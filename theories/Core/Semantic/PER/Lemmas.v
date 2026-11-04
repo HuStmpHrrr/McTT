@@ -1573,7 +1573,7 @@ Proof.
       econstructor; [ exact Eb | exact Eb' | apply IHb ].
     + intros c c' Hc; destruct (HT _ _ Hc) as [b b' Eb Eb' [Hb _]].
       exists b; split; [ exact Eb | exact (proj1 (per_level_code_relevant _ _ _ Hb)) ].
-  - intros b b' elem_rel Hb HE i; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | exact Hb | exact HE ].
+  - intros b b' elem_rel Hb HE i; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | reflexivity | exact Hb | exact HE ].
 Qed.
 
 (** The domain of a [Π] type of levels is one. *)
@@ -1636,6 +1636,47 @@ Proof.
     destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [= -> ->]) | (? & ? & ? & [=])]].
     destruct (level_code_head _ Hl') as [(? & [=]) | [(? & [= -> ->]) | (? & ? & ? & [=])]].
     econstructor; eassumption.
+Qed.
+
+(** A type related to a type of levels is one: the types of levels are
+    [Level@n], the [Π]s between them and the neutral types of levels,
+    which are related to neutral types of levels only
+    ([per_univ_elem_core_neut]). *)
+Lemma per_univ_elem_level_code_right : forall i R a a',
+    DF a ≈ a' ∈ per_univ_elem i ↘ R -> level_code a -> level_code a'.
+Proof.
+  intros * H; per_univ_elem_induction H; intros Hl.
+  all: try (destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [=]) | (? & ? & ? & [=])]]; fail).
+  - exists (per_lvl_at n), Levelᵈ@n; left; constructor; reflexivity.
+  - exfalso; match goal with Hp : per_prop _ _ |- _ =>
+      destruct Hp as [Hpl _ _]; rewrite (level_code_relevant _ Hl) in Hpl; discriminate Hpl end.
+  - (** A [Π]: the domains and the codomains are types of levels. *)
+    destruct_conjs.
+    assert (Hd : level_code a) by (eapply level_code_pi_domain; exact Hl).
+    assert (Hd' : level_code a') by (apply IHH; exact Hd).
+    do 2 eexists; right.
+    econstructor; [ eapply per_univ_elem_level_code; eassumption | eassumption | | eassumption ].
+    intros c c' Hc.
+    assert (Hcc : Dom c ≈ c ∈ in_rel) by (etransitivity; [ exact Hc | symmetry; exact Hc ]).
+    match goal with HT : forall c c' (_ : in_rel c c'), rel_mod_eval _ B _ B' _ _ |- _ =>
+      destruct (HT _ _ Hc) as [b b' Eb Eb' [Hb IHb]]
+    end.
+    econstructor; [ exact Eb | exact Eb' |].
+    assert (Hlb : level_code b) by (eapply level_code_pi_codomain; [ exact Hl | eassumption | exact Hcc | exact Eb ]).
+    exact (per_univ_elem_level_code _ _ _ _ Hb Hlb (IHb Hlb)).
+  - (** A neutral of [LevelSort]: so is the other side. *)
+    destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [= -> ->]) | (? & ? & ? & [=])]].
+    match goal with Hiff : (LevelSortᵈ = LevelSortᵈ <-> ?a' = LevelSortᵈ) |- _ => rewrite (proj1 Hiff eq_refl) end.
+    exists per_ne, (⇑ LevelSortᵈ b'); left; constructor; [| reflexivity ].
+    etransitivity; [ symmetry |]; eassumption.
+Qed.
+
+(** And conversely. *)
+Corollary per_univ_elem_level_code_left : forall i R a a',
+    DF a ≈ a' ∈ per_univ_elem i ↘ R -> level_code a' -> level_code a.
+Proof.
+  intros * H Hl; destruct (per_univ_elem_sym _ _ _ _ H) as [H' _].
+  exact (per_univ_elem_level_code_right _ _ _ _ H' Hl).
 Qed.
 
 End Fixed_GCtx.
@@ -1867,7 +1908,7 @@ Proof.
   (** Each inversion of the second step drops the proposition case at a
       relevant head ([clear_wrong_relevance]). *)
   1: { dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ].
-       apply per_subtyp_neut; [ assumption | assumption | etransitivity; eassumption ]. }
+       apply per_subtyp_neut; [ assumption | assumption | etransitivity; eassumption | etransitivity; eassumption ]. }
   (** The closed types and the universes, a small universe below a small
       one composing by the transitivity of the order on levels. *)
   1-6: dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ]; simpl in *; mauto.

@@ -1203,6 +1203,16 @@ Section Per_univ_elem_core_def.
     `{ forall (elem_rel : relation domain),
           domain_relevance (⇑ a b) = relevant ->
           domain_relevance (⇑ a' b') = relevant ->
+          (** The two are neutral types of levels together, or neither: a
+              neutral type of levels is related to no neutral type of a
+              universe, as the sorts are disjoint.  Relevance alone does
+              not split them, as both universe types and types of levels
+              are relevant; this premise is the level/non-level split of
+              the neutrals, as for [per_relevant_nonlevel].  In [X : LevelSort],
+              the value [⇑ LevelSortᵈ #X] of [X] is not related to
+              [⇑ 𝕌ω@0 #X], which reads back alike: that would make [X] a
+              type of a universe. *)
+          (a = LevelSortᵈ <-> a' = LevelSortᵈ) ->
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
           DF ⇑ a b ≈ ⇑ a' b' ∈ per_univ_elem_core ↘ elem_rel }
@@ -1274,6 +1284,7 @@ Section Per_univ_elem_core_def.
       (case_ne : forall {a b a' b' elem_rel},
           domain_relevance (⇑ a b) = relevant ->
           domain_relevance (⇑ a' b') = relevant ->
+          (a = LevelSortᵈ <-> a' = LevelSortᵈ) ->
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
           motive elem_rel ⇑ a b ⇑ a' b')
@@ -1331,7 +1342,7 @@ Section Per_univ_elem_core_def.
                                   mk_rel_mod_eval b b' evb evb' (conj _ (per_univ_elem_core_strong_ind _ _ _ Rel))
                               end)
         HB HE;
-  | R, a, b, (per_univ_elem_core_neut _ Hr Hr' equiv_b_b' HE)         => case_ne Hr Hr' equiv_b_b' HE;
+  | R, a, b, (per_univ_elem_core_neut _ Hr Hr' Hl equiv_b_b' HE)      => case_ne Hr Hr' Hl equiv_b_b' HE;
   | R, a, b, (per_univ_elem_core_indty nr ar dr _ Hl Hass HM Hh Hu Hu' Hps HnP Hn HnI HaP Ha HaI HdP Hd HdI Hcl Hcd Hns HE) =>
       case_Ind nr ar dr Hl Hass HM Hh Hu Hu' Hps HnP
         (fun m Mm k A vs vs' Hm Hk Hpre => match Hn m Mm k A vs vs' Hm Hk Hpre with
@@ -1559,6 +1570,7 @@ Section Per_univ_elem_ind_def.
       (case_ne : forall i {a b a' b' elem_rel},
           domain_relevance (⇑ a b) = relevant ->
           domain_relevance (⇑ a' b') = relevant ->
+          (a = LevelSortᵈ <-> a' = LevelSortᵈ) ->
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
           motive i elem_rel ⇑ a b ⇑ a' b')
@@ -1636,6 +1648,9 @@ Inductive per_subtyp : universe_index -> domain -> domain -> Prop :=
 | per_subtyp_neut :
   `( domain_relevance (⇑ a b) = relevant ->
      domain_relevance (⇑ a' b') = relevant ->
+     (** Neutral types of levels together, or neither, as for
+         [per_univ_elem_core_neut] *)
+     (a = LevelSortᵈ <-> a' = LevelSortᵈ) ->
      Dom b ≈ b' ∈ per_bot ->
      Sub ⇑ a b <: ⇑ a' b' at i )
 (** A type of levels below every type of levels of a larger sort. *)
@@ -2181,6 +2196,16 @@ Notation "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.
 #[export]
 Hint Constructors per_ctx_subtyp : mctt.
 
+(** The level/non-level split of two neutral types
+    ([per_univ_elem_core_neut]), from those in context: it is an
+    equivalence, so it is closed under symmetry and transitivity. *)
+#[export]
+Hint Extern 1 (_ = LevelSortᵈ <-> _ = LevelSortᵈ) =>
+  solve [ reflexivity | assumption | symmetry; assumption
+        | etransitivity; eassumption
+        | etransitivity; [ symmetry; eassumption | eassumption ]
+        | etransitivity; [ eassumption | symmetry; eassumption ] ] : mctt.
+
 (** Induction on a [per_univ_elem] hypothesis.  [induction H using
     per_univ_elem_ind] does not apply, because the instance is an argument of
     [per_univ_elem] that the eliminator does not quantify over as an index.
@@ -2203,7 +2228,7 @@ Ltac per_univ_elem_induction_core HH ih :=
           sort of its type of levels; the proposition case has the two
           propositions and their relation. *)
       [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 5 intro | do 6 intro | do 11 intro; ih; do 4 intro
-      | do 10 intro | do 34 intro | do 17 intro ]; cbv beta
+      | do 11 intro | do 34 intro | do 17 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

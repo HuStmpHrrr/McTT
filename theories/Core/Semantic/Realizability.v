@@ -739,7 +739,7 @@ Proof.
     + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
     + intros c c' Hc; apply_relation_equivalence.
       constructor; [| reflexivity | reflexivity | solve_not_level_code | solve_not_level_code ].
-      eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | exact Hc | reflexivity ].
+      eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | split; discriminate | exact Hc | reflexivity ].
     + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _ _ _].
       match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
       intro s; destruct (Htt s) as [C C' HC HC' HE].
@@ -755,7 +755,7 @@ Proof.
       exists (nf_univ_of L); split; apply read_typ_suniv; assumption.
     + intros c c' Hc; apply_relation_equivalence.
       constructor; [| reflexivity | reflexivity | solve_not_level_code | solve_not_level_code ].
-      eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | exact Hc | reflexivity ].
+      eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | split; discriminate | exact Hc | reflexivity ].
     + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _ _ _].
       match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
       intro s; destruct (Htt s) as [C C' HC HC' HE].

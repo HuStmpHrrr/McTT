@@ -99,6 +99,13 @@ Proof.
   eassumption.
 Qed.
 
+(** [nbe] of a type, at a large universe it lives in. *)
+Lemma nbe_ty_to_nbe_type : forall Γ T i W, nbe_ty_f Γ T W -> nbe_f Γ T Typeω@i W.
+Proof.
+  intros * H; inversion_clear H.
+  eapply nbe_relevant_intro; [ eassumption | constructor | eassumption | constructor; eassumption | reflexivity ].
+Qed.
+
 (** [nbe] of a type, at [Prop]: a proposition is a relevant term of
     [Prop], read back as a type. *)
 Lemma nbe_ty_to_nbe_prop : forall Γ T W, nbe_ty_f Γ T W -> nbe_f Γ T Propₘ W.

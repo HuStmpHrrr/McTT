@@ -1027,7 +1027,7 @@ Lemma per_subtyp_antisym : forall i a a',
     Sub a <: a' at i -> Sub a' <: a at i -> exists R, DF a ≈ a' ∈ per_univ_elem i ↘ R.
 Proof.
   induction 1; intros Hsub; dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ].
-  - eexists; per_univ_elem_econstructor; [ assumption | assumption | assumption | reflexivity ].
+  - eexists; per_univ_elem_econstructor; [ assumption | assumption | assumption | assumption | reflexivity ].
   - assert (m = n) as -> by lia; eexists; per_univ_elem_econstructor; reflexivity.
   - eexists; per_univ_elem_econstructor; reflexivity.
   - eexists; per_univ_elem_econstructor; [ assumption | reflexivity ].

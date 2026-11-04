@@ -28,19 +28,12 @@ From Mctt.Core Require Import Base Completeness Soundness.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
-From Mctt.Core.Semantic Require Import Realizability Rename.
+From Mctt.Core.Semantic Require Import Realizability Rename Avoid.
 From Mctt.Core.Syntactic Require Import Fresh NfRename.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 
 Section Fixed_GCtx.
 Context {GC : GCtx}.
-
-(** [nbe] of a type, at a large universe it lives in. *)
-Lemma nbe_ty_to_nbe_type : forall Γ T i W, nbe_ty_f Γ T W -> nbe_f Γ T Typeω@i W.
-Proof.
-  intros * H; inversion_clear H.
-  eapply nbe_relevant_intro; [ eassumption | constructor | eassumption | constructor; eassumption | reflexivity ].
-Qed.
 
 (** ** NbE Commutes with Weakening
 
@@ -142,32 +135,21 @@ Qed.
 (** ** NbE Invents No Variables, Semantically
 
     Outside its proofs, which name the positions of the environment they
-    are kept over ([nbe_wk]). *)
+    are kept over ([nbe_wk]).  The invariant of avoided variables
+    ([Core.Semantic.Avoid.nbe_wk_fresh]) gives it with no typing. *)
 Corollary nbe_wk_fresh_sem : forall Γ A M T W,
     ⊢ Γ ▹ A ->
     Γ ⊢ M : T ->
     nbe_f (Γ ▹ A) M[↑]ʷ T[↑]ʷ W ->
     nf_fresh 0 (nf_erase W).
-Proof.
-  intros * HΓA HM Hn.
-  destruct (soundness HM) as [W1 [Hn1 _]].
-  destruct (nbe_wk _ _ _ _ _ HΓA HM Hn1) as (W2 & Hn2 & E).
-  functional_nbe_rewrite_clear.
-  rewrite E, nf_erase_wk; apply (proj1 nf_wk_fresh); intros x; cbn; lia.
-Qed.
+Proof. intros * _ _ Hn; exact (nbe_wk_fresh _ _ _ _ _ _ _ Hn). Qed.
 
 Corollary nbe_ty_wk_fresh_sem : forall Γ A T i W,
     ⊢ Γ ▹ A ->
     Γ ⊢ T : Typeω@i ->
     nbe_ty_f (Γ ▹ A) T[↑]ʷ W ->
     nf_fresh 0 (nf_erase W).
-Proof.
-  intros * HΓA HT Hn.
-  destruct (soundness_ty HT) as [W1 [Hn1 _]].
-  destruct (nbe_ty_wk _ _ _ _ _ HΓA HT Hn1) as (W2 & Hn2 & E).
-  functional_nbe_rewrite_clear.
-  rewrite E, nf_erase_wk; apply (proj1 nf_wk_fresh); intros x; cbn; lia.
-Qed.
+Proof. intros * _ _ Hn; exact (nbe_ty_wk_fresh _ _ _ _ _ _ Hn). Qed.
 
 (** ** Strengthening an Equation
 
@@ -183,8 +165,8 @@ Theorem exp_eq_strengthen_sem : forall Γ A M N T,
     Γ ⊢ M ≈ N : T.
 Proof.
   intros * HΓA HM HN HMN.
-  destruct (soundness HM) as [WM [HnM HeqM]].
-  destruct (soundness HN) as [WN [HnN HeqN]].
+  destruct (normalization HM) as [WM HnM].
+  destruct (normalization HN) as [WN HnN].
   destruct (completeness HMN) as (W & W' & HnM' & HnN' & HE).
   destruct (nbe_wk _ _ _ _ _ HΓA HM HnM) as (WM' & HnM'' & EM).
   destruct (nbe_wk _ _ _ _ _ HΓA HN HnN) as (WN' & HnN'' & EN).
