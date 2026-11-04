@@ -16,8 +16,8 @@
     closure's binders.  [K = None] is a closure whose environment avoids [v]
     everywhere.
 
-    The proof is structural, in the pattern of [Core.Semantic.Transparency]
-    ([domain_clean]); readback is where the level arithmetic happens: a variable at
+    The proof is structural, in the pattern of [Core.Semantic.Stuck]
+    ([domain_stuck]); readback is where the level arithmetic happens: a variable at
     level [x] reads back at length [n] as the index [n - x - 1], which is not
     [n - v - 1] when [x <> v] and both are below [n]. *)
 From Stdlib Require Import Arith Lia List PeanoNat String.
