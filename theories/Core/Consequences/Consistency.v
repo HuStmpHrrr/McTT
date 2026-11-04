@@ -30,7 +30,7 @@ From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 Require Import Mctt.Core.Syntactic.Command.
-From Mctt.Core.Syntactic Require Import Builtin.
+From Mctt.Core.Syntactic Require Import Builtin NfRename.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 #[local] Open Scope list_scope.
@@ -148,12 +148,14 @@ Proof.
   rewrite <- (Hrel _ _ HS HAs _ Ha), <- (Hrel _ _ HS' HA's _ Ha'); exact Hr.
 Qed.
 
-(** A subtyping read at an environment of its context, the initial one
-    retagged: the two values are in the semantic subtyping
-    ([per_subtyp]). *)
+(** A subtyping read at the initial environment of its context: the two
+    values are in the semantic subtyping ([per_subtyp]).  The semantic
+    judgment is read at the identity, whose value is the initial
+    environment retagged, and moved back along the types' relatedness
+    ([per_subtyp_transp]). *)
 Lemma subtyp_at_initial_env : forall {Γ A A'},
     Γ ⊢ A ⊆ A' ->
-    exists ρ a a' k, ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ ↘ a' /\ Sub a <: a' at k.
+    exists ρ a a' k, initial_env_f Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ ↘ a' /\ Sub a <: a' at k.
 Proof.
   intros * Hs.
   pose proof (completeness_fundamental_subtyp _ _ _ Hs) as [R HR k Hsub].
@@ -163,8 +165,10 @@ Proof.
   assert (Hρ1 : R ρ ρ) by (etransitivity; [ exact Hρρ | symmetry; exact Hρρ ]).
   destruct (eval_sub_id_rel HR Hρ1) as [Hid Hid'].
   destruct (Hsub _ _ HR _ _ (rel_sub_id (ex_intro _ _ HR)) _ _ _ _ Hρ1 Hid Hid')
-    as [aσ a0 a'σ' a0' Ha Ha0 Ha' Ha0' _ _ Hsa].
-  exists (ctx_retag Γ ρ), a0, a0', k; repeat split; assumption.
+    as [aσ a0 a'σ' a0' Ha Ha0 Ha' Ha0' [R1 HR1] [R2 HR2] Hsa].
+  rewrite exp_sub_id in Ha, Ha'.
+  exists ρ, aσ, a'σ', k; repeat split; [ exact Hρ | exact Ha | exact Ha' |].
+  eapply per_subtyp_transp; [ exact Hsa | symmetry; exact HR1 | symmetry; exact HR2 ].
 Qed.
 
 (** NbE at [Prop] reads a proposition back as a type. *)
@@ -1125,7 +1129,7 @@ Lemma subtyp_level_inv : forall {Γ m n},
     m <= n.
 Proof.
   intros * H.
-  destruct (subtyp_at_initial_env H) as (ρ & a & a' & k & Ha & Ha' & Hs).
+  destruct (subtyp_at_initial_env H) as (ρ & a & a' & k & _ & Ha & Ha' & Hs).
   inversion Ha; subst; inversion Ha'; subst.
   inversion Hs; subst; try assumption.
   match goal with Hp : per_prop _ _ |- _ => destruct Hp as [Hp _ _]; cbn in Hp; discriminate end.
@@ -1446,7 +1450,8 @@ Hint Constructors small_typ_nf : mctt.
 (** ** The Normal Forms of the Types of a Universe
 
     The normal forms of the types of a universe [u], when they are not
-    neutral: [Prop], the types of levels, the [Π]s,
+    neutral: [Prop], the types of levels, their sort [LevelSort] (in a
+    large universe), the [Π]s,
     the small universes whose successor level is below [u] (every small
     universe when [u] is large), and the large universes below [u].  A
     literal small universe's instance is [small_typ_nf]
@@ -1457,6 +1462,9 @@ Inductive typ_nf_below : universe_nf -> nf -> Prop :=
 | typ_nf_below_prop : forall u, typ_nf_below u Propⁿ
 (** A type of levels *)
 | typ_nf_below_level : forall u m, typ_nf_below u Levelⁿ@m
+(** The sort of the types of levels, in the large universes only
+    ([wf_level_sort]) *)
+| typ_nf_below_level_sort : forall i, typ_nf_below (universe_large i) LevelSortⁿ
 (** A [Π] *)
 | typ_nf_below_pi : forall u A B, typ_nf_below u (Πⁿ A B)
 (** A small universe whose successor level is below [u] *)
@@ -1479,7 +1487,7 @@ Lemma typ_nf_below_lit : forall n W,
     typ_nf_below (universe_small (lvl_lit (ordinal_of_nat n))) W ->
     small_typ_nf n W.
 Proof.
-  intros * H; inversion H as [| | | ? c xs Hle | | |]; subst; try constructor.
+  intros * H; inversion H as [| | | | ? c xs Hle | | |]; subst; try constructor.
   cbn [universe_nf_le] in Hle.
   pose proof (lvl_le_lit_closed _ _ Hle) as Hxs.
   destruct xs as [| [k s a] r]; cbn in Hxs; [| discriminate ].
@@ -1618,7 +1626,7 @@ Lemma subtyp_large_inv : forall {Γ i j},
     i <= j.
 Proof.
   intros * H.
-  destruct (subtyp_at_initial_env H) as (ρ & a & a' & k & Ha & Ha' & Hs).
+  destruct (subtyp_at_initial_env H) as (ρ & a & a' & k & _ & Ha & Ha' & Hs).
   inversion Ha; subst; inversion Ha'; subst.
   inversion Hs; subst; try assumption.
   match goal with Hp : per_prop _ _ |- _ => destruct Hp as [Hp _ _]; cbn in Hp; discriminate end.
@@ -1716,11 +1724,9 @@ Proof.
   destruct (univ_term_large HT HM) as [k HMl].
   destruct (univ_term_large HT HW) as [k' HWl].
   pose proof (nbe_univ_term_to_nbe_ty HT Hn) as Hty.
-  (** A normal form is its own normal form. *)
-  assert (HWW : nbe_ty_f Γ W W).
-  { (* TEMP-NFB: only up to erasure ([idempotent_nbe_ty]); the small
-       universe case below needs its level read back *)
-    admit. }
+  (** The normal form of the normal form, equal to it up to proofs *)
+  destruct (normalization_ty HWl) as (W'' & HW'').
+  pose proof (idempotent_nbe_ty HMl Hty HW'') as HEW.
   inversion Hty; subst.
   match goal with Hr : Rtyp _ in _ ↘ W |- _ => inversion Hr; subst end.
   all: try solve [ constructor | exfalso; eapply Hne; reflexivity ].
@@ -1737,6 +1743,23 @@ Proof.
     + apply nbe_ty_typ_univ_nf in HnT as ->; exact I.
     + destruct (nbe_ty_suniv_univ_nf HnT) as (L' & -> & HL').
       cbn [universe_nf_le nf_to_exp] in *.
+      (** A small universe is its own normal form: its level is canonical,
+          and canonical forms equal up to proofs are equal *)
+      assert (HWW : nbe_ty_f Γ (univⁿ c xs) (univⁿ c xs)).
+      { match goal with H0 : Rnf ⇓ Levelᵈ _ in _ ↘ nf_lvl_of (c, xs) |- _ =>
+          destruct (domain_level_canon_of_read _ _ _ H0) as [_ [L1 [HL1 [ys1 [_ Hc1]]]]] end.
+        apply nf_lvl_of_inj in HL1; subst L1.
+        pose proof HW'' as HW0; destruct HW0 as [ρ2 a2 Hρ2 Ha2 Hr2].
+        directed_inversion_by_head eval_exp; subst.
+        inversion Hr2; subst.
+        match goal with H3 : Rnf ⇓ Levelᵈ _ in _ ↘ nf_lvl_of ?L2 |- _ =>
+          destruct (domain_level_canon_of_read _ _ _ H3) as [_ [L3 [HL3 [ys3 [_ Hc3]]]]]; apply nf_lvl_of_inj in HL3; subst L3;
+          destruct L2 as [c2 xs2] end.
+        unfold nf_univ_of in *; cbn [fst snd nf_erase] in HEW, HW''; injection HEW as <- HEx.
+        assert (E1 : lvl_canon (c, xs) = (c, xs)) by (rewrite Hc1, lvl_canon_idem; reflexivity).
+        assert (E2 : lvl_canon (c, xs2) = (c, xs2)) by (rewrite Hc3, lvl_canon_idem; reflexivity).
+        rewrite lvl_canon_erase, HEx, <- lvl_canon_erase, E2 in E1.
+        injection E1 as ->; exact HW''. }
       set (E := lvl_exp_of c (List.map atom_exp xs)) in *.
       apply wf_univ_inversion in HW.
       assert (HL : nbe_f Γ E Level (nf_lvl_of (c, xs))) by (apply (nbe_ty_univ_level (L := (c, xs))); exact HWW).
@@ -1755,7 +1778,11 @@ Proof.
       pose proof (subtyp_suniv_bound HW Hn' HL') as Hle.
       rewrite lvl_le_correct in *; intros ν Hν; specialize (Hle ν Hν).
       rewrite lvl_canon_eval in Hle by exact Hν; exact Hle.
-Admitted. (* TEMP-NFB *)
+  - (** [LevelSort] is of the large universes only *)
+    destruct HT as [i | t].
+    + apply nbe_ty_typ_univ_nf in HnT as ->; constructor.
+    + exfalso; cbn in HW; apply wf_level_sort_inversion in HW; eapply subtyp_large_small_absurd; exact HW.
+Qed.
 
 End Small_Typ.
 
@@ -1926,14 +1953,47 @@ Proof.
   all: repeat (match type of Hc with context [String.eqb ?a ?b] => destruct (String.eqb_spec a b) as [-> | ?]; [ injection Hc as <-; auto | ] end); discriminate.
 Qed.
 
+(** The domain of a typed [Π] is of a large universe at every large
+    enough index, of [Prop], or of [LevelSort] ([wf_pi_inversion]). *)
+Lemma pi_domain_sorted : forall {Γ A B C}, Γ ⊢ Π A B : C ->
+    exists i, forall j, i <= j -> Γ ⊢ A : Typeω@j \/ Γ ⊢ A : Propₘ \/ Γ ⊢ A : LevelSort.
+Proof.
+  intros * H.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  destruct (wf_pi_inversion H) as [(i & HA & _) | [(L & n & HL & HA & _) | [_ HA _ _]]].
+  - exists (S i); intros j Hj; destruct HA as [HA | HA]; [| right; exact HA ].
+    left; eapply wf_exp_subtyp'; [ exact HA | apply wf_subtyp_univ; [ exact HΓ | lia ] ].
+  - exists 0; intros j _; destruct HA as [HA | HA]; [| right; exact HA ].
+    left; eapply wf_exp_subtyp'; [ exact HA | eapply wf_subtyp_small_large; eassumption ].
+  - exists 0; intros; right; right; exact HA.
+Qed.
+
 (** A term of the domain of a [Π] is one of the domain of a [Π] below. *)
 Lemma subtyp_pi_dom_conv : forall {Γ A' B' A B N},
     Γ ⊢ Π A' B' ⊆ Π A B -> Γ ⊢ N : A -> Γ ⊢ N : A'.
 Proof using GC.
   intros * H HN.
   assert (exists C, Γ ⊢ Π A B : C) as [C HC] by (gen_presups; eexists; eassumption).
-  destruct (wf_pi_typed_large HC) as [[k0 Hk0] | Hk0];
-    [| (* TEMP-LVLPI: a [Π] between types of levels: its domains are equal ([wf_subtyp_pi_level]) *) admit ].
+  destruct (wf_pi_typed_large HC) as [[k0 Hk0] | Hk0].
+  2:{ (** A [Π] between types of levels: the semantic subtyping relates
+        the domains ([per_subtyp_pi]), which are so equal at a common
+        sort *)
+    destruct (subtyp_at_initial_env H) as (ρ & a1 & a2 & k & Hρ & Ha1 & Ha2 & Hs).
+    inversion Ha1; subst; inversion Ha2; subst.
+    assert (exists C', Γ ⊢ Π A' B' : C') as [C' HC'] by (gen_presups; eexists; eassumption).
+    destruct (pi_domain_sorted HC) as [i1 HA1], (pi_domain_sorted HC') as [i2 HA2].
+    pose proof (initial_value_of_sort type_sort_level Hk0 Hρ Ha2) as [Hr2 _].
+    inversion Hs; subst;
+      [| match goal with Hp : per_prop _ _ |- _ => destruct Hp as [Hp1 Hp2 _] end; cbn in *; congruence ].
+    pose proof (HA1 (max i1 i2) (PeanoNat.Nat.le_max_l _ _)) as HA1'.
+    pose proof (HA2 (max i1 i2) (PeanoNat.Nat.le_max_r _ _)) as HA2'.
+    match goal with H5 : ⟦ A ⟧ ρ ↘ ?a, H6 : ⟦ A' ⟧ ρ ↘ ?a0, Ha : per_univ_elem _ _ ?a0 ?a |- _ =>
+      destruct (related_values_common_sort Hρ H6 H5 Ha HA2' HA1') as (S & HSe & HA' & HA);
+      destruct (per_univ_then_per_top_typ Ha (length Γ)) as [WA' WA HWA' HWA HEA] end.
+    assert (HS : type_sort S) by (destruct HSe as [-> | [-> | ->]]; constructor).
+    assert (HAA : Γ ⊢ A' ≈ A : S)
+      by (eapply exp_eq_of_nbe_ty_same; [ exact HS | exact HA' | exact HA | econstructor; eassumption | econstructor; eassumption | exact HEA ]).
+    eapply exp_conv_sort; [ exact HS | symmetry; exact HAA | exact HN ]. }
   apply (subtyp_spec_large (k := k0)) in H
     as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & Hs) | (A1 & A2 & B1 & B2 & [k1 HA] & [k2 HB] & (S3 & HS3 & H13) & _)]];
     [| | | right; exact Hk0 ].
@@ -1945,7 +2005,7 @@ Proof using GC.
       by (destruct HB as [HB | [HB | HB]]; (eapply exp_conv_sort; [| symmetry; eassumption | exact HN ]); constructor).
     assert (Γ ⊢ N : A1) by (eapply exp_conv_sort; [ exact HS3 | symmetry; exact H13 | assumption ]).
     destruct HA as [HA | [HA | HA]]; (eapply exp_conv_sort; [| symmetry; eassumption | eassumption ]); constructor.
-Admitted. (* TEMP-LVLPI *)
+Qed.
 
 (** The normal forms of a type shaped as the natural numbers
     ([nat_shape]), its constructors [z] and [s]: chains of [s] ending in

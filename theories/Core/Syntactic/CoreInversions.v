@@ -131,6 +131,16 @@ Proof. intros * HΓ; exact (wf_subtyp_refl_large _ _ _ _ _ (wf_prop_large _ _ _ 
 #[export]
 Hint Resolve wf_prop_large wf_subtyp_prop_refl : mctt.
 
+(** The sort of the types of levels is a type of [Typeω@0], up to
+    subtyping ([wf_level_sort]). *)
+Lemma wf_level_sort_inversion : forall {Θ Ξ Γ A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@0 ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H; mautosolve 4.
+Qed.
+
 Lemma wf_prop_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.

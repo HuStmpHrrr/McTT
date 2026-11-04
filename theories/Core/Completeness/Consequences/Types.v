@@ -105,6 +105,9 @@ Inductive is_typ_constr : typ -> Prop :=
 | univ_is_typ_constr : forall t, is_typ_constr Type⟨t⟩
 (** A type of levels *)
 | level_is_typ_constr : forall n, is_typ_constr Level@n
+(** The sort of the types of levels, a type of [Typeω@0]
+    ([wf_level_sort]) *)
+| level_sort_is_typ_constr : is_typ_constr LevelSort
 (** The universe of propositions *)
 | prop_is_typ_constr : is_typ_constr Propₘ
 (** A [Π] *)
