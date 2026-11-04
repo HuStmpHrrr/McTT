@@ -43,6 +43,192 @@ From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
+(** ** Scoping side conditions
+
+    A kept proof is read back over the context it is met in, so the
+    semantic cases of the rules that keep a term ask for its scoping; it
+    comes from the term's typing ([wf_scoped]). *)
+Lemma wf_exp_scoped_term : forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> exp_scoped (List.length Γ) M.
+Proof. intros * H; exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ H))). Qed.
+
+Lemma wf_exp_eq_scoped_left : forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> exp_scoped (List.length Γ) M.
+Proof. intros * H; exact (proj1 (proj2 (proj1 (proj2 (proj2 wf_scoped)) _ _ _ _ _ _ H))). Qed.
+
+Lemma wf_exp_eq_scoped_right : forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> exp_scoped (List.length Γ) M'.
+Proof. intros * H; exact (proj1 (proj2 (proj2 (proj1 (proj2 (proj2 wf_scoped)) _ _ _ _ _ _ H)))). Qed.
+
+Lemma wf_unit_eq_scoped_left : forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> gunit_scoped (List.length Γ) U.
+Proof.
+  intros * H; destruct wf_scoped as (_ & _ & _ & _ & _ & _ & Hu & _); exact (proj1 (proj2 (Hu _ _ _ _ _ H))).
+Qed.
+
+Lemma wf_unit_eq_scoped_right : forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> gunit_scoped (List.length Γ) U'.
+Proof.
+  intros * H; destruct wf_scoped as (_ & _ & _ & _ & _ & _ & Hu & _); exact (proj2 (proj2 (Hu _ _ _ _ _ H))).
+Qed.
+
+(** A list each of whose entries satisfies [Q]. *)
+Lemma forall_of_nth_error : forall {X} (Q : X -> Prop) (l : list X), (forall k x, nth_error l k = Some x -> Q x) -> Forall Q l.
+Proof.
+  intros * H; apply Forall_forall; intros x Hx.
+  destruct (In_nth_error _ _ Hx) as [k Hk]; exact (H _ _ Hk).
+Qed.
+
+(** An entry of a list at an index of a list at least as long. *)
+Lemma nth_error_of_length : forall {X Y} (l : list X) (l' : list Y) k x,
+    nth_error l k = Some x -> List.length l <= List.length l' -> exists y, nth_error l' k = Some y.
+Proof.
+  intros * Hk Hl; destruct (nth_error l' k) as [y |] eqn:E; [ eauto |].
+  apply nth_error_None in E; assert (k < List.length l) by (apply nth_error_Some; congruence); lia.
+Qed.
+
+(** The block of an eliminator, scoped, from its typing. *)
+Lemma blocks_scoped_of_elim : forall Θ Ξ Γ r p Us m Bks M T,
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us m Bks M : T -> blocks_scoped (List.length Γ) Bks.
+Proof. intros * H; exact (proj1 (proj2 (proj1 (exp_scoped_elim _ _ _ _ _ _ _) (wf_exp_scoped_term _ _ _ _ _ H)))). Qed.
+
+(** The field values of a tuple, scoped, from its typing. *)
+Lemma tuple_fields_scoped : forall Θ Ξ Γ T fs A,
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : A -> Forall (exp_scoped (List.length Γ)) (map snd fs).
+Proof.
+  intros * H; pose proof (wf_exp_scoped_term _ _ _ _ _ H) as Hs; cbn [exp_scoped] in Hs.
+  destruct Hs as [_ Hs]; rewrite all_list_Forall in Hs; apply Forall_map; exact Hs.
+Qed.
+
+Lemma blocks_scoped_of_elim_eq : forall Θ Ξ Γ r p Us m Bks M N T,
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim r p Us m Bks M ≈ N : T -> blocks_scoped (List.length Γ) Bks.
+Proof. intros * H; exact (proj1 (proj2 (proj1 (exp_scoped_elim _ _ _ _ _ _ _) (wf_exp_eq_scoped_left _ _ _ _ _ _ H)))). Qed.
+
+Lemma blocks_scoped_of_elim_eq_right : forall Θ Ξ Γ r p Us m Bks M N T,
+    Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ a_elim r p Us m Bks M : T -> blocks_scoped (List.length Γ) Bks.
+Proof. intros * H; exact (proj1 (proj2 (proj1 (exp_scoped_elim _ _ _ _ _ _ _) (wf_exp_eq_scoped_right _ _ _ _ _ _ H)))). Qed.
+
+(** The length of the instances of a telescope at arguments, at least the
+    arguments' number: of a member's parameters, of a constructor's
+    arguments, or of a record's parameters. *)
+(** A well-formed context of the global context of the hypotheses. *)
+Ltac ctx_judgment :=
+  first [ match goal with H : ⊢ _ ⍮ _ ⍮ _ |- _ => exact H end
+        | match goal with H : _ ⍮ _ ⍮ _ ⊢ _ : _ |- _ => exact (presup_exp_ctx H) end
+        | match goal with H : _ ⍮ _ ⍮ _ ⊢ _ ≈ _ : _ |- _ => exact (presup_exp_eq_ctx H) end ].
+
+Ltac tele_insts_long :=
+  first
+    [ lia
+    | rewrite length_tele_insts_cargs by assumption; lia
+    | match goal with
+      | Hl : ind_lookup ?T ?X _ = Some ?D, HMk : ind_member ?D _ = Some ?Mk |- _ =>
+          let HΓ := fresh "HΓ" in
+          assert (HΓ : exists G, ⊢ T ⍮ X ⍮ G) by (eexists; ctx_judgment);
+          destruct HΓ as [? HΓ];
+          rewrite length_tele_insts_params;
+          [ lia | exact (decl_closed_params_ass _ _ _ (proj2 (decl_of_lookup _ _ _ _ _ HΓ Hl)) HMk) | lia ]
+      end
+    | match goal with
+      | Hl : record_lookup ?T ?X _ = Some ?R |- _ =>
+          let HΓ := fresh "HΓ" in
+          assert (HΓ : exists G, ⊢ T ⍮ X ⍮ G) by (eexists; ctx_judgment);
+          destruct HΓ as [? HΓ];
+          let G := constr:(ctx_wf_gctx _ _ _ HΓ) in
+          rewrite length_tele_insts by exact (typed_params_ass _ _ _ (record_lookup_typed _ _ G (gctx_valid_syn _ _ G) _ _ Hl));
+          lia
+      end ].
+
+(** The field [k] of two lists of field values of one record, and of its
+    declaration, from the value at [k] of the first. *)
+Ltac field_pair fs gs Fs Hn Hn' k M HP :=
+  rewrite nth_error_map in HP;
+  let f := fresh "f" in let M0 := fresh "M0" in let U := fresh "U" in let M1 := fresh "M1" in
+  destruct (nth_error fs k) as [[f M0] |] eqn:Hfk; cbn in HP; [| discriminate ]; injection HP as <-;
+  assert (Hf : nth_error (map fst Fs) k = Some f) by (rewrite <- Hn, nth_error_map, Hfk; reflexivity);
+  rewrite nth_error_map in Hf;
+  destruct (nth_error Fs k) as [[? U] |] eqn:HFk; cbn in Hf; [| discriminate ]; injection Hf as ->;
+  assert (Hg : nth_error (map fst gs) k = Some f) by (rewrite Hn', nth_error_map, HFk; reflexivity);
+  rewrite nth_error_map in Hg;
+  destruct (nth_error gs k) as [[? M1] |] eqn:Hfk'; cbn in Hg; [| discriminate ]; injection Hg as ->.
+
+(** The entries of a list of arguments, scoped, from their typings at the
+    instances of a telescope ([args_ok]), or from the equal pairs of two
+    lists, or a record's field values from their typings. *)
+Ltac args_scoped :=
+  apply forall_of_nth_error; intros ?k ?P ?HP;
+  first
+    [ match goal with
+      | H : forall k P T, nth_error ?Ps k = Some P -> nth_error ?Ts k = Some T -> _ ⍮ _ ⍮ _ ⊢ P : T,
+        HP : nth_error ?Ps ?k = Some ?P |- _ =>
+          let T := fresh "T" in let HT := fresh "HT" in
+          destruct (nth_error_of_length Ps Ts k P HP ltac:(tele_insts_long)) as [T HT];
+          exact (wf_exp_scoped_term _ _ _ _ _ (H _ _ _ HP HT))
+      end
+    | match goal with
+      | H : forall k P P' T, nth_error ?Ps k = Some P -> nth_error ?Ps' k = Some P' -> nth_error ?Ts k = Some T ->
+              _ ⍮ _ ⍮ _ ⊢ P ≈ P' : T,
+        HP : nth_error ?Ps ?k = Some ?P |- _ =>
+          let P' := fresh "P'" in let HP' := fresh "HP'" in let T := fresh "T" in let HT := fresh "HT" in
+          destruct (nth_error_of_length Ps Ps' k P HP ltac:(lia)) as [P' HP'];
+          destruct (nth_error_of_length Ps Ts k P HP ltac:(tele_insts_long)) as [T HT];
+          exact (wf_exp_eq_scoped_left _ _ _ _ _ _ (H _ _ _ _ HP HP' HT))
+      end
+    | match goal with
+      | H : forall k P P' T, nth_error ?Ps k = Some P -> nth_error ?Ps' k = Some P' -> nth_error ?Ts k = Some T ->
+              _ ⍮ _ ⍮ _ ⊢ P ≈ P' : T,
+        HP' : nth_error ?Ps' ?k = Some ?P' |- _ =>
+          let P := fresh "P" in let HP := fresh "HP" in let T := fresh "T" in let HT := fresh "HT" in
+          destruct (nth_error_of_length Ps' Ps k P' HP' ltac:(lia)) as [P HP];
+          destruct (nth_error_of_length Ps Ts k P HP ltac:(tele_insts_long)) as [T HT];
+          exact (wf_exp_eq_scoped_right _ _ _ _ _ _ (H _ _ _ _ HP HP' HT))
+      end
+    | match goal with
+      | HP : nth_error (map snd ?fs) ?k = Some ?M,
+        Hn : map fst ?fs = map fst ?Fs,
+        H : forall k f M U, nth_error ?fs k = Some (f, M) -> nth_error ?Fs k = Some (f, U) -> _ ⍮ _ ⍮ _ ⊢ M : _ |- _ =>
+          rewrite nth_error_map in HP;
+          destruct (nth_error fs k) as [[f M0] |] eqn:Hfk; cbn in HP; [| discriminate ]; injection HP as <-;
+          assert (Hf : nth_error (map fst Fs) k = Some f) by (rewrite <- Hn, nth_error_map, Hfk; reflexivity);
+          rewrite nth_error_map in Hf;
+          destruct (nth_error Fs k) as [[f' U] |] eqn:HFk; cbn in Hf; [| discriminate ]; injection Hf as ->;
+          exact (wf_exp_scoped_term _ _ _ _ _ (H _ _ _ _ Hfk HFk))
+      end
+    | match goal with
+      | HP : nth_error (map snd ?fs) ?k = Some ?M,
+        Hn : map fst ?fs = map fst ?Fs, Hn' : map fst ?fs' = map fst ?Fs,
+        H : forall k f M M' U, nth_error ?fs k = Some (f, M) -> nth_error ?fs' k = Some (f, M') ->
+              nth_error ?Fs k = Some (f, U) -> _ ⍮ _ ⍮ _ ⊢ M ≈ M' : _ |- _ =>
+          field_pair fs fs' Fs Hn Hn' k M HP;
+          eapply wf_exp_eq_scoped_left; eapply H; eassumption
+      end
+    | match goal with
+      | HP : nth_error (map snd ?fs') ?k = Some ?M',
+        Hn : map fst ?fs = map fst ?Fs, Hn' : map fst ?fs' = map fst ?Fs,
+        H : forall k f M M' U, nth_error ?fs k = Some (f, M) -> nth_error ?fs' k = Some (f, M') ->
+              nth_error ?Fs k = Some (f, U) -> _ ⍮ _ ⍮ _ ⊢ M ≈ M' : _ |- _ =>
+          field_pair fs' fs Fs Hn' Hn k M' HP;
+          eapply wf_exp_eq_scoped_right; eapply H; eassumption
+      end ].
+
+(** A scoping side condition from a typing hypothesis of the term or unit. *)
+Ltac scoped_side :=
+  match goal with
+  | |- Forall (exp_scoped _) _ => args_scoped
+  | |- Forall (exp_scoped _) (map snd ?fs) =>
+      match goal with H : _ ⍮ _ ⍮ _ ⊢ a_tuple _ fs : _ |- _ => exact (tuple_fields_scoped _ _ _ _ _ _ H) end
+  | |- blocks_scoped _ ?Bks =>
+      first [ (** the eliminator's group: the one of the blocks' number *)
+              match goal with HB : length Bks = ind_nblk ?D, Hl : ind_lookup _ _ ?p = Some ?D |- _ =>
+                eapply blocks_scoped_of_elim; eapply (wf_elim _ _ p D); eassumption end
+            | eapply blocks_scoped_of_elim_eq; eapply wf_exp_eq_elim_cong; eassumption
+            | eapply blocks_scoped_of_elim_eq_right; eapply wf_exp_eq_elim_cong; eassumption
+            | eapply blocks_scoped_of_elim_eq; eapply wf_exp_eq_elim_iota; eassumption
+            | eapply blocks_scoped_of_elim_eq; eapply wf_exp_eq_elim_view; eassumption ]
+  | |- exp_scoped _ ?M =>
+      first [ match goal with H : _ ⍮ _ ⍮ _ ⊢ M : _ |- _ => exact (wf_exp_scoped_term _ _ _ _ _ H) end
+            | match goal with H : _ ⍮ _ ⍮ _ ⊢ M ≈ _ : _ |- _ => exact (wf_exp_eq_scoped_left _ _ _ _ _ _ H) end
+            | match goal with H : _ ⍮ _ ⍮ _ ⊢ _ ≈ M : _ |- _ => exact (wf_exp_eq_scoped_right _ _ _ _ _ _ H) end ]
+  | |- gunit_scoped _ ?U =>
+      first [ match goal with H : _ ⍮ _ ⍮ _ ⊢ᵘ U ≈ _ |- _ => exact (wf_unit_eq_scoped_left _ _ _ _ _ H) end
+            | match goal with H : _ ⍮ _ ⍮ _ ⊢ᵘ _ ≈ U |- _ => exact (wf_unit_eq_scoped_right _ _ _ _ _ H) end ]
+  end.
+
 Theorem completeness_fundamental :
   (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊨ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊨ M : A) /\
@@ -58,34 +244,39 @@ Proof.
       eapply sem_ctx_empty | eapply sem_ctx_extend | eapply sem_ctx_extend_def | eapply sem_ctx_extend_mod
     | eapply sem_ctx_extend_dm
     | (** terms *)
-      eapply sem_typ | eapply sem_univ | eapply sem_level | eapply sem_llit | eapply sem_succl | eapply sem_maxl
-    | eapply sem_prop | eapply sem_True | eapply sem_true | eapply sem_tt | eapply sem_star | eapply sem_False | eapply sem_absurd
+      eapply sem_typ | eapply sem_univ | eapply sem_level | eapply sem_level_sort | eapply sem_llit | eapply sem_succl
+    | eapply sem_maxl
+    | eapply sem_prop | eapply sem_True | eapply sem_tt | eapply sem_False | eapply sem_absurd
     | eapply sem_and | eapply sem_conj | eapply sem_left | eapply sem_right
-    | eapply sem_placeholder_type | eapply sem_placeholder | eapply sem_ind | eapply sem_con
-    | eapply sem_elim | eapply sem_pi | eapply sem_fn | eapply sem_app | eapply sem_let | eapply sem_let_mod
+    | eapply sem_ind | eapply sem_con
+    | eapply sem_elim | eapply sem_pi | eapply sem_pi_level | eapply sem_fn
+    | (** the function's premise first: it fixes the domain, which the
+          conclusion does not *)
+      eapply sem_app; [ | | | | eassumption | | ]
+    | eapply sem_let
+    | eapply sem_let_mod
     | eapply sem_mem | eapply sem_vlookup | eapply sem_record | eapply sem_tuple | eapply sem_proj | eapply sem_exp_subtyp
     | (** term equality *)
       eapply sem_exp_eq_typ_cong | eapply sem_exp_eq_univ_cong | eapply sem_exp_eq_level_cong
-    | eapply sem_exp_eq_llit_cong | eapply sem_exp_eq_succl_cong | eapply sem_exp_eq_maxl_cong
+    | eapply sem_exp_eq_level_sort_cong | eapply sem_exp_eq_llit_cong | eapply sem_exp_eq_succl_cong | eapply sem_exp_eq_maxl_cong
     | eapply sem_exp_eq_llit_succl | eapply sem_exp_eq_maxl_absorb | eapply sem_exp_eq_maxl_zero
     | eapply sem_exp_eq_maxl_assoc | eapply sem_exp_eq_maxl_comm | eapply sem_exp_eq_maxl_idem
     | eapply sem_exp_eq_succl_maxl | eapply sem_exp_eq_maxl_succl
     | eapply sem_exp_eq_prop_cong | eapply sem_exp_eq_True_cong | eapply sem_exp_eq_False_cong
     | eapply sem_exp_eq_absurd_cong | eapply sem_exp_eq_and_cong
-    | eapply sem_exp_eq_placeholder_type_cong | eapply sem_exp_eq_placeholder_cong
     | eapply sem_exp_eq_ind_cong | eapply sem_exp_eq_con_cong
-    | eapply sem_exp_eq_elim_cong | eapply sem_exp_eq_pi_cong | eapply sem_exp_eq_fn_cong
+    | eapply sem_exp_eq_elim_cong | eapply sem_exp_eq_pi_cong | eapply sem_exp_eq_pi_cong_level | eapply sem_exp_eq_fn_cong
     | eapply sem_exp_eq_app_cong | eapply sem_exp_eq_let_cong | eapply sem_exp_eq_let_mod_cong
     | eapply sem_exp_eq_mem_cong | eapply sem_exp_eq_var | eapply sem_exp_eq_pi_beta
     | eapply sem_exp_eq_elim_iota | eapply sem_exp_eq_elim_view | eapply sem_exp_eq_con_view | eapply sem_exp_eq_con_rview
     | eapply sem_exp_eq_let_zeta | eapply sem_exp_eq_let_mod_zeta
     | eapply sem_exp_eq_mem_delta | eapply sem_exp_eq_var_delta | eapply sem_exp_eq_fn_eta
-    | eapply sem_exp_eq_placeholder_eta | eapply sem_exp_eq_irrelevant | eapply sem_exp_eq_record_cong | eapply sem_exp_eq_tuple_cong
+    | eapply sem_exp_eq_irrelevant | eapply sem_exp_eq_record_cong | eapply sem_exp_eq_tuple_cong
     | eapply sem_exp_eq_proj_cong | eapply sem_exp_eq_field_beta | eapply sem_exp_eq_record_eta
     | eapply sem_exp_eq_subtyp | eapply sem_exp_eq_sym | eapply sem_exp_eq_trans
     | (** subtyping *)
       eapply sem_subtyp_refl | eapply sem_subtyp_trans | eapply sem_subtyp_univ | eapply sem_subtyp_suniv
-    | eapply sem_subtyp_level | eapply sem_subtyp_small_large | eapply sem_subtyp_pi
+    | eapply sem_subtyp_level | eapply sem_subtyp_small_large | eapply sem_subtyp_pi | eapply sem_subtyp_pi_level
     | (** universes *)
       eapply sem_is_univ_large | eapply sem_is_univ_small
     | (** extensions *)
@@ -95,7 +286,7 @@ Proof.
       eapply sem_unit_eq_body; [ eapply wf_unit_eq_body; eassumption | .. ]
     | eapply sem_unit_eq_alias; [ eapply wf_unit_eq_alias; eassumption | .. ]
     | eapply sem_unit_eq_flatten; [ eapply wf_unit_eq_flatten; eassumption | .. ]
-    | eapply sem_unit_eq_sym | eapply sem_unit_eq_trans
+    | eapply sem_unit_eq_expand | eapply sem_unit_eq_sym | eapply sem_unit_eq_trans
     | (** module expressions *)
       eapply sem_me_unit | eapply sem_me_var | eapply sem_me_lit | eapply sem_me_mem | eapply sem_me_app
     | eapply sem_me_delta_slot | eapply sem_me_delta_sel | eapply sem_me_beta_body | eapply sem_me_beta_alias
@@ -103,7 +294,7 @@ Proof.
     (** A premise whose sort or index is not fixed by the conclusion (the
         [Srt] of [sem_let], the [P] of [sem_right]) may match a wrong
         hypothesis first; [multimatch] backtracks over the choices. *)
-    multimatch goal with H : _ |- _ => exact H end.
+    first [ scoped_side | multimatch goal with H : _ |- _ => exact H end ].
 Qed.
 
 (** Judgments read along a sound embedding. *)

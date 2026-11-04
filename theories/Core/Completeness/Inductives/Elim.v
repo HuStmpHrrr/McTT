@@ -671,9 +671,10 @@ Proof.
   assert (H : Ψ ▹ A ⊨ M[↑]ʷ $ #0 : C[wk_q ↑]ʷ[Id ,, #0]).
   { assert (Hs : exp_scoped (List.length (Ψ ▹ A)) #0) by (cbn; lia).
     destruct HS as [j | |].
-    - exact (rel_exp_under_ctx_app_cong (rel_type_of_typ HAw) (rel_type_relevant_of_typ HAw) HCw HMw Hv Hs).
+    - exact (rel_exp_under_ctx_app_cong (rel_type_of_typ HAw) (rel_type_relevant_of_typ HAw) (rel_type_of_typ HCw) HMw Hv Hs).
     - exact (rel_exp_under_ctx_app_cong_prop HAw HCw HMw Hv Hs Hs).
-    - exact (rel_exp_under_ctx_app_cong (rel_type_of_level_sort 0 HAw) (rel_type_relevant_of_level_sort HAw) HCw HMw Hv Hs). }
+    - exact (rel_exp_under_ctx_app_cong (rel_type_of_level_sort 0 HAw) (rel_type_relevant_of_level_sort HAw)
+               (rel_type_of_typ HCw) HMw Hv Hs). }
   eapply rel_exp_under_ctx_subtyp; [ exact H | exact (rel_type_of_typ HC) |].
   eapply rel_subtyp_under_ctx_refl; exact (rel_type_of_typ (rel_exp_typ_var0 HAt HC)).
 Qed.

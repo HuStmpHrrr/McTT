@@ -1230,29 +1230,35 @@ Qed.
 End Fixed_GCtx.
 
 (** A λ over a domain of either sort: a function into a type of a
-    universe, or a proof of a [∀]. *)
+    universe, or into a type of levels over a type of levels
+    ([pi_codomain_sort]), or a proof of a [∀]. *)
 Lemma sem_exp_eq_fn_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Srt ->
      type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ M ≈ M' : B ->
      Θ ⍮ Ξ ⍮ Γ ⊨ λ A M ≈ λ A' M' : a_pi r A B ).
 Proof.
-  intros * HA0 HS HA HB HM; sem_intro; [ assumption |].
+  intros * HA0 HS HA HB HC HM; sem_intro; [ assumption |].
   destruct r; cbn [relevance_sort] in *.
-  - destruct (rel_pi_parts HS HA0 HA HB) as [k [Hl [Hr Hk]]].
-    exact (rel_exp_under_ctx_fn_cong Hl Hr Hk HM).
+  - destruct HC as [? i | ].
+    + destruct (rel_pi_parts HS HA0 HA HB) as [k [Hl [Hr Hk]]].
+      exact (rel_exp_under_ctx_fn_cong Hl Hr Hk HM).
+    + exact (rel_exp_under_ctx_fn_cong_relevant (rel_type_of_level_sort 0 HA0) (rel_type_of_level_sort 0 HA)
+               (rel_type_of_level_sort 0 HB) (rel_type_relevant_of_level_sort HB) HM).
   - exact (rel_exp_under_ctx_proof (rel_all_of_parts HS HA0 HA0 HB)).
 Qed.
 
 Lemma sem_fn :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ M : B ->
      Θ ⍮ Ξ ⍮ Γ ⊨ λ A M : a_pi r A B ).
-Proof. intros * HA HS HB HM; eapply sem_exp_eq_fn_cong; eassumption. Qed.
+Proof. intros * HA HS HB HC HM; eapply sem_exp_eq_fn_cong; eassumption. Qed.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -1269,7 +1275,7 @@ Section Fixed_GCtx.
 Lemma rel_exp_under_ctx_app_cong : forall {Γ A} {i j : nat} {B M M' N N'},
     Γ ⊨ᵗ A ≈ A at j ->
     rel_type_relevant Γ A ->
-    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
+    Γ ▹ A ⊨ᵗ B ≈ B at i ->
     Γ ⊨ M ≈ M' : Π A B ->
     Γ ⊨ N ≈ N' : A ->
     exp_scoped (List.length Γ) N ->
@@ -1368,7 +1374,7 @@ Proof.
              per_head B B (ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ) (ρ'σ' ↦ p3 ⦂ centry_tag (ce_ass A) Γ ρ'σ')).
   { intros x y Hxy Huy.
     pose proof (entry_readable_of_elem Hmid Hxy) as [Rx Ry].
-    exact (per_head_codomain_resp HΓ HA (rel_type_of_typ HB) _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    exact (per_head_codomain_resp HΓ HA HB _ _ _ _ _ _ _ _ _ _ _ _ _ _
              Hρσ Ha2 Ha3 Hmid Hxy Hn2p3 Huy Rx Ry Rn2 Rp3). }
   apply rel_chain_4;
     [ apply (Hmove _ _ Hn12 Hn22); exact Hr
@@ -1606,19 +1612,24 @@ End Fixed_GCtx.
 Lemma sem_exp_eq_app_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N ≈ N' : A ->
      exp_scoped (List.length Γ) N ->
      exp_scoped (List.length Γ) N' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M $ N ≈ M' $ N' : B[Id,,N] ).
 Proof.
-  intros * HA HS HB HM HN HNs HN's; sem_intro; [ assumption |].
+  intros * HA HS HB HC HM HN HNs HN's; sem_intro; [ assumption |].
   destruct r; cbn [relevance_sort] in *.
-  - destruct HS as [k | |].
-    + exact (rel_exp_under_ctx_app_cong (rel_type_of_typ HA) (rel_type_relevant_of_typ HA) HB HM HN HNs).
-    + exact (rel_exp_under_ctx_app_cong_prop HA HB HM HN HNs HN's).
-    + exact (rel_exp_under_ctx_app_cong (rel_type_of_level_sort 0 HA) (rel_type_relevant_of_level_sort HA) HB HM HN HNs).
+  - destruct HC as [? i | ].
+    + destruct HS as [k | |].
+      * exact (rel_exp_under_ctx_app_cong (rel_type_of_typ HA) (rel_type_relevant_of_typ HA) (rel_type_of_typ HB) HM HN HNs).
+      * exact (rel_exp_under_ctx_app_cong_prop HA HB HM HN HNs HN's).
+      * exact (rel_exp_under_ctx_app_cong (rel_type_of_level_sort 0 HA) (rel_type_relevant_of_level_sort HA)
+                 (rel_type_of_typ HB) HM HN HNs).
+    + exact (rel_exp_under_ctx_app_cong (rel_type_of_level_sort 0 HA) (rel_type_relevant_of_level_sort HA)
+               (rel_type_of_level_sort 0 HB) HM HN HNs).
   - apply rel_exp_under_ctx_proof.
     match goal with HΓ : ⊨ Γ |- _ =>
       exact (rel_exp_under_ctx_instance HΓ HS HA HB (rel_exp_under_ctx_refl_left HN) HNs) end.
@@ -1627,13 +1638,15 @@ Qed.
 Lemma sem_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N : A ->
      exp_scoped (List.length Γ) N ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M $ N : B[Id,,N] ).
 Proof.
-  intros * HA HS HB HM HN HNs; eapply sem_exp_eq_app_cong; [ exact HA | exact HS | exact HB | exact HM | exact HN | exact HNs | exact HNs ].
+  intros * HA HS HB HC HM HN HNs;
+    eapply sem_exp_eq_app_cong; [ exact HA | exact HS | exact HB | exact HC | exact HM | exact HN | exact HNs | exact HNs ].
 Qed.
 
 Section Fixed_GCtx.
@@ -1664,20 +1677,21 @@ Section Fixed_GCtx.
 Lemma rel_exp_under_ctx_pi_beta : forall {Γ A B M N} {i j : nat},
     Γ ⊨ᵗ A ≈ A at j ->
     rel_type_relevant Γ A ->
-    Γ ▹ A ⊨ B : Typeω@i ->
+    Γ ▹ A ⊨ᵗ B ≈ B at i ->
+    rel_type_relevant (Γ ▹ A) B ->
     Γ ▹ A ⊨ M : B ->
     Γ ⊨ N : A ->
     exp_scoped (List.length Γ) N ->
     Γ ⊨ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N].
 Proof.
-  intros * HA HArel HB HM HN HNs.
+  intros * HA HArel HB HBr HM HN HNs.
   pose proof (rel_type_inversion HA) as [env_relΓ [HΓ HAgen]].
   pose proof HA as HAt.
   pose proof (per_ctx_env_of_typ HΓ HAt) as HΓA.
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
   rewrite exp_sub_id in HidN.
   assert (HBrel : forall ρ ρ' R, EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R -> Dom ρ ≈ ρ' ∈ R -> rel_typ_sort B ρ relevant)
-    by (intros * HR Hρ; exact (rel_exp_of_typ_relevant_at HR HB _ _ Hρ)).
+    by (intros * HR Hρ; exact (HBr _ HR _ _ Hρ)).
   pose proof HM as [env_relΓAM HΓAM k HMgen].
   assert (EAM : env_relΓAM <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   eexists_rel_exp_with i.
@@ -1721,7 +1735,7 @@ Proof.
     as [[v1 [v2 [Hv1 [Hv2 Hv]]]] _].
   clear Hpair.
   assert (Hlink1 : Dom v1 ≈ v2 ∈ per_head B B (ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ) (ρ'σ' ↦ n3 ⦂ centry_tag (ce_ass A) Γ ρ'σ'))
-    by (apply (per_head_codomain_resp HΓ HAt (rel_type_of_typ HB) _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    by (apply (per_head_codomain_resp HΓ HAt HB _ _ _ _ _ _ _ _ _ _ _ _ _ _
                  Hρσ Ha2 Ha3 Hmid Hn12 Hn23 Hn22 Rn1a2 Rn2a2 Rn2T Rn3T); exact Hv).
   apply rel_chain_of_pair in Hlink1.
   (** *** The Outer Instantiation
@@ -1785,7 +1799,7 @@ Proof.
                     ([ρσ ↦ n2 ⦂ entry_type_value a2; ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ;
                       ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ; ρ'σ' ↦ n3 ⦂ centry_tag (ce_ass A) Γ ρ'σ']))
       by (apply rel_chain_4; [ exact Htag | etransitivity; [ symmetry |]; exact Htag | exact Hext ]).
-    pose proof (per_head_of_type_resp HΓA (rel_type_of_typ HB) _ _ _ _ Hch) as Hr.
+    pose proof (per_head_of_type_resp HΓA HB _ _ _ _ Hch) as Hr.
     apply Hr; exact Hw. }
   apply rel_chain_of_pair in Hlink2.
   (** *** The Bridge
@@ -2040,11 +2054,12 @@ Section Fixed_GCtx.
       [per_pi]. *)
 Lemma rel_exp_under_ctx_fn_eta : forall {Γ A B M} {i : nat},
     Γ ⊨ᵗ A ≈ A at i ->
-    Γ ▹ A ⊨ B : Typeω@i ->
+    Γ ▹ A ⊨ᵗ B ≈ B at i ->
+    rel_type_relevant (Γ ▹ A) B ->
     Γ ⊨ M : Π A B ->
     Γ ⊨ M ≈ λ A M[↑]ʷ $ #0 : Π A B.
 Proof.
-  intros * HA HB HM.
+  intros * HA HBt HBr HM.
   pose proof (rel_type_inversion HA) as [env_relΓ [HΓ _]].
   pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
   pose proof (rel_exp_under_ctx_shift HΓA HM) as HMwk.
@@ -2065,7 +2080,7 @@ Proof.
   pose proof HM as [? ? k HMgen].
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  destruct (rel_typ_of_pi HA HA HB _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
+  destruct (rel_typ_of_pi_relevant HA HA HBt HBr _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
     as [in_rel [a1 [a2 [a3 [a4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter [Hmid Htyp]]]]]]]]]]].
   exists (per_pi a2 a3 in_rel B ρσ B ρ'σ').
   split; [ exact Htyp |]; right.
@@ -2117,7 +2132,6 @@ Proof.
   assert (PER in_rel) by (eapply per_elem_PER; exact Hmid).
   assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
   pose proof (per_ctx_env_of_typ_sub HΓ' Hσj HA) as HΓ'A.
-  pose proof (rel_type_of_typ HB) as HBt.
   pose proof Hmchain as (Hpi1 & Hpi2 & Hpi3).
   apply (mk_rel_exp m1 m2 λᵈ a3 ρ'σ' (M[↑]ʷ $ #0) λᵈ a4 ρ' (M[↑]ʷ $ #0)[q σ']);
     [ exact Hm1 | exact Hm2 | apply eval_exp_fn; exact Ha3 | apply eval_exp_fn; exact Ha4 |].
@@ -2211,18 +2225,24 @@ End Fixed_GCtx.
 Lemma sem_exp_eq_pi_beta :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ M : B ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N : A ->
      exp_scoped (List.length Γ) N ->
      Θ ⍮ Ξ ⍮ Γ ⊨ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N] ).
 Proof.
-  intros * HA HS HB HM HN HNs; sem_intro; [ assumption |].
+  intros * HA HS HB HC HM HN HNs; sem_intro; [ assumption |].
   destruct r; cbn [relevance_sort] in *.
-  - destruct HS as [k | |].
-    + exact (rel_exp_under_ctx_pi_beta (rel_type_of_typ HA) (rel_type_relevant_of_typ HA) HB HM HN HNs).
-    + exact (rel_exp_under_ctx_pi_beta_prop HA HB HM HN HNs).
-    + exact (rel_exp_under_ctx_pi_beta (rel_type_of_level_sort 0 HA) (rel_type_relevant_of_level_sort HA) HB HM HN HNs).
+  - destruct HC as [? i | ].
+    + destruct HS as [k | |].
+      * exact (rel_exp_under_ctx_pi_beta (rel_type_of_typ HA) (rel_type_relevant_of_typ HA)
+                 (rel_type_of_typ HB) (rel_type_relevant_of_typ HB) HM HN HNs).
+      * exact (rel_exp_under_ctx_pi_beta_prop HA HB HM HN HNs).
+      * exact (rel_exp_under_ctx_pi_beta (rel_type_of_level_sort 0 HA) (rel_type_relevant_of_level_sort HA)
+                 (rel_type_of_typ HB) (rel_type_relevant_of_typ HB) HM HN HNs).
+    + exact (rel_exp_under_ctx_pi_beta (rel_type_of_level_sort 0 HA) (rel_type_relevant_of_level_sort HA)
+               (rel_type_of_level_sort 0 HB) (rel_type_relevant_of_level_sort HB) HM HN HNs).
   - apply rel_exp_under_ctx_proof.
     match goal with HΓ : ⊨ Γ |- _ =>
       exact (rel_exp_under_ctx_instance HΓ HS HA HB HN HNs) end.
@@ -2232,14 +2252,18 @@ Qed.
 Lemma sem_exp_eq_fn_eta :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Srt ->
      type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : relevance_sort r Srt' ->
+     pi_codomain_sort Srt Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : a_pi r A B ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ λ A M[↑]ʷ $ #0 : a_pi r A B ).
 Proof.
-  intros * HA HS HB HM; sem_intro; [ assumption |].
+  intros * HA HS HB HC HM; sem_intro; [ assumption |].
   destruct r; cbn [relevance_sort] in *.
-  - destruct (rel_pi_parts HS HA HA HB) as [k [Hl [_ Hk]]].
-    exact (rel_exp_under_ctx_fn_eta Hl Hk HM).
+  - destruct HC as [? i | ].
+    + destruct (rel_pi_parts HS HA HA HB) as [k [Hl [_ Hk]]].
+      exact (rel_exp_under_ctx_fn_eta Hl (rel_type_of_typ Hk) (rel_type_relevant_of_typ Hk) HM).
+    + exact (rel_exp_under_ctx_fn_eta (rel_type_of_level_sort 0 HA) (rel_type_of_level_sort 0 HB)
+               (rel_type_relevant_of_level_sort HB) HM).
   - exact (rel_exp_under_ctx_proof (rel_all_of_parts HS HA HA HB)).
 Qed.
 

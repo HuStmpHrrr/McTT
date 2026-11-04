@@ -743,10 +743,10 @@ Proof.
     (** The application, at a domain of any sort. *)
     assert (Happ : Γ ⊨ M $ M0 : (ctx_pi Δ B)[Id,,M0]).
     { destruct HS as [k | |].
-      - exact (rel_exp_under_ctx_app_cong (rel_type_of_typ HA0) (rel_type_relevant_of_typ HA0) HPi HM HM0 HM0s).
+      - exact (rel_exp_under_ctx_app_cong (rel_type_of_typ HA0) (rel_type_relevant_of_typ HA0) (rel_type_of_typ HPi) HM HM0 HM0s).
       - exact (rel_exp_under_ctx_app_cong_prop HA0 HPi HM HM0 HM0s HM0s).
       - exact (rel_exp_under_ctx_app_cong (rel_type_of_level_sort 0 HA0) (rel_type_relevant_of_level_sort HA0)
-                 HPi HM HM0 HM0s). }
+                 (rel_type_of_typ HPi) HM HM0 HM0s). }
     rewrite ctx_pi_sub in Happ.
     assert (Hg0 : gsub Γ (Id,,M0) (Γ ▹ A0)).
     { eapply gsub_ass; [ constructor; exact HΓ | exact HS | exact HA0 | rewrite exp_sub_id; exact HM0 | exact HM0s ]. }

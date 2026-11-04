@@ -483,10 +483,12 @@ Proof.
   exact (rel_exp_under_ctx_proof HP).
 Qed.
 
+(** The premises begin with the conjunction's proof, which fixes [P]: the
+    conclusion does not. *)
 Lemma sem_right :
-  `( Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Σₚ P Q ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ▹ P ⊨ Q : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ M : Σₚ P Q ->
      Θ ⍮ Ξ ⍮ Γ ⊨ Q[Id,,a_left M] : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_right M : Q[Id,,a_left M] ).
 Proof.

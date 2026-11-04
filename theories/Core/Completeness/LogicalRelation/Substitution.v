@@ -1199,7 +1199,7 @@ Qed.
 Lemma rel_typ_of_instance : forall {Γ A} {i k : nat} {B N},
     Γ ⊨ᵗ A ≈ A at k ->
     rel_type_relevant Γ A ->
-    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
+    Γ ▹ A ⊨ᵗ B ≈ B at i ->
     Γ ⊨ N ≈ N : A ->
     exp_scoped (List.length Γ) N ->
     forall Γ' env_rel',
@@ -1231,7 +1231,7 @@ Lemma rel_typ_of_instance : forall {Γ A} {i k : nat} {B N},
 Proof.
   intros * HA HArel' HB HN HNs * HΓ' * Hσj Hρ Hev Hev'.
   pose proof (rel_type_inversion HA) as [env_relΓ [HΓ _]].
-  pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
+  pose proof (rel_type_inversion HB) as [env_relΓA [HΓA HBgen]].
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
   rewrite exp_sub_id in HidN.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
@@ -1259,7 +1259,7 @@ Proof.
                ⟦ B ⟧ ρσ ↦ w ⦂ centry_tag (ce_ass A) Γ ρσ ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ z ⦂ centry_tag (ce_ass A) Γ ρ'σ' ↘ b' /\
                  Dom b ≈ b' ∈ per_univ i).
   { intros w z Hwz.
-    eapply (rel_exp_of_typ_extend_simple HΓ HA HB).
+    apply (rel_type_inversion_simple_at HΓA0 HB).
     apply (per_env_extend_intro_tagged HΓA0 HΓ Hρσ).
     eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Hmid | exact Hwz ]. }
   (** The two instantiations, their outer values rewritten into the goal's
@@ -1268,7 +1268,6 @@ Proof.
                   ltac:(apply eval_sub_extend; eassumption)
                   ltac:(apply eval_sub_extend; eassumption))
     as [t1 tA2 tA3 t4 Ht1 HtA2 HtA3 Ht4 HtAchain].
-  apply rel_chain_relevant_univ in HtAchain.
   rewrite <- exp_sub_extend_sub in Ht1, Ht4.
   (** The second along [Id,,N], whose results are the extensions of the
       retagged environments; read at the extensions of the environments
@@ -1283,7 +1282,6 @@ Proof.
               (ρσ ↦ n2 ⦂ centry_tag (ce_ass A) Γ ρσ) (ρ'σ' ↦ n3 ⦂ centry_tag (ce_ass A) Γ ρ'σ') Hρσ
               (eval_sub_extend _ _ _ _ _ _ _ Hid2 Hnp2r Hn2) (eval_sub_extend _ _ _ _ _ _ _ Hid3 Hnp3r Hn3) Hext)
     as [t2 tB2 tB3 t3 Ht2 HtB2 HtB3 Ht3 HtBchain].
-  apply rel_chain_relevant_univ in HtBchain.
   (** The bridge, at the pair of arguments that crosses from the one
       instantiation to the other. *)
   assert (Hn1n3 : Dom n1 ≈ n3 ∈ RN) by pairwise.
