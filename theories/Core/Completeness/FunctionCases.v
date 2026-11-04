@@ -825,7 +825,194 @@ Qed.
 
 Hint Resolve rel_exp_under_ctx_all : mctt.
 
+(** ** The [Π] between Types of Levels
+
+    A [Π] between types of levels is one: its four values are related
+    types of levels ([per_level_code_pi]), their codomains related types
+    of levels at related arguments.  For example
+    [⋅ ⊨ Π Level@0 Level@1 : LevelSort]. *)
+
+(** A type of levels in an extended context along a lifted substitution,
+    at three pairs of arguments, in [per_level_sort]: the proof of
+    [rel_exp_of_univ_under_ctx_q], at [LevelSort] rather than at a
+    universe. *)
+Lemma rel_exp_of_level_sort_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ᵗ A ≈ A at i ->
+    Δ ▹ A ⊨ B ≈ B' : LevelSort ->
+    forall ρ ρ' ρσ ρ'σ' c c' t1 t2 t3 t4,
+      Dom ρ ↦ c ⦂ t1 ≈ ρ' ↦ c' ⦂ t4 ∈ per_env_extend A[σ] A[σ] env_relΓ ->
+      args_readable_at c c' ([t1; t2; t3; t4]) ->
+      ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' : Δ ⟧s ρ' ↘ ρ'σ' ->
+      (exists b b',
+          ⟦ B[q σ] ⟧ ρ ↦ c ⦂ t1 ↘ b /\ ⟦ B ⟧ ρσ ↦ c' ⦂ t2 ↘ b' /\
+          Dom b ≈ b' ∈ per_level_sort) /\
+      (exists b b',
+          ⟦ B ⟧ ρσ ↦ c ⦂ t2 ↘ b /\ ⟦ B' ⟧ ρ'σ' ↦ c' ⦂ t3 ↘ b' /\
+          Dom b ≈ b' ∈ per_level_sort) /\
+      (exists b b',
+          ⟦ B' ⟧ ρ'σ' ↦ c ⦂ t3 ↘ b /\ ⟦ B'[q σ'] ⟧ ρ' ↦ c' ⦂ t4 ↘ b' /\
+          Dom b ≈ b' ∈ per_level_sort).
+Proof.
+  intros * HΓ Hσj HA HB * Hpair Hts Hev Hev'.
+  pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
+  pose proof (rel_sub_under_ctx_q Hσj HA) as Hqj.
+  pose proof (rel_exp_of_level_sort_inversion HB) as [env_relΔA [HΔA HBgen]].
+  pose proof (rel_exp_of_level_sort_inversion_simple_at HΔA (rel_exp_under_ctx_refl_left HB)) as HBl.
+  pose proof (rel_exp_of_level_sort_inversion_simple_at HΔA (rel_exp_under_ctx_refl_right HB)) as HBr.
+  destruct (rel_sub_under_ctx_q_at HΓ HΔA Hσj HA _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+    as [s [s' [Hq [Hq' Hchain]]]].
+  destruct (HBgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq')
+    as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
+  (** The four bridges, at four pairs the chain above relates. *)
+  assert (P1 : Dom s ↦ c ⦂ centry_tag (ce_ass A) Δ s ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
+  assert (P2 : Dom ρσ ↦ c ⦂ t2 ≈ s ↦ c ⦂ centry_tag (ce_ass A) Δ s ∈ env_relΔA) by pairwise.
+  assert (P3 : Dom s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ≈ ρ'σ' ↦ c' ⦂ t3 ∈ env_relΔA) by pairwise.
+  assert (P4 : Dom ρ'σ' ↦ c ⦂ t3 ≈ s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ∈ env_relΔA) by pairwise.
+  destruct (HBl _ _ P1) as [x1 [x2 [Hx1 [Hx2 Hx]]]].
+  destruct (HBl _ _ P2) as [y1 [y2 [Hy1 [Hy2 Hy]]]].
+  destruct (HBr _ _ P3) as [z1 [z2 [Hz1 [Hz2 Hz]]]].
+  destruct (HBr _ _ P4) as [u1 [u2 [Hu1 [Hu2 Hu]]]].
+  assert (x1 = b2) by (eapply functional_eval_exp; eassumption).
+  assert (y2 = b2) by (eapply functional_eval_exp; eassumption).
+  assert (z1 = b3) by (eapply functional_eval_exp; eassumption).
+  assert (u2 = b3) by (eapply functional_eval_exp; eassumption).
+  subst.
+  apply rel_chain_of_pair in Hx, Hy, Hz, Hu.
+  assert (M1 : rel_chain per_level_sort ([b1; b2; b3; b4; x2]))
+    by (merge_rel_chain Hbchain Hx b2).
+  assert (M2 : rel_chain per_level_sort ([y1; b1; b2; b3; b4; x2]))
+    by (merge_rel_chain M1 Hy b2).
+  assert (M3 : rel_chain per_level_sort ([y1; b1; b2; b3; b4; x2; z2]))
+    by (merge_rel_chain M2 Hz b3).
+  assert (M4 : rel_chain per_level_sort ([u1; y1; b1; b2; b3; b4; x2; z2]))
+    by (merge_rel_chain M3 Hu b3).
+  split; [| split ].
+  - exists b1, x2; split; [ eassumption | split; [ eassumption | pairwise ] ].
+  - exists y1, z2; split; [ eassumption | split; [ eassumption | pairwise ] ].
+  - exists u1, b4; split; [ eassumption | split; [ eassumption | pairwise ] ].
+Qed.
+
+(** Related types of levels stay so at an equivalent relation. *)
+Lemma per_level_code_resp_iff : forall R R' a a', R <~> R' -> per_level_code R a a' -> per_level_code R' a a'.
+Proof.
+  intros * HE H; destruct H.
+  - econstructor; etransitivity; [ symmetry; exact HE | eassumption ].
+  - econstructor; try eassumption; etransitivity; [ symmetry; exact HE | eassumption ].
+  - econstructor; [ eassumption | etransitivity; [ symmetry; exact HE | eassumption ] ].
+Qed.
+
+(** Related types of levels, at some relation, from related elements of
+    [LevelSort]. *)
+Lemma per_level_code_of_level_sort : forall a a', Dom a ≈ a' ∈ per_level_sort -> exists R, per_level_code R a a'.
+Proof.
+  intros * (Hl & Hl' & [R HR]); exists R; exact (per_univ_elem_level_code _ _ _ _ HR Hl Hl').
+Qed.
+
+(** Related types of levels are related elements of [LevelSort]. *)
+Lemma per_level_sort_of_code : forall R a a', per_level_code R a a' -> Dom a ≈ a' ∈ per_level_sort.
+Proof.
+  intros * H; split; [ exists R, a'; left; exact H | split; [ exists R, a; right; exact H |] ].
+  exists R; exact (per_level_code_univ_elem _ _ _ H _).
+Qed.
+
+(** Building a [Π] between types of levels at [per_pi], as
+    [per_univ_elem_pi_canonical] does in a universe. *)
+Lemma per_level_code_pi_canonical : forall {a a' in_rel ρ B ρ' B'},
+    per_level_code in_rel a a' ->
+    (forall c c', Dom c ≈ c' ∈ in_rel ->
+       exists b b', ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\ ⟦ B' ⟧ ρ' ↦ c' ⦂ entry_type_value a' ↘ b' /\
+                    Dom b ≈ b' ∈ per_level_sort) ->
+    per_level_code (per_pi a a' in_rel B ρ B' ρ') (Πᵈ a ρ B) (Πᵈ a' ρ' B').
+Proof.
+  intros * Ha HB.
+  pose proof (per_level_code_univ_elem _ _ _ Ha 0) as Ha0.
+  eapply (per_level_code_pi in_rel
+            (fun c c' (_ : Dom c ≈ c' ∈ in_rel) =>
+               per_head B B' (ρ ↦ c ⦂ entry_type_value a) (ρ' ↦ c' ⦂ entry_type_value a')));
+    [ exact Ha | exact (per_elem_PER Ha0) | | reflexivity ].
+  intros c c' Hc.
+  destruct (HB _ _ Hc) as (b & b' & Eb & Eb' & Hbb').
+  destruct (per_level_code_of_level_sort _ _ Hbb') as [R HR].
+  econstructor; [ exact Eb | exact Eb' |].
+  eapply per_level_code_resp_iff; [| exact HR ].
+  exact (per_head_iff Eb Eb' (per_level_code_univ_elem _ _ _ HR 0)).
+Qed.
+
+(** The congruence of the [Π] between types of levels. *)
+Lemma rel_exp_under_ctx_pi_level_cong : forall {Γ A A' B B'},
+    Γ ⊨ A : LevelSort ->
+    Γ ⊨ A ≈ A' : LevelSort ->
+    Γ ▹ A ⊨ B ≈ B' : LevelSort ->
+    Γ ⊨ Π A B ≈ Π A' B' : LevelSort.
+Proof.
+  intros * HA0 HA HB.
+  pose proof (rel_type_of_level_sort 0 HA0) as HAself.
+  pose proof (rel_type_of_level_sort 0 HA) as HAt.
+  pose proof (rel_type_inversion HAt) as [env_relΓ [HΓ HAgen]].
+  pose proof (rel_exp_of_level_sort_inversion HA) as [env_relΓ2 [_ HAlv]].
+  apply rel_exp_of_level_sort; exists env_relΓ, HΓ.
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
+  destruct (HAlv _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [e1 e2 e3 e4 He1 He2 He3 He4 Helv].
+  functional_eval_rewrite_clear.
+  functionalize_per_univ_chain Hachain in_rel.
+  assert (Ha14 : DF a1 ≈ a4 ∈ per_univ_elem 0 ↘ in_rel) by pairwise.
+  (** The codomains at every related pair of arguments, along the three links. *)
+  assert (Hq : forall c c', Dom c ≈ c' ∈ in_rel ->
+             (exists b b', ⟦ B[q σ] ⟧ ρ ↦ c ⦂ entry_type_value a1 ↘ b /\ ⟦ B ⟧ ρσ ↦ c' ⦂ entry_type_value a2 ↘ b' /\
+                           Dom b ≈ b' ∈ per_level_sort) /\
+             (exists b b', ⟦ B ⟧ ρσ ↦ c ⦂ entry_type_value a2 ↘ b /\ ⟦ B' ⟧ ρ'σ' ↦ c' ⦂ entry_type_value a3 ↘ b' /\
+                           Dom b ≈ b' ∈ per_level_sort) /\
+             (exists b b', ⟦ B' ⟧ ρ'σ' ↦ c ⦂ entry_type_value a3 ↘ b /\ ⟦ B'[q σ'] ⟧ ρ' ↦ c' ⦂ entry_type_value a4 ↘ b' /\
+                           Dom b ≈ b' ∈ per_level_sort)).
+  { intros c c' Hc.
+    pose proof (args_readable_of_chain Hachain Hc) as Hts.
+    pose proof (entry_readable_of_elem Ha14 Hc) as [Hr1 Hr4].
+    pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ _ _ Hρ Ha1 Ha14 Hc Hr1 Hr4) as Hpair.
+    exact (rel_exp_of_level_sort_under_ctx_q HΓ' Hσj HAself HB _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev'). }
+  (** The domains are related types of levels at the domain's relation. *)
+  assert (Hcode : forall x y, Dom x ≈ y ∈ per_level_sort -> DF x ≈ y ∈ per_univ_elem 0 ↘ in_rel ->
+                    per_level_code in_rel x y)
+    by (intros x y (Hl & Hl' & _) Hxy; exact (per_univ_elem_level_code _ _ _ _ Hxy Hl Hl')).
+  assert (H12 : DF a1 ≈ a2 ∈ per_univ_elem 0 ↘ in_rel) by pairwise.
+  assert (H23 : DF a2 ≈ a3 ∈ per_univ_elem 0 ↘ in_rel) by pairwise.
+  assert (H34 : DF a3 ≈ a4 ∈ per_univ_elem 0 ↘ in_rel) by pairwise.
+  assert (L12 : Dom a1 ≈ a2 ∈ per_level_sort) by pairwise.
+  assert (L23 : Dom a2 ≈ a3 ∈ per_level_sort) by pairwise.
+  assert (L34 : Dom a3 ≈ a4 ∈ per_level_sort) by pairwise.
+  apply (mk_rel_exp Πᵈ a1 ρ B[q σ] Πᵈ a2 ρσ B Πᵈ a3 ρ'σ' B' Πᵈ a4 ρ' B'[q σ']);
+    [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
+    | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
+  apply rel_chain_4; eapply per_level_sort_of_code; apply (per_level_code_pi_canonical (in_rel := in_rel)).
+  - exact (Hcode _ _ L12 H12).
+  - intros c c' Hc; exact (proj1 (Hq _ _ Hc)).
+  - exact (Hcode _ _ L23 H23).
+  - intros c c' Hc; exact (proj1 (proj2 (Hq _ _ Hc))).
+  - exact (Hcode _ _ L34 H34).
+  - intros c c' Hc; exact (proj2 (proj2 (Hq _ _ Hc))).
+Qed.
+
 End Fixed_GCtx.
+
+(** A [Π] between types of levels is a type of levels ([wf_pi_level]). *)
+Lemma sem_exp_eq_pi_cong_level :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B ≈ B' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Π A B ≈ Π A' B' : LevelSort ).
+Proof.
+  intros * HA0 HA HB; sem_intro; [ assumption |].
+  exact (rel_exp_under_ctx_pi_level_cong HA0 HA HB).
+Qed.
+
+Lemma sem_pi_level :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Π A B : LevelSort ).
+Proof. intros * HA HB; eapply sem_exp_eq_pi_cong_level; eassumption. Qed.
 
 (** A [Π] of the sort [r] in a universe [U]: at [relevant] a type of [U],
     large or small at a level term, over a domain of [U] or a proposition;

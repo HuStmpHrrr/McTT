@@ -27,7 +27,7 @@ Import ListNotations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases.
+From Mctt.Core.Completeness Require Import ContextCases LogicalRelation UniverseCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import FunctionCases.
 From Mctt.Core.Semantic Require Import Realizability.
@@ -310,6 +310,81 @@ Proof.
     + eapply per_univ_elem_cumu_max_left; exact Hin_rel.
     + intros c c' b b' Hc Hb Hb'.
       (** [in_rel] and [in2] share the value [q3] on the right. *)
+      assert (Hii : in_rel <~> in2)
+        by (eapply per_univ_elem_left_irrel; [ exact Hin_rel | exact Hmid2 ]).
+      pose proof (entry_readable_of_elem Hin_rel Hc) as [Rc Rc'].
+      rewrite Hii in Hc.
+      assert (Hext : Dom ρσ ↦ c ⦂ entry_type_value p2 ≈ ρ'σ' ↦ c' ⦂ entry_type_value q3 ∈ env_relΓA')
+        by (rewrite HiffA'; apply per_env_extend_intro';
+            [ exact Hρσ | eapply per_head_of; [ exact Hq2 | exact Hq3 | exact Hmid2 | exact Hc ] | exact Rc | exact Rc' ]).
+      destruct (Hsubgen _ _ Hext) as [b0 [b0' [Hb0 [Hb0' Hsubb]]]].
+      assert (b0 = b) as -> by (eapply functional_eval_exp; [ exact Hb0 | exact Hb ]).
+      assert (b0' = b') as -> by (eapply functional_eval_exp; [ exact Hb0' | exact Hb' ]).
+      apply per_subtyp_cumu_right; exact Hsubb.
+    + eapply per_univ_elem_cumu_max_left; pairwise.
+    + eapply per_univ_elem_cumu_max_left; pairwise.
+Qed.
+
+(** ** [Sub-Pi] between Types of Levels
+
+    As [sem_subtyp_pi], the domains and codomains types of levels, so
+    types of every index ([rel_type_of_level_sort]), read at index [0];
+    the Π-values come from [rel_typ_of_pi_relevant], whose codomain may be
+    a type of levels. *)
+Lemma sem_subtyp_pi_level :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊨ B' : LevelSort ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊨ B ⊆ B' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Π A B ⊆ Π A' B' ).
+Proof.
+  intros * HAself0 HA'self0 HAA'0 HB0 HB'0 Hsub; sem_intro; [ assumption |].
+  pose proof (rel_type_of_level_sort 0 HAself0) as HAself.
+  pose proof (rel_type_of_level_sort 0 HA'self0) as HA'self.
+  pose proof (rel_type_of_level_sort 0 HAA'0) as HAA'.
+  pose proof (rel_type_of_level_sort 0 HB0) as HB.
+  pose proof (rel_type_of_level_sort 0 HB'0) as HB'.
+  pose proof (rel_type_relevant_of_level_sort HB0) as HBr.
+  pose proof (rel_type_relevant_of_level_sort HB'0) as HB'r.
+  pose proof (rel_type_inversion HAA') as [env_relΓ [HΓ HAA'gen]].
+  pose proof (rel_subtyp_under_ctx_simple Hsub) as [env_relΓA' [HΓA' [i0 Hsubgen]]].
+  pose proof (per_ctx_env_of_typ HΓ HA'self) as HΓA'can.
+  assert (HiffA' : env_relΓA' <~> per_env_extend A' A' env_relΓ)
+    by (eapply per_ctx_env_right_irrel; [ exact HΓA' | exact HΓA'can ]).
+  eexists_subtyp_with (max 0 i0).
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
+    by (eapply (rel_sub_under_ctx_at' Hσ HΓ' HΓ); eassumption).
+  (** The two Π-values, each from its own self-equality. *)
+  destruct (rel_typ_of_pi_relevant HAself HAself HB HBr _ _ HΓ' _ _ _ _ _ _ Hσ Hρ Hev Hev')
+    as [in1 [p1 [p2 [p3 [p4 [Hp1 [Hp2 [Hp3 [Hp4 [_ [_ Htyp1]]]]]]]]]]].
+  destruct (rel_typ_of_pi_relevant HA'self HA'self HB' HB'r _ _ HΓ' _ _ _ _ _ _ Hσ Hρ Hev Hev')
+    as [in2 [q1 [q2 [q3 [q4 [Hq1 [Hq2 [Hq3 [Hq4 [_ [Hmid2 Htyp2]]]]]]]]]]].
+  pose proof Htyp1 as [P1 P2 P3 P4 HP1 HP2 HP3 HP4 HPchain].
+  pose proof Htyp2 as [Q1 Q2 Q3 Q4 HQ1 HQ2 HQ3 HQ4 HQchain].
+  assert (P2 = Πᵈ p2 ρσ B) as ->
+    by (eapply functional_eval_exp; [ exact HP2 | apply eval_exp_pi; exact Hp2 ]).
+  assert (Q3 = Πᵈ q3 ρ'σ' B') as ->
+    by (eapply functional_eval_exp; [ exact HQ3 | apply eval_exp_pi; exact Hq3 ]).
+  (** The domain PER, from the heterogeneous equality's middle link. *)
+  destruct (HAA'gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
+    as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
+  assert (d2 = p2) as -> by (eapply functional_eval_exp; [ exact Hd2 | exact Hp2 ]).
+  assert (d3 = q3) as -> by (eapply functional_eval_exp; [ exact Hd3 | exact Hq3 ]).
+  assert (Hmid : Dom p2 ≈ q3 ∈ per_univ 0) by pairwise.
+  destruct Hmid as [in_rel Hin_rel].
+  exists P1 (Πᵈ p2 ρσ B) Q4 (Πᵈ q3 ρ'σ' B'); try eassumption.
+  - exists (per_pi p2 p3 in1 B ρσ B ρ'σ').
+    eapply per_univ_elem_cumu_max_left; pairwise.
+  - exists (per_pi q2 q3 in2 B' ρσ B' ρ'σ').
+    eapply per_univ_elem_cumu_max_left; pairwise.
+  - eapply per_subtyp_pi with (in_rel := in_rel)
+                              (elem_rel := per_pi p2 p3 in1 B ρσ B ρ'σ')
+                              (elem_rel' := per_pi q2 q3 in2 B' ρσ B' ρ'σ').
+    + eapply per_univ_elem_cumu_max_left; exact Hin_rel.
+    + intros c c' b b' Hc Hb Hb'.
       assert (Hii : in_rel <~> in2)
         by (eapply per_univ_elem_left_irrel; [ exact Hin_rel | exact Hmid2 ]).
       pose proof (entry_readable_of_elem Hin_rel Hc) as [Rc Rc'].

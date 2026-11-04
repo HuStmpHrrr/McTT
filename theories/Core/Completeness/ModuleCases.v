@@ -354,6 +354,53 @@ Proof.
                       | intros * Hn; exact (proj2 (Ho' _ _ _ Hn)) ].
 Qed.
 
+(** A literal and the literal of its expansion evaluate alike: a closure
+    stores the expansion ([eval_close_expand_iff]). *)
+Lemma eval_me_lit_expand_iff : forall U ρ h,
+    ⟦ me_lit (gunit_expand U) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h <-> ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h.
+Proof. intros [Δ D] ρ h; rewrite gunit_expand_mk, !eval_me_lit_iff; apply eval_close_expand_iff. Qed.
+
+(** A module expression related to a literal is related to the literal of
+    its expansion. *)
+Lemma rel_modexp_lit_expand : forall Γ H U, Γ ⊨ᵐ H ≈ me_lit U -> Γ ⊨ᵐ H ≈ me_lit (gunit_expand U).
+Proof.
+  intros * [R HR Hb]; econstructor; [ exact HR |].
+  intros * HΓ' * Hσ * Hρ Hev Hev'.
+  destruct (Hb _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [h1 h2 h3 h4 E1 E2 E3 E4 Hc].
+  apply (mk_rel_modexp h1 h2 h3 h4 E1 E2); [ apply eval_me_lit_expand_iff; exact E3 | | exact Hc ].
+  cbn [modexp_sub]; rewrite <- gunit_expand_sub; apply eval_me_lit_expand_iff; exact E4.
+Qed.
+
+(** A body unit and its expansion ([wf_unit_eq_expand]): related, and the
+    expansion a valid unit, of no open, its own expansion. *)
+Lemma rel_unit_under_ctx_expand : forall Γ Δ Φ,
+    Θm ⍮ Ξm ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ Φ ->
+    Γ ⊨ᵘ gu_open Δ Φ ≈ gu_open Δ Φ -> valid_unit Γ (me_lit (gu_open Δ Φ)) ->
+    Γ ⊨ᵘ gu_open Δ Φ ≈ gu_open Δ (gm_expand Φ) /\ valid_unit Γ (me_lit (gu_open Δ Φ)) /\
+    valid_unit Γ (me_lit (gu_open Δ (gm_expand Φ))).
+Proof.
+  intros * Hw [HL Hl _] HK.
+  pose proof (wf_unit_eq_expand _ _ _ _ _ Hw) as Hwe.
+  pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ (wf_unit_eq_sym _ _ _ _ _ Hwe) Hwe)) as Hwx.
+  pose proof (rel_modexp_lit_expand _ _ (gu_open Δ Φ) HL) as HLx.
+  pose proof (gm_noopen_expand Φ) as Hn.
+  assert (Hnone : forall k Ψ H, nth_error (body_opens (gm_expand Φ) (gm_expand Φ)) k = Some (Ψ, H) -> False)
+    by (intros k Ψ H Hk; rewrite (body_opens_noopen _ Hn) in Hk; destruct k; discriminate).
+  inversion Hl; subst.
+  match goal with Hxp : body_xp _ _ _ Φ ?Φx |- _ => pose proof (body_xp_expand _ _ _ _ _ Hxp) as -> end.
+  split; [ constructor; [ exact HLx | exact Hl |] |].
+  { eapply rel_unit_wf_body; [ eassumption | exact (body_xp_noopen _ _ _ _ Hn) | eassumption | eassumption
+                             | eassumption | eassumption |].
+    intros * Hk; exfalso; exact (Hnone _ _ _ Hk). }
+  split; [ exact HK |].
+  inversion HK; subst; [ exfalso; eapply me_apps_qname_not_lit; eassumption |].
+  match goal with Hxp : body_xp Θm Ξm _ Φ ?Φx |- _ => pose proof (body_xp_expand _ _ _ _ _ Hxp) as -> end.
+  eapply valid_unit_body; [ exact Hwx | exact (body_xp_noopen _ _ _ _ Hn) | eassumption | eassumption | eassumption
+                          | eassumption | eassumption | eassumption | eassumption | eassumption
+                          | exact (rel_modexp_refl_right HLx) | intros * Hk; exfalso; exact (Hnone _ _ _ Hk)
+                          | intros * Hk; exfalso; exact (Hnone _ _ _ Hk) ].
+Qed.
+
 End Cases.
 
 (** ** 3. The rules
@@ -601,6 +648,16 @@ Proof.
       by (intros ? ? ? HE0; exact (rel_param_typed_of_parameter_sort _ _ _ _ (Hps _) (sem_exp_eq_at_rel (HP _ _ _ HE0 _ _ He))))
   end.
   close_unit rel_unit_under_ctx_flatten.
+Qed.
+
+(** A body unit is equivalent to its expansion ([wf_unit_eq_expand]). *)
+Lemma sem_unit_eq_expand :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ Φ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ᵘ gu_open Δ Φ ≈ gu_open Δ Φ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ᵘ gu_open Δ Φ ≈ gu_open Δ (gm_expand Φ) ).
+Proof.
+  intros * Hw HU; sem_intro0.
+  close_unit rel_unit_under_ctx_expand.
 Qed.
 
 Lemma sem_unit_eq_sym :
