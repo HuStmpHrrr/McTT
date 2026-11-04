@@ -100,6 +100,9 @@ Ltac grp_in_model Hl Hta G :=
   match goal with |- DF d_ind ?p ?k nil ≈ _ ∈ _ ↘ _ => change (d_ind p k nil) with (d_ind p k (nil ++ nil)) end;
   basic_per_univ_elem_econstructor;
   try exact Hl; try exact Hta; try reflexivity;
+  (** The uniform parameters, none, read back alike *)
+  try (match goal with |- per_top_ps _ nil nil =>
+         intros ?s; unfold G; cbn; exists nil nil; [ constructor | constructor | reflexivity ] end);
   try (intros ?s; exists nil; split; constructor);
   try (red; intros; grp_vacuous; fail);
   try (cbn; split; [ reflexivity | exact I ]);
@@ -112,7 +115,7 @@ Definition no_nparams_rel : nat -> nat -> list domain -> relation domain := fun 
 (** The empty relation of non-recursive arguments. *)
 Definition no_args_rel : nat -> list domain -> string -> nat -> list domain -> relation domain := fun _ _ _ _ _ _ _ => False.
 (** The empty relation of shape domains. *)
-Definition no_doms_rel : nat -> list domain -> exp -> relation domain := fun _ _ _ _ _ => False.
+Definition no_doms_rel : nat -> list domain -> ctx -> exp -> relation domain := fun _ _ _ _ _ _ => False.
 
 (** ** [T] Nested Through a Container with a View
 
@@ -508,9 +511,8 @@ Proof.
   intros * [ρ m Hi He Hr].
   inversion Hi; subst.
   inversion He; subst.
-  (** The variable's value is a neutral at a relevant type, [⋆ᵈ] at a
-      proposition, which is no type *)
-  unfold relevant_value in *; destruct (domain_relevance _); cbn in Hr; inversion Hr; subst.
+  (** The variable's value is the neutral variable *)
+  cbn in *; inversion Hr; subst.
   match goal with H : read_ne _ _ _ _ _ |- _ => inversion H; subst end.
   cbn [List.length]; replace (S (Datatypes.length Γ) - Datatypes.length Γ - 1) with 0 by lia; reflexivity.
 Qed.
@@ -562,7 +564,6 @@ Proof.
   (** The variables' values: neutrals, at a universe and at a variable of
       it, both relevant *)
   destruct HB as [[i ->] | [t ->]]; inversion Ha0; subst; inversion Ha1; subst.
-  all: cbn [relevant_value domain_relevance] in *.
   all: cbn in Hr.
   all: inversion Hr as [| | | | | | | | | | | ? ? ? D3 M3 Rs Hl3 Hk3 Hlen3 Hps |]; subst; clear Hr.
   all: rewrite Hl in Hk3; injection Hk3 as <-; rewrite Hk in Hlen3; injection Hlen3 as <-.
