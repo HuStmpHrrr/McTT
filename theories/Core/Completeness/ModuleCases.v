@@ -144,19 +144,21 @@ Proof.
 Qed.
 
 (** Applications of equal module expressions valid in what they denote. *)
-Lemma valid_modexp_app : forall Γ H H' N N' R T B T1 i R' T' B' T1' j,
+Lemma valid_modexp_app : forall Γ H H' N N' R T B T1 Srt R' T' B' T1' Srt',
     Γ ⊨ᵐ H ≈ H' -> valid_modexp Γ H -> valid_modexp Γ H' ->
     mdenote Θm Ξm Γ H R -> mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
-    Θm ⍮ Ξm ⍮ Γ ⊢ B : Typeω@i -> Γ ⊨ B : Typeω@i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Γ ⊨ N ≈ N' : B ->
+    Θm ⍮ Ξm ⍮ Γ ⊢ B : Srt -> relevant_sort Srt -> Γ ⊨ B : Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Γ ⊨ N ≈ N' : B ->
     mdenote Θm Ξm Γ H' R' -> mdesc_mod_tele R' = Some T' -> tele_view T' = Some (B', T1') ->
-    Θm ⍮ Ξm ⍮ Γ ⊢ B' : Typeω@j -> Γ ⊨ B' : Typeω@j -> Θm ⍮ Ξm ⍮ Γ ⊢ N' : B' -> Γ ⊨ N' : B' ->
+    Θm ⍮ Ξm ⍮ Γ ⊢ B' : Srt' -> relevant_sort Srt' -> Γ ⊨ B' : Srt' -> Θm ⍮ Ξm ⍮ Γ ⊢ N' : B' -> Γ ⊨ N' : B' ->
     Γ ⊨ᵐ me_app H N ≈ me_app H' N' /\ valid_modexp Γ (me_app H N) /\ valid_modexp Γ (me_app H' N').
 Proof.
-  intros * HH Hs Hs' Hm Ht Hv HB HBs HN HNN Hm' Ht' Hv' HB' HBs' HN' HNs'.
-  destruct (proj2 (valid_unit_app_all Hgw _ _ Hgm Hsub Hgf) _ _ Hs _ _ _ _ _ _ Hm Ht Hv HB HBs HN (rel_exp_under_ctx_refl_left HNN))
+  intros * HH Hs Hs' Hm Ht Hv HB HS HBs HN HNN Hm' Ht' Hv' HB' HS' HBs' HN' HNs'.
+  destruct (rel_param_typed_of_sort _ _ _ HS HBs) as [i HBp].
+  destruct (rel_param_typed_of_sort _ _ _ HS' HBs') as [j HBp'].
+  destruct (proj2 (valid_unit_app_all Hgw _ _ Hgm Hsub Hgf) _ _ Hs _ _ _ _ _ _ _ Hm Ht Hv HS HB HBp HN (rel_exp_under_ctx_refl_left HNN))
     as [Hl HsN].
-  destruct (proj2 (valid_unit_app_all Hgw _ _ Hgm Hsub Hgf) _ _ Hs' _ _ _ _ _ _ Hm' Ht' Hv' HB' HBs' HN' HNs') as [_ HsN'].
-  split; [ exact (rel_modexp_under_ctx_app _ _ _ _ _ _ _ HH HBs HNN Hl) | split; assumption ].
+  destruct (proj2 (valid_unit_app_all Hgw _ _ Hgm Hsub Hgf) _ _ Hs' _ _ _ _ _ _ _ Hm' Ht' Hv' HS' HB' HBp' HN' HNs') as [_ HsN'].
+  split; [ exact (rel_modexp_under_ctx_app _ _ _ _ _ _ HH (rel_type_relevant_of_relevant_sort HS HBs) HNN Hl) | split; assumption ].
 Qed.
 
 (** [β] for a literal, valid in what it denotes on both sides. *)
@@ -173,7 +175,10 @@ Proof.
   pose proof (HXw _ _ _ eq_refl) as HXw0; pose proof (HX _ _ _ eq_refl) as HX0; cbn [List.app] in HXw0, HX0.
   destruct (me_denotes _ _ _ _ _ Hw) as (R & Rm & Hm & _).
   pose proof (mdenote_lit_inv _ _ _ _ _ Hm) as Hu.
-  destruct (valid_unit_lit_app Hgw _ _ Hgm Hsub Hgf _ _ _ _ _ _ _ HK Hu HXw0 HX0 HNw HN) as (_ & R' & Ha & HKN & HK' & Hm' & Hmd').
+  assert (HXs : exists SX, relevant_sort SX /\ Θm ⍮ Ξm ⍮ Γ ⊢ X : SX)
+    by (destruct HXw0 as [HXw1 | HXw1]; eexists; (split; [ constructor | exact HXw1 ])).
+  destruct HXs as (SX & HSX & HXw1).
+  destruct (valid_unit_lit_app Hgw _ _ Hgm Hsub Hgf _ _ _ _ _ _ _ _ HK Hu HSX HXw1 HX0 HNw HN) as (_ & R' & Ha & HKN & HK' & Hm' & Hmd').
   split; [ exact HKN |]; split; [| exact (valid_modexp_of_valid_unit _ _ Hgf _ _ HK') ].
   exact (valid_modexp_intro _ _ _ _ _ _ _ _ Hwa (mdenote_app _ _ _ _ _ _ _ Hm Ha) Hmd' HKN HK' Hm' Hmd').
 Qed.
@@ -238,7 +243,7 @@ Proof.
                                   | intros [|k] ? ? Hk; discriminate | intros [|k] ? Hk; discriminate ]. }
   rewrite Heq in Hw |- *.
   pose proof (valid_unit_filed _ _ _ _ _ _ nil Hw Hgl HΓ Hs) as HK.
-  split; [ exact (filed_valid _ _ Hgf _ _ _ _ nil Hgl HΓ Hs) | exact (valid_modexp_of_valid_unit _ _ Hgf _ _ HK) ].
+  split; [ exact (filed_valid _ _ Hgf _ _ _ _ nil Hgl HΓ Hs (List.Forall_nil _)) | exact (valid_modexp_of_valid_unit _ _ Hgf _ _ HK) ].
 Qed.
 
 (** An alias unit. *)
@@ -271,10 +276,17 @@ Lemma rel_unit_under_ctx_flatten : forall Γ Δ Δ' D l,
     valid_unit Γ (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))) /\ valid_unit Γ (me_lit (gu_mk (Δ' ++ Δ) D)).
 Proof.
   intros * Hu Ha HΔw HΔr HΓ HΔΓ HK.
-  pose proof (rel_lit_flatten Hgw _ _ Hgm Hsub Hgf _ _ _ _ _ Ha HΔw HΔr HK) as HR.
-  pose proof (valid_unit_rel _ _ Hgf _ _ HK) as HV.
-  pose proof (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ _ HK Ha HΔw HΔr) as HK'; cbn [gunit_abs] in HK'.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ Hu (wf_unit_eq_sym _ _ _ _ _ Hu))) as Hw.
+  (* the alias's flag: what the literal denotes can be abstracted over [Δ] *)
+  assert (HΔa : forall R, mdenote Θm Ξm (Δ ++ Γ) (me_lit (gu_mk Δ' D)) R -> desc_levels_abstractable Θm Ξm Γ Δ R).
+  { pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m unit_full] in Hf.
+    destruct Hf as [_ _ _ _ _ _ _ lv Rt [Hs1 Hd1 Hn1]].
+    intros R HR; destruct lv; [ left; exact (Hs1 eq_refl) | right ].
+    rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HR _ (Hd1 eq_refl)); exact (Hn1 eq_refl). }
+  pose proof (rel_lit_flatten _ _ Hgm Hgf _ _ _ _ _ Ha HΔw HΔr HΔa HK) as HR.
+  pose proof (valid_unit_rel _ _ Hgf _ _ HK) as HV.
+  pose proof (valid_unit_abs _ _ Hgm Hgf _ _ _ _ HK Ha HΔw HΔr (fun R HR => HΔa R (mdenote_lit _ _ _ _ _ HR))) as HK';
+    cbn [gunit_abs] in HK'.
   split; [ constructor; [ exact HR | apply rel_unit_wf_alias; assumption | exact (rel_unit_under_ctx_right _ _ _ (valid_unit_lit_unit Hgw _ _ Hgm Hsub _ _ HK')) ] |].
   split; [| exact HK' ].
   eapply valid_unit_alias; [ exact Hw | exact Ha | exists l; exact HΔr | exact HΓ | exact HΔΓ | exact (rel_modexp_refl_left HR) | exact HV
@@ -294,37 +306,31 @@ Lemma rel_unit_under_ctx_body : forall Γ Δ Δ' Φ Φ' Φx Φx' l,
       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-      (exists i, Δ ++ Γ ⊨ A[σ] ≈ A'[σ'] : relevance_sort (entry_relevance E) Typeω@i) /\ Δ ++ Γ ⊨ M[σ] ≈ M'[σ'] : A[σ]) ->
+      (exists Srt, relevant_sort Srt /\ Δ ++ Γ ⊨ A[σ] ≈ A'[σ'] : relevance_sort (entry_relevance E) Srt) /\
+      Δ ++ Γ ⊨ M[σ] ≈ M'[σ'] : A[σ]) ->
     (forall y Φ0 E U Φ0' E' U' σ σ',
       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
       Δ ++ Γ ⊨ᵐ me_lit U[σ]ᵘ ≈ me_lit U'[σ']ᵘ) ->
-    (forall k Φ0 H Φ0' H' σ σ',
-      nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
-      gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' -> Δ ++ Γ ⊨ᵐ H[σ]ᵐ ≈ H'[σ']ᵐ) ->
     (forall k Ψo H, nth_error (body_opens Φ Φx) k = Some (Ψo, H) -> Ψo ++ Δ ++ Γ ⊨ᵐ H ≈ H /\ valid_modexp (Ψo ++ Δ ++ Γ) H) ->
     (forall k Ψo H, nth_error (body_opens Φ' Φx') k = Some (Ψo, H) -> Ψo ++ Δ' ++ Γ ⊨ᵐ H ≈ H /\ valid_modexp (Ψo ++ Δ' ++ Γ) H) ->
     tele_ass Δ -> tele_ass Δ' -> List.length Δ = List.length Δ' ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     Γ ⊨ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' /\ valid_unit Γ (me_lit (gu_open Δ Φ)) /\ valid_unit Γ (me_lit (gu_open Δ' Φ')).
 Proof.
-  intros * Hu Hx Hx' HΔ HΓ HC HokC HC' HokC' Hsv Hsv' HΔr HΔr' HD HU HO Ho Ho' Ha Ha' Hl Hs Hsxx Hnd.
+  intros * Hu Hx Hx' HΔ HΓ HC HokC HC' HokC' Hsv Hsv' HΔr HΔr' HD HU Ho Ho' Ha Ha' Hl Hs Hsxx Hnd.
   rewrite <- app_assoc in HC, HokC, HC', HokC'.
   pose proof (body_shape_l _ _ Hsxx) as Hsx; pose proof (body_shape_r _ _ Hsxx) as Hsx'.
   pose proof (body_shape_l _ _ Hs) as Hsw; pose proof (body_shape_r _ _ Hs) as Hsw'.
   assert (HndX : List.NoDup (gm_names Φx)) by (rewrite (body_xp_names _ _ _ _ _ Hx); exact Hnd).
   assert (HndX' : List.NoDup (gm_names Φx'))
     by (rewrite (body_xp_names _ _ _ _ _ Hx'), <- (body_shape_names _ _ Hs); exact Hnd).
-  assert (Hk : forall k Ψo H, nth_error (body_opens Φ Φx) k = Some (Ψo, H) ->
-             Ψo ++ Δ ++ Γ ⊨ᵐ H ≈ H /\ kinds_ok Θm Ξm (Ψo ++ Δ ++ Γ) H)
-    by (intros * Hn; destruct (Ho _ _ _ Hn) as [HV HS]; exact (conj HV (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ HS))).
-  assert (Hk' : forall k Ψo H, nth_error (body_opens Φ' Φx') k = Some (Ψo, H) ->
-             Ψo ++ Δ' ++ Γ ⊨ᵐ H ≈ H /\ kinds_ok Θm Ξm (Ψo ++ Δ' ++ Γ) H)
-    by (intros * Hn; destruct (Ho' _ _ _ Hn) as [HV HS]; exact (conj HV (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ HS))).
-  pose proof (rel_lit_body _ _ _ _ _ _ _ _ _ HΔ Ha Ha' Hl Hx Hx' Hs Hsx Hsx' Hsw Hsw' HndX HndX' HC HC' Hsv Hsv' HD HU HO Hk Hk') as HR.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ Hu (wf_unit_eq_sym _ _ _ _ _ Hu))) as Hw.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ (wf_unit_eq_sym _ _ _ _ _ Hu) Hu)) as Hw'.
+  pose proof (body_xp_scoped_of_wf _ _ _ _ _ _ Hw Hx) as Hsc.
+  pose proof (body_xp_scoped_of_wf _ _ _ _ _ _ Hw' Hx') as Hsc'.
+  pose proof (rel_lit_body _ _ _ _ _ _ _ _ _ HΔ Ha Ha' Hl Hx Hx' Hsxx Hsx Hsx' HndX HndX' HC HC' Hsv Hsv' Hsc Hsc' HD HU) as HR.
   assert (Hslots : forall Φx0 Δ0, valid_slots (body_ctx Φx0 ++ Δ0 ++ Γ) -> gm_nopens Φx0 = 0 ->
              forall y Φ0 E U, gm_prefix_upto Φx0 y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
              valid_unit (body_ctx Φ0 ++ Δ0 ++ Γ) (me_lit U)).
@@ -399,9 +405,15 @@ Ltac close_modexp_left lem :=
 
 (** *** Units *)
 
+(** A parameter of the sort a rule gives it ([parameter_sort]) is a
+    parameter type in the PER model ([rel_param_typed]). *)
+Lemma rel_param_typed_of_parameter_sort : forall {GC : GCtx} Γ T l S, parameter_sort l S -> Γ ⊨ T : S -> rel_param_typed Γ T l.
+Proof. intros * [] H; [ left | right ]; exact H. Qed.
+
 (** A body unit at the target of a sound embedding, from the semantic
     premises of its rule. *)
-Lemma rel_unit_under_ctx_body_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ Φ' Φx Φx' (sort_of : String.string -> typ) l,
+Lemma rel_unit_under_ctx_body_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ Φ' Φx Φx' (sort_of : String.string -> typ) l
+    (ps : nat -> typ),
     valid_gctx_embedding Θ Ξ Θ2 Ξ2 ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' ->
     body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> body_xp Θ Ξ (Δ' ++ Γ) Φ' Φx' ->
@@ -411,7 +423,7 @@ Lemma rel_unit_under_ctx_body_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ �
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ (body_ctx Φx' ++ Δ') (body_ctx Φx' ++ Δ') ->
     @valid_slots (gc_mk Θ2 Ξ2) Θ Ξ ((body_ctx Φx' ++ Δ') ++ Γ) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, sort_of y = relevance_sort (entry_relevance E) Typeω@i) ->
+       exists Srt, relevant_sort Srt /\ sort_of y = relevance_sort (entry_relevance E) Srt) ->
     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -430,17 +442,15 @@ Lemma rel_unit_under_ctx_body_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ �
       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵘ U[σ]ᵘ ≈ U'[σ']ᵘ) ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
     (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δ' ++ Γ ⊨ᵐ H' ≈ H') ->
-    (forall k Φ0 H Φ0' H' σ σ',
-      nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
-      gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵐ H[σ]ᵐ ≈ H'[σ']ᵐ) ->
     tele_ass Δ -> tele_ass Δ' -> List.length Δ = List.length Δ' ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
-    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : Typeω@l) ->
-    (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : Typeω@l) ->
+    (forall k, parameter_sort l (ps k)) ->
+    (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : ps (List.length Δ2)) ->
+    (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : ps (List.length Δ2)) ->
     @rel_unit_under_ctx (gc_mk Θ2 Ξ2) Γ (gu_open Δ Φ) (gu_open Δ' Φ') /\
     @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit (gu_open Δ Φ)) /\ @valid_unit (gc_mk Θ2 Ξ2) Θ Ξ Γ (me_lit (gu_open Δ' Φ')).
 Proof.
-  intros * He Hu Hx Hx' HΔ HΓ HC HokC HC' HokC' Htag HA HA' HM HU Ho Ho' HO Ha Ha' Hl Hs Hsxx Hnd HP HP'.
+  intros * He Hu Hx Hx' HΔ HΓ HC HokC HC' HokC' Htag HA HA' HM HU Ho Ho' Ha Ha' Hl Hs Hsxx Hnd Hps HP HP'.
   pose proof (valid_gctx_embedding_embedding _ _ _ _ He) as Hemb.
   pose proof (gctx_embedding_resolution _ _ _ _ Hemb) as Hsub; pose proof (gctx_embedding_wf _ _ _ _ Hemb) as Hgw.
   change (⊢ᵍ @gc_deps (gc_mk Θ2 Ξ2) ⍮ @gc_stack (gc_mk Θ2 Ξ2)) in Hgw.
@@ -470,30 +480,31 @@ Proof.
              gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
              gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
              gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-             exists i, Δ ++ Γ ⊨ A[σ] ≈ A'[σ'] : relevance_sort (entry_relevance E) Typeω@i).
+             exists Srt, relevant_sort Srt /\ Δ ++ Γ ⊨ A[σ] ≈ A'[σ'] : relevance_sort (entry_relevance E) Srt).
   { intros * Hp HE Hp' HE' Hf Hf'.
-    destruct (Htag _ _ _ _ _ Hp HE) as [i Hi]; exists i; rewrite <- Hi.
+    destruct (Htag _ _ _ _ _ Hp HE) as (Srt & HS & Hi); exists Srt; split; [ exact HS |]; rewrite <- Hi.
     exact (sem_exp_eq_at_rel (HA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)). }
   assert (Hsv : body_sorts_valid Φx (Δ ++ Γ)).
-  { apply (body_sorts_valid_of_fill _ _ Hn Hsx HndX HCl).
+  { apply (body_sorts_valid_of_fill _ _ Hn Hsx HndX HCl (body_xp_scoped_of_wf _ _ _ _ _ _
+             (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ Hu (wf_unit_eq_sym _ _ _ _ _ Hu))) Hx)).
     intros * Hp HE Hf.
     destruct (Hpart _ _ _ _ _ _ _ Hsxx Hn' Hp HE) as (Φ0' & E' & A' & M' & σ' & Hp' & HE' & Hf' & _).
-    destruct (HD _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf') as [i Hi]; exists i; exact (rel_exp_under_ctx_refl_left Hi). }
+    destruct (HD _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf') as (Srt & HS & Hi); exists Srt; split; [ exact HS | exact (rel_exp_under_ctx_refl_left Hi) ]. }
   assert (Hsv' : body_sorts_valid Φx' (Δ' ++ Γ)).
-  { apply (body_sorts_valid_of_fill _ _ Hn' Hsx' HndX' HCl').
+  { apply (body_sorts_valid_of_fill _ _ Hn' Hsx' HndX' HCl' (body_xp_scoped_of_wf _ _ _ _ _ _
+             (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ (wf_unit_eq_sym _ _ _ _ _ Hu) Hu)) Hx')).
     intros * Hp' HE' Hf'.
     destruct (Hpart _ _ _ _ _ _ _ (body_shape_sym _ _ Hsxx) Hn Hp' HE') as (Φl & El & Al & Ml & σl & Hp & HE & Hf & Hr).
-    destruct (Htag _ _ _ _ _ Hp HE) as [i Hi]; exists i; rewrite <- Hr, <- Hi.
+    destruct (Htag _ _ _ _ _ Hp HE) as (Srt & HS & Hi); exists Srt; split; [ exact HS |]; rewrite <- Hr, <- Hi.
     exact (sem_exp_eq_at_rel (HA' _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)). }
-  apply (@rel_unit_under_ctx_body GC Hgw _ _ (valid_gctx_embedding_wf _ _ _ _ He) Hsub (valid_gctx_embedding_filed _ _ _ _ He)
+  apply (@rel_unit_under_ctx_body GC Hgw _ _ (valid_gctx_embedding_wf _ _ _ _ He) Hsub
            _ _ _ _ _ _ _ l Hu Hx Hx' HΔ HΓ (rel_ext_under_ctx_left _ _ _ HC) HokC (rel_ext_under_ctx_left _ _ _ HC') HokC'
            Hsv Hsv'); try assumption.
-  - intros Δ1 T Δ2 HE0; exact (sem_exp_eq_at_rel (HP _ _ _ HE0 _ _ He)).
-  - intros Δ1 T Δ2 HE0; exact (sem_exp_eq_at_rel (HP' _ _ _ HE0 _ _ He)).
+  - intros Δ1 T Δ2 HE0; exact (rel_param_typed_of_parameter_sort _ _ _ _ (Hps _) (sem_exp_eq_at_rel (HP _ _ _ HE0 _ _ He))).
+  - intros Δ1 T Δ2 HE0; exact (rel_param_typed_of_parameter_sort _ _ _ _ (Hps _) (sem_exp_eq_at_rel (HP' _ _ _ HE0 _ _ He))).
   - intros * Hp HE Hp' HE' Hf Hf'; split; [ exact (HD _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf') |].
     exact (sem_exp_eq_at_rel (HM _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)).
   - intros * Hp HE Hp' HE' Hf Hf'; exact (rel_unit_under_ctx_lit _ _ _ (sem_unit_eq_at_rel (HU _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He))).
-  - intros * Hk Hk' Hf Hf'; exact (sem_modexp_eq_at_rel (HO _ _ _ _ _ _ _ Hk Hk' Hf Hf' _ _ He)).
   - intros * Hk; destruct (Ho _ _ _ Hk _ _ He) as [_ HV HS _]; exact (conj HV HS).
   - intros * Hk; destruct (Ho' _ _ _ Hk _ _ He) as [_ HV HS _]; exact (conj HV HS).
 Qed.
@@ -506,7 +517,7 @@ Lemma sem_unit_eq_body :
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ body_ctx Φx' ++ Δ' ≈ body_ctx Φx' ++ Δ' ->
      (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-        exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+        exists Srt, relevant_sort Srt /\ entry_sort y = relevance_sort (entry_relevance E) Srt) ->
      (forall y Φ0 E A M Φ0' E' A' M' σ σ',
         gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
         gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -529,28 +540,24 @@ Lemma sem_unit_eq_body :
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵘ U[σ]ᵘ ≈ U'[σ']ᵘ) ->
      (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
      (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δ' ++ Γ ⊨ᵐ H' ≈ H') ->
-     (forall k Φ0 H Φ0' H' σ σ',
-        nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) ->
-        nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
-        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵐ H[σ]ᵐ ≈ H'[σ']ᵐ) ->
      tele_ass Δ ->
      tele_ass Δ' ->
      List.length Δ = List.length Δ' ->
      body_shape Φ Φ' ->
      body_shape Φx Φx' ->
      List.NoDup (gm_names Φ) ->
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : Typeω@param_level) ->
-     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : Typeω@param_level) ->
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : param_sorts (List.length Δ2)) ->
+     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ Γ ⊨ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' ).
 Proof.
-  intros * Hu Hx Hx' HΔ HC HC' Htag HA HA' HM HU Ho Ho' HO Ha Ha' Hl Hs Hsxx Hnd HP HP' Θ2 Ξ2 He.
+  intros * Hu Hx Hx' HΔ HC HC' Htag HA HA' HM HU Ho Ho' Ha Ha' Hl Hs Hsxx Hnd Hps HP HP' Θ2 Ξ2 He.
   destruct (HΔ _ _ He) as [HKctx HΔr _ _].
   destruct (HC _ _ He) as [_ HCr HKC _].
   destruct (HC' _ _ He) as [_ HCr' HKC' _].
-  destruct (rel_unit_under_ctx_body_of_embedding _ _ _ _ _ _ _ _ _ _ _ _ _ He Hu Hx Hx' HΔr (valid_ctx_rel_ctx_wf HKctx)
+  destruct (rel_unit_under_ctx_body_of_embedding _ _ _ _ _ _ _ _ _ _ _ _ _ _ He Hu Hx Hx' HΔr (valid_ctx_rel_ctx_wf HKctx)
               HCr (proj2 (proj1 (valid_ctx_iff _ _ _) HKC)) HCr' (proj2 (proj1 (valid_ctx_iff _ _ _) HKC'))
-              Htag HA HA' HM HU Ho Ho' HO Ha Ha' Hl Hs Hsxx Hnd HP HP') as (HR & HV & HV').
+              Htag HA HA' HM HU Ho Ho' Ha Ha' Hl Hs Hsxx Hnd Hps HP HP') as (HR & HV & HV').
   constructor; assumption.
 Qed.
 
@@ -562,14 +569,17 @@ Lemma sem_unit_eq_alias :
      tele_ass Δ' ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵐ E ≈ E' ->
      Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊨ᵐ E' ≈ E' ->
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : Typeω@param_level) ->
-     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : Typeω@param_level) ->
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : param_sorts (List.length Δ2)) ->
+     (forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ Γ ⊨ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') ).
 Proof.
-  intros * Hu HΔw HΔ Ha Ha' HE HE' HP HP'; sem_intro0.
+  intros * Hu HΔw HΔ Ha Ha' HE HE' Hps HP HP'; sem_intro0.
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
-    assert (HPr : rel_params_relevant Γ Δ param_level) by (intros ? ? ? HE0; exact (sem_exp_eq_at_rel (HP _ _ _ HE0 _ _ He)));
-    assert (HPr' : rel_params_relevant Γ Δ' param_level) by (intros ? ? ? HE0; exact (sem_exp_eq_at_rel (HP' _ _ _ HE0 _ _ He)))
+    assert (HPr : rel_params_relevant Γ Δ param_level)
+      by (intros ? ? ? HE0; exact (rel_param_typed_of_parameter_sort _ _ _ _ (Hps _) (sem_exp_eq_at_rel (HP _ _ _ HE0 _ _ He))));
+    assert (HPr' : rel_params_relevant Γ Δ' param_level)
+      by (intros ? ? ? HE0; exact (rel_param_typed_of_parameter_sort _ _ _ _ (Hps _) (sem_exp_eq_at_rel (HP' _ _ _ HE0 _ _ He))))
   end.
   close_unit rel_unit_under_ctx_alias.
 Qed.
@@ -579,14 +589,16 @@ Lemma sem_unit_eq_flatten :
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ Δ ≈ Δ ->
      tele_ass Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : Typeω@param_level) ->
-     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : Typeω@param_level) ->
+     (forall k, parameter_sort param_level (param_sorts k)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->
+     (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : param_sorts (List.length Δ2)) ->
      Θ ⍮ Ξ ⍮ Γ ⊨ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D ).
 Proof.
-  intros * Hu HΔ Ha HU HPw HP; sem_intro0.
-  assert (HPw' : params_relevant Θ Ξ Γ Δ param_level) by exact HPw.
+  intros * Hu HΔ Ha HU Hps HPw HP; sem_intro0.
+  pose proof (params_relevant_of_sorts _ _ _ _ _ _ Hps HPw) as HPw'.
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
-    assert (HPr : rel_params_relevant Γ Δ param_level) by (intros ? ? ? HE0; exact (sem_exp_eq_at_rel (HP _ _ _ HE0 _ _ He)))
+    assert (HPr : rel_params_relevant Γ Δ param_level)
+      by (intros ? ? ? HE0; exact (rel_param_typed_of_parameter_sort _ _ _ _ (Hps _) (sem_exp_eq_at_rel (HP _ _ _ HE0 _ _ He))))
   end.
   close_unit rel_unit_under_ctx_flatten.
 Qed.
@@ -650,15 +662,17 @@ Lemma sem_me_app :
      mdenote Θ Ξ Γ H R ->
      mdesc_mod_tele R = Some T ->
      tele_view T = Some (B, T1) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ B : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ B : Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ B : Srt ->
+     relevant_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N ≈ N' : B ->
      mdenote Θ Ξ Γ H' R' ->
      mdesc_mod_tele R' = Some T' ->
      tele_view T' = Some (B', T1') ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ B' : Typeω@j ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ B' : Typeω@j ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ B' : Srt' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ B' : Srt' ->
+     relevant_sort Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N' : B' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N' : B' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ᵐ me_app H N ≈ me_app H' N' ).
@@ -725,7 +739,7 @@ Lemma sem_mem :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H x : A ).
 Proof.
   intros * HH Hm Ht _ _ _; sem_intro; [ assumption |].
-  assert (Hsm : valid_mem Γ H x A (mdesc_reduct R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
+  assert (Hsm : valid_mem Γ H x A (mdesc_reduct R)) by (eapply (proj2 (valid_unit_mem_all _ _ Hgm Hgf)); eassumption).
   exact (rel_mem_of_valid_mem _ _ _ _ _ _ HH Hsm).
 Qed.
 
@@ -739,7 +753,7 @@ Lemma sem_exp_eq_mem_cong :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H x ≈ a_mem H' x : A ).
 Proof.
   intros * HH Hm Ht Hm' Ht' _; sem_intro; [ assumption |].
-  assert (Hsm : valid_mem Γ H x A (mdesc_reduct R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
+  assert (Hsm : valid_mem Γ H x A (mdesc_reduct R)) by (eapply (proj2 (valid_unit_mem_all _ _ Hgm Hgf)); eassumption).
   apply rel_exp_under_ctx_sym.
   exact (rel_mem_of_valid_mem _ _ _ _ _ _ (rel_modexp_under_ctx_sym HH) Hsm).
 Qed.
@@ -752,7 +766,7 @@ Lemma sem_exp_eq_mem_delta :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H x ≈ M : A ).
 Proof.
   intros * HH Hm Ht Hr; sem_intro; [ assumption |].
-  assert (Hsm : valid_mem Γ H x A (mdesc_reduct R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
+  assert (Hsm : valid_mem Γ H x A (mdesc_reduct R)) by (eapply (proj2 (valid_unit_mem_all _ _ Hgm Hgf)); eassumption).
   rewrite Hr in Hsm.
   exact (rel_mem_red_of_valid_mem _ _ _ _ _ _ HH Hsm).
 Qed.
