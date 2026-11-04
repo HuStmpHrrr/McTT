@@ -579,27 +579,39 @@ Section FiledOk.
     destruct (rel_type_ctx_pi _ _ _ _ _ HTa HT0 HTr HA0t HA0r) as [HP HPr]; eauto.
   Qed.
 
+  (** A relevant term member, of a type valid at a relevant sort, with a
+      value: a filed term. *)
+  Lemma valid_filed_term_of_value : forall p T x R0 A0 Srt, mdesc_relevance R0 = relevant ->
+      relevant_sort Srt -> T ⊨ A0 : Srt -> valid_filed_value p T x R0 A0 -> valid_filed_term p T x R0.
+  Proof.
+    intros * Hr HSrt HA0 Hv.
+    apply mk_valid_filed_term with (valid_filed_term_typ := A0) (valid_filed_term_sort := Srt);
+      [ exact HSrt | rewrite Hr; exact HA0 | | intros _; exact Hv ].
+    intros * HT12 Hlen Ha; destruct Hv as [g Hrd _ _]; rewrite Hr.
+    destruct (Hrd _ _ _ _ HT12 Hlen Ha) as [Hty [Hn | (M1 & HM1 & HMt & _)]]; split;
+      [ exact Hty | left; exact Hn | exact Hty | right; exists M1; split; [ exact HM1 | exact HMt ] ].
+  Qed.
+
   (** The value of a relevant transparent member, a [λ] over the telescope
       of a valid body: related to itself at the closed type, and, applied to
       arguments, related to the value of its reduct at them. *)
-  Lemma filed_ok_term_fn : forall T A0 Srt l M0 R0, mdesc_relevance R0 = relevant ->
+  Lemma filed_ok_term_fn : forall T A0 Srt l M0 R0,
       tele_ass T -> ⊨ T -> rel_params_relevant ⋅ T l -> relevant_sort Srt -> T ⊨ A0 : Srt -> T ⊨ M0 : A0 ->
       (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
          mdesc_type R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
          mdesc_reduct R1 = Some (ctx_fn T1 M0)[sb_of_list Id Ns]) ->
       exists g, ⟦ ctx_fn T M0 ⟧ nil ↘ g /\
       (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
-         mdesc_type R1 = Some (ctx_pi_at (mdesc_relevance R0) T1 A0)[sb_of_list Id Ns] /\
+         mdesc_type R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
          (mdesc_reduct R1 = None \/
-          exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_relevance R0) T1 A0 /\
-            forall ns m, mdesc_relevance R0 = relevant ->
-              List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns -> ⟦ M1 ⟧ env_tele nil (rev T2) ns ↘ m ->
+          exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
+            forall ns m, List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns ->
+              ⟦ M1 ⟧ env_tele nil (rev T2) ns ↘ m ->
               exists v, $*| g & ns | gc_deps ⍮ gc_stack ↘ v /\
-                Dom m ≈ v ∈ per_head (ctx_pi_at (mdesc_relevance R0) T1 A0) (ctx_pi_at (mdesc_relevance R0) T1 A0)
-                                     (env_tele nil (rev T2) ns) (env_tele nil (rev T2) ns))) /\
+                Dom m ≈ v ∈ per_head (ctx_pi T1 A0) (ctx_pi T1 A0) (env_tele nil (rev T2) ns) (env_tele nil (rev T2) ns))) /\
       rel_self relevant T A0 g.
   Proof.
-    intros * Hr HTa HT HTr HSrt HA0 HM0 Hats.
+    intros * HTa HT HTr HSrt HA0 HM0 Hats.
     destruct (rel_param_typed_of_sort _ _ _ HSrt HA0) as [iA HAp].
     pose proof (rel_param_typed_type _ _ _ HAp) as HA0t.
     pose proof (rel_type_relevant_of_relevant_sort HSrt HA0) as HA0r.
@@ -611,7 +623,7 @@ Section FiledOk.
     destruct (rel_type_ctx_pi _ _ _ _ _ HTa HT0 HTr HA0t' HA0r') as [HP HPr].
     destruct (valid_at _ _ _ _ _ Hfn HP HPr per_ctx_env_nil_true nil nil I) as (g & g' & e & j & E0 & Hg & Hg' & He0 & HE0 & Hgg).
     pose proof (functional_eval_exp _ _ _ _ Hg' Hg) as ->.
-    exists g; split; [ exact Hg |]; rewrite Hr; split; [| exact (mk_rel_self _ _ _ _ j E0 e He0 HE0 Hgg) ].
+    exists g; split; [ exact Hg |]; split; [| exact (mk_rel_self _ _ _ _ j E0 e He0 HE0 Hgg) ].
     intros * -> Hl Ha; destruct (Hats _ _ _ _ eq_refl Hl Ha) as [Hty Hred]; split; [ exact Hty | right ].
     destruct (tele_ass_app_inv _ _ HTa) as [HTa1 HTa2].
     pose proof (rel_params_relevant_inner _ _ _ _ HTr) as HT1r; rewrite app_nil_r in HT1r.
@@ -619,7 +631,7 @@ Section FiledOk.
     pose proof (rel_exp_ctx_fn _ _ _ _ _ _ HTa1 HT HT1r HA0t HA0r HM0) as Hfn1.
     destruct (rel_type_ctx_pi _ _ _ _ _ HTa1 HT HT1r HA0t HA0r) as [HP1 HP1r].
     exists (ctx_fn T1 M0); split; [ exact Hred |]; split; [ exact Hfn1 |].
-    intros ns m _ Hlen Hgs Hm.
+    intros ns m Hlen Hgs Hm.
     rewrite ctx_fn_app in Hg.
     assert (HT20 : ⊨ T2 ++ ⋅) by (rewrite app_nil_r; exact (rel_ctx_wf_app_r _ _ HT)).
     assert (HP1' : T2 ++ ⋅ ⊨ᵗ ctx_pi T1 A0 ≈ ctx_pi T1 A0 at max l iA) by (rewrite app_nil_r; exact HP1).
@@ -671,9 +683,8 @@ Section FiledOk.
     destruct (valid_at_universe _ _ _ _ _ Hind0 Hkt per_ctx_env_nil_true nil nil I) as (g & g' & e & j & E0 & Hg & Hg' & He0 & HE0 & Hgg).
     assert (Hgd : ⟦ a_ind pq k ⟧ nil ↘ d_ind pq k nil) by constructor.
     pose proof (functional_eval_exp _ _ _ _ Hg Hgd) as ->; pose proof (functional_eval_exp _ _ _ _ Hg' Hgd) as ->.
-    apply mk_valid_filed_term with (valid_filed_term_typ := ctx_pi Δp S') (valid_filed_term_sort := Typeω@i)
-                                   (valid_filed_term_val := d_ind pq k nil);
-      [ apply relevant_sort_universe | exact HA0 | | intros _ | intros _ ].
+    eapply valid_filed_term_of_value; [ reflexivity | apply (relevant_sort_universe i) | exact HA0 |].
+    apply mk_valid_filed_value with (valid_filed_value_val := d_ind pq k nil).
     - intros Ns R1 T1 T2 HT12 Hlen Ha.
       assert (Hle : length Ns <= length (ind_uparams D)) by (rewrite HU, HT12, !length_app; lia).
       unfold S' in Ha; rewrite (mdesc_term_part_ats_ind _ _ _ _ _ (decl_closed_ass _ Hc) Hle) in Ha; injection Ha as <-.
@@ -696,7 +707,7 @@ Section FiledOk.
           pose proof (valid_apps_vars _ _ _ _ _ _ eq_refl HTa2 HT20 Hk0 Hi0) as Hv0.
           rewrite app_nil_r in Hv0; cbn [exp_wk] in Hv0; exact Hv0. }
         split; [ exact Hv0 |].
-        intros ns m _ Hns Hgs Hm.
+        intros ns m Hns Hgs Hm.
         exists m; split; [| exact (tele_value_self _ _ _ _ _ _ HT2 Hv0 Hk Hns Hgs Hm) ].
         apply eval_apps_exp in Hm as (f & Hf & Hfa0).
         assert (Hgd' : ⟦ a_ind pq k ⟧ env_tele nil (rev T2) ns ↘ d_ind pq k nil) by constructor.
@@ -738,9 +749,8 @@ Section FiledOk.
     destruct (valid_at_universe _ _ _ _ _ Hrec0 Hkt per_ctx_env_nil_true nil nil I) as (g & g' & e & j & E0 & Hg & Hg' & He0 & HE0 & Hgg).
     assert (Hgd : ⟦ a_record (qname_in p x) ⟧ nil ↘ d_record (qname_in p x) nil) by constructor.
     pose proof (functional_eval_exp _ _ _ _ Hg Hgd) as ->; pose proof (functional_eval_exp _ _ _ _ Hg' Hgd) as ->.
-    apply mk_valid_filed_term with (valid_filed_term_typ := ctx_pi Δ0 S) (valid_filed_term_sort := Typeω@i)
-                                   (valid_filed_term_val := d_record (qname_in p x) nil);
-      [ apply relevant_sort_universe | exact HA0 | | intros _ | intros _ ].
+    eapply valid_filed_term_of_value; [ reflexivity | apply (relevant_sort_universe i) | exact HA0 |].
+    apply mk_valid_filed_value with (valid_filed_value_val := d_record (qname_in p x) nil).
     - intros Ns R1 T1 T2 HT12 Hlen Ha.
       assert (Hle : length Ns <= length (record_params R)) by (rewrite HP, HT12, !length_app; lia).
       rewrite (mdesc_term_part_ats_record _ _ _ Hass Hle) in Ha; injection Ha as <-.
@@ -763,7 +773,7 @@ Section FiledOk.
           pose proof (valid_apps_vars _ _ _ _ _ _ eq_refl HTa2 HT20 Hk0 Hi0) as Hv0.
           rewrite app_nil_r in Hv0; cbn [exp_wk] in Hv0; exact Hv0. }
         split; [ exact Hv0 |].
-        intros ns m _ Hns Hgs Hm.
+        intros ns m Hns Hgs Hm.
         exists m; split; [| exact (tele_value_self _ _ _ _ _ _ HT2 Hv0 Hk Hns Hgs Hm) ].
         apply eval_apps_exp in Hm as (f & Hf & Hfa0).
         assert (Hgd' : ⟦ a_record (qname_in p x) ⟧ env_tele nil (rev T2) ns ↘ d_record (qname_in p x) nil) by constructor.
@@ -805,19 +815,19 @@ Section FiledOk.
         split; [ apply Hty; reflexivity | rewrite Hred; cbn; destruct (if b then oM0 else None); reflexivity ]. }
       destruct r; cbn [relevance_sort mdesc_up mdesc_relevance] in HA0 |- *.
       2:{ (* a proof: no value, its reduct asked for nothing at values *)
-        apply mk_valid_filed_term with (valid_filed_term_typ := A0) (valid_filed_term_sort := Srt) (valid_filed_term_val := ⋆ᵈ⟨member_proof x, nil⟩);
-          [ exact HSrt | exact HA0 | | intros [=] | intros [=] ].
+        apply mk_valid_filed_term with (valid_filed_term_typ := A0) (valid_filed_term_sort := Srt);
+          [ exact HSrt | exact HA0 | | intros [=] ].
         intros * HT12 Hlen Ha; destruct (Hats _ _ _ _ HT12 Hlen Ha) as [Hty Hred]; split; [ exact Hty |].
         destruct b; [ destruct oM0 as [M0 |] |]; cbn in Hred; [| left; exact Hred | left; exact Hred ].
-        right; exists (ctx_fn T1 M0); split; [ exact Hred |]; split; [| intros ? ? Hr; discriminate ].
+        right; exists (ctx_fn T1 M0); split; [ exact Hred |].
         subst T; destruct (tele_ass_app_inv _ _ HTa) as [HTa1 _].
         exact (valid_exp_under_ctx_ctx_fn propositional _ _ _ _ 0 HTa1 HT HA0 (HM0 _ eq_refl)). }
       destruct b; [ destruct oM0 as [M0 |] |].
       1:{ (* transparent: its body *)
-        destruct (filed_ok_term_fn _ _ _ _ _ (mdesc_term relevant (ctx_pi T A0) (Some (ctx_fn T M0))) eq_refl HTa HT HTr HSrt HA0
+        destruct (filed_ok_term_fn _ _ _ _ _ (mdesc_term relevant (ctx_pi T A0) (Some (ctx_fn T M0))) HTa HT HTr HSrt HA0
                     (HM0 _ eq_refl) Hats) as (g & Hg & Hred & Hper).
-        apply mk_valid_filed_term with (valid_filed_term_typ := A0) (valid_filed_term_sort := Srt) (valid_filed_term_val := g);
-          [ exact HSrt | exact HA0 | exact Hred | intros _ | intros _; exact Hper ].
+        eapply valid_filed_term_of_value; [ reflexivity | exact HSrt | exact HA0 |].
+        apply (mk_valid_filed_value _ _ _ _ _ g Hred); [| exact Hper ].
         eapply global_member_value_term; [ exact (gc_term_of_resolve _ _ _ _ _ _ HeE2) | exact Hg ]. }
       all: (* an axiom or an abstract definition: its name, a neutral *)
         destruct (filed_ok_closed_type _ _ _ _ HTa HT HTr HSrt HA0) as (j & HP & HPr);
@@ -825,13 +835,12 @@ Section FiledOk.
         pose proof (functional_eval_exp _ _ _ _ Hev' Hev) as ->;
         assert (Hself : rel_self relevant T A0 (⇑ e (d_glob (qname_app p (x :: nil)))))
           by exact (mk_rel_self _ _ _ _ j E0 e Hev HE0 (per_bot_then_per_elem HE0 (per_bot_glob _)));
-        apply mk_valid_filed_term with (valid_filed_term_typ := A0) (valid_filed_term_sort := Srt)
-                                       (valid_filed_term_val := ⇑ e (d_glob (qname_app p (x :: nil))));
-        [ exact HSrt | exact HA0
-        | intros * HT12 Hlen Ha; destruct (Hats _ _ _ _ HT12 Hlen Ha) as [Hty Hred]; cbn in Hred;
+        eapply valid_filed_term_of_value; [ reflexivity | exact HSrt | exact HA0 |];
+        apply mk_valid_filed_value with (valid_filed_value_val := ⇑ e (d_glob (qname_app p (x :: nil))));
+        [ intros * HT12 Hlen Ha; destruct (Hats _ _ _ _ HT12 Hlen Ha) as [Hty Hred]; cbn in Hred;
           split; [ exact Hty | left; exact Hred ]
-        | intros _; eapply global_member_value_neut; [ exact HeE2 | first [ left; reflexivity | right; reflexivity ] | exact Hev ]
-        | intros _; exact Hself ].
+        | eapply global_member_value_neut; [ exact HeE2 | first [ left; reflexivity | right; reflexivity ] | exact Hev ]
+        | exact Hself ].
     - (* a member of a group: its type former *)
       assert (HE2 : exists ΦD2, E2 = ge_ind pv pq k D ΦD2)
         by (destruct E2 as [b' pv' r' A' B' | pv' U' | pv' pq' k' D' ΦD2 | pv' Ad' Md' U'' | pv' R' ΦR']; cbn in Hgr; try discriminate;
@@ -861,10 +870,10 @@ Section FiledOk.
         rewrite (mdesc_term_part_ats_up Ns _ _ _ _ HTa ltac:(rewrite HT12, length_app; lia)) in Ha.
         destruct (filed_ok_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
         split; [ apply Hty; reflexivity | rewrite Hred; reflexivity ]. }
-      destruct (filed_ok_term_fn _ _ _ _ _ (mdesc_term relevant (ctx_pi T A0) (Some (ctx_fn T M0))) eq_refl HTa HT HTr HSrt HA0
+      destruct (filed_ok_term_fn _ _ _ _ _ (mdesc_term relevant (ctx_pi T A0) (Some (ctx_fn T M0))) HTa HT HTr HSrt HA0
                   (HM0 _ eq_refl) Hats) as (g & Hg & Hred & Hper).
-      apply mk_valid_filed_term with (valid_filed_term_typ := A0) (valid_filed_term_sort := Srt) (valid_filed_term_val := g);
-        [ exact HSrt | exact HA0 | exact Hred | intros _ | intros _; exact Hper ].
+      eapply valid_filed_term_of_value; [ reflexivity | exact HSrt | exact HA0 |].
+      apply (mk_valid_filed_value _ _ _ _ _ g Hred); [| exact Hper ].
       eapply global_member_value_term; [ exact (gc_term_of_def_mod _ _ _ _ _ _ _ HeE2) | exact Hg ].
     - (* a record type: its type former *)
       pose proof (gc_entry_record _ _ _ _ _ _ _ HeE) as Hrl.

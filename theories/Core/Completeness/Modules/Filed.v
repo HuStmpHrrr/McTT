@@ -1013,7 +1013,7 @@ Proof.
   assert (Hvt : valid_filed_term p (T1 ++ T2) x R0)
     by (destruct HR0 as [(Φ0 & E & Hp & He) | [(pq & k & D & Mk & Hk & HMk & ->) | (Rr & Hk & ->)]];
           [ exact (Hents _ _ _ _ Hp He) | exact (Hfrs _ _ _ _ _ Hk HMk) | exact (Hrfrs _ _ Hk) ]).
-  destruct Hvt as [A0 Srt g HSrt HA0 Hats Hsel Hself].
+  destruct Hvt as [A0 Srt HSrt HA0 Hats Hval].
   destruct (Hats _ _ _ _ eq_refl Hlen Ha) as [HtyR1 HredR1].
   rewrite HtyR1 in Ht; injection Ht as <-.
   set (K := me_apps (qname_mod p) Ns).
@@ -1034,8 +1034,8 @@ Proof.
     split; [| exact HXΓ ].
     apply valid_mem_of_prop; [ exact HXΓ | intros M _; exact (rel_exp_under_ctx_proof HXΓ) | exact HK ]. }
   cbn [relevance_sort] in HA0.
-  specialize (Hsel eq_refl).
-  destruct (Hself eq_refl) as [j E0 e He0 HE0 Hgg].
+  destruct (Hval eq_refl) as [g Hreads Hsel [j E0 e He0 HE0 Hgg]].
+  clear HredR1; destruct (Hreads _ _ _ _ eq_refl Hlen Ha) as [_ HredR1].
   (* the type over the outer telescope, a relevant type of either sort *)
   destruct (rel_param_typed_of_sort _ _ _ HSrt HA0) as [iA HAp].
   pose proof (rel_param_typed_type _ _ _ HAp) as HA0t.
@@ -1098,7 +1098,7 @@ Proof.
       pose proof (Hfs _ _ _ Hns' _ Hns) as ->.
       functional_eval_rewrite_clear.
       assert (Hlns : List.length ns = List.length T2) by (rewrite (eval_exps_length _ _ _ Hns); lia).
-      destruct (HevM1 _ _ eq_refl Hlns Hgs2 Hn) as (v & Hv & Hnv).
+      destruct (HevM1 _ _ Hlns Hgs2 Hn) as (v & Hv & Hnv).
       destruct (Hred _ Hv) as (r & Hr & Hvr).
       apply (mk_rel_mem_reduct _ _ _ _ _ m r); [ exact Hm' | exact Hr |].
       assert (E2 : R2 <~> RX) by (eapply per_univ_elem_right_irrel; [ exact HR2 | exact Haa ]).

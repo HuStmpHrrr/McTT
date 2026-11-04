@@ -609,7 +609,7 @@ Definition entry_kind (E : gentry) : member_kind :=
 
 (** A value [g] related to itself at the value of the closed type
     [ctx_pi_at r T A0], of the sort [r]; asked of relevant members only
-    ([valid_filed_term_self]). *)
+    ([valid_filed_value_self]). *)
 #[warnings="-cannot-define-projection"]
 Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
   { (** The universe index of the type *)
@@ -625,21 +625,50 @@ Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_r
     (** [g] is related to itself at it *)
   ; rel_self_elem : rel_self_rel g g }.
 
+(** The value of the relevant term member [x] of the filed module [p], of
+    type [A0] over its telescope [T], read as [R0].  Its δ-reduct at
+    arguments for the outer part of [T], if it has one, has a value at
+    arguments related at the type there to the member's value applied to
+    them: the value applied evaluates its body at its arguments stored at
+    the values of the domains ([eval_app_fn]), the reduct at the
+    telescope's closures ([env_tele]), and a proof kept in the body keeps
+    the environment it is met in, so the two values are related, not
+    equal. *)
+#[warnings="-cannot-define-projection"]
+Record valid_filed_value (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) (A0 : exp) : Prop := mk_valid_filed_value
+  { (** The member's value *)
+    valid_filed_value_val : domain
+    (** The reading at arguments for the outer part of the telescope, as
+        [valid_filed_term_reads], restated with the reduct's value: a
+        reduct is a term instantiated, which does not determine the term,
+        and [filed_mem] needs one term with both its validity and its
+        value *)
+  ; valid_filed_value_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns ->
+      mdesc_term_part_ats R0 Ns = Some R1 ->
+      mdesc_type R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+      (mdesc_reduct R1 = None \/
+       exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
+         forall ns m, List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns ->
+           ⟦ M1 ⟧ env_tele nil (rev T2) ns ↘ m ->
+           exists v, $*| valid_filed_value_val & ns | gc_deps ⍮ gc_stack ↘ v /\
+             Dom m ≈ v ∈ per_head (ctx_pi T1 A0) (ctx_pi T1 A0) (env_tele nil (rev T2) ns) (env_tele nil (rev T2) ns))
+    (** The value is the member's stored value, closed over the telescope,
+        which selection at arguments for all of it applies to them
+        ([eval_sel_global_apps]); not the member closure that selection
+        at fewer arguments gives ([eval_sel_global_unsat]) *)
+  ; valid_filed_value_sel : global_member_value gc_deps gc_stack p x valid_filed_value_val
+    (** The value is related to itself at the closed type *)
+  ; valid_filed_value_self : rel_self relevant T A0 valid_filed_value_val }.
+
 (** The term member [x] of the filed module [p], over its telescope [T],
-    read as [R0]: of a type over [T], of a value related to itself, with
-    its δ-reduct at arguments for the outer part of [T] (read as a filed
-    entry's term part is, [mdesc_term_part_ats]), if it has one, a term over that
-    part instantiated, valid there, whose value at arguments is, for a
-    relevant member, related at the type there to the member's value
-    applied to them: the value applied evaluates its body at its
-    arguments stored at the values of the domains ([eval_app_fn]), the
-    reduct at the telescope's closures ([env_tele]), and a proof kept in
-    the body keeps the environment it is met in, so the two values are
-    related, not equal.  The type is of
-    the member's sort [mdesc_relevance R0], and so are the [Π]s over the
-    telescope.  A member tagged propositional stores no value: selection
-    keeps it as written ([eval_sel_global_proof]), so nothing is asked of
-    its value or its reduct's. *)
+    read as [R0]: of a type over [T] of the member's sort
+    [mdesc_relevance R0], and so are the [Π]s over the telescope; with its
+    δ-reduct at arguments for the outer part of [T] (read as a filed
+    entry's term part is, [mdesc_term_part_ats]), if it has one, a term
+    over that part instantiated, valid there; and, if relevant, of a
+    value ([valid_filed_value]).  A member tagged propositional stores no
+    value: selection keeps it as written ([eval_sel_global_proof]), so
+    nothing is asked of its value or its reduct's. *)
 #[warnings="-cannot-define-projection"]
 Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) : Prop := mk_valid_filed_term
   { (** The member's type over the telescope *)
@@ -647,35 +676,18 @@ Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) :
     (** The sort of the member's type at [relevant]: a universe, or the
         types of levels ([def v : Level ≔ zero]) *)
   ; valid_filed_term_sort : exp
-    (** The member's value *)
-  ; valid_filed_term_val : domain
     (** The sort is a relevant sort *)
   ; valid_filed_term_sort_relevant : relevant_sort valid_filed_term_sort
     (** The type is a valid type of the member's sort *)
   ; valid_filed_term_typed : T ⊨ valid_filed_term_typ : relevance_sort (mdesc_relevance R0) valid_filed_term_sort
-    (** The reading at arguments for the outer part of the telescope *)
+    (** The reading at arguments for the outer part of the telescope: the
+        type, and the reduct, if any, valid *)
   ; valid_filed_term_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
       mdesc_type R1 = Some (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)[sb_of_list Id Ns] /\
       (mdesc_reduct R1 = None \/
-       exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ /\
-         forall ns m, mdesc_relevance R0 = relevant ->
-           List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns -> ⟦ M1 ⟧ env_tele nil (rev T2) ns ↘ m ->
-           exists v, $*| valid_filed_term_val & ns | gc_deps ⍮ gc_stack ↘ v /\
-             Dom m ≈ v ∈ per_head (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)
-                                  (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)
-                                  (env_tele nil (rev T2) ns) (env_tele nil (rev T2) ns))
-    (** The value is the member's stored value, closed over the telescope,
-        which selection at arguments for all of it applies to them
-        ([eval_sel_global_apps]); not the member closure that selection
-        at fewer arguments gives ([eval_sel_global_unsat]).  Asked of a
-        relevant member only: a proof member stores no value, selection
-        keeps it as written at its module's arguments
-        ([eval_sel_global_proof]) *)
-  ; valid_filed_term_sel : mdesc_relevance R0 = relevant ->
-      global_member_value gc_deps gc_stack p x valid_filed_term_val
-    (** A relevant member's value is related to itself at the closed type *)
-  ; valid_filed_term_self : mdesc_relevance R0 = relevant ->
-      rel_self (mdesc_relevance R0) T valid_filed_term_typ valid_filed_term_val }.
+       exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)
+    (** A relevant member's value *)
+  ; valid_filed_term_value : mdesc_relevance R0 = relevant -> valid_filed_value p T x R0 valid_filed_term_typ }.
 
 Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_filed_mod
   { valid_filed_mod_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
