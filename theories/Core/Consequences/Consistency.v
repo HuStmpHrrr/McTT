@@ -602,17 +602,30 @@ Qed.
 
 (** ** The Parameters of an Inductive Type
 
-    The normal form of an inductive type is the type former at the normal
-    forms of its parameters, each equal to its parameter; so equal
-    inductive types have equal parameters. *)
+    The normal form of an inductive type is the type former at normal
+    forms of its parameters, each equal, up to proofs, to the normal form
+    of its parameter at the parameter's instance type
+    ([nbe_params_at_telescope]); so equal inductive types have equal
+    parameters. *)
 Lemma nbe_ty_ind_params : forall Γ p D k Mk Ms W, ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk -> ⊢ Γ ->
     List.length Ms = im_np D Mk ->
     (forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T -> Γ ⊢ P : T) ->
     nbe_ty_f Γ (apps (a_ind p k) Ms) W ->
-    exists Rs, W = nf_indty p k Rs /\ exps_eq_at Γ (im_params D Mk) Ms (List.map nf_to_exp Rs).
+    exists Rs, W = nf_indty p k Rs /\ List.length Rs = im_np D Mk /\
+      forall j P T R V, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T ->
+        List.nth_error Rs j = Some R -> nbe_f Γ P T V -> nf_equal_up_to_proofs V R.
 Proof.
-  (* PENDING M2: read off the gluing of the parameters (Soundness.Inductives.Args) *)
-Admitted.
+  intros * Hl Hk HΓ HMl HMt [ρ a Hρ Ha Hr].
+  destruct (eval_ind_apps_args _ _ _ _ _ Ha) as (vs & Hvs & ->).
+  inversion Hr; subst.
+  match goal with H1 : ind_lookup _ _ _ = Some _, H2 : ind_member _ _ = Some _,
+                  H3 : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ps |- _ =>
+    rewrite Hl in H1; injection H1 as <-; rewrite Hk in H2; injection H2 as <-; rename H3 into Hps; exists Ps end.
+  split; [ reflexivity | split ].
+  - rewrite (read_ps_length_nf _ _ _ _ _ Hps), (read_ps_length _ _ _ _ _ Hps), List.length_rev, length_im_params; reflexivity.
+  - exact (nbe_params_at_telescope _ _ _ _ _ _ (ind_relevant_params_telescope _ _ _ _ _ HΓ Hl Hk)
+             ltac:(rewrite length_im_params; exact HMl) HMt Hρ Hvs Hps).
+Qed.
 
 (** A type whose normal form is an inductive type is equal to the type
     former at typed parameters, whose normal forms the normal form has. *)
@@ -624,6 +637,86 @@ Proof.
   (* PENDING M2: read off the gluing of the inductive type (Soundness.Inductives.Args) *)
 Admitted.
 
+(** Two instances [X], [Y] of a closed telescope [C] whose terms have
+    normal forms equal, up to proofs, to the same list (two lists equal
+    up to proofs) are equal instances.  Position by position: once the
+    terms before [j] are equal, the instance types at [j] are equal
+    ([tele_insts_cong], at [Y]'s terms before [j] and [X]'s after), so
+    [Y_j] is of [X]'s instance type, where it reads back as at its own
+    ([completeness_at_equal_types]), and [soundness_erased] makes it
+    equal to [X_j]. *)
+Lemma exps_eq_at_of_params_up_to_proofs : forall Γ C X Y Rs Rs', tele_ass C -> ⊢ (C ++ Γ)%list ->
+    List.length X = List.length C -> List.length Y = List.length C ->
+    (forall j P T, List.nth_error X j = Some P -> List.nth_error (tele_insts C Id X) j = Some T -> Γ ⊢ P : T) ->
+    (forall j P T, List.nth_error Y j = Some P -> List.nth_error (tele_insts C Id Y) j = Some T -> Γ ⊢ P : T) ->
+    (forall j P T R V, List.nth_error X j = Some P -> List.nth_error (tele_insts C Id X) j = Some T ->
+       List.nth_error Rs j = Some R -> nbe_f Γ P T V -> nf_equal_up_to_proofs V R) ->
+    (forall j P T R V, List.nth_error Y j = Some P -> List.nth_error (tele_insts C Id Y) j = Some T ->
+       List.nth_error Rs' j = Some R -> nbe_f Γ P T V -> nf_equal_up_to_proofs V R) ->
+    List.length Rs = List.length C -> List.map nf_erase Rs = List.map nf_erase Rs' ->
+    exps_eq_at Γ C X Y.
+Proof.
+  intros * HCa HCΓ HXl HYl HXt HYt HX HY HRl HE.
+  split; [ congruence |].
+  enough (Hn : forall n j P Q A, j < n -> List.nth_error X j = Some P -> List.nth_error Y j = Some Q ->
+                 List.nth_error (tele_insts C Id X) j = Some A -> Γ ⊢ P ≈ Q : A)
+    by (intros j P Q A HP HQ HA; exact (Hn (S j) j P Q A ltac:(lia) HP HQ HA)).
+  induction n as [| n IH]; intros j P Q A Hjn' HP HQ HA; [ lia |].
+  destruct (PeanoNat.Nat.lt_ge_cases j n) as [Hjn | Hjn]; [ exact (IH _ _ _ _ Hjn HP HQ HA) |].
+  assert (n = j) as -> by lia.
+  assert (HΓ : ⊢ Γ) by (eapply ctx_app_wf_tail; exact HCΓ).
+  assert (Hj : j < List.length C) by (rewrite <- HXl; apply List.nth_error_Some; congruence).
+  (** [Y]'s terms before [j], [X]'s from [j] on *)
+  set (Y' := (List.firstn j Y ++ List.skipn j X)%list).
+  assert (HY'l : List.length Y' = List.length C)
+    by (unfold Y'; rewrite List.length_app, List.length_firstn, List.length_skipn; lia).
+  assert (HY'n : forall k N, List.nth_error Y' k = Some N ->
+             (k < j /\ List.nth_error Y k = Some N) \/ (j <= k /\ List.nth_error X k = Some N)).
+  { intros k N HN; unfold Y' in HN.
+    destruct (PeanoNat.Nat.lt_ge_cases k j) as [Hk | Hk].
+    - left; rewrite List.nth_error_app1 in HN by (rewrite List.length_firstn; lia).
+      rewrite nth_error_firstn_lt in HN by exact Hk; split; assumption.
+    - right; rewrite List.nth_error_app2 in HN by (rewrite List.length_firstn; lia).
+      rewrite List.length_firstn, List.nth_error_skipn in HN; replace (j + (k - Init.Nat.min j (List.length Y))) with k in HN by lia.
+      split; assumption. }
+  assert (HXY' : forall k N N' T, List.nth_error X k = Some N -> List.nth_error Y' k = Some N' ->
+             List.nth_error (tele_insts C Id X) k = Some T -> Γ ⊢ N ≈ N' : T).
+  { intros k N N' T HN HN' HT.
+    destruct (HY'n _ _ HN') as [[Hk HN'Y] | [Hk HN'X]].
+    - exact (IH _ _ _ _ Hk HN HN'Y HT).
+    - rewrite HN in HN'X; injection HN'X as <-; apply wf_exp_eq_refl; exact (HXt _ _ _ HN HT). }
+  (** The instance types at [j] are equal *)
+  destruct (nth_error_lt_some (tele_insts C Id Y') j) as [T' HT']; [ rewrite length_tele_insts by exact HCa; lia |].
+  destruct (tele_insts_cong C Γ Γ Id Id X Y' HCa HCΓ ltac:(apply wf_sub_eq_refl; mauto 3) ltac:(lia) HY'l HXY' _ _ _ HA HT')
+    as (S & HS & HAT').
+  destruct (nth_error_lt_some (tele_insts C Id Y) j) as [B HB]; [ rewrite length_tele_insts by exact HCa; lia |].
+  assert (EB : B = T').
+  { destruct (tele_insts_nth _ _ _ _ _ HB) as (A1 & HA1 & ->).
+    destruct (tele_insts_nth _ _ _ _ _ HT') as (A2 & HA2 & ->).
+    rewrite HA1 in HA2; injection HA2 as <-.
+    unfold Y'; rewrite List.firstn_app, List.firstn_firstn, List.length_firstn.
+    replace (j - Init.Nat.min j (List.length Y)) with 0 by lia; rewrite List.firstn_O, List.app_nil_r.
+    replace (Init.Nat.min j j) with j by lia; reflexivity. }
+  subst T'.
+  (** So [Y_j] is of [X]'s instance type; the three normal forms agree *)
+  pose proof (HXt _ _ _ HP HA) as HPt.
+  pose proof (HYt _ _ _ HQ HB) as HQB.
+  assert (HQA : Γ ⊢ Q : A) by (eapply wf_conv_sort; [ exact HQB | exact (presup_exp_eq_left HAT') | exact HS | symmetry; exact HAT' ]).
+  destruct (nth_error_lt_some Rs j) as [R HR]; [ lia |].
+  destruct (nth_error_lt_some Rs' j) as [R' HR'']; [ rewrite <- (List.length_map nf_erase Rs'), <- HE, List.length_map; lia |].
+  destruct (normalization HPt) as [V1 HV1].
+  destruct (normalization HQB) as [V2 HV2].
+  destruct (normalization HQA) as [V3 HV3].
+  pose proof (HX _ _ _ _ _ HP HA HR HV1) as E1.
+  pose proof (HY _ _ _ _ _ HQ HB HR'' HV2) as E2.
+  pose proof (completeness_at_equal_types HS (wf_exp_eq_refl HQA) HAT' HV3 HV2) as E3.
+  assert (E4 : nf_erase R = nf_erase R').
+  { assert (Hm : List.nth_error (List.map nf_erase Rs) j = List.nth_error (List.map nf_erase Rs') j) by (rewrite HE; reflexivity).
+    rewrite !List.nth_error_map, HR, HR'' in Hm; injection Hm as Hm; exact Hm. }
+  unfold nf_equal_up_to_proofs in *.
+  eapply soundness_erased; [ exact HPt | exact HQA | exact HV1 | exact HV3 | congruence ].
+Qed.
+
 Corollary exp_eq_ind_apps_inv : forall Γ p D k Mk X Y i, ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk ->
     Γ ⊢ apps (a_ind p k) X ≈ apps (a_ind p k) Y : Typeω@i ->
     List.length X = im_np D Mk -> List.length Y = im_np D Mk ->
@@ -631,17 +724,15 @@ Corollary exp_eq_ind_apps_inv : forall Γ p D k Mk X Y i, ind_lookup gc_deps gc_
     (forall j P T, List.nth_error Y j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Y) j = Some T -> Γ ⊢ P : T) ->
     exps_eq_at Γ (im_params D Mk) X Y.
 Proof.
-  (* TEMP-IND
   intros * Hl Hk H HXl HYl HXt HYt.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-  destruct (completeness_ty H) as (W & HWX & HWY).
-  destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HXl HXt HWX) as (Rs & -> & HX).
-  destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HYl HYt HWY) as (Rs' & E & HY).
-  injection E as <-.
-  destruct HX as [L1 H1]; destruct HY as [L2 H2]; split; [ congruence |].
-  eapply (params_eq_trans _ p D k Mk X (List.map nf_to_exp Rs) Y Hl Hk HΓ); [ exact HXl | congruence | congruence | exact H1 |].
-  eapply (params_eq_sym _ p D k Mk Y (List.map nf_to_exp Rs) Hl Hk HΓ); [ exact HYl | congruence | exact H2 ].
-*) Admitted.
+  destruct (ind_relevant_params_telescope _ _ _ _ _ HΓ Hl Hk) as [HCa _ _ HCΓ].
+  destruct (completeness_ty H) as (W & W' & HWX & HWY & HE).
+  destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HXl HXt HWX) as (Rs & -> & HRl & HX).
+  destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HYl HYt HWY) as (Rs' & -> & _ & HY).
+  cbn [nf_erase] in HE; injection HE as HE.
+  eapply exps_eq_at_of_params_up_to_proofs; try eassumption; rewrite ?length_im_params; assumption.
+Qed.
 
 Lemma nf_of_pi : forall {Γ M A B},
     Γ ⊢ M : Π A B ->
@@ -1114,20 +1205,33 @@ Lemma subtyp_ind_nf : forall {Γ T p m D Mm Ps W}, Γ ⊢ T ⊆ apps (a_ind p m)
     List.length Ps = im_np D Mm ->
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some A -> Γ ⊢ P : A) ->
     nbe_ty_f Γ T W ->
-    exists Rs, W = nf_indty p m Rs /\ List.length (List.map nf_to_exp Rs) = im_np D Mm /\
-      (forall k P R A, List.nth_error Ps k = Some P -> List.nth_error (List.map nf_to_exp Rs) k = Some R ->
-         List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some A -> Γ ⊢ P ≈ R : A).
+    exists Rs, W = nf_indty p m Rs /\ List.length Rs = im_np D Mm /\
+      forall k P R A V, List.nth_error Ps k = Some P -> List.nth_error Rs k = Some R ->
+        List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some A -> nbe_f Γ P A V -> nf_equal_up_to_proofs V R.
 Proof.
   intros * Hs Hl Hm HPl HPt HW.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
   apply subtyp_spec in Hs as [(S & HS & Heq) | [(U & V & [k1 HU] & [k2 HV] & Hsu) | [(A1 & A2 & B1 & B2 & _ & [k2 Hb] & _) | [_ HL]]]].
-  - (* TEMP-Q1: W is erase-equal to the normal form of the inductive type, not equal to it *)
-    admit.
+  - (** [T] reads back as the inductive type does, up to proofs: at
+        parameters equal up to proofs to the inductive type's *)
+    destruct (completeness_ty_sort HS Heq) as (W1 & W2 & HW1 & HW2 & HE).
+    pose proof (functional_nbe_ty _ _ _ _ HW HW1) as <-.
+    destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hm HΓ HPl HPt HW2) as (Rs2 & -> & HRl & HP).
+    destruct W; cbn [nf_erase] in HE; try discriminate; injection HE as -> -> HE.
+    match goal with |- exists Rs, nf_indty _ _ ?L = _ /\ _ => exists L end.
+    split; [ reflexivity |]; split; [ rewrite <- (List.length_map nf_erase), HE, List.length_map; exact HRl |].
+    intros k P R A V HPk HRk HAk HV.
+    destruct (nth_error_lt_some Rs2 k) as [R2 HR2];
+      [ rewrite <- (List.length_map nf_erase Rs2), <- HE, List.length_map; apply List.nth_error_Some; congruence |].
+    pose proof (HP _ _ _ _ _ HPk HAk HR2 HV) as E.
+    assert (Hm' : List.nth_error (List.map nf_erase l) k = List.nth_error (List.map nf_erase Rs2) k) by (rewrite HE; reflexivity).
+    rewrite !List.nth_error_map, HRk, HR2 in Hm'; injection Hm' as Hm'.
+    unfold nf_equal_up_to_proofs in *; congruence.
   - exfalso; destruct (univ_sub_sort_term Hsu) as [_ HVt].
     eapply exp_eq_ind_sort_absurd; [ exact HVt | symmetry; exact HV ].
   - exfalso; eapply exp_eq_ind_pi_absurd; symmetry; exact Hb.
   - exfalso; exact (ind_type_not_level HL).
-Admitted. (* TEMP-Q1 *)
+Qed.
 
 (** ** The Parameters of a Record Type
 
@@ -1155,10 +1259,19 @@ Lemma nbe_ty_record_params : forall Γ p R Ms W, record_lookup gc_deps gc_stack 
     List.length Ms = List.length (record_params R) ->
     (forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (record_params R) Id Ms) j = Some T -> Γ ⊢ P : T) ->
     nbe_ty_f Γ (apps (a_record p) Ms) W ->
-    exists Rs, W = nf_record p Rs /\ exps_eq_at Γ (record_params R) Ms (List.map nf_to_exp Rs).
+    exists Rs, W = nf_record p Rs /\ List.length Rs = List.length (record_params R) /\
+      forall j P T Q V, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (record_params R) Id Ms) j = Some T ->
+        List.nth_error Rs j = Some Q -> nbe_f Γ P T V -> nf_equal_up_to_proofs V Q.
 Proof.
-  (* PENDING M2: read off the gluing of the parameters (Soundness.Records.Model) *)
-Admitted.
+  intros * Hl HΓ HMl HMt [ρ a Hρ Ha Hr].
+  destruct (eval_record_apps_args _ _ _ _ Ha) as (vs & Hvs & ->).
+  inversion Hr; subst.
+  match goal with H1 : record_lookup _ _ _ = Some _, H3 : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ps |- _ =>
+    rewrite Hl in H1; injection H1 as <-; rename H3 into Hps; exists Ps end.
+  split; [ reflexivity | split ].
+  - rewrite (read_ps_length_nf _ _ _ _ _ Hps), (read_ps_length _ _ _ _ _ Hps), List.length_rev; reflexivity.
+  - exact (nbe_params_at_telescope _ _ _ _ _ _ (record_relevant_params_telescope _ _ _ HΓ Hl) HMl HMt Hρ Hvs Hps).
+Qed.
 
 (** A type whose normal form is a record type is equal to the type former
     at typed parameters, whose normal forms the normal form has. *)
@@ -1177,19 +1290,15 @@ Corollary exp_eq_record_apps_inv : forall Γ p R X Y i, record_lookup gc_deps gc
     (forall j P T, List.nth_error Y j = Some P -> List.nth_error (tele_insts (record_params R) Id Y) j = Some T -> Γ ⊢ P : T) ->
     exps_eq_at Γ (record_params R) X Y.
 Proof.
-  (* TEMP-IND
   intros * Hl H HXl HYl HXt HYt.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-  destruct (record_params_facts _ _ _ HΓ Hl) as (Ht & Hc & HPΓ).
-  pose proof (typed_params_ass _ _ _ Ht) as Hass.
-  destruct (completeness_ty H) as (W & HWX & HWY).
-  destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HXl HXt HWX) as (Rs & -> & HX).
-  destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HYl HYt HWY) as (Rs' & E & HY).
-  injection E as <-.
-  destruct HX as [L1 H1]; destruct HY as [L2 H2]; split; [ congruence |].
-  eapply (tele_eq_trans _ (record_params R) X (List.map nf_to_exp Rs) Y Hass HPΓ); [ exact HXl | congruence | congruence | exact H1 |].
-  eapply (tele_eq_sym _ (record_params R) Y (List.map nf_to_exp Rs) Hass HPΓ); [ exact HYl | congruence | exact H2 ].
-*) Admitted.
+  destruct (record_relevant_params_telescope _ _ _ HΓ Hl) as [HCa _ _ HCΓ].
+  destruct (completeness_ty H) as (W & W' & HWX & HWY & HE).
+  destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HXl HXt HWX) as (Rs & -> & HRl & HX).
+  destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HYl HYt HWY) as (Rs' & -> & _ & HY).
+  cbn [nf_erase] in HE; injection HE as HE.
+  eapply exps_eq_at_of_params_up_to_proofs; eassumption.
+Qed.
 
 Lemma exp_eq_record_pi_absurd : forall {Γ p X A B k},
     Γ ⊢ apps (a_record p) X ≈ Π A B : Typeω@k ->
@@ -1233,20 +1342,32 @@ Lemma subtyp_record_nf : forall {Γ T p R Ps W}, Γ ⊢ T ⊆ apps (a_record p) 
     List.length Ps = List.length (record_params R) ->
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (record_params R) Id Ps) k = Some A -> Γ ⊢ P : A) ->
     nbe_ty_f Γ T W ->
-    exists Rs, W = nf_record p Rs /\ List.length (List.map nf_to_exp Rs) = List.length (record_params R) /\
-      (forall k P Q A, List.nth_error Ps k = Some P -> List.nth_error (List.map nf_to_exp Rs) k = Some Q ->
-         List.nth_error (tele_insts (record_params R) Id Ps) k = Some A -> Γ ⊢ P ≈ Q : A).
+    exists Rs, W = nf_record p Rs /\ List.length Rs = List.length (record_params R) /\
+      forall k P Q A V, List.nth_error Ps k = Some P -> List.nth_error Rs k = Some Q ->
+        List.nth_error (tele_insts (record_params R) Id Ps) k = Some A -> nbe_f Γ P A V -> nf_equal_up_to_proofs V Q.
 Proof.
   intros * Hs Hl HPl HPt HW.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
   apply subtyp_spec in Hs as [(S & HS & Heq) | [(U & V & [k1 HU] & [k2 HV] & Hsu) | [(A1 & A2 & B1 & B2 & _ & [k2 Hb] & _) | [_ HL]]]].
-  - (* TEMP-Q1: W is erase-equal to the normal form of the record type, not equal to it *)
-    admit.
+  - (** As for inductive types ([subtyp_ind_nf]) *)
+    destruct (completeness_ty_sort HS Heq) as (W1 & W2 & HW1 & HW2 & HE).
+    pose proof (functional_nbe_ty _ _ _ _ HW HW1) as <-.
+    destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HPl HPt HW2) as (Rs2 & -> & HRl & HP).
+    destruct W; cbn [nf_erase] in HE; try discriminate; injection HE as -> HE.
+    match goal with |- exists Rs, nf_record _ ?L = _ /\ _ => exists L end.
+    split; [ reflexivity |]; split; [ rewrite <- (List.length_map nf_erase), HE, List.length_map; exact HRl |].
+    intros k P Q A V HPk HQk HAk HV.
+    destruct (nth_error_lt_some Rs2 k) as [Q2 HQ2];
+      [ rewrite <- (List.length_map nf_erase Rs2), <- HE, List.length_map; apply List.nth_error_Some; congruence |].
+    pose proof (HP _ _ _ _ _ HPk HAk HQ2 HV) as E.
+    assert (Hm' : List.nth_error (List.map nf_erase l) k = List.nth_error (List.map nf_erase Rs2) k) by (rewrite HE; reflexivity).
+    rewrite !List.nth_error_map, HQk, HQ2 in Hm'; injection Hm' as Hm'.
+    unfold nf_equal_up_to_proofs in *; congruence.
   - exfalso; destruct (univ_sub_sort_term Hsu) as [_ HVt].
     eapply exp_eq_record_sort_absurd; [ exact HVt | symmetry; exact HV ].
   - exfalso; eapply exp_eq_record_pi_absurd; symmetry; exact Hb.
   - exfalso; exact (record_type_not_level HL).
-Admitted. (* TEMP-Q1 *)
+Qed.
 
 (** A literal of type [Level@n] is of a tier at most [n], and so is the
     constant of a level of type [Level@n]. *)

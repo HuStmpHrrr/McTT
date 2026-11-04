@@ -14,6 +14,13 @@ From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Completeness.
 From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
+From Mctt.Core.Completeness.LogicalRelation Require Import Instance Telescope.
+From Mctt.Core.Completeness.Inductives Require Import Decl Model.
+From Mctt.Core.Completeness.Modules Require Import Filed.
+From Mctt.Core.Completeness Require Import UnitCases LetCases.
+From Mctt.Core.Syntactic.System.Global Require Import Presup DescTyping.
+From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing IndCong.
+From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 Import Domain_Notations Fixed_Notations.
 
@@ -168,6 +175,242 @@ Proof.
   intros * H; apply eval_apps_exp in H as (f & Hf & Hargs).
   inversion Hf; subst; apply eval_app_args_record in Hargs as (ms & _ & Hap).
   apply eval_apps_record_inv in Hap; eauto.
+Qed.
+
+(** An inductive type at parameters evaluates to the type former at the
+    parameters' values. *)
+Lemma eval_ind_apps_args : forall p k Ms ρ a, ⟦ apps_exp (a_ind p k) Ms ⟧ ρ ↘ a ->
+    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ a = d_ind p k ms.
+Proof.
+  intros * H; apply eval_apps_exp in H as (f & Hf & Hargs).
+  inversion Hf; subst; apply eval_app_args_ind in Hargs as (ms & Hms & Hap).
+  apply eval_apps_ind_inv in Hap; eauto.
+Qed.
+
+(** So does a record type. *)
+Lemma eval_record_apps_args : forall p Ms ρ a, ⟦ apps_exp (a_record p) Ms ⟧ ρ ↘ a ->
+    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ a = d_record p ms.
+Proof.
+  intros * H; apply eval_apps_exp in H as (f & Hf & Hargs).
+  inversion Hf; subst; apply eval_app_args_record in Hargs as (ms & Hms & Hap).
+  apply eval_apps_record_inv in Hap; eauto.
+Qed.
+
+(** ** The Parameters of a Type Former
+
+    The normal form of an inductive or record type reads each parameter
+    at the parameter's type in the environment of the values of the
+    parameters before it ([read_ps]), the types' closures over the empty
+    environment.  NbE reads it at its instance [A_j[Id,,M_0,…,M_(j-1)]] in
+    the initial environment of the context.  The two type values are
+    related, so the two normal forms are equal up to their proofs. *)
+
+(** A type over a closed telescope [C] of relevant parameters, at terms
+    valid at its instances: its instance at the terms, at an environment,
+    is related to it at the terms' values over the empty environment.
+    [closed_inst_typ] asks the instances to be types of relevant sorts
+    instead. *)
+Lemma closed_instance_typ_relevant : forall C Γ Ms X (k : nat) RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
+    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
+    (exists l, rel_params_relevant ⋅ C l) ->
+    List.Forall (exp_scoped (List.length Γ)) Ms ->
+    C ⊨ᵗ X ≈ X at k -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
+    exists ms a b i R, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ X[sb_of_list Id Ms] ⟧ ρ ↘ a /\
+      ⟦ X ⟧ env_tele nil (List.rev C) ms ↘ b /\ per_univ_elem i R a b.
+Proof.
+  intros * HCa HC HΓ Hl HMs Hrel HMss HX HRΓ ρ Hρ.
+  pose proof (gsub_valid (gsub_closed_inst _ _ _ HCa HC HΓ Hl HMs HMss)) as Hσ.
+  destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
+  destruct (closed_instance_values_of_sub C Γ Ms RΓ RC HCa HC HΓ HRΓ HRC Hrel Hσ Hl ρ ρ Hρ) as [ms ms' Hms Hms' _ Hev _].
+  pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (_ & _ & Hfs & _).
+  pose proof (Hfs _ _ _ Hms _ Hms') as <-.
+  (** The instance's environment is related to itself at [C ++ Γ], so at
+      [C], and so to the telescope's own extension *)
+  destruct (closed_app_sem C Γ HCa HC HΓ) as [HCΓ Hres].
+  destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ HRCΓ].
+  destruct (rel_sub_under_ctx_simple Hσ) as (RΓ1 & HRΓ1 & RΔ & HRΔ & Hs).
+  assert (E1 : RΓ <~> RΓ1) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (E2 : RΔ <~> RCΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hs _ _ (proj1 (E1 _ _) Hρ)) as (y1 & y2 & Ey1 & Ey2 & Hy).
+  pose proof (per_ctx_env_resp_agree HRΔ _ _ _ _ (functional_eval_sub _ _ _ _ _ Ey1 Hev)
+                (functional_eval_sub _ _ _ _ _ Ey2 Hev) Hy) as HyE.
+  pose proof (Hres _ _ HRC HRCΓ _ _ (proj1 (E2 _ _) HyE)) as HEE.
+  pose proof (eval_exps_length _ _ _ Hms) as Lms.
+  assert (Lt : List.length (List.rev C) = List.length ms) by (rewrite List.length_rev; lia).
+  rewrite env_extend_tagged_typed in HEE.
+  assert (Lv : List.length (tagged_entries Γ (List.rev C) (ctx_retag Γ ρ) ms) = List.length C)
+    by (rewrite tagged_entries_length by exact Lt; lia).
+  pose proof (closed_env_tele_right C RC _ _ _ _ nil HCa HC HRC Lv Lv HEE) as Hmix.
+  rewrite tagged_entries_fst in Hmix by exact Lt.
+  (** The type at both *)
+  pose proof (closed_app_type _ _ _ _ _ HCa HC HΓ HX) as HXΓ.
+  pose proof (rel_type_inversion HXΓ) as [R0 [HΔ0 HXgen]].
+  destruct (HXgen _ _ HRΓ _ _ (rel_sub_under_ctx_refl_left Hσ) _ _ _ _ Hρ Hev Hev) as [a a2 a3 a4 Ha Ha2 _ _ ([R1 HR1] & _)].
+  destruct (rel_type_inversion_simple_at HRC HX _ _ Hmix) as (a3' & b & Ha3 & Hb & [R2 HR2]).
+  rewrite <- env_extend_tagged_typed in Ha3.
+  functional_eval_rewrite_clear.
+  destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HR1 HR2) as (R & HR & _).
+  exists ms, a, b; eexists; exists R; repeat split; eassumption.
+Qed.
+
+(** A closed telescope [C] of relevant parameters over [Γ]: the
+    parameters of a member of an inductive group, or of a record type,
+    in a well-formed context [Γ]. *)
+Record relevant_params_telescope (Γ C : ctx) : Prop := mk_relevant_params_telescope
+  { (** Its entries are assumptions *)
+    relevant_params_telescope_ass : tele_ass C
+    (** It is a valid closed context *)
+  ; relevant_params_telescope_valid : ⊨ C
+    (** Each entry is a type of a universe or a type of levels over the
+        entries before it ([rel_param_typed]) *)
+  ; relevant_params_telescope_relevant : forall Δ1 A Δ2, C = (Δ1 ++ ce_ass A :: Δ2)%list -> exists l, rel_param_typed Δ2 A l
+    (** It extends [Γ] *)
+  ; relevant_params_telescope_wf : ⊢ (C ++ Γ)%list }.
+
+(** A global context is the one of its two parts: what the semantic
+    validity of the identity embedding ([valid_gctx_embedding_refl_gc]),
+    stated at [gc_mk gc_deps gc_stack], is read at. *)
+Lemma gc_mk_eta : forall G : GCtx, G = gc_mk (@gc_deps G) (@gc_stack G).
+Proof. intros [? ?]; reflexivity. Qed.
+
+(** The parameters of a member of a group found from a well-formed
+    context are such a telescope ([im_params_relevant]). *)
+Lemma ind_relevant_params_telescope : forall Γ p D k Mk, ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D ->
+    ind_member D k = Some Mk -> relevant_params_telescope Γ (im_params D Mk).
+Proof.
+  intros * HΓ Hl Hk.
+  pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
+  pose proof (valid_gctx_embedding_ind_field _ _ _ _ (valid_gctx_embedding_refl_gc Hg) _ _ Hl) as HD.
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hc].
+  rewrite <- gc_mk_eta in HD.
+  constructor; [ exact (decl_closed_params_ass _ _ _ Hc Hk) | exact (valid_ind_decl_params _ HD _ _ Hk)
+               | exact (im_params_relevant _ HD _ _ Hk) | exact (params_ctx_wf _ _ _ _ _ Hl Hk HΓ) ].
+Qed.
+
+(** So are the parameters of a record type found from a well-formed
+    context. *)
+Lemma record_relevant_params_telescope : forall Γ p R, ⊢ Γ -> record_lookup gc_deps gc_stack p = Some R ->
+    relevant_params_telescope Γ (record_params R).
+Proof.
+  intros * HΓ Hl.
+  pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
+  pose proof (valid_gctx_embedding_record _ _ _ _ (valid_gctx_embedding_refl_gc Hg) _ _ Hl) as HR.
+  rewrite <- gc_mk_eta in HR.
+  destruct HR as [HP [l HPr] _ _ _].
+  pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl) as Ht.
+  pose proof (wf_record_closed _ _ _ _ _ HΓ Hl) as Hc.
+  constructor; [ exact (typed_params_ass _ _ _ Ht) | exact HP | intros Δ1 A Δ2 E; exists l; rewrite <- (List.app_nil_r Δ2); exact (HPr _ _ _ E) |].
+  pose proof (record_fctx_app_wf _ _ R 0 Γ ltac:(lia) Hc (typed_params_ass _ _ _ Ht)
+                (record_typed_fctx_wf _ _ _ Ht _ (le_n _)) HΓ) as H.
+  change (record_fctx R 0) with (@nil centry) in H; exact H.
+Qed.
+
+(** NbE of the parameters of a closed telescope [C] of relevant
+    parameters agrees, up to proofs, with their readback along [C]: for
+    [C = (l : Level) (A : Type@l)] and the parameters [l0, N], NbE reads
+    [N] at [Type@l0] in the initial environment of [Γ], [read_ps] reads
+    its value at [Type@l] with [l] the value of [l0]. *)
+Lemma nbe_params_at_telescope : forall Γ C Ms ρ vs Rs,
+    relevant_params_telescope Γ C -> List.length Ms = List.length C ->
+    (forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts C Id Ms) j = Some T -> Γ ⊢ P : T) ->
+    initial_env_f Γ ρ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ vs ->
+    Rps vs at List.rev C in gc_deps ⍮ gc_stack ⍮ nil ⍮ List.length Γ ↘ Rs ->
+    forall j P T R V, List.nth_error Ms j = Some P -> List.nth_error (tele_insts C Id Ms) j = Some T ->
+      List.nth_error Rs j = Some R -> nbe_f Γ P T V -> nf_equal_up_to_proofs V R.
+Proof.
+  intros * [HCa HC HCr HCΓ] Hl HMs Hρ Hvs Hread j P T R V HP HT HR HV.
+  assert (HΓw : ⊢ Γ) by (eapply ctx_app_wf_tail; exact HCΓ).
+  destruct (tele_insts_nth _ _ _ _ _ HT) as (A & HA & ->).
+  (** [C] split at parameter [j]: [C1] holds it and those after it, [C2]
+      those before it *)
+  destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
+  assert (HCeq : C = (List.rev l2 ++ ce_ass A :: List.rev l1)%list)
+    by (rewrite <- (List.rev_involutive C), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
+  set (C2 := List.rev l1) in *.
+  assert (LC2 : List.length C2 = j) by (unfold C2; rewrite List.length_rev; lia).
+  assert (LC : List.length C = List.length l2 + S j)
+    by (rewrite HCeq, List.length_app; cbn [List.length]; rewrite LC2, List.length_rev; lia).
+  assert (HCa2 : tele_ass C2)
+    by (rewrite HCeq in HCa; unfold tele_ass in HCa; apply List.Forall_app in HCa as [_ HCa]; inversion HCa; assumption).
+  set (C1 := (List.rev l2 ++ ce_ass A :: nil)%list).
+  assert (HCeq' : C = (C1 ++ C2)%list) by (unfold C1; rewrite HCeq, <- List.app_assoc; reflexivity).
+  assert (HC2 : ⊨ C2) by (rewrite HCeq' in HC; eapply rel_ctx_wf_app_r; exact HC).
+  assert (HCr2 : exists l, rel_params_relevant ⋅ C2 l).
+  { apply rel_params_relevant_of_entries; intros Δ1 B Δ2 E.
+    destruct (HCr (C1 ++ Δ1)%list B Δ2) as [l Hl']; [ rewrite HCeq', E, <- List.app_assoc; reflexivity |].
+    exists l; rewrite List.app_nil_r; exact Hl'. }
+  (** The parameters before [j] are an instance of [C2] *)
+  assert (Lj : j < List.length Ms) by (apply List.nth_error_Some; congruence).
+  set (Ms2 := List.firstn j Ms).
+  assert (LMs2 : List.length Ms2 = List.length C2) by (unfold Ms2; rewrite List.length_firstn; lia).
+  assert (Hinsts : tele_insts C Id Ms = (tele_insts C2 Id Ms2 ++ tele_insts C1 (sb_of_list Id Ms2) (List.skipn j Ms))%list)
+    by (rewrite HCeq', <- (List.firstn_skipn j Ms) at 1; apply tele_insts_app; [ exact HCa2 | exact LMs2 ]).
+  assert (HMs2 : forall k N T, List.nth_error Ms2 k = Some N -> List.nth_error (tele_insts C2 Id Ms2) k = Some T -> Γ ⊢ N : T).
+  { intros k N T HN HTk.
+    assert (Hk : k < j) by (rewrite <- LC2, <- LMs2; apply List.nth_error_Some; congruence).
+    apply (HMs k); [ unfold Ms2 in HN; rewrite nth_error_firstn_lt in HN by exact Hk; exact HN |].
+    rewrite Hinsts, List.nth_error_app1; [ exact HTk | apply List.nth_error_Some; congruence ]. }
+  assert (HMs2s : forall k N T, List.nth_error Ms2 k = Some N -> List.nth_error (tele_insts C2 Id Ms2) k = Some T -> Γ ⊨ N : T)
+    by (intros; apply completeness_fundamental_exp; eapply HMs2; eassumption).
+  assert (HMs2sc : List.Forall (exp_scoped (List.length Γ)) Ms2).
+  { apply List.Forall_forall; intros N HN.
+    destruct (List.In_nth_error _ _ HN) as [k Hk].
+    assert (Hk' : k < List.length C2) by (rewrite <- LMs2; apply List.nth_error_Some; congruence).
+    destruct (nth_error_lt_some (tele_insts C2 Id Ms2) k) as [Tk HTk]; [ rewrite length_tele_insts by exact HCa2; lia |].
+    exact (wf_exp_scoped_term _ _ _ _ _ (HMs2 _ _ _ Hk HTk)). }
+  (** The type of parameter [j] at its instance and at the values before
+      it are related *)
+  destruct (HCr (List.rev l2) A C2 HCeq) as [lA HlA].
+  assert (HX : exists kA, C2 ⊨ᵗ A ≈ A at kA)
+    by (destruct HlA as [HlA | HlA]; eapply rel_type_of_sort; [ constructor | exact HlA | constructor | exact HlA ]).
+  destruct HX as [kA HX].
+  pose proof (completeness_fundamental_ctx _ HΓw) as HΓs.
+  destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
+  assert (HsΓ : ctx_scoped 0 Γ) by (eapply wf_ctx_scoped; exact HΓw).
+  pose proof (per_ctx_then_per_env_initial_env HRΓ HsΓ HsΓ) as [ρ' [ρ'' [Hρ' [Hρ'' Hrel]]]].
+  assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
+  assert (ρ'' = ρ) as -> by (eapply functional_initial_env; eassumption).
+  destruct (closed_instance_typ_relevant C2 Γ Ms2 A kA RΓ HCa2 HC2 HΓs LMs2 HMs2s HCr2 HMs2sc HX HRΓ ρ Hrel)
+    as (ms & a & b & i & R0 & Hms & Ha & Hb & HR0).
+  pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (Hfm & _ & Hfs & _).
+  assert (Hms_vs : ms = List.firstn j vs).
+  { pose proof Hvs as Hvs'; rewrite <- (List.firstn_skipn j Ms) in Hvs'.
+    destruct (eval_exps_app_inv _ _ _ _ _ _ Hvs') as (ms' & ns & Evs & Hms' & _).
+    pose proof (Hfs _ _ _ Hms _ Hms') as <-.
+    pose proof (eval_exps_length _ _ _ Hms) as L.
+    rewrite Evs, List.firstn_app; replace (j - List.length ms) with 0 by lia.
+    rewrite List.firstn_O, List.app_nil_r, List.firstn_all2 by lia; reflexivity. }
+  (** [read_ps] reads parameter [j] at the second *)
+  destruct (eval_exps_nth _ _ _ _ _ Hvs HP) as (v & Hv & HPv).
+  destruct (read_ps_nth_type _ _ _ _ _ Hread _ _ _ _ HA Hv HR) as (b' & Hb' & HRb).
+  assert (Hlms : List.length ms = j) by (rewrite (eval_exps_length _ _ _ Hms); lia).
+  assert (Henv : env_tele nil (List.rev C) (List.firstn j vs) = env_tele nil (List.rev C2) ms).
+  { rewrite <- Hms_vs, (env_tele_firstn _ (List.rev C)), (env_tele_firstn _ (List.rev C2)), Hlms; f_equal.
+    rewrite Hrev, List.firstn_app; replace (j - List.length l1) with 0 by lia.
+    rewrite List.firstn_O, List.app_nil_r, List.firstn_all2 by lia.
+    unfold C2; rewrite List.rev_involutive, List.firstn_all2 by lia; reflexivity. }
+  rewrite Henv in Hb'.
+  pose proof (Hfm _ _ _ Hb _ Hb') as <-.
+  (** NbE reads it at the first: the two readbacks agree up to proofs *)
+  pose proof (completeness_fundamental_exp _ _ _ (HMs _ _ _ HP HT)) as HPs.
+  pose proof HPs as [env_relΓ' HΓ' _ _].
+  destruct (LetCases.rel_exp_under_ctx_simple_full_at HΓ' HPs) as [kP HM].
+  assert (E1 : RΓ <~> env_relΓ') by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (HM _ _ (proj1 (E1 _ _) Hrel)) as (t & t' & R' & Ht & Ht' & HR' & Hexp).
+  destruct HV as [ρ0 a0 Hρ0 Ha0 HVt].
+  assert (ρ0 = ρ) as -> by (eapply functional_initial_env; eassumption).
+  fold Ms2 in Ht, Ht', Ha0.
+  pose proof (Hfm _ _ _ Ha _ Ht) as <-; pose proof (Hfm _ _ _ Ha _ Ht') as <-; pose proof (Hfm _ _ _ Ha _ Ha0) as <-.
+  assert (E : R' <~> R0) by (eapply per_univ_elem_right_irrel; eassumption).
+  pose proof (per_univ_elem_relevance _ _ _ _ HR0) as Hrab.
+  unfold nf_equal_up_to_proofs.
+  destruct HVt as [w Hp Hw | m w Hr Hm Hw].
+  - destruct (read_nf_propositional _ _ _ _ Hp Hw) as [Q ->].
+    destruct (read_nf_propositional _ _ _ _ (eq_trans (eq_sym Hrab) Hp) HRb) as [Q' ->]; reflexivity.
+  - destruct Hexp as [Hp | (m0 & m0' & Hm0 & Hm0' & Hmm)]; [ congruence |].
+    pose proof (Hfm _ _ _ HPv _ Hm) as <-; pose proof (Hfm _ _ _ HPv _ Hm0) as <-; pose proof (Hfm _ _ _ HPv _ Hm0') as <-.
+    destruct (per_elem_then_per_top HR0 (proj1 (E _ _) Hmm) (List.length Γ)) as [W1 W2 HW1 HW2 HE].
+    functional_read_rewrite_clear; exact HE.
 Qed.
 
 (** A universe as a term: a large one, or a small one at any level term. *)

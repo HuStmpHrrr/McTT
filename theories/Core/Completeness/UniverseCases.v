@@ -982,6 +982,21 @@ Proof.
     intros A HA; rewrite <- app_assoc; exact (rel_param_typed_ge _ _ l (max l l') ltac:(lia) (Hh A HA)).
 Qed.
 
+(** Parameters each relevant at its own level are relevant at a common
+    one, the largest: [(l : Level) (A : Typeω@3)] at [3]. *)
+Lemma rel_params_relevant_of_entries : forall Γ Ψ,
+    (forall Δ1 A Δ2, Ψ = Δ1 ++ ce_ass A :: Δ2 -> exists l, rel_param_typed (Δ2 ++ Γ) A l) ->
+    exists l, rel_params_relevant Γ Ψ l.
+Proof.
+  induction Ψ as [| e Ψ IH]; intros H; [ exists 0; apply rel_params_relevant_nil |].
+  destruct IH as [l' Hl']; [ intros Δ1 A Δ2 E; apply (H (e :: Δ1)); rewrite E; reflexivity |].
+  destruct e as [A0 | | |];
+    [| exists l'; apply rel_params_relevant_cons_iff; split; [ intros A HA; discriminate HA | exact Hl' ] .. ].
+  destruct (H nil A0 Ψ eq_refl) as [l0 Hl0]; exists (max l0 l').
+  apply rel_params_relevant_cons_iff; split; [| exact (rel_params_relevant_ge _ _ l' (max l0 l') ltac:(lia) Hl') ].
+  intros A HA; injection HA as <-; exact (rel_param_typed_ge _ _ l0 (max l0 l') ltac:(lia) Hl0).
+Qed.
+
 (** ** Antisymmetry
 
     A telescope equation states that its heads are each below the other

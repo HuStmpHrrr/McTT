@@ -92,6 +92,31 @@ Proof. intros; unfold im_params; rewrite List.rev_app_distr; reflexivity. Qed.
 Lemma read_ps_length : forall s ρ T vs Ms, Rps vs at T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms -> List.length vs = List.length T.
 Proof. induction 1; cbn; congruence. Qed.
 
+(** As many normal forms as values. *)
+Lemma read_ps_length_nf : forall s ρ T vs Ms, Rps vs at T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms -> List.length Ms = List.length vs.
+Proof. induction 1; cbn; congruence. Qed.
+
+(** Value [j] of a telescope reads back at its type, evaluated in the
+    environment of the values before it: for [Rps (v0 :: v1 :: nil) at
+    (A0 :: A1 :: nil) in ρ ↘ (R0 :: R1 :: nil)], [R1] is [v1] read at
+    [⟦A1⟧ (ρ ↦ v0 ⦂ entry_type_closure A0 ρ)]. *)
+Lemma read_ps_nth_type : forall s ρ T vs Rs, Rps vs at T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Rs ->
+    forall j A v R, List.nth_error T j = Some (ce_ass A) -> List.nth_error vs j = Some v -> List.nth_error Rs j = Some R ->
+      exists a, ⟦ A ⟧ env_tele ρ T (List.firstn j vs) ↘ a /\ Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ R.
+Proof.
+  induction 1 as [| ? ? ? ? ? ? ? ? ? Ha0 HV0 _ IH]; intros [| j] A1 v1 R1 HA Hv HR; cbn in HA, Hv, HR; try discriminate.
+  - injection HA as <-; injection Hv as <-; injection HR as <-; eexists; split; [ exact Ha0 | exact HV0 ].
+  - exact (IH _ _ _ _ HA Hv HR).
+Qed.
+
+(** At a propositional type every value reads back as a proof term
+    ([read_nf_proof] is the only rule there). *)
+Lemma read_nf_propositional : forall s a v W, domain_relevance a = propositional ->
+    Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ W -> exists P, W = nf_proof P.
+Proof.
+  intros * Ha H; inversion H; subst; cbn in *; try congruence; eauto.
+Qed.
+
 (** The codomain of the type of an argument of a function shape, at an
     argument. *)
 Lemma eval_fam_cod_shfam : forall p ups ρ B t x a tf tx,

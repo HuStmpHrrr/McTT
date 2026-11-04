@@ -155,6 +155,46 @@ Proof.
   exists W, W'; repeat split; [ econstructor; eassumption | econstructor; eassumption | exact HE ].
 Qed.
 
+(** Equal terms read back at equal types have normal forms equal up to
+    their proofs: completeness, with each side read at its own type.  For
+    example, a pair [(n, h)] of a record type [R n] whose second field is
+    a proof [h : n = n] reads back at [R n] and at an equal [R n'] with
+    the same first field and possibly different kept proofs in the
+    second. *)
+Theorem completeness_at_equal_types : forall {Θ Ξ Γ M M' A A' S W W'},
+    type_sort S ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : S ->
+    nbe Θ Ξ Γ M A W ->
+    nbe Θ Ξ Γ M' A' W' ->
+    nf_equal_up_to_proofs W W'.
+Proof.
+  intros * HS H HAA [ρ0 a0 Hρ0 Ha0 HW] [ρ1 a1 Hρ1 Ha1 HW'].
+  pose proof (proj1 (proj2 (proj2 completeness_fundamental)) _ _ _ _ _ _ H) as HK.
+  pose proof (sem_exp_eq_at_rel (HK _ _ (valid_gctx_embedding_refl _ _ (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))))) as Hrel.
+  destruct (@rel_typ_sort_at_initial_env (gc_mk Θ Ξ) _ _ _ _ HS HAA) as (ρ & a & a' & i & Hρ & Ha & Ha' & [R' HR']).
+  pose proof Hrel as [env_relΓ HΓ _ _].
+  destruct (rel_exp_under_ctx_simple_full_at HΓ Hrel) as [k HM].
+  pose proof (wf_ctx_scoped_exp_eq H) as HsΓ.
+  pose proof (per_ctx_then_per_env_initial_env HΓ HsΓ HsΓ) as [ρ2 [ρ3 [Hρ2 [Hρ3 Hrel23]]]].
+  repeat match goal with
+         | H1 : initial_env _ _ Γ ?x, H2 : initial_env _ _ Γ ?y |- _ =>
+             assert (y = x) as -> by (eapply functional_initial_env; eassumption); clear H2
+         end.
+  destruct (HM _ _ Hrel23) as (b & b' & R & Hb & Hb' & HR & Hexp).
+  functional_eval_rewrite_clear.
+  assert (E : R <~> R') by (eapply per_univ_elem_right_irrel; eassumption).
+  pose proof (per_univ_elem_relevance _ _ _ _ HR') as Hra.
+  unfold nf_equal_up_to_proofs.
+  destruct HW as [w Hp Hw | m w Hr Hm Hw]; destruct HW' as [w' Hp' Hw' | m' w' Hr' Hm' Hw']; try congruence.
+  - destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp Hw) as [P ->].
+    destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp' Hw') as [P' ->]; reflexivity.
+  - destruct Hexp as [Hp | (m0 & m0' & Hm0 & Hm0' & Hmm)]; [ congruence |].
+    functional_eval_rewrite_clear.
+    destruct (per_elem_then_per_top HR' (proj1 (E _ _) Hmm) (List.length Γ)) as [V V' HV HV' HE].
+    functional_read_rewrite_clear; exact HE.
+Qed.
+
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
