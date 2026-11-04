@@ -72,7 +72,7 @@ Qed.
 
 (** A closure of an expanded definition given fewer arguments than it
     lacks parameters. *)
-Lemma appms_local : forall args Δ D ρ, moddef_expand D = D -> tele_ass Δ -> List.length args < List.length Δ ->
+Lemma apply_args_local_unsaturated : forall args Δ D ρ, moddef_expand D = D -> tele_ass Δ -> List.length args < List.length Δ ->
     $ᵐ*| dm_local Δ D ρ & args | gc_deps ⍮ gc_stack ↘
       dm_local (List.firstn (List.length Δ - List.length args) Δ) D (env_tele ρ (List.rev Δ) args).
 Proof.
@@ -177,7 +177,7 @@ Proof.
     match goal with Hc : eval_close _ _ _ ?D nil ?h0 |- _ =>
       pose proof (functional_eval_close _ _ _ _ _ Hc (close_unsat (Δy ++ T) D nil ltac:(rewrite List.length_app; lia))) as -> end.
     match goal with Ha' : eval_appms _ _ (dm_local _ ?D _) args r |- _ =>
-      pose proof (functional_eval_appms _ _ _ _ Ha' (appms_local args (Δy ++ T) D nil (moddef_expand_idem _) Ha ltac:(rewrite List.length_app; lia))) as -> end.
+      pose proof (functional_eval_appms _ _ _ _ Ha' (apply_args_local_unsaturated args (Δy ++ T) D nil (moddef_expand_idem _) Ha ltac:(rewrite List.length_app; lia))) as -> end.
     inversion Hn; subst.
     match goal with Hm0 : gc_loc _ _ p = Some _ |- _ => rewrite Hm in Hm0; injection Hm0 as <- <- end.
     match goal with Hx : nth_error (rev T) _ = Some ?e |- _ =>

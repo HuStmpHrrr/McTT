@@ -111,6 +111,28 @@ Proof.
   cbn [List.app env_extend_tagged List.rev]; rewrite IH by lia; rewrite <- app_assoc; reflexivity.
 Qed.
 
+(** A type over a closed telescope is one over the telescope above any
+    context. *)
+Lemma closed_app_type : forall C Γ X X' (i : nat), tele_ass C -> ⊨ C -> ⊨ Γ -> C ⊨ᵗ X ≈ X' at i -> C ++ Γ ⊨ᵗ X ≈ X' at i.
+Proof.
+  intros * HCa HC HΓ HX.
+  destruct (closed_app_sem C Γ HCa HC HΓ) as [HCΓ Hres].
+  destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
+  destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ HRCΓ].
+  eapply rel_type_under_ctx_restrict; [ exact HRCΓ | exact HRC | apply Hres; assumption
+                                     | rewrite List.length_app; lia
+                                     | exact (ctx_props_agree_app _ _ _ _ HRCΓ HRC (Hres _ _ HRC HRCΓ)) | exact HX ].
+Qed.
+
+(** So is a relevant type. *)
+Lemma closed_app_relevant : forall C Γ X, tele_ass C -> ⊨ C -> ⊨ Γ -> rel_type_relevant C X -> rel_type_relevant (C ++ Γ) X.
+Proof.
+  intros * HCa HC HΓ HX R HR ρ ρ' Hρ.
+  destruct (closed_app_sem C Γ HCa HC HΓ) as [_ Hres].
+  destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
+  exact (HX _ HRC _ _ (Hres _ _ HRC HR _ _ Hρ)).
+Qed.
+
 Lemma closed_inst_eval : forall C Γ Ms RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists Srt, relevant_sort Srt /\ Γ ⊨ T : Srt) ->
@@ -239,15 +261,15 @@ Qed.
 
 (** A type of either sort over a closed telescope, at valid arguments of
     relevant instantiated types. *)
-Lemma closed_inst_typ : forall C Γ Ms X S RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
+Lemma closed_inst_typ : forall C Γ Ms X (k : nat) RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists Srt, relevant_sort Srt /\ Γ ⊨ T : Srt) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
-    type_sort S -> C ⊨ X : S -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
+    C ⊨ᵗ X ≈ X at k -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
     exists ms a b i R, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ X[sb_of_list Id Ms] ⟧ ρ ↘ a /\
       ⟦ X ⟧ env_tele nil (rev C) ms ↘ b /\ per_univ_elem i R a b.
 Proof.
-  intros * HCa HC HΓ Hl HMs HTs HMss HS HX HRΓ ρ Hρ.
+  intros * HCa HC HΓ Hl HMs HTs HMss HX HRΓ ρ Hρ.
   destruct (closed_inst_env _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ _ _ Hρ)
     as (ms & ms' & RC & RCΓ & Hms & Hms' & HRC & HRCΓ & Hρσ & Hbase & Hmix & _).
   pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (_ & _ & Hfs & _).
@@ -255,10 +277,10 @@ Proof.
   pose proof (gsub_valid (gsub_closed_inst _ _ _ HCa HC HΓ Hl HMs HMss)) as Hσ.
   destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ _ Hρ) as (ms0 & Hms0 & Hev).
   pose proof (Hfs _ _ _ Hms0 _ Hms) as ->.
-  destruct (rel_type_of_sort HS (closed_app_valid _ _ _ _ _ HCa HC HΓ HX)) as [i HXΓ].
+  pose proof (closed_app_type _ _ _ _ _ HCa HC HΓ HX) as HXΓ.
   pose proof (rel_type_inversion HXΓ) as [R0 [HΔ0 HXgen]].
   destruct (HXgen _ _ HRΓ _ _ (rel_sub_under_ctx_refl_left Hσ) _ _ _ _ Hρ Hev Hev) as [a a2 a3 a4 Ha Ha2 _ _ ([R1 HR1] & _)].
-  destruct (rel_type_of_sort HS HX) as [i' HXt].
+  pose proof HX as HXt.
   destruct (rel_type_inversion_simple_at HRC HXt _ _ (Hmix nil)) as (a3' & b & Ha3 & Hb & [R2 HR2]).
   functional_eval_rewrite_clear.
   destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HR1 HR2) as (R & HR & _).
@@ -271,11 +293,11 @@ Lemma closed_inst_exp : forall C Γ Ms M X k RΓ, tele_ass C -> ⊨ C -> ⊨ Γ 
     (forall k N T, nth_error Ms k = Some N -> nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     (forall k T, nth_error (tele_insts C Id Ms) k = Some T -> exists Srt, relevant_sort Srt /\ Γ ⊨ T : Srt) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
-    C ⊨ X : Typeω@k -> C ⊨ M : X -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
+    C ⊨ᵗ X ≈ X at k -> rel_type_relevant C X -> C ⊨ M : X -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
     exists ms m n a i R, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ M[sb_of_list Id Ms] ⟧ ρ ↘ m /\
       ⟦ M ⟧ env_tele nil (rev C) ms ↘ n /\ ⟦ X[sb_of_list Id Ms] ⟧ ρ ↘ a /\ per_univ_elem i R a a /\ R m n.
 Proof.
-  intros * HCa HC HΓ Hl HMs HTs HMss HX HM HRΓ ρ Hρ.
+  intros * HCa HC HΓ Hl HMs HTs HMss HX HXr HM HRΓ ρ Hρ.
   destruct (closed_inst_env _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ _ _ Hρ)
     as (ms & ms' & RC & RCΓ & Hms & Hms' & HRC & HRCΓ & Hρσ & Hbase & Hmix & _).
   pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (_ & _ & Hfs & _).
@@ -284,13 +306,13 @@ Proof.
   destruct (closed_inst_eval _ _ _ _ HCa HC HΓ Hl HMs HTs HMss HRΓ _ Hρ) as (ms0 & Hms0 & Hev).
   pose proof (Hfs _ _ _ Hms0 _ Hms) as ->.
   pose proof (closed_app_valid _ _ _ _ _ HCa HC HΓ HM) as HMΓ.
-  pose proof (closed_app_valid _ _ _ _ _ HCa HC HΓ HX) as HXΓ.
-  destruct (valid_inst _ _ _ _ _ _ HMΓ (rel_type_relevant_of_typ HXΓ) Hσ HRΓ _ _ Hρ Hev)
+  pose proof (closed_app_type _ _ _ _ _ HCa HC HΓ HX) as HXΓ.
+  destruct (valid_inst _ _ _ _ _ _ HMΓ (closed_app_relevant _ _ _ HCa HC HΓ HXr) Hσ HRΓ _ _ Hρ Hev)
     as (m & m2 & a2 & i & R1 & Hm & Hm2 & Ha2 & HR1 & Hmm).
-  destruct (valid_at _ _ _ _ _ HM (rel_type_of_typ HX) (rel_type_relevant_of_typ HX) HRC _ _ (Hmix nil))
+  destruct (valid_at _ _ _ _ _ HM HX HXr HRC _ _ (Hmix nil))
     as (m2' & n & a2' & i' & R2 & Hm2' & Hn & Ha2' & HR2 & Hmn).
   functional_eval_rewrite_clear.
-  destruct (valid_typ_inst _ _ _ _ _ _ HXΓ Hσ HRΓ _ _ Hρ Hev)
+  destruct (rel_type_inst _ _ _ _ _ _ HXΓ Hσ HRΓ _ _ Hρ Hev)
     as (a & b2 & Ha & Hb2 & [R0 HR0]).
   set (j := k).
   functional_eval_rewrite_clear.
@@ -305,14 +327,24 @@ Qed.
 
 (** ** Members of Global Modules *)
 
+(** The inner parameters of relevant parameters are relevant over the
+    outer ones. *)
+Lemma rel_params_relevant_inner : forall Γ Δy Δ l, rel_params_relevant Γ (Δy ++ Δ) l -> rel_params_relevant (Δ ++ Γ) Δy l.
+Proof. intros * H Δ1 A Δ2 ->; rewrite app_assoc; apply (H Δ1 A (Δ2 ++ Δ)); rewrite <- app_assoc; reflexivity. Qed.
+
+(** The outer parameters of relevant parameters are relevant. *)
+Lemma rel_params_relevant_outer : forall Γ Δy Δ l, rel_params_relevant Γ (Δy ++ Δ) l -> rel_params_relevant Γ Δ l.
+Proof. intros * H Δ1 A Δ2 ->; apply (H (Δy ++ Δ1) A Δ2); rewrite <- app_assoc; reflexivity. Qed.
+
+
 (** An element of a [Π] over a telescope, applied to the values of
     environments of the telescope related at its context PER over a
     context [Γ]: the results are related at the codomain's head PER there.
     The [Π] applies at the values of its domains ([entry_type_value]), the
     environments store any types: the codomain, a type over the telescope,
     is related at both. *)
-Lemma ctx_pi_apps_rel : forall ts Γ RΓ B k, tele_ass ts -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> ⊨ List.rev ts ++ Γ ->
-    List.rev ts ++ Γ ⊨ B : Typeω@k ->
+Lemma ctx_pi_apps_rel : forall ts Γ RΓ B l k, tele_ass ts -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> ⊨ List.rev ts ++ Γ ->
+    rel_params_relevant Γ (List.rev ts) l -> List.rev ts ++ Γ ⊨ᵗ B ≈ B at k -> rel_type_relevant (List.rev ts ++ Γ) B ->
     forall E E' g g' a a' i R vts vts' R1,
       RΓ E E' -> ⟦ ctx_pi (List.rev ts) B ⟧ E ↘ a -> ⟦ ctx_pi (List.rev ts) B ⟧ E' ↘ a' ->
       per_univ_elem i R a a' -> R g g' ->
@@ -322,7 +354,7 @@ Lemma ctx_pi_apps_rel : forall ts Γ RΓ B k, tele_ass ts -> EF Γ ≈ Γ ∈ pe
       exists v v', $*| g & List.map fst vts | gc_deps ⍮ gc_stack ↘ v /\ $*| g' & List.map fst vts' | gc_deps ⍮ gc_stack ↘ v' /\
         Dom v ≈ v' ∈ per_head B B (env_extend_typed E vts) (env_extend_typed E' vts').
 Proof.
-  induction ts as [| e ts IH]; intros * Hts HΓ HC HB * HE Ha Ha' HR Hg HR1 Hl Hl' H1.
+  induction ts as [| e ts IH]; intros * Hts HΓ HC HTr HB HBr * HE Ha Ha' HR Hg HR1 Hl Hl' H1.
   - destruct vts, vts'; cbn in Hl, Hl'; try discriminate.
     exists g, g'; split; [ constructor | split; [ constructor |] ].
     intros j Q b b' Hb Hb' HQ; cbn [List.rev ctx_pi] in Ha, Ha'.
@@ -332,7 +364,9 @@ Proof.
   - inversion Hts as [| ? ? [A ->] Hts']; subst.
     destruct vts as [| [y t] vts]; [ cbn in Hl; discriminate |]; destruct vts' as [| [y' t'] vts']; [ cbn in Hl'; discriminate |].
     cbn [List.length] in Hl, Hl'.
-    cbn [List.rev] in HC, HB, HR1, Ha, Ha'; rewrite <- app_assoc in HC, HB, HR1; cbn [List.app] in HC, HB, HR1.
+    cbn [List.rev] in HC, HB, HBr, HR1, Ha, Ha', HTr.
+    destruct (rel_params_relevant_snoc_inv _ _ _ _ HTr) as [_ HTr'].
+    rewrite <- app_assoc in HC, HB, HBr, HR1; cbn [List.app] in HC, HB, HBr, HR1.
     rewrite ctx_pi_snoc in Ha, Ha'; cbn [ctx_pi_at] in Ha, Ha'.
     inversion Ha; subst; inversion Ha'; subst.
     match goal with Hx : ⟦ A ⟧ E ↘ ?x, Hx' : ⟦ A ⟧ E' ↘ ?x' |- _ =>
@@ -359,13 +393,14 @@ Proof.
     { apply HEA; apply (mk_per_ctx_env_cons_rel _ _ _ _ (E ↦ y ⦂ entry_type_value xa) (E' ↦ y' ⦂ t') Ht);
         [ exact Hh | intros _; eexists; reflexivity | exact Hrp | split; [ exact Ry | cbn; lia ] | exact Hrr ]. }
     (** the codomain at the given extensions *)
-    destruct (rel_exp_ctx_pi (rev ts) (Γ ▹ A) B k ltac:(apply Forall_rev; exact Hts') HC HB) as [j HcT].
-    destruct (rel_type_inversion_simple_at HRA (rel_type_of_typ HcT) _ _ HvL) as (b1x & c1' & Hb1x & Hc1' & U2).
-    destruct (rel_type_inversion_simple_at HRA (rel_type_of_typ HcT) _ _ HyA) as (c1 & c2' & Hc1 & Hc2' & [R2 HR2]).
+    destruct (rel_type_ctx_pi (rev ts) (Γ ▹ A) B l k ltac:(apply Forall_rev; exact Hts') HC HTr' HB HBr) as [HcT _].
+    set (j := max l k) in *.
+    destruct (rel_type_inversion_simple_at HRA HcT _ _ HvL) as (b1x & c1' & Hb1x & Hc1' & U2).
+    destruct (rel_type_inversion_simple_at HRA HcT _ _ HyA) as (c1 & c2' & Hc1 & Hc2' & [R2 HR2]).
     functional_eval_rewrite_clear.
     assert (Eo : out_rel y y' Hy <~> R2)
       by exact (per_univ_irrel_rel _ _ _ _ _ _ _ _ _ HRb1 U2 (proj1 (per_univ_elem_sym _ _ _ _ HR2))).
-    destruct (IH (Γ ▹ A) RA B k Hts' HRA HC HB (E ↦ y ⦂ t) (E' ↦ y' ⦂ t') g1 g1' c1 c1' j R2 vts vts' R1
+    destruct (IH (Γ ▹ A) RA B l k Hts' HRA HC HTr' HB HBr (E ↦ y ⦂ t) (E' ↦ y' ⦂ t') g1 g1' c1 c1' j R2 vts vts' R1
                 HyA Hc1 Hc1' HR2 (proj1 (Eo _ _) Hgg) HR1 ltac:(lia) ltac:(lia) H1) as (v & v' & Hv & Hv' & Hvv).
     exists v, v'; split; [ econstructor; eassumption | split; [ econstructor; eassumption | exact Hvv ] ].
 Qed.
@@ -411,8 +446,8 @@ Qed.
 (** The member [x] of a global module at arguments related to themselves at
     its telescope, typed at the [Π] over the parameters still missing. *)
 Lemma glob_dmod_has_mem : forall p T Φ x A0 g j E e,
-    gc_loc gc_deps gc_stack p = Some (T, Φ) -> tele_ass T -> ⊨ T -> (exists i, T ⊨ A0 : Typeω@i) ->
-    (exists l, rel_params_relevant nil T l) ->
+    gc_loc gc_deps gc_stack p = Some (T, Φ) -> tele_ass T -> ⊨ T -> (exists i : nat, T ⊨ᵗ A0 ≈ A0 at i) ->
+    rel_type_relevant T A0 -> (exists l, rel_params_relevant nil T l) ->
     ⟦ ctx_pi T A0 ⟧ nil ↘ e -> per_univ_elem j E e e -> E g g -> global_member_value gc_deps gc_stack p x g ->
     forall Tin Tout args, T = Tin ++ Tout -> List.length args = List.length Tout ->
       per_gargs (rev T) nil nil args args ->
@@ -421,7 +456,7 @@ Lemma glob_dmod_has_mem : forall p T Φ x A0 g j E e,
         (** the stored value applied to the arguments is related to the member *)
         forall v, $*| g & args | gc_deps ⍮ gc_stack ↘ v -> exists r, dm_global p args ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ R v r.
 Proof.
-  intros * Hm HT HTs [iA HA0] [lT HTrel] He HE Hgg Hg Tin.
+  intros * Hm HT HTs [iA HA0] HA0r [lT HTrel] He HE Hgg Hg Tin.
   (** the stored value applied to arguments related at the outer part of
       the telescope: related at the type over the rest *)
   assert (Happs : forall Tin' Tout' args0 args1, T = Tin' ++ Tout' ->
@@ -439,13 +474,16 @@ Proof.
     assert (HTo' : ⊨ Tout' ++ ⋅) by (rewrite app_nil_r; exact HTo).
     assert (HRO' : EF Tout' ++ ⋅ ≈ Tout' ++ ⋅ ∈ per_ctx_env ↘ RO) by (rewrite app_nil_r; exact HRO).
     pose proof (gargs_env_rel_gen Tout' ⋅ _ _ nil nil args0 args1 per_ctx_env_nil_true HRO' HTo' I Hl0 Hg01) as Hρ.
-    rewrite ET in HA0, HT.
-    destruct (rel_exp_ctx_pi Tin' Tout' A0 iA (proj1 (tele_ass_app_inv _ _ HT)) HTs' HA0) as [ip HP].
+    rewrite ET in HA0, HA0r, HT, HTrel.
+    pose proof (rel_params_relevant_inner _ _ _ _ HTrel) as HTinr; rewrite app_nil_r in HTinr.
+    destruct (rel_type_ctx_pi Tin' Tout' A0 lT iA (proj1 (tele_ass_app_inv _ _ HT)) HTs' HTinr HA0 HA0r) as [HP HPr].
     assert (He' : ⟦ ctx_pi (rev (rev Tout')) (ctx_pi Tin' A0) ⟧ nil ↘ e)
       by (rewrite rev_involutive, <- Evaluation.Modules.ctx_pi_app, <- ET; exact He).
-    destruct (ctx_pi_apps_rel (rev Tout') ⋅ _ (ctx_pi Tin' A0) ip
+    destruct (ctx_pi_apps_rel (rev Tout') ⋅ _ (ctx_pi Tin' A0) lT (max lT iA)
                 ltac:(apply Forall_rev; exact (proj2 (tele_ass_app_inv _ _ HT)))
-                per_ctx_env_nil_true ltac:(rewrite rev_involutive; exact HTo') ltac:(rewrite rev_involutive, app_nil_r; exact HP)
+                per_ctx_env_nil_true ltac:(rewrite rev_involutive; exact HTo')
+                ltac:(rewrite rev_involutive; exact (rel_params_relevant_outer _ _ _ _ HTrel))
+                ltac:(rewrite rev_involutive, app_nil_r; exact HP) ltac:(rewrite rev_involutive, app_nil_r; exact HPr)
                 nil nil g g e e j E (tele_entries nil (rev Tout') args0) (tele_entries nil (rev Tout') args1) RO
                 I He' He' HE Hgg ltac:(rewrite rev_involutive, app_nil_r; exact HRO)
                 ltac:(rewrite tele_entries_length, length_rev; lia) ltac:(rewrite tele_entries_length, length_rev; lia) Hρ)
@@ -456,7 +494,7 @@ Proof.
   - subst Tout.
     destruct (Happs nil T args args eq_refl Hargs Hl) as (RO & v & v' & HRO & Hρ & Hv & Hv' & Hvv).
     pose proof (functional_eval_apps _ _ _ _ Hv Hv') as <-.
-    destruct (rel_type_inversion_simple_at HRO (rel_type_of_typ HA0) _ _ Hρ) as (b & b' & Hb & Hb' & [R HR]).
+    destruct (rel_type_inversion_simple_at HRO HA0 _ _ Hρ) as (b & b' & Hb & Hb' & [R HR]).
     functional_eval_rewrite_clear.
     pose proof (Hvv _ _ _ _ Hb Hb HR) as Hvv'.
     exists b, iA, R; cbn [ctx_pi]; split; [ exact Hb | split; [ exact HR |] ].
@@ -471,7 +509,7 @@ Proof.
     + rewrite Hm in Hm0; injection Hm0 as <- <-.
       destruct (Happs nil T args0 args eq_refl Hg0 Hl0) as (RO' & u & u' & HRO' & Hρ' & Hu & Hu' & Huu).
       pose proof (functional_eval_apps _ _ _ _ Hu' Hv) as ->.
-      destruct (rel_type_inversion_simple_at HRO' (rel_type_of_typ HA0) _ _ Hρ') as (c & c' & Hc & Hc' & [R1 HR1]).
+      destruct (rel_type_inversion_simple_at HRO' HA0 _ _ Hρ') as (c & c' & Hc & Hc' & [R1 HR1]).
       functional_eval_rewrite_clear.
       assert (E1 : R1 <~> R).
       { symmetry; eapply per_univ_irrel_rel; [ exact HR | eexists; exact HR | exact (proj1 (per_univ_elem_sym _ _ _ _ HR1)) ]. }
@@ -491,7 +529,7 @@ Proof.
                 ltac:(eapply per_gargs_prefix; [ rewrite rev_app_distr in Hargs; exact Hargs | rewrite length_rev; lia ]) Hl)
       as (RO & v & v' & HRO & HρO & Hv & Hv' & Hvv).
     pose proof (functional_eval_apps _ _ _ _ Hv Hv') as <-.
-    rewrite <- app_assoc in Hm, HTs, HA0, Hargs, IH, HT; cbn [List.app] in Hm, HTs, HA0, Hargs, IH, HT.
+    rewrite <- app_assoc in Hm, HTs, HA0, HA0r, Hargs, IH, HT; cbn [List.app] in Hm, HTs, HA0, HA0r, Hargs, IH, HT.
     pose proof (rel_ctx_wf_app_r _ _ HTs) as HA1T.
     (** the missing parameter is relevant *)
     pose proof (HTrel Tin0 A1 Tout ltac:(rewrite <- app_assoc; reflexivity)) as HA1; rewrite app_nil_r in HA1.
@@ -506,9 +544,15 @@ Proof.
     pose proof (rel_param_typed_type _ _ _ HA1) as HA1t.
     destruct (rel_type_inversion_simple_at HRo HA1t _ _ Hρ) as (a1 & a1' & Ha1 & Ha1' & [Ra HRa]).
     functional_eval_rewrite_clear.
-    destruct (rel_exp_ctx_pi (Tin0 ++ ce_ass A1 :: nil) Tout A0 iA ltac:(apply List.Forall_app; split; [ exact (proj1 (tele_ass_app_inv _ _ HT)) | repeat constructor; eauto ])
-                ltac:(rewrite <- app_assoc; exact HTs) ltac:(rewrite <- app_assoc; exact HA0)) as [ip HP].
-    destruct (rel_exp_of_typ_inversion_simple_at HRo HP _ _ Hρ) as (pa & pa' & Hpa & Hpa' & [RP HRP]).
+    assert (HTinr : rel_params_relevant (Tout ++ ⋅) (Tin0 ++ ce_ass A1 :: nil) lT)
+      by (apply rel_params_relevant_inner; exact HTrel).
+    rewrite app_nil_r in HTinr.
+    destruct (rel_type_ctx_pi (Tin0 ++ ce_ass A1 :: nil) Tout A0 lT iA
+                ltac:(apply List.Forall_app; split; [ exact (proj1 (tele_ass_app_inv _ _ HT)) | repeat constructor; eauto ])
+                ltac:(rewrite <- app_assoc; exact HTs) HTinr ltac:(rewrite <- app_assoc; exact HA0)
+                ltac:(rewrite <- app_assoc; exact HA0r)) as [HP _].
+    set (ip := max lT iA) in *.
+    destruct (rel_type_inversion_simple_at HRo HP _ _ Hρ) as (pa & pa' & Hpa & Hpa' & [RP HRP]).
     functional_eval_rewrite_clear.
     assert (EO : RO <~> Ro) by (eapply per_ctx_env_right_irrel; eassumption).
     pose proof (Hvv _ _ _ _ Hpa Hpa HRP) as Hvv'.
@@ -524,7 +568,8 @@ Proof.
     assert (Hnp : next_param (dm_global p args) a1).
     { econstructor; [ exact Hm | exact Hn |].
       rewrite rev_app_distr; cbn [rev]; rewrite <- app_assoc, env_tele_app_long by (rewrite length_rev; lia); exact Ha1. }
-    destruct (rel_exp_ctx_pi Tin0 (Tout ▹ A1) A0 iA (proj1 (tele_ass_app_inv _ _ HT)) HTs HA0) as [kcod HcodT].
+    destruct (rel_type_ctx_pi Tin0 (Tout ▹ A1) A0 lT iA (proj1 (tele_ass_app_inv _ _ HT)) HTs
+                (proj2 (rel_params_relevant_snoc_inv _ _ _ _ HTinr)) HA0 HA0r) as [HcodT _].
     assert (Hkk : per_dmod (dm_global p args) (dm_global p args))
       by (eapply gval_rel; [ exact Hm | exact HT | exact HTs | reflexivity | rewrite length_app; cbn; lia | exact Hargs ]).
     assert (Hra1 : domain_relevance a1 = relevant).
@@ -550,7 +595,7 @@ Proof.
       (** the IH's type, at the argument stored at its parameter's
           closure, against the codomain at it stored at its value *)
       cbn [rev] in Hb'; rewrite env_tele_snoc in Hb' by (rewrite length_rev; lia).
-      destruct (extension_value_closure_type _ _ _ _ _ _ _ _ _ _ _ _ HRo HA1t (rel_type_of_typ HcodT) Hρ Ha1 HRa
+      destruct (extension_value_closure_type _ _ _ _ _ _ _ _ _ _ _ _ HRo HA1t HcodT Hρ Ha1 HRa
                   (proj1 (HRa' c c) Hc) Hb Hb') as [Q HQ].
       destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HQ (proj1 (per_univ_elem_sym _ _ _ _ HQ))) as (Rb0 & HRb0 & _).
       assert (ERb : Rb0 <~> Rb) by (eapply per_univ_irrel_rel; [ exact HRb0 | eexists; exact HQ | exact HRb ]).
@@ -755,7 +800,8 @@ Proof.
   destruct (rel_ctx_wf_ass_inv HAT2) as (Srt & HS & HA).
   pose proof (rel_ctx_wf_tail HAT2) as HT2.
   destruct (tele_ass_app_inv _ _ HTa) as [_ HTa2]; inversion HTa2 as [| ? ? _ HTa2']; subst.
-  destruct (closed_inst_typ _ _ _ _ _ _ HTa2' HT2 HΓ Hlen HNs HNr HNss HS HA HR _ Hρ) as (ns & a & b & i & RA & Hns & Ha & Hb & HRA).
+  destruct (rel_type_of_sort HS HA) as [iA HAt].
+  destruct (closed_inst_typ _ _ _ _ _ _ HTa2' HT2 HΓ Hlen HNs HNr HNss HAt HR _ Hρ) as (ns & a & b & i & RA & Hns & Ha & Hb & HRA).
   pose proof (eval_exps_length _ _ _ Hns) as Hlns.
   exists (dm_global p ns) b a i RA;
     [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | econstructor; [ exact Hm | |] | exact Ha
@@ -967,7 +1013,7 @@ Proof.
   assert (Hvt : valid_filed_term p (T1 ++ T2) x R0)
     by (destruct HR0 as [(Φ0 & E & Hp & He) | [(pq & k & D & Mk & Hk & HMk & ->) | (Rr & Hk & ->)]];
           [ exact (Hents _ _ _ _ Hp He) | exact (Hfrs _ _ _ _ _ Hk HMk) | exact (Hrfrs _ _ Hk) ]).
-  destruct Hvt as [A0 i g HA0 Hats Hsel [j E0 e He0 HE0 Hgg]].
+  destruct Hvt as [A0 Srt g HSrt HA0 Hats Hsel Hself].
   destruct (Hats _ _ _ _ eq_refl Hlen Ha) as [HtyR1 HredR1].
   rewrite HtyR1 in Ht; injection Ht as <-.
   set (K := me_apps (qname_mod p) Ns).
@@ -982,16 +1028,28 @@ Proof.
     exists (dm_global p ns); exact (eval_apps_filed _ _ _ _ _ _ Hl Hns). }
   remember (mdesc_relevance R0) as r0 eqn:Er; destruct r0.
   2:{ (* a proof member: only its type and its module's value are asked for *)
-    destruct (valid_exp_under_ctx_ctx_pi_at propositional T1 T2 A0 i HTa1 HT HA0) as [iX HX]; cbn [relevance_sort] in HX.
+    destruct (valid_exp_under_ctx_ctx_pi_at propositional T1 T2 A0 0 HTa1 HT HA0) as [iX HX]; cbn [relevance_sort] in HX.
     assert (HXΓ : Γ ⊨ (ctx_pi_at propositional T1 A0)[sb_of_list Id Ns] : Propₘ)
       by (pose proof (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HX)) as H0; cbn in H0; exact H0).
     split; [| exact HXΓ ].
     apply valid_mem_of_prop; [ exact HXΓ | intros M _; exact (rel_exp_under_ctx_proof HXΓ) | exact HK ]. }
   cbn [relevance_sort] in HA0.
-  destruct (rel_exp_ctx_pi _ _ _ _ HTa1 HT HA0) as [iX HX].
-  assert (HXΓ : Γ ⊨ (ctx_pi T1 A0)[sb_of_list Id Ns] : Typeω@iX)
-    by (pose proof (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HX)) as H0; cbn in H0; exact H0).
-  split; [| split; [ exists iX; exact (rel_type_of_typ HXΓ) | exact (rel_type_relevant_of_typ HXΓ) ] ].
+  specialize (Hsel eq_refl).
+  destruct (Hself eq_refl) as [j E0 e He0 HE0 Hgg].
+  (* the type over the outer telescope, a relevant type of either sort *)
+  destruct (rel_param_typed_of_sort _ _ _ HSrt HA0) as [iA HAp].
+  pose proof (rel_param_typed_type _ _ _ HAp) as HA0t.
+  pose proof (rel_type_relevant_of_relevant_sort HSrt HA0) as HA0r.
+  destruct HTrel as [lT HTrel].
+  pose proof (rel_params_relevant_inner _ _ _ _ HTrel) as HT1r; rewrite app_nil_r in HT1r.
+  destruct (rel_type_ctx_pi _ _ _ _ _ HTa1 HT HT1r HA0t HA0r) as [HX HXr].
+  set (iX := max lT iA) in *.
+  pose proof (rel_type_under_ctx_gsub Hg (closed_app_type _ _ _ _ _ HTa2 HT2 HΓ HX)) as HXΓ.
+  assert (HXΓr : rel_type_relevant Γ (ctx_pi T1 A0)[sb_of_list Id Ns])
+    by (intros RΓ0 HRΓ0 ρ ρ' Hρ;
+        exact (rel_type_sub_relevant HRΓ0 (gsub_valid Hg) (closed_app_type _ _ _ _ _ HTa2 HT2 HΓ HX)
+                 (closed_app_relevant _ _ _ HTa2 HT2 HΓ HXr) _ _ Hρ)).
+  split; [| split; [ exists iX; exact HXΓ | exact HXΓr ] ].
   (* the member, pointwise *)
   assert (Hpt : forall RΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
              exists ns a k RX, ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns /\ ⟦ (ctx_pi T1 A0)[sb_of_list Id Ns] ⟧ ρ ↘ a /\
@@ -999,13 +1057,13 @@ Proof.
                per_gargs (rev T2) nil nil ns ns /\
                forall v, $*| g & ns | gc_deps ⍮ gc_stack ↘ v -> exists r, dm_global p ns ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ RX v r).
   { intros RΓ HR ρ Hρ.
-    destruct (closed_inst_typ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss (type_sort_universe iX) HX HR _ Hρ)
+    destruct (closed_inst_typ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss HX HR _ Hρ)
       as (ns & a & b & k & RX & Hns & Ha1 & Hbb & HRX).
     destruct (valid_args_gargs _ _ _ _ HT HΓ Hs HNss HR _ _ Hρ) as (ns1 & ns2 & Hns1 & Hns2 & Hgs).
     pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (_ & _ & Hfs & _).
     pose proof (Hfs _ _ _ Hns1 _ Hns) as ->; pose proof (Hfs _ _ _ Hns2 _ Hns) as ->.
     assert (Hlns : List.length ns = List.length T2) by (rewrite (eval_exps_length _ _ _ Hns); lia).
-    destruct (glob_dmod_has_mem _ _ _ _ _ _ _ _ _ Hmo HTa HT (ex_intro (fun i0 : nat => _ ⊨ _ : Typeω@i0) i HA0) HTrel
+    destruct (glob_dmod_has_mem _ _ _ _ _ _ _ _ _ Hmo HTa HT (ex_intro _ iA HA0t) HA0r (ex_intro _ lT HTrel)
                 He0 HE0 Hgg Hsel T1 T2 ns eq_refl Hlns Hgs)
       as (a' & i' & R' & Ha' & HR' & Hmt & Hred).
     functional_eval_rewrite_clear.
@@ -1018,7 +1076,7 @@ Proof.
                                     | apply (filed_gval _ _ _ Hl); [ rewrite length_app; lia | exact Hgs ] | exact Hgs2 |].
     intros v Hv; destruct (Hred _ Hv) as (r & Hr & Hvr); exists r; split; [ exact Hr | apply ER; exact Hvr ]. }
   assert (HS0 : valid_mem Γ K x (ctx_pi T1 A0)[sb_of_list Id Ns] None).
-  { constructor; [ exists iX; exact (rel_type_of_typ HXΓ) | discriminate |].
+  { constructor; [ exists iX; exact HXΓ | discriminate |].
     intros RΓ HR ρ Hρ.
     destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & _).
     apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := k) (valid_mem_at_rel := RX); try assumption;
@@ -1026,7 +1084,7 @@ Proof.
   destruct HredR1 as [HredR1 | (M1 & HredR1 & HM1 & HevM1)].
   2:{ (* a reduct: a term over the outer parameters, instantiated *)
     rewrite (mdesc_reduct_named_some _ _ _ _ _ HredR1).
-    constructor; [ exists iX; exact (rel_type_of_typ HXΓ) | |].
+    constructor; [ exists iX; exact HXΓ | |].
     + intros M HM; injection HM as <-.
       exact (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HM1)).
     + intros RΓ HR ρ Hρ.
@@ -1034,7 +1092,7 @@ Proof.
       apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := k) (valid_mem_at_rel := RX);
         [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | intros _; exact Hmt |].
       intros _ M HM; injection HM as <-.
-      destruct (closed_inst_exp _ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss HX HM1 HR _ Hρ)
+      destruct (closed_inst_exp _ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss HX HXr HM1 HR _ Hρ)
         as (ns' & m & n & a2 & i2 & R2 & Hns' & Hm' & Hn & Ha2 & HR2 & Hmn).
       pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (_ & _ & Hfs & _).
       pose proof (Hfs _ _ _ Hns' _ Hns) as ->.
@@ -1047,7 +1105,7 @@ Proof.
       assert (HPX : PER RX) by (eapply per_elem_PER; exact Haa).
       (** the reduct's value, against the stored value applied, at the type
           over the outer telescope *)
-      destruct (closed_inst_typ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss (type_sort_universe iX) HX HR _ Hρ)
+      destruct (closed_inst_typ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss HX HR _ Hρ)
         as (ns3 & a3 & b3 & k3 & RX3 & Hns3 & Ha3 & Hb3 & HRX3).
       pose proof (Hfs _ _ _ Hns3 _ Hns) as ->.
       functional_eval_rewrite_clear.
@@ -1066,7 +1124,7 @@ Proof.
       rewrite qname_mod_sub; apply (eval_mem_filed _ _ _ _ _ _ _ Hmo Hpe); rewrite length_map; exact HlNs. }
     pose proof (filed_valid _ _ _ _ _ Hl HΓ Hs HNss) as HKv.
     pose proof (rel_mem_of_valid_mem _ _ _ _ _ _ HKv HS0) as HKx.
-    constructor; [ exists iX; exact (rel_type_of_typ HXΓ) | |].
+    constructor; [ exists iX; exact HXΓ | |].
     + intros M HM; injection HM as <-; exact (valid_exp_eval_iff _ _ _ _ HKx Hiff).
     + intros RΓ HR ρ Hρ.
       destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & Hkk & _).

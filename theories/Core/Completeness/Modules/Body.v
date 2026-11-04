@@ -128,7 +128,7 @@ Qed.
 
 (** An assumption along the walk: the environments extended by related
     values, each stored at its type over its environment. *)
-Lemma sub_walk_ass : forall Γ' Γ σ Ψ A i ρl ρr,
+Lemma sub_walk_assumption : forall Γ' Γ σ Ψ A i ρl ρr,
     sub_walk_inv Γ' Γ σ Ψ ρl ρr ->
     Ψ ++ Γ ⊨ᵗ A ≈ A at i ->
     exists a a' R, ⟦ A[sb_qn (List.length Ψ) σ] ⟧ ρl ↘ a /\ ⟦ A ⟧ ρr ↘ a' /\ per_univ_elem i R a a' /\
@@ -182,7 +182,7 @@ Proof.
     pose proof (rel_ctx_wf_app_r _ _ HΨ) as HΨA.
     destruct (rel_ctx_wf_ass_inv HΨA) as [Srt [HS HA]].
     destruct (rel_type_of_sort HS HA) as [i HAt].
-    destruct (sub_walk_ass _ _ _ _ _ _ _ _ Hinv HAt) as (a & a' & R & Ha & Ha' & HRa & Hc).
+    destruct (sub_walk_assumption _ _ _ _ _ _ _ _ Hinv HAt) as (a & a' & R & Ha & Ha' & HRa & Hc).
     exists (dm_local (tele_sub (rev ts) (sb_qn (S (List.length Ψ)) σ) ++ ce_ass A[sb_qn (List.length Ψ) σ] :: nil) (moddef_expand Dl) ρl),
            (dm_local (rev ts ++ ce_ass A :: nil) (moddef_expand D) ρr).
     split; [ apply close_unsat; rewrite length_app; cbn; lia |].
@@ -780,7 +780,7 @@ Proof. intros * H; destruct E as [? ? ? ? [] | | | |]; exact (rel_ctx_wf_tail H)
     context, related entry by entry through their filled-in entries.  The
     definitions may be of any relevant sort, a universe or [LevelSort], or
     propositions. *)
-Lemma fw_body : forall Φx Φx' C C' RC RC',
+Lemma rel_expanded_bodies : forall Φx Φx' C C' RC RC',
     gm_noopen Φx -> gm_noopen Φx' ->
     body_shape Φx Φx' -> body_shape Φx Φx -> body_shape Φx' Φx' ->
     List.NoDup (gm_names Φx) -> List.NoDup (gm_names Φx') ->
@@ -988,7 +988,7 @@ Section BodyRel.
                 (Forall_rev Ha) (Forall_rev Ha') ltac:(rewrite !length_rev; exact Hl) HΓ HRh
                 ltac:(intros ρa ρa' Hρa; rewrite !rev_involutive in HRh;
                       destruct (ext_rel_sides _ _ _ _ _ HRh HRC HRC' _ _ Hρa) as [H1 H2];
-                      pose proof (fw_body _ _ _ _ _ _ Hn Hn' Hsxx Hsx Hsx' Hnd Hnd' HC HC' Hsvb Hsvb' Hscb Hscb' HD HU HRC HRC' _ _ H1 H2)
+                      pose proof (rel_expanded_bodies _ _ _ _ _ _ Hn Hn' Hsxx Hsx Hsx' Hnd Hnd' HC HC' Hsvb Hsvb' Hscb Hscb' HD HU HRC HRC' _ _ H1 H2)
                         as Hb;
                       eexists _, _; split; [ apply eval_close_body | split; [ apply eval_close_body |] ];
                       apply per_dmod_body; rewrite <- HxE, <- HxE'; exact Hb)

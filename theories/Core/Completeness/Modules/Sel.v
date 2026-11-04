@@ -803,7 +803,7 @@ Proof.
   - intros ns1 w a Hlt Hw1 Hnp.
     assert (Hlt' : 0 < List.length (Δ0 ++ T)) by (rewrite length_app; lia).
     pose proof (functional_eval_close _ _ _ _ _ Hh0 (close_unsat _ _ _ Hlt')) as ->.
-    pose proof (functional_eval_appms _ _ _ _ Hw1 (appms_local ns1 (Δ0 ++ T) (md_alias Ea) nil eq_refl HaT ltac:(rewrite length_app; lia))) as ->.
+    pose proof (functional_eval_appms _ _ _ _ Hw1 (apply_args_local_unsaturated ns1 (Δ0 ++ T) (md_alias Ea) nil eq_refl HaT ltac:(rewrite length_app; lia))) as ->.
     inversion Hnp; subst.
     match goal with Hm0 : gc_loc _ _ p = Some _ |- _ => rewrite Hm in Hm0; injection Hm0 as <- <- end.
     match goal with Hx : nth_error (rev ?T0) _ = Some ?e |- _ =>

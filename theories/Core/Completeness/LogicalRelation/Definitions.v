@@ -608,9 +608,8 @@ Definition entry_kind (E : gentry) : member_kind :=
   end.
 
 (** A value [g] related to itself at the value of the closed type
-    [ctx_pi_at r T A0], of the sort [r].  At a proposition [g] is the
-    proof [⋆ᵈ], as a member's stored value is
-    ([global_member_value_proof]). *)
+    [ctx_pi_at r T A0], of the sort [r]; asked of relevant members only
+    ([valid_filed_term_self]). *)
 #[warnings="-cannot-define-projection"]
 Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
   { (** The universe index of the type *)
@@ -638,19 +637,22 @@ Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_r
     the body keeps the environment it is met in, so the two values are
     related, not equal.  The type is of
     the member's sort [mdesc_relevance R0], and so are the [Π]s over the
-    telescope.  A member tagged propositional is the proof [⋆ᵈ]
-    ([global_member_value_proof]), which its reduct's value is not: nothing
-    is asked of that value. *)
+    telescope.  A member tagged propositional stores no value: selection
+    keeps it as written ([eval_sel_global_proof]), so nothing is asked of
+    its value or its reduct's. *)
 #[warnings="-cannot-define-projection"]
 Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) : Prop := mk_valid_filed_term
   { (** The member's type over the telescope *)
     valid_filed_term_typ : exp
-    (** Its level *)
-  ; valid_filed_term_lvl : nat
+    (** The sort of the member's type at [relevant]: a universe, or the
+        types of levels ([def v : Level ≔ zero]) *)
+  ; valid_filed_term_sort : exp
     (** The member's value *)
   ; valid_filed_term_val : domain
+    (** The sort is a relevant sort *)
+  ; valid_filed_term_sort_relevant : relevant_sort valid_filed_term_sort
     (** The type is a valid type of the member's sort *)
-  ; valid_filed_term_typed : T ⊨ valid_filed_term_typ : relevance_sort (mdesc_relevance R0) Typeω@valid_filed_term_lvl
+  ; valid_filed_term_typed : T ⊨ valid_filed_term_typ : relevance_sort (mdesc_relevance R0) valid_filed_term_sort
     (** The reading at arguments for the outer part of the telescope *)
   ; valid_filed_term_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
       mdesc_type R1 = Some (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)[sb_of_list Id Ns] /\
@@ -665,10 +667,15 @@ Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) :
     (** The value is the member's stored value, closed over the telescope,
         which selection at arguments for all of it applies to them
         ([eval_sel_global_apps]); not the member closure that selection
-        at fewer arguments gives ([eval_sel_global_unsat]) *)
-  ; valid_filed_term_sel : global_member_value gc_deps gc_stack p x valid_filed_term_val
-    (** It is related to itself at the closed type *)
-  ; valid_filed_term_self : rel_self (mdesc_relevance R0) T valid_filed_term_typ valid_filed_term_val }.
+        at fewer arguments gives ([eval_sel_global_unsat]).  Asked of a
+        relevant member only: a proof member stores no value, selection
+        keeps it as written at its module's arguments
+        ([eval_sel_global_proof]) *)
+  ; valid_filed_term_sel : mdesc_relevance R0 = relevant ->
+      global_member_value gc_deps gc_stack p x valid_filed_term_val
+    (** A relevant member's value is related to itself at the closed type *)
+  ; valid_filed_term_self : mdesc_relevance R0 = relevant ->
+      rel_self (mdesc_relevance R0) T valid_filed_term_typ valid_filed_term_val }.
 
 Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_filed_mod
   { valid_filed_mod_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
