@@ -1103,11 +1103,6 @@ Proof.
     apply mdesc_canonical_up; apply mdesc_named_cases; destruct R1 as [? ? [] | | |]; exact H1.
 Qed.
 
-Lemma body_xp_noopen_refl : forall Θ Ξ Γ Φ, gm_noopen Φ -> body_xp Θ Ξ Γ Φ Φ.
-Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its]; intros HΦ; cbn in HΦ; [ constructor | constructor; apply IH, HΦ | contradiction ].
-Qed.
-
 Lemma body_xp_noopen_id : forall Θ Ξ Γ Φ Φx, gm_noopen Φ -> body_xp Θ Ξ Γ Φ Φx -> Φx = Φ.
 Proof.
   intros * HΦ Hx; revert HΦ; induction Hx; intros HΦ; cbn in HΦ; [ reflexivity | | contradiction ].
@@ -1488,7 +1483,7 @@ Proof.
   all: match goal with |- (exists _, udenote _ _ _ None (gu_open _ ?Φ) _) /\
                           (exists _, udenote _ _ _ None (gu_open _ (gm_expand ?Φ)) _) =>
          split; [ eexists; eassumption |];
-         eexists; econstructor; [ apply body_xp_noopen_refl, gm_noopen_expand | reflexivity ]
+         eexists; econstructor; [ apply body_xp_noopen, gm_noopen_expand | reflexivity ]
        end.
 Qed.
 

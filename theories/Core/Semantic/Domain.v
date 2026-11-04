@@ -288,6 +288,10 @@ Fixpoint tele_entries (ρ : env) (T : list centry) (vs : list domain) : list (do
   | v :: vs' => (v, tele_head_type ρ T) :: tele_entries (extend_env ρ v (tele_head_type ρ T)) (List.tl T) vs'
   end.
 
+(** The values of a telescope's entries are the values given. *)
+Lemma tele_entries_values : forall vs ρ T, List.map fst (tele_entries ρ T vs) = vs.
+Proof. induction vs as [| v vs IH]; intros ρ T; cbn; [ reflexivity | f_equal; apply IH ]. Qed.
+
 (** The environment [ρ] extended by the values [vs] at the telescope [T],
     outermost first, as a unit's parameters are: the types are closures in
     the environment extended so far. *)

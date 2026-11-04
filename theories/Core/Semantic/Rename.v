@@ -31,7 +31,7 @@ From Stdlib Require Import Arith Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Semantic Require Import NbE Avoid Stuck.
+From Mctt.Core.Semantic Require Import NbE Avoid.
 From Mctt.Core.Syntactic Require Import Fresh Members NfRename.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 Import Domain_Notations Syntax_Notations Wk_Notations.
@@ -746,9 +746,9 @@ Section Bound.
     pose proof (fresh_tele_domain_bounded _ _ _ _ F (env_domain_bounded_decl_env _ _ _ Hu)) as Hns.
     rewrite List.length_rev in Hns; change (List.length (im_nparams Mv)) with (im_nn Mv) in Hns; rewrite Hnn in Hns.
     eapply (domain_bounded_eclo_clon _ _ _ _ HA); [ lia | | | exact e ].
-    - rewrite <- (List.length_map fst); unfold motive_entries; rewrite List.map_app, tele_entries_map_fst, List.length_app, Hl.
+    - rewrite <- (List.length_map fst); unfold motive_entries; rewrite List.map_app, tele_entries_values, List.length_app, Hl.
       cbn; lia.
-    - unfold motive_entries; rewrite List.map_app, tele_entries_map_fst; cbn [List.map fst].
+    - unfold motive_entries; rewrite List.map_app, tele_entries_values; cbn [List.map fst].
       apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hns; eassumption ]; lia |].
       apply all_in_cons; [| apply all_in_nil ].
       apply domain_bounded_fresh; [ lia |]; apply domain_bounded_indty, all_in_app;
@@ -804,9 +804,9 @@ Section Bound.
                                           | intros; eapply domain_bounded_mono; [| apply Hihs; eassumption ]; unfold n; lia ]. }
     split.
     - eapply (domain_bounded_eclo_clon _ _ _ _ HA); [ unfold n; lia | | | exact e1 ].
-      + rewrite <- (List.length_map fst); unfold motive_entries; rewrite List.map_app, tele_entries_map_fst, List.length_app, Hl1.
+      + rewrite <- (List.length_map fst); unfold motive_entries; rewrite List.map_app, tele_entries_values, List.length_app, Hl1.
         cbn; lia.
-      + unfold motive_entries; rewrite List.map_app, tele_entries_map_fst; cbn [List.map fst].
+      + unfold motive_entries; rewrite List.map_app, tele_entries_values; cbn [List.map fst].
         apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hns; eassumption ]; unfold n; lia |].
         apply all_in_cons; [| apply all_in_nil ].
         apply domain_bounded_con, all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hp; eassumption ]; unfold n; lia |].
@@ -814,9 +814,9 @@ Section Bound.
                           | intros; eapply domain_bounded_mono; [| apply Hvs; eassumption ]; unfold n; lia ].
     - eapply HB; [ unfold n; lia | | | exact e0 ].
       + rewrite <- (List.length_map fst); unfold branch_entries; cbv zeta.
-        rewrite !List.map_app, tele_entries_map_fst, cargs_entries_map_fst, pair_values_with_types_map_fst.
+        rewrite !List.map_app, tele_entries_values, cargs_entries_values, pair_values_with_types_values.
         rewrite !List.length_app, Hl1, Hl2, Hgl, Hl3; lia.
-      + unfold branch_entries; cbv zeta; rewrite !List.map_app, tele_entries_map_fst, cargs_entries_map_fst, pair_values_with_types_map_fst.
+      + unfold branch_entries; cbv zeta; rewrite !List.map_app, tele_entries_values, cargs_entries_values, pair_values_with_types_values.
         apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hns; eassumption ]; unfold n; lia |].
         apply all_in_app; [ intros; eapply domain_bounded_mono; [| apply Hvs; eassumption ]; unfold n; lia | exact Hw ].
   Qed.

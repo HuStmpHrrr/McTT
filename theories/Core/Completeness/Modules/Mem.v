@@ -30,13 +30,6 @@ From Mctt.Core.Semantic.Kinds Require Import Kinds KindsTyping KindsEval KindsPE
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
-(** A prefix of a scoped body is scoped. *)
-Lemma gmod_scoped_prefix_upto : forall Φ x Φ' n, gm_prefix_upto Φ x = Some Φ' -> gmod_scoped n Φ -> gmod_scoped n Φ'.
-Proof.
-  induction Φ as [| Φ IH z E0 | Φ IH H its]; intros * Hp Hs; cbn in Hp, Hs; try discriminate.
-  - destruct (String.eqb x z); [ injection Hp as <-; exact Hs | exact (IH _ _ _ Hp (proj1 Hs)) ].
-  - destruct (existsb _ _); [ discriminate | exact (IH _ _ _ Hp (proj1 Hs)) ].
-Qed.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.

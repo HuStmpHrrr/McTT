@@ -165,6 +165,25 @@ Fixpoint pair_values_with_types (vs : list domain) (ts : list entry_type) : list
   | v :: vs' => (v, List.hd entry_type_none ts) :: pair_values_with_types vs' (List.tl ts)
   end.
 
+(** The values of the typed lists of entries evaluation extends
+    environments by: the values given, whatever their types. *)
+Lemma cargs_entries_values : forall p ups ρ gs vs, List.map fst (cargs_entries p ups ρ gs vs) = vs.
+Proof. intros p ups ρ gs vs; revert ρ gs; induction vs as [| v vs IH]; intros ρ [| [] gs]; cbn; f_equal; auto. Qed.
+
+Lemma pair_values_with_types_values : forall vs ts, List.map fst (pair_values_with_types vs ts) = vs.
+Proof. induction vs as [| v vs IH]; intros; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+
+(** A member of a suffix of a list is a member of the list. *)
+Lemma in_skipn_in : forall {A : Type} n (l : list A) x, In x (List.skipn n l) -> In x l.
+Proof. intros A n; induction n as [| n IH]; intros [| y l] x H; cbn in H; auto; right; exact (IH _ _ H). Qed.
+
+(** A member of a prefix is a member of the list. *)
+Lemma in_firstn_in : forall {A : Type} n (l : list A) x, In x (List.firstn n l) -> In x l.
+Proof.
+  intros A n; induction n as [| n IH]; intros [| y l] x H; cbn in H; try contradiction.
+  destruct H as [<- | H]; [ left; reflexivity | right; exact (IH _ _ H) ].
+Qed.
+
 (** The variables of a branch of the member [Mj] of the group [D] at
     [p], at the uniform parameters [ups], the motives [As] in [ρm]: the
     non-uniform parameters [ns], the arguments [vs] of kinds [gs] and the

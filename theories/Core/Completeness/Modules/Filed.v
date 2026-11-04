@@ -213,7 +213,7 @@ Proof.
   pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HC' HCr B1 B2 B1 B4 _ _ I I I Hg) as Hg'.
   pose proof (per_gargs_entries_readable _ _ _ _ _ Hg') as [_ Hr'].
   unfold env_tele; eapply closed_env_base; [ exact HCa | exact HC | exact HRC | exact Hl | exact Hl'
-                                            | reflexivity | rewrite tele_entries_fst; reflexivity
+                                            | reflexivity | rewrite tele_entries_values; reflexivity
                                             | exact Rv | exact Hr' | exact H ].
 Qed.
 
@@ -326,15 +326,6 @@ Proof.
 Qed.
 
 (** ** Members of Global Modules *)
-
-(** The inner parameters of relevant parameters are relevant over the
-    outer ones. *)
-Lemma rel_params_relevant_inner : forall Γ Δy Δ l, rel_params_relevant Γ (Δy ++ Δ) l -> rel_params_relevant (Δ ++ Γ) Δy l.
-Proof. intros * H Δ1 A Δ2 ->; rewrite app_assoc; apply (H Δ1 A (Δ2 ++ Δ)); rewrite <- app_assoc; reflexivity. Qed.
-
-(** The outer parameters of relevant parameters are relevant. *)
-Lemma rel_params_relevant_outer : forall Γ Δy Δ l, rel_params_relevant Γ (Δy ++ Δ) l -> rel_params_relevant Γ Δ l.
-Proof. intros * H Δ1 A Δ2 ->; apply (H (Δy ++ Δ1) A Δ2); rewrite <- app_assoc; reflexivity. Qed.
 
 
 (** An element of a [Π] over a telescope, applied to the values of
@@ -488,7 +479,7 @@ Proof.
                 I He' He' HE Hgg ltac:(rewrite rev_involutive, app_nil_r; exact HRO)
                 ltac:(rewrite tele_entries_length, length_rev; lia) ltac:(rewrite tele_entries_length, length_rev; lia) Hρ)
       as (v0 & v1 & Hv0 & Hv1 & Hvv).
-    rewrite !tele_entries_fst in Hv0, Hv1.
+    rewrite !tele_entries_values in Hv0, Hv1.
     exists RO, v0, v1; repeat split; assumption. }
   induction Tin as [| e1 Tin0 IH] using rev_ind; intros Tout args ET Hl Hargs; cbn [List.app] in ET.
   - subst Tout.
@@ -646,7 +637,7 @@ Proof.
               (tele_entries nil (rev T2) ns) (tele_entries nil (rev T2) ns')
               ltac:(rewrite tele_entries_length, length_rev; exact Hl1) ltac:(rewrite tele_entries_length, length_rev; exact Hl2)
               (Hbase nil nil)) as [_ Hg].
-  rewrite !tele_entries_fst in Hg; exact Hg.
+  rewrite !tele_entries_values in Hg; exact Hg.
 Qed.
 
 (** ** Terms Evaluating Alike *)

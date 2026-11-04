@@ -25,10 +25,6 @@ From Stdlib Require Import Arith Lia List PeanoNat String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import NbE.
-(** For the values of the typed lists of entries ([tele_entries_map_fst]
-    and its siblings) and list membership ([in_skipn_in]) only: pending
-    their move to [Domain]. *)
-From Mctt.Core.Semantic Require Import Stuck.
 From Mctt.Core.Syntactic Require Import Fresh Members.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 Import Domain_Notations Syntax_Notations Wk_Notations.
@@ -321,7 +317,7 @@ Section Env.
   (** An environment extended at a telescope by avoiding values. *)
   Lemma env_avoids_env_tele_none : forall ρ T vs,
       env_avoids v b None ρ -> (forall a, In a vs -> domain_avoids v b a) -> env_avoids v b None (env_tele ρ T vs).
-  Proof. intros * Hρ Hv; unfold env_tele; apply env_avoids_extend_typed_none; [ exact Hρ | rewrite tele_entries_map_fst; exact Hv ]. Qed.
+  Proof. intros * Hρ Hv; unfold env_tele; apply env_avoids_extend_typed_none; [ exact Hρ | rewrite tele_entries_values; exact Hv ]. Qed.
 
   (** Pads are [absent_entry]: [Prop] at no type. *)
   Lemma env_avoids_kinds_pads : forall n K ρ, env_avoids v b K ρ -> env_avoids v b (optional_shift n K) (kinds_pads n ρ).
@@ -626,7 +622,7 @@ Section Eval.
       ([env_extend_typed]): the values given, whatever their types. *)
   Ltac av_vals :=
     unfold branch_entries, motive_entries; cbv zeta;
-    rewrite ?List.map_app, ?tele_entries_map_fst, ?cargs_entries_map_fst, ?pair_values_with_types_map_fst;
+    rewrite ?List.map_app, ?tele_entries_values, ?cargs_entries_values, ?pair_values_with_types_values;
     cbn [List.map fst];
     let a := fresh "a" in let Ha := fresh "Ha" in intros a Ha;
     repeat match goal with
@@ -643,7 +639,7 @@ Section Eval.
   Lemma env_avoids_decl_env : forall D ups, (forall a, In a ups -> domain_avoids v b a) -> env_avoids v b None (decl_env D ups).
   Proof.
     intros * Hu; unfold decl_env, env_tele; apply env_avoids_extend_typed_none; [ apply env_avoids_nil |].
-    rewrite tele_entries_map_fst; exact Hu.
+    rewrite tele_entries_values; exact Hu.
   Qed.
 
   (** Forward reasoning: instantiate each induction hypothesis at the
@@ -894,7 +890,7 @@ Section Eval.
     (** The projections of a neutral record: at the field types, closed
         over the type's parameters, and the projections before them *)
     all: try solve [ match goal with H : env_avoids _ _ None (env_tele _ _ ?ns) -> _ |- _ =>
-        eapply H; [ unfold env_tele; apply env_avoids_extend_typed_none; [ apply env_avoids_nil | rewrite tele_entries_map_fst; assumption ] | ];
+        eapply H; [ unfold env_tele; apply env_avoids_extend_typed_none; [ apply env_avoids_nil | rewrite tele_entries_values; assumption ] | ];
         eapply List.nth_error_In; eassumption end ].
     all: try solve [ match goal with H0 : env_avoids _ _ None (?ρ ↦ ⇑ ?a (d_proj ?g ?m) ⦂ _) -> _, H : optional_exp_fresh None _ -> domain_avoids _ _ ?a |- _ =>
         eapply H0; [ apply env_avoids_cons_none; [ assumption | constructor; [ apply H; exact I | constructor; assumption ] ] | assumption ] end ].
@@ -938,7 +934,7 @@ Section Eval.
             HA : optional_exp_fresh (optional_shift (S (List.length ?Ps)) ?Km) ?A |- _ =>
               let Hlb := fresh "Hlb" in
               assert (Hlb : List.length bs = List.length Ps) by (clear - e; induction e; cbn; congruence);
-              apply IH; rewrite List.length_app, <- (List.length_map fst (tele_entries _ _ _)), tele_entries_map_fst, Hlb;
+              apply IH; rewrite List.length_app, <- (List.length_map fst (tele_entries _ _ _)), tele_entries_values, Hlb;
               cbn [List.length]; replace (List.length Ps + 1) with (S (List.length Ps)) by lia; exact HA
           end
         | match goal with
@@ -965,7 +961,7 @@ Section Eval.
           assert (HL : forall a, In a (List.map fst L) -> domain_avoids v b a) by av_vals;
           apply (IHB (optional_shift (List.length L) K)); [ apply env_avoids_extend_typed; assumption |];
           rewrite <- (List.length_map fst L); unfold branch_entries; cbv zeta;
-          rewrite !List.map_app, tele_entries_map_fst, cargs_entries_map_fst, pair_values_with_types_map_fst;
+          rewrite !List.map_app, tele_entries_values, cargs_entries_values, pair_values_with_types_values;
           rewrite (ind_branch_args_length _ _ _ _ _ Hl), Hni, <- Hn;
           exact (proj2 (HBk _ (List.nth_error_In _ _ Hb)) _ _ _ (brs_lookup_in _ _ _ _ e7))
       end ].
@@ -980,7 +976,7 @@ Section Eval.
           assert (Ha : domain_avoids v b a);
           [ apply IH; replace (List.length _) with (eb_binder_count bk); [ exact (proj1 (HBk _ (List.nth_error_In _ _ Hb))) |];
             rewrite Hn, <- (List.length_map fst); unfold motive_entries;
-            rewrite List.map_app, tele_entries_map_fst, List.length_app, List.length_skipn, Hl; cbn [List.map List.length fst];
+            rewrite List.map_app, tele_entries_values, List.length_app, List.length_skipn, Hl; cbn [List.map List.length fst];
             unfold im_np; lia
           | constructor; [ exact Ha | econstructor; eassumption ] ]
       end.
@@ -1382,12 +1378,12 @@ Section Read.
       rewrite List.length_rev in H; change (List.length (im_nparams Mv)) with (im_nn Mv) in H; rewrite Hnn in H; exact H. }
     eapply (proj1 (eval_avoids v (S (s + im_nn Mi))));
       [ exact e | apply env_avoids_extend_typed; [ eapply env_avoids_mono; [| exact Hρ ]; lia |] |].
-    - unfold motive_entries; rewrite List.map_app, tele_entries_map_fst; cbn [List.map fst].
+    - unfold motive_entries; rewrite List.map_app, tele_entries_values; cbn [List.map fst].
       apply all_in_app; [ intros; eapply domain_avoids_mono'; [| apply Hns; eassumption ]; lia |].
       apply all_in_cons; [| apply all_in_nil ].
       apply (domain_avoids_fresh_var (s + im_nn Mi)); [ lia | lia |].
       constructor; apply all_in_app; [ intros; eapply domain_avoids_mono'; [| apply Hp; eassumption ]; lia | exact Hns ].
-    - unfold motive_entries; rewrite <- List.length_map with (f := fst), List.map_app, tele_entries_map_fst, List.length_app, Hlen;
+    - unfold motive_entries; rewrite <- List.length_map with (f := fst), List.map_app, tele_entries_values, List.length_app, Hlen;
         cbn [List.length List.map]; replace (im_nn Mi + 1) with (S (im_nn Mi)) by lia; exact HA.
   Qed.
 
@@ -1426,7 +1422,7 @@ Section Read.
       rewrite List.length_rev in H; change (List.length (im_nparams Mv)) with (im_nn Mv) in H; rewrite Hnn in H; exact H. }
     assert (Hρa : env_avoids v (s + im_nn Mi) None (env_tele (decl_env D ups) (List.rev (im_nparams Mv)) ns)).
     { unfold env_tele; apply env_avoids_extend_typed_none;
-        [ eapply env_avoids_mono; [| exact (env_avoids_decl_env v b D ups HX) ]; lia | rewrite tele_entries_map_fst; exact Hns ]. }
+        [ eapply env_avoids_mono; [| exact (env_avoids_decl_env v b D ups HX) ]; lia | rewrite tele_entries_values; exact Hns ]. }
     pose proof (fresh_cargs_avoids _ _ _ _ _ _ f0 (s + im_nn Mi) ltac:(lia) ltac:(lia) Hρa
                   ltac:(intros; eapply domain_avoids_mono'; [| apply HX; eassumption ]; lia)) as Hvs.
     assert (Hgl : List.length gs = List.length gs') by congruence.
@@ -1445,22 +1441,22 @@ Section Read.
     split.
     - eapply (proj1 (eval_avoids v (s + n)));
         [ exact e1 | apply env_avoids_extend_typed; [ eapply env_avoids_mono; [| exact Hρ ]; unfold n; lia |] |].
-      + unfold motive_entries; rewrite List.map_app, tele_entries_map_fst; cbn [List.map fst].
+      + unfold motive_entries; rewrite List.map_app, tele_entries_values; cbn [List.map fst].
         apply all_in_app; [ intros; eapply domain_avoids_mono'; [| apply Hns; eassumption ]; unfold n; lia |].
         apply all_in_cons; [| apply all_in_nil ].
         constructor; apply all_in_app; [ intros; eapply domain_avoids_mono'; [| apply Hp; eassumption ]; unfold n; lia |].
         apply all_in_app; [ intros; eapply domain_avoids_mono'; [| apply Hns; eassumption ]; unfold n; lia
                           | intros; eapply domain_avoids_mono'; [| apply Hvs; eassumption ]; unfold n; lia ].
-      + unfold motive_entries; rewrite <- List.length_map with (f := fst), List.map_app, tele_entries_map_fst, List.length_app, Hl1;
+      + unfold motive_entries; rewrite <- List.length_map with (f := fst), List.map_app, tele_entries_values, List.length_app, Hl1;
           cbn [List.length List.map]; replace (im_nn Mi + 1) with (S (im_nn Mi)) by lia; exact HA.
     - eapply (proj1 (eval_avoids v (s + n)));
         [ exact e0 | apply env_avoids_extend_typed; [ eapply env_avoids_mono; [| exact Hρ ]; unfold n; lia |] |].
       + unfold branch_entries; cbv zeta;
-          rewrite !List.map_app, tele_entries_map_fst, cargs_entries_map_fst, pair_values_with_types_map_fst.
+          rewrite !List.map_app, tele_entries_values, cargs_entries_values, pair_values_with_types_values.
         apply all_in_app; [ intros; eapply domain_avoids_mono'; [| apply Hns; eassumption ]; unfold n; lia |].
         apply all_in_app; [ intros; eapply domain_avoids_mono'; [| apply Hvs; eassumption ]; unfold n; lia | exact Hw ].
       + rewrite <- List.length_map with (f := fst); unfold branch_entries; cbv zeta;
-          rewrite !List.map_app, tele_entries_map_fst, cargs_entries_map_fst, pair_values_with_types_map_fst.
+          rewrite !List.map_app, tele_entries_values, cargs_entries_values, pair_values_with_types_values.
         rewrite !List.length_app, Hl1, Hl2, Hgl, Hl3, Nat.add_assoc, <- Hn0; exact HB.
   Qed.
 

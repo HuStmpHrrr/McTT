@@ -958,13 +958,6 @@ Proof.
   destruct (String.eqb x z); [ injection Hp as <-; exact Hn | exact (IH _ _ Hn Hp) ].
 Qed.
 
-(** A prefix of a body with no open has none. *)
-Lemma gm_noopen_prefix_upto : forall Φ x Φ', gm_noopen Φ -> gm_prefix_upto Φ x = Some Φ' -> gm_noopen Φ'.
-Proof.
-  induction Φ as [| Φ IH z E0 | Φ IH H its Φg _]; intros * Hn Hp; cbn in Hn, Hp; try discriminate; [| contradiction ].
-  destruct (String.eqb x z); [ injection Hp as <-; exact Hn | exact (IH _ _ Hn Hp) ].
-Qed.
-
 (** The definitions of a body up to an entry are of their tagged sorts
     when the whole body's are. *)
 Lemma body_sorts_valid_prefix : forall Φ x Φ' D, gm_prefix_upto Φ x = Some Φ' -> body_sorts_valid Φ D -> body_sorts_valid Φ' D.

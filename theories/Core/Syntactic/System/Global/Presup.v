@@ -4823,6 +4823,18 @@ Proof.
     split; [ exact (wf_type_univ Hty) | intros M [= <-]; exact (Hfn _ HMt) ].
 Qed.
 
+(** The type of a member with both a term part and a module part is of a
+    large universe: the term part of a definition with a module part is
+    relevant, and not a level. *)
+Lemma desc_ok_ty_mod : forall Θ Ξ Γ R A Rm, desc_ok Θ Ξ Γ R -> mdesc_type R = Some A -> mdesc_mod R = Some Rm ->
+    exists j, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@j.
+Proof.
+  intros * HR HA Hm.
+  destruct HR as [Γ r A0 om Srt HSrt HA0 HM | | | Γ Θd A0 M0 Rm0 lΘ iA HΘd HaΘd HBt HMt _];
+    cbn in HA, Hm |- *; try discriminate.
+  injection HA as <-; destruct (ctx_pi_type _ _ relevant _ _ _ _ HΘd HBt) as [[j Hty] _]; exists j; exact Hty.
+Qed.
+
 (** The type of a typed description's term part is of the sort of its
     tag, at a relevant sort: a large universe or the types of levels. *)
 Lemma desc_ok_ty_at : forall Θ Ξ Γ R A, desc_ok Θ Ξ Γ R -> mdesc_type R = Some A ->
@@ -4974,11 +4986,6 @@ Proof.
   apply (f_equal mod_qname) in Ep; rewrite !mod_qname_qname_mod in Ep; injection Ep as ->; reflexivity.
 Qed.
 
-Lemma me_apps_qname_lit : forall p Ns U, me_apps (qname_mod p) Ns <> me_lit U.
-Proof.
-  intros * E; apply (f_equal me_strip) in E; rewrite me_strip_apps, me_strip_qname in E; cbn in E.
-  injection E as Ep _; apply (f_equal mod_qname) in Ep; rewrite mod_qname_qname_mod in Ep; discriminate.
-Qed.
 
 
 

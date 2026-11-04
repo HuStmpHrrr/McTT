@@ -1767,7 +1767,7 @@ Section Sort.
       pose proof (per_gargs_entries_readable _ _ _ _ _ Hgu0) as [Rups _].
       assert (HRUρ : RU (env_extend_typed ρ fv) (decl_env D ups)).
       { assert (Hw' : List.map fst (tele_entries nil (List.rev (ind_uparams D)) ups) = List.map fst fv)
-          by (rewrite tele_entries_fst; unfold ups, ys, fv; rewrite List.firstn_map; reflexivity).
+          by (rewrite tele_entries_values; unfold ups, ys, fv; rewrite List.firstn_map; reflexivity).
         unfold decl_env, env_tele.
         exact (closed_env_base _ _ fv fv fv (tele_entries nil (List.rev (ind_uparams D)) ups) ρ ρ ρ nil
                  uparams_ass uparams_sem HRU Hlfv Hlfv eq_refl Hw' Rfv Rups Hfv). }
@@ -1884,7 +1884,7 @@ Section Sort.
         rewrite List.length_rev, length_im_nparams in Hl1, Hl1'.
         pose proof (ind_at_params j Mj pm HMj Hh R1 nil nil (tele_entries nil (List.rev (ind_uparams D)) ups ++ vts)
                       (tele_entries nil (List.rev (ind_uparams D)) ups' ++ vts') HR1) as H.
-        rewrite !List.map_app, !tele_entries_fst, !env_extend_typed_app in H.
+        rewrite !List.map_app, !tele_entries_values, !env_extend_typed_app in H.
         apply H; [ rewrite List.length_app, tele_entries_length; unfold im_np in *; lia
                  | rewrite List.length_app, tele_entries_length; unfold im_np in *; lia | exact HE1 ].
     Qed.

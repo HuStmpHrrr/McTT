@@ -123,8 +123,8 @@ Section TeleLink.
     pose proof (per_gargs_entries_readable _ _ _ _ _ Hgg) as [Rvg _].
     pose proof (per_gargs_entries_readable _ _ _ _ _ Hgc) as [Rvc _].
     set (vtsg := tele_entries Eg (List.firstn j tg) vs) in *; set (vtsc := tele_entries Ec (List.firstn j tc) vs) in *.
-    assert (Hvg : List.map fst vtsg = vs) by apply tele_entries_fst.
-    assert (Hvc : List.map fst vtsc = vs) by apply tele_entries_fst.
+    assert (Hvg : List.map fst vtsg = vs) by apply tele_entries_values.
+    assert (Hvc : List.map fst vtsc = vs) by apply tele_entries_values.
     (** The equation, cut at the position: the types there, under the two
         substitutions, are related at related environments of the prefixes. *)
     destruct Heq as [HL _ [R HR]].

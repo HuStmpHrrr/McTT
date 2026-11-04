@@ -3365,7 +3365,7 @@ Section GroupElim.
         replace (List.length (Pre ++ ind_uparams D)) with (List.length (tele_entries nil (List.rev (Pre ++ ind_uparams D)) (u ++ zs)))
           by (rewrite tele_entries_length, !List.length_app; unfold ind_nu in Lu1; lia).
         apply env_agree_retagged_typed.
-        rewrite tele_entries_fst, List.map_app, tagged_entries_fst by exact Lt; rewrite Hvz; reflexivity.
+        rewrite tele_entries_values, List.map_app, tagged_entries_fst by exact Lt; rewrite Hvz; reflexivity.
       - exact (env_heads_readable_tele_ext Pre (ind_uparams D) _ _ HPa Lv Hvr HrU).
     Qed.
 
@@ -3410,7 +3410,7 @@ Section GroupElim.
       refine (closed_env_base _ RK _ _ vts _ nil nil B nil HKa HK HRK _ _ _ eq_refl Hvr Hr0 H0).
       - rewrite tele_entries_length; exact Lt.
       - rewrite tele_entries_length; exact Lt0.
-      - rewrite tele_entries_fst; exact Hvz.
+      - rewrite tele_entries_values; exact Hvz.
     Qed.
 
     (** ** Instances of a Closed Telescope
@@ -3465,7 +3465,7 @@ Section GroupElim.
         pose proof (per_gargs_refl_l _ _ _ HRU HKr (List.Forall_rev HPa) (decl_env D u0) (decl_env D u0) zs0 zs0' u0_env Hg0) as Hg00.
         assert (HB11 : RΓ B1 B1) by (etransitivity; [ exact HB | symmetry; exact HB ]).
         pose proof (proj1 (per_gargs_entries_readable _ _ _ _ _ IHz)) as Hr1.
-        pose proof (closed_pre_base Pre RK HKa' HK' HRK B1 u1 _ zs0 HB11 Hu1 H10 Hg00 Lz0 (tele_entries_fst _ _ _) Hr1) as HK1.
+        pose proof (closed_pre_base Pre RK HKa' HK' HRK B1 u1 _ zs0 HB11 Hu1 H10 Hg00 Lz0 (tele_entries_values _ _ _) Hr1) as HK1.
         destruct (closed_typ_inst Pre (ind_uparams D) Γ X Sc τU RΓ RK RS B1 _ _ _
                     HKa' HK' Ua Usem HΓ HRΓ HRK HRS HSc HXc (gsub_valid gsub_U) HEE
                     ltac:(rewrite tele_entries_length; exact Lz0)
@@ -3526,7 +3526,7 @@ Section GroupElim.
         pose proof (per_gargs_refl_l _ _ _ HRU HKr (List.Forall_rev HPa) (decl_env D u0) (decl_env D u0) zs0 zs0' u0_env IHz) as Hg00.
         assert (HB11 : RΓ B1 B1) by (etransitivity; [ exact HB | symmetry; exact HB ]).
         pose proof (proj1 (per_gargs_entries_readable _ _ _ _ _ Hg0)) as Hr1.
-        pose proof (closed_pre_base Pre RK HKa' HK' HRK B1 u1 _ zs0 HB11 Hu1 H10 Hg00 Lz0 (tele_entries_fst _ _ _) Hr1) as HK1.
+        pose proof (closed_pre_base Pre RK HKa' HK' HRK B1 u1 _ zs0 HB11 Hu1 H10 Hg00 Lz0 (tele_entries_values _ _ _) Hr1) as HK1.
         destruct (closed_typ_inst Pre (ind_uparams D) Γ X Sc τU RΓ RK RS B1 _ _ _
                     HKa' HK' Ua Usem HΓ HRΓ HRK HRS HSc HXc (gsub_valid gsub_U) HEE
                     ltac:(rewrite tele_entries_length; exact Lz0)
@@ -3656,7 +3656,7 @@ Section GroupElim.
         assert (Ev : forall zs, List.length zs = im_nn Mk -> ⟦ vars_from 0 (im_nn Mk) ⟧* gc_deps ⍮ gc_stack ⍮ components_env D u0 T zs ↘ zs).
         { intros zs Lz; unfold components_env, env_tele.
           pose proof (eval_vars_from_args (tele_entries (decl_env D u0) T zs) (decl_env D u0) nil) as H.
-          rewrite List.app_nil_r, tele_entries_fst, tele_entries_length in H; cbn [List.length] in H.
+          rewrite List.app_nil_r, tele_entries_values, tele_entries_length in H; cbn [List.length] in H.
           rewrite Lz in H; exact H. }
         pose proof (member_type_rel P p D HP HPD k Mk u0 u0 (im_nparams Mk) RK ns ns' (im_nn Mk) 0 (vars_from 0 (im_nn Mk))
                       ns ns' c1 c2 jx Rc HMk u0_len u0_gargs base_member_Ps HRK ltac:(rewrite length_im_nparams; exact Ln)
@@ -3717,7 +3717,7 @@ Section GroupElim.
         assert (HEE : RN (env_tele B1 (List.rev (tele_sub (im_nparams Mk) τU)) ns) (env_tele B1 (List.rev (tele_sub (im_nparams Mk) τU)) ns))
           by (etransitivity; [ exact HE | symmetry; exact HE ]).
         destruct (rel_exp_of_typ_inversion_simple_at HRN HIT _ _ HE) as (t1 & t2 & Et1 & Et2 & [R12 HR12]).
-        pose proof (mctx_head_rel B1 B2 u1 HB Hu1 H10 RN HRN ns ns' _ _ Hns (tele_entries_fst _ _ _) (tele_entries_fst _ _ _)
+        pose proof (mctx_head_rel B1 B2 u1 HB Hu1 H10 RN HRN ns ns' _ _ Hns (tele_entries_values _ _ _) (tele_entries_values _ _ _)
                       HEE t1 t2 j R12 Et1 Et2 HR12) as ER.
         eapply gargs_env_rel_gen; [ exact HRΓ | exact HRM | exact HMm | exact HB | rewrite List.length_app, length_elim_mctx; cbn; lia |].
         unfold elim_mctx; cbn [List.rev].
@@ -4221,7 +4221,7 @@ Section GroupElim.
         pose proof (mctx_at j Mj HMj B1 B2 HB1 HB2 RM HRM _ _ _ _ _ _ Hm) as E; unfold env_tele in E.
         destruct (rel_gargs _ _ _ _ HRΓ HMr Hta HRMr _ _ _ _ ltac:(rewrite tele_entries_length; exact L)
                     ltac:(rewrite tele_entries_length; exact L') E) as [HB Hg].
-        rewrite !tele_entries_fst, <- Hv, <- Hv' in Hg.
+        rewrite !tele_entries_values, <- Hv, <- Hv' in Hg.
         apply (gargs_env_rel_typed _ _ _ _ HRΓ HMr Hta HRMr _ _ _ _ HB); [| | exact Hg | exact Hr | exact Hr' ].
         - rewrite <- (List.length_map fst), Hv; exact L.
         - rewrite <- (List.length_map fst), Hv'; exact L'.
@@ -4235,7 +4235,7 @@ Section GroupElim.
         intros * HMj Hm.
         destruct (mctx_readable j Mj HMj C1 C1 HC11 HC11 _ _ _ _ _ _ Hm) as [Hr Hr'].
         apply (Forall2_of_Forall_pairs (fun v t => entry_readable (de_term v t))) in Hr, Hr'.
-        rewrite tele_entries_fst in Hr, Hr'.
+        rewrite tele_entries_values in Hr, Hr'.
         split; eexists; eassumption.
       Qed.
 
@@ -4292,8 +4292,8 @@ Section GroupElim.
         pose proof (combine_fst_eq _ _ (List.Forall2_length Ht)) as Hv; pose proof (combine_fst_eq _ _ (List.Forall2_length Ht')) as Hv'.
         pose proof (mctx_at_typed j Mj HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm _ _ Hv Hv' Hr Hr') as HE.
         pose proof (mctx_at j Mj HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm) as HEc.
-        pose proof (mctx_at_typed j Mj HMj C1 C1 HC11 HC11 RM HRM _ _ _ _ _ _ Hmm _ _ Hv (tele_entries_fst _ _ _) Hr Hc1) as HE1.
-        pose proof (mctx_at_typed j Mj HMj C2 C2 HC21 HC21 RM HRM _ _ _ _ _ _ Hmm' _ _ (tele_entries_fst _ _ _) Hv' Hc2 Hr') as HE2.
+        pose proof (mctx_at_typed j Mj HMj C1 C1 HC11 HC11 RM HRM _ _ _ _ _ _ Hmm _ _ Hv (tele_entries_values _ _ _) Hr Hc1) as HE1.
+        pose proof (mctx_at_typed j Mj HMj C2 C2 HC21 HC21 RM HRM _ _ _ _ _ _ Hmm' _ _ (tele_entries_values _ _ _) Hv' Hc2 Hr') as HE2.
         pose proof (rel_exp_under_ctx_refl_left HA) as HAl.
         destruct (rel_exp_of_typ_inversion_simple_at HRM HA _ _ HE) as (a & a' & Ea & Ea' & _).
         destruct (rel_exp_of_typ_inversion_simple_at HRM HAl _ _ HEc) as (b1 & c1 & Eb1 & Ec1 & Hbc).
@@ -4345,11 +4345,11 @@ Section GroupElim.
         rewrite length_elim_mctx in Ea.
         pose proof (mctx_at j Mj HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm) as Ebc.
         destruct (rel_exp_of_typ_inversion_simple_at HRM HAl _ _ Ebc) as (b1 & c0 & Eb & Ec & Hbc).
-        pose proof (mctx_at_typed j Mj HMj C1 ρ0σ0 HC11 HρC RM HRM _ _ _ _ _ _ Hmm _ _ (tele_entries_fst _ _ _) Hv Hc1 Hr) as E1.
+        pose proof (mctx_at_typed j Mj HMj C1 ρ0σ0 HC11 HρC RM HRM _ _ _ _ _ _ Hmm _ _ (tele_entries_values _ _ _) Hv Hc1 Hr) as E1.
         destruct (rel_exp_of_typ_inversion_simple_at HRM HA0 _ _ E1) as (b' & b0' & Eb' & Eb0' & Hbb0).
         assert (b' = b1) as -> by (eapply functional_eval_exp; eassumption).
         assert (b0' = b0) as -> by (eapply functional_eval_exp; eassumption).
-        pose proof (mctx_at_typed j Mj HMj C2 ρ0σ0 HC21 HρC RM HRM _ _ _ _ _ _ Hmm' _ _ (tele_entries_fst _ _ _) Hv' Hc2 Hr') as E2.
+        pose proof (mctx_at_typed j Mj HMj C2 ρ0σ0 HC21 HρC RM HRM _ _ _ _ _ _ Hmm' _ _ (tele_entries_values _ _ _) Hv' Hc2 Hr') as E2.
         destruct (rel_exp_of_typ_inversion_simple_at HRM HA0 _ _ E2) as (c' & d & Ec' & Ed & Hcd).
         assert (c' = c0) as -> by (eapply functional_eval_exp; eassumption).
         exists a, d; split; [ exact Ea | split; [ exact Ed |] ].
@@ -5019,7 +5019,7 @@ Section GroupElim.
           pose proof (tagged_entries_fst _ Γ (ctx_retag Γ B2) _ (eq_sym LX2)) as Hv2'.
           destruct (mctx_readable _ _ HMj C1 C2 HC11 HC21 _ _ _ _ _ _ Hrr) as [Hrc1 _].
           pose proof (mctx_at_typed _ _ HMj _ _ HB1r HB2r RM HRM _ _ _ _ _ _ H12 _ _ Hv1' Hv2' Hrd1 Hrd2) as L1.
-          pose proof (mctx_at_typed _ _ HMj _ _ HB2r HC11 RM HRM _ _ _ _ _ _ H21 _ _ Hv2' (tele_entries_fst _ _ _) Hrd2 Hrc1) as L2.
+          pose proof (mctx_at_typed _ _ HMj _ _ HB2r HC11 RM HRM _ _ _ _ _ _ H21 _ _ Hv2' (tele_entries_values _ _ _) Hrd2 Hrc1) as L2.
           pose proof (mctx_at _ _ HMj C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hrr) as L3.
           destruct (rel_exp_of_typ_inversion_simple_at HRM HAj _ _ L1) as (A1' & A2' & EA1' & EA2' & HA12).
           assert (A1' = A1) as -> by (eapply functional_eval_exp; eassumption).
@@ -6224,9 +6224,9 @@ Section GroupElim.
               pose proof (args_prefix_rel_refl_r p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mk HMk X X' c gs K _ _ HX Hcon HKl Hpk)
                 as Hpk2.
               pose proof (branch_entry_vals gs1 t gs2 Heq0 Er HCtx RS HRS B1 vtsE1 X (List.firstn kk vs) v (List.skipn (S kk) vs) ihp w1 HB1
-                            (tele_entries_fst _ _ _) LX (Lf _ Lv) (Ls _ Lv) Lihp HE1 Hw1 HwU1 Lw1) as Hv1.
+                            (tele_entries_values _ _ _) LX (Lf _ Lv) (Ls _ Lv) Lihp HE1 Hw1 HwU1 Lw1) as Hv1.
               pose proof (branch_entry_vals gs1 t gs2 Heq0 Er HCtx RS HRS B2 vtsE2 X' (List.firstn kk vs') v' (List.skipn (S kk) vs') ihp' w2 HB2
-                            (tele_entries_fst _ _ _) LX' (Lf _ Lv') (Ls _ Lv') Lihp' HE2 Hw2 HwU2 Lw2) as Hv2.
+                            (tele_entries_values _ _ _) LX' (Lf _ Lv') (Ls _ Lv') Lihp' HE2 Hw2 HwU2 Lw2) as Hv2.
               pose proof (branch_entry_frame gs1 t gs2 Heq0 Er HCtx) as Hf.
               destruct (length_rec_ps D HD k Mk HMk c gs gs1 t gs2 Hcon Heq0) as (Mj & HMj & _).
               assert (HRS0 : EF (Er ++ tele_sub (cargs_ctx p D Mk gs ++ im_nparams Mk) τU) ++ Γ
@@ -6627,7 +6627,7 @@ Section GroupElim.
           unfold env_tele in HEc.
           destruct (rel_gargs _ _ _ _ HRΓ HBr HtaB HRBr _ _ _ _ ltac:(rewrite tele_entries_length; exact Lw1)
                       ltac:(rewrite tele_entries_length; exact Lw2) HEc) as [HB12 Hg].
-          rewrite !tele_entries_fst, <- Hv1, <- Hv2 in Hg.
+          rewrite !tele_entries_values, <- Hv1, <- Hv2 in Hg.
           assert (Lv1 : List.length vts1 = List.length TB) by (rewrite <- (List.length_map fst), Hv1; exact Lw1).
           assert (Lv2 : List.length vts2 = List.length TB) by (rewrite <- (List.length_map fst), Hv2; exact Lw2).
           pose proof (gargs_env_rel_typed _ _ _ _ HRΓ HBr HtaB HRBr _ _ _ _ HB12 Lv1 Lv2 Hg Hr1 Hr2) as HE.
@@ -6690,7 +6690,7 @@ Section GroupElim.
           destruct (mctx_readable _ _ HMk C1 C1 HC11 HC11 _ _ _ _ _ _ Hm00) as [Hrc _].
           pose proof (mctx_at_typed _ _ HMk _ _ (per_ctx_env_retag_left HRΓ _ _ HB1) HC11 RM HRM _ _ _ _ _ _ Hll' _ _
                         (tagged_entries_fst _ Γ (ctx_retag Γ B1) (X ++ d_con hd k' c (cs1 ++ X ++ vsp) :: nil) Lq)
-                        (tele_entries_fst _ _ _) Hrd Hrc) as Lc.
+                        (tele_entries_values _ _ _) Hrd Hrc) as Lc.
           pose proof (mctx_at _ _ HMk C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hm0) as L3.
           rewrite HbY, <- List.app_assoc in L3.
           assert (Ch : rel_chain RM (env_extend_tagged Γ (List.rev (elim_mctx p D k Mk Us)) (ctx_retag Γ B1)
@@ -6756,7 +6756,7 @@ Section GroupElim.
           unfold env_tele in HEc.
           destruct (rel_gargs _ _ _ _ HRΓ HBr HtaB HRBr _ _ _ _ ltac:(rewrite tele_entries_length; exact Lw1)
                       ltac:(rewrite tele_entries_length; exact Lw2) HEc) as [HB12 Hg].
-          rewrite !tele_entries_fst, <- Hv1, <- Hv2 in Hg.
+          rewrite !tele_entries_values, <- Hv1, <- Hv2 in Hg.
           assert (Lv1 : List.length vts1 = List.length TB) by (rewrite <- (List.length_map fst), Hv1; exact Lw1).
           assert (Lv2 : List.length vts2 = List.length TB) by (rewrite <- (List.length_map fst), Hv2; exact Lw2).
           exact (gargs_env_rel_typed _ _ _ _ HRΓ HBr HtaB HRBr _ _ _ _ HB12 Lv1 Lv2 Hg Hr1 Hr2).
@@ -7139,7 +7139,7 @@ Section GroupElim.
         destruct (mctx_readable _ _ HMm C1 C1 HC11 HC11 _ _ _ _ _ _ M22') as [Hrc _].
         pose proof (mctx_at_typed _ _ HMm _ _ (per_ctx_env_retag_left HRΓ _ _ HC11) HC11 RM HRM _ _ _ _ _ _ M22' _ _
                       (tagged_entries_fst _ Γ (ctx_retag Γ C1) (ns2 ++ m2 :: nil) (eq_sym Ll))
-                      (tele_entries_fst _ _ _) Hrd Hrc) as Lc.
+                      (tele_entries_values _ _ _) Hrd Hrc) as Lc.
         pose proof (mctx_at _ _ HMm C1 C2 HC11 HC21 RM HRM _ _ _ _ _ _ Hmy) as L3.
         assert (Ch : rel_chain RM (env_extend_tagged Γ (List.rev (elim_mctx p D m Mm Us)) (ctx_retag Γ C1) (ns2 ++ m2 :: nil)
                                    :: env_extend_tagged Γ (List.rev (elim_mctx p D m Mm Us)) (ctx_retag Γ C2) (ns3 ++ my :: nil)

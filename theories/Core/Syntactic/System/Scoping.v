@@ -918,6 +918,14 @@ Proof.
   - destruct HΦ as (HΦ & _ & HΦg); apply gmod_scoped_graft; split; [ apply IH; exact HΦ | rewrite gm_binders_expand; apply IHg; exact HΦg ].
 Qed.
 
+(** A prefix of a scoped body is scoped. *)
+Lemma gmod_scoped_prefix_upto : forall Φ x Φ' n, gm_prefix_upto Φ x = Some Φ' -> gmod_scoped n Φ -> gmod_scoped n Φ'.
+Proof.
+  induction Φ as [| Φ IH z E0 | Φ IH H its]; intros * Hp Hs; cbn in Hp, Hs; try discriminate.
+  - destruct (String.eqb x z); [ injection Hp as <-; exact Hs | exact (IH _ _ _ Hp (proj1 Hs)) ].
+  - destruct (existsb _ _); [ discriminate | exact (IH _ _ _ Hp (proj1 Hs)) ].
+Qed.
+
 Lemma gunit_scoped_expand : forall U n, gunit_scoped n U -> gunit_scoped n (gunit_expand U).
 Proof.
   intros [Δ [sm Φ | E]] n HU; cbn [gunit_expand] in *; [| exact HU ].
@@ -987,7 +995,7 @@ Proof.
 Qed.
 
 (** The shape of a grafted fragment, read off the whole. *)
-Lemma body_shape_graft_r : forall B A, body_shape (gm_graft A B) (gm_graft A B) -> body_shape B B.
+Lemma body_shape_graft_fragment : forall B A, body_shape (gm_graft A B) (gm_graft A B) -> body_shape B B.
 Proof.
   induction B as [| B IH x E | B IH H its Bg _]; intros A Hs; cbn [gm_graft body_shape] in Hs |- *; [ exact I | |];
     destruct Hs as (Hs & H1 & H2); repeat split; eauto.
@@ -997,7 +1005,7 @@ Lemma body_shape_of_xp : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body
 Proof.
   induction 1; intros Hs; cbn in Hs |- *; [ exact I | destruct Hs as (Hs & _ & HE); repeat split; auto |].
   split; [ apply IHbody_xp; eapply body_shape_gens_l; exact Hs | split; [ reflexivity |] ].
-  subst; rewrite gens_append_body in Hs; exact (body_shape_graft_r _ _ Hs).
+  subst; rewrite gens_append_body in Hs; exact (body_shape_graft_fragment _ _ Hs).
 Qed.
 
 

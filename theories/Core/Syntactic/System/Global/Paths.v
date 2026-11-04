@@ -1706,6 +1706,7 @@ Proof.
   exact (gs_find_tele_body _ _ Hg (q_abs fq nil) V nil nil ltac:(cbn; rewrite qname_strip_refl; reflexivity)).
 Qed.
 
+(** A body with no open is its own expansion. *)
 Lemma body_xp_noopen : forall Θ Ξ Γ Φ, gm_noopen Φ -> body_xp Θ Ξ Γ Φ Φ.
 Proof. induction Φ as [| Φ IH x E | Φ IH H its]; intros Hn; cbn in Hn; [ constructor | constructor; auto | contradiction ]. Qed.
 

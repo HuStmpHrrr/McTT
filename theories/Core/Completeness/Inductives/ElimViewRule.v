@@ -175,7 +175,7 @@ Section ElimViewRule.
         apply (gargs_env_rel_typed _ _ _ _ per_ctx_env_nil_true HWU' HaU' HRU' (ctx_retag Γ C2) nil
                  (tagged_entries Γ (List.rev (ind_uparams D)) (ctx_retag Γ C2) u3) (tele_entries nil (List.rev (ind_uparams D)) u3)
                  I Lv Lv').
-        - rewrite tagged_entries_fst, tele_entries_fst by (rewrite List.length_rev; unfold ind_nu in Hlu3; lia); exact Hgu3'.
+        - rewrite tagged_entries_fst, tele_entries_values by (rewrite List.length_rev; unfold ind_nu in Hlu3; lia); exact Hgu3'.
         - exact Rv.
         - exact (proj2 (per_gargs_entries_readable _ _ _ _ _ Hgu3')). }
       pose proof (gsub_valid (valid_group_views_view_args_gsub p D Hvg Hcv _ _ _ _ _ _ _ HMm Hh Hq)) as HσI.
@@ -401,7 +401,7 @@ Section ElimViewRule.
     pose proof (mctx_at_typed VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2 HMall
                   _ _ HMm _ _ (per_ctx_env_retag_left HRΓ _ _ HC22) HC22 RM HRM _ _ _ _ _ _ G33 _ _
                   (tagged_entries_fst _ Γ (ctx_retag Γ C2) (ns3 ++ m3 :: nil) (eq_sym Ll))
-                  (tele_entries_fst _ _ _) Hrd0 Hrc0) as Lc.
+                  (tele_entries_values _ _ _) Hrd0 Hrc0) as Lc.
     pose proof (mctx_at VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2 HMall
                   _ _ HMm C2 C2 HC22 HC22 RM HRM _ _ _ _ _ _ G33) as L3.
     assert (Ch : rel_chain RM (env_extend_tagged Γ (List.rev (elim_mctx p D m Mm Us)) (ctx_retag Γ C2) (ns3 ++ m3 :: nil)

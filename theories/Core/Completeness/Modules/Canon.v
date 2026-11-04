@@ -99,46 +99,6 @@ Qed.
 
 (** ** Aliases of Canonical Units *)
 
-(** The unit of a module part abstracted over [Δ] is well formed only if
-    what the unit of the module part denotes under [Δ] can be abstracted
-    over it: the flag premise of the abstracted unit's rule, read back.
-    For example, the unit of a submodule [B] of [module A (l : Level) ≔ …]
-    is read over [l] at [B]'s own parameters and [l]. *)
-Lemma up_unit_levels : forall Γ Δ X, mdesc_is_mod X ->
-    Θm ⍮ Ξm ⍮ Γ ⊢ᵐ mdesc_unit (mdesc_up Δ X) ≈ mdesc_unit (mdesc_up Δ X) ->
-    forall R, mdenote Θm Ξm (Δ ++ Γ) (mdesc_unit X) R -> desc_levels_abstractable Θm Ξm Γ Δ R.
-Proof.
-  intros * Hm Hw R HR.
-  destruct Δ as [| e0 Δ0]; [ apply desc_levels_abstractable_nil |].
-  pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf.
-  destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θd Ad Md Rm]; cbn in Hm; try contradiction;
-    cbn [mdesc_up mdesc_unit gen_m unit_full] in Hf, HR.
-  - (* an open module part: the flag of the flattened body *)
-    destruct Hf as [Φx' es lp ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt [Hs1 Hd1 Hn1]].
-    destruct lv; [ left; exact (proj2 (level_sorted_app_inv _ _ _ _ _ (Hs1 eq_refl))) | right ].
-    specialize (Hd1 eq_refl); specialize (Hn1 eq_refl).
-    apply mdenote_lit_inv in HR; inversion HR; subst.
-    match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
-    apply mdenote_lit_inv in Hd1; inversion Hd1; subst.
-    match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
-    match goal with Hx1 : body_xp _ _ (Δe ++ _) Φ ?Φ1, Hx2 : body_xp _ _ (nil ++ _) Φ ?Φ2 |- _ =>
-      cbn [List.app] in Hx2; rewrite <- List.app_assoc in Hx2;
-      pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hgm)))) _ _ _ Hx1 _ Hx2) as <- end.
-    eapply no_level_open_shift; [| exact Hn1 ]; rewrite List.app_nil_l, <- List.app_assoc; reflexivity.
-  - (* a filed module at arguments, read bare: the alias's flag *)
-    destruct Hf as [lp ps Hps HC Ha HE Hp lv Rt [Hs1 Hd1 Hn1]].
-    destruct lv; [ left; exact (Hs1 eq_refl) | right ].
-    rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HR _ (Hd1 eq_refl)); exact (Hn1 eq_refl).
-  - (* an alias of a filed module at arguments: the flag of the flattened alias *)
-    destruct Hf as [lp ps Hps HC Ha HE Hp lv Rt [Hs1 Hd1 Hn1]].
-    destruct lv; [ left; exact (proj2 (level_sorted_app_inv _ _ _ _ _ (Hs1 eq_refl))) | right ].
-    specialize (Hd1 eq_refl); specialize (Hn1 eq_refl).
-    apply mdenote_lit_inv in HR; inversion HR as [| ? ? ? ? RE REm HmE HmdE]; subst.
-    rewrite <- List.app_assoc in Hd1.
-    rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HmE _ Hd1) in HmdE.
-    rewrite <- List.app_assoc in Hn1.
-    exact (proj2 (no_level_up_mod _ _ _ _ _ (mdesc_mod_is_mod _ _ HmdE)) (no_level_mod _ _ _ _ _ Hn1 HmdE)).
-Qed.
 
 Lemma rel_alias_unit_up : forall Γ Δ X l, Δ <> nil -> tele_ass Δ -> params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
     mdesc_is_mod X ->

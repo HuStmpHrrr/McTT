@@ -456,7 +456,7 @@ Section ConCanon.
       pose proof (proj2 (rel_gargs _ _ _ _ per_ctx_env_nil_true HC0'
                            (List.Forall_rev (proj2 (List.Forall_app _ _ _) (conj (cargs_ctx_aux_ass _ _ _ _ _) (member_params_ass D Hc _ _ HMk))))
                            HR0' nil nil _ _ L1 L1 HEE)) as H.
-      rewrite tele_entries_fst, <- List.app_assoc in H; exact H. }
+      rewrite tele_entries_values, <- List.app_assoc in H; exact H. }
     assert (Hpre : forall R, EF cargs_ctx p D Mk gs1 ++ im_params D Mk ≈ cargs_ctx p D Mk gs1 ++ im_params D Mk ∈ per_ctx_env ↘ R ->
                R (env_tele nil (List.rev (cargs_ctx p D Mk gs1 ++ im_params D Mk)) (u0 ++ X ++ fa))
                  (env_tele nil (List.rev (cargs_ctx p D Mk gs1 ++ im_params D Mk)) (u0 ++ X ++ fa))).

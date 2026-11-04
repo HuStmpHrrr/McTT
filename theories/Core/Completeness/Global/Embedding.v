@@ -714,7 +714,7 @@ Section FiledOk.
         pose proof (functional_eval_exp _ _ _ _ Hf Hgd') as ->.
         apply eval_app_args_ind in Hfa0 as (ns' & Hns' & Hfa).
         pose proof (eval_vars_from_args (tele_entries nil (rev T2) ns) nil nil) as Hvs.
-        rewrite app_nil_r, tele_entries_fst, tele_entries_length in Hvs; cbn [length] in Hvs; rewrite Hns in Hvs.
+        rewrite app_nil_r, tele_entries_values, tele_entries_length in Hvs; cbn [length] in Hvs; rewrite Hns in Hvs.
         pose proof (functional_eval_exps _ _ _ _ Hns' Hvs) as ->; exact Hfa.
     - rewrite qname_in_app in Hres2, Hind2.
       eapply global_member_value_indty; [ exact Hres2 | exact Hind2 ].
@@ -780,7 +780,7 @@ Section FiledOk.
         pose proof (functional_eval_exp _ _ _ _ Hf Hgd') as ->.
         apply eval_app_args_record in Hfa0 as (ns' & Hns' & Hfa).
         pose proof (eval_vars_from_args (tele_entries nil (rev T2) ns) nil nil) as Hvs.
-        rewrite app_nil_r, tele_entries_fst, tele_entries_length in Hvs; cbn [length] in Hvs; rewrite Hns in Hvs.
+        rewrite app_nil_r, tele_entries_values, tele_entries_length in Hvs; cbn [length] in Hvs; rewrite Hns in Hvs.
         pose proof (functional_eval_exps _ _ _ _ Hns' Hvs) as ->; exact Hfa.
     - rewrite qname_in_app in Hres2, Hrl2 |- *.
       eapply global_member_value_record; [ exact Hres2 | exact Hrl2 ].

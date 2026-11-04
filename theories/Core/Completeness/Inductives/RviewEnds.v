@@ -252,7 +252,7 @@ Section RviewArgs.
     fold (decl_env D ups) EU in Hgz.
     pose proof (per_gargs_entries_readable _ _ _ _ _ Hgz) as [Rvg _].
     set (vtsg := tele_entries EU (List.rev (cargs_ctx p D Mj gsA)) zs) in *.
-    assert (Hvg : List.map fst vtsg = zs) by apply tele_entries_fst.
+    assert (Hvg : List.map fst vtsg = zs) by apply tele_entries_values.
     (** The field's type, over [cups]. *)
     pose proof (valid_rview_record_valid _ _ HR) as [_ HPr [is HS] HF HT].
     pose proof (record_typed_sort_univ _ _ _ (valid_rview_record_typed _ _ HR)) as Hsu.
@@ -312,7 +312,7 @@ Section RviewArgs.
       pose proof (per_gargs_entries_readable _ _ _ _ _ Hg2) as [Rvk _]; fold vtsK in Rvk.
       apply (closed_env_base (Δc ++ record_params R) RK vtsK vtsK (tele_entries EU (List.rev (record_params R)) cups ++ vtsg) vtsK
                nil nil EU nil HaC HWc HRK HKl HKl); [ | reflexivity | | exact Rvk | exact HKF ].
-      - unfold vtsK; rewrite List.map_app, !tele_entries_fst, Hvg; reflexivity.
+      - unfold vtsK; rewrite List.map_app, !tele_entries_values, Hvg; reflexivity.
       - apply List.Forall_app; split; assumption. }
     destruct (rel_type_inversion_simple_at HRK (Hic _ _ _ HCv) _ _ HKF') as (c1 & c2 & Ec1 & Ec2 & [Rk HRk]).
     rewrite env_extend_typed_app in Ec1; change (env_extend_typed EU (tele_entries EU (List.rev (record_params R)) cups)) with Ec in Ec1.

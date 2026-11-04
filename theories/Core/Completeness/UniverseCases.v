@@ -956,6 +956,15 @@ Qed.
 Lemma rel_params_relevant_nil : forall Γ l, rel_params_relevant Γ nil l.
 Proof. intros * [| ? ?] ? ? HE; discriminate. Qed.
 
+(** The inner parameters of relevant parameters are relevant over the
+    outer ones. *)
+Lemma rel_params_relevant_inner : forall Γ Δy Δ l, rel_params_relevant Γ (Δy ++ Δ) l -> rel_params_relevant (Δ ++ Γ) Δy l.
+Proof. intros * H Δ1 A Δ2 ->; rewrite app_assoc; apply (H Δ1 A (Δ2 ++ Δ)); rewrite <- app_assoc; reflexivity. Qed.
+
+(** The outer parameters of relevant parameters are relevant. *)
+Lemma rel_params_relevant_outer : forall Γ Δy Δ l, rel_params_relevant Γ (Δy ++ Δ) l -> rel_params_relevant Γ Δ l.
+Proof. intros * H Δ1 A Δ2 ->; apply (H (Δy ++ Δ1) A Δ2); rewrite <- app_assoc; reflexivity. Qed.
+
 (** Relevant parameters are relevant at a larger level. *)
 Lemma rel_params_relevant_ge : forall Γ Ψ l l', l <= l' -> rel_params_relevant Γ Ψ l -> rel_params_relevant Γ Ψ l'.
 Proof. intros * Hl H Δ1 A Δ2 HE; exact (rel_param_typed_ge _ _ _ _ Hl (H _ _ _ HE)). Qed.

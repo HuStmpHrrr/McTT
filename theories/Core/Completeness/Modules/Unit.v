@@ -50,7 +50,7 @@ Proof. exact (proj1 (proj2 (proj2 (proj2 (mdenote_grow_all _ _ _ _ Hgm Hgw Hsub)
 Lemma valid_unit_lit_unit : forall Γ U, valid_unit Γ (me_lit U) -> Γ ⊨ᵘ U ≈ U.
 Proof.
   intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw HΔ HΔr HΓ HΔΓ HU HE Hsm];
-    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |].
+    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |].
   - assert (Hsu : rel_unit_wf Γ (gu_open Δ Φ))
       by (eapply rel_unit_wf_body; [ exact HΔ | exact (body_xp_target _ _ _ Hx) | exact Hsh | exact Hsx | exact HC | exact Hsv | exact Hov ]).
     constructor; [ exact HU | exact Hsu | exact Hsu ].
@@ -86,7 +86,7 @@ Qed.
 Lemma valid_unit_links : forall Γ U, valid_unit Γ (me_lit U) -> modexp_sub_rel Γ (me_lit U).
 Proof.
   intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw HΔ HΔr HΓ HΔΓ HU HE Hsm];
-    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
+    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |];
     intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
   - eapply unit_sub_link_body; try eassumption.
     exact (body_xp_scoped_of_wf _ _ _ _ _ _ Hw Hx).
@@ -98,7 +98,7 @@ Lemma valid_unit_links_unabs1 : forall Γ Δ X D, valid_unit Γ (me_lit (gu_mk (
     modexp_sub_rel (Γ ▹ X) (me_lit (gu_mk Δ D)).
 Proof.
   intros * HK; inversion HK as [| ? Δ0 Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ0 E Hw HΔ HΔr HΓ HΔΓ HU HE Hsm];
-    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
+    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |];
     intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
   - rewrite <- app_assoc in Hx, HC, Hsv, Hov, Hos; cbn [List.app] in Hx, HC, Hsv, Hov, Hos.
     pose proof (body_xp_scoped_of_wf _ _ _ _ _ _ Hw ltac:(rewrite <- app_assoc; exact Hx)) as Hsc;
@@ -312,7 +312,7 @@ Proof.
   pose proof (rel_lit_beta Γ T1 X D N i HΓ (valid_unit_rel _ _ HK) (valid_unit_links_unabs1 _ _ _ _ HK) HX HN HNs) as HKN.
   pose proof (wf_me_lit _ _ _ _ _ HUNw) as HwN.
   inversion HK as [| ? Δ Φ Φx Hw0 Hx HΔ HΔr HΓ0 HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw0 HΔ HΔr HΓ0 HΔΓ HU HE Hsm];
-    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |].
+    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |].
   - (* a body *)
     change (valid_unit Γ (me_lit (gu_open T1 Φ))[Id,,N]ᵐ).
     rewrite <- app_assoc in Hx, HC, Hsv, Hsl, Hov, Hos; cbn [List.app] in Hx, HC, Hsv, Hsl, Hov, Hos.
@@ -349,7 +349,7 @@ Lemma valid_unit_lit_params_relevant : forall Γ U, valid_unit Γ (me_lit U) ->
     exists l, params_relevant Θm Ξm Γ (gu_params U) l /\ rel_params_relevant Γ (gu_params U) l.
 Proof.
   intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΔr | ? Δ E Hw HΔ HΔr]; subst;
-    [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
+    [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |];
     exact (lit_params_relevant_both _ _ Hw HΔr).
 Qed.
 
@@ -410,7 +410,7 @@ Proof.
     destruct U as [Δy D]; cbn [gunit_abs].
     exact (closure_walk _ _ _ _ _ HΔ HC HRΓ HU _ _ (proj1 (E _ _) Hρ)). }
   inversion HK as [| ? Δy Φ Φx Hw0 Hx HΔy HΔyr HΓ0 HCx Hsv Hsl Hsh Hsx HU0 Hov Hos | ? Δy E Hw0 HΔy HΔyr HΓ0 HΔΓ HU0 HE Hsm];
-    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
+    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |];
     cbn [gunit_abs] in *;
     destruct HΔyr as [ly HΔyr];
     assert (HΔyΔr : exists l', rel_params_relevant Γ (Δy ++ Δ) l') by (eexists; exact (rel_params_relevant_app _ _ _ _ _ HΔyr HΔr)).

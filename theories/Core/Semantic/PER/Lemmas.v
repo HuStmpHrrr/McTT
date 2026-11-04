@@ -1671,7 +1671,16 @@ Proof.
     etransitivity; [ symmetry |]; eassumption.
 Qed.
 
-(** And conversely. *)
+(** Related types of levels stay so at an equivalent relation. *)
+Lemma per_level_code_resp_iff : forall R R' a a', R <~> R' -> per_level_code R a a' -> per_level_code R' a a'.
+Proof.
+  intros * HE H; destruct H.
+  - econstructor; etransitivity; [ symmetry; exact HE | eassumption ].
+  - econstructor; try eassumption; etransitivity; [ symmetry; exact HE | eassumption ].
+  - econstructor; [ eassumption | etransitivity; [ symmetry; exact HE | eassumption ] ].
+Qed.
+
+(** The converse of [per_univ_elem_level_code_right]. *)
 Corollary per_univ_elem_level_code_left : forall i R a a',
     DF a ≈ a' ∈ per_univ_elem i ↘ R -> level_code a' -> level_code a.
 Proof.

@@ -212,7 +212,7 @@ Section ViewArgs.
     fold (decl_env D ups) EU in Hgz.
     pose proof (per_gargs_entries_readable _ _ _ _ _ Hgz) as [Rvg _].
     set (vtsg := tele_entries EU (List.rev (cargs_ctx p D Mv gsA ++ im_nparams Mv)) (ms ++ vs)) in *.
-    assert (Hvg : List.map fst vtsg = ms ++ vs) by apply tele_entries_fst.
+    assert (Hvg : List.map fst vtsg = ms ++ vs) by apply tele_entries_values.
     rewrite <- Hvg in Hgc1.
     destruct (outer_type_link Δc (ind_uparams Dq ++ ind_uparams D) (ind_uparams D) RU (sb_of_list Id Is) EU Ecq C ic
                 HaΔc HWcU (Hic _ _ _ HCvU) HRU Hτ HρU Eτ vtsg Hgc1
@@ -242,7 +242,7 @@ Section ViewArgs.
       apply (closed_env_base (cargs_ctx qc Dq Mi' gsA' ++ im_params Dq Mi') RK vtsK vtsK
                (tele_entries EU (List.rev (ind_uparams Dq)) cups ++ vtsg) vtsK nil nil EU nil HaC HWc HRK HKl HKl);
         [ | reflexivity | | exact Rvk | exact HKF ].
-      - unfold vtsK; rewrite List.map_app, !tele_entries_fst, Hvg; reflexivity.
+      - unfold vtsK; rewrite List.map_app, !tele_entries_values, Hvg; reflexivity.
       - apply List.Forall_app; split; assumption. }
     destruct (rel_type_inversion_simple_at HRK (Hic _ _ _ HCv) _ _ HKF') as (c1 & c2 & Ec1 & Ec2 & [Rk HRk]).
     rewrite env_extend_typed_app in Ec1; change (env_extend_typed EU (tele_entries EU (List.rev (ind_uparams Dq)) cups)) with Ecq in Ec1.

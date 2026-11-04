@@ -929,7 +929,7 @@ Proof.
   assert (Hb : List.length base = List.length (im_params G Mk)) by (unfold base; rewrite length_env_tele; cbn; lia).
   rewrite (ctx_retag_extend_typed (List.map ce_ass (cargs_nonrec gs1)) (im_params G Mk) base)
     by (first [ exact Hb | rewrite length_nonrec_typed, List.length_map by (rewrite tele_entries_length; exact Hv); reflexivity ]).
-  rewrite nonrec_typed_values, tele_entries_fst, List.rev_involutive.
+  rewrite nonrec_typed_values, tele_entries_values, List.rev_involutive.
   f_equal; unfold base.
   rewrite <- (List.rev_involutive (im_params G Mk)) at 1; rewrite <- (List.app_nil_r (List.rev (List.rev (im_params G Mk)))).
   apply ctx_retag_env_tele; [ reflexivity | reflexivity | rewrite List.length_rev; exact Hu ].
@@ -963,7 +963,7 @@ Proof.
   rewrite <- (List.rev_involutive (doms_ctx Bs)) at 1.
   rewrite (ctx_retag_extend_typed (List.rev (doms_ctx Bs))) by
     (first [ exact Hl | rewrite List.length_rev, tele_entries_length; unfold doms_ctx; rewrite List.length_rev, List.length_map; exact Hy ]).
-  rewrite Hrs, tele_entries_fst; reflexivity.
+  rewrite Hrs, tele_entries_values; reflexivity.
 Qed.
 
 (** The same with the parameters split into the uniform and the
@@ -996,7 +996,7 @@ Lemma eval_uvars_components : forall D ups T zs nn L, List.length ups = ind_nu D
 Proof.
   intros * Hu Hz.
   pose proof (eval_vars_from_args (tele_entries nil (List.rev (ind_uparams D)) ups) nil (tele_entries (decl_env D ups) T zs)) as H.
-  rewrite tele_entries_fst, !tele_entries_length, env_extend_typed_app in H.
+  rewrite tele_entries_values, !tele_entries_length, env_extend_typed_app in H.
   unfold ind_uvars; rewrite <- Hz, <- Hu; exact H.
 Qed.
 
@@ -1752,7 +1752,7 @@ Section ShapeChar.
         assert (Hta : tele_ass (List.rev C))
           by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D Hc k Mk HM) ]).
         pose proof (proj2 (rel_gargs _ _ _ _ per_ctx_env_nil_true HC' Hta HR0' nil nil _ _ Hl0 Hl0 (Hpre _ HR0))) as H.
-        rewrite tele_entries_fst in H; exact H. }
+        rewrite tele_entries_values in H; exact H. }
       (** The environment of the arguments and [kk] domains, in the context
           of their types. *)
       assert (Henv : forall kk ys, kk <= List.length (ptyp_doms t) -> List.length ys = kk ->
@@ -2054,7 +2054,7 @@ Section ShapeChar.
         assert (Hta : tele_ass (List.rev C))
           by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D Hc k Mk HM) ]).
         pose proof (proj2 (rel_gargs _ _ _ _ per_ctx_env_nil_true HC' Hta HR0' nil nil _ _ Hl0 Hl0 (Hpre _ HR0))) as H.
-        rewrite tele_entries_fst in H; exact H. }
+        rewrite tele_entries_values in H; exact H. }
       assert (Henv : forall kk ys, kk <= List.length (ptyp_doms t) -> List.length ys = kk ->
                  per_gargs (List.rev (shape_domains_ctx pat (List.firstn kk (ptyp_doms t)))) Ef Ef ys ys ->
                  forall R0, EF shape_domains_ctx pat (List.firstn kk (ptyp_doms t)) ++ C

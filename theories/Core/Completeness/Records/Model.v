@@ -608,7 +608,7 @@ Section RecordModel.
     assert (HRUρ : RU (env_extend_typed ρ vts) (env_tele nil (List.rev (record_params R)) ys)).
     { unfold env_tele.
       exact (closed_env_base _ _ vts vts vts (tele_entries nil (List.rev (record_params R)) ys) ρ ρ ρ nil
-               Hass record_params_sem HRU Hlen Hlen eq_refl ltac:(rewrite tele_entries_fst; reflexivity) Rv Rt HEE). }
+               Hass record_params_sem HRU Hlen Hlen eq_refl ltac:(rewrite tele_entries_values; reflexivity) Rv Rt HEE). }
     assert (Hub : is_univ b) by exact (sort_tele_univ (record_params R) _ Hsu HS _ _ Eb).
     destruct (per_univ_elem_univ _ _ _ _ HR0 Hub) as [_ ER0].
     pose proof (univ_idx_rel _ _ _ _ _ _ _ _ HRU HSi HRUρ Eb Ea Hub) as Hi.
@@ -901,7 +901,7 @@ Section RecordModel.
     pose proof (per_gargs_entries_readable _ _ _ _ _ Hgms) as [Rms _].
     pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HCr HCra nil nil (List.skipn (List.length C) X) nil _ _ I I I Hgxm) as Hgxm'.
     rewrite <- (tagged_entries_fst (List.rev C) Γ (List.skipn (List.length C) X) xs HlxC) in Hgxm'.
-    rewrite <- (tele_entries_fst ms nil (List.rev C)) in Hgxm'.
+    rewrite <- (tele_entries_values ms nil (List.rev C)) in Hgxm'.
     assert (HXY : RC (env_extend_typed (List.skipn (List.length C) X) (tagged_entries Γ (List.rev C) (List.skipn (List.length C) X) xs))
                      (env_tele nil (List.rev C) ms))
       by (assert (Hlt2 : List.length (tele_entries nil (List.rev C) ms) = List.length (List.rev C))

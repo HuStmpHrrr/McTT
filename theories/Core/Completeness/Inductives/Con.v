@@ -357,7 +357,7 @@ Proof.
   rewrite tele_entries_app by exact Hl.
   pose proof (eval_vars_from_args (tele_entries (decl_env D ups) Tn ns) (decl_env D ups)
                 (tele_entries (env_tele (decl_env D ups) Tn ns) Ta as1)) as H.
-  rewrite tele_entries_fst, !tele_entries_length in H; exact H.
+  rewrite tele_entries_values, !tele_entries_length in H; exact H.
 Qed.
 
 (** ** The Parameters of a Member, Split at the Uniform Ones *)

@@ -2533,6 +2533,13 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; cbn; [ exact I | exact IH | apply gm_noopen_graft; assumption ].
 Qed.
 
+(** A prefix of a body with no open has none. *)
+Lemma gm_noopen_prefix_upto : forall Φ x Φ', gm_noopen Φ -> gm_prefix_upto Φ x = Some Φ' -> gm_noopen Φ'.
+Proof.
+  induction Φ as [| Φ IH z E0 | Φ IH H its Φg _]; intros * Hn Hp; cbn in Hn, Hp; try discriminate; [| contradiction ].
+  destruct (String.eqb x z); [ injection Hp as <-; exact Hn | exact (IH _ _ Hn Hp) ].
+Qed.
+
 (** Expanding twice is expanding once. *)
 Corollary gm_expand_idem : forall Φ, gm_expand (gm_expand Φ) = gm_expand Φ.
 Proof. intros; apply gm_expand_noopen, gm_noopen_expand. Qed.

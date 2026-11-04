@@ -895,15 +895,6 @@ Proof.
   - exists u1, b4; split; [ eassumption | split; [ eassumption | pairwise ] ].
 Qed.
 
-(** Related types of levels stay so at an equivalent relation. *)
-Lemma per_level_code_resp_iff : forall R R' a a', R <~> R' -> per_level_code R a a' -> per_level_code R' a a'.
-Proof.
-  intros * HE H; destruct H.
-  - econstructor; etransitivity; [ symmetry; exact HE | eassumption ].
-  - econstructor; try eassumption; etransitivity; [ symmetry; exact HE | eassumption ].
-  - econstructor; [ eassumption | etransitivity; [ symmetry; exact HE | eassumption ] ].
-Qed.
-
 (** Related types of levels, at some relation, from related elements of
     [LevelSort]. *)
 Lemma per_level_code_of_level_sort : forall a a', Dom a ≈ a' ∈ per_level_sort -> exists R, per_level_code R a a'.

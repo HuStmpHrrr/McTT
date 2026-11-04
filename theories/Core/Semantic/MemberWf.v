@@ -121,18 +121,6 @@ Proof.
   exists R, T; split; [ exact Hm | unfold mdesc_mod_tele; rewrite Hmd; exact HT ].
 Qed.
 
-(** The type of a member with both a term part and a module part is of a
-    large universe: the term part of a definition with a module part is
-    relevant, and not a level. *)
-Lemma desc_ok_ty_mod : forall Γ R A Rm, desc_ok gc_deps gc_stack Γ R -> mdesc_type R = Some A -> mdesc_mod R = Some Rm ->
-    exists j, Γ ⊢ A : Typeω@j.
-Proof.
-  intros * HR HA Hm.
-  destruct HR as [Γ r A0 om Srt HSrt HA0 HM | | | Γ Θd A0 M0 Rm0 lΘ iA HΘd HaΘd HBt HMt _];
-    cbn in HA, Hm |- *; try discriminate.
-  injection HA as <-; destruct (ctx_pi_type _ _ relevant _ _ _ _ HΘd HBt) as [[j Hty] _]; exists j; exact Hty.
-Qed.
-
 (** An alias of a well-formed module under no parameters: the premises on
     the parameters hold vacuously ([lv] true). *)
 Lemma wf_unit_eq_alias_nil : forall Γ E,
@@ -210,7 +198,7 @@ Proof.
     pose proof (wf_unit_eq_alias_nil _ _ HE) as HU0.
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
     (* a member with a module part is relevant: its type is of a large universe *)
-    destruct (desc_ok_ty_mod _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty Hmd) as [iA HAi].
+    destruct (desc_ok_ty_mod _ _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty Hmd) as [iA HAi].
     clear HA HS; rename HAi into HA.
     pose proof (wk_preserves_typ _ _ _ _ _ _ _ HA Hw) as HA1.
     pose proof (wk_preserves_exp _ _ _ _ _ _ _ HM Hw) as HM1.
@@ -331,7 +319,7 @@ Proof.
   - (** A member with both parts: relevant. *)
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    destruct (desc_ok_ty_mod _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty Hmd) as [i HAi].
+    destruct (desc_ok_ty_mod _ _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty Hmd) as [i HAi].
     pose proof (wk_preserves_typ _ _ _ _ _ _ _ HAi Hw) as HA1.
     set (E1 := gentry_wk (ge_def_mod pv A (a_mem H n) (gu_mk nil (md_alias (me_mem H n)))) (wk_shiftn (List.length Ψk))) in *.
     change (S (List.length Ψk))

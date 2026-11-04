@@ -12,6 +12,7 @@ Import ListNotations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic.System.Global Require Import LookupSound.
 From Mctt.Core.Syntactic Require Import Substitution Members.
 From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
@@ -132,7 +133,7 @@ Qed.
 Lemma valid_unit_lit_scoped : forall Θm Ξm Γ U, valid_unit Θm Ξm Γ (me_lit U) -> gunit_scoped (List.length Γ) U.
 Proof.
   intros * H; inversion H; subst;
-    try solve [ exfalso; exact (me_apps_qname_lit _ _ _ ltac:(eassumption)) ];
+    try solve [ exfalso; exact (me_apps_qname_not_lit _ _ _ ltac:(eassumption)) ];
     match goal with Hw : _ ⍮ _ ⍮ _ ⊢ᵐ _ ≈ _ |- _ => exact (proj1 (proj2 (wf_modexp_eq_scoped _ _ _ _ _ Hw))) end.
 Qed.
 

@@ -215,10 +215,6 @@ Section Fixed_GCtx.
     do 3 eexists; split; [ eassumption | split; eassumption ].
   Qed.
 
-  (** The values of a telescope's entries are the values given. *)
-  Lemma tele_entries_values : forall vs ρ T, List.map fst (tele_entries ρ T vs) = vs.
-  Proof. induction vs as [| v vs IH]; intros ρ T; cbn; [ reflexivity | f_equal; apply IH ]. Qed.
-
   (** A list of pairs is its two projections combined. *)
   Lemma combine_map_fst_snd : forall {A B : Type} (l : list (A * B)), List.combine (List.map fst l) (List.map snd l) = l.
   Proof. induction l as [| [a b] l IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
@@ -2218,9 +2214,6 @@ Section Fixed_GCtx.
       Lemma pair_values_with_types_types : forall vs ts, List.length vs = List.length ts ->
           List.map snd (pair_values_with_types vs ts) = ts.
       Proof using. induction vs as [| v vs IH]; intros [| t ts] Lv; cbn in Lv |- *; try discriminate; [ reflexivity | f_equal; auto ]. Qed.
-
-      Lemma cargs_entries_values : forall X ρ gs vs, List.map fst (cargs_entries p X ρ gs vs) = vs.
-      Proof. intros X ρ gs vs; revert ρ gs; induction vs as [| v vs IH]; intros ρ [| [] gs]; cbn; f_equal; auto. Qed.
 
       Lemma branch_entries_values : forall Mj X As ρm gs ns vs ihs,
           List.map fst (branch_entries D Mj p X As ρm gs ns vs ihs) = ns ++ vs ++ ihs.

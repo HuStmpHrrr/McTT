@@ -251,16 +251,6 @@ Proof.
   apply IH; [ apply env_stuck_extend; [ exact Hρ | apply Ha; left; reflexivity ] | intros; apply Ha; right; assumption ].
 Qed.
 
-(** The values of the typed lists of entries evaluation extends
-    environments by: the values given, whatever their types. *)
-Lemma tele_entries_map_fst : forall vs ρ T, List.map fst (tele_entries ρ T vs) = vs.
-Proof. induction vs as [| v vs IH]; intros; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
-
-Lemma cargs_entries_map_fst : forall p ups vs ρ gs, List.map fst (cargs_entries p ups ρ gs vs) = vs.
-Proof. intros p ups; induction vs as [| v vs IH]; intros ρ [| [] gs]; cbn; rewrite ?IH; reflexivity. Qed.
-
-Lemma pair_values_with_types_map_fst : forall vs ts, List.map fst (pair_values_with_types vs ts) = vs.
-Proof. induction vs as [| v vs IH]; intros; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
 (** Pads are [absent_entry]. *)
 Lemma env_stuck_kinds_pads : forall n ρ, env_stuck ρ -> env_stuck (kinds_pads n ρ).
@@ -310,16 +300,6 @@ Proof. intros; unfold domain_level_max; constructor; apply level_atoms_stuck_app
 #[local] Hint Extern 1 (domain_stuck (domain_level_suc _)) => apply domain_stuck_lvl_suc : mctt.
 #[local] Hint Extern 1 (domain_stuck (domain_level_max _ _)) => apply domain_stuck_lvl_max : mctt.
 
-(** A member of a suffix is a member of the list. *)
-Lemma in_skipn_in : forall {A : Type} n (l : list A) x, In x (List.skipn n l) -> In x l.
-Proof. intros A n; induction n as [| n IH]; intros [| y l] x H; cbn in H; auto; right; exact (IH _ _ H). Qed.
-
-(** A member of a prefix is a member of the list. *)
-Lemma in_firstn_in : forall {A : Type} n (l : list A) x, In x (List.firstn n l) -> In x l.
-Proof.
-  intros A n; induction n as [| n IH]; intros [| y l] x H; cbn in H; try contradiction.
-  destruct H as [<- | H]; [ left; reflexivity | right; exact (IH _ _ H) ].
-Qed.
 
 
 (** The induction hypotheses at the premises the context proves: an
@@ -363,7 +343,7 @@ Ltac stuck_go n :=
           | |- env_stuck (env_extend_typed _ _) =>
               apply env_stuck_extend_typed;
                 [ stuck_go n'
-                | unfold branch_entries, motive_entries; cbv zeta; rewrite ?List.map_app, ?tele_entries_map_fst, ?cargs_entries_map_fst, ?pair_values_with_types_map_fst;
+                | unfold branch_entries, motive_entries; cbv zeta; rewrite ?List.map_app, ?tele_entries_values, ?cargs_entries_values, ?pair_values_with_types_values;
                   cbn [List.map fst]; stuck_go n' ]
           | |- env_stuck (_ ↦ _ ⦂ _) => apply env_stuck_extend; stuck_go n'
           | |- env_stuck (_ ↦ᵐ _ ⦂ _) => apply env_stuck_extend_mod; stuck_go n'

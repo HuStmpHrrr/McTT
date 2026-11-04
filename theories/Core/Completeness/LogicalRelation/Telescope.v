@@ -460,7 +460,7 @@ Proof.
       by (rewrite tele_entries_length; exact Hlr).
     assert (HYT : RΔ (env_extend_typed ρσ vts') (env_tele ρσ (List.rev Δ) (List.map fst vts'))).
     { unfold env_tele; apply (gargs_env_rel_typed _ _ _ _ HRΓ HCr Har HRr _ _ vts' _ Hρσ Hlr' Hlt);
-        [ rewrite tele_entries_fst; exact Hg' | exact Hr' | exact Hte ]. }
+        [ rewrite tele_entries_values; exact Hg' | exact Hr' | exact Hte ]. }
     assert (HYY : RΓ Y Y) by (etransitivity; [ exact HYρ | symmetry; exact HYρ ]).
     pose proof (eval_sub_qn_args _ _ _ _ _ _ _ Hl' HRΓ HYY HY) as Hqev.
     destruct (typ_inst_link _ _ _ _ _ _ _ _ _ HB HS' (rel_sub_under_ctx_refl_left Hq) IHx Hqev) as (a & b & Ea & Eb & Hab).
@@ -526,7 +526,7 @@ Proof.
   pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HC' HCr B1 B2 B3 B4 _ _ I I I Hg) as Hg'.
   pose proof (per_gargs_entries_readable _ _ _ _ _ Hg') as [Hr Hr'].
   unfold env_tele; eapply closed_env_base; [ exact HCa | exact HC | exact HRC | exact Hl | exact Hl'
-                                            | rewrite tele_entries_fst; reflexivity | rewrite tele_entries_fst; reflexivity
+                                            | rewrite tele_entries_values; reflexivity | rewrite tele_entries_values; reflexivity
                                             | exact Hr | exact Hr' | exact H ].
 Qed.
 

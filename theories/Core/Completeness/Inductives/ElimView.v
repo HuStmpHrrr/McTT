@@ -936,7 +936,7 @@ Qed.
 Lemma branch_entries_fst : forall D Mj p X As ρm gs ns vs ihs,
     List.map fst (branch_entries D Mj p X As ρm gs ns vs ihs) = ns ++ vs ++ ihs.
 Proof.
-  intros; unfold branch_entries; rewrite !List.map_app, tele_entries_fst; f_equal; f_equal.
+  intros; unfold branch_entries; rewrite !List.map_app, tele_entries_values; f_equal; f_equal.
   - generalize (env_extend_typed (decl_env D X) (tele_entries (decl_env D X) (List.rev (im_nparams Mj)) ns)) as ρ.
     revert gs; induction vs as [| v vs IH]; intros [| [] gs] ρ; cbn; f_equal; apply IH.
   - generalize (ihs_types D p X ρm As (env_extend_typed (decl_env D X) (tele_entries (decl_env D X) (List.rev (im_nparams Mj)) ns)) gs vs)
@@ -1603,9 +1603,9 @@ Section SelfElim.
       destruct (EBr side_w G1 t G2 Heq0 Er HCtx RS HRS B1 vtsE1 HB1 Lm1 HE1) as (wu1 & Hwu1 & HwU1 & Lwu1).
       destruct (EBr side_w G1 t G2 Heq0 Er HCtx RS HRS B2 vtsE2 HB2 Lm2 HE2) as (wu2 & Hwu2 & HwU2 & Lwu2).
       pose proof (EBr branch_entry_vals G1 t G2 Heq0 Er HCtx RS HRS B1 vtsE1 X (List.firstn kk vs) x (List.skipn (S kk) vs) ihp wu1 HB1
-                    (tele_entries_fst _ _ _) LX (Lf _ Lv) (Ls _ Lv) Lihp' HE1 Hwu1 HwU1 Lwu1) as Hv1.
+                    (tele_entries_values _ _ _) LX (Lf _ Lv) (Ls _ Lv) Lihp' HE1 Hwu1 HwU1 Lwu1) as Hv1.
       pose proof (EBr branch_entry_vals G1 t G2 Heq0 Er HCtx RS HRS B2 vtsE2 X' (List.firstn kk vs') x' (List.skipn (S kk) vs') ihq wu2 HB2
-                    (tele_entries_fst _ _ _) LX' (Lf _ Lv') (Ls _ Lv') Lihq' HE2 Hwu2 HwU2 Lwu2) as Hv2.
+                    (tele_entries_values _ _ _) LX' (Lf _ Lv') (Ls _ Lv') Lihq' HE2 Hwu2 HwU2 Lwu2) as Hv2.
       pose proof (EBr branch_entry_frame G1 t G2 Heq0 Er HCtx) as Hf.
       destruct (length_rec_ps D HD v Mv HMv c gs G1 t G2 Hcon Heq0) as (Mj & HMj & _).
       assert (HRS0 : EF (Er ++ tele_sub (cargs_ctx p D Mv gs ++ im_nparams Mv) τU) ++ Γ
@@ -2165,7 +2165,7 @@ Section SelfElim.
         unfold env_tele in Hcc.
         destruct (rel_gargs _ _ _ _ HRΓ HWr HtaW HRWr _ _ _ _ ltac:(rewrite tele_entries_length; exact (eq_sym LTW))
                     ltac:(rewrite tele_entries_length; exact (eq_sym LTW)) Hcc) as [_ Hg].
-        rewrite !tele_entries_fst in Hg.
+        rewrite !tele_entries_values in Hg.
         exact (gargs_env_rel_typed _ _ _ _ HRΓ HWr HtaW HRWr _ _ _ _ HC11 LvW LvW ltac:(rewrite Hvw; exact Hg) HrW HrW). }
       assert (HRS : EF Ew ++ con_inst_ctx Γ p D Mv Us gs ≈ Ew ++ con_inst_ctx Γ p D Mv Us gs ∈ per_ctx_env ↘ RW).
       { pose proof HRW as H; rewrite (WB wrapping_ctx_eq) in H.
@@ -2199,7 +2199,7 @@ Section SelfElim.
       pose proof (EBr canonical_bctx C1 C1 HC11 HC11 X X' vs vs' ihsT ihs HX Har0 Hia0 Hrr RB HRB) as HEc; fold K0 TK in HEc.
       assert (HEcc : RB (env_tele C1 TK xsT) (env_tele C1 TK xsT)) by (etransitivity; [ exact HEc | symmetry; exact HEc ]).
       set (vtsX := tele_entries C1 TK xsT).
-      assert (FX : List.map fst vtsX = xsT) by apply tele_entries_fst.
+      assert (FX : List.map fst vtsX = xsT) by apply tele_entries_values.
       assert (LvX : List.length vtsX = List.length TK) by (unfold vtsX; rewrite tele_entries_length; exact (eq_sym LTK)).
       unfold env_tele in HEcc; fold vtsX in HEcc.
       destruct (rel_gargs _ _ _ _ HRΓ HKr HtaK HRKr _ _ _ _ LvX LvX HEcc) as [_ Hgx]; rewrite FX in Hgx.

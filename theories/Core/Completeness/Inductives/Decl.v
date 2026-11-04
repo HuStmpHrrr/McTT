@@ -64,12 +64,8 @@ Proof.
   rewrite <- env_tele_firstn; reflexivity.
 Qed.
 
-(** The values of a telescope's entries are the values given. *)
-Lemma tele_entries_fst : forall vs ρ T, List.map fst (tele_entries ρ T vs) = vs.
-Proof. induction vs as [| v vs IH]; intros ρ T; cbn; [ reflexivity | f_equal; apply IH ]. Qed.
-
 Lemma tele_entries_length : forall vs ρ T, List.length (tele_entries ρ T vs) = List.length vs.
-Proof. intros; rewrite <- (List.length_map fst), tele_entries_fst; reflexivity. Qed.
+Proof. intros; rewrite <- (List.length_map fst), tele_entries_values; reflexivity. Qed.
 
 (** Arguments of a telescope [Pre] after a group's uniform parameters,
     from the empty environment: the components after the parameters. *)
@@ -556,7 +552,7 @@ Corollary rel_gargs_tele : forall ts Tb RTb R,
       R (env_tele ρ ts xs) (env_tele ρ' ts xs') -> RTb ρ ρ' /\ per_gargs ts ρ ρ' xs xs'.
 Proof.
   intros * HTb HC Hts HR * Hl Hl' H; unfold env_tele in H.
-  rewrite <- (tele_entries_fst xs ρ ts), <- (tele_entries_fst xs' ρ' ts).
+  rewrite <- (tele_entries_values xs ρ ts), <- (tele_entries_values xs' ρ' ts).
   apply (rel_gargs _ _ _ _ HTb HC Hts HR); [ rewrite tele_entries_length; exact Hl | rewrite tele_entries_length; exact Hl' | exact H ].
 Qed.
 

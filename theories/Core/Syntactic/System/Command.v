@@ -23,7 +23,7 @@ From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.Inductives Require Export Inductives.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
-From Mctt.Core.Syntactic.System.Global Require Import MemberWf Modules.
+From Mctt.Core.Syntactic.System.Global Require Import MemberWf Modules LookupSound.
 From Mctt.Core.Syntactic.System Require Export Privacy Translations.
 From Mctt.Core Require Export TypedElab.
 From Mctt.Core.Semantic Require Import NbE.
@@ -2042,31 +2042,6 @@ Proof.
     exists l; exact Hl.
 Qed.
 
-(** Relevant parameters have sorts, one per position, each a universe at
-    the common level or the sort of the types of levels: the premises
-    (R) of the rules, the converse of [params_relevant_of_sorts]. *)
-Lemma params_relevant_sorts : forall Θ Ξ Γ Δ l, params_relevant Θ Ξ Γ Δ l ->
-    exists ps, (forall k, parameter_sort l (ps k)) /\
-      (forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)).
-Proof.
-  intros Θ Ξ Γ Δ l; induction Δ as [| e Δ IH]; intros HP.
-  - exists (fun _ => Typeω@l); split; [ intros; constructor | intros [|] ? ? E; discriminate ].
-  - destruct (params_relevant_app_inv Θ Ξ Γ (e :: nil) Δ l HP) as [He HΔ].
-    destruct (IH HΔ) as (ps & Hps & HT).
-    assert (Hhead : exists S0, parameter_sort l S0 /\ forall T, e = ce_ass T -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ T : S0).
-    { destruct e as [T | | |]; try (exists (Typeω@l); split; [ constructor | intros ? E; discriminate ]).
-      destruct (He nil T nil eq_refl) as [H0 | H0];
-        [ exists (Typeω@l) | exists LevelSort ]; (split; [ constructor | intros ? [= <-]; exact H0 ]). }
-    destruct Hhead as (S0 & HS0 & HTe).
-    exists (fun k => if Nat.eqb k (List.length Δ) then S0 else ps k); split.
-    + intros k; destruct (Nat.eqb k (List.length Δ)); auto.
-    + intros [| e1 Δ1] T Δ2 E; cbn in E; injection E as E1 E2.
-      * subst; rewrite Nat.eqb_refl; exact (HTe _ eq_refl).
-      * subst Δ; rewrite List.length_app; cbn.
-        replace (Nat.eqb (List.length Δ2) (List.length Δ1 + S (List.length Δ2))) with false
-          by (symmetry; apply Nat.eqb_neq; lia).
-        exact (HT _ _ _ eq_refl).
-Qed.
 
 (** A later declared member of a group whose first member's entry is in
     the innermost frame is well formed with an empty module, where it is
