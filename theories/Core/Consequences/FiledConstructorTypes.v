@@ -115,9 +115,9 @@ Lemma self_var_sub : forall p b n t x, b <= x -> x < b + n ->
 Proof.
   intros * H1 H2; unfold sb_selfs; cbn [exp_sub].
   rewrite sb_qn_ge by lia.
-  rewrite (sb_of_list_nth _ _ _ a_placeholder_type) by (rewrite length_self_insts; lia).
+  rewrite (sb_of_list_nth _ _ _ exp_default) by (rewrite length_self_insts; lia).
   rewrite length_self_insts.
-  rewrite (List.nth_indep _ a_placeholder_type (apps (a_ind p 0) (vars_from 0 t))) by (rewrite length_self_insts; lia).
+  rewrite (List.nth_indep _ exp_default (apps (a_ind p 0) (vars_from 0 t))) by (rewrite length_self_insts; lia).
   rewrite (List.map_nth (fun j => apps (a_ind p j) (vars_from 0 t))), List.seq_nth by lia.
   cbn [sentry_wk sentry_exp]; rewrite apps_exp_wk, vars_from_wk_shiftn; cbn; reflexivity.
 Qed.
@@ -397,14 +397,18 @@ Proof.
   induction Δ as [| e Δ IH]; intros * Hass HΔ HA; cbn in *; [ eauto |].
   inversion Hass as [| ? ? [B ->] Hass']; subst.
   destruct (ctx_decomp HΔ) as [HΔ' [S HS HB]].
-  (** The assumption is a type or a proposition *)
-  destruct HS as [k |].
+  (** The assumption is a type, a proposition or a type of levels *)
+  destruct HS as [k | |].
   - eapply IH with (i := max k i); [ exact Hass' | exact HΔ' |].
     eapply wf_exp_eq_pi_cong_large; [ eapply lift_exp_max_left; exact HB | apply wf_exp_eq_refl; eapply lift_exp_max_left; exact HB
                               | eapply lift_exp_eq_ge; [| exact HA ]; lia ].
   - eapply IH with (i := i); [ exact Hass' | exact HΔ' |].
     change (Typeω@i) with (relevance_sort relevant Typeω@i) at 1.
     eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; exact HΔ' | exact HB | apply pi_domain_prop
+                              | apply wf_exp_eq_refl; exact HB | exact HA ].
+  - eapply IH with (i := i); [ exact Hass' | exact HΔ' |].
+    change (Typeω@i) with (relevance_sort relevant Typeω@i) at 1.
+    eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; exact HΔ' | exact HB | apply pi_domain_level
                               | apply wf_exp_eq_refl; exact HB | exact HA ].
 Qed.
 
@@ -830,12 +834,17 @@ Section ConTypes.
                  Θ ⍮ Ξf ⍮ tele_sub (raw_args_tele args1) (sb_selfs p np n t) ++ im_params D Mj ⊢ T[τ] ≈ T'[τ] : Sd).
       { assert (HT'2 : Θ ⍮ Ξf ⍮ tele_sub (raw_args_tele args1) (sb_selfs p np n t) ++ im_params D Mj ⊢ T'[τ] : S2)
           by (gen_presups; assumption).
-        destruct HS1 as [k1 |], HS2 as [k2 |].
+        destruct HS1 as [k1 | |], HS2 as [k2 | |].
         - exists Typeω@(max k1 k2); repeat split; [ constructor | eapply lift_exp_max_left; exact HT'L
                                                  | eapply lift_exp_max_left; exact HT'i | eapply lift_exp_eq_max_right; exact HTe ].
         - exfalso; exact (@typ_prop_absurd (gc_mk Θ Ξf) _ _ _ HT'L HT'2).
+        - exfalso; exact (@level_type_not_large (gc_mk Θ Ξf) _ _ _ HT'2 HT'L).
         - exfalso; exact (@typ_prop_absurd (gc_mk Θ Ξf) _ _ _ HT'2 HT'L).
-        - exists Propₘ; repeat split; [ constructor | exact HT'L | exact HT'i | exact HTe ]. }
+        - exists Propₘ; repeat split; [ constructor | exact HT'L | exact HT'i | exact HTe ].
+        - exfalso; exact (@level_type_not_prop (gc_mk Θ Ξf) _ _ HT'2 HT'L).
+        - exfalso; exact (@level_type_not_large (gc_mk Θ Ξf) _ _ _ HT'L HT'2).
+        - exfalso; exact (@level_type_not_prop (gc_mk Θ Ξf) _ _ HT'L HT'2).
+        - exists LevelSort; repeat split; [ constructor | exact HT'L | exact HT'i | exact HTe ]. }
       destruct Hsd as (Sd & HSd & HT'd & HEd & HTed).
       assert (HTL : Θ ⍮ Ξf ⍮ tele_sub (raw_args_tele args1) (sb_selfs p np n t) ++ im_params D Mj ⊢ T[τ] : Sd)
         by (gen_presups; assumption).
@@ -964,7 +973,7 @@ Proof.
   end.
   (** The recursor module, if any, is filed after the members. *)
   match goal with
-  | Hrec : run_cmds _ _ _ _ _ _ _ _ (rec_cmds _ _ _ _ _) _ _ _ _, Hwf1 : ⊢ᵍ Θ ⍮ ?Ξf |- _ =>
+  | Hrec : run_cmds _ _ _ _ _ _ _ _ (List.map ci_core (rec_cmds _ _ _ _ _)) _ _ _ _, Hwf1 : ⊢ᵍ Θ ⍮ ?Ξf |- _ =>
       destruct (rec_cmds_run_wf _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrec Hwf1) as [-> -> -> Hwf Hsub];
       apply (gctx_embedding_preserves_filed_con_ty Θ Ξf); [ constructor; assumption |]
   end.
