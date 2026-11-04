@@ -250,7 +250,7 @@ Section RecTyped.
   Qed.
 
   Lemma L1_wf : ⊢ Θ ⍮ Ξ ⍮ ce_ass (a_level 0) :: Γ0.
-  Proof. eapply wf_ctx_extend; [ apply (wf_level_large (i := 0)); exact HU | constructor ]. Qed.
+  Proof. eapply wf_ctx_extend; [ apply wf_level; exact HU | constructor ]. Qed.
 
   Lemma Lm_wf : ⊢ Θ ⍮ Ξ ⍮ Lm.
   Proof.
@@ -422,7 +422,9 @@ Section RecTyped.
       context at the module's uniform parameters. *)
   Lemma rec_elim_typed :
       Θ ⍮ Ξ ⍮ elim_mctx p D 0 M (rec_uvars D K) ++ EK ++ Lm
-        ⊢ a_elim relevant None (rec_uvars D (K + S nn)) 0 (eb_mk (S nn) None (rec_motive M (K + S nn)) (rec_brs D M K 0 (im_cons M)) :: nil) (a_var 0)
+        ⊢ a_elim relevant p (rec_uvars D (K + S nn)) 0
+            (eb_mk (S nn) (member_scrutinee_type p D 0 M (rec_uvars D (K + S nn))) (rec_motive M (K + S nn)) (rec_brs D M K 0 (im_cons M)) :: nil)
+            (a_var 0)
         : rec_motive M K.
   Proof.
     destruct (motive_at _ EK_wf) as [HM2 HA2]; rewrite length_EK in HM2, HA2.
@@ -444,9 +446,9 @@ Section RecTyped.
     assert (HS : List.skipn nu Ps = vars_from 1 nn) by (unfold Ps; exact (skipn_app_len Us' (vars_from 1 nn) nu HUl')).
     rewrite (Nat.add_comm K (S nn)).
     rewrite <- (rec_motive_inst M K), <- HS.
-    eapply wf_elim with (i := 0) (Ps := Ps) (bm := eb_mk (S nn) None (rec_motive M (S nn + K)) (rec_brs D M K 0 (im_cons M)));
-      [ exact Hl | right; split; [ reflexivity | exact ndecl_pos ] | exact HM | reflexivity
-      | cbn; symmetry; exact Hone | | | | rewrite HF; reflexivity | | | | | | | | ].
+    eapply wf_elim with (i := 0) (Ps := Ps)
+      (bm := eb_mk (S nn) (member_scrutinee_type p D 0 M (rec_uvars D (S nn + K))) (rec_motive M (S nn + K)) (rec_brs D M K 0 (im_cons M)));
+      [ exact Hl | exact HM | reflexivity | cbn; symmetry; exact Hone | | | | rewrite HF; reflexivity | | | | | | | | ].
     - (* the number of parameters *)
       unfold Ps, im_np; rewrite List.length_app, HUl', HNl; lia.
     - (* the parameters, at their types: the uniform ones the module's,
@@ -472,7 +474,12 @@ Section RecTyped.
       apply wf_vlookup; [ exact HM2 |].
       unfold elim_mctx; cbn [List.app]; rewrite <- Heq; constructor.
     - intros k Mk b HMk Hb; destruct (block_0 _ _ _ _ HMk Hb) as (-> & -> & ->); reflexivity.
-    - intros k Mk b Z HMk Hb Hz; destruct (block_0 _ _ _ _ HMk Hb) as (-> & -> & ->); discriminate.
+    - (* the scrutinee's type: the motive context's innermost entry *)
+      intros k Mk b HMk Hb; destruct (block_0 _ _ _ _ HMk Hb) as (-> & -> & ->); cbn [eb_scrutinee_type].
+      rewrite HF; fold Us'; rewrite <- elim_mctx_scrutinee_type.
+      pose proof (mctx_at _ HE2 _ _ HM) as H; rewrite HlE2 in H; unfold E2 in H; rewrite <- List.app_assoc in H.
+      fold Us' in H.
+      apply ctx_ext_refl; [ apply (elim_mctx_ass p D 0 M _ Hc HM) | exact H ].
     - intros k Mk b HMk Hb; destruct (block_0 _ _ _ _ HMk Hb) as (-> & -> & ->); cbn.
       rewrite HF; apply HA3.
     - (* the motives' contexts, of every member, record views too *)

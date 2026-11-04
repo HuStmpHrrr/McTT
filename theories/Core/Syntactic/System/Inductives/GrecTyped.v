@@ -121,7 +121,7 @@ Section GrecTyped.
   Lemma MT_wf : ⊢ Θ ⍮ Ξ ⍮ MT.
   Proof.
     rewrite recursor_motive_tys_from; apply (recursor_motive_ctx_wf _ 0 nil); [ intros; apply block_member_member; assumption | reflexivity |].
-    cbn; eapply wf_ctx_extend; [ apply (wf_level_large (i := 0)); exact HU | constructor ].
+    cbn; eapply wf_ctx_extend; [ apply wf_level; exact HU | constructor ].
   Qed.
 
   Lemma length_recursor_motive_ctx : forall a ms, List.length (recursor_motive_ctx_from a ms) = List.length ms.
@@ -368,7 +368,7 @@ Section GrecTyped.
     rewrite <- List.app_assoc; cbn [List.app].
     destruct (recursor_motive_type_typed a M E ltac:(rewrite <- (Nat.add_0_r a); exact (Hms 0 M eq_refl)) HE HEw) as [j Hj].
     apply (IH (S a) (ce_ass (recursor_mty a M) :: E) (max j l));
-      [ | cbn; rewrite HE; reflexivity | eapply wf_ctx_extend; [ exact Hj | constructor ] | exact (params_relevant_snoc _ _ _ _ _ _ _ HR Hj) ].
+      [ | cbn; rewrite HE; reflexivity | eapply wf_ctx_extend; [ exact Hj | constructor ] | exact (params_relevant_snoc _ _ _ _ _ _ _ HR (or_introl Hj)) ].
     intros j' M' Hj'; rewrite Nat.add_succ_comm; exact (Hms (S j') M' Hj').
   Qed.
 
@@ -384,7 +384,7 @@ Section GrecTyped.
     destruct (ctx_pi_wf _ _ _ _ _ _ HB (Hty 0)) as [j Hj].
     apply (IH (S k) (_ :: E) (max j l));
       [ exact HMi | intros; apply Hcs; right; assumption | cbn; rewrite HE; reflexivity
-      | eapply wf_ctx_extend; [ exact Hj | constructor ] | exact (params_relevant_snoc _ _ _ _ _ _ _ HR Hj) ].
+      | eapply wf_ctx_extend; [ exact Hj | constructor ] | exact (params_relevant_snoc _ _ _ _ _ _ _ HR (or_introl Hj)) ].
   Qed.
 
   Lemma recursor_case_tys_relevant : forall ms i k E l,
@@ -412,7 +412,7 @@ Section GrecTyped.
     rewrite recursor_motive_tys_from.
     destruct (recursor_motive_ctx_relevant (ind_block_members D) 0 nil 0) as [l HRl];
       [ intros; apply block_member_member; assumption | reflexivity
-      | cbn; eapply wf_ctx_extend; [ apply (wf_level_large (i := 0)); exact HU | constructor ]
+      | cbn; eapply wf_ctx_extend; [ apply wf_level; exact HU | constructor ]
       | apply params_relevant_nil |].
     exists l; rewrite List.app_nil_r in HRl; exact HRl.
   Qed.
@@ -505,12 +505,13 @@ Section GrecTyped.
       rewrite length_vars_from in H; exact H.
   Qed.
 
-  Lemma length_recursor_blocks : forall K nj ms i kc, List.length (recursor_blocks D K nj i kc ms) = List.length ms.
+  Lemma length_recursor_blocks : forall K nj ms i kc, List.length (recursor_blocks p D K nj i kc ms) = List.length ms.
   Proof. intros K nj; induction ms as [| M ms IH]; intros; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
   Lemma nth_recursor_blocks : forall K nj ms i kc j Mj, List.nth_error ms j = Some Mj ->
-      List.nth_error (recursor_blocks D K nj i kc ms) j =
-        Some (eb_mk (S (im_nn Mj)) None (recursor_motive N (i + j) Mj (K + nj))
+      List.nth_error (recursor_blocks p D K nj i kc ms) j =
+        Some (eb_mk (S (im_nn Mj)) (member_scrutinee_type p D (i + j) Mj (recursor_uvars D N (K + nj)))
+                (recursor_motive N (i + j) Mj (K + nj))
                 (recursor_brs D K nj (kc + ncases (List.firstn j ms)) Mj (im_cons Mj))).
   Proof.
     intros K nj; induction ms as [| M ms IH]; intros i kc [| j] Mj Hj; cbn in Hj; try discriminate.
@@ -520,7 +521,7 @@ Section GrecTyped.
   Qed.
 
   Lemma blocks_motives_recursor : forall K nj ms i kc,
-      blocks_motives (recursor_blocks D K nj i kc ms) =
+      blocks_motives (recursor_blocks p D K nj i kc ms) =
         List.map (fun iM => recursor_motive N (fst iM) (snd iM) (K + nj)) (List.combine (List.seq i (List.length ms)) ms).
   Proof. intros K nj; induction ms as [| M ms IH]; intros; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
@@ -553,7 +554,7 @@ Section GrecTyped.
       parameters and scrutinee, is of the motive. *)
   Lemma recursor_elim_typed : forall j Mj, List.nth_error (ind_block_members D) j = Some Mj ->
       Θ ⍮ Ξ ⍮ elim_mctx p D j Mj (recursor_uvars D N K) ++ CT
-        ⊢ a_elim relevant (Some p) (recursor_uvars D N (K + S (im_nn Mj))) j (recursor_blocks D K (S (im_nn Mj)) 0 0 (ind_block_members D)) (a_var 0)
+        ⊢ a_elim relevant p (recursor_uvars D N (K + S (im_nn Mj))) j (recursor_blocks p D K (S (im_nn Mj)) 0 0 (ind_block_members D)) (a_var 0)
         : recursor_motive N j Mj K.
   Proof.
     intros j Mj HBj. pose proof (block_member_member _ _ HBj) as HMj. set (nn := im_nn Mj).
@@ -571,17 +572,18 @@ Section GrecTyped.
     assert (HUs'w : Us' = List.map (fun U => U[wk_shiftn (S nn)]ʷ) Us) by (unfold Us, Us'; rewrite recursor_uvars_wk; reflexivity).
     assert (HF : List.firstn nu Ps = Us') by (unfold Ps; exact (firstn_app_len Us' (vars_from 1 nn) nu HUl')).
     assert (HS : List.skipn nu Ps = vars_from 1 nn) by (unfold Ps; exact (skipn_app_len Us' (vars_from 1 nn) nu HUl')).
-    set (Bks := recursor_blocks D K (S nn) 0 0 (ind_block_members D)).
+    set (Bks := recursor_blocks p D K (S nn) 0 0 (ind_block_members D)).
     assert (Hblk : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
                      List.nth_error (ind_block_members D) k = Some Mk /\
-                     b = eb_mk (S (im_nn Mk)) None (recursor_motive N k Mk (K + S nn))
+                     b = eb_mk (S (im_nn Mk)) (member_scrutinee_type p D k Mk (recursor_uvars D N (K + S nn)))
+                           (recursor_motive N k Mk (K + S nn))
                            (recursor_brs D K (S nn) (ncases (List.firstn k (ind_block_members D))) Mk (im_cons Mk))).
     { intros k Mk b HMk Hb.
       assert (HBk : List.nth_error (ind_block_members D) k = Some Mk).
       { destruct (List.nth_error (ind_block_members D) k) as [Mk' |] eqn:E.
         - rewrite (block_member_member _ _ E) in HMk; congruence.
         - apply List.nth_error_None in E; unfold Bks in Hb.
-          assert (k < List.length (recursor_blocks D K (S nn) 0 0 (ind_block_members D))) by (apply List.nth_error_Some; congruence).
+          assert (k < List.length (recursor_blocks p D K (S nn) 0 0 (ind_block_members D))) by (apply List.nth_error_Some; congruence).
           rewrite length_recursor_blocks in *; lia. }
       split; [ exact HBk |].
       unfold Bks in Hb; rewrite (nth_recursor_blocks _ _ _ _ _ _ _ HBk) in Hb; injection Hb as <-; reflexivity. }
@@ -590,8 +592,9 @@ Section GrecTyped.
     replace (recursor_motive N j Mj K) with ((recursor_motive N j Mj (K + S nn))[sb_of_list Id (List.skipn nu Ps ++ #0 :: nil)])
       by (rewrite HS, Nat.add_comm; apply recursor_motive_inst).
     eapply wf_elim with (i := 0) (Ps := Ps)
-      (bm := eb_mk (S nn) None (recursor_motive N j Mj (K + S nn)) (recursor_brs D K (S nn) (ncases (List.firstn j (ind_block_members D))) Mj (im_cons Mj)));
-      [ exact Hl | left; reflexivity | exact HMj | unfold Bks; exact (nth_recursor_blocks _ _ _ _ _ _ _ HBj)
+      (bm := eb_mk (S nn) (member_scrutinee_type p D j Mj (recursor_uvars D N (K + S nn))) (recursor_motive N j Mj (K + S nn))
+               (recursor_brs D K (S nn) (ncases (List.firstn j (ind_block_members D))) Mj (im_cons Mj)));
+      [ exact Hl | exact HMj | unfold Bks; exact (nth_recursor_blocks _ _ _ _ _ _ _ HBj)
       | unfold Bks; rewrite length_recursor_blocks, length_ind_block_members; reflexivity | | | | rewrite HF; reflexivity | | | | | | | | ].
     - (* the number of parameters *)
       unfold Ps, im_np; rewrite List.length_app, HUl', HNl; lia.
@@ -619,8 +622,12 @@ Section GrecTyped.
       unfold elim_mctx; cbn [List.app]; rewrite <- Heq; constructor.
     - (* each block binds its member's indices and the scrutinee *)
       intros k Mk b HMk Hb; destruct (Hblk _ _ _ HMk Hb) as [_ ->]; reflexivity.
-    - (* no block is annotated *)
-      intros k Mk b Z HMk Hb Hz; destruct (Hblk _ _ _ HMk Hb) as [_ ->]; discriminate.
+    - (* each block's scrutinee type: the innermost entry of its motive's context *)
+      intros k Mk b HMk Hb; destruct (Hblk _ _ _ HMk Hb) as [_ ->]; cbn [eb_scrutinee_type].
+      rewrite HF; replace (recursor_uvars D N (K + S nn)) with Us' by (unfold Us'; f_equal; lia).
+      rewrite <- elim_mctx_scrutinee_type.
+      apply ctx_ext_refl; [ apply (elim_mctx_ass p D k Mk _ Hc HMk) |].
+      pose proof (recursor_mctx_at E2 HE2 k Mk HMk) as H; rewrite HlE2 in H; unfold E2 in H; rewrite <- List.app_assoc in H; exact H.
     - (* the motives *)
       intros k Mk b HMk Hb; destruct (Hblk _ _ _ HMk Hb) as [HBk ->]; cbn [eb_motive]; rewrite HF.
       pose proof (proj2 (recursor_motive_at E2 k Mk HBk HE2) 0) as H; rewrite HlE2 in H; unfold E2 in H; rewrite <- List.app_assoc in H; exact H.
