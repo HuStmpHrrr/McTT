@@ -734,7 +734,7 @@ Section ConValue.
     - (** A parameter: relevant. *)
       destruct (app_split_right _ _ _ _ _ HCe ltac:(rewrite length_im_params, HlC; exact Hlt)) as [X HX].
       destruct (im_params_relevant D HD k Mk HM _ _ _ HX) as [i HA].
-      destruct (rel_exp_of_typ_relevant_at HR HA _ _ Hz) as (b0 & Eb0 & Hr).
+      destruct (rel_param_typed_relevant HA _ HR _ _ Hz) as (b0 & Eb0 & Hr).
       assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); exact Hr.
     - (** An argument: of its tag. *)
       destruct (app_split_left _ _ _ _ _ HCe ltac:(rewrite length_im_params, HlC; exact Hge)) as (Y & HY1 & HY2).

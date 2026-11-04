@@ -476,7 +476,7 @@ Section RecordModel.
     (HS : exists i : nat, record_params R ⊨ record_sort R : Typeω@i)
     (HT : forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
        record_fctx R k ++ record_params R ⊨ T : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ)
-    (HPr : exists l, forall Δ1 T Δ2, record_params R = Δ1 ++ ce_ass T :: Δ2 -> Δ2 ⊨ T : Typeω@l).
+    (HPr : exists l, rel_params_relevant ⋅ (record_params R) l).
 
   Lemma record_fctx_sem : forall k, k <= List.length (record_fields R) -> ⊨ record_fctx R k ++ record_params R.
   Proof.
@@ -639,8 +639,8 @@ Section RecordModel.
     split; [ exact Ea | split; [ exact Ea' | split; [ exact HR0 | split; [ constructor | split; [ constructor |] ] ] ] ].
     unfold record_ty in Ea, Ea'; rewrite <- (List.rev_involutive (record_params R)) in Ea, Ea'.
     (** The parameters are relevant. *)
-    assert (Hrel : forall Δ1 T Δ2, record_params R = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, Δ2 ⊨ T : Typeω@i)
-      by (destruct HPr as [l HPl]; intros * E; exists l; exact (HPl _ _ _ E)).
+    assert (Hrel : forall Δ1 T Δ2, record_params R = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, rel_param_typed Δ2 T i)
+      by (destruct HPr as [l HPl]; intros * E; exists l; pose proof (HPl _ _ _ E) as H; rewrite List.app_nil_r in H; exact H).
     eapply (ctx_pi_rel_elem (List.length (record_params R)) (d_record p) _ eval_app_record_args
               (fun _ _ => eq_refl) (List.rev (record_params R)) ⋅ RT (rev_tele_ass _ Hass) HRT (rev_tele_sem _ record_params_sem)
               ρ ρ' nil nil);
@@ -650,7 +650,7 @@ Section RecordModel.
       assert (Hpe : record_params R = List.rev ts2 ++ ce_ass A :: List.rev ts1)
         by (rewrite <- (List.rev_involutive (record_params R)), Heq, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
       destruct (Hrel _ _ _ Hpe) as [i0 HA]; rewrite <- (List.app_nil_r (List.rev ts1)) in HA.
-      destruct (rel_exp_of_typ_relevant_at HR1 HA _ _ HE1) as (b0 & Eb0 & Hr).
+      destruct (rel_param_typed_relevant HA _ HR1 _ _ HE1) as (b0 & Eb0 & Hr).
       assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); exact Hr.
     - intros R1 vts vts' HR1 Hl1 Hl1' HE1; cbn [List.app].
       rewrite List.rev_involutive, List.app_nil_r in HR1; rewrite List.length_rev in Hl1, Hl1'.
@@ -768,11 +768,12 @@ Section RecordModel.
   Qed.
 
   (** An entry of the first [k] fields over the parameters, over [Γ], is a
-      type of a universe at a relevant sort, and a proposition at the
-      propositional one. *)
+      parameter type ([rel_param_typed]) at a relevant sort, a field a type
+      of a universe, a parameter of a universe or of levels, and a
+      proposition at the propositional one. *)
   Lemma record_ctx_entry_typed : forall k Γ, k <= List.length (record_fields R) -> ⊨ Γ ->
       forall Δ1 T Δ2, record_fctx R k ++ record_params R = Δ1 ++ ce_ass T :: Δ2 ->
-        (record_ctx_sort k (List.length Δ1) = relevant -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i) /\
+        (record_ctx_sort k (List.length Δ1) = relevant -> exists i : nat, rel_param_typed (Δ2 ++ Γ) T i) /\
         (record_ctx_sort k (List.length Δ1) = propositional -> Δ2 ++ Γ ⊨ T : Propₘ).
   Proof.
     intros * Hk HΓ * E.
@@ -784,7 +785,7 @@ Section RecordModel.
       assert (Hk' : k - 1 - List.length Δ1 <= List.length (record_fields R)) by lia.
       split.
       + intros Hr; destruct (field_typ_large _ _ _ HT' Hr) as [i Hi].
-        exists i; exact (closed_app_valid _ _ _ _ _ (record_fctx_params_ass _ _ Hass) (record_fctx_sem _ Hk') HΓ Hi).
+        exists i; left; exact (closed_app_valid _ _ _ _ _ (record_fctx_params_ass _ _ Hass) (record_fctx_sem _ Hk') HΓ Hi).
       + intros Hp; pose proof (HT _ _ _ HT') as H; rewrite Hp in H.
         exact (closed_app_valid _ _ _ _ _ (record_fctx_params_ass _ _ Hass) (record_fctx_sem _ Hk') HΓ H).
     - rewrite (record_ctx_param_at k _ Hk Hge) in Hs.
@@ -1025,7 +1026,7 @@ Section RecordModel.
     destruct (rel_sub_under_ctx_simple Hτ) as (RΓ0 & HRΓ0 & RΔ0 & HRΔ0 & Hs).
     assert (E0 : RΓ <~> RΓ0) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct (Hs _ _ (proj1 (E0 _ _) HE)) as (y1 & y2 & Ey1 & Ey2 & Hy).
-    assert (Hrel : forall Δ1 T Δ2, record_params R = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i)
+    assert (Hrel : forall Δ1 T Δ2, record_params R = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ Γ) T i)
       by exact (closed_relevant_over _ _ Hass record_params_sem HΓ HPr).
     assert (HlP : List.length (List.rev (record_params R)) = List.length Ns) by (rewrite List.length_rev; lia).
     assert (HPΔ : PER RΔ0) by (eapply per_env_PER; exact HRΔ0).

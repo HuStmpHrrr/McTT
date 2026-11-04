@@ -2005,7 +2005,7 @@ Section SelfElim.
         refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
         intros Δ1 T0 Δ2 E0 HΔ1.
         destruct (BSv branch_context_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv Δ1 T0 Δ2 E0) as [i0 HT0].
-        rewrite HΔ1, Hr in HT0; exists i0; exact HT0. }
+        rewrite HΔ1, Hr in HT0; exists i0; left; exact HT0. }
       assert (Hpr : forall x, x < List.length K0 -> branch_context_entry_relevance D gs x = propositional -> entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
       { intros x Hx Hr.
         refine (prop_entry_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).

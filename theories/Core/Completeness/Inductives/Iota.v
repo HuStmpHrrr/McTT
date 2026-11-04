@@ -1196,7 +1196,7 @@ Section BranchSorts.
         rewrite Hrf; cbn [relevance_sort].
         assert (Ep : im_params D Mm = X1' ++ ce_ass A :: (X2 ++ ind_uparams D))
           by (unfold im_params; rewrite Enp, <- List.app_assoc; reflexivity).
-        destruct (im_params_relevant D HD m Mm HMm X1' A (X2 ++ ind_uparams D) Ep) as [j Hj].
+        destruct (im_nparams_typed D HD m Mm HMm X1' A X2 Enp) as [j Hj].
         exists j; split; [| exact Hj ].
         pose proof (valid_ind_decl_params _ HD _ _ HMm) as HP0; rewrite Ep in HP0.
         exact (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HP0)). }
@@ -1929,15 +1929,13 @@ Section Iota.
       { intros x Hx Hr; rewrite List.app_assoc.
         refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT' e1 e1 He11).
         intros Δ1 T0 Δ2 E0 HΔ1.
-        destruct (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 T0 Δ2 E0 HΔ1) as [i0 HT0].
-        unfold rf in Hr; rewrite Hr in HT0; exists i0; exact HT0. }
+        unfold rf in Hr; exact (proj1 (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 T0 Δ2 E0 HΔ1) Hr). }
       assert (Hpr : forall x, x < n -> rf x = propositional ->
                       entry_propositional gc_deps gc_stack (cargs_strat gs1 ++ im_params D Mm ++ Γ) e1 x).
       { intros x Hx Hr; rewrite List.app_assoc.
         refine (prop_entry_propositional K0 Γ RT x HK0a Hx _ HRT' e1 e1 He11).
         intros Δ1 T0 Δ2 E0 HΔ1.
-        destruct (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 T0 Δ2 E0 HΔ1) as [i0 HT0].
-        unfold rf in Hr; rewrite Hr in HT0; exact HT0. }
+        unfold rf in Hr; exact (proj2 (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 T0 Δ2 E0 HΔ1) Hr). }
       assert (ETg : cargs_strat gs1 ++ im_params D Mm ++ Γ = List.rev (List.rev K0) ++ Γ)
         by (rewrite List.rev_involutive; unfold K0; rewrite <- List.app_assoc; reflexivity).
       rewrite Eσ, ETg in Ee1; rewrite ETg in Hdec, Hpr.
@@ -2139,7 +2137,7 @@ Section Iota.
         refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
         intros Δ1 T0 Δ2 E0 HΔ1.
         destruct (branch_context_entry_sort Δ1 T0 Δ2 E0) as [i0 HT0].
-        rewrite HΔ1, Hr in HT0; exists i0; exact HT0. }
+        rewrite HΔ1, Hr in HT0; exists i0; left; exact HT0. }
       assert (Hpr : forall x, x < List.length K0 -> branch_context_entry_relevance x = propositional -> entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
       { intros x Hx Hr.
         refine (prop_entry_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).

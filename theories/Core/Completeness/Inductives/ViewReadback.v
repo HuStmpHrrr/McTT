@@ -371,7 +371,7 @@ Qed.
     [Γ0] equal as substitutions: their values at related environments
     related at [C]'s telescope. *)
 Lemma closed_instance_gargs : forall C Γ0 Ms Ms' RΓ0, tele_ass C -> ⊨ C -> ⊨ Γ0 -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 ->
-    (exists l, forall Δ1 T Δ2, C = Δ1 ++ ce_ass T :: Δ2 -> Δ2 ⊨ T : Typeω@l) ->
+    (exists l, rel_params_relevant ⋅ C l) ->
     Γ0 ⊨ˢ sb_of_list Id Ms ≈ sb_of_list Id Ms' : C ++ Γ0 -> List.length Ms = List.length C -> List.length Ms' = List.length C ->
     forall ρ ρ', RΓ0 ρ ρ' -> exists ms ms', ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ Ms' ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ ms' /\
       per_gargs (List.rev C) nil nil ms ms'.
@@ -406,7 +406,7 @@ Qed.
     [σ] at [ρ], against their values at the value of [σ], related at
     [C]'s telescope. *)
 Lemma closed_instance_moved_gargs : forall C Γ0 Vs, tele_ass C -> ⊨ C -> ⊨ Γ0 ->
-    (exists l, forall Δ1 T Δ2, C = Δ1 ++ ce_ass T :: Δ2 -> Δ2 ⊨ T : Typeω@l) ->
+    (exists l, rel_params_relevant ⋅ C l) ->
     List.length Vs = List.length C ->
     Γ0 ⊨ˢ sb_of_list Id Vs ≈ sb_of_list Id Vs : C ++ Γ0 ->
     sub_link Γ0 (C ++ Γ0) (sb_of_list Id Vs) ->
