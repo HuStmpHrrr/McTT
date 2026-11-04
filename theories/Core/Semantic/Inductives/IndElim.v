@@ -106,7 +106,7 @@ Section Fixed_GCtx.
   Proof.
     intros * H; unfold fam_cod in H; inversion H; subst;
       match goal with H1 : ⟦ #1 ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H1; subst end;
-      try (match goal with Hr : arg_relevance _ _ _ = propositional |- _ => cbn in Hr; discriminate Hr end).
+      try (match goal with Hr : arg_kind _ _ _ = ak_propositional |- _ => cbn in Hr; discriminate Hr end).
     all: match goal with H0 : ⟦ #0 ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H0; subst end.
     all: match goal with Ha : $| _ & _ | _ ⍮ _ ↘ _ |- _ => cbn in Ha; inversion Ha; subst; assumption end.
   Qed.
@@ -185,11 +185,11 @@ Section Fixed_GCtx.
   Proof.
     intros * Hn Hw HB.
     replace (ns ++ ws ++ ys ++ c :: nil) with ((ns ++ ws ++ ys) ++ c :: nil) by (rewrite <- !List.app_assoc; reflexivity).
-    apply components_env_snoc_nth.
+    apply components_env_snoc_nth with (κ := ak_relevant).
     rewrite !List.length_app, List.nth_error_app2 by (rewrite List.length_rev; lia).
     rewrite List.length_rev, List.nth_error_app2
-      by (unfold cargs_nonrec_tele; rewrite List.length_map; lia).
-    unfold cargs_nonrec_tele, shape_doms_tele; rewrite List.length_map.
+      by (rewrite length_cargs_nonrec_tele; lia).
+    rewrite length_cargs_nonrec_tele; unfold shape_doms_tele.
     replace (List.length ns + (List.length ws + List.length ys) - List.length (im_nparams Mm) - List.length (cargs_nonrec gs1))
       with (List.length ys) by lia.
     rewrite List.nth_error_map, HB; reflexivity.
@@ -273,11 +273,11 @@ Section Fixed_GCtx.
       by (apply List.Forall_rev; exact (grp_tele_ass_nparams _ Hass _ _ HM)).
     apply tele_entries_readable; [| lia ].
     intros i e v He Hv.
-    destruct (proj1 (List.Forall_forall _ _) Hta e (List.nth_error_In _ _ He)) as [A ->].
+    destruct (proj1 (List.Forall_forall _ _) Hta e (List.nth_error_In _ _ He)) as (κ & A & ->).
     assert (Hi : i < List.length ns) by (rewrite Ll; apply List.nth_error_Some; congruence).
     destruct (nth_error_lt_some' ns i Hi) as [x Hx].
     pose proof (tele_prefix_rel_of_full _ _ _ _ i Hn ltac:(lia)) as Hp.
-    pose proof (adm_nparam_types _ _ _ _ _ _ Ha j Mj i A _ _ HM He Hp) as Hc.
+    pose proof (adm_nparam_types _ _ _ _ _ _ Ha j Mj i κ A _ _ HM He Hp) as Hc.
     exists A; split; [ reflexivity | exact (component_elem_readable_at_admissible_base _ _ _ _ _ _ Hc (Hr _ _ _ Hx Hv)) ].
   Qed.
 
@@ -839,9 +839,9 @@ Section Fixed_GCtx.
           pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hy1) as (_ & Ly1 & _).
           pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hy2) as (_ & Ly2 & _).
           econstructor;
-            [ eapply eval_app_neut, eval_fam_cod_shfam;
+            [ eapply eval_app_neut; [ constructor | eapply eval_fam_cod_shfam ];
               rewrite <- (components_env_shape_snoc _ _ _ _ _ _ _ _ _ _ Ln1 Lw1 ltac:(rewrite Ly1; exact HB)); exact Ea1'
-            | eapply eval_app_neut, eval_fam_cod_shfam;
+            | eapply eval_app_neut; [ constructor | eapply eval_fam_cod_shfam ];
               rewrite <- (components_env_shape_snoc _ _ _ _ _ _ _ _ _ _ Ln2 Lw2 ltac:(rewrite Ly2; exact HB)); exact Ea2' |].
           replace ((ns1 ++ ws1 ++ ys1) ++ c0 :: nil) with (ns1 ++ ws1 ++ (ys1 ++ c0 :: nil)) by (rewrite <- !List.app_assoc; reflexivity).
           replace ((ns2 ++ ws2 ++ ys2) ++ c0' :: nil) with (ns2 ++ ws2 ++ (ys2 ++ c0' :: nil)) by (rewrite <- !List.app_assoc; reflexivity).
@@ -877,8 +877,8 @@ Section Fixed_GCtx.
         ⟦ B ⟧ gc_deps ⍮ gc_stack ⍮ components_env D X Ts pre ↘ b ->
         ⟦ B ⟧ gc_deps ⍮ gc_stack ⍮ components_env D Y Ts pre' ↘ b' ->
         (forall c c', dr k pre Ts B c c' -> Dom ⇓ b c ≈ ⇓ b' c' ∈ per_top) ->
-        (forall c c', dr k pre Ts B c c' -> shape_doms_ok X Y k (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t) ->
-        domain_relevance b = relevant -> domain_relevance b' = relevant ->
+        (forall c c', dr k pre Ts B c c' -> shape_doms_ok X Y k (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t) ->
+        domain_kind b = ak_relevant -> domain_kind b' = ak_relevant ->
         (** the two values read back alike as types *)
         Dom b ≈ b' ∈ per_top_typ ->
         (** and their variables are related: the arguments η-directed
@@ -994,7 +994,7 @@ Section Fixed_GCtx.
     | cargs_doms_ok_nil : forall pre pre' Ts, cargs_doms_ok X Y k pre pre' Ts nil nil nil
     (** A non-recursive argument joins the prefixes, at its type *)
     | cargs_doms_ok_arg : forall pre pre' Ts rA A gs v v' vs vs',
-        cargs_doms_ok X Y k (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass A :: nil) gs vs vs' ->
+        cargs_doms_ok X Y k (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass rA A :: nil) gs vs vs' ->
         cargs_doms_ok X Y k pre pre' Ts (ca_arg rA A :: gs) (v :: vs) (v' :: vs')
     (** A recursive argument's shape *)
     | cargs_doms_ok_rec : forall pre pre' Ts t gs v v' vs vs',
@@ -1261,9 +1261,9 @@ Section Fixed_GCtx.
           type of a universe, do *)
       | rec_result_pi : forall pre pre' Ts B t v v' rs rs',
           (forall c c', dr k pre Ts B c c' ->
-             rec_result_app_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t v c v' c' rs rs') ->
-          List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) rs ->
-          List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) rs' ->
+             rec_result_app_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t v c v' c' rs rs') ->
+          List.Forall (fun r => arg_kind gc_deps gc_stack r = ak_relevant) rs ->
+          List.Forall (fun r => arg_kind gc_deps gc_stack r = ak_relevant) rs' ->
           rec_result_rel k u u' pre pre' Ts (pt_pi B t) v v' rs rs'
       with rec_result_app_rel (k : nat) (u u' : list domain) :
           list domain -> list domain -> list centry -> ptyp -> domain -> domain -> domain -> domain -> list domain -> list domain -> Prop :=
@@ -1284,7 +1284,7 @@ Section Fixed_GCtx.
       | rec_results_nil : forall pre pre' Ts, rec_results_rel k u u' pre pre' Ts nil nil nil nil nil
       (** A non-recursive argument joins the prefixes, at its type *)
       | rec_results_arg : forall pre pre' Ts rA A gs v v' vs vs' ihs ihs',
-          rec_results_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass A :: nil) gs vs vs' ihs ihs' ->
+          rec_results_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass rA A :: nil) gs vs vs' ihs ihs' ->
           rec_results_rel k u u' pre pre' Ts (ca_arg rA A :: gs) (v :: vs) (v' :: vs') ihs ihs'
       (** A recursive argument's results, one per leaf path, are related *)
       | rec_results_rec : forall pre pre' Ts t gs v v' vs vs' rs rs' ihs ihs',
@@ -1603,20 +1603,20 @@ Section Fixed_GCtx.
           the domain, or the eliminator's result function. *)
       Lemma leaf_results_pi_relevant : forall (l : list nat) bs out out' b b' f f' ρ ρ' B t,
           leaf_results bs
-            (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua ρ B t i f ⦂ entry_type_none) fam_cod) l)
-            (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub ρ' B t i f' ⦂ entry_type_none) fam_cod) l)
+            (List.map (fun i => Πᵈ{ak_relevant} b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua ρ B t i f ⦂ entry_type_none) fam_cod) l)
+            (List.map (fun i => Πᵈ{ak_relevant} b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub ρ' B t i f' ⦂ entry_type_none) fam_cod) l)
             (List.map (fun i => d_ihfn ρa Bksa p ua t i f) l) (List.map (fun i => d_ihfn ρb Bksb p ub t i f') l) out out' ->
-          domain_relevance b = relevant -> domain_relevance b' = relevant ->
-          List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) out /\
-          List.Forall (fun r => arg_relevance gc_deps gc_stack r = relevant) out'.
+          domain_kind b = ak_relevant -> domain_kind b' = ak_relevant ->
+          List.Forall (fun r => arg_kind gc_deps gc_stack r = ak_relevant) out /\
+          List.Forall (fun r => arg_kind gc_deps gc_stack r = ak_relevant) out'.
       Proof.
         induction l as [| x l IH]; intros * H Hb Hb'; cbn [List.map] in H.
         - inversion H; subst; split; constructor.
         - inversion H as [| bs0 ? ? ? ? ? ? ? ? e e' o o' He H0 | bs0 ? ? ? ? ? ? ? ? o o' H0]; subst;
             destruct (IH _ _ _ _ _ _ _ _ _ _ _ H0 Hb Hb') as [F1 F2]; (split; constructor; [| exact F1 | | exact F2 ]);
             try reflexivity.
-          + cbn [domain_relevance arg_relevance]; exact Hb.
-          + cbn [domain_relevance arg_relevance]; exact Hb'.
+          + cbn [domain_kind arg_kind]; exact Hb.
+          + cbn [domain_kind arg_kind]; exact Hb'.
       Qed.
 
       (** The results of a function shape along its paths, applied to
@@ -1624,8 +1624,8 @@ Section Fixed_GCtx.
           rest at the function's values there. *)
       Lemma leaf_results_apply : forall (l : list nat) bs out out' b b' f f' fc fc' c c' ρ ρ' B t tc tc' rc rc',
           leaf_results bs
-            (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua ρ B t i f ⦂ entry_type_none) fam_cod) l)
-            (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub ρ' B t i f' ⦂ entry_type_none) fam_cod) l)
+            (List.map (fun i => Πᵈ{ak_relevant} b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua ρ B t i f ⦂ entry_type_none) fam_cod) l)
+            (List.map (fun i => Πᵈ{ak_relevant} b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub ρ' B t i f' ⦂ entry_type_none) fam_cod) l)
             (List.map (fun i => d_ihfn ρa Bksa p ua t i f) l) (List.map (fun i => d_ihfn ρb Bksb p ub t i f') l) out out' ->
           $| f & c | gc_deps ⍮ gc_stack ↘ fc -> $| f' & c' | gc_deps ⍮ gc_stack ↘ fc' ->
           ⟦ihty fc of t at p ua under ρa (blocks_motives Bksa) ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ c ⦂ entry_type_closure B ρ ↘ tc ->
@@ -1646,8 +1646,8 @@ Section Fixed_GCtx.
                         ltac:(intros i0 Hi0; apply Hi; right; exact Hi0) Htop) as (oc & oc' & F1 & F2 & Hr).
           + exists (⇑ (List.nth x tc d_True) (e $ᵈ ⇓ b c) :: oc), (⇑ (List.nth x tc' d_True) (e' $ᵈ ⇓ b' c') :: oc').
             split; [| split ]; [ constructor; [| exact F1 ] | constructor; [| exact F2 ] | constructor; [| exact Hr ] ].
-            * apply eval_app_neut; eapply eval_fam_cod_ihfam; [ exact Ef | exact Tc | apply List.nth_error_nth'; exact L1 ].
-            * apply eval_app_neut; eapply eval_fam_cod_ihfam; [ exact Ef' | exact Tc' | apply List.nth_error_nth'; exact L2 ].
+            * apply eval_app_neut; [ constructor |]; eapply eval_fam_cod_ihfam; [ exact Ef | exact Tc | apply List.nth_error_nth'; exact L1 ].
+            * apply eval_app_neut; [ constructor |]; eapply eval_fam_cod_ihfam; [ exact Ef' | exact Tc' | apply List.nth_error_nth'; exact L2 ].
             * exact (per_bot_app _ _ _ _ He Htop).
           + exists (List.nth x rc d_True :: oc), (List.nth x rc' d_True :: oc').
             split; [| split ]; [ constructor; [| exact F1 ] | constructor; [| exact F2 ] | constructor; exact Hr ].
@@ -1721,7 +1721,7 @@ Section Fixed_GCtx.
           destruct (IH eq_refl eq_refl ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                       ltac:(assumption) ltac:(assumption) ltac:(assumption) bs Hbs)
             as [tya tyb resa resb Ta Tb Ra Rb La Lb Lc Ld Hr].
-          rewrite (components_env_snoc _ _ _ _ _ _ Lp) in Ta; rewrite (components_env_snoc _ _ _ _ _ _ Lp') in Tb.
+          rewrite (components_env_snoc _ _ _ _ _ _ _ Lp) in Ta; rewrite (components_env_snoc _ _ _ _ _ _ _ Lp') in Tb.
           refine (mk_ihs_pair _ _ _ _ _ _ _ tya tyb resa resb _ _ _ _ La Lb Lc Ld _);
             [ constructor; exact Ta | constructor; exact Tb | constructor; exact Ra | constructor; exact Rb |].
           intros out out' Ho; constructor; exact (Hr _ _ Ho).
@@ -1799,10 +1799,10 @@ Section Fixed_GCtx.
           pose proof (leaf_flags_ok_length _ _ _ Hbs) as Lbs; rewrite length_shape_mems in Lbs.
           set (N := List.length (shape_leaves (rview_leaves D) 0 t)) in *.
           refine (mk_ih_pair _ _ _ _ _ _ _
-                    (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua (components_env D ua Ts pre) B t i f
+                    (List.map (fun i => Πᵈ{ak_relevant} b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua (components_env D ua Ts pre) B t i f
                                                  ⦂ entry_type_none) fam_cod)
                        (List.seq 0 N))
-                    (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub (components_env D ub Ts pre') B t i f'
+                    (List.map (fun i => Πᵈ{ak_relevant} b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub (components_env D ub Ts pre') B t i f'
                                                   ⦂ entry_type_none) fam_cod)
                        (List.seq 0 N))
                     (List.map (fun i => d_ihfn ρa Bksa p ua t i f) (List.seq 0 N))
@@ -1819,7 +1819,7 @@ Section Fixed_GCtx.
           destruct (IH c c' Hcc fc fc' Ef Ef' eq_refl eq_refl ltac:(rewrite !List.length_app; cbn; lia)
                       ltac:(rewrite !List.length_app; cbn; lia) Hf Hf' (Hrest c c' Hcc) bs Hbs)
             as [tyc tyc' rc rc' Tc Tc' Rc Rc' Lc1 Lc2 Lc3 Lc4 Hrc].
-          rewrite (components_env_snoc _ _ _ _ _ _ Lp) in Tc; rewrite (components_env_snoc _ _ _ _ _ _ Lp') in Tc'.
+          rewrite (components_env_snoc _ _ _ _ _ _ _ Lp) in Tc; rewrite (components_env_snoc _ _ _ _ _ _ _ Lp') in Tc'.
           destruct (leaf_results_apply (List.seq 0 N) bs out out' b b' f f' fc fc' c c' _ _ B t tyc tyc' rc rc' Ho Ef Ef'
                       Tc Tc' Rc Rc' ltac:(intros x Hx; apply List.in_seq in Hx; lia) (Htop c c' Hcc))
             as (oc & oc' & F1 & F2 & Hoc).
@@ -1870,7 +1870,7 @@ Section Fixed_GCtx.
       Lemma rec_arg_rel_pi_inv : forall k u u' pre pre' Ts B t f f',
           rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts (pt_pi B t) f f' ->
           forall c c', dr k pre Ts B c c' -> exists r r', $| f & c | gc_deps ⍮ gc_stack ↘ r /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ r' /\
-            rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t r r'.
+            rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t r r'.
       Proof using.
         intros * H c c' Hc; inversion H as [| ? ? ? ? ? ? ? ? ? ? Hf _ _]; subst.
         destruct (Hf c c' Hc) as [? ? r ? ? r' ? ? ? ? ? ? ? Er Er' Hr]; exists r, r'; auto.
@@ -1886,7 +1886,7 @@ Section Fixed_GCtx.
       (** A non-recursive argument joins the prefixes. *)
       Lemma con_args_rel_arg_inv : forall k u u' pre pre' Ts r A gs v v' vs vs',
           con_args_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts (ca_arg r A :: gs) (v :: vs) (v' :: vs') ->
-          con_args_rel p D (admissible_index_at D ups nr) nr ar dr k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass A :: nil) gs vs vs'.
+          con_args_rel p D (admissible_index_at D ups nr) nr ar dr k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass r A :: nil) gs vs vs'.
       Proof using. intros * H; inversion H; subst; assumption. Qed.
 
       (** A recursive argument, by its shape, then the rest. *)
@@ -1899,7 +1899,7 @@ Section Fixed_GCtx.
       (** Likewise of the domains. *)
       Lemma cargs_doms_ok_arg_inv : forall X Y k pre pre' Ts r A gs v v' vs vs',
           cargs_doms_ok X Y k pre pre' Ts (ca_arg r A :: gs) (v :: vs) (v' :: vs') ->
-          cargs_doms_ok X Y k (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass A :: nil) gs vs vs'.
+          cargs_doms_ok X Y k (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass r A :: nil) gs vs vs'.
       Proof using. intros * H; inversion H; subst; assumption. Qed.
 
       Lemma cargs_doms_ok_rec_inv : forall X Y k pre pre' Ts t gs v v' vs vs',
@@ -1911,7 +1911,7 @@ Section Fixed_GCtx.
       Lemma shape_doms_ok_pi_inv : forall X Y k pre pre' Ts B t, shape_doms_ok X Y k pre pre' Ts (pt_pi B t) ->
           exists b b', ⟦ B ⟧ gc_deps ⍮ gc_stack ⍮ components_env D X Ts pre ↘ b /\
             ⟦ B ⟧ gc_deps ⍮ gc_stack ⍮ components_env D Y Ts pre' ↘ b' /\
-            (forall c c', dr k pre Ts B c c' -> shape_doms_ok X Y k (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t) /\
+            (forall c c', dr k pre Ts B c c' -> shape_doms_ok X Y k (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t) /\
             Dom b ≈ b' ∈ per_top_typ /\ (forall s, dr k pre Ts B (⇑! b s) (⇑! b' s)).
       Proof using.
         intros * H; inversion H as [| ? ? ? ? ? b b' Eb Eb' _ Hrest _ _ Hty Hvar]; subst.
@@ -1976,12 +1976,12 @@ Section Fixed_GCtx.
                                                   entry_type_closure B (components_env D ub Ts pre')) t))).
           { intros s.
             destruct (rec_arg_rel_pi_inv _ _ _ _ _ _ _ _ _ _ Hr _ _ (Hvar s)) as (r & r' & Er & Er' & Hr').
-            assert (L1 : List.length (pre ++ ⇑! b s :: nil) = List.length (Ts ++ ce_ass B :: nil))
+            assert (L1 : List.length (pre ++ ⇑! b s :: nil) = List.length (Ts ++ ce_ass ak_relevant B :: nil))
               by (rewrite !List.length_app, Lp; reflexivity).
-            assert (L2 : List.length (pre' ++ ⇑! b' s :: nil) = List.length (Ts ++ ce_ass B :: nil))
+            assert (L2 : List.length (pre' ++ ⇑! b' s :: nil) = List.length (Ts ++ ce_ass ak_relevant B :: nil))
               by (rewrite !List.length_app, Lp'; reflexivity).
             destruct (IH _ _ _ _ _ _ _ _ Hau Hau' L1 L2 Hr' (Hrest _ _ (Hvar s))) as [IHa IHb].
-            rewrite (components_env_snoc _ _ _ _ _ _ Lp) in IHa; rewrite (components_env_snoc _ _ _ _ _ _ Lp') in IHb.
+            rewrite (components_env_snoc _ _ _ _ _ _ _ Lp) in IHa; rewrite (components_env_snoc _ _ _ _ _ _ _ Lp') in IHb.
             exists r, r'; split; [ exact Er | split; [ exact Er' | split; [ exact IHa | exact IHb ] ] ]. }
           split; intros s; destruct (Hext s) as (r & r' & Er & Er' & Ra & Rb);
             destruct (Hty s) as [A A' RA RA' _].
@@ -1989,12 +1989,12 @@ Section Fixed_GCtx.
             eexists; eapply read_entry_term;
               [ apply eval_entry_type_shape, eval_shape_type_pi; exact Eb
               | eapply read_typ_pi; [ exact RA | eapply eval_fam_cod_shfam; eassumption | exact RC ]
-              | eapply read_nf_fn; [ exact RA | exact Er | eapply eval_fam_cod_shfam; eassumption | exact RW ] ].
+              | eapply read_nf_fn; [ constructor | exact RA | exact Er | eapply eval_fam_cod_shfam; eassumption | exact RW ] ].
           + destruct (entry_readable_term_at _ _ (S s) Rb) as (c & C & W & Ec & RC & RW); inversion Ec; subst.
             eexists; eapply read_entry_term;
               [ apply eval_entry_type_shape, eval_shape_type_pi; exact Eb'
               | eapply read_typ_pi; [ exact RA' | eapply eval_fam_cod_shfam; eassumption | exact RC ]
-              | eapply read_nf_fn; [ exact RA' | exact Er' | eapply eval_fam_cod_shfam; eassumption | exact RW ] ].
+              | eapply read_nf_fn; [ constructor | exact RA' | exact Er' | eapply eval_fam_cod_shfam; eassumption | exact RW ] ].
       Qed.
 
       Scheme rec_result_rel_readable_ind := Minimality for rec_result_rel Sort Prop
@@ -2107,7 +2107,7 @@ Section Fixed_GCtx.
           destruct (shape_doms_ok_pi_inv _ _ _ _ _ _ _ _ Hd) as (b & b' & Eb & Eb' & Hrest & Hty & Hvar).
           assert (Hf : forall c c', dr k pre Ts B c c' ->
                      rec_arg_app_rel p D (admissible_index_at D ups nr) nr ar dr k u u' (pre ++ c :: nil) (pre' ++ c' :: nil)
-                       (Ts ++ ce_ass B :: nil) t v c v' c').
+                       (Ts ++ ce_ass ak_relevant B :: nil) t v c v' c').
           { intros c c' Hc; destruct (rec_arg_rel_pi_inv _ _ _ _ _ _ _ _ _ _ Hr _ _ Hc) as (r & r' & Er & Er' & Hr').
             econstructor; [ exact Er | exact Er' | exact Hr' ]. }
           assert (Hext : forall s, exists fc fc' rcs rcs' as1 as2,
@@ -2121,13 +2121,13 @@ Section Fixed_GCtx.
                      List.Forall2 (fun r a => entry_readable (de_term r (entry_type_value a))) rcs as1 /\
                      List.Forall2 (fun r a => entry_readable (de_term r (entry_type_value a))) rcs' as2).
           { intros s.
-            assert (L1 : List.length (pre ++ ⇑! b s :: nil) = List.length (Ts ++ ce_ass B :: nil))
+            assert (L1 : List.length (pre ++ ⇑! b s :: nil) = List.length (Ts ++ ce_ass ak_relevant B :: nil))
               by (rewrite !List.length_app, Lp; reflexivity).
-            assert (L2 : List.length (pre' ++ ⇑! b' s :: nil) = List.length (Ts ++ ce_ass B :: nil))
+            assert (L2 : List.length (pre' ++ ⇑! b' s :: nil) = List.length (Ts ++ ce_ass ak_relevant B :: nil))
               by (rewrite !List.length_app, Lp'; reflexivity).
             destruct (IH _ _ (Hvar s) Hau Hau' L1 L2 (Hf _ _ (Hvar s)) (Hrest _ _ (Hvar s)))
               as (fc & fc' & rcs & rcs' & as1 & as2 & Ef & Ef' & F1 & F2 & T1 & T2 & R1 & R2).
-            rewrite (components_env_snoc _ _ _ _ _ _ Lp) in T1; rewrite (components_env_snoc _ _ _ _ _ _ Lp') in T2.
+            rewrite (components_env_snoc _ _ _ _ _ _ _ Lp) in T1; rewrite (components_env_snoc _ _ _ _ _ _ _ Lp') in T2.
             exists fc, fc', rcs, rcs', as1, as2; repeat split; assumption. }
           set (N := List.length (shape_leaves (rview_leaves D) 0 t)).
           assert (LN : List.length rs = N /\ List.length rs' = N).
@@ -2138,9 +2138,9 @@ Section Fixed_GCtx.
               pose proof (List.Forall2_length R1); pose proof (List.Forall2_length R2).
             unfold N; split; congruence. }
           destruct LN as [LN LN'].
-          exists (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua (components_env D ua Ts pre) B t i v
+          exists (List.map (fun i => Πᵈ{ak_relevant} b (nil ↦ d_ihfam ρa (blocks_motives Bksa) p ua (components_env D ua Ts pre) B t i v
                                              ⦂ entry_type_none) fam_cod) (List.seq 0 N)),
-                 (List.map (fun i => Πᵈ b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub (components_env D ub Ts pre') B t i v'
+                 (List.map (fun i => Πᵈ{ak_relevant} b' (nil ↦ d_ihfam ρb (blocks_motives Bksb) p ub (components_env D ub Ts pre') B t i v'
                                              ⦂ entry_type_none) fam_cod) (List.seq 0 N)).
           split; [ eapply eval_ihty_pi; [ exact Hl | exact Eb ] | split; [ eapply eval_ihty_pi; [ exact Hl | exact Eb' ] | split ] ].
           + rewrite <- LN; apply forall2_map_seq; intros n r Hri s; cbn [Nat.add].
@@ -2152,7 +2152,7 @@ Section Fixed_GCtx.
             eexists; eapply read_entry_term;
               [ apply eval_entry_type_value
               | eapply read_typ_pi; [ exact RA | eapply eval_fam_cod_ihfam; [ exact Ef | exact T1 | exact Hai ] | exact RC ]
-              | eapply read_nf_fn; [ exact RA | exact Erc | eapply eval_fam_cod_ihfam; [ exact Ef | exact T1 | exact Hai ] | exact RW ] ].
+              | eapply read_nf_fn; [ constructor | exact RA | exact Erc | eapply eval_fam_cod_ihfam; [ exact Ef | exact T1 | exact Hai ] | exact RW ] ].
           + rewrite <- LN'; apply forall2_map_seq; intros n r Hri s; cbn [Nat.add].
             destruct (Hext s) as (fc & fc' & rcs & rcs' & as1 & as2 & _ & Ef & _ & F2 & _ & T2 & _ & R2).
             destruct (forall2_nth_left _ _ _ _ _ F2 Hri) as (rc & Hrc & Erc).
@@ -2162,7 +2162,7 @@ Section Fixed_GCtx.
             eexists; eapply read_entry_term;
               [ apply eval_entry_type_value
               | eapply read_typ_pi; [ exact RA' | eapply eval_fam_cod_ihfam; [ exact Ef | exact T2 | exact Hai ] | exact RC ]
-              | eapply read_nf_fn; [ exact RA' | exact Erc | eapply eval_fam_cod_ihfam; [ exact Ef | exact T2 | exact Hai ] | exact RW ] ].
+              | eapply read_nf_fn; [ constructor | exact RA' | exact Erc | eapply eval_fam_cod_ihfam; [ exact Ef | exact T2 | exact Hai ] | exact RW ] ].
         - (** An application: the rest at the function's values. *)
           intros k u u' pre pre' Ts t v c v' c' rs rs' fc fc' rcs rcs' Ev Ev' F1 F2 Hres IH Hau Hau' Lp Lp' Ha Hd.
           destruct (rec_arg_app_rel_inv _ _ _ _ _ _ _ _ _ _ _ Ha) as (r & r' & Er & Er' & Hr).
@@ -2173,13 +2173,13 @@ Section Fixed_GCtx.
           intros; exists nil, nil; split; [ constructor | split; [ constructor | split; constructor ] ].
         - (** A non-recursive argument joins the prefixes. *)
           intros k u u' pre pre' Ts rA A gs v v' vs vs' ihs ihs' _ IH Hau Hau' Lp Lp' Hc Hd.
-          assert (L1 : List.length (pre ++ v :: nil) = List.length (Ts ++ ce_ass A :: nil))
+          assert (L1 : List.length (pre ++ v :: nil) = List.length (Ts ++ ce_ass rA A :: nil))
             by (rewrite !List.length_app, Lp; reflexivity).
-          assert (L2 : List.length (pre' ++ v' :: nil) = List.length (Ts ++ ce_ass A :: nil))
+          assert (L2 : List.length (pre' ++ v' :: nil) = List.length (Ts ++ ce_ass rA A :: nil))
             by (rewrite !List.length_app, Lp'; reflexivity).
           destruct (IH Hau Hau' L1 L2 (con_args_rel_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hc)
                       (cargs_doms_ok_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hd)) as (as1 & as2 & T1 & T2 & R1 & R2).
-          rewrite (components_env_snoc _ _ _ _ _ _ Lp) in T1; rewrite (components_env_snoc _ _ _ _ _ _ Lp') in T2.
+          rewrite (components_env_snoc _ _ _ _ _ _ _ Lp) in T1; rewrite (components_env_snoc _ _ _ _ _ _ _ Lp') in T2.
           exists as1, as2; split; [ constructor; exact T1 | split; [ constructor; exact T2 | split; assumption ] ].
         - (** A recursive argument: its results, then the rest's. *)
           intros k u u' pre pre' Ts t gs v v' vs vs' rs rs' ihs ihs' _ _ _ IHr _ IHrs Hau Hau' Lp Lp' Hc Hd.
@@ -2233,8 +2233,6 @@ Section Fixed_GCtx.
           List.nth_error (cargs_nonrec (gs1 ++ ca_arg r A :: gs2)) (List.length (cargs_nonrec gs1)) = Some A.
       Proof using. intros; rewrite cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity. Qed.
 
-      Lemma cargs_nonrec_tele_app : forall gs1 gs2, cargs_nonrec_tele (gs1 ++ gs2) = cargs_nonrec_tele gs1 ++ cargs_nonrec_tele gs2.
-      Proof using. intros; unfold cargs_nonrec_tele; rewrite cargs_nonrec_app, List.map_app; reflexivity. Qed.
 
       (** The arguments of a constructor at any admissible bases read back
           at the types the branch binds them at, at [ua] and [ub]: a
@@ -2273,9 +2271,9 @@ Section Fixed_GCtx.
           assert (Hvv : ar k ns c (List.length (cargs_nonrec gs1)) pre v v) by (etransitivity; [ exact Hv | symmetry; exact Hv ]).
           (** The type is read among the components before the argument. *)
           assert (LT : List.length (ns ++ pre) = List.length (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1))
-            by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_map; lia).
+            by (rewrite !List.length_app, length_cargs_nonrec_tele; lia).
           assert (LT' : List.length (ns' ++ pre') = List.length (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1))
-            by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_map; lia).
+            by (rewrite !List.length_app, length_cargs_nonrec_tele; lia).
           assert (HTs : List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs
                         = (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1) ++ cargs_nonrec_tele (ca_arg rA A :: gs2))
             by (rewrite Heq, cargs_nonrec_tele_app, List.app_assoc; reflexivity).
@@ -2289,17 +2287,17 @@ Section Fixed_GCtx.
           + exact Hr.
           + rewrite <- prefix_tele_snoc_arg, !List.app_assoc; exact (con_args_rel_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hc').
           + rewrite <- prefix_tele_snoc_arg, !List.app_assoc; exact (cargs_doms_ok_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hd).
-          + rewrite <- prefix_tele_snoc_arg, !List.app_assoc, (components_env_snoc _ _ _ _ _ _ LT) in IHa.
-            rewrite <- prefix_tele_snoc_arg, !List.app_assoc, (components_env_snoc _ _ _ _ _ _ LT') in IHb.
+          + rewrite <- prefix_tele_snoc_arg, !List.app_assoc, (components_env_snoc _ _ _ _ _ _ _ LT) in IHa.
+            rewrite <- prefix_tele_snoc_arg, !List.app_assoc, (components_env_snoc _ _ _ _ _ _ _ LT') in IHb.
             split; cbn [cargs_entries List.map snd]; constructor; assumption.
         - cbn [nonrec_arg_vals] in Hr.
           pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hp) as (Lp & Lp' & _).
           assert (Hn1 : List.length (cargs_nonrec (gs1 ++ ca_rec t :: nil)) = List.length (cargs_nonrec gs1))
             by (rewrite cargs_nonrec_app, List.length_app; cbn; lia).
           assert (LT : List.length (ns ++ pre) = List.length (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1))
-            by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_map; lia).
+            by (rewrite !List.length_app, length_cargs_nonrec_tele; lia).
           assert (LT' : List.length (ns' ++ pre') = List.length (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1))
-            by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_map; lia).
+            by (rewrite !List.length_app, length_cargs_nonrec_tele; lia).
           destruct (con_args_rel_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ Hc') as [Hra Hc2].
           destruct (cargs_doms_ok_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ Hd) as [Hd1 Hd2].
           destruct (shape_elements_readable t _ _ _ _ _ _ _ _ Hau Hau' LT LT' Hra Hd1) as [Rv Rv'].
@@ -2712,7 +2710,7 @@ Section Fixed_GCtx.
       (** The lengths of a prefix of fresh variables and its telescope. *)
       Local Ltac fresh_args_len :=
         rewrite ?List.app_nil_r; repeat rewrite List.length_app in *; cbn [List.length List.firstn] in *;
-        unfold cargs_nonrec_tele in *; rewrite ?List.length_map, ?List.length_rev in *; lia.
+        rewrite ?length_cargs_nonrec_tele, ?List.length_map, ?List.length_rev in *; lia.
 
       Lemma fresh_args : forall v Mv c gsf nsu nsa nsb Dh (rk : nat -> nat) r,
           adm_fresh p D ups nr ar dr ua -> adm_fresh p D ups nr ar dr ub ->
@@ -2747,11 +2745,11 @@ Section Fixed_GCtx.
         - pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hw1) as (Lwu & Lw1 & _).
           pose proof (proj1 (tele_prefix_rel_iff _ _ _ _) Hw2) as (_ & Lw2 & _).
           assert (LTu : List.length (nsu ++ wsu) = List.length (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1))
-            by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_map; lia).
+            by (rewrite !List.length_app, length_cargs_nonrec_tele; lia).
           assert (LT1 : List.length (nsa ++ wsa) = List.length (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1))
-            by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_map; lia).
+            by (rewrite !List.length_app, length_cargs_nonrec_tele; lia).
           assert (LT2 : List.length (nsb ++ wsb) = List.length (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1))
-            by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_map; lia).
+            by (rewrite !List.length_app, length_cargs_nonrec_tele; lia).
           destruct g' as [rA' A' | t']; destruct g as [rA A | t]; cbn in Hk; try contradiction.
           + (** Non-recursive in both. *)
             inversion C1 as [| k0 Ta0 ws0 ws0' ρ0 ρ0' s0 r0 A0 gs0 a0 a1 E0 E1 R1 C1' |]; subst.
@@ -2765,22 +2763,22 @@ Section Fixed_GCtx.
             { rewrite <- List.app_assoc; reflexivity. }
             { exact Hk. }
             { exact Hno. }
-            { rewrite Hk1, cargs_nonrec_tele_snoc_arg, !List.app_assoc, (components_env_snoc _ _ _ _ _ _ LTu),
-                (components_env_snoc _ _ _ _ _ _ LT1); exact C1'. }
-            { rewrite Hk1, cargs_nonrec_tele_snoc_arg, !List.app_assoc, (components_env_snoc _ _ _ _ _ _ LTu),
-                (components_env_snoc _ _ _ _ _ _ LT2); exact C2'. }
+            { rewrite Hk1, cargs_nonrec_tele_snoc_arg, !List.app_assoc, (components_env_snoc _ _ _ _ _ _ _ LTu),
+                (components_env_snoc _ _ _ _ _ _ _ LT1); exact C1'. }
+            { rewrite Hk1, cargs_nonrec_tele_snoc_arg, !List.app_assoc, (components_env_snoc _ _ _ _ _ _ _ LTu),
+                (components_env_snoc _ _ _ _ _ _ _ LT2); exact C2'. }
             { rewrite Hk1; apply tele_prefix_rel_snoc; assumption. }
             { rewrite Hk1; apply tele_prefix_rel_snoc; assumption. }
             rewrite <- !List.app_assoc in P1, P2; cbn in P1, P2.
             (** The telescope and the prefixes, one argument more. *)
             replace (List.rev (im_nparams Mv) ++ cargs_nonrec_tele (gs1 ++ ca_arg rA A :: nil))
-              with ((List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1) ++ ce_ass A :: nil) in F1, F2, I1, I2, Hia, Hir
+              with ((List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1) ++ ce_ass rA A :: nil) in F1, F2, I1, I2, Hia, Hir
               by (rewrite cargs_nonrec_tele_snoc_arg, List.app_assoc; reflexivity).
             replace (nsa ++ wsa ++ ⇑! a1 s :: nil) with ((nsa ++ wsa) ++ ⇑! a1 s :: nil) in F1, I1, Hia, Hir
               by (rewrite List.app_assoc; reflexivity).
             replace (nsb ++ wsb ++ ⇑! a2 s :: nil) with ((nsb ++ wsb) ++ ⇑! a2 s :: nil) in F2, I2, Hia, Hir
               by (rewrite List.app_assoc; reflexivity).
-            rewrite (components_env_snoc _ _ _ _ _ _ LT1) in F1, I1; rewrite (components_env_snoc _ _ _ _ _ _ LT2) in F2, I2.
+            rewrite (components_env_snoc _ _ _ _ _ _ _ LT1) in F1, I1; rewrite (components_env_snoc _ _ _ _ _ _ _ LT2) in F2, I2.
             refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ _ _ (⇑! a1 s :: vsa) (⇑! a2 s :: vsb)
                       ihsa ihsb wa wb wfu
                       _ _ _ _ _ _ _ _ _ _).

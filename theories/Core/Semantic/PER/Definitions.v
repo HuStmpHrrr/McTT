@@ -198,28 +198,28 @@ Definition head_readable (n : nat) (e : dentry) : Prop := entry_readable e /\ en
     so impredicativity costs nothing. *)
 Record per_prop (a a' : domain) : Prop := mk_per_prop
   { (** The left one is a proposition by its head *)
-    per_prop_left : domain_relevance a = propositional
+    per_prop_left : domain_kind a = ak_propositional
     (** So is the right one *)
-  ; per_prop_right : domain_relevance a' = propositional
+  ; per_prop_right : domain_kind a' = ak_propositional
     (** They read back equally at every length *)
   ; per_prop_top : per_top_typ a a' }.
 
-(** The value of the type [A] in [ρ] is of the sort [r]. *)
-Definition rel_typ_sort (A : exp) (ρ : env) (r : relevance) : Prop :=
-  exists a, ⟦ A ⟧ ρ ↘ a /\ domain_relevance a = r.
+(** The value of the type [A] in [ρ] is of the kind [κ]. *)
+Definition rel_typ_kind (A : exp) (ρ : env) (κ : abs_kind) : Prop :=
+  exists a, ⟦ A ⟧ ρ ↘ a /\ domain_kind a = κ.
 
 (** The elements of a [Π] with the domains [a] and [a'], related at
     [in_rel], and the codomains' relations [out_rel]: functions taking
-    arguments of their domains' sorts, applied to related arguments with
-    related results.  The sorts make an application of related functions
+    arguments of their domains' kinds, applied to related arguments with
+    related results.  The kinds make an application of related functions
     evaluate by the same rule ([eval_exp_app] or [eval_exp_app_proof]). *)
 #[warnings="-cannot-define-projection"]
 Record pi_elements (a a' : domain) (in_rel : relation domain)
     (out_rel : forall c c', in_rel c c' -> relation domain) (f f' : domain) : Prop := mk_pi_elements
-  { (** The left function takes arguments of the left domain's sort *)
-    pi_elements_left : arg_relevance gc_deps gc_stack f = domain_relevance a
+  { (** The left function takes arguments of the left domain's kind *)
+    pi_elements_left : arg_kind gc_deps gc_stack f = domain_kind a
     (** The right one, of the right domain's *)
-  ; pi_elements_right : arg_relevance gc_deps gc_stack f' = domain_relevance a'
+  ; pi_elements_right : arg_kind gc_deps gc_stack f' = domain_kind a'
     (** Applied to related arguments, they give related results *)
   ; pi_elements_app : forall c c' (equiv_c_c' : in_rel c c'), rel_mod_app f c f' c' (out_rel c c' equiv_c_c') }.
 
@@ -241,7 +241,7 @@ Hint Constructors per_ne : mctt.
     [∀ (u : Level) → Type@{u}] is none, as its codomain is a universe.
     Every type of levels is also a type of every universe index
     ([per_level_code_univ_elem]), but no element of a universe
-    ([per_relevant_nonlevel]). *)
+    ([per_universe_elements]). *)
 Inductive per_level_code : relation domain -> domain -> domain -> Prop :=
 (** [Level@n], its elements the related levels of sort [n] *)
 | per_level_code_level :
@@ -258,7 +258,7 @@ Inductive per_level_code : relation domain -> domain -> domain -> Prop :=
        (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
            rel_mod_eval per_level_code B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel equiv_c_c')) ->
        (elem_rel <~> pi_elements a a' in_rel (@out_rel)) ->
-       per_level_code elem_rel (Πᵈ a ρ B) (Πᵈ a' ρ' B') }
+       per_level_code elem_rel (Πₗᵈ a ρ B) (Πₗᵈ a' ρ' B') }
 (** A neutral type of levels, its elements the neutrals *)
 | per_level_code_neut :
   `{ forall (elem_rel : relation domain),
@@ -285,7 +285,7 @@ Section Per_level_code_ind_def.
               rel_mod_eval (fun R x y => per_level_code R x y /\ motive R x y)
                 B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel equiv_c_c')) ->
           (elem_rel <~> pi_elements a a' in_rel (@out_rel)) ->
-          motive elem_rel (Πᵈ a ρ B) (Πᵈ a' ρ' B'))
+          motive elem_rel (Πₗᵈ a ρ B) (Πₗᵈ a' ρ' B'))
       (case_neut : forall {b b' elem_rel},
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
@@ -323,28 +323,35 @@ Definition universe_index_large (u : universe_index) : Prop :=
 Lemma universe_index_large_above_small : forall u o, universe_index_large u -> universe_index_lt (us o) u.
 Proof. intros [] ? H; cbn in *; [ contradiction | exact I ]. Qed.
 
-(** The relevant types among those [R] relates that are no types of
-    levels: the elements of a universe.  Propositions are types of every
+(** The elements of a universe: the types [R] relates that are of the
+    relevant kind ([domain_kind]).  Propositions are types of every
     universe index, but not elements of a universe, as [Prop] is not below
     [Type]: the declarations classify their constructors' arguments and
     record fields by their sorts, and an argument whose type is an element
-    of a universe is relevant.  The types of levels are the elements of
-    [LevelSort] only, so that the sorts are disjoint: [⋅ ⊨ Level@0 :
-    Type@0] fails in the model, as it does in the syntax.  [LevelSort]
-    itself is an element of [Typeω@0] ([wf_level_sort]), and so is
-    [∀ (u : Level) → Type@{u}] of a universe large enough: neither is a
-    type of levels. *)
-Record per_relevant_nonlevel (R : relation domain) (a a' : domain) : Prop := mk_per_relevant_nonlevel
+    of a universe is relevant.  The types of levels are of the kind of
+    levels, so the elements of [LevelSort] only, and the sorts are
+    disjoint: [⋅ ⊨ Level@0 : Type@0] fails in the model, as it does in the
+    syntax ([relevant_kind_not_level_code]).  [LevelSort] itself is an
+    element of [Typeω@0] ([wf_level_sort]), and so is
+    [∀ (u : Level) → Type@{u}] of a universe large enough: both are of the
+    relevant kind. *)
+Record per_universe_elements (R : relation domain) (a a' : domain) : Prop := mk_per_universe_elements
   { (** [R] relates them *)
-    per_relevant_nonlevel_rel : R a a'
-    (** The left one is relevant *)
-  ; per_relevant_nonlevel_left : domain_relevance a = relevant
+    per_universe_elements_rel : R a a'
+    (** The left one is of the relevant kind *)
+  ; per_universe_elements_left : domain_kind a = ak_relevant
     (** So is the right one *)
-  ; per_relevant_nonlevel_right : domain_relevance a' = relevant
-    (** The left one is no type of levels *)
-  ; per_relevant_nonlevel_left_nonlevel : ~ level_code a
-    (** Nor is the right one *)
-  ; per_relevant_nonlevel_right_nonlevel : ~ level_code a' }.
+  ; per_universe_elements_right : domain_kind a' = ak_relevant }.
+
+(** A type of levels is of the kind of levels: none is of the relevant
+    kind. *)
+Lemma per_level_code_kind : forall R a a', per_level_code R a a' -> domain_kind a = ak_level /\ domain_kind a' = ak_level.
+Proof. intros * H; destruct H; split; reflexivity. Qed.
+
+Lemma relevant_kind_not_level_code : forall a, domain_kind a = ak_relevant -> ~ level_code a.
+Proof.
+  intros a Ha (R & a' & [H | H]); apply per_level_code_kind in H as [H1 H2]; congruence.
+Qed.
 
 (** ** Telescopes of Inductive Types
 
@@ -399,19 +406,27 @@ Fixpoint nonrec_arg_vals (gs : list carg) (vs : list domain) : list domain :=
     telescope [Ts] of its declared types, [List.length Ts = List.length
     pre], over the environment of the uniform parameters ([decl_env]). *)
 
-(** The non-recursive arguments of a constructor as a telescope. *)
-Definition cargs_nonrec_tele (gs : list carg) : list centry := List.map ce_ass (cargs_nonrec gs).
+(** The non-recursive arguments of a constructor as a telescope,
+    outermost first, each at its kind ([cargs_strat] reversed). *)
+Fixpoint cargs_nonrec_tele (gs : list carg) : list centry :=
+  match gs with
+  | nil => nil
+  | ca_arg κ A :: gs => ce_ass κ A :: cargs_nonrec_tele gs
+  | ca_rec _ :: gs => cargs_nonrec_tele gs
+  end.
 
-(** The domains of a shape as a telescope. *)
-Definition shape_doms_tele (t : ptyp) : list centry := List.map ce_ass (ptyp_doms t).
+(** The domains of a shape as a telescope, outermost first: types of a
+    universe ([doms_ctx] reversed). *)
+Definition shape_doms_tele (t : ptyp) : list centry := List.map (ce_ass ak_relevant) (ptyp_doms t).
 
 (** The environment of the components [pre], of the telescope [Ts], over
     the uniform parameters [ups] of [D]. *)
 Definition components_env (D : ind_decl) (ups : list domain) (Ts : list centry) (pre : list domain) : env :=
   env_tele (decl_env D ups) Ts pre.
 
-(** The fields of a record as a telescope. *)
-Definition record_fields_tele (R : record_decl) : list centry := List.map (fun fT => ce_ass (snd fT)) (record_fields R).
+(** The fields of a record as a telescope, outermost first, each at its
+    kind ([record_fctx] reversed). *)
+Definition record_fields_tele (R : record_decl) : list centry := List.rev (fields_tele (record_fields R) (record_field_kinds R)).
 
 (** The environment of the parameters [ns] of a record type and the
     projections [vs] of the fields before one. *)
@@ -507,11 +522,11 @@ Record rel_dom_apps (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_
   ; rel_dom_apps_eval_right : ⟦ B ⟧ ρ' ↘ rel_dom_apps_right
     (** Elements related by [R] read back alike at them *)
   ; rel_dom_apps_top : forall x x', R x x' -> per_top (d_dom rel_dom_apps_left x) (d_dom rel_dom_apps_right x')
-    (** The domain's left value is a relevant type, as a shape's domain, a
-        type of a universe, is *)
-  ; rel_dom_apps_left_relevant : domain_relevance rel_dom_apps_left = relevant
+    (** The domain's left value is of the relevant kind, as a shape's
+        domain, a type of a universe, is *)
+  ; rel_dom_apps_left_relevant : domain_kind rel_dom_apps_left = ak_relevant
     (** So is its right value *)
-  ; rel_dom_apps_right_relevant : domain_relevance rel_dom_apps_right = relevant
+  ; rel_dom_apps_right_relevant : domain_kind rel_dom_apps_right = ak_relevant
     (** The two values read back alike, as types: η-directed readback
         reads the domain of a function shape's type *)
   ; rel_dom_apps_types : Dom rel_dom_apps_left ≈ rel_dom_apps_right ∈ per_top_typ
@@ -541,8 +556,8 @@ Record adm_uparams (D : ind_decl) (ups : list domain)
   { (** A non-uniform parameter's type at [ua] is related to the one at
         [ups], at related prefixes: they read back alike, their elements
         at [ups] read back alike at both, and so do their fresh variables *)
-    adm_nparam_types : forall m Mm k A vs vs', ind_member D m = Some Mm ->
-      List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nparams_rel m) k vs vs' ->
+    adm_nparam_types : forall m Mm k κ A vs vs', ind_member D m = Some Mm ->
+      List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass κ A) -> tele_prefix_rel (nparams_rel m) k vs vs' ->
       rel_component_types A (components_env D ups (List.rev (im_nparams Mm)) vs)
         (components_env D ua (List.rev (im_nparams Mm)) vs') (nparams_rel m k vs)
     (** So is a non-recursive argument's type *)
@@ -596,13 +611,13 @@ Inductive fresh_tele_rel (tr : nat -> list domain -> relation domain) :
 (** The next entry's fresh variables on each side are related, then the
     rest after them; a variable of a proposition is a neutral proof, as
     readback has it *)
-| fresh_tele_rel_cons : forall k pre pre' ρ ρ' s A T a a',
+| fresh_tele_rel_cons : forall k pre pre' ρ ρ' s κ A T a a',
     ⟦ A ⟧ ρ ↘ a ->
     ⟦ A ⟧ ρ' ↘ a' ->
     tr k pre (⇑! a s) (⇑! a' s) ->
     fresh_tele_rel tr (S k) (pre ++ ⇑! a s :: nil) (pre' ++ ⇑! a' s :: nil)
       (ρ ↦ ⇑! a s ⦂ entry_type_closure A ρ) (ρ' ↦ ⇑! a' s ⦂ entry_type_closure A ρ') (S s) T ->
-    fresh_tele_rel tr k pre pre' ρ ρ' s (ce_ass A :: T).
+    fresh_tele_rel tr k pre pre' ρ ρ' s (ce_ass κ A :: T).
 
 (** The arguments, after the fresh non-uniform parameters [ns] and [ns'],
     of the telescope [Tn]; [ws] and [ws'] the fresh non-recursive arguments
@@ -621,7 +636,7 @@ Inductive fresh_cargs_rel (D : ind_decl)
     ⟦ A ⟧ ρ ↘ a ->
     ⟦ A ⟧ ρ' ↘ a' ->
     args_rel k ws (⇑! a s) (⇑! a' s) ->
-    fresh_cargs_rel D nparams_rel args_rel doms_rel Tn ns ns' (S k) (Ta ++ ce_ass A :: nil)
+    fresh_cargs_rel D nparams_rel args_rel doms_rel Tn ns ns' (S k) (Ta ++ ce_ass r A :: nil)
       (ws ++ ⇑! a s :: nil) (ws' ++ ⇑! a' s :: nil)
       (ρ ↦ ⇑! a s ⦂ entry_type_closure A ρ) (ρ' ↦ ⇑! a' s ⦂ entry_type_closure A ρ') (S s) gs ->
     fresh_cargs_rel D nparams_rel args_rel doms_rel Tn ns ns' k Ta ws ws' ρ ρ' s (ca_arg r A :: gs)
@@ -784,7 +799,7 @@ with con_args_rel (p : qname) (D : ind_decl)
 (** A non-recursive argument: it joins the prefixes, at its type (it is
     related by [ind_rel_con]) *)
 | con_args_arg :
-  `{ con_args_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass A :: nil) gs vs vs' ->
+  `{ con_args_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass r A :: nil) gs vs vs' ->
      con_args_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' Ts (ca_arg r A :: gs) (v :: vs) (v' :: vs') }
 (** A recursive argument, by its shape *)
 | con_args_rec :
@@ -817,9 +832,9 @@ with rec_arg_rel (p : qname) (D : ind_decl)
     domain, a type of a universe, do ([pi_elements]) *)
 | rec_arg_pi :
   `{ (forall c c', doms_rel k pre Ts B c c' ->
-        rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass B :: nil) t f c f' c') ->
-     arg_relevance gc_deps gc_stack f = relevant ->
-     arg_relevance gc_deps gc_stack f' = relevant ->
+        rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t f c f' c') ->
+     arg_kind gc_deps gc_stack f = ak_relevant ->
+     arg_kind gc_deps gc_stack f' = ak_relevant ->
      rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' Ts (pt_pi B t) f f' }
 (** Two functions at two arguments: their results are related at the rest
     of the shape *)
@@ -944,23 +959,23 @@ Qed.
 
 (** The non-uniform parameters' relations are PERs at related prefixes. *)
 Definition nparams_per (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain) : Prop :=
-  forall m Mm k A vs vs', ind_member D m = Some Mm ->
-    List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
+  forall m Mm k κ A vs vs', ind_member D m = Some Mm ->
+    List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass κ A) -> tele_prefix_rel (nr m) k vs vs' ->
     PER (nr m k vs).
 
 (** They do not depend on which of two related prefixes they are read
     at. *)
 Definition nparams_inv (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain) : Prop :=
-  forall m Mm k A vs vs', ind_member D m = Some Mm ->
-    List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
+  forall m Mm k κ A vs vs', ind_member D m = Some Mm ->
+    List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass κ A) -> tele_prefix_rel (nr m) k vs vs' ->
     (nr m k vs <~> nr m k vs').
 
 (** Each is [R] of its type at the two sides' parameters [ups] and
     [ups']. *)
 Definition nparams_evals (R : relation domain -> domain -> domain -> Prop) (D : ind_decl) (ups ups' : list domain)
     (nr : nat -> nat -> list domain -> relation domain) : Prop :=
-  forall m Mm k A vs vs', ind_member D m = Some Mm ->
-    List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
+  forall m Mm k κ A vs vs', ind_member D m = Some Mm ->
+    List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass κ A) -> tele_prefix_rel (nr m) k vs vs' ->
     rel_mod_eval R A (components_env D ups (List.rev (im_nparams Mm)) vs) A (components_env D ups' (List.rev (im_nparams Mm)) vs')
       (nr m k vs).
 
@@ -1072,11 +1087,11 @@ Definition fields_evals (Rel : relation domain -> domain -> domain -> Prop) (R :
     rel_mod_eval Rel T (record_fields_env R ns vs) T (record_fields_env R ns' vs') (fr k vs).
 
 (** Each field's type, at the left parameters and a related prefix, is of
-    the sort the field's tag says: the relation of a propositional field
-    relates only proofs. *)
-Definition fields_sorts (R : record_decl) (ns : list domain) (fr : nat -> list domain -> relation domain) : Prop :=
+    the field's kind: the relation of a propositional field relates only
+    proofs. *)
+Definition fields_kinds (R : record_decl) (ns : list domain) (fr : nat -> list domain -> relation domain) : Prop :=
   forall k f T vs vs', List.nth_error (record_fields R) k = Some (f, T) -> tele_prefix_rel fr k vs vs' ->
-    rel_typ_sort T (record_fields_env R ns vs) (record_field_rel R k).
+    rel_typ_kind T (record_fields_env R ns vs) (record_field_kind R k).
 
 (** The projections [vs] of the value [v] at the fields of [R], in order. *)
 Definition record_projs (R : record_decl) (v : domain) (vs : list domain) : Prop :=
@@ -1115,7 +1130,7 @@ Section Per_univ_elem_core_def.
     `{ forall (elem_rel : relation domain)
           (lt_j_i : universe_index_lt (ul j) i),
           j = j' ->
-          (elem_rel <~> per_relevant_nonlevel (per_univ_rec (ul j))) ->
+          (elem_rel <~> per_universe_elements (per_univ_rec (ul j))) ->
           DF 𝕌ω@j ≈ 𝕌ω@j' ∈ per_univ_elem_core ↘ elem_rel }
   (** A smaller small universe, its elements the relevant types of that
       universe.  Two small universes are the same when their levels are
@@ -1126,7 +1141,7 @@ Section Per_univ_elem_core_def.
     `{ forall (elem_rel : relation domain)
           (lt_j_i : universe_index_lt (us (domain_level_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
-          (elem_rel <~> per_relevant_nonlevel (per_univ_rec (us (domain_level_real l)))) ->
+          (elem_rel <~> per_universe_elements (per_univ_rec (us (domain_level_real l)))) ->
           DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem_core ↘ elem_rel }
   (** [Level@n], its elements the related levels of sort [n]. *)
   | per_univ_elem_core_level :
@@ -1147,9 +1162,12 @@ Section Per_univ_elem_core_def.
       (large_i : universe_index_large i),
       (elem_rel <~> per_level_sort_at (per_univ_rec (us (0, 0)))) ->
       DF LevelSortᵈ ≈ LevelSortᵈ ∈ per_univ_elem_core ↘ elem_rel
-  (** A [Π]: related domains, relevant codomains related at related
-      arguments, and functions of the domains' sorts related pointwise.  A
-      function into propositions is a proof of a [∀], not a [Π]. *)
+  (** A [Π] at the kinds [κd] and [κc] a [Π] may join ([pi_kinds]), as
+      [wf_pi]: related domains of the kind [κd], codomains of the kind
+      [κc] related at related arguments, and functions of the domains'
+      kinds related pointwise.  A [Π] into propositions is a proposition,
+      a proof of a [∀] its element ([per_univ_elem_core_prop]), so [κc] is
+      an evaluated kind. *)
   | per_univ_elem_core_pi :
     `{ forall (in_rel : relation domain)
          (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
@@ -1158,9 +1176,13 @@ Section Per_univ_elem_core_def.
           PER in_rel ->
           (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
               rel_mod_eval per_univ_elem_core B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel equiv_c_c')) ->
-          (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_typ_sort B (ρ ↦ c ⦂ entry_type_value a) relevant) ->
+          (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_typ_kind B (ρ ↦ c ⦂ entry_type_value a) κc) ->
+          domain_kind a = κd ->
+          domain_kind a' = κd ->
+          pi_kinds κd κc ->
+          evaluated_kind κc ->
           (elem_rel <~> pi_elements a a' in_rel (@out_rel)) ->
-          DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem_core ↘ elem_rel }
+          DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem_core ↘ elem_rel }
   (** A declared member [k] of a group at its parameters.  The uniform
       parameters read back equally; the components of every member — the
       non-uniform parameters, whose types are in the sort ([nr]), the
@@ -1197,22 +1219,17 @@ Section Per_univ_elem_core_def.
          tele_rel (nr k) (List.rev (im_nparams M)) ns ns' ->
          (elem_rel <~> grp_rel p D ups nr ar dr k ups ups' ns ns') ->
          DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups' ++ ns') ∈ per_univ_elem_core ↘ elem_rel }
-  (** A neutral relevant type, its elements neutrals (a neutral
-      proposition is a proposition). *)
+  (** A neutral type of an evaluated kind, its elements neutrals (a
+      neutral proposition is a proposition). *)
   | per_univ_elem_core_neut :
     `{ forall (elem_rel : relation domain),
-          domain_relevance (⇑ a b) = relevant ->
-          domain_relevance (⇑ a' b') = relevant ->
-          (** The two are neutral types of levels together, or neither: a
-              neutral type of levels is related to no neutral type of a
-              universe, as the sorts are disjoint.  Relevance alone does
-              not split them, as both universe types and types of levels
-              are relevant; this premise is the level/non-level split of
-              the neutrals, as for [per_relevant_nonlevel].  In [X : LevelSort],
-              the value [⇑ LevelSortᵈ #X] of [X] is not related to
-              [⇑ 𝕌ω@0 #X], which reads back alike: that would make [X] a
-              type of a universe. *)
-          (a = LevelSortᵈ <-> a' = LevelSortᵈ) ->
+          evaluated_kind (domain_kind (⇑ a b)) ->
+          (** The two are of the same kind: a neutral type of levels is
+              related to no neutral type of a universe, as the sorts are
+              disjoint.  In [X : LevelSort], the value [⇑ LevelSortᵈ #X]
+              of [X] is not related to [⇑ 𝕌ω@0 #X], which reads back
+              alike: that would make [X] a type of a universe. *)
+          domain_kind (⇑ a b) = domain_kind (⇑ a' b') ->
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
           DF ⇑ a b ≈ ⇑ a' b' ∈ per_univ_elem_core ↘ elem_rel }
@@ -1229,7 +1246,7 @@ Section Per_univ_elem_core_def.
          per_top_ps (List.rev (record_params R)) ns ns' ->
          fields_per R fr ->
          fields_evals per_univ_elem_core R ns ns' fr ->
-         fields_sorts R ns fr ->
+         fields_kinds R ns fr ->
          fields_inv R fr ->
          (elem_rel <~> record_rel R fr) ->
          DF d_record p ns ≈ d_record p ns' ∈ per_univ_elem_core ↘ elem_rel }
@@ -1249,11 +1266,11 @@ Section Per_univ_elem_core_def.
     (motive : relation domain -> domain -> domain -> Prop)
       (case_U : forall {j j' elem_rel} (lt_j_i : universe_index_lt (ul j) i),
           j = j' ->
-          (elem_rel <~> per_relevant_nonlevel (per_univ_rec (ul j))) ->
+          (elem_rel <~> per_universe_elements (per_univ_rec (ul j))) ->
           motive elem_rel 𝕌ω@j 𝕌ω@j')
       (case_SU : forall {l l' elem_rel} (lt_j_i : universe_index_lt (us (domain_level_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
-          (elem_rel <~> per_relevant_nonlevel (per_univ_rec (us (domain_level_real l)))) ->
+          (elem_rel <~> per_universe_elements (per_univ_rec (us (domain_level_real l)))) ->
           motive elem_rel 𝕌@l 𝕌@l')
       (case_level : forall {n elem_rel},
           (elem_rel <~> per_lvl_at n) ->
@@ -1270,7 +1287,7 @@ Section Per_univ_elem_core_def.
           (elem_rel <~> per_proof) ->
           motive elem_rel a a')
       (case_Pi :
-        forall {a ρ B a' ρ' B' in_rel}
+        forall {κd κc a ρ B a' ρ' B' in_rel}
            (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
            {elem_rel},
           DF a ≈ a' ∈ per_univ_elem_core ↘ in_rel ->
@@ -1278,13 +1295,16 @@ Section Per_univ_elem_core_def.
           PER in_rel ->
           (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
               rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y) B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel equiv_c_c')) ->
-          (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_typ_sort B (ρ ↦ c ⦂ entry_type_value a) relevant) ->
+          (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_typ_kind B (ρ ↦ c ⦂ entry_type_value a) κc) ->
+          domain_kind a = κd ->
+          domain_kind a' = κd ->
+          pi_kinds κd κc ->
+          evaluated_kind κc ->
           (elem_rel <~> pi_elements a a' in_rel (@out_rel)) ->
-          motive elem_rel Πᵈ a ρ B Πᵈ a' ρ' B')
+          motive elem_rel (d_pi κd κc a ρ B) (d_pi κd κc a' ρ' B'))
       (case_ne : forall {a b a' b' elem_rel},
-          domain_relevance (⇑ a b) = relevant ->
-          domain_relevance (⇑ a' b') = relevant ->
-          (a = LevelSortᵈ <-> a' = LevelSortᵈ) ->
+          evaluated_kind (domain_kind (⇑ a b)) ->
+          domain_kind (⇑ a b) = domain_kind (⇑ a' b') ->
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
           motive elem_rel ⇑ a b ⇑ a' b')
@@ -1322,7 +1342,7 @@ Section Per_univ_elem_core_def.
           per_top_ps (List.rev (record_params R)) ns ns' ->
           fields_per R fr ->
           fields_evals (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y) R ns ns' fr ->
-          fields_sorts R ns fr ->
+          fields_kinds R ns fr ->
           fields_inv R fr ->
           (elem_rel <~> record_rel R fr) ->
           motive elem_rel (d_record p ns) (d_record p ns')).
@@ -1335,17 +1355,17 @@ Section Per_univ_elem_core_def.
   | R, a, b, (per_univ_elem_core_prop_univ _ HE)                      => case_prop_univ HE;
   | R, a, b, (per_univ_elem_core_level_sort _ Hlarge HE)              => case_level_sort Hlarge HE;
   | R, a, b, (per_univ_elem_core_prop _ Hp HE)                        => case_prop Hp HE;
-  | R, a, b, (per_univ_elem_core_pi _ out_rel _ equiv_a_a' per HT HB HE) =>
+  | R, a, b, (per_univ_elem_core_pi _ out_rel _ equiv_a_a' per HT HB Hd Hd' Hk Hev HE) =>
       case_Pi out_rel equiv_a_a' (per_univ_elem_core_strong_ind _ _ _ equiv_a_a') per
         (fun _ _ equiv_c_c' => match HT _ _ equiv_c_c' with
                               | mk_rel_mod_eval b b' evb evb' Rel =>
                                   mk_rel_mod_eval b b' evb evb' (conj _ (per_univ_elem_core_strong_ind _ _ _ Rel))
                               end)
-        HB HE;
-  | R, a, b, (per_univ_elem_core_neut _ Hr Hr' Hl equiv_b_b' HE)      => case_ne Hr Hr' Hl equiv_b_b' HE;
+        HB Hd Hd' Hk Hev HE;
+  | R, a, b, (per_univ_elem_core_neut _ Hev Hk equiv_b_b' HE)        => case_ne Hev Hk equiv_b_b' HE;
   | R, a, b, (per_univ_elem_core_indty nr ar dr _ Hl Hass HM Hh Hu Hu' Hps HnP Hn HnI HaP Ha HaI HdP Hd HdI Hcl Hcd Hns HE) =>
       case_Ind nr ar dr Hl Hass HM Hh Hu Hu' Hps HnP
-        (fun m Mm k A vs vs' Hm Hk Hpre => match Hn m Mm k A vs vs' Hm Hk Hpre with
+        (fun m Mm k κ A vs vs' Hm Hk Hpre => match Hn m Mm k κ A vs vs' Hm Hk Hpre with
                                    | mk_rel_mod_eval b b' evb evb' Rel =>
                                        mk_rel_mod_eval b b' evb evb' (conj Rel (per_univ_elem_core_strong_ind _ _ _ Rel))
                                    end)
@@ -1496,7 +1516,7 @@ Definition per_level_sort : relation domain := per_level_sort_at (per_univ (us (
 
 Lemma per_univ_elem_core_univ' : forall j i elem_rel,
     universe_index_lt (ul j) i ->
-    (elem_rel <~> per_relevant_nonlevel (per_univ j)) ->
+    (elem_rel <~> per_universe_elements (per_univ j)) ->
     DF 𝕌ω@j ≈ 𝕌ω@j ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
@@ -1509,7 +1529,7 @@ Qed.
 Lemma per_univ_elem_core_suniv' : forall l l' i elem_rel,
     Dom l ≈ l' ∈ per_lvl ->
     universe_index_lt (us (domain_level_real l)) i ->
-    (elem_rel <~> per_relevant_nonlevel (per_univ (us (domain_level_real l)))) ->
+    (elem_rel <~> per_universe_elements (per_univ (us (domain_level_real l)))) ->
     DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
@@ -1528,13 +1548,13 @@ Section Per_univ_elem_ind_def.
     (motive : universe_index -> relation domain -> domain -> domain -> Prop)
       (case_U : forall i {j j' elem_rel},
           universe_index_lt (ul j) i -> j = j' ->
-          (elem_rel <~> per_relevant_nonlevel (per_univ j)) ->
+          (elem_rel <~> per_universe_elements (per_univ j)) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem j ↘ R -> motive j R A B) ->
           motive i elem_rel 𝕌ω@j 𝕌ω@j')
       (case_SU : forall i {l l' elem_rel},
           universe_index_lt (us (domain_level_real l)) i ->
           Dom l ≈ l' ∈ per_lvl ->
-          (elem_rel <~> per_relevant_nonlevel (per_univ (us (domain_level_real l)))) ->
+          (elem_rel <~> per_universe_elements (per_univ (us (domain_level_real l)))) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem (us (domain_level_real l)) ↘ R ->
                          motive (us (domain_level_real l)) R A B) ->
           motive i elem_rel 𝕌@l 𝕌@l')
@@ -1556,7 +1576,7 @@ Section Per_univ_elem_ind_def.
           (elem_rel <~> per_proof) ->
           motive i elem_rel a a')
       (case_Pi :
-        forall i {a ρ B a' ρ' B' in_rel}
+        forall i {κd κc a ρ B a' ρ' B' in_rel}
            (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
            {elem_rel},
           DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
@@ -1564,13 +1584,16 @@ Section Per_univ_elem_ind_def.
           PER in_rel ->
           (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
               rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y) B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel equiv_c_c')) ->
-          (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_typ_sort B (ρ ↦ c ⦂ entry_type_value a) relevant) ->
+          (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_typ_kind B (ρ ↦ c ⦂ entry_type_value a) κc) ->
+          domain_kind a = κd ->
+          domain_kind a' = κd ->
+          pi_kinds κd κc ->
+          evaluated_kind κc ->
           (elem_rel <~> pi_elements a a' in_rel (@out_rel)) ->
-          motive i elem_rel Πᵈ a ρ B Πᵈ a' ρ' B')
+          motive i elem_rel (d_pi κd κc a ρ B) (d_pi κd κc a' ρ' B'))
       (case_ne : forall i {a b a' b' elem_rel},
-          domain_relevance (⇑ a b) = relevant ->
-          domain_relevance (⇑ a' b') = relevant ->
-          (a = LevelSortᵈ <-> a' = LevelSortᵈ) ->
+          evaluated_kind (domain_kind (⇑ a b)) ->
+          domain_kind (⇑ a b) = domain_kind (⇑ a' b') ->
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
           motive i elem_rel ⇑ a b ⇑ a' b')
@@ -1608,7 +1631,7 @@ Section Per_univ_elem_ind_def.
           per_top_ps (List.rev (record_params R)) ns ns' ->
           fields_per R fr ->
           fields_evals (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y) R ns ns' fr ->
-          fields_sorts R ns fr ->
+          fields_kinds R ns fr ->
           fields_inv R fr ->
           (elem_rel <~> record_rel R fr) ->
           motive i elem_rel (d_record p ns) (d_record p ns')).
@@ -1631,7 +1654,7 @@ Section Per_univ_elem_ind_def.
       rewrite per_univ_below_spec in HE by (apply universe_index_large_above_small; exact Hlarge).
       eapply case_level_sort; [ exact Hlarge | exact HE |].
       intros; apply IHi; [ apply universe_index_large_above_small; exact Hlarge | assumption ].
-    - intros * Ha IHa Hper HT HB HE.
+    - intros * Ha IHa Hper HT HB Hd Hd' Hk Hev HE.
       eapply case_Pi; eassumption.
     - intros * Hl Hass HM Hh Hu Hu' Hps HnP Hn HnI HaP Ha HaI HdP Hd HdI Hcl Hcd Hns HE.
       eapply case_Ind; eassumption.
@@ -1644,13 +1667,11 @@ End Per_univ_elem_ind_def.
 (** [per_subtyp i a b]: the type [a] is below [b], both types of the
     universe at [i]. *)
 Inductive per_subtyp : universe_index -> domain -> domain -> Prop :=
-(** Equal neutral relevant types. *)
+(** Equal neutral types of an evaluated kind. *)
 | per_subtyp_neut :
-  `( domain_relevance (⇑ a b) = relevant ->
-     domain_relevance (⇑ a' b') = relevant ->
-     (** Neutral types of levels together, or neither, as for
-         [per_univ_elem_core_neut] *)
-     (a = LevelSortᵈ <-> a' = LevelSortᵈ) ->
+  `( evaluated_kind (domain_kind (⇑ a b)) ->
+     (** Of the same kind, as for [per_univ_elem_core_neut] *)
+     domain_kind (⇑ a b) = domain_kind (⇑ a' b') ->
      Dom b ≈ b' ∈ per_bot ->
      Sub ⇑ a b <: ⇑ a' b' at i )
 (** A type of levels below every type of levels of a larger sort. *)
@@ -1680,18 +1701,21 @@ Inductive per_subtyp : universe_index -> domain -> domain -> Prop :=
   `( Dom l ≈ l ∈ per_lvl ->
      universe_index_lt (ul j) k ->
      Sub 𝕌@l <: 𝕌ω@j at k )
-(** A [Π] below another with an equal domain and a smaller codomain. *)
+(** A [Π] below another at the same kinds, into an evaluated kind, with
+    an equal domain and a smaller codomain ([wf_subtyp_pi]); a [∀] is a
+    proposition, below itself only ([per_subtyp_prop]). *)
 | per_subtyp_pi :
   `( forall (in_rel : relation domain) elem_rel elem_rel',
+        evaluated_kind κc ->
         DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
         (forall c c' b b',
             Dom c ≈ c' ∈ in_rel ->
             ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b ->
             ⟦ B' ⟧ ρ' ↦ c' ⦂ entry_type_value a' ↘ b' ->
             Sub b <: b' at i) ->
-        DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel ->
-        DF Πᵈ a' ρ' B' ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel' ->
-        Sub Πᵈ a ρ B <: Πᵈ a' ρ' B' at i)
+        DF d_pi κd κc a ρ B ≈ d_pi κd κc a ρ B ∈ per_univ_elem i ↘ elem_rel ->
+        DF d_pi κd κc a' ρ' B' ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem i ↘ elem_rel' ->
+        Sub d_pi κd κc a ρ B <: d_pi κd κc a' ρ' B' at i)
 (** An inductive type below itself: inductive types are invariant. *)
 | per_subtyp_indty :
   `( forall elem_rel,
@@ -1725,7 +1749,7 @@ Hint Unfold rel_elem : mctt.
 (** The type [A] is a proposition in [ρ]: a term of it is a proof, which
     evaluation never reaches, so nothing is asked of its value. *)
 Definition rel_typ_propositional (A : exp) (ρ : env) : Prop :=
-  exists a, ⟦ A ⟧ ρ ↘ a /\ domain_relevance a = propositional.
+  exists a, ⟦ A ⟧ ρ ↘ a /\ domain_kind a = ak_propositional.
 
 (** * Module PER
 
@@ -1751,12 +1775,12 @@ Definition rel_typ_propositional (A : exp) (ρ : env) : Prop :=
     outermost missing parameter, in its environment; a global module's
     first parameter past its arguments; a submodule closure's base's. *)
 Inductive next_param : dmod -> domain -> Prop :=
-| next_param_local : forall Δ A D ρ a,
+| next_param_local : forall Δ κ A D ρ a,
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a ->
-    next_param (dm_local (Δ ++ ce_ass A :: nil) D ρ) a
-| next_param_global : forall p T Φ args A a,
+    next_param (dm_local (Δ ++ ce_ass κ A :: nil) D ρ) a
+| next_param_global : forall p T Φ args κ A a,
     gc_loc gc_deps gc_stack p = Some (T, Φ) ->
-    List.nth_error (List.rev T) (List.length args) = Some (ce_ass A) ->
+    List.nth_error (List.rev T) (List.length args) = Some (ce_ass κ A) ->
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ env_tele nil (List.rev T) args ↘ a ->
     next_param (dm_global p args) a
 | next_param_member : forall h ch a,
@@ -1798,7 +1822,7 @@ with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop
        rel_typ i A ρ A ρ' R ->
        R a a' ->
        per_gargs ts (ρ ↦ a ⦂ entry_type_closure A ρ) (ρ' ↦ a' ⦂ entry_type_closure A ρ') args args' ->
-       per_gargs (ce_ass A :: ts) ρ ρ' (a :: args) (a' :: args') }
+       per_gargs (ce_ass κ A :: ts) ρ ρ' (a :: args) (a' :: args') }
 (** Two expanded bodies (the core open phase has replaced their local
     opens), each entry seen in the environment its predecessors make
     ([eval_body_env]). *)
@@ -1806,17 +1830,18 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 (** Two empty bodies. *)
 | per_body_nil :
   `{ per_body ρ gm_nil ρ' gm_nil }
-(** A definition each, with related types, each of the sort its
-    definition is tagged with, and, at relevant types, related values. *)
+(** A definition each, with related types, each of the kind its
+    definition is tagged with, and, at types of an evaluated kind, related
+    values. *)
 | per_body_def :
   `{ forall R,
        per_body ρ Φ ρ' Φ' ->
        ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
        ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
        rel_typ i A ρ1 A' ρ1' R ->
-       rel_typ_sort A ρ1 r ->
-       rel_typ_sort A' ρ1' r ->
-       r = propositional \/ rel_elem M ρ1 M' ρ1' R ->
+       rel_typ_kind A ρ1 r ->
+       rel_typ_kind A' ρ1' r ->
+       r = ak_propositional \/ rel_elem M ρ1 M' ρ1' R ->
        per_body ρ (gm_ext Φ y (ge_def b pv r A (Some M))) ρ' (gm_ext Φ' y (ge_def b' pv' r A' (Some M'))) }
 (** A submodule each, with related closures. *)
 | per_body_mod :
@@ -1879,30 +1904,30 @@ Record def_heads (head_rel : relation domain) (M M' : exp) (ρ ρ' : env) : Prop
     (** and to that of [M'] *)
   ; def_heads_right' : exists m', ⟦ M' ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel }.
 
-(** The bodies of a definition of the sort [r]: their values related at a
-    relevant type; at a proposition nothing.  A proof is not evaluated:
+(** The bodies of a definition of the kind [r]: their values related at a
+    type of an evaluated kind; at a proposition nothing.  A proof is not evaluated:
     the environments hold it kept, [⋆ᵈ⟨M, ρ⟩], whose readback comes from
     its scope ([per_ctx_env_kept_proof_readable]), not from the PER.  For
     example, at [⋅ ▹ (f : ℕ → P) ▸ (h : P ≔ f 0)] nothing is asked of
     [f 0], and [⋆ᵈ⟨f 0, ρ⟩] reads back as [f 0] is scoped by the
     context. *)
-Definition def_bodies_at (r : relevance) (M : exp) (ρ : env) (M' : exp) (ρ' : env) (R : relation domain) : Prop :=
-  match r with relevant => rel_elem M ρ M' ρ' R | propositional => True end.
+Definition def_bodies_at (r : abs_kind) (M : exp) (ρ : env) (M' : exp) (ρ' : env) (R : relation domain) : Prop :=
+  match r with ak_propositional => True | _ => rel_elem M ρ M' ρ' R end.
 
-(** The heads at a definition of the sort [r]: tied to the bodies at a
-    relevant type ([def_heads]); at a proposition nothing, as evaluation
-    binds such a definition to its body kept, [⋆ᵈ⟨M, ρ⟩], without
-    evaluating it, and any two proofs are related. *)
-Definition def_heads_at (r : relevance) (head_rel : relation domain) (M M' : exp) (ρ ρ' : env) : Prop :=
-  match r with relevant => def_heads head_rel M M' ρ ρ' | propositional => True end.
+(** The heads at a definition of the kind [r]: tied to the bodies at a
+    type of an evaluated kind ([def_heads]); at a proposition nothing, as
+    evaluation binds such a definition to its body kept, [⋆ᵈ⟨M, ρ⟩],
+    without evaluating it, and any two proofs are related. *)
+Definition def_heads_at (r : abs_kind) (head_rel : relation domain) (M M' : exp) (ρ ρ' : env) : Prop :=
+  match r with ak_propositional => True | _ => def_heads head_rel M M' ρ ρ' end.
 
 (** The environments a definition with a module part relates, given the
     PER of the tails and the head relation at related tails: those of a
-    definition entry of the sort [r] for its terms [M], [M'], and those of
+    definition entry of the kind [r] for its terms [M], [M'], and those of
     a module slot for its units [U], [U'], at the same head. *)
 Record per_ctx_env_dm_rel (tail_rel : relation env)
     (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
-    (r : relevance) (M M' : exp) (U U' : gunit) (ρ ρ' : env) : Prop := mk_per_ctx_env_dm_rel
+    (r : abs_kind) (M M' : exp) (U U' : gunit) (ρ ρ' : env) : Prop := mk_per_ctx_env_dm_rel
   { (** The tails are related *)
     per_ctx_env_dm_rel_tail : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel
     (** The heads are related at the tails' head relation *)
@@ -1965,7 +1990,7 @@ Record per_ctx_env_cons_rel (tail_rel : relation env)
     as for an assumption. *)
 Record per_ctx_env_def_rel (tail_rel : relation env)
     (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
-    (A A' : typ) (r : relevance) (M M' : exp) (ρ ρ' : env) : Prop :=
+    (A A' : typ) (r : abs_kind) (M M' : exp) (ρ ρ' : env) : Prop :=
   mk_per_ctx_env_def_rel
   { (** The tails are related *)
     per_ctx_env_def_rel_tail : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel
@@ -2028,7 +2053,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
         (env_rel <~> per_ctx_env_cons_rel tail_rel (@head_rel) A A') ->
-        EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel }
+        EF Γ ▹{κ} A ≈ Γ' ▹{κ} A' ∈ per_ctx_env ↘ env_rel }
 (** A definition entry of the sort [r]: at a relevant type the bodies'
     values are related, and each head of the environment is related to the
     value of both bodies in that head's tail; at a proposition nothing is
@@ -2039,11 +2064,11 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
         (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
         env_rel
         (equiv_Γ_Γ' : EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel)
-        (r : relevance),
+        (r : abs_kind),
         PER tail_rel ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_sort A ρ r) ->
+        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_kind A ρ r) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             def_bodies_at r M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
         (env_rel <~> per_ctx_env_def_rel tail_rel (@head_rel) A A' r M M') ->
@@ -2072,17 +2097,17 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
         (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
         env_rel
         (equiv_Γ_Γ' : EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel)
-        (r : relevance),
+        (r : abs_kind),
         PER tail_rel ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_sort A ρ r) ->
+        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_kind A ρ r) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             rel_elem M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             rel_modexp_evals (me_lit U) ρ (me_lit U') ρ') ->
         (env_rel <~> per_ctx_env_dm_rel tail_rel (@head_rel) r M M' U U') ->
-        r = relevant ->
+        r = ak_relevant ->
         EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ' ▸ₘ A' ≔ M' ‖ U' ∈ per_ctx_env ↘ env_rel }
 .
 Hint Constructors per_ctx_env : mctt.
@@ -2106,9 +2131,9 @@ Inductive per_ctx_subtyp : ctx -> ctx -> Prop :=
             ⟦ A ⟧ ρ ↘ a ->
             ⟦ A' ⟧ ρ' ↘ a' ->
             Sub a <: a' at (ul i)) ->
-        EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ env_rel ->
-        EF Γ' ▹ A' ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel' ->
-        SubE Γ ▹ A <: Γ' ▹ A' }
+        EF Γ ▹{κ} A ≈ Γ ▹{κ} A ∈ per_ctx_env ↘ env_rel ->
+        EF Γ' ▹{κ} A' ≈ Γ' ▹{κ} A' ∈ per_ctx_env ↘ env_rel' ->
+        SubE Γ ▹{κ} A <: Γ' ▹{κ} A' }
 (** A context ending in a definition refines another context when its
     environments are environments of the other.  This covers a definition of a
     supertype with an equal body and an assumption of a supertype. *)
@@ -2196,15 +2221,26 @@ Notation "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.
 #[export]
 Hint Constructors per_ctx_subtyp : mctt.
 
-(** The level/non-level split of two neutral types
-    ([per_univ_elem_core_neut]), from those in context: it is an
-    equivalence, so it is closed under symmetry and transitivity. *)
+(** The equal kinds of two neutral types ([per_univ_elem_core_neut]),
+    from those in context, closed under symmetry and transitivity. *)
 #[export]
-Hint Extern 1 (_ = LevelSortᵈ <-> _ = LevelSortᵈ) =>
+Hint Extern 1 (domain_kind _ = domain_kind _) =>
   solve [ reflexivity | assumption | symmetry; assumption
         | etransitivity; eassumption
         | etransitivity; [ symmetry; eassumption | eassumption ]
         | etransitivity; [ eassumption | symmetry; eassumption ] ] : mctt.
+
+(** The evaluated kind of a neutral type, carried along the equal kinds
+    in context ([per_univ_elem_core_neut]). *)
+#[export]
+Hint Extern 1 (evaluated_kind (domain_kind _)) =>
+  solve [ assumption
+        | match goal with
+          | H : evaluated_kind (domain_kind ?x), E : domain_kind ?x = domain_kind ?y |- evaluated_kind (domain_kind ?y) =>
+              rewrite <- E; exact H
+          | H : evaluated_kind (domain_kind ?x), E : domain_kind ?y = domain_kind ?x |- evaluated_kind (domain_kind ?y) =>
+              rewrite E; exact H
+          end ] : mctt.
 
 (** Induction on a [per_univ_elem] hypothesis.  [induction H using
     per_univ_elem_ind] does not apply, because the instance is an argument of
@@ -2227,8 +2263,8 @@ Ltac per_univ_elem_induction_core HH ih :=
       (** The level case has one binder more than the other closed types: the
           sort of its type of levels; the proposition case has the two
           propositions and their relation. *)
-      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 5 intro | do 6 intro | do 11 intro; ih; do 4 intro
-      | do 11 intro | do 34 intro | do 17 intro ]; cbv beta
+      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 5 intro | do 6 intro | do 13 intro; ih; do 8 intro
+      | do 10 intro | do 34 intro | do 17 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

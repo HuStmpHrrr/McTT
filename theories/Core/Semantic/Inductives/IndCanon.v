@@ -89,9 +89,9 @@ Section Fixed_GCtx.
   Proof.
     intros * Hass Hn Ha Hd; constructor.
     - intros m Mm k vs vs1 vs2 HM Hk Hp _.
-      destruct (nparams_lt_ass D m Mm k Hass HM Hk) as [A HA].
-      destruct (Hn _ _ _ _ _ _ HM HA Hp) as [a a' Ea Ea' HR].
-      unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM HA), (member_nparams_eq _ _ _ HM).
+      destruct (nparams_lt_ass D m Mm k Hass HM Hk) as (κ & A & HA).
+      destruct (Hn _ _ _ _ _ _ _ HM HA Hp) as [a a' Ea Ea' HR].
+      unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ _ HM HA), (member_nparams_eq _ _ _ HM).
       exact (per_head_left Ea Ea' HR).
     - intros m Mm ms ms1 ms2 c gs k vs vs1 vs2 HM Hm _ Hc Hk Hp _.
       destruct (nth_error_lt_some' _ _ Hk) as [A HA].
@@ -148,7 +148,7 @@ Section Fixed_GCtx.
       H17 into Hns, H18 into HE.
     (** The relations of the clause are the canonical ones at [ups]. *)
     pose proof (ind_fam_agree_of_evals i D ups ups' nr ar dr Hass
-                  ltac:(red; intros * HM0 HA Hp; destruct (Hn _ _ _ _ _ _ HM0 HA Hp) as [a a' Ea Ea' HR]; econstructor; eauto)
+                  ltac:(red; intros * HM0 HA Hp; destruct (Hn _ _ _ _ _ _ _ HM0 HA Hp) as [a a' Ea Ea' HR]; econstructor; eauto)
                   ltac:(red; intros * HM0 Hm Hc HA Hp; destruct (Ha _ _ _ _ _ _ _ _ _ _ HM0 Hm Hc HA Hp) as [a a' Ea Ea' HR];
                         econstructor; eauto)
                   ltac:(red; intros * HM0 Hm Hc Heq Hw HB Hy;
@@ -202,11 +202,11 @@ Section Fixed_GCtx.
       unfold shape_doms_rel in Hdd; rewrite (List.nth_error_nth _ _ _ HB) in Hdd; exact Hdd. }
     assert (Hcp : ind_canon_props D ups).
     { constructor.
-      - intros m Mm k0 A vs vs' HM0 HA Hp.
+      - intros m Mm k0 κ A vs vs' HM0 HA Hp.
         assert (Hk : k0 < length (rev (im_nparams Mm))) by (apply nth_error_Some; congruence).
         pose proof (P2 _ _ HM0 k0 vs vs' (Nat.lt_le_incl _ _ Hk) Hp) as Hp'.
         rewrite <- (Hn0 _ _ _ _ _ _ HM0 Hk Hp' Hp); eapply HnP; eassumption.
-      - intros m Mm k0 A vs vs' HM0 HA Hp.
+      - intros m Mm k0 κ A vs vs' HM0 HA Hp.
         assert (Hk : k0 < length (rev (im_nparams Mm))) by (apply nth_error_Some; congruence).
         pose proof (P2 _ _ HM0 k0 vs vs' (Nat.lt_le_incl _ _ Hk) Hp) as Hp'.
         pose proof (Snp _ _ HM0 k0 vs vs' (Nat.lt_le_incl _ _ Hk) Hp') as Hs.
@@ -254,10 +254,10 @@ Section Fixed_GCtx.
       intros m Mm k0 vs vs1 vs2 HM0 Hk Hp1 Hp2.
       pose proof (P2 _ _ HM0 k0 vs vs1 (Nat.lt_le_incl _ _ Hk) Hp1) as Hp'.
       pose proof (RnpL _ _ HM0 k0 vs vs1 (Nat.lt_le_incl _ _ Hk) Hp') as Hdg.
-      destruct (nparams_lt_ass D m Mm k0 Hass HM0 Hk) as [A HA].
-      destruct (Hn _ _ _ _ _ _ HM0 HA Hdg) as [a a' Ea Ea' HR].
+      destruct (nparams_lt_ass D m Mm k0 Hass HM0 Hk) as (κ & A & HA).
+      destruct (Hn _ _ _ _ _ _ _ HM0 HA Hdg) as [a a' Ea Ea' HR].
       rewrite <- (Hn0 _ _ _ _ _ _ HM0 Hk Hp' Hp1).
-      unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM0 HA), (member_nparams_eq _ _ _ HM0).
+      unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ _ HM0 HA), (member_nparams_eq _ _ _ HM0).
       exact (per_head_right Ea Ea' HR).
     - intros m Mm ms ms1 ms2 c gs k0 vs vs1 vs2 HM0 Hm1 Hm2 Hc Hk Hp1 Hp2.
       pose proof (F2 _ _ HM0 _ _ Hm1) as Hm'.
@@ -319,10 +319,10 @@ Section Fixed_GCtx.
     destruct Hag as [Hn0 Ha0 Hd0].
     destruct (ind_fam_agree_sym _ _ _ _ _ _ _ (mk_ind_fam_agree _ _ _ _ _ _ _ Hn0 Ha0 Hd0)) as [Hn0' Ha0' Hd0'].
     split; [| split ].
-    - intros m Mm k0 A vs vs' HM HA Hp.
+    - intros m Mm k0 κ A vs vs' HM HA Hp.
       assert (Hk : k0 < length (rev (im_nparams Mm))) by (apply nth_error_Some; congruence).
       pose proof (tele_prefix_rel_nr_change' p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 m Mm HM k0 vs vs' (Nat.lt_le_incl _ _ Hk) Hp) as Hp'.
-      destruct (Hn _ _ _ _ _ _ HM HA Hp') as [a a' Ea Ea' HR].
+      destruct (Hn _ _ _ _ _ _ _ HM HA Hp') as [a a' Ea Ea' HR].
       econstructor; [ exact Ea | exact Ea' |].
       eapply per_univ_elem_resp_iff; [ exact HR | exact (Hn0 _ _ _ _ _ _ HM Hk Hp' Hp) ].
     - intros m Mm ms ms' c gs k0 A vs vs' HM Hm Hc HA Hp.

@@ -17,8 +17,8 @@ Section Fixed_GCtx.
 
 (** The environment of the values of a telescope, one value more, at the
     type of the telescope's next entry. *)
-Lemma env_tele_snoc_nth : forall ρ T pre A v,
-    List.nth_error T (List.length pre) = Some (ce_ass A) ->
+Lemma env_tele_snoc_nth : forall ρ T pre κ A v,
+    List.nth_error T (List.length pre) = Some (ce_ass κ A) ->
     env_tele ρ T (pre ++ v :: nil) = env_tele ρ T pre ↦ v ⦂ entry_type_closure A (env_tele ρ T pre).
 Proof.
   intros * HA.
@@ -29,10 +29,10 @@ Proof.
 Qed.
 
 (** The same for the environment of a group's components. *)
-Lemma components_env_snoc_nth : forall D u Ts pre A v,
-    List.nth_error Ts (List.length pre) = Some (ce_ass A) ->
+Lemma components_env_snoc_nth : forall D u Ts pre κ A v,
+    List.nth_error Ts (List.length pre) = Some (ce_ass κ A) ->
     components_env D u Ts (pre ++ v :: nil) = components_env D u Ts pre ↦ v ⦂ entry_type_closure A (components_env D u Ts pre).
-Proof. intros; unfold components_env; apply env_tele_snoc_nth; assumption. Qed.
+Proof. intros * H; unfold components_env; exact (env_tele_snoc_nth _ _ _ _ _ _ H). Qed.
 
 Lemma read_ps_app : forall s ρ T1 vs1 Ms1, Rps vs1 at T1 in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms1 ->
     forall T2 vs2 Ms2, Rps vs2 at T2 in gc_deps ⍮ gc_stack ⍮ env_tele ρ T1 vs1 ⍮ s ↘ Ms2 ->
@@ -52,7 +52,7 @@ Qed.
     alike read back alike. *)
 Lemma read_ps_tele : forall (T : list centry) (tr : nat -> list domain -> relation domain) ρ ρ',
     tele_ass T ->
-    (forall k A pre pre', List.nth_error T k = Some (ce_ass A) -> tele_prefix_rel tr k pre pre' ->
+    (forall k κ A pre pre', List.nth_error T k = Some (ce_ass κ A) -> tele_prefix_rel tr k pre pre' ->
        exists a a', ⟦ A ⟧ env_tele ρ T pre ↘ a /\ ⟦ A ⟧ env_tele ρ' T pre' ↘ a' /\
          (forall b b', tr k pre b b' -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top)) ->
     forall vs vs', tele_rel tr T vs vs' ->
@@ -70,16 +70,16 @@ Proof.
     - destruct (nth_error_lt_some' T j ltac:(lia)) as [e He].
       destruct (nth_error_lt_some' vs j ltac:(lia)) as [v Hv].
       destruct (nth_error_lt_some' vs' j ltac:(lia)) as [v' Hv'].
-      assert (He' : exists A, e = ce_ass A)
+      assert (He' : exists κ A, e = ce_ass κ A)
         by (unfold tele_ass in Hass; rewrite List.Forall_forall in Hass; apply Hass; eapply List.nth_error_In; exact He).
-      destruct He' as [A ->].
-      destruct (Hev _ _ _ _ He (tele_prefix_rel_of_full _ _ _ _ j Hf ltac:(lia))) as (a & a' & Ea & Ea' & Hrb).
+      destruct He' as (κ & A & ->).
+      destruct (Hev _ _ _ _ _ He (tele_prefix_rel_of_full _ _ _ _ j Hf ltac:(lia))) as (a & a' & Ea & Ea' & Hrb).
       destruct (Hrb _ _ (Hr _ _ _ Hv Hv') s) as [V V' HV HV' HE].
       destruct (IH (S j) ltac:(lia)) as (Ms & Ms' & HM & HM' & HEs).
       assert (Hj1 : List.length (List.firstn j vs) = j) by (rewrite List.length_firstn; lia).
       assert (Hj2 : List.length (List.firstn j vs') = j) by (rewrite List.length_firstn; lia).
-      rewrite (firstn_S_snoc _ _ _ Hv), (env_tele_snoc_nth _ _ _ A) in HM by (rewrite Hj1; exact He).
-      rewrite (firstn_S_snoc _ _ _ Hv'), (env_tele_snoc_nth _ _ _ A) in HM' by (rewrite Hj2; exact He).
+      rewrite (firstn_S_snoc _ _ _ Hv), (env_tele_snoc_nth _ _ _ κ A) in HM by (rewrite Hj1; exact He).
+      rewrite (firstn_S_snoc _ _ _ Hv'), (env_tele_snoc_nth _ _ _ κ A) in HM' by (rewrite Hj2; exact He).
       exists (cons V Ms), (cons V' Ms').
       rewrite (skipn_nth_cons' _ _ _ He), (skipn_nth_cons' _ _ _ Hv), (skipn_nth_cons' _ _ _ Hv').
       split; [ econstructor; eassumption | split; [ econstructor; eassumption | cbn [List.map]; congruence ] ]. }
@@ -101,20 +101,21 @@ Proof. induction 1; cbn; congruence. Qed.
     (A0 :: A1 :: nil) in ρ ↘ (R0 :: R1 :: nil)], [R1] is [v1] read at
     [⟦A1⟧ (ρ ↦ v0 ⦂ entry_type_closure A0 ρ)]. *)
 Lemma read_ps_nth_type : forall s ρ T vs Rs, Rps vs at T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Rs ->
-    forall j A v R, List.nth_error T j = Some (ce_ass A) -> List.nth_error vs j = Some v -> List.nth_error Rs j = Some R ->
+    forall j κ A v R, List.nth_error T j = Some (ce_ass κ A) -> List.nth_error vs j = Some v -> List.nth_error Rs j = Some R ->
       exists a, ⟦ A ⟧ env_tele ρ T (List.firstn j vs) ↘ a /\ Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ R.
 Proof.
-  induction 1 as [| ? ? ? ? ? ? ? ? ? Ha0 HV0 _ IH]; intros [| j] A1 v1 R1 HA Hv HR; cbn in HA, Hv, HR; try discriminate.
-  - injection HA as <-; injection Hv as <-; injection HR as <-; eexists; split; [ exact Ha0 | exact HV0 ].
-  - exact (IH _ _ _ _ HA Hv HR).
+  induction 1 as [| ? ? ? ? ? ? ? ? ? ? Ha0 HV0 _ IH]; intros [| j] κ1 A1 v1 R1 HA Hv HR; cbn in HA, Hv, HR; try discriminate.
+  - injection HA as <- <-; injection Hv as <-; injection HR as <-; eexists; split; [ exact Ha0 | exact HV0 ].
+  - exact (IH _ _ _ _ _ HA Hv HR).
 Qed.
 
 (** At a propositional type every value reads back as a proof term
     ([read_nf_proof] is the only rule there). *)
-Lemma read_nf_propositional : forall s a v W, domain_relevance a = propositional ->
+Lemma read_nf_propositional : forall s a v W, domain_kind a = ak_propositional ->
     Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ W -> exists P, W = nf_proof P.
 Proof.
-  intros * Ha H; inversion H; subst; cbn in *; try congruence; eauto.
+  intros * Ha H; inversion H; subst; cbn in *; try congruence; eauto;
+    exfalso; eapply evaluated_kind_not_propositional; eassumption.
 Qed.
 
 (** The codomain of the type of an argument of a function shape, at an
@@ -123,12 +124,12 @@ Lemma eval_fam_cod_shfam : forall p ups ρ B t x a tf tx,
     ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ x ⦂ entry_type_closure B ρ ↘ a ->
     ⟦ fam_cod ⟧ nil ↦ d_shfam p ups ρ B t ⦂ tf ↦ x ⦂ tx ↘ a.
 Proof.
-  intros; unfold fam_cod; eapply eval_exp_app; [ apply eval_exp_var | reflexivity | apply eval_exp_var | econstructor; eassumption ].
+  intros; unfold fam_cod; eapply eval_exp_app; [ apply eval_exp_var | cbn; constructor | apply eval_exp_var | econstructor; eassumption ].
 Qed.
 
 (** The type of a shape is relevant: a member, a record or a [Π]. *)
 Lemma eval_shape_type_relevant : forall p ups ρ t a,
-    ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a -> domain_relevance a = relevant.
+    ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a -> domain_kind a = ak_relevant.
 Proof. intros * H; inversion H; reflexivity. Qed.
 
 Lemma eval_fam_cod_ihfam : forall ρm A p ups ρ B t i f x fx as' a tf tx,
@@ -137,7 +138,7 @@ Lemma eval_fam_cod_ihfam : forall ρm A p ups ρ B t i f x fx as' a tf tx,
     List.nth_error as' i = Some a ->
     ⟦ fam_cod ⟧ nil ↦ d_ihfam ρm A p ups ρ B t i f ⦂ tf ↦ x ⦂ tx ↘ a.
 Proof.
-  intros; unfold fam_cod; eapply eval_exp_app; [ apply eval_exp_var | reflexivity | apply eval_exp_var | econstructor; eassumption ].
+  intros; unfold fam_cod; eapply eval_exp_app; [ apply eval_exp_var | cbn; constructor | apply eval_exp_var | econstructor; eassumption ].
 Qed.
 
 (** The environment of the uniform parameters [ups] of a group and the
@@ -159,10 +160,10 @@ Lemma components_env_args_prefix : forall D u (Mk : imember) gs1 gs xs vp,
     = components_env D u (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1) (xs ++ nonrec_arg_vals gs1 vp).
 Proof.
   intros * Hx Hv.
-  unfold cargs_nonrec_tele at 1; rewrite cargs_nonrec_app, List.map_app, List.app_assoc.
+  rewrite cargs_nonrec_tele_app, List.app_assoc.
   apply components_env_prefix.
   rewrite !List.length_app, List.length_rev, length_nonrec_arg_vals by exact Hv.
-  unfold cargs_nonrec_tele; rewrite List.length_map; lia.
+  rewrite length_cargs_nonrec_tele; lia.
 Qed.
 
 (** One non-recursive argument more. *)
@@ -177,7 +178,7 @@ Proof.
   rewrite cargs_nonrec_tele_snoc_arg, nonrec_arg_vals_app by exact Hv; cbn [nonrec_arg_vals].
   rewrite !List.app_assoc; apply components_env_snoc.
   rewrite !List.length_app, List.length_rev, length_nonrec_arg_vals by exact Hv.
-  unfold cargs_nonrec_tele; rewrite List.length_map; lia.
+  rewrite length_cargs_nonrec_tele; lia.
 Qed.
 
 (** One recursive argument more: nothing joins the environment. *)
@@ -204,7 +205,7 @@ Proof.
   intros * Hx Hw Hy.
   rewrite <- (List.firstn_skipn (List.length ys) (shape_doms_tele t)) at 1.
   rewrite !List.app_assoc; apply components_env_prefix.
-  rewrite !List.length_app, List.length_rev, List.length_firstn; unfold cargs_nonrec_tele, shape_doms_tele;
+  rewrite !List.length_app, List.length_rev, List.length_firstn, length_cargs_nonrec_tele; unfold shape_doms_tele;
     rewrite !List.length_map; lia.
 Qed.
 
@@ -228,8 +229,8 @@ Lemma realize_indty : forall p D ups ups'
     per_top_ps (List.rev (ind_uparams D)) ups ups' ->
     nparams_per D nr -> nparams_inv D nr -> args_per D nr ar -> args_inv D nr ar ->
     doms_per D nr ar dr -> doms_inv D nr ar dr ->
-    (forall m Mm k A vs vs', ind_member D m = Some Mm ->
-       List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
+    (forall m Mm k κ A vs vs', ind_member D m = Some Mm ->
+       List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass κ A) -> tele_prefix_rel (nr m) k vs vs' ->
        exists a a', ⟦ A ⟧ components_env D ups (List.rev (im_nparams Mm)) vs ↘ a /\
          ⟦ A ⟧ components_env D ups' (List.rev (im_nparams Mm)) vs' ↘ a' /\
          (forall b b', nr m k vs b b' -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top)) ->
@@ -269,7 +270,7 @@ Proof.
     assert (Hassn : tele_ass (List.rev (im_nparams Mm)))
       by (apply List.Forall_rev; exact (grp_tele_ass_nparams _ Hass _ _ HM)).
     destruct (read_ps_tele (List.rev (im_nparams Mm)) (nr m) (decl_env D ups) (decl_env D ups') Hassn
-                (fun k A pre pre' Hk Hp => Hn _ _ _ _ _ _ HM Hk Hp) _ _ Hx s) as (Ms2 & Ms2' & HM2 & HM2' & HE2).
+                (fun k κ A pre pre' Hk Hp => Hn _ _ _ _ _ _ _ HM Hk Hp) _ _ Hx s) as (Ms2 & Ms2' & HM2 & HM2' & HE2).
     rewrite rev_im_params_split.
     apply (mk_params_read_alike _ _ _ _ (Ms1 ++ Ms2) (Ms1' ++ Ms2'));
       [ apply read_ps_app; assumption | apply read_ps_app; assumption | rewrite !List.map_app; congruence ]. }
@@ -400,7 +401,7 @@ Proof.
         | eapply read_nf_rview; [ exact Hl | exact HM | exact Hh | exact Hcs | assumption | eassumption | exact HMs' | exact HV' ]
         | cbn [nf_erase]; rewrite !List.map_app; congruence ].
     - intros; exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
-    - intros k0 u u' pre v pre' v' Ts A gs vs vs' rA Hia IH Mk0 ms ms' xs xs' c gsf gs1 vp vp' HM Hρ Hρ' HTs Hl1 Hl2 Hm Hx Hx'
+    - intros k0 u u' pre v pre' v' Ts rA A gs vs vs' Hia IH Mk0 ms ms' xs xs' c gsf gs1 vp vp' HM Hρ Hρ' HTs Hl1 Hl2 Hm Hx Hx'
         Hc Heq Ha0 s.
       subst pre pre' gsf Ts.
       assert (Hxl : List.length xs = List.length (im_nparams Mk0) /\ List.length xs' = List.length (im_nparams Mk0)).
@@ -552,10 +553,10 @@ Proof.
       rewrite components_env_shape_prefix in Eb, Eb' by (assumption || lia).
       rewrite Hyl in Eb; rewrite Hyl' in Eb'.
       rewrite (List.app_assoc ws ys), (List.app_assoc xs (ws ++ ys)), components_env_snoc in HV
-        by (rewrite !List.length_app, List.length_rev, List.length_firstn; unfold cargs_nonrec_tele, shape_doms_tele;
+        by (rewrite !List.length_app, List.length_rev, List.length_firstn, length_cargs_nonrec_tele; unfold shape_doms_tele;
             rewrite !List.length_map; lia).
       rewrite (List.app_assoc ws' ys'), (List.app_assoc xs' (ws' ++ ys')), components_env_snoc in HV'
-        by (rewrite !List.length_app, List.length_rev, List.length_firstn; unfold cargs_nonrec_tele, shape_doms_tele;
+        by (rewrite !List.length_app, List.length_rev, List.length_firstn, length_cargs_nonrec_tele; unfold shape_doms_tele;
             rewrite !List.length_map; lia).
       exists (λⁿ A V), (λⁿ A' V');
         split; [ econstructor; eassumption | split; [ econstructor; eassumption | cbn [nf_erase]; congruence ] ].
@@ -619,12 +620,24 @@ Proof. induction 1; cbn; congruence. Qed.
 
 (** The environment of a record type's parameters and of the projections
     of its first fields, one projection more, at its field's type. *)
+(** The fields' telescope, outermost first, has each field's type at its
+    kind. *)
+Lemma nth_error_rev_fields_tele : forall fs κs k f T, List.nth_error fs k = Some (f, T) ->
+    List.nth_error (List.rev (fields_tele fs κs)) k = Some (ce_ass (List.nth k κs ak_relevant) T).
+Proof.
+  induction fs as [| fT fs IH]; intros κs [| k] f T H; cbn [List.nth_error] in H; try discriminate;
+    cbn [fields_tele]; rewrite List.rev_app_distr; cbn [List.rev List.app List.nth_error].
+  - injection H as ->; destruct κs; reflexivity.
+  - destruct κs as [| κ κs]; cbn [List.tl List.nth];
+      [ rewrite (IH nil k f T H); destruct k; reflexivity | exact (IH κs k f T H) ].
+Qed.
+
 Lemma record_fields_env_snoc : forall R ns pre f T v,
     List.nth_error (record_fields R) (List.length pre) = Some (f, T) ->
     record_fields_env R ns (pre ++ v :: nil) = record_fields_env R ns pre ↦ v ⦂ entry_type_closure T (record_fields_env R ns pre).
 Proof.
-  intros * H; unfold record_fields_env; apply env_tele_snoc_nth.
-  unfold record_fields_tele; rewrite List.nth_error_map, H; reflexivity.
+  intros * H; unfold record_fields_env; apply (env_tele_snoc_nth _ _ _ (record_field_kind R (List.length pre))).
+  unfold record_fields_tele, record_field_kind; exact (nth_error_rev_fields_tele _ _ _ _ _ H).
 Qed.
 
 Lemma Forall2_of_nth : forall {X Y} (P : X -> Y -> Prop) l1 l2, List.length l1 = List.length l2 ->
@@ -763,9 +776,9 @@ Proof.
     subst; repeat split.
     + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
     + intros c c' Hc; apply_relation_equivalence.
-      constructor; [| reflexivity | reflexivity | solve_not_level_code | solve_not_level_code ].
-      eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | split; discriminate | exact Hc | reflexivity ].
-    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _ _ _].
+      constructor; [| reflexivity | reflexivity ].
+      eexists; basic_per_univ_elem_econstructor; [ cbn; constructor | reflexivity | exact Hc | reflexivity ].
+    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _].
       match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
       intro s; destruct (Htt s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ constructor; exact HC | constructor; exact HC' | exact HE ].
@@ -779,9 +792,9 @@ Proof.
       destruct (read_nf_level_real _ _ _ _ HW) as [L [-> _]].
       exists (nf_univ_of L); split; apply read_typ_suniv; assumption.
     + intros c c' Hc; apply_relation_equivalence.
-      constructor; [| reflexivity | reflexivity | solve_not_level_code | solve_not_level_code ].
-      eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | split; discriminate | exact Hc | reflexivity ].
-    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _ _ _].
+      constructor; [| reflexivity | reflexivity ].
+      eexists; basic_per_univ_elem_econstructor; [ cbn; constructor | reflexivity | exact Hc | reflexivity ].
+    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _].
       match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
       intro s; destruct (Htt s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ constructor; exact HC | constructor; exact HC' | exact HE ].
@@ -841,7 +854,7 @@ Proof.
         destruct (HT _ _ Hv) as [b b' Eb Eb' [HRb (Hbtt & _ & _)]] end.
       destruct (Hatt s) as [A0 A0' HA0 HA0' HEA].
       destruct (Hbtt (S s)) as [B0 B0' HB0 HB0' HEB].
-      apply (mk_type_reads_alike _ _ _ (Πⁿ A0 B0) (Πⁿ A0' B0'));
+      apply (mk_type_reads_alike _ _ _ (nf_pi κd κc A0 B0) (nf_pi κd κc A0' B0'));
         [ econstructor; eassumption | econstructor; eassumption | cbn [nf_erase]; congruence ].
     + intros c c' Hc; apply_relation_equivalence.
       constructor; [ reflexivity | reflexivity |].
@@ -849,7 +862,8 @@ Proof.
       match goal with HT : forall c c' (e : in_rel c c'), rel_mod_eval _ B _ B' _ _ |- _ =>
         destruct (HT _ _ Hc0) as [b b' Eb Eb' [HRb (_ & Hbbot & _)]] end.
       assert (Hap : Dom c $ᵈ ⇓ a c0 ≈ c' $ᵈ ⇓ a' c0' ∈ per_bot) by (apply domain_app_per; [ exact Hc | exact (Hatop _ _ Hc0) ]).
-      econstructor; [ eapply eval_app_neut; exact Eb | eapply eval_app_neut; exact Eb' | exact (Hbbot _ _ Hap) ].
+      econstructor; [ eapply eval_app_neut; [ eassumption | exact Eb ] | eapply eval_app_neut; [ eassumption | exact Eb' ]
+                    | exact (Hbbot _ _ Hap) ].
     + intros f f' Hf; apply_relation_equivalence; destruct Hf as [_ _ Happ].
       intro s.
       assert (Hv : Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel) by (apply Habot; apply var_per_bot).
@@ -860,9 +874,7 @@ Proof.
       destruct (Hatt s) as [A0 A0' HA0 HA0' HEA].
       apply (mk_normal_reads_alike _ _ _ (λⁿ A0 M0) (λⁿ A0' M0'));
         [ econstructor; eassumption | econstructor; eassumption | cbn [nf_erase]; congruence ].
-  - (** A neutral relevant type: its elements are neutrals. *)
-    match goal with Hr : domain_relevance (⇑ a b) = relevant, Hr' : domain_relevance (⇑ a' b') = relevant |- _ =>
-      rename Hr into Hra; rename Hr' into Hra' end.
+  - (** A neutral type of an evaluated kind: its elements are neutrals. *)
     repeat split.
     + intro s; match goal with Hb : per_bot b b' |- _ => destruct (Hb s) as [M M' HM HM' HE] end.
       apply (mk_type_reads_alike _ _ _ (⇑ⁿ M) (⇑ⁿ M'));
@@ -871,7 +883,8 @@ Proof.
     + intros m m' Hm; apply_relation_equivalence; destruct Hm as [? ? ? ? Hm]; intro s.
       destruct (Hm s) as [M M' HM HM' HE].
       apply (mk_normal_reads_alike _ _ _ (⇑ⁿ M) (⇑ⁿ M'));
-        [ apply read_nf_neut; assumption | apply read_nf_neut; assumption | cbn [nf_erase]; congruence ].
+        [ apply read_nf_neut; [ eauto with mctt | assumption ] | apply read_nf_neut; [ eauto with mctt | assumption ]
+        | cbn [nf_erase]; congruence ].
   (** A member of a group of inductive types: [realize_indty], from the
       realisability of the types of its telescopes; its neutrals by
       [ind_rel_neut_canon], the fresh-variable admissibility of the type's
@@ -880,7 +893,7 @@ Proof.
       apply_relation_equivalence.
     + unshelve epose proof (realize_indty p D ups ups' nr ar dr H H0 H3 H5 H6 H8 H9 H11 H12 H14
                               _ _ _ H15 H16 k M ns ns' H1 H17) as [Hrt _];
-      [ intros m Mm k0 A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
+      [ intros m Mm k0 κ A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
       | intros m Mm ms ms' c0 gs k0 A vs vs' Hm0 Hm Hc Hk Hp;
         destruct (H10 _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
       | intros m Mm ms ms' c0 gs gs1 t gs2 ws ws' k0 B ys ys' Hm0 Hm Hc Heq Hw HB Hy;
@@ -891,7 +904,7 @@ Proof.
       eapply ind_rel_neut_canon; eassumption.
     + unshelve epose proof (realize_indty p D ups ups' nr ar dr H H0 H3 H5 H6 H8 H9 H11 H12 H14
                               _ _ _ H15 H16 k M ns ns' H1 H17) as [_ Hre];
-      [ intros m Mm k0 A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
+      [ intros m Mm k0 κ A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
       | intros m Mm ms ms' c0 gs k0 A vs vs' Hm0 Hm Hc Hk Hp;
         destruct (H10 _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
       | intros m Mm ms ms' c0 gs gs1 t gs2 ws ws' k0 B ys ys' Hm0 Hm Hc Heq Hw HB Hy;
@@ -1054,27 +1067,31 @@ Proof.
     destruct IHper_ctx_env as [ρ [ρ' [Hi [Hi' Hρ]]]].
     assert (Dom ρ ≈ ρ ∈ tail_rel) by solve_per.
     assert (Dom ρ' ≈ ρ' ∈ tail_rel) by solve_per.
-    match goal with HS : forall ρ ρ' (_ : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_sort _ _ _ |- _ => rename HS into HS0 end.
+    match goal with HS : forall ρ ρ' (_ : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_kind _ _ _ |- _ => rename HS into HS0 end.
     match goal with HT : forall ρ ρ' (_ : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ _ _ _ _ _ _ |- _ =>
       destruct (HT _ _ Hρ) as [a a' Ha Ha' HR] end.
     destruct (HS0 _ _ Hρ) as (a0 & Ha0 & Hr0).
     assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
-    pose proof (per_univ_elem_relevance _ _ _ _ HR) as Hr0'.
-    destruct r; cbn [def_heads_at def_bodies_at] in *.
-    + match goal with
-      | Hbody : forall ρ ρ' (_ : Dom ρ ≈ ρ' ∈ tail_rel), rel_elem _ _ _ _ _ |- _ =>
-          destruct (Hbody _ _ Hρ) as [m m' Hm Hm' Hmm]
-      end.
+    pose proof (per_univ_elem_kind _ _ _ _ HR) as Hr0'.
+    (** At an evaluated kind, relevant or of levels, the heads hold the
+        bodies' values. *)
+    destruct r; cbn [def_heads_at def_bodies_at] in *; [ | | rename Hr0 into Hr0l ].
+    1,3: match goal with
+         | Hbody : forall ρ ρ' (_ : Dom ρ ≈ ρ' ∈ ?TR), rel_elem _ _ _ _ _ |- _ =>
+             destruct (Hbody _ _ Hρ) as [m m' Hm Hm' Hmm]
+         end;
       do 2 eexists; repeat split;
-        only 1-2: (eapply initial_env_cons_def; [ eassumption | eassumption | congruence | eassumption ]).
-      apply_relation_equivalence.
+        only 1-2: (eapply initial_env_cons_def;
+                   [ eassumption | eassumption | rewrite ?Hr0, ?Hr0l, <- ?Hr0'; first [ rewrite ?Hr0, ?Hr0l; constructor | constructor ]
+                   | eassumption ]);
+      apply_relation_equivalence;
       unshelve eapply mk_per_ctx_env_def_rel';
         [ exact Hρ | solve_def_heads | intros _; eexists; reflexivity | intros _; eexists; reflexivity
         | exact (conj (proj1 (entry_readable_of_elem HR Hmm)) (le_n 0))
         | exact (conj (proj2 (entry_readable_of_elem HR Hmm)) (le_n 0)) ].
     + (** The kept bodies read back over the initial environments: they
           are scoped by the contexts. *)
-      assert (Hp' : domain_relevance a' = propositional) by congruence.
+      assert (Hp' : domain_kind a' = ak_propositional) by congruence.
       assert (HMb : exp_free_bound M <= List.length Γ)
         by (destruct HeΓ as [_ HMs]; rewrite Nat.add_0_r in HMs; exact (exp_scoped_free_bound _ _ HMs)).
       assert (HM'b : exp_free_bound M' <= List.length Γ)
@@ -1082,7 +1099,7 @@ Proof.
             exact (exp_scoped_free_bound _ _ HMs)).
       destruct (per_ctx_env_kept_proof_readable _ _ _ M equiv_Γ_Γ' HMb _ _ Hρ) as [Hρr _].
       destruct (per_ctx_env_kept_proof_readable _ _ _ M' equiv_Γ_Γ' HM'b _ _ Hρ) as [_ Hρr'].
-      assert (Hkept : forall b M0 ρ0, proof_readable ⋆ᵈ⟨M0, ρ0⟩ -> domain_relevance b = propositional ->
+      assert (Hkept : forall b M0 ρ0, proof_readable ⋆ᵈ⟨M0, ρ0⟩ -> domain_kind b = ak_propositional ->
                 (forall s, exists B, Rtyp b in gc_deps ⍮ gc_stack ⍮ s ↘ B) ->
                 entry_readable (de_term ⋆ᵈ⟨M0, ρ0⟩ (entry_type_value b))).
       { intros * Hr Hb Hty s; destruct (Hty s) as [B HB]; destruct (Hr s) as [P HP].

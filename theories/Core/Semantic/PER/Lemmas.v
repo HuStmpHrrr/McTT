@@ -317,8 +317,8 @@ Qed.
 Hint Resolve per_lvl_at_sym per_lvl_at_trans per_bot_then_per_lvl_at : mctt.
 
 Lemma per_bot_then_per_top : forall m m' a a' b b' c c',
-    domain_relevance (⇑ a b) = relevant ->
-    domain_relevance (⇑ a' b') = relevant ->
+    evaluated_kind (domain_kind (⇑ a b)) ->
+    evaluated_kind (domain_kind (⇑ a' b')) ->
     Dom m ≈ m' ∈ per_bot ->
     Dom ⇓ (⇑ a b) (⇑ c m) ≈ ⇓ (⇑ a' b') (⇑ c' m') ∈ per_top.
 Proof.
@@ -440,9 +440,9 @@ Proof.
 Qed.
 
 (** The elements of a [Π] read the domains only through their sorts. *)
-Lemma pi_elements_relevance_irrel : forall a a' b b' in_rel out_rel,
-    domain_relevance a = domain_relevance b ->
-    domain_relevance a' = domain_relevance b' ->
+Lemma pi_elements_kind_irrel : forall a a' b b' in_rel out_rel,
+    domain_kind a = domain_kind b ->
+    domain_kind a' = domain_kind b' ->
     (pi_elements a a' in_rel out_rel <~> pi_elements b b' in_rel out_rel).
 Proof. intros * Ha Ha' f f'; split; intros []; constructor; congruence + assumption. Qed.
 
@@ -625,18 +625,18 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 (** Related types are of one sort: both propositions or both relevant. *)
-Lemma per_univ_elem_relevance : forall i R a a',
+Lemma per_univ_elem_kind : forall i R a a',
     DF a ≈ a' ∈ per_univ_elem i ↘ R ->
-    domain_relevance a = domain_relevance a'.
+    domain_kind a = domain_kind a'.
 Proof.
   intros * H; per_univ_elem_induction H; intros; try reflexivity.
   all: try match goal with Hp : per_prop _ _ |- _ => destruct Hp end; congruence.
 Qed.
 
 (** So are two types related modulo evaluation. *)
-Lemma rel_mod_eval_sort : forall (Rel : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R r,
-    (forall R x y, Rel R x y -> domain_relevance x = domain_relevance y) ->
-    rel_mod_eval Rel A ρ A' ρ' R -> rel_typ_sort A ρ r -> rel_typ_sort A' ρ' r.
+Lemma rel_mod_eval_kind : forall (Rel : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R r,
+    (forall R x y, Rel R x y -> domain_kind x = domain_kind y) ->
+    rel_mod_eval Rel A ρ A' ρ' R -> rel_typ_kind A ρ r -> rel_typ_kind A' ρ' r.
 Proof.
   intros * Hrel [a a' Ha Ha' HR] (a0 & Ha0 & Hr).
   assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
@@ -687,9 +687,9 @@ Proof.
     assert (Hnr : forall m Mm kk vs vs1 vs2, ind_member D m = Some Mm -> kk < List.length (List.rev (im_nparams Mm)) ->
                     tele_prefix_rel (nr m) kk vs vs1 -> tele_prefix_rel (nr0 m) kk vs vs2 -> (nr m kk vs <~> nr0 m kk vs)).
     { intros m Mm kk vs vs1 vs2 Hm Hk Hp1 Hp2.
-      destruct (nparams_lt_ass D m Mm kk Hass Hm Hk) as [A HA].
-      destruct (Hn _ _ _ _ _ _ Hm HA Hp1) as [a1 a1' E1 E1' [Hper Hmot]].
-      destruct (Hn0 _ _ _ _ _ _ Hm HA Hp2) as [a2 a2' E2 E2' Hper2].
+      destruct (nparams_lt_ass D m Mm kk Hass Hm Hk) as (κ & A & HA).
+      destruct (Hn _ _ _ _ _ _ _ Hm HA Hp1) as [a1 a1' E1 E1' [Hper Hmot]].
+      destruct (Hn0 _ _ _ _ _ _ _ Hm HA Hp2) as [a2 a2' E2 E2' Hper2].
       functional_eval_rewrite_clear; exact (Hmot _ _ _ eq_refl Hper2). }
     assert (Har : forall m Mm ms ms1 ms2 c gs kk vs vs1 vs2, ind_member D m = Some Mm ->
                tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms1 -> tele_rel (nr0 m) (List.rev (im_nparams Mm)) ms ms2 ->
@@ -762,8 +762,8 @@ Proof.
         | exact (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ _
                    (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ Hns0') Hns) ]. }
   (** A [Π]: the domains are related, so of one sort. *)
-  match goal with H1 : per_univ_elem _ in_rel a a' |- _ => pose proof (per_univ_elem_relevance _ _ _ _ H1) as Ea end.
-  pose proof (per_univ_elem_relevance _ _ _ _ equiv_a_a') as Ea0.
+  match goal with H1 : per_univ_elem _ in_rel a a' |- _ => pose proof (per_univ_elem_kind _ _ _ _ H1) as Ea end.
+  pose proof (per_univ_elem_kind _ _ _ _ equiv_a_a') as Ea0.
   specialize (IHHorig _ _ _ eq_refl equiv_a_a').
   split; intros [Hl Hr Happ]; constructor; try congruence.
   - intros c c' equiv0_c_c'.
@@ -809,8 +809,8 @@ Proof.
   - split.
     + apply per_univ_elem_core_univ'; firstorder.
     + intros m m' Hm.
-      match goal with HE : _ <~> per_relevant_nonlevel _ |- _ => apply HE in Hm; apply HE end.
-      destruct Hm as [[R' HR] Hl Hr Hnl Hnr]; constructor; [| exact Hr | exact Hl | exact Hnr | exact Hnl ].
+      match goal with HE : _ <~> per_universe_elements _ |- _ => apply HE in Hm; apply HE end.
+      destruct Hm as [[R' HR] Hl Hr]; constructor; [| exact Hr | exact Hl ].
       eexists.
       eapply proj1; mautosolve.
   - (** The two levels are related, hence have the same realiser, so the
@@ -820,8 +820,8 @@ Proof.
     + apply per_univ_elem_core_suniv';
         [ apply per_lvl_sym; assumption | rewrite <- Heq | rewrite <- Heq ]; assumption.
     + intros m m' Hm.
-      match goal with HE : _ <~> per_relevant_nonlevel _ |- _ => apply HE in Hm; apply HE end.
-      destruct Hm as [[R' HR] Hl Hr Hnl Hnr]; constructor; [| exact Hr | exact Hl | exact Hnr | exact Hnl ].
+      match goal with HE : _ <~> per_universe_elements _ |- _ => apply HE in Hm; apply HE end.
+      destruct Hm as [[R' HR] Hl Hr]; constructor; [| exact Hr | exact Hl ].
       eexists.
       eapply proj1; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
@@ -836,17 +836,17 @@ Proof.
       split; [ exact Hr | split; [ exact Hl | eexists; exact HR' ] ].
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - destruct_conjs.
-    match goal with H1 : per_univ_elem _ in_rel a a' |- _ => pose proof (per_univ_elem_relevance _ _ _ _ H1) as Ea end.
+    match goal with H1 : per_univ_elem _ in_rel a a' |- _ => pose proof (per_univ_elem_kind _ _ _ _ H1) as Ea end.
     split.
     + basic_per_univ_elem_econstructor; eauto.
       2: { intros c c' Hc; assert (Hc' : in_rel c' c) by eauto.
            match goal with
            | HT : forall c c' (e : in_rel c c'), rel_mod_eval _ B _ B' _ _,
-             HB : forall c c' (e : in_rel c c'), rel_typ_sort B _ _ |- _ =>
-               exact (rel_mod_eval_sort _ _ _ _ _ _ _ (fun _ _ _ H => per_univ_elem_relevance _ _ _ _ (proj1 H))
+             HB : forall c c' (e : in_rel c c'), rel_typ_kind B _ _ |- _ =>
+               exact (rel_mod_eval_kind _ _ _ _ _ _ _ (fun _ _ _ H => per_univ_elem_kind _ _ _ _ (proj1 H))
                         (HT _ _ Hc') (HB _ _ Hc'))
            end. }
-      2: { etransitivity; [ eassumption | apply pi_elements_relevance_irrel; congruence ]. }
+      2: { etransitivity; [ eassumption | apply pi_elements_kind_irrel; congruence ]. }
       intros.
       assert (in_rel c' c) by eauto.
       assert (in_rel c c) by (etransitivity; eassumption).
@@ -885,12 +885,12 @@ Proof.
         [ exact Hl | exact Hass | exact HM | exact Hh | exact Hu' | exact Hu | exact (per_top_ps_sym _ _ _ Hps) | exact HnP | | exact HnI
         | exact HaP | | exact HaI | exact HdP | | exact HdI | exact Hfl
         | exact (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) | exact Hsn |].
-      * intros m Mm k0 A vs vs' Hm Hk Hp.
+      * intros m Mm k0 κ A vs vs' Hm Hk Hp.
         assert (Hkl : k0 < List.length (List.rev (im_nparams Mm))) by (apply List.nth_error_Some; congruence).
         pose proof (nparams_prefix_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm k0 vs vs' ltac:(lia) Hp) as Hp'.
-        destruct (Hn _ _ _ _ _ _ Hm Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
+        destruct (Hn _ _ _ _ _ _ _ Hm Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
         econstructor; [ exact Ea' | exact Ea |].
-        eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HnI _ _ _ _ _ _ Hm Hk Hp).
+        eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HnI _ _ _ _ _ _ _ Hm Hk Hp).
       * intros m Mm ms ms' c gs k0 A vs vs' Hm0 Hm Hc Hk Hp.
         assert (Hkl : k0 < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
         assert (Hp' : tele_prefix_rel (ar m ms' c) k0 vs' vs)
@@ -959,8 +959,8 @@ Proof.
         intros k f T vs vs' Hk Hp.
         assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
         pose proof (fields_prefix_sym R fr HfP HfI k vs vs' ltac:(lia) Hp) as Hp'.
-        eapply rel_mod_eval_sort; [ | exact (Hf _ _ _ _ _ Hk Hp') | exact (HfS _ _ _ _ _ Hk Hp') ].
-        intros ? ? ? [Hx _]; exact (per_univ_elem_relevance _ _ _ _ Hx).
+        eapply rel_mod_eval_kind; [ | exact (Hf _ _ _ _ _ Hk Hp') | exact (HfS _ _ _ _ _ Hk Hp') ].
+        intros ? ? ? [Hx _]; exact (per_univ_elem_kind _ _ _ _ Hx).
     + intros m m' Hm; apply HE in Hm; apply HE; exact (record_rel_sym R fr HfP HfI _ _ Hm).
 Qed.
 
@@ -1068,7 +1068,7 @@ Proof.
      | intros * HTR1 HTR2; apply_relation_equivalence ] ..]; mauto.
   - (** The univ case. *)
     subst.
-    destruct HTR1 as [HTR1 ? ? ? ?], HTR2 as [HTR2 ? ? ? ?]; constructor; [| assumption .. ].
+    destruct HTR1 as [HTR1 ? ?], HTR2 as [HTR2 ? ?]; constructor; [| assumption .. ].
     destruct HTR1, HTR2.
     functional_eval_rewrite_clear.
     handle_per_univ_elem_irrel.
@@ -1078,7 +1078,7 @@ Proof.
   - (** The small univ case.  Unlike the large one there is no equation
         between the two levels to substitute, so the transitivity of the
         elements is taken from the first of the two derivations. *)
-    destruct HTR1 as [HTR1 ? ? ? ?], HTR2 as [HTR2 ? ? ? ?]; constructor; [| assumption .. ].
+    destruct HTR1 as [HTR1 ? ?], HTR2 as [HTR2 ? ?]; constructor; [| assumption .. ].
     destruct HTR1, HTR2.
     functional_eval_rewrite_clear.
     handle_per_univ_elem_irrel.
@@ -1110,10 +1110,10 @@ Proof.
   - (** The pi case. *)
     destruct_conjs.
     basic_per_univ_elem_econstructor; eauto.
-    4: { etransitivity; [ eassumption | apply pi_elements_relevance_irrel;
-                                          [ symmetry; eapply per_univ_elem_relevance; eassumption | reflexivity ] ]. }
+    4: { etransitivity; [ eassumption | apply pi_elements_kind_irrel;
+                                          [ symmetry; eapply per_univ_elem_kind; eassumption | reflexivity ] ]. }
     3: { intros c c' Hc.
-         match goal with HB : forall c c' (e : in_rel c c'), rel_typ_sort B _ _ |- _ => apply (HB c c') end.
+         match goal with HB : forall c c' (e : in_rel c c'), rel_typ_kind B _ _ |- _ => apply (HB c c') end.
          handle_per_univ_elem_irrel; intuition. }
     + handle_per_univ_elem_irrel.
       intuition.
@@ -1151,9 +1151,9 @@ Proof.
     assert (Hcr : forall m Mm k pa pb pc, ind_member D m = Some Mm -> k < List.length (List.rev (im_nparams Mm)) ->
               tele_prefix_rel (nr m) k pa pb -> tele_prefix_rel (nr0 m) k pb pc -> (nr m k pa <~> nr0 m k pb)).
     { intros m Mm k0 pa pb pc Hm Hk Hp1 Hp2.
-      destruct (nparams_lt_ass D m Mm k0 Hass Hm Hk) as [A HA].
-      destruct (Hn _ _ _ _ _ _ Hm HA Hp1) as [a a' Ea Ea' (Hper & _)].
-      destruct (Hn2 _ _ _ _ _ _ Hm HA Hp2) as [b b' Eb Eb' Hper2].
+      destruct (nparams_lt_ass D m Mm k0 Hass Hm Hk) as (κ & A & HA).
+      destruct (Hn _ _ _ _ _ _ _ Hm HA Hp1) as [a a' Ea Ea' (Hper & _)].
+      destruct (Hn2 _ _ _ _ _ _ _ Hm HA Hp2) as [b b' Eb Eb' Hper2].
       functional_eval_rewrite_clear.
       eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ]. }
     assert (Hacr : forall m Mm ms ms' ms'' c gs k pa pb pc, ind_member D m = Some Mm ->
@@ -1168,10 +1168,10 @@ Proof.
       eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ]. }
     assert (HnP0 : forall m Mm k vs vs', ind_member D m = Some Mm -> k < List.length (List.rev (im_nparams Mm)) ->
               tele_prefix_rel (nr0 m) k vs vs' -> PER (nr0 m k vs))
-      by (intros m Mm k0 ? ? Hm Hk ?; destruct (nparams_lt_ass D m Mm k0 Hass Hm Hk) as [A HA]; eapply HnP2; eassumption).
+      by (intros m Mm k0 ? ? Hm Hk ?; destruct (nparams_lt_ass D m Mm k0 Hass Hm Hk) as (κ & A & HA); eapply HnP2; eassumption).
     assert (HnP1 : forall m Mm k vs vs', ind_member D m = Some Mm -> k < List.length (List.rev (im_nparams Mm)) ->
               tele_prefix_rel (nr m) k vs vs' -> PER (nr m k vs))
-      by (intros m Mm k0 ? ? Hm Hk ?; destruct (nparams_lt_ass D m Mm k0 Hass Hm Hk) as [A HA]; eapply HnP; eassumption).
+      by (intros m Mm k0 ? ? Hm Hk ?; destruct (nparams_lt_ass D m Mm k0 Hass Hm Hk) as (κ & A & HA); eapply HnP; eassumption).
     assert (Hrefl0 : forall m Mm ms ms'', ind_member D m = Some Mm -> tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms'' ->
               tele_rel (nr0 m) (List.rev (im_nparams Mm)) ms'' ms'').
     { intros * Hm0 Hm; eapply (tele_rel_cross_refl _ (nr m) (nr0 m)); [ | exact (fun k0 vs vs' => HnP0 m Mm k0 vs vs' Hm0) | exact Hm ].
@@ -1264,14 +1264,14 @@ Proof.
       [ exact Hl | exact Hass | exact HM | exact Hh | exact Hu | exact Hu2' | exact (per_top_ps_trans _ _ _ _ Hps Hps2)
       | exact HnP | | exact HnI | exact HaP | | exact HaI | exact HdP | | exact HdI | | exact Hcd
       | exact (Hcomp _ _ _ _ _ HM Hns Hns2) | ].
-    + intros m Mm k0 A vs vs'' Hm Hk Hp.
+    + intros m Mm k0 κ A vs vs'' Hm Hk Hp.
       assert (Hkl : k0 < List.length (List.rev (im_nparams Mm))) by (apply List.nth_error_Some; congruence).
       assert (Hp2 : tele_prefix_rel (nr0 m) k0 vs'' vs'').
       { eapply (tele_prefix_rel_cross_refl (nr m) (nr0 m) (List.length (List.rev (im_nparams Mm))));
           [ lia | | exact (fun j0 vs1 vs2 => HnP0 m Mm j0 vs1 vs2 Hm) | exact Hp ].
         intros j0 pa pb Hj Hp1 Hp2; exact (Hcr _ _ _ _ _ _ Hm Hj Hp1 Hp2). }
-      destruct (Hn _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & Htr & _)].
-      destruct (Hn2 _ _ _ _ _ _ Hm Hk Hp2) as [b b' Eb Eb' Hper2].
+      destruct (Hn _ _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & Htr & _)].
+      destruct (Hn2 _ _ _ _ _ _ _ Hm Hk Hp2) as [b b' Eb Eb' Hper2].
       functional_eval_rewrite_clear.
       econstructor; [ exact Ea | exact Eb' |].
       apply (Htr j); eapply per_univ_elem_resp_iff; [ exact Hper2 |]; symmetry; exact (Hcr _ _ _ _ _ _ Hm Hkl Hp Hp2).
@@ -1326,7 +1326,7 @@ Proof.
       assert_fails constr_eq R1 R2; assert (R2 = R1) as -> by congruence end.
     match goal with
     | Hf2 : fields_evals (per_univ_elem ?j) ?R ?ns' ?ns'' ?fr0, Hf1 : fields_evals _ ?R ?ns ?ns' ?fr,
-      HfP : fields_per ?R ?fr, HfP2 : fields_per ?R ?fr0, HfI : fields_inv ?R ?fr, HfS : fields_sorts ?R ?ns ?fr,
+      HfP : fields_per ?R ?fr, HfP2 : fields_per ?R ?fr0, HfI : fields_inv ?R ?fr, HfS : fields_kinds ?R ?ns ?fr,
       Hps : per_top_ps _ ?ns ?ns', Hps2 : per_top_ps _ ?ns' ?ns'',
       Hl : record_lookup _ _ _ = Some ?R, Hnd : List.NoDup _,
       Hn : List.length ?ns = _, Hn2 : List.length ?ns'' = _,
@@ -1526,16 +1526,20 @@ Section Fixed_GCtx.
 
 (** The [per_univ_elem] rule for [Π] without its PER premise. *)
 Lemma per_univ_elem_pi' :
-  forall i a a' ρ B ρ' B'
+  forall i κd κc a a' ρ B ρ' B'
     (in_rel : relation domain)
     (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
     elem_rel,
     DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
     (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
         rel_mod_eval (per_univ_elem i) B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel equiv_c_c')) ->
-    (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_typ_sort B (ρ ↦ c ⦂ entry_type_value a) relevant) ->
+    (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_typ_kind B (ρ ↦ c ⦂ entry_type_value a) κc) ->
+    domain_kind a = κd ->
+    domain_kind a' = κd ->
+    pi_kinds κd κc ->
+    evaluated_kind κc ->
     (elem_rel <~> pi_elements a a' in_rel (@out_rel)) ->
-    DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel.
+    DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
   basic_per_univ_elem_econstructor; eauto.
@@ -1544,18 +1548,18 @@ Qed.
 
 (** ** Types of Levels *)
 
-(** A type of levels is relevant. *)
-Lemma per_level_code_relevant : forall R a a', per_level_code R a a' ->
-    domain_relevance a = relevant /\ domain_relevance a' = relevant.
-Proof. intros * H; destruct H; split; reflexivity. Qed.
+(** A neutral of the kind of levels is a neutral of [LevelSort]. *)
+Lemma neut_kind_level : forall a b, domain_kind (⇑ a b) = ak_level -> a = LevelSortᵈ.
+Proof. intros [] ? H; cbn in H; first [ discriminate H | reflexivity ]. Qed.
 
-Lemma level_code_relevant : forall a, level_code a -> domain_relevance a = relevant.
-Proof. intros a (R & a' & [H | H]); apply per_level_code_relevant in H; destruct H; assumption. Qed.
+(** A type of levels is of the kind of levels. *)
+Lemma level_code_kind : forall a, level_code a -> domain_kind a = ak_level.
+Proof. intros a (R & a' & [H | H]); apply per_level_code_kind in H; destruct H; assumption. Qed.
 
-(** The heads of a type of levels: [Level@n], a [Π] or a neutral of
-    [LevelSort]. *)
+(** The heads of a type of levels: [Level@n], a [Π] between types of
+    levels or a neutral of [LevelSort]. *)
 Lemma level_code_head : forall a, level_code a ->
-    (exists n, a = Levelᵈ@n) \/ (exists b, a = ⇑ LevelSortᵈ b) \/ (exists a0 ρ B, a = Πᵈ a0 ρ B).
+    (exists n, a = Levelᵈ@n) \/ (exists b, a = ⇑ LevelSortᵈ b) \/ (exists a0 ρ B, a = Πₗᵈ a0 ρ B).
 Proof.
   intros a (R & a' & [H | H]); destruct H;
     first [ left; eexists; reflexivity | right; left; eexists; reflexivity | right; right; do 3 eexists; reflexivity ].
@@ -1568,16 +1572,18 @@ Proof.
   apply (per_level_code_strong_ind (fun R a a' => forall i, DF a ≈ a' ∈ per_univ_elem i ↘ R)).
   - intros n elem_rel HE i; basic_per_univ_elem_econstructor; exact HE.
   - intros a a' ρ ρ' B B' in_rel out_rel elem_rel Ha IHa Hper HT HE i.
-    eapply (per_univ_elem_pi' _ _ _ _ _ _ _ in_rel (@out_rel)); [ apply IHa | | | exact HE ].
+    destruct (per_level_code_kind _ _ _ Ha) as [Hk Hk'].
+    eapply (per_univ_elem_pi' _ _ _ _ _ _ _ _ _ in_rel (@out_rel));
+      [ apply IHa | | | exact Hk | exact Hk' | constructor | constructor | exact HE ].
     + intros c c' Hc; destruct (HT _ _ Hc) as [b b' Eb Eb' [Hb IHb]].
       econstructor; [ exact Eb | exact Eb' | apply IHb ].
     + intros c c' Hc; destruct (HT _ _ Hc) as [b b' Eb Eb' [Hb _]].
-      exists b; split; [ exact Eb | exact (proj1 (per_level_code_relevant _ _ _ Hb)) ].
-  - intros b b' elem_rel Hb HE i; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | reflexivity | exact Hb | exact HE ].
+      exists b; split; [ exact Eb | exact (proj1 (per_level_code_kind _ _ _ Hb)) ].
+  - intros b b' elem_rel Hb HE i; basic_per_univ_elem_econstructor; [ cbn; constructor | reflexivity | exact Hb | exact HE ].
 Qed.
 
 (** The domain of a [Π] type of levels is one. *)
-Lemma level_code_pi_domain : forall a ρ B, level_code (Πᵈ a ρ B) -> level_code a.
+Lemma level_code_pi_domain : forall a ρ B, level_code (Πₗᵈ a ρ B) -> level_code a.
 Proof.
   intros * (R & z & [H | H]); inversion H; subst; do 2 eexists; [ left | right ]; eassumption.
 Qed.
@@ -1585,7 +1591,7 @@ Qed.
 (** Its codomain is one at every argument its domain's PER relates to
     itself, whatever type the PER is read at. *)
 Lemma level_code_pi_codomain : forall a ρ B i in_rel a2,
-    level_code (Πᵈ a ρ B) ->
+    level_code (Πₗᵈ a ρ B) ->
     DF a ≈ a2 ∈ per_univ_elem i ↘ in_rel ->
     forall c b, Dom c ≈ c ∈ in_rel -> ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b -> level_code b.
 Proof.
@@ -1617,8 +1623,10 @@ Proof.
   all: try (destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [=]) | (? & ? & ? & [=])]]; fail).
   - econstructor; eassumption.
   - exfalso; match goal with Hp : per_prop _ _ |- _ =>
-      destruct Hp as [Hpl _ _]; rewrite (level_code_relevant _ Hl) in Hpl; discriminate Hpl end.
-  - (** A [Π]: the domains and the codomains are types of levels. *)
+      destruct Hp as [Hpl _ _]; rewrite (level_code_kind _ Hl) in Hpl; discriminate Hpl end.
+  - (** A [Π]: between types of levels, the domains and the codomains
+        are types of levels. *)
+    destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [=]) | (? & ? & ? & [= -> -> <- <- <-])]].
     destruct_conjs.
     econstructor; [ apply IHH; [ eapply level_code_pi_domain; exact Hl | eapply level_code_pi_domain; exact Hl' ]
                   | eassumption | | eassumption ].
@@ -1649,8 +1657,10 @@ Proof.
   all: try (destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [=]) | (? & ? & ? & [=])]]; fail).
   - exists (per_lvl_at n), Levelᵈ@n; left; constructor; reflexivity.
   - exfalso; match goal with Hp : per_prop _ _ |- _ =>
-      destruct Hp as [Hpl _ _]; rewrite (level_code_relevant _ Hl) in Hpl; discriminate Hpl end.
-  - (** A [Π]: the domains and the codomains are types of levels. *)
+      destruct Hp as [Hpl _ _]; rewrite (level_code_kind _ Hl) in Hpl; discriminate Hpl end.
+  - (** A [Π]: between types of levels, the domains and the codomains
+        are types of levels. *)
+    destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [=]) | (? & ? & ? & [= -> -> <- <- <-])]].
     destruct_conjs.
     assert (Hd : level_code a) by (eapply level_code_pi_domain; exact Hl).
     assert (Hd' : level_code a') by (apply IHH; exact Hd).
@@ -1666,7 +1676,8 @@ Proof.
     exact (per_univ_elem_level_code _ _ _ _ Hb Hlb (IHb Hlb)).
   - (** A neutral of [LevelSort]: so is the other side. *)
     destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [= -> ->]) | (? & ? & ? & [=])]].
-    match goal with Hiff : (LevelSortᵈ = LevelSortᵈ <-> ?a' = LevelSortᵈ) |- _ => rewrite (proj1 Hiff eq_refl) end.
+    match goal with Hk : _ = domain_kind (⇑ ?a2 ?b2) |- _ =>
+      assert (a2 = LevelSortᵈ) as -> by (apply (neut_kind_level _ b2); rewrite <- Hk; reflexivity) end.
     exists per_ne, (⇑ LevelSortᵈ b'); left; constructor; [| reflexivity ].
     etransitivity; [ symmetry |]; eassumption.
 Qed.
@@ -1705,15 +1716,16 @@ Section Fixed_GCtx.
 
 Hint Resolve per_univ_elem_pi' : mctt.
 
-Lemma per_univ_elem_pi_clean_inversion : forall {i j a a' in_rel ρ ρ' B B' elem_rel},
+Lemma per_univ_elem_pi_clean_inversion : forall {i j κd κc a a' in_rel ρ ρ' B B' elem_rel},
+    evaluated_kind κc ->
     DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
-    DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem j ↘ elem_rel ->
+    DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem j ↘ elem_rel ->
     exists (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain),
       (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
           rel_mod_eval (per_univ_elem j) B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel equiv_c_c')) /\
         (elem_rel <~> pi_elements a a' in_rel (@out_rel)).
 Proof.
-  intros * Ha HΠ.
+  intros * Hev Ha HΠ.
   basic_invert_per_univ_elem HΠ.
   handle_per_univ_elem_irrel.
   eexists.
@@ -1745,7 +1757,8 @@ End Fixed_GCtx.
 #[export]
 Hint Resolve per_univ_elem_pi' : mctt.
 Ltac invert_per_univ_elem H :=
-  (unshelve eapply (per_univ_elem_pi_clean_inversion _) in H; shelve_unifiable; [eassumption |]; destruct H as [? []])
+  (unshelve eapply (per_univ_elem_pi_clean_inversion _ _) in H; shelve_unifiable;
+     [ first [ eassumption | constructor ] | eassumption |]; destruct H as [? []])
   + basic_invert_per_univ_elem H.
 
 Section Fixed_GCtx.
@@ -1837,15 +1850,15 @@ Proof.
       to the larger: inside the large tier along the order on levels, inside
       the small one along the order on the realisers, which [per_sublvl]
       bounds, and across the tiers immediately. *)
-  1-3: match goal with H : per_relevant_nonlevel _ ?a ?b |- per_relevant_nonlevel _ ?a ?b => destruct H as [[R0 HR0] Hl Hr Hnl Hnr] end;
-    constructor; [| exact Hl | exact Hr | exact Hnl | exact Hnr ];
+  1-3: match goal with H : per_universe_elements _ ?a ?b |- per_universe_elements _ ?a ?b => destruct H as [[R0 HR0] Hl Hr] end;
+    constructor; [| exact Hl | exact Hr ];
     eexists; eapply per_univ_elem_cumu_universe_index;
       [ eassumption
       | cbn; first [ apply per_sublvl_real; assumption | exact I | lia ] ].
   (** Two [Π]s: the functions take arguments of the domains' common
       sort. *)
   1: { match goal with H : pi_elements _ _ _ _ ?x ?y |- pi_elements _ _ _ _ ?x ?y => destruct H as [Hl Hr Happ] end.
-       match goal with H : per_univ_elem _ in_rel a a' |- _ => pose proof (per_univ_elem_relevance _ _ _ _ H) as Ea end.
+       match goal with H : per_univ_elem _ in_rel a a' |- _ => pose proof (per_univ_elem_kind _ _ _ _ H) as Ea end.
        constructor; [ congruence | congruence |].
        intros.
        handle_per_univ_elem_irrel.
@@ -1884,8 +1897,9 @@ Proof.
   2: { eapply per_subtyp_indty; basic_per_univ_elem_econstructor; try eassumption;
        unfold nparams_evals, args_evals, doms_evals in *; intros; eapply rel_mod_eval_proj1;
        match goal with H : forall m Mm, _ |- _ => eapply H; eassumption end. }
-  assert (DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel)
-    by (eapply per_univ_elem_pi'; eauto; intros; destruct_rel_mod_eval; mauto).
+  match goal with |- per_subtyp _ (d_pi ?kd ?kc a ρ B) _ =>
+    assert (DF d_pi kd kc a ρ B ≈ d_pi kd kc a' ρ' B' ∈ per_univ_elem i ↘ elem_rel)
+      by (eapply per_univ_elem_pi'; eauto; intros; destruct_rel_mod_eval; mauto) end.
   saturate_refl.
   econstructor; eauto.
   intros;
@@ -1915,17 +1929,17 @@ Lemma per_subtyp_trans : forall a1 a2 i,
 Proof.
   induction 1; intros ? Hsub.
   (** Each inversion of the second step drops the proposition case at a
-      relevant head ([clear_wrong_relevance]). *)
-  1: { dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ].
-       apply per_subtyp_neut; [ assumption | assumption | etransitivity; eassumption | etransitivity; eassumption ]. }
+      relevant head ([clear_wrong_kind]). *)
+  1: { dependent destruction Hsub; try solve [ exfalso; clear_wrong_kind ].
+       apply per_subtyp_neut; [ assumption | etransitivity; eassumption | etransitivity; eassumption ]. }
   (** The closed types and the universes, a small universe below a small
       one composing by the transitivity of the order on levels. *)
-  1-6: dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ]; simpl in *; mauto.
+  1-6: dependent destruction Hsub; try solve [ exfalso; clear_wrong_kind ]; simpl in *; mauto.
   all: try solve [ econstructor; solve [ lia | solve_universe_index ] ].
-  - dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ].
+  - dependent destruction Hsub; try solve [ exfalso; clear_wrong_kind ].
     handle_per_univ_elem_irrel.
     eapply per_subtyp_pi; eauto.
-    + etransitivity; [ exact H | eassumption ].
+    + etransitivity; [ exact H0 | eassumption ].
     + intros.
       saturate_refl.
       (on_all_hyp: fun H => directed invert_per_univ_elem H).
@@ -1933,19 +1947,19 @@ Proof.
       handle_per_univ_elem_irrel.
       intuition.
   - (** Inductive types: their equalities compose. *)
-    inversion Hsub; subst; try solve [ exfalso; clear_wrong_relevance ].
+    inversion Hsub; subst; try solve [ exfalso; clear_wrong_kind ].
     match goal with H : per_univ_elem _ ?R (d_ind _ _ ?x) (d_ind _ _ ?y), HR' : per_univ_elem _ ?R' (d_ind _ _ ?y) (d_ind _ _ ?z) |- _ =>
       assert (HRR : R <~> R') by (eapply per_univ_elem_left_irrel; [ exact H | apply per_univ_sym; exact HR' ]);
       eapply per_subtyp_indty; eapply per_univ_trans; [ exact H | eapply per_univ_elem_resp_iff; [ exact HR' | symmetry; exact HRR ] ]
     end.
   - (** Record types: their equalities compose. *)
-    inversion Hsub; subst; try solve [ exfalso; clear_wrong_relevance ].
+    inversion Hsub; subst; try solve [ exfalso; clear_wrong_kind ].
     match goal with H : per_univ_elem _ ?R (d_record _ ?x) (d_record _ ?y), HR' : per_univ_elem _ ?R' (d_record _ ?y) (d_record _ ?z) |- _ =>
       assert (HRR : R <~> R') by (eapply per_univ_elem_left_irrel; [ exact H | apply per_univ_sym; exact HR' ]);
       eapply per_subtyp_record; eapply per_univ_trans; [ exact H | eapply per_univ_elem_resp_iff; [ exact HR' | symmetry; exact HRR ] ]
     end.
   - (** Propositions: the second step is between propositions too. *)
-    dependent destruction Hsub; try solve [ exfalso; clear_wrong_relevance ].
+    dependent destruction Hsub; try solve [ exfalso; clear_wrong_kind ].
     apply per_subtyp_prop; etransitivity; eassumption.
 Qed.
 
@@ -2050,22 +2064,36 @@ Proof.
 Qed.
 
 (** A type is of one sort in an environment. *)
-Lemma rel_typ_sort_unique : forall A ρ r r', rel_typ_sort A ρ r -> rel_typ_sort A ρ r' -> r = r'.
+Lemma rel_typ_kind_unique : forall A ρ r r', rel_typ_kind A ρ r -> rel_typ_kind A ρ r' -> r = r'.
 Proof. intros * (a & Ha & <-) (a' & Ha' & <-); functional_eval_rewrite_clear; reflexivity. Qed.
 
 (** Related types are of one sort. *)
-Lemma rel_typ_sort_right : forall {i A ρ A' ρ' R r},
-    rel_typ i A ρ A' ρ' R -> rel_typ_sort A ρ r -> rel_typ_sort A' ρ' r.
+Lemma rel_typ_kind_right : forall {i A ρ A' ρ' R r},
+    rel_typ i A ρ A' ρ' R -> rel_typ_kind A ρ r -> rel_typ_kind A' ρ' r.
 Proof.
   intros * [a a' Ha Ha' HR] (a0 & Ha0 & Hr).
   assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
-  exists a'; split; [ exact Ha' | rewrite <- (per_univ_elem_relevance _ _ _ _ HR); exact Hr ].
+  exists a'; split; [ exact Ha' | rewrite <- (per_univ_elem_kind _ _ _ _ HR); exact Hr ].
 Qed.
+
+(** A kind is the propositions' or an evaluated one. *)
+Lemma kind_cases : forall r, r = ak_propositional \/ evaluated_kind r.
+Proof. intros []; [ right; constructor | left; reflexivity | right; constructor ]. Qed.
+
+(** At an evaluated kind the bodies' values are related and the heads
+    tied to them. *)
+Lemma def_bodies_at_evaluated : forall r M ρ M' ρ' R,
+    evaluated_kind r -> def_bodies_at r M ρ M' ρ' R = rel_elem M ρ M' ρ' R.
+Proof. intros * []; reflexivity. Qed.
+
+Lemma def_heads_at_evaluated : forall r R M M' ρ ρ',
+    evaluated_kind r -> def_heads_at r R M M' ρ ρ' = def_heads R M M' ρ ρ'.
+Proof. intros * []; reflexivity. Qed.
 
 (** The heads tied to two bodies are tied to them in either order. *)
 Lemma def_heads_at_swap : forall r R M M' ρ ρ',
     def_heads_at r R M M' ρ ρ' -> def_heads_at r R M' M ρ ρ'.
-Proof. intros [] * H; [ destruct H; constructor; assumption | exact I ]. Qed.
+Proof. intros [] * H; cbn in *; first [ exact I | destruct H; constructor; assumption ]. Qed.
 
 (** A proposition is related only to propositions. *)
 Lemma rel_typ_propositional_right : forall {i A ρ A' ρ' R},
@@ -2073,7 +2101,7 @@ Lemma rel_typ_propositional_right : forall {i A ρ A' ρ' R},
 Proof.
   intros * [a a' Ha Ha' HR] (a0 & Ha0 & Hp).
   functional_eval_rewrite_clear.
-  exists a'; split; [ exact Ha' | rewrite <- (per_univ_elem_relevance _ _ _ _ HR); exact Hp ].
+  exists a'; split; [ exact Ha' | rewrite <- (per_univ_elem_kind _ _ _ _ HR); exact Hp ].
 Qed.
 
 Lemma rel_typ_propositional_left : forall {i A ρ A' ρ' R},
@@ -2103,20 +2131,20 @@ Proof.
   - right; exact (rel_elem_trans HT HT' HM HM').
 Qed.
 
-(** The same for two terms related unless the sort of their types is
-    [propositional], the sort their definitions are tagged with. *)
+(** The same for two terms related unless the kind of their types is
+    [ak_propositional], the kind their definitions are tagged with. *)
 Lemma rel_elem_tag_sym : forall {i A ρ A' ρ' R M M' r},
     rel_typ i A ρ A' ρ' R ->
-    r = propositional \/ rel_elem M ρ M' ρ' R ->
-    r = propositional \/ rel_elem M' ρ' M ρ R.
+    r = ak_propositional \/ rel_elem M ρ M' ρ' R ->
+    r = ak_propositional \/ rel_elem M' ρ' M ρ R.
 Proof. intros * HT [Hp | HM]; [ left; exact Hp | right; exact (rel_elem_sym HT HM) ]. Qed.
 
 Lemma rel_elem_tag_trans : forall {i j A1 ρ1 A2 ρ2 A3 ρ3 R R' M1 M2 M3 r},
     rel_typ i A1 ρ1 A2 ρ2 R ->
     rel_typ j A2 ρ2 A3 ρ3 R' ->
-    r = propositional \/ rel_elem M1 ρ1 M2 ρ2 R ->
-    r = propositional \/ rel_elem M2 ρ2 M3 ρ3 R' ->
-    r = propositional \/ rel_elem M1 ρ1 M3 ρ3 R.
+    r = ak_propositional \/ rel_elem M1 ρ1 M2 ρ2 R ->
+    r = ak_propositional \/ rel_elem M2 ρ2 M3 ρ3 R' ->
+    r = ak_propositional \/ rel_elem M1 ρ1 M3 ρ3 R.
 Proof.
   intros * HT HT' [Hp | HM] [Hp' | HM']; try (left; assumption).
   right; exact (rel_elem_trans HT HT' HM HM').
@@ -2154,10 +2182,10 @@ Proof. intros * H1 H2; pose proof (@functional_eval gc_deps gc_stack) as Hf; des
 Lemma next_param_functional : forall h a1, next_param h a1 -> forall a2, next_param h a2 -> a1 = a2.
 Proof.
   induction 1; intros a2 H2; inversion H2; subst; auto.
-  - match goal with H : _ ++ _ :: nil = _ ++ _ :: nil |- _ => apply app_inj_tail in H as [<- [= <-]] end.
+  - match goal with H : _ ++ _ :: nil = _ ++ _ :: nil |- _ => apply app_inj_tail in H as [<- [= <- <-]] end.
     eapply functional_eval_exp; eassumption.
   - match goal with H1 : gc_loc _ _ ?p = Some _, H2 : gc_loc _ _ ?p = Some _ |- _ => rewrite H1 in H2; injection H2 as <- <- end.
-    match goal with H1 : nth_error ?l ?n = Some _, H2 : nth_error ?l ?n = Some _ |- _ => rewrite H1 in H2; injection H2 as -> end.
+    match goal with H1 : nth_error ?l ?n = Some _, H2 : nth_error ?l ?n = Some _ |- _ => rewrite H1 in H2; injection H2 as -> -> end.
     eapply functional_eval_exp; eassumption.
 Qed.
 
@@ -2195,7 +2223,7 @@ Lemma per_dmod_sym_all :
 Proof.
   apply per_dmod_mut_ind_all; intros;
     try match goal with Hr : rel_typ _ _ _ _ _ _ |- _ => destruct (rel_typ_sym Hr) as [? Hs] end;
-    try solve [ econstructor; eauto using rel_elem_sym, rel_elem_at_sym, rel_elem_tag_sym, rel_typ_sort_right ].
+    try solve [ econstructor; eauto using rel_elem_sym, rel_elem_at_sym, rel_elem_tag_sym, rel_typ_kind_right ].
   - assert (Hl : length args = length args') by (eapply per_gargs_len_eq; eassumption).
     econstructor; [ eassumption | congruence | assumption ].
   - (* a missing parameter *)
@@ -2364,24 +2392,24 @@ Qed.
 
 (** A closure given its outermost argument is the closure of the rest over
     the environment extended by it. *)
-Lemma appm_local_inv : forall Δ A D ρ c hc h,
-    $ᵐ| dm_local (Δ ++ ce_ass A :: nil) D ρ & c | gc_deps ⍮ gc_stack ↘ hc ->
+Lemma appm_local_inv : forall Δ κ A D ρ c hc h,
+    $ᵐ| dm_local (Δ ++ ce_ass κ A :: nil) D ρ & c | gc_deps ⍮ gc_stack ↘ hc ->
     ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↦ c ⦂ entry_type_closure A ρ ↘ h -> hc = h.
 Proof.
   intros * Ha Hc; inversion Ha; subst.
-  match goal with H : _ ++ _ :: nil = _ ++ _ :: nil |- _ => apply app_inj_tail in H as [<- HA]; injection HA as <- end.
+  match goal with H : _ ++ _ :: nil = _ ++ _ :: nil |- _ => apply app_inj_tail in H as [<- HA]; injection HA as <- <- end.
   eapply functional_eval_close; eassumption.
 Qed.
 
 (** Two closures lacking their outermost parameter are related when, at
     every related pair of arguments, the closures of the rest over the
     environments extended by them evaluate to related values. *)
-Lemma per_dmod_closure_step : forall ρ ρ' Δ Δ' A A' D D' i R a a',
+Lemma per_dmod_closure_step : forall ρ ρ' Δ Δ' κ κ' A A' D D' i R a a',
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a -> ⟦ A' ⟧ gc_deps ⍮ gc_stack ⍮ ρ' ↘ a' -> per_univ_elem i R a a' ->
     (forall c c', R c c' -> exists h h', ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↦ c ⦂ entry_type_closure A ρ ↘ h /\
                                      ⟦ Δ' ⊢ D' ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ' ↦ c' ⦂ entry_type_closure A' ρ' ↘ h' /\
                                      per_dmod h h') ->
-    per_dmod (dm_local (Δ ++ ce_ass A :: nil) D ρ) (dm_local (Δ' ++ ce_ass A' :: nil) D' ρ').
+    per_dmod (dm_local (Δ ++ ce_ass κ A :: nil) D ρ) (dm_local (Δ' ++ ce_ass κ' A' :: nil) D' ρ').
 Proof.
   intros * Ha Ha' HR HD.
   destruct (per_univ_elem_sym _ _ _ _ HR) as [_ Hs].
@@ -2391,7 +2419,7 @@ Proof.
   - intros c c' Hc; destruct (HD _ _ Hc) as (_ & h' & _ & Hh' & _); eexists; constructor; exact Hh'.
   - intros c c' hc hc' Hc Hh Hh'.
     destruct (HD _ _ Hc) as (h & h' & Hc1 & Hc2 & Hr).
-    rewrite (appm_local_inv _ _ _ _ _ _ _ Hh Hc1), (appm_local_inv _ _ _ _ _ _ _ Hh' Hc2); exact Hr.
+    rewrite (appm_local_inv _ _ _ _ _ _ _ _ Hh Hc1), (appm_local_inv _ _ _ _ _ _ _ _ Hh' Hc2); exact Hr.
 Qed.
 
 
@@ -2452,18 +2480,18 @@ Ltac solve_def_heads := solve_def_heads_pre; solve_def_heads_post.
     propositions, at a proposition nothing is. *)
 Ltac same_def_sort :=
   repeat match goal with
-    | Hs1 : context [rel_typ_sort ?A _ ?r1], Hs2 : context [rel_typ_sort ?A _ ?r2] |- _ =>
+    | Hs1 : context [rel_typ_kind ?A _ ?r1], Hs2 : context [rel_typ_kind ?A _ ?r2] |- _ =>
         assert_fails constr_eq r1 r2; is_var r2;
         match goal with
         | He1 : _ ?x _, He2 : _ ?x _ |- _ =>
             let E := fresh "E" in
-            assert (E : r2 = r1) by exact (rel_typ_sort_unique _ _ _ _ (Hs2 _ _ He2) (Hs1 _ _ He1));
+            assert (E : r2 = r1) by exact (rel_typ_kind_unique _ _ _ _ (Hs2 _ _ He2) (Hs1 _ _ He1));
             subst r2
         end
     end;
-  (** The sort is a variable unless it is fixed, as a definition with a
-      module part's is, at [relevant]. *)
-  try match goal with H : context [rel_typ_sort _ _ ?r] |- _ => is_var r; destruct r end;
+  (** The kind is a variable unless it is fixed, as a definition with a
+      module part's is, at [ak_relevant]. *)
+  try match goal with H : context [rel_typ_kind _ _ ?r] |- _ => is_var r; destruct r end;
   cbn [def_heads_at def_bodies_at] in *;
   repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end;
   destruct_conjs.
@@ -2659,20 +2687,20 @@ Proof.
         assert (Hρ' : tail_rel ρ' ρ) by eauto.
         match goal with
         | HT : forall ρ ρ' (e : tail_rel ρ ρ'), rel_mod_eval _ _ ρ _ ρ' _,
-          HS : forall ρ ρ' (e : tail_rel ρ ρ'), rel_typ_sort _ ρ _ |- _ =>
-            exact (rel_typ_sort_right (HT _ _ Hρ') (HS _ _ Hρ'))
+          HS : forall ρ ρ' (e : tail_rel ρ ρ'), rel_typ_kind _ ρ _ |- _ =>
+            exact (rel_typ_kind_right (HT _ _ Hρ') (HS _ _ Hρ'))
         end.
       * intros ρ ρ' Hρ.
         (** At a proposition nothing is asked of the bodies. *)
-        destruct r; cbn [def_bodies_at rel_elem] in *; [| exact I ].
-        assert (tail_rel ρ' ρ) by eauto.
-        assert (tail_rel ρ ρ) by (etransitivity; eassumption).
-        destruct_rel_mod_eval.
-        handle_per_univ_elem_irrel.
-        match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end.
-        move_by_relation_equivalence.
-        econstructor; try eassumption.
-        move_goal_by_relation_equivalence; solve_per.
+        destruct r; cbn [def_bodies_at rel_elem] in *; [| exact I |].
+        all: assert (tail_rel ρ' ρ) by eauto.
+        all: assert (tail_rel ρ ρ) by (etransitivity; eassumption).
+        all: destruct_rel_mod_eval.
+        all: handle_per_univ_elem_irrel.
+        all: match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end.
+        all: move_by_relation_equivalence.
+        all: econstructor; try eassumption.
+        all: move_goal_by_relation_equivalence; solve_per.
       * intros ρ ρ'; split; intros Hρ;
           [ apply HE0 in Hρ | apply HE0 ]; destruct Hρ as [e Hh Hd Hl Hr Hrl Hrr];
           assert (tail_rel ρ↯ ρ↯) by (etransitivity; [ exact e | symmetry; exact e ]);
@@ -2685,7 +2713,7 @@ Proof.
       assert (Ht : tail_rel ρ'↯ ρ↯) by eauto.
       assert (tail_rel ρ↯ ρ↯) by (etransitivity; eassumption).
       assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; eassumption).
-      destruct r; cbn [def_heads_at def_bodies_at rel_elem] in *; [ destruct Hd; destruct_conjs |].
+      destruct r; cbn [def_heads_at def_bodies_at rel_elem] in *; [ destruct Hd; destruct_conjs | | destruct Hd; destruct_conjs ].
       all: apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try exact Hrl; try exact Hrr; try solve_prop_head; cbn [def_heads_at].
       all: destruct_rel_mod_eval.
       all: handle_per_univ_elem_irrel.
@@ -2729,8 +2757,8 @@ Proof.
         assert (Hρ' : tail_rel ρ' ρ) by eauto.
         match goal with
         | HT : forall ρ ρ' (e : tail_rel ρ ρ'), rel_mod_eval _ _ ρ _ ρ' _,
-          HS : forall ρ ρ' (e : tail_rel ρ ρ'), rel_typ_sort _ ρ _ |- _ =>
-            exact (rel_typ_sort_right (HT _ _ Hρ') (HS _ _ Hρ'))
+          HS : forall ρ ρ' (e : tail_rel ρ ρ'), rel_typ_kind _ ρ _ |- _ =>
+            exact (rel_typ_kind_right (HT _ _ Hρ') (HS _ _ Hρ'))
         end.
       * cbn [rel_elem] in *.
         intros ρ ρ' Hρ.
@@ -2752,7 +2780,7 @@ Proof.
       assert (Ht : tail_rel ρ'↯ ρ↯) by eauto.
       assert (tail_rel ρ↯ ρ↯) by (etransitivity; eassumption).
       assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; eassumption).
-      destruct r; cbn [def_heads_at def_bodies_at rel_elem] in *; [ destruct Hd; destruct_conjs |].
+      destruct r; cbn [def_heads_at def_bodies_at rel_elem] in *; [ destruct Hd; destruct_conjs | | destruct Hd; destruct_conjs ].
       (** Saturated once, before the relation is split into its fields. *)
       all: destruct_rel_mod_eval.
       all: handle_per_univ_elem_irrel.
@@ -2864,20 +2892,20 @@ Ltac handle_per_ctx_env_irrel :=
     is the right type's, at the second's. *)
 Ltac trans_def_sort :=
   try match goal with
-    | HS : context [rel_typ_sort ?A _ ?r], HS0 : context [rel_typ_sort ?A' _ ?r0],
+    | HS : context [rel_typ_kind ?A _ ?r], HS0 : context [rel_typ_kind ?A' _ ?r0],
       HT : context [rel_typ _ ?A _ ?A' _ _] |- _ =>
         assert_fails constr_eq r r0; is_var r0;
         match goal with
         | Hp : _ ?x ?y, Hp0 : _ ?y _ |- _ =>
-            assert (r0 = r) by exact (rel_typ_sort_unique _ _ _ _ (HS0 _ _ Hp0) (rel_typ_sort_right (HT _ _ Hp) (HS _ _ Hp)))
+            assert (r0 = r) by exact (rel_typ_kind_unique _ _ _ _ (HS0 _ _ Hp0) (rel_typ_kind_right (HT _ _ Hp) (HS _ _ Hp)))
         end;
         subst r0
-    | HS : context [rel_typ_sort ?A _ ?r], HS0 : context [rel_typ_sort ?A' _ ?r0],
+    | HS : context [rel_typ_kind ?A _ ?r], HS0 : context [rel_typ_kind ?A' _ ?r0],
       HT : context [rel_mod_eval _ ?A _ ?A' _ _] |- _ =>
         assert_fails constr_eq r r0; is_var r0;
         match goal with
         | Hp : _ ?x ?y, Hp0 : _ ?y _ |- _ =>
-            assert (r0 = r) by exact (rel_typ_sort_unique _ _ _ _ (HS0 _ _ Hp0) (rel_typ_sort_right (HT _ _ Hp) (HS _ _ Hp)))
+            assert (r0 = r) by exact (rel_typ_kind_unique _ _ _ _ (HS0 _ _ Hp0) (rel_typ_kind_right (HT _ _ Hp) (HS _ _ Hp)))
         end;
         subst r0
     end.
@@ -2952,10 +2980,10 @@ Proof with solve [eauto using per_univ_trans].
       assert (tail_rel0 ρ' ρ') by intuition.
       trans_def_sort.
       (** At a proposition nothing is asked of the bodies. *)
-      destruct r; cbn [def_bodies_at] in *; [| exact I ].
-      destruct_rel_typ; handle_per_univ_elem_irrel.
-      econstructor; try eassumption.
-      solve_def_heads.
+      destruct r; cbn [def_bodies_at] in *; [| exact I |].
+      all: destruct_rel_typ; handle_per_univ_elem_irrel.
+      all: econstructor; try eassumption.
+      all: solve_def_heads.
     + (** The right bodies are related at each tail against itself, in
           the right context's tail relation, which is the left one's. *)
       intros ρ ρ'; split; intros [Ht ? ? Hl Hr Hrl Hrr];
@@ -3006,7 +3034,7 @@ Proof with solve [eauto using per_univ_trans].
         definition, the right unit as a slot, each moved across the middle
         one. *)
     destruct IHper_ctx_env as [IHctx IHenv].
-    eapply per_ctx_env_cons_dm with (head_rel := head_rel) (r := relevant); [ eauto | eassumption | | | | | | reflexivity ].
+    eapply per_ctx_env_cons_dm with (head_rel := head_rel) (r := ak_relevant); [ eauto | eassumption | | | | | | reflexivity ].
     + intros.
       assert (tail_rel ρ ρ) by intuition.
       assert (tail_rel0 ρ ρ') by intuition.
@@ -3082,14 +3110,14 @@ Proof.
 Qed.
 
 (** [per_ctx_env_cons] without its PER premise. *)
-Lemma per_ctx_env_cons' : forall {Γ Γ' i A A' tail_rel}
+Lemma per_ctx_env_cons' : forall {Γ Γ' i κ A A' tail_rel}
                              (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
                              env_rel,
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
         rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
     (env_rel <~> per_ctx_env_cons_rel tail_rel (@head_rel) A A') ->
-    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel.
+    EF Γ ▹{κ} A ≈ Γ' ▹{κ} A' ∈ per_ctx_env ↘ env_rel.
 Proof.
   intros.
   econstructor; eauto.
@@ -3111,9 +3139,9 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-Lemma per_ctx_env_cons_clean_inversion : forall {Γ Γ' env_relΓ A A' env_relΓA},
+Lemma per_ctx_env_cons_clean_inversion : forall {Γ Γ' env_relΓ κ A A' env_relΓA},
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ env_relΓ ->
-    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_relΓA -> 
+    EF Γ ▹{κ} A ≈ Γ' ▹{κ} A' ∈ per_ctx_env ↘ env_relΓA ->
     exists i (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ env_relΓ), relation domain),
       (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ env_relΓ),
           rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) /\
@@ -3311,13 +3339,13 @@ Qed.
 (** The premise of [per_ctx_env_cons], at the canonical head relation.  Its
     own premise has the shape that [rel_exp_of_typ_inversion_simple]
     provides. *)
-Lemma per_ctx_env_extend : forall {Δ Δ' S S' env_relΔ} {i : nat},
+Lemma per_ctx_env_extend : forall {Δ Δ' κ S S' env_relΔ} {i : nat},
     EF Δ ≈ Δ' ∈ per_ctx_env ↘ env_relΔ ->
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_relΔ ->
         exists a a',
           ⟦ S ⟧ ρ ↘ a /\ ⟦ S' ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
-    EF Δ ▹ S ≈ Δ' ▹ S' ∈ per_ctx_env ↘ per_env_extend S S' env_relΔ.
+    EF Δ ▹{κ} S ≈ Δ' ▹{κ} S' ∈ per_ctx_env ↘ per_env_extend S S' env_relΔ.
 Proof.
   intros * HΔ HS.
   eapply (per_ctx_env_cons' (i := i) (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S' ρ ρ'));
@@ -3401,22 +3429,23 @@ Proof.
 Qed.
 
 (** The premise [per_ctx_env_cons_def] asks for, at the canonical relation,
-    at a relevant type. *)
-Lemma per_ctx_env_extend_def : forall {Δ S M env_relΔ} {i : nat},
+    at a type of an evaluated kind [r]. *)
+Lemma per_ctx_env_extend_def : forall {Δ S M env_relΔ r} {i : nat},
+    evaluated_kind r ->
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_relΔ ->
         exists a a', ⟦ S ⟧ ρ ↘ a /\ ⟦ S ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
-    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_typ_sort S ρ relevant) ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_typ_kind S ρ r) ->
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_relΔ ->
         exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
     EF Δ ▸ S ≔ M ≈ Δ ▸ S ≔ M ∈ per_ctx_env ↘ per_env_extend_def S M env_relΔ.
 Proof.
-  intros * HΔ HS HSr HM.
+  intros * Hev HΔ HS HSr HM.
   assert (HPER : PER env_relΔ) by (eapply per_env_PER; eassumption).
   eapply per_ctx_env_cons_def
-    with (head_rel := fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S ρ ρ') (r := relevant);
+    with (head_rel := fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S ρ ρ') (r := r);
     [ eassumption | eassumption | | | |].
   - intros ρ ρ' Hρ.
     destruct (HS _ _ Hρ) as [a [a' [Ha [Ha' [R HR]]]]].
@@ -3426,6 +3455,7 @@ Proof.
   - exact HSr.
   - intros ρ ρ' Hρ.
     destruct (HM _ _ Hρ) as [m [m' [Hm [Hm' Hmm']]]].
+    rewrite def_bodies_at_evaluated by exact Hev.
     econstructor; eassumption.
   - intros ρ ρ'.
     (** A tie at a single environment and a tie read across the related pair
@@ -3442,12 +3472,12 @@ Proof.
     + intros [[Ht Hh Hl Hr] [m [Hm Htie]] [m' [Hm' Htie']]].
       destruct (Hmove _ _ Ht) as [H1 H2].
       apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try assumption.
-      cbn [def_heads_at]; constructor.
+      rewrite def_heads_at_evaluated by exact Hev; constructor.
       * eexists; split; [ eassumption | apply H1; eassumption ].
       * eexists; split; [ eassumption | apply H1; eassumption ].
       * eexists; split; [ eassumption | apply H2; eassumption ].
       * eexists; split; [ eassumption | apply H2; eassumption ].
-    + intros [Ht Hh Hd Hl Hr]; cbn [def_heads_at] in Hd.
+    + intros [Ht Hh Hd Hl Hr]; rewrite def_heads_at_evaluated in Hd by exact Hev.
       destruct Hd as [[m [Hm Htie]] _ [m' [Hm' Htie']] _].
       destruct (Hmove _ _ Ht) as [H1 H2].
       constructor; [ apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht Hh Hl Hr); assumption | |].
@@ -3494,14 +3524,14 @@ Lemma per_ctx_env_extend_dm : forall {Δ S M U env_relΔ} {i : nat},
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_relΔ ->
         exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
-    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_typ_sort S ρ relevant) ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_typ_kind S ρ ak_relevant) ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_modexp_evals (me_lit U) ρ (me_lit U) ρ') ->
     EF Δ ▸ₘ S ≔ M ‖ U ≈ Δ ▸ₘ S ≔ M ‖ U ∈ per_ctx_env ↘ per_env_extend_dm S M U env_relΔ.
 Proof.
   intros * HΔ HS HM HSr HU.
   assert (HPER : PER env_relΔ) by (eapply per_env_PER; eassumption).
   eapply per_ctx_env_cons_dm
-    with (head_rel := fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S ρ ρ') (r := relevant);
+    with (head_rel := fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S ρ ρ') (r := ak_relevant);
     [ eassumption | eassumption | | | | | | reflexivity ].
   - intros ρ ρ' Hρ.
     destruct (HS _ _ Hρ) as [a [a' [Ha [Ha' [R HR]]]]].
@@ -3618,7 +3648,7 @@ Definition per_pi (a a' : domain) (in_rel : relation domain) (B : typ) (ρ : env
     existentially quantified, which is the shape a four-value chain provides
     after [destruct_per_univ_chain]; [per_head_iff] turns any such PER into the
     canonical one. *)
-Lemma per_univ_elem_pi_canonical : forall {i a a' in_rel ρ B ρ' B'},
+Lemma per_univ_elem_pi_canonical : forall {i κd κc a a' in_rel ρ B ρ' B'},
     DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
     (forall c c',
         Dom c ≈ c' ∈ in_rel ->
@@ -3626,14 +3656,15 @@ Lemma per_univ_elem_pi_canonical : forall {i a a' in_rel ρ B ρ' B'},
           ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\
           ⟦ B' ⟧ ρ' ↦ c' ⦂ entry_type_value a' ↘ b' /\
           DF b ≈ b' ∈ per_univ_elem i ↘ R) ->
-    (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_sort B (ρ ↦ c ⦂ entry_type_value a) relevant) ->
-    DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ (per_pi a a' in_rel B ρ B' ρ').
+    (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_kind B (ρ ↦ c ⦂ entry_type_value a) κc) ->
+    domain_kind a = κd -> domain_kind a' = κd -> pi_kinds κd κc -> evaluated_kind κc ->
+    DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem i ↘ (per_pi a a' in_rel B ρ B' ρ').
 Proof.
-  intros * Ha HB HBr.
-  eapply (per_univ_elem_pi' _ _ _ _ _ _ _ in_rel
+  intros * Ha HB HBr Hd Hd' Hk Hev.
+  eapply (per_univ_elem_pi' _ _ _ _ _ _ _ _ _ in_rel
             (fun c c' (_ : Dom c ≈ c' ∈ in_rel) =>
                per_head B B' (ρ ↦ c ⦂ entry_type_value a) (ρ' ↦ c' ⦂ entry_type_value a')));
-    [ eassumption | | exact HBr | reflexivity ].
+    [ eassumption | | exact HBr | exact Hd | exact Hd' | exact Hk | exact Hev | reflexivity ].
   intros c c' equiv_c_c'.
   destruct (HB _ _ equiv_c_c') as [b [b' [R [Hb [Hb' HR]]]]].
   econstructor; try eassumption.
@@ -3645,12 +3676,13 @@ Qed.
     application.  The two levels are unrelated, since [per_univ_elem]
     irrelevance is cross-level, so a Π-type from one judgment and a domain from
     another need no lifting. *)
-Corollary per_pi_iff : forall {i j a a' in_rel ρ B ρ' B' R},
+Corollary per_pi_iff : forall {i j κd κc a a' in_rel ρ B ρ' B' R},
+    evaluated_kind κc ->
     DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
-    DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem j ↘ R ->
+    DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem j ↘ R ->
     R <~> per_pi a a' in_rel B ρ B' ρ'.
 Proof.
-  intros * Ha HΠ.
+  intros * Hev Ha HΠ.
   invert_per_univ_elem HΠ.
   rename x into out_rel; rename H into Hout; rename H0 into HR.
   (** [HR] identifies [R] with the family-indexed relation; it remains to show
@@ -3678,7 +3710,7 @@ Qed.
     functionality is what a semantic type judgment provides
     ([functionalize_per_univ_chain]).  The three codomain premises are, in
     order, the three obligations produced by [rel_exp_of_typ_under_ctx_q]. *)
-Lemma per_univ_elem_pi_chain : forall {i in_rel a1 a2 a3 a4 B1 ρ1 B2 ρ2 B3 ρ3 B4 ρ4},
+Lemma per_univ_elem_pi_chain : forall {i κd κc in_rel a1 a2 a3 a4 B1 ρ1 B2 ρ2 B3 ρ3 B4 ρ4},
     rel_chain (per_univ_elem i in_rel) ([a1; a2; a3; a4]) ->
     (forall c c',
         Dom c ≈ c' ∈ in_rel ->
@@ -3689,14 +3721,18 @@ Lemma per_univ_elem_pi_chain : forall {i in_rel a1 a2 a3 a4 B1 ρ1 B2 ρ2 B3 ρ3
     (forall c c',
         Dom c ≈ c' ∈ in_rel ->
         exists b b', ⟦ B3 ⟧ ρ3 ↦ c ⦂ entry_type_value a3 ↘ b /\ ⟦ B4 ⟧ ρ4 ↦ c' ⦂ entry_type_value a4 ↘ b' /\ Dom b ≈ b' ∈ per_univ i) ->
-    (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_sort B1 (ρ1 ↦ c ⦂ entry_type_value a1) relevant) ->
+    (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_kind B1 (ρ1 ↦ c ⦂ entry_type_value a1) κc) ->
+    domain_kind a1 = κd -> pi_kinds κd κc -> evaluated_kind κc ->
     rel_chain (per_univ_elem i (per_pi a2 a3 in_rel B2 ρ2 B3 ρ3))
-      ([Πᵈ a1 ρ1 B1; Πᵈ a2 ρ2 B2; Πᵈ a3 ρ3 B3; Πᵈ a4 ρ4 B4]).
+      ([d_pi κd κc a1 ρ1 B1; d_pi κd κc a2 ρ2 B2; d_pi κd κc a3 ρ3 B3; d_pi κd κc a4 ρ4 B4]).
 Proof.
-  intros * Hchain HB12 HB23 HB34 HB1r.
+  intros * Hchain HB12 HB23 HB34 HB1r Hd1 Hk Hev.
   assert (H12 : DF a1 ≈ a2 ∈ per_univ_elem i ↘ in_rel) by pairwise.
   assert (H23 : DF a2 ≈ a3 ∈ per_univ_elem i ↘ in_rel) by pairwise.
   assert (H34 : DF a3 ≈ a4 ∈ per_univ_elem i ↘ in_rel) by pairwise.
+  assert (Hd2 : domain_kind a2 = κd) by (rewrite <- (per_univ_elem_kind _ _ _ _ H12); exact Hd1).
+  assert (Hd3 : domain_kind a3 = κd) by (rewrite <- (per_univ_elem_kind _ _ _ _ H23); exact Hd2).
+  assert (Hd4 : domain_kind a4 = κd) by (rewrite <- (per_univ_elem_kind _ _ _ _ H34); exact Hd3).
   pose proof (per_elem_PER H12) as Hin.
   (** The codomains along the chain are relevant, each related to the one
       before at an argument related to itself. *)
@@ -3704,14 +3740,14 @@ Proof.
              (forall c c',
                  Dom c ≈ c' ∈ in_rel ->
                  exists b b', ⟦ B ⟧ ρ ↦ c ⦂ t ↘ b /\ ⟦ B' ⟧ ρ' ↦ c' ⦂ t' ↘ b' /\ Dom b ≈ b' ∈ per_univ i) ->
-             (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_sort B (ρ ↦ c ⦂ t) relevant) ->
-             (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_sort B' (ρ' ↦ c ⦂ t') relevant)).
+             (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_kind B (ρ ↦ c ⦂ t) κc) ->
+             (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_kind B' (ρ' ↦ c ⦂ t') κc)).
   { intros * HB HBr c c' Hc.
     assert (Hcc : Dom c ≈ c ∈ in_rel) by (etransitivity; [ exact Hc | symmetry; exact Hc ]).
     destruct (HB _ _ Hcc) as [b [b' [Hb [Hb' [R HR]]]]].
     destruct (HBr _ _ Hcc) as (b0 & Hb0 & Hr0).
     assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption).
-    exists b'; split; [ exact Hb' | rewrite <- (per_univ_elem_relevance _ _ _ _ HR); exact Hr0 ]. }
+    exists b'; split; [ exact Hb' | rewrite <- (per_univ_elem_kind _ _ _ _ HR); exact Hr0 ]. }
   pose proof (Hmove _ _ _ _ _ _ HB12 HB1r) as HB2r.
   pose proof (Hmove _ _ _ _ _ _ HB23 HB2r) as HB3r.
   (** One [per_univ_elem_pi_canonical] per link, adapting the premise's
@@ -3721,23 +3757,24 @@ Proof.
              (forall c c',
                  Dom c ≈ c' ∈ in_rel ->
                  exists b b', ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\ ⟦ B' ⟧ ρ' ↦ c' ⦂ entry_type_value a' ↘ b' /\ Dom b ≈ b' ∈ per_univ i) ->
-             (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_sort B (ρ ↦ c ⦂ entry_type_value a) relevant) ->
-             DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ (per_pi a a' in_rel B ρ B' ρ')).
-  { intros * Ha HB HBr.
-    apply per_univ_elem_pi_canonical; [ eassumption | | exact HBr ].
+             (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_kind B (ρ ↦ c ⦂ entry_type_value a) κc) ->
+             domain_kind a = κd -> domain_kind a' = κd ->
+             DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem i ↘ (per_pi a a' in_rel B ρ B' ρ')).
+  { intros * Ha HB HBr Hda Hda'.
+    apply per_univ_elem_pi_canonical; [ eassumption | | exact HBr | exact Hda | exact Hda' | exact Hk | exact Hev ].
     intros c c' Hc.
     destruct (HB _ _ Hc) as [b [b' [Hb [Hb' [R HR]]]]].
     exists b, b', R; repeat split; eassumption. }
-  pose proof (Hlink _ _ _ _ _ _ H12 HB12 HB1r) as HL1.
-  pose proof (Hlink _ _ _ _ _ _ H23 HB23 HB2r) as HL2.
-  pose proof (Hlink _ _ _ _ _ _ H34 HB34 HB3r) as HL3.
+  pose proof (Hlink _ _ _ _ _ _ H12 HB12 HB1r Hd1 Hd2) as HL1.
+  pose proof (Hlink _ _ _ _ _ _ H23 HB23 HB2r Hd2 Hd3) as HL2.
+  pose proof (Hlink _ _ _ _ _ _ H34 HB34 HB3r Hd3 Hd4) as HL3.
   (** The three links are a chain in [per_univ i], so weak functionality puts
       them at one PER, and uniqueness, with [HL2] as anchor, makes it the inner
       link's.  [handle_per_univ_elem_irrel] would keep an unpredictable one of
       the three [per_pi]s. *)
   assert (Hpi : rel_chain (per_univ i)
-                  ([Πᵈ a1 ρ1 B1; Πᵈ a2 ρ2 B2;
-                   Πᵈ a3 ρ3 B3; Πᵈ a4 ρ4 B4]))
+                  ([d_pi κd κc a1 ρ1 B1; d_pi κd κc a2 ρ2 B2;
+                   d_pi κd κc a3 ρ3 B3; d_pi κd κc a4 ρ4 B4]))
     by (apply rel_chain_4; eexists; eassumption).
   functionalize_per_univ_chain Hpi R.
   retype_rel_chain Hpi HL2 Hpi.
@@ -3835,7 +3872,7 @@ Proof.
 Qed.
 
 (** Subtyping relates types of one sort. *)
-Lemma per_subtyp_relevance : forall i a a', Sub a <: a' at i -> domain_relevance a = domain_relevance a'.
+Lemma per_subtyp_kind : forall i a a', Sub a <: a' at i -> domain_kind a = domain_kind a'.
 Proof.
   intros * H; destruct H; try reflexivity; try congruence.
   destruct H as [Hl Hr _]; congruence.
@@ -3848,7 +3885,7 @@ Lemma rel_typ_propositional_subtyp : forall {i A ρ A' ρ' a a'},
 Proof.
   intros * Ea Ea' Hs (b & Eb & Hb).
   assert (b = a') as -> by (eapply functional_eval_exp; eassumption).
-  exists a; split; [ exact Ea | rewrite (per_subtyp_relevance _ _ _ Hs); exact Hb ].
+  exists a; split; [ exact Ea | rewrite (per_subtyp_kind _ _ _ Hs); exact Hb ].
 Qed.
 
 Lemma per_ctx_env_subtyping : forall Γ Δ,
@@ -4170,7 +4207,7 @@ Proof.
         side against itself.  The self-relations of the old sides are not
         needed, and would only enlarge the saturation. *)
     clear D11 D11'.
-    destruct r; cbn [def_heads_at def_bodies_at] in *; [ destruct Hterms; destruct_conjs |].
+    destruct r; cbn [def_heads_at def_bodies_at] in *; [ destruct Hterms; destruct_conjs | | destruct Hterms; destruct_conjs ].
     all: solve_def_heads_pre.
     all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Dtail2);
       try (match goal with |- def_heads_at _ _ _ _ _ _ => cbn [def_heads_at]; constructor end);
@@ -4221,10 +4258,10 @@ Proof.
     assert (Dom ρ1'↯ ≈ ρ2'↯ ∈ tail_rel) by solve_per.
     destruct r; cbn [def_heads_at def_bodies_at] in *;
       repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
-      [| split; [ solve_def_heads | exact I ] ].
-    solve_def_heads_pre.
-    split; [ solve_def_heads_post |].
-    constructor; try rewrite <- (env_agree_retagged_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_retagged_var _ _ _ Heq' 0 ltac:(cbn; lia));
+      [| split; [ solve_def_heads | exact I ] |].
+    all: solve_def_heads_pre.
+    all: split; [ solve_def_heads_post |].
+    all: constructor; try rewrite <- (env_agree_retagged_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_retagged_var _ _ _ Heq' 0 ltac:(cbn; lia));
       solve_def_heads_post.
 Qed.
 
@@ -4294,7 +4331,7 @@ Proof. intros * ? [R ?]; eexists; eapply per_univ_elem_cumu_universe_index; eass
     with its own relevant elements as the relation. *)
 Lemma per_univ_elem_universe_index_value : forall u i,
     universe_index_lt u i ->
-    DF universe_index_value u ≈ universe_index_value u ∈ per_univ_elem i ↘ per_relevant_nonlevel (per_univ u).
+    DF universe_index_value u ≈ universe_index_value u ∈ per_univ_elem i ↘ per_universe_elements (per_univ u).
 Proof.
   intros [n | n] * Hlt; cbn.
   - (** The small universe at [n] is the one at the literal level [n], whose
@@ -4315,7 +4352,7 @@ Qed.
 (** A proposition's elements are the proof alone. *)
 Lemma per_univ_elem_propositional : forall i R a a',
     DF a ≈ a' ∈ per_univ_elem i ↘ R ->
-    domain_relevance a = propositional ->
+    domain_kind a = ak_propositional ->
     R <~> per_proof.
 Proof.
   intros * H Hr.
@@ -4331,7 +4368,7 @@ Lemma per_ctx_head_propositional_left : forall Γ Γ' tail_rel i A A'
     (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) ρ ρ' (Ht : Dom ρ ≈ ρ' ∈ tail_rel) E a,
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-    env_agree_upto (List.length Γ) E ρ -> ⟦ A ⟧ E ↘ a -> domain_relevance a = propositional ->
+    env_agree_upto (List.length Γ) E ρ -> ⟦ A ⟧ E ↘ a -> domain_kind a = ak_propositional ->
     head_rel Ht <~> per_proof.
 Proof.
   intros * HΓ HT HE Ea Hp.
@@ -4339,8 +4376,8 @@ Proof.
   destruct (HT _ _ HE') as [a1 b1 Ea1 Eb1 R1].
   destruct (HT _ _ Ht) as [a0 b0 Ea0 Eb0 R0].
   functional_eval_rewrite_clear.
-  pose proof (per_univ_elem_relevance _ _ _ _ R1) as Hr1.
-  pose proof (per_univ_elem_relevance _ _ _ _ R0) as Hr0.
+  pose proof (per_univ_elem_kind _ _ _ _ R1) as Hr1.
+  pose proof (per_univ_elem_kind _ _ _ _ R0) as Hr0.
   eapply per_univ_elem_propositional; [ exact R0 | congruence ].
 Qed.
 
@@ -4348,7 +4385,7 @@ Lemma per_ctx_head_propositional_right : forall Γ Γ' tail_rel i A A'
     (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) ρ ρ' (Ht : Dom ρ ≈ ρ' ∈ tail_rel) E a',
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-    env_agree_upto (List.length Γ') E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_relevance a' = propositional ->
+    env_agree_upto (List.length Γ') E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_kind a' = ak_propositional ->
     head_rel Ht <~> per_proof.
 Proof.
   intros * HΓ HT HE Ea Hp.
@@ -4357,7 +4394,7 @@ Proof.
   destruct (HT _ _ HE') as [a1 b1 Ea1 Eb1 R1].
   destruct (HT _ _ Ht) as [a0 b0 Ea0 Eb0 R0].
   functional_eval_rewrite_clear.
-  pose proof (per_univ_elem_relevance _ _ _ _ R1) as Hr1.
+  pose proof (per_univ_elem_kind _ _ _ _ R1) as Hr1.
   eapply per_univ_elem_propositional; [ exact R0 | congruence ].
 Qed.
 
@@ -4368,7 +4405,7 @@ Lemma rel_typ_propositional_env_eq_left : forall Γ Γ' tail_rel i A A'
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
     Dom ρ ≈ ρ' ∈ tail_rel ->
-    env_agree_upto (List.length Γ) E ρ -> ⟦ A ⟧ E ↘ a -> domain_relevance a = propositional ->
+    env_agree_upto (List.length Γ) E ρ -> ⟦ A ⟧ E ↘ a -> domain_kind a = ak_propositional ->
     rel_typ_propositional A ρ.
 Proof.
   intros * HΓ HT Ht HE Ea Hp.
@@ -4381,7 +4418,7 @@ Lemma rel_typ_propositional_env_eq_right : forall Γ Γ' tail_rel i A A'
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
     Dom ρ ≈ ρ' ∈ tail_rel ->
-    env_agree_upto (List.length Γ') E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_relevance a' = propositional ->
+    env_agree_upto (List.length Γ') E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_kind a' = ak_propositional ->
     rel_typ_propositional A' ρ'.
 Proof.
   intros * HΓ HT Ht HE Ea Hp.

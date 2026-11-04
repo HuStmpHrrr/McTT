@@ -413,7 +413,7 @@ Section Fixed_GCtx.
         intros k u u' pre pre' Ts Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _ _.
         destruct gs; cbn in Hcorr; [ constructor | contradiction ].
       - (* a non-recursive argument of the container's *)
-        intros k u u' pre x pre' x' Ts A' gs' vs vs' rA' Hrest IH Hu Hu' Mi' v Mv c gs1' gs1 gs ms ms' vp vp'
+        intros k u u' pre x pre' x' Ts rA' A' gs' vs vs' Hrest IH Hu Hu' Mi' v Mv c gs1' gs1 gs ms ms' vp vp'
           HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' HTs Hms Hpw Hfr.
         assert (Hlc : List.length vp = List.length gs1') by (rewrite Hlp; symmetry; exact (cargs_correspond_len _ _ _ Hcorr1)).
         assert (Hlc' : List.length vp' = List.length gs1') by (rewrite Hlp'; symmetry; exact (cargs_correspond_len _ _ _ Hcorr1)).
@@ -674,7 +674,7 @@ Section Fixed_GCtx.
           intros k u u' pre pre' Ts Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _ _.
           destruct gs'; [ split; [ constructor | exact I ] | destruct c0; contradiction ].
         - (* a non-recursive argument of the group's *)
-          intros k u u' pre x pre' x' Ts A gs vs vs' rA Hrest IH Hu Hu' i' Mi' Mw c gs1' gs1 gs' ms ms' vp vp'
+          intros k u u' pre x pre' x' Ts rA A gs vs vs' Hrest IH Hu Hu' i' Mi' Mw c gs1' gs1 gs' ms ms' vp vp'
             HM Hv Hc' Hc Hcorr1 Hcorr Hlp Hlp' Hpre Hpre' HTs Hms Hpw Hfr.
           destruct gs' as [| [rA' A' | t'] gs0']; cbn in Hcorr; try contradiction;
             try (match type of Hcorr with _ = _ /\ cargs_correspond _ _ _ => destruct Hcorr as [Hrr Hcorr] end).

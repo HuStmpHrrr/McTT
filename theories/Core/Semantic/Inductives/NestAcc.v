@@ -50,9 +50,9 @@ Section NestAcc.
   | tele_elems_nil : tele_elems ρ T nil
   (** The next entry's type evaluates in [ρ] extended by the elements
       before it to a type of the model, and [v] is an element of it *)
-  | tele_elems_snoc : forall vs A t (i : universe_index) R v,
+  | tele_elems_snoc : forall vs κ A t (i : universe_index) R v,
       tele_elems ρ T vs ->
-      List.nth_error T (List.length vs) = Some (ce_ass A) ->
+      List.nth_error T (List.length vs) = Some (ce_ass κ A) ->
       ⟦ A ⟧ env_tele ρ T vs ↘ t ->
       DF t ≈ t ∈ per_univ_elem i ↘ R ->
       R v v ->
@@ -63,9 +63,10 @@ Section NestAcc.
   Inductive shape_end : domain -> domain -> Prop :=
   (** No [Π]: the type itself *)
   | se_here : forall a, shape_end a a
-  (** A [Π]: the end of its codomain at a fresh variable of its domain *)
-  | se_pi : forall e a ρ B n b,
-      ⟦ B ⟧ ρ ↦ ⇑! a n ⦂ entry_type_value a ↘ b -> shape_end e b -> shape_end e (Πᵈ a ρ B).
+  (** A [Π] into a type of a universe, as a shape's is: the end of its
+      codomain at a fresh variable of its domain *)
+  | se_pi : forall e κd a ρ B n b,
+      ⟦ B ⟧ ρ ↦ ⇑! a n ⦂ entry_type_value a ↘ b -> shape_end e b -> shape_end e (Πᵈ{κd} a ρ B).
 
   (** One step of nesting, out of a group at [ups], or out of a record
       type at its parameters. *)
@@ -119,7 +120,7 @@ Section NestAcc.
     intros a Ha Hr; constructor; intros b Hb; inversion Hb; subst; exfalso; [ eapply Ha | eapply Hr ]; reflexivity.
   Qed.
 
-  Lemma shape_end_non_pi : forall e z, shape_end e z -> (forall a ρ B, z <> Πᵈ a ρ B) -> e = z.
+  Lemma shape_end_non_pi : forall e z, shape_end e z -> (forall κd a ρ B, z <> Πᵈ{κd} a ρ B) -> e = z.
   Proof. intros * H Hz; inversion H; subst; [ reflexivity | exfalso; eapply Hz; reflexivity ]. Qed.
 
   Lemma per_univ_elem_some_universe_index : forall (i : universe_index) R x y, DF x ≈ y ∈ per_univ_elem i ↘ R ->
@@ -131,14 +132,14 @@ Section NestAcc.
   Lemma tele_elems_transfer : forall (P : relation domain -> domain -> domain -> Prop)
       (HP : forall R x y, P R x y -> exists i : universe_index, DF x ≈ y ∈ per_univ_elem i ↘ R) tr ρ1 ρ2 T vs,
       tele_elems ρ1 T vs ->
-      (forall k A vs1 vs2, List.nth_error T k = Some (ce_ass A) -> tele_prefix_rel tr k vs1 vs2 ->
+      (forall k κ A vs1 vs2, List.nth_error T k = Some (ce_ass κ A) -> tele_prefix_rel tr k vs1 vs2 ->
          rel_mod_eval P A (env_tele ρ1 T vs1) A (env_tele ρ2 T vs2) (tr k vs1)) ->
       tele_prefix_rel tr (List.length vs) vs vs /\ tele_elems ρ2 T vs.
   Proof.
-    intros * HP tr ρ1 ρ2 T vs H Hev; induction H as [| vs A t i R v H IH HA Ht Htt Hv].
+    intros * HP tr ρ1 ρ2 T vs H Hev; induction H as [| vs κ A t i R v H IH HA Ht Htt Hv].
     - split; [ apply tele_prefix_rel_nil | constructor ].
     - destruct IH as (Hr & Hf).
-      destruct (Hev (List.length vs) A vs vs HA Hr) as [t1 t2 E1 E2 HPt].
+      destruct (Hev (List.length vs) κ A vs vs HA Hr) as [t1 t2 E1 E2 HPt].
       pose proof (functional_eval_exp _ _ _ _ Ht E1) as <-.
       destruct (HP _ _ _ HPt) as [i' Ht12].
       assert (Htr : tr (List.length vs) vs v v).
@@ -161,7 +162,7 @@ Section NestAcc.
   Lemma per_univ_left_ind : forall i R p k us a, DF d_ind p k us ≈ a ∈ per_univ_elem i ↘ R -> exists us', a = d_ind p k us'.
   Proof. intros * H; basic_invert_per_univ_elem H; eauto. Qed.
 
-  Lemma per_univ_left_pi : forall i R x ρ B a, DF Πᵈ x ρ B ≈ a ∈ per_univ_elem i ↘ R -> exists x' ρ' B', a = Πᵈ x' ρ' B'.
+  Lemma per_univ_left_pi : forall i R κd x ρ B a, DF Πᵈ{κd} x ρ B ≈ a ∈ per_univ_elem i ↘ R -> exists x' ρ' B', a = Πᵈ{κd} x' ρ' B'.
   Proof. intros * H; basic_invert_per_univ_elem H; eauto. Qed.
 
   Lemma per_univ_left_record : forall i R p ns a, DF d_record p ns ≈ a ∈ per_univ_elem i ↘ R -> exists ns', a = d_record p ns'.
@@ -181,12 +182,12 @@ Section NestAcc.
       one that is none. *)
   Lemma non_ind_non_pi_nest : forall j R z a e j2 R2 e',
       DF z ≈ a ∈ per_univ_elem j ↘ R ->
-      (forall p k us, a <> d_ind p k us) -> (forall p ns, a <> d_record p ns) -> (forall x ρ B, a <> Πᵈ x ρ B) ->
+      (forall p k us, a <> d_ind p k us) -> (forall p ns, a <> d_record p ns) -> (forall κd x ρ B, a <> Πᵈ{κd} x ρ B) ->
       shape_end e z -> DF e' ≈ e ∈ per_univ_elem j2 ↘ R2 -> nest_acc e'.
   Proof.
     intros * Hz Ha Hr Hb He He'.
-    assert (Hzp : forall x ρ B, z <> Πᵈ x ρ B)
-      by (intros x ρ B ->; destruct (per_univ_left_pi _ _ _ _ _ _ Hz) as (? & ? & ? & ->); eapply Hb; reflexivity).
+    assert (Hzp : forall κd x ρ B, z <> Πᵈ{κd} x ρ B)
+      by (intros κd x ρ B ->; destruct (per_univ_left_pi _ _ _ _ _ _ _ Hz) as (? & ? & ? & ->); eapply Hb; reflexivity).
     rewrite (shape_end_non_pi _ _ He Hzp) in He'.
     assert (Hea : per_univ j2 e' a) by (eapply per_univ_trans'; eexists; eassumption).
     destruct Hea as [R3 Hea].
@@ -205,21 +206,27 @@ Section NestAcc.
   Qed.
 
   (** The entries of the fields' telescope are the fields' types. *)
-  Lemma fields_tele_nth : forall (R : record_decl) k A,
-      List.nth_error (record_fields_tele R) k = Some (ce_ass A) -> exists f, List.nth_error (record_fields R) k = Some (f, A).
+  Lemma fields_tele_nth : forall (R : record_decl) k κ A,
+      List.nth_error (record_fields_tele R) k = Some (ce_ass κ A) -> exists f, List.nth_error (record_fields R) k = Some (f, A).
   Proof.
-    intros * Hk; unfold record_fields_tele in Hk; rewrite List.nth_error_map in Hk.
-    destruct (List.nth_error (record_fields R) k) as [[f A1] |] eqn:E; cbn in Hk; [| discriminate ].
-    injection Hk as ->; exists f; reflexivity.
+    intros * Hk; unfold record_fields_tele in Hk.
+    destruct (List.nth_error (record_fields R) k) as [[f A1] |] eqn:E.
+    - rewrite (nth_error_rev_fields_tele _ _ _ _ _ E) in Hk; injection Hk as _ ->; exists f; reflexivity.
+    - exfalso; apply List.nth_error_None in E.
+      assert (Hl : List.length (List.rev (fields_tele (record_fields R) (record_field_kinds R))) = List.length (record_fields R))
+        by (rewrite List.length_rev; apply length_fields_tele).
+      assert (Hlt : k < List.length (List.rev (fields_tele (record_fields R) (record_field_kinds R))))
+        by (apply List.nth_error_Some; congruence).
+      lia.
   Qed.
 
   (** The entries of the arguments' telescope are the arguments' types. *)
-  Lemma cargs_tele_nth : forall gs k A,
-      List.nth_error (cargs_nonrec_tele gs) k = Some (ce_ass A) -> List.nth_error (cargs_nonrec gs) k = Some A.
+  Lemma cargs_tele_nth : forall gs k κ A,
+      List.nth_error (cargs_nonrec_tele gs) k = Some (ce_ass κ A) -> List.nth_error (cargs_nonrec gs) k = Some A.
   Proof.
-    intros * Hk; unfold cargs_nonrec_tele in Hk; rewrite List.nth_error_map in Hk.
-    destruct (List.nth_error (cargs_nonrec gs) k) as [A1 |] eqn:E; cbn in Hk; [| discriminate ].
-    injection Hk as ->; reflexivity.
+    induction gs as [| [r A0 | t] gs IH]; intros k κ A Hk; cbn [cargs_nonrec_tele cargs_nonrec] in Hk |- *;
+      [ destruct k; discriminate | destruct k as [| k]; cbn in Hk |- *; [ injection Hk as _ ->; reflexivity | exact (IH _ _ _ Hk) ]
+      | exact (IH _ _ _ Hk) ].
   Qed.
 
   (** A step out of a type is one out of any type related to it. *)
@@ -241,8 +248,8 @@ Section NestAcc.
         match goal with Hf : fields_evals _ Rr ns ns1 ?fr0 |- _ => rename Hf into Hfe; rename fr0 into fr end.
         destruct (tele_elems_transfer (per_univ_elem _) (fun _ _ _ H => per_univ_elem_some_universe_index _ _ _ _ H) fr
                     (env_tele nil (List.rev (record_params Rr)) ns) (env_tele nil (List.rev (record_params Rr)) ns1) _ _ Hvs
-                    (fun k0 A0 vs1 vs2 Hk Hp =>
-                       ltac:(destruct (fields_tele_nth _ _ _ Hk) as [f0 Hf0]; exact (Hfe _ _ _ _ _ Hf0 Hp))))
+                    (fun k0 κ0 A0 vs1 vs2 Hk Hp =>
+                       ltac:(destruct (fields_tele_nth _ _ _ _ Hk) as [f0 Hf0]; exact (Hfe _ _ _ _ _ Hf0 Hp))))
           as (Hrvs & Hvsa).
         destruct (Hfe _ _ _ _ _ Hj Hrvs) as [b1 ba Eb1 Eba Hb1a].
         pose proof (functional_eval_exp _ _ _ _ Hb0 Eb1) as <-.
@@ -266,13 +273,13 @@ Section NestAcc.
     end.
     destruct (tele_elems_transfer (per_univ_elem _) (fun _ _ _ H => per_univ_elem_some_universe_index _ _ _ _ H) (nr m)
                 (decl_env D upsL) (decl_env D ups1) _ _ Hms
-                (fun k0 A0 vs1 vs2 Hk Hp => Hn0 _ _ _ _ _ _ HMm Hk Hp)) as (Hrms & Hmsa).
+                (fun k0 κ0 A0 vs1 vs2 Hk Hp => Hn0 _ _ _ _ _ _ _ HMm Hk Hp)) as (Hrms & Hmsa).
     assert (Hrms' : tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms)
       by (apply tele_rel_of_pre; rewrite List.length_rev, <- Hlms; exact Hrms).
     destruct (tele_elems_transfer (per_univ_elem _) (fun _ _ _ H => per_univ_elem_some_universe_index _ _ _ _ H) (ar m ms c)
                 (components_env D upsL (List.rev (im_nparams Mm)) ms) (components_env D ups1 (List.rev (im_nparams Mm)) ms) _ _ Hvs
-                (fun k0 A0 vs1 vs2 Hk Hp => ltac:(rewrite <- !components_env_args_split by exact Hlms;
-                   exact (Hargs _ _ _ _ _ _ _ _ _ _ HMm Hrms' Hc (cargs_tele_nth _ _ _ Hk) Hp)))) as (Hrvs & Hvsa).
+                (fun k0 κ0 A0 vs1 vs2 Hk Hp => ltac:(rewrite <- !components_env_args_split by exact Hlms;
+                   exact (Hargs _ _ _ _ _ _ _ _ _ _ HMm Hrms' Hc (cargs_tele_nth _ _ _ _ Hk) Hp)))) as (Hrvs & Hvsa).
     destruct (Hargs _ _ _ _ _ _ _ _ _ _ HMm Hrms' Hc HA Hrvs) as [b1 ba Eb1 Eba Hb1a].
     pose proof (functional_eval_exp _ _ _ _ Hb0 Eb1) as <-.
     assert (Hzb : per_univ i0 z ba) by (eapply per_univ_trans'; [ eexists; exact Hz | eexists; exact Hb1a ]).
@@ -322,16 +329,26 @@ Section NestAcc.
       | Hp : per_prop ?a _, Hz : per_univ_elem _ _ ?z ?a, He : shape_end ?e ?z, He' : per_univ_elem _ _ ?e' ?e
         |- nest_acc ?e' => exact (prop_nest _ _ _ _ _ _ _ _ _ Hp Hz He He')
       end.
-    - (* a [Π]: the shape end of a related type is one of a codomain at a
-         fresh variable, related to this codomain's at a fresh variable *)
-      destruct (per_univ_left_pi _ _ _ _ _ _ (per_univ_sym _ _ _ _ H6)) as (az & ρz & Bz & ->).
-      inversion H7 as [| ee a1 ρ1 B1 n b Hb Hse]; subst.
+    - (* a [Π]: between types of levels, no shape steps through it; into
+         a type of a universe, the shape end of a related type is one of a
+         codomain at a fresh variable, related to this codomain's at a
+         fresh variable *)
+      match goal with
+      | Hz : per_univ_elem _ _ ?z (d_pi _ _ _ _ _), He : shape_end ?e ?z, He' : per_univ_elem _ _ ?e' ?e |- _ =>
+          rename Hz into Hzπ; rename He into Heπ; rename He' into Heπ'
+      end.
+      match goal with Hev : evaluated_kind ?kc |- _ => destruct Hev end;
+        [| exact (non_ind_non_pi_nest _ _ _ _ _ _ _ _ Hzπ ltac:(intros; discriminate) ltac:(intros; discriminate)
+                    ltac:(intros; discriminate) Heπ Heπ') ].
+      destruct (per_univ_left_pi _ _ _ _ _ _ _ (per_univ_sym _ _ _ _ Hzπ)) as (az & ρz & Bz & ->).
+      inversion Heπ as [| ee κ1 a1 ρ1 B1 n b Hb Hse]; subst.
       { apply nest_acc_non_ind;
-          [ exact (non_ind_related _ _ _ _ H8 ltac:(intros; discriminate))
-          | exact (non_record_related _ _ _ _ H8 ltac:(intros; discriminate)) ]. }
-      basic_invert_per_univ_elem H6.
+          [ exact (non_ind_related _ _ _ _ Heπ' ltac:(intros; discriminate))
+          | exact (non_record_related _ _ _ _ Heπ' ltac:(intros; discriminate)) ]. }
+      basic_invert_per_univ_elem Hzπ.
       assert (Hc0 : in_rel0 (⇑! az n) (⇑! a0 n)) by (eapply var_per_elem; eassumption).
-      destruct (H7 _ _ Hc0) as [b1 b2 Eb1 Eb2 Hb12].
+      match goal with HT : forall c c' (_ : in_rel0 c c'), rel_mod_eval _ Bz _ _ _ _ |- _ =>
+        destruct (HT _ _ Hc0) as [b1 b2 Eb1 Eb2 Hb12] end.
       pose proof (functional_eval_exp _ _ _ _ Hb Eb1) as <-.
       assert (Hc : in_rel (⇑! a0 n) (⇑! a'0 n)) by (eapply var_per_elem; eassumption).
       destruct (H3 _ _ Hc) as [c1 c2 Ec1 Ec2 [_ HIH]].
@@ -358,13 +375,13 @@ Section NestAcc.
       end.
       destruct (tele_elems_transfer _ (fun _ _ _ H => per_univ_elem_some_universe_index _ _ _ _ (proj1 H)) (nr m)
                  (decl_env D ups) (decl_env D ups') _ _ Hms
-                 (fun k0 A0 vs1 vs2 Hk Hp => HnIH _ _ _ _ _ _ HMm Hk Hp)) as (Hrms & _).
+                 (fun k0 κ0 A0 vs1 vs2 Hk Hp => HnIH _ _ _ _ _ _ _ HMm Hk Hp)) as (Hrms & _).
       assert (Hrms' : tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms)
         by (apply tele_rel_of_pre; rewrite List.length_rev, <- Hlms; exact Hrms).
       destruct (tele_elems_transfer _ (fun _ _ _ H => per_univ_elem_some_universe_index _ _ _ _ (proj1 H)) (ar m ms c)
                  (components_env D ups (List.rev (im_nparams Mm)) ms) (components_env D ups' (List.rev (im_nparams Mm)) ms) _ _ Hvs
-                 (fun k0 A0 vs1 vs2 Hk Hp => ltac:(rewrite <- !components_env_args_split by exact Hlms;
-                    exact (HaIH _ _ _ _ _ _ _ _ _ _ HMm Hrms' Hc (cargs_tele_nth _ _ _ Hk) Hp)))) as (Hrvs & _).
+                 (fun k0 κ0 A0 vs1 vs2 Hk Hp => ltac:(rewrite <- !components_env_args_split by exact Hlms;
+                    exact (HaIH _ _ _ _ _ _ _ _ _ _ HMm Hrms' Hc (cargs_tele_nth _ _ _ _ Hk) Hp)))) as (Hrvs & _).
       destruct (HaIH _ _ _ _ _ _ _ _ _ _ HMm Hrms' Hc HA Hrvs) as [c1 c2 Ec1 Ec2 [_ HIH]].
       pose proof (functional_eval_exp _ _ _ _ Hb0 Ec1) as <-.
       eapply HIH; [ exact Hz1 | exact Hse | exact Hbe ].
@@ -387,8 +404,8 @@ Section NestAcc.
       end.
       destruct (tele_elems_transfer _ (fun _ _ _ H => per_univ_elem_some_universe_index _ _ _ _ (proj1 H)) fr
                  (env_tele nil (List.rev (record_params Rr)) ns) (env_tele nil (List.rev (record_params Rr)) ns') _ _ Hvs
-                 (fun k0 A0 vs1 vs2 Hk Hp =>
-                    ltac:(destruct (fields_tele_nth _ _ _ Hk) as [f0 Hf0]; exact (HfIH _ _ _ _ _ Hf0 Hp))))
+                 (fun k0 κ0 A0 vs1 vs2 Hk Hp =>
+                    ltac:(destruct (fields_tele_nth _ _ _ _ Hk) as [f0 Hf0]; exact (HfIH _ _ _ _ _ Hf0 Hp))))
         as (Hrvs & _).
       destruct (HfIH _ _ _ _ _ Hj Hrvs) as [c1 c2 Ec1 Ec2 [_ HIH]].
       pose proof (functional_eval_exp _ _ _ _ Hb0 Ec1) as <-.

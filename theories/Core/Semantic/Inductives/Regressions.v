@@ -131,8 +131,8 @@ Section ChainedViews.
 
   (** The filed group of [Sigma]: one declared member, no view. *)
   Definition sigma_group : ind_decl :=
-    mk_ind (ce_ass TP :: ce_ass TA :: nil) SS
-      (mk_imember (mh_decl pmS) nil (("pair", ca_arg relevant (a_var 1) :: ca_arg relevant (a_app (a_var 1) (a_var 0)) :: nil) :: nil) :: nil).
+    mk_ind (ce_ass ak_relevant TP :: ce_ass ak_relevant TA :: nil) SS
+      (mk_imember (mh_decl pmS) nil (("pair", ca_arg ak_relevant (a_var 1) :: ca_arg ak_relevant (a_app (a_var 1) (a_var 0)) :: nil) :: nil) :: nil).
 
   (** The instance [Sigma (C B) (λ_. B')] of [Sigma]'s uniform
       parameters. *)
@@ -141,10 +141,10 @@ Section ChainedViews.
   (** The filed group of [C]: [C] itself, and the view
       [Sigma (C B) (λ_. B)]. *)
   Definition c_group : ind_decl :=
-    mk_ind (ce_ass TB :: nil) SC
+    mk_ind (ce_ass ak_relevant TB :: nil) SC
       (mk_imember (mh_decl pmC) nil (("mk", ca_rec (pt_self 1 nil) :: nil) :: nil)
        :: mk_imember (mh_view pS 0 (sigma_inst (a_var 0) (a_var 1)) (1 :: nil)) nil
-            (("pair", ca_rec (pt_self 0 nil) :: ca_arg relevant (a_var 0) :: nil) :: nil)
+            (("pair", ca_rec (pt_self 0 nil) :: ca_arg ak_relevant (a_var 0) :: nil) :: nil)
        :: nil).
 
   (** The filed group of [T]: [T], the view [C T], and the inherited view
@@ -256,14 +256,14 @@ Section RoseViews.
 
   (** The filed group of [List]: one declared member, no view. *)
   Definition list_group : ind_decl :=
-    mk_ind (ce_ass TL :: nil) SL
-      (mk_imember (mh_decl pmL) nil (("nil", nil) :: ("cons", ca_arg relevant (a_var 0) :: ca_rec (pt_self 0 nil) :: nil) :: nil)
+    mk_ind (ce_ass ak_relevant TL :: nil) SL
+      (mk_imember (mh_decl pmL) nil (("nil", nil) :: ("cons", ca_arg ak_relevant (a_var 0) :: ca_rec (pt_self 0 nil) :: nil) :: nil)
        :: nil).
 
   (** The filed group of [Rose]: [Rose], and the view [List (Rose A)]. *)
   Definition rose_group : ind_decl :=
-    mk_ind (ce_ass TR :: nil) SR
-      (mk_imember (mh_decl pmR) nil (("node", ca_arg relevant (a_var 0) :: ca_rec (pt_self 1 nil) :: nil) :: nil)
+    mk_ind (ce_ass ak_relevant TR :: nil) SR
+      (mk_imember (mh_decl pmR) nil (("node", ca_arg ak_relevant (a_var 0) :: ca_rec (pt_self 1 nil) :: nil) :: nil)
        :: mk_imember (mh_view pL 0 (a_app (a_ind pR 0) (a_var 0) :: nil) (1 :: nil)) nil
             (("nil", nil) :: ("cons", ca_rec (pt_self 0 nil) :: ca_rec (pt_self 1 nil) :: nil) :: nil)
        :: nil).
@@ -383,12 +383,12 @@ Section PhantomViews.
 
   (** The filed group of [Phantom]: one declared member, no view. *)
   Definition phantom_group : ind_decl :=
-    mk_ind (ce_ass TB :: ce_ass TA :: nil) SP
-      (mk_imember (mh_decl pmP) nil (("mk", ca_arg relevant (a_var 1) :: nil) :: nil) :: nil).
+    mk_ind (ce_ass ak_relevant TB :: ce_ass ak_relevant TA :: nil) SP
+      (mk_imember (mh_decl pmP) nil (("mk", ca_arg ak_relevant (a_var 1) :: nil) :: nil) :: nil).
 
   (** The filed group of [T]: [T], and the view [Phantom (T f) (f Z)]. *)
   Definition t_over_phantom_group : ind_decl :=
-    mk_ind (ce_ass TF :: nil) ST
+    mk_ind (ce_ass ak_relevant TF :: nil) ST
       (mk_imember (mh_decl pmT) nil (("node", ca_rec (pt_self 1 nil) :: nil) :: nil)
        :: mk_imember (mh_view pP 0 (a_app (a_ind pT 0) (a_var 0) :: a_app (a_var 0) Z :: nil) (1 :: nil)) nil
             (("mk", ca_rec (pt_self 0 nil) :: nil) :: nil)
@@ -457,7 +457,7 @@ Section PhantomViews.
   Lemma t_over_phantom_tele_ass : grp_tele_ass t_over_phantom_group.
   Proof.
     constructor.
-    - constructor; [ eexists; reflexivity | constructor ].
+    - constructor; [ do 2 eexists; reflexivity | constructor ].
     - intros * Hk; grp_cases; constructor.
     - intros * Hv Hh; grp_cases.
       all: do 2 eexists; split; [ eassumption | split; [ reflexivity | split; reflexivity ] ].
@@ -474,7 +474,7 @@ Section PhantomViews.
 
   (** [T] at uniform parameters [g] and [g'] whose readbacks agree: related
       types of the model. *)
-  Theorem t_over_phantom_related : forall i g g', per_top_ps (ce_ass TF :: nil) (g :: nil) (g' :: nil) ->
+  Theorem t_over_phantom_related : forall i g g', per_top_ps (ce_ass ak_relevant TF :: nil) (g :: nil) (g' :: nil) ->
       DF d_ind pT 0 (g :: nil) ≈ d_ind pT 0 (g' :: nil) ∈ per_univ_elem i ↘
         grp_rel pT t_over_phantom_group (g :: nil) no_nparams_rel no_args_rel no_doms_rel 0 (g :: nil) (g' :: nil) nil nil.
   Proof.
@@ -506,7 +506,7 @@ End PhantomViews.
     proof, read back as [⋆ⁿ], and [C T ⋆ⁿ] mentions no recursive
     argument. *)
 
-Lemma nbe_ty_var0 : forall Θ Ξ A Γ W, nbe_ty Θ Ξ (ce_ass A :: Γ) (a_var 0) W -> W = nf_neut (ne_var 0).
+Lemma nbe_ty_var0 : forall Θ Ξ κ A Γ W, nbe_ty Θ Ξ (ce_ass κ A :: Γ) (a_var 0) W -> W = nf_neut (ne_var 0).
 Proof.
   intros * [ρ m Hi He Hr].
   inversion Hi; subst.
@@ -519,7 +519,7 @@ Qed.
 
 Lemma view_nparams_self_param_absurd : forall Θ Ξ R pC DC MC Nv,
     raw_decl_uparams R = nil -> raw_decl_nmembers R = 1 ->
-    ind_lookup Θ Ξ pC = Some DC -> ind_member DC 0 = Some MC -> im_nparams MC = ce_ass (a_var 0) :: nil ->
+    ind_lookup Θ Ξ pC = Some DC -> ind_member DC 0 = Some MC -> im_nparams MC = ce_ass ak_relevant (a_var 0) :: nil ->
     ~ view_nparams Θ Ξ R (vk_ind pC 0 (a_var 0 :: nil)) Nv.
 Proof.
   intros * Hu Hn Hl Hk Hnp Hv.
@@ -528,7 +528,7 @@ Proof.
   rewrite Hnp in Hnbe; cbn in Hnbe.
   destruct R as [Us [| Mr [| ? ?]]]; cbn in Hu, Hn; try discriminate; subst Us.
   unfold raw_decl_uniform_ctx, raw_decl_selfs in Hnbe; cbn in Hnbe.
-  inversion Hnbe as [| A Δ W Δ' _ HW Hrest]; subst.
+  inversion Hnbe as [| κ A Δ W Δ' _ HW Hrest]; subst.
   inversion Hrest; subst.
   (** The parameter's type normalizes to [Self], which is not in the
       image of the weakening past the [Self]s. *)
@@ -543,10 +543,10 @@ Qed.
     [A] the statement is false, since [A] may be a proposition ([⊤]), whose
     variable is read back as [⋆ⁿ]. *)
 Lemma nbe_ty_container_at_self : forall Θ Ξ B Γ pC DC MC iU W,
-    ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
-    im_nparams MC = ce_ass (a_var 0) :: nil ->
+    ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass ak_relevant (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
+    im_nparams MC = ce_ass ak_relevant (a_var 0) :: nil ->
     ind_sort_univ B ->
-    nbe_ty Θ Ξ (ce_ass (a_var 0) :: ce_ass B :: Γ) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) W ->
+    nbe_ty Θ Ξ (ce_ass ak_relevant (a_var 0) :: ce_ass ak_relevant B :: Γ) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) W ->
     W = nf_indty pC 0 (cons (nf_neut (ne_var 1)) (cons (nf_neut (ne_var 0)) nil)).
 Proof.
   intros * Hl Hu Hk Hnp HB [ρ m Hi He Hr].
@@ -555,17 +555,17 @@ Proof.
   assert (Hv : ⟦ a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind pC 0 ((nil ++ ρ 1 :: nil) ++ ρ 0 :: nil))
     by (assert (Hnp2 : im_np DC MC = 2) by (unfold im_np, im_nn, ind_nu; rewrite Hu, Hnp; reflexivity);
         eapply eval_exp_app;
-        [ eapply eval_exp_app; [ apply eval_exp_indty | reflexivity | apply eval_exp_var
+        [ eapply eval_exp_app; [ apply eval_exp_indty | cbn; constructor | apply eval_exp_var
                                | eapply eval_app_indty; [ exact Hl | exact Hk | rewrite Hnp2; cbn; lia ] ]
-        | reflexivity | apply eval_exp_var | eapply eval_app_indty; [ exact Hl | exact Hk | rewrite Hnp2; cbn; lia ] ]).
+        | cbn; constructor | apply eval_exp_var | eapply eval_app_indty; [ exact Hl | exact Hk | rewrite Hnp2; cbn; lia ] ]).
   functional_eval_rewrite_clear.
-  inversion Hi as [| ? ρ1 ? a1 Hi1 Ha1 | | | |]; subst.
-  inversion Hi1 as [| ? ρ0 ? a0 Hi0 Ha0 | | | |]; subst.
+  inversion Hi as [| ? ρ1 ? a1 ? Hi1 Ha1 | | | |]; subst.
+  inversion Hi1 as [| ? ρ0 ? a0 ? Hi0 Ha0 | | | |]; subst.
   (** The variables' values: neutrals, at a universe and at a variable of
       it, both relevant *)
   destruct HB as [[i ->] | [t ->]]; inversion Ha0; subst; inversion Ha1; subst.
   all: cbn in Hr.
-  all: inversion Hr as [| | | | | | | | | | | ? ? ? D3 M3 Rs Hl3 Hk3 Hlen3 Hps |]; subst; clear Hr.
+  all: inversion Hr as [| | | | | | | | | | ? ? ? D3 M3 Rs Hl3 Hk3 Hlen3 Hps |]; subst; clear Hr.
   all: rewrite Hl in Hk3; injection Hk3 as <-; rewrite Hk in Hlen3; injection Hlen3 as <-.
   all: match goal with H : read_ps _ _ _ _ _ _ _ |- _ => rename H into Hps' end.
   all: unfold im_params in Hps'; rewrite Hnp, Hu in Hps'; cbn in Hps'.
@@ -603,11 +603,11 @@ Qed.
 
 (** [T := t (x : T) (c : C T x) : T], of the sort [ST]. *)
 Definition self_param_decl (pC : qname) (x : string) (ST : exp) : raw_decl :=
-  mk_raw nil (mk_rmem x nil ST (("t", ("x", a_var 0) :: ("c", a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) :: nil) :: nil) :: nil) false.
+  mk_raw nil (mk_rmem x nil ST (("t", ("x", ak_relevant, a_var 0) :: ("c", ak_relevant, a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) :: nil) :: nil) :: nil) false.
 
 Theorem run_cmd_ind_self_param_rejected : forall lp rd tc ch B Rb Θ Ξ pv B' Rb' Θ' Ξ' pC DC MC iU x ST,
-    ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
-    im_nparams MC = ce_ass (a_var 0) :: nil ->
+    ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass ak_relevant (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
+    im_nparams MC = ce_ass ak_relevant (a_var 0) :: nil ->
     ind_sort_univ ST ->
     ~ (Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨lp ⍮ rd ⍮ tc⟩ core_cmd_inductive pv (self_param_decl pC x ST) ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb').
 Proof.
@@ -617,8 +617,8 @@ Proof.
   cbn in Hcls; inversion Hcls as [| ? cs ? ? Hc _]; subst.
   unfold raw_member_classify, classify_cons_in in Hc; cbn in Hc.
   inversion Hc as [| ? ? ? ? [_ Hargs] _]; subst.
-  inversion Hargs as [| ? ? ? ? ? g1 ? Hg1 Hrest]; subst.
-  inversion Hrest as [| ? ? ? ? ? g2 ? Hg2 _]; subst.
+  inversion Hargs as [| ? ? ? ? ? ? g1 ? Hg1 Hrest]; subst.
+  inversion Hrest as [| ? ? ? ? ? ? g2 ? Hg2 Hrest2]; subst.
   (** The first argument, [x : T], is recursive. *)
   assert (Eg1 : g1 = classified_carg_rec_case (classified_ptyp_self 0 nil)).
   { inversion Hg1 as [? Hs | ? ? ? Hs]; subst; vm_compute in Hs; [ injection Hs as <-; reflexivity | discriminate ]. }

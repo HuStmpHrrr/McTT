@@ -115,8 +115,8 @@ Section Fixed_GCtx.
   (** The head PER of [A] at environments of [Δ] is included in the
       element PER of [A]'s values over their first [|Δ|] entries, the
       environment of the closure [centry_tag] stores. *)
-  Lemma per_head_at_env_upto : forall {Δ A R S ρ ρ'},
-      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+  Lemma per_head_at_env_upto : forall {Δ κ A R S ρ ρ'},
+      EF Δ ▹{κ} A ≈ Δ ▹{κ} A ∈ per_ctx_env ↘ R ->
       EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
       Dom ρ ≈ ρ' ∈ S ->
       exists i a a' Rh,
@@ -125,7 +125,7 @@ Section Fixed_GCtx.
         (forall m m', Dom m ≈ m' ∈ per_head A A ρ ρ' -> Dom m ≈ m' ∈ Rh).
   Proof.
     intros * HΔA HΔ Hρ.
-    inversion HΔA as [| ? ? ? ? ? tail_rel head_rel ? HΔt Htail HA | | | ]; subst.
+    inversion HΔA as [| ? ? ? ? ? ? tail_rel head_rel ? HΔt Htail HA | | | ]; subst.
     assert (ES : S <~> tail_rel) by (eapply per_ctx_env_right_irrel; eassumption).
     apply ES in Hρ.
     assert (Hu : Dom env_upto (List.length Δ) ρ ≈ env_upto (List.length Δ) ρ' ∈ tail_rel)
@@ -145,11 +145,11 @@ Section Fixed_GCtx.
   (** Values the head PER of [A] relates, at environments of [Δ], read
       back stored at the tag an extension of the environments by [A]
       gives them ([centry_tag]). *)
-  Lemma per_head_closure_readable : forall {Δ A R S ρ ρ' m m'},
-      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+  Lemma per_head_closure_readable : forall {Δ κ A R S ρ ρ' m m'},
+      EF Δ ▹{κ} A ≈ Δ ▹{κ} A ∈ per_ctx_env ↘ R ->
       EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
       Dom ρ ≈ ρ' ∈ S -> Dom m ≈ m' ∈ per_head A A ρ ρ' ->
-      entry_readable (de_term m (centry_tag (ce_ass A) Δ ρ)) /\ entry_readable (de_term m' (centry_tag (ce_ass A) Δ ρ')).
+      entry_readable (de_term m (centry_tag (ce_ass κ A) Δ ρ)) /\ entry_readable (de_term m' (centry_tag (ce_ass κ A) Δ ρ')).
   Proof.
     intros * HΔA HΔ Hρ Hm.
     destruct (per_head_at_env_upto HΔA HΔ Hρ) as (i & a & a' & Rh & Ea & Ea' & HR & Hincl).
@@ -161,14 +161,14 @@ Section Fixed_GCtx.
       [Δ], read back retagged at [A] over the first [|Δ|] entries and at a
       unit [U], when [U] is closed or the entries are no module entries:
       a definition with a module part keeps its unit. *)
-  Lemma per_head_retag_readable_at : forall {Δ A R S ρ ρ' e e'} (U : gunit),
-      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+  Lemma per_head_retag_readable_at : forall {Δ κ A R S ρ ρ' e e'} (U : gunit),
+      EF Δ ▹{κ} A ≈ Δ ▹{κ} A ∈ per_ctx_env ↘ R ->
       EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
       Dom ρ ≈ ρ' ∈ S -> Dom (env_var (e :: ρ) 0) ≈ (env_var (e' :: ρ') 0) ∈ per_head A A ρ ρ' ->
       (forall h U0, e = de_mod h U0 -> gunit_free_bound U <= 0) ->
       (forall h U0, e' = de_mod h U0 -> gunit_free_bound U <= 0) ->
-      head_readable 0 (retag_entry (centry_tag (ce_ass A) Δ ρ) U e) /\
-      head_readable 0 (retag_entry (centry_tag (ce_ass A) Δ ρ') U e').
+      head_readable 0 (retag_entry (centry_tag (ce_ass κ A) Δ ρ) U e) /\
+      head_readable 0 (retag_entry (centry_tag (ce_ass κ A) Δ ρ') U e').
   Proof.
     intros * HΔA HΔ Hρ Hm HU HU'.
     destruct (per_head_at_env_upto HΔA HΔ Hρ) as (i & a & a' & Rh & Ea & Ea' & HR & Hincl).
@@ -180,42 +180,42 @@ Section Fixed_GCtx.
   Qed.
 
   (** At the unit of an assumption, closed. *)
-  Corollary per_head_retag_readable : forall {Δ A R S ρ ρ' e e'},
-      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+  Corollary per_head_retag_readable : forall {Δ κ A R S ρ ρ' e e'},
+      EF Δ ▹{κ} A ≈ Δ ▹{κ} A ∈ per_ctx_env ↘ R ->
       EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
       Dom ρ ≈ ρ' ∈ S -> Dom (env_var (e :: ρ) 0) ≈ (env_var (e' :: ρ') 0) ∈ per_head A A ρ ρ' ->
-      head_readable 0 (retag_entry (centry_tag (ce_ass A) Δ ρ) (centry_slot_unit (ce_ass A)) e) /\
-      head_readable 0 (retag_entry (centry_tag (ce_ass A) Δ ρ') (centry_slot_unit (ce_ass A)) e').
+      head_readable 0 (retag_entry (centry_tag (ce_ass κ A) Δ ρ) (centry_slot_unit (ce_ass κ A)) e) /\
+      head_readable 0 (retag_entry (centry_tag (ce_ass κ A) Δ ρ') (centry_slot_unit (ce_ass κ A)) e').
   Proof.
     intros * HΔA HΔ Hρ Hm.
-    exact (per_head_retag_readable_at (centry_slot_unit (ce_ass A)) HΔA HΔ Hρ Hm
+    exact (per_head_retag_readable_at (centry_slot_unit (ce_ass κ A)) HΔA HΔ Hρ Hm
              (fun _ _ _ => ltac:(cbn; lia)) (fun _ _ _ => ltac:(cbn; lia))).
   Qed.
 
   (** A definition with a module part, its term related in the head PER
       of [A] at environments of [Δ], reads back stored at [A] over the
       first [|Δ|] entries, at any unit. *)
-  Corollary per_head_dm_readable : forall {Δ A R S ρ ρ' m m' h h' U},
-      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+  Corollary per_head_dm_readable : forall {Δ κ A R S ρ ρ' m m' h h' U},
+      EF Δ ▹{κ} A ≈ Δ ▹{κ} A ∈ per_ctx_env ↘ R ->
       EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
       Dom ρ ≈ ρ' ∈ S -> Dom m ≈ m' ∈ per_head A A ρ ρ' ->
-      head_readable 0 (de_dm m (centry_tag (ce_ass A) Δ ρ) h U) /\
-      head_readable 0 (de_dm m' (centry_tag (ce_ass A) Δ ρ') h' U).
+      head_readable 0 (de_dm m (centry_tag (ce_ass κ A) Δ ρ) h U) /\
+      head_readable 0 (de_dm m' (centry_tag (ce_ass κ A) Δ ρ') h' U).
   Proof.
     intros * HΔA HΔ Hρ Hm.
-    exact (per_head_retag_readable_at (e := de_dm m (centry_tag (ce_ass A) Δ ρ) h U)
-             (e' := de_dm m' (centry_tag (ce_ass A) Δ ρ') h' U) U HΔA HΔ Hρ Hm
+    exact (per_head_retag_readable_at (e := de_dm m (centry_tag (ce_ass κ A) Δ ρ) h U)
+             (e' := de_dm m' (centry_tag (ce_ass κ A) Δ ρ') h' U) U HΔA HΔ Hρ Hm
              (fun _ _ E => ltac:(discriminate E)) (fun _ _ E => ltac:(discriminate E))).
   Qed.
 
   (** [per_env_extend_intro'] for the extensions a substitution
       extension evaluates to ([eval_sub_extend]): the heads stored at
       [centry_tag], which read back ([per_head_closure_readable]). *)
-  Corollary per_env_extend_intro_tagged : forall {Δ A R S ρ ρ' m m'},
-      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+  Corollary per_env_extend_intro_tagged : forall {Δ κ A R S ρ ρ' m m'},
+      EF Δ ▹{κ} A ≈ Δ ▹{κ} A ∈ per_ctx_env ↘ R ->
       EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
       Dom ρ ≈ ρ' ∈ S -> Dom m ≈ m' ∈ per_head A A ρ ρ' ->
-      Dom ρ ↦ m ⦂ centry_tag (ce_ass A) Δ ρ ≈ ρ' ↦ m' ⦂ centry_tag (ce_ass A) Δ ρ' ∈ per_env_extend A A S.
+      Dom ρ ↦ m ⦂ centry_tag (ce_ass κ A) Δ ρ ≈ ρ' ↦ m' ⦂ centry_tag (ce_ass κ A) Δ ρ' ∈ per_env_extend A A S.
   Proof.
     intros * HΔA HΔ Hρ Hm.
     destruct (per_head_closure_readable HΔA HΔ Hρ Hm) as [Hr Hr'].
@@ -225,14 +225,14 @@ Section Fixed_GCtx.
   (** [per_env_extend_intro] for environments whose heads are retagged at
       the tag of an extension by [A] ([eval_sub_q]): their values are
       related in the head PER, and they read back as they are. *)
-  Corollary per_env_extend_intro_retagged : forall {Δ A R S ρ ρ' e e'},
-      EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ R ->
+  Corollary per_env_extend_intro_retagged : forall {Δ κ A R S ρ ρ' e e'},
+      EF Δ ▹{κ} A ≈ Δ ▹{κ} A ∈ per_ctx_env ↘ R ->
       EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
       Dom ρ ≈ ρ' ∈ S -> Dom (env_var (e :: ρ) 0) ≈ (env_var (e' :: ρ') 0) ∈ per_head A A ρ ρ' ->
       (rel_typ_propositional A ρ -> exists v t, e = de_term v t) ->
       (rel_typ_propositional A ρ' -> exists v t, e' = de_term v t) ->
-      Dom retag_entry (centry_tag (ce_ass A) Δ ρ) (centry_slot_unit (ce_ass A)) e :: ρ
-        ≈ retag_entry (centry_tag (ce_ass A) Δ ρ') (centry_slot_unit (ce_ass A)) e' :: ρ' ∈ per_env_extend A A S.
+      Dom retag_entry (centry_tag (ce_ass κ A) Δ ρ) (centry_slot_unit (ce_ass κ A)) e :: ρ
+        ≈ retag_entry (centry_tag (ce_ass κ A) Δ ρ') (centry_slot_unit (ce_ass κ A)) e' :: ρ' ∈ per_env_extend A A S.
   Proof.
     intros * HΔA HΔ Hρ Hm Hp Hp'.
     destruct (per_head_retag_readable HΔA HΔ Hρ Hm) as [Hr Hr'].

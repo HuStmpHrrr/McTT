@@ -76,22 +76,32 @@ Ltac rewrite_per_univ_below :=
           by first [ solve_universe_index | apply universe_index_large_above_small; assumption ]
     end.
 
-(** A case of an inversion whose relevance premise is false of a value
-    with a known head: a proposition clause at a relevant head, the neutral
-    clause at a neutral proposition. *)
-Ltac clear_wrong_relevance :=
+(** A case of an inversion whose kind premise is false of a value with a
+    known head: a proposition clause at a head of an evaluated kind, the
+    neutral clause at a neutral proposition, neutrals of different kinds. *)
+Ltac clear_wrong_kind :=
   repeat match goal with Hp : per_prop _ _ |- _ => destruct Hp end;
   match goal with
-  | Hr : domain_relevance _ = _ |- _ => progress cbn in Hr; discriminate Hr
-  | H1 : domain_relevance ?x = relevant, H2 : domain_relevance ?x = propositional |- _ =>
-      rewrite H1 in H2; discriminate H2
+  | H1 : domain_kind ?x = ak_propositional, H2 : evaluated_kind (domain_kind ?x) |- _ =>
+      rewrite H1 in H2; inversion H2
+  | H1 : domain_kind ?y = ak_propositional, E : domain_kind ?x = domain_kind ?y, H2 : evaluated_kind (domain_kind ?x) |- _ =>
+      rewrite E, H1 in H2; inversion H2
+  | H1 : domain_kind ?y = ak_propositional, E : domain_kind ?y = domain_kind ?x, H2 : evaluated_kind (domain_kind ?x) |- _ =>
+      rewrite <- E, H1 in H2; inversion H2
+  | H1 : domain_kind ?x = ?k1, H2 : domain_kind ?x = ?k2 |- _ =>
+      assert_fails constr_eq k1 k2; rewrite H1 in H2; discriminate H2
+  | Hr : domain_kind _ = _ |- _ =>
+      progress cbn in Hr;
+      first [ discriminate Hr
+            | subst; match goal with He : evaluated_kind ak_propositional |- _ => inversion He end ]
+  | Hr : evaluated_kind (domain_kind _) |- _ => progress cbn in Hr; solve [ inversion Hr ]
   end.
 
 Ltac basic_invert_per_univ_elem H :=
   progress simp per_univ_elem in H;
   unmark_vars;
   dependent destruction H;
-  try solve [ clear_wrong_relevance ];
+  try solve [ clear_wrong_kind ];
   rewrite_per_univ_below;
   try rewrite <- per_univ_elem_equation_1 in *.
 

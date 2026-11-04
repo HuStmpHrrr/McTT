@@ -41,14 +41,14 @@ Generalizable All Variables.
     families, so no term is built. *)
 Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
 
-(** * Relevance-Directed Evaluation
+(** * Kind-Directed Evaluation
 
     No proof is ever evaluated: a term of a propositional type is kept as
     it is written, with the environment it stands in, as the proof value
     [⋆ᵈ⟨M, ρ⟩].  The places where a proof may stand inside a relevant term
-    read the sort of what stands there off values or declarations, never
-    off types: the argument of an application ([arg_relevance]), a field of
-    a record value (its declaration's [record_field_relevance]), a local
+    read the kind of what stands there off values or declarations, never
+    off types: the argument of an application ([arg_kind]), a field of
+    a record value (its declaration's [record_field_kind]), a local
     definition and an entry of a module body (their types), and a
     substitution's entry (its target context's type, [eval_sub]).
 
@@ -960,7 +960,7 @@ with eval_exps (Θ : gdeps) (Ξ : gstack) : list exp -> env -> list domain -> Pr
 where "'⟦' Ms '⟧*' Θ '⍮' Ξ '⍮' ρ '↘' ms" := (eval_exps Θ Ξ Ms ρ ms)
 (** [eval_app_args f Ms ρ r]: [f] applied to the terms [Ms] in [ρ],
     outermost first, is [r]; an argument the function at that point takes
-    as a proof ([arg_relevance]) is kept as it is, unevaluated, as in
+    as a proof ([arg_kind]) is kept as it is, unevaluated, as in
     [eval_exp_app_proof]. *)
 with eval_app_args (Θ : gdeps) (Ξ : gstack) : domain -> list exp -> env -> domain -> Prop :=
 (** No argument: the function itself. *)

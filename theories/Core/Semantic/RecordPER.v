@@ -48,8 +48,8 @@ Section Fixed_GCtx.
       forall k f T vs vs', List.nth_error (record_fields R) k = Some (f, T) -> tele_prefix_rel fr k vs vs' ->
         exists a a', ⟦ T ⟧ record_fields_env R ns vs ↘ a /\ ⟦ T ⟧ record_fields_env R u2 vs' ↘ a' /\ Dom a ≈ a' ∈ per_univ u.
     Hypothesis (Hf : fields_related ns').
-    (** The fields' types are of their sorts along related prefixes. *)
-    Hypothesis (HfS : fields_sorts R ns fr).
+    (** The fields' types are of their kinds along related prefixes. *)
+    Hypothesis (HfS : fields_kinds R ns fr).
 
     (** The evidence at a field, at the head PER. *)
     Lemma canon_fields_evals : fields_evals (per_univ_elem u) R ns ns' fr.
@@ -220,8 +220,8 @@ Section Fixed_GCtx.
     ; record_canon_facts_inv : fields_inv R (canon_fields_rel R ns)
       (** The fields' types at related prefixes are related, at them *)
     ; record_canon_facts_evals : fields_evals (per_univ_elem i) R ns ns' (canon_fields_rel R ns)
-      (** and of their fields' sorts *)
-    ; record_canon_facts_sorts : fields_sorts R ns (canon_fields_rel R ns)
+      (** and of their fields' kinds *)
+    ; record_canon_facts_kinds : fields_kinds R ns (canon_fields_rel R ns)
       (** The element relation is the canonical record relation *)
     ; record_canon_facts_elem : elem_rel <~> record_rel R (canon_fields_rel R ns) }.
 
@@ -250,10 +250,10 @@ Section Fixed_GCtx.
     assert (Hrel : fields_related i R ns ns').
     { intros k f T vs vs' Hk Hp; destruct (HcE _ _ _ _ _ Hk Hp) as [a a' Ea Ea' Hper].
       exists a, a'; split; [ exact Ea | split; [ exact Ea' | eexists; exact Hper ] ]. }
-    (** The sorts, along the canonical relations' prefixes: the clause's. *)
-    assert (HcS : fields_sorts R ns (canon_fields_rel R ns)).
+    (** The kinds, along the canonical relations' prefixes: the clause's. *)
+    assert (HcS : fields_kinds R ns (canon_fields_rel R ns)).
     { match goal with
-      | HfE : fields_evals _ R ns ns' ?fr, HfS : fields_sorts R ns ?fr |- _ =>
+      | HfE : fields_evals _ R ns ns' ?fr, HfS : fields_kinds R ns ?fr |- _ =>
           intros k f T vs vs' Hk Hp;
           assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence);
           exact (HfS _ _ _ _ _ Hk (proj1 (record_canon_prefix_iff_clause i _ R ns ns' fr (fun _ _ _ H => H) HfE k vs vs' ltac:(lia)) Hp))
@@ -264,19 +264,41 @@ Section Fixed_GCtx.
 
   (** ** The Projections of a Neutral and the Readback of Fields *)
 
-  (** The fields of a list as a telescope. *)
-  Definition fields_tele (fl : list (String.string * exp)) : list centry := List.map (fun fT => ce_ass (snd fT)) fl.
+  (** The fields [fl] as a telescope, outermost first, each an assumption
+      at its kind in [κs] (in the same order, [ak_relevant] past them):
+      the reverse of their context [fields_tele]. *)
+  Fixpoint fields_tele_in_order (fl : list (String.string * exp)) (κs : list abs_kind) : list centry :=
+    match fl with
+    | nil => nil
+    | fT :: fl' => ce_ass (List.hd ak_relevant κs) (snd fT) :: fields_tele_in_order fl' (List.tl κs)
+    end.
+
+  (** The fields' context, reversed, is their telescope. *)
+  Lemma rev_fields_tele : forall fl κs, List.rev (fields_tele fl κs) = fields_tele_in_order fl κs.
+  Proof.
+    induction fl as [| fT fl IH]; intros κs; cbn [fields_tele fields_tele_in_order]; [ reflexivity |].
+    rewrite List.rev_app_distr, IH; reflexivity.
+  Qed.
+
+  (** The telescope of the first [k] fields is the first [k] entries of
+      the fields' telescope. *)
+  Lemma firstn_fields_tele_in_order : forall k fl κs,
+      List.firstn k (fields_tele_in_order fl κs) = fields_tele_in_order (List.firstn k fl) κs.
+  Proof.
+    induction k as [| k IH]; intros [| fT fl] κs; cbn [List.firstn fields_tele_in_order]; try reflexivity.
+    rewrite IH; reflexivity.
+  Qed.
 
   (** Each neutral projection is the projection of the neutral at the
       field's type, in the environment extended by the projections before
-      it, at their types. *)
+      it, at their types (whatever their kinds [κs]). *)
   Lemma eval_neutral_fields_nth : forall m ρ fl rs, eval_neutral_fields gc_deps gc_stack m ρ fl rs ->
-      forall j g T r, List.nth_error fl j = Some (g, T) -> List.nth_error rs j = Some r ->
-      exists a, r = ⇑ a (d_proj g m) /\ ⟦ T ⟧ env_tele ρ (fields_tele fl) (List.firstn j rs) ↘ a.
+      forall κs j g T r, List.nth_error fl j = Some (g, T) -> List.nth_error rs j = Some r ->
+      exists a, r = ⇑ a (d_proj g m) /\ ⟦ T ⟧ env_tele ρ (fields_tele_in_order fl κs) (List.firstn j rs) ↘ a.
   Proof.
-    induction 1 as [| T ρ a m g fl rs Ea E IH]; intros [| j] g' T' r Hj Hr; cbn in Hj, Hr; try discriminate.
+    induction 1 as [| T ρ a m g fl rs Ea E IH]; intros κs [| j] g' T' r Hj Hr; cbn in Hj, Hr; try discriminate.
     - injection Hj as <- <-; injection Hr as <-; exists a; split; [ reflexivity | exact Ea ].
-    - destruct (IH _ _ _ _ Hj Hr) as (a' & -> & Ea'); exists a'; split; [ reflexivity | exact Ea' ].
+    - destruct (IH (List.tl κs) _ _ _ _ Hj Hr) as (a' & -> & Ea'); exists a'; split; [ reflexivity | exact Ea' ].
   Qed.
 
   (** The projections of a neutral of a record type: each the neutral
@@ -295,15 +317,16 @@ Section Fixed_GCtx.
     rewrite (field_index_nth_nodup _ _ _ _ Hnd Hk) in Hi; injection Hi as <-.
     assert (Hkf : List.nth_error (List.firstn (S k) (record_fields R)) k = Some (f, T))
       by (rewrite List.nth_error_firstn; destruct (Nat.ltb_spec k (S k)); [ exact Hk | lia ]).
-    destruct (eval_neutral_fields_nth _ _ _ _ E _ _ _ _ Hkf Hrk) as (a & -> & Ea); exists a; split; [ reflexivity |].
+    destruct (eval_neutral_fields_nth _ _ _ _ E (record_field_kinds R) _ _ _ _ Hkf Hrk) as (a & -> & Ea); exists a; split; [ reflexivity |].
     assert (Hlk : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
     pose proof (eval_neutral_fields_length _ _ _ _ E) as Hrl; rewrite List.length_firstn in Hrl.
     (** Both environments read the first [k] fields' types only. *)
     assert (Hlr : List.length (List.firstn k rs) = k) by (rewrite List.length_firstn; lia).
     unfold record_fields_env; rewrite env_tele_firstn in Ea |- *; rewrite Hlr in Ea.
-    unfold fields_tele, record_fields_tele in *; rewrite List.firstn_map, List.firstn_firstn, Nat.min_l in Ea by lia.
+    unfold record_fields_tele in *; rewrite rev_fields_tele in *.
+    rewrite !firstn_fields_tele_in_order, List.firstn_firstn, Nat.min_l in Ea by lia.
     replace (List.firstn k vs) with (List.firstn k rs);
-      [ rewrite Hlr, List.firstn_map; exact Ea |].
+      [ rewrite Hlr, firstn_fields_tele_in_order; exact Ea |].
     pose proof (List.Forall2_length Hvs) as Hvl.
     apply List.nth_error_ext; intros j.
     rewrite !List.nth_error_firstn; destruct (Nat.ltb_spec j k) as [Hjk |]; [| reflexivity ].
@@ -322,24 +345,25 @@ Section Fixed_GCtx.
 
   (** The readback of the fields of a record value, one by one: the
       readback of each projection at the field's type, in [ρ] extended by
-      the projections before it, at their types. *)
+      the projections before it, at their types (whatever their kinds
+      [κs]). *)
   Lemma read_fields_nth : forall s ρ fl v Fs, Rflds v at fl in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Fs ->
       forall vs, List.Forall2 (fun fT r => eval_proj gc_deps gc_stack (fst fT) v r) fl vs ->
       List.length (List.map nf_to_exp Fs) = List.length fl /\
-      forall j g T r, List.nth_error fl j = Some (g, T) -> List.nth_error vs j = Some r ->
-        exists t F, ⟦ T ⟧ env_tele ρ (fields_tele fl) (List.firstn j vs) ↘ t /\ Rnf ⇓ t r in gc_deps ⍮ gc_stack ⍮ s ↘ F /\
+      forall κs j g T r, List.nth_error fl j = Some (g, T) -> List.nth_error vs j = Some r ->
+        exists t F, ⟦ T ⟧ env_tele ρ (fields_tele_in_order fl κs) (List.firstn j vs) ↘ t /\ Rnf ⇓ t r in gc_deps ⍮ gc_stack ⍮ s ↘ F /\
           List.nth_error (List.map nf_to_exp Fs) j = Some (nf_to_exp F).
   Proof.
     induction 1 as [| f v r T ρ t s F fl Fs Hp Et HF HFs IH]; intros vs Hvs.
-    - inversion Hvs; subst; split; [ reflexivity |]; intros [| j]; discriminate.
+    - inversion Hvs; subst; split; [ reflexivity |]; intros κs [| j]; discriminate.
     - inversion Hvs as [| ? r' ? vs' Hr' Hvs']; subst; cbn [fst] in Hr'.
       pose proof (functional_eval_proj _ _ _ _ Hp Hr') as <-.
       destruct (IH vs' Hvs') as [Hl IHn].
       split; [ cbn; congruence |].
-      intros [| j] g U r0 Hj Hr0; cbn in Hj, Hr0.
+      intros κs [| j] g U r0 Hj Hr0; cbn in Hj, Hr0.
       + injection Hj as <- <-; injection Hr0 as <-; exists t, F; split; [| split; [ exact HF | reflexivity ] ].
         exact Et.
-      + destruct (IHn _ _ _ _ Hj Hr0) as (t' & F' & Et' & HF' & HnF); exists t', F'; split; [| split; [ exact HF' | exact HnF ] ].
+      + destruct (IHn (List.tl κs) _ _ _ _ Hj Hr0) as (t' & F' & Et' & HF' & HnF); exists t', F'; split; [| split; [ exact HF' | exact HnF ] ].
         exact Et'.
   Qed.
 End Fixed_GCtx.
