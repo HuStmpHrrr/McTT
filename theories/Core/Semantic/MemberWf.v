@@ -35,12 +35,13 @@ Proof.
 Qed.
 
 (** The next parameter of a closed telescope given typed arguments, at
-    them, is a type of a universe, as a module's parameters are relevant. *)
+    them, is a type of a universe or of levels, as a module's parameters
+    are relevant. *)
 Lemma args_ok_next : forall Γ T Ns C T1' l,
     args_ok gc_deps gc_stack Γ T Ns -> tele_ass T -> ctx_scoped 0 T -> ⊢ T ->
     params_relevant gc_deps gc_stack nil T l ->
     tele_view (List.firstn (length T - length Ns) T) = Some (C, T1') ->
-    Γ ⊢ C[sb_of_list Id Ns] : Typeω@l.
+    param_typed gc_deps gc_stack Γ C[sb_of_list Id Ns] l.
 Proof.
   intros * [T1 T2 -> Hl Ha2 Hs2 HT2 HN] Ha Hs HT HR Hv.
   replace (firstn (length (T1 ++ T2) - length Ns) (T1 ++ T2)) with T1 in Hv
@@ -48,16 +49,17 @@ Proof.
   apply List.Forall_app in Ha as [Ha1 _].
   pose proof (tele_view_ass _ _ _ Ha1 Hv) as ->.
   pose proof (HR T1' C T2 ltac:(rewrite <- List.app_assoc; reflexivity)) as HC; rewrite List.app_nil_r in HC.
-  pose proof (closed_tele_weaken_exp _ _ _ _ _ _ Hs2 HC HT2) as HC'.
   pose proof (wf_sub_of_list_id _ _ _ _ _ Ha2 HT2 (eq_sym Hl) HN) as Hσ.
-  pose proof (sub_preserves_typ _ _ _ _ _ _ _ HC' Hσ) as HB; cbn in HB; exact HB.
+  destruct HC as [HC | HC]; [ left | right ];
+    pose proof (closed_tele_weaken_exp _ _ _ _ _ _ Hs2 HC HT2) as HC';
+    exact (sub_preserves_sort _ _ _ _ _ _ _ HC' ltac:(constructor) Hσ).
 Qed.
 
 (** The outermost parameter a typed module description still takes is a
-    type of a universe. *)
+    type of a relevant sort: of a universe or of levels. *)
 Lemma desc_ok_tele_head : forall Γ Rm T B T1,
     desc_ok gc_deps gc_stack Γ Rm -> mdesc_tele Rm = Some T -> tele_view T = Some (B, T1) ->
-    exists i, Γ ⊢ B : Typeω@i.
+    exists Srt, relevant_sort Srt /\ Γ ⊢ B : Srt.
 Proof.
   intros * HR Ht Hv.
   inversion HR as [Γ0 A om HA HM | Γ0 Δ Φw Φ lΔ HΦ Hn Hent HaΔ Hsh Hnd HUw HRΔ
@@ -67,7 +69,7 @@ Proof.
     injection Ht as <-.
     unfold tele_view in Hv; destruct (tele_open_split _ _ _ Hv) as (τ & Es).
     destruct (tele_split_ass_eq _ _ _ _ HaΔ Es) as [EΔ _].
-    exists lΔ; exact (HRΔ _ _ nil EΔ).
+    exact (param_typed_relevant _ _ _ _ _ (HRΔ _ _ nil EΔ)).
   - (* a closed module: its outside parameters, then the rest of its telescope *)
     destruct (Nat.leb (length Ns) (length T0)); [| discriminate ]; injection Ht as <-.
     unfold tele_view in Hv; rewrite List.rev_app_distr in Hv.
@@ -78,7 +80,7 @@ Proof.
         as (T' & Ho).
       rewrite Ho in Hv; injection Hv as <- _.
       destruct (tele_split_ass_eq _ _ _ _ HaΘ Es) as [EΘ _].
-      exists lΘ; exact (HRΘ _ _ nil EΘ).
+      exact (param_typed_relevant _ _ _ _ _ (HRΘ _ _ nil EΘ)).
     + destruct (tele_open_app_inr _ _ _ _ _ Es Hv) as (B0 & T0' & Ho & ->).
       fold (tele_view (tele_sub (List.firstn (length T0 - length Ns) T0) (sb_of_list Id Ns))) in Ho.
       rewrite tele_view_sub in Ho.
@@ -88,16 +90,17 @@ Proof.
       pose proof (ctx_wf_gctx _ _ _ HΘ') as Hg.
       destruct (loc_relevant _ _ _ _ _ (gctx_valid_syn _ _ Hg0) Hloc) as [lT HRT].
       pose proof (params_relevant_embed _ _ _ _ _ _ _ (Build_gctx_embedding _ _ _ _ Hg Hsub0) HRT) as HRT'.
-      exists lT; pose proof (sub_preserves_typ _ _ _ _ _ _ _ (args_ok_next _ _ _ _ _ _ Hargs Ha0 Hs0 HT0 HRT' HvC) Hsw) as HB.
-      cbn in HB; exact HB.
+      destruct (param_typed_relevant _ _ _ _ _ (args_ok_next _ _ _ _ _ _ Hargs Ha0 Hs0 HT0 HRT' HvC)) as (Srt & HS & HC).
+      exists Srt; split; [ exact HS |].
+      exact (sub_preserves_sort _ _ _ _ _ _ _ HC (relevant_type_sort _ HS) Hsw).
 Qed.
 
 (** The outermost parameter a well-formed module expression still takes is
-    a type of a universe. *)
+    a type of a relevant sort. *)
 Corollary mtele_head_wf : forall Γ H R T B T1,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> mdenote gc_deps gc_stack Γ H R ->
     mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
-    exists i, Γ ⊢ B : Typeω@i.
+    exists Srt, relevant_sort Srt /\ Γ ⊢ B : Srt.
 Proof.
   intros * HH Hm Ht Hv.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
@@ -118,6 +121,32 @@ Proof.
   exists R, T; split; [ exact Hm | unfold mdesc_mod_tele; rewrite Hmd; exact HT ].
 Qed.
 
+(** The type of a member with both a term part and a module part is of a
+    large universe: the term part of a definition with a module part is
+    relevant, and not a level. *)
+Lemma desc_ok_ty_mod : forall Γ R A Rm, desc_ok gc_deps gc_stack Γ R -> mdesc_type R = Some A -> mdesc_mod R = Some Rm ->
+    exists j, Γ ⊢ A : Typeω@j.
+Proof.
+  intros * HR HA Hm.
+  destruct HR as [Γ r A0 om Srt HSrt HA0 HM | | | Γ Θd A0 M0 Rm0 lΘ iA HΘd HaΘd HBt HMt _];
+    cbn in HA, Hm |- *; try discriminate.
+  injection HA as <-; destruct (ctx_pi_type _ _ relevant _ _ _ _ HΘd HBt) as [[j Hty] _]; exists j; exact Hty.
+Qed.
+
+(** An alias of a well-formed module under no parameters: the premises on
+    the parameters hold vacuously ([lv] true). *)
+Lemma wf_unit_eq_alias_nil : forall Γ E,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E).
+Proof.
+  intros * HE.
+  eapply wf_unit_eq_alias with (param_level := 0) (param_sorts := fun _ => Typeω@0) (lv := true) (lv' := true)
+                               (Rt := mdesc_term relevant Typeω@0 None) (Rt' := mdesc_term relevant Typeω@0 None);
+    try first [ exact HE | constructor | intros [=]
+              | intros Δ1 ? ? Ex; destruct Δ1; discriminate | intros _ Δ1 ? ? Ex; destruct Δ1; discriminate ].
+  all: try (intros Δ1 ? ? Ex; destruct Δ1; discriminate).
+  exact (presup_modexp_eq_ctx HE).
+Qed.
+
 (** ** What a Local Open Generates Is Well-Formed
 
     The entries an open of a well-formed module generates are well-formed:
@@ -136,10 +165,7 @@ Proof.
   all: pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- app_assoc in HC.
   all: pose proof (wf_wk_shiftn_app' _ _ _ _ HC) as Hw.
   - (* the module itself *)
-    assert (HU0 : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵘ gu_mk nil (md_alias H) ≈ gu_mk nil (md_alias H))
-      by (eapply wf_unit_eq_alias with (param_level := 0);
-          [ apply wf_ext_eq_nil; gen_presups; assumption | constructor | constructor | exact HH | exact HH
-          | exact (params_relevant_nil _ _ _ 0) | exact (params_relevant_nil _ _ _ 0) ]).
+    pose proof (wf_unit_eq_alias_nil _ _ HH) as HU0.
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
     cbn [gentry_wk].
     change (S (length (body_ctx Φg)))
@@ -164,10 +190,7 @@ Proof.
     assert (Hmt : mdesc_mod_tele R = Some T) by (unfold mdesc_mod_tele; rewrite (mdesc_is_mod_mod _ Hmod); exact HT).
     assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
       by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
-    assert (HU0 : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵘ gu_mk nil (md_alias (me_mem H n)) ≈ gu_mk nil (md_alias (me_mem H n)))
-      by (eapply wf_unit_eq_alias with (param_level := 0);
-          [ apply wf_ext_eq_nil; gen_presups; assumption | constructor | constructor | exact HE | exact HE
-          | exact (params_relevant_nil _ _ _ 0) | exact (params_relevant_nil _ _ _ 0) ]).
+    pose proof (wf_unit_eq_alias_nil _ _ HE) as HU0.
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
     cbn [gentry_wk].
     change (S (length (body_ctx Φg)))
@@ -184,15 +207,10 @@ Proof.
     assert (Hmt : mdesc_mod_tele R = Some T) by (unfold mdesc_mod_tele; rewrite Hmd; exact HT).
     assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
       by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
-    assert (HU0 : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵘ gu_mk nil (md_alias (me_mem H n)) ≈ gu_mk nil (md_alias (me_mem H n)))
-      by (eapply wf_unit_eq_alias with (param_level := 0);
-          [ apply wf_ext_eq_nil; gen_presups; assumption | constructor | constructor | exact HE | exact HE
-          | exact (params_relevant_nil _ _ _ 0) | exact (params_relevant_nil _ _ _ 0) ]).
+    pose proof (wf_unit_eq_alias_nil _ _ HE) as HU0.
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
     (* a member with a module part is relevant: its type is of a large universe *)
-    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty) as [iA HAi].
-    assert (Hr : mdesc_relevance R = relevant) by (destruct R; cbn in Hmd |- *; congruence).
-    rewrite Hr in HAi; cbn [relevance_sort] in HAi.
+    destruct (desc_ok_ty_mod _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty Hmd) as [iA HAi].
     clear HA HS; rename HAi into HA.
     pose proof (wk_preserves_typ _ _ _ _ _ _ _ HA Hw) as HA1.
     pose proof (wk_preserves_exp _ _ _ _ _ _ _ HM Hw) as HM1.
@@ -224,19 +242,31 @@ Qed.
 
     [body_tags Γ Φ L]: the type of every term part of the body [Φ] over [Γ]
     is, in the context of the entries before it, of the sort its relevance
-    tag says, at the level [L] if relevant ([entry_relevance]).  This is
-    what the premises on [entry_sort] of the unit rules need. *)
+    tag says ([entry_relevance]), if relevant a type of the universe at the
+    level [L] or a type of levels ([parameter_sort]).  This is what the
+    premises on [entry_sort] of the unit rules need. *)
 Definition body_tags (Γ : ctx) (Φ : gmod) (L : nat) : Prop :=
   forall y Φ0 E A M, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-    (body_ctx Φ0 ++ Γ)%list ⊢ A : relevance_sort (entry_relevance E) Typeω@L.
+    exists Srt, parameter_sort L Srt /\ (body_ctx Φ0 ++ Γ)%list ⊢ A : relevance_sort (entry_relevance E) Srt.
 
 (** A type of the sort at a tag is one at every larger level. *)
-Lemma relevance_sort_lift : forall Γ A r i j,
-    Γ ⊢ A : relevance_sort r Typeω@i -> i <= j -> Γ ⊢ A : relevance_sort r Typeω@j.
-Proof. intros * HA Hij; destruct r; cbn [relevance_sort] in *; [ eapply lift_exp_ge; eassumption | exact HA ]. Qed.
+Lemma relevance_sort_lift : forall Γ A r Srt i j,
+    parameter_sort i Srt -> Γ ⊢ A : relevance_sort r Srt -> i <= j ->
+    exists Srt', parameter_sort j Srt' /\ Γ ⊢ A : relevance_sort r Srt'.
+Proof.
+  intros * HS HA Hij; destruct HS; [ exists Typeω@j | exists LevelSort ]; (split; [ constructor |]);
+    destruct r; cbn [relevance_sort] in *; first [ exact HA | eapply lift_exp_ge; eassumption ].
+Qed.
+
+(** A relevant sort is a parameter sort at some level. *)
+Lemma relevant_sort_parameter_sort : forall Srt, relevant_sort Srt -> exists i, parameter_sort i Srt.
+Proof. intros * []; [ eexists; constructor | exists 0; constructor ]. Qed.
 
 Lemma body_tags_mono : forall Γ Φ L L', body_tags Γ Φ L -> L <= L' -> body_tags Γ Φ L'.
-Proof. intros * HT HL y Φ0 E A M Hp HE; eapply relevance_sort_lift; [ exact (HT _ _ _ _ _ Hp HE) | exact HL ]. Qed.
+Proof.
+  intros * HT HL y Φ0 E A M Hp HE; destruct (HT _ _ _ _ _ Hp HE) as (Srt & HS & HA).
+  exact (relevance_sort_lift _ _ _ _ _ _ HS HA HL).
+Qed.
 
 Lemma body_tags_nil : forall Γ L, body_tags Γ gm_nil L.
 Proof. intros * y Φ0 E A M Hp; discriminate. Qed.
@@ -244,7 +274,8 @@ Proof. intros * y Φ0 E A M Hp; discriminate. Qed.
 (** An entry added, its term part, if any, of the sort at its tag. *)
 Lemma body_tags_ext : forall Γ Φ x E L,
     body_tags Γ Φ L ->
-    (forall A M, entry_tm E = Some (A, M) -> (body_ctx Φ ++ Γ)%list ⊢ A : relevance_sort (entry_relevance E) Typeω@L) ->
+    (forall A M, entry_tm E = Some (A, M) ->
+       exists Srt, parameter_sort L Srt /\ (body_ctx Φ ++ Γ)%list ⊢ A : relevance_sort (entry_relevance E) Srt) ->
     body_tags Γ (gm_ext Φ x E) L.
 Proof.
   intros * HT HE y Φ0 E0 A M Hp HE0; cbn [gm_prefix_upto] in Hp.
@@ -280,17 +311,19 @@ Proof.
   - (** A term member, at the sort of its tag. *)
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) eq_refl) as [i HAi]; cbn [mdesc_relevance] in HAi.
-    assert (HA1 : (body_ctx Φg ++ Γ)%list ⊢ A[wk_shiftn (List.length Ψk)]ʷ : relevance_sort ra Typeω@i)
-      by (destruct ra; cbn [relevance_sort] in *; [ exact (wk_preserves_typ _ _ _ _ _ _ _ HAi Hw)
-                                                  | exact (wk_preserves_sort _ _ _ _ _ _ _ HAi type_sort_prop Hw) ]).
+    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) eq_refl) as (Srt & HSrt & HAi);
+      cbn [mdesc_relevance] in HAi.
+    destruct (relevant_sort_parameter_sort _ HSrt) as [i Hi].
+    assert (HA1 : (body_ctx Φg ++ Γ)%list ⊢ A[wk_shiftn (List.length Ψk)]ʷ : relevance_sort ra Srt)
+      by (exact (wk_preserves_sort _ _ _ _ _ _ _ HAi
+                   ltac:(destruct ra; cbn [relevance_sort]; [ exact (relevant_type_sort _ HSrt) | exact type_sort_prop ]) Hw)).
     set (E1 := gentry_wk (ge_def true pv ra A (Some (a_mem H n))) (wk_shiftn (List.length Ψk))) in *.
     change (S (List.length Ψk)) with (List.length (ce_def A[wk_shiftn (List.length Ψk)]ʷ (a_mem H n)[wk_shiftn (List.length Ψk)]ʷ :: Ψk)).
     eapply IH; [ reflexivity | exact HH | unfold E1; cbn [body_ctx gentry_wk option_map]; rewrite HΦg; reflexivity | exact HC |].
     apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HT (Nat.le_max_l L i)) |].
     intros A' M' HE; unfold E1 in HE; cbn [gentry_wk option_map entry_tm] in HE; injection HE as <- <-.
     unfold E1; cbn [entry_relevance gentry_wk].
-    exact (relevance_sort_lift _ _ _ _ _ HA1 (Nat.le_max_r L i)).
+    exact (relevance_sort_lift _ _ _ _ _ _ Hi HA1 (Nat.le_max_r L i)).
   - (** A module member: no term part. *)
     change (S (List.length Ψk)) with (List.length (ce_mod (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (List.length Ψk))) :: Ψk)).
     eapply IH; [ reflexivity | exact HH | cbn [body_ctx]; rewrite HΦg; reflexivity | exact HC |].
@@ -298,9 +331,7 @@ Proof.
   - (** A member with both parts: relevant. *)
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty) as [i HAi].
-    assert (Hr : mdesc_relevance R = relevant) by (destruct R; cbn in Hmd |- *; congruence).
-    rewrite Hr in HAi; cbn [relevance_sort] in HAi.
+    destruct (desc_ok_ty_mod _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty Hmd) as [i HAi].
     pose proof (wk_preserves_typ _ _ _ _ _ _ _ HAi Hw) as HA1.
     set (E1 := gentry_wk (ge_def_mod pv A (a_mem H n) (gu_mk nil (md_alias (me_mem H n)))) (wk_shiftn (List.length Ψk))) in *.
     change (S (List.length Ψk))
@@ -310,7 +341,7 @@ Proof.
     apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HT (Nat.le_max_l L i)) |].
     intros A' M' HE; unfold E1 in HE; cbn [gentry_wk entry_tm] in HE; injection HE as <- <-.
     unfold E1; cbn [entry_relevance gentry_wk relevance_sort].
-    eapply lift_exp_ge; [| exact HA1 ]; lia.
+    exists Typeω@(max L i); split; [ constructor |]; eapply lift_exp_ge; [| exact HA1 ]; lia.
 Qed.
 
 End Fixed_GCtx.

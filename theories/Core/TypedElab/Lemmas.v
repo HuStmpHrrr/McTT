@@ -74,6 +74,11 @@ Ltac fill_functional_step Hg :=
           assert_fails constr_eq X1 X2;
           assert (X1 = X2) by exact (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ H1 _ H2);
           clear H2
+      (** The entries an open generates, stored with it *)
+      | H1 : items_gen _ _ ?G ?H ?its ?X1, H2 : items_gen _ _ ?G ?H ?its ?X2 |- _ =>
+          assert_fails constr_eq X1 X2;
+          assert (X1 = X2) by exact (proj2 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ _ H1 _ H2);
+          clear H2
       | E : ?a = ?b -> _, E' : ?a = ?b |- _ => specialize (E E')
       end
     | match goal with

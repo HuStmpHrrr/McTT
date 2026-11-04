@@ -397,7 +397,10 @@ with alg_body : ctx -> gmod -> gmod -> Prop :=
      mdesc_mod R = Some Rm ->
      items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
      items_ok its ->
-     Γ ⊢aᵇ gm_open Φ H its ⇝ gens_append Φx 0 gs )
+     (** The entries the open stores are the ones its items generate, as
+         [body_xp_open] has them *)
+     Φg = gens_body gs ->
+     Γ ⊢aᵇ gm_open Φ H its Φg ⇝ gens_append Φx 0 gs )
 where "Γ '⊢aᵇ' Φ ⇝ Φx" := (alg_body Γ Φ Φx) : type_scope
 with alg_modexp : ctx -> modexp -> Prop :=
 | alg_modexp_unit :

@@ -23,7 +23,8 @@ From Mctt.Core.Semantic Require Import Domain.
 Import Syntax_Notations.
 
 (** A normal form renamed by the weakening [φ]; mutually, a neutral.  A
-    block's motive and a branch's body are under their binders. *)
+    block's motive and a branch's body are under their binders; a proof
+    term is renamed as a term. *)
 Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   match W with
   | nf_typ i => nf_typ i
@@ -33,11 +34,10 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   | nf_lvl c xs => nf_lvl c (List.map (map_level_atom (ne_wk φ)) xs)
   | nf_prop => nf_prop
   | nf_True => nf_True
-  | nf_true => nf_true
+  | nf_proof M => nf_proof M[φ]ʷ
   | nf_False => nf_False
   | nf_and P Q => nf_and (nf_wk φ P) (nf_wk (wk_q φ) Q)
-  | nf_placeholder_type => nf_placeholder_type
-  | nf_placeholder => nf_placeholder
+  | nf_proof_erased => nf_proof_erased
   | nf_pi r A B => nf_pi r (nf_wk φ A) (nf_wk (wk_q φ) B)
   | nf_fn A M => nf_fn (nf_wk φ A) (nf_wk (wk_q φ) M)
   | nf_indty p k Ms => nf_indty p k (List.map (nf_wk φ) Ms)
@@ -48,7 +48,8 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   end
 with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   match u with
-  | ne_absurd A => ne_absurd (nf_wk φ A)
+  | ne_absurd A M => ne_absurd (nf_wk φ A) M[φ]ʷ
+  | ne_absurd_erased A => ne_absurd_erased (nf_wk φ A)
   | ne_elim p Us m Bks u =>
       ne_elim p (List.map (nf_wk φ) Us) m (List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) Bks) (ne_wk φ u)
   | ne_app u W => ne_app (ne_wk φ u) (nf_wk φ W)
@@ -84,6 +85,34 @@ Proof.
   (** A block's branches. *)
   all: nested_elements; cbn; f_equal; eauto.
 Qed.
+
+(** ** Renaming Commutes with Erasure
+
+    A renaming renames the proofs; erasure forgets them. *)
+Lemma nf_ne_erase_wk :
+  (forall W φ, nf_erase (nf_wk φ W) = nf_wk φ (nf_erase W)) /\
+  (forall u φ, ne_erase (ne_wk φ u) = ne_wk φ (ne_erase u)).
+Proof.
+  apply nf_ne_ind; intros; cbn [nf_wk ne_wk nf_erase ne_erase]; f_equal; try solve [ auto ]; rewrite ?List.map_map;
+    try (eapply list_all_map_ext; [ eassumption |]);
+    first [ solve [ intros x Hx; apply Hx ]
+          | solve [ intros x Hx; lazymatch type of Hx with normal_block_g_all _ _ _ =>
+              destruct Hx as [n' Z HZ A HA brs Hbrs]; unfold map_normal_block; cbn; f_equal; [ auto | auto |];
+              rewrite !List.map_map; eapply list_all_map_ext; [ exact Hbrs |];
+              intros br Hbr; destruct Hbr; unfold map_normal_branch; cbn; f_equal; auto end ]
+          | solve [ intros x Hx; destruct Hx; unfold map_level_atom; cbn; f_equal; auto ]
+          | reflexivity ].
+Qed.
+
+Lemma ne_erase_wk : forall φ u, ne_erase (ne_wk φ u) = ne_wk φ (ne_erase u).
+Proof. intros; apply nf_ne_erase_wk. Qed.
+
+Lemma nf_erase_wk : forall φ W, nf_erase (nf_wk φ W) = nf_wk φ (nf_erase W).
+Proof. intros; apply nf_ne_erase_wk. Qed.
+
+(** Erasing before renaming is erasing after. *)
+Lemma ne_erase_wk_erase : forall φ u, ne_erase (ne_wk φ (ne_erase u)) = ne_erase (ne_wk φ u).
+Proof. intros; rewrite !ne_erase_wk, ne_erase_idem; reflexivity. Qed.
 
 (** ** Order-Preserving Renamings Preserve the Order on Atoms
 
@@ -199,12 +228,16 @@ Ltac elem_cmp_wk :=
         destruct Hx as [? ? a Ha]; destruct y as [? ? b];
         unfold atom_code, map_level_atom; cbn [atom_offset atom_sort atom_level]; rewrite !lt_cmp_node;
         pose proof (Ha φ b Hφ) as E; unfold ne_cmp in E; rewrite E; reflexivity
-      | (** a block *)
-        let n := fresh "n" in let A := fresh "A" in let HA := fresh "HA" in let brs := fresh "brs" in
-        let Hbrs := fresh "Hbrs" in let n' := fresh "n" in let A' := fresh "A" in let E := fresh "E" in
-        destruct Hx as [n A HA brs Hbrs]; destruct y as [n' A' ?];
-        unfold block_code, map_normal_block; cbn [block_arity block_motive block_branches]; rewrite !lt_cmp_node;
+      | (** a block: its scrutinee's type, its motive, its branches *)
+        let n := fresh "n" in let Z := fresh "Z" in let HZ := fresh "HZ" in let A := fresh "A" in
+        let HA := fresh "HA" in let brs := fresh "brs" in
+        let Hbrs := fresh "Hbrs" in let n' := fresh "n" in let Z' := fresh "Z" in let A' := fresh "A" in
+        let E := fresh "E" in let EZ := fresh "EZ" in
+        destruct Hx as [n Z HZ A HA brs Hbrs]; destruct y as [n' Z' A' ?];
+        unfold block_code, map_normal_block; cbn [block_arity block_scrutinee_type block_motive block_branches];
+        rewrite !lt_cmp_node;
         destruct (Nat.compare_spec n n') as [<- | ? | ?]; cbn [cmp_then]; [| reflexivity | reflexivity ];
+        pose proof (HZ (wk_qn (n - 1) φ) Z' (wk_mono_qn _ _ Hφ)) as EZ; unfold nf_cmp in EZ; rewrite EZ;
         pose proof (HA (wk_qn n φ) A' (wk_mono_qn _ _ Hφ)) as E; unfold nf_cmp in E; rewrite E;
         rewrite !list_code_cmp; rewrite (list_cmp_map _ _ _ brs Hbrs); [ reflexivity |];
         let z := fresh "z" in let Hz := fresh "Hz" in let w := fresh "w" in
@@ -254,10 +287,12 @@ Lemma level_atoms_insert_wk : forall φ, wk_mono φ ->
     forall k s a ys, List.map (map_level_atom (ne_wk φ)) (level_atoms_insert k s a ys)
                      = level_atoms_insert k s (ne_wk φ a) (List.map (map_level_atom (ne_wk φ)) ys).
 Proof.
-  intros φ Hφ k s a; induction ys as [| [k' t b] r IH]; cbn [level_atoms_insert List.map]; [ reflexivity |].
+  intros φ Hφ k s a; induction ys as [| [k' t b] r IH]; cbn [level_atoms_insert List.map];
+    [ unfold map_level_atom; cbn [atom_offset atom_sort atom_level]; rewrite ne_erase_wk; reflexivity |].
   unfold map_level_atom at 2; cbn [atom_offset atom_sort atom_level].
   rewrite at_cmp_wk by assumption.
-  destruct (at_cmp a s b t); cbn [List.map]; rewrite ?IH; reflexivity.
+  destruct (at_cmp a s b t); cbn [List.map]; rewrite ?IH; unfold map_level_atom; cbn [atom_offset atom_sort atom_level];
+    rewrite ?ne_erase_wk; reflexivity.
 Qed.
 
 Lemma level_atoms_sort_wk : forall φ, wk_mono φ -> forall xs,
@@ -284,6 +319,37 @@ Proof.
   rewrite <- level_atoms_sort_wk, <- level_atoms_keep_wk, level_atoms_max_offset_wk by assumption; reflexivity.
 Qed.
 
+(** ** The Canonical Form Sees Atoms up to Erasure
+
+    The order on atoms compares them erased ([at_cmp_erase_l]) and the
+    canonical form stores them erased, so it is that of the erased
+    atoms. *)
+Lemma level_atoms_insert_erase : forall k s a ys, level_atoms_insert k s a ys = level_atoms_insert k s (ne_erase a) ys.
+Proof.
+  intros k s a; induction ys as [| [k' t b] r IH]; cbn [level_atoms_insert]; rewrite ?ne_erase_idem; [ reflexivity |].
+  rewrite at_cmp_erase_l, IH; reflexivity.
+Qed.
+
+Lemma level_atoms_sort_erase : forall xs, level_atoms_sort xs = level_atoms_sort (List.map (map_level_atom ne_erase) xs).
+Proof.
+  induction xs as [| [k s a] r IH]; cbn [level_atoms_sort List.map]; [ reflexivity |].
+  unfold map_level_atom at 1; cbn [atom_offset atom_sort atom_level level_atoms_sort].
+  rewrite <- level_atoms_insert_erase, <- IH; reflexivity.
+Qed.
+
+Lemma lvl_canon_erase : forall c ys, lvl_canon (c, ys) = lvl_canon (c, List.map (map_level_atom ne_erase) ys).
+Proof. intros; unfold lvl_canon; cbn [fst snd]; rewrite <- level_atoms_sort_erase; reflexivity. Qed.
+
+(** So atoms equal up to erasure to the renamings of others have, as a
+    level, the renaming of theirs' canonical form. *)
+Lemma lvl_canon_erase_wk : forall φ c ys ys', wk_mono φ ->
+    List.map (map_level_atom ne_erase) ys' = List.map (map_level_atom ne_erase) (List.map (map_level_atom (ne_wk φ)) ys) ->
+    nf_lvl_of (lvl_canon (c, ys')) = nf_wk φ (nf_lvl_of (lvl_canon (c, ys))).
+Proof.
+  intros * Hφ E; rewrite nf_lvl_of_wk, <- lvl_canon_wk by exact Hφ; unfold lvl_wk; cbn [fst snd].
+  rewrite (lvl_canon_erase c ys'), E, <- lvl_canon_erase; reflexivity.
+Qed.
+
 (** ** Freshness
 
     A renaming that never hits [k] produces normal forms fresh at [k]. *)
@@ -293,6 +359,8 @@ Lemma nf_wk_fresh :
   (forall u k φ, wk_avoids k φ -> ne_fresh k (ne_wk φ u)).
 Proof.
   apply nf_ne_ind; intros; cbn; rewrite ?all_list_map; repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
+  (** A proof term: renamed away from [k] ([syn_wk_fresh]) *)
+  all: try solve [ apply (proj1 syn_wk_fresh); assumption ].
   all: nested_elements; cbn; unfold normal_block_forall; cbn; rewrite ?all_list_map;
     repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
   all: nested_elements; cbn; eauto 6 using wk_avoids_q, wk_avoids_qn.
@@ -300,17 +368,26 @@ Qed.
 
 (** ** Injectivity
 
-    An injective renaming is injective on normal forms. *)
-Definition wk_inj (φ : wk) : Prop := forall x y, φ x = φ y -> x = y.
+    A renaming with a left inverse is injective on normal forms: on the
+    proof terms they hold too, which the left inverse renames back
+    ([exp_wk_left_inverse]). *)
+Definition wk_left_inverse (ψ φ : wk) : Prop := forall x, ψ (φ x) = x.
 
-Lemma wk_inj_q : forall φ, wk_inj φ -> wk_inj (wk_q φ).
-Proof. intros φ Hφ [| x] [| y]; cbn; intros H; try discriminate; [ reflexivity | f_equal; apply Hφ; lia ]. Qed.
+Lemma wk_left_inverse_q : forall ψ φ, wk_left_inverse ψ φ -> wk_left_inverse (wk_q ψ) (wk_q φ).
+Proof. intros ψ φ H [| x]; cbn; [ reflexivity | rewrite H; reflexivity ]. Qed.
 
-Lemma wk_inj_shift : wk_inj wk_shift.
-Proof. intros x y; cbn; lia. Qed.
+Lemma wk_left_inverse_shift : wk_left_inverse pred wk_shift.
+Proof. intros x; reflexivity. Qed.
 
-Lemma wk_inj_qn : forall n φ, wk_inj φ -> wk_inj (wk_qn n φ).
-Proof. induction n; intros; cbn; [ assumption | apply wk_inj_q; auto ]. Qed.
+Lemma wk_left_inverse_qn : forall n ψ φ, wk_left_inverse ψ φ -> wk_left_inverse (wk_qn n ψ) (wk_qn n φ).
+Proof. induction n; intros; cbn; [ assumption | apply wk_left_inverse_q; auto ]. Qed.
+
+(** A term renamed by [φ], then by a left inverse of [φ], is itself. *)
+Lemma exp_wk_left_inverse : forall ψ φ M, wk_left_inverse ψ φ -> M[φ]ʷ[ψ]ʷ = M.
+Proof. intros * H; rewrite exp_wk_wk_ext with (χ := wk_id); [ apply exp_wk_id | intros x; exact (H x) ]. Qed.
+
+Lemma exp_wk_inj : forall ψ φ M N, wk_left_inverse ψ φ -> M[φ]ʷ = N[φ]ʷ -> M = N.
+Proof. intros * H E; rewrite <- (exp_wk_left_inverse ψ φ M H), <- (exp_wk_left_inverse ψ φ N H), E; reflexivity. Qed.
 
 (** A map injective on the elements of a list is injective on the list. *)
 Lemma list_all_map_inj {A B : Set} (P : A -> Set) (g : A -> B) : forall l,
@@ -322,15 +399,18 @@ Proof.
 Qed.
 
 Lemma nf_wk_inj :
-  (forall W φ W', wk_inj φ -> nf_wk φ W = nf_wk φ W' -> W = W') /\
-  (forall u φ u', wk_inj φ -> ne_wk φ u = ne_wk φ u' -> u = u').
+  (forall W φ ψ W', wk_left_inverse ψ φ -> nf_wk φ W = nf_wk φ W' -> W = W') /\
+  (forall u φ ψ u', wk_left_inverse ψ φ -> ne_wk φ u = ne_wk φ u' -> u = u').
 Proof.
   apply nf_ne_ind; intros;
     match goal with
     | H : nf_wk _ _ = nf_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     | H : ne_wk _ _ = ne_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     end;
-    f_equal; eauto using wk_inj_q, wk_inj_qn.
+    f_equal; eauto using wk_left_inverse_q, wk_left_inverse_qn, exp_wk_inj.
+  (** A variable: renamed back *)
+  all: try solve [ match goal with Hψ : wk_left_inverse ?ψ ?φ, E : ?φ ?x = ?φ ?y |- ?x = ?y =>
+                     rewrite <- (Hψ x), <- (Hψ y), E; reflexivity end ].
   (** The lists, element by element. *)
   all: eapply list_all_map_inj; [ eassumption | | eassumption ].
   all: let x := fresh "x" in let Hx := fresh "Hx" in let y := fresh "y" in let Hy := fresh "Hy" in
@@ -338,11 +418,11 @@ Proof.
   (** An atom. *)
   all: try (destruct Hx; destruct y; unfold map_level_atom in Hy; cbn in Hy; injection Hy as -> -> Hy;
             f_equal; eauto).
-  (** A block: its motive and its branches. *)
-  all: destruct Hx as [n A HA brs Hbrs]; destruct y as [n' A' brs']; unfold map_normal_block in Hy; cbn in Hy;
-    injection Hy as -> Hy Hy'; f_equal; [ eauto using wk_inj_qn |].
+  (** A block: its scrutinee's type, its motive and its branches. *)
+  all: destruct Hx as [n Z HZ A HA brs Hbrs]; destruct y as [n' Z' A' brs']; unfold map_normal_block in Hy; cbn in Hy;
+    injection Hy as -> HyZ Hy Hy'; f_equal; [ eauto using wk_left_inverse_qn | eauto using wk_left_inverse_qn |].
   all: eapply list_all_map_inj; [ exact Hbrs | | exact Hy' ].
   all: let z := fresh "z" in let Hz := fresh "Hz" in let w := fresh "w" in let Hw := fresh "Hw" in
        intros z Hz w Hw; destruct Hz; destruct w; unfold map_normal_branch in Hw; cbn in Hw;
-       injection Hw as -> -> Hw; f_equal; eauto using wk_inj_qn.
+       injection Hw as -> -> Hw; f_equal; eauto using wk_left_inverse_qn.
 Qed.
