@@ -412,7 +412,7 @@ Section ElimViewRule.
       apply rel_chain_cons; [ rewrite env_extend_tagged_typed; etransitivity; [ symmetry; exact L1 | exact Lc ] |].
       apply rel_chain_of_pair; exact L3. }
     pose proof (per_head_of_typ_resp HRM (HAv _ _ _ HMm Hbm) _ _ _ _ Ch) as ER4.
-    assert (Hfin : forall a b, per_head (List.nth m (blocks_motives Bks) exp_default) (List.nth m (blocks_motives Bks) exp_default)
+    assert (Hfin : forall a b, per_head (List.nth m (blocks_motives Bks) a_prop) (List.nth m (blocks_motives Bks) a_prop)
                      (env_tele C2 (List.rev (elim_mctx p D m Mm Us)) (ns3 ++ m3 :: nil))
                      (env_tele C2 (List.rev (elim_mctx p D m Mm Us)) (ns3 ++ m3 :: nil)) a b -> RT a b).
     { intros a b H; apply ER1, ER2, ER4; rewrite (blocks_motives_nth _ _ _ Hbm) in H; exact H. }

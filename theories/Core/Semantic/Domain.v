@@ -203,16 +203,15 @@ Fixpoint env_entry (ρ : env) (x : nat) : dentry :=
 
 (** The value of the variable [#x] as a term, and as a module.  A well-typed
     term only reads variables of its sort in its context, so it never sees
-    the defaults, which are the values of the defaults of [sentry_exp] and
-    [sentry_modexp].  As a coercion, [env_var] lets an environment be applied
-    as a function, [ρ x]. *)
-Definition dm_default : dmod := dm_global (q_abs nil nil) nil.
-
+    the values an entry of the other sort gives, which are the values of
+    the closed terms of [sentry_exp] and [sentry_modexp].  As a coercion,
+    [env_var] lets an environment be applied as a function, [ρ x]. *)
 Definition env_var (ρ : env) (x : nat) : domain :=
   match env_entry ρ x with
   | de_term d _ => d
-  (** never a user value: the value of [exp_junk], only for totality of
-      the read *)
+  (** never a user value: the value [Propᵈ] of the term [Propₘ] a module
+      entry gives a term variable ([sentry_exp]), only for totality of the
+      read *)
   | de_mod _ _ => d_prop
   | de_dm d _ _ _ => d
   end.
@@ -230,7 +229,9 @@ Definition env_type (ρ : env) (x : nat) : entry_type :=
 Definition env_mod (ρ : env) (x : nat) : dmod :=
   match env_entry ρ x with
   | de_mod m _ => m
-  | de_term _ _ => dm_default
+  (** never a user value: a term entry read as a module, only for
+      totality of the read; the empty global module *)
+  | de_term _ _ => dm_global (q_abs nil nil) nil
   | de_dm _ _ m _ => m
   end.
 

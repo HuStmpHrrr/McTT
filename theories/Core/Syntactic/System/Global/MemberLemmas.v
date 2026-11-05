@@ -503,23 +503,25 @@ Lemma ctx_pi_rev_cons : forall r e R A,
     end.
 Proof. intros; cbn [rev]; rewrite ctx_pi_app; destruct e; reflexivity. Qed.
 
-(** The [Π] an arity type is, substituted. *)
+(** The [Π] an arity type is, substituted.  An arity type ends in a
+    closed term that is no [Π], here [Propₘ], so that only its parameters
+    make [Π]s and a substitution fixes the end. *)
 Lemma pi_view_ctx_pi_sub : forall R σ,
-    pi_view (ctx_pi (rev R) exp_default)[σ] =
-    option_map (fun BC => ((fst BC)[σ], (snd BC)[q σ])) (pi_view (ctx_pi (rev R) exp_default)).
+    pi_view (ctx_pi (rev R) a_prop)[σ] =
+    option_map (fun BC => ((fst BC)[σ], (snd BC)[q σ])) (pi_view (ctx_pi (rev R) a_prop)).
 Proof.
   induction R as [| e R IH]; intros σ; [ reflexivity |].
   rewrite !ctx_pi_rev_cons; destruct e as [B | B N | U | B N U].
   - reflexivity.
   - cbn [exp_sub binding_sub pi_view option_map]; rewrite IH.
-    destruct (pi_view (ctx_pi (rev R) exp_default)) as [[B' C'] |]; cbn; [| reflexivity ].
+    destruct (pi_view (ctx_pi (rev R) a_prop)) as [[B' C'] |]; cbn; [| reflexivity ].
     f_equal; f_equal; [ apply (exp_sub_extend_comm_gen _ _ (se_exp N)) | apply (exp_sub_q_extend_comm_gen _ _ (se_exp N)) ].
   - cbn [exp_sub binding_sub pi_view option_map]; rewrite IH.
-    destruct (pi_view (ctx_pi (rev R) exp_default)) as [[B' C'] |]; cbn; [| reflexivity ].
+    destruct (pi_view (ctx_pi (rev R) a_prop)) as [[B' C'] |]; cbn; [| reflexivity ].
     f_equal; f_equal;
       [ apply (exp_sub_extend_comm_gen _ _ (se_mod (me_lit U))) | apply (exp_sub_q_extend_comm_gen _ _ (se_mod (me_lit U))) ].
   - rewrite exp_sub_sub_extend_dm, (exp_sub_sub _ (q σ)), IH, IH.
-    destruct (pi_view (ctx_pi (rev R) exp_default)) as [[B' C'] |]; cbn; [| reflexivity ].
+    destruct (pi_view (ctx_pi (rev R) a_prop)) as [[B' C'] |]; cbn; [| reflexivity ].
     f_equal; f_equal.
     + rewrite <- exp_sub_sub; apply (exp_sub_extend_comm_gen _ _ (se_dm N (me_lit U))).
     + rewrite <- (exp_sub_sb_eq _ _ _ (sb_q_compose _ _)), <- exp_sub_sub.
@@ -528,7 +530,7 @@ Qed.
 
 (** The [Π] the arity type of a telescope is, is its outermost parameter. *)
 Lemma tele_view_pi : forall T,
-    pi_view (ctx_pi T exp_default) = option_map (fun BT => (fst BT, ctx_pi (snd BT) exp_default)) (tele_view T).
+    pi_view (ctx_pi T a_prop) = option_map (fun BT => (fst BT, ctx_pi (snd BT) a_prop)) (tele_view T).
 Proof.
   intros T; unfold tele_view; rewrite <- (rev_involutive T) at 1; generalize (rev T) as R; clear T.
   induction R as [| [B | B N | U | B N U] R IH]; [ reflexivity | | | |]; rewrite ctx_pi_rev_cons; cbn [pi_view tele_open].

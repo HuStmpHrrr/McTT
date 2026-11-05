@@ -617,7 +617,7 @@ Qed.
     binds as many variables as the path's end has parameters, and the
     scrutinee. *)
 Lemma leaf_ihty_base : forall r l As As' τ β σ x,
-    List.nth (leaf_mem l) As' exp_default = (List.nth (leaf_mem l) As exp_default)[sb_qn (S (List.length (leaf_ps l))) τ] ->
+    List.nth (leaf_mem l) As' a_prop = (List.nth (leaf_mem l) As a_prop)[sb_qn (S (List.length (leaf_ps l))) τ] ->
     leaf_ihty r As (τ ⨟ β) σ x l = leaf_ihty r As' β σ x l.
 Proof.
   induction l as [j Ps | B l IH | f ns l IH]; intros * HA; cbn in *.
@@ -689,7 +689,7 @@ Lemma leaves_ctx_sub : forall r nn As As' Us na τ pat ls j,
     List.length pat < na ->
     List.Forall (leaf_scoped (pat_nargs pat + (nn + List.length Us))) ls ->
     (forall l, In l ls ->
-       List.nth (leaf_mem l) As' exp_default = (List.nth (leaf_mem l) As exp_default)[sb_qn (S (List.length (leaf_ps l))) τ]) ->
+       List.nth (leaf_mem l) As' a_prop = (List.nth (leaf_mem l) As a_prop)[sb_qn (S (List.length (leaf_ps l))) τ]) ->
     tele_sub (leaves_ctx r nn As Us na pat j ls) (sb_qn (j + na + nn) τ)
     = leaves_ctx r nn As' (List.map (fun U => U[τ]) Us) na pat j ls.
 Proof.
@@ -713,7 +713,7 @@ Lemma ihs_ctx_aux_sub : forall r D nn As As' Us na τ gs pat j,
     (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
        ptyp_scoped (pat_nargs pat + List.length (cargs_strat gs1) + (nn + List.length Us)) t /\
        (forall l, In l (shape_leaves (rview_leaves D) (pat_nargs pat + List.length (cargs_strat gs1) + nn) t) ->
-          List.nth (leaf_mem l) As' exp_default = (List.nth (leaf_mem l) As exp_default)[sb_qn (S (List.length (leaf_ps l))) τ])) ->
+          List.nth (leaf_mem l) As' a_prop = (List.nth (leaf_mem l) As a_prop)[sb_qn (S (List.length (leaf_ps l))) τ])) ->
     tele_sub (ihs_ctx_aux r (rview_leaves D) nn As Us na pat j gs) (sb_qn (j + na + nn) τ)
     = ihs_ctx_aux r (rview_leaves D) nn As' (List.map (fun U => U[τ]) Us) na pat j gs.
 Proof.
@@ -744,7 +744,7 @@ Qed.
 
 Lemma elim_bctx_sub : forall r pq D k M c gs As As' Us τ,
     decl_closed D -> ind_member D k = Some M -> In (c, gs) (im_cons M) -> List.length Us = ind_nu D ->
-    (forall j Mj, ind_member D j = Some Mj -> List.nth j As' exp_default = (List.nth j As exp_default)[sb_qn (S (im_nn Mj)) τ]) ->
+    (forall j Mj, ind_member D j = Some Mj -> List.nth j As' a_prop = (List.nth j As a_prop)[sb_qn (S (im_nn Mj)) τ]) ->
     tele_sub (elim_bctx r pq D M gs As Us) τ = elim_bctx r pq D M gs As' (List.map (fun U => U[τ]) Us).
 Proof.
   intros * HD HM Hin Hl HAs; unfold elim_bctx.
@@ -821,14 +821,14 @@ Qed.
 (** The motive of the member [j], moved under its binders. *)
 Lemma blocks_motives_sub : forall D Bks τ j Mj,
     blocks_binder_count_ok D Bks -> ind_member D j = Some Mj ->
-    List.nth j (blocks_motives (blocks_sub Bks τ)) exp_default = (List.nth j (blocks_motives Bks) exp_default)[sb_qn (S (im_nn Mj)) τ].
+    List.nth j (blocks_motives (blocks_sub Bks τ)) a_prop = (List.nth j (blocks_motives Bks) a_prop)[sb_qn (S (im_nn Mj)) τ].
 Proof.
   intros * Hnm HMj; unfold blocks_motives.
   destruct (List.nth_error Bks j) as [[nm Z A Bs] |] eqn:Hb.
   - pose proof (Hnm _ _ _ HMj Hb) as E; cbn in E; subst nm.
-    assert (E1 : List.nth j (List.map eb_motive Bks) exp_default = A)
+    assert (E1 : List.nth j (List.map eb_motive Bks) a_prop = A)
       by (apply List.nth_error_nth; rewrite List.nth_error_map, Hb; reflexivity).
-    assert (E2 : List.nth j (List.map eb_motive (blocks_sub Bks τ)) exp_default = A[sb_qn (S (im_nn Mj)) τ])
+    assert (E2 : List.nth j (List.map eb_motive (blocks_sub Bks τ)) a_prop = A[sb_qn (S (im_nn Mj)) τ])
       by (apply List.nth_error_nth; rewrite List.nth_error_map, nth_error_blocks_sub, Hb; reflexivity).
     rewrite E1, E2; reflexivity.
   - apply List.nth_error_None in Hb.
@@ -1072,7 +1072,7 @@ Qed.
 
 Lemma blocks_motives_wk : forall D Bks φ j Mj,
     blocks_binder_count_ok D Bks -> ind_member D j = Some Mj ->
-    List.nth j (blocks_motives (blocks_wk Bks φ)) exp_default = (List.nth j (blocks_motives Bks) exp_default)[wk_qn (S (im_nn Mj)) φ]ʷ.
+    List.nth j (blocks_motives (blocks_wk Bks φ)) a_prop = (List.nth j (blocks_motives Bks) a_prop)[wk_qn (S (im_nn Mj)) φ]ʷ.
 Proof. intros; rewrite <- blocks_sub_of_wk, <- exp_sub_qn_of_wk; eapply blocks_motives_sub; eassumption. Qed.
 
 Lemma elim_mctx_wk : forall pq D k M Us φ,
@@ -1082,7 +1082,7 @@ Proof. intros; rewrite <- tele_sub_of_wk; erewrite elim_mctx_sub by eassumption;
 
 Lemma elim_bctx_wk : forall r pq D k M c gs As As' Us φ,
     decl_closed D -> ind_member D k = Some M -> In (c, gs) (im_cons M) -> List.length Us = ind_nu D ->
-    (forall j Mj, ind_member D j = Some Mj -> List.nth j As' exp_default = (List.nth j As exp_default)[wk_qn (S (im_nn Mj)) φ]ʷ) ->
+    (forall j Mj, ind_member D j = Some Mj -> List.nth j As' a_prop = (List.nth j As a_prop)[wk_qn (S (im_nn Mj)) φ]ʷ) ->
     tele_wk (elim_bctx r pq D M gs As Us) φ = elim_bctx r pq D M gs As' (List.map (fun U => U[φ]ʷ) Us).
 Proof.
   intros * HD HM Hin Hl HAs; rewrite <- tele_sub_of_wk; erewrite elim_bctx_sub; [ rewrite map_sub_of_wk; reflexivity | eassumption .. |].
@@ -1239,7 +1239,13 @@ Proof.
        apply List.nth_error_Some in Hk; lia ].
   destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & Hnn & Hcs & Hcorr).
   unfold view_wrap_block; rewrite (List.nth_error_nth _ _ _ Hv), nth_error_blocks_sub, HMv.
-  destruct (List.nth_error Bks v) as [[nm Z A Bs] |] eqn:Hb; cbn [option_map eblock_sub]; [| reflexivity ].
+  destruct (List.nth_error Bks v) as [[nm Z A Bs] |] eqn:Hb; cbn [option_map eblock_sub].
+  2: { (** No block: the block of the same shape, its motive [#0] under its binders. *)
+    cbn [brs_sub List.map]; f_equal.
+    - replace (S (im_nn Mi') - 1) with (im_nn Mi') by lia.
+      rewrite ind_mty_sub by (first [ exact HD' | rewrite length_map; exact Hlc ]).
+      rewrite (vars_from_sub _ _ (im_nn Mi')) by lia; f_equal.
+      rewrite !map_map; apply map_ext; intros U; apply exp_shiftn_sub_qn0. }
   f_equal.
   { (** The container's member type, under its non-uniform parameters. *)
     pose proof (Hnm _ _ _ HMv Hb) as Enm; cbn in Enm; subst nm.

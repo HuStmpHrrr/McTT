@@ -350,7 +350,7 @@ Section Blocks.
       List.Forall (exp_scoped (List.length Ψ)) Ns ->
       Ψ ⊨ M : ind_mty p D j (List.map (fun U => U[β]) Us) Ns -> exp_scoped (List.length Ψ) M ->
       Ψ ⊨ a_elim ak_relevant p (List.map (fun U => U[β]) Us) j (blocks_sub Bks β) M
-        : (List.nth j (blocks_motives Bks) exp_default)[sb_of_list β (Ns ++ M :: nil)].
+        : (List.nth j (blocks_motives Bks) a_prop)[sb_of_list β (Ns ++ M :: nil)].
   Proof.
     intros * Hβ HMj Hrv HUs0s HNl HNs HNss HM HMs.
     set (Us0 := List.map (fun U => U[β]) Us) in *.
@@ -615,7 +615,7 @@ Section LeafVals.
   (** The family of the motives at [C], as [Elim.v] has it. *)
   Let mctx_tele j := match ind_member D j with Some Mj => List.rev (elim_mctx p D j Mj Us) | None => nil end.
   Let Rel := fun j ns m ns' m' =>
-    per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
+    per_head (List.nth j (blocks_motives Bks) a_prop) (List.nth j (blocks_motives Bks) a_prop)
       (env_tele C (mctx_tele j) (ns ++ m :: nil)) (env_tele C (mctx_tele j) (ns' ++ m' :: nil)).
   #[local] Abbreviation u0_len' := (u0_len D Us HUl C u0 HUC).
   #[local] Abbreviation u0_env' := (u0_env VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C u0 HCC HUC).
@@ -1740,7 +1740,7 @@ Section Iota.
     Let G := grp_rel p D u0 nr ar dr.
     Let mctx_tele j := match ind_member D j with Some Mj => List.rev (elim_mctx p D j Mj Us) | None => nil end.
     Let Rel := fun j ns m ns' m' =>
-      per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
+      per_head (List.nth j (blocks_motives Bks) a_prop) (List.nth j (blocks_motives Bks) a_prop)
         (env_tele C (mctx_tele j) (ns ++ m :: nil)) (env_tele C (mctx_tele j) (ns' ++ m' :: nil)).
     #[local] Abbreviation u0_len' := (u0_len D Us iota_case_HUl C u0 HUC).
     #[local] Abbreviation u0_env' := (u0_env VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs iota_case_HUss C u0 HCC HUC).

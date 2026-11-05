@@ -115,8 +115,8 @@ Definition rf_block (k : nat) (f : raw_fun) : eblock :=
 (** The blocks, one per member [j < nm], of the function of member [j]. *)
 Definition mdef_blocks (k nm : nat) (fs : list raw_fun) (ms : list nat) : list eblock :=
   List.map (fun j => match nat_index j ms with
-                     | Some i => match List.nth_error fs i with Some g => rf_block k g | None => eb_mk 0 exp_default exp_default nil end
-                     | None => eb_mk 0 exp_default exp_default nil
+                     | Some i => match List.nth_error fs i with Some g => rf_block k g | None => eb_mk 0 a_prop a_prop nil end
+                     | None => eb_mk 0 a_prop a_prop nil
                      end)
     (List.seq 0 nm).
 

@@ -615,7 +615,7 @@ Lemma ptyp_skip_depth : forall t, ptyp_skip (ptyp_depth t) t = pt_self (ptyp_mem
 Proof. induction t as [j Ps | B t IH]; cbn; [ reflexivity | exact IH ]. Qed.
 
 Lemma ptyp_skip_lt : forall t d, d < ptyp_depth t ->
-    ptyp_skip d t = pt_pi (List.nth d (ptyp_doms t) exp_default) (ptyp_skip (S d) t).
+    ptyp_skip d t = pt_pi (List.nth d (ptyp_doms t) a_prop) (ptyp_skip (S d) t).
 Proof.
   induction t as [j Ps | B t IH]; intros d Hd; unfold ptyp_depth in Hd; cbn in Hd; [ lia |].
   destruct d as [| d]; cbn; [ reflexivity | apply IH; unfold ptyp_depth; lia ].
@@ -829,7 +829,7 @@ Section LeafConv.
     (HUs : forall k U T, nth_error Us k = Some U -> nth_error (tele_insts (ind_uparams D) Id Us) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ U : T)
     (HAs : motives_typed Θ Ξ Γ p D Us As r i) (HAsk : motive_kind r)
     (HAsc : forall j' Mj' j, ind_member D' j' = Some Mj' -> im_is_rview Mj' = false -> nth_error vm j' = Some j ->
-       List.nth j' As' exp_default = List.nth j As exp_default).
+       List.nth j' As' a_prop = List.nth j As a_prop).
 
   Lemma leaf_conv : forall n v Mv i' Mi' c gs gs' gs1 t gs2 gs1' t' gs2' Mj,
       ind_member D v = Some Mv -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
@@ -1192,8 +1192,8 @@ Section LeafConv.
       cbn [ptyp_ty_at shape_leaves] in Hx |- *.
       rewrite filter_map_comm; cbn [leaf_in].
       apply Forall2_map_both.
-      set (B := List.nth d (ptyp_doms t) exp_default) in *.
-      set (B' := List.nth d (ptyp_doms t') exp_default).
+      set (B := List.nth d (ptyp_doms t) a_prop) in *.
+      set (B' := List.nth d (ptyp_doms t') a_prop).
       set (σ := ι (wk_pat (List.repeat false d ++ pat)) ⨟ Sb) in *.
       set (σ' := ι (wk_pat (List.repeat false d ++ pat')) ⨟ (sb_qn (d + List.length gs1 + nn) (sb_of_list Id Is) ⨟ Sb)).
       destruct (shape_prefix_wf _ _ _ _ _ _ _ _ Hg HDs Hl Hmv Hin gs1 t gs2 Heq d ltac:(unfold ptyp_depth in Hd; lia))
@@ -1355,7 +1355,7 @@ Qed.
 Lemma view_wrap_motive_nth : forall r pq qc D D' vm Us Uc Bks i' Mi' v b, rview_suffix_ok D' ->
     ind_member D' i' = Some Mi' -> im_is_rview Mi' = false -> List.nth_error vm i' = Some v -> List.nth_error Bks v = Some b ->
     (exists Mv, ind_member D v = Some Mv) ->
-    List.nth i' (blocks_motives (view_wrap r pq qc D D' vm Us Uc Bks)) exp_default = eb_motive b.
+    List.nth i' (blocks_motives (view_wrap r pq qc D D' vm Us Uc Bks)) a_prop = eb_motive b.
 Proof.
   intros * Hs Hi Hr Hv Hb [Mv Hm].
   rewrite (blocks_motives_nth _ _ _ (nth_error_view_wrap r pq qc D D' vm Us Uc Bks _ _ Hs Hi Hr)).
@@ -1842,7 +1842,7 @@ Section ViewBlocks.
       pose proof (blocks_motives_typed _ _ _ _ _ _ _ _ _ (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD)) HBt) as HAs.
       (* the motives correspond *)
       assert (HAsc : forall j' Mj' j, ind_member D' j' = Some Mj' -> im_is_rview Mj' = false -> nth_error vm j' = Some j ->
-                 List.nth j' (blocks_motives Bks') exp_default = List.nth j (blocks_motives Bks) exp_default).
+                 List.nth j' (blocks_motives Bks') a_prop = List.nth j (blocks_motives Bks) a_prop).
       { intros j' Mj' j Hj' Hrj' Hvj.
         destruct (view_blocks_member _ _ Hj' Hrj') as (v0 & Mv0 & b0 & Hv0 & Hmv0 & Hb0 & _).
         rewrite Hvj in Hv0; injection Hv0 as <-.

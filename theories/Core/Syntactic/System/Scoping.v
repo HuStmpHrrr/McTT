@@ -1951,7 +1951,13 @@ Proof.
        apply List.nth_error_Some in Hk; unfold ind_member in *; lia ].
   rewrite (List.nth_error_nth _ _ _ Hv).
   destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMi' Hv) as (Mv & HMv & Hnn & Hcs & Hcorr).
-  destruct (List.nth_error Bks v) as [[nm Z A Bs] |] eqn:Hbv; [| cbn; repeat split; exact I ].
+  destruct (List.nth_error Bks v) as [[nm Z A Bs] |] eqn:Hbv;
+    [| cbn beta iota; cbn [eb_binder_count eb_scrutinee_type eb_motive eb_brs]; split;
+       [ replace (S (im_nn Mi') - 1 + m) with (im_nn Mi' + m) by lia;
+         apply ind_mty_scoped; [ exact HD' | rewrite length_map; exact Hlc | | apply vars_from_scoped; lia ];
+         apply List.Forall_map; eapply List.Forall_impl; [| exact HUc ]; intros U HU;
+         eapply exp_scoped_wk; [ exact HU |]; intros; unfold wk_shiftn; lia
+       | split; [ cbn; lia | exact I ] ] ].
   rewrite HMv; cbn [eb_binder_count eb_scrutinee_type eb_motive eb_brs].
   destruct (blocks_scoped_nth _ _ _ _ HBks Hbv) as (_ & HA & HBs); cbn in HA, HBs.
   split; [| split; [ exact HA |] ].

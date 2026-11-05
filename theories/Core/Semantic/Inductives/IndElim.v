@@ -33,16 +33,6 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-  Lemma brs_names_lookup : forall cs (Bs : list (String.string * nat * exp)) c gs, brs_names cs Bs ->
-      cons_lookup cs c = Some gs -> exists n B, brs_lookup Bs c = Some (n, B) /\ In (c, n, B) Bs.
-  Proof.
-    induction cs as [| [c' gs'] cs IH]; intros [| [[c0 n0] B0] Bs] c gs Hn Hc; cbn in *; try discriminate.
-    injection Hn as -> Hn.
-    destruct (String.eqb c c0) eqn:E.
-    - apply String.eqb_eq in E; subst; exists n0, B0; split; [ reflexivity | left; reflexivity ].
-    - destruct (IH _ _ _ Hn Hc) as (n & B & HB & Hin); exists n, B; split; [ exact HB | right; exact Hin ].
-  Qed.
-
   Lemma cons_lookup_nodup_in : forall cs c gs, List.NoDup (List.map fst cs) -> In (c, gs) cs -> cons_lookup cs c = Some gs.
   Proof.
     induction cs as [| [c' gs'] cs IH]; cbn; intros c gs Hnd H; [ destruct H |].
@@ -121,7 +111,7 @@ Section Fixed_GCtx.
   Qed.
 
   Lemma nth_blocks_motives : forall Bks j b, List.nth_error Bks j = Some b ->
-      List.nth j (blocks_motives Bks) exp_default = eb_motive b.
+      List.nth j (blocks_motives Bks) a_prop = eb_motive b.
   Proof.
     intros * H; unfold blocks_motives.
     apply List.nth_error_nth; rewrite List.nth_error_map, H; reflexivity.

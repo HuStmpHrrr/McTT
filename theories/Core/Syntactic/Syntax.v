@@ -1117,22 +1117,17 @@ Fixpoint me_mems (H : modexp) (pre : list string) : modexp :=
   | y :: pre' => me_mems (me_mem H y) pre'
   end.
 
-(** The closed term a total function returns where its input has no
-    answer: an index past the end of a list, a chain naming no member.
-    Never a user term, and never read where an answer exists; it is
-    [Propₘ] only so that it is closed and evaluates. *)
-Definition exp_default : exp := a_prop.
-
 (** The unit a total function returns where its input has none: at an
     entry of a context that is no module slot.  Never a user unit, and
     never read where a unit exists; it is the empty closed body. *)
 Definition gunit_default : gunit := gu_mk nil (md_body sm_closed gm_nil).
 
 (** [H.y1. … .yn.x] as a term: submodule selections, then a member.  The
-    empty chain names no member ([exp_default]). *)
+    empty chain names no member and is never read (every chain of a
+    lookup has a member); its term is the closed [Propₘ]. *)
 Fixpoint member_ref (H : modexp) (ch : list string) : exp :=
   match ch with
-  | nil => exp_default
+  | nil => a_prop
   | x :: nil => a_mem H x
   | y :: ch' => member_ref (me_mem H y) ch'
   end.
@@ -1780,7 +1775,7 @@ Fixpoint apps_exp (M : exp) (args : list exp) : exp :=
 
 (** The term a normal form stands for (normal forms are a subset of
     terms).  An erased proof stands for none: erasures are only compared
-    ([nf_erase]), so its term is [exp_default], never read. *)
+    ([nf_erase]), so its term is the closed [Propₘ], never read. *)
 Fixpoint nf_to_exp (M : nf) : exp :=
   match M with
   | nf_typ i => a_typ i
@@ -1793,7 +1788,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_proof M => M
   | nf_False => a_False
   | nf_and P Q => a_and (nf_to_exp P) (nf_to_exp Q)
-  | nf_proof_erased => exp_default
+  | nf_proof_erased => a_prop
   | nf_pi κd κc A B => a_pi κd κc (nf_to_exp A) (nf_to_exp B)
   | nf_fn A M => a_fn (nf_to_exp A) (nf_to_exp M)
   | nf_indty p k Ms => apps_exp (a_ind p k) (List.map nf_to_exp Ms)
@@ -1805,7 +1800,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
 with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_absurd A M => a_absurd (nf_to_exp A) M
-  | ne_absurd_erased A => a_absurd (nf_to_exp A) exp_default
+  | ne_absurd_erased A => a_absurd (nf_to_exp A) a_prop
   | ne_elim p Us m Bks M =>
       a_elim ak_relevant p (List.map nf_to_exp Us) m
         (List.map (fun b => eb_mk (block_arity b) (nf_to_exp (block_scrutinee_type b)) (nf_to_exp (block_motive b))
@@ -2470,7 +2465,7 @@ Fixpoint tele_wk (Δ : ctx) (φ : wk) : ctx :=
     are not part of the object syntax: applying one is a meta-level recursion
     on the expression.
 
-    An entry of the wrong sort reads as a closed default, [exp_junk] or the
+    An entry of the wrong sort reads as a closed term, [Propₘ] or the
     module [me_unit nil], which every operation fixes.  The
     defaults are the semantic projections of an entry of the other sort, so
     evaluation commutes with every substitution. *)
@@ -2487,21 +2482,19 @@ Inductive sentry : Set :=
 
 Definition sub : Set := nat -> sentry.
 
-(** The term a module entry gives a term variable.  Never a user term:
-    only for totality of the read ([sentry_exp]); it evaluates to what a
-    module entry of an environment gives a term variable ([env_var]). *)
-Definition exp_junk : exp := exp_default.
-(** The module expression a term entry gives a module variable.  Never a
-    user module expression: only for totality of the read
-    ([sentry_modexp]). *)
-Definition modexp_junk : modexp := me_unit nil.
-
 (** The term an entry gives a term variable. *)
 Definition sentry_exp (e : sentry) : exp :=
   match e with
   | se_var x => a_var x
   | se_exp M => M
-  | se_mod _ => exp_junk
+  (** A module entry gives a term variable [Propₘ], never a user term:
+      only for totality of the read.  It must be a closed term, fixed by
+      every substitution, so that evaluation commutes with substitution;
+      it evaluates to what a module entry of an environment gives a term
+      variable ([env_var]).  For example [(#0)[se_mod H .: σ]] is [Propₘ],
+      which stays [Propₘ] under any further substitution; a variable
+      would not: [#0[se_mod H .: σ][τ]] would be the entry [τ 0]. *)
+  | se_mod _ => a_prop
   | se_dm N _ => N
   end.
 
@@ -2509,7 +2502,11 @@ Definition sentry_exp (e : sentry) : exp :=
 Definition sentry_modexp (e : sentry) : modexp :=
   match e with
   | se_var x => me_var x
-  | se_exp _ => modexp_junk
+  (** A term entry gives a module variable the empty unit, never a user
+      module expression: only for totality of the read.  Like the term
+      read of a module entry, it must be closed and fixed by every
+      substitution, so that evaluation commutes with substitution. *)
+  | se_exp _ => me_unit nil
   | se_mod H => H
   | se_dm _ H => H
   end.

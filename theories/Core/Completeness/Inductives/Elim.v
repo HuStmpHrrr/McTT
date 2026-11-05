@@ -974,7 +974,7 @@ Inductive leaf_type_at (D : ind_decl) (u : list domain) (ρm : env) (As : list e
 | leaf_type_self : forall pre Ts j Mj Ps v bs b a (i : nat),
     ind_member D j = Some Mj -> im_is_rview Mj = false ->
     ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D u Ts pre ↘ bs ->
-    ⟦ List.nth j As exp_default ⟧ env_tele ρm (Tm j) (bs ++ v :: nil) ↘ b ->
+    ⟦ List.nth j As a_prop ⟧ env_tele ρm (Tm j) (bs ++ v :: nil) ↘ b ->
     Dom a ≈ b ∈ per_univ i ->
     leaf_type_at D u ρm As Tm pre Ts (pt_self j Ps) v 0 a
 (** At the end, at a record view: the type along the path [idx] of its
@@ -3009,14 +3009,14 @@ Section GroupElim.
         replace (y + (im_nn Mk + K + L) - L) with (y + List.length (cargs_strat gs1 ++ im_nparams Mk)) by lia.
         rewrite EN.
         destruct (Nat.lt_ge_cases y (ind_nu D)) as [Hy | Hy].
-        - rewrite !(sb_of_list_nth _ _ _ exp_default) by (rewrite List.length_map; lia).
+        - rewrite !(sb_of_list_nth _ _ _ a_prop) by (rewrite List.length_map; lia).
           cbn [sentry_wk]; f_equal.
           rewrite !List.length_map.
-          rewrite (List.nth_indep (List.map (fun U => U[β0]) Us) _ (exp_default[β0])),
-            (List.nth_indep (List.map (fun U => U[sb_shift_iter L β0]) Us) _ (exp_default[sb_shift_iter L β0]))
+          rewrite (List.nth_indep (List.map (fun U => U[β0]) Us) _ (a_prop[β0])),
+            (List.nth_indep (List.map (fun U => U[sb_shift_iter L β0]) Us) _ (a_prop[sb_shift_iter L β0]))
             by (rewrite List.length_map; lia).
-          pose proof (List.map_nth (fun U => U[β0]) Us exp_default (List.length Us - 1 - y)) as E1; cbn beta in E1; rewrite E1.
-          pose proof (List.map_nth (fun U => U[sb_shift_iter L β0]) Us exp_default (List.length Us - 1 - y)) as E2;
+          pose proof (List.map_nth (fun U => U[β0]) Us a_prop (List.length Us - 1 - y)) as E1; cbn beta in E1; rewrite E1.
+          pose proof (List.map_nth (fun U => U[sb_shift_iter L β0]) Us a_prop (List.length Us - 1 - y)) as E2;
             cbn beta in E2; rewrite E2.
           rewrite <- exp_sub_of_wk, exp_sub_sub; apply exp_sub_sb_eq; symmetry; apply sb_shift_iter_eq.
         - replace y with (List.length (List.map (fun U => U[β0]) Us) + (y - ind_nu D)) at 1 by (rewrite List.length_map; lia).
@@ -4194,7 +4194,7 @@ Section GroupElim.
       (** The telescope of the motive's context of the member [j]. *)
       Let mctx_tele j := match ind_member D j with Some Mj => List.rev (elim_mctx p D j Mj Us) | None => nil end.
       Let Rel := fun j ns m ns' m' =>
-        per_head (List.nth j (blocks_motives Bks) exp_default) (List.nth j (blocks_motives Bks) exp_default)
+        per_head (List.nth j (blocks_motives Bks) a_prop) (List.nth j (blocks_motives Bks) a_prop)
           (env_tele C1 (mctx_tele j) (ns ++ m :: nil)) (env_tele C2 (mctx_tele j) (ns' ++ m' :: nil)).
 
       Lemma mctx_tele_at : forall j Mj, ind_member D j = Some Mj -> mctx_tele j = List.rev (elim_mctx p D j Mj Us).
@@ -5876,10 +5876,10 @@ Section GroupElim.
             replace (List.length pat + (im_nn Mk + y) - (List.length pat + im_nn Mk)) with y by lia.
             rewrite sentry_sub_of_wk, sentry_wk_wk.
             destruct (Nat.lt_ge_cases y (ind_nu D)) as [Hy | Hy].
-            - rewrite !(sb_of_list_nth _ _ _ exp_default) by (rewrite ?List.length_map; lia); cbn [sentry_wk]; f_equal.
+            - rewrite !(sb_of_list_nth _ _ _ a_prop) by (rewrite ?List.length_map; lia); cbn [sentry_wk]; f_equal.
               rewrite List.length_map.
-              rewrite (List.nth_indep (List.map (fun U => U[β]) Us) _ (exp_default[β])) by (rewrite List.length_map; lia).
-              pose proof (List.map_nth (fun U => U[β]) Us exp_default (List.length Us - 1 - y)) as E1; cbn beta in E1; rewrite E1.
+              rewrite (List.nth_indep (List.map (fun U => U[β]) Us) _ (a_prop[β])) by (rewrite List.length_map; lia).
+              pose proof (List.map_nth (fun U => U[β]) Us a_prop (List.length Us - 1 - y)) as E1; cbn beta in E1; rewrite E1.
               unfold β; rewrite exp_sub_of_wk; apply exp_wk_wk_eq; intros z; cbn; unfold m; rewrite branch_entry_Lna, branch_entry_Lpat; lia.
             - replace y with (List.length Us + (y - ind_nu D)) at 1 by lia.
               replace y with (List.length (List.map (fun U => U[β]) Us) + (y - ind_nu D)) at 2 by (rewrite List.length_map; lia).
@@ -5976,7 +5976,7 @@ Section GroupElim.
                   by (rewrite List.length_app, cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele, length_im_nparams; unfold y, K in *; lia).
                 assert (Hyl : y < ind_nu D) by (unfold y; lia).
                 pose proof (branch_entry_form y) as Hσx; rewrite <- Exy in Hσx.
-                rewrite (sb_of_list_nth _ _ _ exp_default) in Hσx by (rewrite List.length_map, HUl; exact Hyl).
+                rewrite (sb_of_list_nth _ _ _ a_prop) in Hσx by (rewrite List.length_map, HUl; exact Hyl).
                 assert (Erf : frame_rf gs gs1 x = ak_relevant) by (unfold frame_rf; replace (x <? List.length (cargs_nonrec gs1)) with false
                                                 by (symmetry; apply Nat.ltb_ge; unfold K in Hxg; lia); reflexivity).
                 pose proof (HN (Hdec x Hx ltac:(rewrite Erf; constructor))) as H0; rewrite Hσx in H0; cbn [eval_sentry] in H0.
@@ -5985,8 +5985,8 @@ Section GroupElim.
                 destruct (nth_error_lt_some' Us (ind_nu D - 1 - y) ltac:(rewrite HUl; lia)) as [U HU].
                 destruct (eval_exps_nth _ _ _ _ _ Hw ltac:(rewrite List.nth_error_map, HU; reflexivity)) as (u & Hu & Eu).
                 assert (Emm' : ⟦ U[β] ⟧ E ↘ mm).
-                { replace (U[β]) with (List.nth (ind_nu D - 1 - y) (List.map (fun U => U[β]) Us) exp_default); [ exact Emm |].
-                  rewrite (List.nth_error_nth _ _ exp_default (eq_trans (List.nth_error_map _ _ _) (f_equal _ HU))); reflexivity. }
+                { replace (U[β]) with (List.nth (ind_nu D - 1 - y) (List.map (fun U => U[β]) Us) a_prop); [ exact Emm |].
+                  rewrite (List.nth_error_nth _ _ a_prop (eq_trans (List.nth_error_map _ _ _) (f_equal _ HU))); reflexivity. }
                 unfold β in Emm'; rewrite exp_sub_of_wk in Emm'.
                 pose proof (functional_eval_exp _ _ _ _ Emm' Eu) as ->.
                 exists (ctx_entry_tag Tg x e1); rewrite Hm; f_equal.

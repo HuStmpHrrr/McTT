@@ -460,7 +460,7 @@ Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=
     before it, at the telescope of all of them ([components_env]). *)
 Definition shape_doms_rel (doms_rel : list domain -> list centry -> exp -> relation domain)
     (Tn Ta : list centry) (ms ws : list domain) (t : ptyp) : nat -> list domain -> relation domain :=
-  fun k ys => doms_rel (ms ++ ws ++ ys) (Tn ++ Ta ++ List.firstn k (shape_doms_tele t)) (List.nth k (ptyp_doms t) exp_default).
+  fun k ys => doms_rel (ms ++ ws ++ ys) (Tn ++ Ta ++ List.firstn k (shape_doms_tele t)) (List.nth k (ptyp_doms t) a_prop).
 
 (** The terms [Ps] evaluate, in [ρ] and in [ρ'], to lists related by [R]. *)
 #[warnings="-cannot-define-projection"]

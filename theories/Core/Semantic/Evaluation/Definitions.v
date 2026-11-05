@@ -896,7 +896,7 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list 
      ind_member D j = Some Mj ->
      im_is_rview Mj = false ->
      ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     ⟦ List.nth j As exp_default ⟧ Θ ⍮ Ξ ⍮
+     ⟦ List.nth j As a_prop ⟧ Θ ⍮ Ξ ⍮
        env_extend_typed ρm (tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) bs ++ (v, entry_type_shape p ups ρ (pt_self j Ps)) :: nil) ↘ a ->
      ⟦ihty v of pt_self j Ps at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a :: nil )
 (** At the end, at a record view: those of its fields at [v]'s
@@ -1609,8 +1609,8 @@ Lemma env_var_retag_entry : forall t ou e, match retag_entry t ou e with de_term
     match e with de_term d _ | de_dm d _ _ _ => d | de_mod _ _ => d_prop end.
 Proof. intros t ou []; reflexivity. Qed.
 
-Lemma env_mod_retag_entry : forall t ou e, match retag_entry t ou e with de_mod m _ | de_dm _ _ m _ => m | de_term _ _ => dm_default end =
-    match e with de_mod m _ | de_dm _ _ m _ => m | de_term _ _ => dm_default end.
+Lemma env_mod_retag_entry : forall t ou e, match retag_entry t ou e with de_mod m _ | de_dm _ _ m _ => m | de_term _ _ => dm_global (q_abs nil nil) nil end =
+    match e with de_mod m _ | de_dm _ _ m _ => m | de_term _ _ => dm_global (q_abs nil nil) nil end.
 Proof. intros t ou []; reflexivity. Qed.
 
 Lemma env_var_ctx_retag : forall Δ ρ x, env_var (ctx_retag Δ ρ) x = env_var ρ x.

@@ -427,7 +427,10 @@ Import Sub_Notations Wk_Notations.
 Definition ind_mty (pq : qname) (D : ind_decl) (j : nat) (Us Ns : list exp) : typ :=
   match ind_member D j with
   | Some M => im_ty_at pq j M Us Ns
-  | None => exp_default
+  (** No member [j]: never read.  A closed term, so that it is scoped
+      everywhere and fixed by every substitution, and agrees with the
+      same arm of [self_mty] under [grp_sb]. *)
+  | None => a_prop
   end.
 
 (** The parameters of the member [M], and the uniform ones, as variables,
@@ -584,7 +587,8 @@ Definition self_mty (D : ind_decl) (IsS : nat -> list exp) (j d : nat) (Ns : lis
       | mh_view qc kc _ _ => apps_exp (a_ind qc kc) (List.map (fun I => I[wk_shiftn d]ʷ) (IsS j) ++ Ns)
       | mh_record qr _ _ => apps_exp (a_record qr) (List.map (fun I => I[wk_shiftn d]ʷ) (IsS j) ++ Ns)
       end
-  | None => exp_default
+  (** No member [j]: never read.  A closed term, as in [ind_mty]. *)
+  | None => a_prop
   end.
 
 (** [ptyp_ty] and [cargs_ctx] with the members as variables. *)
@@ -668,7 +672,7 @@ Definition projections_of (ns : list string) (x : exp) : list exp := List.map (f
 Fixpoint leaf_ihty (r : abs_kind) (As : list exp) (β σ : sub) (x : exp) (l : leaf_path) : typ :=
   match l with
   | leaf_pi B l => a_pi ak_relevant r B[σ] (leaf_ihty r As (β ⨟ sb_of_wk wk_shift) (sb_q σ) (a_app x[wk_shift]ʷ (a_var 0)) l)
-  | leaf_self j Ps => (List.nth j As exp_default)[sb_of_list β (List.map (fun P => P[σ]) Ps ++ x :: nil)]
+  | leaf_self j Ps => (List.nth j As a_prop)[sb_of_list β (List.map (fun P => P[σ]) Ps ++ x :: nil)]
   | leaf_proj f ns l => leaf_ihty r As β (sb_of_list σ (projections_of ns x)) (a_proj f x) l
   end.
 
@@ -790,7 +794,7 @@ Definition elim_src (sel : option (list nat)) (i : nat) : nat :=
 Definition motives_sel (sel : option (list nat)) (As : list exp) : list exp :=
   match sel with
   | None => As
-  | Some vm => List.map (fun v => List.nth v As exp_default) vm
+  | Some vm => List.map (fun v => List.nth v As a_prop) vm
   end.
 
 (** The motive of each block read binds the non-uniform parameters of the
@@ -837,7 +841,7 @@ Definition brs_names (cs : list (string * list carg)) (Bs : list (string * nat *
     and the domains before it, and the non-uniform parameters of the member
     the shape ends in, under all its domains ([ptyp_ty]). *)
 Definition ptyp_dom_at (pat : list bool) (d : nat) (t : ptyp) : typ :=
-  (List.nth d (ptyp_doms t) exp_default)[wk_pat (List.repeat false d ++ pat)]ʷ.
+  (List.nth d (ptyp_doms t) a_prop)[wk_pat (List.repeat false d ++ pat)]ʷ.
 
 (** The non-uniform parameters a shape ends in, under the arguments
     before ([pat]) and all its domains. *)
@@ -1101,7 +1105,9 @@ Definition wrap_branch (r : abs_kind) (pq : qname) (D D' : ind_decl) (Us : list 
   let nr' := cargs_nrec D' gs' in
   let n' := (nn + na + nr')%nat in
   let gs := match ind_con Mv c with Some gs => gs | None => gs' end in
-  let B := match brs_lookup Bs c with Some (_, B) => B | None => exp_default end in
+  (* No branch for [c]: never read; a closed term, scoped everywhere and
+     fixed by every substitution. *)
+  let B := match brs_lookup Bs c with Some (_, B) => B | None => a_prop end in
   let Us' := List.map (fun U => U[wk_shiftn n']ʷ) Us in
   let nvars := vars_from (nr' + na) nn in
   let avars := vars_from nr' na in
@@ -1136,7 +1142,12 @@ Definition view_wrap_block (r : abs_kind) (pq qc : qname) (D D' : ind_decl) (vm 
   | Some (eb_mk nm _ A Bs), Some Mv =>
       eb_mk nm (ind_mty qc D' i' (List.map (fun U => U[wk_shiftn (im_nn Mi')]ʷ) Uc) (vars_from 0 (im_nn Mi'))) A
         (List.map (fun cg => wrap_branch r pq D D' Us Bks Mv Bs (fst cg) (snd cg)) (im_cons Mi'))
-  | _, _ => eb_mk 0 exp_default exp_default nil
+  (** No block or no member of the view: never read.  A block of the
+      same shape, the motive [#0] under its binders and no branches, so
+      that it is as scoped and as substitution-stable as a real one. *)
+  | _, _ =>
+      eb_mk (S (im_nn Mi')) (ind_mty qc D' i' (List.map (fun U => U[wk_shiftn (im_nn Mi')]ʷ) Uc) (vars_from 0 (im_nn Mi')))
+        (a_var 0) nil
   end.
 
 (** The container's blocks for its members [ms], from the member [i'] on. *)
@@ -1355,6 +1366,17 @@ Proof.
   assert (Hc : In c (List.map fst cs)) by (rewrite Hn; apply List.in_map_iff; exists (c, n, B); auto).
   apply List.in_map_iff in Hc as ([c' gs] & Hc & Hin'); cbn in Hc; subst c'.
   exact (cons_lookup_of_in _ _ _ Hin').
+Qed.
+
+(** Branches named after the constructors have one for each. *)
+Lemma brs_names_lookup : forall cs (Bs : list (String.string * nat * exp)) c gs, brs_names cs Bs ->
+    cons_lookup cs c = Some gs -> exists n B, brs_lookup Bs c = Some (n, B) /\ In (c, n, B) Bs.
+Proof.
+  induction cs as [| [c' gs'] cs IH]; intros [| [[c0 n0] B0] Bs] c gs Hn Hc; cbn in *; try discriminate.
+  injection Hn as -> Hn.
+  destruct (String.eqb c c0) eqn:E.
+  - apply String.eqb_eq in E; subst; exists n0, B0; split; [ reflexivity | left; reflexivity ].
+  - destruct (IH _ _ _ Hn Hc) as (n & B & HB & Hin); exists n, B; split; [ exact HB | right; exact Hin ].
 Qed.
 
 Lemma length_cargs_ctx_aux : forall pq D nn gs pat, List.length (cargs_ctx_aux pq D nn pat gs) = List.length gs.

@@ -115,9 +115,9 @@ Lemma self_var_sub : forall p b n t x, b <= x -> x < b + n ->
 Proof.
   intros * H1 H2; unfold sb_selfs; cbn [exp_sub].
   rewrite sb_qn_ge by lia.
-  rewrite (sb_of_list_nth _ _ _ exp_default) by (rewrite length_self_insts; lia).
+  rewrite (sb_of_list_nth _ _ _ a_prop) by (rewrite length_self_insts; lia).
   rewrite length_self_insts.
-  rewrite (List.nth_indep _ exp_default (apps (a_ind p 0) (vars_from 0 t))) by (rewrite length_self_insts; lia).
+  rewrite (List.nth_indep _ a_prop (apps (a_ind p 0) (vars_from 0 t))) by (rewrite length_self_insts; lia).
   rewrite (List.map_nth (fun j => apps (a_ind p j) (vars_from 0 t))), List.seq_nth by lia.
   cbn [sentry_wk sentry_exp]; rewrite apps_exp_wk, vars_from_wk_shiftn; cbn; reflexivity.
 Qed.
