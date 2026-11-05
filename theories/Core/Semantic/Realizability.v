@@ -57,14 +57,14 @@ Lemma read_ps_tele : forall (T : list centry) (tr : nat -> list domain -> relati
          (forall b b', tr k pre b b' -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top)) ->
     forall vs vs', tele_rel tr T vs vs' ->
     forall s, exists Ms Ms', Rps vs at T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms /\ Rps vs' at T in gc_deps ⍮ gc_stack ⍮ ρ' ⍮ s ↘ Ms' /\
-      List.map nf_erase Ms = List.map nf_erase Ms'.
+      nfs_eq_upto_proofs Ms Ms'.
 Proof.
   intros * Hass Hev vs vs' Hf s.
   pose proof Hf as Hf'; rewrite tele_rel_iff in Hf'; destruct Hf' as (Hl & Hl' & Hr).
   assert (Hall : forall m j, m + j = List.length T ->
              exists Ms Ms', Rps List.skipn j vs at List.skipn j T in gc_deps ⍮ gc_stack ⍮ env_tele ρ T (List.firstn j vs) ⍮ s ↘ Ms /\
                         Rps List.skipn j vs' at List.skipn j T in gc_deps ⍮ gc_stack ⍮ env_tele ρ' T (List.firstn j vs') ⍮ s ↘ Ms' /\
-                        List.map nf_erase Ms = List.map nf_erase Ms').
+                        nfs_eq_upto_proofs Ms Ms').
   { induction m as [| m IH]; intros j Hj.
     - rewrite !List.skipn_all2 by lia; exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
     - destruct (nth_error_lt_some' T j ltac:(lia)) as [e He].
@@ -82,7 +82,7 @@ Proof.
       rewrite (firstn_S_snoc _ _ _ Hv'), (env_tele_snoc_nth _ _ _ κ A) in HM' by (rewrite Hj2; exact He).
       exists (cons V Ms), (cons V' Ms').
       rewrite (skipn_nth_cons' _ _ _ He), (skipn_nth_cons' _ _ _ Hv), (skipn_nth_cons' _ _ _ Hv').
-      split; [ econstructor; eassumption | split; [ econstructor; eassumption | cbn [List.map]; congruence ] ]. }
+      split; [ econstructor; eassumption | split; [ econstructor; eassumption | apply nfs_eq_upto_proofs_cons; split; assumption ] ]. }
   destruct (Hall (List.length T) 0 ltac:(lia)) as (Ms & Ms' & HM & HM' & HE); exists Ms, Ms'; repeat split; assumption.
 Qed.
 
@@ -273,7 +273,7 @@ Proof.
                 (fun k κ A pre pre' Hk Hp => Hn _ _ _ _ _ _ _ HM Hk Hp) _ _ Hx s) as (Ms2 & Ms2' & HM2 & HM2' & HE2).
     rewrite rev_im_params_split.
     apply (mk_params_read_alike _ _ _ _ (Ms1 ++ Ms2) (Ms1' ++ Ms2'));
-      [ apply read_ps_app; assumption | apply read_ps_app; assumption | rewrite !List.map_app; congruence ]. }
+      [ apply read_ps_app; assumption | apply read_ps_app; assumption | apply nfs_eq_upto_proofs_app; assumption ]. }
   assert (Hlen : forall m Mm xs xs', ind_member D m = Some Mm -> tele_rel (nr m) (List.rev (im_nparams Mm)) xs xs' ->
              List.length (ups ++ xs) = im_np D Mm /\ List.length (ups' ++ xs') = im_np D Mm).
   { intros m Mm xs xs' HM Hx; rewrite tele_rel_iff in Hx; destruct Hx as (Hl1 & Hl2 & _).
@@ -310,7 +310,7 @@ Proof.
          forall s, exists Vs Vs',
            Rcargs vs at gs of p ups in gc_deps ⍮ gc_stack ⍮ components_env D ups Ts (xs ++ nonrec_arg_vals gs1 vp) ⍮ s ↘ Vs /\
            Rcargs vs' at gs of p ups' in gc_deps ⍮ gc_stack ⍮ components_env D ups' Ts (xs' ++ nonrec_arg_vals gs1 vp') ⍮ s ↘ Vs' /\
-           List.map nf_erase Vs = List.map nf_erase Vs') /\
+           nfs_eq_upto_proofs Vs Vs') /\
     (forall k u u' pre pre' Ts t v v', rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts t v v' ->
        forall Mk ms ms' xs xs' c gs1 t0 gs2 ws ws' kk ys ys', ind_member D k = Some Mk ->
          pre = ms ++ ws ++ ys -> pre' = ms' ++ ws' ++ ys' ->
@@ -323,7 +323,7 @@ Proof.
          tele_prefix_rel (shape_doms_rel (dr k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys' ->
          forall s, exists V V', Rsh v at t of p ups in gc_deps ⍮ gc_stack ⍮ components_env D ups Ts (xs ++ ws ++ ys) ⍮ s ↘ V /\
            Rsh v' at t of p ups' in gc_deps ⍮ gc_stack ⍮ components_env D ups' Ts (xs' ++ ws' ++ ys') ⍮ s ↘ V' /\
-           nf_erase V = nf_erase V') /\
+           nf_eq_upto_proofs V V') /\
     (forall k u u' pre pre' Ts t f x f' x', rec_arg_app_rel p D (admissible_index_at D ups nr) nr ar dr k u u' pre pre' Ts t f x f' x' ->
        forall Mk ms ms' xs xs' c gs1 t0 gs2 ws ws' kk ys ys', ind_member D k = Some Mk ->
          pre = ms ++ ws ++ ys -> pre' = ms' ++ ws' ++ ys' ->
@@ -337,7 +337,7 @@ Proof.
          forall s, exists r r' V V', $| f & x | gc_deps ⍮ gc_stack ↘ r /\ $| f' & x' | gc_deps ⍮ gc_stack ↘ r' /\
            Rsh r at t of p ups in gc_deps ⍮ gc_stack ⍮ components_env D ups Ts (xs ++ ws ++ ys) ⍮ s ↘ V /\
            Rsh r' at t of p ups' in gc_deps ⍮ gc_stack ⍮ components_env D ups' Ts (xs' ++ ws' ++ ys') ⍮ s ↘ V' /\
-           nf_erase V = nf_erase V')).
+           nf_eq_upto_proofs V V')).
   { apply ind_rel_mut_ind_all.
     - (** A constructor: its parameters off the type, its arguments at the
           member's telescopes, at a declared member or a view alike. *)
@@ -356,9 +356,9 @@ Proof.
                    (ttrans _ _ HM _ _ _ (ttrans _ _ HM _ _ _ (tsym _ _ HM _ _ Hs) Hn0) Hs')
                    (ttrans _ _ HM _ _ _ Hx Hs) (ttrans _ _ HM _ _ _ Hx' Hs') Hc eq_refl Ha0 s) as (Vs & Vs' & HV & HV' & HEv).
       cbn [nonrec_arg_vals List.app] in HV, HV'; rewrite List.app_nil_r in HV, HV'.
-      (** The erasures of the two constructors agree part by part. *)
-      assert (HE : nf_erase (nf_con p k0 c (Ms ++ Vs)) = nf_erase (nf_con p k0 c (Ms' ++ Vs')))
-        by (cbn [nf_erase]; rewrite !List.map_app; congruence).
+      (** The two constructors agree up to proofs part by part. *)
+      assert (HE : nf_eq_upto_proofs (nf_con p k0 c (Ms ++ Vs)) (nf_con p k0 c (Ms' ++ Vs')))
+        by (apply nf_con_upto_proofs, nfs_eq_upto_proofs_app; assumption).
       unfold im_ref in Hr; destruct (im_head Mk0) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-;
         [| | exfalso; exact (not_rview_record _ _ _ _ Hrv Hh) ].
       + assert (Hu0 : im_unu D Mk0 = ind_nu D) by (unfold im_unu; rewrite Hh; reflexivity).
@@ -382,7 +382,7 @@ Proof.
       apply (mk_normal_reads_alike _ _ _ (⇑ⁿ L) (⇑ⁿ L'));
         [ eapply read_nf_ind_neut; [ exact Hl | exact HM | exact Hrv | exact HL ]
         | eapply read_nf_ind_neut; [ exact Hl | exact HM | exact Hrv | exact HL' ]
-        | cbn [nf_erase]; congruence ].
+        | exact HE ].
     - (** A record view: its projections at the pseudo-constructor's
           arguments, at the group's uniform parameters only. *)
       intros k0 Mk0 qr Is fl c gs v vs v' vs' u u' HM Hh Hnp Hcs Hp Hp' Ha0 Hia IH Mk1 xs xs' HM1 Hx Hx' s.
@@ -399,7 +399,7 @@ Proof.
       apply (mk_normal_reads_alike _ _ _ (nf_con p k0 c (Ms ++ Vs)%list) (nf_con p k0 c (Ms' ++ Vs')%list));
         [ eapply read_nf_rview; [ exact Hl | exact HM | exact Hh | exact Hcs | assumption | eassumption | exact HMs | exact HV ]
         | eapply read_nf_rview; [ exact Hl | exact HM | exact Hh | exact Hcs | assumption | eassumption | exact HMs' | exact HV' ]
-        | cbn [nf_erase]; rewrite !List.map_app; congruence ].
+        | apply nf_con_upto_proofs, nfs_eq_upto_proofs_app; assumption ].
     - intros; exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
     - intros k0 u u' pre v pre' v' Ts rA A gs vs vs' Hia IH Mk0 ms ms' xs xs' c gsf gs1 vp vp' HM Hρ Hρ' HTs Hl1 Hl2 Hm Hx Hx'
         Hc Heq Ha0 s.
@@ -447,7 +447,7 @@ Proof.
       rewrite <- List.app_assoc, <- (cargs_nonrec_tele_snoc_arg gs1 rA A) in HVs, HVs'.
       rewrite components_env_args_snoc in HVs, HVs' by (apply Hxl || assumption).
       exists (cons V Vs), (cons V' Vs');
-        split; [ econstructor; eassumption | split; [ econstructor; eassumption | cbn [List.map]; congruence ] ].
+        split; [ econstructor; eassumption | split; [ econstructor; eassumption | apply nfs_eq_upto_proofs_cons; split; assumption ] ].
     - intros k0 u u' pre pre' Ts t v v' gs vs vs' Hsh IHs Hia IH Mk0 ms ms' xs xs' c gsf gs1 vp vp' HM Hρ Hρ' HTs Hl1 Hl2 Hm Hx Hx'
         Hc Heq Ha0 s.
       subst pre pre' gsf Ts.
@@ -468,7 +468,7 @@ Proof.
       rewrite nonrec_arg_vals_app in HVs, HVs' by assumption; cbn [nonrec_arg_vals] in HVs, HVs';
         rewrite List.app_nil_r in HVs, HVs'.
       exists (cons V Vs), (cons V' Vs');
-        split; [ econstructor; eassumption | split; [ econstructor; eassumption | cbn [List.map]; congruence ] ].
+        split; [ econstructor; eassumption | split; [ econstructor; eassumption | apply nfs_eq_upto_proofs_cons; split; assumption ] ].
     - (** The end of a shape: the index at the type's prefix is related to
           the element's own through the index at the element's own prefix
           ([admissible_index_at]), the two prefixes related by [Hcd] on the left and by
@@ -559,7 +559,7 @@ Proof.
         by (rewrite !List.length_app, List.length_rev, List.length_firstn, length_cargs_nonrec_tele; unfold shape_doms_tele;
             rewrite !List.length_map; lia).
       exists (λⁿ A V), (λⁿ A' V');
-        split; [ econstructor; eassumption | split; [ econstructor; eassumption | cbn [nf_erase]; congruence ] ].
+        split; [ econstructor; eassumption | split; [ econstructor; eassumption | apply nf_fn_upto_proofs; assumption ] ].
     - intros f x r f' x' r' k0 u u' pre pre' Ts t Ef Ef' Hsh IH Mk0 ms ms' xs xs' c gs1 t0 gs2 ws ws' k1 ys ys'
         HM Hρ Hρ' HTs Hm Hx Hx' Hc Hw Hs Hk Hy s.
       destruct (IH Mk0 ms ms' xs xs' c gs1 t0 gs2 ws ws' k1 ys ys' HM Hρ Hρ' HTs Hm Hx Hx' Hc Hw Hs Hk Hy s)
@@ -569,7 +569,7 @@ Proof.
   { intros s; destruct (Hpar _ _ _ _ HMk Hns s) as [Ms Ms' HM HM' HE].
     destruct (Hlen _ _ _ _ HMk Hns) as [Hl1 Hl2].
     apply (mk_type_reads_alike _ _ _ (nf_indty p k Ms) (nf_indty p k Ms'));
-      [ econstructor; eassumption | econstructor; eassumption | cbn [nf_erase]; congruence ]. }
+      [ econstructor; eassumption | econstructor; eassumption | apply nf_indty_upto_proofs; assumption ]. }
   intros u u' b b' Hb; exact (proj1 Hmain _ _ _ _ _ _ _ Hb _ _ _ HMk (trefl _ _ HMk _ _ Hns) (trefl_r _ _ HMk _ _ Hns)).
 Qed.
 
@@ -679,7 +679,7 @@ Proof.
   repeat split.
   - intros s; destruct (Hps s) as [Ps Ps' H1 H2 HE].
     apply (mk_type_reads_alike _ _ _ (nf_record p Ps) (nf_record p Ps'));
-      [ econstructor; eassumption | econstructor; eassumption | cbn [nf_erase]; congruence ].
+      [ econstructor; eassumption | econstructor; eassumption | apply nf_record_upto_proofs; exact HE ].
   - (** The neutral projections, built field by field, related at each
         field's type, and the projections they are. *)
     intros c c' Hc.
@@ -695,7 +695,8 @@ Proof.
         pose proof Hp as Hpl; rewrite tele_prefix_rel_iff in Hpl; destruct Hpl as (Hpl & Hpl' & _).
         assert (Hpc : Dom d_proj g c ≈ d_proj g c' ∈ per_bot)
           by (intros s; destruct (Hc s) as [M M' HM HM' HE];
-              apply (mk_neutral_reads_alike _ _ _ (ne_proj g M) (ne_proj g M')); [ constructor; assumption .. | cbn; congruence ]).
+              apply (mk_neutral_reads_alike _ _ _ (ne_proj g M) (ne_proj g M')); [ constructor; assumption .. |];
+              unfold ne_eq_upto_proofs in *; cbn; rewrite dec_eqb_refl; exact HE).
         destruct (IH (S j) (pre ++ ⇑ a (d_proj g c) :: nil) (pre' ++ ⇑ a' (d_proj g c') :: nil)
                     ltac:(lia) (tele_prefix_rel_snoc _ _ _ _ _ _ Hp (Hbot _ _ Hpc))) as (rs & rs' & Er & Er' & Hrs).
         rewrite (record_fields_env_snoc _ _ _ g T) in Er by (rewrite Hpl; exact Hg).
@@ -724,7 +725,7 @@ Proof.
     assert (Hall : forall m j, m + j = List.length fl ->
                exists Fs Fs', Rflds b at List.skipn j fl in gc_deps ⍮ gc_stack ⍮ record_fields_env R ns (List.firstn j vs) ⍮ s ↘ Fs /\
                  Rflds b' at List.skipn j fl in gc_deps ⍮ gc_stack ⍮ record_fields_env R ns' (List.firstn j vs') ⍮ s ↘ Fs' /\
-                 List.map nf_erase Fs = List.map nf_erase Fs').
+                 nfs_eq_upto_proofs Fs Fs').
     { induction m as [| m IH]; intros j Hj.
       - rewrite List.skipn_all2 by lia; exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
       - destruct (nth_error_lt_some' fl j ltac:(lia)) as [[g T] Hg].
@@ -738,7 +739,7 @@ Proof.
         rewrite (firstn_S_snoc _ _ _ Hv), (record_fields_env_snoc _ _ _ g T) in HFs by (rewrite Hj1; exact Hg).
         rewrite (firstn_S_snoc _ _ _ Hv'), (record_fields_env_snoc _ _ _ g T) in HFs' by (rewrite Hj2; exact Hg).
         exists (cons F Fs), (cons F' Fs'); rewrite (skipn_nth_cons' _ _ _ Hg).
-        split; [| split; [| cbn [List.map]; congruence ] ]; econstructor;
+        split; [| split; [| apply nfs_eq_upto_proofs_cons; split; assumption ] ]; econstructor;
           [ exact (Forall2_nth_both _ _ _ _ _ _ Hvl Hg Hv) | exact Ea | exact HF | exact HFs
           | exact (Forall2_nth_both _ _ _ _ _ _ Hvr Hg Hv') | exact Ea' | exact HF' | exact HFs' ]. }
     destruct (Hall (List.length fl) 0 ltac:(lia)) as (Fs & Fs' & HFs & HFs' & HEs).
@@ -746,7 +747,7 @@ Proof.
     apply (mk_normal_reads_alike _ _ _ (nf_tuple p Ps (List.map fst fl) Fs) (nf_tuple p Ps' (List.map fst fl) Fs'));
       [ econstructor; [ eassumption | eassumption | eassumption | exact HFs ]
       | econstructor; [ eassumption | eassumption | eassumption | exact HFs' ]
-      | cbn [nf_erase]; congruence ].
+      | apply nf_tuple_upto_proofs; assumption ].
 Qed.
 
 (** [realize_record] at the record clause's premises, the realisability of
@@ -787,10 +788,10 @@ Proof.
         other two components are as in the large tier, with the elements at
         the index of the realiser. *)
     repeat split.
-    + apply per_top_typ_of_reads; intro s.
-      match goal with H : per_lvl _ _ |- _ => destruct (per_lvl_reads _ _ H s) as [W [HW HW']] end.
-      destruct (read_nf_level_real _ _ _ _ HW) as [L [-> _]].
-      exists (nf_univ_of L); split; apply read_typ_suniv; assumption.
+    + intro s.
+      match goal with H : per_lvl _ _ |- _ => destruct (per_lvl_reads _ _ H s) as (L & L' & HW & HW' & HE) end.
+      apply (mk_type_reads_alike _ _ _ (nf_univ_of L) (nf_univ_of L'));
+        [ apply read_typ_suniv; assumption | apply read_typ_suniv; assumption | apply nf_univ_of_upto_proofs; exact HE ].
     + intros c c' Hc; apply_relation_equivalence.
       constructor; [| reflexivity | reflexivity ].
       eexists; basic_per_univ_elem_econstructor; [ cbn; constructor | reflexivity | exact Hc | reflexivity ].
@@ -803,9 +804,10 @@ Proof.
     + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
     + intros c c' Hc; apply_relation_equivalence.
       apply per_bot_then_per_lvl_at; exact Hc.
-    + intros b b' Hb; apply_relation_equivalence; apply per_top_of_reads; intro s.
-      apply per_lvl_at_lvl in Hb; destruct (per_lvl_reads _ _ Hb s) as [L [HL HL']].
-      exists L; split; eapply read_nf_level_sort; eassumption.
+    + intros b b' Hb; apply_relation_equivalence; intro s.
+      destruct (Hb s) as [L L' HL HL' HE _].
+      apply (mk_normal_reads_alike _ _ _ (nf_lvl_of L) (nf_lvl_of L'));
+        [ eapply read_nf_level_sort; eassumption | eapply read_nf_level_sort; eassumption | apply nf_lvl_of_upto_proofs; exact HE ].
   - (** [Prop]: its neutrals are neutral propositions; its elements read
         back as types. *)
     repeat split.
@@ -814,7 +816,7 @@ Proof.
       constructor; [ reflexivity | reflexivity |].
       intro s; destruct (Hc s) as [C C' HC HC' HE].
       apply (mk_type_reads_alike _ _ _ (⇑ⁿ C) (⇑ⁿ C'));
-        [ constructor; assumption | constructor; assumption | cbn [nf_erase]; congruence ].
+        [ constructor; assumption | constructor; assumption | exact HE ].
     + intros b b' Hb; apply_relation_equivalence; destruct Hb as [_ _ Ht].
       intro s; destruct (Ht s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ apply read_nf_prop; assumption | apply read_nf_prop; assumption | exact HE ].
@@ -855,7 +857,7 @@ Proof.
       destruct (Hatt s) as [A0 A0' HA0 HA0' HEA].
       destruct (Hbtt (S s)) as [B0 B0' HB0 HB0' HEB].
       apply (mk_type_reads_alike _ _ _ (nf_pi κd κc A0 B0) (nf_pi κd κc A0' B0'));
-        [ econstructor; eassumption | econstructor; eassumption | cbn [nf_erase]; congruence ].
+        [ econstructor; eassumption | econstructor; eassumption | apply nf_pi_upto_proofs; assumption ].
     + intros c c' Hc; apply_relation_equivalence.
       constructor; [ reflexivity | reflexivity |].
       intros c0 c0' Hc0.
@@ -873,18 +875,18 @@ Proof.
       destruct (Hbtop _ _ Hrel (S s)) as [M0 M0' HM0 HM0' HEM].
       destruct (Hatt s) as [A0 A0' HA0 HA0' HEA].
       apply (mk_normal_reads_alike _ _ _ (λⁿ A0 M0) (λⁿ A0' M0'));
-        [ econstructor; eassumption | econstructor; eassumption | cbn [nf_erase]; congruence ].
+        [ econstructor; eassumption | econstructor; eassumption | apply nf_fn_upto_proofs; assumption ].
   - (** A neutral type of an evaluated kind: its elements are neutrals. *)
     repeat split.
     + intro s; match goal with Hb : per_bot b b' |- _ => destruct (Hb s) as [M M' HM HM' HE] end.
       apply (mk_type_reads_alike _ _ _ (⇑ⁿ M) (⇑ⁿ M'));
-        [ constructor; assumption | constructor; assumption | cbn [nf_erase]; congruence ].
+        [ constructor; assumption | constructor; assumption | exact HE ].
     + intros c c' Hc; apply_relation_equivalence; constructor; exact Hc.
     + intros m m' Hm; apply_relation_equivalence; destruct Hm as [? ? ? ? Hm]; intro s.
       destruct (Hm s) as [M M' HM HM' HE].
       apply (mk_normal_reads_alike _ _ _ (⇑ⁿ M) (⇑ⁿ M'));
         [ apply read_nf_neut; [ eauto with mctt | assumption ] | apply read_nf_neut; [ eauto with mctt | assumption ]
-        | cbn [nf_erase]; congruence ].
+        | exact HE ].
   (** A member of a group of inductive types: [realize_indty], from the
       realisability of the types of its telescopes; its neutrals by
       [ind_rel_neut_canon], the fresh-variable admissibility of the type's

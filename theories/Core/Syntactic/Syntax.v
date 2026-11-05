@@ -2345,6 +2345,98 @@ Lemma nfs_eq_upto_proofs_cons : forall W W' Ws Ws',
     nfs_eq_upto_proofs (W :: Ws) (W' :: Ws') <-> nf_eq_upto_proofs W W' /\ nfs_eq_upto_proofs Ws Ws'.
 Proof. intros; unfold nfs_eq_upto_proofs, nf_eq_upto_proofs; cbn; apply Bool.andb_true_iff. Qed.
 
+(** Appended related lists are related. *)
+Lemma nfs_eq_upto_proofs_app : forall Ms Ms' Ns Ns',
+    nfs_eq_upto_proofs Ms Ms' -> nfs_eq_upto_proofs Ns Ns' -> nfs_eq_upto_proofs (Ms ++ Ns) (Ms' ++ Ns').
+Proof.
+  unfold nfs_eq_upto_proofs; induction Ms as [| M Ms IH]; intros [| M' Ms'] * H H'; cbn in *; try discriminate; [ exact H' |].
+  apply Bool.andb_true_iff in H as [H1 H2]; rewrite H1, (IH _ _ _ H2 H'); reflexivity.
+Qed.
+
+(** The formers taking lists of normal forms respect the relation. *)
+Lemma nf_con_upto_proofs : forall p k c Ms Ms', nfs_eq_upto_proofs Ms Ms' -> nf_eq_upto_proofs (nf_con p k c Ms) (nf_con p k c Ms').
+Proof. intros * H; unfold nf_eq_upto_proofs; cbn; rewrite !dec_eqb_refl, PeanoNat.Nat.eqb_refl; exact H. Qed.
+
+Lemma nf_indty_upto_proofs : forall p k Ms Ms', nfs_eq_upto_proofs Ms Ms' -> nf_eq_upto_proofs (nf_indty p k Ms) (nf_indty p k Ms').
+Proof. intros * H; unfold nf_eq_upto_proofs; cbn; rewrite !dec_eqb_refl, PeanoNat.Nat.eqb_refl; exact H. Qed.
+
+Lemma nf_record_upto_proofs : forall p Ms Ms', nfs_eq_upto_proofs Ms Ms' -> nf_eq_upto_proofs (nf_record p Ms) (nf_record p Ms').
+Proof. intros * H; unfold nf_eq_upto_proofs; cbn; rewrite !dec_eqb_refl; exact H. Qed.
+
+(** Two lists of branches of a stuck eliminator equal up to their proofs,
+    the comparison of [ne_eqb_upto_proofs]. *)
+Definition branches_eq_upto_proofs (Bs Bs' : list normal_branch) : Prop :=
+  list_eqb (fun br br' =>
+              dec_eqb String.string_dec (branch_constructor br) (branch_constructor br') &&
+              Nat.eqb (branch_arity br) (branch_arity br') &&
+              nf_eqb_upto_proofs (branch_body br) (branch_body br')) Bs Bs' = true.
+
+(** Two lists of blocks likewise. *)
+Definition blocks_eq_upto_proofs (Bks Bks' : list normal_block) : Prop :=
+  list_eqb (fun b b' =>
+              Nat.eqb (block_arity b) (block_arity b') &&
+              nf_eqb_upto_proofs (block_scrutinee_type b) (block_scrutinee_type b') &&
+              nf_eqb_upto_proofs (block_motive b) (block_motive b') &&
+              list_eqb (fun br br' =>
+                          dec_eqb String.string_dec (branch_constructor br) (branch_constructor br') &&
+                          Nat.eqb (branch_arity br) (branch_arity br') &&
+                          nf_eqb_upto_proofs (branch_body br) (branch_body br'))
+                (block_branches b) (block_branches b')) Bks Bks' = true.
+
+Lemma branches_eq_upto_proofs_nil : branches_eq_upto_proofs nil nil.
+Proof. reflexivity. Qed.
+
+Lemma branches_eq_upto_proofs_cons : forall c n W W' Bs Bs', nf_eq_upto_proofs W W' -> branches_eq_upto_proofs Bs Bs' ->
+    branches_eq_upto_proofs (mk_normal_branch c n W :: Bs) (mk_normal_branch c n W' :: Bs').
+Proof.
+  intros * H H'; unfold branches_eq_upto_proofs, nf_eq_upto_proofs in *; cbn.
+  rewrite dec_eqb_refl, PeanoNat.Nat.eqb_refl, H, H'; reflexivity.
+Qed.
+
+Lemma blocks_eq_upto_proofs_nil : blocks_eq_upto_proofs nil nil.
+Proof. reflexivity. Qed.
+
+Lemma blocks_eq_upto_proofs_cons : forall n Z Z' A A' Bs Bs' Bks Bks',
+    nf_eq_upto_proofs Z Z' -> nf_eq_upto_proofs A A' -> branches_eq_upto_proofs Bs Bs' -> blocks_eq_upto_proofs Bks Bks' ->
+    blocks_eq_upto_proofs (mk_normal_block n Z A Bs :: Bks) (mk_normal_block n Z' A' Bs' :: Bks').
+Proof.
+  intros * HZ HA HB HK; unfold blocks_eq_upto_proofs, branches_eq_upto_proofs, nf_eq_upto_proofs in *; cbn.
+  rewrite PeanoNat.Nat.eqb_refl, HZ, HA, HB, HK; reflexivity.
+Qed.
+
+(** The neutral formers respect the relation. *)
+Lemma ne_app_upto_proofs : forall M M' N N', ne_eq_upto_proofs M M' -> nf_eq_upto_proofs N N' ->
+    ne_eq_upto_proofs (ne_app M N) (ne_app M' N').
+Proof. intros * H H'; unfold ne_eq_upto_proofs, nf_eq_upto_proofs in *; cbn; rewrite H, H'; reflexivity. Qed.
+
+Lemma ne_proj_upto_proofs : forall f M M', ne_eq_upto_proofs M M' -> ne_eq_upto_proofs (ne_proj f M) (ne_proj f M').
+Proof. intros * H; unfold ne_eq_upto_proofs in *; cbn; rewrite dec_eqb_refl, H; reflexivity. Qed.
+
+Lemma ne_elim_upto_proofs : forall p Us Us' k Bks Bks' M M',
+    nfs_eq_upto_proofs Us Us' -> blocks_eq_upto_proofs Bks Bks' -> ne_eq_upto_proofs M M' ->
+    ne_eq_upto_proofs (ne_elim p Us k Bks M) (ne_elim p Us' k Bks' M').
+Proof.
+  intros * HU HB HM; unfold ne_eq_upto_proofs, nfs_eq_upto_proofs, blocks_eq_upto_proofs in *; cbn.
+  rewrite dec_eqb_refl, PeanoNat.Nat.eqb_refl, HU, HB, HM; reflexivity.
+Qed.
+
+(** So do the binding formers. *)
+Lemma nf_fn_upto_proofs : forall A A' M M', nf_eq_upto_proofs A A' -> nf_eq_upto_proofs M M' ->
+    nf_eq_upto_proofs (nf_fn A M) (nf_fn A' M').
+Proof. intros * H H'; unfold nf_eq_upto_proofs in *; cbn; rewrite H, H'; reflexivity. Qed.
+
+Lemma nf_pi_upto_proofs : forall κd κc A A' B B', nf_eq_upto_proofs A A' -> nf_eq_upto_proofs B B' ->
+    nf_eq_upto_proofs (nf_pi κd κc A B) (nf_pi κd κc A' B').
+Proof. intros * H H'; unfold nf_eq_upto_proofs in *; cbn; rewrite !dec_eqb_refl, H, H'; reflexivity. Qed.
+
+Lemma nf_and_upto_proofs : forall P P' Q Q', nf_eq_upto_proofs P P' -> nf_eq_upto_proofs Q Q' ->
+    nf_eq_upto_proofs (nf_and P Q) (nf_and P' Q').
+Proof. intros * H H'; unfold nf_eq_upto_proofs in *; cbn; rewrite H, H'; reflexivity. Qed.
+
+Lemma nf_tuple_upto_proofs : forall p Ms Ms' fs Ns Ns', nfs_eq_upto_proofs Ms Ms' -> nfs_eq_upto_proofs Ns Ns' ->
+    nf_eq_upto_proofs (nf_tuple p Ms fs Ns) (nf_tuple p Ms' fs Ns').
+Proof. intros * H H'; unfold nf_eq_upto_proofs; cbn; rewrite !dec_eqb_refl; unfold nfs_eq_upto_proofs in *; rewrite H, H'; reflexivity. Qed.
+
 (** [auto] closes reflexive goals of the relations (an atom is in a list
     in which it occurs: [level_atoms_In]). *)
 #[export] Hint Extern 1 (nf_eq_upto_proofs _ _) => reflexivity : core.

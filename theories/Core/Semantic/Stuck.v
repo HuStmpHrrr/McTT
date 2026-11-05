@@ -7,7 +7,7 @@
 
     Proofs are exempt, as in [nf_clean]: a proof reads back as its term
     under definitions of the variables it reads ([nf_proof]), which may
-    name any global, and is compared erased.  So is the proof an ex falso
+    name any global, and is compared up to proofs.  So is the proof an ex falso
     carries ([ne_absurd]). *)
 
 From Stdlib Require Import List.
@@ -23,8 +23,7 @@ Import Domain_Notations.
     proofs, satisfies [G]; mutually, in the neutral [M]. *)
 Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False
-  | nf_proof_erased => True
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_stuck G (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_stuck G A /\ nf_stuck G B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_stuck G) Ms
@@ -34,7 +33,7 @@ Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   end
 with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   match M with
-  | ne_absurd A _ | ne_absurd_erased A => nf_stuck G A
+  | ne_absurd A _ => nf_stuck G A
   | ne_elim _ Us _ Bks M =>
       all_list (nf_stuck G) Us /\
       all_list (fun b => nf_stuck G (block_scrutinee_type b) /\ nf_stuck G (block_motive b) /\
@@ -46,41 +45,18 @@ with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   | ne_proj _ M => ne_stuck G M
   end.
 
-(** Erasure keeps the globals outside the proofs: it only replaces
-    proofs. *)
-Lemma nf_ne_stuck_erase : forall G, (forall W, nf_stuck G W -> nf_stuck G (nf_erase W)) /\
-                                    (forall M, ne_stuck G M -> ne_stuck G (ne_erase M)).
-Proof.
-  intros G; apply nf_ne_ind; intros; cbn [nf_erase ne_erase nf_stuck ne_stuck] in *; intuition auto;
-    repeat match goal with H : _ /\ _ |- _ => destruct H end;
-    rewrite ?all_list_map; try split; auto.
-  all: eapply list_all_all_list_impl; [ eassumption | eassumption |]; cbn; intros x Hx Hy.
-  all: try solve [ auto ].
-  (** An atom of a level: its neutral *)
-  all: try solve [ destruct Hx; cbn in *; auto ].
-  (** A block: its scrutinee's type, its motive and its branches *)
-  destruct Hx as [n' Z HZ A HA brs Hbrs]; cbn in *; destruct Hy as [HyZ [HyA Hybrs]]; split; [ auto | split; [ auto |] ];
-    rewrite all_list_map; eapply list_all_all_list_impl; [ exact Hbrs | exact Hybrs |];
-    intros br Hbr Hy'; destruct Hbr; cbn in *; auto.
-Qed.
-
-Lemma ne_stuck_erase : forall G M, ne_stuck G M -> ne_stuck G (ne_erase M).
-Proof. intros G; apply nf_ne_stuck_erase. Qed.
-
-(** Sorting erases the atoms ([level_atoms_sort]). *)
+(** Sorting keeps the atoms ([level_atoms_sort]). *)
 Lemma level_atoms_stuck_sort : forall G xs, all_list (fun a => ne_stuck G (atom_level a)) xs ->
     all_list (fun a => ne_stuck G (atom_level a)) (level_atoms_sort xs).
 Proof.
-  intros * H; apply level_atoms_all_all_list, level_atoms_all_sort, level_atoms_all_all_list;
-    [ apply ne_stuck_erase | assumption ].
+  intros * H; apply level_atoms_all_all_list, level_atoms_all_sort, level_atoms_all_all_list; assumption.
 Qed.
 
-(** The canonical form of a level keeps a subset of its atoms, erased. *)
+(** The canonical form of a level keeps a subset of its atoms. *)
 Lemma level_atoms_stuck_canon : forall G c xs, all_list (fun a => ne_stuck G (atom_level a)) xs ->
     all_list (fun a => ne_stuck G (atom_level a)) (snd (lvl_canon (c, xs))).
 Proof.
-  intros * H; apply level_atoms_all_all_list, level_atoms_all_canon, level_atoms_all_all_list;
-    [ apply ne_stuck_erase | assumption ].
+  intros * H; apply level_atoms_all_all_list, level_atoms_all_canon, level_atoms_all_all_list; assumption.
 Qed.
 
 (** A global that does not unfold: an opaque definition or an axiom. *)
@@ -416,7 +392,8 @@ Ltac stuck_go n :=
     (forall p ups ρm As ρ gs vs as', ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' -> ups_stuck ups ->
        env_stuck ρm -> env_stuck ρ -> (forall a, In a vs -> domain_stuck a) -> forall a, In a as' -> domain_stuck a) /\
     (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs -> env_stuck ρ -> forall a, In a vs -> domain_stuck a) /\
-    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> domain_stuck f -> env_stuck ρ -> domain_stuck r).
+    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> domain_stuck f -> env_stuck ρ -> domain_stuck r) /\
+    (forall M ρ m, ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m -> env_stuck ρ -> domain_stuck m).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_stuck ρ -> domain_stuck m)
@@ -446,7 +423,8 @@ Ltac stuck_go n :=
              (fun p ups ρm As ρ gs vs as' _ => ups_stuck ups -> env_stuck ρm -> env_stuck ρ ->
                 (forall a, In a vs -> domain_stuck a) -> forall a, In a as' -> domain_stuck a)
              (fun rs Ms ρ vs _ => env_stuck ρ -> forall a, In a vs -> domain_stuck a)
-             (fun f Ms ρ r _ => domain_stuck f -> env_stuck ρ -> domain_stuck r));
+             (fun f Ms ρ r _ => domain_stuck f -> env_stuck ρ -> domain_stuck r)
+             (fun M ρ m _ => env_stuck ρ -> domain_stuck m));
       intros; cbn [snd] in *.
     (* the induction hypotheses at the premises given, the parts of the
        stuck values given; then each value by its rule, shallowly first *)
@@ -645,7 +623,7 @@ Ltac stuck_go n :=
     all: stuck_fwd He Ha Hes Hsh Hm Hpj Hpjs.
     all: stuck_specialize; stuck_invert; stuck_specialize.
     (* each component read back of a stuck value, by its induction
-       hypothesis; a level canonically, its atoms erased *)
+       hypothesis; a level canonically *)
     all: cbn [nf_stuck ne_stuck nf_lvl_of nf_univ_of fst snd all_list atom_level
               block_scrutinee_type block_motive block_branches branch_body] in *.
     all: repeat match goal with |- _ /\ _ => split end.
@@ -653,7 +631,6 @@ Ltac stuck_go n :=
     all: try apply all_list_app.
     all: try solve [ apply level_atoms_stuck_canon; stuck_read 3
                    | apply level_atoms_stuck_sort; stuck_read 3
-                   | apply ne_stuck_erase; stuck_read 3
                    | stuck_read 4 ].
   Qed.
 

@@ -127,7 +127,7 @@ Section Fixed_GCtx.
         brs_names cs Bs1 -> brs_names cs Bs2 ->
         exists Bs' Bs'', Rbrs Bs1 at cs of Mi (hd, k, prea) of Dc from pa ua Bksa Mva Aa in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ Bs' /\
           Rbrs Bs2 at cs of Mi (hd, k, preb) of Dc from pb ub Bksb Mvb Ab in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ Bs'' /\
-          List.map (map_normal_branch (fun _ => nf_erase)) Bs' = List.map (map_normal_branch (fun _ => nf_erase)) Bs''.
+          branches_eq_upto_proofs Bs' Bs''.
     Proof.
       intros s Dc Mi hd k prea preb Mva Mvb Aa Ab nsa nsb Fa Fb.
       induction cs as [| [c gs'] cs IH]; intros [| [[c1 n1] B1] Bs1] [| [[c2 n2] B2] Bs2] Hcs Hn1 Hn2;
@@ -147,7 +147,7 @@ Section Fixed_GCtx.
                                 | exact Ia | exact Wa | exact Ea | exact Ta | exact RB1 | exact RBs1 ].
         + eapply read_brs_cons; [ exact Cb | exact Hlb | exact Arb | reflexivity | exact Nb | exact Pb | exact Fb | exact Gb
                                 | exact Ib | exact Wb | exact Eb | exact Tb | exact RB2 | exact RBs2 ].
-        + exact (f_equal2 (fun b l => b :: l) (f_equal (mk_normal_branch c _) HE) HEs).
+        + apply branches_eq_upto_proofs_cons; assumption.
     Qed.
 
     (** What the two readbacks need of a block: the one of the member [Mi]
@@ -234,7 +234,7 @@ Section Fixed_GCtx.
         (forall n Mi, List.nth_error Ms n = Some Mi -> block_read_pair s Dc sela selb (i + n) Mi) ->
         exists NBks NBks', Rblks i Ms of Dc from pa ua Bksa sela in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ NBks /\
           Rblks i Ms of Dc from pb ub Bksb selb in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ NBks' /\
-          List.map (map_normal_block (fun _ => nf_erase)) NBks = List.map (map_normal_block (fun _ => nf_erase)) NBks'.
+          blocks_eq_upto_proofs NBks NBks'.
     Proof.
       intros s Dc sela selb Ms; induction Ms as [| Mi Ms IH]; intros i0 HMs.
       - exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
@@ -253,7 +253,7 @@ Section Fixed_GCtx.
                                    | exact RA1 | exact RB1 | exact RN1 ].
         + eapply read_blocks_cons; [ exact Hlb | exact HMb | exact Hbb | exact Hnmb | exact Rb | exact Fb | exact RZ2 | exact Eb
                                    | exact RA2 | exact RB2 | exact RN2 ].
-        + cbn [List.map]; f_equal; [ unfold map_normal_block; cbn; f_equal; assumption | exact HEn ].
+        + apply blocks_eq_upto_proofs_cons; assumption.
     Qed.
 
     (** Two stuck eliminators read as the eliminator of the member [k] of
@@ -283,7 +283,7 @@ Section Fixed_GCtx.
                              | exact Ra | exact RU1 | exact RB1 | exact RM1 ].
       - eapply read_ne_elim; [ exact Hlb | exact HMb | exact Hrb | exact Hq | exact HMk | exact Lb | exact Hnmb | exact Harb
                              | exact Rb | exact RU2 | exact RB2 | exact RM2 ].
-      - cbn [ne_erase]; rewrite HEU, HEB, HEM; reflexivity.
+      - apply ne_elim_upto_proofs; assumption.
     Qed.
   End ReadPairs.
 End Fixed_GCtx.

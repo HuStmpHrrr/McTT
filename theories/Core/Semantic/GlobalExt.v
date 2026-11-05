@@ -114,7 +114,8 @@ Section GlobalExt.
     (forall p ups ρm As ρ gs vs a, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a ->
        ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
     (forall rs Ms ρ vs, eval_field_vals Θ1 Ξ1 rs Ms ρ vs -> eval_field_vals Θ2 Ξ2 rs Ms ρ vs) /\
-    (forall f Ms ρ r, eval_app_args Θ1 Ξ1 f Ms ρ r -> eval_app_args Θ2 Ξ2 f Ms ρ r).
+    (forall f Ms ρ r, eval_app_args Θ1 Ξ1 f Ms ρ r -> eval_app_args Θ2 Ξ2 f Ms ρ r) /\
+    (forall M ρ m, ⟦ M ⟧ₖ Θ1 ⍮ Ξ1 ⍮ ρ ↘ m -> ⟦ M ⟧ₖ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m).
   Proof.
     apply (eval_mut_ind Θ1 Ξ1
              (fun M ρ m _ => ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m)
@@ -141,7 +142,8 @@ Section GlobalExt.
              (fun fl v ws _ => eval_projs Θ2 Ξ2 fl v ws)
              (fun p ups ρm As ρ gs vs a _ => eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs a)
              (fun rs Ms ρ vs _ => eval_field_vals Θ2 Ξ2 rs Ms ρ vs)
-             (fun f Ms ρ r _ => eval_app_args Θ2 Ξ2 f Ms ρ r)).
+             (fun f Ms ρ r _ => eval_app_args Θ2 Ξ2 f Ms ρ r)
+             (fun M ρ m _ => keep_proof Θ2 Ξ2 M ρ m)).
     all: intros;
       repeat match goal with
              | H : _ \/ _ |- _ => destruct H

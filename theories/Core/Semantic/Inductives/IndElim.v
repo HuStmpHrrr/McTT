@@ -57,7 +57,8 @@ Section Fixed_GCtx.
   Lemma per_bot_app : forall m m' n n', Dom m ≈ m' ∈ per_bot -> Dom n ≈ n' ∈ per_top -> Dom m $ᵈ n ≈ m' $ᵈ n' ∈ per_bot.
   Proof.
     intros * Hm Hn s; destruct (Hm s) as [M M' HM HM' HE]; destruct (Hn s) as [N N' HN HN' HE'].
-    apply (mk_neutral_reads_alike _ _ _ (M $ⁿ N) (M' $ⁿ N')); [ constructor; assumption | constructor; assumption | cbn; congruence ].
+    apply (mk_neutral_reads_alike _ _ _ (M $ⁿ N) (M' $ⁿ N')); [ constructor; assumption | constructor; assumption |].
+    apply ne_app_upto_proofs; assumption.
   Qed.
 
   (** A declared member of a group is itself at the group's uniform
@@ -2453,7 +2454,7 @@ Section Fixed_GCtx.
                         in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ Bs' /\
             Rbrs Bs2 at cs of Mi (hd, k, preb) of Dh from p ub Bksb Mv (eb_motive bb)
               in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ Bs'' /\
-            List.map (map_normal_branch (fun _ => nf_erase)) Bs' = List.map (map_normal_branch (fun _ => nf_erase)) Bs''.
+            branches_eq_upto_proofs Bs' Bs''.
       Proof.
         intros s v Mv Mi hd Dh k prea preb nsa nsb ba bb HM Hrv Ha Hb Hnn La Lb Hra Hrb Fa Fb.
         pose proof Hups as [_ _ Aa Ab _ _ _ Ra Rb _ _ _].
@@ -2514,7 +2515,7 @@ Section Fixed_GCtx.
                                   | exact Ia | exact Wa | exact Er1 | exact T1 | exact RB1 | exact RBs1 ].
           + eapply read_brs_cons; [ exact Hc | exact Hl | lia | reflexivity | exact Hcnt | exact Hpl | exact Fb | exact Cb
                                   | exact Ib | exact Wb | exact Er2 | exact T2 | exact RB2 | exact RBs2 ].
-          + exact (f_equal2 (fun b l => b :: l) (f_equal (mk_normal_branch c _) HE) HEs).
+          + apply branches_eq_upto_proofs_cons; assumption.
       Qed.
 
       (** What the two readbacks need of a block: the one of the member
@@ -2574,7 +2575,7 @@ Section Fixed_GCtx.
           (forall n Mi, List.nth_error Ms n = Some Mi -> member_pair s Dc sel (i + n) Mi) ->
           exists NBks NBks', Rblks i Ms of Dc from p ua Bksa sel in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ NBks /\
             Rblks i Ms of Dc from p ub Bksb sel in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ NBks' /\
-            List.map (map_normal_block (fun _ => nf_erase)) NBks = List.map (map_normal_block (fun _ => nf_erase)) NBks'.
+            blocks_eq_upto_proofs NBks NBks'.
       Proof.
         intros s Dc sel Ms; induction Ms as [| Mi Ms IH]; intros i0 HMs.
         - exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
@@ -2628,7 +2629,7 @@ Section Fixed_GCtx.
                                      | exact Ra | exact Fa | exact RZ1 | exact Ea1 | exact RA1 | exact RB1 | exact RN1 ].
           + eapply read_blocks_cons; [ exact Hl | exact HM | exact Hb | rewrite (HnmB _ _ _ HM Hb), Hnn; reflexivity
                                      | exact Rb | exact Fb | exact RZ2 | exact Ea2 | exact RA2 | exact RB2 | exact RN2 ].
-          + cbn [List.map]; f_equal; [ unfold map_normal_block; cbn; f_equal; assumption | exact HEn ].
+          + apply blocks_eq_upto_proofs_cons; assumption.
       Qed.
 
       (** *** The Fresh Arguments of a Branch
@@ -3096,7 +3097,7 @@ Section Fixed_GCtx.
         - eapply read_ne_elim; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | exact (proj2 Lq)
                                | exact (Hnm _ HnmB) | exact (group_structure_leaf_arity _ Hass) | exact Rb | exact RU2 | exact RB2
                                | exact RM2 ].
-        - cbn [ne_erase]; rewrite HEU, HEB, HEM; reflexivity.
+        - apply ne_elim_upto_proofs; assumption.
       Qed.
 
       (** ** The Stuck Eliminator

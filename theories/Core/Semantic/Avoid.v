@@ -765,7 +765,8 @@ Section Eval.
     (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs ->
        forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> forall a, In a vs -> domain_avoids v b a) /\
     (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r ->
-       forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> domain_avoids v b f -> domain_avoids v b r).
+       forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> domain_avoids v b f -> domain_avoids v b r) /\
+    (forall M ρ m, ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m -> domain_avoids v b m).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => forall K, env_avoids v b K ρ -> optional_exp_fresh K M -> domain_avoids v b m)
@@ -803,7 +804,8 @@ Section Eval.
              (fun rs Ms ρ vs _ => forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms ->
                                    forall a, In a vs -> domain_avoids v b a)
              (fun f Ms ρ r _ => forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms ->
-                                 domain_avoids v b f -> domain_avoids v b r));
+                                 domain_avoids v b f -> domain_avoids v b r)
+             (fun M ρ m _ => domain_avoids v b m));
       intros; cbn [optional_ptyp_fresh ptyp_ps ptyp_mem snd] in *.
     all: repeat match goal with
            | H : domain_avoids _ _ (_ _) |- _ => inversion_clear H
@@ -1183,12 +1185,11 @@ Proof. intros * Hb H a Ha; exact (domain_avoids_mono' _ _ _ _ Hb (H a Ha)). Qed.
     normal form [W] outside its proofs; mutually, in the neutral [u].  A
     proof is read back as its term under definitions of the entries it
     reads ([read_proof_kept]), which may include [k], and normal forms are
-    compared up to their proofs, so proofs are exempt; it is the freshness
-    of the erasure ([nf_fresh_outside_proofs_erase]). *)
+    compared up to their proofs, so proofs are exempt. *)
 Fixpoint nf_fresh_outside_proofs (k : nat) (W : nf) {struct W} : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
-  | nf_proof_erased | nf_proof _ => True
+  | nf_proof _ => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh_outside_proofs k (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_fresh_outside_proofs k A /\ nf_fresh_outside_proofs (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_fresh_outside_proofs k) Ms
@@ -1198,7 +1199,7 @@ Fixpoint nf_fresh_outside_proofs (k : nat) (W : nf) {struct W} : Prop :=
   end
 with ne_fresh_outside_proofs (k : nat) (u : ne) {struct u} : Prop :=
   match u with
-  | ne_absurd A _ | ne_absurd_erased A => nf_fresh_outside_proofs k A
+  | ne_absurd A _ => nf_fresh_outside_proofs k A
   | ne_elim _ Us _ Bks u =>
       all_list (nf_fresh_outside_proofs k) Us /\
       all_list (normal_block_forall (fun n => nf_fresh_outside_proofs (n + k))) Bks /\ ne_fresh_outside_proofs k u
@@ -1208,39 +1209,12 @@ with ne_fresh_outside_proofs (k : nat) (u : ne) {struct u} : Prop :=
   | ne_proj _ u => ne_fresh_outside_proofs k u
   end.
 
-(** Freshness outside proofs is the freshness of the erasure, and erasure
-    keeps it. *)
-Lemma nf_ne_fresh_outside_proofs_erase :
-    (forall W k, nf_fresh_outside_proofs k W -> nf_fresh k (nf_erase W) /\ nf_fresh_outside_proofs k (nf_erase W)) /\
-    (forall u k, ne_fresh_outside_proofs k u -> ne_fresh k (ne_erase u) /\ ne_fresh_outside_proofs k (ne_erase u)).
-Proof.
-  apply nf_ne_ind; intros; cbn [nf_erase ne_erase nf_fresh ne_fresh nf_fresh_outside_proofs ne_fresh_outside_proofs] in *;
-    repeat match goal with H : _ /\ _ |- _ => destruct H end;
-    rewrite ?all_list_map; repeat split; try solve [ auto | firstorder ].
-  all: eapply list_all_all_list_impl; [ eassumption | eassumption |]; cbn; intros x Hx Hy.
-  all: try solve [ firstorder ].
-  (** An atom of a level: its neutral *)
-  all: try solve [ destruct Hx; unfold map_level_atom; cbn in *; firstorder ].
-  (** A block: its scrutinee's type, its motive and its branches *)
-  all: destruct Hx as [n' Z HZ A HA brs Hbrs]; unfold normal_block_forall, map_normal_block in *; cbn in *;
-    destruct Hy as [HyZ [HyA Hybrs]]; split; [ firstorder | split; [ firstorder |] ];
-    rewrite all_list_map; eapply list_all_all_list_impl; [ exact Hbrs | exact Hybrs |];
-    intros br Hbr Hy'; destruct Hbr; cbn in *; firstorder.
-Qed.
-
-Lemma nf_fresh_outside_proofs_erase : forall k W, nf_fresh_outside_proofs k W -> nf_fresh k (nf_erase W).
-Proof. intros k W H; exact (proj1 (proj1 nf_ne_fresh_outside_proofs_erase W k H)). Qed.
-
-Lemma ne_fresh_outside_proofs_erased : forall k u, ne_fresh_outside_proofs k u -> ne_fresh_outside_proofs k (ne_erase u).
-Proof. intros k u H; exact (proj2 (proj2 nf_ne_fresh_outside_proofs_erase u k H)). Qed.
-
 (** ** Readback Introduces Only Variables Above the Ones in Scope *)
 
 Lemma level_atoms_fresh_canon : forall k c xs, all_list (fun a => ne_fresh_outside_proofs k (atom_level a)) xs ->
     all_list (fun a => ne_fresh_outside_proofs k (atom_level a)) (snd (lvl_canon (c, xs))).
 Proof.
-  intros * H; apply level_atoms_all_all_list, level_atoms_all_canon, level_atoms_all_all_list;
-    [ apply ne_fresh_outside_proofs_erased | assumption ].
+  intros * H; apply level_atoms_all_all_list, level_atoms_all_canon, level_atoms_all_all_list; assumption.
 Qed.
 
 Section Read.
@@ -1771,9 +1745,8 @@ Section Read.
           apply (IH b); [ lia | lia |]; repeat constructor; assumption
       end ].
     all: cbn [atom_level block_scrutinee_type block_arity] in *.
-    (** A neutral level: its atom, erased *)
-    all: try solve [ apply ne_fresh_outside_proofs_erased;
-                     match goal with IH : forall b0, _ -> b0 <= _ -> domain_ne_avoids _ b0 ?m -> _, Hm : domain_ne_avoids _ ?b ?m |- _ =>
+    (** A neutral level: its atom *)
+    all: try solve [ match goal with IH : forall b0, _ -> b0 <= _ -> domain_ne_avoids _ b0 ?m -> _, Hm : domain_ne_avoids _ ?b ?m |- _ =>
                        apply (IH b); [ lia | lia | exact Hm ] end ].
     (** Ex falso: its type; its proof is exempt *)
     all: try solve [ match goal with H3 : domain_ne_avoids _ _ (d_absurd _ _) |- _ => inversion_clear H3 end;
@@ -1865,7 +1838,7 @@ Qed.
 
 (** NbE invents no variables: a weakened term, normalized in the extended
     context at its weakened type, has a normal form fresh at the new
-    variable outside its proofs: its erasure is fresh.  The proofs need
+    variable outside its proofs.  The proofs need
     not be: a proof is kept over the environment and read back under
     definitions of the positions its term reaches, which for a weakened
     term include the new variable.  For example, in
@@ -1874,9 +1847,9 @@ Qed.
     [let x : P ≔ h in let y : ⊤ ≔ #k in #1], [#k] the new variable. *)
 Theorem nbe_wk_fresh : forall Θ Ξ Γ κ A M T W,
     nbe Θ Ξ (Γ ▹{κ} A) M[↑]ʷ T[↑]ʷ W ->
-    nf_fresh 0 (nf_erase W).
+    nf_fresh_outside_proofs 0 W.
 Proof.
-  intros * Hn; destruct Hn as [? ? Hρ ? Hnt]; apply nf_fresh_outside_proofs_erase.
+  intros * Hn; destruct Hn as [? ? Hρ ? Hnt].
   pose proof (initial_env_wk_avoids _ _ _ _ _ _ Hρ).
   replace 0 with (S (List.length Γ) - List.length Γ - 1) by lia.
   (** The value read back: a proof kept as it is, or the term's value *)
@@ -1889,9 +1862,9 @@ Qed.
     at its indices. *)
 Theorem nbe_ty_wk_fresh : forall Θ Ξ Γ κ A T W,
     nbe_ty Θ Ξ (Γ ▹{κ} A) T[↑]ʷ W ->
-    nf_fresh 0 (nf_erase W).
+    nf_fresh_outside_proofs 0 W.
 Proof.
-  intros * Hn; inversion_clear Hn as [? ? Hρ]; apply nf_fresh_outside_proofs_erase.
+  intros * Hn; inversion_clear Hn as [? ? Hρ].
   pose proof (initial_env_wk_avoids _ _ _ _ _ _ Hρ).
   replace 0 with (S (List.length Γ) - List.length Γ - 1) by lia.
   eapply (proj1 (proj2 (proj2 (read_avoids Θ Ξ (List.length Γ))))); [ eassumption | cbn; lia | cbn; reflexivity |].

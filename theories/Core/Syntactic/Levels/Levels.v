@@ -1304,6 +1304,60 @@ Proof. intros; rewrite !lvl_real_eval; apply lvl_eval_suc. Qed.
 Lemma lvl_real_max : forall l l', lvl_real (lvl_max l l') = ordinal_max (lvl_real l) (lvl_real l').
 Proof. intros; rewrite !lvl_real_eval; apply lvl_eval_max. Qed.
 
+(** ** Levels Equal up to Proofs
+
+    Two related levels are interchangeable for everything the semantics
+    reads off a level: the realiser, the order, the sorts. *)
+#[export] Instance lvl_eq_upto_proofs_Equivalence : RelationClasses.Equivalence lvl_eq_upto_proofs.
+Proof.
+  unfold lvl_eq_upto_proofs, level_atoms_eq_upto_proofs; split.
+  - intros [c xs]; split; [ reflexivity | apply level_atoms_eq_upto_proofs_refl ].
+  - intros [c xs] [d ys] [Hc H]; cbn in *; split; [ congruence |]; revert ys H.
+    induction xs as [| [k s a] r IH]; intros [| [k' s' a'] r'] H; cbn in *; try discriminate; [ reflexivity |].
+    eqb_split; eqb_leaves; subst; try solve [ auto ].
+    rewrite (proj2 nf_ne_eqb_upto_proofs_sym); assumption.
+  - intros [c xs] [d ys] [e zs] [Hc H] [Hd H']; cbn in *; split; [ congruence |]; revert ys zs H H'.
+    induction xs as [| [k s a] r IH]; intros [| [k' s' a'] r'] [| [k'' s'' a''] r''] H H'; cbn in *; try discriminate;
+      [ reflexivity |].
+    eqb_split; eqb_leaves; subst; try solve [ eauto ].
+    eapply (proj2 nf_ne_eqb_upto_proofs_trans); eassumption.
+Qed.
+
+(** The normal forms of two levels are related exactly when the levels
+    are. *)
+Lemma nf_lvl_of_upto_proofs_iff : forall l l', nf_eq_upto_proofs (nf_lvl_of l) (nf_lvl_of l') <-> lvl_eq_upto_proofs l l'.
+Proof.
+  intros [c xs] [d ys]; split; [| apply nf_lvl_of_upto_proofs ].
+  unfold nf_eq_upto_proofs, lvl_eq_upto_proofs; cbn; intros H; eqb_split; eqb_leaves; split; assumption.
+Qed.
+
+Lemma lvl_real_upto_proofs : forall l l', lvl_eq_upto_proofs l l' -> lvl_real l = lvl_real l'.
+Proof. intros * H; rewrite !lvl_real_eval; apply lvl_eval_upto; [ apply lvl_adm_zero | exact H ]. Qed.
+
+Lemma lvl_le_of_upto_proofs : forall l l', lvl_eq_upto_proofs l l' -> lvl_le l l'.
+Proof.
+  intros * H; apply lvl_le_correct; intros ν Hν; rewrite (lvl_eval_upto _ _ _ Hν H); apply ordinal_le_refl.
+Qed.
+
+(** An atom of a related list is an atom of the list, at its offset and
+    sort. *)
+Lemma level_atoms_In_upto_proofs : forall ys ys', level_atoms_eq_upto_proofs ys ys' ->
+    forall k s a, level_atoms_In k s a ys' -> level_atoms_In k s a ys.
+Proof.
+  unfold level_atoms_eq_upto_proofs; induction ys as [| [k0 t b] r IH]; intros [| [k0' t' b'] r'] H k s a Hin;
+    cbn in *; try discriminate; [ contradiction |].
+  eqb_split; eqb_leaves; subst.
+  destruct Hin as [(-> & -> & Ha) | Hin]; [ left; split; [ reflexivity | split; [ reflexivity |] ] | right; eapply IH; eassumption ].
+  unfold ne_eq_upto_proofs in *; eapply (proj2 nf_ne_eqb_upto_proofs_trans); [ exact Ha |].
+  rewrite (proj2 nf_ne_eqb_upto_proofs_sym); assumption.
+Qed.
+
+Lemma lvl_sort_bounded_upto_proofs : forall n l l', lvl_eq_upto_proofs l l' -> lvl_sort_bounded n l -> lvl_sort_bounded n l'.
+Proof.
+  intros n [c xs] [d ys] [Hc H] [Hn Ha]; cbn in *; subst d; split; [ exact Hn |].
+  intros k s a Hin; eapply Ha, level_atoms_In_upto_proofs; eassumption.
+Qed.
+
 (** ** The Order on Universe Normal Forms
 
     The checker compares two universes by the canonical order of their levels

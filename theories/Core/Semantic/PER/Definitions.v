@@ -125,10 +125,13 @@ Hint Transparent per_top_typ : mctt.
 Hint Unfold per_top_typ : mctt.
 
 (** Two level values are related when they read back to the same canonical
-    level at every length.  Evaluation of [succl] and [maxl] only flattens, so
+    level, up to the proofs in its atoms, at every length.  Evaluation of [succl] and [maxl] only flattens, so
     this is where the level equations are quotiented: readback canonicalises,
     and [lvl_canon_iff] says that two levels have the same canonical form
-    exactly when they agree under every assignment to their atoms.
+    exactly when they agree under every assignment to their atoms, up to
+    proofs.  A level atom may hold a proof: with [h : P], [F : P → LevelSort]
+    and [g : (F h → F h) → Level@0], the atom of [g (λ x : F h. x)] holds
+    [h] in the λ's annotation.
 
     It is [per_top] at [Level].  Unlike [per_bot] and [per_top] it is not
     declared transparent to the automation: a goal [R <~> per_lvl] is closed by
@@ -138,16 +141,25 @@ Hint Unfold per_top_typ : mctt.
 Definition per_lvl : relation domain := fun m m' => Dom ⇓ Levelᵈ m ≈ ⇓ Levelᵈ m' ∈ per_top.
 
 (** The elements of [Level@n]: levels that read back, at every length, as
-    the same canonical level of sort [n] ([lvl_sort_bounded]), below ω·(n+1).  A small
+    canonical levels equal up to proofs ([lvl_eq_upto_proofs]) of sort [n]
+    ([lvl_sort_bounded]), below ω·(n+1).  A small
     universe is indexed by any level, so its levels are related by [per_lvl]
     alone.  Like [per_lvl] it has a [forall] head, so the shared scripts do
     not split it. *)
 #[warnings="-cannot-define-projection"]
 Record lvl_reads (n : nat) (m m' : domain) (s : nat) : Prop := mk_lvl_reads
-  { lvl_reads_lvl : lvl
-  ; lvl_reads_left : Rnf ⇓ Levelᵈ m in s ↘ nf_lvl_of lvl_reads_lvl
-  ; lvl_reads_right : Rnf ⇓ Levelᵈ m' in s ↘ nf_lvl_of lvl_reads_lvl
-  ; lvl_reads_sort_bounded : lvl_sort_bounded n lvl_reads_lvl }.
+  { (** The canonical level the left one reads back as *)
+    lvl_reads_left_lvl : lvl
+    (** The one the right one reads back as *)
+  ; lvl_reads_right_lvl : lvl
+    (** The left one reads back as its level *)
+  ; lvl_reads_left : Rnf ⇓ Levelᵈ m in s ↘ nf_lvl_of lvl_reads_left_lvl
+    (** The right one as its *)
+  ; lvl_reads_right : Rnf ⇓ Levelᵈ m' in s ↘ nf_lvl_of lvl_reads_right_lvl
+    (** The two are equal up to the proofs in their atoms *)
+  ; lvl_reads_related : lvl_eq_upto_proofs lvl_reads_left_lvl lvl_reads_right_lvl
+    (** The left one's atoms are of sorts at most [n] *)
+  ; lvl_reads_sort_bounded : lvl_sort_bounded n lvl_reads_left_lvl }.
 
 Definition per_lvl_at (n : nat) : relation domain :=
   fun m m' => forall s, lvl_reads n m m' s.
@@ -159,10 +171,15 @@ Definition per_lvl_at (n : nat) : relation domain :=
     [max u 3] and [3] have the same realiser and are not comparable. *)
 #[warnings="-cannot-define-projection"]
 Record sublvl_reads (l l' : domain) (s : nat) : Prop := mk_sublvl_reads
-  { sublvl_reads_left_lvl : lvl
+  { (** The canonical level the smaller one reads back as *)
+    sublvl_reads_left_lvl : lvl
+    (** The one the larger reads back as *)
   ; sublvl_reads_right_lvl : lvl
+    (** The smaller one reads back as its level *)
   ; sublvl_reads_left : Rnf ⇓ Levelᵈ l in s ↘ nf_lvl_of sublvl_reads_left_lvl
+    (** The larger one as its *)
   ; sublvl_reads_right : Rnf ⇓ Levelᵈ l' in s ↘ nf_lvl_of sublvl_reads_right_lvl
+    (** The two are ordered *)
   ; sublvl_reads_le : lvl_le sublvl_reads_left_lvl sublvl_reads_right_lvl }.
 
 Definition per_sublvl (l l' : domain) : Prop :=

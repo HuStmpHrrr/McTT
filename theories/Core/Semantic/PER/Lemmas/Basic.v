@@ -41,7 +41,7 @@ Lemma per_bot_sym : forall m n,
     Dom n ≈ m ∈ per_bot.
 Proof.
   intros * H s; destruct (H s) as [L L' HL HL' HE].
-  exact (mk_neutral_reads_alike _ _ _ _ _ HL' HL (eq_sym HE)).
+  exact (mk_neutral_reads_alike _ _ _ _ _ HL' HL (symmetry HE)).
 Qed.
 
 Hint Resolve per_bot_sym : mctt.
@@ -53,7 +53,7 @@ Lemma per_bot_trans : forall m n l,
 Proof.
   intros * Hmn Hnl s; destruct (Hmn s) as [L L1 HL HL1 HE]; destruct (Hnl s) as [L2 L' HL2 HL' HE'].
   pose proof (functional_read_ne _ _ _ _ HL1 HL2) as <-.
-  exact (mk_neutral_reads_alike _ _ _ _ _ HL HL' (eq_trans HE HE')).
+  exact (mk_neutral_reads_alike _ _ _ _ _ HL HL' (transitivity HE HE')).
 Qed.
 
 Hint Resolve per_bot_trans : mctt.
@@ -77,14 +77,14 @@ Hint Resolve var_per_bot : mctt.
 Lemma per_bot_of_reads : forall m n,
     (forall s, exists L, Rne m in s ↘ L /\ Rne n in s ↘ L) ->
     Dom m ≈ n ∈ per_bot.
-Proof. intros * H s; destruct (H s) as (L & HL & HL'); exact (mk_neutral_reads_alike _ _ _ _ _ HL HL' eq_refl). Qed.
+Proof. intros * H s; destruct (H s) as (L & HL & HL'); exact (mk_neutral_reads_alike _ _ _ _ _ HL HL' ltac:(reflexivity)). Qed.
 
 Lemma per_top_sym : forall m n,
     Dom m ≈ n ∈ per_top ->
     Dom n ≈ m ∈ per_top.
 Proof.
   intros * H s; destruct (H s) as [L L' HL HL' HE].
-  exact (mk_normal_reads_alike _ _ _ _ _ HL' HL (eq_sym HE)).
+  exact (mk_normal_reads_alike _ _ _ _ _ HL' HL (symmetry HE)).
 Qed.
 
 Hint Resolve per_top_sym : mctt.
@@ -96,24 +96,26 @@ Lemma per_top_trans : forall m n l,
 Proof.
   intros * Hmn Hnl s; destruct (Hmn s) as [L L1 HL HL1 HE]; destruct (Hnl s) as [L2 L' HL2 HL' HE'].
   pose proof (functional_read_nf _ _ _ _ HL1 HL2) as <-.
-  exact (mk_normal_reads_alike _ _ _ _ _ HL HL' (eq_trans HE HE')).
+  exact (mk_normal_reads_alike _ _ _ _ _ HL HL' (transitivity HE HE')).
 Qed.
 
 (** Two values reading back to the same normal form are related. *)
 Lemma per_top_of_reads : forall m n,
     (forall s, exists L, Rnf m in s ↘ L /\ Rnf n in s ↘ L) ->
     Dom m ≈ n ∈ per_top.
-Proof. intros * H s; destruct (H s) as (L & HL & HL'); exact (mk_normal_reads_alike _ _ _ _ _ HL HL' eq_refl). Qed.
+Proof. intros * H s; destruct (H s) as (L & HL & HL'); exact (mk_normal_reads_alike _ _ _ _ _ HL HL' ltac:(reflexivity)). Qed.
 
-(** At [Level] related values read back to the same normal form: level
-    normal forms are erased ([read_nf_level_erased]). *)
+(** Related levels read back to canonical levels equal up to the proofs
+    in their atoms ([read_nf_level_real]: a level reads back as a
+    canonical level). *)
 Lemma per_lvl_reads : forall m n,
     Dom ⇓ Levelᵈ m ≈ ⇓ Levelᵈ n ∈ per_top ->
-    forall s, exists W, Rnf ⇓ Levelᵈ m in s ↘ W /\ Rnf ⇓ Levelᵈ n in s ↘ W.
+    forall s, exists L L', Rnf ⇓ Levelᵈ m in s ↘ nf_lvl_of L /\ Rnf ⇓ Levelᵈ n in s ↘ nf_lvl_of L' /\
+                      lvl_eq_upto_proofs L L'.
 Proof.
   intros * H s; destruct (H s) as [W W' HW HW' HE].
-  rewrite (read_nf_level_erased _ _ _ _ HW), (read_nf_level_erased _ _ _ _ HW') in HE; subst W'.
-  eauto.
+  destruct (read_nf_level_real _ _ _ _ HW) as [L [-> _]], (read_nf_level_real _ _ _ _ HW') as [L' [-> _]].
+  exists L, L'; split; [ assumption | split; [ assumption | apply nf_lvl_of_upto_proofs_iff; exact HE ] ].
 Qed.
 
 Hint Resolve per_top_trans : mctt.
@@ -162,15 +164,16 @@ Qed.
 Hint Resolve per_sublvl_lit : mctt.
 
 (** Related levels have the same realiser: readback preserves the offsets, so
-    the realiser is the one of the canonical form both read back as. *)
+    the realiser is the one of the canonical forms they read back as, which
+    are equal up to proofs. *)
 Lemma per_lvl_real : forall m n,
     Dom m ≈ n ∈ per_lvl ->
     domain_level_real m = domain_level_real n.
 Proof.
-  intros * H; destruct (per_lvl_reads _ _ H 0) as [W [HW HW']].
-  apply read_nf_level_real in HW as [L [-> HL]].
-  apply read_nf_level_real in HW' as [L' [Heq HL']].
-  apply nf_lvl_of_inj in Heq as <-; congruence.
+  intros * H; destruct (per_lvl_reads _ _ H 0) as (L & L' & HW & HW' & HE).
+  apply read_nf_level_real in HW as [L1 [Heq HL]], HW' as [L1' [Heq' HL']].
+  apply nf_lvl_of_inj in Heq as <-; apply nf_lvl_of_inj in Heq' as <-.
+  rewrite <- HL, <- HL'; apply lvl_real_upto_proofs; exact HE.
 Qed.
 
 Hint Resolve per_lvl_real : mctt.
@@ -212,9 +215,8 @@ Lemma per_sublvl_of_per_lvl : forall l l',
     Dom l ≈ l' ∈ per_lvl ->
     per_sublvl l l'.
 Proof.
-  intros * H s; destruct (per_lvl_reads _ _ H s) as [W [HW HW']].
-  destruct (read_nf_level_real _ _ _ _ HW) as [L [-> _]].
-  exists L L; [ assumption | assumption | apply lvl_le_refl ].
+  intros * H s; destruct (per_lvl_reads _ _ H s) as (L & L' & HW & HW' & HE).
+  exists L L'; [ assumption | assumption | apply lvl_le_of_upto_proofs; exact HE ].
 Qed.
 
 Hint Resolve per_sublvl_of_per_lvl : mctt.
@@ -265,10 +267,13 @@ Lemma per_bot_then_per_lvl : forall m m' a a',
     Dom m ≈ m' ∈ per_bot ->
     Dom ⇑ a m ≈ ⇑ a' m' ∈ per_lvl.
 Proof.
-  intros * Ha H; apply per_top_of_reads; intros s.
+  intros * Ha H s.
   destruct (H s) as [M M' Hl Hr HE].
-  exists (lvⁿ ordinal_zero (cons (mk_level_atom 0 (domain_level_sort a) (ne_erase M)) nil)); split;
-    [| rewrite Ha, HE ]; econstructor; eassumption.
+  exists (lvⁿ ordinal_zero (cons (mk_level_atom 0 (domain_level_sort a) M) nil))
+         (lvⁿ ordinal_zero (cons (mk_level_atom 0 (domain_level_sort a') M') nil));
+    [ econstructor; eassumption | econstructor; eassumption |].
+  rewrite Ha; apply (nf_lvl_of_upto_proofs (_, _) (_, _)); split; [ reflexivity |].
+  apply level_atoms_eq_upto_proofs_cons; [ exact HE | apply level_atoms_eq_upto_proofs_refl ].
 Qed.
 
 Hint Resolve per_bot_then_per_lvl : mctt.
@@ -276,21 +281,27 @@ Hint Resolve per_bot_then_per_lvl : mctt.
 (** The levels of sort [n] form a PER, and a neutral of type [Level@n] is
     one. *)
 Lemma per_lvl_at_lvl : forall n l l', Dom l ≈ l' ∈ per_lvl_at n -> Dom l ≈ l' ∈ per_lvl.
-Proof. intros * H; apply per_top_of_reads; intros s; destruct (H s) as [L HL HL' _]; eexists; split; eassumption. Qed.
+Proof.
+  intros * H s; destruct (H s) as [L L' HL HL' HE _].
+  exact (mk_normal_reads_alike _ _ _ _ _ HL HL' (nf_lvl_of_upto_proofs _ _ HE)).
+Qed.
 
 Lemma per_lvl_at_sym : forall n m m',
     Dom m ≈ m' ∈ per_lvl_at n ->
     Dom m' ≈ m ∈ per_lvl_at n.
-Proof. intros * H s; destruct (H s) as [L HL HL' Hb]; exists L; assumption. Qed.
+Proof.
+  intros * H s; destruct (H s) as [L L' HL HL' HE Hb].
+  exists L' L; [ assumption | assumption | symmetry; exact HE | eapply lvl_sort_bounded_upto_proofs; eassumption ].
+Qed.
 
 Lemma per_lvl_at_trans : forall n m m' m'',
     Dom m ≈ m' ∈ per_lvl_at n ->
     Dom m' ≈ m'' ∈ per_lvl_at n ->
     Dom m ≈ m'' ∈ per_lvl_at n.
 Proof.
-  intros * H H' s; destruct (H s) as [L HL HL' Hb], (H' s) as [L' HM HM' Hb'].
-  assert (L' = L) as -> by (apply nf_lvl_of_inj; exact (functional_read_nf _ _ _ _ HM HL')).
-  exists L; assumption.
+  intros * H H' s; destruct (H s) as [L L1 HL HL1 HE Hb], (H' s) as [L1' L2 HM HM' HE' Hb'].
+  assert (L1' = L1) as -> by (apply nf_lvl_of_inj; exact (functional_read_nf _ _ _ _ HM HL1)).
+  exists L L2; [ assumption | assumption | etransitivity; eassumption | exact Hb ].
 Qed.
 
 #[local] Instance per_lvl_at_PER n : PER (per_lvl_at n).
@@ -305,8 +316,8 @@ Proof. intros * Hmn [Hc Ha]; split; [ lia | intros; eapply Nat.le_trans; [ eappl
 
 Lemma per_lvl_at_mono : forall m n l l', m <= n -> Dom l ≈ l' ∈ per_lvl_at m -> Dom l ≈ l' ∈ per_lvl_at n.
 Proof.
-  intros * Hmn H s; destruct (H s) as [L HL HL' Hb].
-  exists L; [ assumption | assumption | eapply lvl_sort_bounded_mono; eassumption ].
+  intros * Hmn H s; destruct (H s) as [L L' HL HL' HE Hb].
+  exists L L'; [ assumption | assumption | exact HE | eapply lvl_sort_bounded_mono; eassumption ].
 Qed.
 
 Lemma per_bot_then_per_lvl_at : forall n m m',
@@ -315,9 +326,10 @@ Lemma per_bot_then_per_lvl_at : forall n m m',
 Proof.
   intros * H s.
   destruct (H s) as [M M' Hl Hr HE].
-  exists (ordinal_zero, cons (mk_level_atom 0 n (ne_erase M)) nil);
-    [ econstructor; eassumption | rewrite HE; econstructor; eassumption | split; [ cbn; lia |] ].
-  intros k t a Hin; cbn in Hin; destruct Hin as [(_ & -> & _) | []]; lia.
+  exists (ordinal_zero, cons (mk_level_atom 0 n M) nil) (ordinal_zero, cons (mk_level_atom 0 n M') nil);
+    [ econstructor; eassumption | econstructor; eassumption | | split; [ cbn; lia |] ].
+  - split; [ reflexivity |]; apply level_atoms_eq_upto_proofs_cons; [ exact HE | apply level_atoms_eq_upto_proofs_refl ].
+  - intros k t a Hin; cbn in Hin; destruct Hin as [(_ & -> & _) | []]; lia.
 Qed.
 
 Hint Resolve per_lvl_at_sym per_lvl_at_trans per_bot_then_per_lvl_at : mctt.
@@ -330,7 +342,7 @@ Lemma per_bot_then_per_top : forall m m' a a' b b' c c',
 Proof.
   intros * Hr Hr' H s.
   destruct (H s) as [M M' Hl Hr0 HE].
-  exists (nf_neut M) (nf_neut M'); [ apply read_nf_neut; assumption | apply read_nf_neut; assumption | cbn; f_equal; exact HE ].
+  exists (nf_neut M) (nf_neut M'); [ apply read_nf_neut; assumption | apply read_nf_neut; assumption | exact HE ].
 Qed.
 
 Hint Resolve per_bot_then_per_top : mctt.
@@ -340,7 +352,7 @@ Lemma per_top_typ_sym : forall m n,
     Dom n ≈ m ∈ per_top_typ.
 Proof.
   intros * H s; destruct (H s) as [L L' HL HL' HE].
-  exact (mk_type_reads_alike _ _ _ _ _ HL' HL (eq_sym HE)).
+  exact (mk_type_reads_alike _ _ _ _ _ HL' HL (symmetry HE)).
 Qed.
 
 Hint Resolve per_top_typ_sym : mctt.
@@ -352,14 +364,14 @@ Lemma per_top_typ_trans : forall m n l,
 Proof.
   intros * Hmn Hnl s; destruct (Hmn s) as [L L1 HL HL1 HE]; destruct (Hnl s) as [L2 L' HL2 HL' HE'].
   pose proof (functional_read_typ _ _ _ _ HL1 HL2) as <-.
-  exact (mk_type_reads_alike _ _ _ _ _ HL HL' (eq_trans HE HE')).
+  exact (mk_type_reads_alike _ _ _ _ _ HL HL' (transitivity HE HE')).
 Qed.
 
 (** Two types reading back to the same normal form are related. *)
 Lemma per_top_typ_of_reads : forall a b,
     (forall s, exists C, Rtyp a in s ↘ C /\ Rtyp b in s ↘ C) ->
     Dom a ≈ b ∈ per_top_typ.
-Proof. intros * H s; destruct (H s) as (C & HC & HC'); exact (mk_type_reads_alike _ _ _ _ _ HC HC' eq_refl). Qed.
+Proof. intros * H s; destruct (H s) as (C & HC & HC'); exact (mk_type_reads_alike _ _ _ _ _ HC HC' ltac:(reflexivity)). Qed.
 
 Hint Resolve per_top_typ_trans : mctt.
 
@@ -511,7 +523,8 @@ Proof.
   intros * H H0 s.
   destruct (H s) as [L L' HL HL' HE].
   destruct (H0 s) as [N N' HN HN' HE'].
-  exists (ne_app L N) (ne_app L' N'); [ econstructor; eassumption | econstructor; eassumption | cbn; f_equal; assumption ].
+  exists (ne_app L N) (ne_app L' N'); [ econstructor; eassumption | econstructor; eassumption |].
+  unfold ne_eq_upto_proofs, nf_eq_upto_proofs, ne_eq_upto_proofs in *; cbn; rewrite HE, HE'; reflexivity.
 Qed.
 
 End Fixed_GCtx.
