@@ -34,7 +34,7 @@ Section Fixed_GCtx.
 
   Lemma per_dmod_kinds_equiv_all :
     (forall h h', per_dmod h h' -> kinds_equiv gc_deps gc_stack h h') /\
-    (forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> True) /\
+    (forall ts ρ ρ' args args', per_tele_args ts ρ ρ' args args' -> True) /\
     (forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' ->
        forall sm sm' y ch k, gunit_member_kind gc_deps gc_stack ρ (gu_mk nil (md_body sm Φ)) (y :: ch) k <->
                           gunit_member_kind gc_deps gc_stack ρ' (gu_mk nil (md_body sm' Φ')) (y :: ch) k).

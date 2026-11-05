@@ -51,7 +51,7 @@ Qed.
 (** Two lists related at a telescope whose types read back related elements
     alike read back alike. *)
 Lemma read_ps_tele : forall (T : list centry) (tr : nat -> list domain -> relation domain) ρ ρ',
-    tele_ass T ->
+    all_assumptions T ->
     (forall k κ A pre pre', List.nth_error T k = Some (ce_ass κ A) -> tele_prefix_rel tr k pre pre' ->
        exists a a', ⟦ A ⟧ env_tele ρ T pre ↘ a /\ ⟦ A ⟧ env_tele ρ' T pre' ↘ a' /\
          (forall b b', tr k pre b b' -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top)) ->
@@ -71,7 +71,7 @@ Proof.
       destruct (nth_error_lt_some' vs j ltac:(lia)) as [v Hv].
       destruct (nth_error_lt_some' vs' j ltac:(lia)) as [v' Hv'].
       assert (He' : exists κ A, e = ce_ass κ A)
-        by (unfold tele_ass in Hass; rewrite List.Forall_forall in Hass; apply Hass; eapply List.nth_error_In; exact He).
+        by (unfold all_assumptions in Hass; rewrite List.Forall_forall in Hass; apply Hass; eapply List.nth_error_In; exact He).
       destruct He' as (κ & A & ->).
       destruct (Hev _ _ _ _ _ He (tele_prefix_rel_of_full _ _ _ _ j Hf ltac:(lia))) as (a & a' & Ea & Ea' & Hrb).
       destruct (Hrb _ _ (Hr _ _ _ Hv Hv') s) as [V V' HV HV' HE].
@@ -224,7 +224,7 @@ Lemma realize_indty : forall p D ups ups'
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : nat -> list domain -> list centry -> exp -> relation domain),
     ind_lookup gc_deps gc_stack p = Some D ->
-    grp_tele_ass D ->
+    group_structure D ->
     List.length ups = ind_nu D ->
     per_top_ps (List.rev (ind_uparams D)) ups ups' ->
     nparams_per D nr -> nparams_inv D nr -> args_per D nr ar -> args_inv D nr ar ->
@@ -267,8 +267,8 @@ Proof.
              per_top_ps (List.rev (im_params D Mm)) (ups ++ xs) (ups' ++ xs')).
   { intros m Mm xs xs' HM Hx s.
     destruct (Hps s) as [Ms1 Ms1' HM1 HM1' HE1].
-    assert (Hassn : tele_ass (List.rev (im_nparams Mm)))
-      by (apply List.Forall_rev; exact (grp_tele_ass_nparams _ Hass _ _ HM)).
+    assert (Hassn : all_assumptions (List.rev (im_nparams Mm)))
+      by (apply List.Forall_rev; exact (group_structure_nparams _ Hass _ _ HM)).
     destruct (read_ps_tele (List.rev (im_nparams Mm)) (nr m) (decl_env D ups) (decl_env D ups') Hassn
                 (fun k κ A pre pre' Hk Hp => Hn _ _ _ _ _ _ _ HM Hk Hp) _ _ Hx s) as (Ms2 & Ms2' & HM2 & HM2' & HE2).
     rewrite rev_im_params_split.
@@ -581,7 +581,7 @@ Lemma ind_rel_neut_canon : forall p D ups ups'
     (dr : nat -> list domain -> list centry -> exp -> relation domain)
     (okr : nat -> list domain -> list centry -> list exp -> list domain -> Prop)
     k Mk pm ns ns' c c',
-    grp_tele_ass D ->
+    group_structure D ->
     nparams_per D nr -> nparams_inv D nr -> args_per D nr ar -> args_inv D nr ar ->
     doms_per D nr ar dr -> doms_inv D nr ar dr ->
     ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->

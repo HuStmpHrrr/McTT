@@ -38,7 +38,7 @@ Qed.
     them, is a type of a universe or of levels, as a module's parameters
     are relevant. *)
 Lemma args_ok_next : forall Γ T Ns C T1' l,
-    args_ok gc_deps gc_stack Γ T Ns -> tele_ass T -> ctx_scoped 0 T -> ⊢ T ->
+    args_ok gc_deps gc_stack Γ T Ns -> all_assumptions T -> ctx_scoped 0 T -> ⊢ T ->
     params_evaluated gc_deps gc_stack nil T l ->
     tele_view (List.firstn (length T - length Ns) T) = Some (C, T1') ->
     param_typed gc_deps gc_stack Γ C[sb_of_list Id Ns] l.

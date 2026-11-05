@@ -407,7 +407,7 @@ Fixpoint nonrec_arg_vals (gs : list carg) (vs : list domain) : list domain :=
     pre], over the environment of the uniform parameters ([decl_env]). *)
 
 (** The non-recursive arguments of a constructor as a telescope,
-    outermost first, each at its kind ([cargs_strat] reversed). *)
+    outermost first, each at its kind ([cargs_nonrec_ctx] reversed). *)
 Fixpoint cargs_nonrec_tele (gs : list carg) : list centry :=
   match gs with
   | nil => nil
@@ -867,7 +867,7 @@ Hint Constructors ind_rel con_args_rel rec_arg_rel rec_arg_app_rel : mctt.
     depend on which of two related prefixes it is read at, and is the
     relation of the component's two types at the two sides' parameters,
     [R] being the universe relation (or, in an induction, it with the
-    motive).  [grp_tele_ass]: the parameters are assumptions, and a view's
+    motive).  [group_structure]: the parameters are assumptions, and a view's
     container member is declared, with as many non-uniform parameters as
     the view; the rank, the views' members and the agreement of the
     views' maps as the declaration checks them; and the parameters of every recursive argument's shape, of the
@@ -903,58 +903,58 @@ Record view_member_image (D : ind_decl) (qc : qname) (Is : list exp) (vm : list 
 
 (** The structural facts about a group the universe clause asks for (see
     the section header). *)
-Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
+Record group_structure (D : ind_decl) : Prop := mk_group_structure
   { (** The uniform parameters are assumptions *)
-    grp_tele_ass_uparams : tele_ass (ind_uparams D)
+    group_structure_uparams : all_assumptions (ind_uparams D)
     (** Each member's non-uniform parameters are assumptions *)
-  ; grp_tele_ass_nparams : forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)
+  ; group_structure_nparams : forall k Mk, ind_member D k = Some Mk -> all_assumptions (im_nparams Mk)
     (** A view's container member exists, with as many non-uniform
         parameters as the view, at as many uniform arguments as the
         container has *)
-  ; grp_tele_ass_views : forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+  ; group_structure_views : forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       exists Dq Mc, ind_lookup gc_deps gc_stack qc = Some Dq /\ ind_member Dq kc = Some Mc /\ im_nn Mc = im_nn Mv /\
         List.length Is = ind_nu Dq
     (** The members have a rank *)
-  ; grp_tele_ass_rank : exists rk, view_rank_ok gc_deps gc_stack D rk
+  ; group_structure_rank : exists rk, view_rank_ok gc_deps gc_stack D rk
     (** Each view's map takes the container's members to members of the
         same shapes *)
-  ; grp_tele_ass_view_wrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+  ; group_structure_view_wrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ view_wrap_ok D D' vm
     (** The views agree on their maps *)
-  ; grp_tele_ass_view_maps_coherent : view_maps_coherent gc_deps gc_stack D
+  ; group_structure_view_maps_coherent : view_maps_coherent gc_deps gc_stack D
     (** Each container member has its image under a view's map *)
-  ; grp_tele_ass_vm : forall v Mv qc kc Is vm Dq i' Mi', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+  ; group_structure_vm : forall v Mv qc kc Is vm Dq i' Mi', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> view_member_image D qc Is vm i' Mi'
     (** Each recursive argument of the group's constructors gives its
         member as many parameters as it has *)
-  ; grp_tele_ass_params_length : forall k Mk c gs, ind_member D k = Some Mk -> List.In (c, gs) (im_cons Mk) -> cargs_params_length D gs
+  ; group_structure_params_length : forall k Mk c gs, ind_member D k = Some Mk -> List.In (c, gs) (im_cons Mk) -> cargs_params_length D gs
     (** So does each of the views' containers' constructors *)
-  ; grp_tele_ass_cplen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+  ; group_structure_cplen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> List.In (c, gs') (im_cons Mi') ->
       cargs_params_length Dq gs'
     (** The record views' facts without a judgment: each a record's at its
         instance, of no non-uniform parameter and one constructor, after
         every other member, their fields ending in record views before
         them *)
-  ; grp_tele_ass_record_struct : rview_struct_ok gc_deps gc_stack D
+  ; group_structure_record_struct : rview_struct_ok gc_deps gc_stack D
     (** A view's container's record views come last, after its members
         with a block *)
-  ; grp_tele_ass_csuffix : forall v Mv qc kc Is vm Dq, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+  ; group_structure_csuffix : forall v Mv qc kc Is vm Dq, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> rview_suffix_ok Dq
     (** A view's container's record views' facts without a judgment, as
-        the group's own ([grp_tele_ass_record_struct]): what the count of the
+        the group's own ([group_structure_record_struct]): what the count of the
         container's leaf paths among the view's reads
         ([ViewCount.cargs_container_count_view]) *)
-  ; grp_tele_ass_crstruct : forall v Mv qc kc Is vm Dq, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+  ; group_structure_crstruct : forall v Mv qc kc Is vm Dq, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> rview_struct_ok gc_deps gc_stack Dq }.
 
 (** A group of these facts has the arities readback asks of a stuck
     eliminator's group ([read_ne_elim]). *)
-Lemma grp_tele_ass_leaf_arity : forall D, grp_tele_ass D -> rview_leaf_arity D.
+Lemma group_structure_leaf_arity : forall D, group_structure D -> rview_leaf_arity D.
 Proof.
   intros D HD; constructor.
-  - intros * HMk _ Hin; exact (grp_tele_ass_params_length _ HD _ _ _ _ HMk Hin).
-  - exact (rview_struct_order _ _ _ (grp_tele_ass_record_struct _ HD)).
+  - intros * HMk _ Hin; exact (group_structure_params_length _ HD _ _ _ _ HMk Hin).
+  - exact (rview_struct_order _ _ _ (group_structure_record_struct _ HD)).
 Qed.
 
 (** The non-uniform parameters' relations are PERs at related prefixes. *)
@@ -1199,7 +1199,7 @@ Section Per_univ_elem_core_def.
          (dr : nat -> list domain -> list centry -> exp -> relation domain)
          (elem_rel : relation domain),
          ind_lookup gc_deps gc_stack p = Some D ->
-         grp_tele_ass D ->
+         group_structure D ->
          ind_member D k = Some M ->
          im_head M = mh_decl pm ->
          List.length ups = ind_nu D ->
@@ -1314,7 +1314,7 @@ Section Per_univ_elem_core_def.
           (dr : nat -> list domain -> list centry -> exp -> relation domain)
           {elem_rel},
           ind_lookup gc_deps gc_stack p = Some D ->
-          grp_tele_ass D ->
+          group_structure D ->
           ind_member D k = Some M ->
           im_head M = mh_decl pm ->
           List.length ups = ind_nu D ->
@@ -1603,7 +1603,7 @@ Section Per_univ_elem_ind_def.
           (dr : nat -> list domain -> list centry -> exp -> relation domain)
           {elem_rel},
           ind_lookup gc_deps gc_stack p = Some D ->
-          grp_tele_ass D ->
+          group_structure D ->
           ind_member D k = Some M ->
           im_head M = mh_decl pm ->
           List.length ups = ind_nu D ->
@@ -1800,7 +1800,7 @@ Inductive per_dmod : dmod -> dmod -> Prop :=
 | per_dmod_global :
   `{ gc_loc gc_deps gc_stack p = Some (T, Φ) ->
      List.length args = List.length T ->
-     per_gargs (List.rev T) nil nil args args' ->
+     per_tele_args (List.rev T) nil nil args args' ->
      per_dmod (dm_global p args) (dm_global p args') }
 (** Two saturated bodies, related entry by entry as written. *)
 | per_dmod_body :
@@ -1819,17 +1819,17 @@ Inductive per_dmod : dmod -> dmod -> Prop :=
           per_dmod hc hc') ->
        per_dmod h h' }
 (** Arguments of a global module, outermost first, against its telescope. *)
-with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop :=
+with per_tele_args : list centry -> env -> env -> list domain -> list domain -> Prop :=
 (** No more arguments. *)
-| per_gargs_nil :
-  `{ per_gargs ts ρ ρ' nil nil }
+| per_tele_args_nil :
+  `{ per_tele_args ts ρ ρ' nil nil }
 (** An argument related at its parameter's type, then the rest. *)
-| per_gargs_cons :
+| per_tele_args_cons :
   `{ forall R,
        rel_typ i A ρ A ρ' R ->
        R a a' ->
-       per_gargs ts (ρ ↦ a ⦂ entry_type_closure A ρ) (ρ' ↦ a' ⦂ entry_type_closure A ρ') args args' ->
-       per_gargs (ce_ass κ A :: ts) ρ ρ' (a :: args) (a' :: args') }
+       per_tele_args ts (ρ ↦ a ⦂ entry_type_closure A ρ) (ρ' ↦ a' ⦂ entry_type_closure A ρ') args args' ->
+       per_tele_args (ce_ass κ A :: ts) ρ ρ' (a :: args) (a' :: args') }
 (** Two expanded bodies (the core open phase has replaced their local
     opens), each entry seen in the environment its predecessors make
     ([eval_body_env]). *)
@@ -1875,12 +1875,12 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 .
 
 Scheme per_dmod_mut_ind := Induction for per_dmod Sort Prop
-with per_gargs_mut_ind := Induction for per_gargs Sort Prop
+with per_tele_args_mut_ind := Induction for per_tele_args Sort Prop
 with per_body_mut_ind := Induction for per_body Sort Prop.
 Combined Scheme per_dmod_mut_ind_all from
-  per_dmod_mut_ind, per_gargs_mut_ind, per_body_mut_ind.
+  per_dmod_mut_ind, per_tele_args_mut_ind, per_body_mut_ind.
 
-Hint Constructors next_param per_dmod per_gargs per_body : mctt.
+Hint Constructors next_param per_dmod per_tele_args per_body : mctt.
 
 (** Two module expressions evaluate to related module values. *)
 #[warnings="-cannot-define-projection"]
@@ -2221,7 +2221,7 @@ Hint Transparent rel_elem : mctt.
 #[export]
 Hint Unfold rel_elem : mctt.
 #[export]
-Hint Constructors next_param per_dmod per_gargs per_body : mctt.
+Hint Constructors next_param per_dmod per_tele_args per_body : mctt.
 #[export]
 Hint Constructors per_ctx_env : mctt.
 Notation "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.

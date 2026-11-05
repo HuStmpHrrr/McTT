@@ -605,27 +605,27 @@ Lemma ctx_app_wf_tail : forall Θ Ξ Ψ Γ, ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ -> ⊢ Θ
 Proof. induction Ψ; intros; cbn in *; eauto using ctx_decomp_tail. Qed.
 
 (** The motive's and the branches' contexts are of assumptions. *)
-Lemma leaves_ctx_ass : forall r nn As Us na pat j ls, tele_ass (leaves_ctx r nn As Us na pat j ls).
+Lemma leaves_ctx_ass : forall r nn As Us na pat j ls, all_assumptions (leaves_ctx r nn As Us na pat j ls).
 Proof.
   intros r nn As Us na pat j ls; revert j; induction ls as [| l ls IH]; intros; cbn; [ constructor |].
   apply List.Forall_app; split; [ apply IH | constructor; eauto ].
 Qed.
 
-Lemma ihs_ctx_aux_ass : forall r tbl nn As Us na gs pat j, tele_ass (ihs_ctx_aux r tbl nn As Us na pat j gs).
+Lemma ihs_ctx_aux_ass : forall r tbl nn As Us na gs pat j, all_assumptions (ihs_ctx_aux r tbl nn As Us na pat j gs).
 Proof.
   intros r tbl nn As Us na; induction gs as [| [] gs IH]; intros; cbn; [ constructor | apply IH |].
   apply List.Forall_app; split; [ apply IH | apply leaves_ctx_ass ].
 Qed.
 
-Lemma elim_mctx_ass : forall pq D k M Us, decl_closed D -> ind_member D k = Some M -> tele_ass (elim_mctx pq D k M Us).
+Lemma elim_mctx_ass : forall pq D k M Us, decl_closed D -> ind_member D k = Some M -> all_assumptions (elim_mctx pq D k M Us).
 Proof.
-  intros * HD HM; unfold elim_mctx; constructor; [ eauto | apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption ].
+  intros * HD HM; unfold elim_mctx; constructor; [ eauto | apply all_assumptions_sub; eapply decl_closed_nparams_ass; eassumption ].
 Qed.
 
-Lemma elim_bctx_ass : forall r pq D k M gs As Us, decl_closed D -> ind_member D k = Some M -> tele_ass (elim_bctx r pq D M gs As Us).
+Lemma elim_bctx_ass : forall r pq D k M gs As Us, decl_closed D -> ind_member D k = Some M -> all_assumptions (elim_bctx r pq D M gs As Us).
 Proof.
   intros * HD HM; unfold elim_bctx; apply List.Forall_app; split; [ apply ihs_ctx_aux_ass |].
-  apply List.Forall_app; split; apply tele_ass_sub; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ].
+  apply List.Forall_app; split; apply all_assumptions_sub; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ].
 Qed.
 
 (** The rest of an extension compared entry by entry. *)
@@ -1428,7 +1428,7 @@ Section RecordMove.
       (forall Γ0, ⊢ Θ ⍮ Ξ ⍮ Γ0 -> R Γ0 Id Γ0) ->
       record_lookup Θ Ξ p = Some Rd ->
       List.NoDup (List.map fst (record_fields Rd)) ->
-      tele_ass (record_params Rd) ->
+      all_assumptions (record_params Rd) ->
       (forall Δ0 σ0, R Δ0 σ0 ⋅ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (record_ty Rd)[σ0] : Typeω@i[σ0]) ->
       ⊢ Θ ⍮ Ξ ⍮ record_fctx Rd (List.length (record_fields Rd)) ++ record_params Rd ->
       (forall Δ0 σ0, R Δ0 σ0 (record_params Rd) -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵤ (record_sort Rd)[σ0]) ->
@@ -1450,7 +1450,7 @@ Section RecordMove.
       (forall Γ0, ⊢ Θ ⍮ Ξ ⍮ Γ0 -> R Γ0 Id Γ0) ->
       record_lookup Θ Ξ p = Some Rd ->
       List.NoDup (List.map fst (record_fields Rd)) ->
-      tele_ass (record_params Rd) ->
+      all_assumptions (record_params Rd) ->
       (forall Δ0 σ0, R Δ0 σ0 ⋅ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (record_ty Rd)[σ0] : Typeω@i[σ0]) ->
       ⊢ Θ ⍮ Ξ ⍮ record_fctx Rd (List.length (record_fields Rd)) ++ record_params Rd ->
       (forall Δ0 σ0, R Δ0 σ0 (record_params Rd) -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵤ (record_sort Rd)[σ0]) ->
@@ -2056,7 +2056,7 @@ Lemma unit_body_moved : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps
        gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
        Θ ⍮ Ξ ⍮ tele_sub Δu' σ' ++ Δ ⊢ᵐ H'[σf']ᵐ[sb_qn (length Δu') σ']ᵐ ≈ H'[σf']ᵐ[sb_qn (length Δu') σ']ᵐ) ->
     body_xp Θ Ξ (Δu ++ Γ) Φ Φx -> body_xp Θ Ξ (Δu' ++ Γ) Φ' Φx' ->
-    tele_ass Δu -> tele_ass Δu' -> length Δu = length Δu' ->
+    all_assumptions Δu -> all_assumptions Δu' -> length Δu = length Δu' ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
@@ -2172,8 +2172,8 @@ Proof.
     destruct (gm_fill_sub Φ0' (length Δu') σ' σf' Hf0') as (τ' & Hτ' & Heq'); rewrite Hτ' in Hfw'; injection Hfw' as <-.
     rewrite (fill_sub_modexp _ _ _ _ _ _ Heq').
     exact (HOr _ _ _ _ _ _ _ Ek Ek' Hf0 Hf0').
-  - apply tele_ass_sub; assumption.
-  - apply tele_ass_sub; assumption.
+  - apply all_assumptions_sub; assumption.
+  - apply all_assumptions_sub; assumption.
   - rewrite !length_tele_sub; assumption.
   - apply body_shape_sub; assumption.
   - apply body_shape_sub; assumption.
@@ -2256,7 +2256,7 @@ Lemma wk_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l 
        List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> List.nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
        gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
        forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk H'[σf']ᵐ φ0 ≈ modexp_wk H'[σf']ᵐ φ0) ->
-    tele_ass Δu -> tele_ass Δu' -> length Δu = length Δu' ->
+    all_assumptions Δu -> all_assumptions Δu' -> length Δu = length Δu' ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
@@ -2682,7 +2682,7 @@ Proof.
         destruct (wf_wk_ext_of_ext _ _ _ _ _ _ _ Hφ Hx (IHx _ _ Hφ)) as [Hl Hr];
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         wk_pose_flags Hφ;
-        eapply wf_unit_eq_alias; [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption | eauto | rewrite <- ?Hlen in *; eauto
+        eapply wf_unit_eq_alias; [ exact (IHx _ _ Hφ) | apply all_assumptions_wk; assumption | apply all_assumptions_wk; assumption | eauto | rewrite <- ?Hlen in *; eauto
                                  | eassumption | wk_params_case Hφ | wk_params_case Hφ | flag_premise_from_levels_flag .. ]
     end ].
   all: try solve [ eapply wk_unit_body_case; (eassumption || (eapply wf_unit_eq_body; eassumption)) ].
@@ -2701,7 +2701,7 @@ Proof.
         match goal with F : levels_flag _ _ _ _ _ _ _ |- _ => revert F end;
         destruct (gunit_wk (gu_mk Δ' D) (wk_qn (length Δ) φ)) as [Δw Dw] eqn:EU; intros F HU'; cbn [gunit_abs];
         cbn [modexp_wk] in F; rewrite EU in F;
-        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | exact HU' | eassumption | wk_params_case Hφ
+        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hφ) | apply all_assumptions_wk; assumption | exact HU' | eassumption | wk_params_case Hφ
                                    | flag_premise_from_levels_flag .. ]
     end ].
   (** The remaining cases name their induction hypotheses by shape. *)
@@ -2717,7 +2717,7 @@ Proof.
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         wk_pose_flags Hφ;
         eapply wf_unit_eq_alias;
-        [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption
+        [ exact (IHx _ _ Hφ) | apply all_assumptions_wk; assumption | apply all_assumptions_wk; assumption
         | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | eassumption | wk_params_case Hφ | wk_params_case Hφ
         | flag_premise_from_levels_flag .. ]
     end ].
@@ -3603,7 +3603,7 @@ Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l
        List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> List.nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
        gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
        forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ H'[σf']ᵐ[σ0]ᵐ ≈ H'[σf']ᵐ[σ0]ᵐ) ->
-    tele_ass Δu -> tele_ass Δu' -> length Δu = length Δu' ->
+    all_assumptions Δu -> all_assumptions Δu' -> length Δu = length Δu' ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
@@ -3919,7 +3919,7 @@ Proof.
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         sub_pose_flags Hσ;
         eapply wf_unit_eq_alias;
-        [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | apply tele_ass_sub; assumption
+        [ exact (IHx _ _ Hσ) | apply all_assumptions_sub; assumption | apply all_assumptions_sub; assumption
         | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) | eassumption | sub_params_case Hσ | sub_params_case Hσ
         | flag_premise_from_levels_flag .. ]
     end ].
@@ -3939,7 +3939,7 @@ Proof.
         match goal with F : levels_flag _ _ _ _ _ _ _ |- _ => revert F end;
         destruct (gunit_sub (gu_mk Δ' D) (sb_qn (length Δ) σ)) as [Δw Dw] eqn:EU; intros F HU'; cbn [gunit_abs];
         cbn [modexp_sub] in F; rewrite EU in F;
-        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | exact HU' | eassumption | sub_params_case Hσ
+        eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hσ) | apply all_assumptions_sub; assumption | exact HU' | eassumption | sub_params_case Hσ
                                    | flag_premise_from_levels_flag .. ]
     end ].
   (** Module expressions. *)

@@ -356,7 +356,7 @@ Section Fill.
   (** The empty telescope *)
   | fill_tele_nil : forall Γ, fill_tele Γ nil nil
   (** An assumption, at the kind of the sort its filled type infers to *)
-  | fill_tele_ass : forall Γ Δ Δ' A A' W,
+  | fill_tele_assumption : forall Γ Δ Δ' A A' W,
       fill_tele Γ Δ Δ' -> fill_exp (Δ' ++ Γ) A A' -> ⊢ Θ ⍮ Ξ ⍮ Δ' ++ Γ -> Δ' ++ Γ ⊢a A' ⟹ W ->
       fill_tele Γ (A :: Δ) (ce_ass (sort_abs_kind W) A' :: Δ')
 

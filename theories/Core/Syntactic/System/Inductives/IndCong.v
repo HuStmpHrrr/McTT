@@ -20,7 +20,7 @@ Section Fixed_GCtx.
   Context {Θ : gdeps} {Ξ : gstack}.
 
   Lemma wf_sub_eq_of_list : forall Δ Γ Γ0 σ σ' Ms Ms',
-      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Γ0 ->
+      all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Γ0 ->
       List.length Ms = List.length Δ -> List.length Ms' = List.length Δ ->
       (forall k N N' T, List.nth_error Ms k = Some N -> List.nth_error Ms' k = Some N' ->
          List.nth_error (tele_insts Δ σ Ms) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T) ->
@@ -28,7 +28,7 @@ Section Fixed_GCtx.
   Proof.
     induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ Hl Hl' HMs.
     - destruct Ms; [| discriminate ]; destruct Ms'; [| discriminate ]; exact Hσ.
-    - unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
+    - unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
       rewrite List.length_app in Hl, Hl'; cbn in Hl, Hl'.
       destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; destruct Ms' as [| M0' Ms']; [ cbn in Hl'; lia |]; cbn in Hl, Hl'.
       rewrite <- List.app_assoc in HΔ |- *; cbn [List.app] in HΔ |- *.
@@ -46,7 +46,7 @@ Section Fixed_GCtx.
 
   Lemma wf_exp_eq_apps_ctx_pi_n : forall n Δ Γ B i M M' Ms Ms',
       List.length Δ = n ->
-      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ B : Typeω@i ->
+      all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ B : Typeω@i ->
       Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ctx_pi Δ B ->
       List.length Ms = List.length Δ -> List.length Ms' = List.length Δ ->
       (forall k N N' T, List.nth_error Ms k = Some N -> List.nth_error Ms' k = Some N' ->
@@ -59,7 +59,7 @@ Section Fixed_GCtx.
     - destruct (List.exists_last (l := Δ)) as (Δ0 & e & ->); [ intros ->; discriminate |].
       rename Δ0 into Δ.
       rewrite List.length_app in Hn; cbn in Hn.
-      unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
+      unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
       rewrite List.length_app in Hl, Hl'; cbn in Hl, Hl'.
       destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; destruct Ms' as [| M0' Ms']; [ cbn in Hl'; lia |]; cbn in Hl, Hl'.
       rewrite ctx_pi_snoc in HM; rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
@@ -75,7 +75,7 @@ Section Fixed_GCtx.
       cbn [apps_exp sb_of_list].
       replace (B[sb_of_list (Id,,M0) Ms]) with (B[sb_qn (List.length Δ) (Id,,M0)][sb_of_list Id Ms])
         by (replace (List.length Δ) with (List.length Ms) by lia; apply exp_sub_qn_of_list).
-      eapply (IH (tele_sub Δ (Id,,M0))); [ rewrite length_tele_sub; lia | apply tele_ass_sub; exact Hass | exact HΔ' | | exact Happ
+      eapply (IH (tele_sub Δ (Id,,M0))); [ rewrite length_tele_sub; lia | apply all_assumptions_sub; exact Hass | exact HΔ' | | exact Happ
                  | rewrite length_tele_sub; lia | rewrite length_tele_sub; lia |].
       + exact (sub_preserves_exp _ _ _ _ _ _ _ HB Hs').
       + intros k' N N' T HN HN' HT; apply (HMs (S k')); [ exact HN | exact HN' |].
@@ -87,7 +87,7 @@ Section Fixed_GCtx.
   (** A term of a [Π] over a closed telescope applies equally to equal terms
       of its types. *)
   Lemma wf_exp_eq_apps_closed_pi : forall Δ B i Ψ M M' Ms Ms',
-      tele_ass Δ -> ctx_scoped 0 Δ -> exp_scoped (List.length Δ) B -> Θ ⍮ Ξ ⍮ Δ ⊢ B : Typeω@i ->
+      all_assumptions Δ -> ctx_scoped 0 Δ -> exp_scoped (List.length Δ) B -> Θ ⍮ Ξ ⍮ Δ ⊢ B : Typeω@i ->
       ⊢ Θ ⍮ Ξ ⍮ Ψ -> Θ ⍮ Ξ ⍮ Ψ ⊢ M ≈ M' : ctx_pi Δ B ->
       List.length Ms = List.length Δ -> List.length Ms' = List.length Δ ->
       (forall k N N' T, List.nth_error Ms k = Some N -> List.nth_error Ms' k = Some N' ->
@@ -152,7 +152,7 @@ Section Fixed_GCtx.
     assert (HC : Θ ⍮ Ξ ⍮ Γ ⊢ a_con p k c : con_ty p D k Mk gs) by (eapply wf_con_of_lookup; eassumption).
     unfold con_ty in HC; rewrite <- ctx_pi_app in HC.
     destruct (proj1 (proj2 wf_scoped) _ _ _ _ _ Hj) as (_ & Hscod & _).
-    assert (Hass : tele_ass (cargs_ctx p D Mk gs ++ im_params D Mk))
+    assert (Hass : all_assumptions (cargs_ctx p D Mk gs ++ im_params D Mk))
       by (apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | eapply decl_closed_params_ass; eassumption ]).
     pose proof (wf_exp_eq_apps_closed_pi _ _ j _ _ _ (Ps ++ As) (Ps' ++ As') Hass
                   (cargs_ctx_closed p D k Mk c gs gs nil Hc Hk Hin (eq_sym (List.app_nil_r gs))) Hscod Hj HΓ (wf_exp_eq_refl HC)) as HR.
@@ -188,7 +188,7 @@ Section Fixed_GCtx.
   (** Equal instances of a telescope have equal types, position by
       position. *)
   Lemma tele_insts_cong : forall Δ Γ Γ0 σ σ' Ms Ms',
-      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Γ0 ->
+      all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Γ0 ->
       List.length Ms = List.length Δ -> List.length Ms' = List.length Δ ->
       (forall k N N' T, List.nth_error Ms k = Some N -> List.nth_error Ms' k = Some N' ->
          List.nth_error (tele_insts Δ σ Ms) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T) ->
@@ -197,7 +197,7 @@ Section Fixed_GCtx.
   Proof.
     induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ Hl Hl' HMs k T T' HT HT'.
     - destruct Ms; [| discriminate ]; unfold tele_insts in HT; cbn in HT; destruct k; discriminate.
-    - unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
+    - unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
       rewrite List.length_app in Hl, Hl'; cbn in Hl, Hl'.
       destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; destruct Ms' as [| M0' Ms']; [ cbn in Hl'; lia |]; cbn in Hl, Hl'.
       rewrite <- List.app_assoc in HΔ; cbn [List.app] in HΔ.
@@ -279,7 +279,7 @@ Section Fixed_GCtx.
   Qed.
 
   (** The same for any closed telescope. *)
-  Lemma tele_eq_trans : forall Γ C Xs Ys Zs, tele_ass C -> ⊢ Θ ⍮ Ξ ⍮ C ++ Γ ->
+  Lemma tele_eq_trans : forall Γ C Xs Ys Zs, all_assumptions C -> ⊢ Θ ⍮ Ξ ⍮ C ++ Γ ->
       List.length Xs = List.length C -> List.length Ys = List.length C -> List.length Zs = List.length C ->
       (forall k X Y T, List.nth_error Xs k = Some X -> List.nth_error Ys k = Some Y ->
          List.nth_error (tele_insts C Id Xs) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ X ≈ Y : T) ->
@@ -301,7 +301,7 @@ Section Fixed_GCtx.
   Qed.
 
   (** Symmetry, for any closed telescope. *)
-  Lemma tele_eq_sym : forall Γ C Xs Ys, tele_ass C -> ⊢ Θ ⍮ Ξ ⍮ C ++ Γ ->
+  Lemma tele_eq_sym : forall Γ C Xs Ys, all_assumptions C -> ⊢ Θ ⍮ Ξ ⍮ C ++ Γ ->
       List.length Xs = List.length C -> List.length Ys = List.length C ->
       (forall k X Y T, List.nth_error Xs k = Some X -> List.nth_error Ys k = Some Y ->
          List.nth_error (tele_insts C Id Xs) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ X ≈ Y : T) ->
@@ -371,27 +371,27 @@ Section Fixed_GCtx.
   Qed.
 
   (** The pieces of a [Π] over a telescope are types at its level. *)
-  Lemma ctx_pi_inv_outer : forall Δ2 Γ C j, tele_ass Δ2 ->
+  Lemma ctx_pi_inv_outer : forall Δ2 Γ C j, all_assumptions Δ2 ->
       Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ2 C : Typeω@j -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ C : Typeω@j.
   Proof.
     induction Δ2 as [| e Δ2 IH] using List.rev_ind; intros * Hass H; [ exact H |].
-    unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ & A & ->) _].
+    unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ & A & ->) _].
     rewrite ctx_pi_snoc in H; apply wf_pi_inversion' in H as [_ H].
     rewrite <- List.app_assoc; exact (IH _ _ _ Hass H).
   Qed.
 
-  Lemma ctx_pi_split_typed : forall Δt Γ B j, tele_ass Δt -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δt B : Typeω@j ->
+  Lemma ctx_pi_split_typed : forall Δt Γ B j, all_assumptions Δt -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δt B : Typeω@j ->
       (forall Δ1 Δ2, Δt = Δ1 ++ Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ ctx_pi Δ1 B : Typeω@j) /\
       (forall Δ1 κ A Δ2, Δt = Δ1 ++ ce_ass κ A :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ A : abs_kind_sort κ Typeω@j).
   Proof.
     intros * Hass H; split.
     - intros Δ1 Δ2 ->; rewrite ctx_pi_app in H.
-      unfold tele_ass in Hass; apply List.Forall_app in Hass as [_ Hass].
+      unfold all_assumptions in Hass; apply List.Forall_app in Hass as [_ Hass].
       exact (ctx_pi_inv_outer _ _ _ _ Hass H).
     - intros Δ1 κ A Δ2 ->.
       replace (Δ1 ++ ce_ass κ A :: Δ2) with ((Δ1 ++ ⋅ ▹{κ} A) ++ Δ2) in H by (rewrite <- List.app_assoc; reflexivity).
       rewrite ctx_pi_app, ctx_pi_snoc in H.
-      unfold tele_ass in Hass; apply List.Forall_app in Hass as [_ Hass]; apply List.Forall_cons_iff in Hass as [_ Hass].
+      unfold all_assumptions in Hass; apply List.Forall_app in Hass as [_ Hass]; apply List.Forall_cons_iff in Hass as [_ Hass].
       exact (proj1 (wf_pi_inversion' (ctx_pi_inv_outer _ _ _ _ Hass H))).
   Qed.
 

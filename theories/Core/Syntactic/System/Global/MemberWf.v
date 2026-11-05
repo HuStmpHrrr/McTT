@@ -59,13 +59,13 @@ Qed.
 Definition unit_parts (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U : gunit) : Prop :=
   match U with
   | gu_mk Δ (md_body sm Φ) =>
-      exists Φx, body_xp Θ Ξ (Δ ++ Γ) Φ Φx /\ ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Δ ++ Γ /\ tele_ass Δ /\ body_shape Φx Φx
-  | gu_mk Δ (md_alias E) => ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ /\ tele_ass Δ /\ Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ E ≈ E
+      exists Φx, body_xp Θ Ξ (Δ ++ Γ) Φ Φx /\ ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Δ ++ Γ /\ all_assumptions Δ /\ body_shape Φx Φx
+  | gu_mk Δ (md_alias E) => ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ /\ all_assumptions Δ /\ Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ E ≈ E
   end.
 
 (** The parts of a unit of the context after [Δ] are those of the unit
     abstracted over [Δ]. *)
-Lemma unit_parts_abs : forall Θ Ξ Γ Δ U, unit_parts Θ Ξ (Δ ++ Γ) U -> tele_ass Δ -> unit_parts Θ Ξ Γ (gunit_abs Δ U).
+Lemma unit_parts_abs : forall Θ Ξ Γ Δ U, unit_parts Θ Ξ (Δ ++ Γ) U -> all_assumptions Δ -> unit_parts Θ Ξ Γ (gunit_abs Δ U).
 Proof.
   intros * HU Ha; destruct U as [Δy [sm Φ | E]]; cbn in HU |- *.
   - destruct HU as (Φx & Hx & HC & Hy & Hs); exists Φx; rewrite <- !app_assoc.
@@ -217,7 +217,7 @@ Proof. induction args; intros; cbn; auto. Qed.
 (** ** Telescopes of a Valid Global Context *)
 
 Theorem gc_body_tele_wf : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
-    forall p T Φ, gc_body Θ Ξ p = Some (T, Φ) -> ⊢ Θ ⍮ Ξ ⍮ T /\ tele_ass T.
+    forall p T Φ, gc_body Θ Ξ p = Some (T, Φ) -> ⊢ Θ ⍮ Ξ ⍮ T /\ all_assumptions T.
 Proof.
   intros * Hg * Hb.
   destruct (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hg) (or_intror Hb)) as [[Ha HT _ _] _]; split; assumption.

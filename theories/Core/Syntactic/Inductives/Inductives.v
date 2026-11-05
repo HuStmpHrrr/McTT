@@ -446,14 +446,14 @@ Definition ind_ty (D : ind_decl) (M : imember) : typ := ctx_pi (im_params D M) (
 
 (** The types of the non-recursive arguments of a constructor are in the
     context of the non-recursive arguments before them: a recursive argument
-    is not a binder for them ([cargs_strat]).  [wk_pat pat] sends that
+    is not a binder for them ([cargs_nonrec_ctx]).  [wk_pat pat] sends that
     context into the one of all the arguments before, where [pat] tells,
     innermost first, which of them are recursive. *)
-Fixpoint cargs_strat (gs : list carg) : ctx :=
+Fixpoint cargs_nonrec_ctx (gs : list carg) : ctx :=
   match gs with
   | nil => nil
-  | ca_arg κ A :: gs' => cargs_strat gs' ++ ce_ass κ A :: nil
-  | ca_rec _ :: gs' => cargs_strat gs'
+  | ca_arg κ A :: gs' => cargs_nonrec_ctx gs' ++ ce_ass κ A :: nil
+  | ca_rec _ :: gs' => cargs_nonrec_ctx gs'
   end.
 
 (** ** Shapes

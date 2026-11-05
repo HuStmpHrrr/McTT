@@ -69,7 +69,7 @@ Qed.
     relations: [ups_ok] at the parameters' own context, its variables at
     the parameters' environment. *)
 Lemma group_ups_ok : forall VP pg Dg, valid_groups VP -> VP pg Dg ->
-    forall u, per_gargs (List.rev (ind_uparams Dg)) nil nil u u -> List.length u = ind_nu Dg ->
+    forall u, per_tele_args (List.rev (ind_uparams Dg)) nil nil u u -> List.length u = ind_nu Dg ->
     elim_ups_ok pg Dg u (canon_nparams_rel Dg u) (canon_args_rel Dg u) (canon_doms_rel Dg u) u u.
 Proof.
   intros VP pg Dg HP HPG u Hgu Hu.
@@ -90,8 +90,8 @@ Qed.
     the canonical relations at [u], at the bases [u] and [w]
     ([member_type_from_u0]). *)
 Lemma group_member_type : forall VP pg Dg, valid_groups VP -> VP pg Dg ->
-    forall u w, per_gargs (List.rev (ind_uparams Dg)) nil nil u u -> List.length u = ind_nu Dg ->
-    per_gargs (List.rev (ind_uparams Dg)) nil nil w u -> List.length w = ind_nu Dg ->
+    forall u w, per_tele_args (List.rev (ind_uparams Dg)) nil nil u u -> List.length u = ind_nu Dg ->
+    per_tele_args (List.rev (ind_uparams Dg)) nil nil w u -> List.length w = ind_nu Dg ->
     forall j Mj hd0 k0 p0 hd k pw bs bs', ind_member Dg j = Some Mj -> im_is_rview Mj = false ->
       ⟦mref j of pg u ⟧ gc_deps ⍮ gc_stack ↘ (hd0, k0, p0) -> ⟦mref j of pg w ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pw) ->
       tele_rel (canon_nparams_rel Dg u j) (List.rev (im_nparams Mj)) bs bs' ->
@@ -163,7 +163,7 @@ Section ContainerReadable.
   Let Hl := valid_group_lookup _ _ Hvg.
   Let Hdt := valid_group_typed _ _ Hvg.
   Let Hass := valid_group_ass _ _ Hvg.
-  Let Hrs : rview_struct_ok gc_deps gc_stack D := grp_tele_ass_record_struct _ Hass.
+  Let Hrs : rview_struct_ok gc_deps gc_stack D := group_structure_record_struct _ Hass.
   Let Hlc : leaves_coherent D := leaves_coherent_of_order D (rview_struct_order _ _ _ Hrs).
   Variable (Γ : ctx) (RΓ : relation env).
   Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HΓ : ⊨ Γ).
@@ -190,15 +190,15 @@ Section ContainerReadable.
       (env_tele C1 (mctx_tele j) (ns ++ m :: nil)) (env_tele C1 (mctx_tele j) (ns' ++ m' :: nil)).
   #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC).
   #[local] Abbreviation u0_len' := (u0_len D Us HUl C1 u0 HUC).
-  #[local] Abbreviation u0_gargs' := (EB u0_gargs).
-  #[local] Abbreviation Hcp := (valid_group_canon p D Hvg u0 u0_gargs' u0_len').
+  #[local] Abbreviation u0_tele_args' := (EB u0_tele_args).
+  #[local] Abbreviation Hcp := (valid_group_canon p D Hvg u0 u0_tele_args' u0_len').
   #[local] Abbreviation HnP := (ind_canon_props_np_per _ _ Hcp).
   #[local] Abbreviation HnI := (ind_canon_props_np_iff _ _ Hcp).
   #[local] Abbreviation HaP := (ind_canon_props_arg_per _ _ Hcp).
   #[local] Abbreviation HaI := (ind_canon_props_arg_iff _ _ Hcp).
   #[local] Abbreviation HdP := (ind_canon_props_dom_per _ _ Hcp).
   #[local] Abbreviation HdI := (ind_canon_props_dom_iff _ _ Hcp).
-  #[local] Abbreviation Had := (valid_group_adm p D Hvg u0 u0 u0_gargs' u0_len' u0_gargs').
+  #[local] Abbreviation Had := (valid_group_adm p D Hvg u0 u0 u0_tele_args' u0_len' u0_tele_args').
 
   (** The view [m] of the container's member [k'], its map [vm]. *)
   Variable (qc : qname) (D' : ind_decl) (m : nat) (Mm : imember) (k' : nat) (Is : list exp) (vm : list nat).
@@ -210,7 +210,7 @@ Section ContainerReadable.
   Let HDQ := valid_group_valid _ _ HgQ.
   Let HcQ := valid_group_closed _ _ HgQ.
   Let HassQ := valid_group_ass _ _ HgQ.
-  Let HrsQ : rview_struct_ok gc_deps gc_stack D' := grp_tele_ass_record_struct _ HassQ.
+  Let HrsQ : rview_struct_ok gc_deps gc_stack D' := group_structure_record_struct _ HassQ.
   Let HlcQ : leaves_coherent D' := leaves_coherent_of_order D' (rview_struct_order _ _ _ HrsQ).
 
   (** The container's eliminator: a block for each member with one. *)
@@ -234,7 +234,7 @@ Section ContainerReadable.
   (** The view's instance at [u0], and [ub] related to it. *)
   Variable (cups : list domain).
   Hypotheses (Ecups : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D u0 ↘ cups)
-    (Hub : per_gargs (List.rev (ind_uparams D')) nil nil ub cups).
+    (Hub : per_tele_args (List.rev (ind_uparams D')) nil nil ub cups).
   (** The container's canonical relations at [cups] and at [ub]. *)
   Let nrC := canon_nparams_rel D' cups.
   Let arC := canon_args_rel D' cups.
@@ -242,7 +242,7 @@ Section ContainerReadable.
   Let nrQ := canon_nparams_rel D' ub.
   Let arQ := canon_args_rel D' ub.
   Let drQ := canon_doms_rel D' ub.
-  #[local] Abbreviation Hcc := (view_container_uparams_rel p D Hvg Hcv m Mm qc k' Is vm D' HMm Hh Hq u0 cups u0_gargs' u0_len' Ecups).
+  #[local] Abbreviation Hcc := (view_container_uparams_rel p D Hvg Hcv m Mm qc k' Is vm D' HMm Hh Hq u0 cups u0_tele_args' u0_len' Ecups).
   #[local] Abbreviation Lc := (length_container_uparams p D Hvg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups).
   #[local] Abbreviation Hcu := (uparams_sym D' HDQ HcQ _ _ Hub Lub).
   #[local] Abbreviation Hubub := (uparams_refl_l D' HDQ HcQ _ _ Hub).
@@ -251,7 +251,7 @@ Section ContainerReadable.
   #[local] Abbreviation HadC := (valid_group_adm qc D' HgQ cups cups Hcc Lc Hcc).
   #[local] Abbreviation HadCu := (valid_group_adm qc D' HgQ cups ub Hcc Lc Hcu).
   (** The view's coherence at the canonical relations at [u0] and [cups]. *)
-  #[local] Abbreviation Hvc := (view_agreement_canonical_all VP p D HP HPD u0 u0 u0_gargs' u0_len' m Mm qc k' Is vm D' cups cups
+  #[local] Abbreviation Hvc := (view_agreement_canonical_all VP p D HP HPD u0 u0 u0_tele_args' u0_len' m Mm qc k' Is vm D' cups cups
                                   HMm Hh Hq Ecups Ecups).
   (** The container's eliminator's uniform parameters [ub], at the
       container's own canonical relations. *)
@@ -263,7 +263,7 @@ Section ContainerReadable.
       exists Mi' Mj, ind_member D' i' = Some Mi' /\ view_member p D qc D' vm i' Mi' j Mj.
   Proof.
     intros i' j Hv.
-    destruct (grp_tele_ass_view_wrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw).
+    destruct (group_structure_view_wrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw).
     rewrite Hq in Hq2; injection Hq2 as <-.
     assert (Hi : i' < List.length (ind_members D')) by (rewrite <- (view_wrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; congruence).
     destruct (nth_error_lt_some' _ _ Hi) as [Mi' HMi'].

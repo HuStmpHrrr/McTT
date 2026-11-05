@@ -252,15 +252,15 @@ Section Fixed_GCtx.
       type's base [ups], read back at the types of the telescope over any
       base [ua] admissible beside it ([adm_nparam_types]). *)
   Lemma nparams_entries_readable_at_admissible_base : forall D ups nr ar dr ua j Mj ns ns',
-      grp_tele_ass D -> adm_uparams D ups nr ar dr ua -> ind_member D j = Some Mj ->
+      group_structure D -> adm_uparams D ups nr ar dr ua -> ind_member D j = Some Mj ->
       tele_rel (nr j) (List.rev (im_nparams Mj)) ns ns' ->
       List.Forall2 (fun v t => entry_readable (de_term v t)) ns'
         (List.map snd (tele_entries (decl_env D ua) (List.rev (im_nparams Mj)) ns')).
   Proof.
     intros * Hass Ha HM Hn.
     pose proof (proj1 (tele_rel_iff _ _ _ _) Hn) as (Ll & Lr & Hr).
-    assert (Hta : tele_ass (List.rev (im_nparams Mj)))
-      by (apply List.Forall_rev; exact (grp_tele_ass_nparams _ Hass _ _ HM)).
+    assert (Hta : all_assumptions (List.rev (im_nparams Mj)))
+      by (apply List.Forall_rev; exact (group_structure_nparams _ Hass _ _ HM)).
     apply tele_entries_readable; [| lia ].
     intros i e v He Hv.
     destruct (proj1 (List.Forall_forall _ _) Hta e (List.nth_error_In _ _ He)) as (κ & A & ->).
@@ -488,7 +488,7 @@ Section Fixed_GCtx.
     Variable (nr : nat -> nat -> list domain -> relation domain).
     Variable (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain).
     Variable (dr : nat -> list domain -> list centry -> exp -> relation domain).
-    Hypothesis (Hl : ind_lookup gc_deps gc_stack p = Some D) (Hass : grp_tele_ass D).
+    Hypothesis (Hl : ind_lookup gc_deps gc_stack p = Some D) (Hass : group_structure D).
     Hypothesis (HnP : nparams_per D nr) (HnI : nparams_inv D nr).
     Hypothesis (HaP : args_per D nr ar) (HaI : args_inv D nr ar).
     Hypothesis (HdP : doms_per D nr ar dr) (HdI : doms_inv D nr ar dr).
@@ -496,7 +496,7 @@ Section Fixed_GCtx.
         related prefix. *)
     Hypothesis (Hcd : adm_uparams D ups nr ar dr ups).
     (** The record views' table is coherent. *)
-    Let Hrs := grp_tele_ass_record_struct _ Hass.
+    Let Hrs := group_structure_record_struct _ Hass.
     Let Hlc : leaves_coherent D := leaves_coherent_of_order D (rview_struct_order _ _ _ Hrs).
 
     (** Every leaf path of a shape of the group is its own ([leaf_in]). *)
@@ -509,7 +509,7 @@ Section Fixed_GCtx.
         destruct (rview_struct_con _ _ _ Hrs _ _ _ _ _ HM Hh) as (gs & Hcs & Hlen).
         split; [ exact (rview_record_nodup _ _ _ _ _ _ HR) | exists rview_con, gs; split; [ exact Hcs | lia ] ].
       - intros * HM Hh Hcs.
-        destruct (grp_tele_ass_params_length _ Hass _ _ _ _ HM ltac:(rewrite Hcs; left; reflexivity) gs1 t gs2 eq_refl) as (M & HM' & _).
+        destruct (group_structure_params_length _ Hass _ _ _ _ HM ltac:(rewrite Hcs; left; reflexivity) gs1 t gs2 eq_refl) as (M & HM' & _).
         exists M; exact HM'.
     Qed.
 
@@ -524,7 +524,7 @@ Section Fixed_GCtx.
         cargs_nest_ok D D rk r gs gs.
     Proof.
       intros * HM Hc.
-      pose proof (grp_tele_ass_params_length _ Hass _ _ _ _ HM (cons_lookup_in _ _ _ Hc)) as Hpl.
+      pose proof (group_structure_params_length _ Hass _ _ _ _ HM (cons_lookup_in _ _ _ Hc)) as Hpl.
       enough (H : forall gs2 gs1, gs = gs1 ++ gs2 -> cargs_nest_ok D D rk r gs2 gs2) by exact (H gs nil eq_refl).
       induction gs2 as [| [rA A | t] gs2 IH]; intros gs1 Heq; cbn; [ exact I | |].
       - apply (IH (gs1 ++ ca_arg rA A :: nil)); rewrite Heq, <- List.app_assoc; reflexivity.
@@ -733,7 +733,7 @@ Section Fixed_GCtx.
                                H3 : im_head ?M1 = mh_record _ _ _, H4 : ⟦ _ ⟧* _ ⍮ _ ⍮ decl_env _ ua2 ↘ _ |- _ =>
                  rewrite Hl in H1; injection H1 as <-; rewrite HMj in H2; injection H2 as <-; rewrite Hh in H3;
                  injection H3 as <- <- <-; rename H4 into Ec2 end.
-               destruct (grp_tele_ass_params_length _ Hass _ _ _ _ HM (cons_lookup_in _ _ _ Hc) gs1 t0 gs2 eq_refl) as (Mj' & HMj' & HlPs).
+               destruct (group_structure_params_length _ Hass _ _ _ _ HM (cons_lookup_in _ _ _ Hc) gs1 t0 gs2 eq_refl) as (Mj' & HMj' & HlPs).
                rewrite HMj in HMj'; injection HMj' as <-.
                pose proof (rview_struct_nparams _ _ _ Hrs _ _ _ _ _ HMj Hh) as Hnp.
                assert (HP0 : ptyp_ps t0 = nil) by (unfold im_nn in HlPs; rewrite Hnp in HlPs; destruct (ptyp_ps t0); [ reflexivity | discriminate HlPs ]).
@@ -1370,7 +1370,7 @@ Section Fixed_GCtx.
       Proof.
         intros * HM Hr; unfold im_ref in Hr; destruct (im_head Mj) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; injection Hr as <- <-.
         - exists D, Mj; unfold im_unu; rewrite Hh; auto.
-        - destruct (grp_tele_ass_views _ Hass j Mj qc kc Is vm HM Hh) as (Dq & Mc & Hq & HMc & Hnn & HIs).
+        - destruct (group_structure_views _ Hass j Mj qc kc Is vm HM Hh) as (Dq & Mc & Hq & HMc & Hnn & HIs).
           exists Dq, Mc; unfold im_unu; rewrite Hh; auto.
         - exists D, Mj; unfold im_unu; rewrite Hh; auto.
       Qed.
@@ -2977,7 +2977,7 @@ Section Fixed_GCtx.
             by (rewrite <- Hnames; apply List.in_map_iff; exists (c, gs'); split; [ reflexivity | exact Hin ]).
           destruct (cons_lookup_names _ _ HinN) as [gs Hc].
           destruct (Hcs c gs' gs Hin Hc) as [Hk Hcnt Hno].
-          pose proof (grp_tele_ass_params_length _ Hass _ _ _ _ HM (cons_lookup_in _ _ _ Hc)) as Hpl.
+          pose proof (group_structure_params_length _ Hass _ _ _ _ HM (cons_lookup_in _ _ _ Hc)) as Hpl.
           exists gs; split; [ exact Hc | split; [ exact Hpl | split; [ exact Hcnt | split; [ symmetry; exact (cargs_same_kinds_length _ _ Hk) |] ] ] ].
           pose proof (adm_fresh_args _ _ _ _ _ _ _ Ha _ Mv c gs s nsu nsa HM Hc Fu Fa) as C1.
           pose proof (adm_fresh_args _ _ _ _ _ _ _ Hb _ Mv c gs s nsu nsb HM Hc Fu Fb) as C2.
@@ -3046,11 +3046,11 @@ Section Fixed_GCtx.
             assert (gs = gs') as ->
               by (pose proof (cons_lookup_nodup_in _ _ _ (Hnd _ _ Hn0) Hin) as Hc0; unfold ind_con in Hc; congruence).
             constructor; [ apply cargs_same_kinds_refl | | exact (cargs_nest_ok_own rk (rk j) _ _ _ _ Hn0 Hc) ].
-            exact (cargs_container_count_own _ (grp_tele_ass_params_length _ Hass _ _ _ _ Hn0 (cons_lookup_in _ _ _ Hc))).
+            exact (cargs_container_count_own _ (group_structure_params_length _ Hass _ _ _ _ Hn0 (cons_lookup_in _ _ _ Hc))).
           - unfold im_ref in Hr; rewrite Hh in Hr; injection Hr as <- <-.
             assert (Hsel : im_sel Mj = Some vm) by (unfold im_sel; rewrite Hh; reflexivity); rewrite Hsel.
-            destruct (grp_tele_ass_vm _ Hass j Mj qc kc Is vm Dq n Mi HM Hh Hq Hn0) as [v Mv Hvm HMv Hnn Hhm].
-            destruct (grp_tele_ass_view_wrap _ Hass j Mj qc kc Is vm HM Hh) as (D' & Hq' & Hvw).
+            destruct (group_structure_vm _ Hass j Mj qc kc Is vm Dq n Mi HM Hh Hq Hn0) as [v Mv Hvm HMv Hnn Hhm].
+            destruct (group_structure_view_wrap _ Hass j Mj qc kc Is vm HM Hh) as (D' & Hq' & Hvw).
             rewrite Hq in Hq'; injection Hq' as <-.
             destruct (view_wrap_ok_members _ _ _ Hvw n Mi v Hn0 Hvm) as (Mv' & HMv' & _ & Hnames & Hcorr).
             rewrite HMv in HMv'; injection HMv' as <-.
@@ -3058,7 +3058,7 @@ Section Fixed_GCtx.
                 nor is its image. *)
             assert (Hrvi : im_is_rview Mi = false)
               by (destruct (im_is_rview Mi) eqn:E;
-                  [ apply (grp_tele_ass_csuffix _ Hass _ _ _ _ _ _ _ HM Hh Hq _ _ Hn0) in E; lia | reflexivity ]).
+                  [ apply (group_structure_csuffix _ Hass _ _ _ _ _ _ _ HM Hh Hq _ _ Hn0) in E; lia | reflexivity ]).
             assert (Hrvv : im_is_rview Mv = false).
             { unfold im_is_rview in Hrvi |- *; destruct (im_head Mi) eqn:Hhi; try discriminate Hrvi.
               - destruct Hhm as [vm' ->]; reflexivity.
@@ -3072,7 +3072,7 @@ Section Fixed_GCtx.
             constructor; [ exact (cargs_same_kinds_of_correspond _ _ _ (Hcorr c gs' gs Hin Hc)) | |].
             (** as many of the group's paths are the container's as the
                 container's branch binds *)
-            { pose proof (grp_tele_ass_crstruct _ Hass _ _ _ _ _ _ _ HM Hh Hq) as HrsQ.
+            { pose proof (group_structure_crstruct _ Hass _ _ _ _ _ _ _ HM Hh Hq) as HrsQ.
               exact (cargs_container_count_view p qc D Dq vm Hlc (leaves_coherent_of_order Dq (rview_struct_order _ _ _ HrsQ)) Hrs HrsQ
                        (view_members_of_ass p D j Mj qc kc Is vm Dq Hass HM Hh Hq) gs' gs (Hcorr c gs' gs Hin Hc)). }
             exact (view_rank_ok_nest _ _ _ _ Hrk j Mj qc kc Is vm Dq n Mi v Mv c gs' gs HM Hh Hq Hn0 Hvm HMv Hc' Hc). }
@@ -3091,10 +3091,10 @@ Section Fixed_GCtx.
         destruct (Hcu j Mj hd k' pa pb Dq HM Ra Rb Hq s) as [Us Us' RU1 RU2 HEU].
         apply (mk_neutral_reads_alike _ _ _ (ne_elim hd Us k' NBks M) (ne_elim hd Us' k' NBks' M')).
         - eapply read_ne_elim; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | exact (proj1 Lq)
-                               | exact (Hnm _ HnmA) | exact (grp_tele_ass_leaf_arity _ Hass) | exact Ra | exact RU1 | exact RB1
+                               | exact (Hnm _ HnmA) | exact (group_structure_leaf_arity _ Hass) | exact Ra | exact RU1 | exact RB1
                                | exact RM1 ].
         - eapply read_ne_elim; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | exact (proj2 Lq)
-                               | exact (Hnm _ HnmB) | exact (grp_tele_ass_leaf_arity _ Hass) | exact Rb | exact RU2 | exact RB2
+                               | exact (Hnm _ HnmB) | exact (group_structure_leaf_arity _ Hass) | exact Rb | exact RU2 | exact RB2
                                | exact RM2 ].
         - cbn [ne_erase]; rewrite HEU, HEB, HEM; reflexivity.
       Qed.
@@ -3106,7 +3106,7 @@ Section Fixed_GCtx.
           through. *)
       Theorem per_bot_elim : forall j, elim_bot j.
       Proof.
-        destruct (grp_tele_ass_rank _ Hass) as [rk Hrk].
+        destruct (group_structure_rank _ Hass) as [rk Hrk].
         assert (H : forall r j, rk j < r -> elim_bot j).
         { induction r as [| r IH]; intros j Hj; [ lia |].
           intros Mj hd k' as1 as2 e1 e1' w w' ns ns' HM Hrv Hm.

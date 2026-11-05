@@ -218,7 +218,7 @@ Qed.
     well typed ([mem_desc_ok]).  For a member of levels, every parameter is
     of levels. *)
 Lemma member_pi_kinds : forall Γ H x R r Δ B, Θm ⍮ Ξm ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θm Ξm Γ (me_mem H x) R ->
-    mdesc_kind R = r -> mdesc_type R = Some (ctx_pi_at r Δ B) -> tele_ass Δ ->
+    mdesc_kind R = r -> mdesc_type R = Some (ctx_pi_at r Δ B) -> all_assumptions Δ ->
     forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r.
 Proof.
   intros * HwH Hm Hk Ht HΔ.
@@ -341,7 +341,7 @@ Qed.
     [λ] at its value: the types and the reducts there are related through
     their judgments. *)
 Lemma unit_walk : forall Δ Γ D x r A0 om0 RΓ lp k0,
-    tele_ass Δ -> rel_params_evaluated Γ Δ lp -> ⊨ Δ ++ Γ ->
+    all_assumptions Δ -> rel_params_evaluated Γ Δ lp -> ⊨ Δ ++ Γ ->
     (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
     Δ ++ Γ ⊨ᵗ A0 ≈ A0 at k0 -> rel_type_kind (Δ ++ Γ) A0 r ->
     (forall M0, om0 = Some M0 -> Δ ++ Γ ⊨ M0 : A0) ->
@@ -355,7 +355,7 @@ Lemma unit_walk : forall Δ Γ D x r A0 om0 RΓ lp k0,
 Proof.
   induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HΔr HC Hpk Hev HA HAk HM Hbase HΓ ρ Hρ k Hk Hkk; cbn [List.app] in *.
   - exact (Hbase _ HΓ _ Hρ _ Hk).
-  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & X & ->) _]; subst.
+  - destruct (all_assumptions_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & X & ->) _]; subst.
     destruct (rel_params_evaluated_snoc_inv _ _ _ _ _ HΔr) as [HX HΔ0r].
     pose proof (rel_param_typed_type _ _ _ HX) as HXt.
     destruct (rel_type_ctx_pi _ _ _ _ _ _ HΔ HC HΔr Hpk Hev HA HAk) as [HPi _].

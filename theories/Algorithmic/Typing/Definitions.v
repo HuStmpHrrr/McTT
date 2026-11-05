@@ -366,7 +366,7 @@ with alg_unit : ctx -> gunit -> Prop :=
     expansion of the body before it. *)
 | alg_unit_body :
   `( Γ ⊢aᵖ Δ ->
-     tele_ass Δ ->
+     all_assumptions Δ ->
      Δ ++ Γ ⊢aᵇ Φ ⇝ Φx ->
      body_shape Φ Φ ->
      body_shape Φx Φx ->
@@ -374,7 +374,7 @@ with alg_unit : ctx -> gunit -> Prop :=
      Γ ⊢aᵘ gu_open Δ Φ )
 | alg_unit_alias :
   `( Γ ⊢aᵖ Δ ->
-     tele_ass Δ ->
+     all_assumptions Δ ->
      Δ ++ Γ ⊢aᵐ E ->
      Γ ⊢aᵘ gu_mk Δ (md_alias E) )
 where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope

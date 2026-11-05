@@ -47,7 +47,7 @@ Qed.
       (** Its field names are distinct *)
     ; former_nodup : List.NoDup (List.map fst (record_fields former_decl))
       (** Its parameters are assumptions *)
-    ; former_params_ass : tele_ass (record_params former_decl)
+    ; former_params_ass : all_assumptions (record_params former_decl)
       (** The universe of the type former's type *)
     ; former_level : nat
       (** The type former's type is a type *)
@@ -179,13 +179,13 @@ Qed.
 
   (** ** The Fields over the Parameters *)
 
-  Lemma record_fctx_params_ass : forall R k, tele_ass (record_params R) -> tele_ass (record_fctx R k ++ record_params R).
+  Lemma record_fctx_params_ass : forall R k, all_assumptions (record_params R) -> all_assumptions (record_fctx R k ++ record_params R).
   Proof. intros * H; apply List.Forall_app; split; [ apply record_fctx_ass | exact H ]. Qed.
 
   (** The first [k] fields over the parameters are a context, under any
       context. *)
   Lemma record_fctx_app_wf : forall Θ Ξ R k Γ, k <= List.length (record_fields R) -> record_closed R ->
-      tele_ass (record_params R) ->
+      all_assumptions (record_params R) ->
       ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       ⊢ Θ ⍮ Ξ ⍮ (record_fctx R k ++ record_params R) ++ Γ.
   Proof.
@@ -213,7 +213,7 @@ Qed.
     exact (ctx_decomp_right HF').
   Qed.
 
-  Lemma tele_insts_cons_snoc : forall Δ κ T σ L x, tele_ass Δ -> List.length L = List.length Δ ->
+  Lemma tele_insts_cons_snoc : forall Δ κ T σ L x, all_assumptions Δ -> List.length L = List.length Δ ->
       tele_insts (ce_ass κ T :: Δ) σ (L ++ x :: nil) = tele_insts Δ σ L ++ T[sb_of_list σ L] :: nil.
   Proof.
     intros * Hass Hl; change (ce_ass κ T :: Δ) with ((ce_ass κ T :: nil) ++ Δ).
@@ -223,7 +223,7 @@ Qed.
   (** Equal instances of the fields' telescope give equal types to a field
       over it. *)
   Lemma record_field_typ_cong : forall Θ Ξ Γ R k f U Ms Ms',
-      record_closed R -> tele_ass (record_params R) ->
+      record_closed R -> all_assumptions (record_params R) ->
       ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.nth_error (record_fields R) k = Some (f, U) ->
       List.length Ms = k + List.length (record_params R) -> List.length Ms' = k + List.length (record_params R) ->
@@ -249,7 +249,7 @@ Qed.
 
   (** A term over a closed telescope, at equal instances of it. *)
   Lemma closed_tele_exp_cong : forall Θ Ξ Γ Δ M A Ms Ms',
-      tele_ass Δ -> ctx_scoped 0 Δ -> exp_scoped (List.length Δ) M -> exp_scoped (List.length Δ) A ->
+      all_assumptions Δ -> ctx_scoped 0 Δ -> exp_scoped (List.length Δ) M -> exp_scoped (List.length Δ) A ->
       Θ ⍮ Ξ ⍮ Δ ⊢ M : A -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.length Ms = List.length Δ -> List.length Ms' = List.length Δ ->
       (forall j N N' T, List.nth_error Ms j = Some N -> List.nth_error Ms' j = Some N' ->
@@ -267,7 +267,7 @@ Qed.
 
   (** The sort at equal parameters. *)
   Lemma record_sort_inst_cong : forall Θ Ξ Γ R Ns Ns',
-      record_closed R -> tele_ass (record_params R) -> Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
+      record_closed R -> all_assumptions (record_params R) -> Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.length Ns = List.length (record_params R) -> List.length Ns' = List.length (record_params R) ->
       (forall j N N' T, List.nth_error Ns j = Some N -> List.nth_error Ns' j = Some N' ->
          List.nth_error (tele_insts (record_params R) Id Ns) j = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T) ->
@@ -310,7 +310,7 @@ Qed.
       field's sort: the record's sort, or [Prop] at a propositional
       field. *)
   Lemma record_field_sort_cong : forall Θ Ξ Γ R k f U Ns Ls Ms',
-      record_closed R -> tele_ass (record_params R) ->
+      record_closed R -> all_assumptions (record_params R) ->
       (forall k f U, List.nth_error (record_fields R) k = Some (f, U) ->
          Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ U : abs_kind_sort (record_field_kind R k) (record_sort R)[wk_shiftn k]ʷ) ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -343,7 +343,7 @@ Qed.
       instance is an instance, and the type former applies to equal
       instances equally. *)
   Lemma record_params_eq_right : forall Θ Ξ Γ R Xs Ys,
-      record_closed R -> tele_ass (record_params R) ->
+      record_closed R -> all_assumptions (record_params R) ->
       ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.length Xs = List.length (record_params R) -> List.length Ys = List.length (record_params R) ->
       (forall j X Y T, List.nth_error Xs j = Some X -> List.nth_error Ys j = Some Y ->

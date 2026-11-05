@@ -214,7 +214,7 @@ Qed.
     is related to it at the terms' values over the empty environment.
     [closed_inst_typ] asks the instances to be types of relevant sorts
     instead. *)
-Lemma closed_instance_typ_evaluated : forall C Γ Ms X (k : nat) RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
+Lemma closed_instance_typ_evaluated : forall C Γ Ms X (k : nat) RΓ, all_assumptions C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     (exists l, rel_params_evaluated ⋅ C l) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
@@ -262,7 +262,7 @@ Qed.
     in a well-formed context [Γ]. *)
 Record evaluated_params_telescope (Γ C : ctx) : Prop := mk_evaluated_params_telescope
   { (** Its entries are assumptions *)
-    evaluated_params_telescope_ass : tele_ass C
+    evaluated_params_telescope_ass : all_assumptions C
     (** It is a valid closed context *)
   ; evaluated_params_telescope_valid : ⊨ C
     (** Each entry is a type of a universe or a type of levels over the
@@ -334,8 +334,8 @@ Proof.
   assert (LC2 : List.length C2 = j) by (unfold C2; rewrite List.length_rev; lia).
   assert (LC : List.length C = List.length l2 + S j)
     by (rewrite HCeq, List.length_app; cbn [List.length]; rewrite LC2, List.length_rev; lia).
-  assert (HCa2 : tele_ass C2)
-    by (rewrite HCeq in HCa; unfold tele_ass in HCa; apply List.Forall_app in HCa as [_ HCa]; inversion HCa; assumption).
+  assert (HCa2 : all_assumptions C2)
+    by (rewrite HCeq in HCa; unfold all_assumptions in HCa; apply List.Forall_app in HCa as [_ HCa]; inversion HCa; assumption).
   set (C1 := (List.rev l2 ++ ce_ass κ A :: nil)%list).
   assert (HCeq' : C = (C1 ++ C2)%list) by (unfold C1; rewrite HCeq, <- List.app_assoc; reflexivity).
   assert (HC2 : ⊨ C2) by (rewrite HCeq' in HC; eapply rel_ctx_wf_app_r; exact HC).

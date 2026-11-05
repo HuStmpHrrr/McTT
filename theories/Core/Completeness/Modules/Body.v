@@ -179,7 +179,7 @@ Qed.
     reversed.  The closures still lacking parameters store their
     definitions expanded ([moddef_expand]). *)
 Lemma sub_walk_params : forall Γ' Γ σ ts Ψ Dl D ρl ρr,
-    tele_ass ts ->
+    all_assumptions ts ->
     ⊨ rev ts ++ Ψ ++ Γ ->
     sub_walk_inv Γ' Γ σ Ψ ρl ρr ->
     (forall ρl' ρr', sub_walk_inv Γ' Γ σ (rev ts ++ Ψ) ρl' ρr' ->
@@ -536,7 +536,7 @@ Variables (Θm : gdeps) (Ξm : gstack).
     ([gm_expand_sub]): so the walk is along the expansion. *)
 
 Lemma unit_sub_link_body : forall Γ' Γ σ σ' Δ Φ Φx R' ρ ρσ,
-    tele_ass Δ -> body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> body_shape Φx Φx ->
+    all_assumptions Δ -> body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> body_shape Φx Φx ->
     ⊨ body_ctx Φx ++ Δ ++ Γ -> body_sorts_valid Φx (Δ ++ Γ) -> gmod_scoped (List.length (Δ ++ Γ)) Φx ->
     Γ' ⊨ˢ σ ≈ σ' : Γ -> EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R' -> R' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
     rel_modexp_evals (me_lit (gu_open Δ Φ)[σ]ᵘ) ρ (me_lit (gu_open Δ Φ)) ρσ.
@@ -560,7 +560,7 @@ Proof.
 Qed.
 
 Lemma unit_sub_link_alias : forall Γ' Γ σ σ' Δ E R' ρ ρσ,
-    tele_ass Δ -> ⊨ Δ ++ Γ -> Δ ++ Γ ⊨ᵐ E ≈ E ->
+    all_assumptions Δ -> ⊨ Δ ++ Γ -> Δ ++ Γ ⊨ᵐ E ≈ E ->
     Γ' ⊨ˢ σ ≈ σ' : Γ -> EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R' -> R' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
     rel_modexp_evals (me_lit (gu_mk Δ (md_alias E))[σ]ᵘ) ρ (me_lit (gu_mk Δ (md_alias E))) ρσ.
 Proof.
@@ -925,7 +925,7 @@ Qed.
     is of the kind its entry is tagged with.  The closures still lacking
     parameters store their definitions expanded ([moddef_expand]). *)
 Lemma walk_params : forall ts ts' Γ Γ' RΓ R D D',
-    tele_ass ts -> tele_ass ts' -> List.length ts = List.length ts' ->
+    all_assumptions ts -> all_assumptions ts' -> List.length ts = List.length ts' ->
     ⊨ rev ts ++ Γ -> ⊨ rev ts' ++ Γ' ->
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ RΓ ->
     EF rev ts ++ Γ ≈ rev ts' ++ Γ' ∈ per_ctx_env ↘ R ->
@@ -970,7 +970,7 @@ Qed.
 (** Two body units, related entry by entry along their expansions. *)
 Section BodyRel.
   Variables (Γ Δ Δ' : ctx) (Φ Φ' Φx Φx' : gmod).
-  Hypotheses (HΔ : Γ ⊨ˣ Δ ≈ Δ') (Ha : tele_ass Δ) (Ha' : tele_ass Δ') (Hl : List.length Δ = List.length Δ')
+  Hypotheses (HΔ : Γ ⊨ˣ Δ ≈ Δ') (Ha : all_assumptions Δ) (Ha' : all_assumptions Δ') (Hl : List.length Δ = List.length Δ')
     (Hx : body_xp Θm Ξm (Δ ++ Γ) Φ Φx) (Hx' : body_xp Θm Ξm (Δ' ++ Γ) Φ' Φx')
     (Hsxx : body_shape Φx Φx') (Hsx : body_shape Φx Φx) (Hsx' : body_shape Φx' Φx')
     (Hnd : List.NoDup (gm_names Φx)) (Hnd' : List.NoDup (gm_names Φx'))
@@ -1038,7 +1038,7 @@ End BodyRel.
 (** The closures of two related aliases over related environments are
     related. *)
 Lemma rel_closure_alias : forall Γ Δ Δ' E E' RΓ,
-    Γ ⊨ˣ Δ ≈ Δ' -> tele_ass Δ -> tele_ass Δ' -> List.length Δ = List.length Δ' ->
+    Γ ⊨ˣ Δ ≈ Δ' -> all_assumptions Δ -> all_assumptions Δ' -> List.length Δ = List.length Δ' ->
     Δ ++ Γ ⊨ᵐ E ≈ E' -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     forall ρ ρ', RΓ ρ ρ' -> rel_modexp_evals (me_lit (gu_mk Δ (md_alias E))) ρ (me_lit (gu_mk Δ' (md_alias E'))) ρ'.
 Proof.
@@ -1062,7 +1062,7 @@ Qed.
 
 (** Two related aliases are related, along substitutions too. *)
 Lemma rel_lit_alias : forall Γ Δ Δ' E E',
-    Γ ⊨ˣ Δ ≈ Δ' -> tele_ass Δ -> tele_ass Δ' -> List.length Δ = List.length Δ' ->
+    Γ ⊨ˣ Δ ≈ Δ' -> all_assumptions Δ -> all_assumptions Δ' -> List.length Δ = List.length Δ' ->
     Δ ++ Γ ⊨ᵐ E ≈ E' -> Δ' ++ Γ ⊨ᵐ E' ≈ E' ->
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias E)) ≈ me_lit (gu_mk Δ' (md_alias E')).
 Proof.

@@ -113,7 +113,7 @@ Section Fixed_GCtx.
     Let nr := canon_nparams_rel D ups.
     Let ar := canon_args_rel D ups.
     Let dr := canon_doms_rel D ups.
-    Hypothesis (Hl : ind_lookup gc_deps gc_stack p = Some D) (Hass : grp_tele_ass D).
+    Hypothesis (Hl : ind_lookup gc_deps gc_stack p = Some D) (Hass : group_structure D).
     Hypothesis (Hu : List.length ups = ind_nu D) (Hu' : List.length ups' = ind_nu D).
     Hypothesis (Hps : per_top_ps (List.rev (ind_uparams D)) ups ups').
     (** The types of the members' telescopes at two related prefixes, at

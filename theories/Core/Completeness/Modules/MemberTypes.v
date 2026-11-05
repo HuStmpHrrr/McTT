@@ -152,7 +152,7 @@ Qed.
     of assumptions of any kinds: a [Π] into a type of a universe, or a [∀]
     into a proposition.  As [ctx_pi_at_wf], not into a type of levels,
     whose [Π]s take levels only ([pi_kinds]). *)
-Lemma valid_exp_under_ctx_ctx_pi_at : forall r Ψ D X i, r <> ak_level -> tele_ass Ψ -> ⊨ Ψ ++ D ->
+Lemma valid_exp_under_ctx_ctx_pi_at : forall r Ψ D X i, r <> ak_level -> all_assumptions Ψ -> ⊨ Ψ ++ D ->
     Ψ ++ D ⊨ X : abs_kind_sort r Typeω@i ->
     exists j, D ⊨ ctx_pi_at r Ψ X : abs_kind_sort r Typeω@j.
 Proof.
@@ -167,13 +167,13 @@ Proof.
   - exact (rel_exp_under_ctx_all (HB k (le_n k)) (HB k (le_n k)) HX).
 Qed.
 
-Corollary valid_exp_under_ctx_ctx_pi : forall Ψ D X i, tele_ass Ψ -> ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Typeω@i ->
+Corollary valid_exp_under_ctx_ctx_pi : forall Ψ D X i, all_assumptions Ψ -> ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Typeω@i ->
     exists j, D ⊨ ctx_pi Ψ X : Typeω@j.
 Proof. intros * HΨa HΨ HX; exact (valid_exp_under_ctx_ctx_pi_at ak_relevant _ _ _ _ ltac:(discriminate) HΨa HΨ HX). Qed.
 
 (** ** Telescopes of Parameters *)
 
-Lemma tele_ass_app_inv : forall Δ1 Δ2, tele_ass (Δ1 ++ Δ2) -> tele_ass Δ1 /\ tele_ass Δ2.
+Lemma all_assumptions_app_inv : forall Δ1 Δ2, all_assumptions (Δ1 ++ Δ2) -> all_assumptions Δ1 /\ all_assumptions Δ2.
 Proof. intros * H; apply Forall_app in H; exact H. Qed.
 
 End Fixed_GCtx.

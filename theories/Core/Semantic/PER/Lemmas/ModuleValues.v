@@ -63,7 +63,7 @@ Qed.
 Lemma next_param_body_nil : forall sm Φ ρ a, next_param (dm_local nil (md_body sm Φ) ρ) a -> False.
 Proof. intros * Hn; inversion Hn; subst; destruct Δ; discriminate. Qed.
 
-Lemma per_gargs_len_eq : forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> length args = length args'.
+Lemma per_tele_args_len_eq : forall ts ρ ρ' args args', per_tele_args ts ρ ρ' args args' -> length args = length args'.
 Proof. induction 1; cbn; congruence. Qed.
 
 (** The environment of one body read twice is one. *)
@@ -77,13 +77,13 @@ Ltac solve_mid_body :=
 
 Lemma per_dmod_sym_all :
   (forall m m', per_dmod m m' -> per_dmod m' m) /\
-  (forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> per_gargs ts ρ' ρ args' args) /\
+  (forall ts ρ ρ' args args', per_tele_args ts ρ ρ' args args' -> per_tele_args ts ρ' ρ args' args) /\
   (forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' -> per_body ρ' Φ' ρ Φ).
 Proof.
   apply per_dmod_mut_ind_all; intros;
     try match goal with Hr : rel_typ _ _ _ _ _ _ |- _ => destruct (rel_typ_sym Hr) as [? Hs] end;
     try solve [ econstructor; eauto using rel_elem_sym, rel_elem_at_sym, rel_elem_tag_sym, rel_typ_kind_right ].
-  - assert (Hl : length args = length args') by (eapply per_gargs_len_eq; eassumption).
+  - assert (Hl : length args = length args') by (eapply per_tele_args_len_eq; eassumption).
     econstructor; [ eassumption | congruence | assumption ].
   - (* a missing parameter *)
     match goal with Hu : per_univ_elem _ _ _ _ |- _ => destruct (per_univ_elem_sym _ _ _ _ Hu) as [Hu' Hs] end.
@@ -104,8 +104,8 @@ Proof. exact (proj2 (proj2 per_dmod_sym_all)). Qed.
 
 Lemma per_dmod_trans_all :
   (forall m1 m2, per_dmod m1 m2 -> forall m3, per_dmod m2 m3 -> per_dmod m1 m3) /\
-  (forall ts ρ1 ρ2 a1 a2, per_gargs ts ρ1 ρ2 a1 a2 ->
-     forall ρ3 a3, per_gargs ts ρ2 ρ3 a2 a3 -> per_gargs ts ρ1 ρ3 a1 a3) /\
+  (forall ts ρ1 ρ2 a1 a2, per_tele_args ts ρ1 ρ2 a1 a2 ->
+     forall ρ3 a3, per_tele_args ts ρ2 ρ3 a2 a3 -> per_tele_args ts ρ1 ρ3 a1 a3) /\
   (forall ρ1 Φ1 ρ2 Φ2, per_body ρ1 Φ1 ρ2 Φ2 -> forall ρ3 Φ3, per_body ρ2 Φ2 ρ3 Φ3 -> per_body ρ1 Φ1 ρ3 Φ3).
 Proof.
   apply per_dmod_mut_ind_all; intros.
@@ -114,9 +114,9 @@ Proof.
     + match goal with H1 : gc_loc _ _ ?p = Some _, H2 : gc_loc _ _ ?p = Some _ |- _ =>
         rewrite H1 in H2; injection H2 as <- <- end.
       econstructor; eauto.
-    + match goal with HL : List.length ?args = _, HG : per_gargs _ _ _ ?args ?args' |- _ =>
+    + match goal with HL : List.length ?args = _, HG : per_tele_args _ _ _ ?args ?args' |- _ =>
         exfalso; eapply next_param_global_sat; [ eassumption | | eassumption ];
-        rewrite <- HL; symmetry; eapply per_gargs_len_eq; exact HG end.
+        rewrite <- HL; symmetry; eapply per_tele_args_len_eq; exact HG end.
   - (* bodies *)
     match goal with H : per_dmod _ _ |- _ => inversion H; subst; clear H end.
     + econstructor; eauto.
@@ -149,8 +149,8 @@ Proof.
       match goal with IH : forall c c' hc hc', R c c' -> _ -> _ -> forall m3, per_dmod hc' m3 -> per_dmod hc m3 |- _ =>
         exact (IH c c3 hc hc2 Hc Hh Hh2 _ Hm23) end.
   - (* global arguments *)
-    match goal with H : per_gargs _ _ _ _ _ |- _ => inversion H; subst; clear H end; constructor.
-  - match goal with H : per_gargs _ _ _ (_ :: _) _ |- _ => inversion H; subst; clear H end.
+    match goal with H : per_tele_args _ _ _ _ _ |- _ => inversion H; subst; clear H end; constructor.
+  - match goal with H : per_tele_args _ _ _ (_ :: _) _ |- _ => inversion H; subst; clear H end.
     match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
       destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
     econstructor; [ exact HT | eapply Ht; [ eassumption | apply HRR; eassumption ] | eauto ].

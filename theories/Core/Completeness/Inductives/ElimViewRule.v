@@ -65,7 +65,7 @@ Section ElimViewRule.
   Let Hl := valid_group_lookup _ _ Hvg.
   Let Hdt := valid_group_typed _ _ Hvg.
   Let Hass := valid_group_ass _ _ Hvg.
-  Let Ua : tele_ass (ind_uparams D) := uparams_ass D Hc.
+  Let Ua : all_assumptions (ind_uparams D) := uparams_ass D Hc.
   Let Usem : ⊨ ind_uparams D := valid_ind_decl_uparams _ HD.
   Variable (Γ : ctx) (RΓ : relation env).
   Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HΓ : ⊨ Γ).
@@ -87,7 +87,7 @@ Section ElimViewRule.
     (Hh : im_head Mm = mh_view qc k' Is vm).
   Let HVQ := valid_groups_containers VP HP p D m Mm qc k' Is vm D' HPD HMm Hh Hq.
   Let HgQ := valid_groups_valid VP HP qc D' HVQ.
-  Let HaQ : tele_ass (ind_uparams D') := uparams_ass D' (valid_group_closed _ _ HgQ).
+  Let HaQ : all_assumptions (ind_uparams D') := uparams_ass D' (valid_group_closed _ _ HgQ).
   Let HWQ : ⊨ ind_uparams D' := valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ).
   Let VB := view_wrap ak_relevant p qc D D' vm Us (im_pre Mm Us) Bks.
   Let HUr := valid_ind_decl_uparams_evaluated _ HD.
@@ -104,7 +104,7 @@ Section ElimViewRule.
 
     Lemma pre_length : List.length Is = List.length (ind_uparams D').
     Proof.
-      destruct (grp_tele_ass_views _ Hass _ _ _ _ _ _ HMm Hh) as (D5 & Mc5 & Hq5 & _ & _ & HlIs).
+      destruct (group_structure_views _ Hass _ _ _ _ _ _ HMm Hh) as (D5 & Mc5 & Hq5 & _ & _ & HlIs).
       rewrite Hq in Hq5; injection Hq5 as <-; exact HlIs.
     Qed.
 
@@ -129,10 +129,10 @@ Section ElimViewRule.
         [C2] against [Is] at [τU]'s value, and that value against the
         uniform parameters' own environment. *)
     Lemma pre_base : exists uB, ⟦ im_pre Mm Us ⟧* gc_deps ⍮ gc_stack ⍮ C2 ↘ uB /\
-        per_gargs (List.rev (ind_uparams D')) nil nil uB cups.
+        per_tele_args (List.rev (ind_uparams D')) nil nil uB cups.
     Proof.
       pose proof pre_length as HlIs.
-      pose proof (u0_gargs VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2) as Hgu3.
+      pose proof (u0_tele_args VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2) as Hgu3.
       pose proof (u0_len D Us HUl C2 u3 HUC2) as Hlu3.
       destruct (closed_app_sem _ _ Ua Usem HΓ) as [HUΓ _].
       destruct (rel_ctx_wf_per_ctx_env HUΓ) as [RUΓ HRUΓ].
@@ -150,15 +150,15 @@ Section ElimViewRule.
         [ intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-;
           exact (closed_app_valid _ _ _ _ _ Ua Usem HΓ (pre_typed _ _ _ HN HT))
         | exact HsIs | exact HsIs |].
-      destruct (closed_instance_gargs _ _ _ _ RUΓ HaQ HWQ HUΓ HRUΓ HQr HsI HlIs HlIs E E HE12) as (u & _ & Eu & _ & _).
-      destruct (closed_instance_moved_gargs _ _ Is HaQ HWQ HUΓ HQr HlIs HsI Hlk _ _ τU C2 E u HRΓ HτU HC22 EτU Eu)
+      destruct (closed_instance_tele_args _ _ _ _ RUΓ HaQ HWQ HUΓ HRUΓ HQr HsI HlIs HlIs E E HE12) as (u & _ & Eu & _ & _).
+      destruct (closed_instance_moved_tele_args _ _ Is HaQ HWQ HUΓ HQr HlIs HsI Hlk _ _ τU C2 E u HRΓ HτU HC22 EτU Eu)
         as (w & Ew & H1).
       (** [E] against the uniform parameters' own environment: their values
           stored at readable types on each side. *)
       assert (HWU' : ⊨ List.rev (List.rev (ind_uparams D)) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact Usem).
       assert (HRU' : EF List.rev (List.rev (ind_uparams D)) ++ ⋅ ≈ List.rev (List.rev (ind_uparams D)) ++ ⋅ ∈ per_ctx_env ↘ RU)
         by (rewrite List.rev_involutive, List.app_nil_r; exact HRU).
-      assert (HaU' : tele_ass (List.rev (ind_uparams D))) by exact (List.Forall_rev Ua).
+      assert (HaU' : all_assumptions (List.rev (ind_uparams D))) by exact (List.Forall_rev Ua).
       assert (HUΓ' : ⊨ List.rev (List.rev (ind_uparams D)) ++ Γ) by (rewrite List.rev_involutive; exact HUΓ).
       assert (HRUΓ' : EF List.rev (List.rev (ind_uparams D)) ++ Γ ≈ List.rev (List.rev (ind_uparams D)) ++ Γ ∈ per_ctx_env ↘ RUΓ)
         by (rewrite List.rev_involutive; exact HRUΓ).
@@ -166,20 +166,20 @@ Section ElimViewRule.
         by (rewrite tagged_entries_length, List.length_rev by (rewrite List.length_rev; unfold ind_nu in Hlu3; lia);
             unfold ind_nu in Hlu3; lia).
       assert (HE12' := HE12); unfold E in HE12'; rewrite env_extend_tagged_typed in HE12'.
-      destruct (rel_gargs_readable _ _ _ _ HRΓ HUΓ' HaU' HRUΓ' _ _ _ _ Lv Lv HE12') as [Rv _].
-      pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HWU' HaU' nil nil (ctx_retag Γ C2) nil _ _ I I I Hgu3) as Hgu3'.
+      destruct (per_tele_args_of_env_extend_readable _ _ _ _ HRΓ HUΓ' HaU' HRUΓ' _ _ _ _ Lv Lv HE12') as [Rv _].
+      pose proof (per_tele_args_base _ _ _ per_ctx_env_nil_true HWU' HaU' nil nil (ctx_retag Γ C2) nil _ _ I I I Hgu3) as Hgu3'.
       assert (HE : RU E (decl_env D u3)).
       { unfold E, decl_env, env_tele; rewrite env_extend_tagged_typed.
         assert (Lv' : List.length (tele_entries nil (List.rev (ind_uparams D)) u3) = List.length (List.rev (ind_uparams D)))
           by (rewrite tele_entries_length, List.length_rev; unfold ind_nu in Hlu3; lia).
-        apply (gargs_env_rel_typed _ _ _ _ per_ctx_env_nil_true HWU' HaU' HRU' (ctx_retag Γ C2) nil
+        apply (tele_args_env_rel_typed _ _ _ _ per_ctx_env_nil_true HWU' HaU' HRU' (ctx_retag Γ C2) nil
                  (tagged_entries Γ (List.rev (ind_uparams D)) (ctx_retag Γ C2) u3) (tele_entries nil (List.rev (ind_uparams D)) u3)
                  I Lv Lv').
         - rewrite tagged_entries_fst, tele_entries_values by (rewrite List.length_rev; unfold ind_nu in Hlu3; lia); exact Hgu3'.
         - exact Rv.
-        - exact (proj2 (per_gargs_entries_readable _ _ _ _ _ Hgu3')). }
+        - exact (proj2 (per_tele_args_entries_readable _ _ _ _ _ Hgu3')). }
       pose proof (gsub_valid (valid_group_views_view_args_gsub p D Hvg Hcv _ _ _ _ _ _ _ HMm Hh Hq)) as HσI.
-      destruct (closed_instance_gargs _ _ _ _ RU HaQ HWQ Usem HRU HQr HσI HlIs HlIs E (decl_env D u3) HE)
+      destruct (closed_instance_tele_args _ _ _ _ RU HaQ HWQ Usem HRU HQr HσI HlIs HlIs E (decl_env D u3) HE)
         as (u' & cs & Eu' & Ecs & H2).
       pose proof (functional_eval_exps' _ _ _ _ Eu' Eu) as ->; pose proof (functional_eval_exps' _ _ _ _ Ecs Ecups) as ->.
       exists w; split; [ unfold im_pre; rewrite Hh; exact Ew |].
@@ -191,7 +191,7 @@ Section ElimViewRule.
     Lemma pre_moved : forall Γ' RΓ' σ0 ρ0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ -> RΓ' ρ0 ρ0 ->
         ⟦ σ0 : Γ ⟧s ρ0 ↘ C2 ->
         exists ub, ⟦ List.map (fun U => U[σ0]) (im_pre Mm Us) ⟧* gc_deps ⍮ gc_stack ⍮ ρ0 ↘ ub /\
-          per_gargs (List.rev (ind_uparams D')) nil nil ub cups.
+          per_tele_args (List.rev (ind_uparams D')) nil nil ub cups.
     Proof.
       intros Γ' RΓ' σ0 ρ0 HRΓ' Hσ0 Hρ0 Hev0.
       pose proof pre_length as HlIs.
@@ -211,7 +211,7 @@ Section ElimViewRule.
       pose proof (im_pre_scoped D m Mm Us _ Hc HMm HUl HUss) as HsP0.
       destruct (closed_inst_cross _ Γ (im_pre Mm Us) (im_pre Mm Us) HaQ HWQ HΓ HQr Hlp Hlp) as [HsP Hlk];
         [ intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-; exact (Hpt _ _ _ HN HT) | exact HsP0 | exact HsP0 |].
-      destruct (closed_instance_moved_gargs _ _ (im_pre Mm Us) HaQ HWQ HΓ HQr Hlp HsP Hlk _ _ σ0 ρ0 C2 uB
+      destruct (closed_instance_moved_tele_args _ _ (im_pre Mm Us) HaQ HWQ HΓ HQr Hlp HsP Hlk _ _ σ0 ρ0 C2 uB
                   HRΓ' Hσ0 Hρ0 Hev0 EuB) as (ub & Eub & H3).
       exists ub; split; [ exact Eub |].
       exact (uparams_trans D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) _ _ _ H3
@@ -296,7 +296,7 @@ Section ElimViewRule.
     destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMm Hh) as (D2 & Mk' & Hl2 & HMk' & _ & _ & _ & Hvk & _).
     (** The view's instance at [C2] and moved: related to the instance at
         [u3] ([pre_base], [pre_moved]). *)
-    pose proof (u0_gargs VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2) as Hgu3.
+    pose proof (u0_tele_args VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2) as Hgu3.
     pose proof (u0_len D Us HUl C2 u3 HUC2) as Hlu3.
     pose proof (valid_group_adm p D Hvg u3 u3 Hgu3 Hlu3 Hgu3) as Had3.
     destruct (valid_group_views_view_args_values p D Hvg Hcv _ _ _ _ _ _ _ HMm Hh Hq u3 u3 Hgu3 Hlu3) as (cups & _ & Ecups & _ & _).
@@ -395,7 +395,7 @@ Section ElimViewRule.
     assert (Lt : List.length (tagged_entries Γ (List.rev (elim_mctx p D m Mm Us)) (ctx_retag Γ C2) (ns3 ++ m3 :: nil))
                  = List.length (List.rev (elim_mctx p D m Mm Us)))
       by (rewrite tagged_entries_length by exact (eq_sym Ll); exact Ll).
-    destruct (rel_gargs_readable _ _ _ _ HRΓ HMr Hta HRMr _ _ _ _ Lt Lt L1) as [Hrd0 _].
+    destruct (per_tele_args_of_env_extend_readable _ _ _ _ HRΓ HMr Hta HRMr _ _ _ _ Lt Lt L1) as [Hrd0 _].
     destruct (mctx_readable VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2 HMall
                 _ _ HMm C2 C2 HC22 HC22 _ _ _ _ _ _ G33) as [Hrc0 _].
     pose proof (mctx_at_typed VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C2 u3 HC22 HUC2 HMall

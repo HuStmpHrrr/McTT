@@ -34,7 +34,7 @@ Record record_model {GC : GCtx} (p : qname) (R : record_decl) : Prop := mk_recor
     (** Its declaration is closed *)
   ; model_closed : record_closed R
     (** Its parameters are assumptions *)
-  ; model_params_ass : tele_ass (record_params R)
+  ; model_params_ass : all_assumptions (record_params R)
     (** Its field names are distinct *)
   ; model_fields_distinct : List.NoDup (List.map fst (record_fields R))
     (** Its sort is a universe *)

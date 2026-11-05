@@ -95,7 +95,7 @@ where "Γ ∋ '#' x ≔ M : A" := (ctx_lookup_def x A M Γ) : type_scope.
 
 (** ** Shapes of Units
 
-    A telescope of parameters has assumptions only ([tele_ass], with the
+    A telescope of parameters has assumptions only ([all_assumptions], with the
     member types in [Members]). *)
 
 (** Two bodies compared entry by entry: the same names and kinds in the same
@@ -305,7 +305,7 @@ Record rview_record_facts (Θ : gdeps) (Ξ : gstack) (R : record_decl) (qr : qna
     (** There are as many arguments as [R] has parameters *)
   ; rview_record_count : List.length Is = List.length (record_params R)
     (** [R]'s parameters are assumptions *)
-  ; rview_record_ass : tele_ass (record_params R)
+  ; rview_record_ass : all_assumptions (record_params R)
     (** The fields have distinct names, so a leaf path's projection names
         one field ([leaf_in]) *)
   ; rview_record_nodup : List.NoDup fl }.
@@ -663,7 +663,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      record_lookup Θ Ξ p = Some R ->
      List.NoDup (List.map fst (record_fields R)) ->
-     tele_ass (record_params R) ->
+     all_assumptions (record_params R) ->
      Θ ⍮ Ξ ⍮ ⋅ ⊢ record_ty R : Typeω@i ->
      ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
      Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
@@ -1106,7 +1106,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      record_lookup Θ Ξ p = Some R ->
      List.NoDup (List.map fst (record_fields R)) ->
-     tele_ass (record_params R) ->
+     all_assumptions (record_params R) ->
      Θ ⍮ Ξ ⍮ ⋅ ⊢ record_ty R : Typeω@i ->
      ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
      Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
@@ -1418,8 +1418,8 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
         nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵐ H'[σ']ᵐ ≈ H'[σ']ᵐ) ->
-     tele_ass Δ ->
-     tele_ass Δ' ->
+     all_assumptions Δ ->
+     all_assumptions Δ' ->
      List.length Δ = List.length Δ' ->
      body_shape Φ Φ' ->
      body_shape Φx Φx' ->
@@ -1450,8 +1450,8 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' )
 | wf_unit_eq_alias :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
-     tele_ass Δ ->
-     tele_ass Δ' ->
+     all_assumptions Δ ->
+     all_assumptions Δ' ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ E ≈ E' ->
      Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵐ E' ≈ E' ->
      (** The parameters of both sides are types of a universe or types of
@@ -1477,7 +1477,7 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
     under them. *)
 | wf_unit_eq_flatten :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ ->
-     tele_ass Δ ->
+     all_assumptions Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
      (** The outer parameters are types of a universe or types of levels,
          as for [wf_unit_eq_body]: [param_sorts] gives their sorts *)
@@ -1716,7 +1716,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
     full telescope, so that it is closed; its target is checked, and its
     arguments with it, where it is declared. *)
 | wf_gentry_alias :
-  `( tele_ass Δ ->
+  `( all_assumptions Δ ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
      (** The parameters are types of a universe or types of levels, as a
@@ -1750,7 +1750,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
     type in a context of assumptions. *)
 | wf_gentry_ind_nil :
   `( ind_uparams D = Δ ++ gs_tele Ξ ->
-     tele_ass (ind_uparams D) ->
+     all_assumptions (ind_uparams D) ->
      decl_mvc D ->
      List.length (gs_tele Ξ) <= ind_nu D ->
      ⊢ Θ ⍮ Ξ ⍮ ind_uparams D ->
@@ -1760,30 +1760,30 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      ind_sort_univ (ind_sort D) ->
      Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort D : Typeω@i ->
      Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort_lvl (ind_sort D) : Level@n ->
-     (forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)) ->
+     (forall k Mk, ind_member D k = Some Mk -> all_assumptions (im_nparams Mk)) ->
      (forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))) ->
      (forall k Mk Δ1 κ T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass κ T :: Δ2 ->
         Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ) ->
      (** The non-uniform parameters are of the sort, a universe *)
      (forall k Mk Δ1 κ T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass κ T :: Δ2 -> κ = ak_relevant) ->
      (forall k Mk c gs gs1 r A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg r A :: gs2 ->
-        Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
-          ⊢ A : abs_kind_sort r (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
+        Θ ⍮ Ξ ⍮ cargs_nonrec_ctx gs1 ++ im_params D Mk
+          ⊢ A : abs_kind_sort r (ind_sort D)[wk_shiftn (List.length (cargs_nonrec_ctx gs1) + im_nn Mk)]ʷ) ->
      (** No argument of a type of levels *)
      (forall k Mk c gs gs1 r A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg r A :: gs2 ->
         carg_kind r) ->
      (forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
         gs = gs1 ++ ca_rec t :: gs2 -> ptyp_doms t = Bs1 ++ B :: Bs2 ->
-        Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk
-          ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
+        Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_nonrec_ctx gs1 ++ im_params D Mk
+          ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_nonrec_ctx gs1) + im_nn Mk)]ʷ) ->
      (forall k Mk c gs, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> cargs_params_length D gs) ->
      (forall k Mk c gs gs1 t gs2 Mj j P T, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
         gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
         nth_error (ptyp_ps t) j = Some P ->
         nth_error (tele_insts (im_nparams Mj)
-                     (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + im_nn Mk))) (ptyp_ps t)) j
+                     (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec_ctx gs1) + im_nn Mk))) (ptyp_ps t)) j
           = Some T ->
-        Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ im_params D Mk ⊢ P : T) ->
+        Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_nonrec_ctx gs1 ++ im_params D Mk ⊢ P : T) ->
      (** the views *)
      (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         exists D' Mk', ind_lookup Θ Ξ qc = Some D' /\ ind_member D' k' = Some Mk' /\ k' < ind_ndecl D' /\
@@ -1938,7 +1938,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
     module before it. *)
 | wf_gentry_ind_mem_nil :
   `( ind_uparams D = Δu ++ gs_tele ((mq, Kq, gu_body Δ Φ0) :: Ξ) ->
-     tele_ass (ind_uparams D) ->
+     all_assumptions (ind_uparams D) ->
      ⊢ Θ ⍮ (mq, Kq, gu_body Δ Φ0) :: Ξ ⍮ ind_uparams D ->
      gm_entry Φ0 (y0 :: nil) = Some (ge_ind pv0 (qname_in mq y0) 0 D Φm) ->
      ind_lookup Θ ((mq, Kq, gu_body Δ Φ0) :: Ξ) (qname_in mq y0) = Some D ->
@@ -1969,7 +1969,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
 | wf_gentry_def_mod :
   `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-     tele_ass Δ ->
+     all_assumptions Δ ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
      (** The module part's parameters are types of a universe or types of
@@ -1991,7 +1991,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
     module variable ([record_mvc]), as no type in a context of assumptions. *)
 | wf_gentry_record :
   `( record_params R = Δ ++ gs_tele Ξ ->
-     tele_ass (record_params R) ->
+     all_assumptions (record_params R) ->
      record_mvc R ->
      Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
      List.NoDup (List.map fst (record_fields R)) ->
@@ -2022,7 +2022,7 @@ where "Θ ⍮ Ξ ⍮ mp ⊢ᵉ E" := (wf_gentry Θ Ξ mp E) : type_scope
 with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
 (** An ordinary module, before its members *)
 | wf_gmod_nil :
-  `( tele_ass Δ ->
+  `( all_assumptions Δ ->
      ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
      (** The parameters are types of a universe or types of levels, as a
          unit's are: [param_sorts] gives their sorts *)
@@ -2036,7 +2036,7 @@ with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
     as [wf_gmod_nil] has them.  A member is declared in an enclosing
     frame, so its module is no unit. *)
 | wf_gmod_ind_nil :
-  `( tele_ass Δ ->
+  `( all_assumptions Δ ->
      ⊢ Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
      (** The parameters are types of a universe or types of levels, as for
          [wf_gmod_nil] *)
@@ -2055,7 +2055,7 @@ with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
     (as [wf_gs_tele] shows), not here ([frame_params]).  A record is
     declared in an enclosing frame, so its module is no unit. *)
 | wf_gmod_record_nil :
-  `( tele_ass Δ ->
+  `( all_assumptions Δ ->
      ⊢ Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
      (** The parameters are types of a universe or types of levels, as for
          [wf_gmod_nil]; the value's type is a record type, of a universe,

@@ -170,7 +170,7 @@ Section Match.
       intros ch k; rewrite !dmod_member_kind_clo_iff, gunit_member_kind_drop; reflexivity.
   Qed.
 
-  Lemma kinds_match_kinds_pads : forall Δ Γ ρ, tele_ass Δ -> kinds_match Γ ρ -> kinds_match (Δ ++ Γ) (kinds_pads (List.length Δ) ρ).
+  Lemma kinds_match_kinds_pads : forall Δ Γ ρ, all_assumptions Δ -> kinds_match Γ ρ -> kinds_match (Δ ++ Γ) (kinds_pads (List.length Δ) ρ).
   Proof.
     induction 1 as [| e Δ (κ & A & ->) HΔ IH]; intros HΓ; cbn [app List.length]; [ exact HΓ |].
     unfold kinds_pads in *; cbn [List.repeat app].
@@ -178,7 +178,7 @@ Section Match.
   Qed.
 
   (** The same, for the arguments of a unit, at any types. *)
-  Lemma kinds_match_env_args : forall Δ Γ ρ vts, tele_ass Δ -> kinds_match Γ ρ -> List.length vts = List.length Δ ->
+  Lemma kinds_match_env_args : forall Δ Γ ρ vts, all_assumptions Δ -> kinds_match Γ ρ -> List.length vts = List.length Δ ->
       kinds_match (Δ ++ Γ) (env_extend_typed ρ vts).
   Proof.
     induction Δ as [| e Δ IH]; intros * HΔ HΓ Hl.

@@ -4,12 +4,12 @@
     eliminator binds telescopes of them.  This file relates the three ways
     the proofs meet a telescope:
 
-    - as arguments related at it, one at a time ([per_gargs]);
+    - as arguments related at it, one at a time ([per_tele_args]);
     - as an environment of a context extended by it ([per_ctx_env]);
     - as the argument of the [Π] it makes ([ctx_pi]).
 
     A closed telescope is read in any base environment: arguments related at
-    it over one pair of bases are related over any other ([per_gargs_base]),
+    it over one pair of bases are related over any other ([per_tele_args_base]),
     which is how the proofs move between the environments of a judgment and
     the empty environment the PER clause of an inductive type reads its
     telescopes in. *)
@@ -238,29 +238,29 @@ Qed.
 
 (** ** Arguments at a Telescope *)
 
-Lemma per_gargs_length : forall ts ρ ρ' xs xs', per_gargs ts ρ ρ' xs xs' ->
+Lemma per_tele_args_length : forall ts ρ ρ' xs xs', per_tele_args ts ρ ρ' xs xs' ->
     List.length xs = List.length xs' /\ List.length xs <= List.length ts.
-Proof. induction 1; cbn; [ split; lia |]; destruct IHper_gargs; split; lia. Qed.
+Proof. induction 1; cbn; [ split; lia |]; destruct IHper_tele_args; split; lia. Qed.
 
-Lemma per_gargs_app : forall ts1 ts2 ρ ρ' xs1 xs1' xs2 xs2',
+Lemma per_tele_args_app : forall ts1 ts2 ρ ρ' xs1 xs1' xs2 xs2',
     List.length xs1 = List.length ts1 ->
-    per_gargs (ts1 ++ ts2) ρ ρ' (xs1 ++ xs2) (xs1' ++ xs2') ->
+    per_tele_args (ts1 ++ ts2) ρ ρ' (xs1 ++ xs2) (xs1' ++ xs2') ->
     List.length xs1' = List.length ts1 ->
-    per_gargs ts1 ρ ρ' xs1 xs1' /\ per_gargs ts2 (env_tele ρ ts1 xs1) (env_tele ρ' ts1 xs1') xs2 xs2'.
+    per_tele_args ts1 ρ ρ' xs1 xs1' /\ per_tele_args ts2 (env_tele ρ ts1 xs1) (env_tele ρ' ts1 xs1') xs2 xs2'.
 Proof.
   induction ts1 as [| e ts1 IH]; intros * Hl H Hl'.
   - destruct xs1, xs1'; cbn in *; try discriminate; split; [ constructor | exact H ].
   - destruct xs1 as [| x xs1], xs1' as [| x' xs1']; cbn in *; try discriminate.
     inversion H; subst.
-    match goal with H' : per_gargs (ts1 ++ ts2) (ρ ↦ x ⦂ ?t) (ρ' ↦ x' ⦂ ?t') _ _ |- _ =>
+    match goal with H' : per_tele_args (ts1 ++ ts2) (ρ ↦ x ⦂ ?t) (ρ' ↦ x' ⦂ ?t') _ _ |- _ =>
       destruct (IH ts2 (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t') xs1 xs1' xs2 xs2' ltac:(lia) H' ltac:(lia)) as [H1 H2] end.
     split; [ econstructor; eassumption | exact H2 ].
 Qed.
 
-Lemma per_gargs_app_intro : forall ts1 ts2 ρ ρ' xs1 xs1' xs2 xs2',
+Lemma per_tele_args_app_intro : forall ts1 ts2 ρ ρ' xs1 xs1' xs2 xs2',
     List.length xs1 = List.length ts1 ->
-    per_gargs ts1 ρ ρ' xs1 xs1' -> per_gargs ts2 (env_tele ρ ts1 xs1) (env_tele ρ' ts1 xs1') xs2 xs2' ->
-    per_gargs (ts1 ++ ts2) ρ ρ' (xs1 ++ xs2) (xs1' ++ xs2').
+    per_tele_args ts1 ρ ρ' xs1 xs1' -> per_tele_args ts2 (env_tele ρ ts1 xs1) (env_tele ρ' ts1 xs1') xs2 xs2' ->
+    per_tele_args (ts1 ++ ts2) ρ ρ' (xs1 ++ xs2) (xs1' ++ xs2').
 Proof.
   induction ts1 as [| e ts1 IH]; intros * Hl H1 H2.
   - destruct xs1; cbn in *; try discriminate; inversion H1; subst; exact H2.
@@ -269,13 +269,13 @@ Proof.
     apply IH; [ lia | eassumption | exact H2 ].
 Qed.
 
-Lemma per_gargs_snoc : forall ts κ A ρ ρ' xs xs' x x' i R,
+Lemma per_tele_args_snoc : forall ts κ A ρ ρ' xs xs' x x' i R,
     List.length xs = List.length ts ->
-    per_gargs ts ρ ρ' xs xs' ->
+    per_tele_args ts ρ ρ' xs xs' ->
     rel_typ i A (env_tele ρ ts xs) A (env_tele ρ' ts xs') R -> R x x' ->
-    per_gargs (ts ++ ce_ass κ A :: nil) ρ ρ' (xs ++ x :: nil) (xs' ++ x' :: nil).
+    per_tele_args (ts ++ ce_ass κ A :: nil) ρ ρ' (xs ++ x :: nil) (xs' ++ x' :: nil).
 Proof.
-  intros * Hl H HA Hx; apply per_gargs_app_intro; [ exact Hl | exact H |].
+  intros * Hl H HA Hx; apply per_tele_args_app_intro; [ exact Hl | exact H |].
   econstructor; [ exact HA | exact Hx | constructor ].
 Qed.
 
@@ -307,7 +307,7 @@ Lemma ctx_pi_rel_elem : forall N (f : list domain -> domain) B TS,
     (forall xs x, List.length xs < N -> $| f xs & x | gc_deps ⍮ gc_stack ↘ f (xs ++ x :: nil)) ->
     (forall xs κ A, List.length xs < N -> List.nth_error TS (List.length xs) = Some (ce_ass κ A) ->
        evaluated_kind κ -> arg_kind gc_deps gc_stack (f xs) = κ) ->
-    forall ts Γ RΓ, tele_ass ts -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> ⊨ List.rev ts ++ Γ ->
+    forall ts Γ RΓ, all_assumptions ts -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> ⊨ List.rev ts ++ Γ ->
     forall E E' xs xs' a a' (i : universe_index) R,
       List.length xs + List.length ts = N -> List.length xs' = List.length xs -> RΓ E E' ->
       List.skipn (List.length xs) TS = ts ->
@@ -331,7 +331,7 @@ Proof.
     exact (Hbase _ _ _ _ Ha Ha' HR).
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion Hts as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
-    assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
+    assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
     cbn [List.rev] in Ha, Ha', HC; rewrite ctx_pi_snoc in Ha, Ha'.
     rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
     (** The context PER of [Γ] extended by the parameter. *)
@@ -385,15 +385,15 @@ Qed.
     The types of a telescope valid over [Tb] are related at related bases,
     so arguments related at it over one pair of bases are over another
     related pair. *)
-Lemma per_gargs_base : forall ts Tb RTb,
-    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+Lemma per_tele_args_base : forall ts Tb RTb,
+    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> all_assumptions ts ->
     forall ρ1 ρ2 ρ3 ρ4 xs xs', RTb ρ1 ρ2 -> RTb ρ1 ρ3 -> RTb ρ2 ρ4 ->
-      per_gargs ts ρ1 ρ2 xs xs' -> per_gargs ts ρ3 ρ4 xs xs'.
+      per_tele_args ts ρ1 ρ2 xs xs' -> per_tele_args ts ρ3 ρ4 xs xs'.
 Proof.
   induction ts as [| e ts IH]; intros * HTb HC Hts * H12 H13 H24 Hg; [ inversion Hg; subst; constructor |].
   assert (He : exists κ A, e = ce_ass κ A) by (inversion Hts as [| ? ? He _]; exact He).
   destruct He as (κ & A & ->).
-  assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
+  assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
   inversion Hg as [| ? A0 ? ? x x' ? ys ys' ? R HA Hx Hg']; subst; [ constructor |].
   cbn [List.rev] in HC; rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
   destruct (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
@@ -430,14 +430,14 @@ Proof.
 Qed.
 
 (** The left arguments are related to themselves, over the left base. *)
-Lemma per_gargs_refl_l : forall ts Tb RTb,
-    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
-    forall ρ ρ' xs xs', RTb ρ ρ' -> per_gargs ts ρ ρ' xs xs' -> per_gargs ts ρ ρ xs xs.
+Lemma per_tele_args_refl_l : forall ts Tb RTb,
+    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> all_assumptions ts ->
+    forall ρ ρ' xs xs', RTb ρ ρ' -> per_tele_args ts ρ ρ' xs xs' -> per_tele_args ts ρ ρ xs xs.
 Proof.
   induction ts as [| e ts IH]; intros * HTb HC Hts * Hρ Hg; [ inversion Hg; subst; constructor |].
   assert (He : exists κ A, e = ce_ass κ A) by (inversion Hts as [| ? ? He _]; exact He).
   destruct He as (κ & A & ->).
-  assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
+  assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
   inversion Hg as [| ? A0 ? ? x x' ? ys ys' ? R HA Hx Hg']; subst; [ constructor |].
   cbn [List.rev] in HC; rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
   destruct (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
@@ -460,18 +460,18 @@ Qed.
 (** Arguments related to themselves over related bases, equal up to the
     proofs at the telescope's propositions, are related: two proofs of a
     proposition are. *)
-Lemma per_gargs_equal_up_to_proofs : forall ts Tb RTb,
-    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
-    forall ρ ρ' xs ys, RTb ρ ρ' -> per_gargs ts ρ ρ xs xs -> per_gargs ts ρ' ρ' ys ys -> List.length xs = List.length ys ->
+Lemma per_tele_args_equal_up_to_proofs : forall ts Tb RTb,
+    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> all_assumptions ts ->
+    forall ρ ρ' xs ys, RTb ρ ρ' -> per_tele_args ts ρ ρ xs xs -> per_tele_args ts ρ' ρ' ys ys -> List.length xs = List.length ys ->
     (forall j x y, List.nth_error xs j = Some x -> List.nth_error ys j = Some y -> x = y \/
        exists κ A, List.nth_error ts j = Some (ce_ass κ A) /\ List.rev (List.firstn j ts) ++ Tb ⊨ A : Propₘ) ->
-    per_gargs ts ρ ρ' xs ys.
+    per_tele_args ts ρ ρ' xs ys.
 Proof.
   induction ts as [| e ts IH]; intros * HTb HC Hts * Hρ Hgx Hgy Hl Hmix.
   - inversion Hgx; subst; inversion Hgy; subst; constructor.
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion Hts as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
-    assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
+    assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
     destruct xs as [| x xs], ys as [| y ys]; cbn [List.length] in Hl; try discriminate; [ constructor |].
     inversion Hgx as [| ? ? ? ? ? ? ? ? ? ? Rx HAx Hxx Hgx']; subst.
     inversion Hgy as [| ? ? ? ? ? ? ? ? ? ? Ry HAy Hyy Hgy']; subst.
@@ -511,19 +511,19 @@ Qed.
 
 (** Environments related at an extension are arguments related at its
     telescope, whatever the types the extensions store their values at. *)
-Lemma rel_gargs : forall ts Tb RTb R,
-    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+Lemma per_tele_args_of_env_extend : forall ts Tb RTb R,
+    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> all_assumptions ts ->
     EF List.rev ts ++ Tb ≈ List.rev ts ++ Tb ∈ per_ctx_env ↘ R ->
     forall ρ ρ' vts vts', List.length vts = List.length ts -> List.length vts' = List.length ts ->
       R (env_extend_typed ρ vts) (env_extend_typed ρ' vts') ->
-      RTb ρ ρ' /\ per_gargs ts ρ ρ' (List.map fst vts) (List.map fst vts').
+      RTb ρ ρ' /\ per_tele_args ts ρ ρ' (List.map fst vts) (List.map fst vts').
 Proof.
   induction ts as [| e ts IH]; intros * HTb HC Hts HR * Hl Hl' Hρ.
   - destruct vts, vts'; cbn in *; try discriminate. split; [| constructor ].
     assert (E : R <~> RTb) by (eapply per_ctx_env_right_irrel; eassumption). apply E; exact Hρ.
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion Hts as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
-    assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
+    assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
     destruct vts as [| [x t] vts], vts' as [| [x' t'] vts']; cbn in Hl, Hl'; try discriminate.
     cbn [List.rev] in HC, HR; rewrite <- List.app_assoc in HC, HR; cbn [List.app] in HC, HR.
     destruct (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
@@ -555,26 +555,26 @@ Proof.
     assert (Hx'x' : R2 x' x') by (apply E2; etransitivity; [ symmetry; exact Hxx' | exact Hxx' ]).
     pose proof (entry_readable_of_elem_closure Ea Ea HR1 Hxx) as [Rx _].
     pose proof (entry_readable_of_elem_closure Ea' Ea' HR2 Hx'x') as [Rx' _].
-    eapply (per_gargs_base _ _ _ HTb' HC Hts' (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t')); [ exact Hext | | | exact Hg ].
+    eapply (per_tele_args_base _ _ _ HTb' HC Hts' (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t')); [ exact Hext | | | exact Hg ].
     + apply per_env_extend_intro'; [ exact Hρρ | exact (per_head_of Ea Ea HR1 Hxx) | exact Rt | exact Rx ].
     + apply per_env_extend_intro'; [ exact Hρ'ρ' | exact (per_head_of Ea' Ea' HR2 Hx'x') | exact Rt' | exact Rx' ].
 Qed.
 
 (** The same at the telescope's own extensions. *)
-Corollary rel_gargs_tele : forall ts Tb RTb R,
-    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+Corollary per_tele_args_of_env_tele : forall ts Tb RTb R,
+    EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> all_assumptions ts ->
     EF List.rev ts ++ Tb ≈ List.rev ts ++ Tb ∈ per_ctx_env ↘ R ->
     forall ρ ρ' xs xs', List.length xs = List.length ts -> List.length xs' = List.length ts ->
-      R (env_tele ρ ts xs) (env_tele ρ' ts xs') -> RTb ρ ρ' /\ per_gargs ts ρ ρ' xs xs'.
+      R (env_tele ρ ts xs) (env_tele ρ' ts xs') -> RTb ρ ρ' /\ per_tele_args ts ρ ρ' xs xs'.
 Proof.
   intros * HTb HC Hts HR * Hl Hl' H; unfold env_tele in H.
   rewrite <- (tele_entries_values xs ρ ts), <- (tele_entries_values xs' ρ' ts).
-  apply (rel_gargs _ _ _ _ HTb HC Hts HR); [ rewrite tele_entries_length; exact Hl | rewrite tele_entries_length; exact Hl' | exact H ].
+  apply (per_tele_args_of_env_extend _ _ _ _ HTb HC Hts HR); [ rewrite tele_entries_length; exact Hl | rewrite tele_entries_length; exact Hl' | exact H ].
 Qed.
 
 (** Arguments related at a telescope read back alike, up to their
     proofs. *)
-Lemma per_gargs_top : forall ts ρ ρ' xs xs', per_gargs ts ρ ρ' xs xs' -> List.length xs = List.length ts ->
+Lemma per_tele_args_top : forall ts ρ ρ' xs xs', per_tele_args ts ρ ρ' xs xs' -> List.length xs = List.length ts ->
     forall s, exists Ms Ms', Rps xs at ts in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms /\
       Rps xs' at ts in gc_deps ⍮ gc_stack ⍮ ρ' ⍮ s ↘ Ms' /\ List.map nf_erase Ms = List.map nf_erase Ms'.
 Proof.
@@ -588,10 +588,10 @@ Proof.
 Qed.
 
 (** Arguments of a closed telescope related at it read back alike. *)
-Corollary per_gargs_per_top_ps : forall ts xs xs', per_gargs ts nil nil xs xs' -> List.length xs = List.length ts ->
+Corollary per_tele_args_per_top_ps : forall ts xs xs', per_tele_args ts nil nil xs xs' -> List.length xs = List.length ts ->
     per_top_ps ts xs xs'.
 Proof.
-  intros * Hg Hl s; destruct (per_gargs_top _ _ _ _ _ Hg Hl s) as (Ms & Ms' & HM & HM' & HE).
+  intros * Hg Hl s; destruct (per_tele_args_top _ _ _ _ _ Hg Hl s) as (Ms & Ms' & HM & HM' & HE).
   exact (mk_params_read_alike _ _ _ _ Ms Ms' HM HM' HE).
 Qed.
 

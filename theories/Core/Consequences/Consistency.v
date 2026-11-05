@@ -613,7 +613,7 @@ Admitted.
     [Y_j] is of [X]'s instance type, where it reads back as at its own
     ([completeness_at_equal_types]), and [soundness_erased] makes it
     equal to [X_j]. *)
-Lemma exps_eq_at_of_params_up_to_proofs : forall Γ C X Y Rs Rs', tele_ass C -> ⊢ (C ++ Γ)%list ->
+Lemma exps_eq_at_of_params_up_to_proofs : forall Γ C X Y Rs Rs', all_assumptions C -> ⊢ (C ++ Γ)%list ->
     List.length X = List.length C -> List.length Y = List.length C ->
     (forall j P T, List.nth_error X j = Some P -> List.nth_error (tele_insts C Id X) j = Some T -> Γ ⊢ P : T) ->
     (forall j P T, List.nth_error Y j = Some P -> List.nth_error (tele_insts C Id Y) j = Some T -> Γ ⊢ P : T) ->

@@ -40,7 +40,7 @@ Section Fixed_GCtx.
 
 (** ** A Closed Context over Another *)
 
-Lemma closed_app_sem : forall C Γ, tele_ass C -> ⊨ C -> ⊨ Γ ->
+Lemma closed_app_sem : forall C Γ, all_assumptions C -> ⊨ C -> ⊨ Γ ->
     ⊨ C ++ Γ /\
     (forall RC RCΓ, EF C ≈ C ∈ per_ctx_env ↘ RC -> EF C ++ Γ ≈ C ++ Γ ∈ per_ctx_env ↘ RCΓ ->
        forall ρ ρ', RCΓ ρ ρ' -> RC ρ ρ').
@@ -52,7 +52,7 @@ Proof.
     apply E; exact I.
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion HCa as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
-    assert (HCa' : tele_ass C) by (inversion HCa; assumption).
+    assert (HCa' : all_assumptions C) by (inversion HCa; assumption).
     destruct (rel_ctx_wf_ass_inv HC) as (Srt & HS & HA).
     pose proof (rel_ctx_wf_tail HC) as HC'.
     destruct (IH Γ HCa' HC' HΓ) as [HCΓ Hres].
@@ -74,7 +74,7 @@ Proof.
     exact (mk_per_ctx_env_cons_rel _ _ _ _ _ _ (Hres _ _ HRC' HRCΓ' _ _ Ht) Hh Hl Hr Hrl Hrr).
 Qed.
 
-Lemma closed_app_valid : forall C Γ T M M', tele_ass C -> ⊨ C -> ⊨ Γ ->
+Lemma closed_app_valid : forall C Γ T M M', all_assumptions C -> ⊨ C -> ⊨ Γ ->
     C ⊨ M ≈ M' : T -> C ++ Γ ⊨ M ≈ M' : T.
 Proof.
   intros * HCa HC HΓ HM.
@@ -88,7 +88,7 @@ Qed.
 
 (** ** The Instance of a Closed Context *)
 
-Lemma gsub_closed_inst : forall C Γ Ms, tele_ass C -> ⊨ C -> ⊨ Γ ->
+Lemma gsub_closed_inst : forall C Γ Ms, all_assumptions C -> ⊨ C -> ⊨ Γ ->
     List.length Ms = List.length C ->
     (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
@@ -98,7 +98,7 @@ Proof.
   - destruct Ms; cbn in Hl; [| discriminate ]; cbn; constructor; exact HΓ.
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion HCa as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
-    assert (HCa' : tele_ass C) by (inversion HCa; assumption).
+    assert (HCa' : all_assumptions C) by (inversion HCa; assumption).
     destruct (rel_ctx_wf_ass_inv HC) as (Srt & HS & HA).
     pose proof (rel_ctx_wf_tail HC) as HC'.
     destruct (List.exists_last (l := Ms) ltac:(intros ->; cbn in Hl; discriminate)) as (Ms' & M & ->).
@@ -132,14 +132,14 @@ Qed.
 
 (** ** Environments of a Context Extended by a Telescope *)
 
-Lemma gargs_env_rel_gen : forall Δ Γ RΓ R ρ ρ' xs xs',
+Lemma tele_args_env_rel_gen : forall Δ Γ RΓ R ρ ρ' xs xs',
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R -> ⊨ Δ ++ Γ ->
     RΓ ρ ρ' -> List.length xs = List.length Δ ->
-    per_gargs (List.rev Δ) ρ ρ' xs xs' -> R (env_tele ρ (List.rev Δ) xs) (env_tele ρ' (List.rev Δ) xs').
+    per_tele_args (List.rev Δ) ρ ρ' xs xs' -> R (env_tele ρ (List.rev Δ) xs) (env_tele ρ' (List.rev Δ) xs').
 Proof.
   intros * HΓ HR HC Hρ Hl Hg.
   assert (HC' : ⊨ List.rev (List.rev Δ) ++ Γ) by (rewrite List.rev_involutive; exact HC).
-  destruct (gargs_rel _ _ _ _ _ Hg _ _ HΓ Hρ HC') as (R' & HR' & Hρ').
+  destruct (tele_args_rel _ _ _ _ _ Hg _ _ HΓ Hρ HC') as (R' & HR' & Hρ').
   rewrite List.firstn_all2 in HR' by (rewrite List.length_rev; lia).
   rewrite List.rev_involutive in HR'.
   assert (E : R' <~> R) by (eapply per_ctx_env_right_irrel; eassumption).
@@ -148,7 +148,7 @@ Qed.
 
 (** Arguments related at a telescope read back at the closures of its
     types, as the telescope's entries store them. *)
-Lemma per_gargs_entries_readable : forall ts ρ ρ' xs xs', per_gargs ts ρ ρ' xs xs' ->
+Lemma per_tele_args_entries_readable : forall ts ρ ρ' xs xs', per_tele_args ts ρ ρ' xs xs' ->
     List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) (tele_entries ρ ts xs) /\
     List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) (tele_entries ρ' ts xs').
 Proof.
@@ -161,10 +161,10 @@ Qed.
 (** Arguments related at a telescope make related extensions of the bases,
     whatever readable types the extensions store them at: a context PER
     reads the types only through their readability. *)
-Lemma gargs_env_rel_typed : forall ts Tb RTb R, EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+Lemma tele_args_env_rel_typed : forall ts Tb RTb R, EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> all_assumptions ts ->
     EF List.rev ts ++ Tb ≈ List.rev ts ++ Tb ∈ per_ctx_env ↘ R ->
     forall ρ ρ' vts vts', RTb ρ ρ' -> List.length vts = List.length ts -> List.length vts' = List.length ts ->
-      per_gargs ts ρ ρ' (List.map fst vts) (List.map fst vts') ->
+      per_tele_args ts ρ ρ' (List.map fst vts) (List.map fst vts') ->
       List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts ->
       List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts' ->
       R (env_extend_typed ρ vts) (env_extend_typed ρ' vts').
@@ -174,7 +174,7 @@ Proof.
     assert (E : R <~> RTb) by (eapply per_ctx_env_right_irrel; eassumption). apply E; exact Hρ.
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion Hts as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
-    assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
+    assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
     destruct vts as [| [x t] vts], vts' as [| [x' t'] vts']; cbn in Hl, Hl'; try discriminate.
     cbn [List.map fst] in Hg.
     inversion Hg as [| ? A0 ? ? ? ? ? ys ys' ? R0 HA Hx Hg']; subst.
@@ -202,8 +202,8 @@ Proof.
         related to those at the closures of the parameter's type. *)
     assert (Hb : per_env_extend A A RTb (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t'))
       by (apply per_env_extend_intro'; [ exact Hρ | exact (per_head_of Ea Ea' HR0 Hx) | exact Rt | exact Rt' ]).
-    assert (Hg2 : per_gargs ts (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t') (List.map fst vts) (List.map fst vts')).
-    { eapply (per_gargs_base _ _ _ HTb' HC Hts' (ρ ↦ x ⦂ entry_type_closure A ρ) (ρ' ↦ x' ⦂ entry_type_closure A ρ'));
+    assert (Hg2 : per_tele_args ts (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t') (List.map fst vts) (List.map fst vts')).
+    { eapply (per_tele_args_base _ _ _ HTb' HC Hts' (ρ ↦ x ⦂ entry_type_closure A ρ) (ρ' ↦ x' ⦂ entry_type_closure A ρ'));
         [ | | | exact Hg' ].
       - apply per_env_extend_intro'; [ exact Hρ | exact (per_head_of Ea Ea' HR0 Hx) | exact Rx | exact Rx' ].
       - apply per_env_extend_intro'; [ exact Hρρ | exact (per_head_of Ea Ea HR1 Hxx) | exact Rx | exact Rt ].
@@ -213,7 +213,7 @@ Qed.
 
 (** And conversely: extensions related at the telescope store their values
     at readable types. *)
-Lemma rel_gargs_readable : forall ts Tb RTb R, EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+Lemma per_tele_args_of_env_extend_readable : forall ts Tb RTb R, EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> all_assumptions ts ->
     EF List.rev ts ++ Tb ≈ List.rev ts ++ Tb ∈ per_ctx_env ↘ R ->
     forall ρ ρ' vts vts', List.length vts = List.length ts -> List.length vts' = List.length ts ->
       R (env_extend_typed ρ vts) (env_extend_typed ρ' vts') ->
@@ -224,20 +224,20 @@ Proof.
   - destruct vts, vts'; cbn in Hl, Hl'; try discriminate; split; constructor.
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion Hts as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
-    assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
+    assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
     destruct vts as [| [x t] vts], vts' as [| [x' t'] vts']; cbn in Hl, Hl'; try discriminate.
     cbn [List.rev] in HC, HR; rewrite <- List.app_assoc in HC, HR; cbn [List.app] in HC, HR.
     destruct (rel_ctx_wf_ass_typ (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
     pose proof (per_ctx_env_of_typ (κ := κ) HTb HAv) as HTb'.
     destruct (IH _ _ _ HTb' HC Hts' HR (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t') vts vts' ltac:(lia) ltac:(lia) Hρ) as [H1 H2].
-    destruct (rel_gargs _ _ _ _ HTb' HC Hts' HR (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t') vts vts' ltac:(lia) ltac:(lia) Hρ)
+    destruct (per_tele_args_of_env_extend _ _ _ _ HTb' HC Hts' HR (ρ ↦ x ⦂ t) (ρ' ↦ x' ⦂ t') vts vts' ltac:(lia) ltac:(lia) Hρ)
       as [[_ _ _ _ [Rt _] [Rt' _]] _].
     split; constructor; cbn [fst snd]; assumption.
 Qed.
 
 (** Extensions related at the telescope stay related when one side's
     values are stored at other readable types. *)
-Lemma per_ctx_env_retype_right : forall ts Tb RTb R, EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
+Lemma per_ctx_env_retype_right : forall ts Tb RTb R, EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> all_assumptions ts ->
     EF List.rev ts ++ Tb ≈ List.rev ts ++ Tb ∈ per_ctx_env ↘ R ->
     forall ρ ρ' vts vts' wts', List.length vts = List.length ts -> List.length vts' = List.length ts ->
       R (env_extend_typed ρ vts) (env_extend_typed ρ' vts') ->
@@ -246,22 +246,22 @@ Lemma per_ctx_env_retype_right : forall ts Tb RTb R, EF Tb ≈ Tb ∈ per_ctx_en
       R (env_extend_typed ρ vts) (env_extend_typed ρ' wts').
 Proof.
   intros * HTb HC Hts HR * Hl Hl' H Hw Rw.
-  destruct (rel_gargs _ _ _ _ HTb HC Hts HR _ _ _ _ Hl Hl' H) as [Hρ Hg].
-  destruct (rel_gargs_readable _ _ _ _ HTb HC Hts HR _ _ _ _ Hl Hl' H) as [Rv _].
+  destruct (per_tele_args_of_env_extend _ _ _ _ HTb HC Hts HR _ _ _ _ Hl Hl' H) as [Hρ Hg].
+  destruct (per_tele_args_of_env_extend_readable _ _ _ _ HTb HC Hts HR _ _ _ _ Hl Hl' H) as [Rv _].
   assert (Hlw : List.length wts' = List.length ts) by (rewrite <- (List.length_map fst), Hw, List.length_map; exact Hl').
   rewrite <- Hw in Hg.
-  exact (gargs_env_rel_typed _ _ _ _ HTb HC Hts HR _ _ _ _ Hρ Hl Hlw Hg Rv Rw).
+  exact (tele_args_env_rel_typed _ _ _ _ HTb HC Hts HR _ _ _ _ Hρ Hl Hlw Hg Rv Rw).
 Qed.
 
 (** ** [q^n] of a Semantic Substitution *)
 
-Lemma rel_sub_qn : forall Δ Γ Γ' σ σ', tele_ass Δ -> ⊨ Δ ++ Γ -> Γ' ⊨ˢ σ ≈ σ' : Γ ->
+Lemma rel_sub_qn : forall Δ Γ Γ' σ σ', all_assumptions Δ -> ⊨ Δ ++ Γ -> Γ' ⊨ˢ σ ≈ σ' : Γ ->
     tele_sub Δ σ ++ Γ' ⊨ˢ sb_qn (List.length Δ) σ ≈ sb_qn (List.length Δ) σ' : Δ ++ Γ.
 Proof.
   induction Δ as [| e Δ IH]; intros * HΔa HΔ Hσ; cbn [List.app tele_sub List.length sb_qn]; [ exact Hσ |].
   assert (He : exists κ A, e = ce_ass κ A) by (inversion HΔa as [| ? ? He _]; exact He).
   destruct He as (κ & A & ->).
-  assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
+  assert (HΔa' : all_assumptions Δ) by (inversion HΔa; assumption).
   destruct (rel_ctx_wf_ass_typ HΔ) as [i HA].
   cbn [centry_sub].
   exact (rel_sub_under_ctx_q (IH _ _ _ _ HΔa' (rel_ctx_wf_tail HΔ) Hσ) HA).
@@ -276,11 +276,11 @@ Qed.
 
 (** The heads of an environment of [K ++ Γ] read back at [K], a telescope
     of assumptions: their room does not depend on the context. *)
-Lemma env_heads_readable_app_tele : forall K Γ ρ, tele_ass K -> env_heads_readable (K ++ Γ) ρ -> env_heads_readable K ρ.
+Lemma env_heads_readable_app_tele : forall K Γ ρ, all_assumptions K -> env_heads_readable (K ++ Γ) ρ -> env_heads_readable K ρ.
 Proof.
   intros * HK H x e Hx.
   pose proof (List.nth_error_In _ _ Hx) as Hin.
-  unfold tele_ass in HK; rewrite List.Forall_forall in HK; destruct (HK _ Hin) as (κ & A & ->).
+  unfold all_assumptions in HK; rewrite List.Forall_forall in HK; destruct (HK _ Hin) as (κ & A & ->).
   exact (H x (ce_ass κ A) ltac:(rewrite List.nth_error_app1 by (apply List.nth_error_Some; congruence); exact Hx)).
 Qed.
 
@@ -288,7 +288,7 @@ Qed.
     retagging at an extension [K ++ Γ], when the retagging is an
     environment of [K ++ Γ]'s PER: the PER of [K] reads only its first
     entries, up to retagging. *)
-Lemma per_ctx_env_retag_app_left : forall K Γ RK RF X F, tele_ass K ->
+Lemma per_ctx_env_retag_app_left : forall K Γ RK RF X F, all_assumptions K ->
     EF K ≈ K ∈ per_ctx_env ↘ RK -> EF K ++ Γ ≈ K ++ Γ ∈ per_ctx_env ↘ RF ->
     RF (ctx_retag (K ++ Γ) X) (ctx_retag (K ++ Γ) X) -> RK X F -> RK (ctx_retag (K ++ Γ) X) F.
 Proof.
@@ -400,9 +400,9 @@ Qed.
     Arguments related at a telescope over the value of [σ] at [ρ] are, over
     [ρ], related at its instance by [σ], at any readable types the
     extensions store them at. *)
-Lemma tele_stage_rel : forall Δ Γ Γ' σ RΓ' ρ ρσ, tele_ass Δ -> ⊨ Δ ++ Γ ->
+Lemma tele_stage_rel : forall Δ Γ Γ' σ RΓ' ρ ρσ, all_assumptions Δ -> ⊨ Δ ++ Γ ->
     EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
-    forall vts, per_gargs (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
+    forall vts, per_tele_args (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
     List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts ->
     forall RS, EF tele_sub Δ σ ++ Γ' ≈ tele_sub Δ σ ++ Γ' ∈ per_ctx_env ↘ RS ->
       RS (env_extend_typed ρ vts) (env_extend_typed ρ vts).
@@ -413,7 +413,7 @@ Proof.
     apply E; exact Hρ.
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion HΔa as [| ? ? He _]; exact He).
     destruct He as (κ & B & ->).
-    assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
+    assert (HΔa' : all_assumptions Δ) by (inversion HΔa; assumption).
     destruct (rel_ctx_wf_ass_typ HΔ) as [i HB].
     pose proof (rel_ctx_wf_tail HΔ) as HΔ'.
     destruct (List.exists_last (l := vts) ltac:(intros ->; cbn in Hl; discriminate)) as (vts' & [x t] & ->).
@@ -424,7 +424,7 @@ Proof.
     cbn [List.rev] in Hg.
     assert (Hlr : List.length (List.map fst vts') = List.length (List.rev Δ))
       by (rewrite List.length_map, List.length_rev; exact Hl').
-    destruct (per_gargs_app (List.rev Δ) (ce_ass κ B :: nil) ρσ ρσ _ _ (x :: nil) (x :: nil) Hlr Hg Hlr)
+    destruct (per_tele_args_app (List.rev Δ) (ce_ass κ B :: nil) ρσ ρσ _ _ (x :: nil) (x :: nil) Hlr Hg Hlr)
       as [Hg' Hgx].
     inversion Hgx as [| ? ? ? ? ? ? ? ? ? ? R0 HB0 Hx _]; subst.
     pose proof (rel_ctx_wf_app_r _ _ HΔ') as HΓ.
@@ -448,18 +448,18 @@ Proof.
     assert (HCr : ⊨ List.rev (List.rev Δ) ++ Γ) by (rewrite List.rev_involutive; exact HΔ').
     assert (HRr : EF List.rev (List.rev Δ) ++ Γ ≈ List.rev (List.rev Δ) ++ Γ ∈ per_ctx_env ↘ RΔ)
       by (rewrite List.rev_involutive; exact HRΔ).
-    assert (Har : tele_ass (List.rev Δ)) by (apply List.Forall_rev; exact HΔa').
-    assert (HgY : per_gargs (List.rev Δ) Y ρσ (List.map fst vts') (List.map fst vts')).
-    { eapply (per_gargs_base _ _ _ HRΓ HCr Har ρσ ρσ); [ exact Hρσ | symmetry; exact HYρ | exact Hρσ | exact Hg' ]. }
+    assert (Har : all_assumptions (List.rev Δ)) by (apply List.Forall_rev; exact HΔa').
+    assert (HgY : per_tele_args (List.rev Δ) Y ρσ (List.map fst vts') (List.map fst vts')).
+    { eapply (per_tele_args_base _ _ _ HRΓ HCr Har ρσ ρσ); [ exact Hρσ | symmetry; exact HYρ | exact Hρσ | exact Hg' ]. }
     (** The image of the stage along [q^n σ], against the extension of
         [ρσ] at the same types and at the telescope's closures. *)
     assert (Hlr' : List.length vts' = List.length (List.rev Δ)) by (rewrite List.length_rev; exact Hl').
-    pose proof (gargs_env_rel_typed _ _ _ _ HRΓ HCr Har HRr _ _ vts' vts' HYρ Hlr' Hlr' HgY Hr' Hr') as HYE.
-    pose proof (per_gargs_entries_readable _ _ _ _ _ Hg') as [_ Hte].
+    pose proof (tele_args_env_rel_typed _ _ _ _ HRΓ HCr Har HRr _ _ vts' vts' HYρ Hlr' Hlr' HgY Hr' Hr') as HYE.
+    pose proof (per_tele_args_entries_readable _ _ _ _ _ Hg') as [_ Hte].
     assert (Hlt : List.length (tele_entries ρσ (List.rev Δ) (List.map fst vts')) = List.length (List.rev Δ))
       by (rewrite tele_entries_length; exact Hlr).
     assert (HYT : RΔ (env_extend_typed ρσ vts') (env_tele ρσ (List.rev Δ) (List.map fst vts'))).
-    { unfold env_tele; apply (gargs_env_rel_typed _ _ _ _ HRΓ HCr Har HRr _ _ vts' _ Hρσ Hlr' Hlt);
+    { unfold env_tele; apply (tele_args_env_rel_typed _ _ _ _ HRΓ HCr Har HRr _ _ vts' _ Hρσ Hlr' Hlt);
         [ rewrite tele_entries_values; exact Hg' | exact Hr' | exact Hte ]. }
     assert (HYY : RΓ Y Y) by (etransitivity; [ exact HYρ | symmetry; exact HYρ ]).
     pose proof (eval_sub_qn_args _ _ _ _ _ _ _ Hl' HRΓ HYY HY) as Hqev.
@@ -486,7 +486,7 @@ Qed.
 
 (** ** Base Change for a Closed Context *)
 
-Lemma closed_env_base : forall C RC vts vts' wts wts' B1 B2 B3 B4, tele_ass C -> ⊨ C ->
+Lemma closed_env_base : forall C RC vts vts' wts wts' B1 B2 B3 B4, all_assumptions C -> ⊨ C ->
     EF C ≈ C ∈ per_ctx_env ↘ RC -> List.length vts = List.length C -> List.length vts' = List.length C ->
     List.map fst wts = List.map fst vts -> List.map fst wts' = List.map fst vts' ->
     List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) wts ->
@@ -497,21 +497,21 @@ Proof.
   assert (HC' : ⊨ List.rev (List.rev C) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
   assert (HRC' : EF List.rev (List.rev C) ++ ⋅ ≈ List.rev (List.rev C) ++ ⋅ ∈ per_ctx_env ↘ RC)
     by (rewrite List.rev_involutive, List.app_nil_r; exact HRC).
-  assert (HCr : tele_ass (List.rev C)) by (apply List.Forall_rev; exact HCa).
-  destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' B1 B2 vts vts'
+  assert (HCr : all_assumptions (List.rev C)) by (apply List.Forall_rev; exact HCa).
+  destruct (per_tele_args_of_env_extend _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' B1 B2 vts vts'
               ltac:(rewrite List.length_rev; exact Hl) ltac:(rewrite List.length_rev; exact Hl') H) as [_ Hg].
-  pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HC' HCr B1 B2 B3 B4 _ _ I I I Hg) as Hg'.
+  pose proof (per_tele_args_base _ _ _ per_ctx_env_nil_true HC' HCr B1 B2 B3 B4 _ _ I I I Hg) as Hg'.
   rewrite <- Hw, <- Hw' in Hg'.
   assert (Hlw : List.length wts = List.length (List.rev C))
     by (rewrite <- (List.length_map fst), Hw, List.length_map, List.length_rev; exact Hl).
   assert (Hlw' : List.length wts' = List.length (List.rev C))
     by (rewrite <- (List.length_map fst), Hw', List.length_map, List.length_rev; exact Hl').
-  exact (gargs_env_rel_typed _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' _ _ _ _ I Hlw Hlw' Hg' Hr Hr').
+  exact (tele_args_env_rel_typed _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' _ _ _ _ I Hlw Hlw' Hg' Hr Hr').
 Qed.
 
 (** The same into the telescope's own extensions, at the closures of its
     types: those read back by the relation itself. *)
-Corollary closed_env_tele : forall C RC vts vts' B1 B2 B3 B4, tele_ass C -> ⊨ C ->
+Corollary closed_env_tele : forall C RC vts vts' B1 B2 B3 B4, all_assumptions C -> ⊨ C ->
     EF C ≈ C ∈ per_ctx_env ↘ RC -> List.length vts = List.length C -> List.length vts' = List.length C ->
     RC (env_extend_typed B1 vts) (env_extend_typed B2 vts') ->
     RC (env_tele B3 (List.rev C) (List.map fst vts)) (env_tele B4 (List.rev C) (List.map fst vts')).
@@ -520,11 +520,11 @@ Proof.
   assert (HC' : ⊨ List.rev (List.rev C) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
   assert (HRC' : EF List.rev (List.rev C) ++ ⋅ ≈ List.rev (List.rev C) ++ ⋅ ∈ per_ctx_env ↘ RC)
     by (rewrite List.rev_involutive, List.app_nil_r; exact HRC).
-  assert (HCr : tele_ass (List.rev C)) by (apply List.Forall_rev; exact HCa).
-  destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' B1 B2 vts vts'
+  assert (HCr : all_assumptions (List.rev C)) by (apply List.Forall_rev; exact HCa).
+  destruct (per_tele_args_of_env_extend _ _ _ _ per_ctx_env_nil_true HC' HCr HRC' B1 B2 vts vts'
               ltac:(rewrite List.length_rev; exact Hl) ltac:(rewrite List.length_rev; exact Hl') H) as [_ Hg].
-  pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HC' HCr B1 B2 B3 B4 _ _ I I I Hg) as Hg'.
-  pose proof (per_gargs_entries_readable _ _ _ _ _ Hg') as [Hr Hr'].
+  pose proof (per_tele_args_base _ _ _ per_ctx_env_nil_true HC' HCr B1 B2 B3 B4 _ _ I I I Hg) as Hg'.
+  pose proof (per_tele_args_entries_readable _ _ _ _ _ Hg') as [Hr Hr'].
   unfold env_tele; eapply closed_env_base; [ exact HCa | exact HC | exact HRC | exact Hl | exact Hl'
                                             | rewrite tele_entries_values; reflexivity | rewrite tele_entries_values; reflexivity
                                             | exact Hr | exact Hr' | exact H ].
@@ -537,7 +537,7 @@ Qed.
     of the instance of [Pre] to [X] at any environment related to the
     values there. *)
 Lemma closed_typ_inst : forall Pre C0 Γ X S τ RΓ RK RS B vts Bτ F,
-    tele_ass (Pre ++ C0) -> ⊨ Pre ++ C0 -> tele_ass C0 -> ⊨ C0 -> ⊨ Γ ->
+    all_assumptions (Pre ++ C0) -> ⊨ Pre ++ C0 -> all_assumptions C0 -> ⊨ C0 -> ⊨ Γ ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF Pre ++ C0 ≈ Pre ++ C0 ∈ per_ctx_env ↘ RK ->
     EF tele_sub Pre τ ++ Γ ≈ tele_sub Pre τ ++ Γ ∈ per_ctx_env ↘ RS ->
     type_sort S -> Pre ++ C0 ⊨ X : S -> Γ ⊨ˢ τ ≈ τ : C0 ++ Γ ->
@@ -554,7 +554,7 @@ Proof.
   destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0].
   assert (HPK : PER RK) by (eapply per_env_PER; exact HRK).
   assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
-  assert (HPa : tele_ass Pre) by (apply List.Forall_app in HKa as [H _]; exact H).
+  assert (HPa : all_assumptions Pre) by (apply List.Forall_app in HKa as [H _]; exact H).
   (** The value of [q^n τ]. *)
   destruct (stage_base (tele_sub Pre τ) Γ (C0 ++ Γ) τ R0Γ RS B Bτ vts HR0Γ HRS Hτ HE
               ltac:(rewrite length_tele_sub; exact Hl) Hev) as (Y & HY & HYτ).
@@ -568,10 +568,10 @@ Proof.
     by (rewrite List.rev_involutive; exact HRK).
   assert (HBB : RK (env_extend_typed Bτ vts) (env_extend_typed Bτ vts)) by (etransitivity; [ exact HF | symmetry; exact HF ]).
   assert (Hlr : List.length vts = List.length (List.rev Pre)) by (rewrite List.length_rev; exact Hl).
-  destruct (rel_gargs _ _ _ _ HR0 HPre (List.Forall_rev HPa) HRK' Bτ Bτ vts vts Hlr Hlr HBB) as [HBτ Hg].
-  destruct (rel_gargs_readable _ _ _ _ HR0 HPre (List.Forall_rev HPa) HRK' Bτ Bτ vts vts Hlr Hlr HBB) as [Hr _].
-  pose proof (per_gargs_base _ _ _ HR0 HPre (List.Forall_rev HPa) Bτ Bτ Y Bτ _ _ HBτ (symmetry HYτ0) HBτ Hg) as Hg'.
-  pose proof (gargs_env_rel_typed _ _ _ _ HR0 HPre (List.Forall_rev HPa) HRK' _ _ vts vts HYτ0 Hlr Hlr Hg' Hr Hr) as HYB.
+  destruct (per_tele_args_of_env_extend _ _ _ _ HR0 HPre (List.Forall_rev HPa) HRK' Bτ Bτ vts vts Hlr Hlr HBB) as [HBτ Hg].
+  destruct (per_tele_args_of_env_extend_readable _ _ _ _ HR0 HPre (List.Forall_rev HPa) HRK' Bτ Bτ vts vts Hlr Hlr HBB) as [Hr _].
+  pose proof (per_tele_args_base _ _ _ HR0 HPre (List.Forall_rev HPa) Bτ Bτ Y Bτ _ _ HBτ (symmetry HYτ0) HBτ Hg) as Hg'.
+  pose proof (tele_args_env_rel_typed _ _ _ _ HR0 HPre (List.Forall_rev HPa) HRK' _ _ vts vts HYτ0 Hlr Hlr Hg' Hr Hr) as HYB.
   (** The value of [q^n τ]. *)
   assert (HP0Γ : PER R0Γ) by (eapply per_env_PER; exact HR0Γ).
   assert (HYY : R0Γ Y Y) by (etransitivity; [ exact HYτ | symmetry; exact HYτ ]).
@@ -594,7 +594,7 @@ Qed.
 
 (** ** Substitutions Built from Valid Parts, over Telescopes *)
 
-Lemma gsub_of_list : forall Δ Γ Γ1 σ0 Ms, gsub Γ σ0 Γ1 -> tele_ass Δ -> ⊨ Δ ++ Γ1 ->
+Lemma gsub_of_list : forall Δ Γ Γ1 σ0 Ms, gsub Γ σ0 Γ1 -> all_assumptions Δ -> ⊨ Δ ++ Γ1 ->
     List.length Ms = List.length Δ ->
     (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ σ0 Ms) k = Some T -> Γ ⊨ N : T) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
@@ -604,7 +604,7 @@ Proof.
   - destruct Ms; cbn in Hl; [| discriminate ]; cbn; exact Hg0.
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion HCa as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
-    assert (HCa' : tele_ass Δ) by (inversion HCa; assumption).
+    assert (HCa' : all_assumptions Δ) by (inversion HCa; assumption).
     destruct (rel_ctx_wf_ass_inv HC) as (Srt & HS & HA).
     pose proof (rel_ctx_wf_tail HC) as HC'.
     destruct (List.exists_last (l := Ms) ltac:(intros ->; cbn in Hl; discriminate)) as (Ms' & M & ->).
@@ -637,13 +637,13 @@ Proof. intros * HΓ HS HA; exact (rel_ctx_wf_extend_sort HΓ HS HA). Qed.
 Lemma gsub_rel_ctx_wf : forall Γ τ Δ, gsub Γ τ Δ -> ⊨ Γ.
 Proof. intros * Hg; exact (proj1 (gsub_sem Hg)). Qed.
 
-Lemma gsub_qn : forall Pre Γ0 τ Δ0, gsub Γ0 τ Δ0 -> tele_ass Pre -> ⊨ Pre ++ Δ0 ->
+Lemma gsub_qn : forall Pre Γ0 τ Δ0, gsub Γ0 τ Δ0 -> all_assumptions Pre -> ⊨ Pre ++ Δ0 ->
     gsub (tele_sub Pre τ ++ Γ0) (sb_qn (List.length Pre) τ) (Pre ++ Δ0).
 Proof.
   induction Pre as [| e Pre IH]; intros * Hg HPa HP; cbn [tele_sub List.app List.length sb_qn]; [ exact Hg |].
   assert (He : exists κ A, e = ce_ass κ A) by (inversion HPa as [| ? ? He _]; exact He).
   destruct He as (κ & B & ->).
-  assert (HPa' : tele_ass Pre) by (inversion HPa; assumption).
+  assert (HPa' : all_assumptions Pre) by (inversion HPa; assumption).
   destruct (rel_ctx_wf_ass_inv HP) as (Srt & HS & HB).
   cbn [centry_sub].
   exact (gsub_q _ _ _ _ _ _ (IH _ _ _ Hg HPa' (rel_ctx_wf_tail HP)) HS HB).
@@ -658,13 +658,13 @@ Qed.
 
 (** ** Telescopes of [Π] *)
 
-Lemma rel_exp_ctx_pi : forall Δ Γ B (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ -> Δ ++ Γ ⊨ B : Typeω@i ->
+Lemma rel_exp_ctx_pi : forall Δ Γ B (i : nat), all_assumptions Δ -> ⊨ Δ ++ Γ -> Δ ++ Γ ⊨ B : Typeω@i ->
     exists j : nat, Γ ⊨ ctx_pi Δ B : Typeω@j.
 Proof.
   induction Δ as [| e Δ IH]; intros * HΔa HΔ HB; [ exists i; exact HB |].
   assert (He : exists κ A, e = ce_ass κ A) by (inversion HΔa as [| ? ? He _]; exact He).
   destruct He as (κ & A & ->).
-  assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
+  assert (HΔa' : all_assumptions Δ) by (inversion HΔa; assumption).
   destruct (rel_ctx_wf_ass_typ HΔ) as [k HA].
   cbn [ctx_pi_at].
   apply (IH _ _ (max k i) HΔa' (rel_ctx_wf_tail HΔ)).
@@ -678,7 +678,7 @@ Qed.
     ([pi_kinds]): a type of an index, of the kind [r] ([ctx_pi_at]).  For
     example, the member [v : Level] of [module M (l : Level) ≔ …] is read
     at [Πₗ (l : Level) Level]. *)
-Lemma rel_type_ctx_pi : forall Δ Γ B r l k, tele_ass Δ -> ⊨ Δ ++ Γ -> rel_params_evaluated Γ Δ l ->
+Lemma rel_type_ctx_pi : forall Δ Γ B r l k, all_assumptions Δ -> ⊨ Δ ++ Γ -> rel_params_evaluated Γ Δ l ->
     (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
     Δ ++ Γ ⊨ᵗ B ≈ B at k -> rel_type_kind (Δ ++ Γ) B r ->
     Γ ⊨ᵗ ctx_pi_at r Δ B ≈ ctx_pi_at r Δ B at max l k /\ rel_type_kind Γ (ctx_pi_at r Δ B) r.
@@ -687,7 +687,7 @@ Proof.
   - split; [ eapply rel_type_cumu_ge; [| exact HB ]; lia | exact HBr ].
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion HΔa as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
-    assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
+    assert (HΔa' : all_assumptions Δ) by (inversion HΔa; assumption).
     apply rel_params_evaluated_cons_iff in HΔr as [Hh HΔr'].
     pose proof (rel_type_cumu_ge (i := l) (j := max l k) ltac:(lia) (rel_param_typed_type _ _ _ (Hh κ A eq_refl))) as HA.
     pose proof (HΔk nil κ A Δ eq_refl) as Hk.
@@ -701,7 +701,7 @@ Qed.
 
 (** A term of a type of an evaluated kind generalized over relevant
     parameters: the λ over them, at the [Π] over them ([rel_type_ctx_pi]). *)
-Lemma rel_exp_ctx_fn : forall Δ Γ B M r l k, tele_ass Δ -> ⊨ Δ ++ Γ -> rel_params_evaluated Γ Δ l ->
+Lemma rel_exp_ctx_fn : forall Δ Γ B M r l k, all_assumptions Δ -> ⊨ Δ ++ Γ -> rel_params_evaluated Γ Δ l ->
     (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
     Δ ++ Γ ⊨ᵗ B ≈ B at k -> rel_type_kind (Δ ++ Γ) B r -> Δ ++ Γ ⊨ M : B ->
     Γ ⊨ ctx_fn Δ M : ctx_pi_at r Δ B.
@@ -709,7 +709,7 @@ Proof.
   induction Δ as [| e Δ IH]; intros * HΔa HΔ HΔr HΔk Hev HB HBr HM; [ exact HM |].
   assert (He : exists κ A, e = ce_ass κ A) by (inversion HΔa as [| ? ? He _]; exact He).
   destruct He as (κ & A & ->).
-  assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
+  assert (HΔa' : all_assumptions Δ) by (inversion HΔa; assumption).
   apply rel_params_evaluated_cons_iff in HΔr as [Hh HΔr'].
   pose proof (rel_type_cumu_ge (i := l) (j := max l k) ltac:(lia) (rel_param_typed_type _ _ _ (Hh κ A eq_refl))) as HA.
   pose proof (rel_type_cumu_ge (i := k) (j := max l k) ltac:(lia) HB) as HB'.
@@ -723,7 +723,7 @@ Proof.
 Qed.
 
 Lemma rel_exp_apps_ctx_pi_n : forall n Δ Γ B (i : nat) M Ms,
-    List.length Δ = n -> tele_ass Δ -> ⊨ Δ ++ Γ -> Δ ++ Γ ⊨ B : Typeω@i ->
+    List.length Δ = n -> all_assumptions Δ -> ⊨ Δ ++ Γ -> Δ ++ Γ ⊨ B : Typeω@i ->
     Γ ⊨ M : ctx_pi Δ B ->
     List.length Ms = List.length Δ ->
     (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ Id Ms) k = Some T -> Γ ⊨ N : T) ->
@@ -735,7 +735,7 @@ Proof.
   - destruct (List.exists_last (l := Δ)) as (Δ0 & e & ->); [ intros ->; discriminate |].
     rename Δ0 into Δ.
     rewrite List.length_app in Hn; cbn in Hn.
-    unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
+    unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
     rewrite List.length_app in Hl; cbn in Hl.
     destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; cbn in Hl.
     rewrite ctx_pi_snoc in HM; rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
@@ -763,7 +763,7 @@ Proof.
     cbn [apps_exp sb_of_list].
     replace (B[sb_of_list (Id,,M0) Ms]) with (B[sb_qn (List.length Δ) (Id,,M0)][sb_of_list Id Ms])
       by (replace (List.length Δ) with (List.length Ms) by lia; apply exp_sub_qn_of_list).
-    eapply (IH (tele_sub Δ (Id,,M0)) Γ (B[sb_qn (List.length Δ) (Id,,M0)]) i (M $ M0) Ms); [ rewrite length_tele_sub; lia | apply tele_ass_sub; exact Hass | exact HΔ' | exact HB' | exact Happ
+    eapply (IH (tele_sub Δ (Id,,M0)) Γ (B[sb_qn (List.length Δ) (Id,,M0)]) i (M $ M0) Ms); [ rewrite length_tele_sub; lia | apply all_assumptions_sub; exact Hass | exact HΔ' | exact HB' | exact Happ
                | rewrite length_tele_sub; lia | | exact HMss' ].
     intros k' N T HN HT; apply (HMs (S k')); [ exact HN |].
     rewrite tele_insts_snoc; cbn [List.nth_error].
@@ -790,9 +790,9 @@ Qed.
     The instance of a judgment over [Δ ++ Γ] along [q^n σ], at an
     environment of the instance of [Δ] over [ρ], against the judgment at
     the value of [σ] at [ρ] extended by the same arguments. *)
-Lemma outer_base : forall Δ Γ Γ' RΓ' σ ρ ρσ, tele_ass Δ -> ⊨ Δ ++ Γ ->
+Lemma outer_base : forall Δ Γ Γ' RΓ' σ ρ ρσ, all_assumptions Δ -> ⊨ Δ ++ Γ ->
     EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
-    forall vts, per_gargs (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
+    forall vts, per_tele_args (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
     List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts ->
     exists RS RΔ Y, EF tele_sub Δ σ ++ Γ' ≈ tele_sub Δ σ ++ Γ' ∈ per_ctx_env ↘ RS /\
       RS (env_extend_typed ρ vts) (env_extend_typed ρ vts) /\
@@ -816,20 +816,20 @@ Proof.
   assert (HCr : ⊨ List.rev (List.rev Δ) ++ Γ) by (rewrite List.rev_involutive; exact HΔ).
   assert (HRr : EF List.rev (List.rev Δ) ++ Γ ≈ List.rev (List.rev Δ) ++ Γ ∈ per_ctx_env ↘ RΔ)
     by (rewrite List.rev_involutive; exact HRΔ).
-  assert (Har : tele_ass (List.rev Δ)) by (apply List.Forall_rev; exact HΔa).
-  assert (HgY : per_gargs (List.rev Δ) Y ρσ (List.map fst vts) (List.map fst vts)).
-  { eapply (per_gargs_base _ _ _ HRΓ HCr Har ρσ ρσ); [ exact Hρσ | symmetry; exact HYρ | exact Hρσ | exact Hg ]. }
+  assert (Har : all_assumptions (List.rev Δ)) by (apply List.Forall_rev; exact HΔa).
+  assert (HgY : per_tele_args (List.rev Δ) Y ρσ (List.map fst vts) (List.map fst vts)).
+  { eapply (per_tele_args_base _ _ _ HRΓ HCr Har ρσ ρσ); [ exact Hρσ | symmetry; exact HYρ | exact Hρσ | exact Hg ]. }
   assert (Hlr : List.length vts = List.length (List.rev Δ)) by (rewrite List.length_rev; exact Hl).
-  pose proof (gargs_env_rel_typed _ _ _ _ HRΓ HCr Har HRr _ _ vts vts HYρ Hlr Hlr HgY Hr Hr) as HYE.
+  pose proof (tele_args_env_rel_typed _ _ _ _ HRΓ HCr Har HRr _ _ vts vts HYρ Hlr Hlr HgY Hr Hr) as HYE.
   pose proof (eval_sub_qn_args _ _ _ _ _ _ _ Hl HRΓ (ltac:(etransitivity; [ exact HYρ | symmetry; exact HYρ ]) : RΓ Y Y) HY) as Hqev.
   pose proof (per_ctx_env_retag_left HRΔ _ _ HYE) as HYE'.
   exists RS, RΔ, Y; repeat split; assumption.
 Qed.
 
-Lemma outer_type_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ ->
+Lemma outer_type_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A (i : nat), all_assumptions Δ -> ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ᵗ A ≈ A at i ->
     EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
-    forall vts, per_gargs (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
+    forall vts, per_tele_args (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
     List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts ->
     exists a b, ⟦ A[sb_qn (List.length Δ) σ] ⟧ env_extend_typed ρ vts ↘ a /\ ⟦ A ⟧ env_extend_typed ρσ vts ↘ b /\
       Dom a ≈ b ∈ per_univ i.
@@ -843,10 +843,10 @@ Proof.
 Qed.
 
 (** The same for a type of a universe. *)
-Lemma outer_universe_type_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A A' (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ ->
+Lemma outer_universe_type_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A A' (i : nat), all_assumptions Δ -> ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ A ≈ A' : Typeω@i ->
     EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
-    forall vts, per_gargs (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
+    forall vts, per_tele_args (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
     List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts ->
     exists a b, ⟦ A[sb_qn (List.length Δ) σ] ⟧ env_extend_typed ρ vts ↘ a /\ ⟦ A ⟧ env_extend_typed ρσ vts ↘ b /\
       Dom a ≈ b ∈ per_univ i.
@@ -854,10 +854,10 @@ Proof.
   intros * HΔa HΔ HA; exact (outer_type_link _ _ _ _ _ _ _ _ _ HΔa HΔ (rel_type_of_typ (rel_exp_under_ctx_refl_left HA))).
 Qed.
 
-Lemma outer_exp_link : forall Δ Γ Γ' RΓ' σ ρ ρσ T M M', tele_ass Δ -> ⊨ Δ ++ Γ ->
+Lemma outer_exp_link : forall Δ Γ Γ' RΓ' σ ρ ρσ T M M', all_assumptions Δ -> ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ M ≈ M' : T ->
     EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
-    forall vts, per_gargs (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
+    forall vts, per_tele_args (List.rev Δ) ρσ ρσ (List.map fst vts) (List.map fst vts) -> List.length vts = List.length Δ ->
     List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts ->
     rel_typ_evaluated T (env_extend_typed ρσ vts) ->
     exists RΔ F m n, EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ RΔ /\ RΔ F (env_extend_typed ρσ vts) /\

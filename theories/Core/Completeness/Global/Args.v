@@ -1,6 +1,6 @@
 (** * Arguments Related at a Telescope
 
-    Arguments a [per_gargs] relates, at a telescope valid over [Tb], make
+    Arguments a [per_tele_args] relates, at a telescope valid over [Tb], make
     environments the context PER of the telescope over [Tb] relates. *)
 
 From Stdlib Require Import Lia List Morphisms_Relations PeanoNat RelationClasses.
@@ -21,7 +21,7 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma gargs_rel : forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' ->
+Lemma tele_args_rel : forall ts ρ ρ' args args', per_tele_args ts ρ ρ' args args' ->
     forall Tb Rb, EF Tb ≈ Tb ∈ per_ctx_env ↘ Rb -> Rb ρ ρ' -> ⊨ rev ts ++ Tb ->
     exists R, EF rev (firstn (List.length args) ts) ++ Tb ≈ rev (firstn (List.length args) ts) ++ Tb ∈ per_ctx_env ↘ R /\
       R (env_tele ρ ts args) (env_tele ρ' ts args').

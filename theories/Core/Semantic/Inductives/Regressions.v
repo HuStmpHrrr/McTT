@@ -95,7 +95,7 @@ Ltac grp_record_struct_none :=
                | hnf; intros * ? ?; grp_cases ].
 
 (** A declared member, without parameters, of a group of that kind: its
-    clause of the model, all but [grp_tele_ass]. *)
+    clause of the model, all but [group_structure]. *)
 Ltac grp_in_model Hl Hta G :=
   match goal with |- DF d_ind ?p ?k nil ≈ _ ∈ _ ↘ _ => change (d_ind p k nil) with (d_ind p k (nil ++ nil)) end;
   basic_per_univ_elem_econstructor;
@@ -216,7 +216,7 @@ Section ChainedViews.
     all: eexists; split; reflexivity.
   Qed.
 
-  Lemma t_over_c_tele_ass : grp_tele_ass t_over_c_group.
+  Lemma t_over_c_group_structure : group_structure t_over_c_group.
   Proof.
     constructor.
     - constructor.
@@ -238,7 +238,7 @@ Section ChainedViews.
   Theorem t_over_c_in_model : forall i,
       DF d_ind pT 0 nil ≈ d_ind pT 0 nil ∈ per_univ_elem i ↘
         grp_rel pT t_over_c_group nil no_nparams_rel no_args_rel no_doms_rel 0 nil nil nil nil.
-  Proof. intros i; grp_in_model HlT t_over_c_tele_ass t_over_c_group. Qed.
+  Proof. intros i; grp_in_model HlT t_over_c_group_structure t_over_c_group. Qed.
 
 End ChainedViews.
 
@@ -342,7 +342,7 @@ Section RoseViews.
     all: eexists; split; reflexivity.
   Qed.
 
-  Lemma t_over_rose_tele_ass : grp_tele_ass t_over_rose_group.
+  Lemma t_over_rose_group_structure : group_structure t_over_rose_group.
   Proof.
     constructor.
     - constructor.
@@ -364,7 +364,7 @@ Section RoseViews.
   Theorem t_over_rose_in_model : forall i,
       DF d_ind pT 0 nil ≈ d_ind pT 0 nil ∈ per_univ_elem i ↘
         grp_rel pT t_over_rose_group nil no_nparams_rel no_args_rel no_doms_rel 0 nil nil nil nil.
-  Proof. intros i; grp_in_model HlT t_over_rose_tele_ass t_over_rose_group. Qed.
+  Proof. intros i; grp_in_model HlT t_over_rose_group_structure t_over_rose_group. Qed.
 
 End RoseViews.
 
@@ -454,7 +454,7 @@ Section PhantomViews.
     all: eexists; split; reflexivity.
   Qed.
 
-  Lemma t_over_phantom_tele_ass : grp_tele_ass t_over_phantom_group.
+  Lemma t_over_phantom_group_structure : group_structure t_over_phantom_group.
   Proof.
     constructor.
     - constructor; [ do 2 eexists; reflexivity | constructor ].
@@ -482,7 +482,7 @@ Section PhantomViews.
     change (d_ind pT 0 (g :: nil)) with (d_ind pT 0 ((g :: nil) ++ nil)).
     change (d_ind pT 0 (g' :: nil)) with (d_ind pT 0 ((g' :: nil) ++ nil)).
     basic_per_univ_elem_econstructor;
-      try exact HlT; try exact t_over_phantom_tele_ass; try exact Hg; try reflexivity;
+      try exact HlT; try exact t_over_phantom_group_structure; try exact Hg; try reflexivity;
       try (red; intros; grp_vacuous; fail);
       try (cbn; split; [ reflexivity | exact I ]);
       try (constructor; intros; grp_vacuous;

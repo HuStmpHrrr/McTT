@@ -44,7 +44,7 @@ Section Fixed_GCtx.
 
 (** ** Aliases of Literals *)
 
-Lemma flat_walk : forall Δ Γ Δ' D RΓ, tele_ass Δ -> ⊨ Δ ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
+Lemma flat_walk : forall Δ Γ Δ' D RΓ, all_assumptions Δ -> ⊨ Δ ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     Δ ++ Γ ⊨ᵐ me_lit (gu_mk Δ' D) ≈ me_lit (gu_mk Δ' D) ->
     forall ρ ρ', RΓ ρ ρ' ->
       rel_modexp_evals (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))) ρ (me_lit (gu_mk (Δ' ++ Δ) D)) ρ'.
@@ -53,7 +53,7 @@ Proof.
   - rewrite app_nil_r.
     destruct (unit_chain_at HU HΓ _ _ Hρ) as [h h' Hh Hh' Hhh].
     apply (mk_rel_modexp_evals _ _ _ _ h h'); [ apply eval_me_lit, eval_close_alias0; exact Hh | exact Hh' | exact Hhh ].
-  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
+  - destruct (all_assumptions_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
     rewrite <- app_assoc in HC, HU; cbn [List.app] in HC, HU.
     destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as (Srt & HS & HA0).
     destruct (rel_type_of_sort (sort_kind_type_sort _ _ HS) HA0) as [i HA].
@@ -81,7 +81,7 @@ Lemma ext_refl : forall Γ Δ, ⊨ Δ ++ Γ -> Γ ⊨ˣ Δ ≈ Δ.
 Proof. intros * HC; constructor; [ exact HC | exact HC | exact (rel_ctx_wf_per_ctx HC) ]. Qed.
 
 (** An alias of a literal is the literal over both telescopes. *)
-Lemma rel_lit_flatten : forall Γ Δ Δ' D l, tele_ass Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
+Lemma rel_lit_flatten : forall Γ Δ Δ' D l, all_assumptions Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
     (forall R, mdenote Θm Ξm (Δ ++ Γ) (me_lit (gu_mk Δ' D)) R -> desc_levels_abstractable Θm Ξm Γ Δ R) ->
     valid_unit (Δ ++ Γ) (me_lit (gu_mk Δ' D)) ->
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))) ≈ me_lit (gu_mk (Δ' ++ Δ) D).
@@ -104,7 +104,7 @@ Qed.
 (** ** Aliases of Canonical Units *)
 
 
-Lemma rel_alias_unit_up : forall Γ Δ X l, Δ <> nil -> tele_ass Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
+Lemma rel_alias_unit_up : forall Γ Δ X l, Δ <> nil -> all_assumptions Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
     mdesc_is_mod X ->
     (forall R, mdenote Θm Ξm (Δ ++ Γ) (mdesc_unit X) R -> desc_levels_abstractable Θm Ξm Γ Δ R) ->
     valid_unit (Δ ++ Γ) (mdesc_unit X) ->

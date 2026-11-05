@@ -81,7 +81,7 @@ Section Fixed_GCtx.
   (** The relations of the clause agree with the canonical ones at the
       left uniform parameters. *)
   Lemma ind_fam_agree_of_evals : forall i D ups ups' nr ar dr,
-      grp_tele_ass D ->
+      group_structure D ->
       nparams_evals (per_univ_elem i) D ups ups' nr ->
       args_evals (per_univ_elem i) D ups ups' nr ar ->
       doms_evals (per_univ_elem i) D ups ups' nr ar dr ->
@@ -115,7 +115,7 @@ Section Fixed_GCtx.
   Record ind_canon_clause (p : qname) (D : ind_decl) (k : nat) (ups ups' ns ns' : list domain) (R : relation domain) : Prop :=
     mk_ind_canon_clause
     { (** The group's structural facts *)
-      ind_canon_clause_ass : grp_tele_ass D
+      ind_canon_clause_ass : group_structure D
       (** The uniform parameters read back alike *)
     ; ind_canon_clause_ups : per_top_ps (List.rev (ind_uparams D)) ups ups'
       (** The canonical relations at [ups] are PERs, invariant along
@@ -377,7 +377,7 @@ Section Fixed_GCtx.
       along their telescopes. *)
   Section CanonPER.
     Variable (p : qname) (D : ind_decl) (ups : list domain).
-    Hypothesis (Hass : grp_tele_ass D) (Hcp : ind_canon_props D ups).
+    Hypothesis (Hass : group_structure D) (Hcp : ind_canon_props D ups).
     Let nr := canon_nparams_rel D ups.
     Let ar := canon_args_rel D ups.
     Let dr := canon_doms_rel D ups.

@@ -27,14 +27,14 @@ Section Fixed_GCtx.
 
   (** ** Telescopes of Assumptions *)
 
-  Lemma sb_qn_eq_ext : forall Ψ Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+  Lemma sb_qn_eq_ext : forall Ψ Δ Γ σ σ', all_assumptions Ψ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
       Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ ⊢ˢ sb_qn (List.length Ψ) σ ≈ sb_qn (List.length Ψ) σ' : Ψ ++ Δ.
   Proof.
     intros * Hass HΨ Hσ.
     exact (proj1 (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 sub_eq_preserves_mut)))) _ _ _ _ _ (ctx_ext_refl _ _ _ _ Hass HΨ) _ _ _ Hσ) Hass)).
   Qed.
 
-  Lemma tele_sub_eq_ext : forall Ψ Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+  Lemma tele_sub_eq_ext : forall Ψ Δ Γ σ σ', all_assumptions Ψ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub Ψ σ ≈ tele_sub Ψ σ'.
   Proof.
     induction Ψ as [| e Ψ IH]; intros * Hass HΨ Hσ.
@@ -76,7 +76,7 @@ Section Fixed_GCtx.
 
   (** A telescope of assumptions with a head, moved by equal
       substitutions: the heads are equal at the head's sort. *)
-  Lemma tele_sub_eq_ext_head : forall Ψ κ A Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ (Ψ ▹{κ} A) ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+  Lemma tele_sub_eq_ext_head : forall Ψ κ A Δ Γ σ σ', all_assumptions Ψ -> ⊢ Θ ⍮ Ξ ⍮ (Ψ ▹{κ} A) ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
       telescope_heads_eq Γ (tele_sub Ψ σ) (tele_sub Ψ σ') κ A[sb_qn (List.length Ψ) σ] A[sb_qn (List.length Ψ) σ'].
   Proof.
     intros * Hass HΨ Hσ.
@@ -92,7 +92,7 @@ Section Fixed_GCtx.
   Qed.
 
   (** Equal telescopes of assumptions, chained. *)
-  Lemma ext_eq_trans_ass : forall Γ Ψ1 Ψ2 Ψ3, tele_ass Ψ1 -> tele_ass Ψ2 ->
+  Lemma ext_eq_trans_ass : forall Γ Ψ1 Ψ2 Ψ3, all_assumptions Ψ1 -> all_assumptions Ψ2 ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ1 ≈ Ψ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ2 ≈ Ψ3 -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ1 ≈ Ψ3.
   Proof.
     induction Ψ1 as [| e1 Ψ1 IH]; intros * Ha1 Ha2 H12 H23.
@@ -181,7 +181,7 @@ Section Fixed_GCtx.
     unfold elim_mctx in HW, E, E'; cbn [tele_sub centry_sub] in E, E'.
     injection E as Eh Et; injection E' as Eh' Et'.
     rewrite Eh, Et, Eh', Et'.
-    eapply tele_sub_eq_ext_head; [ apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption | exact HW | exact Hσ ].
+    eapply tele_sub_eq_ext_head; [ apply all_assumptions_sub; eapply decl_closed_nparams_ass; eassumption | exact HW | exact Hσ ].
   Qed.
 
   (** ** The Recursive Results' Instances *)
@@ -234,7 +234,7 @@ Section Fixed_GCtx.
         + eapply decl_closed_nparams_scoped; eassumption.
         + intros y Hy; unfold σ0; cbn [sb_of_wk sentry_sub wk_shiftn]; exact (Huc y Hy). }
       pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσσ) as Hσ'.
-      apply wf_sub_eq_of_list_left; [ apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption | exact HN | apply wf_sub_eq_refl; exact Hβ
+      apply wf_sub_eq_of_list_left; [ apply all_assumptions_sub; eapply decl_closed_nparams_ass; eassumption | exact HN | apply wf_sub_eq_refl; exact Hβ
                                     | rewrite length_tele_sub, List.length_map, HPl; reflexivity
                                     | rewrite length_tele_sub, List.length_map, HPl; reflexivity | | |].
       - intros k N T HN1 HT.
@@ -270,7 +270,7 @@ Section Fixed_GCtx.
   (** The same terms after equal substitutions, filling the same
       telescope, are equal substitutions. *)
   Lemma wf_sub_eq_of_list_same : forall Ψ Δ Γ0 σ σ' Ms,
-      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> List.length Ms = List.length Δ ->
+      all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> List.length Ms = List.length Δ ->
       Θ ⍮ Ξ ⍮ Ψ ⊢ˢ σ ≈ σ' : Γ0 -> Θ ⍮ Ξ ⍮ Ψ ⊢ˢ sb_of_list σ Ms : Δ ++ Γ0 ->
       Θ ⍮ Ξ ⍮ Ψ ⊢ˢ sb_of_list σ Ms ≈ sb_of_list σ' Ms : Δ ++ Γ0.
   Proof.
@@ -360,20 +360,20 @@ Section Fixed_GCtx.
         assert (Huc1 : forall y, y < ind_nu D ->
                   sentry_exp (τ (y + (List.length (cargs_pat gs1) + im_nn Mj))) = sentry_exp ((sb_of_list Id Us ⨟ β) y)).
         { intros y Hy; rewrite Hnn, Nat.add_0_r, Nat.add_comm, Hlg; unfold τ; rewrite sb_of_list_ge; exact (Huc0 y Hy). }
-        refine (IHn _ Hrk Mj nil (cargs_strat gs1) t Ψ β _ _ (a_proj f x) Mt l1 _ Ht HPlt HBt HPt Hβ _ _ _ _ _).
+        refine (IHn _ Hrk Mj nil (cargs_nonrec_ctx gs1) t Ψ β _ _ (a_proj f x) Mt l1 _ Ht HPlt HBt HPt Hβ _ _ _ _ _).
         * intros HrT; exact (rview_struct_order _ _ _ (decl_typed_record_struct _ _ _ HD) _ _ _ _ _ _ _ _ _ _ _ Hj Hh Hcs Egs Ht HrT).
         * eapply wf_sub_compose; [ apply wf_sub_of_wk; exact Hφ | exact Hτ ].
         * eapply wf_sub_eq_compose_right; [ apply wf_sub_of_wk; exact Hφ | exact Hττ ].
         * intros y Hy; cbn [doms_ctx List.rev List.map List.app] in *.
           rewrite EG, List.length_app; cbn [sb_compose sb_of_wk sentry_sub].
-          replace (y + (List.length (cargs_strat gs1) + List.length (ind_uparams D) - ind_nu D))
+          replace (y + (List.length (cargs_nonrec_ctx gs1) + List.length (ind_uparams D) - ind_nu D))
             with (pat_nargs (cargs_pat gs1) + y) by (rewrite pat_nargs_cargs_pat; unfold ind_nu; lia).
           rewrite wk_pat_ge; cbn [sb_compose] in Huc1.
           rewrite <- (Huc1 y Hy), Hnn, Nat.add_0_r, Nat.add_comm; reflexivity.
         * rewrite ptyp_ty_eq_at, ptyp_ty_at_sub in Hxf by (try exact Hc; apply length_ind_uvars).
           rewrite (uvars_inst _ _ _ _ _ _ HUl Huc1) in Hxf; exact Hxf.
         * cbn [List.length]; rewrite Hnn, Nat.add_0_r.
-          replace (List.length (cargs_strat gs1)) with (List.length (fields_args fs1)); [ exact Hin1 |].
+          replace (List.length (cargs_nonrec_ctx gs1)) with (List.length (fields_args fs1)); [ exact Hin1 |].
           unfold gs1; rewrite length_fields_args; reflexivity.
       + rewrite (rview_leaves_not_rview _ _ _ Hj Hr) in Hin; destruct Hin as [<- | []].
         cbn [leaf_ihty]; exists i.
@@ -418,7 +418,7 @@ Section Fixed_GCtx.
       List.In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_rec t :: gs2 ->
       ⊢ Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ->
       Θ ⍮ Ξ ⍮ E ++ con_inst_ctx Γ p D Mk Us gs ⊢ˢ ihs_sub (im_nn Mk) Us (List.length gs) (cargs_pat gs1) (List.length E)
-        ≈ ihs_sub (im_nn Mk) Us' (List.length gs) (cargs_pat gs1) (List.length E) : doms_ctx nil ++ cargs_strat gs1 ++ im_params D Mk.
+        ≈ ihs_sub (im_nn Mk) Us' (List.length gs) (cargs_pat gs1) (List.length E) : doms_ctx nil ++ cargs_nonrec_ctx gs1 ++ im_params D Mk.
   Proof.
     intros * Hl Hk HΓ HUl Hσ Hσσ Hin Heq HΨ.
     pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
@@ -442,7 +442,7 @@ Section Fixed_GCtx.
       { apply wf_ctx_closed_app; [| eapply cargs_ctx_closed; eassumption | exact HΨ1 | exact HΓ ].
         apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | eapply decl_closed_params_ass; eassumption ]. }
       unfold im_params in HΨΓ; rewrite <- !List.app_assoc, (List.app_assoc (cargs_ctx p D Mk gs1)) in HΨΓ.
-      assert (Hass1 : tele_ass (cargs_ctx p D Mk gs1 ++ im_nparams Mk))
+      assert (Hass1 : all_assumptions (cargs_ctx p D Mk gs1 ++ im_nparams Mk))
         by (apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ]).
       pose proof (sb_qn_eq_ext _ _ _ _ _ Hass1 HΨΓ Hσσ) as H.
       rewrite <- con_inst_ctx_eq in H; rewrite List.length_app, length_cargs_ctx, length_im_nparams in H.
@@ -487,7 +487,7 @@ Section Fixed_GCtx.
   Qed.
 
   (** The induction hypotheses of a leaf list are assumptions. *)
-  Lemma tele_ass_leaves_ctx : forall r nn As Us na pat ls j, tele_ass (leaves_ctx r nn As Us na pat j ls).
+  Lemma all_assumptions_leaves_ctx : forall r nn As Us na pat ls j, all_assumptions (leaves_ctx r nn As Us na pat j ls).
   Proof.
     induction ls as [| l ls IH]; intros j; cbn [leaves_ctx]; [ constructor |].
     apply List.Forall_app; split; [ apply IH | constructor; [ do 2 eexists; reflexivity | constructor ] ].
@@ -504,7 +504,7 @@ Section Fixed_GCtx.
       motives_typed Θ Ξ Γ p D Us As r i -> motives_typed Θ Ξ Γ p D Us' As r i -> motive_kind r ->
       List.In (c, gs) (im_cons Mk) ->
       forall rest gs1 E E', gs = gs1 ++ rest -> List.length E = cargs_nrec D gs1 -> List.length E' = cargs_nrec D gs1 ->
-        tele_ass E ->
+        all_assumptions E ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ E ++ con_inst_tele p D Mk Us gs ≈ E' ++ con_inst_tele p D Mk Us' gs ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ ihs_ctx_aux r (rview_leaves D) (im_nn Mk) As Us (List.length gs) (cargs_pat gs1) (List.length E) rest
                        ++ E ++ con_inst_tele p D Mk Us gs
@@ -515,10 +515,10 @@ Section Fixed_GCtx.
     pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hc].
     (** The arguments of a constructor instance are assumptions. *)
-    assert (Hcta : tele_ass (con_inst_tele p D Mk Us gs)).
+    assert (Hcta : all_assumptions (con_inst_tele p D Mk Us gs)).
     { assert (Hct : con_inst_tele p D Mk Us gs = tele_sub (cargs_ctx p D Mk gs ++ im_nparams Mk) (sb_of_list Id Us))
         by (unfold con_inst_tele; rewrite tele_sub_app, length_im_nparams; reflexivity).
-      rewrite Hct; apply tele_ass_sub, List.Forall_app; split; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ]. }
+      rewrite Hct; apply all_assumptions_sub, List.Forall_app; split; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ]. }
     assert (HAA : motives_eq Θ Ξ Γ p D Us As As r i) by (intros j Mj Hj Hr; apply wf_exp_eq_refl; exact (HA _ _ Hj Hr)).
     assert (HAA' : motives_eq Θ Ξ Γ p D Us' As As r i) by (intros j Mj Hj Hr; apply wf_exp_eq_refl; exact (HA' _ _ Hj Hr)).
     induction rest as [| [rB B | t] rest IH]; intros gs1 E E' Heq HE HE' HaE HEE; cbn [ihs_ctx_aux List.app]; [ exact HEE | |].
@@ -527,7 +527,7 @@ Section Fixed_GCtx.
                 | exact HaE | exact HEE ].
     - set (ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t).
       (* the results along the leaf paths, one by one *)
-      assert (HL : forall ls0 E0 E0', List.incl ls0 ls -> List.length E0 = List.length E0' -> tele_ass E0 ->
+      assert (HL : forall ls0 E0 E0', List.incl ls0 ls -> List.length E0 = List.length E0' -> all_assumptions E0 ->
                  Θ ⍮ Ξ ⍮ Γ ⊢ˣ E0 ++ con_inst_tele p D Mk Us gs ≈ E0' ++ con_inst_tele p D Mk Us' gs ->
                  Θ ⍮ Ξ ⍮ Γ ⊢ˣ (leaves_ctx r (im_nn Mk) As Us (List.length gs) (cargs_pat gs1) (List.length E0) ls0 ++ E0)
                                 ++ con_inst_tele p D Mk Us gs
@@ -567,7 +567,7 @@ Section Fixed_GCtx.
       replace (List.length ls + List.length E) with (List.length (L ++ E))
         by (unfold L; rewrite List.length_app, length_leaves_ctx; reflexivity).
       rewrite <- !List.app_assoc, (List.app_assoc L E), (List.app_assoc L' E').
-      apply IH; [ rewrite Heq, <- List.app_assoc; reflexivity | | | apply List.Forall_app; split; [ apply tele_ass_leaves_ctx | exact HaE ]
+      apply IH; [ rewrite Heq, <- List.app_assoc; reflexivity | | | apply List.Forall_app; split; [ apply all_assumptions_leaves_ctx | exact HaE ]
                 | exact HL' ];
         unfold L, L', ls; rewrite List.length_app, length_leaves_ctx, cargs_nrec_snoc, ?HE, ?HE', (length_shape_leaves _ _ _ 0); lia.
   Qed.
@@ -640,7 +640,7 @@ Section Fixed_GCtx.
     { rewrite EΔ, List.app_assoc; replace n with (List.length (IHc ++ con_inst_tele p D Mk Us gs))
         by (rewrite List.length_app, HlI, Hlc; unfold n; lia).
       apply wf_wk_shiftn_app'; rewrite <- List.app_assoc, <- EΔ; exact HΔ. }
-    apply wf_sub_of_list; [ unfold con_inst_tele; apply List.Forall_app; split; apply tele_ass_sub;
+    apply wf_sub_of_list; [ unfold con_inst_tele; apply List.Forall_app; split; apply all_assumptions_sub;
                               [ apply cargs_ctx_aux_ass | exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk) ]
                           | exact Hi | apply wf_sub_of_wk; exact Hw
                           | rewrite List.length_app, !length_vars_from, Hlc; lia |].
@@ -715,8 +715,8 @@ Section Fixed_GCtx.
       unfold im_params in HΨΓ; rewrite <- !List.app_assoc, (List.app_assoc (cargs_ctx p D Mk gs)) in HΨΓ.
       eapply tele_sub_eq_ext; [| exact HΨΓ | exact Hσσ ].
       apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ]. }
-    assert (Hcta : tele_ass (con_inst_tele p D Mk Us gs))
-      by (rewrite Hct; apply tele_ass_sub, List.Forall_app; split; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ]).
+    assert (Hcta : all_assumptions (con_inst_tele p D Mk Us gs))
+      by (rewrite Hct; apply all_assumptions_sub, List.Forall_app; split; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ]).
     pose proof (wf_sub_compose _ _ _ _ _ _ _ (ctxsub_ext_rev _ _ _ _ _ Hctel Hcta) Hb) as Hb'.
     rewrite sb_compose_id_left in Hb'.
     assert (HNl : List.length nvars = im_nn Mk) by (unfold nvars; apply length_vars_from).
@@ -838,7 +838,7 @@ Section Fixed_GCtx.
       assert (HNΓ : ⊢ Θ ⍮ Ξ ⍮ tele_sub (im_nparams Mk) (sb_of_list Id Us) ++ Γ)
         by (pose proof (HM _ _ Hk) as H0; unfold elim_mctx in H0; cbn [List.app] in H0; exact (proj1 (ctx_decomp H0))).
       assert (Hδ : Θ ⍮ Ξ ⍮ Δ ⊢ˢ sb_of_list (ι (wk_shiftn n)) nvars : tele_sub (im_nparams Mk) (sb_of_list Id Us) ++ Γ).
-      { apply wf_sub_of_list; [ apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption | exact HNΓ
+      { apply wf_sub_of_list; [ apply all_assumptions_sub; eapply decl_closed_nparams_ass; eassumption | exact HNΓ
                               | apply wf_sub_of_wk; exact Hw | rewrite length_tele_sub, HNl; reflexivity |].
         intros j0 N T HN HT; rewrite tele_insts_tele_sub in HT.
         apply (HMs j0); [ rewrite List.nth_error_app1 by (apply List.nth_error_Some; congruence); exact HN |].
@@ -875,7 +875,7 @@ Section Fixed_GCtx.
   (** Equal substitutions read back from lists of terms: equal terms, each
       at the instance of the type of its variable. *)
   Lemma wf_sub_eq_of_list_inv : forall Γ Δ Γ0 σ σ' Ms Ms',
-      tele_ass Δ -> List.length Ms = List.length Δ -> List.length Ms' = List.length Δ ->
+      all_assumptions Δ -> List.length Ms = List.length Δ -> List.length Ms' = List.length Δ ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list σ Ms ≈ sb_of_list σ' Ms' : Δ ++ Γ0 ->
       forall k N N' T, List.nth_error Ms k = Some N -> List.nth_error Ms' k = Some N' ->
         List.nth_error (tele_insts Δ σ Ms) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T.
@@ -994,7 +994,7 @@ Section Fixed_GCtx.
 
   (** An annotation equal to the motive's context's head stays so when
       the telescope before it changes to an equal one. *)
-  Lemma ext_eq_ann_move : forall Γ Ψ Ψ' κ Z A A', tele_ass Ψ -> tele_ass Ψ' ->
+  Lemma ext_eq_ann_move : forall Γ Ψ Ψ' κ Z A A', all_assumptions Ψ -> all_assumptions Ψ' ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹{κ} Z ≈ Ψ ▹{κ} A -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹{κ} A ≈ Ψ' ▹{κ} A' -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ' ▹{κ} Z ≈ Ψ' ▹{κ} A'.
   Proof.
     intros * Ha Ha' H1 H2.
@@ -1056,8 +1056,8 @@ Section Fixed_GCtx.
     - intros k Mk b Hk' Hb.
       pose proof (HZ _ _ _ Hk' Hb) as HZ0; pose proof (HMc _ _ Hk') as HMk.
       unfold elim_mctx in HZ0, HMk |- *.
-      eapply ext_eq_ann_move; [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk')
-                              | apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk') | exact HZ0 | exact HMk ].
+      eapply ext_eq_ann_move; [ apply all_assumptions_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk')
+                              | apply all_assumptions_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk') | exact HZ0 | exact HMk ].
     - intros k Mk b Hk' Hb; pose proof (sub_preserves_exp _ _ _ _ _ _ _ (HAb _ _ _ Hk' Hb) (HMv _ _ Hk')) as H.
       rewrite !exp_sub_id in H; exact H.
     - intros k Mk Hk'; exact (ctx_ext_refl _ _ _ _ (elim_mctx_ass _ _ _ _ _ Hc Hk') (HM' _ _ Hk')).
@@ -1171,7 +1171,7 @@ Proof.
     rewrite (tele_insts_sb_eq _ _ (sb_of_list Id Us)) in HT by apply sb_compose_id_right; exact HT. }
   assert (Hδδ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ns ≈ sb_of_list Id Ns' : tele_sub (im_nparams Mm) (sb_of_list Id Us) ++ Γ).
   { eapply wf_sub_eq_of_list_left;
-      [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm) | exact (wf_nparams_sub _ _ _ HD Hc _ _ _ _ Hm HΓ Hσ)
+      [ apply all_assumptions_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm) | exact (wf_nparams_sub _ _ _ HD Hc _ _ _ _ Hm HΓ Hσ)
       | apply wf_sub_eq_refl, wf_sub_id, HΓ | rewrite length_tele_sub; exact HNl | rewrite length_tele_sub; exact HNl' | | | ].
     - intros j N T HN HT; exact (HNs _ _ _ HN (Hti _ _ HT)).
     - intros j N' T HN' HT.

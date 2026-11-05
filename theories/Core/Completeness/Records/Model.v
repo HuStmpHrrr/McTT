@@ -45,7 +45,7 @@ Section Fixed_GCtx.
     arguments of [C]. *)
 Section SortTele.
   Variables (C : ctx) (S : typ).
-  Hypothesis (HCv : ⊨ C) (HCa : tele_ass C) (Hsu : ind_sort_univ S) (HS : exists i : nat, C ⊨ S : Typeω@i).
+  Hypothesis (HCv : ⊨ C) (HCa : all_assumptions C) (Hsu : ind_sort_univ S) (HS : exists i : nat, C ⊨ S : Typeω@i).
 
   Lemma sort_tele_univ : forall ρ b, ⟦ S ⟧ ρ ↘ b -> is_univ b.
   Proof.
@@ -62,7 +62,7 @@ Section SortTele.
       Pre ++ C ⊨ T : S[wk_shiftn (List.length Pre)]ʷ ->
       forall ns ns' zs zs', List.length zs = List.length Pre -> List.length zs' = List.length Pre ->
         List.length ns = List.length C -> List.length ns' = List.length C ->
-        per_gargs (List.rev (Pre ++ C)) nil nil (ns ++ zs) (ns' ++ zs') ->
+        per_tele_args (List.rev (Pre ++ C)) nil nil (ns ++ zs) (ns' ++ zs') ->
         forall a, ⟦ S ⟧ env_tele nil (List.rev C) ns ↘ a ->
         exists t t', ⟦ T ⟧ env_tele (env_tele nil (List.rev C) ns) (List.rev Pre) zs ↘ t /\
           ⟦ T ⟧ env_tele (env_tele nil (List.rev C) ns') (List.rev Pre) zs' ↘ t' /\
@@ -72,7 +72,7 @@ Section SortTele.
     destruct (rel_ctx_wf_per_ctx_env HC) as [R HR].
     assert (HRe : R (env_tele (env_tele nil (List.rev C) ns) (List.rev Pre) zs) (env_tele (env_tele nil (List.rev C) ns') (List.rev Pre) zs')).
     { rewrite <- !env_tele_closed_app by assumption.
-      apply (gargs_env_rel _ _ _ _ _ _ HR HC); [ rewrite !List.length_app; lia | exact Hg ]. }
+      apply (tele_args_env_rel _ _ _ _ _ _ HR HC); [ rewrite !List.length_app; lia | exact Hg ]. }
     assert (HPR : PER R) by (eapply per_env_PER; exact HR).
     assert (HRee : R (env_tele (env_tele nil (List.rev C) ns) (List.rev Pre) zs) (env_tele (env_tele nil (List.rev C) ns) (List.rev Pre) zs))
       by (etransitivity; [ exact HRe | symmetry; exact HRe ]).
@@ -104,7 +104,7 @@ Section SortTele.
       Pre ++ C ⊨ T : abs_kind_sort r S[wk_shiftn (List.length Pre)]ʷ ->
       forall ns ns' zs zs', List.length zs = List.length Pre -> List.length zs' = List.length Pre ->
         List.length ns = List.length C -> List.length ns' = List.length C ->
-        per_gargs (List.rev (Pre ++ C)) nil nil (ns ++ zs) (ns' ++ zs') ->
+        per_tele_args (List.rev (Pre ++ C)) nil nil (ns ++ zs) (ns' ++ zs') ->
         forall a, ⟦ S ⟧ env_tele nil (List.rev C) ns ↘ a ->
         exists t t', ⟦ T ⟧ env_tele (env_tele nil (List.rev C) ns) (List.rev Pre) zs ↘ t /\
           ⟦ T ⟧ env_tele (env_tele nil (List.rev C) ns') (List.rev Pre) zs' ↘ t' /\
@@ -115,7 +115,7 @@ Section SortTele.
     destruct (rel_ctx_wf_per_ctx_env HC) as [R HR].
     assert (HRe : R (env_tele (env_tele nil (List.rev C) ns) (List.rev Pre) zs) (env_tele (env_tele nil (List.rev C) ns') (List.rev Pre) zs')).
     { rewrite <- !env_tele_closed_app by assumption.
-      apply (gargs_env_rel _ _ _ _ _ _ HR HC); [ rewrite !List.length_app; lia | exact Hg ]. }
+      apply (tele_args_env_rel _ _ _ _ _ _ HR HC); [ rewrite !List.length_app; lia | exact Hg ]. }
     destruct (rel_exp_of_prop_inversion_simple_at HR HT _ _ HRe) as (t & t' & Et & Et' & Hp).
     exists t, t'; split; [ exact Et | split; [ exact Et' |] ].
     exists per_proof; apply per_univ_elem_of_prop; exact Hp.
@@ -124,12 +124,12 @@ Section SortTele.
   (** Arguments related at a telescope of types at the sort or
       propositions, by the canonical relations, are arguments related at
       it. *)
-  Lemma sort_tele_canon_gargs : forall (ts : list centry) (Pre0 : ctx) (tr : nat -> list domain -> relation domain)
+  Lemma sort_tele_canon_tele_args : forall (ts : list centry) (Pre0 : ctx) (tr : nat -> list domain -> relation domain)
       ns ns' zs zs' a,
-      tele_ass ts ->
+      all_assumptions ts ->
       List.length ns = List.length C -> List.length ns' = List.length C ->
       List.length zs = List.length Pre0 -> List.length zs' = List.length Pre0 ->
-      per_gargs (List.rev (Pre0 ++ C)) nil nil (ns ++ zs) (ns' ++ zs') ->
+      per_tele_args (List.rev (Pre0 ++ C)) nil nil (ns ++ zs) (ns' ++ zs') ->
       ⟦ S ⟧ env_tele nil (List.rev C) ns ↘ a ->
       (forall j κ A, List.nth_error ts j = Some (ce_ass κ A) ->
          ⊨ List.rev (List.firstn j ts) ++ Pre0 ++ C /\
@@ -138,7 +138,7 @@ Section SortTele.
          (tr j pre <~> per_head A A (env_tele (env_tele nil (List.rev C) ns) (List.rev Pre0 ++ ts) (zs ++ pre))
                                    (env_tele (env_tele nil (List.rev C) ns) (List.rev Pre0 ++ ts) (zs ++ pre)))) ->
       forall k vs vs', k <= List.length ts -> tele_prefix_rel tr k vs vs' ->
-        per_gargs (List.firstn k ts) (env_tele (env_tele nil (List.rev C) ns) (List.rev Pre0) zs)
+        per_tele_args (List.firstn k ts) (env_tele (env_tele nil (List.rev C) ns) (List.rev Pre0) zs)
           (env_tele (env_tele nil (List.rev C) ns') (List.rev Pre0) zs') vs vs'.
   Proof.
     intros * Hts Hu Hu' Hz Hz' Hg Ha Hv Htr k.
@@ -148,7 +148,7 @@ Section SortTele.
     - pose proof Hp as Hp0; rewrite tele_prefix_rel_iff in Hp0; destruct Hp0 as (Hl & Hl' & Hr).
       destruct (nth_error_lt_some' ts k ltac:(lia)) as [e He].
       assert (HA : exists κ A, e = ce_ass κ A)
-        by (unfold tele_ass in Hts; rewrite List.Forall_forall in Hts; apply Hts; eapply List.nth_error_In; exact He).
+        by (unfold all_assumptions in Hts; rewrite List.Forall_forall in Hts; apply Hts; eapply List.nth_error_In; exact He).
       destruct HA as (κ & A & ->).
       destruct (nth_error_lt_some' vs k ltac:(lia)) as [v Hv0].
       destruct (nth_error_lt_some' vs' k ltac:(lia)) as [v' Hv0'].
@@ -163,16 +163,16 @@ Section SortTele.
       assert (Hlf : List.length (List.firstn k ts) = k) by (rewrite List.length_firstn; lia).
       assert (Hlv : List.length (List.firstn k vs) = k) by (rewrite List.length_firstn; lia).
       assert (Hlv' : List.length (List.firstn k vs') = k) by (rewrite List.length_firstn; lia).
-      assert (Hg' : per_gargs (List.rev (List.rev (List.firstn k ts) ++ Pre0 ++ C)) nil nil
+      assert (Hg' : per_tele_args (List.rev (List.rev (List.firstn k ts) ++ Pre0 ++ C)) nil nil
                       (ns ++ zs ++ List.firstn k vs) (ns' ++ zs' ++ List.firstn k vs')).
       { rewrite List.rev_app_distr, List.rev_involutive, !List.app_assoc.
-        apply per_gargs_app_intro; [ rewrite List.length_app, List.length_rev, List.length_app; lia | exact Hg |].
+        apply per_tele_args_app_intro; [ rewrite List.length_app, List.length_rev, List.length_app; lia | exact Hg |].
         rewrite !env_tele_closed_app by assumption; exact IHk. }
       set (Pre := List.rev (List.firstn k ts) ++ Pre0).
       assert (HC' : ⊨ Pre ++ C) by (unfold Pre; rewrite <- List.app_assoc; exact HC).
       assert (HT' : Pre ++ C ⊨ A : abs_kind_sort r S[wk_shiftn (List.length Pre)]ʷ)
         by (unfold Pre; rewrite <- List.app_assoc, List.length_app, List.length_rev, Hlf; exact HT).
-      assert (Hg'' : per_gargs (List.rev (Pre ++ C)) nil nil
+      assert (Hg'' : per_tele_args (List.rev (Pre ++ C)) nil nil
                        (ns ++ (zs ++ List.firstn k vs)) (ns' ++ (zs' ++ List.firstn k vs')))
         by (unfold Pre; rewrite <- List.app_assoc; exact Hg').
       destruct (sort_rel_tele_rel r Pre A Hrk HC' HT' ns ns' (zs ++ List.firstn k vs) (zs' ++ List.firstn k vs')
@@ -182,7 +182,7 @@ Section SortTele.
         as (t & t' & Et & Et' & [R0 HR0]).
       destruct (per_univ_elem_to_nat _ _ _ _ HR0) as [n Hn].
       unfold Pre in Et, Et'; rewrite List.rev_app_distr, List.rev_involutive in Et, Et'.
-      apply (per_gargs_snoc _ _ _ _ _ _ _ _ _ n R0); [ lia | exact IHk | |].
+      apply (per_tele_args_snoc _ _ _ _ _ _ _ _ _ n R0); [ lia | exact IHk | |].
       + rewrite env_tele_app in Et, Et' by (rewrite List.length_rev; lia).
         exact (mk_rel_mod_eval t t' Et Et' Hn).
       + pose proof (Hr _ _ _ Hv0 Hv0') as Hrv.
@@ -198,27 +198,27 @@ Section SortTele.
   Lemma rev_tele_sem : ⊨ List.rev (List.rev C) ++ ⋅.
   Proof. rewrite List.rev_involutive, List.app_nil_r; exact HCv. Qed.
 
-  Lemma rev_tele_ass : tele_ass (List.rev C).
+  Lemma rev_all_assumptions : all_assumptions (List.rev C).
   Proof. apply List.Forall_rev, HCa. Qed.
 
-  Lemma tele_gargs_refl_l : forall ns ns', per_gargs (List.rev C) nil nil ns ns' -> per_gargs (List.rev C) nil nil ns ns.
+  Lemma record_params_args_refl_l : forall ns ns', per_tele_args (List.rev C) nil nil ns ns' -> per_tele_args (List.rev C) nil nil ns ns.
   Proof.
-    intros * Hg; eapply (per_gargs_refl_l _ _ _ per_ctx_env_nil_true rev_tele_sem); [ exact rev_tele_ass | exact I | exact Hg ].
+    intros * Hg; eapply (per_tele_args_refl_l _ _ _ per_ctx_env_nil_true rev_tele_sem); [ exact rev_all_assumptions | exact I | exact Hg ].
   Qed.
 
-  Lemma length_tele_gargs : forall ns ns', per_gargs (List.rev C) nil nil ns ns' ->
+  Lemma length_record_params_args : forall ns ns', per_tele_args (List.rev C) nil nil ns ns' ->
       List.length ns = List.length C -> List.length ns' = List.length C.
-  Proof. intros * Hg Hu; destruct (per_gargs_length _ _ _ _ _ Hg) as [Hl _]; lia. Qed.
+  Proof. intros * Hg Hu; destruct (per_tele_args_length _ _ _ _ _ Hg) as [Hl _]; lia. Qed.
 
   (** The sort at arguments related to themselves has a value. *)
-  Lemma sort_tele_value : forall ns, per_gargs (List.rev C) nil nil ns ns -> List.length ns = List.length C ->
+  Lemma sort_tele_value : forall ns, per_tele_args (List.rev C) nil nil ns ns -> List.length ns = List.length C ->
       exists a, ⟦ S ⟧ env_tele nil (List.rev C) ns ↘ a.
   Proof.
     intros ns Hg Hu.
     destruct HS as [i HSi].
     destruct (rel_ctx_wf_per_ctx_env HCv) as [RU HRU].
     assert (HRU0 : RU (env_tele nil (List.rev C) ns) (env_tele nil (List.rev C) ns))
-      by (apply (gargs_env_rel _ _ _ _ _ _ HRU HCv); [ exact Hu | exact Hg ]).
+      by (apply (tele_args_env_rel _ _ _ _ _ _ HRU HCv); [ exact Hu | exact Hg ]).
     destruct (rel_exp_of_typ_inversion_simple_at HRU HSi _ _ HRU0) as (a & _ & Ea & _ & _); eauto.
   Qed.
 End SortTele.
@@ -458,9 +458,9 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma field_tele_ass : forall R, tele_ass (field_tele R).
+Lemma field_tele_all_assumptions : forall R, all_assumptions (field_tele R).
 Proof.
-  intros R; unfold field_tele, tele_ass; generalize (record_field_kinds R).
+  intros R; unfold field_tele, all_assumptions; generalize (record_field_kinds R).
   induction (record_fields R) as [| fT fl IH]; intros κs; cbn [fields_tele_in_order]; constructor; eauto.
 Qed.
 
@@ -503,7 +503,7 @@ Qed.
 Section RecordModel.
   Variables (p : qname) (R : record_decl).
   Hypothesis (Hl : record_lookup gc_deps gc_stack p = Some R) (Hc : record_closed R)
-    (Hass : tele_ass (record_params R)) (Hnd : List.NoDup (List.map fst (record_fields R)))
+    (Hass : all_assumptions (record_params R)) (Hnd : List.NoDup (List.map fst (record_fields R)))
     (Hsu : ind_sort_univ (record_sort R))
     (HF : ⊨ record_fctx R (List.length (record_fields R)) ++ record_params R)
     (HS : exists i : nat, record_params R ⊨ record_sort R : Typeω@i)
@@ -542,17 +542,17 @@ Section RecordModel.
 
   (** The canonical relations of the fields at related parameters are
       those of their telescope. *)
-  Lemma canon_fields_gargs : forall ns ns' a, per_gargs (List.rev (record_params R)) nil nil ns ns' ->
+  Lemma canon_fields_tele_args : forall ns ns' a, per_tele_args (List.rev (record_params R)) nil nil ns ns' ->
       List.length ns = List.length (record_params R) -> ⟦ record_sort R ⟧ env_tele nil (List.rev (record_params R)) ns ↘ a ->
       forall k vs vs', k <= List.length (record_fields R) -> tele_prefix_rel (canon_fields_rel R ns) k vs vs' ->
-        per_gargs (List.firstn k (field_tele R)) (env_tele nil (List.rev (record_params R)) ns)
+        per_tele_args (List.firstn k (field_tele R)) (env_tele nil (List.rev (record_params R)) ns)
           (env_tele nil (List.rev (record_params R)) ns') vs vs'.
   Proof.
     intros * Hg Hu Ha * Hk Hp.
-    pose proof (length_tele_gargs (record_params R) _ _ Hg Hu) as Hu'.
-    pose proof (sort_tele_canon_gargs (record_params R) (record_sort R) Hsu HS
+    pose proof (length_record_params_args (record_params R) _ _ Hg Hu) as Hu'.
+    pose proof (sort_tele_canon_tele_args (record_params R) (record_sort R) Hsu HS
                   (field_tele R) nil (canon_fields_rel R ns) ns ns' nil nil a
-                  (field_tele_ass R) Hu Hu' eq_refl eq_refl ltac:(rewrite !List.app_nil_r; exact Hg) Ha) as Hcan.
+                  (field_tele_all_assumptions R) Hu Hu' eq_refl eq_refl ltac:(rewrite !List.app_nil_r; exact Hg) Ha) as Hcan.
     cbn [List.rev List.app List.length] in Hcan.
     assert (Hce : forall u, env_tele (env_tele nil (List.rev (record_params R)) u) nil nil = env_tele nil (List.rev (record_params R)) u)
       by reflexivity.
@@ -569,20 +569,20 @@ Section RecordModel.
 
   (** The fields' types at related parameters and canonically related
       prefixes are related, in the universe the sort denotes. *)
-  Lemma record_fields_related : forall ns ns' a, per_gargs (List.rev (record_params R)) nil nil ns ns' ->
+  Lemma record_fields_related : forall ns ns' a, per_tele_args (List.rev (record_params R)) nil nil ns ns' ->
       List.length ns = List.length (record_params R) -> ⟦ record_sort R ⟧ env_tele nil (List.rev (record_params R)) ns ↘ a ->
       fields_related (univ_idx a) R ns ns'.
   Proof.
     intros * Hg Hu Ha k f T vs vs' Hk Hp.
-    pose proof (length_tele_gargs (record_params R) _ _ Hg Hu) as Hu'.
+    pose proof (length_record_params_args (record_params R) _ _ Hg Hu) as Hu'.
     assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
-    pose proof (canon_fields_gargs _ _ _ Hg Hu Ha k vs vs' ltac:(lia) Hp) as Hgv.
+    pose proof (canon_fields_tele_args _ _ _ Hg Hu Ha k vs vs' ltac:(lia) Hp) as Hgv.
     pose proof Hp as Hp0; rewrite tele_prefix_rel_iff in Hp0; destruct Hp0 as (Hlv & Hlv' & _).
     assert (HLk : List.length (record_fctx R k) = k) by (apply length_record_fctx; lia).
     pose proof (HT _ _ _ Hk) as HTk; rewrite <- HLk in HTk at 3.
     destruct (sort_rel_tele_rel (record_params R) (record_sort R) Hsu HS _ (record_fctx R k) T (HFk k) (record_fctx_sem k ltac:(lia)) HTk
                 ns ns' vs vs' ltac:(lia) ltac:(lia) Hu Hu' ltac:(rewrite List.rev_app_distr, rev_record_fctx;
-                                                              apply per_gargs_app_intro;
+                                                              apply per_tele_args_app_intro;
                                                               [ rewrite List.length_rev; exact Hu | exact Hg | exact Hgv ]) a Ha)
       as (t & t' & Et & Et' & Htt).
     unfold record_fields_env.
@@ -595,20 +595,20 @@ Section RecordModel.
 
       The record at related parameters is a type of the universe its sort
       denotes, its elements those of the canonical record relation. *)
-  Lemma record_relate : forall ns ns' a, per_gargs (List.rev (record_params R)) nil nil ns ns' ->
+  Lemma record_relate : forall ns ns' a, per_tele_args (List.rev (record_params R)) nil nil ns ns' ->
       List.length ns = List.length (record_params R) -> ⟦ record_sort R ⟧ env_tele nil (List.rev (record_params R)) ns ↘ a ->
       DF d_record p ns ≈ d_record p ns' ∈ per_univ_elem (univ_idx a) ↘ record_rel R (canon_fields_rel R ns).
   Proof.
     intros * Hg Hu Ha.
-    pose proof (length_tele_gargs (record_params R) _ _ Hg Hu) as Hu'.
+    pose proof (length_record_params_args (record_params R) _ _ Hg Hu) as Hu'.
     apply (per_univ_elem_record_canon (univ_idx a) p R ns ns' Hl Hnd Hu Hu');
-      [ exact (per_gargs_per_top_ps _ _ _ Hg ltac:(rewrite List.length_rev; exact Hu))
+      [ exact (per_tele_args_per_top_ps _ _ _ Hg ltac:(rewrite List.length_rev; exact Hu))
       | exact (record_fields_related _ _ _ Hg Hu Ha) |].
     (** The sorts: at related arguments of the fields' telescope, each
         field's type is of its sort. *)
     intros k f T vs vs' Hk Hp.
     assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
-    pose proof (canon_fields_gargs _ _ _ Hg Hu Ha k vs vs' ltac:(lia) Hp) as Hgv.
+    pose proof (canon_fields_tele_args _ _ _ Hg Hu Ha k vs vs' ltac:(lia) Hp) as Hgv.
     pose proof Hp as Hp0; rewrite tele_prefix_rel_iff in Hp0; destruct Hp0 as (Hlv & Hlv' & _).
     assert (HC : ⊨ record_fctx R k ++ record_params R) by (apply record_fctx_sem; lia).
     destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
@@ -616,9 +616,9 @@ Section RecordModel.
     { unfold record_fields_env.
       rewrite (env_tele_firstn _ (record_fields_tele R) vs), (env_tele_firstn _ (record_fields_tele R) vs'), Hlv, Hlv'.
       rewrite record_fields_tele_eq, <- rev_record_fctx, <- !env_tele_closed_app by assumption.
-      apply (gargs_env_rel _ _ _ _ _ _ HRC HC); [ rewrite !List.length_app, length_record_fctx by lia; lia |].
+      apply (tele_args_env_rel _ _ _ _ _ _ HRC HC); [ rewrite !List.length_app, length_record_fctx by lia; lia |].
       rewrite List.rev_app_distr, rev_record_fctx.
-      apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hu | exact Hg | exact Hgv ]. }
+      apply per_tele_args_app_intro; [ rewrite List.length_rev; exact Hu | exact Hg | exact Hgv ]. }
     destruct (field_kind_cases k) as [Er | Er].
     - assert (HTl : exists l : nat, record_fctx R k ++ record_params R ⊨ T : Typeω@l).
       { pose proof (HT _ _ _ Hk) as H; rewrite Er in H; cbn [abs_kind_sort] in H.
@@ -643,18 +643,18 @@ Section RecordModel.
     assert (HEE : RU (env_extend_typed ρ vts) (env_extend_typed ρ vts)) by (etransitivity; [ exact HE | symmetry; exact HE ]).
     assert (HRU' : EF List.rev (List.rev (record_params R)) ++ ⋅ ≈ List.rev (List.rev (record_params R)) ++ ⋅ ∈ per_ctx_env ↘ RU)
       by (rewrite List.rev_involutive, List.app_nil_r; exact HRU).
-    destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_tele_ass _ Hass) HRU' ρ ρ' vts vts'
+    destruct (per_tele_args_of_env_extend _ _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_all_assumptions _ Hass) HRU' ρ ρ' vts vts'
                 ltac:(rewrite List.length_rev; exact Hlen) ltac:(rewrite List.length_rev; exact Hlen') HE) as [_ Hg].
-    destruct (rel_gargs_readable _ _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_tele_ass _ Hass) HRU' ρ ρ vts vts
+    destruct (per_tele_args_of_env_extend_readable _ _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_all_assumptions _ Hass) HRU' ρ ρ vts vts
                 ltac:(rewrite List.length_rev; exact Hlen) ltac:(rewrite List.length_rev; exact Hlen) HEE) as [Rv _].
     set (ys := List.map fst vts) in *; set (ys' := List.map fst vts') in *.
     assert (Hlys : List.length ys = List.length (record_params R)) by (unfold ys; rewrite List.length_map; exact Hlen).
-    pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_tele_ass _ Hass)
+    pose proof (per_tele_args_base _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_all_assumptions _ Hass)
                   ρ ρ' nil nil _ _ I I I Hg) as Hg0.
-    pose proof (tele_gargs_refl_l _ record_params_sem Hass _ _ Hg0) as Hgd.
+    pose proof (record_params_args_refl_l _ record_params_sem Hass _ _ Hg0) as Hgd.
     destruct (sort_tele_value _ _ record_params_sem HS _ Hgd Hlys) as [a Ea].
     destruct HS as [i HSi].
-    pose proof (per_gargs_entries_readable _ _ _ _ _ Hgd) as [Rt _].
+    pose proof (per_tele_args_entries_readable _ _ _ _ _ Hgd) as [Rt _].
     assert (HRUρ : RU (env_extend_typed ρ vts) (env_tele nil (List.rev (record_params R)) ys)).
     { unfold env_tele.
       exact (closed_env_base _ _ vts vts vts (tele_entries nil (List.rev (record_params R)) ys) ρ ρ ρ nil
@@ -698,7 +698,7 @@ Section RecordModel.
       by (destruct HPr as [l HPl]; intros * E; exists l; pose proof (HPl _ _ _ _ E) as H; rewrite List.app_nil_r in H; exact H).
     eapply (ctx_pi_rel_elem (List.length (record_params R)) (d_record p) _ (List.rev (record_params R)) eval_app_record_args
               ltac:(intros xs κ A _ Hn Hev; exact (arg_kind_record_param xs κ A Hn Hev))
-              (List.rev (record_params R)) ⋅ RT (rev_tele_ass _ Hass) HRT (rev_tele_sem _ record_params_sem)
+              (List.rev (record_params R)) ⋅ RT (rev_all_assumptions _ Hass) HRT (rev_tele_sem _ record_params_sem)
               ρ ρ' nil nil);
       [ rewrite List.length_rev; reflexivity | reflexivity | exact Hρ | reflexivity
       | | exact Ea | exact Ea' | exact HR0 | ].
@@ -877,7 +877,7 @@ Section RecordModel.
          List.nth_error (tele_insts (record_fctx R k ++ record_params R) Id Ms) j = Some A -> Γ ⊨ N : A) ->
       List.Forall (exp_scoped (List.length Γ)) Ms ->
       RΓ E E -> List.length ms = List.length Ms ->
-      per_gargs (List.rev (record_fctx R k ++ record_params R)) nil nil ms ms ->
+      per_tele_args (List.rev (record_fctx R k ++ record_params R)) nil nil ms ms ->
       (forall j N m, List.nth_error Ms j = Some N -> List.nth_error ms j = Some m ->
          ⟦ N ⟧ E ↘ m \/ record_ctx_sort k (List.length Ms - 1 - j) = ak_propositional) ->
       exists (j : nat) t u, ⟦ U[sb_of_list Id Ms] ⟧ E ↘ t /\
@@ -886,7 +886,7 @@ Section RecordModel.
     intros * Hk HΓ HRΓ HMl HMs HMss HE Hlms0 Hgms Hms.
     set (C := record_fctx R k ++ record_params R) in *.
     assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
-    assert (HCa : tele_ass C) by (apply record_fctx_params_ass; exact Hass).
+    assert (HCa : all_assumptions C) by (apply record_fctx_params_ass; exact Hass).
     assert (HC : ⊨ C) by (apply record_fctx_sem; lia).
     assert (HlC : List.length Ms = List.length C) by (unfold C; rewrite List.length_app, length_record_fctx by lia; exact HMl).
     assert (Hlms : List.length ms = List.length C) by lia.
@@ -932,16 +932,16 @@ Section RecordModel.
     assert (HRC' : EF List.rev (List.rev C) ++ ⋅ ≈ List.rev (List.rev C) ++ ⋅ ∈ per_ctx_env ↘ RC)
       by (rewrite List.rev_involutive, List.app_nil_r; exact HRC).
     assert (HCr : ⊨ List.rev (List.rev C) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
-    assert (HCra : tele_ass (List.rev C)) by (apply List.Forall_rev; exact HCa).
+    assert (HCra : all_assumptions (List.rev C)) by (apply List.Forall_rev; exact HCa).
     assert (Hlt : List.length (tagged_entries Γ (List.rev C) (List.skipn (List.length C) X) xs) = List.length (List.rev C))
       by (rewrite tagged_entries_length by exact HlxC; lia).
-    destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true HCr HCra HRC' _ _ _ _ Hlt Hlt HYC) as [_ Hgx].
-    destruct (rel_gargs_readable _ _ _ _ per_ctx_env_nil_true HCr HCra HRC' _ _ _ _ Hlt Hlt HYC) as [Rx _].
+    destruct (per_tele_args_of_env_extend _ _ _ _ per_ctx_env_nil_true HCr HCra HRC' _ _ _ _ Hlt Hlt HYC) as [_ Hgx].
+    destruct (per_tele_args_of_env_extend_readable _ _ _ _ per_ctx_env_nil_true HCr HCra HRC' _ _ _ _ Hlt Hlt HYC) as [Rx _].
     rewrite tagged_entries_fst in Hgx by exact HlxC.
-    pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HCr HCra _ _ nil nil _ _ I I I Hgx) as Hgx0.
+    pose proof (per_tele_args_base _ _ _ per_ctx_env_nil_true HCr HCra _ _ nil nil _ _ I I I Hgx) as Hgx0.
     (** These values and [ms] differ only at the propositions. *)
-    assert (Hgxm : per_gargs (List.rev C) nil nil xs ms).
-    { apply (per_gargs_equal_up_to_proofs _ _ _ per_ctx_env_nil_true HCr HCra nil nil xs ms I Hgx0 Hgms ltac:(lia)).
+    assert (Hgxm : per_tele_args (List.rev C) nil nil xs ms).
+    { apply (per_tele_args_equal_up_to_proofs _ _ _ per_ctx_env_nil_true HCr HCra nil nil xs ms I Hgx0 Hgms ltac:(lia)).
       intros i x m Hx Hm.
       pose proof (nth_error_lt_length _ _ _ Hx) as Hix.
       destruct (nth_error_lt_some' Ms i ltac:(lia)) as [N HN].
@@ -967,15 +967,15 @@ Section RecordModel.
         rewrite Hrc, List.firstn_app, <- Hl1, Nat.sub_diag, List.firstn_all; cbn [List.firstn]; rewrite !List.app_nil_r.
         exact Hp1. }
     (** So [X] and the values [ms] are related environments of [C]. *)
-    pose proof (per_gargs_entries_readable _ _ _ _ _ Hgms) as [Rms _].
-    pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true HCr HCra nil nil (List.skipn (List.length C) X) nil _ _ I I I Hgxm) as Hgxm'.
+    pose proof (per_tele_args_entries_readable _ _ _ _ _ Hgms) as [Rms _].
+    pose proof (per_tele_args_base _ _ _ per_ctx_env_nil_true HCr HCra nil nil (List.skipn (List.length C) X) nil _ _ I I I Hgxm) as Hgxm'.
     rewrite <- (tagged_entries_fst (List.rev C) Γ (List.skipn (List.length C) X) xs HlxC) in Hgxm'.
     rewrite <- (tele_entries_values ms nil (List.rev C)) in Hgxm'.
     assert (HXY : RC (env_extend_typed (List.skipn (List.length C) X) (tagged_entries Γ (List.rev C) (List.skipn (List.length C) X) xs))
                      (env_tele nil (List.rev C) ms))
       by (assert (Hlt2 : List.length (tele_entries nil (List.rev C) ms) = List.length (List.rev C))
             by (rewrite tele_entries_length, List.length_rev; lia);
-          exact (gargs_env_rel_typed _ _ _ _ per_ctx_env_nil_true HCr HCra HRC' _ _ _ _ I Hlt Hlt2 Hgxm' Rx Rms)).
+          exact (tele_args_env_rel_typed _ _ _ _ per_ctx_env_nil_true HCr HCra HRC' _ _ _ _ I Hlt Hlt2 Hgxm' Rx Rms)).
     rewrite <- env_extend_tagged_typed in HXY.
     assert (HXY' : RC X (env_tele nil (List.rev C) ms))
       by (eapply (per_ctx_env_resp_agree HRC); [ intros y _; symmetry; apply HXag | reflexivity | exact HXY ]).
@@ -992,7 +992,7 @@ Section RecordModel.
   Proof.
     intros * Hj HΓ HRCΓ Hρ Eu.
     assert (Hjl : j < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hj).
-    assert (HCa : tele_ass (record_fctx R j ++ record_params R)) by (apply record_fctx_params_ass; exact Hass).
+    assert (HCa : all_assumptions (record_fctx R j ++ record_params R)) by (apply record_fctx_params_ass; exact Hass).
     assert (HC : ⊨ record_fctx R j ++ record_params R) by (apply record_fctx_sem; lia).
     destruct (field_kind_cases j) as [Er | Er]; rewrite Er.
     - destruct (field_typ_large _ _ _ Hj Er) as [l HU].
@@ -1082,12 +1082,12 @@ Section RecordModel.
   (** The values of valid parameters at related environments are related
       arguments of the parameters' telescope: the parameters are relevant,
       so the substitution of the parameters' instance holds their values. *)
-  Lemma params_inst_gargs : forall Γ Ns RΓ E E' ns ns', ⊨ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
+  Lemma params_inst_tele_args : forall Γ Ns RΓ E E' ns ns', ⊨ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
       List.length Ns = List.length (record_params R) ->
       (forall j N A, List.nth_error Ns j = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) j = Some A -> Γ ⊨ N : A) ->
       List.Forall (exp_scoped (List.length Γ)) Ns ->
       RΓ E E' -> ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ E ↘ ns -> ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ E' ↘ ns' ->
-      per_gargs (List.rev (record_params R)) nil nil ns ns'.
+      per_tele_args (List.rev (record_params R)) nil nil ns ns'.
   Proof.
     intros * HΓ HRΓ Hn HNs HNss HE Ens Ens'.
     pose proof (gsub_closed_inst (record_params R) Γ Ns Hass record_params_sem HΓ Hn HNs HNss) as Hg.
@@ -1123,11 +1123,11 @@ Section RecordModel.
     assert (Hl1' : List.length (List.rev (record_params R)) = List.length ns) by (rewrite List.length_rev; lia).
     assert (Hl2' : List.length (List.rev (record_params R)) = List.length ns') by (rewrite List.length_rev; lia).
     rewrite !env_extend_tagged_typed in HEQ.
-    destruct (rel_gargs _ _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_tele_ass _ Hass) HRQ' _ _ _ _
+    destruct (per_tele_args_of_env_extend _ _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_all_assumptions _ Hass) HRQ' _ _ _ _
                 ltac:(rewrite tagged_entries_length by exact Hl1'; lia) ltac:(rewrite tagged_entries_length by exact Hl2'; lia) HEQ)
       as [_ Hgc].
     rewrite !tagged_entries_fst in Hgc by assumption.
-    exact (per_gargs_base _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_tele_ass _ Hass) _ _ nil nil _ _ I I I Hgc).
+    exact (per_tele_args_base _ _ _ per_ctx_env_nil_true (rev_tele_sem _ record_params_sem) (rev_all_assumptions _ Hass) _ _ nil nil _ _ I I I Hgc).
   Qed.
 
   (** The field [k] of equal elements of a record type at valid
@@ -1149,7 +1149,7 @@ Section RecordModel.
       by (apply List.Forall_app; split; [ exact HNss | exact (record_pre_scoped _ k _ HMs) ]).
     assert (Hk0 : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hjf).
     pose proof (record_pre_insts Γ M Ns k Hn ltac:(lia) HNs HPs) as Hins.
-    assert (HCa : tele_ass (record_fctx R k ++ record_params R)) by (apply record_fctx_params_ass; exact Hass).
+    assert (HCa : all_assumptions (record_fctx R k ++ record_params R)) by (apply record_fctx_params_ass; exact Hass).
     assert (HC : ⊨ record_fctx R k ++ record_params R) by (apply record_fctx_sem; lia).
     assert (HlM : List.length (Ns ++ record_pre R k M) = k + List.length (record_params R))
       by (rewrite List.length_app, length_record_pre by lia; lia).
@@ -1229,14 +1229,14 @@ Section RecordModel.
     destruct (proj1 (HE _ _) Hm22) as [P2a P2b HP2a HP2b Hr22].
     pose proof (record_projs_functional _ _ _ _ HP2a HP2) as ->.
     pose proof (record_projs_functional _ _ _ _ HP2b HP2) as ->.
-    assert (Hgms : per_gargs (List.rev (record_fctx R k ++ record_params R)) nil nil
+    assert (Hgms : per_tele_args (List.rev (record_fctx R k ++ record_params R)) nil nil
                      (ns2 ++ List.firstn k P2) (ns2 ++ List.firstn k P2)).
-    { pose proof (params_inst_gargs Γ Ns RΓ ρσ ρσ ns2 ns2 HΓ HRΓ Hn HNs HNss Hρσρσ Ens2 Ens2) as Hgp.
+    { pose proof (params_inst_tele_args Γ Ns RΓ ρσ ρσ ns2 ns2 HΓ HRΓ Hn HNs HNss Hρσρσ Ens2 Ens2) as Hgp.
       destruct (sort_tele_value _ _ record_params_sem HS _ Hgp Hln2) as [a Ha].
-      pose proof (canon_fields_gargs _ _ _ Hgp Hln2 Ha k (List.firstn k P2) (List.firstn k P2) ltac:(lia)
+      pose proof (canon_fields_tele_args _ _ _ Hgp Hln2 Ha k (List.firstn k P2) (List.firstn k P2) ltac:(lia)
                     (tele_prefix_rel_of_full _ _ _ _ k Hr22 ltac:(lia))) as Hgf.
       rewrite List.rev_app_distr, rev_record_fctx.
-      apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hln2 | exact Hgp | exact Hgf ]. }
+      apply per_tele_args_app_intro; [ rewrite List.length_rev; exact Hln2 | exact Hgp | exact Hgf ]. }
     assert (Hlms : List.length (ns2 ++ List.firstn k P2) = List.length (Ns ++ record_pre R k M))
       by (rewrite HlM, List.length_app, List.length_firstn; lia).
     destruct (field_inst_link Γ k f U _ RΓ ρσ _ Hjf HΓ HRΓ HlM Hins HMss Hρσρσ Hlms Hgms) as (jb & t & u & Et & Eu & [Ru HRu]).
@@ -1342,27 +1342,27 @@ Section RecordModel.
 
   (** Values canonically related at a prefix of the fields, after related
       parameters, are related arguments of each shorter prefix. *)
-  Lemma prefix_gargs : forall ns vs vs' a k, per_gargs (List.rev (record_params R)) nil nil ns ns ->
+  Lemma prefix_tele_args : forall ns vs vs' a k, per_tele_args (List.rev (record_params R)) nil nil ns ns ->
       List.length ns = List.length (record_params R) -> ⟦ record_sort R ⟧ env_tele nil (List.rev (record_params R)) ns ↘ a ->
       k <= List.length (record_fields R) -> tele_prefix_rel (canon_fields_rel R ns) k vs vs' ->
-      forall j, j <= k -> per_gargs (List.rev (record_fctx R j ++ record_params R)) nil nil
+      forall j, j <= k -> per_tele_args (List.rev (record_fctx R j ++ record_params R)) nil nil
                             (ns ++ List.firstn j vs) (ns ++ List.firstn j vs).
   Proof.
     intros * Hg Hln Ha Hk Hp j Hj.
     pose proof (tele_prefix_rel_of_pre _ _ _ _ j Hp Hj) as Hpj.
-    pose proof (canon_fields_gargs _ _ _ Hg Hln Ha j _ _ ltac:(lia) Hpj) as Hgf.
-    assert (Hg' : per_gargs (List.rev (record_fctx R j ++ record_params R)) nil nil
+    pose proof (canon_fields_tele_args _ _ _ Hg Hln Ha j _ _ ltac:(lia) Hpj) as Hgf.
+    assert (Hg' : per_tele_args (List.rev (record_fctx R j ++ record_params R)) nil nil
                     (ns ++ List.firstn j vs) (ns ++ List.firstn j vs')).
     { rewrite List.rev_app_distr, rev_record_fctx.
-      apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hln | exact Hg | exact Hgf ]. }
-    exact (tele_gargs_refl_l _ (record_fctx_sem j ltac:(lia)) ltac:(apply record_fctx_params_ass; exact Hass) _ _ Hg').
+      apply per_tele_args_app_intro; [ rewrite List.length_rev; exact Hln | exact Hg | exact Hgf ]. }
+    exact (record_params_args_refl_l _ (record_fctx_sem j ltac:(lia)) ltac:(apply record_fctx_params_ass; exact Hass) _ _ Hg').
   Qed.
 
   (** At a propositional field, after related values of the fields before
       it, the canonical relation relates any two readable proofs. *)
   Lemma field_canon_proof : forall k f U ns pre, List.nth_error (record_fields R) k = Some (f, U) ->
       record_field_kind R k = ak_propositional -> List.length ns = List.length (record_params R) -> List.length pre = k ->
-      per_gargs (List.rev (record_fctx R k ++ record_params R)) nil nil (ns ++ pre) (ns ++ pre) ->
+      per_tele_args (List.rev (record_fctx R k ++ record_params R)) nil nil (ns ++ pre) (ns ++ pre) ->
       forall v v', proof_readable v -> proof_readable v' -> canon_fields_rel R ns k pre v v'.
   Proof.
     intros * Hk Hr Hln Hlp Hg v v' Hv Hv'.
@@ -1371,7 +1371,7 @@ Section RecordModel.
     destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
     assert (HE : RC (env_tele nil (List.rev (record_fctx R k ++ record_params R)) (ns ++ pre))
                     (env_tele nil (List.rev (record_fctx R k ++ record_params R)) (ns ++ pre)))
-      by (apply (gargs_env_rel _ _ _ _ _ _ HRC HC); [ rewrite !List.length_app, length_record_fctx by lia; lia | exact Hg ]).
+      by (apply (tele_args_env_rel _ _ _ _ _ _ HRC HC); [ rewrite !List.length_app, length_record_fctx by lia; lia | exact Hg ]).
     pose proof (HT _ _ _ Hk) as HU; rewrite Hr in HU; cbn [abs_kind_sort] in HU.
     destruct (rel_exp_of_prop_inversion_simple_at HRC HU _ _ HE) as (u & _ & Eu & _ & [Hu _ _]).
     unfold canon_fields_rel; rewrite (nth_ftyp_eq _ _ _ _ Hk), (record_fields_env_closed R ns pre Hln), Hlp.
@@ -1405,7 +1405,7 @@ Section RecordModel.
                exists j : nat, Γ ⊨ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : Typeω@j).
     { intros k f M U Hk Hfk Hr.
       assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
-      assert (HCa : tele_ass (record_fctx R k ++ record_params R)) by (apply record_fctx_params_ass; exact Hass).
+      assert (HCa : all_assumptions (record_fctx R k ++ record_params R)) by (apply record_fctx_params_ass; exact Hass).
       assert (HC : ⊨ record_fctx R k ++ record_params R) by (apply record_fctx_sem; lia).
       assert (HlC : List.length (Ns ++ List.firstn k (List.map snd fs)) = List.length (record_fctx R k ++ record_params R))
         by (rewrite !List.length_app, List.length_firstn, List.length_map, length_record_fctx by lia; lia).
@@ -1425,7 +1425,7 @@ Section RecordModel.
     destruct (eval_record_apps_inv _ _ _ Ea2 Hn) as (ns2 & Ens2 & ->).
     pose proof (record_typ_facts _ _ _ _ HRx) as [_ Hln2 _ _ _ HfI _ HfS HE].
     assert (ERT : RT <~> Rx) by (eapply per_univ_chain_rel_irrel; [ exact Htch | exact HRx | solve_in ]).
-    pose proof (params_inst_gargs Γ Ns RΓ ρσ ρσ ns2 ns2 HΓ HRΓ Hn HNs HNss Hρσρσ Ens2 Ens2) as Hgp.
+    pose proof (params_inst_tele_args Γ Ns RΓ ρσ ρσ ns2 ns2 HΓ HRΓ Hn HNs HNss Hρσρσ Ens2 Ens2) as Hgp.
     destruct (sort_tele_value _ _ record_params_sem HS _ Hgp Hln2) as [a Ha].
     (** Each relevant field: its four values, related at the relation of its
         instance type at the middle *)
@@ -1526,7 +1526,7 @@ Section RecordModel.
                   DF b ≈ b ∈ per_univ_elem jb ↘ Rk -> (Rk <~> canon_fields_rel R ns2 k (List.firstn k V2)))).
     { intros k f M U Hk Hfk Hpre.
       assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
-      pose proof (prefix_gargs _ _ _ _ k Hgp Hln2 Ha ltac:(lia) Hpre) as Hgj.
+      pose proof (prefix_tele_args _ _ _ _ k Hgp Hln2 Ha ltac:(lia) Hpre) as Hgj.
       assert (Hlk : List.length (List.firstn k V2) = k) by (rewrite List.length_firstn; lia).
       split.
       - intros Hp v v' Hv Hv'; refine (field_canon_proof _ _ _ _ _ Hfk Hp Hln2 Hlk _ v v' Hv Hv').
@@ -1754,7 +1754,7 @@ Section RecordModel.
                exists j : nat, Γ ⊨ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : Typeω@j).
     { intros k f M U Hk Hfk Hr.
       assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
-      assert (HCa : tele_ass (record_fctx R k ++ record_params R)) by (apply record_fctx_params_ass; exact Hass).
+      assert (HCa : all_assumptions (record_fctx R k ++ record_params R)) by (apply record_fctx_params_ass; exact Hass).
       assert (HC : ⊨ record_fctx R k ++ record_params R) by (apply record_fctx_sem; lia).
       assert (HlC : List.length (Ns ++ List.firstn k (List.map snd fs)) = List.length (record_fctx R k ++ record_params R))
         by (rewrite !List.length_app, List.length_firstn, List.length_map, length_record_fctx by lia; lia).
@@ -1777,7 +1777,7 @@ Section RecordModel.
     assert (EH : per_head T T ρ ρ' <~> record_rel R (canon_fields_rel R ns)).
     { etransitivity; [ symmetry; exact (per_head_iff Et Et' HRT) |].
       etransitivity; [ eapply per_univ_elem_right_irrel; [ exact HRT | exact HRx ] | exact HE ]. }
-    pose proof (params_inst_gargs Γ Ns RΓ ρ ρ ns ns HΓ HRΓ Hn HNs HNss Hρρ Ens Ens) as Hgp.
+    pose proof (params_inst_tele_args Γ Ns RΓ ρ ρ ns ns HΓ HRΓ Hn HNs HNss Hρρ Ens Ens) as Hgp.
     destruct (sort_tele_value _ _ record_params_sem HS _ Hgp Hlns) as [a0 Ha0].
     (** The two annotations evaluate to record type formers. *)
     destruct (per_univ_elem_record_right _ _ _ _ _ HRx) as [ns1 ->].
@@ -1863,7 +1863,7 @@ Section RecordModel.
                   DF b ≈ b' ∈ per_univ_elem jb ↘ Rb -> (Rb <~> canon_fields_rel R ns k (List.firstn k V)))).
     { intros k f M U Hk Hfk Hpre.
       assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
-      pose proof (prefix_gargs _ _ _ _ k Hgp Hlns Ha0 ltac:(lia) Hpre) as Hgj.
+      pose proof (prefix_tele_args _ _ _ _ k Hgp Hlns Ha0 ltac:(lia) Hpre) as Hgj.
       assert (Hlk : List.length (List.firstn k V) = k) by (rewrite List.length_firstn; lia).
       split.
       - intros Hp v v' Hv Hv'; refine (field_canon_proof _ _ _ _ _ Hfk Hp Hlns Hlk _ v v' Hv Hv').

@@ -483,12 +483,12 @@ Section Tele.
       instances, and the recursive instances of related arguments are
       related (the closures). *)
 
-  Lemma nparams_lt_ass : forall D m Mm k, grp_tele_ass D -> ind_member D m = Some Mm ->
+  Lemma nparams_lt_ass : forall D m Mm k, group_structure D -> ind_member D m = Some Mm ->
       k < List.length (List.rev (im_nparams Mm)) -> exists κ A, List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass κ A).
   Proof.
     intros * Hass HM Hk; destruct (nth_error_lt_some' _ _ Hk) as [e He].
     assert (Hf : List.Forall (fun e => exists κ A, e = ce_ass κ A) (List.rev (im_nparams Mm)))
-      by (apply List.Forall_rev; exact (grp_tele_ass_nparams _ Hass _ _ HM)).
+      by (apply List.Forall_rev; exact (group_structure_nparams _ Hass _ _ HM)).
     rewrite List.Forall_forall in Hf; destruct (Hf e (List.nth_error_In _ _ He)) as (κ & A & ->); eauto.
   Qed.
 
@@ -638,7 +638,7 @@ Section Tele.
     Variable (nparams_rel : nat -> nat -> list domain -> relation domain).
     Variable (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain).
     Variable (doms_rel : nat -> list domain -> list centry -> exp -> relation domain).
-    Hypothesis (Hass : grp_tele_ass D).
+    Hypothesis (Hass : group_structure D).
     Hypothesis (HnP : nparams_per D nparams_rel) (HnI : nparams_inv D nparams_rel).
     Hypothesis (HaP : args_per D nparams_rel args_rel) (HaI : args_inv D nparams_rel args_rel).
     Hypothesis (HdP : doms_per D nparams_rel args_rel doms_rel) (HdI : doms_inv D nparams_rel args_rel doms_rel).

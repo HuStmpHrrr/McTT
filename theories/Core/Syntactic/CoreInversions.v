@@ -255,7 +255,7 @@ Qed.
 
 (** The tag of each parameter of a [Π] over a telescope, typed at any
     sort, may be abstracted at the [Π]'s tag ([pi_kinds]). *)
-Lemma ctx_pi_at_pi_kinds : forall Θ Ξ r Δ Γ B S, tele_ass Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi_at r Δ B : S ->
+Lemma ctx_pi_at_pi_kinds : forall Θ Ξ r Δ Γ B S, all_assumptions Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi_at r Δ B : S ->
     forall Δ1 κ A Δ2, Δ = (Δ1 ++ ce_ass κ A :: Δ2)%list -> pi_kinds κ r.
 Proof.
   intros Θ Ξ r Δ; induction Δ as [| e Δ0 IH] using List.rev_ind; intros * HΔ HB Δ1 κ A Δ2 Heq.

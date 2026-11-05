@@ -397,7 +397,7 @@ Proof. intros; unfold raw_args_tele; rewrite List.map_app, List.rev_app_distr; r
 
 (** A [Π] over assumptions of equal bodies. *)
 Lemma ctx_pi_ass_eq : forall Θ Ξ Δ Γ A A' i,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
+    all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A ≈ A' : Typeω@i ->
     exists j, Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A ≈ ctx_pi Δ A' : Typeω@j.
 Proof.
@@ -628,10 +628,10 @@ Section ConTypes.
 
   (** The frames' parameters, the outer part of the filed group's uniform
       ones. *)
-  Lemma frames_ass : tele_ass (gs_tele Ξ).
+  Lemma frames_ass : all_assumptions (gs_tele Ξ).
   Proof.
     pose proof (decl_typed_ass _ _ _ filed_decl_typed) as H; cbn [ind_uparams] in H.
-    unfold tele_ass in *; apply List.Forall_app in H as [_ H]; exact H.
+    unfold all_assumptions in *; apply List.Forall_app in H as [_ H]; exact H.
   Qed.
 
   Lemma frames_scoped : ctx_scoped 0 (gs_tele Ξ).
@@ -683,7 +683,7 @@ Section ConTypes.
       cbn [ind_uparams im_nparams Mi] in HnM, HuM.
       apply ctx_pi_mvc.
       - pose proof (decl_closed_params_ass _ _ _ Hc Hk) as Ha; unfold im_params in Ha; cbn [im_nparams ind_uparams Mi] in Ha.
-        rewrite List.app_assoc in Ha; unfold tele_ass in *; apply List.Forall_app in Ha as [Ha _]; exact Ha.
+        rewrite List.app_assoc in Ha; unfold all_assumptions in *; apply List.Forall_app in Ha as [Ha _]; exact Ha.
       - unfold ctx_mvc in HuM; apply List.Forall_app in HuM as [HuM _]; apply List.Forall_app; split; assumption.
       - eapply exp_mvc_mono; [| apply exp_mvc_wk; exact (decl_mvc_sort _ Hm) ]; lia. }
     replace (raw_decl_self_ty R Mr) with ((raw_decl_self_ty R Mr)[sb_of_list Id (vars_from 0 t)]).

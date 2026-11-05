@@ -161,7 +161,7 @@ Qed.
 (** A term over parameters, generalized over them: a function into a type
     of a universe, or a proof of a [∀]; as [valid_exp_under_ctx_ctx_pi_at],
     not into a type of levels. *)
-Lemma valid_exp_under_ctx_ctx_fn : forall r Ψ D M X i, r <> ak_level -> tele_ass Ψ -> ⊨ Ψ ++ D ->
+Lemma valid_exp_under_ctx_ctx_fn : forall r Ψ D M X i, r <> ak_level -> all_assumptions Ψ -> ⊨ Ψ ++ D ->
     Ψ ++ D ⊨ X : abs_kind_sort r Typeω@i -> Ψ ++ D ⊨ M : X ->
     D ⊨ ctx_fn Ψ M : ctx_pi_at r Ψ X.
 Proof.
@@ -586,7 +586,7 @@ Qed.
 
 (** An environment of a context extended by parameters, extending a given
     one of the context by arguments, each at the value of its type. *)
-Lemma params_env : forall Δ Γ RΓ R, tele_ass Δ ->
+Lemma params_env : forall Δ Γ RΓ R, all_assumptions Δ ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R ->
     forall ρ, RΓ ρ ρ ->
     exists vts, List.length vts = List.length Δ /\ R (env_extend_typed ρ vts) (env_extend_typed ρ vts).
@@ -594,7 +594,7 @@ Proof.
   induction Δ as [| e Δ IH] using rev_ind; intros * HΔ HΓ HR ρ Hρ; cbn [List.app] in *.
   - exists nil; split; [ reflexivity |].
     assert (E : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption); apply E, Hρ.
-  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
+  - destruct (all_assumptions_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
     rewrite <- app_assoc in HR; cbn [List.app] in HR.
     destruct (per_ctx_env_app_tail Δ Δ _ _ _ eq_refl HR) as [R1 HR1].
     destruct (per_ctx_env_cons_clean_inversion HΓ HR1) as (i & head_rel & Hhead & HE).
@@ -628,7 +628,7 @@ Qed.
 (** A module value related to itself is a module. *)
 Lemma per_dmod_nil_kind_all :
   (forall h h', per_dmod h h' -> dmod_member_kind gc_deps gc_stack h nil member_kind_mod) /\
-  (forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> True) /\
+  (forall ts ρ ρ' args args', per_tele_args ts ρ ρ' args args' -> True) /\
   (forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' -> True).
 Proof.
   apply per_dmod_mut_ind_all; intros; try exact I.

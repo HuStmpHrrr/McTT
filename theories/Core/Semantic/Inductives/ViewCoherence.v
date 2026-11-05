@@ -59,7 +59,7 @@ Section Fixed_GCtx.
     Variable (nr : nat -> nat -> list domain -> relation domain).
     Variable (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain).
     Variable (dr : nat -> list domain -> list centry -> exp -> relation domain).
-    Hypothesis (Hass : grp_tele_ass D).
+    Hypothesis (Hass : group_structure D).
     Hypothesis (HnP : nparams_per D nr) (HnI : nparams_inv D nr).
     Hypothesis (HaP : args_per D nr ar) (HaI : args_inv D nr ar).
     Hypothesis (HdP : doms_per D nr ar dr) (HdI : doms_inv D nr ar dr).
@@ -69,7 +69,7 @@ Section Fixed_GCtx.
     Variable (nr' : nat -> nat -> list domain -> relation domain).
     Variable (ar' : nat -> list domain -> String.string -> nat -> list domain -> relation domain).
     Variable (dr' : nat -> list domain -> list centry -> exp -> relation domain).
-    Hypothesis (Hass' : grp_tele_ass Dq).
+    Hypothesis (Hass' : group_structure Dq).
     Hypothesis (HnP' : nparams_per Dq nr') (HnI' : nparams_inv Dq nr').
     Hypothesis (HaP' : args_per Dq nr' ar') (HaI' : args_inv Dq nr' ar').
     Hypothesis (HdP' : doms_per Dq nr' ar' dr') (HdI' : doms_inv Dq nr' ar' dr').

@@ -57,7 +57,7 @@ Section Fixed_GCtx.
                                 | apply wf_sub_eq_refl, wf_sub_id, HΓ | exact HUl | exact HUl' | exact HUe ]. }
     (* the non-uniform parameters, as a substitution *)
     assert (Hδδ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ns ≈ sb_of_list Id Ns' : tele_sub (im_nparams Mm) (sb_of_list Id Us) ++ Γ).
-    { eapply wf_sub_eq_of_list; [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm) | exact (wf_nparams_sub _ _ _ HD Hc _ _ _ _ Hm HΓ Hσ)
+    { eapply wf_sub_eq_of_list; [ apply all_assumptions_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm) | exact (wf_nparams_sub _ _ _ HD Hc _ _ _ _ Hm HΓ Hσ)
                                 | apply wf_sub_eq_refl, wf_sub_id, HΓ | rewrite length_tele_sub; exact HNl
                                 | rewrite length_tele_sub; exact HNl' |].
       intros j N N' T HN HN' HT; rewrite tele_insts_tele_sub in HT.

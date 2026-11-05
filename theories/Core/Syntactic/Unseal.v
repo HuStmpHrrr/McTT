@@ -394,16 +394,16 @@ Qed.
 
 (** A stored definition, given arguments for its telescope: its body, a
     function of the telescope, is too. *)
-Lemma ats_term_unseal : forall Ns r T A0 M0 R1, tele_ass T -> List.length Ns <= List.length T ->
+Lemma ats_term_unseal : forall Ns r T A0 M0 R1, all_assumptions T -> List.length Ns <= List.length T ->
     mdesc_ats (mdesc_term r (ctx_pi_at r T A0) None) Ns = Some R1 ->
     exists R1', mdesc_ats (mdesc_term r (ctx_pi_at r T A0) (Some (ctx_fn T M0))) Ns = Some R1' /\ mdesc_unsealed R1 R1'.
 Proof.
   induction Ns as [| N Ns IH]; intros * Ha Hl Hats; cbn in Hats |- *; [ injection Hats as <-; eauto |].
   destruct (List.exists_last (l := T)) as (T1 & e & ->); [ intros ->; cbn in Hl; lia |].
-  unfold tele_ass in Ha; apply List.Forall_app in Ha as [Ha1 He]; inversion He as [| ? ? (κ & C & ->) _]; subst.
+  unfold all_assumptions in Ha; apply List.Forall_app in Ha as [Ha1 He]; inversion He as [| ? ? (κ & C & ->) _]; subst.
   rewrite ctx_pi_app in Hats |- *; rewrite ctx_fn_app; cbn [ctx_pi ctx_fn pi_view fn_view] in Hats |- *.
   rewrite ctx_pi_sub in Hats |- *; rewrite ctx_fn_sub.
-  apply (IH r (tele_sub T1 (Id,,N))); [ apply tele_ass_sub; exact Ha1 | rewrite length_tele_sub; rewrite length_app in Hl; cbn in Hl; lia | exact Hats ].
+  apply (IH r (tele_sub T1 (Id,,N))); [ apply all_assumptions_sub; exact Ha1 | rewrite length_tele_sub; rewrite length_app in Hl; cbn in Hl; lia | exact Hats ].
 Qed.
 
 (** [mdesc_unseal_struct R]: the unsealing of a description that is no

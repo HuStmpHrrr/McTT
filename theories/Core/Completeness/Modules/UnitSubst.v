@@ -167,7 +167,7 @@ Proof.
                   ltac:(rewrite length_app; exact (proj2 HDs)) _ _ Hcx) as Hxσ.
     destruct (IHCx nil (body_ctx Φx ++ Δu) C ltac:(rewrite <- app_assoc; reflexivity) HwCx _ _ Hg Hc) as [HCxσ Hgx].
     apply (rel_unit_wf_body _ _ _ (gmod_sub Φx (sb_qn (length Δu) τ))).
-    + apply tele_ass_sub; exact HΔu.
+    + apply all_assumptions_sub; exact HΔu.
     + exact Hxσ.
     + apply body_shape_sub; exact Hs.
     + apply body_shape_sub; exact Hsx.
@@ -192,7 +192,7 @@ Proof.
     destruct (proj1 (unit_full_of_eq _ _ _ _ _ HUU)) as [_ _ _ HwΔ _ _ _ _ _ _].
     destruct (IHC nil Δu C eq_refl HwΔ _ _ Hg Hc) as [HΔσ Hgx].
     rewrite gunit_sub_mk; cbn [moddef_sub].
-    apply rel_unit_wf_alias; [ apply tele_ass_sub; exact HΔu | exact HΔσ |].
+    apply rel_unit_wf_alias; [ apply all_assumptions_sub; exact HΔu | exact HΔσ |].
     exact (rel_modexp_under_ctx_gsub Hgx HE).
 Qed.
 

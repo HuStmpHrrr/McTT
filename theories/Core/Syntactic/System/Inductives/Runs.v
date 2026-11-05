@@ -30,13 +30,13 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 (** A term of a [Π] over a telescope, moved under it and applied to its
     variables, is of the [Π]'s body. *)
 Lemma wf_apps_vars : forall Θ Ξ Δ Γ B M i,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ B : Typeω@i ->
+    all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ B : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : ctx_pi Δ B ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ apps M[wk_shiftn (List.length Δ)]ʷ (vars_from 0 (List.length Δ)) : B.
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ HB HM.
   - cbn in *; rewrite exp_wk_id_ext by (intros x; cbn; lia); exact HM.
-  - unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He];
+  - unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He];
       apply List.Forall_cons_iff in He as [(κ & A & ->) _].
     rewrite ctx_pi_snoc in HM; rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
     destruct (ctx_decomp_sort_kind (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ (Srt & HkS & HA)].

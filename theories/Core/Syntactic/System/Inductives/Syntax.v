@@ -114,12 +114,12 @@ Lemma tele_insts_snoc : forall Δ κ A σ M Ms,
 Proof. intros; unfold tele_insts; rewrite rev_app_distr; reflexivity. Qed.
 
 Lemma tele_insts_sub : forall Δ k σ σ' τ Ms,
-    tele_ass Δ -> ctx_scoped k Δ ->
+    all_assumptions Δ -> ctx_scoped k Δ ->
     (forall x, x < k -> sentry_sub (σ x) τ = σ' x) ->
     List.map (fun T => T[τ]) (tele_insts Δ σ Ms) = tele_insts Δ σ' (List.map (fun M => M[τ]) Ms).
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ; [ reflexivity |].
-  unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He].
+  unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He].
   apply List.Forall_cons_iff in He as [(κ & A & ->) _].
   apply ctx_scoped_app in HΔ as [HΔ [HA _]]; cbn in HA, HΔ.
   destruct Ms as [| M Ms]; [ unfold tele_insts; rewrite rev_app_distr; reflexivity |].
@@ -264,7 +264,7 @@ Proof.
 Qed.
 
 Lemma tele_insts_app : forall Δ1 Δ2 σ Ms Ns,
-    tele_ass Δ2 -> List.length Ms = List.length Δ2 ->
+    all_assumptions Δ2 -> List.length Ms = List.length Δ2 ->
     tele_insts (Δ1 ++ Δ2) σ (Ms ++ Ns) = tele_insts Δ2 σ Ms ++ tele_insts Δ1 (sb_of_list σ Ms) Ns.
 Proof.
   intros * Hass Hl; unfold tele_insts; rewrite List.rev_app_distr.
@@ -287,16 +287,16 @@ Lemma cargs_pat_cons : forall g gs,
     cargs_pat (g :: gs) = cargs_pat gs ++ (match g with ca_rec _ => true | ca_arg _ _ => false end :: nil).
 Proof. reflexivity. Qed.
 
-Lemma pat_nargs_cargs_pat : forall gs, pat_nargs (cargs_pat gs) = List.length (cargs_strat gs).
+Lemma pat_nargs_cargs_pat : forall gs, pat_nargs (cargs_pat gs) = List.length (cargs_nonrec_ctx gs).
 Proof.
   induction gs as [| [] gs IH]; [ reflexivity | |]; rewrite cargs_pat_cons, pat_nargs_app, IH; cbn;
     rewrite ?List.length_app; cbn; lia.
 Qed.
 
-Lemma cargs_strat_snoc_arg : forall gs r A, cargs_strat (gs ++ ca_arg r A :: nil) = ce_ass r A :: cargs_strat gs.
+Lemma cargs_nonrec_ctx_snoc_arg : forall gs r A, cargs_nonrec_ctx (gs ++ ca_arg r A :: nil) = ce_ass r A :: cargs_nonrec_ctx gs.
 Proof. induction gs as [| [] gs IH]; intros; cbn; rewrite ?IH; reflexivity. Qed.
 
-Lemma cargs_strat_snoc_rec : forall gs Ps, cargs_strat (gs ++ ca_rec Ps :: nil) = cargs_strat gs.
+Lemma cargs_nonrec_ctx_snoc_rec : forall gs Ps, cargs_nonrec_ctx (gs ++ ca_rec Ps :: nil) = cargs_nonrec_ctx gs.
 Proof. induction gs as [| [] gs IH]; intros; cbn; rewrite ?IH; reflexivity. Qed.
 
 Lemma cargs_ctx_aux_app : forall pq D nn gs1 gs2 pat,
@@ -379,12 +379,12 @@ Proof. induction gs as [| [] gs IH]; intros t σ [| M As] N Hl; cbn in *; try di
 (** The same for a telescope whose types have no free module variable: the
     substitutions need only send the same terms. *)
 Lemma tele_insts_sub_mvc : forall Δ k σ σ' τ Ms,
-    tele_ass Δ -> ctx_mvc Δ -> ctx_scoped k Δ ->
+    all_assumptions Δ -> ctx_mvc Δ -> ctx_scoped k Δ ->
     (forall x, x < k -> sentry_exp (sentry_sub (σ x) τ) = sentry_exp (σ' x)) ->
     List.map (fun T => T[τ]) (tele_insts Δ σ Ms) = tele_insts Δ σ' (List.map (fun M => M[τ]) Ms).
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass Hmv HΔ Hσ; [ reflexivity |].
-  unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He].
+  unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He].
   apply List.Forall_cons_iff in He as [(κ & A & ->) _].
   unfold ctx_mvc in Hmv; apply List.Forall_app in Hmv as [Hmv HmA]; apply List.Forall_cons_iff in HmA as [HmA _].
   apply ctx_scoped_app in HΔ as [HΔ [HA _]]; cbn in HA, HΔ, HmA.
@@ -403,7 +403,7 @@ Section Closed.
   Lemma decl_closed_nparams_scoped : forall k M, ind_member D k = Some M -> ctx_scoped (ind_nu D) (im_nparams M).
   Proof. intros * HM; exact (member_closed_nparams _ _ (decl_closed_members _ HD _ _ HM)). Qed.
 
-  Lemma decl_closed_nparams_ass : forall k M, ind_member D k = Some M -> tele_ass (im_nparams M).
+  Lemma decl_closed_nparams_ass : forall k M, ind_member D k = Some M -> all_assumptions (im_nparams M).
   Proof. intros * HM; exact (member_closed_ass _ _ (decl_closed_members _ HD _ _ HM)). Qed.
 
   Lemma decl_closed_head_scoped : forall k M qc k' Is vm,
@@ -711,8 +711,8 @@ Lemma ihs_ctx_aux_sub : forall r D nn As As' Us na τ gs pat j,
     decl_closed D -> List.length Us = ind_nu D ->
     List.length pat + List.length gs = na ->
     (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
-       ptyp_scoped (pat_nargs pat + List.length (cargs_strat gs1) + (nn + List.length Us)) t /\
-       (forall l, In l (shape_leaves (rview_leaves D) (pat_nargs pat + List.length (cargs_strat gs1) + nn) t) ->
+       ptyp_scoped (pat_nargs pat + List.length (cargs_nonrec_ctx gs1) + (nn + List.length Us)) t /\
+       (forall l, In l (shape_leaves (rview_leaves D) (pat_nargs pat + List.length (cargs_nonrec_ctx gs1) + nn) t) ->
           List.nth (leaf_mem l) As' a_prop = (List.nth (leaf_mem l) As a_prop)[sb_qn (S (List.length (leaf_ps l))) τ])) ->
     tele_sub (ihs_ctx_aux r (rview_leaves D) nn As Us na pat j gs) (sb_qn (j + na + nn) τ)
     = ihs_ctx_aux r (rview_leaves D) nn As' (List.map (fun U => U[τ]) Us) na pat j gs.
@@ -723,8 +723,8 @@ Proof.
     intros gs1 t gs2 Egs; destruct (HPs (ca_arg rB B :: gs1) t gs2 ltac:(rewrite Egs; reflexivity)) as [HPs' HA]; cbn in HPs'.
     rewrite length_app in HPs'; cbn in HPs'; split.
     + eapply ptyp_scoped_mono; [| exact HPs' ]; cbn [pat_nargs]; lia.
-    + intros l Hl; apply HA; cbn [pat_nargs] in Hl; cbn [cargs_strat]; rewrite length_app; cbn [List.length].
-      replace (pat_nargs pat + (length (cargs_strat gs1) + 1) + nn) with (S (pat_nargs pat) + length (cargs_strat gs1) + nn) by lia;
+    + intros l Hl; apply HA; cbn [pat_nargs] in Hl; cbn [cargs_nonrec_ctx]; rewrite length_app; cbn [List.length].
+      replace (pat_nargs pat + (length (cargs_nonrec_ctx gs1) + 1) + nn) with (S (pat_nargs pat) + length (cargs_nonrec_ctx gs1) + nn) by lia;
         exact Hl.
   - destruct (HPs nil t gs eq_refl) as [HPs0 HA0]; cbn in HPs0, HA0; rewrite Nat.add_0_r in HPs0, HA0.
     cbn in Hna.
@@ -754,7 +754,7 @@ Proof.
   - apply (ihs_ctx_aux_sub r D (im_nn M) As As' Us (List.length gs) τ gs nil 0 HD Hl eq_refl).
     intros * Heq; split.
     + rewrite Hl; exact (member_closed_recs _ _ HMc _ _ _ _ _ Hin Heq).
-    + intros l Hlf; pose proof (cargs_leaves_params_length _ _ _ _ _ _ _ _ (pat_nargs nil + length (cargs_strat gs1) + im_nn M) HD HM Hin Heq) as Hp.
+    + intros l Hlf; pose proof (cargs_leaves_params_length _ _ _ _ _ _ _ _ (pat_nargs nil + length (cargs_nonrec_ctx gs1) + im_nn M) HD HM Hin Heq) as Hp.
       rewrite List.Forall_forall in Hp; destruct (Hp l Hlf) as (Mj & HMj & HlMj).
       rewrite HlMj; apply HAs; exact HMj.
   - rewrite tele_sub_sub.
@@ -942,7 +942,7 @@ Qed.
 Lemma elim_ihs_agree : forall r pq D Us Bks gs σ σ' m As k,
     decl_closed D -> k = m + ind_nu D ->
     (forall y, y < k -> σ y = σ' y) ->
-    (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ptyp_scoped (List.length (cargs_strat gs1) + k) t) ->
+    (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ptyp_scoped (List.length (cargs_nonrec_ctx gs1) + k) t) ->
     elim_ihs r pq D Us Bks σ m gs As = elim_ihs r pq D Us Bks σ' m gs As.
 Proof.
   intros r pq D Us Bks gs; induction gs as [| [rA0 A0 | t] gs IH]; intros σ σ' m [| N As] k HD Hk Hσ Ht; cbn [elim_ihs];

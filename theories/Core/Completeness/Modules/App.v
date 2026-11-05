@@ -110,9 +110,9 @@ Proof.
     replace (List.length T1s + List.length T2s - List.length Ns) with (List.length T1s) in Hv by lia.
     rewrite List.firstn_app, List.firstn_all, Nat.sub_diag in Hv; cbn [List.firstn] in Hv; rewrite !app_nil_r in Hv.
     destruct (Hgf _ _ _ Hgl) as [_ _ _ HTa _ _ _ _ _ _ _ _].
-    destruct (tele_ass_app_inv _ _ HTa) as [HTa1 _].
+    destruct (all_assumptions_app_inv _ _ HTa) as [HTa1 _].
     destruct (List.exists_last (l := T1s)) as (L & e & ->); [ intros ->; cbn in Hv; discriminate |].
-    destruct (tele_ass_app_inv _ _ HTa1) as [_ He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
+    destruct (all_assumptions_app_inv _ _ HTa1) as [_ He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
     rewrite tele_sub_app in Hv; cbn [tele_sub List.length sb_qn centry_sub] in Hv.
     rewrite tele_view_last in Hv; injection Hv as <- <-.
     assert (HT : L ++ ce_ass κ A :: T2s = (L ++ ce_ass κ A :: nil) ++ T2s) by (rewrite <- app_assoc; reflexivity).
@@ -184,7 +184,7 @@ Proof.
       eapply rel_modexp_under_ctx_trans; [| exact HNK ].
       eapply rel_modexp_under_ctx_app; [ exact Hβ | exact (rel_param_typed_evaluated HB) | exact HN | exact Hl ].
     + (* β *)
-      destruct (tele_ass_app_inv _ _ HΔ) as [HΔ' He]; inversion He as [| ? ? (κ & X & ->) _]; subst.
+      destruct (all_assumptions_app_inv _ _ HΔ) as [HΔ' He]; inversion He as [| ? ? (κ & X & ->) _]; subst.
       rewrite app_assoc, tele_view_last in Hv; injection Hv as <- <-.
       destruct (valid_unit_lit_app _ _ _ _ _ _ _ _ HK0 Hu HB HNw HN) as (Hl & R' & Ha & HKN & HK' & Hm' & Hmod').
       split; [ exact Hl |].
@@ -207,7 +207,7 @@ Qed.
 (** A module expression valid in what it denotes, given arguments for the
     outermost parameters of an abstraction its description is. *)
 Lemma valid_modexp_apps_up : forall Ns Γ Δa R H l, valid_modexp Γ H -> Θm ⍮ Ξm ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θm Ξm Γ H (mdesc_up Δa R) -> mdesc_is_mod R ->
-    ⊢ Θm ⍮ Ξm ⍮ Δa ++ Γ -> tele_ass Δa -> List.length Ns <= List.length Δa ->
+    ⊢ Θm ⍮ Ξm ⍮ Δa ++ Γ -> all_assumptions Δa -> List.length Ns <= List.length Δa ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Θm ⍮ Ξm ⍮ Γ ⊢ N : A) ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Γ ⊨ N : A) ->
     (forall k A, nth_error (tele_insts Δa Id Ns) k = Some A -> exists Srt, evaluated_sort Srt /\ Γ ⊨ A : Srt) ->
@@ -217,7 +217,7 @@ Lemma valid_modexp_apps_up : forall Ns Γ Δa R H l, valid_modexp Γ H -> Θm �
 Proof.
   induction Ns as [| N Ns IH]; intros * Hs HH Hm Hmod HΔ Ha Hl HNs HNv HNr HΔr HR; [ exact Hs |].
   destruct (List.exists_last (l := Δa)) as (Δ1 & e & ->); [ intros ->; cbn in Hl; lia |].
-  unfold tele_ass in Ha; apply List.Forall_app in Ha as [Ha1 He]; inversion He as [| ? ? (κ & C & ->) _]; subst.
+  unfold all_assumptions in Ha; apply List.Forall_app in Ha as [Ha1 He]; inversion He as [| ? ? (κ & C & ->) _]; subst.
   rewrite tele_insts_snoc in HNs, HNv, HNr.
   pose proof (HNs 0 N C[Id] eq_refl eq_refl) as HN; rewrite exp_sub_id in HN.
   pose proof (HNv 0 N C[Id] eq_refl eq_refl) as HNsem; rewrite exp_sub_id in HNsem.
@@ -248,7 +248,7 @@ Proof.
   - eapply mdenote_app; [ exact Hm | apply mdesc_at_up ].
   - apply mdesc_is_mod_sub; exact Hmod.
   - exact HΔN.
-  - apply tele_ass_sub; exact Ha1.
+  - apply all_assumptions_sub; exact Ha1.
   - rewrite length_tele_sub; rewrite List.length_app in Hl; cbn in Hl; lia.
   - intros k N1 A HN1 HA.
     rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (Id,,N)) in HA by apply sb_compose_id_right.

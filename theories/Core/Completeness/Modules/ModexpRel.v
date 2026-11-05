@@ -319,11 +319,11 @@ Qed.
 Lemma rel_unit_wf_unabs1 : forall Γ Δ κ X D, rel_unit_wf Γ (gu_mk (Δ ++ ce_ass κ X :: nil) D) -> rel_unit_wf (Γ ▹{κ} X) (gu_mk Δ D).
 Proof.
   intros * HU; inversion HU as [? Δ0 Φ Φx HΔ Hx Hs Hsx HC Hsv Ho | ? Δ0 E HΔ HC HE]; subst.
-  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ' _].
+  - destruct (all_assumptions_app_inv _ _ HΔ) as [HΔ' _].
     rewrite <- app_assoc in Hx, HC, Hsv; cbn [List.app] in Hx, HC, Hsv.
     apply (rel_unit_wf_body _ _ _ Φx); try assumption.
     intros k Ψ H Hk; pose proof (Ho _ _ _ Hk) as H1; rewrite <- app_assoc in H1; exact H1.
-  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ' _].
+  - destruct (all_assumptions_app_inv _ _ HΔ) as [HΔ' _].
     rewrite <- app_assoc in HC, HE; cbn [List.app] in HC, HE.
     apply rel_unit_wf_alias; assumption.
 Qed.

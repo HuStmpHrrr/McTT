@@ -72,13 +72,13 @@ Qed.
 
 (** A closure of an expanded definition given fewer arguments than it
     lacks parameters. *)
-Lemma apply_args_local_unsaturated : forall args Δ D ρ, moddef_expand D = D -> tele_ass Δ -> List.length args < List.length Δ ->
+Lemma apply_args_local_unsaturated : forall args Δ D ρ, moddef_expand D = D -> all_assumptions Δ -> List.length args < List.length Δ ->
     $ᵐ*| dm_local Δ D ρ & args | gc_deps ⍮ gc_stack ↘
       dm_local (List.firstn (List.length Δ - List.length args) Δ) D (env_tele ρ (List.rev Δ) args).
 Proof.
   induction args as [| c args IH]; intros * HD Ha Hl; cbn [List.length] in *.
   - rewrite Nat.sub_0_r, List.firstn_all; constructor.
-  - destruct (tele_ass_last _ Ha ltac:(destruct Δ; cbn in Hl; [ lia | discriminate ])) as (Δ0 & κ & A & ->).
+  - destruct (all_assumptions_last _ Ha ltac:(destruct Δ; cbn in Hl; [ lia | discriminate ])) as (Δ0 & κ & A & ->).
     rewrite List.length_app in Hl |- *; cbn [List.length] in Hl |- *.
     apply List.Forall_app in Ha as [Ha0 _].
     econstructor; [ apply eval_appm_local; apply close_unsat; lia |].
@@ -172,8 +172,8 @@ Proof.
       rewrite <- qname_in_app in Ha;
       destruct (loc_alias_params _ _ Hgw _ _ _ _ _ Hm Ha) as (Δy & HΔ & HaΔ); rewrite qname_in_app in Ha end;
       cbn [gu_params] in HΔ; subst.
-    pose proof (gc_loc_tele_ass _ _ Hgw _ _ _ Hm) as HaT.
-    assert (Ha : tele_ass (Δy ++ T)) by (apply List.Forall_app; split; assumption).
+    pose proof (gc_loc_tele_all_assumptions _ _ Hgw _ _ _ Hm) as HaT.
+    assert (Ha : all_assumptions (Δy ++ T)) by (apply List.Forall_app; split; assumption).
     match goal with Hc : eval_close _ _ _ ?D nil ?h0 |- _ =>
       pose proof (functional_eval_close _ _ _ _ _ Hc (close_unsat (Δy ++ T) D nil ltac:(rewrite List.length_app; lia))) as -> end.
     match goal with Ha' : eval_appms _ _ (dm_local _ ?D _) args r |- _ =>

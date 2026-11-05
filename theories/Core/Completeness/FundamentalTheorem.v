@@ -340,7 +340,7 @@ Qed.
     level ([pi_kinds_of_level_sorted]). *)
 Lemma valid_entry_def : forall Θ Ξ T r A M i b pv Θ2 Ξ2,
     Θ ⍮ Ξ ⍮ T ⊢ A : abs_kind_sort r Typeω@i ->
-    (r = ak_level -> level_sorted_parameters T) -> tele_ass T ->
+    (r = ak_level -> level_sorted_parameters T) -> all_assumptions T ->
     Θ ⍮ Ξ ⍮ T ⊢ M : A -> bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     gds_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ ->
     forall Θs Ξs, valid_entry Θs Ξs Θ2 Ξ2 T (ge_def b pv r (ctx_pi_at r T A) (Some (ctx_fn T M))).
@@ -356,7 +356,7 @@ Qed.
 (** An axiom, of no type of levels: the [Π] over its telescope of a valid
     type. *)
 Lemma valid_entry_ax : forall Θ Ξ r A i b pv Θ2 Ξ2 Θs Ξs,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i -> r <> ak_level -> tele_ass (gs_tele Ξ) ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i -> r <> ak_level -> all_assumptions (gs_tele Ξ) ->
     bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None).
 Proof.
@@ -368,7 +368,7 @@ Proof.
 Qed.
 
 Lemma valid_entry_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 Θs Ξs,
-    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+    all_assumptions Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
     params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     levels_flag Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E lv Rt ->
     bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
@@ -377,7 +377,7 @@ Proof.
   intros * HΔ _ HE HP [HFs HFd HFn] HG He Hs HgS; cbn.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) as Hg.
   pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
-  assert (Ht : tele_ass (Δ ++ gs_tele Ξ)) by (apply List.Forall_app; split; [ exact HΔ | exact (gs_tele_ass_of_bodies_valid _ _ _ _ HG He) ]).
+  assert (Ht : all_assumptions (Δ ++ gs_tele Ξ)) by (apply List.Forall_app; split; [ exact HΔ | exact (gs_tele_all_assumptions_of_bodies_valid _ _ _ _ HG He) ]).
   assert (HE' : Θ ⍮ Ξ ⍮ (Δ ++ gs_tele Ξ) ++ ⋅ ⊢ᵐ E ≈ E) by (rewrite app_nil_r; exact HE).
   assert (HC : ⊢ Θ ⍮ Ξ ⍮ (Δ ++ gs_tele Ξ) ++ ⋅) by (rewrite app_nil_r; exact (presup_modexp_eq_ctx HE)).
   destruct (params_evaluated_over_stack _ _ _ _ Hg HP) as [l' HP'].
@@ -408,7 +408,7 @@ Proof.
 Qed.
 
 Lemma valid_mod_tele_nil : forall Θ Ξ Δ l Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
+    all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     valid_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
@@ -417,7 +417,7 @@ Proof.
   pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
   destruct (params_evaluated_over_stack _ _ _ _ Hg HP) as [l' HP'].
   constructor; [ exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ HC) | | exists l'; exact (rel_params_evaluated_of_embedding _ _ _ _ _ _ _ Hμ HP') ].
-  apply List.Forall_app; split; [ exact HΔ | exact (gs_tele_ass_of_bodies_valid _ _ _ _ HG He) ].
+  apply List.Forall_app; split; [ exact HΔ | exact (gs_tele_all_assumptions_of_bodies_valid _ _ _ _ HG He) ].
 Qed.
 
 (** A type at a sort is a type. *)
@@ -445,18 +445,18 @@ Proof.
     assert (r0 = r) as <- by (rewrite Heq, <- Hk, nonrec_kind_at in Hr; congruence).
     pose proof (decl_typed_args _ _ _ Hdt _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
     pose proof (decl_typed_args_kind _ _ _ Hdt _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as Hck.
-    assert (Hls : List.length (cargs_strat gs1) = j) by (rewrite cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; exact Hk).
-    rewrite Hls, (nonrec_args_prefix_cargs_strat gs1 (ca_arg r0 A :: gs2)), Hk, <- Heq in HT.
+    assert (Hls : List.length (cargs_nonrec_ctx gs1) = j) by (rewrite cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; exact Hk).
+    rewrite Hls, (cargs_nonrec_ctx_nonrec_args_prefix gs1 (ca_arg r0 A :: gs2)), Hk, <- Heq in HT.
     pose proof (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H |].
     destruct Hck; cbn [abs_kind_sort] in H |- *; [ exact (sort_large_sem _ _ _ _ Hsu H) | exists 0; exact H ]. }
-  assert (Hstrat : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
+  assert (Hnonrec_ctx : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
              @rel_ctx_wf (gc_mk Θ2 Ξ2) (nonrec_args_prefix gs j ++ im_params D Mk)).
   { intros k Mk c gs j HMk Hcon; induction j as [| j IH]; intros Hj.
     + unfold nonrec_args_prefix; cbn [List.firstn List.rev List.app].
       exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ (member_params_wf _ _ _ _ _ Hdt HMk)).
     + destruct (nth_error_lt_some' (cargs_nonrec_tele gs) j ltac:(rewrite length_cargs_nonrec_tele; lia)) as [e He].
-      destruct (proj1 (List.Forall_forall _ _) (tele_ass_cargs_nonrec_tele gs) e (List.nth_error_In _ _ He)) as (κ & A & ->).
+      destruct (proj1 (List.Forall_forall _ _) (all_assumptions_cargs_nonrec_tele gs) e (List.nth_error_In _ _ He)) as (κ & A & ->).
       destruct (cargs_nonrec_tele_nth _ _ _ _ He) as [HA0 Hr].
       assert (Hst : nonrec_args_prefix gs (S j) = ce_ass κ A :: nonrec_args_prefix gs j).
       { unfold nonrec_args_prefix; rewrite (firstn_S_snoc _ _ _ He).
@@ -478,9 +478,9 @@ Proof.
     pose proof (decl_typed_doms _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq Hsplit) as HT.
     assert (Hk : List.length (List.firstn j (ptyp_doms t)) = j)
       by (rewrite List.length_firstn; assert (j < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
-    assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
-      by (rewrite cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; reflexivity).
-    rewrite Hk, Hls, (nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in HT.
+    assert (Hls : List.length (cargs_nonrec_ctx gs1) = List.length (cargs_nonrec gs1))
+      by (rewrite cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; reflexivity).
+    rewrite Hk, Hls, (cargs_nonrec_ctx_nonrec_args_prefix gs1 (ca_rec t :: gs2)), <- Heq in HT.
     pose proof (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
   constructor.
@@ -500,24 +500,24 @@ Proof.
   - intros * HMk HA0.
     destruct (nparams_nth_split _ _ _ _ HA0) as [Δ1 HΔ1].
     exact (decl_typed_nparams_kind _ _ _ Hdt _ _ _ _ _ _ HMk HΔ1).
-  - exact Hstrat.
+  - exact Hnonrec_ctx.
   - exact Harg.
   - intros * HMk Hcon Hr.
     destruct (nonrec_kind_split _ _ _ Hr) as (gs1 & A & gs2 & Heq).
     exact (decl_typed_args_kind _ _ _ Hdt _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq).
   - exact (decl_typed_nodup _ _ _ Hdt).
   - intros * HMk Hcon Heq HMj HPk HT.
-    assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_strat gs1))
-      by (rewrite cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; reflexivity).
+    assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_nonrec_ctx gs1))
+      by (rewrite cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; reflexivity).
     rewrite Hls in HT.
     pose proof (decl_typed_rec_ps _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq HMj HPk HT) as H.
-    rewrite (nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
+    rewrite (cargs_nonrec_ctx_nonrec_args_prefix gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ H).
   - exact Hdom.
   - intros * HMk Hcon; exact (decl_typed_params_length _ _ _ Hdt _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon)).
   - intros k Mk c gs gs1 t gs2 j HMk Hcon Heq; induction j as [| j IH]; intros Hj.
     + cbn [List.firstn doms_ctx List.map List.rev List.app].
-      apply (Hstrat k Mk c); [ exact HMk | exact Hcon | rewrite Heq, cargs_nonrec_app, List.length_app; lia ].
+      apply (Hnonrec_ctx k Mk c); [ exact HMk | exact Hcon | rewrite Heq, cargs_nonrec_app, List.length_app; lia ].
     + destruct (nth_error_lt_some' (ptyp_doms t) j ltac:(lia)) as [B HB].
       rewrite (firstn_S_snoc _ _ _ HB), doms_ctx_snoc; cbn [List.app].
       destruct (Hdom _ _ _ _ _ _ _ _ _ HMk Hcon Heq HB) as (_ & i & Hi).
@@ -587,7 +587,7 @@ Proof.
   pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ HUw) HG He) as Hμ.
   split; [ split; [ exact (valid_ind_decl_of_typed _ _ _ _ _ _ Hdt HPr Hμ) |] |].
   - intros k Mk Δ1 Δ2 HMk Hpar.
-    assert (Hass : tele_ass (im_params D Mk))
+    assert (Hass : all_assumptions (im_params D Mk))
       by (apply List.Forall_app; split; [ exact (decl_typed_nparams_ass _ _ _ Hdt _ _ HMk) | exact HUa ]).
     destruct (ind_ty_typed0 _ _ _ _ _ Hdt HMk) as [j Hj]; unfold ind_ty in Hj.
     pose proof (proj1 (ctx_pi_split_typed _ _ _ _ Hass Hj) _ _ Hpar) as H; rewrite app_nil_r in H.

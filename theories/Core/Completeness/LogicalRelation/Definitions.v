@@ -417,7 +417,7 @@ Inductive rel_ctx_wf : ctx -> Prop :=
     ⊨ Γ ▸ₘ A ≔ M ‖ U
 with rel_unit_wf : ctx -> gunit -> Prop :=
 | rel_unit_wf_body : forall Γ Δ Φ Φx,
-    tele_ass Δ ->
+    all_assumptions Δ ->
     body_xp gc_deps gc_stack (Δ ++ Γ) Φ Φx ->
     body_shape Φ Φ ->
     body_shape Φx Φx ->
@@ -426,7 +426,7 @@ with rel_unit_wf : ctx -> gunit -> Prop :=
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
     rel_unit_wf Γ (gu_open Δ Φ)
 | rel_unit_wf_alias : forall Γ Δ E,
-    tele_ass Δ ->
+    all_assumptions Δ ->
     ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ᵐ E ≈ E ->
     rel_unit_wf Γ (gu_mk Δ (md_alias E))
@@ -503,7 +503,7 @@ Record valid_args (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_valid_args
   ; valid_args_filled : ctx
   ; valid_args_split : T = valid_args_rest ++ valid_args_filled
   ; valid_args_length : List.length valid_args_filled = List.length Ns
-  ; valid_args_ass : tele_ass valid_args_filled
+  ; valid_args_ass : all_assumptions valid_args_filled
   ; valid_args_scoped : ctx_scoped 0 valid_args_filled
   ; valid_args_args : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts valid_args_filled Id Ns) k = Some A ->
       Γ ⊨ N : A
@@ -536,7 +536,7 @@ Inductive valid_unit : ctx -> modexp -> Prop :=
     [λ a. a] because [A]'s value is relevant. *)
 | valid_unit_body : forall Γ Δ Φ Φx,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit (gu_open Δ Φ) ≈ me_lit (gu_open Δ Φ) ->
-    body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> tele_ass Δ -> (exists l : nat, rel_params_evaluated Γ Δ l) ->
+    body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> all_assumptions Δ -> (exists l : nat, rel_params_evaluated Γ Δ l) ->
     ⊨ Γ -> ⊨ body_ctx Φx ++ Δ ++ Γ -> body_sorts_valid Φx (Δ ++ Γ) ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        valid_unit (body_ctx Φ0 ++ Δ ++ Γ) (me_lit U)) ->
@@ -549,7 +549,7 @@ Inductive valid_unit : ctx -> modexp -> Prop :=
     the PER model, as for [valid_unit_body] *)
 | valid_unit_alias : forall Γ Δ E,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit (gu_mk Δ (md_alias E)) ≈ me_lit (gu_mk Δ (md_alias E)) ->
-    tele_ass Δ -> (exists l : nat, rel_params_evaluated Γ Δ l) -> ⊨ Γ -> ⊨ Δ ++ Γ ->
+    all_assumptions Δ -> (exists l : nat, rel_params_evaluated Γ Δ l) -> ⊨ Γ -> ⊨ Δ ++ Γ ->
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias E)) ≈ me_lit (gu_mk Δ (md_alias E)) ->
     Δ ++ Γ ⊨ᵐ E ≈ E -> valid_modexp (Δ ++ Γ) E ->
     valid_unit Γ (me_lit (gu_mk Δ (md_alias E)))
@@ -650,7 +650,7 @@ Record valid_filed_value (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) 
       mdesc_type R1 = Some (ctx_pi_at (mdesc_kind R0) T1 A0)[sb_of_list Id Ns] /\
       (mdesc_reduct R1 = None \/
        exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_kind R0) T1 A0 /\
-         forall ns m, List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns ->
+         forall ns m, List.length ns = List.length T2 -> per_tele_args (rev T2) nil nil ns ns ->
            ⟦ M1 ⟧ env_tele nil (rev T2) ns ↘ m ->
            exists v, $*| valid_filed_value_val & ns | gc_deps ⍮ gc_stack ↘ v /\
              Dom m ≈ v ∈ per_head (ctx_pi_at (mdesc_kind R0) T1 A0) (ctx_pi_at (mdesc_kind R0) T1 A0)
@@ -702,7 +702,7 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
   { valid_filed_mod_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
   ; valid_filed_mod_path : forall ρ, ⟦ qname_mod p ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p nil
   ; valid_filed_mod_tele_wf : ⊨ T
-  ; valid_filed_mod_tele_ass : tele_ass T
+  ; valid_filed_mod_tele_all_assumptions : all_assumptions T
   ; valid_filed_mod_tele_scoped : ctx_scoped 0 T
   ; valid_filed_mod_kinds : forall x Φ0 E, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
       dmod_member_kind gc_deps gc_stack (dm_global p nil) (x :: nil) (entry_member_kind E)
@@ -876,7 +876,7 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
     List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass κ A) -> κ = ak_relevant
 (** Each prefix of a constructor's non-recursive arguments is a valid
     context *)
-; valid_ind_decl_strat : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
+; valid_ind_decl_nonrec_prefixes : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
     ⊨ nonrec_args_prefix gs j ++ im_params D Mk
 (** Each non-recursive argument is a valid type of the sort, or a
     proposition, as its kind [r] says ([abs_kind_sort]), and a type of

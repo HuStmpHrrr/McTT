@@ -580,7 +580,7 @@ Proof. exact (proj1 syn_mvc_mono). Qed.
 
 (** A [Π] over assumptions without module variables. *)
 Lemma ctx_pi_mvc : forall r Δ A n,
-    tele_ass Δ -> List.Forall (centry_mvc n) Δ -> exp_mvc (List.length Δ + n) A -> exp_mvc n (ctx_pi_at r Δ A).
+    all_assumptions Δ -> List.Forall (centry_mvc n) Δ -> exp_mvc (List.length Δ + n) A -> exp_mvc n (ctx_pi_at r Δ A).
 Proof.
   induction Δ as [| e Δ IH]; intros * Hass Hm HA; cbn in *; [ exact HA |].
   inversion Hass as [| ? ? (κ & B & ->) Hass']; inversion Hm; subst; cbn in *.
@@ -1056,7 +1056,7 @@ Fixpoint ptyp_scoped (n : nat) (t : ptyp) : Prop :=
     group, at its number of non-uniform parameters. *)
 Record member_closed (D : ind_decl) (M : imember) : Prop := mk_member_closed
   { (** The non-uniform parameters are assumptions *)
-    member_closed_ass : tele_ass (im_nparams M)
+    member_closed_ass : all_assumptions (im_nparams M)
     (** They are over the uniform ones *)
   ; member_closed_nparams : ctx_scoped (ind_nu D) (im_nparams M)
     (** A view's uniform arguments are over the uniform parameters *)
@@ -1071,10 +1071,10 @@ Record member_closed (D : ind_decl) (M : imember) : Prop := mk_member_closed
     (** A non-recursive argument is over the parameters and the
         non-recursive arguments before it *)
   ; member_closed_args : forall c gs gs1 ra A gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_arg ra A :: gs2 ->
-      exp_scoped (List.length (cargs_strat gs1) + im_np D M) A
+      exp_scoped (List.length (cargs_nonrec_ctx gs1) + im_np D M) A
     (** So is a recursive argument's shape *)
   ; member_closed_recs : forall c gs gs1 t gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_rec t :: gs2 ->
-      ptyp_scoped (List.length (cargs_strat gs1) + im_np D M) t
+      ptyp_scoped (List.length (cargs_nonrec_ctx gs1) + im_np D M) t
     (** A shape ends in a member, at its number of non-uniform
         parameters *)
   ; member_closed_rec_len : forall c gs, In (c, gs) (im_cons M) -> cargs_params_length D gs }.
@@ -1082,7 +1082,7 @@ Record member_closed (D : ind_decl) (M : imember) : Prop := mk_member_closed
 (** A closed group: see the section header. *)
 Record decl_closed (D : ind_decl) : Prop := mk_decl_closed
   { (** The uniform parameters are assumptions *)
-    decl_closed_ass : tele_ass (ind_uparams D)
+    decl_closed_ass : all_assumptions (ind_uparams D)
     (** They are a closed telescope *)
   ; decl_closed_uparams : ctx_scoped 0 (ind_uparams D)
     (** The sort is over the uniform parameters *)
@@ -1193,7 +1193,7 @@ Proof.
   apply ctx_scoped_app; split; [ rewrite Nat.add_0_r; apply (member_closed_nparams _ _ HMc) | apply (decl_closed_uparams _ HD) ].
 Qed.
 
-Lemma decl_closed_params_ass : forall D k M, decl_closed D -> ind_member D k = Some M -> tele_ass (im_params D M).
+Lemma decl_closed_params_ass : forall D k M, decl_closed D -> ind_member D k = Some M -> all_assumptions (im_params D M).
 Proof.
   intros * HD HM; pose proof (decl_closed_members _ HD _ _ HM) as HMc; unfold im_params.
   apply List.Forall_app; split; [ apply (member_closed_ass _ _ HMc) | apply (decl_closed_ass _ HD) ].
@@ -1238,18 +1238,18 @@ Lemma cargs_ctx_aux_scoped : forall pq D nn gs pat k,
     decl_closed D ->
     pat_nargs pat = k ->
     (forall gs1 ra A gs2, gs = gs1 ++ ca_arg ra A :: gs2 ->
-       exp_scoped (k + List.length (cargs_strat gs1) + (nn + ind_nu D)) A) ->
+       exp_scoped (k + List.length (cargs_nonrec_ctx gs1) + (nn + ind_nu D)) A) ->
     (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
-       ptyp_scoped (k + List.length (cargs_strat gs1) + (nn + ind_nu D)) t) ->
+       ptyp_scoped (k + List.length (cargs_nonrec_ctx gs1) + (nn + ind_nu D)) t) ->
     ctx_scoped (List.length pat + (nn + ind_nu D)) (cargs_ctx_aux pq D nn pat gs).
 Proof.
   induction gs as [| [ra A | t] gs IH]; intros * HD Hk HA HPs; cbn; [ exact I | |].
   all: rewrite ctx_scoped_app; cbn; split; [| split; [| exact I ] ].
   - apply (IH (false :: pat) (S k) HD); cbn; [ rewrite Hk; reflexivity | |].
     + intros gs1 ra' A' gs2 ->; specialize (HA (ca_arg ra A :: gs1) ra' A' gs2 eq_refl); cbn in HA.
-      rewrite length_app in HA; cbn in HA; match goal with |- exp_scoped ?n _ => replace n with (k + (length (cargs_strat gs1) + 1) + (nn + ind_nu D)) by lia end; exact HA.
+      rewrite length_app in HA; cbn in HA; match goal with |- exp_scoped ?n _ => replace n with (k + (length (cargs_nonrec_ctx gs1) + 1) + (nn + ind_nu D)) by lia end; exact HA.
     + intros gs1 Ps gs2 ->; specialize (HPs (ca_arg ra A :: gs1) Ps gs2 eq_refl); cbn in HPs.
-      rewrite length_app in HPs; cbn in HPs; match goal with |- ptyp_scoped ?n _ => replace n with (k + (length (cargs_strat gs1) + 1) + (nn + ind_nu D)) by lia end; exact HPs.
+      rewrite length_app in HPs; cbn in HPs; match goal with |- ptyp_scoped ?n _ => replace n with (k + (length (cargs_nonrec_ctx gs1) + 1) + (nn + ind_nu D)) by lia end; exact HPs.
   - specialize (HA nil ra A gs eq_refl); cbn in HA.
     eapply exp_scoped_wk; [ exact HA |]; intros x Hx; rewrite ?Nat.add_0_r; apply wk_pat_bound; lia.
   - apply (IH (true :: pat) k HD); cbn; [ exact Hk | |].
@@ -1351,7 +1351,7 @@ Lemma length_im_params : forall D M, List.length (im_params D M) = im_np D M.
 Proof. intros; unfold im_params, im_np, im_nn, ind_nu; rewrite length_app; reflexivity. Qed.
 
 Lemma length_tele_insts_params : forall D M σ Ps,
-    tele_ass (im_params D M) -> List.length Ps = im_np D M -> List.length (tele_insts (im_params D M) σ Ps) = List.length Ps.
+    all_assumptions (im_params D M) -> List.length Ps = im_np D M -> List.length (tele_insts (im_params D M) σ Ps) = List.length Ps.
 Proof. intros * HΔ Hl; rewrite length_tele_insts by exact HΔ; rewrite length_im_params; lia. Qed.
 
 Lemma length_tele_insts_cargs : forall p D M gs σ As,
@@ -1508,15 +1508,15 @@ Lemma fields_leaves_combine_scoped : forall tbl nu fl gs ns,
     (forall j ls, tbl j = Some ls -> List.Forall (leaf_scoped nu) ls) ->
     List.length fl = List.length gs ->
     (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
-       ptyp_scoped (List.length ns + List.length (cargs_strat gs1) + nu) t) ->
+       ptyp_scoped (List.length ns + List.length (cargs_nonrec_ctx gs1) + nu) t) ->
     List.Forall (leaf_scoped nu) (fields_leaves tbl ns (List.combine fl gs)).
 Proof.
   intros tbl nu; induction fl as [| f fl IH]; intros [| [ra A | t] gs] ns Htbl Hl Hf; cbn in *; try discriminate; [ constructor | |].
   - apply IH; [ exact Htbl | lia |]; intros gs1 t gs2 E.
     specialize (Hf (ca_arg ra A :: gs1) t gs2 ltac:(rewrite E; reflexivity)); cbn in Hf.
     rewrite List.length_app in *; cbn in *.
-    replace (List.length ns + 1 + List.length (cargs_strat gs1) + nu)
-      with (List.length ns + (List.length (cargs_strat gs1) + 1) + nu) by lia; exact Hf.
+    replace (List.length ns + 1 + List.length (cargs_nonrec_ctx gs1) + nu)
+      with (List.length ns + (List.length (cargs_nonrec_ctx gs1) + 1) + nu) by lia; exact Hf.
   - apply List.Forall_app; split.
     + apply List.Forall_map; eapply List.Forall_impl; [| apply shape_leaves_scoped; [ exact Htbl |] ].
       * intros l Hl'; cbn; exact Hl'.
@@ -1635,7 +1635,7 @@ Lemma elim_ihs_scoped : forall r pq D Us Bks gs σ As m n k,
     decl_closed D -> List.length Us = ind_nu D -> List.Forall (exp_scoped m) Us ->
     blocks_binder_count_ok D Bks -> blocks_scoped m Bks -> k = n + ind_nu D ->
     (forall x, x < k -> sentry_scoped m (σ x)) ->
-    (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ptyp_scoped (List.length (cargs_strat gs1) + k) t) ->
+    (forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> ptyp_scoped (List.length (cargs_nonrec_ctx gs1) + k) t) ->
     List.Forall (exp_scoped m) As -> List.Forall (exp_scoped m) (elim_ihs r pq D Us Bks σ n gs As).
 Proof.
   induction gs as [| [ra A0 | t] gs IH]; intros σ [| N As] m n k HD Hl HUs Hnm HBs Hk Hσ Ht HAs; cbn; try constructor;
@@ -1983,7 +1983,7 @@ Qed.
 (** A telescope whose entries are each scoped by the ones below it and [n]. *)
 Lemma ctx_scoped_intro : forall Δ n,
     (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> exp_scoped (List.length Δ2 + n) T) ->
-    tele_ass Δ -> ctx_scoped n Δ.
+    all_assumptions Δ -> ctx_scoped n Δ.
 Proof.
   induction Δ as [| e Δ IH]; intros n H Hass; cbn; [ exact I |].
   inversion Hass as [| ? ? (κ & A & ->) Hass']; subst.
@@ -1992,27 +1992,27 @@ Proof.
 Qed.
 
 Lemma member_closed_intro : forall D M,
-    tele_ass (ind_uparams D) ->
-    (forall j Mj, ind_member D j = Some Mj -> tele_ass (im_nparams Mj)) ->
-    tele_ass (im_nparams M) ->
+    all_assumptions (ind_uparams D) ->
+    (forall j Mj, ind_member D j = Some Mj -> all_assumptions (im_nparams Mj)) ->
+    all_assumptions (im_nparams M) ->
     (forall Δ1 κ T Δ2, im_nparams M = Δ1 ++ ce_ass κ T :: Δ2 -> exp_scoped (List.length (Δ2 ++ ind_uparams D)) T) ->
     (forall qc k' Is vm, im_head M = mh_view qc k' Is vm -> List.Forall (exp_scoped (List.length (ind_uparams D))) Is) ->
     (forall qr Is fl, im_head M = mh_record qr Is fl -> List.Forall (exp_scoped (List.length (ind_uparams D))) Is) ->
     (forall qr Is fl, im_head M = mh_record qr Is fl -> im_nparams M = nil) ->
     (forall qr Is fl c gs, im_head M = mh_record qr Is fl -> In (c, gs) (im_cons M) -> List.length fl = List.length gs) ->
     (forall c gs gs1 ra A gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_arg ra A :: gs2 ->
-       exp_scoped (List.length (cargs_strat gs1 ++ im_params D M)) A) ->
+       exp_scoped (List.length (cargs_nonrec_ctx gs1 ++ im_params D M)) A) ->
     (forall c gs gs1 t gs2 Bs1 B Bs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_rec t :: gs2 ->
        ptyp_doms t = Bs1 ++ B :: Bs2 ->
-       exp_scoped (List.length (doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D M)) B) ->
+       exp_scoped (List.length (doms_ctx Bs1 ++ cargs_nonrec_ctx gs1 ++ im_params D M)) B) ->
     (forall c gs, In (c, gs) (im_cons M) -> cargs_params_length D gs) ->
     (forall c gs gs1 t gs2 Mj k P T, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_rec t :: gs2 ->
        ind_member D (ptyp_mem t) = Some Mj ->
        nth_error (ptyp_ps t) k = Some P ->
        nth_error (tele_insts (im_nparams Mj)
-                    (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + im_nn M))) (ptyp_ps t)) k
+                    (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec_ctx gs1) + im_nn M))) (ptyp_ps t)) k
          = Some T ->
-       exp_scoped (List.length (ptyp_tele t ++ cargs_strat gs1 ++ im_params D M)) P) ->
+       exp_scoped (List.length (ptyp_tele t ++ cargs_nonrec_ctx gs1 ++ im_params D M)) P) ->
     member_closed D M.
 Proof.
   intros D M HassU HassM Hass HN Hh Hrh Hrn Hrl HA HB Hl HPs; constructor; try assumption.
@@ -2024,7 +2024,7 @@ Proof.
       eapply exp_scoped_mono; [| exact HB ]; lia.
     + destruct (Hl _ _ Hin _ _ _ Heq) as (Mj & HMj & HlMj).
       eapply (nth_typed_scoped _ (tele_insts (im_nparams Mj)
-                (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + im_nn M))) (ptyp_ps t))).
+                (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec_ctx gs1) + im_nn M))) (ptyp_ps t))).
       * rewrite length_tele_insts; [ unfold im_nn in HlMj; lia | exact (HassM _ _ HMj) ].
       * intros k P T Hk HT; specialize (HPs _ _ _ _ _ _ _ _ _ Hin Heq HMj Hk HT).
         unfold ptyp_tele, doms_ctx, ptyp_depth in *; rewrite !length_app, length_rev, length_map, length_im_params in HPs.
@@ -2032,7 +2032,7 @@ Proof.
 Qed.
 
 Lemma decl_closed_intro : forall D,
-    tele_ass (ind_uparams D) -> ctx_scoped 0 (ind_uparams D) ->
+    all_assumptions (ind_uparams D) -> ctx_scoped 0 (ind_uparams D) ->
     exp_scoped (List.length (ind_uparams D)) (ind_sort D) ->
     (forall k M, ind_member D k = Some M -> member_closed D M) ->
     decl_closed D.

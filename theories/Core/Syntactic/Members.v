@@ -2666,14 +2666,14 @@ Definition items_ok (its : list import_item) : Prop :=
 
 (** A telescope of parameters has assumptions only: a module's arguments are
     terms.  A unit has members only under such parameters. *)
-Definition tele_ass (Δ : ctx) : Prop := List.Forall (fun e => exists κ A, e = ce_ass κ A) Δ.
+Definition all_assumptions (Δ : ctx) : Prop := List.Forall (fun e => exists κ A, e = ce_ass κ A) Δ.
 
-Lemma tele_ass_wk : forall Δ φ, tele_ass Δ -> tele_ass (tele_wk Δ φ).
+Lemma all_assumptions_wk : forall Δ φ, all_assumptions Δ -> all_assumptions (tele_wk Δ φ).
 Proof.
   induction 1 as [| e Δ (κ & A & ->) HΔ IH]; cbn; constructor; eauto.
 Qed.
 
-Lemma tele_ass_sub : forall Δ σ, tele_ass Δ -> tele_ass (tele_sub Δ σ).
+Lemma all_assumptions_sub : forall Δ σ, all_assumptions Δ -> all_assumptions (tele_sub Δ σ).
 Proof.
   induction 1 as [| e Δ (κ & A & ->) HΔ IH]; cbn; constructor; eauto.
 Qed.

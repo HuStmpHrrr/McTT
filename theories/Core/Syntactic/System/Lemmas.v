@@ -430,7 +430,7 @@ Qed.
     motive's context [T ▹ H]: [T ▹ Z'] is equal to the motive's context
     too, the heads chained by [wf_subtyp_trans]. *)
 Lemma ann_ctx_trans : forall Θ Ξ Δ T T' κ Z Z' H,
-    Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹{κ} Z ≈ T' ▹{κ} Z' -> Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹{κ} Z ≈ T ▹{κ} H -> tele_ass T ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹{κ} Z ≈ T' ▹{κ} Z' -> Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹{κ} Z ≈ T ▹{κ} H -> all_assumptions T ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹{κ} Z' ≈ T ▹{κ} H.
 Proof.
   intros * Ha Hb HT.
@@ -467,14 +467,14 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D Us m Mm Bks bm Ps M i,
                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
-       (tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) ->
+       (all_assumptions (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) ->
          Θ ⍮ Ξ ⍮ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) τ ++ Δ0
            ⊢ˢ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b)) τ
             ≈ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b)) τ'
            : (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) ++ Γ /\
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) τ
            ≈ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b) τ') /\
-       (tele_ass (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+       (all_assumptions (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
          Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ ++ Δ0
            ⊢ˢ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ
             ≈ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ'
@@ -490,14 +490,14 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D Us m Mm Bks bm Ps M i,
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk, ind_member D k = Some Mk ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
-       (tele_ass (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+       (all_assumptions (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
          Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ ++ Δ0
            ⊢ˢ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ
             ≈ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ'
            : elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ /\
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ
            ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ') /\
-       (tele_ass (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+       (all_assumptions (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
          Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ ++ Δ0
            ⊢ˢ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ
             ≈ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ'
@@ -510,14 +510,14 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' r p D Us m Mm Bks bm Ps M i,
                     ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
-       (tele_ass (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+       (all_assumptions (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
          Θ ⍮ Ξ ⍮ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ ++ Δ0
            ⊢ˢ sb_qn (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ
             ≈ sb_qn (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ'
            : elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ /\
          Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ
            ≈ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ') /\
-       (tele_ass (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+       (all_assumptions (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
          Θ ⍮ Ξ ⍮ tele_sub (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ ++ Δ0
            ⊢ˢ sb_qn (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ
             ≈ sb_qn (List.length (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ'
@@ -603,13 +603,13 @@ Proof.
         by (cbn [eblock_sub eb_scrutinee_type]; replace (S (im_nn Mk) - 1) with (im_nn Mk) by lia; reflexivity).
       eapply move_blocks_ann with (R := sub_as_sub Θ Ξ) (k := k) (b := eblock_sub (eb_mk (S (im_nn Mk)) Z0 A0 Bs0) σ);
         first [ eassumption | rewrite nth_error_blocks_sub, Hb0; reflexivity ]. }
-    assert (HtZ : tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} Z0))
-      by (constructor; [ eauto | apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption ]).
+    assert (HtZ : all_assumptions (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} Z0))
+      by (constructor; [ eauto | apply all_assumptions_sub; eapply decl_closed_nparams_ass; eassumption ]).
     destruct (proj1 (IHZ _ _ _ HMk Hb0 _ _ _ Hσ) HtZ) as [_ HZσ].
     cbn [tele_sub centry_sub] in HZσ; rewrite length_tele_sub in HZσ; fold (im_nn Mk) in HZσ.
     erewrite !nparams_sub in HZσ by eassumption.
     rewrite List.firstn_map; unfold elim_mctx in Hlft |- *; eapply ann_ctx_trans; [ exact HZσ | exact Hlft |].
-    apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption.
+    apply all_assumptions_sub; eapply decl_closed_nparams_ass; eassumption.
   - rewrite List.firstn_map; eapply move_blocks_motive with (R := sub_as_sub Θ Ξ); eassumption.
   - (* the motives at the two substitutions *)
     intros k Mk b b' HMk Hb Hb'.
@@ -767,7 +767,7 @@ Lemma sub_eq_unit_self : forall Θ Ξ Γ Δu Φ Φx entry_sort l ps Γ0 σ σ',
     (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δu ++ Γ ⊢ᵐ H ≈ H) ->
     (forall k Φ0 H σf, List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> gm_fill Φ0 = Some σf ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ᵐ H[σf]ᵐ[τ]ᵐ ≈ H[σf]ᵐ[τ']ᵐ) ->
-    tele_ass Δu -> body_shape Φ Φ -> body_shape Φx Φx -> List.NoDup (gm_names Φ) ->
+    all_assumptions Δu -> body_shape Φ Φ -> body_shape Φx Φx -> List.NoDup (gm_names Φ) ->
     forall (lv : bool) Rt, levels_flag Θ Ξ Γ Δu (me_lit (gu_open nil Φ)) lv Rt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu Φ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu Φ)[σ']ᵘ.
@@ -856,7 +856,7 @@ Lemma sub_eq_unit_alias_self : forall Θ Ξ Γ Δu E l ps Γ0 σ σ',
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ σ ≈ σ' : Γ ->
     Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Γ0 ⊢ˢ sb_qn (length Δu) σ ≈ sb_qn (length Δu) σ' : Δu ++ Γ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub Δu σ ≈ tele_sub Δu σ' ->
-    tele_ass Δu ->
+    all_assumptions Δu ->
     Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ᵐ E ≈ E ->
     (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ᵐ E[τ]ᵐ ≈ E[τ']ᵐ) ->
     (forall k, parameter_sort l (ps k)) ->
@@ -873,7 +873,7 @@ Proof.
   pose proof (sub_eq_levels_flag _ _ _ _ _ lv Rt _ _ Hs1 HΔΓ (ext_eq_ctx_right _ _ _ _ _ HΔσ) HsE Hf) as F'.
   rewrite !gunit_sub_mk; cbn [moddef_sub].
   eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps);
-    [ exact HΔσ | apply tele_ass_sub; exact Ha | apply tele_ass_sub; exact Ha | exact (IHE _ _ _ L) | | exact Hps
+    [ exact HΔσ | apply all_assumptions_sub; exact Ha | apply all_assumptions_sub; exact Ha | exact (IHE _ _ _ L) | | exact Hps
     | sub_eq_params_case Hs0 HΔΓ (ext_eq_ctx_left _ _ _ _ _ HΔσ) Hps HRp
     | sub_eq_params_case Hs1 HΔΓ (ext_eq_ctx_right _ _ _ _ _ HΔσ) Hps HRp
     | exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
@@ -891,7 +891,7 @@ Lemma sub_eq_unit_flatten_case : forall Θ Ξ Γ Δ Δ' D l ps Γ0 σ σ',
     Θ ⍮ Ξ ⍮ tele_sub Δ σ ++ Γ0 ⊢ˢ sb_qn (length Δ) σ ≈ sb_qn (length Δ) σ' : Δ ++ Γ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub Δ σ ≈ tele_sub Δ σ' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ ->
-    tele_ass Δ ->
+    all_assumptions Δ ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
     (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δ ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ (gu_mk Δ' D)[τ]ᵘ ≈ (gu_mk Δ' D)[τ']ᵘ) ->
     (forall k, parameter_sort l (ps k)) ->
@@ -920,7 +920,7 @@ Proof.
     cbn [modexp_sub] in F.
     revert HUs F; destruct ((gu_mk Δ' D)[sb_qn (length Δ) s]ᵘ) as [Δw Dw]; intros HUs F; cbn [gunit_abs].
     eapply wf_unit_eq_flatten with (param_level := l) (param_sorts := ps);
-      [ exact HΔs | apply tele_ass_sub; exact Ha | exact HUs | exact Hps
+      [ exact HΔs | apply all_assumptions_sub; exact Ha | exact HUs | exact Hps
       | sub_eq_params_case Hs HΔΓ (ext_eq_ctx_left _ _ _ _ _ HΔs) Hps HRp
       | exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
       | exact (levels_flag_no_level _ _ _ _ _ _ _ F) ]. }
@@ -946,9 +946,9 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sor
     body_xp Θ Ξ (Δu' ++ Γ) Φ' Φx' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δu ≈ Δu' ->
     (forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Γ ->
-       (tele_ass Δu -> Θ ⍮ Ξ ⍮ tele_sub Δu τ ++ Γ1 ⊢ˢ sb_qn (length Δu) τ ≈ sb_qn (length Δu) τ' : Δu ++ Γ /\
+       (all_assumptions Δu -> Θ ⍮ Ξ ⍮ tele_sub Δu τ ++ Γ1 ⊢ˢ sb_qn (length Δu) τ ≈ sb_qn (length Δu) τ' : Δu ++ Γ /\
                         Θ ⍮ Ξ ⍮ Γ1 ⊢ˣ tele_sub Δu τ ≈ tele_sub Δu τ') /\
-       (tele_ass Δu' -> Θ ⍮ Ξ ⍮ tele_sub Δu' τ ++ Γ1 ⊢ˢ sb_qn (length Δu') τ ≈ sb_qn (length Δu') τ' : Δu' ++ Γ /\
+       (all_assumptions Δu' -> Θ ⍮ Ξ ⍮ tele_sub Δu' τ ++ Γ1 ⊢ˢ sb_qn (length Δu') τ ≈ sb_qn (length Δu') τ' : Δu' ++ Γ /\
                         Θ ⍮ Ξ ⍮ Γ1 ⊢ˣ tele_sub Δu' τ ≈ tele_sub Δu' τ')) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δu ≈ body_ctx Φx ++ Δu ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δu' ≈ body_ctx Φx' ++ Δu' ->
@@ -1044,7 +1044,7 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sor
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu' ++ Γ ->
           Θ ⍮ Ξ ⍮ Γ1 ⊢ᵐ H'[σf']ᵐ[τ]ᵐ ≈ H'[σf']ᵐ[τ']ᵐ /\ Θ ⍮ Ξ ⍮ Γ1 ⊢ᵐ H'[σf']ᵐ[τ]ᵐ ≈ H'[σf']ᵐ[τ']ᵐ) ->
-    tele_ass Δu -> tele_ass Δu' -> length Δu = length Δu' ->
+    all_assumptions Δu -> all_assumptions Δu' -> length Δu = length Δu' ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     (forall y, type_sort (entry_sort y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
@@ -1194,7 +1194,7 @@ Qed.
 Lemma sub_eq_record_case : forall Θ Ξ Γ Δ σ σ' p R i,
     record_lookup Θ Ξ p = Some R ->
     List.NoDup (List.map fst (record_fields R)) ->
-    tele_ass (record_params R) ->
+    all_assumptions (record_params R) ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ record_ty R : Typeω@i ->
     ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
     Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
@@ -1347,9 +1347,9 @@ Lemma sub_eq_preserves_mut :
   (forall Θ Ξ Δ U, Θ ⍮ Ξ ⍮ Δ ⊢ᵤ U -> True) /\
   (forall Θ Ξ Δ Ψ Ψ', Θ ⍮ Ξ ⍮ Δ ⊢ˣ Ψ ≈ Ψ' ->
      forall Γ σ σ', Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
-       (tele_ass Ψ -> Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ ⊢ˢ sb_qn (length Ψ) σ ≈ sb_qn (length Ψ) σ' : Ψ ++ Δ /\
+       (all_assumptions Ψ -> Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ ⊢ˢ sb_qn (length Ψ) σ ≈ sb_qn (length Ψ) σ' : Ψ ++ Δ /\
                        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub Ψ σ ≈ tele_sub Ψ σ') /\
-       (tele_ass Ψ' -> Θ ⍮ Ξ ⍮ tele_sub Ψ' σ ++ Γ ⊢ˢ sb_qn (length Ψ') σ ≈ sb_qn (length Ψ') σ' : Ψ' ++ Δ /\
+       (all_assumptions Ψ' -> Θ ⍮ Ξ ⍮ tele_sub Ψ' σ ++ Γ ⊢ˢ sb_qn (length Ψ') σ ≈ sb_qn (length Ψ') σ' : Ψ' ++ Δ /\
                         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub Ψ' σ ≈ tele_sub Ψ' σ')) /\
   (forall Θ Ξ Δ U U', Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U' ->
      forall Γ σ σ', Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ']ᵘ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U'[σ]ᵘ ≈ U'[σ']ᵘ) /\
@@ -1373,8 +1373,8 @@ Proof.
   all: try solve [
     match goal with
     | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HΔ : wf_ext_eq _ _ _ ?Δu ?Δu',
-      IHΔ : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> (tele_ass ?Δu -> _) /\ (tele_ass ?Δu' -> _),
-      Ha : tele_ass ?Δu, Ha' : tele_ass ?Δu', HE : wf_modexp_eq _ _ _ ?E ?E', HE' : wf_modexp_eq _ _ _ ?E' ?E',
+      IHΔ : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> (all_assumptions ?Δu -> _) /\ (all_assumptions ?Δu' -> _),
+      Ha : all_assumptions ?Δu, Ha' : all_assumptions ?Δu', HE : wf_modexp_eq _ _ _ ?E ?E', HE' : wf_modexp_eq _ _ _ ?E' ?E',
       IHE : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub ?E _) _ /\ _,
       IHE' : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub ?E' _) _ /\ _
       |- wf_unit_eq _ _ _ (gunit_sub (gu_mk ?Δu (md_alias ?E)) ?σ) _ /\ _ =>
@@ -1389,8 +1389,8 @@ Proof.
   all: try solve [
     match goal with
     | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HΔ : wf_ext_eq _ _ _ ?Δ ?Δ,
-      IHΔ : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> (tele_ass ?Δ -> _) /\ _,
-      Ha : tele_ass ?Δ, HU : wf_unit_eq _ _ (?Δ ++ _) (gu_mk ?Δ' ?D) _,
+      IHΔ : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> (all_assumptions ?Δ -> _) /\ _,
+      Ha : all_assumptions ?Δ, HU : wf_unit_eq _ _ (?Δ ++ _) (gu_mk ?Δ' ?D) _,
       IHU : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_unit_eq _ _ _ (gunit_sub (gu_mk ?Δ' ?D) _) _ /\ _
       |- wf_unit_eq _ _ _ (gunit_sub (gu_mk ?Δ (md_alias (me_lit (gu_mk ?Δ' ?D)))) ?σ) _ /\ _ =>
         destruct (IHΔ _ _ _ Hσ) as [HL _]; destruct (HL Ha) as [L HΔσ];
@@ -1590,7 +1590,7 @@ Proof.
   all: try solve [ split; intros Hass; inversion Hass as [| ? ? (? & ? & Heq) ? ]; discriminate ].
   all: try solve [
     match goal with
-    | HΨ : wf_ext_eq _ _ ?Δ ?Ψ ?Ψ', IHx : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> (tele_ass ?Ψ -> _) /\ (tele_ass ?Ψ' -> _),
+    | HΨ : wf_ext_eq _ _ ?Δ ?Ψ ?Ψ', IHx : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> (all_assumptions ?Ψ -> _) /\ (all_assumptions ?Ψ' -> _),
       HA : wf_exp _ _ (?Ψ ++ ?Δ) ?S ?A,
       HS : sort_kind ?S _,
       IHA : forall _ _ _, wf_sub_eq _ _ _ (?Ψ ++ ?Δ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,

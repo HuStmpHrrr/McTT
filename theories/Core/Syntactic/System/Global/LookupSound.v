@@ -55,7 +55,7 @@ Qed.
 (** A unit of the context after [Δ], abstracted over [Δ]: when [Δ] is of
     types of levels, or what the unit denotes there has no member of a type
     of levels (the flag premise for [Δ]). *)
-Lemma unit_full_abs : forall Θ Ξ Γ Δ U l, unit_full Θ Ξ (Δ ++ Γ) U -> tele_ass Δ -> params_evaluated Θ Ξ Γ Δ l ->
+Lemma unit_full_abs : forall Θ Ξ Γ Δ U l, unit_full Θ Ξ (Δ ++ Γ) U -> all_assumptions Δ -> params_evaluated Θ Ξ Γ Δ l ->
     (level_sorted_parameters Δ \/ forall R, udenote Θ Ξ (Δ ++ Γ) None U R -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ R) ->
     unit_full Θ Ξ Γ (gunit_abs Δ U).
 Proof.
@@ -168,7 +168,7 @@ Proof.
     + rewrite (body_xp_names _ _ _ _ _ Hx); exact Hn.
 Qed.
 
-Lemma unit_full_ctx : forall Θ Ξ Γ Δ D, unit_full Θ Ξ Γ (gu_mk Δ D) -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ /\ tele_ass Δ.
+Lemma unit_full_ctx : forall Θ Ξ Γ Δ D, unit_full Θ Ξ Γ (gu_mk Δ D) -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ /\ all_assumptions Δ.
 Proof.
   intros * HU; destruct D as [[] Φ | E]; cbn in HU; try contradiction.
   - destruct HU as [Φx es lp ps _ _ HC _ _ _ _ Ha]; split; [ exact (ctx_app_wf_tail _ _ _ _ HC) | exact Ha ].
@@ -366,7 +366,7 @@ Qed.
 
 (** A stored module at typed arguments is well formed, and made of
     well-formed parts. *)
-Lemma filed_apps_wf : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> forall p T Φ, loc Θ Ξ p T Φ -> tele_ass T -> ctx_scoped 0 T -> ⊢ Θ ⍮ Ξ ⍮ T ->
+Lemma filed_apps_wf : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> forall p T Φ, loc Θ Ξ p T Φ -> all_assumptions T -> ctx_scoped 0 T -> ⊢ Θ ⍮ Ξ ⍮ T ->
     forall Ns, args_ok Θ Ξ Γ T Ns ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns /\ gen_m Θ Ξ Γ (me_apps (qname_mod p) Ns).
 Proof.
@@ -542,7 +542,7 @@ Qed.
     arguments for the outermost parameters of [Δa], is well formed. *)
 Lemma wf_apps_up : forall Θ Ξ Ns Γ Δa R H l,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ H (mdesc_up Δa R) -> mdesc_is_mod R ->
-    ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> tele_ass Δa -> length Ns <= length Δa ->
+    ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> all_assumptions Δa -> length Ns <= length Δa ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
     desc_ok Θ Ξ (Δa ++ Γ) R -> params_evaluated Θ Ξ Γ Δa l ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps H Ns ≈ me_apps H Ns.
@@ -550,7 +550,7 @@ Proof.
   intros Θ Ξ; induction Ns as [| N Ns IH]; intros * HH Hm Hmod HΔ Ha Hl HNs HR HRΔ; [ exact HH |].
   pose proof (ctx_wf_gctx _ _ _ HΔ) as Hg.
   destruct (List.exists_last (l := Δa)) as (Δ1 & e & ->); [ intros ->; cbn in Hl; lia |].
-  unfold tele_ass in Ha; apply List.Forall_app in Ha as [Ha1 He]; apply List.Forall_cons_iff in He as [(κ & C & ->) _].
+  unfold all_assumptions in Ha; apply List.Forall_app in Ha as [Ha1 He]; apply List.Forall_cons_iff in He as [(κ & C & ->) _].
   rewrite tele_insts_snoc in HNs.
   pose proof (HNs 0 N C[Id] eq_refl eq_refl) as HN; rewrite exp_sub_id in HN.
   (* the argument's type is relevant, as every parameter of a module *)
@@ -574,7 +574,7 @@ Proof.
   - eapply mdenote_app; [ exact Hm | apply mdesc_at_up ].
   - apply mdesc_is_mod_sub; exact Hmod.
   - exact HΔN.
-  - apply tele_ass_sub; exact Ha1.
+  - apply all_assumptions_sub; exact Ha1.
   - rewrite length_tele_sub; rewrite List.length_app in Hl; cbn in Hl; lia.
   - intros k N1 A HN1 HA.
     rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (Id,,N)) in HA by apply sb_compose_id_right.
@@ -719,7 +719,7 @@ Qed.
     for the outermost parameters of [Δa], is equal to the δ-reduct the
     description reads at the arguments, by [β]. *)
 Lemma ats_up_red_eq : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Ns Γ Δa R M M0 A0,
-    ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> tele_ass Δa -> length Ns <= length Δa ->
+    ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> all_assumptions Δa -> length Ns <= length Δa ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
     mdesc_type R = Some A0 -> mdesc_reduct R = Some M0 ->
     (** The type is of the sort of the description's kind; of a type of
@@ -736,7 +736,7 @@ Proof.
   - exists (mdesc_up Δa R), (ctx_pi_at (mdesc_kind R) Δa A0), (ctx_fn Δa M0).
     split; [ reflexivity |]; split; [ apply mdesc_type_up; exact Ht |]; split; [ rewrite mdesc_reduct_up, Hr; reflexivity | exact HM ].
   - destruct (List.exists_last (l := Δa)) as (Δ1 & e & ->); [ intros ->; cbn in Hl; lia |].
-    unfold tele_ass in Ha; apply List.Forall_app in Ha as [Ha1 He]; apply List.Forall_cons_iff in He as [(κ & C & ->) _].
+    unfold all_assumptions in Ha; apply List.Forall_app in Ha as [Ha1 He]; apply List.Forall_cons_iff in He as [(κ & C & ->) _].
     rewrite tele_insts_snoc in HNs.
     pose proof (HNs 0 N C[Id] eq_refl eq_refl) as HN; rewrite exp_sub_id in HN.
     (* with a codomain of levels, the parameters are of levels *)
@@ -764,7 +764,7 @@ Proof.
     cbn [mdesc_ats]; rewrite mdesc_at_up.
     apply (IH Γ (tele_sub Δ1 (Id,,N)) _ (M $ N) M0[sb_qn (length Δ1) (Id,,N)] A0[sb_qn (length Δ1) (Id,,N)]).
     + exact HΔN.
-    + apply tele_ass_sub; exact Ha1.
+    + apply all_assumptions_sub; exact Ha1.
     + rewrite length_tele_sub; rewrite List.length_app in Hl; cbn in Hl; lia.
     + intros k0 N1 A HN1 HA.
       rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (Id,,N)) in HA by apply sb_compose_id_right.
@@ -782,7 +782,7 @@ Qed.
 (** Equal terms of a [Π] over a telescope, applied to the same arguments. *)
 Lemma wf_apps_ctx_pi_eq_n : forall n Θ Ξ Δ Γ B i M M' Ms,
     List.length Δ = n ->
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ B : Typeω@i ->
+    all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ B : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ctx_pi Δ B ->
     List.length Ms = List.length Δ ->
     (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ Id Ms) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
@@ -793,7 +793,7 @@ Proof.
   - destruct (List.exists_last (l := Δ)) as (Δ0 & e & ->); [ intros ->; discriminate |].
     rename Δ0 into Δ.
     rewrite List.length_app in Hn; cbn in Hn.
-    unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ & A0 & ->) _].
+    unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ & A0 & ->) _].
     rewrite List.length_app in Hl; cbn in Hl.
     destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; cbn in Hl.
     rewrite ctx_pi_snoc in HM; rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
@@ -810,7 +810,7 @@ Proof.
     cbn [apps_exp sb_of_list].
     replace (B[sb_of_list (Id,,M0) Ms]) with (B[sb_qn (List.length Δ) (Id,,M0)][sb_of_list Id Ms])
       by (replace (List.length Δ) with (List.length Ms) by lia; apply exp_sub_qn_of_list).
-    eapply (IH _ _ (tele_sub Δ (Id,,M0))); [ rewrite length_tele_sub; lia | apply tele_ass_sub; exact Hass | exact HΔ' | | exact Happ
+    eapply (IH _ _ (tele_sub Δ (Id,,M0))); [ rewrite length_tele_sub; lia | apply all_assumptions_sub; exact Hass | exact HΔ' | | exact Happ
                | rewrite length_tele_sub; lia |].
     + exact (sub_preserves_exp _ _ _ _ _ _ _ HB Hs').
     + intros k' N T HN HT; apply (HMs (S k')); [ exact HN |].
@@ -1054,7 +1054,7 @@ Proof. intros * Ht; destruct R1 as [? ? [] | | |]; cbn in Ht |- *; try discrimin
 (** Equal bodies over a telescope of assumptions, abstracted over it at
     the kind [r] of their type; into a type of levels, over parameters of
     types of levels. *)
-Lemma ctx_fn_eq : forall Θ Ξ r Δ Γ A M M' i, tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
+Lemma ctx_fn_eq : forall Θ Ξ r Δ Γ A M M' i, all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
     (r = ak_level -> level_sorted_parameters Δ) ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : abs_kind_sort r Typeω@i -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M ≈ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M ≈ ctx_fn Δ M' : ctx_pi_at r Δ A.
@@ -1256,7 +1256,7 @@ Qed.
 Lemma mdenote_lit_inv : forall Θ Ξ Γ U R, mdenote Θ Ξ Γ (me_lit U) R -> udenote Θ Ξ Γ None U R.
 Proof. intros * Hm; inversion Hm; subst; first [ cbn in *; discriminate | assumption ]. Qed.
 
-Lemma tele_ass_last : forall Δ, tele_ass Δ -> Δ <> nil -> exists Δ0 κ X, Δ = Δ0 ++ ce_ass κ X :: nil.
+Lemma all_assumptions_last : forall Δ, all_assumptions Δ -> Δ <> nil -> exists Δ0 κ X, Δ = Δ0 ++ ce_ass κ X :: nil.
 Proof.
   intros Δ Ha Hn; destruct (List.exists_last Hn) as (Δ0 & e & ->).
   apply List.Forall_app in Ha as [_ Ha]; apply List.Forall_cons_iff in Ha as [(κ & X & ->) _]; eauto.
@@ -1293,7 +1293,7 @@ Proof.
     match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
     unfold mdesc_mod_tele in HT; cbn in HT; injection HT as <-.
     destruct Δ as [| e Δ']; [ cbn in Hv; discriminate |].
-    destruct (tele_ass_last _ Ha ltac:(discriminate)) as (Δ0 & κ & X & HΔ).
+    destruct (all_assumptions_last _ Ha ltac:(discriminate)) as (Δ0 & κ & X & HΔ).
     rewrite HΔ, tele_view_last in Hv; injection Hv as <- _.
     exists Δ0, κ, X, (md_body sm_open Φ); rewrite <- HΔ; split; [ reflexivity | split; assumption ].
   - destruct (unit_full_ctx _ _ _ _ _ Hf) as [_ Ha].
@@ -1301,7 +1301,7 @@ Proof.
     match goal with Hd : mdesc_mod _ = Some ?R' |- _ => pose proof (mdesc_mod_is_mod _ _ Hd) as Him end.
     unfold mdesc_mod_tele in HT; rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ Him)) in HT.
     destruct (mdesc_tele_up_inv _ _ _ Him HT) as (T0 & ->).
-    destruct (tele_ass_last _ Ha HΔ) as (Δ0 & κ & X & HΔ0).
+    destruct (all_assumptions_last _ Ha HΔ) as (Δ0 & κ & X & HΔ0).
     rewrite HΔ0, app_assoc, tele_view_last in Hv; injection Hv as <- _.
     exists Δ0, κ, X, (md_alias E); rewrite <- HΔ0; split; [ reflexivity | split; assumption ].
 Qed.
@@ -1474,7 +1474,7 @@ Qed.
 (** An alias with parameters of the unit of a module part is the unit of
     the module part abstracted over the parameters, under the alias's flag
     premise. *)
-Lemma alias_unit_up : forall Θ Ξ Γ Δ Rm l ps (lv : bool) Rt, Δ <> nil -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ -> tele_ass Δ ->
+Lemma alias_unit_up : forall Θ Ξ Γ Δ Rm l ps (lv : bool) Rt, Δ <> nil -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ -> all_assumptions Δ ->
     (forall k, parameter_sort l (ps k)) ->
     (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     levels_flag Θ Ξ Γ Δ (mdesc_unit Rm) lv Rt -> mdesc_is_mod Rm ->

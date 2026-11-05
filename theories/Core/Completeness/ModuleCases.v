@@ -246,7 +246,7 @@ Qed.
 (** An alias unit. *)
 Lemma rel_unit_under_ctx_alias : forall Γ Δ Δ' E E' l,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') -> Θm ⍮ Ξm ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
-    Γ ⊨ˣ Δ ≈ Δ' -> tele_ass Δ -> tele_ass Δ' -> rel_params_evaluated Γ Δ l -> rel_params_evaluated Γ Δ' l -> ⊨ Γ ->
+    Γ ⊨ˣ Δ ≈ Δ' -> all_assumptions Δ -> all_assumptions Δ' -> rel_params_evaluated Γ Δ l -> rel_params_evaluated Γ Δ' l -> ⊨ Γ ->
     Δ ++ Γ ⊨ᵐ E ≈ E' -> Δ' ++ Γ ⊨ᵐ E' ≈ E' -> valid_modexp (Δ ++ Γ) E -> valid_modexp (Δ' ++ Γ) E' ->
     Γ ⊨ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') /\
     valid_unit Γ (me_lit (gu_mk Δ (md_alias E))) /\ valid_unit Γ (me_lit (gu_mk Δ' (md_alias E'))).
@@ -267,7 +267,7 @@ Qed.
 (** An alias of a literal, flattened. *)
 Lemma rel_unit_under_ctx_flatten : forall Γ Δ Δ' D l,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D ->
-    tele_ass Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
+    all_assumptions Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
     ⊨ Γ -> ⊨ Δ ++ Γ -> valid_unit (Δ ++ Γ) (me_lit (gu_mk Δ' D)) ->
     Γ ⊨ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D /\
     valid_unit Γ (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))) /\ valid_unit Γ (me_lit (gu_mk (Δ' ++ Δ) D)).
@@ -312,7 +312,7 @@ Lemma rel_unit_under_ctx_body : forall Γ Δ Δ' Φ Φ' Φx Φx' l,
       Δ ++ Γ ⊨ᵐ me_lit U[σ]ᵘ ≈ me_lit U'[σ']ᵘ) ->
     (forall k Ψo H, nth_error (body_opens Φ Φx) k = Some (Ψo, H) -> Ψo ++ Δ ++ Γ ⊨ᵐ H ≈ H /\ valid_modexp (Ψo ++ Δ ++ Γ) H) ->
     (forall k Ψo H, nth_error (body_opens Φ' Φx') k = Some (Ψo, H) -> Ψo ++ Δ' ++ Γ ⊨ᵐ H ≈ H /\ valid_modexp (Ψo ++ Δ' ++ Γ) H) ->
-    tele_ass Δ -> tele_ass Δ' -> List.length Δ = List.length Δ' ->
+    all_assumptions Δ -> all_assumptions Δ' -> List.length Δ = List.length Δ' ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     Γ ⊨ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' /\ valid_unit Γ (me_lit (gu_open Δ Φ)) /\ valid_unit Γ (me_lit (gu_open Δ' Φ')).
 Proof.
@@ -486,7 +486,7 @@ Lemma rel_unit_under_ctx_body_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ �
       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵘ U[σ]ᵘ ≈ U'[σ']ᵘ) ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
     (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δ' ++ Γ ⊨ᵐ H' ≈ H') ->
-    tele_ass Δ -> tele_ass Δ' -> List.length Δ = List.length Δ' ->
+    all_assumptions Δ -> all_assumptions Δ' -> List.length Δ = List.length Δ' ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
     (forall k, parameter_sort l (ps k)) ->
     (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊨ T : ps (List.length Δ2)) ->
@@ -584,8 +584,8 @@ Lemma sem_unit_eq_body :
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵘ U[σ]ᵘ ≈ U'[σ']ᵘ) ->
      (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
      (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δ' ++ Γ ⊨ᵐ H' ≈ H') ->
-     tele_ass Δ ->
-     tele_ass Δ' ->
+     all_assumptions Δ ->
+     all_assumptions Δ' ->
      List.length Δ = List.length Δ' ->
      body_shape Φ Φ' ->
      body_shape Φx Φx' ->
@@ -609,8 +609,8 @@ Lemma sem_unit_eq_alias :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ Δ ≈ Δ' ->
-     tele_ass Δ ->
-     tele_ass Δ' ->
+     all_assumptions Δ ->
+     all_assumptions Δ' ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵐ E ≈ E' ->
      Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊨ᵐ E' ≈ E' ->
      (forall k, parameter_sort param_level (param_sorts k)) ->
@@ -631,7 +631,7 @@ Qed.
 Lemma sem_unit_eq_flatten :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D ->
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ Δ ≈ Δ ->
-     tele_ass Δ ->
+     all_assumptions Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
      (forall k, parameter_sort param_level (param_sorts k)) ->
      (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_sorts (List.length Δ2)) ->

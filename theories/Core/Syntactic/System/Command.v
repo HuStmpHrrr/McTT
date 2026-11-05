@@ -926,7 +926,7 @@ Inductive ind_nil_at (Θ : gdeps) (Ξ : gstack) (mp : qname) (D : ind_decl) (IsS
 (** The only rule: the premises of [wf_gentry_ind_nil], [IsS] fixed *)
 | mk_ind_nil_at : forall Δ M0 i n param_level param_sorts,
     ind_uparams D = Δ ++ gs_tele Ξ ->
-    tele_ass (ind_uparams D) ->
+    all_assumptions (ind_uparams D) ->
     decl_mvc D ->
     List.length (gs_tele Ξ) <= ind_nu D ->
     ⊢ Θ ⍮ Ξ ⍮ ind_uparams D ->
@@ -936,30 +936,30 @@ Inductive ind_nil_at (Θ : gdeps) (Ξ : gstack) (mp : qname) (D : ind_decl) (IsS
     ind_sort_univ (ind_sort D) ->
     Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort D : Typeω@i ->
     Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort_lvl (ind_sort D) : Level@n ->
-    (forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)) ->
+    (forall k Mk, ind_member D k = Some Mk -> all_assumptions (im_nparams Mk)) ->
     (forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))) ->
     (forall k Mk Δ1 κ T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass κ T :: Δ2 ->
        Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ) ->
     (** The non-uniform parameters are of the sort, a universe *)
     (forall k Mk Δ1 κ T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass κ T :: Δ2 -> κ = ak_relevant) ->
     (forall k Mk c gs gs1 r A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg r A :: gs2 ->
-       Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
-         ⊢ A : abs_kind_sort r (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
+       Θ ⍮ Ξ ⍮ cargs_nonrec_ctx gs1 ++ im_params D Mk
+         ⊢ A : abs_kind_sort r (ind_sort D)[wk_shiftn (List.length (cargs_nonrec_ctx gs1) + im_nn Mk)]ʷ) ->
     (** No argument of a type of levels *)
     (forall k Mk c gs gs1 r A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg r A :: gs2 ->
        carg_kind r) ->
     (forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
        gs = gs1 ++ ca_rec t :: gs2 -> ptyp_doms t = Bs1 ++ B :: Bs2 ->
-       Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk
-         ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
+       Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_nonrec_ctx gs1 ++ im_params D Mk
+         ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_nonrec_ctx gs1) + im_nn Mk)]ʷ) ->
     (forall k Mk c gs, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> cargs_params_length D gs) ->
     (forall k Mk c gs gs1 t gs2 Mj j P T, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
        gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
        nth_error (ptyp_ps t) j = Some P ->
        nth_error (tele_insts (im_nparams Mj)
-                    (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + im_nn Mk))) (ptyp_ps t)) j
+                    (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec_ctx gs1) + im_nn Mk))) (ptyp_ps t)) j
          = Some T ->
-       Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ im_params D Mk ⊢ P : T) ->
+       Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_nonrec_ctx gs1 ++ im_params D Mk ⊢ P : T) ->
     (** the views *)
     (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
        exists D' Mk', ind_lookup Θ Ξ qc = Some D' /\ ind_member D' k' = Some Mk' /\ k' < ind_ndecl D' /\
@@ -1256,7 +1256,7 @@ Section Semantics.
       frame; its body's commands run in it, and [core_cmd_close] files
       it. *)
   | run_cmd_mod_open : forall ch B Rb Θ Ξ x pv Δ l,
-      tele_ass Δ ->
+      all_assumptions Δ ->
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
       (** the parameters are types of a universe, at a common level *)
       params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
@@ -1281,7 +1281,7 @@ Section Semantics.
       ([levels_abstractable]): [module N (n : ℕ) where module A ≔ M end],
       where [M] has [def v : Level], is rejected. *)
   | run_cmd_alias : forall ch B Rb Θ Ξ x pv Δ l E,
-      tele_ass Δ ->
+      all_assumptions Δ ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
       (** the parameters are types of a universe, at a common level *)
@@ -1346,7 +1346,7 @@ Section Semantics.
       function's member ([mdef_group]), and the definitions filed in order,
       each checked as a definition is. *)
   | run_cmd_mdef : forall ch B Rb Θ Ξ b pv Δ f0 fs pq m0 Ps D Us ms Ξ',
-      tele_ass Δ ->
+      all_assumptions Δ ->
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
       mdef_group Θ Ξ Δ (raw_fun_head_of f0) (List.map raw_fun_head_of fs) pq m0 Ps D Us ms ->
       mdefs_run Θ b pv (mdef_defs pq D Us Δ (f0 :: fs) ms) Ξ Ξ' ->
@@ -1380,7 +1380,7 @@ Section Semantics.
       well-formedness of a run is proved before [alg_type_infer_sound], in
       the order of the files. *)
   | run_cmd_ind_alias : forall ch B Rb Θ Ξ x pv Δ l H M W (i : nat),
-      tele_ass Δ ->
+      all_assumptions Δ ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H ->
       params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
@@ -1397,7 +1397,7 @@ Section Semantics.
       of a record type, given any prefix of its parameters
       ([record_former]). *)
   | run_cmd_record_alias : forall ch B Rb Θ Ξ x pv Δ l H M W (i : nat),
-      tele_ass Δ ->
+      all_assumptions Δ ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H ->
       params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
@@ -1461,7 +1461,7 @@ Section Semantics.
   | run_unit_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P' l cs Θ1 Θ2 mp K U,
       nil ⍮ nil ⍮ builtins_empty ⍮ nil ⊢[fp :: ch] List.map ci_written imps ⇝* Θ1 ⍮ nil ⍮ B1 ⍮ Rb1 ->
       fill_params Θ1 nil B1 P P' ->
-      tele_ass P' ->
+      all_assumptions P' ->
       ⊢ Θ1 ⍮ nil ⍮ P' ->
       (** the unit's parameters are types of a universe, at a common level *)
       params_evaluated Θ1 nil nil P' l ->
@@ -1952,10 +1952,10 @@ Proof. intros; apply add_entry_wf; assumption. Qed.
     those its module is opened over. *)
 Lemma ind_nil_entry_uparams : forall Θ Ξ mp pv pq k D Δu,
     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D ⋄ -> ind_uparams D = Δu ++ gs_tele Ξ ->
-    tele_ass Δu /\ ⊢ Θ ⍮ Ξ ⍮ Δu ++ gs_tele Ξ.
+    all_assumptions Δu /\ ⊢ Θ ⍮ Ξ ⍮ Δu ++ gs_tele Ξ.
 Proof.
   intros * HE Hu.
-  assert (Hass : tele_ass (ind_uparams D) -> tele_ass Δu) by (rewrite Hu; intros Ha; apply Forall_app in Ha; tauto).
+  assert (Hass : all_assumptions (ind_uparams D) -> all_assumptions Δu) by (rewrite Hu; intros Ha; apply Forall_app in Ha; tauto).
   inversion HE; subst.
   - split; [ auto | rewrite <- Hu; assumption ].
   - split; [ auto | rewrite <- Hu; assumption ].
@@ -1969,16 +1969,16 @@ Qed.
     opened over, before its value. *)
 Lemma record_nil_entry_params : forall Θ Ξ mp pv pr Δ Srt fs,
     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr (record_at Ξ Δ Srt fs) ⋄ ->
-    tele_ass Δ /\ ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ.
+    all_assumptions Δ /\ ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ.
 Proof.
   intros * HE.
   assert (HP : record_params (record_at Ξ Δ Srt fs) = Δ ++ gs_tele Ξ) by reflexivity.
   inversion HE; subst.
   - split.
-    + match goal with Ha : tele_ass (record_params _) |- _ => rewrite HP in Ha; apply Forall_app in Ha; tauto end.
+    + match goal with Ha : all_assumptions (record_params _) |- _ => rewrite HP in Ha; apply Forall_app in Ha; tauto end.
     + match goal with HS : _ ⍮ _ ⍮ record_params _ ⊢ᵤ _ |- _ => rewrite HP in HS; exact (presup_is_univ_ctx HS) end.
   - match goal with Hm : _ ⍮ _ ⍮ _ ⍮ fk_record _ ⍮ _ ⊢ᵍᵐ ⋄ |- _ => inversion Hm; subst end.
-    match goal with Hp : record_params _ = ?Δ' ++ _, Ha : tele_ass ?Δ', HC : ⊢ _ ⍮ _ ⍮ ?Δ' ++ _ |- _ =>
+    match goal with Hp : record_params _ = ?Δ' ++ _, Ha : all_assumptions ?Δ', HC : ⊢ _ ⍮ _ ⍮ ?Δ' ++ _ |- _ =>
       rewrite HP in Hp; apply app_inv_tail in Hp; subst; split; assumption end.
 Qed.
 
@@ -2409,7 +2409,7 @@ Proof.
 Qed.
 
 Lemma add_alias_wf : forall Θ Ξ x pv Δ E l,
-    ⊢ᵍ Θ ⍮ Ξ -> tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+    ⊢ᵍ Θ ⍮ Ξ -> all_assumptions Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
     params_evaluated Θ Ξ (gs_tele Ξ) Δ l -> levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E ->
     gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ.
 Proof.
@@ -2426,7 +2426,7 @@ Qed.
     universe and its module part's target well formed over its relevant
     parameters, keeps the stack well formed. *)
 Lemma add_dm_wf : forall Θ Ξ x pv Δ A M H (i : nat) l,
-    ⊢ᵍ Θ ⍮ Ξ -> tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ A : Typeω@i ->
+    ⊢ᵍ Θ ⍮ Ξ -> all_assumptions Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) H ->

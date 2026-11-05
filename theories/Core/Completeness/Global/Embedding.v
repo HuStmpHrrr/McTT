@@ -135,7 +135,7 @@ Qed.
     arguments for all of [T2]: its term part and reduct are those of the
     description abstracted over [Θa], instantiated. *)
 Lemma mdesc_ats_up_parts : forall Ns T2 Θa R R1,
-    tele_ass T2 -> length T2 = length Ns -> mdesc_ats (mdesc_up (Θa ++ T2) R) Ns = Some R1 ->
+    all_assumptions T2 -> length T2 = length Ns -> mdesc_ats (mdesc_up (Θa ++ T2) R) Ns = Some R1 ->
     (forall A, mdesc_type (mdesc_up Θa R) = Some A -> mdesc_type R1 = Some A[sb_of_list Id Ns]) /\
     mdesc_reduct R1 = option_map (fun M => M[sb_of_list Id Ns]) (mdesc_reduct (mdesc_up Θa R)).
 Proof.
@@ -144,11 +144,11 @@ Proof.
     split; [ intros A Ht; rewrite Ht, exp_sub_id; reflexivity |].
     destruct (mdesc_reduct (mdesc_up Θa R)); cbn; rewrite ?exp_sub_id; reflexivity.
   - destruct (List.exists_last (l := T2)) as (T2' & e & ->); [ intros ->; cbn in Hl; discriminate |].
-    destruct (tele_ass_app_inv _ _ HT) as [HT' He]; inversion He as [| ? ? (κ & B & ->) _]; subst.
+    destruct (all_assumptions_app_inv _ _ HT) as [HT' He]; inversion He as [| ? ? (κ & B & ->) _]; subst.
     rewrite List.length_app in Hl; cbn in Hl.
     cbn [mdesc_ats] in Ha; rewrite app_assoc, mdesc_at_up, tele_sub_app, List.length_app, sb_qn_plus in Ha.
     set (σ := sb_qn (length T2') (Id,,N)) in Ha.
-    destruct (IH _ _ _ _ (tele_ass_sub _ _ HT') ltac:(rewrite length_tele_sub; lia) Ha) as [Hty Hred].
+    destruct (IH _ _ _ _ (all_assumptions_sub _ _ HT') ltac:(rewrite length_tele_sub; lia) Ha) as [Hty Hred].
     destruct (mdesc_up_sub_parts Θa R σ) as [Hty0 Hred0].
     assert (Hσ : forall M, M[σ][sb_of_list Id Ns] = M[sb_of_list Id (N :: Ns)]).
     { intros M; subst σ; cbn [sb_of_list]; rewrite exp_sub_sub; apply exp_sub_sb_eq.
@@ -213,7 +213,7 @@ Record valid_mod_tele (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) : Prop := mk_valid_
   { (** The telescope is valid *)
     valid_mod_tele_wf : @rel_ctx_wf (gc_mk Θ2 Ξ2) T
     (** It has parameters only *)
-  ; valid_mod_tele_ass : tele_ass T
+  ; valid_mod_tele_all_assumptions : all_assumptions T
     (** They are types of a universe at one level *)
   ; valid_mod_tele_evaluated : exists l : nat, @rel_params_evaluated (gc_mk Θ2 Ξ2) nil T l }.
 
@@ -302,13 +302,13 @@ Proof. intros * H; unfold gc_loc; destruct (gc_frame Ξ p); eauto. Qed.
 
 (** The group tables of a group of a well-formed source, read at a target
     it embeds into. *)
-Lemma grp_tele_ass_of_embedding : forall Θ Ξ Θ2 Ξ2 p G, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some G ->
-    @grp_tele_ass (gc_mk Θ2 Ξ2) G.
+Lemma group_structure_of_embedding : forall Θ Ξ Θ2 Ξ2 p G, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some G ->
+    @group_structure (gc_mk Θ2 Ξ2) G.
 Proof.
   intros * Hg He Hlq.
   pose proof (gctx_embedding_resolution _ _ _ _ He) as Hs.
   destruct (decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt _].
-  apply (@grp_tele_ass_of_typed (gc_mk Θ2 Ξ2) G (gctx_embedding_preserves_decl_typed _ _ _ _ _ He Hdt)).
+  apply (@group_structure_of_typed (gc_mk Θ2 Ξ2) G (gctx_embedding_preserves_decl_typed _ _ _ _ _ He Hdt)).
   intros * HM Hh Hq2.
   destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (D' & Mk' & Hq & _).
   pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hq) as Hq'.
@@ -326,10 +326,10 @@ Section ApplyTele.
     extension at its type's closure ([env_tele]): the two are related
     through the body's judgment.  The body's type is of an evaluated kind
     [r], each parameter abstractable at [r]. *)
-Lemma ctx_fn_apps_tele : forall T Γ RΓ B M r l k, tele_ass T -> ⊨ T ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
+Lemma ctx_fn_apps_tele : forall T Γ RΓ B M r l k, all_assumptions T -> ⊨ T ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     rel_params_evaluated Γ T l -> (forall Δ1 κ A Δ2, T = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
     T ++ Γ ⊨ᵗ B ≈ B at k -> rel_type_kind (T ++ Γ) B r -> T ++ Γ ⊨ M : B ->
-    forall ρ1 ρ2 ns g m, RΓ ρ1 ρ2 -> per_gargs (rev T) ρ1 ρ1 ns ns -> List.length ns = List.length T ->
+    forall ρ1 ρ2 ns g m, RΓ ρ1 ρ2 -> per_tele_args (rev T) ρ1 ρ1 ns ns -> List.length ns = List.length T ->
       ⟦ ctx_fn T M ⟧ ρ2 ↘ g -> ⟦ M ⟧ env_tele ρ1 (rev T) ns ↘ m ->
       exists v, $*| g & ns | gc_deps ⍮ gc_stack ↘ v /\ per_head B B (env_tele ρ1 (rev T) ns) (env_tele ρ1 (rev T) ns) m v.
 Proof.
@@ -340,7 +340,7 @@ Proof.
     functional_eval_rewrite_clear.
     exists g; split; [ constructor |].
     eapply per_head_of; [ exact Ha | exact Ha | exact HRa | exact Hmv ].
-  - destruct (tele_ass_app_inv _ _ HTa) as [HTa0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
+  - destruct (all_assumptions_app_inv _ _ HTa) as [HTa0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
     assert (Hpk0 : forall Δ1 κ' A' Δ2, T0 = Δ1 ++ ce_ass κ' A' :: Δ2 -> pi_kinds κ' r)
       by (intros Δ1 κ' A' Δ2 ->; apply (Hpk Δ1 κ' A' (Δ2 ++ ce_ass κ A :: nil)); rewrite <- app_assoc; reflexivity).
     destruct ns as [| n ns0]; [ rewrite length_app in Hl; cbn in Hl; lia |].
@@ -348,7 +348,7 @@ Proof.
     inversion Hg; subst.
     rewrite ctx_fn_app in Hgv; cbn [ctx_fn] in Hgv; inversion Hgv; subst.
     match goal with
-    | H6 : PER.Definitions.rel_typ _ A ρ1 A ρ1 ?R, H8 : ?R n n, H9 : per_gargs (rev T0) _ _ ns0 ns0, H3 : ⟦ A ⟧ ρ2 ↘ ?a |- _ =>
+    | H6 : PER.Definitions.rel_typ _ A ρ1 A ρ1 ?R, H8 : ?R n n, H9 : per_tele_args (rev T0) _ _ ns0 ns0, H3 : ⟦ A ⟧ ρ2 ↘ ?a |- _ =>
         rename H6 into HAr; rename H8 into Hn; rename H9 into Hg0; rename H3 into Ha2; rename R into RA0; rename a into a2
     end.
     destruct (rel_params_evaluated_snoc_inv _ _ _ _ _ HTr) as [HAp HT0r].
@@ -389,12 +389,12 @@ Qed.
     telescope's extension by related arguments: its value related to
     itself at the type. *)
 Lemma tele_value_self : forall C M A k ns m, ⊨ C -> C ⊨ M : A -> C ⊨ A : Typeω@k ->
-    List.length ns = List.length C -> per_gargs (rev C) nil nil ns ns -> ⟦ M ⟧ env_tele nil (rev C) ns ↘ m ->
+    List.length ns = List.length C -> per_tele_args (rev C) nil nil ns ns -> ⟦ M ⟧ env_tele nil (rev C) ns ↘ m ->
     per_head A A (env_tele nil (rev C) ns) (env_tele nil (rev C) ns) m m.
 Proof.
   intros * HC HM HA Hl Hg Hm.
   destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
-  pose proof (gargs_env_rel _ _ _ _ _ _ HRC HC Hl Hg) as Hρ.
+  pose proof (tele_args_env_rel _ _ _ _ _ _ HRC HC Hl Hg) as Hρ.
   destruct (valid_at_universe _ _ _ _ _ HM HA HRC _ _ Hρ) as (m1 & m1' & a & i & R & Hm1 & Hm1' & Ha & HRa & Hmm).
   functional_eval_rewrite_clear.
   eapply per_head_of; [ exact Ha | exact Ha | exact HRa | exact Hmm ].
@@ -575,7 +575,7 @@ Section FiledOk.
   (** The closed type of a member of an evaluated kind [r], over a
       telescope of relevant parameters abstractable at [r], of a type of
       the sort of [r] over it: a type of kind [r]. *)
-  Lemma filed_ok_closed_type : forall T A0 r i l, tele_ass T -> ⊨ T -> rel_params_evaluated ⋅ T l ->
+  Lemma filed_ok_closed_type : forall T A0 r i l, all_assumptions T -> ⊨ T -> rel_params_evaluated ⋅ T l ->
       (forall Δ1 κ B Δ2, T = Δ1 ++ ce_ass κ B :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
       T ⊨ A0 : abs_kind_sort r Typeω@i ->
       exists k, (⋅ ⊨ᵗ ctx_pi_at r T A0 ≈ ctx_pi_at r T A0 at k) /\ rel_type_kind ⋅ (ctx_pi_at r T A0) r.
@@ -608,7 +608,7 @@ Section FiledOk.
       type, and, applied to arguments, related to the value of its reduct
       at them. *)
   Lemma filed_ok_term_fn : forall T A0 r i l M0 R0,
-      tele_ass T -> ⊨ T -> rel_params_evaluated ⋅ T l ->
+      all_assumptions T -> ⊨ T -> rel_params_evaluated ⋅ T l ->
       (forall Δ1 κ B Δ2, T = Δ1 ++ ce_ass κ B :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
       T ⊨ A0 : abs_kind_sort r Typeω@i -> T ⊨ M0 : A0 ->
       (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
@@ -619,7 +619,7 @@ Section FiledOk.
          mdesc_type R1 = Some (ctx_pi_at r T1 A0)[sb_of_list Id Ns] /\
          (mdesc_reduct R1 = None \/
           exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at r T1 A0 /\
-            forall ns m, List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns ->
+            forall ns m, List.length ns = List.length T2 -> per_tele_args (rev T2) nil nil ns ns ->
               ⟦ M1 ⟧ env_tele nil (rev T2) ns ↘ m ->
               exists v, $*| g & ns | gc_deps ⍮ gc_stack ↘ v /\
                 Dom m ≈ v ∈ per_head (ctx_pi_at r T1 A0) (ctx_pi_at r T1 A0) (env_tele nil (rev T2) ns) (env_tele nil (rev T2) ns))) /\
@@ -638,7 +638,7 @@ Section FiledOk.
     pose proof (functional_eval_exp _ _ _ _ Hg' Hg) as ->.
     exists g; split; [ exact Hg |]; split; [| exact (mk_rel_self _ _ _ _ j E0 e He0 HE0 Hgg) ].
     intros * -> Hl Ha; destruct (Hats _ _ _ _ eq_refl Hl Ha) as [Hty Hred]; split; [ exact Hty | right ].
-    destruct (tele_ass_app_inv _ _ HTa) as [HTa1 HTa2].
+    destruct (all_assumptions_app_inv _ _ HTa) as [HTa1 HTa2].
     pose proof (rel_params_evaluated_inner _ _ _ _ HTr) as HT1r; rewrite app_nil_r in HT1r.
     pose proof (rel_params_evaluated_outer _ _ _ _ HTr) as HT2r.
     (* each part of the telescope abstractable at [r] *)
@@ -659,13 +659,13 @@ Section FiledOk.
   Qed.
 
   (** The reduct clause for an abstracted description, by its parts. *)
-  Lemma filed_ok_ats_up : forall T R Ns R1 T1 T2, T = T1 ++ T2 -> tele_ass T -> List.length T2 = List.length Ns ->
+  Lemma filed_ok_ats_up : forall T R Ns R1 T1 T2, T = T1 ++ T2 -> all_assumptions T -> List.length T2 = List.length Ns ->
       mdesc_ats (mdesc_up T R) Ns = Some R1 ->
       (forall A, mdesc_type (mdesc_up T1 R) = Some A -> mdesc_type R1 = Some A[sb_of_list Id Ns]) /\
       mdesc_reduct R1 = option_map (fun M => M[sb_of_list Id Ns]) (mdesc_reduct (mdesc_up T1 R)).
   Proof.
     intros * -> HTa Hl Ha.
-    exact (mdesc_ats_up_parts _ _ _ _ _ (proj2 (tele_ass_app_inv _ _ HTa)) Hl Ha).
+    exact (mdesc_ats_up_parts _ _ _ _ _ (proj2 (all_assumptions_app_inv _ _ HTa)) Hl Ha).
   Qed.
 
   Lemma per_bot_glob : forall pg, per_bot (d_glob pg) (d_glob pg).
@@ -688,7 +688,7 @@ Section FiledOk.
     destruct (decl_of_lookup _ _ ⋅ _ _ (wf_ctx_empty _ _ Hgm) HlD) as [Hdt Hc].
     pose proof (decl_typed_sort_univ _ _ _ Hdt) as Hsu.
     destruct (member_lt_decl _ _ _ _ _ Hdt HMk (ind_selfpath_decl_field _ _ _ _ Hsp)) as [pm Hh].
-    pose proof (grp_tele_ass_of_embedding _ _ _ _ _ _ Hgm He HlD) as Hass.
+    pose proof (group_structure_of_embedding _ _ _ _ _ _ Hgm He HlD) as Hass.
     set (Δp := im_nparams Mk ++ Δu).
     assert (Hpar : im_params D Mk = Δp ++ T) by (subst Δp; rewrite <- app_assoc, <- HU; reflexivity).
     set (S' := (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ).
@@ -712,7 +712,7 @@ Section FiledOk.
           Nat.sub_diag, firstn_all; cbn [List.firstn]; rewrite app_nil_r, ctx_pi_app; reflexivity.
       + right; exists (apps_exp (a_ind pq k) (vars_from 0 (length T2))).
         split; [ cbn [mdesc_reduct]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
-        destruct (tele_ass_app_inv T1 T2 ltac:(rewrite <- HT12; exact HTa)) as [HTa1 HTa2].
+        destruct (all_assumptions_app_inv T1 T2 ltac:(rewrite <- HT12; exact HTa)) as [HTa1 HTa2].
         assert (HT12' : ⊨ T1 ++ T2) by (rewrite <- HT12; exact HT).
         pose proof (rel_ctx_wf_app_r _ _ HT12') as HT2.
         assert (HA0' : T1 ++ T2 ⊨ ctx_pi Δp S' : Typeω@i) by (rewrite <- HT12; exact HA0).
@@ -759,7 +759,7 @@ Section FiledOk.
     assert (Hrec0 : ⋅ ⊨ a_record (qname_in p x) : record_ty R) by (eapply valid_exp_under_ctx_record; eassumption).
     unfold record_ty in Hrec0; rewrite HP, ctx_pi_app in Hrec0.
     set (S := record_sort R) in *.
-    destruct (tele_ass_app_inv Δ0 T ltac:(rewrite <- HP; exact Hass)) as [HaΔ0 _].
+    destruct (all_assumptions_app_inv Δ0 T ltac:(rewrite <- HP; exact Hass)) as [HaΔ0 _].
     destruct HSv as [i0 HS0]; rewrite HP in HS0.
     destruct (rel_exp_ctx_pi _ _ _ _ HaΔ0 ltac:(rewrite <- HP; exact HPv) HS0) as [i HA0].
     assert (HT0 : ⊨ T ++ ⋅) by (rewrite app_nil_r; exact HT).
@@ -778,7 +778,7 @@ Section FiledOk.
           Nat.sub_diag, firstn_all; cbn [List.firstn]; rewrite app_nil_r, ctx_pi_app; reflexivity.
       + right; exists (apps_exp (a_record (qname_in p x)) (vars_from 0 (length T2))).
         split; [ cbn [mdesc_reduct]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
-        destruct (tele_ass_app_inv T1 T2 ltac:(rewrite <- HT12; exact HTa)) as [HTa1 HTa2].
+        destruct (all_assumptions_app_inv T1 T2 ltac:(rewrite <- HT12; exact HTa)) as [HTa1 HTa2].
         assert (HT12' : ⊨ T1 ++ T2) by (rewrite <- HT12; exact HT).
         pose proof (rel_ctx_wf_app_r _ _ HT12') as HT2.
         assert (HA0' : T1 ++ T2 ⊨ ctx_pi Δ0 S : Typeω@i) by (rewrite <- HT12; exact HA0).
@@ -838,7 +838,7 @@ Section FiledOk.
         intros * HT12 Hlen Ha; destruct (Hats _ _ _ _ HT12 Hlen Ha) as [Hty Hred]; split; [ exact Hty |].
         destruct b; [ destruct oM0 as [M0 |] |]; cbn in Hred; [| left; exact Hred | left; exact Hred ].
         right; exists (ctx_fn T1 M0); split; [ exact Hred |].
-        subst T; destruct (tele_ass_app_inv _ _ HTa) as [HTa1 _].
+        subst T; destruct (all_assumptions_app_inv _ _ HTa) as [HTa1 _].
         exact (valid_exp_under_ctx_ctx_fn ak_propositional _ _ _ _ i ltac:(discriminate) HTa1 HT HA0 (HM0 _ eq_refl)). }
       destruct b; [ destruct oM0 as [M0 |] |].
       1:{ (* transparent: its body *)
@@ -971,8 +971,8 @@ Proof.
   exact (valid_gctx_embedding_of _ _ _ _ Hg (gctx_embedding_with_bodies_embedding _ _ _ _ He) HΘ HΞ).
 Qed.
 
-Lemma gs_valid_tele : forall Θs Ξs Θ2 Ξ2 Ξ, gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θs Ξs Θ2 Ξ2 Ξ -> tele_ass (gs_tele Ξ).
-Proof. intros * HΞ; destruct Ξ as [| [[mp K] U] Ξ]; [ cbn; constructor | exact (valid_mod_tele_ass _ _ _ (proj1 HΞ)) ]. Qed.
+Lemma gs_valid_tele : forall Θs Ξs Θ2 Ξ2 Ξ, gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θs Ξs Θ2 Ξ2 Ξ -> all_assumptions (gs_tele Ξ).
+Proof. intros * HΞ; destruct Ξ as [| [[mp K] U] Ξ]; [ cbn; constructor | exact (valid_mod_tele_all_assumptions _ _ _ (proj1 HΞ)) ]. Qed.
 
-Lemma gs_tele_ass_of_bodies_valid : forall Θ Ξ Θ2 Ξ2, bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
+Lemma gs_tele_all_assumptions_of_bodies_valid : forall Θ Ξ Θ2 Ξ2, bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> all_assumptions (gs_tele Ξ).
 Proof. intros * HG He; exact (gs_valid_tele _ _ _ _ _ (proj2 (HG _ _ He _ _ (gc_sub_refl _ _)))). Qed.
