@@ -2,6 +2,7 @@ From Stdlib Require Import List PeanoNat String.
 
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members Records.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives Group.
 From Mctt.Core.Semantic Require Import Domain Evaluation.
 #[local] Open Scope list_scope.
 
@@ -214,6 +215,58 @@ Fixpoint ftele_entries (ρ : fenv) (T : list centry) (vs : list fdomain) : list 
 (** The environment extended by values at a telescope, as [env_tele] *)
 Definition fenv_tele (ρ : fenv) (T : list centry) (vs : list fdomain) : fenv := fenv_extend_typed ρ (ftele_entries ρ T vs).
 
+(** ** The Types of the Variables an Eliminator Binds, as
+    [Core.Semantic.Evaluation]'s *)
+
+(** [decl_env]'s twin *)
+Definition fdecl_env (D : ind_decl) (ups : list fdomain) : fenv := fenv_tele nil (List.rev (ind_uparams D)) ups.
+
+(** [cargs_entries]'s twin *)
+Fixpoint fcargs_entries (p : qname) (ups : list fdomain) (ρ : fenv) (gs : list carg) (vs : list fdomain) : list (fdomain * fentry_type) :=
+  match vs with
+  | nil => nil
+  | v :: vs' =>
+      match gs with
+      | ca_arg _ A :: gs' => (v, fentry_type_closure A ρ) :: fcargs_entries p ups (fextend_env ρ v (fentry_type_closure A ρ)) gs' vs'
+      | ca_rec t :: gs' => (v, fentry_type_shape p ups ρ t) :: fcargs_entries p ups ρ gs' vs'
+      | nil => (v, fentry_type_none) :: fcargs_entries p ups ρ nil vs'
+      end
+  end.
+
+(** [ihs_types]'s twin *)
+Fixpoint fihs_types (D : ind_decl) (p : qname) (ups : list fdomain) (ρm : fenv) (As : list exp)
+    (ρ : fenv) (gs : list carg) (vs : list fdomain) : list fentry_type :=
+  match gs, vs with
+  | ca_arg _ A :: gs', v :: vs' => fihs_types D p ups ρm As (fextend_env ρ v (fentry_type_closure A ρ)) gs' vs'
+  | ca_rec t :: gs', v :: vs' =>
+      List.map (fun i => fentry_type_induction_hypothesis ρm As p ups ρ t v i) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))
+        ++ fihs_types D p ups ρm As ρ gs' vs'
+  | _, _ => nil
+  end.
+
+(** [pair_values_with_types]'s twin *)
+Fixpoint fpair_values_with_types (vs : list fdomain) (ts : list fentry_type) : list (fdomain * fentry_type) :=
+  match vs with
+  | nil => nil
+  | v :: vs' => (v, List.hd fentry_type_none ts) :: fpair_values_with_types vs' (List.tl ts)
+  end.
+
+(** [branch_entries]'s twin *)
+Definition fbranch_entries (D : ind_decl) (Mj : imember) (p : qname) (ups : list fdomain) (As : list exp) (ρm : fenv)
+    (gs : list carg) (ns vs ihs : list fdomain) : list (fdomain * fentry_type) :=
+  let nts := ftele_entries (fdecl_env D ups) (List.rev (im_nparams Mj)) ns in
+  let ρa := fenv_extend_typed (fdecl_env D ups) nts in
+  nts ++ fcargs_entries p ups ρa gs vs ++ fpair_values_with_types ihs (fihs_types D p ups ρm As ρa gs vs).
+
+(** [motive_entries]'s twin *)
+Definition fmotive_entries (D : ind_decl) (Mk : imember) (ups ns : list fdomain) (a m : fdomain) : list (fdomain * fentry_type) :=
+  ftele_entries (fdecl_env D ups) (List.rev (im_nparams Mk)) ns ++ (m, fentry_type_value a) :: nil.
+
+(** [global_proof_env]'s twin *)
+Definition fglobal_proof_env (p : qname) (T : list centry) (args : list fdomain) : fenv :=
+  fextend_env_mod (fenv_tele nil (List.rev T) args) (fdm_global p args)
+    (gu_mk nil (md_alias (me_apps (qname_mod p) (vars_from 0 (List.length args))))).
+
 (** ** Levels, as [Core.Semantic.Domain]'s *)
 
 (** The sort of a neutral level, read off its type *)
@@ -388,6 +441,49 @@ Qed.
 
 Lemma fenv_tele_erase : forall ρ T vs, fenv_erase (fenv_tele ρ T vs) = env_tele (fenv_erase ρ) T (fdomains_erase vs).
 Proof. intros; unfold fenv_tele, env_tele; rewrite fenv_extend_typed_erase, ftele_entries_erase; reflexivity. Qed.
+
+Lemma fdecl_env_erase : forall D ups, fenv_erase (fdecl_env D ups) = decl_env D (fdomains_erase ups).
+Proof. intros; unfold fdecl_env, decl_env; apply fenv_tele_erase. Qed.
+
+Lemma fcargs_entries_erase : forall p ups vs ρ gs,
+    fvalue_types_erase (fcargs_entries p ups ρ gs vs) = cargs_entries p (fdomains_erase ups) (fenv_erase ρ) gs (fdomains_erase vs).
+Proof.
+  intros p ups vs; induction vs as [| v vs IH]; intros ρ [| [r A | t] gs]; cbn [fcargs_entries cargs_entries List.map fst snd];
+    [ reflexivity .. | | | ]; f_equal; rewrite IH; reflexivity.
+Qed.
+
+Lemma fihs_types_erase : forall D p ups ρm As gs vs ρ,
+    List.map fentry_type_erase (fihs_types D p ups ρm As ρ gs vs) =
+    ihs_types D p (fdomains_erase ups) (fenv_erase ρm) As (fenv_erase ρ) gs (fdomains_erase vs).
+Proof.
+  intros D p ups ρm As gs; induction gs as [| [r A | t] gs IH]; intros [| v vs] ρ; cbn [fihs_types ihs_types List.map]; try reflexivity.
+  - rewrite IH; reflexivity.
+  - rewrite List.map_app, IH, List.map_map; reflexivity.
+Qed.
+
+Lemma fpair_values_with_types_erase : forall vs ts,
+    fvalue_types_erase (fpair_values_with_types vs ts) = pair_values_with_types (fdomains_erase vs) (List.map fentry_type_erase ts).
+Proof.
+  induction vs as [| v vs IH]; intros ts; cbn [fpair_values_with_types pair_values_with_types List.map fst snd]; [ reflexivity |].
+  rewrite IH; destruct ts; reflexivity.
+Qed.
+
+Lemma fbranch_entries_erase : forall D Mj p ups As ρm gs ns vs ihs,
+    fvalue_types_erase (fbranch_entries D Mj p ups As ρm gs ns vs ihs) =
+    branch_entries D Mj p (fdomains_erase ups) As (fenv_erase ρm) gs (fdomains_erase ns) (fdomains_erase vs) (fdomains_erase ihs).
+Proof.
+  intros; unfold fbranch_entries, branch_entries.
+  rewrite !List.map_app, ftele_entries_erase, fcargs_entries_erase, fpair_values_with_types_erase, fihs_types_erase,
+    fenv_extend_typed_erase, ftele_entries_erase, fdecl_env_erase; reflexivity.
+Qed.
+
+Lemma fmotive_entries_erase : forall D Mk ups ns a m,
+    fvalue_types_erase (fmotive_entries D Mk ups ns a m) =
+    motive_entries D Mk (fdomains_erase ups) (fdomains_erase ns) (fdomain_erase a) (fdomain_erase m).
+Proof. intros; unfold fmotive_entries, motive_entries; rewrite List.map_app, ftele_entries_erase, fdecl_env_erase; reflexivity. Qed.
+
+Lemma fglobal_proof_env_erase : forall p T args, fenv_erase (fglobal_proof_env p T args) = global_proof_env p T (fdomains_erase args).
+Proof. intros; unfold fglobal_proof_env, global_proof_env; cbn; rewrite fenv_tele_erase, List.length_map; reflexivity. Qed.
 
 Lemma fdomain_level_sort_erase : forall a, domain_level_sort (fdomain_erase a) = fdomain_level_sort a.
 Proof. intros [] ; reflexivity. Qed.
