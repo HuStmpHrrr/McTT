@@ -188,11 +188,11 @@ Qed.
     along a lifted substitution, at three pairs of arguments, in
     [per_prop]: the proof of [rel_exp_of_univ_under_ctx_q], at [Prop]
     rather than at a universe. *)
-Lemma rel_exp_of_prop_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' env_relΓ},
+Lemma rel_exp_of_prop_under_ctx_q : forall {Γ Δ σ σ' κ A} {i : nat} {B B' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ᵗ A ≈ A at i ->
-    Δ ▹ A ⊨ B ≈ B' : Propₘ ->
+    Δ ▹{κ} A ⊨ B ≈ B' : Propₘ ->
     forall ρ ρ' ρσ ρ'σ' c c' t1 t2 t3 t4,
       Dom ρ ↦ c ⦂ t1 ≈ ρ' ↦ c' ⦂ t4 ∈ per_env_extend A[σ] A[σ] env_relΓ ->
       args_readable_at c c' ([t1; t2; t3; t4]) ->
@@ -209,8 +209,8 @@ Lemma rel_exp_of_prop_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' env_
           Dom b ≈ b' ∈ per_prop).
 Proof.
   intros * HΓ Hσj HA HB * Hpair Hts Hev Hev'.
-  pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
-  pose proof (rel_sub_under_ctx_q Hσj HA) as Hqj.
+  pose proof (per_ctx_env_of_typ_sub (κ := κ) HΓ Hσj HA) as HΓA.
+  pose proof (rel_sub_under_ctx_q (κ := κ) Hσj HA) as Hqj.
   pose proof (rel_exp_of_prop_inversion HB) as [env_relΔA [HΔA HBgen]].
   pose proof (rel_exp_of_prop_inversion_simple_at HΔA (rel_exp_under_ctx_refl_left HB)) as HBl.
   pose proof (rel_exp_of_prop_inversion_simple_at HΔA (rel_exp_under_ctx_refl_right HB)) as HBr.
@@ -219,10 +219,10 @@ Proof.
   destruct (HBgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq')
     as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   (** The four bridges, at four pairs the chain above relates. *)
-  assert (P1 : Dom s ↦ c ⦂ centry_tag (ce_ass A) Δ s ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
-  assert (P2 : Dom ρσ ↦ c ⦂ t2 ≈ s ↦ c ⦂ centry_tag (ce_ass A) Δ s ∈ env_relΔA) by pairwise.
-  assert (P3 : Dom s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ≈ ρ'σ' ↦ c' ⦂ t3 ∈ env_relΔA) by pairwise.
-  assert (P4 : Dom ρ'σ' ↦ c ⦂ t3 ≈ s' ↦ c' ⦂ centry_tag (ce_ass A) Δ s' ∈ env_relΔA) by pairwise.
+  assert (P1 : Dom s ↦ c ⦂ centry_tag (ce_ass κ A) Δ s ≈ ρσ ↦ c' ⦂ t2 ∈ env_relΔA) by pairwise.
+  assert (P2 : Dom ρσ ↦ c ⦂ t2 ≈ s ↦ c ⦂ centry_tag (ce_ass κ A) Δ s ∈ env_relΔA) by pairwise.
+  assert (P3 : Dom s' ↦ c' ⦂ centry_tag (ce_ass κ A) Δ s' ≈ ρ'σ' ↦ c' ⦂ t3 ∈ env_relΔA) by pairwise.
+  assert (P4 : Dom ρ'σ' ↦ c ⦂ t3 ≈ s' ↦ c' ⦂ centry_tag (ce_ass κ A) Δ s' ∈ env_relΔA) by pairwise.
   destruct (HBl _ _ P1) as [x1 [x2 [Hx1 [Hx2 Hx]]]].
   destruct (HBl _ _ P2) as [y1 [y2 [Hy1 [Hy2 Hy]]]].
   destruct (HBr _ _ P3) as [z1 [z2 [Hz1 [Hz2 Hz]]]].
@@ -272,7 +272,7 @@ Proof. intros a s k; eexists; constructor; constructor. Qed.
 (** A proof that reads back is an entry that reads back at a proposition
     that reads back. *)
 Lemma proof_entry_readable : forall a v,
-    domain_relevance a = propositional ->
+    domain_kind a = ak_propositional ->
     (forall s, exists A, Rtyp a in gc_deps ⍮ gc_stack ⍮ s ↘ A) ->
     proof_readable v ->
     entry_readable (de_term v (entry_type_value a)).
@@ -296,7 +296,7 @@ Proof. intros * [_ _ Ht] s; destruct (Ht s) as [? A _ HA _]; exists A; exact HA.
 Lemma rel_exp_under_ctx_and : forall {Γ P P' Q Q'},
     Γ ⊨ P : Propₘ ->
     Γ ⊨ P ≈ P' : Propₘ ->
-    Γ ▹ P ⊨ Q ≈ Q' : Propₘ ->
+    Γ ▹{ak_propositional} P ⊨ Q ≈ Q' : Propₘ ->
     Γ ⊨ Σₚ P Q ≈ Σₚ P' Q' : Propₘ.
 Proof.
   intros * HPl HP HQ.
@@ -344,16 +344,15 @@ Lemma rel_exp_of_univ_const : forall {Γ A a u R env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     (forall ρ, ⟦ A ⟧ ρ ↘ a) ->
     (forall σ, A[σ] = A) ->
-    domain_relevance a = relevant ->
-    ~ level_code a ->
+    domain_kind a = ak_relevant ->
     DF a ≈ a ∈ per_univ_elem u ↘ R ->
     Γ ⊨ A ≈ A : universe_index_term u.
 Proof.
-  intros * HΓ Hev Hs Hr Hnl Ha.
+  intros * HΓ Hev Hs Hr Ha.
   apply rel_exp_of_univ; eexists; eexists; [ eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hevσ Hevσ'.
   apply (mk_rel_exp a a a a); [ rewrite Hs; apply Hev | apply Hev | apply Hev | rewrite Hs; apply Hev |].
-  apply rel_chain_4; (constructor; [ eexists; exact Ha | exact Hr | exact Hr | exact Hnl | exact Hnl ]).
+  apply rel_chain_4; (constructor; [ eexists; exact Ha | exact Hr | exact Hr ]).
 Qed.
 
 Lemma rel_exp_of_univ_prop : forall {Γ u env_relΓ},
@@ -361,8 +360,7 @@ Lemma rel_exp_of_univ_prop : forall {Γ u env_relΓ},
     Γ ⊨ Propₘ ≈ Propₘ : universe_index_term u.
 Proof.
   intros * HΓ; eapply rel_exp_of_univ_const;
-    [ exact HΓ | intros; apply eval_exp_prop | reflexivity | reflexivity | solve_not_level_code
-    | apply per_univ_elem_prop_univ ].
+    [ exact HΓ | intros; apply eval_exp_prop | reflexivity | reflexivity | apply per_univ_elem_prop_univ ].
 Qed.
 
 End Fixed_GCtx.
@@ -446,7 +444,7 @@ Proof. intros; eapply sem_exp_eq_absurd_cong; eassumption. Qed.
 Lemma sem_exp_eq_and_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ P ≈ P' : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ▹ P ⊨ Q ≈ Q' : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊨ Q ≈ Q' : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ Σₚ P Q ≈ Σₚ P' Q' : Propₘ ).
 Proof.
   intros * HP HPP' HQ; sem_intro; [ assumption |].
@@ -455,14 +453,14 @@ Qed.
 
 Lemma sem_and :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ▹ P ⊨ Q : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊨ Q : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ Σₚ P Q : Propₘ ).
 Proof. intros; eapply sem_exp_eq_and_cong; eassumption. Qed.
 
 (** A proof of a conjunction, at its components' propositions. *)
 Lemma sem_conj :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ▹ P ⊨ Q : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊨ Q : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : P ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N : Q[Id,,M] ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_conj P Q M N : Σₚ P Q ).
@@ -475,7 +473,7 @@ Qed.
 
 Lemma sem_left :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ▹ P ⊨ Q : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊨ Q : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : Σₚ P Q ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_left M : P ).
 Proof.
@@ -488,7 +486,7 @@ Qed.
 Lemma sem_right :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Σₚ P Q ->
      Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
-     Θ ⍮ Ξ ⍮ Γ ▹ P ⊨ Q : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊨ Q : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ Q[Id,,a_left M] : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_right M : Q[Id,,a_left M] ).
 Proof.
