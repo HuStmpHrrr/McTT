@@ -214,9 +214,9 @@ Qed.
     is related to it at the terms' values over the empty environment.
     [closed_inst_typ] asks the instances to be types of relevant sorts
     instead. *)
-Lemma closed_instance_typ_relevant : forall C Γ Ms X (k : nat) RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
+Lemma closed_instance_typ_evaluated : forall C Γ Ms X (k : nat) RΓ, tele_ass C -> ⊨ C -> ⊨ Γ -> List.length Ms = List.length C ->
     (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
-    (exists l, rel_params_relevant ⋅ C l) ->
+    (exists l, rel_params_evaluated ⋅ C l) ->
     List.Forall (exp_scoped (List.length Γ)) Ms ->
     C ⊨ᵗ X ≈ X at k -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
     exists ms a b i R, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ X[sb_of_list Id Ms] ⟧ ρ ↘ a /\
@@ -257,19 +257,19 @@ Proof.
   exists ms, a, b; eexists; exists R; repeat split; eassumption.
 Qed.
 
-(** A closed telescope [C] of relevant parameters over [Γ]: the
+(** A closed telescope [C] of parameters of evaluated kinds over [Γ]: the
     parameters of a member of an inductive group, or of a record type,
     in a well-formed context [Γ]. *)
-Record relevant_params_telescope (Γ C : ctx) : Prop := mk_relevant_params_telescope
+Record evaluated_params_telescope (Γ C : ctx) : Prop := mk_evaluated_params_telescope
   { (** Its entries are assumptions *)
-    relevant_params_telescope_ass : tele_ass C
+    evaluated_params_telescope_ass : tele_ass C
     (** It is a valid closed context *)
-  ; relevant_params_telescope_valid : ⊨ C
+  ; evaluated_params_telescope_valid : ⊨ C
     (** Each entry is a type of a universe or a type of levels over the
         entries before it ([rel_param_typed]) *)
-  ; relevant_params_telescope_relevant : forall Δ1 κ A Δ2, C = (Δ1 ++ ce_ass κ A :: Δ2)%list -> exists l, rel_param_typed Δ2 A l
+  ; evaluated_params_telescope_evaluated : forall Δ1 κ A Δ2, C = (Δ1 ++ ce_ass κ A :: Δ2)%list -> exists l, rel_param_typed Δ2 A l
     (** It extends [Γ] *)
-  ; relevant_params_telescope_wf : ⊢ (C ++ Γ)%list }.
+  ; evaluated_params_telescope_wf : ⊢ (C ++ Γ)%list }.
 
 (** A global context is the one of its two parts: what the semantic
     validity of the identity embedding ([valid_gctx_embedding_refl_gc]),
@@ -278,9 +278,9 @@ Lemma gc_mk_eta : forall G : GCtx, G = gc_mk (@gc_deps G) (@gc_stack G).
 Proof. intros [? ?]; reflexivity. Qed.
 
 (** The parameters of a member of a group found from a well-formed
-    context are such a telescope ([im_params_relevant]). *)
-Lemma ind_relevant_params_telescope : forall Γ p D k Mk, ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D ->
-    ind_member D k = Some Mk -> relevant_params_telescope Γ (im_params D Mk).
+    context are such a telescope ([im_params_evaluated]). *)
+Lemma ind_evaluated_params_telescope : forall Γ p D k Mk, ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D ->
+    ind_member D k = Some Mk -> evaluated_params_telescope Γ (im_params D Mk).
 Proof.
   intros * HΓ Hl Hk.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
@@ -288,13 +288,13 @@ Proof.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hc].
   rewrite <- gc_mk_eta in HD.
   constructor; [ exact (decl_closed_params_ass _ _ _ Hc Hk) | exact (valid_ind_decl_params _ HD _ _ Hk)
-               | exact (im_params_relevant _ HD _ _ Hk) | exact (params_ctx_wf _ _ _ _ _ Hl Hk HΓ) ].
+               | exact (im_params_evaluated _ HD _ _ Hk) | exact (params_ctx_wf _ _ _ _ _ Hl Hk HΓ) ].
 Qed.
 
 (** So are the parameters of a record type found from a well-formed
     context. *)
-Lemma record_relevant_params_telescope : forall Γ p R, ⊢ Γ -> record_lookup gc_deps gc_stack p = Some R ->
-    relevant_params_telescope Γ (record_params R).
+Lemma record_evaluated_params_telescope : forall Γ p R, ⊢ Γ -> record_lookup gc_deps gc_stack p = Some R ->
+    evaluated_params_telescope Γ (record_params R).
 Proof.
   intros * HΓ Hl.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
@@ -315,7 +315,7 @@ Qed.
     [N] at [Type@l0] in the initial environment of [Γ], [read_ps] reads
     its value at [Type@l] with [l] the value of [l0]. *)
 Lemma nbe_params_at_telescope : forall Γ C Ms ρ vs Rs,
-    relevant_params_telescope Γ C -> List.length Ms = List.length C ->
+    evaluated_params_telescope Γ C -> List.length Ms = List.length C ->
     (forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts C Id Ms) j = Some T -> Γ ⊢ P : T) ->
     initial_env_f Γ ρ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ vs ->
     Rps vs at List.rev C in gc_deps ⍮ gc_stack ⍮ nil ⍮ List.length Γ ↘ Rs ->
@@ -339,8 +339,8 @@ Proof.
   set (C1 := (List.rev l2 ++ ce_ass κ A :: nil)%list).
   assert (HCeq' : C = (C1 ++ C2)%list) by (unfold C1; rewrite HCeq, <- List.app_assoc; reflexivity).
   assert (HC2 : ⊨ C2) by (rewrite HCeq' in HC; eapply rel_ctx_wf_app_r; exact HC).
-  assert (HCr2 : exists l, rel_params_relevant ⋅ C2 l).
-  { apply rel_params_relevant_of_entries; intros Δ1 κB B Δ2 E.
+  assert (HCr2 : exists l, rel_params_evaluated ⋅ C2 l).
+  { apply rel_params_evaluated_of_entries; intros Δ1 κB B Δ2 E.
     destruct (HCr (C1 ++ Δ1)%list κB B Δ2) as [l Hl']; [ rewrite HCeq', E, <- List.app_assoc; reflexivity |].
     exists l; rewrite List.app_nil_r; exact Hl'. }
   (** The parameters before [j] are an instance of [C2] *)
@@ -374,7 +374,7 @@ Proof.
   pose proof (per_ctx_then_per_env_initial_env HRΓ HsΓ HsΓ) as [ρ' [ρ'' [Hρ' [Hρ'' Hrel]]]].
   assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
   assert (ρ'' = ρ) as -> by (eapply functional_initial_env; eassumption).
-  destruct (closed_instance_typ_relevant C2 Γ Ms2 A kA RΓ HCa2 HC2 HΓs LMs2 HMs2s HCr2 HMs2sc HX HRΓ ρ Hrel)
+  destruct (closed_instance_typ_evaluated C2 Γ Ms2 A kA RΓ HCa2 HC2 HΓs LMs2 HMs2s HCr2 HMs2sc HX HRΓ ρ Hrel)
     as (ms & a & b & i & R0 & Hms & Ha & Hb & HR0).
   pose proof (@functional_eval gc_deps gc_stack) as Hfe; destruct Hfe as (Hfm & _ & Hfs & _).
   assert (Hms_vs : ms = List.firstn j vs).

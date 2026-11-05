@@ -270,7 +270,7 @@ Proof.
   { intros k N HN Hr; apply (H (S k) N HN); rewrite <- nth_tl_kind; exact Hr. }
   destruct (evaluated_kind_or_propositional (List.hd ak_relevant rs)) as [Er | Er].
   - destruct (H 0 M eq_refl ltac:(rewrite <- hd_nth_kind; exact Er)) as [m Hm].
-    exists (m :: vs); eapply eval_field_vals_relevant; eassumption.
+    exists (m :: vs); eapply eval_field_vals_evaluated; eassumption.
   - exists (⋆ᵈ⟨M, ρ⟩ :: vs); eapply eval_field_vals_proof; eassumption.
 Qed.
 
@@ -306,7 +306,7 @@ Proof.
   { apply IH; [ lia |]; intros k N w HN Hw; rewrite !nth_tl_kind; exact (H (S k) N w HN Hw). }
   destruct (H 0 M v eq_refl eq_refl) as [Hr Hp].
   destruct (evaluated_kind_or_propositional (List.hd ak_relevant rs)) as [Er | Er].
-  - eapply eval_field_vals_relevant; [ exact Er | apply Hr; rewrite <- hd_nth_kind; exact Er | exact Hrest ].
+  - eapply eval_field_vals_evaluated; [ exact Er | apply Hr; rewrite <- hd_nth_kind; exact Er | exact Hrest ].
   - rewrite (Hp ltac:(rewrite <- hd_nth_kind; exact Er)).
     eapply eval_field_vals_proof; [ exact Er | exact Hrest ].
 Qed.
@@ -319,7 +319,7 @@ Lemma eval_field_vals_firstn : forall rs Ms ρ vs, eval_field_vals gc_deps gc_st
     forall k, eval_field_vals gc_deps gc_stack rs (List.firstn k Ms) ρ (List.firstn k vs).
 Proof.
   induction 1 as [rs ρ | rs M ρ m Ms ms Hr Hm Hms IH | rs M ρ Ms ms Hr Hms IH]; intros [| k]; cbn; try solve [ constructor ].
-  - eapply eval_field_vals_relevant; [ exact Hr | exact Hm | apply IH ].
+  - eapply eval_field_vals_evaluated; [ exact Hr | exact Hm | apply IH ].
   - eapply eval_field_vals_proof; [ exact Hr | apply IH ].
 Qed.
 
@@ -330,7 +330,7 @@ Lemma eval_field_vals_app : forall Us rs Ms ρ us zs, eval_field_vals gc_deps gc
     eval_field_vals gc_deps gc_stack rs (Us ++ Ms) ρ (us ++ zs).
 Proof.
   induction Us as [| U Us IH]; intros rs Ms ρ us zs Hus Hzs; inversion Hus; subst; [ exact Hzs | |].
-  - eapply eval_field_vals_relevant; [ assumption | eassumption | apply IH; [ assumption |] ].
+  - eapply eval_field_vals_evaluated; [ assumption | eassumption | apply IH; [ assumption |] ].
     destruct rs; cbn in *; [ rewrite ?List.skipn_nil in *; exact Hzs | exact Hzs ].
   - eapply eval_field_vals_proof; [ assumption | apply IH; [ assumption |] ].
     destruct rs; cbn in *; [ rewrite ?List.skipn_nil in *; exact Hzs | exact Hzs ].
@@ -345,7 +345,7 @@ Proof.
   inversion Hvs; subst.
   - match goal with H : eval_field_vals _ _ (List.tl rs) (Us ++ Ms) ρ ?ms |- _ =>
       destruct (IH _ _ _ _ H) as (us & zs & -> & Hus & Hzs) end.
-    eexists (_ :: us), zs; split; [ reflexivity | split; [ eapply eval_field_vals_relevant; eassumption |] ].
+    eexists (_ :: us), zs; split; [ reflexivity | split; [ eapply eval_field_vals_evaluated; eassumption |] ].
     destruct rs; cbn in *; [ rewrite ?List.skipn_nil in *; exact Hzs | exact Hzs ].
   - match goal with H : eval_field_vals _ _ (List.tl rs) (Us ++ Ms) ρ ?ms |- _ =>
       destruct (IH _ _ _ _ H) as (us & zs & -> & Hus & Hzs) end.
@@ -358,7 +358,7 @@ Lemma eval_field_vals_of_exps : forall Ms rs ρ ms, (forall j, j < List.length M
     ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> eval_field_vals gc_deps gc_stack rs Ms ρ ms.
 Proof.
   induction Ms as [| M Ms IH]; intros rs ρ ms Hr Hms; inversion Hms; subst; [ constructor |].
-  eapply eval_field_vals_relevant; [ rewrite hd_nth_kind; exact (Hr 0 ltac:(cbn; lia)) | eassumption |].
+  eapply eval_field_vals_evaluated; [ rewrite hd_nth_kind; exact (Hr 0 ltac:(cbn; lia)) | eassumption |].
   apply IH; [| assumption ]; intros j Hj; rewrite nth_tl_kind; apply Hr; cbn; lia.
 Qed.
 
@@ -509,7 +509,7 @@ Section RecordModel.
     (HS : exists i : nat, record_params R ⊨ record_sort R : Typeω@i)
     (HT : forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
        record_fctx R k ++ record_params R ⊨ T : abs_kind_sort (record_field_kind R k) (record_sort R)[wk_shiftn k]ʷ)
-    (HPr : exists l, rel_params_relevant ⋅ (record_params R) l).
+    (HPr : exists l, rel_params_evaluated ⋅ (record_params R) l).
   (** No field is of a type of levels ([fields_kind_valid]). *)
   Hypothesis (HFk : forall k, field_kind (record_field_kind R k)).
 
@@ -862,7 +862,7 @@ Section RecordModel.
       destruct HPr as [l Hl0].
       assert (Hpe : record_params R = List.firstn (List.length Δ1 - k) (record_params R) ++ ce_ass κ T :: Δ2)
         by (rewrite <- Hs, List.firstn_skipn; reflexivity).
-      exact (closed_relevant_over _ _ Hass record_params_sem HΓ (ex_intro _ l Hl0) _ _ _ _ Hpe).
+      exact (closed_evaluated_over _ _ Hass record_params_sem HΓ (ex_intro _ l Hl0) _ _ _ _ Hpe).
   Qed.
 
   (** A field's type at an instance of the fields' telescope by valid
@@ -915,7 +915,7 @@ Section RecordModel.
     rewrite <- (List.rev_involutive C) in EvX.
     destruct (eval_sb_of_list_sorted_split Ms (List.rev C) Id Γ E X (record_ctx_sort k) HlC' EvX) as (xs & Hlxs & Hxs & HXag).
     { intros x Hx Hr; rewrite List.rev_involutive; rewrite List.length_rev in Hx.
-      refine (relevant_entry_not_propositional C Γ RCΓ x HCa Hx _ HRCΓ X X HXX).
+      refine (evaluated_entry_not_propositional C Γ RCΓ x HCa Hx _ HRCΓ X X HXX).
       intros Δ1 κ T Δ2 HD HΔ1; rewrite <- HΔ1 in Hr; exact (proj1 (record_ctx_entry_typed k Γ ltac:(lia) HΓ _ _ _ _ HD) Hr). }
     { intros x Hx Hp; rewrite List.rev_involutive; rewrite List.length_rev in Hx.
       refine (prop_entry_propositional C Γ RCΓ x HCa Hx _ HRCΓ X X HXX).
@@ -1096,7 +1096,7 @@ Section RecordModel.
     assert (E0 : RΓ <~> RΓ0) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct (Hs _ _ (proj1 (E0 _ _) HE)) as (y1 & y2 & Ey1 & Ey2 & Hy).
     assert (Hrel : forall Δ1 κ T Δ2, record_params R = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ Γ) T i)
-      by exact (closed_relevant_over _ _ Hass record_params_sem HΓ HPr).
+      by exact (closed_evaluated_over _ _ Hass record_params_sem HΓ HPr).
     assert (HlP : List.length (List.rev (record_params R)) = List.length Ns) by (rewrite List.length_rev; lia).
     assert (HPΔ : PER RΔ0) by (eapply per_env_PER; exact HRΔ0).
     assert (Hy11 : RΔ0 y1 y1) by (etransitivity; [ exact Hy | symmetry; exact Hy ]).
@@ -1104,7 +1104,7 @@ Section RecordModel.
     assert (Hnp : forall y, RΔ0 y y -> forall x, x < List.length (List.rev (record_params R)) ->
                 ~ entry_propositional gc_deps gc_stack (List.rev (List.rev (record_params R)) ++ Γ) y x)
       by (intros y Hyy x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx;
-          exact (relevant_entries_not_propositional _ _ _ Hass Hrel HRΔ0 _ _ Hyy x Hx)).
+          exact (evaluated_entries_not_propositional _ _ _ Hass Hrel HRΔ0 _ _ Hyy x Hx)).
     rewrite <- (List.rev_involutive (record_params R)) in Ey1, Ey2.
     destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlP Ey1 (Hnp _ Hy11) (eval_sub_id _ _)) as (ms1 & Ems1 & A1).
     destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlP Ey2 (Hnp _ Hy22) (eval_sub_id _ _)) as (ms2 & Ems2 & A2).

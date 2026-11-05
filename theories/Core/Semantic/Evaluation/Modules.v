@@ -56,14 +56,14 @@ Section Members.
     - intros (g & Hg & H); inversion Hg; subst; assumption.
     - intros H; inversion H; subst;
         (destruct (proj1 (IH _ _ _ _) ltac:(eassumption)) as (g' & ? & ?);
-         exists g'; split; [ first [ eapply eval_app_args_relevant; eassumption | eapply eval_app_args_proof; eassumption ] | assumption ]).
+         exists g'; split; [ first [ eapply eval_app_args_evaluated; eassumption | eapply eval_app_args_proof; eassumption ] | assumption ]).
     - intros (g & Hg & H); inversion Hg; subst;
-        [ eapply eval_app_args_relevant | eapply eval_app_args_proof ]; try eassumption; apply IH; eauto.
+        [ eapply eval_app_args_evaluated | eapply eval_app_args_proof ]; try eassumption; apply IH; eauto.
   Qed.
 
   (** Where every function along the way takes arguments of an evaluated
       kind, the arguments are all evaluated and then applied. *)
-  Lemma eval_app_args_relevant_iff : forall (P : domain -> Prop),
+  Lemma eval_app_args_evaluated_iff : forall (P : domain -> Prop),
       (forall f, P f -> evaluated_kind (arg_kind Θ Ξ f)) ->
       (forall f n g, P f -> $| f & n | Θ ⍮ Ξ ↘ g -> P g) ->
       forall Ns f ρ r, P f ->
@@ -78,7 +78,7 @@ Section Members.
         apply (IH g) in Hr as (ns & ? & ?); [| eapply HPa; eassumption ] end.
       eexists; split; econstructor; eassumption.
     - intros (ns & Hns & Ha); inversion Hns; subst; inversion Ha; subst.
-      eapply eval_app_args_relevant; [ apply HP, Hf | eassumption | eassumption |].
+      eapply eval_app_args_evaluated; [ apply HP, Hf | eassumption | eassumption |].
       apply IH; [ eapply HPa; eassumption | eauto ].
   Qed.
 
@@ -87,7 +87,7 @@ Section Members.
   Lemma eval_app_args_ind : forall Ns p k vs ρ r,
       eval_app_args Θ Ξ (d_ind p k vs) Ns ρ r <-> exists ns, ⟦ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| d_ind p k vs & ns | Θ ⍮ Ξ ↘ r.
   Proof.
-    intros; apply (eval_app_args_relevant_iff (fun f => exists p k vs, f = d_ind p k vs));
+    intros; apply (eval_app_args_evaluated_iff (fun f => exists p k vs, f = d_ind p k vs));
       [ intros ? (? & ? & ? & ->); apply arg_kind_ind_evaluated
       | intros ? ? ? (? & ? & ? & ->) Ha; inversion Ha; subst; eauto
       | eauto ].
@@ -96,7 +96,7 @@ Section Members.
   Lemma eval_app_args_record : forall Ns p vs ρ r,
       eval_app_args Θ Ξ (d_record p vs) Ns ρ r <-> exists ns, ⟦ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| d_record p vs & ns | Θ ⍮ Ξ ↘ r.
   Proof.
-    intros; apply (eval_app_args_relevant_iff (fun f => exists p vs, f = d_record p vs));
+    intros; apply (eval_app_args_evaluated_iff (fun f => exists p vs, f = d_record p vs));
       [ intros ? (? & ? & ->); apply arg_kind_record_evaluated
       | intros ? ? ? (? & ? & ->) Ha; inversion Ha; subst; eauto
       | eauto ].
@@ -260,7 +260,7 @@ Section Members.
     - intros (f & Hf & Ha); inversion Ha; subst; assumption.
     - intros H; apply IH in H as (f1 & Hf1 & Ha).
       inversion Hf1; subst; eexists; (split; [ eassumption |]);
-        [ eapply eval_app_args_relevant | eapply eval_app_args_proof ]; eassumption.
+        [ eapply eval_app_args_evaluated | eapply eval_app_args_proof ]; eassumption.
     - intros (f & Hf & Ha); inversion Ha; subst;
         apply IH; eexists; (split; [| eassumption ]); [ eapply eval_exp_app | eapply eval_exp_app_proof ]; eassumption.
   Qed.
@@ -420,9 +420,9 @@ Section Members.
     - intros (h & f & ns & ? & ? & ? & ?).
       assert (Hf : ⟦ member_ref R (pre ++ [x]) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f) by (apply Href; eauto).
       exists f; split; [ exact Hf |].
-      apply (eval_app_args_relevant_iff P HP HPa _ _ _ _ (HPf _ Hf)); eauto.
+      apply (eval_app_args_evaluated_iff P HP HPa _ _ _ _ (HPf _ Hf)); eauto.
     - intros (f & Hf & Ha).
-      apply (eval_app_args_relevant_iff P HP HPa _ _ _ _ (HPf _ Hf)) in Ha as (ns & ? & ?).
+      apply (eval_app_args_evaluated_iff P HP HPa _ _ _ _ (HPf _ Hf)) in Ha as (ns & ? & ?).
       apply Href in Hf as (h & ? & ?); exists h, f, ns; repeat split; assumption.
   Qed.
 
@@ -449,9 +449,6 @@ Section Members.
       apply eval_selc_app; [ discriminate |]; exists h; split; [ assumption | constructor; assumption ].
   Qed.
 End Members.
-
-Lemma ctx_pi_app : forall Ψ1 Ψ2 A, ctx_pi (Ψ1 ++ Ψ2) A = ctx_pi Ψ2 (ctx_pi Ψ1 A).
-Proof. induction Ψ1 as [| [] Ψ1 IH]; intros; cbn; auto. Qed.
 
 Lemma ctx_fn_app : forall Ψ1 Ψ2 M, ctx_fn (Ψ1 ++ Ψ2) M = ctx_fn Ψ2 (ctx_fn Ψ1 M).
 Proof. induction Ψ1 as [| [] Ψ1 IH]; intros; cbn; auto. Qed.

@@ -77,12 +77,6 @@ Qed.
 
 (** ** Instances of Valid Terms *)
 
-(** A type of an evaluated kind is so at every environment of its
-    context. *)
-Lemma rel_typ_evaluated_at : forall {Γ A R}, rel_type_evaluated Γ A -> EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
-    forall ρ ρ', R ρ ρ' -> rel_typ_evaluated A ρ.
-Proof. intros * (r & Hr & HA) HR ρ ρ' Hρ; exact (rel_typ_evaluated_of_kind (HA _ HR _ _ Hρ) Hr). Qed.
-
 (** At a type of an evaluated kind, the values of a valid term along a
     substitution and in the environment it evaluates to are related. *)
 Lemma valid_inst : forall Δ M A D τ RD, Δ ⊨ M : A -> rel_type_evaluated Δ A ->
@@ -117,7 +111,7 @@ Qed.
 
 (** A type of a relevant sort (a universe or [LevelSort]) is a type of an
     index, of an evaluated kind. *)
-Lemma rel_type_of_relevant_sort : forall {Γ A Srt}, relevant_sort Srt -> Γ ⊨ A : Srt ->
+Lemma rel_type_of_evaluated_sort : forall {Γ A Srt}, evaluated_sort Srt -> Γ ⊨ A : Srt ->
     (exists k : nat, Γ ⊨ᵗ A ≈ A at k) /\ rel_type_evaluated Γ A.
 Proof.
   intros * [i |] HA.
@@ -293,8 +287,8 @@ Proof.
           econstructor; [ reflexivity | intros y' _; reflexivity | exact Ha | exact Hl ]. }
         split; [ eapply eval_body_env_def_proof; exact Hb0 |].
         apply EQ; apply per_env_extend_intro'; [ exact H0 | exact Hhd | exact Rl | exact Rc ]. }
-      assert (HSrt : relevant_sort (abs_kind_sort ra Typeω@i0)) by (destruct Hra; constructor).
-      destruct (rel_type_of_relevant_sort HSrt HA) as [[k HAt] HArel].
+      assert (HSrt : evaluated_sort (abs_kind_sort ra Typeω@i0)) by (destruct Hra; constructor).
+      destruct (rel_type_of_evaluated_sort HSrt HA) as [[k HAt] HArel].
       destruct (valid_inst _ _ _ _ _ _ HM HArel Hτ HD _ _ Hρ Hσ0) as (m1 & m2 & a2 & j & Ra & Hm1 & Hm2 & Ha2 & HRa & Hm12).
       destruct (valid_at _ _ _ _ _ HM HAt HArel HR0 _ _ H0) as (m2' & m3 & a2' & j' & Ra' & Hm2' & Hm3 & Ha2' & HRa' & Hm23).
       functional_eval_rewrite_clear.
@@ -437,7 +431,7 @@ Proof.
       destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0].
       pose proof (gsub_valid (fill_gsub _ _ _ Hn Hf0 HC0 Hs)) as Hτ.
       assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
-      assert (HSr : relevant_sort Srt \/ Srt = Propₘ)
+      assert (HSr : evaluated_sort Srt \/ Srt = Propₘ)
         by (destruct HS; [ left; constructor | right; reflexivity | left; constructor ]).
       destruct HSr as [HSr | ->].
       2:{ (* at a proposition: a kept proof *)
@@ -467,7 +461,7 @@ Proof.
                  (ρσ0 ↦ ⋆ᵈ⟨M[σ0], List.skipn (List.length (body_ctx Φ)) ρ1↯⟩ ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0) H0);
           [ exact Hph | exact Hl | intros _; eexists; reflexivity | exact Hrl | split; [ exact Rr | cbn; lia ] ]. }
       (* at a relevant type: the value of the body filled in *)
-      destruct (rel_type_of_relevant_sort HSr HA) as [[i HAt] HArel].
+      destruct (rel_type_of_evaluated_sort HSr HA) as [[i HAt] HArel].
       pose proof HArel as (rA0 & HrA0 & HAk).
       pose proof (per_ctx_env_of_def_evaluated HrA0 HR0 HAt (HAk _ HR0) HM) as HR'.
       assert (EQ : R <~> per_env_extend_def A M R0) by (eapply per_ctx_env_right_irrel; eassumption).

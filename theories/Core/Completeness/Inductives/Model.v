@@ -42,16 +42,9 @@ Section Fixed_GCtx.
 Lemma length_nparams_prefix : forall M k, k <= im_nn M -> List.length (nparams_prefix M k) = k.
 Proof. intros; unfold nparams_prefix; rewrite List.length_rev, List.length_firstn, List.length_rev, length_im_nparams; lia. Qed.
 
-(** The telescope of a constructor's non-recursive arguments has one
-    entry per argument. *)
-Lemma length_cargs_nonrec_tele : forall gs, List.length (cargs_nonrec_tele gs) = List.length (cargs_nonrec gs).
-Proof. induction gs as [| [κ A | Ps] gs IH]; cbn; congruence. Qed.
-
-Lemma cargs_nonrec_tele_app : forall gs1 gs2,
-    cargs_nonrec_tele (gs1 ++ gs2) = cargs_nonrec_tele gs1 ++ cargs_nonrec_tele gs2.
-Proof. induction gs1 as [| [κ A | Ps] gs1 IH]; intros; cbn; rewrite ?IH; reflexivity. Qed.
-
-(** Its entries are assumptions. *)
+(** The entries of the telescope of a constructor's non-recursive
+    arguments are assumptions ([length_cargs_nonrec_tele] and
+    [cargs_nonrec_tele_app] are in [Core.Semantic.PER.Tele]). *)
 Lemma tele_ass_cargs_nonrec_tele : forall gs, tele_ass (cargs_nonrec_tele gs).
 Proof. induction gs as [| [κ A | Ps] gs IH]; cbn; [ constructor | constructor; eauto | exact IH ]. Qed.
 
@@ -165,6 +158,18 @@ Proof.
   destruct j as [| j]; cbn in *; [ exists r0; reflexivity | exact (IH _ _ H) ].
 Qed.
 
+(** A non-recursive argument's kind is the tag of a non-recursive
+    argument of the constructor. *)
+Lemma nonrec_kind_split : forall gs j r, List.nth_error (cargs_nonrec_kinds gs) j = Some r ->
+    exists gs1 A gs2, gs = gs1 ++ ca_arg r A :: gs2.
+Proof.
+  induction gs as [| [r0 B | Ps] gs IH]; intros j r H; cbn in H; [ destruct j; discriminate | |].
+  - destruct j as [| j]; cbn in H.
+    + injection H as ->; exists nil, B, gs; reflexivity.
+    + destruct (IH _ _ H) as (gs1 & A & gs2 & ->); exists (ca_arg r0 B :: gs1), A, gs2; reflexivity.
+  - destruct (IH _ _ H) as (gs1 & A & gs2 & ->); exists (ca_rec Ps :: gs1), A, gs2; reflexivity.
+Qed.
+
 Lemma nparams_nth_split : forall M k κ A, List.nth_error (List.rev (im_nparams M)) k = Some (ce_ass κ A) ->
     exists Δ1, im_nparams M = Δ1 ++ ce_ass κ A :: nparams_prefix M k.
 Proof.
@@ -249,7 +254,7 @@ Proof. intros * H * E; destruct (H _ _ _ _ E) as [i Hi]; exists i; left; exact H
 (** An entry of a telescope over [Γ] that is a type of a universe or a
     type of levels ([rel_param_typed]) is no proposition at an environment
     the context PER relates. *)
-Lemma relevant_entry_not_propositional : forall Δ Γ R x, tele_ass Δ -> x < List.length Δ ->
+Lemma evaluated_entry_not_propositional : forall Δ Γ R x, tele_ass Δ -> x < List.length Δ ->
     (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> List.length Δ1 = x -> exists i : nat, rel_param_typed (Δ2 ++ Γ) T i) ->
     EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R ->
     forall ρ ρ', R ρ ρ' -> ~ entry_propositional gc_deps gc_stack (Δ ++ Γ) ρ x.
@@ -311,19 +316,19 @@ Qed.
 
 (** A telescope of types of universes or of levels over [Γ] has no
     propositional entry at an environment its context PER relates. *)
-Corollary relevant_entries_not_propositional : forall Δ Γ R, tele_ass Δ ->
+Corollary evaluated_entries_not_propositional : forall Δ Γ R, tele_ass Δ ->
     (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ Γ) T i) ->
     EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R ->
     forall ρ ρ', R ρ ρ' -> forall x, x < List.length Δ -> ~ entry_propositional gc_deps gc_stack (Δ ++ Γ) ρ x.
 Proof.
   intros * Ha Hrel HR ρ ρ' Hρ x Hx.
-  exact (relevant_entry_not_propositional Δ Γ R x Ha Hx (fun Δ1 κ T Δ2 E _ => Hrel Δ1 κ T Δ2 E) HR ρ ρ' Hρ).
+  exact (evaluated_entry_not_propositional Δ Γ R x Ha Hx (fun Δ1 κ T Δ2 E _ => Hrel Δ1 κ T Δ2 E) HR ρ ρ' Hρ).
 Qed.
 
 (** The relevant parameters of a closed telescope stay relevant over any
     valid context. *)
-Lemma closed_relevant_over : forall C Γ, tele_ass C -> ⊨ C -> ⊨ Γ ->
-    (exists l, rel_params_relevant ⋅ C l) ->
+Lemma closed_evaluated_over : forall C Γ, tele_ass C -> ⊨ C -> ⊨ Γ ->
+    (exists l, rel_params_evaluated ⋅ C l) ->
     forall Δ1 κ T Δ2, C = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ Γ) T i.
 Proof.
   intros * Ha HC HΓ [l Hl] * E.
@@ -373,8 +378,8 @@ Proof.
   assert (EC : RCΓ' <~> RCΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   destruct (Hs _ _ (proj1 (E _ _) HB)) as (ρσ & ρ'σ' & Ev1 & Ev2 & Hρσ).
   assert (HPC : PER RCΓ') by (eapply per_env_PER; exact HRCΓ).
-  pose proof (relevant_entries_not_propositional C Γ RCΓ' Ha Hrel' HRCΓ _ _ Hρσ) as Hnp1.
-  pose proof (relevant_entries_not_propositional C Γ RCΓ' Ha Hrel' HRCΓ ρ'σ' ρσ ltac:(symmetry; exact Hρσ)) as Hnp2.
+  pose proof (evaluated_entries_not_propositional C Γ RCΓ' Ha Hrel' HRCΓ _ _ Hρσ) as Hnp1.
+  pose proof (evaluated_entries_not_propositional C Γ RCΓ' Ha Hrel' HRCΓ ρ'σ' ρσ ltac:(symmetry; exact Hρσ)) as Hnp2.
   assert (HlC : List.length (List.rev C) = List.length Ms) by (rewrite List.length_rev; lia).
   assert (Hnp1' : forall x, x < List.length (List.rev C) ->
                     ~ entry_propositional gc_deps gc_stack (List.rev (List.rev C) ++ Γ) ρσ x)
@@ -532,7 +537,7 @@ Proof.
   destruct (Hs _ _ (proj1 (E _ _) Hρ)) as (ρτ & ρτ' & Ev1 & _ & Hρτ).
   assert (HPC : PER RCΓ') by (eapply per_env_PER; exact HRCΓ).
   assert (Hρτρτ : RCΓ' ρτ ρτ) by (etransitivity; [ exact Hρτ | symmetry; exact Hρτ ]).
-  pose proof (relevant_entries_not_propositional C Γ RCΓ' Ha Hrel' HRCΓ _ _ Hρτρτ) as Hnp.
+  pose proof (evaluated_entries_not_propositional C Γ RCΓ' Ha Hrel' HRCΓ _ _ Hρτρτ) as Hnp.
   assert (HlC : List.length (List.rev C) = List.length Ms) by (rewrite List.length_rev; lia).
   assert (Hnp' : forall x, x < List.length (List.rev C) ->
                    ~ entry_propositional gc_deps gc_stack (List.rev (List.rev C) ++ Γ) ρτ x)
@@ -578,14 +583,14 @@ Record closed_instance_values (C Γ : ctx) (Ms : list exp) (RC : relation env) (
     terms' values, related at [C]. *)
 Lemma closed_instance_values_of_sub : forall C Γ Ms RΓ RC, tele_ass C -> ⊨ C -> ⊨ Γ ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF C ≈ C ∈ per_ctx_env ↘ RC ->
-    (exists l, rel_params_relevant ⋅ C l) ->
+    (exists l, rel_params_evaluated ⋅ C l) ->
     Γ ⊨ˢ sb_of_list Id Ms ≈ sb_of_list Id Ms : C ++ Γ -> List.length Ms = List.length C ->
     forall B1 B2, RΓ B1 B2 -> closed_instance_values C Γ Ms RC B1 B2.
 Proof.
   intros * Ha HC HΓ HRΓ HRC Hrel Hσ Hl B1 B2 HB.
   destruct (closed_app_sem _ _ Ha HC HΓ) as [HCΓ Hres].
   destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ HRCΓ].
-  destruct (instance_values_of_sub C Γ Ms RΓ RCΓ Ha HRΓ HRCΓ (closed_relevant_over C Γ Ha HC HΓ Hrel) Hσ Hl B1 B2 HB)
+  destruct (instance_values_of_sub C Γ Ms RΓ RCΓ Ha HRΓ HRCΓ (closed_evaluated_over C Γ Ha HC HΓ Hrel) Hσ Hl B1 B2 HB)
     as [u1 u2 Eu1 Eu2 H12 Es1 Es2].
   pose proof (Hres _ _ HRC HRCΓ _ _ H12) as H12'.
   pose proof (eval_exps_length _ _ _ Eu1) as L1; pose proof (eval_exps_length _ _ _ Eu2) as L2.
@@ -1020,11 +1025,11 @@ Section Sort.
   (** A member's parameters are parameter types ([rel_param_typed]): the
       uniform ones, types of universes or of levels, by the group's
       validity, the others types of universes at its sort. *)
-  Lemma im_params_relevant : forall k Mk, ind_member D k = Some Mk ->
+  Lemma im_params_evaluated : forall k Mk, ind_member D k = Some Mk ->
       forall Δ1 κ T Δ2, im_params D Mk = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed Δ2 T i.
   Proof.
     intros k Mk HM * E; unfold im_params in E.
-    destruct (valid_ind_decl_uparams_relevant _ HD) as [l Hl].
+    destruct (valid_ind_decl_uparams_evaluated _ HD) as [l Hl].
     destruct (List.app_eq_app _ _ _ _ E) as (Δc & [[E1 E2] | [E1 E2]]).
     - destruct Δc as [| e Δc]; cbn [List.app] in E2.
       + exists l; pose proof (Hl nil κ T Δ2 (eq_sym E2)) as H; rewrite List.app_nil_r in H; exact H.
@@ -1062,12 +1067,12 @@ Section Sort.
 
   (** So are those of a prefix of its non-uniform parameters, over the
       uniform ones. *)
-  Corollary nparams_prefix_relevant : forall k Mk m, ind_member D k = Some Mk ->
+  Corollary nparams_prefix_evaluated : forall k Mk m, ind_member D k = Some Mk ->
       forall Δ1 κ T Δ2, nparams_prefix Mk m = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i.
   Proof.
     intros * HM * E.
     destruct (nparams_prefix_suffix D Mk m) as [Δ HΔ].
-    apply (im_params_relevant _ _ HM (Δ ++ Δ1) κ); rewrite HΔ, E, <- !List.app_assoc; reflexivity.
+    apply (im_params_evaluated _ _ HM (Δ ++ Δ1) κ); rewrite HΔ, E, <- !List.app_assoc; reflexivity.
   Qed.
 
   (** ** The Telescopes of a Member *)
@@ -1279,8 +1284,8 @@ Section Sort.
             rewrite <- HX; unfold τ, nparams_prefix.
             apply eval_sb_of_list; [ apply eval_sub_of_wk; typeclasses eauto | exact Ecs | exact Hlτ |].
             rewrite HX; intros x Hx Hpx.
-            apply (relevant_entries_not_propositional (nparams_prefix Mj m) (ind_uparams D) Rm Hpa
-                     (nparams_prefix_relevant _ _ m HMj) HRm _ _ Hcs x); [ | exact Hpx ].
+            apply (evaluated_entries_not_propositional (nparams_prefix Mj m) (ind_uparams D) Rm Hpa
+                     (nparams_prefix_evaluated _ _ m HMj) HRm _ _ Hcs x); [ | exact Hpx ].
             unfold nparams_prefix; rewrite List.length_rev; exact Hx. }
           assert (Hgm' := Hgm _ _ Hu Hgu Hgb).
           pose proof (gargs_env_rel _ _ _ _ _ _ HRm (HWm m) Hlm Hgm') as Hbb'.
@@ -1848,7 +1853,7 @@ Section Sort.
         intros ts1 κ A ts2 R1 vts vts' b Heq HR1 Hl1 Hl1' HE1 Eb.
         assert (Hpe : im_params D Mk = List.rev ts2 ++ ce_ass κ A :: List.rev ts1)
           by (rewrite <- (List.rev_involutive (im_params D Mk)), Heq, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
-        destruct (im_params_relevant _ _ HM _ _ _ _ Hpe) as [i0 HA]; rewrite <- (List.app_nil_r (List.rev ts1)) in HA.
+        destruct (im_params_evaluated _ _ HM _ _ _ _ Hpe) as [i0 HA]; rewrite <- (List.app_nil_r (List.rev ts1)) in HA.
         destruct (rel_param_typed_evaluated HA) as (r & Hr0 & HAr).
         destruct (HAr _ HR1 _ _ HE1) as (b0 & Eb0 & Hr).
         assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); rewrite Hr; exact Hr0.
@@ -1916,7 +1921,7 @@ Section Sort.
         assert (Hpe : im_params D Mj = List.rev ts2 ++ ce_ass κ A :: (List.rev ts1 ++ ind_uparams D))
           by (unfold im_params; rewrite <- (List.rev_involutive (im_nparams Mj)), Heq, List.rev_app_distr; cbn [List.rev];
               rewrite <- !List.app_assoc; reflexivity).
-        destruct (im_params_relevant _ _ HMj _ _ _ _ Hpe) as [i0 HA].
+        destruct (im_params_evaluated _ _ HMj _ _ _ _ Hpe) as [i0 HA].
         destruct (rel_param_typed_evaluated HA) as (r & Hr0 & HAr).
         destruct (HAr _ HR1 _ _ HE1) as (b0 & Eb0 & Hr).
         assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); rewrite Hr; exact Hr0.

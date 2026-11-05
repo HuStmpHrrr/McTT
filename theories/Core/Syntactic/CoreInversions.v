@@ -253,6 +253,22 @@ Proof.
     econstructor; [ exact HU | exact HA | exact HB | exact Hk | eapply wf_subtyp_trans; eassumption ].
 Qed.
 
+(** The tag of each parameter of a [Π] over a telescope, typed at any
+    sort, may be abstracted at the [Π]'s tag ([pi_kinds]). *)
+Lemma ctx_pi_at_pi_kinds : forall Θ Ξ r Δ Γ B S, tele_ass Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi_at r Δ B : S ->
+    forall Δ1 κ A Δ2, Δ = (Δ1 ++ ce_ass κ A :: Δ2)%list -> pi_kinds κ r.
+Proof.
+  intros Θ Ξ r Δ; induction Δ as [| e Δ0 IH] using List.rev_ind; intros * HΔ HB Δ1 κ A Δ2 Heq.
+  - destruct Δ1; discriminate.
+  - apply List.Forall_app in HΔ as [HΔ0 He]; inversion He as [| ? ? (κ0 & X & ->) _]; subst.
+    rewrite ctx_pi_app in HB; cbn [ctx_pi_at] in HB.
+    destruct (wf_pi_inversion_at HB) as [U _ _ HBc Hk _].
+    destruct Δ2 as [| d Δ2 _] using List.rev_ind.
+    + apply List.app_inj_tail in Heq as [_ [= <- _]]; exact Hk.
+    + rewrite List.app_comm_cons, List.app_assoc in Heq; apply List.app_inj_tail in Heq as [Heq _].
+      exact (IH _ _ _ HΔ0 HBc _ _ _ _ Heq).
+Qed.
+
 Lemma wf_all_inversion : forall Θ Ξ Γ κ A P C,
     Θ ⍮ Ξ ⍮ Γ ⊢ ∀ₚ{κ} A P : C ->
     all_inv Θ Ξ Γ κ A P C.

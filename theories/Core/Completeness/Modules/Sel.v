@@ -600,7 +600,7 @@ Qed.
 
 (** A submodule of a unit lacking parameters, given one of the unit with
     them, valid. *)
-Lemma sel_finish : forall Γ Δ D y X l, tele_ass Δ -> params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
+Lemma sel_finish : forall Γ Δ D y X l, tele_ass Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
     ⊨ Δ ++ Γ -> ⊨ Γ -> mdesc_is_mod X -> valid_unit (Δ ++ Γ) (mdesc_unit X) ->
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ mdesc_unit (mdesc_up Δ X) ≈ mdesc_unit (mdesc_up Δ X) ->
     (forall R, EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' ->
@@ -787,7 +787,7 @@ Proof.
   { intros k N A HN HA; rewrite HT12, app_assoc in HA.
     rewrite tele_insts_app_full in HA by (try exact HTa2; lia).
     exact (HNs _ _ _ HN HA). }
-  assert (HNvr : forall k A, nth_error (tele_insts (Δ0 ++ T) Id Ns) k = Some A -> exists Srt, relevant_sort Srt /\ Γ ⊨ A : Srt).
+  assert (HNvr : forall k A, nth_error (tele_insts (Δ0 ++ T) Id Ns) k = Some A -> exists Srt, evaluated_sort Srt /\ Γ ⊨ A : Srt).
   { intros k A HA; rewrite HT12, app_assoc in HA.
     rewrite tele_insts_app_full in HA by (try exact HTa2; lia).
     exact (HNr _ _ HA). }
@@ -795,7 +795,7 @@ Proof.
   { eapply (valid_modexp_apps_up Hgw _ _ Hgm Hsub Hgf); [ exact (valid_modexp_of_valid_unit _ _ Hgf _ _ HKUa) | exact HwUa | apply mdenote_lit; exact Hu
                                                 | exact (mdesc_mod_is_mod _ _ HmodE) | exact HΔΓ | exact HaTa
                                                 | exact (args_ok_length _ _ _ _ _ Hargs') | exact (args_ok_insts _ _ _ _ _ Hargs')
-                                                | exact HNv | exact HNvr | exact (params_relevant_of_sorts _ _ _ _ _ _ Hps HTp)
+                                                | exact HNv | exact HNvr | exact (params_evaluated_of_sorts _ _ _ _ _ _ Hps HTp)
                                                 | exact HokR ]. }
   split; [| exact HsV ].
   (* at every environment: the global's stored unit, given the arguments *)
@@ -871,7 +871,7 @@ Proof.
     destruct (body_mod_desc _ _ Hgm _ _ _ _ _ _ _ Hx Hm Hmd) as (Φ' & E & U & σ & RU & Hp & HEu & Hf & Hu & ->).
     destruct (body_sel_base _ _ _ _ _ _ _ _ _ Hx Hsx HC Hsv (body_xp_scoped_of_wf _ _ _ _ _ _ Hw Hx)
                 Hp HEu Hf Hu (Hsl _ _ _ _ Hp HEu)) as [HKX Hbase].
-    destruct (lit_params_relevant_both _ _ _ _ Hw HΔr) as (l & HΔw & HΔr'); cbn [gu_params] in HΔw, HΔr'.
+    destruct (lit_params_evaluated_both _ _ _ _ Hw HΔr) as (l & HΔw & HΔr'); cbn [gu_params] in HΔw, HΔr'.
     exact (sel_finish _ _ _ _ _ _ HΔ HΔw HΔr' (rel_ctx_wf_app_r _ _ HC) HΓ (mdesc_is_mod_sub _ σ (udenote_is_mod _ _ _ _ _ _ Hu)) HKX HwU Hbase).
   - (* an alias: its target's, over the parameters *)
     intros Γ Δ E Hw HΔ HΔr HΓ HΔΓ HU HE Hsmt IHE y R Rm Hm Hmd.
@@ -880,7 +880,7 @@ Proof.
     destruct (alias_mod_desc _ _ Hgm _ _ _ _ _ _ HwΔΓ Hm Hmd) as (R' & Hm' & ->).
     rewrite mdesc_mod_up in Hmd; destruct (mdesc_mod R') as [Rm' |] eqn:Hmd'; cbn in Hmd; [ injection Hmd as <- | discriminate ].
     destruct (IHE _ _ _ Hm' Hmd') as [HSE HKE].
-    destruct (lit_params_relevant_both _ _ _ _ Hw HΔr) as (l & HΔw & HΔr'); cbn [gu_params] in HΔw, HΔr'.
+    destruct (lit_params_evaluated_both _ _ _ _ Hw HΔr) as (l & HΔw & HΔr'); cbn [gu_params] in HΔw, HΔr'.
     apply (sel_finish _ _ _ _ _ _ HΔ HΔw HΔr' HΔΓ HΓ (mdesc_mod_is_mod _ _ Hmd') HKE HwU).
     intros R HR ρ ρ' Hρ.
     assert (HP : PER R) by (eapply per_env_PER; exact HR).

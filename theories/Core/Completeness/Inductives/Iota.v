@@ -61,7 +61,7 @@ Lemma con_ref_vals_split : forall D k Mk gs Ns As ρ vs, decl_typed gc_deps gc_s
     List.length Ns = im_nn Mk ->
     eval_field_vals gc_deps gc_stack (List.skipn (ind_nu D) (con_kinds D Mk gs)) (Ns ++ As) ρ vs ->
     exists ns avs, vs = ns ++ avs /\ ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns /\
-      eval_field_vals gc_deps gc_stack (Syntactic.Inductives.Inductives.cargs_kinds gs) As ρ avs.
+      eval_field_vals gc_deps gc_stack (cargs_kinds gs) As ρ avs.
 Proof.
   intros * Hdt HM HNl H.
   rewrite (con_kinds_skipn D k Mk gs Hdt HM) in H by (unfold im_np; lia).
@@ -77,7 +77,7 @@ Qed.
 (** And conversely. *)
 Lemma con_ref_vals_join : forall D k Mk gs Ns As ρ ns avs, decl_typed gc_deps gc_stack D -> ind_member D k = Some Mk ->
     List.length Ns = im_nn Mk ->
-    ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns -> eval_field_vals gc_deps gc_stack (Syntactic.Inductives.Inductives.cargs_kinds gs) As ρ avs ->
+    ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns -> eval_field_vals gc_deps gc_stack (cargs_kinds gs) As ρ avs ->
     eval_field_vals gc_deps gc_stack (List.skipn (ind_nu D) (con_kinds D Mk gs)) (Ns ++ As) ρ (ns ++ avs).
 Proof.
   intros * Hdt HM HNl Hns Has.
@@ -111,15 +111,15 @@ Proof. induction gs as [| [r A | t] gs IH]; intros [| N As] Hl; cbn in *; try di
 (** The values of the arguments of their sorts give those of the
     non-recursive ones, of theirs. *)
 Lemma eval_field_vals_nonrec : forall gs rest As ρ avs,
-    eval_field_vals gc_deps gc_stack (Syntactic.Inductives.Inductives.cargs_kinds gs ++ rest) As ρ avs -> List.length As = List.length gs ->
+    eval_field_vals gc_deps gc_stack (cargs_kinds gs ++ rest) As ρ avs -> List.length As = List.length gs ->
     eval_field_vals gc_deps gc_stack (cargs_nonrec_kinds gs) (nonrec_arg_terms gs As) ρ (nonrec_arg_vals gs avs).
 Proof.
   induction gs as [| [r A | t] gs IH]; intros rest [| N As] ρ avs H Hl; cbn in Hl; try discriminate.
   - inversion H; subst; cbn; constructor.
-  - cbn [Syntactic.Inductives.Inductives.cargs_kinds List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_kinds].
-    + eapply eval_field_vals_relevant; [ assumption | eassumption | apply (IH rest); [ eassumption | lia ] ].
+  - cbn [cargs_kinds List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_kinds].
+    + eapply eval_field_vals_evaluated; [ assumption | eassumption | apply (IH rest); [ eassumption | lia ] ].
     + eapply eval_field_vals_proof; [ assumption | apply (IH rest); [ eassumption | lia ] ].
-  - cbn [Syntactic.Inductives.Inductives.cargs_kinds List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_kinds];
+  - cbn [cargs_kinds List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_kinds];
       [ apply (IH rest); [ eassumption | lia ] | discriminate ].
 Qed.
 
@@ -214,9 +214,9 @@ Qed.
 
 (** A recursive argument is of the relevant sort. *)
 Lemma cargs_kinds_rec : forall gs1 t gs2,
-    List.nth (List.length gs1) (Syntactic.Inductives.Inductives.cargs_kinds (gs1 ++ ca_rec t :: gs2)) ak_relevant = ak_relevant.
+    List.nth (List.length gs1) (cargs_kinds (gs1 ++ ca_rec t :: gs2)) ak_relevant = ak_relevant.
 Proof.
-  intros; unfold Syntactic.Inductives.Inductives.cargs_kinds; rewrite List.map_app, List.app_nth2, List.length_map, Nat.sub_diag
+  intros; unfold cargs_kinds; rewrite List.map_app, List.app_nth2, List.length_map, Nat.sub_diag
     by (rewrite List.length_map; lia); reflexivity.
 Qed.
 
@@ -1733,7 +1733,7 @@ Section Iota.
     Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HRU : EF ind_uparams D ≈ ind_uparams D ∈ per_ctx_env ↘ RU).
     Variable (C : env) (u0 ns avs : list domain).
     Hypotheses (HCC : RΓ C C) (HCt : ctx_retag Γ C = C) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ u0)
-      (HNC : ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ns) (HAC : eval_field_vals gc_deps gc_stack (Syntactic.Inductives.Inductives.cargs_kinds gs) As C avs).
+      (HNC : ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ns) (HAC : eval_field_vals gc_deps gc_stack (cargs_kinds gs) As C avs).
     Let nr := canon_nparams_rel D u0.
     Let ar := canon_args_rel D u0.
     Let dr := canon_doms_rel D u0.
@@ -1934,7 +1934,7 @@ Section Iota.
       assert (Hdec : forall x, x < n -> evaluated_kind (rf x) ->
                        ~ entry_propositional gc_deps gc_stack (cargs_strat gs1 ++ im_params D Mm ++ Γ) e1 x).
       { intros x Hx Hr; rewrite List.app_assoc.
-        refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT' e1 e1 He11).
+        refine (evaluated_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT' e1 e1 He11).
         intros Δ1 κ0 T0 Δ2 E0 HΔ1.
         unfold rf in Hr; exact (proj1 (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 κ0 T0 Δ2 E0 HΔ1) Hr). }
       assert (Hpr : forall x, x < n -> rf x = ak_propositional ->
@@ -1952,8 +1952,8 @@ Section Iota.
       (** The values: the parameters', then the non-recursive arguments'. *)
       set (nv1 := nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs)).
       assert (Hnvf : eval_field_vals gc_deps gc_stack (cargs_nonrec_kinds gs1) nt C nv1).
-      { unfold nt, nv1; apply (eval_field_vals_nonrec gs1 (Syntactic.Inductives.Inductives.cargs_kinds (ca_rec t :: gs2))); [| exact Lg1 ].
-        unfold Syntactic.Inductives.Inductives.cargs_kinds; rewrite <- List.map_app, <- Heq; fold (Syntactic.Inductives.Inductives.cargs_kinds gs).
+      { unfold nt, nv1; apply (eval_field_vals_nonrec gs1 (cargs_kinds (ca_rec t :: gs2))); [| exact Lg1 ].
+        unfold cargs_kinds; rewrite <- List.map_app, <- Heq; fold (cargs_kinds gs).
         exact (Mctt.Core.Completeness.Records.Model.eval_field_vals_firstn _ _ _ _ HAC (List.length gs1)). }
       assert (Hmsv : ms = u0 ++ ns ++ nv1).
       { pose proof (Mctt.Core.Completeness.Records.Model.eval_field_vals_length _ _ _ _ Hnvf) as Lnv1.
@@ -2142,7 +2142,7 @@ Section Iota.
       assert (Hdec : forall x, x < List.length K0 -> evaluated_kind (branch_context_entry_kind x) ->
                        ~ entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
       { intros x Hx Hr.
-        refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
+        refine (evaluated_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
         intros Δ1 κ0 T0 Δ2 E0 HΔ1.
         destruct (branch_context_entry_sort Δ1 κ0 T0 Δ2 E0) as [i0 HT0].
         assert (Hk : branch_context_entry_kind x = ak_relevant \/ branch_context_entry_kind x = ak_level) by (destruct Hr; auto).
@@ -2203,9 +2203,9 @@ Section Iota.
               replace (List.length gs - 1 - (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j - cargs_nrec D gs)) with k
                 by (unfold k; lia).
               rewrite Hg; destruct g; reflexivity. }
-            assert (Ecr : List.nth k (Syntactic.Inductives.Inductives.cargs_kinds gs) ak_relevant
+            assert (Ecr : List.nth k (cargs_kinds gs) ak_relevant
                           = match g with ca_arg r _ => r | ca_rec _ => ak_relevant end)
-              by (unfold Syntactic.Inductives.Inductives.cargs_kinds; erewrite List.nth_error_nth; [ reflexivity | rewrite List.nth_error_map, Hg; reflexivity ]).
+              by (unfold cargs_kinds; erewrite List.nth_error_nth; [ reflexivity | rewrite List.nth_error_map, Hg; reflexivity ]).
             rewrite Ecr in Ey1, Ey2; rewrite Erf in HmR, HmP.
             destruct g as [[| |] A0 | t0].
             * exact (functional_eval_exp _ _ _ _ (HmR ltac:(constructor)) (Ey1 ltac:(constructor))).

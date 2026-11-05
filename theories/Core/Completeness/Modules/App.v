@@ -75,7 +75,7 @@ Qed.
 
 Lemma app_wf : forall Γ H R T B T1 Srt N, Θm ⍮ Ξm ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θm Ξm Γ H R ->
     mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
-    relevant_sort Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ B : Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N.
+    evaluated_sort Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ B : Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N.
 Proof.
   intros * Hw Hm Ht Hv HSrt HBw HNw.
   eapply wf_me_app; [ exact Hw | exact Hm | exact Ht | exact Hv | exact HBw | exact HSrt | exact HNw | mauto 3
@@ -85,11 +85,11 @@ Qed.
 Lemma valid_unit_app_all :
   (forall Γ K, valid_unit Γ K -> forall RK Rm T B T1 Srt i N, mdenote Θm Ξm Γ K RK -> mdesc_mod RK = Some Rm ->
      mdesc_tele Rm = Some T -> tele_view T = Some (B, T1) ->
-     relevant_sort Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ B : Srt -> rel_param_typed Γ B i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Γ ⊨ N : B ->
+     evaluated_sort Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ B : Srt -> rel_param_typed Γ B i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Γ ⊨ N : B ->
      modexp_next_param Γ K B /\ exists K' RK' Rm', mdesc_at Rm N = Some Rm' /\ Γ ⊨ᵐ me_app K N ≈ K' /\ valid_unit Γ K' /\
        mdenote Θm Ξm Γ K' RK' /\ mdesc_mod RK' = Some Rm') /\
   (forall Γ H, valid_modexp Γ H -> forall R T B T1 Srt i N, mdenote Θm Ξm Γ H R -> mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
-     relevant_sort Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ B : Srt -> rel_param_typed Γ B i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Γ ⊨ N : B ->
+     evaluated_sort Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ B : Srt -> rel_param_typed Γ B i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Γ ⊨ N : B ->
      modexp_next_param Γ H B /\ valid_modexp Γ (me_app H N)).
 Proof.
   apply valid_unit_modexp_ind.
@@ -210,8 +210,8 @@ Lemma valid_modexp_apps_up : forall Ns Γ Δa R H l, valid_modexp Γ H -> Θm �
     ⊢ Θm ⍮ Ξm ⍮ Δa ++ Γ -> tele_ass Δa -> List.length Ns <= List.length Δa ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Θm ⍮ Ξm ⍮ Γ ⊢ N : A) ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Γ ⊨ N : A) ->
-    (forall k A, nth_error (tele_insts Δa Id Ns) k = Some A -> exists Srt, relevant_sort Srt /\ Γ ⊨ A : Srt) ->
-    params_relevant Θm Ξm Γ Δa l ->
+    (forall k A, nth_error (tele_insts Δa Id Ns) k = Some A -> exists Srt, evaluated_sort Srt /\ Γ ⊨ A : Srt) ->
+    params_evaluated Θm Ξm Γ Δa l ->
     desc_ok Θm Ξm (Δa ++ Γ) R ->
     valid_modexp Γ (me_apps H Ns).
 Proof.
@@ -224,10 +224,10 @@ Proof.
   destruct (HNr 0 C[Id] eq_refl) as (Sr & HSr & HCr); rewrite exp_sub_id in HCr.
   destruct (rel_param_typed_of_sort _ _ _ HSr HCr) as [jr HCs].
   pose proof (HΔr Δ1 κ C nil eq_refl) as HC0; cbn [List.app] in HC0.
-  assert (HCw : exists SC, relevant_sort SC /\ Θm ⍮ Ξm ⍮ Γ ⊢ C : SC)
+  assert (HCw : exists SC, evaluated_sort SC /\ Θm ⍮ Ξm ⍮ Γ ⊢ C : SC)
     by (destruct HC0 as [HC | HC]; eexists; (split; [ constructor | exact HC ])).
   destruct HCw as (SC & HSC & HC).
-  pose proof (proj1 (params_relevant_app_inv _ _ _ _ _ _ HΔr)) as HΔ1r.
+  pose proof (proj1 (params_evaluated_app_inv _ _ _ _ _ _ HΔr)) as HΔ1r.
   rewrite <- List.app_assoc in HΔ, HR; cbn [List.app] in HΔ, HR.
   pose proof (proj1 (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ))) as HΓ.
   (** The parameter at a sort of its tag, as the telescope has it. *)
@@ -259,7 +259,7 @@ Proof.
   - intros k A HA.
     rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (Id,,N)) in HA by apply sb_compose_id_right.
     exact (HNr (S k) A HA).
-  - exact (params_relevant_sub _ _ _ _ _ _ _ HΔ1r Hs1 HΔ HΔN).
+  - exact (params_evaluated_sub _ _ _ _ _ _ _ HΔ1r Hs1 HΔ HΔN).
   - exact (desc_ok_sub _ _ Hgm _ _ HR _ _ Hσ).
 Qed.
 

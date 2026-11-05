@@ -372,13 +372,13 @@ Qed.
     [Γ0] equal as substitutions: their values at related environments
     related at [C]'s telescope. *)
 Lemma closed_instance_gargs : forall C Γ0 Ms Ms' RΓ0, tele_ass C -> ⊨ C -> ⊨ Γ0 -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 ->
-    (exists l, rel_params_relevant ⋅ C l) ->
+    (exists l, rel_params_evaluated ⋅ C l) ->
     Γ0 ⊨ˢ sb_of_list Id Ms ≈ sb_of_list Id Ms' : C ++ Γ0 -> List.length Ms = List.length C -> List.length Ms' = List.length C ->
     forall ρ ρ', RΓ0 ρ ρ' -> exists ms ms', ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms /\ ⟦ Ms' ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ ms' /\
       per_gargs (List.rev C) nil nil ms ms'.
 Proof.
   intros * HCa HC HΓ0 HRΓ0 HCr Hsub Hl Hl' ρ ρ' Hρ.
-  pose proof (closed_relevant_over C Γ0 HCa HC HΓ0 HCr) as Hrel.
+  pose proof (closed_evaluated_over C Γ0 HCa HC HΓ0 HCr) as Hrel.
   destruct (rel_sub_under_ctx_simple Hsub) as (RΓ1 & HRΓ1 & RΔ & HRΔ & Hs).
   assert (E : RΓ0 <~> RΓ1) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HRΔ).
@@ -389,7 +389,7 @@ Proof.
   assert (Hnp : forall y, RΔ y y -> forall x, x < List.length (List.rev C) ->
               ~ entry_propositional gc_deps gc_stack (List.rev (List.rev C) ++ Γ0) y x)
     by (intros y Hyy x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx;
-        exact (relevant_entries_not_propositional _ _ _ HCa Hrel HRΔ _ _ Hyy x Hx)).
+        exact (evaluated_entries_not_propositional _ _ _ HCa Hrel HRΔ _ _ Hyy x Hx)).
   assert (HlC : List.length (List.rev C) = List.length Ms) by (rewrite List.length_rev; lia).
   assert (HlC' : List.length (List.rev C) = List.length Ms') by (rewrite List.length_rev; lia).
   rewrite <- (List.rev_involutive C) in Ey1, Ey2.
@@ -407,7 +407,7 @@ Qed.
     [σ] at [ρ], against their values at the value of [σ], related at
     [C]'s telescope. *)
 Lemma closed_instance_moved_gargs : forall C Γ0 Vs, tele_ass C -> ⊨ C -> ⊨ Γ0 ->
-    (exists l, rel_params_relevant ⋅ C l) ->
+    (exists l, rel_params_evaluated ⋅ C l) ->
     List.length Vs = List.length C ->
     Γ0 ⊨ˢ sb_of_list Id Vs ≈ sb_of_list Id Vs : C ++ Γ0 ->
     sub_link Γ0 (C ++ Γ0) (sb_of_list Id Vs) ->
@@ -416,7 +416,7 @@ Lemma closed_instance_moved_gargs : forall C Γ0 Vs, tele_ass C -> ⊨ C -> ⊨ 
       exists w, ⟦ List.map (fun V => V[σ]) Vs ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ w /\ per_gargs (List.rev C) nil nil w u.
 Proof.
   intros * HCa HC HΓ0 HCr HVl Hsub Hlk * HRΓ' Hσ Hρ Hev Hu.
-  pose proof (closed_relevant_over C Γ0 HCa HC HΓ0 HCr) as Hrel.
+  pose proof (closed_evaluated_over C Γ0 HCa HC HΓ0 HCr) as Hrel.
   destruct (closed_app_sem _ _ HCa HC HΓ0) as [HCΓ _].
   destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ HRCΓ].
   assert (HPCΓ : PER RCΓ) by (eapply per_env_PER; exact HRCΓ).
@@ -441,7 +441,7 @@ Proof.
   assert (Hnp : forall x, x < List.length (List.rev C) ->
               ~ entry_propositional gc_deps gc_stack (List.rev (List.rev C) ++ Γ0) e1 x)
     by (intros x Hx; rewrite List.rev_involutive; rewrite List.length_rev in Hx;
-        exact (relevant_entries_not_propositional _ _ _ HCa Hrel HRCΓ _ _ He11 x Hx)).
+        exact (evaluated_entries_not_propositional _ _ _ HCa Hrel HRCΓ _ _ He11 x Hx)).
   rewrite <- (List.rev_involutive C) in Ee1'.
   destruct (eval_sb_of_list_inv _ _ _ _ _ _ _ HlC Ee1' Hnp Hev) as (w & Ew & Hag).
   exists w; split; [ exact Ew |].
@@ -497,7 +497,7 @@ Proof.
   set (σ := sb_of_list Id Is).
   set (E0 := decl_env G ups).
   assert (HE0 : RG E0 E0) by exact (uparams_rel_env G (valid_group_valid _ _ Hg) ups ups Hgu Hu RG HRG).
-  pose proof (valid_ind_decl_uparams_relevant _ (valid_group_valid _ _ HgQ2)) as HCr.
+  pose proof (valid_ind_decl_uparams_evaluated _ (valid_group_valid _ _ HgQ2)) as HCr.
   pose proof (gsub_valid (valid_group_views_view_args_gsub pq G Hg Hcv _ _ _ _ _ _ _ HMk Hh Hq)) as Hσ.
   destruct (valid_group_views_view_args_sub_eval pq G Hg Hcv _ _ _ _ _ _ _ HMk Hh Hq ups ups Hgu Hu) as (cups0 & Ecups0 & Eσ).
   pose proof (functional_eval_exps' _ _ _ _ Ecups0 Ecups) as ->.
@@ -2785,7 +2785,7 @@ Section CrossBot.
   Lemma cross_wrapped_results : forall (rk : nat -> nat) r, view_rank_ok gc_deps gc_stack D rk ->
       (forall j', rk j' < r -> cross_bot j') ->
       forall Dc k kQ gq gA gB vA vB pre Ts pre' preQ TsQ s2,
-        cargs_kinds gq gA -> cargs_correspond vm gA gB -> cargs_nest_ok D Dc rk r gq gB -> cargs_leaf_mono Dc D' gq gA ->
+        cargs_same_kinds gq gA -> cargs_correspond vm gA gB -> cargs_nest_ok D Dc rk r gq gB -> cargs_leaf_mono Dc D' gq gA ->
         List.length pre' = List.length Ts -> List.length preQ = List.length TsQ ->
         con_args_rel p D (admissible_index_at D u0 nr) nr ar dr k u0 u0 pre pre' Ts gB vA vB ->
         cross_tops qc D D' ub u0 dr kQ k pre Ts preQ TsQ pre' gA gB vA vB ->
@@ -2956,7 +2956,7 @@ Section CrossBot.
       (** [Mn]'s constructors are [a]'s *)
     ; cross_block_site_names : List.map fst (im_cons Mn) = List.map fst (im_cons cross_block_site_Ma)
       (** Their argument kinds are compatible with [a]'s *)
-    ; cross_block_site_kinds : forall c gq gA, In (c, gq) (im_cons Mn) -> ind_con cross_block_site_Ma c = Some gA -> cargs_kinds gq gA
+    ; cross_block_site_kinds : forall c gq gA, In (c, gq) (im_cons Mn) -> ind_con cross_block_site_Ma c = Some gA -> cargs_same_kinds gq gA
       (** The paths [Dc] has are [a]'s *)
     ; cross_block_site_mono : forall c gq gA, In (c, gq) (im_cons Mn) -> ind_con cross_block_site_Ma c = Some gA ->
         cargs_leaf_mono Dc D' gq gA
@@ -3181,8 +3181,8 @@ Section CrossBot.
                nsA nsB c gq na nb Ba Bb gsA gsB vsA vsB ihsA ihsB wA wB ra rb ta tb).
       + exact HcA.
       + exact HcB.
-      + rewrite (HarB _ _ _ _ _ _ _ HMa HblA HcA InA), (cargs_kinds_length _ _ Hkd), Hnn; reflexivity.
-      + rewrite (valid_blocks_arity _ _ _ _ _ _ HBk _ _ _ _ _ _ _ HMb HblB HcB InB), (cargs_kinds_length _ _ Hkd),
+      + rewrite (HarB _ _ _ _ _ _ _ HMa HblA HcA InA), (cargs_same_kinds_length _ _ Hkd), Hnn; reflexivity.
+      + rewrite (valid_blocks_arity _ _ _ _ _ _ HBk _ _ _ _ _ _ _ HMb HblB HcB InB), (cargs_same_kinds_length _ _ Hkd),
           (cargs_correspond_len _ _ _ Hcorr), Hnn', Hnn; reflexivity.
       + exact PA.
       + exact PB.
@@ -3379,7 +3379,7 @@ Section CrossBot.
         * reflexivity.
         * intros c gq gA Hin HcA.
           pose proof (cons_lookup_nodup_in _ _ _ Hnd Hin) as Hc0; unfold ind_con in HcA; rewrite Hc0 in HcA; injection HcA as <-.
-          apply cargs_kinds_refl.
+          apply cargs_same_kinds_refl.
         * intros c gq gA Hin HcA.
           pose proof (cons_lookup_nodup_in _ _ _ Hnd Hin) as Hc0; unfold ind_con in HcA; rewrite Hc0 in HcA; injection HcA as <-.
           apply cargs_leaf_mono_refl.
@@ -3449,7 +3449,7 @@ Section CrossBot.
         * symmetry; exact (view_member_names _ _ _ _ _ _ _ _ _ Hvmn).
         * intros c gq gA Hin HcA.
           destruct (view_member_cons _ _ _ _ _ _ _ _ _ Hvmn c gq (cons_lookup_nodup_in _ _ _ Hnd Hin)) as (gA0 & HcA0 & Hco).
-          rewrite HcA in HcA0; injection HcA0 as <-; exact (cargs_kinds_of_correspond _ _ _ Hco).
+          rewrite HcA in HcA0; injection HcA0 as <-; exact (cargs_same_kinds_of_correspond _ _ _ Hco).
         * intros c gq gA Hin HcA.
           destruct (view_member_cons _ _ _ _ _ _ _ _ _ Hvmn c gq (cons_lookup_nodup_in _ _ _ Hnd Hin)) as (gA0 & HcA0 & Hco).
           rewrite HcA in HcA0; injection HcA0 as <-.

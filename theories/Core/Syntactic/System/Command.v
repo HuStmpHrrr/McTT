@@ -1259,7 +1259,7 @@ Section Semantics.
       tele_ass Δ ->
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
       (** the parameters are types of a universe, at a common level *)
-      params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+      params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_mod_open x pv Δ ⇝ Θ ⍮ gs_push (qname_in (gs_path Ξ) x) Δ Ξ ⍮ B ⍮ Rb
   (** The frame of a module on top, at the path [x] in the frame below,
@@ -1285,7 +1285,7 @@ Section Semantics.
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
       (** the parameters are types of a universe, at a common level *)
-      params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+      params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
       levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_alias x pv Δ E ⇝ Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ ⍮ B ⍮ Rb
@@ -1383,7 +1383,7 @@ Section Semantics.
       tele_ass Δ ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H ->
-      params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+      params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
       modexp_as_term H = Some M ->
       @alg_type_infer (gc_mk Θ Ξ) (Δ ++ gs_tele Ξ) W M ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i ->
@@ -1400,7 +1400,7 @@ Section Semantics.
       tele_ass Δ ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H ->
-      params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+      params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
       modexp_as_term H = Some M ->
       @alg_type_infer (gc_mk Θ Ξ) (Δ ++ gs_tele Ξ) W M ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i ->
@@ -1464,7 +1464,7 @@ Section Semantics.
       tele_ass P' ->
       ⊢ Θ1 ⍮ nil ⍮ P' ->
       (** the unit's parameters are types of a universe, at a common level *)
-      params_relevant Θ1 nil nil P' l ->
+      params_evaluated Θ1 nil nil P' l ->
       acc_ok Θ1 nil (tele_refs nil P) ->
       Θ1 ⍮ gs_push (q_abs fp nil) P' nil ⍮ B1 ⍮ Rb1 ⊢[fp :: ch] List.map ci_written cs ⇝* Θ2 ⍮ (mp, K, U) :: nil ⍮ B2 ⍮ Rb2 ->
       run_unit (fp :: ch) (imps, P, cs) B2 Rb2 Θ2 U
@@ -1985,18 +1985,18 @@ Qed.
 (** The same record's own parameters are types of a universe, at a common
     level: by the premise of [wf_gentry_record], or by (R) of the body of
     its module, one entry out (the value). *)
-Lemma record_nil_entry_params_relevant : forall Θ Ξ mp pv pr Δ Srt fs,
+Lemma record_nil_entry_params_evaluated : forall Θ Ξ mp pv pr Δ Srt fs,
     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr (record_at Ξ Δ Srt fs) ⋄ ->
-    exists l, params_relevant Θ Ξ (gs_tele Ξ) Δ l.
+    exists l, params_evaluated Θ Ξ (gs_tele Ξ) Δ l.
 Proof.
   intros * HE.
   assert (HP : record_params (record_at Ξ Δ Srt fs) = Δ ++ gs_tele Ξ) by reflexivity.
   inversion HE; subst.
   - match goal with Hp : record_params _ = ?Δ' ++ _ |- _ =>
       rewrite HP in Hp; apply app_inv_tail in Hp; subst Δ' end.
-    eexists; eapply params_relevant_of_sorts; eassumption.
+    eexists; eapply params_evaluated_of_sorts; eassumption.
   - match goal with Hm : _ ⍮ _ ⍮ _ ⍮ fk_record _ ⍮ _ ⊢ᵍᵐ ⋄ |- _ =>
-      destruct (wf_gmod_params_relevant _ _ _ _ _ _ Hm) as [l Hl] end.
+      destruct (wf_gmod_params_evaluated _ _ _ _ _ _ Hm) as [l Hl] end.
     cbn [frame_params List.tl] in Hl.
     match goal with Hp : record_params _ = ?Δ' ++ _ |- _ =>
       rewrite HP in Hp; apply app_inv_tail in Hp; subst Δ' end.
@@ -2012,7 +2012,7 @@ Lemma later_member_entry : forall Θ mq Kq Δ Φ Ξ0 y0 pv0 Φm D k Mk x pv Δu 
     gm_entry Φ (y0 :: nil) = Some (ge_ind pv0 (qname_in mq y0) 0 D Φm) ->
     ind_member D k = Some Mk -> 0 < k -> k < ind_ndecl D -> im_head Mk = mh_decl (qname_in mq x) ->
     ind_uparams D = Δu ++ gs_tele ((mq, Kq, gu_body Δ Φ) :: Ξ0) ->
-    params_relevant Θ ((mq, Kq, gu_body Δ Φ) :: Ξ0) (gs_tele ((mq, Kq, gu_body Δ Φ) :: Ξ0)) Δu l ->
+    params_evaluated Θ ((mq, Kq, gu_body Δ Φ) :: Ξ0) (gs_tele ((mq, Kq, gu_body Δ Φ) :: Ξ0)) Δu l ->
     Θ ⍮ (mq, Kq, gu_body Δ Φ) :: Ξ0 ⍮ qname_in mq x ⊢ᵉ ge_ind pv (qname_in mq y0) k D ⋄.
 Proof.
   intros * HΞ He HMk Hk Hlt Hh Hu HPr.
@@ -2023,23 +2023,23 @@ Proof.
     rewrite ind_lookup_unfold, (proj2 (gc_entry_ind _ _ _ _ _ _ _ _ HeE)); reflexivity. }
   destruct (decl_of_lookup _ _ ⋅ _ _ (wf_ctx_empty _ _ HΞ) Hl) as [HD _].
   destruct (decl_typed_uparams _ _ _ HD) as [HU Hass].
-  destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+  destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
   eapply wf_gentry_ind_mem_nil with (param_level := l) (param_sorts := ps); eassumption.
 Qed.
 
 (** A member of a group well formed with an empty module where it is
     declared has relevant uniform parameters of its own, over the frames'
     parameters: by the premise of its rule, or by (R) of its module. *)
-Lemma ind_empty_entry_params_relevant : forall Θ Ξ mp pv pq k D Δu,
+Lemma ind_empty_entry_params_evaluated : forall Θ Ξ mp pv pq k D Δu,
     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D ⋄ -> ind_uparams D = Δu ++ gs_tele Ξ ->
-    exists l, params_relevant Θ Ξ (gs_tele Ξ) Δu l.
+    exists l, params_evaluated Θ Ξ (gs_tele Ξ) Δu l.
 Proof.
   intros * HE; revert Δu; inversion HE; subst; intros Δu' Hu.
   all: match goal with HU : ind_uparams ?D0 = ?Δ0 ++ gs_tele _ |- _ =>
          assert_fails constr_eq Δ0 Δu'; rewrite Hu in HU; apply app_inv_tail in HU; subst Δ0 end.
-  all: try solve [ eexists; eassumption | eexists; eapply params_relevant_of_sorts; eassumption ].
+  all: try solve [ eexists; eassumption | eexists; eapply params_evaluated_of_sorts; eassumption ].
   match goal with HΦ : _ ⍮ _ ⍮ _ ⍮ fk_ind _ _ _ ⍮ _ ⊢ᵍᵐ _ |- _ =>
-    destruct (wf_gmod_params_relevant _ _ _ _ _ _ HΦ) as [l Hl]; exists l; exact Hl end.
+    destruct (wf_gmod_params_evaluated _ _ _ _ _ _ HΦ) as [l Hl]; exists l; exact Hl end.
 Qed.
 
 (** The name of an entry of a frame is fresh in the body before it. *)
@@ -2410,11 +2410,11 @@ Qed.
 
 Lemma add_alias_wf : forall Θ Ξ x pv Δ E l,
     ⊢ᵍ Θ ⍮ Ξ -> tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    params_relevant Θ Ξ (gs_tele Ξ) Δ l -> levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E ->
+    params_evaluated Θ Ξ (gs_tele Ξ) Δ l -> levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E ->
     gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ.
 Proof.
   intros * HΞ Htel HΔ HE HP Hlv Hfr.
-  destruct (params_relevant_sorts _ _ _ _ _ HP) as (ps & Hps & HT).
+  destruct (params_evaluated_sorts _ _ _ _ _ HP) as (ps & Hps & HT).
   destruct (levels_abstractable_flag _ _ _ _ Hlv) as (lv & Rt & Hl1 & Hl2 & Hl3).
   destruct Ξ as [| [[mp K] [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
   inversion HΞ as [| | ? ? ? ? ? ? Hs0 HΦ Hff]; subst.
@@ -2428,12 +2428,12 @@ Qed.
 Lemma add_dm_wf : forall Θ Ξ x pv Δ A M H (i : nat) l,
     ⊢ᵍ Θ ⍮ Ξ -> tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H -> params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) H ->
     gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (dm_entry Ξ pv Δ A M H) Ξ.
 Proof.
   intros * HΞ Htel HΔ HA HM HH HPr Hlv Hfr.
-  destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+  destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
   destruct (levels_abstractable_flag _ _ _ _ Hlv) as (lv & Rt & Hl1 & Hl2 & Hl3).
   pose proof (presup_exp_ctx HM) as HΔT.
   destruct (ctx_pi_wf _ _ _ _ _ _ HΔT HA) as [j HP].
@@ -2447,9 +2447,9 @@ Qed.
 Lemma gens_run_wf : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ'.
 Proof.
   induction 1; intros HΞ; [ exact HΞ | apply IHgens_run; eapply add_def_wf; eassumption | |].
-  - apply IHgens_run; apply (add_alias_wf _ _ _ _ nil _ 0); try assumption; [ constructor | | apply params_relevant_nil ].
+  - apply IHgens_run; apply (add_alias_wf _ _ _ _ nil _ 0); try assumption; [ constructor | | apply params_evaluated_nil ].
     constructor; exact (presup_modexp_eq_ctx H).
-  - apply IHgens_run; apply (add_dm_wf _ _ _ _ nil _ _ _ i 0); try assumption; [ constructor | | apply params_relevant_nil ].
+  - apply IHgens_run; apply (add_dm_wf _ _ _ _ nil _ _ _ i 0); try assumption; [ constructor | | apply params_evaluated_nil ].
     constructor; exact (presup_exp_ctx H1).
 Qed.
 
@@ -2484,9 +2484,9 @@ Lemma gens_run_ind_lookup : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> ⊢ᵍ
 Proof.
   induction 1; intros HΞ p0 D0 Hl; [ exact Hl | .. ]; apply IHgens_run; try (apply ind_lookup_add; assumption).
   - eapply add_def_wf; eassumption.
-  - apply (add_alias_wf _ _ _ _ nil _ 0); try assumption; [ constructor | | apply params_relevant_nil ].
+  - apply (add_alias_wf _ _ _ _ nil _ 0); try assumption; [ constructor | | apply params_evaluated_nil ].
     constructor; exact (presup_modexp_eq_ctx H).
-  - apply (add_dm_wf _ _ _ _ nil _ _ _ i 0); try assumption; [ constructor | | apply params_relevant_nil ].
+  - apply (add_dm_wf _ _ _ _ nil _ _ _ i 0); try assumption; [ constructor | | apply params_evaluated_nil ].
     constructor; exact (presup_exp_ctx H1).
 Qed.
 
@@ -2835,7 +2835,7 @@ Section WellFormed.
     inversion Hr as [| | ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? Hopen Hrest]; subst.
     inversion Hopen as [| | ? ? ? ? ? ? ? ? l Htel HΔ HPr Hfr | | | | | | | | | | | | | ]; subst.
     destruct (run_cmds_app _ _ _ _ _ _ _ _ _ _ _ Hrest) as (Bd & Rbd & Θd & Ξ1 & Hdefs & Hclose).
-    destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+    destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
     match goal with |- gen_run ?T ?X _ _ _ _ _ _ =>
       assert (Hpush : ⊢ᵍ T ⍮ gs_push (qname_in (gs_path X) "Rec") (recursor_tele pq D Δu) X);
       [ destruct X as [| [[mq Kq] Uq] Ξs]; [ contradiction |];
@@ -2902,8 +2902,8 @@ Section WellFormed.
     intros * HΞ Hu Hfr HE Hr.
     destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
     destruct (ind_nil_entry_uparams _ _ _ _ _ _ _ _ HE Hu) as [Htel HΔ].
-    destruct (ind_empty_entry_params_relevant _ _ _ _ _ _ _ _ HE Hu) as [l HPr].
-    destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+    destruct (ind_empty_entry_params_evaluated _ _ _ _ _ _ _ _ HE Hu) as [l HPr].
+    destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
     assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_ind (ind_qname ((mq, Kq, Uq) :: Ξ0) x) pq k D (raw_decl_uparams R) ((mq, Kq, Uq) :: Ξ0)).
     { apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_ind_nil; eassumption |].
       cbn; exists x; split; [ reflexivity | exact Hfr ]. }
@@ -2965,7 +2965,7 @@ Section WellFormed.
                     | apply stack_in_add; exact Hst ].
     - (* a module's frame, opened at its path in the frame below *)
       intros ch B Rb Θ Ξ x pv Δ l Htel HΔ HPr Hfr HΞ Hc Hst.
-      destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+      destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
       repeat split; [| exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl
                     | apply stack_in_push; assumption ].
       destruct Ξ as [| [[mp K] [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr |- *.
@@ -3048,8 +3048,8 @@ Section WellFormed.
       intros ch B Rb Θ Ξ x pv Δ Srt fs B1 Rb1 Θ1 Ξ1 Hfr HE Hr1 IH1 HΞ Hc Hst.
       destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
       destruct (record_nil_entry_params _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
-      destruct (record_nil_entry_params_relevant _ _ _ _ _ _ _ _ HE) as [l HPr].
-      destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+      destruct (record_nil_entry_params_evaluated _ _ _ _ _ _ _ _ HE) as [l HPr].
+      destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
       assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_record (ind_qname ((mq, Kq, Uq) :: Ξ0) x)
                               (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs) Δ ((mq, Kq, Uq) :: Ξ0)).
       { apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_record_nil; try eassumption; reflexivity |].
@@ -3079,7 +3079,7 @@ Section WellFormed.
       destruct (IHi ltac:(constructor; constructor) canon_nil ltac:(intros ? ? ? [])) as (H1 & Hc1 & _ & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
-      destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+      destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
       assert (Hpush : ⊢ᵍ Θ1 ⍮ gs_push (q_abs fp nil) P nil).
       { apply wf_gstack_cons; [ exact H1 | eapply wf_gmod_nil with (param_level := l) (param_sorts := ps) | ].
         - exact Htel.
@@ -3267,8 +3267,8 @@ Section WellFormed.
       intros ch B Rb Θ Ξ x pv Δ Srt fs B1 Rb1 Θ1 Ξ1 Hfr HE Hr1 IH1 HΞ Hc Hst Hb HR.
       destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
       destruct (record_nil_entry_params _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
-      destruct (record_nil_entry_params_relevant _ _ _ _ _ _ _ _ HE) as [l HPr].
-      destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+      destruct (record_nil_entry_params_evaluated _ _ _ _ _ _ _ _ HE) as [l HPr].
+      destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
       assert (Hff : frame_fresh Θ ((mq, Kq, Uq) :: Ξ0) (ind_qname ((mq, Kq, Uq) :: Ξ0) x))
         by (cbn; exists x; split; [ reflexivity | exact Hfr ]).
       assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_record (ind_qname ((mq, Kq, Uq) :: Ξ0) x)
@@ -3299,7 +3299,7 @@ Section WellFormed.
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
       assert (Hff : frame_fresh Θ1 nil (q_abs fp nil)) by (cbn; split; [ exact Hn1 | reflexivity ]).
-      destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+      destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
       assert (Hpush : ⊢ᵍ Θ1 ⍮ gs_push (q_abs fp nil) P nil).
       { apply wf_gstack_cons; [ exact H1 | eapply wf_gmod_nil with (param_level := l) (param_sorts := ps) | exact Hff ].
         - exact Htel.
@@ -3324,8 +3324,8 @@ Section WellFormed.
       intros ch B Rb Θ Ξ pv R pq D k x xs M B1 Rb1 Θ1 mp K U B2 Rb2 Θ2 Ξ2 HM Hfr HE Hr IHr Hrest IHrest HΞ Hc Hst Hu Hb HR.
       destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
       destruct (ind_nil_entry_uparams _ _ _ _ _ _ _ _ HE Hu) as [Htel HΔ].
-      destruct (ind_empty_entry_params_relevant _ _ _ _ _ _ _ _ HE Hu) as [l HPr].
-      destruct (params_relevant_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
+      destruct (ind_empty_entry_params_evaluated _ _ _ _ _ _ _ _ HE Hu) as [l HPr].
+      destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
       assert (Hff : frame_fresh Θ ((mq, Kq, Uq) :: Ξ0) (ind_qname ((mq, Kq, Uq) :: Ξ0) x))
         by (cbn; exists x; split; [ reflexivity | exact Hfr ]).
       assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_ind (ind_qname ((mq, Kq, Uq) :: Ξ0) x) pq k D (raw_decl_uparams R) ((mq, Kq, Uq) :: Ξ0))

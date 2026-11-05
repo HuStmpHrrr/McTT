@@ -198,15 +198,6 @@ Record valid_def_entry (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (r : abs_kind) (A 
         every parameter is a level ([level_sorted_parameters]) *)
   ; valid_def_entry_pi_kinds : forall Δ1 κ B Δ2, T = Δ1 ++ ce_ass κ B :: Δ2 -> pi_kinds κ r }.
 
-(** Each parameter of a telescope may be abstracted at a kind whose
-    level case has only levels as parameters. *)
-Lemma pi_kinds_of_level_sorted : forall T r, (r = ak_level -> level_sorted_parameters T) ->
-    forall Δ1 κ B Δ2, T = Δ1 ++ ce_ass κ B :: Δ2 -> pi_kinds κ r.
-Proof.
-  intros * Hl * HT; destruct r; [ constructor | constructor |].
-  rewrite (Hl eq_refl _ _ _ _ HT); constructor.
-Qed.
-
 Definition valid_entry (Θs : gdeps) (Ξs : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ r A oM => valid_def_entry Θ2 Ξ2 T r A oM
@@ -224,7 +215,7 @@ Record valid_mod_tele (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) : Prop := mk_valid_
     (** It has parameters only *)
   ; valid_mod_tele_ass : tele_ass T
     (** They are types of a universe at one level *)
-  ; valid_mod_tele_relevant : exists l : nat, @rel_params_relevant (gc_mk Θ2 Ξ2) nil T l }.
+  ; valid_mod_tele_evaluated : exists l : nat, @rel_params_evaluated (gc_mk Θ2 Ξ2) nil T l }.
 
 (** A declaration: valid, and the type of each member's type former,
     abstracted over the outer part of its parameters, a type over the inner
@@ -336,7 +327,7 @@ Section ApplyTele.
     through the body's judgment.  The body's type is of an evaluated kind
     [r], each parameter abstractable at [r]. *)
 Lemma ctx_fn_apps_tele : forall T Γ RΓ B M r l k, tele_ass T -> ⊨ T ++ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
-    rel_params_relevant Γ T l -> (forall Δ1 κ A Δ2, T = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
+    rel_params_evaluated Γ T l -> (forall Δ1 κ A Δ2, T = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
     T ++ Γ ⊨ᵗ B ≈ B at k -> rel_type_kind (T ++ Γ) B r -> T ++ Γ ⊨ M : B ->
     forall ρ1 ρ2 ns g m, RΓ ρ1 ρ2 -> per_gargs (rev T) ρ1 ρ1 ns ns -> List.length ns = List.length T ->
       ⟦ ctx_fn T M ⟧ ρ2 ↘ g -> ⟦ M ⟧ env_tele ρ1 (rev T) ns ↘ m ->
@@ -360,7 +351,7 @@ Proof.
     | H6 : PER.Definitions.rel_typ _ A ρ1 A ρ1 ?R, H8 : ?R n n, H9 : per_gargs (rev T0) _ _ ns0 ns0, H3 : ⟦ A ⟧ ρ2 ↘ ?a |- _ =>
         rename H6 into HAr; rename H8 into Hn; rename H9 into Hg0; rename H3 into Ha2; rename R into RA0; rename a into a2
     end.
-    destruct (rel_params_relevant_snoc_inv _ _ _ _ _ HTr) as [HAp HT0r].
+    destruct (rel_params_evaluated_snoc_inv _ _ _ _ _ HTr) as [HAp HT0r].
     pose proof (rel_param_typed_type _ _ _ HAp) as HAt.
     destruct (rel_type_inversion_simple_at HΓ HAt _ _ Hρ) as (a1 & a2' & Ha1 & Ha2' & [RA HRA]).
     pose proof (functional_eval_exp _ _ _ _ Ha2' Ha2) as ->.
@@ -584,7 +575,7 @@ Section FiledOk.
   (** The closed type of a member of an evaluated kind [r], over a
       telescope of relevant parameters abstractable at [r], of a type of
       the sort of [r] over it: a type of kind [r]. *)
-  Lemma filed_ok_closed_type : forall T A0 r i l, tele_ass T -> ⊨ T -> rel_params_relevant ⋅ T l ->
+  Lemma filed_ok_closed_type : forall T A0 r i l, tele_ass T -> ⊨ T -> rel_params_evaluated ⋅ T l ->
       (forall Δ1 κ B Δ2, T = Δ1 ++ ce_ass κ B :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
       T ⊨ A0 : abs_kind_sort r Typeω@i ->
       exists k, (⋅ ⊨ᵗ ctx_pi_at r T A0 ≈ ctx_pi_at r T A0 at k) /\ rel_type_kind ⋅ (ctx_pi_at r T A0) r.
@@ -617,7 +608,7 @@ Section FiledOk.
       type, and, applied to arguments, related to the value of its reduct
       at them. *)
   Lemma filed_ok_term_fn : forall T A0 r i l M0 R0,
-      tele_ass T -> ⊨ T -> rel_params_relevant ⋅ T l ->
+      tele_ass T -> ⊨ T -> rel_params_evaluated ⋅ T l ->
       (forall Δ1 κ B Δ2, T = Δ1 ++ ce_ass κ B :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
       T ⊨ A0 : abs_kind_sort r Typeω@i -> T ⊨ M0 : A0 ->
       (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
@@ -648,8 +639,8 @@ Section FiledOk.
     exists g; split; [ exact Hg |]; split; [| exact (mk_rel_self _ _ _ _ j E0 e He0 HE0 Hgg) ].
     intros * -> Hl Ha; destruct (Hats _ _ _ _ eq_refl Hl Ha) as [Hty Hred]; split; [ exact Hty | right ].
     destruct (tele_ass_app_inv _ _ HTa) as [HTa1 HTa2].
-    pose proof (rel_params_relevant_inner _ _ _ _ HTr) as HT1r; rewrite app_nil_r in HT1r.
-    pose proof (rel_params_relevant_outer _ _ _ _ HTr) as HT2r.
+    pose proof (rel_params_evaluated_inner _ _ _ _ HTr) as HT1r; rewrite app_nil_r in HT1r.
+    pose proof (rel_params_evaluated_outer _ _ _ _ HTr) as HT2r.
     (* each part of the telescope abstractable at [r] *)
     assert (Hpk1 : forall Δ1 κ B Δ2, T1 = Δ1 ++ ce_ass κ B :: Δ2 -> pi_kinds κ r)
       by (intros Δ1 κ B Δ2 ->; apply (Hpk Δ1 κ B (Δ2 ++ T2)); rewrite <- app_assoc; reflexivity).

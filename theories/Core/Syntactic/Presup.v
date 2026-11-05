@@ -120,7 +120,7 @@ Proof.
       [System/Inductives/Typing.v].  The positional premises of the
       congruence on the motives and the branches give those of either side,
       one component of their induction hypotheses each.  The lemmas are
-      stated at the motives' sort, [relevance_sort r Typeω@i], so they
+      stated at the motives' sort, [abs_kind_sort r Typeω@i], so they
       cover both tags. *)
   all: try solve [ eapply wf_iota_lhs; eassumption | eapply wf_iota_rhs; eassumption ].
   all: try solve [ eapply wf_elim; eassumption | eapply wf_elim_view_rhs; eassumption ].

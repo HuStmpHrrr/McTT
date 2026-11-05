@@ -94,7 +94,7 @@ Qed.
 (** A type of levels is of no large universe: at the initial environment
     its value is an element of [LevelSort], a type of levels
     ([per_level_sort]), and an element of the universe, no type of levels
-    ([per_relevant_nonlevel], [rel_exp_of_typ_nonlevel_at]).  For example
+    ([rel_exp_of_typ_nonlevel_at]).  For example
     [⋅ ⊢ Level@0 : Type@0] fails. *)
 Lemma level_type_not_large : forall {Γ A k}, Γ ⊢ A : LevelSort -> Γ ⊢ A : Typeω@k -> False.
 Proof.
@@ -591,7 +591,7 @@ Proof.
     rewrite Hl in H1; injection H1 as <-; rewrite Hk in H2; injection H2 as <-; rename H3 into Hps; exists Ps end.
   split; [ reflexivity | split ].
   - rewrite (read_ps_length_nf _ _ _ _ _ Hps), (read_ps_length _ _ _ _ _ Hps), List.length_rev, length_im_params; reflexivity.
-  - exact (nbe_params_at_telescope _ _ _ _ _ _ (ind_relevant_params_telescope _ _ _ _ _ HΓ Hl Hk)
+  - exact (nbe_params_at_telescope _ _ _ _ _ _ (ind_evaluated_params_telescope _ _ _ _ _ HΓ Hl Hk)
              ltac:(rewrite length_im_params; exact HMl) HMt Hρ Hvs Hps).
 Qed.
 
@@ -694,7 +694,7 @@ Corollary exp_eq_ind_apps_inv : forall Γ p D k Mk X Y i, ind_lookup gc_deps gc_
 Proof.
   intros * Hl Hk H HXl HYl HXt HYt.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-  destruct (ind_relevant_params_telescope _ _ _ _ _ HΓ Hl Hk) as [HCa _ _ HCΓ].
+  destruct (ind_evaluated_params_telescope _ _ _ _ _ HΓ Hl Hk) as [HCa _ _ HCΓ].
   destruct (completeness_ty H) as (W & W' & HWX & HWY & HE).
   destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HXl HXt HWX) as (Rs & -> & HRl & HX).
   destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HYl HYt HWY) as (Rs' & -> & _ & HY).
@@ -1237,7 +1237,7 @@ Proof.
     rewrite Hl in H1; injection H1 as <-; rename H3 into Hps; exists Ps end.
   split; [ reflexivity | split ].
   - rewrite (read_ps_length_nf _ _ _ _ _ Hps), (read_ps_length _ _ _ _ _ Hps), List.length_rev; reflexivity.
-  - exact (nbe_params_at_telescope _ _ _ _ _ _ (record_relevant_params_telescope _ _ _ HΓ Hl) HMl HMt Hρ Hvs Hps).
+  - exact (nbe_params_at_telescope _ _ _ _ _ _ (record_evaluated_params_telescope _ _ _ HΓ Hl) HMl HMt Hρ Hvs Hps).
 Qed.
 
 (** A type whose normal form is a record type is equal to the type former
@@ -1259,7 +1259,7 @@ Corollary exp_eq_record_apps_inv : forall Γ p R X Y i, record_lookup gc_deps gc
 Proof.
   intros * Hl H HXl HYl HXt HYt.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-  destruct (record_relevant_params_telescope _ _ _ HΓ Hl) as [HCa _ _ HCΓ].
+  destruct (record_evaluated_params_telescope _ _ _ HΓ Hl) as [HCa _ _ HCΓ].
   destruct (completeness_ty H) as (W & W' & HWX & HWY & HE).
   destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HXl HXt HWX) as (Rs & -> & HRl & HX).
   destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HYl HYt HWY) as (Rs' & -> & _ & HY).

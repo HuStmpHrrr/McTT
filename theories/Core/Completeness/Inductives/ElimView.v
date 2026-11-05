@@ -722,7 +722,7 @@ Proof.
     pose proof (wrap_inst_shift nn na r (vars_from 0 r)) as Hs; rewrite length_vars_from in Hs; symmetry; exact Hs.
 Qed.
 
-Lemma length_merge_ihs : forall D' D gs' gs ihs w, cargs_kinds gs' gs -> List.length ihs = cargs_nrec D gs ->
+Lemma length_merge_ihs : forall D' D gs' gs ihs w, cargs_same_kinds gs' gs -> List.length ihs = cargs_nrec D gs ->
     List.length (merge_ihs D' D gs' gs ihs w) = cargs_nrec D gs.
 Proof.
   intros D' D; induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] ihs w Hk Hl; cbn in Hk |- *; try contradiction;
@@ -733,7 +733,7 @@ Proof.
       rewrite (IH gs) by (try exact Hk; rewrite List.length_skipn; lia); lia.
 Qed.
 
-Lemma merge_ihs_app : forall D' D G1' G1 G2' G2 ihs w, cargs_kinds G1' G1 ->
+Lemma merge_ihs_app : forall D' D G1' G1 G2' G2 ihs w, cargs_same_kinds G1' G1 ->
     merge_ihs D' D (G1' ++ G2') (G1 ++ G2) ihs w
     = merge_ihs D' D G1' G1 (List.firstn (cargs_nrec D G1) ihs) w ++
       merge_ihs D' D G2' G2 (List.skipn (cargs_nrec D G1) ihs) (List.skipn (cargs_container_count D D' G1' G1) w).
@@ -754,7 +754,7 @@ Proof.
     + rewrite !List.skipn_skipn, (Nat.add_comm (cargs_nrec D G1)), (Nat.add_comm (cargs_container_count D D' G1' G1)); reflexivity.
 Qed.
 
-Lemma sel_ihs_app : forall D' D G1' G1 G2' G2 ihs, cargs_kinds G1' G1 ->
+Lemma sel_ihs_app : forall D' D G1' G1 G2' G2 ihs, cargs_same_kinds G1' G1 ->
     sel_ihs D' D (G1' ++ G2') (G1 ++ G2) ihs
     = sel_ihs D' D G1' G1 (List.firstn (cargs_nrec D G1) ihs) ++ sel_ihs D' D G2' G2 (List.skipn (cargs_nrec D G1) ihs).
 Proof.
@@ -774,7 +774,7 @@ Proof.
     + rewrite List.skipn_skipn, Nat.add_comm; reflexivity.
 Qed.
 
-Lemma length_sel_ihs : forall D' D gs' gs ihs, cargs_kinds gs' gs -> List.length ihs = cargs_nrec D gs ->
+Lemma length_sel_ihs : forall D' D gs' gs ihs, cargs_same_kinds gs' gs -> List.length ihs = cargs_nrec D gs ->
     List.length (sel_ihs D' D gs' gs ihs) = cargs_container_count D D' gs' gs.
 Proof.
   intros D' D; induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] ihs Hk Hl; cbn in Hk |- *; try contradiction;
@@ -867,7 +867,7 @@ Proof.
   apply List.Forall_app; split; apply tele_ass_sub; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ].
 Qed.
 
-Lemma length_wrap_bctx : forall pq D D' M gs' gs As Us, cargs_kinds gs' gs ->
+Lemma length_wrap_bctx : forall pq D D' M gs' gs As Us, cargs_same_kinds gs' gs ->
     List.length (wrap_bctx pq D D' M gs' gs As Us) = (cargs_container_count D D' gs' gs + List.length gs + im_nn M)%nat.
 Proof.
   intros * Hk; unfold wrap_bctx; rewrite !List.length_app, length_wrap_ihs_ctx by exact Hk.
@@ -904,7 +904,7 @@ Proof.
     + constructor; [ exact Ee | apply IH; [ lia | exact Ees | lia ] ].
 Qed.
 
-Lemma eval_wrap_ihs : forall D' D gs' gs ihs ihsE C (Y w : list (domain * entry_type)) r', cargs_kinds gs' gs ->
+Lemma eval_wrap_ihs : forall D' D gs' gs ihs ihsE C (Y w : list (domain * entry_type)) r', cargs_same_kinds gs' gs ->
     List.length ihs = cargs_nrec D gs ->
     ⟦ ihs ⟧* gc_deps ⍮ gc_stack ⍮ env_extend_typed C (Y ++ w) ↘ ihsE -> r' + cargs_container_count D D' gs' gs <= List.length w ->
     ⟦ wrap_ihs D' D gs' gs ihs r' (List.length w) ⟧* gc_deps ⍮ gc_stack ⍮ env_extend_typed C (Y ++ w)
@@ -1390,7 +1390,7 @@ Section SelfElim.
   Section WrapCv.
     Variable (D' : ind_decl).
     Variable (v : nat) (Mv : imember) (c : String.string) (gs' gs : list carg).
-    Hypotheses (HMv : ind_member D v = Some Mv) (Hcon : ind_con Mv c = Some gs) (Hk : cargs_kinds gs' gs)
+    Hypotheses (HMv : ind_member D v = Some Mv) (Hcon : ind_con Mv c = Some gs) (Hk : cargs_same_kinds gs' gs)
       (HrvMv : im_is_rview Mv = false).
     Let nn := im_nn Mv.
     Let na := List.length gs.
@@ -1426,7 +1426,7 @@ Section SelfElim.
       pose proof HX as HX0; rewrite tele_rel_iff in HX0; destruct HX0 as (LX & LX' & _).
       unfold T in LX, LX'; rewrite List.length_rev, length_im_nparams in LX, LX'.
       pose proof (nparams_rel_refl_l p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HMv _ _ HX) as HXX.
-      pose proof (cargs_kinds_length _ _ Hk) as Lgs.
+      pose proof (cargs_same_kinds_length _ _ Hk) as Lgs.
       induction kk as [| kk IH]; intros Hkk; [ cbn; constructor |].
       destruct (nth_error_lt_some' gs kk ltac:(unfold na in Hkk; lia)) as [g Hg].
       destruct (nth_error_lt_some' gs' kk ltac:(unfold na in Hkk; lia)) as [g' Hg'].
@@ -1440,8 +1440,8 @@ Section SelfElim.
       rewrite (firstn_S_snoc _ _ _ Hg), (firstn_S_snoc _ _ _ Hg').
       set (G1 := List.firstn kk gs) in *; set (G1' := List.firstn kk gs') in *.
       set (G2 := List.skipn (S kk) gs) in *; set (G2' := List.skipn (S kk) gs') in *.
-      assert (Hkk' : cargs_kinds (G1' ++ g' :: G2') (G1 ++ g :: G2)) by (rewrite <- Heq0, <- Heq0'; exact Hk).
-      destruct (cargs_kinds_app_inv G1' G1 (g' :: G2') (g :: G2) ltac:(lia) Hkk') as [Hk1 Hkg].
+      assert (Hkk' : cargs_same_kinds (G1' ++ g' :: G2') (G1 ++ g :: G2)) by (rewrite <- Heq0, <- Heq0'; exact Hk).
+      destruct (cargs_same_kinds_app_inv G1' G1 (g' :: G2') (g :: G2) ltac:(lia) Hkk') as [Hk1 Hkg].
       rewrite wrap_ihs_ctx_app, cargs_container_count_app, sel_ihs_app by exact Hk1.
       rewrite List.firstn_firstn, Nat.min_l by (rewrite cargs_nrec_app'; lia).
       destruct g' as [A' | t'], g as [A | t]; cbn in Hkg; try contradiction; cbn [wrap_ihs_ctx List.app cargs_container_count cargs_nrec sel_ihs].
@@ -1677,7 +1677,7 @@ Section SelfElim.
       destruct (rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li Li'].
       pose proof HX as HX0; rewrite tele_rel_iff in HX0; destruct HX0 as (LX & LX' & _).
       unfold T in LX, LX'; rewrite List.length_rev, length_im_nparams in LX, LX'.
-      pose proof (cargs_kinds_length _ _ Hk) as Lgs.
+      pose proof (cargs_same_kinds_length _ _ Hk) as Lgs.
       destruct (us_class VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HUC B1 HB1) as (u1 & Hu1 & H10).
       destruct (us_class VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HUC B2 HB2) as (u2 & Hu2 & H20).
       pose proof (EB closed_args_gargs v Mv c gs HMv Hcon X X' vs vs' HX Har Hia (List.length gs) (le_n _)) as Hcg.
@@ -1929,7 +1929,7 @@ Section SelfElim.
         = sb_of_list (sb_of_wk (wk_shiftn nw)) (vars_from (Rw + na) nn ++ Aw ++ wrap_ihs D' D gs' gs (elim_ihs ak_relevant p D Uw Bw σw nn gs Aw) 0 Rw).
     Proof.
       assert (HR : cargs_nrec D' gs' = Rw) by (rewrite <- Hcnt; symmetry; exact (WB wrap_full_R)).
-      assert (Hna : List.length gs' = na) by exact (cargs_kinds_length _ _ Hk).
+      assert (Hna : List.length gs' = na) by exact (cargs_same_kinds_length _ _ Hk).
       unfold ViewBranch.wrap_branch_sub; cbv zeta; rewrite HR, Hna; change (im_nn Mv) with nn.
       replace (nn + na + Rw) with nw by (unfold nw; lia).
       reflexivity.
@@ -2003,7 +2003,7 @@ Section SelfElim.
       assert (Hdec : forall x, x < List.length K0 -> evaluated_kind (branch_context_entry_kind D gs x) ->
                        ~ entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
       { intros x Hx Hr.
-        refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
+        refine (evaluated_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
         intros Δ1 κ0 T0 Δ2 E0 HΔ1.
         destruct (BSv branch_context_entry_sort RΓ RU HRΓ HRU C1 u0 HC11 HUC HrvMv Δ1 κ0 T0 Δ2 E0) as [i0 HT0].
         assert (Hek : branch_context_entry_kind D gs x = ak_relevant \/ branch_context_entry_kind D gs x = ak_level)
@@ -2317,7 +2317,7 @@ Section SelfElim.
         exists m1; split.
         + unfold Δ in Em1; rewrite length_wrap_bctx in Em1 by exact Hk.
           replace (im_nn Mv + List.length gs' + cargs_nrec D' gs') with (cargs_container_count D D' gs' gs + List.length gs + im_nn Mv)
-            by (rewrite (cargs_kinds_length _ _ Hk), Hcnt; lia).
+            by (rewrite (cargs_same_kinds_length _ _ Hk), Hcnt; lia).
           exact Em1.
         + apply Hfin.
           exact (proj1 (per_head_inst_type _ _ _ _ _ _ _ _ _ _ HT HRW (gsub_valid (WB gsub_wrap_branch Hcnt)) HEb Hτe Hτe m1 m)
@@ -3002,7 +3002,7 @@ Section WrappedBlocks.
   Proof.
     intros * HMi' _ Hv HMv Hb Hba Hc' Hcn HBb HBa Hm Hcr Ht Ht'.
     destruct (wrapped_branch_of _ _ _ _ _ _ _ _ _ _ _ _ _ HMi' Hv HMv Hb Hba Hc' Hcn HBb HBa) as (-> & _ & Hrv & Hco).
-    pose proof (cargs_kinds_of_correspond _ _ _ Hco) as Hk.
+    pose proof (cargs_same_kinds_of_correspond _ _ _ Hco) as Hk.
     pose proof (cargs_container_count_view p qc D D' vm Hlc HlcQ (grp_tele_ass_record_struct _ Hass) HrsQ wrapped_view_members gs' gs Hco) as Hcnt.
     destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv HCa ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k ts ts'
                 Hm Hcr Ht Ht')
@@ -3086,14 +3086,14 @@ Section WrappedBlocks.
       destruct (nth_error_blocks_sub_inv _ _ _ _ Hb) as (b0 & Hb0 & ->).
       rewrite eb_brs_sub in HBb; destruct (brs_lookup_sub_inv _ _ _ _ _ HBb) as (B0 & HlB0 & ->).
       destruct (wrapped_branch_of _ _ _ _ _ _ _ _ _ _ _ _ _ HMi' Hv HMv Hb0 Hba Hc' Hcn HlB0 HBa) as (-> & -> & Hrv & Hco).
-      pose proof (cargs_kinds_of_correspond _ _ _ Hco) as Hk.
+      pose proof (cargs_same_kinds_of_correspond _ _ _ Hco) as Hk.
       pose proof (cargs_container_count_view p qc D D' vm Hlc HlcQ (grp_tele_ass_record_struct _ Hass) HrsQ wrapped_view_members gs' gs Hco) as Hcnt.
       destruct (WR wrap_branch_rel D' v Mv c gs' gs HMv Hcn Hk Hrv HCa ba Hba HrsQ Hcnt na Ba HBa u u' bs bs' vs vs' w ihs hd k ts ts'
                   Hm Hcr Ht Ht')
         as [r r' _ Er' _ Hout].
       destruct (Hout Γ' RΓ' σ0 ρ0 HRΓ' Hσ0 Hρ0 Hev0) as (r0 & Er0 & Hrr).
       exists r0, r'; split; [| split; [ exact Er' | exact Hrr ] ].
-      rewrite (cargs_kinds_length _ _ Hk) in Er0 |- *.
+      rewrite (cargs_same_kinds_length _ _ Hk) in Er0 |- *.
       exact Er0.
     Qed.
   End Moved.

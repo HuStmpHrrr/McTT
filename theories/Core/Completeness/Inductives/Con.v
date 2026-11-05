@@ -763,7 +763,7 @@ Section ConValue.
     destruct (Nat.ltb_spec (List.length ts1) (im_np D Mk)) as [Hlt | Hge].
     - (** A parameter: of its tag, an evaluated kind. *)
       destruct (app_split_right _ _ _ _ _ HCe ltac:(rewrite length_im_params, HlC; exact Hlt)) as [X HX].
-      destruct (im_params_relevant D HD k Mk HM _ _ _ _ HX) as [i HA].
+      destruct (im_params_evaluated D HD k Mk HM _ _ _ _ HX) as [i HA].
       destruct (rel_param_typed_evaluated HA) as (r & Hr & HAr).
       destruct (HAr _ HR _ _ Hz) as (b0 & Eb0 & Hb0).
       assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption).

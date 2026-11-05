@@ -1141,24 +1141,25 @@ Proof.
         destruct (entry_shape_unit_r _ _ _ HS HE') as (U & HE); intros; eapply proj1; eapply IHUr; eassumption.
 Qed.
 
-(** The parameters of a unit are types of a universe.  Every rule of the
-    unit judgment requires it of its sides. *)
-Definition unit_params_relevant (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U : gunit) : Prop :=
-  exists l, params_relevant Θ Ξ Γ (gu_params U) l.
+(** The parameters of a unit are of evaluated kinds: types of a universe
+    or types of levels.  Every rule of the unit judgment requires it of
+    its sides. *)
+Definition unit_params_evaluated (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U : gunit) : Prop :=
+  exists l, params_evaluated Θ Ξ Γ (gu_params U) l.
 
-(** Both sides of an equation of units have relevant parameters. *)
-Lemma unit_eq_params_relevant : forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
-    unit_params_relevant Θ Ξ Γ U /\ unit_params_relevant Θ Ξ Γ U'.
+(** Both sides of an equation of units have parameters of evaluated kinds. *)
+Lemma unit_eq_params_evaluated : forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
+    unit_params_evaluated Θ Ξ Γ U /\ unit_params_evaluated Θ Ξ Γ U'.
 Proof.
-  intros * H; induction H; unfold unit_params_relevant in *; cbn [gu_params] in *;
-    try solve [ split; eexists; eapply params_relevant_of_sorts; eassumption | tauto ].
+  intros * H; induction H; unfold unit_params_evaluated in *; cbn [gu_params] in *;
+    try solve [ split; eexists; eapply params_evaluated_of_sorts; eassumption | tauto ].
   (* the flattened literal: the outer parameters by the premise, the inner
      ones by the literal's *)
-  assert (HR : params_relevant Θ Ξ Γ Δ param_level) by (eapply params_relevant_of_sorts; eassumption).
+  assert (HR : params_evaluated Θ Ξ Γ Δ param_level) by (eapply params_evaluated_of_sorts; eassumption).
   split; [ eexists; exact HR |].
-  match goal with IH : _ /\ exists l', params_relevant _ _ _ _ l' |- _ =>
+  match goal with IH : _ /\ exists l', params_evaluated _ _ _ _ l' |- _ =>
     let lw := fresh "lw" in let Hlw := fresh "Hlw" in destruct IH as [_ [lw Hlw]];
-    exists (max lw param_level); apply params_relevant_app; assumption end.
+    exists (max lw param_level); apply params_evaluated_app; assumption end.
 Qed.
 
 (** A literal given its outermost parameter, both sides moved. *)
@@ -1180,7 +1181,7 @@ Proof.
       exact (desc_ok_mtele_last _ _ _ _ _ _ (udenote_is_mod _ _ _ _ _ _ Hu0) Hok) end. }
   destruct (Ht _ _ _ _ _ HR1 (HK1 _ HR1)) as (T1 & HT1).
   destruct (Ht _ _ _ _ _ HR2 (HK2 _ HR2)) as (T2 & HT2).
-  destruct (unit_eq_params_relevant _ _ _ _ _ HU) as [[i HX1] [j HX2]]; cbn [gu_params] in HX1, HX2.
+  destruct (unit_eq_params_evaluated _ _ _ _ _ HU) as [[i HX1] [j HX2]]; cbn [gu_params] in HX1, HX2.
   specialize (HX1 _ _ _ _ eq_refl); specialize (HX2 _ _ _ _ eq_refl); cbn [List.app] in HX1, HX2.
   (* each argument type is of a universe or of the types of levels *)
   destruct HX1 as [HX1 | HX1], HX2 as [HX2 | HX2].
@@ -1447,10 +1448,10 @@ Proof.
     match goal with
     | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HH : wf_modexp_eq _ _ _ ?H ?H',
       IH : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub ?H _) _ /\ wf_modexp_eq _ _ _ (modexp_sub ?H' _) _,
-      HB : wf_exp _ _ _ ?S ?B, HSr : relevant_sort ?S,
+      HB : wf_exp _ _ _ ?S ?B, HSr : evaluated_sort ?S,
       IHB : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?B _) _,
       HN : wf_exp _ _ _ ?B ?N, IHN : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?N _) _,
-      HB' : wf_exp _ _ _ ?S' ?B', HSr' : relevant_sort ?S',
+      HB' : wf_exp _ _ _ ?S' ?B', HSr' : evaluated_sort ?S',
       IHB' : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?B' _) _,
       HN' : wf_exp _ _ _ ?B' ?N', IHN' : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?N' _) _,
       Hm : mdenote _ _ _ ?H ?R, HT : mdesc_mod_tele ?R = Some _, Hv : tele_view _ = Some (?B, _),

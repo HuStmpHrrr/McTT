@@ -150,25 +150,25 @@ Section Fixed_GCtx.
       in the group of the eliminator ([gs]): non-recursive in both,
       recursive in both, or nested through (non-recursive in the group
       read only). *)
-  Fixpoint cargs_kinds (gs' gs : list carg) : Prop :=
+  Fixpoint cargs_same_kinds (gs' gs : list carg) : Prop :=
     match gs', gs with
     | nil, nil => True
-    | ca_arg _ _ :: gs1', ca_arg _ _ :: gs1 => cargs_kinds gs1' gs1
-    | ca_rec _ :: gs1', ca_rec _ :: gs1 => cargs_kinds gs1' gs1
-    | ca_arg _ _ :: gs1', ca_rec _ :: gs1 => cargs_kinds gs1' gs1
+    | ca_arg _ _ :: gs1', ca_arg _ _ :: gs1 => cargs_same_kinds gs1' gs1
+    | ca_rec _ :: gs1', ca_rec _ :: gs1 => cargs_same_kinds gs1' gs1
+    | ca_arg _ _ :: gs1', ca_rec _ :: gs1 => cargs_same_kinds gs1' gs1
     | _, _ => False
     end.
 
-  Lemma cargs_kinds_refl : forall gs, cargs_kinds gs gs.
+  Lemma cargs_same_kinds_refl : forall gs, cargs_same_kinds gs gs.
   Proof. induction gs as [| [rA A | t] gs IH]; cbn; auto. Qed.
 
-  Lemma cargs_kinds_of_correspond : forall vm gs' gs, cargs_correspond vm gs' gs -> cargs_kinds gs' gs.
+  Lemma cargs_same_kinds_of_correspond : forall vm gs' gs, cargs_correspond vm gs' gs -> cargs_same_kinds gs' gs.
   Proof.
     induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] H; cbn in H |- *; try contradiction;
       [ exact I | exact (IH _ (proj2 H)) | exact (IH _ (proj2 H)) | exact (IH _ (proj2 (proj2 H))) ].
   Qed.
 
-  Lemma cargs_kinds_length : forall gs' gs, cargs_kinds gs' gs -> List.length gs' = List.length gs.
+  Lemma cargs_same_kinds_length : forall gs' gs, cargs_same_kinds gs' gs -> List.length gs' = List.length gs.
   Proof.
     induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] H; cbn in H |- *; try contradiction; auto.
   Qed.
@@ -2719,7 +2719,7 @@ Section Fixed_GCtx.
           tele_rel (nr v) (List.rev (im_nparams Mv)) nsu nsa -> tele_rel (nr v) (List.rev (im_nparams Mv)) nsu nsb ->
           view_rank_ok gc_deps gc_stack D rk -> (forall j, rk j < r -> elim_bot j) ->
           forall gs' gs gs1 wsu wsa wsb s s2, gsf = gs1 ++ gs ->
-          cargs_kinds gs' gs -> cargs_nest_ok D Dh rk r gs' gs ->
+          cargs_same_kinds gs' gs -> cargs_nest_ok D Dh rk r gs' gs ->
           fresh_cargs_rel D nr (ar v nsu c) (dr v) (List.rev (im_nparams Mv)) nsu nsa (List.length (cargs_nonrec gs1))
             (cargs_nonrec_tele gs1) wsu wsa
             (components_env D ups (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1) (nsu ++ wsu))
@@ -2931,7 +2931,7 @@ Section Fixed_GCtx.
       Record member_pair_con (Dc : ind_decl) (rk : nat -> nat) (r : nat) (gs' gs : list carg) : Prop :=
         mk_member_pair_con
         { (** The arguments' kinds are compatible *)
-          member_pair_con_kinds : cargs_kinds gs' gs
+          member_pair_con_kinds : cargs_same_kinds gs' gs
           (** The group's leaf paths [Dc] has are as many as [Dc]'s branch
               binds *)
         ; member_pair_con_count : cargs_container_count D Dc gs' gs = cargs_nrec Dc gs'
@@ -2988,7 +2988,7 @@ Section Fixed_GCtx.
           destruct (cons_lookup_names _ _ HinN) as [gs Hc].
           destruct (Hcs c gs' gs Hin Hc) as [Hk Hcnt Hno].
           pose proof (grp_tele_ass_params_length _ Hass _ _ _ _ HM (cons_lookup_in _ _ _ Hc)) as Hpl.
-          exists gs; split; [ exact Hc | split; [ exact Hpl | split; [ exact Hcnt | split; [ symmetry; exact (cargs_kinds_length _ _ Hk) |] ] ] ].
+          exists gs; split; [ exact Hc | split; [ exact Hpl | split; [ exact Hcnt | split; [ symmetry; exact (cargs_same_kinds_length _ _ Hk) |] ] ] ].
           pose proof (adm_fresh_args _ _ _ _ _ _ _ Ha _ Mv c gs s nsu nsa HM Hc Fu Fa) as C1.
           pose proof (adm_fresh_args _ _ _ _ _ _ _ Hb _ Mv c gs s nsu nsb HM Hc Fu Fb) as C2.
           destruct (fresh_args _ Mv c gs nsu nsa nsb Dc rk r Ha Hb La Lb Hma Hmb HM Hc Hpl Hn1 Hn2 Hrk HIH
@@ -3055,7 +3055,7 @@ Section Fixed_GCtx.
             intros c gs' gs Hin Hc.
             assert (gs = gs') as ->
               by (pose proof (cons_lookup_nodup_in _ _ _ (Hnd _ _ Hn0) Hin) as Hc0; unfold ind_con in Hc; congruence).
-            constructor; [ apply cargs_kinds_refl | | exact (cargs_nest_ok_own rk (rk j) _ _ _ _ Hn0 Hc) ].
+            constructor; [ apply cargs_same_kinds_refl | | exact (cargs_nest_ok_own rk (rk j) _ _ _ _ Hn0 Hc) ].
             exact (cargs_container_count_own _ (grp_tele_ass_params_length _ Hass _ _ _ _ Hn0 (cons_lookup_in _ _ _ Hc))).
           - unfold im_ref in Hr; rewrite Hh in Hr; injection Hr as <- <-.
             assert (Hsel : im_sel Mj = Some vm) by (unfold im_sel; rewrite Hh; reflexivity); rewrite Hsel.
@@ -3079,7 +3079,7 @@ Section Fixed_GCtx.
             intros c gs' gs Hin Hc.
             assert (Hc' : ind_con Mi c = Some gs')
               by (apply cons_lookup_nodup_in; [ rewrite <- Hnames; exact (Hnd _ _ HMv) | exact Hin ]).
-            constructor; [ exact (cargs_kinds_of_correspond _ _ _ (Hcorr c gs' gs Hin Hc)) | |].
+            constructor; [ exact (cargs_same_kinds_of_correspond _ _ _ (Hcorr c gs' gs Hin Hc)) | |].
             (** as many of the group's paths are the container's as the
                 container's branch binds *)
             { pose proof (grp_tele_ass_crstruct _ Hass _ _ _ _ _ _ _ HM Hh Hq) as HrsQ.

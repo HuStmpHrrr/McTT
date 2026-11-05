@@ -123,15 +123,15 @@ Qed.
 
 (** Relevant parameters stay relevant along a substitution built from
     valid parts. *)
-Lemma rel_params_relevant_gsub : forall Ψ Δ Γ τ l, ⊨ Ψ ++ Δ -> ⊢ Θm ⍮ Ξm ⍮ Ψ ++ Δ -> gsub Γ τ Δ -> Θm ⍮ Ξm ⍮ Γ ⊢ˢ τ : Δ ->
-    rel_params_relevant Δ Ψ l -> rel_params_relevant Γ (tele_sub Ψ τ) l.
+Lemma rel_params_evaluated_gsub : forall Ψ Δ Γ τ l, ⊨ Ψ ++ Δ -> ⊢ Θm ⍮ Ξm ⍮ Ψ ++ Δ -> gsub Γ τ Δ -> Θm ⍮ Ξm ⍮ Γ ⊢ˢ τ : Δ ->
+    rel_params_evaluated Δ Ψ l -> rel_params_evaluated Γ (tele_sub Ψ τ) l.
 Proof.
-  induction Ψ as [| e Ψ IH]; intros * HC HwC Hg Hτ HΨ; cbn [tele_sub]; [ apply rel_params_relevant_nil |].
-  apply rel_params_relevant_cons_iff in HΨ as [Hh Ht].
+  induction Ψ as [| e Ψ IH]; intros * HC HwC Hg Hτ HΨ; cbn [tele_sub]; [ apply rel_params_evaluated_nil |].
+  apply rel_params_evaluated_cons_iff in HΨ as [Hh Ht].
   cbn [List.app] in HC, HwC.
   pose proof (rel_ctx_wf_tail HC) as HC0.
   pose proof (ctx_app_wf_tail _ _ (e :: nil) _ HwC) as HwC0.
-  apply rel_params_relevant_cons_iff; split; [| exact (IH _ _ _ _ HC0 HwC0 Hg Hτ Ht) ].
+  apply rel_params_evaluated_cons_iff; split; [| exact (IH _ _ _ _ HC0 HwC0 Hg Hτ Ht) ].
   intros κ A HA; destruct e; cbn in HA; try discriminate; injection HA as <- <-.
   destruct (ext_gsub Ψ Δ Γ τ HC0 HwC0 Hg Hτ) as (_ & HgΨ & _).
   destruct (Hh _ _ eq_refl) as [Hp | Hp]; [ left | right ]; exact (rel_exp_under_ctx_gsub HgΨ Hp).
@@ -141,7 +141,7 @@ Qed.
     a valid unit, once its literal is valid there. *)
 Lemma valid_unit_body_sub : forall Δ Δu Φ Φx Γ τ,
     Θm ⍮ Ξm ⍮ Δ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu Φ ->
-    body_xp Θm Ξm (Δu ++ Δ) Φ Φx -> tele_ass Δu -> (exists l, rel_params_relevant Δ Δu l) ->
+    body_xp Θm Ξm (Δu ++ Δ) Φ Φx -> tele_ass Δu -> (exists l, rel_params_evaluated Δ Δu l) ->
     ⊨ body_ctx Φx ++ Δu ++ Δ -> body_sorts_valid Φx (Δu ++ Δ) ->
     body_shape Φ Φ -> body_shape Φx Φx ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
@@ -173,7 +173,7 @@ Proof.
   1: exact Hw'.
   1: exact Hxσ.
   1: apply tele_ass_sub; exact HΔu.
-  1: destruct HΔur as [l Hl]; exists l; exact (rel_params_relevant_gsub _ _ _ _ _ (rel_ctx_wf_app_r _ _ HC) HwΔ Hg Hτ Hl).
+  1: destruct HΔur as [l Hl]; exists l; exact (rel_params_evaluated_gsub _ _ _ _ _ (rel_ctx_wf_app_r _ _ HC) HwΔ Hg Hτ Hl).
   1: exact (proj1 (gsub_sem Hg)).
   1: { rewrite app_assoc in HC, HwCx.
        destruct (ext_gsub _ _ Γ τ HC HwCx Hg Hτ) as (HCσ & _).
@@ -219,7 +219,7 @@ Qed.
 
 Lemma valid_unit_alias_sub : forall Δ Δu E Γ τ,
     Θm ⍮ Ξm ⍮ Δ ⊢ᵘ gu_mk Δu (md_alias E) ≈ gu_mk Δu (md_alias E) ->
-    tele_ass Δu -> (exists l, rel_params_relevant Δ Δu l) -> ⊨ Δu ++ Δ -> Δu ++ Δ ⊨ᵐ E ≈ E ->
+    tele_ass Δu -> (exists l, rel_params_evaluated Δ Δu l) -> ⊨ Δu ++ Δ -> Δu ++ Δ ⊨ᵐ E ≈ E ->
     (forall Γ0 τ0, gsub Γ0 τ0 (Δu ++ Δ) -> Θm ⍮ Ξm ⍮ Γ0 ⊢ˢ τ0 : Δu ++ Δ -> valid_modexp Γ0 E[τ0]ᵐ) ->
     gsub Γ τ Δ -> Θm ⍮ Ξm ⍮ Γ ⊢ˢ τ : Δ ->
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ (me_lit (gu_mk Δu (md_alias E)))[τ]ᵐ ≈ (me_lit (gu_mk Δu (md_alias E)))[τ]ᵐ ->
@@ -231,7 +231,7 @@ Proof.
   destruct (ext_gsub Δu Δ Γ τ HΔΔ HwΔ Hg Hτ) as (HΔσ & HgΔ & HwΔσ & HτΔ).
   cbn [modexp_sub] in Hw', HK' |- *; rewrite gunit_sub_mk in Hw', HK' |- *; cbn [moddef_sub] in Hw', HK' |- *.
   apply valid_unit_alias; [ exact Hw' | apply tele_ass_sub; exact HΔu
-                  | exists l; exact (rel_params_relevant_gsub _ _ _ _ _ HΔΔ HwΔ Hg Hτ HΔur)
+                  | exists l; exact (rel_params_evaluated_gsub _ _ _ _ _ HΔΔ HwΔ Hg Hτ HΔur)
                   | exact (proj1 (gsub_sem Hg)) | exact HΔσ | exact HK'
                   | exact (rel_modexp_under_ctx_gsub HgΔ HE) | exact (IHE _ _ HgΔ HτΔ) ].
 Qed.
@@ -333,7 +333,7 @@ Proof.
     rewrite <- app_assoc in Hx, HC, Hsv, Hsl, Hov, Hos; cbn [List.app] in Hx, HC, Hsv, Hsl, Hov, Hos.
     destruct HΔr as [l HΔr].
     eapply (valid_unit_body_sub (Γ ▹{κ} X)); [ exact HU1 | exact Hx | exact (proj1 (tele_ass_app_inv _ _ HΔ))
-                                   | exists l; exact (proj2 (rel_params_relevant_snoc_inv _ _ _ _ _ HΔr)) | exact HC | exact Hsv | exact Hsh
+                                   | exists l; exact (proj2 (rel_params_evaluated_snoc_inv _ _ _ _ _ HΔr)) | exact HC | exact Hsv | exact Hsh
                                    | exact Hsx | | exact Hov | | exact Hg | exact Hτ | exact HwN | exact HKN ].
     + intros * Hp HEu * Hg0 Hτ0; exact (valid_unit_gsub _ _ _ _ (Hsl _ _ _ _ Hp HEu) Hg0 Hτ0).
     + intros * Hk * Hg0 Hτ0; exact (valid_modexp_gsub _ _ _ _ (Hos _ _ _ Hk) Hg0 Hτ0).
@@ -342,30 +342,30 @@ Proof.
     rewrite <- app_assoc in HΔΓ, HE, Hsm; cbn [List.app] in HΔΓ, HE, Hsm.
     destruct HΔr as [l HΔr].
     eapply (valid_unit_alias_sub (Γ ▹{κ} X)); [ exact HU1 | exact (proj1 (tele_ass_app_inv _ _ HΔ))
-                                    | exists l; exact (proj2 (rel_params_relevant_snoc_inv _ _ _ _ _ HΔr)) | exact HΔΓ | exact HE
+                                    | exists l; exact (proj2 (rel_params_evaluated_snoc_inv _ _ _ _ _ HΔr)) | exact HΔΓ | exact HE
                                     | | exact Hg | exact Hτ | exact HwN | exact HKN ].
     intros * Hg0 Hτ0; exact (valid_modexp_gsub _ _ _ _ Hsm Hg0 Hτ0).
 Qed.
 
 (** The parameters of a well-formed literal, relevant in the PER model, are
     relevant in both senses at one level. *)
-Lemma lit_params_relevant_both : forall Γ U, Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U ->
-    (exists l, rel_params_relevant Γ (gu_params U) l) ->
-    exists l, params_relevant Θm Ξm Γ (gu_params U) l /\ rel_params_relevant Γ (gu_params U) l.
+Lemma lit_params_evaluated_both : forall Γ U, Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U ->
+    (exists l, rel_params_evaluated Γ (gu_params U) l) ->
+    exists l, params_evaluated Θm Ξm Γ (gu_params U) l /\ rel_params_evaluated Γ (gu_params U) l.
 Proof.
   intros * Hw [lr Hr].
   pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
-  destruct (proj1 (unit_eq_params_relevant _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf))) as [lw Hlw].
-  exists (max lw lr); split; [ exact (params_relevant_max _ _ _ _ _ _ Hlw) | exact (rel_params_relevant_ge _ _ lr (max lw lr) ltac:(lia) Hr) ].
+  destruct (proj1 (unit_eq_params_evaluated _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf))) as [lw Hlw].
+  exists (max lw lr); split; [ exact (params_evaluated_max _ _ _ _ _ _ Hlw) | exact (rel_params_evaluated_ge _ _ lr (max lw lr) ltac:(lia) Hr) ].
 Qed.
 
 (** So are the parameters of a valid literal. *)
-Lemma valid_unit_lit_params_relevant : forall Γ U, valid_unit Γ (me_lit U) ->
-    exists l, params_relevant Θm Ξm Γ (gu_params U) l /\ rel_params_relevant Γ (gu_params U) l.
+Lemma valid_unit_lit_params_evaluated : forall Γ U, valid_unit Γ (me_lit U) ->
+    exists l, params_evaluated Θm Ξm Γ (gu_params U) l /\ rel_params_evaluated Γ (gu_params U) l.
 Proof.
   intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΔr | ? Δ E Hw HΔ HΔr]; subst;
     [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |];
-    exact (lit_params_relevant_both _ _ Hw HΔr).
+    exact (lit_params_evaluated_both _ _ Hw HΔr).
 Qed.
 
 (** ** Valid Units Abstracted over Parameters *)
@@ -404,7 +404,7 @@ Proof.
 Qed.
 
 Lemma valid_unit_abs : forall Δ Γ U l, valid_unit (Δ ++ Γ) (me_lit U) -> tele_ass Δ ->
-    params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
+    params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
     (forall R, udenote Θm Ξm (Δ ++ Γ) None U R -> desc_levels_abstractable Θm Ξm Γ Δ R) ->
     valid_unit Γ (me_lit (gunit_abs Δ U)).
 Proof.
@@ -432,7 +432,7 @@ Proof.
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |];
     cbn [gunit_abs] in *;
     destruct HΔyr as [ly HΔyr];
-    assert (HΔyΔr : exists l', rel_params_relevant Γ (Δy ++ Δ) l') by (eexists; exact (rel_params_relevant_app _ _ _ _ _ HΔyr HΔr)).
+    assert (HΔyΔr : exists l', rel_params_evaluated Γ (Δy ++ Δ) l') by (eexists; exact (rel_params_evaluated_app _ _ _ _ _ HΔyr HΔr)).
   - assert (HL : modexp_sub_rel Γ (me_lit (gu_open (Δy ++ Δ) Φ))).
     { intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
       pose proof (body_xp_scoped_of_wf _ _ _ _ _ _ Hw0 Hx) as Hsc.

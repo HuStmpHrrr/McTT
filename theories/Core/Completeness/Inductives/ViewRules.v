@@ -139,7 +139,7 @@ Proof.
       destruct (IH ρ (xs ++ n :: nil) (xs' ++ n :: nil) l Hq HM Hh ltac:(rewrite ?List.length_app, HL; reflexivity) Er)
         as (ms & Lms & -> & Er');
       exists (n :: ms); rewrite <- !List.app_assoc in *; split; [ cbn; lia | split; [ reflexivity |] ];
-      eapply eval_app_args_relevant;
+      eapply eval_app_args_evaluated;
         [ cbn [arg_kind] in Har |- *; rewrite Hq, HM in *; rewrite HL; exact Har | exact En
         | eapply eval_app_con; [ exact Hq | exact HM | exact Hh | eassumption | lia ] | exact Er' ] end.
   - match goal with Har : arg_kind _ _ _ = ak_propositional, Eg : eval_app _ _ _ (⋆ᵈ⟨N, ρ⟩) ?g,
@@ -286,7 +286,7 @@ Proof.
   destruct (rview_struct_con _ _ _ Hrs _ _ _ _ _ HMj Hh) as (gs0 & Hcs0 & _).
   rewrite Hcs in Hcs0; injection Hcs0 as -> <-.
   (** The constructor takes its fields at the record's sorts. *)
-  pose proof (rview_struct_relevance _ _ _ Hrs _ _ _ _ _ _ _ HMj Hh HR Hcs) as Hrel.
+  pose proof (rview_struct_kinds _ _ _ Hrs _ _ _ _ _ _ _ HMj Hh HR Hcs) as Hrel.
   apply eval_apps_exp in El as (f & Ef & Ea).
   destruct (con_value_start P p D HP HPD j Mj rview_con HMj ρ) as (f0 & Ef0 & Hf0).
   pose proof (functional_eval_exp _ _ _ _ Ef Ef0) as ->.

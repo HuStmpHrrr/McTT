@@ -296,14 +296,20 @@ Proof. intros * HA; exists ak_relevant; split; [ constructor | exact (rel_type_k
 Lemma rel_type_evaluated_of_level_sort : forall {Γ A}, Γ ⊨ A : LevelSort -> rel_type_evaluated Γ A.
 Proof. intros * HA; exists ak_level; split; [ constructor | exact (rel_type_kind_of_level_sort HA) ]. Qed.
 
-(** A type of a relevant sort (a universe or [LevelSort]) is of an
+(** A type of an evaluated sort (a universe or [LevelSort]) is of an
     evaluated kind. *)
-Lemma rel_type_evaluated_of_relevant_sort : forall {Γ A Srt}, relevant_sort Srt -> Γ ⊨ A : Srt -> rel_type_evaluated Γ A.
+Lemma rel_type_evaluated_of_evaluated_sort : forall {Γ A Srt}, evaluated_sort Srt -> Γ ⊨ A : Srt -> rel_type_evaluated Γ A.
 Proof. intros * [i |] HA; [ exact (rel_type_evaluated_of_typ HA) | exact (rel_type_evaluated_of_level_sort HA) ]. Qed.
 
 (** A parameter type is of an evaluated kind. *)
 Lemma rel_param_typed_evaluated : forall {Γ A l}, rel_param_typed Γ A l -> rel_type_evaluated Γ A.
 Proof. intros * [HA | HA]; [ exact (rel_type_evaluated_of_typ HA) | exact (rel_type_evaluated_of_level_sort HA) ]. Qed.
+
+(** A type of an evaluated kind is so at every environment of its
+    context. *)
+Lemma rel_typ_evaluated_at : forall {Γ A R}, rel_type_evaluated Γ A -> EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' -> rel_typ_evaluated A ρ.
+Proof. intros * (r & Hr & HA) HR ρ ρ' Hρ; exact (rel_typ_evaluated_of_kind (HA _ HR _ _ Hρ) Hr). Qed.
 
 (** An entry of a type of an evaluated kind is no proposition, at either
     environment of a related pair. *)

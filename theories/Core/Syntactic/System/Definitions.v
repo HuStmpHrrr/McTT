@@ -225,13 +225,14 @@ Inductive field_kind : abs_kind -> Prop :=
 Definition level_sorted_parameters (Δ : ctx) : Prop :=
   forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> κ = ak_level.
 
-(** The sorts of the relevant types a definition or a codomain may have: a
-    large universe, or [LevelSort]. *)
-Inductive relevant_sort : exp -> Prop :=
+(** The sorts of the types of an evaluated kind ([evaluated_kind]: no
+    proposition), which a definition or a codomain may have: a large
+    universe, or [LevelSort]. *)
+Inductive evaluated_sort : exp -> Prop :=
 (** A large universe *)
-| relevant_sort_universe : forall i, relevant_sort (Typeω@i)
+| evaluated_sort_universe : forall i, evaluated_sort (Typeω@i)
 (** The types of levels *)
-| relevant_sort_level : relevant_sort LevelSort.
+| evaluated_sort_level : evaluated_sort LevelSort.
 
 (** [parameter_sort l S]: a parameter of a unit, a frame or a declaration
     may be a type of the sort [S], the universe at [l] or [LevelSort].  The
@@ -329,7 +330,7 @@ Record rview_struct_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop := mk_rv
     (** Its constructor's arguments are of the record's fields' sorts, so
         that the constructor and the tuple of its fields take them
         alike *)
-  ; rview_struct_relevance : forall k Mk qr Is fl R gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+  ; rview_struct_kinds : forall k Mk qr Is fl R gs, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       record_lookup Θ Ξ qr = Some R -> im_cons Mk = (rview_con, gs) :: nil ->
       cargs_kinds gs = record_field_kinds R
     (** The record views come last *)
@@ -1041,7 +1042,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
     record type at the view's instance there, both sides at the same
     type.  The constructor is the view's own ([ind_con]), as in [wf_con]:
     it takes its fields at their sorts, which are the record's
-    ([rview_struct_relevance]), as the tuple does. *)
+    ([rview_struct_kinds]), as the tuple does. *)
 | wf_exp_eq_con_rview :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -1536,7 +1537,7 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H' y )
 (** An application: the argument is checked against the outermost
     parameter of the telescope of what the module expression denotes, a
-    type of a universe or a type of levels ([relevant_sort]), as a unit's
+    type of a universe or a type of levels ([evaluated_sort]), as a unit's
     parameters are. *)
 | wf_me_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
@@ -1544,14 +1545,14 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
      mdesc_mod_tele R = Some T ->
      tele_view T = Some (B, T1) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B : Srt ->
-     relevant_sort Srt ->
+     evaluated_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : B ->
      mdenote Θ Ξ Γ H' R' ->
      mdesc_mod_tele R' = Some T' ->
      tele_view T' = Some (B', T1') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B' : Srt' ->
-     relevant_sort Srt' ->
+     evaluated_sort Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N' : B' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H' N' )
 (** *** [δ] *)
@@ -2372,7 +2373,7 @@ Ltac destruct_type_sort :=
   repeat match goal with
          | H : type_sort _ |- _ => destruct H
          | H : sort_kind _ _ |- _ => inversion H; subst; clear H
-         | H : relevant_sort _ |- _ => inversion H; subst; clear H
+         | H : evaluated_sort _ |- _ => inversion H; subst; clear H
          | H : pi_kinds _ _ |- _ => inversion H; subst; clear H
          | H : level_closed_sort _ _ |- _ => inversion H; subst; clear H
          | H : module_body_sort _ |- _ => inversion H; subst; clear H
@@ -2393,8 +2394,8 @@ Proof. intros * []; reflexivity. Qed.
 Lemma parameter_sort_type_sort : forall l S, parameter_sort l S -> type_sort S.
 Proof. intros * []; constructor. Qed.
 
-(** A relevant sort is a type sort. *)
-Lemma relevant_sort_type_sort : forall S, relevant_sort S -> type_sort S.
+(** An evaluated sort is a type sort. *)
+Lemma evaluated_sort_type_sort : forall S, evaluated_sort S -> type_sort S.
 Proof. intros S []; constructor. Qed.
 
 (** The result sort of a former that keeps levels closed is a type sort. *)
@@ -2419,11 +2420,11 @@ Lemma wf_type_level : forall {Θ Ξ Γ A}, Θ ⍮ Ξ ⍮ Γ ⊢ A : LevelSort ->
 Proof. intros * H; exact (mk_wf_type _ type_sort_level H). Qed.
 
 #[export]
-Hint Resolve relevant_sort_type_sort level_closed_sort_type_sort
+Hint Resolve evaluated_sort_type_sort level_closed_sort_type_sort
   level_closed_motive_kind module_body_motive_kind module_body_sort_type_sort parameter_sort_type_sort wf_type_level : mctt.
 
 #[export]
-Hint Constructors type_sort sort_kind relevant_sort pi_kinds motive_kind carg_kind field_kind evaluated_kind
+Hint Constructors type_sort sort_kind evaluated_sort pi_kinds motive_kind carg_kind field_kind evaluated_kind
   level_closed_sort module_body_sort parameter_sort : mctt.
 
 #[export]

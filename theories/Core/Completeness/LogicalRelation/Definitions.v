@@ -472,17 +472,17 @@ Notation "Γ ⊨ˣ Ψ ≈ Ψ'" := (rel_ext_under_ctx Γ Ψ Ψ') (at level 70, Ψ
 Definition rel_param_typed {GC : GCtx} (Γ : ctx) (A : typ) (l : nat) : Prop :=
   Γ ⊨ A : Typeω@l \/ Γ ⊨ A : LevelSort.
 
-(** [rel_params_relevant Γ Δ l]: every parameter of the telescope [Δ]
+(** [rel_params_evaluated Γ Δ l]: every parameter of the telescope [Δ]
     over [Γ] is, in the PER model, a type of the universe at [l] or a type
     of levels ([rel_param_typed]), in the context of the parameters after
-    it.  It is the counterpart of [params_relevant]: modules take relevant
-    parameters, as the typing of units and of module application asks.
+    it.  It is the counterpart of [params_evaluated]: modules take parameters
+    of evaluated kinds (types or types of levels, no propositions), as the typing of units and of module application asks.
     For example, the parameter [X] of [module M (X : Typeω@0) := ...] is a
     type of [Typeω@1], so
-    [rel_params_relevant Γ (ce_ass ak_relevant (Typeω@0) :: nil) 1]
+    [rel_params_evaluated Γ (ce_ass ak_relevant (Typeω@0) :: nil) 1]
     holds, while a proposition [P : Prop] as a parameter is not of any
     universe. *)
-Definition rel_params_relevant {GC : GCtx} (Γ Δ : ctx) (l : nat) : Prop :=
+Definition rel_params_evaluated {GC : GCtx} (Γ Δ : ctx) (l : nat) : Prop :=
   forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> rel_param_typed (Δ2 ++ Γ) A l.
 
 (** ** 2. Valid Units, and Contexts with Valid Slots
@@ -510,8 +510,8 @@ Record valid_args (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_valid_args
     (** The types of the arguments are of a relevant sort, a universe or
         the types of levels: the parameters of modules are relevant, as
         application asks ([wf_me_app]) *)
-  ; valid_args_relevant : forall k A, nth_error (tele_insts valid_args_filled Id Ns) k = Some A ->
-      exists Srt, relevant_sort Srt /\ Γ ⊨ A : Srt }.
+  ; valid_args_evaluated : forall k A, nth_error (tele_insts valid_args_filled Id Ns) k = Some A ->
+      exists Srt, evaluated_sort Srt /\ Γ ⊨ A : Srt }.
 
 (** A unit is valid when its parts are ([valid_unit]): a filed module at
     arguments valid against its telescope ([valid_args]); a local body whose
@@ -529,14 +529,14 @@ Inductive valid_unit : ctx -> modexp -> Prop :=
     gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ -> valid_args Γ T Ns ->
     valid_unit Γ (me_apps (qname_mod p) Ns)
 (** A local body, its parts valid.  The unit's own parameters are relevant
-    in the PER model ([rel_params_relevant]): the member closures of the
+    in the PER model ([rel_params_evaluated]): the member closures of the
     unit lacking them relate at a relevant domain only.  For example, in
     [module M (A : Typeω@0) := { def x : A -> A := fun a => a }], the
     member [M.x] read without an argument is a member closure, related to
     [λ a. a] because [A]'s value is relevant. *)
 | valid_unit_body : forall Γ Δ Φ Φx,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit (gu_open Δ Φ) ≈ me_lit (gu_open Δ Φ) ->
-    body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> tele_ass Δ -> (exists l : nat, rel_params_relevant Γ Δ l) ->
+    body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> tele_ass Δ -> (exists l : nat, rel_params_evaluated Γ Δ l) ->
     ⊨ Γ -> ⊨ body_ctx Φx ++ Δ ++ Γ -> body_sorts_valid Φx (Δ ++ Γ) ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        valid_unit (body_ctx Φ0 ++ Δ ++ Γ) (me_lit U)) ->
@@ -549,7 +549,7 @@ Inductive valid_unit : ctx -> modexp -> Prop :=
     the PER model, as for [valid_unit_body] *)
 | valid_unit_alias : forall Γ Δ E,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit (gu_mk Δ (md_alias E)) ≈ me_lit (gu_mk Δ (md_alias E)) ->
-    tele_ass Δ -> (exists l : nat, rel_params_relevant Γ Δ l) -> ⊨ Γ -> ⊨ Δ ++ Γ ->
+    tele_ass Δ -> (exists l : nat, rel_params_evaluated Γ Δ l) -> ⊨ Γ -> ⊨ Δ ++ Γ ->
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias E)) ≈ me_lit (gu_mk Δ (md_alias E)) ->
     Δ ++ Γ ⊨ᵐ E ≈ E -> valid_modexp (Δ ++ Γ) E ->
     valid_unit Γ (me_lit (gu_mk Δ (md_alias E)))
@@ -726,8 +726,8 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
       forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua)
     (** The parameters of the telescope are types of a universe, at one
         level: modules take relevant parameters, as the typing of units
-        and of modules asks ([params_relevant]) *)
-  ; valid_filed_mod_tele_relevant : exists l : nat, rel_params_relevant nil T l }.
+        and of modules asks ([params_evaluated]) *)
+  ; valid_filed_mod_tele_evaluated : exists l : nat, rel_params_evaluated nil T l }.
 
 Definition valid_filed_mods : Prop :=
   forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) -> valid_filed_mod p T Φ.
@@ -850,12 +850,12 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
   valid_ind_decl_uparams : ⊨ ind_uparams D
 (** Each uniform parameter is a type of a universe or a type of levels
     ([rel_param_typed]), under those outside it: parameters are relevant
-    ([params_relevant], read semantically), for example the [l : Level] of
+    ([params_evaluated], read semantically), for example the [l : Level] of
     [Vec (l : Level) (A : Type@l)].  The type former and the constructors
     take their parameters as relevant arguments ([arg_kind] of
     [d_ind], and of [d_con] before its arguments), so their values are
     relevant only when the parameters' types are *)
-; valid_ind_decl_uparams_relevant : exists l, rel_params_relevant ⋅ (ind_uparams D) l
+; valid_ind_decl_uparams_evaluated : exists l, rel_params_evaluated ⋅ (ind_uparams D) l
 (** The sort is a valid type over them *)
 ; valid_ind_decl_sort : exists i, ind_uparams D ⊨ ind_sort D : Typeω@i
 (** The level of the sort, a level ([decl_typed_sort_lvl]): a small sort is below
@@ -927,7 +927,7 @@ Record valid_record_decl (R : record_decl) : Prop := mk_valid_record_decl
     ([rel_param_typed]), under those outside it, for example the
     [l : Level] of [Box (l : Level)]: the record type former takes its
     parameters as relevant arguments *)
-; params_relevant_valid : exists l, rel_params_relevant ⋅ (record_params R) l
+; params_evaluated_valid : exists l, rel_params_evaluated ⋅ (record_params R) l
 (** The sort is a valid type over them *)
 ; sort_valid : exists i : nat, record_params R ⊨ record_sort R : Typeω@i
 (** The fields, over the parameters, are a valid context *)

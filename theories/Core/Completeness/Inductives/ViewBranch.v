@@ -150,21 +150,21 @@ Proof.
   destruct (inb l); cbn; rewrite IH by lia; reflexivity.
 Qed.
 
-Lemma cargs_kinds_app_inv : forall gs1' gs1 gs2' gs2, List.length gs1' = List.length gs1 ->
-    cargs_kinds (gs1' ++ gs2') (gs1 ++ gs2) -> cargs_kinds gs1' gs1 /\ cargs_kinds gs2' gs2.
+Lemma cargs_same_kinds_app_inv : forall gs1' gs1 gs2' gs2, List.length gs1' = List.length gs1 ->
+    cargs_same_kinds (gs1' ++ gs2') (gs1 ++ gs2) -> cargs_same_kinds gs1' gs1 /\ cargs_same_kinds gs2' gs2.
 Proof.
   induction gs1' as [| [] gs1' IH]; intros [| [] gs1] * Hl H; cbn in Hl; try discriminate; cbn in H |- *;
     try contradiction; try (split; [ exact I | exact H ]); exact (IH gs1 gs2' gs2 ltac:(lia) H).
 Qed.
 
-Lemma cargs_kinds_app : forall gs1' gs1 gs2' gs2, cargs_kinds gs1' gs1 -> cargs_kinds gs2' gs2 ->
-    cargs_kinds (gs1' ++ gs2') (gs1 ++ gs2).
+Lemma cargs_same_kinds_app : forall gs1' gs1 gs2' gs2, cargs_same_kinds gs1' gs1 -> cargs_same_kinds gs2' gs2 ->
+    cargs_same_kinds (gs1' ++ gs2') (gs1 ++ gs2).
 Proof. induction gs1' as [| [] gs1' IH]; intros [| [] gs1] * H1 H2; cbn in *; try contradiction; auto. Qed.
 
 Lemma cargs_nrec_app' : forall D gs1 gs2, cargs_nrec D (gs1 ++ gs2) = cargs_nrec D gs1 + cargs_nrec D gs2.
 Proof. intros D; induction gs1 as [| [] gs1 IH]; intros; cbn; rewrite ?IH; lia. Qed.
 
-Lemma cargs_container_count_app : forall D D' gs1' gs1 gs2' gs2, cargs_kinds gs1' gs1 ->
+Lemma cargs_container_count_app : forall D D' gs1' gs1 gs2' gs2, cargs_same_kinds gs1' gs1 ->
     cargs_container_count D D' (gs1' ++ gs2') (gs1 ++ gs2) = cargs_container_count D D' gs1' gs1 + cargs_container_count D D' gs2' gs2.
 Proof. intros D D'; induction gs1' as [| [] gs1' IH]; intros [| [] gs1] * H; cbn in *; try contradiction; rewrite ?IH by exact H; lia. Qed.
 
@@ -175,14 +175,14 @@ Lemma leaves_in_count_shift : forall D D' t' t m,
 Proof. intros; apply leaves_in_count_ext, leaf_in_shape_leaves. Qed.
 
 Lemma length_wrap_ihs_ctx : forall D D' nn As Us na gs' gs gs0 r,
-    cargs_kinds gs' gs -> List.length (wrap_ihs_ctx D D' nn As Us na gs0 r gs' gs) = cargs_container_count D D' gs' gs.
+    cargs_same_kinds gs' gs -> List.length (wrap_ihs_ctx D D' nn As Us na gs0 r gs' gs) = cargs_container_count D D' gs' gs.
 Proof.
   intros D D' nn As Us na; induction gs' as [| [] gs' IH]; intros [| [] gs] * H; cbn in *; try contradiction; try reflexivity;
     rewrite ?List.length_app, ?length_wrap_leaves_ctx, IH by exact H; try reflexivity.
   rewrite leaves_in_count_shift; lia.
 Qed.
 
-Lemma wrap_ihs_ctx_app : forall D D' nn As Us na gs1' gs1 gs2' gs2 gs0 r, cargs_kinds gs1' gs1 ->
+Lemma wrap_ihs_ctx_app : forall D D' nn As Us na gs1' gs1 gs2' gs2 gs0 r, cargs_same_kinds gs1' gs1 ->
     wrap_ihs_ctx D D' nn As Us na gs0 r (gs1' ++ gs2') (gs1 ++ gs2)
     = wrap_ihs_ctx D D' nn As Us na (gs0 ++ gs1) (cargs_container_count D D' gs1' gs1 + r) gs2' gs2
         ++ wrap_ihs_ctx D D' nn As Us na gs0 r gs1' gs1.
@@ -412,7 +412,7 @@ Section WrapBranch.
     (HBk : valid_blocks p D Γ Us Bks i).
   Variable (D' : ind_decl) (v : nat) (Mv : imember) (c : String.string) (gs' gs : list carg).
   Hypotheses (HMv : ind_member D v = Some Mv) (HrvMv : im_is_rview Mv = false) (Hcon : ind_con Mv c = Some gs)
-    (Hk : cargs_kinds gs' gs).
+    (Hk : cargs_same_kinds gs' gs).
   Let As := blocks_motives Bks.
   Let nn := im_nn Mv.
   Let na := List.length gs.
@@ -698,11 +698,11 @@ Section WrapBranch.
   End At.
 
   Lemma wrapping_len : List.length gs' = na.
-  Proof. unfold na; exact (cargs_kinds_length _ _ Hk). Qed.
+  Proof. unfold na; exact (cargs_same_kinds_length _ _ Hk). Qed.
 
   Lemma wrapping_kinds_split : forall G1' G2' G1 G2, gs' = G1' ++ G2' -> gs = G1 ++ G2 -> List.length G1' = List.length G1 ->
-      cargs_kinds G1' G1 /\ cargs_kinds G2' G2.
-  Proof. intros * E1 E2 Hlg; pose proof Hk as Hk0; rewrite E1, E2 in Hk0; exact (cargs_kinds_app_inv _ _ _ _ Hlg Hk0). Qed.
+      cargs_same_kinds G1' G1 /\ cargs_same_kinds G2' G2.
+  Proof. intros * E1 E2 Hlg; pose proof Hk as Hk0; rewrite E1, E2 in Hk0; exact (cargs_same_kinds_app_inv _ _ _ _ Hlg Hk0). Qed.
 
   (** *** The Wrapped Branch's Context Is Valid
 
@@ -944,9 +944,9 @@ Section WrapBranch.
       induction rest' as [| g' rest' IH]; intros [| g rest] gs1' gs1 L E1' E1 Hl1 HL Hδ.
       - cbn [wrap_ihs]; rewrite !List.app_nil_r; exact Hδ.
       - exfalso; rewrite List.app_nil_r in E1'; rewrite E1', E1 in Hk.
-        pose proof (cargs_kinds_length _ _ Hk) as H0; rewrite !List.length_app in H0; cbn in H0; lia.
+        pose proof (cargs_same_kinds_length _ _ Hk) as H0; rewrite !List.length_app in H0; cbn in H0; lia.
       - exfalso; rewrite List.app_nil_r in E1; rewrite E1', E1 in Hk.
-        pose proof (cargs_kinds_length _ _ Hk) as H0; rewrite !List.length_app in H0; cbn in H0; lia.
+        pose proof (cargs_same_kinds_length _ _ Hk) as H0; rewrite !List.length_app in H0; cbn in H0; lia.
       - destruct (wrapping_kinds_split _ _ _ _ E1' E1 Hl1) as [Hka Hkg]; cbn in Hkg.
         rewrite (wrap_full_avar _ _ _ E1).
         assert (E1a : gs' = (gs1' ++ g' :: nil) ++ rest') by (rewrite E1', <- List.app_assoc; reflexivity).

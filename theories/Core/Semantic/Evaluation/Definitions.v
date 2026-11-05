@@ -81,7 +81,7 @@ Definition module_saturated (Θ : gdeps) (Ξ : gstack) (p : qname) (args : list 
 (** The kind of the [n]-th parameter of a telescope [T], outermost first:
     [ak_level] at an assumption tagged [ak_level], [ak_relevant] at every
     other entry and past the telescope.  Parameters are never propositional
-    by the typing rules ([params_relevant]: relevant or levels), so at a
+    by the typing rules ([params_evaluated]: relevant or levels), so at a
     typed declaration this is the kind the assumption is tagged with; at an
     entry tagged [ak_propositional], which no well-typed term reaches, the
     value [ak_relevant] is junk, accepted so that a type former's
@@ -1043,7 +1043,7 @@ with eval_app_args (Θ : gdeps) (Ξ : gstack) : domain -> list exp -> env -> dom
 | eval_app_args_nil :
   `( eval_app_args Θ Ξ f nil ρ f )
 (** An evaluated argument: its value applied, then the rest. *)
-| eval_app_args_relevant :
+| eval_app_args_evaluated :
   `( evaluated_kind (arg_kind Θ Ξ f) ->
      ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
      $| f & n | Θ ⍮ Ξ ↘ g ->
@@ -1063,7 +1063,7 @@ with eval_field_vals (Θ : gdeps) (Ξ : gstack) : list abs_kind -> list exp -> e
 | eval_field_vals_nil :
   `( eval_field_vals Θ Ξ rs nil ρ nil )
 (** An evaluated field: its value, then the rest. *)
-| eval_field_vals_relevant :
+| eval_field_vals_evaluated :
   `( evaluated_kind (List.hd ak_relevant rs) ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->

@@ -81,7 +81,7 @@ Lemma ext_refl : forall Γ Δ, ⊨ Δ ++ Γ -> Γ ⊨ˣ Δ ≈ Δ.
 Proof. intros * HC; constructor; [ exact HC | exact HC | exact (rel_ctx_wf_per_ctx HC) ]. Qed.
 
 (** An alias of a literal is the literal over both telescopes. *)
-Lemma rel_lit_flatten : forall Γ Δ Δ' D l, tele_ass Δ -> params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
+Lemma rel_lit_flatten : forall Γ Δ Δ' D l, tele_ass Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
     (forall R, mdenote Θm Ξm (Δ ++ Γ) (me_lit (gu_mk Δ' D)) R -> desc_levels_abstractable Θm Ξm Γ Δ R) ->
     valid_unit (Δ ++ Γ) (me_lit (gu_mk Δ' D)) ->
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))) ≈ me_lit (gu_mk (Δ' ++ Δ) D).
@@ -104,7 +104,7 @@ Qed.
 (** ** Aliases of Canonical Units *)
 
 
-Lemma rel_alias_unit_up : forall Γ Δ X l, Δ <> nil -> tele_ass Δ -> params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
+Lemma rel_alias_unit_up : forall Γ Δ X l, Δ <> nil -> tele_ass Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
     mdesc_is_mod X ->
     (forall R, mdenote Θm Ξm (Δ ++ Γ) (mdesc_unit X) R -> desc_levels_abstractable Θm Ξm Γ Δ R) ->
     valid_unit (Δ ++ Γ) (mdesc_unit X) ->
@@ -125,7 +125,7 @@ Proof.
     assert (HL : Γ ⊨ᵐ me_lit (gu_mk (e :: Δ0) (md_alias (me_apps (qname_mod p) Ns))) ≈ me_lit (gu_mk (e :: Δ0) (md_alias (me_apps (qname_mod p) Ns))))
       by exact (rel_lit_alias _ _ _ _ _ (ext_refl _ _ HC) HΔ HΔ eq_refl HE HE).
     split; [ exact HL |].
-    destruct (params_relevant_sorts _ _ _ _ _ HΔw) as (ps & Hps & HpΔ).
+    destruct (params_evaluated_sorts _ _ _ _ _ HΔw) as (ps & Hps & HpΔ).
     assert (HF : exists lv Rt, levels_flag Θm Ξm Γ (e :: Δ0) (me_apps (qname_mod p) Ns) lv Rt).
     { destruct (me_denotes _ _ _ _ _ HwE) as (RE & _ & HmE & _).
       destruct (HΔa _ HmE) as [HLs | HN];
@@ -178,7 +178,7 @@ Proof.
     + rewrite mdesc_up_nil; cbn [List.app] in *.
       split; [ exact (rel_modexp_under_ctx_trans (rel_modexp_under_ctx_beta_alias0 _ _ HE) HEu) | exact HKu ].
     + pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
-      destruct (proj1 (unit_eq_params_relevant _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf))) as [lw HΔw]; cbn [gu_params] in HΔw.
+      destruct (proj1 (unit_eq_params_evaluated _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf))) as [lw HΔw]; cbn [gu_params] in HΔw.
       destruct HΔr as [lr HΔr].
       (* the alias's flag: what the unit of the target's module part
          denotes has the module part the target's has *)
@@ -189,8 +189,8 @@ Proof.
         rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HR _ Hmu).
         rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HmE _ (Hf2 eq_refl)) in HmdE.
         exact (no_level_of_mod _ _ _ _ _ Hmdu (no_level_mod _ _ _ _ _ (Hf3 eq_refl) HmdE)). }
-      destruct (rel_alias_unit_up Γ (e :: Δ0) REm (max lw lr) ltac:(discriminate) HΔ (params_relevant_max _ _ _ _ _ _ HΔw)
-                  (rel_params_relevant_ge _ _ lr (max lw lr) ltac:(lia) HΔr) Him HΔa HKu) as [Hup HKup].
+      destruct (rel_alias_unit_up Γ (e :: Δ0) REm (max lw lr) ltac:(discriminate) HΔ (params_evaluated_max _ _ _ _ _ _ HΔw)
+                  (rel_params_evaluated_ge _ _ lr (max lw lr) ltac:(lia) HΔr) Him HΔa HKu) as [Hup HKup].
       split; [| exact HKup ].
       eapply rel_modexp_under_ctx_trans; [| exact Hup ].
       exact (rel_lit_alias _ _ _ _ _ (ext_refl _ _ HΔΓ) HΔ HΔ eq_refl HEu (rel_modexp_refl_right HEu)).

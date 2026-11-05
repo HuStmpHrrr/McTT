@@ -5,8 +5,8 @@
     needs are the extension [σ,,M[σ]] and the lifting [q σ]; each is built
     from its counterpart for [Δ ▹ A] by [rel_sub_under_ctx_into_def].
 
-    The let rules are then derived from two lemmas, [rel_exp_let_relevant]
-    for a definition of a relevant type (of a universe, or of [LevelSort])
+    The let rules are then derived from two lemmas, [rel_exp_let_evaluated]
+    for a definition of a type of an evaluated kind (of a universe, or of [LevelSort])
     and [rel_exp_let_prop] for one of a proposition, which relate the
     instance [B[Id,,M]] of a judgment of [B] in [Γ ▸ A ≔ M] to a [let].  At
     a relevant type the value of [ℓ A ≔ M in B] at [ρ] is the value of [B]

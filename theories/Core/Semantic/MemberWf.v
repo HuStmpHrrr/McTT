@@ -39,7 +39,7 @@ Qed.
     are relevant. *)
 Lemma args_ok_next : forall Γ T Ns C T1' l,
     args_ok gc_deps gc_stack Γ T Ns -> tele_ass T -> ctx_scoped 0 T -> ⊢ T ->
-    params_relevant gc_deps gc_stack nil T l ->
+    params_evaluated gc_deps gc_stack nil T l ->
     tele_view (List.firstn (length T - length Ns) T) = Some (C, T1') ->
     param_typed gc_deps gc_stack Γ C[sb_of_list Id Ns] l.
 Proof.
@@ -59,7 +59,7 @@ Qed.
     type of a relevant sort: of a universe or of levels. *)
 Lemma desc_ok_tele_head : forall Γ Rm T B T1,
     desc_ok gc_deps gc_stack Γ Rm -> mdesc_tele Rm = Some T -> tele_view T = Some (B, T1) ->
-    exists Srt, relevant_sort Srt /\ Γ ⊢ B : Srt.
+    exists Srt, evaluated_sort Srt /\ Γ ⊢ B : Srt.
 Proof.
   intros * HR Ht Hv.
   inversion HR as [Γ0 A om HA HM | Γ0 Δ Φw Φ lΔ HΦ Hn Hent HaΔ Hsh Hnd HUw HRΔ
@@ -69,7 +69,7 @@ Proof.
     injection Ht as <-.
     unfold tele_view in Hv; destruct (tele_open_split _ _ _ Hv) as (τ & Es).
     destruct (tele_split_ass_eq _ _ _ _ HaΔ Es) as [EΔ _].
-    exact (param_typed_relevant _ _ _ _ _ (HRΔ _ _ _ nil EΔ)).
+    exact (param_typed_evaluated _ _ _ _ _ (HRΔ _ _ _ nil EΔ)).
   - (* a closed module: its outside parameters, then the rest of its telescope *)
     destruct (Nat.leb (length Ns) (length T0)); [| discriminate ]; injection Ht as <-.
     unfold tele_view in Hv; rewrite List.rev_app_distr in Hv.
@@ -80,7 +80,7 @@ Proof.
         as (T' & Ho).
       rewrite Ho in Hv; injection Hv as <- _.
       destruct (tele_split_ass_eq _ _ _ _ HaΘ Es) as [EΘ _].
-      exact (param_typed_relevant _ _ _ _ _ (HRΘ _ _ _ nil EΘ)).
+      exact (param_typed_evaluated _ _ _ _ _ (HRΘ _ _ _ nil EΘ)).
     + destruct (tele_open_app_inr _ _ _ _ _ Es Hv) as (B0 & T0' & Ho & ->).
       fold (tele_view (tele_sub (List.firstn (length T0 - length Ns) T0) (sb_of_list Id Ns))) in Ho.
       rewrite tele_view_sub in Ho.
@@ -88,11 +88,11 @@ Proof.
       injection Ho as <- _.
       (* the stored telescope is relevant where it is stored, so here *)
       pose proof (ctx_wf_gctx _ _ _ HΘ') as Hg.
-      destruct (loc_relevant _ _ _ _ _ (gctx_valid_syn _ _ Hg0) Hloc) as [lT HRT].
-      pose proof (params_relevant_embed _ _ _ _ _ _ _ (Build_gctx_embedding _ _ _ _ Hg Hsub0) HRT) as HRT'.
-      destruct (param_typed_relevant _ _ _ _ _ (args_ok_next _ _ _ _ _ _ Hargs Ha0 Hs0 HT0 HRT' HvC)) as (Srt & HS & HC).
+      destruct (loc_params_evaluated _ _ _ _ _ (gctx_valid_syn _ _ Hg0) Hloc) as [lT HRT].
+      pose proof (params_evaluated_embed _ _ _ _ _ _ _ (Build_gctx_embedding _ _ _ _ Hg Hsub0) HRT) as HRT'.
+      destruct (param_typed_evaluated _ _ _ _ _ (args_ok_next _ _ _ _ _ _ Hargs Ha0 Hs0 HT0 HRT' HvC)) as (Srt & HS & HC).
       exists Srt; split; [ exact HS |].
-      exact (sub_preserves_sort _ _ _ _ _ _ _ HC (relevant_type_sort _ HS) Hsw).
+      exact (sub_preserves_sort _ _ _ _ _ _ _ HC (evaluated_sort_type_sort _ HS) Hsw).
 Qed.
 
 (** The outermost parameter a well-formed module expression still takes is
@@ -100,7 +100,7 @@ Qed.
 Corollary mtele_head_wf : forall Γ H R T B T1,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> mdenote gc_deps gc_stack Γ H R ->
     mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
-    exists Srt, relevant_sort Srt /\ Γ ⊢ B : Srt.
+    exists Srt, evaluated_sort Srt /\ Γ ⊢ B : Srt.
 Proof.
   intros * HH Hm Ht Hv.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.

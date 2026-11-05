@@ -3292,7 +3292,7 @@ Section ElimGlu.
               (elim_ups_ok_mref_a _ _ _ _ _ _ _ _ Hups) HMi Hrv eq_refl eq_refl _ Hrk _).
     - intros c gs' gs Hin Hcn.
       assert (gs = gs') as -> by (pose proof (cons_lookup_nodup_in _ _ _ (Hnd _ _ HMi) Hin) as Hc0; unfold ind_con in Hcn; congruence).
-      constructor; [ apply cargs_kinds_refl
+      constructor; [ apply cargs_same_kinds_refl
                    | exact (cargs_container_count_own_of_ass D Hass gs' (grp_tele_ass_params_length _ Hass _ _ _ _ HMi (cons_lookup_in _ _ _ Hcn)))
                    | exact (cargs_nest_ok_own p D ups nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had rk 0 i Mi c gs' HMi Hcn) ].
     - intros j0 Hj; lia.
@@ -3323,7 +3323,7 @@ Section ElimGlu.
     refine (ER member_pair_of s D' (Some vm) i' Mi' Mv rk (rk m) Ha Ha ups_len ups_len (elim_ups_ok_mref_a _ _ _ _ _ _ _ _ Hups)
               (elim_ups_ok_mref_a _ _ _ _ _ _ _ _ Hups) ltac:(rewrite Hsrc; exact HMv) Hrv Hnn (eq_sym Hnames) _ Hrk _).
     - intros c gs' gs Hin Hcn.
-      constructor; [ exact (cargs_kinds_of_correspond _ _ _ (Hcorr c gs' gs Hin Hcn)) | |].
+      constructor; [ exact (cargs_same_kinds_of_correspond _ _ _ (Hcorr c gs' gs Hin Hcn)) | |].
       + (** the group's paths the container has, as many as its branch binds *)
         pose proof (decl_typed_record_struct _ _ _ HdtQ) as HrsQ.
         exact (cargs_container_count_view p qc D D' vm (leaves_coherent_of_order D (rview_struct_order _ _ _ (grp_tele_ass_record_struct _ Hass)))

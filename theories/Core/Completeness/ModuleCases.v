@@ -147,9 +147,9 @@ Qed.
 Lemma valid_modexp_app : forall Γ H H' N N' R T B T1 Srt R' T' B' T1' Srt',
     Γ ⊨ᵐ H ≈ H' -> valid_modexp Γ H -> valid_modexp Γ H' ->
     mdenote Θm Ξm Γ H R -> mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
-    Θm ⍮ Ξm ⍮ Γ ⊢ B : Srt -> relevant_sort Srt -> Γ ⊨ B : Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Γ ⊨ N ≈ N' : B ->
+    Θm ⍮ Ξm ⍮ Γ ⊢ B : Srt -> evaluated_sort Srt -> Γ ⊨ B : Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ N : B -> Γ ⊨ N ≈ N' : B ->
     mdenote Θm Ξm Γ H' R' -> mdesc_mod_tele R' = Some T' -> tele_view T' = Some (B', T1') ->
-    Θm ⍮ Ξm ⍮ Γ ⊢ B' : Srt' -> relevant_sort Srt' -> Γ ⊨ B' : Srt' -> Θm ⍮ Ξm ⍮ Γ ⊢ N' : B' -> Γ ⊨ N' : B' ->
+    Θm ⍮ Ξm ⍮ Γ ⊢ B' : Srt' -> evaluated_sort Srt' -> Γ ⊨ B' : Srt' -> Θm ⍮ Ξm ⍮ Γ ⊢ N' : B' -> Γ ⊨ N' : B' ->
     Γ ⊨ᵐ me_app H N ≈ me_app H' N' /\ valid_modexp Γ (me_app H N) /\ valid_modexp Γ (me_app H' N').
 Proof.
   intros * HH Hs Hs' Hm Ht Hv HB HS HBs HN HNN Hm' Ht' Hv' HB' HS' HBs' HN' HNs'.
@@ -158,7 +158,7 @@ Proof.
   destruct (proj2 (valid_unit_app_all Hgw _ _ Hgm Hsub Hgf) _ _ Hs _ _ _ _ _ _ _ Hm Ht Hv HS HB HBp HN (rel_exp_under_ctx_refl_left HNN))
     as [Hl HsN].
   destruct (proj2 (valid_unit_app_all Hgw _ _ Hgm Hsub Hgf) _ _ Hs' _ _ _ _ _ _ _ Hm' Ht' Hv' HS' HB' HBp' HN' HNs') as [_ HsN'].
-  split; [ exact (rel_modexp_under_ctx_app _ _ _ _ _ _ HH (rel_type_evaluated_of_relevant_sort HS HBs) HNN Hl) | split; assumption ].
+  split; [ exact (rel_modexp_under_ctx_app _ _ _ _ _ _ HH (rel_type_evaluated_of_evaluated_sort HS HBs) HNN Hl) | split; assumption ].
 Qed.
 
 (** [β] for a literal, valid in what it denotes on both sides. *)
@@ -171,7 +171,7 @@ Lemma valid_modexp_beta : forall Γ Δ κ X D N,
 Proof.
   intros * Hw Hwa HK HNw HN.
   (* the parameter is relevant in the PER model *)
-  destruct (valid_unit_lit_params_relevant _ _ _ _ HK) as (i & _ & HX); cbn [gu_params] in HX.
+  destruct (valid_unit_lit_params_evaluated _ _ _ _ HK) as (i & _ & HX); cbn [gu_params] in HX.
   pose proof (HX _ _ _ _ eq_refl) as HX0; cbn [List.app] in HX0.
   destruct (me_denotes _ _ _ _ _ Hw) as (R & Rm & Hm & _).
   pose proof (mdenote_lit_inv _ _ _ _ _ Hm) as Hu.
@@ -222,7 +222,7 @@ Proof.
                          | reflexivity | exact HE | exact HE ]. }
   split; [ exact (rel_modexp_under_ctx_beta_alias0 _ _ HE) |].
   apply (valid_modexp_of_valid_unit _ _ Hgf).
-  eapply valid_unit_alias; [ exact Hw' | constructor | exists 0; apply rel_params_relevant_nil | exact HΓ | exact HΓ | exact HL | exact HE | exact Hs ].
+  eapply valid_unit_alias; [ exact Hw' | constructor | exists 0; apply rel_params_evaluated_nil | exact HΓ | exact HΓ | exact HL | exact HE | exact Hs ].
 Qed.
 
 (** A loaded unit or an open frame, by its path. *)
@@ -246,7 +246,7 @@ Qed.
 (** An alias unit. *)
 Lemma rel_unit_under_ctx_alias : forall Γ Δ Δ' E E' l,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') -> Θm ⍮ Ξm ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
-    Γ ⊨ˣ Δ ≈ Δ' -> tele_ass Δ -> tele_ass Δ' -> rel_params_relevant Γ Δ l -> rel_params_relevant Γ Δ' l -> ⊨ Γ ->
+    Γ ⊨ˣ Δ ≈ Δ' -> tele_ass Δ -> tele_ass Δ' -> rel_params_evaluated Γ Δ l -> rel_params_evaluated Γ Δ' l -> ⊨ Γ ->
     Δ ++ Γ ⊨ᵐ E ≈ E' -> Δ' ++ Γ ⊨ᵐ E' ≈ E' -> valid_modexp (Δ ++ Γ) E -> valid_modexp (Δ' ++ Γ) E' ->
     Γ ⊨ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') /\
     valid_unit Γ (me_lit (gu_mk Δ (md_alias E))) /\ valid_unit Γ (me_lit (gu_mk Δ' (md_alias E'))).
@@ -267,7 +267,7 @@ Qed.
 (** An alias of a literal, flattened. *)
 Lemma rel_unit_under_ctx_flatten : forall Γ Δ Δ' D l,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D ->
-    tele_ass Δ -> params_relevant Θm Ξm Γ Δ l -> rel_params_relevant Γ Δ l ->
+    tele_ass Δ -> params_evaluated Θm Ξm Γ Δ l -> rel_params_evaluated Γ Δ l ->
     ⊨ Γ -> ⊨ Δ ++ Γ -> valid_unit (Δ ++ Γ) (me_lit (gu_mk Δ' D)) ->
     Γ ⊨ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D /\
     valid_unit Γ (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))) /\ valid_unit Γ (me_lit (gu_mk (Δ' ++ Δ) D)).
@@ -298,7 +298,7 @@ Lemma rel_unit_under_ctx_body : forall Γ Δ Δ' Φ Φ' Φx Φx' l,
     ⊨ (body_ctx Φx ++ Δ) ++ Γ -> valid_slots ((body_ctx Φx ++ Δ) ++ Γ) ->
     ⊨ (body_ctx Φx' ++ Δ') ++ Γ -> valid_slots ((body_ctx Φx' ++ Δ') ++ Γ) ->
     body_sorts_valid Φx (Δ ++ Γ) -> body_sorts_valid Φx' (Δ' ++ Γ) ->
-    rel_params_relevant Γ Δ l -> rel_params_relevant Γ Δ' l ->
+    rel_params_evaluated Γ Δ l -> rel_params_evaluated Γ Δ' l ->
     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -620,9 +620,9 @@ Lemma sem_unit_eq_alias :
 Proof.
   intros * Hu HΔw HΔ Ha Ha' HE HE' Hps HP HP'; sem_intro0.
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
-    assert (HPr : rel_params_relevant Γ Δ param_level)
+    assert (HPr : rel_params_evaluated Γ Δ param_level)
       by (intros ? ? ? ? HE0; exact (rel_param_typed_of_parameter_sort _ _ _ _ (Hps _) (sem_exp_eq_at_rel (HP _ _ _ _ HE0 _ _ He))));
-    assert (HPr' : rel_params_relevant Γ Δ' param_level)
+    assert (HPr' : rel_params_evaluated Γ Δ' param_level)
       by (intros ? ? ? ? HE0; exact (rel_param_typed_of_parameter_sort _ _ _ _ (Hps _) (sem_exp_eq_at_rel (HP' _ _ _ _ HE0 _ _ He))))
   end.
   close_unit rel_unit_under_ctx_alias.
@@ -639,9 +639,9 @@ Lemma sem_unit_eq_flatten :
      Θ ⍮ Ξ ⍮ Γ ⊨ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D ).
 Proof.
   intros * Hu HΔ Ha HU Hps HPw HP; sem_intro0.
-  pose proof (params_relevant_of_sorts _ _ _ _ _ _ Hps HPw) as HPw'.
+  pose proof (params_evaluated_of_sorts _ _ _ _ _ _ Hps HPw) as HPw'.
   match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
-    assert (HPr : rel_params_relevant Γ Δ param_level)
+    assert (HPr : rel_params_evaluated Γ Δ param_level)
       by (intros ? ? ? ? HE0; exact (rel_param_typed_of_parameter_sort _ _ _ _ (Hps _) (sem_exp_eq_at_rel (HP _ _ _ _ HE0 _ _ He))))
   end.
   close_unit rel_unit_under_ctx_flatten.
@@ -718,7 +718,7 @@ Lemma sem_me_app :
      tele_view T = Some (B, T1) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B : Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊨ B : Srt ->
-     relevant_sort Srt ->
+     evaluated_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N ≈ N' : B ->
      mdenote Θ Ξ Γ H' R' ->
@@ -726,7 +726,7 @@ Lemma sem_me_app :
      tele_view T' = Some (B', T1') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B' : Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ B' : Srt' ->
-     relevant_sort Srt' ->
+     evaluated_sort Srt' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N' : B' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ N' : B' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ᵐ me_app H N ≈ me_app H' N' ).

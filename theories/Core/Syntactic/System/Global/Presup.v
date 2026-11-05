@@ -2687,16 +2687,16 @@ Qed.
 (** A module's own parameters, over the frames outside it, are types of a
     universe: the premise (R) of the rule it starts with.  A record's
     module's value is not among them ([frame_params]). *)
-Lemma wf_gmod_params_relevant : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ ->
-    exists l, params_relevant Θ Ξ (gs_tele Ξ) (frame_params K Δ) l.
+Lemma wf_gmod_params_evaluated : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ ->
+    exists l, params_evaluated Θ Ξ (gs_tele Ξ) (frame_params K Δ) l.
 Proof.
   induction 1; cbn [frame_params List.tl];
-    first [ eexists; eapply params_relevant_of_sorts; eassumption | eexists; eassumption | assumption ].
+    first [ eexists; eapply params_evaluated_of_sorts; eassumption | eexists; eassumption | assumption ].
 Qed.
 
 (** Relevant parameters stay so along an embedding. *)
-Lemma params_relevant_embed : forall Θ1 Ξ1 Θ2 Ξ2 Γ Δ l,
-    gctx_embedding Θ1 Ξ1 Θ2 Ξ2 -> params_relevant Θ1 Ξ1 Γ Δ l -> params_relevant Θ2 Ξ2 Γ Δ l.
+Lemma params_evaluated_embed : forall Θ1 Ξ1 Θ2 Ξ2 Γ Δ l,
+    gctx_embedding Θ1 Ξ1 Θ2 Ξ2 -> params_evaluated Θ1 Ξ1 Γ Δ l -> params_evaluated Θ2 Ξ2 Γ Δ l.
 Proof.
   intros * He HR Δ1 κ T Δ2 E; destruct (HR _ _ _ _ E) as [H | H]; [ left | right ];
     exact (proj1 (proj2 (gctx_embedding_preserves_wf _ _ _ _ He)) _ _ _ H).
@@ -2727,21 +2727,21 @@ Qed.
     universe: each frame's own parameters by (R), read one frame out and
     moved into the stack pushed, and a record's module's value, typed in
     the record's own frame. *)
-Lemma wf_gs_tele_relevant : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> exists l, params_relevant Θ Ξ nil (gs_tele Ξ) l.
+Lemma wf_gs_tele_evaluated : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> exists l, params_evaluated Θ Ξ nil (gs_tele Ξ) l.
 Proof.
   intros Θ Ξ; induction Ξ as [| [[mp K] U] Ξ IH]; intros Hg.
-  - exists 0; apply params_relevant_nil.
+  - exists 0; apply params_evaluated_nil.
   - destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (Hs0 & HU & Hff).
     pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ.
     assert (He : gctx_embedding Θ Ξ Θ ((mp, K, U) :: Ξ)) by (constructor; [ exact Hg | apply gc_sub_push; exact Hff ]).
     destruct (IH Hs0) as [l0 H0].
-    destruct (wf_gmod_params_relevant _ _ _ _ _ _ HΦ) as [l1 H1].
-    pose proof (params_relevant_embed _ _ _ _ _ _ _ He H0) as H0'.
-    pose proof (params_relevant_embed _ _ _ _ _ _ _ He H1) as H1'.
+    destruct (wf_gmod_params_evaluated _ _ _ _ _ _ HΦ) as [l1 H1].
+    pose proof (params_evaluated_embed _ _ _ _ _ _ _ He H0) as H0'.
+    pose proof (params_evaluated_embed _ _ _ _ _ _ _ He H1) as H1'.
     cbn [gs_tele].
     destruct K as [| pq k D | R]; cbn [frame_params] in H1'.
-    + exists (max l1 l0); apply params_relevant_app; [ rewrite List.app_nil_r; exact H1' | exact H0' ].
-    + exists (max l1 l0); apply params_relevant_app; [ rewrite List.app_nil_r; exact H1' | exact H0' ].
+    + exists (max l1 l0); apply params_evaluated_app; [ rewrite List.app_nil_r; exact H1' | exact H0' ].
+    + exists (max l1 l0); apply params_evaluated_app; [ rewrite List.app_nil_r; exact H1' | exact H0' ].
     + destruct (wf_gmod_record_params _ _ _ _ _ _ HΦ _ eq_refl) as (Δr & HΔ & HPR & _).
       rewrite HΔ in H1' |- *; cbn [List.tl] in H1'.
       destruct (record_self_large _ _ mp R
@@ -2750,36 +2750,36 @@ Proof.
       exists (max j (max l1 l0)).
       change (ce_ass (sort_exp_kind (record_sort R)) (record_self mp R) :: Δr) with ((ce_ass (sort_exp_kind (record_sort R)) (record_self mp R) :: nil) ++ Δr).
       rewrite <- List.app_assoc.
-      apply params_relevant_app; [| apply params_relevant_app; [ rewrite List.app_nil_r; exact H1' | exact H0' ] ].
+      apply params_evaluated_app; [| apply params_evaluated_app; [ rewrite List.app_nil_r; exact H1' | exact H0' ] ].
       intros Δ1 κ T Δ2 E; destruct Δ1 as [| e Δ1]; cbn in E; [| destruct Δ1; discriminate ].
       injection E as <- <- <-; left; rewrite List.app_nil_r, <- HPR; exact Hj.
 Qed.
 
 (** Relevant parameters over the frames' parameters, with these: relevant
     in the empty context. *)
-Lemma params_relevant_over_stack : forall Θ Ξ Δ l, ⊢ᵍ Θ ⍮ Ξ -> params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
-    exists l', params_relevant Θ Ξ nil (Δ ++ gs_tele Ξ) l'.
+Lemma params_evaluated_over_stack : forall Θ Ξ Δ l, ⊢ᵍ Θ ⍮ Ξ -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
+    exists l', params_evaluated Θ Ξ nil (Δ ++ gs_tele Ξ) l'.
 Proof.
-  intros * Hg HR; destruct (wf_gs_tele_relevant _ _ Hg) as [l0 H0].
-  exists (max l l0); apply params_relevant_app; [ rewrite List.app_nil_r; exact HR | exact H0 ].
+  intros * Hg HR; destruct (wf_gs_tele_evaluated _ _ Hg) as [l0 H0].
+  exists (max l l0); apply params_evaluated_app; [ rewrite List.app_nil_r; exact HR | exact H0 ].
 Qed.
 
 (** A filed record's parameters are relevant in the empty context: its own
     ones by the premise of [wf_gentry_record], or by (R) of the body of its
-    module ([wf_gmod_params_relevant], one entry out: the value), over the
-    frames' parameters ([params_relevant_over_stack]). *)
-Lemma wf_gentry_record_params_relevant : forall Θ Ξ mp pv pr R Φ, Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr R Φ ->
-    exists l, params_relevant Θ Ξ nil (record_params R) l.
+    module ([wf_gmod_params_evaluated], one entry out: the value), over the
+    frames' parameters ([params_evaluated_over_stack]). *)
+Lemma wf_gentry_record_params_evaluated : forall Θ Ξ mp pv pr R Φ, Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr R Φ ->
+    exists l, params_evaluated Θ Ξ nil (record_params R) l.
 Proof.
   intros * HE; inversion HE; subst.
   - match goal with HS : _ ⍮ _ ⍮ record_params R ⊢ᵤ _ |- _ => pose proof (ctx_wf_gctx _ _ _ (presup_is_univ_ctx HS)) as Hg end.
     match goal with HU : record_params R = _ ++ gs_tele Ξ |- _ => rewrite HU end.
-    eapply params_relevant_over_stack; [ exact Hg | first [ eassumption | eapply params_relevant_of_sorts; eassumption ] ].
+    eapply params_evaluated_over_stack; [ exact Hg | first [ eassumption | eapply params_evaluated_of_sorts; eassumption ] ].
   - match goal with HΦ : _ ⍮ _ ⍮ _ ⍮ fk_record R ⍮ _ ⊢ᵍᵐ _ |- _ =>
-      destruct (wf_gmod_params_relevant _ _ _ _ _ _ HΦ) as [l Hl]; pose proof (ctx_wf_gctx _ _ _ (wf_gmod_ctx _ _ _ _ _ _ HΦ)) as Hg end.
+      destruct (wf_gmod_params_evaluated _ _ _ _ _ _ HΦ) as [l Hl]; pose proof (ctx_wf_gctx _ _ _ (wf_gmod_ctx _ _ _ _ _ _ HΦ)) as Hg end.
     cbn [frame_params List.tl] in Hl.
     match goal with HU : record_params R = _ ++ gs_tele Ξ |- _ => rewrite HU end.
-    exact (params_relevant_over_stack _ _ _ _ Hg Hl).
+    exact (params_evaluated_over_stack _ _ _ _ Hg Hl).
 Qed.
 
 Section Induction.
@@ -3205,23 +3205,23 @@ Section ModInduction.
       V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None).
   Hypothesis Halias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 Θs Ξs,
       tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-      params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+      params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
       levels_flag Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E lv Rt ->
       bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
       V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
   Hypothesis Hnil : forall Θ Ξ Δ l Θ2 Ξ2,
-      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
       bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
       F Θ2 Ξ2 (Δ ++ gs_tele Ξ).
   (** A declaration, and the telescope of its uniform parameters, which its
       module's members are checked in. *)
   Hypothesis Hind : forall Θ Ξ D l Θ2 Ξ2,
-      decl_typed Θ Ξ D -> params_relevant Θ Ξ nil (ind_uparams D) l ->
+      decl_typed Θ Ξ D -> params_evaluated Θ Ξ nil (ind_uparams D) l ->
       bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D /\ F Θ2 Ξ2 (ind_uparams D).
   (** A record's declaration, with its parameters relevant, at any target
       its context embeds into. *)
   Hypothesis Hrecord : forall Θ Ξ R l Θ2 Ξ2,
-      record_typed Θ Ξ R -> params_relevant Θ Ξ nil (record_params R) l ->
+      record_typed Θ Ξ R -> params_evaluated Θ Ξ nil (record_params R) l ->
       bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> VR Θ2 Ξ2 R.
   (** A record's module telescope, at any target its context embeds into
       where the record is found: its parameters, then a value of it, which
@@ -3285,13 +3285,13 @@ Section ModInduction.
       split; [ exact HF | apply HΦ; exact (gc_sub_nested _ _ _ pv fk_module _ _ _ _ Hs Hcs I) ].
     - split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He _ Θs Ξs Hs _; cbn; eapply Halias;
-        first [ eassumption | eapply params_relevant_of_sorts; eassumption | eapply levels_flag_of_global; eassumption ].
+        first [ eassumption | eapply params_evaluated_of_sorts; eassumption | eapply levels_flag_of_global; eassumption ].
     - (* a group, at its first member, with no member in its module *)
       split; [ assumption |].
-      assert (HRU : exists l, params_relevant Θ Ξ nil (ind_uparams D) l).
+      assert (HRU : exists l, params_evaluated Θ Ξ nil (ind_uparams D) l).
       { match goal with HU : ind_uparams D = ?Δ ++ gs_tele ?Ξ0, HC : ⊢ _ ⍮ _ ⍮ ind_uparams D |- _ =>
-          rewrite HU; eapply params_relevant_over_stack;
-            [ exact (ctx_wf_gctx _ _ _ HC) | first [ eassumption | eapply params_relevant_of_sorts; eassumption ] ] end. }
+          rewrite HU; eapply params_evaluated_over_stack;
+            [ exact (ctx_wf_gctx _ _ _ HC) | first [ eassumption | eapply params_evaluated_of_sorts; eassumption ] ] end. }
       destruct HRU as [lU HRU].
       assert (HDF : forall Θ2 Ξ2, gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D /\ F Θ2 Ξ2 (ind_uparams D))
         by (intros Θ2 Ξ2 He; eapply Hind; [ build_decl_typed | exact HRU | eassumption | exact He ]).
@@ -3309,7 +3309,7 @@ Section ModInduction.
         HG : bodies_valid_along_embeddings _ _ |- F _ _ (ind_uparams ?D) =>
           rewrite HU in Ha, HC |- *; eapply Hnil;
             [ exact (proj1 (proj1 (List.Forall_app _ _ _) Ha)) | exact HC
-            | first [ eassumption | eapply params_relevant_of_sorts; eassumption ] | exact HG | exact He ]
+            | first [ eassumption | eapply params_evaluated_of_sorts; eassumption ] | exact HG | exact He ]
       end.
     - (* a declared member with the body of its module, checked in the
          member's open frame *)
@@ -3325,7 +3325,7 @@ Section ModInduction.
          alias, and as its term part, a transparent definition *)
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He _ Θs Ξs Hs _; cbn; split;
-        [ eapply Halias; first [ eassumption | eapply params_relevant_of_sorts; eassumption
+        [ eapply Halias; first [ eassumption | eapply params_evaluated_of_sorts; eassumption
                                | eapply levels_flag_of_global; eassumption ] |].
       match goal with HG : bodies_valid_along_embeddings _ _ |- _ => destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ] end.
       split.
@@ -3340,12 +3340,12 @@ Section ModInduction.
          declaration, over its parameters and a value *)
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He [Hct _] Θs Ξs Hs _; cbn.
-      assert (HRr : exists l, params_relevant Θ Ξ nil (record_params R) l).
+      assert (HRr : exists l, params_evaluated Θ Ξ nil (record_params R) l).
       { match goal with HU : record_params R = ?Δ ++ gs_tele ?Ξ0, HS : _ ⍮ _ ⍮ record_params R ⊢ᵤ _,
                         Hp : forall Δ1 κ T Δ2, ?Δ = Δ1 ++ ce_ass κ T :: Δ2 -> _ ⍮ _ ⍮ _ ⊢ T : _ |- _ =>
-          rewrite HU; eapply params_relevant_over_stack;
+          rewrite HU; eapply params_evaluated_over_stack;
             [ exact (ctx_wf_gctx _ _ _ (presup_is_univ_ctx HS))
-            | first [ exact Hp | eapply params_relevant_of_sorts; [ eassumption | exact Hp ] ] ] end. }
+            | first [ exact Hp | eapply params_evaluated_of_sorts; [ eassumption | exact Hp ] ] ] end. }
       destruct HRr as [lR HRr].
       split; [ eapply Hrecord; [ constructor; eassumption | exact HRr | eassumption | exact He ] | split; [| exact I ] ].
       eapply Hrecord_tele; [ constructor; eassumption | eassumption | exact He | exact (contributions_found_record_lookup _ _ _ _ _ _ _ _ Hct) |].
@@ -3355,7 +3355,7 @@ Section ModInduction.
           pose proof (presup_is_univ_ctx HS) as HC;
           rewrite HU in Ha, HC |- *; eapply Hnil;
             [ exact (proj1 (proj1 (List.Forall_app _ _ _) Ha)) | exact HC
-            | first [ eassumption | eapply params_relevant_of_sorts; eassumption ] | exact HG | exact He ]
+            | first [ eassumption | eapply params_evaluated_of_sorts; eassumption ] | exact HG | exact He ]
       end.
     - (* a record with the body of its module, checked in the record's open
          frame *)
@@ -3372,13 +3372,13 @@ Section ModInduction.
       unfold record_mod_tele; rewrite HU; split; [ exact HF |].
       apply HΦ; exact (gc_sub_nested _ _ _ pv (fk_record R) _ _ _ _ Hs Hcs HKt).
     - split; [ assumption |]; split; [ intros ? ? _; split; [ intros ? ? Heq | intros ? Heq ]; discriminate Heq |].
-      intros Θ2 Ξ2 _ He; split; [ eapply Hnil; first [ eassumption | eapply params_relevant_of_sorts; eassumption ] | intros; exact I ].
+      intros Θ2 Ξ2 _ He; split; [ eapply Hnil; first [ eassumption | eapply params_evaluated_of_sorts; eassumption ] | intros; exact I ].
     - (* the module of a member, before its members: the member's group *)
       match goal with IH : entry_bodies_valid_along_embeddings _ _ _ _ |- _ => rename IH into IHE end.
       split; [ exact (proj1 IHE) |]; split.
       + intros Θ2 Ξ2 He; split; [| intros ? Heq; discriminate Heq ].
         intros pq0 D0 Heq; injection Heq as -> -> ->; exact (proj1 (proj2 IHE) _ _ He _ _ _ _ eq_refl).
-      + intros Θ2 Ξ2 _ He; split; [ eapply Hnil; first [ eassumption | eapply params_relevant_of_sorts; eassumption ] | intros; exact I ].
+      + intros Θ2 Ξ2 _ He; split; [ eapply Hnil; first [ eassumption | eapply params_evaluated_of_sorts; eassumption ] | intros; exact I ].
     - (* the module of a record, before its members: the record's
          declaration *)
       match goal with IH : entry_bodies_valid_along_embeddings _ _ _ _ |- _ => rename IH into IHE end.
@@ -3386,7 +3386,7 @@ Section ModInduction.
       + intros Θ2 Ξ2 He; split; [ intros ? ? Heq; discriminate Heq |].
         intros R0 Heq; injection Heq as <-.
         match goal with HE : _ ⍮ _ ⍮ _ ⊢ᵉ ge_record _ _ _ _ |- _ =>
-          destruct (wf_gentry_record_params_relevant _ _ _ _ _ _ _ HE) as [lR HRr];
+          destruct (wf_gentry_record_params_evaluated _ _ _ _ _ _ _ HE) as [lR HRr];
           exact (Hrecord _ _ _ _ _ _ (proj1 wf_record_typed_all _ _ _ _ HE _ _ _ _ eq_refl) HRr (proj1 IHE) He) end.
       + (* its telescope: the parameters, valid one frame out, and the
            value, where the record's frame is *)
@@ -3398,7 +3398,7 @@ Section ModInduction.
           rewrite gs_find_record_own; reflexivity.
         * match goal with HU : record_params _ = _ ++ _ |- _ => rewrite HU end.
           match goal with Ha : tele_ass ?Δ, HC : ⊢ _ ⍮ _ ⍮ ?Δ ++ _ |- _ => exact (Hnil _ _ _ _ _ _ Ha HC
-                   ltac:(first [ eassumption | eapply params_relevant_of_sorts; eassumption ]) (proj1 IHE) He) end.
+                   ltac:(first [ eassumption | eapply params_evaluated_of_sorts; eassumption ]) (proj1 IHE) He) end.
     - match goal with IH : module_bodies_valid_along_embeddings _ _ _ _ _ _ |- _ => rename IH into IHΦ end.
       match goal with IH : entry_bodies_valid_along_embeddings _ _ _ _ |- _ => rename IH into IHE end.
       destruct IHΦ as [HG [HK IHΦ]]; split; [ exact HG |]; split; [ exact HK |].
@@ -3675,7 +3675,7 @@ Record syn_F (Θ : gdeps) (Ξ : gstack) (T : ctx) : Prop := mk_syn_F
   ; syn_F_level : nat
     (** The parameters are types of the universe at that level, as every
         module's are (R) *)
-  ; syn_F_relevant : params_relevant Θ Ξ nil T syn_F_level }.
+  ; syn_F_evaluated : params_evaluated Θ Ξ nil T syn_F_level }.
 
 Definition syn_VD : gdeps -> gstack -> ind_decl -> Prop := decl_typed.
 
@@ -3714,7 +3714,7 @@ Definition syn_V (Θ : gdeps) (Ξ : gstack) (T : ctx) (E : gentry) : Prop :=
         (forall M, oM = Some M -> exists M0, M = ctx_fn T M0 /\ Θ ⍮ Ξ ⍮ T ⊢ M0 : A0)
   | ge_mod _ (gu_mk Δa (md_alias E')) =>
       Θ ⍮ Ξ ⍮ Δa ⊢ᵐ E' ≈ E' /\ ⊢ Θ ⍮ Ξ ⍮ Δa /\
-      (exists l, params_relevant Θ Ξ nil Δa l) /\
+      (exists l, params_evaluated Θ Ξ nil Δa l) /\
       (** The flag premise of [wf_gentry_alias]: the full telescope is of
           types of levels, or the target has no member of a type of
           levels *)
@@ -3753,7 +3753,7 @@ Proof.
 Qed.
 
 (** A stored module's telescope is of relevant parameters. *)
-Corollary loc_relevant : forall Θ Ξ p T Φ, valid_syn Θ Ξ -> loc Θ Ξ p T Φ -> exists l, params_relevant Θ Ξ nil T l.
+Corollary loc_params_evaluated : forall Θ Ξ p T Φ, valid_syn Θ Ξ -> loc Θ Ξ p T Φ -> exists l, params_evaluated Θ Ξ nil T l.
 Proof. intros * Hv Hl; destruct (loc_valid _ _ _ _ _ Hv Hl) as [[_ _ l HR] _]; exists l; exact HR. Qed.
 
 (** The record type an open frame is the module of is typed: it was
@@ -4022,7 +4022,7 @@ Proof.
   destruct (wf_ind_args _ _ _ _ _ _ _ _ HD Hl HMk Hlt HΓ Hargs) as [[i Hi] HM].
   rewrite <- (mdesc_up_nil (mdesc_closed nil pm Tm Φm Ns)).
   eapply desc_ok_dm with (param_level := 0);
-    [ exact HΓ | constructor | exact Hi | exact HM | exact Hok | apply params_relevant_nil | apply desc_levels_abstractable_nil ].
+    [ exact HΓ | constructor | exact Hi | exact HM | exact Hok | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
 Qed.
 
 (** The type former of a typed record type at arguments for its outermost
@@ -4041,7 +4041,7 @@ Proof.
   destruct (wf_record_args _ _ _ _ _ _ HRt Hl HΓ Hargs) as [[i Hi] HM].
   rewrite <- (mdesc_up_nil (mdesc_closed nil pm Tm Φm Ns)).
   eapply desc_ok_dm with (param_level := 0);
-    [ exact HΓ | constructor | exact Hi | exact HM | exact Hok | apply params_relevant_nil | apply desc_levels_abstractable_nil ].
+    [ exact HΓ | constructor | exact Hi | exact HM | exact Hok | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
 Qed.
 
 (** [closed_entry_read Θ Ξ Γ Θ' p T Φ Ns M R R' R0]: the entry [R] of the
@@ -4163,7 +4163,7 @@ Proof.
     eapply desc_ok_closed with (param_level := 0);
       [ exact Hg0 | exact Hsub | right; exact Hb | exact HaΔT
       | exact (proj1 (gctx_closed_body _ _ _ _ _ (wf_gstack_closed _ _ Hg0) Hb)) | exact HΔT | exact HΘ'
-      | apply args_ok_ext; exact Hargs | constructor | apply params_relevant_nil | apply desc_levels_abstractable_nil ].
+      | apply args_ok_ext; exact Hargs | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
   - (* an alias: the module part of what its target denotes, at the
        arguments for the telescope it is stored over *)
     cbn in Hgr; subst E1.
@@ -4190,7 +4190,7 @@ Proof.
     assert (HaΔ : tele_ass (Δ0 ++ T)) by (apply List.Forall_app; split; assumption).
     pose proof (args_ok_ext _ _ _ _ _ Δ0 Hargs) as Hargs'.
     destruct (ats_up_ok _ _ Hg Ns (Θ' ++ Γ) (Δ0 ++ T) _ lΔ HΔΘ HaΔ (args_ok_length _ _ _ _ _ Hargs') (args_ok_insts _ _ _ _ _ Hargs') Hok2
-                (up_relevant_of _ _ _ _ _ _ (params_relevant_closed _ _ _ _ _ HsΔ HRΔ HΔΘ) HLR1m)) as (R2 & HR2 & Hok3).
+                (up_evaluated_of _ _ _ _ _ _ (params_evaluated_closed _ _ _ _ _ HsΔ HRΔ HΔΘ) HLR1m)) as (R2 & HR2 & Hok3).
     rewrite mdesc_ats_read_mod in Hats by (apply mdesc_is_mod_up; eapply mdesc_mod_is_mod; eassumption).
     rewrite Hats in HR2; injection HR2 as <-.
     rewrite mdesc_named_fix.
@@ -4222,7 +4222,7 @@ Proof.
       as (R1 & HR1 & Hok1).
     { eapply desc_ok_closed with (param_level := 0);
         [ exact Hg | apply gc_sub_refl | right; exact Hbm | exact HaU | exact HsU | exact HU | exact HΘ'
-        | exact HargsU | constructor | apply params_relevant_nil | apply desc_levels_abstractable_nil ]. }
+        | exact HargsU | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil ]. }
     rewrite Hats in HR1; injection HR1 as <-.
     split; [| intros HNl; apply no_level_named; exact (no_level_former_read _ _ _ _ _ _ _ _ _ _ _ (HNo ltac:(intros; discriminate) HNl) Hats) ].
     unfold ind_former_desc in Hats; cbn [mdesc_ats_read] in Hats; mdesc_dm_read_shape Hats.
@@ -4260,7 +4260,7 @@ Proof.
     assert (HaΔ : tele_ass (Δ0 ++ T)) by (apply List.Forall_app; split; assumption).
     pose proof (args_ok_ext _ _ _ _ _ Δ0 Hargs) as Hargs'.
     destruct (ats_up_ok _ _ Hg Ns (Θ' ++ Γ) (Δ0 ++ T) _ lΔ HΔΘ HaΔ (args_ok_length _ _ _ _ _ Hargs') (args_ok_insts _ _ _ _ _ Hargs') Hok2
-                (up_relevant_of _ _ _ _ _ _ (params_relevant_closed _ _ _ _ _ HsΔ HRΔ HΔΘ) HLR1m)) as (R2 & HR2 & Hok3).
+                (up_evaluated_of _ _ _ _ _ _ (params_evaluated_closed _ _ _ _ _ HsΔ HRΔ HΔΘ) HLR1m)) as (R2 & HR2 & Hok3).
     (* the term part: as a transparent definition, at the arguments *)
     pose proof (closed_tele_weaken_exp _ _ _ _ _ _ HsT HA0 HTΘ) as HA0Θ.
     destruct (ats_up_ok _ _ Hg Ns (Θ' ++ Γ) T (mdesc_term ak_relevant A0 (Some M0)) 0 HTΘ Ha (args_ok_length _ _ _ _ _ Hargs)
@@ -4292,7 +4292,7 @@ Proof.
     inversion HNB; subst.
     rewrite <- (mdesc_up_nil R2).
     eapply desc_ok_dm with (Θd := nil) (param_level := 0);
-      [ exact HΘ' | constructor | eassumption | exact (HMB _ eq_refl) | exact Hok3 | apply params_relevant_nil | apply desc_levels_abstractable_nil ].
+      [ exact HΘ' | constructor | eassumption | exact (HMB _ eq_refl) | exact Hok3 | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
   - (* a record type, stored at its own path: its type former at the
        arguments, with its module there *)
     destruct E1 as [| ? [? [? ?| ?]] | | | pv1 pr1 Rr1 ΦR1]; cbn in Hgr; try discriminate; try contradiction.
@@ -4313,7 +4313,7 @@ Proof.
     { eapply desc_ok_closed with (param_level := 0);
         [ exact Hg | apply gc_sub_refl | right; exact Hbm | exact HaU
         | exact (record_mod_tele_scoped _ _ (proj2 (proj1 (ctx_scoped_app_iff _ _) HF)))
-        | exact HU | exact HΘ' | | constructor | apply params_relevant_nil | apply desc_levels_abstractable_nil ].
+        | exact HU | exact HΘ' | | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
       unfold record_mod_tele; rewrite HΔ0.
       exact (args_ok_ext _ _ _ _ _ (ce_ass (sort_exp_kind (record_sort Rr)) (record_self (qname_in p y) Rr) :: Δ0) Hargs). }
     rewrite Hats in HR1; injection HR1 as <-.
@@ -4333,7 +4333,7 @@ Proof.
   intros Θ Ξ Hg Hv * HR He Hed Hr.
   destruct (desc_ok_entry_closed_read _ _ Hg Hv _ _ _ _ _ _ _ _ _ _ _ _ HR He Hed Hr) as (R0 & [-> _ Hok HN]).
   inversion HR as [| | Γ0 Θa T0 Φ1 Ns0 Θ0 Ξ0 p0 lΘ Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs HaΘ' HRΘ' HLΘ' |]; subst.
-  apply (desc_ok_up _ _ _ _ _ lΘ); [ exact Hok | exact HΘ' | exact HaΘ' | apply up_relevant_of; [ exact HRΘ' |] ].
+  apply (desc_ok_up _ _ _ _ _ lΘ); [ exact Hok | exact HΘ' | exact HaΘ' | apply up_evaluated_of; [ exact HRΘ' |] ].
   destruct HLΘ' as [HL | HL]; [ left; exact HL | right; exact (HN HL) ].
 Qed.
 
@@ -4400,7 +4400,7 @@ Proof.
   destruct (loc_valid _ _ _ _ _ Hv Hl) as [[Ha HT _ _] _].
   eapply desc_ok_closed with (param_level := 0);
     [ exact (ctx_wf_gctx _ _ _ HΓ) | apply gc_sub_refl | exact Hl | exact Ha | exact (wf_ctx_scoped _ _ _ HT) | exact HT | exact HΓ
-    | | constructor | apply params_relevant_nil | apply desc_levels_abstractable_nil ].
+    | | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
   exists T nil; [ rewrite List.app_nil_r; reflexivity | reflexivity | constructor | constructor | exact HΓ |].
   intros k ? ? Hk; rewrite List.nth_error_nil in Hk; discriminate.
 Qed.
@@ -4493,7 +4493,7 @@ Lemma desc_ok_body : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ Δ Φ Φx R,
     body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> ⊢ Θ ⍮ Ξ ⍮ (body_ctx Φx ++ Δ) ++ Γ -> slots_typed Θ Ξ ((body_ctx Φx ++ Δ) ++ Γ) ->
     tele_ass Δ -> body_shape Φx Φx -> List.NoDup (gm_names Φ) ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊢ᵐ H ≈ H) ->
-    body_shape Φ Φ -> forall l, params_relevant Θ Ξ Γ Δ l ->
+    body_shape Φ Φ -> forall l, params_evaluated Θ Ξ Γ Δ l ->
     forall es, (forall y, type_sort (es y)) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        sort_kind (es y) (entry_kind E)) ->
@@ -4552,12 +4552,12 @@ Qed.
 
 (** An alias unit of a typed target, under its flag premise. *)
 Lemma desc_ok_alias : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ Δ E R l lv Rt, ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> tele_ass Δ ->
-    params_relevant Θ Ξ Γ Δ l -> levels_flag Θ Ξ Γ Δ E lv Rt ->
+    params_evaluated Θ Ξ Γ Δ l -> levels_flag Θ Ξ Γ Δ E lv Rt ->
     (forall R0, mdenote Θ Ξ (Δ ++ Γ) E R0 -> desc_ok Θ Ξ (Δ ++ Γ) R0) ->
     udenote Θ Ξ Γ None (gu_mk Δ (md_alias E)) R -> desc_ok Θ Ξ Γ R.
 Proof.
   intros * Hg * HΓ Ha HRΔ Hlv HE HR; inversion HR; subst.
-  apply (desc_ok_up _ _ _ _ _ l); [| exact HΓ | exact Ha | apply up_relevant_of; [ exact HRΔ |] ].
+  apply (desc_ok_up _ _ _ _ _ l); [| exact HΓ | exact Ha | apply up_evaluated_of; [ exact HRΔ |] ].
   - eapply desc_ok_mod; [ exact Hg | apply HE; eassumption | eassumption ].
   - eapply desc_levels_abstractable_mod; [ eapply levels_flag_here; eassumption | eassumption ].
 Qed.
@@ -4694,7 +4694,7 @@ Proof.
         Ho : forall k Ψ H, nth_error (body_opens ?Φ ?Φx) k = Some (Ψ, H) -> _ |- _ =>
           eapply desc_ok_body; [ exact Hg | exact Hx | exact (ext_eq_ctx_left _ _ _ _ _ HX) | exact Hs | assumption | assumption
                                | assumption | exact Ho | assumption
-                               | eapply params_relevant_of_sorts; eassumption | eassumption | eassumption
+                               | eapply params_evaluated_of_sorts; eassumption | eassumption | eassumption
                                | | eapply mk_levels_flag; eassumption | exact Hu ]
       end.
     (* the definitions of each side, filled in, at their sorts *)
@@ -4713,7 +4713,7 @@ Proof.
          end.
   - (* an alias unit *)
     split; intros R HR; eapply desc_ok_alias; try exact HR;
-      first [ exact Hg | eapply presup_modexp_eq_ctx; eassumption | eapply params_relevant_of_sorts; eassumption
+      first [ exact Hg | eapply presup_modexp_eq_ctx; eassumption | eapply params_evaluated_of_sorts; eassumption
             | eapply mk_levels_flag; eassumption | assumption | eassumption ].
   - (* an alias of a literal, and the literal over both telescopes *)
     match goal with HU : wf_unit_eq _ _ (?Δ ++ ?Γ) (gu_mk ?Δ' ?D) _, Ha : tele_ass ?Δ,
@@ -4721,13 +4721,13 @@ Proof.
       pose proof (presup_unit_eq_ctx HU) as HΔ;
       destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & (R0 & HR0) & _);
       split; intros R HR;
-      [ eapply desc_ok_alias; [ exact Hg | exact HΔ | exact Ha | eapply params_relevant_of_sorts; eassumption
+      [ eapply desc_ok_alias; [ exact Hg | exact HΔ | exact Ha | eapply params_evaluated_of_sorts; eassumption
                               | eapply mk_levels_flag; eassumption | | exact HR ];
         intros R1 HR1; inversion HR1; subst; try (unfold gc_unit in *; cbn in *; discriminate); auto
       | pose proof (udenote_abs _ _ _ _ _ _ HR0) as Habs; cbn [gunit_abs] in Habs;
         rewrite (proj1 (proj2 (mdenote_functional_all _ _ Hg)) _ _ _ _ HR _ Habs);
-        eapply desc_ok_up; [ exact (IH _ HR0) | exact HΔ | exact Ha | apply up_relevant_of ];
-        [ eapply params_relevant_of_sorts; eassumption
+        eapply desc_ok_up; [ exact (IH _ HR0) | exact HΔ | exact Ha | apply up_evaluated_of ];
+        [ eapply params_evaluated_of_sorts; eassumption
         | eapply levels_flag_here; [ exact Hg | eapply mk_levels_flag; eassumption | constructor; exact HR0 ] ] ]
     end.
   - (* a body unit and its expansion *)
@@ -4799,7 +4799,7 @@ Proof.
     split; [| assumption ].
     intros R HR; inversion HR; subst; try (cbn in *; discriminate).
     match goal with HE : wf_modexp_eq _ _ _ E E |- _ => eapply (desc_ok_alias _ _ Hg _ nil E _ 0 true R);
-      [ exact (presup_modexp_eq_ctx HE) | constructor | apply params_relevant_nil
+      [ exact (presup_modexp_eq_ctx HE) | constructor | apply params_evaluated_nil
       | constructor; [ intros _ [| ? ?] ? ? ? Heq; discriminate | discriminate | discriminate ]
       | cbn; assumption | eassumption ] end.
 Qed.
@@ -4853,15 +4853,15 @@ Lemma desc_ok_up_inv : forall Θ Ξ Γ Δ Rm, mdesc_is_mod Rm -> desc_ok Θ Ξ �
 Proof.
   intros * Hm Hok; destruct Rm as [| Δ0 Φ | Θ' p T Φ Ns |]; cbn in Hm |- *; try contradiction.
   - assert (Ha : tele_ass (Δ0 ++ Δ)) by (inversion Hok; assumption).
-    assert (HR : exists l, params_relevant Θ Ξ Γ (Δ0 ++ Δ) l) by (inversion Hok; eexists; eassumption).
-    destruct HR as [l HR]; destruct (params_relevant_app_inv _ _ _ _ _ _ HR) as [HR0 _].
+    assert (HR : exists l, params_evaluated Θ Ξ Γ (Δ0 ++ Δ) l) by (inversion Hok; eexists; eassumption).
+    destruct HR as [l HR]; destruct (params_evaluated_app_inv _ _ _ _ _ _ HR) as [HR0 _].
     assert (HL : desc_levels_abstractable Θ Ξ Γ (Δ0 ++ Δ) (mdesc_open nil Φ g)) by (inversion Hok; assumption).
     apply (desc_ok_open_root _ _ _ _ _ _ Ha) in Hok; rewrite <- List.app_assoc in Hok.
     exact (desc_ok_open_unroot _ _ _ _ _ _ _ (proj1 (proj1 (List.Forall_app _ _ _) Ha)) HR0
              (desc_levels_abstractable_app_inv _ _ _ _ _ _ HL) Hok).
   - assert (Ha : tele_ass (Θ' ++ Δ)) by (inversion Hok; assumption).
-    assert (HR : exists l, params_relevant Θ Ξ Γ (Θ' ++ Δ) l) by (inversion Hok; eexists; eassumption).
-    destruct HR as [l HR]; destruct (params_relevant_app_inv _ _ _ _ _ _ HR) as [HR0 _].
+    assert (HR : exists l, params_evaluated Θ Ξ Γ (Θ' ++ Δ) l) by (inversion Hok; eexists; eassumption).
+    destruct HR as [l HR]; destruct (params_evaluated_app_inv _ _ _ _ _ _ HR) as [HR0 _].
     assert (HL : desc_levels_abstractable Θ Ξ Γ (Θ' ++ Δ) (mdesc_closed nil p T Φ Ns)) by (inversion Hok; assumption).
     apply (desc_ok_closed_root _ _ _ _ _ _ _ _ Ha) in Hok; rewrite <- List.app_assoc in Hok.
     exact (desc_ok_closed_unroot _ _ _ _ _ _ _ _ _ (proj1 (proj1 (List.Forall_app _ _ _) Ha)) HR0
@@ -5061,18 +5061,18 @@ Proof.
        inversion Hd as [? Hcb | | ? ? ? R1' R2' Hd']; subst.
        - (* reading no closed body *)
          econstructor; [ apply Hc, HΘd | exact HaΘd | exact (Ht _ _ _ HBt) | apply Ht, HMt |
-                       | exact (params_relevant_embed _ _ _ _ _ _ _ He HRΘd)
+                       | exact (params_evaluated_embed _ _ _ _ _ _ _ He HRΘd)
                        | eapply desc_levels_abstractable_grow; [ exact He | exact HLΘd | apply mdesc_grows_same ] ].
          + apply IH, mdesc_grows_same; cbn in Hcb; rewrite mdesc_closedb_up in Hcb; exact Hcb.
          + cbn in Hcb |- *; rewrite mdesc_closedb_up in Hcb; exact Hcb.
        - destruct (mdesc_grows_up_inv _ _ _ _ _ _ _ Hd') as (Rm' & -> & HRm').
          econstructor; [ apply Hc, HΘd | exact HaΘd | exact (Ht _ _ _ HBt) | apply Ht, HMt | exact (IH _ HRm')
-                       | exact (params_relevant_embed _ _ _ _ _ _ _ He HRΘd)
+                       | exact (params_evaluated_embed _ _ _ _ _ _ _ He HRΘd)
                        | eapply desc_levels_abstractable_grow; [ exact He | exact HLΘd | constructor; exact HRm' ] ]. }
   all: inversion Hd as [? Hcb | Θ'' T' Φ1 Φ2 Ns' p' Hl1 Hl2 |]; subst; try (cbn in Hcb; discriminate).
   - econstructor; [ exact (Ht _ _ _ HA) | intros M HM0; apply Ht, HM, HM0 ].
   - econstructor; [ apply Hc, HΦ | exact Hn | | exact HaΔ | exact Hsh | exact Hnd | apply Hu, HUw
-                  | exact (params_relevant_embed _ _ _ _ _ _ _ He HRΔ)
+                  | exact (params_evaluated_embed _ _ _ _ _ _ _ He HRΔ)
                   | intros * Hp HE Hf; destruct (Htg _ _ _ _ _ _ Hp HE Hf) as (j & Hj);
                     exists j; exact (Ht _ _ _ Hj)
                   | eapply desc_levels_abstractable_grow; [ exact He | exact HLΔ | apply mdesc_grows_same; reflexivity ] ].
@@ -5087,7 +5087,7 @@ Proof.
     exact (IH _ _ _ _ Hp HE _ HR1 _ Hd1).
   - econstructor; [ exact Hg2 | apply gc_sub_refl | exact Hl2 | exact Ha | exact Hsc
                   | apply Hc, HT | apply Hc, HΘ' | exact (gctx_embedding_preserves_args_ok _ _ _ _ _ _ _ He Hargs) | exact HaΘ
-                  | exact (params_relevant_embed _ _ _ _ _ _ _ He HRΘ)
+                  | exact (params_evaluated_embed _ _ _ _ _ _ _ He HRΘ)
                   | eapply desc_levels_abstractable_grow; [ exact He | exact HLΘ | constructor; eassumption ] ].
 Qed.
 
@@ -5251,7 +5251,7 @@ Qed.
 (** An alias: what its target denotes, wherever it is read, is typed. *)
 Lemma syn_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+    params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     levels_flag Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E lv Rt ->
     bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     syn_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
@@ -5268,9 +5268,9 @@ Proof.
   split; [ exact (Hc _ HΔ) |].
   (* the parameters, relevant over the frames' parameters, which are *)
   split.
-  { destruct (wf_gs_tele_relevant _ _ Hg) as [l0 H0].
-    exists (max l l0); apply (params_relevant_embed _ _ _ _ _ _ _ He').
-    apply params_relevant_app; [ rewrite List.app_nil_r; exact HRΔ | exact H0 ]. }
+  { destruct (wf_gs_tele_evaluated _ _ Hg) as [l0 H0].
+    exists (max l l0); apply (params_evaluated_embed _ _ _ _ _ _ _ He').
+    apply params_evaluated_app; [ rewrite List.app_nil_r; exact HRΔ | exact H0 ]. }
   (* the flag premise, moved *)
   split.
   { exists lv, Rt; constructor; [ | rewrite List.app_nil_r .. ].
@@ -5295,22 +5295,22 @@ Proof.
 Qed.
 
 Lemma syn_nil : forall Θ Ξ Δ l Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     syn_F Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
   intros * HΔ HC HRΔ HG He.
   pose proof (gctx_embedding_with_bodies_embedding _ _ _ _ He) as He'.
-  destruct (wf_gs_tele_relevant _ _ (ctx_wf_gctx _ _ _ HC)) as [l0 H0].
+  destruct (wf_gs_tele_evaluated _ _ (ctx_wf_gctx _ _ _ HC)) as [l0 H0].
   eapply mk_syn_F with (syn_F_level := max l l0).
   - apply List.Forall_app; split; [ exact HΔ | exact (syn_tele_ass _ _ _ _ HG He) ].
   - exact (proj1 (gctx_embedding_preserves_wf _ _ _ _ He') _ HC).
-  - apply (params_relevant_embed _ _ _ _ _ _ _ He').
-    apply params_relevant_app; [ rewrite List.app_nil_r; exact HRΔ | exact H0 ].
+  - apply (params_evaluated_embed _ _ _ _ _ _ _ He').
+    apply params_evaluated_app; [ rewrite List.app_nil_r; exact HRΔ | exact H0 ].
 Qed.
 
 Lemma syn_ind : forall Θ Ξ D l Θ2 Ξ2,
-    decl_typed Θ Ξ D -> params_relevant Θ Ξ nil (ind_uparams D) l ->
+    decl_typed Θ Ξ D -> params_evaluated Θ Ξ nil (ind_uparams D) l ->
     bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     syn_VD Θ2 Ξ2 D /\ syn_F Θ2 Ξ2 (ind_uparams D).
 Proof.
@@ -5318,12 +5318,12 @@ Proof.
   pose proof (gctx_embedding_with_bodies_embedding _ _ _ _ He) as He'.
   pose proof (gctx_embedding_preserves_decl_typed _ _ _ _ _ He' HD) as HD2.
   destruct (decl_typed_uparams _ _ _ HD2) as [HU HaU].
-  split; [ exact HD2 | exact (mk_syn_F _ _ _ HaU HU l (params_relevant_embed _ _ _ _ _ _ _ He' HRU)) ].
+  split; [ exact HD2 | exact (mk_syn_F _ _ _ HaU HU l (params_evaluated_embed _ _ _ _ _ _ _ He' HRU)) ].
 Qed.
 
 (** A record: its declaration, typed where it is checked, moved along. *)
 Lemma syn_record : forall Θ Ξ R l Θ2 Ξ2,
-    record_typed Θ Ξ R -> params_relevant Θ Ξ nil (record_params R) l ->
+    record_typed Θ Ξ R -> params_evaluated Θ Ξ nil (record_params R) l ->
     bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> syn_VR Θ2 Ξ2 R.
 Proof. intros * HR _ _ He; exact (gctx_embedding_preserves_record_typed _ _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He) HR). Qed.
 
@@ -5341,7 +5341,7 @@ Proof.
   - exact (record_mod_tele_wf _ _ _ _ HR2 Hl).
   - unfold record_mod_tele.
     change (ce_ass (sort_exp_kind (record_sort R)) (record_self p R) :: record_params R) with ((ce_ass (sort_exp_kind (record_sort R)) (record_self p R) :: nil) ++ record_params R).
-    apply params_relevant_app; [| exact HRP ].
+    apply params_evaluated_app; [| exact HRP ].
     intros Δ1 κ T Δ2 E; destruct Δ1 as [| e Δ1]; cbn in E; [| destruct Δ1; discriminate ].
     injection E as <- <- <-; rewrite List.app_nil_r; left; exact Hj.
 Qed.

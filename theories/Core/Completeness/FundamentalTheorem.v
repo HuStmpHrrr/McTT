@@ -369,7 +369,7 @@ Qed.
 
 Lemma valid_entry_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 Θs Ξs,
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+    params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     levels_flag Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E lv Rt ->
     bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
@@ -380,8 +380,8 @@ Proof.
   assert (Ht : tele_ass (Δ ++ gs_tele Ξ)) by (apply List.Forall_app; split; [ exact HΔ | exact (gs_tele_ass_of_bodies_valid _ _ _ _ HG He) ]).
   assert (HE' : Θ ⍮ Ξ ⍮ (Δ ++ gs_tele Ξ) ++ ⋅ ⊢ᵐ E ≈ E) by (rewrite app_nil_r; exact HE).
   assert (HC : ⊢ Θ ⍮ Ξ ⍮ (Δ ++ gs_tele Ξ) ++ ⋅) by (rewrite app_nil_r; exact (presup_modexp_eq_ctx HE)).
-  destruct (params_relevant_over_stack _ _ _ _ Hg HP) as [l' HP'].
-  destruct (params_relevant_sorts _ _ _ _ _ HP') as (ps & Hps & HPs).
+  destruct (params_evaluated_over_stack _ _ _ _ Hg HP) as [l' HP'].
+  destruct (params_evaluated_sorts _ _ _ _ _ HP') as (ps & Hps & HPs).
   assert (HU : Θ ⍮ Ξ ⍮ ⋅ ⊢ᵘ gu_mk (Δ ++ gs_tele Ξ) (md_alias E) ≈ gu_mk (Δ ++ gs_tele Ξ) (md_alias E))
     by (apply wf_unit_eq_alias with (param_level := l') (param_sorts := ps) (lv := lv) (Rt := Rt) (lv' := lv) (Rt' := Rt);
         [ exact (ext_of_ctx _ _ _ _ HC) | exact Ht | exact Ht | exact HE' | exact HE' | exact Hps | exact HPs | exact HPs
@@ -392,8 +392,8 @@ Proof.
 Qed.
 
 (** Relevant parameters are so in the PER model, along a sound embedding. *)
-Lemma rel_params_relevant_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ Δ l, valid_gctx_embedding Θ Ξ Θ2 Ξ2 ->
-    params_relevant Θ Ξ Γ Δ l -> @rel_params_relevant (gc_mk Θ2 Ξ2) Γ Δ l.
+Lemma rel_params_evaluated_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ Δ l, valid_gctx_embedding Θ Ξ Θ2 Ξ2 ->
+    params_evaluated Θ Ξ Γ Δ l -> @rel_params_evaluated (gc_mk Θ2 Ξ2) Γ Δ l.
 Proof.
   intros * Hμ HP Δ1 κ A Δ2 E; destruct (HP _ _ _ _ E) as [H | H]; [ left | right ];
     exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ H).
@@ -408,15 +408,15 @@ Proof.
 Qed.
 
 Lemma valid_mod_tele_nil : forall Θ Ξ Δ l Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     valid_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
   intros * HΔ HC HP HG He.
   pose proof (ctx_wf_gctx _ _ _ HC) as Hg.
   pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
-  destruct (params_relevant_over_stack _ _ _ _ Hg HP) as [l' HP'].
-  constructor; [ exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ HC) | | exists l'; exact (rel_params_relevant_of_embedding _ _ _ _ _ _ _ Hμ HP') ].
+  destruct (params_evaluated_over_stack _ _ _ _ Hg HP) as [l' HP'].
+  constructor; [ exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ HC) | | exists l'; exact (rel_params_evaluated_of_embedding _ _ _ _ _ _ _ Hμ HP') ].
   apply List.Forall_app; split; [ exact HΔ | exact (gs_tele_ass_of_bodies_valid _ _ _ _ HG He) ].
 Qed.
 
@@ -426,22 +426,10 @@ Proof.
   intros * [[i ->] | [t ->]] H; cbn [exp_wk] in H; [ exists i; exact H | exists 0; eapply rel_exp_suniv_tm_large; exact H ].
 Qed.
 
-(** A non-recursive argument's kind is the tag of a non-recursive
-    argument of the constructor. *)
-Lemma nonrec_kind_split : forall gs j r, List.nth_error (cargs_nonrec_kinds gs) j = Some r ->
-    exists gs1 A gs2, gs = gs1 ++ ca_arg r A :: gs2.
-Proof.
-  induction gs as [| [r0 B | Ps] gs IH]; intros j r H; cbn in H; [ destruct j; discriminate | |].
-  - destruct j as [| j]; cbn in H.
-    + injection H as ->; exists nil, B, gs; reflexivity.
-    + destruct (IH _ _ H) as (gs1 & A & gs2 & ->); exists (ca_arg r0 B :: gs1), A, gs2; reflexivity.
-  - destruct (IH _ _ H) as (gs1 & A & gs2 & ->); exists (ca_rec Ps :: gs1), A, gs2; reflexivity.
-Qed.
-
 (** A declaration typed at the source is valid at the target: its
     judgments, read in the PER model, member by member, and its views with
     the members as variables ([views_self_typed], read semantically). *)
-Lemma valid_ind_decl_of_typed : forall Θ Ξ D l Θ2 Ξ2, decl_typed Θ Ξ D -> params_relevant Θ Ξ nil (ind_uparams D) l ->
+Lemma valid_ind_decl_of_typed : forall Θ Ξ D l Θ2 Ξ2, decl_typed Θ Ξ D -> params_evaluated Θ Ξ nil (ind_uparams D) l ->
     valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> @valid_ind_decl (gc_mk Θ2 Ξ2) D.
 Proof.
   intros * Hdt HPr Hμ.
@@ -497,7 +485,7 @@ Proof.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
   constructor.
   - destruct (decl_typed_uparams _ _ _ Hdt) as [HU _]; exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ HU).
-  - exists l; exact (rel_params_relevant_of_embedding _ _ _ _ _ _ _ Hμ HPr).
+  - exists l; exact (rel_params_evaluated_of_embedding _ _ _ _ _ _ _ Hμ HPr).
   - destruct (decl_typed_sort _ _ _ Hdt) as [i HS]; exists i; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HS).
   - destruct (decl_typed_sort_lvl _ _ _ Hdt) as [n HS]; exists n; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HS).
   - intros * HMk; exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ (member_params_wf _ _ _ _ _ Hdt HMk)).
@@ -591,7 +579,7 @@ Proof.
 Qed.
 
 Lemma valid_entry_ind : forall Θ Ξ D l Θ2 Ξ2,
-    decl_typed Θ Ξ D -> params_relevant Θ Ξ nil (ind_uparams D) l ->
+    decl_typed Θ Ξ D -> params_evaluated Θ Ξ nil (ind_uparams D) l ->
     bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> valid_ind_decl_entry Θ2 Ξ2 D /\ valid_mod_tele Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * Hdt HPr HG He.
@@ -604,13 +592,13 @@ Proof.
     destruct (ind_ty_typed0 _ _ _ _ _ Hdt HMk) as [j Hj]; unfold ind_ty in Hj.
     pose proof (proj1 (ctx_pi_split_typed _ _ _ _ Hass Hj) _ _ Hpar) as H; rewrite app_nil_r in H.
     exists j; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ H).
-  - constructor; [ exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ HUw) | exact HUa | exists l; exact (rel_params_relevant_of_embedding _ _ _ _ _ _ _ Hμ HPr) ].
+  - constructor; [ exact (rel_ctx_wf_of_embedding _ _ _ _ _ Hμ HUw) | exact HUa | exists l; exact (rel_params_evaluated_of_embedding _ _ _ _ _ _ _ Hμ HPr) ].
 Qed.
 
 (** A record declaration typed at the source is valid at the target: its
     judgments, read in the PER model. *)
 Lemma valid_record_decl_of_typed : forall Θ Ξ R l Θ2 Ξ2, record_typed Θ Ξ R ->
-    @rel_params_relevant (gc_mk Θ2 Ξ2) nil (record_params R) l ->
+    @rel_params_evaluated (gc_mk Θ2 Ξ2) nil (record_params R) l ->
     valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> @valid_record_decl (gc_mk Θ2 Ξ2) R.
 Proof.
   intros * Ht HPr Hμ.
@@ -625,13 +613,13 @@ Proof.
 Qed.
 
 Lemma valid_entry_record : forall Θ Ξ R l Θ2 Ξ2,
-    record_typed Θ Ξ R -> params_relevant Θ Ξ nil (record_params R) l ->
+    record_typed Θ Ξ R -> params_evaluated Θ Ξ nil (record_params R) l ->
     bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ ->
     gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> valid_record_decl_entry Θ2 Ξ2 R.
 Proof.
   intros * Ht HPr HG He.
   pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HG He) as Hμ.
-  exact (valid_record_decl_of_typed _ _ _ _ _ _ Ht (rel_params_relevant_of_embedding _ _ _ _ _ _ _ Hμ HPr) Hμ).
+  exact (valid_record_decl_of_typed _ _ _ _ _ _ Ht (rel_params_evaluated_of_embedding _ _ _ _ _ _ _ Hμ HPr) Hμ).
 Qed.
 
 (** A record's module telescope, at a target where the record is found:
@@ -663,9 +651,9 @@ Proof.
     by (destruct (record_typed_sort_univ _ _ _ Ht) as [[j HU] | [L HU]]; rewrite HU; reflexivity).
   unfold record_mod_tele; rewrite Hsk.
   constructor; [ exact (@rel_ctx_wf_extend (gc_mk Θ2 Ξ2) _ _ _ HP Hk) | constructor; [ do 2 eexists; reflexivity | exact Ha ] |].
-  exists (max k l0); apply (@rel_params_relevant_cons_iff (gc_mk Θ2 Ξ2)); split.
+  exists (max k l0); apply (@rel_params_evaluated_cons_iff (gc_mk Θ2 Ξ2)); split.
   - intros κ A [= _ <-]; rewrite List.app_nil_r; left; exact (@rel_exp_cumu_ge (gc_mk Θ2 Ξ2) k (max k l0) _ _ _ ltac:(lia) Hk).
-  - exact (@rel_params_relevant_ge (gc_mk Θ2 Ξ2) _ _ l0 (max k l0) ltac:(lia) Hr).
+  - exact (@rel_params_evaluated_ge (gc_mk Θ2 Ξ2) _ _ l0 (max k l0) ltac:(lia) Hr).
 Qed.
 
 (** ** Every well-formed global context embeds soundly into itself *)

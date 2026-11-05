@@ -924,18 +924,18 @@ Lemma rel_param_typed_type : forall Γ A l, rel_param_typed Γ A l -> Γ ⊨ᵗ 
 Proof. intros * [H | H]; [ exact (rel_type_of_typ H) | exact (rel_type_of_level_sort l H) ]. Qed.
 
 (** A parameter type is of a relevant sort. *)
-Lemma rel_param_typed_sort : forall Γ A l, rel_param_typed Γ A l -> exists Srt, relevant_sort Srt /\ Γ ⊨ A : Srt.
+Lemma rel_param_typed_sort : forall Γ A l, rel_param_typed Γ A l -> exists Srt, evaluated_sort Srt /\ Γ ⊨ A : Srt.
 Proof. intros * [H | H]; eexists; (split; [ constructor | exact H ]). Qed.
 
 (** A type of a relevant sort is a parameter type at some level. *)
-Lemma rel_param_typed_of_sort : forall Γ A Srt, relevant_sort Srt -> Γ ⊨ A : Srt -> exists l, rel_param_typed Γ A l.
+Lemma rel_param_typed_of_sort : forall Γ A Srt, evaluated_sort Srt -> Γ ⊨ A : Srt -> exists l, rel_param_typed Γ A l.
 Proof. intros * [i |] H; [ exists i; left; exact H | exists 0; right; exact H ]. Qed.
 
 (** The innermost parameter of relevant parameters is relevant, and the
     parameters before it are relevant over it. *)
-Lemma rel_params_relevant_snoc_inv : forall Γ Δ κ A l,
-    rel_params_relevant Γ (Δ ++ ce_ass κ A :: nil) l ->
-    rel_param_typed Γ A l /\ rel_params_relevant (Γ ▹{κ} A) Δ l.
+Lemma rel_params_evaluated_snoc_inv : forall Γ Δ κ A l,
+    rel_params_evaluated Γ (Δ ++ ce_ass κ A :: nil) l ->
+    rel_param_typed Γ A l /\ rel_params_evaluated (Γ ▹{κ} A) Δ l.
 Proof.
   intros * H; split; [ exact (H Δ κ A nil eq_refl) |].
   intros Δ1 κ' B Δ2 ->.
@@ -945,9 +945,9 @@ Qed.
 
 (** Relevant parameters, read from the innermost: the innermost entry, if
     an assumption, is relevant over the rest, and the rest are relevant. *)
-Lemma rel_params_relevant_cons_iff : forall Γ e Ψ l,
-    rel_params_relevant Γ (e :: Ψ) l <->
-    (forall κ A, e = ce_ass κ A -> rel_param_typed (Ψ ++ Γ) A l) /\ rel_params_relevant Γ Ψ l.
+Lemma rel_params_evaluated_cons_iff : forall Γ e Ψ l,
+    rel_params_evaluated Γ (e :: Ψ) l <->
+    (forall κ A, e = ce_ass κ A -> rel_param_typed (Ψ ++ Γ) A l) /\ rel_params_evaluated Γ Ψ l.
 Proof.
   intros *; split.
   - intros H; split; [ intros κ A ->; exact (H nil κ A Ψ eq_refl) |].
@@ -957,47 +957,47 @@ Proof.
 Qed.
 
 (** No parameters are relevant at every level. *)
-Lemma rel_params_relevant_nil : forall Γ l, rel_params_relevant Γ nil l.
+Lemma rel_params_evaluated_nil : forall Γ l, rel_params_evaluated Γ nil l.
 Proof. intros * [| ? ?] ? ? ? HE; discriminate. Qed.
 
 (** The inner parameters of relevant parameters are relevant over the
     outer ones. *)
-Lemma rel_params_relevant_inner : forall Γ Δy Δ l, rel_params_relevant Γ (Δy ++ Δ) l -> rel_params_relevant (Δ ++ Γ) Δy l.
+Lemma rel_params_evaluated_inner : forall Γ Δy Δ l, rel_params_evaluated Γ (Δy ++ Δ) l -> rel_params_evaluated (Δ ++ Γ) Δy l.
 Proof. intros * H Δ1 κ A Δ2 ->; rewrite app_assoc; apply (H Δ1 κ A (Δ2 ++ Δ)); rewrite <- app_assoc; reflexivity. Qed.
 
 (** The outer parameters of relevant parameters are relevant. *)
-Lemma rel_params_relevant_outer : forall Γ Δy Δ l, rel_params_relevant Γ (Δy ++ Δ) l -> rel_params_relevant Γ Δ l.
+Lemma rel_params_evaluated_outer : forall Γ Δy Δ l, rel_params_evaluated Γ (Δy ++ Δ) l -> rel_params_evaluated Γ Δ l.
 Proof. intros * H Δ1 κ A Δ2 ->; apply (H (Δy ++ Δ1) κ A Δ2); rewrite <- app_assoc; reflexivity. Qed.
 
 (** Relevant parameters are relevant at a larger level. *)
-Lemma rel_params_relevant_ge : forall Γ Ψ l l', l <= l' -> rel_params_relevant Γ Ψ l -> rel_params_relevant Γ Ψ l'.
+Lemma rel_params_evaluated_ge : forall Γ Ψ l l', l <= l' -> rel_params_evaluated Γ Ψ l -> rel_params_evaluated Γ Ψ l'.
 Proof. intros * Hl H Δ1 κ A Δ2 HE; exact (rel_param_typed_ge _ _ _ _ Hl (H _ _ _ _ HE)). Qed.
 
 (** Relevant parameters over relevant parameters are relevant, at the
     larger level. *)
-Lemma rel_params_relevant_app : forall Γ Δy Δ l l',
-    rel_params_relevant (Δ ++ Γ) Δy l -> rel_params_relevant Γ Δ l' ->
-    rel_params_relevant Γ (Δy ++ Δ) (max l l').
+Lemma rel_params_evaluated_app : forall Γ Δy Δ l l',
+    rel_params_evaluated (Δ ++ Γ) Δy l -> rel_params_evaluated Γ Δ l' ->
+    rel_params_evaluated Γ (Δy ++ Δ) (max l l').
 Proof.
   induction Δy as [| e Δy IH]; intros * Hy HΔ; cbn [List.app].
-  - exact (rel_params_relevant_ge _ _ l' (max l l') ltac:(lia) HΔ).
-  - apply rel_params_relevant_cons_iff in Hy as [Hh Ht].
-    apply rel_params_relevant_cons_iff; split; [| exact (IH _ _ _ Ht HΔ) ].
+  - exact (rel_params_evaluated_ge _ _ l' (max l l') ltac:(lia) HΔ).
+  - apply rel_params_evaluated_cons_iff in Hy as [Hh Ht].
+    apply rel_params_evaluated_cons_iff; split; [| exact (IH _ _ _ Ht HΔ) ].
     intros κ A HA; rewrite <- app_assoc; exact (rel_param_typed_ge _ _ l (max l l') ltac:(lia) (Hh κ A HA)).
 Qed.
 
 (** Parameters each relevant at its own level are relevant at a common
     one, the largest: [(l : Level) (A : Typeω@3)] at [3]. *)
-Lemma rel_params_relevant_of_entries : forall Γ Ψ,
+Lemma rel_params_evaluated_of_entries : forall Γ Ψ,
     (forall Δ1 κ A Δ2, Ψ = Δ1 ++ ce_ass κ A :: Δ2 -> exists l, rel_param_typed (Δ2 ++ Γ) A l) ->
-    exists l, rel_params_relevant Γ Ψ l.
+    exists l, rel_params_evaluated Γ Ψ l.
 Proof.
-  induction Ψ as [| e Ψ IH]; intros H; [ exists 0; apply rel_params_relevant_nil |].
+  induction Ψ as [| e Ψ IH]; intros H; [ exists 0; apply rel_params_evaluated_nil |].
   destruct IH as [l' Hl']; [ intros Δ1 κ A Δ2 E; apply (H (e :: Δ1) κ); rewrite E; reflexivity |].
   destruct e as [κ0 A0 | | |];
-    [| exists l'; apply rel_params_relevant_cons_iff; split; [ intros κ A HA; discriminate HA | exact Hl' ] .. ].
+    [| exists l'; apply rel_params_evaluated_cons_iff; split; [ intros κ A HA; discriminate HA | exact Hl' ] .. ].
   destruct (H nil κ0 A0 Ψ eq_refl) as [l0 Hl0]; exists (max l0 l').
-  apply rel_params_relevant_cons_iff; split; [| exact (rel_params_relevant_ge _ _ l' (max l0 l') ltac:(lia) Hl') ].
+  apply rel_params_evaluated_cons_iff; split; [| exact (rel_params_evaluated_ge _ _ l' (max l0 l') ltac:(lia) Hl') ].
   intros κ A HA; injection HA as <- <-; exact (rel_param_typed_ge _ _ l0 (max l0 l') ltac:(lia) Hl0).
 Qed.
 

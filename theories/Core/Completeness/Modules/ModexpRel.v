@@ -394,7 +394,7 @@ Section Beta.
   (** At an environment of [Γ], the parameter's type is of an evaluated
       kind, its tag. *)
   Let HXat : forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' -> rel_typ_evaluated X ρ.
-  Proof. intros R HR ρ ρ' Hρ; destruct HXr as (r & Hr & HXk'); exact (rel_typ_evaluated_of_kind (HXk' _ HR _ _ Hρ) Hr). Qed.
+  Proof. exact (fun R HR => rel_typ_evaluated_at HXr HR). Qed.
 
   (** The values of the parameter's type are of its tag. *)
   Let HXa : forall R ρ ρ' a, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> R ρ ρ' -> ⟦ X ⟧ ρ ↘ a -> domain_kind a = κ.

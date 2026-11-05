@@ -674,11 +674,11 @@ Proof.
 Qed.
 
 (** A type of an evaluated kind [r] generalized over relevant parameters
-    ([rel_params_relevant]) whose kinds a [Π] into [r] takes
+    ([rel_params_evaluated]) whose kinds a [Π] into [r] takes
     ([pi_kinds]): a type of an index, of the kind [r] ([ctx_pi_at]).  For
     example, the member [v : Level] of [module M (l : Level) ≔ …] is read
     at [Πₗ (l : Level) Level]. *)
-Lemma rel_type_ctx_pi : forall Δ Γ B r l k, tele_ass Δ -> ⊨ Δ ++ Γ -> rel_params_relevant Γ Δ l ->
+Lemma rel_type_ctx_pi : forall Δ Γ B r l k, tele_ass Δ -> ⊨ Δ ++ Γ -> rel_params_evaluated Γ Δ l ->
     (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
     Δ ++ Γ ⊨ᵗ B ≈ B at k -> rel_type_kind (Δ ++ Γ) B r ->
     Γ ⊨ᵗ ctx_pi_at r Δ B ≈ ctx_pi_at r Δ B at max l k /\ rel_type_kind Γ (ctx_pi_at r Δ B) r.
@@ -688,7 +688,7 @@ Proof.
   - assert (He : exists κ A, e = ce_ass κ A) by (inversion HΔa as [| ? ? He _]; exact He).
     destruct He as (κ & A & ->).
     assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
-    apply rel_params_relevant_cons_iff in HΔr as [Hh HΔr'].
+    apply rel_params_evaluated_cons_iff in HΔr as [Hh HΔr'].
     pose proof (rel_type_cumu_ge (i := l) (j := max l k) ltac:(lia) (rel_param_typed_type _ _ _ (Hh κ A eq_refl))) as HA.
     pose proof (HΔk nil κ A Δ eq_refl) as Hk.
     cbn [ctx_pi_at List.app] in *.
@@ -701,7 +701,7 @@ Qed.
 
 (** A term of a type of an evaluated kind generalized over relevant
     parameters: the λ over them, at the [Π] over them ([rel_type_ctx_pi]). *)
-Lemma rel_exp_ctx_fn : forall Δ Γ B M r l k, tele_ass Δ -> ⊨ Δ ++ Γ -> rel_params_relevant Γ Δ l ->
+Lemma rel_exp_ctx_fn : forall Δ Γ B M r l k, tele_ass Δ -> ⊨ Δ ++ Γ -> rel_params_evaluated Γ Δ l ->
     (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
     Δ ++ Γ ⊨ᵗ B ≈ B at k -> rel_type_kind (Δ ++ Γ) B r -> Δ ++ Γ ⊨ M : B ->
     Γ ⊨ ctx_fn Δ M : ctx_pi_at r Δ B.
@@ -710,7 +710,7 @@ Proof.
   assert (He : exists κ A, e = ce_ass κ A) by (inversion HΔa as [| ? ? He _]; exact He).
   destruct He as (κ & A & ->).
   assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
-  apply rel_params_relevant_cons_iff in HΔr as [Hh HΔr'].
+  apply rel_params_evaluated_cons_iff in HΔr as [Hh HΔr'].
   pose proof (rel_type_cumu_ge (i := l) (j := max l k) ltac:(lia) (rel_param_typed_type _ _ _ (Hh κ A eq_refl))) as HA.
   pose proof (rel_type_cumu_ge (i := k) (j := max l k) ltac:(lia) HB) as HB'.
   pose proof (HΔk nil κ A Δ eq_refl) as Hk.

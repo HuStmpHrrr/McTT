@@ -90,22 +90,6 @@ Proof.
          | exact (rel_type_kind_of_sort_kind (sort_kind_abs_kind_sort _ _) HA) ].
 Qed.
 
-(** The tag of each parameter of a [Π] over a telescope, typed at any
-    sort, may be abstracted at the [Π]'s tag ([pi_kinds]). *)
-Lemma ctx_pi_at_pi_kinds : forall Θ Ξ r Δ Γ B S, tele_ass Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi_at r Δ B : S ->
-    forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r.
-Proof.
-  intros Θ Ξ r Δ; induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HB Δ1 κ A Δ2 Heq.
-  - destruct Δ1; discriminate.
-  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ0 & X & ->) _]; subst.
-    rewrite ctx_pi_snoc in HB.
-    destruct (wf_pi_inversion_at HB) as [U _ _ HBc Hk _].
-    destruct Δ2 as [| d Δ2 _] using rev_ind.
-    + apply app_inj_tail in Heq as [_ [= <- _]]; exact Hk.
-    + rewrite app_comm_cons, app_assoc in Heq; apply app_inj_tail in Heq as [Heq _].
-      exact (IH _ _ _ HΔ0 HBc _ _ _ _ Heq).
-Qed.
-
 (** ** Definitions of a Body *)
 
 (** A definition of a valid expanded body of an evaluated tag, against the
@@ -357,7 +341,7 @@ Qed.
     [λ] at its value: the types and the reducts there are related through
     their judgments. *)
 Lemma unit_walk : forall Δ Γ D x r A0 om0 RΓ lp k0,
-    tele_ass Δ -> rel_params_relevant Γ Δ lp -> ⊨ Δ ++ Γ ->
+    tele_ass Δ -> rel_params_evaluated Γ Δ lp -> ⊨ Δ ++ Γ ->
     (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ r) -> evaluated_kind r ->
     Δ ++ Γ ⊨ᵗ A0 ≈ A0 at k0 -> rel_type_kind (Δ ++ Γ) A0 r ->
     (forall M0, om0 = Some M0 -> Δ ++ Γ ⊨ M0 : A0) ->
@@ -372,7 +356,7 @@ Proof.
   induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HΔr HC Hpk Hev HA HAk HM Hbase HΓ ρ Hρ k Hk Hkk; cbn [List.app] in *.
   - exact (Hbase _ HΓ _ Hρ _ Hk).
   - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & X & ->) _]; subst.
-    destruct (rel_params_relevant_snoc_inv _ _ _ _ _ HΔr) as [HX HΔ0r].
+    destruct (rel_params_evaluated_snoc_inv _ _ _ _ _ HΔr) as [HX HΔ0r].
     pose proof (rel_param_typed_type _ _ _ HX) as HXt.
     destruct (rel_type_ctx_pi _ _ _ _ _ _ HΔ HC HΔr Hpk Hev HA HAk) as [HPi _].
     assert (Hpk0 : forall Δ1 κ' A' Δ2, Δ0 = Δ1 ++ ce_ass κ' A' :: Δ2 -> pi_kinds κ' r)

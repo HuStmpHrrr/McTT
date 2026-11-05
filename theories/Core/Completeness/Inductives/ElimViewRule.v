@@ -90,8 +90,8 @@ Section ElimViewRule.
   Let HaQ : tele_ass (ind_uparams D') := uparams_ass D' (valid_group_closed _ _ HgQ).
   Let HWQ : ⊨ ind_uparams D' := valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ).
   Let VB := view_wrap ak_relevant p qc D D' vm Us (im_pre Mm Us) Bks.
-  Let HUr := valid_ind_decl_uparams_relevant _ HD.
-  Let HQr := valid_ind_decl_uparams_relevant _ (valid_group_valid _ _ HgQ).
+  Let HUr := valid_ind_decl_uparams_evaluated _ HD.
+  Let HQr := valid_ind_decl_uparams_evaluated _ (valid_group_valid _ _ HgQ).
 
   (** *** The Container's Uniform Parameters
 
@@ -138,7 +138,7 @@ Section ElimViewRule.
       destruct (rel_ctx_wf_per_ctx_env HUΓ) as [RUΓ HRUΓ].
       pose proof (gsub_valid (gsub_U VP p D HP HPD Γ HΓ Us HUl HUs HUss)) as HτU.
       (** The value of [τU] at [C2]. *)
-      destruct (instance_values_of_sub _ _ Us RΓ RUΓ Ua HRΓ HRUΓ (closed_relevant_over _ _ Ua Usem HΓ HUr) HτU
+      destruct (instance_values_of_sub _ _ Us RΓ RUΓ Ua HRΓ HRUΓ (closed_evaluated_over _ _ Ua Usem HΓ HUr) HτU
                   ltac:(rewrite HUl; reflexivity) C2 C2 HC22) as [u1 u2 Eu1 Eu2 HE12 EτU _].
       pose proof (functional_eval_exps' _ _ _ _ Eu1 HUC2) as ->; pose proof (functional_eval_exps' _ _ _ _ Eu2 HUC2) as ->.
       set (E := env_extend_tagged Γ (List.rev (ind_uparams D)) (ctx_retag Γ C2) u3) in *.
@@ -378,7 +378,7 @@ Section ElimViewRule.
       by (rewrite List.length_app, length_elim_mctx, HNl; cbn [List.length]; lia).
     destruct (sb_of_list_values_of_sub (elim_mctx p D m Mm Us) Γ Γ Id (Ns ++ M :: nil) RΓ RM C2 (ctx_retag Γ C2)
                 (elim_mctx_ass p D m Mm Us Hc HMm) HRΓ HRM
-                (mctx_relevant VP p D HP HPD Γ HΓ Us HUl HUs HUss m Mm HMm (HMall _ _ HMm)) (gsub_valid Hg) Lτ HC22
+                (mctx_evaluated VP p D HP HPD Γ HΓ Us HUl HUs HUss m Mm HMm (HMall _ _ HMm)) (gsub_valid Hg) Lτ HC22
                 (eval_sub_id _ _)) as (q3 & Eq3 & Hτ3 & _).
     assert (Eq3' : ⟦ Ns ++ M :: nil ⟧* gc_deps ⍮ gc_stack ⍮ C2 ↘ ns3 ++ m3 :: nil)
       by (apply eval_exps_app; [ exact Ens3 | econstructor; [ exact Em3 | constructor ] ]).

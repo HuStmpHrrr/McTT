@@ -222,8 +222,8 @@ Lemma sub_walk_def : forall Γ' Γ σ Ψ A r i0 M ρl ρr,
         (ρr ↦ m' ⦂ entry_type_closure A ρr).
 Proof.
   intros * Hinv Hr HA HM.
-  assert (HSrt : relevant_sort (abs_kind_sort r Typeω@i0)) by (destruct Hr; constructor).
-  destruct (rel_type_of_relevant_sort HSrt HA) as [[k HAt] HArel].
+  assert (HSrt : evaluated_sort (abs_kind_sort r Typeω@i0)) by (destruct Hr; constructor).
+  destruct (rel_type_of_evaluated_sort HSrt HA) as [[k HAt] HArel].
   destruct (sub_walk_type _ _ _ _ _ _ _ _ Hinv HAt) as (a & a' & R & Ha & Ha' & HR & Hhd).
   pose proof Hinv as [Rl Rr HΓl HΓr Hsub Hl [ρm [Hm Hmr]]].
   set (τ := sb_qn (List.length Ψ) σ) in *.
@@ -870,13 +870,13 @@ Proof.
       pose proof (rel_exp_of_abs_kind_sort_at HR0 HA _ _ H11) as HSl.
       pose proof (rel_exp_of_abs_kind_sort_at HR0' HA' _ _ H11') as HSr.
       destruct (evaluated_kind_or_propositional r) as [Hr | ->]; [| cbn [abs_kind_sort] in HA, HA', HAA' ].
-      * assert (HSi : relevant_sort (abs_kind_sort r Typeω@ia)) by (destruct Hr; constructor).
-        assert (HSi' : relevant_sort (abs_kind_sort r Typeω@ia')) by (destruct Hr; constructor).
-        assert (HSrt : relevant_sort (abs_kind_sort r Typeω@iA)) by (destruct Hr; constructor).
-        destruct (rel_type_of_relevant_sort HSi HA) as [[i HAt] HArel].
-        destruct (rel_type_of_relevant_sort HSi' HA') as [[i' HAt'] HArel'].
-        destruct (rel_type_of_relevant_sort HSrt (rel_exp_under_ctx_refl_left HAA')) as [_ HAσrel].
-        destruct (rel_type_of_sort (relevant_sort_type_sort _ HSrt) HAA') as [j HAAt].
+      * assert (HSi : evaluated_sort (abs_kind_sort r Typeω@ia)) by (destruct Hr; constructor).
+        assert (HSi' : evaluated_sort (abs_kind_sort r Typeω@ia')) by (destruct Hr; constructor).
+        assert (HSrt : evaluated_sort (abs_kind_sort r Typeω@iA)) by (destruct Hr; constructor).
+        destruct (rel_type_of_evaluated_sort HSi HA) as [[i HAt] HArel].
+        destruct (rel_type_of_evaluated_sort HSi' HA') as [[i' HAt'] HArel'].
+        destruct (rel_type_of_evaluated_sort HSrt (rel_exp_under_ctx_refl_left HAA')) as [_ HAσrel].
+        destruct (rel_type_of_sort (evaluated_sort_type_sort _ HSrt) HAA') as [j HAAt].
         edestruct typ_bridge as (a & a' & Ha & Ha' & [R HR]);
           [ exact HAt | exact Hσ | exact HRC | exact Hρ | exact HR0 | exact Hev | exact H1
           | exact HAAt
