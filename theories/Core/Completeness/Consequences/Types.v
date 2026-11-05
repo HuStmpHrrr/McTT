@@ -320,7 +320,7 @@ Lemma nbe_params_at_telescope : forall Γ C Ms ρ vs Rs,
     initial_env_f Γ ρ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ vs ->
     Rps vs at List.rev C in gc_deps ⍮ gc_stack ⍮ nil ⍮ List.length Γ ↘ Rs ->
     forall j P T R V, List.nth_error Ms j = Some P -> List.nth_error (tele_insts C Id Ms) j = Some T ->
-      List.nth_error Rs j = Some R -> nbe_f Γ P T V -> nf_equal_up_to_proofs V R.
+      List.nth_error Rs j = Some R -> nbe_f Γ P T V -> nf_eq_upto_proofs V R.
 Proof.
   intros * [HCa HC HCr HCΓ] Hl HMs Hρ Hvs Hread j P T R V HP HT HR HV.
   assert (HΓw : ⊢ Γ) by (eapply ctx_app_wf_tail; exact HCΓ).
@@ -407,10 +407,9 @@ Proof.
   pose proof (Hfm _ _ _ Ha _ Ht) as <-; pose proof (Hfm _ _ _ Ha _ Ht') as <-; pose proof (Hfm _ _ _ Ha _ Ha0) as <-.
   assert (E : R' <~> R0) by (eapply per_univ_elem_right_irrel; eassumption).
   pose proof (per_univ_elem_kind _ _ _ _ HR0) as Hrab.
-  unfold nf_equal_up_to_proofs.
   destruct HVt as [w Hp Hw | m w Hr Hm Hw].
   - destruct (read_nf_propositional _ _ _ _ Hp Hw) as [Q ->].
-    destruct (read_nf_propositional _ _ _ _ (eq_trans (eq_sym Hrab) Hp) HRb) as [Q' ->]; reflexivity.
+    destruct (read_nf_propositional _ _ _ _ (eq_trans (eq_sym Hrab) Hp) HRb) as [Q' ->]; exact eq_refl.
   - destruct Hexp as [Hp | (m0 & m0' & Hm0 & Hm0' & Hmm)]; [ rewrite Hp in Hr; inversion Hr |].
     pose proof (Hfm _ _ _ HPv _ Hm) as <-; pose proof (Hfm _ _ _ HPv _ Hm0) as <-; pose proof (Hfm _ _ _ HPv _ Hm0') as <-.
     destruct (per_elem_then_per_top HR0 (proj1 (E _ _) Hmm) (List.length Γ)) as [W1 W2 HW1 HW2 HE].
@@ -456,7 +455,7 @@ Proof.
     invert_per_univ_elem HR.
   (** Two propositions related in [per_prop] read back alike up to their
       proofs: a relevant type or a type former is no neutral variable's,
-      erased or not. *)
+      up to proofs or not. *)
   all: try solve [ match goal with Hp : per_prop _ _ |- _ =>
                      let Hl := fresh "Hl" in let Ht := fresh "Ht" in let HC := fresh "HC" in let HC' := fresh "HC'" in
                      let HE := fresh "HE" in
@@ -469,14 +468,14 @@ Proof.
   all: try solve [ match_by_head eval_exp ltac:(fun H => directed dependent destruction H) ].
   (** Two neutral variables related in [per_bot], or as propositions in
       [per_prop]: read both back at [length Γ] and compare the indices they
-      produce, which erasure keeps. *)
+      produce, which the relation compares exactly. *)
   all: match goal with |- #?y = #?z => f_equal; enough (length Γ - y - 1 = length Γ - z - 1) by lia end.
   all: first [ match_by_head1 per_bot ltac:(fun H => destruct (H (length Γ)) as [? ? ? ? HE])
              | match goal with Hp : per_prop _ _ |- _ =>
                  let Ht := fresh "Ht" in destruct Hp as [_ _ Ht]; destruct (Ht (length Γ)) as [? ? ? ? HE] end;
                match_by_head read_typ ltac:(fun H => directed dependent destruction H) ].
   all: match_by_head read_ne ltac:(fun H => directed dependent destruction H).
-  all: cbn in HE; injection HE; lia.
+  all: unfold nf_eq_upto_proofs, ne_eq_upto_proofs in HE; cbn in HE; apply PeanoNat.Nat.eqb_eq in HE; lia.
 Qed.
 
 Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.

@@ -351,8 +351,7 @@ Section KindsEval.
     (forall fl m ws, ⟦projs fl of m ⟧ Θ ⍮ Ξ ↘ ws -> True) /\
     (forall p ups ρm As ρ gs vs rs, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ rs -> True) /\
     (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs -> True) /\
-    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> True) /\
-    (forall M ρ m, ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m -> True).
+    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> True).
   Proof.
     apply eval_mut_ind; intros; try exact I.
     (* module expressions *)

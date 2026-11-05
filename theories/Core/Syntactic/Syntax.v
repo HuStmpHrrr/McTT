@@ -2241,6 +2241,32 @@ Proof.
   apply Bool.andb_true_iff in H as [H H']; rewrite (Hf _ ltac:(eassumption) _ H), (IHHl _ H'); reflexivity.
 Qed.
 
+(** Lists related under maps that reflect the relation of their elements
+    are related: the list case of the injectivity lemmas. *)
+Lemma list_eqb_map_inv_all : forall {A B : Set} (Q : A -> Type) (f : A -> A -> bool) (f' : B -> B -> bool) (g : A -> B) l,
+    Base.list_all A Q l -> (forall x, Q x -> forall y, f' (g x) (g y) = true -> f x y = true) ->
+    forall l', list_eqb f' (List.map g l) (List.map g l') = true -> list_eqb f l l' = true.
+Proof.
+  intros * Hl Hf; induction Hl; intros [| y l'] H; cbn in *; try discriminate; try reflexivity.
+  apply Bool.andb_true_iff in H as [H H']; rewrite (Hf _ ltac:(eassumption) _ H), (IHHl _ H'); reflexivity.
+Qed.
+
+(** Related lists have the same length. *)
+Lemma list_eqb_length : forall {A : Set} (f : A -> A -> bool) l l', list_eqb f l l' = true -> List.length l = List.length l'.
+Proof.
+  intros A f; induction l as [| x l IH]; intros [| y l'] H; cbn in *; try discriminate; [ reflexivity |].
+  apply Bool.andb_true_iff in H as [_ H]; f_equal; exact (IH _ H).
+Qed.
+
+(** The comparison of two appends, at prefixes of one length, is that of
+    their parts. *)
+Lemma list_eqb_app_eq : forall {A : Set} (f : A -> A -> bool) l1 l1' l2 l2', List.length l1 = List.length l1' ->
+    list_eqb f (l1 ++ l2) (l1' ++ l2') = (list_eqb f l1 l1' && list_eqb f l2 l2').
+Proof.
+  intros A f; induction l1 as [| x l1 IH]; intros [| y l1'] * H; cbn in *; try discriminate; [ reflexivity |].
+  rewrite IH by congruence; destruct (f x y); reflexivity.
+Qed.
+
 (** Splits conjunctions of booleans, in the hypotheses and the goal. *)
 Ltac eqb_split :=
   repeat match goal with
@@ -2419,6 +2445,33 @@ Proof.
   intros * HU HB HM; unfold ne_eq_upto_proofs, nfs_eq_upto_proofs, blocks_eq_upto_proofs in *; cbn.
   rewrite dec_eqb_refl, PeanoNat.Nat.eqb_refl, HU, HB, HM; reflexivity.
 Qed.
+
+(** The formers are injective up to proofs. *)
+Lemma nf_pi_upto_proofs_inv : forall κd κc A B κd' κc' A' B',
+    nf_eq_upto_proofs (nf_pi κd κc A B) (nf_pi κd' κc' A' B') ->
+    κd = κd' /\ κc = κc' /\ nf_eq_upto_proofs A A' /\ nf_eq_upto_proofs B B'.
+Proof. unfold nf_eq_upto_proofs; cbn; intros * H; eqb_split; eqb_leaves; subst; repeat split; assumption. Qed.
+
+Lemma nf_indty_upto_proofs_inv : forall p k Ms p' k' Ms',
+    nf_eq_upto_proofs (nf_indty p k Ms) (nf_indty p' k' Ms') -> p = p' /\ k = k' /\ nfs_eq_upto_proofs Ms Ms'.
+Proof. unfold nf_eq_upto_proofs, nfs_eq_upto_proofs; cbn; intros * H; eqb_split; eqb_leaves; subst; repeat split; assumption. Qed.
+
+Lemma nf_record_upto_proofs_inv : forall p Ms p' Ms',
+    nf_eq_upto_proofs (nf_record p Ms) (nf_record p' Ms') -> p = p' /\ nfs_eq_upto_proofs Ms Ms'.
+Proof. unfold nf_eq_upto_proofs, nfs_eq_upto_proofs; cbn; intros * H; eqb_split; eqb_leaves; subst; split; [ reflexivity | assumption ]. Qed.
+
+(** Related lists have related elements at each position. *)
+Lemma nfs_eq_upto_proofs_nth : forall Ms Ms' j M, nfs_eq_upto_proofs Ms Ms' -> List.nth_error Ms j = Some M ->
+    exists M', List.nth_error Ms' j = Some M' /\ nf_eq_upto_proofs M M'.
+Proof.
+  unfold nfs_eq_upto_proofs, nf_eq_upto_proofs; induction Ms as [| N Ms IH]; intros [| N' Ms'] [| j] M H Hj;
+    cbn in *; try discriminate; apply Bool.andb_true_iff in H as [H1 H2].
+  - injection Hj as <-; eauto.
+  - eauto.
+Qed.
+
+Lemma nfs_eq_upto_proofs_length : forall Ms Ms', nfs_eq_upto_proofs Ms Ms' -> List.length Ms = List.length Ms'.
+Proof. intros * H; exact (list_eqb_length _ _ _ H). Qed.
 
 (** So do the binding formers. *)
 Lemma nf_fn_upto_proofs : forall A A' M M', nf_eq_upto_proofs A A' -> nf_eq_upto_proofs M M' ->

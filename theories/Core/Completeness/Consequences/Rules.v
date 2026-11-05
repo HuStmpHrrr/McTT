@@ -37,7 +37,7 @@ Lemma ctxeq_nbe_eq : forall Γ Γ' M A,
     Γ ⊢ M : A ->
     ctx_scoped 0 Γ' ->
     ⊨ Γ ≈ Γ' ->
-    exists W W', nbe_f Γ M A W /\ nbe_f Γ' M A W' /\ nf_erase W = nf_erase W'.
+    exists W W', nbe_f Γ M A W /\ nbe_f Γ' M A W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * HM0 HsΓ' HΓΓ'.
   pose proof (completeness_fundamental_exp _ _ _ HM0) as HM.
@@ -77,7 +77,7 @@ Corollary ctxeq_nbe_eq' : forall Γ Γ' M A W,
     ctx_scoped 0 Γ' ->
     ⊨ Γ ≈ Γ' ->
     nbe_f Γ M A W ->
-    exists W', nbe_f Γ' M A W' /\ nf_erase W = nf_erase W'.
+    exists W', nbe_f Γ' M A W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * HM HsΓ' HΓΓ' HW.
   destruct (ctxeq_nbe_eq _ _ _ _ HM HsΓ' HΓΓ') as (W0 & W' & HW0 & HW' & HE).
@@ -89,7 +89,7 @@ Corollary ctxeq_nbe_ty_eq : forall Γ Γ' A i,
     Γ ⊢ A : Typeω@i ->
     ctx_scoped 0 Γ' ->
     ⊨ Γ ≈ Γ' ->
-    exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ' A W' /\ nf_erase W = nf_erase W'.
+    exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ' A W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * HA HsΓ' HΓΓ'.
   destruct (ctxeq_nbe_eq _ _ _ _ HA HsΓ' HΓΓ') as (W & W' & HW%nbe_type_to_nbe_ty & HW'%nbe_type_to_nbe_ty & HE).
@@ -101,7 +101,7 @@ Corollary ctxeq_nbe_ty_eq' : forall Γ Γ' A i W,
     ctx_scoped 0 Γ' ->
     ⊨ Γ ≈ Γ' ->
     nbe_ty_f Γ A W ->
-    exists W', nbe_ty_f Γ' A W' /\ nf_erase W = nf_erase W'.
+    exists W', nbe_ty_f Γ' A W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * HA HsΓ' HΓΓ' HW.
   destruct (ctxeq_nbe_ty_eq _ _ _ _ HA HsΓ' HΓΓ') as (W0 & W' & HW0 & HW' & HE).

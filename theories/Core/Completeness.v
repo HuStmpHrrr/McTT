@@ -29,7 +29,7 @@ Section Fixed_GCtx.
 
 (** A semantic equality [Γ ⊨ M ≈ M' : A] read at the initial environment
     of [Γ]: both terms have normal forms there, equal up to their proofs
-    ([nf_erase]).  At a proposition the terms are never evaluated: each is
+    ([nf_eq_upto_proofs]).  At a proposition the terms are never evaluated: each is
     kept over the environment and read back as a proof term. *)
 #[warnings="-cannot-define-projection"]
 Record initial_env_normal_forms (Γ : ctx) (M M' A : exp) : Prop := mk_initial_env_normal_forms
@@ -52,7 +52,7 @@ Record initial_env_normal_forms (Γ : ctx) (M M' A : exp) : Prop := mk_initial_e
   ; initial_env_normal_forms_nbe_right : nbe_term gc_deps gc_stack (List.length Γ)
       initial_env_normal_forms_env M' initial_env_normal_forms_type initial_env_normal_forms_right
     (** The two are equal up to their proofs *)
-  ; initial_env_normal_forms_erased : nf_erase initial_env_normal_forms_left = nf_erase initial_env_normal_forms_right }.
+  ; initial_env_normal_forms_upto_proofs : nf_eq_upto_proofs initial_env_normal_forms_left initial_env_normal_forms_right }.
 
 (** The context is scoped, for its initial environment to be related to
     itself ([per_ctx_then_per_env_initial_env]), and so are the terms, for
@@ -139,12 +139,12 @@ End Fixed_GCtx.
 
 (** Equal terms have normal forms equal up to their proofs: the semantic
     equality of [completeness_fundamental], read at the identity embedding
-    and at the initial environment.  The proofs are compared erased
-    ([nf_erase]): two equal proofs of a proposition are any two of its
-    proofs. *)
+    and at the initial environment.  The proofs are compared up to proofs
+    ([nf_eq_upto_proofs]): two equal proofs of a proposition are any two
+    of its proofs. *)
 Theorem completeness : forall {Θ Ξ Γ M M' A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-    exists W W', nbe Θ Ξ Γ M A W /\ nbe Θ Ξ Γ M' A W' /\ nf_erase W = nf_erase W'.
+    exists W W', nbe Θ Ξ Γ M A W /\ nbe Θ Ξ Γ M' A W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * H.
   pose proof (proj1 (proj2 (proj2 completeness_fundamental)) _ _ _ _ _ _ H) as HK.
@@ -176,7 +176,7 @@ Theorem completeness_at_equal_types : forall {Θ Ξ Γ M M' A A' S W W'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : S ->
     nbe Θ Ξ Γ M A W ->
     nbe Θ Ξ Γ M' A' W' ->
-    nf_equal_up_to_proofs W W'.
+    nf_eq_upto_proofs W W'.
 Proof.
   intros * HS H HAA [ρ0 a0 Hρ0 Ha0 HW] [ρ1 a1 Hρ1 Ha1 HW'].
   pose proof (proj1 (proj2 (proj2 completeness_fundamental)) _ _ _ _ _ _ H) as HK.
@@ -194,7 +194,6 @@ Proof.
   functional_eval_rewrite_clear.
   assert (E : R <~> R') by (eapply per_univ_elem_right_irrel; eassumption).
   pose proof (per_univ_elem_kind _ _ _ _ HR') as Hra.
-  unfold nf_equal_up_to_proofs.
   destruct HW as [w Hp Hw | m w Hr Hm Hw]; destruct HW' as [w' Hp' Hw' | m' w' Hr' Hm' Hw']; try kind_clash.
   - destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp Hw) as [P ->].
     destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp' Hw') as [P' ->]; reflexivity.
@@ -211,7 +210,7 @@ Section Fixed_GCtx.
     proofs at its indices. *)
 Corollary completeness_ty : forall {Γ} {i : nat} {A A'},
     Γ ⊢ A ≈ A' : Typeω@i ->
-    exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W' /\ nf_erase W = nf_erase W'.
+    exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * (W & W' & HW%nbe_type_to_nbe_ty & HW'%nbe_type_to_nbe_ty & HE)%completeness.
   exists W, W'; repeat split; assumption.

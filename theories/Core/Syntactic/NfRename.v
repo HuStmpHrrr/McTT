@@ -415,3 +415,28 @@ Proof.
        intros z Hz w Hw; destruct Hz; destruct w; unfold map_normal_branch in Hw; cbn in Hw;
        injection Hw as -> -> Hw; f_equal; eauto using wk_left_inverse_qn.
 Qed.
+
+(** The same up to proofs: a renaming with a left inverse reflects
+    equality up to proofs. *)
+Lemma nf_ne_wk_inj_upto_proofs :
+  (forall W φ ψ W', wk_left_inverse ψ φ -> nf_eq_upto_proofs (nf_wk φ W) (nf_wk φ W') -> nf_eq_upto_proofs W W') /\
+  (forall u φ ψ u', wk_left_inverse ψ φ -> ne_eq_upto_proofs (ne_wk φ u) (ne_wk φ u') -> ne_eq_upto_proofs u u').
+Proof.
+  unfold nf_eq_upto_proofs, ne_eq_upto_proofs.
+  apply nf_ne_ind; intros;
+    lazymatch goal with
+    | H : nf_eqb_upto_proofs _ (nf_wk _ ?N) = true |- _ => destruct N
+    | H : ne_eqb_upto_proofs _ (ne_wk _ ?N) = true |- _ => destruct N
+    end;
+    cbn [nf_wk ne_wk nf_eqb_upto_proofs ne_eqb_upto_proofs] in *; try discriminate; try reflexivity;
+    eqb_split; eqb_leaves; try solve [ eauto using wk_left_inverse_q, wk_left_inverse_qn ].
+  (** A variable: renamed back *)
+  all: try solve [ match goal with Hψ : wk_left_inverse ?ψ ?φ, E : ?φ ?x = ?φ ?y |- _ =>
+                     apply PeanoNat.Nat.eqb_eq; rewrite <- (Hψ x), <- (Hψ y), E; reflexivity end ].
+  all: eapply list_eqb_map_inv_all; [ eassumption | | eassumption ]; intros x Hx y Hxy; try solve [ eauto ].
+  all: destruct Hx; destruct y; cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *;
+    eqb_split; eqb_leaves; subst; eqb_split; eqb_leaves; try solve [ eauto using wk_left_inverse_qn ].
+  all: eapply list_eqb_map_inv_all; [ eassumption | | eassumption ]; intros br Hbr br' Hbb; destruct Hbr; destruct br';
+    cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *; eqb_split; eqb_leaves; subst;
+    eqb_split; eqb_leaves; eauto using wk_left_inverse_qn.
+Qed.

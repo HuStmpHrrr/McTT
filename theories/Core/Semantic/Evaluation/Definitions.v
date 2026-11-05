@@ -21,7 +21,6 @@ Reserved Notation "'⟦mref' j 'of' p ups '⟧' Θ '⍮' Ξ '↘' r" (at level 7
 Reserved Notation "'⟦' σ ':' Δ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" (at level 70, σ at level 69, Δ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρσ at level 69).
 
 Reserved Notation "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, H at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦' M '⟧ₖ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, M at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦' Ms '⟧*' Θ '⍮' Ξ '⍮' ρ '↘' ms" (at level 70, Ms at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ms at level 69).
 Reserved Notation "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" (at level 70, Φ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρ' at level 69).
 Reserved Notation "'$*|' m '&' ns '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, ns at level 69, Θ at level 69, Ξ at level 69, r at level 69).
@@ -501,14 +500,6 @@ Hint Constructors dmod_member_kind gunit_member_kind modexp_member_kind kinds_en
     module needs neither: its members are stored generalized over its
     parameters, so selection applies the generalized member to the arguments
     there are. *)
-(** [M] is not a local definition: a kept proof stops peeling there
-    ([keep_proof_term]). *)
-Definition not_let (M : exp) : Prop :=
-  match M with
-  | a_let _ _ => False
-  | _ => True
-  end.
-
 Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** A universe is its own value. *)
 | eval_exp_typ :
@@ -552,11 +543,10 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_False :
   `( ⟦ ⊥ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⊥ᵈ )
 (** Ex falso never evaluates its proof: it is stuck at its type, on the
-    proof kept ([keep_proof]). *)
+    proof kept as it is. *)
 | eval_exp_absurd :
   `( ⟦ C ⟧ Θ ⍮ Ξ ⍮ ρ ↘ c ->
-     ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ efq M return C ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ c (efqᵈ m return c) )
+     ⟦ efq M return C ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ c (efqᵈ ⋆ᵈ⟨M, ρ⟩ return c) )
 (** A [Σₚ] evaluates its first component and closes over its second. *)
 | eval_exp_and :
   `( ⟦ P ⟧ Θ ⍮ Ξ ⍮ ρ ↘ p ->
@@ -639,12 +629,11 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      $| m & n | Θ ⍮ Ξ ↘ r ->
      ⟦ M $ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** An application of a function taking a proof applies it to the proof
-    kept ([keep_proof]); the argument is not evaluated. *)
+    kept as it is; the argument is not evaluated. *)
 | eval_exp_app_proof :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      arg_kind Θ Ξ m = ak_propositional ->
-     ⟦ N ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ n ->
-     $| m & n | Θ ⍮ Ξ ↘ r ->
+     $| m & ⋆ᵈ⟨N, ρ⟩ | Θ ⍮ Ξ ↘ r ->
      ⟦ M $ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A local definition at a type of an evaluated kind extends the
     environment by the value of its body, at its type; nothing is
@@ -655,12 +644,11 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ⦂ entry_type_value a ↘ r ->
      ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** One at a proposition binds its body, a proof, kept ([keep_proof]). *)
+(** One at a proposition binds its body, a proof, kept as it is. *)
 | eval_exp_let_proof :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      domain_kind a = ak_propositional ->
-     ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ⦂ entry_type_value a ↘ r ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ entry_type_value a ↘ r ->
      ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A local module extends it by the unit's closure, at the unit. *)
 | eval_exp_let_mod :
@@ -1061,12 +1049,10 @@ with eval_app_args (Θ : gdeps) (Ξ : gstack) : domain -> list exp -> env -> dom
      $| f & n | Θ ⍮ Ξ ↘ g ->
      eval_app_args Θ Ξ g Ns ρ r ->
      eval_app_args Θ Ξ f (N :: Ns) ρ r )
-(** A proof argument: the proof applied, kept ([keep_proof]), then the
-    rest. *)
+(** A proof argument: the proof applied, kept as it is, then the rest. *)
 | eval_app_args_proof :
   `( arg_kind Θ Ξ f = ak_propositional ->
-     ⟦ N ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ n ->
-     $| f & n | Θ ⍮ Ξ ↘ g ->
+     $| f & ⋆ᵈ⟨N, ρ⟩ | Θ ⍮ Ξ ↘ g ->
      eval_app_args Θ Ξ g Ns ρ r ->
      eval_app_args Θ Ξ f (N :: Ns) ρ r )
 (** [eval_field_vals rs Ms ρ vs]: the values [vs] of the fields [Ms] of a record
@@ -1082,55 +1068,11 @@ with eval_field_vals (Θ : gdeps) (Ξ : gstack) : list abs_kind -> list exp -> e
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
      eval_field_vals Θ Ξ rs (M :: Ms) ρ (m :: ms) )
-(** A propositional field: the proof kept ([keep_proof]), then the rest. *)
+(** A propositional field: the proof kept as it is, then the rest. *)
 | eval_field_vals_proof :
   `( List.hd ak_relevant rs = ak_propositional ->
-     ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
-     eval_field_vals Θ Ξ rs (M :: Ms) ρ (m :: ms) )
-(** [⟦ M ⟧ₖ ρ ↘ m]: the proof [M] kept in [ρ] as the value [m].  The local
-    definitions in front of [M] are peeled into the environment: a
-    definition at a type of an evaluated kind binds the value of its body,
-    one at a proposition its body kept, a local module its closure; the
-    first term that is not a definition is kept as it is, [⋆ᵈ⟨M, ρ'⟩],
-    never evaluated.  Only the definitions are evaluated.
-
-    Readback copies the kept term under definitions for the positions of
-    the environment it reads ([read_proof_kept]), so peeling makes that
-    readback stable when it is evaluated again.  With [q : ℕ → P] and
-    [g : P → Type] for a proposition [P], the argument of
-    [g (ℓ y : ℕ ≔ 3 in q y)] is kept as [⋆ᵈ⟨q #0, ρ ↦ 3ᵈ ⦂ ℕᵈ⟩] and reads
-    back as [q y] under the definitions of [q], [g] and [y : ℕ ≔ 3]; that
-    term evaluated is kept by peeling the same four definitions, so it
-    reads back as itself.  Kept as written, it would read back as
-    [ℓ y : ℕ ≔ 3 in q y] under the definitions of [q] and [g], and gain
-    one more such chain at every round. *)
-with keep_proof (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
-(** A definition at a type of an evaluated kind: its body's value is
-    bound, at its type, and the rest is kept under it. *)
-| keep_proof_let :
-  `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     evaluated_kind (domain_kind a) ->
-     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
-     ⟦ B ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_value a ↘ r ->
-     ⟦ ℓ A ≔ N in B ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** A definition at a proposition: its body, a proof, is bound kept. *)
-| keep_proof_let_proof :
-  `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     domain_kind a = ak_propositional ->
-     ⟦ N ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ n ->
-     ⟦ B ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_value a ↘ r ->
-     ⟦ ℓ A ≔ N in B ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** A local module: its unit's closure is bound, at the unit. *)
-| keep_proof_let_mod :
-  `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     ⟦ B ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↦ᵐ h ⦂ gu_mk Δ D ↘ r ->
-     ⟦ ℓₘ (gu_mk Δ D) in B ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** Any other proof is kept as it is written, with its environment. *)
-| keep_proof_term :
-  `( not_let M ->
-     ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨M, ρ⟩ )
-where "'⟦' M '⟧ₖ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (keep_proof Θ Ξ M ρ r)
+     eval_field_vals Θ Ξ rs (M :: Ms) ρ (⋆ᵈ⟨M, ρ⟩ :: ms) )
 with eval_apps (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> domain -> Prop :=
 (** No arguments. *)
 | eval_apps_nil :
@@ -1379,12 +1321,11 @@ with eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
      ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
      ⟦ gm_ext Φ y (ge_def b pv κ A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m ⦂ entry_type_closure A ρ1 )
-(** A definition tagged a proposition, a proof, adds it kept
-    ([keep_proof]), unevaluated. *)
+(** A definition tagged a proposition, a proof, adds it kept as it is,
+    unevaluated. *)
 | eval_body_env_def_proof :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
-     ⟦ gm_ext Φ y (ge_def b pv ak_propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m ⦂ entry_type_closure A ρ1 )
+     ⟦ gm_ext Φ y (ge_def b pv ak_propositional A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ⟨M, ρ1⟩ ⦂ entry_type_closure A ρ1 )
 (** A submodule adds its unit's closure, at the unit. *)
 | eval_body_env_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
@@ -1423,8 +1364,7 @@ with eval_neutral_fields_mut_ind := Induction for eval_neutral_fields Sort Prop
 with eval_projs_mut_ind := Induction for eval_projs Sort Prop
 with eval_ihtys_mut_ind := Induction for eval_ihtys Sort Prop
 with eval_field_vals_mut_ind := Induction for eval_field_vals Sort Prop
-with eval_app_args_mut_ind := Induction for eval_app_args Sort Prop
-with keep_proof_mut_ind := Induction for keep_proof Sort Prop.
+with eval_app_args_mut_ind := Induction for eval_app_args Sort Prop.
 Combined Scheme eval_mut_ind from
   eval_exp_mut_ind,
   eval_app_mut_ind,
@@ -1450,17 +1390,11 @@ Combined Scheme eval_mut_ind from
   eval_projs_mut_ind,
   eval_ihtys_mut_ind,
   eval_field_vals_mut_ind,
-  eval_app_args_mut_ind,
-  keep_proof_mut_ind.
+  eval_app_args_mut_ind.
 
 #[export]
 Hint Constructors eval_exp eval_proj eval_neutral_fields eval_projs eval_elim eval_ihs eval_ih eval_mref eval_shape_type eval_ihty eval_ihtys eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
-  eval_selc eval_selmc eval_body_env eval_field_vals eval_app_args keep_proof : mctt.
-
-(** On a term that is not a local definition, keeping is
-    [⋆ᵈ⟨M, ρ⟩]. *)
-Lemma keep_proof_not_let : forall {Θ Ξ} M ρ m, not_let M -> ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m -> m = ⋆ᵈ⟨M, ρ⟩.
-Proof. intros * HM H; inversion H; subst; cbn in HM; first [ contradiction | reflexivity ]. Qed.
+  eval_selc eval_selmc eval_body_env eval_field_vals eval_app_args : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible
     application, so unifying against it directly can pick the wrong [ρ] and
@@ -1570,12 +1504,12 @@ Definition eval_sentry (Θ : gdeps) (Ξ : gstack) (t : entry_type) (U : gunit) (
   end.
 
 (** The entry a substitution entry [e] denotes in [ρ] at a proposition,
-    stored at the type [t] and the unit [U]: the proof kept
-    ([keep_proof]), or the entry of a variable. *)
-Definition eval_sentry_proof (Θ : gdeps) (Ξ : gstack) (t : entry_type) (U : gunit) (e : sentry) (ρ : env) (d : dentry) : Prop :=
+    stored at the type [t] and the unit [U]: the proof kept as it is, or
+    the entry of a variable. *)
+Definition eval_sentry_proof (t : entry_type) (U : gunit) (e : sentry) (ρ : env) (d : dentry) : Prop :=
   match e with
   | se_var y => d = retag_entry t U (env_entry ρ y)
-  | se_exp M => exists m, d = de_term m t /\ ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m
+  | se_exp M => d = de_term ⋆ᵈ⟨M, ρ⟩ t
   | _ => False
   end.
 (** The entry [x] of [Δ] is a proposition in the environment [ρσ] of [Δ]:
@@ -1613,7 +1547,7 @@ Record entry_propositional (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (ρσ : env) (x
     ([ctx_entry_tag], [ctx_entry_unit]). *)
 Definition eval_sub (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (σ : sub) (ρ ρσ : env) : Prop :=
   forall x, x < List.length Δ ->
-    (entry_propositional Θ Ξ Δ ρσ x -> eval_sentry_proof Θ Ξ (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (σ x) ρ (env_entry ρσ x))
+    (entry_propositional Θ Ξ Δ ρσ x -> eval_sentry_proof (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (σ x) ρ (env_entry ρσ x))
     /\ (~ entry_propositional Θ Ξ Δ ρσ x ->
          eval_sentry Θ Ξ (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (σ x) ρ (env_entry ρσ x)).
 
@@ -1707,12 +1641,12 @@ Proof.
   - destruct H as (n & h & -> & Hn & Hh); exists n, h; split; [ reflexivity | split; assumption ].
 Qed.
 
-Lemma eval_sentry_proof_retag : forall Θ Ξ t U t' U' e ρ d,
-    eval_sentry_proof Θ Ξ t U e ρ d -> eval_sentry_proof Θ Ξ t' U' e ρ (retag_entry t' U' d).
+Lemma eval_sentry_proof_retag : forall t U t' U' e ρ d,
+    eval_sentry_proof t U e ρ d -> eval_sentry_proof t' U' e ρ (retag_entry t' U' d).
 Proof.
   intros * H; destruct e as [y | M | H0 | N H0]; cbn [eval_sentry_proof] in H |- *; try contradiction.
   - subst d; apply retag_entry_twice.
-  - destruct H as (m & -> & Hm); exists m; split; [ reflexivity | exact Hm ].
+  - subst d; reflexivity.
 Qed.
 Arguments eval_sub : simpl never.
 
@@ -1784,7 +1718,7 @@ Qed.
 (** The two cases of an evaluation of a substitution at an index. *)
 Lemma eval_sub_at_prop : forall {Θ Ξ} Δ σ ρ ρσ x,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> entry_propositional Θ Ξ Δ ρσ x ->
-    eval_sentry_proof Θ Ξ (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (σ x) ρ (env_entry ρσ x).
+    eval_sentry_proof (ctx_entry_tag Δ x ρσ) (ctx_entry_unit Δ x) (σ x) ρ (env_entry ρσ x).
 Proof. intros * H Hp; exact (proj1 (H x (entry_propositional_lt _ _ _ Hp)) Hp). Qed.
 
 Proposition eval_sub_index : forall {Θ Ξ} Δ σ (ρ ρσ : env),
@@ -1828,16 +1762,15 @@ Proof.
            | intros Hp; apply (H x ltac:(lia)); intros Hp'; exact (Hp (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
 Qed.
 
-(** An extension at an entry that is a proposition: the term kept
-    ([keep_proof]), unevaluated. *)
-Lemma eval_sub_extend_proof : forall {Θ Ξ} e Δ σ ρ ρσ M m,
+(** An extension at an entry that is a proposition: the term kept as it
+    is, unevaluated. *)
+Lemma eval_sub_extend_proof : forall {Θ Ξ} e Δ σ ρ ρσ M,
     ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     head_propositional Θ Ξ e Δ ρσ ->
-    ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m ⦂ centry_tag e Δ ρσ.
+    ⟦ σ,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ centry_tag e Δ ρσ.
 Proof.
-  intros * H Hp Hm [| x] Hx.
-  - split; [ intros _; cbn [eval_sentry_proof]; rewrite ctx_entry_tag_head; exists m; split; [ reflexivity | exact Hm ] | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
+  intros * H Hp [| x] Hx.
+  - split; [ intros _; cbn [eval_sentry_proof]; rewrite ctx_entry_tag_head; reflexivity | intros Hn; exfalso; exact (Hn (proj2 (entry_propositional_head _ _ _ _) Hp)) ].
   - cbn [List.length] in Hx.
     split; [ intros Hp'; apply (H x ltac:(lia)); exact (entry_propositional_extend_inv _ _ _ _ _ Hp')
            | intros Hn; apply (H x ltac:(lia)); intros Hp'; exact (Hn (entry_propositional_extend_intro _ _ _ _ _ Hp')) ].
@@ -1890,12 +1823,11 @@ Proof.
   intros; apply eval_sub_extend; [ apply eval_sub_id | assumption .. ].
 Qed.
 
-Corollary eval_sub_single_proof : forall {Θ Ξ} e Δ ρ M m,
+Corollary eval_sub_single_proof : forall {Θ Ξ} e Δ ρ M,
     head_propositional Θ Ξ e Δ (ctx_retag Δ ρ) ->
-    ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ ↦ m ⦂ centry_tag e Δ (ctx_retag Δ ρ).
+    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ centry_tag e Δ (ctx_retag Δ ρ).
 Proof.
-  intros; apply eval_sub_extend_proof; [ apply eval_sub_id | assumption .. ].
+  intros; apply eval_sub_extend_proof; [ apply eval_sub_id | assumption ].
 Qed.
 
 Corollary eval_sub_single_mod : forall {Θ Ξ} U Δ ρ H h,

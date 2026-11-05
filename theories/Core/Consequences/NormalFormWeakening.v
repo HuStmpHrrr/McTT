@@ -10,7 +10,7 @@
     - related values read back equally at every length ([per_top]), so the
       normal form of [M[↑]] in [Γ ▹{κ} A] is the readback of [⟦M⟧ρΓ] at
       [|Γ| + 1];
-    - that is, up to erasure, the weakening of its readback at [|Γ|], the
+    - that is, up to proofs, the weakening of its readback at [|Γ|], the
       normal form of [M] in [Γ] ([Core.Semantic.Rename.read_shift]): a
       proof is read back over the environment it is kept over, which the
       weakening extends.
@@ -37,17 +37,17 @@ Context {GC : GCtx}.
 
 (** ** NbE Commutes with Weakening
 
-    Up to erasure: a proof of [Γ] is kept over the initial environment of
+    Up to proofs: a proof of [Γ] is kept over the initial environment of
     [Γ], and its weakening over that of [Γ ▹{κ} A], whose readback binds one
     more position.  For [Γ = (P : Prop) ▹ (h : P)], [A = ⊤] and [M = #0],
     the normal form of [M] in [Γ] is [ℓ h : P ≔ #0 in #0], and that of
     [M[↑]] in [Γ ▹{κ} A] lets-binds both [h] and the new variable, so it is no
-    weakening of the first; erased, both are [⋆ⁿ]. *)
+    weakening of the first; both are proofs, related ([nf_eq_upto_proofs]). *)
 Theorem nbe_wk : forall Γ κ A M T W,
     ⊢ Γ ▹{κ} A ->
     Γ ⊢ M : T ->
     nbe_f Γ M T W ->
-    exists W', nbe_f (Γ ▹{κ} A) M[↑]ʷ T[↑]ʷ W' /\ nf_erase W' = nf_erase (nf_wk ↑ W).
+    exists W', nbe_f (Γ ▹{κ} A) M[↑]ʷ T[↑]ʷ W' /\ nf_eq_upto_proofs W' (nf_wk ↑ W).
 Proof.
   intros * HΓA HM Hn.
   assert (HA : ⊨ Γ ▹{κ} A) by (apply completeness_fundamental_ctx; exact HΓA).
@@ -92,13 +92,13 @@ Proof.
   pose proof (proj1 (per_univ_elem_trans _ _ _ _ HRσR) _ _ HRRT') as HRσT.
   pose proof (per_univ_elem_kind _ _ _ _ HRσT) as Erel.
   destruct Hres as [W0 Hp HW0 | m0 W0 Hr Hm0 HW0].
-  - (** A proof: both read back as proof terms, erased alike *)
+  - (** A proof: both read back as proof terms, related *)
     assert (HsM1 : exp_scoped (length (Γ ▹{κ} A)) M[↑]ʷ) by (eapply exp_scoped_wk; [ exact HsM | intros; cbn; lia ]).
     destruct (per_ctx_env_kept_proof_readable _ _ _ M[↑]ʷ HR1 (exp_scoped_free_bound _ _ HsM1) _ _ Hrel1) as [HP _].
     destruct (HP (length (Γ ▹{κ} A))) as [P HPr].
     exists (nf_proof P); split.
     + econstructor; [ exact Hρ1 | exact HaσE | apply nbe_term_proof; [ congruence | apply read_nf_proof; [ congruence | exact HPr ] ] ].
-    + destruct (read_nf_propositional _ _ _ _ Hp HW0) as [P0 ->]; reflexivity.
+    + destruct (read_nf_propositional _ _ _ _ Hp HW0) as [P0 ->]; exact eq_refl.
   - (** A type of an evaluated kind: the value of [M[↑]] is related to
         that of [M], so they read back alike one variable further out,
         where the value of [M] reads back as the weakening of [W]
@@ -121,14 +121,14 @@ Proof.
     pose proof (read_shift _ _ Γ ρ0 T M aT m0 W0 W2 Hρ' HaT Hm0 HW0 HW2) as Hs.
     exists W1; split.
     + eapply nbe_evaluated_intro; [ exact Hρ1 | exact HaσE | exact Hmσ | exact HW1 | rewrite Erel; exact Hr ].
-    + congruence.
+    + etransitivity; [ exact HE | exact Hs ].
 Qed.
 
 Corollary nbe_ty_wk : forall Γ κ A T i W,
     ⊢ Γ ▹{κ} A ->
     Γ ⊢ T : Typeω@i ->
     nbe_ty_f Γ T W ->
-    exists W', nbe_ty_f (Γ ▹{κ} A) T[↑]ʷ W' /\ nf_erase W' = nf_erase (nf_wk ↑ W).
+    exists W', nbe_ty_f (Γ ▹{κ} A) T[↑]ʷ W' /\ nf_eq_upto_proofs W' (nf_wk ↑ W).
 Proof.
   intros * HΓA HT Hn.
   destruct (nbe_wk _ _ _ _ _ _ HΓA HT (nbe_ty_to_nbe_type _ _ i _ Hn)) as (W' & HW' & E).
@@ -144,22 +144,23 @@ Corollary nbe_wk_fresh_sem : forall Γ κ A M T W,
     ⊢ Γ ▹{κ} A ->
     Γ ⊢ M : T ->
     nbe_f (Γ ▹{κ} A) M[↑]ʷ T[↑]ʷ W ->
-    nf_fresh 0 (nf_erase W).
+    nf_fresh_outside_proofs 0 W.
 Proof. intros * _ _ Hn; exact (nbe_wk_fresh _ _ _ _ _ _ _ _ Hn). Qed.
 
 Corollary nbe_ty_wk_fresh_sem : forall Γ κ A T i W,
     ⊢ Γ ▹{κ} A ->
     Γ ⊢ T : Typeω@i ->
     nbe_ty_f (Γ ▹{κ} A) T[↑]ʷ W ->
-    nf_fresh 0 (nf_erase W).
+    nf_fresh_outside_proofs 0 W.
 Proof. intros * _ _ Hn; exact (nbe_ty_wk_fresh _ _ _ _ _ _ _ Hn). Qed.
 
 (** ** Strengthening an Equation
 
-    Both ends are terms of [Γ]: their normal forms in [Γ ▹{κ} A] are, erased,
-    the weakenings of their erased normal forms in [Γ], the long equation
-    makes the former equal up to erasure, and the weakening is injective;
-    terms of [Γ] with normal forms equal up to erasure are equal. *)
+    Both ends are terms of [Γ]: their normal forms in [Γ ▹{κ} A] are, up
+    to proofs, the weakenings of their normal forms in [Γ], the long
+    equation relates the former, and the weakening reflects the relation
+    ([nf_ne_wk_inj_upto_proofs]); terms of [Γ] with normal forms equal up to
+    proofs are equal ([soundness_upto_proofs]). *)
 Theorem exp_eq_strengthen_sem : forall Γ κ A M N T,
     ⊢ Γ ▹{κ} A ->
     Γ ⊢ M : T ->
@@ -174,9 +175,10 @@ Proof.
   destruct (nbe_wk _ _ _ _ _ _ HΓA HM HnM) as (WM' & HnM'' & EM).
   destruct (nbe_wk _ _ _ _ _ _ HΓA HN HnN) as (WN' & HnN'' & EN).
   functional_nbe_rewrite_clear.
-  assert (Eerase : nf_erase WM = nf_erase WN)
-    by (rewrite !nf_erase_wk in EM, EN; eapply (proj1 nf_wk_inj); [ apply wk_left_inverse_shift | congruence ]).
-  exact (soundness_erased HM HN HnM HnN Eerase).
+  assert (Eupto : nf_eq_upto_proofs WM WN).
+  { eapply (proj1 nf_ne_wk_inj_upto_proofs); [ apply wk_left_inverse_shift |].
+    etransitivity; [ symmetry; exact EM |]; etransitivity; [ exact HE | exact EN ]. }
+  exact (soundness_upto_proofs HM HN HnM HnN Eupto).
 Qed.
 
 End Fixed_GCtx.

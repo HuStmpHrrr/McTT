@@ -105,7 +105,7 @@ Qed.
 
     The value of [efq M return C] is the neutral of the value [c] of [C]
     at the proof of [⊥] kept, [⋆ᵈ⟨M, ρ⟩].  Related types read back alike
-    and proofs that read back are erased alike, so the neutrals read back
+    and proofs that read back are related, so the neutrals read back
     alike, and realisability relates them. *)
 Lemma per_bot_absurd : forall {c c' p p'},
     Dom c ≈ c' ∈ per_top_typ ->
@@ -115,7 +115,7 @@ Proof.
   intros * Hc Hp Hp' s; destruct (Hc s) as [C C' HC HC' HE].
   destruct (Hp s) as [P HP], (Hp' s) as [P' HP'].
   apply (mk_neutral_reads_alike _ _ _ (efqⁿ P return C) (efqⁿ P' return C'));
-    [ constructor; assumption | constructor; assumption | cbn [ne_erase]; rewrite HE; reflexivity ].
+    [ constructor; assumption | constructor; assumption | exact HE ].
 Qed.
 
 Lemma per_elem_absurd : forall {i R c c' p p'},
@@ -262,7 +262,7 @@ Proof.
   intros s; destruct (Hp s) as [P P' HP HP' HE].
   destruct (HQ s) as (b & b' & Hb & Hb' & [_ _ Hbb]); destruct (Hbb (S s)) as [B B' HB HB' HEB].
   apply (mk_type_reads_alike _ _ _ (Σₚⁿ P B) (Σₚⁿ P' B'));
-    [ eapply read_typ_and; eassumption | eapply read_typ_and; eassumption | cbn [nf_erase]; congruence ].
+    [ eapply read_typ_and; eassumption | eapply read_typ_and; eassumption | apply nf_and_upto_proofs; assumption ].
 Qed.
 
 (** A neutral proof reads back, as its neutral. *)

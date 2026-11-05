@@ -53,7 +53,7 @@ Proof.
   1-2: match goal with HE : _ <~> per_universe_elements (per_univ _) |- _ => apply HE in Hx end;
        destruct Hx as [[R0 HR0] _ _]; exfalso; exact (per_univ_elem_not_con _ _ _ _ HR0 _ _ _ _ eq_refl).
   - match goal with HE : _ <~> per_lvl_at _ |- _ => apply HE in Hx end.
-    destruct (Hx 0) as [L0 HL0 _ _]; inversion HL0.
+    destruct (Hx 0) as [L0 L1 HL0 _ _ _]; inversion HL0.
   - match goal with HE : _ <~> per_prop |- _ => apply HE in Hx end.
     exfalso; pose proof (per_prop_left _ _ Hx) as Hl; discriminate Hl.
   - (** A type of levels is no constructor's type. *)

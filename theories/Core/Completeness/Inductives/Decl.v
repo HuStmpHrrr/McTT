@@ -576,7 +576,7 @@ Qed.
     proofs. *)
 Lemma per_tele_args_top : forall ts ρ ρ' xs xs', per_tele_args ts ρ ρ' xs xs' -> List.length xs = List.length ts ->
     forall s, exists Ms Ms', Rps xs at ts in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms /\
-      Rps xs' at ts in gc_deps ⍮ gc_stack ⍮ ρ' ⍮ s ↘ Ms' /\ List.map nf_erase Ms = List.map nf_erase Ms'.
+      Rps xs' at ts in gc_deps ⍮ gc_stack ⍮ ρ' ⍮ s ↘ Ms' /\ nfs_eq_upto_proofs Ms Ms'.
 Proof.
   induction 1 as [ts ρ ρ' | i A ρ ρ' a a' ts args args' κ R HA Ha Hg IH]; intros Hl s.
   - destruct ts; cbn in Hl; try discriminate; exists nil, nil; split; [ constructor | split; [ constructor | reflexivity ] ].
@@ -584,7 +584,7 @@ Proof.
     destruct (IH ltac:(cbn in Hl; lia) s) as (Ms & Ms' & HM & HM' & HE).
     destruct (per_elem_then_per_top HR Ha s) as [V V' HV HV' HEV].
     exists (cons V Ms), (cons V' Ms'); split; [ econstructor; eassumption | split; [ econstructor; eassumption |] ].
-    cbn [List.map]; congruence.
+    apply nfs_eq_upto_proofs_cons; split; assumption.
 Qed.
 
 (** Arguments of a closed telescope related at it read back alike. *)

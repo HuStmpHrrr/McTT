@@ -765,8 +765,7 @@ Section Eval.
     (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs ->
        forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> forall a, In a vs -> domain_avoids v b a) /\
     (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r ->
-       forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> domain_avoids v b f -> domain_avoids v b r) /\
-    (forall M ρ m, ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m -> domain_avoids v b m).
+       forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms -> domain_avoids v b f -> domain_avoids v b r).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => forall K, env_avoids v b K ρ -> optional_exp_fresh K M -> domain_avoids v b m)
@@ -804,8 +803,7 @@ Section Eval.
              (fun rs Ms ρ vs _ => forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms ->
                                    forall a, In a vs -> domain_avoids v b a)
              (fun f Ms ρ r _ => forall K, env_avoids v b K ρ -> Forall (optional_exp_fresh K) Ms ->
-                                 domain_avoids v b f -> domain_avoids v b r)
-             (fun M ρ m _ => domain_avoids v b m));
+                                 domain_avoids v b f -> domain_avoids v b r));
       intros; cbn [optional_ptyp_fresh ptyp_ps ptyp_mem snd] in *.
     all: repeat match goal with
            | H : domain_avoids _ _ (_ _) |- _ => inversion_clear H

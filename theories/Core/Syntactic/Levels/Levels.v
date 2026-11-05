@@ -1339,6 +1339,14 @@ Proof.
   intros * H; apply lvl_le_correct; intros ν Hν; rewrite (lvl_eval_upto _ _ _ Hν H); apply ordinal_le_refl.
 Qed.
 
+(** The order respects the relation on both sides. *)
+Lemma lvl_le_upto_proofs : forall l1 l1' l2 l2', lvl_eq_upto_proofs l1 l1' -> lvl_eq_upto_proofs l2 l2' ->
+    lvl_le l1 l2 -> lvl_le l1' l2'.
+Proof.
+  intros * E1 E2 H; rewrite lvl_le_correct in H |- *; intros ν Hν.
+  rewrite <- (lvl_eval_upto _ _ _ Hν E1), <- (lvl_eval_upto _ _ _ Hν E2); exact (H ν Hν).
+Qed.
+
 (** An atom of a related list is an atom of the list, at its offset and
     sort. *)
 Lemma level_atoms_In_upto_proofs : forall ys ys', level_atoms_eq_upto_proofs ys ys' ->

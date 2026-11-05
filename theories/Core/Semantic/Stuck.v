@@ -392,8 +392,7 @@ Ltac stuck_go n :=
     (forall p ups ρm As ρ gs vs as', ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ as' -> ups_stuck ups ->
        env_stuck ρm -> env_stuck ρ -> (forall a, In a vs -> domain_stuck a) -> forall a, In a as' -> domain_stuck a) /\
     (forall rs Ms ρ vs, eval_field_vals Θ Ξ rs Ms ρ vs -> env_stuck ρ -> forall a, In a vs -> domain_stuck a) /\
-    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> domain_stuck f -> env_stuck ρ -> domain_stuck r) /\
-    (forall M ρ m, ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m -> env_stuck ρ -> domain_stuck m).
+    (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> domain_stuck f -> env_stuck ρ -> domain_stuck r).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_stuck ρ -> domain_stuck m)
@@ -423,8 +422,7 @@ Ltac stuck_go n :=
              (fun p ups ρm As ρ gs vs as' _ => ups_stuck ups -> env_stuck ρm -> env_stuck ρ ->
                 (forall a, In a vs -> domain_stuck a) -> forall a, In a as' -> domain_stuck a)
              (fun rs Ms ρ vs _ => env_stuck ρ -> forall a, In a vs -> domain_stuck a)
-             (fun f Ms ρ r _ => domain_stuck f -> env_stuck ρ -> domain_stuck r)
-             (fun M ρ m _ => env_stuck ρ -> domain_stuck m));
+             (fun f Ms ρ r _ => domain_stuck f -> env_stuck ρ -> domain_stuck r));
       intros; cbn [snd] in *.
     (* the induction hypotheses at the premises given, the parts of the
        stuck values given; then each value by its rule, shallowly first *)

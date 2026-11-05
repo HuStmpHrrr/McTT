@@ -107,7 +107,7 @@ Section Fixed_GCtx.
   Proof.
     intros * H s; destruct (H s) as [M M' H1 H2 HE].
     inversion H1; subst; inversion H2; subst.
-    cbn in HE; injection HE as _ HE.
+    unfold ne_eq_upto_proofs in HE; cbn in HE; apply Bool.andb_true_iff in HE as [_ HE].
     eapply mk_normal_reads_alike; eassumption.
   Qed.
 

@@ -1019,11 +1019,11 @@ Proof.
     + split; [ intros * Hin; cbn in Hin; first [ contradiction | inversion Hin ] | exact I ].
     + intros * Hin; cbn; lia.
     + left; reflexivity.
-    + split; [ apply ne_erase_idem | exact I ].
 Qed.
 
 (** Two levels each below the other are related: at every length their
-    canonical forms are ordered both ways, so they are equal. *)
+    canonical forms are ordered both ways, so they are equal up to
+    proofs. *)
 Lemma per_sublvl_antisym : forall l l',
     per_sublvl l l' -> per_sublvl l' l -> Dom l ≈ l' ∈ per_lvl.
 Proof.
@@ -1034,7 +1034,7 @@ Proof.
   pose proof (lvl_le_antisym _ _ Hle Hle') as Hc.
   rewrite (lvl_canonical_canon _ (read_nf_level_canonical _ _ _ _ HL)),
     (lvl_canonical_canon _ (read_nf_level_canonical _ _ _ _ HL')) in Hc.
-  subst; apply (mk_normal_reads_alike _ _ _ (nf_lvl_of L') (nf_lvl_of L')); [ assumption | assumption | reflexivity ].
+  apply (mk_normal_reads_alike _ _ _ (nf_lvl_of L) (nf_lvl_of L')); [ assumption | assumption | apply nf_lvl_of_upto_proofs, Hc ].
 Qed.
 
 (** Two types each below the other are related types.  The second

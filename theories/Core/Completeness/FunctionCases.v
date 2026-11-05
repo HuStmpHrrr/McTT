@@ -695,7 +695,7 @@ Proof.
   destruct (HB _ _ Hvar) as [b [b' [Hb [Hb' [_ _ Hbb]]]]].
   destruct (Hbb (S s)) as [P P' HP HP' HEP].
   apply (mk_type_reads_alike _ _ _ (∀ₚⁿ{κd} A P) (∀ₚⁿ{κd} A' P'));
-    [ eapply read_typ_pi; eassumption | eapply read_typ_pi; eassumption | cbn [nf_erase]; congruence ].
+    [ eapply read_typ_pi; eassumption | eapply read_typ_pi; eassumption | apply nf_pi_upto_proofs; assumption ].
 Qed.
 
 Lemma rel_exp_under_ctx_all : forall {Γ κd A A'} {i : nat} {B B'},

@@ -1122,47 +1122,47 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
               exact (evaluated_kind_not_propositional _ H H') end
           | match goal with H : evaluated_kind ak_propositional |- _ => inversion H end ].
 
-  (** Readback is equivariant up to erasure: if a value and its renaming
+  (** Readback is equivariant up to proofs: if a value and its renaming
       both read back, at the two lengths, the second readback is the
       weakening of the first, but for the proofs.  The bound does not reach
       into the environment of a kept proof ([domain_avoids_proof]), whose
       entries its readback reads ([read_proof_kept]): for [⋆ᵈ⟨M, ρ⟩] the
       bound says nothing of [ρ], so the renamed proof's readback cannot be
-      built from the original's, and is given instead; the two are compared
-      erased, both [⋆ⁿ], and the proofs' clauses state nothing. *)
+      built from the original's, and is given instead; the two are proofs,
+      related ([nf_eq_upto_proofs]), and the proofs' clauses state
+      nothing. *)
   Lemma read_rn :
     (forall s m W, Rnf m in Θ ⍮ Ξ ⍮ s ↘ W ->
        forall s' φ W', Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ W' -> rn_ok f s s' φ -> domain_nf_bounded s m ->
-       nf_erase W' = nf_erase (nf_wk φ W)) /\
+       nf_eq_upto_proofs W' (nf_wk φ W)) /\
     (forall s m M, Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
        forall s' φ M', Rne domain_ne_rename f m in Θ ⍮ Ξ ⍮ s' ↘ M' -> rn_ok f s s' φ -> domain_ne_bounded s m ->
-       ne_erase M' = ne_erase (ne_wk φ M)) /\
+       ne_eq_upto_proofs M' (ne_wk φ M)) /\
     (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
        forall s' φ A', Rtyp domain_rename f a in Θ ⍮ Ξ ⍮ s' ↘ A' -> rn_ok f s s' φ -> domain_bounded s a ->
-       nf_erase A' = nf_erase (nf_wk φ A)) /\
+       nf_eq_upto_proofs A' (nf_wk φ A)) /\
     (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
        forall s' φ ys', Rla level_atoms_rename f xs in Θ ⍮ Ξ ⍮ s' ↘ ys' -> rn_ok f s s' φ -> level_atoms_bounded s xs ->
-       List.map (map_level_atom ne_erase) ys' = List.map (map_level_atom ne_erase) (List.map (map_level_atom (ne_wk φ)) ys)) /\
+       level_atoms_eq_upto_proofs ys' (List.map (map_level_atom (ne_wk φ)) ys)) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall s' φ Ms', Rps List.map (domain_rename f) vs at T in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ Ms' ->
        rn_ok f s s' φ -> env_domain_bounded s ρ -> (forall a, In a vs -> domain_bounded s a) ->
-       List.map nf_erase Ms' = List.map nf_erase (List.map (nf_wk φ) Ms)) /\
+       nfs_eq_upto_proofs Ms' (List.map (nf_wk φ) Ms)) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall s' φ Ms', Rcargs List.map (domain_rename f) vs at gs of p (List.map (domain_rename f) ups) in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ Ms' ->
        rn_ok f s s' φ -> (forall a, In a ups -> domain_bounded s a) -> env_domain_bounded s ρ ->
        (forall a, In a vs -> domain_bounded s a) ->
-       List.map nf_erase Ms' = List.map nf_erase (List.map (nf_wk φ) Ms)) /\
+       nfs_eq_upto_proofs Ms' (List.map (nf_wk φ) Ms)) /\
     (forall s p ups ρ t x X, Rsh x at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ X ->
        forall s' φ X', Rsh domain_rename f x at t of p (List.map (domain_rename f) ups) in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ X' ->
        rn_ok f s s' φ -> (forall a, In a ups -> domain_bounded s a) -> env_domain_bounded s ρ -> domain_bounded s x ->
-       nf_erase X' = nf_erase (nf_wk φ X)) /\
+       nf_eq_upto_proofs X' (nf_wk φ X)) /\
     (forall s ρ p ups Bks Dc sel i Ms NBks, Rblks i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
        forall s' φ NBks', Rblks i Ms of Dc from p (List.map (domain_rename f) ups) Bks sel in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ NBks' ->
        rn_ok f s s' φ -> domain_bounded_blocks s ρ Bks ->
        (forall D, ind_lookup Θ Ξ p = Some D -> blocks_binder_count_at D None Bks) ->
        (forall D, ind_lookup Θ Ξ p = Some D -> rview_leaf_arity D) -> (forall a, In a ups -> domain_bounded s a) ->
-       List.map (map_normal_block (fun _ => nf_erase)) NBks'
-       = List.map (map_normal_block (fun _ => nf_erase)) (List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) NBks)) /\
+       blocks_eq_upto_proofs NBks' (List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) NBks)) /\
     (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        forall s' φ Bs'',
        Rbrs Bs at cs of Mi (fst (fst r), snd (fst r), List.map (domain_rename f) (snd r)) of Dc from p (List.map (domain_rename f) ups)
@@ -1173,16 +1173,17 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
        domain_bounded_eclo s ρ A (S (im_nn Mi)) ->
        (forall c n B, In (c, n, B) Bs -> domain_bounded_clon s ρ B n) -> (forall a, In a ups -> domain_bounded s a) ->
        (forall a, In a (snd r) -> domain_bounded s a) ->
-       List.map (map_normal_branch (fun _ => nf_erase)) Bs''
-       = List.map (map_normal_branch (fun _ => nf_erase)) (List.map (map_normal_branch (fun n => nf_wk (wk_qn n φ))) Bs')) /\
+       branches_eq_upto_proofs Bs'' (List.map (map_normal_branch (fun n => nf_wk (wk_qn n φ))) Bs')) /\
     (forall s ρ fl d Fs, Rflds d at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
        forall s' φ Fs', Rflds domain_rename f d at fl in Θ ⍮ Ξ ⍮ env_rename f ρ ⍮ s' ↘ Fs' ->
        rn_ok f s s' φ -> env_domain_bounded s ρ -> domain_bounded s d ->
-       List.map nf_erase Fs' = List.map nf_erase (List.map (nf_wk φ) Fs)) /\
+       nfs_eq_upto_proofs Fs' (List.map (nf_wk φ) Fs)) /\
     (forall s m M, Rprf m in Θ ⍮ Ξ ⍮ s ↘ M -> True) /\
     (forall s ρ k bs, Rlets ρ at k in Θ ⍮ Ξ ⍮ s ↘ bs -> True) /\
     (forall s e b, Rent e in Θ ⍮ Ξ ⍮ s ↘ b -> True).
   Proof.
+    unfold nf_eq_upto_proofs, ne_eq_upto_proofs, nfs_eq_upto_proofs, level_atoms_eq_upto_proofs,
+      blocks_eq_upto_proofs, branches_eq_upto_proofs.
     apply read_mut_ind; intros; try exact I.
     (** The readback of the renamed value, inverted. *)
     all: match goal with H : rn_ok f _ _ _ |- _ => rename H into Hok end.
@@ -1197,8 +1198,8 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
     all: cbn [domain_nf_rename] in Hrd; rewrite ?domain_rename_lvl, ?level_atoms_rename_cons, ?level_atoms_rename_nil in Hrd;
       cbn [domain_rename domain_ne_rename dmod_rename dentry_rename List.map fst snd entry_type_rename] in Hrd.
     all: inversion Hrd; subst; clear Hrd.
-    (** Two proofs: erased alike. *)
-    all: try solve [ cbn [nf_erase nf_wk]; reflexivity ].
+    (** Two proofs: related. *)
+    all: try solve [ cbn [nf_eqb_upto_proofs nf_wk]; reflexivity ].
     (** A rule the original's excludes by the relevance of the type, which
         the renaming keeps. *)
     all: try solve [ rn_kind_contra ].
@@ -1290,24 +1291,27 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
       end.
     (** Each renamed part's readback compared by its induction hypothesis. *)
     all: rn_feed.
-    (** A level: its canonical form sees the atoms erased. *)
-    all: try solve [ match goal with E : List.map _ ?ys0 = List.map _ (List.map _ ?ys) |- nf_erase (nf_lvl_of (lvl_canon (?c, _))) = _ =>
-                       rewrite (lvl_canon_erase_wk _ c ys ys0 (rn_mono _ _ _ _ Hok) E); reflexivity end ].
+    (** A level: its canonical form sees the atoms up to proofs. *)
+    all: try solve [ match goal with E : list_eqb _ ?ys0 (List.map _ ?ys) = true
+                                    |- nf_eqb_upto_proofs (nf_lvl_of (lvl_canon (?c, _))) _ = true =>
+                       exact (lvl_canon_upto_proofs_wk _ c ys ys0 (rn_mono _ _ _ _ Hok) E) end ].
     (** A small universe: at its level's canonical form. *)
-    all: try solve [ match goal with E : nf_erase (nf_lvl_of ?L0) = _, L : lvl |- _ =>
-                       destruct L0, L; cbn in E |- *; injection E as -> ->; reflexivity end ].
+    all: try solve [ match goal with E : nf_eqb_upto_proofs (nf_lvl_of ?L0) (nf_wk ?φ (nf_lvl_of ?L)) = true |- _ =>
+                       exact (nf_univ_of_upto_proofs L0 (lvl_wk φ L) (proj1 (nf_lvl_of_upto_proofs_iff L0 (lvl_wk φ L)) E)) end ].
     (** The rest part by part. *)
-    all: cbn [nf_erase ne_erase nf_wk ne_wk]; rewrite ?List.map_app in *.
+    all: cbn [nf_eqb_upto_proofs ne_eqb_upto_proofs nf_wk ne_wk]; rewrite ?List.map_app.
+    all: repeat (rewrite list_eqb_app_eq by (eapply list_eqb_length; eassumption)).
     (** A variable: the index of [x] at [s] is renamed to that of [f x] at [s']. *)
     all: try solve [ match goal with H1 : domain_ne_bounded _ (#ᵈ ?x) |- _ =>
-                       rewrite (rn_index _ _ _ _ Hok x (domain_bounded_var_inv _ _ H1)); reflexivity end ].
-    all: unfold map_level_atom in *; cbn [List.map atom_offset atom_sort atom_level] in *.
-    all: rewrite ?domain_level_sort_rn, ?ne_erase_idem, ?ne_erase_wk_erase.
-    all: try solve [ repeat match goal with E : ?X = _ |- context [ ?X ] => rewrite E; clear E end; reflexivity ].
+                       rewrite (rn_index _ _ _ _ Hok x (domain_bounded_var_inv _ _ H1)); apply PeanoNat.Nat.eqb_refl end ].
+    all: unfold map_level_atom in *; cbn [List.map list_eqb atom_offset atom_sort atom_level] in *.
+    all: rewrite ?domain_level_sort_rn.
+    all: try solve [ repeat match goal with E : ?X = true |- context [ ?X ] => rewrite E; clear E end;
+                     rewrite ?dec_eqb_refl, ?PeanoNat.Nat.eqb_refl; reflexivity ].
     (** A block: the scrutinee's type at the non-uniform parameters' fresh
         variables, and the motive one binder further, past the readback
         length. *)
-    all: try match goal with |- map_normal_block _ _ :: _ = _ =>
+    all: try match goal with |- context [ map_normal_block _ _ ] =>
       match goal with
       | Hok : rn_ok f ?s ?s' ?φ,
         Hnm : forall D, ind_lookup _ _ ?p = Some D -> blocks_binder_count_at D None ?Bks,
@@ -1335,14 +1339,15 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
                         ltac:(eapply (motive_domain_bounded _ _ _ _ _ _ _ _ _ _ _ _ s);
                               [ exact F | exact Hnn | exact e | lia | | exact Hu | exact Hp ];
                               rewrite <- Hc; exact (domain_bounded_blocks_motive _ _ _ _ HBd (List.nth_error_In _ _ Hb)))) as EA;
-          unfold map_normal_block in *; cbn [block_arity block_scrutinee_type block_motive block_branches List.map] in *;
+          unfold map_normal_block in *; cbn [block_arity block_scrutinee_type block_motive block_branches List.map list_eqb] in *;
           replace (S (im_nn Mi) - 1) with (im_nn Mi) by lia;
           rewrite EZ, EA;
-          repeat match goal with E : ?X = _ |- context [ ?X ] => rewrite E; clear E end; reflexivity
+          repeat match goal with E : ?X = true |- context [ ?X ] => rewrite E; clear E end;
+          rewrite ?dec_eqb_refl, ?PeanoNat.Nat.eqb_refl; reflexivity
       end end.
     (** A branch: under the fresh variables of the group read, as many as it
         binds. *)
-    all: match goal with |- map_normal_branch _ _ :: _ = _ =>
+    all: match goal with |- context [ map_normal_branch _ _ ] =>
       match goal with
       | Hok : rn_ok f ?s ?s' ?φ,
         F : fresh_tele _ _ _ _ ?s _, F0 : fresh_cargs _ _ _ _ _ _ _ _, F2 : fresh_ihs _ _ _ _ _ _ _ _ _ _ _ _ _,
@@ -1365,20 +1370,21 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
             pose proof (IH _ _ _ HW (rn_ok_add n f s s' φ (s + n) (s' + n) Hok ltac:(lia) ltac:(lia))
                           (domain_nf_bounded_dom _ _ _ Ht Hb)) as EB
           end;
-          unfold map_normal_branch in *; cbn [branch_constructor branch_arity branch_body List.map] in *;
+          unfold map_normal_branch in *; cbn [branch_constructor branch_arity branch_body List.map list_eqb] in *;
           rewrite EB;
-          repeat match goal with E : ?X = _ |- context [ ?X ] => rewrite E; clear E end; reflexivity
+          repeat match goal with E : ?X = true |- context [ ?X ] => rewrite E; clear E end;
+          rewrite ?dec_eqb_refl, ?PeanoNat.Nat.eqb_refl; reflexivity
       end end.
   Qed.
 
   Corollary read_nf_rn : forall s s' φ m W W',
       rn_ok f s s' φ -> domain_nf_bounded s m ->
-      Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ W' -> nf_erase W' = nf_erase (nf_wk φ W).
+      Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rnf domain_nf_rename f m in Θ ⍮ Ξ ⍮ s' ↘ W' -> nf_eq_upto_proofs W' (nf_wk φ W).
   Proof. intros * ? ? H H'; exact (proj1 read_rn _ _ _ H _ _ _ H' ltac:(eassumption) ltac:(eassumption)). Qed.
 
   Corollary read_typ_rn : forall s s' φ a A A',
       rn_ok f s s' φ -> domain_bounded s a ->
-      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A -> Rtyp domain_rename f a in Θ ⍮ Ξ ⍮ s' ↘ A' -> nf_erase A' = nf_erase (nf_wk φ A).
+      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A -> Rtyp domain_rename f a in Θ ⍮ Ξ ⍮ s' ↘ A' -> nf_eq_upto_proofs A' (nf_wk φ A).
   Proof. intros * ? ? H H'; exact (proj1 (proj2 (proj2 read_rn)) _ _ _ H _ _ _ H' ltac:(eassumption) ltac:(eassumption)). Qed.
 End Bound.
 
@@ -1455,7 +1461,7 @@ Lemma lvl_shift_above_lt : forall s x, x < s -> lvl_shift_above s x = x.
 Proof. intros; unfold lvl_shift_above; destruct (Nat.ltb_spec x s); lia. Qed.
 
 (** Readback shift: a value of [Γ] reads back one variable further out as
-    the weakening of its normal form, up to erasure: its proofs are kept
+    the weakening of its normal form, up to proofs: its proofs are kept
     over environments the bound does not reach ([read_rn]). *)
 Theorem read_shift : forall Θ Ξ Γ ρ A M a m W W',
     initial_env Θ Ξ Γ ρ ->
@@ -1463,7 +1469,7 @@ Theorem read_shift : forall Θ Ξ Γ ρ A M a m W W',
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
     Rnf ⇓ a m in Θ ⍮ Ξ ⍮ List.length Γ ↘ W ->
     Rnf ⇓ a m in Θ ⍮ Ξ ⍮ S (List.length Γ) ↘ W' ->
-    nf_erase W' = nf_erase (nf_wk ↑ W).
+    nf_eq_upto_proofs W' (nf_wk ↑ W).
 Proof.
   intros * Hρ Ha Hm HW HW'.
   rewrite <- (eval_initial_rn _ _ _ _ _ _ Hρ Ha _ (lvl_shift_above_lt _)),
@@ -1478,7 +1484,7 @@ Theorem read_typ_shift : forall Θ Ξ Γ ρ A a W W',
     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
     Rtyp a in Θ ⍮ Ξ ⍮ List.length Γ ↘ W ->
     Rtyp a in Θ ⍮ Ξ ⍮ S (List.length Γ) ↘ W' ->
-    nf_erase W' = nf_erase (nf_wk ↑ W).
+    nf_eq_upto_proofs W' (nf_wk ↑ W).
 Proof.
   intros * Hρ Ha HW HW'.
   rewrite <- (eval_initial_rn _ _ _ _ _ _ Hρ Ha _ (lvl_shift_above_lt _)) in HW'.

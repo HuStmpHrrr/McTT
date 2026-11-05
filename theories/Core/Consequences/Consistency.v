@@ -51,7 +51,7 @@ Lemma idempotent_nbe_ty : forall {Γ i A B C},
     Γ ⊢ A : Typeω@i ->
     nbe_ty_f Γ A B ->
     nbe_ty_f Γ B C ->
-    nf_erase B = nf_erase C.
+    nf_eq_upto_proofs B C.
 Proof.
   intros.
   assert (Γ ⊢ A ≈ B : Typeω@i) as (? & ? & ? & ? & ?)%completeness_ty by mauto 2 using soundness_ty'.
@@ -207,7 +207,7 @@ Lemma idempotent_nbe_ty_sort : forall {Γ S A B C},
     Γ ⊢ A : S ->
     nbe_ty_f Γ A B ->
     nbe_ty_f Γ B C ->
-    nf_erase B = nf_erase C.
+    nf_eq_upto_proofs B C.
 Proof.
   intros * HS HA HB HC.
   pose proof (soundness_ty_at_sort HS HA HB) as HE.
@@ -226,7 +226,7 @@ Qed.
     to its proofs. *)
 Lemma ctxeq_nbe_ty_eq_sort : forall {Γ Γ' S A W W'},
     type_sort S -> Γ ⊢ A : S -> ⊨ Γ ≈ Γ' -> ctx_scoped 0 Γ' -> nbe_ty_f Γ A W -> nbe_ty_f Γ' A W' ->
-    nf_erase W = nf_erase W'.
+    nf_eq_upto_proofs W W'.
 Proof.
   intros * HS HA HΓ HsΓ' HW HW'.
   destruct (ctxeq_nbe_eq _ _ _ _ HA HsΓ' HΓ) as (W1 & W2 & H1 & H2 & Heq).
@@ -247,7 +247,7 @@ Qed.
     normal forms equal up to their proofs: at the initial environment
     their values are related in [per_univ i], so read back alike. *)
 Lemma nbe_ty_of_rel_type : forall {Γ A A' i}, ctx_scoped 0 Γ -> Γ ⊨ᵗ A ≈ A' at i ->
-    exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W' /\ nf_erase W = nf_erase W'.
+    exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * HsΓ H.
   destruct (rel_type_under_ctx_at_initial_env HsΓ H) as (ρ & a & a' & Hρi & Ha & Ha' & [Rm HRm]).
@@ -277,7 +277,7 @@ Qed.
 (** Types each below the other have normal forms equal up to their proofs
     ([rel_type_of_mutual_subtyp]). *)
 Lemma nbe_ty_of_mutual_subtyp : forall {Γ A A'},
-    Γ ⊢ A ⊆ A' -> Γ ⊢ A' ⊆ A -> exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W' /\ nf_erase W = nf_erase W'.
+    Γ ⊢ A ⊆ A' -> Γ ⊢ A' ⊆ A -> exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * H H'.
   destruct (rel_type_of_mutual_subtyp (completeness_fundamental_subtyp _ _ _ H) (completeness_fundamental_subtyp _ _ _ H'))
@@ -289,7 +289,7 @@ Qed.
 (** Completeness for types equal at a sort: normal forms equal up to their
     proofs. *)
 Lemma completeness_ty_sort : forall {Γ S A B},
-    type_sort S -> Γ ⊢ A ≈ B : S -> exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ B W' /\ nf_erase W = nf_erase W'.
+    type_sort S -> Γ ⊢ A ≈ B : S -> exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ B W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * HS H.
   destruct (completeness H) as (W & W' & H1 & H2 & HE); exists W, W'; repeat split; try exact HE;
@@ -435,7 +435,7 @@ Proof.
 Qed.
 
 (** Two types of one sort whose normal forms are equal up to their proofs
-    are equal at it ([soundness_erased]).  The sort is given on both
+    are equal at it ([soundness_upto_proofs]).  The sort is given on both
     sides: normal forms do not determine it, since the readback of a
     neutral type drops its sort, so [⇑ 𝕌ω@0 #x] and [⇑ Propᵈ #x], a
     relevant type and a proposition, read back alike. *)
@@ -445,11 +445,11 @@ Lemma exp_eq_of_nbe_ty_same : forall {Γ A A' S W W'},
     Γ ⊢ A' : S ->
     nbe_ty_f Γ A W ->
     nbe_ty_f Γ A' W' ->
-    nf_erase W = nf_erase W' ->
+    nf_eq_upto_proofs W W' ->
     Γ ⊢ A ≈ A' : S.
 Proof.
   intros * HS HA HA' Hn Hn' HE.
-  exact (soundness_erased HA HA' (nbe_ty_to_nbe_sort HS Hn) (nbe_ty_to_nbe_sort HS Hn') HE).
+  exact (soundness_upto_proofs HA HA' (nbe_ty_to_nbe_sort HS Hn) (nbe_ty_to_nbe_sort HS Hn') HE).
 Qed.
 
 (** The value at the initial environment of a type of a sort is of the
@@ -521,7 +521,7 @@ Proof.
   assert (HsΓA : ctx_scoped 0 (Γ ▹{κ} A)) by (gen_presups; eapply wf_ctx_scoped; eassumption).
   assert (Hsem : ⊨ Γ ▹{κ} A' ≈ Γ ▹{κ} A) by (apply (ctx_extend_sem_eq HS); symmetry; exact HAA).
   pose proof (ctxeq_nbe_ty_eq_sort (type_sort_universe i) HB' Hsem HsΓA HnB' HnB'') as HE'.
-  eapply exp_eq_of_nbe_ty_same; [ apply type_sort_universe | exact HB | exact HB'A | exact HnB | exact HnB'' | congruence ].
+  eapply exp_eq_of_nbe_ty_same; [ apply type_sort_universe | exact HB | exact HB'A | exact HnB | exact HnB'' | etransitivity; eassumption ].
 Qed.
 
 (** [∀] is injective, at its domain's tag too: two equal propositions [∀]
@@ -543,7 +543,7 @@ Proof.
   functional_initial_env_rewrite_clear.
   inversion Ha; subst; inversion Ha'; subst.
   inversion Hr; subst; inversion Hr'; subst.
-  cbn [nf_erase] in HE; injection HE as Hκ HEA HEP; subst κ'.
+  apply nf_pi_upto_proofs_inv in HE as (Hκ & _ & HEA & HEP); subst κ'.
   split; [ reflexivity |].
   destruct (sort_kind_common HSA HSA' HA0 HA0') as (i & HA & HA').
   pose proof (sort_kind_abs_kind_sort κ i) as HSk.
@@ -565,7 +565,7 @@ Proof.
   assert (HsΓA : ctx_scoped 0 (Γ ▹{κ} A)) by (gen_presups; eapply wf_ctx_scoped; eassumption).
   assert (Hsem : ⊨ Γ ▹{κ} A' ≈ Γ ▹{κ} A) by (apply (ctx_extend_sem_eq HS); symmetry; exact HAA).
   pose proof (ctxeq_nbe_ty_eq_sort type_sort_prop HP' Hsem HsΓA HnP' HnP'') as HE'.
-  eapply exp_eq_of_nbe_ty_same; [ apply type_sort_prop | exact HP | exact HP'A | exact HnP | exact HnP'' | congruence ].
+  eapply exp_eq_of_nbe_ty_same; [ apply type_sort_prop | exact HP | exact HP'A | exact HnP | exact HnP'' | etransitivity; eassumption ].
 Qed.
 
 (** ** The Parameters of an Inductive Type
@@ -581,7 +581,7 @@ Lemma nbe_ty_ind_params : forall Γ p D k Mk Ms W, ind_lookup gc_deps gc_stack p
     nbe_ty_f Γ (apps (a_ind p k) Ms) W ->
     exists Rs, W = nf_indty p k Rs /\ List.length Rs = im_np D Mk /\
       forall j P T R V, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T ->
-        List.nth_error Rs j = Some R -> nbe_f Γ P T V -> nf_equal_up_to_proofs V R.
+        List.nth_error Rs j = Some R -> nbe_f Γ P T V -> nf_eq_upto_proofs V R.
 Proof.
   intros * Hl Hk HΓ HMl HMt [ρ a Hρ Ha Hr].
   destruct (eval_ind_apps_args _ _ _ _ _ Ha) as (vs & Hvs & ->).
@@ -611,17 +611,17 @@ Admitted.
     terms before [j] are equal, the instance types at [j] are equal
     ([tele_insts_cong], at [Y]'s terms before [j] and [X]'s after), so
     [Y_j] is of [X]'s instance type, where it reads back as at its own
-    ([completeness_at_equal_types]), and [soundness_erased] makes it
+    ([completeness_at_equal_types]), and [soundness_upto_proofs] makes it
     equal to [X_j]. *)
 Lemma exps_eq_at_of_params_up_to_proofs : forall Γ C X Y Rs Rs', all_assumptions C -> ⊢ (C ++ Γ)%list ->
     List.length X = List.length C -> List.length Y = List.length C ->
     (forall j P T, List.nth_error X j = Some P -> List.nth_error (tele_insts C Id X) j = Some T -> Γ ⊢ P : T) ->
     (forall j P T, List.nth_error Y j = Some P -> List.nth_error (tele_insts C Id Y) j = Some T -> Γ ⊢ P : T) ->
     (forall j P T R V, List.nth_error X j = Some P -> List.nth_error (tele_insts C Id X) j = Some T ->
-       List.nth_error Rs j = Some R -> nbe_f Γ P T V -> nf_equal_up_to_proofs V R) ->
+       List.nth_error Rs j = Some R -> nbe_f Γ P T V -> nf_eq_upto_proofs V R) ->
     (forall j P T R V, List.nth_error Y j = Some P -> List.nth_error (tele_insts C Id Y) j = Some T ->
-       List.nth_error Rs' j = Some R -> nbe_f Γ P T V -> nf_equal_up_to_proofs V R) ->
-    List.length Rs = List.length C -> List.map nf_erase Rs = List.map nf_erase Rs' ->
+       List.nth_error Rs' j = Some R -> nbe_f Γ P T V -> nf_eq_upto_proofs V R) ->
+    List.length Rs = List.length C -> nfs_eq_upto_proofs Rs Rs' ->
     exps_eq_at Γ C X Y.
 Proof.
   intros * HCa HCΓ HXl HYl HXt HYt HX HY HRl HE.
@@ -671,18 +671,16 @@ Proof.
   pose proof (HYt _ _ _ HQ HB) as HQB.
   assert (HQA : Γ ⊢ Q : A) by (eapply wf_conv_sort; [ exact HQB | exact (presup_exp_eq_left HAT') | exact HS | symmetry; exact HAT' ]).
   destruct (nth_error_lt_some Rs j) as [R HR]; [ lia |].
-  destruct (nth_error_lt_some Rs' j) as [R' HR'']; [ rewrite <- (List.length_map nf_erase Rs'), <- HE, List.length_map; lia |].
+  destruct (nfs_eq_upto_proofs_nth _ _ _ _ HE HR) as (R' & HR'' & E4).
   destruct (normalization HPt) as [V1 HV1].
   destruct (normalization HQB) as [V2 HV2].
   destruct (normalization HQA) as [V3 HV3].
   pose proof (HX _ _ _ _ _ HP HA HR HV1) as E1.
   pose proof (HY _ _ _ _ _ HQ HB HR'' HV2) as E2.
   pose proof (completeness_at_equal_types HS (wf_exp_eq_refl HQA) HAT' HV3 HV2) as E3.
-  assert (E4 : nf_erase R = nf_erase R').
-  { assert (Hm : List.nth_error (List.map nf_erase Rs) j = List.nth_error (List.map nf_erase Rs') j) by (rewrite HE; reflexivity).
-    rewrite !List.nth_error_map, HR, HR'' in Hm; injection Hm as Hm; exact Hm. }
-  unfold nf_equal_up_to_proofs in *.
-  eapply soundness_erased; [ exact HPt | exact HQA | exact HV1 | exact HV3 | congruence ].
+  (** [V1 ≈ R ≈ R' ≈ V2 ≈ V3] *)
+  eapply soundness_upto_proofs; [ exact HPt | exact HQA | exact HV1 | exact HV3 |].
+  etransitivity; [ exact E1 |]; etransitivity; [ exact E4 |]; etransitivity; [ symmetry; exact E2 | symmetry; exact E3 ].
 Qed.
 
 Corollary exp_eq_ind_apps_inv : forall Γ p D k Mk X Y i, ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk ->
@@ -698,7 +696,7 @@ Proof.
   destruct (completeness_ty H) as (W & W' & HWX & HWY & HE).
   destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HXl HXt HWX) as (Rs & -> & HRl & HX).
   destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HYl HYt HWY) as (Rs' & -> & _ & HY).
-  cbn [nf_erase] in HE; injection HE as HE.
+  apply nf_indty_upto_proofs_inv in HE as (_ & _ & HE).
   eapply exps_eq_at_of_params_up_to_proofs; try eassumption; rewrite ?length_im_params; assumption.
 Qed.
 
@@ -748,18 +746,11 @@ Proof.
   destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) Hsem) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   inversion Ha; subst; inversion Ha'; subst.
   invert_per_univ_elem HR.
-  match goal with Hl : per_lvl ?l ?l' |- _ => destruct (per_lvl_reads _ _ Hl (length Γ)) as [W [HW HW']] end.
-  assert (Γ ⊢ t ≈ W : Level@(Nat.max n1 n2))
-    by (eapply soundness';
-        [ eassumption
-        | eapply nbe_evaluated_intro; [ eassumption | apply eval_exp_level | eassumption
-                                      | eapply read_nf_level_sort; eassumption | constructor ] ]).
-  assert (Γ ⊢ t' ≈ W : Level@(Nat.max n1 n2))
-    by (eapply soundness';
-        [ eassumption
-        | eapply nbe_evaluated_intro; [ eassumption | apply eval_exp_level | eassumption
-                                      | eapply read_nf_level_sort; eassumption | constructor ] ]).
-  etransitivity; [ eassumption | symmetry; eassumption ].
+  match goal with Hl : per_lvl ?l ?l' |- _ => destruct (per_lvl_reads _ _ Hl (length Γ)) as (L & L' & HW & HW' & HE) end.
+  (** The two level terms have normal forms equal up to proofs *)
+  eapply soundness_upto_proofs; [ eassumption | eassumption | | | apply nf_lvl_of_upto_proofs; exact HE ];
+    (eapply nbe_evaluated_intro; [ eassumption | apply eval_exp_level | eassumption
+                                 | eapply read_nf_level_sort; eassumption | constructor ]).
 Qed.
 
 (** ** Subtyping of Universe Terms and Level Types
@@ -1174,7 +1165,7 @@ Lemma subtyp_ind_nf : forall {Γ T p m D Mm Ps W}, Γ ⊢ T ⊆ apps (a_ind p m)
     nbe_ty_f Γ T W ->
     exists Rs, W = nf_indty p m Rs /\ List.length Rs = im_np D Mm /\
       forall k P R A V, List.nth_error Ps k = Some P -> List.nth_error Rs k = Some R ->
-        List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some A -> nbe_f Γ P A V -> nf_equal_up_to_proofs V R.
+        List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some A -> nbe_f Γ P A V -> nf_eq_upto_proofs V R.
 Proof.
   intros * Hs Hl Hm HPl HPt HW.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
@@ -1184,16 +1175,14 @@ Proof.
     destruct (completeness_ty_sort HS Heq) as (W1 & W2 & HW1 & HW2 & HE).
     pose proof (functional_nbe_ty _ _ _ _ HW HW1) as <-.
     destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hm HΓ HPl HPt HW2) as (Rs2 & -> & HRl & HP).
-    destruct W; cbn [nf_erase] in HE; try discriminate; injection HE as -> -> HE.
+    destruct W; try (unfold nf_eq_upto_proofs in HE; cbn in HE; discriminate).
+    apply nf_indty_upto_proofs_inv in HE as (-> & -> & HE).
     match goal with |- exists Rs, nf_indty _ _ ?L = _ /\ _ => exists L end.
-    split; [ reflexivity |]; split; [ rewrite <- (List.length_map nf_erase), HE, List.length_map; exact HRl |].
+    split; [ reflexivity |]; split; [ rewrite (nfs_eq_upto_proofs_length _ _ HE); exact HRl |].
     intros k P R A V HPk HRk HAk HV.
-    destruct (nth_error_lt_some Rs2 k) as [R2 HR2];
-      [ rewrite <- (List.length_map nf_erase Rs2), <- HE, List.length_map; apply List.nth_error_Some; congruence |].
+    destruct (nfs_eq_upto_proofs_nth _ _ _ _ HE HRk) as (R2 & HR2 & ER).
     pose proof (HP _ _ _ _ _ HPk HAk HR2 HV) as E.
-    assert (Hm' : List.nth_error (List.map nf_erase l) k = List.nth_error (List.map nf_erase Rs2) k) by (rewrite HE; reflexivity).
-    rewrite !List.nth_error_map, HRk, HR2 in Hm'; injection Hm' as Hm'.
-    unfold nf_equal_up_to_proofs in *; congruence.
+    etransitivity; [ exact E | symmetry; exact ER ].
   - exfalso; destruct (univ_sub_sort_term Hsu) as [_ HVt].
     eapply exp_eq_ind_sort_absurd; [ exact HVt | symmetry; exact HV ].
   - exfalso; eapply exp_eq_ind_pi_absurd; symmetry; exact Hb.
@@ -1228,7 +1217,7 @@ Lemma nbe_ty_record_params : forall Γ p R Ms W, record_lookup gc_deps gc_stack 
     nbe_ty_f Γ (apps (a_record p) Ms) W ->
     exists Rs, W = nf_record p Rs /\ List.length Rs = List.length (record_params R) /\
       forall j P T Q V, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (record_params R) Id Ms) j = Some T ->
-        List.nth_error Rs j = Some Q -> nbe_f Γ P T V -> nf_equal_up_to_proofs V Q.
+        List.nth_error Rs j = Some Q -> nbe_f Γ P T V -> nf_eq_upto_proofs V Q.
 Proof.
   intros * Hl HΓ HMl HMt [ρ a Hρ Ha Hr].
   destruct (eval_record_apps_args _ _ _ _ Ha) as (vs & Hvs & ->).
@@ -1263,7 +1252,7 @@ Proof.
   destruct (completeness_ty H) as (W & W' & HWX & HWY & HE).
   destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HXl HXt HWX) as (Rs & -> & HRl & HX).
   destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HYl HYt HWY) as (Rs' & -> & _ & HY).
-  cbn [nf_erase] in HE; injection HE as HE.
+  apply nf_record_upto_proofs_inv in HE as (_ & HE).
   eapply exps_eq_at_of_params_up_to_proofs; eassumption.
 Qed.
 
@@ -1311,7 +1300,7 @@ Lemma subtyp_record_nf : forall {Γ T p R Ps W}, Γ ⊢ T ⊆ apps (a_record p) 
     nbe_ty_f Γ T W ->
     exists Rs, W = nf_record p Rs /\ List.length Rs = List.length (record_params R) /\
       forall k P Q A V, List.nth_error Ps k = Some P -> List.nth_error Rs k = Some Q ->
-        List.nth_error (tele_insts (record_params R) Id Ps) k = Some A -> nbe_f Γ P A V -> nf_equal_up_to_proofs V Q.
+        List.nth_error (tele_insts (record_params R) Id Ps) k = Some A -> nbe_f Γ P A V -> nf_eq_upto_proofs V Q.
 Proof.
   intros * Hs Hl HPl HPt HW.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
@@ -1320,16 +1309,14 @@ Proof.
     destruct (completeness_ty_sort HS Heq) as (W1 & W2 & HW1 & HW2 & HE).
     pose proof (functional_nbe_ty _ _ _ _ HW HW1) as <-.
     destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HPl HPt HW2) as (Rs2 & -> & HRl & HP).
-    destruct W; cbn [nf_erase] in HE; try discriminate; injection HE as -> HE.
+    destruct W; try (unfold nf_eq_upto_proofs in HE; cbn in HE; discriminate).
+    apply nf_record_upto_proofs_inv in HE as (-> & HE).
     match goal with |- exists Rs, nf_record _ ?L = _ /\ _ => exists L end.
-    split; [ reflexivity |]; split; [ rewrite <- (List.length_map nf_erase), HE, List.length_map; exact HRl |].
+    split; [ reflexivity |]; split; [ rewrite (nfs_eq_upto_proofs_length _ _ HE); exact HRl |].
     intros k P Q A V HPk HQk HAk HV.
-    destruct (nth_error_lt_some Rs2 k) as [Q2 HQ2];
-      [ rewrite <- (List.length_map nf_erase Rs2), <- HE, List.length_map; apply List.nth_error_Some; congruence |].
+    destruct (nfs_eq_upto_proofs_nth _ _ _ _ HE HQk) as (Q2 & HQ2 & EQ).
     pose proof (HP _ _ _ _ _ HPk HAk HQ2 HV) as E.
-    assert (Hm' : List.nth_error (List.map nf_erase l) k = List.nth_error (List.map nf_erase Rs2) k) by (rewrite HE; reflexivity).
-    rewrite !List.nth_error_map, HQk, HQ2 in Hm'; injection Hm' as Hm'.
-    unfold nf_equal_up_to_proofs in *; congruence.
+    etransitivity; [ exact E | symmetry; exact EQ ].
   - exfalso; destruct (univ_sub_sort_term Hsu) as [_ HVt].
     eapply exp_eq_record_sort_absurd; [ exact HVt | symmetry; exact HV ].
   - exfalso; eapply exp_eq_record_pi_absurd; symmetry; exact Hb.
@@ -1505,12 +1492,15 @@ Proof.
       related levels, so read back alike *)
   invert_per_univ_elem Hll; invert_per_univ_elem Hrr.
   repeat match goal with Hp : per_lvl _ _ |- _ =>
-    let W := fresh "W" in let HW := fresh "HW" in let HW' := fresh "HW'" in
-    destruct (per_lvl_reads _ _ Hp (length Γ)) as [W [HW HW']]; clear Hp end.
+    let La := fresh "La" in let Lb := fresh "Lb" in let HW := fresh "HW" in let HW' := fresh "HW'" in
+    let HE := fresh "HE" in
+    destruct (per_lvl_reads _ _ Hp (length Γ)) as (La & Lb & HW & HW' & HE); clear Hp end.
   functional_eval_rewrite_clear.
   functional_read_rewrite_clear.
   repeat match goal with H : nf_lvl_of _ = nf_lvl_of _ |- _ => apply nf_lvl_of_inj in H; subst end.
-  exact Hle.
+  (** The readbacks the order is about are, up to proofs, those NbE
+      gives. *)
+  eapply lvl_le_upto_proofs; [ | | exact Hle ]; solve [ eassumption | symmetry; eassumption ].
 Qed.
 
 (** The instance at a literal. *)
@@ -1713,26 +1703,22 @@ Proof.
     + apply nbe_ty_typ_univ_nf in HnT as ->; exact I.
     + destruct (nbe_ty_suniv_univ_nf HnT) as (L' & -> & HL').
       cbn [universe_nf_le nf_to_exp] in *.
-      (** A small universe is its own normal form: its level is canonical,
-          and canonical forms equal up to proofs are equal *)
-      assert (HWW : nbe_ty_f Γ (univⁿ c xs) (univⁿ c xs)).
-      { match goal with H0 : Rnf ⇓ Levelᵈ _ in _ ↘ nf_lvl_of (c, xs) |- _ =>
-          destruct (domain_level_canon_of_read _ _ _ H0) as [_ [L1 [HL1 [ys1 [_ Hc1]]]]] end.
-        apply nf_lvl_of_inj in HL1; subst L1.
-        pose proof HW'' as HW0; destruct HW0 as [ρ2 a2 Hρ2 Ha2 Hr2].
+      (** A small universe is its own normal form up to the proofs in
+          its level's atoms: its level is canonical *)
+      assert (HWW : exists xs2, nbe_ty_f Γ (univⁿ c xs) (univⁿ c xs2) /\ lvl_eq_upto_proofs (c, xs) (c, xs2)).
+      { pose proof HW'' as HW0; destruct HW0 as [ρ2 a2 Hρ2 Ha2 Hr2].
         directed_inversion_by_head eval_exp; subst.
         inversion Hr2; subst.
-        match goal with H3 : Rnf ⇓ Levelᵈ _ in _ ↘ nf_lvl_of ?L2 |- _ =>
-          destruct (domain_level_canon_of_read _ _ _ H3) as [_ [L3 [HL3 [ys3 [_ Hc3]]]]]; apply nf_lvl_of_inj in HL3; subst L3;
-          destruct L2 as [c2 xs2] end.
-        unfold nf_univ_of in *; cbn [fst snd nf_erase] in HEW, HW''; injection HEW as <- HEx.
-        assert (E1 : lvl_canon (c, xs) = (c, xs)) by (rewrite Hc1, lvl_canon_idem; reflexivity).
-        assert (E2 : lvl_canon (c, xs2) = (c, xs2)) by (rewrite Hc3, lvl_canon_idem; reflexivity).
-        rewrite lvl_canon_erase, HEx, <- lvl_canon_erase, E2 in E1.
-        injection E1 as ->; exact HW''. }
+        match goal with H3 : Rnf ⇓ Levelᵈ _ in _ ↘ nf_lvl_of ?L2 |- _ => destruct L2 as [c2 xs2] end.
+        unfold nf_univ_of in *; cbn [fst snd] in HEW, HW''.
+        assert (HEW' : lvl_eq_upto_proofs (c, xs) (c2, xs2))
+          by (unfold nf_eq_upto_proofs in HEW; cbn in HEW; eqb_split; eqb_leaves; split; assumption).
+        destruct HEW' as [Hc2 Hxs2]; cbn [fst] in Hc2; subst c2.
+        exists xs2; split; [ exact HW'' | split; [ reflexivity | exact Hxs2 ] ]. }
+      destruct HWW as (xs2 & HWW & Hxs2).
       set (E := lvl_exp_of c (List.map atom_exp xs)) in *.
       apply wf_univ_inversion in HW.
-      assert (HL : nbe_f Γ E Level (nf_lvl_of (c, xs))) by (apply (nbe_ty_univ_level (L := (c, xs))); exact HWW).
+      assert (HL : nbe_f Γ E Level (nf_lvl_of (c, xs2))) by (apply (nbe_ty_univ_level (L := (c, xs2))); exact HWW).
       inversion HL; subst.
       directed_inversion_by_head eval_exp; subst.
       invert_nbe_term.
@@ -1740,14 +1726,16 @@ Proof.
         destruct (domain_level_canon_of_read _ _ _ Hr) as [Hsh [L0 [HL0 Hc]]] end.
       apply nf_lvl_of_inj in HL0; subst L0.
       (** The universe above has the successor level, whose canonical form
-          is the canonical successor of [(c, xs)]. *)
-      pose proof (domain_level_canon_suc _ _ _ Hc) as Hc'.
-      assert (Hn' : nbe_f Γ (succl E) Level (nf_lvl_of (lvl_canon (lvl_suc (c, xs))))).
+          is, up to proofs, the canonical successor of [(c, xs2)]. *)
+      destruct (domain_level_canon_suc _ _ _ Hc) as (Ls & Hc' & ELs).
+      assert (Hn' : nbe_f Γ (succl E) Level (nf_lvl_of Ls)).
       { eapply nbe_evaluated_intro; [ eassumption | eassumption | apply eval_exp_succl; eassumption
                                     | apply domain_level_canon_read; [ apply domain_level_shape_suc | exact Hc' ] | constructor ]. }
       pose proof (subtyp_suniv_bound HW Hn' HL') as Hle.
       rewrite lvl_le_correct in *; intros ν Hν; specialize (Hle ν Hν).
-      rewrite lvl_canon_eval in Hle by exact Hν; exact Hle.
+      rewrite (lvl_eval_upto ν _ _ Hν ELs), (lvl_canon_eval ν _ Hν), !lvl_eval_suc,
+        <- (lvl_eval_upto ν _ _ Hν Hxs2) in Hle.
+      rewrite !lvl_eval_suc; exact Hle.
   - (** [LevelSort] is of the large universes only *)
     destruct HT as [i | t].
     + apply nbe_ty_typ_univ_nf in HnT as ->; constructor.
@@ -2235,7 +2223,7 @@ Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.
 Fixpoint ne_head (W : ne) : option qname :=
   match W with
   | ne_elim _ _ _ _ W | ne_app W _ | ne_proj _ W => ne_head W
-  | ne_absurd _ _ | ne_absurd_erased _ | ne_var _ => None
+  | ne_absurd _ _ | ne_var _ => None
   | ne_glob p => Some p
   end.
 
