@@ -254,14 +254,13 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
     the same normal form.  A neutral level is the single atom at offset [0],
     of the sort of its type ([domain_level_sort]), which is already canonical: the sort
     is read off the neutral's type, not off the type it is read back at.  Its
-    atom is erased, as [lvl_canon] stores atoms: a level normal form holds no
-    proof. *)
+    atom is stored as read, as [lvl_canon] stores atoms. *)
 | read_nf_lvl :
   `( Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
      Rnf ⇓ (Levelᵈ@n) (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
 | read_nf_lvl_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ ordinal_zero (mk_level_atom 0 (domain_level_sort a) (ne_erase M) :: nil) )
+     Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ ordinal_zero (mk_level_atom 0 (domain_level_sort a) M :: nil) )
 (** A value of a proposition reads back as a proof term ([read_proof]),
     whatever the proposition.  This is the only rule at a propositional
     type. *)

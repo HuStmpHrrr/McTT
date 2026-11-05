@@ -222,14 +222,15 @@ Qed.
 
 (** ** The Atoms of a Level, Well Typed *)
 
-(** Every atom a level of the sort [n] of the whole, holding no proof (its
-    own erasure): atoms are compared and stored up to their proofs
-    ([level_atoms_insert] keeps [ne_erase a]), and a typed level atom holds
-    no proof (the 𝕃 invariant). *)
+(** Every atom a level of the sort [n] of the whole, holding no proof
+    ([ne_proof_free]): atoms are compared up to their proofs, so of two
+    atoms equal up to them a canonical level keeps one, and a typed level
+    atom holds no proof (the 𝕃 invariant), so the two are equal
+    ([nf_ne_proof_free_eq]). *)
 Fixpoint level_atoms_wf (Γ : ctx) (xs : list level_atom) : Prop :=
   match xs with
   | nil => True
-  | mk_level_atom _ _ a :: r => (ne_erase a = a /\ Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n) /\ level_atoms_wf Γ r
+  | mk_level_atom _ _ a :: r => (ne_proof_free a /\ Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n) /\ level_atoms_wf Γ r
   end.
 
 (** Every atom a level of its own sort, at most [n], holding no proof: the
@@ -238,7 +239,7 @@ Fixpoint level_atoms_wf (Γ : ctx) (xs : list level_atom) : Prop :=
 Fixpoint level_atoms_well_scoped (Γ : ctx) (xs : list level_atom) : Prop :=
   match xs with
   | nil => True
-  | mk_level_atom _ s a :: r => (s <= n /\ ne_erase a = a /\ Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@s) /\ level_atoms_well_scoped Γ r
+  | mk_level_atom _ s a :: r => (s <= n /\ ne_proof_free a /\ Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@s) /\ level_atoms_well_scoped Γ r
   end.
 
 Lemma level_atoms_well_scoped_wf : forall {Γ} xs, level_atoms_well_scoped Γ xs -> level_atoms_wf Γ xs.
@@ -249,12 +250,8 @@ Proof.
   eapply wf_exp_subtyp'; [ exact Ha | apply wf_subtyp_level; assumption ].
 Qed.
 
-(** Two erased atoms equal up to their proofs are equal. *)
-Lemma erased_atoms_eq : forall a b, ne_erase a = a -> ne_erase b = b -> ne_erase a = ne_erase b -> a = b.
-Proof. intros * Ha Hb Hab; rewrite <- Ha, <- Hb; exact Hab. Qed.
-
 Lemma level_atoms_wf_insert : forall {Γ} k s (a : ne) ys,
-    ne_erase a = a ->
+    ne_proof_free a ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n ->
     level_atoms_wf Γ ys ->
     level_atoms_wf Γ (level_atoms_insert k s a ys).
@@ -282,13 +279,20 @@ Qed.
 
 Lemma level_atoms_well_scoped_insert : forall {Γ} k s (a : ne) ys,
     s <= n ->
-    ne_erase a = a ->
+    ne_proof_free a ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@s ->
     level_atoms_well_scoped Γ ys ->
     level_atoms_well_scoped Γ (level_atoms_insert k s a ys).
 Proof.
   intros Γ k s a ys Hs He Ha; induction ys as [| [k' t b] r IH]; cbn; intros Hys; rewrite ?He; [ intuition auto |].
   destruct Hys as [Hb Hr]; destruct (at_cmp a s b t); cbn; rewrite ?He; intuition auto.
+Qed.
+
+(** The atoms of a well-scoped list hold no proof. *)
+Lemma level_atoms_well_scoped_proof_free : forall {Γ} xs, level_atoms_well_scoped Γ xs -> level_atoms_all ne_proof_free xs.
+Proof.
+  intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
+  destruct H as [[_ [Ha _]] Hr]; auto.
 Qed.
 
 Lemma level_atoms_well_scoped_sort : forall {Γ} xs,
@@ -532,7 +536,7 @@ Qed.
 Lemma lvl_tm_insert : forall {Γ} c k s (a : ne) ys,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    ne_erase a = a ->
+    ne_proof_free a ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n ->
     level_atoms_wf Γ ys ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (level_atoms_insert k s a ys) ≈ maxl (succl_n k a) (lvl_tm c ys) : Level@n.
@@ -547,8 +551,8 @@ Proof.
   destruct (at_cmp a s b t) eqn:E; cbn.
   - (** The same atom: the two offsets merge at the larger one. *)
     apply at_cmp_eq in E as [Hab <-].
-    (** Both atoms are erased, so equal up to proofs is equal. *)
-    assert (Heq : a = b) by exact (erased_atoms_eq _ _ He Hbe Hab); subst b.
+    (** The atom holds no proof, so equal up to proofs is equal. *)
+    assert (Heq : a = b) by exact (ne_proof_free_eq _ _ He Hab); subst b.
     unfold lvl_tm; cbn.
     transitivity (maxl (maxl (succl_n k a) (succl_n k' a)) (lvl_tm_from (𝕃ᵒ c) r));
       [ apply wf_exp_eq_maxl_cong;
@@ -793,7 +797,11 @@ Proof.
     transitivity (lvl_tm (ordinal_max c d) (xs ++ ys));
       [ apply lvl_tm_max; assumption |].
     apply lvl_tm_canon; [ exact Hcd | exact HΓ | cbn; apply level_atoms_well_scoped_app; assumption ].
-  - unfold lvl_le in Hle; rewrite Hle.
+  - (** The atoms hold no proof, so the two canonical forms, equal up to
+        proofs, are equal. *)
+    unfold lvl_le in Hle; apply lvl_proof_free_eq in Hle as ->;
+      [| unfold lvl_canon; cbn; eapply level_atoms_well_scoped_proof_free, level_atoms_well_scoped_keep,
+           level_atoms_well_scoped_sort, level_atoms_well_scoped_app; eassumption ].
     apply wf_exp_eq_sym.
     transitivity (lvl_tm d ys); [ apply lvl_exp_of_tm; assumption |].
     apply lvl_tm_canon; assumption.

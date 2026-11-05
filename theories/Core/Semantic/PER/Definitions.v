@@ -62,7 +62,8 @@ Hint Constructors rel_mod_app : mctt.
 (** Readback compares up to proofs: two convertible values may hold
     different proofs ([f p] and [f q] for proofs [p], [q] of one
     proposition), which read back as different terms, so related values
-    read back to normal forms with equal erasures ([nf_erase]). *)
+    read back to normal forms equal up to their proofs
+    ([nf_eq_upto_proofs]). *)
 
 (** Two neutrals read back, at the length [s], alike up to their proofs. *)
 #[warnings="-cannot-define-projection"]
@@ -76,7 +77,7 @@ Record neutral_reads_alike (m n : domain_ne) (s : nat) : Prop := mk_neutral_read
     (** The right one as it *)
   ; neutral_reads_alike_read_right : Rne n in s ↘ neutral_reads_alike_right
     (** The two are equal up to their proofs *)
-  ; neutral_reads_alike_erased : ne_erase neutral_reads_alike_left = ne_erase neutral_reads_alike_right }.
+  ; neutral_reads_alike_upto_proofs : ne_eq_upto_proofs neutral_reads_alike_left neutral_reads_alike_right }.
 
 Definition per_bot : relation domain_ne := fun m n => forall s, neutral_reads_alike m n s.
 #[global] Arguments per_bot /.
@@ -96,7 +97,7 @@ Record normal_reads_alike (m n : domain_nf) (s : nat) : Prop := mk_normal_reads_
     (** The right one as it *)
   ; normal_reads_alike_read_right : Rnf n in s ↘ normal_reads_alike_right
     (** The two are equal up to their proofs *)
-  ; normal_reads_alike_erased : nf_erase normal_reads_alike_left = nf_erase normal_reads_alike_right }.
+  ; normal_reads_alike_upto_proofs : nf_eq_upto_proofs normal_reads_alike_left normal_reads_alike_right }.
 
 Definition per_top : relation domain_nf := fun m n => forall s, normal_reads_alike m n s.
 #[global] Arguments per_top /.
@@ -116,7 +117,7 @@ Record type_reads_alike (a b : domain) (s : nat) : Prop := mk_type_reads_alike
     (** The right one as it *)
   ; type_reads_alike_read_right : Rtyp b in s ↘ type_reads_alike_right
     (** The two are equal up to their proofs *)
-  ; type_reads_alike_erased : nf_erase type_reads_alike_left = nf_erase type_reads_alike_right }.
+  ; type_reads_alike_upto_proofs : nf_eq_upto_proofs type_reads_alike_left type_reads_alike_right }.
 
 Definition per_top_typ : relation domain := fun a b => forall s, type_reads_alike a b s.
 #[global] Arguments per_top_typ /.
@@ -446,7 +447,7 @@ Record params_read_alike (T : list centry) (vs vs' : list domain) (s : nat) : Pr
     (** The right list as it *)
   ; params_read_alike_read_right : Rps vs' at T in gc_deps ⍮ gc_stack ⍮ nil ⍮ s ↘ params_read_alike_right
     (** The two are equal up to their proofs *)
-  ; params_read_alike_erased : List.map nf_erase params_read_alike_left = List.map nf_erase params_read_alike_right }.
+  ; params_read_alike_upto_proofs : nfs_eq_upto_proofs params_read_alike_left params_read_alike_right }.
 
 (** Two lists of values read back alike at a telescope, at every length. *)
 Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=

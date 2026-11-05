@@ -37,7 +37,6 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   | nf_proof M => nf_proof M[φ]ʷ
   | nf_False => nf_False
   | nf_and P Q => nf_and (nf_wk φ P) (nf_wk (wk_q φ) Q)
-  | nf_proof_erased => nf_proof_erased
   | nf_pi κd κc A B => nf_pi κd κc (nf_wk φ A) (nf_wk (wk_q φ) B)
   | nf_fn A M => nf_fn (nf_wk φ A) (nf_wk (wk_q φ) M)
   | nf_indty p k Ms => nf_indty p k (List.map (nf_wk φ) Ms)
@@ -49,7 +48,6 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
 with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   match u with
   | ne_absurd A M => ne_absurd (nf_wk φ A) M[φ]ʷ
-  | ne_absurd_erased A => ne_absurd_erased (nf_wk φ A)
   | ne_elim p Us m Bks u =>
       ne_elim p (List.map (nf_wk φ) Us) m (List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) Bks) (ne_wk φ u)
   | ne_app u W => ne_app (ne_wk φ u) (nf_wk φ W)
@@ -86,33 +84,35 @@ Proof.
   all: nested_elements; cbn; f_equal; eauto.
 Qed.
 
-(** ** Renaming Commutes with Erasure
+(** ** Renaming Respects Equality up to Proofs
 
-    A renaming renames the proofs; erasure forgets them. *)
-Lemma nf_ne_erase_wk :
-  (forall W φ, nf_erase (nf_wk φ W) = nf_wk φ (nf_erase W)) /\
-  (forall u φ, ne_erase (ne_wk φ u) = ne_wk φ (ne_erase u)).
+    A renaming renames the proofs without changing which positions hold
+    one. *)
+Lemma nf_ne_wk_upto_proofs :
+  (forall W W' φ, nf_eq_upto_proofs W W' -> nf_eq_upto_proofs (nf_wk φ W) (nf_wk φ W')) /\
+  (forall u u' φ, ne_eq_upto_proofs u u' -> ne_eq_upto_proofs (ne_wk φ u) (ne_wk φ u')).
 Proof.
-  apply nf_ne_ind; intros; cbn [nf_wk ne_wk nf_erase ne_erase]; f_equal; try solve [ auto ]; rewrite ?List.map_map;
-    try (eapply list_all_map_ext; [ eassumption |]);
-    first [ solve [ intros x Hx; apply Hx ]
-          | solve [ intros x Hx; lazymatch type of Hx with normal_block_g_all _ _ _ =>
-              destruct Hx as [n' Z HZ A HA brs Hbrs]; unfold map_normal_block; cbn; f_equal; [ auto | auto |];
-              rewrite !List.map_map; eapply list_all_map_ext; [ exact Hbrs |];
-              intros br Hbr; destruct Hbr; unfold map_normal_branch; cbn; f_equal; auto end ]
-          | solve [ intros x Hx; destruct Hx; unfold map_level_atom; cbn; f_equal; auto ]
-          | reflexivity ].
+  unfold nf_eq_upto_proofs, ne_eq_upto_proofs.
+  apply nf_ne_ind; intros;
+    lazymatch goal with
+    | H : nf_eqb_upto_proofs _ ?N = true |- _ => destruct N
+    | H : ne_eqb_upto_proofs _ ?N = true |- _ => destruct N
+    end;
+    cbn [nf_wk ne_wk nf_eqb_upto_proofs ne_eqb_upto_proofs] in *; try discriminate; try reflexivity;
+    eqb_split; eqb_leaves; try solve [ eauto ].
+  all: eapply list_eqb_map_all; [ eassumption | | eassumption ]; intros x Hx y Hxy; try solve [ eauto ].
+  all: destruct Hx; destruct y; cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *;
+    eqb_split; eqb_leaves; subst; eqb_split; eqb_leaves; try solve [ eauto ].
+  all: eapply list_eqb_map_all; [ eassumption | | eassumption ]; intros br Hbr br' Hbb; destruct Hbr; destruct br';
+    cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *; eqb_split; eqb_leaves; subst;
+    eqb_split; eqb_leaves; eauto.
 Qed.
 
-Lemma ne_erase_wk : forall φ u, ne_erase (ne_wk φ u) = ne_wk φ (ne_erase u).
-Proof. intros; apply nf_ne_erase_wk. Qed.
+Lemma nf_wk_upto_proofs : forall φ W W', nf_eq_upto_proofs W W' -> nf_eq_upto_proofs (nf_wk φ W) (nf_wk φ W').
+Proof. intros; apply nf_ne_wk_upto_proofs; assumption. Qed.
 
-Lemma nf_erase_wk : forall φ W, nf_erase (nf_wk φ W) = nf_wk φ (nf_erase W).
-Proof. intros; apply nf_ne_erase_wk. Qed.
-
-(** Erasing before renaming is erasing after. *)
-Lemma ne_erase_wk_erase : forall φ u, ne_erase (ne_wk φ (ne_erase u)) = ne_erase (ne_wk φ u).
-Proof. intros; rewrite !ne_erase_wk, ne_erase_idem; reflexivity. Qed.
+Lemma ne_wk_upto_proofs : forall φ u u', ne_eq_upto_proofs u u' -> ne_eq_upto_proofs (ne_wk φ u) (ne_wk φ u').
+Proof. intros; apply nf_ne_wk_upto_proofs; assumption. Qed.
 
 (** ** Order-Preserving Renamings Preserve the Order on Atoms
 
@@ -288,11 +288,10 @@ Lemma level_atoms_insert_wk : forall φ, wk_mono φ ->
                      = level_atoms_insert k s (ne_wk φ a) (List.map (map_level_atom (ne_wk φ)) ys).
 Proof.
   intros φ Hφ k s a; induction ys as [| [k' t b] r IH]; cbn [level_atoms_insert List.map];
-    [ unfold map_level_atom; cbn [atom_offset atom_sort atom_level]; rewrite ne_erase_wk; reflexivity |].
+    [ reflexivity |].
   unfold map_level_atom at 2; cbn [atom_offset atom_sort atom_level].
   rewrite at_cmp_wk by assumption.
-  destruct (at_cmp a s b t); cbn [List.map]; rewrite ?IH; unfold map_level_atom; cbn [atom_offset atom_sort atom_level];
-    rewrite ?ne_erase_wk; reflexivity.
+  destruct (at_cmp a s b t); cbn [List.map]; rewrite ?IH; reflexivity.
 Qed.
 
 Lemma level_atoms_sort_wk : forall φ, wk_mono φ -> forall xs,
@@ -319,35 +318,25 @@ Proof.
   rewrite <- level_atoms_sort_wk, <- level_atoms_keep_wk, level_atoms_max_offset_wk by assumption; reflexivity.
 Qed.
 
-(** ** The Canonical Form Sees Atoms up to Erasure
+(** ** The Canonical Form Sees Atoms up to Proofs
 
-    The order on atoms compares them erased ([at_cmp_erase_l]) and the
-    canonical form stores them erased, so it is that of the erased
-    atoms. *)
-Lemma level_atoms_insert_erase : forall k s a ys, level_atoms_insert k s a ys = level_atoms_insert k s (ne_erase a) ys.
+    Atoms equal up to proofs have the same value under every admissible
+    assignment, so their canonical forms are equal up to proofs
+    ([lvl_canon_iff]). *)
+Lemma lvl_canon_upto_proofs : forall c ys ys', level_atoms_eq_upto_proofs ys ys' ->
+    lvl_eq_upto_proofs (lvl_canon (c, ys)) (lvl_canon (c, ys')).
 Proof.
-  intros k s a; induction ys as [| [k' t b] r IH]; cbn [level_atoms_insert]; rewrite ?ne_erase_idem; [ reflexivity |].
-  rewrite at_cmp_erase_l, IH; reflexivity.
+  intros * E; apply lvl_canon_iff; intros ν Hν; apply lvl_eval_upto; [ exact Hν | split; [ reflexivity | exact E ] ].
 Qed.
 
-Lemma level_atoms_sort_erase : forall xs, level_atoms_sort xs = level_atoms_sort (List.map (map_level_atom ne_erase) xs).
-Proof.
-  induction xs as [| [k s a] r IH]; cbn [level_atoms_sort List.map]; [ reflexivity |].
-  unfold map_level_atom at 1; cbn [atom_offset atom_sort atom_level level_atoms_sort].
-  rewrite <- level_atoms_insert_erase, <- IH; reflexivity.
-Qed.
-
-Lemma lvl_canon_erase : forall c ys, lvl_canon (c, ys) = lvl_canon (c, List.map (map_level_atom ne_erase) ys).
-Proof. intros; unfold lvl_canon; cbn [fst snd]; rewrite <- level_atoms_sort_erase; reflexivity. Qed.
-
-(** So atoms equal up to erasure to the renamings of others have, as a
-    level, the renaming of theirs' canonical form. *)
-Lemma lvl_canon_erase_wk : forall φ c ys ys', wk_mono φ ->
-    List.map (map_level_atom ne_erase) ys' = List.map (map_level_atom ne_erase) (List.map (map_level_atom (ne_wk φ)) ys) ->
-    nf_lvl_of (lvl_canon (c, ys')) = nf_wk φ (nf_lvl_of (lvl_canon (c, ys))).
+(** So atoms equal up to proofs to the renamings of others have, as a
+    level, the renaming of theirs' canonical form, up to proofs. *)
+Lemma lvl_canon_upto_proofs_wk : forall φ c ys ys', wk_mono φ ->
+    level_atoms_eq_upto_proofs ys' (List.map (map_level_atom (ne_wk φ)) ys) ->
+    nf_eq_upto_proofs (nf_lvl_of (lvl_canon (c, ys'))) (nf_wk φ (nf_lvl_of (lvl_canon (c, ys)))).
 Proof.
   intros * Hφ E; rewrite nf_lvl_of_wk, <- lvl_canon_wk by exact Hφ; unfold lvl_wk; cbn [fst snd].
-  rewrite (lvl_canon_erase c ys'), E, <- lvl_canon_erase; reflexivity.
+  apply nf_lvl_of_upto_proofs, lvl_canon_upto_proofs, E.
 Qed.
 
 (** ** Freshness

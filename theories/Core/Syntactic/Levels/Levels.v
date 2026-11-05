@@ -176,7 +176,7 @@ Fixpoint nf_code (M : nf) (t : code_tree) : code_tree :=
   | nf_lvl (a, b) xs =>
       code_tree_node 3 (code_tree_node a (code_tree_node b (list_code (atom_code (fun m => ne_code m code_tree_nil)) xs code_tree_nil) code_tree_nil) code_tree_nil) t
   | nf_True => code_tree_node 7 code_tree_nil t
-  | nf_proof _ | nf_proof_erased => code_tree_node 8 code_tree_nil t
+  | nf_proof _ => code_tree_node 8 code_tree_nil t
   | nf_False => code_tree_node 9 code_tree_nil t
   | nf_prop => code_tree_node 17 code_tree_nil t
   | nf_and P Q => code_tree_node 19 (nf_code P (nf_code Q code_tree_nil)) t
@@ -205,7 +205,7 @@ with ne_code (m : ne) (t : code_tree) : code_tree :=
   | ne_var x => code_tree_node 0 (code_tree_node x code_tree_nil code_tree_nil) t
   | ne_glob p => code_tree_node 1 (strings_code (q_unit p) (strings_code (q_chain p) code_tree_nil)) t
   | ne_app m' N => code_tree_node 2 (ne_code m' (nf_code N code_tree_nil)) t
-  | ne_absurd A _ | ne_absurd_erased A => code_tree_node 4 (nf_code A code_tree_nil) t
+  | ne_absurd A _ => code_tree_node 4 (nf_code A code_tree_nil) t
   | ne_elim p Us m Bks m' =>
       code_tree_node 5 (code_tree_node m (strings_code (q_unit p) (strings_code (q_chain p) code_tree_nil))
                    (list_code (block_code (fun A => nf_code A code_tree_nil)) Bks
@@ -216,46 +216,54 @@ with ne_code (m : ne) (t : code_tree) : code_tree :=
 #[global] Arguments atom_code : simpl never.
 #[global] Arguments block_code : simpl never.
 
-(** The coding of a list determines the list up to [g] where the coding of
+(** The coding of a list determines the list up to [r] where the coding of
     its elements does: on the elements of which [P] holds, [P] saying that
-    [f] determines [g] there.  The coding of a normal form ignores its
-    proofs, so it determines the normal form up to them ([g] the
-    erasure). *)
-Lemma list_code_inj {A B : Set} (P : A -> Set) (f : A -> code_tree) (g : A -> B) : forall l,
-    list_all A P l -> (forall x, P x -> forall y, f x = f y -> g x = g y) ->
-    forall l' t t', list_code f l t = list_code f l' t' -> List.map g l = List.map g l' /\ t = t'.
+    [f] determines [r] there.  The coding of a normal form ignores its
+    proofs, so it determines the normal form up to them ([r] the
+    comparison up to proofs). *)
+Lemma list_code_inj {A : Set} (P : A -> Set) (f : A -> code_tree) (r : A -> A -> bool) : forall l,
+    list_all A P l -> (forall x, P x -> forall y, f x = f y -> r x y = true) ->
+    forall l' t t', list_code f l t = list_code f l' t' -> list_eqb r l l' = true /\ t = t'.
 Proof.
   intros l Hl Hf; induction Hl as [| x Hx l Hl IH]; intros [| y l'] t t' H; cbn in H;
     injection H as; subst; try discriminate; [ split; reflexivity |].
   match goal with H : list_code _ _ _ = list_code _ _ _ |- _ => apply IH in H as [E ->] end.
   match goal with H : f _ = f _ |- _ => apply (Hf _ Hx) in H end.
-  cbn; split; congruence.
+  cbn; split; [ apply Bool.andb_true_iff; split; assumption | reflexivity ].
 Qed.
 
-Lemma atom_code_inj {E F : Set} (P : E -> Set) (f : E -> code_tree) (g : E -> F) : forall a,
-    level_atom_g_all E P a -> (forall x, P x -> forall y, f x = f y -> g x = g y) ->
-    forall a', atom_code f a = atom_code f a' -> map_level_atom g a = map_level_atom g a'.
+Lemma atom_code_inj {E : Set} (P : E -> Set) (f : E -> code_tree) (r : E -> E -> bool) : forall a,
+    level_atom_g_all E P a -> (forall x, P x -> forall y, f x = f y -> r x y = true) ->
+    forall a', atom_code f a = atom_code f a' ->
+    (Nat.eqb (atom_offset a) (atom_offset a') && Nat.eqb (atom_sort a) (atom_sort a') && r (atom_level a) (atom_level a'))%bool = true.
 Proof.
   intros a [k s x Hx] Hf [k' s' y] H; unfold atom_code in H; cbn in H; injection H as -> H ->.
-  apply (Hf _ Hx) in H; unfold map_level_atom; cbn; congruence.
+  apply (Hf _ Hx) in H; cbn; rewrite !Nat.eqb_refl, H; reflexivity.
 Qed.
 
-Lemma branch_code_inj {E F : Set} (P : E -> Set) (f : E -> code_tree) (g : E -> F) : forall br,
-    normal_branch_g_all E P br -> (forall x, P x -> forall y, f x = f y -> g x = g y) ->
-    forall br', branch_code f br = branch_code f br' -> map_normal_branch (fun _ => g) br = map_normal_branch (fun _ => g) br'.
+Lemma branch_code_inj {E : Set} (P : E -> Set) (f : E -> code_tree) (r : E -> E -> bool) : forall br,
+    normal_branch_g_all E P br -> (forall x, P x -> forall y, f x = f y -> r x y = true) ->
+    forall br', branch_code f br = branch_code f br' ->
+    (dec_eqb String.string_dec (branch_constructor br) (branch_constructor br') &&
+     Nat.eqb (branch_arity br) (branch_arity br') && r (branch_body br) (branch_body br'))%bool = true.
 Proof.
   intros br [c n x Hx] Hf [c' n' y] H; unfold branch_code in H; cbn in H; injection H as -> H H'.
-  apply str_code_inj in H as [-> _]; apply (Hf _ Hx) in H'; unfold map_normal_branch; cbn; congruence.
+  apply str_code_inj in H as [-> _]; apply (Hf _ Hx) in H'; cbn; rewrite dec_eqb_refl, Nat.eqb_refl, H'; reflexivity.
 Qed.
 
-Lemma block_code_inj {E F : Set} (P : E -> Set) (f : E -> code_tree) (g : E -> F) : forall b,
-    normal_block_g_all E P b -> (forall x, P x -> forall y, f x = f y -> g x = g y) ->
-    forall b', block_code f b = block_code f b' -> map_normal_block (fun _ => g) b = map_normal_block (fun _ => g) b'.
+Lemma block_code_inj {E : Set} (P : E -> Set) (f : E -> code_tree) (r : E -> E -> bool) : forall b,
+    normal_block_g_all E P b -> (forall x, P x -> forall y, f x = f y -> r x y = true) ->
+    forall b', block_code f b = block_code f b' ->
+    (Nat.eqb (block_arity b) (block_arity b') && r (block_scrutinee_type b) (block_scrutinee_type b') &&
+     r (block_motive b) (block_motive b') &&
+     list_eqb (fun br br' => dec_eqb String.string_dec (branch_constructor br) (branch_constructor br') &&
+                             Nat.eqb (branch_arity br) (branch_arity br') && r (branch_body br) (branch_body br'))
+       (block_branches b) (block_branches b'))%bool = true.
 Proof.
   intros b [n z Hz x Hx brs Hbrs] Hf [n' z' y brs'] H; unfold block_code in H; cbn in H; injection H as -> Hzz H H'.
   apply (Hf _ Hz) in Hzz; apply (Hf _ Hx) in H.
-  eapply (list_code_inj _ _ (map_normal_branch (fun _ => g))) in H' as [Ebrs _]; [| exact Hbrs |].
-  - unfold map_normal_block; cbn; congruence.
+  eapply list_code_inj in H' as [Ebrs _]; [| exact Hbrs |].
+  - cbn; rewrite Nat.eqb_refl, Hzz, H, Ebrs; reflexivity.
   - intros br Hbr br'; eapply branch_code_inj; eassumption.
 Qed.
 
@@ -271,8 +279,8 @@ Qed.
 
 (** The coding determines a normal form up to its proofs. *)
 Lemma nf_ne_code_inj :
-  (forall M N t t', nf_code M t = nf_code N t' -> nf_erase M = nf_erase N /\ t = t') /\
-  (forall m m' t t', ne_code m t = ne_code m' t' -> ne_erase m = ne_erase m' /\ t = t').
+  (forall M N t t', nf_code M t = nf_code N t' -> nf_eq_upto_proofs M N /\ t = t') /\
+  (forall m m' t t', ne_code m t = ne_code m' t' -> ne_eq_upto_proofs m m' /\ t = t').
 Proof.
   apply nf_ne_ind.
   all: intros; match goal with
@@ -290,64 +298,93 @@ Proof.
          | H : ne_code ?M _ = ne_code _ _, IH : forall N t t', ne_code ?M t = ne_code N t' -> _ |- _ =>
              apply IH in H as [?E H]
          | H : list_code (atom_code _) _ _ = list_code _ _ _ |- _ =>
-             eapply (list_code_inj _ _ (map_level_atom ne_erase)) in H as [?E H]; [| eassumption | code_elem_inj ]
+             eapply (list_code_inj _ _ (fun a a' => Nat.eqb (atom_offset a) (atom_offset a') && Nat.eqb (atom_sort a) (atom_sort a') &&
+                                                     ne_eqb_upto_proofs (atom_level a) (atom_level a'))%bool) in H as [?E H];
+               [| eassumption | code_elem_inj ]
          | H : list_code (block_code _) _ _ = list_code _ _ _ |- _ =>
-             eapply (list_code_inj _ _ (map_normal_block (fun _ => nf_erase))) in H as [?E H]; [| eassumption | code_elem_inj ]
+             eapply (list_code_inj _ _ (fun b b' =>
+                       Nat.eqb (block_arity b) (block_arity b') &&
+                       nf_eqb_upto_proofs (block_scrutinee_type b) (block_scrutinee_type b') &&
+                       nf_eqb_upto_proofs (block_motive b) (block_motive b') &&
+                       list_eqb (fun br br' => dec_eqb String.string_dec (branch_constructor br) (branch_constructor br') &&
+                                               Nat.eqb (branch_arity br) (branch_arity br') &&
+                                               nf_eqb_upto_proofs (branch_body br) (branch_body br'))
+                         (block_branches b) (block_branches b'))%bool) in H as [?E H];
+               [| eassumption | code_elem_inj ]
          | H : list_code _ _ _ = list_code _ _ _ |- _ =>
-             eapply (list_code_inj _ _ nf_erase) in H as [?E H]; [| eassumption | code_elem_inj ]
+             eapply (list_code_inj _ _ nf_eqb_upto_proofs) in H as [?E H]; [| eassumption | code_elem_inj ]
          | H : str_code _ _ = str_code _ _ |- _ => apply str_code_inj in H as [-> H]
          | H : strings_code _ _ = strings_code _ _ |- _ => apply qname_code_inj in H as ->
          | H : strings_code _ _ = strings_code _ _ |- _ => apply strings_code_inj in H as [-> H]
          | H : code_tree_node _ _ _ = code_tree_node _ _ _ |- _ => injection H as; subst
        end.
   all: try discriminate.
-  all: cbn [nf_erase ne_erase]; split; congruence.
+  all: unfold nf_eq_upto_proofs, ne_eq_upto_proofs in *; cbn [nf_eqb_upto_proofs ne_eqb_upto_proofs];
+    split; [ eqb_split; rewrite ?Nat.eqb_refl, ?dec_eqb_refl; try reflexivity; try assumption | congruence ].
 Qed.
 
-Lemma nf_code_inj : forall M N t t', nf_code M t = nf_code N t' -> nf_erase M = nf_erase N /\ t = t'.
+Lemma nf_code_inj : forall M N t t', nf_code M t = nf_code N t' -> nf_eq_upto_proofs M N /\ t = t'.
 Proof. apply nf_ne_code_inj. Qed.
 
-Lemma ne_code_inj : forall m m' t t', ne_code m t = ne_code m' t' -> ne_erase m = ne_erase m' /\ t = t'.
+Lemma ne_code_inj : forall m m' t t', ne_code m t = ne_code m' t' -> ne_eq_upto_proofs m m' /\ t = t'.
 Proof. apply nf_ne_code_inj. Qed.
 
-(** Erasing the proofs of a normal form does not change its coding. *)
-Lemma list_code_map {A B : Set} (P : A -> Set) (f : B -> code_tree) (g : A -> B) (h : A -> code_tree) : forall l,
-    list_all A P l -> (forall x, P x -> f (g x) = h x) -> forall t, list_code f (List.map g l) t = list_code h l t.
-Proof. intros l Hl Hf; induction Hl; intros t; cbn; f_equal; auto. Qed.
-
-Lemma nf_ne_code_erase :
-  (forall M t, nf_code (nf_erase M) t = nf_code M t) /\ (forall m t, ne_code (ne_erase m) t = ne_code m t).
+(** Normal forms equal up to their proofs have one coding: the coding
+    ignores proofs. *)
+Lemma list_code_eqb {A : Set} (P : A -> Set) (f : A -> code_tree) (r : A -> A -> bool) : forall l,
+    list_all A P l -> (forall x, P x -> forall y, r x y = true -> f x = f y) ->
+    forall l' t, list_eqb r l l' = true -> list_code f l t = list_code f l' t.
 Proof.
-  apply nf_ne_ind; intros; cbn [nf_erase ne_erase];
-    repeat match goal with p : o2 |- _ => destruct p | κ : abs_kind |- _ => destruct κ end;
-    cbn [nf_code ne_code];
-    repeat match goal with
-           | IH : forall t, nf_code (nf_erase ?M) t = _ |- context [nf_code (nf_erase ?M) ?t] => rewrite (IH t)
-           | IH : forall t, ne_code (ne_erase ?M) t = _ |- context [ne_code (ne_erase ?M) ?t] => rewrite (IH t)
-           | H : list_all _ _ ?l |- context [list_code ?f (List.map ?g ?l) ?t] =>
-               rewrite (list_code_map _ f g f l H); clear H
-           end; try reflexivity.
-  all: first
-    [ intros a Ha; destruct Ha as [k s x Hx]; unfold atom_code, map_level_atom; cbn; rewrite Hx; reflexivity
-    | intros x Hx; apply Hx
-    | intros b Hb; destruct Hb as [n' z Hz x Hx brs Hbrs]; unfold block_code, map_normal_block; cbn;
-      rewrite Hz, Hx; f_equal; apply (list_code_map _ _ _ _ _ Hbrs);
-      intros br Hbr; destruct Hbr as [c n'' y Hy]; unfold branch_code, map_normal_branch; cbn; rewrite Hy; reflexivity ].
+  intros l Hl Hf; induction Hl as [| x Hx l Hl IH]; intros [| y l'] t H; cbn in *; try discriminate; [ reflexivity |].
+  apply Bool.andb_true_iff in H as [H1 H2]; rewrite (Hf _ Hx _ H1), (IH _ _ H2); reflexivity.
 Qed.
 
-Lemma ne_code_erase : forall m t, ne_code (ne_erase m) t = ne_code m t.
-Proof. apply nf_ne_code_erase. Qed.
+Lemma nf_ne_code_upto :
+  (forall M N t, nf_eq_upto_proofs M N -> nf_code M t = nf_code N t) /\
+  (forall m m' t, ne_eq_upto_proofs m m' -> ne_code m t = ne_code m' t).
+Proof.
+  unfold nf_eq_upto_proofs, ne_eq_upto_proofs.
+  apply nf_ne_ind; intros;
+    lazymatch goal with
+    | H : nf_eqb_upto_proofs _ ?N = true |- _ => destruct N
+    | H : ne_eqb_upto_proofs _ ?N = true |- _ => destruct N
+    end;
+    cbn [nf_eqb_upto_proofs ne_eqb_upto_proofs] in *; try discriminate; eqb_split; eqb_leaves; subst;
+    repeat match goal with p : o2 |- _ => destruct p | κ : abs_kind |- _ => destruct κ end;
+    cbn [nf_code ne_code]; try reflexivity.
+  all: repeat match goal with
+         | IH : forall N t, nf_eqb_upto_proofs ?M N = true -> _, H : nf_eqb_upto_proofs ?M ?N = true |- _ =>
+             rewrite (IH N _ H); clear H
+         | IH : forall N t, ne_eqb_upto_proofs ?M N = true -> _, H : ne_eqb_upto_proofs ?M ?N = true |- _ =>
+             rewrite (IH N _ H); clear H
+         | Hl : list_all _ _ ?l, H : list_eqb _ ?l ?l' = true |- _ =>
+             erewrite (list_code_eqb _ _ _ l Hl _ l' _ H); clear H
+         end; try reflexivity.
+  Unshelve.
+  all: first
+    [ intros x Hx y Hxy; apply Hx; exact Hxy
+    | intros a Ha b Hab; destruct Ha as [k s x Hx]; destruct b as [k' s' y]; unfold atom_code; cbn in *;
+      eqb_split; eqb_leaves; subst; rewrite (Hx _ _ ltac:(eassumption)); reflexivity
+    | intros b0 Hb b1 Hbb; destruct Hb as [n' z Hz x Hx brs Hbrs]; destruct b1 as [n'' z' x' brs']; unfold block_code; cbn in *;
+      eqb_split; eqb_leaves; subst; rewrite (Hz _ _ ltac:(eassumption)), (Hx _ _ ltac:(eassumption));
+      f_equal; eapply list_code_eqb; [ exact Hbrs | | eassumption ];
+      intros br Hbr br' Hbr'; destruct Hbr as [c n3 y Hy]; destruct br' as [c' n4 y']; unfold branch_code; cbn in *;
+      eqb_split; eqb_leaves; subst; rewrite (Hy _ _ ltac:(eassumption)); reflexivity ].
+Qed.
+
+Lemma ne_code_upto : forall m m' t, ne_eq_upto_proofs m m' -> ne_code m t = ne_code m' t.
+Proof. apply nf_ne_code_upto. Qed.
 
 (** The order on the atoms of a level.  It ignores their proofs. *)
 Definition ne_cmp (m m' : ne) : comparison := lt_cmp (ne_code m code_tree_nil) (ne_code m' code_tree_nil).
 
 (** Two neutrals are equal in the order exactly when they are equal up to
     their proofs. *)
-Lemma ne_cmp_eq : forall m m', ne_cmp m m' = Eq <-> ne_erase m = ne_erase m'.
+Lemma ne_cmp_eq : forall m m', ne_cmp m m' = Eq <-> ne_eq_upto_proofs m m'.
 Proof.
   intros; unfold ne_cmp; rewrite lt_cmp_eq; split.
   - intros H; apply ne_code_inj in H as [? _]; assumption.
-  - intros H; rewrite <- (ne_code_erase m), <- (ne_code_erase m'), H; reflexivity.
+  - intros H; apply ne_code_upto; exact H.
 Qed.
 
 Lemma ne_cmp_refl : forall m, ne_cmp m m = Eq.
@@ -359,12 +396,6 @@ Proof. intros * H; unfold ne_cmp in *; apply lt_cmp_eq in H; rewrite H; reflexiv
 
 Lemma ne_cmp_eq_compat_r : forall m n n', ne_cmp n n' = Eq -> ne_cmp m n = ne_cmp m n'.
 Proof. intros * H; unfold ne_cmp in *; apply lt_cmp_eq in H; rewrite H; reflexivity. Qed.
-
-Lemma ne_cmp_erase_l : forall m n, ne_cmp (ne_erase m) n = ne_cmp m n.
-Proof. intros; unfold ne_cmp; rewrite ne_code_erase; reflexivity. Qed.
-
-Lemma ne_cmp_erase_r : forall m n, ne_cmp m (ne_erase n) = ne_cmp m n.
-Proof. intros; unfold ne_cmp; rewrite ne_code_erase; reflexivity. Qed.
 
 Lemma ne_cmp_opp : forall m m', ne_cmp m' m = CompOpp (ne_cmp m m').
 Proof. intros; apply lt_cmp_opp. Qed.
@@ -390,7 +421,7 @@ Proof. intros; eapply lt_cmp_trans; eassumption. Qed.
 Definition at_cmp (a : ne) (s : nat) (b : ne) (t : nat) : comparison :=
   match ne_cmp a b with Eq => Nat.compare s t | c => c end.
 
-Lemma at_cmp_eq : forall a s b t, at_cmp a s b t = Eq <-> ne_erase a = ne_erase b /\ s = t.
+Lemma at_cmp_eq : forall a s b t, at_cmp a s b t = Eq <-> ne_eq_upto_proofs a b /\ s = t.
 Proof.
   intros; unfold at_cmp; destruct (ne_cmp a b) eqn:E.
   - apply ne_cmp_eq in E; rewrite Nat.compare_eq_iff; intuition.
@@ -404,12 +435,6 @@ Proof.
   intros * H; unfold at_cmp in *; destruct (ne_cmp a b) eqn:E; try discriminate.
   apply Nat.compare_eq_iff in H as ->; rewrite (ne_cmp_eq_compat _ _ _ E); reflexivity.
 Qed.
-
-Lemma at_cmp_erase_l : forall a s b t, at_cmp (ne_erase a) s b t = at_cmp a s b t.
-Proof. intros; unfold at_cmp; rewrite ne_cmp_erase_l; reflexivity. Qed.
-
-Lemma at_cmp_erase_r : forall a s b t, at_cmp a s (ne_erase b) t = at_cmp a s b t.
-Proof. intros; unfold at_cmp; rewrite ne_cmp_erase_r; reflexivity. Qed.
 
 Lemma at_cmp_refl : forall a s, at_cmp a s a s = Eq.
 Proof. intros; apply at_cmp_eq; split; reflexivity. Qed.
@@ -446,7 +471,7 @@ Record lvl_adm (ν : ne -> nat -> o2) : Prop := mk_lvl_adm
   { (** An atom of sort [s] is below [ω·(s+1)] *)
     lvl_adm_sort : forall a s, fst (ν a s) <= s
     (** Atoms equal up to their proofs have the same value *)
-  ; lvl_adm_erase : forall a b s, ne_erase a = ne_erase b -> ν a s = ν b s }.
+  ; lvl_adm_upto_proofs : forall a b s, ne_eq_upto_proofs a b -> ν a s = ν b s }.
 
 Lemma lvl_adm_zero : lvl_adm (fun _ _ => ordinal_zero).
 Proof. constructor; intros; cbn; [ lia | reflexivity ]. Qed.
@@ -464,14 +489,14 @@ Definition lvl_suc (l : lvl) : lvl := (ordinal_succ (fst l), level_atoms_suc (sn
 Definition lvl_max (l l' : lvl) : lvl := (ordinal_max (fst l) (fst l'), snd l ++ snd l').
 
 (** Insertion into a sorted list of atoms, merging at the larger offset.
-    The atom is inserted with its proofs erased: the order ignores proofs,
-    so a canonical level keeps one atom of those equal up to them. *)
+    The atom is inserted as it is.  The order ignores proofs, so of the
+    atoms equal up to them a canonical level keeps the one already there. *)
 Fixpoint level_atoms_insert (k s : nat) (a : ne) (ys : list level_atom) : list level_atom :=
   match ys with
-  | nil => mk_level_atom k s (ne_erase a) :: nil
+  | nil => mk_level_atom k s a :: nil
   | mk_level_atom k' t b :: r =>
       match at_cmp a s b t with
-      | Lt => mk_level_atom k s (ne_erase a) :: ys
+      | Lt => mk_level_atom k s a :: ys
       | Eq => mk_level_atom (Nat.max k k') t b :: r
       | Gt => mk_level_atom k' t b :: level_atoms_insert k s a r
       end
@@ -518,12 +543,11 @@ Lemma level_atoms_eval_insert : forall ν k s a ys, lvl_adm ν ->
     level_atoms_eval ν (level_atoms_insert k s a ys) = ordinal_max (ordinal_add_nat k (ν a s)) (level_atoms_eval ν ys).
 Proof.
   intros ν k s a ys Hadm.
-  assert (Ha : ν (ne_erase a) s = ν a s) by (apply (lvl_adm_erase _ Hadm), ne_erase_idem).
-  induction ys as [| [k' t b] r IH]; cbn; [ rewrite Ha; reflexivity |].
+  induction ys as [| [k' t b] r IH]; cbn; [ reflexivity |].
   destruct (at_cmp a s b t) eqn:E; cbn.
-  - apply at_cmp_eq in E as [Eab ->]; rewrite (lvl_adm_erase _ Hadm _ _ t Eab).
+  - apply at_cmp_eq in E as [Eab ->]; rewrite (lvl_adm_upto_proofs _ Hadm _ _ t Eab).
     generalize (ν b t) (level_atoms_eval ν r); intros; ordinal_solve.
-  - rewrite Ha; reflexivity.
+  - reflexivity.
   - rewrite IH; generalize (ν a s) (ν b t) (level_atoms_eval ν r); intros; ordinal_solve.
 Qed.
 
@@ -562,8 +586,12 @@ Qed.
 Fixpoint level_atoms_In (k s : nat) (a : ne) (xs : list level_atom) : Prop :=
   match xs with
   | nil => False
-  | mk_level_atom k' t b :: r => (k = k' /\ s = t /\ ne_erase a = ne_erase b) \/ level_atoms_In k s a r
+  | mk_level_atom k' t b :: r => (k = k' /\ s = t /\ ne_eq_upto_proofs a b) \/ level_atoms_In k s a r
   end.
+
+(** The first atom of a list is in it. *)
+Lemma level_atoms_In_head : forall k s a r, level_atoms_In k s a (mk_level_atom k s a :: r).
+Proof. intros; left; split; [ reflexivity | split; [ reflexivity | apply nf_ne_eqb_upto_proofs_refl ] ]. Qed.
 
 Fixpoint level_atoms_sorted (ys : list level_atom) : Prop :=
   match ys with
@@ -572,23 +600,23 @@ Fixpoint level_atoms_sorted (ys : list level_atom) : Prop :=
   end.
 
 Lemma level_atoms_insert_atoms : forall k s a ys k' t b,
-    level_atoms_In k' t b (level_atoms_insert k s a ys) -> (t = s /\ ne_erase b = ne_erase a) \/ exists k'', level_atoms_In k'' t b ys.
+    level_atoms_In k' t b (level_atoms_insert k s a ys) -> (t = s /\ ne_eq_upto_proofs b a) \/ exists k'', level_atoms_In k'' t b ys.
 Proof.
   induction ys as [| [k0 u c] r IH]; cbn; intros k' t b H.
-  - destruct H as [(_ & -> & Eb) | []]; rewrite ne_erase_idem in Eb; auto.
+  - destruct H as [(_ & -> & Eb) | []]; auto.
   - destruct (at_cmp a s c u) eqn:E; cbn in H.
     + destruct H as [(_ & -> & Eb) | H]; [ right; exists k0; left; auto | right; eauto ].
-    + destruct H as [(_ & -> & Eb) | H]; [ rewrite ne_erase_idem in Eb; auto | right; eauto ].
+    + destruct H as [(_ & -> & Eb) | H]; [ auto | right; eauto ].
     + destruct H as [(_ & -> & Eb) | H]; [ right; exists k0; left; auto |].
       destruct (IH _ _ _ H) as [[-> Eb] | [k'' Hin]]; [ auto | right; eauto ].
 Qed.
 
 (** The order sees an atom up to its proofs. *)
-Lemma at_cmp_erase_eq_l : forall a a' s b t, ne_erase a = ne_erase a' -> at_cmp a s b t = at_cmp a' s b t.
-Proof. intros * E; rewrite <- (at_cmp_erase_l a), E, at_cmp_erase_l; reflexivity. Qed.
+Lemma at_cmp_upto_l : forall a a' s b t, ne_eq_upto_proofs a a' -> at_cmp a s b t = at_cmp a' s b t.
+Proof. intros * E; unfold at_cmp, ne_cmp; rewrite (ne_code_upto _ _ _ E); reflexivity. Qed.
 
-Lemma at_cmp_erase_eq_r : forall a s b b' t, ne_erase b = ne_erase b' -> at_cmp a s b t = at_cmp a s b' t.
-Proof. intros * E; rewrite <- (at_cmp_erase_r _ _ b), E, at_cmp_erase_r; reflexivity. Qed.
+Lemma at_cmp_upto_r : forall a s b b' t, ne_eq_upto_proofs b b' -> at_cmp a s b t = at_cmp a s b' t.
+Proof. intros * E; unfold at_cmp, ne_cmp; rewrite (ne_code_upto _ _ _ E); reflexivity. Qed.
 
 Lemma level_atoms_insert_sorted : forall k s a ys, level_atoms_sorted ys -> level_atoms_sorted (level_atoms_insert k s a ys).
 Proof.
@@ -598,11 +626,11 @@ Proof.
     destruct (at_cmp a s c u) eqn:E; cbn.
     + split; assumption.
     + split; [| split; auto ].
-      intros k' t b [(_ & -> & Eb) | H]; rewrite at_cmp_erase_l;
-        [ rewrite (at_cmp_erase_eq_r _ _ _ _ _ Eb); exact E | eapply at_cmp_trans; eauto ].
+      intros k' t b [(_ & -> & Eb) | H];
+        [ rewrite (at_cmp_upto_r _ _ _ _ _ Eb); exact E | eapply at_cmp_trans; eauto ].
     + split; [| auto ].
       intros k' t b H; destruct (level_atoms_insert_atoms _ _ _ _ _ _ _ H) as [[-> Eb] | [k'' Hin]]; eauto.
-      rewrite (at_cmp_erase_eq_r _ _ _ _ _ Eb), at_cmp_opp, E; reflexivity.
+      rewrite (at_cmp_upto_r _ _ _ _ _ Eb), at_cmp_opp, E; reflexivity.
 Qed.
 
 Lemma level_atoms_sort_sorted : forall xs, level_atoms_sorted (level_atoms_sort xs).
@@ -612,7 +640,7 @@ Lemma level_atoms_keep_In : forall c ys k s a, level_atoms_In k s a (level_atoms
 Proof.
   intros c; induction ys as [| [k0 t b] r IH]; cbn [level_atoms_keep]; intros k s a H; [ destruct H |].
   destruct (Nat.leb_spec (fst c) t); cbn in H |- *.
-  - destruct H as [(-> & -> & ->) | H]; [ auto |].
+  - destruct H as [(-> & -> & Hab) | H]; [ split; [ left; auto | auto ] |].
     apply IH in H as [? ?]; auto.
   - apply IH in H as [? ?]; auto.
 Qed.
@@ -626,47 +654,20 @@ Proof.
   intros k' t' b' Hin; apply level_atoms_keep_In in Hin as [Hin _]; eapply Hb; eauto.
 Qed.
 
-(** The atoms of a list hold no proofs (they are erased). *)
-Fixpoint level_atoms_erased (ys : list level_atom) : Prop :=
-  match ys with
-  | nil => True
-  | mk_level_atom _ _ a :: r => ne_erase a = a /\ level_atoms_erased r
-  end.
-
-Lemma level_atoms_insert_erased : forall k s a ys, level_atoms_erased ys -> level_atoms_erased (level_atoms_insert k s a ys).
-Proof.
-  induction ys as [| [k0 u c] r IH]; cbn; intros He; [ split; [ apply ne_erase_idem | exact I ] |].
-  destruct He as [Ec Er]; destruct (at_cmp a s c u); cbn; auto.
-  split; [ apply ne_erase_idem | auto ].
-Qed.
-
-Lemma level_atoms_sort_erased : forall xs, level_atoms_erased (level_atoms_sort xs).
-Proof. induction xs as [| [k s a] r IH]; cbn; [ exact I | apply level_atoms_insert_erased; exact IH ]. Qed.
-
-Lemma level_atoms_keep_erased : forall c ys, level_atoms_erased ys -> level_atoms_erased (level_atoms_keep c ys).
-Proof.
-  intros c; induction ys as [| [k t b] r IH]; cbn [level_atoms_keep]; intros He; [ exact I |].
-  destruct He as [Eb Er]; destruct (Nat.leb_spec (fst c) t); cbn; auto.
-Qed.
-
 (** A canonical level: its atoms sorted, each of a sort the constant's tier
-    does not exceed, its constant zero or above every offset, and its atoms
-    erased. *)
+    does not exceed, and its constant zero or above every offset. *)
 Record lvl_canonical (l : lvl) : Prop := mk_lvl_canonical
   { (** The atoms are strictly sorted *)
     lvl_canonical_sorted : level_atoms_sorted (snd l)
     (** No atom is of a sort below the constant's tier *)
   ; lvl_canonical_sorts : forall k s a, level_atoms_In k s a (snd l) -> fst (fst l) <= s
     (** The constant is zero or above every offset *)
-  ; lvl_canonical_const : fst l = ordinal_zero \/ ordinal_lt (ordinal_of_nat (level_atoms_max_offset (snd l))) (fst l)
-    (** The atoms hold no proofs: of the atoms equal up to their proofs a
-        level keeps one, erased *)
-  ; lvl_canonical_erased : level_atoms_erased (snd l) }.
+  ; lvl_canonical_const : fst l = ordinal_zero \/ ordinal_lt (ordinal_of_nat (level_atoms_max_offset (snd l))) (fst l) }.
 
 Lemma lvl_canon_canonical : forall l, lvl_canonical (lvl_canon l).
 Proof.
   intros [c xs]; unfold lvl_canon; constructor; cbn [fst snd];
-    [ apply level_atoms_keep_sorted, level_atoms_sort_sorted | | | apply level_atoms_keep_erased, level_atoms_sort_erased ];
+    [ apply level_atoms_keep_sorted, level_atoms_sort_sorted | | ];
   destruct (o2_dominated c (level_atoms_max_offset (level_atoms_keep c (level_atoms_sort xs)))) eqn:E; cbn [fst].
   - intros; cbn; lia.
   - intros k s a H; apply level_atoms_keep_In in H as [_ H]; exact H.
@@ -687,37 +688,132 @@ Lemma level_atoms_lookup_In : forall a s ys k, level_atoms_lookup a s ys = Some 
 Proof.
   induction ys as [| [k0 t b] r IH]; cbn; intros k H; [ discriminate |].
   destruct (at_cmp a s b t) eqn:E;
-    [ apply at_cmp_eq in E as [-> ->]; injection H as <-; auto | right; auto | right; auto ].
+    [ apply at_cmp_eq in E as [Eab ->]; injection H as <-; left; auto | right; auto | right; auto ].
 Qed.
 
 (** Lookup sees an atom up to its proofs. *)
-Lemma level_atoms_lookup_erase_eq : forall a a' s ys, ne_erase a = ne_erase a' ->
+Lemma level_atoms_lookup_upto : forall a a' s ys, ne_eq_upto_proofs a a' ->
     level_atoms_lookup a s ys = level_atoms_lookup a' s ys.
 Proof.
   intros * E; induction ys as [| [k t b] r IH]; cbn; [ reflexivity |].
-  rewrite (at_cmp_erase_eq_l _ _ _ _ _ E), IH; reflexivity.
+  rewrite (at_cmp_upto_l _ _ _ _ _ E), IH; reflexivity.
+Qed.
+
+(** [nf_proof_free W]: the normal form [W] holds no kept proof
+    ([nf_proof]) and no ex falso; mutually, [ne_proof_free u] for the
+    neutral [u].  A well-typed level atom is so, a level being made of
+    levels only ("levels only from levels"), and on such normal forms
+    equality up to proofs is equality ([nf_ne_proof_free_eq]).  The normal
+    forms that are strengthened ([Algorithmic.Strengthening.nf_strengthen])
+    and the classification of an argument by its normal form
+    ([classify_in_nf]) ask for proof-free ones too (see
+    [Core.Syntactic.Fresh]). *)
+Fixpoint nf_proof_free (W : nf) : Prop :=
+  match W with
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
+  | nf_proof _ => False
+  | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_proof_free (atom_level a)) xs
+  | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_proof_free A /\ nf_proof_free B
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms | nf_record _ Ms => all_list nf_proof_free Ms
+  | nf_neut M => ne_proof_free M
+  | nf_tuple _ Ms _ Ns => all_list nf_proof_free Ms /\ all_list nf_proof_free Ns
+  end
+with ne_proof_free (M : ne) : Prop :=
+  match M with
+  | ne_absurd _ _ => False
+  | ne_elim _ Us _ Bks M =>
+      all_list nf_proof_free Us /\ all_list (normal_block_forall (fun _ => nf_proof_free)) Bks /\ ne_proof_free M
+  | ne_app M N => ne_proof_free M /\ nf_proof_free N
+  | ne_var _ | ne_glob _ => True
+  | ne_proj _ M => ne_proof_free M
+  end.
+
+(** The list case of [nf_ne_proof_free_eq]: a list of proof-free
+    elements is the only list related to it. *)
+Lemma list_eqb_proof_free_eq : forall {A : Set} (Q : A -> Type) (pf : A -> Prop) (f : A -> A -> bool) l,
+    list_all A Q l -> (forall x, Q x -> pf x -> forall y, f x y = true -> x = y) ->
+    all_list pf l -> forall l', list_eqb f l l' = true -> l = l'.
+Proof.
+  intros * Hl Hf; induction Hl as [| x Hx l Hl IH]; intros Hp [| y l'] H; cbn in *; try discriminate; [ reflexivity |].
+  destruct Hp as [Hpx Hpl]; apply Bool.andb_true_iff in H as [H1 H2].
+  rewrite (Hf _ Hx Hpx _ H1), (IH Hpl _ H2); reflexivity.
+Qed.
+
+(** A normal form without proofs is the only normal form equal to it up to
+    proofs: a related normal form has the same shape, and a proof or an ex
+    falso can only be related to a proof or an ex falso. *)
+Lemma nf_ne_proof_free_eq :
+  (forall W, nf_proof_free W -> forall W', nf_eq_upto_proofs W W' -> W = W') /\
+  (forall M, ne_proof_free M -> forall M', ne_eq_upto_proofs M M' -> M = M').
+Proof.
+  unfold nf_eq_upto_proofs, ne_eq_upto_proofs.
+  apply nf_ne_ind; intros;
+    lazymatch goal with
+    | H : nf_eqb_upto_proofs _ ?N = true |- _ => destruct N
+    | H : ne_eqb_upto_proofs _ ?N = true |- _ => destruct N
+    end;
+    cbn [nf_eqb_upto_proofs ne_eqb_upto_proofs nf_proof_free ne_proof_free] in *; try discriminate; try contradiction;
+    eqb_split; eqb_leaves; subst; try reflexivity;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end.
+  all: f_equal; try solve [ eauto ].
+  all: eapply list_eqb_proof_free_eq; [ eassumption | | eassumption | eassumption ];
+    intros x Hx Hpx y Hxy; try solve [ apply Hx; assumption ].
+  all: destruct Hx; destruct y; unfold normal_block_forall in *; cbn in *;
+    eqb_split; eqb_leaves; subst; repeat match goal with H : _ /\ _ |- _ => destruct H end; f_equal; auto.
+  all: eapply list_eqb_proof_free_eq; [ eassumption | | eassumption | eassumption ];
+    intros br Hbr Hpbr br' Hbb; destruct Hbr; destruct br'; cbn in *;
+    eqb_split; eqb_leaves; subst; f_equal; auto.
+Qed.
+
+(** The neutral case of [nf_ne_proof_free_eq]. *)
+Lemma ne_proof_free_eq : forall M M', ne_proof_free M -> ne_eq_upto_proofs M M' -> M = M'.
+Proof. intros * H E; exact (proj2 nf_ne_proof_free_eq _ H _ E). Qed.
+
+(** Two lists of atoms equal up to the proofs in their neutrals. *)
+Definition level_atoms_eq_upto_proofs (ys ys' : list level_atom) : Prop :=
+  list_eqb (fun a a' => Nat.eqb (atom_offset a) (atom_offset a') && Nat.eqb (atom_sort a) (atom_sort a') &&
+                        ne_eqb_upto_proofs (atom_level a) (atom_level a'))%bool ys ys' = true.
+
+Definition level_atoms_eq_upto_proofs_dec (ys ys' : list level_atom) :
+    {level_atoms_eq_upto_proofs ys ys'} + {~ level_atoms_eq_upto_proofs ys ys'} :=
+  Bool.bool_dec _ true.
+
+Lemma level_atoms_eq_upto_proofs_refl : forall ys, level_atoms_eq_upto_proofs ys ys.
+Proof.
+  unfold level_atoms_eq_upto_proofs; induction ys as [| [k s a] r IH]; cbn; [ reflexivity |].
+  rewrite !Nat.eqb_refl, (proj2 nf_ne_eqb_upto_proofs_refl), IH; reflexivity.
+Qed.
+
+Lemma level_atoms_eq_upto_proofs_cons : forall k s a a' r r',
+    ne_eq_upto_proofs a a' -> level_atoms_eq_upto_proofs r r' ->
+    level_atoms_eq_upto_proofs (mk_level_atom k s a :: r) (mk_level_atom k s a' :: r').
+Proof.
+  unfold level_atoms_eq_upto_proofs, ne_eq_upto_proofs; intros * Ha Hr; cbn.
+  rewrite !Nat.eqb_refl, Ha, Hr; reflexivity.
 Qed.
 
 Lemma level_atoms_sorted_unique : forall ys1 ys2, level_atoms_sorted ys1 -> level_atoms_sorted ys2 ->
-    level_atoms_erased ys1 -> level_atoms_erased ys2 ->
-    (forall a s, level_atoms_lookup a s ys1 = level_atoms_lookup a s ys2) -> ys1 = ys2.
+    (forall a s, level_atoms_lookup a s ys1 = level_atoms_lookup a s ys2) -> level_atoms_eq_upto_proofs ys1 ys2.
 Proof.
-  induction ys1 as [| [k s a] r1 IH]; intros [| [k' t b] r2] H1 H2 He1 He2 Hl.
+  induction ys1 as [| [k s a] r1 IH]; intros [| [k' t b] r2] H1 H2 Hl.
   - reflexivity.
   - specialize (Hl b t); cbn in Hl; rewrite at_cmp_refl in Hl; discriminate.
   - specialize (Hl a s); cbn in Hl; rewrite at_cmp_refl in Hl; discriminate.
-  - destruct H1 as [Ha1 Hr1], H2 as [Hb2 Hr2], He1 as [Ea Er1], He2 as [Eb Er2].
+  - destruct H1 as [Ha1 Hr1], H2 as [Hb2 Hr2].
     destruct (at_cmp a s b t) eqn:E.
-    + apply at_cmp_eq in E as [Eab <-]; rewrite Ea, Eb in Eab; subst b.
-      pose proof (Hl a s) as Hk; cbn in Hk; rewrite at_cmp_refl in Hk; injection Hk as <-.
-      f_equal; apply IH; auto.
+    + apply at_cmp_eq in E as [Eab <-].
+      pose proof (Hl a s) as Hk; cbn in Hk; rewrite at_cmp_refl, (at_cmp_upto_l _ _ _ _ _ Eab), at_cmp_refl in Hk;
+        injection Hk as <-.
+      apply level_atoms_eq_upto_proofs_cons; [ exact Eab |]; apply IH; auto.
       intros x u; specialize (Hl x u); cbn in Hl.
+      rewrite <- (at_cmp_upto_r _ _ _ _ _ Eab) in Hl.
       destruct (at_cmp x u a s) eqn:Ex; auto.
-      apply at_cmp_eq in Ex as [Ex ->]; rewrite !(level_atoms_lookup_erase_eq _ _ _ _ Ex).
+      apply at_cmp_eq in Ex as [Ex ->]; rewrite !(level_atoms_lookup_upto _ _ _ _ Ex).
       destruct (level_atoms_lookup a s r1) eqn:L1;
         [ apply level_atoms_lookup_In in L1; specialize (Ha1 _ _ _ L1); rewrite at_cmp_refl in Ha1; discriminate |].
       destruct (level_atoms_lookup a s r2) eqn:L2;
-        [ apply level_atoms_lookup_In in L2; specialize (Hb2 _ _ _ L2); rewrite at_cmp_refl in Hb2; discriminate |].
+        [ apply level_atoms_lookup_In in L2; specialize (Hb2 _ _ _ L2);
+          rewrite <- (at_cmp_upto_l _ _ _ _ _ Eab), at_cmp_refl in Hb2; discriminate |].
       reflexivity.
     + pose proof (Hl a s) as Hk; cbn in Hk; rewrite at_cmp_refl, E in Hk.
       symmetry in Hk; apply level_atoms_lookup_In in Hk; specialize (Hb2 _ _ _ Hk).
@@ -738,7 +834,7 @@ Proof.
   intros a s N; constructor.
   - intros b t; unfold ν_at; destruct (at_cmp a s b t) eqn:E; cbn; [| lia | lia ].
     apply at_cmp_eq in E as [_ ->]; lia.
-  - intros b b' t E; unfold ν_at; rewrite (at_cmp_erase_eq_r _ _ _ _ _ E); reflexivity.
+  - intros b b' t E; unfold ν_at; rewrite (at_cmp_upto_r _ _ _ _ _ E); reflexivity.
 Qed.
 
 Lemma level_atoms_eval_zero : forall ys, level_atoms_eval (fun _ _ => ordinal_zero) ys = ordinal_of_nat (level_atoms_max_offset ys).
@@ -760,16 +856,55 @@ Proof.
     rewrite level_atoms_eval_at_none; [ revert HN; ordinal_solve |].
     destruct (level_atoms_lookup a s r) eqn:L; auto.
     apply level_atoms_lookup_In in L; specialize (Hb _ _ _ L).
-    rewrite (at_cmp_erase_eq_r _ _ _ _ _ Eab), at_cmp_refl in Hb; discriminate.
+    rewrite (at_cmp_upto_r _ _ _ _ _ Eab), at_cmp_refl in Hb; discriminate.
   - rewrite (IH k ltac:(lia) Hr H); revert HN; ordinal_solve.
   - rewrite (IH k ltac:(lia) Hr H); revert HN; ordinal_solve.
 Qed.
 
-Theorem lvl_canonical_unique : forall l1 l2, lvl_canonical l1 -> lvl_canonical l2 ->
-    (forall ν, lvl_adm ν -> lvl_eval ν l1 = lvl_eval ν l2) -> l1 = l2.
+(** Two levels equal up to the proofs in their atoms. *)
+Definition lvl_eq_upto_proofs (l l' : lvl) : Prop := fst l = fst l' /\ level_atoms_eq_upto_proofs (snd l) (snd l').
+
+(** The normal forms of levels, and of their universes, equal up to proofs
+    are so as normal forms. *)
+Lemma nf_lvl_of_upto_proofs : forall l l', lvl_eq_upto_proofs l l' -> nf_eq_upto_proofs (nf_lvl_of l) (nf_lvl_of l').
 Proof.
-  intros [c1 ys1] [c2 ys2] [S1 K1 C1 E1] [S2 K2 C2 E2] Hev; cbn [fst snd] in *.
-  assert (Hys : ys1 = ys2).
+  intros [c ys] [c' ys'] [Hc Hys]; cbn in *; subst c'; unfold nf_eq_upto_proofs; cbn.
+  rewrite dec_eqb_refl; exact Hys.
+Qed.
+
+Lemma nf_univ_of_upto_proofs : forall l l', lvl_eq_upto_proofs l l' -> nf_eq_upto_proofs (nf_univ_of l) (nf_univ_of l').
+Proof.
+  intros [c ys] [c' ys'] [Hc Hys]; cbn in *; subst c'; unfold nf_eq_upto_proofs; cbn.
+  rewrite dec_eqb_refl; exact Hys.
+Qed.
+
+Lemma level_atoms_eq_upto_proofs_max_offset : forall ys ys', level_atoms_eq_upto_proofs ys ys' ->
+    level_atoms_max_offset ys = level_atoms_max_offset ys'.
+Proof.
+  unfold level_atoms_eq_upto_proofs; induction ys as [| [k s a] r IH]; intros [| [k' s' a'] r'] H; cbn in *;
+    try discriminate; [ reflexivity |].
+  eqb_split; eqb_leaves; subst; rewrite (IH _ ltac:(eassumption)); reflexivity.
+Qed.
+
+(** Levels equal up to proofs have the same value at an admissible
+    assignment. *)
+Lemma level_atoms_eval_upto : forall ν ys ys', lvl_adm ν -> level_atoms_eq_upto_proofs ys ys' ->
+    level_atoms_eval ν ys = level_atoms_eval ν ys'.
+Proof.
+  unfold level_atoms_eq_upto_proofs; intros ν ys; induction ys as [| [k s a] r IH]; intros [| [k' s' a'] r'] Hadm H; cbn in *;
+    try discriminate; [ reflexivity |].
+  eqb_split; eqb_leaves; subst.
+  rewrite (lvl_adm_upto_proofs _ Hadm a a' s' ltac:(eassumption)), (IH _ Hadm ltac:(eassumption)); reflexivity.
+Qed.
+
+Lemma lvl_eval_upto : forall ν l l', lvl_adm ν -> lvl_eq_upto_proofs l l' -> lvl_eval ν l = lvl_eval ν l'.
+Proof. intros ν [c ys] [c' ys'] Hadm [Hc Hys]; unfold lvl_eval; cbn in *; rewrite Hc, (level_atoms_eval_upto _ _ _ Hadm Hys); reflexivity. Qed.
+
+Theorem lvl_canonical_unique : forall l1 l2, lvl_canonical l1 -> lvl_canonical l2 ->
+    (forall ν, lvl_adm ν -> lvl_eval ν l1 = lvl_eval ν l2) -> lvl_eq_upto_proofs l1 l2.
+Proof.
+  intros [c1 ys1] [c2 ys2] [S1 K1 C1] [S2 K2 C2] Hev; unfold lvl_eq_upto_proofs; cbn [fst snd] in *.
+  assert (Hys : level_atoms_eq_upto_proofs ys1 ys2).
   { apply level_atoms_sorted_unique; auto; intros a s.
     set (N := S (snd c1 + snd c2 + level_atoms_max_offset ys1 + level_atoms_max_offset ys2)).
     assert (HN1 : level_atoms_max_offset ys1 < N) by (subst N; lia).
@@ -788,28 +923,54 @@ Proof.
       rewrite (level_atoms_eval_at_none _ _ _ _ L1), (level_atoms_eval_at_some _ _ _ _ _ HN2 S2 L2) in Hev.
       exfalso; clearbody N; revert Hc1 Hc2 HN1 H Hev; ordinal_solve.
     - reflexivity. }
-  subst ys2; f_equal.
-  specialize (Hev _ lvl_adm_zero); unfold lvl_eval in Hev; cbn [fst snd] in Hev; rewrite level_atoms_eval_zero in Hev.
+  split; [| exact Hys ].
+  specialize (Hev _ lvl_adm_zero); unfold lvl_eval in Hev; cbn [fst snd] in Hev; rewrite !level_atoms_eval_zero in Hev.
+  rewrite <- (level_atoms_eq_upto_proofs_max_offset _ _ Hys) in Hev, C2.
   revert Hev C1 C2; generalize (level_atoms_max_offset ys1); intros; ordinal_solve.
 Qed.
 
+(** Two levels have canonical forms equal up to proofs exactly when they
+    agree at every admissible assignment.  On well-typed levels the
+    relation is equality: level atoms carry no proofs ("levels only from
+    levels"), though no proof needs that. *)
 Theorem lvl_canon_iff : forall l l',
-    lvl_canon l = lvl_canon l' <-> (forall ν, lvl_adm ν -> lvl_eval ν l = lvl_eval ν l').
+    lvl_eq_upto_proofs (lvl_canon l) (lvl_canon l') <-> (forall ν, lvl_adm ν -> lvl_eval ν l = lvl_eval ν l').
 Proof.
   split.
-  - intros H ν Hν; rewrite <- (lvl_canon_eval ν l Hν), <- (lvl_canon_eval ν l' Hν), H; reflexivity.
+  - intros H ν Hν; rewrite <- (lvl_canon_eval ν l Hν), <- (lvl_canon_eval ν l' Hν); exact (lvl_eval_upto _ _ _ Hν H).
   - intros H; apply lvl_canonical_unique; try apply lvl_canon_canonical.
     intros ν Hν; rewrite !lvl_canon_eval by exact Hν; apply H, Hν.
 Qed.
 
-Lemma lvl_canon_idem : forall l, lvl_canon (lvl_canon l) = lvl_canon l.
-Proof. intros; apply lvl_canon_iff; intros; apply lvl_canon_eval; assumption. Qed.
+(** Sorting a sorted list of atoms changes nothing. *)
+Lemma level_atoms_sort_sorted_id : forall ys, level_atoms_sorted ys -> level_atoms_sort ys = ys.
+Proof.
+  induction ys as [| [k s a] r IH]; cbn; intros Hs; [ reflexivity |]; destruct Hs as [Ha Hr].
+  rewrite (IH Hr); destruct r as [| [k' t b] r']; cbn; [ reflexivity |].
+  rewrite (Ha k' t b ltac:(left; split; [ reflexivity | split; [ reflexivity | apply nf_ne_eqb_upto_proofs_refl ] ])); reflexivity.
+Qed.
 
+(** Keeping the atoms of a sort at least the constant's tier keeps them
+    all when they are all of such a sort. *)
+Lemma level_atoms_keep_all : forall c ys, (forall k s a, level_atoms_In k s a ys -> fst c <= s) -> level_atoms_keep c ys = ys.
+Proof.
+  intros c; induction ys as [| [k s a] r IH]; cbn; intros H; [ reflexivity |].
+  rewrite (proj2 (Nat.leb_le _ _) (H k s a ltac:(left; split; [ reflexivity | split; [ reflexivity | apply nf_ne_eqb_upto_proofs_refl ] ]))).
+  f_equal; apply IH; intros; eapply H; right; eassumption.
+Qed.
+
+(** A canonical level is its canonical form. *)
 Lemma lvl_canonical_canon : forall l, lvl_canonical l -> lvl_canon l = l.
 Proof.
-  intros l H; apply lvl_canonical_unique; [ apply lvl_canon_canonical | assumption |].
-  intros; apply lvl_canon_eval; assumption.
+  intros [c ys] [S K C]; unfold lvl_canon; cbn [fst snd] in *.
+  rewrite (level_atoms_sort_sorted_id _ S), (level_atoms_keep_all _ _ K).
+  destruct (o2_dominated c (level_atoms_max_offset ys)) eqn:E; f_equal.
+  apply o2_dominated_spec in E; destruct C as [-> | C]; [ reflexivity |].
+  exfalso; revert E C; generalize (level_atoms_max_offset ys); intros; ordinal_solve.
 Qed.
+
+Lemma lvl_canon_idem : forall l, lvl_canon (lvl_canon l) = lvl_canon l.
+Proof. intros; apply lvl_canonical_canon, lvl_canon_canonical. Qed.
 
 (** The level operations evaluate as the successor and the join. *)
 Lemma level_atoms_eval_suc : forall ν xs,
@@ -839,26 +1000,26 @@ Qed.
 
 (** Canonicalising a part of a level does not change its canonical form: this
     is what makes readback compositional, since the atoms of a level read back
-    already canonical. *)
-Lemma lvl_canon_max_l : forall l l', lvl_canon (lvl_max (lvl_canon l) l') = lvl_canon (lvl_max l l').
+    already canonical (up to the proofs of their atoms). *)
+Lemma lvl_canon_max_l : forall l l', lvl_eq_upto_proofs (lvl_canon (lvl_max (lvl_canon l) l')) (lvl_canon (lvl_max l l')).
 Proof. intros; apply lvl_canon_iff; intros; rewrite !lvl_eval_max, !lvl_canon_eval by assumption; reflexivity. Qed.
 
-Lemma lvl_canon_max_r : forall l l', lvl_canon (lvl_max l (lvl_canon l')) = lvl_canon (lvl_max l l').
+Lemma lvl_canon_max_r : forall l l', lvl_eq_upto_proofs (lvl_canon (lvl_max l (lvl_canon l'))) (lvl_canon (lvl_max l l')).
 Proof. intros; apply lvl_canon_iff; intros; rewrite !lvl_eval_max, !lvl_canon_eval by assumption; reflexivity. Qed.
 
-Lemma lvl_canon_suc : forall l, lvl_canon (lvl_suc (lvl_canon l)) = lvl_canon (lvl_suc l).
+Lemma lvl_canon_suc : forall l, lvl_eq_upto_proofs (lvl_canon (lvl_suc (lvl_canon l))) (lvl_canon (lvl_suc l)).
 Proof. intros; apply lvl_canon_iff; intros; rewrite !lvl_eval_suc, !lvl_canon_eval by assumption; reflexivity. Qed.
 
 Lemma lvl_canon_max_cong : forall l1 l1' l2 l2',
-    lvl_canon l1 = lvl_canon l1' -> lvl_canon l2 = lvl_canon l2' ->
-    lvl_canon (lvl_max l1 l2) = lvl_canon (lvl_max l1' l2').
+    lvl_eq_upto_proofs (lvl_canon l1) (lvl_canon l1') -> lvl_eq_upto_proofs (lvl_canon l2) (lvl_canon l2') ->
+    lvl_eq_upto_proofs (lvl_canon (lvl_max l1 l2)) (lvl_canon (lvl_max l1' l2')).
 Proof.
   intros * H1 H2; rewrite lvl_canon_iff in H1, H2 |- *.
   intros; rewrite !lvl_eval_max, H1, H2 by assumption; reflexivity.
 Qed.
 
 Lemma lvl_canon_suc_cong : forall l l',
-    lvl_canon l = lvl_canon l' -> lvl_canon (lvl_suc l) = lvl_canon (lvl_suc l').
+    lvl_eq_upto_proofs (lvl_canon l) (lvl_canon l') -> lvl_eq_upto_proofs (lvl_canon (lvl_suc l)) (lvl_canon (lvl_suc l')).
 Proof.
   intros * H; rewrite lvl_canon_iff in H |- *.
   intros; rewrite !lvl_eval_suc, H by assumption; reflexivity.
@@ -868,25 +1029,23 @@ Qed.
 
     Canonicalisation only reorders, merges and drops atoms, so a property of
     all the atoms of a level survives it.  Cleanness, stuckness and
-    freshness of the atoms are instances, through [level_atoms_all_all_list].
-    Canonicalisation also erases the proofs of the atoms, so the property must
-    survive erasure. *)
+    freshness of the atoms are instances, through [level_atoms_all_all_list]. *)
 Fixpoint level_atoms_all (P : ne -> Prop) (xs : list level_atom) : Prop :=
   match xs with
   | nil => True
   | mk_level_atom _ _ a :: r => P a /\ level_atoms_all P r
   end.
 
-Lemma level_atoms_all_insert : forall P k s a ys, P (ne_erase a) -> level_atoms_all P ys -> level_atoms_all P (level_atoms_insert k s a ys).
+Lemma level_atoms_all_insert : forall P k s a ys, P a -> level_atoms_all P ys -> level_atoms_all P (level_atoms_insert k s a ys).
 Proof.
   induction ys as [| [k' t b] r IH]; cbn; intros Ha Hys; [ auto |].
   destruct Hys as [Hb Hr]; destruct (at_cmp a s b t) eqn:E; cbn; auto.
 Qed.
 
-Lemma level_atoms_all_sort : forall (P : ne -> Prop) xs, (forall a, P a -> P (ne_erase a)) ->
+Lemma level_atoms_all_sort : forall (P : ne -> Prop) xs,
     level_atoms_all P xs -> level_atoms_all P (level_atoms_sort xs).
 Proof.
-  intros P xs HP; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
+  intros P xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
   destruct H; apply level_atoms_all_insert; auto.
 Qed.
 
@@ -896,7 +1055,7 @@ Proof.
   destruct H as [Ha Hr]; destruct (fst c <=? s); cbn; auto.
 Qed.
 
-Lemma level_atoms_all_canon : forall (P : ne -> Prop) c xs, (forall a, P a -> P (ne_erase a)) ->
+Lemma level_atoms_all_canon : forall (P : ne -> Prop) c xs,
     level_atoms_all P xs -> level_atoms_all P (snd (lvl_canon (c, xs))).
 Proof. intros; unfold lvl_canon; cbn; apply level_atoms_all_keep, level_atoms_all_sort; assumption. Qed.
 
@@ -917,6 +1076,17 @@ Qed.
 Lemma level_atoms_all_all_list : forall P xs, all_list (fun a => P (atom_level a)) xs <-> level_atoms_all P xs.
 Proof. induction xs as [| [k s a] r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
+(** A level whose atoms hold no proof is the only level equal to it up to
+    proofs ([nf_ne_proof_free_eq] at each atom). *)
+Lemma lvl_proof_free_eq : forall l l', level_atoms_all ne_proof_free (snd l) -> lvl_eq_upto_proofs l l' -> l = l'.
+Proof.
+  intros [c xs] [c' ys] Hp [Hc Hxs]; cbn in *; subst c'; f_equal.
+  revert ys Hxs; induction xs as [| [k s a] r IH]; intros [| [k' s' a'] r'] H;
+    unfold level_atoms_eq_upto_proofs in H; cbn in *; try discriminate; [ reflexivity |].
+  destruct Hp as [Ha Hr]; eqb_split; eqb_leaves; subst.
+  f_equal; [ f_equal; apply ne_proof_free_eq; assumption | apply IH; assumption ].
+Qed.
+
 (** The generated induction hypothesis at the atoms of a level is [level_atoms_all]
     of the motive. *)
 Lemma list_all_level_atoms_all : forall (P : ne -> Prop) xs, list_all level_atom (level_atom_g_all ne P) xs -> level_atoms_all P xs.
@@ -929,17 +1099,17 @@ Proof. intros; apply level_atoms_all_all_list. Qed.
 
 Lemma level_atoms_clean_canon : forall c xs, all_list (fun a => ne_clean (atom_level a)) xs ->
     all_list (fun a => ne_clean (atom_level a)) (snd (lvl_canon (c, xs))).
-Proof. intros * H; apply level_atoms_clean_all, level_atoms_all_canon, level_atoms_clean_all; [ apply ne_clean_erase | assumption ]. Qed.
+Proof. intros * H; apply level_atoms_clean_all, level_atoms_all_canon, level_atoms_clean_all; assumption. Qed.
 
 Lemma level_atoms_clean_sort : forall xs, all_list (fun a => ne_clean (atom_level a)) xs ->
     all_list (fun a => ne_clean (atom_level a)) (level_atoms_sort xs).
-Proof. intros * H; apply level_atoms_clean_all, level_atoms_all_sort, level_atoms_clean_all; [ apply ne_clean_erase | assumption ]. Qed.
+Proof. intros * H; apply level_atoms_clean_all, level_atoms_all_sort, level_atoms_clean_all; assumption. Qed.
 
 (** ** The Order on Levels
 
     [lvl_le l l'] is the decidable order [l ⊔ l' = l'], which is the pointwise
     order at every admissible assignment. *)
-Definition lvl_le (l l' : lvl) : Prop := lvl_canon (lvl_max l l') = lvl_canon l'.
+Definition lvl_le (l l' : lvl) : Prop := lvl_eq_upto_proofs (lvl_canon (lvl_max l l')) (lvl_canon l').
 
 Theorem lvl_le_correct : forall l l',
     lvl_le l l' <-> (forall ν, lvl_adm ν -> ordinal_le (lvl_eval ν l) (lvl_eval ν l')).
@@ -954,8 +1124,16 @@ Proof.
   destruct (List.list_eq_dec (level_atom_eq_dec_g ne_eq_dec) xs ys) as [-> |]; [ left; reflexivity | right; congruence ].
 Defined.
 
+(** Equality up to proofs of levels is decidable. *)
+Definition lvl_eq_upto_proofs_dec : forall l l', ({lvl_eq_upto_proofs l l'} + {~ lvl_eq_upto_proofs l l'})%type.
+Proof.
+  intros [c xs] [c' ys]; unfold lvl_eq_upto_proofs; cbn [fst snd].
+  destruct (o2_eq_dec c c') as [-> |]; [| right; intros [? _]; congruence ].
+  destruct (level_atoms_eq_upto_proofs_dec xs ys); [ left; split; auto | right; intros [_ ?]; contradiction ].
+Defined.
+
 Definition lvl_le_dec : forall l l', ({lvl_le l l'} + {~ lvl_le l l'})%type.
-Proof. intros; unfold lvl_le; apply lvl_eq_dec. Defined.
+Proof. intros; unfold lvl_le; apply lvl_eq_upto_proofs_dec. Defined.
 
 Lemma lvl_le_refl : forall l, lvl_le l l.
 Proof. intros; apply lvl_le_correct; intros; apply ordinal_le_refl. Qed.
@@ -966,12 +1144,12 @@ Proof.
   eapply ordinal_le_trans; [ apply H1, Hν | apply H2, Hν ].
 Qed.
 
-Lemma lvl_le_canon : forall l l', lvl_canon l = lvl_canon l' -> lvl_le l l'.
+Lemma lvl_le_canon : forall l l', lvl_eq_upto_proofs (lvl_canon l) (lvl_canon l') -> lvl_le l l'.
 Proof.
   intros * H; rewrite lvl_canon_iff in H; apply lvl_le_correct; intros ν Hν; rewrite (H ν Hν); apply ordinal_le_refl.
 Qed.
 
-Lemma lvl_le_antisym : forall l l', lvl_le l l' -> lvl_le l' l -> lvl_canon l = lvl_canon l'.
+Lemma lvl_le_antisym : forall l l', lvl_le l l' -> lvl_le l' l -> lvl_eq_upto_proofs (lvl_canon l) (lvl_canon l').
 Proof.
   intros * H H'; rewrite lvl_le_correct in H, H'; apply lvl_canon_iff; intros ν Hν.
   apply ordinal_le_antisym; [ apply H, Hν | apply H', Hν ].
@@ -1000,7 +1178,7 @@ Proof. intros; unfold lvl_eval, lvl_lit; cbn; apply ordinal_max_zero_r. Qed.
 
 Lemma lvl_canon_lit : forall o, lvl_canon (lvl_lit o) = lvl_lit o.
 Proof.
-  intros; apply lvl_canonical_canon; constructor; [ exact I | intros ? ? ? [] | | exact I ].
+  intros; apply lvl_canonical_canon; constructor; [ exact I | intros ? ? ? [] | ].
   cbn; destruct o as [[|] [|]]; [ left | right .. ]; ordinal_solve.
 Qed.
 
@@ -1021,7 +1199,7 @@ Definition lvl_sort_bounded (n : nat) (l : lvl) : Prop :=
 Lemma level_atoms_sort_In : forall xs k s a, level_atoms_In k s a (level_atoms_sort xs) -> exists k', level_atoms_In k' s a xs.
 Proof.
   induction xs as [| [j t b] r IH]; cbn; intros k s a H; [ contradiction |].
-  destruct (level_atoms_insert_atoms _ _ _ _ _ _ _ H) as [[-> ->] | [k'' Hin]]; [ eauto |].
+  destruct (level_atoms_insert_atoms _ _ _ _ _ _ _ H) as [[-> Hab] | [k'' Hin]]; [ exists j; left; auto |].
   destruct (IH _ _ _ Hin) as [k' ?]; eauto.
 Qed.
 
@@ -1036,7 +1214,7 @@ Qed.
 Lemma level_atoms_suc_In : forall xs k s a, level_atoms_In k s a (level_atoms_suc xs) -> exists k', level_atoms_In k' s a xs.
 Proof.
   induction xs as [| [j t b] r IH]; cbn; intros k s a H; [ contradiction |].
-  destruct H as [(_ & -> & ->) | H]; [ eauto |].
+  destruct H as [(_ & -> & Hab) | H]; [ exists j; left; auto |].
   destruct (IH _ _ _ H) as [k' ?]; eauto.
 Qed.
 
@@ -1067,7 +1245,7 @@ Proof.
   intros ν n [c xs] Hν [Hc Hxs]; unfold lvl_eval; cbn [fst snd] in *.
   enough (fst (level_atoms_eval ν xs) <= n) by (revert Hc H; generalize (level_atoms_eval ν xs); intros; ordinal_solve).
   induction xs as [| [k s a] r IH]; cbn; [ lia |].
-  assert (Hs : s <= n) by (eapply Hxs; left; auto).
+  assert (Hs : s <= n) by (eapply Hxs; apply level_atoms_In_head).
   assert (IH' : fst (level_atoms_eval ν r) <= n) by (apply IH; intros; eapply Hxs; right; eassumption).
   pose proof (lvl_adm_sort _ Hν a s) as Ha; revert IH' Hs Ha; generalize (level_atoms_eval ν r) (ν a s); intros; ordinal_solve.
 Qed.
@@ -1075,9 +1253,15 @@ Qed.
 Lemma lvl_canon_absorb : forall n l, lvl_sort_bounded n l ->
     lvl_canon (lvl_max l (lvl_lit (S n, 0))) = lvl_lit (S n, 0).
 Proof.
-  intros n l Hl; rewrite <- (lvl_canon_lit (S n, 0)) at 2; apply lvl_canon_iff; intros ν Hν.
-  rewrite lvl_eval_max, lvl_eval_lit; pose proof (lvl_eval_sort_bounded _ _ _ Hν Hl) as H.
-  revert H; generalize (lvl_eval ν l); intros; ordinal_solve.
+  intros n l Hl.
+  assert (H : lvl_eq_upto_proofs (lvl_canon (lvl_max l (lvl_lit (S n, 0)))) (lvl_canon (lvl_lit (S n, 0)))).
+  { apply lvl_canon_iff; intros ν Hν.
+    rewrite lvl_eval_max, lvl_eval_lit; pose proof (lvl_eval_sort_bounded _ _ _ Hν Hl) as H.
+    revert H; generalize (lvl_eval ν l); intros; ordinal_solve. }
+  (** The literal has no atoms, so the relation is equality here. *)
+  rewrite lvl_canon_lit in H; destruct (lvl_canon (lvl_max l (lvl_lit (S n, 0)))) as [c ys];
+    destruct H as [Hc Hys]; unfold level_atoms_eq_upto_proofs in Hys; cbn in Hc, Hys.
+  destruct ys; [ subst; reflexivity | discriminate ].
 Qed.
 
 (** ** The Realiser
@@ -1194,7 +1378,7 @@ Proof.
   assert (Hge : ordinal_le (s, S (snd o)) (level_atoms_eval (ν_at a s (S (snd o))) xs)).
   { clear H; induction xs as [| [k0 t b] r IH]; cbn in Hin |- *; [ contradiction |].
     destruct Hin as [(<- & <- & Eab) | Hin].
-    - unfold ν_at at 1; rewrite <- (at_cmp_erase_eq_r _ _ _ _ _ Eab), at_cmp_refl.
+    - unfold ν_at at 1; rewrite <- (at_cmp_upto_r _ _ _ _ _ Eab), at_cmp_refl.
       generalize (level_atoms_eval (ν_at a s (S (snd o))) r); intros; ordinal_solve.
     - specialize (IH Hin); revert IH; generalize (level_atoms_eval (ν_at a s (S (snd o))) r) (ν_at a s (S (snd o)) b t); intros; ordinal_solve. }
   revert H Hge Hs; generalize (level_atoms_eval (ν_at a s (S (snd o))) xs); intros; ordinal_solve.
@@ -1203,7 +1387,7 @@ Qed.
 Lemma lvl_le_lit_closed : forall l n, lvl_le l (lvl_lit (ordinal_of_nat n)) -> snd l = nil.
 Proof.
   intros [c xs] n H; destruct xs as [| [k s a] r]; [ reflexivity | exfalso ].
-  pose proof (lvl_le_lit_sorts _ _ H k s a ltac:(cbn; left; auto)) as Hs; cbn in Hs; lia.
+  pose proof (lvl_le_lit_sorts _ _ H k s a (level_atoms_In_head _ _ _ _)) as Hs; cbn in Hs; lia.
 Qed.
 
 (** The literal small universes. *)

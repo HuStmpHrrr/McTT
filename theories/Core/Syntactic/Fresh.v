@@ -603,8 +603,7 @@ Proof. intros; split; [ apply exp_freshb_sound | apply (proj1 freshb_complete) ]
     [W]; mutually, in the neutral [u]. *)
 Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
-  | nf_proof_erased => True
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
   | nf_proof M => exp_fresh k M
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh k (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_fresh k A /\ nf_fresh (S k) B
@@ -616,7 +615,6 @@ Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
 with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   match u with
   | ne_absurd A M => nf_fresh k A /\ exp_fresh k M
-  | ne_absurd_erased A => nf_fresh k A
   | ne_elim _ Us _ Bks u =>
       all_list (nf_fresh k) Us /\ all_list (normal_block_forall (fun n => nf_fresh (n + k))) Bks /\ ne_fresh k u
   | ne_app u W => ne_fresh k u /\ nf_fresh k W
@@ -640,7 +638,6 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_proof M => nf_proof M[unwk k]ʷ
   | nf_False => nf_False
   | nf_and P Q => nf_and (nf_unwk k P) (nf_unwk (S k) Q)
-  | nf_proof_erased => nf_proof_erased
   | nf_pi κd κc A B => nf_pi κd κc (nf_unwk k A) (nf_unwk (S k) B)
   | nf_fn A M => nf_fn (nf_unwk k A) (nf_unwk (S k) M)
   | nf_indty p j Ms => nf_indty p j (List.map (nf_unwk k) Ms)
@@ -652,7 +649,6 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
 with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   match u with
   | ne_absurd A M => ne_absurd (nf_unwk k A) M[unwk k]ʷ
-  | ne_absurd_erased A => ne_absurd_erased (nf_unwk k A)
   | ne_elim p Us m Bks u =>
       ne_elim p (List.map (nf_unwk k) Us) m (List.map (map_normal_block (fun n => nf_unwk (n + k))) Bks) (ne_unwk k u)
   | ne_app u W => ne_app (ne_unwk k u) (nf_unwk k W)
@@ -815,8 +811,7 @@ Qed.
     decided by a boolean function and reflection. *)
 Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   match W with
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
-  | nf_proof_erased => true
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => true
   | nf_proof M => exp_freshb k M
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_freshb k (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_freshb k A && nf_freshb (S k) B
@@ -828,7 +823,6 @@ Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
 with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   match u with
   | ne_absurd A M => nf_freshb k A && exp_freshb k M
-  | ne_absurd_erased A => nf_freshb k A
   | ne_elim _ Us _ Bks u =>
       List.forallb (nf_freshb k) Us && (List.forallb (normal_block_forallb (fun n => nf_freshb (n + k))) Bks
                                          && ne_freshb k u)
@@ -857,65 +851,24 @@ Proof.
   all: (eapply list_all_forallb; [ eassumption |]); intros y Hy; destruct Hy; cbn; eauto.
 Qed.
 
-(** Erasure keeps a normal form fresh: it replaces proofs by the marker,
-    which mentions no variable. *)
-Lemma nf_ne_fresh_erase :
-  (forall W k, nf_fresh k W -> nf_fresh k (nf_erase W)) /\ (forall u k, ne_fresh k u -> ne_fresh k (ne_erase u)).
-Proof.
-  apply nf_ne_ind; intros; cbn [nf_erase ne_erase nf_fresh ne_fresh exp_fresh] in *; intuition auto;
-    repeat match goal with H : _ /\ _ |- _ => destruct H end;
-    rewrite ?all_list_map; try split; auto;
-    try (eapply list_all_all_list_impl; [ eassumption | eassumption |]; cbn; intros x Hx Hy;
-         first [ solve [ match type of Hx with normal_block_g_all _ _ _ =>
-                         destruct Hx as [n' Z HZ A HA brs Hbrs]; unfold normal_block_forall in *; cbn in *;
-                         destruct Hy as [HyZ [HyA Hybrs]]; split; [ auto | split; [ auto |] ];
-                         rewrite all_list_map; eapply list_all_all_list_impl; [ exact Hbrs | exact Hybrs |];
-                         intros br Hbr Hy'; destruct Hbr; cbn in *; auto end ]
-               | solve [ destruct Hx; cbn in *; auto ]
-               | auto ]).
-Qed.
-
-Lemma ne_fresh_erase : forall k u, ne_fresh k u -> ne_fresh k (ne_erase u).
-Proof. intros; apply nf_ne_fresh_erase; assumption. Qed.
-
 (** ** Normal Forms Free of Proofs
 
-    [nf_proof_free W]: the normal form [W] holds no kept proof
-    ([nf_proof]) and no ex falso; mutually, [ne_proof_free u] for the
-    neutral [u].  Normal forms are compared up to their proofs
-    ([nf_erase]), so up to erasure a normal form that holds a proof no
-    longer says which variables the proof used, and it cannot be
-    strengthened past a variable it does not mention: with
+    [nf_proof_free] / [ne_proof_free] are defined in
+    [Core.Syntactic.Levels.Levels].  Normal forms are compared up to their
+    proofs ([nf_eq_upto_proofs]), so a normal form that holds a proof is,
+    up to that relation, no longer saying which variables the proof used,
+    and it cannot be strengthened past a variable it does not mention: with
     [f : ⊥ → Type@0], the normal form [f M], for a proof [M] of [⊥], is a
-    type in [f ▹ (x : ⊥)], where [x] proves [⊥], but not in [f] alone.  The normal forms that are
-    strengthened ([Algorithmic.Strengthening.nf_strengthen]) and the
-    classification of an argument by its normal form ([classify_in_nf])
-    ask for proof-free ones. *)
-Fixpoint nf_proof_free (W : nf) {struct W} : Prop :=
-  match W with
-  | nf_proof _ | nf_proof_erased => False
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
-  | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_proof_free (atom_level a)) xs
-  | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_proof_free A /\ nf_proof_free B
-  | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_proof_free Ms
-  | nf_neut u => ne_proof_free u
-  | nf_record _ Ms => all_list nf_proof_free Ms
-  | nf_tuple _ Ms _ Ns => all_list nf_proof_free Ms /\ all_list nf_proof_free Ns
-  end
-with ne_proof_free (u : ne) {struct u} : Prop :=
-  match u with
-  | ne_absurd _ _ | ne_absurd_erased _ => False
-  | ne_elim _ Us _ Bks u =>
-      all_list nf_proof_free Us /\ all_list (normal_block_forall (fun _ => nf_proof_free)) Bks /\ ne_proof_free u
-  | ne_app u W => ne_proof_free u /\ nf_proof_free W
-  | ne_var _ | ne_glob _ => True
-  | ne_proj _ u => ne_proof_free u
-  end.
+    type in [f ▹ (x : ⊥)], where [x] proves [⊥], but not in [f] alone.  The
+    normal forms that are strengthened
+    ([Algorithmic.Strengthening.nf_strengthen]) and the classification of an
+    argument by its normal form ([classify_in_nf]) ask for proof-free
+    ones. *)
 
 (** Proof-freedom is decided by a boolean function with the same clauses. *)
 Fixpoint nf_proof_freeb (W : nf) {struct W} : bool :=
   match W with
-  | nf_proof _ | nf_proof_erased => false
+  | nf_proof _ => false
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => true
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_proof_freeb (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_proof_freeb A && nf_proof_freeb B
@@ -926,7 +879,7 @@ Fixpoint nf_proof_freeb (W : nf) {struct W} : bool :=
   end
 with ne_proof_freeb (u : ne) {struct u} : bool :=
   match u with
-  | ne_absurd _ _ | ne_absurd_erased _ => false
+  | ne_absurd _ _ => false
   | ne_elim _ Us _ Bks u =>
       List.forallb nf_proof_freeb Us && (List.forallb (normal_block_forallb (fun _ => nf_proof_freeb)) Bks
                                          && ne_proof_freeb u)
@@ -956,22 +909,22 @@ Qed.
     [k] is not an atom of the larger, and the assignment that makes it alone
     large, at [ω·s + N] for its sort [s], is below the larger level only if
     that level's constant is at least [ω·(s+1)]. *)
-(** An erased atom of a fresh list, up to erasure, is fresh.  Atoms are
-    compared up to erasure ([level_atoms_In]), and an atom that holds a
-    proof may mention a variable that its erasure does not; the atoms of a
-    canonical level are erased ([lvl_canonical_erased],
-    [level_atoms_erased]), and by the 𝕃 invariant (typed level normal forms
-    hold no proofs) so are those of every typed level normal form. *)
+(** A proof-free atom of a fresh list, up to proofs, is fresh.  Atoms are
+    compared up to proofs ([level_atoms_In]), and an atom that holds a
+    proof may mention a variable that a related atom does not; a proof-free
+    atom is the only atom related to it ([ne_proof_free_eq]), and by the 𝕃
+    invariant (typed level normal forms hold no proofs) the atoms of every
+    typed level normal form are proof-free. *)
 Lemma level_atoms_fresh_In : forall k ys j s a, all_list (fun a => ne_fresh k (atom_level a)) ys -> level_atoms_In j s a ys ->
-    ne_erase a = a -> ne_fresh k a.
+    ne_proof_free a -> ne_fresh k a.
 Proof.
   induction ys as [| [j0 t b] r IH]; cbn; intros j s a Hf Hi Ha; [ contradiction |].
   destruct Hf as [Hb Hr]; destruct Hi as [(_ & _ & Hab) | Hi]; [| eapply IH; eassumption ].
-  rewrite <- Ha, Hab; exact (ne_fresh_erase _ _ Hb).
+  rewrite (ne_proof_free_eq _ _ Ha Hab); exact Hb.
 Qed.
 
 Lemma lvl_le_level_atoms_fresh : forall k l l', lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
-    forall j s a, level_atoms_In j s a (snd l) -> ne_erase a = a -> ~ ne_fresh k a -> s < fst (fst l').
+    forall j s a, level_atoms_In j s a (snd l) -> ne_proof_free a -> ~ ne_fresh k a -> s < fst (fst l').
 Proof.
   intros k [c xs] [d ys] Hle Hys j s a Hin Hea Ha; cbn [fst snd] in *.
   rewrite lvl_le_correct in Hle.
@@ -986,7 +939,7 @@ Proof.
   assert (Hge : ordinal_le (s, N) (level_atoms_eval (ν_at a s N) xs)).
   { clear Hle; induction xs as [| [j0 t b] r IH]; cbn in Hin |- *; [ contradiction |].
     destruct Hin as [(<- & <- & Hab) | Hin].
-    - unfold ν_at at 1; rewrite (at_cmp_erase_eq_r a s b a s (eq_sym Hab)), at_cmp_refl.
+    - unfold ν_at at 1; rewrite (at_cmp_upto_r a s b a s (symmetry Hab)), at_cmp_refl.
       generalize (level_atoms_eval (ν_at a s N) r); intros; ordinal_solve.
     - specialize (IH Hin); revert IH; generalize (level_atoms_eval (ν_at a s N) r) (ν_at a s N b t); intros; ordinal_solve. }
   assert (HN1 : snd d < N) by (subst N; lia).
@@ -995,19 +948,26 @@ Proof.
   revert Hle Hge Hs HN1 HN2; generalize (level_atoms_eval (ν_at a s N) xs) (level_atoms_max_offset ys); intros; ordinal_solve.
 Qed.
 
-(** Un-weakening commutes with erasure: the marker mentions no variable. *)
-Lemma nf_ne_erase_unwk :
-  (forall W k, nf_erase (nf_unwk k W) = nf_unwk k (nf_erase W)) /\
-  (forall u k, ne_erase (ne_unwk k u) = ne_unwk k (ne_erase u)).
+(** Un-weakening respects equality up to proofs: it acts on the proofs
+    without changing which positions hold one. *)
+Lemma nf_ne_unwk_upto_proofs :
+  (forall W W' k, nf_eq_upto_proofs W W' -> nf_eq_upto_proofs (nf_unwk k W) (nf_unwk k W')) /\
+  (forall u u' k, ne_eq_upto_proofs u u' -> ne_eq_upto_proofs (ne_unwk k u) (ne_unwk k u')).
 Proof.
-  apply nf_ne_ind; intros; cbn [nf_erase ne_erase nf_unwk ne_unwk]; try solve [ f_equal; eauto ];
-    f_equal; try solve [ eauto ]; rewrite ?List.map_map;
-    (eapply list_all_map_ext; [ eassumption |]); intros x Hx;
-    first [ apply Hx
-          | solve [ destruct Hx; unfold map_level_atom; cbn; f_equal; eauto ]
-          | destruct Hx as [n' Z HZ A HA brs Hbrs]; unfold map_normal_block; cbn; f_equal; [ apply HZ | apply HA |];
-            rewrite !List.map_map; eapply list_all_map_ext; [ exact Hbrs |];
-            intros br Hbr; destruct Hbr; unfold map_normal_branch; cbn; f_equal; eauto ].
+  unfold nf_eq_upto_proofs, ne_eq_upto_proofs.
+  apply nf_ne_ind; intros;
+    lazymatch goal with
+    | H : nf_eqb_upto_proofs _ ?N = true |- _ => destruct N
+    | H : ne_eqb_upto_proofs _ ?N = true |- _ => destruct N
+    end;
+    cbn [nf_unwk ne_unwk nf_eqb_upto_proofs ne_eqb_upto_proofs] in *; try discriminate; try reflexivity;
+    eqb_split; eqb_leaves; try solve [ eauto ].
+  all: eapply list_eqb_map_all; [ eassumption | | eassumption ]; intros x Hx y Hxy; try solve [ eauto ].
+  all: destruct Hx; destruct y; cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *;
+    eqb_split; eqb_leaves; subst; eqb_split; eqb_leaves; try solve [ eauto ].
+  all: eapply list_eqb_map_all; [ eassumption | | eassumption ]; intros br Hbr br' Hbb; destruct Hbr; destruct br';
+    cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *; eqb_split; eqb_leaves; subst;
+    eqb_split; eqb_leaves; eauto.
 Qed.
 
 (** ** The Bound of a Level Under a Binder
@@ -1060,20 +1020,20 @@ Proof.
     revert IH; generalize (level_atoms_eval ν r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ordinal_solve.
 Qed.
 
-Lemma level_atoms_open_bound_le : forall k xs d, level_atoms_erased xs ->
-    (forall j s a, level_atoms_In j s a xs -> ne_erase a = a -> ~ ne_fresh k a -> s < fst d) ->
+Lemma level_atoms_open_bound_le : forall k xs d, all_list (fun a => ne_proof_free (atom_level a)) xs ->
+    (forall j s a, level_atoms_In j s a xs -> ne_proof_free a -> ~ ne_fresh k a -> s < fst d) ->
     ordinal_le (level_atoms_open_bound k xs) d.
 Proof.
   intros k xs d; induction xs as [| [j s a] r IH]; cbn [level_atoms_open_bound]; intros HE H; [ apply ordinal_le_zero |].
-  cbn [level_atoms_erased] in HE; destruct HE as [Ha Hr].
+  cbn [all_list atom_level] in HE; destruct HE as [Ha Hr].
   assert (IH' : ordinal_le (level_atoms_open_bound k r) d) by (apply IH; [ exact Hr | intros; eapply H; [ right | |]; eassumption ]).
   destruct (ne_freshb k a) eqn:E; [ exact IH' |].
   assert (Hs : s < fst d).
-  { eapply H; [ left; auto | exact Ha |]. intros Hf; apply (proj2 nf_freshb_iff) in Hf; congruence. }
+  { eapply H; [ left; repeat split; reflexivity | exact Ha |]. intros Hf; apply (proj2 nf_freshb_iff) in Hf; congruence. }
   revert IH' Hs; generalize (level_atoms_open_bound k r); intros; ordinal_solve.
 Qed.
 
-Lemma lvl_le_bound : forall k l l', level_atoms_erased (snd l) -> lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
+Lemma lvl_le_bound : forall k l l', all_list (fun a => ne_proof_free (atom_level a)) (snd l) -> lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
     lvl_le (lvl_bound k l) (fst l', List.map (map_level_atom (ne_unwk k)) (snd l')).
 Proof.
   intros k [c xs] [d ys] HE Hle Hys; cbn [fst snd] in *.
@@ -1083,8 +1043,7 @@ Proof.
   set (ν' := fun a s => ν (ne_unwk k a) s).
   assert (Hν' : lvl_adm ν').
   { constructor; intros a; [ intros s; apply (lvl_adm_sort _ Hν) |].
-    intros b s Hab; apply (lvl_adm_erase _ Hν).
-    rewrite !(proj2 nf_ne_erase_unwk), Hab; reflexivity. }
+    intros b s Hab; apply (lvl_adm_upto_proofs _ Hν), (proj2 nf_ne_unwk_upto_proofs), Hab. }
   specialize (Hle ν' Hν'); unfold lvl_bound, lvl_eval in *; cbn [fst snd] in *.
   rewrite !level_atoms_eval_unwk; fold ν'.
   pose proof (level_atoms_eval_fresh_part ν' k xs) as Hf.
@@ -1113,7 +1072,7 @@ Qed.
 
 (** The bound, weakened back, is below every level fresh at [k] above the
     level. *)
-Lemma lvl_le_bound_wk : forall k l l', level_atoms_erased (snd l) -> lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
+Lemma lvl_le_bound_wk : forall k l l', all_list (fun a => ne_proof_free (atom_level a)) (snd l) -> lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
     lvl_le (ordinal_max (fst l) (level_atoms_open_bound k (snd l)), level_atoms_fresh_part k (snd l)) l'.
 Proof.
   intros k [c xs] [d ys] HE Hle Hys; cbn [fst snd] in *.

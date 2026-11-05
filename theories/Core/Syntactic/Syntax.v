@@ -1,4 +1,5 @@
 From Stdlib Require Import Lia List Morphisms Relation_Definitions RelationClasses Setoid String Wf_nat.
+From Stdlib Require Bool.
 
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.Levels Require Export Ordinals.
@@ -1708,15 +1709,12 @@ Inductive nf : Set :=
     normal: it is the proof as written, its free variables bound by local
     definitions to the readbacks of their values ([Core.Semantic.Readback]).
     Normal forms are compared up to their proofs
-    ([nf_equal_up_to_proofs]). *)
+    ([nf_eq_upto_proofs]). *)
 | nf_proof : exp -> nf
 (** [⊥] *)
 | nf_False : nf
 (** A [Σₚ] of normal forms *)
 | nf_and : nf -> nf -> nf
-(** A proof erased ([nf_erase]): normal forms are compared up to their
-    proofs.  Only an erasure builds it. *)
-| nf_proof_erased : nf
 (** A [Π] of normal forms, out of a domain of the kind [κd] into a
     codomain of the kind [κc] ([a_pi]): a [∀] at [ak_propositional] *)
 | nf_pi : abs_kind -> abs_kind -> nf -> nf -> nf
@@ -1737,9 +1735,6 @@ with ne : Set :=
 (** Ex falso at a type, with its proof of [⊥] as a term: a proof is not
     evaluated, so it is stuck on nothing *)
 | ne_absurd : nf -> exp -> ne
-(** Ex falso at a type with its proof erased ([ne_erase]).  Only an
-    erasure builds it. *)
-| ne_absurd_erased : nf -> ne
 (** The eliminator of the group [pq], at its declared member [m], stuck
     on a neutral, at the group's uniform parameters; its blocks carry the
     scrutinee types, motives and branches.  (An eliminator at a view is stuck as the eliminator of the
@@ -1774,8 +1769,7 @@ Fixpoint apps_exp (M : exp) (args : list exp) : exp :=
   end.
 
 (** The term a normal form stands for (normal forms are a subset of
-    terms).  An erased proof stands for none: erasures are only compared
-    ([nf_erase]), so its term is the closed [Propₘ], never read. *)
+    terms). *)
 Fixpoint nf_to_exp (M : nf) : exp :=
   match M with
   | nf_typ i => a_typ i
@@ -1788,7 +1782,6 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_proof M => M
   | nf_False => a_False
   | nf_and P Q => a_and (nf_to_exp P) (nf_to_exp Q)
-  | nf_proof_erased => a_prop
   | nf_pi κd κc A B => a_pi κd κc (nf_to_exp A) (nf_to_exp B)
   | nf_fn A M => a_fn (nf_to_exp A) (nf_to_exp M)
   | nf_indty p k Ms => apps_exp (a_ind p k) (List.map nf_to_exp Ms)
@@ -1800,7 +1793,6 @@ Fixpoint nf_to_exp (M : nf) : exp :=
 with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_absurd A M => a_absurd (nf_to_exp A) M
-  | ne_absurd_erased A => a_absurd (nf_to_exp A) a_prop
   | ne_elim p Us m Bks M =>
       a_elim ak_relevant p (List.map nf_to_exp Us) m
         (List.map (fun b => eb_mk (block_arity b) (nf_to_exp (block_scrutinee_type b)) (nf_to_exp (block_motive b))
@@ -1911,8 +1903,7 @@ Proof. intros ? ? ? H H'; destruct H; inversion H'; reflexivity. Qed.
     not inspected. *)
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False
-  | nf_proof_erased => True
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_clean (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_clean A /\ nf_clean B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_clean Ms
@@ -1922,7 +1913,7 @@ Fixpoint nf_clean (W : nf) : Prop :=
   end
 with ne_clean (M : ne) : Prop :=
   match M with
-  | ne_absurd A _ | ne_absurd_erased A => nf_clean A
+  | ne_absurd A _ => nf_clean A
   | ne_elim _ Us _ Bks M =>
       all_list nf_clean Us /\
       all_list (fun b => nf_clean (block_scrutinee_type b) /\ nf_clean (block_motive b) /\
@@ -2120,86 +2111,260 @@ Defined.
 (** ** Equality up to Proofs
 
     Proofs are irrelevant: two normal forms that differ only in their
-    proofs stand for equal terms.  [nf_erase] replaces every proof by the
-    marker [nf_proof_erased] (in a stuck ex falso, [ne_absurd_erased]);
-    two normal forms are equal up to proofs when their erasures are
-    equal. *)
-Fixpoint nf_erase (W : nf) : nf :=
-  match W with
-  | nf_typ i => nf_typ i
-  | nf_univ c xs => nf_univ c (List.map (map_level_atom ne_erase) xs)
-  | nf_level n => nf_level n
-  | nf_level_sort => nf_level_sort
-  | nf_lvl c xs => nf_lvl c (List.map (map_level_atom ne_erase) xs)
-  | nf_prop => nf_prop
-  | nf_True => nf_True
-  | nf_proof _ | nf_proof_erased => nf_proof_erased
-  | nf_False => nf_False
-  | nf_and P Q => nf_and (nf_erase P) (nf_erase Q)
-  | nf_pi κd κc A B => nf_pi κd κc (nf_erase A) (nf_erase B)
-  | nf_fn A M => nf_fn (nf_erase A) (nf_erase M)
-  | nf_indty p k Ms => nf_indty p k (List.map nf_erase Ms)
-  | nf_con p k c Ms => nf_con p k c (List.map nf_erase Ms)
-  | nf_neut M => nf_neut (ne_erase M)
-  | nf_record p Ms => nf_record p (List.map nf_erase Ms)
-  | nf_tuple p Ms fs Ns => nf_tuple p (List.map nf_erase Ms) fs (List.map nf_erase Ns)
-  end
-with ne_erase (M : ne) : ne :=
-  match M with
-  | ne_absurd A _ | ne_absurd_erased A => ne_absurd_erased (nf_erase A)
-  | ne_elim p Us m Bks M => ne_elim p (List.map nf_erase Us) m (List.map (map_normal_block (fun _ => nf_erase)) Bks) (ne_erase M)
-  | ne_app M N => ne_app (ne_erase M) (nf_erase N)
-  | ne_var x => ne_var x
-  | ne_glob p => ne_glob p
-  | ne_proj f M => ne_proj f (ne_erase M)
+    proofs stand for equal terms.  Nothing is erased: the normal forms
+    are compared structurally, any two proofs related. *)
+
+#[local] Open Scope bool_scope.
+
+(** The boolean of a decision. *)
+Definition dec_eqb {A : Type} (d : forall x y : A, {x = y} + {x <> y}) (x y : A) : bool :=
+  if d x y then true else false.
+
+Lemma dec_eqb_true : forall {A} (d : forall x y : A, {x = y} + {x <> y}) x y, dec_eqb d x y = true <-> x = y.
+Proof. intros; unfold dec_eqb; destruct (d x y); split; congruence. Qed.
+
+Lemma dec_eqb_refl : forall {A} (d : forall x y : A, {x = y} + {x <> y}) x, dec_eqb d x x = true.
+Proof. intros; apply dec_eqb_true; reflexivity. Qed.
+
+Lemma dec_eqb_sym : forall {A} (d : forall x y : A, {x = y} + {x <> y}) x y, dec_eqb d x y = dec_eqb d y x.
+Proof. intros; unfold dec_eqb; destruct (d x y), (d y x); congruence. Qed.
+
+(** Two lists related pointwise by a boolean comparison. *)
+Fixpoint list_eqb {A : Set} (f : A -> A -> bool) (l l' : list A) : bool :=
+  match l, l' with
+  | nil, nil => true
+  | x :: r, x' :: r' => f x x' && list_eqb f r r'
+  | _, _ => false
   end.
 
-(** Erasing twice is erasing once. *)
-Lemma nf_ne_erase_idem :
-  (forall W, nf_erase (nf_erase W) = nf_erase W) /\ (forall M, ne_erase (ne_erase M) = ne_erase M).
-Proof.
-  apply nf_ne_ind; intros; cbn [nf_erase ne_erase]; f_equal; try assumption; rewrite ?List.map_map;
-    try (eapply list_all_map_ext; [ eassumption |]);
-    first [ intros x Hx; exact Hx
-          | intros x Hx; destruct Hx; unfold map_level_atom; cbn; f_equal; assumption
-          | intros x Hx; destruct Hx as [n' Z HZ A HA brs Hbrs]; unfold map_normal_block; cbn; f_equal; [ assumption | assumption |];
-            rewrite List.map_map; eapply list_all_map_ext; [ exact Hbrs |];
-            intros br Hbr; destruct Hbr; unfold map_normal_branch; cbn; f_equal; assumption
-          | reflexivity ].
-Qed.
+(** [nf_eqb_upto_proofs W W'] is the decision procedure for equality of
+    normal forms up to their proofs: the two normal forms have the same
+    shape, with the same kinds, indices, names and levels, and any two
+    proofs ([nf_proof], and the proof of a stuck ex falso) are related.
+    Statements use the relation [nf_eq_upto_proofs] below; the checker
+    runs this function.  For example [Vec ⟨n, nf_proof P1⟩] and
+    [Vec ⟨n, nf_proof P2⟩] are related, while [Πⁿ{ak_relevant} A B] and
+    [Πⁿ{ak_level} A B] are not. *)
+Fixpoint nf_eqb_upto_proofs (W W' : nf) {struct W} : bool :=
+  match W, W' with
+  | nf_typ i, nf_typ i' => Nat.eqb i i'
+  | nf_univ c xs, nf_univ c' xs' =>
+      dec_eqb o2_eq_dec c c' &&
+      list_eqb (fun a a' => Nat.eqb (atom_offset a) (atom_offset a') && Nat.eqb (atom_sort a) (atom_sort a') &&
+                            ne_eqb_upto_proofs (atom_level a) (atom_level a')) xs xs'
+  | nf_level n, nf_level n' => Nat.eqb n n'
+  | nf_level_sort, nf_level_sort => true
+  | nf_lvl c xs, nf_lvl c' xs' =>
+      dec_eqb o2_eq_dec c c' &&
+      list_eqb (fun a a' => Nat.eqb (atom_offset a) (atom_offset a') && Nat.eqb (atom_sort a) (atom_sort a') &&
+                            ne_eqb_upto_proofs (atom_level a) (atom_level a')) xs xs'
+  | nf_prop, nf_prop => true
+  | nf_True, nf_True => true
+  | nf_proof _, nf_proof _ => true
+  | nf_False, nf_False => true
+  | nf_and P Q, nf_and P' Q' => nf_eqb_upto_proofs P P' && nf_eqb_upto_proofs Q Q'
+  | nf_pi κd κc A B, nf_pi κd' κc' A' B' =>
+      dec_eqb abs_kind_eq_dec κd κd' && dec_eqb abs_kind_eq_dec κc κc' &&
+      nf_eqb_upto_proofs A A' && nf_eqb_upto_proofs B B'
+  | nf_fn A M, nf_fn A' M' => nf_eqb_upto_proofs A A' && nf_eqb_upto_proofs M M'
+  | nf_indty p k Ms, nf_indty p' k' Ms' =>
+      dec_eqb qname_eq_dec p p' && Nat.eqb k k' && list_eqb nf_eqb_upto_proofs Ms Ms'
+  | nf_con p k c Ms, nf_con p' k' c' Ms' =>
+      dec_eqb qname_eq_dec p p' && Nat.eqb k k' && dec_eqb String.string_dec c c' && list_eqb nf_eqb_upto_proofs Ms Ms'
+  | nf_neut M, nf_neut M' => ne_eqb_upto_proofs M M'
+  | nf_record p Ms, nf_record p' Ms' => dec_eqb qname_eq_dec p p' && list_eqb nf_eqb_upto_proofs Ms Ms'
+  | nf_tuple p Ms fs Ns, nf_tuple p' Ms' fs' Ns' =>
+      dec_eqb qname_eq_dec p p' && list_eqb nf_eqb_upto_proofs Ms Ms' &&
+      dec_eqb (List.list_eq_dec String.string_dec) fs fs' && list_eqb nf_eqb_upto_proofs Ns Ns'
+  | _, _ => false
+  end
+(** The same for neutrals. *)
+with ne_eqb_upto_proofs (M M' : ne) {struct M} : bool :=
+  match M, M' with
+  | ne_absurd A _, ne_absurd A' _ => nf_eqb_upto_proofs A A'
+  | ne_elim p Us m Bks N, ne_elim p' Us' m' Bks' N' =>
+      dec_eqb qname_eq_dec p p' && list_eqb nf_eqb_upto_proofs Us Us' && Nat.eqb m m' &&
+      list_eqb (fun b b' =>
+                  Nat.eqb (block_arity b) (block_arity b') &&
+                  nf_eqb_upto_proofs (block_scrutinee_type b) (block_scrutinee_type b') &&
+                  nf_eqb_upto_proofs (block_motive b) (block_motive b') &&
+                  list_eqb (fun br br' =>
+                              dec_eqb String.string_dec (branch_constructor br) (branch_constructor br') &&
+                              Nat.eqb (branch_arity br) (branch_arity br') &&
+                              nf_eqb_upto_proofs (branch_body br) (branch_body br'))
+                    (block_branches b) (block_branches b')) Bks Bks' &&
+      ne_eqb_upto_proofs N N'
+  | ne_app N A, ne_app N' A' => ne_eqb_upto_proofs N N' && nf_eqb_upto_proofs A A'
+  | ne_var x, ne_var x' => Nat.eqb x x'
+  | ne_glob p, ne_glob p' => dec_eqb qname_eq_dec p p'
+  | ne_proj f N, ne_proj f' N' => dec_eqb String.string_dec f f' && ne_eqb_upto_proofs N N'
+  | _, _ => false
+  end.
 
-Lemma ne_erase_idem : forall M, ne_erase (ne_erase M) = ne_erase M.
-Proof. apply nf_ne_erase_idem. Qed.
-
-Lemma nf_erase_idem : forall W, nf_erase (nf_erase W) = nf_erase W.
-Proof. apply nf_ne_erase_idem. Qed.
-
-(** Erasure keeps a normal form clean: cleanness does not look at proofs. *)
-Lemma nf_ne_clean_erase : (forall W, nf_clean W -> nf_clean (nf_erase W)) /\ (forall M, ne_clean M -> ne_clean (ne_erase M)).
-Proof.
-  apply nf_ne_ind; intros; cbn [nf_erase ne_erase nf_clean ne_clean] in *; intuition auto;
-    repeat match goal with H : _ /\ _ |- _ => destruct H end;
-    rewrite ?all_list_map; try split; auto;
-    try (eapply list_all_all_list_impl; [ eassumption | eassumption |]; cbn; intros x Hx Hy;
-         first [ solve [ destruct Hx; cbn in *; auto ]
-               | solve [ destruct Hx as [n' Z HZ A HA brs Hbrs]; cbn in *; destruct Hy as [HyZ [HyA Hybrs]]; split; [ auto | split; [ auto |] ];
-                         rewrite all_list_map; eapply list_all_all_list_impl; [ exact Hbrs | exact Hybrs |];
-                         intros br Hbr Hy'; destruct Hbr; cbn in *; auto ]
-               | auto ]).
-Qed.
-
-Lemma ne_clean_erase : forall M, ne_clean M -> ne_clean (ne_erase M).
-Proof. apply nf_ne_clean_erase. Qed.
-
-(** Two normal forms are equal up to their proofs. *)
-Definition nf_equal_up_to_proofs (W W' : nf) : Prop := nf_erase W = nf_erase W'.
+(** Two normal forms are equal up to their proofs: the relation of
+    statements, decided by [nf_eqb_upto_proofs]. *)
+Definition nf_eq_upto_proofs (W W' : nf) : Prop := nf_eqb_upto_proofs W W' = true.
 
 (** Two neutrals are equal up to their proofs. *)
-Definition ne_equal_up_to_proofs (M M' : ne) : Prop := ne_erase M = ne_erase M'.
+Definition ne_eq_upto_proofs (M M' : ne) : Prop := ne_eqb_upto_proofs M M' = true.
 
-(** Equality up to proofs is decidable. *)
-Definition nf_equal_up_to_proofs_dec (W W' : nf) : {nf_equal_up_to_proofs W W'} + {~ nf_equal_up_to_proofs W W'} :=
-  nf_eq_dec (nf_erase W) (nf_erase W').
+(** *** Lists *)
+
+Lemma list_eqb_refl_all : forall {A : Set} (Q : A -> Type) (f : A -> A -> bool) l,
+    Base.list_all A Q l -> (forall x, Q x -> f x x = true) -> list_eqb f l l = true.
+Proof. intros * Hl Hf; induction Hl; cbn; [ reflexivity | rewrite Hf, IHHl by assumption; reflexivity ]. Qed.
+
+Lemma list_eqb_sym_all : forall {A : Set} (Q : A -> Type) (f : A -> A -> bool) l,
+    Base.list_all A Q l -> (forall x, Q x -> forall y, f x y = f y x) -> forall l', list_eqb f l l' = list_eqb f l' l.
+Proof.
+  intros * Hl Hf; induction Hl; intros [| y l']; cbn; try reflexivity.
+  rewrite (Hf _ ltac:(eassumption) y), IHHl; reflexivity.
+Qed.
+
+Lemma list_eqb_trans_all : forall {A : Set} (Q : A -> Type) (f : A -> A -> bool) l,
+    Base.list_all A Q l -> (forall x, Q x -> forall y z, f x y = true -> f y z = true -> f x z = true) ->
+    forall l' l'', list_eqb f l l' = true -> list_eqb f l' l'' = true -> list_eqb f l l'' = true.
+Proof.
+  intros * Hl Hf; induction Hl; intros [| y l'] [| z l''] H1 H2; cbn in *; try discriminate; try reflexivity.
+  apply Bool.andb_true_iff in H1 as [H1 H1']; apply Bool.andb_true_iff in H2 as [H2 H2'].
+  rewrite (Hf _ ltac:(eassumption) _ _ H1 H2), (IHHl _ _ H1' H2'); reflexivity.
+Qed.
+
+(** Related lists stay related under maps that respect the relation of
+    their elements: the list case of the congruence lemmas (renaming,
+    un-weakening). *)
+Lemma list_eqb_map_all : forall {A B : Set} (Q : A -> Type) (f : A -> A -> bool) (f' : B -> B -> bool) (g g' : A -> B) l,
+    Base.list_all A Q l -> (forall x, Q x -> forall y, f x y = true -> f' (g x) (g' y) = true) ->
+    forall l', list_eqb f l l' = true -> list_eqb f' (List.map g l) (List.map g' l') = true.
+Proof.
+  intros * Hl Hf; induction Hl; intros [| y l'] H; cbn in *; try discriminate; try reflexivity.
+  apply Bool.andb_true_iff in H as [H H']; rewrite (Hf _ ltac:(eassumption) _ H), (IHHl _ H'); reflexivity.
+Qed.
+
+(** Splits conjunctions of booleans, in the hypotheses and the goal. *)
+Ltac eqb_split :=
+  repeat match goal with
+         | H : (_ && _) = true |- _ => apply Bool.andb_true_iff in H as [? ?]
+         | |- (_ && _) = true => apply Bool.andb_true_iff; split
+         end.
+
+(** Turns the boolean equalities of the hypotheses into equalities and
+    closes the leaves they give. *)
+Ltac eqb_leaves :=
+  repeat match goal with
+         | H : Nat.eqb _ _ = true |- _ => apply PeanoNat.Nat.eqb_eq in H
+         | H : dec_eqb _ _ _ = true |- _ => apply dec_eqb_true in H
+         end;
+  try (apply PeanoNat.Nat.eqb_eq; congruence); try (apply dec_eqb_true; congruence).
+
+(** *** An Equivalence *)
+
+Lemma nf_ne_eqb_upto_proofs_refl :
+  (forall W, nf_eqb_upto_proofs W W = true) /\ (forall M, ne_eqb_upto_proofs M M = true).
+Proof.
+  apply nf_ne_ind; intros; cbn [nf_eqb_upto_proofs ne_eqb_upto_proofs]; eqb_split;
+    rewrite ?PeanoNat.Nat.eqb_refl, ?dec_eqb_refl; try assumption; try reflexivity;
+    try (eapply list_eqb_refl_all; [ eassumption |]; cbn; intros x Hx).
+  all: try (destruct Hx; cbn; rewrite !PeanoNat.Nat.eqb_refl; cbn; assumption).
+  all: try assumption.
+  - destruct Hx as [n' Z HZ A' HA brs Hbrs]; cbn; rewrite PeanoNat.Nat.eqb_refl, HZ, HA; cbn.
+    eapply list_eqb_refl_all; [ exact Hbrs |]; intros br Hbr; destruct Hbr; cbn.
+    rewrite dec_eqb_refl, PeanoNat.Nat.eqb_refl; assumption.
+Qed.
+
+Lemma nf_ne_eqb_upto_proofs_sym :
+  (forall W W', nf_eqb_upto_proofs W W' = nf_eqb_upto_proofs W' W) /\
+  (forall M M', ne_eqb_upto_proofs M M' = ne_eqb_upto_proofs M' M).
+Proof.
+  apply nf_ne_ind; intros;
+    lazymatch goal with |- nf_eqb_upto_proofs _ ?W = _ => destruct W | |- ne_eqb_upto_proofs _ ?M = _ => destruct M end;
+    cbn [nf_eqb_upto_proofs ne_eqb_upto_proofs]; try reflexivity.
+  all: repeat (match goal with |- (_ && _) = (_ && _) => apply (f_equal2 andb) end);
+    try apply PeanoNat.Nat.eqb_sym; try apply dec_eqb_sym; try (match goal with H : forall _, _ = _ |- _ => apply H end).
+  all: try (eapply list_eqb_sym_all; [ eassumption |]; intros x Hx y).
+  all: try solve [ apply Hx ].
+  all: destruct Hx; cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb];
+    repeat (match goal with |- (_ && _) = (_ && _) => apply (f_equal2 andb) end); try apply PeanoNat.Nat.eqb_sym; try solve [ auto ].
+  all: eapply list_eqb_sym_all; [ eassumption |]; intros br Hbr br'; destruct Hbr;
+    cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb];
+    repeat (match goal with |- (_ && _) = (_ && _) => apply (f_equal2 andb) end);
+    try apply PeanoNat.Nat.eqb_sym; try apply dec_eqb_sym; auto.
+Qed.
+
+Lemma nf_ne_eqb_upto_proofs_trans :
+  (forall W W' W'', nf_eqb_upto_proofs W W' = true -> nf_eqb_upto_proofs W' W'' = true -> nf_eqb_upto_proofs W W'' = true) /\
+  (forall M M' M'', ne_eqb_upto_proofs M M' = true -> ne_eqb_upto_proofs M' M'' = true -> ne_eqb_upto_proofs M M'' = true).
+Proof.
+  apply nf_ne_ind; intros;
+    lazymatch goal with
+    | H1 : nf_eqb_upto_proofs _ ?W = true, H2 : nf_eqb_upto_proofs ?W ?W' = true |- _ => destruct W, W'
+    | H1 : ne_eqb_upto_proofs _ ?M = true, H2 : ne_eqb_upto_proofs ?M ?M' = true |- _ => destruct M, M'
+    end;
+    cbn [nf_eqb_upto_proofs ne_eqb_upto_proofs] in *; try discriminate; try reflexivity.
+  all: eqb_split; eqb_leaves; try solve [ eauto ].
+  all: eapply list_eqb_trans_all; [ eassumption | | eassumption | eassumption ]; intros x Hx y z Hxy Hyz; try solve [ eauto ].
+  all: destruct Hx; cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *; eqb_split; eqb_leaves;
+    try solve [ eauto ].
+  all: eapply list_eqb_trans_all; [ eassumption | | eassumption | eassumption ]; intros br Hbr br' br'' Hb1 Hb2; destruct Hbr;
+    cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *; eqb_split; eqb_leaves; eauto.
+Qed.
+
+#[export] Instance nf_eq_upto_proofs_Equivalence : Equivalence nf_eq_upto_proofs.
+Proof.
+  split; unfold nf_eq_upto_proofs; repeat intro.
+  - apply nf_ne_eqb_upto_proofs_refl.
+  - rewrite (proj1 nf_ne_eqb_upto_proofs_sym); assumption.
+  - eapply (proj1 nf_ne_eqb_upto_proofs_trans); eassumption.
+Qed.
+
+#[export] Instance ne_eq_upto_proofs_Equivalence : Equivalence ne_eq_upto_proofs.
+Proof.
+  split; unfold ne_eq_upto_proofs; repeat intro.
+  - apply nf_ne_eqb_upto_proofs_refl.
+  - rewrite (proj2 nf_ne_eqb_upto_proofs_sym); assumption.
+  - eapply (proj2 nf_ne_eqb_upto_proofs_trans); eassumption.
+Qed.
+
+(** Two lists of normal forms equal up to their proofs, element by element
+    (the comparison of the arguments of [nf_indty]). *)
+Definition nfs_eq_upto_proofs (Ws Ws' : list nf) : Prop := list_eqb nf_eqb_upto_proofs Ws Ws' = true.
+
+#[export] Instance nfs_eq_upto_proofs_Equivalence : Equivalence nfs_eq_upto_proofs.
+Proof.
+  unfold nfs_eq_upto_proofs; split.
+  - intros Ws; induction Ws; cbn; [ reflexivity |]; rewrite (proj1 nf_ne_eqb_upto_proofs_refl), IHWs; reflexivity.
+  - intros Ws; induction Ws as [| W Ws IH]; intros [| W' Ws'] H; cbn in *; try discriminate; [ reflexivity |].
+    apply Bool.andb_true_iff in H as [H1 H2]; rewrite (proj1 nf_ne_eqb_upto_proofs_sym), H1, (IH _ H2); reflexivity.
+  - intros Ws; induction Ws as [| W Ws IH]; intros [| W' Ws'] [| W'' Ws''] H H'; cbn in *; try discriminate; [ reflexivity |].
+    apply Bool.andb_true_iff in H as [H1 H2]; apply Bool.andb_true_iff in H' as [H1' H2'].
+    rewrite ((proj1 nf_ne_eqb_upto_proofs_trans) _ _ _ H1 H1'), (IH _ _ H2 H2'); reflexivity.
+Qed.
+
+(** The lists, cons by cons. *)
+Lemma nfs_eq_upto_proofs_cons : forall W W' Ws Ws',
+    nfs_eq_upto_proofs (W :: Ws) (W' :: Ws') <-> nf_eq_upto_proofs W W' /\ nfs_eq_upto_proofs Ws Ws'.
+Proof. intros; unfold nfs_eq_upto_proofs, nf_eq_upto_proofs; cbn; apply Bool.andb_true_iff. Qed.
+
+(** [auto] closes reflexive goals of the relations (an atom is in a list
+    in which it occurs: [level_atoms_In]). *)
+#[export] Hint Extern 1 (nf_eq_upto_proofs _ _) => reflexivity : core.
+#[export] Hint Extern 1 (ne_eq_upto_proofs _ _) => reflexivity : core.
+#[export] Hint Extern 1 (nfs_eq_upto_proofs _ _) => reflexivity : core.
+
+(** Equal normal forms are equal up to proofs. *)
+Lemma nf_eq_upto_proofs_of_eq : forall W W', W = W' -> nf_eq_upto_proofs W W'.
+Proof. intros * ->; reflexivity. Qed.
+
+Lemma ne_eq_upto_proofs_of_eq : forall M M', M = M' -> ne_eq_upto_proofs M M'.
+Proof. intros * ->; reflexivity. Qed.
+
+(** Equality up to proofs is decidable, by its decision procedure. *)
+Definition nf_eq_upto_proofs_dec (W W' : nf) : {nf_eq_upto_proofs W W'} + {~ nf_eq_upto_proofs W W'} :=
+  Bool.bool_dec (nf_eqb_upto_proofs W W') true.
+
+Definition ne_eq_upto_proofs_dec (M M' : ne) : {ne_eq_upto_proofs M M'} + {~ ne_eq_upto_proofs M M'} :=
+  Bool.bool_dec (ne_eqb_upto_proofs M M') true.
+
 
 (** ** Notations *)
 Module Nf_Notations.
