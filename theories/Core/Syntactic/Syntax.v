@@ -1841,6 +1841,11 @@ Definition lvl : Set := (o2 * list level_atom)%type.
 
 Definition nf_lvl_of (l : lvl) : nf := nf_lvl (fst l) (snd l).
 
+(** [lets_exp bs M]: [M] under the local definitions [bs], outermost
+    first; the readback of a kept proof binds the positions it reads so
+    ([Core.Semantic.Readback.Definitions.read_proof_kept]). *)
+Definition lets_exp (bs : list binding) (M : exp) : exp := List.fold_right a_let M bs.
+
 Definition nf_univ_of (l : lvl) : nf := nf_univ (fst l) (snd l).
 
 Lemma nf_lvl_of_inj : forall l l', nf_lvl_of l = nf_lvl_of l' -> l = l'.

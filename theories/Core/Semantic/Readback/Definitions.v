@@ -196,10 +196,6 @@ Inductive eval_entry_type (Θ : gdeps) (Ξ : gstack) : entry_type -> domain -> P
 #[export]
 Hint Constructors eval_entry_type : mctt.
 
-(** The local definitions the readback of a kept proof binds, outermost
-    first, around the proof term [M]. *)
-Definition lets_exp (bs : list binding) (M : exp) : exp := List.fold_right a_let M bs.
-
 (** How far past an entry the definition binding it reaches: a module
     entry is bound by its stored unit ([read_entry_mod]), written over the
     entry's tail, so it reaches the free variables of the unit; a term

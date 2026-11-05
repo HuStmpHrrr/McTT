@@ -170,6 +170,7 @@
 ./Core/Syntactic/System/Structural.v
 ./Core/Syntactic/System/Tactics.v
 ./Core/Syntactic/SystemOpt.v
+./Core/Syntactic/System/LetPeeling.v
 ./Core/Syntactic/System/Records/Typing.v
 ./Core/Syntactic/System/Records/RecordRuns.v
 ./Core/Syntactic/Unseal.v
