@@ -440,7 +440,7 @@ Proof.
     destruct (nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & r0 & Heq & Hk).
     assert (r0 = r) as <- by (rewrite Heq, <- Hk, nonrec_relevance_at in Hr; congruence).
     pose proof (decl_typed_args _ _ _ Hdt _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
-    assert (Hls : List.length (cargs_strat gs1) = j) by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
+    assert (Hls : List.length (cargs_strat gs1) = j) by (rewrite cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; exact Hk).
     rewrite Hls, (nonrec_args_prefix_cargs_strat gs1 (ca_arg r0 A :: gs2)), Hk, <- Heq in HT.
     pose proof (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H |].
@@ -473,7 +473,7 @@ Proof.
     assert (Hk : List.length (List.firstn j (ptyp_doms t)) = j)
       by (rewrite List.length_firstn; assert (j < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
     assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
-      by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+      by (rewrite cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; reflexivity).
     rewrite Hk, Hls, (nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in HT.
     pose proof (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
@@ -496,7 +496,7 @@ Proof.
   - exact (decl_typed_nodup _ _ _ Hdt).
   - intros * HMk Hcon Heq HMj HPk HT.
     assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_strat gs1))
-      by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+      by (rewrite cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; reflexivity).
     rewrite Hls in HT.
     pose proof (decl_typed_rec_ps _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq HMj HPk HT) as H.
     rewrite (nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.

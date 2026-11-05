@@ -58,7 +58,7 @@ Fixpoint wrap_leaves_ctx (D' : ind_decl) (t' : ptyp) (nn : nat) (As Us : list ex
   | l :: ls' =>
       if leaf_in D' t' l
       then wrap_leaves_ctx D' t' nn As Us na gs0 (S r) ls' ++
-             ce_ass (leaf_ihty relevant As (sb_of_wk (wk_shiftn (r + na + nn))) (cargs_sub (wrap_base Us nn na r) gs0 (vars_from r na))
+             ce_ass ak_relevant (leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn (r + na + nn))) (cargs_sub (wrap_base Us nn na r) gs0 (vars_from r na))
                        (a_var (r + (na - 1 - List.length gs0))) l) :: nil
       else wrap_leaves_ctx D' t' nn As Us na gs0 r ls'
   end.
@@ -99,12 +99,12 @@ Definition wrap_branch_sub (pq : qname) (D D' : ind_decl) (Us : list exp) (Bks :
   let Us' := List.map (fun U => U[wk_shiftn n']ʷ) Us in
   let nvars := vars_from (nr' + na) nn in
   let avars := vars_from nr' na in
-  let ihs := elim_ihs relevant pq D Us' (blocks_wk Bks (wk_shiftn n')) (sb_of_list (sb_of_wk (wk_shiftn n')) (Us' ++ nvars))
+  let ihs := elim_ihs ak_relevant pq D Us' (blocks_wk Bks (wk_shiftn n')) (sb_of_list (sb_of_wk (wk_shiftn n')) (Us' ++ nvars))
                nn gs avars in
   sb_of_list (sb_of_wk (wk_shiftn n')) (nvars ++ avars ++ wrap_ihs D' D gs' gs ihs 0 nr').
 
 Lemma wrap_branch_snd : forall pq D D' Us Bks Mv Bs c gs' gs n B, ind_con Mv c = Some gs -> brs_lookup Bs c = Some (n, B) ->
-    snd (wrap_branch relevant pq D D' Us Bks Mv Bs c gs') = B[wrap_branch_sub pq D D' Us Bks Mv gs' gs].
+    snd (wrap_branch ak_relevant pq D D' Us Bks Mv Bs c gs') = B[wrap_branch_sub pq D D' Us Bks Mv gs' gs].
 Proof. intros * Hc Hb; unfold wrap_branch, wrap_branch_sub; cbv zeta; rewrite Hc, Hb; reflexivity. Qed.
 
 Lemma length_wrap_leaves_ctx : forall D' t' nn As Us na gs0 ls r,
@@ -220,7 +220,7 @@ Record valid_blocks (p : qname) (D : ind_decl) (Γ : ctx) (Us : list exp) (Bks :
   ; valid_blocks_names : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)
     (** Each branch context is valid *)
   ; valid_blocks_bctx : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs ->
-      ⊨ elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ
+      ⊨ elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ
     (** Each branch binds the parameters, the arguments and the recursive
         results *)
   ; valid_blocks_arity : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
@@ -228,7 +228,7 @@ Record valid_blocks (p : qname) (D : ind_decl) (Γ : ctx) (Us : list exp) (Bks :
     (** Each branch is valid at its branch type *)
   ; valid_blocks_branch : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
       In (c, n, B) (eb_brs b) ->
-      elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us }.
+      elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us }.
 
 (** A block at each member with one. *)
 Lemma valid_blocks_has : forall p D Γ Us Bks i, decl_typed gc_deps gc_stack D -> valid_blocks p D Γ Us Bks i ->
@@ -247,11 +247,11 @@ Proof.
     pose proof (gsub_qn _ _ _ _ Hβ (elim_mctx_ass p D k Mk Us Hc HMk) (HMall _ _ HMk)) as G.
     rewrite (elim_mctx_sub p D k Mk Us β Hc HMk HUl), length_elim_mctx in G; exact G. }
   assert (Hgb : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-             gsub (elim_bctx relevant p D Mk gs (blocks_motives (blocks_sub Bks β)) (List.map (fun U => U[β]) Us) ++ Ψ)
-               (sb_qn (cargs_nrec D gs + List.length gs + im_nn Mk) β) (elim_bctx relevant p D Mk gs (blocks_motives Bks) Us ++ Γ)).
+             gsub (elim_bctx ak_relevant p D Mk gs (blocks_motives (blocks_sub Bks β)) (List.map (fun U => U[β]) Us) ++ Ψ)
+               (sb_qn (cargs_nrec D gs + List.length gs + im_nn Mk) β) (elim_bctx ak_relevant p D Mk gs (blocks_motives Bks) Us ++ Γ)).
   { intros * HMk Hcon.
-    pose proof (gsub_qn _ _ _ _ Hβ (elim_bctx_ass relevant p D k Mk gs (blocks_motives Bks) Us Hc HMk) (HBc _ _ _ _ HMk Hcon)) as G.
-    rewrite (elim_bctx_sub relevant p D k Mk c gs (blocks_motives Bks) (blocks_motives (blocks_sub Bks β)) Us β Hc HMk
+    pose proof (gsub_qn _ _ _ _ Hβ (elim_bctx_ass ak_relevant p D k Mk gs (blocks_motives Bks) Us Hc HMk) (HBc _ _ _ _ HMk Hcon)) as G.
+    rewrite (elim_bctx_sub ak_relevant p D k Mk c gs (blocks_motives Bks) (blocks_motives (blocks_sub Bks β)) Us β Hc HMk
                (cons_lookup_in _ _ _ Hcon) HUl (fun j0 Mj0 HMj0 => blocks_motives_sub D Bks β j0 Mj0 HnmA HMj0)),
       length_elim_bctx in G.
     exact G. }
@@ -339,9 +339,9 @@ Qed.
 (** The group's recursive result along a leaf path of an argument, in the
     wrapped branch's context. *)
 Lemma wrap_ihty_eq : forall As nn Us na r (gs1 : list carg) l L, List.length gs1 < na ->
-    (leaf_ihty relevant As (sb_of_wk (wk_shiftn (List.length L + na + nn))) (ihs_sub nn Us na (cargs_pat gs1) (List.length L))
+    (leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn (List.length L + na + nn))) (ihs_sub nn Us na (cargs_pat gs1) (List.length L))
        (a_var (List.length L + na - 1 - List.length (cargs_pat gs1))) l)[wrap_inst nn na r L]
-    = leaf_ihty relevant As (sb_of_wk (wk_shiftn (r + na + nn))) (cargs_sub (wrap_base Us nn na r) gs1 (vars_from r na))
+    = leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn (r + na + nn))) (cargs_sub (wrap_base Us nn na r) gs1 (vars_from r na))
         (a_var (r + (na - 1 - List.length gs1))) l.
 Proof.
   intros * Hlt.
@@ -374,9 +374,9 @@ Qed.
 
 (** The same type at a later stage, [k] more recursive results. *)
 Lemma wrap_ihty_shift : forall As nn Us na r k (gs1 : list carg) l,
-    (leaf_ihty relevant As (sb_of_wk (wk_shiftn (r + na + nn))) (cargs_sub (wrap_base Us nn na r) gs1 (vars_from r na))
+    (leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn (r + na + nn))) (cargs_sub (wrap_base Us nn na r) gs1 (vars_from r na))
        (a_var (r + (na - 1 - List.length gs1))) l)[wk_shiftn k]ʷ
-    = leaf_ihty relevant As (sb_of_wk (wk_shiftn (r + k + na + nn))) (cargs_sub (wrap_base Us nn na (r + k)) gs1 (vars_from (r + k) na))
+    = leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn (r + k + na + nn))) (cargs_sub (wrap_base Us nn na (r + k)) gs1 (vars_from (r + k) na))
         (a_var (r + k + (na - 1 - List.length gs1))) l.
 Proof.
   intros; rewrite <- exp_sub_of_wk, leaf_ihty_sub.
@@ -580,11 +580,11 @@ Section WrapBranch.
         variable ([elim_ihs]). *)
     Lemma wrapping_ih_leaf : forall gs1 t gs2 l, gs = gs1 ++ ca_rec t :: gs2 ->
         In l (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t) ->
-        E ++ Ψc ⊨ leaf_ih relevant p Uw (blocks_wk Bks (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
+        E ++ Ψc ⊨ leaf_ih ak_relevant p Uw (blocks_wk Bks (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
                     (a_var (List.length E + (na - 1 - List.length gs1))) l
-          : leaf_ihty relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
+          : leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
               (a_var (List.length E + (na - 1 - List.length gs1))) l /\
-        exists j0 : nat, E ++ Ψc ⊨ leaf_ihty relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
+        exists j0 : nat, E ++ Ψc ⊨ leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
               (a_var (List.length E + (na - 1 - List.length gs1))) l : Typeω@j0.
     Proof.
       intros * Heq Hinl.
@@ -619,7 +619,7 @@ Section WrapBranch.
                     HBks' HnmA' HMall' HAv' HnaA' HBc' HarA' HBv' gs1 t gs2 Heq) as Hf.
       assert (Hinl' : In l (shape_leaves (rview_leaves D) (im_nn Mv + List.length (cargs_nonrec gs1) + 0) (ptyp_skip 0 t))).
       { replace (im_nn Mv + List.length (cargs_nonrec gs1) + 0) with (pat_nargs (cargs_pat gs1) + nn)
-          by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, List.length_map; unfold nn; lia).
+          by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; unfold nn; lia).
         exact Hinl. }
       pose proof (leaf_ih_valid VP p D HP HPD (E ++ Ψc) (List.firstn (ind_nu D) Ps) (blocks_wk Bks (wk_shiftn n)) i HE
                     HUl' HUs' ltac:(rewrite HfP; exact wrapping_us_scoped) HBks' HnmA' HMall' HAv' HnaA' HBc' HarA' HBv'
@@ -633,30 +633,30 @@ Section WrapBranch.
       (** The instance of the parameters, at a base agreeing below them. *)
       assert (Hst : ptyp_scoped (List.length (cargs_nonrec gs1) + im_np D Mv) t).
       { pose proof (member_closed_recs _ _ (decl_closed_members _ Hc _ _ HMv) _ _ _ _ _ wrapping_Hin Heq) as Hs.
-        rewrite cargs_strat_nonrec, List.length_rev, List.length_map in Hs; exact Hs. }
+        rewrite cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele in Hs; exact Hs. }
       assert (Hsl : leaf_scoped (List.length (cargs_nonrec gs1) + im_np D Mv) l).
       { assert (Hst' : ptyp_scoped (pat_nargs (cargs_pat gs1) + nn + ind_nu D) t)
           by (replace (pat_nargs (cargs_pat gs1) + nn + ind_nu D) with (List.length (cargs_nonrec gs1) + im_np D Mv)
-                by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, List.length_map; unfold im_np, nn; lia);
+                by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; unfold im_np, nn; lia);
               exact Hst).
         pose proof (shape_leaves_scoped (rview_leaves D) (ind_nu D) t (pat_nargs (cargs_pat gs1) + nn) (rview_leaves_scoped D Hc) Hst') as HF.
         rewrite List.Forall_forall in HF; specialize (HF l Hinl).
         replace (List.length (cargs_nonrec gs1) + im_np D Mv) with (pat_nargs (cargs_pat gs1) + nn + ind_nu D)
-          by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, List.length_map; unfold im_np, nn; lia).
+          by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; unfold im_np, nn; lia).
         exact HF. }
       assert (Hag : forall y, y < List.length (cargs_nonrec gs1) + im_np D Mv ->
                  cargs_sub (sb_of_list Id Ps) gs1 Aw y = cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw y).
       { apply cargs_sub_lt_base; [ unfold Aw; rewrite length_vars_from; lia |].
         intros z Hz; unfold wrap_base; fold n; fold Uw Nw Ps; apply sb_of_list_lt_base; lia. }
-      rewrite (leaf_ih_agree relevant _ l _ _ _ _ _ _ Hsl Hag) in H.
-      rewrite (leaf_ihty_sb_agree relevant l _ _ _ _ _ _ Hsl Hag) in H.
-      replace (leaf_ihty relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
+      rewrite (leaf_ih_agree ak_relevant _ l _ _ _ _ _ _ Hsl Hag) in H.
+      rewrite (leaf_ihty_sb_agree ak_relevant l _ _ _ _ _ _ Hsl Hag) in H.
+      replace (leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
                  (a_var (List.length E + (na - 1 - List.length gs1))) l)
-        with (leaf_ihty relevant (blocks_motives (blocks_wk Bks (wk_shiftn n))) Id (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
+        with (leaf_ihty ak_relevant (blocks_motives (blocks_wk Bks (wk_shiftn n))) Id (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
                 (a_var (List.length E + (na - 1 - List.length gs1))) l); [ exact H |].
       pose proof (cargs_leaves_params_length D v Mv c gs gs1 t gs2 (pat_nargs (cargs_pat gs1) + nn) Hc HMv wrapping_Hin Heq) as HPL.
       rewrite List.Forall_forall in HPL; destruct (HPL l Hinl) as (Mq & HMq & Hlq).
-      rewrite <- (leaf_ihty_base relevant l As _ (sb_of_wk (wk_shiftn n)) Id).
+      rewrite <- (leaf_ihty_base ak_relevant l As _ (sb_of_wk (wk_shiftn n)) Id).
       - apply leaf_ihty_sb_eq; [ apply sb_compose_id_right | reflexivity ].
       - rewrite <- blocks_sub_of_wk, Hlq; exact (blocks_motives_sub D Bks _ _ _ (valid_blocks_binder_count _ _ _ _ _ _ HBk) HMq).
     Qed.
@@ -665,23 +665,23 @@ Section WrapBranch.
     Lemma wrapping_ih_leaf_scoped : forall gs1 t gs2 l, gs = gs1 ++ ca_rec t :: gs2 ->
         In l (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t) ->
         exp_scoped (List.length (E ++ Ψc))
-          (leaf_ih relevant p Uw (blocks_wk Bks (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
+          (leaf_ih ak_relevant p Uw (blocks_wk Bks (wk_shiftn n)) (cargs_sub (wrap_base Us nn na (List.length E)) gs1 Aw)
              (a_var (List.length E + (na - 1 - List.length gs1))) l).
     Proof.
       intros * Heq Hinl.
       assert (Hlt : List.length gs1 < na) by (unfold na; rewrite Heq, List.length_app; cbn; lia).
       assert (Hst' : ptyp_scoped (pat_nargs (cargs_pat gs1) + nn + ind_nu D) t).
       { pose proof (member_closed_recs _ _ (decl_closed_members _ Hc _ _ HMv) _ _ _ _ _ wrapping_Hin Heq) as Hs.
-        rewrite cargs_strat_nonrec, List.length_rev, List.length_map in Hs.
+        rewrite cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele in Hs.
         replace (pat_nargs (cargs_pat gs1) + nn + ind_nu D) with (List.length (cargs_nonrec gs1) + im_np D Mv)
-          by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, List.length_map; unfold im_np, nn; lia).
+          by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; unfold im_np, nn; lia).
         exact Hs. }
       pose proof (shape_leaves_scoped (rview_leaves D) (ind_nu D) t (pat_nargs (cargs_pat gs1) + nn) (rview_leaves_scoped D Hc) Hst')
         as HF.
       rewrite List.Forall_forall in HF.
       assert (LP : List.length (Uw ++ Nw) = im_np D Mv)
         by (rewrite List.length_app; unfold Uw, Nw; rewrite List.length_map, length_vars_from, HUl; unfold im_np, nn; lia).
-      apply (leaf_ih_scoped relevant p D l Uw _ _ _ _ (pat_nargs (cargs_pat gs1) + nn + ind_nu D) Hc
+      apply (leaf_ih_scoped ak_relevant p D l Uw _ _ _ _ (pat_nargs (cargs_pat gs1) + nn + ind_nu D) Hc
                ltac:(unfold Uw; rewrite List.length_map; exact HUl) wrapping_us_scoped).
       - rewrite <- blocks_sub_of_wk; apply blocks_binder_count_ok_sub; exact (valid_blocks_binder_count _ _ _ _ _ _ HBk).
       - exact wrapping_blocks_scoped.
@@ -691,7 +691,7 @@ Section WrapBranch.
            | rewrite List.length_firstn; unfold Aw; rewrite length_vars_from; lia |].
         + intros y Hy; unfold wrap_base; fold n; fold Uw Nw.
           apply (sb_of_list_bound (Uw ++ Nw) _ 0 _); [ intros; lia | exact wrapping_params_scoped | lia ].
-        + rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, List.length_map in Hx; unfold im_np, nn in *; lia.
+        + rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele in Hx; unfold im_np, nn in *; lia.
       - exact (HF l Hinl).
       - cbn; rewrite wrapping_ctx_length; unfold n; lia.
     Qed.
@@ -828,7 +828,7 @@ Section WrapBranch.
         List.length gs1' = List.length gs1 ->
         shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t = ls1 ++ l :: ls2 -> leaf_in D' t' l = true ->
         Ew ++ Ψc ⊨ a_var (R - 1 - (List.length (List.filter (leaf_in D' t') ls1) + cargs_container_count D D' gs1' gs1))
-          : leaf_ihty relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) l.
+          : leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) l.
     Proof.
       intros * E1' E1 Hl1 Els Hli.
       destruct (wrapping_kinds_split _ _ _ _ E1' E1 Hl1) as [Hka Hkb]; cbn in Hkb.
@@ -837,10 +837,10 @@ Section WrapBranch.
       set (Rest := wrap_ihs_ctx D D' nn As Us na (gs1 ++ ca_rec t :: nil) (leaves_in_count D' t' ls + (cargs_container_count D D' gs1' gs1 + 0))
                      rest' rest
                    ++ wrap_leaves_ctx D' t' nn As Us na gs1 (S r) ls2).
-      set (T0 := leaf_ihty relevant As (sb_of_wk (wk_shiftn (r + na + nn))) (cargs_sub (wrap_base Us nn na r) gs1 (vars_from r na))
+      set (T0 := leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn (r + na + nn))) (cargs_sub (wrap_base Us nn na r) gs1 (vars_from r na))
                    (a_var (r + (na - 1 - List.length gs1))) l).
       set (Pre := wrap_leaves_ctx D' t' nn As Us na gs1 (cargs_container_count D D' gs1' gs1 + 0) ls1 ++ wrap_ihs_ctx D D' nn As Us na nil 0 gs1' gs1).
-      assert (EE : Ew = Rest ++ ce_ass T0 :: Pre).
+      assert (EE : Ew = Rest ++ ce_ass ak_relevant T0 :: Pre).
       { unfold Ew; rewrite E1', E1, wrap_ihs_ctx_app by exact Hka; cbn [List.app wrap_ihs_ctx].
         fold ls; rewrite Els at 2; rewrite wrap_leaves_ctx_app; cbn [wrap_leaves_ctx]; rewrite Hli.
         unfold Rest, Pre, T0, r, leaves_in_count; rewrite <- !List.app_assoc; reflexivity. }
@@ -851,7 +851,7 @@ Section WrapBranch.
       { rewrite EE, <- List.app_assoc; apply ctx_lookup_app_r; constructor. }
       replace (R - 1 - (List.length (List.filter (leaf_in D' t') ls1) + cargs_container_count D D' gs1' gs1)) with (0 + List.length Rest)
         by (unfold r in HR; lia).
-      replace (leaf_ihty relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) l)
+      replace (leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) l)
         with (T0[↑]ʷ[wk_shiftn (List.length Rest)]ʷ).
       - apply valid_exp_under_ctx_vlookup; [ exact Hlk | exact wrap_full_HE ].
       - rewrite exp_wk_wk.
@@ -864,9 +864,9 @@ Section WrapBranch.
         recursive argument, after those of the paths before, is a type. *)
     Lemma wrap_full_bc_entry : forall gs1 t rest ls1 l ls2, gs = gs1 ++ ca_rec t :: rest ->
         shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t = ls1 ++ l :: ls2 ->
-        exists Srt, type_sort Srt /\ leaves_ctx relevant nn As Us na (cargs_pat gs1) (cargs_nrec D gs1) ls1
-                          ++ ihs_ctx_aux relevant (rview_leaves D) nn As Us na nil 0 gs1 ++ Ψc
-          ⊨ leaf_ihty relevant As (sb_of_wk (wk_shiftn ((cargs_nrec D gs1 + List.length ls1) + na + nn)))
+        exists Srt, sort_kind Srt ak_relevant /\ leaves_ctx ak_relevant nn As Us na (cargs_pat gs1) (cargs_nrec D gs1) ls1
+                          ++ ihs_ctx_aux ak_relevant (rview_leaves D) nn As Us na nil 0 gs1 ++ Ψc
+          ⊨ leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn ((cargs_nrec D gs1 + List.length ls1) + na + nn)))
               (ihs_sub nn Us na (cargs_pat gs1) (cargs_nrec D gs1 + List.length ls1))
               (a_var ((cargs_nrec D gs1 + List.length ls1) + na - 1 - List.length (cargs_pat gs1))) l : Srt.
     Proof.
@@ -888,15 +888,15 @@ Section WrapBranch.
         others. *)
     Lemma wrap_full_leaves : forall gs1 t rest inb r0, gs = gs1 ++ ca_rec t :: rest ->
         let ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t in
-        let ih := leaf_ih relevant p Uw Bw (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) in
+        let ih := leaf_ih ak_relevant p Uw Bw (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) in
         (forall ls1 l ls2, ls = ls1 ++ l :: ls2 -> inb l = true ->
            Ew ++ Ψc ⊨ a_var (R - 1 - (List.length (List.filter inb ls1) + r0))
-             : leaf_ihty relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) l) ->
+             : leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) l) ->
         forall ls2 ls1 L, ls = ls1 ++ ls2 -> List.length L = cargs_nrec D gs1 + List.length ls1 ->
         gsub (Ew ++ Ψc) (wrap_inst nn na R L)
-          (leaves_ctx relevant nn As Us na (cargs_pat gs1) (cargs_nrec D gs1) ls1 ++ ihs_ctx_aux relevant (rview_leaves D) nn As Us na nil 0 gs1 ++ Ψc) ->
+          (leaves_ctx ak_relevant nn As Us na (cargs_pat gs1) (cargs_nrec D gs1) ls1 ++ ihs_ctx_aux ak_relevant (rview_leaves D) nn As Us na nil 0 gs1 ++ Ψc) ->
         gsub (Ew ++ Ψc) (wrap_inst nn na R (L ++ sel_leaves inb ls2 (List.map ih ls2) (List.length (List.filter inb ls1) + r0) R))
-          (leaves_ctx relevant nn As Us na (cargs_pat gs1) (cargs_nrec D gs1) (ls1 ++ ls2) ++ ihs_ctx_aux relevant (rview_leaves D) nn As Us na nil 0 gs1 ++ Ψc).
+          (leaves_ctx ak_relevant nn As Us na (cargs_pat gs1) (cargs_nrec D gs1) (ls1 ++ ls2) ++ ihs_ctx_aux ak_relevant (rview_leaves D) nn As Us na nil 0 gs1 ++ Ψc).
     Proof.
       intros gs1 t rest inb r0 Heq ls ih Hvar ls2.
       assert (Hlt : List.length gs1 < na) by (unfold na; rewrite Heq, List.length_app; cbn; lia).
@@ -909,7 +909,7 @@ Section WrapBranch.
           destruct (inb l); rewrite List.length_app; cbn [List.length]; rewrite ?Nat.add_0_r; [ f_equal; f_equal; lia | reflexivity ]. }
         cbn [sel_leaves] in EX; rewrite EX.
         assert (Hinl : In l ls) by (rewrite Els; apply List.in_or_app; right; left; reflexivity).
-        assert (HX : Ew ++ Ψc ⊨ X : leaf_ihty relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) l).
+        assert (HX : Ew ++ Ψc ⊨ X : leaf_ihty ak_relevant As (sb_of_wk (wk_shiftn n)) (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1))) l).
         { unfold X; destruct (inb l) eqn:Hin; [ exact (Hvar ls1 l ls2 Els Hin) |].
           exact (proj1 (wrapping_ih_leaf Ew wrap_full_HE gs1 t rest l Heq Hinl)). }
         destruct (wrap_full_bc_entry gs1 t rest ls1 l ls2 Heq Els) as (Srt & HS & HT).
@@ -933,13 +933,13 @@ Section WrapBranch.
         arguments [gs1] and [gs1'] so far. *)
     Lemma wrap_full_ihs : forall rest' rest gs1' gs1 L, gs' = gs1' ++ rest' -> gs = gs1 ++ rest -> List.length gs1' = List.length gs1 ->
         List.length L = cargs_nrec D gs1 ->
-        gsub (Ew ++ Ψc) (wrap_inst nn na R L) (ihs_ctx_aux relevant (rview_leaves D) nn As Us na nil 0 gs1 ++ Ψc) ->
+        gsub (Ew ++ Ψc) (wrap_inst nn na R L) (ihs_ctx_aux ak_relevant (rview_leaves D) nn As Us na nil 0 gs1 ++ Ψc) ->
         gsub (Ew ++ Ψc)
           (wrap_inst nn na R (L ++ wrap_ihs D' D rest' rest
-                                   (elim_ihs relevant p D Uw Bw (cargs_sub σw gs1 Aw) (pat_nargs (cargs_pat gs1) + nn) rest
+                                   (elim_ihs ak_relevant p D Uw Bw (cargs_sub σw gs1 Aw) (pat_nargs (cargs_pat gs1) + nn) rest
                                       (List.skipn (List.length gs1) Aw))
                                    (cargs_container_count D D' gs1' gs1) R))
-          (ihs_ctx_aux relevant (rview_leaves D) nn As Us na nil 0 (gs1 ++ rest) ++ Ψc).
+          (ihs_ctx_aux ak_relevant (rview_leaves D) nn As Us na nil 0 (gs1 ++ rest) ++ Ψc).
     Proof.
       induction rest' as [| g' rest' IH]; intros [| g rest] gs1' gs1 L E1' E1 Hl1 HL Hδ.
       - cbn [wrap_ihs]; rewrite !List.app_nil_r; exact Hδ.
@@ -967,7 +967,7 @@ Section WrapBranch.
               group's eliminator along each path *)
           cbn [wrap_ihs elim_ihs List.hd List.tl].
           set (ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t).
-          set (ih := leaf_ih relevant p Uw Bw (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1)))).
+          set (ih := leaf_ih ak_relevant p Uw Bw (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1)))).
           fold ls ih.
           assert (Els : List.length (shape_leaves (rview_leaves D) 0 t) = List.length (List.map ih ls))
             by (rewrite List.length_map; apply length_shape_leaves).
@@ -991,7 +991,7 @@ Section WrapBranch.
               its, the group's eliminator elsewhere *)
           cbn [wrap_ihs elim_ihs List.hd List.tl].
           set (ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + nn) t).
-          set (ih := leaf_ih relevant p Uw Bw (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1)))).
+          set (ih := leaf_ih ak_relevant p Uw Bw (cargs_sub σw gs1 Aw) (a_var (R + (na - 1 - List.length gs1)))).
           fold ls ih.
           assert (Ein : List.map (leaf_in D' t') (shape_leaves (rview_leaves D) 0 t) = List.map (leaf_in D' t') ls)
             by apply leaf_in_shape_leaves.
@@ -1022,8 +1022,8 @@ Section WrapBranch.
     (** The instance of the group's branch's context in the whole wrapped
         context. *)
     Lemma wrap_full_sub : gsub (Ew ++ Ψc)
-        (wrap_inst nn na R (wrap_ihs D' D gs' gs (elim_ihs relevant p D Uw Bw σw nn gs Aw) 0 R))
-        (ihs_ctx_aux relevant (rview_leaves D) nn As Us na nil 0 gs ++ Ψc).
+        (wrap_inst nn na R (wrap_ihs D' D gs' gs (elim_ihs ak_relevant p D Uw Bw σw nn gs Aw) 0 R))
+        (ihs_ctx_aux ak_relevant (rview_leaves D) nn As Us na nil 0 gs ++ Ψc).
     Proof.
       pose proof (wrap_full_ihs gs' gs nil nil nil eq_refl eq_refl eq_refl eq_refl
                     ltac:(cbn [ihs_ctx_aux List.app]; exact (wrapping_base Ew wrap_full_HE))) as H.
@@ -1036,13 +1036,13 @@ Section WrapBranch.
       branch's context has as many recursive results as the container's
       constructor. *)
   Theorem gsub_wrap_branch : cargs_container_count D D' gs' gs = cargs_nrec D' gs' ->
-      gsub (wrap_bctx p D D' Mv gs' gs As Us ++ Γ) (wrap_branch_sub p D D' Us Bks Mv gs' gs) (elim_bctx relevant p D Mv gs As Us ++ Γ).
+      gsub (wrap_bctx p D D' Mv gs' gs As Us ++ Γ) (wrap_branch_sub p D D' Us Bks Mv gs' gs) (elim_bctx ak_relevant p D Mv gs As Us ++ Γ).
   Proof.
     intros Hcnt.
     pose proof wrap_full_sub as H.
     pose proof wrap_full_R as HR.
     rewrite wrapping_ctx_eq.
-    replace (elim_bctx relevant p D Mv gs As Us ++ Γ) with (ihs_ctx_aux relevant (rview_leaves D) nn As Us na nil 0 gs ++ Ψc)
+    replace (elim_bctx ak_relevant p D Mv gs As Us ++ Γ) with (ihs_ctx_aux ak_relevant (rview_leaves D) nn As Us na nil 0 gs ++ Ψc)
       by (unfold elim_bctx, Ψc, Cs, Ns; rewrite <- !List.app_assoc; reflexivity).
     eapply gsub_eq; [ exact H |].
     rewrite HR, Hcnt; unfold wrap_inst, wrap_branch_sub, wrap_base; cbv zeta; rewrite wrapping_len.
@@ -1054,7 +1054,7 @@ Section WrapBranch.
       by the instance ([view_blocks_branch]). *)
   Theorem valid_wrap_branch : cargs_container_count D D' gs' gs = cargs_nrec D' gs' ->
       forall b n B, List.nth_error Bks v = Some b -> brs_lookup (eb_brs b) c = Some (n, B) ->
-      wrap_bctx p D D' Mv gs' gs As Us ++ Γ ⊨ snd (wrap_branch relevant p D D' Us Bks Mv (eb_brs b) c gs')
+      wrap_bctx p D D' Mv gs' gs As Us ++ Γ ⊨ snd (wrap_branch ak_relevant p D D' Us Bks Mv (eb_brs b) c gs')
         : (elim_branch_type p D v Mv c gs (eb_motive b) Us)[wrap_branch_sub p D D' Us Bks Mv gs' gs].
   Proof.
     intros Hcnt * Hb Hlk.

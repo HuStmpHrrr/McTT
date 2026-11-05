@@ -54,36 +54,38 @@ Proof.
     [ rewrite List.app_nil_r; reflexivity | rewrite IH, <- List.app_assoc; reflexivity | exact (IH gs2) ].
 Qed.
 
-(** The values, of a referenced constructor's sorts, of its non-uniform
-    parameters and its arguments: the parameters' values, then the
-    arguments' of their sorts. *)
-Lemma con_ref_vals_split : forall D Mk gs Ns As ρ vs, List.length Ns = im_nn Mk ->
-    eval_field_vals gc_deps gc_stack (List.skipn (ind_nu D) (con_relevances D Mk gs)) (Ns ++ As) ρ vs ->
+(** The values, of a referenced constructor's kinds, of its non-uniform
+    parameters and its arguments: the parameters' values (relevant,
+    [con_kinds_skipn]), then the arguments' of their kinds. *)
+Lemma con_ref_vals_split : forall D k Mk gs Ns As ρ vs, decl_typed gc_deps gc_stack D -> ind_member D k = Some Mk ->
+    List.length Ns = im_nn Mk ->
+    eval_field_vals gc_deps gc_stack (List.skipn (ind_nu D) (con_kinds D Mk gs)) (Ns ++ As) ρ vs ->
     exists ns avs, vs = ns ++ avs /\ ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns /\
-      eval_field_vals gc_deps gc_stack (cargs_relevance gs) As ρ avs.
+      eval_field_vals gc_deps gc_stack (Syntactic.Inductives.Inductives.cargs_kinds gs) As ρ avs.
 Proof.
-  intros * HNl H.
-  rewrite (con_relevances_skipn D Mk gs) in H by (unfold im_np; lia).
+  intros * Hdt HM HNl H.
+  rewrite (con_kinds_skipn D k Mk gs Hdt HM) in H by (unfold im_np; lia).
   replace (im_np D Mk - ind_nu D) with (List.length Ns) in H by (unfold im_np; lia).
   destruct (Mctt.Core.Completeness.Records.Model.eval_field_vals_app_inv _ _ _ _ _ H) as (ns & avs & -> & Hns & Has).
   exists ns, avs; split; [ reflexivity | split ].
   - apply (Mctt.Core.Completeness.Records.Model.eval_exps_of_field_vals _ _ _ _ Hns); intros j Hj.
-    rewrite List.app_nth1 by (rewrite List.repeat_length; exact Hj); apply List.nth_repeat.
+    rewrite List.app_nth1 by (rewrite List.repeat_length; exact Hj); rewrite List.nth_repeat; constructor.
   - rewrite List.skipn_app, List.skipn_all2, List.repeat_length, Nat.sub_diag in Has by (rewrite List.repeat_length; lia).
     exact Has.
 Qed.
 
 (** And conversely. *)
-Lemma con_ref_vals_join : forall D Mk gs Ns As ρ ns avs, List.length Ns = im_nn Mk ->
-    ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns -> eval_field_vals gc_deps gc_stack (cargs_relevance gs) As ρ avs ->
-    eval_field_vals gc_deps gc_stack (List.skipn (ind_nu D) (con_relevances D Mk gs)) (Ns ++ As) ρ (ns ++ avs).
+Lemma con_ref_vals_join : forall D k Mk gs Ns As ρ ns avs, decl_typed gc_deps gc_stack D -> ind_member D k = Some Mk ->
+    List.length Ns = im_nn Mk ->
+    ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns -> eval_field_vals gc_deps gc_stack (Syntactic.Inductives.Inductives.cargs_kinds gs) As ρ avs ->
+    eval_field_vals gc_deps gc_stack (List.skipn (ind_nu D) (con_kinds D Mk gs)) (Ns ++ As) ρ (ns ++ avs).
 Proof.
-  intros * HNl Hns Has.
-  rewrite (con_relevances_skipn D Mk gs) by (unfold im_np; lia).
+  intros * Hdt HM HNl Hns Has.
+  rewrite (con_kinds_skipn D k Mk gs Hdt HM) by (unfold im_np; lia).
   replace (im_np D Mk - ind_nu D) with (List.length Ns) by (unfold im_np; lia).
   apply Mctt.Core.Completeness.Records.Model.eval_field_vals_app.
   - apply Mctt.Core.Completeness.Records.Model.eval_field_vals_of_exps; [| exact Hns ]; intros j Hj.
-    rewrite List.app_nth1 by (rewrite List.repeat_length; exact Hj); apply List.nth_repeat.
+    rewrite List.app_nth1 by (rewrite List.repeat_length; exact Hj); rewrite List.nth_repeat; constructor.
   - rewrite List.skipn_app, List.skipn_all2, List.repeat_length, Nat.sub_diag by (rewrite List.repeat_length; lia).
     exact Has.
 Qed.
@@ -109,22 +111,22 @@ Proof. induction gs as [| [r A | t] gs IH]; intros [| N As] Hl; cbn in *; try di
 (** The values of the arguments of their sorts give those of the
     non-recursive ones, of theirs. *)
 Lemma eval_field_vals_nonrec : forall gs rest As ρ avs,
-    eval_field_vals gc_deps gc_stack (cargs_relevance gs ++ rest) As ρ avs -> List.length As = List.length gs ->
-    eval_field_vals gc_deps gc_stack (cargs_nonrec_relevance gs) (nonrec_arg_terms gs As) ρ (nonrec_arg_vals gs avs).
+    eval_field_vals gc_deps gc_stack (Syntactic.Inductives.Inductives.cargs_kinds gs ++ rest) As ρ avs -> List.length As = List.length gs ->
+    eval_field_vals gc_deps gc_stack (cargs_nonrec_kinds gs) (nonrec_arg_terms gs As) ρ (nonrec_arg_vals gs avs).
 Proof.
   induction gs as [| [r A | t] gs IH]; intros rest [| N As] ρ avs H Hl; cbn in Hl; try discriminate.
   - inversion H; subst; cbn; constructor.
-  - cbn [cargs_relevance List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_relevance].
+  - cbn [Syntactic.Inductives.Inductives.cargs_kinds List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_kinds].
     + eapply eval_field_vals_relevant; [ assumption | eassumption | apply (IH rest); [ eassumption | lia ] ].
     + eapply eval_field_vals_proof; [ assumption | apply (IH rest); [ eassumption | lia ] ].
-  - cbn [cargs_relevance List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_relevance];
+  - cbn [Syntactic.Inductives.Inductives.cargs_kinds List.map List.app] in H; inversion H; subst; cbn [nonrec_arg_terms nonrec_arg_vals cargs_nonrec_kinds];
       [ apply (IH rest); [ eassumption | lia ] | discriminate ].
 Qed.
 
 (** The sorts of the non-recursive arguments of [gs1 ++ gs2]: those of
     [gs1], then those of [gs2]. *)
-Lemma cargs_nonrec_relevance_app : forall gs1 gs2,
-    cargs_nonrec_relevance (gs1 ++ gs2) = cargs_nonrec_relevance gs1 ++ cargs_nonrec_relevance gs2.
+Lemma cargs_nonrec_kinds_app : forall gs1 gs2,
+    cargs_nonrec_kinds (gs1 ++ gs2) = cargs_nonrec_kinds gs1 ++ cargs_nonrec_kinds gs2.
 Proof. induction gs1 as [| [r A | t] gs1 IH]; intros; cbn; rewrite ?IH; reflexivity. Qed.
 
 (** The substitution extended by the non-recursive arguments of [gs] is
@@ -141,42 +143,44 @@ Qed.
 
 (** An entry of a telescope moved by a substitution: the entry of the
     telescope at the same position, moved past the entries after it. *)
-Lemma tele_sub_split_at : forall X σ Δ1 T Δ2, tele_ass X -> tele_sub X σ = Δ1 ++ ce_ass T :: Δ2 ->
-    exists X1 A X2, X = X1 ++ ce_ass A :: X2 /\ List.length X1 = List.length Δ1 /\ T = A[sb_qn (List.length X2) σ] /\
+Lemma tele_sub_split_at : forall X σ Δ1 κ T Δ2, tele_ass X -> tele_sub X σ = Δ1 ++ ce_ass κ T :: Δ2 ->
+    exists X1 A X2, X = X1 ++ ce_ass κ A :: X2 /\ List.length X1 = List.length Δ1 /\ T = A[sb_qn (List.length X2) σ] /\
       Δ2 = tele_sub X2 σ.
 Proof.
-  induction X as [| e X IH]; intros σ Δ1 T Δ2 Ha H; cbn [tele_sub] in H; [ destruct Δ1; discriminate |].
-  assert (He : exists A, e = ce_ass A) by (inversion Ha as [| ? ? He _]; exact He).
-  destruct He as [A ->].
+  induction X as [| e X IH]; intros σ Δ1 κ T Δ2 Ha H; cbn [tele_sub] in H; [ destruct Δ1; discriminate |].
+  assert (He : exists κ0 A, e = ce_ass κ0 A) by (inversion Ha as [| ? ? He _]; exact He).
+  destruct He as (κ0 & A & ->).
   assert (Ha' : tele_ass X) by (inversion Ha; assumption).
-  destruct Δ1 as [| d Δ1]; cbn [List.app] in H; injection H as H1 H2.
-  - exists nil, A, X; split; [ reflexivity | split; [ reflexivity | split; [ exact (eq_sym H1) | exact (eq_sym H2) ] ] ].
-  - destruct (IH σ Δ1 T Δ2 Ha' H2) as (X1 & A' & X2 & -> & L1 & -> & ->).
-    exists (ce_ass A :: X1), A', X2; split; [ reflexivity | split; [ cbn; lia | split; reflexivity ] ].
+  destruct Δ1 as [| d Δ1]; cbn [List.app] in H.
+  - injection H as -> H1 H2.
+    exists nil, A, X; split; [ reflexivity | split; [ reflexivity | split; [ exact (eq_sym H1) | exact (eq_sym H2) ] ] ].
+  - injection H as H1 H2.
+    destruct (IH σ Δ1 κ T Δ2 Ha' H2) as (X1 & A' & X2 & -> & L1 & -> & ->).
+    exists (ce_ass κ0 A :: X1), A', X2; split; [ reflexivity | split; [ cbn; lia | split; reflexivity ] ].
 Qed.
 
 (** An entry of the recursive results along the leaf paths [ls]: the
     result along one of them, after those before it. *)
-Lemma leaves_ctx_split_at : forall r nn As Us na pat ls j Δ1 T Δ2,
-    leaves_ctx r nn As Us na pat j ls = Δ1 ++ ce_ass T :: Δ2 ->
+Lemma leaves_ctx_split_at : forall r nn As Us na pat ls j Δ1 κ T Δ2,
+    leaves_ctx r nn As Us na pat j ls = Δ1 ++ ce_ass κ T :: Δ2 ->
     exists n l, List.nth_error ls n = Some l /\
       T = leaf_ihty r As (sb_of_wk (wk_shiftn ((j + n) + na + nn))) (ihs_sub nn Us na pat (j + n))
             (a_var ((j + n) + na - 1 - List.length pat)) l /\
       Δ2 = leaves_ctx r nn As Us na pat j (List.firstn n ls).
 Proof.
-  intros r nn As Us na pat; induction ls as [| l ls IH]; intros j Δ1 T Δ2 H; cbn [leaves_ctx] in H; [ destruct Δ1; discriminate |].
+  intros r nn As Us na pat; induction ls as [| l ls IH]; intros j Δ1 κ T Δ2 H; cbn [leaves_ctx] in H; [ destruct Δ1; discriminate |].
   set (L := leaves_ctx r nn As Us na pat (S j) ls) in *.
   destruct (Nat.lt_ge_cases (List.length Δ1) (List.length L)) as [Hlt | Hge].
-  - destruct (app_split_prefix Δ1 (ce_ass T :: Δ2) L _ (eq_sym H) ltac:(lia)) as (m1 & EL & Em).
+  - destruct (app_split_prefix Δ1 (ce_ass κ T :: Δ2) L _ (eq_sym H) ltac:(lia)) as (m1 & EL & Em).
     destruct m1 as [| d m1]; [ rewrite List.app_nil_r in EL; subst L; rewrite <- EL in Hlt; lia |].
     cbn [List.app] in Em; injection Em as <- ->.
-    destruct (IH (S j) Δ1 T m1 EL) as (n & l' & Hn & -> & ->).
+    destruct (IH (S j) Δ1 κ T m1 EL) as (n & l' & Hn & -> & ->).
     exists (S n), l'; split; [ exact Hn | split ].
     + replace (j + S n) with (S j + n) by lia; reflexivity.
     + cbn [List.firstn leaves_ctx]; reflexivity.
-  - destruct (app_split_prefix L _ Δ1 (ce_ass T :: Δ2) H Hge) as (m1 & EΔ & Em).
+  - destruct (app_split_prefix L _ Δ1 (ce_ass κ T :: Δ2) H Hge) as (m1 & EΔ & Em).
     destruct m1 as [| d m1]; cbn [List.app] in Em.
-    + injection Em as HT HΔ; subst Δ2.
+    + injection Em as _ HT HΔ; subst Δ2.
       exists 0, l; split; [ reflexivity | split; [ rewrite Nat.add_0_r; exact (eq_sym HT) | reflexivity ] ].
     + injection Em as _ Em; destruct m1; discriminate.
 Qed.
@@ -209,9 +213,10 @@ Proof.
 Qed.
 
 (** A recursive argument is of the relevant sort. *)
-Lemma cargs_relevance_rec : forall gs1 t gs2, List.nth (List.length gs1) (cargs_relevance (gs1 ++ ca_rec t :: gs2)) relevant = relevant.
+Lemma cargs_kinds_rec : forall gs1 t gs2,
+    List.nth (List.length gs1) (Syntactic.Inductives.Inductives.cargs_kinds (gs1 ++ ca_rec t :: gs2)) ak_relevant = ak_relevant.
 Proof.
-  intros; unfold cargs_relevance; rewrite List.map_app, List.app_nth2, List.length_map, Nat.sub_diag
+  intros; unfold Syntactic.Inductives.Inductives.cargs_kinds; rewrite List.map_app, List.app_nth2, List.length_map, Nat.sub_diag
     by (rewrite List.length_map; lia); reflexivity.
 Qed.
 
@@ -319,12 +324,12 @@ Section Blocks.
              elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b : Typeω@i)
     (HnaA : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b))
     (HBc : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs ->
-             ⊨ elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ)
+             ⊨ elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ)
     (HarA : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
               In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat)
     (HBv : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
              In (c, n, B) (eb_brs b) ->
-             elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us).
+             elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us).
 
   (** The uniform parameters moved by a weakening past [k] entries are
       scoped there. *)
@@ -344,7 +349,7 @@ Section Blocks.
          List.nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (List.map (fun U => U[β]) Us)) Ns) k = Some T -> Ψ ⊨ N : T) ->
       List.Forall (exp_scoped (List.length Ψ)) Ns ->
       Ψ ⊨ M : ind_mty p D j (List.map (fun U => U[β]) Us) Ns -> exp_scoped (List.length Ψ) M ->
-      Ψ ⊨ a_elim relevant p (List.map (fun U => U[β]) Us) j (blocks_sub Bks β) M
+      Ψ ⊨ a_elim ak_relevant p (List.map (fun U => U[β]) Us) j (blocks_sub Bks β) M
         : (List.nth j (blocks_motives Bks) exp_default)[sb_of_list β (Ns ++ M :: nil)].
   Proof.
     intros * Hβ HMj Hrv HUs0s HNl HNs HNss HM HMs.
@@ -377,15 +382,15 @@ Section Blocks.
       rewrite eb_motive_sub, (HnmA _ _ _ HMk Hb2).
       pose proof (rel_exp_under_ctx_gsub (Hgm _ _ HMk) (HAv _ _ _ HMk Hb2)) as H; cbn [exp_sub] in H; exact H. }
     assert (Hgb : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-               gsub (elim_bctx relevant p D Mk gs (blocks_motives Bks0) Us0 ++ Ψ)
-                 (sb_qn (cargs_nrec D gs + List.length gs + im_nn Mk) β) (elim_bctx relevant p D Mk gs (blocks_motives Bks) Us ++ Γ)).
+               gsub (elim_bctx ak_relevant p D Mk gs (blocks_motives Bks0) Us0 ++ Ψ)
+                 (sb_qn (cargs_nrec D gs + List.length gs + im_nn Mk) β) (elim_bctx ak_relevant p D Mk gs (blocks_motives Bks) Us ++ Γ)).
     { intros * HMk Hcon.
-      pose proof (gsub_qn _ _ _ _ Hβ (elim_bctx_ass relevant p D k Mk gs (blocks_motives Bks) Us Hc HMk) (HBc _ _ _ _ HMk Hcon)) as G.
-      rewrite (elim_bctx_sub relevant p D k Mk c gs (blocks_motives Bks) (blocks_motives Bks0) Us β Hc HMk (cons_lookup_in _ _ _ Hcon) HUl
+      pose proof (gsub_qn _ _ _ _ Hβ (elim_bctx_ass ak_relevant p D k Mk gs (blocks_motives Bks) Us Hc HMk) (HBc _ _ _ _ HMk Hcon)) as G.
+      rewrite (elim_bctx_sub ak_relevant p D k Mk c gs (blocks_motives Bks) (blocks_motives Bks0) Us β Hc HMk (cons_lookup_in _ _ _ Hcon) HUl
                  (fun j0 Mj0 HMj0 => blocks_motives_sub D Bks β j0 Mj0 HnmA HMj0)), length_elim_bctx in G.
       exact G. }
     assert (HBc0 : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-               ⊨ elim_bctx relevant p D Mk gs (blocks_motives Bks0) Us0 ++ Ψ)
+               ⊨ elim_bctx ak_relevant p D Mk gs (blocks_motives Bks0) Us0 ++ Ψ)
       by (intros * HMk Hcon; exact (gsub_rel_ctx_wf _ _ _ (Hgb _ _ _ _ HMk Hcon))).
     assert (HnaA0 : forall k Mk b1, ind_member D k = Some Mk -> List.nth_error Bks0 k = Some b1 -> brs_names (im_cons Mk) (eb_brs b1)).
     { intros * HMk Hb1; destruct (nth_error_blocks_sub_inv _ _ _ _ Hb1) as (b2 & Hb2 & ->).
@@ -397,7 +402,7 @@ Section Blocks.
     assert (HBB0 : forall k Mk b1 b1' c gs n B B', ind_member D k = Some Mk -> List.nth_error Bks0 k = Some b1 ->
                List.nth_error Bks0 k = Some b1' -> ind_con Mk c = Some gs ->
                brs_lookup (eb_brs b1) c = Some (n, B) -> brs_lookup (eb_brs b1') c = Some (n, B') ->
-               elim_bctx relevant p D Mk gs (blocks_motives Bks0) Us0 ++ Ψ ⊨ B ≈ B' : elim_branch_type p D k Mk c gs (eb_motive b1) Us0).
+               elim_bctx ak_relevant p D Mk gs (blocks_motives Bks0) Us0 ++ Ψ ⊨ B ≈ B' : elim_branch_type p D k Mk c gs (eb_motive b1) Us0).
     { intros * HMk Hb1 Hb1' Hcon Hlk Hlk'; rewrite Hb1 in Hb1'; injection Hb1' as <-; rewrite Hlk in Hlk'; injection Hlk' as <-.
       destruct (nth_error_blocks_sub_inv _ _ _ _ Hb1) as (b2 & Hb2 & ->).
       rewrite eb_brs_sub in Hlk; destruct (brs_lookup_sub_inv _ _ _ _ _ Hlk) as (B0 & Hlk0 & ->).
@@ -430,11 +435,11 @@ Section Blocks.
       forall kd l, kd <= List.length (ptyp_doms t) ->
       In l (shape_leaves (rview_leaves D) (im_nn Mk + List.length (cargs_nonrec gs1) + kd) (ptyp_skip kd t)) ->
       (tele_sub (doms_ctx (List.firstn kd (ptyp_doms t))) σ0 ++ Ψ0 ++ Γ
-         ⊨ leaf_ih relevant p (List.map (fun U => U[sb_shift_iter kd β0]) Us) (blocks_sub Bks (sb_shift_iter kd β0))
+         ⊨ leaf_ih ak_relevant p (List.map (fun U => U[sb_shift_iter kd β0]) Us) (blocks_sub Bks (sb_shift_iter kd β0))
              (sb_qn kd σ0) (apps_vars_iter kd x0) l
-         : leaf_ihty relevant (blocks_motives Bks) (sb_shift_iter kd β0) (sb_qn kd σ0) (apps_vars_iter kd x0) l) /\
+         : leaf_ihty ak_relevant (blocks_motives Bks) (sb_shift_iter kd β0) (sb_qn kd σ0) (apps_vars_iter kd x0) l) /\
       (exists j0 : nat, tele_sub (doms_ctx (List.firstn kd (ptyp_doms t))) σ0 ++ Ψ0 ++ Γ
-         ⊨ leaf_ihty relevant (blocks_motives Bks) (sb_shift_iter kd β0) (sb_qn kd σ0) (apps_vars_iter kd x0) l : Typeω@j0).
+         ⊨ leaf_ihty ak_relevant (blocks_motives Bks) (sb_shift_iter kd β0) (sb_qn kd σ0) (apps_vars_iter kd x0) l : Typeω@j0).
   Proof.
     destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].
     destruct (rel_ctx_wf_per_ctx_env (valid_ind_decl_uparams _ HD)) as [RU HRU].
@@ -541,8 +546,9 @@ Section Blocks.
       pose proof (rel_exp_cumu_ge (Nat.le_max_l j j0) HBk') as HBm.
       pose proof (rel_exp_cumu_ge (Nat.le_max_r j j0) Hty) as Htm.
       split.
-      + exact (rel_exp_under_ctx_fn_cong (rel_type_of_typ HBm) (rel_type_of_typ HBm) Htm Hih).
-      + exists (Nat.max j j0); exact (rel_exp_under_ctx_pi_cong (rel_type_of_typ HBm) (rel_type_of_typ HBm) Htm).
+      + exact (rel_exp_under_ctx_fn_cong (rel_type_of_typ HBm) (rel_type_of_typ HBm) (rel_type_kind_of_typ HBm) Htm Hih).
+      + exists (Nat.max j j0);
+          exact (rel_exp_under_ctx_pi_cong (rel_type_of_typ HBm) (rel_type_of_typ HBm) (rel_type_kind_of_typ HBm) Htm).
   Qed.
 End Blocks.
 
@@ -575,12 +581,12 @@ Section LeafVals.
              elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b : Typeω@i)
     (HnaA : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b))
     (HBc : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs ->
-             ⊨ elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ)
+             ⊨ elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ)
     (HarA : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
               In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat)
     (HBv : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
              In (c, n, B) (eb_brs b) ->
-             elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us).
+             elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us).
   (** The blocks of the members with one. *)
   Let HBks' := block_of_nblk D Bks Hdt HBks.
 
@@ -662,7 +668,7 @@ Section LeafVals.
     ; leaf_ihs_vals_own : list domain
       (** The terms', at [E] *)
     ; leaf_ihs_vals_eval_terms :
-        ⟦ List.map (leaf_ih relevant p Us0 Bks0 σ x) (shape_leaves (rview_leaves D) mk t) ⟧* gc_deps ⍮ gc_stack ⍮ E ↘ leaf_ihs_vals_terms
+        ⟦ List.map (leaf_ih ak_relevant p Us0 Bks0 σ x) (shape_leaves (rview_leaves D) mk t) ⟧* gc_deps ⍮ gc_stack ⍮ E ↘ leaf_ihs_vals_terms
       (** The eliminator's own, at [C] *)
     ; leaf_ihs_vals_eval_own : ⟦ih v' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C ↘ leaf_ihs_vals_own
       (** Related along the leaf paths *)
@@ -768,7 +774,7 @@ Section LeafVals.
             frames of the recursive ones. *)
         assert (Hfw : forall fs2 fs1, List.combine fl gsr = fs1 ++ fs2 ->
           exists rs rs',
-            ⟦ List.map (leaf_ih relevant p (List.map (fun U => U[σL]) Us) (blocks_sub Bks σL) φσ xL)
+            ⟦ List.map (leaf_ih ak_relevant p (List.map (fun U => U[σL]) Us) (blocks_sub Bks σL) φσ xL)
                 (fields_leaves (rview_leaves D) (fields_args fs1) fs2) ⟧* gc_deps ⍮ gc_stack ⍮ env_extend_typed C (zts ++ yts) ↘ rs /\
             ⟦ihs List.skipn (List.length fs1) wsv' of List.map snd fs2 under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C ↘ rs' /\
             rec_results_rel D dr Rel (ptyp_mem t) u0 u0
@@ -792,7 +798,7 @@ Section LeafVals.
             rewrite List.length_app, Nat.add_1_r in Ers2', Hrr2; cbn [List.length] in Ers2', Hrr2.
             rewrite (firstn_S_nth _ _ _ Hwf), (firstn_S_nth _ _ _ Hwf'), List.map_app, !nonrec_arg_vals_app in Hrr2
               by (rewrite List.length_firstn, List.length_map; lia).
-            unfold cargs_nonrec_tele in Hrr2; rewrite cargs_nonrec_app, List.map_app in Hrr2; fold (cargs_nonrec_tele (List.map snd fs1)) in Hrr2.
+            rewrite cargs_nonrec_tele_app in Hrr2.
             rewrite fields_args_app in Ers2.
             destruct g as [rA A | tf].
             + (** A non-recursive field joins the prefixes. *)
@@ -882,7 +888,7 @@ Section LeafVals.
         rewrite combine_snd_eq in Eihs', Hrr by exact (eq_sym Hlen).
         eapply (mk_leaf_ihs_vals_out _ _ _ _ _ _ _ _ _ _ _ _ _ rs rs').
         * cbn [shape_leaves]; rewrite (Hco _ _ _ _ _ _ _ HMj Hh Hcs), List.map_map.
-          rewrite (List.map_ext _ (leaf_ih relevant p (List.map (fun U => U[σL]) Us) (blocks_sub Bks σL) φσ xL))
+          rewrite (List.map_ext _ (leaf_ih ak_relevant p (List.map (fun U => U[σL]) Us) (blocks_sub Bks σL) φσ xL))
             by (intros; apply leaf_ih_wk).
           exact Eihs.
         * eapply eval_ih_rview; [ exact Hl | exact HMj | exact Hh | exact Hcs | exact Ewsv' | exact Eihs' ].
@@ -903,7 +909,7 @@ Section LeafVals.
         assert (HB0s : forall j Mj b b0 c gs n B0, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
                    List.nth_error Bks j = Some b0 -> ind_con Mj c = Some gs -> brs_lookup (eb_brs b0) c = Some (n, B0) ->
                    n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat /\
-                   elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B0 : elim_branch_type p D j Mj c gs (eb_motive b) Us).
+                   elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B0 : elim_branch_type p D j Mj c gs (eb_motive b) Us).
         { intros * HMj0 Hb Hb0 Hcon1 Hlb; rewrite Hb in Hb0; injection Hb0 as <-.
           split; [ exact (HarA _ _ _ _ _ _ _ HMj0 Hb Hcon1 (brs_lookup_in _ _ _ _ Hlb))
                  | exact (HBv _ _ _ _ _ _ _ HMj0 Hb Hcon1 (brs_lookup_in _ _ _ _ Hlb)) ]. }
@@ -931,7 +937,7 @@ Section LeafVals.
       destruct (ptyp_skip_lt kd t Hk') as (Bk & HBk & Hs).
       rewrite Hs in Hsh, Hlk |- *.
       set (t' := ptyp_skip (S kd) t) in *.
-      set (F := leaf_ih relevant p (List.map (fun U => U[↑]ʷ) (List.map (fun U => U[sb_shift_iter kd β0]) Us))
+      set (F := leaf_ih ak_relevant p (List.map (fun U => U[↑]ʷ) (List.map (fun U => U[sb_shift_iter kd β0]) Us))
                   (blocks_wk (blocks_sub Bks (sb_shift_iter kd β0)) ↑) (sb_q (sb_qn kd σ0))
                   (a_app (apps_vars_iter kd x0)[↑]ʷ (a_var 0))).
       (** The terms' side's domain values, related to themselves. *)
@@ -960,7 +966,7 @@ Section LeafVals.
       assert (HPbb : PER Rbb) by (eapply per_elem_PER; exact HRbb).
       set (ρt := env_extend_typed C (zts ++ yts)) in *.
       set (ta := entry_type_value a).
-      assert (Ers : ⟦ List.map (leaf_ih relevant p (List.map (fun U => U[sb_shift_iter kd β0]) Us) (blocks_sub Bks (sb_shift_iter kd β0))
+      assert (Ers : ⟦ List.map (leaf_ih ak_relevant p (List.map (fun U => U[sb_shift_iter kd β0]) Us) (blocks_sub Bks (sb_shift_iter kd β0))
                                   (sb_qn kd σ0) (apps_vars_iter kd x0))
                         (shape_leaves (rview_leaves D) (im_nn Mk + K + kd) (pt_pi Bk t')) ⟧* gc_deps ⍮ gc_stack ⍮ ρt
                       ↘ List.map (fun l => λᵈ a ρt (F l)) (shape_leaves (rview_leaves D) (S (im_nn Mk + K + kd)) t')).
@@ -980,7 +986,7 @@ Section LeafVals.
         by (apply (proj1 (ERb c0 c0)); etransitivity; [ exact Hcb | symmetry; exact Hcb ]).
       set (yts' := yts ++ (c0, ta) :: nil).
       assert (Hm1 : List.map fst yts' = List.map fst yts ++ c0 :: nil) by (unfold yts'; rewrite List.map_app; reflexivity).
-      assert (HBs : List.nth_error (shape_doms_tele t) kd = Some (ce_ass Bk))
+      assert (HBs : List.nth_error (shape_doms_tele t) kd = Some (ce_ass ak_relevant Bk))
         by (unfold shape_doms_tele; rewrite List.nth_error_map, HBk; reflexivity).
       (** The domain's values, past the shape's domains so far. *)
       assert (Hys' : tele_prefix_rel (shape_doms_rel (dr k) T (cargs_nonrec_tele gs1) ns cv t) (S kd) (List.map fst yts')
@@ -1003,8 +1009,8 @@ Section LeafVals.
         exists (pre0 ++ c0 :: nil), r'; split.
         2:{ rewrite Hm1, (firstn_S_snoc _ _ _ HBs); rewrite <- !List.app_assoc in Hr; rewrite <- ?List.app_assoc; exact Hr. }
         cbn [apps_vars_iter exp_wk].
-        pose proof Hvm as Hvm0; apply rec_arg_pi_relevance in Hvm0 as [_ Hm0r].
-        eapply eval_exp_app; [| exact Hm0r | | exact Er' ].
+        pose proof Hvm as Hvm0; apply rec_arg_pi_kind in Hvm0 as [_ Hm0r].
+        eapply eval_exp_app; [| rewrite Hm0r; constructor | | exact Er' ].
         - rewrite exp_wk_wk, (exp_wk_wk_eq _ _ (wk_shiftn (List.length ((c0, ta) :: zts2)))) by (intros z; cbn; lia); exact Em0.
         - rewrite env_extend_typed_app.
           pose proof (eval_var_extend_typed (env_extend_typed C (zts ++ yts)) ((c0, ta) :: zts2) (List.length zts2) ltac:(cbn; lia)) as Hv0.
@@ -1066,12 +1072,12 @@ Section BranchSorts.
              elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b : Typeω@i)
     (HnaA : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b))
     (HBc : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs ->
-             ⊨ elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ)
+             ⊨ elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ)
     (HarA : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
               In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat)
     (HBv : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
              In (c, n, B) (eb_brs b) ->
-             elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us).
+             elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us).
   Let HBks' := block_of_nblk D Bks Hdt HBks.
 
   Variable (m : nat) (Mm : imember) (c : String.string) (gs : list carg).
@@ -1081,12 +1087,12 @@ Section BranchSorts.
       over the instance of the arguments and the non-uniform parameters,
       form a valid context. *)
   Lemma recursive_results_prefix_valid : forall gs1 gs2, gs = gs1 ++ gs2 ->
-      ⊨ ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mm Us gs.
+      ⊨ ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mm Us gs.
   Proof.
     intros * Heq; pose proof (HBc _ _ _ _ HMm Hcon) as H; unfold elim_bctx in H.
-    replace (ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs)
-      with (ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1 ++ nil) (0 + cargs_nrec D gs1) gs2
-              ++ ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1) in H
+    replace (ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs)
+      with (ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1 ++ nil) (0 + cargs_nrec D gs1) gs2
+              ++ ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1) in H
       by (rewrite <- ihs_ctx_aux_app, <- Heq; reflexivity).
     unfold con_inst_ctx; rewrite <- !List.app_assoc in H; exact (rel_ctx_wf_app_r _ _ H).
   Qed.
@@ -1094,24 +1100,24 @@ Section BranchSorts.
   (** The recursive results of a recursive argument [t] after [gs1], one
       per leaf path of its shape, as a context: after those of [gs1]. *)
   Lemma recursive_results_snoc_recursive_argument : forall gs1 t,
-      ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 (gs1 ++ ca_rec t :: nil)
-      = leaves_ctx relevant (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (cargs_nrec D gs1)
+      ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 (gs1 ++ ca_rec t :: nil)
+      = leaves_ctx ak_relevant (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (cargs_nrec D gs1)
           (shape_leaves (rview_leaves D) (im_nn Mm + List.length (cargs_nonrec gs1)) t)
-        ++ ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1.
+        ++ ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1.
   Proof.
     intros gs1 t; rewrite ihs_ctx_aux_app, List.app_nil_r; cbn [ihs_ctx_aux List.app Nat.add].
     replace (pat_nargs (cargs_pat gs1) + im_nn Mm) with (im_nn Mm + List.length (cargs_nonrec gs1))
-      by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, List.length_map; lia).
+      by (rewrite pat_nargs_cargs_pat, cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele; lia).
     reflexivity.
   Qed.
 
-  (** The sort of an entry of the arguments and the non-uniform parameters,
-      at [Us]: an argument's own, a recursive one's and a parameter's the
-      relevant one.  [y] counts the entries from the last argument. *)
-  Definition instance_entry_relevance (y : nat) : relevance :=
+  (** The kind of an entry of the arguments and the non-uniform parameters,
+      at [Us]: an argument's own, a recursive one's and a parameter's
+      [ak_relevant].  [y] counts the entries from the last argument. *)
+  Definition instance_entry_kind (y : nat) : abs_kind :=
     if y <? List.length gs then
-      match List.nth_error gs (List.length gs - 1 - y) with Some (ca_arg r _) => r | _ => relevant end
-    else relevant.
+      match List.nth_error gs (List.length gs - 1 - y) with Some (ca_arg r _) => r | _ => ak_relevant end
+    else ak_relevant.
 
   (** An entry over the uniform parameters, of a sort, moved by [Us]. *)
   Lemma closed_entry_moved : forall X2 A (S : exp), tele_ass X2 -> ⊨ X2 ++ ind_uparams D ->
@@ -1127,20 +1133,20 @@ Section BranchSorts.
     pose proof (rel_exp_under_ctx_gsub Hg HAΓ) as H; rewrite HS in H; exact H.
   Qed.
 
-  Lemma relevance_sort_universe_sub : forall r (j : nat) σ, (relevance_sort r Typeω@j)[σ] = relevance_sort r Typeω@j.
+  Lemma abs_kind_sort_universe_sub : forall r (j : nat) σ, (abs_kind_sort r Typeω@j)[σ] = abs_kind_sort r Typeω@j.
   Proof. intros [] *; reflexivity. Qed.
 
-  Lemma instance_entry_sort : forall Δ1 T Δ2, tele_sub (cargs_ctx p D Mm gs ++ im_nparams Mm) (sb_of_list Id Us) = Δ1 ++ ce_ass T :: Δ2 ->
-      exists i : nat, Δ2 ++ Γ ⊨ T : relevance_sort (instance_entry_relevance (List.length Δ1)) Typeω@i.
+  Lemma instance_entry_sort : forall Δ1 κ T Δ2, tele_sub (cargs_ctx p D Mm gs ++ im_nparams Mm) (sb_of_list Id Us) = Δ1 ++ ce_ass κ T :: Δ2 ->
+      exists i : nat, Δ2 ++ Γ ⊨ T : abs_kind_sort (instance_entry_kind (List.length Δ1)) Typeω@i.
   Proof.
     intros * H.
     assert (HXa : tele_ass (cargs_ctx p D Mm gs ++ im_nparams Mm))
       by (apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_nparams_ass D Hc _ _ HMm) ]).
-    destruct (tele_sub_split_at _ _ _ _ _ HXa H) as (X1 & A & X2 & EX & L1 & -> & ->).
+    destruct (tele_sub_split_at _ _ _ _ _ _ HXa H) as (X1 & A & X2 & EX & L1 & -> & ->).
     rewrite <- L1.
     assert (HX2a : tele_ass X2) by (rewrite EX in HXa; apply List.Forall_app in HXa as [_ HXa]; exact (List.Forall_inv_tail HXa)).
     (** The entry's sort over the uniform parameters. *)
-    assert (Hsort : exists i : nat, ⊨ X2 ++ ind_uparams D /\ X2 ++ ind_uparams D ⊨ A : relevance_sort (instance_entry_relevance (List.length X1)) Typeω@i).
+    assert (Hsort : exists i : nat, ⊨ X2 ++ ind_uparams D /\ X2 ++ ind_uparams D ⊨ A : abs_kind_sort (instance_entry_kind (List.length X1)) Typeω@i).
     { destruct (Nat.lt_ge_cases (List.length X1) (List.length gs)) as [Hy | Hy].
       - (** An argument. *)
         destruct (nth_error_lt_some' gs (List.length gs - 1 - List.length X1) ltac:(lia)) as [g Hg].
@@ -1148,8 +1154,8 @@ Section BranchSorts.
         assert (Lb : List.length b = List.length X1)
           by (pose proof (f_equal (@List.length _) Hgs) as Lg; rewrite List.length_app in Lg; cbn [List.length] in Lg; lia).
         destruct (valid_group_cargs_sem_all p D Hvg Hcv m Mm c gs HMm Hcon a (g :: b) Hgs) as [HΨa IHw].
-        assert (Hrf : instance_entry_relevance (List.length X1) = match g with ca_arg r _ => r | ca_rec _ => relevant end).
-        { unfold instance_entry_relevance; replace (List.length X1 <? List.length gs) with true by (symmetry; apply Nat.ltb_lt; exact Hy).
+        assert (Hrf : instance_entry_kind (List.length X1) = match g with ca_arg r _ => r | ca_rec _ => ak_relevant end).
+        { unfold instance_entry_kind; replace (List.length X1 <? List.length gs) with true by (symmetry; apply Nat.ltb_lt; exact Hy).
           rewrite Hg; destruct g; reflexivity. }
         rewrite Hrf.
         assert (EX' : cargs_ctx p D Mm gs ++ im_nparams Mm
@@ -1162,19 +1168,19 @@ Section BranchSorts.
         destruct g as [r A0 | t].
         + cbn [cargs_ctx_aux List.app] in EX'.
           rewrite EX in EX'; destruct (app_split_eq _ _ _ _ EX' (eq_sym Lpre)) as [_ E2].
-          cbn [List.app] in E2; injection E2 as -> ->.
+          cbn [List.app] in E2; injection E2 as -> -> ->.
           assert (HA : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec a)) = Some A0)
             by (rewrite Hgs, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-          pose proof (nonrec_relevance_at a b r A0) as Hr; rewrite <- Hgs in Hr.
+          pose proof (nonrec_kind_at a b r A0) as Hr; rewrite <- Hgs in Hr.
           destruct (valid_ind_decl_arg _ HD _ _ _ _ _ _ _ HMm Hcon HA Hr) as (_ & j & HA0).
           rewrite Hgs, <- nonrec_args_prefix_cargs_strat in HA0.
           pose proof (rel_exp_under_ctx_wk IHw HA0) as HAw; cbn [exp_wk] in HAw.
-          rewrite relevance_sort_wk in HAw; cbn [exp_wk] in HAw.
+          rewrite abs_kind_sort_wk in HAw; cbn [exp_wk] in HAw.
           exists j; split; [ rewrite <- List.app_assoc; unfold im_params in HΨa; exact HΨa |].
           rewrite <- List.app_assoc; unfold im_params in HAw; exact HAw.
         + cbn [cargs_ctx_aux List.app] in EX'.
           rewrite EX in EX'; destruct (app_split_eq _ _ _ _ EX' (eq_sym Lpre)) as [_ E2].
-          cbn [List.app] in E2; injection E2 as -> ->.
+          cbn [List.app] in E2; injection E2 as -> -> ->.
           (** The recursive argument's type, the [Π] over its domains of the
               end. *)
           rewrite (ptyp_ty_ctx_pi p D (im_nn Mm) t (cargs_pat a)).
@@ -1189,24 +1195,25 @@ Section BranchSorts.
       - (** A non-uniform parameter. *)
         assert (Lc : List.length (cargs_ctx p D Mm gs) <= List.length X1) by (rewrite length_cargs_ctx; exact Hy).
         destruct (app_split_prefix _ _ _ _ EX Lc) as (X1' & -> & Enp).
-        assert (Hrf : instance_entry_relevance (List.length (cargs_ctx p D Mm gs ++ X1')) = relevant).
-        { unfold instance_entry_relevance; replace (List.length (cargs_ctx p D Mm gs ++ X1') <? List.length gs) with false
+        assert (Hrf : instance_entry_kind (List.length (cargs_ctx p D Mm gs ++ X1')) = ak_relevant).
+        { unfold instance_entry_kind; replace (List.length (cargs_ctx p D Mm gs ++ X1') <? List.length gs) with false
             by (symmetry; apply Nat.ltb_ge; rewrite List.length_app, length_cargs_ctx; lia).
           reflexivity. }
-        rewrite Hrf; cbn [relevance_sort].
-        assert (Ep : im_params D Mm = X1' ++ ce_ass A :: (X2 ++ ind_uparams D))
+        rewrite Hrf; cbn [abs_kind_sort].
+        assert (Ep : im_params D Mm = X1' ++ ce_ass κ A :: (X2 ++ ind_uparams D))
           by (unfold im_params; rewrite Enp, <- List.app_assoc; reflexivity).
-        destruct (im_nparams_typed D HD m Mm HMm X1' A X2 Enp) as [j Hj].
+        destruct (im_nparams_typed D HD m Mm HMm X1' κ A X2 Enp) as [j Hj].
         exists j; split; [| exact Hj ].
         pose proof (valid_ind_decl_params _ HD _ _ HMm) as HP0; rewrite Ep in HP0.
         exact (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HP0)). }
     destruct Hsort as (j & HX & HAj).
-    exists j; exact (closed_entry_moved X2 A _ HX2a HX (relevance_sort_universe_sub _ _) HAj).
+    exists j; exact (closed_entry_moved X2 A _ HX2a HX (abs_kind_sort_universe_sub _ _) HAj).
   Qed.
 
   (** The sort of an entry of the branch's context: a recursive result's
       and a parameter's the relevant one, an argument's its own. *)
-  Definition branch_context_entry_relevance (x : nat) : relevance := if x <? cargs_nrec D gs then relevant else instance_entry_relevance (x - cargs_nrec D gs).
+  Definition branch_context_entry_kind (x : nat) : abs_kind :=
+    if x <? cargs_nrec D gs then ak_relevant else instance_entry_kind (x - cargs_nrec D gs).
 
   (** At an environment of [Γ], the recursive results' sorts, by the frame
       of each recursive argument. *)
@@ -1220,30 +1227,30 @@ Section BranchSorts.
     (** Each entry of the recursive results is a type of a universe, over
         the entries after it: the type of the result along its leaf path,
         in the frame of its argument ([leaf_ih_valid]). *)
-    Lemma recursive_results_entry_sort : forall Δ1 T Δ2,
-        ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs = Δ1 ++ ce_ass T :: Δ2 ->
+    Lemma recursive_results_entry_sort : forall Δ1 κ T Δ2,
+        ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs = Δ1 ++ ce_ass κ T :: Δ2 ->
         exists j0 : nat, Δ2 ++ con_inst_ctx Γ p D Mm Us gs ⊨ T : Typeω@j0.
     Proof.
-      assert (Hgen : forall kk, kk <= List.length gs -> forall Δ1 T Δ2,
-                 ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 (List.firstn kk gs)
-                 = Δ1 ++ ce_ass T :: Δ2 -> exists j0 : nat, Δ2 ++ con_inst_ctx Γ p D Mm Us gs ⊨ T : Typeω@j0).
-      { induction kk as [| kk IH]; intros Hk Δ1 T Δ2 H; [ cbn in H; destruct Δ1; discriminate |].
+      assert (Hgen : forall kk, kk <= List.length gs -> forall Δ1 κ T Δ2,
+                 ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 (List.firstn kk gs)
+                 = Δ1 ++ ce_ass κ T :: Δ2 -> exists j0 : nat, Δ2 ++ con_inst_ctx Γ p D Mm Us gs ⊨ T : Typeω@j0).
+      { induction kk as [| kk IH]; intros Hk Δ1 κ T Δ2 H; [ cbn in H; destruct Δ1; discriminate |].
         destruct (nth_error_lt_some' gs kk ltac:(lia)) as [g Hg].
         rewrite (firstn_S_snoc _ _ _ Hg) in H.
         assert (Heq0 : gs = List.firstn kk gs ++ g :: List.skipn (S kk) gs)
           by (rewrite <- (skipn_nth_cons' _ _ _ Hg), List.firstn_skipn; reflexivity).
         destruct g as [r B0 | t].
-        - rewrite ihs_ctx_aux_app in H; cbn [ihs_ctx_aux List.app] in H; exact (IH ltac:(lia) _ _ _ H).
+        - rewrite ihs_ctx_aux_app in H; cbn [ihs_ctx_aux List.app] in H; exact (IH ltac:(lia) _ _ _ _ H).
         - rewrite recursive_results_snoc_recursive_argument in H.
           set (gs1 := List.firstn kk gs) in *; set (gs2 := List.skipn (S kk) gs) in *.
           set (ls := shape_leaves (rview_leaves D) (im_nn Mm + List.length (cargs_nonrec gs1)) t) in *.
-          set (Lv := leaves_ctx relevant (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (cargs_nrec D gs1) ls) in *.
-          set (E0 := ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1) in *.
+          set (Lv := leaves_ctx ak_relevant (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (cargs_nrec D gs1) ls) in *.
+          set (E0 := ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1) in *.
           destruct (Nat.lt_ge_cases (List.length Δ1) (List.length Lv)) as [Hlt | Hge].
-          + destruct (app_split_prefix Δ1 (ce_ass T :: Δ2) Lv E0 (eq_sym H) ltac:(lia)) as (m1 & ELv & Em).
+          + destruct (app_split_prefix Δ1 (ce_ass κ T :: Δ2) Lv E0 (eq_sym H) ltac:(lia)) as (m1 & ELv & Em).
             destruct m1 as [| d m1]; [ rewrite List.app_nil_r in ELv; rewrite ELv in Hlt; lia |].
             cbn [List.app] in Em; injection Em as <- ->.
-            destruct (leaves_ctx_split_at _ _ _ _ _ _ _ _ _ _ _ ELv) as (n & l & Hn & -> & Em1).
+            destruct (leaves_ctx_split_at _ _ _ _ _ _ _ _ _ _ _ _ ELv) as (n & l & Hn & -> & Em1).
             set (Er := m1 ++ E0).
             (** The context past the entry is valid. *)
             assert (HCtx : ⊨ Er ++ con_inst_ctx Γ p D Mm Us gs).
@@ -1266,34 +1273,34 @@ Section BranchSorts.
             rewrite LEr in Hty.
             exists j0; unfold Er in Hty; rewrite con_inst_ctx_eq, List.app_assoc; rewrite <- !List.app_assoc in Hty |- *.
             exact Hty.
-          + destruct (app_split_prefix Lv E0 Δ1 (ce_ass T :: Δ2) H Hge) as (m1 & -> & Em).
-            exact (IH ltac:(lia) _ _ _ Em). }
-      intros Δ1 T Δ2 H; apply (Hgen (List.length gs) (le_n _) Δ1); rewrite List.firstn_all; exact H.
+          + destruct (app_split_prefix Lv E0 Δ1 (ce_ass κ T :: Δ2) H Hge) as (m1 & -> & Em).
+            exact (IH ltac:(lia) _ _ _ _ Em). }
+      intros Δ1 κ T Δ2 H; apply (Hgen (List.length gs) (le_n _) Δ1 κ); rewrite List.firstn_all; exact H.
     Qed.
 
-    Lemma branch_context_entry_sort : forall Δ1 T Δ2, elim_bctx relevant p D Mm gs (blocks_motives Bks) Us = Δ1 ++ ce_ass T :: Δ2 ->
-        exists i0 : nat, Δ2 ++ Γ ⊨ T : relevance_sort (branch_context_entry_relevance (List.length Δ1)) Typeω@i0.
+    Lemma branch_context_entry_sort : forall Δ1 κ T Δ2, elim_bctx ak_relevant p D Mm gs (blocks_motives Bks) Us = Δ1 ++ ce_ass κ T :: Δ2 ->
+        exists i0 : nat, Δ2 ++ Γ ⊨ T : abs_kind_sort (branch_context_entry_kind (List.length Δ1)) Typeω@i0.
     Proof.
       intros * E.
-      set (IHs := ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs) in *.
+      set (IHs := ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs) in *.
       set (Inst := tele_sub (cargs_ctx p D Mm gs ++ im_nparams Mm) (sb_of_list Id Us)).
-      assert (EK : elim_bctx relevant p D Mm gs (blocks_motives Bks) Us = IHs ++ Inst)
+      assert (EK : elim_bctx ak_relevant p D Mm gs (blocks_motives Bks) Us = IHs ++ Inst)
         by (unfold elim_bctx, Inst; rewrite tele_sub_app, length_im_nparams; reflexivity).
       assert (LI : List.length IHs = cargs_nrec D gs) by apply length_ihs_ctx_aux.
       rewrite EK in E.
       destruct (Nat.lt_ge_cases (List.length Δ1) (List.length IHs)) as [Hlt | Hge].
-      - destruct (app_split_prefix Δ1 (ce_ass T :: Δ2) IHs Inst (eq_sym E) ltac:(lia)) as (m1 & EI & Em).
+      - destruct (app_split_prefix Δ1 (ce_ass κ T :: Δ2) IHs Inst (eq_sym E) ltac:(lia)) as (m1 & EI & Em).
         destruct m1 as [| d m1]; [ rewrite List.app_nil_r in EI; rewrite EI in Hlt; lia |].
         cbn [List.app] in Em; injection Em as <- ->.
-        destruct (recursive_results_entry_sort Δ1 T m1 EI) as [j0 Hj0].
-        assert (Hrf : branch_context_entry_relevance (List.length Δ1) = relevant)
-          by (unfold branch_context_entry_relevance; replace (List.length Δ1 <? cargs_nrec D gs) with true by (symmetry; apply Nat.ltb_lt; lia); reflexivity).
-        rewrite Hrf; exists j0; cbn [relevance_sort].
+        destruct (recursive_results_entry_sort Δ1 κ T m1 EI) as [j0 Hj0].
+        assert (Hrf : branch_context_entry_kind (List.length Δ1) = ak_relevant)
+          by (unfold branch_context_entry_kind; replace (List.length Δ1 <? cargs_nrec D gs) with true by (symmetry; apply Nat.ltb_lt; lia); reflexivity).
+        rewrite Hrf; exists j0; cbn [abs_kind_sort].
         rewrite con_inst_ctx_eq in Hj0; fold Inst in Hj0; rewrite <- List.app_assoc; exact Hj0.
-      - destruct (app_split_prefix IHs Inst Δ1 (ce_ass T :: Δ2) E Hge) as (m1 & -> & Em).
-        destruct (instance_entry_sort m1 T Δ2 Em) as [i0 Hi0].
-        assert (Hrf : branch_context_entry_relevance (List.length (IHs ++ m1)) = instance_entry_relevance (List.length m1)).
-        { unfold branch_context_entry_relevance; rewrite List.length_app, LI.
+      - destruct (app_split_prefix IHs Inst Δ1 (ce_ass κ T :: Δ2) E Hge) as (m1 & -> & Em).
+        destruct (instance_entry_sort m1 κ T Δ2 Em) as [i0 Hi0].
+        assert (Hrf : branch_context_entry_kind (List.length (IHs ++ m1)) = instance_entry_kind (List.length m1)).
+        { unfold branch_context_entry_kind; rewrite List.length_app, LI.
           replace (cargs_nrec D gs + List.length m1 <? cargs_nrec D gs) with false by (symmetry; apply Nat.ltb_ge; lia).
           f_equal; lia. }
         rewrite Hrf; exists i0; exact Hi0.
@@ -1337,12 +1344,12 @@ Section Iota.
              elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b : Typeω@i)
     (HnaA : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b))
     (HBc : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs ->
-             ⊨ elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ)
+             ⊨ elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ)
     (HarA : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
               In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec D gs)%nat)
     (HBv : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
              In (c, n, B) (eb_brs b) ->
-             elim_bctx relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us).
+             elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us).
   Let HΨ := valid_group_cargs_sem p D Hvg Hcv m Mm c gs HMm Hcon.
   (** The member has a block: it is not a record view. *)
   Let HrvM := Elim.block_not_rview D Bks m Mm bm Hdt HBks HMm Hbm.
@@ -1418,7 +1425,7 @@ Section Iota.
       by (apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D Hc _ _ HMm) ]).
     destruct (closed_app_sem _ _ Hpa Hp HΓ) as [HpΓ _]; rewrite <- List.app_assoc in HpΓ.
     assert (HSa : tele_ass (cargs_strat gs1 ++ im_params D Mm))
-      by (apply List.Forall_app; split; [ rewrite cargs_strat_nonrec; apply List.Forall_rev, tele_ass_map_ass
+      by (apply List.Forall_app; split; [ rewrite cargs_strat_nonrec; apply List.Forall_rev, tele_ass_cargs_nonrec_tele
                                        | exact (member_params_ass D Hc _ _ HMm) ]).
     assert (HSs : ⊨ cargs_strat gs1 ++ im_params D Mm)
       by (rewrite (nonrec_args_prefix_cargs_strat gs1 gs2), <- Heq; apply (valid_ind_decl_strat _ HD _ _ _ _ _ HMm Hcon);
@@ -1472,13 +1479,13 @@ Section Iota.
       rewrite Heq at 1; unfold cargs_ctx; rewrite cargs_ctx_aux_app, List.app_nil_r; cbn [cargs_ctx_aux].
       rewrite HAeq.
       rewrite (tele_insts_app (cargs_ctx_aux p D (im_nn Mm) (true :: cargs_pat gs1) gs2
-                                 ++ ce_ass (ptyp_ty p D (im_nn Mm) (cargs_pat gs1) t) :: nil)
+                                 ++ ce_ass ak_relevant (ptyp_ty p D (im_nn Mm) (cargs_pat gs1) t) :: nil)
                  (cargs_ctx_aux p D (im_nn Mm) nil gs1)); [| apply cargs_ctx_aux_ass | rewrite length_cargs_ctx_aux; exact LAs1 ].
       rewrite List.nth_error_app2 by (rewrite length_tele_insts by apply cargs_ctx_aux_ass; rewrite length_cargs_ctx_aux; lia).
       rewrite length_tele_insts by apply cargs_ctx_aux_ass; rewrite length_cargs_ctx_aux, LAs1.
       replace (List.length gs1 - Nat.min (List.length gs1) (List.length gs1)) with 0 by lia.
       change (M :: List.skipn (S (List.length gs1)) As) with ((M :: nil) ++ List.skipn (S (List.length gs1)) As).
-      rewrite tele_insts_app; [| repeat constructor; eexists; reflexivity | reflexivity ].
+      rewrite tele_insts_app; [| repeat econstructor | reflexivity ].
       cbn; unfold tele_insts at 1; cbn [List.rev List.app tele_insts_aux]; f_equal.
       rewrite ptyp_ty_eq_at, ptyp_ty_at_sub by (try exact Hc; apply length_ind_uvars).
       rewrite (ptyp_ty_at_sb_eq _ _ _ _ _ σt); [ f_equal |].
@@ -1506,7 +1513,7 @@ Section Iota.
       - intros y; rewrite iota_case_Us_id.
         assert (Lg1 : List.length gs1 <= List.length As) by (rewrite HAl, Heq, List.length_app; cbn; lia).
         replace (y + List.length (cargs_strat gs1 ++ im_nparams Mm)) with ((y + im_nn Mm) + List.length (cargs_nonrec gs1))
-          by (rewrite List.length_app, cargs_strat_nonrec, List.length_rev, List.length_map, length_im_nparams; lia).
+          by (rewrite List.length_app, cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele, length_im_nparams; lia).
         unfold σt; rewrite cargs_sub_ge by exact Lg1.
         unfold σP; rewrite iota_case_Ps, sb_of_list_app.
         replace (y + im_nn Mm) with (List.length Ns + y) by (rewrite iota_case_HNl; lia).
@@ -1536,7 +1543,7 @@ Section Iota.
                                    HBc HarA HBv m Mm c gs HMm Hcon).
   #[local] Abbreviation recursive_results_prefix_valid := (BS recursive_results_prefix_valid).
   #[local] Abbreviation recursive_results_snoc_recursive_argument := (BS recursive_results_snoc_recursive_argument).
-  #[local] Abbreviation instance_entry_relevance := (instance_entry_relevance gs).
+  #[local] Abbreviation instance_entry_kind := (instance_entry_kind gs).
   #[local] Abbreviation instance_entry_sort := (BS instance_entry_sort).
 
   (** The recursive results along the leaf paths [ls1] of a recursive
@@ -1544,12 +1551,12 @@ Section Iota.
       context. *)
   Lemma gsub_iota_leaves : forall gs1 t rest, gs = gs1 ++ ca_rec t :: rest -> forall L0, List.length L0 = cargs_nrec D gs1 ->
       gsub Γ (sb_of_list Id (Ns ++ As ++ L0))
-        (ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mm Us gs) ->
+        (ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mm Us gs) ->
       forall ls1 ls2, shape_leaves (rview_leaves D) (im_nn Mm + List.length (cargs_nonrec gs1)) t = ls1 ++ ls2 ->
       gsub Γ (sb_of_list Id (Ns ++ As ++ L0 ++
-                List.map (leaf_ih relevant p Us Bks (cargs_sub σP gs1 As) (List.nth (List.length gs1) As (a_var 0))) ls1))
-        (leaves_ctx relevant (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (cargs_nrec D gs1) ls1
-         ++ ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mm Us gs).
+                List.map (leaf_ih ak_relevant p Us Bks (cargs_sub σP gs1 As) (List.nth (List.length gs1) As (a_var 0))) ls1))
+        (leaves_ctx ak_relevant (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (cargs_nrec D gs1) ls1
+         ++ ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mm Us gs).
   Proof.
     intros gs1 t rest Heq L0 HL Hδ ls1.
     assert (Hlt : List.length gs1 < List.length As) by (rewrite HAl, Heq, List.length_app; cbn; lia).
@@ -1567,13 +1574,13 @@ Section Iota.
       destruct (rel_ctx_wf_ass_inv HCT) as [jT HTj].
       (** The instance so far, extended by the path's result. *)
       rewrite List.map_app, leaves_ctx_app; cbn [leaves_ctx List.app List.map].
-      set (L1 := L0 ++ List.map (leaf_ih relevant p Us Bks (cargs_sub σP gs1 As) a) ls1) in *.
+      set (L1 := L0 ++ List.map (leaf_ih ak_relevant p Us Bks (cargs_sub σP gs1 As) a) ls1) in *.
       assert (LL1 : List.length L1 = cargs_nrec D gs1 + List.length ls1) by (unfold L1; rewrite List.length_app, List.length_map, HL; reflexivity).
-      replace (Ns ++ As ++ L0 ++ List.map (leaf_ih relevant p Us Bks (cargs_sub σP gs1 As) a) ls1
-                 ++ leaf_ih relevant p Us Bks (cargs_sub σP gs1 As) a l :: nil)
-        with ((Ns ++ As ++ L1) ++ leaf_ih relevant p Us Bks (cargs_sub σP gs1 As) a l :: nil)
+      replace (Ns ++ As ++ L0 ++ List.map (leaf_ih ak_relevant p Us Bks (cargs_sub σP gs1 As) a) ls1
+                 ++ leaf_ih ak_relevant p Us Bks (cargs_sub σP gs1 As) a l :: nil)
+        with ((Ns ++ As ++ L1) ++ leaf_ih ak_relevant p Us Bks (cargs_sub σP gs1 As) a l :: nil)
         by (unfold L1; rewrite <- !List.app_assoc; reflexivity).
-      replace (Ns ++ As ++ L0 ++ List.map (leaf_ih relevant p Us Bks (cargs_sub σP gs1 As) a) ls1) with (Ns ++ As ++ L1) in IH1
+      replace (Ns ++ As ++ L0 ++ List.map (leaf_ih ak_relevant p Us Bks (cargs_sub σP gs1 As) a) ls1) with (Ns ++ As ++ L1) in IH1
         by (unfold L1; reflexivity).
       rewrite (sb_of_list_app (Ns ++ As ++ L1) (_ :: nil) Id).
       change (sb_of_list (sb_of_list Id (Ns ++ As ++ L1)) (?N :: nil)) with (sb_of_list Id (Ns ++ As ++ L1) ,, N).
@@ -1581,13 +1588,13 @@ Section Iota.
       2:{ (** The path's result is scoped by [Γ]. *)
           assert (Lg1 : List.length (List.firstn (List.length gs1) As) = List.length gs1) by (rewrite List.length_firstn; lia).
           pose proof (member_closed_recs _ _ (decl_closed_members _ Hc _ _ HMm) _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as Ht.
-          rewrite cargs_strat_nonrec, List.length_rev, List.length_map in Ht.
+          rewrite cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele in Ht.
           pose proof (shape_leaves_scoped (rview_leaves D) (ind_nu D) t (im_nn Mm + List.length (cargs_nonrec gs1))
                         (rview_leaves_scoped D Hc) ltac:(unfold im_np in Ht; replace (im_nn Mm + List.length (cargs_nonrec gs1) + ind_nu D)
                                                            with (List.length (cargs_nonrec gs1) + (im_nn Mm + ind_nu D)) by lia; exact Ht))
             as HLs.
           rewrite Els in HLs.
-          apply (leaf_ih_scoped relevant p D l Us Bks _ a (List.length Γ) (im_nn Mm + List.length (cargs_nonrec gs1) + ind_nu D) Hc
+          apply (leaf_ih_scoped ak_relevant p D l Us Bks _ a (List.length Γ) (im_nn Mm + List.length (cargs_nonrec gs1) + ind_nu D) Hc
                    iota_case_HUl iota_case_HUss HnmA HBss).
           - intros x Hx; rewrite <- (cargs_sub_firstn gs1 σP As).
             apply (cargs_sub_bound gs1 σP _ (List.length Ps) _); [| exact (Forall_firstn' _ _ _ HAss) | exact Lg1 |].
@@ -1616,7 +1623,7 @@ Section Iota.
         cbn [sentry_exp]; rewrite List.app_nth2 by (rewrite iota_case_HNl; lia); rewrite iota_case_HNl.
         replace (im_nn Mm + List.length gs1 - im_nn Mm) with (List.length gs1) by lia.
         rewrite List.app_nth1 by exact Hlt; apply List.nth_error_nth; exact Ha. }
-      rewrite Hidx, (leaf_ihty_sb_eq relevant l _ _ Id _ (cargs_sub σP gs1 As) a Hbδ Hθδ).
+      rewrite Hidx, (leaf_ihty_sb_eq ak_relevant l _ _ Id _ (cargs_sub σP gs1 As) a Hbδ Hθδ).
       (** The path's result, at the argument's frame. *)
       assert (Hinl : In l (shape_leaves (rview_leaves D) (im_nn Mm + List.length (cargs_nonrec gs1) + 0) (ptyp_skip 0 t)))
         by (rewrite Nat.add_0_r; cbn [ptyp_skip]; rewrite Els; apply List.in_or_app; left; apply List.in_or_app; right; left; reflexivity).
@@ -1630,10 +1637,10 @@ Section Iota.
 
   Lemma gsub_iota_ihs : forall rest gs1 L0, gs = gs1 ++ rest -> List.length L0 = cargs_nrec D gs1 ->
       gsub Γ (sb_of_list Id (Ns ++ As ++ L0))
-        (ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mm Us gs) ->
-      gsub Γ (sb_of_list Id (Ns ++ As ++ L0 ++ elim_ihs relevant p D Us Bks (cargs_sub σP gs1 As)
+        (ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ con_inst_ctx Γ p D Mm Us gs) ->
+      gsub Γ (sb_of_list Id (Ns ++ As ++ L0 ++ elim_ihs ak_relevant p D Us Bks (cargs_sub σP gs1 As)
                                           (im_nn Mm + List.length (cargs_nonrec gs1)) rest (List.skipn (List.length gs1) As)))
-        (ihs_ctx_aux relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 (gs1 ++ rest) ++ con_inst_ctx Γ p D Mm Us gs).
+        (ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 (gs1 ++ rest) ++ con_inst_ctx Γ p D Mm Us gs).
   Proof.
     induction rest as [| [rB B0 | t] rest IH]; intros gs1 L0 Heq HL Hδ.
     - cbn [elim_ihs]; rewrite !List.app_nil_r; exact Hδ.
@@ -1659,10 +1666,10 @@ Section Iota.
       pose proof (gsub_iota_leaves gs1 t rest Heq L0 HL Hδ _ nil (eq_sym (List.app_nil_r _))) as Hall.
       rewrite (List.nth_error_nth _ _ _ Ha) in Hall.
       set (ls := shape_leaves (rview_leaves D) (im_nn Mm + List.length (cargs_nonrec gs1)) t) in *.
-      set (F := leaf_ih relevant p Us Bks (cargs_sub σP gs1 As) a) in *.
-      replace (Ns ++ As ++ L0 ++ List.map F ls ++ elim_ihs relevant p D Us Bks (cargs_sub σP gs1 As) (im_nn Mm + List.length (cargs_nonrec gs1))
+      set (F := leaf_ih ak_relevant p Us Bks (cargs_sub σP gs1 As) a) in *.
+      replace (Ns ++ As ++ L0 ++ List.map F ls ++ elim_ihs ak_relevant p D Us Bks (cargs_sub σP gs1 As) (im_nn Mm + List.length (cargs_nonrec gs1))
                  rest (List.skipn (S (List.length gs1)) As))
-        with (Ns ++ As ++ (L0 ++ List.map F ls) ++ elim_ihs relevant p D Us Bks (cargs_sub σP (gs1 ++ ca_rec t :: nil) As)
+        with (Ns ++ As ++ (L0 ++ List.map F ls) ++ elim_ihs ak_relevant p D Us Bks (cargs_sub σP (gs1 ++ ca_rec t :: nil) As)
                 (im_nn Mm + List.length (cargs_nonrec (gs1 ++ ca_rec t :: nil))) rest
                 (List.skipn (List.length (gs1 ++ ca_rec t :: nil)) As))
         by (rewrite Hcs, cargs_nonrec_app, !List.length_app; cbn [cargs_nonrec List.length];
@@ -1674,8 +1681,8 @@ Section Iota.
       rewrite recursive_results_snoc_recursive_argument, <- List.app_assoc; exact Hall.
   Qed.
 
-  Lemma gsub_iota : gsub Γ (sb_of_list Id (Ns ++ As ++ elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As))
-      (elim_bctx relevant p D Mm gs (blocks_motives Bks) Us ++ Γ).
+  Lemma gsub_iota : gsub Γ (sb_of_list Id (Ns ++ As ++ elim_ihs ak_relevant p D Us Bks σP (im_nn Mm) gs As))
+      (elim_bctx ak_relevant p D Mm gs (blocks_motives Bks) Us ++ Γ).
   Proof.
     pose proof gsub_args as Hδ.
     rewrite <- (List.app_nil_r As) in Hδ at 1.
@@ -1726,7 +1733,7 @@ Section Iota.
     Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HRU : EF ind_uparams D ≈ ind_uparams D ∈ per_ctx_env ↘ RU).
     Variable (C : env) (u0 ns avs : list domain).
     Hypotheses (HCC : RΓ C C) (HCt : ctx_retag Γ C = C) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ u0)
-      (HNC : ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ns) (HAC : eval_field_vals gc_deps gc_stack (cargs_relevance gs) As C avs).
+      (HNC : ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ns) (HAC : eval_field_vals gc_deps gc_stack (Syntactic.Inductives.Inductives.cargs_kinds gs) As C avs).
     Let nr := canon_nparams_rel D u0.
     Let ar := canon_args_rel D u0.
     Let dr := canon_doms_rel D u0.
@@ -1770,7 +1777,7 @@ Section Iota.
       destruct (rel_exp_under_ctx_simple_at_mty _ _ _ _ _ _ _ _ _ _ HMm HRΓ iota_Mc_valid _ _ HCC) as (mv & _ & Emv & _ & _).
       assert (LNA : List.length (Ns ++ As) = (im_nn Mm + List.length gs)%nat) by (rewrite List.length_app, iota_case_HNl, HAl; reflexivity).
       destruct (con_ref_apps_value VP p D HP HPD m Mm c gs C Us (Ns ++ As) (ns ++ avs) mv HMm HrvM Hcon iota_case_HUl
-                  (con_ref_vals_join D Mm gs Ns As C ns avs iota_case_HNl HNC HAC) LNA Emv) as (cs & Lcs & ->).
+                  (con_ref_vals_join D m Mm gs Ns As C ns avs Hdt HMm iota_case_HNl HNC HAC) LNA Emv) as (cs & Lcs & ->).
       exists cs; split; assumption.
     Qed.
 
@@ -1850,7 +1857,7 @@ Section Iota.
       destruct (presup_rel_exp_under_ctx iota_Mc_valid) as [iT HIT].
       destruct (rel_type_inversion_simple_at HRΓ HIT _ _ HCC) as (t1 & _ & Et1 & _ & _).
       destruct (exp_inst_link _ _ _ _ _ _ _ _ _ iota_Mc_valid HRΔ Hw HE Hev
-                  (ex_intro _ t1 (conj Et1 (ind_mty_relevant _ _ _ _ _ _ _ _ HMm Et1))))
+                  (rel_typ_evaluated_of_kind (ex_intro _ t1 (conj Et1 (ind_mty_relevant _ _ _ _ _ _ _ _ HMm Et1))) evaluated_kind_relevant))
         as (mw & mC & Emw & EmC & Hm).
       destruct iota_sem_Mc as (cs & Lcs & EMc).
       assert (mC = d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c (cs ++ ns ++ avs)) as -> by (eapply functional_eval_exp; eassumption).
@@ -1861,7 +1868,7 @@ Section Iota.
         by (rewrite List.length_app, !List.length_map, iota_case_HNl, HAl; reflexivity).
       destruct (con_ref_apps_sorted VP p D HP HPD m Mm c gs (env_extend_typed C zs) (List.map (fun U => U[σL]) Us) _ mw HMm HrvM Hcon
                   ltac:(rewrite List.length_map; exact iota_case_HUl) LNA Emw) as (zs' & Ezs).
-      destruct (con_ref_vals_split D Mm gs _ _ _ _ ltac:(rewrite List.length_map; exact iota_case_HNl) Ezs)
+      destruct (con_ref_vals_split D m Mm gs _ _ _ _ Hdt HMm ltac:(rewrite List.length_map; exact iota_case_HNl) Ezs)
         as (ns1 & as1 & -> & Ens1 & Eas1).
       assert (Ln1 : List.length ns1 = im_nn Mm) by (rewrite (eval_exps_length _ _ _ Ens1), List.length_map; exact iota_case_HNl).
       destruct (con_ref_apps_value VP p D HP HPD m Mm c gs (env_extend_typed C zs) (List.map (fun U => U[σL]) Us) _ _ mw HMm HrvM Hcon
@@ -1883,7 +1890,7 @@ Section Iota.
       destruct (Mctt.Core.Completeness.Records.Model.eval_field_vals_nth _ _ _ _ Eas1 (List.length gs1) (M0[σL])
                   ltac:(rewrite List.nth_error_map, HM0; reflexivity)) as (v0 & Hv0 & Ev0 & _).
       rewrite Hx' in Hv0; injection Hv0 as <-.
-      specialize (Ev0 ltac:(rewrite Heq; exact (cargs_relevance_rec gs1 t gs2))).
+      specialize (Ev0 ltac:(rewrite Heq, (cargs_kinds_rec gs1 t gs2); constructor)).
       exists (ns1 ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) as1)), x'; split; [| exact Hshw ].
       unfold σL in Ev0; rewrite exp_sub_of_wk in Ev0; exact Ev0.
     Qed.
@@ -1909,7 +1916,7 @@ Section Iota.
       set (Ms := Ps ++ nt).
       assert (Lnt : List.length nt = K) by (unfold nt, K; apply length_nonrec_arg_terms; exact Lg1).
       assert (Ln : n = K + List.length Ps)
-        by (unfold n, K0; rewrite List.length_app, cargs_strat_nonrec, List.length_rev, List.length_map, length_im_params, HPl;
+        by (unfold n, K0; rewrite List.length_app, cargs_strat_nonrec, List.length_rev, length_cargs_nonrec_tele, length_im_params, HPl;
             fold K; lia).
       assert (LMs : List.length Ms = n) by (unfold Ms; rewrite List.length_app, Lnt; lia).
       assert (Eσ : cargs_sub σP gs1 As = sb_of_list Id Ms)
@@ -1924,18 +1931,18 @@ Section Iota.
       assert (HRT' : EF K0 ++ Γ ≈ K0 ++ Γ ∈ per_ctx_env ↘ RT) by (unfold K0; rewrite <- List.app_assoc; exact HRT).
       set (rf := frame_rf gs gs1).
       (** The entries' propositionality is decided by their relevance. *)
-      assert (Hdec : forall x, x < n -> rf x = relevant ->
+      assert (Hdec : forall x, x < n -> evaluated_kind (rf x) ->
                        ~ entry_propositional gc_deps gc_stack (cargs_strat gs1 ++ im_params D Mm ++ Γ) e1 x).
       { intros x Hx Hr; rewrite List.app_assoc.
         refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT' e1 e1 He11).
-        intros Δ1 T0 Δ2 E0 HΔ1.
-        unfold rf in Hr; exact (proj1 (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 T0 Δ2 E0 HΔ1) Hr). }
-      assert (Hpr : forall x, x < n -> rf x = propositional ->
+        intros Δ1 κ0 T0 Δ2 E0 HΔ1.
+        unfold rf in Hr; exact (proj1 (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 κ0 T0 Δ2 E0 HΔ1) Hr). }
+      assert (Hpr : forall x, x < n -> rf x = ak_propositional ->
                       entry_propositional gc_deps gc_stack (cargs_strat gs1 ++ im_params D Mm ++ Γ) e1 x).
       { intros x Hx Hr; rewrite List.app_assoc.
         refine (prop_entry_propositional K0 Γ RT x HK0a Hx _ HRT' e1 e1 He11).
-        intros Δ1 T0 Δ2 E0 HΔ1.
-        unfold rf in Hr; exact (proj2 (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 T0 Δ2 E0 HΔ1) Hr). }
+        intros Δ1 κ0 T0 Δ2 E0 HΔ1.
+        unfold rf in Hr; exact (proj2 (SF frame_entry_sort m Mm c gs gs1 t gs2 HMm Hcon Heq x Δ1 κ0 T0 Δ2 E0 HΔ1) Hr). }
       assert (ETg : cargs_strat gs1 ++ im_params D Mm ++ Γ = List.rev (List.rev K0) ++ Γ)
         by (rewrite List.rev_involutive; unfold K0; rewrite <- List.app_assoc; reflexivity).
       rewrite Eσ, ETg in Ee1; rewrite ETg in Hdec, Hpr.
@@ -1944,9 +1951,9 @@ Section Iota.
         as (ms & Lms & Hms & Hagr).
       (** The values: the parameters', then the non-recursive arguments'. *)
       set (nv1 := nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs)).
-      assert (Hnvf : eval_field_vals gc_deps gc_stack (cargs_nonrec_relevance gs1) nt C nv1).
-      { unfold nt, nv1; apply (eval_field_vals_nonrec gs1 (cargs_relevance (ca_rec t :: gs2))); [| exact Lg1 ].
-        unfold cargs_relevance; rewrite <- List.map_app, <- Heq; fold (cargs_relevance gs).
+      assert (Hnvf : eval_field_vals gc_deps gc_stack (cargs_nonrec_kinds gs1) nt C nv1).
+      { unfold nt, nv1; apply (eval_field_vals_nonrec gs1 (Syntactic.Inductives.Inductives.cargs_kinds (ca_rec t :: gs2))); [| exact Lg1 ].
+        unfold Syntactic.Inductives.Inductives.cargs_kinds; rewrite <- List.map_app, <- Heq; fold (Syntactic.Inductives.Inductives.cargs_kinds gs).
         exact (Mctt.Core.Completeness.Records.Model.eval_field_vals_firstn _ _ _ _ HAC (List.length gs1)). }
       assert (Hmsv : ms = u0 ++ ns ++ nv1).
       { pose proof (Mctt.Core.Completeness.Records.Model.eval_field_vals_length _ _ _ _ Hnvf) as Lnv1.
@@ -1959,13 +1966,13 @@ Section Iota.
         rewrite (List.nth_error_nth _ _ _ Hv).
         destruct (Nat.lt_ge_cases j (List.length Ps)) as [Hj1 | Hj1].
         - (** A parameter: relevant. *)
-          assert (Erf : rf (List.length Ms - 1 - j) = relevant)
+          assert (Erf : rf (List.length Ms - 1 - j) = ak_relevant)
             by (unfold rf, frame_rf; fold K; replace (List.length Ms - 1 - j <? K) with false by (symmetry; apply Nat.ltb_ge; lia);
                 reflexivity).
           unfold Ms in HM; rewrite List.nth_error_app1 in HM by exact Hj1.
           destruct (eval_exps_nth _ _ _ _ _ iota_sem_HPC HM) as (y & Hy & Ey).
           rewrite List.app_assoc, List.app_nth1 by (rewrite LPC; exact Hj1).
-          rewrite (List.nth_error_nth _ _ _ Hy); exact (functional_eval_exp _ _ _ _ (HmR Erf) Ey).
+          rewrite (List.nth_error_nth _ _ _ Hy); exact (functional_eval_exp _ _ _ _ (HmR ltac:(rewrite Erf; constructor)) Ey).
         - (** A non-recursive argument: of its sort. *)
           set (k := j - List.length Ps).
           unfold Ms in HM; rewrite List.nth_error_app2 in HM by exact Hj1; fold k in HM.
@@ -1975,16 +1982,16 @@ Section Iota.
           rewrite (List.nth_error_nth _ _ _ Hy).
           assert (Hk : k < K) by (unfold k; rewrite Lms, LMs in Hj; lia).
           destruct (nth_error_lt_some' (cargs_nonrec gs1) k Hk) as [A0 HA0].
-          destruct (nonrec_relevance_nth _ _ _ HA0) as [r Hr].
+          destruct (nonrec_kind_nth _ _ _ HA0) as [r Hr].
           assert (Erf : rf (List.length Ms - 1 - j) = r).
           { unfold rf, frame_rf; fold K.
             replace (List.length Ms - 1 - j <? K) with true by (symmetry; apply Nat.ltb_lt; lia).
             replace (K - 1 - (List.length Ms - 1 - j)) with k by (unfold k; lia).
-            rewrite Heq, cargs_nonrec_relevance_app, List.nth_error_app1 by (apply List.nth_error_Some; congruence).
+            rewrite Heq, cargs_nonrec_kinds_app, List.nth_error_app1 by (apply List.nth_error_Some; congruence).
             rewrite Hr; reflexivity. }
-          rewrite (List.nth_error_nth _ _ relevant Hr) in Ey1, Ey2.
-          destruct r.
-          + exact (functional_eval_exp _ _ _ _ (HmR Erf) (Ey1 eq_refl)).
+          rewrite (List.nth_error_nth _ _ ak_relevant Hr) in Ey1, Ey2.
+          destruct (evaluated_kind_or_propositional r) as [Hre | ->].
+          + exact (functional_eval_exp _ _ _ _ (HmR ltac:(rewrite Erf; exact Hre)) (Ey1 Hre)).
           + rewrite (HmP Erf), (Ey2 eq_refl); reflexivity. }
       (** The value past the entries: [C]. *)
       assert (Lpj : List.length (List.rev K0) = List.length Ms) by (rewrite List.length_rev; lia).
@@ -2015,7 +2022,7 @@ Section Iota.
         eliminator's own and the values of [elim_ihs], related. *)
     Lemma iota_sem_ihs : forall rest gs1, gs = gs1 ++ rest ->
         exists ihe ihc, ⟦ihs List.skipn (List.length gs1) avs of rest under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C ↘ ihe /\
-          ⟦ elim_ihs relevant p D Us Bks (cargs_sub σP gs1 As) (im_nn Mm + List.length (cargs_nonrec gs1)) rest
+          ⟦ elim_ihs ak_relevant p D Us Bks (cargs_sub σP gs1 As) (im_nn Mm + List.length (cargs_nonrec gs1)) rest
               (List.skipn (List.length gs1) As) ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ihc /\
           rec_results_rel D dr Rel m u0 u0 (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs))
             (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs)) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1) rest
@@ -2035,7 +2042,7 @@ Section Iota.
         destruct (IH _ Heq') as (ihe & ihc & Ee & Ec & Hr).
         rewrite List.length_app in Ee, Ec, Hr; cbn [List.length] in Ee, Ec, Hr; rewrite Nat.add_1_r in Ee, Ec, Hr.
         rewrite (firstn_S_nth _ _ _ Hv), nonrec_arg_vals_app in Hr by exact Lf.
-        unfold cargs_nonrec_tele in Hr; rewrite cargs_nonrec_app, List.map_app in Hr; fold (cargs_nonrec_tele gs1) in Hr.
+        rewrite cargs_nonrec_tele_app in Hr.
         rewrite (skipn_nth_cons _ _ _ Hv), (skipn_nth_cons _ _ _ HM0).
         rewrite cargs_nonrec_app, List.length_app in Ec.
         destruct g as [rB B0 | t].
@@ -2078,7 +2085,7 @@ Section Iota.
               destruct (Mctt.Core.Completeness.Records.Model.eval_field_vals_nth _ _ _ _ HAC (List.length gs1) M0 HM0)
                 as (v0 & Hv0 & Ev0 & _).
               rewrite Hv in Hv0; injection Hv0 as ->; apply Ev0.
-              rewrite Heq; exact (cargs_relevance_rec gs1 t rest).
+              rewrite Heq, (cargs_kinds_rec gs1 t rest); constructor.
             - exact u0_env'.
             - exact u0_len'.
             - exact iota_sem_Ln.
@@ -2101,7 +2108,7 @@ Section Iota.
     Qed.
 
     (** The sorts of the branch's context's entries ([BranchSorts]). *)
-    #[local] Abbreviation branch_context_entry_relevance := (branch_context_entry_relevance D gs).
+    #[local] Abbreviation branch_context_entry_kind := (branch_context_entry_kind D gs).
     #[local] Abbreviation branch_context_entry_sort := (BS branch_context_entry_sort RΓ RU HRΓ HRU C u0 HCC HUC HrvM).
 
     (** *** The Branch's Instance at [C]
@@ -2110,16 +2117,16 @@ Section Iota.
         non-uniform parameters', the arguments' of their sorts and the
         recursive results', at types that read back. *)
     Lemma iota_tau_value : forall ihc,
-        ⟦ elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ihc ->
-        exists wts, ⟦ sb_of_list Id (Ns ++ As ++ elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As)
-                      : elim_bctx relevant p D Mm gs (blocks_motives Bks) Us ++ Γ ⟧s C ↘ env_extend_typed C wts /\
+        ⟦ elim_ihs ak_relevant p D Us Bks σP (im_nn Mm) gs As ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ihc ->
+        exists wts, ⟦ sb_of_list Id (Ns ++ As ++ elim_ihs ak_relevant p D Us Bks σP (im_nn Mm) gs As)
+                      : elim_bctx ak_relevant p D Mm gs (blocks_motives Bks) Us ++ Γ ⟧s C ↘ env_extend_typed C wts /\
           List.map fst wts = ns ++ avs ++ ihc /\
           List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) wts.
     Proof.
       intros ihc Ec.
       assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
-      set (Ihs := elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As) in *.
-      set (K0 := elim_bctx relevant p D Mm gs (blocks_motives Bks) Us).
+      set (Ihs := elim_ihs ak_relevant p D Us Bks σP (im_nn Mm) gs As) in *.
+      set (K0 := elim_bctx ak_relevant p D Mm gs (blocks_motives Bks) Us).
       set (Ms := Ns ++ As ++ Ihs).
       assert (Lih : List.length Ihs = cargs_nrec D gs) by (apply length_elim_ihs; exact HAl).
       assert (LK0 : List.length K0 = cargs_nrec D gs + List.length gs + im_nn Mm) by apply length_elim_bctx.
@@ -2130,24 +2137,26 @@ Section Iota.
       destruct (Hs _ _ (proj1 (E1 _ _) HCC)) as (e1 & e1' & Ee1 & _ & He1).
       assert (HPT : PER RT) by (eapply per_env_PER; exact HRT).
       assert (He11 : RT e1 e1) by (etransitivity; [ exact He1 | symmetry; exact He1 ]).
-      pose proof (elim_bctx_ass relevant p D m Mm gs (blocks_motives Bks) Us Hc HMm) as HK0a; fold K0 in HK0a.
+      pose proof (elim_bctx_ass ak_relevant p D m Mm gs (blocks_motives Bks) Us Hc HMm) as HK0a; fold K0 in HK0a.
       (** The entries' propositionality is decided by their sorts. *)
-      assert (Hdec : forall x, x < List.length K0 -> branch_context_entry_relevance x = relevant -> ~ entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
+      assert (Hdec : forall x, x < List.length K0 -> evaluated_kind (branch_context_entry_kind x) ->
+                       ~ entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
       { intros x Hx Hr.
         refine (relevant_entry_not_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
-        intros Δ1 T0 Δ2 E0 HΔ1.
-        destruct (branch_context_entry_sort Δ1 T0 Δ2 E0) as [i0 HT0].
-        rewrite HΔ1, Hr in HT0; exists i0; left; exact HT0. }
-      assert (Hpr : forall x, x < List.length K0 -> branch_context_entry_relevance x = propositional -> entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
+        intros Δ1 κ0 T0 Δ2 E0 HΔ1.
+        destruct (branch_context_entry_sort Δ1 κ0 T0 Δ2 E0) as [i0 HT0].
+        assert (Hk : branch_context_entry_kind x = ak_relevant \/ branch_context_entry_kind x = ak_level) by (destruct Hr; auto).
+        rewrite HΔ1 in HT0; exists i0; destruct Hk as [Hk | Hk]; rewrite Hk in HT0; [ left | right ]; exact HT0. }
+      assert (Hpr : forall x, x < List.length K0 -> branch_context_entry_kind x = ak_propositional -> entry_propositional gc_deps gc_stack (K0 ++ Γ) e1 x).
       { intros x Hx Hr.
         refine (prop_entry_propositional K0 Γ RT x HK0a Hx _ HRT e1 e1 He11).
-        intros Δ1 T0 Δ2 E0 HΔ1.
-        destruct (branch_context_entry_sort Δ1 T0 Δ2 E0) as [i0 HT0].
+        intros Δ1 κ0 T0 Δ2 E0 HΔ1.
+        destruct (branch_context_entry_sort Δ1 κ0 T0 Δ2 E0) as [i0 HT0].
         rewrite HΔ1, Hr in HT0; exact HT0. }
       assert (ETg : K0 ++ Γ = List.rev (List.rev K0) ++ Γ) by (rewrite List.rev_involutive; reflexivity).
       fold K0 Ihs Ms in Ee1, HRT.
       rewrite ETg in Ee1, Hdec, Hpr.
-      destruct (eval_sb_of_list_sorted_split Ms (List.rev K0) Id Γ C e1 branch_context_entry_relevance ltac:(rewrite List.length_rev; lia) Ee1
+      destruct (eval_sb_of_list_sorted_split Ms (List.rev K0) Id Γ C e1 branch_context_entry_kind ltac:(rewrite List.length_rev; lia) Ee1
                   ltac:(rewrite List.length_rev; exact Hdec) ltac:(rewrite List.length_rev; exact Hpr))
         as (ms & Lms & Hms & Hagr).
       (** The values: the parameters', the arguments', the results'. *)
@@ -2163,8 +2172,8 @@ Section Iota.
         rewrite Lms, LMs, LK0 in Hj; rewrite LMs, LK0 in HmR, HmP.
         destruct (Nat.lt_ge_cases j (im_nn Mm)) as [Hj1 | Hj1].
         - (** A parameter: relevant. *)
-          assert (Erf : branch_context_entry_relevance (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j) = relevant).
-          { unfold branch_context_entry_relevance, instance_entry_relevance.
+          assert (Erf : branch_context_entry_kind (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j) = ak_relevant).
+          { unfold branch_context_entry_kind, instance_entry_kind.
             replace (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j <? cargs_nrec D gs) with false
               by (symmetry; apply Nat.ltb_ge; lia).
             replace (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j - cargs_nrec D gs <? List.length gs) with false
@@ -2173,7 +2182,7 @@ Section Iota.
           unfold Ms in HM; rewrite List.nth_error_app1 in HM by (rewrite iota_case_HNl; exact Hj1).
           destruct (eval_exps_nth _ _ _ _ _ HNC HM) as (y & Hy & Ey).
           rewrite List.app_nth1 by (rewrite LNC, iota_case_HNl; exact Hj1).
-          rewrite (List.nth_error_nth _ _ _ Hy); exact (functional_eval_exp _ _ _ _ (HmR Erf) Ey).
+          rewrite (List.nth_error_nth _ _ _ Hy); exact (functional_eval_exp _ _ _ _ (HmR ltac:(rewrite Erf; constructor)) Ey).
         - destruct (Nat.lt_ge_cases j (im_nn Mm + List.length gs)) as [Hj2 | Hj2].
           + (** An argument: of its sort. *)
             set (k := j - im_nn Mm).
@@ -2184,9 +2193,9 @@ Section Iota.
             rewrite LNC, iota_case_HNl; fold k; rewrite List.app_nth1 by (rewrite LAC; unfold k; lia).
             rewrite (List.nth_error_nth _ _ _ Hy).
             destruct (nth_error_lt_some' gs k ltac:(unfold k; lia)) as [g Hg].
-            assert (Erf : branch_context_entry_relevance (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j)
-                          = match g with ca_arg r _ => r | ca_rec _ => relevant end).
-            { unfold branch_context_entry_relevance, instance_entry_relevance.
+            assert (Erf : branch_context_entry_kind (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j)
+                          = match g with ca_arg r _ => r | ca_rec _ => ak_relevant end).
+            { unfold branch_context_entry_kind, instance_entry_kind.
               replace (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j <? cargs_nrec D gs) with false
                 by (symmetry; apply Nat.ltb_ge; lia).
               replace (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j - cargs_nrec D gs <? List.length gs) with true
@@ -2194,17 +2203,19 @@ Section Iota.
               replace (List.length gs - 1 - (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j - cargs_nrec D gs)) with k
                 by (unfold k; lia).
               rewrite Hg; destruct g; reflexivity. }
-            assert (Ecr : List.nth k (cargs_relevance gs) relevant = match g with ca_arg r _ => r | ca_rec _ => relevant end)
-              by (unfold cargs_relevance; erewrite List.nth_error_nth; [ reflexivity | rewrite List.nth_error_map, Hg; reflexivity ]).
+            assert (Ecr : List.nth k (Syntactic.Inductives.Inductives.cargs_kinds gs) ak_relevant
+                          = match g with ca_arg r _ => r | ca_rec _ => ak_relevant end)
+              by (unfold Syntactic.Inductives.Inductives.cargs_kinds; erewrite List.nth_error_nth; [ reflexivity | rewrite List.nth_error_map, Hg; reflexivity ]).
             rewrite Ecr in Ey1, Ey2; rewrite Erf in HmR, HmP.
-            destruct g as [[|] A0 | t0].
-            * exact (functional_eval_exp _ _ _ _ (HmR eq_refl) (Ey1 eq_refl)).
+            destruct g as [[| |] A0 | t0].
+            * exact (functional_eval_exp _ _ _ _ (HmR ltac:(constructor)) (Ey1 ltac:(constructor))).
             * rewrite (HmP eq_refl), (Ey2 eq_refl); reflexivity.
-            * exact (functional_eval_exp _ _ _ _ (HmR eq_refl) (Ey1 eq_refl)).
+            * exact (functional_eval_exp _ _ _ _ (HmR ltac:(constructor)) (Ey1 ltac:(constructor))).
+            * exact (functional_eval_exp _ _ _ _ (HmR ltac:(constructor)) (Ey1 ltac:(constructor))).
           + (** A recursive result: relevant. *)
             set (k := j - (im_nn Mm + List.length gs)).
-            assert (Erf : branch_context_entry_relevance (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j) = relevant).
-            { unfold branch_context_entry_relevance.
+            assert (Erf : branch_context_entry_kind (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j) = ak_relevant).
+            { unfold branch_context_entry_kind.
               replace (cargs_nrec D gs + List.length gs + im_nn Mm - 1 - j <? cargs_nrec D gs) with true
                 by (symmetry; apply Nat.ltb_lt; lia).
               reflexivity. }
@@ -2214,7 +2225,7 @@ Section Iota.
             destruct (eval_exps_nth _ _ _ _ _ Ec HM) as (y & Hy & Ey).
             rewrite List.app_assoc, List.app_nth2 by (rewrite List.length_app, LNC, LAC, iota_case_HNl; exact Hj2).
             rewrite List.length_app, LNC, LAC, iota_case_HNl; fold k.
-            rewrite (List.nth_error_nth _ _ _ Hy); exact (functional_eval_exp _ _ _ _ (HmR Erf) Ey). }
+            rewrite (List.nth_error_nth _ _ _ Hy); exact (functional_eval_exp _ _ _ _ (HmR ltac:(rewrite Erf; constructor)) Ey). }
       (** The value past the entries: [C]. *)
       assert (Lpj : List.length (List.rev K0) = List.length Ms) by (rewrite List.length_rev; lia).
       pose proof (eval_sb_of_list_tail _ _ _ _ _ _ Lpj Ee1) as Htail.
@@ -2243,8 +2254,8 @@ Section Iota.
         environment and the instance's value are related at the branch's
         context, their recursive results by [iota_sem_ihs]. *)
     Lemma iota_sem_core : forall n B, brs_lookup (eb_brs bm) c = Some (n, B) ->
-        exists l r, ⟦ a_elim relevant p Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c) (im_pre Mm Us ++ Ns ++ As)) ⟧ C ↘ l /\
-          ⟦ B[sb_of_list Id (Ns ++ As ++ elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As)] ⟧ C ↘ r /\
+        exists l r, ⟦ a_elim ak_relevant p Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c) (im_pre Mm Us ++ Ns ++ As)) ⟧ C ↘ l /\
+          ⟦ B[sb_of_list Id (Ns ++ As ++ elim_ihs ak_relevant p D Us Bks σP (im_nn Mm) gs As)] ⟧ C ↘ r /\
           Dom l ≈ r ∈ per_head ((eb_motive bm)[sb_of_list Id (Ns ++ apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                                            (im_pre Mm Us ++ Ns ++ As) :: nil)])
                                ((eb_motive bm)[sb_of_list Id (Ns ++ apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
@@ -2275,7 +2286,7 @@ Section Iota.
       assert (HBB : forall j Mj ba bb c0 gs0 n0 Ba Bb, ind_member D j = Some Mj -> List.nth_error Bks j = Some ba ->
                  List.nth_error Bks j = Some bb -> ind_con Mj c0 = Some gs0 ->
                  brs_lookup (eb_brs ba) c0 = Some (n0, Ba) -> brs_lookup (eb_brs bb) c0 = Some (n0, Bb) ->
-                 elim_bctx relevant p D Mj gs0 (blocks_motives Bks) Us ++ Γ ⊨ Ba ≈ Bb : elim_branch_type p D j Mj c0 gs0 (eb_motive ba) Us)
+                 elim_bctx ak_relevant p D Mj gs0 (blocks_motives Bks) Us ++ Γ ⊨ Ba ≈ Bb : elim_branch_type p D j Mj c0 gs0 (eb_motive ba) Us)
         by (intros * HMj Hb Hb' Hc0 Hl1 Hl2; rewrite Hb in Hb'; injection Hb' as <-; rewrite Hl1 in Hl2; injection Hl2 as <-;
             exact (HBv _ _ _ _ _ _ _ HMj Hb Hc0 (brs_lookup_in _ _ _ _ Hl1))).
       pose proof (ups_ok VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us iota_case_HUl iota_case_HUs iota_case_HUss C u0 HCC HUC u0 u0
@@ -2306,7 +2317,8 @@ Section Iota.
                     branch_type_relevant_at VP p D HP HPD Γ HΓ Us iota_case_HUl iota_case_HUs iota_case_HUss Bks i HMall HAv
                       m Mm c gs HMm Hcon HBm HrvM bm Hbm RB HRB E E' HE) as Hbr.
       pose proof (HBv _ _ _ _ _ _ _ HMm Hbm Hcon (brs_lookup_in _ _ _ _ Hlk)) as HBv'.
-      destruct (rel_exp_under_ctx_simple_at_relevant HRB HBv' _ _ Hec (Hbr _ _ Hec)) as (r2 & r1 & Er2 & Er1 & Hr21).
+      destruct (rel_exp_under_ctx_simple_at_evaluated HRB HBv' _ _ Hec (rel_typ_evaluated_of_kind (Hbr _ _ Hec) evaluated_kind_relevant))
+        as (r2 & r1 & Er2 & Er1 & Hr21).
       (** The eliminator's own value. *)
       destruct ref_target as (Dq & Mk & HDq & HMk & Hunu & Hnn).
       assert (Enp : im_np Dq Mk = List.length (cs ++ ns))
@@ -2321,13 +2333,14 @@ Section Iota.
         - rewrite Enp, skipn_app_exact by reflexivity; exact Ee.
         - rewrite Enp, skipn_app_exact, firstn_app_exact by reflexivity; rewrite <- Hunu, Hsk; exact Er1. }
       (** The instance's value. *)
-      destruct (exp_inst_link _ _ _ _ _ _ _ _ _ HBv' HRΓ (gsub_valid gsub_iota) HCC Hτ (Hbr _ _ HE11)) as (r & n0 & Er & En0 & Hrn).
+      destruct (exp_inst_link _ _ _ _ _ _ _ _ _ HBv' HRΓ (gsub_valid gsub_iota) HCC Hτ (rel_typ_evaluated_of_kind (Hbr _ _ HE11) evaluated_kind_relevant))
+        as (r & n0 & Er & En0 & Hrn).
       assert (n0 = r2) as -> by (eapply functional_eval_exp; eassumption).
       exists r1, r; split; [ eapply eval_exp_elim; [ exact HUC | exact EMc | exact Eel ] | split; [ exact Er |] ].
       (** The relations, at the motive's instance. *)
       destruct (presup_rel_exp_under_ctx HBv') as [iB HTb].
       pose proof (per_head_inst_type _ _ _ _ _ _ _ _ _ _ HTb HRΓ (gsub_valid gsub_iota) HCC Hτ Hτ) as ER.
-      assert (Lih : List.length (elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As) = cargs_nrec D gs) by (apply length_elim_ihs; exact HAl).
+      assert (Lih : List.length (elim_ihs ak_relevant p D Us Bks σP (im_nn Mm) gs As) = cargs_nrec D gs) by (apply length_elim_ihs; exact HAl).
       rewrite (elim_branch_type_iota p D m Mm c gs (eb_motive bm) Us Ns As _ Hc HMm iota_case_HUl iota_case_HNl HAl Lih) in ER.
       assert (EC1 : per_head (elim_branch_type p D m Mm c gs (eb_motive bm) Us) (elim_branch_type p D m Mm c gs (eb_motive bm) Us)
                       (env_extend_typed C wts1) (env_extend_typed C vts2)
@@ -2352,8 +2365,8 @@ Section Iota.
 
   (** *** The Rule *)
   Lemma rel_exp_under_ctx_elim_iota_at : forall n B, brs_lookup (eb_brs bm) c = Some (n, B) ->
-      Γ ⊨ a_elim relevant p Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c) (im_pre Mm Us ++ Ns ++ As))
-        ≈ B[sb_of_list Id (Ns ++ As ++ elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As)]
+      Γ ⊨ a_elim ak_relevant p Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c) (im_pre Mm Us ++ Ns ++ As))
+        ≈ B[sb_of_list Id (Ns ++ As ++ elim_ihs ak_relevant p D Us Bks σP (im_nn Mm) gs As)]
         : (eb_motive bm)[sb_of_list Id (Ns ++ apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                                 (im_pre Mm Us ++ Ns ++ As) :: nil)].
   Proof.
@@ -2370,7 +2383,7 @@ Section Iota.
     assert (HBB : forall k Mk b b' c0 gs0 n0 B0 B0', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
                List.nth_error Bks k = Some b' -> ind_con Mk c0 = Some gs0 ->
                brs_lookup (eb_brs b) c0 = Some (n0, B0) -> brs_lookup (eb_brs b') c0 = Some (n0, B0') ->
-               elim_bctx relevant p D Mk gs0 (blocks_motives Bks) Us ++ Γ ⊨ B0 ≈ B0' : elim_branch_type p D k Mk c0 gs0 (eb_motive b) Us)
+               elim_bctx ak_relevant p D Mk gs0 (blocks_motives Bks) Us ++ Γ ⊨ B0 ≈ B0' : elim_branch_type p D k Mk c0 gs0 (eb_motive b) Us)
       by (intros * HMk Hb Hb' Hc0 Hl1 Hl2; rewrite Hb in Hb'; injection Hb' as <-; rewrite Hl1 in Hl2; injection Hl2 as <-;
           exact (HBv _ _ _ _ _ _ _ HMk Hb Hc0 (brs_lookup_in _ _ _ _ Hl1))).
     pose proof (rel_exp_under_ctx_elim_at VP p D HP HPD Γ m Mm bm Bks Bks Us Us Ns Mc Mc i HΓ HMm Hbm HBks HBks
@@ -2380,7 +2393,7 @@ Section Iota.
     (** The right side, the branch at its instance. *)
     pose proof gsub_iota as Hgi.
     pose proof (HBv _ _ _ _ _ _ _ HMm Hbm Hcon (brs_lookup_in _ _ _ _ Hlk)) as HBv'.
-    assert (Lih : List.length (elim_ihs relevant p D Us Bks σP (im_nn Mm) gs As) = cargs_nrec D gs) by (apply length_elim_ihs; exact HAl).
+    assert (Lih : List.length (elim_ihs ak_relevant p D Us Bks σP (im_nn Mm) gs As) = cargs_nrec D gs) by (apply length_elim_ihs; exact HAl).
     pose proof (rel_exp_under_ctx_gsub Hgi HBv') as HR.
     rewrite (elim_branch_type_iota p D m Mm c gs (eb_motive bm) Us Ns As _ Hc HMm iota_case_HUl iota_case_HNl HAl Lih) in HR; fold Mc in HR.
     destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].
@@ -2395,7 +2408,8 @@ Section Iota.
     apply (rel_exp_under_ctx_of_simple HRΓ HL HR).
     intros ρ ρ' Hρρ'.
     assert (Hρ'ρ' : RΓ ρ' ρ') by (etransitivity; [ symmetry; exact Hρρ' | exact Hρρ' ]).
-    destruct (rel_exp_under_ctx_simple_at_relevant HRΓ HL _ _ Hρρ' (rel_exp_of_typ_relevant_at HRΓ HTm _ _ Hρρ'))
+    destruct (rel_exp_under_ctx_simple_at_evaluated HRΓ HL _ _ Hρρ'
+                (rel_typ_evaluated_of_kind (rel_exp_of_typ_relevant_at HRΓ HTm _ _ Hρρ') evaluated_kind_relevant))
       as (l & l' & El & El' & Hll').
     (** The two sides at [ρ'] retagged at [Γ]: its values are the
         eliminator's environment, and a weakening into [Γ] evaluates to
@@ -2410,15 +2424,17 @@ Section Iota.
     assert (LNA : List.length (Ns ++ As) = (im_nn Mm + List.length gs)%nat)
       by (rewrite List.length_app, iota_case_HNl, HAl; reflexivity).
     destruct (con_ref_apps_sorted VP p D HP HPD m Mm c gs C Us (Ns ++ As) mv HMm HrvM Hcon iota_case_HUl LNA Emv) as (vrest & Evrest).
-    destruct (con_ref_vals_split D Mm gs Ns As C vrest iota_case_HNl Evrest) as (ns & avs & -> & HNC & HAC).
+    destruct (con_ref_vals_split D m Mm gs Ns As C vrest Hdt HMm iota_case_HNl Evrest) as (ns & avs & -> & HNC & HAC).
     destruct (iota_sem_core RΓ RU HRΓ HRU C u0 ns avs HCC HCt Hu0 HNC HAC n B Hlk) as (l0 & r0 & El0 & Er0 & Hlr0).
     fold Mc in El0, Hlr0.
     (** Each side at [C] against [ρ']. *)
-    destruct (rel_exp_under_ctx_simple_at_relevant HRΓ HL _ _ HCρ (rel_exp_of_typ_relevant_at HRΓ HTm _ _ HCρ))
+    destruct (rel_exp_under_ctx_simple_at_evaluated HRΓ HL _ _ HCρ
+                (rel_typ_evaluated_of_kind (rel_exp_of_typ_relevant_at HRΓ HTm _ _ HCρ) evaluated_kind_relevant))
       as (l1 & l2 & El1 & El2 & Hl12).
     assert (l1 = l0) as -> by (eapply functional_eval_exp; eassumption).
     assert (l2 = l') as -> by (eapply functional_eval_exp; eassumption).
-    destruct (rel_exp_under_ctx_simple_at_relevant HRΓ HR _ _ HCρ (rel_exp_of_typ_relevant_at HRΓ HTm _ _ HCρ))
+    destruct (rel_exp_under_ctx_simple_at_evaluated HRΓ HR _ _ HCρ
+                (rel_typ_evaluated_of_kind (rel_exp_of_typ_relevant_at HRΓ HTm _ _ HCρ) evaluated_kind_relevant))
       as (r1 & r' & Er1 & Er' & Hr1').
     assert (r1 = r0) as -> by (eapply functional_eval_exp; eassumption).
     right; exists l, r'; split; [ exact El | split; [ exact Er' |] ].
