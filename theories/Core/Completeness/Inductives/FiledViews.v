@@ -305,7 +305,7 @@ Section FiledViews.
         parameters are relevant, so the substitution's values are the
         instance's. *)
     destruct (Hs _ _ Hρ) as (y1 & y2 & Ey1 & Ey2 & Hy).
-    assert (Hrel : forall Δ1 T Δ2, ind_uparams Dq = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
+    assert (Hrel : forall Δ1 κ T Δ2, ind_uparams Dq = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
       by exact (closed_relevant_over _ _ HaQ HWQ HWD (valid_ind_decl_uparams_relevant _ (valid_group_valid _ _ HgQ))).
     assert (HlIs : List.length (List.rev (ind_uparams Dq)) = List.length Is) by (rewrite List.length_rev; unfold ind_nu in HIl; lia).
     assert (HPΔ : PER RΔ0) by (eapply per_env_PER; exact HRΔ0).
@@ -354,7 +354,7 @@ Section FiledViews.
     destruct (rel_sub_under_ctx_simple Hσ) as (RΓ0 & HRΓ0 & RΔ0 & HRΔ0 & Hs).
     pose proof (uparams_rel_env D HD _ _ Hgu Hu _ HRΓ0) as Hρ.
     destruct (Hs _ _ Hρ) as (y1 & y2 & Ey1 & _ & Hy).
-    assert (Hrel : forall Δ1 T Δ2, ind_uparams Dq = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
+    assert (Hrel : forall Δ1 κ T Δ2, ind_uparams Dq = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
       by exact (closed_relevant_over _ _ HaQ HWQ HWD (valid_ind_decl_uparams_relevant _ (valid_group_valid _ _ HgQ))).
     assert (HlIs : List.length (List.rev (ind_uparams Dq)) = List.length Is) by (rewrite List.length_rev; unfold ind_nu in HIl; lia).
     assert (HPΔ : PER RΔ0) by (eapply per_env_PER; exact HRΔ0).
@@ -419,7 +419,7 @@ Section FiledViews.
     pose proof (He1 _ Ecupsσ) as HR1.
     (** The values of the weakened instance: the container's parameters are
         relevant, so the composite's values are the instance's. *)
-    assert (Hrel : forall Δ1 T Δ2, ind_uparams Dq = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
+    assert (Hrel : forall Δ1 κ T Δ2, ind_uparams Dq = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
       by exact (closed_relevant_over _ _ HaQ HWQ HWD (valid_ind_decl_uparams_relevant _ (valid_group_valid _ _ HgQ))).
     assert (He1e1 : RΔ e1 e1) by (etransitivity; [ exact HR1 | symmetry; exact HR1 ]).
     assert (Hnp : forall x, x < List.length (List.rev (ind_uparams Dq)) ->
@@ -499,7 +499,7 @@ Section FiledViews.
     (** The values of the instance at either side: the record's parameters
         are relevant, so the substitution's values are the instance's. *)
     destruct (Hs _ _ Hρ) as (y1 & y2 & Ey1 & Ey2 & Hy).
-    assert (Hrel : forall Δ1 T Δ2, record_params R = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
+    assert (Hrel : forall Δ1 κ T Δ2, record_params R = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
       by exact (closed_relevant_over _ _ HaQ HWQ HWD (params_relevant_valid _ (valid_rview_record_valid _ _ HR))).
     assert (HlIs : List.length (List.rev (record_params R)) = List.length Is) by (rewrite List.length_rev; lia).
     assert (HPΔ : PER RΔ0) by (eapply per_env_PER; exact HRΔ0).
@@ -544,7 +544,7 @@ Section FiledViews.
     destruct (rel_sub_under_ctx_simple Hσ) as (RΓ0 & HRΓ0 & RΔ0 & HRΔ0 & Hs).
     pose proof (uparams_rel_env D HD _ _ Hgu Hu _ HRΓ0) as Hρ.
     destruct (Hs _ _ Hρ) as (y1 & y2 & Ey1 & _ & Hy).
-    assert (Hrel : forall Δ1 T Δ2, record_params R = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
+    assert (Hrel : forall Δ1 κ T Δ2, record_params R = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
       by exact (closed_relevant_over _ _ HaQ HWQ HWD (params_relevant_valid _ (valid_rview_record_valid _ _ HR))).
     assert (HlIs : List.length (List.rev (record_params R)) = List.length Is) by (rewrite List.length_rev; lia).
     assert (HPΔ : PER RΔ0) by (eapply per_env_PER; exact HRΔ0).
@@ -604,7 +604,7 @@ Section FiledViews.
     pose proof (He1 _ Ecupsσ) as HR1.
     (** The values of the weakened instance: the record's parameters are
         relevant, so the composite's values are the instance's. *)
-    assert (Hrel : forall Δ1 T Δ2, record_params R = Δ1 ++ ce_ass T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
+    assert (Hrel : forall Δ1 κ T Δ2, record_params R = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ ind_uparams D) T i)
       by exact (closed_relevant_over _ _ HaQ HWQ HWD (params_relevant_valid _ (valid_rview_record_valid _ _ HR))).
     assert (He1e1 : RΔ e1 e1) by (etransitivity; [ exact HR1 | symmetry; exact HR1 ]).
     assert (Hnp : forall x, x < List.length (List.rev (record_params R)) ->

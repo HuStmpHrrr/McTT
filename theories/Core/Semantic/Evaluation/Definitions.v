@@ -78,11 +78,14 @@ Definition con_arg_kind (Mk : imember) (c : string) (n : nat) : abs_kind :=
 Definition module_saturated (Θ : gdeps) (Ξ : gstack) (p : qname) (args : list domain) : Prop :=
   forall T Φ, gc_loc Θ Ξ p = Some (T, Φ) -> List.length T <= List.length args.
 
-(** The kind of the [n]-th parameter of a telescope [T], outermost first.
-    Parameters are relevant or levels ([params_relevant]), both evaluated:
+(** The kind of the [n]-th parameter of a telescope [T], outermost first:
     [ak_level] at an assumption tagged [ak_level], [ak_relevant] at every
-    other entry and past the telescope.  At a typed declaration this is
-    the kind the assumption is tagged with. *)
+    other entry and past the telescope.  Parameters are never propositional
+    by the typing rules ([params_relevant]: relevant or levels), so at a
+    typed declaration this is the kind the assumption is tagged with; at an
+    entry tagged [ak_propositional], which no well-typed term reaches, the
+    value [ak_relevant] is junk, accepted so that a type former's
+    arguments are always evaluated ([tele_param_kind_evaluated]). *)
 Definition tele_param_kind (T : list centry) (n : nat) : abs_kind :=
   match List.nth_error T n with Some (ce_ass ak_level _) => ak_level | _ => ak_relevant end.
 
