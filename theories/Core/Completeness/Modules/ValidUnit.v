@@ -49,9 +49,9 @@ Proof.
       intros [| e1 Γ1] e0 U0 Γ0 Heq Hu; cbn in Heq; inversion Heq; subst; cbn in Hu;
       first [ discriminate | injection Hu as <-; assumption
             | eapply (proj2 (proj1 IH ltac:(assumption))); [ reflexivity | exact Hu ] ].
-  - intros [H Hok]; destruct e as [A | A M | U | A M U]; inversion H; subst.
+  - intros [H Hok]; destruct e as [κ A | A M | U | A M U]; inversion H; subst.
     + apply valid_ctx_ass; [ apply IH; split; [ assumption |] | assumption ].
-      intros Γ1 e0 U0 Γ0 -> Hu; exact (Hok (ce_ass A :: Γ1) e0 U0 Γ0 eq_refl Hu).
+      intros Γ1 e0 U0 Γ0 -> Hu; exact (Hok (ce_ass κ A :: Γ1) e0 U0 Γ0 eq_refl Hu).
     + apply valid_ctx_def; [ apply IH; split; [ assumption |] | assumption ].
       intros Γ1 e0 U0 Γ0 -> Hu; exact (Hok (ce_def A M :: Γ1) e0 U0 Γ0 eq_refl Hu).
     + apply valid_ctx_mod; [ apply IH; split; [ assumption |] | assumption | exact (Hok nil _ U Γ eq_refl eq_refl) ].
@@ -77,9 +77,15 @@ Qed.
 
 (** ** Instances of Valid Terms *)
 
-(** At a relevant type, the values of a valid term along a substitution
-    and in the environment it evaluates to are related. *)
-Lemma valid_inst : forall Δ M A D τ RD, Δ ⊨ M : A -> rel_type_relevant Δ A ->
+(** A type of an evaluated kind is so at every environment of its
+    context. *)
+Lemma rel_typ_evaluated_at : forall {Γ A R}, rel_type_evaluated Γ A -> EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' -> rel_typ_evaluated A ρ.
+Proof. intros * (r & Hr & HA) HR ρ ρ' Hρ; exact (rel_typ_evaluated_of_kind (HA _ HR _ _ Hρ) Hr). Qed.
+
+(** At a type of an evaluated kind, the values of a valid term along a
+    substitution and in the environment it evaluates to are related. *)
+Lemma valid_inst : forall Δ M A D τ RD, Δ ⊨ M : A -> rel_type_evaluated Δ A ->
     D ⊨ˢ τ ≈ τ : Δ -> EF D ≈ D ∈ per_ctx_env ↘ RD ->
     forall ρ ρτ, RD ρ ρ -> ⟦ τ : Δ ⟧s ρ ↘ ρτ ->
     exists m1 m2 a i R, ⟦ M[τ] ⟧ ρ ↘ m1 /\ ⟦ M ⟧ ρτ ↘ m2 /\ ⟦ A ⟧ ρτ ↘ a /\ per_univ_elem i R a a /\ R m1 m2.
@@ -87,36 +93,36 @@ Proof.
   intros * [RΔ HΔ i Hgen] HArel Hτ HD ρ ρτ Hρ Hev.
   destruct (Hgen _ _ HD _ _ Hτ _ _ _ _ Hρ Hev Hev) as [E [HT HMexp]].
   pose proof (rel_sub_under_ctx_at' Hτ HD HΔ _ _ _ _ Hρ Hev Hev) as Hρτ.
-  apply (rel_exp_or_prop_relevant HT (HArel _ HΔ _ _ Hρτ)) in HMexp.
+  apply (rel_exp_or_prop_evaluated HT (rel_typ_evaluated_at HArel HΔ _ _ Hρτ)) in HMexp.
   destruct HT as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & T23 & _)].
   destruct HMexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 (M12 & _)].
   exists m1, m2, a2, i, E; repeat split; try assumption.
   etransitivity; [ symmetry; exact T12 | exact T12 ].
 Qed.
 
-(** At a relevant type, the values of a valid term at related environments
-    are related. *)
-Lemma valid_at : forall Δ M A k RΔ, Δ ⊨ M : A -> Δ ⊨ᵗ A ≈ A at k -> rel_type_relevant Δ A ->
+(** At a type of an evaluated kind, the values of a valid term at related
+    environments are related. *)
+Lemma valid_at : forall Δ M A k RΔ, Δ ⊨ M : A -> Δ ⊨ᵗ A ≈ A at k -> rel_type_evaluated Δ A ->
     EF Δ ≈ Δ ∈ per_ctx_env ↘ RΔ ->
     forall ρ ρ', RΔ ρ ρ' ->
     exists m m' a i R, ⟦ M ⟧ ρ ↘ m /\ ⟦ M ⟧ ρ' ↘ m' /\ ⟦ A ⟧ ρ ↘ a /\ per_univ_elem i R a a /\ R m m'.
 Proof.
   intros * HM HA HArel HΔ ρ ρ' Hρ.
-  destruct (rel_exp_under_ctx_simple_at_of_relevant HΔ (HArel _ HΔ) HM _ _ Hρ) as (m & m' & Em & Em' & Hmm).
+  destruct (rel_exp_under_ctx_simple_at_of_evaluated HΔ (rel_typ_evaluated_at HArel HΔ) HM _ _ Hρ) as (m & m' & Em & Em' & Hmm).
   destruct (rel_type_inversion_simple_at HΔ HA _ _ Hρ) as (a & a' & Ea & Ea' & [R HR]).
   exists m, m', a, k, R.
   split; [ exact Em | split; [ exact Em' | split; [ exact Ea | split ] ] ];
     [ etransitivity; [ exact HR | symmetry; exact HR ] | exact (Hmm _ _ _ _ Ea Ea' HR) ].
 Qed.
 
-(** A type of a relevant sort is a type of an index, relevant wherever it
-    has a value. *)
+(** A type of a relevant sort (a universe or [LevelSort]) is a type of an
+    index, of an evaluated kind. *)
 Lemma rel_type_of_relevant_sort : forall {Γ A Srt}, relevant_sort Srt -> Γ ⊨ A : Srt ->
-    (exists k : nat, Γ ⊨ᵗ A ≈ A at k) /\ rel_type_relevant Γ A.
+    (exists k : nat, Γ ⊨ᵗ A ≈ A at k) /\ rel_type_evaluated Γ A.
 Proof.
   intros * [i |] HA.
-  - split; [ exists i; exact (rel_type_of_typ HA) | exact (rel_type_relevant_of_typ HA) ].
-  - split; [ exists 0; exact (rel_type_of_level_sort 0 HA) | exact (rel_type_relevant_of_level_sort HA) ].
+  - split; [ exists i; exact (rel_type_of_typ HA) | exact (rel_type_evaluated_of_typ HA) ].
+  - split; [ exists 0; exact (rel_type_of_level_sort 0 HA) | exact (rel_type_evaluated_of_level_sort HA) ].
 Qed.
 
 (** A type of either sort, along a semantic substitution: its value under
@@ -159,20 +165,23 @@ Proof.
 Qed.
 
 (** A term over parameters, generalized over them: a function into a type
-    of a universe, or a proof of a [∀]. *)
-Lemma valid_exp_under_ctx_ctx_fn : forall r Ψ D M X i, tele_ass Ψ -> ⊨ Ψ ++ D ->
-    Ψ ++ D ⊨ X : relevance_sort r Typeω@i -> Ψ ++ D ⊨ M : X ->
+    of a universe, or a proof of a [∀]; as [valid_exp_under_ctx_ctx_pi_at],
+    not into a type of levels. *)
+Lemma valid_exp_under_ctx_ctx_fn : forall r Ψ D M X i, r <> ak_level -> tele_ass Ψ -> ⊨ Ψ ++ D ->
+    Ψ ++ D ⊨ X : abs_kind_sort r Typeω@i -> Ψ ++ D ⊨ M : X ->
     D ⊨ ctx_fn Ψ M : ctx_pi_at r Ψ X.
 Proof.
-  intros [|].
-  - induction Ψ as [| e Ψ IH]; intros * HΨ HC HX HM; cbn in *; [ exact HM |].
-    inversion HΨ as [| ? ? [B ->] HΨ']; subst.
+  intros [| |] Ψ; [| | intros * Hr; contradiction ].
+  - induction Ψ as [| e Ψ IH]; intros * _ HΨ HC HX HM; cbn in *; [ exact HM |].
+    inversion HΨ as [| ? ? (κ & B & ->) HΨ']; subst.
     destruct (rel_ctx_wf_ass_type HC) as [k HB].
-    apply (IH _ _ _ (max i k)); [ exact HΨ' | exact (rel_ctx_wf_tail HC) | |].
-    + apply rel_exp_under_ctx_pi_cong; [ apply HB; lia | apply HB; lia | eapply rel_exp_cumu_ge; [| exact HX ]; lia ].
-    + apply (rel_exp_under_ctx_fn_cong (i := max i k)); [ apply HB; lia | apply HB; lia | eapply rel_exp_cumu_ge; [| exact HX ]; lia | exact HM ].
-  - intros * HΨ HC HX HM.
-    destruct (valid_exp_under_ctx_ctx_pi_at propositional _ _ _ _ HΨ HC HX) as [j Hj].
+    pose proof (rel_ctx_wf_ass_kind HC) as HBk.
+    apply (IH _ _ _ (max i k)); [ discriminate | exact HΨ' | exact (rel_ctx_wf_tail HC) | |].
+    + apply rel_exp_under_ctx_pi_cong; [ apply HB; lia | apply HB; lia | exact HBk | eapply rel_exp_cumu_ge; [| exact HX ]; lia ].
+    + apply (rel_exp_under_ctx_fn_cong (i := max i k));
+        [ apply HB; lia | apply HB; lia | exact HBk | eapply rel_exp_cumu_ge; [| exact HX ]; lia | exact HM ].
+  - intros * Hr HΨ HC HX HM.
+    destruct (valid_exp_under_ctx_ctx_pi_at ak_propositional _ _ _ _ Hr HΨ HC HX) as [j Hj].
     exact (rel_exp_under_ctx_proof Hj).
 Qed.
 
@@ -248,7 +257,7 @@ Proof.
     rewrite <- (length_body_ctx _ Hn), <- List.length_app in HsE.
     destruct E as [b pv ra A [M |] | pv U | ? ? ? ? ? | pv A M [Δy Dy] | ? ? ? ?]; cbn in Hf; try discriminate;
       destruct (gm_fill Φ) as [σ0 |] eqn:Hf0; cbn in Hf; try discriminate; injection Hf as <-;
-      cbn [body_ctx app] in HC, HR; cbn [body_sorts_valid entry_tm entry_relevance] in Hsv;
+      cbn [body_ctx app] in HC, HR; cbn [body_sorts_valid entry_tm entry_kind] in Hsv;
       cbn [gentry_scoped] in HsE.
     + (* a definition: its filled-in body at the environment, against its value in the body's *)
       pose proof (rel_ctx_wf_tail HC) as HC0.
@@ -258,9 +267,10 @@ Proof.
       pose proof (gsub_valid (fill_gsub _ _ _ Hn Hf0 HC0 Hs)) as Hτ.
       assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
       (** The tag [ra] is the sort of [A] ([body_sorts_valid]). *)
-      destruct (proj2 Hsv _ _ eq_refl) as (Srt & HSrt & HA).
-      destruct ra; cbn [relevance_sort] in HA.
+      destruct (proj2 Hsv _ _ eq_refl) as [i0 HA].
+      destruct (evaluated_kind_or_propositional ra) as [Hra | ->].
       2:{ (* a proof: kept on both sides, neither body evaluated *)
+        cbn [abs_kind_sort] in HA.
         pose proof (per_ctx_env_of_def_prop (M := M) HR0 HA) as HR'.
         assert (EQ : R <~> per_env_extend A A R0) by (eapply per_ctx_env_right_irrel; eassumption).
         destruct (rel_exp_of_prop_inversion_simple_at HR0 HA _ _ H0) as (a & a' & Ha & Ha' & Haa').
@@ -276,13 +286,14 @@ Proof.
         pose proof (entry_readable_of_elem_closure Ha' Ha' (per_univ_elem_of_prop 0 _ _ Ha'a') (conj Rp2 Rp2)) as [Rc _].
         pose proof (per_head_proof (S' := A) (ρ' := ρ10) Ha Hl Rp1 Rp2) as Hhd.
         (** The substitution's head is stored at [A] over its tail. *)
-        destruct (per_head_closure_readable (per_ctx_env_of_typ HR0 (rel_type_of_prop 0 HA)) HR0 H0 Hhd) as [Rl _].
+        destruct (per_head_closure_readable (per_ctx_env_of_typ (κ := ak_propositional) HR0 (rel_type_of_prop 0 HA)) HR0 H0 Hhd) as [Rl _].
         exists (ρσ0 ↦ ⋆ᵈ⟨M[σ0], ρ⟩ ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0),
           (ρ10 ↦ ⋆ᵈ⟨M, ρ10⟩ ⦂ entry_type_closure A ρ10); split.
         { apply eval_sub_extend_proof; [ exact Hσ0 |].
           econstructor; [ reflexivity | intros y' _; reflexivity | exact Ha | exact Hl ]. }
         split; [ eapply eval_body_env_def_proof; exact Hb0 |].
         apply EQ; apply per_env_extend_intro'; [ exact H0 | exact Hhd | exact Rl | exact Rc ]. }
+      assert (HSrt : relevant_sort (abs_kind_sort ra Typeω@i0)) by (destruct Hra; constructor).
       destruct (rel_type_of_relevant_sort HSrt HA) as [[k HAt] HArel].
       destruct (valid_inst _ _ _ _ _ _ HM HArel Hτ HD _ _ Hρ Hσ0) as (m1 & m2 & a2 & j & Ra & Hm1 & Hm2 & Ha2 & HRa & Hm12).
       destruct (valid_at _ _ _ _ _ HM HAt HArel HR0 _ _ H0) as (m2' & m3 & a2' & j' & Ra' & Hm2' & Hm3 & Ha2' & HRa' & Hm23).
@@ -296,21 +307,22 @@ Proof.
       apply E1 in Hm12; apply E2 in Hm23.
       assert (Hm13 : Rx m1 m3) by (etransitivity; eassumption).
       pose proof (entry_readable_of_elem_closure Ha2 Hx' Hxx Hm13) as [_ Rm3].
-      pose proof (per_ctx_env_of_def_relevant HR0 HAt (HArel _ HR0) HM) as HR'.
+      pose proof HArel as (rA0 & HrA0 & HAk).
+      pose proof (per_ctx_env_of_def_evaluated HrA0 HR0 HAt (HAk _ HR0) HM) as HR'.
       assert (EQ : R <~> per_env_extend_def A M R0) by (eapply per_ctx_env_right_irrel; eassumption).
       assert (Hhd : per_head A A ρσ0 ρ10 m1 m3) by (eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | exact Hm13 ]).
       (** The substitution's head is stored at [A] over its tail. *)
-      destruct (per_head_closure_readable (per_ctx_env_of_typ HR0 HAt) HR0 H0 Hhd) as [Rm1 _].
+      destruct (per_head_closure_readable (per_ctx_env_of_typ (κ := ak_relevant) HR0 HAt) HR0 H0 Hhd) as [Rm1 _].
       exists (ρσ0 ↦ m1 ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0), (ρ10 ↦ m3 ⦂ entry_type_closure A ρ10); split;
         [ apply eval_sub_extend;
-          [ exact Hσ0 | exact (proj1 (head_not_propositional_of_relevant (e := ce_def A M) HR0 eq_refl HAt HArel _ _ H0))
+          [ exact Hσ0 | exact (proj1 (head_not_propositional_of_evaluated (e := ce_def A M) HR0 eq_refl HAt HArel _ _ H0))
           | exact Hm1 ] |].
-      split; [ eapply eval_body_env_def; [ exact Hb0 | exact Hm3 ] |].
+      split; [ eapply eval_body_env_def; [ exact Hra | exact Hb0 | exact Hm3 ] |].
       apply EQ.
       eapply per_env_extend_def_intro;
         [ exact HP0 | | | exact H0 | exact Hhd | exact Rm1 | exact Rm3 | exact Hm2 | ].
       * exact (rel_type_inversion_simple_at HR0 HAt).
-      * exact (rel_exp_under_ctx_simple_at_of_relevant HR0 (HArel _ HR0) HM).
+      * exact (rel_exp_under_ctx_simple_at_of_evaluated HR0 (rel_typ_evaluated_at HArel HR0) HM).
       * eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | symmetry; exact Hm12 ].
     + (* a submodule: the closure of its filled-in unit, against its closure in the body's *)
       pose proof (rel_ctx_wf_tail HC) as HC0.
@@ -345,7 +357,7 @@ Proof.
       destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0].
       destruct (IH _ _ Hn eq_refl HC0 (proj1 Hsv) Hs _ _ HD HR0 _ Hρ) as (ρσ0 & ρ10 & Hσ0 & Hb0 & H0).
       pose proof (gsub_valid (fill_gsub _ _ _ Hn Hf0 HC0 Hs)) as Hτ.
-      pose proof (rel_type_of_typ HA) as HAt; pose proof (rel_type_relevant_of_typ HA) as HArel.
+      pose proof (rel_type_of_typ HA) as HAt; pose proof (rel_type_evaluated_of_typ HA) as HArel.
       destruct (valid_inst _ _ _ _ _ _ HM HArel Hτ HD _ _ Hρ Hσ0) as (m1 & m2 & a2 & j & Ra & Hm1 & Hm2 & Ha2 & HRa & Hm12).
       destruct (valid_at _ _ _ _ _ HM HAt HArel HR0 _ _ H0) as (m2' & m3 & a2' & j' & Ra' & Hm2' & Hm3 & Ha2' & HRa' & Hm23).
       functional_eval_rewrite_clear.
@@ -361,14 +373,14 @@ Proof.
       assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
       assert (Hhd : per_head A A ρσ0 ρ10 m1 m3) by (eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | exact Hm13 ]).
       (** The substitution's head is stored at [A] over its tail. *)
-      pose proof (per_ctx_env_of_typ HR0 HAt) as HRA.
+      pose proof (per_ctx_env_of_typ (κ := ak_relevant) HR0 HAt) as HRA.
       destruct (per_head_closure_readable HRA HR0 H0 Hhd) as [Rm1 _].
-      assert (Hdef : per_env_extend_def A M R0 (ρσ0 ↦ m1 ⦂ centry_tag (ce_ass A) (body_ctx Φ ++ D) ρσ0)
+      assert (Hdef : per_env_extend_def A M R0 (ρσ0 ↦ m1 ⦂ centry_tag (ce_ass ak_relevant A) (body_ctx Φ ++ D) ρσ0)
                        (ρ10 ↦ m3 ⦂ entry_type_closure A ρ10)).
       { eapply per_env_extend_def_intro;
           [ exact HP0 | | | exact H0 | exact Hhd | exact Rm1 | exact Rm3 | exact Hm2 | ].
         - exact (rel_type_inversion_simple_at HR0 HAt).
-        - exact (rel_exp_under_ctx_simple_at_of_relevant HR0 (HArel _ HR0) HM).
+        - exact (rel_exp_under_ctx_simple_at_of_evaluated HR0 (rel_typ_evaluated_at HArel HR0) HM).
         - eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | symmetry; exact Hm12 ]. }
       destruct (unit_sub_chain HD Hτ HU _ _ _ _ Hρ Hσ0 Hσ0) as ([g1 g2 Hg1 Hg2 G12] & _).
       destruct (unit_chain_at HU HR0 _ _ H0) as [k2 k3 Hk2 Hk3 K23].
@@ -446,7 +458,7 @@ Proof.
         destruct (per_ctx_env_kept_proof_readable _ _ _ M[σ0] HD (exp_scoped_free_bound _ _ HMσ) _ _ Htail) as [Rp2 _].
         pose proof (per_head_proof (S' := A) (ρ' := ρσ0) Ea Hpl Rp1 Rp2) as Hph.
         (** The substitution's head is stored at [A] over its tail. *)
-        destruct (per_head_closure_readable (per_ctx_env_of_typ HR0 (rel_type_of_prop 0 HA)) HR0 H0 Hph) as [_ Rr].
+        destruct (per_head_closure_readable (per_ctx_env_of_typ (κ := ak_propositional) HR0 (rel_type_of_prop 0 HA)) HR0 H0 Hph) as [_ Rr].
         exists (ρσ0 ↦ ⋆ᵈ⟨M[σ0], List.skipn (List.length (body_ctx Φ)) ρ1↯⟩ ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0); split.
         { apply eval_sub_extend_proof; [ exact Hσ0 |].
           econstructor; [ reflexivity | intros y' _; reflexivity | exact Ea' | exact Hpr ]. }
@@ -456,14 +468,15 @@ Proof.
           [ exact Hph | exact Hl | intros _; eexists; reflexivity | exact Hrl | split; [ exact Rr | cbn; lia ] ]. }
       (* at a relevant type: the value of the body filled in *)
       destruct (rel_type_of_relevant_sort HSr HA) as [[i HAt] HArel].
-      pose proof (per_ctx_env_of_def_relevant HR0 HAt (HArel _ HR0) HM) as HR'.
+      pose proof HArel as (rA0 & HrA0 & HAk).
+      pose proof (per_ctx_env_of_def_evaluated HrA0 HR0 HAt (HAk _ HR0) HM) as HR'.
       assert (EQ : R <~> per_env_extend_def A M R0) by (eapply per_ctx_env_right_irrel; eassumption).
       pose proof (proj1 (EQ _ _) Hρ1) as [[Ht Hh _ _ Hrl _] Htl _].
       destruct (IH _ _ Hn eq_refl HC0 Hs _ _ HD HR0 _ Ht) as (Htail & ρσ0 & Hσ0 & H0).
       split; [ exact Htail |].
       destruct (valid_inst _ _ _ _ _ _ HM HArel Hτ HD _ _ Htail Hσ0) as (m1 & m2 & a2 & j & Ra & Hm1 & Hm2 & Ha2 & HRa & Hm12).
       destruct (rel_type_inversion_simple_at HR0 HAt _ _ H0) as (a & a' & Ea & Ea' & [RX HRX]).
-      destruct (rel_exp_under_ctx_simple_at_of_relevant HR0 (HArel _ HR0) HM _ _ H0) as (z & z' & Ez & Ez' & Hzz).
+      destruct (rel_exp_under_ctx_simple_at_of_evaluated HR0 (rel_typ_evaluated_at HArel HR0) HM _ _ H0) as (z & z' & Ez & Ez' & Hzz).
       destruct Htl as (ma & Ema & Hma).
       functional_eval_rewrite_clear.
       assert (HPX : PER RX) by (eapply per_elem_PER; exact HRX).
@@ -476,11 +489,11 @@ Proof.
         pose proof (proj1 (E1 _ _) Hm12) as H3.
         etransitivity; [ symmetry; exact H1 |]; etransitivity; [ exact H2 | symmetry; exact H3 ]. }
       assert (Hnp : forall r r', R0 r r' -> ~ rel_typ_propositional A r).
-      { intros r r' Hr (c & Ec & Hc); destruct (HArel _ HR0 _ _ Hr) as (c' & Ec' & Hc').
-        pose proof (functional_eval_exp _ _ _ _ Ec Ec') as <-; congruence. }
+      { intros r r' Hr (c & Ec & Hc); destruct (rel_typ_evaluated_at HArel HR0 _ _ Hr) as (c' & Ec' & Hc').
+        pose proof (functional_eval_exp _ _ _ _ Ec Ec') as <-; rewrite Hc in Hc'; inversion Hc'. }
       assert (Hph : per_head A A ρ1↯ ρσ0 (ρ1 0) m1) by (eapply per_head_of; [ exact Ea | exact Ha2 | exact HRX | exact Hhd ]).
       (** The substitution's head is stored at [A] over its tail. *)
-      destruct (per_head_closure_readable (per_ctx_env_of_typ HR0 HAt) HR0 H0 Hph) as [_ Rr].
+      destruct (per_head_closure_readable (per_ctx_env_of_typ (κ := ak_relevant) HR0 HAt) HR0 H0 Hph) as [_ Rr].
       assert (Hext : per_env_extend A A R0 ρ1 (ρσ0 ↦ m1 ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0)).
       { apply (mk_per_ctx_env_cons_rel _ _ _ _ ρ1 (ρσ0 ↦ m1 ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0) H0);
           [ exact Hph
@@ -489,10 +502,10 @@ Proof.
           | exact Hrl | split; [ exact Rr | cbn; lia ] ]. }
       exists (ρσ0 ↦ m1 ⦂ centry_tag (ce_def A M) (body_ctx Φ ++ D) ρσ0); split;
         [ apply eval_sub_extend;
-          [ exact Hσ0 | exact (proj2 (head_not_propositional_of_relevant (e := ce_def A M) HR0 eq_refl HAt HArel _ _ H0))
+          [ exact Hσ0 | exact (proj2 (head_not_propositional_of_evaluated (e := ce_def A M) HR0 eq_refl HAt HArel _ _ H0))
           | exact Hm1 ] |].
       apply EQ; constructor; [ exact Hext | exists ma; split; assumption |].
-      eapply (def_tie_resp HP0 (rel_type_inversion_simple_at HR0 HAt) (rel_exp_under_ctx_simple_at_of_relevant HR0 (HArel _ HR0) HM) Hext).
+      eapply (def_tie_resp HP0 (rel_type_inversion_simple_at HR0 HAt) (rel_exp_under_ctx_simple_at_of_evaluated HR0 (rel_typ_evaluated_at HArel HR0) HM) Hext).
       exists ma; split; assumption.
     + (* a submodule: the closure of its unit filled in *)
       pose proof (rel_ctx_wf_tail HC) as HC0.
@@ -523,7 +536,7 @@ Proof.
       pose proof (proj1 (EQ _ _) Hρ1) as [Ht Hh Htl _ Hml _ Hrl _].
       destruct (IH _ _ Hn eq_refl HC0 Hs _ _ HD HR0 _ Ht) as (Htail & ρσ0 & Hσ0 & H0).
       split; [ exact Htail |].
-      destruct (valid_inst _ _ _ _ _ _ HM (rel_type_relevant_of_typ HA) Hτ HD _ _ Htail Hσ0)
+      destruct (valid_inst _ _ _ _ _ _ HM (rel_type_evaluated_of_typ HA) Hτ HD _ _ Htail Hσ0)
         as (m1 & m2 & a2 & j & Ra & Hm1 & Hm2 & Ha2 & HRa & Hm12).
       destruct (rel_exp_of_typ_inversion_simple_at HR0 HA _ _ H0) as (a & a' & Ea & Ea' & [RX HRX]).
       destruct (rel_exp_under_ctx_simple_at_rel HR0 HA HM _ _ H0) as (z & z' & Ez & Ez' & Hzz).
@@ -542,7 +555,7 @@ Proof.
       (** The substitution's head is stored at [A] over its tail, at the
           unit written. *)
       destruct (per_head_dm_readable (h := env_mod ρ1 0) (h' := g1) (U := gu_mk Δy Dy)
-                  (per_ctx_env_of_typ HR0 (rel_type_of_typ HA)) HR0 H0 Hph) as [_ Rr].
+                  (per_ctx_env_of_typ (κ := ak_relevant) HR0 (rel_type_of_typ HA)) HR0 H0 Hph) as [_ Rr].
       assert (Hext : per_env_extend A A R0 ρ1
                        (ρσ0 ↦ᵈ m1 ⦂ centry_tag (ce_dm A M (gu_mk Δy Dy)) (body_ctx Φ ++ D) ρσ0 ‖ g1 ⦂ gu_mk Δy Dy)).
       { apply (mk_per_ctx_env_cons_rel _ _ _ _ ρ1
@@ -587,7 +600,7 @@ Proof.
   induction Δ as [| e Δ IH] using rev_ind; intros * HΔ HΓ HR ρ Hρ; cbn [List.app] in *.
   - exists nil; split; [ reflexivity |].
     assert (E : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption); apply E, Hρ.
-  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? [A ->] _]; subst.
+  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
     rewrite <- app_assoc in HR; cbn [List.app] in HR.
     destruct (per_ctx_env_app_tail Δ Δ _ _ _ eq_refl HR) as [R1 HR1].
     destruct (per_ctx_env_cons_clean_inversion HΓ HR1) as (i & head_rel & Hhead & HE).
@@ -655,29 +668,29 @@ Qed.
 
 (** The kind of what a description describes: a term, a module, or a
     member with a term part and a module part. *)
-Definition mdesc_kind (R : mdesc) : member_kind :=
+Definition mdesc_member_kind (R : mdesc) : member_kind :=
   match R with
   | mdesc_term r _ _ => member_kind_term r
   | mdesc_dm _ _ _ _ => member_kind_dm
   | _ => member_kind_mod
   end.
 
-Lemma mdesc_kind_up : forall Θ' R, mdesc_kind (mdesc_up Θ' R) = mdesc_kind R.
+Lemma mdesc_member_kind_up : forall Θ' R, mdesc_member_kind (mdesc_up Θ' R) = mdesc_member_kind R.
 Proof. intros Θ' R; induction R; cbn; auto. Qed.
 
-Lemma mdesc_kind_sub : forall R σ, mdesc_kind (mdesc_sub R σ) = mdesc_kind R.
+Lemma mdesc_member_kind_sub : forall R σ, mdesc_member_kind (mdesc_sub R σ) = mdesc_member_kind R.
 Proof. intros R σ; revert σ; induction R; intros; cbn; auto. Qed.
 
-Lemma mdesc_kind_named : forall Θ' Ns M R, mdesc_kind (mdesc_named Θ' Ns M R) = mdesc_kind R.
+Lemma mdesc_member_kind_named : forall Θ' Ns M R, mdesc_member_kind (mdesc_named Θ' Ns M R) = mdesc_member_kind R.
 Proof.
-  intros; apply (mdesc_named_cases (fun R' => mdesc_kind R' = mdesc_kind R)); [ reflexivity |].
+  intros; apply (mdesc_named_cases (fun R' => mdesc_member_kind R' = mdesc_member_kind R)); [ reflexivity |].
   destruct R as [? ? [] | | |]; reflexivity.
 Qed.
 
-Lemma entry_kind_read : forall T E, entry_kind (ge_read T E) = entry_kind E.
+Lemma entry_member_kind_read : forall T E, entry_member_kind (ge_read T E) = entry_member_kind E.
 Proof. intros T [| ? [? [[|] ?|?]] | | |]; reflexivity. Qed.
 
-Lemma mdesc_kind_edenote : forall Γ o E R, edenote Θm Ξm Γ o E R -> mdesc_kind R = entry_kind E.
+Lemma mdesc_member_kind_edenote : forall Γ o E R, edenote Θm Ξm Γ o E R -> mdesc_member_kind R = entry_member_kind E.
 Proof.
   intros * He; inversion He; subst; try reflexivity.
   all: match goal with Hu : udenote _ _ _ _ _ ?R0 |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hm; destruct R0 end;
@@ -707,7 +720,7 @@ Definition mdesc_not_dm (R : mdesc) : Prop :=
   | _ => True
   end.
 
-Lemma mdesc_kind_at : forall R N R', mdesc_not_dm R -> mdesc_at R N = Some R' -> mdesc_not_dm R' /\ mdesc_kind R' = mdesc_kind R.
+Lemma mdesc_member_kind_at : forall R N R', mdesc_not_dm R -> mdesc_at R N = Some R' -> mdesc_not_dm R' /\ mdesc_member_kind R' = mdesc_member_kind R.
 Proof.
   intros R N; destruct R as [| | | Θd A M Rm]; intros R' Hn E1; cbn in E1, Hn; [| | | contradiction ].
   all: repeat match type of E1 with
@@ -716,27 +729,27 @@ Proof.
        injection E1 as <-; split; first [ exact I | reflexivity ].
 Qed.
 
-Lemma mdesc_kind_ats : forall Ns R R', mdesc_not_dm R -> mdesc_ats R Ns = Some R' -> mdesc_kind R' = mdesc_kind R.
+Lemma mdesc_member_kind_ats : forall Ns R R', mdesc_not_dm R -> mdesc_ats R Ns = Some R' -> mdesc_member_kind R' = mdesc_member_kind R.
 Proof.
   induction Ns as [| N Ns IH]; intros * Hn Ha; cbn in Ha; [ injection Ha as <-; reflexivity |].
   destruct (mdesc_at R N) as [R1 |] eqn:E1; [| discriminate ].
-  destruct (mdesc_kind_at _ _ _ Hn E1) as [Hn1 E].
+  destruct (mdesc_member_kind_at _ _ _ Hn E1) as [Hn1 E].
   rewrite (IH _ _ Hn1 Ha); exact E.
 Qed.
 
-Lemma mdesc_kind_ats_read : forall Ns R R', mdesc_dm_closed R -> mdesc_ats_read R Ns = Some R' -> mdesc_kind R' = mdesc_kind R.
+Lemma mdesc_member_kind_ats_read : forall Ns R R', mdesc_dm_closed R -> mdesc_ats_read R Ns = Some R' -> mdesc_member_kind R' = mdesc_member_kind R.
 Proof.
   intros Ns [| | | Θd A M Rm] R' Hc Ha; cbn in Hc.
   4: { subst Θd; cbn in Ha; mdesc_dm_read_shape Ha; reflexivity. }
-  all: apply (mdesc_kind_ats Ns); [ exact I | exact Ha ].
+  all: apply (mdesc_member_kind_ats Ns); [ exact I | exact Ha ].
 Qed.
 
-Lemma mdesc_kind_read : forall rd R R', mdesc_dm_closed R -> mdesc_read rd R = Some R' -> mdesc_kind R' = mdesc_kind R.
+Lemma mdesc_member_kind_read : forall rd R R', mdesc_dm_closed R -> mdesc_read rd R = Some R' -> mdesc_member_kind R' = mdesc_member_kind R.
 Proof.
   intros [Δ Φ' | Θ' Ns M] * Hc Hr; cbn in Hr.
-  - destruct (gm_fill Φ'); cbn in Hr; [ injection Hr as <- | discriminate ]; rewrite mdesc_kind_up, mdesc_kind_sub; reflexivity.
+  - destruct (gm_fill Φ'); cbn in Hr; [ injection Hr as <- | discriminate ]; rewrite mdesc_member_kind_up, mdesc_member_kind_sub; reflexivity.
   - destruct (mdesc_ats_read R Ns) as [R1 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
-    rewrite mdesc_kind_up, mdesc_kind_named; exact (mdesc_kind_ats_read _ _ _ Hc Ha).
+    rewrite mdesc_member_kind_up, mdesc_member_kind_named; exact (mdesc_member_kind_ats_read _ _ _ Hc Ha).
 Qed.
 
 (** What a member of a module expression denotes has the kind its value
@@ -745,7 +758,7 @@ Qed.
 Record kinds_ok (Γ : ctx) (H : modexp) : Prop := mk_kinds_ok
   { (** An entry of the module part has its entry's kind *)
     kinds_ok_entry : forall R Rm x Γy E rd, mdenote Θm Ξm Γ H R -> mdesc_mod R = Some Rm -> mdesc_entry Rm x = Some (Γy, E, rd) ->
-      forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> modexp_member_kind gc_deps gc_stack ρ H (x :: nil) (entry_kind E)
+      forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> modexp_member_kind gc_deps gc_stack ρ H (x :: nil) (entry_member_kind E)
     (** A unit the member names is a module *)
   ; kinds_ok_unit : forall x, (exists TΦ, gc_unit Θm Ξm (me_mem H x) = Some TΦ) ->
       forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> modexp_member_kind gc_deps gc_stack ρ H (x :: nil) member_kind_mod
@@ -756,14 +769,14 @@ Record kinds_ok (Γ : ctx) (H : modexp) : Prop := mk_kinds_ok
       forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> modexp_member_kind gc_deps gc_stack ρ H (x :: nil) member_kind_dm }.
 
 Lemma kinds_ok_mem : forall Γ H x R, kinds_ok Γ H -> mdenote Θm Ξm Γ (me_mem H x) R ->
-    forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> modexp_member_kind gc_deps gc_stack ρ H (x :: nil) (mdesc_kind R).
+    forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> modexp_member_kind gc_deps gc_stack ρ H (x :: nil) (mdesc_member_kind R).
 Proof.
   intros * [Ke Ku Kf] Hm RΓ ρ HΓ Hρ.
   inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hr
                   | ? ? ? Rr ? ? Hq Hk]; subst.
   - exact (Ku _ (ex_intro _ _ Hu) _ _ HΓ Hρ).
   - exact (Kf _ (or_introl (ex_intro _ _ (ex_intro _ _ (conj Hq Hk)))) _ _ HΓ Hρ).
-  - rewrite (mdesc_kind_read _ _ _ (edenote_dm_closed _ _ _ _ Hed) Hr), (mdesc_kind_edenote _ _ _ _ Hed);
+  - rewrite (mdesc_member_kind_read _ _ _ (edenote_dm_closed _ _ _ _ Hed) Hr), (mdesc_member_kind_edenote _ _ _ _ Hed);
       exact (Ke _ _ _ _ _ _ Hm0 Hmd He _ _ HΓ Hρ).
   - exact (Kf _ (or_intror (ex_intro _ _ (ex_intro _ _ (conj Hq Hk)))) _ _ HΓ Hρ).
 Qed.
@@ -914,7 +927,7 @@ Proof.
 Qed.
 
 Lemma mdesc_entry_open_inv : forall Δ Φ Φx y Γy E rd, mdesc_entry (mdesc_open Δ Φ Φx) y = Some (Γy, E, rd) ->
-    exists Φ' E0, gm_prefix_upto Φx y = Some (gm_ext Φ' y E0) /\ entry_kind E = entry_kind E0 /\
+    exists Φ' E0, gm_prefix_upto Φx y = Some (gm_ext Φ' y E0) /\ entry_member_kind E = entry_member_kind E0 /\
       Γy = body_ctx Φ' ++ Δ /\ rd = reader_open Δ Φ'.
 Proof.
   intros * He; cbn in He.
@@ -982,7 +995,7 @@ Proof.
     rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm _ Hm1), Hmod1 in Hmod; injection Hmod as <-.
     destruct (mdesc_entry_closed_inv _ _ _ _ _ _ _ _ _ He) as (Φ0 & E0 & Hp & ->).
     destruct (Hgf _ _ _ Hgl) as [_ Hpe _ _ _ Hk _ _ _ _ _ _].
-    apply modexp_member_kind_apps, (kind_eval_modexp _ _ _ _ _ (Hpe ρ)); rewrite entry_kind_read; exact (Hk _ _ _ Hp).
+    apply modexp_member_kind_apps, (kind_eval_modexp _ _ _ _ _ (Hpe ρ)); rewrite entry_member_kind_read; exact (Hk _ _ _ Hp).
   - (* a body *)
     intros Γ Δ Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hslots IHslots Hs Hsx HK Hopv Hops IHops.
     split; [| intros x (TΦ & Hu); cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate
@@ -1008,7 +1021,7 @@ Proof.
     pose proof (gm_noopen_prefix_upto _ _ _ (body_xp_result_noopen _ _ _ _ _ Hx) Hp) as Hno'; cbn [gm_noopen] in Hno'.
     destruct (prefix_shape _ _ _ _ Hsx Hp) as [Hsh' HshE].
     pose proof (prefix_nopens _ _ _ Hn Hp) as Hn'; cbn [gm_nopens] in Hn'.
-    destruct E0 as [b pv ra A0 oM | pm U | | pv A0 M0 U | ]; cbn in HshE; try contradiction; cbn [entry_kind].
+    destruct E0 as [b pv ra A0 oM | pm U | | pv A0 M0 U | ]; cbn in HshE; try contradiction; cbn [entry_member_kind].
     1: eapply gunit_member_kind_def; exact Hp.
     2: (* a definition with a module part: [dm_of] its unit's kind, a
             module's, at an environment of its context *)
