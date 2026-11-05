@@ -442,9 +442,11 @@ Qed.
 Lemma fenv_tele_erase : forall ρ T vs, fenv_erase (fenv_tele ρ T vs) = env_tele (fenv_erase ρ) T (fdomains_erase vs).
 Proof. intros; unfold fenv_tele, env_tele; rewrite fenv_extend_typed_erase, ftele_entries_erase; reflexivity. Qed.
 
+(** The twin erases to [decl_env]. *)
 Lemma fdecl_env_erase : forall D ups, fenv_erase (fdecl_env D ups) = decl_env D (fdomains_erase ups).
 Proof. intros; unfold fdecl_env, decl_env; apply fenv_tele_erase. Qed.
 
+(** The twin erases to [cargs_entries]. *)
 Lemma fcargs_entries_erase : forall p ups vs ρ gs,
     fvalue_types_erase (fcargs_entries p ups ρ gs vs) = cargs_entries p (fdomains_erase ups) (fenv_erase ρ) gs (fdomains_erase vs).
 Proof.
@@ -452,6 +454,7 @@ Proof.
     [ reflexivity .. | | | ]; f_equal; rewrite IH; reflexivity.
 Qed.
 
+(** The twin erases to [ihs_types]. *)
 Lemma fihs_types_erase : forall D p ups ρm As gs vs ρ,
     List.map fentry_type_erase (fihs_types D p ups ρm As ρ gs vs) =
     ihs_types D p (fdomains_erase ups) (fenv_erase ρm) As (fenv_erase ρ) gs (fdomains_erase vs).
@@ -461,6 +464,7 @@ Proof.
   - rewrite List.map_app, IH, List.map_map; reflexivity.
 Qed.
 
+(** The twin erases to [pair_values_with_types]. *)
 Lemma fpair_values_with_types_erase : forall vs ts,
     fvalue_types_erase (fpair_values_with_types vs ts) = pair_values_with_types (fdomains_erase vs) (List.map fentry_type_erase ts).
 Proof.
@@ -468,6 +472,7 @@ Proof.
   rewrite IH; destruct ts; reflexivity.
 Qed.
 
+(** The twin erases to [branch_entries]. *)
 Lemma fbranch_entries_erase : forall D Mj p ups As ρm gs ns vs ihs,
     fvalue_types_erase (fbranch_entries D Mj p ups As ρm gs ns vs ihs) =
     branch_entries D Mj p (fdomains_erase ups) As (fenv_erase ρm) gs (fdomains_erase ns) (fdomains_erase vs) (fdomains_erase ihs).
@@ -477,11 +482,13 @@ Proof.
     fenv_extend_typed_erase, ftele_entries_erase, fdecl_env_erase; reflexivity.
 Qed.
 
+(** The twin erases to [motive_entries]. *)
 Lemma fmotive_entries_erase : forall D Mk ups ns a m,
     fvalue_types_erase (fmotive_entries D Mk ups ns a m) =
     motive_entries D Mk (fdomains_erase ups) (fdomains_erase ns) (fdomain_erase a) (fdomain_erase m).
 Proof. intros; unfold fmotive_entries, motive_entries; rewrite List.map_app, ftele_entries_erase, fdecl_env_erase; reflexivity. Qed.
 
+(** The twin erases to [global_proof_env]. *)
 Lemma fglobal_proof_env_erase : forall p T args, fenv_erase (fglobal_proof_env p T args) = global_proof_env p T (fdomains_erase args).
 Proof. intros; unfold fglobal_proof_env, global_proof_env; cbn; rewrite fenv_tele_erase, List.length_map; reflexivity. Qed.
 

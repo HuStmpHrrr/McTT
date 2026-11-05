@@ -424,7 +424,11 @@ Section DenoteImpl.
     | _ => try solve [ econstructor; eauto using ctx_find_mod_sound, udenote_alias; cbn; auto ]
     end.
 
-  #[tactic="impl_obligation_tac",derive(equations=no,eliminator=no)]
+  (** The obligations the tactic leaves are proved after the definition. *)
+  #[local]
+  Ltac impl_obligation_try := try impl_obligation_tac.
+
+  #[tactic="impl_obligation_try",derive(equations=no,eliminator=no)]
   Equations mdenote_impl Γ H (Ho : mdenote_order Θ Ξ Γ H) :
       { R : fmdesc | mdenote Θ Ξ Γ H (decode_desc R) } + { forall R, ~ mdenote Θ Ξ Γ H R } by struct Ho :=
   | Γ, me_unit fp, Ho with gc_unit_canonical F (me_unit fp) := {
