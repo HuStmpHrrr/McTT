@@ -134,7 +134,7 @@ Inductive container_doms_link (dr : nat -> list domain -> list centry -> exp -> 
 | container_doms_link_pi : forall pre Ts preQ TsQ B' t' B t,
     (forall c c', drQ kQ preQ TsQ B' c c' ->
        dr k pre Ts B c c /\
-       container_doms_link dr k drQ kQ (pre ++ c :: nil) (Ts ++ ce_ass B :: nil) (preQ ++ c :: nil) (TsQ ++ ce_ass B' :: nil) t' t) ->
+       container_doms_link dr k drQ kQ (pre ++ c :: nil) (Ts ++ ce_ass ak_relevant B :: nil) (preQ ++ c :: nil) (TsQ ++ ce_ass ak_relevant B' :: nil) t' t) ->
     container_doms_link dr k drQ kQ pre Ts preQ TsQ (pt_pi B' t') (pt_pi B t).
 
 (** The non-dependent induction over the cross relations of
@@ -659,12 +659,12 @@ Section ContainerReadable.
         assert (HvQ : drQ kQ preQ TsQ B' (⇑! b s) (⇑! b s)) by exact (Hvar s).
         destruct (rec_arg_rel_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HrQ _ _ HvQ) as (fq & fq' & Eq1 & Eq1' & HrQ').
         pose proof (functional_eval_app _ _ _ _ Eq1 Eq1') as <-.
-        assert (LQ1 : List.length (preQ ++ ⇑! b s :: nil) = List.length (TsQ ++ ce_ass B' :: nil))
+        assert (LQ1 : List.length (preQ ++ ⇑! b s :: nil) = List.length (TsQ ++ ce_ass ak_relevant B' :: nil))
           by (rewrite !List.length_app, LQ; reflexivity).
         destruct (IH _ _ Hdr _ _ _ LQ1 Hsc ltac:(econstructor; [ exact Er | exact Er' | exact Hr' ])
                     ltac:(econstructor; [ exact Eq1 | exact Eq1 | exact HrQ' ]) (Hrest _ _ HvQ) Hlk1)
           as (fc & rcs & as1 & Ef & F1 & T1 & R1).
-        rewrite (components_env_snoc _ _ _ _ _ _ LQ) in T1.
+        rewrite (components_env_snoc _ _ _ _ _ _ _ LQ) in T1.
         exists fc, rcs, as1; repeat split; assumption. }
       set (N := List.length (shape_leaves (rview_leaves D') 0 t')).
       assert (LN : List.length rs = N).
@@ -672,7 +672,7 @@ Section ContainerReadable.
         pose proof (proj1 eval_ihty_length_all _ _ _ _ _ _ _ _ T1 D' Hq HlcQ).
         pose proof (List.Forall2_length F1); pose proof (List.Forall2_length R1).
         unfold N; congruence. }
-      exists (List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρb (blocks_motives VBb) qc ub (components_env D' ub TsQ preQ) B' t' i v
+      exists (List.map (fun i => Πᵈ{ak_relevant} b (nil ↦ d_ihfam ρb (blocks_motives VBb) qc ub (components_env D' ub TsQ preQ) B' t' i v
                                          ⦂ entry_type_none) fam_cod) (List.seq 0 N)).
       split; [ eapply eval_ihty_pi; [ exact Hq | exact Eb ] |].
       rewrite <- LN; apply forall2_map_seq; intros n r Hri s; cbn [Nat.add].
@@ -684,7 +684,7 @@ Section ContainerReadable.
       eexists; eapply read_entry_term;
         [ apply eval_entry_type_value
         | eapply read_typ_pi; [ exact RA | eapply eval_fam_cod_ihfam; [ exact Ef | exact T1 | exact Hai ] | exact RC ]
-        | eapply read_nf_fn; [ exact RA | exact Erc | eapply eval_fam_cod_ihfam; [ exact Ef | exact T1 | exact Hai ] | exact RW ] ].
+        | eapply read_nf_fn; [ exact evaluated_kind_relevant | exact RA | exact Erc | eapply eval_fam_cod_ihfam; [ exact Ef | exact T1 | exact Hai ] | exact RW ] ].
     - (** An application: the rest at the function's values. *)
       intros k u u' pre pre' Ts t' t v c v' c' rs rs' fc fc' rcs rcs' Ev Ev' F1 F2 _ IH kQ preQ TsQ LQ Hsc Hrg HrQ HdQ Hlk.
       destruct (rec_arg_app_rel_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrg) as (r & r' & Er & Er' & Hr).
@@ -706,7 +706,7 @@ Section ContainerReadable.
       pose proof HcaQ as HcQ1; apply con_args_rel_arg_inv in HcQ1.
       pose proof HdQ as HdQ1; apply cargs_doms_ok_arg_inv in HdQ1.
       assert (LTQ : List.length (ms ++ nonrec_arg_vals gs1' vp) = List.length (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1'))
-        by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_rev, length_im_nparams, List.length_map,
+        by (rewrite !List.length_app, List.length_rev, length_im_nparams, length_cargs_nonrec_tele,
               length_nonrec_arg_vals by exact Lvc; lia).
       (** The prefixes one argument more, on each side. *)
       assert (EnQ : nonrec_arg_vals (gs1' ++ ca_arg rA' A' :: nil) (vp ++ v :: nil) = nonrec_arg_vals gs1' vp ++ v :: nil)
@@ -733,7 +733,7 @@ Section ContainerReadable.
                   ltac:(rewrite EnG, Hpre, <- List.app_assoc; reflexivity)
                   ltac:(rewrite HTs; exact (prefix_tele_snoc_arg _ gs1 rA A)) Lms Hms Hpw1 Hfr1 Hcg1 HcQ1 HdQ1)
         as (as1 & T1 & R1).
-      rewrite ETQ, EnQ, List.app_assoc, (components_env_snoc _ _ _ _ _ _ LTQ) in T1.
+      rewrite ETQ, EnQ, List.app_assoc, (components_env_snoc _ _ _ _ _ _ _ LTQ) in T1.
       exists as1; split; [ constructor; exact T1 | exact R1 ].
     - (** Nested through by the group: no result of the container's. *)
       intros k u u' pre pre' Ts rA' A' t gs' gs v v' vs vs' w rs' ihs _ _ IH i' Mi' Mk c gs1' gs1 ms vp HMi' Hvm Hc' HcB Hcorr1 Hcorr Lvp
@@ -745,7 +745,7 @@ Section ContainerReadable.
       pose proof HcaQ as HcQ1; apply con_args_rel_arg_inv in HcQ1.
       pose proof HdQ as HdQ1; apply cargs_doms_ok_arg_inv in HdQ1.
       assert (LTQ : List.length (ms ++ nonrec_arg_vals gs1' vp) = List.length (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1'))
-        by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_rev, length_im_nparams, List.length_map,
+        by (rewrite !List.length_app, List.length_rev, length_im_nparams, length_cargs_nonrec_tele,
               length_nonrec_arg_vals by exact Lvc; lia).
       (** The container's prefix one argument more, the group's the same. *)
       assert (EnQ : nonrec_arg_vals (gs1' ++ ca_arg rA' A' :: nil) (vp ++ v :: nil) = nonrec_arg_vals gs1' vp ++ v :: nil)
@@ -772,7 +772,7 @@ Section ContainerReadable.
                   ltac:(rewrite EnG; exact Hpre)
                   ltac:(rewrite HTs; exact (prefix_tele_snoc_rec _ gs1 t)) Lms Hms Hpw1 Hfr1 Hcg1 HcQ1 HdQ1)
         as (as1 & T1 & R1).
-      rewrite ETQ, EnQ, List.app_assoc, (components_env_snoc _ _ _ _ _ _ LTQ) in T1.
+      rewrite ETQ, EnQ, List.app_assoc, (components_env_snoc _ _ _ _ _ _ _ LTQ) in T1.
       exists as1; split; [ constructor; exact T1 | exact R1 ].
     - (** Recursive in both: the results of its shape, then the rest's. *)
       intros k u u' pre pre' Ts t' t gs' gs v v' vs vs' rs rs' w ihs _ _ _ IHr _ IHf i' Mi' Mk c gs1' gs1 ms vp HMi' Hvm Hc' HcB Hcorr1 Hcorr
@@ -784,7 +784,7 @@ Section ContainerReadable.
       pose proof HcaQ as HcQ0; apply con_args_rel_rec_inv in HcQ0 as [HcQ1 HcQ2].
       pose proof HdQ as HdQ0; apply cargs_doms_ok_rec_inv in HdQ0 as [HdQ1 HdQ2].
       assert (LTQ : List.length (ms ++ nonrec_arg_vals gs1' vp) = List.length (List.rev (im_nparams Mi') ++ cargs_nonrec_tele gs1'))
-        by (unfold cargs_nonrec_tele; rewrite !List.length_app, List.length_rev, length_im_nparams, List.length_map,
+        by (rewrite !List.length_app, List.length_rev, length_im_nparams, length_cargs_nonrec_tele,
               length_nonrec_arg_vals by exact Lvc; lia).
       (** The domains of the shapes, linked. *)
       pose proof (view_member_mem _ _ _ _ _ _ _ _ _ Hvm) as HMk.
