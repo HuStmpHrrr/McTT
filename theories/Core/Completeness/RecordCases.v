@@ -174,7 +174,7 @@ Lemma sem_exp_eq_field_beta :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ T ≈ apps_exp (a_record p) Ns : Typeω@i ->
      record_lookup Θ Ξ p = Some R ->
      field_index fs f = Some k ->
-     record_field_rel R k = relevant ->
+     record_field_kind R k = ak_relevant ->
      field_lookup fs f = Some M ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_proj f (a_tuple T fs) : A ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : A ->

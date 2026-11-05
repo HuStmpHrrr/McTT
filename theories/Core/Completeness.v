@@ -69,13 +69,13 @@ Proof.
   assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
   destruct (HM _ _ Hrel) as (a & a' & elem_rel & Ha & Ha' & HR & Hexp).
   assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
-  destruct (domain_relevance a) eqn:Hr.
-  (** A relevant type: both terms evaluate, to related values, which read
-      back alike *)
-  - destruct Hexp as [Hp | (m & m' & Hm & Hm' & Hmm')]; [ congruence |].
+  destruct (evaluated_kind_or_propositional (domain_kind a)) as [Hr | Hr].
+  (** A type of an evaluated kind: both terms evaluate, to related values,
+      which read back alike *)
+  - destruct Hexp as [Hp | (m & m' & Hm & Hm' & Hmm')]; [ rewrite Hp in Hr; inversion Hr |].
     destruct (per_elem_then_per_top HR Hmm' (List.length Γ)) as [W W' HW HW' HE].
     exact (mk_initial_env_normal_forms _ _ _ _ ρ a W W' Hρ Ha
-             (nbe_term_relevant _ _ _ _ _ _ _ _ Hr Hm HW) (nbe_term_relevant _ _ _ _ _ _ _ _ Hr Hm' HW') HE).
+             (nbe_term_evaluated _ _ _ _ _ _ _ _ Hr Hm HW) (nbe_term_evaluated _ _ _ _ _ _ _ _ Hr Hm' HW') HE).
   (** A proposition: both terms kept over the environment, read back as
       proof terms *)
   - destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓ (exp_scoped_free_bound _ _ HsM) _ _ Hrel) as [HP _].
@@ -155,6 +155,15 @@ Proof.
   exists W, W'; repeat split; [ econstructor; eassumption | econstructor; eassumption | exact HE ].
 Qed.
 
+(** A contradiction from a value's kind both propositional and evaluated,
+    the two kinds equated by the hypotheses. *)
+Local Ltac kind_clash :=
+  exfalso; match goal with
+           | Hp0 : domain_kind ?x = ak_propositional, Hr0 : evaluated_kind (domain_kind ?y) |- _ =>
+               let Hxy := fresh "Hxy" in
+               assert (Hxy : domain_kind y = ak_propositional) by congruence; rewrite Hxy in Hr0; inversion Hr0
+           end.
+
 (** Equal terms read back at equal types have normal forms equal up to
     their proofs: completeness, with each side read at its own type.  For
     example, a pair [(n, h)] of a record type [R n] whose second field is
@@ -184,12 +193,12 @@ Proof.
   destruct (HM _ _ Hrel23) as (b & b' & R & Hb & Hb' & HR & Hexp).
   functional_eval_rewrite_clear.
   assert (E : R <~> R') by (eapply per_univ_elem_right_irrel; eassumption).
-  pose proof (per_univ_elem_relevance _ _ _ _ HR') as Hra.
+  pose proof (per_univ_elem_kind _ _ _ _ HR') as Hra.
   unfold nf_equal_up_to_proofs.
-  destruct HW as [w Hp Hw | m w Hr Hm Hw]; destruct HW' as [w' Hp' Hw' | m' w' Hr' Hm' Hw']; try congruence.
+  destruct HW as [w Hp Hw | m w Hr Hm Hw]; destruct HW' as [w' Hp' Hw' | m' w' Hr' Hm' Hw']; try kind_clash.
   - destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp Hw) as [P ->].
     destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp' Hw') as [P' ->]; reflexivity.
-  - destruct Hexp as [Hp | (m0 & m0' & Hm0 & Hm0' & Hmm)]; [ congruence |].
+  - destruct Hexp as [Hp | (m0 & m0' & Hm0 & Hm0' & Hmm)]; [ kind_clash |].
     functional_eval_rewrite_clear.
     destruct (per_elem_then_per_top HR' (proj1 (E _ _) Hmm) (List.length Γ)) as [V V' HV HV' HE].
     functional_read_rewrite_clear; exact HE.
