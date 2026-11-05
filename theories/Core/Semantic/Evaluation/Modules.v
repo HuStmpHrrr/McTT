@@ -12,7 +12,7 @@ Import ListNotations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members.
-From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping.
 From Mctt.Core.Semantic.Evaluation Require Import Definitions Lemmas.
 Import Domain_Notations Syntax_Notations.
 
@@ -449,9 +449,6 @@ Section Members.
       apply eval_selc_app; [ discriminate |]; exists h; split; [ assumption | constructor; assumption ].
   Qed.
 End Members.
-
-Lemma ctx_fn_app : forall Ψ1 Ψ2 M, ctx_fn (Ψ1 ++ Ψ2) M = ctx_fn Ψ2 (ctx_fn Ψ1 M).
-Proof. induction Ψ1 as [| [] Ψ1 IH]; intros; cbn; auto. Qed.
 
 (** The spine of a substituted module expression: the substituted root's spine,
     followed by the substituted arguments and the selections. *)
