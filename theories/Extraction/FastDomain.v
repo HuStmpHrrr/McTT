@@ -24,15 +24,17 @@ From Mctt.Core.Semantic Require Import Domain Evaluation.
 (** ** The Values *)
 
 Inductive fdomain : Set :=
-(** [fd_pi r a ρ B]: a [Π] at the relevance [r] with domain [a], its
-    codomain [B] a closure in [ρ] *)
-| fd_pi : relevance -> fdomain -> list fdentry -> exp -> fdomain
+(** [fd_pi κd κc a ρ B]: a [Π] out of a domain [a] of the kind [κd] into a
+    codomain of the kind [κc], its codomain [B] a closure in [ρ] *)
+| fd_pi : abs_kind -> abs_kind -> fdomain -> list fdentry -> exp -> fdomain
 (** A large universe *)
 | fd_univ : nat -> fdomain
 (** A small universe at a level value *)
 | fd_suniv : fdomain -> fdomain
 (** The type [Level@n] *)
 | fd_level : nat -> fdomain
+(** The sort of the types of levels, [LevelSort] *)
+| fd_level_sort : fdomain
 (** A flat level: its constant and its atoms, each with its offset and its
     sort *)
 | fd_lvl : o2 -> list (nat * nat * fdomain_ne) -> fdomain
@@ -40,17 +42,14 @@ Inductive fdomain : Set :=
 | fd_prop : fdomain
 (** [⊤] *)
 | fd_True : fdomain
-(** The proof [⋆]: the value of every proof *)
-| fd_true : fdomain
+(** [fd_proof M ρ]: a proof kept as the proof term [M] as written, with
+    the environment [ρ] of its free variables, as [d_proof] *)
+| fd_proof : exp -> list fdentry -> fdomain
 (** [⊥] *)
 | fd_False : fdomain
 (** [fd_and p ρ Q]: a [Σₚ] with first component [p], its second [Q] a
     closure in [ρ] *)
 | fd_and : fdomain -> list fdentry -> exp -> fdomain
-(** The placeholder type *)
-| fd_placeholder_type : fdomain
-(** Its element, and the value read past the end of an environment *)
-| fd_placeholder : fdomain
 (** [fd_fn a ρ M]: a function with domain [a], its body a closure in [ρ] *)
 | fd_fn : fdomain -> list fdentry -> exp -> fdomain
 (** [fd_neut a m]: a neutral [m] at the type [a] *)
@@ -73,12 +72,13 @@ Inductive fdomain : Set :=
 (** [fd_ihfn ρ Bks p ups t i f]: the [i]-th recursive result of an argument
     [f] of a function shape, as [d_ihfn] *)
 | fd_ihfn : list fdentry -> list eblock -> qname -> list fdomain -> ptyp -> nat -> fdomain -> fdomain
-(** [fd_shfam p ups ρ t]: the codomain of the type of an argument of a
-    function shape, as [d_shfam] *)
-| fd_shfam : qname -> list fdomain -> list fdentry -> ptyp -> fdomain
-(** [fd_ihfam ρm As p ups ρ t i f]: the codomain of the type of a recursive
-    result of an argument of a function shape, as [d_ihfam] *)
-| fd_ihfam : list fdentry -> list exp -> qname -> list fdomain -> list fdentry -> ptyp -> nat -> fdomain -> fdomain
+(** [fd_shfam p ups ρ B t]: the codomain of the type of an argument of a
+    function shape [pt_pi B t], as [d_shfam] *)
+| fd_shfam : qname -> list fdomain -> list fdentry -> exp -> ptyp -> fdomain
+(** [fd_ihfam ρm As p ups ρ B t i f]: the codomain of the type of a
+    recursive result of an argument of a function shape [pt_pi B t], as
+    [d_ihfam] *)
+| fd_ihfam : list fdentry -> list exp -> qname -> list fdomain -> list fdentry -> exp -> ptyp -> nat -> fdomain -> fdomain
 (** [fd_record p ns]: the type former of the record at [p] applied to [ns] *)
 | fd_record : qname -> list fdomain -> fdomain
 (** A record value: its fields' values, by name *)
@@ -88,8 +88,8 @@ with fdomain_ne : Set :=
 | fd_var : nat -> fdomain_ne
 (** A neutral applied to a normal argument *)
 | fd_app : fdomain_ne -> fdomain_nf -> fdomain_ne
-(** Ex falso at the type [c], a closed neutral *)
-| fd_absurd : fdomain -> fdomain_ne
+(** [fd_absurd c p]: ex falso at the type [c], from the proof [p] of [⊥] *)
+| fd_absurd : fdomain -> fdomain -> fdomain_ne
 (** An opaque definition or an axiom *)
 | fd_glob : qname -> fdomain_ne
 (** [fd_elim ρ Bks p D ups m as m']: the eliminator of the group at [p],
@@ -110,13 +110,28 @@ with fdmod : Set :=
 (** A submodule of a local module still lacking arguments *)
 | fdm_member : fdmod -> list string -> fdmod
 with fdentry : Set :=
-(** A term variable's value *)
-| fde_term : fdomain -> fdentry
-(** A module slot's value *)
-| fde_mod : fdmod -> fdentry
-(** A definition with a module part: its term part's value and its module
-    part's *)
-| fde_dm : fdomain -> fdmod -> fdentry.
+(** A term variable's value and its type *)
+| fde_term : fdomain -> fentry_type -> fdentry
+(** A module slot's value, and the unit declared for the entry *)
+| fde_mod : fdmod -> gunit -> fdentry
+(** A definition with a module part: its term part's value and type, its
+    module part's value, and the unit declared for the entry *)
+| fde_dm : fdomain -> fentry_type -> fdmod -> gunit -> fdentry
+(** The type of a term variable in an environment, as [entry_type] *)
+with fentry_type : Set :=
+(** A type value *)
+| fentry_type_value : fdomain -> fentry_type
+(** [fentry_type_closure A ρ]: the type [A] in [ρ], not yet evaluated *)
+| fentry_type_closure : exp -> list fdentry -> fentry_type
+(** [fentry_type_shape p ups ρ t]: the type of a recursive argument of
+    shape [t] in [ρ], at the uniform parameters [ups] of the group at
+    [p] *)
+| fentry_type_shape : qname -> list fdomain -> list fdentry -> ptyp -> fentry_type
+(** [fentry_type_induction_hypothesis ρm As p ups ρ t v i]: the type of
+    the [i]-th recursive result of an argument [v] of shape [t] *)
+| fentry_type_induction_hypothesis : list fdentry -> list exp -> qname -> list fdomain -> list fdentry -> ptyp -> fdomain -> nat -> fentry_type
+(** No type *)
+| fentry_type_none : fentry_type.
 
 (** A fast environment *)
 Abbreviation fenv := (list fdentry).
@@ -128,44 +143,76 @@ Definition carry (D : ind_decl) : option ind_decl := Some D.
 
 (** ** Environments, as [Core.Semantic.Domain]'s *)
 
-(** The entry of [#x], or the placeholder past the end *)
+(** The entry past the end of an environment, [absent_entry]'s twin *)
+Definition fabsent_entry : fdentry := fde_term fd_prop fentry_type_none.
+
+(** The entry of [#x], or [fabsent_entry] past the end *)
 Fixpoint fenv_entry (ρ : fenv) (x : nat) : fdentry :=
   match x with
-  | 0 => List.hd (fde_term fd_placeholder) ρ
+  | 0 => List.hd fabsent_entry ρ
   | S x' => fenv_entry (List.tl ρ) x'
   end.
 
-(** The default module value, [dm_default]'s twin *)
-Definition fdm_default : fdmod := fdm_global (q_abs nil nil) nil.
+(** The empty global module, the module value of a term entry *)
+Definition fdm_empty : fdmod := fdm_global (q_abs nil nil) nil.
 
 (** The value of [#x] as a term *)
 Definition fenv_var (ρ : fenv) (x : nat) : fdomain :=
   match fenv_entry ρ x with
-  | fde_term d => d
-  | fde_mod _ => fd_placeholder
-  | fde_dm d _ => d
+  | fde_term d _ => d
+  | fde_mod _ _ => fd_prop
+  | fde_dm d _ _ _ => d
+  end.
+
+(** The type the entry of [#x] is stored at *)
+Definition fenv_type (ρ : fenv) (x : nat) : fentry_type :=
+  match fenv_entry ρ x with
+  | fde_term _ t => t
+  | fde_mod _ _ => fentry_type_none
+  | fde_dm _ t _ _ => t
   end.
 
 (** The value of [#x] as a module *)
 Definition fenv_mod (ρ : fenv) (x : nat) : fdmod :=
   match fenv_entry ρ x with
-  | fde_mod m => m
-  | fde_term _ => fdm_default
-  | fde_dm _ m => m
+  | fde_mod m _ => m
+  | fde_term _ _ => fdm_empty
+  | fde_dm _ _ m _ => m
   end.
 
-(** One more term entry *)
-Definition fextend_env (ρ : fenv) (d : fdomain) : fenv := fde_term d :: ρ.
-(** One more module entry *)
-Definition fextend_env_mod (ρ : fenv) (m : fdmod) : fenv := fde_mod m :: ρ.
+(** One more term entry, of the type [t] *)
+Definition fextend_env (ρ : fenv) (d : fdomain) (t : fentry_type) : fenv := fde_term d t :: ρ.
+(** One more module entry, of the declared unit [U] *)
+Definition fextend_env_mod (ρ : fenv) (m : fdmod) (U : gunit) : fenv := fde_mod m U :: ρ.
 (** One more entry of a definition with a module part *)
-Definition fextend_env_dm (ρ : fenv) (d : fdomain) (m : fdmod) : fenv := fde_dm d m :: ρ.
+Definition fextend_env_dm (ρ : fenv) (d : fdomain) (t : fentry_type) (m : fdmod) (U : gunit) : fenv := fde_dm d t m U :: ρ.
 
-(** The environment extended by arguments, outermost first *)
-Definition fenv_args (ρ : fenv) (args : list fdomain) : fenv := List.fold_left fextend_env args ρ.
+(** The environment extended by values, each at its type, outermost first,
+    [env_extend_typed]'s twin *)
+Definition fenv_extend_typed (ρ : fenv) (vts : list (fdomain * fentry_type)) : fenv :=
+  List.fold_left (fun ρ vt => fextend_env ρ (fst vt) (snd vt)) vts ρ.
 
-Lemma fenv_args_app : forall ρ vs ws, fenv_args ρ (vs ++ ws) = fenv_args (fenv_args ρ vs) ws.
-Proof. intros; unfold fenv_args; rewrite List.fold_left_app; reflexivity. Qed.
+Lemma fenv_extend_typed_app : forall ρ vs ws, fenv_extend_typed ρ (vs ++ ws) = fenv_extend_typed (fenv_extend_typed ρ vs) ws.
+Proof. intros; unfold fenv_extend_typed; rewrite List.fold_left_app; reflexivity. Qed.
+
+(** The type the head of a telescope gives a variable over [ρ], as
+    [tele_head_type] *)
+Definition ftele_head_type (ρ : fenv) (T : list centry) : fentry_type :=
+  match T with
+  | e :: _ => match centry_type e with Some A => fentry_type_closure A ρ | None => fentry_type_none end
+  | nil => fentry_type_none
+  end.
+
+(** The values [vs] at the telescope [T] with their types, as
+    [tele_entries] *)
+Fixpoint ftele_entries (ρ : fenv) (T : list centry) (vs : list fdomain) : list (fdomain * fentry_type) :=
+  match vs with
+  | nil => nil
+  | v :: vs' => (v, ftele_head_type ρ T) :: ftele_entries (fextend_env ρ v (ftele_head_type ρ T)) (List.tl T) vs'
+  end.
+
+(** The environment extended by values at a telescope, as [env_tele] *)
+Definition fenv_tele (ρ : fenv) (T : list centry) (vs : list fdomain) : fenv := fenv_extend_typed ρ (ftele_entries ρ T vs).
 
 (** ** Levels, as [Core.Semantic.Domain]'s *)
 
@@ -192,13 +239,14 @@ Definition fdomain_level_max (d e : fdomain) : fdomain :=
 (** A literal level *)
 Definition fdomain_level_lit (o : o2) : fdomain := fd_lvl o nil.
 
-(** ** The Sort of a Type Value, as [domain_relevance] *)
+(** ** The Kind of a Type Value, as [domain_kind] *)
 
-Definition fdomain_relevance (a : fdomain) : relevance :=
+Definition fdomain_kind (a : fdomain) : abs_kind :=
   match a with
-  | fd_pi r _ _ _ => r
-  | fd_True | fd_False | fd_and _ _ _ | fd_neut fd_prop _ => propositional
-  | _ => relevant
+  | fd_pi _ κc _ _ _ => κc
+  | fd_True | fd_False | fd_and _ _ _ | fd_neut fd_prop _ => ak_propositional
+  | fd_level _ | fd_neut fd_level_sort _ => ak_level
+  | _ => ak_relevant
   end.
 
 (** ** The Erasure
@@ -208,27 +256,26 @@ Definition fdomain_relevance (a : fdomain) : relevance :=
 
 Fixpoint fdomain_erase (d : fdomain) : domain :=
   match d with
-  | fd_pi r a ρ B => d_pi r (fdomain_erase a) (List.map fdentry_erase ρ) B
+  | fd_pi κd κc a ρ B => d_pi κd κc (fdomain_erase a) (List.map fdentry_erase ρ) B
   | fd_univ i => d_univ i
   | fd_suniv l => d_suniv (fdomain_erase l)
   | fd_level n => d_level n
+  | fd_level_sort => d_level_sort
   | fd_lvl c xs => d_lvl c (List.map (fun ka => (fst ka, fdomain_ne_erase (snd ka))) xs)
   | fd_prop => d_prop
   | fd_True => d_True
-  | fd_true => d_true
+  | fd_proof M ρ => d_proof M (List.map fdentry_erase ρ)
   | fd_False => d_False
   | fd_and p ρ Q => d_and (fdomain_erase p) (List.map fdentry_erase ρ) Q
-  | fd_placeholder_type => d_placeholder_type
-  | fd_placeholder => d_placeholder
   | fd_fn a ρ M => d_fn (fdomain_erase a) (List.map fdentry_erase ρ) M
   | fd_neut a m => d_neut (fdomain_erase a) (fdomain_ne_erase m)
   | fd_member h ch => d_member (fdmod_erase h) ch
   | fd_ind p _ k vs => d_ind p k (List.map fdomain_erase vs)
   | fd_con p _ k c vs => d_con p k c (List.map fdomain_erase vs)
   | fd_ihfn ρ Bks p ups t i f => d_ihfn (List.map fdentry_erase ρ) Bks p (List.map fdomain_erase ups) t i (fdomain_erase f)
-  | fd_shfam p ups ρ t => d_shfam p (List.map fdomain_erase ups) (List.map fdentry_erase ρ) t
-  | fd_ihfam ρm As p ups ρ t i f =>
-      d_ihfam (List.map fdentry_erase ρm) As p (List.map fdomain_erase ups) (List.map fdentry_erase ρ) t i (fdomain_erase f)
+  | fd_shfam p ups ρ B t => d_shfam p (List.map fdomain_erase ups) (List.map fdentry_erase ρ) B t
+  | fd_ihfam ρm As p ups ρ B t i f =>
+      d_ihfam (List.map fdentry_erase ρm) As p (List.map fdomain_erase ups) (List.map fdentry_erase ρ) B t i (fdomain_erase f)
   | fd_record p ns => d_record p (List.map fdomain_erase ns)
   | fd_tuple vs => d_tuple (List.map (fun f => (fst f, fdomain_erase (snd f))) vs)
   end
@@ -236,7 +283,7 @@ with fdomain_ne_erase (m : fdomain_ne) : domain_ne :=
   match m with
   | fd_var x => d_var x
   | fd_app m n => d_app (fdomain_ne_erase m) (fdomain_nf_erase n)
-  | fd_absurd c => d_absurd (fdomain_erase c)
+  | fd_absurd c p => d_absurd (fdomain_erase c) (fdomain_erase p)
   | fd_glob p => d_glob p
   | fd_elim ρ Bks p _ ups j as' m =>
       d_elim (List.map fdentry_erase ρ) Bks p (List.map fdomain_erase ups) j (List.map fdomain_erase as') (fdomain_ne_erase m)
@@ -254,9 +301,19 @@ with fdmod_erase (h : fdmod) : dmod :=
   end
 with fdentry_erase (e : fdentry) : dentry :=
   match e with
-  | fde_term d => de_term (fdomain_erase d)
-  | fde_mod h => de_mod (fdmod_erase h)
-  | fde_dm d h => de_dm (fdomain_erase d) (fdmod_erase h)
+  | fde_term d t => de_term (fdomain_erase d) (fentry_type_erase t)
+  | fde_mod h U => de_mod (fdmod_erase h) U
+  | fde_dm d t h U => de_dm (fdomain_erase d) (fentry_type_erase t) (fdmod_erase h) U
+  end
+with fentry_type_erase (t : fentry_type) : entry_type :=
+  match t with
+  | fentry_type_value a => entry_type_value (fdomain_erase a)
+  | fentry_type_closure A ρ => entry_type_closure A (List.map fdentry_erase ρ)
+  | fentry_type_shape p ups ρ s => entry_type_shape p (List.map fdomain_erase ups) (List.map fdentry_erase ρ) s
+  | fentry_type_induction_hypothesis ρm As p ups ρ s v i =>
+      entry_type_induction_hypothesis (List.map fdentry_erase ρm) As p (List.map fdomain_erase ups)
+        (List.map fdentry_erase ρ) s (fdomain_erase v) i
+  | fentry_type_none => entry_type_none
   end.
 
 (** The Core environment a fast one stands for *)
@@ -295,20 +352,42 @@ Qed.
 Lemma fenv_var_erase : forall ρ x, env_var (fenv_erase ρ) x = fdomain_erase (fenv_var ρ x).
 Proof. intros; unfold env_var, fenv_var; rewrite fenv_entry_erase; destruct (fenv_entry ρ x); reflexivity. Qed.
 
+Lemma fenv_type_erase : forall ρ x, env_type (fenv_erase ρ) x = fentry_type_erase (fenv_type ρ x).
+Proof. intros; unfold env_type, fenv_type; rewrite fenv_entry_erase; destruct (fenv_entry ρ x); reflexivity. Qed.
+
 Lemma fenv_mod_erase : forall ρ x, env_mod (fenv_erase ρ) x = fdmod_erase (fenv_mod ρ x).
 Proof. intros; unfold env_mod, fenv_mod; rewrite fenv_entry_erase; destruct (fenv_entry ρ x); reflexivity. Qed.
 
-Lemma fextend_env_erase : forall ρ d, fenv_erase (fextend_env ρ d) = extend_env (fenv_erase ρ) (fdomain_erase d).
+Lemma fextend_env_erase : forall ρ d t,
+    fenv_erase (fextend_env ρ d t) = extend_env (fenv_erase ρ) (fdomain_erase d) (fentry_type_erase t).
 Proof. reflexivity. Qed.
 
-Lemma fextend_env_mod_erase : forall ρ h, fenv_erase (fextend_env_mod ρ h) = extend_env_mod (fenv_erase ρ) (fdmod_erase h).
+Lemma fextend_env_mod_erase : forall ρ h U, fenv_erase (fextend_env_mod ρ h U) = extend_env_mod (fenv_erase ρ) (fdmod_erase h) U.
 Proof. reflexivity. Qed.
 
-Lemma fextend_env_dm_erase : forall ρ d h, fenv_erase (fextend_env_dm ρ d h) = extend_env_dm (fenv_erase ρ) (fdomain_erase d) (fdmod_erase h).
+Lemma fextend_env_dm_erase : forall ρ d t h U,
+    fenv_erase (fextend_env_dm ρ d t h U) = extend_env_dm (fenv_erase ρ) (fdomain_erase d) (fentry_type_erase t) (fdmod_erase h) U.
 Proof. reflexivity. Qed.
 
-Lemma fenv_args_erase : forall vs ρ, fenv_erase (fenv_args ρ vs) = env_args (fenv_erase ρ) (fdomains_erase vs).
-Proof. induction vs as [| v vs IH]; intros ρ; [ reflexivity | apply IH ]. Qed.
+(** Typed values, erased *)
+Abbreviation fvalue_types_erase vts := (List.map (fun vt => (fdomain_erase (fst vt), fentry_type_erase (snd vt))) vts).
+
+Lemma fenv_extend_typed_erase : forall vts ρ,
+    fenv_erase (fenv_extend_typed ρ vts) = env_extend_typed (fenv_erase ρ) (fvalue_types_erase vts).
+Proof. induction vts as [| vt vts IH]; intros ρ; [ reflexivity | apply IH ]. Qed.
+
+Lemma ftele_head_type_erase : forall ρ T, fentry_type_erase (ftele_head_type ρ T) = tele_head_type (fenv_erase ρ) T.
+Proof. intros ρ [| e T]; [ reflexivity |]; cbn; destruct (centry_type e); reflexivity. Qed.
+
+Lemma ftele_entries_erase : forall vs ρ T,
+    fvalue_types_erase (ftele_entries ρ T vs) = tele_entries (fenv_erase ρ) T (fdomains_erase vs).
+Proof.
+  induction vs as [| v vs IH]; intros ρ T; [ reflexivity |]; cbn [ftele_entries tele_entries List.map fst snd].
+  rewrite ftele_head_type_erase; f_equal; rewrite IH; cbn; rewrite ftele_head_type_erase; reflexivity.
+Qed.
+
+Lemma fenv_tele_erase : forall ρ T vs, fenv_erase (fenv_tele ρ T vs) = env_tele (fenv_erase ρ) T (fdomains_erase vs).
+Proof. intros; unfold fenv_tele, env_tele; rewrite fenv_extend_typed_erase, ftele_entries_erase; reflexivity. Qed.
 
 Lemma fdomain_level_sort_erase : forall a, domain_level_sort (fdomain_erase a) = fdomain_level_sort a.
 Proof. intros [] ; reflexivity. Qed.
@@ -331,24 +410,12 @@ Qed.
 Lemma fdomain_level_lit_erase : forall o, fdomain_erase (fdomain_level_lit o) = domain_level_lit o.
 Proof. reflexivity. Qed.
 
-Lemma fdomain_relevance_erase : forall a, domain_relevance (fdomain_erase a) = fdomain_relevance a.
+Lemma fdomain_kind_erase : forall a, domain_kind (fdomain_erase a) = fdomain_kind a.
 Proof. intros []; try reflexivity; match goal with a : fdomain |- _ => destruct a; reflexivity end. Qed.
 
-(** The sort of a fast type, read as its erasure's *)
-Lemma fdomain_relevance_erase_eq : forall a r, fdomain_relevance a = r -> domain_relevance (fdomain_erase a) = r.
-Proof. intros * H; rewrite fdomain_relevance_erase; exact H. Qed.
-
-(** [relevant_value]'s twin: the value [v] at the type [a], the proof at a
-    proposition *)
-Definition frelevant_value (a v : fdomain) : fdomain :=
-  match fdomain_relevance a with propositional => fd_true | relevant => v end.
-
-Lemma frelevant_value_erase : forall a v,
-    fdomain_erase (frelevant_value a v) = relevant_value (fdomain_erase a) (fdomain_erase v).
-Proof.
-  intros; unfold frelevant_value, relevant_value; rewrite fdomain_relevance_erase.
-  destruct (fdomain_relevance a); reflexivity.
-Qed.
+(** The kind of a fast type, read as its erasure's *)
+Lemma fdomain_kind_erase_eq : forall a κ, fdomain_kind a = κ -> domain_kind (fdomain_erase a) = κ.
+Proof. intros * H; rewrite fdomain_kind_erase; exact H. Qed.
 
 (** A record value's fields, erased *)
 Lemma fields_erase_combine : forall (fl : list string) vs,
@@ -378,18 +445,6 @@ Proof. intros * E; rewrite field_lookup_erase, E; reflexivity. Qed.
     implementations call, on fast values, with the equation of its
     erasure. *)
 
-(** [elim_grp_of]'s twin: the group written, or that of the value *)
-Definition felim_grp_of (oq : option qname) (m : fdomain) : option qname :=
-  match oq, m with
-  | Some p, _ => Some p
-  | None, fd_con p _ _ _ _ => Some p
-  | None, fd_neut (fd_ind p _ _ _) _ => Some p
-  | None, _ => None
-  end.
-
-Lemma felim_grp_of_erase : forall oq m, elim_grp_of oq (fdomain_erase m) = felim_grp_of oq m.
-Proof. intros [p |] m; [ reflexivity |]; destruct m as [ | | | | | | | | | | | | | a ? | | | | | | | | ]; try reflexivity; destruct a; reflexivity. Qed.
-
 (** [dm_clo]'s twin *)
 Definition fdm_clo (U : gunit) (ρ : fenv) : fdmod :=
   match U with gu_mk Δ D => fdm_local Δ D ρ end.
@@ -397,43 +452,25 @@ Definition fdm_clo (U : gunit) (ρ : fenv) : fdmod :=
 Lemma fdm_clo_erase : forall U ρ, fdmod_erase (fdm_clo U ρ) = dm_clo U (fenv_erase ρ).
 Proof. intros [Δ D] ρ; reflexivity. Qed.
 
-(** [kinds_placeholders]'s twin *)
-Definition fkinds_placeholders (n : nat) (ρ : fenv) : fenv := List.repeat (fde_term fd_placeholder) n ++ ρ.
+(** [kinds_pads]'s twin *)
+Definition fkinds_pads (n : nat) (ρ : fenv) : fenv := List.repeat fabsent_entry n ++ ρ.
 
-Lemma fkinds_placeholders_erase : forall n ρ, fenv_erase (fkinds_placeholders n ρ) = kinds_placeholders n (fenv_erase ρ).
-Proof. intros; unfold fkinds_placeholders, kinds_placeholders; rewrite List.map_app, List.map_repeat; reflexivity. Qed.
+Lemma fkinds_pads_erase : forall n ρ, fenv_erase (fkinds_pads n ρ) = kinds_pads n (fenv_erase ρ).
+Proof. intros; unfold fkinds_pads, kinds_pads; rewrite List.map_app, List.map_repeat; reflexivity. Qed.
 
 (** [kinds_body_entry]'s twin *)
-Definition fkinds_body_entry (ρ : fenv) (E : gentry) : fdentry :=
+Definition fkinds_body_entry (ρ : fenv) (y : string) (E : gentry) : fdentry :=
   match E with
-  | ge_mod _ U => fde_mod (fdm_clo U ρ)
-  | ge_def_mod _ _ _ U => fde_dm fd_placeholder (fdm_clo U ρ)
-  | _ => fde_term fd_placeholder
+  | ge_mod _ U => fde_mod (fdm_clo U ρ) U
+  | ge_ind _ pq _ _ _ =>
+      let U := gu_mk nil (md_alias (qname_mod (qname_sibling pq y))) in fde_mod (fdm_clo U ρ) U
+  | ge_record _ p _ _ => let U := gu_mk nil (md_alias (qname_mod p)) in fde_mod (fdm_clo U ρ) U
+  | ge_def_mod _ _ _ U => fde_dm fd_prop fentry_type_none (fdm_clo U ρ) U
+  | _ => fabsent_entry
   end.
 
-Lemma fkinds_body_entry_erase : forall ρ E, fdentry_erase (fkinds_body_entry ρ E) = kinds_body_entry (fenv_erase ρ) E.
-Proof. intros ρ [| ? [] | | ? ? ? [] |]; reflexivity. Qed.
-
-(** [kinds_generated_entry]'s twin *)
-Definition fkinds_generated_entry (ρ : fenv) (k : nat) (g : generated_item) : fdentry :=
-  match g with
-  | generated_item_alias _ _ E => fde_mod (fdm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-  | generated_item_def_mod _ _ _ _ E => fde_dm fd_placeholder (fdm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
-  | _ => fde_term fd_placeholder
-  end.
-
-(** [kinds_items_gen_env]'s twin *)
-Fixpoint fkinds_items_gen_env (ρ : fenv) (k : nat) (gs : list generated_item) : fenv :=
-  match gs with
-  | nil => ρ
-  | g :: gs' => fkinds_items_gen_env (fkinds_generated_entry ρ k g :: ρ) (S k) gs'
-  end.
-
-Lemma fkinds_items_gen_env_erase : forall gs ρ k, fenv_erase (fkinds_items_gen_env ρ k gs) = kinds_items_gen_env (fenv_erase ρ) k gs.
-Proof.
-  induction gs as [| g gs IH]; intros ρ k; [ reflexivity |]; cbn [fkinds_items_gen_env kinds_items_gen_env].
-  rewrite IH; f_equal; destruct g; reflexivity.
-Qed.
+Lemma fkinds_body_entry_erase : forall ρ y E, fdentry_erase (fkinds_body_entry ρ y E) = kinds_body_entry (fenv_erase ρ) y E.
+Proof. intros ρ y []; try reflexivity; match goal with U : gunit |- _ => destruct U; reflexivity end. Qed.
 
 (** ** The Declarations Carried Are Right
 
@@ -453,29 +490,27 @@ Section Ok.
 
   Inductive fdomain_ok : fdomain -> Prop :=
   (** A [Π]: its domain and its closure's environment *)
-  | fdomain_ok_pi : forall r a ρ B, fdomain_ok a -> Forall fdentry_ok ρ -> fdomain_ok (fd_pi r a ρ B)
+  | fdomain_ok_pi : forall κd κc a ρ B, fdomain_ok a -> Forall fdentry_ok ρ -> fdomain_ok (fd_pi κd κc a ρ B)
   (** A large universe *)
   | fdomain_ok_univ : forall i, fdomain_ok (fd_univ i)
   (** A small universe: its level *)
   | fdomain_ok_suniv : forall l, fdomain_ok l -> fdomain_ok (fd_suniv l)
   (** The type of levels *)
   | fdomain_ok_level : forall n, fdomain_ok (fd_level n)
+  (** The sort of the types of levels *)
+  | fdomain_ok_level_sort : fdomain_ok fd_level_sort
   (** A flat level: its atoms *)
   | fdomain_ok_lvl : forall c xs, Forall (fun ka => fdomain_ne_ok (snd ka)) xs -> fdomain_ok (fd_lvl c xs)
   (** [Prop] *)
   | fdomain_ok_prop : fdomain_ok fd_prop
   (** [⊤] *)
   | fdomain_ok_True : fdomain_ok fd_True
-  (** The proof *)
-  | fdomain_ok_true : fdomain_ok fd_true
+  (** A kept proof: its environment *)
+  | fdomain_ok_proof : forall M ρ, Forall fdentry_ok ρ -> fdomain_ok (fd_proof M ρ)
   (** [⊥] *)
   | fdomain_ok_False : fdomain_ok fd_False
   (** A conjunction: its first component and its closure's environment *)
   | fdomain_ok_and : forall p ρ Q, fdomain_ok p -> Forall fdentry_ok ρ -> fdomain_ok (fd_and p ρ Q)
-  (** The placeholder type *)
-  | fdomain_ok_placeholder_type : fdomain_ok fd_placeholder_type
-  (** The placeholder *)
-  | fdomain_ok_placeholder : fdomain_ok fd_placeholder
   (** A function: its domain and its closure's environment *)
   | fdomain_ok_fn : forall a ρ M, fdomain_ok a -> Forall fdentry_ok ρ -> fdomain_ok (fd_fn a ρ M)
   (** A neutral: its type and itself *)
@@ -490,10 +525,10 @@ Section Ok.
   | fdomain_ok_ihfn : forall ρ Bks p ups t i f,
       Forall fdentry_ok ρ -> Forall fdomain_ok ups -> fdomain_ok f -> fdomain_ok (fd_ihfn ρ Bks p ups t i f)
   (** The family of a shape's argument type: its parameters and environment *)
-  | fdomain_ok_shfam : forall p ups ρ t, Forall fdomain_ok ups -> Forall fdentry_ok ρ -> fdomain_ok (fd_shfam p ups ρ t)
+  | fdomain_ok_shfam : forall p ups ρ B t, Forall fdomain_ok ups -> Forall fdentry_ok ρ -> fdomain_ok (fd_shfam p ups ρ B t)
   (** The family of a recursive result's type: its environments, parameters and argument *)
-  | fdomain_ok_ihfam : forall ρm As p ups ρ t i f,
-      Forall fdentry_ok ρm -> Forall fdomain_ok ups -> Forall fdentry_ok ρ -> fdomain_ok f -> fdomain_ok (fd_ihfam ρm As p ups ρ t i f)
+  | fdomain_ok_ihfam : forall ρm As p ups ρ B t i f,
+      Forall fdentry_ok ρm -> Forall fdomain_ok ups -> Forall fdentry_ok ρ -> fdomain_ok f -> fdomain_ok (fd_ihfam ρm As p ups ρ B t i f)
   (** A record's type former: its arguments *)
   | fdomain_ok_record : forall p ns, Forall fdomain_ok ns -> fdomain_ok (fd_record p ns)
   (** A tuple: its fields *)
@@ -503,8 +538,8 @@ Section Ok.
   | fdomain_ne_ok_var : forall x, fdomain_ne_ok (fd_var x)
   (** An application: the neutral and the argument *)
   | fdomain_ne_ok_app : forall m n, fdomain_ne_ok m -> fdomain_nf_ok n -> fdomain_ne_ok (fd_app m n)
-  (** Ex falso: its type *)
-  | fdomain_ne_ok_absurd : forall c, fdomain_ok c -> fdomain_ne_ok (fd_absurd c)
+  (** Ex falso: its type and its proof *)
+  | fdomain_ne_ok_absurd : forall c p, fdomain_ok c -> fdomain_ok p -> fdomain_ne_ok (fd_absurd c p)
   (** A global *)
   | fdomain_ne_ok_glob : forall p, fdomain_ne_ok (fd_glob p)
   (** A stuck eliminator: its declaration is right, and its environment,
@@ -525,12 +560,25 @@ Section Ok.
   (** A member closure: the module value *)
   | fdmod_ok_member : forall h ch, fdmod_ok h -> fdmod_ok (fdm_member h ch)
   with fdentry_ok : fdentry -> Prop :=
-  (** A term entry *)
-  | fdentry_ok_term : forall d, fdomain_ok d -> fdentry_ok (fde_term d)
+  (** A term entry: its value and its type *)
+  | fdentry_ok_term : forall d t, fdomain_ok d -> fentry_type_ok t -> fdentry_ok (fde_term d t)
   (** A module entry *)
-  | fdentry_ok_mod : forall h, fdmod_ok h -> fdentry_ok (fde_mod h)
-  (** An entry of a definition with a module part: both parts *)
-  | fdentry_ok_dm : forall d h, fdomain_ok d -> fdmod_ok h -> fdentry_ok (fde_dm d h).
+  | fdentry_ok_mod : forall h U, fdmod_ok h -> fdentry_ok (fde_mod h U)
+  (** An entry of a definition with a module part: both parts and the type *)
+  | fdentry_ok_dm : forall d t h U, fdomain_ok d -> fentry_type_ok t -> fdmod_ok h -> fdentry_ok (fde_dm d t h U)
+  with fentry_type_ok : fentry_type -> Prop :=
+  (** A type value *)
+  | fentry_type_ok_value : forall a, fdomain_ok a -> fentry_type_ok (fentry_type_value a)
+  (** A closure: its environment *)
+  | fentry_type_ok_closure : forall A ρ, Forall fdentry_ok ρ -> fentry_type_ok (fentry_type_closure A ρ)
+  (** A shape type: its parameters and environment *)
+  | fentry_type_ok_shape : forall p ups ρ t, Forall fdomain_ok ups -> Forall fdentry_ok ρ -> fentry_type_ok (fentry_type_shape p ups ρ t)
+  (** An induction hypothesis's type: its environments, parameters and argument *)
+  | fentry_type_ok_induction_hypothesis : forall ρm As p ups ρ t v i,
+      Forall fdentry_ok ρm -> Forall fdomain_ok ups -> Forall fdentry_ok ρ -> fdomain_ok v ->
+      fentry_type_ok (fentry_type_induction_hypothesis ρm As p ups ρ t v i)
+  (** No type *)
+  | fentry_type_ok_none : fentry_type_ok fentry_type_none.
 
   (** Every entry of an environment *)
   Definition fenv_ok (ρ : fenv) : Prop := Forall fdentry_ok ρ.
@@ -555,26 +603,48 @@ Section Ok.
     destruct (fenv_entry ρ x); inversion He; subst; [ assumption | constructor | assumption ].
   Qed.
 
+  Lemma fenv_type_ok : forall ρ x, fenv_ok ρ -> fentry_type_ok (fenv_type ρ x).
+  Proof.
+    intros ρ x H; unfold fenv_type; pose proof (fenv_entry_ok ρ x H) as He.
+    destruct (fenv_entry ρ x); inversion He; subst; [ assumption | constructor | assumption ].
+  Qed.
+
   Lemma fenv_mod_ok : forall ρ x, fenv_ok ρ -> fdmod_ok (fenv_mod ρ x).
   Proof.
     intros ρ x H; unfold fenv_mod; pose proof (fenv_entry_ok ρ x H) as He.
     destruct (fenv_entry ρ x); inversion He; subst; [ repeat constructor | assumption | assumption ].
   Qed.
 
-  Lemma fextend_env_ok : forall ρ d, fenv_ok ρ -> fdomain_ok d -> fenv_ok (fextend_env ρ d).
+  Lemma fextend_env_ok : forall ρ d t, fenv_ok ρ -> fdomain_ok d -> fentry_type_ok t -> fenv_ok (fextend_env ρ d t).
   Proof. intros; constructor; [ constructor |]; assumption. Qed.
 
-  Lemma fextend_env_mod_ok : forall ρ h, fenv_ok ρ -> fdmod_ok h -> fenv_ok (fextend_env_mod ρ h).
+  Lemma fextend_env_mod_ok : forall ρ h U, fenv_ok ρ -> fdmod_ok h -> fenv_ok (fextend_env_mod ρ h U).
   Proof. intros; constructor; [ constructor |]; assumption. Qed.
 
-  Lemma fextend_env_dm_ok : forall ρ d h, fenv_ok ρ -> fdomain_ok d -> fdmod_ok h -> fenv_ok (fextend_env_dm ρ d h).
+  Lemma fextend_env_dm_ok : forall ρ d t h U, fenv_ok ρ -> fdomain_ok d -> fentry_type_ok t -> fdmod_ok h ->
+      fenv_ok (fextend_env_dm ρ d t h U).
   Proof. intros; constructor; [ constructor |]; assumption. Qed.
 
-  Lemma fenv_args_ok : forall vs ρ, fenv_ok ρ -> Forall fdomain_ok vs -> fenv_ok (fenv_args ρ vs).
+  Lemma fenv_extend_typed_ok : forall vts ρ, fenv_ok ρ ->
+      Forall (fun vt => fdomain_ok (fst vt) /\ fentry_type_ok (snd vt)) vts -> fenv_ok (fenv_extend_typed ρ vts).
   Proof.
-    induction vs as [| v vs IH]; intros ρ Hρ Hv; [ exact Hρ |]; inversion Hv; subst.
+    induction vts as [| vt vts IH]; intros ρ Hρ Hv; [ exact Hρ |]; inversion Hv as [| ? ? [Hd Ht] Hr]; subst.
     apply IH; [ apply fextend_env_ok |]; assumption.
   Qed.
+
+  Lemma ftele_head_type_ok : forall ρ T, fenv_ok ρ -> fentry_type_ok (ftele_head_type ρ T).
+  Proof. intros ρ [| e T] H; cbn; [ constructor |]; destruct (centry_type e); constructor; exact H. Qed.
+
+  Lemma ftele_entries_ok : forall vs ρ T, fenv_ok ρ -> Forall fdomain_ok vs ->
+      Forall (fun vt => fdomain_ok (fst vt) /\ fentry_type_ok (snd vt)) (ftele_entries ρ T vs).
+  Proof.
+    induction vs as [| v vs IH]; intros ρ T Hρ Hv; cbn; constructor; inversion Hv; subst;
+      [ split; [ assumption | apply ftele_head_type_ok; exact Hρ ] |].
+    apply IH; [ apply fextend_env_ok; [ exact Hρ | assumption | apply ftele_head_type_ok; exact Hρ ] | assumption ].
+  Qed.
+
+  Lemma fenv_tele_ok : forall ρ T vs, fenv_ok ρ -> Forall fdomain_ok vs -> fenv_ok (fenv_tele ρ T vs).
+  Proof. intros; apply fenv_extend_typed_ok; [| apply ftele_entries_ok ]; assumption. Qed.
 
   Lemma fdomain_level_view_ok : forall d, fdomain_ok d -> Forall (fun ka => fdomain_ne_ok (snd ka)) (snd (fdomain_level_view d)).
   Proof. intros d H; destruct d; cbn; inversion H; subst; auto. Qed.
@@ -594,20 +664,14 @@ Section Ok.
   Lemma fdm_clo_ok : forall U ρ, fenv_ok ρ -> fdmod_ok (fdm_clo U ρ).
   Proof. intros [Δ D] ρ H; constructor; exact H. Qed.
 
-  Lemma fkinds_placeholders_ok : forall n ρ, fenv_ok ρ -> fenv_ok (fkinds_placeholders n ρ).
+  Lemma fkinds_pads_ok : forall n ρ, fenv_ok ρ -> fenv_ok (fkinds_pads n ρ).
   Proof.
-    intros n ρ H; unfold fenv_ok, fkinds_placeholders; apply Forall_app; split; [| exact H ].
+    intros n ρ H; unfold fenv_ok, fkinds_pads; apply Forall_app; split; [| exact H ].
     apply Forall_forall; intros e He; apply repeat_spec in He as ->; repeat constructor.
   Qed.
 
-  Lemma fkinds_body_entry_ok : forall ρ E, fenv_ok ρ -> fdentry_ok (fkinds_body_entry ρ E).
-  Proof. intros ρ [] H; cbn; repeat constructor; try apply fdm_clo_ok; exact H. Qed.
-
-  Lemma fkinds_items_gen_env_ok : forall gs ρ k, fenv_ok ρ -> fenv_ok (fkinds_items_gen_env ρ k gs).
-  Proof.
-    induction gs as [| g gs IH]; intros ρ k H; [ exact H |]; cbn; apply IH; constructor; [| exact H ].
-    destruct g; cbn; repeat constructor; exact H.
-  Qed.
+  Lemma fkinds_body_entry_ok : forall ρ y E, fenv_ok ρ -> fdentry_ok (fkinds_body_entry ρ y E).
+  Proof. intros ρ y [] H; cbn; repeat constructor; try apply fdm_clo_ok; exact H. Qed.
 
   (** Elements of lists of right values *)
   Lemma Forall_nth_error_ok : forall {A} (P : A -> Prop) l n x, Forall P l -> List.nth_error l n = Some x -> P x.
@@ -628,10 +692,6 @@ Section Ok.
   Proof. induction fl as [| f fl IH]; intros [| v vs] H; cbn; constructor; inversion H; subst; auto. Qed.
 
   (** The declarations carried, read off a right value *)
-  (** A value or the proof, right *)
-  Lemma frelevant_value_ok : forall a v, fdomain_ok v -> fdomain_ok (frelevant_value a v).
-  Proof. intros * Hv; unfold frelevant_value; destruct (fdomain_relevance a); [ exact Hv | constructor ]. Qed.
-
   Lemma fdomain_ok_con_carried : forall p oD k c vs, fdomain_ok (fd_con p oD k c vs) -> decl_carried_ok p oD.
   Proof. intros * H; inversion H; assumption. Qed.
 
@@ -691,20 +751,21 @@ Hint Unfold fenv_ok : mctt.
 Hint Extern 3 (Forall (fdentry_ok ?T ?X) ?ρ) => change (fenv_ok T X ρ) : mctt.
 
 #[export]
-Hint Constructors fdomain_ok fdomain_ne_ok fdomain_nf_ok fdmod_ok fdentry_ok : mctt.
+Hint Constructors fdomain_ok fdomain_ne_ok fdomain_nf_ok fdmod_ok fdentry_ok fentry_type_ok : mctt.
 #[export]
-Hint Resolve fenv_var_ok fenv_mod_ok fextend_env_ok fextend_env_mod_ok fextend_env_dm_ok fenv_args_ok
-  fdomain_level_suc_ok fdomain_level_max_ok fdomain_level_lit_ok fdm_clo_ok fkinds_placeholders_ok fkinds_body_entry_ok
-  fkinds_items_gen_env_ok combine_ok : mctt.
+Hint Resolve fenv_var_ok fenv_type_ok fenv_mod_ok fextend_env_ok fextend_env_mod_ok fextend_env_dm_ok fenv_extend_typed_ok
+  ftele_head_type_ok ftele_entries_ok fenv_tele_ok
+  fdomain_level_suc_ok fdomain_level_max_ok fdomain_level_lit_ok fdm_clo_ok fkinds_pads_ok fkinds_body_entry_ok
+  combine_ok : mctt.
 
 (** The operations on fast values are read through their erasure
     equations, never unfolded by a tactic: the obligations of the
     implementations state them as computed.  [Opaque] has no [export]
     form, so each file defining implementations on fast values makes
-    [fenv_var], [fenv_mod], [fextend_env], [fextend_env_mod],
-    [fextend_env_dm], [fenv_args], [fdomain_level_suc], [fdomain_level_max], [fdomain_level_lit],
-    [fdm_clo], [fkinds_placeholders], [fkinds_body_entry],
-    [fkinds_items_gen_env], [felim_grp_of] and [carry] opaque locally. *)
+    [fenv_var], [fenv_type], [fenv_mod], [fextend_env], [fextend_env_mod],
+    [fextend_env_dm], [fenv_extend_typed], [fenv_tele], [fdomain_level_suc],
+    [fdomain_level_max], [fdomain_level_lit], [fdm_clo], [fkinds_pads],
+    [fkinds_body_entry] and [carry] opaque locally. *)
 
 (** ** Right Values, by Their Parts
 
@@ -713,15 +774,17 @@ Hint Resolve fenv_var_ok fenv_mod_ok fextend_env_ok fextend_env_mod_ok fextend_e
     environment right from the rightness of its parts. *)
 Ltac fd_head v :=
   lazymatch v with
-  | fd_pi _ _ _ _ => idtac | fd_univ _ => idtac | fd_suniv _ => idtac | fd_level _ => idtac | fd_lvl _ _ => idtac
-  | fd_prop => idtac | fd_True => idtac | fd_true => idtac | fd_False => idtac | fd_and _ _ _ => idtac
-  | fd_placeholder_type => idtac | fd_placeholder => idtac | fd_fn _ _ _ => idtac | fd_neut _ _ => idtac
+  | fd_pi _ _ _ _ _ => idtac | fd_univ _ => idtac | fd_suniv _ => idtac | fd_level _ => idtac | fd_level_sort => idtac
+  | fd_lvl _ _ => idtac | fd_prop => idtac | fd_True => idtac | fd_proof _ _ => idtac | fd_False => idtac
+  | fd_and _ _ _ => idtac | fd_fn _ _ _ => idtac | fd_neut _ _ => idtac
   | fd_member _ _ => idtac | fd_ind _ _ _ _ => idtac | fd_con _ _ _ _ _ => idtac | fd_ihfn _ _ _ _ _ _ _ => idtac
-  | fd_shfam _ _ _ _ => idtac | fd_ihfam _ _ _ _ _ _ _ _ => idtac | fd_record _ _ => idtac | fd_tuple _ => idtac
-  | fd_var _ => idtac | fd_app _ _ => idtac | fd_absurd _ => idtac | fd_glob _ => idtac
+  | fd_shfam _ _ _ _ _ => idtac | fd_ihfam _ _ _ _ _ _ _ _ _ => idtac | fd_record _ _ => idtac | fd_tuple _ => idtac
+  | fd_var _ => idtac | fd_app _ _ => idtac | fd_absurd _ _ => idtac | fd_glob _ => idtac
   | fd_elim _ _ _ _ _ _ _ _ => idtac | fd_proj _ _ => idtac | fd_dom _ _ => idtac
   | fdm_global _ _ => idtac | fdm_local _ _ _ => idtac | fdm_member _ _ => idtac
-  | fde_term _ => idtac | fde_mod _ => idtac | fde_dm _ _ => idtac
+  | fde_term _ _ => idtac | fde_mod _ _ => idtac | fde_dm _ _ _ _ => idtac
+  | fentry_type_value _ => idtac | fentry_type_closure _ _ => idtac | fentry_type_shape _ _ _ _ => idtac
+  | fentry_type_induction_hypothesis _ _ _ _ _ _ _ _ => idtac | fentry_type_none => idtac
   end.
 
 Ltac ok_invert :=
@@ -732,15 +795,17 @@ Ltac ok_invert :=
     | H : fdomain_nf_ok _ _ ?v |- _ => fd_head v; inversion H; clear H; subst
     | H : fdmod_ok _ _ ?v |- _ => fd_head v; inversion H; clear H; subst
     | H : fdentry_ok _ _ ?v |- _ => fd_head v; inversion H; clear H; subst
+    | H : fentry_type_ok _ _ ?v |- _ => fd_head v; inversion H; clear H; subst
     | H : Forall _ (_ :: _) |- _ => inversion H; clear H; subst
     | H : Forall _ (_ ++ _) |- _ => apply Forall_app in H as [? ?]
     end.
 
 Ltac ok_solve :=
   ok_invert; repeat match goal with |- _ /\ _ => split end;
-  solve [ eauto 8 using fenv_var_ok, fenv_mod_ok, fenv_args_ok, fdomains_nth_error_ok, field_lookup_ok, combine_ok, Forall_map_intro,
-                         fdomain_level_suc_ok, fdomain_level_max_ok, fdomain_level_lit_ok, fkinds_body_entry_ok, fkinds_items_gen_env_ok,
-                         fkinds_placeholders_ok, fdm_clo_ok, frelevant_value_ok with mctt ].
+  solve [ eauto 8 using fenv_var_ok, fenv_type_ok, fenv_mod_ok, fenv_extend_typed_ok, fenv_tele_ok, ftele_head_type_ok,
+                         fdomains_nth_error_ok, field_lookup_ok, combine_ok, Forall_map_intro,
+                         fdomain_level_suc_ok, fdomain_level_max_ok, fdomain_level_lit_ok, fkinds_body_entry_ok,
+                         fkinds_pads_ok, fdm_clo_ok with mctt ].
 
 (** ** Reading Erasures as Core Values
 
@@ -764,26 +829,24 @@ Ltac ferase_rw_back_at c L :=
        end; rewrite <- ?L in *).
 
 Ltac ferase_ops :=
-  ferase_rw_back_at fenv_var fenv_var_erase; ferase_rw_back_at fenv_mod fenv_mod_erase;
-  ferase_rw_back_at felim_grp_of felim_grp_of_erase;
+  ferase_rw_back_at fenv_var fenv_var_erase; ferase_rw_back_at fenv_type fenv_type_erase;
+  ferase_rw_back_at fenv_mod fenv_mod_erase;
   ferase_rw_at fextend_env fextend_env_erase; ferase_rw_at fextend_env_mod fextend_env_mod_erase;
-  ferase_rw_at fextend_env_dm fextend_env_dm_erase; ferase_rw_at fenv_args fenv_args_erase;
-  ferase_rw_at fkinds_placeholders fkinds_placeholders_erase; ferase_rw_at fkinds_items_gen_env fkinds_items_gen_env_erase;
+  ferase_rw_at fextend_env_dm fextend_env_dm_erase; ferase_rw_at fenv_extend_typed fenv_extend_typed_erase;
+  ferase_rw_at fenv_tele fenv_tele_erase; ferase_rw_at ftele_head_type ftele_head_type_erase;
+  ferase_rw_at fkinds_pads fkinds_pads_erase;
   ferase_rw_at fkinds_body_entry fkinds_body_entry_erase; ferase_rw_at fdm_clo fdm_clo_erase;
   ferase_rw_at fdomain_level_suc fdomain_level_suc_erase; ferase_rw_at fdomain_level_max fdomain_level_max_erase;
   ferase_rw_at fdomain_level_lit fdomain_level_lit_erase; ferase_rw_at (@List.combine) fields_erase_combine;
-  ferase_rw_at field_lookup field_lookup_erase; ferase_rw_at frelevant_value frelevant_value_erase.
+  ferase_rw_at field_lookup field_lookup_erase.
 
 Ltac ferase_norm :=
   unfold fast_member_reference_ok in *;
   ferase_ops;
-  cbn [fdomain_erase fdomain_ne_erase fdomain_nf_erase fdmod_erase fdentry_erase List.map
+  cbn [fdomain_erase fdomain_ne_erase fdomain_nf_erase fdmod_erase fdentry_erase fentry_type_erase List.map
        fast_member_reference_erase fmr_group fmr_declaration fmr_member fmr_arguments] in *;
   ferase_ops;
   (** each rewrite moves an erasure inwards, past one list operation *)
   repeat progress (rewrite ?List.map_app, <- ?skipn_map, <- ?firstn_map, ?List.map_repeat, ?List.map_map in *);
   rewrite ?length_map, ?nth_error_map in *;
-  cbn [fdomain_erase fdomain_ne_erase fdomain_nf_erase fdmod_erase fdentry_erase List.map option_map] in *;
-  (** the operations the list rewriting exposed *)
-  rewrite ?frelevant_value_erase in *;
-  cbn [fdomain_erase fdomain_ne_erase fdomain_nf_erase fdmod_erase fdentry_erase List.map option_map] in *.
+  cbn [fdomain_erase fdomain_ne_erase fdomain_nf_erase fdmod_erase fdentry_erase fentry_type_erase List.map option_map] in *.

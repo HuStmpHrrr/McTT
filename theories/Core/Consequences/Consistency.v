@@ -1545,6 +1545,52 @@ Proof.
   exists n; split; [ exact Ht | exact Hws ].
 Qed.
 
+(** What the normal form [univⁿ c xs] of a small universe [Type⟨t⟩] says
+    of its level term [t]. *)
+#[warnings="-cannot-define-projection"]
+Record univ_nf_level (Γ : ctx) (t : exp) (c : o2) (xs : list level_atom) : Prop := mk_univ_nf_level
+  { (** A sort of the level *)
+    univ_nf_level_sort : nat
+    (** The level term is equal there to the canonical level *)
+  ; univ_nf_level_eq : Γ ⊢ t ≈ lvl_exp_of c (List.map atom_exp xs) : Level@univ_nf_level_sort
+    (** The constant is of a tier at most that sort *)
+  ; univ_nf_level_constant : fst c <= univ_nf_level_sort
+    (** Each atom is a level of its own sort, at most that sort *)
+  ; univ_nf_level_well_scoped : @level_atoms_well_scoped gc_deps gc_stack univ_nf_level_sort Γ xs
+    (** The atoms are atoms of the normal form of a typed level *)
+  ; univ_nf_level_atoms : forall j s a, List.In (mk_level_atom j s a) xs -> nbe_level_atom Γ s a }.
+
+(** A typed small universe whose normal form is [univⁿ c xs]: its level
+    term's normal form is [nf_lvl c xs] ([nbe_ty_univ_level]), which
+    soundness reads as [univ_nf_level]. *)
+Lemma univ_nf_level_of_nbe : forall {Γ t c xs A},
+    Γ ⊢ Type⟨t⟩ : A ->
+    nbe_ty_f Γ Type⟨t⟩ (univⁿ c xs) ->
+    univ_nf_level Γ t c xs.
+Proof.
+  intros * HA Hn.
+  destruct (wf_univ_lvl_inversion HA) as [n Ht].
+  pose proof (nbe_ty_univ_level (L := (c, xs)) (n := n) Hn) as Hl.
+  pose proof (soundness_lvl_well_scoped Ht Hl) as [Hc Hws]; cbn in Hc, Hws.
+  econstructor; [ exact (soundness' Ht Hl) | exact Hc | exact Hws | exact (nbe_level_atom_of_nbe Ht Hl) ].
+Qed.
+
+(** The atoms of the levels of two small universes in normal form are
+    coherent together: they are atoms of normal forms of typed levels
+    ([univ_nf_level_atoms]). *)
+Lemma univ_nfs_coherent : forall {Γ t c xs A t' d ys B},
+    Γ ⊢ Type⟨t⟩ : A ->
+    nbe_ty_f Γ Type⟨t⟩ (univⁿ c xs) ->
+    Γ ⊢ Type⟨t'⟩ : B ->
+    nbe_ty_f Γ Type⟨t'⟩ (univⁿ d ys) ->
+    @level_atoms_coherent gc_deps gc_stack Γ (xs ++ ys).
+Proof.
+  intros * HA Hn HB Hn'; apply level_atoms_coherent_of_nbe.
+  intros j s a Hin; apply List.in_app_or in Hin as [Hin | Hin];
+    [ exact (univ_nf_level_atoms _ _ _ _ (univ_nf_level_of_nbe HA Hn) _ _ _ Hin)
+    | exact (univ_nf_level_atoms _ _ _ _ (univ_nf_level_of_nbe HB Hn') _ _ _ Hin) ].
+Qed.
+
 (** NbE at a small universe reads the term back as a type. *)
 Lemma nbe_suniv_to_nbe_ty : forall {Γ M t W},
     nbe_f Γ M Type⟨t⟩ W ->

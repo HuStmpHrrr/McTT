@@ -17,11 +17,15 @@ Definition not_univ_pi (A : nf) : Prop :=
   end.
 
 (** Subtyping of normal forms is purely syntactic: it neither evaluates nor
-    refers to a judgment, so it is defined outside the fixed global context. *)
+    refers to a judgment, so it is defined outside the fixed global context.
+    Normal forms are compared up to the proofs they hold
+    ([nf_eq_upto_proofs]): completeness gives equal types normal forms
+    equal only up to proofs. *)
 Inductive alg_subtyping_nf : nf -> nf -> Prop :=
+(** Normal forms of no other case, equal up to proofs *)
 | alg_subtyping_nf_refl_case : forall A A',
     not_univ_pi A ->
-    A = A' ->
+    nf_eq_upto_proofs A A' ->
     ⊢anf A ⊆ A'
 | alg_subtyping_nf_univ : forall i j,
     i <= j ->
@@ -39,12 +43,14 @@ Inductive alg_subtyping_nf : nf -> nf -> Prop :=
 | alg_subtyping_nf_level : forall m n,
     m <= n ->
     ⊢anf Levelⁿ@m ⊆ Levelⁿ@n
-(** A [Π] into an evaluated kind, covariant in the codomain, out of equal
-    domains, at kinds a [Π] may join ([wf_subtyp_pi]) *)
+(** A [Π] into an evaluated kind, covariant in the codomain, out of
+    domains equal up to proofs ([wf_subtyp_pi]).  That the kinds are ones a
+    [Π] may join ([pi_kinds]) is not asked: the typings of the two sides
+    give it, and only ill-kinded normal forms, the readback of no typed
+    type, lack it. *)
 | alg_subtyping_nf_pi : forall κd κc A B A' B',
-    pi_kinds κd κc ->
     evaluated_kind κc ->
-    A = A' ->
+    nf_eq_upto_proofs A A' ->
     ⊢anf B ⊆ B' ->
     ⊢anf nf_pi κd κc A B ⊆ nf_pi κd κc A' B'
 where "⊢anf A ⊆ A'" := (alg_subtyping_nf A A') : type_scope.

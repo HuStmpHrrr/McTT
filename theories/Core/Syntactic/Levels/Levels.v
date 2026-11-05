@@ -1320,6 +1320,24 @@ Proof.
   unfold nf_eq_upto_proofs, lvl_eq_upto_proofs; cbn; intros H; eqb_split; eqb_leaves; split; assumption.
 Qed.
 
+(** Two small universes are equal up to proofs exactly when their levels
+    are. *)
+Lemma nf_univ_of_upto_proofs_iff : forall l l', nf_eq_upto_proofs (nf_univ_of l) (nf_univ_of l') <-> lvl_eq_upto_proofs l l'.
+Proof.
+  intros [c xs] [d ys]; split; [| apply nf_univ_of_upto_proofs ].
+  unfold nf_eq_upto_proofs, lvl_eq_upto_proofs; cbn; intros H; eqb_split; eqb_leaves; split; assumption.
+Qed.
+
+(** A normal form equal up to proofs to a small universe is one, at a
+    level equal to its level up to proofs. *)
+Lemma nf_univ_of_upto_proofs_inv : forall W l, nf_eq_upto_proofs W (nf_univ_of l) ->
+    exists l', W = nf_univ_of l' /\ lvl_eq_upto_proofs l' l.
+Proof.
+  intros [] [c xs] H; unfold nf_eq_upto_proofs in H; cbn in H; try discriminate.
+  match goal with |- exists l', nf_univ ?c' ?xs' = _ /\ _ => exists (c', xs') end.
+  split; [ reflexivity | apply nf_univ_of_upto_proofs_iff; exact H ].
+Qed.
+
 Lemma lvl_real_upto_proofs : forall l l', lvl_eq_upto_proofs l l' -> lvl_real l = lvl_real l'.
 Proof. intros * H; rewrite !lvl_real_eval; apply lvl_eval_upto; [ apply lvl_adm_zero | exact H ]. Qed.
 

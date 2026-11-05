@@ -46,23 +46,26 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 (** [nfs_agree Γ Ms Rs Ts]: the terms [Ms] and [Rs] have, position by
-    position, the same normal form at the types [Ts].  The eliminator's
-    rule compares by it the uniform parameters its member's type has at
-    the eliminator's uniform parameters with those of the type its
-    scrutinee infers. *)
+    position, normal forms equal up to proofs at the types [Ts].  The
+    eliminator's rule compares by it the uniform parameters its member's
+    type has at the eliminator's uniform parameters with those of the type
+    its scrutinee infers. *)
 Inductive nfs_agree (Γ : ctx) : list exp -> list exp -> list typ -> Prop :=
 (** No term *)
 | nfs_agree_nil : nfs_agree Γ nil nil nil
-(** The first terms have the normal form [W] at the first type, then the
-    rest agree *)
-| nfs_agree_cons : forall M R T W Ms Rs Ts,
+(** The first terms have the normal forms [W] and [W'], equal up to
+    proofs, at the first type, then the rest agree *)
+| nfs_agree_cons : forall M R T W W' Ms Rs Ts,
     nbe_f Γ M T W ->
-    nbe_f Γ R T W ->
+    nbe_f Γ R T W' ->
+    nf_eq_upto_proofs W W' ->
     nfs_agree Γ Ms Rs Ts ->
     nfs_agree Γ (M :: Ms) (R :: Rs) (T :: Ts).
 
-(** [alg_ty_conv Γ A B]: the types [A] and [B] have one normal form. *)
-Definition alg_ty_conv (Γ : ctx) (A B : typ) : Prop := exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ B W.
+(** [alg_ty_conv Γ A B]: the types [A] and [B] have normal forms equal up
+    to proofs, as completeness gives equal types. *)
+Definition alg_ty_conv (Γ : ctx) (A B : typ) : Prop :=
+  exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ B W' /\ nf_eq_upto_proofs W W'.
 
 (** [nbe_ty_kind Γ A κ]: the type [A] is of the kind [κ], read off its
     value at the initial environment ([domain_kind]): a type of a universe
