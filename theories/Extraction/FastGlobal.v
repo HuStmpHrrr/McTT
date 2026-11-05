@@ -309,11 +309,11 @@ with ftrie : Type :=
     entry. *)
 | ft_mk : SRaw.tree fentry -> list string -> ftrie
 with fentry : Type :=
-(** Core's [ge_def b pv r A oM], and the value its body has in the empty
-    environment, when it is stored: [Some v] for a transparent relevant
-    definition a command added, [None] from a translation
+(** Core's [ge_def b pv κ A oM], and the value its body has in the empty
+    environment, when it is stored: [Some v] for a transparent definition
+    of an evaluated kind a command added, [None] from a translation
     ([translate_entry]); decoding forgets it ([decode_entry]) *)
-| fe_def : bool -> bool -> relevance -> exp -> option exp -> option fdomain -> fentry
+| fe_def : bool -> bool -> abs_kind -> exp -> option exp -> option fdomain -> fentry
 (** Core's [ge_mod pv U], the unit fast *)
 | fe_mod : bool -> funit -> fentry
 (** Core's [ge_ind pv pq k D Φ], the member's module a trie *)
@@ -398,7 +398,7 @@ with translate_mod (Φ : gmod) : ftrie :=
   match Φ with
   | gm_nil => ft_empty
   | gm_ext Φ' x E => ft_ext (translate_mod Φ') x (translate_entry E)
-  | gm_open Φ' _ _ => translate_mod Φ'
+  | gm_open Φ' _ _ _ => translate_mod Φ'
   end
 with translate_entry (E : gentry) : fentry :=
   match E with
@@ -482,7 +482,7 @@ with canon_mod (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ' x E => ~ In x (gm_names Φ') /\ canon_mod Φ' /\ canon_entry E
-  | gm_open _ _ _ => False
+  | gm_open _ _ _ _ => False
   end
 with canon_entry (E : gentry) : Prop :=
   match E with
@@ -498,7 +498,7 @@ with canon_entry (E : gentry) : Prop :=
 (** A translated body is a search tree. *)
 Lemma translate_mod_bst : forall Φ, SRaw.bst (ft_map (translate_mod Φ)).
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its]; cbn [translate_mod].
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; cbn [translate_mod].
   - constructor.
   - destruct (translate_mod Φ) as [m xs] eqn:Et; cbn in *; apply SP.add_bst; exact IH.
   - exact IH.
@@ -509,14 +509,14 @@ Fixpoint gm_newest (Φ : gmod) (x : string) : option gentry :=
   match Φ with
   | gm_nil => None
   | gm_ext Φ' y E => if String.eqb x y then Some E else gm_newest Φ' x
-  | gm_open Φ' _ _ => gm_newest Φ' x
+  | gm_open Φ' _ _ _ => gm_newest Φ' x
   end.
 
 (** A name finds the translation of its newest entry. *)
 Lemma translate_mod_find : forall Φ x, ft_find (translate_mod Φ) x = option_map translate_entry (gm_newest Φ x).
 Proof.
   intros Φ x; unfold ft_find; rewrite string_tree_find_ok; revert x.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros x; cbn [translate_mod gm_newest].
+  induction Φ as [| Φ IH y E | Φ IH H its Φg IHg]; intros x; cbn [translate_mod gm_newest].
   - reflexivity.
   - pose proof (translate_mod_bst Φ) as Hb.
     destruct (translate_mod Φ) as [m xs] eqn:Et; cbn [ft_ext ft_map] in *.
@@ -541,7 +541,7 @@ Proof. intros [| ? [? [[|] ?|] ] | | |] Hc; cbn in Hc; first [ contradiction | r
 (** The newest entry of a name in a canonical body is canonical. *)
 Lemma canon_newest : forall Φ x E, canon_mod Φ -> gm_newest Φ x = Some E -> canon_entry E.
 Proof.
-  induction Φ as [| Φ IH y E' | Φ IH H its]; intros x E Hc Hn; cbn in *; [ discriminate | | contradiction ].
+  induction Φ as [| Φ IH y E' | Φ IH H its Φg IHg]; intros x E Hc Hn; cbn in *; [ discriminate | | contradiction ].
   destruct Hc as (_ & HΦ & HE); destruct (String.eqb x y); [ injection Hn as <-; exact HE | eauto ].
 Qed.
 
@@ -562,7 +562,7 @@ Lemma gm_entry_newest : forall Φ x ip,
                   end
       end.
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros x ip; cbn [gm_entry gm_newest].
+  induction Φ as [| Φ IH y E | Φ IH H its Φg IHg]; intros x ip; cbn [gm_entry gm_newest].
   - reflexivity.
   - destruct (String.eqb x y); [| apply IH ].
     destruct ip; [ reflexivity |].
@@ -626,7 +626,7 @@ Qed.
 (** The order index of a canonical body is its names. *)
 Lemma translate_mod_names : forall Φ, canon_mod Φ -> ft_names (translate_mod Φ) = gm_names Φ.
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros Hc; cbn in *; [ reflexivity | | contradiction ].
+  induction Φ as [| Φ IH y E | Φ IH H its Φg IHg]; intros Hc; cbn in *; [ reflexivity | | contradiction ].
   destruct Hc as (_ & Hc & _); destruct (translate_mod Φ) as [m xs] eqn:Et; cbn in *; rewrite <- IH by exact Hc; reflexivity.
 Qed.
 
@@ -942,7 +942,7 @@ Proof. reflexivity. Qed.
 
 (** The frame of the module of a record type, [gs_push_record]'s twin *)
 Definition fs_push_record (mp : qname) (R : record_decl) (Δ : ctx) (fs : fstack) : fstack :=
-  mk_fframe mp (fk_record R) (ce_ass (record_self mp R) :: Δ) ft_empty :: fs.
+  mk_fframe mp (fk_record R) (ce_ass (sort_exp_kind (record_sort R)) (record_self mp R) :: Δ) ft_empty :: fs.
 
 (** Alike for a record's module *)
 Lemma fs_push_record_of : forall mp R Δ Ξ, fs_push_record mp R Δ (fs_of Ξ) = fs_of (gs_push_record mp R Δ Ξ).
@@ -959,7 +959,7 @@ Definition fs_fresh_dec (x : string) (fs : fstack) : bool :=
     declares the name. *)
 Lemma gm_newest_names : forall Φ x, canon_mod Φ -> (gm_newest Φ x = None <-> ~ In x (gm_names Φ)).
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros x Hc; cbn in *; [ tauto | | contradiction ].
+  induction Φ as [| Φ IH y E | Φ IH H its Φg IHg]; intros x Hc; cbn in *; [ tauto | | contradiction ].
   destruct Hc as (_ & Hc & _); destruct (String.eqb_spec x y) as [-> | Hne].
   - split; [ discriminate | intros Hn; elim Hn; left; reflexivity ].
   - rewrite (IH x Hc); split; [ intros Hn [-> | Hin]; [ exact (Hne eq_refl) | exact (Hn Hin) ] | intros Hn Hin; exact (Hn (or_intror Hin)) ].
@@ -1122,7 +1122,7 @@ Lemma gm_resolve_newest : forall Φ x ip,
                   end
       end.
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros x ip; cbn [gm_resolve gm_newest].
+  induction Φ as [| Φ IH y E | Φ IH H its Φg IHg]; intros x ip; cbn [gm_resolve gm_newest].
   - reflexivity.
   - destruct (String.eqb x y); [| apply IH ].
     destruct ip; destruct E as [| ? [? [] ] | | |]; reflexivity.
@@ -1218,7 +1218,7 @@ Lemma gm_submodule_newest : forall Φ T x ip,
       | None => None
       end.
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros T x ip; cbn [gm_submodule gm_newest].
+  induction Φ as [| Φ IH y E | Φ IH H its Φg IHg]; intros T x ip; cbn [gm_submodule gm_newest].
   - reflexivity.
   - destruct (String.eqb x y); [ reflexivity | apply IH ].
   - apply IH.
@@ -1296,7 +1296,7 @@ Lemma gm_subbody_newest : forall Φ T x ip,
       | _ => None
       end.
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros T x ip; cbn [gm_subbody gm_newest].
+  induction Φ as [| Φ IH y E | Φ IH H its Φg IHg]; intros T x ip; cbn [gm_subbody gm_newest].
   - reflexivity.
   - destruct (String.eqb x y); [ destruct E as [| ? [? [] ] | | |]; reflexivity | apply IH ].
   - apply IH.
@@ -1432,7 +1432,7 @@ Section Lookups.
   (** [gc_term]'s twin *)
   Definition fast_gc_term (fs : fstack) (p : qname) : option exp :=
     match fast_gc_resolve fs p with
-    | Some (ge_def true _ relevant _ (Some M)) => Some M
+    | Some (ge_def true _ ak_relevant _ (Some M)) | Some (ge_def true _ ak_level _ (Some M)) => Some M
     | _ =>
         match fast_gc_entry fs p with
         | Some (fe_def_mod _ _ M _ _) => Some M
@@ -2043,7 +2043,7 @@ Section LookupsDrop.
   Lemma fast_gc_term_drop : forall fs p, fast_gc_term ufd (fstack_drop fs) p = fast_gc_term uf fs p.
   Proof.
     intros; unfold fast_gc_term; rewrite fast_gc_resolve_drop, fast_gc_entry_drop.
-    destruct (fast_gc_resolve uf fs p) as [[[|] ? [|] ? [?|] | | | |] |];
+    destruct (fast_gc_resolve uf fs p) as [[[|] ? [| |] ? [?|] | | | |] |];
       try reflexivity; destruct (fast_gc_entry uf fs p) as [[] |]; reflexivity.
   Qed.
 

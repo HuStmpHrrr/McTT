@@ -1,22 +1,17 @@
 (** * The Evaluation the Extracted Checker Runs
 
-    A copy of the evaluation relations ([Core.Semantic.Evaluation]) and of
-    readback ([Core.Semantic.Readback]) with one rule changed: the
-    eliminator of a group of inductive types at a constructor computes the
-    recursive result of a recursive argument only when the branch reads it,
-    that is, when its variable is not fresh in the branch ([exp_freshb]);
-    an unused entry is [𝕌ω@0] ([fast_eval_ihs_skip]).  Readback of a stuck
-    eliminator's branch gives such a recursive result the type [𝕌ω@0]
-    ([fast_fresh_ihs_skip]).
+    A copy of the evaluation relations ([Core.Semantic.Evaluation]) with one
+    rule changed: the eliminator of a group of inductive types at a
+    constructor computes the recursive result of a recursive argument only
+    when the branch reads it, that is, when its variable is not fresh in the
+    branch ([exp_freshb]); an unused entry is [𝕌ω@0] ([fast_eval_ihs_skip]),
+    at the type the branch's telescope gives it.
 
-    The decision is syntactic and builds nothing.  Readback is copied
-    because it evaluates closures.
+    The decision is syntactic and builds nothing.
 
     The values of the two evaluations agree except in the entries of
     environments that nothing reads: [Extraction.Simulation] makes this
-    precise and proves that both read back to the same normal forms, so the
-    normalizer built on this evaluation ([Extraction.NbE]) meets the
-    specification [nbe] of the reference one. *)
+    precise. *)
 From Stdlib Require Import Lia List Morphisms PeanoNat Relations String.
 
 From Mctt Require Import LibTactics.
@@ -94,11 +89,13 @@ Inductive fast_eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Pro
 (** [Level] is a value. *)
 | fast_eval_exp_level :
   `( ⟦ Level@n ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ Levelᵈ@n )
+(** So is the sort of the types of levels. *)
+| fast_eval_exp_level_sort :
+  `( ⟦ LevelSort ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ LevelSortᵈ )
 (** A level literal is the flat level with that constant and no atom. *)
 | fast_eval_exp_llit :
   `( ⟦ 𝕃ᵒ o ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ domain_level_lit o )
-(** The level operations only flatten: they add to the offsets, or join the
-    constants and concatenate the atoms.  Canonicalisation is readback's. *)
+(** The successor of a level: the flat successor of its value. *)
 | fast_eval_exp_succl :
   `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ succl M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ domain_level_suc m )
@@ -116,62 +113,48 @@ Inductive fast_eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Pro
 (** [⊤] is a value. *)
 | fast_eval_exp_True :
   `( ⟦ ⊤ ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⊤ᵈ )
-(** So is [⋆]. *)
-| fast_eval_exp_true :
-  `( ⟦ ⋆ ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
-(** The introduction of [⊤] is the proof [⋆ᵈ]. *)
+(** The introduction of [⊤] is a proof, kept as it is. *)
 | fast_eval_exp_tt :
-  `( ⟦ a_tt ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+  `( ⟦ a_tt ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_tt, ρ⟩ )
 (** [⊥] is a value. *)
 | fast_eval_exp_False :
   `( ⟦ ⊥ ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⊥ᵈ )
-(** Ex falso never evaluates its proof: it is stuck at its type, the
-    proof [⋆ᵈ] at a proposition ([relevant_value]). *)
+(** Ex falso is stuck at its type, on the proof kept as it is. *)
 | fast_eval_exp_absurd :
   `( ⟦ C ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ c ->
-     ⟦ efq M return C ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ relevant_value c (⇑ c (efqᵈ c)) )
+     ⟦ efq M return C ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ c (efqᵈ ⋆ᵈ⟨M, ρ⟩ return c) )
 (** A [Σₚ] evaluates its first component and closes over its second. *)
 | fast_eval_exp_and :
   `( ⟦ P ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ p ->
      ⟦ Σₚ P Q ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ Σₚᵈ p ρ Q )
-(** The proof of a conjunction is [⋆ᵈ]; its parts are not evaluated. *)
+(** The proof of a conjunction is kept as it is. *)
 | fast_eval_exp_conj :
-  `( ⟦ a_conj T M N ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+  `( ⟦ a_conj P Q M N ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_conj P Q M N, ρ⟩ )
 (** So is the proof of its first component. *)
 | fast_eval_exp_left :
-  `( ⟦ a_left M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+  `( ⟦ a_left M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_left M, ρ⟩ )
 (** And that of its second. *)
 | fast_eval_exp_right :
-  `( ⟦ a_right M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
-(** The placeholder type is a value. *)
-| fast_eval_exp_placeholder_type :
-  `( ⟦ a_placeholder_type ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_placeholder_type )
-(** So is its element. *)
-| fast_eval_exp_placeholder :
-  `( ⟦ a_placeholder ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_placeholder )
-(** The type former and a constructor of a member of a group of inductive
-    types are values, with no argument yet. *)
+  `( ⟦ a_right M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_right M, ρ⟩ )
+(** The type former of a member is a value, with no argument yet. *)
 | fast_eval_exp_indty :
   `( ⟦ a_ind p k ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p k nil )
-(** A constructor, with no argument yet, when it is a value of its own
-    before any argument ([im_starts]). *)
+(** A constructor that is a value of its own before any argument. *)
 | fast_eval_exp_con :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
      im_starts D Mk = true ->
      ⟦ a_con p k c ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_con p k c nil )
-(** A constructor of a view of a group with no uniform parameters is at
-    once the container's, at the view's arguments. *)
+(** A constructor of a view of a group with no uniform parameters: the
+    container's, at the view's arguments. *)
 | fast_eval_exp_con_view :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      ind_nu D = 0 ->
-     ⟦ Is ⟧*ᶠ Θ ⍮ Ξ ⍮ env_args nil nil ↘ cups ->
+     ⟦ Is ⟧*ᶠ Θ ⍮ Ξ ⍮ nil ↘ cups ->
      ⟦ a_con p j c ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_con qc k c cups )
-(** The constructor of a record view of a group with no uniform
-    parameters, of a record with fields: a value of its own, waiting for
-    the fields. *)
+(** The constructor of a record view with fields, waiting for them. *)
 | fast_eval_exp_con_rview :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -179,81 +162,63 @@ Inductive fast_eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Pro
      ind_nu D = 0 ->
      0 < List.length fl ->
      ⟦ a_con p j c ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_con p j c nil )
-(** The constructor of a record view of a group with no uniform
-    parameters, of a record without fields: at once the empty tuple. *)
+(** The constructor of a record view without fields: the empty tuple. *)
 | fast_eval_exp_con_rview_empty :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is nil ->
      ind_nu D = 0 ->
      ⟦ a_con p j c ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_tuple nil )
-(** The eliminator evaluates its scrutinee, then eliminates the value, by
-    the blocks of its group: the one written, or the group of the value,
-    at the group's uniform parameters it carries. *)
+(** The eliminator into types: evaluates its scrutinee and eliminates it. *)
 | fast_eval_exp_elim :
   `( ⟦ Us ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ups ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     elim_grp_of oq m = Some p ->
      ⟦elimᶠ m at j of p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ a_elim relevant oq Us j Bks M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An eliminator into propositions is a proof: [⋆ᵈ], unevaluated. *)
+     ⟦ a_elim ak_relevant p Us j Bks M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** An eliminator into propositions is a proof, kept as it is. *)
 | fast_eval_exp_elim_proof :
-  `( ⟦ a_elim propositional oq Us j Bks M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
-(** A [Π] evaluates its domain and closes over its codomain, at its
-    relevance tag. *)
+  `( ⟦ a_elim ak_propositional p Us j Bks M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_elim ak_propositional p Us j Bks M, ρ⟩ )
+(** A [Π] evaluates its domain and closes over its codomain. *)
 | fast_eval_exp_pi :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     ⟦ a_pi r A B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_pi r a ρ B )
-(** A function evaluates its domain and closes over its body: it keeps its
-    domain, so that its application can tell a proof argument. *)
+     ⟦ a_pi κd κc A B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_pi κd κc a ρ B )
+(** A function evaluates its domain and closes over its body. *)
 | fast_eval_exp_fn :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      ⟦ λ A M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ λᵈ a ρ M )
-(** An application of a function taking a relevant argument applies the
-    value of the function to that of the argument. *)
+(** An application at an evaluated argument. *)
 | fast_eval_exp_app :
   `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     arg_relevance Θ Ξ m = relevant ->
+     evaluated_kind (arg_kind Θ Ξ m) ->
      ⟦ N ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ n ->
      $ᶠ| m & n | Θ ⍮ Ξ ↘ r ->
      ⟦ M $ N ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An application of a function taking a proof applies it to [⋆ᵈ]; the
-    argument is not evaluated. *)
+(** An application at a proof: the proof kept as it is. *)
 | fast_eval_exp_app_proof :
   `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     arg_relevance Θ Ξ m = propositional ->
-     $ᶠ| m & ⋆ᵈ | Θ ⍮ Ξ ↘ r ->
+     arg_kind Θ Ξ m = ak_propositional ->
+     $ᶠ| m & ⋆ᵈ⟨N, ρ⟩ | Θ ⍮ Ξ ↘ r ->
      ⟦ M $ N ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An unannotated local definition, of a type of a universe, extends the
-    environment by the value of its body; nothing is substituted. *)
+(** A local definition at a type of an evaluated kind. *)
 | fast_eval_exp_let :
-  `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ m ↘ r ->
-     ⟦ a_let (b_def None M) B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An annotated one at a relevant type, likewise. *)
-| fast_eval_exp_let_ann :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     domain_relevance a = relevant ->
+     evaluated_kind (domain_kind a) ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ m ↘ r ->
-     ⟦ a_let (b_def (Some A) M) B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An annotated one at a proposition binds [⋆ᵈ]; its body is a proof,
-    not evaluated. *)
+     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ m ⦂ entry_type_value a ↘ r ->
+     ⟦ ℓ A ≔ M in B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** A local definition at a proposition: its body kept as it is. *)
 | fast_eval_exp_let_proof :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     domain_relevance a = propositional ->
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ ⋆ᵈ ↘ r ->
-     ⟦ a_let (b_def (Some A) M) B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** A local module extends it by the unit's closure. *)
+     domain_kind a = ak_propositional ->
+     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ entry_type_value a ↘ r ->
+     ⟦ ℓ A ≔ M in B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** A local module: the unit's closure, at the unit. *)
 | fast_eval_exp_let_mod :
   `( ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ᵐ h ↘ r ->
+     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ᵐ h ⦂ gu_mk Δ D ↘ r ->
      ⟦ ℓₘ (gu_mk Δ D) in B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** A member is read off the root of its module expression, then applied to
-    the module's arguments: arguments commute with selection.  Without
-    arguments this is selection from the module's value.  The parameters
-    of a module are relevant, so its arguments are all evaluated, as
-    [fast_eval_me_app] evaluates them. *)
+(** A member: read off the root of its module expression, then applied to
+    the module's arguments. *)
 | fast_eval_exp_mem :
   `( modexp_spine H = (R, args, pre) ->
      ⟦ R ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
@@ -264,14 +229,11 @@ Inductive fast_eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Pro
 (** A record's type former is a value, with no argument yet. *)
 | fast_eval_exp_record :
   `( ⟦ a_record p ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_record p nil )
-(** A record element is the tuple of its fields' values, by name, a
-    propositional field [⋆ᵈ] ([fast_eval_field_vals]); the type it is annotated with
-    is evaluated only to find the record, whose declaration stores the
-    fields' sorts, and the value carries no parameters. *)
+(** A record element: the tuple of its fields' values, by name. *)
 | fast_eval_exp_tuple :
   `( ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_record p ns ->
      record_lookup Θ Ξ p = Some R ->
-     fast_eval_field_vals Θ Ξ (record_field_relevance R) (List.map snd fs) ρ vs ->
+     fast_eval_field_vals Θ Ξ (record_field_kinds R) (List.map snd fs) ρ vs ->
      ⟦ a_tuple T fs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_tuple (List.combine (List.map fst fs) vs) )
 (** A field: the field of the value. *)
 | fast_eval_exp_proj :
@@ -279,11 +241,7 @@ Inductive fast_eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Pro
      fast_eval_proj Θ Ξ f m r ->
      ⟦ a_proj f M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' e '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (fast_eval_exp Θ Ξ e ρ r)
-(** The field [f] of a value: of a tuple, the value of its first field so
-    named; of a neutral of a record type, the neutral projection, at the
-    field's type at the type's parameters and the neutral projections of
-    the fields before it (read off the neutral's annotation, as a stuck
-    eliminator's motive is). *)
+(** The field [f] of a value, as [eval_proj] *)
 with fast_eval_proj (Θ : gdeps) (Ξ : gstack) : string -> domain -> domain -> Prop :=
 (** A tuple: its field *)
 | fast_eval_proj_tuple :
@@ -293,40 +251,24 @@ with fast_eval_proj (Θ : gdeps) (Ξ : gstack) : string -> domain -> domain -> P
 | fast_eval_proj_neut :
   `( record_lookup Θ Ξ p = Some R ->
      field_index (record_fields R) f = Some k ->
-     fast_eval_neutral_fields Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil rs ->
+     fast_eval_neutral_fields Θ Ξ m (env_tele nil (List.rev (record_params R)) ns) (List.firstn (S k) (record_fields R)) rs ->
      List.nth_error rs k = Some r ->
      fast_eval_proj Θ Ξ f (⇑ (d_record p ns) m) r )
-(** [fast_eval_neutral_fields ns m fl pre rs]: the neutral projections [rs] of [m] at
-    the fields [fl], after the projections [pre] of the fields before them,
-    each at its type at the parameters [ns] and the projections before
-    it. *)
-with fast_eval_neutral_fields (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> list domain -> Prop :=
+(** The neutral projections of a neutral at fields, as
+    [eval_neutral_fields] *)
+with fast_eval_neutral_fields (Θ : gdeps) (Ξ : gstack) : domain_ne -> env -> list (string * exp) -> list domain -> Prop :=
 (** No field left *)
 | fast_eval_neutral_fields_nil :
-  `( fast_eval_neutral_fields Θ Ξ ns m nil pre nil )
-(** The next field's projection, at its type, then the rest after it *)
+  `( fast_eval_neutral_fields Θ Ξ m ρ nil nil )
+(** The next field's projection, at its type, then the rest *)
 | fast_eval_neutral_fields_cons :
-  `( ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
-     fast_eval_neutral_fields Θ Ξ ns m fl (pre ++ relevant_value a (⇑ a (d_proj g m)) :: nil) rs ->
-     fast_eval_neutral_fields Θ Ξ ns m ((g, T) :: fl) pre (relevant_value a (⇑ a (d_proj g m)) :: rs) )
-(** The eliminator of the group at [p] at its member [j], on a value.  The
-    member is the declared member [k] of the group at [q] ([im_ref]): the
-    group itself at a declared member, the container's at a view.  On a
-    constructor of it at all its parameters and arguments, the branch of
-    the constructor in the member's block, with its non-uniform parameters,
-    its arguments and the recursive results, each by the eliminator at the
-    member of the group its argument is recursive in, as the group
-    classifies the member's arguments.  On a neutral of the member, a
-    neutral at the motive's instance; the neutral records the parameters of
-    its type, which readback needs, and the group's uniform parameters
-    [ups] the eliminator carries. *)
+  `( ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     fast_eval_neutral_fields Θ Ξ m (ρ ↦ ⇑ a (d_proj g m) ⦂ entry_type_closure T ρ) fl rs ->
+     fast_eval_neutral_fields Θ Ξ m ρ ((g, T) :: fl) (⇑ a (d_proj g m) :: rs) )
+(** The eliminator on a value, as [eval_elim]: on a constructor, the
+    recursive results are computed for the branch ([Some B]). *)
 with fast_eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> nat -> domain -> domain -> Prop :=
-(** On a saturated constructor: its branch, at the non-uniform parameters,
-    the arguments and the recursive results.  The group's table of leaf
-    paths is coherent ([leaves_coherent D]), a gate on the group, the twin
-    of readback's [rview_leaf_arity]: the recursive results along the
-    record views' fields are then as many as the branch binds
-    ([cargs_nrec]). *)
+(** On a saturated constructor: its branch *)
 | fast_eval_elim_con :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -340,11 +282,10 @@ with fast_eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> 
      n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat ->
      leaves_coherent D ->
      ⟦ihsᶠ skipn (im_np Dq Mk) vs of gs under p ups Bks for (Some B) ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs) ↘ r ->
+     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_extend_typed ρ (branch_entries D Mj p ups (blocks_motives Bks) ρ gs
+                                     (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs)) (skipn (im_np Dq Mk) vs) ihs) ↘ r ->
      ⟦elimᶠ d_con pc k c vs at j of p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** On a neutral: a stuck eliminator, at the motive's instance; the
-    proof [⋆ᵈ] at a propositional instance, as every neutral evaluation
-    builds ([relevant_value]) *)
+(** On a neutral: a stuck eliminator, at the motive's instance *)
 | fast_eval_elim_neut :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -354,8 +295,10 @@ with fast_eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> 
      List.length as' = im_np Dq Mk ->
      List.nth_error Bks j = Some b ->
      eb_binder_count b = S (im_nn Mk) ->
-     ⟦ eb_motive b ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil) ↘ a ->
-     ⟦elimᶠ ⇑ (d_ind pc k as') m at j of p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ relevant_value a (⇑ a (d_elim ρ Bks p ups j as' m)) )
+     ⟦mrefᶠ j of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pc, k, cups) ->
+     ⟦ eb_motive b ⟧ᶠ Θ ⍮ Ξ ⍮ env_extend_typed ρ (motive_entries D Mj ups (List.skipn (ind_nu Dq) as')
+                                           (d_ind pc k (cups ++ List.skipn (ind_nu Dq) as')) (⇑ (d_ind pc k as') m)) ↘ a ->
+     ⟦elimᶠ ⇑ (d_ind pc k as') m at j of p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ Bks p ups j as' m) )
 where "'⟦elimᶠ' m 'at' j 'of' p ups Bks '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (fast_eval_elim Θ Ξ ρ p ups Bks j m r)
 (** The recursive results of the arguments [vs] of a constructor, for the
     branch [B] ([Some B]): those of a recursive argument, one per leaf
@@ -387,22 +330,16 @@ with fast_eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> l
      ⟦ihsᶠ v :: vs of ca_rec t :: gs under p ups Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ ρ
        ↘ List.repeat 𝕌ω@0 (List.length (shape_leaves (rview_leaves D) 0 t)) ++ ihs )
 where "'⟦ihsᶠ' vs 'of' gs 'under' p ups Bks 'for' oB '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (fast_eval_ihs Θ Ξ ρ p ups Bks oB gs vs r)
-(** The recursive results of an argument [v] of shape [t], one per leaf
-    path: the eliminator at [v], at the member the shape ends in; at a
-    record view, those of the view's fields, at [v]'s projections; at a
-    function shape, the family of each recursive result at [v]'s
-    values. *)
+(** The recursive results of an argument of a shape, as [eval_ih] *)
 with fast_eval_ih (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> ptyp -> domain -> list domain -> Prop :=
-(** At the end of a shape, at a member with a block: the eliminator at the
-    member [j] *)
+(** At a member with a block: the eliminator at it *)
 | fast_eval_ih_self :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_is_rview Mj = false ->
      ⟦elimᶠ v at j of p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦ihᶠ v of pt_self j Ps under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r :: nil )
-(** At the end of a shape, at a record view: the recursive results of its
-    fields at the projections of [v] *)
+(** At a record view: those of its fields at the projections *)
 | fast_eval_ih_rview :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -411,14 +348,13 @@ with fast_eval_ih (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> li
      ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws ->
      ⟦ihsᶠ ws of gs under p ups Bks for None ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
      ⟦ihᶠ v of pt_self j Ps under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs )
-(** At a function shape: the family of each recursive result of the rest
-    at [v]'s values, one per leaf path of the rest *)
+(** At a function shape: the family of each recursive result of the rest *)
 | fast_eval_ih_pi :
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ihᶠ v of pt_pi B t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ
        ↘ List.map (fun i => d_ihfn ρ Bks p ups t i v) (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))) )
 where "'⟦ihᶠ' v 'of' t 'under' p ups Bks '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (fast_eval_ih Θ Ξ ρ p ups Bks t v r)
-(** The projections of a value at the fields [fl], in order. *)
+(** The projections of a value at fields, in order *)
 with fast_eval_projs (Θ : gdeps) (Ξ : gstack) : list string -> domain -> list domain -> Prop :=
 (** No field *)
 | fast_eval_projs_nil :
@@ -429,95 +365,78 @@ with fast_eval_projs (Θ : gdeps) (Ξ : gstack) : list string -> domain -> list 
      ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws ->
      ⟦projsᶠ f :: fl of v ⟧ᶠ Θ ⍮ Ξ ↘ w :: ws )
 where "'⟦projsᶠ' fl 'of' v '⟧ᶠ' Θ '⍮' Ξ '↘' ws" := (fast_eval_projs Θ Ξ fl v ws)
-(** The member [j] of the group at [p] at the uniform parameters [ups]:
-    the declared member [k] of the group at [q] at the uniform parameters
-    [pre] ([im_ref], [im_pre]), the group itself and [ups] at a declared
-    member, the container's and the view's arguments at [ups] at a view. *)
+(** The declared member a member is, as [eval_mref] *)
 with fast_eval_mref (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -> (qname * nat * list domain) -> Prop :=
-(** A declared member: itself, at [ups] *)
+(** A declared member: itself *)
 | fast_eval_mref_decl :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_decl pm ->
      ⟦mrefᶠ j of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (p, j, ups) )
-(** A view: the container's member, at the view's arguments at [ups] *)
+(** A view: the container's member, at the view's arguments *)
 | fast_eval_mref_view :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
-     ⟦ Is ⟧*ᶠ Θ ⍮ Ξ ⍮ env_args nil ups ↘ cups ->
+     ⟦ Is ⟧*ᶠ Θ ⍮ Ξ ⍮ decl_env D ups ↘ cups ->
      ⟦mrefᶠ j of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (qc, k, cups) )
 where "'⟦mrefᶠ' j 'of' p ups '⟧ᶠ' Θ '⍮' Ξ '↘' r" := (fast_eval_mref Θ Ξ p ups j r)
-(** The type of an argument of shape [t] in [ρ], at the uniform parameters
-    [ups] of the group at [p]: at the end, the member the shape ends in at
-    the shape's non-uniform parameters: the container's type at a view, as
-    every value and every neutral of a view is of the container's member.
-    Readback reads an argument of a shape at the group's own member instead
-    ([read_shape]). *)
+(** The type of an argument of a shape, as [eval_shape_type] *)
 with fast_eval_shape_type (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> domain -> Prop :=
 (** At the end: the member's type former at the shape's parameters *)
 | fast_eval_shape_type_self :
   `( ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ⟦mrefᶠ j of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pc, k, pre) ->
      ⟦shtyᶠ pt_self j Ps of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_ind pc k (pre ++ bs) )
-(** At the end, at a record view: the record type at the view's instance
-    at [ups] *)
+(** At the end, at a record view: the record type at the view's instance *)
 | fast_eval_shape_type_rview :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is fl ->
-     ⟦ Is ⟧*ᶠ Θ ⍮ Ξ ⍮ env_args nil ups ↘ cups ->
+     ⟦ Is ⟧*ᶠ Θ ⍮ Ξ ⍮ decl_env D ups ↘ cups ->
      ⟦shtyᶠ pt_self j Ps of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_record qr cups )
 (** At a domain: a [Π] over it, of the shape family *)
 | fast_eval_shape_type_pi :
   `( ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     ⟦shtyᶠ pt_pi B t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod )
+     ⟦shtyᶠ pt_pi B t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ{ak_relevant} b (nil ↦ d_shfam p ups ρ B t ⦂ entry_type_none) fam_cod )
 where "'⟦shtyᶠ' t 'of' p ups '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (fast_eval_shape_type Θ Ξ p ups ρ t r)
-(** The types of the recursive results of an argument [v] of shape [t],
-    one per leaf path, its components in [ρ], of the group at [p] at the
-    uniform parameters [ups]: the motive of the member the shape ends in,
-    among [As] in [ρm], at the shape's non-uniform parameters and [v]; at a
-    record view, those of its fields at [v]'s projections, their components
-    over [ups]; at a function shape, a [Π] over the domain of each. *)
+(** The types of the recursive results of an argument, as [eval_ihty] *)
 with fast_eval_ihty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list exp -> env -> ptyp -> domain -> list domain -> Prop :=
-(** At the end, at a member with a block: the member's motive at the
-    shape's parameters and [v] *)
+(** At a member with a block: its motive at the shape's parameters and [v] *)
 | fast_eval_ihty_self :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_is_rview Mj = false ->
      ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     ⟦ List.nth j As a_placeholder_type ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
+     ⟦ List.nth j As a_prop ⟧ᶠ Θ ⍮ Ξ ⍮
+       env_extend_typed ρm (tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) bs ++ (v, entry_type_shape p ups ρ (pt_self j Ps)) :: nil) ↘ a ->
      ⟦ihtyᶠ v of pt_self j Ps at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a :: nil )
-(** At the end, at a record view: those of its fields at [v]'s
-    projections *)
+(** At a record view: those of its fields at the projections *)
 | fast_eval_ihty_rview :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is fl ->
      im_cons Mj = (c, gs) :: nil ->
      ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws ->
-     ⟦ihtysᶠ ws of gs at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ env_args nil ups ↘ rs ->
+     ⟦ihtysᶠ ws of gs at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ decl_env D ups ↘ rs ->
      ⟦ihtyᶠ v of pt_self j Ps at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs )
 (** At a domain: a [Π] over it, of each recursive result's family *)
 | fast_eval_ihty_pi :
   `( ind_lookup Θ Ξ p = Some D ->
      ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦ihtyᶠ v of pt_pi B t at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ
-       ↘ List.map (fun i => Πᵈ b (nil ↦ d_ihfam ρm As p ups ρ t i v) fam_cod)
+       ↘ List.map (fun i => Πᵈ{ak_relevant} b (nil ↦ d_ihfam ρm As p ups ρ B t i v ⦂ entry_type_none) fam_cod)
            (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))) )
 where "'⟦ihtyᶠ' v 'of' t 'at' p ups 'under' ρm As '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (fast_eval_ihty Θ Ξ p ups ρm As ρ t v r)
-(** The types of the recursive results of the fields [vs] of a record
-    view, of kinds [gs], their components in [ρ], which a non-recursive
-    field extends. *)
+(** The types of the recursive results of a record view's fields, as
+    [eval_ihtys] *)
 with fast_eval_ihtys (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> list exp -> env -> list carg -> list domain -> list domain -> Prop :=
 (** No field, no result *)
 | fast_eval_ihtys_nil :
   `( ⟦ihtysᶠ nil of nil at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ nil )
-(** A non-recursive field has none, and extends the components'
-    environment *)
+(** A non-recursive field has none, and extends the components' environment *)
 | fast_eval_ihtys_arg :
-  `( ⟦ihtysᶠ vs of gs at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ v ↘ rs ->
+  `( ⟦ihtysᶠ vs of gs at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ v ⦂ entry_type_closure T ρ ↘ rs ->
      ⟦ihtysᶠ v :: vs of ca_arg r T :: gs at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs )
 (** A recursive field has those of its shape *)
 | fast_eval_ihtys_rec :
@@ -525,37 +444,29 @@ with fast_eval_ihtys (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env ->
      ⟦ihtysᶠ vs of gs at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
      ⟦ihtysᶠ v :: vs of ca_rec t :: gs at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs1 ++ rs )
 where "'⟦ihtysᶠ' vs 'of' gs 'at' p ups 'under' ρm As '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (fast_eval_ihtys Θ Ξ p ups ρm As ρ gs vs r)
+(** Semantic application, as [eval_app] *)
 with fast_eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
-(** A function's body, at the argument. *)
+(** A function's body, at the argument *)
 | fast_eval_app_fn :
-  `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ m ->
+  `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_value a ↘ m ->
      $ᶠ| λᵈ a ρ M & n | Θ ⍮ Ξ ↘ m )
-(** The proof [⋆ᵈ] applied is a proof: [⋆ᵈ].  A proof member of a
-    saturated module is [⋆ᵈ] ([fast_eval_sel_global_proof]).  [arg_relevance ⋆ᵈ]
-    is [relevant], but no term application reaches this rule with an
-    argument to evaluate: an application whose function is a proof is at
-    a [∀], hence itself a proof, which relevance-directed evaluation never
-    evaluates. *)
-| fast_eval_app_proof :
-  `( $ᶠ| ⋆ᵈ & n | Θ ⍮ Ξ ↘ ⋆ᵈ )
-(** A neutral applied, at the codomain's instance; the proof [⋆ᵈ] at a
-    propositional instance, as every neutral evaluation builds
-    ([relevant_value]). *)
+(** A neutral applied, at the codomain's instance *)
 | fast_eval_app_neut :
-  `( ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ b ->
-     $ᶠ| ⇑ (Πᵈ a ρ B) m & n | Θ ⍮ Ξ ↘ relevant_value b (⇑ b (m $ᵈ ⇓ a n)) )
-(** The type former takes a parameter it still lacks. *)
+  `( evaluated_kind κc ->
+     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_value a ↘ b ->
+     $ᶠ| ⇑ (d_pi κd κc a ρ B) m & n | Θ ⍮ Ξ ↘ ⇑ b (m $ᵈ ⇓ a n) )
+(** The type former takes a parameter it still lacks *)
 | fast_eval_app_indty :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
      List.length as' < im_np D Mk ->
      $ᶠ| d_ind p k as' & n | Θ ⍮ Ξ ↘ d_ind p k (as' ++ n :: nil) )
-(** So does a record's type former. *)
+(** So does a record's type former *)
 | fast_eval_app_record :
   `( record_lookup Θ Ξ p = Some R ->
      List.length ns < List.length (record_params R) ->
      $ᶠ| d_record p ns & n | Θ ⍮ Ξ ↘ d_record p (ns ++ n :: nil) )
-(** So does a constructor, a parameter or an argument. *)
+(** So does a constructor *)
 | fast_eval_app_con :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
@@ -563,154 +474,143 @@ with fast_eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Pr
      ind_con Mk c = Some gs ->
      List.length vs < (im_np D Mk + List.length gs)%nat ->
      $ᶠ| d_con p k c vs & n | Θ ⍮ Ξ ↘ d_con p k c (vs ++ n :: nil) )
-(** A constructor of a view takes the group's uniform parameters; at the
-    last of them it is the container's, at the view's arguments there. *)
+(** A constructor of a view takes the group's uniform parameters *)
 | fast_eval_app_con_view :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      S (List.length vs) < ind_nu D ->
      $ᶠ| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_con p j c (vs ++ n :: nil) )
-(** At the last uniform parameter, the container's constructor at the
-    view's arguments *)
+(** At the last of them, the container's constructor at the view's
+    arguments *)
 | fast_eval_app_con_view_ups :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      S (List.length vs) = ind_nu D ->
-     ⟦ Is ⟧*ᶠ Θ ⍮ Ξ ⍮ env_args nil (vs ++ n :: nil) ↘ cups ->
+     ⟦ Is ⟧*ᶠ Θ ⍮ Ξ ⍮ decl_env D (vs ++ n :: nil) ↘ cups ->
      $ᶠ| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_con qc k c cups )
-(** The constructor of a record view takes the group's uniform parameters
-    and the fields; before the last of them it waits for more *)
+(** The constructor of a record view, before its last argument *)
 | fast_eval_app_con_rview :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is fl ->
      S (List.length vs) < ind_nu D + List.length fl ->
      $ᶠ| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_con p j c (vs ++ n :: nil) )
-(** At the last one, the tuple of the fields, by name: a record value
-    carries no parameters *)
+(** At its last one, the tuple of the fields *)
 | fast_eval_app_con_rview_full :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is fl ->
      S (List.length vs) = ind_nu D + List.length fl ->
      $ᶠ| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_tuple (List.combine fl (List.skipn (ind_nu D) (vs ++ n :: nil))) )
-(** The [i]-th recursive result of a function shape, at the argument's
-    value: the [i]-th of the rest's at the function's value there. *)
+(** A recursive result of a function shape, at the argument *)
 | fast_eval_app_ihfn :
   `( $ᶠ| f & n | Θ ⍮ Ξ ↘ fn ->
      ⟦ihᶠ fn of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
      List.nth_error rs i = Some r ->
      $ᶠ| d_ihfn ρ Bks p ups t i f & n | Θ ⍮ Ξ ↘ r )
-(** The families of the types of an argument of a function shape and of its
-    recursive result. *)
+(** The family of the type of an argument of a function shape *)
 | fast_eval_app_shfam :
-  `( ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
-     $ᶠ| d_shfam p ups ρ t & n | Θ ⍮ Ξ ↘ a )
-(** The [i]-th recursive result's family, at the argument's value *)
+  `( ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_closure B ρ ↘ a ->
+     $ᶠ| d_shfam p ups ρ B t & n | Θ ⍮ Ξ ↘ a )
+(** The family of the type of a recursive result *)
 | fast_eval_app_ihfam :
   `( $ᶠ| f & n | Θ ⍮ Ξ ↘ fn ->
-     ⟦ihtyᶠ fn of t at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ as' ->
+     ⟦ihtyᶠ fn of t at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_closure B ρ ↘ as' ->
      List.nth_error as' i = Some a ->
-     $ᶠ| d_ihfam ρm As p ups ρ t i f & n | Θ ⍮ Ξ ↘ a )
-(** A member closure takes the next argument of its module, and selects again. *)
+     $ᶠ| d_ihfam ρm As p ups ρ B t i f & n | Θ ⍮ Ξ ↘ a )
+(** A member closure takes the next argument of its module *)
 | fast_eval_app_member :
   `( $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ h' ->
      h' ·ₜ*ᶠ ch Θ ⍮ Ξ ↘ r ->
      $ᶠ| d_member h ch & n | Θ ⍮ Ξ ↘ r )
 where "'$ᶠ|' m '&' n '|' Θ '⍮' Ξ '↘' r" := (fast_eval_app Θ Ξ m n r)
+(** The values of terms, in order *)
 with fast_eval_exps (Θ : gdeps) (Ξ : gstack) : list exp -> env -> list domain -> Prop :=
-(** No terms. *)
+(** No terms *)
 | fast_eval_exps_nil :
   `( ⟦ nil ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ nil )
-(** A term, then the rest. *)
+(** A term, then the rest *)
 | fast_eval_exps_cons :
   `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ms ->
      ⟦ M :: Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m :: ms )
 where "'⟦' Ms '⟧*ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ms" := (fast_eval_exps Θ Ξ Ms ρ ms)
-(** [fast_eval_app_args f Ms ρ r]: [f] applied to the terms [Ms] in [ρ],
-    outermost first, is [r]; an argument the function at that point takes
-    as a proof ([arg_relevance]) is [⋆ᵈ], unevaluated, as in
-    [fast_eval_exp_app_proof]. *)
+(** A function applied to terms, as [eval_app_args] *)
 with fast_eval_app_args (Θ : gdeps) (Ξ : gstack) : domain -> list exp -> env -> domain -> Prop :=
-(** No argument: the function itself. *)
+(** No argument: the function itself *)
 | fast_eval_app_args_nil :
   `( fast_eval_app_args Θ Ξ f nil ρ f )
-(** A relevant argument: its value applied, then the rest. *)
-| fast_eval_app_args_relevant :
-  `( arg_relevance Θ Ξ f = relevant ->
+(** An evaluated argument: its value applied, then the rest *)
+| fast_eval_app_args_evaluated :
+  `( evaluated_kind (arg_kind Θ Ξ f) ->
      ⟦ N ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ n ->
      $ᶠ| f & n | Θ ⍮ Ξ ↘ g ->
      fast_eval_app_args Θ Ξ g Ns ρ r ->
      fast_eval_app_args Θ Ξ f (N :: Ns) ρ r )
-(** A proof argument: [⋆ᵈ] applied, then the rest. *)
+(** A proof argument: kept as it is, then the rest *)
 | fast_eval_app_args_proof :
-  `( arg_relevance Θ Ξ f = propositional ->
-     $ᶠ| f & ⋆ᵈ | Θ ⍮ Ξ ↘ g ->
+  `( arg_kind Θ Ξ f = ak_propositional ->
+     $ᶠ| f & ⋆ᵈ⟨N, ρ⟩ | Θ ⍮ Ξ ↘ g ->
      fast_eval_app_args Θ Ξ g Ns ρ r ->
      fast_eval_app_args Θ Ξ f (N :: Ns) ρ r )
-(** [fast_eval_field_vals rs Ms ρ vs]: the values [vs] of the fields [Ms] of a record
-    value, the field at the sort [propositional] in [rs] the proof [⋆ᵈ],
-    not evaluated (a sort past [rs] is relevant). *)
-with fast_eval_field_vals (Θ : gdeps) (Ξ : gstack) : list relevance -> list exp -> env -> list domain -> Prop :=
-(** No field. *)
+(** The values of a record value's fields, as [eval_field_vals] *)
+with fast_eval_field_vals (Θ : gdeps) (Ξ : gstack) : list abs_kind -> list exp -> env -> list domain -> Prop :=
+(** No field *)
 | fast_eval_field_vals_nil :
   `( fast_eval_field_vals Θ Ξ rs nil ρ nil )
-(** A relevant field: its value, then the rest. *)
-| fast_eval_field_vals_relevant :
-  `( List.hd relevant rs = relevant ->
+(** An evaluated field: its value, then the rest *)
+| fast_eval_field_vals_evaluated :
+  `( evaluated_kind (List.hd ak_relevant rs) ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      fast_eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
      fast_eval_field_vals Θ Ξ rs (M :: Ms) ρ (m :: ms) )
-(** A propositional field: [⋆ᵈ], then the rest. *)
+(** A propositional field: the proof kept as it is, then the rest *)
 | fast_eval_field_vals_proof :
-  `( List.hd relevant rs = propositional ->
+  `( List.hd ak_relevant rs = ak_propositional ->
      fast_eval_field_vals Θ Ξ (List.tl rs) Ms ρ ms ->
-     fast_eval_field_vals Θ Ξ rs (M :: Ms) ρ (⋆ᵈ :: ms) )
+     fast_eval_field_vals Θ Ξ rs (M :: Ms) ρ (⋆ᵈ⟨M, ρ⟩ :: ms) )
+(** A value applied to values, outermost first *)
 with fast_eval_apps (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> domain -> Prop :=
-(** No arguments. *)
+(** No arguments *)
 | fast_eval_apps_nil :
   `( $*ᶠ| m & nil | Θ ⍮ Ξ ↘ m )
-(** The first argument, then the rest. *)
+(** The first argument, then the rest *)
 | fast_eval_apps_cons :
   `( $ᶠ| m & n | Θ ⍮ Ξ ↘ m1 ->
      $*ᶠ| m1 & args | Θ ⍮ Ξ ↘ r ->
      $*ᶠ| m & n :: args | Θ ⍮ Ξ ↘ r )
 where "'$*ᶠ|' m '&' ns '|' Θ '⍮' Ξ '↘' r" := (fast_eval_apps Θ Ξ m ns r)
+(** Module expressions, as [eval_modexp] *)
 with fast_eval_modexp (Θ : gdeps) (Ξ : gstack) : modexp -> env -> dmod -> Prop :=
-(** A module slot is read off the environment. *)
+(** A module slot is read off the environment *)
 | fast_eval_me_var :
   `( ⟦ me_var x ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ env_mod ρ x )
-(** A unit is a global body module, with no argument yet.  Its submodules
-    are selected from it ([fast_eval_selm_global]). *)
+(** A unit is a global body module, with no argument yet *)
 | fast_eval_me_unit :
   `( ⟦ me_unit fp ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ dm_global (q_abs fp nil) nil )
-(** A literal unit is its closure. *)
+(** A literal unit is its closure *)
 | fast_eval_me_lit :
   `( ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
      ⟦ me_lit (gu_mk Δ D) ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h )
-(** A submodule is selected from the module's value. *)
+(** A submodule is selected from the module's value *)
 | fast_eval_me_mem :
   `( ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
      h ·ₘᶠ y Θ ⍮ Ξ ↘ r ->
      ⟦ me_mem H y ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** An application adds the argument's value to the module's. *)
+(** An application adds the argument's value to the module's *)
 | fast_eval_me_app :
   `( ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
      ⟦ N ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ n ->
      $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ r ->
      ⟦ me_app H N ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' H '⟧ᵐᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (fast_eval_modexp Θ Ξ H ρ r)
-(** The closure of a unit's definition [D] lacking the parameters [Δ], over
-    [ρ]: a body, or an alias still lacking a parameter, is its closure; an
-    alias lacking none is its target's value.  So no value is a saturated
-    alias. *)
+(** The closure of a unit's definition, as [eval_close] *)
 with fast_eval_close (Θ : gdeps) (Ξ : gstack) : ctx -> moddef -> env -> dmod -> Prop :=
-(** A body: its closure *)
+(** A body: the closure of its expansion *)
 | fast_eval_close_body :
-  `( ⟦ Δ ⊢ md_body sm Φ ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_body sm Φ) ρ )
+  `( ⟦ Δ ⊢ md_body sm Φ ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_body sm (gm_expand Φ)) ρ )
 (** An alias still lacking a parameter: its closure *)
 | fast_eval_close_alias :
   `( 0 < List.length Δ ->
@@ -720,23 +620,22 @@ with fast_eval_close (Θ : gdeps) (Ξ : gstack) : ctx -> moddef -> env -> dmod -
   `( ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
      ⟦ nil ⊢ md_alias E ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ h )
 where "'⟦' Δ '⊢' D '⟧ᶜᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (fast_eval_close Θ Ξ Δ D ρ r)
-(** Applying a module value to one more argument, which it must still lack. *)
+(** A module value applied to one more argument, as [eval_appm] *)
 with fast_eval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
-(** A global module records the argument. *)
+(** A global module records the argument *)
 | fast_eval_appm_global :
   `( $ᵐᶠ| dm_global p args & n | Θ ⍮ Ξ ↘ dm_global p (args ++ n :: nil) )
-(** A closure takes it as its outermost missing parameter, in its
-    environment. *)
+(** A closure takes it as its outermost missing parameter *)
 | fast_eval_appm_local :
-  `( ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ r ->
-     $ᵐᶠ| dm_local (Δ ++ ce_ass A :: nil) D ρ & n | Θ ⍮ Ξ ↘ r )
-(** A submodule of an unsaturated module passes it to the module, then selects again. *)
+  `( ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ⦂ entry_type_closure A ρ ↘ r ->
+     $ᵐᶠ| dm_local (Δ ++ ce_ass κ A :: nil) D ρ & n | Θ ⍮ Ξ ↘ r )
+(** A submodule closure passes it to the module, then selects again *)
 | fast_eval_appm_member :
   `( $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ h' ->
      h' ·ₘ*ᶠ ch Θ ⍮ Ξ ↘ r ->
      $ᵐᶠ| dm_member h ch & n | Θ ⍮ Ξ ↘ r )
 where "'$ᵐᶠ|' h '&' n '|' Θ '⍮' Ξ '↘' r" := (fast_eval_appm Θ Ξ h n r)
-(** Applying a module value to arguments, outermost first. *)
+(** A module value applied to arguments, outermost first *)
 with fast_eval_appms (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> dmod -> Prop :=
 (** No argument *)
 | fast_eval_appms_nil :
@@ -747,81 +646,64 @@ with fast_eval_appms (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> dmod ->
      $ᵐ*ᶠ| h1 & ns | Θ ⍮ Ξ ↘ r ->
      $ᵐ*ᶠ| h & n :: ns | Θ ⍮ Ξ ↘ r )
 where "'$ᵐ*ᶠ|' h '&' ns '|' Θ '⍮' Ξ '↘' r" := (fast_eval_appms Θ Ξ h ns r)
-(** Selecting a term member.  A member of a global module is stored closed,
-    over the module's parameters: δ evaluates a transparent one's body in the
-    empty environment, and an opaque one or an axiom is a neutral at its
-    (closed) type.  Either is then applied to the module's arguments, once
-    the module lacks none ([module_saturated]). *)
+(** Selecting a term member, as [eval_sel] *)
 with fast_eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
-(** A term part of a saturated global module, a transparent definition's
-    body or a definition with a module part's term ([gc_term]): it, applied
-    to the module's arguments. *)
+(** A term part of a saturated global module, applied to its arguments *)
 | fast_eval_sel_global :
   `( module_saturated Θ Ξ p args ->
      gc_term Θ Ξ (qname_app p (x :: nil)) = Some M ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f ->
      $*ᶠ| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
-(** A relevant opaque definition or axiom of a saturated global module: a
-    neutral, applied to the module's arguments. *)
+(** An opaque definition or axiom of an evaluated kind: a neutral *)
 | fast_eval_sel_global_neut :
   `( module_saturated Θ Ξ p args ->
-     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv relevant A B) ->
+     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv κ A B) ->
+     evaluated_kind κ ->
      b = false \/ B = None ->
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ a ->
      $*ᶠ| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
-(** A definition of a saturated global module tagged a proposition,
-    transparent or not: the proof [⋆ᵈ].  Neither its body nor its type is
-    evaluated. *)
+(** A definition tagged a proposition: a proof, kept as the selection *)
 | fast_eval_sel_global_proof :
-  `( module_saturated Θ Ξ p args ->
-     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv propositional A B) ->
-     dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ ⋆ᵈ )
-(** The module of a member of a group of inductive types, as a term, in a
-    saturated global module: the member's type former, applied to the
-    module's arguments. *)
+  `( gc_loc Θ Ξ p = Some (T, Φ) ->
+     List.length args = List.length T ->
+     gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv ak_propositional A B) ->
+     dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, global_proof_env p T args⟩ )
+(** The module of a member of a group, as a term: its type former *)
 | fast_eval_sel_global_ind :
   `( module_saturated Θ Ξ p args ->
      gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
      ind_mlookup Θ Ξ (qname_app p (x :: nil)) = Some (pq, k, D) ->
      $*ᶠ| d_ind pq k nil & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
-(** A member of a global module lacking a parameter is a member closure. *)
+(** A member of a global module lacking a parameter: a member closure *)
 | fast_eval_sel_global_unsat :
   `( gc_loc Θ Ξ p = Some (T, Φ) ->
      List.length args < List.length T ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ d_member (dm_global p args) (x :: nil) )
-(** A member of a closure lacking a parameter is a member closure. *)
+(** A member of a closure lacking a parameter: a member closure *)
 | fast_eval_sel_unsat :
   `( 0 < List.length Δ ->
      dm_local Δ D ρ ·ₜᶠ x Θ ⍮ Ξ ↘ d_member (dm_local Δ D ρ) (x :: nil) )
-(** A term part of a saturated body ([entry_tm]: a definition's body or a
-    definition with a module part's term), found in the body read through
-    the entries its local opens generate: it, in the environment of the
-    body before it, when the entry is relevant. *)
+(** A term part of a saturated body, of an evaluated kind *)
 | fast_eval_sel_body :
-  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
-     gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
+  `( gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
-     entry_relevance E = relevant ->
+     evaluated_kind (entry_kind E) ->
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local nil (md_body sm Φ) ρ ·ₜᶠ x Θ ⍮ Ξ ↘ r )
-(** A definition of a saturated body tagged a proposition: the proof
-    [⋆ᵈ], its body not evaluated. *)
+(** A definition of a saturated body tagged a proposition: a proof *)
 | fast_eval_sel_body_proof :
-  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
-     gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
+  `( gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
      entry_tm E = Some (A, M) ->
-     entry_relevance E = propositional ->
-     dm_local nil (md_body sm Φ) ρ ·ₜᶠ x Θ ⍮ Ξ ↘ ⋆ᵈ )
-(** A member of a submodule closure extends the chain. *)
+     entry_kind E = ak_propositional ->
+     dm_local nil (md_body sm Φ) ρ ·ₜᶠ x Θ ⍮ Ξ ↘ ⋆ᵈ⟨member_proof x, ρ ↦ᵐ dm_local nil (md_body sm Φ) ρ ⦂ gu_mk nil (md_body sm Φ)⟩ )
+(** A member of a submodule closure extends the chain *)
 | fast_eval_sel_member :
   `( dm_member h ch ·ₜᶠ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )
-(** A record type of a saturated global module, stored or with its
-    module's frame open, as a term: its type former, applied to the
-    module's arguments. *)
+(** A record type of a saturated global module, as a term *)
 | fast_eval_sel_global_record :
   `( module_saturated Θ Ξ p args ->
      gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
@@ -829,93 +711,82 @@ with fast_eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop
      $*ᶠ| d_record (qname_app p (x :: nil)) nil & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
 where "h '·ₜᶠ' x Θ '⍮' Ξ '↘' r" := (fast_eval_sel Θ Ξ h x r)
-(** Selecting a submodule. *)
+(** Selecting a submodule, as [eval_selm] *)
 with fast_eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
-(** A body submodule, an open frame or the module of an inductive type in a
-    global module is a global module, with the same arguments. *)
+(** A located submodule of a global module: a global module *)
 | fast_eval_selm_global :
   `( gc_loc Θ Ξ (qname_app p (y :: nil)) = Some TΦ ->
      dm_global p args ·ₘᶠ y Θ ⍮ Ξ ↘ dm_global (qname_app p (y :: nil)) args )
-(** An alias submodule of a global module is the closure of the alias,
-    stored closed over the module's parameters, given the module's
-    arguments. *)
+(** An alias submodule of a global module: its closure, applied *)
 | fast_eval_selm_global_alias :
   `( gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias (gu_mk Δ D)) ->
      ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ nil ↘ h ->
      $ᵐ*ᶠ| h & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₘᶠ y Θ ⍮ Ξ ↘ r )
-(** A submodule of a closure lacking a parameter is a submodule closure. *)
+(** A submodule of a closure lacking a parameter: a submodule closure *)
 | fast_eval_selm_unsat :
   `( 0 < List.length Δ ->
      dm_local Δ D ρ ·ₘᶠ y Θ ⍮ Ξ ↘ dm_member (dm_local Δ D ρ) (y :: nil) )
-(** A module part of a saturated body ([entry_unit]: a submodule, or a
-    definition with a module part's), found in the body read through the
-    entries its local opens generate: its unit's closure, in the
-    environment of the body before it. *)
+(** A module part of a saturated body: its unit's closure *)
 | fast_eval_selm_body :
-  `( kinds_body_xp Θ Ξ ρ Φ Φx ->
-     gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
+  `( gm_prefix_upto (gm_expand Φ) y = Some (gm_ext Φ' y E) ->
      entry_unit E = Some (gu_mk Δy Dy) ->
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ Δy ⊢ Dy ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local nil (md_body sm Φ) ρ ·ₘᶠ y Θ ⍮ Ξ ↘ r )
-(** A submodule of a submodule closure extends the chain. *)
+(** A submodule of a submodule closure extends the chain *)
 | fast_eval_selm_member :
   `( dm_member h ch ·ₘᶠ y Θ ⍮ Ξ ↘ dm_member h (ch ++ y :: nil) )
 where "h '·ₘᶠ' y Θ '⍮' Ξ '↘' r" := (fast_eval_selm Θ Ξ h y r)
-(** Selecting along a chain: submodules, then a term member. *)
+(** Selecting along a chain: submodules, then a term member *)
 with fast_eval_selc (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> domain -> Prop :=
-(** The last selection is a term member. *)
+(** The last selection is a term member *)
 | fast_eval_selc_one :
   `( h ·ₜᶠ x Θ ⍮ Ξ ↘ r ->
      h ·ₜ*ᶠ (x :: nil) Θ ⍮ Ξ ↘ r )
-(** The ones before it are submodules. *)
+(** The ones before it are submodules *)
 | fast_eval_selc_cons :
   `( h ·ₘᶠ y Θ ⍮ Ξ ↘ h1 ->
      h1 ·ₜ*ᶠ ch Θ ⍮ Ξ ↘ r ->
      h ·ₜ*ᶠ (y :: ch) Θ ⍮ Ξ ↘ r )
 where "h '·ₜ*ᶠ' ch Θ '⍮' Ξ '↘' r" := (fast_eval_selc Θ Ξ h ch r)
+(** Selecting submodules along a chain *)
 with fast_eval_selmc (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> dmod -> Prop :=
-(** The empty chain is the module itself. *)
+(** The empty chain is the module itself *)
 | fast_eval_selmc_nil :
   `( h ·ₘ*ᶠ nil Θ ⍮ Ξ ↘ h )
-(** A submodule, then the rest of the chain. *)
+(** A submodule, then the rest of the chain *)
 | fast_eval_selmc_cons :
   `( h ·ₘᶠ y Θ ⍮ Ξ ↘ h1 ->
      h1 ·ₘ*ᶠ ch Θ ⍮ Ξ ↘ r ->
      h ·ₘ*ᶠ (y :: ch) Θ ⍮ Ξ ↘ r )
 where "h '·ₘ*ᶠ' ch Θ '⍮' Ξ '↘' r" := (fast_eval_selmc Θ Ξ h ch r)
-(** The environment the members of a body see after its entries [Φ]: each
-    definition adds its value and each module its closure. *)
+(** The environment the members of a body see, as [eval_body_env] *)
 with fast_eval_body_env (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
-(** The empty body adds nothing. *)
+(** The empty body adds nothing *)
 | fast_eval_body_env_nil :
   `( ⟦ gm_nil ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ )
-(** A definition tagged relevant adds its value.  A body is read by the
-    sorts its definitions are tagged with, as selection reads it
-    ([fast_eval_sel_body]): typing makes a definition's tag the sort of its
-    type, and a definition an open generates is tagged with the sort of
-    the member it names, where its type is not known ([kinds_items_gen]). *)
+(** A definition tagged an evaluated kind adds its value *)
 | fast_eval_body_env_def :
-  `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
+  `( evaluated_kind κ ->
+     ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
-     ⟦ gm_ext Φ y (ge_def b pv relevant A (Some M)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m )
-(** A definition tagged a proposition, a proof, adds [⋆ᵈ], unevaluated. *)
+     ⟦ gm_ext Φ y (ge_def b pv κ A (Some M)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m ⦂ entry_type_closure A ρ1 )
+(** A definition tagged a proposition adds it kept as it is *)
 | fast_eval_body_env_def_proof :
   `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ gm_ext Φ y (ge_def b pv propositional A (Some M)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ )
-(** A submodule adds its unit's closure. *)
+     ⟦ gm_ext Φ y (ge_def b pv ak_propositional A (Some M)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ ⋆ᵈ⟨M, ρ1⟩ ⦂ entry_type_closure A ρ1 )
+(** A submodule adds its unit's closure *)
 | fast_eval_body_env_mod :
   `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ Δy ⊢ Dy ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
-     ⟦ gm_ext Φ y (ge_mod pm (gu_mk Δy Dy)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ h )
-(** A definition with a module part adds its term's value and its unit's
-    closure. *)
+     ⟦ gm_ext Φ y (ge_mod pm (gu_mk Δy Dy)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ h ⦂ gu_mk Δy Dy )
+(** A definition with a module part adds both parts *)
 | fast_eval_body_env_dm :
   `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
      ⟦ Δy ⊢ Dy ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
-     ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ‖ h )
+     ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ⦂ entry_type_closure A ρ1 ‖ h ⦂ gu_mk Δy Dy )
 where "'⟦' Φ '⟧ᵇᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (fast_eval_body_env Θ Ξ ρ Φ ρ').
 
 Scheme fast_eval_exp_mut_ind := Induction for fast_eval_exp Sort Prop
@@ -1011,7 +882,7 @@ Hint Constructors fast_eval_exp fast_eval_proj fast_eval_neutral_fields fast_eva
       (forall p ups ρm As ρ t v a1, ⟦ihtyᶠ v of t at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a1 ->
           forall a2, ⟦ihtyᶠ v of t at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
       (forall f m r1, fast_eval_proj Θ Ξ f m r1 -> forall r2, fast_eval_proj Θ Ξ f m r2 -> r1 = r2) /\
-      (forall ns m fl pre rs1, fast_eval_neutral_fields Θ Ξ ns m fl pre rs1 -> forall rs2, fast_eval_neutral_fields Θ Ξ ns m fl pre rs2 -> rs1 = rs2) /\
+      (forall m ρ fl rs1, fast_eval_neutral_fields Θ Ξ m ρ fl rs1 -> forall rs2, fast_eval_neutral_fields Θ Ξ m ρ fl rs2 -> rs1 = rs2) /\
       (forall fl v ws1, ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws1 -> forall ws2, ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws2 -> ws1 = ws2) /\
       (forall p ups ρm As ρ gs vs r1, ⟦ihtysᶠ vs of gs at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
           forall r2, ⟦ihtysᶠ vs of gs at p ups under ρm As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
@@ -1019,14 +890,12 @@ Hint Constructors fast_eval_exp fast_eval_proj fast_eval_neutral_fields fast_eva
       (forall f Ms ρ r1, fast_eval_app_args Θ Ξ f Ms ρ r1 -> forall r2, fast_eval_app_args Θ Ξ f Ms ρ r2 -> r1 = r2).
   Proof.
     intros Θ Ξ; apply fast_eval_mut_ind; intros;
-      (* invert the other evaluation, then use the hypotheses on its parts; the
-         two resolutions of a global or a module agree, and two neutral
-         scrutinees of [efq] that are equal have equal parts; an induction
-         hypothesis is never spent on the premise it is about *)
+      (* invert the other evaluation, then use the hypotheses on its parts, as
+         in [functional_eval] *)
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
       repeat match goal with
         | H : gc_term Θ Ξ ?p = Some _ |- _ =>
-            destruct (gc_term_inv _ _ _ _ H) as [(? & ? & ?) | (? & ? & ? & ?)]; clear H
+            destruct (gc_term_inv _ _ _ _ H) as [(? & ? & ? & ? & ?) | (? & ? & ? & ?)]; clear H
         | H1 : entry_tm ?E = Some _, H2 : entry_tm ?E = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : entry_unit ?E = Some _, H2 : entry_unit ?E = Some _ |- _ =>
@@ -1072,8 +941,6 @@ Hint Constructors fast_eval_exp fast_eval_proj fast_eval_neutral_fields fast_eva
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : List.nth_error ?Bks ?j = Some _, H2 : List.nth_error ?Bks ?j = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
-        | H1 : elim_grp_of ?oq ?m = Some _, H2 : elim_grp_of ?oq ?m = Some _ |- _ =>
-            rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : brs_lookup ?Bs ?c = Some _, H2 : brs_lookup ?Bs ?c = Some _ |- _ =>
@@ -1085,16 +952,14 @@ Hint Constructors fast_eval_exp fast_eval_proj fast_eval_neutral_fields fast_eva
             exfalso; exact (H2 _ H1)
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : kinds_items_gen Θ Ξ ?ρ ?H ?its ?g1, H2 : kinds_items_gen Θ Ξ ?ρ ?H ?its ?g2 |- _ =>
-            assert_fails (constr_eq g1 g2); pose proof (functional_kinds_items_gen _ _ _ _ _ H1 H2); subst g2
-        | H1 : kinds_body_xp Θ Ξ ?ρ ?Φ ?Φ1, H2 : kinds_body_xp Θ Ξ ?ρ ?Φ ?Φ2 |- _ =>
-            assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kinds_body_xp _ _ _ _ H1 H2); subst Φ2
         | H1 : Members.gc_loc Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _) |- _ =>
             exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
         | H1 : module_saturated Θ Ξ ?p ?args, H2 : Members.gc_loc Θ Ξ ?p = Some (?T, ?Φ),
           H3 : List.length ?args < List.length ?T |- _ =>
             exfalso; specialize (H1 _ _ H2); lia
-        | H : _ ++ ce_ass _ :: nil = _ ++ ce_ass _ :: nil |- _ =>
+        | H1 : Members.gc_loc Θ Ξ ?p = Some (?T, ?Φ), H2 : Members.gc_loc Θ Ξ ?p = Some (?T', ?Φ') |- _ =>
+            assert_fails (constr_eq H1 H2); rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H : _ ++ ce_ass _ _ :: nil = _ ++ ce_ass _ _ :: nil |- _ =>
             apply List.app_inj_tail in H as [? [= ?]]; subst
         | H : 0 < List.length (_ ++ _ :: nil) -> False |- _ =>
             exfalso; apply H; rewrite List.length_app; cbn; lia
@@ -1104,7 +969,12 @@ Hint Constructors fast_eval_exp fast_eval_proj fast_eval_neutral_fields fast_eva
             assert_fails (constr_eq a b); specialize (IH _ H); subst
         | H : d_neut _ _ = d_neut _ _ |- _ => injection H; intros; subst; clear H
         | H : d_record _ _ = d_record _ _ |- _ => injection H; intros; subst; clear H
+        | H : (_, _, _) = (_, _, _) |- _ => injection H; intros; subst; clear H
         | H : fast_eval_selc _ _ _ nil _ |- _ => inversion H
+        | H1 : evaluated_kind ?k, H2 : ?k = ak_propositional |- _ =>
+            exfalso; exact (evaluated_kind_not_propositional _ H1 H2)
+        | H : evaluated_kind ak_propositional |- _ =>
+            exfalso; exact (evaluated_kind_not_propositional _ H eq_refl)
         end;
       cbn [gu_params List.length] in *; try congruence; try lia; intuition (try congruence; try lia).
   Qed.
@@ -1191,8 +1061,8 @@ Hint Constructors fast_eval_exp fast_eval_proj fast_eval_neutral_fields fast_eva
   Proof. intros Θ Ξ; pose proof (@functional_fast_eval Θ Ξ) as H; destruct_all; eauto. Qed.
 
   (** So are the neutral projections of the fields of a neutral. *)
-  Corollary functional_fast_eval_neutral_fields : forall {Θ Ξ} ns m fl pre rs1 rs2,
-      fast_eval_neutral_fields Θ Ξ ns m fl pre rs1 -> fast_eval_neutral_fields Θ Ξ ns m fl pre rs2 -> rs1 = rs2.
+  Corollary functional_fast_eval_neutral_fields : forall {Θ Ξ} m ρ fl rs1 rs2,
+      fast_eval_neutral_fields Θ Ξ m ρ fl rs1 -> fast_eval_neutral_fields Θ Ξ m ρ fl rs2 -> rs1 = rs2.
   Proof. intros Θ Ξ; pose proof (@functional_fast_eval Θ Ξ) as H; destruct_all; eauto. Qed.
 
   (** The values of a record value's fields are one list. *)
@@ -1237,707 +1107,9 @@ Ltac functional_fast_eval_rewrite_clear1 :=
       clean replace r2 with r1 by first [solve [eapply functional_fast_eval_exps; eassumption] | tactic_error r2 r1]; clear H2
   | H1 : fast_eval_proj ?T ?X ?f ?m ?r1, H2 : fast_eval_proj ?T ?X ?f ?m ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [eapply functional_fast_eval_proj; eassumption] | tactic_error r2 r1]; clear H2
-  | H1 : fast_eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r1, H2 : fast_eval_neutral_fields ?T ?X ?ns ?m ?fl ?pre ?r2 |- _ =>
+  | H1 : fast_eval_neutral_fields ?T ?X ?m ?ρ ?fl ?r1, H2 : fast_eval_neutral_fields ?T ?X ?m ?ρ ?fl ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [eapply functional_fast_eval_neutral_fields; eassumption] | tactic_error r2 r1]; clear H2
   end.
 (** There is no [fast_eval_sub] case: there is no fast evaluation of
     substitutions. *)
 Ltac functional_fast_eval_rewrite_clear := repeat functional_fast_eval_rewrite_clear1.
-
-(** ** Readback *)
-
-Reserved Notation "'Rnfᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
-Reserved Notation "'Rneᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
-Reserved Notation "'Rtypᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
-Reserved Notation "'Rlaᶠ' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" (at level 70, xs at level 69, Θ at level 69, Ξ at level 69, s constr, ys at level 69).
-Reserved Notation "'Rfldsᶠ' v 'at' fl 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Fs" (at level 70, v at level 69, fl at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Fs at level 69).
-Reserved Notation "'Rpsᶠ' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
-Reserved Notation "'Rcargsᶠ' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, gs at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
-Reserved Notation "'Rshᶠ' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" (at level 70, v at level 69, t at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, V at level 69).
-Reserved Notation "'Rbrsᶠ' Bs 'at' cs 'of' Mi r 'of' Dc 'from' p ups Bks Mv A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" (at level 70, Bs at level 69, cs at level 69, Mi at level 0, r at level 0, Dc at level 0, p at level 0, ups at level 0, Bks at level 0, Mv at level 0, A at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Bs' at level 69).
-Reserved Notation "'Rblksᶠ' i Ms 'of' Dc 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" (at level 70, i at level 0, Ms at level 0, Dc at level 0, p at level 0, ups at level 0, Bks at level 0, sel at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, NBks at level 69).
-
-Reserved Notation "'Fteleᶠ' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" (at level 70, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, vs at level 69).
-Reserved Notation "'Fcargsᶠ' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" (at level 70, gs at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, vs at level 69).
-Reserved Notation "'Fihsᶠ' vs 'at' gs' gs 'of' Dc 'under' ρm As 'at' p ups 'for' B 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ ihs" (at level 70, vs at level 69, gs' at level 0, gs at level 0, Dc at level 0, ρm at level 0, As at level 0, p at level 0, ups at level 0, B at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, ihs at level 69).
-Reserved Notation "'⟦wihsᶠ' vs 'of' gs' gs 'of' Dc 'with' ihs 'under' p ups Bks '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs' at level 0, gs at level 0, Dc at level 0, ihs at level 0, p at level 0, ups at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-
-Generalizable All Variables.
-
-(** The fresh variables of the telescopes of a group of inductive types,
-    as in [Core.Semantic.Readback]. *)
-Inductive fast_fresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> list domain -> Prop :=
-(** No entry, no variable *)
-| fast_fresh_tele_nil :
-  `( Fteleᶠ nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
-(** A variable of the first entry's type, then the rest under it *)
-| fast_fresh_tele_cons :
-  `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ⍮ S s ↘ vs ->
-     Fteleᶠ ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ relevant_value a (⇑! a s) :: vs )
-where "'Fteleᶠ' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fast_fresh_tele Θ Ξ ρ T s vs) : type_scope.
-
-(** The arguments of a constructor, as in [Core.Semantic.Readback]. *)
-Inductive fast_fresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
-  env -> list carg -> nat -> list domain -> Prop :=
-(** No argument *)
-| fast_fresh_cargs_nil :
-  `( Fcargsᶠ nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
-(** A non-recursive argument, of its declared type *)
-| fast_fresh_cargs_arg :
-  `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ⍮ S s ↘ vs ->
-     Fcargsᶠ ca_arg r A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ relevant_value a (⇑! a s) :: vs )
-(** A recursive argument, of the type of its shape *)
-| fast_fresh_cargs_rec :
-  `( ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ S s ↘ vs ->
-     Fcargsᶠ ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
-where "'Fcargsᶠ' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fast_fresh_cargs Θ Ξ p ups ρ gs s vs) : type_scope.
-
-(** The recursive results of a branch [B] of a stuck eliminator, as fresh
-    variables, as in [Core.Semantic.Readback]: the types of an argument's
-    results the branch reads none of are not computed, and each of its
-    variables gets [𝕌ω@0].  The results of the argument heading
-    [ca_rec t :: gs], [gs] the kinds the branch's group has, are the
-    variables [cargs_nrec D gs] on of [B] ([ihs_skipb]). *)
-Inductive fast_fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (p : qname) (ups : list domain) (Dc : ind_decl) (B : exp) :
-  env -> list carg -> list carg -> list domain -> nat -> list domain -> Prop :=
-(** No argument, no result *)
-| fast_fresh_ihs_nil :
-  `( Fihsᶠ nil at nil nil of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ nil )
-(** A non-recursive argument: none, the argument entering [ρa] *)
-| fast_fresh_ihs_arg :
-  `( Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ↦ v ⍮ s ↘ ihs ->
-     Fihsᶠ v :: vs at (ca_arg ra' T' :: gs') (ca_arg ra T :: gs) of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
-(** An argument recursive in both, one of whose results the branch reads:
-    a fresh variable at each recursive result's type along the paths of
-    the container's *)
-| fast_fresh_ihs_rec :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rview_leaves D) 0 t)) = false ->
-     ⟦ihtyᶠ v of t at p ups under ρ As ⟧ᶠ Θ ⍮ Ξ ⍮ ρa ↘ as' ->
-     fresh_leaf_vars (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) as' s ihs1 ->
-     Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ (List.length ihs1 + s) ↘ ihs ->
-     Fihsᶠ v :: vs at (ca_rec t' :: gs') (ca_rec t :: gs) of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ++ ihs )
-(** One the branch reads none of the results of: each variable at
-    [𝕌ω@0] *)
-| fast_fresh_ihs_skip :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ihs_skipb (Some B) (cargs_nrec D gs) (List.length (shape_leaves (rview_leaves D) 0 t)) = true ->
-     fresh_leaf_vars (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t))
-       (List.repeat 𝕌ω@0 (List.length (shape_leaves (rview_leaves D) 0 t))) s ihs1 ->
-     Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ (List.length ihs1 + s) ↘ ihs ->
-     Fihsᶠ v :: vs at (ca_rec t' :: gs') (ca_rec t :: gs) of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ++ ihs )
-(** An argument recursive in [gs] only (nested through): no variable *)
-| fast_fresh_ihs_nest :
-  `( Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
-     Fihsᶠ v :: vs at (ca_arg ra' T' :: gs') (ca_rec t :: gs) of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
-where "'Fihsᶠ' vs 'at' gs' gs 'of' Dc 'under' ρm As 'at' p ups 'for' B 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ ihs" :=
-  (fast_fresh_ihs Θ Ξ ρm As p ups Dc B ρ gs' gs vs s ihs) : type_scope.
-
-(** The recursive results a branch of a block is read under, as in
-    [Core.Semantic.Readback]. *)
-Inductive fast_wrap_ihs_eval (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock) (Dc : ind_decl) :
-  list carg -> list carg -> list domain -> list domain -> list domain -> Prop :=
-(** No argument, no result *)
-| fast_wrap_ihs_eval_nil :
-  `( ⟦wihsᶠ nil of nil nil of Dc with nil under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ nil )
-(** Recursive in both: along each path, the next of [ihs] at a path of
-    the container's, the eliminator at one nested through *)
-| fast_wrap_ihs_eval_rec :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ⟦ihᶠ v of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
-     wrap_leaf_vals (List.map (leaf_in Dc t') (shape_leaves (rview_leaves D) 0 t)) rs ihs ihs' r1 ->
-     ⟦wihsᶠ vs of gs' gs of Dc with ihs' under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦wihsᶠ v :: vs of (ca_rec t' :: gs') (ca_rec t :: gs) of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ++ r )
-(** Recursive for the branch's group only: the eliminator at the
-    argument, along each path *)
-| fast_wrap_ihs_eval_nest :
-  `( ⟦ihᶠ v of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ->
-     ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦wihsᶠ v :: vs of (ca_arg ra' T' :: gs') (ca_rec t :: gs) of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ rs ++ r )
-(** Non-recursive: no result *)
-| fast_wrap_ihs_eval_arg :
-  `( ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦wihsᶠ v :: vs of (ca_arg ra' T' :: gs') (ca_arg ra T :: gs) of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
-where "'⟦wihsᶠ' vs 'of' gs' gs 'of' Dc 'with' ihs 'under' p ups Bks '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" :=
-  (fast_wrap_ihs_eval Θ Ξ ρ p ups Bks Dc gs' gs vs ihs r) : type_scope.
-
-#[export]
-Hint Constructors fast_fresh_tele fast_fresh_cargs fast_fresh_ihs fast_wrap_ihs_eval : mctt.
-
-(** Readback of values into normal and neutral forms in a context with [s]
-    variables, as in [Core.Semantic.Readback]. *)
-Inductive fast_read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
-(** A type in a large universe: as a type *)
-| fast_read_nf_type :
-  `( Rtypᶠ a in Θ ⍮ Ξ ⍮ s ↘ A ->
-     Rnfᶠ ⇓ 𝕌ω@i a in Θ ⍮ Ξ ⍮ s ↘ A )
-(** A type in a small universe: as a type *)
-| fast_read_nf_stype :
-  `( Rtypᶠ a in Θ ⍮ Ξ ⍮ s ↘ A ->
-     Rnfᶠ ⇓ 𝕌@n a in Θ ⍮ Ξ ⍮ s ↘ A )
-(** A level reads back canonically: its atoms are read, then sorted and
-    merged, and a dominated constant is dropped ([lvl_canon]). *)
-| fast_read_nf_lvl :
-  `( Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-     Rnfᶠ ⇓ (Levelᵈ@n) (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
-(** A neutral level is the single atom at offset [0], of the sort of its
-    type ([domain_level_sort]) *)
-| fast_read_nf_lvl_neut :
-  `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnfᶠ ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ ordinal_zero (mk_level_atom 0 (domain_level_sort a) M :: nil) )
-(** Proof irrelevance: every value of a proposition reads back as [⋆] *)
-| fast_read_nf_proof :
-  `( domain_relevance a = propositional ->
-     Rnfᶠ ⇓ a m in Θ ⍮ Ξ ⍮ s ↘ ⋆ⁿ )
-(** A proposition, as an element of [Prop], reads back as a type *)
-| fast_read_nf_prop :
-  `( Rtypᶠ a in Θ ⍮ Ξ ⍮ s ↘ A ->
-     Rnfᶠ ⇓ Propᵈ a in Θ ⍮ Ξ ⍮ s ↘ A )
-(** η for the placeholder type: its only value is the placeholder *)
-| fast_read_nf_placeholder :
-  `( Rnfᶠ ⇓ d_placeholder_type m in Θ ⍮ Ξ ⍮ s ↘ nf_placeholder )
-(** A function, η-expanded, at a fresh variable of its domain, the proof
-    [⋆ᵈ] at a propositional domain *)
-| fast_read_nf_fn :
-  `( (** The normal form of the argument type. *)
-     Rtypᶠ a in Θ ⍮ Ξ ⍮ s ↘ A ->
-     (** The normal form of the η-expanded body. *)
-     $ᶠ| m & relevant_value a (⇑! a s) | Θ ⍮ Ξ ↘ m' ->
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ↘ b ->
-     Rnfᶠ ⇓ b m' in Θ ⍮ Ξ ⍮ S s ↘ M ->
-
-     Rnfᶠ ⇓ (Πᵈ a ρ B) m in Θ ⍮ Ξ ⍮ s ↘ λⁿ A M )
-(** A neutral at a neutral type that is not a proposition *)
-| fast_read_nf_neut :
-  `( domain_relevance (⇑ a b) = relevant ->
-     Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnfᶠ ⇓ (⇑ a b) (⇑ c m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
-(** A constructor of a declared member at all its parameters and
-    arguments *)
-| fast_read_nf_con :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ind_member D k = Some Mk ->
-     im_head Mk = mh_decl pm ->
-     ind_con Mk c = Some gs ->
-     List.length as' = im_np D Mk ->
-     List.length vs = (im_np D Mk + List.length gs)%nat ->
-     Rpsᶠ as' at List.rev (im_params D Mk) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     Rcargsᶠ List.skipn (im_np D Mk) vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ ⍮ env_args nil as' ⍮ s ↘ Args ->
-     Rnfᶠ ⇓ (d_ind p k as') (d_con p k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p k c (Ps ++ Args) )
-(** A constructor at a view, read as the view's constructor *)
-| fast_read_nf_con_view :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ind_member D j = Some Mj ->
-     im_head Mj = mh_view qc k Is vm ->
-     ind_con Mj c = Some gs ->
-     List.length as' = im_np D Mj ->
-     List.length vs = (n + List.length gs)%nat ->
-     Rpsᶠ as' at List.rev (im_params D Mj) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     Rcargsᶠ List.skipn n vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ ⍮ env_args nil as' ⍮ s ↘ Args ->
-     Rnfᶠ ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (Ps ++ Args) )
-(** Any value at a record view, η-long, as in [Core.Semantic.Readback]:
-    its constructor at the uniform parameters and the projections along
-    the view's path *)
-| fast_read_nf_rview :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ind_member D j = Some Mj ->
-     im_head Mj = mh_record qr Is fl ->
-     im_cons Mj = (c, gs) :: nil ->
-     List.length as' = ind_nu D ->
-     ⟦projsᶠ fl of v ⟧ᶠ Θ ⍮ Ξ ↘ ws ->
-     Rpsᶠ as' at List.rev (ind_uparams D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     Rcargsᶠ ws at gs of p as' in Θ ⍮ Ξ ⍮ env_args nil as' ⍮ s ↘ Args ->
-     Rnfᶠ ⇓ (d_ind p j as') v in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (Ps ++ Args) )
-(** A neutral of a member of a group with a block *)
-| fast_read_nf_ind_neut :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ind_member D k = Some Mk ->
-     im_is_rview Mk = false ->
-     Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnfᶠ ⇓ (d_ind p k as') (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
-(** Any value of a record type, η-long, as in [Core.Semantic.Readback] *)
-| fast_read_nf_record :
-  `( record_lookup Θ Ξ p = Some R ->
-     List.length ns = List.length (record_params R) ->
-     Rpsᶠ ns at List.rev (record_params R) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     Rfldsᶠ v at record_fields R in Θ ⍮ Ξ ⍮ env_args nil ns ⍮ s ↘ Fs ->
-     Rnfᶠ ⇓ (d_record p ns) v in Θ ⍮ Ξ ⍮ s ↘ nf_tuple p Ps (List.map fst (record_fields R)) Fs )
-where "'Rnfᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fast_read_nf Θ Ξ s m M) : type_scope
-with fast_read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
-(** A variable, as a de Bruijn index *)
-| fast_read_ne_var :
-  `( Rneᶠ #ᵈ x in Θ ⍮ Ξ ⍮ s ↘ #ⁿ (s - x - 1) )
-(** An application *)
-| fast_read_ne_app :
-  `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnfᶠ n in Θ ⍮ Ξ ⍮ s ↘ N ->
-     Rneᶠ m $ᵈ n in Θ ⍮ Ξ ⍮ s ↘ M $ⁿ N )
-(** Ex falso at the type [c]: the type read back *)
-| fast_read_ne_absurd :
-  `( Rtypᶠ c in Θ ⍮ Ξ ⍮ s ↘ C ->
-     Rneᶠ efqᵈ c in Θ ⍮ Ξ ⍮ s ↘ efqⁿ C )
-(** A global *)
-| fast_read_ne_glob :
-  `( Rneᶠ d_glob p in Θ ⍮ Ξ ⍮ s ↘ ne_glob p )
-(** A stuck eliminator, as in [Core.Semantic.Readback] *)
-| fast_read_ne_elim :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ind_member D j = Some Mj ->
-     im_ref p j Mj = (pc, k) ->
-     ind_lookup Θ Ξ pc = Some Dq ->
-     ind_member Dq k = Some Mk ->
-     List.length as' = im_np Dq Mk ->
-     blocks_binder_count_at D None Bks ->
-     rview_leaf_arity D ->
-     ⟦mrefᶠ j of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pc, k, pre) ->
-     Rpsᶠ pre at List.rev (ind_uparams Dq) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Us ->
-     Rblksᶠ 0 (ind_block_members Dq) of Dq from p ups Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-     Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rneᶠ d_elim ρ Bks p ups j as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim pc Us k NBks M )
-(** The field of a neutral *)
-| fast_read_ne_proj :
-  `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rneᶠ d_proj f m in Θ ⍮ Ξ ⍮ s ↘ ne_proj f M )
-where "'Rneᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fast_read_ne Θ Ξ s m M) : type_scope
-with fast_read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
-(** A large universe *)
-| fast_read_typ_univ :
-  `( Rtypᶠ 𝕌ω@i in Θ ⍮ Ξ ⍮ s ↘ Typeωⁿ@i )
-(** A small universe reads back as the universe at the canonical form its
-    level reads back as. *)
-| fast_read_typ_suniv :
-  `( Rnfᶠ ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of L ->
-     Rtypᶠ 𝕌@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of L )
-(** The type of levels *)
-| fast_read_typ_level :
-  `( Rtypᶠ Levelᵈ@n in Θ ⍮ Ξ ⍮ s ↘ Levelⁿ@n )
-(** The universe of propositions *)
-| fast_read_typ_prop :
-  `( Rtypᶠ Propᵈ in Θ ⍮ Ξ ⍮ s ↘ Propⁿ )
-(** [⊤] *)
-| fast_read_typ_True :
-  `( Rtypᶠ ⊤ᵈ in Θ ⍮ Ξ ⍮ s ↘ ⊤ⁿ )
-(** [⊥] *)
-| fast_read_typ_False :
-  `( Rtypᶠ ⊥ᵈ in Θ ⍮ Ξ ⍮ s ↘ ⊥ⁿ )
-(** The placeholder type *)
-| fast_read_typ_placeholder_type :
-  `( Rtypᶠ d_placeholder_type in Θ ⍮ Ξ ⍮ s ↘ nf_placeholder_type )
-(** A [Π], its codomain under a fresh variable of its domain, the proof
-    [⋆ᵈ] at a propositional domain *)
-| fast_read_typ_pi :
-  `( (** The normal form of the argument type. *)
-     Rtypᶠ a in Θ ⍮ Ξ ⍮ s ↘ A ->
-
-     (** The normal form of the return type. *)
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ↘ b ->
-     Rtypᶠ b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
-
-     Rtypᶠ Πᵈ a ρ B in Θ ⍮ Ξ ⍮ s ↘ Πⁿ A B')
-(** A universal proposition, as for [Π] *)
-| fast_read_typ_all :
-  `( (** The normal form of the domain. *)
-     Rtypᶠ a in Θ ⍮ Ξ ⍮ s ↘ A ->
-
-     (** The normal form of the body. *)
-     ⟦ P ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ↘ b ->
-     Rtypᶠ b in Θ ⍮ Ξ ⍮ S s ↘ P' ->
-
-     Rtypᶠ ∀ₚᵈ a ρ P in Θ ⍮ Ξ ⍮ s ↘ ∀ₚⁿ A P')
-(** A dependent conjunction: its second component under a fresh variable
-    of its first, which is the proof [⋆ᵈ] *)
-| fast_read_typ_and :
-  `( (** The normal form of the first component. *)
-     Rtypᶠ a in Θ ⍮ Ξ ⍮ s ↘ P' ->
-
-     (** The normal form of the second component. *)
-     ⟦ Q ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ relevant_value a (⇑! a s) ↘ b ->
-     Rtypᶠ b in Θ ⍮ Ξ ⍮ S s ↘ Q' ->
-
-     Rtypᶠ Σₚᵈ a ρ Q in Θ ⍮ Ξ ⍮ s ↘ Σₚⁿ P' Q')
-(** A neutral type *)
-| fast_read_typ_neut :
-  `( Rneᶠ b in Θ ⍮ Ξ ⍮ s ↘ B ->
-     Rtypᶠ ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ B)
-(** A type former without arguments reads back without its declaration:
-    it has no parameter to read. *)
-| fast_read_typ_indty_nil :
-  `( Rtypᶠ d_ind p k nil in Θ ⍮ Ξ ⍮ s ↘ nf_indty p k nil )
-(** At one argument or more, each read at its type. *)
-| fast_read_typ_indty :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ind_member D k = Some Mk ->
-     List.length (a :: as') = im_np D Mk ->
-     Rpsᶠ (a :: as') at List.rev (im_params D Mk) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     Rtypᶠ d_ind p k (a :: as') in Θ ⍮ Ξ ⍮ s ↘ nf_indty p k Ps )
-(** A record type at all its parameters, each read at its type. *)
-| fast_read_typ_record :
-  `( record_lookup Θ Ξ p = Some R ->
-     List.length ns = List.length (record_params R) ->
-     Rpsᶠ ns at List.rev (record_params R) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     Rtypᶠ d_record p ns in Θ ⍮ Ξ ⍮ s ↘ nf_record p Ps )
-where "'Rtypᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fast_read_typ Θ Ξ s m M) : type_scope
-(** The atoms of a level, read one by one. *)
-with fast_read_level_atoms (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> list level_atom -> Prop :=
-(** No atom *)
-| fast_read_level_atoms_nil :
-  `( Rlaᶠ nil in Θ ⍮ Ξ ⍮ s ↘ nil )
-(** The first atom's neutral, then the rest *)
-| fast_read_level_atoms_cons :
-  `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-     Rlaᶠ (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ mk_level_atom k n M :: ys )
-where "'Rlaᶠ' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (fast_read_level_atoms Θ Ξ s xs ys) : type_scope
-(** Values at a telescope, outermost first. *)
-with fast_read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> list nf -> Prop :=
-(** No value *)
-| fast_read_ps_nil :
-  `( Rpsᶠ nil at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
-(** The first value at its type, then the rest with it in the
-    environment *)
-| fast_read_ps_cons :
-  `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Rnfᶠ ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
-     Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
-     Rpsᶠ v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
-where "'Rpsᶠ' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (fast_read_ps Θ Ξ s ρ T vs Ms) : type_scope
-(** The fields of a record value, each at its type, as in
-    [Core.Semantic.Readback]. *)
-with fast_read_fields (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> list nf -> Prop :=
-(** No field left *)
-| fast_read_fields_nil :
-  `( Rfldsᶠ v at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
-(** The next field's projection at its type, then the rest with it in the
-    environment *)
-| fast_read_fields_cons :
-  `( fast_eval_proj Θ Ξ f v r ->
-     ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ t ->
-     Rnfᶠ ⇓ t r in Θ ⍮ Ξ ⍮ s ↘ F ->
-     Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ↦ r ⍮ s ↘ Fs ->
-     Rfldsᶠ v at (f, T) :: fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ F :: Fs )
-where "'Rfldsᶠ' v 'at' fl 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Fs" := (fast_read_fields Θ Ξ s ρ fl v Fs) : type_scope
-(** The arguments of a constructor, each at its type. *)
-with fast_read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> list nf -> Prop :=
-(** No argument *)
-| fast_read_cargs_nil :
-  `( Rcargsᶠ nil at nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
-(** A non-recursive argument, at its declared type *)
-| fast_read_cargs_arg :
-  `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     Rnfᶠ ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
-     Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
-     Rcargsᶠ v :: vs at ca_arg r A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
-(** A recursive argument, along its shape *)
-| fast_read_cargs_rec :
-  `( Rshᶠ v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V ->
-     Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs ->
-     Rcargsᶠ v :: vs at ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
-where "'Rcargsᶠ' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (fast_read_cargs Θ Ξ s p ups ρ gs vs Ms) : type_scope
-(** A recursive argument of shape [t], as in [Core.Semantic.Readback]. *)
-with fast_read_shape (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> ptyp -> domain -> nf -> Prop :=
-(** At the end: at the group's own member at the shape's parameters *)
-| fast_read_shape_self :
-  `( ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     Rnfᶠ ⇓ (d_ind p j (ups ++ bs)) v in Θ ⍮ Ξ ⍮ s ↘ V ->
-     Rshᶠ v at pt_self j Ps of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V )
-(** At a domain: a λ, the rest read under a fresh variable of it *)
-| fast_read_shape_pi :
-  `( ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     Rtypᶠ b in Θ ⍮ Ξ ⍮ s ↘ A ->
-     $ᶠ| v & relevant_value b (⇑! b s) | Θ ⍮ Ξ ↘ r ->
-     Rshᶠ r at t of p ups in Θ ⍮ Ξ ⍮ ρ ↦ relevant_value b (⇑! b s) ⍮ S s ↘ V ->
-     Rshᶠ v at pt_pi B t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ λⁿ A V )
-where "'Rshᶠ' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" := (fast_read_shape Θ Ξ s p ups ρ t v V) : type_scope
-(** The blocks of a stuck eliminator, as in [Core.Semantic.Readback]. *)
-with fast_read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock -> ind_decl ->
-                                       option (list nat) -> nat -> list imember -> list normal_block -> Prop :=
-(** No member left *)
-| fast_read_blocks_nil :
-  `( Rblksᶠ i nil of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
-(** The block for the member [Mi]: the motive, then the branches, then
-    the rest *)
-| fast_read_blocks_cons :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ind_member D (elim_src sel i) = Some Mv ->
-     List.nth_error Bks (elim_src sel i) = Some b ->
-     eb_binder_count b = S (im_nn Mi) ->
-     ⟦mrefᶠ elim_src sel i of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pk, k, pre) ->
-     Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
-     ⟦ eb_motive b ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind pk k (pre ++ ns)) ((s + im_nn Mi)%nat) :: nil) ↘ a ->
-     Rtypᶠ a in Θ ⍮ Ξ ⍮ S (s + im_nn Mi)%nat ↘ A' ->
-     Rbrsᶠ eb_brs b at im_cons Mi of Mi (pk, k, pre) of Dc from p ups Bks Mv (eb_motive b) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-     Rblksᶠ (S i) Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-     Rblksᶠ i (Mi :: Ms) of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ mk_normal_block (S (im_nn Mi)) A' Bs' :: NBks )
-where "'Rblksᶠ' i Ms 'of' Dc 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" := (fast_read_blocks Θ Ξ s ρ p ups Bks Dc sel i Ms NBks) : type_scope
-(** The branches of a block, as in [Core.Semantic.Readback]; the results
-    of an argument the branch reads none of get the type [𝕌ω@0]
-    ([fast_fresh_ihs_skip]). *)
-with fast_read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock -> ind_decl ->
-                                    imember -> exp -> imember -> (qname * nat * list domain) ->
-                                    list (string * list carg) -> list (string * nat * exp) -> list normal_branch -> Prop :=
-(** No constructor left *)
-| fast_read_brs_nil :
-  `( Rbrsᶠ nil at nil of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
-(** The branch of the next constructor, under its fresh variables, at
-    the motive's instance, then the rest; the fresh recursive results are
-    as many as the branch read binds, the gate of [read_brs_cons] *)
-| fast_read_brs_cons :
-  `( ind_con Mv c = Some gs ->
-     ind_lookup Θ Ξ p = Some D ->
-     n0 = (im_nn Mi + List.length gs' + cargs_nrec D gs)%nat ->
-     n = (im_nn Mi + List.length gs' + cargs_nrec Dc gs')%nat ->
-     cargs_container_count D Dc gs' gs = cargs_nrec Dc gs' ->
-     cargs_params_length D gs ->
-     Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
-     Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi)%nat ↘ vs ->
-     Fihsᶠ vs at gs' gs of Dc under ρ (blocks_motives Bks) at p ups for B in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns)
-       ⍮ (s + im_nn Mi + List.length gs')%nat ↘ ihs ->
-     ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ wihs) ↘ b ->
-     ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil) ↘ t ->
-     Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
-     Rbrsᶠ Bs at cs of Mi (pk, k, pre) of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-     Rbrsᶠ (c, n0, B) :: Bs at (c, gs') :: cs of Mi (pk, k, pre) of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s
-       ↘ mk_normal_branch c n B' :: Bs' )
-where "'Rbrsᶠ' Bs 'at' cs 'of' Mi r 'of' Dc 'from' p ups Bks Mv A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" :=
-  (fast_read_brs Θ Ξ s ρ p ups Bks Dc Mv A Mi r cs Bs Bs') : type_scope
-.
-
-Scheme fast_read_nf_mut_ind := Induction for fast_read_nf Sort Prop
-with fast_read_ne_mut_ind := Induction for fast_read_ne Sort Prop
-with fast_read_typ_mut_ind := Induction for fast_read_typ Sort Prop
-with fast_read_level_atoms_mut_ind := Induction for fast_read_level_atoms Sort Prop
-with fast_read_ps_mut_ind := Induction for fast_read_ps Sort Prop
-with fast_read_cargs_mut_ind := Induction for fast_read_cargs Sort Prop
-with fast_read_shape_mut_ind := Induction for fast_read_shape Sort Prop
-with fast_read_blocks_mut_ind := Induction for fast_read_blocks Sort Prop
-with fast_read_brs_mut_ind := Induction for fast_read_brs Sort Prop
-with fast_read_fields_mut_ind := Induction for fast_read_fields Sort Prop.
-Combined Scheme fast_read_mut_ind from
-  fast_read_nf_mut_ind,
-  fast_read_ne_mut_ind,
-  fast_read_typ_mut_ind,
-  fast_read_level_atoms_mut_ind,
-  fast_read_ps_mut_ind,
-  fast_read_cargs_mut_ind,
-  fast_read_shape_mut_ind,
-  fast_read_blocks_mut_ind,
-  fast_read_brs_mut_ind,
-  fast_read_fields_mut_ind.
-
-#[export]
-Hint Constructors fast_read_nf fast_read_ne fast_read_typ fast_read_level_atoms fast_read_ps fast_read_fields fast_read_cargs fast_read_shape fast_read_blocks fast_read_brs : mctt.
-
-  Lemma functional_fast_fresh_tele : forall {Θ Ξ} ρ T s vs1, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
-      forall vs2, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs2 -> vs1 = vs2.
-  Proof.
-    induction 1; intros * H2; inversion H2; subst; [ reflexivity |].
-    functional_fast_eval_rewrite_clear; f_equal; auto.
-  Qed.
-
-  Lemma functional_fast_fresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1, Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
-      forall vs2, Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs2 -> vs1 = vs2.
-  Proof.
-    induction 1; intros * H2; inversion H2; subst; [ auto | |];
-      functional_fast_eval_rewrite_clear; f_equal; auto.
-  Qed.
-
-  Lemma functional_fast_fresh_ihs : forall {Θ Ξ} ρ As p ups Dc B ρa gs' gs vs s ihs1,
-      Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
-      forall ihs2, Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
-  Proof.
-    induction 1; intros * Hother; inversion Hother; subst; auto.
-    all: repeat match goal with
-           | H1 : ind_lookup ?T ?X ?p = Some _, H3 : ind_lookup ?T ?X ?p = Some _ |- _ =>
-               rewrite H1 in H3; injection H3 as ?; subst
-           end; try congruence.
-    all: functional_fast_eval_rewrite_clear.
-    all: match goal with H1 : fresh_leaf_vars ?b ?a ?s ?v1, H3 : fresh_leaf_vars ?b ?a ?s ?v2 |- _ =>
-           pose proof (functional_fresh_leaf_vars _ _ _ _ H1 _ H3); subst end.
-    all: f_equal; auto.
-  Qed.
-
-  Lemma functional_fast_wrap_ihs_eval : forall {Θ Ξ} ρ p ups Bks Dc gs' gs vs ihs r1,
-      ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      forall r2, ⟦wihsᶠ vs of gs' gs of Dc with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
-  Proof.
-    induction 1; intros * Hother; inversion Hother; subst; auto.
-    all: repeat match goal with
-           | H1 : ind_lookup ?T ?X ?p = Some _, H3 : ind_lookup ?T ?X ?p = Some _ |- _ =>
-               rewrite H1 in H3; injection H3 as ?; subst
-           end.
-    all: functional_fast_eval_rewrite_clear.
-    all: try match goal with H1 : wrap_leaf_vals ?b ?r ?i _ _, H3 : wrap_leaf_vals ?b ?r ?i _ _ |- _ =>
-           destruct (functional_wrap_leaf_vals _ _ _ _ _ H1 _ _ H3); subst end.
-    all: f_equal; auto.
-  Qed.
-
-  Ltac functional_fast_fresh_rewrite_clear :=
-    repeat match goal with
-      | H1 : fast_fresh_tele ?T ?X ?ρ ?L ?s ?v1, H2 : fast_fresh_tele ?T ?X ?ρ ?L ?s ?v2 |- _ =>
-          pose proof (functional_fast_fresh_tele _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : fast_fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1, H2 : fast_fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 |- _ =>
-          pose proof (functional_fast_fresh_cargs _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : fast_fresh_ihs ?T ?X ?ρ ?A ?p ?u ?Dc ?B ?ρa ?gs' ?gs ?vs ?s ?i1, H2 : fast_fresh_ihs ?T ?X ?ρ ?A ?p ?u ?Dc ?B ?ρa ?gs' ?gs ?vs ?s ?i2 |- _ =>
-          pose proof (functional_fast_fresh_ihs _ _ _ _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : fast_wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?Dc ?g' ?g ?vs ?ih ?r1, H2 : fast_wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?Dc ?g' ?g ?vs ?ih ?r2 |- _ =>
-          pose proof (functional_fast_wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : fast_eval_projs ?T ?X ?fl ?v ?w1, H2 : fast_eval_projs ?T ?X ?fl ?v ?w2 |- _ =>
-          pose proof (functional_fast_eval_projs _ _ _ _ H1 H2); subst; clear H2
-      | H1 : im_cons ?M = _, H2 : im_cons ?M = _ |- _ =>
-          rewrite H1 in H2; injection H2; intros; subst; clear H2
-      | H1 : im_is_rview ?M = false, H2 : im_head ?M = mh_record _ _ _ |- _ =>
-          exfalso; unfold im_is_rview in H1; rewrite H2 in H1; discriminate H1
-      | H1 : ⟦ ?Ps ⟧*ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?b1, H2 : ⟦ ?Ps ⟧*ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?b2 |- _ =>
-          pose proof (functional_fast_eval_exps _ _ _ _ H1 H2); subst; clear H2
-      | H1 : fast_eval_mref ?T ?X ?p ?ups ?j ?r1, H2 : fast_eval_mref ?T ?X ?p ?ups ?j ?r2 |- _ =>
-          let E := fresh "E" in
-          pose proof (functional_fast_eval_mref _ _ _ _ _ H1 H2) as E; injection E; intros; subst; clear H2
-      | H : (_, _) = (_, _) |- _ => injection H; intros; subst; clear H
-      | H1 : ind_lookup ?T ?X ?p = Some _, H2 : ind_lookup ?T ?X ?p = Some _ |- _ =>
-          rewrite H1 in H2; injection H2 as ?; subst
-      | H1 : record_lookup ?T ?X ?p = Some _, H2 : record_lookup ?T ?X ?p = Some _ |- _ =>
-          rewrite H1 in H2; injection H2 as ?; subst
-      | H1 : ind_member ?D ?k = Some _, H2 : ind_member ?D ?k = Some _ |- _ =>
-          rewrite H1 in H2; injection H2 as ?; subst
-      | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
-          rewrite H1 in H2; injection H2; intros; subst; clear H2
-      | H1 : im_head ?M = _, H2 : im_head ?M = _ |- _ =>
-          rewrite H1 in H2; injection H2; intros; subst; clear H2
-      | H1 : List.nth_error ?Bks ?j = Some _, H2 : List.nth_error ?Bks ?j = Some _ |- _ =>
-          rewrite H1 in H2; injection H2 as ?; subst
-      | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
-          rewrite H1 in H2; injection H2 as ?; subst
-      end.
-
-  Lemma functional_fast_read : forall {Θ Ξ},
-    (forall s m M1,
-        Rnfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
-        forall M2,
-          Rnfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 ->
-          M1 = M2) /\
-      (forall s m M1,
-          Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
-          forall M2,
-            Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 ->
-            M1 = M2) /\
-      (forall s m M1,
-          Rtypᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
-          forall M2,
-            Rtypᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 ->
-            M1 = M2) /\
-      (forall s xs ys1,
-          Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys1 ->
-          forall ys2,
-            Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys2 ->
-            ys1 = ys2) /\
-      (forall s ρ T vs Vs1, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 -> forall Vs2, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
-      (forall s p ups ρ gs vs Vs1, Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 ->
-         forall Vs2, Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
-      (forall s p ups ρ t v V1, Rshᶠ v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V1 ->
-         forall V2, Rshᶠ v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V2 -> V1 = V2) /\
-      (forall s ρ p ups Bks Dc sel i Ms NBks1, Rblksᶠ i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks1 ->
-         forall NBks2, Rblksᶠ i Ms of Dc from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
-      (forall s ρ p ups Bks Dc Mv A Mi r cs Bs Bs1, Rbrsᶠ Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
-         forall Bs2, Rbrsᶠ Bs at cs of Mi r of Dc from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2) /\
-      (forall s ρ fl v Fs1, Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs1 -> forall Fs2, Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs2 -> Fs1 = Fs2).
-  Proof.
-    intros Θ Ξ; apply fast_read_mut_ind; intros; progressive_inversion; functional_fast_eval_rewrite_clear;
-      functional_fast_fresh_rewrite_clear; functional_fast_eval_rewrite_clear;
-      (** The two rules of a type former exclude each other. *)
-      try contradiction.
-    all: try solve [ apply nf_univ_of_cong; eauto | f_equal; solve [eauto] | repeat f_equal; solve [eauto] ].
-    (** The other side is inverted here: every value type admits the proof
-        rule [fast_read_nf_proof] too, and a constructor at an inductive
-        type is read by one of two rules (a declared member, or a view).
-        The proof rule excludes every other by the type's head
-        ([domain_relevance]), the two constructor rules each other by the
-        member's head. *)
-    all: try match goal with
-         | H : fast_read_nf _ _ _ _ _ |- _ = _ => inversion H; subst; clear H
-         | H : fast_read_ne _ _ _ _ _ |- _ = _ => inversion H; subst; clear H
-         end.
-    all: try match goal with H : domain_relevance _ = _ |- _ => cbn in H; discriminate H end.
-    all: functional_fast_fresh_rewrite_clear; functional_fast_eval_rewrite_clear; try congruence.
-    all: try solve [ apply nf_univ_of_cong; eauto | repeat f_equal; solve [eauto] ].
-    all: repeat match goal with
-        | H1 : List.length ?v = (?a + ?g)%nat, H2 : List.length ?v = (?b + ?g)%nat |- _ =>
-            assert_fails (constr_eq a b); assert (a = b) by lia; subst b
-        end;
-      repeat f_equal; solve [eauto].
-  Qed.
-
-  Corollary functional_fast_read_nf : forall {Θ Ξ} s m M1 M2,
-      Rnfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
-      Rnfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 ->
-      M1 = M2.
-  Proof.
-    intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder.
-  Qed.
-
-  Lemma functional_fast_read_level_atoms : forall {Θ Ξ} s xs ys1 ys2,
-      Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys1 ->
-      Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys2 ->
-      ys1 = ys2.
-  Proof.
-    intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder.
-  Qed.
-
-  Lemma functional_fast_read_ne : forall {Θ Ξ} s m M1 M2,
-      Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
-      Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 ->
-      M1 = M2.
-  Proof.
-    intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder.
-  Qed.
-
-  Lemma functional_fast_read_typ : forall {Θ Ξ} s m M1 M2,
-      Rtypᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
-      Rtypᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 ->
-      M1 = M2.
-  Proof.
-    intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder.
-  Qed.
-
-#[export]
-Hint Resolve functional_fast_read_nf functional_fast_read_ne functional_fast_read_typ functional_fast_read_level_atoms : mctt.
-
-Ltac functional_fast_read_rewrite_clear1 :=
-  let tactic_error o1 o2 := fail 3 "functional_fast_read equality between" o1 "and" o2 "cannot be solved by mauto" in
-  match goal with
-  | H1 : (Rnfᶠ ?m in ?T ⍮ ?X ⍮ ?s ↘ ?M1), H2 : (Rnfᶠ ?m in ?T ⍮ ?X ⍮ ?s ↘ ?M2) |- _ =>
-      clean replace M2 with M1 by first [solve [mauto 2] | tactic_error M2 M1]; clear H2
-  | H1 : (Rneᶠ ?m in ?T ⍮ ?X ⍮ ?s ↘ ?M1), H2 : (Rneᶠ ?m in ?T ⍮ ?X ⍮ ?s ↘ ?M2) |- _ =>
-      clean replace M2 with M1 by first [solve [mauto 2] | tactic_error M2 M1]; clear H2
-  | H1 : (Rtypᶠ ?m in ?T ⍮ ?X ⍮ ?s ↘ ?M1), H2 : (Rtypᶠ ?m in ?T ⍮ ?X ⍮ ?s ↘ ?M2) |- _ =>
-      clean replace M2 with M1 by first [solve [mauto 2] | tactic_error M2 M1]; clear H2
-  | H1 : (Rlaᶠ ?xs in ?T ⍮ ?X ⍮ ?s ↘ ?M1), H2 : (Rlaᶠ ?xs in ?T ⍮ ?X ⍮ ?s ↘ ?M2) |- _ =>
-      clean replace M2 with M1 by first [solve [mauto 2] | tactic_error M2 M1]; clear H2
-  end.
-Ltac functional_fast_read_rewrite_clear := repeat functional_fast_read_rewrite_clear1.
-
-(** One fresh variable per member of a telescope, per argument, and per
-    recursive argument of the eliminated group. *)
-Lemma fast_fresh_tele_length : forall {Θ Ξ} ρ T s vs,
-    Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length T.
-Proof. induction 1; cbn; congruence. Qed.
-
-Lemma fast_fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs,
-    Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length gs.
-Proof. induction 1; cbn; congruence. Qed.
-
-Lemma fast_fresh_ihs_length : forall {Θ Ξ} ρ As p ups Dc B ρa gs' gs vs s ihs D, ind_lookup Θ Ξ p = Some D ->
-    Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_container_count D Dc gs' gs.
-Proof.
-  intros * HD H; induction H; cbn; try congruence.
-  all: match goal with H1 : ind_lookup _ _ _ = Some _, H2 : ind_lookup _ _ _ = Some _ |- _ =>
-         rewrite H1 in H2; injection H2 as <- end.
-  all: match goal with Hf : fresh_leaf_vars _ _ _ _ |- _ => rewrite List.length_app, (fresh_leaf_vars_length _ _ _ _ Hf) end.
-  all: rewrite IHfast_fresh_ihs by assumption.
-  all: unfold leaves_in_count; f_equal.
-  all: clear; induction (shape_leaves (rview_leaves D) 0 t); cbn; [ reflexivity |].
-  all: destruct (leaf_in Dc t' a); cbn; congruence.
-Qed.
