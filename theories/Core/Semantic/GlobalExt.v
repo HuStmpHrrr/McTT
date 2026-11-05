@@ -52,10 +52,15 @@ Section GlobalExt.
   Lemma gc_term_ext : forall p, gc_term Θ1 Ξ1 p = gc_term Θ2 Ξ2 p.
   Proof. intros; unfold gc_term; rewrite Hres, Hent; reflexivity. Qed.
 
+  (** The kind of the next parameter of a module value is read off the
+      telescopes of the stored bodies. *)
+  Lemma dmod_param_kind_ext : forall h, dmod_param_kind Θ1 Ξ1 h = dmod_param_kind Θ2 Ξ2 h.
+  Proof. induction h; cbn; rewrite ?gc_loc_ext; congruence. Qed.
+
   (** The kind of a function's next argument is read off the groups' and
-      the records' declarations. *)
+      the records' declarations, and the stored bodies' telescopes. *)
   Lemma arg_kind_ext : forall f, arg_kind Θ1 Ξ1 f = arg_kind Θ2 Ξ2 f.
-  Proof. intros []; cbn; rewrite ?Hind, ?Hrec; reflexivity. Qed.
+  Proof. intros []; cbn; rewrite ?Hind, ?Hrec, ?dmod_param_kind_ext; reflexivity. Qed.
 
   (** A member with a term part and a module part is one by its lookups. *)
   Lemma dm_path_ext : forall p, dm_path Θ1 Ξ1 p <-> dm_path Θ2 Ξ2 p.

@@ -618,8 +618,8 @@ Proof.
   cbn in Hcls; inversion Hcls as [| ? cs ? ? Hc _]; subst.
   unfold raw_member_classify, classify_cons_in in Hc; cbn in Hc.
   inversion Hc as [| ? ? ? ? [_ Hargs] _]; subst.
-  inversion Hargs as [| ? ? ? ? ? ? g1 ? Hg1 Hrest]; subst.
-  inversion Hrest as [| ? ? ? ? ? ? g2 ? Hg2 Hrest2]; subst.
+  inversion Hargs as [| ? ? ? ? ? ? g1 ? Hg1 _ Hrest]; subst.
+  inversion Hrest as [| ? ? ? ? ? ? g2 ? Hg2 _ Hrest2]; subst.
   (** The first argument, [x : T], is recursive. *)
   assert (Eg1 : g1 = classified_carg_rec_case (classified_ptyp_self 0 nil)).
   { inversion Hg1 as [? Hs | ? ? ? Hs]; subst; vm_compute in Hs; [ injection Hs as <-; reflexivity | discriminate ]. }

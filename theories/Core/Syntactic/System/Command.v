@@ -537,9 +537,12 @@ Inductive classify_args_in (Θ : gdeps) (Ξ : gstack) (Γp : ctx) (nu np n : nat
 | classify_args_in_nil : forall pat args1, classify_args_in Θ Ξ Γp nu np n pat args1 nil nil
 (** The next argument, classified, then the rest after it.  A
     non-recursive one is tagged with the kind [κ] the argument carries
-    ([classified_carg_tag]); the group's well-formedness checks it. *)
+    ([classified_carg_tag]); the group's well-formedness checks it.  A
+    recursive argument is a type of the group, so it is tagged relevant:
+    its filed entry drops the tag, which is checked here. *)
 | classify_args_in_cons : forall pat args1 y κ T args g gs,
     classify_arg_in Θ Ξ (raw_args_tele args1 ++ Γp) nu np n pat T g ->
+    (classified_carg_bit g = true -> κ = ak_relevant) ->
     classify_args_in Θ Ξ Γp nu np n (classified_carg_bit g :: pat) (args1 ++ (y, κ, T) :: nil) args gs ->
     classify_args_in Θ Ξ Γp nu np n pat args1 ((y, κ, T) :: args) (classified_carg_tag κ g :: gs).
 
@@ -566,7 +569,7 @@ Qed.
 Lemma classify_args_in_functional : forall Θ Ξ Γp nu np n pat args1 args gs gs',
     classify_args_in Θ Ξ Γp nu np n pat args1 args gs -> classify_args_in Θ Ξ Γp nu np n pat args1 args gs' -> gs = gs'.
 Proof.
-  intros * H; revert gs'; induction H as [| pat args1 y κ T args g gs Hg Hgs IH]; intros gs' H'; inversion H'; subst;
+  intros * H; revert gs'; induction H as [| pat args1 y κ T args g gs Hg _ Hgs IH]; intros gs' H'; inversion H'; subst;
     [ reflexivity |].
   match goal with Hg' : classify_arg_in _ _ _ _ _ _ _ _ ?g' |- _ =>
     pose proof (classify_arg_in_functional _ _ _ _ _ _ _ _ _ _ Hg Hg') as <- end.

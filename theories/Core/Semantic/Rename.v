@@ -249,10 +249,15 @@ Section Rename.
   Lemma domain_kind_neut_rn : forall a m m', domain_kind (d_neut (domain_rename a) m) = domain_kind (d_neut a m').
   Proof. intros []; reflexivity. Qed.
 
+  (** The kind of the next parameter of a module value is read off its
+      telescope and its number of arguments, which the renaming keeps. *)
+  Lemma dmod_param_kind_rn : forall Θ Ξ h, dmod_param_kind Θ Ξ (dmod_rename h) = dmod_param_kind Θ Ξ h.
+  Proof. intros Θ Ξ h; induction h; cbn [dmod_rename dmod_param_kind]; rewrite ?List.length_map; congruence. Qed.
+
   (** So is the kind of a function's next argument. *)
   Lemma arg_kind_rn : forall Θ Ξ m, arg_kind Θ Ξ (domain_rename m) = arg_kind Θ Ξ m.
   Proof.
-    intros; destruct m; cbn [domain_rename]; unfold arg_kind; rewrite ?domain_kind_rn, ?List.length_map; try reflexivity.
+    intros; destruct m; cbn [domain_rename]; unfold arg_kind; rewrite ?domain_kind_rn, ?List.length_map, ?dmod_param_kind_rn; try reflexivity.
     (* a neutral, at the type its head reads *)
     match goal with |- match domain_rename ?m with _ => _ end = _ => destruct m end;
       cbn [domain_rename]; rewrite ?domain_kind_rn; reflexivity.

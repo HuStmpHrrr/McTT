@@ -136,8 +136,13 @@ Qed.
 Definition carg_entry (pq : qname) (D : ind_decl) (nn : nat) (pat : list bool) (g : carg) : typ :=
   match g with ca_arg _ A => A[wk_pat pat]ʷ | ca_rec t => ptyp_ty pq D nn pat t end.
 
+(** The tag of that entry: a non-recursive argument's own, a recursive
+    one's relevant. *)
+Definition carg_entry_kind (g : carg) : abs_kind :=
+  match g with ca_arg κ _ => κ | ca_rec _ => ak_relevant end.
+
 Lemma cargs_ctx_aux_single : forall pq D nn pat g,
-    cargs_ctx_aux pq D nn pat (g :: nil) = ce_ass (carg_entry pq D nn pat g) :: nil.
+    cargs_ctx_aux pq D nn pat (g :: nil) = ce_ass (carg_entry_kind g) (carg_entry pq D nn pat g) :: nil.
 Proof. intros; destruct g; reflexivity. Qed.
 
 Lemma classified_carg_num_bit : forall n Vs g g', classified_carg_num n Vs g = Some g' ->
@@ -259,8 +264,10 @@ Section Filed.
   Proof.
     intros pat T; induction T; intros d0 r0 s0 Hcls Hnum.
     all: try solve [ eapply classify_head_filed; [ exact Hcls | exact Hnum ] ].
-    (** A [Π] over a [Self]-free domain; a [∀] is no shape. *)
-    destruct r; [| cbn in Hcls; discriminate Hcls ].
+    (** A [Π] over a [Self]-free relevant domain into a universe; no other
+        [Π] is a shape. *)
+    match type of Hcls with classify_shape _ _ _ _ _ _ _ (a_pi ?k1 ?k2 _ _) = _ =>
+      destruct k1; destruct k2; try (cbn in Hcls; discriminate Hcls) end.
     cbn [classify_shape] in Hcls.
     destruct (image_pat (classify_pat d0 (nn + nu) n pat) T1) as [B0 |] eqn:EB; [| discriminate ].
     destruct (classify_shape grp_nu rec_np nu (nn + nu) n pat (S d0) T2) as [r' |] eqn:Er; [| discriminate ].
@@ -379,7 +386,7 @@ Proof.
   cbn; f_equal; eapply IH; exact E2.
 Qed.
 
-Lemma raw_args_tele_cons : forall y T args, raw_args_tele ((y, T) :: args) = raw_args_tele args ++ ce_ass T :: nil.
+Lemma raw_args_tele_cons : forall y κ T args, raw_args_tele ((y, κ, T) :: args) = raw_args_tele args ++ ce_ass κ T :: nil.
 Proof. reflexivity. Qed.
 
 Lemma length_raw_args_tele : forall args, List.length (raw_args_tele args) = List.length args.
@@ -395,25 +402,16 @@ Lemma ctx_pi_ass_eq : forall Θ Ξ Δ Γ A A' i,
     exists j, Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A ≈ ctx_pi Δ A' : Typeω@j.
 Proof.
   induction Δ as [| e Δ IH]; intros * Hass HΔ HA; cbn in *; [ eauto |].
-  inversion Hass as [| ? ? [B ->] Hass']; subst.
-  destruct (ctx_decomp HΔ) as [HΔ' [S HS HB]].
-  (** The assumption is a type, a proposition or a type of levels *)
-  destruct HS as [k | |].
-  - eapply IH with (i := max k i); [ exact Hass' | exact HΔ' |].
-    eapply wf_exp_eq_pi_cong_large; [ eapply lift_exp_max_left; exact HB | apply wf_exp_eq_refl; eapply lift_exp_max_left; exact HB
-                              | eapply lift_exp_eq_ge; [| exact HA ]; lia ].
-  - eapply IH with (i := i); [ exact Hass' | exact HΔ' |].
-    change (Typeω@i) with (relevance_sort relevant Typeω@i) at 1.
-    eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; exact HΔ' | exact HB | apply pi_domain_prop
-                              | apply wf_exp_eq_refl; exact HB | exact HA ].
-  - eapply IH with (i := i); [ exact Hass' | exact HΔ' |].
-    change (Typeω@i) with (relevance_sort relevant Typeω@i) at 1.
-    eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; exact HΔ' | exact HB | apply pi_domain_level
-                              | apply wf_exp_eq_refl; exact HB | exact HA ].
+  inversion Hass as [| ? ? (κ & B & ->) Hass']; subst.
+  pose proof (ctx_decomp_tail HΔ) as HΔ'.
+  (** The assumption is of a sort at its tag *)
+  destruct (ctx_decomp_kind HΔ) as (S & HS & HB).
+  destruct (wf_exp_eq_pi_sort_at _ _ _ κ ak_relevant B B A A' S i HB HS (wf_exp_eq_refl HB) HA ltac:(discriminate)) as [j Hj].
+  exact (IH _ _ _ j Hass' HΔ' Hj).
 Qed.
 
 Lemma raw_decl_selfs_from_snoc : forall R j l Mr,
-    raw_decl_selfs_from R j (l ++ Mr :: nil) = ce_ass (raw_decl_self_ty R Mr)[wk_shiftn (j + List.length l)]ʷ :: raw_decl_selfs_from R j l.
+    raw_decl_selfs_from R j (l ++ Mr :: nil) = ce_ass ak_relevant (raw_decl_self_ty R Mr)[wk_shiftn (j + List.length l)]ʷ :: raw_decl_selfs_from R j l.
 Proof.
   intros R j l; revert j; induction l as [| M0 l IH]; intros; cbn [List.app raw_decl_selfs_from List.length].
   - rewrite Nat.add_0_r; reflexivity.
@@ -449,7 +447,7 @@ Proof. induction 1; cbn; auto. Qed.
     instantiated as the type formers at the frames' parameters
     ([sb_selfs]), and the result is [Self_j] at all the member's
     parameters. *)
-Definition user_con_ty (p : qname) (R : raw_decl) (Mr : raw_member) (j : nat) (T : ctx) (args : list (string * exp)) : typ :=
+Definition user_con_ty (p : qname) (R : raw_decl) (Mr : raw_member) (j : nat) (T : ctx) (args : list (string * abs_kind * exp)) : typ :=
   let np := (List.length (raw_member_nparams Mr) + raw_decl_nu R)%nat in
   ctx_pi (raw_member_nparams Mr ++ raw_decl_uparams R ++ T)
     (ctx_pi (raw_args_tele args) (apps (a_var (List.length args + np + (raw_decl_nmembers R - 1 - j))) (vars_from (List.length args) np)))
@@ -717,7 +715,8 @@ Section ConTypes.
         rewrite List.length_firstn in Hctx |- *;
           replace (Nat.min m (List.length (raw_decl_members R))) with m in * by (unfold raw_decl_nmembers in Hm; lia).
         rewrite List.seq_S, List.map_app, sb_of_list_app; cbn [List.map sb_of_list Nat.add].
-        destruct (ctx_decomp Hctx) as [Hctx' [Si HSi Hi]].
+        destruct (ctx_decomp Hctx) as [Hctx' _].
+        destruct (ctx_decomp_kind Hctx) as (Si & HSi & Hi).
         eapply wf_sub_extend; [ apply IH; [ lia | exact Hctx' ] | exact Hi | exact HSi |].
         rewrite exp_sub_wk.
         rewrite (exp_sub_sb_eq _ _ Id).
@@ -768,7 +767,7 @@ Section ConTypes.
   Proof.
     intros j Mr Mj c gsall Hj Hk Hnp Hin.
     set (np := List.length (raw_member_nparams Mr) + nu).
-    induction 1 as [pat args1 | pat args1 y T args g gsr Hg Hgs IH]; intros gs1 gs2 Hn Hall Hpat Hlen Hsub.
+    induction 1 as [pat args1 | pat args1 y κ T args g gsr Hg Hκ Hgs IH]; intros gs1 gs2 Hn Hall Hpat Hlen Hsub.
     - (** No argument left: the result type. *)
       cbn in Hn; injection Hn as <-; rewrite List.app_nil_r in Hall; subst gsall.
       pose proof (cons_lookup_nodup _ _ _ (decl_typed_nodup _ _ _ filed_decl_typed _ _ Hk) Hin) as Hcon.
@@ -781,10 +780,25 @@ Section ConTypes.
     - (** An argument: equal at its type as written and as filed, then the
           rest. *)
       cbn [classified_cargs_num] in Hn.
-      destruct (classified_carg_num n Ks g) as [g' |] eqn:Eg; [| discriminate ].
+      destruct (classified_carg_num n Ks (classified_carg_tag κ g)) as [g' |] eqn:Eg; [| discriminate ].
       destruct (classified_cargs_num n Ks gsr) as [gs2' |] eqn:Egs; [| discriminate ].
       injection Hn as <-.
       set (τ := sb_selfs p (List.length args1 + np) n t).
+      (** The filed entry is tagged as written: a non-recursive argument at
+          its own tag, a recursive one relevant ([Hκ]). *)
+      assert (Hkind : carg_entry_kind g' = κ).
+      { destruct g as [κ0 A0 | r0]; cbn in Eg.
+        - injection Eg as <-; reflexivity.
+        - destruct (classified_ptyp_num n Ks r0); cbn in Eg; [ injection Eg as <- | discriminate ].
+          cbn; symmetry; exact (Hκ eq_refl). }
+      (** The classification untagged is filed at the same type. *)
+      assert (Eg0 : exists g0', classified_carg_num n Ks g = Some g0' /\
+                  carg_entry p D (im_nn Mj) pat g0' = carg_entry p D (im_nn Mj) pat g').
+      { destruct g as [κ0 A0 | r0]; cbn in Eg |- *.
+        - injection Eg as <-; eexists; split; reflexivity.
+        - destruct (classified_ptyp_num n Ks r0); cbn in Eg; [ injection Eg as <- | discriminate ].
+          eexists; split; reflexivity. }
+      destruct Eg0 as (g0' & Eg0 & Ee0).
       (** The argument as classified, as written or as its normal form, and
           its filed entry. *)
       assert (HT' : exists grp recs T', classify_arg grp recs nu np n pat T' = Some g /\
@@ -794,18 +808,19 @@ Section ConTypes.
         exact (@soundness_ty' (gc_mk Θ Ξ) _ _ _ _ HTt HW). }
       destruct HT' as (grp & recs & T' & Hc & HTT).
       assert (Hentry : T'[τ] = carg_entry p D (im_nn Mj) pat g').
-      { unfold τ; replace (List.length args1) with (List.length pat) by (rewrite Hpat, length_cargs_pat; lia).
+      { rewrite <- Ee0.
+        unfold τ; replace (List.length args1) with (List.length pat) by (rewrite Hpat, length_cargs_pat; lia).
         unfold im_nn; rewrite Hnp.
         exact (classify_arg_filed p D Ks nu n t (List.length (raw_member_nparams Mr)) filed_nu filed_mty_decl filed_view grp recs
-                 _ _ _ _ Hc Eg). }
+                 _ _ _ _ Hc Eg0). }
       assert (EP : im_params D Mj = raw_member_nparams Mr ++ raw_decl_uparams R ++ gs_tele Ξ) by (unfold im_params; rewrite Hnp; reflexivity).
       (** The filed entry is a type after the filed arguments before it. *)
       assert (Hin' : In (c, (gs1 ++ g' :: nil) ++ gs2') (im_cons Mj))
         by (rewrite <- List.app_assoc; cbn; rewrite <- Hall; exact Hin).
       destruct (cargs_ctx_wf _ _ _ _ _ _ _ _ filed_wf (decls_of_ctx _ _ _ (wf_ctx_empty _ _ filed_wf)) filed_lookup Hk Hin'
                   (gs1 ++ g' :: nil) gs2' eq_refl) as (HRk & _ & _).
-      rewrite cargs_ctx_snoc, cargs_ctx_aux_single, <- Hpat in HRk; cbn [List.app] in HRk.
-      destruct (ctx_decomp HRk) as [_ [S1 HS1 HT'i]].
+      rewrite cargs_ctx_snoc, cargs_ctx_aux_single, <- Hpat, Hkind in HRk; cbn [List.app] in HRk.
+      destruct (ctx_decomp_kind HRk) as (S1 & HS1 & HT'i).
       pose proof (ctx_sub_escape _ _ _ _ Hsub) as Hid.
       assert (HT'L : Θ ⍮ Ξf ⍮ tele_sub (raw_args_tele args1) (sb_selfs p np n t) ++ im_params D Mj ⊢ T'[τ] : S1)
         by (rewrite Hentry; pose proof (sub_preserves_exp _ _ _ _ _ _ _ HT'i Hid) as H; rewrite !exp_sub_id in H; exact H).
@@ -813,7 +828,7 @@ Section ConTypes.
           instantiated. *)
       assert (HTe : exists S2, type_sort S2 /\ Θ ⍮ Ξf ⍮ tele_sub (raw_args_tele args1) (sb_selfs p np n t) ++ im_params D Mj
                                  ⊢ T[τ] ≈ T'[τ] : S2).
-      { destruct HTT as [-> | [i2 HTe]]; [ exists S1; split; [ exact HS1 | apply wf_exp_eq_refl; exact HT'L ] |].
+      { destruct HTT as [-> | [i2 HTe]]; [ exists S1; split; [ exact (sort_kind_type_sort _ _ HS1) | apply wf_exp_eq_refl; exact HT'L ] |].
         exists Typeω@i2; split; [ constructor |].
         pose proof (proj1 (proj2 (proj2 (gctx_embedding_preserves_wf _ _ _ _ filed_gctx_embedding))) _ _ _ _ HTe) as HTe'.
         pose proof (presup_exp_eq_ctx HTe') as Hraw.
@@ -826,15 +841,15 @@ Section ConTypes.
           fold (sb_selfs p (List.length args1 + np) n t) in Hτ.
         exact (sub_preserves_exp_eq _ _ _ _ _ _ _ _ HTe' Hτ). }
       destruct HTe as (S2 & HS2 & HTe).
-      (** The argument's type and its entry's are of one sort, up to the
-          level: a type of a universe is no proposition. *)
-      assert (Hsd : exists Sd, type_sort Sd /\
+      (** The argument's type and its entry's are of one sort at the tag,
+          up to the level: a type of a universe is no proposition. *)
+      assert (Hsd : exists Sd, sort_kind Sd κ /\
                  Θ ⍮ Ξf ⍮ tele_sub (raw_args_tele args1) (sb_selfs p np n t) ++ im_params D Mj ⊢ T'[τ] : Sd /\
                  Θ ⍮ Ξf ⍮ cargs_ctx p D Mj gs1 ++ im_params D Mj ⊢ carg_entry p D (im_nn Mj) pat g' : Sd /\
                  Θ ⍮ Ξf ⍮ tele_sub (raw_args_tele args1) (sb_selfs p np n t) ++ im_params D Mj ⊢ T[τ] ≈ T'[τ] : Sd).
       { assert (HT'2 : Θ ⍮ Ξf ⍮ tele_sub (raw_args_tele args1) (sb_selfs p np n t) ++ im_params D Mj ⊢ T'[τ] : S2)
           by (gen_presups; assumption).
-        destruct HS1 as [k1 | |], HS2 as [k2 | |].
+        inversion HS1 as [k1 | |]; subst; destruct HS2 as [k2 | |].
         - exists Typeω@(max k1 k2); repeat split; [ constructor | eapply lift_exp_max_left; exact HT'L
                                                  | eapply lift_exp_max_left; exact HT'i | eapply lift_exp_eq_max_right; exact HTe ].
         - exfalso; exact (@typ_prop_absurd (gc_mk Θ Ξf) _ _ _ HT'L HT'2).
@@ -849,27 +864,28 @@ Section ConTypes.
       assert (HTL : Θ ⍮ Ξf ⍮ tele_sub (raw_args_tele args1) (sb_selfs p np n t) ++ im_params D Mj ⊢ T[τ] : Sd)
         by (gen_presups; assumption).
       (** The context after it. *)
-      assert (Hsub' : Θ ⍮ Ξf ⊢ tele_sub (raw_args_tele (args1 ++ (y, T) :: nil)) (sb_selfs p np n t) ++ im_params D Mj
+      assert (Hsub' : Θ ⍮ Ξf ⊢ tele_sub (raw_args_tele (args1 ++ (y, κ, T) :: nil)) (sb_selfs p np n t) ++ im_params D Mj
                         ⊆ cargs_ctx p D Mj (gs1 ++ g' :: nil) ++ im_params D Mj).
-      { rewrite raw_args_tele_app, tele_sub_app; cbn [raw_args_tele List.map List.rev List.app tele_sub centry_sub List.length snd].
+      { rewrite raw_args_tele_app, tele_sub_app; cbn [raw_args_tele List.map List.rev List.app tele_sub centry_sub List.length snd fst].
         rewrite length_raw_args_tele.
-        rewrite cargs_ctx_snoc, cargs_ctx_aux_single, <- Hpat, <- Hentry; cbn [List.app].
+        rewrite cargs_ctx_snoc, cargs_ctx_aux_single, <- Hpat, <- Hentry, Hkind; cbn [List.app].
         change (sb_qn 0 ?x) with x.
         replace (sb_qn (List.length args1) (sb_selfs p np n t)) with τ
           by (unfold τ, sb_selfs; rewrite sb_qn_plus; reflexivity).
         eapply ctx_sub_extend;
           [ exact Hsub | rewrite Hentry; exact HEd | exact HSd | exact HTL | exact HSd
-          | eapply proj1, wf_subtyp_of_exp_eq; [ exact HTL | exact HT'd | exact HSd | exact HTed ] ]. }
+          | eapply proj1, wf_subtyp_of_exp_eq; [ exact HTL | exact HT'd | exact (sort_kind_type_sort _ _ HSd) | exact HTed ] ]. }
       assert (Hpat' : classified_carg_bit g :: pat = cargs_pat (gs1 ++ g' :: nil))
-        by (rewrite cargs_pat_snoc, <- (classified_carg_num_bit _ _ _ _ Eg), Hpat; reflexivity).
+        by (rewrite cargs_pat_snoc, <- (classified_carg_bit_tag κ g), <- (classified_carg_num_bit _ _ _ _ Eg), Hpat; reflexivity).
       destruct (IH (gs1 ++ g' :: nil) gs2' eq_refl ltac:(rewrite <- List.app_assoc; exact Hall) Hpat'
                   ltac:(rewrite !List.length_app, Hlen; reflexivity) Hsub') as [j0 Hj0].
       (** The two sides as [Π]s. *)
       rewrite raw_args_tele_cons, tele_sub_app; cbn [tele_sub centry_sub List.length]; rewrite ctx_pi_snoc.
       assert (Ecg : cargs_ctx_aux p D (im_nn Mj) pat (g' :: gs2')
-                    = cargs_ctx_aux p D (im_nn Mj) (classified_carg_bit g :: pat) gs2' ++ ce_ass (carg_entry p D (im_nn Mj) pat g') :: nil)
-        by (rewrite (classified_carg_num_bit _ _ _ _ Eg); destruct g'; reflexivity).
-      rewrite Ecg, ctx_pi_snoc.
+                    = cargs_ctx_aux p D (im_nn Mj) (classified_carg_bit g :: pat) gs2'
+                        ++ ce_ass (carg_entry_kind g') (carg_entry p D (im_nn Mj) pat g') :: nil)
+        by (rewrite <- (classified_carg_bit_tag κ g), (classified_carg_num_bit _ _ _ _ Eg); destruct g'; reflexivity).
+      rewrite Ecg, ctx_pi_snoc, Hkind.
       rewrite raw_args_tele_app, tele_sub_app in Hj0; cbn [raw_args_tele List.map List.rev List.app tele_sub centry_sub List.length snd] in Hj0.
       rewrite length_raw_args_tele, List.length_app in Hj0; cbn [List.length] in Hj0.
       replace (List.length args1 + 1 + np) with (1 + (List.length args1 + np)) in Hj0 by lia.
