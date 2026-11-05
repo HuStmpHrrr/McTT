@@ -61,7 +61,7 @@ Lemma sem_con :
      ⊨ Θ ⍮ Ξ ⍮ cargs_ctx p D M gs ++ im_params D M ->
      (forall gs1 t gs2 j, gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
         ⊨ Θ ⍮ Ξ ⍮ (shape_domains_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D M gs1 ++ im_params D M)
-                  ▹ ptyp_ty p D (im_nn M) (List.repeat false j ++ cargs_pat gs1) (ptyp_skip j t)) ->
+                  ▹{ak_relevant} ptyp_ty p D (im_nn M) (List.repeat false j ++ cargs_pat gs1) (ptyp_skip j t)) ->
      Θ ⍮ Ξ ⍮ ⋅ ⊨ con_ty p D k M gs : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊨ a_con p k c : con_ty p D k M gs ).
 Proof.

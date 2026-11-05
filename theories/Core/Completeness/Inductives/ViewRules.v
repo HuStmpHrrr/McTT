@@ -50,7 +50,7 @@ Lemma per_elem_con_prefix : forall i R a b, DF a ≈ b ∈ per_univ_elem i ↘ R
     R (d_con hd kq c (cs ++ ms)) y -> R (d_con hd kq c (cs' ++ ms)) y.
 Proof.
   intros * H; per_univ_elem_induction H; intros * Hq HMq Hh Lc Lc' Hx.
-  1-2: match goal with HE : _ <~> per_relevant_nonlevel (per_univ _) |- _ => apply HE in Hx end;
+  1-2: match goal with HE : _ <~> per_universe_elements (per_univ _) |- _ => apply HE in Hx end;
        destruct Hx as [[R0 HR0] _ _]; exfalso; exact (per_univ_elem_not_con _ _ _ _ HR0 _ _ _ _ eq_refl).
   - match goal with HE : _ <~> per_lvl_at _ |- _ => apply HE in Hx end.
     destruct (Hx 0) as [L0 HL0 _ _]; inversion HL0.
@@ -67,7 +67,7 @@ Proof.
     destruct Hx' as [Hra Hrb Hx'].
     (** The argument sort of a constructor's value reads only the number
         of its arguments. *)
-    constructor; [ rewrite <- Hra; cbn [arg_relevance]; rewrite Hq, HMq, !List.length_app, Lc, Lc'; reflexivity | exact Hrb |].
+    constructor; [ rewrite <- Hra; cbn [arg_kind]; rewrite Hq, HMq, !List.length_app, Lc, Lc'; reflexivity | exact Hrb |].
     intros c0 c0' Hc0.
     destruct (Hx' c0 c0' Hc0) as [fa f'a' Efa Ef'a' Hfa].
     inversion Efa; subst;
@@ -130,7 +130,7 @@ Lemma eval_app_args_con_decl_any : forall qh Dq kq Mq pm c Ns ρ xs xs' l, ind_l
 Proof.
   intros qh Dq kq Mq pm c; induction Ns as [| N Ns IH]; intros ρ xs xs' l Hq HM Hh HL Ea; inversion Ea; subst.
   - exists nil; rewrite !List.app_nil_r; split; [ reflexivity | split; [ reflexivity | constructor ] ].
-  - match goal with Har : arg_relevance _ _ _ = relevant, En : ⟦ N ⟧ _ ⍮ _ ⍮ ρ ↘ ?n, Eg : eval_app _ _ _ ?n ?g,
+  - match goal with Har : evaluated_kind (arg_kind _ _ _), En : ⟦ N ⟧ _ ⍮ _ ⍮ ρ ↘ ?n, Eg : eval_app _ _ _ ?n ?g,
                     Er : eval_app_args _ _ ?g Ns ρ l |- _ =>
       inversion Eg; subst;
         match goal with H1 : ind_lookup _ _ qh = Some ?D1 |- _ => rewrite Hq in H1; injection H1 as <- end;
@@ -140,9 +140,9 @@ Proof.
         as (ms & Lms & -> & Er');
       exists (n :: ms); rewrite <- !List.app_assoc in *; split; [ cbn; lia | split; [ reflexivity |] ];
       eapply eval_app_args_relevant;
-        [ cbn [arg_relevance] in Har |- *; rewrite Hq, HM in *; rewrite HL; exact Har | exact En
+        [ cbn [arg_kind] in Har |- *; rewrite Hq, HM in *; rewrite HL; exact Har | exact En
         | eapply eval_app_con; [ exact Hq | exact HM | exact Hh | eassumption | lia ] | exact Er' ] end.
-  - match goal with Har : arg_relevance _ _ _ = propositional, Eg : eval_app _ _ _ (⋆ᵈ⟨N, ρ⟩) ?g,
+  - match goal with Har : arg_kind _ _ _ = ak_propositional, Eg : eval_app _ _ _ (⋆ᵈ⟨N, ρ⟩) ?g,
                     Er : eval_app_args _ _ ?g Ns ρ l |- _ =>
       inversion Eg; subst;
         match goal with H1 : ind_lookup _ _ qh = Some ?D1 |- _ => rewrite Hq in H1; injection H1 as <- end;
@@ -152,7 +152,7 @@ Proof.
         as (ms & Lms & -> & Er');
       exists (⋆ᵈ⟨N, ρ⟩ :: ms); rewrite <- !List.app_assoc in *; split; [ cbn; lia | split; [ reflexivity |] ];
       eapply eval_app_args_proof;
-        [ cbn [arg_relevance] in Har |- *; rewrite Hq, HM in *; rewrite HL; exact Har
+        [ cbn [arg_kind] in Har |- *; rewrite Hq, HM in *; rewrite HL; exact Har
         | eapply eval_app_con; [ exact Hq | exact HM | exact Hh | eassumption | lia ] | exact Er' ] end.
 Qed.
 
@@ -183,9 +183,9 @@ Proof.
       match goal with Hh2 : im_head Mj = mh_view ?q2 ?k2 ?I2 ?v2 |- _ => rewrite Hh in Hh2; injection Hh2 as <- <- <- <- end.
       eexists (n :: nil), _; split; [ econstructor; [ eassumption | constructor ] | split; [ eassumption | reflexivity ] ].
   - (** No uniform parameter is a proof. *)
-    exfalso; match goal with Har : arg_relevance _ _ _ = propositional |- _ =>
-      revert Har; cbn [arg_relevance]; rewrite Hl, HM; unfold con_param_count, im_np; rewrite Hh;
-      destruct (Nat.ltb_spec (List.length xs) (im_nn Mj + ind_nu D)); [ intros E; discriminate E | lia ] end.
+    exfalso; match goal with Har : arg_kind _ _ _ = ak_propositional |- _ =>
+      revert Har; cbn [arg_kind]; rewrite Hl, HM; unfold con_param_count, im_np; rewrite Hh;
+      destruct (Nat.ltb_spec (List.length xs) (im_nn Mj + ind_nu D)); [ apply tele_param_kind_not_propositional | lia ] end.
 Qed.
 
 (** ** A View's Constructor
@@ -277,7 +277,7 @@ Lemma con_rview_value : forall P p D, valid_groups P -> P p D ->
     ind_con Mj c = Some gs -> record_lookup gc_deps gc_stack qr = Some R ->
     List.length Us = ind_nu D -> List.length Ms = List.length fl ->
     ⟦ apps (a_con p j c) (Us ++ Ms) ⟧ ρ ↘ l ->
-    exists ms, eval_field_vals gc_deps gc_stack (record_field_relevance R) Ms ρ ms /\ l = d_tuple (List.combine fl ms).
+    exists ms, eval_field_vals gc_deps gc_stack (record_field_kinds R) Ms ρ ms /\ l = d_tuple (List.combine fl ms).
 Proof.
   intros P p D HP HPD * HMj Hh Hcon HR HUl HMl El.
   pose proof (decl_typed_record_struct _ _ _ (valid_group_typed _ _ (valid_groups_valid P HP p D HPD))) as Hrs.
@@ -296,10 +296,9 @@ Proof.
     as (zs & Ezs & Hl).
   cbn [List.length List.skipn List.app] in Ezs, Hl.
   destruct (Mctt.Core.Completeness.Records.Model.eval_field_vals_app_inv _ _ _ _ _ Ezs) as (us & ms & -> & Eus & Ems).
-  unfold con_relevances in Ems.
-  rewrite List.skipn_app, List.skipn_all2, List.repeat_length, Hnp, HUl, Nat.sub_diag in Ems
-    by (rewrite List.repeat_length, Hnp, HUl; lia).
-  cbn [List.skipn List.app] in Ems.
+  rewrite (con_kinds_skipn D j Mj gs (valid_group_typed _ _ (valid_groups_valid P HP p D HPD)) HMj (List.length Us)) in Ems
+    by (rewrite ?Hnp, HUl; lia).
+  rewrite Hnp, HUl, Nat.sub_diag in Ems; cbn [List.repeat List.app] in Ems.
   pose proof (Mctt.Core.Completeness.Records.Model.eval_field_vals_length _ _ _ _ Eus) as Lus.
   pose proof (Mctt.Core.Completeness.Records.Model.eval_field_vals_length _ _ _ _ Ems) as Lms.
   exists ms; split; [ rewrite <- Hrel; exact Ems |].
@@ -340,7 +339,7 @@ Proof.
     rewrite HlR in HL0; injection HL0 as <- end.
   rewrite combine_snd_eq in * by (symmetry; exact HMl).
   rewrite combine_fst_eq by (symmetry; exact HMl).
-  match goal with H : eval_field_vals _ _ (record_field_relevance Rr) Ms ρ' ?vs |- _ =>
+  match goal with H : eval_field_vals _ _ (record_field_kinds Rr) Ms ρ' ?vs |- _ =>
     pose proof (functional_eval_field_vals _ _ _ _ _ H Ems) as -> end.
   exact Hll'.
 Qed.

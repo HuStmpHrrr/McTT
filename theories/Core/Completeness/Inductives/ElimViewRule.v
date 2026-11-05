@@ -51,7 +51,7 @@ Record elim_exp_value (p : qname) (Us : list exp) (j : nat) (Bks : list eblock) 
     (** The eliminator on the scrutinee's value gives [r] *)
   ; elim_exp_value_elim : ⟦elim elim_exp_value_scrut at j of p elim_exp_value_ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r }.
 
-Lemma elim_exp_value_of : forall p Us j Bks M ρ r, ⟦ a_elim relevant p Us j Bks M ⟧ ρ ↘ r -> elim_exp_value p Us j Bks M ρ r.
+Lemma elim_exp_value_of : forall p Us j Bks M ρ r, ⟦ a_elim ak_relevant p Us j Bks M ⟧ ρ ↘ r -> elim_exp_value p Us j Bks M ρ r.
 Proof. intros * H; inversion H; subst; econstructor; eassumption. Qed.
 
 Section ElimViewRule.
@@ -89,7 +89,7 @@ Section ElimViewRule.
   Let HgQ := valid_groups_valid VP HP qc D' HVQ.
   Let HaQ : tele_ass (ind_uparams D') := uparams_ass D' (valid_group_closed _ _ HgQ).
   Let HWQ : ⊨ ind_uparams D' := valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ).
-  Let VB := view_wrap relevant p qc D D' vm Us (im_pre Mm Us) Bks.
+  Let VB := view_wrap ak_relevant p qc D D' vm Us (im_pre Mm Us) Bks.
   Let HUr := valid_ind_decl_uparams_relevant _ HD.
   Let HQr := valid_ind_decl_uparams_relevant _ (valid_group_valid _ _ HgQ).
 
@@ -230,7 +230,7 @@ Section ElimViewRule.
       ⟦ σ : Γ ⟧s ρ ↘ C1 -> ⟦ σ' : Γ ⟧s ρ' ↘ C2 ->
       exists R, rel_exp ((eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)]) σ ρ C1
                   ((eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)]) σ' ρ' C2 (per_univ_elem iA R) /\
-        rel_exp (a_elim relevant p Us m Bks M) σ ρ C1 (a_elim relevant qc (im_pre Mm Us) k' VB M) σ' ρ' C2 R.
+        rel_exp (a_elim ak_relevant p Us m Bks M) σ ρ C1 (a_elim ak_relevant qc (im_pre Mm Us) k' VB M) σ' ρ' C2 R.
   Proof.
     intros * HRΓ' Hσ Hρ Hev Hev'.
     pose proof HBk as [HLb0 HnmA _ _ HnaA HBc HarA HBv].
@@ -252,7 +252,7 @@ Section ElimViewRule.
     assert (HBB : forall k Mk b b' c0 gs0 n0 B0 B0', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
                List.nth_error Bks k = Some b' -> ind_con Mk c0 = Some gs0 ->
                brs_lookup (eb_brs b) c0 = Some (n0, B0) -> brs_lookup (eb_brs b') c0 = Some (n0, B0') ->
-               elim_bctx relevant p D Mk gs0 (blocks_motives Bks) Us ++ Γ ⊨ B0 ≈ B0' : elim_branch_type p D k Mk c0 gs0 (eb_motive b) Us)
+               elim_bctx ak_relevant p D Mk gs0 (blocks_motives Bks) Us ++ Γ ⊨ B0 ≈ B0' : elim_branch_type p D k Mk c0 gs0 (eb_motive b) Us)
       by (intros * HMk Hb Hb' Hc0 Hl1 Hl2; rewrite Hb in Hb'; injection Hb' as <-; rewrite Hl1 in Hl2; injection Hl2 as <-;
           exact (HBv _ _ _ _ _ _ _ HMk Hb Hc0 (brs_lookup_in _ _ _ _ Hl1))).
     destruct (elim_stage VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs HUss C1 u0 HC11 HUC1 C2 HC12 Bks iA HBks HMall HAv
@@ -268,11 +268,11 @@ Section ElimViewRule.
     destruct (rel_type_inversion_simple_at HRΓ HTM _ _ HC22) as (t3 & t3' & Et3 & Et3' & [Rt Ht]).
     assert (t3' = t3) as -> by (eapply functional_eval_exp; eassumption).
     (** The scrutinee's type is an inductive type, relevant. *)
-    assert (Ht3r : rel_typ_sort (ind_mty p D m Us Ns) C2 relevant).
+    assert (Ht3r : rel_typ_kind (ind_mty p D m Us Ns) C2 ak_relevant).
     { exists t3; split; [ exact Et3 |].
       destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMm ltac:(unfold im_is_rview; rewrite Hh; reflexivity) Et3) as (? & ? & _ & _ & ->).
       reflexivity. }
-    destruct (rel_exp_under_ctx_simple_at_relevant HRΓ HM _ _ HC22 Ht3r) as (m3' & m3'' & Em3' & Em3'' & Hmm).
+    destruct (rel_exp_under_ctx_simple_at_evaluated HRΓ HM _ _ HC22 (rel_typ_evaluated_of_kind Ht3r evaluated_kind_relevant)) as (m3' & m3'' & Em3' & Em3'' & Hmm).
     assert (m3' = m3) as -> by (eapply functional_eval_exp; eassumption).
     assert (m3'' = m3) as -> by (eapply functional_eval_exp; eassumption).
     pose proof (Hmm _ _ _ _ Et3 Et3 Ht) as Hm33.
@@ -285,7 +285,7 @@ Section ElimViewRule.
     pose proof (rel_sub_under_ctx_refl_right Hσ) as Hσ'.
     pose proof HM as [RΓm HRΓm iM HMg].
     destruct (HMg _ _ HRΓ' _ _ Hσ' _ _ _ _ Hρ'ρ' Hev' Hev') as (RMe & HTyM & HMor).
-    pose proof (rel_exp_or_prop_relevant HTyM Ht3r HMor) as [m4 m2 m5 m6 Em4 Em2 Em5 Em6 Hmc].
+    pose proof (rel_exp_or_prop_evaluated HTyM (rel_typ_evaluated_of_kind Ht3r evaluated_kind_relevant) HMor) as [m4 m2 m5 m6 Em4 Em2 Em5 Em6 Hmc].
     destruct HTyM as [t1 t2 t5 t4 Et1 Et2 Et5 Et4 Htc].
     assert (t2 = t3) as -> by (eapply functional_eval_exp; eassumption).
     assert (m2 = m3) as -> by (eapply functional_eval_exp; eassumption).
@@ -452,16 +452,16 @@ Theorem rel_exp_under_ctx_elim_view : forall VP p D, valid_groups VP -> VP p D -
        elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊨ eb_motive b : Typeω@i) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
     (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-       ⊨ elim_bctx relevant p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
+       ⊨ elim_bctx ak_relevant p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> ind_con Mk c = Some gs ->
        In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> ind_con Mk c = Some gs ->
        In (c, n, B) (eb_brs b) ->
-       elim_bctx relevant p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
+       elim_bctx ak_relevant p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-    Γ ⊨ a_elim relevant p (List.firstn (ind_nu D) Ps) m Bks M
-      ≈ a_elim relevant qc (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
-          (view_wrap relevant p qc D D' vm (List.firstn (ind_nu D) Ps) (im_pre Mm (List.firstn (ind_nu D) Ps)) Bks) M
+    Γ ⊨ a_elim ak_relevant p (List.firstn (ind_nu D) Ps) m Bks M
+      ≈ a_elim ak_relevant qc (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
+          (view_wrap ak_relevant p qc D D' vm (List.firstn (ind_nu D) Ps) (im_pre Mm (List.firstn (ind_nu D) Ps)) Bks) M
       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
   intros VP p D HP HPD * HΓ HMm Hh Hq Hbm HLb HPl HPs HPss HM HMs HBss HnmA HMall HAv HnaA HBc HarA HBv.
