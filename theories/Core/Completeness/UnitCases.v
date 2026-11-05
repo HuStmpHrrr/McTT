@@ -787,10 +787,11 @@ Qed.
 (** Two environments related at a definition entry and two related at a
     slot, with the same tails entry by entry, give two related at the
     definition with a module part: the heads of the first, the modules of
-    the second. *)
-Lemma per_env_extend_dm_combine : forall {Γ A M U R RA a b ma mb},
+    the second.  The assumption context [Γ ▹{κ} A], of any kind, only
+    witnesses that the heads read back at [A] ([per_head_dm_readable]). *)
+Lemma per_env_extend_dm_combine : forall {Γ κ A M U R RA a b ma mb},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
-    EF Γ ▹{ak_relevant} A ≈ Γ ▹{ak_relevant} A ∈ per_ctx_env ↘ RA ->
+    EF Γ ▹{κ} A ≈ Γ ▹{κ} A ∈ per_ctx_env ↘ RA ->
     Γ ⊨ᵐ me_lit U ≈ me_lit U ->
     per_env_extend_def A M R a b ->
     per_ctx_env_mod_rel R (List.length Γ) U U ma mb ->
@@ -891,10 +892,11 @@ Qed.
     evaluates to from [Γ' ▸ₘ A[σ] ≔ M[σ] ‖ U[σ]] to [Γ ▸ A ≔ M] are such:
     their heads [de_dm v t h gunit_default] are the source's, retagged at
     the definition; stored at [U] instead they are the values of [q σ] at
-    [Γ ▸ₘ A ≔ M ‖ U]. *)
-Lemma per_env_extend_dm_of_def : forall {Γ A M U R RA a b},
+    [Γ ▸ₘ A ≔ M ‖ U].  As in [per_env_extend_dm_combine], the assumption
+    context [Γ ▹{κ} A] is of any kind. *)
+Lemma per_env_extend_dm_of_def : forall {Γ κ A M U R RA a b},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
-    EF Γ ▹{ak_relevant} A ≈ Γ ▹{ak_relevant} A ∈ per_ctx_env ↘ RA ->
+    EF Γ ▹{κ} A ≈ Γ ▹{κ} A ∈ per_ctx_env ↘ RA ->
     per_env_extend_def A M R a b ->
     (exists t U0, env_entry a 0 = de_dm (a 0) t (env_mod a 0) U0) ->
     (exists t U0, env_entry b 0 = de_dm (b 0) t (env_mod b 0) U0) ->

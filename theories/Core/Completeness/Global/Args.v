@@ -26,11 +26,11 @@ Lemma gargs_rel : forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' ->
     exists R, EF rev (firstn (List.length args) ts) ++ Tb ≈ rev (firstn (List.length args) ts) ++ Tb ∈ per_ctx_env ↘ R /\
       R (env_tele ρ ts args) (env_tele ρ' ts args').
 Proof.
-  induction 1 as [ts ρ ρ' | i A ρ ρ' a a' ts args args' R1 HA Ha Hg IH]; intros Tb Rb HTb Hρ HC; cbn [firstn List.length rev app].
+  induction 1 as [ts ρ ρ' | i A ρ ρ' a a' ts args args' κ R1 HA Ha Hg IH]; intros Tb Rb HTb Hρ HC; cbn [firstn List.length rev app].
   - exists Rb; split; assumption.
   - cbn [rev] in HC; rewrite <- app_assoc in HC; cbn [app] in HC.
     destruct (rel_ctx_wf_ass_type (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
-    pose proof (per_ctx_env_of_typ HTb (HAv j (le_n j))) as HTb'.
+    pose proof (per_ctx_env_of_typ (κ := κ) HTb (HAv j (le_n j))) as HTb'.
     assert (Hρ' : per_env_extend A A Rb (ρ ↦ a ⦂ entry_type_closure A ρ) (ρ' ↦ a' ⦂ entry_type_closure A ρ')).
     { destruct HA as [x x' Hx Hx' Hxx].
       pose proof (entry_readable_of_elem_closure Hx Hx' Hxx Ha) as [Ra Ra'].

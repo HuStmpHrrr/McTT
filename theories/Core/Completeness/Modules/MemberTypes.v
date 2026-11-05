@@ -68,9 +68,17 @@ Qed.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** The type of an assumption is a type of either sort. *)
-Lemma rel_ctx_wf_ass_inv : forall {Γ A}, ⊨ Γ ▹ A -> exists Srt, type_sort Srt /\ Γ ⊨ A : Srt.
+(** The type of an assumption is a type of a sort of the assumption's
+    kind. *)
+Lemma rel_ctx_wf_ass_inv : forall {Γ κ A}, ⊨ Γ ▹{κ} A -> exists Srt, sort_kind Srt κ /\ Γ ⊨ A : Srt.
 Proof. intros * H; inversion H; subst; eauto. Qed.
+
+(** So it is of the assumption's kind. *)
+Corollary rel_ctx_wf_ass_kind : forall {Γ κ A}, ⊨ Γ ▹{κ} A -> rel_type_kind Γ A κ.
+Proof.
+  intros * H; destruct (rel_ctx_wf_ass_inv H) as (Srt & HS & HA).
+  exact (rel_type_kind_of_sort_kind HS HA).
+Qed.
 
 (** And so is that of a definition, its body valid at it. *)
 Lemma rel_ctx_wf_def_inv : forall {Γ A M}, ⊨ Γ ▸ A ≔ M ->
@@ -78,15 +86,15 @@ Lemma rel_ctx_wf_def_inv : forall {Γ A M}, ⊨ Γ ▸ A ≔ M ->
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
 (** The type of an assumption is a type of every index from some index on. *)
-Corollary rel_ctx_wf_ass_type : forall {Γ A}, ⊨ Γ ▹ A ->
+Corollary rel_ctx_wf_ass_type : forall {Γ κ A}, ⊨ Γ ▹{κ} A ->
     exists i, forall j, i <= j -> Γ ⊨ᵗ A ≈ A at j.
 Proof.
   intros * H; destruct (rel_ctx_wf_ass_inv H) as (Srt & HS & HA).
-  exact (rel_type_of_sort_ge HS HA).
+  exact (rel_type_of_sort_ge (sort_kind_type_sort _ _ HS) HA).
 Qed.
 
 (** In particular it is a type of an index. *)
-Corollary rel_ctx_wf_ass_typ : forall {Γ A}, ⊨ Γ ▹ A -> exists i, Γ ⊨ᵗ A ≈ A at i.
+Corollary rel_ctx_wf_ass_typ : forall {Γ κ A}, ⊨ Γ ▹{κ} A -> exists i, Γ ⊨ᵗ A ≈ A at i.
 Proof. intros * H; destruct (rel_ctx_wf_ass_type H) as [i Hi]; exists i; exact (Hi i (le_n i)). Qed.
 
 Lemma rel_ctx_wf_mod_inv : forall {Γ U}, ⊨ Γ ▹ₘ U -> Γ ⊨ᵘ U ≈ U.
@@ -125,7 +133,7 @@ Proof.
   - split; [ assumption | eapply rel_ctx_wf_extend_def_sort; eassumption ].
   - split; [ assumption | eapply rel_ctx_wf_extend_mod; eassumption ].
   - split; [ assumption | eapply rel_ctx_wf_extend_dm; eassumption ].
-  - pose proof (rel_exp_under_ctx_gsub HG HB) as H; rewrite (type_sort_sub _ _ HS) in H.
+  - pose proof (rel_exp_under_ctx_gsub HG HB) as H; rewrite (type_sort_sub _ _ (sort_kind_type_sort _ _ HS)) in H.
     split; eapply rel_ctx_wf_extend_sort; [ exact IH1 | exact HS | exact H | exact IH2 | exact HS | exact HB ].
   - pose proof (rel_exp_under_ctx_gsub HG HB) as H1; rewrite (type_sort_sub _ _ HS) in H1.
     pose proof (rel_exp_under_ctx_gsub HG HM) as H2.
@@ -141,25 +149,27 @@ Qed.
 (** ** Generalizing over a Telescope *)
 
 (** A type of a universe, or a proposition, generalized over a telescope
-    of assumptions: a [Π] into a type of a universe, or a [∀] into a
-    proposition. *)
-Lemma valid_exp_under_ctx_ctx_pi_at : forall r Ψ D X i, tele_ass Ψ -> ⊨ Ψ ++ D ->
-    Ψ ++ D ⊨ X : relevance_sort r Typeω@i ->
-    exists j, D ⊨ ctx_pi_at r Ψ X : relevance_sort r Typeω@j.
+    of assumptions of any kinds: a [Π] into a type of a universe, or a [∀]
+    into a proposition.  As [ctx_pi_at_wf], not into a type of levels,
+    whose [Π]s take levels only ([pi_kinds]). *)
+Lemma valid_exp_under_ctx_ctx_pi_at : forall r Ψ D X i, r <> ak_level -> tele_ass Ψ -> ⊨ Ψ ++ D ->
+    Ψ ++ D ⊨ X : abs_kind_sort r Typeω@i ->
+    exists j, D ⊨ ctx_pi_at r Ψ X : abs_kind_sort r Typeω@j.
 Proof.
-  induction Ψ as [| e Ψ IH]; intros * HΨa HΨ HX; cbn in *; [ eauto |].
-  inversion HΨa as [| ? ? [B ->] HΨa']; subst.
+  induction Ψ as [| e Ψ IH]; intros * Hr HΨa HΨ HX; cbn in *; [ eauto |].
+  inversion HΨa as [| ? ? (κ & B & ->) HΨa']; subst.
   destruct (rel_ctx_wf_ass_type HΨ) as [k HB].
-  eapply IH; [ exact HΨa' | exact (rel_ctx_wf_tail HΨ) |].
-  destruct r; cbn [relevance_sort] in *.
+  pose proof (rel_ctx_wf_ass_kind HΨ) as HBk.
+  eapply IH; [ exact Hr | exact HΨa' | exact (rel_ctx_wf_tail HΨ) |].
+  destruct r; cbn [abs_kind_sort] in *; [| | contradiction ].
   - apply (rel_exp_under_ctx_pi_cong (i := max i k));
-      [ apply HB; lia | apply HB; lia | eapply rel_exp_cumu_ge; [| exact HX ]; lia ].
+      [ apply HB; lia | apply HB; lia | exact HBk | eapply rel_exp_cumu_ge; [| exact HX ]; lia ].
   - exact (rel_exp_under_ctx_all (HB k (le_n k)) (HB k (le_n k)) HX).
 Qed.
 
 Corollary valid_exp_under_ctx_ctx_pi : forall Ψ D X i, tele_ass Ψ -> ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Typeω@i ->
     exists j, D ⊨ ctx_pi Ψ X : Typeω@j.
-Proof. intros * HΨa HΨ HX; exact (valid_exp_under_ctx_ctx_pi_at relevant _ _ _ _ HΨa HΨ HX). Qed.
+Proof. intros * HΨa HΨ HX; exact (valid_exp_under_ctx_ctx_pi_at ak_relevant _ _ _ _ ltac:(discriminate) HΨa HΨ HX). Qed.
 
 (** ** Telescopes of Parameters *)
 

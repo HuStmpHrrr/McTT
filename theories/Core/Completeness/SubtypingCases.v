@@ -239,38 +239,42 @@ End Fixed_GCtx.
     PER into that extended context PER: the two PERs share their right value
     [⟦A'⟧ρ'σ'], so [per_univ_elem_left_irrel] identifies them.
 
-    Levels: the domains are types of either sort, the codomains of [i], the
-    codomain subtyping comes at whatever level [rel_subtyp_under_ctx_simple]
-    reports, and [per_subtyp_pi] requires all its premises and its conclusion
-    to agree.  So the domains are read as types at an index [k] above [i]
-    ([rel_type_of_sort_ge]), the codomains lifted to [k], and everything
-    raised to [max k i0]. *)
+    Levels and kinds: all four types are at the sorts of their kinds over
+    the one index [i] ([abs_kind_sort]), so all are types at [i]
+    ([rel_type_of_abs_kind_sort]) with no lifting; the codomain subtyping
+    comes at whatever level [rel_subtyp_under_ctx_simple] reports, and
+    everything is raised to [max i i0].  The kinds of the domains and
+    codomains are read off their sorts ([rel_exp_of_abs_kind_sort_at]), and
+    the codomain kind is evaluated, as [per_subtyp_pi] requires. *)
 Lemma sem_subtyp_pi :
-  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Srt ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ A' : Srt ->
-     pi_domain_sort Typeω@i Srt ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊨ B' : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊨ B ⊆ B' ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ Π A B ⊆ Π A' B' ).
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : abs_kind_sort κd Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A' : abs_kind_sort κd Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : abs_kind_sort κd Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊨ B : abs_kind_sort κc Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹{κd} A' ⊨ B' : abs_kind_sort κc Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹{κd} A' ⊨ B ⊆ B' ->
+     pi_kinds κd κc ->
+     evaluated_kind κc ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_pi κd κc A B ⊆ a_pi κd κc A' B' ).
 Proof.
-  intros * HAself0 HA'self0 HS HAA'0 HB0 HB'0 Hsub; sem_intro; [ assumption |].
-  assert (HSrt : type_sort Srt) by (destruct HS; constructor).
-  destruct (rel_type_of_sort_ge HSrt HAself0) as [k1 Hk1].
-  destruct (rel_type_of_sort_ge HSrt HA'self0) as [k2 Hk2].
-  destruct (rel_type_of_sort_ge HSrt HAA'0) as [k3 Hk3].
-  set (k := Nat.max i (Nat.max k1 (Nat.max k2 k3))).
-  assert (HAself : Γ ⊨ᵗ A ≈ A at k) by (apply Hk1; lia).
-  assert (HA'self : Γ ⊨ᵗ A' ≈ A' at k) by (apply Hk2; lia).
-  assert (HAA' : Γ ⊨ᵗ A ≈ A' at k) by (apply Hk3; lia).
-  assert (HB : Γ ▹ A ⊨ B : Typeω@k) by (eapply rel_exp_cumu_ge; [| exact HB0 ]; lia).
-  assert (HB' : Γ ▹ A' ⊨ B' : Typeω@k) by (eapply rel_exp_cumu_ge; [| exact HB'0 ]; lia).
-  clearbody k; clear HAself0 HA'self0 HAA'0 HB0 HB'0 Hk1 Hk2 Hk3 HS HSrt i.
-  rename k into i.
+  intros * HAself0 HA'self0 HAA'0 HB0 HB'0 Hsub Hk Hev0; sem_intro; [ assumption |].
+  pose proof (rel_type_of_abs_kind_sort HAself0) as HAself.
+  pose proof (rel_type_of_abs_kind_sort HA'self0) as HA'self.
+  pose proof (rel_type_of_abs_kind_sort HAA'0) as HAA'.
+  pose proof (rel_type_of_abs_kind_sort HB0) as HB.
+  pose proof (rel_type_of_abs_kind_sort HB'0) as HB'.
+  assert (HAk : rel_type_kind Γ A κd)
+    by (intros R HR ρ ρ' Hρ; exact (rel_exp_of_abs_kind_sort_at HR HAself0 _ _ Hρ)).
+  assert (HA'k : rel_type_kind Γ A' κd)
+    by (intros R HR ρ ρ' Hρ; exact (rel_exp_of_abs_kind_sort_at HR HA'self0 _ _ Hρ)).
+  assert (HBk : rel_type_kind (Γ ▹{κd} A) B κc)
+    by (intros R HR ρ ρ' Hρ; exact (rel_exp_of_abs_kind_sort_at HR HB0 _ _ Hρ)).
+  assert (HB'k : rel_type_kind (Γ ▹{κd} A') B' κc)
+    by (intros R HR ρ ρ' Hρ; exact (rel_exp_of_abs_kind_sort_at HR HB'0 _ _ Hρ)).
+  clear HAself0 HA'self0 HAA'0 HB0 HB'0.
   pose proof (rel_type_inversion HAA') as [env_relΓ [HΓ HAA'gen]].
   pose proof (rel_subtyp_under_ctx_simple Hsub) as [env_relΓA' [HΓA' [i0 Hsubgen]]].
-  pose proof (per_ctx_env_of_typ HΓ HA'self) as HΓA'can.
+  pose proof (per_ctx_env_of_typ (κ := κd) HΓ HA'self) as HΓA'can.
   assert (HiffA' : env_relΓA' <~> per_env_extend A' A' env_relΓ)
     by (eapply per_ctx_env_right_irrel; [ exact HΓA' | exact HΓA'can ]).
   eexists_subtyp_with (max i i0).
@@ -278,15 +282,15 @@ Proof.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
     by (eapply (rel_sub_under_ctx_at' Hσ HΓ' HΓ); eassumption).
   (** The two Π-values, each from its own self-equality. *)
-  destruct (rel_typ_of_pi HAself HAself HB _ _ HΓ' _ _ _ _ _ _ Hσ Hρ Hev Hev')
+  destruct (rel_typ_of_pi_evaluated HAself HAself HAk HB HBk Hk Hev0 _ _ HΓ' _ _ _ _ _ _ Hσ Hρ Hev Hev')
     as [in1 [p1 [p2 [p3 [p4 [Hp1 [Hp2 [Hp3 [Hp4 [_ [_ Htyp1]]]]]]]]]]].
-  destruct (rel_typ_of_pi HA'self HA'self HB' _ _ HΓ' _ _ _ _ _ _ Hσ Hρ Hev Hev')
+  destruct (rel_typ_of_pi_evaluated HA'self HA'self HA'k HB' HB'k Hk Hev0 _ _ HΓ' _ _ _ _ _ _ Hσ Hρ Hev Hev')
     as [in2 [q1 [q2 [q3 [q4 [Hq1 [Hq2 [Hq3 [Hq4 [_ [Hmid2 Htyp2]]]]]]]]]]].
   pose proof Htyp1 as [P1 P2 P3 P4 HP1 HP2 HP3 HP4 HPchain].
   pose proof Htyp2 as [Q1 Q2 Q3 Q4 HQ1 HQ2 HQ3 HQ4 HQchain].
-  assert (P2 = Πᵈ p2 ρσ B) as ->
+  assert (P2 = d_pi κd κc p2 ρσ B) as ->
     by (eapply functional_eval_exp; [ exact HP2 | apply eval_exp_pi; exact Hp2 ]).
-  assert (Q3 = Πᵈ q3 ρ'σ' B') as ->
+  assert (Q3 = d_pi κd κc q3 ρ'σ' B') as ->
     by (eapply functional_eval_exp; [ exact HQ3 | apply eval_exp_pi; exact Hq3 ]).
   (** The domain PER, from the heterogeneous equality's middle link. *)
   destruct (HAA'gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
@@ -298,7 +302,7 @@ Proof.
   (** The two element PERs are named rather than left to [eexists]: [pairwise]
       matches its [rel_chain] hypothesis syntactically, so a metavariable in the
       relation position of the goal finds nothing. *)
-  exists P1 (Πᵈ p2 ρσ B) Q4 (Πᵈ q3 ρ'σ' B'); try eassumption.
+  exists P1 (d_pi κd κc p2 ρσ B) Q4 (d_pi κd κc q3 ρ'σ' B'); try eassumption.
   - exists (per_pi p2 p3 in1 B ρσ B ρ'σ').
     eapply per_univ_elem_cumu_max_left; pairwise.
   - (** [Q4 ≈ Q3], i.e. the second chain's last link read backwards. *)
@@ -307,84 +311,10 @@ Proof.
   - eapply per_subtyp_pi with (in_rel := in_rel)
                               (elem_rel := per_pi p2 p3 in1 B ρσ B ρ'σ')
                               (elem_rel' := per_pi q2 q3 in2 B' ρσ B' ρ'σ').
+    + exact Hev0.
     + eapply per_univ_elem_cumu_max_left; exact Hin_rel.
     + intros c c' b b' Hc Hb Hb'.
       (** [in_rel] and [in2] share the value [q3] on the right. *)
-      assert (Hii : in_rel <~> in2)
-        by (eapply per_univ_elem_left_irrel; [ exact Hin_rel | exact Hmid2 ]).
-      pose proof (entry_readable_of_elem Hin_rel Hc) as [Rc Rc'].
-      rewrite Hii in Hc.
-      assert (Hext : Dom ρσ ↦ c ⦂ entry_type_value p2 ≈ ρ'σ' ↦ c' ⦂ entry_type_value q3 ∈ env_relΓA')
-        by (rewrite HiffA'; apply per_env_extend_intro';
-            [ exact Hρσ | eapply per_head_of; [ exact Hq2 | exact Hq3 | exact Hmid2 | exact Hc ] | exact Rc | exact Rc' ]).
-      destruct (Hsubgen _ _ Hext) as [b0 [b0' [Hb0 [Hb0' Hsubb]]]].
-      assert (b0 = b) as -> by (eapply functional_eval_exp; [ exact Hb0 | exact Hb ]).
-      assert (b0' = b') as -> by (eapply functional_eval_exp; [ exact Hb0' | exact Hb' ]).
-      apply per_subtyp_cumu_right; exact Hsubb.
-    + eapply per_univ_elem_cumu_max_left; pairwise.
-    + eapply per_univ_elem_cumu_max_left; pairwise.
-Qed.
-
-(** ** [Sub-Pi] between Types of Levels
-
-    As [sem_subtyp_pi], the domains and codomains types of levels, so
-    types of every index ([rel_type_of_level_sort]), read at index [0];
-    the Π-values come from [rel_typ_of_pi_relevant], whose codomain may be
-    a type of levels. *)
-Lemma sem_subtyp_pi_level :
-  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : LevelSort ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ A' : LevelSort ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : LevelSort ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : LevelSort ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊨ B' : LevelSort ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊨ B ⊆ B' ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ Π A B ⊆ Π A' B' ).
-Proof.
-  intros * HAself0 HA'self0 HAA'0 HB0 HB'0 Hsub; sem_intro; [ assumption |].
-  pose proof (rel_type_of_level_sort 0 HAself0) as HAself.
-  pose proof (rel_type_of_level_sort 0 HA'self0) as HA'self.
-  pose proof (rel_type_of_level_sort 0 HAA'0) as HAA'.
-  pose proof (rel_type_of_level_sort 0 HB0) as HB.
-  pose proof (rel_type_of_level_sort 0 HB'0) as HB'.
-  pose proof (rel_type_relevant_of_level_sort HB0) as HBr.
-  pose proof (rel_type_relevant_of_level_sort HB'0) as HB'r.
-  pose proof (rel_type_inversion HAA') as [env_relΓ [HΓ HAA'gen]].
-  pose proof (rel_subtyp_under_ctx_simple Hsub) as [env_relΓA' [HΓA' [i0 Hsubgen]]].
-  pose proof (per_ctx_env_of_typ HΓ HA'self) as HΓA'can.
-  assert (HiffA' : env_relΓA' <~> per_env_extend A' A' env_relΓ)
-    by (eapply per_ctx_env_right_irrel; [ exact HΓA' | exact HΓA'can ]).
-  eexists_subtyp_with (max 0 i0).
-  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
-    by (eapply (rel_sub_under_ctx_at' Hσ HΓ' HΓ); eassumption).
-  (** The two Π-values, each from its own self-equality. *)
-  destruct (rel_typ_of_pi_relevant HAself HAself HB HBr _ _ HΓ' _ _ _ _ _ _ Hσ Hρ Hev Hev')
-    as [in1 [p1 [p2 [p3 [p4 [Hp1 [Hp2 [Hp3 [Hp4 [_ [_ Htyp1]]]]]]]]]]].
-  destruct (rel_typ_of_pi_relevant HA'self HA'self HB' HB'r _ _ HΓ' _ _ _ _ _ _ Hσ Hρ Hev Hev')
-    as [in2 [q1 [q2 [q3 [q4 [Hq1 [Hq2 [Hq3 [Hq4 [_ [Hmid2 Htyp2]]]]]]]]]]].
-  pose proof Htyp1 as [P1 P2 P3 P4 HP1 HP2 HP3 HP4 HPchain].
-  pose proof Htyp2 as [Q1 Q2 Q3 Q4 HQ1 HQ2 HQ3 HQ4 HQchain].
-  assert (P2 = Πᵈ p2 ρσ B) as ->
-    by (eapply functional_eval_exp; [ exact HP2 | apply eval_exp_pi; exact Hp2 ]).
-  assert (Q3 = Πᵈ q3 ρ'σ' B') as ->
-    by (eapply functional_eval_exp; [ exact HQ3 | apply eval_exp_pi; exact Hq3 ]).
-  (** The domain PER, from the heterogeneous equality's middle link. *)
-  destruct (HAA'gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
-    as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
-  assert (d2 = p2) as -> by (eapply functional_eval_exp; [ exact Hd2 | exact Hp2 ]).
-  assert (d3 = q3) as -> by (eapply functional_eval_exp; [ exact Hd3 | exact Hq3 ]).
-  assert (Hmid : Dom p2 ≈ q3 ∈ per_univ 0) by pairwise.
-  destruct Hmid as [in_rel Hin_rel].
-  exists P1 (Πᵈ p2 ρσ B) Q4 (Πᵈ q3 ρ'σ' B'); try eassumption.
-  - exists (per_pi p2 p3 in1 B ρσ B ρ'σ').
-    eapply per_univ_elem_cumu_max_left; pairwise.
-  - exists (per_pi q2 q3 in2 B' ρσ B' ρ'σ').
-    eapply per_univ_elem_cumu_max_left; pairwise.
-  - eapply per_subtyp_pi with (in_rel := in_rel)
-                              (elem_rel := per_pi p2 p3 in1 B ρσ B ρ'σ')
-                              (elem_rel' := per_pi q2 q3 in2 B' ρσ B' ρ'σ').
-    + eapply per_univ_elem_cumu_max_left; exact Hin_rel.
-    + intros c c' b b' Hc Hb Hb'.
       assert (Hii : in_rel <~> in2)
         by (eapply per_univ_elem_left_irrel; [ exact Hin_rel | exact Hmid2 ]).
       pose proof (entry_readable_of_elem Hin_rel Hc) as [Rc Rc'].
@@ -417,7 +347,7 @@ Section Fixed_GCtx.
     [per_elem_subtyping] needs its subtyping and both type values at one level.
 
     The target type is of either sort.  Where [A] is a proposition, so is
-    [A'], as subtyping preserves relevance ([per_subtyp_relevance]), and the
+    [A'], as subtyping preserves the kind ([per_subtyp_kind]), and the
     goal's element part is its propositional disjunct. *)
 Lemma rel_exp_under_ctx_subtyp : forall {Γ A A'} {i : nat} {M M'},
     Γ ⊨ M ≈ M' : A ->
@@ -465,7 +395,7 @@ Proof.
     assert (a = s2) as -> by (eapply functional_eval_exp; [ exact Ea | exact Hs2 ]).
     apply (rel_typ_prop_any HA'typ); right; right; left.
     exists t3; split; [ exact Ht3 |].
-    rewrite <- (per_subtyp_relevance _ _ _ Hsubst); exact Hra.
+    rewrite <- (per_subtyp_kind _ _ _ Hsubst); exact Hra.
   - right; apply (mk_rel_exp m1 m2 m3 m4); try eassumption.
     eapply rel_chain_mono; [| exact Hmchain ].
     intros w z Hwz.

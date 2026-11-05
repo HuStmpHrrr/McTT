@@ -645,7 +645,9 @@ Proof.
   pose proof Hτj as [RΓ HΓ _ _ _ _].
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HΓ).
-  (** The extension the head is read back at: at any kind *)
+  (** The extension the head is read back at.  Its kind is arbitrary, not
+      a restriction on [B]: its PER [per_env_extend B B RΔ] is the same
+      relation at every kind. *)
   pose proof (per_ctx_env_of_typ (κ := ak_relevant) HΔ HB) as HΔB'.
   assert (Hwk : (es :: Γ) ⊨ʷ wk_shift : Γ)
     by (eapply rel_wk_under_ctx_intro; [ exact HΓB | exact HΓ | eapply rel_wk_shift; eassumption

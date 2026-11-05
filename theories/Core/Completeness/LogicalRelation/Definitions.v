@@ -677,7 +677,9 @@ Record valid_filed_value (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) 
 Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) : Prop := mk_valid_filed_term
   { (** The member's type over the telescope *)
     valid_filed_term_typ : exp
-    (** The universe index of the member's type, at [ak_relevant] *)
+    (** A universe index: the member's type is of [Typeω@valid_filed_term_level]
+        at [ak_relevant]; at the other kinds the sort ([Prop], [LevelSort])
+        does not mention it ([abs_kind_sort]) *)
   ; valid_filed_term_level : nat
     (** The type is a valid type of the sort of the member's kind: a
         universe, [Prop], or the types of levels ([def v : Level ≔ zero]) *)

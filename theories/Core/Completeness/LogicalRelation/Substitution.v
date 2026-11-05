@@ -210,7 +210,9 @@ Lemma rel_exp_under_ctx_shift_at : forall {Γ A} {i : nat} {B M M' env_relΓ},
         rel_chain R ([w1; w2; w3; w4]).
 Proof.
   intros * HΓ HA HM HBr * Hρ.
-  (** The weakening goes out of an extension at any kind: [ak_relevant] *)
+  (** The weakening goes out of an extension of [Γ] by [A].  Its kind is
+      arbitrary, not a restriction on [A]: its PER [per_env_extend A A
+      env_relΓ] is the same relation at every kind. *)
   pose proof (per_ctx_env_of_typ (κ := ak_relevant) HΓ HA) as HΓA.
   pose proof (rel_sub_of_wk_rel HΓA HΓ (rel_wk_shift HΓ HΓA) (fun x Hx => ltac:(cbn; lia))) as HWk.
   destruct HM as [env_relΓ2 HΓ2 j HMgen].

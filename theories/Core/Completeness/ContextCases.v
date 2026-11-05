@@ -426,7 +426,7 @@ Proof.
   pose proof (rel_type_inversion_simple HA) as [env_relΓ [HΓ HAs]].
   pose proof (per_ctx_env_of_def_evaluated Hr HΓ HA (HArel _ HΓ) (rel_exp_under_ctx_refl_left HM)) as Hd.
   pose proof (per_ctx_env_of_def_evaluated Hr HΓ HA (HArel _ HΓ) (rel_exp_under_ctx_refl_right HM)) as Hd'.
-  pose proof (per_ctx_env_extend (κ := ak_relevant) HΓ HAs) as Ha.
+  pose proof (per_ctx_env_extend (κ := r) HΓ HAs) as Ha.
   assert (E1 : R <~> per_env_extend_def A M env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (E2 : R' <~> per_env_extend_def A M' env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
@@ -460,18 +460,22 @@ Lemma rel_ctx_sub_empty :
   SubE ⋅ <: ⋅.
 Proof. mauto. Qed.
 
-Lemma rel_ctx_sub_extend : forall {Γ Δ} {i : nat} {A A'},
+(** An assumption of a smaller type, the two types of sorts of one kind
+    [κ] ([sort_kind]), so the two entries are of [κ]. *)
+Lemma rel_ctx_sub_extend : forall {Γ Δ κ Srt Srt' A A'},
   SubE Γ <: Δ ->
   ⊨ Γ ->
   ⊨ Δ ->
-  Γ ⊨ A : Typeω@i ->
-  Δ ⊨ A' : Typeω@i ->
+  Γ ⊨ A : Srt ->
+  sort_kind Srt κ ->
+  Δ ⊨ A' : Srt' ->
+  sort_kind Srt' κ ->
   Γ ⊨ A ⊆ A' ->
-  SubE Γ ▹{ak_relevant} A <: Δ ▹{ak_relevant} A'.
+  SubE Γ ▹{κ} A <: Δ ▹{κ} A'.
 Proof.
-  intros * Hsub HΓ HΔ HA HA' Hsubtyp.
-  pose proof (rel_ctx_wf_extend HΓ HA) as HΓA%rel_ctx_wf_per_ctx_env.
-  pose proof (rel_ctx_wf_extend HΔ HA') as HΔA'%rel_ctx_wf_per_ctx_env.
+  intros * Hsub HΓ HΔ HA HS HA' HS' Hsubtyp.
+  pose proof (rel_ctx_wf_extend_sort HΓ HS HA) as HΓA%rel_ctx_wf_per_ctx_env.
+  pose proof (rel_ctx_wf_extend_sort HΔ HS' HA') as HΔA'%rel_ctx_wf_per_ctx_env.
   destruct HΓA as [env_relΓA HΓA], HΔA' as [env_relΔA' HΔA'].
   pose proof (rel_subtyp_under_ctx_simple Hsubtyp) as [env_relΓ [HΓ' [j Hsub2]]].
   econstructor; try eassumption.

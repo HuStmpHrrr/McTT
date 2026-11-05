@@ -40,14 +40,14 @@ Section Fixed_GCtx.
 
 (** An assumption at the head of two related contexts: related tails, and
     a type related at related tails. *)
-Lemma per_ctx_env_ass_inv : forall Γ Γ' A A' R,
-    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R ->
+Lemma per_ctx_env_ass_inv : forall Γ Γ' κ A A' R,
+    EF Γ ▹{κ} A ≈ Γ' ▹{κ} A' ∈ per_ctx_env ↘ R ->
     exists RT, EF Γ ≈ Γ' ∈ per_ctx_env ↘ RT /\
       (forall ρ ρ', R ρ ρ' -> RT ρ↯ ρ'↯) /\
       (forall ρ ρ', RT ρ ρ' -> exists i R0, rel_typ i A ρ A' ρ' R0).
 Proof.
   intros * H.
-  inversion H as [| ? ? ? ? ? tail_rel head_rel ? HT _ Hhead Hiff | | |]; subst.
+  inversion H as [| ? ? ? ? ? ? tail_rel head_rel ? HT _ Hhead Hiff | | |]; subst.
   exists tail_rel; split; [ exact HT | split ].
   - intros ρ ρ' Hρ; apply Hiff in Hρ; destruct Hρ as [Ht _]; exact Ht.
   - intros ρ ρ' Hρ; exists i, (head_rel _ _ Hρ); exact (Hhead _ _ Hρ).
@@ -55,9 +55,9 @@ Qed.
 
 (** A telescope under a substitution, split at a position: the entries
     inside it, the one at it, and the prefix before it. *)
-Lemma tele_sub_rev_split : forall t j A σ, List.nth_error t j = Some (ce_ass A) ->
+Lemma tele_sub_rev_split : forall t j κ A σ, List.nth_error t j = Some (ce_ass κ A) ->
     tele_sub (List.rev t) σ =
-      tele_sub (List.rev (List.skipn (S j) t)) (sb_qn (S j) σ) ++ ce_ass A[sb_qn j σ] :: tele_sub (List.rev (List.firstn j t)) σ.
+      tele_sub (List.rev (List.skipn (S j) t)) (sb_qn (S j) σ) ++ ce_ass κ A[sb_qn j σ] :: tele_sub (List.rev (List.firstn j t)) σ.
 Proof.
 Proof.
   intros * H.
@@ -86,9 +86,9 @@ Section TeleLink.
   Variables (tg tc : list centry).
   Hypotheses (Hag : tele_ass tg) (Hac : tele_ass tc) (Hlen : List.length tg = List.length tc).
   Hypotheses (HWg : ⊨ List.rev tg ++ Bg) (HWc : ⊨ List.rev tc ++ Bc).
-  Hypothesis (HTg : forall j A, List.nth_error tg j = Some (ce_ass A) ->
+  Hypothesis (HTg : forall j κ A, List.nth_error tg j = Some (ce_ass κ A) ->
                  exists i : nat, List.rev (List.firstn j tg) ++ Bg ⊨ A : Typeω@i).
-  Hypothesis (HTc : forall j A, List.nth_error tc j = Some (ce_ass A) ->
+  Hypothesis (HTc : forall j κ A, List.nth_error tc j = Some (ce_ass κ A) ->
                  exists i : nat, List.rev (List.firstn j tc) ++ Bc ⊨ A : Typeω@i).
   Hypothesis (Heq : Γ ⊨ˣ tele_sub (List.rev tg) σg ≈ tele_sub (List.rev tc) σc).
 
@@ -107,15 +107,15 @@ Section TeleLink.
   (** The two types at a position, each under its substitution and at the
       substitution's value, related: the group's type and the container's
       at the same arguments, each stored at its own telescope's types. *)
-  Lemma tele_link_values : forall j vs G C, List.length vs = j ->
-      List.nth_error tg j = Some (ce_ass G) -> List.nth_error tc j = Some (ce_ass C) ->
+  Lemma tele_link_values : forall j vs κg G κc C, List.length vs = j ->
+      List.nth_error tg j = Some (ce_ass κg G) -> List.nth_error tc j = Some (ce_ass κc C) ->
       per_gargs (List.firstn j tg) Eg Eg vs vs -> per_gargs (List.firstn j tc) Ec Ec vs vs ->
       exists (ig ic i0 : nat) Rg Rc R0 ag bg ac bc ρg ρc,
         ⟦ G[sb_qn j σg] ⟧ ρg ↘ ag /\ ⟦ C[sb_qn j σc] ⟧ ρc ↘ ac /\
         ⟦ G ⟧ env_tele Eg (List.firstn j tg) vs ↘ bg /\ ⟦ C ⟧ env_tele Ec (List.firstn j tc) vs ↘ bc /\
         DF ag ≈ bg ∈ per_univ_elem ig ↘ Rg /\ DF ac ≈ bc ∈ per_univ_elem ic ↘ Rc /\ DF ag ≈ ac ∈ per_univ_elem i0 ↘ R0.
   Proof.
-    intros j vs G C Hl HG HC Hgg Hgc.
+    intros j vs κg G κc C Hl HG HC Hgg Hgc.
     assert (Hj : j < List.length tg) by (apply List.nth_error_Some; congruence).
     assert (Hfg : List.length (List.firstn j tg) = j) by (rewrite List.length_firstn; lia).
     assert (Hfc : List.length (List.firstn j tc) = j) by (rewrite List.length_firstn; lia).
@@ -128,8 +128,8 @@ Section TeleLink.
     (** The equation, cut at the position: the types there, under the two
         substitutions, are related at related environments of the prefixes. *)
     destruct Heq as [HL _ [R HR]].
-    rewrite (tele_sub_rev_split _ _ _ _ HG), (tele_sub_rev_split _ _ _ _ HC), <- !List.app_assoc in HR.
-    rewrite (tele_sub_rev_split _ _ _ _ HG), <- !List.app_assoc in HL.
+    rewrite (tele_sub_rev_split _ _ _ _ _ HG), (tele_sub_rev_split _ _ _ _ _ HC), <- !List.app_assoc in HR.
+    rewrite (tele_sub_rev_split _ _ _ _ _ HG), <- !List.app_assoc in HL.
     cbn [List.app] in HR, HL.
     assert (Hlt : List.length (tele_sub (List.rev (List.skipn (S j) tg)) (sb_qn (S j) σg)) =
                   List.length (tele_sub (List.rev (List.skipn (S j) tc)) (sb_qn (S j) σc)))
@@ -165,7 +165,7 @@ Section TeleLink.
     destruct (Hty _ _ (proj2 (E _ _) HEgc)) as (i0 & R0 & Ht0).
     (** Each side's type under its substitution, against the type at the
         substitution's value. *)
-    destruct (HTg _ _ HG) as [ig HGv]; destruct (HTc _ _ HC) as [ic HCv].
+    destruct (HTg _ _ _ HG) as [ig HGv]; destruct (HTc _ _ _ HC) as [ic HCv].
     destruct (outer_universe_type_link _ _ _ _ _ _ _ _ _ _ Hag' HWg' HGv HRΓ Hσg HρS HEg _ Hgg' Hlg Rvg) as (ag & bg & Eag & Ebg & [Rg HRg]).
     destruct (outer_universe_type_link _ _ _ _ _ _ _ _ _ _ Hac' HWc' HCv HRΓ Hσc HρS HEc _ Hgc' Hlc Rvc) as (ac & bc & Eac & Ebc & [Rc HRc]).
     rewrite List.length_rev, Hfg in Eag; rewrite List.length_rev, Hfc in Eac.
@@ -177,15 +177,15 @@ Section TeleLink.
   Qed.
 
   (** The head PERs at a position agree. *)
-  Lemma tele_link_head : forall j vs G C, List.length vs = j ->
-      List.nth_error tg j = Some (ce_ass G) -> List.nth_error tc j = Some (ce_ass C) ->
+  Lemma tele_link_head : forall j vs κg G κc C, List.length vs = j ->
+      List.nth_error tg j = Some (ce_ass κg G) -> List.nth_error tc j = Some (ce_ass κc C) ->
       per_gargs (List.firstn j tg) Eg Eg vs vs -> per_gargs (List.firstn j tc) Ec Ec vs vs ->
       (per_head C C (env_tele Ec (List.firstn j tc) vs) (env_tele Ec (List.firstn j tc) vs)
          <~> per_head G G (env_tele Eg (List.firstn j tg) vs) (env_tele Eg (List.firstn j tg) vs)) /\
       exists (i : nat) R b, ⟦ G ⟧ env_tele Eg (List.firstn j tg) vs ↘ b /\ DF b ≈ b ∈ per_univ_elem i ↘ R.
   Proof.
-    intros j vs G C Hl HG HC Hgg Hgc.
-    destruct (tele_link_values j vs G C Hl HG HC Hgg Hgc)
+    intros j vs κg G κc C Hl HG HC Hgg Hgc.
+    destruct (tele_link_values j vs κg G κc C Hl HG HC Hgg Hgc)
       as (ig & ic & i0 & Rg & Rc & R0 & ag & bg & ac & bc & ρg & ρc & Eag & Eac & Ebg & Ebc & HRg & HRc & HR0).
     split.
     - etransitivity; [ symmetry; exact (per_head_right Eac Ebc HRc) |].
@@ -197,14 +197,14 @@ Section TeleLink.
   Qed.
 
   (** The two types at a position are related to each other. *)
-  Lemma tele_link_types : forall j vs G C, List.length vs = j ->
-      List.nth_error tg j = Some (ce_ass G) -> List.nth_error tc j = Some (ce_ass C) ->
+  Lemma tele_link_types : forall j vs κg G κc C, List.length vs = j ->
+      List.nth_error tg j = Some (ce_ass κg G) -> List.nth_error tc j = Some (ce_ass κc C) ->
       per_gargs (List.firstn j tg) Eg Eg vs vs -> per_gargs (List.firstn j tc) Ec Ec vs vs ->
       exists (i : nat) R b a, ⟦ G ⟧ env_tele Eg (List.firstn j tg) vs ↘ b /\ ⟦ C ⟧ env_tele Ec (List.firstn j tc) vs ↘ a /\
         DF b ≈ a ∈ per_univ_elem i ↘ R.
   Proof.
-    intros j vs G C Hl HG HC Hgg Hgc.
-    destruct (tele_link_values j vs G C Hl HG HC Hgg Hgc)
+    intros j vs κg G κc C Hl HG HC Hgg Hgc.
+    destruct (tele_link_values j vs κg G κc C Hl HG HC Hgg Hgc)
       as (ig & ic & i0 & Rg & Rc & R0 & ag & bg & ac & bc & ρg & ρc & Eag & Eac & Ebg & Ebc & HRg & HRc & HR0).
     destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRg) HR0) as (R1 & H1 & _).
     destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ H1 HRc) as (R2 & H2 & _).
@@ -221,34 +221,34 @@ Section TeleLink.
     rewrite List.length_app in Hl; cbn in Hl.
     destruct (List.nth_error tg j) as [eg |] eqn:Eg0; [| apply List.nth_error_None in Eg0; lia ].
     destruct (List.nth_error tc j) as [ec |] eqn:Ec0; [| apply List.nth_error_None in Ec0; lia ].
-    destruct (proj1 (List.Forall_forall _ _) Hag eg (List.nth_error_In _ _ Eg0)) as [G ->].
-    destruct (proj1 (List.Forall_forall _ _) Hac ec (List.nth_error_In _ _ Ec0)) as [C ->].
+    destruct (proj1 (List.Forall_forall _ _) Hag eg (List.nth_error_In _ _ Eg0)) as (κg & G & ->).
+    destruct (proj1 (List.Forall_forall _ _) Hac ec (List.nth_error_In _ _ Ec0)) as (κc & C & ->).
     assert (Hfg : List.length (List.firstn j tg) = j) by (rewrite List.length_firstn; lia).
     assert (Hfc : List.length (List.firstn j tc) = j) by (rewrite List.length_firstn; lia).
     rewrite (firstn_S_nth _ _ _ Ec0) in Hgc; rewrite (firstn_S_nth _ _ _ Eg0).
     assert (Hl0c : List.length vs0 = List.length (List.firstn j tc)) by lia.
     assert (Hl0g : List.length vs0 = List.length (List.firstn j tg)) by lia.
-    destruct (per_gargs_app (List.firstn j tc) (ce_ass C :: nil) Ec Ec vs0 vs0 (x :: nil) (x :: nil) Hl0c Hgc Hl0c)
+    destruct (per_gargs_app (List.firstn j tc) (ce_ass κc C :: nil) Ec Ec vs0 vs0 (x :: nil) (x :: nil) Hl0c Hgc Hl0c)
       as [Hgc0 Hx].
-    inversion Hx as [| ? ? ? ? ? ? ? ? ? Rx HCx Hxx _]; subst.
+    inversion Hx as [| ? ? ? ? ? ? ? ? ? ? Rx HCx Hxx _]; subst.
     pose proof (IH ltac:(lia) vs0 ltac:(lia) Hgc0) as Hgg0.
-    destruct (tele_link_head j vs0 G C ltac:(lia) Eg0 Ec0 Hgg0 Hgc0) as [Eq (ib & Rg & b & Eb & HRb)].
-    apply (per_gargs_snoc (List.firstn j tg) G Eg Eg vs0 vs0 x x ib Rg Hl0g Hgg0); [ econstructor; [ exact Eb | exact Eb | exact HRb ] |].
+    destruct (tele_link_head j vs0 κg G κc C ltac:(lia) Eg0 Ec0 Hgg0 Hgc0) as [Eq (ib & Rg & b & Eb & HRb)].
+    apply (per_gargs_snoc (List.firstn j tg) κg G Eg Eg vs0 vs0 x x ib Rg Hl0g Hgg0); [ econstructor; [ exact Eb | exact Eb | exact HRb ] |].
     destruct HCx as [c1 c2 Ec1 Ec2 HRx].
     apply (per_head_left Eb Eb HRb), Eq, (per_head_left Ec1 Ec2 HRx); exact Hxx.
   Qed.
 
   (** Hence, at arguments related at a prefix of the container's
       telescope, the head PERs of the two types after it agree. *)
-  Corollary tele_link : forall j vs G C, List.length vs = j ->
-      List.nth_error tg j = Some (ce_ass G) -> List.nth_error tc j = Some (ce_ass C) ->
+  Corollary tele_link : forall j vs κg G κc C, List.length vs = j ->
+      List.nth_error tg j = Some (ce_ass κg G) -> List.nth_error tc j = Some (ce_ass κc C) ->
       per_gargs (List.firstn j tc) Ec Ec vs vs ->
       per_head C C (env_tele Ec (List.firstn j tc) vs) (env_tele Ec (List.firstn j tc) vs)
         <~> per_head G G (env_tele Eg (List.firstn j tg) vs) (env_tele Eg (List.firstn j tg) vs).
   Proof.
     intros * Hl HG HC Hgc.
     assert (Hj : j < List.length tg) by (apply List.nth_error_Some; congruence).
-    exact (proj1 (tele_link_head j vs G C Hl HG HC (tele_link_gargs j ltac:(lia) vs Hl Hgc) Hgc)).
+    exact (proj1 (tele_link_head j vs κg G κc C Hl HG HC (tele_link_gargs j ltac:(lia) vs Hl Hgc) Hgc)).
   Qed.
 End TeleLink.
 
@@ -258,11 +258,11 @@ End TeleLink.
     its base are related over a related one, and the head PERs after them
     agree. *)
 Lemma tele_base_change : forall t B RB E1 E2, tele_ass t -> ⊨ List.rev t ++ B ->
-    (forall j A, List.nth_error t j = Some (ce_ass A) -> exists i : nat, List.rev (List.firstn j t) ++ B ⊨ A : Typeω@i) ->
+    (forall j κ A, List.nth_error t j = Some (ce_ass κ A) -> exists i : nat, List.rev (List.firstn j t) ++ B ⊨ A : Typeω@i) ->
     EF B ≈ B ∈ per_ctx_env ↘ RB -> RB E1 E2 ->
     forall j vs, List.length vs = j -> j <= List.length t -> per_gargs (List.firstn j t) E1 E1 vs vs ->
       per_gargs (List.firstn j t) E2 E2 vs vs /\
-      forall A, List.nth_error t j = Some (ce_ass A) ->
+      forall κ A, List.nth_error t j = Some (ce_ass κ A) ->
         (per_head A A (env_tele E1 (List.firstn j t) vs) (env_tele E1 (List.firstn j t) vs)
            <~> per_head A A (env_tele E2 (List.firstn j t) vs) (env_tele E2 (List.firstn j t) vs)).
 Proof.
@@ -276,14 +276,14 @@ Proof.
   assert (HW'' : ⊨ List.rev (List.firstn j t) ++ B) by exact HW'.
   split.
   - exact (per_gargs_base _ _ _ HRB HW'' Ha' E1 E1 E2 E2 vs vs H11 H12 H12 Hg).
-  - intros A HA.
+  - intros κ A HA.
     pose proof (per_gargs_base _ _ _ HRB HW'' Ha' E1 E1 E1 E2 vs vs H11 H11 H12 Hg) as Hg12.
     destruct (rel_ctx_wf_per_ctx_env HW') as [RΔ HRΔ].
     rewrite <- (List.rev_involutive (List.firstn j t)) in Hg12.
     assert (Hlr : List.length vs = List.length (List.rev (List.firstn j t)))
       by (rewrite List.length_rev, List.length_firstn; lia).
     pose proof (gargs_env_rel_gen _ _ _ _ _ _ _ _ HRB HRΔ HW' H12 Hlr Hg12) as HE; rewrite List.rev_involutive in HE.
-    destruct (HT _ _ HA) as [i HAv].
+    destruct (HT _ _ _ HA) as [i HAv].
     destruct (rel_exp_of_typ_inversion_simple_at HRΔ HAv _ _ HE) as (a1 & a2 & Ea1 & Ea2 & [R HR]).
     etransitivity; [ symmetry; exact (per_head_left Ea1 Ea2 HR) | exact (per_head_right Ea1 Ea2 HR) ].
 Qed.
