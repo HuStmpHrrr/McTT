@@ -1076,17 +1076,6 @@ Qed.
 Lemma level_atoms_all_all_list : forall P xs, all_list (fun a => P (atom_level a)) xs <-> level_atoms_all P xs.
 Proof. induction xs as [| [k s a] r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
-(** A level whose atoms hold no proof is the only level equal to it up to
-    proofs ([nf_ne_proof_free_eq] at each atom). *)
-Lemma lvl_proof_free_eq : forall l l', level_atoms_all ne_proof_free (snd l) -> lvl_eq_upto_proofs l l' -> l = l'.
-Proof.
-  intros [c xs] [c' ys] Hp [Hc Hxs]; cbn in *; subst c'; f_equal.
-  revert ys Hxs; induction xs as [| [k s a] r IH]; intros [| [k' s' a'] r'] H;
-    unfold level_atoms_eq_upto_proofs in H; cbn in *; try discriminate; [ reflexivity |].
-  destruct Hp as [Ha Hr]; eqb_split; eqb_leaves; subst.
-  f_equal; [ f_equal; apply ne_proof_free_eq; assumption | apply IH; assumption ].
-Qed.
-
 (** The generated induction hypothesis at the atoms of a level is [level_atoms_all]
     of the motive. *)
 Lemma list_all_level_atoms_all : forall (P : ne -> Prop) xs, list_all level_atom (level_atom_g_all ne P) xs -> level_atoms_all P xs.

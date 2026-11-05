@@ -148,4 +148,62 @@ Proof.
   (* PENDING M2: read off the gluing of levels *)
 Admitted.
 
+(** A neutral is an atom of sort [s] of the normal form of a typed level:
+    the atoms whose coherence soundness gives
+    ([soundness_nbe_atoms_upto_proofs]).  The atom is one of the list
+    ([List.In]), not a neutral equal to one up to proofs. *)
+#[warnings="-cannot-define-projection"]
+Record nbe_level_atom (Γ : ctx) (s : nat) (a : ne) : Prop := mk_nbe_level_atom
+  { (** The level *)
+    nbe_level_atom_exp : exp
+    (** Its sort *)
+  ; nbe_level_atom_level_sort : nat
+    (** The constant of its normal form *)
+  ; nbe_level_atom_constant : o2
+    (** The atoms of its normal form *)
+  ; nbe_level_atom_atoms : list level_atom
+    (** The offset of the atom *)
+  ; nbe_level_atom_offset : nat
+    (** The level is a level of its sort *)
+  ; nbe_level_atom_typed : Γ ⊢ nbe_level_atom_exp : Level@nbe_level_atom_level_sort
+    (** Its normal form *)
+  ; nbe_level_atom_nbe : nbe_f Γ nbe_level_atom_exp Level@nbe_level_atom_level_sort
+                           (nf_lvl nbe_level_atom_constant nbe_level_atom_atoms)
+    (** The atom is one of its atoms, at sort [s] *)
+  ; nbe_level_atom_in : List.In (mk_level_atom nbe_level_atom_offset s a) nbe_level_atom_atoms }.
+
+(** Two atoms of normal forms of levels, of one sort and equal up to their
+    proofs, are equal levels: a canonical form keeps one of them in place
+    of the other ([level_atoms_coherent]), and proofs are equal by proof
+    irrelevance wherever they occur.  For example, with [h : P],
+    [F : P → LevelSort] and [g : (F h → F h) → Level@0], the atom of
+    [g (λ x : F h. x)] holds the proof [h] in the annotation of the
+    abstraction, and two such atoms differing only in that proof are
+    equal. *)
+Theorem soundness_nbe_atoms_upto_proofs : forall {Γ s a b},
+    nbe_level_atom Γ s a ->
+    nbe_level_atom Γ s b ->
+    ne_eq_upto_proofs a b ->
+    Γ ⊢ (a : exp) ≈ (b : exp) : Level@s.
+Proof.
+  (* PENDING M2: read off the gluing of levels *)
+Admitted.
+
+(** The atoms of the normal forms of typed levels are coherent. *)
+Lemma level_atoms_coherent_of_nbe : forall {Γ} xs,
+    (forall j s a, List.In (mk_level_atom j s a) xs -> nbe_level_atom Γ s a) ->
+    @level_atoms_coherent gc_deps gc_stack Γ xs.
+Proof.
+  intros * Hxs j s a j' b Ha Hb Hab.
+  exact (soundness_nbe_atoms_upto_proofs (Hxs _ _ _ Ha) (Hxs _ _ _ Hb) Hab).
+Qed.
+
+(** The atoms of the normal form of a typed level are atoms of normal
+    forms of typed levels. *)
+Lemma nbe_level_atom_of_nbe : forall {Γ M n c xs},
+    Γ ⊢ M : Level@n ->
+    nbe_f Γ M Level@n (nf_lvl c xs) ->
+    forall j s a, List.In (mk_level_atom j s a) xs -> nbe_level_atom Γ s a.
+Proof. intros * HM Hnbe j s a Hin; exact (mk_nbe_level_atom _ _ _ _ _ _ _ _ HM Hnbe Hin). Qed.
+
 End Fixed_GCtx.
