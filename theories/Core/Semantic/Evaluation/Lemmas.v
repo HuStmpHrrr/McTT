@@ -90,7 +90,8 @@ Import Domain_Notations.
       (forall p ups ρm As ρ gs vs r1, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
           forall r2, ⟦ihtys vs of gs at p ups under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
       (forall rs Ms ρ ms1, eval_field_vals Θ Ξ rs Ms ρ ms1 -> forall ms2, eval_field_vals Θ Ξ rs Ms ρ ms2 -> ms1 = ms2) /\
-      (forall f Ms ρ r1, eval_app_args Θ Ξ f Ms ρ r1 -> forall r2, eval_app_args Θ Ξ f Ms ρ r2 -> r1 = r2).
+      (forall f Ms ρ r1, eval_app_args Θ Ξ f Ms ρ r1 -> forall r2, eval_app_args Θ Ξ f Ms ρ r2 -> r1 = r2) /\
+      (forall M ρ m1, ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m1 -> forall m2, ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m2 -> m1 = m2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -180,8 +181,17 @@ Import Domain_Notations.
             exfalso; exact (evaluated_kind_not_propositional _ H1 H2)
         | H : evaluated_kind ak_propositional |- _ =>
             exfalso; exact (evaluated_kind_not_propositional _ H eq_refl)
+        | H : not_let (a_let _ _) |- _ => exfalso; exact H
         end;
       cbn [gu_params List.length] in *; try congruence; try lia; intuition (try congruence; try lia).
+  Qed.
+
+  Corollary functional_keep_proof : forall {Θ Ξ} M ρ m1 m2,
+      ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m1 ->
+      ⟦ M ⟧ₖ Θ ⍮ Ξ ⍮ ρ ↘ m2 ->
+      m1 = m2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ); firstorder.
   Qed.
 
   Corollary functional_eval_exp : forall {Θ Ξ} M ρ m1 m2,
@@ -341,9 +351,12 @@ Import Domain_Notations.
   Qed.
 
   (** So does a substitution entry at a proposition. *)
-  Lemma functional_eval_sentry_proof : forall t U e ρ d1 d2,
-      eval_sentry_proof t U e ρ d1 -> eval_sentry_proof t U e ρ d2 -> d1 = d2.
-  Proof. intros * H1 H2; destruct e; cbn in H1, H2; subst; tauto. Qed.
+  Lemma functional_eval_sentry_proof : forall {Θ Ξ} t U e ρ d1 d2,
+      eval_sentry_proof Θ Ξ t U e ρ d1 -> eval_sentry_proof Θ Ξ t U e ρ d2 -> d1 = d2.
+  Proof.
+    intros * H1 H2; destruct e; cbn in H1, H2; subst; try tauto.
+    destruct H1 as (m1 & -> & H1), H2 as (m2 & -> & H2); f_equal; eapply functional_keep_proof; eassumption.
+  Qed.
 
   (** Whether the head entry is a proposition depends only on the tail, on
       the entries of the context. *)
@@ -392,8 +405,10 @@ Import Domain_Notations.
     intros * H; destruct e; cbn in H; destruct_all; subst; [ apply retag_entry_twice | reflexivity .. ].
   Qed.
 
-  Lemma eval_sentry_proof_tagged : forall t U e ρ d, eval_sentry_proof t U e ρ d -> retag_entry t U d = d.
-  Proof. intros * H; destruct e; cbn in H; subst; [ apply retag_entry_twice | reflexivity | contradiction .. ]. Qed.
+  Lemma eval_sentry_proof_tagged : forall {Θ Ξ} t U e ρ d, eval_sentry_proof Θ Ξ t U e ρ d -> retag_entry t U d = d.
+  Proof.
+    intros * H; destruct e; cbn in H; destruct_all; subst; [ apply retag_entry_twice | reflexivity | contradiction .. ].
+  Qed.
 
   (** So are the entries of an evaluated substitution, at the declarations
       of its target; no case analysis on a proposition is needed, as
@@ -448,7 +463,7 @@ Import Domain_Notations.
     destruct (dentry_eq_dec (env_entry ρτ 0) (de_term (ρτ 0) (ctx_entry_tag (e :: Δ) 0 ρτ))) as [| Hne]; [ assumption | exfalso ].
     destruct (H 0 ltac:(cbn; lia)) as [Hp Hn]; rewrite HN in Hp, Hn; cbn [eval_sentry eval_sentry_proof] in Hp, Hn.
     assert (Hnp : ~ entry_propositional Θ Ξ (e :: Δ) ρτ 0).
-    { intros Hpp; apply Hne; unfold env_var; rewrite (Hp Hpp); reflexivity. }
+    { intros Hpp; apply Hne; destruct (Hp Hpp) as (m & Em & _); unfold env_var; rewrite Em; reflexivity. }
     destruct (Hn Hnp) as (m & Em & _); apply Hne; unfold env_var; rewrite Em; reflexivity.
   Qed.
 
@@ -563,8 +578,8 @@ Proof.
              (fun _ _ _ _ => True) (fun _ _ _ _ _ => True)
              (fun fl v ws _ => List.length ws = List.length fl)
              (fun _ _ _ _ _ _ _ _ _ => True)
-             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True)) as H.
-  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hihs & Hih & _ & _ & _ & _ & _ & Hp & _ & _ & _);
+             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True) (fun _ _ _ _ => True)) as H.
+  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hihs & Hih & _ & _ & _ & _ & _ & Hp & _ & _ & _ & _);
     clear H; [ .. | split; [ exact Hihs | split; [ exact Hih | exact Hp ] ] ]; intros; try exact I.
   - (* no argument *) cbn; auto.
   - (* a non-recursive argument *)
@@ -621,8 +636,8 @@ Proof.
              (fun fl v ws _ => List.length ws = List.length fl)
              (fun p ups ρm As ρ gs vs r _ => forall D, ind_lookup Θ Ξ p = Some D -> leaves_coherent D ->
                 List.length vs = List.length gs /\ List.length r = cargs_nrec D gs)
-             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True)) as H.
-  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hty & _ & _ & _ & Htys & _ & _);
+             (fun _ _ _ _ _ => True) (fun _ _ _ _ _ => True) (fun _ _ _ _ => True)) as H.
+  edestruct H as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hty & _ & _ & _ & Htys & _ & _ & _);
     clear H; [ .. | split; [ exact Hty | exact Htys ] ]; intros; try exact I.
   - (* at a member with a block *)
     match goal with HD : ind_lookup _ _ _ = Some ?D, HD' : ind_lookup _ _ _ = Some ?D' |- _ =>
