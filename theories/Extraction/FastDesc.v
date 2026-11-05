@@ -75,8 +75,8 @@ Qed.
 (** ** Descriptions *)
 
 Inductive fmdesc : Type :=
-(** [mdesc_term r A om] *)
-| fmdesc_term : relevance -> typ -> option exp -> fmdesc
+(** [mdesc_term κ A om] *)
+| fmdesc_term : abs_kind -> typ -> option exp -> fmdesc
 (** [mdesc_open Δ Φ Φx]: a local body, Core's *)
 | fmdesc_open : ctx -> gmod -> gmod -> fmdesc
 (** [mdesc_closed Θ' p T Φ Ns], with the stored body [Φ] kept as the
@@ -105,14 +105,14 @@ Definition fmdesc_type (R : fmdesc) : option typ :=
 Lemma fmdesc_type_dec : forall R, mdesc_type (decode_desc R) = fmdesc_type R.
 Proof. intros []; reflexivity. Qed.
 
-(** [mdesc_relevance]'s twin *)
-Definition fmdesc_relevance (R : fmdesc) : relevance :=
+(** [mdesc_kind]'s twin *)
+Definition fmdesc_kind (R : fmdesc) : abs_kind :=
   match R with
-  | fmdesc_term r _ _ => r
-  | _ => relevant
+  | fmdesc_term κ _ _ => κ
+  | _ => ak_relevant
   end.
 
-Lemma fmdesc_relevance_dec : forall R, mdesc_relevance (decode_desc R) = fmdesc_relevance R.
+Lemma fmdesc_kind_dec : forall R, mdesc_kind (decode_desc R) = fmdesc_kind R.
 Proof. intros []; reflexivity. Qed.
 
 (** [mdesc_reduct]'s twin *)
@@ -332,7 +332,7 @@ Qed.
 Definition fmdesc_ats_read (R : fmdesc) (Ns : list exp) : option fmdesc :=
   match R with
   | fmdesc_dm nil A M Rm =>
-      match fmdesc_term_part_ats (fmdesc_term relevant A (Some M)) Ns, fmdesc_ats Rm Ns with
+      match fmdesc_term_part_ats (fmdesc_term ak_relevant A (Some M)) Ns, fmdesc_ats Rm Ns with
       | Some (fmdesc_term _ B (Some M')), Some Rm' => Some (fmdesc_dm nil B M' Rm')
       | _, _ => None
       end
@@ -344,9 +344,9 @@ Proof.
   intros R Ns; destruct R as [| | | [| e Θd] A M Rm];
     try (match goal with |- mdesc_ats_read (decode_desc ?R) ?Ns = _ => exact (fmdesc_ats_dec Ns R) end).
   cbn [fmdesc_ats_read mdesc_ats_read decode_desc].
-  change (mdesc_term relevant A (Some M)) with (decode_desc (fmdesc_term relevant A (Some M))).
+  change (mdesc_term ak_relevant A (Some M)) with (decode_desc (fmdesc_term ak_relevant A (Some M))).
   rewrite fmdesc_term_part_ats_dec, fmdesc_ats_dec.
-  destruct (fmdesc_term_part_ats (fmdesc_term relevant A (Some M)) Ns) as [[r B [M' |] | | | ] |]; cbn [option_map decode_desc];
+  destruct (fmdesc_term_part_ats (fmdesc_term ak_relevant A (Some M)) Ns) as [[r B [M' |] | | | ] |]; cbn [option_map decode_desc];
     destruct (fmdesc_ats Rm Ns); reflexivity.
 Qed.
 

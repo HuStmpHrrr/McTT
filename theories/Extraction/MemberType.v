@@ -82,11 +82,11 @@ with body_xp_order (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> Prop :=
 | body_xp_order_ext : forall Γ Φ x E,
     body_xp_order Θ Ξ Γ Φ ->
     body_xp_order Θ Ξ Γ (gm_ext Φ x E)
-| body_xp_order_open : forall Γ Φ H its,
+| body_xp_order_open : forall Γ Φ H its Φg,
     body_xp_order Θ Ξ Γ Φ ->
     (forall Φx, body_xp Θ Ξ Γ Φ Φx -> mdenote_order Θ Ξ (body_ctx Φx ++ Γ) H) ->
     (forall Φx, body_xp Θ Ξ Γ Φ Φx -> items_gen_order Θ Ξ (body_ctx Φx ++ Γ) H its) ->
-    body_xp_order Θ Ξ Γ (gm_open Φ H its)
+    body_xp_order Θ Ξ Γ (gm_open Φ H its Φg)
 with items_gen_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list import_item -> Prop :=
 | items_gen_order_nil : forall Γ H, items_gen_order Θ Ξ Γ H nil
 | items_gen_order_self : forall Γ H d pv its,
@@ -560,7 +560,7 @@ Section DenoteImpl.
   | Γ, gm_ext Φ x E, Ho with body_xp_impl Γ Φ _ := {
     | inleft (exist _ Φx Hx) => inleft (exist _ (gm_ext Φx x E) _)
     | inright HN => inright _ }
-  | Γ, gm_open Φ H its, Ho with body_xp_impl Γ Φ _ := {
+  | Γ, gm_open Φ H its Φg, Ho with body_xp_impl Γ Φ _ := {
     | inright HN => inright _
     | inleft (exist _ Φx Hx) with mdenote_impl (body_ctx Φx ++ Γ) H _ := {
       | inright HN => inright _
@@ -569,8 +569,11 @@ Section DenoteImpl.
         | exist _ (Some Rm) Em with items_gen_impl (body_ctx Φx ++ Γ) H its _ := {
           | inright HN => inright _
           | inleft (exist _ gs Hgs) with items_ok_dec its := {
-            | left Hok => inleft (exist _ (gens_append Φx 0 gs) _)
-            | right Hn => inright _ } } } } }
+            | right Hn => inright _
+            (** the entries the open stores are the ones its items generate *)
+            | left Hok with gmod_eq_dec Φg (gens_body gs) := {
+              | left Hg => inleft (exist _ (gens_append Φx 0 gs) _)
+              | right Hn => inright _ } } } } } }
 
   with items_gen_impl Γ H its (Ho : items_gen_order Θ Ξ Γ H its) :
       { gs | items_gen Θ Ξ Γ H its gs } + { forall gs, ~ items_gen Θ Ξ Γ H its gs } by struct Ho :=
@@ -598,7 +601,18 @@ Section DenoteImpl.
         | exist _ (Some Rm) Em with items_gen_impl Γ H its _ := {
           | inleft (exist _ gs Hgs) => inleft (exist _ (generated_item_def_mod d pv A (a_mem H n) (me_mem H n) :: gs) _)
           | inright HN => inright _ } } } }.
-  Solve All Obligations with impl_obligation_tac.
+  Solve All Obligations with try impl_obligation_tac.
+  (** An open storing entries other than those its items generate expands
+      to nothing: its prefix and its items have one expansion each. *)
+  Next Obligation.
+    match goal with Hd : body_xp _ _ _ (gm_open _ _ _ _) _ |- _ => inversion Hd; subst end.
+    pose proof (mdenote_functional_all _ _ Hg) as (_ & _ & _ & Fb & Fi).
+    match goal with Hx : body_xp _ _ _ ?Φ ?b, H1 : body_xp _ _ _ ?Φ ?a |- _ =>
+      assert_fails (constr_eq a b); pose proof (Fb _ _ _ Hx _ H1); subst a end.
+    match goal with Hgs : items_gen _ _ _ _ _ ?b, H1 : items_gen _ _ _ _ _ ?a |- _ =>
+      assert_fails (constr_eq a b); pose proof (Fi _ _ _ _ Hgs _ H1); subst a end.
+    match goal with Hn : ?x <> ?x |- _ => exact (Hn eq_refl) end.
+  Qed.
 End DenoteImpl.
 
 (** ** What Denotes Has an Order *)
@@ -709,7 +723,7 @@ Section Orders.
         cbn [ge_valid syn_V] in HE0; destruct HE0 as (_ & HΔ & Hcl).
         rewrite gunit_scoped_mk in HcE; destruct HcE as [HsΔ _].
         pose proof (closed_tele_wf _ _ _ _ HsΔ HΔ (ctx_app_wf_tail _ _ _ _ HΘ')) as HΔΓ.
-        destruct (proj1 (proj2 Hcl _ HΔΓ)) as (R & HR).
+        destruct (proj1 (proj2 (proj2 Hcl) _ HΔΓ)) as (R & HR).
         constructor; constructor; exact (proj1 order_of_denote _ _ _ HR).
       + (* a definition with a module part: valid, so its module part's
            target denotes *)
@@ -729,7 +743,7 @@ Section Orders.
         cbn [ge_valid syn_V] in HE0; destruct HE0 as [(_ & HΔ & Hcl) _].
         destruct HcE as (_ & _ & HsU); rewrite gunit_scoped_mk in HsU; destruct HsU as [HsΔ _].
         pose proof (closed_tele_wf _ _ _ _ HsΔ HΔ (ctx_app_wf_tail _ _ _ _ HΘ')) as HΔΓ.
-        destruct (proj1 (proj2 Hcl _ HΔΓ)) as (R & HR).
+        destruct (proj1 (proj2 (proj2 Hcl) _ HΔΓ)) as (R & HR).
         constructor; exact (proj1 order_of_denote _ _ _ HR).
   Qed.
 

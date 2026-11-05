@@ -144,13 +144,15 @@ Scheme fdomain_ok_mut_ind0 := Minimality for fdomain_ok Sort Prop
 with fdomain_ne_ok_mut_ind0 := Minimality for fdomain_ne_ok Sort Prop
 with fdomain_nf_ok_mut_ind0 := Minimality for fdomain_nf_ok Sort Prop
 with fdmod_ok_mut_ind0 := Minimality for fdmod_ok Sort Prop
-with fdentry_ok_mut_ind0 := Minimality for fdentry_ok Sort Prop.
+with fdentry_ok_mut_ind0 := Minimality for fdentry_ok Sort Prop
+with fentry_type_ok_mut_ind0 := Minimality for fentry_type_ok Sort Prop.
 (** What the scheme states of every element, as a [Forall] *)
 Lemma Forall_all_Forall : forall A (P : A -> Prop) (R : A -> Prop) l (H : Forall P l),
     Forall_all A P (fun x _ => R x) l H -> Forall R l.
 Proof. intros * Ha; induction Ha; constructor; assumption. Qed.
 
-Combined Scheme fdomain_ok_mut_ind from fdomain_ok_mut_ind0, fdomain_ne_ok_mut_ind0, fdomain_nf_ok_mut_ind0, fdmod_ok_mut_ind0, fdentry_ok_mut_ind0.
+Combined Scheme fdomain_ok_mut_ind from fdomain_ok_mut_ind0, fdomain_ne_ok_mut_ind0, fdomain_nf_ok_mut_ind0, fdmod_ok_mut_ind0, fdentry_ok_mut_ind0,
+  fentry_type_ok_mut_ind0.
 
 Section Growth.
   Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
@@ -165,7 +167,7 @@ Section Growth.
   Proof.
     intros * H; unfold gc_term in H |- *.
     destruct (gc_resolve Θ1 Ξ1 p) as [E |] eqn:Er.
-    - destruct E as [[|] pv [|] A [M' |] | | | |]; try discriminate;
+    - destruct E as [[|] pv [| |] A [M' |] | | | |]; try discriminate;
         try (rewrite (gc_sub_resolve _ _ _ _ _ _ Hs Er); assumption).
       all: pose proof (gc_resolve_entry _ _ _ _ Er) as Ee; rewrite Ee in H; try discriminate.
       exfalso; rewrite (gc_entry_def_mod _ _ _ _ _ _ _ Ee) in Er; discriminate.
@@ -244,9 +246,7 @@ Section Growth.
     (forall h ch k, dmod_member_kind Θ1 Ξ1 h ch k -> dmod_member_kind Θ2 Ξ2 h ch k) /\
     (forall ρ U ch k, gunit_member_kind Θ1 Ξ1 ρ U ch k -> gunit_member_kind Θ2 Ξ2 ρ U ch k) /\
     (forall ρ H ch k, modexp_member_kind Θ1 Ξ1 ρ H ch k -> modexp_member_kind Θ2 Ξ2 ρ H ch k) /\
-    (forall ρ Φ ρ1, kinds_env Θ1 Ξ1 ρ Φ ρ1 -> kinds_env Θ2 Ξ2 ρ Φ ρ1) /\
-    (forall ρ Φ Φx, kinds_body_xp Θ1 Ξ1 ρ Φ Φx -> kinds_body_xp Θ2 Ξ2 ρ Φ Φx) /\
-    (forall ρ H its gs, kinds_items_gen Θ1 Ξ1 ρ H its gs -> kinds_items_gen Θ2 Ξ2 ρ H its gs).
+    (forall ρ Φ ρ1, kinds_env Θ1 Ξ1 ρ Φ ρ1 -> kinds_env Θ2 Ξ2 ρ Φ ρ1).
   Proof.
     apply kind_mut_ind; intros; try solve [ econstructor; eauto ].
     - eapply dmod_member_kind_global_here_def; eapply gc_sub_resolve; eassumption.
@@ -270,8 +270,8 @@ Section Growth.
 
   (** ** The Fast Evaluation
 
-      Evaluation reads two things whose absence counts: the sort of a
-      function's next argument ([arg_relevance], relevant when the
+      Evaluation reads two things whose absence counts: the kind of a
+      function's next argument ([arg_kind], relevant when the
       constructor's group is not found) and whether a global module lacks
       no parameter ([module_saturated], over where the module is stored).
       The first is read only of a function the evaluation then applies,
@@ -296,13 +296,27 @@ Section Growth.
     rewrite Hl2 in Hl1'; injection Hl1' as <- _; exact (Hsat _ _ Hl1).
   Qed.
 
-  (** A function that is applied takes its next argument at the same sort:
-      a constructor applied is of a group found. *)
-  Lemma arg_relevance_grows : forall m n r, fast_eval_app Θ1 Ξ1 m n r -> arg_relevance Θ2 Ξ2 m = arg_relevance Θ1 Ξ1 m.
+  (** A function that is applied takes its next argument at a kind of the
+      same case, evaluated or a proof: a type former, a record's or a
+      constructor applied is of a declaration found, and a module member
+      always takes an evaluated argument ([dmod_param_kind_evaluated]). *)
+  Lemma arg_kind_grows : forall m n r, fast_eval_app Θ1 Ξ1 m n r ->
+      (evaluated_kind (arg_kind Θ1 Ξ1 m) -> evaluated_kind (arg_kind Θ2 Ξ2 m)) /\
+      (arg_kind Θ1 Ξ1 m = ak_propositional -> arg_kind Θ2 Ξ2 m = ak_propositional).
   Proof.
-    intros * H; destruct m; try reflexivity.
-    inversion H; subst; cbn [arg_relevance];
-      match goal with Hl : ind_lookup Θ1 Ξ1 _ = Some _ |- _ => rewrite Hl, (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) end; reflexivity.
+    intros * H; destruct m; try (split; intro; assumption).
+    all: first
+      [ (** a module member: always evaluated *)
+        split; intro Hk; [ apply dmod_param_kind_evaluated |];
+        exfalso; cbn [arg_kind] in Hk; pose proof (dmod_param_kind_evaluated Θ1 Ξ1 d) as He;
+        rewrite Hk in He; inversion He
+      | (** a type former or a constructor: of a declaration found *)
+        inversion H; subst; cbn [arg_kind];
+        match goal with
+        | Hl : ind_lookup Θ1 Ξ1 _ = Some _ |- _ => rewrite Hl, (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl)
+        | Hl : record_lookup Θ1 Ξ1 _ = Some _ |- _ => rewrite Hl, (record_lookup_gc_sub _ _ _ _ _ _ Hs Hl)
+        end;
+        split; intro; assumption ].
   Qed.
 
   Theorem fast_eval_grow :
@@ -326,19 +340,20 @@ Section Growth.
     (forall p ups ρ t a, fast_eval_shape_type Θ1 Ξ1 p ups ρ t a -> fast_eval_shape_type Θ2 Ξ2 p ups ρ t a) /\
     (forall p ups ρm As ρ t v a, fast_eval_ihty Θ1 Ξ1 p ups ρm As ρ t v a -> fast_eval_ihty Θ2 Ξ2 p ups ρm As ρ t v a) /\
     (forall f m r, fast_eval_proj Θ1 Ξ1 f m r -> fast_eval_proj Θ2 Ξ2 f m r) /\
-    (forall ns m fl pre rs, fast_eval_neutral_fields Θ1 Ξ1 ns m fl pre rs -> fast_eval_neutral_fields Θ2 Ξ2 ns m fl pre rs) /\
+    (forall m ρ fl rs, fast_eval_neutral_fields Θ1 Ξ1 m ρ fl rs -> fast_eval_neutral_fields Θ2 Ξ2 m ρ fl rs) /\
     (forall fl v ws, fast_eval_projs Θ1 Ξ1 fl v ws -> fast_eval_projs Θ2 Ξ2 fl v ws) /\
     (forall p ups ρm As ρ gs vs as', fast_eval_ihtys Θ1 Ξ1 p ups ρm As ρ gs vs as' -> fast_eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs as') /\
     (forall rs Ms ρ ms, fast_eval_field_vals Θ1 Ξ1 rs Ms ρ ms -> fast_eval_field_vals Θ2 Ξ2 rs Ms ρ ms) /\
     (forall f Ms ρ r, fast_eval_app_args Θ1 Ξ1 f Ms ρ r -> fast_eval_app_args Θ2 Ξ2 f Ms ρ r).
   Proof.
-    pose proof kinds_grow as (_ & _ & _ & _ & Hkb & Hkg).
     apply fast_eval_mut_ind; intros;
-      (** the sort of an applied function's argument, and the saturation
+      (** the kind of an applied function's argument, and the saturation
           of a module a member of which is found *)
       repeat match goal with
-        | H : arg_relevance Θ1 Ξ1 ?m = _, Ha : fast_eval_app Θ1 Ξ1 ?m _ _ |- _ =>
-            rewrite <- (arg_relevance_grows _ _ _ Ha) in H
+        | H : evaluated_kind (arg_kind Θ1 Ξ1 ?m), Ha : fast_eval_app Θ1 Ξ1 ?m _ _ |- _ =>
+            apply (proj1 (arg_kind_grows _ _ _ Ha)) in H
+        | H : arg_kind Θ1 Ξ1 ?m = ak_propositional, Ha : fast_eval_app Θ1 Ξ1 ?m _ _ |- _ =>
+            apply (proj2 (arg_kind_grows _ _ _ Ha)) in H
         | H : module_saturated Θ1 Ξ1 ?p ?args, Hc : gc_term Θ1 Ξ1 (qname_app ?p (?x :: nil)) = Some _ |- _ =>
             apply (module_saturated_grows _ _ _ (child_found_term _ _ _ _ Hc)) in H
         | H : module_saturated Θ1 Ξ1 ?p ?args, Hc : gc_resolve Θ1 Ξ1 (qname_app ?p (?x :: nil)) = Some _ |- _ =>
@@ -375,7 +390,8 @@ Section Growth.
     (forall m, fdomain_ne_ok Θ1 Ξ1 m -> fdomain_ne_ok Θ2 Ξ2 m) /\
     (forall n, fdomain_nf_ok Θ1 Ξ1 n -> fdomain_nf_ok Θ2 Ξ2 n) /\
     (forall h, fdmod_ok Θ1 Ξ1 h -> fdmod_ok Θ2 Ξ2 h) /\
-    (forall e, fdentry_ok Θ1 Ξ1 e -> fdentry_ok Θ2 Ξ2 e).
+    (forall e, fdentry_ok Θ1 Ξ1 e -> fdentry_ok Θ2 Ξ2 e) /\
+    (forall t, fentry_type_ok Θ1 Ξ1 t -> fentry_type_ok Θ2 Ξ2 t).
   Proof.
     apply fdomain_ok_mut_ind; intros;
       repeat match goal with H : Forall_all _ _ _ _ _ |- _ => apply Forall_all_Forall in H end;

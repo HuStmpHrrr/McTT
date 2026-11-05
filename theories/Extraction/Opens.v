@@ -233,8 +233,10 @@ End Gen.
 
 Abbreviation skeleton := (list (option gunit)).
 
+(** The context a skeleton stands for: a module slot at its unit, any
+    other entry an assumption, whose type member types never read. *)
 Definition skeleton_ctx (S : skeleton) : ctx :=
-  map (fun o => match o with Some U => ce_mod U | None => ce_ass a_placeholder_type end) S.
+  map (fun o => match o with Some U => ce_mod U | None => ce_ass ak_relevant a_prop end) S.
 
 Definition centry_skeleton (e : centry) : option gunit :=
   match e with
@@ -259,7 +261,7 @@ Fixpoint body_skeleton (Φ : gmod) : skeleton :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ _ E => entry_skeleton E :: body_skeleton Φ
-  | gm_open Φ _ its => repeat None (List.length its) ++ body_skeleton Φ
+  | gm_open Φ _ its _ => repeat None (List.length its) ++ body_skeleton Φ
   end.
 
 (** The skeleton of a frame: its parameters are assumptions. *)
@@ -277,8 +279,7 @@ Section OpenError.
 
   Fixpoint open_expand_exp (S : skeleton) (M : exp) {struct M} : open_result exp :=
     match M with
-    | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_true | a_tt | a_False
-    | a_placeholder_type | a_placeholder | a_var _ => open_success M
+    | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False | a_var _ => open_success M
     | a_univ M => let+ M' := open_expand_exp S M in open_success (a_univ M')
     | a_succl M => let+ M' := open_expand_exp S M in open_success (a_succl M')
     | a_maxl M N =>
@@ -294,18 +295,20 @@ Section OpenError.
         let+ P' := open_expand_exp S P in
         let+ Q' := open_expand_exp (None :: S) Q in
         open_success (a_and P' Q')
-    | a_conj T M N =>
-        let+ T' := open_expand_exp S T in
+    (** A proof of a conjunction: its annotations, the second over the
+        first, and its components *)
+    | a_conj P Q M N =>
+        let+ P' := open_expand_exp S P in
+        let+ Q' := open_expand_exp (None :: S) Q in
         let+ M' := open_expand_exp S M in
         let+ N' := open_expand_exp S N in
-        open_success (a_conj T' M' N')
+        open_success (a_conj P' Q' M' N')
     | a_left M => let+ M' := open_expand_exp S M in open_success (a_left M')
     | a_right M => let+ M' := open_expand_exp S M in open_success (a_right M')
-    (** The literals are generated before expansion ([Builtin]). *)
-    | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => open_success M
-    (** An eliminator: its uniform parameters, each block's annotation,
-        motive and branches under their binders, its scrutinee *)
-    | a_elim r oq Us m Bks M =>
+    | a_ind _ _ | a_con _ _ _ => open_success M
+    (** An eliminator: its uniform parameters, each block's scrutinee
+        type, motive and branches under their binders, its scrutinee *)
+    | a_elim r p Us m Bks M =>
         let+ Us' := (fix open_expand_us (Us : list exp) : open_result (list exp) :=
                        match Us with
                        | nil => open_success nil
@@ -314,11 +317,8 @@ Section OpenError.
         let+ Bks' := (fix open_expand_blocks (Bks : list eblock) : open_result (list eblock) :=
                         match Bks with
                         | nil => open_success nil
-                        | eb_mk nm oZ A Bs :: Bks0 =>
-                            let+ oZ' := match oZ with
-                                        | Some Z => let+ Z' := open_expand_exp (List.repeat None (nm - 1) ++ S) Z in open_success (Some Z')
-                                        | None => open_success None
-                                        end in
+                        | eb_mk nm Z A Bs :: Bks0 =>
+                            let+ Z' := open_expand_exp (List.repeat None (nm - 1) ++ S) Z in
                             let+ A' := open_expand_exp (List.repeat None nm ++ S) A in
                             let+ Bs' := (fix open_expand_brs (Bs : list (String.string * nat * exp)) : open_result (list (String.string * nat * exp)) :=
                                            match Bs with
@@ -329,14 +329,14 @@ Section OpenError.
                                                open_success ((fst b, B') :: Bs0')
                                            end) Bs in
                             let+ Bks0' := open_expand_blocks Bks0 in
-                            open_success (eb_mk nm oZ' A' Bs' :: Bks0')
+                            open_success (eb_mk nm Z' A' Bs' :: Bks0')
                         end) Bks in
         let+ M' := open_expand_exp S M in
-        open_success (a_elim r oq Us' m Bks' M')
-    | a_pi r A B =>
+        open_success (a_elim r p Us' m Bks' M')
+    | a_pi κd κc A B =>
         let+ A' := open_expand_exp S A in
         let+ B' := open_expand_exp (None :: S) B in
-        open_success (a_pi r A' B')
+        open_success (a_pi κd κc A' B')
     | a_fn A M =>
         let+ A' := open_expand_exp S A in
         let+ M' := open_expand_exp (None :: S) M in
@@ -375,13 +375,10 @@ Section OpenError.
     end
   with open_expand_binding (S : skeleton) (b : binding) {struct b} : open_result binding :=
     match b with
-    | b_def oA M =>
-        let+ oA' := match oA with
-                    | Some A => let+ A' := open_expand_exp S A in open_success (Some A')
-                    | None => open_success None
-                    end in
+    | b_def A M =>
+        let+ A' := open_expand_exp S A in
         let+ M' := open_expand_exp S M in
-        open_success (b_def oA' M')
+        open_success (b_def A' M')
     | b_mod U => let+ U' := open_expand_unit S U in open_success (b_mod U')
     end
   with open_expand_unit (S : skeleton) (U : gunit) {struct U} : open_result gunit :=
@@ -410,7 +407,7 @@ Section OpenError.
         let+ Φ' := open_expand_body S Φ in
         let+ E' := open_expand_entry (body_skeleton Φ' ++ S) E in
         open_success (gm_ext Φ' x E')
-    | gm_open Φ H its =>
+    | gm_open Φ H its _ =>
         let+ Φ' := open_expand_body S Φ in
         let+ H' := open_expand_modexp (body_skeleton Φ' ++ S) H in
         match mchk (skeleton_ctx (body_skeleton Φ' ++ S)) H' with
@@ -439,7 +436,7 @@ Section OpenError.
     end
   with open_expand_centry (S : skeleton) (e : centry) {struct e} : open_result centry :=
     match e with
-    | ce_ass A => let+ A' := open_expand_exp S A in open_success (ce_ass A')
+    | ce_ass κ A => let+ A' := open_expand_exp S A in open_success (ce_ass κ A')
     | ce_def A M =>
         let+ A' := open_expand_exp S A in
         let+ M' := open_expand_exp S M in
@@ -462,15 +459,16 @@ Section OpenError.
         open_success (e' :: Δ0')
     end.
 
-  (** The arguments of a constructor as written: each binds a variable for
-      the ones after it. *)
-  Fixpoint open_expand_raw_args (S : skeleton) (args : list (string * exp)) : open_result (list (string * exp)) :=
+  (** The arguments of a constructor, or the fields of a record, as
+      written, each at its kind: each binds a variable for the ones after
+      it. *)
+  Fixpoint open_expand_raw_args (S : skeleton) (args : list (string * abs_kind * exp)) : open_result (list (string * abs_kind * exp)) :=
     match args with
     | nil => open_success nil
-    | (y, T) :: args' =>
+    | (y, κ, T) :: args' =>
         let+ T' := open_expand_exp S T in
         let+ args'' := open_expand_raw_args (None :: S) args' in
-        open_success ((y, T') :: args'')
+        open_success ((y, κ, T') :: args'')
     end.
 
   (** A member of a group as written, its uniform parameters [Su] and the
@@ -505,20 +503,20 @@ Section OpenError.
                   (raw_fun_clauses f) in
     open_success (mk_rfun (raw_fun_name f) ys Z A cls).
 
-  (** A command's own terms: the nested commands of a module are expanded
-      when they run. *)
-  Fixpoint open_expand_cmd (S : skeleton) (c : core_cmd) : open_result core_cmd :=
+  (** A command's own terms: the commands of a module's body run after
+      it, in its frame. *)
+  Definition open_expand_cmd (S : skeleton) (c : core_cmd) : open_result core_cmd :=
     match c with
-    | core_cmd_def x b pv A (Some M) =>
+    | core_cmd_def x b pv κ A (Some M) =>
         let+ A' := open_expand_exp S A in
         let+ M' := open_expand_exp S M in
-        open_success (core_cmd_def x b pv A' (Some M'))
-    | core_cmd_def x b pv A None =>
+        open_success (core_cmd_def x b pv κ A' (Some M'))
+    | core_cmd_def x b pv κ A None =>
         let+ A' := open_expand_exp S A in
-        open_success (core_cmd_def x b pv A' None)
-    | core_cmd_mod x pv Δ cs =>
+        open_success (core_cmd_def x b pv κ A' None)
+    | core_cmd_mod_open x pv Δ =>
         let+ Δ' := open_expand_tele S Δ in
-        open_success (core_cmd_mod x pv Δ' cs)
+        open_success (core_cmd_mod_open x pv Δ')
     | core_cmd_alias x pv Δ E =>
         let+ Δ' := open_expand_tele S Δ in
         let+ E' := open_expand_modexp (map centry_skeleton Δ' ++ S) E in
@@ -527,13 +525,10 @@ Section OpenError.
     | core_cmd_open E its =>
         let+ E' := open_expand_modexp S E in
         open_success (core_cmd_open E' its)
-    | core_cmd_eval M oA =>
+    | core_cmd_eval M A =>
         let+ M' := open_expand_exp S M in
-        let+ oA' := match oA with
-                    | Some A => let+ A' := open_expand_exp S A in open_success (Some A')
-                    | None => open_success None
-                    end in
-        open_success (core_cmd_eval M' oA')
+        let+ A' := open_expand_exp S A in
+        open_success (core_cmd_eval M' A')
     | core_cmd_inductive pv D =>
         let+ D' := open_expand_decl S D in
         open_success (core_cmd_inductive pv D')
@@ -552,14 +547,12 @@ Section OpenError.
         let+ Δ' := open_expand_tele S Δ in
         let+ H' := open_expand_modexp (map centry_skeleton Δ' ++ S) H in
         open_success (core_cmd_record_alias x pv Δ' H')
-    | core_cmd_record x pv Δ Srt fs cs =>
+    | core_cmd_record_open x pv Δ Srt fs =>
         let+ Δ' := open_expand_tele S Δ in
         let+ Srt' := open_expand_exp (map centry_skeleton Δ' ++ S) Srt in
         let+ fs' := open_expand_raw_args (map centry_skeleton Δ' ++ S) fs in
-        open_success (core_cmd_record x pv Δ' Srt' fs' cs)
-    | core_cmd_gen c0 =>
-        let+ c0' := open_expand_cmd S c0 in
-        open_success (core_cmd_gen c0')
+        open_success (core_cmd_record_open x pv Δ' Srt' fs')
+    | core_cmd_close x pv => open_success (core_cmd_close x pv)
     end.
   (** The first open of a command's own terms that generates nothing, if
       any, read as the checker reads the command. *)
