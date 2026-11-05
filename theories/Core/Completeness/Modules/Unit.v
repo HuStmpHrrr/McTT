@@ -306,11 +306,11 @@ Proof.
   - rewrite <- app_assoc in HΔΓ; cbn [List.app] in HΔΓ; exact (rel_ctx_wf_app_r _ _ HΔΓ).
 Qed.
 
-Lemma valid_unit_beta : forall Γ T1 κ X D N Srt i, valid_unit Γ (me_lit (gu_mk (T1 ++ ce_ass κ X :: nil) D)) ->
-    relevant_sort Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ X : Srt -> rel_param_typed Γ X i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : X -> Γ ⊨ N : X ->
+Lemma valid_unit_beta : forall Γ T1 κ X D N i, valid_unit Γ (me_lit (gu_mk (T1 ++ ce_ass κ X :: nil) D)) ->
+    rel_param_typed Γ X i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : X -> Γ ⊨ N : X ->
     valid_unit Γ (me_lit (gu_mk T1 D)[Id,,N]ᵘ).
 Proof.
-  intros * HK HSrt HXw HX HNw HN.
+  intros * HK HX HNw HN.
   pose proof (valid_unit_ctx_wf _ _ _ _ HK) as HΓ.
   pose proof (valid_unit_lit_param_wf _ _ _ _ _ HK) as HΓX.
   destruct (rel_ctx_wf_ass_inv HΓX) as (Srt' & HSrt' & HXs).

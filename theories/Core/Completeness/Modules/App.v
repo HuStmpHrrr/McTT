@@ -52,17 +52,17 @@ Qed.
 (** The unit a valid literal with an outermost parameter is, given an
     argument for it: the literal instantiated, with the description at the
     argument. *)
-Lemma valid_unit_lit_app : forall Γ Δ κ X D N R Srt i, valid_unit Γ (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) ->
+Lemma valid_unit_lit_app : forall Γ Δ κ X D N R i, valid_unit Γ (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) ->
     udenote Θm Ξm Γ None (gu_mk (Δ ++ ce_ass κ X :: nil) D) R ->
-    relevant_sort Srt -> Θm ⍮ Ξm ⍮ Γ ⊢ X : Srt -> rel_param_typed Γ X i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : X -> Γ ⊨ N : X ->
+    rel_param_typed Γ X i -> Θm ⍮ Ξm ⍮ Γ ⊢ N : X -> Γ ⊨ N : X ->
     modexp_next_param Γ (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) X /\
     exists R', mdesc_at R N = Some R' /\
       Γ ⊨ᵐ me_app (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) N ≈ me_lit (gu_mk Δ D)[Id,,N]ᵘ /\
       valid_unit Γ (me_lit (gu_mk Δ D)[Id,,N]ᵘ) /\
       mdenote Θm Ξm Γ (me_lit (gu_mk Δ D)[Id,,N]ᵘ) R' /\ mdesc_mod R' = Some R'.
 Proof.
-  intros * HK Hu HSrt HXw HX HNw HN.
-  pose proof (valid_unit_beta Hgw _ _ Hgm Hsub Hgf _ _ _ _ _ _ _ _ HK HSrt HXw HX HNw HN) as HK'.
+  intros * HK Hu HX HNw HN.
+  pose proof (valid_unit_beta Hgw _ _ Hgm Hsub Hgf _ _ _ _ _ _ _ HK HX HNw HN) as HK'.
   pose proof (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HNw))) as HNs.
   assert (HΓX : ⊨ Γ ▹{κ} X) by (eapply valid_unit_lit_param_wf; exact HK).
   pose proof (valid_unit_wf _ _ _ _ HK) as Hw.
@@ -155,7 +155,7 @@ Proof.
     match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
     cbn in Ht; injection Ht as <-.
     destruct (tele_view_ass _ _ _ HΔ Hv) as [κ ->].
-    destruct (valid_unit_lit_app _ _ _ _ _ _ _ _ _ HK0 Hm HSrt HBw HB HNw HN) as (Hl & R' & Ha & HKN & HK' & Hm' & Hmod').
+    destruct (valid_unit_lit_app _ _ _ _ _ _ _ _ HK0 Hm HB HNw HN) as (Hl & R' & Ha & HKN & HK' & Hm' & Hmod').
     split; [ exact Hl |].
     exists (me_lit (gu_mk T1 (md_body sm_open Φ))[Id,,N]ᵘ), R', R'; repeat split; assumption.
   - (* an alias *)
@@ -186,7 +186,7 @@ Proof.
     + (* β *)
       destruct (tele_ass_app_inv _ _ HΔ) as [HΔ' He]; inversion He as [| ? ? (κ & X & ->) _]; subst.
       rewrite app_assoc, tele_view_last in Hv; injection Hv as <- <-.
-      destruct (valid_unit_lit_app _ _ _ _ _ _ _ _ _ HK0 Hu HSrt HBw HB HNw HN) as (Hl & R' & Ha & HKN & HK' & Hm' & Hmod').
+      destruct (valid_unit_lit_app _ _ _ _ _ _ _ _ HK0 Hu HB HNw HN) as (Hl & R' & Ha & HKN & HK' & Hm' & Hmod').
       split; [ exact Hl |].
       exists (me_lit (gu_mk Δ' (md_alias E))[Id,,N]ᵘ), R', R'; repeat split; assumption.
   - (* a module expression equal to a valid unit: as the unit does *)

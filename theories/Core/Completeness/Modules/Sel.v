@@ -128,12 +128,16 @@ Proof.
   induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HC HΓ Hbase ρ ρ' Hρ; cbn [List.app] in *.
   - destruct (Hbase _ HΓ _ _ Hρ) as (k0 & v0 & Hk0 & Hv0 & Hs).
     exists k0, v0; split; [ exact Hk0 | split; [ apply eval_close_alias0; exact Hv0 | exact Hs ] ].
-  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? [A ->] _]; subst.
+  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
     rewrite <- app_assoc in HC, Hbase; cbn [List.app] in HC, Hbase.
     destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as (Srt & HS & HA0).
-    destruct (rel_type_of_sort HS HA0) as [i HA].
-    pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
+    destruct (rel_type_of_sort (sort_kind_type_sort _ _ HS) HA0) as [i HA].
+    pose proof (per_ctx_env_of_typ (κ := κ) HΓ HA) as HΓA.
     destruct (rel_type_inversion_simple_at HΓ HA _ _ Hρ) as (a & a' & Ha & Ha' & [Ra HRa]).
+    (* the parameter's type is of its tag, at both sides *)
+    destruct (rel_type_kind_of_sort_kind HS HA0 _ HΓ _ _ Hρ) as (a0 & Ea0 & Ka).
+    pose proof (functional_eval_exp _ _ _ _ Ea0 Ha) as ->.
+    assert (Ka' : domain_kind a' = κ) by (rewrite <- (per_univ_elem_kind _ _ _ _ HRa); exact Ka).
     assert (Hext : forall c c', Ra c c' ->
                per_env_extend A A RΓ (ρ ↦ c ⦂ entry_type_closure A ρ) (ρ' ↦ c' ⦂ entry_type_closure A ρ')).
     { intros c c' Hc.
@@ -141,17 +145,17 @@ Proof.
       apply (mk_per_ctx_env_cons_rel _ _ _ _ (ρ ↦ c ⦂ entry_type_closure A ρ) (ρ' ↦ c' ⦂ entry_type_closure A ρ') Hρ);
         [ eapply per_head_of; [ exact Ha | exact Ha' | exact HRa | exact Hc ] | intros _; eexists; reflexivity
         | intros _; eexists; reflexivity | split; [ exact Rc | cbn; lia ] | split; [ exact Rc' | cbn; lia ] ]. }
-    assert (Hl : 0 < List.length (Δ0 ++ ce_ass A :: nil)) by (rewrite length_app; cbn; lia).
-    exists (dm_local (Δ0 ++ ce_ass A :: nil) (moddef_expand D) ρ), (dm_local (Δ0 ++ ce_ass A :: nil) (md_alias V0) ρ').
+    assert (Hl : 0 < List.length (Δ0 ++ ce_ass κ A :: nil)) by (rewrite length_app; cbn; lia).
+    exists (dm_local (Δ0 ++ ce_ass κ A :: nil) (moddef_expand D) ρ), (dm_local (Δ0 ++ ce_ass κ A :: nil) (md_alias V0) ρ').
     split; [ exact (close_unsat _ D _ Hl) |]; split; [ exact (close_unsat _ (md_alias V0) _ Hl) |].
-    eapply sel_step; [ constructor; exact Ha | constructor; exact Ha' | exact HRa | |].
+    eapply sel_step; [ constructor; [ exact Ha | exact Ka ] | constructor; [ exact Ha' | exact Ka' ] | exact HRa | |].
     + intros c c' Hc.
-      destruct (IH (Γ ▹ A) _ _ _ _ HΔ0 HC HΓA Hbase _ _ (Hext _ _ Hc)) as (k1 & v1 & _ & Hv1 & _).
+      destruct (IH _ _ _ _ _ HΔ0 HC HΓA Hbase _ _ (Hext _ _ Hc)) as (k1 & v1 & _ & Hv1 & _).
       exists v1; constructor; exact Hv1.
     + intros c c' kc vc Hc Hkc Hvc.
-      inversion Hkc as [| ? ? ? ? ? ? Hkc' Hl1 |]; subst; apply app_inj_tail in Hl1 as [<- [= <-]].
-      inversion Hvc as [| ? ? ? ? ? ? Hvc' Hl2 |]; subst; apply app_inj_tail in Hl2 as [<- [= <-]].
-      destruct (IH (Γ ▹ A) _ _ _ _ HΔ0 HC HΓA Hbase _ _ (Hext _ _ Hc)) as (k1 & v1 & Hk1 & Hv1 & Hs1).
+      inversion Hkc as [| ? ? ? ? ? ? ? Hkc' Hl1 |]; subst; apply app_inj_tail in Hl1 as [<- [= _ <-]].
+      inversion Hvc as [| ? ? ? ? ? ? ? Hvc' Hl2 |]; subst; apply app_inj_tail in Hl2 as [<- [= _ <-]].
+      destruct (IH _ _ _ _ _ HΔ0 HC HΓA Hbase _ _ (Hext _ _ Hc)) as (k1 & v1 & Hk1 & Hv1 & Hs1).
       rewrite eval_close_expand_iff in Hkc'.
       pose proof (functional_eval_close _ _ _ _ _ Hk1 Hkc') as ->.
       pose proof (functional_eval_close _ _ _ _ _ Hv1 Hvc') as ->.
@@ -193,32 +197,37 @@ Proof.
       [| apply nth_error_None in Hne; rewrite length_rev in Hne; lia ].
     destruct (tele_split_rev _ _ _ Hne) as (l1 & l2 & Hrev & Hl1 & HT').
     assert (Ha : tele_ass (rev l2 ++ e :: rev l1)) by (rewrite <- HT'; exact HTa).
-    apply Forall_app in Ha as [_ Ha]; inversion Ha as [| ? ? [A ->] _]; subst e.
+    apply Forall_app in Ha as [_ Ha]; inversion Ha as [| ? ? (κ & A & ->) _]; subst e.
     pose proof HT as HT0; rewrite HT' in HT0.
     pose proof (rel_ctx_wf_app_r _ _ HT0) as HAT.
     destruct (rel_ctx_wf_ass_inv HAT) as (Srt & HS & HA0).
-    destruct (rel_type_of_sort HS HA0) as [i HA].
+    destruct (rel_type_of_sort (sort_kind_type_sort _ _ HS) HA0) as [i HA].
     pose proof (rel_ctx_wf_tail HAT) as HTl.
     destruct (rel_ctx_wf_per_ctx_env HTl) as [R0 HR0].
     assert (Hg0 : per_gargs l1 nil nil ns ns').
     { rewrite Hrev in Hg; rewrite <- (app_nil_r ns), <- (app_nil_r ns') in Hg.
-      exact (proj1 (per_gargs_app l1 (ce_ass A :: l2) nil nil ns ns' nil nil ltac:(lia) Hg ltac:(lia))). }
+      exact (proj1 (per_gargs_app l1 (ce_ass κ A :: l2) nil nil ns ns' nil nil ltac:(lia) Hg ltac:(lia))). }
     assert (Hρ : R0 (env_tele nil l1 ns) (env_tele nil l1 ns')).
     { rewrite <- (app_nil_r (rev l1)) in HTl, HR0.
       pose proof (gargs_env_rel_gen (rev l1) ⋅ _ _ nil nil ns ns' per_ctx_env_nil_true HR0 HTl I
                     ltac:(rewrite length_rev; lia) ltac:(rewrite rev_involutive; exact Hg0)) as Hρl.
       rewrite rev_involutive in Hρl; exact Hρl. }
     destruct (rel_type_inversion_simple_at HR0 HA _ _ Hρ) as (a & a' & Ha0 & Ha0' & [RA HRA]).
+    (* the missing parameter's type is of its tag, at both sides *)
+    assert (Ka : domain_kind a = κ).
+    { destruct (rel_type_kind_of_sort_kind HS HA0 _ HR0 _ _ Hρ) as (a1 & Ea1 & Ka1).
+      pose proof (functional_eval_exp _ _ _ _ Ea1 Ha0) as ->; exact Ka1. }
+    assert (Ka' : domain_kind a' = κ) by (rewrite <- (per_univ_elem_kind _ _ _ _ HRA); exact Ka).
     assert (Hlt : List.length ns < List.length T) by lia.
-    assert (Hne' : nth_error (rev T) (List.length ns') = Some (ce_ass A)) by (rewrite <- Hl'; exact Hne).
+    assert (Hne' : nth_error (rev T) (List.length ns') = Some (ce_ass κ A)) by (rewrite <- Hl'; exact Hne).
     assert (Hgs : forall c c', RA c c' -> per_gargs (rev T) nil nil (ns ++ c :: nil) (ns' ++ c' :: nil)).
     { intros c c' Hc.
-      rewrite Hrev; change (l1 ++ ce_ass A :: l2) with (l1 ++ (ce_ass A :: nil) ++ l2); rewrite app_assoc.
+      rewrite Hrev; change (l1 ++ ce_ass κ A :: l2) with (l1 ++ (ce_ass κ A :: nil) ++ l2); rewrite app_assoc.
       rewrite <- (app_nil_r (ns ++ c :: nil)), <- (app_nil_r (ns' ++ c' :: nil)).
       apply per_gargs_app_intro; [ rewrite !length_app; cbn; lia | | constructor ].
       eapply per_gargs_snoc; [ lia | exact Hg0 | econstructor; eassumption | exact Hc ]. }
-    eapply sel_step; [ econstructor; [ exact Hm | exact Hne | rewrite Hrev, env_tele_app_long by lia; exact Ha0 ]
-                     | apply (HFp ns'); [ lia | exact Hw | econstructor; [ exact Hm | exact Hne' | rewrite Hrev, env_tele_app_long by lia; exact Ha0' ] ]
+    eapply sel_step; [ econstructor; [ exact Hm | exact Hne | rewrite Hrev, env_tele_app_long by lia; exact Ha0 | exact Ka ]
+                     | apply (HFp ns'); [ lia | exact Hw | econstructor; [ exact Hm | exact Hne' | rewrite Hrev, env_tele_app_long by lia; exact Ha0' | exact Ka' ] ]
                      | exact HRA | |].
     + intros c c' Hc; destruct (HFa _ _ _ _ _ Hlt (Hgs _ _ Hc) Hw) as (w' & Hw' & _); exists w'; exact Hw'.
     + intros c c' kc vc Hc Hkc Hvc.
@@ -226,6 +235,19 @@ Proof.
       destruct (HFa _ _ _ _ _ Hlt (Hgs _ _ Hc) Hw) as (w' & Hw' & HWw').
       pose proof (functional_eval_appm _ _ _ _ Hvc Hw') as ->.
       apply (IH _ (ns' ++ c' :: nil)); [ rewrite length_app; cbn; lia | rewrite length_app; cbn; lia | exact (Hgs _ _ Hc) | exact HWw' ].
+Qed.
+
+(** A closure lacking a last parameter related to anything: the
+    parameter's type has the parameter's tag as its kind, at the closure's
+    environment ([next_param_local]). *)
+Lemma per_dmod_local_last_kind : forall Δ κ A D ρ h', per_dmod (dm_local (Δ ++ ce_ass κ A :: nil) D ρ) h' ->
+    exists a, ⟦ A ⟧ ρ ↘ a /\ domain_kind a = κ.
+Proof.
+  intros * Hd; inversion Hd as [| ? ? ? ? ? ? Hb Heq | h a h1 a1 i R Hnp _ _ _ _ _]; subst.
+  - destruct Δ; discriminate.
+  - inversion Hnp as [Δ0 κ0 A0 D0 ρ0 a0 Ha Hk Heq | |]; subst.
+    apply app_inj_tail in Heq as [_ [= <- <-]].
+    exists a; split; [ exact Ha | reflexivity ].
 Qed.
 
 (** Applying related closures to arguments related at their telescope,
@@ -237,19 +259,23 @@ Lemma closure_gargs : forall ns Ta D ρ ρ' ρb ns', tele_ass Ta -> List.length 
 Proof.
   induction ns as [| c ns IH]; intros * HTa Hl Hd Hg.
   - inversion Hg; subst; exists (dm_local Ta D ρ), (dm_local Ta D ρ'); repeat split; [ constructor | constructor | exact Hd ].
-  - destruct (tele_ass_last _ HTa ltac:(destruct Ta; cbn in Hl; [ lia | discriminate ])) as (Ta0 & A & ->).
+  - destruct (tele_ass_last _ HTa ltac:(destruct Ta; cbn in Hl; [ lia | discriminate ])) as (Ta0 & κ & A & ->).
     rewrite rev_app_distr in Hg; cbn [rev List.app] in Hg.
-    inversion Hg as [| ? A' ? ? a a' ts ? ns0' R HA Hc Hg0]; subst.
+    inversion Hg as [| ? A' ? ? a a' ts ? ns0' κ' R HA Hc Hg0]; subst.
     destruct HA as [x x' Hx Hx' HRx].
-    destruct (per_dmod_appm _ _ _ Hd (next_param_local _ _ _ _ _ Hx)) as (i' & R' & ah & Hph & HR' & Happ).
+    (* the parameter's type is of its tag, as the closure has it *)
+    assert (Kx : domain_kind x = κ).
+    { destruct (per_dmod_local_last_kind _ _ _ _ _ _ Hd) as (x1 & Hx1 & Kx1).
+      pose proof (functional_eval_exp _ _ _ _ Hx1 Hx) as ->; exact Kx1. }
+    destruct (per_dmod_appm _ _ _ Hd (next_param_local _ _ _ _ _ _ Hx Kx)) as (i' & R' & ah & Hph & HR' & Happ).
     assert (E : R <~> R') by (eapply per_univ_elem_right_irrel; [ exact HRx | exact HR' ]).
     destruct (Happ _ _ (proj1 (E _ _) Hc)) as (hc & hc' & Hhc & Hhc' & Hhh).
     rewrite length_app in Hl; cbn in Hl.
     apply List.Forall_app in HTa as [HTa0 _].
-    inversion Hhc as [| Δ1 D1 ρ1 n1 A1 r1 Hcl Heq |]; subst D1 ρ1 n1 r1;
-      apply app_inj_tail in Heq as [-> [= ->]].
-    inversion Hhc' as [| Δ1 D1 ρ1 n1 A1 r1 Hcl' Heq' |]; subst D1 ρ1 n1 r1;
-      apply app_inj_tail in Heq' as [-> [= ->]].
+    inversion Hhc as [| Δ1 D1 ρ1 n1 A1 r1 κ1 Hcl Heq |]; subst D1 ρ1 n1 r1;
+      apply app_inj_tail in Heq as [-> [= -> ->]].
+    inversion Hhc' as [| Δ1 D1 ρ1 n1 A1 r1 κ2 Hcl' Heq' |]; subst D1 ρ1 n1 r1;
+      apply app_inj_tail in Heq' as [-> [= -> ->]].
     destruct ns as [| c1 ns1].
     + inversion Hg0; subst.
       exists hc, hc'; split; [ econstructor; [ exact Hhc | constructor ] |]; split; [ econstructor; [ exact Hhc' | constructor ] | exact Hhh ].
@@ -471,7 +497,7 @@ Proof.
         by (apply mdenote_lit; eapply udenote_alias; eassumption).
       cbn [mdesc_read mdesc_ats_read] in Hr.
       destruct (mdesc_ats (mdesc_up Δd REm) Ns) as [R3 |] eqn:Ha;
-        destruct (mdesc_term_part_ats (mdesc_term relevant Ad (Some Md)) Ns) as [[r2 B [M' |] | | |] |]; cbn in Hr; try discriminate.
+        destruct (mdesc_term_part_ats (mdesc_term ak_relevant Ad (Some Md)) Ns) as [[r2 B [M' |] | | |] |]; cbn in Hr; try discriminate.
       injection Hr as <-.
       rewrite mdesc_named_fix, mdesc_up_nil in Hmd by reflexivity; cbn [mdesc_mod] in Hmd.
       exists Φ0, (ge_def_mod pv Ad Md (gu_mk Δd (md_alias Ed))), (gu_mk Δd (md_alias Ed)), R3.
@@ -692,7 +718,7 @@ Proof.
   - intros ns0 w a Hlt -> Hnp.
     inversion Hnp; subst.
     match goal with Hm0 : gc_loc _ _ p = Some _ |- _ => rewrite Hm in Hm0; injection Hm0 as <- <- end.
-    eapply next_param_global; [ exact Hmq | rewrite nth_rev_app_lt by exact Hlt; eassumption |].
+    eapply next_param_global; [ exact Hmq | rewrite nth_rev_app_lt by exact Hlt; eassumption | | first [ eassumption | reflexivity ] ].
     rewrite rev_app_distr, env_tele_app_long by (rewrite length_rev; lia); eassumption.
   - intros ns0 ns1 c c' w _ _ ->.
     exists (dm_global (qname_in p y) (ns1 ++ c' :: nil)); split; [ constructor | reflexivity ].
@@ -809,7 +835,7 @@ Proof.
     match goal with Hx : nth_error (rev ?T0) _ = Some ?e |- _ =>
       rewrite <- (nth_rev_app_lt Δ0 T0) in Hx by exact Hlt;
       destruct (firstn_rev_nth _ _ _ Hx) as (L0 & HL0) end.
-    rewrite HL0; apply next_param_local.
+    rewrite HL0; apply next_param_local; [| first [ assumption | reflexivity ] ].
     rewrite rev_app_distr, env_tele_app_long by (rewrite length_rev; lia); assumption.
   - intros ns1 ns2 c c' w Hlt Hg1 Hw1.
     pose proof (per_gargs_len_eq _ _ _ _ _ Hg1) as Hl12; rewrite !length_app in Hl12; cbn in Hl12.
