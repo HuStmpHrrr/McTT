@@ -116,6 +116,10 @@ Lemma tele_param_kind_of_nth : forall T n κ A, List.nth_error T n = Some (ce_as
     tele_param_kind T n = κ.
 Proof. intros * H Hk; unfold tele_param_kind; rewrite H; destruct Hk; reflexivity. Qed.
 
+(** No parameter is taken as a proof. *)
+Lemma tele_param_kind_not_propositional : forall T n, tele_param_kind T n <> ak_propositional.
+Proof. intros T n E; pose proof (tele_param_kind_evaluated T n) as Hk; rewrite E in Hk; inversion Hk. Qed.
+
 (** Past the uniform parameters, a member's parameters are its non-uniform
     ones, all relevant ([decl_typed_nparams_kind]). *)
 Lemma tele_param_kind_nparams : forall Θ Ξ D, decl_typed Θ Ξ D -> forall k Mk n, ind_member D k = Some Mk -> ind_nu D <= n ->
