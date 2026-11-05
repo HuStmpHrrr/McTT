@@ -103,7 +103,7 @@ Qed.
 Lemma nbe_ty_to_nbe_type : forall Γ T i W, nbe_ty_f Γ T W -> nbe_f Γ T Typeω@i W.
 Proof.
   intros * H; inversion_clear H.
-  eapply nbe_relevant_intro; [ eassumption | constructor | eassumption | constructor; eassumption | reflexivity ].
+  eapply nbe_evaluated_intro; [ eassumption | constructor | eassumption | constructor; eassumption | constructor ].
 Qed.
 
 (** [nbe] of a type, at [Prop]: a proposition is a relevant term of
@@ -111,7 +111,7 @@ Qed.
 Lemma nbe_ty_to_nbe_prop : forall Γ T W, nbe_ty_f Γ T W -> nbe_f Γ T Propₘ W.
 Proof.
   intros * H; inversion_clear H.
-  econstructor; [ eassumption | constructor | eapply nbe_term_relevant; [ reflexivity | eassumption | constructor; eassumption ] ].
+  econstructor; [ eassumption | constructor | eapply nbe_term_evaluated; [ constructor | eassumption | constructor; eassumption ] ].
 Qed.
 
 (** The same at [LevelSort]: a type of levels is a relevant term of
@@ -119,7 +119,7 @@ Qed.
 Lemma nbe_ty_to_nbe_level_sort : forall Γ T W, nbe_ty_f Γ T W -> nbe_f Γ T LevelSort W.
 Proof.
   intros * H; inversion_clear H.
-  econstructor; [ eassumption | constructor | eapply nbe_term_relevant; [ reflexivity | eassumption | constructor; eassumption ] ].
+  econstructor; [ eassumption | constructor | eapply nbe_term_evaluated; [ constructor | eassumption | constructor; eassumption ] ].
 Qed.
 
 (** A type of a sort ([type_sort]) is equal there to its normal form. *)

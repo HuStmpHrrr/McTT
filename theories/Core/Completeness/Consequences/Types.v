@@ -4,15 +4,15 @@
     forces [i = j].  Each proof reads the judgment at the initial environment and
     inverts the resulting [per_univ]; only the variable-against-variable case needs
     work, since there the values are neutrals whose levels must be turned back
-    into indices.  The same-sort theorem for subtyping reads the relevance of
-    each side's value. *)
+    into indices.  The same-sort theorem for subtyping reads the kind of each
+    side's value. *)
 
 From Stdlib Require Import Lia.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Completeness.
-From Mctt.Core.Completeness Require Import UniverseCases.
+From Mctt.Core.Completeness Require Import UniverseCases FunctionCases.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model.
@@ -27,9 +27,10 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** [x] is bound by an assumption of [Γ], not by a definition. *)
+(** [x] is bound by an assumption of [Γ], of any tag, not by a
+    definition. *)
 Definition ctx_ass (Γ : ctx) (x : nat) : Prop :=
-  exists A, List.nth_error Γ x = Some (ce_ass A).
+  exists κ A, List.nth_error Γ x = Some (ce_ass κ A).
 
 (** A variable bound by an assumption evaluates, in the initial environment of
     its context, to the neutral at its own level. *)
@@ -40,8 +41,8 @@ Lemma eval_var_at_initial_env : forall {Γ x} {i : nat} {ρ a},
     Γ ⊢ #x : Typeω@i ->
     x < length Γ /\ exists b, a = ⇑! b (length Γ - x - 1).
 Proof.
-  intros * [A Hlookup] Hρ Hev Hx.
-  pose proof (initial_env_spec _ _ _ _ Hρ Hlookup) as [b Heq].
+  intros * (κ & A & Hlookup) Hρ Hev Hx.
+  pose proof (initial_env_spec _ _ _ _ _ Hρ Hlookup) as [b Heq].
   assert (Ha : a = ⇑! b (length Γ - x - 1))
     by (eapply functional_eval_exp; [ exact Hev | apply eval_exp_var_eq; exact Heq ]).
   split; [ apply List.nth_error_Some; congruence |].
@@ -110,8 +111,8 @@ Inductive is_typ_constr : typ -> Prop :=
 | level_sort_is_typ_constr : is_typ_constr LevelSort
 (** The universe of propositions *)
 | prop_is_typ_constr : is_typ_constr Propₘ
-(** A [Π] *)
-| pi_is_typ_constr : forall A B, is_typ_constr Π A B
+(** A [Π] into a universe, its domain of any tag *)
+| pi_is_typ_constr : forall κ A B, is_typ_constr (Π{κ} A B)
 (** A variable *)
 | var_is_typ_constr : forall x, is_typ_constr #x
 (** An inductive type at its parameters. *)
@@ -135,8 +136,8 @@ Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
 | True_is_rigid : rigid_typ Γ ⊤
 (** The empty type *)
 | False_is_rigid : rigid_typ Γ ⊥
-(** A [Π] *)
-| pi_is_rigid : forall A B, rigid_typ Γ (Π A B)
+(** A [Π] into a universe, its domain of any tag *)
+| pi_is_rigid : forall κ A B, rigid_typ Γ (Π{κ} A B)
 (** A variable bound by an assumption *)
 | var_is_rigid : forall x, ctx_ass Γ x -> rigid_typ Γ #x
 (** An inductive type at its parameters *)
@@ -266,7 +267,7 @@ Record relevant_params_telescope (Γ C : ctx) : Prop := mk_relevant_params_teles
   ; relevant_params_telescope_valid : ⊨ C
     (** Each entry is a type of a universe or a type of levels over the
         entries before it ([rel_param_typed]) *)
-  ; relevant_params_telescope_relevant : forall Δ1 A Δ2, C = (Δ1 ++ ce_ass A :: Δ2)%list -> exists l, rel_param_typed Δ2 A l
+  ; relevant_params_telescope_relevant : forall Δ1 κ A Δ2, C = (Δ1 ++ ce_ass κ A :: Δ2)%list -> exists l, rel_param_typed Δ2 A l
     (** It extends [Γ] *)
   ; relevant_params_telescope_wf : ⊢ (C ++ Γ)%list }.
 
@@ -302,7 +303,7 @@ Proof.
   destruct HR as [HP [l HPr] _ _ _].
   pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl) as Ht.
   pose proof (wf_record_closed _ _ _ _ _ HΓ Hl) as Hc.
-  constructor; [ exact (typed_params_ass _ _ _ Ht) | exact HP | intros Δ1 A Δ2 E; exists l; rewrite <- (List.app_nil_r Δ2); exact (HPr _ _ _ E) |].
+  constructor; [ exact (typed_params_ass _ _ _ Ht) | exact HP | intros Δ1 κ A Δ2 E; exists l; rewrite <- (List.app_nil_r Δ2); exact (HPr _ _ _ _ E) |].
   pose proof (record_fctx_app_wf _ _ R 0 Γ ltac:(lia) Hc (typed_params_ass _ _ _ Ht)
                 (record_typed_fctx_wf _ _ _ Ht _ (le_n _)) HΓ) as H.
   change (record_fctx R 0) with (@nil centry) in H; exact H.
@@ -323,11 +324,11 @@ Lemma nbe_params_at_telescope : forall Γ C Ms ρ vs Rs,
 Proof.
   intros * [HCa HC HCr HCΓ] Hl HMs Hρ Hvs Hread j P T R V HP HT HR HV.
   assert (HΓw : ⊢ Γ) by (eapply ctx_app_wf_tail; exact HCΓ).
-  destruct (tele_insts_nth _ _ _ _ _ HT) as (A & HA & ->).
+  destruct (tele_insts_nth _ _ _ _ _ HT) as (κ & A & HA & ->).
   (** [C] split at parameter [j]: [C1] holds it and those after it, [C2]
       those before it *)
   destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
-  assert (HCeq : C = (List.rev l2 ++ ce_ass A :: List.rev l1)%list)
+  assert (HCeq : C = (List.rev l2 ++ ce_ass κ A :: List.rev l1)%list)
     by (rewrite <- (List.rev_involutive C), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
   set (C2 := List.rev l1) in *.
   assert (LC2 : List.length C2 = j) by (unfold C2; rewrite List.length_rev; lia).
@@ -335,12 +336,12 @@ Proof.
     by (rewrite HCeq, List.length_app; cbn [List.length]; rewrite LC2, List.length_rev; lia).
   assert (HCa2 : tele_ass C2)
     by (rewrite HCeq in HCa; unfold tele_ass in HCa; apply List.Forall_app in HCa as [_ HCa]; inversion HCa; assumption).
-  set (C1 := (List.rev l2 ++ ce_ass A :: nil)%list).
+  set (C1 := (List.rev l2 ++ ce_ass κ A :: nil)%list).
   assert (HCeq' : C = (C1 ++ C2)%list) by (unfold C1; rewrite HCeq, <- List.app_assoc; reflexivity).
   assert (HC2 : ⊨ C2) by (rewrite HCeq' in HC; eapply rel_ctx_wf_app_r; exact HC).
   assert (HCr2 : exists l, rel_params_relevant ⋅ C2 l).
-  { apply rel_params_relevant_of_entries; intros Δ1 B Δ2 E.
-    destruct (HCr (C1 ++ Δ1)%list B Δ2) as [l Hl']; [ rewrite HCeq', E, <- List.app_assoc; reflexivity |].
+  { apply rel_params_relevant_of_entries; intros Δ1 κB B Δ2 E.
+    destruct (HCr (C1 ++ Δ1)%list κB B Δ2) as [l Hl']; [ rewrite HCeq', E, <- List.app_assoc; reflexivity |].
     exists l; rewrite List.app_nil_r; exact Hl'. }
   (** The parameters before [j] are an instance of [C2] *)
   assert (Lj : j < List.length Ms) by (apply List.nth_error_Some; congruence).
@@ -363,7 +364,7 @@ Proof.
     exact (wf_exp_scoped_term _ _ _ _ _ (HMs2 _ _ _ Hk HTk)). }
   (** The type of parameter [j] at its instance and at the values before
       it are related *)
-  destruct (HCr (List.rev l2) A C2 HCeq) as [lA HlA].
+  destruct (HCr (List.rev l2) κ A C2 HCeq) as [lA HlA].
   assert (HX : exists kA, C2 ⊨ᵗ A ≈ A at kA)
     by (destruct HlA as [HlA | HlA]; eapply rel_type_of_sort; [ constructor | exact HlA | constructor | exact HlA ]).
   destruct HX as [kA HX].
@@ -385,7 +386,7 @@ Proof.
     rewrite List.firstn_O, List.app_nil_r, List.firstn_all2 by lia; reflexivity. }
   (** [read_ps] reads parameter [j] at the second *)
   destruct (eval_exps_nth _ _ _ _ _ Hvs HP) as (v & Hv & HPv).
-  destruct (read_ps_nth_type _ _ _ _ _ Hread _ _ _ _ HA Hv HR) as (b' & Hb' & HRb).
+  destruct (read_ps_nth_type _ _ _ _ _ Hread _ _ _ _ _ HA Hv HR) as (b' & Hb' & HRb).
   assert (Hlms : List.length ms = j) by (rewrite (eval_exps_length _ _ _ Hms); lia).
   assert (Henv : env_tele nil (List.rev C) (List.firstn j vs) = env_tele nil (List.rev C2) ms).
   { rewrite <- Hms_vs, (env_tele_firstn _ (List.rev C)), (env_tele_firstn _ (List.rev C2)), Hlms; f_equal.
@@ -405,12 +406,12 @@ Proof.
   fold Ms2 in Ht, Ht', Ha0.
   pose proof (Hfm _ _ _ Ha _ Ht) as <-; pose proof (Hfm _ _ _ Ha _ Ht') as <-; pose proof (Hfm _ _ _ Ha _ Ha0) as <-.
   assert (E : R' <~> R0) by (eapply per_univ_elem_right_irrel; eassumption).
-  pose proof (per_univ_elem_relevance _ _ _ _ HR0) as Hrab.
+  pose proof (per_univ_elem_kind _ _ _ _ HR0) as Hrab.
   unfold nf_equal_up_to_proofs.
   destruct HVt as [w Hp Hw | m w Hr Hm Hw].
   - destruct (read_nf_propositional _ _ _ _ Hp Hw) as [Q ->].
     destruct (read_nf_propositional _ _ _ _ (eq_trans (eq_sym Hrab) Hp) HRb) as [Q' ->]; reflexivity.
-  - destruct Hexp as [Hp | (m0 & m0' & Hm0 & Hm0' & Hmm)]; [ congruence |].
+  - destruct Hexp as [Hp | (m0 & m0' & Hm0 & Hm0' & Hmm)]; [ rewrite Hp in Hr; inversion Hr |].
     pose proof (Hfm _ _ _ HPv _ Hm) as <-; pose proof (Hfm _ _ _ HPv _ Hm0) as <-; pose proof (Hfm _ _ _ HPv _ Hm0') as <-.
     destruct (per_elem_then_per_top HR0 (proj1 (E _ _) Hmm) (List.length Γ)) as [W1 W2 HW1 HW2 HE].
     functional_read_rewrite_clear; exact HE.
@@ -460,7 +461,7 @@ Proof.
                      let Hl := fresh "Hl" in let Ht := fresh "Ht" in let HC := fresh "HC" in let HC' := fresh "HC'" in
                      let HE := fresh "HE" in
                      destruct Hp as [Hl _ Ht];
-                     try (match goal with He : ⟦ Π _ _ ⟧ _ ↘ _ |- _ => inversion He; subst end);
+                     try (match goal with He : ⟦ a_pi _ _ _ _ ⟧ _ ↘ _ |- _ => inversion He; subst end);
                      first [ cbn in Hl; discriminate
                            | destruct (Ht (length Γ)) as [? ? HC HC' HE]; inversion HC; subst; inversion HC'; subst;
                              cbn in HE; discriminate ] end ].
@@ -563,7 +564,7 @@ Lemma univ_term_universe_index_term : forall u, univ_term (universe_index_term u
 Proof. intros []; constructor. Qed.
 Hint Resolve univ_term_universe_index_term : mctt.
 
-Lemma pi_not_univ_term : forall A B, ~ univ_term (Π A B).
+Lemma pi_not_univ_term : forall κ A B, ~ univ_term (Π{κ} A B).
 Proof. intros * H; inversion H. Qed.
 
 (** A rigid type equal to a small universe at a level term is a universe: its
@@ -606,9 +607,9 @@ Proof.
 Qed.
 
 (** A [Π] is never a universe term. *)
-Corollary pi_univ_term_absurd : forall Γ A B U k,
+Corollary pi_univ_term_absurd : forall Γ κ A B U k,
     univ_term U ->
-    Γ ⊢ Π A B ≈ U : Typeω@k ->
+    Γ ⊢ Π{κ} A B ≈ U : Typeω@k ->
     False.
 Proof.
   intros * HU H.
@@ -640,25 +641,25 @@ Lemma var_neq_universe_index_term : forall x (u : universe_index), #x <> univers
 Proof. intros ? []; discriminate. Qed.
 
 (** A [Π] is never a universe, at either tier. *)
-Corollary pi_universe_index_term_absurd : forall Γ A B (u : universe_index) k,
-    Γ ⊢ Π A B ≈ universe_index_term u : Typeω@k ->
+Corollary pi_universe_index_term_absurd : forall Γ κ A B (u : universe_index) k,
+    Γ ⊢ Π{κ} A B ≈ universe_index_term u : Typeω@k ->
     False.
 Proof.
   intros * H; destruct u as [n | i]; cbn in H;
-    [ assert (Π A B = Type⟨𝕃ᵒ n⟩) as Heq by mauto 3 | assert (Π A B = Typeω@i) as Heq by mauto 3 ];
+    [ assert (Π{κ} A B = Type⟨𝕃ᵒ n⟩) as Heq by mauto 3 | assert (Π{κ} A B = Typeω@i) as Heq by mauto 3 ];
     discriminate Heq.
 Qed.
 
 (** The same-sort theorem: the two sides of a subtyping are types of the
-    same relevance, at an environment of the context their values are of
-    one sort, which a subtyping keeps ([per_subtyp_relevance]).  It is why
+    same kind, at an environment of the context their values are of one
+    kind, which a subtyping keeps ([per_subtyp_kind]).  It is why
     telescope equations ([wf_ext_eq_ass]) and context refinements
     ([ctx_sub_extend]) lose nothing by giving each side its own sort: the
-    two sorts are of the same relevance, which only the PER model shows. *)
-Theorem subtyp_same_relevance : forall Γ A A' r r' (i j : nat),
+    two sorts are of the same kind, which only the PER model shows. *)
+Theorem subtyp_same_kind : forall Γ A A' r r' (i j : nat),
     Γ ⊢ A ⊆ A' ->
-    Γ ⊢ A : relevance_sort r Typeω@i ->
-    Γ ⊢ A' : relevance_sort r' Typeω@j ->
+    Γ ⊢ A : abs_kind_sort r Typeω@i ->
+    Γ ⊢ A' : abs_kind_sort r' Typeω@j ->
     r = r'.
 Proof.
   intros * Hs HA HA'.
@@ -676,16 +677,13 @@ Proof.
   destruct (Hsub _ _ HR _ _ (rel_sub_id (ex_intro _ _ HR)) _ _ _ _ Hρρ Hid Hid')
     as [aσ a0 a'σ' a0' Ha _ Ha' _ [Rl Hll] [Rr Hrr] Hsa].
   rewrite exp_sub_id in Ha, Ha'.
-  pose proof (eq_trans (per_univ_elem_relevance _ _ _ _ Hll)
-                (eq_trans (per_subtyp_relevance _ _ _ Hsa) (eq_sym (per_univ_elem_relevance _ _ _ _ Hrr)))) as Hr.
-  (** A type of a large universe is relevant, a type of [Prop] a
-      proposition. *)
-  assert (Hrel : forall X s (l : nat), Γ ⊨ X : relevance_sort s Typeω@l -> forall x, ⟦ X ⟧ ρ ↘ x -> domain_relevance x = s).
-  { intros X [] l HX x Hx; cbn [relevance_sort] in HX.
-    - destruct (rel_exp_of_typ_relevant_at HR HX _ _ Hρρ) as [x' [Hx' Hr']].
-      functional_eval_rewrite_clear; exact Hr'.
-    - destruct (rel_exp_of_prop_inversion_simple_at HR HX _ _ Hρρ) as (x' & _ & Hx' & _ & [Hl _ _]).
-      functional_eval_rewrite_clear; exact Hl. }
+  pose proof (eq_trans (per_univ_elem_kind _ _ _ _ Hll)
+                (eq_trans (per_subtyp_kind _ _ _ Hsa) (eq_sym (per_univ_elem_kind _ _ _ _ Hrr)))) as Hr.
+  (** A type of the sort at a kind has a value of that kind. *)
+  assert (Hrel : forall X s (l : nat), Γ ⊨ X : abs_kind_sort s Typeω@l -> forall x, ⟦ X ⟧ ρ ↘ x -> domain_kind x = s).
+  { intros X s l HX x Hx.
+    destruct (rel_type_kind_of_sort_kind (sort_kind_abs_kind_sort _ _) HX _ HR _ _ Hρρ) as (x' & Hx' & Hk).
+    pose proof (functional_eval_exp _ _ _ _ Hx' Hx) as <-; exact Hk. }
   rewrite <- (Hrel _ _ _ HAs _ Ha), <- (Hrel _ _ _ HA's _ Ha'); exact Hr.
 Qed.
 

@@ -17,9 +17,9 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Corollary per_ctx_of_exp_eq : forall {Γ A A'} {i : nat},
+Corollary per_ctx_of_exp_eq : forall {Γ κ A A'} {i : nat},
     Γ ⊢ A ≈ A' : Typeω@i ->
-    ⊨ Γ ▹ A ≈ Γ ▹ A'.
+    ⊨ Γ ▹{κ} A ≈ Γ ▹{κ} A'.
 Proof.
   intros * H.
   assert (⊢ Γ) by mauto 2.
@@ -53,13 +53,13 @@ Proof.
       one on each side. *)
   pose proof (per_ctx_then_per_env_initial_env HΓΓ' HsΓ HsΓ') as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
   destruct (HMi _ _ (proj1 (Hirrel _ _) Hrel)) as (a & a' & elem_rel & Ha & Ha' & HR & Hexp).
-  pose proof (per_univ_elem_relevance _ _ _ _ HR) as Hra.
-  destruct (domain_relevance a) eqn:Hr.
-  (** A relevant type: both values read back alike *)
-  - destruct Hexp as [Hp | (m & m' & Hm & Hm' & Hmm')]; [ congruence |].
+  pose proof (per_univ_elem_kind _ _ _ _ HR) as Hra.
+  destruct (evaluated_kind_or_propositional (domain_kind a)) as [Hr | Hr].
+  (** A type of an evaluated kind: both values read back alike *)
+  - destruct Hexp as [Hp | (m & m' & Hm & Hm' & Hmm')]; [ rewrite Hp in Hr; inversion Hr |].
     destruct (per_elem_then_per_top HR Hmm' (length Γ)) as [W W' HW HW' HE].
-    exists W, W'; repeat split; [ econstructor; [ exact Hρ | exact Ha | eapply nbe_term_relevant; eassumption ] | | exact HE ].
-    econstructor; [ exact Hρ' | exact Ha' | eapply nbe_term_relevant; [ congruence | exact Hm' |] ].
+    exists W, W'; repeat split; [ econstructor; [ exact Hρ | exact Ha | eapply nbe_term_evaluated; eassumption ] | | exact HE ].
+    econstructor; [ exact Hρ' | exact Ha' | eapply nbe_term_evaluated; [ rewrite <- Hra; exact Hr | exact Hm' |] ].
     rewrite <- Hlen; exact HW'.
   (** A proposition: the term kept over each environment, read back as a
       proof term *)
