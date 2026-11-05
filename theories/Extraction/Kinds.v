@@ -14,16 +14,14 @@ Generalizable All Variables.
 
 (** * Computing the Kinds of Members
 
-    Evaluation reads a saturated body through the entries its local opens
-    generate ([kinds_body_xp]), which the kinds of the members its items name
-    determine ([kinds_items_gen]).  Both evaluators compute them with [kinds_body_xp_impl], by
-    recursion on a termination order. *)
+    Evaluation reads a body expanded, every local open replaced by the
+    entries it stores ([gunit_expand]), and the kinds of its members off
+    the entries before each ([kinds_env]).  Both evaluators compute the
+    kinds by recursion on a termination order. *)
 
 (** The orders mirror the kinds relations, one for each; a chain of a
-    global alias recurses into the alias's unit, and a body's member into
-    the environment the kinds read off the body before it.  An item naming
-    a member of a target is ordered by that member's kind, which decides
-    whether the chain goes on into it. *)
+    global alias recurses into the alias's unit, expanded, and a body's
+    member into the environment the kinds read off the body before it. *)
 
 Inductive dmod_member_kind_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
 (** The path names a definition ([dmod_member_kind_global_here_def]): no recursion *)
@@ -42,19 +40,19 @@ Inductive dmod_member_kind_order (Θ : gdeps) (Ξ : gstack) : dmod -> list strin
      gc_loc Θ Ξ (qname_app pq (y :: nil)) = Some TΦ ->
      dmod_member_kind_order Θ Ξ (dm_global pq args) (y :: nil) )
 (** The member [y] is an alias read past ([dmod_member_kind_global_alias_case]): the order of
-    the chain in the alias's unit *)
+    the chain in the alias's unit, expanded *)
 | dmod_member_kind_order_global_alias :
   `( gc_module Θ Ξ (qname_app pq (y :: nil)) = Some (mr_alias U) ->
      ch <> nil \/ ~ dm_path Θ Ξ (qname_app pq (y :: nil)) ->
-     gunit_member_kind_order Θ Ξ nil U ch ->
+     gunit_member_kind_order Θ Ξ nil (gunit_expand U) ch ->
      dmod_member_kind_order Θ Ξ (dm_global pq args) (y :: ch) )
 (** The member [y] is a definition with a module part stored as an alias
     ([dmod_member_kind_global_alias_dm]): the order of the empty chain in the alias's
-    unit *)
+    unit, expanded *)
 | dmod_member_kind_order_global_alias_dm :
   `( gc_module Θ Ξ (qname_app pq (y :: nil)) = Some (mr_alias U) ->
      dm_path Θ Ξ (qname_app pq (y :: nil)) ->
-     gunit_member_kind_order Θ Ξ nil U nil ->
+     gunit_member_kind_order Θ Ξ nil (gunit_expand U) nil ->
      dmod_member_kind_order Θ Ξ (dm_global pq args) (y :: nil) )
 (** The member [y] is located in place ([dmod_member_kind_global_step]): the order of the
     rest of the chain at the path of [y] *)
@@ -64,9 +62,9 @@ Inductive dmod_member_kind_order (Θ : gdeps) (Ξ : gstack) : dmod -> list strin
      ch <> nil \/ ~ dm_path Θ Ξ (qname_app pq (y :: nil)) ->
      dmod_member_kind_order Θ Ξ (dm_global (qname_app pq (y :: nil)) args) ch ->
      dmod_member_kind_order Θ Ξ (dm_global pq args) (y :: ch) )
-(** A closure ([dmod_member_kind_local]): the order of its unit *)
+(** A closure ([dmod_member_kind_local]): the order of its unit, expanded *)
 | dmod_member_kind_order_local :
-  `( gunit_member_kind_order Θ Ξ p (gu_mk Δ D) ch ->
+  `( gunit_member_kind_order Θ Ξ p (gunit_expand (gu_mk Δ D)) ch ->
      dmod_member_kind_order Θ Ξ (dm_local Δ D p) ch )
 (** A submodule closure ([dmod_member_kind_member], [dmod_member_kind_member_dm]): the order of the
     longer chain *)
@@ -83,53 +81,33 @@ with gunit_member_kind_order (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list s
   `( gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv ra A B)) ->
      gunit_member_kind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (x :: nil) )
 (** A submodule of the body ([gunit_member_kind_mod]): the order of the entries before it,
-    and of the rest of the chain in its unit, in each environment they
-    make *)
+    and of the rest of the chain in its unit, expanded, in each environment
+    they make *)
 | gunit_member_kind_order_mod :
   `( gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
-     kinds_env_order Θ Ξ (kinds_placeholders (List.length Δ) p) Φ' ->
-     (forall p1, kinds_env Θ Ξ (kinds_placeholders (List.length Δ) p) Φ' p1 -> gunit_member_kind_order Θ Ξ p1 Uy ch) ->
+     kinds_env_order Θ Ξ (kinds_pads (List.length Δ) p) Φ' ->
+     (forall p1, kinds_env Θ Ξ (kinds_pads (List.length Δ) p) Φ' p1 -> gunit_member_kind_order Θ Ξ p1 (gunit_expand Uy) ch) ->
      gunit_member_kind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (y :: ch) )
 (** A definition with a module part of the body, at the end of the chain
     ([gunit_member_kind_dm_here]): the order of the entries before it, and of the empty
-    chain in its module part, in each environment they make *)
+    chain in its module part, expanded, in each environment they make *)
 | gunit_member_kind_order_dm_here :
   `( gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
-     kinds_env_order Θ Ξ (kinds_placeholders (List.length Δ) p) Φ' ->
-     (forall p1, kinds_env Θ Ξ (kinds_placeholders (List.length Δ) p) Φ' p1 -> gunit_member_kind_order Θ Ξ p1 Uy nil) ->
+     kinds_env_order Θ Ξ (kinds_pads (List.length Δ) p) Φ' ->
+     (forall p1, kinds_env Θ Ξ (kinds_pads (List.length Δ) p) Φ' p1 -> gunit_member_kind_order Θ Ξ p1 (gunit_expand Uy) nil) ->
      gunit_member_kind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (y :: nil) )
 (** A definition with a module part of the body, the chain going on
     ([gunit_member_kind_dm_step]): the order of the entries before it, and of the rest of
-    the chain in its module part, in each environment they make *)
+    the chain in its module part, expanded, in each environment they make *)
 | gunit_member_kind_order_dm_step :
   `( gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def_mod pv A M Uy)) ->
      ch <> nil ->
-     kinds_env_order Θ Ξ (kinds_placeholders (List.length Δ) p) Φ' ->
-     (forall p1, kinds_env Θ Ξ (kinds_placeholders (List.length Δ) p) Φ' p1 -> gunit_member_kind_order Θ Ξ p1 Uy ch) ->
+     kinds_env_order Θ Ξ (kinds_pads (List.length Δ) p) Φ' ->
+     (forall p1, kinds_env Θ Ξ (kinds_pads (List.length Δ) p) Φ' p1 -> gunit_member_kind_order Θ Ξ p1 (gunit_expand Uy) ch) ->
      gunit_member_kind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (y :: ch) )
-(** An item naming a member of the target ([gunit_member_kind_item_def], [gunit_member_kind_item_mod],
-    [gunit_member_kind_item_dm]): the order of the entries before the open, of the
-    member's kind, and of the chain in the member when the member is a
-    module or has a module part *)
-| gunit_member_kind_order_item_some :
-  `( gm_item_upto Φ x = Some (Φ0, E, its1, (Some n, d, pv)) ->
-     kinds_env_order Θ Ξ (kinds_placeholders (List.length Δ) p) Φ0 ->
-     (forall p0, kinds_env Θ Ξ (kinds_placeholders (List.length Δ) p) Φ0 p0 ->
-        modexp_member_kind_order Θ Ξ p0 E (n :: nil) /\
-        (((exists r, modexp_member_kind Θ Ξ p0 E (n :: nil) (member_kind_term r)) /\ ch = nil) \/
-         (modexp_member_kind Θ Ξ p0 E (n :: nil) member_kind_mod /\ modexp_member_kind_order Θ Ξ p0 E (n :: ch)) \/
-         (modexp_member_kind Θ Ξ p0 E (n :: nil) member_kind_dm /\ modexp_member_kind_order Θ Ξ p0 E (n :: ch)))) ->
-     gunit_member_kind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (x :: ch) )
-(** An item naming the target itself ([gunit_member_kind_item_self]): the order of the
-    entries before the open, and of the chain in the target *)
-| gunit_member_kind_order_item_none :
-  `( gm_item_upto Φ x = Some (Φ0, E, its1, (None, d, pv)) ->
-     kinds_env_order Θ Ξ (kinds_placeholders (List.length Δ) p) Φ0 ->
-     (forall p0, kinds_env Θ Ξ (kinds_placeholders (List.length Δ) p) Φ0 p0 -> modexp_member_kind_order Θ Ξ p0 E ch) ->
-     gunit_member_kind_order Θ Ξ p (gu_mk Δ (md_body sm Φ)) (x :: ch) )
 (** An alias unit ([gunit_member_kind_alias]): the order of the chain in its target *)
 | gunit_member_kind_order_alias :
-  `( modexp_member_kind_order Θ Ξ (kinds_placeholders (List.length Δ) p) E ch ->
+  `( modexp_member_kind_order Θ Ξ (kinds_pads (List.length Δ) p) E ch ->
      gunit_member_kind_order Θ Ξ p (gu_mk Δ (md_alias E)) ch )
 
 with modexp_member_kind_order (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list string -> Prop :=
@@ -141,9 +119,9 @@ with modexp_member_kind_order (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list
 | modexp_member_kind_order_var :
   `( dmod_member_kind_order Θ Ξ (env_mod p x) ch ->
      modexp_member_kind_order Θ Ξ p (me_var x) ch )
-(** A literal unit ([modexp_member_kind_lit]): the order of the chain in the unit *)
+(** A literal unit ([modexp_member_kind_lit]): the order of the chain in the unit, expanded *)
 | modexp_member_kind_order_lit :
-  `( gunit_member_kind_order Θ Ξ p U ch ->
+  `( gunit_member_kind_order Θ Ξ p (gunit_expand U) ch ->
      modexp_member_kind_order Θ Ξ p (me_lit U) ch )
 (** A selection ([modexp_member_kind_mem], [modexp_member_kind_mem_dm]): the order of the longer chain *)
 | modexp_member_kind_order_mem :
@@ -162,99 +140,35 @@ with kinds_env_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
 (** An entry ([kinds_env_ext]): the order of the body before it *)
 | kinds_env_order_ext :
   `( kinds_env_order Θ Ξ p Φ ->
-     kinds_env_order Θ Ξ p (gm_ext Φ y E) )
-(** An open ([kinds_env_open]): the order of the body before it, and of its items
-    in each environment that body makes *)
-| kinds_env_order_open :
-  `( kinds_env_order Θ Ξ p Φ ->
-     (forall p1, kinds_env Θ Ξ p Φ p1 -> kinds_items_gen_order Θ Ξ p1 E its) ->
-     kinds_env_order Θ Ξ p (gm_open Φ E its) )
-
-with kinds_items_gen_order (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list import_item -> Prop :=
-(** No items ([kinds_items_gen_nil]) *)
-| kinds_items_gen_order_nil :
-  `( kinds_items_gen_order Θ Ξ p E nil )
-(** An item naming the target itself ([kinds_items_gen_self]): the order of the other
-    items *)
-| kinds_items_gen_order_self :
-  `( kinds_items_gen_order Θ Ξ p E its ->
-     kinds_items_gen_order Θ Ξ p E ((None, d, pv) :: its) )
-(** An item naming a member ([kinds_items_gen_def], [kinds_items_gen_mod], [kinds_items_gen_dm]): the order of
-    the member's kind, and of the other items *)
-| kinds_items_gen_order_name :
-  `( modexp_member_kind_order Θ Ξ p E (n :: nil) ->
-     kinds_items_gen_order Θ Ξ p E its ->
-     kinds_items_gen_order Θ Ξ p E ((Some n, d, pv) :: its) ).
-
-(** The order of reading a body through the entries its opens generate. *)
-Inductive kinds_body_xp_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
-(** The empty body ([kinds_body_xp_nil]) *)
-| kinds_body_xp_order_nil :
-  `( kinds_body_xp_order Θ Ξ p gm_nil )
-(** An entry ([kinds_body_xp_ext]): the order of the body before it *)
-| kinds_body_xp_order_ext :
-  `( kinds_body_xp_order Θ Ξ p Φ ->
-     kinds_body_xp_order Θ Ξ p (gm_ext Φ y E) )
-(** An open ([kinds_body_xp_open]): the order of the body before it, and, for each
-    expansion of that body, of the environment it makes and of the items in
-    each such environment *)
-| kinds_body_xp_order_open :
-  `( kinds_body_xp_order Θ Ξ p Φ ->
-     (forall Φx, kinds_body_xp Θ Ξ p Φ Φx -> kinds_env_order Θ Ξ p Φx /\
-        forall p1, kinds_env Θ Ξ p Φx p1 -> kinds_items_gen_order Θ Ξ p1 E its) ->
-     kinds_body_xp_order Θ Ξ p (gm_open Φ E its) ).
+     kinds_env_order Θ Ξ p (gm_ext Φ y E) ).
 
 #[local]
-Hint Constructors dmod_member_kind_order gunit_member_kind_order modexp_member_kind_order kinds_env_order kinds_items_gen_order kinds_body_xp_order : mctt.
+Hint Constructors dmod_member_kind_order gunit_member_kind_order modexp_member_kind_order kinds_env_order : mctt.
 
 Lemma kind_order_sound : forall Θ Ξ,
     (forall h ch k, dmod_member_kind Θ Ξ h ch k -> dmod_member_kind_order Θ Ξ h ch) /\
     (forall p U ch k, gunit_member_kind Θ Ξ p U ch k -> gunit_member_kind_order Θ Ξ p U ch) /\
     (forall p E ch k, modexp_member_kind Θ Ξ p E ch k -> modexp_member_kind_order Θ Ξ p E ch) /\
-    (forall p Φ p1, kinds_env Θ Ξ p Φ p1 -> kinds_env_order Θ Ξ p Φ) /\
-    (forall p Φ Φx, kinds_body_xp Θ Ξ p Φ Φx -> kinds_body_xp_order Θ Ξ p Φ) /\
-    (forall p E its gs, kinds_items_gen Θ Ξ p E its gs -> kinds_items_gen_order Θ Ξ p E its).
+    (forall p Φ p1, kinds_env Θ Ξ p Φ p1 -> kinds_env_order Θ Ξ p Φ).
 Proof.
-  intros Θ Ξ; pose proof (@functional_kind Θ Ξ) as (_ & _ & _ & Fk & Fb & _).
+  intros Θ Ξ; pose proof (@functional_kind Θ Ξ) as (_ & _ & _ & Fk).
   apply kind_mut_ind; intros; try solve [ econstructor; eauto ].
   all: lazymatch goal with
-    | _ : gm_item_upto _ _ = Some (_, _, _, (Some _, _, _)) |- gunit_member_kind_order _ _ _ _ _ => eapply gunit_member_kind_order_item_some
-    | _ : gm_item_upto _ _ = Some (_, _, _, (None, _, _)) |- gunit_member_kind_order _ _ _ _ _ =>
-        eapply gunit_member_kind_order_item_none
     | _ : gm_prefix_upto _ _ = Some (gm_ext _ _ (ge_mod _ _)) |- gunit_member_kind_order _ _ _ _ _ => eapply gunit_member_kind_order_mod
     | _ : gm_prefix_upto _ _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)), _ : _ <> nil |- gunit_member_kind_order _ _ _ _ _ =>
         eapply gunit_member_kind_order_dm_step
     | _ : gm_prefix_upto _ _ = Some (gm_ext _ _ (ge_def_mod _ _ _ _)) |- gunit_member_kind_order _ _ _ _ _ => eapply gunit_member_kind_order_dm_here
-    | |- kinds_body_xp_order _ _ _ (gm_open _ _ _) => eapply kinds_body_xp_order_open
     | _ : gc_module _ _ _ = Some (mr_alias _), _ : dm_path _ _ _ |- dmod_member_kind_order _ _ _ (_ :: nil) => eapply dmod_member_kind_order_global_alias_dm
     | |- _ => econstructor
     end; eauto; intros;
     repeat match goal with
       | H1 : kinds_env _ _ ?p ?Φ ?r1, H2 : kinds_env _ _ ?p ?Φ ?r2 |- _ =>
           assert_fails (constr_eq r1 r2); rewrite <- (Fk _ _ _ H1 _ H2) in *; clear H2
-      | H1 : kinds_body_xp _ _ ?p ?Φ ?r1, H2 : kinds_body_xp _ _ ?p ?Φ ?r2 |- _ =>
-          assert_fails (constr_eq r1 r2); rewrite <- (Fb _ _ _ H1 _ H2) in *; clear H2
       end;
-    first [ split; [ eauto | first [ left; split; [ eexists; eassumption | reflexivity ]
-                                   | solve [ right; left; split; eauto ] | solve [ right; right; split; eauto ] ] ]
-          | split; [ eauto | intros;
-              repeat match goal with
-                | H1 : kinds_env _ _ ?p ?Φ ?r1, H2 : kinds_env _ _ ?p ?Φ ?r2 |- _ =>
-                    assert_fails (constr_eq r1 r2); rewrite <- (Fk _ _ _ H1 _ H2) in *; clear H2
-                end; eauto ]
-          | solve [ rewrite List.app_nil_r; eauto ]
+    first [ solve [ rewrite List.app_nil_r; eauto ]
           | solve [ match goal with Hn : ?a <> ?a |- _ => exfalso; exact (Hn eq_refl) end ]
           | eauto ].
 Qed.
-
-Lemma kinds_items_gen_order_sound : forall Θ Ξ p E its gs, kinds_items_gen Θ Ξ p E its gs -> kinds_items_gen_order Θ Ξ p E its.
-Proof. intros Θ Ξ; pose proof (kind_order_sound Θ Ξ); destruct_all; eauto. Qed.
-
-Lemma kinds_body_xp_order_sound : forall Θ Ξ p Φ Φx, kinds_body_xp Θ Ξ p Φ Φx -> kinds_body_xp_order Θ Ξ p Φ.
-Proof. intros Θ Ξ; pose proof (kind_order_sound Θ Ξ); destruct_all; eauto. Qed.
-
-#[export]
-Hint Resolve kinds_items_gen_order_sound kinds_body_xp_order_sound : mctt.
 
 (** Whether a global path names a member with a term part and a module
     part, decided by its lookups. *)
@@ -279,8 +193,8 @@ Proof.
 Defined.
 
 (** The operations on fast values, read through their erasure equations *)
-#[local] Opaque fenv_var fenv_mod fextend_env fextend_env_mod fextend_env_dm fenv_args fdomain_level_suc fdomain_level_max
-  fdomain_level_lit fdm_clo fkinds_placeholders fkinds_body_entry fkinds_items_gen_env felim_grp_of carry.
+#[local] Opaque fenv_var fenv_type fenv_mod fextend_env fextend_env_mod fextend_env_dm fenv_extend_typed fenv_tele
+  fdomain_level_suc fdomain_level_max fdomain_level_lit fdm_clo fkinds_pads fkinds_body_entry carry.
 
 (** The kinds, computed through the fast context [F] *)
 Section KindImpl.
@@ -295,8 +209,6 @@ Section KindImpl.
     | H : gunit_member_kind_order _ _ _ _ _ |- _ => progressive_invert H
     | H : modexp_member_kind_order _ _ _ _ _ |- _ => progressive_invert H
     | H : kinds_env_order _ _ _ _ |- _ => progressive_invert H
-    | H : kinds_items_gen_order _ _ _ _ _ |- _ => progressive_invert H
-    | H : kinds_body_xp_order _ _ _ _ |- _ => progressive_invert H
     end.
 
   #[local]
@@ -324,12 +236,6 @@ Section KindImpl.
           rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
       | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = None |- _ =>
           rewrite H1 in H2; discriminate H2
-      | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-          rewrite H1 in H2; injection H2; clear H2; intros; subst
-      | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = None |- _ =>
-          rewrite H1 in H2; discriminate H2
-      | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-          rewrite (gm_prefix_item_exclusive _ _ _ H1) in H2; discriminate H2
       | H1 : gc_module _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
           rewrite (gc_module_resolve _ _ _ _ H1) in H2; discriminate H2
       | H1 : gc_frame _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
@@ -339,28 +245,6 @@ Section KindImpl.
           exfalso; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ _ H1 H2)
       | H : (@nil ?T) <> nil \/ _ |- _ => destruct H as [H | H]; [ exfalso; exact (H eq_refl) |]
       | H : (@nil ?T) <> nil |- _ => exfalso; exact (H eq_refl)
-      | H : forall p0, kinds_env _ _ ?qe ?Φ p0 -> _ /\ _, Hk : kinds_env _ _ ?qe ?Φ ?p0 |- _ =>
-          let Ha := fresh "Ha" in let Hb := fresh "Hb" in destruct (H _ Hk) as [Ha Hb]; clear H
-      | H : forall Φx, kinds_body_xp _ _ ?qe ?Φ Φx -> _ /\ _, Hk : kinds_body_xp _ _ ?qe ?Φ ?Φx |- _ =>
-          let Ha := fresh "Ha" in let Hb := fresh "Hb" in destruct (H _ Hk) as [Ha Hb]; clear H
-      | H : ((exists _, modexp_member_kind _ _ ?p0 ?E ?ch (member_kind_term _)) /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_mod /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_dm /\ _),
-        Hk : modexp_member_kind _ _ ?p0 ?E ?ch (member_kind_term _) |- _ =>
-          destruct H as [[_ ?] | [[Hk' _] | [Hk' _]]];
-          [ subst
-          | exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate
-          | exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate ]
-      | H : ((exists _, modexp_member_kind _ _ ?p0 ?E ?ch (member_kind_term _)) /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_mod /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_dm /\ _),
-        Hk : modexp_member_kind _ _ ?p0 ?E ?ch member_kind_mod |- _ =>
-          destruct H as [[(? & Hk') _] | [[_ ?] | [Hk' _]]];
-          [ exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate
-          |
-          | exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate ]
-      | H : ((exists _, modexp_member_kind _ _ ?p0 ?E ?ch (member_kind_term _)) /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_mod /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_dm /\ _),
-        Hk : modexp_member_kind _ _ ?p0 ?E ?ch member_kind_dm |- _ =>
-          destruct H as [[(? & Hk') _] | [[Hk' _] | [_ ?]]];
-          [ exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate
-          | exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate
-          | ]
       end.
 
   #[local]
@@ -370,8 +254,6 @@ Section KindImpl.
     | H : gunit_member_kind_order _ _ _ _ _ |- _ => dependent destruction H
     | H : modexp_member_kind_order _ _ _ _ _ |- _ => dependent destruction H
     | H : kinds_env_order _ _ _ _ |- _ => dependent destruction H
-    | H : kinds_items_gen_order _ _ _ _ _ |- _ => dependent destruction H
-    | H : kinds_body_xp_order _ _ _ _ |- _ => dependent destruction H
     end.
 
   #[local]
@@ -401,8 +283,6 @@ Section KindImpl.
     | |- gunit_member_kind_order _ _ _ _ _ => kinds_obligation
     | |- modexp_member_kind_order _ _ _ _ _ => kinds_obligation
     | |- kinds_env_order _ _ _ _ => kinds_obligation
-    | |- kinds_items_gen_order _ _ _ _ _ => kinds_obligation
-    | |- kinds_body_xp_order _ _ _ _ => kinds_obligation
     | |- _ => abstract kinds_obligation
     end.
 
@@ -421,18 +301,18 @@ Section KindImpl.
       (** a definition with a module part stored as an alias: [dm_of] its
           alias's kind *)
       | exist _ (Some (mr_alias U)) E =>
-          let (k, Hk) := gunit_member_kind_impl nil U nil _ in
+          let (k, Hk) := gunit_member_kind_impl nil (gunit_expand U) nil _ in
           exist _ (dm_of k) _
       | exist _ _ E => exist _ member_kind_dm _ }
     | _, ch' with gc_module_f F (qname_app pq (y :: nil)) := {
       | exist _ (Some (mr_alias U)) E =>
-          let (k, Hk) := gunit_member_kind_impl nil U ch' _ in
+          let (k, Hk) := gunit_member_kind_impl nil (gunit_expand U) ch' _ in
           exist _ k _
       | exist _ _ E =>
           let (k, Hk) := dmod_member_kind_impl (fdm_global (qname_app pq (y :: nil)) args) ch' _ in
           exist _ k _ } }
   | fdm_local Δ D p, ch, H =>
-      let (k, Hk) := gunit_member_kind_impl p (gu_mk Δ D) ch _ in
+      let (k, Hk) := gunit_member_kind_impl p (gunit_expand (gu_mk Δ D)) ch _ in
       exist _ k _
   | fdm_member h ch0, ch, H with dmod_member_kind_impl h (ch0 ++ ch) _ := {
     (** at the empty chain, a member with a term part and a module part is
@@ -445,39 +325,25 @@ Section KindImpl.
   with gunit_member_kind_impl (p : fenv) U ch (H : gunit_member_kind_order Θ Ξ (fenv_erase p) U ch) :
       { k | gunit_member_kind Θ Ξ (fenv_erase p) U ch k } by struct H :=
   | p, gu_mk Δ (md_body sm Φ), nil, H => exist _ member_kind_mod _
-  | p, gu_mk Δ (md_body sm Φ), x :: ch, H with inspect (gm_item_upto Φ x) := {
-    | exist _ (Some (Φ0, E, its1, (Some n, d, pv))) Ei with kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ0 _ := {
-      | exist _ p0 Hp0 with modexp_member_kind_impl p0 E (n :: nil) _ := {
-        | exist _ (member_kind_term r) Hk0 => exist _ (member_kind_term r) _
-        | exist _ member_kind_mod Hk0 =>
-            let (k, Hk) := modexp_member_kind_impl p0 E (n :: ch) _ in
-            exist _ k _
-        | exist _ member_kind_dm Hk0 =>
-            let (k, Hk) := modexp_member_kind_impl p0 E (n :: ch) _ in
-            exist _ k _ } }
-    | exist _ (Some (Φ0, E, its1, (None, d, pv))) Ei =>
-        let (p0, Hp0) := kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ0 _ in
-        let (k, Hk) := modexp_member_kind_impl p0 E ch _ in
+  | p, gu_mk Δ (md_body sm Φ), x :: ch, H with inspect (gm_prefix_upto Φ x) := {
+    | exist _ (Some (gm_ext Φ' _ (ge_def b pv ra A B))) P => exist _ (member_kind_term ra) _
+    | exist _ (Some (gm_ext Φ' _ (ge_mod pm Uy))) P =>
+        let (p1, Hp1) := kinds_env_impl (fkinds_pads (List.length Δ) p) Φ' _ in
+        let (k, Hk) := gunit_member_kind_impl p1 (gunit_expand Uy) ch _ in
         exist _ k _
-    | exist _ None Ei with inspect (gm_prefix_upto Φ x) := {
-      | exist _ (Some (gm_ext Φ' _ (ge_def b pv ra A B))) P => exist _ (member_kind_term ra) _
-      | exist _ (Some (gm_ext Φ' _ (ge_mod pm Uy))) P =>
-          let (p1, Hp1) := kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ' _ in
-          let (k, Hk) := gunit_member_kind_impl p1 Uy ch _ in
-          exist _ k _
-      | exist _ (Some (gm_ext Φ' _ (ge_def_mod pv A M Uy))) P with ch := {
-        (** itself: [dm_of] its module part's kind *)
-        | nil =>
-            let (p1, Hp1) := kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ' _ in
-            let (k, Hk) := gunit_member_kind_impl p1 Uy nil _ in
-            exist _ (dm_of k) _
-        | c :: ch' =>
-            let (p1, Hp1) := kinds_env_impl (fkinds_placeholders (List.length Δ) p) Φ' _ in
-            let (k, Hk) := gunit_member_kind_impl p1 Uy (c :: ch') _ in
-            exist _ k _ }
-      | exist _ _ P => False_rect _ _ } }
+    | exist _ (Some (gm_ext Φ' _ (ge_def_mod pv A M Uy))) P with ch := {
+      (** itself: [dm_of] its module part's kind *)
+      | nil =>
+          let (p1, Hp1) := kinds_env_impl (fkinds_pads (List.length Δ) p) Φ' _ in
+          let (k, Hk) := gunit_member_kind_impl p1 (gunit_expand Uy) nil _ in
+          exist _ (dm_of k) _
+      | c :: ch' =>
+          let (p1, Hp1) := kinds_env_impl (fkinds_pads (List.length Δ) p) Φ' _ in
+          let (k, Hk) := gunit_member_kind_impl p1 (gunit_expand Uy) (c :: ch') _ in
+          exist _ k _ }
+    | exist _ _ P => False_rect _ _ }
   | p, gu_mk Δ (md_alias E), ch, H =>
-      let (k, Hk) := modexp_member_kind_impl (fkinds_placeholders (List.length Δ) p) E ch _ in
+      let (k, Hk) := modexp_member_kind_impl (fkinds_pads (List.length Δ) p) E ch _ in
       exist _ k _
 
   with modexp_member_kind_impl (p : fenv) E ch (H : modexp_member_kind_order Θ Ξ (fenv_erase p) E ch) :
@@ -489,7 +355,7 @@ Section KindImpl.
       let (k, Hk) := dmod_member_kind_impl (fenv_mod p x) ch _ in
       exist _ k _
   | p, me_lit U, ch, H =>
-      let (k, Hk) := gunit_member_kind_impl p U ch _ in
+      let (k, Hk) := gunit_member_kind_impl p (gunit_expand U) ch _ in
       exist _ k _
   | p, me_mem E y, ch, H with modexp_member_kind_impl p E (y :: ch) _ := {
     (** at the empty chain, a member with a term part and a module part is
@@ -507,44 +373,9 @@ Section KindImpl.
   | p, gm_nil, H => exist _ p _
   | p, gm_ext Φ y E, H =>
       let (p1, Hp1) := kinds_env_impl p Φ _ in
-      exist _ (fkinds_body_entry p1 E :: p1) _
-  | p, gm_open Φ E its, H =>
-      let (p1, Hp1) := kinds_env_impl p Φ _ in
-      let (gs, Hgs) := kinds_items_gen_impl p1 E its _ in
-      exist _ (fkinds_items_gen_env p1 0 gs) _
-
-  with kinds_items_gen_impl (p : fenv) E its (H : kinds_items_gen_order Θ Ξ (fenv_erase p) E its) :
-      { gs | kinds_items_gen Θ Ξ (fenv_erase p) E its gs } by struct H :=
-  | p, E, nil, H => exist _ nil _
-  | p, E, (None, d, pv) :: its, H =>
-      let (gs, Hgs) := kinds_items_gen_impl p E its _ in
-      exist _ (generated_item_alias d pv E :: gs) _
-  | p, E, (Some n, d, pv) :: its, H with modexp_member_kind_impl p E (n :: nil) _ := {
-    | exist _ (member_kind_term r) Hk =>
-        let (gs, Hgs) := kinds_items_gen_impl p E its _ in
-        exist _ (generated_item_def d pv r a_placeholder_type (a_mem E n) :: gs) _
-    | exist _ member_kind_mod Hk =>
-        let (gs, Hgs) := kinds_items_gen_impl p E its _ in
-        exist _ (generated_item_alias d pv (me_mem E n) :: gs) _
-    | exist _ member_kind_dm Hk =>
-        let (gs, Hgs) := kinds_items_gen_impl p E its _ in
-        exist _ (generated_item_def_mod d pv a_placeholder_type (a_mem E n) (me_mem E n) :: gs) _ }.
-
-  Solve All Obligations with kinds_obligation_auto.
-
-  (** A body read through the entries its opens generate. *)
-  #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations kinds_body_xp_impl (p : fenv) Φ (H : kinds_body_xp_order Θ Ξ (fenv_erase p) Φ) :
-      { Φx | kinds_body_xp Θ Ξ (fenv_erase p) Φ Φx } by struct H :=
-  | p, gm_nil, H => exist _ gm_nil _
-  | p, gm_ext Φ y E, H =>
-      let (Φx, HΦx) := kinds_body_xp_impl p Φ _ in
-      exist _ (gm_ext Φx y E) _
-  | p, gm_open Φ E its, H =>
-      let (Φx, HΦx) := kinds_body_xp_impl p Φ _ in
-      let (p1, Hp1) := kinds_env_impl p Φx _ in
-      let (gs, Hgs) := kinds_items_gen_impl p1 E its _ in
-      exist _ (gens_append Φx 0 gs) _.
+      exist _ (fkinds_body_entry p1 y E :: p1) _
+  (** an open: no order, as kinds read bodies expanded *)
+  | p, gm_open Φ E its Φg, H => False_rect _ _.
 
   Solve All Obligations with kinds_obligation_auto.
 End KindImpl.

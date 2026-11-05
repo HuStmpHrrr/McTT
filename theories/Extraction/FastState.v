@@ -21,15 +21,15 @@ Import ListNotations.
 (** ** The Frames, Fast *)
 
 (** [gs_def]'s twin: a definition closed over the frames' parameters *)
-Definition fs_def (b pv : bool) (r : relevance) (fs : fstack) (A M : exp) : gentry :=
-  ge_def b pv r (ctx_pi_at r (fs_tele fs) A) (Some (ctx_fn (fs_tele fs) M)).
+Definition fs_def (b pv : bool) (κ : abs_kind) (fs : fstack) (A M : exp) : gentry :=
+  ge_def b pv κ (ctx_pi_at κ (fs_tele fs) A) (Some (ctx_fn (fs_tele fs) M)).
 
 Lemma fs_def_dec : forall b pv r fs A M, fs_def b pv r fs A M = gs_def b pv r (decode_stack fs) A M.
 Proof. intros; unfold fs_def, gs_def; rewrite fs_tele_dec; reflexivity. Qed.
 
 (** [gs_axiom]'s twin *)
-Definition fs_axiom (b pv : bool) (r : relevance) (fs : fstack) (A : exp) : gentry :=
-  ge_def b pv r (ctx_pi_at r (fs_tele fs) A) None.
+Definition fs_axiom (b pv : bool) (κ : abs_kind) (fs : fstack) (A : exp) : gentry :=
+  ge_def b pv κ (ctx_pi_at κ (fs_tele fs) A) None.
 
 Lemma fs_axiom_dec : forall b pv r fs A, fs_axiom b pv r fs A = gs_axiom b pv r (decode_stack fs) A.
 Proof. intros; unfold fs_axiom, gs_axiom; rewrite fs_tele_dec; reflexivity. Qed.
@@ -48,10 +48,10 @@ Lemma fs_ind_qname_dec : forall fs x, fs_ind_qname fs x = ind_qname (decode_stac
 Proof. intros; unfold fs_ind_qname, ind_qname; rewrite fs_path_dec; reflexivity. Qed.
 
 (** [record_at]'s twin *)
-Definition fs_record_at (fs : fstack) (Δ : ctx) (S : typ) (fds : list (string * typ)) (rs : list relevance) : record_decl :=
-  mk_record_decl (Δ ++ fs_tele fs) S fds rs.
+Definition fs_record_at (fs : fstack) (Δ : ctx) (S : typ) (fds : list (string * abs_kind * typ)) : record_decl :=
+  mk_record_decl (Δ ++ fs_tele fs) S (List.map (fun f => (fst (fst f), snd f)) fds) (List.map (fun f => snd (fst f)) fds).
 
-Lemma fs_record_at_dec : forall fs Δ S fds rs, fs_record_at fs Δ S fds rs = record_at (decode_stack fs) Δ S fds rs.
+Lemma fs_record_at_dec : forall fs Δ S fds, fs_record_at fs Δ S fds = record_at (decode_stack fs) Δ S fds.
 Proof. intros; unfold fs_record_at, record_at; rewrite fs_tele_dec; reflexivity. Qed.
 
 (** [raw_members_filed]'s twin *)

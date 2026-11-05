@@ -67,7 +67,7 @@ Fixpoint gmod_inds_core (Φ : gmod) : list ind_decl :=
       | ge_mod _ (gu_mk _ (md_body _ Φi)) => gmod_inds_core Φi
       | _ => nil
       end ++ gmod_inds_core Φ
-  | gm_open Φ _ _ => gmod_inds_core Φ
+  | gm_open Φ _ _ _ => gmod_inds_core Φ
   end.
 
 (** The paths of the groups of a Core body *)
@@ -80,7 +80,7 @@ Fixpoint gmod_groups_core (Φ : gmod) : list qname :=
       | ge_mod _ (gu_mk _ (md_body _ Φi)) => gmod_groups_core Φi
       | _ => nil
       end ++ gmod_groups_core Φ
-  | gm_open Φ _ _ => gmod_groups_core Φ
+  | gm_open Φ _ _ _ => gmod_groups_core Φ
   end.
 
 (** The groups filed in a fast body *)
@@ -293,28 +293,28 @@ Section Twins.
   Proof. intros; unfold nat_view_f, nat_view; destruct (builtins_nat B); [ rewrite fc_ind_ok |]; reflexivity. Qed.
 
   (** [own_target] *)
-  Definition own_target_f (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bks : list eblock) : option (qname * list exp) :=
+  Definition own_target_f (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bns : list (list string)) : option (qname * list exp) :=
     match fc_ind F pc with
     | Some D =>
-        if Nat.eqb m k && Nat.ltb k (ind_ndecl D) && blocks_fit D Bks
+        if Nat.eqb m k && Nat.ltb k (ind_ndecl D) && blocks_fit D Bns
         then Some (pc, List.firstn (ind_nu D) (List.map nf_to_exp Rs))
         else None
     | None => None
     end.
 
   (** [view_targets] *)
-  Fixpoint view_targets_f (pc : qname) (k m : nat) (Bks : list eblock) (seen : list qname)
+  Fixpoint view_targets_f (pc : qname) (k m : nat) (Bns : list (list string)) (seen : list qname)
       (os : list (qname * nat * list exp)) : list (qname * list exp) :=
     match os with
     | nil => nil
     | (pq, d, As) :: os' =>
-        if qname_eq_dec pq pc then view_targets_f pc k m Bks seen os' else
+        if qname_eq_dec pq pc then view_targets_f pc k m Bns seen os' else
         if List.existsb (fun s => if qname_eq_dec s pq then true else false) seen
-        then view_targets_f pc k m Bks seen os' else
-        let rest := view_targets_f pc k m Bks (pq :: seen) os' in
+        then view_targets_f pc k m Bns seen os' else
+        let rest := view_targets_f pc k m Bns (pq :: seen) os' in
         match fc_ind F pq with
         | Some D =>
-            if view_of D m pc k && blocks_fit D Bks
+            if view_of D m pc k && blocks_fit D Bns
             then match image_pats (List.repeat true d) (List.firstn (ind_nu D) As) with
                  | Some Us => (pq, Us) :: rest
                  | None => rest
@@ -325,16 +325,16 @@ Section Twins.
     end.
 
   (** [elim_readings] *)
-  Definition elim_readings_f (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bks : list eblock) : list (qname * list exp) :=
-    let own := match own_target_f pc k Rs m Bks with Some r => r :: nil | None => nil end in
+  Definition elim_readings_f (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bns : list (list string)) : list (qname * list exp) :=
+    let own := match own_target_f pc k Rs m Bns with Some r => r :: nil | None => nil end in
     match fc_ind F pc with
-    | Some Dc => own ++ view_targets_f pc k m Bks nil (List.flat_map (nf_formers 0) (List.firstn (ind_nu Dc) Rs))
+    | Some Dc => own ++ view_targets_f pc k m Bns nil (List.flat_map (nf_formers 0) (List.firstn (ind_nu Dc) Rs))
     | None => own
     end.
 
   (** [elim_target] *)
-  Definition elim_target_f (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bks : list eblock) : elim_target_result :=
-    match elim_readings_f pc k Rs m Bks with
+  Definition elim_target_f (pc : qname) (k : nat) (Rs : list nf) (m : nat) (Bns : list (list string)) : elim_target_result :=
+    match elim_readings_f pc k Rs m Bns with
     | nil => elim_target_none
     | (p, Us) :: nil => elim_target_one p Us
     | rs => elim_target_ambiguous rs
@@ -385,37 +385,38 @@ Section Twins.
   Lemma recursor_names_f_ok : forall D, recursor_names_f D = recursor_names Θ Ξ D.
   Proof. intros; unfold recursor_names_f, recursor_names; rewrite (map_ext _ _ recursor_member_name_f_ok); reflexivity. Qed.
 
-  (** [recursor_mod_cmd] *)
-  Definition recursor_mod_cmd_f (pq : qname) (D : ind_decl) (Δu : ctx) : core_cmd :=
-    core_cmd_gen (core_cmd_mod "Rec" false (recursor_tele pq D Δu)
-      (List.map (fun jx => let '(j, Mj, x) := jx in core_cmd_gen (core_cmd_def x true false (recursor_fn_ty pq D j Mj) (Some (recursor_fn pq D j Mj))))
-         (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D)) (recursor_names_f D)))).
+  (** [recursor_mod_cmds] *)
+  Definition recursor_mod_cmds_f (pq : qname) (D : ind_decl) (Δu : ctx) : list core_cmd :=
+    core_cmd_mod_open "Rec" false (recursor_tele pq D Δu) ::
+      List.map (fun jx => let '(j, Mj, x) := jx in core_cmd_def x true false ak_relevant (recursor_fn_ty pq D j Mj) (Some (recursor_fn pq D j Mj)))
+         (List.combine (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D)) (recursor_names_f D)) ++
+      core_cmd_close "Rec" false :: nil.
 
-  Lemma recursor_mod_cmd_f_ok : forall pq D Δu, recursor_mod_cmd_f pq D Δu = recursor_mod_cmd Θ Ξ pq D Δu.
-  Proof. intros; unfold recursor_mod_cmd_f, recursor_mod_cmd; rewrite recursor_names_f_ok; reflexivity. Qed.
+  Lemma recursor_mod_cmds_f_ok : forall pq D Δu, recursor_mod_cmds_f pq D Δu = recursor_mod_cmds Θ Ξ pq D Δu.
+  Proof. intros; unfold recursor_mod_cmds_f, recursor_mod_cmds; rewrite recursor_names_f_ok; reflexivity. Qed.
 
   (** [rec_cmds] *)
   Definition rec_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) : list core_cmd :=
-    if raw_decl_rec_field R then recursor_mod_cmd_f pq D (raw_decl_uparams R) :: nil else nil.
+    if raw_decl_rec_field R then recursor_mod_cmds_f pq D (raw_decl_uparams R) else nil.
 
   Lemma rec_cmds_f_ok : forall R pq D, rec_cmds_f R pq D = rec_cmds Θ Ξ R pq D.
-  Proof. intros; unfold rec_cmds_f, rec_cmds; rewrite recursor_mod_cmd_f_ok; reflexivity. Qed.
+  Proof. intros; unfold rec_cmds_f, rec_cmds; rewrite recursor_mod_cmds_f_ok; reflexivity. Qed.
 
   (** [ind_recursor_cmds] *)
   Definition ind_recursor_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) : list core_cmd :=
-    if Nat.eqb k 0 && negb (raw_decl_rec_field R) then recursor_mod_cmd_f pq D nil :: nil else nil.
+    if Nat.eqb k 0 && negb (raw_decl_rec_field R) then recursor_mod_cmds_f pq D nil else nil.
 
   (** [ind_mod_cmds] *)
   Definition ind_mod_cmds_f (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) (M : imember) : list core_cmd :=
     List.map (ind_con_cmd pq D k M) (im_cons M) ++ ind_rec_cmds pq D M ++ ind_recursor_cmds_f R pq D k.
 
   Lemma ind_mod_cmds_f_ok : forall R pq D k M, ind_mod_cmds_f R pq D k M = ind_mod_cmds Θ Ξ R pq D k M.
-  Proof. intros; unfold ind_mod_cmds_f, ind_mod_cmds, ind_recursor_cmds_f, ind_recursor_cmds; rewrite recursor_mod_cmd_f_ok; reflexivity. Qed.
+  Proof. intros; unfold ind_mod_cmds_f, ind_mod_cmds, ind_recursor_cmds_f, ind_recursor_cmds; rewrite recursor_mod_cmds_f_ok; reflexivity. Qed.
 
-  Lemma elim_target_f_ok : forall pc k Rs m Bks, elim_target_f pc k Rs m Bks = elim_target Θ Ξ pc k Rs m Bks.
+  Lemma elim_target_f_ok : forall pc k Rs m Bns, elim_target_f pc k Rs m Bns = elim_target Θ Ξ pc k Rs m Bns.
   Proof.
-    intros pc k Rs m Bks.
-    assert (Hv : forall seen os, view_targets_f pc k m Bks seen os = view_targets Θ Ξ pc k m Bks seen os).
+    intros pc k Rs m Bns.
+    assert (Hv : forall seen os, view_targets_f pc k m Bns seen os = view_targets Θ Ξ pc k m Bns seen os).
     { intros seen os; revert seen; induction os as [| [[pq d] As] os IH]; intros seen; cbn; [ reflexivity |].
       rewrite !IH, fc_ind_ok; reflexivity. }
     unfold elim_target_f, elim_target, elim_readings_f, elim_readings, own_target_f, own_target; rewrite !fc_ind_ok.
