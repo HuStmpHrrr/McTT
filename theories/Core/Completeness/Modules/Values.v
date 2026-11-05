@@ -102,7 +102,7 @@ Proof.
         destruct (IH Hch' h3 n _ r Ha2 ltac:(eassumption)) as (f & Hf & Ha).
         exists f; split; [ econstructor; [ eapply eval_selm_global_alias; eassumption | exact Hf ] | exact Ha ].
   - (* a closure lacking a parameter *)
-    exists (d_member (dm_local (Δ ++ ce_ass A :: nil) D ρ) (y :: ch)); split.
+    exists (d_member (dm_local (Δ ++ ce_ass κ A :: nil) D ρ) (y :: ch)); split.
     + apply selc_unsat_ex; [ rewrite List.length_app; cbn; lia | exact Hch ].
     + econstructor; eassumption.
   - (* a submodule closure *)
@@ -152,7 +152,7 @@ Qed.
 Lemma next_param_global_lt : forall p args a, next_param (dm_global p args) a ->
     exists T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) /\ List.length args < List.length T.
 Proof.
-  intros * Hn; inversion Hn as [| ? T Φ ? ? ? Hl Hnth |]; subst.
+  intros * Hn; inversion Hn as [| ? T Φ ? ? ? ? Hl Hnth |]; subst.
   exists T, Φ; split; [ exact Hl |].
   rewrite <- (List.length_rev T); apply List.nth_error_Some; congruence.
 Qed.
@@ -198,9 +198,9 @@ Proof.
 Qed.
 
 (** A term member of a value lacking a parameter is a member closure, which
-    takes relevant arguments. *)
-Lemma sel_unsat_arg_relevance : forall h a, next_param h a -> forall x f,
-    h ·ₜ x gc_deps ⍮ gc_stack ↘ f -> arg_relevance gc_deps gc_stack f = relevant.
+    takes arguments of the kind of that parameter ([dmod_param_kind]). *)
+Lemma sel_unsat_arg_kind : forall h a, next_param h a -> forall x f,
+    h ·ₜ x gc_deps ⍮ gc_stack ↘ f -> arg_kind gc_deps gc_stack f = dmod_param_kind gc_deps gc_stack h.
 Proof.
   intros * Hn * Hs; inversion Hn; subst.
   - inversion Hs; subst; [ reflexivity | destruct Δ; discriminate .. ].
@@ -284,11 +284,13 @@ Record valid_mem_at (K : modexp) (x : String.string) (A : typ) (om : option exp)
   ; valid_mem_at_eval_typ : ⟦ A ⟧ ρ ↘ valid_mem_at_typ
     (** [A]'s value is a type, with the element PER *)
   ; valid_mem_at_per : per_univ_elem valid_mem_at_lvl valid_mem_at_rel valid_mem_at_typ valid_mem_at_typ
-    (** At a relevant type, the member of every related value, related *)
-  ; valid_mem_at_has_mem : domain_relevance valid_mem_at_typ = relevant ->
+    (** At a type of an evaluated kind, the member of every related value,
+        related *)
+  ; valid_mem_at_has_mem : evaluated_kind (domain_kind valid_mem_at_typ) ->
       dmod_has_mem valid_mem_at_mod x valid_mem_at_rel
-    (** At a relevant type, the reduct, if any, related to the member *)
-  ; valid_mem_at_red : domain_relevance valid_mem_at_typ = relevant ->
+    (** At a type of an evaluated kind, the reduct, if any, related to the
+        member *)
+  ; valid_mem_at_red : evaluated_kind (domain_kind valid_mem_at_typ) ->
       forall M, om = Some M -> rel_mem_reduct M ρ valid_mem_at_mod x valid_mem_at_rel }.
 
 (** The member [x] of [K] is valid at [A], with δ-reduct [om], in [Γ]. *)
@@ -313,7 +315,7 @@ Proof.
   pose proof (per_univ_elem_of_prop 0 _ _ Hp) as HRa.
   assert (Haa : DF a ≈ a ∈ per_univ_elem 0 ↘ per_proof)
     by (etransitivity; [ exact HRa | symmetry; exact HRa ]).
-  apply (mk_valid_mem_at _ _ _ _ _ h a 0 per_proof Hh Ea Haa); intros Hr; exfalso; destruct Hp as [Hl _ _]; congruence.
+  apply (mk_valid_mem_at _ _ _ _ _ h a 0 per_proof Hh Ea Haa); intros Hr; exfalso; destruct Hp as [Hl _ _]; rewrite Hl in Hr; inversion Hr.
 Qed.
 
 (** The submodule [y] of [K] at every environment, from any value related
@@ -346,7 +348,7 @@ Proof.
       disjunct. *)
   pose proof HT as HT0.
   destruct HT as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & T23 & T34)].
-  destruct (domain_relevance a3) eqn:Ea3;
+  destruct (evaluated_kind_or_propositional (domain_kind a3)) as [Ea3 | Ea3];
     [| left; exact (proj1 (rel_typ_prop_any HT0 (or_intror (or_intror (or_introl (ex_intro _ a3 (conj Ha3 Ea3))))))) ].
   assert (HPR : PER Rel) by (eapply per_elem_PER; exact T23).
   destruct (rel_modexp_hub _ _ _ _ _ _ _ _ (HH _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
@@ -382,12 +384,12 @@ Proof.
       disjunct; at a relevant type, [M]'s chain is its relevant one. *)
   pose proof HT as HT0.
   destruct HT as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & T23 & T34)].
-  destruct (domain_relevance a2) eqn:Ea2;
+  destruct (evaluated_kind_or_propositional (domain_kind a2)) as [Ea2 | Ea2];
     [| left; exact (proj1 (rel_typ_prop_any HT0 (or_intror (or_introl (ex_intro _ a2 (conj Ha2 Ea2)))))) ].
   right.
   assert (HPR : PER Rel) by (eapply per_elem_PER; exact T23).
   destruct (HMgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [RelM [HMtyp HMexp]].
-  apply (rel_exp_or_prop_relevant HMtyp (ex_intro _ a2 (conj Ha2 Ea2))) in HMexp.
+  apply (rel_exp_or_prop_evaluated HMtyp (ex_intro _ a2 (conj Ha2 Ea2))) in HMexp.
   destruct HMtyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 (B12 & B23 & B34)].
   destruct HMexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 (M12 & M23 & M34)].
   functional_eval_rewrite_clear.
@@ -397,8 +399,8 @@ Proof.
   destruct (HS _ HR _ Hρσ') as [k a j RA Hk Ha HRA' Hm Hred].
   pose proof (functional_eval_modexp _ _ _ _ Hk E3) as ->.
   pose proof (functional_eval_exp _ _ _ _ Ha Ha3) as ->.
-  assert (Ea3 : domain_relevance a3 = relevant)
-    by (rewrite <- (per_univ_elem_relevance _ _ _ _ T23); exact Ea2).
+  assert (Ea3 : evaluated_kind (domain_kind a3))
+    by (rewrite <- (per_univ_elem_kind _ _ _ _ T23); exact Ea2).
   specialize (Hm Ea3); specialize (Hred Ea3).
   assert (E : RA <~> Rel) by (eapply per_univ_elem_right_irrel; [ exact HRA' | etransitivity; [ symmetry; exact T23 | exact T23 ] ]).
   destruct (Hred _ eq_refl) as [m v Hm0 Hv HRv].
@@ -438,16 +440,21 @@ Qed.
 
 (** ** Members of Values Lacking a Parameter *)
 
-Lemma per_univ_elem_pi_inv : forall {j E a ρ B a' ρ' B'},
-    per_univ_elem j E (Πᵈ a ρ B) (Πᵈ a' ρ' B') ->
+(** A [Π] into a codomain of an evaluated kind (a [∀] into propositions
+    is a proposition): its domains, codomains and elements. *)
+Lemma per_univ_elem_pi_inv : forall {j E κd κc a ρ B κd' κc' a' ρ' B'},
+    evaluated_kind κc ->
+    per_univ_elem j E (d_pi κd κc a ρ B) (d_pi κd' κc' a' ρ' B') ->
     exists in_rel (out_rel : forall c c', in_rel c c' -> relation domain),
       per_univ_elem j in_rel a a' /\
       (forall c c' (H : in_rel c c'),
           rel_mod_eval (per_univ_elem j) B (ρ ↦ c ⦂ entry_type_value a) B' (ρ' ↦ c' ⦂ entry_type_value a') (out_rel c c' H)) /\
       (E <~> pi_elements a a' in_rel out_rel).
 Proof.
-  intros * H.
+  intros * Hk H.
   basic_invert_per_univ_elem H.
+  all: try (exfalso; match goal with Hp : per_prop _ _ |- _ => pose proof (per_prop_left _ _ Hp) as Hl end;
+            cbn [domain_kind] in Hl; rewrite Hl in Hk; inversion Hk).
   do 2 eexists; split; [ eassumption | split ]; [| eassumption ].
   intros c c' Hc; destruct_rel_mod_eval; econstructor; eassumption.
 Qed.
@@ -455,19 +462,19 @@ Qed.
 (** The member of a value lacking a parameter, at a [Π] over a type of
     that parameter: when it is related at the codomain once applied, it is
     related at the [Π]. *)
-Lemma dmod_has_mem_fun : forall k a0 x i E a ρB B,
+Lemma dmod_has_mem_fun : forall k a0 x i E κd κc a ρB B,
     next_param k a0 -> per_dmod k k ->
-    per_univ_elem i E (Πᵈ a ρB B) (Πᵈ a ρB B) ->
+    evaluated_kind κc -> per_univ_elem i E (d_pi κd κc a ρB B) (d_pi κd κc a ρB B) ->
     (exists j R0, per_univ_elem j R0 a0 a) ->
-    domain_relevance a = relevant ->
+    evaluated_kind (domain_kind a) ->
     (forall j Ra c, per_univ_elem j Ra a a -> Ra c c -> forall kc b, $ᵐ| k & c | gc_deps ⍮ gc_stack ↘ kc ->
        ⟦ B ⟧ ρB ↦ c ⦂ entry_type_value a ↘ b -> exists l Rb, per_univ_elem l Rb b b /\ dmod_has_mem kc x Rb) ->
     (exists f, k ·ₜ x gc_deps ⍮ gc_stack ↘ f) ->
     dmod_has_mem k x E.
 Proof.
-  intros * Hpk Hkk HE (j0 & R0 & H0) Ha Hcod (fk & Hfk) h Hh.
+  intros * Hpk Hkk Hκc HE (j0 & R0 & H0) Ha Hcod (fk & Hfk) h Hh.
   destruct (per_dmod_appm _ _ _ (per_dmod_sym _ _ Hh) Hpk) as (ih & R & ah & Hph & HRh & Happ0).
-  destruct (per_univ_elem_pi_inv HE) as (in_rel & out_rel & Hin & Hout & HEq).
+  destruct (per_univ_elem_pi_inv Hκc HE) as (in_rel & out_rel & Hin & Hout & HEq).
   assert (HPin : PER in_rel) by (eapply per_elem_PER; exact Hin).
   assert (E1 : R <~> R0) by (eapply per_univ_elem_right_irrel; [ exact HRh | exact H0 ]).
   assert (E2 : R0 <~> in_rel) by (eapply per_univ_elem_right_irrel; [ apply per_univ_elem_sym; exact H0 | exact Hin ]).
@@ -484,11 +491,13 @@ Proof.
   destruct (Hm0 _ Hc00) as [y0 _ Hy0 _ _].
   destruct (sel_of_appm _ _ Hph _ _ _ _ Hhc0 Hy0) as (fh & Hfh).
   exists fh fk; [ exact Hfh | exact Hfk |].
-  (** Both members are member closures, which take relevant arguments, as
-      the parameter is. *)
+  (** Both members are member closures, which take arguments of the kind of
+      their next parameter, the domain's. *)
+  assert (Ka0 : domain_kind a0 = domain_kind a) by exact (per_univ_elem_kind _ _ _ _ H0).
+  assert (Kah : domain_kind ah = domain_kind a) by (rewrite <- (per_univ_elem_kind _ _ _ _ HRh); exact Ka0).
   apply HEq; constructor;
-    [ rewrite Ha; exact (sel_unsat_arg_relevance _ _ Hph _ _ Hfh)
-    | rewrite Ha; exact (sel_unsat_arg_relevance _ _ Hpk _ _ Hfk) |].
+    [ rewrite (sel_unsat_arg_kind _ _ Hph _ _ Hfh), (next_param_kind _ _ Hph ltac:(rewrite Kah; exact Ha)); exact Kah
+    | rewrite (sel_unsat_arg_kind _ _ Hpk _ _ Hfk), (next_param_kind _ _ Hpk ltac:(rewrite Ka0; exact Ha)); exact Ka0 |].
   intros c c' Hc.
   assert (Hc' : in_rel c' c') by (etransitivity; [ symmetry; exact Hc | exact Hc ]).
   destruct (Happ _ _ Hc) as (hc & kc & Hhc & Hkc & Hcc).
@@ -515,25 +524,27 @@ Proof. intros * Hm E h Hh; destruct (Hm _ Hh) as [r r' Hr Hr' Hrr]; exists r r';
 
 (** A function related, once applied, to the member of the applied values
     is related to the member at the [Π]. *)
-Lemma red_fun : forall k a0 x i E a ρB B f fk,
+Lemma red_fun : forall k a0 x i E κd κc a ρB B f fk,
     next_param k a0 ->
-    per_univ_elem i E (Πᵈ a ρB B) (Πᵈ a ρB B) ->
+    evaluated_kind κc -> per_univ_elem i E (d_pi κd κc a ρB B) (d_pi κd κc a ρB B) ->
     (exists j R0, per_univ_elem j R0 a0 a) -> per_dmod k k -> k ·ₜ x gc_deps ⍮ gc_stack ↘ fk ->
-    domain_relevance a = relevant -> arg_relevance gc_deps gc_stack f = relevant ->
+    evaluated_kind (domain_kind a) -> arg_kind gc_deps gc_stack f = domain_kind a ->
     (forall j Ra c, per_univ_elem j Ra a a -> Ra c c -> forall kc b, $ᵐ| k & c | gc_deps ⍮ gc_stack ↘ kc ->
        ⟦ B ⟧ ρB ↦ c ⦂ entry_type_value a ↘ b -> exists l Rb fc r, per_univ_elem l Rb b b /\ dmod_has_mem kc x Rb /\
          $| f & c |↘ fc /\ kc ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ Rb fc r) ->
     E f fk.
 Proof.
-  intros * Hpk HE (j0 & R0 & H0) Hkk Hfk Ha Hf Hcod.
+  intros * Hpk Hκc HE (j0 & R0 & H0) Hkk Hfk Ha Hf Hcod.
   destruct (per_dmod_appm _ _ _ Hkk Hpk) as (ih & Rh & ah & Hph & HRh & Happ).
   pose proof (next_param_functional _ _ Hph _ Hpk) as ->.
-  destruct (per_univ_elem_pi_inv HE) as (in_rel & out_rel & Hin & Hout & HEq).
+  destruct (per_univ_elem_pi_inv Hκc HE) as (in_rel & out_rel & Hin & Hout & HEq).
   assert (HPin : PER in_rel) by (eapply per_elem_PER; exact Hin).
   assert (E1 : Rh <~> R0) by (eapply per_univ_elem_right_irrel; [ exact HRh | exact H0 ]).
   assert (E2 : R0 <~> in_rel) by (eapply per_univ_elem_right_irrel; [ apply per_univ_elem_sym; exact H0 | exact Hin ]).
+  assert (Ka0 : domain_kind a0 = domain_kind a) by exact (per_univ_elem_kind _ _ _ _ H0).
   apply HEq; constructor;
-    [ rewrite Ha; exact Hf | rewrite Ha; exact (sel_unsat_arg_relevance _ _ Hpk _ _ Hfk) |].
+    [ exact Hf
+    | rewrite (sel_unsat_arg_kind _ _ Hpk _ _ Hfk), (next_param_kind _ _ Hpk ltac:(rewrite Ka0; exact Ha)); exact Ka0 |].
   intros c c' Hc.
   assert (Hcc : in_rel c c) by (etransitivity; [ exact Hc | symmetry; exact Hc ]).
   destruct (Happ c c' (proj2 (E1 _ _) (proj2 (E2 _ _) Hc))) as (kc & kc' & Hkc & Hkc' & Hkk').

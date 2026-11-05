@@ -93,14 +93,35 @@ Definition tele_param_kind (T : list centry) (n : nat) : abs_kind :=
 Lemma tele_param_kind_evaluated : forall T n, evaluated_kind (tele_param_kind T n).
 Proof. intros; unfold tele_param_kind; destruct (List.nth_error T n) as [[[] | | | ] |]; constructor. Qed.
 
+(** The kind of the next parameter of the module value [h], one lacking
+    parameters: for a local module closure, the last entry of its
+    remaining telescope; for a global module, the entry of its telescope
+    after its arguments; for a submodule's closure, its module's.  As in
+    [tele_param_kind], a parameter of a type of levels is of [ak_level]
+    and every other one of [ak_relevant]: module parameters are never
+    propositional by the typing rules, so at an entry tagged
+    [ak_propositional], which no well-typed term reaches, the value
+    [ak_relevant] is junk. *)
+Fixpoint dmod_param_kind (Θ : gdeps) (Ξ : gstack) (h : dmod) : abs_kind :=
+  match h with
+  | dm_local Δ _ _ => tele_param_kind (List.rev Δ) 0
+  | dm_global p args =>
+      match gc_loc Θ Ξ p with
+      | Some (T, _) => tele_param_kind (List.rev T) (List.length args)
+      | None => ak_relevant
+      end
+  | dm_member h _ => dmod_param_kind Θ Ξ h
+  end.
+
 (** The kind of the next argument a function value takes: the kind of a
     function's own domain or of a neutral's [Π] domain; for a type former
     of a group or of a record, and for a constructor before its
     arguments, the kind of the next parameter as the declaration tags it
     ([tele_param_kind]): a parameter of a type of levels is of
-    [ak_level]; and the stored kind of a constructor's next argument.
-    Every other function value takes arguments that are evaluated
-    ([ak_relevant]). *)
+    [ak_level]; the stored kind of a constructor's next argument; and for
+    the member of a module value lacking a parameter, that parameter's
+    kind ([dmod_param_kind]).  Every other function value takes arguments
+    that are evaluated ([ak_relevant]). *)
 Definition arg_kind (Θ : gdeps) (Ξ : gstack) (f : domain) : abs_kind :=
   match f with
   | d_fn a _ _ => domain_kind a
@@ -131,6 +152,7 @@ Definition arg_kind (Θ : gdeps) (Ξ : gstack) (f : domain) : abs_kind :=
           end
       | None => ak_relevant
       end
+  | d_member h _ => dmod_param_kind Θ Ξ h
   | _ => ak_relevant
   end.
 
@@ -145,6 +167,15 @@ Lemma arg_kind_record_evaluated : forall Θ Ξ p ns, evaluated_kind (arg_kind Θ
 Proof.
   intros; cbn [arg_kind]; destruct (record_lookup Θ Ξ p); first [ apply tele_param_kind_evaluated | constructor ].
 Qed.
+
+(** A module value lacking a parameter takes an argument of an evaluated
+    kind. *)
+Lemma dmod_param_kind_evaluated : forall Θ Ξ h, evaluated_kind (dmod_param_kind Θ Ξ h).
+Proof.
+  intros Θ Ξ h; induction h as [p args | Δ D ρ | h IH ch]; cbn [dmod_param_kind];
+    [ destruct (gc_loc Θ Ξ p) as [[T Φ] |] | |]; first [ apply tele_param_kind_evaluated | constructor | exact IH ].
+Qed.
+
 (** The proof a member [x] of a saturated module is, kept as its
     selection from the module bound at [#0]: a proof member is never
     evaluated, so its value is this proof in an environment holding the

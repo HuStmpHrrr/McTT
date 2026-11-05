@@ -2181,12 +2181,24 @@ Proof. intros * H1 H2; pose proof (@functional_eval gc_deps gc_stack) as Hf; des
 
 Lemma next_param_functional : forall h a1, next_param h a1 -> forall a2, next_param h a2 -> a1 = a2.
 Proof.
-  induction 1; intros a2 H2; inversion H2; subst; auto.
-  - match goal with H : _ ++ _ :: nil = _ ++ _ :: nil |- _ => apply app_inj_tail in H as [<- [= <- <-]] end.
+  induction 1; intros a2 Hn2; inversion Hn2; subst; auto.
+  - match goal with H : _ ++ _ :: nil = _ ++ _ :: nil |- _ => apply app_inj_tail in H as [<- [= _ <-]] end.
     eapply functional_eval_exp; eassumption.
   - match goal with H1 : gc_loc _ _ ?p = Some _, H2 : gc_loc _ _ ?p = Some _ |- _ => rewrite H1 in H2; injection H2 as <- <- end.
-    match goal with H1 : nth_error ?l ?n = Some _, H2 : nth_error ?l ?n = Some _ |- _ => rewrite H1 in H2; injection H2 as -> -> end.
+    match goal with H1 : nth_error ?l ?n = Some _, H2 : nth_error ?l ?n = Some _ |- _ => rewrite H1 in H2; injection H2 as _ -> end.
     eapply functional_eval_exp; eassumption.
+Qed.
+
+(** The member of a value lacking a parameter takes arguments of the kind
+    of that parameter's type, when it is evaluated: the entry's tag. *)
+Lemma next_param_kind : forall h a, next_param h a -> evaluated_kind (domain_kind a) ->
+    dmod_param_kind gc_deps gc_stack h = domain_kind a.
+Proof.
+  induction 1 as [Δ κ A D ρ a _ <- | p T Φ args κ A a Hm Hn _ <- | h ch a _ IH]; intros Hk; cbn [dmod_param_kind].
+  - unfold tele_param_kind; rewrite List.rev_app_distr; cbn.
+    destruct Hk; reflexivity.
+  - rewrite Hm; unfold tele_param_kind; rewrite Hn; destruct Hk; reflexivity.
+  - exact (IH Hk).
 Qed.
 
 (** A saturated value lacks no parameter. *)
@@ -2403,18 +2415,20 @@ Qed.
 
 (** Two closures lacking their outermost parameter are related when, at
     every related pair of arguments, the closures of the rest over the
-    environments extended by them evaluate to related values. *)
+    environments extended by them evaluate to related values.  Each
+    parameter's type is of the kind its entry is tagged with. *)
 Lemma per_dmod_closure_step : forall ρ ρ' Δ Δ' κ κ' A A' D D' i R a a',
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a -> ⟦ A' ⟧ gc_deps ⍮ gc_stack ⍮ ρ' ↘ a' -> per_univ_elem i R a a' ->
+    domain_kind a = κ -> domain_kind a' = κ' ->
     (forall c c', R c c' -> exists h h', ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↦ c ⦂ entry_type_closure A ρ ↘ h /\
                                      ⟦ Δ' ⊢ D' ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ' ↦ c' ⦂ entry_type_closure A' ρ' ↘ h' /\
                                      per_dmod h h') ->
     per_dmod (dm_local (Δ ++ ce_ass κ A :: nil) D ρ) (dm_local (Δ' ++ ce_ass κ' A' :: nil) D' ρ').
 Proof.
-  intros * Ha Ha' HR HD.
+  intros * Ha Ha' HR Hk Hk' HD.
   destruct (per_univ_elem_sym _ _ _ _ HR) as [_ Hs].
   destruct (per_univ_elem_trans _ _ _ _ HR) as [_ Htr].
-  eapply per_dmod_fun; [ constructor; exact Ha | constructor; exact Ha' | exact HR | | |].
+  eapply per_dmod_fun; [ constructor; [ exact Ha | exact Hk ] | constructor; [ exact Ha' | exact Hk' ] | exact HR | | |].
   - intros c c' Hc; destruct (HD _ _ Hc) as (h & _ & Hh & _); eexists; constructor; exact Hh.
   - intros c c' Hc; destruct (HD _ _ Hc) as (_ & h' & _ & Hh' & _); eexists; constructor; exact Hh'.
   - intros c c' hc hc' Hc Hh Hh'.

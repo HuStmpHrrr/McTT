@@ -1773,16 +1773,23 @@ Definition rel_typ_propositional (A : exp) (ρ : env) : Prop :=
 
 (** The next parameter's type a module value still lacks: a closure's
     outermost missing parameter, in its environment; a global module's
-    first parameter past its arguments; a submodule closure's base's. *)
+    first parameter past its arguments; a submodule closure's base's.  The
+    type is of the kind its entry is tagged with, as a [Π]'s domain is of
+    its tag ([dmod_param_kind] reads the tag). *)
 Inductive next_param : dmod -> domain -> Prop :=
+(** A closure's outermost missing parameter, in its environment *)
 | next_param_local : forall Δ κ A D ρ a,
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a ->
+    domain_kind a = κ ->
     next_param (dm_local (Δ ++ ce_ass κ A :: nil) D ρ) a
+(** A global module's first parameter past its arguments *)
 | next_param_global : forall p T Φ args κ A a,
     gc_loc gc_deps gc_stack p = Some (T, Φ) ->
     List.nth_error (List.rev T) (List.length args) = Some (ce_ass κ A) ->
     ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ env_tele nil (List.rev T) args ↘ a ->
+    domain_kind a = κ ->
     next_param (dm_global p args) a
+(** A submodule closure's base's *)
 | next_param_member : forall h ch a,
     next_param h a ->
     next_param (dm_member h ch) a.

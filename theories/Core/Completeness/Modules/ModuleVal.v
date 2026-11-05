@@ -78,7 +78,7 @@ Lemma apply_args_local_unsaturated : forall args Δ D ρ, moddef_expand D = D ->
 Proof.
   induction args as [| c args IH]; intros * HD Ha Hl; cbn [List.length] in *.
   - rewrite Nat.sub_0_r, List.firstn_all; constructor.
-  - destruct (tele_ass_last _ Ha ltac:(destruct Δ; cbn in Hl; [ lia | discriminate ])) as (Δ0 & A & ->).
+  - destruct (tele_ass_last _ Ha ltac:(destruct Δ; cbn in Hl; [ lia | discriminate ])) as (Δ0 & κ & A & ->).
     rewrite List.length_app in Hl |- *; cbn [List.length] in Hl |- *.
     apply List.Forall_app in Ha as [Ha0 _].
     econstructor; [ apply eval_appm_local; apply close_unsat; lia |].
@@ -162,7 +162,7 @@ Proof.
     match goal with Hx : nth_error (rev T) _ = Some _ |- _ =>
       assert (Hx' : nth_error (rev T) (length args) <> None) by congruence end.
     apply nth_error_Some in Hx'; rewrite length_rev in Hx'.
-    econstructor; [ exact Hm' | rewrite nth_rev_app_lt; [ eassumption | exact Hx' ] |].
+    econstructor; [ exact Hm' | rewrite nth_rev_app_lt; [ eassumption | exact Hx' ] | | reflexivity ].
     (** The parent's parameters come first, outermost first: the
         arguments are at them. *)
     rewrite List.rev_app_distr, env_tele_app_long by (rewrite List.length_rev; lia); eassumption.
@@ -183,7 +183,7 @@ Proof.
     match goal with Hx : nth_error (rev T) _ = Some ?e |- _ =>
       rewrite <- (nth_rev_app_lt Δy) in Hx by exact Hlt;
       destruct (firstn_rev_nth _ _ _ Hx) as (L0 & HL0) end.
-    rewrite HL0; constructor.
+    rewrite HL0; constructor; [| reflexivity ].
     rewrite List.rev_app_distr, env_tele_app_long by (rewrite List.length_rev; lia); assumption.
   - (* a closure lacking a parameter *)
     constructor; exact Hn.
