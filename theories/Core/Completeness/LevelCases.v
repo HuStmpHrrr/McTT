@@ -114,9 +114,8 @@ Proof.
   destruct H as [env_relΓ HΓ].
   apply rel_exp_of_typ; eexists; eexists; [ eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hn : per_relevant_nonlevel (per_univ 0) LevelSortᵈ LevelSortᵈ)
-    by (constructor; [ eexists; apply per_univ_elem_level_sort_univ; exact I | reflexivity | reflexivity
-                     | solve_not_level_code | solve_not_level_code ]).
+  assert (Hn : per_universe_elements (per_univ 0) LevelSortᵈ LevelSortᵈ)
+    by (constructor; [ eexists; apply per_univ_elem_level_sort_univ; exact I | reflexivity | reflexivity ]).
   econstructor; try apply eval_exp_level_sort.
   apply rel_chain_4; exact Hn.
 Qed.
@@ -149,8 +148,8 @@ Proof.
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HM _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
-  assert (Hr : rel_typ_sort Level@n ρσ relevant) by (eexists; split; [ apply eval_exp_level | reflexivity ]).
-  apply (rel_exp_or_prop_relevant Htyp Hr) in Hexp.
+  assert (Hr : rel_typ_evaluated Level@n ρσ) by (eexists; split; [ apply eval_exp_level | constructor ]).
+  apply (rel_exp_or_prop_evaluated Htyp Hr) in Hexp.
   destruct Htyp as [? ? ? ? ? ? ? ? Hchain].
   simpl in Hchain; destruct Hchain as [? [? ?]].
   invert_rel_typ_body.
@@ -530,7 +529,7 @@ Lemma rel_exp_of_suniv_tm : forall {Γ T A A'},
           ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
           ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
           forall t, ⟦ T ⟧ ρσ ↘ t ->
-          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant_nonlevel (per_univ (us (domain_level_real t))))) ->
+          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_universe_elements (per_univ (us (domain_level_real t))))) ->
     Γ ⊨ A ≈ A' : Type⟨T⟩.
 Proof.
   intros * HT [env_relΓ [HΓ H]].
@@ -545,7 +544,7 @@ Proof.
   pose proof (per_lvl_real _ _ H12) as E12.
   pose proof (per_lvl_real _ _ H23) as E23.
   pose proof (per_lvl_real _ _ H34) as E34.
-  exists (per_relevant_nonlevel (per_univ (us (domain_level_real t2)))).
+  exists (per_universe_elements (per_univ (us (domain_level_real t2)))).
   split; [| right; eapply H; eassumption ].
   apply (mk_rel_exp 𝕌@t1 𝕌@t2 𝕌@t3 𝕌@t4);
     try (apply eval_exp_univ; eassumption).
@@ -566,16 +565,16 @@ Lemma rel_exp_of_suniv_tm_inversion : forall {Γ T A A'},
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
         ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
-        exists t, ⟦ T ⟧ ρσ ↘ t /\ rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_relevant_nonlevel (per_univ (us (domain_level_real t)))).
+        exists t, ⟦ T ⟧ ρσ ↘ t /\ rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_universe_elements (per_univ (us (domain_level_real t)))).
 Proof.
   intros * [env_relΓ HΓ i HA].
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
-  assert (Hr : rel_typ_sort Type⟨T⟩ ρσ relevant).
+  assert (Hr : rel_typ_evaluated Type⟨T⟩ ρσ).
   { pose proof Htyp as [u1 u2 u3 u4 _ Hu2 _ _ _]; exists u2; split; [ exact Hu2 |].
-    cbn [exp_sub] in Hu2; inversion Hu2; subst; reflexivity. }
-  apply (rel_exp_or_prop_relevant Htyp Hr) in Hexp.
+    cbn [exp_sub] in Hu2; inversion Hu2; subst; constructor. }
+  apply (rel_exp_or_prop_evaluated Htyp Hr) in Hexp.
   destruct Htyp as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Hchain].
   cbn [exp_sub] in *.
   inversion Hu1; inversion Hu2; inversion Hu3; inversion Hu4; subst.
@@ -589,7 +588,7 @@ Proof.
   eapply rel_chain_mono; [| exact Hc ].
   intros x y Hxy.
   match goal with
-  | Hl : per_lvl ?a ?b, Heq : _ <~> _ |- per_relevant_nonlevel (per_univ (us (domain_level_real ?b))) _ _ =>
+  | Hl : per_lvl ?a ?b, Heq : _ <~> _ |- per_universe_elements (per_univ (us (domain_level_real ?b))) _ _ =>
       rewrite <- (per_lvl_real _ _ Hl); apply Heq in Hxy; exact Hxy
   end.
 Qed.
@@ -603,7 +602,7 @@ Corollary rel_exp_of_suniv_tm_inversion_simple : forall {Γ T A A'},
       Dom ρ ≈ ρ' ∈ env_rel ->
       exists a a' t,
         ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ ⟦ T ⟧ ρ ↘ t /\
-        Dom a ≈ a' ∈ per_relevant_nonlevel (per_univ (us (domain_level_real t))).
+        Dom a ≈ a' ∈ per_universe_elements (per_univ (us (domain_level_real t))).
 Proof.
   intros * [env_relΓ HΓ i HA].
   eexists; eexists; [eassumption |].
@@ -613,10 +612,10 @@ Proof.
       [ρ'] themselves; its inner ones are at the retaggings.  The first
       link names the element PER, at the outer level. *)
   destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hi Hi') as [R [Htyp Hexp]].
-  assert (Hr : rel_typ_sort Type⟨T⟩ (ctx_retag Γ ρ) relevant).
+  assert (Hr : rel_typ_evaluated Type⟨T⟩ (ctx_retag Γ ρ)).
   { pose proof Htyp as [u1 u2 u3 u4 _ Hu2 _ _ _]; exists u2; split; [ exact Hu2 |].
-    cbn [exp_sub] in Hu2; inversion Hu2; subst; reflexivity. }
-  apply (rel_exp_or_prop_relevant Htyp Hr) in Hexp.
+    cbn [exp_sub] in Hu2; inversion Hu2; subst; constructor. }
+  apply (rel_exp_or_prop_evaluated Htyp Hr) in Hexp.
   destruct Htyp as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Hchain].
   rewrite exp_sub_id in Hu1, Hu4.
   inversion Hu1; inversion Hu2; subst.
@@ -628,7 +627,7 @@ Proof.
   invert_per_univ_elem Hl12.
   match goal with HT : ⟦ T ⟧ ρ ↘ ?t |- _ => exists aσ, a'σ', t; split; [ exact HaσI |]; split; [ exact Ha'σ'I |]; split; [ exact HT |] end.
   match goal with
-  | Heq : _ <~> per_relevant_nonlevel _ |- _ => apply Heq in Hx; exact Hx
+  | Heq : _ <~> per_universe_elements _ |- _ => apply Heq in Hx; exact Hx
   end.
 Qed.
 
@@ -644,7 +643,7 @@ Proof.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [t [_ [? ? ? ? ? ? ? ? Hchain]]].
   econstructor; try eassumption.
   eapply rel_chain_mono; [| eassumption ].
-  intros ? ? [Hx Hl Hr Hnl Hnr]; constructor; [| exact Hl | exact Hr | exact Hnl | exact Hnr ].
+  intros ? ? [Hx Hl Hr]; constructor; [| exact Hl | exact Hr ].
   eapply (per_univ_cumu_universe_index (u := us _)); [| exact Hx ]; exact I.
 Qed.
 
@@ -675,7 +674,7 @@ Proof.
   pose proof (per_lvl_real _ _ H34) as E34.
   rewrite domain_level_real_suc.
   apply (mk_rel_exp 𝕌@m1 𝕌@m2 𝕌@m3 𝕌@m4); try (apply eval_exp_univ; eassumption).
-  apply rel_chain_4; (constructor; [| reflexivity | reflexivity | solve_not_level_code | solve_not_level_code ]);
+  apply rel_chain_4; (constructor; [| reflexivity | reflexivity ]);
     eexists; apply per_univ_elem_core_suniv';
     first [ eassumption | cbn; ordinal_solve | reflexivity ].
 Qed.

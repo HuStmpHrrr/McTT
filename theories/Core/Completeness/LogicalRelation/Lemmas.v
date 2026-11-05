@@ -309,7 +309,7 @@ Qed.
     two proofs that read back. *)
 Lemma per_head_proof : forall {S S' ρ ρ' a v v'},
     ⟦ S ⟧ ρ ↘ a ->
-    domain_relevance a = propositional ->
+    domain_kind a = ak_propositional ->
     proof_readable v -> proof_readable v' ->
     Dom v ≈ v' ∈ per_head S S' ρ ρ'.
 Proof.
@@ -328,7 +328,7 @@ Lemma head_propositional_iff : forall {Δ R e A i ρ ρ' a},
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
     Dom ρ ≈ ρ' ∈ R ->
     ⟦ A ⟧ ρ ↘ a ->
-    head_propositional gc_deps gc_stack e Δ ρ <-> domain_relevance a = propositional.
+    head_propositional gc_deps gc_stack e Δ ρ <-> domain_kind a = ak_propositional.
 Proof.
   intros * HΔ He HA Hρ Ha.
   assert (He' : ctx_entry_type (e :: Δ) 0 = Some A) by exact He.
@@ -340,24 +340,24 @@ Proof.
     destruct (HA _ _ HE') as (a1 & a1' & Ea1 & Ea1' & [R1 H1]).
     destruct (HA _ _ Hρ) as (a2 & a2' & Ea2 & Ea2' & [R2 H2]).
     functional_eval_rewrite_clear.
-    pose proof (per_univ_elem_relevance _ _ _ _ H1).
-    pose proof (per_univ_elem_relevance _ _ _ _ H2).
+    pose proof (per_univ_elem_kind _ _ _ _ H1).
+    pose proof (per_univ_elem_kind _ _ _ _ H2).
     congruence.
   - intros Hr; econstructor; [ exact He' | intros y _; reflexivity | exact Ha | exact Hr ].
 Qed.
 
-(** The same, negated, for a relevant value. *)
+(** The same, negated, for a value of an evaluated kind. *)
 Corollary head_not_propositional : forall {Δ R e A i ρ ρ' a},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ R ->
     ctx_entry_type (e :: nil) 0 = Some A ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
     Dom ρ ≈ ρ' ∈ R ->
     ⟦ A ⟧ ρ ↘ a ->
-    domain_relevance a = relevant ->
+    evaluated_kind (domain_kind a) ->
     ~ head_propositional gc_deps gc_stack e Δ ρ.
 Proof.
   intros * HΔ He HA Hρ Ha Hr Hp.
-  apply (head_propositional_iff HΔ He HA Hρ Ha) in Hp; congruence.
+  apply (head_propositional_iff HΔ He HA Hρ Ha) in Hp; exact (evaluated_kind_not_propositional _ Hr Hp).
 Qed.
 
 (** The same at the right environment of the pair. *)
@@ -367,7 +367,7 @@ Corollary head_propositional_iff_right : forall {Δ R e A i ρ ρ' a'},
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
     Dom ρ ≈ ρ' ∈ R ->
     ⟦ A ⟧ ρ' ↘ a' ->
-    head_propositional gc_deps gc_stack e Δ ρ' <-> domain_relevance a' = propositional.
+    head_propositional gc_deps gc_stack e Δ ρ' <-> domain_kind a' = ak_propositional.
 Proof.
   intros * HΔ He HA Hρ Ha.
   assert (PER R) by (eapply per_env_PER; eassumption).
@@ -388,7 +388,7 @@ Proof.
   destruct (HA _ _ Hρ) as (a & a' & Ea & Ea' & [R0 H0]).
   pose proof (head_propositional_iff HΔ He HA Hρ Ea) as I1.
   pose proof (head_propositional_iff_right HΔ He HA Hρ Ea') as I2.
-  pose proof (per_univ_elem_relevance _ _ _ _ H0) as E.
+  pose proof (per_univ_elem_kind _ _ _ _ H0) as E.
   rewrite I1, I2, E; reflexivity.
 Qed.
 
@@ -725,7 +725,7 @@ Lemma rel_exp_under_ctx_simple : forall {Γ A M M'},
         ⟦ A ⟧ ρ ↘ a /\
         ⟦ A ⟧ ρ' ↘ a' /\
         DF a ≈ a' ∈ per_univ_elem i ↘ R /\
-        (domain_relevance a = propositional \/
+        (domain_kind a = ak_propositional \/
          exists m m',
            ⟦ M ⟧ ρ ↘ m /\
            ⟦ M' ⟧ ρ' ↘ m' /\
@@ -804,7 +804,7 @@ Proof.
     rewrite exp_sub_id in Hc.
     assert (c = b1) as -> by (eapply functional_eval_exp; eassumption).
     assert (Hab : DF a1 ≈ b1 ∈ per_univ_elem i ↘ R1) by pairwise.
-    rewrite (per_univ_elem_relevance _ _ _ _ Hab); exact Hp. }
+    rewrite (per_univ_elem_kind _ _ _ _ Hab); exact Hp. }
   rewrite exp_sub_id in Hw1, Hw4.
   assert (w2 = v2) as -> by (eapply functional_eval_exp; eassumption).
   assert (w3 = v3) as -> by (eapply functional_eval_exp; eassumption).
@@ -862,16 +862,26 @@ Proof.
     eapply per_head_of; eassumption.
 Qed.
 
-(** A valid term at related environments where its type is relevant: its
-    values, related at the type's head. *)
-Corollary rel_exp_under_ctx_simple_at_relevant : forall {Γ A M M' env_relΓ},
+(** The value of the type [A] in [ρ] is of an evaluated kind: a type of a
+    universe or a type of levels, not a proposition. *)
+Definition rel_typ_evaluated (A : exp) (ρ : env) : Prop :=
+  exists a, ⟦ A ⟧ ρ ↘ a /\ evaluated_kind (domain_kind a).
+
+(** A type of an evaluated kind is of an evaluated kind. *)
+Lemma rel_typ_evaluated_of_kind : forall {A ρ κ}, rel_typ_kind A ρ κ -> evaluated_kind κ -> rel_typ_evaluated A ρ.
+Proof. intros * (a & Ea & <-) Hκ; exists a; split; assumption. Qed.
+
+(** A valid term at related environments where its type is of an
+    evaluated kind: its values, related at the type's head. *)
+Corollary rel_exp_under_ctx_simple_at_evaluated : forall {Γ A M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ -> Γ ⊨ M ≈ M' : A ->
-    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_sort A ρ relevant ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> rel_typ_evaluated A ρ ->
       exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head A A ρ ρ'.
 Proof.
   intros * HΓ HM ρ ρ' Hρ (a & Ea & Hr).
   destruct (rel_exp_under_ctx_simple_at HΓ HM _ _ Hρ) as [(a0 & Ea0 & Hp) | H]; [| exact H ].
-  exfalso; assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption); congruence.
+  exfalso; assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+  exact (evaluated_kind_not_propositional _ Hr Hp).
 Qed.
 
 Lemma rel_subtyp_under_ctx_simple : forall {Γ A A'},
@@ -1056,7 +1066,7 @@ Proof.
       rewrite exp_sub_of_wk in Hc.
       assert (c = b1) as -> by (eapply functional_eval_exp; eassumption).
       assert (Hab : DF a1 ≈ b1 ∈ per_univ_elem i ↘ R1) by pairwise.
-      rewrite (per_univ_elem_relevance _ _ _ _ Hab); exact Hp. }
+      rewrite (per_univ_elem_kind _ _ _ _ Hab); exact Hp. }
     rewrite <- exp_sub_wk in Hv1, Hv4.
     rewrite exp_sub_of_wk in Hw1, Hw4.
     functional_eval_rewrite_clear.
@@ -1079,7 +1089,7 @@ Lemma rel_exp_under_ctx_wk_simple : forall {Γ Δ φ A M M'},
         ⟦ A[φ]ʷ ⟧ ρ ↘ a /\
         ⟦ A ⟧ ⟪φ⟫ ρ' ↘ a' /\
         DF a ≈ a' ∈ per_univ_elem i ↘ R /\
-        (domain_relevance a = propositional \/
+        (domain_kind a = ak_propositional \/
          exists m m',
            ⟦ M[φ]ʷ ⟧ ρ ↘ m /\
            ⟦ M' ⟧ ⟪φ⟫ ρ' ↘ m' /\
@@ -1123,7 +1133,7 @@ Proof.
     exact Hp.
   - rewrite exp_sub_of_wk in Hv1.
     destruct Hbr as [Hp | (w & w' & Hw & Hw' & Hww')].
-    { left; rewrite (per_univ_elem_relevance _ _ _ _ H12); exact Hp. }
+    { left; rewrite (per_univ_elem_kind _ _ _ _ H12); exact Hp. }
     right.
     assert (w = v2) as -> by (eapply functional_eval_exp; eassumption).
     exists v1, w'.
@@ -1196,10 +1206,10 @@ Proof.
   assert (H12 : DF a1 ≈ a2 ∈ per_univ_elem i ↘ R) by pairwise.
   assert (H23 : DF a2 ≈ a3 ∈ per_univ_elem i ↘ R) by pairwise.
   assert (H34 : DF a3 ≈ a4 ∈ per_univ_elem i ↘ R) by pairwise.
-  pose proof (per_univ_elem_relevance _ _ _ _ H12).
-  pose proof (per_univ_elem_relevance _ _ _ _ H23).
-  pose proof (per_univ_elem_relevance _ _ _ _ H34).
-  assert (Hr : domain_relevance a1 = propositional).
+  pose proof (per_univ_elem_kind _ _ _ _ H12).
+  pose proof (per_univ_elem_kind _ _ _ _ H23).
+  pose proof (per_univ_elem_kind _ _ _ _ H34).
+  assert (Hr : domain_kind a1 = ak_propositional).
   { destruct Hp as [(c & Ec & Hp) | [(c & Ec & Hp) | [(c & Ec & Hp) | (c & Ec & Hp)]]];
       functional_eval_rewrite_clear; congruence. }
   repeat split; eexists; (split; [ eassumption | congruence ]).
@@ -1217,17 +1227,17 @@ Proof.
   - right; apply rel_exp_sym; [ eauto using rel_typ_elem_PER | exact HM ].
 Qed.
 
-(** At a type relevant at the inner left environment, a term judgment's
-    disjunct is its relation. *)
-Lemma rel_exp_or_prop_relevant : forall {i A σ ρ ρσ A' σ' ρ' ρ'σ' R} {P : Prop},
+(** At a type of an evaluated kind at the inner left environment, a term
+    judgment's disjunct is its relation. *)
+Lemma rel_exp_or_prop_evaluated : forall {i A σ ρ ρσ A' σ' ρ' ρ'σ' R} {P : Prop},
     rel_typ i A σ ρ ρσ A' σ' ρ' ρ'σ' R ->
-    rel_typ_sort A ρσ relevant ->
+    rel_typ_evaluated A ρσ ->
     type_propositional A σ ρ \/ P ->
     P.
 Proof.
   intros * HT (a & Ea & Hr) [Hp | HP]; [| exact HP ].
   destruct (proj1 (proj2 (rel_typ_prop_any HT (or_introl Hp)))) as (a' & Ea' & Hp').
-  functional_eval_rewrite_clear; congruence.
+  functional_eval_rewrite_clear; exfalso; exact (evaluated_kind_not_propositional _ Hr Hp').
 Qed.
 
 Lemma rel_sub_sym : forall {Δ σ φ ρ σ' ρ' R},

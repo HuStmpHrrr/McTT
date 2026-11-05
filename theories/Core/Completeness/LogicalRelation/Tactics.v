@@ -128,3 +128,16 @@ Ltac invert_rel_typ_body :=
   handle_per_univ_elem_irrel;
   clear_dups;
   try rewrite <- per_univ_elem_equation_1 in *.
+
+(** A goal closed by kinds that disagree: equations between them
+    ([congruence]), or a kind both evaluated and, by the equations,
+    [ak_propositional]. *)
+Ltac kind_congruence :=
+  first
+    [ congruence
+    | match goal with
+      | H : evaluated_kind ?k |- _ =>
+          let Hk := fresh "Hk" in
+          pose proof (evaluated_kind_not_propositional _ H) as Hk;
+          solve [ exfalso; apply Hk; congruence ]
+      end ].

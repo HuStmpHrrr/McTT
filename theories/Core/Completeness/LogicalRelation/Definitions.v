@@ -344,11 +344,11 @@ Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H 
 
 (** *** The Sorts of a Body's Definitions
 
-    Each term part of the body [Φ] over [D] is of the sort its relevance tag
-    says ([entry_relevance]): a relevant type, of a universe or of
-    [LevelSort] ([relevant_sort]), when it is tagged relevant, a
-    proposition when it is tagged propositional, in the context the
-    entries before it make, as [wf_gentry_def] asks.  A body's environment
+    Each term part of the body [Φ] over [D] is of the sort its kind tag
+    says ([entry_kind], [abs_kind_sort]): a type of a universe when it is
+    tagged [ak_relevant], a type of levels ([LevelSort]) when it is tagged
+    [ak_level], a proposition when it is tagged [ak_propositional], in the
+    context the entries before it make, as [wf_gentry_def] asks.  A body's environment
     is read by the tags ([eval_body_env]), while the context PER of its
     context ([body_ctx]) reads the sorts of the types, so the two agree
     only under this.  For example, in a body [def h : P := p] with
@@ -362,7 +362,7 @@ Fixpoint body_sorts_valid (Φ : gmod) (D : ctx) : Prop :=
   | gm_ext Φ0 _ E =>
       body_sorts_valid Φ0 D /\
       forall A M, entry_tm E = Some (A, M) ->
-        exists Srt, relevant_sort Srt /\ body_ctx Φ0 ++ D ⊨ A : relevance_sort (entry_relevance E) Srt
+        exists i, body_ctx Φ0 ++ D ⊨ A : abs_kind_sort (entry_kind E) Typeω@i
   (* read on expansions only ([body_xp]), which have no open *)
   | gm_open Φ0 _ _ _ => body_sorts_valid Φ0 D
   end.
@@ -375,20 +375,21 @@ Fixpoint body_sorts_valid (Φ : gmod) (D : ctx) : Prop :=
     definition with a module part, of both), so
     [rel_ctx_wf_per_ctx_env] reads the PER off any derivation.  The validity of
     a unit's parts ([rel_unit_wf]) is defined with it, since a body unit's
-    parts form a context.  An assumption or a definition is of a type of
-    a universe or of a proposition ([type_sort]), as in [wf_ctx_extend];
-    a definition with a module part is of a type of a universe. *)
+    parts form a context.  An assumption is of a type of a sort at its
+    kind ([sort_kind]), as in [wf_ctx_extend]; a definition is of a type
+    of a sort ([type_sort]), as in [wf_ctx_extend_def]; a definition with
+    a module part is of a type of a universe. *)
 
 Inductive rel_ctx_wf : ctx -> Prop :=
 (** The empty context *)
 | rel_ctx_wf_nil : ⊨ ⋅
-(** An assumption of a type of the sort [Srt] *)
-| rel_ctx_wf_cons : forall Γ A Srt env_rel,
+(** An assumption of a type of the sort [Srt], at the kind of its types *)
+| rel_ctx_wf_cons : forall Γ κ A Srt env_rel,
     ⊨ Γ ->
-    EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ env_rel ->
-    type_sort Srt ->
+    EF Γ ▹{κ} A ≈ Γ ▹{κ} A ∈ per_ctx_env ↘ env_rel ->
+    sort_kind Srt κ ->
     Γ ⊨ A ≈ A : Srt ->
-    ⊨ Γ ▹ A
+    ⊨ Γ ▹{κ} A
 (** A definition of a type of the sort [Srt], its body valid at it *)
 | rel_ctx_wf_cons_def : forall Γ A M Srt env_rel,
     ⊨ Γ ->
@@ -477,11 +478,12 @@ Definition rel_param_typed {GC : GCtx} (Γ : ctx) (A : typ) (l : nat) : Prop :=
     it.  It is the counterpart of [params_relevant]: modules take relevant
     parameters, as the typing of units and of module application asks.
     For example, the parameter [X] of [module M (X : Typeω@0) := ...] is a
-    type of [Typeω@1], so [rel_params_relevant Γ (ce_ass (Typeω@0) :: nil) 1]
+    type of [Typeω@1], so
+    [rel_params_relevant Γ (ce_ass ak_relevant (Typeω@0) :: nil) 1]
     holds, while a proposition [P : Prop] as a parameter is not of any
     universe. *)
 Definition rel_params_relevant {GC : GCtx} (Γ Δ : ctx) (l : nat) : Prop :=
-  forall Δ1 A Δ2, Δ = Δ1 ++ ce_ass A :: Δ2 -> rel_param_typed (Δ2 ++ Γ) A l.
+  forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> rel_param_typed (Δ2 ++ Γ) A l.
 
 (** ** 2. Valid Units, and Contexts with Valid Slots
 
@@ -569,7 +571,7 @@ Combined Scheme valid_unit_modexp_ind from valid_unit_mut_ind, valid_modexp_mut_
     slot is valid in the context before it. *)
 Inductive valid_ctx : ctx -> Prop :=
 | valid_ctx_nil : valid_ctx ⋅
-| valid_ctx_ass : forall Γ A, valid_ctx Γ -> ⊨ Γ ▹ A -> valid_ctx (Γ ▹ A)
+| valid_ctx_ass : forall Γ κ A, valid_ctx Γ -> ⊨ Γ ▹{κ} A -> valid_ctx (Γ ▹{κ} A)
 | valid_ctx_def : forall Γ A M, valid_ctx Γ -> ⊨ Γ ▸ A ≔ M -> valid_ctx (Γ ▸ A ≔ M)
 | valid_ctx_mod : forall Γ U, valid_ctx Γ -> ⊨ Γ ▹ₘ U -> valid_unit Γ (me_lit U) -> valid_ctx (Γ ▹ₘ U)
 (** A definition with a module part: semantically well formed, its unit
@@ -596,11 +598,11 @@ Section Filed.
   Context {GC : GCtx}.
   Variables (Θm : gdeps) (Ξm : gstack).
 
-(** The kind of an entry: a definition is a term of the sort it is tagged
-    with, a module a module, and an entry with a term part and a module
-    part (an inductive type, a definition with a module part, a record
-    type) is both ([member_kind_dm]). *)
-Definition entry_kind (E : gentry) : member_kind :=
+(** The member kind of an entry: a definition is a term of the kind it is
+    tagged with, a module a module, and an entry with a term part and a
+    module part (an inductive type, a definition with a module part, a
+    record type) is both ([member_kind_dm]). *)
+Definition entry_member_kind (E : gentry) : member_kind :=
   match E with
   | ge_def _ _ r _ _ => member_kind_term r
   | ge_mod _ _ => member_kind_mod
@@ -608,10 +610,10 @@ Definition entry_kind (E : gentry) : member_kind :=
   end.
 
 (** A value [g] related to itself at the value of the closed type
-    [ctx_pi_at r T A0], of the sort [r]; asked of relevant members only
-    ([valid_filed_value_self]). *)
+    [ctx_pi_at r T A0], into the kind [r]; asked of members of an
+    evaluated kind only ([valid_filed_value_self]). *)
 #[warnings="-cannot-define-projection"]
-Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
+Record rel_self (r : abs_kind) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
   { (** The universe index of the type *)
     rel_self_lvl : universe_index
     (** The relation of its elements *)
@@ -625,8 +627,8 @@ Record rel_self (r : relevance) (T : ctx) (A0 : exp) (g : domain) : Prop := mk_r
     (** [g] is related to itself at it *)
   ; rel_self_elem : rel_self_rel g g }.
 
-(** The value of the relevant term member [x] of the filed module [p], of
-    type [A0] over its telescope [T], read as [R0].  Its δ-reduct at
+(** The value of the term member [x], of an evaluated kind, of the filed
+    module [p], of type [A0] over its telescope [T], read as [R0].  Its δ-reduct at
     arguments for the outer part of [T], if it has one, has a value at
     arguments related at the type there to the member's value applied to
     them: the value applied evaluates its body at its arguments stored at
@@ -645,49 +647,49 @@ Record valid_filed_value (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) 
         value *)
   ; valid_filed_value_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns ->
       mdesc_term_part_ats R0 Ns = Some R1 ->
-      mdesc_type R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+      mdesc_type R1 = Some (ctx_pi_at (mdesc_kind R0) T1 A0)[sb_of_list Id Ns] /\
       (mdesc_reduct R1 = None \/
-       exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
+       exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_kind R0) T1 A0 /\
          forall ns m, List.length ns = List.length T2 -> per_gargs (rev T2) nil nil ns ns ->
            ⟦ M1 ⟧ env_tele nil (rev T2) ns ↘ m ->
            exists v, $*| valid_filed_value_val & ns | gc_deps ⍮ gc_stack ↘ v /\
-             Dom m ≈ v ∈ per_head (ctx_pi T1 A0) (ctx_pi T1 A0) (env_tele nil (rev T2) ns) (env_tele nil (rev T2) ns))
+             Dom m ≈ v ∈ per_head (ctx_pi_at (mdesc_kind R0) T1 A0) (ctx_pi_at (mdesc_kind R0) T1 A0)
+                               (env_tele nil (rev T2) ns) (env_tele nil (rev T2) ns))
     (** The value is the member's stored value, closed over the telescope,
         which selection at arguments for all of it applies to them
         ([eval_sel_global_apps]); not the member closure that selection
         at fewer arguments gives ([eval_sel_global_unsat]) *)
   ; valid_filed_value_sel : global_member_value gc_deps gc_stack p x valid_filed_value_val
     (** The value is related to itself at the closed type *)
-  ; valid_filed_value_self : rel_self relevant T A0 valid_filed_value_val }.
+  ; valid_filed_value_self : rel_self (mdesc_kind R0) T A0 valid_filed_value_val }.
 
 (** The term member [x] of the filed module [p], over its telescope [T],
-    read as [R0]: of a type over [T] of the member's sort
-    [mdesc_relevance R0], and so are the [Π]s over the telescope; with its
-    δ-reduct at arguments for the outer part of [T] (read as a filed
-    entry's term part is, [mdesc_term_part_ats]), if it has one, a term
-    over that part instantiated, valid there; and, if relevant, of a
-    value ([valid_filed_value]).  A member tagged propositional stores no
+    read as [R0]: of a type over [T] of the sort of the member's kind
+    [mdesc_kind R0] ([abs_kind_sort]), as [wf_gentry_def] asks, and so are
+    the [Π]s over the telescope into the kind; with its δ-reduct at
+    arguments for the outer part of [T] (read as a filed entry's term part
+    is, [mdesc_term_part_ats]), if it has one, a term over that part
+    instantiated, valid there; and, if of an evaluated kind, of a value
+    ([valid_filed_value]).  A member tagged [ak_propositional] stores no
     value: selection keeps it as written ([eval_sel_global_proof]), so
     nothing is asked of its value or its reduct's. *)
 #[warnings="-cannot-define-projection"]
 Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) : Prop := mk_valid_filed_term
   { (** The member's type over the telescope *)
     valid_filed_term_typ : exp
-    (** The sort of the member's type at [relevant]: a universe, or the
-        types of levels ([def v : Level ≔ zero]) *)
-  ; valid_filed_term_sort : exp
-    (** The sort is a relevant sort *)
-  ; valid_filed_term_sort_relevant : relevant_sort valid_filed_term_sort
-    (** The type is a valid type of the member's sort *)
-  ; valid_filed_term_typed : T ⊨ valid_filed_term_typ : relevance_sort (mdesc_relevance R0) valid_filed_term_sort
+    (** The universe index of the member's type, at [ak_relevant] *)
+  ; valid_filed_term_level : nat
+    (** The type is a valid type of the sort of the member's kind: a
+        universe, [Prop], or the types of levels ([def v : Level ≔ zero]) *)
+  ; valid_filed_term_typed : T ⊨ valid_filed_term_typ : abs_kind_sort (mdesc_kind R0) Typeω@valid_filed_term_level
     (** The reading at arguments for the outer part of the telescope: the
         type, and the reduct, if any, valid *)
   ; valid_filed_term_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> mdesc_term_part_ats R0 Ns = Some R1 ->
-      mdesc_type R1 = Some (ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)[sb_of_list Id Ns] /\
+      mdesc_type R1 = Some (ctx_pi_at (mdesc_kind R0) T1 valid_filed_term_typ)[sb_of_list Id Ns] /\
       (mdesc_reduct R1 = None \/
-       exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_relevance R0) T1 valid_filed_term_typ)
-    (** A relevant member's value *)
-  ; valid_filed_term_value : mdesc_relevance R0 = relevant -> valid_filed_value p T x R0 valid_filed_term_typ }.
+       exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_kind R0) T1 valid_filed_term_typ)
+    (** The value of a member of an evaluated kind *)
+  ; valid_filed_term_value : evaluated_kind (mdesc_kind R0) -> valid_filed_value p T x R0 valid_filed_term_typ }.
 
 Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_filed_mod
   { valid_filed_mod_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
@@ -696,7 +698,7 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
   ; valid_filed_mod_tele_ass : tele_ass T
   ; valid_filed_mod_tele_scoped : ctx_scoped 0 T
   ; valid_filed_mod_kinds : forall x Φ0 E, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
-      dmod_member_kind gc_deps gc_stack (dm_global p nil) (x :: nil) (entry_kind E)
+      dmod_member_kind gc_deps gc_stack (dm_global p nil) (x :: nil) (entry_member_kind E)
     (** A body stored below it is a module, unless it is the module of a
         member with a term part (whose kind is that member's) *)
   ; valid_filed_mod_sub_kinds : forall x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
@@ -708,10 +710,10 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
     (** The open frame of a member's module under it is its type former,
         as a filed member's entry is *)
   ; valid_filed_mod_ind_frames : forall x pq k D Mk, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) -> ind_member D k = Some Mk ->
-      valid_filed_term p T x (mdesc_term relevant (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k)))
+      valid_filed_term p T x (mdesc_term ak_relevant (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k)))
     (** So is the open frame of a record type's module under it *)
   ; valid_filed_mod_record_frames : forall x R, gs_find_record Ξm (qname_in p x) = Some R ->
-      valid_filed_term p T x (mdesc_term relevant (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x))))
+      valid_filed_term p T x (mdesc_term ak_relevant (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x))))
   ; valid_filed_mod_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
       forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua)
@@ -730,15 +732,15 @@ Definition valid_filed_mods : Prop :=
     [nonrec_args_prefix gs k] that of the first [k] non-recursive
     arguments of a constructor. *)
 Definition nparams_prefix (M : imember) (k : nat) : ctx := List.rev (List.firstn k (List.rev (im_nparams M))).
-Definition nonrec_args_prefix (gs : list carg) (k : nat) : ctx := List.rev (List.firstn k (List.map ce_ass (cargs_nonrec gs))).
+Definition nonrec_args_prefix (gs : list carg) (k : nat) : ctx := List.rev (List.firstn k (cargs_nonrec_tele gs)).
 
-(** The sorts of a constructor's non-recursive arguments, in the order of
+(** The kinds of a constructor's non-recursive arguments, in the order of
     [cargs_nonrec]. *)
-Fixpoint cargs_nonrec_relevance (gs : list carg) : list relevance :=
+Fixpoint cargs_nonrec_kinds (gs : list carg) : list abs_kind :=
   match gs with
   | nil => nil
-  | ca_arg r _ :: gs => r :: cargs_nonrec_relevance gs
-  | ca_rec _ :: gs => cargs_nonrec_relevance gs
+  | ca_arg r _ :: gs => r :: cargs_nonrec_kinds gs
+  | ca_rec _ :: gs => cargs_nonrec_kinds gs
   end.
 
 (** The views of a group with its members as variables ([grp_selfs_ctx]),
@@ -843,7 +845,7 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
     ([rel_param_typed]), under those outside it: parameters are relevant
     ([params_relevant], read semantically), for example the [l : Level] of
     [Vec (l : Level) (A : Type@l)].  The type former and the constructors
-    take their parameters as relevant arguments ([arg_relevance] of
+    take their parameters as relevant arguments ([arg_kind] of
     [d_ind], and of [d_con] before its arguments), so their values are
     relevant only when the parameters' types are *)
 ; valid_ind_decl_uparams_relevant : exists l, rel_params_relevant ⋅ (ind_uparams D) l
@@ -858,20 +860,27 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 ; valid_ind_decl_ty : forall k Mk, ind_member D k = Some Mk -> exists i, ⋅ ⊨ ind_ty D Mk : Typeω@i
 (** Each non-uniform parameter is a valid type of the sort, and a type,
     over those before it *)
-; valid_ind_decl_nparams : forall k Mk j A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass A) ->
+; valid_ind_decl_nparams : forall k Mk j κ A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass κ A) ->
     nparams_prefix Mk j ++ ind_uparams D ⊨ A : (ind_sort D)[wk_shiftn j]ʷ /\
     exists i, nparams_prefix Mk j ++ ind_uparams D ⊨ A : Typeω@i
+(** Each non-uniform parameter is relevant, as the sort is a universe
+    ([wf_gentry_ind]) *)
+; valid_ind_decl_nparams_kind : forall k Mk j κ A, ind_member D k = Some Mk ->
+    List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass κ A) -> κ = ak_relevant
 (** Each prefix of a constructor's non-recursive arguments is a valid
     context *)
 ; valid_ind_decl_strat : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
     ⊨ nonrec_args_prefix gs j ++ im_params D Mk
 (** Each non-recursive argument is a valid type of the sort, or a
-    proposition, as its tag [r] says, and a type of that sort, over those
-    before it *)
+    proposition, as its kind [r] says ([abs_kind_sort]), and a type of
+    that sort, over those before it *)
 ; valid_ind_decl_arg : forall k Mk c gs j r A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-    List.nth_error (cargs_nonrec gs) j = Some A -> List.nth_error (cargs_nonrec_relevance gs) j = Some r ->
-    nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : relevance_sort r (ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ /\
-    exists i, nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : relevance_sort r Typeω@i
+    List.nth_error (cargs_nonrec gs) j = Some A -> List.nth_error (cargs_nonrec_kinds gs) j = Some r ->
+    nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : abs_kind_sort r (ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ /\
+    exists i, nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : abs_kind_sort r Typeω@i
+(** No non-recursive argument is of a type of levels ([carg_kind]) *)
+; valid_ind_decl_arg_kind : forall k Mk c gs j r, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+    List.nth_error (cargs_nonrec_kinds gs) j = Some r -> carg_kind r
 (** Each member's constructor names are distinct *)
 ; valid_ind_decl_nodup : forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))
 (** Each parameter of a recursive argument's shape is valid at its
@@ -917,9 +926,12 @@ Record valid_record_decl (R : record_decl) : Prop := mk_valid_record_decl
 (** The fields, over the parameters, are a valid context *)
 ; field_ctx_valid : ⊨ record_fctx R (List.length (record_fields R)) ++ record_params R
 (** Each field is a type of the sort, or a proposition, as its stored
-    relevance says, over the parameters and the fields before it *)
+    kind says ([abs_kind_sort]), over the parameters and the fields
+    before it *)
 ; fields_valid : forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-    record_fctx R k ++ record_params R ⊨ T : relevance_sort (record_field_rel R k) (record_sort R)[wk_shiftn k]ʷ
+    record_fctx R k ++ record_params R ⊨ T : abs_kind_sort (record_field_kind R k) (record_sort R)[wk_shiftn k]ʷ
+(** No field is of a type of levels ([field_kind]) *)
+; fields_kind_valid : forall k, field_kind (record_field_kind R k)
 }.
 
 End Filed.

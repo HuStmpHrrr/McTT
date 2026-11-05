@@ -70,11 +70,12 @@ Proof.
   pose proof Htyp2 as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Huchain].
   assert (Euv : u2 = v2) by (eapply functional_eval_exp; eassumption).
   (** The weakened type is a proposition exactly when the type is, in the
-      tails: at a relevant one both instantiations relate the terms. *)
-  destruct (domain_relevance v2) eqn:Er;
-    [ apply (rel_exp_or_prop_relevant Htyp1 (ex_intro _ v2 (conj Hv2 Er))) in Hexp1;
-      assert (Er' : domain_relevance u2 = relevant) by congruence;
-      apply (rel_exp_or_prop_relevant Htyp2 (ex_intro _ u2 (conj Hu2 Er'))) in Hexp2;
+      tails: at one of an evaluated kind both instantiations relate the
+      terms. *)
+  destruct (evaluated_kind_or_propositional (domain_kind v2)) as [Er | Er];
+    [ apply (rel_exp_or_prop_evaluated Htyp1 (ex_intro _ v2 (conj Hv2 Er))) in Hexp1;
+      assert (Er' : evaluated_kind (domain_kind u2)) by (rewrite Euv; exact Er);
+      apply (rel_exp_or_prop_evaluated Htyp2 (ex_intro _ u2 (conj Hu2 Er'))) in Hexp2;
       destruct Hexp1 as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain];
       destruct Hexp2 as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain]
     | clear Hexp1 Hexp2 ];
@@ -99,7 +100,7 @@ Proof.
     merge_rel_chain Hmchain Hnchain m2.
   - left; exists v1; split; [ exact Hv1 |].
     assert (H12 : DF v1 ≈ v2 ∈ per_univ_elem i ↘ R1) by pairwise.
-    pose proof (per_univ_elem_relevance _ _ _ _ H12); congruence.
+    pose proof (per_univ_elem_kind _ _ _ _ H12); congruence.
 Qed.
 
 Hint Resolve rel_exp_under_ctx_shift : mctt.
@@ -164,20 +165,20 @@ Proof.
   assert (Hu23 : DF u2 ≈ u3 ∈ per_univ_elem k ↘ Ru) by pairwise.
   assert (Hv12 : DF v1 ≈ v2 ∈ per_univ_elem i ↘ Rv) by pairwise.
   assert (Hv22 : DF v2 ≈ u2 ∈ per_univ_elem k ↘ Ru) by pairwise.
-  pose proof (per_univ_elem_relevance _ _ _ _ Hu23) as Eu23.
-  pose proof (per_univ_elem_relevance _ _ _ _ Hv12) as Ev12.
-  pose proof (per_univ_elem_relevance _ _ _ _ Hv22) as Ev22.
+  pose proof (per_univ_elem_kind _ _ _ _ Hu23) as Eu23.
+  pose proof (per_univ_elem_kind _ _ _ _ Hv12) as Ev12.
+  pose proof (per_univ_elem_kind _ _ _ _ Hv22) as Ev22.
   pose proof (head_propositional_iff HΓ2 He HAs Hteq Hu2) as I2.
   pose proof (head_propositional_iff_right HΓ2 He HAs Hteq Hu3) as I3.
   exists Rv; split.
   { apply (mk_rel_exp v1 v2 v3 v4); eassumption. }
-  destruct (domain_relevance u2) eqn:Er2.
+  destruct (evaluated_kind_or_propositional (domain_kind u2)) as [Er2 | Er2].
   2:{ left; exists v1; split; [ exact Hv1 | congruence ]. }
   right.
   assert (Hnp : ~ entry_propositional gc_deps gc_stack (e :: Γ)%list ρσ 0)
-    by (rewrite entry_propositional_zero_head, I2; congruence).
+    by (rewrite entry_propositional_zero_head, I2; intro; kind_congruence).
   assert (Hnp' : ~ entry_propositional gc_deps gc_stack (e :: Γ)%list ρ'σ' 0)
-    by (rewrite entry_propositional_zero_head, I3; congruence).
+    by (rewrite entry_propositional_zero_head, I3; intro; kind_congruence).
   (** The heads, related at the PER of [A] in the tails, which is that of
       the weakened type. *)
   assert (Hh : Dom ρσ 0 ≈ ρ'σ' 0 ∈ Ru) by (apply (Hhead k Ru u2 u3 Hu2 Hu3 Hu23)).
@@ -191,13 +192,14 @@ Proof.
   apply rel_chain_4_of_2; [ assumption | apply Hvu; exact Hh ].
 Qed.
 
-Lemma valid_exp_under_ctx_var_here : forall {Γ A},
-    ⊨ Γ ▹ A ->
-    Γ ▹ A ⊨ #0 : A[↑]ʷ.
+Lemma valid_exp_under_ctx_var_here : forall {Γ κ A},
+    ⊨ Γ ▹{κ} A ->
+    Γ ▹{κ} A ⊨ #0 : A[↑]ʷ.
 Proof.
   intros * HΓ.
-  inversion HΓ as [| ? ? Srt ? HΓ0 HΓAper HS HA | | |]; subst.
-  eapply valid_exp_under_ctx_var_here_any_entry; [ reflexivity | exact HΓAper | exact HS | exact HA ].
+  inversion HΓ as [| ? ? ? Srt ? HΓ0 HΓAper HS HA | | |]; subst.
+  eapply valid_exp_under_ctx_var_here_any_entry;
+    [ reflexivity | exact HΓAper | exact (sort_kind_type_sort _ _ HS) | exact HA ].
 Qed.
 
 Lemma valid_exp_under_ctx_vlookup : forall {Γ x A},
@@ -251,7 +253,7 @@ Lemma rel_exp_under_ctx_var_delta_here_any_entry : forall {Γ e A M R S},
     EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
     type_sort S ->
     Γ ⊨ A : S ->
-    rel_type_relevant Γ A ->
+    rel_type_evaluated Γ A ->
     Γ ⊨ M : A ->
     (e :: Γ)%list ⊨ #0 ≈ M[↑]ʷ : A[↑]ʷ.
 Proof.
@@ -271,13 +273,14 @@ Proof.
     assert (PER R) by (eapply per_env_PER; eassumption).
     assert (Hρ'ρ' : Dom ρ' ≈ ρ' ∈ R) by solve_per.
     destruct (Hws _ _ (proj1 (E _ _) Hρ'ρ')) as [a1 [a1' [R1 [Ha1 [Ha1' [HR1 [Hp1 | [m1 [m1' [Hm1 [Hm1' Hmm1]]]]]]]]]]].
-    { (** [A] is relevant, so its weakening is no proposition. *)
+    { (** [A] is of an evaluated kind, so its weakening is no proposition. *)
       exfalso.
       destruct (Hsplit _ _ Hρ'ρ') as [Ht' _].
-      destruct (HArel _ HT _ _ Ht') as (b0 & Eb0 & Hr0).
+      destruct HArel as (r0 & Hr0e & HArelk).
+      destruct (HArelk _ HT _ _ Ht') as (b0 & Eb0 & Hr0).
       rewrite eval_wk_shift in Ha1'.
       functional_eval_rewrite_clear.
-      pose proof (per_univ_elem_relevance _ _ _ _ HR1); congruence. }
+      pose proof (per_univ_elem_kind _ _ _ _ HR1); kind_congruence. }
     destruct (Hws _ _ (proj1 (E _ _) Hρ)) as [a0 [a0' [R2 [Ha0 [Ha0' [HR2 _]]]]]].
     destruct (Hsplit _ _ Hρ) as [Ht Hh].
     destruct (Htie _ _ Hρ) as [_ [m' [Hm' Htie']]].
@@ -316,9 +319,9 @@ Proof.
         destruct (rel_exp_of_prop_inversion_simple_at HΓdper HAwk _ _ Hρ) as (a & a' & Ha & Ha' & [Hl _ _]).
         exists a; split; assumption. }
   - exact (rel_exp_under_ctx_var_delta_here_any_entry (or_introl eq_refl) HΓdper (type_sort_universe i) HA
-             (rel_type_relevant_of_typ HA) HM).
+             (rel_type_evaluated_of_typ HA) HM).
   - exact (rel_exp_under_ctx_var_delta_here_any_entry (or_introl eq_refl) HΓdper type_sort_level HA
-             (rel_type_relevant_of_level_sort HA) HM).
+             (rel_type_evaluated_of_level_sort HA) HM).
 Qed.
 
 (** δ at a definition with a module part: the same, read off its term
@@ -330,7 +333,7 @@ Proof.
   intros * HΓ.
   inversion HΓ as [| | | | ? ? ? ? i ? HΓ0 HΓdper HA HM _ _]; subst.
   exact (rel_exp_under_ctx_var_delta_here_any_entry (or_intror (ex_intro _ U eq_refl)) HΓdper (type_sort_universe i) HA
-           (rel_type_relevant_of_typ HA) HM).
+           (rel_type_evaluated_of_typ HA) HM).
 Qed.
 
 End Fixed_GCtx.
