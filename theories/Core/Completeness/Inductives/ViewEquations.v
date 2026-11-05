@@ -39,9 +39,10 @@ Section Fixed_GCtx.
 (** ** Positions of a Context Equation *)
 
 (** An assumption at the head of two related contexts: related tails, and
-    a type related at related tails. *)
-Lemma per_ctx_env_ass_inv : forall Γ Γ' κ A A' R,
-    EF Γ ▹{κ} A ≈ Γ' ▹{κ} A' ∈ per_ctx_env ↘ R ->
+    a type related at related tails.  The two entries' kinds are given
+    apart; related contexts have them equal. *)
+Lemma per_ctx_env_ass_inv : forall Γ Γ' κ κ' A A' R,
+    EF Γ ▹{κ} A ≈ Γ' ▹{κ'} A' ∈ per_ctx_env ↘ R ->
     exists RT, EF Γ ≈ Γ' ∈ per_ctx_env ↘ RT /\
       (forall ρ ρ', R ρ ρ' -> RT ρ↯ ρ'↯) /\
       (forall ρ ρ', RT ρ ρ' -> exists i R0, rel_typ i A ρ A' ρ' R0).
@@ -135,7 +136,7 @@ Section TeleLink.
                   List.length (tele_sub (List.rev (List.skipn (S j) tc)) (sb_qn (S j) σc)))
       by (rewrite !length_tele_sub, !List.length_rev, !List.length_skipn; lia).
     destruct (per_ctx_env_app_tail _ _ _ _ _ Hlt HR) as (RT & HRT).
-    destruct (per_ctx_env_ass_inv _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty).
+    destruct (per_ctx_env_ass_inv _ _ _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty).
     (** The arguments, over [ρS], at the group's prefix under [σg]. *)
     pose proof (tele_ass_firstn _ j Hag) as Hag'; pose proof (tele_ass_firstn _ j Hac) as Hac'.
     pose proof (rel_ctx_wf_firstn _ _ j HWg) as HWg'; pose proof (rel_ctx_wf_firstn _ _ j HWc) as HWc'.

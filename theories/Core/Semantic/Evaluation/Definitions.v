@@ -78,21 +78,51 @@ Definition con_arg_kind (Mk : imember) (c : string) (n : nat) : abs_kind :=
 Definition module_saturated (Θ : gdeps) (Ξ : gstack) (p : qname) (args : list domain) : Prop :=
   forall T Φ, gc_loc Θ Ξ p = Some (T, Φ) -> List.length T <= List.length args.
 
+(** The kind of the [n]-th parameter of a telescope [T], outermost first.
+    Parameters are relevant or levels ([params_relevant]), both evaluated:
+    [ak_level] at an assumption tagged [ak_level], [ak_relevant] at every
+    other entry and past the telescope.  At a typed declaration this is
+    the kind the assumption is tagged with. *)
+Definition tele_param_kind (T : list centry) (n : nat) : abs_kind :=
+  match List.nth_error T n with Some (ce_ass ak_level _) => ak_level | _ => ak_relevant end.
+
+(** A parameter's kind is evaluated. *)
+Lemma tele_param_kind_evaluated : forall T n, evaluated_kind (tele_param_kind T n).
+Proof. intros; unfold tele_param_kind; destruct (List.nth_error T n) as [[[] | | | ] |]; constructor. Qed.
+
 (** The kind of the next argument a function value takes: the kind of a
-    function's own domain or of a neutral's [Π] domain, and the stored
-    kind of a constructor's next argument.  Every other function value
-    takes arguments that are evaluated ([ak_relevant]: parameters are
-    relevant or levels, both evaluated). *)
+    function's own domain or of a neutral's [Π] domain; for a type former
+    of a group or of a record, and for a constructor before its
+    arguments, the kind of the next parameter as the declaration tags it
+    ([tele_param_kind]): a parameter of a type of levels is of
+    [ak_level]; and the stored kind of a constructor's next argument.
+    Every other function value takes arguments that are evaluated
+    ([ak_relevant]). *)
 Definition arg_kind (Θ : gdeps) (Ξ : gstack) (f : domain) : abs_kind :=
   match f with
   | d_fn a _ _ => domain_kind a
   | d_neut (d_pi _ _ a _ _) _ => domain_kind a
+  | d_ind p k vs =>
+      match ind_lookup Θ Ξ p with
+      | Some D =>
+          match ind_member D k with
+          | Some Mk => tele_param_kind (List.rev (im_params D Mk)) (List.length vs)
+          | None => ak_relevant
+          end
+      | None => ak_relevant
+      end
+  | d_record p ns =>
+      match record_lookup Θ Ξ p with
+      | Some R => tele_param_kind (List.rev (record_params R)) (List.length ns)
+      | None => ak_relevant
+      end
   | d_con p k c vs =>
       match ind_lookup Θ Ξ p with
       | Some D =>
           match ind_member D k with
           | Some Mk =>
-              if Nat.ltb (List.length vs) (con_param_count D Mk) then ak_relevant
+              if Nat.ltb (List.length vs) (con_param_count D Mk)
+              then tele_param_kind (List.rev (im_params D Mk)) (List.length vs)
               else con_arg_kind Mk c (List.length vs - con_param_count D Mk)
           | None => ak_relevant
           end
@@ -100,6 +130,18 @@ Definition arg_kind (Θ : gdeps) (Ξ : gstack) (f : domain) : abs_kind :=
       end
   | _ => ak_relevant
   end.
+
+(** A type former takes arguments of an evaluated kind: its parameters. *)
+Lemma arg_kind_ind_evaluated : forall Θ Ξ p k vs, evaluated_kind (arg_kind Θ Ξ (d_ind p k vs)).
+Proof.
+  intros; cbn [arg_kind]; destruct (ind_lookup Θ Ξ p) as [D |]; [ destruct (ind_member D k) |];
+    first [ apply tele_param_kind_evaluated | constructor ].
+Qed.
+
+Lemma arg_kind_record_evaluated : forall Θ Ξ p ns, evaluated_kind (arg_kind Θ Ξ (d_record p ns)).
+Proof.
+  intros; cbn [arg_kind]; destruct (record_lookup Θ Ξ p); first [ apply tele_param_kind_evaluated | constructor ].
+Qed.
 (** The proof a member [x] of a saturated module is, kept as its
     selection from the module bound at [#0]: a proof member is never
     evaluated, so its value is this proof in an environment holding the

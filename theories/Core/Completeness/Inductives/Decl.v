@@ -288,28 +288,34 @@ Proof. intros [o | n] * H; [ exists 0; eapply per_univ_elem_cumu_universe_index;
 
     A family [f] of values, one per list of arguments, that applies by
     taking the next argument, and whose full applications are related at
-    the codomain, is an element of the [Π].  Its parameters are relevant
-    (as an inductive type's are, [valid_ind_decl_nparams_kind]): each
-    value of the family before the last takes relevant arguments ([Hfr]),
-    and each parameter's type is relevant at related arguments before it
-    ([Hdom]), whatever kind its entry is tagged with.
+    the codomain, is an element of the [Π].  The family's values take the
+    parameters at their own kinds: the value before the [n]-th parameter
+    of the whole telescope [TS] (outermost first) takes arguments of the
+    kind that parameter is tagged with, when that kind is evaluated
+    ([Hfr]), as a type former's do ([tele_param_kind]).  Each parameter's
+    type is of an evaluated kind at related arguments before it ([Hdom]):
+    parameters are relevant or levels, never proofs.  The parameters still
+    to come, [ts], are the part of [TS] past the arguments [xs] already
+    given.
 
     The [Π] applies to an argument in its environment extended at the
     value of its domain, where the telescope's arguments are at the
     closures of its types ([env_tele]).  So the premises are stated at
     related extensions with any types, related at the context PER of the
     telescope over a context [Γ] the base environments are related at. *)
-Lemma ctx_pi_rel_elem : forall N (f : list domain -> domain) B,
+Lemma ctx_pi_rel_elem : forall N (f : list domain -> domain) B TS,
     (forall xs x, List.length xs < N -> $| f xs & x | gc_deps ⍮ gc_stack ↘ f (xs ++ x :: nil)) ->
-    (forall xs, List.length xs < N -> arg_kind gc_deps gc_stack (f xs) = ak_relevant) ->
+    (forall xs κ A, List.length xs < N -> List.nth_error TS (List.length xs) = Some (ce_ass κ A) ->
+       evaluated_kind κ -> arg_kind gc_deps gc_stack (f xs) = κ) ->
     forall ts Γ RΓ, tele_ass ts -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> ⊨ List.rev ts ++ Γ ->
     forall E E' xs xs' a a' (i : universe_index) R,
       List.length xs + List.length ts = N -> List.length xs' = List.length xs -> RΓ E E' ->
+      List.skipn (List.length xs) TS = ts ->
       (forall ts1 κ A ts2 R1 vts vts' b, ts = ts1 ++ ce_ass κ A :: ts2 ->
          EF List.rev ts1 ++ Γ ≈ List.rev ts1 ++ Γ ∈ per_ctx_env ↘ R1 ->
          List.length vts = List.length ts1 -> List.length vts' = List.length ts1 ->
          R1 (env_extend_typed E vts) (env_extend_typed E' vts') ->
-         ⟦ A ⟧ env_extend_typed E vts ↘ b -> domain_kind b = ak_relevant) ->
+         ⟦ A ⟧ env_extend_typed E vts ↘ b -> evaluated_kind (domain_kind b)) ->
       ⟦ ctx_pi (List.rev ts) B ⟧ E ↘ a -> ⟦ ctx_pi (List.rev ts) B ⟧ E' ↘ a' ->
       DF a ≈ a' ∈ per_univ_elem i ↘ R ->
       (forall R1 vts vts', EF List.rev ts ++ Γ ≈ List.rev ts ++ Γ ∈ per_ctx_env ↘ R1 ->
@@ -319,7 +325,7 @@ Lemma ctx_pi_rel_elem : forall N (f : list domain -> domain) B,
            per_head B B (env_extend_typed E vts) (env_extend_typed E' vts')) ->
       Dom f xs ≈ f xs' ∈ R.
 Proof.
-  intros N f B Happ Hfr ts; induction ts as [| e ts IH]; intros Γ RΓ Hts HΓ HC * Hl Hl' HE Hdom Ha Ha' HR Hbase.
+  intros N f B TS Happ Hfr ts; induction ts as [| e ts IH]; intros Γ RΓ Hts HΓ HC * Hl Hl' HE HTS Hdom Ha Ha' HR Hbase.
   - cbn [List.rev ctx_pi] in Ha, Ha'.
     specialize (Hbase RΓ nil nil HΓ eq_refl eq_refl HE); cbn [List.map] in Hbase; rewrite !List.app_nil_r in Hbase.
     exact (Hbase _ _ _ _ Ha Ha' HR).
@@ -336,13 +342,19 @@ Proof.
     match goal with E1 : ⟦ A ⟧ E' ↘ ?b |- _ => rename b into a0'; rename E1 into Ea0' end.
     basic_invert_per_univ_elem HR.
     apply_relation_equivalence.
-    cbn [List.length] in Hl.
-    (** The parameter is relevant, and so is what the family takes. *)
-    assert (Ha0 : domain_kind a0 = ak_relevant)
-      by exact (Hdom nil κ A ts RΓ nil nil a0 eq_refl HΓ eq_refl eq_refl HE Ea0).
+    (** The count [N] is substituted by the inversion. *)
+    cbn [List.length] in Happ, Hfr.
+    (** The next parameter of [TS] is this one, of the domain's kind (the
+        inversion has replaced the entry's kind by it); the family takes
+        arguments of that kind. *)
+    assert (Hnth : List.nth_error TS (List.length xs) = Some (ce_ass (domain_kind a0) A)).
+    { rewrite <- (Nat.add_0_r (List.length xs)), <- List.nth_error_skipn, HTS; reflexivity. }
+    assert (Hev0 : evaluated_kind (domain_kind a0))
+      by exact (Hdom nil _ A ts RΓ nil nil a0 eq_refl HΓ eq_refl eq_refl HE Ea0).
     constructor;
-      [ rewrite Hfr by lia; symmetry; exact Ha0
-      | rewrite Hfr by lia; rewrite <- (per_univ_elem_kind _ _ _ _ equiv_a_a'); symmetry; exact Ha0 |].
+      [ exact (Hfr xs _ _ ltac:(lia) Hnth Hev0)
+      | rewrite (Hfr xs' (domain_kind a0) A ltac:(lia) ltac:(rewrite Hl'; exact Hnth) Hev0);
+        exact (per_univ_elem_kind _ _ _ _ equiv_a_a') |].
     intros c c' Hc.
     destruct_rel_mod_eval.
     econstructor; [ apply Happ; lia | apply Happ; lia |].
@@ -352,12 +364,15 @@ Proof.
     assert (HE1 : per_env_extend A A RΓ (E ↦ c ⦂ entry_type_value a0) (E' ↦ c' ⦂ entry_type_value a0'))
       by (apply per_env_extend_intro';
           [ exact HE | eapply per_head_of; [ exact Ea0 | exact Ea0' | exact equiv_a_a' | exact Hc ] | exact Rc | exact Rc' ]).
-    eapply (IH (Γ ▹{κ} A) _ Hts' HΓA HC (E ↦ c ⦂ entry_type_value a0) (E' ↦ c' ⦂ entry_type_value a0')
+    (** The inversion has replaced the entry's kind by the domain's. *)
+    eapply (IH (ce_ass (domain_kind a0) A :: Γ) _ Hts' HΓA HC (E ↦ c ⦂ entry_type_value a0) (E' ↦ c' ⦂ entry_type_value a0')
               (xs ++ c :: nil) (xs' ++ c' :: nil));
       [ rewrite List.length_app; cbn; lia | rewrite !List.length_app; cbn; lia | exact HE1
-      | | eassumption | eassumption | eassumption |].
+      | | | eassumption | eassumption | eassumption |].
+    + (** One more argument given: the rest of [TS] past it. *)
+      rewrite List.length_app; cbn [List.length]; rewrite Nat.add_comm, <- List.skipn_skipn, HTS; reflexivity.
     + intros ts1 κj Aj ts2 R1 vts vts' b -> HR1 Hlv Hlv' HEv Eb.
-      apply (Hdom (ce_ass κ A :: ts1) κj Aj ts2 R1 ((c, entry_type_value a0) :: vts) ((c', entry_type_value a0') :: vts') b);
+      apply (Hdom (ce_ass (domain_kind a0) A :: ts1) κj Aj ts2 R1 ((c, entry_type_value a0) :: vts) ((c', entry_type_value a0') :: vts') b);
         [ reflexivity | cbn [List.rev]; rewrite <- List.app_assoc; exact HR1 | cbn; lia | cbn; lia | exact HEv | exact Eb ].
     + intros R1 vts vts' HR1 Hlv Hlv' HEv.
       pose proof (Hbase R1 ((c, entry_type_value a0) :: vts) ((c', entry_type_value a0') :: vts')

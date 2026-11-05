@@ -144,7 +144,7 @@ Section ViewArgs.
                   = List.length (cargs_ctx_aux p D (im_nn Mv) (cargs_pat (gsA ++ g :: nil) ++ nil) gsB))
       by (rewrite length_tele_sub, !length_cargs_ctx_aux; lia).
     destruct (per_ctx_env_app_tail _ _ _ _ _ Hlt HRx) as (RT & HRT).
-    destruct (per_ctx_env_ass_inv _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty).
+    destruct (per_ctx_env_ass_inv _ _ _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty).
     (** The group's prefix, at the arguments. *)
     destruct (valid_group_cargs_sem_all p D Hg Hcv v Mv c gs HMv Hcon gsA (g :: gsB) Heq) as [HWg _].
     destruct (rel_ctx_wf_per_ctx_env HWg) as [RG HRG].

@@ -555,9 +555,10 @@ Proof.
   assert (Hv : ⟦ a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind pC 0 ((nil ++ ρ 1 :: nil) ++ ρ 0 :: nil))
     by (assert (Hnp2 : im_np DC MC = 2) by (unfold im_np, im_nn, ind_nu; rewrite Hu, Hnp; reflexivity);
         eapply eval_exp_app;
-        [ eapply eval_exp_app; [ apply eval_exp_indty | cbn; constructor | apply eval_exp_var
+        [ eapply eval_exp_app; [ apply eval_exp_indty | apply arg_kind_ind_evaluated | apply eval_exp_var
                                | eapply eval_app_indty; [ exact Hl | exact Hk | rewrite Hnp2; cbn; lia ] ]
-        | cbn; constructor | apply eval_exp_var | eapply eval_app_indty; [ exact Hl | exact Hk | rewrite Hnp2; cbn; lia ] ]).
+        | apply arg_kind_ind_evaluated | apply eval_exp_var
+        | eapply eval_app_indty; [ exact Hl | exact Hk | rewrite Hnp2; cbn; lia ] ]).
   functional_eval_rewrite_clear.
   inversion Hi as [| ? ρ1 ? a1 ? Hi1 Ha1 | | | |]; subst.
   inversion Hi1 as [| ? ρ0 ? a0 ? Hi0 Ha0 | | | |]; subst.

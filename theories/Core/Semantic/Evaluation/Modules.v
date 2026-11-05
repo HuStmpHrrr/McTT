@@ -82,13 +82,13 @@ Section Members.
       apply IH; [ eapply HPa; eassumption | eauto ].
   Qed.
 
-  (** A type former, of an inductive type or of a record, takes relevant
-      arguments: its parameters. *)
+  (** A type former, of an inductive type or of a record, takes arguments
+      of an evaluated kind: its parameters ([arg_kind_ind_evaluated]). *)
   Lemma eval_app_args_ind : forall Ns p k vs ρ r,
       eval_app_args Θ Ξ (d_ind p k vs) Ns ρ r <-> exists ns, ⟦ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| d_ind p k vs & ns | Θ ⍮ Ξ ↘ r.
   Proof.
     intros; apply (eval_app_args_relevant_iff (fun f => exists p k vs, f = d_ind p k vs));
-      [ intros ? (? & ? & ? & ->); constructor
+      [ intros ? (? & ? & ? & ->); apply arg_kind_ind_evaluated
       | intros ? ? ? (? & ? & ? & ->) Ha; inversion Ha; subst; eauto
       | eauto ].
   Qed.
@@ -97,7 +97,7 @@ Section Members.
       eval_app_args Θ Ξ (d_record p vs) Ns ρ r <-> exists ns, ⟦ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| d_record p vs & ns | Θ ⍮ Ξ ↘ r.
   Proof.
     intros; apply (eval_app_args_relevant_iff (fun f => exists p vs, f = d_record p vs));
-      [ intros ? (? & ? & ->); constructor
+      [ intros ? (? & ? & ->); apply arg_kind_record_evaluated
       | intros ? ? ? (? & ? & ->) Ha; inversion Ha; subst; eauto
       | eauto ].
   Qed.

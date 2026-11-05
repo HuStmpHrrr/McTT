@@ -230,7 +230,7 @@ Section RviewArgs.
                   = List.length (cargs_ctx_aux p D (im_nn Mj) (cargs_pat (gsA ++ g :: nil) ++ nil) gsB))
       by (rewrite length_tele_sub; exact HlX).
     destruct (per_ctx_env_app_tail _ _ _ _ _ Hlt HRx) as (RT & HRT).
-    destruct (per_ctx_env_ass_inv _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty).
+    destruct (per_ctx_env_ass_inv _ _ _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty).
     (** The group's prefix, at the arguments. *)
     destruct (valid_group_cargs_sem_all p D Hg Hcv j Mj c gs HMj rview_args_con gsA (g :: gsB) Heq) as [HWg _].
     rewrite rview_args_params in HWg.

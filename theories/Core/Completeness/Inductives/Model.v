@@ -124,6 +124,14 @@ Proof.
   destruct m as [| m]; cbn in Hm |- *; [ injection Hm as <-; eauto | eapply IH; eassumption ].
 Qed.
 
+(** A type former takes its next parameter at the kind the parameter is
+    tagged with, when that kind is evaluated ([tele_param_kind]). *)
+Lemma arg_kind_ind_param : forall p D k Mk vs κ A,
+    ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk ->
+    List.nth_error (List.rev (im_params D Mk)) (List.length vs) = Some (ce_ass κ A) -> evaluated_kind κ ->
+    arg_kind gc_deps gc_stack (d_ind p k vs) = κ.
+Proof. intros * Hl HM Hn Hev; cbn [arg_kind]; rewrite Hl, HM; unfold tele_param_kind; rewrite Hn; destruct Hev; reflexivity. Qed.
+
 (** ** The Declaration's Judgments, Positionwise
 
     The typing of a declaration states its judgments at decompositions of
@@ -734,9 +742,9 @@ Lemma valid_vars_tele : forall Φ Δ,
 Proof.
   intros * Hass Hs Hmv HΔ k N T HN HT.
   apply vars_from_nth_error in HN as [Hk ->].
-  apply tele_insts_nth in HT as (A & HA & ->).
+  apply tele_insts_nth in HT as (κA & A & HA & ->).
   destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
-  assert (HΔeq : Δ = List.rev l2 ++ ce_ass A :: List.rev l1)
+  assert (HΔeq : Δ = List.rev l2 ++ ce_ass κA A :: List.rev l1)
     by (rewrite <- (List.rev_involutive Δ), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
   assert (Hlen : List.length Δ = List.length l2 + S k)
     by (rewrite HΔeq, List.length_app; cbn [List.length]; rewrite !List.length_rev; lia).
@@ -1059,7 +1067,7 @@ Section Sort.
   Proof.
     intros * HM * E.
     destruct (nparams_prefix_suffix D Mk m) as [Δ HΔ].
-    apply (im_params_relevant _ _ HM (Δ ++ Δ1)); rewrite HΔ, E, <- !List.app_assoc; reflexivity.
+    apply (im_params_relevant _ _ HM (Δ ++ Δ1) κ); rewrite HΔ, E, <- !List.app_assoc; reflexivity.
   Qed.
 
   (** ** The Telescopes of a Member *)
@@ -1212,7 +1220,7 @@ Section Sort.
             rewrite length_tele_insts by exact (member_closed_ass _ _ (decl_closed_members _ Hc _ _ HMj)).
             rewrite length_im_nparams; lia. }
           destruct HT as [T HT].
-          destruct (tele_insts_nth _ _ _ _ _ HT) as (A & HA & ->).
+          destruct (tele_insts_nth _ _ _ _ _ HT) as (κA & A & HA & ->).
           pose proof (valid_ind_decl_rec_field _ HD _ _ _ _ _ _ _ _ _ _ _ HM Hcon Heq HMj HP HT) as HPv.
           destruct (valid_ind_decl_nparams _ HD _ _ _ _ _ HMj HA) as (_ & j & HAv).
           set (τ := sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m (ptyp_ps Ps))) in *.
@@ -1308,7 +1316,7 @@ Section Sort.
               rewrite HT in HT'; injection HT' as <-.
               split; [| exact (rel_exp_of_typ_sub_relevant HR0 Hτ HAv _ _ HEE) ].
               rewrite List.firstn_app, Hlbs, Nat.sub_diag, List.firstn_all2 by lia; cbn; rewrite List.app_nil_r.
-              unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HMj HA).
+              unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ _ HMj HA).
               assert (HR22 : DF t2 ≈ t2 ∈ per_univ_elem j ↘ R23)
                 by (eapply per_univ_trans; [ exact HR23 | apply per_univ_sym; exact HR23 ]).
               pose proof (per_head_iff Et1 Et4 HR14) as Q1.
@@ -1344,7 +1352,7 @@ Section Sort.
         split; [ exact (nparams_prefix_sem j0) |].
         exists ak_relevant; split; [ constructor | exact (proj1 (valid_ind_decl_nparams _ HD _ _ _ _ _ HM HA)) ].
       - intros j0 κ A pre HA _; unfold canon_nparams_rel.
-        rewrite (nth_ctyp_eq _ _ _ _ _ HM HA), (member_nparams_eq _ _ _ HM); reflexivity.
+        rewrite (nth_ctyp_eq _ _ _ _ _ _ HM HA), (member_nparams_eq _ _ _ HM); reflexivity.
     Qed.
 
     Lemma params_gargs : forall ups ups' a ms ms', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' ->
@@ -1511,13 +1519,13 @@ Section Sort.
     Lemma canon_hn : forall ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 ->
         nparams_related (univ_idx a) D ups ups2.
     Proof.
-      intros ups2 Hg2 m Mm k0 A vs vs' HM Hk Hp.
+      intros ups2 Hg2 m Mm k0 κ A vs vs' HM Hk Hp.
       pose proof (length_ups_gargs _ _ Hg2 Hu) as Hu2.
       assert (Hk0 : k0 < im_nn Mm)
         by (rewrite <- length_im_nparams, <- List.length_rev; apply List.nth_error_Some; congruence).
       pose proof (nr_gargs _ _ HM _ _ _ Hg2 Hu Ha k0 vs vs' ltac:(lia) Hp) as Hgv.
       pose proof Hp as Hp0; rewrite tele_prefix_rel_iff in Hp0; destruct Hp0 as (Hlv & Hlv' & _).
-      pose proof (proj1 (valid_ind_decl_nparams _ HD _ _ _ _ HM Hk)) as HAv; rewrite <- (length_nparams_prefix Mm k0) in HAv at 2 by lia.
+      pose proof (proj1 (valid_ind_decl_nparams _ HD _ _ _ _ _ HM Hk)) as HAv; rewrite <- (length_nparams_prefix Mm k0) in HAv at 2 by lia.
       (** The type reads only the components before it. *)
       rewrite (components_env_firstn D ups _ vs), (components_env_firstn D ups2 _ vs')
         by (rewrite List.length_rev, length_im_nparams; lia).
@@ -1540,20 +1548,21 @@ Section Sort.
       pose proof Hp as Hp0; rewrite tele_prefix_rel_iff in Hp0; destruct Hp0 as (Hlv & Hlv' & _).
       pose proof Hm as Hm0; rewrite tele_rel_iff in Hm0; destruct Hm0 as (Hlm & Hlm' & _).
       rewrite List.length_rev, length_im_nparams in Hlm, Hlm'.
-      destruct (nonrec_relevance_nth _ _ _ HA) as [r Hr].
+      destruct (nonrec_kind_nth _ _ _ HA) as [r Hr].
       destruct (valid_ind_decl_arg _ HD _ _ _ _ _ _ _ HM Hcon HA Hr) as [HAv _].
+      pose proof (valid_ind_decl_arg_kind _ HD _ _ _ _ _ _ HM Hcon Hr) as Hrk.
       assert (HC : ⊨ (nonrec_args_prefix gs k0 ++ im_nparams Mm) ++ ind_uparams D)
         by (rewrite <- List.app_assoc; exact (valid_ind_decl_strat _ HD _ _ _ _ k0 HM Hcon ltac:(lia))).
       assert (HT : (nonrec_args_prefix gs k0 ++ im_nparams Mm) ++ ind_uparams D
-                     ⊨ A : relevance_sort r (ind_sort D)[wk_shiftn (List.length (nonrec_args_prefix gs k0 ++ im_nparams Mm))]ʷ)
+                     ⊨ A : abs_kind_sort r (ind_sort D)[wk_shiftn (List.length (nonrec_args_prefix gs k0 ++ im_nparams Mm))]ʷ)
         by (rewrite <- List.app_assoc, List.length_app, length_nonrec_args_prefix, length_im_nparams by lia; exact HAv).
       (** The type reads only the arguments before it. *)
       rewrite (components_env_app_firstn D ups _ _ ms vs), (components_env_app_firstn D ups2 _ _ ms' vs')
-        by (rewrite ?List.length_rev, ?length_im_nparams; unfold cargs_nonrec_tele; rewrite ?List.length_map; lia).
+        by (rewrite ?List.length_rev, ?length_im_nparams, ?length_cargs_nonrec_tele; lia).
       rewrite Hlv, Hlv'.
       replace (List.rev (im_nparams Mm) ++ List.firstn k0 (cargs_nonrec_tele gs)) with (List.rev (nonrec_args_prefix gs k0 ++ im_nparams Mm))
-        by (unfold nonrec_args_prefix, cargs_nonrec_tele; rewrite List.rev_app_distr, List.rev_involutive; reflexivity).
-      eapply (sort_rel_typ_rel r (nonrec_args_prefix gs k0 ++ im_nparams Mm) A HC HT ups ups2 (ms ++ vs) (ms' ++ vs'));
+        by (unfold nonrec_args_prefix; rewrite List.rev_app_distr, List.rev_involutive; reflexivity).
+      eapply (sort_rel_typ_rel r (nonrec_args_prefix gs k0 ++ im_nparams Mm) A Hrk HC HT ups ups2 (ms ++ vs) (ms' ++ vs'));
         [ rewrite !List.length_app, length_nonrec_args_prefix, length_im_nparams by lia; lia
         | rewrite !List.length_app, length_nonrec_args_prefix, length_im_nparams by lia; lia | exact Hu | exact Hu2 | | exact Ha ].
       rewrite <- List.app_assoc; fold (im_params D Mm); rewrite List.rev_app_distr, !List.app_assoc.
@@ -1587,7 +1596,7 @@ Section Sort.
       (** The domain reads only the components before it. *)
       rewrite (List.app_assoc ms ws ys), (List.app_assoc ms' ws' ys'), (List.app_assoc (List.rev (im_nparams Mm))).
       rewrite (components_env_app_firstn D ups _ _ (ms ++ ws) ys), (components_env_app_firstn D ups2 _ _ (ms' ++ ws') ys')
-        by (rewrite ?List.length_app, ?List.length_rev, ?length_im_nparams; unfold cargs_nonrec_tele, shape_doms_tele, K in *;
+        by (rewrite ?List.length_app, ?List.length_rev, ?length_im_nparams, ?length_cargs_nonrec_tele; unfold shape_doms_tele, K in *;
             rewrite ?List.length_map; lia).
       rewrite Hly, Hly'.
       replace ((List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1) ++ List.firstn k0 (shape_doms_tele t)) with (List.rev Pre)
@@ -1617,7 +1626,7 @@ Section Sort.
       apply (mk_rel_evals _ _ _ _ bs bs' Ebs Ebs').
       unfold nparams_tele_rel; rewrite HMj.
       eapply (gargs_tele_canon _ (canon_nparams_rel D ups (ptyp_mem t)) (decl_env D ups)); [ | exact Hgb |].
-      - intros j A pre HA; unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HMj HA), (member_nparams_eq _ _ _ HMj).
+      - intros j κ A pre HA; unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ _ HMj HA), (member_nparams_eq _ _ _ HMj).
         reflexivity.
       - rewrite (eval_exps_length _ _ _ Ebs), List.length_rev, length_im_nparams; exact HPl.
     Qed.
@@ -1807,14 +1816,12 @@ Section Sort.
       rewrite <- length_im_nparams in Eb.
       pose proof (univ_idx_wk _ _ _ _ _ _ _ _ _ (valid_ind_decl_params _ HD _ _ HM) HS HRP HEE Eb ltac:(rewrite Hwk; exact Ea0) Hub) as Hi1.
       pose proof (univ_idx_rel _ _ _ _ _ _ _ _ HRU HS HRUρ Ea0 Ea (sort_univ _ _ Ea0)) as Hi2.
-      apply ER0; split;
-        [| reflexivity | reflexivity
-         | intros Hlc; destruct (level_code_head _ Hlc) as [[? Hx] | [[? Hx] | (? & ? & ? & Hx)]]; discriminate Hx .. ].
+      apply ER0; split; [| reflexivity | reflexivity ].
       rewrite <- Hi1, <- Hi2.
       (** The type former at the parameters. *)
       assert (Hns : tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams Mk)) ns ns').
       { eapply (gargs_tele_canon _ (canon_nparams_rel D ups k) (decl_env D ups)); [ | exact Hgn | rewrite List.length_rev, length_im_nparams; exact Hlns ].
-        intros j A pre HA; unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM HA), (member_nparams_eq _ _ _ HM); reflexivity. }
+        intros j κ A pre HA; unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ _ HM HA), (member_nparams_eq _ _ _ HM); reflexivity. }
       rewrite Hys, Hys'.
       eexists; exact (ind_relate _ _ _ _ _ _ _ _ HM Hh Hgu Hlu Ea Hns).
     Qed.
@@ -1831,17 +1838,20 @@ Section Sort.
       exists a, a', R0, (d_ind p k nil), (d_ind p k nil).
       split; [ exact Ea | split; [ exact Ea' | split; [ exact HR0 | split; [ constructor | split; [ constructor |] ] ] ] ].
       unfold ind_ty in Ea, Ea'; rewrite <- (List.rev_involutive (im_params D Mk)) in Ea, Ea'.
-      eapply (ctx_pi_rel_elem (im_np D Mk) (d_ind p k) _ ltac:(intros xs x Hx; eapply eval_app_indty; eassumption)
-                (fun _ _ => eq_refl) (List.rev (im_params D Mk)) ⋅ R (rev_params_ass _ _ HM) HR (rev_params_sem _ _ HM) ρ ρ' nil nil);
-        [ rewrite List.length_rev, length_im_params; reflexivity | reflexivity | exact Hρ
+      eapply (ctx_pi_rel_elem (im_np D Mk) (d_ind p k) _ (List.rev (im_params D Mk))
+                ltac:(intros xs x Hx; eapply eval_app_indty; eassumption)
+                ltac:(intros xs κ A _ Hn Hev; eapply arg_kind_ind_param; eassumption)
+                (List.rev (im_params D Mk)) ⋅ R (rev_params_ass _ _ HM) HR (rev_params_sem _ _ HM) ρ ρ' nil nil);
+        [ rewrite List.length_rev, length_im_params; reflexivity | reflexivity | exact Hρ | reflexivity
         | | exact Ea | exact Ea' | exact HR0 | ].
-      - (** The parameters are relevant. *)
-        intros ts1 A ts2 R1 vts vts' b Heq HR1 Hl1 Hl1' HE1 Eb.
-        assert (Hpe : im_params D Mk = List.rev ts2 ++ ce_ass A :: List.rev ts1)
+      - (** The parameters are relevant or levels: of evaluated kinds. *)
+        intros ts1 κ A ts2 R1 vts vts' b Heq HR1 Hl1 Hl1' HE1 Eb.
+        assert (Hpe : im_params D Mk = List.rev ts2 ++ ce_ass κ A :: List.rev ts1)
           by (rewrite <- (List.rev_involutive (im_params D Mk)), Heq, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
-        destruct (im_params_relevant _ _ HM _ _ _ Hpe) as [i0 HA]; rewrite <- (List.app_nil_r (List.rev ts1)) in HA.
-        destruct (rel_param_typed_relevant HA _ HR1 _ _ HE1) as (b0 & Eb0 & Hr).
-        assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); exact Hr.
+        destruct (im_params_relevant _ _ HM _ _ _ _ Hpe) as [i0 HA]; rewrite <- (List.app_nil_r (List.rev ts1)) in HA.
+        destruct (rel_param_typed_evaluated HA) as (r & Hr0 & HAr).
+        destruct (HAr _ HR1 _ _ HE1) as (b0 & Eb0 & Hr).
+        assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); rewrite Hr; exact Hr0.
       - intros R1 vts vts' HR1 Hl1 Hl1' HE1; cbn [List.app].
         rewrite List.rev_involutive, List.app_nil_r in HR1.
         rewrite List.length_rev, length_im_params in Hl1, Hl1'.
@@ -1892,19 +1902,24 @@ Section Sort.
       assert (HCm : ⊨ List.rev (List.rev (im_nparams Mj)) ++ ind_uparams D)
         by (rewrite List.rev_involutive; exact (valid_ind_decl_params _ HD _ _ HMj)).
       unfold self_ty in Ea, Ea'; rewrite <- (List.rev_involutive (im_nparams Mj)) in Ea, Ea'.
-      eapply (ctx_pi_rel_elem (im_np D Mj) (d_ind p j) _ ltac:(intros xs x Hx; eapply eval_app_indty; eassumption)
-                (fun _ _ => eq_refl) (List.rev (im_nparams Mj)) (ind_uparams D) RU
+      assert (Hlu : List.length ups = List.length (List.rev (ind_uparams D))) by (rewrite List.length_rev; exact Hu).
+      eapply (ctx_pi_rel_elem (im_np D Mj) (d_ind p j) _ (List.rev (im_params D Mj))
+                ltac:(intros xs x Hx; eapply eval_app_indty; eassumption)
+                ltac:(intros xs κ A _ Hn Hev; eapply arg_kind_ind_param; eassumption)
+                (List.rev (im_nparams Mj)) (ind_uparams D) RU
                 ltac:(apply List.Forall_rev, (member_nparams_ass _ _ HMj)) HRU HCm (decl_env D ups) (decl_env D ups') ups ups');
         [ rewrite List.length_rev, length_im_nparams; unfold im_np in *; lia | lia | exact (uparams_rel_env _ _ Hg Hu _ HRU)
+        | rewrite rev_im_params, Hlu, List.skipn_app, List.skipn_all, Nat.sub_diag; reflexivity
         | | exact Ea | exact Ea' | exact HR | ].
-      - (** The parameters are relevant. *)
-        intros ts1 A ts2 R1 vts vts' b Heq HR1 Hl1 Hl1' HE1 Eb.
-        assert (Hpe : im_params D Mj = List.rev ts2 ++ ce_ass A :: (List.rev ts1 ++ ind_uparams D))
+      - (** The parameters are relevant or levels: of evaluated kinds. *)
+        intros ts1 κ A ts2 R1 vts vts' b Heq HR1 Hl1 Hl1' HE1 Eb.
+        assert (Hpe : im_params D Mj = List.rev ts2 ++ ce_ass κ A :: (List.rev ts1 ++ ind_uparams D))
           by (unfold im_params; rewrite <- (List.rev_involutive (im_nparams Mj)), Heq, List.rev_app_distr; cbn [List.rev];
               rewrite <- !List.app_assoc; reflexivity).
-        destruct (im_params_relevant _ _ HMj _ _ _ Hpe) as [i0 HA].
-        destruct (rel_param_typed_relevant HA _ HR1 _ _ HE1) as (b0 & Eb0 & Hr).
-        assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); exact Hr.
+        destruct (im_params_relevant _ _ HMj _ _ _ _ Hpe) as [i0 HA].
+        destruct (rel_param_typed_evaluated HA) as (r & Hr0 & HAr).
+        destruct (HAr _ HR1 _ _ HE1) as (b0 & Eb0 & Hr).
+        assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); rewrite Hr; exact Hr0.
       - (** At the parameters' values, the type former, over the uniform
             parameters' environment. *)
         intros R1 vts vts' HR1 Hl1 Hl1' HE1.
@@ -2010,7 +2025,7 @@ Section Sort.
       pose proof (per_univ_sym _ _ _ _ HR2) as HR2'.
       pose proof (per_univ_trans _ _ _ _ _ _ HR1 (per_univ_elem_resp_iff HR2'
                     ltac:(eapply per_univ_elem_right_irrel; [ exact HR2' | exact (per_univ_sym _ _ _ _ HR1) ]))) as HR12.
-      apply (per_gargs_snoc _ _ _ _ _ _ _ _ i R1); [ rewrite List.length_rev, HlΨ, List.length_map, List.length_seq; reflexivity | exact IHn | |].
+      apply (per_gargs_snoc _ _ _ _ _ _ _ _ _ i R1); [ rewrite List.length_rev, HlΨ, List.length_map, List.length_seq; reflexivity | exact IHn | |].
       - econstructor; [ exact Em | exact Em2 | exact HR12 ].
       - (** The value: the type former at the uniform parameters, of the
             member's type there. *)
@@ -2079,7 +2094,7 @@ Section Sort.
     Lemma nth_rev_grp_selfs : forall n k, n <= ind_ndecl D -> k < n ->
         exists Mk, ind_member D k = Some Mk /\
           List.nth_error (List.rev (grp_selfs_from D 0 (List.firstn n (ind_members D)))) k
-            = Some (ce_ass (self_ty D Mk)[wk_shiftn k]ʷ).
+            = Some (ce_ass ak_relevant (self_ty D Mk)[wk_shiftn k]ʷ).
     Proof.
       induction n as [| n IH]; intros k Hn Hk; [ lia |].
       pose proof (ind_ndecl_le D) as Hle.
@@ -2103,7 +2118,7 @@ Section Sort.
                             split; [ cbn; auto | exact (vars_from_scoped 0 (ind_nu D) (ind_nu D) (le_n _)) ] ].
       - unfold grp_selfs; generalize 0; induction (List.firstn (ind_ndecl D) (ind_members D)) as [| M ms IH]; intros j;
           cbn [grp_selfs_from]; [ constructor |].
-        apply List.Forall_app; split; [ apply IH | constructor; [ eexists; reflexivity | constructor ] ].
+        apply List.Forall_app; split; [ apply IH | constructor; [ do 2 eexists; reflexivity | constructor ] ].
       - unfold grp_selfs; rewrite length_grp_sb_list, length_grp_selfs_from, List.length_firstn.
         pose proof (ind_ndecl_le D); lia.
       - intros k N T HN HT.
@@ -2114,9 +2129,9 @@ Section Sort.
           by (rewrite <- (List.length_seq (ind_ndecl D) 0); apply List.nth_error_Some; congruence).
         assert (j = k) as -> by (rewrite (List.nth_error_nth' _ 0 (n := k)) in Hj by (rewrite List.length_seq; exact Hk);
                                  injection Hj as <-; rewrite List.seq_nth by exact Hk; reflexivity).
-        apply tele_insts_nth in HT as (A & HA & ->).
+        apply tele_insts_nth in HT as (κA & A & HA & ->).
         destruct (nth_rev_grp_selfs (ind_ndecl D) k (le_n _) Hk) as (Mk & HMk & HAk).
-        unfold grp_selfs in HA; rewrite HAk in HA; injection HA as <-.
+        unfold grp_selfs in HA; rewrite HAk in HA; injection HA as <- <-.
         rewrite exp_sub_wk, (exp_sub_sb_eq _ _ Id), exp_sub_id; [ exact (valid_self_apps _ _ HMk Hk) |].
         intros x; cbn [sb_compose sb_of_wk sentry_sub wk_shiftn].
         set (L := List.firstn k (List.map (fun j => apps (a_ind p j) (vars_from 0 (ind_nu D))) (List.seq 0 (ind_ndecl D)))).
