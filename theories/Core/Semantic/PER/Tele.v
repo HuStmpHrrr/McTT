@@ -337,13 +337,13 @@ Section Tele.
   Proof. intros; eapply (proj1 (proj2 (proj2 (@functional_eval gc_deps gc_stack)))); eassumption. Qed.
 
   Lemma per_top_ps_sym : forall T vs vs', per_top_ps T vs vs' -> per_top_ps T vs' vs.
-  Proof. intros * H s; destruct (H s) as [Ms Ms' H1 H2 HE]; exact (mk_params_read_alike _ _ _ _ _ _ H2 H1 (eq_sym HE)). Qed.
+  Proof. intros * H s; destruct (H s) as [Ms Ms' H1 H2 HE]; exact (mk_params_read_alike _ _ _ _ _ _ H2 H1 (symmetry HE)). Qed.
 
   Lemma per_top_ps_trans : forall T vs vs' vs'', per_top_ps T vs vs' -> per_top_ps T vs' vs'' -> per_top_ps T vs vs''.
   Proof.
     intros * H H' s; destruct (H s) as [Ms Ms1 H1 H2 HE]; destruct (H' s) as [Ms2 Ms' H1' H2' HE'].
     pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (@functional_read gc_deps gc_stack))))) _ _ _ _ _ H2 _ H1') as <-.
-    exact (mk_params_read_alike _ _ _ _ _ _ H1 H2' (eq_trans HE HE')).
+    exact (mk_params_read_alike _ _ _ _ _ _ H1 H2' (transitivity HE HE')).
   Qed.
 
   (** ** Derived Forms of [tele_rel_combine] *)
@@ -535,23 +535,23 @@ Section Tele.
   Qed.
 
   Lemma per_top_sym' : forall a b, per_top a b -> per_top b a.
-  Proof. intros * H s; destruct (H s) as [L L' H1 H2 HE]; exact (mk_normal_reads_alike _ _ _ _ _ H2 H1 (eq_sym HE)). Qed.
+  Proof. intros * H s; destruct (H s) as [L L' H1 H2 HE]; exact (mk_normal_reads_alike _ _ _ _ _ H2 H1 (symmetry HE)). Qed.
 
   Lemma per_top_trans' : forall a b d, per_top a b -> per_top b d -> per_top a d.
   Proof.
     intros * H1 H2 s; destruct (H1 s) as [L L1 HL1 HL2 HE]; destruct (H2 s) as [L2 L' HL2' HL3 HE'].
     pose proof (functional_read_nf _ _ _ _ HL2 HL2') as <-.
-    exact (mk_normal_reads_alike _ _ _ _ _ HL1 HL3 (eq_trans HE HE')).
+    exact (mk_normal_reads_alike _ _ _ _ _ HL1 HL3 (transitivity HE HE')).
   Qed.
 
   Lemma per_top_typ_sym' : forall a b, per_top_typ a b -> per_top_typ b a.
-  Proof. intros * H s; destruct (H s) as [L L' H1 H2 HE]; exact (mk_type_reads_alike _ _ _ _ _ H2 H1 (eq_sym HE)). Qed.
+  Proof. intros * H s; destruct (H s) as [L L' H1 H2 HE]; exact (mk_type_reads_alike _ _ _ _ _ H2 H1 (symmetry HE)). Qed.
 
   Lemma per_top_typ_trans' : forall a b d, per_top_typ a b -> per_top_typ b d -> per_top_typ a d.
   Proof.
     intros * H1 H2 s; destruct (H1 s) as [L L1 HL1 HL2 HE]; destruct (H2 s) as [L2 L' HL2' HL3 HE'].
     pose proof (functional_read_typ _ _ _ _ HL2 HL2') as <-.
-    exact (mk_type_reads_alike _ _ _ _ _ HL1 HL3 (eq_trans HE HE')).
+    exact (mk_type_reads_alike _ _ _ _ _ HL1 HL3 (transitivity HE HE')).
   Qed.
 
   (** *** Component Types at Two Bases *)
@@ -1062,7 +1062,7 @@ Section Tele.
           cbn; rewrite ?List.app_nil_r; try reflexivity; assumption.
       - intros * HM Hrv Hh Hn L1 L2 H1 H2 Hm.
         eapply ind_rel_neut; try eassumption; [ exact (nparams_rel_sym _ _ HM _ _ Hn) |].
-        intros s; destruct (Hm s) as [L L' HL HL' HE]; exact (mk_neutral_reads_alike _ _ _ _ _ HL' HL (eq_sym HE)).
+        intros s; destruct (Hm s) as [L L' HL HL' HE]; exact (mk_neutral_reads_alike _ _ _ _ _ HL' HL (symmetry HE)).
       - intros * HM Hh Hnp Hcs Hp Hp' Ha Hia IH.
         assert (Hn : tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) nil nil) by (rewrite Hnp; split; reflexivity + exact I).
         pose proof (ind_con_single _ _ _ Hcs) as Hc.
@@ -1194,7 +1194,7 @@ Section Tele.
                    (nparams_rel_trans _ _ HM _ _ _ H2 (nparams_rel_sym _ _ HM _ _ H2'))) Hn').
         + intros s0; destruct (Hm s0) as [N N1 HN HN' HE]; destruct (Hm' s0) as [N2 N' HN0 HN'' HE'].
           pose proof (functional_read_ne _ _ _ _ HN' HN0) as <-.
-          exact (mk_neutral_reads_alike _ _ _ _ _ HN HN'' (eq_trans HE HE')).
+          exact (mk_neutral_reads_alike _ _ _ _ _ HN HN'' (transitivity HE HE')).
       - intros * HM Hh Hnp Hcs Hp1 Hp2 Ha Hia IH u3 ns3 ns4 z Hz.
         pose proof (ind_con_single _ _ _ Hcs) as Hc.
         assert (Hn : tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) nil nil) by (rewrite Hnp; split; reflexivity + exact I).
