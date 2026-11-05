@@ -691,7 +691,12 @@ Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) :
       (mdesc_reduct R1 = None \/
        exists M1, mdesc_reduct R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi_at (mdesc_kind R0) T1 valid_filed_term_typ)
     (** The value of a member of an evaluated kind *)
-  ; valid_filed_term_value : evaluated_kind (mdesc_kind R0) -> valid_filed_value p T x R0 valid_filed_term_typ }.
+  ; valid_filed_term_value : evaluated_kind (mdesc_kind R0) -> valid_filed_value p T x R0 valid_filed_term_typ
+    (** The [Π]s over the telescope into the member's kind are formed
+        ([pi_kinds]): at [ak_level] every parameter is a level
+        ([level_sorted_parameters], as [wf_gentry_def] asks); at the other
+        kinds any parameter is *)
+  ; valid_filed_term_pi_kinds : forall Δ1 κ A Δ2, T = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ (mdesc_kind R0) }.
 
 Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_filed_mod
   { valid_filed_mod_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
