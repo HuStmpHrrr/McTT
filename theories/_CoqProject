@@ -87,6 +87,13 @@
 ./Core/Semantic/PER/CoreTactics.v
 ./Core/Semantic/PER/Definitions.v
 ./Core/Semantic/PER/Tele.v
+./Core/Semantic/PER/Lemmas/Basic.v
+./Core/Semantic/PER/Lemmas/Universe.v
+./Core/Semantic/PER/Lemmas/UniverseSubtyping.v
+./Core/Semantic/PER/Lemmas/ModuleValues.v
+./Core/Semantic/PER/Lemmas/Contexts.v
+./Core/Semantic/PER/Lemmas/CanonicalContexts.v
+./Core/Semantic/PER/Lemmas/Environments.v
 ./Core/Semantic/PER/Lemmas.v
 ./Core/Semantic/Readback.v
 ./Core/Semantic/Readback/Definitions.v
