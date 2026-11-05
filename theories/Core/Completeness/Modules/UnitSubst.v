@@ -62,13 +62,13 @@ Proof.
   split; [ apply (IH _ _ _ Hn (proj1 Hv)); intros X Ψ HX; apply (Hg (e :: X)); rewrite Hc, HX; reflexivity |].
   intros A' M' He.
   destruct (entry_tm_sub_inv _ _ _ _ He) as (A & M & HeA & -> & ->).
-  destruct (proj2 Hv _ _ HeA) as (i & Hri & Hi).
-  exists i; split; [ exact Hri |].
+  destruct (proj2 Hv _ _ HeA) as [i Hi].
+  exists i.
   pose proof (rel_exp_under_ctx_gsub (Hg (e :: nil) (body_ctx Φ) Hc) Hi) as H'.
   rewrite (body_ctx_sub _ _ Hn); rewrite (length_body_ctx _ Hn) in H'.
-  replace (entry_relevance (gentry_sub E (sb_qn (gm_binders Φ) τ))) with (entry_relevance E)
+  replace (entry_kind (gentry_sub E (sb_qn (gm_binders Φ) τ))) with (entry_kind E)
     by (destruct E; reflexivity).
-  rewrite relevance_sort_sub, (type_sort_sub _ _ (relevant_sort_type_sort _ Hri)) in H'.
+  rewrite abs_kind_sort_sub in H'; cbn in H'.
   exact H'.
 Qed.
 
@@ -84,13 +84,13 @@ Proof.
     intros Ψ2 Ψ Δ Heq _ Γ τ Hg _.
     destruct Ψ2, Ψ, Δ; try discriminate; cbn; split; [ exact (proj1 (gsub_sem Hg)) | exact Hg ].
   - (* an assumption *)
-    intros C A Srt R HC IHC HR HS HA Ψ2 Ψ Δ Heq HwC Γ τ Hg Hc.
+    intros C κ A Srt R HC IHC HR HS HA Ψ2 Ψ Δ Heq HwC Γ τ Hg Hc.
     destruct Ψ2 as [| e Ψ2]; cbn [List.app] in Heq.
     + destruct Ψ as [| e Ψ]; cbn [List.app] in Heq |- *.
       * subst Δ; split; [ exact (proj1 (gsub_sem Hg)) | exact Hg ].
       * injection Heq as <- ->.
         destruct (IHC nil Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc) as [HΓ' Hg'].
-        pose proof (rel_exp_under_ctx_gsub Hg' HA) as HA'; rewrite (type_sort_sub _ _ HS) in HA'.
+        pose proof (rel_exp_under_ctx_gsub Hg' HA) as HA'; rewrite (type_sort_sub _ _ (sort_kind_type_sort _ _ HS)) in HA'.
         rewrite tele_sub_cons; cbn [centry_sub List.app].
         split; [ exact (rel_ctx_wf_extend_sort HΓ' HS HA') | eapply gsub_q; eassumption ].
     + injection Heq as <- ->.

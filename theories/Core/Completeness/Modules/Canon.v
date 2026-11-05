@@ -53,19 +53,23 @@ Proof.
   - rewrite app_nil_r.
     destruct (unit_chain_at HU HΓ _ _ Hρ) as [h h' Hh Hh' Hhh].
     apply (mk_rel_modexp_evals _ _ _ _ h h'); [ apply eval_me_lit, eval_close_alias0; exact Hh | exact Hh' | exact Hhh ].
-  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? [A ->] _]; subst.
+  - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
     rewrite <- app_assoc in HC, HU; cbn [List.app] in HC, HU.
     destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as (Srt & HS & HA0).
-    destruct (rel_type_of_sort HS HA0) as [i HA].
-    pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
+    destruct (rel_type_of_sort (sort_kind_type_sort _ _ HS) HA0) as [i HA].
+    pose proof (per_ctx_env_of_typ (κ := κ) HΓ HA) as HΓA.
     destruct (rel_type_inversion_simple_at HΓ HA _ _ Hρ) as (a & a' & Ha & Ha' & [Ra HRa]).
+    (** The parameter's type is of its tag, at both sides. *)
+    destruct (rel_type_kind_of_sort_kind HS HA0 _ HΓ _ _ Hρ) as (a0 & Ea0 & Ka).
+    pose proof (functional_eval_exp _ _ _ _ Ea0 Ha) as ->.
+    assert (Ka' : domain_kind a' = κ) by (rewrite <- (per_univ_elem_kind _ _ _ _ HRa); exact Ka).
     rewrite app_assoc.
     econstructor; [ apply eval_me_lit, close_unsat; rewrite length_app; cbn; lia
                   | apply eval_me_lit, close_unsat; rewrite length_app; cbn; lia |].
-    eapply per_dmod_closure_step; [ exact Ha | exact Ha' | exact HRa |].
+    eapply per_dmod_closure_step; [ exact Ha | exact Ha' | exact HRa | exact Ka | exact Ka' |].
     intros c c' Hc.
     pose proof (entry_readable_of_elem_closure Ha Ha' HRa Hc) as [Rc Rc'].
-    destruct (IH (Γ ▹ A) _ _ _ HΔ0 HC HΓA HU (ρ ↦ c ⦂ entry_type_closure A ρ) (ρ' ↦ c' ⦂ entry_type_closure A ρ'))
+    destruct (IH (Γ ▹{κ} A) _ _ _ HΔ0 HC HΓA HU (ρ ↦ c ⦂ entry_type_closure A ρ) (ρ' ↦ c' ⦂ entry_type_closure A ρ'))
       as [h h' Hh Hh' Hhh].
     { apply (mk_per_ctx_env_cons_rel _ _ _ _ (ρ ↦ c ⦂ entry_type_closure A ρ) (ρ' ↦ c' ⦂ entry_type_closure A ρ') Hρ);
         [ eapply per_head_of; [ exact Ha | exact Ha' | exact HRa | exact Hc ] | intros _; eexists; reflexivity
