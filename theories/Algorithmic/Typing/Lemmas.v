@@ -124,7 +124,7 @@ Lemma wf_exp_universe_nf_large_index : forall {Γ A} {u : universe_nf},
     Γ ⊢ A : Typeω@(universe_nf_large_index u).
 Proof.
   intros * HA; destruct u as [L | n]; cbn in *; [| exact HA ].
-  destruct (presup_exp_typ HA) as [Sk _ Hk].
+  destruct (presup_exp_typ_sorted HA ltac:(discriminate)) as (Sk & _ & Hk).
   assert (⊢ Γ) by (gen_presups; assumption).
   destruct (wf_univ_lvl_inversion Hk) as [n Hn].
   eapply wf_exp_subtyp'; [ exact HA | eapply wf_subtyp_small_large; eassumption ].
@@ -172,20 +172,20 @@ Definition pi_domain_ok (Γ : ctx) (A : typ) (u : universe_nf) : Prop :=
 (** A type of a sort normal form [UA] ([is_sort_nf]) is of its sort, a large
     universe or [Prop]. *)
 Lemma sort_typed_of_is_sort_nf : forall {Γ A} {UA : nf} {r u},
-    Γ ⊢ A : UA -> is_sort_nf UA r u -> Γ ⊢ A : relevance_sort r Typeω@(universe_nf_large_index u).
+    Γ ⊢ A : UA -> is_sort_nf UA r u -> Γ ⊢ A : abs_kind_sort r Typeω@(universe_nf_large_index u).
 Proof.
-  intros * HA Hs; destruct Hs as [W u' Hu |]; cbn [relevance_sort]; [| exact HA ].
+  intros * HA Hs; destruct Hs as [W u' Hu |]; cbn [abs_kind_sort]; [| exact HA ].
   rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HA.
   exact (wf_exp_universe_nf_large_index HA).
 Qed.
 
 (** The sort above is a sort. *)
-Lemma type_sort_relevance_universe : forall r i, type_sort (relevance_sort r Typeω@i).
+Lemma type_sort_kind_universe : forall r i, type_sort (abs_kind_sort r Typeω@i).
 Proof. intros; apply type_sort_relevance; constructor. Qed.
 
 (** It is a type of the next universe. *)
-Lemma relevance_sort_universe_typed : forall Γ r i, ⊢ Γ -> Γ ⊢ relevance_sort r Typeω@i : Typeω@(S i).
-Proof. intros * HΓ; destruct r; cbn [relevance_sort]; [ apply wf_typ, HΓ | eapply wf_prop_large; exact HΓ ]. Qed.
+Lemma relevance_sort_universe_typed : forall Γ r i, ⊢ Γ -> Γ ⊢ abs_kind_sort r Typeω@i : Typeω@(S i).
+Proof. intros * HΓ; destruct r; cbn [abs_kind_sort]; [ apply wf_typ, HΓ | eapply wf_prop_large; exact HΓ ]. Qed.
 
 (** A type of a sort normal form is a [Π] domain at its universe. *)
 Lemma pi_domain_ok_of_is_sort_nf : forall {Γ A} {UA : nf} {r u},
@@ -360,8 +360,8 @@ Lemma alg_elim_typed : forall Γ M pc k Rs p D oq m Mm Dq Mk bm Bks Us Ns r i,
          (ind_mty p D j (List.map (fun U => U[wk_shiftn (im_nn Mj)]ʷ) Us) (vars_from 0 (im_nn Mj)))) ->
     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
        ⊢ (elim_mctx p D j Mj Us ++ Γ)%list -> forall Srt, type_sort Srt ->
-       (elim_mctx p D j Mj Us ++ Γ)%list ⊢ relevance_sort r Typeω@i : Srt ->
-       (elim_mctx p D j Mj Us ++ Γ)%list ⊢ eb_motive b : relevance_sort r Typeω@i) ->
+       (elim_mctx p D j Mj Us ++ Γ)%list ⊢ abs_kind_sort r Typeω@i : Srt ->
+       (elim_mctx p D j Mj Us ++ Γ)%list ⊢ eb_motive b : abs_kind_sort r Typeω@i) ->
     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)) ->
     (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
        ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
@@ -406,7 +406,7 @@ Proof.
   assert (HUt' : forall j Mj, ind_member D j = Some Mj -> ⊢ (elim_mctx p D j Mj Us ++ Γ)%list)
     by (intros; eapply elim_mctx_wf; eassumption).
   assert (HBmot : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
-             (elim_mctx p D j Mj Us ++ Γ)%list ⊢ eb_motive b : relevance_sort r Typeω@i)
+             (elim_mctx p D j Mj Us ++ Γ)%list ⊢ eb_motive b : abs_kind_sort r Typeω@i)
     by (intros j Mj b Hj Hb0;
         exact (HAt _ _ _ Hj Hb0 (HUt' _ _ Hj) _ (type_sort_universe _) (relevance_sort_universe_typed _ r i (HUt' _ _ Hj)))).
   assert (HAs : motives_typed gc_deps gc_stack Γ p D Us (blocks_motives Bks) r i).
@@ -448,9 +448,9 @@ Proof.
       pose proof (wf_branch_type_sub _ _ _ _ _ _ _ _ _ _ _ _ _ Hgw HDs Hl Hj (block_member_not_rview _ _ _ _ _ Hsuf HBl Hj Hb0)
                     HΓ HUl HUt HUt' HAs Hcon) as Hbs.
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ (HBmot _ _ _ Hj Hb0) Hbs) as HBty.
-      rewrite relevance_sort_sub in HBty; cbn [exp_sub] in HBty.
+      rewrite abs_kind_sort_sub in HBty; cbn [exp_sub] in HBty.
       eapply HBt; [ exact Hj | exact Hb0 | exact Hcon | exact Hin | eapply elim_bctx_wf; eassumption
-                  | exact (type_sort_relevance_universe r i) | exact HBty ]. }
+                  | exact (type_sort_kind_universe r i) | exact HBty ]. }
   exact (wf_elim_blocks _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hl Hg Hm Hb HBts HUl HUt HNl HNt HM').
 Qed.
 
@@ -476,8 +476,8 @@ Lemma alg_elim_sound : forall Γ M pc k Rs p D oq m Mm Dq Mk bm Bks Us Ns r i T,
          (ind_mty p D j (List.map (fun U => U[wk_shiftn (im_nn Mj)]ʷ) Us) (vars_from 0 (im_nn Mj)))) ->
     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
        ⊢ (elim_mctx p D j Mj Us ++ Γ)%list -> forall Srt, type_sort Srt ->
-       (elim_mctx p D j Mj Us ++ Γ)%list ⊢ relevance_sort r Typeω@i : Srt ->
-       (elim_mctx p D j Mj Us ++ Γ)%list ⊢ eb_motive b : relevance_sort r Typeω@i) ->
+       (elim_mctx p D j Mj Us ++ Γ)%list ⊢ abs_kind_sort r Typeω@i : Srt ->
+       (elim_mctx p D j Mj Us ++ Γ)%list ⊢ eb_motive b : abs_kind_sort r Typeω@i) ->
     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)) ->
     (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
        ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
@@ -522,7 +522,7 @@ Qed.
 (** A definition, of the sort at its tag. *)
 Lemma alg_body_def_sound : forall Γ Φ Φx x b pv r A M i,
     alg_body_sound Γ Φ Φx ->
-    (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : relevance_sort r Typeω@i) ->
+    (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : abs_kind_sort r Typeω@i) ->
     (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ M : A) ->
     alg_body_sound Γ (gm_ext Φ x (ge_def b pv r A (Some M))) (gm_ext Φx x (ge_def b pv r A (Some M))).
 Proof.
@@ -532,9 +532,9 @@ Proof.
   specialize (HA HC); specialize (HM HC).
   constructor; [ constructor; exact Hbx | | exact Ho |].
   - rewrite List.app_assoc in HA, HM; cbn [body_ctx List.app].
-    eapply wf_ext_eq_def_same; [ exact HX | exact HA | apply type_sort_relevance_universe | exact HA | exact HM | exact HM ].
+    eapply wf_ext_eq_def_same; [ exact HX | exact HA | apply type_sort_kind_universe | exact HA | exact HM | exact HM ].
   - exists (max L i); apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HL (Nat.le_max_l L i)) |].
-    intros A' M' HE; cbn [entry_tm entry_relevance] in HE |- *; injection HE as <- <-.
+    intros A' M' HE; cbn [entry_tm entry_kind] in HE |- *; injection HE as <- <-.
     exact (relevance_sort_lift _ _ _ _ _ HA (Nat.le_max_r L i)).
 Qed.
 
@@ -569,7 +569,7 @@ Proof.
     eapply wf_ext_eq_dm; [ exact HX | exact HA | apply wf_exp_eq_refl; exact HA | exact HM | apply wf_exp_eq_refl; exact HM
                          | exact HA | exact HM | exact HU | exact HU ].
   - exists (max L i); apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HL (Nat.le_max_l L i)) |].
-    intros A' M' HE; cbn [entry_tm entry_relevance relevance_sort] in HE |- *; injection HE as <- <-.
+    intros A' M' HE; cbn [entry_tm entry_kind abs_kind_sort] in HE |- *; injection HE as <- <-.
     eapply lift_exp_ge; [| exact HA ]; lia.
 Qed.
 
@@ -608,17 +608,17 @@ Proof.
   destruct (HB _ _ eq_refl HΓ HΔe) as [Hbx HX Ho [L HL]].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   (** The sort of each name: its entry's tag, at [L]. *)
-  set (es := fun y => relevance_sort match gm_prefix_upto Φx y with
-                                      | Some (gm_ext _ _ E) => entry_relevance E
+  set (es := fun y => abs_kind_sort match gm_prefix_upto Φx y with
+                                      | Some (gm_ext _ _ E) => entry_kind E
                                       | _ => relevant
                                       end Typeω@L).
   apply unit_eq_of_full; apply (unit_full_body _ _ _ _ _ _ Hbx HC Ho Ht Hs Hsx Hn l Hl es).
-  - intros y; apply type_sort_relevance_universe.
+  - intros y; apply type_sort_kind_universe.
   - intros * Hp HE; exists L; unfold es; cbv beta; rewrite Hp; reflexivity.
   - intros * Hp HE Hf; unfold es; cbv beta; rewrite Hp.
     pose proof (HL _ _ _ _ _ Hp HE) as HA.
     pose proof (wf_gm_fill _ _ _ _ _ (presup_exp_ctx HA) Hf) as Hσ.
-    pose proof (sub_preserves_sort _ _ _ _ _ _ _ HA (type_sort_relevance_universe _ _) Hσ) as HAσ.
+    pose proof (sub_preserves_sort _ _ _ _ _ _ _ HA (type_sort_kind_universe _ _) Hσ) as HAσ.
     exact HAσ.
 Qed.
 
@@ -650,7 +650,7 @@ Qed.
 Lemma alg_proj_typed : forall Γ M p Rs R f k U,
     ⊢ Γ -> Γ ⊢ M : nf_record p Rs -> record_lookup gc_deps gc_stack p = Some R ->
     List.nth_error (record_fields R) k = Some (f, U) ->
-    exists m, Γ ⊢ U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)] : relevance_sort (record_field_rel R k) Typeω@m /\
+    exists m, Γ ⊢ U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)] : abs_kind_sort (record_field_kind R k) Typeω@m /\
       Γ ⊢ a_proj f M : U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)].
 Proof.
   intros * HΓ HM Hl Hfk; cbn [nf_to_exp] in HM.
@@ -675,7 +675,7 @@ Lemma alg_proj_sound : forall Γ M p Rs R f k U W,
 Proof.
   intros * HΓ HM Hl Hfk Hn.
   destruct (alg_proj_typed _ _ _ _ _ _ _ _ HΓ HM Hl Hfk) as (m & HUt & Hp).
-  pose proof (type_sort_relevance_universe (record_field_rel R k) m) as HS.
+  pose proof (type_sort_kind_universe (record_field_kind R k) m) as HS.
   exact (exp_conv_sort HS (soundness_ty_at_sort HS HUt Hn) Hp).
 Qed.
 
@@ -706,12 +706,12 @@ Qed.
     below every large one). *)
 Lemma wf_pi_parts_large : forall Γ r A B C,
     Γ ⊢ a_pi r A B : C ->
-    exists Sd k, type_sort Sd /\ Γ ⊢ A : Sd /\ Γ ▹ A ⊢ B : relevance_sort r Typeω@k.
+    exists Sd k, type_sort Sd /\ Γ ⊢ A : Sd /\ Γ ▹ A ⊢ B : abs_kind_sort r Typeω@k.
 Proof.
   intros * H.
   destruct (wf_pi_inversion_at H) as [U SA HU HA HD HB _].
   assert (HΓA : ⊢ Γ ▹ A) by (gen_presups; assumption).
-  inversion HU as [? ? ? i HΓ | ? ? ? n L HL]; subst; destruct HD; destruct r; cbn [relevance_sort exp_wk] in HB.
+  inversion HU as [? ? ? i HΓ | ? ? ? n L HL]; subst; destruct HD; destruct r; cbn [abs_kind_sort exp_wk] in HB.
   - exists Typeω@i, i; repeat split; [ constructor | exact HA | exact HB ].
   - exists Typeω@i, 0; repeat split; [ constructor | exact HA | exact HB ].
   - exists Propₘ, i; repeat split; [ constructor | exact HA | exact HB ].
@@ -727,8 +727,8 @@ Qed.
 (** A type of a sort, of the relevance [r] its value says, is of the sort
     [r] names ([typed_at_sort_of_initial_relevance]). *)
 Lemma typed_at_relevance_of_nbe : forall {Γ A S r},
-    type_sort S -> Γ ⊢ A : S -> nbe_ty_relevance Γ A r ->
-    exists k : nat, Γ ⊢ A : relevance_sort r Typeω@k.
+    type_sort S -> Γ ⊢ A : S -> nbe_ty_kind Γ A r ->
+    exists k : nat, Γ ⊢ A : abs_kind_sort r Typeω@k.
 Proof.
   intros * HS HA (ρ & a & Hρ & Ha & <-).
   exact (typed_at_sort_of_initial_relevance HS HA Hρ Ha).
@@ -738,15 +738,15 @@ Qed.
     value at the initial environment is of the sort's relevance
     ([typed_at_sort_of_initial_relevance]), and no type is of both sorts
     ([typ_prop_absurd]). *)
-Lemma nbe_ty_relevance_of_typed : forall {Γ A r} {i : nat},
-    Γ ⊢ A : relevance_sort r Typeω@i -> nbe_ty_relevance Γ A r.
+Lemma nbe_ty_kind_of_typed : forall {Γ A r} {i : nat},
+    Γ ⊢ A : abs_kind_sort r Typeω@i -> nbe_ty_kind Γ A r.
 Proof.
   intros * HA.
-  pose proof (type_sort_relevance_universe r i) as HS.
+  pose proof (type_sort_kind_universe r i) as HS.
   destruct (nbe_ty_exists_sort HS HA) as [W [ρ a Hρ Ha _]].
   exists ρ, a; split; [ exact Hρ | split; [ exact Ha |] ].
   destruct (typed_at_sort_of_initial_relevance HS HA Hρ Ha) as [k Hk].
-  destruct r, (domain_relevance a); cbn [relevance_sort] in *; [ reflexivity | | | reflexivity ];
+  destruct r, (domain_kind a); cbn [abs_kind_sort] in *; [ reflexivity | | | reflexivity ];
     exfalso; eapply typ_prop_absurd; eassumption.
 Qed.
 
@@ -797,7 +797,7 @@ Proof.
     | IHC : ⊢ ?G -> ?G ⊢ ?C : (nf_to_exp ?UC), Hs : is_sort_nf ?UC ?r ?u, IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ⊥ : Srt -> ?G ⊢ ?M : ⊥,
       Hn : nbe_ty_f ?G ?C ?W, HG : ⊢ ?G |- _ =>
         pose proof (sort_typed_of_is_sort_nf (IHC HG) Hs) as HCs;
-        pose proof (type_sort_relevance_universe r (universe_nf_large_index u)) as HS;
+        pose proof (type_sort_kind_universe r (universe_nf_large_index u)) as HS;
         pose proof (IHM HG _ type_sort_prop (wf_False _ _ _ HG)) as HM0;
         exact (exp_conv_sort HS (soundness_ty_at_sort HS HCs Hn) (wf_absurd _ _ _ _ _ _ HCs HS HM0))
     end.
@@ -874,7 +874,7 @@ Proof.
         pose proof (IHA HG) as HA0;
         pose proof (pi_domain_ok_of_is_sort_nf HA0 Hs) as HAd;
         pose proof (sort_typed_of_is_sort_nf HA0 Hs) as HAs;
-        assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | apply type_sort_relevance_universe ]);
+        assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]);
         destruct (typed_at_univ_nf _ _ _ _ _ (IHB HGA) HnB Hv) as [HB' Hvw];
         pose proof (wf_pi_universe_nf_pi HAd HB' Hvw) as HPi;
         destruct (wf_universe_nf_pi_tm HAd HB' Hvw) as [k Hk];
@@ -884,17 +884,17 @@ Proof.
   - match goal with
     | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?rA ?u, IHB : ⊢ ?G ▹ ?A -> ?G ▹ ?A ⊢ ?B : (nf_to_exp Propⁿ), HG : ⊢ ?G |- _ =>
         pose proof (sort_typed_of_is_sort_nf (IHA HG) Hs) as HAs;
-        assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | apply type_sort_relevance_universe ]);
+        assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]);
         pose proof (IHB HGA) as HB; cbn [nf_to_exp] in HB |- *;
-        exact (wf_all_sort _ _ _ _ (type_sort_relevance_universe _ _) HAs HB)
+        exact (wf_all_sort _ _ _ _ (type_sort_kind_universe _ _) HAs HB)
     end.
   (** [λ]: the annotation of either sort, the body at its type of the sort
       [r]; the function is of the [Π] of the annotation's normal form *)
   - match goal with
     | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?rA ?u, IHM : ⊢ ?G ▹ ?A -> ?G ▹ ?A ⊢ ?M : (nf_to_exp ?B),
-      Hr : nbe_ty_relevance (?G ▹ ?A) (nf_to_exp ?B) ?r, Hn : nbe_ty_f ?G ?A ?C, HG : ⊢ ?G |- _ =>
+      Hr : nbe_ty_kind (?G ▹ ?A) (nf_to_exp ?B) ?r, Hn : nbe_ty_f ?G ?A ?C, HG : ⊢ ?G |- _ =>
         pose proof (sort_typed_of_is_sort_nf (IHA HG) Hs) as HAs;
-        pose proof (type_sort_relevance_universe rA (universe_nf_large_index u)) as HSA;
+        pose proof (type_sort_kind_universe rA (universe_nf_large_index u)) as HSA;
         assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | exact HSA ]);
         pose proof (IHM HGA) as HM;
         let SB := fresh "SB" in let HSB := fresh "HSB" in let HB0 := fresh "HB0" in let kB := fresh "kB" in
@@ -904,7 +904,7 @@ Proof.
         pose proof (soundness_ty_at_sort HSA HAs Hn) as HAC;
         assert (Hfn : G ⊢ λ A M : a_pi r A B) by (eapply wf_fn; [ exact HAs | exact HSA | exact HBs | exact HM ]);
         cbn [nf_to_exp];
-        destruct r; cbn [relevance_sort] in HBs |- *;
+        destruct r; cbn [abs_kind_sort] in HBs |- *;
         [ destruct (pi_cong_sort HSA HAs HAC (wf_exp_eq_refl HBs)) as [k Hk];
           eapply wf_conv'; [ exact Hfn | exact Hk ]
         | exact (exp_conv_sort type_sort_prop (all_cong_sort HSA HAs HAC (wf_exp_eq_refl HBs)) Hfn) ]
@@ -918,8 +918,8 @@ Proof.
           by (let S00 := fresh "S00" in let H00 := fresh "H00" in destruct (presup_exp_typ HM) as [S00 _ H00]; eauto);
         destruct (wf_pi_parts_large _ _ _ _ _ HPi) as (SA & iU & HSA & HA & HBr);
         pose proof (IHN HG _ HSA HA) as HN;
-        pose proof (type_sort_relevance_universe r iU) as HSB;
-        assert (HBN : G ⊢ (nf_to_exp B)[Id,,N] : relevance_sort r Typeω@iU)
+        pose proof (type_sort_kind_universe r iU) as HSB;
+        assert (HBN : G ⊢ (nf_to_exp B)[Id,,N] : abs_kind_sort r Typeω@iU)
           by (exact (sub_preserves_sort _ _ _ _ _ _ _ HBr HSB (wf_sub_single _ _ _ _ _ _ HA HSA HN)));
         exact (exp_conv_sort HSB (soundness_ty_at_sort HSB HBN Hn) (wf_app _ _ _ _ _ _ _ _ _ _ HA HSA HBr HM HN))
     end.
@@ -929,14 +929,14 @@ Proof.
   - match goal with Ha : alg_let_ann _ _ |- _ => destruct Ha as [-> | ->] end; simpl_let_guards.
     + (** Without an annotation *)
       match goal with
-      | Hr : nbe_ty_relevance ?G (nf_to_exp ?W) relevant,
+      | Hr : nbe_ty_kind ?G (nf_to_exp ?W) relevant,
         IHM : ⊢ ?G -> ?G ⊢ ?M : (nf_to_exp ?W), IHB : ⊢ ?G ▸ (nf_to_exp ?W) ≔ ?M -> _ ⊢ ?B : (nf_to_exp ?C),
         Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] ?D, HG : ⊢ ?G |- _ =>
           pose proof (IHM HG) as HM;
           let SW := fresh "SW" in let HSW := fresh "HSW" in let HW0 := fresh "HW0" in let kW := fresh "kW" in
           let HAs := fresh "HAs" in
           destruct (presup_exp_typ HM) as [SW HSW HW0];
-          destruct (typed_at_relevance_of_nbe HSW HW0 Hr) as [kW HAs]; cbn [relevance_sort] in HAs;
+          destruct (typed_at_relevance_of_nbe HSW HW0 Hr) as [kW HAs]; cbn [abs_kind_sort] in HAs;
           assert (HGd : ⊢ G ▸ (nf_to_exp W) ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | constructor | exact HM ]);
           pose proof (IHB HGd) as HB;
           destruct (presup_exp_typ HB) as [SC HSC HC];
@@ -950,7 +950,7 @@ Proof.
         IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ?A : Srt -> ?G ⊢ ?M : ?A, IHB : ⊢ ?G ▸ ?A ≔ ?M -> _ ⊢ ?B : (nf_to_exp ?C),
         Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] ?D, HG : ⊢ ?G |- _ =>
           pose proof (sort_typed_of_is_sort_nf (IHA HG) Hs) as HAs;
-          pose proof (type_sort_relevance_universe r (universe_nf_large_index u)) as HSA;
+          pose proof (type_sort_kind_universe r (universe_nf_large_index u)) as HSA;
           pose proof (IHM HG _ HSA HAs) as HM;
           assert (HGd : ⊢ G ▸ A ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | exact HSA | exact HM ]);
           pose proof (IHB HGd) as HB;
@@ -1004,15 +1004,15 @@ Proof.
     | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P, IHA : ⊢ ?P ++ ?G -> ?P ++ ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?r ?u, HG : ⊢ ?G |- _ =>
         pose proof (IHX HG) as HX; pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HP;
         pose proof (sort_typed_of_is_sort_nf (IHA HP) Hs) as HAs;
-        eapply wf_ext_eq_ass_same; [ exact HX | exact HAs | apply type_sort_relevance_universe | exact HAs ]
+        eapply wf_ext_eq_ass_same; [ exact HX | exact HAs | apply type_sort_kind_universe | exact HAs ]
     end.
   - match goal with
     | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P, IHA : ⊢ ?P ++ ?G -> ?P ++ ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?r ?u,
       IHM : ⊢ ?P ++ ?G -> forall Srt, _ -> ?P ++ ?G ⊢ ?A : Srt -> ?P ++ ?G ⊢ ?M : ?A, HG : ⊢ ?G |- _ =>
         pose proof (IHX HG) as HX; pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HP;
         pose proof (sort_typed_of_is_sort_nf (IHA HP) Hs) as HAs;
-        pose proof (IHM HP _ (type_sort_relevance_universe _ _) HAs) as HM;
-        eapply wf_ext_eq_def_same; [ exact HX | exact HAs | apply type_sort_relevance_universe | exact HAs | exact HM | exact HM ]
+        pose proof (IHM HP _ (type_sort_kind_universe _ _) HAs) as HM;
+        eapply wf_ext_eq_def_same; [ exact HX | exact HAs | apply type_sort_kind_universe | exact HAs | exact HM | exact HM ]
     end.
   - match goal with
     | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P, IHU : ⊢ ?P ++ ?G -> wf_unit_eq _ _ _ ?U ?U, HG : ⊢ ?G |- _ =>
@@ -1060,7 +1060,7 @@ Proof.
       HM : ⊢ _ -> forall Srt, _ -> _ ⊢ ?A : Srt -> _ ⊢ ?M : ?A |- _ =>
         eapply (alg_body_def_sound _ _ _ _ _ _ _ _ _ (universe_nf_large_index u));
           [ exact IH | intros HC; exact (sort_typed_of_is_sort_nf (HA HC) Hs)
-          | intros HC; exact (HM HC _ (type_sort_relevance_universe _ _) (sort_typed_of_is_sort_nf (HA HC) Hs)) ]
+          | intros HC; exact (HM HC _ (type_sort_kind_universe _ _) (sort_typed_of_is_sort_nf (HA HC) Hs)) ]
     end.
   - eapply alg_body_mod_sound; eassumption.
   - match goal with
@@ -1168,7 +1168,7 @@ Proof.
   intros * HΓ HAi Hs HBi HnB Hv.
   pose proof (alg_type_infer_sound HAi HΓ) as HA0.
   pose proof (sort_typed_of_is_sort_nf HA0 Hs) as HAs.
-  assert (HGA : ⊢ Γ ▹ A) by (eapply wf_ctx_extend; [ exact HAs | apply type_sort_relevance_universe ]).
+  assert (HGA : ⊢ Γ ▹ A) by (eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]).
   split; [ exact (pi_domain_ok_of_is_sort_nf HA0 Hs) |].
   exact (typed_at_univ_nf _ _ _ _ _ (alg_type_infer_sound HBi HGA) HnB Hv).
 Qed.
@@ -1201,7 +1201,7 @@ Proof.
       normal_of_typed (type_sort_universe 0) HT Hn Hnbe
   (** Ex falso: the normal form of its target *)
   | HCi : ?G ⊢a ?C ⟹ ?UC, Hs : is_sort_nf ?UC ?r ?u, HMc : alg_type_check ?G a_False _, Hn : nbe_ty_f ?G ?C _ |- _ =>
-      normal_of_typed (type_sort_relevance_universe r (universe_nf_large_index u))
+      normal_of_typed (type_sort_kind_universe r (universe_nf_large_index u))
         (sort_typed_of_is_sort_nf (alg_type_infer_sound HCi HΓ0) Hs) Hn Hnbe
   (** A proof of a conjunction: the normal form of its annotation *)
   | HTi : ?G ⊢a ?T ⟹ Propⁿ, Hn : nbe_ty_f ?G ?T (Σₚⁿ _ _) |- _ =>
@@ -1255,10 +1255,10 @@ Proof.
       body's type, normal by induction, in the context the domain's normal
       form extends, semantically the context the domain extends *)
   | HAi : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA ?rA ?u, HMi : ?G ▹ ?A ⊢a ?M ⟹ ?B,
-    Hr : nbe_ty_relevance (?G ▹ ?A) (nf_to_exp ?B) ?r, Hn : nbe_ty_f ?G ?A ?C,
+    Hr : nbe_ty_kind (?G ▹ ?A) (nf_to_exp ?B) ?r, Hn : nbe_ty_f ?G ?A ?C,
     IH : forall A0, ⊢ ?G ▹ ?A -> nbe_ty_f (?G ▹ ?A) (nf_to_exp ?B) A0 -> ?B = A0 |- _ =>
       pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ0) Hs) as HAs;
-      pose proof (type_sort_relevance_universe rA (universe_nf_large_index u)) as HSA;
+      pose proof (type_sort_kind_universe rA (universe_nf_large_index u)) as HSA;
       assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | exact HSA ]);
       let SB := fresh "SB" in let HSB := fresh "HSB" in let HB0 := fresh "HB0" in let kB := fresh "kB" in
       let HBs := fresh "HBs" in
@@ -1267,9 +1267,9 @@ Proof.
       pose proof (soundness_ty_at_sort HSA HAs Hn) as HAC;
       cbn [nf_to_exp] in Hnbe; destruct (nbe_ty_pi_inv _ _ _ _ _ Hnbe) as (WC & WB & -> & HWC & HWB);
       pose proof (idempotent_nbe_ty_sort HSA HAs Hn HWC) as <-;
-      assert (HBC : G ▹ nf_to_exp C ⊢ nf_to_exp B : relevance_sort r Typeω@kB)
+      assert (HBC : G ▹ nf_to_exp C ⊢ nf_to_exp B : abs_kind_sort r Typeω@kB)
         by (eapply ctxsub_exp; [ exact (sub_id_extend_of_exp_eq HSA (wf_exp_eq_sym _ _ _ _ _ _ HAC)) | exact HBs ]);
-      pose proof (ctxeq_nbe_ty_eq_sort (type_sort_relevance_universe _ _) HBC
+      pose proof (ctxeq_nbe_ty_eq_sort (type_sort_kind_universe _ _) HBC
                     (ctx_extend_sem_eq HSA (wf_exp_eq_sym _ _ _ _ _ _ HAC)) HWB) as HWB';
       rewrite <- (IH _ HGA HWB'); reflexivity
   (** An application: the normal form of the codomain instantiated *)
@@ -1280,19 +1280,19 @@ Proof.
         by (let S00 := fresh "S00" in let H00 := fresh "H00" in destruct (presup_exp_typ HM) as [S00 _ H00]; eauto);
       destruct (wf_pi_parts_large _ _ _ _ _ HPi) as (SA & iU & HSA & HA & HBr);
       pose proof (alg_type_check_sound_sort HNc HΓ0 HSA HA) as HN;
-      normal_of_typed (type_sort_relevance_universe r iU)
-        (sub_preserves_sort _ _ _ _ _ _ _ HBr (type_sort_relevance_universe _ _) (wf_sub_single _ _ _ _ _ _ HA HSA HN)) Hn Hnbe
+      normal_of_typed (type_sort_kind_universe r iU)
+        (sub_preserves_sort _ _ _ _ _ _ _ HBr (type_sort_kind_universe _ _) (wf_sub_single _ _ _ _ _ _ HA HSA HN)) Hn Hnbe
   (** A local definition: the normal form of its body's type instantiated *)
   | Ha : alg_let_ann _ _ |- _ =>
       destruct Ha as [-> | ->]; simpl_let_guards;
       [ match goal with
-        | Hr : nbe_ty_relevance ?G (nf_to_exp ?W) relevant, HMi : ?G ⊢a ?M ⟹ ?W,
+        | Hr : nbe_ty_kind ?G (nf_to_exp ?W) relevant, HMi : ?G ⊢a ?M ⟹ ?W,
           HBi : ?G ▸ (nf_to_exp ?W) ≔ ?M ⊢a ?B ⟹ ?C, Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] _ |- _ =>
             pose proof (alg_type_infer_sound HMi HΓ0) as HM;
             let SW := fresh "SW" in let HSW := fresh "HSW" in let HW0 := fresh "HW0" in let kW := fresh "kW" in
             let HAs := fresh "HAs" in
             destruct (presup_exp_typ HM) as [SW HSW HW0];
-            destruct (typed_at_relevance_of_nbe HSW HW0 Hr) as [kW HAs]; cbn [relevance_sort] in HAs;
+            destruct (typed_at_relevance_of_nbe HSW HW0 Hr) as [kW HAs]; cbn [abs_kind_sort] in HAs;
             assert (HGd : ⊢ G ▸ (nf_to_exp W) ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | constructor | exact HM ]);
             let SC := fresh "SC" in let HSC := fresh "HSC" in let HC := fresh "HC" in
             destruct (presup_exp_typ (alg_type_infer_sound HBi HGd)) as [SC HSC HC];
@@ -1302,7 +1302,7 @@ Proof.
         | HAi : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA ?r ?u, HMc : alg_type_check ?G ?A ?M,
           HBi : ?G ▸ ?A ≔ ?M ⊢a ?B ⟹ ?C, Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] _ |- _ =>
             pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ0) Hs) as HAs;
-            pose proof (type_sort_relevance_universe r (universe_nf_large_index u)) as HSA;
+            pose proof (type_sort_kind_universe r (universe_nf_large_index u)) as HSA;
             pose proof (alg_type_check_sound_sort HMc HΓ0 HSA HAs) as HM;
             assert (HGd : ⊢ G ▸ A ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | exact HSA | exact HM ]);
             let SC := fresh "SC" in let HSC := fresh "HSC" in let HC := fresh "HC" in
@@ -1337,7 +1337,7 @@ Proof.
   | HMi : ?G ⊢a ?N ⟹ nf_record _ _, Hfk : List.nth_error (record_fields _) _ = Some (_, ?U), Hn : nbe_ty_f _ (?U[_]) _ |- _ =>
       let m := fresh "m" in let HUt := fresh "HUt" in
       destruct (alg_proj_typed _ _ _ _ _ _ _ _ HΓ0 (alg_type_infer_sound HMi HΓ0) ltac:(eassumption) Hfk) as (m & HUt & _);
-      eapply idempotent_nbe_ty_sort; [ apply type_sort_relevance_universe | exact HUt | exact Hn | exact Hnbe ]
+      eapply idempotent_nbe_ty_sort; [ apply type_sort_kind_universe | exact HUt | exact Hn | exact Hnbe ]
   end.
 Qed.
 
@@ -1406,7 +1406,7 @@ Proof.
   destruct (wf_pi_parts_large _ _ _ _ _ HPi') as (SA' & k' & HSA' & HA' & HB').
   pose proof (alg_type_infer_self HΓ Hinfer) as Hself.
   destruct (nbe_ty_pi_inv _ _ _ _ _ Hself) as (X & Y & E & _ & HnB'); injection E as -> ->.
-  pose proof (ctxeq_nbe_ty_eq_sort (type_sort_relevance_universe _ _) HB'
+  pose proof (ctxeq_nbe_ty_eq_sort (type_sort_kind_universe _ _) HB'
                 (ctx_extend_sem_eq HSA ltac:(symmetry; exact HAWA)) ltac:(exact HnB')) as HnB''.
   econstructor; [ exact HnB'' | exact HnB | exact HWB ].
 Qed.
@@ -1742,7 +1742,7 @@ Proof.
   assert (HnB : nbe_ty_f (Γ ▹ A) UB UB).
   { pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ) Hu) as HAs.
     eapply alg_type_infer_self; [| eassumption ].
-    eapply wf_ctx_extend; [ exact HAs | apply type_sort_relevance_universe ]. }
+    eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]. }
   destruct (alg_pi_parts_sound HΓ HAi Hu HBi HnB Hv) as (HA & HB & Hvws).
   destruct (wf_universe_nf_pi_tm HA HB Hvws) as [j Hj].
   destruct (soundness_ty Hj) as [W [HW HeqW]].
@@ -1780,7 +1780,7 @@ Proof.
   assert (HnB : nbe_ty_f (Γ ▹ A) UB UB).
   { pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ) Hu) as HAs.
     eapply alg_type_infer_self; [| eassumption ].
-    eapply wf_ctx_extend; [ exact HAs | apply type_sort_relevance_universe ]. }
+    eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]. }
   destruct (alg_pi_parts_sound HΓ HAi Hu HBi HnB Hv) as (HA & HB & Hvws).
   destruct (wf_universe_nf_pi_tm HA HB Hvws) as [j Hj].
   destruct (soundness_ty Hj) as [W [HW _]].
@@ -2035,7 +2035,7 @@ Lemma alg_elim_complete : forall Γ p D oq m Mm bm Bks Ps M r i,
     (forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
        exists UA rZ u, tele_sub (im_nparams Mj) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ++ Γ ⊢a Z ⟹ UA /\ is_sort_nf UA rZ u) ->
     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
-       elim_mctx p D j Mj (List.firstn (ind_nu D) Ps) ++ Γ ⊢a eb_motive b ⟸ relevance_sort r Typeω@i) ->
+       elim_mctx p D j Mj (List.firstn (ind_nu D) Ps) ++ Γ ⊢a eb_motive b ⟸ abs_kind_sort r Typeω@i) ->
     (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
        ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
        elim_bctx r p D Mj gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ
@@ -2153,8 +2153,8 @@ Proof.
   { intros j l l' Hll HQ Mj b Z Hj Hbj HZ; eapply Hmono; [ exact (HΨ _ _ Hj) | exact Hll | exact (HQ _ _ _ Hj Hbj HZ) ]. }
   set (i' := max i L).
   (** The type, the normal form of the motive's instance. *)
-  pose proof (type_sort_relevance_universe r i) as HSr.
-  assert (HTt : Γ ⊢ (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)] : relevance_sort r Typeω@i) by (gen_presups; assumption).
+  pose proof (type_sort_kind_universe r i) as HSr.
+  assert (HTt : Γ ⊢ (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)] : abs_kind_sort r Typeω@i) by (gen_presups; assumption).
   destruct (nbe_ty_exists_sort HSr HTt) as (T & HnT).
   pose proof (soundness_ty_at_sort HSr HTt HnT) as HTe.
   econstructor.
@@ -2168,13 +2168,13 @@ Proof.
       destruct (ext_eq_ass_inv _ _ _ _ _ _ _ (blocks_typed_ann _ _ _ _ _ _ _ _ _ HBt _ _ _ _ Hj Hbj HZ))
         as [_ _ _ _ _ _ _ HZH HHZ].
       exact (nbe_ty_of_mutual_subtyp HZH HHZ).
-    + intros j Mj b Hj Hbj; destruct r; cbn [relevance_sort] in *; [| exact (HAc _ _ _ Hj Hbj) ].
+    + intros j Mj b Hj Hbj; destruct r; cbn [abs_kind_sort] in *; [| exact (HAc _ _ _ Hj Hbj) ].
       eapply (Hmono _ _ i);
         [ exact (ext_eq_ctx_left _ _ _ _ _ (blocks_typed_mctx _ _ _ _ _ _ _ _ _ HBt _ _ Hj)) | unfold i'; lia | exact (HAc _ _ _ Hj Hbj) ].
     + exact (blocks_typed_names _ _ _ _ _ _ _ _ _ HBt).
     + exact (blocks_typed_counts _ _ _ _ _ _ _ _ _ HBt).
   - apply alg_subtyping_complete.
-    assert (HE : Γ ⊢ T ≈ (eb_motive bm)[sb_of_list Id (NsP ++ M :: nil)] : relevance_sort r Typeω@i)
+    assert (HE : Γ ⊢ T ≈ (eb_motive bm)[sb_of_list Id (NsP ++ M :: nil)] : abs_kind_sort r Typeω@i)
       by (etransitivity; [ symmetry; exact HTe | symmetry; exact Hmot ]).
     exact (proj1 (wf_subtyp_of_exp_eq _ _ _ _ _ _ (presup_exp_eq_left HE) (presup_exp_eq_right HE) HSr HE)).
 Qed.
@@ -2224,10 +2224,10 @@ Qed.
 
 (** [body_tagged Γ Φ]: the type of every term part of the body [Φ] over
     [Γ] is, in the context of the entries before it, of the sort its
-    relevance tag says ([entry_relevance]). *)
+    relevance tag says ([entry_kind]). *)
 Definition body_tagged (Γ : ctx) (Φ : gmod) : Prop :=
   forall y Φ0 E A M, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-    exists i, (body_ctx Φ0 ++ Γ)%list ⊢ A : relevance_sort (entry_relevance E) Typeω@i.
+    exists i, (body_ctx Φ0 ++ Γ)%list ⊢ A : abs_kind_sort (entry_kind E) Typeω@i.
 
 (** A name a body finds is one of its names. *)
 Lemma gm_prefix_upto_in : forall Φ y Φ', gm_prefix_upto Φ y = Some Φ' -> List.In y (gm_names Φ).
@@ -2277,9 +2277,9 @@ Qed.
 
 (** A type of the sorts at two tags has one tag. *)
 Lemma relevance_sort_agree : forall Γ A r r' i j,
-    Γ ⊢ A : relevance_sort r Typeω@i -> Γ ⊢ A : relevance_sort r' Typeω@j -> r = r'.
+    Γ ⊢ A : abs_kind_sort r Typeω@i -> Γ ⊢ A : abs_kind_sort r' Typeω@j -> r = r'.
 Proof.
-  intros * H H'; destruct r, r'; cbn [relevance_sort] in *; [ reflexivity | | | reflexivity ];
+  intros * H H'; destruct r, r'; cbn [abs_kind_sort] in *; [ reflexivity | | | reflexivity ];
     exfalso; eapply typ_prop_absurd; eassumption.
 Qed.
 
@@ -2290,7 +2290,7 @@ Qed.
 Lemma body_tagged_of_fill : forall Γ0 Φx (entry_sort : String.string -> exp),
     gm_nopens Φx = 0 -> body_shape Φx Φx -> ⊢ body_ctx Φx ++ Γ0 ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+       exists i, entry_sort y = abs_kind_sort (entry_kind E) Typeω@i) ->
     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_fill Φ0 = Some σ -> Γ0 ⊢ A[σ] : entry_sort y) ->
     body_tagged Γ0 Φx.
@@ -2311,7 +2311,7 @@ Proof.
       exists Typeω@k; split; [ constructor | exact HA' ]. }
   destruct HAS as (HΓ0 & Srt & HS & HA0).
   pose proof (sub_preserves_sort _ _ _ _ _ _ _ HA0 HS (wf_gm_fill _ _ _ _ _ HΓ0 Hσf)) as HAσ'.
-  destruct HS as [j |], (entry_relevance E); cbn [relevance_sort] in HAσ |- *;
+  destruct HS as [j |], (entry_kind E); cbn [abs_kind_sort] in HAσ |- *;
     [ exists j; exact HA0 | | | exists 0; exact HA0 ];
     exfalso; eapply typ_prop_absurd; eassumption.
 Qed.
@@ -2321,7 +2321,7 @@ Qed.
 Lemma body_tagged_of_fill_left : forall Γ0 Φx Φx' (entry_sort : String.string -> exp),
     gm_nopens Φx = 0 -> body_shape Φx Φx' -> ⊢ body_ctx Φx ++ Γ0 ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, entry_sort y = relevance_sort (entry_relevance E) Typeω@i) ->
+       exists i, entry_sort y = abs_kind_sort (entry_kind E) Typeω@i) ->
     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -2343,7 +2343,7 @@ Qed.
 Lemma body_tagged_of_fill_right : forall Γ0 Φx Φx' (entry_sort : String.string -> exp),
     gm_nopens Φx' = 0 -> body_shape Φx Φx' -> ⊢ body_ctx Φx' ++ Γ0 ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       exists i, entry_sort y = relevance_sort (entry_relevance E') Typeω@i) ->
+       exists i, entry_sort y = abs_kind_sort (entry_kind E') Typeω@i) ->
     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -2386,7 +2386,7 @@ Proof.
       rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as ((UA & r' & u & HA & Hu) & HM).
       (** The tag is the relevance of the type's sort. *)
       destruct (Htg x Φx _ A M ltac:(cbn [gm_prefix_upto]; rewrite String.eqb_refl; reflexivity) eq_refl) as [i HAt].
-      cbn [entry_relevance] in HAt.
+      cbn [entry_kind] in HAt.
       pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HA (presup_exp_ctx HAt)) Hu) as HAs.
       pose proof (relevance_sort_agree _ _ _ _ _ _ HAs HAt) as ->.
       econstructor; eassumption.
@@ -2569,14 +2569,14 @@ Proof.
   pose proof (alg_type_infer_self HΓ HMi) as HWW.
   destruct (subtyp_record_nf HWs Hl Hn HNs HWW) as (Rs & -> & HRl & HNR).
   destruct (alg_proj_typed _ _ _ _ _ _ _ _ HΓ HMW Hl Hfk) as (m & HUR & _).
-  pose proof (type_sort_relevance_universe (record_field_rel R k) m) as HSm.
+  pose proof (type_sort_kind_universe (record_field_kind R k) m) as HSm.
   destruct (nbe_ty_exists_sort HSm HUR) as [V HV].
   pose proof (soundness_ty_at_sort HSm HUR HV) as HVe.
   destruct (record_sort_large _ _ _ _ _ _ Hrt Hl Hn HNs) as [n Hm].
   pose proof (record_field_params_cong _ _ _ M p R Ns (List.map nf_to_exp Rs) n k f U HMt Hrt Hl Hn HRl HNs HNR Hm Hfk) as HUU.
   econstructor; [ eapply alg_type_infer_proj; [ exact HMi | exact Hl | exact (field_index_nth_nodup _ _ _ _ Hnd Hfk) | exact Hfk | exact HV ] |].
   apply alg_subtyping_complete.
-  destruct (exp_eq_trans_sort HSm (type_sort_relevance_universe _ n) ltac:(symmetry; exact HVe) ltac:(symmetry; exact HUU))
+  destruct (exp_eq_trans_sort HSm (type_sort_kind_universe _ n) ltac:(symmetry; exact HVe) ltac:(symmetry; exact HUU))
     as (S0 & HS0 & HE).
   exact (proj1 (wf_subtyp_of_exp_eq _ _ _ _ _ _ (presup_exp_eq_left HE) (presup_exp_eq_right HE) HS0 HE)).
 Qed.
@@ -2748,7 +2748,7 @@ Qed.
 (** An application checks against the codomain instantiated: the function
     infers a [Π] whose codomain is below the [Π]'s ([alg_type_check_pi_implies_alg_type_infer_pi]). *)
 Lemma alg_app_complete : forall {Γ A B M N S r} {i : nat},
-    ⊢ Γ -> type_sort S -> Γ ⊢ A : S -> Γ ▹ A ⊢ B : relevance_sort r Typeω@i ->
+    ⊢ Γ -> type_sort S -> Γ ⊢ A : S -> Γ ▹ A ⊢ B : abs_kind_sort r Typeω@i ->
     Γ ⊢ M : a_pi r A B -> Γ ⊢a M ⟸ a_pi r A B -> Γ ⊢ N : A -> Γ ⊢a N ⟸ A ->
     Γ ⊢a M $ N ⟸ B[Id,,N].
 Proof.
@@ -2760,16 +2760,16 @@ Proof.
   destruct (presup_exp_typ HM') as [S' _ HPi'].
   destruct (wf_pi_parts_large _ _ _ _ _ HPi') as (SA' & k & HSA' & HA' & HB'k).
   pose proof (ctxsub_exp _ _ _ _ _ _ (sub_id_extend_of_exp_eq HSA (wf_exp_eq_sym _ _ _ _ _ _ HAA)) HB'k) as HB'A.
-  pose proof (alg_subtyping_sound_sort _ _ _ _ _ (type_sort_relevance_universe r k) (type_sort_relevance_universe r i)
+  pose proof (alg_subtyping_sound_sort _ _ _ _ _ (type_sort_kind_universe r k) (type_sort_kind_universe r i)
                 HBB HB'A HB) as HBB'.
   pose proof (wf_sub_single _ _ _ _ _ _ HA HS HN) as Hσ.
-  pose proof (sub_preserves_sort _ _ _ _ _ _ _ HB'A (type_sort_relevance_universe r k) Hσ) as HB'N.
-  destruct (nbe_ty_exists_sort (type_sort_relevance_universe r k) HB'N) as [W HW].
-  pose proof (soundness_ty_at_sort (type_sort_relevance_universe r k) HB'N HW) as HE.
+  pose proof (sub_preserves_sort _ _ _ _ _ _ _ HB'A (type_sort_kind_universe r k) Hσ) as HB'N.
+  destruct (nbe_ty_exists_sort (type_sort_kind_universe r k) HB'N) as [W HW].
+  pose proof (soundness_ty_at_sort (type_sort_kind_universe r k) HB'N HW) as HE.
   econstructor; [ eapply alg_type_infer_app; [ exact HMi | exact HNc' | exact HW ] |].
   apply alg_subtyping_complete.
   etransitivity; [| exact (sub_preserves_subtyp _ _ _ _ _ _ _ HBB' Hσ) ].
-  exact (proj2 (wf_subtyp_of_exp_eq _ _ _ _ _ _ HB'N (presup_exp_eq_right HE) (type_sort_relevance_universe r k) HE)).
+  exact (proj2 (wf_subtyp_of_exp_eq _ _ _ _ _ _ HB'N (presup_exp_eq_right HE) (type_sort_kind_universe r k) HE)).
 Qed.
 
 (** A relevant [Π] at a large universe, over a type of it or a
@@ -2805,10 +2805,10 @@ Qed.
 (** A [λ] checks against a [Π] of the sort its body's type is of: the
     body's inferred type is below the [Π]'s codomain, so of its sort
     ([subtyp_same_relevance]), and of that relevance
-    ([nbe_ty_relevance_of_typed]); the inferred [Π] is below the [Π],
+    ([nbe_ty_kind_of_typed]); the inferred [Π] is below the [Π],
     covariantly at [relevant], equal at [propositional]. *)
 Lemma alg_fn_complete : forall {Γ A B M S r} {i : nat},
-    ⊢ Γ -> type_sort S -> Γ ⊢ A : S -> Γ ⊢a A ⟸ S -> Γ ▹ A ⊢ B : relevance_sort r Typeω@i -> Γ ▹ A ⊢a M ⟸ B ->
+    ⊢ Γ -> type_sort S -> Γ ⊢ A : S -> Γ ⊢a A ⟸ S -> Γ ▹ A ⊢ B : abs_kind_sort r Typeω@i -> Γ ▹ A ⊢a M ⟸ B ->
     Γ ⊢a λ A M ⟸ a_pi r A B.
 Proof.
   intros * HΓ HS HA HAc HB HMc.
@@ -2817,21 +2817,21 @@ Proof.
   inversion HMc as [? B' ? ? HMi HMs]; subst.
   pose proof (alg_type_infer_sound HMi HΓA) as HMB'.
   destruct (presup_exp_typ HMB') as [SB HSB HB'].
-  pose proof (alg_subtyping_sound_sort _ _ _ _ _ HSB (type_sort_relevance_universe r i) HMs HB' HB) as HBB.
-  assert (exists k : nat, Γ ▹ A ⊢ B' : relevance_sort r Typeω@k) as [k HBk].
-  { assert (exists r' (j : nat), SB = relevance_sort r' Typeω@j) as (r' & j & ->)
+  pose proof (alg_subtyping_sound_sort _ _ _ _ _ HSB (type_sort_kind_universe r i) HMs HB' HB) as HBB.
+  assert (exists k : nat, Γ ▹ A ⊢ B' : abs_kind_sort r Typeω@k) as [k HBk].
+  { assert (exists r' (j : nat), SB = abs_kind_sort r' Typeω@j) as (r' & j & ->)
       by (destruct HSB as [j |]; [ exists relevant, j | exists propositional, 0 ]; reflexivity).
     pose proof (subtyp_same_relevance _ _ _ r' r j i HBB HB' HB) as <-; exists j; exact HB'. }
   destruct (nbe_ty_exists_sort HS HA) as [C HC].
   assert (Hfi : Γ ⊢a λ A M ⟹ nf_pi r C B')
-    by (eapply alg_type_infer_fn; [ exact HAi | exact Hs | exact HMi | exact (nbe_ty_relevance_of_typed HBk) | exact HC ]).
+    by (eapply alg_type_infer_fn; [ exact HAi | exact Hs | exact HMi | exact (nbe_ty_kind_of_typed HBk) | exact HC ]).
   econstructor; [ exact Hfi |].
   destruct HMs as [B1 B2 Hn1 Hn2 Hsub].
   pose proof (alg_type_infer_normal HΓA HMi Hn1) as <-.
   econstructor; [ exact (alg_type_infer_self HΓ Hfi) | exact (nbe_ty_pi_intro _ _ _ _ _ _ HC Hn2) |].
   destruct r.
   - constructor; [ reflexivity | exact Hsub ].
-  - cbn [relevance_sort] in HB.
+  - cbn [abs_kind_sort] in HB.
     rewrite (alg_subtyping_nf_not_univ_pi_eq _ _ Hsub ltac:(right; exact (nbe_ty_prop_not_univ_pi _ _ _ HB Hn2))).
     constructor; [ exact I | reflexivity ].
 Qed.
@@ -2970,7 +2970,7 @@ Proof.
     | Hl : ind_lookup _ _ ?p = Some ?D, Hg : elim_grp ?D ?oq ?p ?m, Hm : ind_member ?D ?m = Some ?Mm,
       Hb : List.nth_error ?Bks ?m = Some ?bm, HPl : List.length ?Ps = im_np ?D ?Mm,
       Hbd : exp_lets (a_elim ?r ?oq _ ?m ?Bks ?M) <= _,
-      HAt : forall k Mk b, ind_member ?D k = Some Mk -> List.nth_error ?Bks k = Some b -> _ ⊢ eb_motive b : relevance_sort ?r Typeω@?i,
+      HAt : forall k Mk b, ind_member ?D k = Some Mk -> List.nth_error ?Bks k = Some b -> _ ⊢ eb_motive b : abs_kind_sort ?r Typeω@?i,
       HUs : forall k P T, List.nth_error ?Ps k = Some P -> List.nth_error (tele_insts (im_params ?D ?Mm) Id ?Ps) k = Some T ->
               _ = _ -> _ = _ -> user_exp P -> exp_lets P <= _ -> _ ⊢a P ⟸ T,
       HZs : forall k Mk b Z, ind_member ?D k = Some Mk -> List.nth_error ?Bks k = Some b -> eb_ann b = Some Z ->
@@ -3012,7 +3012,7 @@ Proof.
       proposition ([alg_pi_large_complete]), or a [∀] ([alg_all_complete]). *)
   - match goal with Hd : pi_domain_sort _ ?Srt, HAt : ?G ⊢ ?A : ?Srt |- ?G ⊢a a_pi ?r ?A _ ⟸ _ =>
       assert (HSd : type_sort Srt) by (destruct Hd; constructor);
-      destruct r; cbn [relevance_sort] in *; destruct_univ;
+      destruct r; cbn [abs_kind_sort] in *; destruct_univ;
       [ eapply alg_pi_large_complete; eassumption
       | eapply (alg_all_complete (S := Srt)); [ eassumption | exact HSd | exact HAt | eassumption | cbn [exp_wk] in *; eassumption ] ]
     end.
@@ -3020,7 +3020,7 @@ Proof.
       or a proposition ([alg_pi_small_prop_complete]), or a [∀] over a type
       of it, which infers a small universe. *)
   - match goal with Hd : pi_domain_sort _ ?Srt, HAt : ?G ⊢ ?A : ?Srt, HG : ⊢ ?G |- ?G ⊢a a_pi ?r ?A _ ⟸ _ =>
-      destruct r; cbn [relevance_sort] in *; destruct_univ;
+      destruct r; cbn [abs_kind_sort] in *; destruct_univ;
       [ destruct Hd; [ eapply alg_pi_small_complete; eassumption | eapply alg_pi_small_prop_complete; eassumption ] |];
       cbn [exp_wk] in *;
       destruct Hd;
@@ -3062,7 +3062,7 @@ Proof.
         destruct (presup_exp_typ HB') as [SC HSC HC];
         destruct (alg_type_check_nbe_sub HGd (wf_sub_single_def _ _ _ _ _ _ HA' (type_sort_universe _) HMA') HSC HC HBa)
           as (C' & W & HBi & HW & Hsub);
-        econstructor; [ eapply alg_type_infer_let_none; [ exact HMi | exact (nbe_ty_relevance_of_typed (r := relevant) HA') | exact HBi | exact HW ]
+        econstructor; [ eapply alg_type_infer_let_none; [ exact HMi | exact (nbe_ty_kind_of_typed (r := relevant) HA') | exact HBi | exact HW ]
                       | exact Hsub ]
     end.
   (** An annotated [let]: the annotation of either sort. *)
