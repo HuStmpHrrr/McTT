@@ -48,6 +48,9 @@ Section MdefDecide.
   Variable F : FCtx.
   #[local] Abbreviation Θ := (fc_deps F).
   #[local] Abbreviation Ξ := (fc_stack F).
+  (** The decision of [levels_abstractable] the checker is given *)
+  Variable levels_abstractable_dec : forall G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G ->
+      { levels_abstractable Θ Ξ G Δ E } + { ~ levels_abstractable Θ Ξ G Δ E }.
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
 
   (** Types, each a type and then normalized, pointwise. *)
@@ -57,7 +60,7 @@ Section MdefDecide.
   Proof.
     destruct xs as [| x xs'].
     - left; exists nil; constructor.
-    - destruct (typ_least_dec F HΞ Γ (T x)) as [[i [HT _]] | HnT];
+    - destruct (typ_least_dec F levels_abstractable_dec HΞ Γ (T x)) as [[i [HT _]] | HnT];
         [| right; exists 0; intros Ws H; inversion H as [| ? ? ? ? [[i HT] _] _]; exact (HnT _ HT) ].
       destruct (nbe_ty_impl F Γ (T x) (typ_nbe_ty_order F _ _ _ HT)) as [W HW].
       destruct (tys_nbe_dec X T Γ xs') as [[Ws HWs] | [j Hn]].
@@ -66,18 +69,18 @@ Section MdefDecide.
   Defined.
 
   (** The member of a function, or why it has none. *)
-  Definition mdef_member_dec (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (f : raw_fun) :
+  Definition mdef_member_dec (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (f : raw_fun_head) :
       ({m | mdef_member Θ Ξ pq D Us Δ f m} + {e : mdef_why | forall m, ~ mdef_member Θ Ξ pq D Us Δ f m})%type.
   Proof.
-    set (Γ := (raw_fun_nparams f ++ Δ ++ fc_tele F)%list).
-    set (n := List.length (raw_fun_nparams f)).
+    set (Γ := (raw_fun_head_nparams f ++ Δ ++ fc_tele F)%list).
+    set (n := List.length (raw_fun_head_nparams f)).
     set (T := fun jM : (nat * imember)%type =>
                 im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn n]ʷ) Us) (vars_from 0 n)).
     (** The facts found, read at the Core telescope *)
     Local Ltac to_core_at G := unfold G in *; rewrite <- ?(fc_tele_ok F) in *.
-    destruct (typ_least_dec F HΞ Γ (raw_fun_scrut f)) as [[i [HZ _]] | HnZ];
+    destruct (typ_least_dec F levels_abstractable_dec HΞ Γ (raw_fun_head_scrut f)) as [[i [HZ _]] | HnZ];
       [| right; exists mdef_why_scrut_untyped; intros m H; to_core_at Γ; inversion H as [? ? ? ? ? [i' HZ'] _ _ _ _ _]; exact (HnZ _ HZ') ].
-    destruct (nbe_ty_impl F Γ (raw_fun_scrut f) (typ_nbe_ty_order F _ _ _ HZ)) as [W HW].
+    destruct (nbe_ty_impl F Γ (raw_fun_head_scrut f) (typ_nbe_ty_order F _ _ _ HZ)) as [W HW].
     destruct (tys_nbe_dec T Γ (List.combine (List.seq 0 (ind_nblk D)) (ind_block_members D))) as [[Ws HWs] | [j Hn]];
       [| right; exists (mdef_why_member_untyped j); intros m H; to_core_at Γ; inversion H; subst; eapply Hn; eassumption ].
     destruct (nf_index W Ws) as [m |] eqn:Hm.
@@ -106,14 +109,14 @@ Section MdefDecide.
 
   (** The members of the functions, function by function; a rejection
       names the function. *)
-  Fixpoint mdef_members_dec (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs : list raw_fun) {struct fs} :
+  Fixpoint mdef_members_dec (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs : list raw_fun_head) {struct fs} :
       ({ms | Forall2 (mdef_member Θ Ξ pq D Us Δ) fs ms}
        + {e : (string * mdef_why) | forall ms, ~ Forall2 (mdef_member Θ Ξ pq D Us Δ) fs ms})%type.
   Proof.
     destruct fs as [| f fs'].
     - left; exists nil; constructor.
     - destruct (mdef_member_dec pq D Us Δ f) as [[m Hm] | [e He]];
-        [| right; exists (raw_fun_name f, e); intros ms H; inversion H; subst; eapply He; eassumption ].
+        [| right; exists (raw_fun_head_name f, e); intros ms H; inversion H; subst; eapply He; eassumption ].
       destruct (mdef_members_dec pq D Us Δ fs') as [[ms Hms] | [e He]].
       + left; exists (m :: ms); constructor; assumption.
       + right; exists e; intros ms' H; inversion H; subst; eapply He; eassumption.
@@ -176,10 +179,10 @@ Inductive mdef_group_why : Set :=
 (** The group, from its scrutinee's facts found at the fast telescope of
     the frames *)
 Lemma mdef_group_of_fast : forall F Δ f0 fs pq m0 Ps D Us ms i,
-    fc_deps F ⍮ fc_stack F ⍮ raw_fun_nparams f0 ++ Δ ++ fc_tele F ⊢ raw_fun_scrut f0 : Typeω@i ->
-    nbe_ty (fc_deps F) (fc_stack F) (raw_fun_nparams f0 ++ Δ ++ fc_tele F) (raw_fun_scrut f0) (nf_indty pq m0 Ps) ->
+    fc_deps F ⍮ fc_stack F ⍮ raw_fun_head_nparams f0 ++ Δ ++ fc_tele F ⊢ raw_fun_head_scrut f0 : Typeω@i ->
+    nbe_ty (fc_deps F) (fc_stack F) (raw_fun_head_nparams f0 ++ Δ ++ fc_tele F) (raw_fun_head_scrut f0) (nf_indty pq m0 Ps) ->
     ind_lookup (fc_deps F) (fc_stack F) pq = Some D -> m0 < ind_ndecl D ->
-    image_pats (List.repeat true (List.length (raw_fun_nparams f0))) (List.firstn (ind_nu D) (List.map nf_to_exp Ps)) = Some Us ->
+    image_pats (List.repeat true (List.length (raw_fun_head_nparams f0))) (List.firstn (ind_nu D) (List.map nf_to_exp Ps)) = Some Us ->
     Forall2 (mdef_member (fc_deps F) (fc_stack F) pq D Us Δ) (f0 :: fs) ms -> List.length ms = ind_nblk D -> NoDup ms ->
     mdef_group (fc_deps F) (fc_stack F) Δ f0 fs pq m0 Ps D Us ms.
 Proof.
@@ -189,25 +192,28 @@ Qed.
 
 (** The group of a mutual definition's functions [f0 :: fs] over [Δ],
     checked premise by premise as [mdef_group] reads it. *)
-Definition mdef_group_dec (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Δ : ctx) (f0 : raw_fun) (fs : list raw_fun) :
+Definition mdef_group_dec (F : FCtx)
+    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ->
+       { levels_abstractable (fc_deps F) (fc_stack F) G Δ E } + { ~ levels_abstractable (fc_deps F) (fc_stack F) G Δ E })
+    (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Δ : ctx) (f0 : raw_fun_head) (fs : list raw_fun_head) :
     ({r : qname * nat * list nf * ind_decl * list exp * list nat |
        let '(pq, m0, Ps, D, Us, ms) := r in mdef_group (fc_deps F) (fc_stack F) Δ f0 fs pq m0 Ps D Us ms} + mdef_group_why)%type :=
-  match typ_least_dec F HΞ (raw_fun_nparams f0 ++ Δ ++ fc_tele F) (raw_fun_scrut f0) with
-  | inright _ => inr (mdef_group_why_function (raw_fun_name f0) mdef_why_scrut_untyped)
+  match typ_least_dec F levels_abstractable_dec HΞ (raw_fun_head_nparams f0 ++ Δ ++ fc_tele F) (raw_fun_head_scrut f0) with
+  | inright _ => inr (mdef_group_why_function (raw_fun_head_name f0) mdef_why_scrut_untyped)
   | inleft (exist _ i (conj HZ _)) =>
-      match nbe_ty_impl F (raw_fun_nparams f0 ++ Δ ++ fc_tele F) (raw_fun_scrut f0) (typ_nbe_ty_order F _ _ _ HZ) with
+      match nbe_ty_impl F (raw_fun_head_nparams f0 ++ Δ ++ fc_tele F) (raw_fun_head_scrut f0) (typ_nbe_ty_order F _ _ _ HZ) with
       | exist _ (nf_indty pq m0 Ps) HW =>
           match ind_lookup_f F pq with
           | exist _ None _ => inr (mdef_group_why_no_group pq)
           | exist _ (Some D) Hl =>
               match Compare_dec.lt_dec m0 (ind_ndecl D) with
-              | right _ => inr (mdef_group_why_view (raw_fun_name f0))
+              | right _ => inr (mdef_group_why_view (raw_fun_head_name f0))
               | left Hm0 =>
-                  match inspect (image_pats (List.repeat true (List.length (raw_fun_nparams f0)))
+                  match inspect (image_pats (List.repeat true (List.length (raw_fun_head_nparams f0)))
                                    (List.firstn (ind_nu D) (List.map nf_to_exp Ps))) with
-                  | exist _ None _ => inr (mdef_group_why_uparams (raw_fun_name f0))
+                  | exist _ None _ => inr (mdef_group_why_uparams (raw_fun_head_name f0))
                   | exist _ (Some Us) HUs =>
-                      match mdef_members_dec F HΞ pq D Us Δ (f0 :: fs) with
+                      match mdef_members_dec F levels_abstractable_dec HΞ pq D Us Δ (f0 :: fs) with
                       | inr (exist _ (f, e) _) => inr (mdef_group_why_function f e)
                       | inl (exist _ ms Hms) =>
                           match PeanoNat.Nat.eq_dec (List.length ms) (ind_nblk D) with
@@ -224,18 +230,18 @@ Definition mdef_group_dec (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Δ
                   end
               end
           end
-      | exist _ _ _ => inr (mdef_group_why_not_inductive (raw_fun_name f0))
+      | exist _ _ _ => inr (mdef_group_why_not_inductive (raw_fun_head_name f0))
       end
   end.
 
 (** The group the relation has, [mdef_group_dec] finds. *)
-Lemma mdef_group_dec_complete : forall F HΞ Δ f0 fs pq m0 Ps D Us ms,
+Lemma mdef_group_dec_complete : forall F lvdec HΞ Δ f0 fs pq m0 Ps D Us ms,
     mdef_group (fc_deps F) (fc_stack F) Δ f0 fs pq m0 Ps D Us ms ->
-    exists Hp, mdef_group_dec F HΞ Δ f0 fs = inl (exist _ (pq, m0, Ps, D, Us, ms) Hp).
+    exists Hp, mdef_group_dec F lvdec HΞ Δ f0 fs = inl (exist _ (pq, m0, Ps, D, Us, ms) Hp).
 Proof.
   intros * Hgp; pose proof Hgp as [[i HZ] HW Hl Hm0 HUs Hms Hlen Hnd]; unfold mdef_group_dec.
   rewrite (fc_tele_ok F) in HZ, HW.
-  destruct (typ_least_dec F HΞ _ _) as [[j [HZ' _]] | HnZ]; [| exfalso; exact (HnZ _ HZ) ].
+  destruct (typ_least_dec F lvdec HΞ _ _) as [[j [HZ' _]] | HnZ]; [| exfalso; exact (HnZ _ HZ) ].
   destruct (nbe_ty_impl F _ _ _) as [W HW'].
   pose proof (functional_nbe_ty _ _ _ _ HW' HW) as ->.
   destruct (ind_lookup_f F pq) as [[D' |] Hl']; [| congruence ].
@@ -243,7 +249,7 @@ Proof.
   destruct (Compare_dec.lt_dec m0 (ind_ndecl D)) as [Hm0' | Hm0']; [| contradiction ].
   destruct (inspect _) as [[Us' |] HUs']; [| congruence ].
   assert (Us' = Us) as -> by congruence.
-  destruct (mdef_members_dec F HΞ pq D Us Δ (f0 :: fs)) as [[ms' Hms'] | [[f e] Hn]]; [| exfalso; exact (Hn _ Hms) ].
+  destruct (mdef_members_dec F lvdec HΞ pq D Us Δ (f0 :: fs)) as [[ms' Hms'] | [[f e] Hn]]; [| exfalso; exact (Hn _ Hms) ].
   assert (ms' = ms) as ->
     by (eapply Forall2_functional; [| exact Hms' | exact Hms ]; intros; eapply mdef_member_functional; eassumption).
   destruct (PeanoNat.Nat.eq_dec _ _) as [Hlen' | Hlen']; [| contradiction ].
