@@ -536,6 +536,41 @@ Proof.
   eapply rel_typ_implies_rel_exp; eassumption.
 Qed.
 
+(** The values of the type of a term judgment at related environments of
+    its context are related types, whatever the type: the part of
+    [presup_rel_exp_under_ctx] that holds at [LevelSort] too. *)
+Corollary presup_rel_exp_under_ctx_simple_at : forall {Γ A M M' R},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    Γ ⊨ M ≈ M' : A ->
+    exists i, forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i.
+Proof.
+  intros * HR [env_relΓ HΓ i HM].
+  exists i.
+  assert (E : R <~> env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  intros ρ ρ' Hρ%E.
+  destruct (eval_sub_id_rel HΓ Hρ) as [Hid Hid'].
+  destruct (HM _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hid Hid') as [R0 [Htyp _]].
+  destruct (rel_typ_implies_rel_exp Htyp) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
+  rewrite exp_sub_id in Ha1, Ha4.
+  exists a1, a4; split; [ exact Ha1 | split; [ exact Ha4 | pairwise ] ].
+Qed.
+
+(** The type of a term judgment is not [LevelSort] when none of its values
+    is. *)
+Lemma rel_type_not_level_sort_of_values : forall {Γ A M M'},
+    Γ ⊨ M ≈ M' : A ->
+    (forall ρ a, ⟦ A ⟧ ρ ↘ a -> not_level_sort a) ->
+    rel_type_not_level_sort Γ A.
+Proof.
+  intros * [env_relΓ HΓ i HM] Hv R HR ρ ρ' Hρ.
+  assert (E : R <~> env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  apply E in Hρ.
+  destruct (eval_sub_id_rel HΓ Hρ) as [Hid Hid'].
+  destruct (HM _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ Hid Hid') as [R0 [[a1 ? ? ? Ha1 ? ? ? _] _]].
+  rewrite exp_sub_id in Ha1.
+  exists a1; split; [ exact Ha1 | exact (Hv _ _ Ha1) ].
+Qed.
+
 End Fixed_GCtx.
 
 #[export]

@@ -603,32 +603,37 @@ Section RecordModel.
     pose proof (length_record_params_args (record_params R) _ _ Hg Hu) as Hu'.
     apply (per_univ_elem_record_canon (univ_idx a) p R ns ns' Hl Hnd Hu Hu');
       [ exact (per_tele_args_per_top_ps _ _ _ Hg ltac:(rewrite List.length_rev; exact Hu))
-      | exact (record_fields_related _ _ _ Hg Hu Ha) |].
-    (** The sorts: at related arguments of the fields' telescope, each
-        field's type is of its sort. *)
-    intros k f T vs vs' Hk Hp.
-    assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
-    pose proof (canon_fields_tele_args _ _ _ Hg Hu Ha k vs vs' ltac:(lia) Hp) as Hgv.
-    pose proof Hp as Hp0; rewrite tele_prefix_rel_iff in Hp0; destruct Hp0 as (Hlv & Hlv' & _).
-    assert (HC : ⊨ record_fctx R k ++ record_params R) by (apply record_fctx_sem; lia).
-    destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
-    assert (HE : RC (record_fields_env R ns vs) (record_fields_env R ns' vs')).
-    { unfold record_fields_env.
-      rewrite (env_tele_firstn _ (record_fields_tele R) vs), (env_tele_firstn _ (record_fields_tele R) vs'), Hlv, Hlv'.
-      rewrite record_fields_tele_eq, <- rev_record_fctx, <- !env_tele_closed_app by assumption.
-      apply (tele_args_env_rel _ _ _ _ _ _ HRC HC); [ rewrite !List.length_app, length_record_fctx by lia; lia |].
-      rewrite List.rev_app_distr, rev_record_fctx.
-      apply per_tele_args_app_intro; [ rewrite List.length_rev; exact Hu | exact Hg | exact Hgv ]. }
-    destruct (field_kind_cases k) as [Er | Er].
-    - assert (HTl : exists l : nat, record_fctx R k ++ record_params R ⊨ T : Typeω@l).
-      { pose proof (HT _ _ _ Hk) as H; rewrite Er in H; cbn [abs_kind_sort] in H.
-        destruct Hsu as [[i Heq] | [t Heq]]; rewrite Heq in H; cbn [exp_wk] in H;
-          [ exists i; exact H | exists 0; eapply rel_exp_suniv_tm_large; exact H ]. }
-      destruct HTl as [l HTl].
-      destruct (rel_exp_of_typ_relevant_at HRC HTl _ _ HE) as (t & Et & Ht); exists t; split; [ exact Et | rewrite Er; exact Ht ].
+      | exact (record_fields_related _ _ _ Hg Hu Ha) | | | exact HFk ].
+    (** The sorts, and that no field's type is [LevelSort]: at related
+        arguments of the fields' telescope, each field's type is of its
+        sort. *)
+    all: intros k f T vs vs' Hk Hp.
+    all: assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
+    all: pose proof (canon_fields_tele_args _ _ _ Hg Hu Ha k vs vs' ltac:(lia) Hp) as Hgv.
+    all: pose proof Hp as Hp0; rewrite tele_prefix_rel_iff in Hp0; destruct Hp0 as (Hlv & Hlv' & _).
+    all: assert (HC : ⊨ record_fctx R k ++ record_params R) by (apply record_fctx_sem; lia).
+    all: destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
+    all: assert (HE : RC (record_fields_env R ns vs) (record_fields_env R ns' vs'))
+      by (unfold record_fields_env;
+          rewrite (env_tele_firstn _ (record_fields_tele R) vs), (env_tele_firstn _ (record_fields_tele R) vs'), Hlv, Hlv';
+          rewrite record_fields_tele_eq, <- rev_record_fctx, <- !env_tele_closed_app by assumption;
+          apply (tele_args_env_rel _ _ _ _ _ _ HRC HC); [ rewrite !List.length_app, length_record_fctx by lia; lia |];
+          rewrite List.rev_app_distr, rev_record_fctx;
+          apply per_tele_args_app_intro; [ rewrite List.length_rev; exact Hu | exact Hg | exact Hgv ]).
+    all: assert (HTl : record_field_kind R k = ak_relevant -> exists l : nat, record_fctx R k ++ record_params R ⊨ T : Typeω@l)
+      by (intros Er; pose proof (HT _ _ _ Hk) as H; rewrite Er in H; cbn [abs_kind_sort] in H;
+          destruct Hsu as [[i Heq] | [t Heq]]; rewrite Heq in H; cbn [exp_wk] in H;
+          [ exists i; exact H | exists 0; eapply rel_exp_suniv_tm_large; exact H ]).
+    all: destruct (field_kind_cases k) as [Er | Er].
+    - destruct (HTl Er) as [l HTl'].
+      destruct (rel_exp_of_typ_relevant_at HRC HTl' _ _ HE) as (t & Et & Ht); exists t; split; [ exact Et | rewrite Er; exact Ht ].
     - pose proof (HT _ _ _ Hk) as HTp; rewrite Er in HTp; cbn [abs_kind_sort] in HTp.
       destruct (rel_exp_of_prop_inversion_simple_at HRC HTp _ _ HE) as (t & _ & Et & _ & [Ht _ _]).
       exists t; split; [ exact Et | rewrite Er; exact Ht ].
+    - destruct (HTl Er) as [l HTl'].
+      exact (rel_exp_of_typ_not_level_sort HTl' _ HRC _ _ HE).
+    - pose proof (HT _ _ _ Hk) as HTp; rewrite Er in HTp; cbn [abs_kind_sort] in HTp.
+      exact (rel_exp_of_prop_not_level_sort HTp _ HRC _ _ HE).
   Qed.
 
   (** The type former at related parameters, at the sort's universe. *)
@@ -662,7 +667,7 @@ Section RecordModel.
     assert (Hub : is_univ b) by exact (sort_tele_univ (record_params R) _ Hsu HS _ _ Eb).
     destruct (per_univ_elem_univ _ _ _ _ HR0 Hub) as [_ ER0].
     pose proof (univ_idx_rel _ _ _ _ _ _ _ _ HRU HSi HRUρ Eb Ea Hub) as Hi.
-    apply ER0; split; [| reflexivity | reflexivity ].
+    apply ER0; split; [| reflexivity | reflexivity | discriminate | discriminate ].
     rewrite <- Hi.
     eexists; exact (record_relate _ _ _ Hg0 Hlys Ea).
   Qed.
@@ -1646,7 +1651,11 @@ Section RecordModel.
     intros ρ ρ' Hρ; right.
     (** The record type at the two environments, and its element relation:
         the canonical one, whose fields are of their sorts. *)
-    destruct (presup_rel_exp_under_ctx HM) as [iT HT0].
+    (** The type is a record type, not [LevelSort]. *)
+    assert (HTn : rel_type_not_level_sort Γ (apps_exp (a_record p) Ns)).
+    { apply (rel_type_not_level_sort_of_values HM); intros ρ0 a0 Ea0.
+      destruct (eval_record_apps_inv _ _ _ Ea0 Hn) as (ns0 & _ & ->); discriminate. }
+    destruct (presup_rel_exp_under_ctx HM HTn) as [iT HT0].
     destruct (rel_type_inversion_simple_at HRΓ HT0 _ _ Hρ) as (a & a' & Ea & Ea' & [X HX]).
     destruct (eval_record_apps_inv _ _ _ Ea Hn) as (ns & _ & ->).
     destruct (eval_record_apps_inv _ _ _ Ea' Hn) as (ns' & _ & ->).

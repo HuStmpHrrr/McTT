@@ -143,6 +143,55 @@ Proof.
   exists b1; split; assumption.
 Qed.
 
+(** A type of a sort in an extended context, along the lifting [q σ], is
+    not [LevelSort]: its value is related to its value at the lifted
+    environment, which is not ([rel_type_under_ctx_not_level_sort]). *)
+Lemma rel_type_not_level_sort_under_ctx_q : forall {Γ Δ σ σ' κ A} {i j : nat} {B B' env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ᵗ A ≈ A at i ->
+    Δ ▹{κ} A ⊨ᵗ B ≈ B' at j ->
+    forall ρ ρ' ρσ ρ'σ' c c' t1 t2 t3 t4,
+      Dom ρ ↦ c ⦂ t1 ≈ ρ' ↦ c' ⦂ t4 ∈ per_env_extend A[σ] A[σ] env_relΓ ->
+      args_readable_at c c' ([t1; t2; t3; t4]) ->
+      ⟦ σ : Δ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' : Δ ⟧s ρ' ↘ ρ'σ' ->
+      value_not_level_sort B[q σ] (ρ ↦ c ⦂ t1).
+Proof.
+  intros * HΓ Hσj HA HB * Hpair Hts Hev Hev'.
+  pose proof (per_ctx_env_of_typ_sub (κ := κ) HΓ Hσj HA) as HΓA.
+  pose proof (rel_sub_under_ctx_q (κ := κ) Hσj HA) as Hqj.
+  pose proof (rel_type_under_ctx_not_level_sort _ _ _ _ HB) as HBn.
+  pose proof (rel_type_inversion HB) as [env_relΔA [HΔA HBgen]].
+  destruct (rel_sub_under_ctx_q_at HΓ HΔA Hσj HA _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+    as [s [s' [Hq [Hq' Hchain]]]].
+  destruct (HBgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq')
+    as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 ([R12 H12] & _)].
+  assert (P0 : Dom s ↦ c ⦂ centry_tag (ce_ass κ A) Δ s ≈ s ↦ c ⦂ centry_tag (ce_ass κ A) Δ s ∈ env_relΔA) by pairwise.
+  destruct (HBn _ HΔA _ _ P0) as (w & Ew & Hnw).
+  assert (w = b2) as -> by (eapply functional_eval_exp; eassumption).
+  exists b1; split; [ exact Hb1 | exact (proj2 (per_univ_elem_not_level_sort_iff _ _ _ _ H12) Hnw) ].
+Qed.
+
+(** The values of a domain at the environments of a stage of a semantic
+    judgment are not [LevelSort]: at the inner environment, and so along
+    the chain. *)
+Lemma domain_not_level_sort_at_stage : forall {Γ A A'} {i : nat} {k : universe_index} {Γ' env_rel' σ σ' ρ ρ' ρσ ρ'σ' in_rel a1 a2 a3 a4},
+    Γ ⊨ᵗ A ≈ A' at i ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
+    Γ' ⊨ˢ σ ≈ σ' : Γ -> Dom ρ ≈ ρ' ∈ env_rel' -> ⟦ σ : Γ ⟧s ρ ↘ ρσ -> ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
+    ⟦ A ⟧ ρσ ↘ a2 -> rel_chain (per_univ_elem k in_rel) ([a1; a2; a3; a4]) ->
+    not_level_sort a1.
+Proof.
+  intros * HA HΓ' Hσj Hρ Hev Hev' Ha2 Hachain.
+  pose proof (rel_type_inversion HA) as [env_relΓ [HΓ _]].
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ) by (eapply rel_sub_under_ctx_at'; eassumption).
+  destruct (rel_type_under_ctx_not_level_sort _ _ _ _ HA _ HΓ _ _ Hρσ) as (a0 & Ea0 & Hn0).
+  assert (a0 = a2) as -> by (eapply functional_eval_exp; eassumption).
+  assert (H12 : DF a1 ≈ a2 ∈ per_univ_elem k ↘ in_rel) by pairwise.
+  exact (proj2 (per_univ_elem_not_level_sort_iff _ _ _ _ H12) Hn0).
+Qed.
+
 (** ** The Type Judgment of a Π
 
     A stage of a semantic judgment, that is, a related pair of environments
@@ -206,7 +255,9 @@ Proof.
   (** The three codomain obligations are, in order, the three [q]-obligations of
       [B] at an argument pair drawn from the domain PER, and the codomain is
       of the relevant kind. *)
-  eapply per_univ_elem_pi_chain; [ exact Hachain | | | | | exact Hd1 | constructor | constructor ];
+  eapply per_univ_elem_pi_chain;
+    [ exact Hachain | | | | | exact Hd1 | constructor | constructor
+    | exact (domain_not_level_sort_at_stage HA HΓ' Hσj Hρ Hev Hev' Ha2 Hachain) | ];
     intros c c' Hc;
     pose proof (args_readable_of_chain Hachain Hc) as Hts;
     inversion Hts as [| ? ? [Hr1 Hr1'] Hts2]; subst; inversion Hts2 as [| ? ? [Hr2 Hr2'] Hts3]; subst;
@@ -214,8 +265,9 @@ Proof.
     pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ _ _ Hρ Ha1
                   ltac:(pairwise) Hc Hr1 Hr4') as Hpair;
     [ destruct (rel_exp_of_typ_under_ctx_q HΓ' Hσj HAself HB _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
-        as [O1 [O2 O3]]; eassumption .. |].
-  exact (rel_typ_sort_of_univ_under_ctx_q (u := ul i) HΓ' Hσj HAself HB _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev').
+        as [O1 [O2 O3]]; eassumption .. | |].
+  - exact (rel_typ_sort_of_univ_under_ctx_q (u := ul i) HΓ' Hσj HAself HB _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev').
+  - exact (rel_type_not_level_sort_under_ctx_q HΓ' Hσj HAself (rel_type_of_typ HB) _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev').
 Qed.
 
 (** A chain of Π-values into types of a universe in [per_univ i] is one
@@ -226,7 +278,7 @@ Lemma rel_chain_pi_relevant : forall {i R κ a1 a2 a3 a4 ρ1 ρ2 ρ3 ρ4 B1 B2 B
     rel_chain (per_universe_elements (per_univ i)) ([Πᵈ{κ} a1 ρ1 B1; Πᵈ{κ} a2 ρ2 B2; Πᵈ{κ} a3 ρ3 B3; Πᵈ{κ} a4 ρ4 B4]).
 Proof.
   intros * (H12 & H23 & H34).
-  apply rel_chain_4; (constructor; [ eexists; eassumption | reflexivity | reflexivity ]).
+  apply rel_chain_4; (constructor; [ eexists; eassumption | reflexivity | reflexivity | discriminate | discriminate ]).
 Qed.
 
 (** ** Π-Congruence in a Large Universe *)
@@ -360,7 +412,10 @@ Lemma rel_type_under_ctx_pi : forall {Γ κd κc A} {i : nat} {B},
 Proof.
   intros * HA HAk HB HBr Hk Hev0.
   pose proof (rel_type_inversion HA) as [env_relΓ [HΓ HAgen]].
-  econstructor; [ exact HΓ |].
+  econstructor; [ exact HΓ | |].
+  2:{ (** A [Π] is not [LevelSort]. *)
+      intros R HR ρ ρ' Hρ; destruct (rel_type_inversion_simple_at HR HA _ _ Hρ) as (a & _ & Ha & _ & _).
+      exists (d_pi κd κc a ρ B); split; [ apply eval_exp_pi; exact Ha | discriminate ]. }
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   functionalize_per_univ_chain Hachain in_rel.
@@ -369,15 +424,18 @@ Proof.
     [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
     | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
   eapply rel_chain_mono; [ intros ? ? Hp; eexists; exact Hp |].
-  eapply per_univ_elem_pi_chain; [ exact Hachain | | | | | exact Hd1 | exact Hk | exact Hev0 ];
+  eapply per_univ_elem_pi_chain;
+    [ exact Hachain | | | | | exact Hd1 | exact Hk | exact Hev0
+    | exact (domain_not_level_sort_at_stage HA HΓ' Hσj Hρ Hev Hev' Ha2 Hachain) | ];
     intros c c' Hc;
     pose proof (args_readable_of_chain Hachain Hc) as Hts;
     inversion Hts as [| ? ? [Hr1 Hr1'] Hts2]; subst; inversion Hts2 as [| ? ? [Hr2 Hr2'] Hts3]; subst;
       inversion Hts3 as [| ? ? [Hr3 Hr3'] Hts4]; subst; inversion Hts4 as [| ? ? [Hr4 Hr4'] _]; subst;
     pose proof (per_env_extend_sub_intro HΓ' Hσj HA _ _ _ _ _ _ _ _ _ _ Hρ Ha1
                   ltac:(pairwise) Hc Hr1 Hr4') as Hpair;
-    destruct (rel_type_under_ctx_q HΓ' Hσj HA HB HBr _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
-      as [O1 [O2 [O3 O4]]]; eassumption.
+    first [ exact (rel_type_not_level_sort_under_ctx_q HΓ' Hσj HA HB _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+          | destruct (rel_type_under_ctx_q HΓ' Hσj HA HB HBr _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+              as [O1 [O2 [O3 O4]]]; eassumption ].
 Qed.
 
 (** The four values of a [Π] into a type of an evaluated kind, as
@@ -419,15 +477,18 @@ Proof.
                     (d_pi κd κc a3 ρ'σ' B) (d_pi κd κc a4 ρ' B[q σ']));
     [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
     | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
-  eapply per_univ_elem_pi_chain; [ exact Hachain | | | | | exact Hd1 | exact Hk | exact Hev0 ];
+  eapply per_univ_elem_pi_chain;
+    [ exact Hachain | | | | | exact Hd1 | exact Hk | exact Hev0
+    | exact (domain_not_level_sort_at_stage HA HΓ' Hσj Hρ Hev Hev' Ha2 Hachain) | ];
     intros c c' Hc;
     pose proof (args_readable_of_chain Hachain Hc) as Hts;
     inversion Hts as [| ? ? [Hr1 Hr1'] Hts2]; subst; inversion Hts2 as [| ? ? [Hr2 Hr2'] Hts3]; subst;
       inversion Hts3 as [| ? ? [Hr3 Hr3'] Hts4]; subst; inversion Hts4 as [| ? ? [Hr4 Hr4'] _]; subst;
     pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ _ _ Hρ Ha1
                   ltac:(pairwise) Hc Hr1 Hr4') as Hpair;
-    destruct (rel_type_under_ctx_q HΓ' Hσj HAself HB HBr _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
-      as [O1 [O2 [O3 O4]]]; eassumption.
+    first [ exact (rel_type_not_level_sort_under_ctx_q HΓ' Hσj HAself HB _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+          | destruct (rel_type_under_ctx_q HΓ' Hσj HAself HB HBr _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev')
+              as [O1 [O2 [O3 O4]]]; eassumption ].
 Qed.
 
 (** A [Π] is of the kind of its codomain. *)
@@ -661,14 +722,17 @@ Proof.
                   ltac:(pairwise) Hc Hr1 Hr4) as Hpair.
     exact (rel_exp_of_suniv_under_ctx_q HΓ' Hσj HAself HL HB _ _ _ _ _ _ _ _ _ _ t Hpair Hts Hev Hev' Ht). }
   apply (rel_chain_pi_relevant (i := j) (R := per_pi a2 a3 in_rel B ρσ B' ρ'σ')).
-  eapply per_univ_elem_pi_chain; [ exact Hachain | | | | | exact Hd1 | constructor | constructor ];
+  eapply per_univ_elem_pi_chain;
+    [ exact Hachain | | | | | exact Hd1 | constructor | constructor
+    | exact (domain_not_level_sort_at_stage HAself HΓ' Hσj Hρ Hev Hev' Ha2 Hachain) | ];
     intros c c' Hc;
     destruct (Hobl _ _ Hc)
       as (Or & (b1 & b1' & E1 & E1' & H1) & (b2 & b2' & E2 & E2' & H2) & (b3 & b3' & E3 & E3' & H3));
     first [ exact Or
           | exists b1, b1'; split; [ exact E1 | split; [ exact E1' | exact (per_universe_elements_univ_rel H1) ] ]
           | exists b2, b2'; split; [ exact E2 | split; [ exact E2' | exact (per_universe_elements_univ_rel H2) ] ]
-          | exists b3, b3'; split; [ exact E3 | split; [ exact E3' | exact (per_universe_elements_univ_rel H3) ] ] ].
+          | exists b3, b3'; split; [ exact E3 | split; [ exact E3' | exact (per_universe_elements_univ_rel H3) ] ]
+          | exists b1; split; [ exact E1 | exact (per_universe_elements_left_not_level_sort _ _ _ H1) ] ].
 Qed.
 
 Hint Resolve rel_exp_under_ctx_pi_cong_small : mctt.
@@ -682,16 +746,17 @@ Hint Resolve rel_exp_under_ctx_pi_cong_small : mctt.
     at every related pair of arguments. *)
 Lemma per_prop_all : forall {k R κd a a' ρ ρ' B B'},
     DF a ≈ a' ∈ per_univ_elem k ↘ R ->
+    not_level_sort a ->
     (forall c c', Dom c ≈ c' ∈ R ->
         exists b b', ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\ ⟦ B' ⟧ ρ' ↦ c' ⦂ entry_type_value a' ↘ b' /\
                      Dom b ≈ b' ∈ per_prop) ->
     Dom ∀ₚᵈ{κd} a ρ B ≈ ∀ₚᵈ{κd} a' ρ' B' ∈ per_prop.
 Proof.
-  intros * Ha HB.
+  intros * Ha Hna HB.
   constructor; [ reflexivity | reflexivity |].
   intros s.
   destruct (per_univ_then_per_top_typ Ha s) as [A A' HA HA' HEA].
-  pose proof (per_bot_then_per_elem Ha (var_per_bot (n := s))) as Hvar.
+  pose proof (var_per_elem s Ha Hna) as Hvar.
   destruct (HB _ _ Hvar) as [b [b' [Hb [Hb' [_ _ Hbb]]]]].
   destruct (Hbb (S s)) as [P P' HP HP' HEP].
   apply (mk_type_reads_alike _ _ _ (∀ₚⁿ{κd} A P) (∀ₚⁿ{κd} A' P'));
@@ -725,14 +790,18 @@ Proof.
     pose proof (entry_readable_of_elem Ha14 Hc) as [Hr1 Hr4].
     pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ _ _ Hρ Ha1 Ha14 Hc Hr1 Hr4) as Hpair.
     exact (rel_exp_of_prop_under_ctx_q HΓ' Hσj HAself HB _ _ _ _ _ _ _ _ _ _ Hpair Hts Hev Hev'). }
+  (** The domains are not [LevelSort], along the chain. *)
+  pose proof (domain_not_level_sort_at_stage HA HΓ' Hσj Hρ Hev Hev' Ha2 Hachain) as Hn1.
   destruct Hachain as (H12 & H23 & H34).
+  pose proof (proj1 (per_univ_elem_not_level_sort_iff _ _ _ _ H12) Hn1) as Hn2.
+  pose proof (proj1 (per_univ_elem_not_level_sort_iff _ _ _ _ H23) Hn2) as Hn3.
   apply (mk_rel_exp ∀ₚᵈ{κd} a1 ρ B[q σ] ∀ₚᵈ{κd} a2 ρσ B ∀ₚᵈ{κd} a3 ρ'σ' B' ∀ₚᵈ{κd} a4 ρ' B'[q σ']);
     [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
     | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
   apply rel_chain_4.
-  - eapply per_prop_all; [ exact H12 |]; intros c c' Hc; exact (proj1 (Hq _ _ Hc)).
-  - eapply per_prop_all; [ exact H23 |]; intros c c' Hc; exact (proj1 (proj2 (Hq _ _ Hc))).
-  - eapply per_prop_all; [ exact H34 |]; intros c c' Hc; exact (proj2 (proj2 (Hq _ _ Hc))).
+  - eapply per_prop_all; [ exact H12 | exact Hn1 |]; intros c c' Hc; exact (proj1 (Hq _ _ Hc)).
+  - eapply per_prop_all; [ exact H23 | exact Hn2 |]; intros c c' Hc; exact (proj1 (proj2 (Hq _ _ Hc))).
+  - eapply per_prop_all; [ exact H34 | exact Hn3 |]; intros c c' Hc; exact (proj2 (proj2 (Hq _ _ Hc))).
 Qed.
 
 Hint Resolve rel_exp_under_ctx_all : mctt.
@@ -1333,7 +1402,8 @@ Proof.
   intros * HA HB HN HNs * HΓ' * Hσj Hρ Hev Hev'.
   pose proof (rel_exp_of_prop_inversion HA) as [env_relΓ [HΓ HAgen]].
   pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
-  pose proof (rel_sub_under_ctx_extend_sub (κ := ak_propositional) (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
+  pose proof (rel_exp_of_prop_not_level_sort HA) as HAn.
+  pose proof (rel_sub_under_ctx_extend_sub (κ := ak_propositional) (rel_sub_id (ex_intro _ _ HΓ)) HN HAn HNs HNs) as HidN.
   rewrite exp_sub_id in HidN.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
     by (eapply (rel_sub_under_ctx_at' Hσj HΓ' HΓ); eassumption).
@@ -1354,7 +1424,7 @@ Proof.
 
       The first along [σ ,, N[σ]], its outer values rewritten into the
       goal's spelling. *)
-  destruct (HBgen _ _ HΓ' _ _ (rel_sub_under_ctx_extend_sub Hσj HN HNs HNs) _ _ _ _ Hρ
+  destruct (HBgen _ _ HΓ' _ _ (rel_sub_under_ctx_extend_sub Hσj HN HAn HNs HNs) _ _ _ _ Hρ
                   (eval_sub_extend_proof _ _ _ _ _ _ Hev Hp2)
                   (eval_sub_extend_proof _ _ _ _ _ _ Hev' Hp3))
     as [t1 tA2 tA3 t4 Ht1 HtA2 HtA3 Ht4 HtAchain].
@@ -1596,7 +1666,8 @@ Proof.
   pose proof (rel_type_inversion HA) as [env_relΓ [HΓ HAgen]].
   pose proof HA as HAt.
   pose proof (per_ctx_env_of_typ (κ := κd) HΓ HAt) as HΓA.
-  pose proof (rel_sub_under_ctx_extend_sub (κ := κd) (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
+  pose proof (rel_type_under_ctx_not_level_sort _ _ _ _ HA) as HAn.
+  pose proof (rel_sub_under_ctx_extend_sub (κ := κd) (rel_sub_id (ex_intro _ _ HΓ)) HN HAn HNs HNs) as HidN.
   rewrite exp_sub_id in HidN.
   pose proof HBr as (rB & HrB & HBk).
   assert (HBrel : forall ρ ρ' R, EF Γ ▹{κd} A ≈ Γ ▹{κd} A ∈ per_ctx_env ↘ R -> Dom ρ ≈ ρ' ∈ R -> rel_typ_evaluated B ρ)
@@ -1651,7 +1722,7 @@ Proof.
 
       Along [σ ,, N[σ] ≈ σ' ,, N[σ']], whose right-hand outer value is the goal's
       fourth once [exp_sub_extend_sub] has rewritten it. *)
-  destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_extend_sub (κ := κd) Hσj HN HNs HNs) _ _ _ _ Hρ
+  destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_extend_sub (κ := κd) Hσj HN HAn HNs HNs) _ _ _ _ Hρ
                   (eval_sub_extend _ _ _ _ _ _ _ Hev Hnp2 Hn1)
                   (eval_sub_extend _ _ _ _ _ _ _ Hev' Hnp3 Hn4))
     as [RA [HAtyp HAexp]].
@@ -1773,7 +1844,8 @@ Proof.
   pose proof (rel_exp_of_prop_inversion HA) as [env_relΓ [HΓ _]].
   pose proof (rel_type_of_prop i HA) as HAt.
   pose proof (per_ctx_env_of_typ (κ := ak_propositional) HΓ HAt) as HΓA.
-  pose proof (rel_sub_under_ctx_extend_sub (κ := ak_propositional) (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
+  pose proof (rel_exp_of_prop_not_level_sort HA) as HAn.
+  pose proof (rel_sub_under_ctx_extend_sub (κ := ak_propositional) (rel_sub_id (ex_intro _ _ HΓ)) HN HAn HNs HNs) as HidN.
   rewrite exp_sub_id in HidN.
   assert (HBrel : forall ρ ρ' R, EF Γ ▹{ak_propositional} A ≈ Γ ▹{ak_propositional} A ∈ per_ctx_env ↘ R ->
                     Dom ρ ≈ ρ' ∈ R -> rel_typ_evaluated B ρ)
@@ -1852,7 +1924,7 @@ Proof.
   assert (Hext14 : Dom ρσ ↦ ⋆ᵈ⟨N[σ], ρ⟩ ⦂ centry_tag (ce_ass ak_propositional A) Γ ρσ ≈ ρ'σ' ↦ ⋆ᵈ⟨N[σ'], ρ'⟩ ⦂ centry_tag (ce_ass ak_propositional A) Γ ρ'σ'
                      ∈ per_env_extend A A env_relΓ)
     by exact (per_env_extend_intro_tagged HΓA HΓ Hρσ (per_head_proof Ha2 Hr2 Rp1 Rp4)).
-  destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_extend_sub (κ := ak_propositional) Hσj HN HNs HNs) _ _ _ _ Hρ
+  destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_extend_sub (κ := ak_propositional) Hσj HN HAn HNs HNs) _ _ _ _ Hρ
                   (eval_sub_extend_proof _ _ _ _ _ _ Hev Hp2)
                   (eval_sub_extend_proof _ _ _ _ _ _ Hev' Hp3))
     as [RA [HAtyp HAexp]].

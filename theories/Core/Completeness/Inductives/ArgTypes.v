@@ -334,7 +334,7 @@ Section GroupFacts.
     - intros m Mm k vs vs1 vs2 HM Hk Hp _.
       destruct (nparams_lt_ass D m Mm k Hass HM Hk) as (κ & A & HA).
       pose proof (nparams_prefix_rel_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI m Mm HM k vs vs1 ltac:(lia) Hp) as Hpp.
-      destruct (canon_hn D HD Hc Hsu ups a Hu Ha ups2 Hg2 m Mm k κ A vs vs HM HA Hpp) as (b & b' & Eb & Eb' & [R HR]).
+      destruct (canon_hn D HD Hc Hsu ups a Hu Ha ups2 Hg2 m Mm k κ A vs vs HM HA Hpp) as (b & b' & Eb & Eb' & [R HR] & _).
       unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ _ HM HA), (member_nparams_eq _ _ _ HM).
       etransitivity; [ symmetry; exact (per_head_left Eb Eb' HR) | exact (per_head_right Eb Eb' HR) ].
     - intros m Mm ms ms1 ms2 c gs k vs vs1 vs2 HM Hm _ Hcon Hk Hp _.
@@ -342,7 +342,7 @@ Section GroupFacts.
       pose proof (nparams_rel_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI m Mm HM _ _ Hm) as Hmm.
       pose proof (args_rel_pre_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI m Mm HM ms c gs Hmm Hcon k vs vs1 ltac:(lia) Hp)
         as Hpp.
-      destruct (canon_ha D HD Hc Hsu ups a Hu Ha ups2 Hg2 m Mm ms ms c gs k A vs vs HM Hmm Hcon HA Hpp) as (b & b' & Eb & Eb' & [R HR]).
+      destruct (canon_ha D HD Hc Hsu ups a Hu Ha ups2 Hg2 m Mm ms ms c gs k A vs vs HM Hmm Hcon HA Hpp) as (b & b' & Eb & Eb' & [R HR] & _).
       unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hcon HA), (member_nparams_eq _ _ _ HM),
         (member_con_tele_eq _ _ _ _ _ HM Hcon).
       etransitivity; [ symmetry; exact (per_head_left Eb Eb' HR) | exact (per_head_right Eb Eb' HR) ].
@@ -467,7 +467,7 @@ Proof.
   eexists_rel_exp_of_typ.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hu : per_universe_elements (per_univ (S i)) 𝕌ω@i 𝕌ω@i)
-    by (constructor; [| reflexivity | reflexivity ];
+    by (constructor; [| reflexivity | reflexivity | discriminate | discriminate ];
         eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ]).
   econstructor; try apply eval_exp_typ.
   apply rel_chain_4; assumption.
@@ -1067,8 +1067,8 @@ Proof.
   assert (Ew : RΓ <~> RΓw) by (eapply per_ctx_env_right_irrel; eassumption).
   pose proof (Hφ _ _ (proj1 (Ew _ _) Hρ)) as Hφρ.
   pose proof (per_ctx_env_retag_right HRΔw _ _ Hφρ) as Hφr.
-  destruct (presup_rel_exp_under_ctx HM) as [iA HA].
-  destruct (rel_type_inversion_simple_at HRΔw HA _ _ Hφr) as (a2 & a3 & Ea2 & Ea3 & [R2 HR2]).
+  destruct (presup_rel_exp_under_ctx_simple_at HRΔw HM) as [iA HA].
+  destruct (HA _ _ Hφr) as (a2 & a3 & Ea2 & Ea3 & [R2 HR2]).
   assert (a2 = a1) as -> by (eapply functional_eval_exp; eassumption).
   destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HR1 HR2) as (R3 & HR3 & E13).
   exists i, R3, a, a3; split; [ exact Ea | split; [ exact Ea3 | split; [ exact HR3 |] ] ].
@@ -1884,7 +1884,7 @@ Section ShapeChar.
                         k ups ups ((ns ++ nv ++ ys) ++ c0 :: nil) ((ns ++ nv ++ ys) ++ c1 :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t' r r' ->
                       rec_arg_rel p D (admissible_index_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups)
                         k ups ups ((ns ++ nv ++ ys) ++ c0 :: nil) ((ns ++ nv ++ ys) ++ c2 :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t' r r').
-           { intros c0 c1 c2 r r' H01 H12 Hs0.
+           { intros c0 c1 c2 r r' H01 H12d Hs0.
              assert (H00 : canon_doms_rel D ups k (ns ++ nv ++ ys) Ts B c0 c0) by (etransitivity; [ exact H01 | symmetry; exact H01 ]).
              rewrite <- !List.app_assoc in Hs0 |- *.
              eapply (Hprer _ _ _ _ _ _ _ _ _ Hs0 Mk ns ns ns c gs1 t gs2 nv nv nv (S kk)
@@ -2152,7 +2152,11 @@ Section ShapeChar.
              assert (b0 = a0) as -> by (eapply functional_eval_exp; eassumption); exact Hr0. }
            eexists; apply (per_univ_elem_pi_canonical HRd);
              [| intros c0 c0' Hcc; apply (HcodS c0 c0'); apply ERd; exact Hcc
-              | exact Hd0 | rewrite <- (per_univ_elem_kind _ _ _ _ HRd); exact Hd0 | constructor | constructor ].
+              | exact Hd0 | rewrite <- (per_univ_elem_kind _ _ _ _ HRd); exact Hd0 | constructor | constructor
+              | assumption
+              | intros c0 c0' Hcc;
+                match goal with HN : forall c c', in_rel c c' -> value_not_level_sort _ _ |- _ => apply (HN c0 c0') end;
+                apply ERd; exact Hcc ].
            intros c0 c0' Hcc.
            assert (Hin : in_rel c0 c0') by (apply ERd; exact Hcc).
            assert (Hin0 : in_rel c0' c0') by (etransitivity; [ symmetry; exact Hin | exact Hin ]).

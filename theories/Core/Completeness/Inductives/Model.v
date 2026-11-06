@@ -894,7 +894,7 @@ Section Sort.
     rewrite Hidx; apply ER0; exact Htt.
   Qed.
 
-  (** So the values are related types of the universe. *)
+  (** So the values are related types of the universe, not [LevelSort]. *)
   Corollary sort_typ_rel : forall Pre T, ⊨ Pre ++ ind_uparams D ->
       Pre ++ ind_uparams D ⊨ T : (ind_sort D)[wk_shiftn (List.length Pre)]ʷ ->
       forall ups ups' zs zs', List.length zs = List.length Pre -> List.length zs' = List.length Pre ->
@@ -902,11 +902,12 @@ Section Sort.
         per_tele_args (List.rev (Pre ++ ind_uparams D)) nil nil (ups ++ zs) (ups' ++ zs') ->
         forall a, ⟦ ind_sort D ⟧ decl_env D ups ↘ a ->
         exists t t', ⟦ T ⟧ components_env D ups (List.rev Pre) zs ↘ t /\ ⟦ T ⟧ components_env D ups' (List.rev Pre) zs' ↘ t' /\
-          Dom t ≈ t' ∈ per_univ (univ_idx a).
+          Dom t ≈ t' ∈ per_univ (univ_idx a) /\ not_level_sort t.
   Proof.
     intros * HC HT * Hz Hz' Hu Hu' Hg a Ha.
     destruct (sort_typ_rel_relevant _ _ HC HT _ _ _ _ Hz Hz' Hu Hu' Hg a Ha) as (t & t' & Et & Et' & Htt).
-    exists t, t'; split; [ exact Et | split; [ exact Et' | exact (per_universe_elements_rel _ _ _ Htt) ] ].
+    exists t, t'; split; [ exact Et | split; [ exact Et' | split ] ];
+      [ exact (per_universe_elements_rel _ _ _ Htt) | exact (per_universe_elements_left_not_level_sort _ _ _ Htt) ].
   Qed.
 
   (** The same at either kind of a constructor argument ([carg_kind]): a
@@ -919,7 +920,7 @@ Section Sort.
         per_tele_args (List.rev (Pre ++ ind_uparams D)) nil nil (ups ++ zs) (ups' ++ zs') ->
         forall a, ⟦ ind_sort D ⟧ decl_env D ups ↘ a ->
         exists t t', ⟦ T ⟧ components_env D ups (List.rev Pre) zs ↘ t /\ ⟦ T ⟧ components_env D ups' (List.rev Pre) zs' ↘ t' /\
-          Dom t ≈ t' ∈ per_univ (univ_idx a).
+          Dom t ≈ t' ∈ per_univ (univ_idx a) /\ not_level_sort t.
   Proof.
     intros r Pre T Hr HC HT * Hz Hz' Hu Hu' Hg a Ha; destruct Hr; cbn [abs_kind_sort] in HT;
       [ exact (sort_typ_rel _ _ HC HT _ _ _ _ Hz Hz' Hu Hu' Hg a Ha) |].
@@ -928,8 +929,9 @@ Section Sort.
     { rewrite <- !env_tele_uparams by assumption.
       apply (tele_args_env_rel _ _ _ _ _ _ HR HC); [ unfold ind_nu in *; rewrite !List.length_app; lia | exact Hg ]. }
     destruct (rel_exp_of_prop_inversion_simple_at HR HT _ _ HRe) as (t & t' & Et & Et' & Hp).
-    exists t, t'; split; [ exact Et | split; [ exact Et' |] ].
-    exists per_proof; apply per_univ_elem_of_prop; exact Hp.
+    exists t, t'; split; [ exact Et | split; [ exact Et' | split ] ].
+    - exists per_proof; apply per_univ_elem_of_prop; exact Hp.
+    - exact (propositional_kind_not_level_sort _ (per_prop_left _ _ Hp)).
   Qed.
 
   (** Arguments related at a telescope of types at the sort or
@@ -990,7 +992,7 @@ Section Sort.
                   ltac:(unfold Pre; rewrite !List.length_app, List.length_rev; lia)
                   ltac:(unfold Pre; rewrite !List.length_app, List.length_rev; lia)
                   Hu Hu' Hg'' a Ha)
-        as (t & t' & Et & Et' & [R0 HR0]).
+        as (t & t' & Et & Et' & [R0 HR0] & _).
       destruct (per_univ_elem_to_nat _ _ _ _ HR0) as [n Hn].
       unfold Pre in Et, Et'; rewrite List.rev_app_distr, List.rev_involutive in Et, Et'.
       apply (per_tele_args_snoc _ _ _ _ _ _ _ _ _ n R0); [ lia | exact IHk | |].
@@ -1821,7 +1823,7 @@ Section Sort.
       rewrite <- length_im_nparams in Eb.
       pose proof (univ_idx_wk _ _ _ _ _ _ _ _ _ (valid_ind_decl_params _ HD _ _ HM) HS HRP HEE Eb ltac:(rewrite Hwk; exact Ea0) Hub) as Hi1.
       pose proof (univ_idx_rel _ _ _ _ _ _ _ _ HRU HS HRUρ Ea0 Ea (sort_univ _ _ Ea0)) as Hi2.
-      apply ER0; split; [| reflexivity | reflexivity ].
+      apply ER0; split; [| reflexivity | reflexivity | discriminate | discriminate ].
       rewrite <- Hi1, <- Hi2.
       (** The type former at the parameters. *)
       assert (Hns : tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams Mk)) ns ns').

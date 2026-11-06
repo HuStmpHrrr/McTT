@@ -145,7 +145,7 @@ Section Fixed_GCtx.
     destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
     rename H0 into Hass, H1 into HM, H2 into Hh, H5 into Hps, H6 into HnP, H7 into Hn, H8 into HnI, H9 into HaP, H10 into Ha,
       H11 into HaI, H12 into HdP, H13 into Hd, H14 into HdI, H15 into Hcl, H16 into Hcd,
-      H17 into Hns, H18 into HE.
+      H17 into Hdnl, H18 into Hns, H19 into HE.
     (** The relations of the clause are the canonical ones at [ups]. *)
     pose proof (ind_fam_agree_of_evals i D ups ups' nr ar dr Hass
                   ltac:(red; intros * HM0 HA Hp; destruct (Hn _ _ _ _ _ _ _ HM0 HA Hp) as [a a' Ea Ea' HR]; econstructor; eauto)
