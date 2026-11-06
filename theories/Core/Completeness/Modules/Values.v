@@ -459,6 +459,19 @@ Proof.
   intros c c' Hc; destruct_rel_mod_eval; econstructor; eassumption.
 Qed.
 
+(** The domain of such a [Π] is not [LevelSort]. *)
+Lemma per_univ_elem_pi_domain_not_level_sort : forall {j E κd κc a ρ B κd' κc' a' ρ' B'},
+    evaluated_kind κc ->
+    per_univ_elem j E (d_pi κd κc a ρ B) (d_pi κd' κc' a' ρ' B') ->
+    not_level_sort a.
+Proof.
+  intros * Hk H.
+  basic_invert_per_univ_elem H.
+  all: try (exfalso; match goal with Hp : per_prop _ _ |- _ => pose proof (per_prop_left _ _ Hp) as Hl end;
+            cbn [domain_kind] in Hl; rewrite Hl in Hk; inversion Hk).
+  assumption.
+Qed.
+
 (** The member of a value lacking a parameter, at a [Π] over a type of
     that parameter: when it is related at the codomain once applied, it is
     related at the [Π]. *)
@@ -484,7 +497,7 @@ Proof.
   { intros c c' Hc; destruct (Happ0 _ _ (Hrel _ _ Hc)) as (kc & hc & Hkc & Hhc & Hr).
     exists hc, kc; repeat split; [ exact Hhc | exact Hkc | apply per_dmod_sym; exact Hr ]. }
   (* the member of the other value, at a reflected variable *)
-  pose proof (var_per_elem 0 Hin) as Hc0.
+  pose proof (var_per_elem 0 Hin (per_univ_elem_pi_domain_not_level_sort Hκc HE)) as Hc0.
   destruct (Happ _ _ Hc0) as (hc0 & kc0 & Hhc0 & Hkc0 & Hc00).
   destruct (Hout _ _ Hc0) as [b0 b0' Hb0 Hb0' Hbb0].
   destruct (Hcod _ _ _ Hin Hc0 _ _ Hkc0 Hb0') as (l0 & Rb0 & _ & Hm0).
