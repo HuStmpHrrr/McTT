@@ -3921,4 +3921,562 @@ Section Impl.
       destruct (run_unit_impl a b c d e f g h) as [[[r [_ Hs Hu]] l] | e'] end; intros E; [| discriminate ].
     injection E as <- <- <- <-; rewrite decode_units_drop, decode_unit_drop; split; assumption.
   Qed.
+
+  (** ** Completeness
+
+      By induction on the derivation, for every accessibility proof.  The
+      executable loads only where the derivation does ([run_cmd_load]), and
+      under the same chain.  For a unit filed already, the derivation loads
+      it, but the executable shares it without recursing.  Each check the
+      executable makes is decided as the derivation has it, at the
+      restriction, which [unit_invariant_equiv] relates to the judgment's
+      state. *)
+
+  (** A judgment at a step's fast context, as the goal, read in Core *)
+  Ltac cmd_goal :=
+    repeat match goal with
+      | |- context [fc_gctx (fctx_cmd ?B ?s ?D ?fs ?Hok)] => rewrite (fc_gctx_cmd B s D fs Hok)
+      | |- context [fc_tele (fctx_cmd ?B ?s ?D ?fs ?Hok)] => rewrite (fc_tele_cmd B s D fs Hok)
+      end;
+    cbn [gc_deps gc_stack].
+
+  (** A name the derivation has fresh, decided fresh fast *)
+  Ltac fresh_case Hfr' :=
+    match goal with |- context [fs_fresh_sum ?a ?b ?c ?d] =>
+      destruct (fs_fresh_sum a b c d) as [Hfr' | Hfr']; [| contradiction ] end.
+
+  (** Parameters of evaluated kinds, decided as the derivation has them;
+      [He] and [Hgr] relate the derivation's global context to the
+      step's. *)
+  Ltac params_case He Hgr :=
+    match goal with
+    | HPr0 : params_evaluated _ _ _ _ ?l0 |- context [params_evaluated_dec ?a ?b ?c ?d] =>
+        destruct (params_evaluated_dec a b c d) as [[l_params H_params] | HPr'];
+        [| exfalso; apply (HPr' l0); cmd_goal; exact (equiv_params_evaluated _ _ _ _ _ _ He Hgr HPr0) ]
+    end.
+
+  (** A module read with no level member over a parameter of a universe,
+      decided as the derivation has it *)
+  Ltac levels_case He Hgr :=
+    match goal with
+    | Hla0 : levels_abstractable _ _ _ _ _ |- context [lvd ?a ?b ?c ?d ?e ?f] =>
+        destruct (lvd a b c d e f) as [Hlv_dec | Hlv_dec];
+        [| exfalso; apply Hlv_dec; cmd_goal; exact (equiv_levels_abstractable _ _ _ He Hgr _ _ _ Hla0) ]
+    end.
+
+  (** A type of a large universe, decided as the derivation has it
+      ([large_type_dec]). *)
+  Ltac universe_case He Hgr :=
+    match goal with
+    | HW0 : _ ⍮ _ ⍮ _ ⊢ nf_to_exp _ : Typeω@?i0 |- context [large_type_dec ?a ?b ?c ?d ?e] =>
+        destruct (large_type_dec a b c d e) as [[? ?] | HWt'];
+        [| exfalso; apply (HWt' i0); cmd_goal; exact (equiv_exp _ _ _ _ _ _ He Hgr HW0) ]
+    end.
+
+  (** The fast entries a step builds, then its success *)
+  Ltac finish_step :=
+    repeat match goal with |- context [match ?t with exist _ _ _ => _ end] => destruct t end;
+    eexists; reflexivity.
+
+  (** A step that changes the frames only, as the command's step *)
+  Lemma frames_step_complete {ch s K D B fs c} (H : pre ch s K D fs) (x : frames_result ch s K D B fs c) :
+      (exists p, x = run_success p) -> exists r, frames_step H x = run_success r.
+  Proof. intros [[fs' Hp] ->]; eexists; reflexivity. Qed.
+
+  (** The type of a definition, at the kind its command carries: the kind
+      found is the command's, as a type is of one kind only. *)
+  Lemma kind_found {ch s K D fs} B (H : pre ch s K D fs) {A κ κ'} {i j : nat} :
+      fc_deps (cmd_F B H) ⍮ fc_stack (cmd_F B H) ⍮ fc_tele (cmd_F B H) ⊢ A : abs_kind_sort κ' Typeω@j ->
+      gds_restrict D (decode_units s) ⍮ decode_stack fs ⍮ gs_tele (decode_stack fs) ⊢ A : abs_kind_sort κ Typeω@i -> κ' = κ.
+  Proof.
+    intros HA' HA; pose proof (cmd_exp B H nil A _ HA') as HA1; cbn [List.app] in HA1.
+    exact (@kind_sort_unique (gc_mk (gds_restrict D (decode_units s)) (decode_stack fs)) _ _ _ _ _ _ HA1 HA).
+  Qed.
+
+  Lemma def_complete : forall ch B RbR ΘR x b pv κ A oM B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_def x b pv κ A oM ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, def_step ch s K D B fs x b pv κ A oM H = run_success r.
+  Proof.
+    intros * Hli Hr; pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+    inversion Hr; subst; simp def_step; fresh_case Hfr'; simp def_step.
+    - match goal with HM : _ ⍮ _ ⍮ _ ⊢ M : A |- _ => pose proof (equiv_exp _ _ _ _ _ _ He Hgr HM) as HM0 end.
+      match goal with HA : _ ⍮ _ ⍮ _ ⊢ A : abs_kind_sort _ _ |- _ => pose proof (equiv_exp _ _ _ _ _ _ He Hgr HA) as HA0 end.
+      match goal with |- context [check_type ?f ?l ?a ?b ?c] => destruct (check_type f l a b c) as [[κ' [j HA']] | HA'] end;
+        simp def_step; [| exfalso; eapply HA'; cmd_goal; exact HA0 ].
+      pose proof (kind_found _ H HA' HA0) as ->.
+      destruct (abs_kind_eq_dec κ κ) as [Eκ | Hn]; [| contradiction ]; simp def_step.
+      destruct (level_premise_dec κ (fs_tele fs)) as [Hlv' | Hlv']; simp def_step;
+        [| exfalso; apply Hlv'; rewrite <- fs_tele_dec; assumption ].
+      match goal with |- context [check_exp_typed ?z ?l ?a ?b ?c ?d ?e] => destruct (check_exp_typed z l a b c d e) as [HM' | HM'] end;
+        simp def_step; [ finish_step |].
+      exfalso; apply HM'; cmd_goal; exact HM0.
+    - match goal with HA : _ ⍮ _ ⍮ _ ⊢ A : abs_kind_sort _ _ |- _ => pose proof (equiv_exp _ _ _ _ _ _ He Hgr HA) as HA0 end.
+      match goal with |- context [check_type ?f ?l ?a ?b ?c] => destruct (check_type f l a b c) as [[κ' [j HA']] | HA'] end;
+        simp def_step; [| exfalso; eapply HA'; cmd_goal; exact HA0 ].
+      pose proof (kind_found _ H HA' HA0) as ->.
+      destruct (abs_kind_eq_dec κ κ) as [Eκ | Hn]; [| contradiction ]; simp def_step.
+      destruct (abs_kind_eq_dec κ ak_level) as [Ek | Hk]; [ contradiction |]; simp def_step; finish_step.
+  Qed.
+
+  Lemma mod_open_complete : forall ch B RbR ΘR x pv Δ B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_mod_open x pv Δ ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, mod_open_step ch s K D B fs x pv Δ H = run_success r.
+  Proof.
+    intros * Hli Hr; pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+    inversion Hr; subst; simp mod_open_step.
+    destruct (all_assumptions_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp mod_open_step.
+    match goal with HΔ0 : ⊢ _ ⍮ _ ⍮ Δ ++ _ |- context [check_ctx ?f ?l ?a ?b] =>
+      destruct (check_ctx f l a b) as [HΔ' | HΔ']; [| exfalso; apply HΔ'; cmd_goal; exact (equiv_ctx _ _ _ _ He Hgr HΔ0) ] end.
+    simp mod_open_step; params_case He Hgr; simp mod_open_step; fresh_case Hfr'; simp mod_open_step; eexists; reflexivity.
+  Qed.
+
+  Lemma close_complete : forall ch B RbR ΘR x pv B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_close x pv ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, close_step ch s K D B fs x pv H = run_success r.
+  Proof.
+    intros * Hr; destruct fs as [| [mp Kf Δ t] fs2]; [ inversion Hr |].
+    change (decode_stack (mk_fframe mp Kf Δ t :: fs2)) with ((mp, Kf, gu_body Δ (decode_mod t)) :: decode_stack fs2) in Hr.
+    inversion Hr; subst; simp close_step; fresh_case Hfr'; simp close_step.
+    - destruct (qname_eq_dec _ _) as [Hp | Hp]; [| exfalso; apply Hp; cbn [ff_path]; rewrite <- fs_path_dec; reflexivity ]; simp close_step.
+      destruct (inspect _) as [Kk Ek]; cbn [ff_kind] in Ek; subst Kk; simp close_step; eexists; reflexivity.
+    - destruct (qname_eq_dec _ _) as [Hp | Hp]; [| exfalso; apply Hp; cbn [ff_path]; rewrite <- fs_path_dec; reflexivity ]; simp close_step.
+      destruct (inspect _) as [Kk Ek]; cbn [ff_kind] in Ek; subst Kk; simp close_step; eexists; reflexivity.
+  Qed.
+
+  Lemma alias_complete : forall ch B RbR ΘR x pv Δ E B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_alias x pv Δ E ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, alias_step ch s K D B fs x pv Δ E H = run_success r.
+  Proof.
+    intros * Hli Hr; inversion Hr; subst; simp alias_step.
+    match goal with
+    | HΔ0 : _ ⍮ _ ⍮ _ ⊢ˣ Δ ≈ Δ, HE0 : _ ⍮ _ ⍮ _ ⊢ᵐ E ≈ E |- _ => rename HΔ0 into HΔ; rename HE0 into HE
+    end.
+    pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+    destruct (all_assumptions_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp alias_step.
+    match goal with |- context [check_ext ?f ?l ?a ?b ?c] => destruct (check_ext f l a b c) as [HΔ' | HΔ'] end;
+      [| exfalso; apply HΔ'; cmd_goal; exact (equiv_ext _ _ _ _ _ He Hgr HΔ) ].
+    simp alias_step; params_case He Hgr; simp alias_step.
+    match goal with |- context [check_modexp ?f ?l ?a ?b ?c] => destruct (check_modexp f l a b c) as [HE' | HE'] end;
+      [| exfalso; apply HE'; cmd_goal; exact (equiv_modexp _ _ _ _ _ He Hgr HE) ].
+    simp alias_step; levels_case He Hgr; simp alias_step; fresh_case Hfr'; simp alias_step; eexists; reflexivity.
+  Qed.
+
+  Lemma builtin_complete : forall ch B RbR ΘR k E B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_builtin k E ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, builtin_step ch s K D B fs k E H = run_success r.
+  Proof.
+    intros * Hli Hr; inversion Hr; subst.
+    match goal with
+    | Ht0 : modexp_as_term E = Some ?M0, HW0 : alg_type_infer _ ?W0 ?M0, Hn0 : nbe _ _ _ ?M0 _ (nf_indty ?p0 0 nil),
+      Hl0 : ind_lookup _ _ ?p0 = Some ?Dd0, Hs0 : nat_shape ?Dd0 = Some _, Hsort0 : ind_sort ?Dd0 = nat_sort,
+      Hb0 : builtins_bind_nat _ ?p0 = Some _ |- _ =>
+        rename Ht0 into Ht; rename HW0 into HW; rename Hn0 into Hn; rename Hl0 into Hl; rename Hs0 into Hs;
+        rename Hsort0 into Hsort; rename Hb0 into Hb; rename p0 into p; rename Dd0 into Dd; rename M0 into M;
+        rename W0 into W
+    end.
+    pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+    pose proof (equiv_alg_infer _ _ _ _ _ _ He Hgr HW) as HW'.
+    simp builtin_step.
+    destruct (string_dec nat_kind nat_kind) as [Hk | Hk]; [| contradiction ]; simp builtin_step.
+    destruct (opt_case (modexp_as_term E)) as [[M1 Ht1] | Ht1]; [| congruence ].
+    assert (M1 = M) as -> by congruence.
+    simp builtin_step.
+    match goal with |- context [type_infer ?f ?l ?G ?a ?b ?c] => destruct (type_infer f l G a b c) as [[W1 HW1] | Hno] end;
+      [| exfalso; apply (Hno W); cmd_goal; exact HW' ].
+    pose proof (functional_alg_type_infer (GC := gc_mk (gds_restrict D (decode_units s)) (decode_stack fs)) Hgr
+                  (cmd_infer B H nil _ _ HW1) HW') as EW; subst W1.
+    simp builtin_step.
+    destruct (nf_is_universe_dec W) as [Hu' | Hu']; [| contradiction ]; simp builtin_step.
+    match goal with |- context [nbe_impl ?a ?b ?c ?d ?e] => destruct (nbe_impl a b c d e) as [W2 Hn2] end.
+    pose proof (functional_nbe _ _ _ _ _ (cmd_nbe B H nil _ _ _ Hn2) (equiv_nbe _ _ _ He _ _ _ _ Hn)) as ->.
+    simp builtin_step.
+    assert (Hl' : ind_lookup (gds_restrict D (decode_units s)) (decode_stack fs) p = Some Dd)
+      by (rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); exact Hl).
+    destruct (ind_lookup_f (cmd_F B H) p) as [[Dd' |] Hl'']; simp builtin_step;
+      pose proof (cmd_ind_lookup B H _ _ Hl'') as Hl3; [| congruence ].
+    assert (Dd' = Dd) as -> by congruence.
+    destruct (inspect (nat_shape Dd)) as [[[z' s'] |] Es]; simp builtin_step; [| congruence ].
+    destruct (inspect (is_nat_sort (ind_sort Dd))) as [[|] Ek]; simp builtin_step;
+      [| rewrite Hsort in Ek; discriminate ].
+    destruct (inspect (builtins_bind_nat B p)) as [[B1 |] Eb]; simp builtin_step; [ eexists; reflexivity | congruence ].
+  Qed.
+
+  (** The module a module expression applies, well formed as the derivation
+      has it *)
+  Lemma indalias_complete : forall ch B RbR ΘR x pv Δ E B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_inductive_alias x pv Δ E ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, indalias_step ch s K D B fs x pv Δ E H = run_success r.
+  Proof.
+    intros * Hli Hr; inversion Hr; subst.
+    match goal with
+    | HΔ0 : _ ⍮ _ ⍮ _ ⊢ˣ Δ ≈ Δ, HH0 : _ ⍮ _ ⍮ _ ⊢ᵐ E ≈ E, Ht0 : modexp_as_term E = Some ?M0,
+      HW0 : alg_type_infer _ ?W0 ?M0, Hf0 : ind_former _ _ _ ?M0 ?W0 |- _ =>
+        rename HΔ0 into HΔ; rename HH0 into HH; rename Ht0 into Ht; rename HW0 into HW; rename Hf0 into Hf;
+        rename M0 into M; rename W0 into W
+    end.
+    pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+    pose proof (equiv_modexp _ _ _ _ _ He Hgr HH) as HE0.
+    pose proof (equiv_alg_infer _ _ _ _ _ _ He Hgr HW) as HW'.
+    simp indalias_step.
+    destruct (all_assumptions_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp indalias_step.
+    match goal with |- context [check_ext ?f ?l ?a ?b ?c] => destruct (check_ext f l a b c) as [HΔ' | HΔ'] end;
+      [| exfalso; apply HΔ'; cmd_goal; exact (equiv_ext _ _ _ _ _ He Hgr HΔ) ].
+    simp indalias_step.
+    match goal with |- context [check_modexp ?f ?l ?a ?b (fst (me_unapps E))] =>
+      destruct (check_modexp f l a b (fst (me_unapps E))) as [Hh | Hh] end; simp indalias_step;
+      [| exfalso; apply Hh; cmd_goal; exact (me_unapps_head_wf _ _ _ _ HE0) ].
+    match goal with |- context [check_modexp ?f ?l ?a ?b E] => destruct (check_modexp f l a b E) as [HE' | HE'] end;
+      simp indalias_step; [| exfalso; apply HE'; cmd_goal; exact HE0 ].
+    destruct (opt_case (modexp_as_term E)) as [[M1 Ht1] | Ht1]; [| congruence ].
+    assert (M1 = M) as -> by congruence.
+    simp indalias_step.
+    match goal with |- context [type_infer ?f ?l ?G ?a ?b ?c] => destruct (type_infer f l G a b c) as [[W1 HW1] | Hno] end;
+      [| exfalso; apply (Hno W); cmd_goal; exact HW' ].
+    pose proof (functional_alg_type_infer (GC := gc_mk (gds_restrict D (decode_units s)) (decode_stack fs)) Hgr
+                  (cmd_infer _ H Δ _ _ HW1) HW') as EW; subst W1.
+    simp indalias_step.
+    match goal with |- context [ind_former_dec ?a ?b ?c ?d ?e] => destruct (ind_former_dec a b c d e) as [Hf' | Hf'] end;
+      [| exfalso; apply Hf'; cmd_goal; exact (equiv_ind_former _ _ _ _ _ _ He Hf) ].
+    simp indalias_step; levels_case He Hgr; simp indalias_step.
+    fresh_case Hfr'; simp indalias_step.
+    params_case He Hgr; simp indalias_step.
+    universe_case He Hgr; simp indalias_step; finish_step.
+  Qed.
+
+  Lemma recalias_complete : forall ch B RbR ΘR x pv Δ E B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_record_alias x pv Δ E ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, recalias_step ch s K D B fs x pv Δ E H = run_success r.
+  Proof.
+    intros * Hli Hr; inversion Hr; subst.
+    match goal with
+    | HΔ0 : _ ⍮ _ ⍮ _ ⊢ˣ Δ ≈ Δ, HH0 : _ ⍮ _ ⍮ _ ⊢ᵐ E ≈ E, Ht0 : modexp_as_term E = Some ?M0,
+      HW0 : alg_type_infer _ ?W0 ?M0, Hf0 : record_former _ _ _ ?M0 ?W0 |- _ =>
+        rename HΔ0 into HΔ; rename HH0 into HH; rename Ht0 into Ht; rename HW0 into HW; rename Hf0 into Hf;
+        rename M0 into M; rename W0 into W
+    end.
+    pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+    pose proof (equiv_modexp _ _ _ _ _ He Hgr HH) as HE0.
+    pose proof (equiv_alg_infer _ _ _ _ _ _ He Hgr HW) as HW'.
+    simp recalias_step.
+    destruct (all_assumptions_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp recalias_step.
+    match goal with |- context [check_ext ?f ?l ?a ?b ?c] => destruct (check_ext f l a b c) as [HΔ' | HΔ'] end;
+      [| exfalso; apply HΔ'; cmd_goal; exact (equiv_ext _ _ _ _ _ He Hgr HΔ) ].
+    simp recalias_step.
+    match goal with |- context [check_modexp ?f ?l ?a ?b E] => destruct (check_modexp f l a b E) as [HE' | HE'] end;
+      simp recalias_step; [| exfalso; apply HE'; cmd_goal; exact HE0 ].
+    destruct (opt_case (modexp_as_term E)) as [[M1 Ht1] | Ht1]; [| congruence ].
+    assert (M1 = M) as -> by congruence.
+    simp recalias_step.
+    match goal with |- context [type_infer ?f ?l ?G ?a ?b ?c] => destruct (type_infer f l G a b c) as [[W1 HW1] | Hno] end;
+      [| exfalso; apply (Hno W); cmd_goal; exact HW' ].
+    pose proof (functional_alg_type_infer (GC := gc_mk (gds_restrict D (decode_units s)) (decode_stack fs)) Hgr
+                  (cmd_infer _ H Δ _ _ HW1) HW') as EW; subst W1.
+    simp recalias_step.
+    match goal with |- context [record_former_dec ?a ?b ?c ?d ?e] => destruct (record_former_dec a b c d e) as [Hf' | Hf'] end;
+      [| exfalso; apply Hf'; cmd_goal; exact (equiv_record_former _ _ _ _ _ _ He Hf) ].
+    simp recalias_step; levels_case He Hgr; simp recalias_step.
+    fresh_case Hfr'; simp recalias_step.
+    params_case He Hgr; simp recalias_step.
+    universe_case He Hgr; simp recalias_step; finish_step.
+  Qed.
+
+  (** A mutual definition the judgment runs, the executable runs. *)
+  Lemma mdef_complete : forall ch B RbR ΘR b pv Δ fns B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_mdef b pv Δ fns ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, mdef_step ch s K D B fs b pv Δ fns H = run_success r.
+  Proof.
+    intros * Hli Hr; inversion Hr as [| | | | | | | | | | ? ? ? ? ? ? ? ? f0 fs0 pq m0 Ps Dd Us ms Ξ1 Htel HΔ Hgp Hrun | | | | |]; subst.
+    pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+    simp mdef_step.
+    destruct (all_assumptions_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp mdef_step.
+    match goal with |- context [check_ctx ?f ?l ?a ?b] => destruct (check_ctx f l a b) as [HΔ' | HΔ'] end;
+      [| exfalso; apply HΔ'; cmd_goal; exact (equiv_ctx _ _ _ _ He Hgr HΔ) ].
+    simp mdef_step.
+    match goal with |- context [mdef_group_dec (fctx_cmd ?B0 ?s0 ?D0 ?fs1 ?Hok) ?l ?Hg _ _ _] =>
+      assert (Hgp' : mdef_group (fc_deps (fctx_cmd B0 s0 D0 fs1 Hok)) (fc_stack (fctx_cmd B0 s0 D0 fs1 Hok)) Δ
+                       (raw_fun_head_of f0) (List.map raw_fun_head_of fs0) pq m0 Ps Dd Us ms)
+        by (cmd_goal; exact (equiv_mdef_group _ _ _ _ _ _ _ _ _ _ _ _ He Hgr Hgp));
+      destruct (mdef_group_dec_complete _ l Hg _ _ _ _ _ _ _ _ _ Hgp') as [Hp E]; rewrite E
+    end.
+    simp mdef_step.
+    destruct (mdefs_dec _ _ _ _ _ _ _ _ _) as [[fs' [Hok' Hv' Hr']] | [e Hn]].
+    - simp mdef_step; eexists; reflexivity.
+    - exfalso; apply (Hn Ξ'); rewrite cmd_view_deps; exact (equiv_mdefs_run _ _ _ _ _ _ _ He Hgr Hrun).
+  Qed.
+
+  (** The entries an open generates, which the judgment declares, the
+      executable declares. *)
+  Lemma gens_complete : forall ΘR Ξ gs Ξ', gens_run ΘR Ξ gs Ξ' ->
+      forall ch s K D B fs (Hx : pre ch s K D fs), decode_stack fs = Ξ -> unit_invariant ch (decode_units s) K D ΘR Ξ ->
+      exists r, gens_impl ch s K D B fs gs Hx = run_success r.
+  Proof.
+    induction 1 as [Ξ | Ξ d pv κ A M i gs Ξ' HA Hlv HM Hfr Hg IH | Ξ d pv E gs Ξ' HE Hla Hfr Hg IH | Ξ d pv A M E W i gs Ξ' HW HWt HM HE Hla Hfr Hg IH];
+      intros ch s K D B fs Hx HΞ Hli; subst Ξ; cbn [gens_impl]; [ eexists; reflexivity | | |].
+    - fresh_case Hfr'.
+      pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+      pose proof (equiv_exp _ _ _ _ _ _ He Hgr HA) as HA0; pose proof (equiv_exp _ _ _ _ _ _ He Hgr HM) as HM0.
+      match goal with |- context [check_type ?f ?l ?a ?b ?c] => destruct (check_type f l a b c) as [[κ' [j HA']] | HA'] end;
+        [| exfalso; eapply HA'; cmd_goal; exact HA0 ].
+      pose proof (kind_found _ Hx HA' HA0) as ->.
+      destruct (abs_kind_eq_dec κ κ) as [Eκ | Eκ]; [| contradiction ].
+      destruct (level_premise_dec κ (fs_tele fs)) as [Hlv' | Hlv']; [| exfalso; apply Hlv'; rewrite <- fs_tele_dec; exact Hlv ].
+      match goal with |- context [check_exp_typed ?z ?l ?a ?b ?c ?d ?e] => destruct (check_exp_typed z l a b c d e) as [HM' | HM'] end;
+        [| exfalso; apply HM'; cmd_goal; exact HM0 ].
+      match goal with |- context [def_entry_rep ?a ?b ?c ?d ?e ?f ?g ?h ?k ?l] => destruct (def_entry_rep a b c d e f g h k l) as [e0 He0] end.
+      cbv beta iota zeta.
+      match goal with |- context [gens_impl ch s K D B ?fs1 gs (pre_add ?H0 ?He0 ?Hl0)] =>
+        destruct (IH ch s K D B fs1 (pre_add H0 He0 Hl0) (proj1 (add_dec H0 He0 Hl0))
+                    (proj2 (proj2 (gen_def_step (pv := pv) Hli Hfr' (cmd_exp _ Hx nil A _ (kind_cast Eκ HA')) (level_premise_at Hlv')
+                                     (cmd_exp _ Hx nil M A HM')))))
+          as [[fs2 [Hp Hf]] E] end.
+      rewrite E; eexists; reflexivity.
+    - fresh_case Hfr'.
+      pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+      match goal with |- context [check_modexp ?f ?l ?a ?b E] => destruct (check_modexp f l a b E) as [HE' | HE'] end;
+        [| exfalso; apply HE'; cmd_goal; exact (equiv_modexp _ _ _ _ _ He Hgr HE) ].
+      levels_case He Hgr.
+      cbv beta iota zeta.
+      match goal with |- context [gens_impl ch s K D B ?fs1 gs (pre_add ?H0 ?He0 ?Hl0)] =>
+        destruct (IH ch s K D B fs1 (pre_add H0 He0 Hl0) (proj1 (add_dec H0 He0 Hl0))
+                    (proj2 (proj2 (gen_alias_step (pv := pv) Hli Hfr' (cmd_modexp _ Hx nil E HE') (cmd_levels_abstractable _ Hx nil E Hlv_dec)))))
+          as [[fs2 [Hp Hf]] E1] end.
+      rewrite E1; eexists; reflexivity.
+    - (* a definition with a module part: the type inferred is the one *)
+      fresh_case Hfr'.
+      pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+      pose proof (equiv_alg_infer _ _ _ _ _ _ He Hgr HW) as HW'.
+      match goal with |- context [type_infer ?f ?l ?G ?a ?b ?c] => destruct (type_infer f l G a b c) as [[W1 HW1] | Hno] end;
+        [| exfalso; apply (Hno W); cmd_goal; exact HW' ].
+      pose proof (functional_alg_type_infer (GC := gc_mk (gds_restrict D (decode_units s)) (decode_stack fs)) Hgr
+                    (cmd_infer _ Hx nil _ _ HW1) HW') as EW; subst W1.
+      match goal with |- context [check_modexp ?f ?l ?a ?b E] => destruct (check_modexp f l a b E) as [HE' | HE'] end;
+        [| exfalso; apply HE'; cmd_goal; exact (equiv_modexp _ _ _ _ _ He Hgr HE) ].
+      levels_case He Hgr.
+      universe_case He Hgr.
+      match goal with |- context [dm_entry_rep ?a ?b ?c ?d ?e ?f ?g ?h ?k ?l] => destruct (dm_entry_rep a b c d e f g h k l) as [e0 He0] end.
+      cbv beta iota zeta.
+      match goal with |- context [gens_impl ch s K D B ?fs1 gs (pre_add ?H0 ?He0 ?Hl0)] =>
+        destruct (IH ch s K D B fs1 (pre_add H0 He0 Hl0) (proj1 (add_dec H0 He0 Hl0))
+                    (proj2 (proj2 (proj2 (proj2 (proj2 (gen_dm_step (pv := pv) Hli Hfr' (cmd_infer _ Hx nil _ _ HW1)
+                                                   (cmd_exp _ Hx nil _ _ ltac:(eassumption))
+                                                   (cmd_exp _ Hx nil _ _ (alg_type_infer_sound HW1 (pre_ctx_f _ Hx)))
+                                                   (cmd_modexp _ Hx nil E HE') (cmd_levels_abstractable _ Hx nil E Hlv_dec))))))))
+          as [[fs2 [Hp Hf]] E1] end.
+      rewrite E1; eexists; reflexivity.
+  Qed.
+
+  (** *** Generated Commands *)
+
+  (** A command a declaration generates: a definition, or a frame of a
+      module opened or closed *)
+  Definition gen_cmd (c : core_cmd) : Prop :=
+    match c with
+    | core_cmd_def _ _ _ _ _ _ | core_cmd_mod_open _ _ _ | core_cmd_close _ _ => True
+    | _ => False
+    end.
+
+  Lemma gen_step_complete : forall ch s K D B fs (H : pre ch s K D fs) ΘR c B' RbR RbR' ΘR' Ξ',
+      gen_cmd c -> unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, gen_step ch s K D B fs c H = run_success r.
+  Proof.
+    intros * Hg Hli Hr; destruct c; try contradiction; cbn [gen_step]; apply frames_step_complete;
+      [ eapply def_complete | eapply mod_open_complete | eapply close_complete ]; eassumption.
+  Qed.
+
+  (** Generated commands the judgment runs, [gen_items_impl] runs. *)
+  Lemma gen_items_complete : forall ch cs, Forall gen_cmd cs ->
+      forall s K D B fs (H : pre ch s K D fs) ΘR RbR B' RbR' ΘR' Ξ',
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) -> builtin_records_ok K ΘR RbR ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ List.map ci_core cs ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, gen_items_impl ch s K D B fs cs H = run_success r.
+  Proof.
+    intros ch cs Hg; induction Hg as [| c cs Hc Hcs IH]; intros * Hli Hrb Hr; cbn [gen_items_impl]; [ eexists; reflexivity |].
+    cbn [List.map] in Hr; inversion Hr as [| | ? ? ? ? ? ? ? B1 Rb1 Θ1 Ξ1 ? ? ? ? Hc1 Hcs1]; subst.
+    destruct (gen_step_complete ch s K D B fs H _ _ _ _ _ _ _ Hc Hli Hc1) as [[[r1 Hp1] l1] E1]; rewrite E1.
+    destruct (fres_post _ _ Hp1 _ _ Hli Hrb) as [ΘR1 RbR1 Hr1 Hli1 Hrb1 _ _]; cbn beta in Hr1.
+    destruct (run_cmd_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hc1 Hr1) as (<- & HΞ1 & HB1 & HR1); subst.
+    cbn [run_state_read run_state_core_stack run_state_core_builtins run_state_core_deps run_state_core_closures run_state_core_imports] in *.
+    destruct (IH _ _ _ _ _ (cmd_pre_f H Hp1) _ _ _ _ _ _ Hli1 Hrb1 Hcs1) as [[[r2 Hp2] l2] E2]; rewrite E2.
+    eexists; reflexivity.
+  Qed.
+
+  (** What a group and a record generate is so. *)
+  Lemma recursor_mod_cmds_gen : forall Θ0 Ξ0 pq Dd Δu, Forall gen_cmd (recursor_mod_cmds Θ0 Ξ0 pq Dd Δu).
+  Proof.
+    intros; unfold recursor_mod_cmds; constructor; [ exact I |]; apply Forall_app; split; [| repeat constructor ].
+    apply Forall_forall; intros c Hin; apply in_map_iff in Hin as ([[j Mj] x] & <- & _); exact I.
+  Qed.
+
+  Lemma ind_mod_cmds_gen : forall Θ0 Ξ0 R pq Dd k M, Forall gen_cmd (ind_mod_cmds Θ0 Ξ0 R pq Dd k M).
+  Proof.
+    intros; unfold ind_mod_cmds; apply Forall_app; split; [| apply Forall_app; split ].
+    - apply Forall_forall; intros c Hin; apply in_map_iff in Hin as (cg & <- & _); exact I.
+    - unfold ind_rec_cmds; destruct (ind_has_rec Dd); repeat constructor.
+    - unfold ind_recursor_cmds; destruct (_ && _)%bool; [ apply recursor_mod_cmds_gen | constructor ].
+  Qed.
+
+  Lemma rec_cmds_gen : forall Θ0 Ξ0 R pq Dd, Forall gen_cmd (rec_cmds Θ0 Ξ0 R pq Dd).
+  Proof. intros; unfold rec_cmds; destruct (raw_decl_rec_field R); [ apply recursor_mod_cmds_gen | constructor ]. Qed.
+
+  Lemma ind_mod_cmds_f_gen : forall F R pq Dd k M, Forall gen_cmd (ind_mod_cmds_f F R pq Dd k M).
+  Proof. intros; rewrite ind_mod_cmds_f_ok; apply ind_mod_cmds_gen. Qed.
+
+  Lemma rec_cmds_f_gen : forall F R pq Dd, Forall gen_cmd (rec_cmds_f F R pq Dd).
+  Proof. intros; rewrite rec_cmds_f_ok; apply rec_cmds_gen. Qed.
+
+  Lemma record_field_cmds_gen : forall R, Forall gen_cmd (record_field_cmds R).
+  Proof.
+    intros R; unfold record_field_cmds; generalize 0; induction (record_fields R) as [| [f T] fs IH]; intros k;
+      cbn; constructor; [ exact I | apply IH ].
+  Qed.
+
+  (** *** Groups *)
+
+  (** A member's frame, opened at a step's fast context, read in Core *)
+  Lemma push_ind_dec : forall fs x pq k Dd Δ,
+      gs_push_ind (ind_qname (decode_stack fs) x) pq k Dd Δ (decode_stack fs) = decode_stack (fs_push_ind (fs_ind_qname fs x) pq k Dd Δ fs).
+  Proof. intros; rewrite fs_ind_qname_dec; reflexivity. Qed.
+
+  Lemma members_step_complete : forall ch xs s K D B fs pv R pq Dd k (H : pre ch s K D fs) Hp HE
+      ΘR RbR B' RbR' ΘR' Ξ',
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) -> builtin_records_ok K ΘR RbR ->
+      run_ind_members load_path read to_core ch B RbR ΘR (decode_stack fs) pv R pq Dd k xs B' RbR' ΘR' Ξ' ->
+      exists r, members_step ch s K D B fs pv R pq Dd k xs H Hp HE = run_success r.
+  Proof.
+    intros ch; induction xs as [| x xs IH]; intros * Hli Hrb Hr; simp members_step; [ eexists; reflexivity |].
+    inversion Hr as [| ? ? ? ? ? ? ? ? ? ? ? ? M B1 Rb1 Θ1 mp Kf U B2 Rb2 Θ2 Ξ2 HM Hfr HE0 Hr1 Hrest]; subst.
+    destruct (member_case Dd k) as [[M' HM'] | HM']; [| congruence ].
+    assert (M' = M) as -> by congruence; simp members_step.
+    pose proof Hr1 as Hr1c.
+    rewrite (equiv_ind_mod_cmds _ _ _ _ _ _ _ _ (unit_invariant_equiv Hli)) in Hr1.
+    pose proof (unit_invariant_push_ind Hli Hfr (mems_pre_uparams _ _ _ _ _ _ Hp) HE0) as Hli'.
+    rewrite push_ind_dec in Hli', Hr1.
+    rewrite <- (ind_mod_cmds_cmd B (member_push_pre H Hp HE)) in Hr1.
+    destruct (gen_items_complete _ _ (ind_mod_cmds_f_gen _ _ _ _ _ _) _ _ _ _ _ (member_push_pre H Hp HE)
+                _ _ _ _ _ _ Hli' Hrb Hr1) as [[[r1 Hp1] l1] E1]; rewrite E1.
+    simp members_step.
+    destruct (fres_post _ _ Hp1 _ _ Hli' Hrb) as [ΘR1 RbR1 Hr1' _ _ _ _]; cbn beta in Hr1'.
+    destruct (run_cmds_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr1 Hr1') as (<- & HΞ1 & HB1 & <-).
+    destruct (list_case (run_state_frames r1)) as [[f [fs2 HΞ]] | HΞ];
+      [| exfalso; cbn [run_state_read run_state_core_stack] in HΞ1; rewrite HΞ in HΞ1; discriminate ].
+    simp members_step.
+    destruct (member_close (pv := pv) H Hp HE Hp1 HΞ) as (Hc & Est & Ed & Hpre).
+    rewrite Est in HΞ1; injection HΞ1 as -> -> ->.
+    destruct (member_ok (M := M) (mems_fresh_head Hp) (mems_pre_uparams _ _ _ _ _ _ Hp) HE Hc Est _ _ Hli Hrb)
+      as [_ [ΘR2 RbR2 Hr2 Hli2 Hrb2 _ _]]; cbn beta in Hr2;
+      cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_stack gu_mod] in Hli2, Hrb2.
+    destruct (run_cmds_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr1c Hr2) as (<- & _ & _ & <-).
+    rewrite HB1 in Hrest; cbn [gu_mod] in Hrest.
+    rewrite <- Ed in Hli2, Hrest.
+    match goal with |- context [members_step ?a1 ?b1 ?c1 ?d1 ?e1 ?f1 ?g1 ?h1 ?i1 ?j1 ?k1 ?l1 ?m1 ?n1 ?o1] =>
+      destruct (IH b1 c1 d1 e1 f1 g1 h1 i1 j1 k1 m1 n1 o1 _ _ _ _ _ _ Hli2 Hrb2 Hrest) as [[[r2 Hp2] l2] E2]; rewrite E2
+    end.
+    simp members_step; eexists; reflexivity.
+  Qed.
+
+  (** A group declaration the judgment runs, the executable runs. *)
+  Lemma ind_complete : forall ch B RbR ΘR pv R B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) -> builtin_records_ok K ΘR RbR ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_inductive pv R ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, ind_step ch s K D B fs pv R H = run_success r.
+  Proof.
+    intros * Hli Hrb Hr;
+      inversion Hr as [| | | | | | | | | ? ? ? ? ? ? ? Mr0 Mrs csD Vs Ss csV Nvs Dd B1 Rb1 Θ1 Ξ1 ? ? ? ? HR Hsort Hcls Hsibs Hvcls Hvnps Hbfs Hfil Hnil Hgn Hent Hrc | | | | | |];
+      subst.
+    pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
+    pose proof (equiv_raw_member_classify _ _ _ He Hgr _ _ _ Hcls) as HclsR.
+    pose proof (equiv_views_ok _ _ _ _ _ _ _ _ _ He Hgr (mk_views_ok _ _ _ _ _ _ _ _ Hsibs Hvcls Hvnps Hbfs)) as HvR.
+    pose proof (equiv_ind_nil_at _ _ _ He Hgr _ _ _ Hnil) as HnilR.
+    destruct (ind_members_run_fresh load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hent) as [Hnd Hfr].
+    simp ind_step.
+    destruct (list_case (raw_decl_members R)) as [[Mr0' [Mrs' HR']] | HR']; [| congruence ].
+    pose proof (eq_trans (eq_sym HR) HR') as ER; injection ER as <- <-; simp ind_step.
+    destruct (Forall_dec _ _ Mrs) as [Hsort' | Hsort']; [| contradiction ]; simp ind_step.
+    assert (HclsF : Forall2 (raw_member_classify (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) R) (raw_decl_members R) csD)
+      by (cmd_goal; exact HclsR).
+    destruct (raw_members_classify_dec (cmd_F B H) _ (pre_gctx_f B H) R (raw_decl_members R)) as [[csD' Hcls'] | [[[[x c] y] w] Hn]];
+      [| exfalso; exact (Hn _ HclsF) ].
+    assert (csD' = csD) as ->
+      by (eapply Forall2_functional; [| exact Hcls' | exact HclsF ];
+          intros; unfold raw_member_classify in *; eapply classify_cons_in_functional; eassumption).
+    simp ind_step.
+    assert (HvF : views_ok (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) R csD Vs Ss csV Nvs) by (cmd_goal; exact HvR).
+    destruct (views_search_complete _ (pre_gctx_f B H) _ _ _ _ _ _ HvF) as [v Ev]; rewrite Ev.
+    destruct v as (Vs' & Ss' & csV' & Nvs' & Hv'); simp ind_step.
+    destruct (views_ok_functional _ _ _ _ _ _ _ _ _ _ _ _ Hv' HvF) as (-> & -> & -> & ->).
+    assert (HfilF : raw_decl_filed (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) R Vs Ss csD csV Nvs = Some Dd)
+      by (cmd_goal; rewrite <- (equiv_raw_decl_filed _ _ _ He); exact Hfil).
+    destruct (raw_decl_filed_case (cmd_F B H) R _ _ _ _ _) as [[Dd' Hfil'] | Hfil']; [| congruence ].
+    assert (Dd' = Dd) as -> by congruence; simp ind_step.
+    destruct (nodup_dec _) as [Hnd' | Hnd']; [| contradiction ]; simp ind_step.
+    destruct (Forall_dec _ _ (raw_decl_members R)) as [Hfr' | Hfr'].
+    2:{ exfalso; apply Hfr'; rewrite List.Forall_map in Hfr; exact Hfr. }
+    simp ind_step.
+    assert (HnilF : ind_nil_at (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) (fs_ind_qname fs (raw_member_name Mr0)) Dd
+                      (grp_self_insts (fs_ind_qname fs (raw_member_name Mr0)) Dd))
+      by (rewrite fs_ind_qname_dec; cmd_goal; exact HnilR).
+    destruct (ind_nil_at_dec (cmd_F B H) _ (pre_gctx_f B H) _ _ _) as [Hnil' | Hnil']; [| contradiction ]; simp ind_step.
+    destruct (inspect (gen_names_blame_f fs R Dd (raw_member_name Mr0))) as [[e |] Egn];
+      [ exfalso; rewrite (gen_names_blame_f_eq _ _ _ _ (pre_frames _ _ _ _ _ H) (pre_canon H)), (gen_names_blame_free Hgn) in Egn;
+        discriminate |]; simp ind_step.
+    (* the members, then the recursor module from where they end *)
+    rewrite <- fs_ind_qname_dec in Hent, Hrc.
+    match goal with |- context [members_step ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k' ?l ?m ?n ?o] =>
+      destruct (members_step_complete a l b c d e f g h i j k' m n o _ _ _ _ _ _ Hli Hrb Hent) as [[[r1 Hp1] l1] E1]; rewrite E1
+    end.
+    simp ind_step.
+    destruct (fres_post _ _ Hp1 _ _ Hli Hrb) as [ΘR1 RbR1 Hr1 Hli1 Hrb1 _ _]; cbn beta in Hr1.
+    destruct (proj2 (proj2 (proj2 (@run_functional load_path read to_core))) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hent _ _ _ _ _ Hr1)
+      as (-> & -> & -> & ->).
+    rewrite (equiv_rec_cmds _ _ _ _ _ _ (unit_invariant_equiv Hli1)) in Hrc.
+    cbn [run_state_read run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack] in Hrc, Hli1, Hrb1.
+    rewrite <- (rec_cmds_cmd (run_state_builtins r1) (mems_res_pre H Hp1)) in Hrc.
+    match goal with |- context [gen_items_impl ?a ?b ?c ?d ?e ?f ?g ?h] =>
+      destruct (gen_items_complete a g (rec_cmds_f_gen _ _ _ _) b c d e f h _ _ _ _ _ _ Hli1 Hrb1 Hrc)
+        as [[[r2 Hp2] l2] E2]; rewrite E2
+    end.
+    simp ind_step; eexists; reflexivity.
+  Qed.
+
+  (** *** Records *)
+
+  (** An entry checked at the judgment's state is checked at the
+      restriction, which files no unit on the chain either. *)
+  Lemma unit_invariant_entry_back {ch Θ K D ΘR Ξ x E} : unit_invariant ch Θ K D ΘR Ξ -> gs_fresh x Ξ ->
+      ΘR ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ E -> gds_restrict D Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ E.
+  Proof.
+    intros Hli Hfr HE.
+    apply (proj1 (global_deps_grow _ _ (proj1 (unit_invariant_equiv Hli))) _ _ _ _ HE eq_refl (unit_invariant_restrict_gctx Hli)).
+    apply (sub_none _ _ _ (restrict_sub _ _)), (gi_chain _ _ _ (ui_global _ _ _ _ _ _ Hli)).
+    destruct Ξ as [| [[mq Kq] V] Ξ0]; [ contradiction |]; cbn; eapply (ui_stack _ _ _ _ _ _ Hli); left; reflexivity.
+  Qed.
+
+  Lemma record_open_complete : forall ch B RbR ΘR x pv Δ Srt fds B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) -> builtin_records_ok K ΘR RbR ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_record_open x pv Δ Srt fds ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, record_open_step ch s K D B fs x pv Δ Srt fds H = run_success r.
+  Proof.
+    intros * Hli Hrb Hr; inversion Hr as [| | | | | | | | | | | | | | ? ? ? ? ? ? ? ? ? ? B1 Rb1 Θ1 Ξ1 Hfr HE Hr1 |]; subst.
+    simp record_open_step; fresh_case Hfr'; simp record_open_step.
+    match goal with |- context [record_entry_dec ?a1 ?a2 ?a3 ?a4 ?a5 ?a6 ?a7 ?a8] =>
+      destruct (record_entry_dec a1 a2 a3 a4 a5 a6 a7 a8) as [HE' | [why Hn]] end.
+    2:{ exfalso; apply Hn; cmd_goal; rewrite fs_ind_qname_dec; exact (unit_invariant_entry_back Hli Hfr HE). }
+    simp record_open_step.
+    pose proof (unit_invariant_push_record Hli Hfr HE) as Hli'.
+    rewrite <- fs_record_at_dec, <- fs_ind_qname_dec in Hli', Hr1.
+    change (gs_push_record (fs_ind_qname fs x) (fs_record_at fs Δ Srt fds) Δ (decode_stack fs))
+      with (decode_stack (fs_push_record (fs_ind_qname fs x) (fs_record_at fs Δ Srt fds) Δ fs)) in Hli', Hr1.
+    match goal with |- context [gen_items_impl ?a ?b ?c ?d ?e ?f ?g ?h] =>
+      destruct (gen_items_complete a g (record_field_cmds_gen _) b c d e f h _ _ _ _ _ _ Hli' Hrb Hr1) as [[[r1 Hp1] l1] E1]; rewrite E1
+    end.
+    simp record_open_step; eexists; reflexivity.
+  Qed.
 End Impl.
