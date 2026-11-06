@@ -2286,6 +2286,7 @@ Section Impl.
   (** A definition or an axiom, at the kind its command carries: the type
       of the sort of the kind, the frames' parameters types of levels when
       it is a level, the body at the type. *)
+  #[derive(eliminator=no)]
   Equations def_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (x : string) (b pv : bool) (κ : abs_kind) (A : typ) (oM : option exp) (H : pre ch s K D fs) :
     frames_result ch s K D B fs (core_cmd_def x b pv κ A oM) :=
@@ -3742,6 +3743,12 @@ Section Impl.
     | None => e
     end.
 
+  (** A list of one element, or not *)
+  Definition single_case {A} (l : list A) : {x | l = x :: nil} + {forall x, l <> x :: nil}.
+  Proof.
+    destruct l as [| x [| y l']]; [ right; intros z E; discriminate | left; exists x; reflexivity | right; intros z E; discriminate ].
+  Defined.
+
   (** A unit: its imports, its parameters filled and checked, then its
       body in its own frame, which must be the only one left. *)
   Definition run_unit_step (ch : list path) (L : loader ch) (s : funits) (K : unit_closure_map) (u : surface_compilation_unit)
@@ -3783,14 +3790,14 @@ Section Impl.
                         (pre_push_unit H1 (unit_body_pre G (fres_post _ _ Hr1) Htel HP' HPr')) with
                 | run_failure e => run_failure e
                 | run_success (exist _ r2 Hr2, l2) =>
-                    match run_state_frames r2 as fr return run_state_frames r2 = fr -> run_result ({r | unit_run_ok (fp :: ch0) s K (imps, P0, cs) r} * certified_log)%type with
-                    | f :: nil => fun HΞ =>
+                    match single_case (run_state_frames r2) with
+                    | inleft (exist _ f HΞ) =>
                         run_success (exist _ _ (unit_res (s := s) r1 r2 G Hr1
                                                   (cmd_fill_params (run_state_builtins r1) H1 _ _ (fill_params_fn_sound F1 (run_state_builtins r1) (lvd _ _) Hg1 _ _ Ea))
                                                   Htel HP' HPr' (cmd_acc (run_state_builtins r1) H1 _ Hac) Hr2 HΞ),
                                      log_app l1 l2)
-                    | _ => fun _ => run_failure (run_error_msg "the body of a unit does not end in its own frame")
-                    end eq_refl
+                    | inright _ => run_failure (run_error_msg "the body of a unit does not end in its own frame")
+                    end
                 end
             end
             end
@@ -4479,4 +4486,304 @@ Section Impl.
     end.
     simp record_open_step; eexists; reflexivity.
   Qed.
+
+  (** *** The Run *)
+
+  (** A command whose step its lemma [lem] proves complete from the
+      judgment's run of it at the step's frames *)
+  Ltac core_case lem :=
+    intros;
+    match goal with
+    | HΞ : decode_stack ?fs0 = ?X |- _ =>
+        match goal with Hli : unit_invariant _ _ _ _ _ X |- _ => rewrite <- HΞ in Hli end;
+        simp core_step; try apply frames_step_complete;
+        match goal with Hrb : builtin_records_ok _ ?T ?Rb |- _ =>
+          eapply lem with (RbR := Rb) (ΘR := T); [ eassumption .. | rewrite HΞ; econstructor; eassumption ]
+        end
+    end.
+
+  Theorem run_impl_complete :
+    (forall ch B RbR ΘR Ξ c B' RbR' ΘR' Ξ', ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+       forall Hacc s K D fs (H : pre ch s K D fs), decode_stack fs = Ξ -> unit_invariant ch (decode_units s) K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
+         exists r, core_step ch (loader_of ch Hacc) s K D B fs c H = run_success r) /\
+    (forall ch B RbR ΘR Ξ its B' RbR' ΘR' Ξ', ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ its ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+       forall Hacc s K D fs (H : pre ch s K D fs), decode_stack fs = Ξ -> unit_invariant ch (decode_units s) K D ΘR Ξ -> builtin_records_ok K ΘR RbR ->
+         exists r, items_impl ch (loader_of ch Hacc) its s K D B fs H = run_success r) /\
+    (forall ch u B' RbU ΘU U, run_unit ch u B' RbU ΘU U ->
+       forall Hacc s K (G : global_invariant ch (decode_units s) K) (Hs : units_rep (funits_drop s) (decode_units s)) (Hsv : units_values_ok K s),
+         exists r, run_unit_impl ch Hacc s K u G Hs Hsv = run_success r) /\
+    (** the declared members of a group are run by [ind_complete], from
+        the whole declaration *)
+    (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ',
+       run_ind_members load_path read to_core ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' -> True).
+  Proof.
+    apply run_mut_dind.
+    - (* a definition *) core_case def_complete.
+    - (* an axiom *) core_case def_complete.
+    - (* a module's frame opened *) core_case mod_open_complete.
+    - (* a module's frame closed *) core_case close_complete.
+    - (* a record's frame closed *) core_case close_complete.
+    - (* an alias *) core_case alias_complete.
+    - (* a load of a unit the judgment has *)
+      intros ch B Rb B' ΘR Ξ fp U BU HU HBU Hm Hacc s K D fs H HΞ Hli Hrb; subst Ξ.
+      simp core_step.
+      pose proof (ui_sub _ _ _ _ _ _ Hli _ _ HU) as HUg.
+      assert (Hin : In fp D) by (apply (ui_dom _ _ _ _ _ _ Hli), gds_dom_lookup; rewrite HU; discriminate).
+      rewrite <- decode_units_drop, (decode_units_lookup _ _ (pre_units _ _ _ _ _ H)), fus_find_drop in HUg.
+      destruct (opt_case (fus_find s fp)) as [[u' HU'] | HU']; [| rewrite HU' in HUg; discriminate ].
+      simp core_step.
+      pose proof (proj2 Hrb _ _ HBU) as HB.
+      destruct (opt_case (unit_closure_builtins K fp)) as [[BU' HB'] | HB']; [| congruence ].
+      assert (BU' = BU) as -> by congruence; simp core_step.
+      destruct (inspect (builtins_merge B BU)) as [[B1 |] Em]; [| congruence ]; simp core_step.
+      destruct (in_dec path_eq_dec fp D) as [Hin' | Hin']; [| contradiction ]; simp core_step.
+      eexists; reflexivity.
+    - (* a load: shared if some other unit filed it, run otherwise *)
+      intros ch B Rb B' ΘR Ξ fp src prg u BU RbU ΘU U Hn Hnin Hld Hrd Hp Ht Hu IH Hm Hacc s K D fs H HΞ Hli Hrb; subst Ξ.
+      simp core_step.
+      assert (HnD : ~ In fp D)
+        by (intros Hin; apply (ui_dom _ _ _ _ _ _ Hli), gds_dom_lookup in Hin; contradiction).
+      destruct (opt_case (fus_find s fp)) as [[uf HU'] | Hng]; simp core_step.
+      + (* filed by another unit: its record is the one this run ends with *)
+        destruct (global_invariant_entry (ui_global _ _ _ _ _ _ Hli) _ _ (units_found H HU'))
+          as [Dfp BU' src' prg' u' ch0 RbU' ΘU' HK HB _ Hl' Hr' _ Ht' Hu' _ _ _].
+        assert (src' = src) as -> by congruence; assert (prg' = prg) as -> by congruence; assert (u' = u) as -> by congruence.
+        destruct (run_unit_functional load_path read to_core (fp :: ch0) (fp :: ch) _ _ _ _ _ _ _ _ _ eq_refl Hu' Hu)
+          as (_ & _ & <- & _).
+        destruct (opt_case (unit_closure_builtins K fp)) as [[BU1 HB1] | HB1]; [| congruence ].
+        assert (BU1 = BU') as -> by congruence; simp core_step.
+        destruct (inspect (builtins_merge B BU')) as [[B1 |] Em]; [| congruence ]; simp core_step.
+        destruct (in_dec path_eq_dec fp D) as [Hin | Hin]; [ contradiction |]; simp core_step.
+        destruct (opt_case (unit_closure_find K fp)) as [[Dfp' HK'] | HK']; [| congruence ]; simp core_step.
+        eexists; reflexivity.
+      + destruct (in_dec path_eq_dec fp ch) as [Hin | Hin]; [ contradiction |]; simp core_step.
+        destruct (opt_case (load_path fp)) as [[src' Hl'] | Hl']; [| congruence ].
+        assert (src' = src) as -> by congruence; simp core_step.
+        destruct (opt_case (read src)) as [[prg' Hr'] | Hr']; [| congruence ].
+        assert (prg' = prg) as -> by congruence; simp core_step.
+        destruct (path_eq_dec (prog_path prg) fp) as [Hp' | Hp']; [| contradiction ]; simp core_step.
+        destruct (opt_case (to_core prg)) as [[u' Ht'] | Ht']; [| congruence ].
+        assert (u' = u) as -> by congruence; simp core_step.
+        unfold loader_of.
+        match goal with |- context [run_unit_impl (fp :: ch) ?a s K u ?b ?c ?d] =>
+          destruct (IH a s K b c d) as [[[r Hpost] l] E']; rewrite E'; simp core_step;
+          destruct (unit_run_ok_post _ _ _ _ _ Hpost b) as [RbU' ΘU' Hu' _ _ _ _ _ _ _]
+        end.
+        destruct (run_unit_functional load_path read to_core (fp :: ch) (fp :: ch) _ _ _ _ _ _ _ _ _ eq_refl Hu' Hu)
+          as (_ & _ & HB & _).
+        destruct (inspect (builtins_merge B (unit_result_builtins r))) as [[B1 |] Em];
+          [| exfalso; pose proof Em as Em'; cbn [unit_result_read unit_result_core_builtins] in HB; rewrite HB in Em'; congruence ]; simp core_step.
+        eexists; reflexivity.
+    - (* an open: its target, then its generated entries *)
+      intros ch B Rb ΘR Ξ E its gs Ξ' HE Hgen Hgs Hacc s K D fs H HΞ Hli Hrb; subst Ξ.
+      simp core_step.
+      match goal with |- context [check_modexp ?f ?l ?a ?b E] => destruct (check_modexp f l a b E) as [HE' | HE'] end;
+        [| exfalso; apply HE'; cmd_goal; exact (equiv_modexp _ _ _ _ _ (unit_invariant_equiv Hli) (unit_invariant_restrict_gctx Hli) HE) ].
+      simp core_step.
+      pose proof (open_gens_equiv _ _ _ _ _ _ _ (unit_invariant_equiv Hli) Hgen) as Hgen'.
+      assert (HgenF : open_gens (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) (fc_tele (cmd_F B H)) E its gs)
+        by (cmd_goal; exact Hgen').
+      apply (import_gen_spec _ (pre_gctx_f B H) _ _ _ HE') in HgenF as Eg.
+      destruct (inspect _) as [[gs1 | e] Eg']; [ assert (gs1 = gs) as -> by congruence | exfalso; congruence ].
+      simp core_step.
+      destruct (gens_complete _ _ _ _ Hgs _ _ _ _ B fs H eq_refl Hli) as [[fs' [Hp1 Hf1]] E1]; rewrite E1; simp core_step.
+      eexists; reflexivity.
+    - (* a group declaration *)
+      intros; match goal with HΞ : decode_stack _ = ?X |- _ => subst X end.
+      simp core_step; eapply ind_complete; [ eassumption | eassumption | econstructor; eassumption ].
+    - (* a mutual definition *) core_case mdef_complete.
+    - (* a builtin binding *)
+      intros ch B Rb B' ΘR Ξ E M W p Dd z sc Ht HW HM Hu Hn Hld Hs Hsort Hb Hacc s K D fs H HΞ Hli Hrb; subst Ξ.
+      simp core_step.
+      destruct (builtin_complete ch B Rb ΘR nat_kind E _ _ _ _ s K D fs H Hli ltac:(econstructor; eassumption)) as [rd Er].
+      rewrite Er; simp core_step; eexists; reflexivity.
+    - (* an inductive alias *) core_case indalias_complete.
+    - (* a record alias *) core_case recalias_complete.
+    - (* a record's frame opened, its fields defined *)
+      intros; match goal with HΞ : decode_stack _ = ?X |- _ => subst X end.
+      simp core_step; eapply record_open_complete; [ eassumption | eassumption | econstructor; eassumption ].
+    - (* an eval *)
+      intros ch B Rb ΘR Ξ M A HM Hacc s K D fs H HΞ Hli Hrb; subst Ξ.
+      simp core_step.
+      pose proof (equiv_exp _ _ _ _ _ _ (unit_invariant_equiv Hli) (unit_invariant_restrict_gctx Hli) HM) as HM0.
+      match goal with |- context [check_exp ?f ?l ?a ?b ?c ?d] => destruct (check_exp f l a b c d) as [HM' | HM'] end;
+        simp core_step; [ eexists; reflexivity | exfalso; apply HM'; cmd_goal; exact HM0 ].
+    - (* no item *)
+      intros ch B Rb ΘR Ξ Hacc s K D fs H HΞ Hli Hrb; simp items_impl; eexists; reflexivity.
+    - (* a command as written: checked, filled, its items, then the rest, as the judgment has them *)
+      intros ch B Rb ΘR Ξ c its cs B1 Rb1 ΘR1 Ξ1 B2 Rb2 ΘR2 Ξ2 Hac Hfc Hits IHits Hcs IHcs Hacc s K D fs H HΞ Hli Hrb; subst Ξ.
+      simp items_impl.
+      match goal with |- context [refs_check ?a ?b ?c] => destruct (refs_check a b c) as [[e Hq] | Hac'] end;
+        simp items_impl; [ exfalso; apply Hq; cmd_goal; exact (equiv_acc _ _ _ _ (unit_invariant_equiv Hli) Hac) |].
+      assert (HfcF : fill_cmd (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) B c its)
+        by (cmd_goal; exact (equiv_fill_cmd _ _ _ _ _ _ (unit_invariant_equiv Hli) (unit_invariant_restrict_gctx Hli) Hfc)).
+      pose proof (fill_cmd_fn_complete _ B (lvd _ _) (pre_gctx_f B H) _ _ HfcF) as Ea.
+      destruct (inspect (fill_cmd_fn _ _ _ _ c)) as [[its' | e] Ea']; [ assert (its' = its) as -> by congruence | exfalso; congruence ].
+      simp items_impl.
+      destruct (IHits Hacc s K D fs H eq_refl Hli Hrb) as [[[r1 Hp1] l1] E1]; rewrite E1; simp items_impl.
+      destruct (fres_post _ _ Hp1 _ _ Hli Hrb) as [ΘR1' RbR1' Hr1 Hli1 Hrb1 _ _]; cbn beta in Hr1.
+      destruct (run_cmds_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hits Hr1) as (<- & HΞ1 & HB1 & HR1);
+        subst Ξ1 B1 Rb1.
+      destruct (IHcs Hacc (run_state_units r1) (run_state_closures r1) (run_state_imports r1) (run_state_frames r1) (cmds_pre_f H Hp1) eq_refl Hli1 Hrb1)
+        as [[[r2 Hp2] l2] E2]; cbn [run_state_read run_state_core_builtins] in E2; rewrite E2.
+      simp items_impl; eexists; reflexivity.
+    - (* a core command, then the rest *)
+      intros ch B Rb ΘR Ξ c cs B1 Rb1 ΘR1 Ξ1 B2 Rb2 ΘR2 Ξ2 Hc IHc Hcs IHcs Hacc s K D fs H HΞ Hli Hrb; subst Ξ.
+      simp items_impl.
+      destruct (IHc Hacc s K D fs H eq_refl Hli Hrb) as [[[r1 Hp1] l1] E1]; rewrite E1; simp items_impl.
+      destruct (fres_post _ _ Hp1 _ _ Hli Hrb) as [ΘR1' RbR1' Hr1 Hli1 Hrb1 _ _]; cbn beta in Hr1.
+      destruct (run_cmd_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hc Hr1) as (<- & HΞ1 & HB1 & HR1);
+        subst Ξ1 B1 Rb1.
+      destruct (IHcs Hacc (run_state_units r1) (run_state_closures r1) (run_state_imports r1) (run_state_frames r1) (cmd_pre_f H Hp1) eq_refl Hli1 Hrb1)
+        as [[[r2 Hp2] l2] E2]; cbn [run_state_read run_state_core_builtins] in E2; rewrite E2.
+      simp items_impl; eexists; reflexivity.
+    - (* a unit *)
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P l cs ΘR1 ΘR2 mp Kf U Hi IHi HPa Htel HP HPr Hac Hb IHb Hacc s K G Hs Hsv.
+      rewrite run_unit_impl_unfold; cbn [run_unit_step].
+      destruct (IHi Hacc (fus_with_visible s (PM.empty _)) K nil nil (unit_pre_f G Hs Hsv) eq_refl (nil_unit_invariant G) (builtin_records_ok_nil K))
+        as [[[r1 Hp1] l1] E1]; rewrite E1; cbv beta iota zeta.
+      destruct (fres_post _ _ Hp1 _ _ (nil_unit_invariant G) (builtin_records_ok_nil K)) as [ΘR1' RbR1' Hr1 Hli1 Hrb1 _ _]; cbn beta in Hr1.
+      destruct (run_cmds_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hi Hr1) as (<- & HΞ & HB & HR);
+        rewrite <- HΞ in Hli1.
+      subst B1 Rb1.
+      assert (HPaF : fill_params (fc_deps (cmd_F (run_state_builtins r1) (unit_mid_pre G Hp1))) (fc_stack (cmd_F (run_state_builtins r1) (unit_mid_pre G Hp1)))
+                       (run_state_builtins r1) P0 P)
+        by (cmd_goal; exact (equiv_fill_params _ _ _ _ _ _ (unit_invariant_equiv Hli1) (unit_invariant_restrict_gctx Hli1) HPa)).
+      pose proof (fill_params_fn_complete _ _ (lvd _ _) (pre_gctx_f (run_state_builtins r1) (unit_mid_pre G Hp1)) _ _ HPaF) as Ea.
+      destruct (inspect (fill_params_fn _ _ _ _ P0)) as [[P' | e] Ea'];
+        [ assert (P' = P) as -> by congruence | exfalso; congruence ].
+      cbv beta iota.
+      destruct (all_assumptions_dec P) as [Htel' | Htel']; [| contradiction ]; cbv beta iota.
+      match goal with |- context [check_ctx ?f ?l ?a ?b] => destruct (check_ctx f l a b) as [HP' | HP'] end;
+        [| exfalso; apply HP'; cmd_goal; exact (equiv_ctx _ _ _ _ (unit_invariant_equiv Hli1) (unit_invariant_restrict_gctx Hli1) HP) ].
+      match goal with |- context [params_evaluated_dec ?a ?b ?c ?d] =>
+          destruct (params_evaluated_dec a b c d) as [[lP HPr'] | HPr'];
+          [ cbv beta iota
+          | exfalso; apply (HPr' l); cmd_goal;
+            exact (equiv_params_evaluated _ _ _ _ _ _ (unit_invariant_equiv Hli1) (unit_invariant_restrict_gctx Hli1) HPr) ] end.
+      match goal with |- context [refs_check ?a ?b ?c] => destruct (refs_check a b c) as [[e Hq] | Hac'] end;
+        [ exfalso; apply Hq; cmd_goal; exact (equiv_acc _ _ _ _ (unit_invariant_equiv Hli1) Hac) | cbv beta iota zeta ].
+      destruct (unit_invariant_push_unit Hli1 Htel' (cmd_ctx_at _ _ P HP') (cmd_params_evaluated_at _ _ nil P lP HPr')) as (_ & _ & Hli1').
+      match goal with |- context [items_impl (fp :: ch) ?L0 (List.map ci_written cs) (run_state_units r1) (run_state_closures r1) (run_state_imports r1)
+                                    (run_state_builtins r1) ?fs1 ?H1] =>
+        destruct (IHb Hacc (run_state_units r1) (run_state_closures r1) (run_state_imports r1) fs1 H1 eq_refl Hli1' Hrb1) as [[[r2 Hp2] l2] E2] end.
+      cbn [run_state_read run_state_core_builtins] in E2; rewrite E2; cbv beta iota.
+      destruct (fres_post _ _ Hp2 _ _ Hli1' Hrb1) as [ΘR2' RbR2' Hr2 _ _ _ _]; cbn beta in Hr2.
+      destruct (run_cmds_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hb Hr2) as (_ & HΞ2 & _ & _).
+      cbn [run_state_read run_state_core_stack] in HΞ2.
+      destruct (single_case (run_state_frames r2)) as [[f HΞ3] | Hn]; [ eexists; reflexivity | exfalso ].
+      destruct (run_state_frames r2) as [| f [| f' fs']]; cbn in HΞ2; try discriminate; exact (Hn f eq_refl).
+    - (* no member left *)
+      intros; exact I.
+    - (* a member *)
+      intros; exact I.
+  Qed.
+
+  (** The result is the judgment's, by determinism. *)
+  Corollary items_impl_complete : forall ch B RbR ΘR its B' RbR' ΘR' Ξ' Hacc s K D fs (H : pre ch s K D fs),
+      unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) -> builtin_records_ok K ΘR RbR ->
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ its ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists r, items_impl ch (loader_of ch Hacc) its s K D B fs H = run_success r /\ run_state_core_stack (run_state_read (proj1_sig (fst r))) = Ξ' /\
+        run_state_core_builtins (run_state_read (proj1_sig (fst r))) = B' /\
+        unit_invariant ch (run_state_core_deps (run_state_read (proj1_sig (fst r)))) (run_state_core_closures (run_state_read (proj1_sig (fst r))))
+          (run_state_core_imports (run_state_read (proj1_sig (fst r)))) ΘR' Ξ' /\
+        builtin_records_ok (run_state_core_closures (run_state_read (proj1_sig (fst r)))) ΘR' RbR'.
+  Proof.
+    intros * Hli Hrb Hr; destruct (proj1 (proj2 run_impl_complete) _ _ _ _ _ _ _ _ _ _ Hr Hacc _ _ _ _ H eq_refl Hli Hrb) as [r E].
+    exists r; split; [ exact E |].
+    destruct r as [[r Hp] l]; cbn [proj1_sig fst].
+    destruct (fres_post _ _ Hp _ _ Hli Hrb) as [ΘR'' RbR'' Hr' Hli' Hrb' _ _]; cbn beta in Hr'.
+    destruct (run_cmds_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr Hr') as (<- & HΞ & HB & <-).
+    rewrite <- HΞ in Hli'; split; [ symmetry; exact HΞ | split; [ symmetry; exact HB | split; assumption ] ].
+  Qed.
+
+  Corollary run_unit_impl_complete : forall ch u B' RbU ΘU U Hacc s K (G : global_invariant ch (decode_units s) K) (Hs : units_rep (funits_drop s) (decode_units s))
+      (Hsv : units_values_ok K s),
+      run_unit ch u B' RbU ΘU U ->
+      exists r, run_unit_impl ch Hacc s K u G Hs Hsv = run_success r /\ unit_result_core_unit (unit_result_read (proj1_sig (fst r))) = U /\
+        unit_result_core_builtins (unit_result_read (proj1_sig (fst r))) = B' /\
+        global_invariant ch (unit_result_core_deps (unit_result_read (proj1_sig (fst r)))) (unit_result_core_closures (unit_result_read (proj1_sig (fst r)))) /\
+        gds_equiv ΘU (gds_restrict (unit_result_core_imports (unit_result_read (proj1_sig (fst r)))) (unit_result_core_deps (unit_result_read (proj1_sig (fst r))))).
+  Proof.
+    intros * Hu; destruct (proj1 (proj2 (proj2 run_impl_complete)) _ _ _ _ _ _ Hu Hacc _ _ G Hs Hsv) as [r E].
+    exists r; split; [ exact E |].
+    destruct r as [[r Hp] l]; cbn [proj1_sig fst].
+    destruct (unit_equiv G (unit_run_ok_post _ _ _ _ _ Hp)) as (RbU' & ΘU' & Hu' & G' & Heq & _).
+    destruct (run_unit_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ eq_refl Hu Hu') as (<- & HU & HB & _).
+    rewrite <- HU, <- HB; split; [ reflexivity | split; [ reflexivity | split; assumption ] ].
+  Qed.
+
+  Theorem prog_impl_complete : forall prg B ΘR U,
+      prog_sem load_path read to_core prg B ΘR U ->
+      forall Hacc, exists s u log, prog_impl prg Hacc = run_success (B, s, u, log) /\ decode_unit u = U /\ gds_equiv ΘR (decode_units s).
+  Proof.
+    intros * [u0 Rb Ht Hu] Hacc.
+    destruct (proj1 (proj2 (proj2 run_impl_complete)) _ _ _ _ _ _ Hu Hacc funits_empty nil (global_invariant_nil _)
+                (units_rep_drop_of_rep _ _ units_rep_empty) units_values_empty)
+      as [[[r Hp] l] E].
+    assert (Hprog : prog_impl prg Hacc = run_success (unit_result_builtins r, funits_drop (unit_result_units r), funit_drop (unit_result_unit r), proj1_sig l))
+      by (unfold prog_impl, unit_run; revert E; rewrite Ht; intros E; rewrite E; reflexivity).
+    destruct (prog_impl_sound _ _ _ _ _ _ Hprog) as [(ΘR' & [u' Rb' Ht' Hu'] & Heq) _].
+    rewrite Ht in Ht'; injection Ht' as <-.
+    destruct (run_unit_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ eq_refl Hu Hu') as (<- & HU & HB & _).
+    subst U B; exists (funits_drop (unit_result_units r)), (funit_drop (unit_result_unit r)), (proj1_sig l).
+    split; [ exact Hprog | split; [ reflexivity | exact Heq ] ].
+  Qed.
 End Impl.
+
+(** ** Finitely Many Files
+
+    Only here is [load_path] assumed to know finitely many files.  Each load
+    adds one of them to the chain, so loading terminates, in whatever order
+    it happens.  The executable never sees the list: [all_files] is a thunk,
+    so only its existence matters, and nothing has to compute it. *)
+
+Section Files.
+  Variable load_path : path -> option string.
+  (** The files [load_path] knows, as a thunk: the termination proof needs
+      such a list to exist, never its value. *)
+  Variable all_files : unit -> list path.
+  Hypothesis Hfiles : forall fp, (exists s, load_path fp = Some s) <-> In fp (all_files tt).
+
+  (** How many known files the chain [ch] has not loaded yet; it decreases
+      with every load. *)
+  Definition unloaded (ch : list path) : nat :=
+    List.length (filter (fun fp => if in_dec path_eq_dec fp ch then false else true) (all_files tt)).
+
+  Lemma filter_mono : forall (p1 p2 : path -> bool) l, (forall y, p1 y = true -> p2 y = true) ->
+      List.length (filter p1 l) <= List.length (filter p2 l).
+  Proof.
+    intros * Hpq; induction l as [| y l IH]; cbn; [ lia |].
+    destruct (p1 y) eqn:Ep; [ rewrite (Hpq _ Ep); cbn; lia | destruct (p2 y); cbn; lia ].
+  Qed.
+
+  Lemma filter_strict : forall (p1 p2 : path -> bool) l x, (forall y, p1 y = true -> p2 y = true) ->
+      In x l -> p1 x = false -> p2 x = true -> List.length (filter p1 l) < List.length (filter p2 l).
+  Proof.
+    intros * Hpq; induction l as [| y l IH]; intros Hin Hp Hq; [ contradiction |].
+    pose proof (filter_mono p1 p2 l Hpq); destruct Hin as [-> | Hin]; cbn.
+    - rewrite Hp, Hq; cbn; lia.
+    - specialize (IH Hin Hp Hq).
+      destruct (p1 y) eqn:Ep; [ rewrite (Hpq _ Ep); cbn; lia | destruct (p2 y); cbn; lia ].
+  Qed.
+
+  Theorem load_step_wf : well_founded (load_step load_path).
+  Proof.
+    apply (wf_incl _ _ (ltof _ unloaded)); [| apply well_founded_ltof ].
+    intros ch' ch [fp s -> Hn Hs]; unfold ltof, unloaded.
+    apply (filter_strict _ _ _ fp).
+    - intros y; destruct (in_dec path_eq_dec y (fp :: ch)) as [| Hy]; [ discriminate |].
+      destruct (in_dec path_eq_dec y ch) as [Hy' |]; [ exfalso; apply Hy; right; exact Hy' | reflexivity ].
+    - apply Hfiles; eauto.
+    - destruct (in_dec path_eq_dec fp (fp :: ch)) as [| Hc]; [ reflexivity | exfalso; apply Hc; left; reflexivity ].
+    - destruct (in_dec path_eq_dec fp ch); [ contradiction | reflexivity ].
+  Qed.
+
+  Corollary prog_impl_complete_wf : forall read to_core lvd vs
+      (Hvs : forall F HΞ R csD Vs Ss csV Nvs, views_ok (fc_deps F) (fc_stack F) R csD Vs Ss csV Nvs -> exists v, vs F HΞ R csD = run_success v)
+      prg B ΘR U,
+      prog_sem load_path read to_core prg B ΘR U ->
+      exists s u log, prog_impl load_path read to_core lvd vs prg (load_step_wf _) = run_success (B, s, u, log) /\
+        decode_unit u = U /\ gds_equiv ΘR (decode_units s).
+  Proof. intros read to_core lvd vs Hvs * H; exact (prog_impl_complete _ _ _ lvd vs Hvs _ _ _ _ H _). Qed.
+End Files.
