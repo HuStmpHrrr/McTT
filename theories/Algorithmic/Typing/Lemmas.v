@@ -1694,12 +1694,51 @@ Proof.
   eapply alg_subtyping_nf_trans; [ apply alg_subtyping_nf_of_upto_proofs; exact (alg_type_infer_normal HΓ Hi Hn1) | exact Hs ].
 Qed.
 
+(** The type a term infers below a type of a sort is of a sort: it is no
+    [LevelSort], which is below only itself, of no sort. *)
+Lemma alg_infer_below_sorted : forall {Γ M A B S},
+    ⊢ Γ -> type_sort S -> Γ ⊢ B : S -> Γ ⊢a M ⟹ A -> Γ ⊢a A ⊆ B -> exists SA, type_sort SA /\ Γ ⊢ A : SA.
+Proof.
+  intros * HΓ HS HB Hi Hs.
+  pose proof (alg_type_infer_sound Hi HΓ) as HM.
+  destruct (presup_exp_typ_cases HM) as [? SA HSA HA | ? Hlf]; [ eauto |].
+  exfalso; destruct Hs as [A' B' HA' HB' Hsub].
+  inversion HA' as [ρ a1 Hρ Ha HW]; subst; inversion Ha; subst; inversion HW; subst.
+  inversion Hsub; subst.
+  match goal with HE : nf_eq_upto_proofs LevelSortⁿ ?X |- _ => destruct X; cbn in HE; try discriminate end.
+  pose proof (soundness_ty_at_sort HS HB HB') as HE'; cbn [nf_to_exp] in HE'.
+  eapply level_sort_untyped; eapply presup_exp_eq_right; exact HE'.
+Qed.
+
 (** The case of [alg_subtyping_nf] at normal forms of no universe or [Π]
     case is impossible below a universe or a type of levels: the two
     would be equal up to proofs. *)
 Ltac refl_case_absurd :=
   match goal with Hn : not_univ_pi ?X, E : nf_eq_upto_proofs ?X _ |- _ =>
     destruct X; cbn in Hn; try contradiction; unfold nf_eq_upto_proofs in E; cbn in E; discriminate end.
+
+(** A former of a type of levels is no application spine: an
+    application is neither [Level@n] nor a [Π]. *)
+Lemma apps_exp_level_former : forall l M, level_type_former (apps_exp M l) -> l = nil /\ level_type_former M.
+Proof.
+  induction l as [| N l IH]; intros M H; cbn in H; [ split; [ reflexivity | exact H ] |].
+  apply IH in H as [_ H]; inversion H.
+Qed.
+
+(** A type former applied to its parameters is a type of a large
+    universe: of a sort, it is no proposition, being below itself
+    ([subtyp_prop_ind_absurd]), and no type of levels
+    ([apps_exp_level_former]). *)
+Lemma ind_apps_typed_large : forall {Γ p k X S},
+    type_sort S -> Γ ⊢ apps (a_ind p k) X : S -> exists j, Γ ⊢ apps (a_ind p k) X : Typeω@j.
+Proof.
+  intros * HS HX.
+  destruct HS as [j | |]; [ exists j; exact HX | exfalso | exfalso ].
+  - eapply subtyp_prop_ind_absurd; [| exact HX ].
+    eapply wf_subtyp_refl; [ exact HX | exact type_sort_prop | apply wf_exp_eq_refl; exact HX ].
+  - pose proof (level_sort_typed_former HX) as Hf.
+    apply apps_exp_level_former in Hf as [_ Hf]; inversion Hf.
+Qed.
 
 (** A type checked against a large universe infers a universe at an index
     below it: with the small tier that index need not be a large one. *)
@@ -2352,12 +2391,12 @@ Qed.
     an index of the judgments, so it is fixed for the induction, as in
     [subtyp_spec]. *)
 (** The parts of an eliminator have fewer [let]s than it. *)
-Lemma elim_lets_parts : forall r oq Us m Bks M,
-    (forall U, List.In U Us -> exp_lets U < exp_lets (a_elim r oq Us m Bks M)) /\
-    (forall b Z, List.In b Bks -> eb_ann b = Some Z -> exp_lets Z < exp_lets (a_elim r oq Us m Bks M)) /\
-    (forall b, List.In b Bks -> exp_lets (eb_motive b) < exp_lets (a_elim r oq Us m Bks M)) /\
-    (forall b br, List.In b Bks -> List.In br (eb_brs b) -> exp_lets (snd br) < exp_lets (a_elim r oq Us m Bks M)) /\
-    exp_lets M < exp_lets (a_elim r oq Us m Bks M).
+Lemma elim_lets_parts : forall r p Us m Bks M,
+    (forall U, List.In U Us -> exp_lets U < exp_lets (a_elim r p Us m Bks M)) /\
+    (forall b, List.In b Bks -> exp_lets (eb_scrutinee_type b) < exp_lets (a_elim r p Us m Bks M)) /\
+    (forall b, List.In b Bks -> exp_lets (eb_motive b) < exp_lets (a_elim r p Us m Bks M)) /\
+    (forall b br, List.In b Bks -> List.In br (eb_brs b) -> exp_lets (snd br) < exp_lets (a_elim r p Us m Bks M)) /\
+    exp_lets M < exp_lets (a_elim r p Us m Bks M).
 Proof.
   intros; cbn [exp_lets].
   set (ul := (fix us_lets (Us : list exp) : nat :=
@@ -2367,8 +2406,7 @@ Proof.
   set (bl := (fix blocks_lets (Bks : list eblock) : nat :=
                 match Bks with
                 | nil => 0
-                | eb_mk _ oZ A Bs :: Bks' =>
-                    match oZ with Some Z => exp_lets Z | None => 0 end + exp_lets A + brl Bs + blocks_lets Bks'
+                | eb_mk _ Z A Bs :: Bks' => exp_lets Z + exp_lets A + brl Bs + blocks_lets Bks'
                 end) Bks).
   assert (HU : forall U, List.In U Us -> exp_lets U <= ul).
   { unfold ul; clear; induction Us as [| U' Us IH]; intros U HU; cbn in HU |- *; [ contradiction |].
@@ -2377,11 +2415,11 @@ Proof.
   { induction Bs as [| br' Bs IH]; intros br Hin; cbn in Hin |- *; [ contradiction |].
     destruct Hin as [-> | Hin]; [ lia | specialize (IH _ Hin); lia ]. }
   assert (HB : forall b, List.In b Bks ->
-             match eb_ann b with Some Z => exp_lets Z | None => 0 end + exp_lets (eb_motive b) + brl (eb_brs b) <= bl).
-  { unfold bl; clear -Hbr; induction Bks as [| [nm oZ A Bs] Bks IH]; intros b Hb; cbn in Hb |- *; [ contradiction |].
+             exp_lets (eb_scrutinee_type b) + exp_lets (eb_motive b) + brl (eb_brs b) <= bl).
+  { unfold bl; clear -Hbr; induction Bks as [| [nm Z A Bs] Bks IH]; intros b Hb; cbn in Hb |- *; [ contradiction |].
     destruct Hb as [<- | Hb]; cbn; [ lia | specialize (IH _ Hb); lia ]. }
   split; [ intros U HU'; specialize (HU _ HU'); lia | split; [| split; [| split ] ] ].
-  - intros b Z Hb HZ; specialize (HB _ Hb); rewrite HZ in HB; lia.
+  - intros b Hb; specialize (HB _ Hb); lia.
   - intros b Hb; specialize (HB _ Hb); lia.
   - intros b br Hb Hbr'; specialize (HB _ Hb); specialize (Hbr _ _ Hbr'); lia.
   - lia.
@@ -2404,12 +2442,12 @@ Qed.
 Lemma nfs_agree_of_nth : forall Γ Ms Rs Ts,
     List.length Ms = List.length Ts -> List.length Rs = List.length Ts ->
     (forall j M R T, List.nth_error Ms j = Some M -> List.nth_error Rs j = Some R -> List.nth_error Ts j = Some T ->
-       exists W, nbe_f Γ M T W /\ nbe_f Γ R T W) ->
+       exists W W', nbe_f Γ M T W /\ nbe_f Γ R T W' /\ nf_eq_upto_proofs W W') ->
     nfs_agree Γ Ms Rs Ts.
 Proof.
   induction Ms as [| M Ms IH]; intros [| R Rs] [| T Ts] HMl HRl H; cbn in HMl, HRl; try discriminate; [ constructor |].
-  destruct (H 0 M R T eq_refl eq_refl eq_refl) as (W & HMW & HRW).
-  econstructor; [ exact HMW | exact HRW |].
+  destruct (H 0 M R T eq_refl eq_refl eq_refl) as (W & W' & HMW & HRW & E).
+  econstructor; [ exact HMW | exact HRW | exact E |].
   apply IH; [ lia | lia | intros j M' R' T' HM' HR' HT'; exact (H (S j) M' R' T' HM' HR' HT') ].
 Qed.
 
@@ -2418,12 +2456,11 @@ Qed.
     the member's type is headed by, at parameters equal to the
     derivation's ([subtyp_ind_nf]), whose uniform ones the member's
     uniform arguments normalize to, and whose others are the member's
-    non-uniform ones ([mty_params_conv], [mty_params_inj]); the annotations
-    and the motives are checked at one universe above them all
-    ([nat_bound_upto]).  An annotation infers a sort, which is a
-    universe: the annotation is below the member's type, an inductive
-    type, which no proposition is below ([subtyp_prop_ind_absurd]). *)
-Lemma alg_elim_complete : forall Γ p D oq m Mm bm Bks Ps M r i,
+    non-uniform ones ([mty_params_conv], [mty_params_inj]); the scrutinee
+    types and the motives are checked at one universe above them all
+    ([nat_bound_upto]).  A scrutinee type is equal to its member's type
+    ([blocks_typed_scrutinee_type]), at a large universe. *)
+Lemma alg_elim_complete : forall Γ p D m Mm bm Bks Ps M r i,
     ind_lookup gc_deps gc_stack p = Some D -> ind_member D m = Some Mm ->
     List.nth_error Bks m = Some bm ->
     List.length Ps = im_np D Mm ->
@@ -2433,18 +2470,19 @@ Lemma alg_elim_complete : forall Γ p D oq m Mm bm Bks Ps M r i,
     blocks_typed gc_deps gc_stack Γ p D (List.firstn (ind_nu D) Ps) Bks r i ->
     (forall j U T, List.nth_error (List.firstn (ind_nu D) Ps) j = Some U ->
        List.nth_error (tele_insts (ind_uparams D) Id (List.firstn (ind_nu D) Ps)) j = Some T -> Γ ⊢a U ⟸ T) ->
-    (forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
-       exists UA rZ u, tele_sub (im_nparams Mj) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ++ Γ ⊢a Z ⟹ UA /\ is_sort_nf UA rZ u) ->
+    (forall j Mj b S, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> type_sort S ->
+       tele_sub (im_nparams Mj) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ++ Γ ⊢ eb_scrutinee_type b : S ->
+       tele_sub (im_nparams Mj) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ++ Γ ⊢a eb_scrutinee_type b ⟸ S) ->
     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
        elim_mctx p D j Mj (List.firstn (ind_nu D) Ps) ++ Γ ⊢a eb_motive b ⟸ abs_kind_sort r Typeω@i) ->
     (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
        ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
        elim_bctx r p D Mj gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ
          ⊢a B ⟸ elim_branch_type p D j Mj c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-    Γ ⊢a a_elim r oq (List.firstn (ind_nu D) Ps) m Bks M
+    Γ ⊢a a_elim r p (List.firstn (ind_nu D) Ps) m Bks M
        ⟸ (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
-  intros * Hl Hg Hm Hb HPl HPt HMe HMc HBt HUc HZc HAc HBc.
+  intros * Hl Hm Hb HPl HPt HMe HMc HBt HUc HZc HAc HBc.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hgw; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
@@ -2468,12 +2506,28 @@ Proof.
       derivation's. *)
   inversion HMc as [? W ? ? HMi HMs]; subst.
   pose proof (alg_type_infer_sound HMi HΓ) as HMW.
-  destruct (presup_exp_typ HMW) as [SW HSW HWt].
-  destruct (presup_exp_typ HMe) as [SP HSP HPs].
+  destruct (presup_exp_typ_sorted HMe ltac:(rewrite Emty; apply apps_exp_not_level_sort; discriminate)) as (SP & HSP & HPs).
+  destruct (alg_infer_below_sorted HΓ HSP HPs HMi HMs) as (SW & HSW & HWt).
   assert (HWs : Γ ⊢ (W : exp) ⊆ ind_mty p D m Us NsP) by exact (alg_subtyping_sound_sort _ _ _ _ _ HSW HSP HMs HWt HPs).
   rewrite Emty in HWs.
-  pose proof (alg_type_infer_self HΓ HMi) as HWW.
-  destruct (subtyp_ind_nf HWs Hlq Hk HXl HXt HWW) as (Rs & -> & HRl & HXR).
+  (** The inferred type is equal up to proofs to its normal form, a type
+      former at parameters, so it is one. *)
+  destruct (alg_type_infer_self_upto HΓ HMi) as (W' & HWW & EW).
+  destruct (subtyp_ind_nf HWs Hlq Hk HXl HXt HWW) as (Rs' & -> & HRl' & _).
+  destruct W; try (unfold nf_eq_upto_proofs in EW; cbn in EW; discriminate).
+  apply nf_indty_upto_proofs_inv in EW as (<- & <- & ERs).
+  rename l into Rs.
+  assert (HRl : List.length (List.map nf_to_exp Rs) = im_np Dq Mk)
+    by (rewrite List.length_map, (nfs_eq_upto_proofs_length _ _ ERs); exact HRl').
+  clear Rs' HRl' ERs HWW.
+  cbn [nf_to_exp] in HWt, HWs, HMW.
+  pose proof (wf_ind_apps_inv _ _ _ _ _ _ _ Hlq Hk HWt HRl) as HRt.
+  (** The two type formers are equal, so their parameters are, position
+      by position ([exp_eq_ind_apps_inv]). *)
+  destruct (subtyp_ind_inv HWs) as (SR & HSR & HeqR0).
+  destruct (ind_apps_typed_large HSW HWt) as [kW HWl].
+  destruct (exp_eq_sort_large HSR HeqR0 (or_introl HWl)) as [kk HeqR1].
+  destruct (exp_eq_ind_apps_inv _ _ _ _ _ _ _ _ Hlq Hk (wf_exp_eq_sym _ _ _ _ _ _ HeqR1) HXl HRl HXt HRt) as [_ HXR].
   assert (Hti : tele_insts (im_params Dq Mk) Id (im_pre Mm Us ++ NsP)
                = tele_insts (ind_uparams Dq) Id (im_pre Mm Us) ++ tele_insts (im_nparams Mk) (sb_of_list Id (im_pre Mm Us)) NsP)
     by (unfold im_params; apply tele_insts_app; [ exact (decl_closed_ass _ Hcq) | exact HPrl ]).
@@ -2492,16 +2546,14 @@ Proof.
     exact (completeness (HPR _ _ _ _ HN HR HT)). }
   (** The rest of the inferred parameters are the member's non-uniform
       ones, equal to the derivation's. *)
-  pose proof (wf_ind_apps_inv _ _ _ _ _ _ _ Hlq Hk HWt HRl) as HRt.
   destruct (mty_params_conv _ _ _ _ _ _ _ _ _ _ _ HΓ Hl Hm Hnr Hr Hlq Hk HUl HUt HRl HRt HPR) as [HNl HNt [iE HE]].
   set (Ns :=List.skipn (ind_nu Dq) (List.map nf_to_exp Rs)) in *.
-  destruct (subtyp_ind_inv HWs) as (SR & HSR & HeqR0).
-  destruct (exp_eq_sort_large HSR HeqR0 (or_introl (presup_exp_eq_left HE))) as [kk HeqR]; clear SR HSR HeqR0.
+  pose proof HeqR1 as HeqR; clear SR HSR HeqR0 HeqR1.
   rewrite <- Emty in HeqR.
   assert (HmE : Γ ⊢ ind_mty p D m Us NsP ≈ ind_mty p D m Us Ns : Typeω@(max kk iE))
     by (etransitivity; [ symmetry; eapply lift_exp_eq_max_left; exact HeqR | eapply lift_exp_eq_max_right; exact HE ]).
   pose proof (mty_params_inj _ _ _ _ _ _ _ _ _ Hl Hm HUl HUt HNPl HNl HNPt HNt HmE) as HNN.
-  clear HmE HeqR HE HWs HMs HWW HXR HPR Hti Hl1 HXt HXl HRt HMW HWt HPs.
+  clear HmE HeqR HE HWs HMs HXR HPR Hti Hl1 HXt HXl HRt HMW HWt HPs.
   pose proof (params_typed_join _ _ D Hc _ _ _ Us Ns Hm HUl HUt HNt) as HPt'.
   assert (HPl' : List.length (Us ++ Ns) = im_np D Mm) by (rewrite List.length_app, HUl, HNl; unfold im_np; lia).
   assert (HPP : forall j P P' T, List.nth_error Ps j = Some P -> List.nth_error (Us ++ Ns) j = Some P' ->
@@ -2521,37 +2573,32 @@ Proof.
   destruct (wf_elim_params_conv _ _ _ _ _ _ _ _ _ _ r i Hl Hm Hb HPl HPt HPl' HPt' HPP HMe HBt) as (_ & _ & Hmot).
   rewrite skipn_app_len in Hmot by exact HUl; fold NsP in Hmot.
   clear HPP HPt' HNN.
-  (** One universe for the annotations and the motives. *)
+  (** One universe for the scrutinee types and the motives. *)
   assert (HΨ : forall j Mj, ind_member D j = Some Mj -> ⊢ (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ)%list).
   { intros j Mj Hj; pose proof (ext_eq_ctx_left _ _ _ _ _ (blocks_typed_mctx _ _ _ _ _ _ _ _ _ HBt _ _ Hj)) as HC.
     unfold elim_mctx in HC; cbn [List.app] in HC; exact (proj1 (ctx_decomp HC)). }
   assert (Hmono : forall Δ A l l', ⊢ Δ -> l <= l' -> Δ ⊢a A ⟸ Typeω@l -> Δ ⊢a A ⟸ Typeω@l').
   { intros Δ A l l' HΔ Hll HA; destruct (Nat.eq_dec l l') as [<- | Hne]; [ exact HA |].
     eapply alg_type_check_subtyp; [ exact HA | apply wf_subtyp_univ; [ exact HΔ | lia ] ]. }
-  destruct (nat_bound_upto (fun j l => forall Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
-              eb_ann b = Some Z -> (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ)%list ⊢a Z ⟸ Typeω@l)
+  (** A scrutinee type is of a large universe and mutually below its
+      member's type ([blocks_typed_scrutinee_type]). *)
+  assert (HZh : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+             ext_eq_ass_head gc_deps gc_stack Γ (tele_sub (im_nparams Mj) (sb_of_list Id Us))
+               (tele_sub (im_nparams Mj) (sb_of_list Id Us)) ak_relevant (eb_scrutinee_type b)
+               (ind_mty p D j (List.map (fun U => U[wk_shiftn (im_nn Mj)]ʷ) Us) (vars_from 0 (im_nn Mj))))
+    by (intros j Mj b Hj Hbj; apply ext_eq_ass_inv; exact (blocks_typed_scrutinee_type _ _ _ _ _ _ _ _ _ HBt _ _ _ Hj Hbj)).
+  destruct (nat_bound_upto (fun j l => forall Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+              (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ)%list ⊢a eb_scrutinee_type b ⟸ Typeω@l)
               (List.length Bks)) as [L HL].
   { intros j _.
     destruct (ind_member D j) as [Mj |] eqn:Hj; [| exists 0; intros; discriminate ].
     destruct (List.nth_error Bks j) as [b |] eqn:Hbj; [| exists 0; intros; discriminate ].
-    destruct (eb_ann b) as [Z |] eqn:HZ; [| exists 0; intros; congruence ].
-    destruct (HZc _ _ _ _ Hj Hbj HZ) as (UA & rZ & u & HZi & Hs).
-    destruct Hs as [? u Hu |].
-    2:{ (** A propositional annotation is below the member's type, an
-            inductive type: absurd. *)
-        exfalso.
-        pose proof (alg_type_infer_sound HZi (HΨ _ _ Hj)) as HZp; cbn [nf_to_exp] in HZp.
-        destruct (ext_eq_ass_inv _ _ _ _ _ _ _ (blocks_typed_ann _ _ _ _ _ _ _ _ _ HBt _ _ _ _ Hj Hbj HZ))
-          as [_ _ _ _ _ _ _ HZH _].
-        pose proof (block_member_not_rview _ _ _ _ _ Hsuf (blocks_typed_len _ _ _ _ _ _ _ _ _ HBt) Hj Hbj) as Hnrj.
-        unfold ind_mty in HZH; rewrite Hj in HZH; unfold im_ty_at in HZH.
-        destruct (im_head Mj) eqn:Hh0;
-          [ exact (subtyp_prop_ind_absurd HZH HZp) | exact (subtyp_prop_ind_absurd HZH HZp) |].
-        unfold im_is_rview in Hnrj; rewrite Hh0 in Hnrj; discriminate. }
-    exists (universe_nf_large_index u); intros Mj' b' Z' Hj' Hb' HZ'.
-    assert (Mj' = Mj) as -> by congruence; assert (b' = b) as -> by congruence; assert (Z' = Z) as -> by congruence.
-    eapply alg_type_check_typ_of; [ exact (HΨ _ _ Hj) | exact HZi | exact Hu | apply universe_nf_le_large ]. }
-  { intros j l l' Hll HQ Mj b Z Hj Hbj HZ; eapply Hmono; [ exact (HΨ _ _ Hj) | exact Hll | exact (HQ _ _ _ Hj Hbj HZ) ]. }
+    destruct (HZh _ _ _ Hj Hbj) as [SZ HSZ _ _ _ HZt _ _ _].
+    destruct (sort_kind_abs_kind_sort_inv _ _ HSZ) as [l ->]; cbn [abs_kind_sort] in HZt.
+    exists l; intros Mj' b' Hj' Hb'.
+    assert (Mj' = Mj) as -> by congruence; assert (b' = b) as -> by congruence.
+    exact (HZc _ _ _ _ Hj Hbj (type_sort_universe l) HZt). }
+  { intros j l l' Hll HQ Mj b Hj Hbj; eapply Hmono; [ exact (HΨ _ _ Hj) | exact Hll | exact (HQ _ _ Hj Hbj) ]. }
   set (i' := max i L).
   (** The type, the normal form of the motive's instance. *)
   pose proof (type_sort_kind_universe r i) as HSr.
@@ -2562,18 +2609,19 @@ Proof.
   - eapply alg_type_infer_elim with (p := p) (D := D) (Mm := Mm) (Dq := Dq) (Mk := Mk) (bm := bm) (i := i'); try eassumption; try reflexivity.
     + exact (blocks_typed_len _ _ _ _ _ _ _ _ _ HBt).
     + exact (blocks_typed_binder_count _ _ _ _ _ _ _ _ _ HBt).
-    + intros j Mj b Z Hj Hbj HZ.
+    + intros j Mj b Hj Hbj.
       assert (Hjl : j < List.length Bks) by (apply List.nth_error_Some; congruence).
-      eapply (Hmono _ _ L); [ exact (HΨ _ _ Hj) | unfold i'; lia | exact (HL j Hjl _ _ _ Hj Hbj HZ) ].
-    + intros j Mj b Z Hj Hbj HZ.
-      destruct (ext_eq_ass_inv _ _ _ _ _ _ _ (blocks_typed_ann _ _ _ _ _ _ _ _ _ HBt _ _ _ _ Hj Hbj HZ))
-        as [_ _ _ _ _ _ _ HZH HHZ].
+      eapply (Hmono _ _ L); [ exact (HΨ _ _ Hj) | unfold i'; lia | exact (HL j Hjl _ _ Hj Hbj) ].
+    + intros j Mj b Hj Hbj.
+      destruct (HZh _ _ _ Hj Hbj) as [_ _ _ _ _ _ _ HZH HHZ].
       exact (nbe_ty_of_mutual_subtyp HZH HHZ).
-    + intros j Mj b Hj Hbj; destruct r; cbn [abs_kind_sort] in *; [| exact (HAc _ _ _ Hj Hbj) ].
+    + intros j Mj b Hj Hbj; destruct (blocks_typed_kind _ _ _ _ _ _ _ _ _ HBt); cbn [abs_kind_sort] in *;
+        [| exact (HAc _ _ _ Hj Hbj) ].
       eapply (Hmono _ _ i);
         [ exact (ext_eq_ctx_left _ _ _ _ _ (blocks_typed_mctx _ _ _ _ _ _ _ _ _ HBt _ _ Hj)) | unfold i'; lia | exact (HAc _ _ _ Hj Hbj) ].
     + exact (blocks_typed_names _ _ _ _ _ _ _ _ _ HBt).
     + exact (blocks_typed_counts _ _ _ _ _ _ _ _ _ HBt).
+    + exact (blocks_typed_kind _ _ _ _ _ _ _ _ _ HBt).
   - apply alg_subtyping_complete.
     assert (HE : Γ ⊢ T ≈ (eb_motive bm)[sb_of_list Id (NsP ++ M :: nil)] : abs_kind_sort r Typeω@i)
       by (etransitivity; [ symmetry; exact HTe | symmetry; exact Hmot ]).
