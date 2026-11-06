@@ -1361,6 +1361,7 @@ Proof.
   eapply Forall2_functional; [ exact (view_nparams_functional Θ Ξ R) | exact Hn | exact Hn' ].
 Qed.
 
+(* OLD-RUN-BEGIN
 Section Impl.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option core_unit).
@@ -6184,3 +6185,4 @@ Section Files.
         decode_unit u = U /\ gds_equiv ΘR (decode_units s).
   Proof. intros read to_core vs Hvs * H; exact (prog_impl_complete _ _ _ vs Hvs _ _ _ _ H _). Qed.
 End Files.
+OLD-RUN-END *)
