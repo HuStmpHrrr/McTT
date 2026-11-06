@@ -937,13 +937,12 @@ Section Judgments.
       type of a universe among them, or of levels ([parameter_sort]). *)
   Fixpoint params_sorts_dec (Γ Δ : ctx) {struct Δ} :
     { lb : nat * list bool | List.length (snd lb) = List.length Δ /\ params_sorts_ok Γ Δ (fst lb) (snd lb) }
-    + { forall l ps, (forall k, parameter_sort l (ps k)) ->
-          ~ forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2) }.
+    + { forall l, ~ params_evaluated Θ Ξ Γ Δ l }.
   Proof.
     destruct Δ as [| e Δ'].
     - left; exists (0, nil); split; [ reflexivity | intros Δ1 κ T Δ2 E; exfalso; destruct Δ1; discriminate ].
     - destruct (params_sorts_dec Γ Δ') as [[[l' bs'] [Hlen Hok]] | Hn']; cbn [fst snd] in *;
-        [| right; intros l ps Hps H; apply (Hn' l ps Hps); intros Δ1 κ T Δ2 E; apply (H (e :: Δ1) κ T Δ2); rewrite E; reflexivity ].
+        [| right; intros l H; apply (Hn' l); intros Δ1 κ T Δ2 E; apply (H (e :: Δ1) κ T Δ2); rewrite E; reflexivity ].
       (** The entries before, at a level at least [l'] *)
       assert (Htail : forall k b, l' <= k -> forall Δ1 κ T Δ2, Δ' = Δ1 ++ ce_ass κ T :: Δ2 ->
                  Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : param_bool_sort k (List.nth (List.length Δ2) (List.rev (b :: bs')) false)).
@@ -966,9 +965,7 @@ Section Judgments.
              intros [| e1 Δ1] κ0 T0 Δ2 E; cbn in E; injection E as E1 E2.
              ++ subst; rewrite <- Hlen, nth_rev_cons_eq; exact HL.
              ++ subst; eapply Htail; [| reflexivity ]; lia.
-          -- right; intros l ps Hps H; specialize (H nil κ T Δ' eq_refl).
-             pose proof (Hps (List.length Δ')) as Hp; inversion Hp as [E | E]; rewrite <- E in H;
-               [ exact (HnT l H) | exact (HnL H) ].
+          -- right; intros l H; destruct (H nil κ T Δ' eq_refl) as [HT | HT]; [ exact (HnT l HT) | exact (HnL HT) ].
       + left; exists (l', false :: bs'); cbn [fst snd]; split; [ cbn; lia |].
         intros [| e1 Δ1] κ0 T0 Δ2 E; cbn in E; injection E as E1 E2; [ discriminate | subst; eapply Htail; [ lia | reflexivity ] ].
       + left; exists (l', false :: bs'); cbn [fst snd]; split; [ cbn; lia |].
@@ -2301,7 +2298,8 @@ Section NilDecide.
          match goal with
          | HΔ0 : ind_uparams D = ?Δ0 ++ gs_tele Ξ, Hps0 : forall k, parameter_sort _ _,
            HP0 : forall Δ1 κ T Δ2, ?Δ0 = _ -> _ |- _ =>
-             assert (Δ0 = Δ) as -> by (eapply app_inv_tail; rewrite <- HΔ0; exact HΔ); exact (HnP _ _ Hps0 HP0)
+             assert (Δ0 = Δ) as -> by (eapply app_inv_tail; rewrite <- HΔ0; exact HΔ);
+             exact (HnP _ (params_evaluated_of_sorts _ _ _ _ _ _ Hps0 HP0))
          end ].
     cbn [fst snd] in HP.
     left; apply (mk_ind_nil_at Θ Ξ mp D IsS Δ M0 (Nat.max lS lD) n lP
