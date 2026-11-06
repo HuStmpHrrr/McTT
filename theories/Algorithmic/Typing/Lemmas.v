@@ -624,7 +624,7 @@ Proof.
     eapply wf_ext_eq_def_same; [ exact HX | exact HA | apply type_sort_kind_universe | exact HA | exact HM | exact HM ].
   - exists (max L i); apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HL (Nat.le_max_l L i)) |].
     intros A' M' HE; cbn [entry_tm entry_kind] in HE |- *; injection HE as <- <-.
-    exact (abs_kind_sort_lift (Nat.le_max_r L i) HA).
+    destruct r; cbn [abs_kind_sort] in HA |- *; [ eapply lift_exp_ge; [| exact HA ]; lia | exact HA | exact HA ].
 Qed.
 
 Lemma alg_body_mod_sound : forall Γ Φ Φx x pm U,
@@ -662,21 +662,22 @@ Proof.
     eapply lift_exp_ge; [| exact HA ]; lia.
 Qed.
 
-Lemma alg_body_open_sound : forall Γ Φ Φx H R Rm its gs,
+Lemma alg_body_open_sound : forall Γ Φ Φx H R Rm its gs Φg,
     alg_body_sound Γ Φ Φx ->
     (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵐ H ≈ H) ->
     mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
     mdesc_mod R = Some Rm ->
     items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
-    alg_body_sound Γ (gm_open Φ H its) (gens_append Φx 0 gs).
+    Φg = gens_body gs ->
+    alg_body_sound Γ (gm_open Φ H its Φg) (gens_append Φx 0 gs).
 Proof.
-  intros * IH HH HR HRm Hg Hok Γ0 Ψ -> HΓ0 HΨ.
+  intros * IH HH HR HRm Hg Hok -> Γ0 Ψ -> HΓ0 HΨ.
   destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho [L HL]].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HH HC).
   pose proof (gens_ext_wf _ _ _ _ _ _ Hg HH HX) as HXg.
-  constructor; [ econstructor; eassumption | exact HXg | |].
+  constructor; [ econstructor; [ eassumption .. | reflexivity ] | exact HXg | |].
   - cbn [body_opens]; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append.
     intros [| k] * Hk; cbn in Hk; [ injection Hk as <- <-; exact HH | exact (Ho _ _ _ Hk) ].
   - pose proof (ext_eq_ctx_left _ _ _ _ _ HXg) as HCg; rewrite <- List.app_assoc in HCg.
