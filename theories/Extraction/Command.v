@@ -61,35 +61,41 @@ Definition gs_fresh_dec (x : string) (Ξ : gstack) : {gs_fresh x Ξ} + {~ gs_fre
   | nil => right (fun H => H)
   end.
 
+(** A decision of [levels_abstractable] at every global context, the one
+    the checker is given (the flag decides it once units carry it). *)
+Definition levels_abstractable_decider : Type :=
+  forall Θ Ξ G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G -> { levels_abstractable Θ Ξ G Δ E } + { ~ levels_abstractable Θ Ξ G Δ E }.
+
 (** The member of a group, with its index. *)
 Definition member_case (D : ind_decl) (k : nat) : {Mk | ind_member D k = Some Mk} + {ind_member D k = None} :=
   opt_case (ind_member D k).
 
 (** A normal type is the [Π] over its domains ([nf_pi_tele]), a telescope
     of assumptions, of its codomain. *)
-Lemma nf_pi_tele_spec : forall W Ds C, nf_pi_tele W = (Ds, C) -> nf_to_exp W = ctx_pi Ds (nf_to_exp C) /\ tele_ass Ds.
+Lemma nf_pi_tele_spec : forall W Ds C, nf_pi_tele W = (Ds, C) -> nf_to_exp W = ctx_pi Ds (nf_to_exp C) /\ all_assumptions Ds.
 Proof.
   induction W; intros * E; cbn [nf_pi_tele] in E;
     try (injection E as <- <-; split; [ reflexivity | constructor ]).
-  destruct r; [| injection E as <- <-; split; [ reflexivity | constructor ] ].
+  destruct a0; try (injection E as <- <-; split; [ reflexivity | constructor ]).
   destruct (nf_pi_tele W2) as [Ds' C'] eqn:E2; injection E as <- <-.
   destruct (IHW2 _ _ eq_refl) as [HW Ha].
   cbn [nf_to_exp]; rewrite ctx_pi_snoc, <- HW; split; [ reflexivity |].
-  apply List.Forall_app; split; [ exact Ha | constructor; [ eexists; reflexivity | constructor ] ].
+  apply List.Forall_app; split; [ exact Ha | constructor; [ do 2 eexists; reflexivity | constructor ] ].
 Qed.
 
-(** A relevant [Π] typed at a sort is a type of a large universe: its
-    value at the initial environment is a relevant [Π]
-    ([typed_at_sort_of_initial_relevance]). *)
-Lemma relevant_pi_large : forall Θ Ξ Γ A B S, type_sort S -> Θ ⍮ Ξ ⍮ Γ ⊢ a_pi relevant A B : S ->
-    exists j : nat, Θ ⍮ Ξ ⍮ Γ ⊢ a_pi relevant A B : Typeω@j.
+(** A [Π] into a relevant codomain typed at a sort is a type of a large
+    universe: its value at the initial environment is a [Π] of that kind
+    ([typed_at_sort_of_initial_kind]). *)
+Lemma relevant_pi_large : forall Θ Ξ Γ κ A B S, type_sort S -> Θ ⍮ Ξ ⍮ Γ ⊢ a_pi κ ak_relevant A B : S ->
+    exists j : nat, Θ ⍮ Ξ ⍮ Γ ⊢ a_pi κ ak_relevant A B : Typeω@j.
 Proof.
   intros * HS HT.
   pose proof (@completeness_fundamental_exp (gc_mk Θ Ξ) _ _ _ HT) as HTs.
-  destruct (@rel_exp_under_ctx_at_initial_env (gc_mk Θ Ξ) _ _ _ _ HTs) as [ρ i R s Hρ Es HSs Hterms].
-  destruct Hterms as [Hp | m m' Em _ _].
-  - exfalso; destruct HS; inversion Es; subst; discriminate Hp.
-  - destruct (@typed_at_sort_of_initial_relevance (gc_mk Θ Ξ) _ _ _ _ _ HS HT Hρ Em) as [k Hk].
+  destruct (@rel_exp_under_ctx_at_initial_env (gc_mk Θ Ξ) _ _ _ _ (wf_ctx_scoped_exp HT) (wf_exp_scoped_term _ _ _ _ _ HT)
+              (wf_exp_scoped_term _ _ _ _ _ HT) HTs) as [ρ a W W' Hρ Ea HW _ _].
+  destruct HW as [w Hp _ | m w _ Em _].
+  - exfalso; destruct HS; inversion Ea; subst; cbn in Hp; discriminate Hp.
+  - destruct (@typed_at_sort_of_initial_kind (gc_mk Θ Ξ) _ _ _ _ _ HS HT Hρ Em) as [k Hk].
     inversion Em; subst; exists k; exact Hk.
 Qed.
 
@@ -102,11 +108,12 @@ Proof.
   destruct Ds as [| e Ds0] using List.rev_ind.
   - cbn in HM |- *; unfold exp_applied_to_vars; cbn.
     rewrite exp_wk_id_ext by (intros x; cbn; lia); exact HM.
-  - destruct (presup_exp_typ HM) as [S HS HT].
-    assert (He : exists A, e = ce_ass A)
-      by (unfold tele_ass in Ha; apply List.Forall_app in Ha as [_ He]; inversion He as [| ? ? He0]; exact He0).
-    destruct He as [A ->]; rewrite ctx_pi_snoc in HT.
-    destruct (relevant_pi_large _ _ _ _ _ _ HS HT) as [i HT'].
+  - assert (He : exists κ A, e = ce_ass κ A)
+      by (unfold all_assumptions in Ha; apply List.Forall_app in Ha as [_ He]; inversion He as [| ? ? He0]; exact He0).
+    destruct He as (κ & A & ->).
+    pose proof (presup_exp_typ HM) as Hty; rewrite ctx_pi_snoc in Hty.
+    inversion Hty as [? S HS HT | ]; subst.
+    destruct (relevant_pi_large _ _ _ _ _ _ _ HS HT) as [i HT'].
     rewrite <- ctx_pi_snoc in HT'.
     pose proof (ctx_pi_inv_outer _ _ _ _ Ha HT') as HC.
     exact (wf_apps_vars _ _ _ _ _ _ _ Ha (presup_exp_ctx HC) HC HM).
@@ -351,9 +358,10 @@ Section ModBlame.
   Fixpoint mod_blame (M : exp) : option run_error :=
     match M with
     | a_succl M | a_univ M | a_left M | a_right M => mod_blame M
-    | a_maxl M N | a_pi _ M N | a_fn M N | a_app M N | a_and M N => first_some (mod_blame M) (fun _ => mod_blame N)
+    | a_maxl M N | a_pi _ _ M N | a_fn M N | a_app M N | a_and M N => first_some (mod_blame M) (fun _ => mod_blame N)
     | a_absurd A M => first_some (mod_blame M) (fun _ => mod_blame A)
-    | a_conj T M N => first_some (mod_blame T) (fun _ => first_some (mod_blame M) (fun _ => mod_blame N))
+    | a_conj P Q M N =>
+        first_some (mod_blame P) (fun _ => first_some (mod_blame Q) (fun _ => first_some (mod_blame M) (fun _ => mod_blame N)))
     | a_elim _ _ Us _ Bks M =>
         first_some (mod_blame M) (fun _ => first_some
           ((fix exps (Us : list exp) : option run_error :=
@@ -364,8 +372,8 @@ Section ModBlame.
           (fun _ => (fix blocks (Bks : list eblock) : option run_error :=
               match Bks with
               | nil => None
-              | eb_mk _ oZ A Bs :: Bks' =>
-                  first_some (match oZ with Some Z => mod_blame Z | None => None end)
+              | eb_mk _ Z A Bs :: Bks' =>
+                  first_some (mod_blame Z)
                     (fun _ => first_some (mod_blame A) (fun _ => first_some
                       ((fix brs (Bs : list (string * nat * exp)) : option run_error :=
                           match Bs with
@@ -374,9 +382,8 @@ Section ModBlame.
                           end) Bs)
                       (fun _ => blocks Bks')))
               end) Bks))
-    | a_let (b_def oA N) B =>
-        first_some (match oA with Some A => mod_blame A | None => None end)
-          (fun _ => first_some (mod_blame N) (fun _ => mod_blame B))
+    | a_let (b_def A N) B =>
+        first_some (mod_blame A) (fun _ => first_some (mod_blame N) (fun _ => mod_blame B))
     | a_let (b_mod _) B => mod_blame B
     | a_mem H x => mod_term_blame H x
     | _ => None
@@ -385,7 +392,7 @@ End ModBlame.
 
 (** A binder of a term a message is read in, whose type the message does
     not read: only the depth matters, for the printer to name the binders. *)
-Definition unread_binder : centry := ce_ass a_placeholder_type.
+Definition unread_binder : centry := ce_ass ak_relevant a_prop.
 
 (** [n] such binders. *)
 Definition unread_binders (n : nat) : ctx := List.repeat unread_binder n.
@@ -476,9 +483,10 @@ Section BranchBlame.
   Fixpoint brs_blame (F : FCtx) (M : exp) : option run_error :=
     match M with
     | a_succl M | a_univ M | a_left M | a_right M => brs_blame F M
-    | a_maxl M N | a_pi _ M N | a_fn M N | a_app M N | a_and M N => first_some (brs_blame F M) (fun _ => brs_blame F N)
+    | a_maxl M N | a_pi _ _ M N | a_fn M N | a_app M N | a_and M N => first_some (brs_blame F M) (fun _ => brs_blame F N)
     | a_absurd A M => first_some (brs_blame F M) (fun _ => brs_blame F A)
-    | a_conj T M N => first_some (brs_blame F T) (fun _ => first_some (brs_blame F M) (fun _ => brs_blame F N))
+    | a_conj P Q M N =>
+        first_some (brs_blame F P) (fun _ => first_some (brs_blame F Q) (fun _ => first_some (brs_blame F M) (fun _ => brs_blame F N)))
     | a_elim _ _ Us _ Bks M =>
         first_some (brs_blame F M) (fun _ => first_some
           ((fix exps (Us : list exp) : option run_error :=
@@ -489,8 +497,8 @@ Section BranchBlame.
           (fun _ => (fix blocks (Bks : list eblock) : option run_error :=
               match Bks with
               | nil => None
-              | eb_mk _ oZ A Bs :: Bks' =>
-                  first_some (match oZ with Some Z => brs_blame F Z | None => None end)
+              | eb_mk _ Z A Bs :: Bks' =>
+                  first_some (brs_blame F Z)
                     (fun _ => first_some (brs_blame F A) (fun _ => first_some (elim_blame F Bs)
                       (fun _ => first_some
                         ((fix brs (Bs : list (string * nat * exp)) : option run_error :=
@@ -500,9 +508,8 @@ Section BranchBlame.
                             end) Bs)
                         (fun _ => blocks Bks'))))
               end) Bks))
-    | a_let (b_def oA N) B =>
-        first_some (match oA with Some A => brs_blame F A | None => None end)
-          (fun _ => first_some (brs_blame F N) (fun _ => brs_blame F B))
+    | a_let (b_def A N) B =>
+        first_some (brs_blame F A) (fun _ => first_some (brs_blame F N) (fun _ => brs_blame F B))
     | a_let (b_mod _) B => brs_blame F B
     | _ => None
     end.
@@ -553,40 +560,16 @@ Section BlocksBlame.
       for.  That second case is a guess, a hint for the message only: it
       reads the branches' names, not the scrutinee's type, and is asked of
       a term already rejected, so it decides nothing about typing. *)
-  Definition elim_group (oq : option qname) (m : nat) (Bks : list eblock) : option qname :=
-    match oq with
-    | Some p => Some p
-    | None =>
-        match List.nth_error Bks m with
-        | None => None
-        | Some b =>
-            let ps := List.filter (fun p => match fc_ind F p with
-                                            | Some D => andb (Nat.eqb (ind_nu D) 0) (existsb (fun Mk => block_fits Mk b) (ind_members D))
-                                            | None => false
-                                            end)
-                        (fc_all_groups F) in
-            match ps with
-            | p :: ps' => if forallb (fun p' => if qname_eq_dec p p' then true else false) ps' then Some p else None
-            | nil => None
-            end
-        end
-    end.
-
   (** The eliminator [E], in the context [Γ], if its blocks are too few or
-      too many for its group, or one per member but out of order; the
-      eliminator in the error has its group.  With as many blocks as
-      members of which some match no member, the branches are to blame
-      ([brs_blame]), not the blocks. *)
+      too many for its group, or one per member but out of order.  With as
+      many blocks as members of which some match no member, the branches
+      are to blame ([brs_blame]), not the blocks. *)
   Definition elim_blocks_check (Γ : ctx) (E : exp) : option run_error :=
     match E with
-    | a_elim r oq Us m Bks M0 =>
-        match match elim_group oq m Bks with
-              | Some p => option_map (fun D => (p, D)) (fc_ind F p)
-              | None => None
-              end with
+    | a_elim r p Us m Bks M0 =>
+        match option_map (fun D => (p, D)) (fc_ind F p) with
         | None => None
         | Some (p, D) =>
-            let E := a_elim r (Some p) Us m Bks M0 in
             let Ms := ind_block_members D in
             let a := blocks_members Ms nil None Bks in
             let missing :=
@@ -615,10 +598,12 @@ Section BlocksBlame.
     match M with
     | a_succl M | a_univ M | a_left M | a_right M => blocks_blame Γ M
     | a_maxl M N | a_app M N => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ N)
-    | a_pi _ A B | a_fn A B | a_and A B => first_some (blocks_blame Γ A) (fun _ => blocks_blame (ce_ass A :: Γ) B)
+    | a_pi _ _ A B | a_fn A B | a_and A B => first_some (blocks_blame Γ A) (fun _ => blocks_blame (unread_binder :: Γ) B)
     | a_absurd A M => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ A)
-    | a_conj T M N => first_some (blocks_blame Γ T) (fun _ => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ N))
-    | a_elim _ oq Us m Bks M0 =>
+    | a_conj P Q M N =>
+        first_some (blocks_blame Γ P) (fun _ => first_some (blocks_blame (unread_binder :: Γ) Q)
+          (fun _ => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ N)))
+    | a_elim _ _ Us m Bks M0 =>
         first_some (blocks_blame Γ M0) (fun _ => first_some
           ((fix exps (Us : list exp) : option run_error :=
               match Us with
@@ -629,8 +614,8 @@ Section BlocksBlame.
             ((fix blocks (Bks : list eblock) : option run_error :=
                 match Bks with
                 | nil => None
-                | eb_mk nm oZ A Bs :: Bks' =>
-                    first_some (match oZ with Some Z => blocks_blame (unread_binders (nm - 1) ++ Γ) Z | None => None end)
+                | eb_mk nm Z A Bs :: Bks' =>
+                    first_some (blocks_blame (unread_binders (nm - 1) ++ Γ) Z)
                       (fun _ => first_some (blocks_blame (unread_binders nm ++ Γ) A) (fun _ => first_some
                         ((fix brs (Bs : list (string * nat * exp)) : option run_error :=
                             match Bs with
@@ -640,10 +625,8 @@ Section BlocksBlame.
                         (fun _ => blocks Bks')))
                 end) Bks)
             (fun _ => elim_blocks_check Γ M)))
-    | a_let (b_def oA N) B =>
-        first_some (match oA with Some A => blocks_blame Γ A | None => None end)
-          (fun _ => first_some (blocks_blame Γ N)
-            (fun _ => blocks_blame (match oA with Some A => ce_def A N | None => unread_binder end :: Γ) B))
+    | a_let (b_def A N) B =>
+        first_some (blocks_blame Γ A) (fun _ => first_some (blocks_blame Γ N) (fun _ => blocks_blame (ce_def A N :: Γ) B))
     | a_let (b_mod U) B => blocks_blame (ce_mod U :: Γ) B
     | _ => None
     end.
@@ -711,12 +694,13 @@ Section ValueBlame.
     | a_maxl M0 N => first_some (value_blame Γ M0) (fun _ => value_blame Γ N)
     | a_app M0 N =>
         first_some (applied_blame Γ M) (fun _ => first_some (value_blame Γ M0) (fun _ => value_blame Γ N))
-    | a_pi _ A B | a_fn A B | a_and A B => first_some (value_blame Γ A) (fun _ => value_blame (ce_ass A :: Γ) B)
+    | a_pi _ _ A B | a_fn A B | a_and A B => first_some (value_blame Γ A) (fun _ => value_blame (unread_binder :: Γ) B)
     | a_absurd A M0 => first_some (value_blame Γ M0) (fun _ => value_blame Γ A)
-    | a_conj T M0 N => first_some (value_blame Γ T) (fun _ => first_some (value_blame Γ M0) (fun _ => value_blame Γ N))
-    | a_let (b_def oA N) B =>
-        first_some (match oA with Some A => value_blame Γ A | None => None end)
-          (fun _ => first_some (value_blame Γ N) (fun _ => value_blame (unread_binder :: Γ) B))
+    | a_conj P Q M0 N =>
+        first_some (value_blame Γ P) (fun _ => first_some (value_blame (unread_binder :: Γ) Q)
+          (fun _ => first_some (value_blame Γ M0) (fun _ => value_blame Γ N)))
+    | a_let (b_def A N) B =>
+        first_some (value_blame Γ A) (fun _ => first_some (value_blame Γ N) (fun _ => value_blame (ce_def A N :: Γ) B))
     | a_let (b_mod U) B => value_blame (ce_mod U :: Γ) B
     | a_tuple T fs =>
         first_some (match record_head T with Some (p, R) => fields_blame p R fs | None => None end)
@@ -760,41 +744,33 @@ End ValueBlame.
     names the innermost field.  The fields are checked with the checker
     only once the whole term has been rejected, so this only chooses the
     message. *)
-(** A context extended by a definition at the type its definiens has. *)
-Lemma wf_ctx_extend_def_typed : forall Θ Ξ Γ A N, Θ ⍮ Ξ ⍮ Γ ⊢ N : A -> ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ N.
-Proof. intros * HN; gen_presups; eapply wf_ctx_extend_def; eassumption. Qed.
-
 Section FieldBlame.
   (** The fast context of the checks ([Extraction.Lookup]), and the
       command declaring [ox], for the printer. *)
   Variables (F : FCtx) (ox : option string).
   #[local] Abbreviation Θ := (fc_deps F).
   #[local] Abbreviation Ξ := (fc_stack F).
+  (** The decision of [levels_abstractable] the checker is given *)
+  Variable levels_abstractable_dec : forall G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G ->
+      { levels_abstractable Θ Ξ G Δ E } + { ~ levels_abstractable Θ Ξ G Δ E }.
 
   (** The term [M] in the context [Δ] the frames' parameters are extended
       by, innermost entry first. *)
   Fixpoint field_value_blame (Δ : ctx) (HΔ : ⊢ Θ ⍮ Ξ ⍮ (Δ ++ fc_tele F)) (M : exp) {struct M} : option run_error :=
     match M with
     | a_fn A B =>
-        match check_type F (Δ ++ fc_tele F) HΔ A with
+        match check_type F levels_abstractable_dec (Δ ++ fc_tele F) HΔ A with
         | inleft (existT _ r (exist _ i HA)) =>
-            field_value_blame (ce_ass A :: Δ) (wf_ctx_extend _ _ _ _ _ HA (type_sort_relevance_universe r i)) B
+            field_value_blame (ce_ass r A :: Δ) (wf_ctx_extend _ _ _ _ _ _ HA (sort_kind_abs_kind_sort r i)) B
         | inright _ => None
         end
-    | a_let (b_def (Some A) N) B =>
-        match check_type F (Δ ++ fc_tele F) HΔ A with
+    | a_let (b_def A N) B =>
+        match check_type F levels_abstractable_dec (Δ ++ fc_tele F) HΔ A with
         | inleft (existT _ r (exist _ i HA)) =>
-            match check_exp_typed F (Δ ++ fc_tele F) HΔ A (type_of_check_type F _ _ _ _ HA) N with
-            | left HN => field_value_blame (ce_def A N :: Δ) (wf_ctx_extend_def _ _ _ _ _ _ HA (type_sort_relevance_universe r i) HN) B
+            match check_exp_typed F levels_abstractable_dec (Δ ++ fc_tele F) HΔ A (type_of_check_type F _ _ _ _ HA) N with
+            | left HN => field_value_blame (ce_def A N :: Δ) (wf_ctx_extend_def _ _ _ _ _ _ HA (type_sort_kind_universe r i) HN) B
             | right _ => None
             end
-        | inright _ => None
-        end
-    (** An unannotated [let], at the type its definiens infers, as the
-        typed fill reads it. *)
-    | a_let (b_def None N) B =>
-        match type_infer_at F (Δ ++ fc_tele F) HΔ N (user_exp_all N) with
-        | inleft (exist _ W HN) => field_value_blame (ce_def (nf_to_exp W) N :: Δ) (wf_ctx_extend_def_typed _ _ _ _ _ HN) B
         | inright _ => None
         end
     | a_tuple T fs =>
@@ -807,9 +783,9 @@ Section FieldBlame.
                    match List.nth_error (record_fields R) k with
                    | Some (_, U) =>
                        let Uk := U[sb_of_list Id (app_args T ++ List.firstn k (List.map snd fs))] in
-                       match check_type F (Δ ++ fc_tele F) HΔ Uk with
+                       match check_type F levels_abstractable_dec (Δ ++ fc_tele F) HΔ Uk with
                        | inleft (existT _ r (exist _ i HU)) =>
-                           match check_exp_typed F (Δ ++ fc_tele F) HΔ Uk (type_of_check_type F _ _ _ _ HU) N with
+                           match check_exp_typed F levels_abstractable_dec (Δ ++ fc_tele F) HΔ Uk (type_of_check_type F _ _ _ _ HU) N with
                            | left _ => fields (S k) fs'
                            | right _ =>
                                first_some (field_value_blame Δ HΔ N)
@@ -833,8 +809,10 @@ End FieldBlame.
     command declaring [ox]: a field of a record value in [M] whose value is
     not of its type ([field_value_blame]), otherwise the given error. *)
 Definition field_error (F : FCtx) (ox : option string)
+    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ->
+       { levels_abstractable (fc_deps F) (fc_stack F) G Δ E } + { ~ levels_abstractable (fc_deps F) (fc_stack F) G Δ E })
     (HΞ : ⊢ fc_deps F ⍮ fc_stack F ⍮ fc_tele F) (M : exp) (e : run_error) : run_error :=
-  match field_value_blame F ox nil HΞ M with
+  match field_value_blame F ox levels_abstractable_dec nil HΞ M with
   | Some e' => e'
   | None => e
   end.
@@ -1000,37 +978,40 @@ Proof.
   intros (Hu & p & Rs & Hn); split; [ exact Hu | exists p, Rs; exact (equiv_nbe _ _ _ He _ _ _ _ Hn) ].
 Qed.
 
-(** A type inferred algorithmically moves along an equivalence. *)
-Lemma equiv_alg_infer : forall Θ Θ' Ξ Γ W M, gds_equiv Θ Θ' ->
+(** A type inferred algorithmically moves along an equivalence to
+    well-formed dependencies. *)
+Lemma equiv_alg_infer : forall Θ Θ' Ξ Γ W M, gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ ->
     @alg_type_infer (gc_mk Θ Ξ) Γ W M -> @alg_type_infer (gc_mk Θ' Ξ) Γ W M.
-Proof. intros * He; exact (proj1 (proj2 (equiv_alg_all _ _ _ He)) _ _ _). Qed.
+Proof. intros * He Hg; exact (proj1 (proj2 (equiv_alg_all _ _ _ He Hg)) _ _ _). Qed.
 
-(** Parameters of a universe stay so along an equivalence. *)
-Lemma equiv_params_relevant : forall Θ Θ' Ξ Γ Δ l, gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ ->
-    params_relevant Θ Ξ Γ Δ l -> params_relevant Θ' Ξ Γ Δ l.
-Proof. intros * He HΞ HR Δ1 T Δ2 E; exact (equiv_exp _ _ _ _ _ _ He HΞ (HR _ _ _ E)). Qed.
+(** Parameters of evaluated kinds stay so along an equivalence. *)
+Lemma equiv_params_evaluated : forall Θ Θ' Ξ Γ Δ l, gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ ->
+    params_evaluated Θ Ξ Γ Δ l -> params_evaluated Θ' Ξ Γ Δ l.
+Proof.
+  intros * He HΞ HR Δ1 κ T Δ2 E; destruct (HR _ _ _ _ E) as [H | H]; [ left | right ]; exact (equiv_exp _ _ _ _ _ _ He HΞ H).
+Qed.
 
-(** A member of a group well formed as an entry has relevant uniform
-    parameters of its own, over the frames' parameters: by the premise of
-    its rule, or by (R) of its module. *)
-Lemma ind_entry_params_relevant : forall Θ Ξ mp pv pq k D Φ Δu,
+(** A member of a group well formed as an entry has uniform parameters of
+    its own of evaluated kinds, over the frames' parameters: by the
+    premise of its rule, or by (R) of its module. *)
+Lemma ind_entry_params_evaluated : forall Θ Ξ mp pv pq k D Φ Δu,
     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D Φ -> ind_uparams D = (Δu ++ gs_tele Ξ)%list ->
-    exists l, params_relevant Θ Ξ (gs_tele Ξ) Δu l.
+    exists l, params_evaluated Θ Ξ (gs_tele Ξ) Δu l.
 Proof.
   intros * HE; revert Δu; inversion HE; subst; intros Δu' Hu.
   all: match goal with HU : ind_uparams ?D0 = (?Δ0 ++ gs_tele _)%list |- _ =>
          assert_fails constr_eq Δ0 Δu'; rewrite Hu in HU; apply app_inv_tail in HU; subst Δ0 end.
-  all: try solve [ eexists; eassumption ].
+  all: try solve [ eexists; eapply params_evaluated_of_sorts; eassumption | eexists; eassumption ].
   match goal with HΦ : _ ⍮ _ ⍮ _ ⍮ fk_ind _ _ _ ⍮ _ ⊢ᵍᵐ _ |- _ =>
-    destruct (wf_gmod_params_relevant _ _ _ _ _ _ HΦ) as [l Hl]; exists l; exact Hl end.
+    destruct (wf_gmod_params_evaluated _ _ _ _ _ _ HΦ) as [l Hl]; exists l; exact Hl end.
 Qed.
 
 (** The uniform parameters of a member of a group just filed in the
-    innermost frame are relevant there: the entry is well formed in the
-    frame before it ([wf_gmod_ext]). *)
-Lemma added_ind_params_relevant : forall Θ Ξ x pv pq k Dd Φx Δu,
+    innermost frame are of evaluated kinds there: the entry is well formed
+    in the frame before it ([wf_gmod_ext]). *)
+Lemma added_ind_params_evaluated : forall Θ Ξ x pv pq k Dd Φx Δu,
     gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (ge_ind pv pq k Dd Φx) Ξ -> ind_uparams Dd = (Δu ++ gs_tele Ξ)%list ->
-    exists l, params_relevant Θ (gs_add x (ge_ind pv pq k Dd Φx) Ξ) (gs_tele (gs_add x (ge_ind pv pq k Dd Φx) Ξ)) Δu l.
+    exists l, params_evaluated Θ (gs_add x (ge_ind pv pq k Dd Φx) Ξ) (gs_tele (gs_add x (ge_ind pv pq k Dd Φx) Ξ)) Δu l.
 Proof.
   intros * Hfr Hg Hu.
   destruct Ξ as [| [[mq Kq] U] Ξ0]; [ contradiction |]; cbn [gs_add] in Hg |- *.
@@ -1041,14 +1022,10 @@ Proof.
   assert (HgU : ⊢ᵍ Θ ⍮ (mq, Kq, gu_body (gu_params U) (gu_mod U)) :: Ξ0)
     by (apply wf_gstack_cons; [ exact Hg0 | eassumption | exact Hff ]).
   match goal with HE : _ ⍮ _ ⍮ _ ⊢ᵉ ge_ind _ _ _ _ _ |- _ =>
-    destruct (ind_entry_params_relevant _ _ _ _ _ _ _ _ _ HE Hu) as [l Hl] end.
+    destruct (ind_entry_params_evaluated _ _ _ _ _ _ _ _ _ HE Hu) as [l Hl] end.
   exists l.
-  exact (params_relevant_embed _ _ _ _ _ _ _ (Build_gctx_embedding _ _ _ _ Hg (gc_sub_add _ _ x (ge_ind pv pq k Dd Φx) HgU Hfr)) Hl).
+  exact (params_evaluated_embed _ _ _ _ _ _ _ (Build_gctx_embedding _ _ _ _ Hg (gc_sub_add _ _ x (ge_ind pv pq k Dd Φx) HgU Hfr)) Hl).
 Qed.
-
-(** So does the relevance of a type, read off its inferred sort. *)
-Lemma equiv_type_relevance : forall Θ Θ' Ξ Γ A r, gds_equiv Θ Θ' -> type_relevance Θ Ξ Γ A r -> type_relevance Θ' Ξ Γ A r.
-Proof. intros * He (U & u & HU & Hs); exists U, u; split; [ exact (equiv_alg_infer _ _ _ _ _ _ He HU) | exact Hs ]. Qed.
 
 (** ** Mutual Definitions *)
 
@@ -1073,20 +1050,21 @@ Proof. intros * H; exact (proj2 (canon_of_wf _ _ H)). Qed.
 
 (** ** Values Stored at Definitions
 
-    A transparent definition is filed with the value its body has, fast,
-    in the empty environment ([closed_value]).  The fast evaluation of a
-    closed term typed in the empty context terminates: the reference one
-    does ([soundness]), and the fast one wherever the reference one does
-    ([fast_eval_of_ref]). *)
+    A transparent definition of a type of a universe is filed with the
+    value its body has, fast, in the empty environment ([closed_value]).
+    The evaluation of a closed term of such a type in the empty context
+    has an order: the term has a normal form ([soundness]), which reads
+    its value. *)
 Lemma closed_eval_order {Θ Ξ M A} : (exists i : nat, Θ ⍮ Ξ ⍮ nil ⊢ A : Typeω@i) -> Θ ⍮ Ξ ⍮ nil ⊢ M : A ->
-    Mctt.Extraction.Evaluation.fast_eval_exp_order Θ Ξ M nil.
+    Mctt.Extraction.Evaluation.eval_exp_order Θ Ξ M nil.
 Proof.
-  intros [i HA] HM; destruct (typed_nbe_order HM) as [_ _ Hexp _].
-  (** a term of a type of a large universe is evaluated *)
-  destruct (@rel_exp_of_typ_relevant_at (gc_mk Θ Ξ) nil A A i _ per_ctx_env_nil_true
-              (@completeness_fundamental_exp (gc_mk Θ Ξ) _ _ _ HA) nil nil I) as (a & Ea & Hr).
-  destruct (eval_of_order Θ Ξ _ _ (Hexp _ _ (initial_env_nil _ _) Ea Hr)) as [m Hm].
-  exact (proj1 (fast_eval_of_ref Θ Ξ _ _ _ _ Hm (Mctt.Extraction.Simulation.env_agree_nil Θ Ξ _))).
+  intros [i HA] HM; destruct (soundness HM) as (W & [ρ a Hρ Ea Ht] & _).
+  destruct Ht as [w Hp _ | m w _ Em _]; [| inversion Hρ; subst; exact (Mctt.Extraction.Evaluation.eval_exp_order_sound _ _ _ _ _ Em) ].
+  (** a term of a type of a large universe is no proof *)
+  exfalso.
+  destruct (@typed_at_sort_of_initial_kind (gc_mk Θ Ξ) _ _ _ _ _ (type_sort_universe i) HA Hρ Ea) as [k Hk].
+  rewrite Hp in Hk.
+  pose proof (@kind_sort_unique (gc_mk Θ Ξ) nil A ak_propositional ak_relevant k i Hk HA) as E; discriminate E.
 Qed.
 
 (** The value a closed term of a type of a large universe has, fast, in
@@ -1103,8 +1081,8 @@ Lemma under_typed {Θ Ξ Δ Γ M A} {i : nat} : Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : T
     Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M : ctx_pi Δ A /\ exists j : nat, Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : Typeω@j.
 Proof.
   intros HA HM; split;
-    [ exact (Mctt.Core.Syntactic.System.Global.DescTyping.ctx_fn_wf _ _ _ _ _ _ _ (presup_exp_ctx HM) HA HM)
-    | exact (Mctt.Core.Syntactic.System.Global.DescTyping.ctx_pi_wf _ _ _ _ _ _ (presup_exp_ctx HM) HA) ].
+    [ exact (ctx_fn_at_wf _ _ ak_relevant _ _ _ _ _ ltac:(discriminate) (presup_exp_ctx HM) HA HM)
+    | exact (ctx_pi_at_wf _ _ ak_relevant _ _ _ _ ltac:(discriminate) (presup_exp_ctx HM) HA) ].
 Qed.
 
 Lemma closed_typed {Θ Ξ Γ M A} {i : nat} : Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
@@ -1112,35 +1090,37 @@ Lemma closed_typed {Θ Ξ Γ M A} {i : nat} : Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i 
 Proof. intros HA HM; rewrite <- (app_nil_r Γ) in HA, HM; exact (under_typed HA HM). Qed.
 
 (** "Is [A] a type of a large universe?", the level found: the sort its
-    type infers ([check_type_relevance]) is a universe.  None when that
-    sort is [Prop], since a type is of one relevance only
-    ([subtyp_same_relevance]): [n = 0] is no type of a universe. *)
-Definition large_type_dec (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Γ : ctx) (HΓ : ⊢ fc_deps F ⍮ fc_stack F ⍮ Γ) (A : typ) :
+    type infers ([check_type]) is a universe.  None at another kind, since
+    a type is of one kind only ([kind_sort_unique]): [n = 0] is no type
+    of a universe. *)
+Definition large_type_dec (F : FCtx)
+    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ->
+       { levels_abstractable (fc_deps F) (fc_stack F) G Δ E } + { ~ levels_abstractable (fc_deps F) (fc_stack F) G Δ E })
+    (Γ : ctx) (HΓ : ⊢ fc_deps F ⍮ fc_stack F ⍮ Γ) (A : typ) :
     { i : nat | fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : Typeω@i } + { forall i : nat, ~ fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : Typeω@i }.
 Proof.
-  destruct (check_type_relevance F HΞ Γ HΓ A) as [(r & i & HA & _) | HnA].
-  - destruct r; [ left; exists i; exact HA |].
-    right; intros j Hj.
-    assert (Hs : fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A ⊆ A) by exact (wf_subtyp_refl_typ _ _ _ _ _ Hj (type_sort_relevance_universe relevant j)).
-    discriminate (@subtyp_same_relevance (gc_mk (fc_deps F) (fc_stack F)) _ _ _ propositional relevant i j Hs HA Hj).
-  - right; intros j Hj; exact (HnA (mk_wf_type _ (type_sort_relevance_universe relevant j) Hj)).
+  destruct (check_type F levels_abstractable_dec Γ HΓ A) as [(r & i & HA) | HnA].
+  - destruct (abs_kind_eq_dec r ak_relevant) as [-> | Hr]; [ left; exists i; exact HA |].
+    right; intros j Hj; apply Hr.
+    exact (@kind_sort_unique (fc_gctx F) Γ A r ak_relevant i j ltac:(rewrite fc_gctx_eta; exact HA) ltac:(rewrite fc_gctx_eta; exact Hj)).
+  - right; intros j Hj; exact (HnA ak_relevant j Hj).
 Defined.
 
-(** The fast entry of a definition [A ≔ M] of the relevance [r] in the
-    innermost frame of [F]: a transparent relevant one stores the value of
-    its body, closed over the frames' parameters; a proof stores none, as
-    proofs are never evaluated *)
-Definition def_fentry (F : FCtx) (b pv : bool) (r : relevance) (i : nat) (A M : exp)
-    (HA : fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ A : relevance_sort r Typeω@i) (HM : fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ M : A) :
-    { e : fentry | fentry_drop e = translate_entry (fs_def b pv r (fc_frames F) A M) /\ fentry_values_ok (fc_deps F) (fc_stack F) e } :=
-  match b as b0, r as r0
-    return fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ A : relevance_sort r0 Typeω@i ->
-      { e : fentry | fentry_drop e = translate_entry (fs_def b0 pv r0 (fc_frames F) A M) /\ fentry_values_ok (fc_deps F) (fc_stack F) e } with
-  | true, relevant => fun HA =>
+(** The fast entry of a definition [A ≔ M] of the kind [κ] in the
+    innermost frame of [F]: a transparent one of a type of a universe
+    stores the value of its body, closed over the frames' parameters; any
+    other stores none, which a lookup evaluates when it needs it *)
+Definition def_fentry (F : FCtx) (b pv : bool) (κ : abs_kind) (i : nat) (A M : exp)
+    (HA : fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ A : abs_kind_sort κ Typeω@i) (HM : fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ M : A) :
+    { e : fentry | fentry_drop e = translate_entry (fs_def b pv κ (fc_frames F) A M) /\ fentry_values_ok (fc_deps F) (fc_stack F) e } :=
+  match b as b0, κ as κ0
+    return fc_deps F ⍮ fc_stack F ⍮ fc_tele F ⊢ A : abs_kind_sort κ0 Typeω@i ->
+      { e : fentry | fentry_drop e = translate_entry (fs_def b0 pv κ0 (fc_frames F) A M) /\ fentry_values_ok (fc_deps F) (fc_stack F) e } with
+  | true, ak_relevant => fun HA =>
       let (v, Hv) := closed_value F (ctx_fn (fc_tele F) M) (ctx_pi (fc_tele F) A) (proj2 (closed_typed HA HM)) (proj1 (closed_typed HA HM)) in
-      exist _ (fe_def true pv relevant (ctx_pi (fc_tele F) A) (Some (ctx_fn (fc_tele F) M)) (Some v)) (conj eq_refl Hv)
-  | b0, r0 => fun _ =>
-      exist _ (translate_entry (fs_def b0 pv r0 (fc_frames F) A M)) (conj (translate_entry_drop _) (translate_entry_values _ _ _))
+      exist _ (fe_def true pv ak_relevant (ctx_pi (fc_tele F) A) (Some (ctx_fn (fc_tele F) M)) (Some v)) (conj eq_refl Hv)
+  | b0, κ0 => fun _ =>
+      exist _ (translate_entry (fs_def b0 pv κ0 (fc_frames F) A M)) (conj (translate_entry_drop _) (translate_entry_values _ _ _))
   end HA.
 
 (** The fast entry of a definition with a module part [A ≔ M ‖ E] under
@@ -1173,8 +1153,8 @@ Record mdefs_filed (v : fview) (b pv : bool) (ds : list (string * typ * exp)) (f
 (** The definitions filed in order, each checked as [run_cmd_def] does, on
     the frames [fs] of the units seen [v], fast: the frames they end with,
     and that they are those [mdefs_run] ends with. *)
-Fixpoint mdefs_dec (v : fview) (b pv : bool) (ds : list (string * typ * exp)) (fs : fstack) (Hok : fctx_ok v fs)
-    (HΞ : ⊢ᵍ view_deps v ⍮ decode_stack fs) (Hv : frames_values_ok (view_deps v) fs) {struct ds} :
+Fixpoint mdefs_dec (lvd : levels_abstractable_decider) (v : fview) (b pv : bool) (ds : list (string * typ * exp)) (fs : fstack)
+    (Hok : fctx_ok v fs) (HΞ : ⊢ᵍ view_deps v ⍮ decode_stack fs) (Hv : frames_values_ok (view_deps v) fs) {struct ds} :
     ({fs' : fstack | mdefs_filed v b pv ds fs fs'}
      + {e : mdefs_why | forall Ξ', ~ mdefs_run (view_deps v) b pv ds (decode_stack fs) Ξ'})%type.
 Proof.
@@ -1190,25 +1170,25 @@ Proof.
       by (unfold F; rewrite fc_deps_view, fc_stack_frames, <- (fc_tele_ok (mk_fctx v fs Hok None)), fc_stack_frames;
           cbn [fc_view fc_frames]; repeat split).
     destruct Eqs as (Ed & Es & Et).
-    destruct (check_ctx F HΞF (fc_tele F)) as [HT | HnT].
+    destruct (check_ctx F (lvd _ _) HΞF (fc_tele F)) as [HT | HnT].
     2:{ right; exists (mdefs_why_untyped_type x fs A); intros Ξ' Hr'; inversion Hr'; subst; apply HnT.
         rewrite Ed, Es, Et; gen_presups; assumption. }
-    destruct (check_type_relevance F HΞF (fc_tele F) HT A) as [(r & i & HA & Hrel) | HnA].
-    2:{ right; exists (mdefs_why_untyped_type x fs A); intros Ξ' Hr'; inversion Hr'; subst; apply HnA.
-        rewrite Ed, Es, Et; eapply mk_wf_type; [ apply type_sort_relevance_universe | eassumption ]. }
-    destruct (check_exp_typed F (fc_tele F) HT A (type_of_check_type F _ _ _ _ HA) M) as [HM | Hn].
+    destruct (large_type_dec F (lvd _ _) (fc_tele F) HT A) as [[i HA] | HnA].
+    2:{ right; exists (mdefs_why_untyped_type x fs A); intros Ξ' Hr'; inversion Hr'; subst.
+        match goal with HA0 : _ ⍮ _ ⍮ _ ⊢ A : Typeω@?i0 |- _ => apply (HnA i0); rewrite Ed, Es, Et; exact HA0 end. }
+    destruct (check_exp_typed F (lvd _ _) (fc_tele F) HT A (type_of_check_type F _ _ ak_relevant i HA) M) as [HM | Hn].
     2:{ right; exists (mdefs_why_untyped x fs A M); intros Ξ' Hr'; inversion Hr'; subst; apply Hn.
         rewrite Ed, Es, Et; assumption. }
-    pose proof HA as HAF; rewrite Ed, Es, Et in HA, Hrel.
+    pose proof HA as HAF; rewrite Ed, Es, Et in HA.
     assert (HM' : view_deps v ⍮ decode_stack fs ⍮ gs_tele (decode_stack fs) ⊢ M : A) by (rewrite <- Et, <- Ed, <- Es; exact HM).
-    pose proof (add_def_wf _ _ _ b pv _ _ _ _ HΞ HA HM' Hfr) as HΞ'.
+    pose proof (add_def_wf _ _ _ b pv ak_relevant _ _ _ HΞ HA ltac:(intros [=]) HM' Hfr) as HΞ'.
     pose proof (add_def_canon _ _ _ _ _ _ _ _ HΞ') as HcΞ'.
     rewrite <- fs_def_dec in HΞ', HcΞ'.
-    destruct (def_fentry F b pv r i A M HAF HM) as [e0 [Hd Hev]].
-    change (fentry_drop e0 = translate_entry (fs_def b pv r fs A M)) in Hd.
+    destruct (def_fentry F b pv ak_relevant i A M HAF HM) as [e0 [Hd Hev]].
+    change (fentry_drop e0 = translate_entry (fs_def b pv ak_relevant fs A M)) in Hd.
     assert (Hev' : fentry_values_ok (view_deps v) (decode_stack fs) e0)
       by (unfold F in Hev; rewrite fc_deps_view, fc_stack_frames in Hev; exact Hev).
-    destruct (mdefs_dec v b pv ds' (fs_add x e0 fs)
+    destruct (mdefs_dec lvd v b pv ds' (fs_add x e0 fs)
                 (fctx_ok_add _ _ _ _ _ Hok Hd HcΞ' (gc_sub_add _ _ _ _ HΞ Hfr) HΞ HΞ'
                    (fentry_values_grow _ _ _ _ (gc_sub_add _ _ _ _ HΞ Hfr) HΞ HΞ' _ Hev'))
                 (eq_ind_r (fun Ξ0 => ⊢ᵍ view_deps v ⍮ Ξ0) HΞ' (decode_stack_add _ _ _ _ Hr Hd HcΞ'))
@@ -1217,10 +1197,7 @@ Proof.
     + left; exists fs'; constructor; [ exact Hok' | exact Hv' |].
       rewrite (decode_stack_add _ _ _ _ Hr Hd HcΞ'), fs_def_dec in Hr'.
       econstructor; eassumption.
-    + (** the definition is filed at the one relevance its type infers *)
-      right; exists e; intros Ξ' Hr'; inversion Hr'; subst; eapply Hn.
-      match goal with Hr0 : type_relevance _ _ _ A ?r0 |- _ =>
-        pose proof (type_relevance_functional _ _ _ _ _ _ HΞ Hrel Hr0) as <- end.
+    + right; exists e; intros Ξ' Hr'; inversion Hr'; subst; eapply Hn.
       rewrite (decode_stack_add _ _ _ _ Hr Hd HcΞ'), fs_def_dec; eassumption.
 Defined.
 
@@ -1228,11 +1205,11 @@ Defined.
 Lemma equiv_mdefs_run : forall Θ Θ' b pv ds Ξ Ξ', gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ ->
     mdefs_run Θ b pv ds Ξ Ξ' -> mdefs_run Θ' b pv ds Ξ Ξ'.
 Proof.
-  intros * He HΞ Hr; revert HΞ; induction Hr as [| x r A M i ds Ξ Ξ' HA Hrel HM Hfr _ IH]; intros HΞ; [ constructor |].
+  intros * He HΞ Hr; revert HΞ; induction Hr as [| x A M i ds Ξ Ξ' HA HM Hfr _ IH]; intros HΞ; [ constructor |].
   pose proof (equiv_exp _ _ _ _ _ _ He HΞ HM) as HM'.
   pose proof (equiv_exp _ _ _ _ _ _ He HΞ HA) as HA'.
-  econstructor; [ exact HA' | exact (equiv_type_relevance _ _ _ _ _ _ He Hrel) | exact HM' | exact Hfr
-                | apply IH; eapply add_def_wf; eassumption ].
+  econstructor; [ exact HA' | exact HM' | exact Hfr |].
+  apply IH; eapply (add_def_wf _ _ _ b pv ak_relevant); [ exact HΞ | exact HA' | intros [=] | exact HM' | exact Hfr ].
 Qed.
 
 (** What a command's checks look names up in ([Extraction.Lookup]) is
