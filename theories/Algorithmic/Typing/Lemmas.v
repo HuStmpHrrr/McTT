@@ -205,6 +205,25 @@ Proof.
   intros [Ha Hr]; destruct (ne_freshb k a); cbn; [ split; [ exact (ne_unwk_proof_free _ _ Ha) | exact (IH Hr) ] | exact (IH Hr) ].
 Qed.
 
+(** The fresh part of a level's atoms is a part of them. *)
+Lemma level_atoms_fresh_part_In : forall k xs j s a, List.In (mk_level_atom j s a) (level_atoms_fresh_part k xs) -> List.In (mk_level_atom j s a) xs.
+Proof.
+  intros k xs; induction xs as [| [j0 s0 a0] r IH]; cbn; [ auto |].
+  intros * Hin; destruct (ne_freshb k a0); [ destruct Hin as [-> | Hin]; [ left; reflexivity | right; eauto ] | right; eauto ].
+Qed.
+
+(** Atoms of their sorts without proofs are coherent: two of them equal up
+    to proofs are the same ([ne_proof_free_eq]). *)
+Lemma level_atoms_coherent_proof_free : forall Γ n xs, @level_atoms_well_scoped gc_deps gc_stack n Γ xs ->
+    all_list (fun a => ne_proof_free (atom_level a)) xs -> @level_atoms_coherent gc_deps gc_stack Γ xs.
+Proof.
+  intros * Hw Hp j s a j' b Ha Hb Hab.
+  assert (Hpa : ne_proof_free a).
+  { clear - Hp Ha; induction xs as [| x r IH]; [ destruct Ha |]; destruct Hp as [Hx Hr]; destruct Ha as [-> | Ha]; [ exact Hx | exact (IH Hr Ha) ]. }
+  pose proof (ne_proof_free_eq _ _ Hpa Hab) as <-.
+  exact (wf_exp_eq_refl (level_atoms_well_scoped_In _ _ _ _ _ _ Hw Ha)).
+Qed.
+
 (** The domain of a [Π] the algorithm counts in the universe [u]: a type
     of the sort at its kind next to [u], where [u] (for a proposition or a
     type of levels the least small universe, [is_sort_nf_prop],
@@ -258,24 +277,32 @@ Qed.
     ([lvl_bound_above]) and mentions no bound variable, so it is the weakening
     of a level of [Γ] ([level_nf_strengthen]); both parts are moved up to the
     join.  Otherwise the [Π] is at the large join. *)
-Lemma wf_pi_universe_nf_pi : forall {Γ A B} {u v : universe_nf},
-    pi_domain_ok Γ A u ->
-    Γ ▹ A ⊢ B : universe_nf_tm v ->
-    universe_nf_well_scoped (Γ ▹ A) v ->
-    Γ ⊢ Π A B : universe_nf_pi_tm u v.
+Lemma wf_pi_universe_nf_pi : forall {Γ κd A B} {u v : universe_nf},
+    pi_domain_ok Γ A κd u ->
+    Γ ▹{κd} A ⊢ B : universe_nf_tm v ->
+    universe_nf_well_scoped (Γ ▹{κd} A) v ->
+    Γ ⊢ Π{κd} A B : universe_nf_pi_tm u v.
 Proof.
-  intros * HA HB Hv.
-  assert (⊢ Γ) by (destruct HA as [HA | [HA _]]; gen_presups; assumption).
-  assert (HAl : Γ ⊢ A : Typeω@(universe_nf_large_index u) \/ Γ ⊢ A : Propₘ)
-    by (destruct HA as [HA | [HA _]]; [ left; apply wf_exp_universe_nf_large_index; exact HA | right; exact HA ]).
-  assert (HBl : Γ ▹ A ⊢ B : Typeω@(universe_nf_large_index v)) by (apply wf_exp_universe_nf_large_index; exact HB).
-  assert (HΓA : ⊢ Γ ▹ A) by (destruct HAl as [HA0 | HA0]; (eapply wf_ctx_extend; [ exact HA0 | constructor ])).
-  (** The domain's universe is a type. *)
-  assert (HUk : exists k, Γ ⊢ universe_nf_tm u : Typeω@k)
-    by (destruct HA as [HA | [_ HA]]; [ exact (univ_term_typed_large (univ_term_universe_nf_tm _) HA) | exact HA ]).
-  destruct u as [[c xs] | i], v as [[d ys] | j]; cbn [universe_nf_pi_tm universe_nf_max universe_nf_tm universe_nf_large_index fst snd] in *.
+  intros * [HA HUk] HB Hv.
+  assert (⊢ Γ) by (gen_presups; assumption).
+  assert (HAl : Γ ⊢ A : abs_kind_sort κd Typeω@(universe_nf_large_index u))
+    by (destruct κd; cbn [abs_kind_sort] in HA |- *; [ apply wf_exp_universe_nf_large_index; exact HA | exact HA | exact HA ]).
+  assert (HBl : Γ ▹{κd} A ⊢ B : Typeω@(universe_nf_large_index v)) by (apply wf_exp_universe_nf_large_index; exact HB).
+  assert (HΓA : ⊢ Γ ▹{κd} A) by (eapply wf_ctx_extend; [ exact HAl | apply sort_kind_abs_kind_sort ]).
+  (** The domain moved up a large universe: a type of a universe is lifted,
+      a proposition or a type of levels stays. *)
+  assert (HAup : forall k, universe_nf_large_index u <= k -> Γ ⊢ A : abs_kind_sort κd Typeω@k)
+    by (intros k Hk; destruct κd; cbn [abs_kind_sort] in HAl |- *; [ eapply lift_exp_ge; [| exact HAl ]; exact Hk | exact HAl | exact HAl ]).
+  destruct u as [[c xs] | i], v as [[d ys] | j]; cbn [universe_nf_pi_tm universe_nf_max universe_nf_tm universe_nf_large_index fst snd] in *;
+    (** A large join: the domain lifted to it. *)
+    [| (try (destruct xs); try (destruct ys); cbn [universe_nf_tm universe_nf_max universe_nf_large_index] in *;
+        match goal with |- _ ⊢ _ : Typeω@?K =>
+          change (Typeω@K) with (abs_kind_sort ak_relevant Typeω@K);
+          eapply wf_pi; [ apply wf_is_univ_large; assumption | apply HAup; lia | eapply lift_exp_ge; [| exact HBl ]; lia
+                        | apply pi_kinds_relevant ]
+        end) .. ].
   - (** The small join. *)
-    destruct Hv as (nB & HLB0 & Hd & Hys); cbn [fst snd] in *.
+    destruct Hv as [(nB & HLB0 & Hd & Hys) Hpfv]; cbn [fst snd] in *.
     unfold lvl_bound; cbn [fst snd].
     set (LA := lvl_exp_of c (List.map atom_exp xs)) in *.
     set (cb := ordinal_max d (level_atoms_open_bound 0 ys)) in *.
@@ -287,52 +314,46 @@ Proof.
     assert (Hcb : fst cb <= N)
       by (subst cb N; apply ordinal_max_fst_le;
           [ lia | eapply Nat.le_trans; [ apply level_atoms_open_bound_fst; eapply level_atoms_well_scoped_sorts; exact Hys | lia ] ]).
-    assert (HysN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹ A) ys) by (eapply level_atoms_well_scoped_mono; [| exact Hys ]; lia).
-    assert (HfpN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹ A) fp) by (apply level_atoms_well_scoped_fresh_part; exact HysN).
-    assert (HLB : Γ ▹ A ⊢ lvl_exp_of d (List.map atom_exp ys) : Level@N) by (eapply wf_exp_level_up; [| exact HLB0 ]; lia).
+    assert (HysN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹{κd} A) ys) by (eapply level_atoms_well_scoped_mono; [| exact Hys ]; lia).
+    assert (HfpN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹{κd} A) fp) by (apply level_atoms_well_scoped_fresh_part; exact HysN).
+    assert (HLB : Γ ▹{κd} A ⊢ lvl_exp_of d (List.map atom_exp ys) : Level@N) by (eapply wf_exp_level_up; [| exact HLB0 ]; lia).
     (** The bound, weakened back, is the level of its fresh atoms. *)
     assert (Hfresh : lvl_exp_of cb (List.map atom_exp fp) = LBs[↑]ʷ)
       by exact (nf_fresh_unwk 0 (nf_lvl cb fp) (level_atoms_fresh_part_fresh 0 ys)).
-    assert (HLBl : Γ ▹ A ⊢ LBs[↑]ʷ : Level@N)
+    assert (HLBl : Γ ▹{κd} A ⊢ LBs[↑]ʷ : Level@N)
       by (rewrite <- Hfresh; apply lvl_exp_of_wf; [ exact Hcb | exact HΓA | apply level_atoms_well_scoped_wf; exact HfpN ]).
-    assert (Habove : Γ ▹ A ⊢ maxl (lvl_exp_of d (List.map atom_exp ys)) LBs[↑]ʷ ≈ LBs[↑]ʷ : Level@N).
+    assert (Habove : Γ ▹{κd} A ⊢ maxl (lvl_exp_of d (List.map atom_exp ys)) LBs[↑]ʷ ≈ LBs[↑]ʷ : Level@N).
     { rewrite <- Hfresh.
-      apply lvl_exp_of_le; [ lia | exact Hcb | exact HΓA | exact HysN | exact HfpN |].
-      exact (lvl_bound_above 0 (d, ys)). }
+      apply lvl_exp_of_le; [ lia | exact Hcb | exact HΓA | exact HysN | exact HfpN | |].
+      - (** the atoms, of the codomain's level and of its fresh part, hold no proof *)
+        eapply (level_atoms_coherent_incl ys); [| exact (level_atoms_coherent_proof_free _ _ _ HysN Hpfv) ].
+        intros j s a Hin; exists j; apply List.in_app_or in Hin as [Hin | Hin]; [ exact Hin | exact (level_atoms_fresh_part_In _ _ _ _ _ Hin) ].
+      - exact (lvl_bound_above 0 (d, ys)). }
     assert (HLA : Γ ⊢ LA : Level@N) by (eapply wf_exp_level_up; [| exact HLA0 ]; lia).
-    assert (HLBs : Γ ⊢ LBs : Level@N).
-    { refine (level_nf_strengthen Γ A _ (nf_lvl cb (List.map (map_level_atom (ne_unwk 0)) fp)) _ HΓA HLBl).
-      (* PENDING design: a level whose atoms hold proofs need not strengthen (level_nf_strengthen asks nf_proof_free).
-       Closed by the 𝕃 invariant (typed level normal forms hold no proofs, mandatory), which also gives the
-       erased-atoms hypotheses (level_atoms_erased) of lvl_le_bound and lvl_le_bound_wk. *)
-      admit. }
+    (** The bound holds no proof, the codomain's level holding none: it is
+        the weakening of a level of [Γ] ([level_nf_strengthen]). *)
+    assert (HLBs : Γ ⊢ LBs : Level@N)
+      by exact (level_nf_strengthen Γ κd A _ (nf_lvl cb (List.map (map_level_atom (ne_unwk 0)) fp))
+                  (level_atoms_unwk_fresh_proof_free 0 cb ys Hpfv) HΓA HLBl).
     assert (Ht : Γ ⊢ maxl LA LBs : Level@N) by mauto 3.
-    assert (Hw : Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
-    eapply wf_pi_lvl_at_domain; [ exact Ht | |].
-    + destruct HA as [HA | [HA _]]; [ left | right; exact HA ].
+    assert (Hw : Γ ▹{κd} A ⊢ʷ ↑ : Γ) by mauto 2.
+    change (Type⟨maxl LA LBs⟩) with (abs_kind_sort ak_relevant Type⟨maxl LA LBs⟩).
+    eapply wf_pi; [ eapply wf_is_univ_small, Ht | | | apply pi_kinds_relevant ].
+    + destruct κd; cbn [abs_kind_sort] in HA |- *; [| exact HA | exact HA ].
       eapply wf_exp_subtyp'; [ exact HA |].
       eapply wf_subtyp_suniv; [ assumption | exact HLA | exact Ht | apply lvl_sub_maxl_l; assumption ].
-    + eapply wf_exp_subtyp'; [ exact HB |].
+    + cbn [abs_kind_sort exp_wk]; eapply wf_exp_subtyp'; [ exact HB |].
       assert (Hsub : Γ ⊢ Type⟨LBs⟩ ⊆ Type⟨maxl LA LBs⟩)
         by (eapply wf_subtyp_suniv; [ assumption | exact HLBs | exact Ht | apply lvl_sub_maxl_r; assumption ]).
       etransitivity; [| exact (wk_preserves_subtyp _ _ _ _ _ _ _ Hsub Hw) ].
       eapply wf_subtyp_suniv; [ exact HΓA | exact HLB | exact HLBl | exact Habove ].
-  (** A large join: the domain lifted to it, of the universe or a proposition. *)
-  - destruct xs; cbn [universe_nf_tm];
-      (apply wf_pi_at_domain; [ destruct HAl as [HAl | HAl]; [ left; eapply lift_exp_ge; [| exact HAl ]; lia | right; exact HAl ]
-                              | assumption ]).
-  - destruct ys; cbn [universe_nf_tm];
-      (apply wf_pi_at_domain; [ exact HAl | eapply lift_exp_ge; [| exact HBl ]; lia ]).
-  - apply wf_pi_at_domain; [ destruct HAl as [HAl | HAl]; [ left; eapply lift_exp_ge; [| exact HAl ]; lia | right; exact HAl ]
-                           | eapply lift_exp_ge; [| exact HBl ]; lia ].
-Admitted. (* PENDING design: level_nf_strengthen at a level whose atoms hold proofs; closed by the 𝕃 invariant
-             (typed level normal forms hold no proofs), which implies the erased-atoms hypotheses *)
+Qed.
 
 (** The universe of a [Π] is a type. *)
-Lemma wf_universe_nf_pi_tm : forall {Γ A B} {u v : universe_nf},
-    pi_domain_ok Γ A u ->
-    Γ ▹ A ⊢ B : universe_nf_tm v ->
-    universe_nf_well_scoped (Γ ▹ A) v ->
+Lemma wf_universe_nf_pi_tm : forall {Γ κd A B} {u v : universe_nf},
+    pi_domain_ok Γ A κd u ->
+    Γ ▹{κd} A ⊢ B : universe_nf_tm v ->
+    universe_nf_well_scoped (Γ ▹{κd} A) v ->
     exists k, Γ ⊢ universe_nf_pi_tm u v : Typeω@k.
 Proof.
   intros * HA HB Hv.
@@ -356,7 +377,7 @@ Qed.
 (** Terms with, position by position, the normal forms of terms at the
     instances of a telescope are, position by position, equal to them. *)
 Lemma nfs_agree_sound : forall Δ Γ0 Γ σ σ' Ms Rs,
-    tele_ass Δ -> ⊢ (Δ ++ Γ0)%list -> Γ ⊢ˢ σ ≈ σ' : Γ0 ->
+    all_assumptionsΔ -> ⊢ (Δ ++ Γ0)%list -> Γ ⊢ˢ σ ≈ σ' : Γ0 ->
     List.length Ms = List.length Δ -> List.length Rs = List.length Δ ->
     (forall j N T, List.nth_error Ms j = Some N -> List.nth_error (tele_insts Δ σ Ms) j = Some T -> Γ ⊢ N : T) ->
     (forall j N T, List.nth_error Rs j = Some N -> List.nth_error (tele_insts Δ σ' Rs) j = Some T -> Γ ⊢ N : T) ->
@@ -366,7 +387,7 @@ Lemma nfs_agree_sound : forall Δ Γ0 Γ σ σ' Ms Rs,
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ HMl HRl HMs HRs Hag j N R T HN HR HT.
   - destruct Ms; [ destruct j; discriminate | discriminate ].
-  - unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [[A0 ->] _].
+  - unfold all_assumptionsin Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [[A0 ->] _].
     rewrite List.length_app in HMl, HRl; cbn in HMl, HRl.
     destruct Ms as [| M0 Ms]; [ cbn in HMl; lia |]; destruct Rs as [| R0 Rs]; [ cbn in HRl; lia |].
     rewrite tele_insts_snoc in HMs, HRs, Hag, HT.
@@ -653,7 +674,7 @@ Qed.
     filled in ([wf_gm_fill]), so it is a unit ([unit_full_body]). *)
 Lemma alg_unit_body_sound : forall Γ Δ Φ Φx,
     (⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ /\ exists l, params_relevant gc_deps gc_stack Γ Δ l) ->
-    tele_ass Δ -> alg_body_sound (Δ ++ Γ) Φ Φx ->
+    all_assumptionsΔ -> alg_body_sound (Δ ++ Γ) Φ Φx ->
     body_shape Φ Φ -> body_shape Φx Φx -> List.NoDup (gm_names Φ) ->
     ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ Φ.
 Proof.
@@ -1103,7 +1124,7 @@ Proof.
   (** ** Units *)
   - eapply alg_unit_body_sound; eassumption.
   - match goal with
-    | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P /\ _, IHE : ⊢ ?P ++ ?G -> wf_modexp_eq _ _ _ ?E ?E, Ha : tele_ass ?P, HG : ⊢ ?G |- _ =>
+    | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P /\ _, IHE : ⊢ ?P ++ ?G -> wf_modexp_eq _ _ _ ?E ?E, Ha : all_assumptions?P, HG : ⊢ ?G |- _ =>
         destruct (IHX HG) as [HX [l Hl]]; pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HP;
         eapply wf_unit_eq_alias with (param_level := l); [ exact HX | exact Ha | exact Ha | exact (IHE HP) | exact (IHE HP) | exact Hl | exact Hl ]
     end.
@@ -2500,7 +2521,7 @@ Qed.
 (** A unit under parameters [Δ] is the unit over its own parameters and
     [Δ], the algorithmic counterpart of [wf_unit_eq_flatten]. *)
 Lemma alg_unit_flatten : forall Γ Δ Δ' D,
-    Γ ⊢aᵖ Δ -> tele_ass Δ -> Δ ++ Γ ⊢aᵘ gu_mk Δ' D -> Γ ⊢aᵘ gu_mk (Δ' ++ Δ) D.
+    Γ ⊢aᵖ Δ -> all_assumptionsΔ -> Δ ++ Γ ⊢aᵘ gu_mk Δ' D -> Γ ⊢aᵘ gu_mk (Δ' ++ Δ) D.
 Proof.
   intros * HΔ Ha HU; inversion HU; subst.
   - eapply alg_unit_body; [ eapply alg_params_app; eassumption | apply List.Forall_app; split; assumption
@@ -2513,7 +2534,7 @@ Qed.
     parameters: a type of a universe infers a universe, no proposition
     ([relevance_sort_agree]). *)
 Lemma alg_params_of_entries : forall n Γ Δ l, ⊢ Γ ->
-    ext_entries n Γ Δ -> ctx_lets Δ <= n -> tele_ass Δ -> params_relevant gc_deps gc_stack Γ Δ l -> Γ ⊢aᵖ Δ.
+    ext_entries n Γ Δ -> ctx_lets Δ <= n -> all_assumptionsΔ -> params_relevant gc_deps gc_stack Γ Δ l -> Γ ⊢aᵖ Δ.
 Proof.
   intros n Γ; induction Δ as [| e Δ IH]; intros l HΓ Hx Hl Ha HR; [ constructor |]; cbn [ctx_lets] in Hl.
   apply List.Forall_cons_iff in Ha as [[T ->] Ha].
