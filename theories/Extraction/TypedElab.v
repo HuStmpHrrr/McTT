@@ -1319,6 +1319,38 @@ Section Decide.
   Definition block_heads (Bks : list eblock) : list (exp * exp) :=
     List.map (fun b => (eb_scrutinee_type b, eb_motive b)) Bks.
 
+  (** The induction hypothesis of a module position, at the member [y]
+      selected from it. *)
+  Ltac use_mod_ih y :=
+    match goal with Hm : forall y0, fill_mod_fn _ y0 _ = fill_ok _ |- _ => unfold fill_mod_fn in Hm; rewrite (Hm y) end.
+
+  (** One step of computing a fill the relation has: a part filled by
+      the induction hypothesis, a decision made by its specification, a
+      written annotation, a binder count. *)
+  Ltac complete_step :=
+    first
+      [ match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E end
+      | match goal with HG : ⊢ _ ⍮ _ ⍮ ?G, HW : @alg_type_infer _ ?G ?W ?A |- context [kind_at ?G ?A ?s] =>
+          rewrite (kind_at_complete G A s W HG HW) end
+      | match goal with HG : ⊢ _ ⍮ _ ⍮ ?G, HW : @alg_type_infer _ ?G ?W ?A |- context [infer_at ?G ?A] =>
+          rewrite (infer_at_complete G A W HG HW) end
+      | match goal with Hs : sel_ok _ _ ?op ?y |- context [sel_check ?op ?y] => rewrite (proj2 (sel_check_spec op y) Hs) end
+      | match goal with Hm : forall y0, fill_mod_fn ?G y0 ?H = fill_ok _ |- context [fill_mod_of ?G ?y (fill_read_fn ?G ?H)] =>
+          unfold fill_mod_fn in Hm; rewrite (Hm y) end
+      | match goal with Hm : forall y0, fill_mod_of ?G y0 (fill_read_fn ?G ?H) = fill_ok _ |- context [fill_mod_of ?G ?y (fill_read_fn ?G ?H)] =>
+          rewrite (Hm y) end
+      | match goal with Hb : body_xp _ _ ?G ?P ?X |- context [body_xp_fn ?G ?P] => rewrite (proj2 (body_xp_fn_spec G P X) Hb) end
+      | match goal with Hf : Forall (sel_ok _ _ ?op) ?ys |- context [sels_check ?op ?ys] => rewrite (proj2 (sels_check_spec op ys) Hf) end
+      | match goal with Hi : items_gen _ _ ?G ?H ?its ?gs |- context [items_gen_fn ?G ?H ?its] =>
+          rewrite (proj2 (items_gen_fn_spec G H its gs) Hi) end
+      | match goal with Ee : ?a = Some _ |- context [?a] => rewrite Ee end
+      | match goal with Ee : ?n = ?m |- context [Nat.eqb ?n ?m] => rewrite Ee, Nat.eqb_refl end
+      | match goal with Hn : ?Q <> surface_hole |- context [is_surface_hole ?Q] => rewrite (proj2 (is_surface_hole_false Q) Hn) end
+      | progress cbn [fill_result_bind is_surface_hole fst snd fill_mod_of] ].
+
+  Lemma block_heads_cons : forall b Bks, block_heads (b :: Bks) = (eb_scrutinee_type b, eb_motive b) :: block_heads Bks.
+  Proof. reflexivity. Qed.
+
   Lemma fill_fn_complete_all :
     (forall Γ M M', fill_exp Θ Ξ B Γ M M' -> fill_exp_fn Γ M = fill_ok M') /\
     (forall Γ fs fs', fill_field_vals Θ Ξ B Γ fs fs' -> field_vals_fn Γ fs = fill_ok fs') /\
@@ -1340,79 +1372,42 @@ Section Decide.
       try match goal with |- fill_exp_fn _ (surface_tuple _ _) = _ => rewrite fill_exp_fn_tuple end;
       try match goal with |- fill_unit_fn _ (surface_gu_mk _ _) = _ => rewrite fill_unit_fn_mk end;
       try match goal with |- fill_mod_fn _ _ _ = _ => unfold fill_mod_fn end;
+      try match goal with |- scrutinee_type_fn _ _ _ _ _ _ _ = _ => unfold scrutinee_type_fn end;
+      try match goal with Ho : fill_optional_exp_fn _ _ = _ |- _ => unfold fill_optional_exp_fn in Ho end;
       cbn [fill_exp_fn fill_read_fn fill_def_fn fill_body_fn fill_tele_fn field_vals_fn brs_fn heads_fn blocks_fn
            fill_optional_exp_fn];
-      try match goal with Hn : ?Q <> surface_hole |- _ => rewrite (proj2 (is_surface_hole_false Q) Hn) end;
-      cbn [is_surface_hole];
-      repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end;
-      try reflexivity.
-    - (* a term with no subterm *)
-      destruct M; try discriminate; injection e as <-; reflexivity.
-    - (* a numeral *)
-      rewrite nat_view_f_ok, e; reflexivity.
-    - (* the token [ℕ] *)
-      rewrite nat_view_f_ok, e; reflexivity.
-    - (* a [Π]: its kinds *)
-      rewrite (kind_at_complete _ _ _ _ w a); cbn; rewrite H0; cbn; rewrite (kind_at_complete _ _ _ _ w0 a0); reflexivity.
-    - (* a proof of a conjunction as written: its second component infers
-         the second proposition *)
-      rewrite (infer_at_complete _ _ _ w a); reflexivity.
-    - (* a [λ] *)
-      rewrite (kind_at_complete _ _ _ _ w a); cbn; rewrite H0; reflexivity.
-    - (* an unannotated let: its definition infers the type *)
-      rewrite (infer_at_complete _ _ _ w a); cbn; rewrite H0; reflexivity.
-    - (* a member *)
-      unfold fill_mod_fn in H; rewrite (H x); cbn; rewrite (proj2 (sel_check_spec _ _) s); reflexivity.
-    - (* a member of a term *)
-      rewrite (infer_at_complete _ _ _ w a); rewrite (proj2 (sel_check_spec _ _) s); reflexivity.
-    - (* an eliminator: the reading, then its blocks' heads, then its tag,
-         then its blocks, whose motives are those its branches are read
-         at *)
-      unfold elim_fill_fn; rewrite (infer_at_complete _ _ _ w a), elim_target_f_ok, e, <- fc_ind_ok, e0.
-      destruct H0 as [Hh Hb]; rewrite Hh; cbn.
+      repeat complete_step; try reflexivity.
+    (* a term with no subterm *)
+    all: try solve [ match goal with Hl : surface_exp_leaf ?M = Some _ |- _ => destruct M; try discriminate; injection Hl as <-; reflexivity end ].
+    (* a numeral, the token [ℕ] *)
+    all: try solve [ rewrite nat_view_f_ok; match goal with Hv : nat_view _ _ _ = _ |- _ => rewrite Hv end; reflexivity ].
+    (* a block: its heads, then its branches *)
+    all: try match goal with Hb : heads_fn _ _ _ _ _ _ = _ /\ blocks_fn _ _ _ _ _ _ _ _ _ = _ |- _ /\ _ =>
+           destruct Hb as [Hh Hb]; rewrite !block_heads_cons; cbn [eb_scrutinee_type eb_motive];
+           split; repeat complete_step; reflexivity end.
+    all: try (split; reflexivity).
+    (* an eliminator: the reading, then its blocks' heads, then its tag,
+       then its blocks, whose motives are those its branches are read at *)
+    all: try match goal with |- elim_fill_fn _ _ _ _ = _ =>
+      unfold elim_fill_fn; rewrite (infer_at_complete _ _ _ w a), elim_target_f_ok, e, <- fc_ind_ok, e0;
+      destruct H0 as [Hh Hb]; rewrite Hh; cbn [fill_result_bind];
       replace (List.map snd (block_heads Bks')) with (blocks_motives Bks')
-        by (clear; induction Bks' as [| [] ? IH]; cbn; [ reflexivity | f_equal; exact IH ]).
-      rewrite e1.
+        by (clear; induction Bks' as [| [] ? IH]; cbn; [ reflexivity | f_equal; exact IH ]);
+      rewrite e1;
       assert (Hm : List.nth_error (blocks_motives Bks') m = Some (eb_motive bm))
-        by (unfold blocks_motives; rewrite List.nth_error_map, e2; reflexivity).
-      rewrite Hm, (infer_at_complete _ _ _ w0 a0); cbn.
-      rewrite Hb; reflexivity.
-    - split; reflexivity.
-    - (* a block *)
-      rewrite e; subst nm; rewrite Nat.eqb_refl.
-      rewrite H, H0; destruct H2 as [Hh Hb]; rewrite Hh; split; cbn; [ reflexivity |].
-      rewrite H1; cbn; unfold block_heads in Hb; rewrite Hb; reflexivity.
-    - (* a written scrutinee's type *)
-      unfold scrutinee_type_fn; rewrite (proj2 (is_surface_hole_false Z) n); exact H.
-    - (* an omitted one *)
-      reflexivity.
-    - (* a branch *)
-      rewrite e; subst n; rewrite Nat.eqb_refl, H; reflexivity.
-    - (* a binder that holds no term *)
-      destruct (term_binder_b Γ k) eqn:E; [ apply term_binder_b_spec in E; exfalso; exact (n E) | reflexivity ].
-    - (* a term binder *)
-      rewrite (proj2 (term_binder_b_spec Γ k) t); reflexivity.
-    - (* a member that is no term *)
-      unfold fill_mod_fn in H; rewrite (H y); cbn; rewrite (proj2 (sel_check_spec _ _) s).
-      destruct (member_term_b Γ H' y) eqn:Em;
-        [ apply member_term_b_spec in Em as (r0 & A & oM & HA); exfalso; exact (n _ _ _ HA) | reflexivity ].
-    - (* a member that is a term *)
-      unfold fill_mod_fn in H; rewrite (H y); cbn; rewrite (proj2 (sel_check_spec _ _) s).
-      rewrite (proj2 (member_term_b_spec Γ H' y) (ex_intro _ r (ex_intro _ A (ex_intro _ oM m)))); reflexivity.
-    - (* a term of a record type *)
-      cbn; rewrite (infer_at_complete _ _ _ w a); reflexivity.
-    - unfold fill_mod_fn in H; rewrite (H ""); reflexivity.
-    - (* a parameter: its kind *)
-      rewrite (kind_at_complete _ _ _ _ w a); reflexivity.
-    - (* an entry of a body, in the expansion of the body before it, its
-         type inferring its kind *)
-      rewrite (proj2 (body_xp_fn_spec _ _ _) b0); cbn; rewrite H0; cbn.
-      change (match oM with Some M => _ | None => fill_ok None end) with (fill_optional_exp_fn (body_ctx Φx ++ Γ) oM).
-      rewrite H1; cbn; rewrite (kind_at_complete _ _ _ _ w a); reflexivity.
-    - rewrite (proj2 (body_xp_fn_spec _ _ _) b); cbn; rewrite H0; reflexivity.
-    - (* a local open *)
-      rewrite (proj2 (body_xp_fn_spec _ _ _) b); cbn; unfold fill_mod_fn in H1; rewrite (H1 ""); cbn.
-      rewrite (proj2 (sels_check_spec _ _) f1); cbn; rewrite (proj2 (items_gen_fn_spec _ _ _ _) i); reflexivity.
+        by (unfold blocks_motives; rewrite List.nth_error_map, e2; reflexivity);
+      rewrite Hm, (infer_at_complete _ _ _ w0 a0); cbn [fill_result_bind];
+      rewrite Hb; reflexivity end.
+    (* a binder in module position, holding no term or a term *)
+    all: try solve [ match goal with Hn : ~ term_binder ?G ?k |- _ =>
+           destruct (term_binder_b G k) eqn:Et; [ apply term_binder_b_spec in Et; exfalso; exact (Hn Et) | reflexivity ] end ].
+    all: try solve [ match goal with Ht : term_binder ?G ?k |- _ => rewrite (proj2 (term_binder_b_spec G k) Ht); reflexivity end ].
+    (* a member in module position, no term or a term *)
+    all: try solve [ match goal with Hn : forall r A oM, ~ mdenote _ _ ?G (me_mem ?H ?y) _ |- _ =>
+           destruct (member_term_b G H y) eqn:Em;
+           [ apply member_term_b_spec in Em as (r0 & A & oM & HA); exfalso; exact (Hn _ _ _ HA) | reflexivity ] end ].
+    all: try solve [ match goal with Hm : mdenote _ _ ?G (me_mem ?H ?y) (mdesc_term ?r ?A ?oM) |- _ =>
+           rewrite (proj2 (member_term_b_spec G H y) (ex_intro _ r (ex_intro _ A (ex_intro _ oM Hm)))); reflexivity end ].
   Qed.
 
   (** ** The Parts of Commands *)
@@ -1534,16 +1529,18 @@ Section Decide.
       Forall2 (fun fhm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f') l fs' /\
       Forall2 (fun f1 f2 => raw_fun_nparams f1 = raw_fun_nparams f2 /\ raw_fun_res f1 = raw_fun_res f2) fs' rs.
   Proof.
-    intros Γ pq D Us As; induction l as [| [[f h] m] l IH]; intros rs fs' Er Ec; cbn in Er;
-      bind_inv; cbn in Ec; bind_inv; try (split; constructor).
-    destruct (ind_member D m) as [Mm |] eqn:Hj; [| discriminate ]; bind_inv; cbn in Ec.
-    rewrite Hj in Ec; bind_inv.
-    destruct (IH _ _ H0 H2) as [Hb Hrs].
-    split; constructor; cbn; [| exact Hb | split; reflexivity | exact Hrs ].
-    constructor; cbn; [ destruct h; reflexivity | congruence | | ].
-    - intros Mm' Hj'; rewrite Hj in Hj'; injection Hj' as <-; apply fill_exp_fn_sound; assumption.
-    - intros Mm' Hj'; rewrite Hj in Hj'; injection Hj' as <-; eapply brs_fill_sound; [| eassumption ].
-      apply Forall_forall; intros; apply fill_fn_sound_all.
+    intros Γ pq D Us As; induction l as [| [[f h] m] l IH]; intros rs fs' Er Ec.
+    - cbn in Er, Ec; injection Er as <-; injection Ec as <-; split; constructor.
+    - cbn in Er; destruct (ind_member D m) as [Mm |] eqn:Hj; [| discriminate ].
+      apply fill_result_bind_ok in Er as (A' & EA & Er); apply fill_result_bind_ok in Er as (rs0 & Ers & Er); injection Er as <-.
+      cbn in Ec; rewrite Hj in Ec.
+      apply fill_result_bind_ok in Ec as (Bs' & EB & Ec); apply fill_result_bind_ok in Ec as (fs0' & Efs & Ec); injection Ec as <-.
+      destruct (IH _ _ Ers Efs) as [Hb Hrs].
+      split; constructor; cbn; [| exact Hb | split; reflexivity | exact Hrs ].
+      constructor; cbn; [ destruct h; reflexivity | congruence | | ].
+      + intros Mm' Hj'; rewrite Hj in Hj'; injection Hj' as <-; apply fill_exp_fn_sound; assumption.
+      + intros Mm' Hj'; rewrite Hj in Hj'; injection Hj' as <-; eapply brs_fill_sound; [| eassumption ].
+        apply Forall_forall; intros; apply fill_fn_sound_all.
   Qed.
 
   Lemma fill_raw_fun_bodies_parts_complete : forall Γ pq D Us As l fs',
@@ -1558,11 +1555,11 @@ Section Decide.
     cbn [fst snd] in *.
     destruct (ind_member D m) as [Mm |] eqn:Hj; [| contradiction ].
     destruct (IH _ Hb') as (rs & Er & Hrs & Ec).
-    exists (mk_rfun (raw_fun_name f') (raw_fun_nparams f') (raw_fun_scrut f') (raw_fun_res f') nil :: rs); cbn.
-    rewrite Hj, (Ce _ _ _ (Hr Mm eq_refl)); cbn; rewrite Er; cbn.
-    destruct f' as [n ys Z A Bs]; cbn in *; subst h; cbn.
+    exists (mk_rfun (raw_fun_name f') (raw_fun_nparams f') (raw_fun_scrut f') (raw_fun_res f') nil :: rs).
+    destruct f' as [n ys Z A Bs]; cbn in Eh |- *; subst h.
+    rewrite Hj, (Ce _ _ _ (Hr Mm eq_refl)); cbn [fill_result_bind]; rewrite Er; cbn [fill_result_bind].
     split; [ reflexivity | split; [ constructor; [ cbn; split; reflexivity | exact Hrs ] |] ].
-    rewrite Hj, (Cb _ _ _ _ _ _ _ _ _ (Hc Mm eq_refl)); cbn; rewrite Ec; reflexivity.
+    rewrite (Cb _ _ _ _ _ _ _ _ _ (Hc Mm eq_refl)); cbn [fill_result_bind]; rewrite Ec; reflexivity.
   Qed.
 
   (** A mutual definition's bodies, filled as the relation fills them. *)
@@ -1692,12 +1689,30 @@ Section Decide.
   Proof.
     intros Rh ms; induction ms as [| Mr ms IH]; intros [| Mh hs] ms' Hl E; cbn in Hl; try discriminate;
       cbn in E; bind_inv; [ split; constructor |].
-    destruct (IH _ _ ltac:(lia) H0) as [Hh Hc].
+    destruct (IH hs _ ltac:(lia) H0) as [Hh Hc].
     split; constructor; cbn; [ repeat split | exact Hh | | exact Hc ].
     change (raw_member_args_ctx_at (gs_tele Ξ)) with (raw_member_args_ctx Ξ) in H.
     replace (raw_member_args_ctx Ξ Rh (mk_rmem (raw_member_name Mh) (raw_member_nparams Mh) (raw_member_sort Mh) x))
       with (raw_member_args_ctx Ξ Rh Mh) by reflexivity.
     apply fill_raw_cons_fn_sound; assumption.
+  Qed.
+
+  (** The members of a group [R''], their heads filled as [hs] and their
+      constructors over their contexts in [R''], are the relation's. *)
+  Lemma fill_raw_members_zip : forall R'' ms hs ms',
+      Forall2 (fun Mr Mh => raw_member_name Mh = surface_raw_member_name Mr /\
+                            fill_tele Θ Ξ B (raw_decl_uparams R'' ++ gs_tele Ξ) (surface_raw_member_nparams Mr) (raw_member_nparams Mh) /\
+                            fill_exp Θ Ξ B (raw_decl_uparams R'' ++ gs_tele Ξ) (surface_raw_member_sort Mr) (raw_member_sort Mh)) ms hs ->
+      Forall2 (fun Mh Mr' => raw_member_name Mr' = raw_member_name Mh /\ raw_member_nparams Mr' = raw_member_nparams Mh /\
+                             raw_member_sort Mr' = raw_member_sort Mh) hs ms' ->
+      Forall2 (fun Mr Mr' => Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_fields Θ Ξ B (raw_member_args_ctx Ξ R'' Mr') (snd rc) (snd rc'))
+                               (surface_raw_member_cons Mr) (raw_member_cons Mr')) ms ms' ->
+      Forall2 (fill_raw_member Θ Ξ B R'') ms ms'.
+  Proof.
+    intros R'' ms hs ms' Hh; revert ms'; induction Hh as [| Mr Mh ms hs (En & Hn & Hs) _ IH]; intros ms' Hhm Hc;
+      inversion Hhm as [| ? Mr' ? ms1' (En' & Ep' & Es') Hhm0]; subst; inversion Hc as [| ? ? ? ? Hc1 Hc0]; subst;
+      constructor; [| exact (IH _ Hhm0 Hc0) ].
+    constructor; [ congruence | rewrite Ep'; exact Hn | rewrite Es'; exact Hs | exact Hc1 ].
   Qed.
 
   (** The computed fill of a group is the relation's. *)
@@ -1714,14 +1729,10 @@ Section Decide.
         in the filled group *)
     assert (Hctx : forall Mr', raw_member_args_ctx Ξ (mk_raw ups' hs (surface_raw_decl_rec_field R)) Mr' =
                                raw_member_args_ctx Ξ (mk_raw ups' ms' (surface_raw_decl_rec_field R)) Mr')
-      by (intros; exact (raw_member_args_ctx_heads_eq _ _ _ _ _ eq_refl Hhb eq_refl)).
-    clear H0 H1 Hhb; revert Hh Hhm Hc.
-    generalize (surface_raw_decl_members R) as ms; generalize ms' at 1 3 4 as ms0'; generalize hs at 2 3 as hs0.
-    intros hs0 ms0' ms Hh; revert ms0'; induction Hh as [| Mr Mh ms hs1 (En & Hn & Hs) _ IH]; intros ms0' Hhm Hc;
-      inversion Hhm as [| ? Mr' ? ms1' (En' & Ep' & Es') Hhm0]; subst; inversion Hc as [| ? ? ? ? Hc1 Hc0]; subst;
-      constructor; [| exact (IH _ Hhm0 Hc0) ].
-    rewrite Hctx in Hc1.
-    constructor; cbn; [ congruence | rewrite Ep'; exact Hn | rewrite Es'; exact Hs | exact Hc1 ].
+      by (intros Mr'; exact (raw_member_args_ctx_heads_eq Ξ (mk_raw ups' hs (surface_raw_decl_rec_field R))
+                               (mk_raw ups' ms' (surface_raw_decl_rec_field R)) Mr' Mr' eq_refl Hhb eq_refl)).
+    apply (fill_raw_members_zip _ _ hs); [ exact Hh | exact Hhm |].
+    eapply Forall2_impl; [| exact Hc ]; intros Mr Mr' Hx; rewrite <- Hctx; exact Hx.
   Qed.
 
   (** The relation's fill of a group is computed. *)
@@ -1742,12 +1753,12 @@ Section Decide.
       fill_raw_bodies_at (gs_tele Ξ) Rh ms
         (List.map (fun Mr' => mk_rmem (raw_member_name Mr') (raw_member_nparams Mr') (raw_member_sort Mr') nil) ms') = fill_ok ms'.
   Proof.
-    intros * Eu HG; induction 1 as [| Mr Mr' ms ms' [En Hn Hs Hc] _ IH]; cbn; [ reflexivity |].
+    intros * Eu HG; induction 1 as [| Mr Mr' ms ms' [En Hn Hs Hc] _ IH]; cbn [fill_raw_bodies_at List.map]; [ reflexivity |].
     change (raw_member_args_ctx_at (gs_tele Ξ)) with (raw_member_args_ctx Ξ).
-    rewrite (raw_member_args_ctx_heads_eq Ξ Rh R' _ Mr' Eu HG eq_refl), (fill_raw_cons_fn_complete _ _ _ Hc); cbn [fill_result_bind].
+    rewrite (raw_member_args_ctx_heads_eq Ξ Rh R' (mk_rmem (raw_member_name Mr') (raw_member_nparams Mr') (raw_member_sort Mr') nil)
+               Mr' Eu HG eq_refl), (fill_raw_cons_fn_complete _ _ _ Hc); cbn [fill_result_bind].
     rewrite IH; cbn [fill_result_bind].
-    rewrite (raw_member_parts_eq Mr' (mk_rmem (raw_member_name Mr') (raw_member_nparams Mr') (raw_member_sort Mr') (raw_member_cons Mr'))
-               eq_refl eq_refl eq_refl eq_refl) at 2; destruct Mr'; reflexivity.
+    destruct Mr'; reflexivity.
   Qed.
 
   Lemma fill_raw_decl_fn_complete : forall R R', fill_raw_decl Θ Ξ B R R' -> fill_raw_decl_at (gs_tele Ξ) R = fill_ok R'.
@@ -1755,7 +1766,10 @@ Section Decide.
     pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     intros R R' [Hu Hr Hm]; unfold fill_raw_decl_at; rewrite (Ct _ _ _ Hu); cbn [fill_result_bind].
     rewrite (fill_raw_heads_fn_complete _ _ _ Hm); cbn [fill_result_bind].
-    rewrite (fill_raw_bodies_fn_complete _ R' _ _ eq_refl); cbn [fill_result_bind].
+    rewrite (fill_raw_bodies_fn_complete
+               (mk_raw (raw_decl_uparams R')
+                  (List.map (fun Mr' => mk_rmem (raw_member_name Mr') (raw_member_nparams Mr') (raw_member_sort Mr') nil)
+                     (raw_decl_members R')) (surface_raw_decl_rec_field R)) R' _ _ eq_refl); cbn [fill_result_bind].
     - destruct R'; cbn in *; subst; reflexivity.
     - cbn; clear; induction (raw_decl_members R') as [| M ms IH]; constructor; [ split; reflexivity | exact IH ].
     - exact Hm.
