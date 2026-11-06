@@ -737,15 +737,17 @@ Section Corollaries.
   Context {GC : GCtx}.
 
 (** The substitution instance soundness needs, in its [Π]-β case, at
-    any tag: the PER model of substitutions does not read it. *)
+    any tag: the PER model of substitutions does not read it.  The
+    extended context is a context: [A] is a type, not [LevelSort]. *)
 Corollary completeness_fundamental_sub_single : forall Γ κ M A,
+    ⊢ Γ ▹{κ} A ->
     Γ ⊢ M : A ->
     Γ ⊨ˢ Id,,M : Γ ▹{κ} A.
 Proof.
-  intros * HM.
+  intros * HΓA HM.
   pose proof (wf_exp_scoped_term _ _ _ _ _ HM) as Hs.
   apply completeness_fundamental_exp in HM.
-  pose proof (presup_rel_exp_under_ctx HM) as [i HA].
+  destruct (rel_ctx_wf_ass_typ (completeness_fundamental_ctx _ HΓA)) as [i HA].
   pose proof HM as [env_relΓ HΓ _ _].
   eapply rel_sub_under_ctx_extend;
     [ apply (rel_sub_id (ex_intro _ _ HΓ)) | eassumption | rewrite exp_sub_id; eassumption | exact Hs | exact Hs ].
