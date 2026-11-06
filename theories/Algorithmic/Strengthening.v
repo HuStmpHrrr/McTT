@@ -3196,30 +3196,30 @@ Proof.
 Qed.
 (** ** At the Outermost Variable *)
 
-(** A proof-free normal form typed, weakened, in [Γ ▹ A] at a weakened type
-    of [Γ] is typed at that type in [Γ]. *)
-Corollary nf_strengthen_shift : forall Γ κ A (W : nf) T i,
+(** A proof-free normal form typed, weakened, in [Γ ▹{κ} A] at a weakened
+    type ([⊢ᵗ]) of [Γ] is typed at that type in [Γ]. *)
+Corollary nf_strengthen_shift : forall Γ κ A (W : nf) T,
     nf_proof_free W ->
-    ⊢ Γ ▹ A ->
-    Γ ⊢ T : Typeω@i ->
-    Γ ▹ A ⊢ (W : exp)[↑]ʷ : T[↑]ʷ ->
+    ⊢ Γ ▹{κ} A ->
+    Γ ⊢ᵗ T ->
+    Γ ▹{κ} A ⊢ (W : exp)[↑]ʷ : T[↑]ʷ ->
     Γ ⊢ W : T.
 Proof.
   intros * Hpf HΓA HT HW.
-  exact (proj1 (nf_strengthen Γ A) W Hpf nil T Typeω@i ltac:(constructor) HΓA (type_sort_universe i) HT HW).
+  exact (proj1 (nf_strengthen Γ κ A) W Hpf nil T ltac:(constructor) HΓA HT HW).
 Qed.
 
 (** The case the algorithmic [Π] needs: the level of a codomain's universe,
     when it does not mention the bound variable and holds no proof. *)
-Corollary level_nf_strengthen : forall Γ κ A n(L : nf),
+Corollary level_nf_strengthen : forall Γ κ A n (L : nf),
     nf_proof_free L ->
-    ⊢ Γ ▹ A ->
-    Γ ▹ A ⊢ (L : exp)[↑]ʷ : Level@n ->
+    ⊢ Γ ▹{κ} A ->
+    Γ ▹{κ} A ⊢ (L : exp)[↑]ʷ : Level@n ->
     Γ ⊢ L : Level@n.
 Proof.
   intros * Hpf HΓA HL.
   destruct (ctx_decomp HΓA) as [HΓ _].
-  exact (nf_strengthen_shift Γ A L Level@n 0 Hpf HΓA (wf_level_large HΓ) HL).
+  exact (nf_strengthen_shift Γ κ A L Level@n Hpf HΓA (wf_type_of_sort _ type_sort_level (wf_level _ _ _ n HΓ)) HL).
 Qed.
 
 End Fixed_GCtx.
