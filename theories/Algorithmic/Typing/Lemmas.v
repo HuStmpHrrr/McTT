@@ -780,11 +780,23 @@ Lemma typed_at_univ_nf : forall Δ B (UB UB' : nf) v,
 Proof.
   intros * HBU HnB Hv.
   assert (exists k, Δ ⊢ (UB : exp) : Typeω@k) as [kB HUB].
-  { destruct (presup_exp_typ HBU) as [SB HSB HUB0]; destruct HSB as [kB |]; [ exists kB; exact HUB0 |].
-    exfalso; pose proof (nbe_ty_prop_not_univ_pi _ _ _ HUB0 HnB) as Hnu.
-    rewrite (is_univ_nf_eq _ _ Hv) in Hnu; destruct v as [[] |]; cbn in Hnu; exact Hnu. }
+  { destruct (presup_exp_typ_cases HBU) as [? SB HSB HUB0 | ? Hlf].
+    - destruct HSB as [kB | |]; [ exists kB; exact HUB0 | |].
+      + exfalso; pose proof (nbe_ty_prop_not_univ_pi _ _ _ HUB0 HnB) as Hnu.
+        rewrite (is_univ_nf_eq _ _ Hv) in Hnu; destruct v as [[] |]; cbn in Hnu; exact Hnu.
+      + (** a type of levels normalises to a type of levels, of [LevelSort]
+            ([level_sort_typed_former]), and no universe is one *)
+        exfalso; pose proof (soundness_ty_at_sort type_sort_level HUB0 HnB) as HE.
+        rewrite (is_univ_nf_eq _ _ Hv), nf_to_exp_univ_nf in HE.
+        pose proof (level_sort_typed_former (presup_exp_eq_right HE)) as Hf.
+        destruct v; inversion Hf.
+    - (** [LevelSort] normalises to itself, no universe *)
+      exfalso; destruct UB; cbn [nf_to_exp] in *; try discriminate.
+      destruct HnB as [ρ a Hρ Ha HW]; inversion Ha; subst; inversion HW; subst; inversion Hv. }
   assert (HUBe : Δ ⊢ (UB : exp) ≈ UB' : Typeω@kB) by (eapply soundness_ty'; eassumption).
-  pose proof (nbe_ty_self HUB HnB) as HnB'.
+  assert (Hpf : nf_proof_free UB')
+    by (rewrite (is_univ_nf_eq _ _ Hv) in HnB |- *; destruct v as [[c xs] | j]; [ exact (nbe_ty_univ_proof_free HUB HnB) | exact I ]).
+  pose proof (nbe_ty_self HUB HnB Hpf) as HnB'.
   rewrite (is_univ_nf_eq _ _ Hv) in HUBe, HnB'.
   assert (HB' : Δ ⊢ B : universe_nf_tm v) by (rewrite <- nf_to_exp_univ_nf; eapply wf_conv'; [ exact HBU | exact HUBe ]).
   split; [ exact HB' |].
