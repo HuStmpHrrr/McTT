@@ -169,6 +169,37 @@ Proof.
   split; [ exact (univ_nf_well_scoped Hu Hn) | exact (nbe_ty_univ_proof_free Hu Hn) ].
 Qed.
 
+(** A property of the elements of a list that follows from two others and
+    the motive the nested induction gives them holds of the list. *)
+Lemma list_all_combine {A : Set} (Q : A -> Type) (P1 P2 P3 : A -> Prop) : forall l,
+    Base.list_all A Q l -> (forall x, Q x -> P1 x -> P2 x -> P3 x) -> all_list P1 l -> all_list P2 l -> all_list P3 l.
+Proof. intros l Hl Hf; induction Hl; cbn; [ auto | intros [] []; split; auto ]. Qed.
+
+(** A normal form that holds no proof and avoids a variable outside its
+    proofs avoids it ([nf_fresh_outside_proofs], the freshness readback
+    gives under a weakening). *)
+Lemma nf_ne_fresh_of_outside_proofs :
+  (forall W, nf_proof_free W -> forall k, nf_fresh_outside_proofs k W -> nf_fresh k W) /\
+  (forall M, ne_proof_free M -> forall k, ne_fresh_outside_proofs k M -> ne_fresh k M).
+Proof.
+  apply nf_ne_ind; intros; cbn [nf_proof_free ne_proof_free nf_fresh_outside_proofs ne_fresh_outside_proofs nf_fresh ne_fresh] in *;
+    repeat match goal with H : _ /\ _ |- _ => destruct H end; try contradiction; try tauto; try solve [ split; auto ].
+  all: repeat split; try assumption; try solve [ auto ].
+  all: match goal with
+       | Hl : Base.list_all _ _ ?l, Hp : all_list ?P1 ?l, Hf : all_list ?P2 ?l |- all_list _ ?l =>
+           lazymatch P1 with context [ nf_proof_free ] => idtac | context [ ne_proof_free ] => idtac end;
+           lazymatch P2 with context [ nf_fresh_outside_proofs ] => idtac | context [ ne_fresh_outside_proofs ] => idtac end;
+           apply (list_all_combine _ P1 P2 _ l Hl); [| exact Hp | exact Hf ]
+       end.
+  all: intros x Hx Hp Hf; cbn in *; try solve [ auto ].
+  (** a block: its scrutinee type, motive and branches *)
+  all: destruct Hx; unfold normal_block_forall in *; cbn in *; auto.
+  destruct Hp as (Hp1 & Hp2 & Hp3); destruct Hf as (Hf1 & Hf2 & Hf3).
+  split; [ auto | split; [ auto |] ].
+  eapply list_all_combine; [ eassumption | | exact Hp3 | exact Hf3 ].
+  intros x Hb Hpb Hfb; destruct Hb; cbn in *; auto.
+Qed.
+
 (** The list of a list of terms mapped is checked by the check of its
     elements mapped. *)
 Lemma forallb_map_eq_list_all : forall {X : Set} (P : X -> Type) (f : X -> bool) (g : X -> X) l,
@@ -1415,19 +1446,19 @@ Qed.
 (** The parts of a [Π] the algorithm infers: the domain at its universe, the
     codomain at the normal form of its universe, whose level's atoms are of
     the sorts they carry. *)
-Lemma alg_pi_parts_sound : forall {Γ A B UA UB UB' rA u v},
+Lemma alg_pi_parts_sound : forall {Γ A B UA UB UB' κd u v},
     ⊢ Γ ->
     Γ ⊢a A ⟹ UA ->
-    is_sort_nf UA rA u ->
-    Γ ▹ A ⊢a B ⟹ UB ->
-    nbe_ty_f (Γ ▹ A) UB UB' ->
+    is_sort_nf UA κd u ->
+    Γ ▹{κd} A ⊢a B ⟹ UB ->
+    nbe_ty_f (Γ ▹{κd} A) UB UB' ->
     is_univ_nf UB' v ->
-    pi_domain_ok Γ A u /\ Γ ▹ A ⊢ B : universe_nf_tm v /\ universe_nf_well_scoped (Γ ▹ A) v.
+    pi_domain_ok Γ A κd u /\ Γ ▹{κd} A ⊢ B : universe_nf_tm v /\ universe_nf_well_scoped (Γ ▹{κd} A) v.
 Proof.
   intros * HΓ HAi Hs HBi HnB Hv.
   pose proof (alg_type_infer_sound HAi HΓ) as HA0.
   pose proof (sort_typed_of_is_sort_nf HA0 Hs) as HAs.
-  assert (HGA : ⊢ Γ ▹ A) by (eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]).
+  assert (HGA : ⊢ Γ ▹{κd} A) by (eapply wf_ctx_extend; [ exact HAs | apply sort_kind_abs_kind_sort ]).
   split; [ exact (pi_domain_ok_of_is_sort_nf HA0 Hs) |].
   exact (typed_at_univ_nf _ _ _ _ _ (alg_type_infer_sound HBi HGA) HnB Hv).
 Qed.
@@ -1439,15 +1470,17 @@ Ltac normal_of_typed HS HT Hn Hnbe :=
 (** An inferred type is a normal form: most rules infer the normal form of
     a type of a sort, which normalises to itself; a [λ] the [Π] of its
     domain's normal form and of its body's type, normal by induction; a
-    projection of a conjunction a part of a normal form. *)
+    projection of a conjunction a part of a normal form.  All up to
+    proofs: the normal form of a normal form is equal to it up to the
+    proofs it keeps ([idempotent_nbe_ty_sort]). *)
 Lemma alg_type_infer_normal : forall {Γ A A' M},
     ⊢ Γ ->
     Γ ⊢a M ⟹ A ->
     nbe_ty_f Γ A A' ->
-    A = A'.
+    nf_eq_upto_proofs A A'.
 Proof.
   intros Γ A A0 M HΓ0 Hinfer Hnbe0; revert A0 HΓ0 Hnbe0; induction Hinfer; intros A' HΓ0 Hnbe;
-    try (symmetry; eapply nbe_ty_suniv_lit; eassumption);
+    try (rewrite (nbe_ty_suniv_lit Hnbe); reflexivity);
     try (directed_inversion_clear_by_head nbe_ty;
          directed_inversion_by_head eval_exp; subst;
          directed_inversion_by_head read_typ; subst;
@@ -1459,22 +1492,25 @@ Proof.
       assert (HT : G ⊢ Type⟨succl M⟩ : Typeω@0) by (eapply wf_univ_large_tm; [ assumption | eapply wf_succl; exact HMl ]);
       normal_of_typed (type_sort_universe 0) HT Hn Hnbe
   (** Ex falso: the normal form of its target *)
-  | HCi : ?G ⊢a ?C ⟹ ?UC, Hs : is_sort_nf ?UC ?r ?u, HMc : alg_type_check ?G a_False _, Hn : nbe_ty_f ?G ?C _ |- _ =>
+  | HCi : ?G ⊢a ?C ⟹ ?UC, Hs : is_sort_nf ?UC ?r ?u, HMc : alg_type_check ?G ⊥ _, Hn : nbe_ty_f ?G ?C _ |- _ =>
       normal_of_typed (type_sort_kind_universe r (universe_nf_large_index u))
         (sort_typed_of_is_sort_nf (alg_type_infer_sound HCi HΓ0) Hs) Hn Hnbe
-  (** A proof of a conjunction: the normal form of its annotation *)
-  | HTi : ?G ⊢a ?T ⟹ Propⁿ, Hn : nbe_ty_f ?G ?T (Σₚⁿ _ _) |- _ =>
-      normal_of_typed type_sort_prop (alg_type_infer_sound HTi HΓ0) Hn Hnbe
+  (** A proof of a conjunction: the normal form of the conjunction *)
+  | HPi : ?G ⊢a ?P ⟹ Propⁿ, HQi : ?G ▹{ak_propositional} ?P ⊢a ?Q ⟹ Propⁿ, Hn : nbe_ty_f ?G (Σₚ ?P ?Q) _ |- _ =>
+      pose proof (alg_type_infer_sound HPi HΓ0) as HP; cbn [nf_to_exp] in HP;
+      assert (HGP : ⊢ G ▹{ak_propositional} P) by (eapply wf_ctx_extend; [ exact HP | exact sort_kind_prop ]);
+      pose proof (alg_type_infer_sound HQi HGP) as HQ; cbn [nf_to_exp] in HQ;
+      normal_of_typed type_sort_prop (wf_and _ _ _ _ _ HP HQ) Hn Hnbe
   (** The first component of a proof of a conjunction: the first part of a
       normal form *)
-  | HMi : ?G ⊢a ?M ⟹ Σₚⁿ ?P ?Q, IH : forall A0, ⊢ ?G -> nbe_ty_f ?G _ A0 -> _ = A0 |- ?P = _ =>
+  | HMi : ?G ⊢a ?M ⟹ Σₚⁿ ?P ?Q, IH : forall A0, ⊢ ?G -> nbe_ty_f ?G _ A0 -> nf_eq_upto_proofs _ A0 |- nf_eq_upto_proofs ?P _ =>
       pose proof (alg_type_infer_sound HMi HΓ0) as HM;
       cbn [nf_to_exp] in HM; pose proof (and_typed_of_proof HM) as HPQ;
       destruct (nbe_ty_exists_sort type_sort_prop HPQ) as [WPQ HWPQ];
-      pose proof (IH _ HΓ0 HWPQ) as E; subst WPQ;
-      cbn [nf_to_exp] in HWPQ; destruct (nbe_ty_and_inv _ _ _ _ HWPQ) as (WP & WQ & E' & HWP & _);
-      injection E' as -> ->;
-      functional_nbe_rewrite_clear; reflexivity
+      pose proof (IH _ HΓ0 HWPQ) as E;
+      cbn [nf_to_exp] in HWPQ; destruct (nbe_ty_and_inv _ _ _ _ HWPQ) as (WP & WQ & -> & HWP & _);
+      functional_nbe_rewrite_clear;
+      unfold nf_eq_upto_proofs in E; cbn in E; apply andb_prop in E as [E _]; exact E
   (** The second: the normal form of its type *)
   | HMi : ?G ⊢a ?M ⟹ Σₚⁿ ?P ?Q, Hn : nbe_ty_f ?G (nf_to_exp ?Q)[Id,,a_left ?M] _ |- _ =>
       pose proof (alg_type_infer_sound (alg_type_infer_right _ _ _ _ _ HMi Hn) HΓ0) as HR;
@@ -1493,94 +1529,91 @@ Proof.
       destruct (con_ty_typed _ _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ HΓ0) (decls_of_ctx _ _ _ HΓ0) Hl Hk Hcon HΓ0) as [j Hj];
       normal_of_typed (type_sort_universe j) Hj Hn Hnbe
   (** The eliminator: the normal form of the motive's instance *)
-  | HMi : ?G ⊢a ?N ⟹ nf_indty _ _ _, Hg : elim_grp ?D ?oq ?p ?m,
-    Hn : nbe_ty_f ?G (eb_motive ?bm)[sb_of_list Id (?Ns ++ ?N :: nil)] _ |- _ =>
+  | HMi : ?G ⊢a ?N ⟹ nf_indty _ _ _, Hn : nbe_ty_f ?G (eb_motive ?bm)[sb_of_list Id (?Ns ++ ?N :: nil)] _,
+    Hb : List.nth_error ?Bks ?m = Some ?bm, HBl : List.length ?Bks = ind_nblk ?D,
+    Hl : ind_lookup _ _ ?p = Some ?D |- _ =>
       let Sm := fresh "Sm" in let HSm := fresh "HSm" in let Hm := fresh "Hm" in
       assert (exists Srt, type_sort Srt /\ G ⊢ (eb_motive bm)[sb_of_list Id (Ns ++ N :: nil)] : Srt) as (Sm & HSm & Hm)
-        by (eapply proj2; eapply (alg_elim_sound G N _ _ _ p D oq m);
+        by (eapply proj2; eapply (alg_elim_sound G N _ _ _ p D m);
             first [ exact HΓ0 | exact (alg_type_infer_sound HMi HΓ0) | eassumption
                   | intros; eapply alg_type_check_sound_sort; eauto ]);
       normal_of_typed HSm Hm Hn Hnbe
   (** A [Π]: the normal form of the join of its parts' universes *)
-  | HAi : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA _ _, HBi : ?G ▹ ?A ⊢a ?B ⟹ ?UB,
-    HnB : nbe_ty_f (?G ▹ ?A) (nf_to_exp ?UB) ?UB', Hv : is_univ_nf ?UB' _, Hn : nbe_ty_f ?G (universe_nf_pi_tm _ _) _ |- _ =>
-      destruct (alg_pi_parts_sound HΓ0 HAi Hs HBi HnB Hv) as (HA' & HB' & Hvw);
-      destruct (wf_universe_nf_pi_tm HA' HB' Hvw) as [k Hk];
-      normal_of_typed (type_sort_universe k) Hk Hn Hnbe
+  | HAi : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA ?κd _, HBi : ?G ▹{?κd} ?A ⊢a ?B ⟹ ?UB,
+    HnB : nbe_ty_f (?G ▹{?κd} ?A) (nf_to_exp ?UB) ?UB', Hv : is_sort_nf ?UB' _ _,
+    Hn : nbe_ty_f ?G (abs_kind_sort _ (universe_nf_pi_tm _ _)) _ |- _ =>
+      destruct Hv as [UB0 v0 Hv | |]; cbn [abs_kind_sort] in Hn;
+      [ destruct (alg_pi_parts_sound HΓ0 HAi Hs HBi HnB Hv) as (HA' & HB' & Hvw);
+        destruct (wf_universe_nf_pi_tm HA' HB' Hvw) as [k Hk];
+        normal_of_typed (type_sort_universe k) Hk Hn Hnbe
+      | normal_of_typed (type_sort_universe 1) (motive_kind_sort_typed _ ak_propositional 0 ltac:(constructor) HΓ0) Hn Hnbe
+      | destruct Hn as [ρ a1 Hρ Ha HWr]; inversion Ha; subst; inversion HWr; subst;
+        directed_inversion_clear_by_head nbe_ty; directed_inversion_by_head eval_exp; subst;
+        directed_inversion_by_head read_typ; subst; reflexivity ]
   (** A [λ]: the [Π] of its domain's normal form, normal, and of its
       body's type, normal by induction, in the context the domain's normal
       form extends, semantically the context the domain extends *)
-  | HAi : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA ?rA ?u, HMi : ?G ▹ ?A ⊢a ?M ⟹ ?B,
-    Hr : nbe_ty_kind (?G ▹ ?A) (nf_to_exp ?B) ?r, Hn : nbe_ty_f ?G ?A ?C,
-    IH : forall A0, ⊢ ?G ▹ ?A -> nbe_ty_f (?G ▹ ?A) (nf_to_exp ?B) A0 -> ?B = A0 |- _ =>
+  | HAi : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA ?κd ?u, HMi : ?G ▹{?κd} ?A ⊢a ?M ⟹ ?B, HnL : nf_to_exp ?B <> LevelSort,
+    Hr : nbe_ty_kind (?G ▹{?κd} ?A) (nf_to_exp ?B) ?κc, Hn : nbe_ty_f ?G ?A ?C,
+    IH : forall A0, ⊢ ?G ▹{?κd} ?A -> nbe_ty_f (?G ▹{?κd} ?A) (nf_to_exp ?B) A0 -> nf_eq_upto_proofs ?B A0 |- _ =>
       pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ0) Hs) as HAs;
-      pose proof (type_sort_kind_universe rA (universe_nf_large_index u)) as HSA;
-      assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | exact HSA ]);
-      let SB := fresh "SB" in let HSB := fresh "HSB" in let HB0 := fresh "HB0" in let kB := fresh "kB" in
-      let HBs := fresh "HBs" in
-      destruct (presup_exp_typ (alg_type_infer_sound HMi HGA)) as [SB HSB HB0];
-      destruct (typed_at_relevance_of_nbe HSB HB0 Hr) as [kB HBs];
+      pose proof (type_sort_kind_universe κd (universe_nf_large_index u)) as HSA;
+      assert (HGA : ⊢ G ▹{κd} A) by (eapply wf_ctx_extend; [ exact HAs | apply sort_kind_abs_kind_sort ]);
+      let kB := fresh "kB" in let HBs := fresh "HBs" in
+      destruct (typed_at_kind_of_nbe (alg_type_infer_sound HMi HGA) HnL Hr) as [kB HBs];
       pose proof (soundness_ty_at_sort HSA HAs Hn) as HAC;
-      cbn [nf_to_exp] in Hnbe; destruct (nbe_ty_pi_inv _ _ _ _ _ Hnbe) as (WC & WB & -> & HWC & HWB);
-      pose proof (idempotent_nbe_ty_sort HSA HAs Hn HWC) as <-;
-      assert (HBC : G ▹ nf_to_exp C ⊢ nf_to_exp B : abs_kind_sort r Typeω@kB)
-        by (eapply ctxsub_exp; [ exact (sub_id_extend_of_exp_eq HSA (wf_exp_eq_sym _ _ _ _ _ _ HAC)) | exact HBs ]);
+      cbn [nf_to_exp] in Hnbe; destruct (nbe_ty_pi_inv _ _ _ _ _ _ Hnbe) as (WC & WB & -> & HWC & HWB);
+      pose proof (idempotent_nbe_ty_sort HSA HAs Hn HWC) as HCW;
+      assert (HBC : G ▹{κd} nf_to_exp C ⊢ nf_to_exp B : abs_kind_sort κc Typeω@kB)
+        by (eapply ctxsub_exp; [ exact (sub_id_extend_of_exp_eq (sort_kind_abs_kind_sort _ _) (wf_exp_eq_sym _ _ _ _ _ _ HAC)) | exact HBs ]);
+      let WB' := fresh "WB'" in let HWB' := fresh "HWB'" in
+      destruct (nbe_ty_exists_sort (type_sort_kind_universe _ _) HBs) as [WB' HWB'];
       pose proof (ctxeq_nbe_ty_eq_sort (type_sort_kind_universe _ _) HBC
-                    (ctx_extend_sem_eq HSA (wf_exp_eq_sym _ _ _ _ _ _ HAC)) HWB) as HWB';
-      rewrite <- (IH _ HGA HWB'); reflexivity
+                    (ctx_extend_sem_eq HSA (wf_exp_eq_sym _ _ _ _ _ _ HAC)) ltac:(eapply wf_ctx_scoped; exact HGA) HWB HWB') as HBB;
+      exact (nf_pi_upto_proofs _ _ _ _ _ _ HCW (transitivity (IH _ HGA HWB') (symmetry HBB)))
   (** An application: the normal form of the codomain instantiated *)
-  | HMi : ?G ⊢a ?M ⟹ nf_pi ?r ?A ?B, HNc : alg_type_check ?G (nf_to_exp ?A) ?N, Hn : nbe_ty_f ?G (nf_to_exp ?B)[Id,,?N] _ |- _ =>
+  | HMi : ?G ⊢a ?M ⟹ nf_pi ?κd ?κc ?A ?B, HNc : alg_type_check ?G (nf_to_exp ?A) ?N, Hn : nbe_ty_f ?G (nf_to_exp ?B)[Id,,?N] _ |- _ =>
       pose proof (alg_type_infer_sound HMi HΓ0) as HM; cbn [nf_to_exp] in HM;
       let Spi := fresh "Spi" in let HPi := fresh "HPi" in
-      assert (exists Spi, G ⊢ a_pi r (nf_to_exp A) (nf_to_exp B) : Spi) as [Spi HPi]
-        by (let S00 := fresh "S00" in let H00 := fresh "H00" in destruct (presup_exp_typ HM) as [S00 _ H00]; eauto);
-      destruct (wf_pi_parts_large _ _ _ _ _ HPi) as (SA & iU & HSA & HA & HBr);
-      pose proof (alg_type_check_sound_sort HNc HΓ0 HSA HA) as HN;
-      normal_of_typed (type_sort_kind_universe r iU)
-        (sub_preserves_sort _ _ _ _ _ _ _ HBr (type_sort_kind_universe _ _) (wf_sub_single _ _ _ _ _ _ HA HSA HN)) Hn Hnbe
+      assert (exists Spi, G ⊢ a_pi κd κc (nf_to_exp A) (nf_to_exp B) : Spi) as [Spi HPi]
+        by (let S00 := fresh "S00" in let H00 := fresh "H00" in
+            destruct (presup_exp_typ_sorted HM ltac:(discriminate)) as [S00 [_ H00]]; eauto);
+      let Hκ := fresh "Hκ" in let SA := fresh "SA" in let HSAk := fresh "HSAk" in let HA := fresh "HA" in
+      let iU := fresh "iU" in let HBr := fresh "HBr" in
+      destruct (wf_pi_parts HPi) as (Hκ & (SA & HSAk & HA) & (iU & HBr));
+      pose proof (alg_type_check_sound_sort HNc HΓ0 (sort_kind_type_sort _ _ HSAk) HA) as HN;
+      normal_of_typed (type_sort_kind_universe κc iU)
+        (sub_preserves_sort _ _ _ _ _ _ _ HBr (type_sort_kind_universe _ _) (wf_sub_single _ _ _ _ _ _ _ HA HSAk HN)) Hn Hnbe
   (** A local definition: the normal form of its body's type instantiated *)
-  | Ha : alg_let_ann _ _ |- _ =>
-      destruct Ha as [-> | ->]; simpl_let_guards;
-      [ match goal with
-        | Hr : nbe_ty_kind ?G (nf_to_exp ?W) relevant, HMi : ?G ⊢a ?M ⟹ ?W,
-          HBi : ?G ▸ (nf_to_exp ?W) ≔ ?M ⊢a ?B ⟹ ?C, Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] _ |- _ =>
-            pose proof (alg_type_infer_sound HMi HΓ0) as HM;
-            let SW := fresh "SW" in let HSW := fresh "HSW" in let HW0 := fresh "HW0" in let kW := fresh "kW" in
-            let HAs := fresh "HAs" in
-            destruct (presup_exp_typ HM) as [SW HSW HW0];
-            destruct (typed_at_relevance_of_nbe HSW HW0 Hr) as [kW HAs]; cbn [abs_kind_sort] in HAs;
-            assert (HGd : ⊢ G ▸ (nf_to_exp W) ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | constructor | exact HM ]);
-            let SC := fresh "SC" in let HSC := fresh "HSC" in let HC := fresh "HC" in
-            destruct (presup_exp_typ (alg_type_infer_sound HBi HGd)) as [SC HSC HC];
-            normal_of_typed HSC (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_def _ _ _ _ _ _ HAs (type_sort_universe _) HM)) Hn Hnbe
-        end
-      | match goal with
-        | HAi : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA ?r ?u, HMc : alg_type_check ?G ?A ?M,
-          HBi : ?G ▸ ?A ≔ ?M ⊢a ?B ⟹ ?C, Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] _ |- _ =>
-            pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ0) Hs) as HAs;
-            pose proof (type_sort_kind_universe r (universe_nf_large_index u)) as HSA;
-            pose proof (alg_type_check_sound_sort HMc HΓ0 HSA HAs) as HM;
-            assert (HGd : ⊢ G ▸ A ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | exact HSA | exact HM ]);
-            let SC := fresh "SC" in let HSC := fresh "HSC" in let HC := fresh "HC" in
-            destruct (presup_exp_typ (alg_type_infer_sound HBi HGd)) as [SC HSC HC];
-            normal_of_typed HSC (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_def _ _ _ _ _ _ HAs HSA HM)) Hn Hnbe
-        end ]
+  | HAi : ?G ⊢a ?A ⟹ ?UA, Hs : is_sort_nf ?UA ?r ?u, HMc : alg_type_check ?G ?A ?M,
+    HBi : ?G ▸ ?A ≔ ?M ⊢a ?B ⟹ ?C, HnL : nf_to_exp ?C <> LevelSort, Hr : nbe_ty_kind _ (nf_to_exp ?C) ?κC,
+    Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] _ |- _ =>
+      pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ0) Hs) as HAs;
+      pose proof (type_sort_kind_universe r (universe_nf_large_index u)) as HSA;
+      pose proof (alg_type_check_sound_sort HMc HΓ0 HSA HAs) as HM;
+      assert (HGd : ⊢ G ▸ A ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | exact HSA | exact HM ]);
+      let kC := fresh "kC" in let HC := fresh "HC" in
+      destruct (typed_at_kind_of_nbe (alg_type_infer_sound HBi HGd) HnL Hr) as [kC HC];
+      normal_of_typed (type_sort_kind_universe κC kC)
+        (sub_preserves_sort _ _ _ _ _ _ _ HC (type_sort_kind_universe κC kC) (wf_sub_single_def _ _ _ _ _ _ HAs HSA HM)) Hn Hnbe
   (** A module [let]: the same *)
-  | HUi : ?G ⊢aᵘ ?U, HBi : ?G ▹ₘ ?U ⊢a ?B ⟹ ?C, Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id ,,ₘ me_lit ?U] _ |- _ =>
+  | HUi : ?G ⊢aᵘ ?U, HBi : ?G ▹ₘ ?U ⊢a ?B ⟹ ?C, HnL : nf_to_exp ?C <> LevelSort, Hr : nbe_ty_kind _ (nf_to_exp ?C) ?κC,
+    Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id ,,ₘ me_lit ?U] _ |- _ =>
       pose proof (alg_unit_sound HUi HΓ0) as HU;
       assert (HGU : ⊢ G ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU);
-      let SC := fresh "SC" in let HSC := fresh "HSC" in let HC := fresh "HC" in
-      destruct (presup_exp_typ (alg_type_infer_sound HBi HGU)) as [SC HSC HC];
-      normal_of_typed HSC (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_mod _ _ _ _ HU)) Hn Hnbe
+      let kC := fresh "kC" in let HC := fresh "HC" in
+      destruct (typed_at_kind_of_nbe (alg_type_infer_sound HBi HGU) HnL Hr) as [kC HC];
+      normal_of_typed (type_sort_kind_universe κC kC)
+        (sub_preserves_sort _ _ _ _ _ _ _ HC (type_sort_kind_universe κC kC) (wf_sub_single_mod _ _ _ _ HU)) Hn Hnbe
   (** A member: the normal form of the type its module's description reads *)
   | HHi : ?G ⊢aᵐ ?H0, Hm : mdenote _ _ _ (me_mem _ _) _, Ht : mdesc_type _ = Some ?A0, Hn : nbe_ty_f _ ?A0 _ |- _ =>
       let SA := fresh "SA" in let HSA := fresh "HSA" in let HA := fresh "HA" in
-      destruct (member_wf _ _ _ _ _ (alg_modexp_sound HHi HΓ0) Hm Ht) as ([SA HSA HA] & _);
+      destruct (member_wf _ _ _ _ _ (alg_modexp_sound HHi HΓ0) Hm Ht) as ((SA & HSA & HA) & _);
       normal_of_typed HSA HA Hn Hnbe
   (** A variable: the normal form of its type *)
   | Hl : ?G ∋ #?x : ?A, Hn : nbe_ty_f ?G ?A _ |- _ =>
       let SA := fresh "SA" in let HSA := fresh "HSA" in let HA := fresh "HA" in
-      destruct (presup_exp_typ (wf_vlookup _ _ _ _ _ HΓ0 Hl)) as [SA HSA HA];
+      destruct (ctx_lookup_wf_sorted _ _ _ _ _ HΓ0 Hl) as (SA & HSA & HA);
       normal_of_typed HSA HA Hn Hnbe
   (** A record's type former, a tuple and a projection *)
   | Hl : record_lookup _ _ _ = Some _, Hn : nbe_ty_f _ (record_ty _) _ |- _ =>
@@ -1599,18 +1632,74 @@ Qed.
 
 Hint Resolve alg_type_infer_normal : mctt.
 
-(** An inferred type is its own normal form. *)
+(** A type ([⊢ᵗ]) has a normal form: one of a sort by normalization,
+    [LevelSort] its own, read at the initial environment of the context
+    (which the normal form of a universe gives). *)
+Lemma nbe_ty_exists_wf_type : forall {Γ A}, Γ ⊢ᵗ A -> exists W, nbe_ty_f Γ A W.
+Proof.
+  intros * [? S HS HA | HΓ]; [ exact (nbe_ty_exists_sort HS HA) |].
+  destruct (nbe_ty_exists_sort (type_sort_universe 1) ltac:(apply wf_typ; exact HΓ)) as [W [ρ a Hρ _ _]].
+  exists LevelSortⁿ; econstructor; [ exact Hρ | econstructor | econstructor ].
+Qed.
+
+(** An inferred type has a normal form equal to it up to proofs
+    ([alg_type_infer_normal]). *)
+Lemma alg_type_infer_self_upto : forall {Γ A M},
+    ⊢ Γ ->
+    Γ ⊢a M ⟹ A ->
+    exists A', nbe_ty_f Γ A A' /\ nf_eq_upto_proofs A A'.
+Proof.
+  intros * HΓ Hi.
+  destruct (nbe_ty_exists_wf_type (presup_exp_typ (alg_type_infer_sound Hi HΓ))) as (C & HC).
+  exists C; split; [ exact HC | exact (alg_type_infer_normal HΓ Hi HC) ].
+Qed.
+
+(** An inferred type that holds no proof is its own normal form: equal up
+    to proofs to it, it is it ([nf_ne_proof_free_eq]). *)
 Lemma alg_type_infer_self : forall {Γ A M},
     ⊢ Γ ->
     Γ ⊢a M ⟹ A ->
+    nf_proof_free A ->
     nbe_ty_f Γ A A.
 Proof.
-  intros * HΓ Hi.
-  destruct (presup_exp_typ (alg_type_infer_sound Hi HΓ)) as [S HS HA].
-  destruct (nbe_ty_exists_sort HS HA) as (C & HC).
-  assert (A = C) as <- by (eapply alg_type_infer_normal; eassumption).
-  exact HC.
+  intros * HΓ Hi Hpf.
+  destruct (alg_type_infer_self_upto HΓ Hi) as (C & HC & E).
+  rewrite <- (proj1 nf_ne_proof_free_eq _ Hpf _ E) in HC; exact HC.
 Qed.
+
+(** An inferred small universe holds no proof: its normal form, equal to
+    it up to proofs, is the normal form of a type of a large universe,
+    whose atoms hold none ([nbe_ty_univ_proof_free]). *)
+Lemma alg_type_infer_univ_proof_free : forall {Γ M c xs},
+    ⊢ Γ -> Γ ⊢a M ⟹ univⁿ c xs -> nf_proof_free (univⁿ c xs).
+Proof.
+  intros * HΓ Hi.
+  destruct (alg_type_infer_self_upto HΓ Hi) as (C & HC & E).
+  pose proof (alg_type_infer_sound Hi HΓ) as HM; cbn [nf_to_exp] in HM.
+  assert (exists k, Γ ⊢ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ : Typeω@k) as [k Hk] by univ_large.
+  pose proof E as E0; symmetry in E0.
+  destruct C; unfold nf_eq_upto_proofs in E; cbn in E; try discriminate.
+  pose proof (nbe_ty_univ_proof_free Hk HC) as Hpf.
+  rewrite <- (proj1 nf_ne_proof_free_eq _ Hpf _ E0); exact Hpf.
+Qed.
+
+(** A checked term infers a type below the normal form of the checked
+    one: the inferred type is equal up to proofs to its normal form
+    ([alg_type_infer_normal]). *)
+Lemma alg_type_check_infer_below : forall {Γ M B},
+    ⊢ Γ -> Γ ⊢a M ⟸ B -> exists A W, Γ ⊢a M ⟹ A /\ nbe_ty_f Γ B W /\ ⊢anf A ⊆ W.
+Proof.
+  intros * HΓ Hc; inversion Hc as [? A ? ? Hi [A' W Hn1 Hn2 Hs]]; subst.
+  exists A, W; split; [ exact Hi | split; [ exact Hn2 |] ].
+  eapply alg_subtyping_nf_trans; [ apply alg_subtyping_nf_of_upto_proofs; exact (alg_type_infer_normal HΓ Hi Hn1) | exact Hs ].
+Qed.
+
+(** The case of [alg_subtyping_nf] at normal forms of no universe or [Π]
+    case is impossible below a universe or a type of levels: the two
+    would be equal up to proofs. *)
+Ltac refl_case_absurd :=
+  match goal with Hn : not_univ_pi ?X, E : nf_eq_upto_proofs ?X _ |- _ =>
+    destruct X; cbn in Hn; try contradiction; unfold nf_eq_upto_proofs in E; cbn in E; discriminate end.
 
 (** A type checked against a large universe infers a universe at an index
     below it: with the small tier that index need not be a large one. *)
@@ -1621,50 +1710,78 @@ Lemma alg_type_check_typ_implies_alg_type_infer_typ : forall {Γ A i},
 Proof.
   intros * ? Hcheck.
   inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
-  inversion Hsub as [A'' ? Hnbe1 Hnbe2 Hnfsub]; subst.
-  replace A' with A'' in * by (symmetry; mauto 3).
+  inversion Hsub as [A'' ? Hnbe1 Hnbe2 Hnfsub0]; subst.
+  (** the inferred type is below its normal form, equal up to proofs *)
+  pose proof (alg_subtyping_nf_trans _ _ _
+                (alg_subtyping_nf_of_upto_proofs _ _ (alg_type_infer_normal H Hinfer Hnbe1)) Hnfsub0) as Hnfsub.
   inversion Hnbe2; subst.
   directed_inversion_by_head eval_exp; subst.
   directed_inversion_by_head read_typ; subst.
-  inversion Hnfsub; subst; [ contradiction | |].
+  inversion Hnfsub; subst.
+  - match goal with Hn : not_univ_pi ?X, E : nf_eq_upto_proofs ?X _ |- _ =>
+      destruct X; cbn in Hn; try contradiction; unfold nf_eq_upto_proofs in E; cbn in E; discriminate end.
   - exists Typeωⁿ@i0, (universe_large i0); split; [ exact Hinfer | split; [ constructor | cbn; assumption ] ].
   - exists (univⁿ c xs), (universe_small (c, xs)); split; [ exact Hinfer | split; [ constructor | exact I ] ].
 Qed.
 
 Hint Resolve alg_type_check_typ_implies_alg_type_infer_typ : mctt.
 
-(** A term checked against a [Π] of the sort [r] infers a [Π] of that sort:
-    its domain the normal form of the [Π]'s, its codomain below the [Π]'s
-    (equal to it at [propositional], where subtyping is equality). *)
-Lemma alg_type_check_pi_implies_alg_type_infer_pi : forall {Γ M r A B S},
+(** A term checked against a [Π] at the kinds [κd] and [κc] infers a [Π]
+    at those kinds: its domain equal to the [Π]'s, its codomain below the
+    [Π]'s (equal to it up to proofs into [Prop], where subtyping is
+    equality).  The inferred type is equal up to proofs to its normal
+    form ([alg_type_infer_normal]), so below the [Π]'s normal form; its
+    domain and the [Π]'s, of one kind, are at one sort
+    ([sort_kind_common]), with normal forms equal up to proofs
+    ([exp_eq_of_nbe_ty_same]). *)
+Lemma alg_type_check_pi_implies_alg_type_infer_pi : forall {Γ M κd κc A B S},
     ⊢ Γ ->
-    Γ ⊢ a_pi r A B : S ->
-    Γ ⊢a M ⟸ a_pi r A B ->
-    exists A' B' SA, type_sort SA /\ Γ ⊢a M ⟹ nf_pi r A' B' /\ Γ ⊢ A' ≈ A : SA /\ Γ ▹ A ⊢a B' ⊆ B.
+    Γ ⊢ a_pi κd κc A B : S ->
+    Γ ⊢a M ⟸ a_pi κd κc A B ->
+    exists A' B' SA, sort_kind SA κd /\ Γ ⊢a M ⟹ nf_pi κd κc A' B' /\ Γ ⊢ A' ≈ A : SA /\ Γ ▹{κd} A ⊢a B' ⊆ B.
 Proof.
   intros * HΓ HPi Hcheck.
-  destruct (wf_pi_parts_large _ _ _ _ _ HPi) as (SA & k & HSA & HA & HB).
+  destruct (wf_pi_parts HPi) as (Hκ & (SA0 & HSAk0 & HA) & (k & HB)).
   inversion Hcheck as [? W ? ? Hinfer Hsub]; subst.
-  destruct Hsub as [W1 W2 Hn1 Hn2 Hnf].
-  pose proof (alg_type_infer_normal HΓ Hinfer Hn1) as <-.
-  destruct (nbe_ty_pi_inv _ _ _ _ _ Hn2) as (WA & WB & -> & HnA & HnB).
-  (** The inferred type is a [Π] of the sort [r] over [WA]. *)
-  assert (exists WB', W = nf_pi r WA WB' /\ ⊢anf WB' ⊆ WB) as (WB' & -> & HWB).
+  destruct Hsub as [W1 W2 Hn1 Hn2 Hnf0].
+  pose proof (alg_type_infer_normal HΓ Hinfer Hn1) as HW1.
+  pose proof (alg_subtyping_nf_trans _ _ _ (alg_subtyping_nf_of_upto_proofs _ _ HW1) Hnf0) as Hnf.
+  destruct (nbe_ty_pi_inv _ _ _ _ _ _ Hn2) as (WA & WB & -> & HnA & HnB).
+  (** The inferred type is a [Π] at the kinds [κd] and [κc]. *)
+  assert (exists WA' WB', W = nf_pi κd κc WA' WB' /\ nf_eq_upto_proofs WA' WA /\ ⊢anf WB' ⊆ WB)
+    as (WA' & WB' & -> & HWA & HWB).
   { inversion Hnf; subst.
-    - destruct r; cbn in *; [ contradiction | exists WB; split; [ reflexivity | apply alg_subtyping_nf_refl ] ].
-    - eexists; split; [ reflexivity | eassumption ]. }
-  pose proof (soundness_ty_at_sort HSA HA HnA) as HAWA.
-  exists WA, WB', SA; split; [ exact HSA | split; [ exact Hinfer | split; [ symmetry; exact HAWA |] ] ].
-  (** The inferred codomain is normal, in the context its domain's normal
-      form extends, semantically the context [A] extends. *)
+    - match goal with E : nf_eq_upto_proofs W _ |- _ =>
+        destruct W; try (unfold nf_eq_upto_proofs in E; cbn in E; discriminate);
+        apply nf_pi_upto_proofs_inv in E as (<- & <- & EA & EB) end.
+      do 2 eexists; split; [ reflexivity | split; [ exact EA | apply alg_subtyping_nf_of_upto_proofs; exact EB ] ].
+    - do 2 eexists; split; [ reflexivity | split; eassumption ]. }
+  (** The inferred [Π] is typed; its domain and the [Π]'s at one sort. *)
   pose proof (alg_type_infer_sound Hinfer HΓ) as HM; cbn [nf_to_exp] in HM.
-  destruct (presup_exp_typ HM) as [S' _ HPi'].
-  destruct (wf_pi_parts_large _ _ _ _ _ HPi') as (SA' & k' & HSA' & HA' & HB').
-  pose proof (alg_type_infer_self HΓ Hinfer) as Hself.
-  destruct (nbe_ty_pi_inv _ _ _ _ _ Hself) as (X & Y & E & _ & HnB'); injection E as -> ->.
-  pose proof (ctxeq_nbe_ty_eq_sort (type_sort_kind_universe _ _) HB'
-                (ctx_extend_sem_eq HSA ltac:(symmetry; exact HAWA)) ltac:(exact HnB')) as HnB''.
-  econstructor; [ exact HnB'' | exact HnB | exact HWB ].
+  destruct (presup_exp_typ_sorted HM ltac:(discriminate)) as (S' & _ & HPi').
+  destruct (wf_pi_parts HPi') as (_ & (SA' & HSAk' & HA') & (k' & HB')).
+  destruct (sort_kind_common HSAk' HSAk0 HA' HA) as (j & HA'j & HAj).
+  pose proof (type_sort_kind_universe κd j) as HSj.
+  destruct (nbe_ty_pi_inv _ _ _ _ _ _ Hn1) as (X & Y & -> & HnX & HnY).
+  apply nf_pi_upto_proofs_inv in HW1 as (_ & _ & HWX & HWY).
+  assert (HAA : Γ ⊢ WA' ≈ A : abs_kind_sort κd Typeω@j)
+    by (eapply exp_eq_of_nbe_ty_same; [ exact HSj | exact HA'j | exact HAj | exact HnX | exact HnA
+                                      | transitivity WA'; [ symmetry; exact HWX | exact HWA ] ]).
+  exists WA', WB', (abs_kind_sort κd Typeω@j).
+  split; [ apply sort_kind_abs_kind_sort | split; [ exact Hinfer | split; [ exact HAA |] ] ].
+  (** The inferred codomain, read in the context [A] extends, is below the
+      [Π]'s codomain's normal form. *)
+  assert (HΓA : ⊢ Γ ▹{κd} A) by (gen_presups; assumption).
+  assert (HB'A : Γ ▹{κd} A ⊢ WB' : abs_kind_sort κc Typeω@k')
+    by (eapply ctxsub_exp; [ exact (sub_id_extend_of_exp_eq (sort_kind_abs_kind_sort κd j) (wf_exp_eq_sym _ _ _ _ _ _ HAA)) | exact HB' ]).
+  destruct (nbe_ty_exists_sort (type_sort_kind_universe _ _) HB'A) as [Y' HnY'].
+  assert (HYY : nf_eq_upto_proofs Y Y')
+    by (eapply ctxeq_nbe_ty_eq_sort; [ apply type_sort_kind_universe | exact HB'
+                                     | eapply ctx_extend_sem_eq; [ exact HSj | exact HAA ]
+                                     | eapply wf_ctx_scoped; exact HΓA | exact HnY | exact HnY' ]).
+  econstructor; [ exact HnY' | exact HnB |].
+  eapply alg_subtyping_nf_trans; [ apply alg_subtyping_nf_of_upto_proofs | exact HWB ].
+  transitivity Y; [ symmetry; exact HYY | symmetry; exact HWY ].
 Qed.
 
 Hint Resolve alg_type_check_pi_implies_alg_type_infer_pi : mctt.
@@ -1707,20 +1824,49 @@ Proof.
   exact (proj2 (wf_subtyp_of_exp_eq _ _ _ _ _ _ HA (presup_exp_eq_right HE) HS HE)).
 Qed.
 
+(** A term checked against a type [T] whose normal form [Tn] is of no
+    universe or [Π] case and holds no proof infers [Tn]: subtyping below
+    [Tn] is equality up to proofs ([alg_subtyping_nf_not_univ_pi_eq]), the
+    inferred type is equal up to proofs to its normal form
+    ([alg_type_infer_normal]), and a proof-free normal form is equal to
+    what is equal to it up to proofs ([nf_ne_proof_free_eq]). *)
+Lemma alg_type_check_infer_of_nf : forall {Γ A T} {Tn : nf},
+    ⊢ Γ -> Γ ⊢a A ⟸ T -> (forall W, nbe_ty_f Γ T W -> W = Tn) -> not_univ_pi Tn -> nf_proof_free Tn ->
+    Γ ⊢a A ⟹ Tn.
+Proof.
+  intros * HΓ Hc HT Hn Hpf.
+  inversion Hc as [? W ? ? Hi [W1 W2 Hn1 Hn2 Hsub]]; subst.
+  rewrite (HT _ Hn2) in Hsub.
+  pose proof (alg_subtyping_nf_not_univ_pi_eq _ _ Hsub (or_intror Hn)) as E1.
+  pose proof (transitivity (alg_type_infer_normal HΓ Hi Hn1) E1) as E.
+  rewrite <- (proj1 nf_ne_proof_free_eq _ Hpf _ (symmetry E)) in Hi; exact Hi.
+Qed.
+
 (** A term checked against [Prop] infers [Prop]: subtyping at a
-    proposition is equality ([alg_subtyping_nf_not_univ_pi_eq]). *)
+    proposition is equality up to proofs ([alg_subtyping_nf_not_univ_pi_eq]),
+    and [Prop] holds none. *)
 Lemma alg_type_check_prop_infer : forall {Γ A},
     ⊢ Γ ->
     Γ ⊢a A ⟸ Propₘ ->
     Γ ⊢a A ⟹ Propⁿ.
 Proof.
   intros * HΓ Hc.
-  inversion Hc as [? W ? ? Hi [W1 W2 Hn1 Hn2 Hsub]]; subst.
-  pose proof (alg_type_infer_normal HΓ Hi Hn1) as <-.
-  assert (W2 = Propⁿ) as ->
-    by (inversion Hn2; subst; directed_inversion_by_head eval_exp; subst;
-        directed_inversion_by_head read_typ; subst; reflexivity).
-  rewrite (alg_subtyping_nf_not_univ_pi_eq _ _ Hsub ltac:(right; exact I)) in Hi; exact Hi.
+  eapply alg_type_check_infer_of_nf; [ exact HΓ | exact Hc | | exact I | exact I ].
+  intros W Hn2; inversion Hn2; subst; directed_inversion_by_head eval_exp; subst;
+    directed_inversion_by_head read_typ; subst; reflexivity.
+Qed.
+
+(** A term checked against [LevelSort] infers [LevelSort]: subtyping
+    below it is equality. *)
+Lemma alg_type_check_level_sort_infer : forall {Γ A},
+    ⊢ Γ ->
+    Γ ⊢a A ⟸ LevelSort ->
+    Γ ⊢a A ⟹ LevelSortⁿ.
+Proof.
+  intros * HΓ Hc.
+  eapply alg_type_check_infer_of_nf; [ exact HΓ | exact Hc | | exact I | exact I ].
+  intros W Hn2; inversion Hn2; subst; directed_inversion_by_head eval_exp; subst;
+    directed_inversion_by_head read_typ; subst; reflexivity.
 Qed.
 
 (** A term checked against a sort infers a sort. *)
@@ -1730,11 +1876,13 @@ Lemma alg_type_check_sort_infer : forall {Γ A S},
     Γ ⊢a A ⟸ S ->
     exists UA r u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA r u.
 Proof.
-  intros * HΓ [i |] Hc.
+  intros * HΓ [i | |] Hc.
   - destruct (alg_type_check_typ_implies_alg_type_infer_typ HΓ Hc) as (UA & u & Hi & Hu & _).
-    exists UA, relevant, u; split; [ exact Hi | constructor; exact Hu ].
-  - exists Propⁿ, propositional, (universe_small (ordinal_of_nat 0, nil)).
+    exists UA, ak_relevant, u; split; [ exact Hi | constructor; exact Hu ].
+  - exists Propⁿ, ak_propositional, (universe_small (ordinal_of_nat 0, nil)).
     split; [ exact (alg_type_check_prop_infer HΓ Hc) | constructor ].
+  - exists LevelSortⁿ, ak_level, (universe_small (ordinal_of_nat 0, nil)).
+    split; [ exact (alg_type_check_level_sort_infer HΓ Hc) | constructor ].
 Qed.
 
 (** ** Unannotated Definitions
@@ -1754,7 +1902,7 @@ Fixpoint exp_lets (M : exp) : nat :=
   | a_maxl M N => exp_lets M + exp_lets N
   | a_absurd A M => exp_lets A + exp_lets M
   | a_and P Q => exp_lets P + exp_lets Q
-  | a_conj T M N => exp_lets T + exp_lets M + exp_lets N
+  | a_conj P Q M N => exp_lets P + exp_lets Q + exp_lets M + exp_lets N
   | a_left M | a_right M => exp_lets M
   | a_elim _ _ Us _ Bks M =>
       S ((fix us_lets (Us : list exp) : nat :=
@@ -1765,15 +1913,15 @@ Fixpoint exp_lets (M : exp) : nat :=
          (fix blocks_lets (Bks : list eblock) : nat :=
             match Bks with
             | nil => 0
-            | eb_mk _ oZ A Bs :: Bks' =>
-                match oZ with Some Z => exp_lets Z | None => 0 end + exp_lets A +
+            | eb_mk _ Z A Bs :: Bks' =>
+                exp_lets Z + exp_lets A +
                 (fix brs_lets (Bs : list (String.string * nat * exp)) : nat :=
                    match Bs with
                    | nil => 0
                    | b :: Bs' => exp_lets (snd b) + brs_lets Bs'
                    end) Bs + blocks_lets Bks'
             end) Bks + exp_lets M)
-  | a_pi _ A B => exp_lets A + exp_lets B
+  | a_pi _ _ A B => exp_lets A + exp_lets B
   | a_fn A M => exp_lets A + exp_lets M
   | a_app M N => exp_lets M + exp_lets N
   | a_let b B => binding_lets b + exp_lets B
@@ -1797,8 +1945,7 @@ with modexp_lets (H : modexp) : nat :=
   end
 with binding_lets (b : binding) : nat :=
   match b with
-  | b_def (Some A) M => exp_lets A + exp_lets M
-  | b_def None M => S (exp_lets M)
+  | b_def A M => exp_lets A + exp_lets M
   | b_mod U => gunit_lets U
   end
 with gunit_lets (U : gunit) : nat :=
@@ -1819,19 +1966,21 @@ with gmod_lets (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ _ E => gmod_lets Φ + gentry_lets E
-  | gm_open Φ H _ => gmod_lets Φ + S (modexp_lets H)
+  | gm_open Φ H _ _ => gmod_lets Φ + S (modexp_lets H)
   end
 with gentry_lets (E : gentry) : nat :=
   match E with
   | ge_def _ _ _ A B => exp_lets A + match B with Some M => exp_lets M | None => 0 end
   | ge_mod _ U => gunit_lets U
-  | ge_ind _ _ _ _ Φ => gmod_lets Φ
+  (** an inductive or a record stands in the body's context as an alias,
+      of one module expression ([body_ctx]) *)
+  | ge_ind _ _ _ _ Φ => S (gmod_lets Φ)
   | ge_def_mod _ A M U => exp_lets A + exp_lets M + gunit_lets U
-  | ge_record _ _ _ Φ => gmod_lets Φ
+  | ge_record _ _ _ Φ => S (gmod_lets Φ)
   end
 with centry_lets (e : centry) : nat :=
   match e with
-  | ce_ass A => exp_lets A
+  | ce_ass _ A => exp_lets A
   | ce_def A M => exp_lets A + exp_lets M
   | ce_mod U => gunit_lets U
   | ce_dm A M U => exp_lets A + exp_lets M + gunit_lets U
@@ -1849,11 +1998,14 @@ Proof. intros; cbn; f_equal; induction Δ; cbn; congruence. Qed.
 Lemma ctx_lets_app : forall Ψ Γ, ctx_lets (Ψ ++ Γ) = ctx_lets Ψ + ctx_lets Γ.
 Proof. induction Ψ; intros; cbn; [| rewrite IHΨ ]; lia. Qed.
 
+(** A chain of selections counts as its head. *)
+Lemma modexp_lets_mems : forall pre H, modexp_lets (me_mems H pre) = modexp_lets H.
+Proof. induction pre as [| y pre IH]; intros; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+
 Lemma body_ctx_lets : forall Φ, ctx_lets (body_ctx Φ) <= gmod_lets Φ.
 Proof.
-  induction Φ as [| Φ IH x [b pv r A [M |] | pm U | ? ? ? ? ? | ? ? ? ? | ? ? ? ?] | Φ IH c its ]; cbn; rewrite ?ctx_lets_app; [ lia .. |].
-  enough (ctx_lets (List.repeat (ce_ass a_placeholder_type) (List.length its)) = 0) by lia.
-  induction (List.length its); cbn; auto.
+  induction Φ as [| Φ IH x [b pv r A [M |] | pm U | ? ? ? ? ? | ? ? ? ? | ? ? ? ?] | Φ IH H its Φo IHo ];
+    cbn; unfold qname_mod; rewrite ?modexp_lets_mems; cbn; lia.
 Qed.
 
 Lemma exp_lets_apps : forall M args,
@@ -1909,8 +2061,10 @@ Proof.
   (** The inferred universe is a normal form, so its level's atoms are of the
       sorts they carry, below the literal's tier ([lvl_le_lit_sorts]). *)
   assert (HA : Γ ⊢ A : UA) by (eapply alg_type_infer_sound; eassumption).
-  pose proof (alg_type_infer_self HΓ Hi) as HnA.
-  rewrite (is_univ_nf_eq _ _ Hu) in HA, HnA; cbn [universe_nf_to_nf nf_univ_of fst snd nf_to_exp] in HA, HnA.
+  pose proof (is_univ_nf_eq _ _ Hu) as EU; cbn [universe_nf_to_nf nf_univ_of fst snd] in EU; subst UA.
+  pose proof (alg_type_infer_univ_proof_free HΓ Hi) as Hpf.
+  pose proof (alg_type_infer_self HΓ Hi Hpf) as HnA.
+  cbn [nf_to_exp] in HA, HnA.
   assert (exists k, Γ ⊢ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ : Typeω@k) as [k Hk] by univ_large.
   destruct (univ_nf_well_scoped Hk HnA) as (nA & HLA & Hc & Hxs).
   set (N := Nat.max nA (fst m)).
@@ -1924,7 +2078,9 @@ Proof.
   assert (HcN : fst c <= N) by (subst N; lia).
   assert (HmN : fst m <= N) by (subst N; lia).
   assert (HxsN : @level_atoms_well_scoped gc_deps gc_stack N Γ xs) by (eapply level_atoms_well_scoped_mono; [| exact Hxs ]; subst N; lia).
-  exact (lvl_exp_of_le (n := N) c xs m nil HcN HmN HΓ HxsN I Hle).
+  assert (Hcoh : @level_atoms_coherent gc_deps gc_stack Γ (xs ++ nil))
+    by (rewrite List.app_nil_r; exact (level_atoms_coherent_proof_free _ _ _ HxsN Hpf)).
+  exact (lvl_exp_of_le (n := N) c xs m nil HcN HmN HΓ HxsN I Hcoh Hle).
 Qed.
 
 (** A type checked against a small universe infers a small universe, at a canonical
@@ -1934,16 +2090,14 @@ Lemma alg_type_check_suniv_tm_implies_alg_type_infer_univ : forall {Γ A t},
     Γ ⊢a A ⟸ Type⟨t⟩ ->
     exists L L', Γ ⊢a A ⟹ nf_univ_of L /\ nbe_ty_f Γ Type⟨t⟩ (nf_univ_of L') /\ lvl_le L L'.
 Proof.
-  intros * ? Hcheck.
-  inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
-  inversion Hsub as [A'' B' Hnbe1 Hnbe2 Hnfsub]; subst.
-  replace A' with A'' in * by (symmetry; mauto 3).
+  intros * HΓ Hcheck.
+  destruct (alg_type_check_infer_below HΓ Hcheck) as (A' & B' & Hinfer & Hnbe2 & Hnfsub).
   pose proof Hnbe2 as Hn.
   inversion Hn; subst.
   directed_inversion_by_head eval_exp; subst.
   directed_inversion_by_head read_typ; subst.
   destruct L as [d ys]; unfold nf_univ_of in *; cbn [fst snd] in *.
-  inversion Hnfsub; subst; [ contradiction |].
+  inversion Hnfsub; subst; [ refl_case_absurd |].
   exists (c, xs), (d, ys); split; [ exact Hinfer | split; [ exact Hnbe2 | assumption ] ].
 Qed.
 
@@ -1955,14 +2109,12 @@ Lemma alg_type_check_level_infer : forall {Γ M n},
     Γ ⊢a M ⟸ Level@n ->
     exists m, Γ ⊢a M ⟹ Levelⁿ@m /\ m <= n.
 Proof.
-  intros * ? Hcheck.
-  inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
-  inversion Hsub as [A'' ? Hnbe1 Hnbe2 Hnfsub]; subst.
-  replace A' with A'' in * by (symmetry; mauto 3).
+  intros * HΓ Hcheck.
+  destruct (alg_type_check_infer_below HΓ Hcheck) as (A' & B' & Hinfer & Hnbe2 & Hnfsub).
   inversion Hnbe2; subst.
   directed_inversion_by_head eval_exp; subst.
   directed_inversion_by_head read_typ; subst.
-  inversion Hnfsub; subst; [ contradiction |].
+  inversion Hnfsub; subst; [ refl_case_absurd |].
   eexists; split; [ exact Hinfer | assumption ].
 Qed.
 
@@ -1984,64 +2136,32 @@ Qed.
 
     A [Π] whose parts infer universes checks against every type its
     universe ([universe_nf_pi_tm]) is below. *)
-Lemma alg_pi_check_of_infer : forall Γ A B UA UB rA (u v : universe_nf) T k,
+Lemma alg_pi_check_of_infer : forall Γ A B UA UB κd (u v : universe_nf) T k,
     ⊢ Γ ->
     Γ ⊢a A ⟹ UA ->
-    Γ ▹ A ⊢a B ⟹ UB ->
-    is_sort_nf UA rA u ->
+    Γ ▹{κd} A ⊢a B ⟹ UB ->
+    is_sort_nf UA κd u ->
     is_univ_nf UB v ->
     Γ ⊢ T : Typeω@k ->
     Γ ⊢ universe_nf_pi_tm u v ⊆ T ->
-    Γ ⊢a Π A B ⟸ T.
+    Γ ⊢a Π{κd} A B ⟸ T.
 Proof.
   intros * HΓ HAi HBi Hu Hv HT Hsub.
-  assert (HnB : nbe_ty_f (Γ ▹ A) UB UB).
-  { pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ) Hu) as HAs.
-    eapply alg_type_infer_self; [| eassumption ].
-    eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]. }
+  assert (HΓA : ⊢ Γ ▹{κd} A)
+    by (eapply wf_ctx_extend; [ exact (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ) Hu) | apply sort_kind_abs_kind_sort ]).
+  assert (HnB : nbe_ty_f (Γ ▹{κd} A) UB UB).
+  { eapply alg_type_infer_self; [ exact HΓA | eassumption |].
+    rewrite (is_univ_nf_eq _ _ Hv) in HBi |- *.
+    destruct v as [[c xs] | j]; cbn [universe_nf_to_nf nf_univ_of fst snd] in HBi |- *;
+      [ exact (alg_type_infer_univ_proof_free HΓA HBi) | exact I ]. }
   destruct (alg_pi_parts_sound HΓ HAi Hu HBi HnB Hv) as (HA & HB & Hvws).
   destruct (wf_universe_nf_pi_tm HA HB Hvws) as [j Hj].
   destruct (soundness_ty Hj) as [W [HW HeqW]].
-  econstructor; [ eapply alg_type_infer_pi; [ eassumption | eassumption | eassumption | exact HnB | exact Hv | eassumption ] |].
+  econstructor; [ eapply alg_type_infer_pi; [ eassumption | eassumption | eassumption | exact HnB | constructor; exact Hv
+                                            | apply pi_kinds_relevant | exact HW ] |].
   apply alg_subtyping_complete.
   etransitivity; [| exact Hsub ].
   eapply wf_subtyp_refl'; symmetry; exact HeqW.
-Qed.
-
-(** The universe a [Π] infers is a universe normal form: [universe_nf_pi_tm] is a
-    universe term, which reads back as one. *)
-Lemma nbe_ty_universe_nf_pi_tm_univ : forall Γ (u v : universe_nf) W,
-    nbe_ty_f Γ (universe_nf_pi_tm u v) W ->
-    exists w, is_univ_nf W w.
-Proof.
-  intros * Hn.
-  destruct u as [[c xs] | i], v as [[d ys] | j]; cbn [universe_nf_pi_tm universe_nf_max universe_nf_tm fst snd] in Hn;
-    [ | destruct xs | destruct ys |];
-    cbn [universe_nf_tm] in Hn;
-    directed_inversion_clear_by_head nbe_ty; directed_inversion_by_head eval_exp; subst;
-    directed_inversion_by_head read_typ; subst;
-    eexists; first [ constructor | match goal with |- is_univ_nf (nf_univ_of ?L) _ => destruct L; constructor end ].
-Qed.
-
-(** A [Π] whose parts infer universes infers one. *)
-Lemma alg_pi_infer_univ : forall Γ A B UA UB rA (u v : universe_nf),
-    ⊢ Γ ->
-    Γ ⊢a A ⟹ UA ->
-    Γ ▹ A ⊢a B ⟹ UB ->
-    is_sort_nf UA rA u ->
-    is_univ_nf UB v ->
-    exists W w, Γ ⊢a Π A B ⟹ W /\ is_univ_nf W w /\ nbe_ty_f Γ (universe_nf_pi_tm u v) W.
-Proof.
-  intros * HΓ HAi HBi Hu Hv.
-  assert (HnB : nbe_ty_f (Γ ▹ A) UB UB).
-  { pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ) Hu) as HAs.
-    eapply alg_type_infer_self; [| eassumption ].
-    eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]. }
-  destruct (alg_pi_parts_sound HΓ HAi Hu HBi HnB Hv) as (HA & HB & Hvws).
-  destruct (wf_universe_nf_pi_tm HA HB Hvws) as [j Hj].
-  destruct (soundness_ty Hj) as [W [HW _]].
-  destruct (nbe_ty_universe_nf_pi_tm_univ _ _ _ _ HW) as [w Hw].
-  exists W, w; split; [ eapply alg_type_infer_pi; [ eassumption | eassumption | eassumption | exact HnB | exact Hv | eassumption ] | split; assumption ].
 Qed.
 
 (** The universe of a [Π] of two types below a large universe is below it. *)
@@ -2070,40 +2190,49 @@ Qed.
     ([univ_nf_well_scoped], [soundness_lvl_well_scoped]).  The domain
     infers a sort at the small universe [(c, xs)], with its level and
     atoms well formed: a small universe, or [Prop], at the least level. *)
-Lemma alg_pi_small_complete_at : forall Γ L A B n UA rA c xs e zs,
+Lemma alg_pi_small_complete_at : forall Γ L A B n UA κd c xs e zs,
     Γ ⊢ L : Level@n ->
-    ⊢ Γ ▹ A ->
+    ⊢ Γ ▹{κd} A ->
     Γ ⊢a A ⟹ UA ->
-    is_sort_nf UA rA (universe_small (c, xs)) ->
+    is_sort_nf UA κd (universe_small (c, xs)) ->
     nbe_ty_f Γ Type⟨L⟩ (nf_univ_of (e, zs)) ->
     lvl_le (c, xs) (e, zs) ->
     (exists nA, Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@nA /\ fst c <= nA /\
-       @level_atoms_well_scoped gc_deps gc_stack nA Γ xs) ->
-    Γ ▹ A ⊢a B ⟸ Type⟨L[↑]ʷ⟩ ->
-    Γ ⊢a Π A B ⟸ Type⟨L⟩.
+       @level_atoms_well_scoped gc_deps gc_stack nA Γ xs /\ all_list (fun a => ne_proof_free (atom_level a)) xs) ->
+    Γ ▹{κd} A ⊢a B ⟸ Type⟨L[↑]ʷ⟩ ->
+    Γ ⊢a Π{κd} A B ⟸ Type⟨L⟩.
 Proof.
   intros * HL0 HΓA HAi Hs HnL HLA HAws HBc.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
   destruct (alg_type_check_suniv_tm_implies_alg_type_infer_univ HΓA HBc) as (LB & L' & HBi & HnL' & HLB).
-  assert (HfL' : all_list (fun a => ne_fresh 0 (atom_level a)) (snd L'))
-    by exact (nbe_ty_wk_fresh _ _ Γ A Type⟨L⟩ _ HnL').
-  pose proof (lvl_le_bound_wk 0 _ _ HLB HfL') as HbLB.
   destruct LB as [d ys], L' as [f ws]; cbn [fst snd] in *.
-  eapply (alg_pi_check_of_infer _ _ _ _ _ rA (universe_small (c, xs)) (universe_small (d, ys)) _ 0);
+  (** The inferred universes and the normal forms of universes hold no
+      proofs ([alg_type_infer_univ_proof_free], [nbe_ty_univ_proof_free]),
+      so the weakened level's normal form avoids the bound variable
+      ([nbe_ty_wk_fresh], [nf_ne_fresh_of_outside_proofs]). *)
+  assert (HL1 : Γ ▹{κd} A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ Level@n); [ exact HL0 | mauto 2 ]).
+  pose proof (alg_type_infer_univ_proof_free HΓA HBi) as Hpys.
+  assert (HTL : Γ ⊢ Type⟨L⟩ : Typeω@0) by (eapply wf_univ_large_tm; eassumption).
+  assert (HTL1 : Γ ▹{κd} A ⊢ Type⟨L[↑]ʷ⟩ : Typeω@0) by (eapply wf_univ_large_tm; eassumption).
+  pose proof (nbe_ty_univ_proof_free HTL HnL) as Hpzs.
+  pose proof (nbe_ty_univ_proof_free HTL1 HnL') as Hpws.
+  assert (HfL' : all_list (fun a => ne_fresh 0 (atom_level a)) ws)
+    by exact (proj1 nf_ne_fresh_of_outside_proofs _ Hpws 0 (nbe_ty_wk_fresh _ _ Γ κd A Type⟨L⟩ _ HnL')).
+  pose proof (lvl_le_bound_wk 0 (d, ys) (f, ws) Hpys HLB HfL') as HbLB.
+  eapply (alg_pi_check_of_infer _ _ _ _ _ κd (universe_small (c, xs)) (universe_small (d, ys)) _ 0);
     [ exact HΓ | exact HAi | exact HBi | exact Hs | constructor | eapply wf_univ_large_tm; eassumption |].
   cbn [universe_nf_pi_tm fst snd]; unfold lvl_bound; cbn [fst snd].
   (** The levels and their atoms, each at its own sort. *)
-  assert (HBi' : Γ ▹ A ⊢ B : Type⟨lvl_exp_of d (List.map atom_exp ys)⟩) by (eapply alg_type_infer_sound in HBi; eassumption).
-  assert (exists k, Γ ▹ A ⊢ Type⟨lvl_exp_of d (List.map atom_exp ys)⟩ : Typeω@k) as [kB HkB] by univ_large.
-  destruct HAws as (nA & HLAe0 & Hc & Hxs).
-  destruct (univ_nf_well_scoped HkB (alg_type_infer_self HΓA HBi)) as (nB & HLBe0 & Hd & Hys).
-  assert (HL1 : Γ ▹ A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ Level@n); [ exact HL0 | mauto 2 ]).
+  assert (HBi' : Γ ▹{κd} A ⊢ B : Type⟨lvl_exp_of d (List.map atom_exp ys)⟩) by (eapply alg_type_infer_sound in HBi; eassumption).
+  assert (exists k, Γ ▹{κd} A ⊢ Type⟨lvl_exp_of d (List.map atom_exp ys)⟩ : Typeω@k) as [kB HkB] by univ_large.
+  destruct HAws as (nA & HLAe0 & Hc & Hxs & Hpxs).
+  destruct (univ_nf_well_scoped HkB (alg_type_infer_self HΓA HBi Hpys)) as (nB & HLBe0 & Hd & Hys).
   pose proof (soundness_lvl_well_scoped HL0 (nbe_ty_univ_level (L := (e, zs)) (n := n) HnL)) as [He Hzs].
   pose proof (soundness_lvl_well_scoped HL1 (nbe_ty_univ_level (L := (f, ws)) (n := n) HnL')) as [Hf Hws].
   cbn [fst snd] in He, Hzs, Hf, Hws.
   assert (HTt : Γ ⊢ Type⟨L⟩ ≈ (nf_univ_of (e, zs) : exp) : Typeω@0)
     by (eapply soundness_ty'; [ eapply wf_univ_large_tm; eassumption | exact HnL ]).
-  assert (HTt' : Γ ▹ A ⊢ Type⟨L[↑]ʷ⟩ ≈ (nf_univ_of (f, ws) : exp) : Typeω@0)
+  assert (HTt' : Γ ▹{κd} A ⊢ Type⟨L[↑]ʷ⟩ ≈ (nf_univ_of (f, ws) : exp) : Typeω@0)
     by (eapply soundness_ty'; [ eapply wf_univ_large_tm; eassumption | exact HnL' ]).
   cbn [nf_to_exp nf_univ_of fst snd] in HTt, HTt'.
   apply exp_eq_suniv_tm_inj in HTt as [nT HTt0], HTt' as [nT' HTt'0].
@@ -2117,89 +2246,105 @@ Proof.
         [ lia | eapply Nat.le_trans; [ apply level_atoms_open_bound_fst; eapply level_atoms_well_scoped_sorts; exact Hys | lia ] ]).
   assert (HxsN : @level_atoms_well_scoped gc_deps gc_stack N Γ xs) by (eapply level_atoms_well_scoped_mono; [| exact Hxs ]; subst N; lia).
   assert (HzsN : @level_atoms_well_scoped gc_deps gc_stack N Γ zs) by (eapply level_atoms_well_scoped_mono; [| exact Hzs ]; subst N; lia).
-  assert (HwsN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹ A) ws) by (eapply level_atoms_well_scoped_mono; [| exact Hws ]; subst N; lia).
-  assert (HfpN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹ A) fp)
-    by (apply level_atoms_well_scoped_fresh_part; eapply level_atoms_well_scoped_mono; [| exact Hys ]; subst N; lia).
+  assert (HwsN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹{κd} A) ws) by (eapply level_atoms_well_scoped_mono; [| exact Hws ]; subst N; lia).
+  assert (HysN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹{κd} A) ys) by (eapply level_atoms_well_scoped_mono; [| exact Hys ]; subst N; lia).
+  assert (HfpN : @level_atoms_well_scoped gc_deps gc_stack N (Γ ▹{κd} A) fp)
+    by (apply level_atoms_well_scoped_fresh_part; exact HysN).
   assert (HL : Γ ⊢ L : Level@N) by (eapply wf_exp_level_up; [| exact HL0 ]; subst N; lia).
   assert (HLAe : Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@N) by (eapply wf_exp_level_up; [| exact HLAe0 ]; subst N; lia).
   assert (HTt : Γ ⊢ L ≈ lvl_exp_of e (List.map atom_exp zs) : Level@N) by (eapply wf_exp_eq_level_up; [| exact HTt0 ]; subst N; lia).
-  assert (HTt' : Γ ▹ A ⊢ L[↑]ʷ ≈ lvl_exp_of f (List.map atom_exp ws) : Level@N)
+  assert (HTt' : Γ ▹{κd} A ⊢ L[↑]ʷ ≈ lvl_exp_of f (List.map atom_exp ws) : Level@N)
     by (eapply wf_exp_eq_level_up; [| exact HTt'0 ]; subst N; lia).
   clear HL0 HLAe0 HTt0 HTt'0.
   set (LAe := lvl_exp_of c (List.map atom_exp xs)) in *.
   set (LBs := lvl_exp_of cb (List.map atom_exp (List.map (map_level_atom (ne_unwk 0)) fp))).
   assert (Hfresh : lvl_exp_of cb (List.map atom_exp fp) = LBs[↑]ʷ)
     by exact (nf_fresh_unwk 0 (nf_lvl cb fp) (level_atoms_fresh_part_fresh 0 ys)).
-  assert (HLBl : Γ ▹ A ⊢ LBs[↑]ʷ : Level@N)
+  assert (HLBl : Γ ▹{κd} A ⊢ LBs[↑]ʷ : Level@N)
     by (rewrite <- Hfresh; apply lvl_exp_of_wf; [ exact Hcb | exact HΓA | apply level_atoms_well_scoped_wf; exact HfpN ]).
-  assert (HLBs : Γ ⊢ LBs : Level@N).
-  { refine (level_nf_strengthen Γ A N (nf_lvl cb (List.map (map_level_atom (ne_unwk 0)) fp)) _ HΓA HLBl).
-    (* PENDING design: a level whose atoms hold proofs need not strengthen (level_nf_strengthen asks nf_proof_free).
-       Closed by the 𝕃 invariant (typed level normal forms hold no proofs, mandatory), which also gives the
-       erased-atoms hypotheses (level_atoms_erased) of lvl_le_bound and lvl_le_bound_wk. *)
-    admit. }
+  (** The bound holds no proof, the codomain's universe holding none: it
+      is the weakening of a level of [Γ] ([level_nf_strengthen]). *)
+  assert (HLBs : Γ ⊢ LBs : Level@N)
+    by exact (level_nf_strengthen Γ κd A N (nf_lvl cb (List.map (map_level_atom (ne_unwk 0)) fp))
+                (level_atoms_unwk_fresh_proof_free 0 cb ys Hpys) HΓA HLBl).
   eapply wf_subtyp_suniv; [ exact HΓ | apply wf_maxl; eassumption | exact HL |].
   apply lvl_sub_maxl_lub; [ exact HLAe | exact HLBs | exact HL | |].
   - (** The domain's level is below [L]. *)
     unfold lvl_sub.
     assert (HcN : fst c <= N) by (subst N; lia).
     assert (HeN : fst e <= N) by (subst N; lia).
-    pose proof (lvl_exp_of_le (n := N) c xs e zs HcN HeN HΓ HxsN HzsN HLA) as Hle.
+    (** the atoms of the two levels hold no proofs *)
+    assert (Hcoh : @level_atoms_coherent gc_deps gc_stack Γ (xs ++ zs))
+      by (eapply level_atoms_coherent_proof_free; [ apply level_atoms_well_scoped_app; [ exact HxsN | exact HzsN ]
+                                                  | apply all_list_app; [ exact Hpxs | exact Hpzs ] ]).
+    pose proof (lvl_exp_of_le (n := N) c xs e zs HcN HeN HΓ HxsN HzsN Hcoh HLA) as Hle.
     transitivity (maxl LAe (lvl_exp_of e (List.map atom_exp zs)));
       [ apply wf_exp_eq_maxl_cong; [ mauto 3 | exact HTt ] |].
     transitivity (lvl_exp_of e (List.map atom_exp zs)); [ exact Hle | symmetry; exact HTt ].
   - (** The codomain's bound, below [L[↑]ʷ] in [Γ ▹ A], strengthened. *)
     unfold lvl_sub.
     assert (HfN : fst f <= N) by (subst N; lia).
-    pose proof (lvl_exp_of_le (n := N) cb fp f ws Hcb HfN HΓA HfpN HwsN HbLB) as Hle.
+    (** the atoms of the bound are among the codomain's, which hold no
+        proofs, as the weakened level's do not *)
+    assert (Hcoh : @level_atoms_coherent gc_deps gc_stack (Γ ▹{κd} A) (fp ++ ws)).
+    { eapply (level_atoms_coherent_incl (ys ++ ws));
+        [| eapply level_atoms_coherent_proof_free; [ apply level_atoms_well_scoped_app; [ exact HysN | exact HwsN ]
+                                                   | apply all_list_app; [ exact Hpys | exact Hpws ] ] ].
+      intros j s a Hin; exists j; apply List.in_app_or in Hin as [Hin | Hin];
+        apply List.in_or_app; [ left; exact (level_atoms_fresh_part_In _ _ _ _ _ Hin) | right; exact Hin ]. }
+    pose proof (lvl_exp_of_le (n := N) cb fp f ws Hcb HfN HΓA HfpN HwsN Hcoh HbLB) as Hle.
     rewrite Hfresh in Hle.
-    assert (Hlong : Γ ▹ A ⊢ maxl LBs[↑]ʷ L[↑]ʷ ≈ L[↑]ʷ : Level@N).
+    assert (Hlong : Γ ▹{κd} A ⊢ maxl LBs[↑]ʷ L[↑]ʷ ≈ L[↑]ʷ : Level@N).
     { transitivity (maxl LBs[↑]ʷ (lvl_exp_of f (List.map atom_exp ws)));
         [ apply wf_exp_eq_maxl_cong; [ mauto 3 | exact HTt' ] |].
       transitivity (lvl_exp_of f (List.map atom_exp ws)); [ exact Hle | symmetry; exact HTt' ]. }
-    exact (exp_eq_strengthen nil Γ A (maxl LBs L) L Level@N ltac:(constructor) HΓA ltac:(mauto 3) HL Hlong).
-Admitted. (* PENDING design: level_nf_strengthen at a level whose atoms hold proofs; closed by the 𝕃 invariant
-             (typed level normal forms hold no proofs), which implies the erased-atoms hypotheses *)
-
-(** The small [Π] over a type of the small universe. *)
-Lemma alg_pi_small_complete : forall Γ L A B n,
-    Γ ⊢ L : Level@n ->
-    Γ ⊢ A : Type⟨L⟩ ->
-    Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ ->
-    Γ ⊢a A ⟸ Type⟨L⟩ ->
-    Γ ▹ A ⊢a B ⟸ Type⟨L[↑]ʷ⟩ ->
-    Γ ⊢a Π A B ⟸ Type⟨L⟩.
-Proof.
-  intros * HL0 HA HB HAc HBc.
-  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-  assert (HΓA : ⊢ Γ ▹ A) by (gen_presups; assumption).
-  destruct (alg_type_check_suniv_tm_implies_alg_type_infer_univ HΓ HAc) as (LA & Lt & HAi & HnL & HLA).
-  destruct LA as [c xs], Lt as [e zs].
-  eapply alg_pi_small_complete_at; [ exact HL0 | exact HΓA | exact HAi | do 2 constructor | exact HnL | exact HLA | | exact HBc ].
-  assert (HAi' : Γ ⊢ A : Type⟨lvl_exp_of c (List.map atom_exp xs)⟩) by (eapply alg_type_infer_sound in HAi; eassumption).
-  assert (exists k, Γ ⊢ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ : Typeω@k) as [kA HkA] by univ_large.
-  exact (univ_nf_well_scoped HkA (alg_type_infer_self HΓ HAi)).
+    exact (exp_eq_strengthen nil Γ κd A (maxl LBs L) L Level@N ltac:(constructor) HΓA ltac:(mauto 3) HL Hlong).
 Qed.
 
-(** The small [Π] out of a proposition: [Prop] counts as the least small
-    universe ([is_sort_nf_prop]), below every level. *)
-Lemma alg_pi_small_prop_complete : forall Γ L A B n,
+(** The small [Π] over a type of the kind [κd] at the small universe: a
+    type of it, or a proposition or a type of levels, which count as the
+    least small universe ([is_sort_nf_prop], [is_sort_nf_level]), below
+    every level. *)
+Lemma alg_pi_small_complete : forall Γ L A B n κd,
     Γ ⊢ L : Level@n ->
-    Γ ⊢ A : Propₘ ->
-    Γ ⊢a A ⟸ Propₘ ->
-    Γ ▹ A ⊢a B ⟸ Type⟨L[↑]ʷ⟩ ->
-    Γ ⊢a Π A B ⟸ Type⟨L⟩.
+    Γ ⊢ A : abs_kind_sort κd Type⟨L⟩ ->
+    Γ ⊢a A ⟸ abs_kind_sort κd Type⟨L⟩ ->
+    Γ ▹{κd} A ⊢a B ⟸ Type⟨L[↑]ʷ⟩ ->
+    Γ ⊢a Π{κd} A B ⟸ Type⟨L⟩.
 Proof.
   intros * HL0 HA HAc HBc.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-  assert (HΓA : ⊢ Γ ▹ A) by (eapply wf_ctx_extend; [ exact HA | exact type_sort_prop ]).
-  pose proof (alg_type_check_prop_infer HΓ HAc) as HAi.
   assert (HT : Γ ⊢ Type⟨L⟩ : Typeω@0) by (eapply wf_univ_large_tm; [ exact HΓ | exact HL0 ]).
-  destruct (nbe_ty_exists_sort (type_sort_universe 0) HT) as [W HW].
-  destruct (nbe_ty_univ_term (univ_term_suniv _) HW) as [u ->].
-  destruct (nbe_ty_suniv_univ_nf HW) as ([e zs] & -> & _).
-  eapply alg_pi_small_complete_at; [ exact HL0 | exact HΓA | exact HAi | exact is_sort_nf_prop | exact HW | apply lvl_le_zero | | exact HBc ].
-  exists 0; split; [ cbn; eapply wf_llit; [ cbn; lia | exact HΓ ] | split; [ cbn; lia | exact I ] ].
+  (** the domain is at the sort of its kind at the least large universe *)
+  assert (HAl : Γ ⊢ A : abs_kind_sort κd Typeω@0)
+    by (destruct κd; cbn [abs_kind_sort] in HA |- *; [ eapply wf_exp_subtyp'; [ exact HA | eapply wf_subtyp_small_large; eassumption ]
+                                                     | exact HA | exact HA ]).
+  assert (HΓA : ⊢ Γ ▹{κd} A) by (eapply wf_ctx_extend; [ exact HAl | apply sort_kind_abs_kind_sort ]).
+  destruct κd; cbn [abs_kind_sort] in HA, HAc.
+  - (** a type of the small universe: below its level *)
+    destruct (alg_type_check_suniv_tm_implies_alg_type_infer_univ HΓ HAc) as (LA & Lt & HAi & HnL & HLA).
+    destruct LA as [c xs], Lt as [e zs].
+    eapply alg_pi_small_complete_at; [ exact HL0 | exact HΓA | exact HAi | do 2 constructor | exact HnL | exact HLA | | exact HBc ].
+    assert (HAi' : Γ ⊢ A : Type⟨lvl_exp_of c (List.map atom_exp xs)⟩) by (eapply alg_type_infer_sound in HAi; eassumption).
+    assert (exists k, Γ ⊢ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ : Typeω@k) as [kA HkA] by univ_large.
+    pose proof (alg_type_infer_univ_proof_free HΓ HAi) as Hpxs.
+    destruct (univ_nf_well_scoped HkA (alg_type_infer_self HΓ HAi Hpxs)) as (nA & ? & ? & ?).
+    exists nA; repeat split; assumption.
+  (** a proposition or a type of levels: at the least small universe *)
+  - destruct (nbe_ty_exists_sort (type_sort_universe 0) HT) as [W HW];
+      destruct (nbe_ty_univ_term (univ_term_suniv _) HW) as [u ->];
+      destruct (nbe_ty_suniv_univ_nf HW) as ([e zs] & -> & _).
+    eapply alg_pi_small_complete_at;
+      [ exact HL0 | exact HΓA | exact (alg_type_check_prop_infer HΓ HAc) | exact is_sort_nf_prop | exact HW
+      | apply lvl_le_zero | | exact HBc ].
+    exists 0; split; [ cbn; eapply wf_llit; [ cbn; lia | exact HΓ ] | split; [ cbn; lia | split; exact I ] ].
+  - destruct (nbe_ty_exists_sort (type_sort_universe 0) HT) as [W HW];
+      destruct (nbe_ty_univ_term (univ_term_suniv _) HW) as [u ->];
+      destruct (nbe_ty_suniv_univ_nf HW) as ([e zs] & -> & _).
+    eapply alg_pi_small_complete_at;
+      [ exact HL0 | exact HΓA | exact (alg_type_check_level_sort_infer HΓ HAc) | exact is_sort_nf_level | exact HW
+      | apply lvl_le_zero | | exact HBc ].
+    exists 0; split; [ cbn; eapply wf_llit; [ cbn; lia | exact HΓ ] | split; [ cbn; lia | split; exact I ] ].
 Qed.
 
 (** Completeness, for terms and for the module judgments at once, since a
