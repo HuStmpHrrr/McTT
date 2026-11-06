@@ -72,27 +72,28 @@ Proof.
   apply List.Forall_app; split; [ eapply wf_gmod_tele_all_assumptions; eassumption | assumption ].
 Qed.
 
-(** A sort is a term of a large universe. *)
-Lemma type_sort_large : forall Θ Ξ Γ C, ⊢ Θ ⍮ Ξ ⍮ Γ -> type_sort C -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ C : Typeω@i.
+(** A sort other than [LevelSort] is a term of a large universe;
+    [LevelSort] itself is of no sort. *)
+Lemma type_sort_large : forall Θ Ξ Γ C, ⊢ Θ ⍮ Ξ ⍮ Γ -> type_sort C -> C <> LevelSort -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ C : Typeω@i.
 Proof.
-  intros * HΓ []; [ exists (S i); apply wf_typ; exact HΓ | |].
-  - exists 0; apply wf_prop_large; exact HΓ.
-  - exists 0; apply wf_level_sort; exact HΓ.
+  intros * HΓ [] Hn; [ exists (S i); apply wf_typ; exact HΓ | | contradiction (Hn eq_refl) ].
+  exists 0; apply wf_prop_large; exact HΓ.
 Qed.
 
 (** [wf_let] and its [ζ] at a sort [C], which [C[Id,,M]] is by
-    computation only.  A sort is in a large universe, which any binding
-    may build. *)
+    computation only.  A sort other than [LevelSort] is in a large
+    universe, which any binding may build. *)
 Lemma wf_let_sort : forall Θ Ξ Γ A M B Srt C,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
     type_sort Srt ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
     type_sort C ->
+    C <> LevelSort ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : C.
 Proof.
-  intros * HA HS HM HB HC; rewrite <- (type_sort_sub C (Id,,M) HC).
-  destruct (type_sort_large _ _ _ _ (presup_exp_ctx HB) HC) as [i Hi].
+  intros * HA HS HM HB HC Hn; rewrite <- (type_sort_sub C (Id,,M) HC).
+  destruct (type_sort_large _ _ _ _ (presup_exp_ctx HB) HC Hn) as [i Hi].
   eapply wf_let; [ exact HA | exact HS | exact HM | exact Hi | constructor | exact HB ].
 Qed.
 
@@ -102,19 +103,12 @@ Lemma wf_exp_eq_let_zeta_sort : forall Θ Ξ Γ A M B Srt C,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
     type_sort C ->
+    C <> LevelSort ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : C.
 Proof.
-  intros * HA HS HM HB HC; rewrite <- (type_sort_sub C (Id,,M) HC).
-  destruct (type_sort_large _ _ _ _ (presup_exp_ctx HB) HC) as [i Hi].
+  intros * HA HS HM HB HC Hn; rewrite <- (type_sort_sub C (Id,,M) HC).
+  destruct (type_sort_large _ _ _ _ (presup_exp_ctx HB) HC Hn) as [i Hi].
   eapply wf_exp_eq_let_zeta; [ exact HA | exact HS | exact HM | exact Hi | constructor | exact HB ].
-Qed.
-
-(** A sort is a term of a large universe. *)
-Lemma type_sort_typed : forall Θ Ξ Γ C, ⊢ Θ ⍮ Ξ ⍮ Γ -> type_sort C -> exists S, Θ ⍮ Ξ ⍮ Γ ⊢ C : S /\ type_sort S.
-Proof.
-  intros * HΓ []; [ exists (Typeω@(S i)); split; [ apply wf_typ; exact HΓ | constructor ] | |].
-  - exists (Typeω@0); split; [ apply wf_prop_large; exact HΓ | constructor ].
-  - exists (Typeω@0); split; [ apply wf_level_sort; exact HΓ | constructor ].
 Qed.
 
 (** The same for a local module. *)
@@ -122,9 +116,10 @@ Lemma wf_let_mod_sort : forall Θ Ξ Γ U B C,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
     type_sort C ->
+    C <> LevelSort ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : C.
 Proof.
-  intros * HU HB HC; destruct (type_sort_large _ _ _ C (presup_exp_ctx HB) HC) as [i HCS].
+  intros * HU HB HC Hn; destruct (type_sort_large _ _ _ C (presup_exp_ctx HB) HC Hn) as [i HCS].
   rewrite <- (type_sort_sub C (Id ,,ₘ me_lit U) HC); eapply wf_let_mod; [ exact HU | exact HCS | constructor | constructor | exact HB ].
 Qed.
 
@@ -132,9 +127,10 @@ Lemma wf_exp_eq_let_mod_zeta_sort : forall Θ Ξ Γ U B C,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
     type_sort C ->
+    C <> LevelSort ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C.
 Proof.
-  intros * HU HB HC; destruct (type_sort_large _ _ _ C (presup_exp_ctx HB) HC) as [i HCS].
+  intros * HU HB HC Hn; destruct (type_sort_large _ _ _ C (presup_exp_ctx HB) HC Hn) as [i HCS].
   rewrite <- (type_sort_sub C (Id ,,ₘ me_lit U) HC);
     eapply wf_exp_eq_let_mod_zeta; [ exact HU | exact HCS | constructor | constructor | exact HB ].
 Qed.
@@ -253,6 +249,7 @@ Lemma ctx_pi_at_wf : forall Θ Ξ r Δ Γ A i,
 Proof.
   intros Θ Ξ r Δ Γ A i Hr; revert Γ A i.
   assert (HC : forall i, type_sort (abs_kind_sort r Typeω@i)) by (intros; apply type_sort_abs_kind; constructor).
+  assert (HCn : forall i, abs_kind_sort r Typeω@i <> LevelSort) by (intros ? E; destruct r; cbn in E; try discriminate E; contradiction).
   induction Δ as [| [κ B | B N | U | B N U] Δ IH]; intros * HΔ HA; cbn in *; [ eauto | | | |];
     inversion HΔ; subst.
   - match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : ?S, HS : sort_kind ?S _ |- _ =>
@@ -263,10 +260,10 @@ Proof.
         sort. *)
     eapply IH; [ eauto using presup_exp_ctx |].
     match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : ?S, HS : type_sort ?S, HN : _ ⍮ _ ⍮ _ ⊢ N : B |- _ =>
-      eapply (wf_let_sort _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | apply HC ] end.
+      eapply (wf_let_sort _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | apply HC | apply HCn ] end.
   - (** So is a module slot, as a [let module]. *)
     eapply IH; [ eauto using presup_unit_eq_ctx |].
-    eapply wf_let_mod_sort; [ eassumption | exact HA | apply HC ].
+    eapply wf_let_mod_sort; [ eassumption | exact HA | apply HC | apply HCn ].
   - (** A definition with a module part is substituted by its body and
         unit. *)
     eapply IH with (i := i); [ eauto using presup_exp_ctx |].
@@ -283,6 +280,7 @@ Lemma ctx_fn_at_wf : forall Θ Ξ r Δ Γ A M i,
 Proof.
   intros Θ Ξ r Δ Γ A M i Hr; revert Γ A M i.
   assert (HC : forall i, type_sort (abs_kind_sort r Typeω@i)) by (intros; apply type_sort_abs_kind; constructor).
+  assert (HCn : forall i, abs_kind_sort r Typeω@i <> LevelSort) by (intros ? E; destruct r; cbn in E; try discriminate E; contradiction).
   assert (Hm : motive_kind r) by (destruct r; [ constructor | constructor | contradiction ]).
   induction Δ as [| [κ B | B N | U | B N U] Δ IH]; intros * HΔ HA HM; cbn in *; [ assumption | | | |];
     inversion HΔ; subst.
@@ -295,20 +293,20 @@ Proof.
         ζ. *)
     match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : ?S, HS : type_sort ?S, HN : _ ⍮ _ ⍮ _ ⊢ N : B |- _ =>
       assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓ B ≔ N in A : abs_kind_sort r Typeω@i)
-        by (eapply (wf_let_sort _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | apply HC ]);
+        by (eapply (wf_let_sort _ _ _ B N A S); [ exact HB | exact HS | exact HN | exact HA | apply HC | apply HCn ]);
       eapply IH with (i := i); [ eauto using presup_exp_ctx | eassumption |];
       eapply wf_exp_subtyp';
         [ eapply wf_let with (A := B) (Srt := S);
           [ exact HB | exact HS | exact HN | exact HA | apply level_closed_motive_kind, Hm | exact HM ] |];
       eapply wf_subtyp_refl; [ eassumption | apply HC |];
       eapply wf_exp_eq_sym, (wf_exp_eq_let_zeta_sort _ _ _ B N A S);
-        [ exact HB | exact HS | exact HN | exact HA | apply HC ]
+        [ exact HB | exact HS | exact HN | exact HA | apply HC | apply HCn ]
     end.
-  - assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓₘ U in A : abs_kind_sort r Typeω@i) by (eapply wf_let_mod_sort; [ eassumption | exact HA | apply HC ]).
+  - assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓₘ U in A : abs_kind_sort r Typeω@i) by (eapply wf_let_mod_sort; [ eassumption | exact HA | apply HC | apply HCn ]).
     eapply IH with (i := i); [ eauto using presup_unit_eq_ctx | eassumption |].
     eapply wf_exp_subtyp'; [ eapply wf_let_mod; [ eassumption | exact HA | apply HC | apply module_body_motive_kind, Hm | exact HM ] |].
     eapply wf_subtyp_refl; [ eassumption | apply HC |].
-    eapply wf_exp_eq_sym, wf_exp_eq_let_mod_zeta_sort; [ eassumption | exact HA | apply HC ].
+    eapply wf_exp_eq_sym, wf_exp_eq_let_mod_zeta_sort; [ eassumption | exact HA | apply HC | apply HCn ].
   - (** A definition with a module part: the body and the type are
         substituted alike. *)
     assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ˢ Id ,,ᵈ N ‖ me_lit U : (Δ ++ Γ) ▸ₘ B ≔ N ‖ U) by (eapply wf_sub_single_dm; eassumption).
@@ -637,7 +635,8 @@ Proof.
     split; [ exact HB | split; [ exact HR | exact (wf_sub_id _ _ _ HR) ] ].
   - rewrite <- List.app_assoc in HR; cbn [List.app] in HR.
     pose proof (ctx_app_wf_tail _ _ _ _ HR) as HD.
-    destruct (ctx_decomp_def HD) as (HΓ & [Srt HS HB0] & HN).
+    destruct (ctx_decomp_def HD) as (HΓ & _ & HN).
+    destruct (ctx_decomp_def_sorted HD) as (Srt & HS & HB0).
     pose proof (wf_sub_single_def _ _ _ _ _ _ HB0 HS HN) as Hs.
     specialize (IH _ HR).
     rewrite <- List.app_assoc; cbn [List.app].
@@ -1649,7 +1648,8 @@ Proof.
   - injection Hf as <-; apply wf_sub_id; exact HΦ.
   - destruct E as [b pv ra A [M |] | pv U | ? ? ? ? | ? ? ? ? | ? ? ?]; try discriminate;
       destruct (gm_fill Φ) as [σ0 |] eqn:E0; cbn in Hf; try discriminate; injection Hf as <-; cbn [body_ctx List.app] in HΦ |- *.
-    + destruct (ctx_decomp_def HΦ) as (HΓ & [Srt HS HA] & HM).
+    + destruct (ctx_decomp_def HΦ) as (HΓ & _ & HM).
+      destruct (ctx_decomp_def_sorted HΦ) as (Srt & HS & HA).
       pose proof (IH _ _ HΓ eq_refl) as Hσ.
       eapply wf_sub_extend_def; [ exact Hσ | exact HA | exact HS | exact HM | eapply sub_preserves_exp; eassumption |].
       apply wf_exp_eq_refl; eapply sub_preserves_exp; eassumption.
@@ -1717,7 +1717,7 @@ Proof.
     assert (Hcase : exists S, type_sort S /\ forall A M, entry_tm E = Some (A, M) -> Θ ⍮ Ξ ⍮ body_ctx Φ ++ Γ ⊢ A : S).
     { destruct E as [b pv ra A [M |] | | | pv A M U | ]; try (exists (Typeω@0); split; [ constructor | intros; discriminate ]);
         cbn [body_ctx List.app] in HC.
-      - destruct (ctx_decomp_def HC) as (_ & [S HS Hi] & _).
+      - destruct (ctx_decomp_def_sorted HC) as (S & HS & Hi).
         exists S; split; [ exact HS | intros * [= <- <-]; exact Hi ].
       - destruct (ctx_decomp_dm HC) as (_ & [i Hi] & _).
         exists (Typeω@i); split; [ constructor | intros * [= <- <-]; exact Hi ]. }

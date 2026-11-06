@@ -244,7 +244,7 @@ Proof.
       eapply sem_ctx_empty | eapply sem_ctx_extend | eapply sem_ctx_extend_def | eapply sem_ctx_extend_mod
     | eapply sem_ctx_extend_dm
     | (** terms *)
-      eapply sem_typ | eapply sem_univ | eapply sem_level | eapply sem_level_sort | eapply sem_llit | eapply sem_succl
+      eapply sem_typ | eapply sem_univ | eapply sem_level | eapply sem_llit | eapply sem_succl
     | eapply sem_maxl
     | eapply sem_prop | eapply sem_True | eapply sem_tt | eapply sem_False | eapply sem_absurd
     | eapply sem_and | eapply sem_conj | eapply sem_left | eapply sem_right
@@ -258,7 +258,7 @@ Proof.
     | eapply sem_mem | eapply sem_vlookup | eapply sem_record | eapply sem_tuple | eapply sem_proj | eapply sem_exp_subtyp
     | (** term equality *)
       eapply sem_exp_eq_typ_cong | eapply sem_exp_eq_univ_cong | eapply sem_exp_eq_level_cong
-    | eapply sem_exp_eq_level_sort_cong | eapply sem_exp_eq_llit_cong | eapply sem_exp_eq_succl_cong | eapply sem_exp_eq_maxl_cong
+    | eapply sem_exp_eq_llit_cong | eapply sem_exp_eq_succl_cong | eapply sem_exp_eq_maxl_cong
     | eapply sem_exp_eq_llit_succl | eapply sem_exp_eq_maxl_absorb | eapply sem_exp_eq_maxl_zero
     | eapply sem_exp_eq_maxl_assoc | eapply sem_exp_eq_maxl_comm | eapply sem_exp_eq_maxl_idem
     | eapply sem_exp_eq_succl_maxl | eapply sem_exp_eq_maxl_succl

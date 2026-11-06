@@ -253,7 +253,7 @@ Corollary wf_app_at' : forall Θ Ξ Γ κd κc A B M N,
     Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N].
 Proof.
   intros * HM HN.
-  destruct (presup_exp_typ HM) as [S HS HΠ].
+  destruct (presup_exp_typ_sorted HM ltac:(discriminate)) as (S & HS & HΠ).
   destruct (wf_pi_parts_at _ _ _ _ _ _ _ _ HΠ) as [S' i HS' HA HB Hk].
   eapply wf_app; [ exact HA | exact HS' | exact HB | exact Hk | exact HM | exact HN ].
 Qed.
@@ -343,7 +343,7 @@ Corollary wf_exp_eq_app_cong' : forall Θ Ξ Γ κd κc A B M M' N N',
     Θ ⍮ Ξ ⍮ Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N].
 Proof.
   intros * HM HN.
-  destruct (presup_exp_typ (presup_exp_eq_left HM)) as [S HS HΠ].
+  destruct (presup_exp_typ_sorted (presup_exp_eq_left HM) ltac:(discriminate)) as (S & HS & HΠ).
   destruct (wf_pi_parts_at _ _ _ _ _ _ _ _ HΠ) as [S' i HS' HA HB Hk].
   eapply wf_exp_eq_app_cong; [ exact HA | exact HS' | exact HB | exact Hk | exact HM | exact HN ].
 Qed.
@@ -378,7 +378,7 @@ Corollary wf_exp_eq_fn_eta' : forall Θ Ξ Γ κd κc A B M,
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]ʷ $ #0 : a_pi κd κc A B.
 Proof.
   intros * HM.
-  destruct (presup_exp_typ HM) as [S HS HΠ].
+  destruct (presup_exp_typ_sorted HM ltac:(discriminate)) as (S & HS & HΠ).
   destruct (wf_pi_parts_at _ _ _ _ _ _ _ _ HΠ) as [S' i HS' HA HB Hk].
   eapply wf_exp_eq_fn_eta; [ exact HA | exact HS' | exact HB | exact Hk | exact HM ].
 Qed.
@@ -409,17 +409,24 @@ Hint Resolve wf_let' : mctt.
 #[export]
 Remove Hints wf_let : mctt.
 
+(** A definition of a term that is no type of levels: its type is of a
+    sort ([presup_exp_typ_not_level]); a type of levels is of the sort
+    [LevelSort], which no definition is at. *)
 Corollary wf_ctx_extend_def' : forall Θ Ξ Γ A M,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    ~ level_type_former M ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M.
 Proof.
-  intros; gen_presups; mautosolve 2.
+  intros * HM Hn; destruct (presup_exp_typ_not_level HM Hn) as (S & HS & HA).
+  eapply wf_ctx_extend_def; [ exact HA | exact HS | exact HM ].
 Qed.
+
+(** That a term is no former of a type of levels is decided by its head. *)
+#[export]
+Hint Extern 1 (~ level_type_former _) => let H := fresh in intro H; inversion H : mctt.
 
 #[export]
 Hint Resolve wf_ctx_extend_def' : mctt.
-#[export]
-Remove Hints wf_ctx_extend_def : mctt.
 
 (** Congruence for a let, with the sort premises of [wf_let']. *)
 Corollary wf_exp_eq_let_cong' : forall Θ Ξ Γ A A' M M' B B' C Srt SrtC,

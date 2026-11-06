@@ -139,7 +139,7 @@ Lemma ctx_decomp : forall {Θ Ξ Γ κ A},
     ⊢ Θ ⍮ Ξ ⍮ Γ ▹{κ} A ->
     ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
 Proof.
-  inversion 1; eauto using presup_exp_ctx, mk_wf_type, sort_kind_type_sort.
+  inversion 1; eauto using presup_exp_ctx, wf_type_of_sort, sort_kind_type_sort.
 Qed.
 
 #[export]
@@ -169,7 +169,14 @@ Lemma ctx_decomp_def : forall {Θ Ξ Γ A M},
     ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ->
     ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
 Proof.
-  inversion 1; eauto using presup_exp_ctx, mk_wf_type.
+  inversion 1; eauto using presup_exp_ctx, wf_type_of_sort.
+Qed.
+
+(** The type of a definition is of a sort ([wf_ctx_def]). *)
+Lemma ctx_decomp_def_sorted : forall {Θ Ξ Γ A M},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M -> exists Srt, type_sort Srt /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt.
+Proof.
+  inversion 1; eauto.
 Qed.
 
 Corollary ctx_decomp_def_left : forall {Θ Ξ Γ A M}, ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M -> ⊢ Θ ⍮ Ξ ⍮ Γ.
@@ -4514,7 +4521,8 @@ Corollary wk_preserves_type : forall Θ Ξ Γ Δ A φ,
     Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵗ A[φ]ʷ.
 Proof.
-  intros * [Srt HS HA] Hφ; exact (mk_wf_type _ HS (wk_preserves_sort _ _ _ _ _ _ _ HA HS Hφ)).
+  intros * [? Srt HS HA | HΓ] Hφ;
+    [ exact (wf_type_of_sort _ HS (wk_preserves_sort _ _ _ _ _ _ _ HA HS Hφ)) | exact (wf_type_level_sort (wf_wk_dom _ _ _ _ _ Hφ)) ].
 Qed.
 
 Corollary sub_preserves_type : forall Θ Ξ Γ Δ A σ,
@@ -4522,7 +4530,8 @@ Corollary sub_preserves_type : forall Θ Ξ Γ Δ A σ,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A[σ].
 Proof.
-  intros * [Srt HS HA] Hσ; exact (mk_wf_type _ HS (sub_preserves_sort _ _ _ _ _ _ _ HA HS Hσ)).
+  intros * [? Srt HS HA | HΔ] Hσ;
+    [ exact (wf_type_of_sort _ HS (sub_preserves_sort _ _ _ _ _ _ _ HA HS Hσ)) | exact (wf_type_level_sort (wf_sub_dom _ _ _ _ _ Hσ)) ].
 Qed.
 
 #[export]
@@ -4898,6 +4907,25 @@ Proof.
     | pose proof (ctx_decomp_dm_typ HΓ)
     | pose proof (IHHlk ltac:(mauto 2)) ];
     eapply wk_preserves_type; eassumption.
+Qed.
+
+(** The type of a local binding is of a sort: no binding is at the sort
+    [LevelSort] itself. *)
+Lemma ctx_lookup_wf_sorted : forall Ξ Θ Γ x A,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Γ ∋ #x : A ->
+    exists Srt, type_sort Srt /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt.
+Proof.
+  intros * HΓ Hlk; gen HΓ; induction Hlk; intros HΓ;
+    assert (Hw : Θ ⍮ Ξ ⍮ _ ⊢ʷ ↑ : Γ) by (eapply wf_wk_shift; exact HΓ).
+  - destruct (proj2 (ctx_decomp_sort_kind HΓ)) as (Srt & Hk & HA).
+    exists Srt; split; [ exact (sort_kind_type_sort _ _ Hk) | exact (wk_preserves_sort _ _ _ _ _ _ _ HA (sort_kind_type_sort _ _ Hk) Hw) ].
+  - destruct (ctx_decomp_def_sorted HΓ) as (Srt & HS & HA).
+    exists Srt; split; [ exact HS | exact (wk_preserves_sort _ _ _ _ _ _ _ HA HS Hw) ].
+  - destruct (ctx_decomp_dm HΓ) as (_ & [i HA] & _).
+    exists (Typeω@i); split; [ constructor | exact (wk_preserves_sort _ _ _ _ _ _ _ HA ltac:(constructor) Hw) ].
+  - destruct (IHHlk ltac:(mauto 2)) as (Srt & HS & HA).
+    exists Srt; split; [ exact HS | exact (wk_preserves_sort _ _ _ _ _ _ _ HA HS Hw) ].
 Qed.
 
 (** The body of a definition entry is typed at its type, both weakened. *)

@@ -1802,7 +1802,7 @@ Proof.
   - (** [LevelSort] is of the large universes only *)
     destruct HT as [i | t].
     + apply nbe_ty_typ_univ_nf in HnT as ->; constructor.
-    + exfalso; cbn in HW; apply wf_level_sort_inversion in HW; eapply subtyp_large_small_absurd; exact HW.
+    + exfalso; cbn in HW; exact (level_sort_untyped HW).
 Qed.
 
 End Small_Typ.

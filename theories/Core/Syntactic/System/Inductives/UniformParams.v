@@ -244,7 +244,10 @@ Section Fixed_GCtx.
       - intros k N T HN2 HT.
         apply nth_error_map_inv in HN2 as (P & HPk & ->).
         destruct (Hinst _ _ _ HPk HT) as (T0 & HT0 & ->).
-        pose proof (HP _ _ _ HPk HT0) as HP0; destruct (presup_exp HP0) as [_ [S0 HS0 HT0t]].
+        pose proof (HP _ _ _ HPk HT0) as HP0; pose proof (proj2 (presup_exp HP0)) as HT0w;
+          inversion HT0w as [? S0 HS0 HT0t | ?]; subst;
+          (** at the sort [LevelSort], which every substitution keeps *)
+          [| exact (sub_preserves_exp _ _ _ _ _ _ _ HP0 Hσ') ].
         eapply wf_conv_sort;
           [ exact (sub_preserves_exp _ _ _ _ _ _ _ HP0 Hσ') | exact (sub_preserves_sort _ _ _ _ _ _ _ HT0t HS0 Hσ) | exact HS0 |].
         apply wf_exp_eq_sym; exact (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HT0t HS0 Hσσ).

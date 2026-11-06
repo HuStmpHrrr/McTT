@@ -103,27 +103,6 @@ Lemma sem_exp_eq_level_cong :
      Θ ⍮ Ξ ⍮ Γ ⊨ Level@n ≈ Level@n : LevelSort ).
 Proof. intros; eapply sem_level; eassumption. Qed.
 
-(** [LevelSort] is a type of the least large universe, no type of levels
-    itself. *)
-Lemma sem_level_sort :
-  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ LevelSort : Typeω@0 ).
-Proof.
-  intros * H; sem_intro; [ assumption |].
-  apply rel_ctx_wf_per_ctx_env in H.
-  destruct H as [env_relΓ HΓ].
-  apply rel_exp_of_typ; eexists; eexists; [ eassumption |].
-  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hn : per_universe_elements (per_univ 0) LevelSortᵈ LevelSortᵈ)
-    by (constructor; [ eexists; apply per_univ_elem_level_sort_univ; exact I | reflexivity | reflexivity ]).
-  econstructor; try apply eval_exp_level_sort.
-  apply rel_chain_4; exact Hn.
-Qed.
-
-Lemma sem_exp_eq_level_sort_cong :
-  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ LevelSort ≈ LevelSort : Typeω@0 ).
-Proof. intros; eapply sem_level_sort; eassumption. Qed.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.

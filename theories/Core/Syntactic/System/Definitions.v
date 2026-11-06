@@ -419,11 +419,6 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_level :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : LevelSort )
-(** The sort of the types of levels is a type of the least large universe,
-    so that a type of levels has a type. *)
-| wf_level_sort :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort : Typeω@0 )
 (** A level is a literal, a successor, or a join.  [Level@n] is the type of
     the levels below ω·(n+1), so a literal is of the sorts at least its
     tier. *)
@@ -727,9 +722,6 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_level_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : LevelSort )
-| wf_exp_eq_level_sort_cong :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort ≈ LevelSort : Typeω@0 )
 | wf_exp_eq_llit_cong :
   `( fst o <= n ->
      ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -2329,19 +2321,22 @@ Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp wf_is_univ ctx_lookup ctx_lo
 (** ** Types of Either Sort
 
     [Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A]: [A] is a type, of a large universe, a
-    proposition or a type of levels.  (A trailing word [type] would make [type] a keyword,
-    which breaks every [%type] scope delimiter.)  It is a record outside the mutual block, so no mutual
-    induction has a motive for it; the rules state its two parts as
-    premises, [Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt] and [type_sort Srt]. *)
-#[warnings="-cannot-define-projection"]
-Record wf_type (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (A : typ) : Prop := mk_wf_type
-  { (** The sort [A] is of *)
-    wf_type_sort : exp
-    (** It is a sort: a large universe, [Prop] or [LevelSort] *)
-  ; wf_type_sort_ok : type_sort wf_type_sort
-    (** [A] is of it *)
-  ; wf_type_typed : Θ ⍮ Ξ ⍮ Γ ⊢ A : wf_type_sort }.
-Arguments mk_wf_type {Θ Ξ Γ A}.
+    proposition or a type of levels, or it is the sort [LevelSort]
+    itself, which is of no sort: levels are closed under [Level@n] and
+    the [Π]s between types of levels only, so no variable, family or ex
+    falso is at [LevelSort].  It is the type of every term's type
+    ([presup_exp_typ]): [Level@n : LevelSort].  (A trailing word [type]
+    would make [type] a keyword, which breaks every [%type] scope
+    delimiter.)  It is outside the mutual block, so no mutual induction
+    has a motive for it; the rules state its parts as premises,
+    [Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt] and [type_sort Srt]. *)
+Inductive wf_type (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : typ -> Prop :=
+(** A type of a sort: a large universe, [Prop] or [LevelSort] *)
+| wf_type_of_sort : forall A S, type_sort S -> Θ ⍮ Ξ ⍮ Γ ⊢ A : S -> wf_type Θ Ξ Γ A
+(** The sort of the types of levels, in a well-formed context *)
+| wf_type_level_sort : ⊢ Θ ⍮ Ξ ⍮ Γ -> wf_type Θ Ξ Γ LevelSort.
+Arguments wf_type_of_sort {Θ Ξ Γ A}.
+Arguments wf_type_level_sort {Θ Ξ Γ}.
 
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A" := (wf_type Θ Ξ Γ A) (at level 70, Ξ at level 69, Γ at level 69, A at level 69) : type_scope.
 
@@ -2350,15 +2345,15 @@ Hint Constructors wf_type : mctt.
 
 (** A type of a large universe is a type. *)
 Lemma wf_type_univ : forall {Θ Ξ Γ A i}, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof. intros * H; exact (mk_wf_type _ (type_sort_universe i) H). Qed.
+Proof. intros * H; exact (wf_type_of_sort _ (type_sort_universe i) H). Qed.
 
 (** So is a proposition. *)
 Lemma wf_type_prop : forall {Θ Ξ Γ A}, Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof. intros * H; exact (mk_wf_type _ type_sort_prop H). Qed.
+Proof. intros * H; exact (wf_type_of_sort _ type_sort_prop H). Qed.
 
 (** So is a term of the sort at a kind. *)
 Lemma wf_type_kind : forall {Θ Ξ Γ r A i}, Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort r Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof. intros * H; exact (mk_wf_type _ (type_sort_abs_kind r _ (type_sort_universe i)) H). Qed.
+Proof. intros * H; exact (wf_type_of_sort _ (type_sort_abs_kind r _ (type_sort_universe i)) H). Qed.
 
 #[export]
 Hint Resolve wf_type_univ wf_type_prop : mctt.
@@ -2417,7 +2412,7 @@ Proof. intros * []; constructor. Qed.
 
 (** A type of levels is a type. *)
 Lemma wf_type_level : forall {Θ Ξ Γ A}, Θ ⍮ Ξ ⍮ Γ ⊢ A : LevelSort -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof. intros * H; exact (mk_wf_type _ type_sort_level H). Qed.
+Proof. intros * H; exact (wf_type_of_sort _ type_sort_level H). Qed.
 
 #[export]
 Hint Resolve evaluated_sort_type_sort level_closed_sort_type_sort
@@ -2589,19 +2584,6 @@ Lemma wf_univ_large : forall {Θ Ξ Γ o i},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ : Typeω@i.
 Proof. intros; eapply wf_univ_large_tm; [ assumption | apply wf_llit_ordinal; assumption ]. Qed.
-
-(** [LevelSort] is a type of every large universe. *)
-Lemma wf_level_sort_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort : Typeω@i.
-Proof.
-  intros * HΓ; destruct i as [| i]; [ apply wf_level_sort, HΓ |].
-  eapply wf_exp_subtyp; [ apply wf_level_sort, HΓ | apply wf_typ, HΓ | constructor | apply wf_subtyp_univ; [ exact HΓ | lia ] ].
-Qed.
-
-Lemma wf_exp_eq_level_sort_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort ≈ LevelSort : Typeω@i.
-Proof.
-  intros * HΓ; destruct i as [| i]; [ apply wf_exp_eq_level_sort_cong, HΓ |].
-  eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_sort_cong, HΓ | apply wf_typ, HΓ | constructor | apply wf_subtyp_univ; [ exact HΓ | lia ] ].
-Qed.
 
 (** [Prop] is a type of every large universe. *)
 Lemma wf_prop_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Propₘ : Typeω@i.
@@ -2852,10 +2834,6 @@ Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨_⟩ : Typeω@?i) => fix_open_level i; e
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨𝕃ᵒ _⟩ : Typeω@?i) => fix_open_level i; apply wf_univ_large : mctt.
 #[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ LevelSort : Typeω@?i) => fix_open_level i; apply wf_level_sort_large : mctt.
-#[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ LevelSort ≈ LevelSort : Typeω@?i) => fix_open_level i; apply wf_exp_eq_level_sort_cong_large : mctt.
-#[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ : Typeω@?i) => fix_open_level i; apply wf_prop_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Propₘ ≈ Propₘ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_prop_cong_large : mctt.
@@ -3010,13 +2988,20 @@ Qed.
 #[export]
 Hint Resolve wf_is_univ_typ : mctt.
 
-Lemma presup_subtyp_right : forall {Θ Ξ Γ A B}, Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ B.
+(** The right side of a subtyping is a type of a sort: never the sort
+    [LevelSort] itself, which is below and above nothing. *)
+Lemma presup_subtyp_right_sorted : forall {Θ Ξ Γ A B}, Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B ->
+    exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ B : S.
 Proof.
-  induction 1; try (econstructor; eassumption); try mautosolve 3.
-  econstructor; [ apply type_sort_abs_kind; constructor
-                | eapply wf_pi with (U := Typeω@i); [ apply wf_is_univ_large; mauto 2 | eassumption
-                                                     | rewrite abs_kind_sort_wk; eassumption | eassumption ] ].
+  induction 1; try (eexists; split; eassumption); try (eexists; split; [ constructor | mautosolve 3 ]).
+  - exact IHwf_subtyp2.
+  - eexists; split; [ apply type_sort_abs_kind; constructor
+                  | eapply wf_pi with (U := Typeω@i); [ apply wf_is_univ_large; mauto 2 | eassumption
+                                                       | rewrite abs_kind_sort_wk; eassumption | eassumption ] ].
 Qed.
+
+Lemma presup_subtyp_right : forall {Θ Ξ Γ A B}, Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ B.
+Proof. intros * H; destruct (presup_subtyp_right_sorted H) as (S & HS & HB); exact (wf_type_of_sort _ HS HB). Qed.
 
 #[export]
 Hint Resolve presup_subtyp_right : mctt.
@@ -3029,7 +3014,7 @@ Lemma wf_exp_subtyp' : forall Θ Ξ Γ A A' M,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
 Proof.
   intros * HM HA.
-  destruct (presup_subtyp_right HA).
+  destruct (presup_subtyp_right_sorted HA) as (S & HS & HA').
   econstructor; eassumption.
 Qed.
 
@@ -3044,7 +3029,7 @@ Lemma wf_exp_eq_subtyp' : forall Θ Ξ Γ A A' M M',
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A'.
 Proof.
   intros * HM HA.
-  destruct (presup_subtyp_right HA).
+  destruct (presup_subtyp_right_sorted HA) as (S & HS & HA').
   econstructor; eassumption.
 Qed.
 

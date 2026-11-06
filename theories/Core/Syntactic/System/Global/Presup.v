@@ -3782,12 +3782,12 @@ Qed.
 (** An axiom or an abstract definition stored in a stored body is a member
     of the body's path, at the type it is stored at: read bare, it has no
     δ-reduct. *)
-Lemma filed_def_wf : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ p T Φ y Φ0 b pv r A oM,
+Lemma filed_def_wf : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ p T Φ y Φ0 b pv r A oM Srt,
     ⊢ Θ ⍮ Ξ ⍮ Γ -> loc Θ Ξ p T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
     (if b then oM else None) = None ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A -> Θ ⍮ Ξ ⍮ Γ ⊢ a_mem (qname_mod p) y : A.
+    type_sort Srt -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt -> Θ ⍮ Ξ ⍮ Γ ⊢ a_mem (qname_mod p) y : A.
 Proof.
-  intros Θ Ξ Hg * HΓ Hl Hp Hn [Srt HS HA].
+  intros Θ Ξ Hg * HΓ Hl Hp Hn HS HA.
   destruct (filed_denote _ _ Hg _ _ _ Γ nil (gc_loc_of_loc _ _ Hg _ _ _ Hl)) as (R1 & Hm & Hmd); cbn [me_apps] in Hm.
   eapply wf_mem; [ exact (loc_modexp_wf _ _ _ HΓ _ _ _ Hl) | | | exact HA | exact HS | ].
   - eapply mdenote_mem; [ exact Hm | exact Hmd | cbn; rewrite Hp; reflexivity | constructor | reflexivity ].
@@ -4136,8 +4136,8 @@ Proof.
       destruct (mdesc_ats_some_red _ _ _ _ _ Hats) as (A' & M' & ->); apply mdesc_named_cases; exact Hok1.
     + (* an axiom or abstract: its name, at the arguments *)
       destruct (proj1 (ctx_pi_type_kind _ _ r T (Θ' ++ Γ) A0 iA HTΘ (fun _ => Ha) HLsrt HA0Θ)) as [j Hj].
-      pose proof (filed_def_wf _ _ Hg _ _ _ _ _ _ _ _ _ _ _ HΘ' Hloc' Hp1 Hom
-                    (mk_wf_type _ (type_sort_abs_kind r _ (type_sort_universe j)) Hj)) as Hname.
+      pose proof (filed_def_wf _ _ Hg _ _ _ _ _ _ _ _ _ _ _ _ HΘ' Hloc' Hp1 Hom
+                    (type_sort_abs_kind r _ (type_sort_universe j)) Hj) as Hname.
       destruct (ats_up_self_ok _ _ Hg Ns (Θ' ++ Γ) T r A0 _ HTΘ Ha (args_ok_length _ _ _ _ _ Hargs) (args_ok_insts _ _ _ _ _ Hargs)
                   (ex_intro _ iA HA0Θ) (HLA _) Hname) as (R1 & HR1 & Hok1).
       rewrite Hats in HR1; injection HR1 as <-.
@@ -4806,18 +4806,26 @@ Qed.
 
 (** The term part of a typed description is of a type, and its δ-reduct of
     that type. *)
-Lemma desc_ok_ty : forall Θ Ξ, valid_syn Θ Ξ -> forall Γ R A, desc_ok Θ Ξ Γ R -> mdesc_type R = Some A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A /\ (forall M, mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A).
+Lemma desc_ok_ty_sorted : forall Θ Ξ, valid_syn Θ Ξ -> forall Γ R A, desc_ok Θ Ξ Γ R -> mdesc_type R = Some A ->
+    (exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : S) /\ (forall M, mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A).
 Proof.
   intros * Hv * HR HA.
   destruct HR as [Γ r A0 om i0 HA0 HM | | | Γ Θd A0 M0 Rm lΘ iA HΘd HaΘd HBt HMt _];
     cbn in HA |- *; try discriminate.
   - injection HA as <-; split; [| exact HM ].
-    exact (mk_wf_type _ (type_sort_abs_kind r _ (type_sort_universe i0)) HA0).
+    exact (ex_intro _ _ (conj (type_sort_abs_kind r _ (type_sort_universe i0)) HA0)).
   - (* a definition with a module part, or a type former: its term part *)
     injection HA as <-.
     destruct (ctx_pi_type _ _ ak_relevant _ _ _ _ ltac:(discriminate) HΘd HBt) as [[j Hty] Hfn].
-    split; [ exact (wf_type_univ Hty) | intros M [= <-]; exact (Hfn _ HMt) ].
+    split; [ exact (ex_intro _ _ (conj (type_sort_universe j) Hty)) | intros M [= <-]; exact (Hfn _ HMt) ].
+Qed.
+
+(** The same, as a type ([⊢ᵗ]). *)
+Lemma desc_ok_ty : forall Θ Ξ, valid_syn Θ Ξ -> forall Γ R A, desc_ok Θ Ξ Γ R -> mdesc_type R = Some A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A /\ (forall M, mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A).
+Proof.
+  intros * Hv * HR HA; destruct (desc_ok_ty_sorted _ _ Hv _ _ _ HR HA) as [(S & HS & HT) HM].
+  exact (conj (wf_type_of_sort _ HS HT) HM).
 Qed.
 
 (** The type of a member with both a term part and a module part is of a
@@ -5122,21 +5130,70 @@ Proof.
       [ apply wf_is_univ_large; eapply presup_exp_ctx, HA | exact HA | rewrite abs_kind_sort_wk; exact HB | exact Hk ].
 Qed.
 
-Lemma presup_exp_typ_v : forall {Θ Ξ Γ M A},
+(** The sort of the types of levels is of no type: no rule types it, and
+    the conversion rule would need a type it is converted from. *)
+Lemma level_sort_untyped : forall {Θ Ξ Γ A}, ~ Θ ⍮ Ξ ⍮ Γ ⊢ LevelSort : A.
+Proof.
+  intros * H.
+  dependent induction H; eauto.
+Qed.
+
+(** The formers of the types of levels: [Level@n] and the [Π]s between
+    types of levels.  These are the only terms of the sort [LevelSort]
+    ([presup_exp_typ_cases]). *)
+Inductive level_type_former : exp -> Prop :=
+(** [Level@n] *)
+| level_type_former_level : forall n, level_type_former (Level@n)
+(** A [Π] between types of levels *)
+| level_type_former_pi : forall A B, level_type_former (a_pi ak_level ak_level A B).
+
+(** The type of a typed term: of a sort, or the sort [LevelSort] itself,
+    and then the term is the former of a type of levels. *)
+Inductive typ_presup (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) : typ -> Prop :=
+(** A type of a sort *)
+| typ_presup_sorted : forall A S, type_sort S -> Θ ⍮ Ξ ⍮ Γ ⊢ A : S -> typ_presup Θ Ξ Γ M A
+(** [LevelSort], at a type of levels *)
+| typ_presup_level_sort : ⊢ Θ ⍮ Ξ ⍮ Γ -> level_type_former M -> typ_presup Θ Ξ Γ M LevelSort.
+Arguments typ_presup_sorted {Θ Ξ Γ M A}.
+Arguments typ_presup_level_sort {Θ Ξ Γ M}.
+
+(** A type of a large universe *)
+Lemma typ_presup_univ : forall {Θ Ξ Γ M A i}, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> typ_presup Θ Ξ Γ M A.
+Proof. intros * H; exact (typ_presup_sorted _ (type_sort_universe i) H). Qed.
+
+(** One of a large universe given by a level that exists *)
+Lemma typ_presup_of_ex : forall {Θ Ξ Γ M A}, (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) -> typ_presup Θ Ξ Γ M A.
+Proof. intros * [i Hi]; exact (typ_presup_univ Hi). Qed.
+
+(** A proposition *)
+Lemma typ_presup_prop : forall {Θ Ξ Γ M A}, Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ -> typ_presup Θ Ξ Γ M A.
+Proof. intros * H; exact (typ_presup_sorted _ type_sort_prop H). Qed.
+
+(** A type other than [LevelSort] *)
+Lemma typ_presup_of_wf_type : forall {Θ Ξ Γ M A}, Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A -> A <> LevelSort -> typ_presup Θ Ξ Γ M A.
+Proof. intros * [? S HS HA | HΓ] Hn; [ exact (typ_presup_sorted _ HS HA) | contradiction (Hn eq_refl) ]. Qed.
+
+(** The type of a typed term is a type ([⊢ᵗ]), at its two cases. *)
+Lemma presup_exp_typ_cases_v : forall {Θ Ξ Γ M A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     valid_syn Θ Ξ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
+    typ_presup Θ Ξ Γ M A.
 Proof.
   induction 1; intros Hv;
     repeat match goal with IH : valid_syn _ _ -> _ |- _ => specialize (IH Hv) end;
     assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2; destruct_conjs.
-  (* the types the induction hypotheses give, by their sorts *)
-  all: repeat match goal with H : _ ⍮ _ ⍮ _ ⊢ᵗ _ |- _ =>
-    let S := fresh "S" in let HS := fresh "HS" in let HT := fresh "HT" in destruct H as [S HS HT] end.
+  (* the types the induction hypotheses give, by their sorts; a premise's
+     type premised of a sort is not [LevelSort] *)
+  all: repeat match goal with H : typ_presup _ _ _ _ _ |- _ =>
+    let S := fresh "S" in let HS := fresh "HS" in let HT := fresh "HT" in
+    inversion H as [? S HS HT | ? ?]; subst; clear H end.
+  all: try solve [ exfalso; eapply level_sort_untyped; eassumption ].
   (* a member: the type the unit binds it at *)
   all: try match goal with
     | Hm : mdenote _ _ _ (me_mem ?H0 _) ?R, Ht : mdesc_type ?R = Some _, HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H0 ≈ _ |- _ =>
-        exact (proj1 (desc_ok_ty _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht))
+        let S := fresh "S" in let HS := fresh "HS" in let HT := fresh "HT" in
+        destruct (proj1 (desc_ok_ty_sorted _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht)) as (S & HS & HT);
+        exact (typ_presup_sorted _ HS HT)
     end.
   (* inductive types: the declaration's types are types, and the motive at
      the scrutinee *)
@@ -5145,12 +5202,12 @@ Proof.
         pose proof (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ (proj1 Hv) (proj2 Hv) Hl) as HDt; cbn [syn_VD] in HDt;
         pose proof (gctx_closed_ind _ _ _ _ (wf_gctx_closed _ _ _ HΓ) Hl) as HDc
     end.
-  all: try solve [ apply wf_type_of_ex; eapply ind_ty_typed; eassumption ].
+  all: try solve [ apply typ_presup_of_ex; eapply ind_ty_typed; eassumption ].
   (* a constructor: its type is a closed type *)
   all: try solve [
     match goal with
     | HM : ind_member ?D ?k = Some ?M, Hcon : ind_con ?M _ = Some _, Hty : _ ⍮ _ ⍮ ⋅ ⊢ con_ty _ ?D ?k ?M _ : _ |- _ =>
-        eapply wf_type_univ; eapply closed_weaken_exp;
+        eapply typ_presup_univ; eapply closed_weaken_exp;
           [ eassumption | exact Hty | eapply decl_closed_con_ty; [ eassumption | exact HM | apply cons_lookup_in; exact Hcon ]
           | exact I ]
     end ].
@@ -5160,8 +5217,8 @@ Proof.
     | Hm : ind_member ?D ?m = Some ?Mm, Hb : nth_error ?Bks ?m = Some ?bm,
       HA : forall k Mk b, ind_member ?D k = Some Mk -> nth_error ?Bks k = Some b -> _ ⍮ _ ⍮ _ ⊢ eb_motive b : ?S,
       Hx : forall k Mk, ind_member ?D k = Some Mk -> _ ⍮ _ ⍮ _ ⊢ˣ _ ≈ _
-      |- _ ⍮ _ ⍮ _ ⊢ᵗ (eb_motive ?bm)[_] =>
-        apply (mk_wf_type S); [ first [ assumption | constructor | apply type_sort_abs_kind; constructor ]
+      |- typ_presup _ _ _ _ (eb_motive ?bm)[_] =>
+        apply (typ_presup_sorted S); [ first [ assumption | constructor | apply type_sort_abs_kind; constructor ]
                               | eapply (sub_preserves_sort _ _ _ _ _ _ _ (HA _ _ _ Hm Hb));
                                 [ first [ assumption | constructor | apply type_sort_abs_kind; constructor ] |] ];
         eapply wf_elim_inst_sub;
@@ -5171,40 +5228,54 @@ Proof.
   all: try solve [
     match goal with
     | Hl : record_lookup _ _ _ = Some ?R, Hty : _ ⍮ _ ⍮ ⋅ ⊢ record_ty ?R : _, HΓ : ⊢ _ ⍮ _ ⍮ ?Γ |- _ =>
-        eapply wf_type_univ; eapply closed_weaken_exp;
+        eapply typ_presup_univ; eapply closed_weaken_exp;
           [ exact HΓ | exact Hty | apply record_ty_scoped; eapply wf_record_closed; eassumption | exact I ]
     end ].
   (* a type of a premised sort *)
-  all: try solve [ econstructor; [| eassumption ]; eassumption ].
+  all: try solve [ eapply typ_presup_sorted; [| eassumption ]; eassumption ].
   (* a [Π] at its kinds: of the sort of its codomain's kind *)
   all: try solve [
     match goal with
     | HA : _ ⍮ _ ⍮ ?Γ ⊢ ?A : ?S, HS : sort_kind ?S ?kd,
       HB : _ ⍮ _ ⍮ ?Γ ▹{?kd} ?A ⊢ ?B : abs_kind_sort ?kc Typeω@?i, Hk : pi_kinds ?kd ?kc
-      |- _ ⍮ _ ⍮ ?Γ ⊢ᵗ a_pi ?kd ?kc ?A ?B =>
-        exact (wf_type_pi _ _ _ _ _ _ _ _ _ HA HS HB Hk)
+      |- typ_presup _ _ ?Γ _ (a_pi ?kd ?kc ?A ?B) =>
+        exact (typ_presup_of_wf_type (wf_type_pi _ _ _ _ _ _ _ _ _ HA HS HB Hk) ltac:(discriminate))
     end ].
   (* an application: the codomain at the argument, of the codomain's sort *)
   all: try solve [
     match goal with
     | HA : _ ⍮ _ ⍮ ?Γ ⊢ ?A : ?S, HS : sort_kind ?S ?kd,
       HB : _ ⍮ _ ⍮ ?Γ ▹{?kd} ?A ⊢ ?B : abs_kind_sort ?kc Typeω@?i, HN : _ ⍮ _ ⍮ ?Γ ⊢ ?N : ?A
-      |- _ ⍮ _ ⍮ ?Γ ⊢ᵗ ?B[Id,,?N] =>
+      |- typ_presup _ _ ?Γ _ ?B[Id,,?N] =>
         assert (HS' : type_sort (abs_kind_sort kc Typeω@i)) by (apply type_sort_abs_kind; constructor);
-        apply (mk_wf_type _ HS'); eapply sub_preserves_sort; [ exact HB | exact HS' | eapply wf_sub_single; eassumption ]
+        apply (typ_presup_sorted _ HS'); eapply sub_preserves_sort; [ exact HB | exact HS' | eapply wf_sub_single; eassumption ]
     end ].
   (* a type of levels is of the sort of the types of levels *)
-  all: try solve [ apply (mk_wf_type LevelSort); [ constructor | constructor; assumption ] ].
+  all: try solve [ apply (typ_presup_sorted LevelSort); [ constructor | constructor; assumption ] ].
   all: destruct_type_sort.
-  all: try solve [ eapply wf_type_univ; mauto 3 ].
-  all: try solve [ eapply wf_type_prop; mauto 3 ].
+  all: try solve [ eapply typ_presup_univ; mauto 3 ].
+  all: try solve [ eapply typ_presup_prop; mauto 3 ].
   (* a universe is a type; a variable is of a type of the context *)
-  all: try solve [ match goal with HU : _ ⍮ _ ⍮ _ ⊢ᵤ ?U |- _ ⍮ _ ⍮ _ ⊢ᵗ ?U =>
-                     destruct (wf_is_univ_typ HU) as [? ?]; eapply wf_type_univ; eassumption end ].
-  (* a type under a substitution, of its sort ([LevelSort] or another) *)
-  all: try solve [ match goal with HT : _ ⍮ _ ⍮ _ ⊢ ?C : ?S |- _ ⍮ _ ⍮ _ ⊢ᵗ ?C[?σ] =>
-                     apply (mk_wf_type S); [ constructor | eapply sub_preserves_sort; [ exact HT | constructor | mauto 3 ] ] end ].
-  all: eapply ctx_lookup_wf; eassumption.
+  all: try solve [ match goal with HU : _ ⍮ _ ⍮ _ ⊢ᵤ ?U |- typ_presup _ _ _ _ ?U =>
+                     destruct (wf_is_univ_typ HU) as [? ?]; eapply typ_presup_univ; eassumption end ].
+  (* a type under a substitution, of its sort *)
+  all: try solve [ match goal with HT : _ ⍮ _ ⍮ _ ⊢ ?C : ?S |- typ_presup _ _ _ _ ?C[?σ] =>
+                     apply (typ_presup_sorted S); [ constructor | eapply sub_preserves_sort; [ exact HT | constructor | mauto 3 ] ] end ].
+  (* the sort of the types of levels: [Level@n] and a [Π] between types of
+     levels *)
+  all: try solve [ apply typ_presup_level_sort; [ mauto 2 | constructor ] ].
+  all: match goal with Hl : _ ∋ #_ : _, HΓ : ⊢ _ ⍮ _ ⍮ _ |- _ =>
+         let S := fresh "S" in let HS := fresh "HS" in let HT := fresh "HT" in
+         destruct (ctx_lookup_wf_sorted _ _ _ _ _ HΓ Hl) as (S & HS & HT); exact (typ_presup_sorted _ HS HT) end.
+Qed.
+
+Lemma presup_exp_typ_v : forall {Θ Ξ Γ M A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    valid_syn Θ Ξ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
+Proof.
+  intros * H Hv; destruct (presup_exp_typ_cases_v H Hv) as [? S HS HT | HΓ _];
+    [ exact (wf_type_of_sort _ HS HT) | exact (wf_type_level_sort HΓ) ].
 Qed.
 
 (** ** Storage is Valid *)
@@ -5365,7 +5436,7 @@ Corollary wf_mem_desc : forall Θ Ξ Γ H x R A,
 Proof.
   intros * HH Hm Ht.
   pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH))) as Hv.
-  destruct (desc_ok_ty _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [[S HS Hi] HM].
+  destruct (desc_ok_ty_sorted _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [(S & HS & Hi) HM].
   eapply wf_mem; [ exact HH | exact Hm | exact Ht | exact Hi | exact HS | exact HM ].
 Qed.
 
@@ -5446,12 +5517,30 @@ Proof.
   intros * H; exact (presup_exp_typ_v H (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))).
 Qed.
 
+(** The type of a term is of a sort, or it is [LevelSort] and the term is
+    a [Level@n] or a [Π] between types of levels. *)
+Theorem presup_exp_typ_cases : forall {Θ Ξ Γ M A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    typ_presup Θ Ξ Γ M A.
+Proof.
+  intros * H; exact (presup_exp_typ_cases_v H (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))).
+Qed.
+
+(** The type of a term other than a former of a type of levels is of a
+    sort. *)
+Corollary presup_exp_typ_not_level : forall {Θ Ξ Γ M A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> ~ level_type_former M ->
+    exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : S.
+Proof.
+  intros * H Hn; destruct (presup_exp_typ_cases H) as [? S HS HT | _ Hl]; [ eauto | contradiction ].
+Qed.
+
 (** A closed type moves along an embedding. *)
 Lemma gctx_embedding_type : forall Θ Ξ Θ2 Ξ2 Γ A,
     gctx_embedding Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A -> Θ2 ⍮ Ξ2 ⍮ Γ ⊢ᵗ A.
 Proof.
-  intros * He [S HS HA]; destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (_ & Ht & _).
-  exact (mk_wf_type _ HS (Ht _ _ _ HA)).
+  intros * He [? S HS HA | HΓ]; destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Hc & Ht & _);
+    [ exact (wf_type_of_sort _ HS (Ht _ _ _ HA)) | exact (wf_type_level_sort (Hc _ HΓ)) ].
 Qed.
 
 Lemma entry_typed_def : forall Θ Ξ T r A M i b pv Θ2 Ξ2,

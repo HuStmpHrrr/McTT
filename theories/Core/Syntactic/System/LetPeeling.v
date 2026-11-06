@@ -103,24 +103,26 @@ Qed.
 (** ** Typing a Chain *)
 
 (** A typed chain types its body in the chain's context, at a type whose
-    ζ-instance is below the chain's. *)
+    ζ-instance is the chain's or below it: the empty chain's body may be a
+    type of levels, of the sort [LevelSort], which is outside subtyping. *)
 Lemma lets_exp_inversion : forall bs {Θ Ξ Γ X T},
     Θ ⍮ Ξ ⍮ Γ ⊢ lets_exp bs X : T ->
-    exists C, Θ ⍮ Ξ ⍮ ctx_lets Γ bs ⊢ X : C /\ Θ ⍮ Ξ ⍮ Γ ⊢ C[lets_sub bs] ⊆ T.
+    exists C, Θ ⍮ Ξ ⍮ ctx_lets Γ bs ⊢ X : C /\ (C[lets_sub bs] = T \/ Θ ⍮ Ξ ⍮ Γ ⊢ C[lets_sub bs] ⊆ T).
 Proof.
   induction bs as [| [A M | U] bs IH]; intros * H; cbn [lets_exp List.fold_right lets_sub binding_zeta_sub ctx_lets] in *.
-  - exists T; split; [ exact H |]; rewrite exp_sub_id.
-    destruct (presup_exp_typ H) as [S HS HT]; eapply wf_subtyp_refl_typ; eassumption.
+  - exists T; split; [ exact H |]; rewrite exp_sub_id; left; reflexivity.
   - destruct (wf_let_ann_inversion H) as [S Y HS HA HM HB Hs].
-    destruct (IH _ _ _ _ _ HB) as (C & HX & HC).
-    exists C; split; [ exact HX |].
-    rewrite <- exp_sub_sub; eapply wf_subtyp_trans; [| exact Hs ].
-    eapply sub_preserves_subtyp; [ exact HC | eapply wf_sub_single_def; eassumption ].
+    destruct (IH _ _ _ _ _ HB) as (C & HX & [HC | HC]); exists C; split; [ exact HX | | exact HX |];
+      right; rewrite <- exp_sub_sub.
+    + rewrite HC; exact Hs.
+    + eapply wf_subtyp_trans; [| exact Hs ].
+      eapply sub_preserves_subtyp; [ exact HC | eapply wf_sub_single_def; eassumption ].
   - destruct (wf_let_mod_inversion H) as (Y & HU & HB & Hs).
-    destruct (IH _ _ _ _ _ HB) as (C & HX & HC).
-    exists C; split; [ exact HX |].
-    rewrite <- exp_sub_sub; eapply wf_subtyp_trans; [| exact Hs ].
-    eapply sub_preserves_subtyp; [ exact HC | eapply wf_sub_single_mod; eassumption ].
+    destruct (IH _ _ _ _ _ HB) as (C & HX & [HC | HC]); exists C; split; [ exact HX | | exact HX |];
+      right; rewrite <- exp_sub_sub.
+    + rewrite HC; exact Hs.
+    + eapply wf_subtyp_trans; [| exact Hs ].
+      eapply sub_preserves_subtyp; [ exact HC | eapply wf_sub_single_mod; eassumption ].
 Qed.
 
 (** The weakening past a chain: [ctx_lets Γ bs] over [Γ]. *)
@@ -332,8 +334,15 @@ Theorem lets_chain_replacement_typed : forall {Θ Ξ Γ cs cs' X P σ},
     Θ ⍮ Ξ ⍮ Γ ⊢ lets_exp cs' X : P /\ Θ ⍮ Ξ ⍮ Γ ⊢ lets_exp cs' X ≈ lets_exp cs X : P.
 Proof.
   intros * HP Hw HΓ' Hσ HXσ Hz.
-  destruct (lets_exp_inversion cs Hw) as (C & HX & HC).
-  destruct (presup_exp_typ HX) as [SC HSC HCt].
+  destruct (lets_exp_inversion cs Hw) as (C & HX & HC0).
+  (** at a proposition, the body's type is below it *)
+  assert (HC : Θ ⍮ Ξ ⍮ Γ ⊢ C[lets_sub cs] ⊆ P)
+    by (destruct HC0 as [-> | HC0]; [ eapply wf_subtyp_refl_typ; [ exact HP | constructor ] | exact HC0 ]).
+  clear HC0.
+  assert (HCs : exists SC, type_sort SC /\ Θ ⍮ Ξ ⍮ ctx_lets Γ cs ⊢ C : SC).
+  { pose proof (presup_exp_typ_cases HX) as Hcs; inversion Hcs as [C0 SC HSC HCt | Hx1 Hx2]; subst; [ eauto |].
+    exfalso; destruct (presup_subtyp_left_sorted HC) as (? & _ & HL); cbn in HL; exact (level_sort_untyped HL). }
+  destruct HCs as (SC & HSC & HCt).
   pose proof (ctx_lets_wk_shiftn cs' HΓ') as Hwk.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hz) as Hσz.
   (** The body in the new chain's context, at [C[σ]] *)

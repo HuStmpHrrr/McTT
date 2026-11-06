@@ -94,12 +94,10 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ⊢a M ⟹ Levelⁿ@n ->
      nbe_ty_f Γ Type⟨succl M⟩ W ->
      Γ ⊢a Type⟨M⟩ ⟹ W )
-(** A type of levels infers the sort of the types of levels, and that
-    sort the least large universe ([wf_level], [wf_level_sort]). *)
+(** A type of levels infers the sort of the types of levels ([wf_level]);
+    that sort is of no type. *)
 | alg_type_infer_level :
   `( Γ ⊢a Level@n ⟹ LevelSortⁿ )
-| alg_type_infer_level_sort :
-  `( Γ ⊢a LevelSort ⟹ Typeωⁿ@0 )
 (** A level literal is of the type of levels of its tier, the least one it
     is in; the two operations infer the types of levels of their arguments,
     and are of the larger. *)

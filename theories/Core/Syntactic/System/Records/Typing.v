@@ -71,7 +71,7 @@ Qed.
   Lemma wf_record_inversion : forall {Θ Ξ Γ p T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : T -> record_former_inv Θ Ξ Γ p T.
   Proof.
     intros * H; dependent induction H.
-    - econstructor; try eassumption; eapply wf_subtyp_of_typed; econstructor; eassumption.
+    - econstructor; try eassumption; eapply wf_subtyp_of_typed; [ econstructor; eassumption | inversion 1 ].
     - destruct (IHwf_exp1 _ eq_refl) as [R Hl Hnd Hass i0 Hty Hf Hs HF Hsub Hlen Hfk].
       econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
   Qed.
@@ -113,7 +113,7 @@ Qed.
   Lemma wf_tuple_inversion : forall {Θ Ξ Γ T fs A}, Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : A -> record_tuple_inv Θ Ξ Γ T fs A.
   Proof.
     intros * H; dependent induction H.
-    - econstructor; try eassumption; eapply wf_subtyp_of_typed; econstructor; eassumption.
+    - econstructor; try eassumption; eapply wf_subtyp_of_typed; [ econstructor; eassumption | inversion 1 ].
     - destruct (IHwf_exp1 _ _ eq_refl) as [p0 R0 Ns0 i0 HT0 HTe0 Hr0 Hl0 Hn0 HNs0 Hfs0 HMs0 Hsub0].
       econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
   Qed.
@@ -158,7 +158,7 @@ Qed.
   Lemma wf_proj_inversion : forall {Θ Ξ Γ f M A}, Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M : A -> record_proj_inv Θ Ξ Γ f M A.
   Proof.
     intros * H; dependent induction H.
-    - econstructor; try eassumption; eapply wf_subtyp_of_typed; econstructor; eassumption.
+    - econstructor; try eassumption; eapply wf_subtyp_of_typed; [ econstructor; eassumption | inversion 1 ].
     - destruct (IHwf_exp1 _ _ eq_refl) as [p0 R0 Ns0 k0 U0 i0 HM0 Hr0 Hl0 Hn0 HNs0 Hfk0 HU0 HS0 Hsub0].
       econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
   Qed.
@@ -199,10 +199,10 @@ Qed.
     rewrite <- List.app_assoc in HF; exact (ctx_app_wf_tail _ _ _ _ HF).
   Qed.
 
-  (** A field's type is a type over the fields before it. *)
+  (** A field's type is a type of a sort over the fields before it. *)
   Lemma record_field_typ_wf : forall Θ Ξ R k f U, List.nth_error (record_fields R) k = Some (f, U) ->
       ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
-      Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ᵗ U.
+      exists S, type_sort S /\ Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ U : S.
   Proof.
     intros * Hk HF.
     assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
@@ -210,7 +210,8 @@ Qed.
     rewrite List.firstn_all, <- (List.firstn_skipn (S k) (record_fields R)), (firstn_succ_nth _ _ _ Hk) in HF.
     rewrite fields_tele_app, fields_tele_snoc, <- !List.app_assoc in HF; cbn [List.app snd] in HF.
     pose proof (ctx_app_wf_tail _ _ _ _ HF) as HF'.
-    exact (ctx_decomp_right HF').
+    destruct (proj2 (ctx_decomp_sort_kind HF')) as (S & HkS & HU).
+    exact (ex_intro _ S (conj (sort_kind_type_sort _ _ HkS) HU)).
   Qed.
 
   Lemma tele_insts_cons_snoc : forall Δ κ T σ L x, all_assumptions Δ -> List.length L = List.length Δ ->
@@ -233,7 +234,7 @@ Qed.
   Proof.
     intros * Hc Hass HF HΓ Hk HMl HMl' HMs.
     assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hk).
-    destruct (record_field_typ_wf _ _ _ _ _ _ Hk HF) as [i HSi HU].
+    destruct (record_field_typ_wf _ _ _ _ _ _ Hk HF) as (i & HSi & HU).
     assert (HΔΓ : ⊢ Θ ⍮ Ξ ⍮ (record_fctx R k ++ record_params R) ++ Γ) by (apply record_fctx_app_wf; auto; lia).
     assert (Hlen : List.length (record_fctx R k ++ record_params R) = k + List.length (record_params R))
       by (rewrite List.length_app, length_record_fctx by lia; reflexivity).

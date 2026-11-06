@@ -96,7 +96,7 @@ Proof.
     match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H ≈ _, Hm : mdenote _ _ _ (me_mem ?H _) ?R, Ht : mdesc_type ?R = Some ?A |- _ =>
       let Hv := fresh "Hv" in
       pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH))) as Hv;
-      destruct (desc_ok_ty _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [[? HS HA] HM];
+      destruct (desc_ok_ty_sorted _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [(? & HS & HA) HM];
       first [ eapply wf_mem; [ eapply wf_modexp_eq_refl_left; exact HH | exact Hm | exact Ht | exact HA | exact HS | exact HM ]
             | apply HM; assumption ]
     end ].
@@ -207,15 +207,18 @@ Proof.
       type moves along the equal bodies. *)
   - assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A') by (eapply wf_conv_sort; eassumption).
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ˢ Id : Γ ▸ A ≔ M) by mauto 3.
-    match goal with HB : _ ⍮ _ ⍮ _ ▸ A ≔ M ⊢ B : C |- _ => destruct (presup_exp_typ HB) as [SC HSC HC] end.
-    assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ B' : C) by mauto 2.
-    match goal with HCS : _ ⍮ _ ⍮ _ ▸ A ≔ M ⊢ C : ?SrtC, Hlc : level_closed_sort _ ?SrtC |- _ =>
-      assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ C : SrtC) by mauto 2;
+    (** The body's type is of the sort the rule premises. *)
+    match goal with HCS : _ ⍮ _ ⍮ _ ▸ A ≔ M ⊢ C : ?SC, Hlc : level_closed_sort _ ?SC |- _ =>
+      pose proof (level_closed_sort_type_sort _ _ Hlc) as HSC;
+      assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ B' : C) by mauto 2;
+      assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ C : SC) by mauto 2;
       assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def A' M') B' : C[Id,,M'])
-        by (eapply wf_let; [ | | | eassumption | exact Hlc | ]; eassumption) end.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M ≈ Id,,M' : Γ ▸ A ≔ M) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : SC) by (eapply sub_eq_preserves_sort; eassumption).
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : SC) by (eapply sub_preserves_sort; [ eassumption | eassumption | mauto 3 ]).
+        by (eapply wf_let; [ | | | eassumption | exact Hlc | ]; eassumption);
+      let Hσσ := fresh "Hσσ" in
+      assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M ≈ Id,,M' : Γ ▸ A ≔ M) by mauto 3;
+      pose proof (sub_eq_preserves_sort _ _ _ _ _ _ _ _ HCS HSC Hσσ);
+      assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : SC) by (eapply sub_preserves_sort; [ exact HCS | exact HSC | mauto 3 ])
+    end.
     eapply wf_conv_sort; [ eassumption | eassumption | eassumption | apply wf_exp_eq_sym; eassumption ].
 
   (** [let module], left: the body's type is a type, by presupposition. *)
@@ -229,6 +232,15 @@ Theorem presup_exp_eq : forall {Θ Ξ Γ M M' A},
 Proof.
   intros * H; destruct (presup_exp_eq_sides H) as [HM HM'].
   repeat split; eauto using presup_exp_ctx, presup_exp_typ.
+Qed.
+
+(** The type of a term other than the sort [LevelSort] is of a sort:
+    [LevelSort] is the only type of no sort ([wf_type_level_sort]). *)
+Corollary presup_exp_typ_sorted : forall {Θ Ξ Γ M A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> A <> LevelSort ->
+    exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : S.
+Proof.
+  intros * H Hn; pose proof (presup_exp_typ H) as HT; inversion HT as [? S HS HA | ?]; subst; [ eauto | contradiction (Hn eq_refl) ].
 Qed.
 
 Corollary presup_exp_eq_left : forall {Θ Ξ Γ M M' A},
@@ -255,25 +267,32 @@ Hint Resolve presup_exp_eq_left presup_exp_eq_right : mctt.
     ([wf_subtyp_refl]'s case is where [presup_exp_eq] is used, and the only
     place it is needed.) *)
 
-Corollary presup_subtyp_left : forall {Θ Ξ Γ A A'},
+(** The left side of a refinement is of a sort: never the sort
+    [LevelSort] itself, which is below and above nothing. *)
+Corollary presup_subtyp_left_sorted : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
+    exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : S.
 Proof.
   induction 1; try assumption.
   (** Reflexivity: at the sort of the equation. *)
-  1: exact (mk_wf_type _ H0 (presup_exp_eq_left H1)).
+  1: exact (ex_intro _ _ (conj H0 (presup_exp_eq_left H1))).
   (** The others are between types of universes. *)
-  all: try (match goal with |- ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ᵗ ?A =>
+  all: try (match goal with |- exists S, type_sort S /\ ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ ?A : S =>
               assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) as (k & Hk) by (eexists; mauto 3);
-              exact (mk_wf_type _ (type_sort_universe k) Hk) end).
+              exact (ex_intro _ _ (conj (type_sort_universe k) Hk)) end).
   (** The types of levels of a sort: types of levels. *)
-  all: try solve [ apply (mk_wf_type _ type_sort_level); mauto 3 ].
+  all: try solve [ exists LevelSort; split; [ exact type_sort_level | mauto 3 ] ].
   (** [Π] at its kinds, at the sort of the codomain's kind next to the
       universe of its parts. *)
   all: assert (Θ ⍮ Ξ ⍮ Γ ⊢ᵤ Typeω@i) by mauto 3.
-  all: apply (mk_wf_type (abs_kind_sort κc Typeω@i)); [ apply type_sort_abs_kind; constructor |].
+  all: exists (abs_kind_sort κc Typeω@i); split; [ apply type_sort_abs_kind; constructor |].
   all: eapply wf_pi; [ eassumption | eassumption | rewrite abs_kind_sort_wk; eassumption | eassumption ].
 Qed.
+
+Corollary presup_subtyp_left : forall {Θ Ξ Γ A A'},
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
+Proof. intros * H; destruct (presup_subtyp_left_sorted H) as (S & HS & HA); exact (wf_type_of_sort _ HS HA). Qed.
 
 Theorem presup_subtyp : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
@@ -316,8 +335,8 @@ Ltac gen_presup1 H :=
       let S' := fresh "S'" in
       let HS' := fresh "HS'" in
       let HA' := fresh "HA'" in
-      pose proof presup_subtyp_left H as [S HS HA];
-      pose proof presup_subtyp_right H as [S' HS' HA'];
+      pose proof presup_subtyp_left_sorted H as (S & HS & HA);
+      pose proof presup_subtyp_right_sorted H as (S' & HS' & HA');
       try gen_core_presup HA
   | wf_sub_eq _ _ _ _ _ _ =>
       (** The two projections of [wf_sub_eq]; see [saturate_sub_eq]. *)

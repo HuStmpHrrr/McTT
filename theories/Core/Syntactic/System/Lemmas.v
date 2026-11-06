@@ -1832,7 +1832,7 @@ Proof.
   intros * H; saturate_sub_eq.
   econstructor; [ mauto 2 | mauto 2 | |].
   - intros x A Hlk.
-    destruct (ctx_lookup_wf _ _ _ _ _ ltac:(eassumption) Hlk) as [S HS HA].
+    destruct (ctx_lookup_wf_sorted _ _ _ _ _ ltac:(eassumption) Hlk) as (S & HS & HA).
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : S) by (eapply sub_eq_preserves_sort; eassumption).
     eapply wf_exp_eq_subtyp';
       [ symmetry; eapply wf_sub_eq_apply; eassumption
@@ -1848,7 +1848,7 @@ Proof.
   intros * H1 H2; saturate_sub_eq.
   econstructor; [ mauto 2 | mauto 2 | |].
   - intros x A Hlk.
-    destruct (ctx_lookup_wf _ _ _ _ _ ltac:(eassumption) Hlk) as [S HS HA].
+    destruct (ctx_lookup_wf_sorted _ _ _ _ _ ltac:(eassumption) Hlk) as (S & HS & HA).
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : S) by (eapply sub_eq_preserves_sort; eassumption).
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ'] ≈ #x[σ''] : A[σ]) by
       (eapply wf_exp_eq_subtyp';

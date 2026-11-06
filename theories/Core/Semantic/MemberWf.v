@@ -26,11 +26,11 @@ Section Fixed_GCtx.
 Corollary member_wf : forall Γ H x R A,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> mdenote gc_deps gc_stack Γ (me_mem H x) R ->
     mdesc_type R = Some A ->
-    Γ ⊢ᵗ A /\ (forall M, mdesc_reduct R = Some M -> Γ ⊢ M : A) /\ Γ ⊢ a_mem H x : A.
+    (exists S, type_sort S /\ Γ ⊢ A : S) /\ (forall M, mdesc_reduct R = Some M -> Γ ⊢ M : A) /\ Γ ⊢ a_mem H x : A.
 Proof.
   intros * HH Hm Ht.
   pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH))) as Hv.
-  destruct (desc_ok_ty _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [Hi HM].
+  destruct (desc_ok_ty_sorted _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [Hi HM].
   split; [ exact Hi | split; [ exact HM | exact (wf_mem_desc _ _ _ _ _ _ _ HH Hm Ht) ] ].
 Qed.
 
@@ -161,7 +161,7 @@ Proof.
     apply (IH Γ0 Ψ eq_refl HH).
     cbn [body_ctx app]; apply wf_ext_eq_mod; [ exact HX | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
   - (* a term member: a definition of it, at its type *)
-    destruct (member_wf _ _ _ _ _ HH Hm eq_refl) as ([Srt HS HA] & _ & HM).
+    destruct (member_wf _ _ _ _ _ HH Hm eq_refl) as ((Srt & HS & HA) & _ & HM).
     pose proof (wk_preserves_sort _ _ _ _ _ _ _ HA HS Hw) as HA1.
     pose proof (wk_preserves_exp _ _ _ _ _ _ _ HM Hw) as HM1.
     cbn [gentry_wk option_map].
@@ -187,7 +187,7 @@ Proof.
     cbn [body_ctx app]; apply wf_ext_eq_mod; [ exact HX | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
   - (* a member with a term part and a module part: a definition with a
        module part, its term the selection, its module the alias of it *)
-    destruct (member_wf _ _ _ _ _ HH Hm Hty) as ([Srt HS HA] & _ & HM).
+    destruct (member_wf _ _ _ _ _ HH Hm Hty) as ((Srt & HS & HA) & _ & HM).
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
     pose proof (desc_ok_mod _ _ Hg _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hmd) as Hok.
