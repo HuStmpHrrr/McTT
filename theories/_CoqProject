@@ -176,6 +176,7 @@
 ./Core/Syntactic/Unseal.v
 ./Entrypoint.v
 ./Extraction/Command.v
+./Extraction/CommandRun.v
 ./Extraction/Evaluation.v
 ./Extraction/FastGlobal.v
 ./Extraction/FastContext.v
