@@ -278,11 +278,18 @@ Qed.
 
 Hint Resolve per_bot_then_per_lvl : mctt.
 
+(** A canonical level without proofs is the only one equal to it up to
+    proofs ([nf_ne_proof_free_eq]). *)
+Lemma lvl_proof_free_upto_proofs_eq : forall L L', nf_proof_free (nf_lvl_of L) -> lvl_eq_upto_proofs L L' -> L = L'.
+Proof.
+  intros * Hp HE; apply nf_lvl_of_inj; exact (proj1 nf_ne_proof_free_eq _ Hp _ (nf_lvl_of_upto_proofs _ _ HE)).
+Qed.
+
 (** The levels of sort [n] form a PER, and a neutral of type [Level@n] is
     one. *)
 Lemma per_lvl_at_lvl : forall n l l', Dom l ≈ l' ∈ per_lvl_at n -> Dom l ≈ l' ∈ per_lvl.
 Proof.
-  intros * H s; destruct (H s) as [L L' HL HL' HE _].
+  intros * H s; destruct (H s) as [L L' HL HL' HE _ _].
   exact (mk_normal_reads_alike _ _ _ _ _ HL HL' (nf_lvl_of_upto_proofs _ _ HE)).
 Qed.
 
@@ -290,8 +297,9 @@ Lemma per_lvl_at_sym : forall n m m',
     Dom m ≈ m' ∈ per_lvl_at n ->
     Dom m' ≈ m ∈ per_lvl_at n.
 Proof.
-  intros * H s; destruct (H s) as [L L' HL HL' HE Hb].
-  exists L' L; [ assumption | assumption | symmetry; exact HE | eapply lvl_sort_bounded_upto_proofs; eassumption ].
+  intros * H s; destruct (H s) as [L L' HL HL' HE Hb Hp].
+  pose proof (lvl_proof_free_upto_proofs_eq _ _ Hp HE) as <-.
+  exists L L; assumption.
 Qed.
 
 Lemma per_lvl_at_trans : forall n m m' m'',
@@ -299,9 +307,9 @@ Lemma per_lvl_at_trans : forall n m m' m'',
     Dom m' ≈ m'' ∈ per_lvl_at n ->
     Dom m ≈ m'' ∈ per_lvl_at n.
 Proof.
-  intros * H H' s; destruct (H s) as [L L1 HL HL1 HE Hb], (H' s) as [L1' L2 HM HM' HE' Hb'].
+  intros * H H' s; destruct (H s) as [L L1 HL HL1 HE Hb Hp], (H' s) as [L1' L2 HM HM' HE' Hb' Hp'].
   assert (L1' = L1) as -> by (apply nf_lvl_of_inj; exact (functional_read_nf _ _ _ _ HM HL1)).
-  exists L L2; [ assumption | assumption | etransitivity; eassumption | exact Hb ].
+  exists L L2; [ assumption | assumption | etransitivity; eassumption | exact Hb | exact Hp ].
 Qed.
 
 #[local] Instance per_lvl_at_PER n : PER (per_lvl_at n).
@@ -316,20 +324,22 @@ Proof. intros * Hmn [Hc Ha]; split; [ lia | intros; eapply Nat.le_trans; [ eappl
 
 Lemma per_lvl_at_mono : forall m n l l', m <= n -> Dom l ≈ l' ∈ per_lvl_at m -> Dom l ≈ l' ∈ per_lvl_at n.
 Proof.
-  intros * Hmn H s; destruct (H s) as [L L' HL HL' HE Hb].
-  exists L L'; [ assumption | assumption | exact HE | eapply lvl_sort_bounded_mono; eassumption ].
+  intros * Hmn H s; destruct (H s) as [L L' HL HL' HE Hb Hp].
+  exists L L'; [ assumption | assumption | exact HE | eapply lvl_sort_bounded_mono; eassumption | exact Hp ].
 Qed.
 
+(** Neutrals of a type of levels, which hold no proof, are levels. *)
 Lemma per_bot_then_per_lvl_at : forall n m m',
-    Dom m ≈ m' ∈ per_bot ->
+    Dom m ≈ m' ∈ per_bot_at ak_level ->
     Dom ⇑ (Levelᵈ@n) m ≈ ⇑ (Levelᵈ@n) m' ∈ per_lvl_at n.
 Proof.
-  intros * H s.
+  intros * [H Hpf] s.
   destruct (H s) as [M M' Hl Hr HE].
   exists (ordinal_zero, cons (mk_level_atom 0 n M) nil) (ordinal_zero, cons (mk_level_atom 0 n M') nil);
-    [ econstructor; eassumption | econstructor; eassumption | | split; [ cbn; lia |] ].
+    [ econstructor; eassumption | econstructor; eassumption | | split; [ cbn; lia |] |].
   - split; [ reflexivity |]; apply level_atoms_eq_upto_proofs_cons; [ exact HE | apply level_atoms_eq_upto_proofs_refl ].
   - intros k t a Hin; cbn in Hin; destruct Hin as [(_ & -> & _) | []]; lia.
+  - cbn; split; [ exact (proj1 (Hpf eq_refl) _ _ Hl) | exact I ].
 Qed.
 
 Hint Resolve per_lvl_at_sym per_lvl_at_trans per_bot_then_per_lvl_at : mctt.

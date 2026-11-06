@@ -84,6 +84,17 @@ Definition per_bot : relation domain_ne := fun m n => forall s, neutral_reads_al
 Hint Transparent per_bot : mctt.
 Hint Unfold per_bot : mctt.
 
+(** A neutral reads back, at every length, as a neutral holding no proof:
+    a neutral level, made of levels only. *)
+Definition neutral_proof_free (m : domain_ne) : Prop :=
+  forall s M, Rne m in s ↘ M -> ne_proof_free M.
+
+(** Neutrals related at the kind [κ] of their type: at a type of levels
+    they also hold no proof, as the arguments of a function between types
+    of levels are levels. *)
+Definition per_bot_at (κ : abs_kind) : relation domain_ne :=
+  fun m m' => per_bot m m' /\ (κ = ak_level -> neutral_proof_free m /\ neutral_proof_free m').
+
 (** Two values at their types read back, at the length [s], alike up to
     their proofs. *)
 #[warnings="-cannot-define-projection"]
@@ -159,7 +170,11 @@ Record lvl_reads (n : nat) (m m' : domain) (s : nat) : Prop := mk_lvl_reads
     (** The two are equal up to the proofs in their atoms *)
   ; lvl_reads_related : lvl_eq_upto_proofs lvl_reads_left_lvl lvl_reads_right_lvl
     (** The left one's atoms are of sorts at most [n] *)
-  ; lvl_reads_sort_bounded : lvl_sort_bounded n lvl_reads_left_lvl }.
+  ; lvl_reads_sort_bounded : lvl_sort_bounded n lvl_reads_left_lvl
+    (** The left one holds no proof: a level is made of levels only; so
+        does the right one, equal to it up to proofs
+        ([lvl_reads_right_proof_free]) *)
+  ; lvl_reads_proof_free : nf_proof_free (nf_lvl_of lvl_reads_left_lvl) }.
 
 Definition per_lvl_at (n : nat) : relation domain :=
   fun m m' => forall s, lvl_reads n m m' s.

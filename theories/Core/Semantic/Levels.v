@@ -322,26 +322,50 @@ Lemma per_lvl_at_canon_sort_bounded : forall n l l' s L,
     lvl_sort_bounded n L.
 Proof.
   intros * H HL.
-  destruct (H s) as [L' L1 HL' _ _ Hb].
+  destruct (H s) as [L' L1 HL' _ _ Hb _].
   apply domain_level_canon_of_read in HL' as [_ [L'' [Heq HL'']]].
   apply nf_lvl_of_inj in Heq as <-.
   assert (L = L') as -> by (eapply domain_level_canon_functional; eassumption).
   exact Hb.
 Qed.
 
-(** A level related to one whose canonical forms are of sort [n] is an
-    element of [Level@n]. *)
+(** The canonical forms of an element of [Level@n] hold no proof. *)
+Lemma per_lvl_at_canon_proof_free : forall n l l' s L,
+    Dom l ≈ l' ∈ per_lvl_at n ->
+    domain_level_canon s l L ->
+    nf_proof_free (nf_lvl_of L).
+Proof.
+  intros * H HL.
+  destruct (H s) as [L' L1 HL' _ _ _ Hp].
+  apply domain_level_canon_of_read in HL' as [_ [L'' [Heq HL'']]].
+  apply nf_lvl_of_inj in Heq as <-.
+  assert (L = L') as -> by (eapply domain_level_canon_functional; eassumption).
+  exact Hp.
+Qed.
+
+(** A canonical level holds no proof when its atoms' neutrals hold none
+    ([level_atoms_all]). *)
+Lemma lvl_proof_free_atoms : forall L, nf_proof_free (nf_lvl_of L) <-> level_atoms_all ne_proof_free (snd L).
+Proof. intros [c xs]; cbn [nf_lvl_of nf_proof_free fst snd]; apply level_atoms_all_all_list. Qed.
+
+(** A level equal up to proofs to one without proofs is that level. *)
+Lemma lvl_proof_free_upto : forall L L', lvl_eq_upto_proofs L L' -> nf_proof_free (nf_lvl_of L') -> nf_proof_free (nf_lvl_of L).
+Proof. intros * HE Hp; symmetry in HE; rewrite <- (lvl_proof_free_upto_proofs_eq _ _ Hp HE); exact Hp. Qed.
+
+(** A level related to one whose canonical forms are of sort [n], and hold
+    no proof, is an element of [Level@n]. *)
 Lemma per_lvl_at_intro : forall n l l',
     Dom l ≈ l' ∈ per_lvl ->
     (forall s L, domain_level_canon s l L -> lvl_sort_bounded n L) ->
+    (forall s L, domain_level_canon s l L -> nf_proof_free (nf_lvl_of L)) ->
     Dom l ≈ l' ∈ per_lvl_at n.
 Proof.
-  intros * H Hb s.
+  intros * H Hb Hp s.
   destruct (H s) as [W W' HW HW' HE].
   pose proof HW as HW0; apply domain_level_canon_of_read in HW0 as [_ [L [-> HL]]].
   pose proof HW' as HW1; apply domain_level_canon_of_read in HW1 as [_ [L' [-> HL']]].
   apply nf_lvl_of_upto_proofs_iff in HE.
-  exists L L'; [ exact HW | exact HW' | exact HE | eapply Hb; exact HL ].
+  exists L L'; [ exact HW | exact HW' | exact HE | eapply Hb; exact HL | eapply Hp; exact HL ].
 Qed.
 
 Lemma per_lvl_at_of_lvl : forall n l l',
@@ -349,25 +373,30 @@ Lemma per_lvl_at_of_lvl : forall n l l',
     Dom l ≈ l ∈ per_lvl_at n ->
     Dom l ≈ l' ∈ per_lvl_at n.
 Proof.
-  intros * H Hb; apply per_lvl_at_intro; [ exact H |].
-  intros; eapply per_lvl_at_canon_sort_bounded; eassumption.
+  intros * H Hb; apply per_lvl_at_intro; [ exact H | |].
+  - intros; eapply per_lvl_at_canon_sort_bounded; eassumption.
+  - intros; eapply per_lvl_at_canon_proof_free; eassumption.
 Qed.
 
 Lemma per_lvl_at_lit : forall n o, fst o <= n -> Dom domain_level_lit o ≈ domain_level_lit o ∈ per_lvl_at n.
 Proof.
-  intros; apply per_lvl_at_intro; [ apply per_lvl_lit |].
-  intros s L HL; assert (L = lvl_lit o) as -> by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_lit ]).
-  apply lvl_sort_bounded_lit; assumption.
+  intros; apply per_lvl_at_intro; [ apply per_lvl_lit | |];
+    intros s L HL; assert (L = lvl_lit o) as -> by (eapply domain_level_canon_functional; [ exact HL | apply domain_level_canon_lit ]).
+  - apply lvl_sort_bounded_lit; assumption.
+  - exact I.
 Qed.
 
 Lemma per_lvl_at_suc : forall n l l',
     Dom l ≈ l' ∈ per_lvl_at n -> Dom domain_level_suc l ≈ domain_level_suc l' ∈ per_lvl_at n.
 Proof.
   intros * H; pose proof (per_lvl_at_lvl _ _ _ H) as Hl.
-  apply per_lvl_at_intro; [ apply per_lvl_suc; exact Hl |].
-  intros s L HL; destruct (per_lvl_ex _ _ Hl s) as [A HA].
-  eapply lvl_sort_bounded_upto_proofs; [ symmetry; exact (domain_level_canon_suc_upto _ _ _ _ HA HL) |].
-  apply lvl_sort_bounded_canon, lvl_sort_bounded_suc; eapply per_lvl_at_canon_sort_bounded; eassumption.
+  apply per_lvl_at_intro; [ apply per_lvl_suc; exact Hl | |];
+    intros s L HL; destruct (per_lvl_ex _ _ Hl s) as [A HA].
+  - eapply lvl_sort_bounded_upto_proofs; [ symmetry; exact (domain_level_canon_suc_upto _ _ _ _ HA HL) |].
+    apply lvl_sort_bounded_canon, lvl_sort_bounded_suc; eapply per_lvl_at_canon_sort_bounded; eassumption.
+  - eapply lvl_proof_free_upto; [ exact (domain_level_canon_suc_upto _ _ _ _ HA HL) |].
+    pose proof (per_lvl_at_canon_proof_free _ _ _ _ _ H HA) as HpA; rewrite lvl_proof_free_atoms in HpA |- *.
+    destruct A as [c xs]; apply level_atoms_all_canon, level_atoms_all_suc; exact HpA.
 Qed.
 
 Lemma per_lvl_at_max : forall n l l' m m',
@@ -375,10 +404,14 @@ Lemma per_lvl_at_max : forall n l l' m m',
     Dom domain_level_max l m ≈ domain_level_max l' m' ∈ per_lvl_at n.
 Proof.
   intros * H H'; pose proof (per_lvl_at_lvl _ _ _ H) as Hl; pose proof (per_lvl_at_lvl _ _ _ H') as Hm.
-  apply per_lvl_at_intro; [ apply per_lvl_max; assumption |].
-  intros s L HL; destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB].
-  eapply lvl_sort_bounded_upto_proofs; [ symmetry; exact (domain_level_canon_max_upto _ _ _ _ _ _ HA HB HL) |].
-  apply lvl_sort_bounded_canon, lvl_sort_bounded_max; [ exact (per_lvl_at_canon_sort_bounded _ _ _ _ _ H HA) | exact (per_lvl_at_canon_sort_bounded _ _ _ _ _ H' HB) ].
+  apply per_lvl_at_intro; [ apply per_lvl_max; assumption | |];
+    intros s L HL; destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB].
+  - eapply lvl_sort_bounded_upto_proofs; [ symmetry; exact (domain_level_canon_max_upto _ _ _ _ _ _ HA HB HL) |].
+    apply lvl_sort_bounded_canon, lvl_sort_bounded_max; [ exact (per_lvl_at_canon_sort_bounded _ _ _ _ _ H HA) | exact (per_lvl_at_canon_sort_bounded _ _ _ _ _ H' HB) ].
+  - eapply lvl_proof_free_upto; [ exact (domain_level_canon_max_upto _ _ _ _ _ _ HA HB HL) |].
+    pose proof (per_lvl_at_canon_proof_free _ _ _ _ _ H HA) as HpA; pose proof (per_lvl_at_canon_proof_free _ _ _ _ _ H' HB) as HpB.
+    rewrite lvl_proof_free_atoms in HpA, HpB |- *.
+    destruct A as [c xs], B as [d ys]; apply level_atoms_all_canon, level_atoms_all_app; assumption.
 Qed.
 
 Hint Resolve per_lvl_at_lit per_lvl_at_suc per_lvl_at_max : mctt.
