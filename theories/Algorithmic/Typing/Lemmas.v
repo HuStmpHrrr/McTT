@@ -2028,7 +2028,9 @@ with gunit_lets (U : gunit) : nat :=
   end
 with moddef_lets (D : moddef) : nat :=
   match D with
-  | md_body sm Φ => gmod_lets Φ
+  (** one more than its entries: each part of a unit has fewer [let]s
+      than the unit, for the expanded side of [wf_unit_eq_expand] *)
+  | md_body sm Φ => S (gmod_lets Φ)
   | md_alias E => S (modexp_lets E)
   end
 with gmod_lets (Φ : gmod) : nat :=
@@ -3570,6 +3572,34 @@ Proof.
   - eapply alg_pi_irrelevant_complete; [ exact HΓ | exact HU | discriminate | exact Hk | exact HAc | cbn [abs_kind_sort] in *; exact HBc ].
 Qed.
 
+(** The expanded side of [wf_unit_eq_expand], in the induction below: the
+    expanded unit's parts, from its own derivation, by the outer
+    induction at a smaller bound. *)
+Ltac expand_case :=
+  match goal with
+  | IHn : forall m, m < ?n -> _, HmH : forall Γ' H0, _ -> modexp_lets H0 < ?n -> _,
+    HU : _ ⍮ _ ⍮ ?G ⊢ᵘ gu_open ?Δ ?Φ ≈ _, Hb : gunit_lets (gu_open ?Δ (gm_expand ?Φ)) <= ?n |- _ =>
+      destruct (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as [Φx0 ? ? ? ? Hx0];
+      pose proof (body_xp_result_noopen _ _ _ _ _ Hx0) as Hno; rewrite (body_xp_expand _ _ _ _ _ Hx0) in Hno;
+      destruct (proj2 (unit_full_of_eq _ _ _ _ _ (wf_unit_eq_expand _ _ _ _ _ HU)))
+        as [Φx es pl ps Hps Hx HC Hsorts Htags Hdefs Hopens Ha Hs Hsx Hnd HR lv Rt [Hf1 Hf2 Hf3]];
+      pose proof (body_xp_noopen_id _ _ _ _ _ Hno Hx) as EΦx; subst Φx;
+      rewrite gunit_lets_mk in Hb; cbn [moddef_lets] in Hb;
+      destruct (IHn (n - 1) ltac:(lia)) as (_ & _ & _ & _ & _ & IHx & _ & _);
+      assert (HXe : gc_deps ⍮ gc_stack ⍮ G ⊢ˣ body_ctx (gm_expand Φ) ++ Δ ≈ body_ctx (gm_expand Φ) ++ Δ)
+        by (apply ext_of_ctx'; rewrite <- List.app_assoc; exact HC);
+      pose proof (proj1 (IHx _ _ _ _ _ HXe eq_refl eq_refl)) as HXl;
+      assert (HΓ : ⊢ G) by exact (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HXe));
+      eapply alg_unit_body;
+        [ eapply (alg_params_of_entries (n - 1)); [ exact HΓ | exact (ext_entries_app_r _ _ _ _ HXl) | lets_bound | exact Ha | exact Hps | exact HR ]
+        | exact Ha | | exact Hs | exact Hsx | exact Hnd | exact (levels_abstractable_of_flag _ _ _ _ _ _ _ Hf1 Hf2 Hf3) ];
+      eapply (alg_body_of_entries (n - 1));
+        [ exact Hx | exact HXl | lets_bound | exact Hs | exact Hnd
+        | exact (body_tagged_of_fill _ _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsx HC Htags
+                   (fun y Φ0 E A M σ Hp HE Hσ => proj1 (Hdefs y Φ0 E A M σ Hp HE Hσ)))
+        | intros k Ψ0 H0' Hk Hle; apply HmH; [ exact (Hopens _ _ _ Hk) | lia ] ]
+  end.
+
 (** The whole block, the universes included; [alg_type_complete_lets] below
     is the statement without them. *)
 Lemma alg_type_complete_lets_all : forall n,
@@ -3609,8 +3639,8 @@ Proof.
                clear IH; rename H' into IH
            end.
   (** The outer induction is needed only for the module expressions
-      ([HmH]). *)
-  all: try clear IHn.
+      ([HmH]) and the expanded side of an expansion. *)
+  all: try (lazymatch goal with |- _ ⊢aᵘ gu_open _ (gm_expand _) => fail | _ => clear IHn end).
   all: match goal with |- _ ⊢a a_elim _ _ _ _ _ ⟸ _ => idtac | |- _ ⊢a _ ⟸ _ =>
          gen_presups;
          (** A universe, [⊤] and [⊥] infer their own universe. *)
@@ -3881,13 +3911,18 @@ Proof.
     match goal with HU : _ ⊢aᵘ _ /\ _ |- _ =>
       eapply alg_unit_flatten; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXl | lia | assumption | eassumption | eassumption ]
                                | assumption | exact (proj1 HU) | eapply levels_abstractable_of_flag; eassumption ] end.
-  (** The expansion of a body: its own side, and the expanded one. *)
-  - first [ repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ] | admit ].
-  - first [ repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ] | admit ].
+  (** The expansion of a body: its own side, and the expanded one.  The
+      expanded unit's derivation is no subderivation; its parts, read off
+      it ([unit_full_of_eq]), have fewer [let]s than it, so the outer
+      induction checks them, as for a body. *)
+  - first [ repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ] | expand_case ].
+  - first [ repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ] | expand_case ].
   (** Symmetry and transitivity: the sides the induction hypotheses give. *)
   - repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ].
   - repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ].
-Admitted.
+  - repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ].
+  - repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ].
+Qed.
 
 Lemma alg_type_complete_lets : forall n,
   (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> True) /\
