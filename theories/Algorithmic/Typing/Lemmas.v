@@ -860,6 +860,27 @@ Proof.
                                          | rewrite <- nf_to_exp_univ_nf; exact HnB' ].
 Qed.
 
+(** A type whose type [UB] normalises to [Prop] or to [LevelSort]
+    ([is_sort_nf] at a kind other than the relevant one) is of that sort.
+    A type [UB] of a sort is equal to its normal form, and [LevelSort],
+    of no sort, is not one; [UB] itself [LevelSort] normalises to
+    [LevelSortⁿ]. *)
+Lemma typed_at_sort_nf_irrelevant : forall Δ B (UB UB' : nf) κ v,
+    Δ ⊢ B : UB -> nbe_ty_f Δ UB UB' -> is_sort_nf UB' κ v -> κ <> ak_relevant ->
+    Δ ⊢ B : abs_kind_sort κ Typeω@0.
+Proof.
+  intros * HBU HnB Hs Hκ.
+  destruct Hs as [W u Hu | |]; [ contradiction (Hκ eq_refl) | |]; cbn [abs_kind_sort].
+  - destruct (presup_exp_typ_cases HBU) as [? SB HSB HUB0 | ? Hlf].
+    + pose proof (soundness_ty_at_sort HSB HUB0 HnB) as HE; cbn [nf_to_exp] in HE.
+      exact (exp_conv_sort HSB HE HBU).
+    + exfalso; destruct HnB as [ρ a Hρ Ha HW]; inversion Ha; subst; inversion HW.
+  - destruct (presup_exp_typ_cases HBU) as [? SB HSB HUB0 | ? Hlf].
+    + exfalso; pose proof (soundness_ty_at_sort HSB HUB0 HnB) as HE; cbn [nf_to_exp] in HE.
+      exact (level_sort_untyped (presup_exp_eq_right HE)).
+    + exact HBU.
+Qed.
+
 (** The parts of a typed [Π] at the kinds [κd] and [κc]: the domain of a
     sort, the codomain of the sort at [κc] at a large universe
     ([wf_pi_parts]). *)
@@ -898,6 +919,91 @@ Proof.
   exact (eq_sym (subtyp_same_kind _ _ _ r (domain_kind a) i k Hs HA Hk)).
 Qed.
 
+(** A λ whose body's type [B] is no [LevelSort] and of the kind [κc] is of
+    the [Π] of its annotation's normal form: [B] is of a sort
+    ([presup_exp_typ_sorted]), so of the sort of [κc]
+    ([typed_at_relevance_of_nbe]); both parts are moved to one universe, at
+    which the [Π] is congruent in its domain. *)
+Lemma fn_typed_at_nf : forall {Γ κd κc A M} {B C : nf} {l},
+    Γ ⊢ A : abs_kind_sort κd Typeω@l -> Γ ▹{κd} A ⊢ M : B -> nf_to_exp B <> LevelSort ->
+    nbe_ty_kind (Γ ▹{κd} A) B κc -> pi_kinds κd κc -> nbe_ty_f Γ A C ->
+    Γ ⊢ λ A M : nf_pi κd κc C B.
+Proof.
+  intros * HA HM HnL Hr Hk Hn.
+  assert (⊢ Γ) by (gen_presups; assumption).
+  destruct (presup_exp_typ_sorted HM HnL) as [SB [HSB HB0]].
+  destruct (typed_at_relevance_of_nbe HSB HB0 Hr) as [kB HBs].
+  pose proof (abs_kind_sort_lift _ _ _ _ _ HA (Nat.le_max_l l kB)) as HAj.
+  pose proof (abs_kind_sort_lift _ _ _ _ _ HBs (Nat.le_max_r l kB)) as HBj.
+  pose proof (soundness_ty_at_sort (type_sort_kind_universe κd (Nat.max l kB)) HAj Hn) as HAC.
+  assert (Hfn : Γ ⊢ λ A M : a_pi κd κc A B)
+    by (eapply wf_fn; [ exact HA | apply sort_kind_abs_kind_sort | exact HBs | exact Hk | exact HM ]).
+  assert (Heq : Γ ⊢ a_pi κd κc A B ≈ a_pi κd κc C B : abs_kind_sort κc Typeω@(Nat.max l kB)).
+  { eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; assumption | exact HAj | exact HAC | | exact Hk ].
+    rewrite abs_kind_sort_wk; exact (wf_exp_eq_refl HBj). }
+  cbn [nf_to_exp]; exact (exp_conv_sort (type_sort_kind_universe κc _) Heq Hfn).
+Qed.
+
+(** A body's type [C] that is no [LevelSort] and of the kind [κC] is of
+    the sort of [κC] at a large universe ([presup_exp_typ_sorted],
+    [typed_at_relevance_of_nbe]). *)
+Lemma typed_at_kind_of_nbe : forall {Δ B} {C : nf} {κC},
+    Δ ⊢ B : C -> nf_to_exp C <> LevelSort -> nbe_ty_kind Δ C κC ->
+    exists k, Δ ⊢ C : abs_kind_sort κC Typeω@k.
+Proof.
+  intros * HB HnL Hr.
+  destruct (presup_exp_typ_sorted HB HnL) as [SC [HSC HC]].
+  exact (typed_at_relevance_of_nbe HSC HC Hr).
+Qed.
+
+(** A [let] of a definition of the kind [r], whose body's type [C] is no
+    [LevelSort] and of a kind [κC] the definition may build (a type of
+    levels only under a level), is of the normal form of [C]
+    instantiated ([wf_let]). *)
+Lemma let_typed_at_nf : forall {Γ A M B r l} {C D : nf} {κC},
+    Γ ⊢ A : abs_kind_sort r Typeω@l -> Γ ⊢ M : A -> Γ ▸ A ≔ M ⊢ B : C ->
+    nf_to_exp C <> LevelSort -> nbe_ty_kind (Γ ▸ A ≔ M) C κC -> (κC = ak_level -> r = ak_level) ->
+    nbe_ty_f Γ (nf_to_exp C)[Id,,M] D ->
+    Γ ⊢ ℓ A ≔ M in B : D.
+Proof.
+  intros * HA HM HB HnL Hr Hlc Hn.
+  pose proof (type_sort_kind_universe r l) as HSA.
+  destruct (typed_at_kind_of_nbe HB HnL Hr) as [k HC].
+  pose proof (type_sort_kind_universe κC k) as HSC.
+  assert (Hcl : level_closed_sort (abs_kind_sort r Typeω@l) (abs_kind_sort κC Typeω@k))
+    by (destruct κC; cbn [abs_kind_sort]; [ constructor | constructor | rewrite (Hlc eq_refl); constructor ]).
+  pose proof (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_def _ _ _ _ _ _ HA HSA HM)) as HCs.
+  exact (exp_conv_sort HSC (soundness_ty_at_sort HSC HCs Hn) (wf_let _ _ _ _ _ _ _ _ _ HA HSA HM HC Hcl HB)).
+Qed.
+
+(** A module [let] whose body's type [C] is no [LevelSort] and no type of
+    levels is of the normal form of [C] instantiated ([wf_let_mod]). *)
+Lemma let_mod_typed_at_nf : forall {Γ U B} {C D : nf} {κC},
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U -> Γ ▹ₘ U ⊢ B : C ->
+    nf_to_exp C <> LevelSort -> nbe_ty_kind (Γ ▹ₘ U) C κC -> κC <> ak_level ->
+    nbe_ty_f Γ (nf_to_exp C)[Id ,,ₘ me_lit U] D ->
+    Γ ⊢ ℓₘ U in B : D.
+Proof.
+  intros * HU HB HnL Hr Hlc Hn.
+  destruct (typed_at_kind_of_nbe HB HnL Hr) as [k HC].
+  pose proof (type_sort_kind_universe κC k) as HSC.
+  assert (Hms : module_body_sort (abs_kind_sort κC Typeω@k))
+    by (destruct κC; cbn [abs_kind_sort]; [ constructor | constructor | contradiction (Hlc eq_refl) ]).
+  pose proof (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_mod _ _ _ _ HU)) as HCs.
+  exact (exp_conv_sort HSC (soundness_ty_at_sort HSC HCs Hn) (wf_let_mod _ _ _ _ _ _ _ HU HC HSC Hms HB)).
+Qed.
+
+(** The type of a proof of a conjunction is a proposition: it is of a
+    sort, being no [LevelSort] ([presup_exp_typ_sorted]), and a
+    conjunction of a sort is one of [Prop] ([prop_former_typed]). *)
+Lemma and_typed_of_proof : forall {Γ M P Q},
+    Γ ⊢ M : Σₚ P Q -> Γ ⊢ Σₚ P Q : Propₘ.
+Proof.
+  intros * HM.
+  destruct (presup_exp_typ_sorted HM ltac:(discriminate)) as [S [_ HPQ]].
+  exact (prop_former_typed HPQ ltac:(eauto 6)).
+Qed.
+
 Lemma alg_type_sound :
   (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall Srt, type_sort Srt -> Γ ⊢ A : Srt -> Γ ⊢ M : A) /\
     (forall {Γ A M}, Γ ⊢a M ⟹ A -> ⊢ Γ -> Γ ⊢ M : A) /\
@@ -911,8 +1017,15 @@ Proof.
   (** ** Checking: by the inferred type, below the checked one *)
   - match goal with
     | IH : ⊢ ?G -> ?G ⊢ ?M : ?A, HG : ⊢ ?G, Hs : ?G ⊢a ?A ⊆ ?B, HS : type_sort ?S, HB : ?G ⊢ ?B : ?S |- _ =>
-        pose proof (IH HG) as HM; destruct (presup_exp_typ HM) as [SA HSA HA];
-        eapply wf_exp_subtyp; [ exact HM | exact HB | exact HS | exact (alg_subtyping_sound_sort _ _ _ _ _ HSA HS Hs HA HB) ]
+        pose proof (IH HG) as HM; destruct (presup_exp_typ_cases HM) as [? SA HSA HA | ? Hlf];
+        [ eapply wf_exp_subtyp; [ exact HM | exact HB | exact HS | exact (alg_subtyping_sound_sort _ _ _ _ _ HSA HS Hs HA HB) ]
+        | (** inferred [LevelSort], below only itself, of no sort *)
+          exfalso; destruct Hs as [A' B' HA' HB' Hsub];
+          inversion HA' as [ρ a1 Hρ Ha HW]; subst; inversion Ha; subst; inversion HW; subst;
+          inversion Hsub; subst;
+          match goal with HE : nf_eq_upto_proofs LevelSortⁿ ?B |- _ => destruct B; cbn in HE; try discriminate end;
+          pose proof (soundness_ty_at_sort HS HB HB') as HE'; cbn [nf_to_exp] in HE';
+          eapply level_sort_untyped; eapply presup_exp_eq_right; exact HE' ]
     end.
   (** ** Inference *)
   (** The universes, the levels and [Prop] *)
@@ -937,68 +1050,64 @@ Proof.
   - apply wf_prop; assumption.
   (** The propositions [⊤], [⊥], the proof [⋆] and the introduction of [⊤] *)
   - apply wf_True; assumption.
-  - apply wf_true; assumption.
   - apply wf_tt; assumption.
   - apply wf_False; assumption.
   (** Ex falso: the target at its sort, the proof at [⊥] *)
   - match goal with
-    | IHC : ⊢ ?G -> ?G ⊢ ?C : (nf_to_exp ?UC), Hs : is_sort_nf ?UC ?r ?u, IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ⊥ : Srt -> ?G ⊢ ?M : ⊥,
+    | IHC : ⊢ ?G -> ?G ⊢ ?C : (nf_to_exp ?UC), Hs : is_sort_nf ?UC ?r ?u, Hr : ?r <> ak_level,
+      IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ⊥ : Srt -> ?G ⊢ ?M : ⊥,
       Hn : nbe_ty_f ?G ?C ?W, HG : ⊢ ?G |- _ =>
         pose proof (sort_typed_of_is_sort_nf (IHC HG) Hs) as HCs;
         pose proof (type_sort_kind_universe r (universe_nf_large_index u)) as HS;
         pose proof (IHM HG _ type_sort_prop (wf_False _ _ _ HG)) as HM0;
-        exact (exp_conv_sort HS (soundness_ty_at_sort HS HCs Hn) (wf_absurd _ _ _ _ _ _ HCs HS HM0))
+        assert (HL : level_closed_sort Propₘ (abs_kind_sort r Typeω@(universe_nf_large_index u)))
+          by (destruct r; [ constructor | constructor | congruence ]);
+        exact (exp_conv_sort HS (soundness_ty_at_sort HS HCs Hn) (wf_absurd _ _ _ _ _ _ HCs HS HL HM0))
     end.
   (** A conjunction of propositions *)
   - match goal with
-    | IHP : ⊢ ?G -> ?G ⊢ ?P : (nf_to_exp Propⁿ), IHQ : ⊢ ?G ▹ ?P -> ?G ▹ ?P ⊢ ?Q : (nf_to_exp Propⁿ), HG : ⊢ ?G |- _ =>
+    | IHP : ⊢ ?G -> ?G ⊢ ?P : (nf_to_exp Propⁿ), IHQ : ⊢ ?G ▹{ak_propositional} ?P -> ?G ▹{ak_propositional} ?P ⊢ ?Q : (nf_to_exp Propⁿ), HG : ⊢ ?G |- _ =>
         pose proof (IHP HG) as HP; cbn [nf_to_exp] in HP;
-        assert (HGP : ⊢ G ▹ P) by (eapply wf_ctx_extend; [ exact HP | constructor ]);
+        assert (HGP : ⊢ G ▹{ak_propositional} P) by (eapply wf_ctx_extend; [ exact HP | constructor ]);
         pose proof (IHQ HGP) as HQ; cbn [nf_to_exp] in HQ;
         apply wf_and; assumption
     end.
   (** A proof of a conjunction: at its annotation, normalised *)
   - match goal with
-    | IHT : ⊢ ?G -> ?G ⊢ ?T : (nf_to_exp Propⁿ), HnT : nbe_ty_f ?G ?T (Σₚⁿ ?P ?Q),
-      IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ (nf_to_exp ?P) : Srt -> ?G ⊢ ?M : _,
-      IHN : ⊢ ?G -> forall Srt, _ -> ?G ⊢ (nf_to_exp ?Q)[Id,,?M] : Srt -> ?G ⊢ ?N : _, HG : ⊢ ?G |- _ =>
-        pose proof (IHT HG) as HT; cbn [nf_to_exp] in HT;
-        pose proof (soundness_ty_at_sort type_sort_prop HT HnT) as HTe; cbn [nf_to_exp] in HTe;
-        assert (HPQ : G ⊢ Σₚ (nf_to_exp P) (nf_to_exp Q) : Propₘ) by (gen_presups; assumption);
-        destruct (wf_and_inversion _ _ _ _ _ _ HPQ) as [HP HQ _];
+    | IHP : ⊢ ?G -> ?G ⊢ ?P : (nf_to_exp Propⁿ),
+      IHQ : ⊢ ?G ▹{ak_propositional} ?P -> ?G ▹{ak_propositional} ?P ⊢ ?Q : (nf_to_exp Propⁿ),
+      IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ?P : Srt -> ?G ⊢ ?M : _,
+      IHN : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ?Q[Id,,?M] : Srt -> ?G ⊢ ?N : _,
+      Hn : nbe_ty_f ?G (Σₚ ?P ?Q) ?W, HG : ⊢ ?G |- _ =>
+        pose proof (IHP HG) as HP; cbn [nf_to_exp] in HP;
+        assert (HGP : ⊢ G ▹{ak_propositional} P) by (eapply wf_ctx_extend; [ exact HP | constructor ]);
+        pose proof (IHQ HGP) as HQ; cbn [nf_to_exp] in HQ;
         pose proof (IHM HG _ type_sort_prop HP) as HM;
-        assert (HQM : G ⊢ (nf_to_exp Q)[Id,,M] : Propₘ)
-          by (exact (sub_preserves_sort _ _ _ _ _ _ _ HQ type_sort_prop (wf_sub_single _ _ _ _ _ _ HP type_sort_prop HM)));
+        assert (HQM : G ⊢ Q[Id,,M] : Propₘ)
+          by (exact (sub_preserves_sort _ _ _ _ _ _ _ HQ type_sort_prop (wf_sub_single _ _ _ _ _ _ _ HP ltac:(constructor) HM)));
         pose proof (IHN HG _ type_sort_prop HQM) as HN;
-        cbn [nf_to_exp];
-        exact (exp_conv_sort type_sort_prop HTe (wf_conj _ _ _ _ _ _ _ _ HT HTe HP HQ HM HN))
+        assert (HT : G ⊢ Σₚ P Q : Propₘ) by (apply wf_and; assumption);
+        exact (exp_conv_sort type_sort_prop (soundness_ty_at_sort type_sort_prop HT Hn) (wf_conj _ _ _ _ _ _ _ HP HQ HM HN))
     end.
   (** The components of a proof of a conjunction *)
   - match goal with
     | IH : ⊢ ?G -> ?G ⊢ ?M : (nf_to_exp (Σₚⁿ ?P ?Q)), HG : ⊢ ?G |- _ =>
         pose proof (IH HG) as HM; cbn [nf_to_exp] in HM;
-        assert (HPQ : G ⊢ Σₚ (nf_to_exp P) (nf_to_exp Q) : Propₘ)
-          by (let S0 := fresh "S0" in let H00 := fresh "H00" in
-              destruct (presup_exp_typ HM) as [S0 _ H00]; exact (prop_former_typed H00 ltac:(eauto 6)));
+        pose proof (and_typed_of_proof HM) as HPQ;
         destruct (wf_and_inversion _ _ _ _ _ _ HPQ) as [HP HQ _];
         eapply wf_left; eassumption
     end.
   - match goal with
     | IH : ⊢ ?G -> ?G ⊢ ?M : (nf_to_exp (Σₚⁿ ?P ?Q)), Hn : nbe_ty_f ?G (nf_to_exp ?Q)[Id,,a_left ?M] ?W, HG : ⊢ ?G |- _ =>
         pose proof (IH HG) as HM; cbn [nf_to_exp] in HM;
-        assert (HPQ : G ⊢ Σₚ (nf_to_exp P) (nf_to_exp Q) : Propₘ)
-          by (let S0 := fresh "S0" in let H00 := fresh "H00" in
-              destruct (presup_exp_typ HM) as [S0 _ H00]; exact (prop_former_typed H00 ltac:(eauto 6)));
+        pose proof (and_typed_of_proof HM) as HPQ;
         destruct (wf_and_inversion _ _ _ _ _ _ HPQ) as [HP HQ _];
         assert (HL : G ⊢ a_left M : nf_to_exp P) by (eapply wf_left; eassumption);
         assert (HQL : G ⊢ (nf_to_exp Q)[Id,,a_left M] : Propₘ)
-          by (exact (sub_preserves_sort _ _ _ _ _ _ _ HQ type_sort_prop (wf_sub_single _ _ _ _ _ _ HP type_sort_prop HL)));
+          by (exact (sub_preserves_sort _ _ _ _ _ _ _ HQ type_sort_prop (wf_sub_single _ _ _ _ _ _ _ HP ltac:(constructor) HL)));
         exact (exp_conv_sort type_sort_prop (soundness_ty_at_sort type_sort_prop HQL Hn)
                  (wf_right _ _ _ _ _ _ HP HQ HM HQL))
     end.
-  (** The placeholder type and its element *)
-  - apply wf_placeholder_type; assumption.
-  - apply wf_placeholder; assumption.
   (** The type former, a constructor and the eliminator *)
   - match goal with Hl : ind_lookup _ _ _ = Some ?D, Hk : ind_member ?D _ = Some _, HΓ : ⊢ ?G |- _ =>
       destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc];
@@ -1009,128 +1118,116 @@ Proof.
       destruct (con_ty_typed _ _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) (decls_of_ctx _ _ _ HΓ) Hl Hk Hcon HΓ) as [j Hj];
       eapply wf_conv'; [ eapply wf_con_closed; eassumption | eapply soundness_ty'; eassumption ] end.
   - match goal with
-    | HM : ⊢ ?G -> ?G ⊢ ?M : _, HΓ : ⊢ ?G, Hg : elim_grp ?D ?oq ?p ?m |- ?G ⊢ a_elim ?r ?oq _ ?m _ ?M : _ =>
-        eapply proj1; eapply (alg_elim_sound G M _ _ _ p D oq m); first [ exact HΓ | exact (HM HΓ) | eassumption ]
+    | HM : ⊢ ?G -> ?G ⊢ ?M : _, HΓ : ⊢ ?G, Hl : ind_lookup _ _ ?p = Some ?D |- ?G ⊢ a_elim ?r ?p _ ?m _ ?M : _ =>
+        eapply proj1; eapply (alg_elim_sound G M _ _ _ p D m); first [ exact HΓ | exact (HM HΓ) | eassumption ]
     end.
   (** A [Π]: the domain of either sort, counted in its universe, the
       codomain at the normal form of its universe, whose level's atoms are
       of the sorts they carry; at the normal form of the join *)
   - match goal with
-    | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?rA ?u, IHB : ⊢ ?G ▹ ?A -> ?G ▹ ?A ⊢ ?B : (nf_to_exp ?UB),
-      HnB : nbe_ty_f (?G ▹ ?A) (nf_to_exp ?UB) ?UB', Hv : is_univ_nf ?UB' ?v,
-      HnW : nbe_ty_f ?G (universe_nf_pi_tm ?u ?v) ?W, HG : ⊢ ?G |- _ =>
+    | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?κd ?u,
+      IHB : ⊢ ?G ▹{?κd} ?A -> ?G ▹{?κd} ?A ⊢ ?B : (nf_to_exp ?UB),
+      HnB : nbe_ty_f (?G ▹{?κd} ?A) (nf_to_exp ?UB) ?UB', Hv : is_sort_nf ?UB' ?κc ?v, Hk : pi_kinds ?κd ?κc,
+      HnW : nbe_ty_f ?G (abs_kind_sort ?κc (universe_nf_pi_tm ?u ?v)) ?W, HG : ⊢ ?G |- _ =>
         pose proof (IHA HG) as HA0;
-        pose proof (pi_domain_ok_of_is_sort_nf HA0 Hs) as HAd;
         pose proof (sort_typed_of_is_sort_nf HA0 Hs) as HAs;
-        assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]);
-        destruct (typed_at_univ_nf _ _ _ _ _ (IHB HGA) HnB Hv) as [HB' Hvw];
-        pose proof (wf_pi_universe_nf_pi HAd HB' Hvw) as HPi;
-        destruct (wf_universe_nf_pi_tm HAd HB' Hvw) as [k Hk];
-        eapply wf_exp_subtyp'; [ exact HPi | eapply wf_subtyp_refl'; eapply soundness_ty'; eassumption ]
+        assert (HGA : ⊢ G ▹{κd} A) by (eapply wf_ctx_extend; [ exact HAs | apply sort_kind_abs_kind_sort ]);
+        pose proof (IHB HGA) as HB0;
+        destruct Hv as [UB0 v0 Hv | |]; cbn [abs_kind_sort] in HnW
     end.
-  (** A [∀]: over a type of either sort, into propositions *)
-  - match goal with
-    | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?rA ?u, IHB : ⊢ ?G ▹ ?A -> ?G ▹ ?A ⊢ ?B : (nf_to_exp Propⁿ), HG : ⊢ ?G |- _ =>
-        pose proof (sort_typed_of_is_sort_nf (IHA HG) Hs) as HAs;
-        assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | apply type_sort_kind_universe ]);
-        pose proof (IHB HGA) as HB; cbn [nf_to_exp] in HB |- *;
-        exact (wf_all_sort _ _ _ _ (type_sort_kind_universe _ _) HAs HB)
-    end.
+    + (** Into a universe: at the normal form of the join *)
+      match goal with
+      | HB0 : ?G ▹{?κd} ?A ⊢ ?B : (nf_to_exp ?UB), HnB : nbe_ty_f _ (nf_to_exp ?UB) ?UB', Hv : is_univ_nf ?UB' ?v,
+        HA0 : ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?κd ?u |- _ =>
+          destruct (typed_at_univ_nf _ _ _ _ _ HB0 HnB Hv) as [HB' Hvw];
+          pose proof (pi_domain_ok_of_is_sort_nf HA0 Hs) as HAd;
+          pose proof (wf_pi_universe_nf_pi HAd HB' Hvw) as HPi;
+          destruct (wf_universe_nf_pi_tm HAd HB' Hvw) as [k Hk];
+          eapply wf_exp_subtyp'; [ exact HPi | eapply wf_subtyp_refl'; eapply soundness_ty'; eassumption ]
+      end.
+    + (** A universal proposition: in [Prop], whatever the universe *)
+      match goal with
+      | HB0 : ?G ▹{?κd} ?A ⊢ ?B : (nf_to_exp ?UB), HnB : nbe_ty_f _ (nf_to_exp ?UB) Propⁿ,
+        HAs : ?G ⊢ ?A : abs_kind_sort ?κd Typeω@?l, HnW : nbe_ty_f ?G Propₘ ?W, Hk : pi_kinds _ _, HG : ⊢ ?G |- _ =>
+          pose proof (typed_at_sort_nf_irrelevant _ _ _ _ _ _ HB0 HnB is_sort_nf_prop ltac:(discriminate)) as HB;
+          cbn [abs_kind_sort] in HB;
+          destruct HnW as [ρ a1 Hρ Ha HWr]; inversion Ha; subst; inversion HWr; subst;
+          change (Propⁿ : exp) with (abs_kind_sort ak_propositional Typeω@l);
+          eapply wf_pi; [ apply wf_is_univ_large; exact HG | exact HAs | exact HB | exact Hk ]
+      end.
+    + (** A type of functions between levels: in [LevelSort] *)
+      match goal with
+      | HB0 : ?G ▹{?κd} ?A ⊢ ?B : (nf_to_exp ?UB), HnB : nbe_ty_f _ (nf_to_exp ?UB) LevelSortⁿ,
+        HAs : ?G ⊢ ?A : abs_kind_sort ?κd Typeω@?l, HnW : nbe_ty_f ?G LevelSort ?W, Hk : pi_kinds _ _, HG : ⊢ ?G |- _ =>
+          pose proof (typed_at_sort_nf_irrelevant _ _ _ _ _ _ HB0 HnB is_sort_nf_level ltac:(discriminate)) as HB;
+          cbn [abs_kind_sort] in HB;
+          destruct HnW as [ρ a1 Hρ Ha HWr]; inversion Ha; subst; inversion HWr; subst;
+          change (LevelSortⁿ : exp) with (abs_kind_sort ak_level Typeω@l);
+          eapply wf_pi; [ apply wf_is_univ_large; exact HG | exact HAs | exact HB | exact Hk ]
+      end.
   (** [λ]: the annotation of either sort, the body at its type of the sort
       [r]; the function is of the [Π] of the annotation's normal form *)
   - match goal with
-    | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?rA ?u, IHM : ⊢ ?G ▹ ?A -> ?G ▹ ?A ⊢ ?M : (nf_to_exp ?B),
-      Hr : nbe_ty_kind (?G ▹ ?A) (nf_to_exp ?B) ?r, Hn : nbe_ty_f ?G ?A ?C, HG : ⊢ ?G |- _ =>
+    | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?κd ?u,
+      IHM : ⊢ ?G ▹{?κd} ?A -> ?G ▹{?κd} ?A ⊢ ?M : (nf_to_exp ?B), HnL : nf_to_exp ?B <> LevelSort,
+      Hr : nbe_ty_kind (?G ▹{?κd} ?A) (nf_to_exp ?B) ?κc, Hk : pi_kinds ?κd ?κc, Hn : nbe_ty_f ?G ?A ?C, HG : ⊢ ?G |- _ =>
         pose proof (sort_typed_of_is_sort_nf (IHA HG) Hs) as HAs;
-        pose proof (type_sort_kind_universe rA (universe_nf_large_index u)) as HSA;
-        assert (HGA : ⊢ G ▹ A) by (eapply wf_ctx_extend; [ exact HAs | exact HSA ]);
-        pose proof (IHM HGA) as HM;
-        let SB := fresh "SB" in let HSB := fresh "HSB" in let HB0 := fresh "HB0" in let kB := fresh "kB" in
-        let HBs := fresh "HBs" in
-        destruct (presup_exp_typ HM) as [SB HSB HB0];
-        destruct (typed_at_relevance_of_nbe HSB HB0 Hr) as [kB HBs];
-        pose proof (soundness_ty_at_sort HSA HAs Hn) as HAC;
-        assert (Hfn : G ⊢ λ A M : a_pi r A B) by (eapply wf_fn; [ exact HAs | exact HSA | exact HBs | exact HM ]);
-        cbn [nf_to_exp];
-        destruct r; cbn [abs_kind_sort] in HBs |- *;
-        [ destruct (pi_cong_sort HSA HAs HAC (wf_exp_eq_refl HBs)) as [k Hk];
-          eapply wf_conv'; [ exact Hfn | exact Hk ]
-        | exact (exp_conv_sort type_sort_prop (all_cong_sort HSA HAs HAC (wf_exp_eq_refl HBs)) Hfn) ]
+        assert (HGA : ⊢ G ▹{κd} A) by (eapply wf_ctx_extend; [ exact HAs | apply sort_kind_abs_kind_sort ]);
+        exact (fn_typed_at_nf HAs (IHM HGA) HnL Hr Hk Hn)
     end.
   (** An application: at the codomain instantiated, normalised *)
   - match goal with
-    | IHM : ⊢ ?G -> ?G ⊢ ?M : (nf_to_exp (nf_pi ?r ?A ?B)), IHN : ⊢ ?G -> forall Srt, _ -> ?G ⊢ (nf_to_exp ?A) : Srt -> ?G ⊢ ?N : _,
+    | IHM : ⊢ ?G -> ?G ⊢ ?M : (nf_to_exp (nf_pi ?κd ?κc ?A ?B)), IHN : ⊢ ?G -> forall Srt, _ -> ?G ⊢ (nf_to_exp ?A) : Srt -> ?G ⊢ ?N : _,
       Hn : nbe_ty_f ?G (nf_to_exp ?B)[Id,,?N] ?C, HG : ⊢ ?G |- _ =>
         pose proof (IHM HG) as HM; cbn [nf_to_exp] in HM;
-        assert (exists Spi, G ⊢ a_pi r (nf_to_exp A) (nf_to_exp B) : Spi) as [Spi HPi]
-          by (let S00 := fresh "S00" in let H00 := fresh "H00" in destruct (presup_exp_typ HM) as [S00 _ H00]; eauto);
-        destruct (wf_pi_parts_large _ _ _ _ _ HPi) as (SA & iU & HSA & HA & HBr);
+        assert (exists Spi, G ⊢ a_pi κd κc (nf_to_exp A) (nf_to_exp B) : Spi) as [Spi HPi]
+          by (let S00 := fresh "S00" in let H00 := fresh "H00" in
+              destruct (presup_exp_typ_sorted HM ltac:(discriminate)) as [S00 [_ H00]]; eauto);
+        destruct (wf_pi_parts HPi) as (Hκ & (SA & HSAk & HA) & (iU & HBr));
+        pose proof (sort_kind_type_sort _ _ HSAk) as HSA;
         pose proof (IHN HG _ HSA HA) as HN;
-        pose proof (type_sort_kind_universe r iU) as HSB;
-        assert (HBN : G ⊢ (nf_to_exp B)[Id,,N] : abs_kind_sort r Typeω@iU)
-          by (exact (sub_preserves_sort _ _ _ _ _ _ _ HBr HSB (wf_sub_single _ _ _ _ _ _ HA HSA HN)));
-        exact (exp_conv_sort HSB (soundness_ty_at_sort HSB HBN Hn) (wf_app _ _ _ _ _ _ _ _ _ _ HA HSA HBr HM HN))
+        pose proof (type_sort_kind_universe κc iU) as HSB;
+        assert (HBN : G ⊢ (nf_to_exp B)[Id,,N] : abs_kind_sort κc Typeω@iU)
+          by (exact (sub_preserves_sort _ _ _ _ _ _ _ HBr HSB (wf_sub_single _ _ _ _ _ _ _ HA HSAk HN)));
+        refine (exp_conv_sort HSB (soundness_ty_at_sort HSB HBN Hn) _);
+        eapply wf_app; [ exact HA | exact HSAk | exact HBr | exact Hκ | exact HM | exact HN ]
     end.
   (** A local definition: its type of the sort [r], an annotation checked
       against, without one a type of a universe; the body's type, of a
       sort, instantiated, normalised *)
-  - match goal with Ha : alg_let_ann _ _ |- _ => destruct Ha as [-> | ->] end; simpl_let_guards.
-    + (** Without an annotation *)
-      match goal with
-      | Hr : nbe_ty_kind ?G (nf_to_exp ?W) relevant,
-        IHM : ⊢ ?G -> ?G ⊢ ?M : (nf_to_exp ?W), IHB : ⊢ ?G ▸ (nf_to_exp ?W) ≔ ?M -> _ ⊢ ?B : (nf_to_exp ?C),
-        Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] ?D, HG : ⊢ ?G |- _ =>
-          pose proof (IHM HG) as HM;
-          let SW := fresh "SW" in let HSW := fresh "HSW" in let HW0 := fresh "HW0" in let kW := fresh "kW" in
-          let HAs := fresh "HAs" in
-          destruct (presup_exp_typ HM) as [SW HSW HW0];
-          destruct (typed_at_relevance_of_nbe HSW HW0 Hr) as [kW HAs]; cbn [abs_kind_sort] in HAs;
-          assert (HGd : ⊢ G ▸ (nf_to_exp W) ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | constructor | exact HM ]);
-          pose proof (IHB HGd) as HB;
-          destruct (presup_exp_typ HB) as [SC HSC HC];
-          pose proof (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_def _ _ _ _ _ _ HAs (type_sort_universe _) HM)) as HCs;
-          exact (exp_conv_sort HSC (soundness_ty_at_sort HSC HCs Hn)
-                   (wf_let _ _ _ _ _ _ _ _ _ HAs (type_sort_universe _) HM HB ltac:(left; split; [ reflexivity | eexists; reflexivity ])))
-      end.
-    + (** With one *)
-      match goal with
-      | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?r ?u,
-        IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ?A : Srt -> ?G ⊢ ?M : ?A, IHB : ⊢ ?G ▸ ?A ≔ ?M -> _ ⊢ ?B : (nf_to_exp ?C),
-        Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] ?D, HG : ⊢ ?G |- _ =>
-          pose proof (sort_typed_of_is_sort_nf (IHA HG) Hs) as HAs;
-          pose proof (type_sort_kind_universe r (universe_nf_large_index u)) as HSA;
-          pose proof (IHM HG _ HSA HAs) as HM;
-          assert (HGd : ⊢ G ▸ A ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | exact HSA | exact HM ]);
-          pose proof (IHB HGd) as HB;
-          destruct (presup_exp_typ HB) as [SC HSC HC];
-          pose proof (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_def _ _ _ _ _ _ HAs HSA HM)) as HCs;
-          exact (exp_conv_sort HSC (soundness_ty_at_sort HSC HCs Hn)
-                   (wf_let _ _ _ _ _ _ _ _ _ HAs HSA HM HB ltac:(right; reflexivity)))
-      end.
+  - match goal with
+    | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?r ?u,
+      IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ?A : Srt -> ?G ⊢ ?M : ?A, IHB : ⊢ ?G ▸ ?A ≔ ?M -> _ ⊢ ?B : (nf_to_exp ?C),
+      HnL : nf_to_exp ?C <> LevelSort, Hr : nbe_ty_kind _ (nf_to_exp ?C) ?κC, Hlc : ?κC = ak_level -> ?r = ak_level,
+      Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id,,?M] ?D, HG : ⊢ ?G |- _ =>
+        pose proof (sort_typed_of_is_sort_nf (IHA HG) Hs) as HAs;
+        pose proof (type_sort_kind_universe r (universe_nf_large_index u)) as HSA;
+        pose proof (IHM HG _ HSA HAs) as HM;
+        assert (HGd : ⊢ G ▸ A ≔ M) by (eapply wf_ctx_extend_def; [ exact HAs | exact HSA | exact HM ]);
+        exact (let_typed_at_nf HAs HM (IHB HGd) HnL Hr Hlc Hn)
+    end.
   (** A module [let] *)
   - match goal with
     | IHU : ⊢ ?G -> gc_deps ⍮ gc_stack ⍮ ?G ⊢ᵘ ?U ≈ ?U, IHB : ⊢ ?G ▹ₘ ?U -> _ ⊢ ?B : (nf_to_exp ?C),
+      HnL : nf_to_exp ?C <> LevelSort, Hr : nbe_ty_kind _ (nf_to_exp ?C) ?κC, Hlc : ?κC <> ak_level,
       Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id ,,ₘ me_lit ?U] ?D, HG : ⊢ ?G |- _ =>
         pose proof (IHU HG) as HU;
         assert (HGU : ⊢ G ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU);
-        pose proof (IHB HGU) as HB;
-        destruct (presup_exp_typ HB) as [SC HSC HC];
-        pose proof (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_mod _ _ _ _ HU)) as HCs;
-        exact (exp_conv_sort HSC (soundness_ty_at_sort HSC HCs Hn) (wf_let_mod _ _ _ _ _ _ _ HU HC HSC HB))
+        exact (let_mod_typed_at_nf HU (IHB HGU) HnL Hr Hlc Hn)
     end.
   (** A member, at the normal form of the type its module's description
       reads *)
   - match goal with
     | IHH : ⊢ ?G -> gc_deps ⍮ gc_stack ⍮ ?G ⊢ᵐ ?H0 ≈ ?H0, Hm : mdenote _ _ _ (me_mem ?H0 ?x0) _, Ht : mdesc_type _ = Some ?A0,
       Hn : nbe_ty_f ?G ?A0 ?B, HG : ⊢ ?G |- _ =>
-        destruct (member_wf _ _ _ _ _ (IHH HG) Hm Ht) as ([SA HSA HA] & _ & HMt);
+        destruct (member_wf _ _ _ _ _ (IHH HG) Hm Ht) as ((SA & HSA & HA) & _ & HMt);
         exact (exp_conv_sort HSA (soundness_ty_at_sort HSA HA Hn) HMt)
     end.
   (** A variable, at the normal form of its type *)
   - match goal with
     | Hl : ?G ∋ #?x : ?A, Hn : nbe_ty_f ?G ?A ?B, HG : ⊢ ?G |- _ =>
         assert (Hx : G ⊢ #x : A) by (apply wf_vlookup; assumption);
-        destruct (presup_exp_typ Hx) as [SA HSA HA];
+        destruct (ctx_lookup_wf_sorted _ _ _ _ _ HG Hl) as (SA & HSA & HA);
         exact (exp_conv_sort HSA (soundness_ty_at_sort HSA HA Hn) Hx)
     end.
   (** A record's type former, a tuple and a projection *)
@@ -1152,7 +1249,7 @@ Proof.
     | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P, IHA : ⊢ ?P ++ ?G -> ?P ++ ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?r ?u, HG : ⊢ ?G |- _ =>
         pose proof (IHX HG) as HX; pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HP;
         pose proof (sort_typed_of_is_sort_nf (IHA HP) Hs) as HAs;
-        eapply wf_ext_eq_ass_same; [ exact HX | exact HAs | apply type_sort_kind_universe | exact HAs ]
+        eapply wf_ext_eq_ass_same; [ exact HX | exact HAs | apply sort_kind_abs_kind_sort | exact HAs ]
     end.
   - match goal with
     | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P, IHA : ⊢ ?P ++ ?G -> ?P ++ ?G ⊢ ?A : (nf_to_exp ?UA), Hs : is_sort_nf ?UA ?r ?u,
@@ -1205,11 +1302,12 @@ Proof.
     match goal with
     | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P /\ _, IHE : ⊢ ?P ++ ?G -> wf_modexp_eq _ _ _ ?E ?E, Ha : all_assumptions ?P,
       Habs : levels_abstractable _ _ ?G ?P ?E, HG : ⊢ ?G |- _ =>
-        destruct (IHX HG) as [HX [l Hl]]; pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HP;
+        let lp := fresh "lp" in
+        destruct (IHX HG) as [HX [lp Hl]]; pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HP;
         destruct Habs as [Hsorted | (R & HR & Hnl)];
-        [ eapply wf_unit_eq_alias with (param_level := l) (param_sorts := param_sort_at P l) (lv := true) (lv' := true)
+        [ eapply wf_unit_eq_alias with (param_level := lp) (param_sorts := param_sort_at P lp) (lv := true) (lv' := true)
                                          (Rt := mdesc_term ak_relevant a_prop None) (Rt' := mdesc_term ak_relevant a_prop None)
-        | eapply wf_unit_eq_alias with (param_level := l) (param_sorts := param_sort_at P l) (lv := false) (lv' := false)
+        | eapply wf_unit_eq_alias with (param_level := lp) (param_sorts := param_sort_at P lp) (lv := false) (lv' := false)
                                          (Rt := R) (Rt' := R) ];
         first [ exact HX | exact Ha | exact (IHE HP) | apply param_sort_at_parameter_sort | exact (params_kinded_sorts _ _ _ Hl)
               | intros _; assumption | discriminate ]
@@ -1248,8 +1346,8 @@ Proof.
       IHH : ⊢ ?G -> wf_modexp_eq _ _ _ ?H0 ?H0, IHN : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ?B : Srt -> ?G ⊢ ?N : ?B, HG : ⊢ ?G
       |- wf_modexp_eq _ _ _ (me_app _ _) _ =>
         pose proof (IHH HG) as HH;
-        destruct (mtele_head_wf _ _ _ _ _ _ HH Hm Htl Hv) as [i HB];
-        pose proof (IHN HG _ (type_sort_universe _) HB) as HN;
+        destruct (mtele_head_wf _ _ _ _ _ _ HH Hm Htl Hv) as (Sb & HSb & HB);
+        pose proof (IHN HG _ (evaluated_sort_type_sort _ HSb) HB) as HN;
         eapply wf_me_app; eauto using wf_exp_eq_refl
     end.
 Qed.
@@ -1371,8 +1469,7 @@ Proof.
       normal form *)
   | HMi : ?G ⊢a ?M ⟹ Σₚⁿ ?P ?Q, IH : forall A0, ⊢ ?G -> nbe_ty_f ?G _ A0 -> _ = A0 |- ?P = _ =>
       pose proof (alg_type_infer_sound HMi HΓ0) as HM;
-      destruct (presup_exp_typ HM) as [S0 HS0 HPQ0];
-      pose proof (prop_former_typed HPQ0 ltac:(cbn [nf_to_exp]; eauto 6)) as HPQ;
+      cbn [nf_to_exp] in HM; pose proof (and_typed_of_proof HM) as HPQ;
       destruct (nbe_ty_exists_sort type_sort_prop HPQ) as [WPQ HWPQ];
       pose proof (IH _ HΓ0 HWPQ) as E; subst WPQ;
       cbn [nf_to_exp] in HWPQ; destruct (nbe_ty_and_inv _ _ _ _ HWPQ) as (WP & WQ & E' & HWP & _);
@@ -1382,13 +1479,11 @@ Proof.
   | HMi : ?G ⊢a ?M ⟹ Σₚⁿ ?P ?Q, Hn : nbe_ty_f ?G (nf_to_exp ?Q)[Id,,a_left ?M] _ |- _ =>
       pose proof (alg_type_infer_sound (alg_type_infer_right _ _ _ _ _ HMi Hn) HΓ0) as HR;
       pose proof (alg_type_infer_sound HMi HΓ0) as HM; cbn [nf_to_exp] in HM;
-      assert (HPQ : G ⊢ Σₚ (nf_to_exp P) (nf_to_exp Q) : Propₘ)
-        by (let S00 := fresh "S00" in let H00 := fresh "H00" in
-            destruct (presup_exp_typ HM) as [S00 _ H00]; exact (prop_former_typed H00 ltac:(eauto 6)));
+      pose proof (and_typed_of_proof HM) as HPQ;
       destruct (wf_and_inversion _ _ _ _ _ _ HPQ) as [HP HQ _];
       assert (HL : G ⊢ a_left M : nf_to_exp P) by (eapply wf_left; eassumption);
       normal_of_typed type_sort_prop
-        (sub_preserves_sort _ _ _ _ _ _ _ HQ type_sort_prop (wf_sub_single _ _ _ _ _ _ HP type_sort_prop HL)) Hn Hnbe
+        (sub_preserves_sort _ _ _ _ _ _ _ HQ type_sort_prop (wf_sub_single _ _ _ _ _ _ _ HP ltac:(constructor) HL)) Hn Hnbe
   (** The type former and a constructor: the normal forms of closed types *)
   | Hl : ind_lookup _ _ _ = Some ?D, Hk : ind_member ?D _ = Some _, Hlt : _ < ind_ndecl ?D, Hn : nbe_ty_f _ (ind_ty _ _) _ |- _ =>
       destruct (decl_of_lookup _ _ _ _ _ HΓ0 Hl) as [HD Hc];

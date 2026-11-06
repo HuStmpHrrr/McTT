@@ -247,11 +247,13 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 (** A λ-abstraction, over a type of the kind [κd] its sort says: a
     function, a proof of a [∀] or a function between levels, as the kind
     [κc] of its body's type is ([nbe_ty_kind]), at kinds a [Π] may join
-    ([pi_kinds]). *)
+    ([pi_kinds]).  The body's type is no [LevelSort], which is of no sort
+    and so no codomain ([wf_fn]). *)
 | alg_type_infer_fn :
   `( Γ ⊢a A ⟹ UA ->
      is_sort_nf UA κd u ->
      Γ ▹{κd} A ⊢a M ⟹ B ->
+     nf_to_exp B <> LevelSort ->
      nbe_ty_kind (Γ ▹{κd} A) B κc ->
      pi_kinds κd κc ->
      nbe_ty_f Γ A C ->
@@ -264,17 +266,28 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      nbe_ty_f Γ B[Id,,N] C ->
      Γ ⊢a M $ N ⟹ C )
 (** A local definition: its annotation infers a sort, and the body is
-    checked against it; then the body of the [let]. *)
+    checked against it; then the body of the [let].  The body's type is no
+    [LevelSort], of no sort, and of a kind the binding may build
+    ([level_closed_sort]): a type of levels only under a definition of a
+    level ([wf_let]). *)
 | alg_type_infer_let :
   `( Γ ⊢a A ⟹ UA ->
      is_sort_nf UA r u ->
      Γ ⊢a M ⟸ A ->
      Γ ▸ A ≔ M ⊢a B ⟹ C ->
+     nf_to_exp C <> LevelSort ->
+     nbe_ty_kind (Γ ▸ A ≔ M) C κC ->
+     (κC = ak_level -> r = ak_level) ->
      nbe_ty_f Γ C[Id,,M] D ->
      Γ ⊢a a_let (b_def A M) B ⟹ D )
+(** A local module: the body's type is no [LevelSort] and no type of
+    levels ([module_body_sort], [wf_let_mod]). *)
 | alg_type_infer_let_mod :
   `( Γ ⊢aᵘ U ->
      Γ ▹ₘ U ⊢a B ⟹ C ->
+     nf_to_exp C <> LevelSort ->
+     nbe_ty_kind (Γ ▹ₘ U) C κC ->
+     κC <> ak_level ->
      nbe_ty_f Γ C[Id ,,ₘ me_lit U] D ->
      Γ ⊢a ℓₘ U in B ⟹ D )
 (** A member infers the normal form of the term part of what it denotes.
