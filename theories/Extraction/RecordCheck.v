@@ -31,10 +31,8 @@ Equations get_record_nf (A : nf) : { p & { Rs | A = nf_record p Rs } } + { foral
 
 Extraction Inline get_record_nf.
 
-(** What an inference returns: the type, which infers a sort and is a
-    type. *)
-Definition infer_post (G : ctx) (M : exp) (A : nf) : Prop :=
-  G ⊢a M ⟹ A /\ (exists UA r u, G ⊢a A ⟹ UA /\ is_sort_nf UA r u) /\ G ⊢ᵗ A.
+(** What an inference returns: the inferred type. *)
+Definition infer_post (G : ctx) (M : exp) (A : nf) : Prop := G ⊢a M ⟹ A.
 
 (** ** The Type Former *)
 
@@ -49,7 +47,7 @@ Lemma record_ty_post : forall G p R W, ⊢ G -> record_lookup gc_deps gc_stack p
     nbe_ty_f G (record_ty R) W -> infer_post G (a_record p) W.
 Proof.
   intros * HG Hl HW; destruct (record_former_typed _ _ _ HG Hl) as [j [_ Hj]].
-  split; [ econstructor; eassumption | eapply level_of_nbe_typ; eassumption ].
+  econstructor; eassumption.
 Qed.
 
 (** A record's type former. *)
@@ -69,7 +67,7 @@ Lemma proj_typed : forall G M p Rs R f k U, ⊢ G -> G ⊢a M ⟹ nf_record p Rs
 Proof.
   intros * HG HM Hl Hfk.
   destruct (alg_proj_typed _ _ _ _ _ _ _ _ HG (alg_type_infer_sound HM HG) Hl Hfk) as (m & Hm & _).
-  exact (mk_wf_type _ (type_sort_relevance_universe _ m) Hm).
+  exact (wf_type_of_sort _ (type_sort_kind_universe _ m) Hm).
 Qed.
 
 Lemma proj_order : forall G M p Rs R f k U, ⊢ G -> G ⊢a M ⟹ nf_record p Rs ->
@@ -82,8 +80,7 @@ Lemma proj_post : forall G M p Rs R f k U W, ⊢ G -> G ⊢a M ⟹ nf_record p R
     List.nth_error (record_fields R) k = Some (f, U) ->
     nbe_ty_f G U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)] W -> infer_post G (a_proj f M) W.
 Proof.
-  intros * HG HM Hl Hfi Hfk HW; pose proof (proj_typed _ _ _ _ _ _ _ _ HG HM Hl Hfk) as Hm.
-  split; [ econstructor; eassumption | eapply level_of_nbe; eassumption ].
+  intros * HG HM Hl Hfi Hfk HW; econstructor; eassumption.
 Qed.
 
 (** A projection, from the inference of its element. *)
@@ -92,7 +89,7 @@ Definition proj_infer G (HG : ⊢ G) (P : checker_env G) f M
   { A : nf | infer_post G (a_proj f M) A } + { forall A, ~ G ⊢a a_proj f M ⟹ A }.
 Proof.
   pose proof (ctx_wf_gctx _ _ _ HG) as Hg.
-  destruct IM as [[A [HM _]] | HN]; [| right; intros A H; inversion H; subst; eapply HN; eassumption ].
+  destruct IM as [[A HM] | HN]; [| right; intros A H; inversion H; subst; eapply HN; eassumption ].
   destruct (get_record_nf A) as [(p & Rs & ->) | Hne];
     [| right; intros W H; inversion H; subst;
        match goal with H' : G ⊢a M ⟹ _ |- _ => pose proof (functional_alg_type_infer Hg HM H') as E end;
@@ -141,13 +138,14 @@ Proof.
   split; [ exact HRl | exact (wf_record_apps_inv _ _ _ _ _ Hl HRa HRl) ].
 Qed.
 
-(** The type of the field [k], when the fields before it check: a type. *)
+(** The type of the field [k], when the fields before it check: a type of
+    a sort. *)
 Lemma tuple_field_typed : forall G T (fs : list (string * exp)) p Rs R i, ⊢ G ->
     G ⊢ T : Typeω@i -> nbe_ty_f G T (nf_record p Rs) -> record_lookup gc_deps gc_stack p = Some R ->
     List.map fst fs = List.map fst (record_fields R) ->
     forall k, (forall j, j < k -> field_checks G R Rs fs j) ->
     forall f U, List.nth_error (record_fields R) k = Some (f, U) ->
-      G ⊢ᵗ U[sb_of_list Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))].
+      exists S, type_sort S /\ G ⊢ U[sb_of_list Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))] : S.
 Proof.
   intros * HG HT Hn Hl Hfs.
   destruct (record_nf_params _ _ _ _ _ _ HT Hn Hl) as [HRl HRt].
@@ -164,7 +162,7 @@ Proof.
              List.nth_error (tele_insts (record_fctx R k ++ record_params R) Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))) j
                = Some B -> G ⊢ N : B).
   { apply Hins; intros j g M U' Hj HM HU'.
-    destruct (IH j Hj ltac:(intros j' Hj'; apply Hprev; lia) g U' HU') as [Sm HSm Hm].
+    destruct (IH j Hj ltac:(intros j' Hj'; apply Hprev; lia) g U' HU') as (Sm & HSm & Hm).
     exact (alg_type_check_sound_sort (Hprev j Hj g M U' HM HU') HG HSm Hm). }
   assert (Hl1 : List.length (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs)) = k + List.length (record_params R))
     by (rewrite ?List.length_app, ?List.length_firstn, ?List.length_map in *; lia).
@@ -172,7 +170,20 @@ Proof.
               ltac:(intros j1 N N' B HN HN' HB; rewrite HN in HN'; injection HN' as <-; apply wf_exp_eq_refl; exact (Hins' _ _ _ HN HB)))
     as (SU & HSU & HUU).
   assert (HU : G ⊢ U[sb_of_list Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))] : SU) by (gen_presups; assumption).
-  exact (mk_wf_type _ HSU HU).
+  exists SU; split; [ exact HSU | exact HU ].
+Qed.
+
+(** The same, as a type. *)
+Corollary tuple_field_wf_type : forall G T (fs : list (string * exp)) p Rs R i, ⊢ G ->
+    G ⊢ T : Typeω@i -> nbe_ty_f G T (nf_record p Rs) -> record_lookup gc_deps gc_stack p = Some R ->
+    List.map fst fs = List.map fst (record_fields R) ->
+    forall k, (forall j, j < k -> field_checks G R Rs fs j) ->
+    forall f U, List.nth_error (record_fields R) k = Some (f, U) ->
+      G ⊢ᵗ U[sb_of_list Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))].
+Proof.
+  intros * HG HT Hn Hl Hfs k Hprev f U Hfk.
+  destruct (tuple_field_typed _ _ _ _ _ _ _ HG HT Hn Hl Hfs k Hprev f U Hfk) as (S & HS & HU).
+  exact (wf_type_of_sort _ HS HU).
 Qed.
 
 Lemma tuple_post : forall G T (fs : list (string * exp)) UT u p Rs R, ⊢ G ->
@@ -181,11 +192,7 @@ Lemma tuple_post : forall G T (fs : list (string * exp)) UT u p Rs R, ⊢ G ->
     infer_post G (a_tuple T fs) (nf_record p Rs).
 Proof.
   intros * HG HTi Hu Hn Hl Hfs HQ.
-  assert (HTs : G ⊢ T : UT) by exact (alg_type_infer_sound HTi HG).
-  rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HTs.
-  pose proof (wf_exp_universe_nf_large_index HTs) as HTl.
-  split; [ eapply alg_type_infer_tuple; [ exact HTi | exact Hu | exact Hn | exact Hl | exact Hfs | intros k; exact (HQ k) ]
-         | eapply level_of_nbe_typ; eassumption ].
+  eapply alg_type_infer_tuple; [ exact HTi | exact Hu | exact Hn | exact Hl | exact Hfs | intros k; exact (HQ k) ].
 Qed.
 
 (** A tuple, from the inference of its annotation and a check of each field
@@ -196,7 +203,7 @@ Definition tuple_infer G (HG : ⊢ G) (P : checker_env G) T (fs : list (string *
   { A : nf | infer_post G (a_tuple T fs) A } + { forall A, ~ G ⊢a a_tuple T fs ⟹ A }.
 Proof.
   pose proof (ctx_wf_gctx _ _ _ HG) as Hg.
-  destruct IT as [[UT [HTi _]] | HN]; [| right; intros A H; inversion H; subst; eapply HN; eassumption ].
+  destruct IT as [[UT HTi] | HN]; [| right; intros A H; inversion H; subst; eapply HN; eassumption ].
   destruct (univ_nf_idx_dec UT) as [[u Hu] | Hnu];
     [| right; intros A H; inversion H; subst;
        match goal with H' : G ⊢a T ⟹ _ |- _ => pose proof (functional_alg_type_infer Hg HTi H') as <- end;
@@ -225,7 +232,7 @@ Proof.
     destruct (List.nth_error (record_fields R) j) as [[g U] |] eqn:Hfk; [| left; intros ? ? ? _ H2; congruence ].
     destruct (string_dec f g) as [<- | Hfg]; [| left; intros ? ? ? H1 H2; rewrite Hk in H1; rewrite Hfk in H2; congruence ].
     destruct (CF (f, M) (List.nth_error_In _ _ Hk) _
-                (tuple_field_typed _ _ _ _ _ _ _ HG HTl HW Hl Hfs j Hprev f U Hfk)) as [Hc | Hc].
+                (tuple_field_wf_type _ _ _ _ _ _ _ HG HTl HW Hl Hfs j Hprev f U Hfk)) as [Hc | Hc].
     - left; intros f' M' U' H1 H2; rewrite Hk in H1; rewrite Hfk in H2; injection H1 as <- <-; injection H2 as <-; exact Hc.
     - right; intros H; exact (Hc (H f M U Hk Hfk)). }
   destruct (forall_lt_dec (field_checks G R Rs fs) (List.length fs) Hstep) as [HQ | HQ].
