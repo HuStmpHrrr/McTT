@@ -230,7 +230,7 @@ Section ContainerReadable.
                 List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
                 exists a a', ⟦ eb_motive bb ⟧ env_extend_typed ρb (List.combine (ns ++ x :: nil) ts) ↘ a /\
                   ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
-                  DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x').
+                  DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x' /\ not_level_sort a /\ domain_kind a <> ak_level).
   (** The view's instance at [u0], and [ub] related to it. *)
   Variable (cups : list domain).
   Hypotheses (Ecups : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ decl_env D u0 ↘ cups)
@@ -591,7 +591,7 @@ Section ContainerReadable.
       pose proof (container_end_entries_readable _ _ _ _ _ _ _ _ _ _ _ _ _ HMj' Hrv' Href EbQ HnQ AaQ AaQ HiQ) as Hra.
       destruct (SE self_index_readable j Mj u0 u0 bsQ bs' v v' HMj Hrv HG) as [_ [ts' Hrb]].
       destruct (HbB _ _ HMj' Hrv') as [bb Hbb]; destruct (HBks _ _ HMj Hrv) as [ba Hba].
-      destruct (Hmot_x j' Mj' j bb ba u0 u0 bsQ bs' v v' _ _ HMj' Hrv' Hsc Hbb Hba HG Hra Hrb) as (a1 & a2 & Ea1 & Ea2 & HRa).
+      destruct (Hmot_x j' Mj' j bb ba u0 u0 bsQ bs' v v' _ _ HMj' Hrv' Hsc Hbb Hba HG Hra Hrb) as (a1 & a2 & Ea1 & Ea2 & HRa & _).
       rewrite combine_tele_entries_snoc in Ea1.
       pose proof (proj1 (SE self_motive_move j Mj u u' bs bs' v v' bsQ bs' HMj Hrv Hi Hbq Hbb' _ _) HR) as HRQ.
       exists (a1 :: nil); split.

@@ -264,7 +264,7 @@ Section ElimViewRule.
     destruct (elim_exp_value_of _ _ _ _ _ _ _ Er3) as [u3' m3 Eu3 Em3 Eel3].
     pose proof (functional_eval_exps' _ _ _ _ Eu3 HUC2) as ->.
     (** The scrutinee at [C2]. *)
-    destruct (presup_rel_exp_under_ctx HM) as [iT HTM].
+    destruct (presup_rel_exp_under_ctx_mty _ _ _ _ _ _ _ _ _ HMm HM) as [iT HTM].
     destruct (rel_type_inversion_simple_at HRΓ HTM _ _ HC22) as (t3 & t3' & Et3 & Et3' & [Rt Ht]).
     assert (t3' = t3) as -> by (eapply functional_eval_exp; eassumption).
     (** The scrutinee's type is an inductive type, relevant. *)
