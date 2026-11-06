@@ -597,11 +597,12 @@ Proof.
   - destruct (all_assumptions_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
     rewrite <- app_assoc in HR; cbn [List.app] in HR.
     destruct (per_ctx_env_app_tail Δ Δ _ _ _ eq_refl HR) as [R1 HR1].
-    destruct (per_ctx_env_cons_clean_inversion HΓ HR1) as (i & head_rel & Hhead & HE).
+    destruct (per_ctx_env_cons_clean_inversion HΓ HR1) as (i & head_rel & Hhead & HAn & HE).
     destruct (Hhead _ _ Hρ) as [a a' Ha Ha' HRa].
     pose proof (functional_eval_exp _ _ _ _ Ha Ha') as <-.
+    destruct (HAn _ _ Hρ) as (a0 & Ea0 & Hna); pose proof (functional_eval_exp _ _ _ _ Ea0 Ha) as ->.
     (** The reflected variable, a neutral proof at a proposition. *)
-    pose proof (var_per_elem 0 HRa) as Hv.
+    pose proof (var_per_elem 0 HRa Hna) as Hv.
     pose proof (entry_readable_of_elem HRa Hv) as [Rv _].
     assert (Hρc : R1 (ρ ↦ ⇑! a 0 ⦂ entry_type_value a) (ρ ↦ ⇑! a 0 ⦂ entry_type_value a)).
     { apply HE.
@@ -638,8 +639,9 @@ Proof.
   - match goal with Hu : per_univ_elem _ _ _ _, E1 : forall c c', _ -> exists hc, eval_appm _ _ h c hc,
                     E2 : forall c c', _ -> exists hc', eval_appm _ _ h' c' hc',
                     IH : forall c c' hc hc', _ -> eval_appm _ _ h c hc -> eval_appm _ _ h' c' hc' -> dmod_member_kind _ _ hc _ _ |- _ =>
-      destruct (E1 _ _ (var_per_elem 0 Hu)) as (hc & Hc); destruct (E2 _ _ (var_per_elem 0 Hu)) as (hc' & Hc');
-      apply (kind_eval_appm _ _ _ _ _ Hc); exact (IH _ _ _ _ (var_per_elem 0 Hu) Hc Hc') end.
+      destruct (per_univ_elem_inhabited _ _ _ _ Hu) as (c0 & c0' & Hv);
+      destruct (E1 _ _ Hv) as (hc & Hc); destruct (E2 _ _ Hv) as (hc' & Hc');
+      apply (kind_eval_appm _ _ _ _ _ Hc); exact (IH _ _ _ _ Hv Hc Hc') end.
 Qed.
 
 Corollary per_dmod_nil_kind : forall h h', per_dmod h h' -> dmod_member_kind gc_deps gc_stack h nil member_kind_mod.
