@@ -238,4 +238,65 @@ Proof.
   intros * H; destruct (completeness_ty (wf_exp_eq_refl H)) as (W & _ & HW & _); exists W; exact HW.
 Qed.
 
+(** ** Levels Hold No Proofs
+
+    The normal form of a term of a type of levels holds no proof: the type's
+    value is a type of levels ([level_code]), whose related elements read
+    back without proofs ([read_at_level_type_proof_free]).  For example, a
+    function [f : Level@0 → Level@0] applied to a level [l] normalizes to a
+    level whose atoms are neutrals [f l] with no kept proof anywhere. *)
+Theorem nbe_level_proof_free : forall {Γ M A W},
+    Γ ⊢ M : A ->
+    Γ ⊢ A : LevelSort ->
+    nbe_f Γ M A W ->
+    nf_proof_free W.
+Proof.
+  intros * H HA [ρ0 a0 Hρ0 Ha0 HW].
+  pose proof (completeness_fundamental_exp _ _ _ H) as HM0.
+  pose proof (completeness_fundamental_exp _ _ _ HA) as HA0.
+  pose proof HM0 as [env_relΓ HΓ _ _].
+  destruct (rel_exp_under_ctx_simple_full_at HΓ HM0) as [k HM].
+  pose proof (wf_ctx_scoped_exp H) as HsΓ.
+  pose proof (per_ctx_then_per_env_initial_env HΓ HsΓ HsΓ) as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
+  assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
+  assert (ρ0 = ρ) as -> by (eapply functional_initial_env; eassumption).
+  destruct (HM _ _ Hrel) as (b & b' & R & Hb & Hb' & HR & Hexp).
+  (** The type's value is a type of levels, of the kind of levels *)
+  destruct (rel_exp_of_level_sort_inversion_simple_at HΓ HA0 _ _ Hrel) as (a & a' & Ea & _ & (Hl & _)).
+  functional_eval_rewrite_clear.
+  pose proof (level_code_kind _ Hl) as Hk.
+  (** so the term is evaluated, to an element of its relation *)
+  destruct HW as [w Hp Hw | m w Hr Hm Hw]; [ congruence |].
+  destruct Hexp as [Hp | (m0 & m0' & Hm0 & _ & Hmm)]; [ congruence |].
+  functional_eval_rewrite_clear.
+  exact (read_at_level_type_proof_free HR Hk Hmm Hw).
+Qed.
+
+(** Nor does the normal form of a type of levels, read back as an element
+    of [LevelSort]: a type of levels is [Level@n] or a [Π] between types of
+    levels ([level_code_head]), read back without proofs
+    ([level_type_read_proof_free]). *)
+Theorem nbe_level_type_proof_free : forall {Γ A W},
+    Γ ⊢ A : LevelSort ->
+    nbe_f Γ A LevelSort W ->
+    nf_proof_free W.
+Proof.
+  intros * HA [ρ0 a0 Hρ0 Ha0 HW].
+  pose proof (completeness_fundamental_exp _ _ _ HA) as HA0.
+  pose proof HA0 as [env_relΓ HΓ _ _].
+  pose proof (wf_ctx_scoped_exp HA) as HsΓ.
+  pose proof (per_ctx_then_per_env_initial_env HΓ HsΓ HsΓ) as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
+  assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
+  assert (ρ0 = ρ) as -> by (eapply functional_initial_env; eassumption).
+  destruct (rel_exp_of_level_sort_inversion_simple_at HΓ HA0 _ _ Hrel) as (a & a' & Ea & _ & (Hl & _ & [R HR])).
+  inversion Ha0; subst.
+  (** [LevelSort] is relevant: the type is evaluated and read back as a
+      type *)
+  destruct HW as [w Hp Hw | m w Hr Hm Hw]; [ discriminate |].
+  functional_eval_rewrite_clear.
+  inversion Hw; subst.
+  - discriminate.
+  - exact (level_type_read_proof_free HR (level_code_kind _ Hl) H1).
+Qed.
+
 End Fixed_GCtx.
