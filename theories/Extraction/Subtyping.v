@@ -36,13 +36,22 @@ Equations subtyping_nf_impl A B : { ⊢anf A ⊆ B } + {~ ⊢anf A ⊆ B } :=
 | Levelⁿ@m, Levelⁿ@n =>
     let*b _ := Compare_dec.le_lt_dec m n while _ in
     pureb _
-| Πⁿ A B, Πⁿ A' B' =>
-    let*b _ := nf_eq_dec A A' while _ in
+(** Two [Π]s: into a proposition, equal up to proofs; into an evaluated
+    kind, of the same kinds, out of domains equal up to proofs, covariant
+    in the codomain. *)
+| nf_pi κd κc A B, nf_pi κd' κc' A' B' with abs_kind_eq_dec κc ak_propositional => {
+  | left _ with nf_eq_upto_proofs_dec (nf_pi κd κc A B) (nf_pi κd' κc' A' B') => {
+    | left _ => left _
+    | right _ => right _ }
+  | right _ =>
+    let*b _ := abs_kind_eq_dec κd κd' while _ in
+    let*b _ := abs_kind_eq_dec κc κc' while _ in
+    let*b _ := nf_eq_upto_proofs_dec A A' while _ in
     let*b _ := subtyping_nf_impl B B' while _ in
-    pureb _
+    pureb _ }
 (** Pseudo-monadic syntax in this catch-all branch leaves obligations
-    unsolved, so it matches on [nf_eq_dec A B] directly. *)
-| A, B with nf_eq_dec A B => {
+    unsolved, so it matches on [nf_eq_upto_proofs_dec A B] directly. *)
+| A, B with nf_eq_upto_proofs_dec A B => {
   | left _ => left _
   | right _ => right _
   }.
@@ -54,7 +63,10 @@ Equations subtyping_nf_impl A B : { ⊢anf A ⊆ B } + {~ ⊢anf A ⊆ B } :=
 Ltac subtyping_failure :=
   lazymatch goal with H : ⊢anf _ ⊆ _ |- False => inversion H; subst end;
   simpl in *;
-  first [ lia | congruence | contradiction ].
+  first [ lia | congruence | contradiction
+        (** A kind left open: the refused [Π]'s codomain kind *)
+        | repeat match goal with κ : abs_kind |- _ => destruct κ end; simpl in *;
+          first [ congruence | contradiction | match goal with H : evaluated_kind _ |- _ => inversion H end ] ].
 
 (** A branch that derives subtyping: by the rule for the two normal forms,
     whose side condition the branch has decided. *)
@@ -71,10 +83,16 @@ Ltac st_pos :=
             | unfold lvl_le, lvl_canon; cbn; f_equal; assumption ]
   | |- ⊢anf univⁿ _ _ ⊆ Typeωⁿ@_ => apply alg_subtyping_nf_small_large
   | |- ⊢anf Levelⁿ@_ ⊆ Levelⁿ@_ => apply alg_subtyping_nf_level; assumption
-  | |- ⊢anf Πⁿ _ _ ⊆ Πⁿ _ _ => apply alg_subtyping_nf_pi; [ first [ assumption | reflexivity ] | assumption ]
-  (** Every other normal form is below itself only, by [alg_subtyping_nf_refl_case], whose
-      side condition holds by computation. *)
-  | |- ⊢anf ?A ⊆ ?A => apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ]
+  (** A [Π] into a proposition, equal up to proofs *)
+  | |- ⊢anf nf_pi _ ak_propositional _ _ ⊆ _ => apply alg_subtyping_nf_refl_case; [ exact I | assumption ]
+  | |- ⊢anf nf_pi _ _ _ _ ⊆ nf_pi _ _ _ _ =>
+      apply alg_subtyping_nf_pi; [ apply evaluated_kind_of_not_propositional; assumption | assumption | assumption ]
+  (** Every other normal form is below those equal to it up to proofs, by
+      [alg_subtyping_nf_refl_case], whose side condition holds by
+      computation; of different heads, none is. *)
+  | |- ⊢anf ?A ⊆ ?B =>
+      first [ apply alg_subtyping_nf_refl_case; [ exact I | assumption ]
+            | exfalso; match goal with H : nf_eq_upto_proofs _ _ |- _ => unfold nf_eq_upto_proofs in H; cbn in H; discriminate end ]
   end.
 
 Solve All Obligations with (repeat intro; first [ discriminate | subtyping_failure | st_pos ]).
