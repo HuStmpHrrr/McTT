@@ -249,8 +249,8 @@ Lemma realize_indty : forall p D ups ups'
        exists a a', ⟦ B ⟧ components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys) ↘ a /\
          ⟦ B ⟧ components_env D ups' (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ ws' ++ ys') ↘ a' /\
          Dom a ≈ a' ∈ per_top_typ /\
-         (forall c c', Dom c ≈ c' ∈ per_bot -> dr m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B
-           (⇑ a c) (⇑ a' c'))) ->
+         (forall n, dr m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) B
+           (⇑! a n) (⇑! a' n))) ->
     adm_uparams D ups nr ar dr ups' ->
     adm_uparams D ups nr ar dr ups ->
     forall k Mk ns ns', ind_member D k = Some Mk ->
@@ -536,7 +536,7 @@ Proof.
       pose proof (ttrans _ _ HM _ _ _ Hx (ttrans _ _ HM _ _ _ Hm (tsym _ _ HM _ _ Hx'))) as Hxx.
       destruct (Hdr k0 Mk0 xs xs' c _ gs1 t0 gs2 ws ws' k1 B ys ys' HM Hxx Hc eq_refl Hwx HB Hyx)
         as (b & b' & Eb & Eb' & Htt & Hbot).
-      pose proof (Hbot _ _ (var_per_bot (n := s))) as Hxv.
+      pose proof (Hbot s) as Hxv.
       pose proof (tshl _ _ HM ms c _ gs1 t0 gs2 ws Hmm Hc eq_refl Hww k1 ys ys' Hk Hy) as Hyy.
       pose proof (proj2 (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hmx Hc eq_refl Hww HB Hyy _ _) Hxv) as Hxv'.
       destruct (IH _ _ Hxv' Mk0 ms ms' xs xs' c gs1 t0 gs2 ws ws' (S k1) (ys ++ ⇑! b s :: nil)
@@ -752,67 +752,158 @@ Qed.
 
 (** [realize_record] at the record clause's premises, the realisability of
     the fields' types read off the induction hypotheses. *)
+(** The kinds of a [Π] of the kind of levels: out of a type of levels. *)
+Lemma pi_kinds_level_domain : forall κd, pi_kinds κd ak_level -> κd = ak_level.
+Proof. inversion 1; reflexivity. Qed.
+
+(** A variable is a neutral of every type but [LevelSort]: it reads back
+    as a variable, which holds no proof. *)
+Lemma var_neutral_at : forall a n, not_level_sort a -> Dom #ᵈ n ≈ #ᵈ n ∈ neutral_at a.
+Proof.
+  intros * Ha; split; [ exact Ha | split; [ apply var_per_bot | intros _ ] ].
+  split; intros s M HM; inversion HM; subst; exact I.
+Qed.
+
+(** So is a global, which reads back as itself. *)
+Lemma glob_neutral_at : forall a p, not_level_sort a -> Dom d_glob p ≈ d_glob p ∈ neutral_at a.
+Proof.
+  intros * Ha; split; [ exact Ha | split; [| intros _ ] ].
+  - intros s; econstructor; [ constructor | constructor | unfold ne_eq_upto_proofs; cbn; rewrite dec_eqb_refl; reflexivity ].
+  - split; intros s M HM; inversion HM; subst; exact I.
+Qed.
+
+(** Neutrals [per_bot] relates are neutrals of a type other than
+    [LevelSort] and not of a type of levels. *)
+Lemma per_bot_neutral_at : forall a c c', not_level_sort a -> domain_kind a <> ak_level ->
+    Dom c ≈ c' ∈ per_bot -> Dom c ≈ c' ∈ neutral_at a.
+Proof. intros * Ha Hk Hc; split; [ exact Ha | split; [ exact Hc | intros Hl; contradiction ] ]. Qed.
+
+(** A normal form related to one without proofs holds none: the two are
+    equal ([nf_ne_proof_free_eq]). *)
+Lemma per_top_proof_free_right : forall d d' s W',
+    Dom d ≈ d' ∈ per_top ->
+    (forall W, Rnf d in gc_deps ⍮ gc_stack ⍮ s ↘ W -> nf_proof_free W) ->
+    Rnf d' in gc_deps ⍮ gc_stack ⍮ s ↘ W' -> nf_proof_free W'.
+Proof.
+  intros * Hd Hpf HW'.
+  destruct (Hd s) as [W0 W0' HW0 HW0' HE].
+  pose proof (Hpf _ HW0) as Hp.
+  pose proof (proj1 nf_ne_proof_free_eq _ Hp _ HE) as <-.
+  rewrite (functional_read_nf _ _ _ _ HW' HW0'); exact Hp.
+Qed.
+
+(** So does a type readback related to one without proofs. *)
+Lemma per_top_typ_proof_free_right : forall a a' s A',
+    Dom a ≈ a' ∈ per_top_typ ->
+    (forall A, Rtyp a in gc_deps ⍮ gc_stack ⍮ s ↘ A -> nf_proof_free A) ->
+    Rtyp a' in gc_deps ⍮ gc_stack ⍮ s ↘ A' -> nf_proof_free A'.
+Proof.
+  intros * Ha Hpf HA'.
+  destruct (Ha s) as [A0 A0' HA0 HA0' HE].
+  pose proof (Hpf _ HA0) as Hp.
+  pose proof (proj1 nf_ne_proof_free_eq _ Hp _ HE) as <-.
+  rewrite (functional_read_typ _ _ _ _ HA' HA0'); exact Hp.
+Qed.
+
+(** A field's kind is not that of the types of levels. *)
+Lemma field_kind_not_level : forall κ, field_kind κ -> κ <> ak_level.
+Proof. intros κ []; discriminate. Qed.
+
 #[local] Ltac realize_record_from_ih :=
   match goal with
   | Hl : record_lookup _ _ ?p = Some ?R, Hnd : List.NoDup _, Hn : List.length ?ns = _, Hn' : List.length ?ns' = _,
-    Hps : per_top_ps _ ?ns ?ns', HfE : fields_evals _ ?R ?ns ?ns' ?fr |- _ =>
+    Hps : per_top_ps _ ?ns ?ns', HfE : fields_evals _ ?R ?ns ?ns' ?fr, HfS : fields_kinds ?R ?ns ?fr,
+    HfN : fields_not_level_sort ?R ?ns ?fr, HfK : forall k, field_kind (record_field_kind ?R k) |- _ =>
       unshelve epose proof (realize_record p R ns ns' fr Hl Hnd Hn Hn' Hps _) as (Hrt & Hrn & Hre);
-      [ intros k f T vs vs' Hk Hp; destruct (HfE _ _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & _ & Hbot & Htop)];
-        exists a, a'; repeat split; eauto |]
+      [ intros k f T vs vs' Hk Hp; destruct (HfE _ _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & [_ Hbot Htop _ _])];
+        exists a, a'; split; [ exact Ea | split; [ exact Ea' | split; [| exact Htop ] ] ];
+        (** A field's neutral projections are neutrals of a type other than
+            [LevelSort], not of a type of levels ([field_kind]). *)
+        intros cf cf' Hcf; apply Hbot; apply per_bot_neutral_at; [ | | exact Hcf ];
+        [ destruct (HfN _ _ _ _ _ Hk Hp) as (a0 & Ea0 & Hn0);
+          assert (a0 = a) as <- by (eapply functional_eval_exp; eassumption); exact Hn0
+        | destruct (HfS _ _ _ _ _ Hk Hp) as (a0 & Ea0 & Hn0);
+          assert (a0 = a) as <- by (eapply functional_eval_exp; eassumption);
+          rewrite Hn0; apply field_kind_not_level; apply HfK ] |]
   end.
 
-(** Realisability: related types read back alike, neutrals of them are
-    related (a neutral at a proposition is a neutral proof, which reads
-    back as itself), and related elements read back alike. *)
+(** Realisability of two related types [a], [a'] at the relation [R] of
+    their elements. *)
+Record realizable_type (a a' : domain) (R : relation domain) : Prop := mk_realizable_type
+  { (** They read back alike *)
+    realizable_type_top_typ : Dom a ≈ a' ∈ per_top_typ
+    (** Their neutrals are related elements (a neutral at a proposition is
+        a neutral proof, which reads back as itself) *)
+  ; realizable_type_neutral : forall c c', Dom c ≈ c' ∈ neutral_at a -> Dom ⇑ a c ≈ ⇑ a' c' ∈ R
+    (** Related elements read back alike *)
+  ; realizable_type_top : forall b b', Dom b ≈ b' ∈ R -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top
+    (** At a type of levels, an element reads back without proofs: a level
+        is made of levels only *)
+  ; realizable_type_elem_proof_free : domain_kind a = ak_level ->
+      forall b b' s W, Dom b ≈ b' ∈ R -> Rnf ⇓ a b in gc_deps ⍮ gc_stack ⍮ s ↘ W -> nf_proof_free W
+    (** And the type itself reads back without proofs *)
+  ; realizable_type_type_proof_free : domain_kind a = ak_level ->
+      forall s A, Rtyp a in gc_deps ⍮ gc_stack ⍮ s ↘ A -> nf_proof_free A }.
+
+(** The record of realisability, its components at a type of levels closed
+    when the type is visibly of another kind: only a [Level@n] and a [Π]
+    may be of the kind of levels. *)
+#[local] Ltac realizable_split :=
+  apply mk_realizable_type; try solve [ intros Hk; exfalso; first [ congruence | discriminate Hk ] ].
+
+(** Realisability of every related types. *)
 Lemma realize_per_univ_elem_gen : forall {i a a' R},
-    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
-    Dom a ≈ a' ∈ per_top_typ
-    /\ (forall {c c'}, Dom c ≈ c' ∈ per_bot -> Dom ⇑ a c ≈ ⇑ a' c' ∈ R)
-    /\ (forall {b b'}, Dom b ≈ b' ∈ R -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top).
+    DF a ≈ a' ∈ per_univ_elem i ↘ R -> realizable_type a a' R.
 Proof.
   intros * Hunivelem. simpl in Hunivelem.
   per_univ_elem_induction Hunivelem.
   - (** A large universe: its neutrals are neutral types, relevant; its
         elements read back as types. *)
-    subst; repeat split.
+    subst; realizable_split.
     + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
     + intros c c' Hc; apply_relation_equivalence.
-      constructor; [| reflexivity | reflexivity ].
-      eexists; basic_per_univ_elem_econstructor; [ cbn; constructor | reflexivity | exact Hc | reflexivity ].
-    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _].
-      match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
+      constructor; [| reflexivity | reflexivity | discriminate | discriminate ].
+      eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | exact (proj1 (proj2 Hc)) | reflexivity ].
+    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _ _ _].
+      match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as [Htt _ _ _ _] end.
       intro s; destruct (Htt s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ constructor; exact HC | constructor; exact HC' | exact HE ].
   - (** A small universe.  It reads back as the universe at the canonical
         form its level reads back as, which the two related levels share; the
         other two components are as in the large tier, with the elements at
         the index of the realiser. *)
-    repeat split.
+    realizable_split.
     + intro s.
-      match goal with H : per_lvl _ _ |- _ => destruct (per_lvl_reads _ _ H s) as (L & L' & HW & HW' & HE) end.
-      apply (mk_type_reads_alike _ _ _ (nf_univ_of L) (nf_univ_of L'));
-        [ apply read_typ_suniv; assumption | apply read_typ_suniv; assumption | apply nf_univ_of_upto_proofs; exact HE ].
+      match goal with H : per_lvl _ _ |- _ => destruct (per_lvl_reads _ _ H s) as (L & HW & HW' & _) end.
+      apply (mk_type_reads_alike _ _ _ (nf_univ_of L) (nf_univ_of L));
+        [ apply read_typ_suniv; assumption | apply read_typ_suniv; assumption | apply nf_univ_of_upto_proofs; reflexivity ].
     + intros c c' Hc; apply_relation_equivalence.
-      constructor; [| reflexivity | reflexivity ].
-      eexists; basic_per_univ_elem_econstructor; [ cbn; constructor | reflexivity | exact Hc | reflexivity ].
-    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _].
-      match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
+      constructor; [| reflexivity | reflexivity | discriminate | discriminate ].
+      eexists; basic_per_univ_elem_econstructor; [ reflexivity | reflexivity | exact (proj1 (proj2 Hc)) | reflexivity ].
+    + intros b b' Hb; apply_relation_equivalence; destruct Hb as [[R' HR'] _ _ _ _].
+      match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as [Htt _ _ _ _] end.
       intro s; destruct (Htt s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ constructor; exact HC | constructor; exact HC' | exact HE ].
-  - (** A type of levels: its elements read back at every sort. *)
-    repeat split.
+  - (** A type of levels: its elements read back at every sort, as levels
+        without proofs. *)
+    realizable_split.
     + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
     + intros c c' Hc; apply_relation_equivalence.
-      apply per_bot_then_per_lvl_at; exact Hc.
+      apply per_bot_then_per_lvl_at; exact (proj2 Hc).
     + intros b b' Hb; apply_relation_equivalence; intro s.
-      destruct (Hb s) as [L L' HL HL' HE _].
-      apply (mk_normal_reads_alike _ _ _ (nf_lvl_of L) (nf_lvl_of L'));
-        [ eapply read_nf_level_sort; eassumption | eapply read_nf_level_sort; eassumption | apply nf_lvl_of_upto_proofs; exact HE ].
+      destruct (Hb s) as [L HL HL' _ _].
+      apply (mk_normal_reads_alike _ _ _ (nf_lvl_of L) (nf_lvl_of L));
+        [ eapply read_nf_level_sort; eassumption | eapply read_nf_level_sort; eassumption | apply nf_lvl_of_upto_proofs; reflexivity ].
+    + intros _ b b' s W Hb HW; apply_relation_equivalence.
+      destruct (Hb s) as [L HL _ _ Hp].
+      assert (HL2 : Rnf ⇓ (Levelᵈ@n) b in gc_deps ⍮ gc_stack ⍮ s ↘ nf_lvl_of L) by (eapply read_nf_level_sort; exact HL).
+      rewrite (functional_read_nf _ _ _ _ HW HL2); exact Hp.
+    + intros _ s A HA; inversion HA; subst; exact I.
   - (** [Prop]: its neutrals are neutral propositions; its elements read
         back as types. *)
-    repeat split.
+    realizable_split.
     + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
-    + intros c c' Hc; apply_relation_equivalence.
+    + intros c c' [_ [Hc _]]; apply_relation_equivalence.
       constructor; [ reflexivity | reflexivity |].
       intro s; destruct (Hc s) as [C C' HC HC' HE].
       apply (mk_type_reads_alike _ _ _ (⇑ⁿ{ak_propositional} C) (⇑ⁿ{ak_propositional} C'));
@@ -821,16 +912,13 @@ Proof.
     + intros b b' Hb; apply_relation_equivalence; destruct Hb as [_ _ Ht].
       intro s; destruct (Ht s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ apply read_nf_prop; assumption | apply read_nf_prop; assumption | exact HE ].
-  - (** [LevelSort]: its neutrals are neutral types of levels; its
+  - (** [LevelSort]: it has no neutrals, no variable being of it; its
         elements read back as types, as types of the least small index. *)
-    repeat split.
+    realizable_split.
     + apply per_top_typ_of_reads; intro s; eexists; split; econstructor.
-    + intros c c' Hc; apply_relation_equivalence.
-      assert (Hcode : per_level_code per_ne (⇑ LevelSortᵈ c) (⇑ LevelSortᵈ c')) by (econstructor; [ exact Hc | reflexivity ]).
-      split; [ do 2 eexists; left; exact Hcode
-             | split; [ do 2 eexists; right; exact Hcode | eexists; exact (per_level_code_univ_elem _ _ _ Hcode _) ] ].
+    + intros c c' [Hn _]; exfalso; exact (Hn eq_refl).
     + intros b b' Hb; apply_relation_equivalence; destruct Hb as [_ [_ [R' HR']]].
-      match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as (Htt & _ & _) end.
+      match goal with IH : forall A B R, per_univ_elem _ R A B -> _ |- _ => destruct (IH _ _ _ HR') as [Htt _ _ _ _] end.
       intro s; destruct (Htt s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C');
         [ apply read_nf_at_level_sort; exact HC | apply read_nf_at_level_sort; exact HC' | exact HE ].
@@ -838,9 +926,9 @@ Proof.
         a proof term, which erasure ignores; its neutrals are neutral
         proofs. *)
     match goal with Hp : per_prop _ _ |- _ => destruct Hp as [Hl Hr Ht] end.
-    repeat split.
+    realizable_split.
     + exact Ht.
-    + intros c c' Hc; apply_relation_equivalence; split; intro s; destruct (Hc s) as [M M' HM HM' _];
+    + intros c c' [_ [Hc _]]; apply_relation_equivalence; split; intro s; destruct (Hc s) as [M M' HM HM' _];
         eexists; constructor; eassumption.
     + intros b b' Hb; apply_relation_equivalence; destruct Hb as [Hb Hb']; intro s.
       destruct (Hb s) as [M HM], (Hb' s) as [M' HM'].
@@ -849,78 +937,135 @@ Proof.
   - (** A [Π]: read back under a fresh variable of the domain, a neutral
         proof at a proposition; its neutrals applied are neutrals of the
         relevant codomain. *)
-    destruct IHHunivelem as (Hatt & Habot & Hatop).
-    repeat split.
+    destruct IHHunivelem as [Hatt Habot Hatop Hapf Hatpf].
+    match goal with
+    | HT : forall c c' (e : in_rel c c'), rel_mod_eval _ B _ B' _ _ |- _ => rename HT into HTB
+    end.
+    match goal with
+    | HB : forall c c', in_rel c c' -> rel_typ_kind B _ κc |- _ => rename HB into HBk
+    end.
+    match goal with
+    | HN : forall c c', in_rel c c' -> value_not_level_sort B _ |- _ => rename HN into HBn
+    end.
+    match goal with Hna0 : not_level_sort a |- _ => rename Hna0 into Hna end.
+    match goal with Hd0 : domain_kind a = κd |- _ => rename Hd0 into Hda end.
+    match goal with Hk0 : pi_kinds κd κc |- _ => rename Hk0 into Hpk end.
+    (** The fresh variable of the domain at the length [s]. *)
+    assert (Hv : forall s, Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel) by (intros s; apply Habot; apply var_neutral_at; exact Hna).
+    (** The codomain's kind is [κc], and at the kind of levels so is the
+        domain's. *)
+    assert (Hbk : forall c c' b, in_rel c c' -> ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b -> domain_kind b = κc).
+    { intros * Hc Eb; destruct (HBk _ _ Hc) as (b0 & Eb0 & Hb0).
+      assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); exact Hb0. }
+    assert (Hlvl : κc = ak_level -> domain_kind a = ak_level)
+      by (intros ->; rewrite Hda; exact (pi_kinds_level_domain _ Hpk)).
+    realizable_split.
     + intro s.
-      assert (Hv : Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel) by (apply Habot; apply var_per_bot).
-      match goal with HT : forall c c' (e : in_rel c c'), rel_mod_eval _ B _ B' _ _ |- _ =>
-        destruct (HT _ _ Hv) as [b b' Eb Eb' [HRb (Hbtt & _ & _)]] end.
+      destruct (HTB _ _ (Hv s)) as [b b' Eb Eb' [HRb [Hbtt _ _ _ _]]].
       destruct (Hatt s) as [A0 A0' HA0 HA0' HEA].
       destruct (Hbtt (S s)) as [B0 B0' HB0 HB0' HEB].
       apply (mk_type_reads_alike _ _ _ (nf_pi κd κc A0 B0) (nf_pi κd κc A0' B0'));
         [ econstructor; eassumption | econstructor; eassumption | apply nf_pi_upto_proofs; assumption ].
-    + intros c c' Hc; apply_relation_equivalence.
+    + intros c c' [_ [Hc Hcpf]]; apply_relation_equivalence.
       constructor; [ reflexivity | reflexivity |].
       intros c0 c0' Hc0.
-      match goal with HT : forall c c' (e : in_rel c c'), rel_mod_eval _ B _ B' _ _ |- _ =>
-        destruct (HT _ _ Hc0) as [b b' Eb Eb' [HRb (_ & Hbbot & _)]] end.
+      destruct (HTB _ _ Hc0) as [b b' Eb Eb' [HRb [_ Hbbot _ _ _]]].
       assert (Hap : Dom c $ᵈ ⇓ a c0 ≈ c' $ᵈ ⇓ a' c0' ∈ per_bot) by (apply domain_app_per; [ exact Hc | exact (Hatop _ _ Hc0) ]).
-      econstructor; [ eapply eval_app_neut; [ eassumption | exact Eb ] | eapply eval_app_neut; [ eassumption | exact Eb' ]
-                    | exact (Hbbot _ _ Hap) ].
+      econstructor; [ eapply eval_app_neut; [ eassumption | exact Eb ] | eapply eval_app_neut; [ eassumption | exact Eb' ] |].
+      apply Hbbot; split; [| split; [ exact Hap |] ].
+      * destruct (HBn _ _ Hc0) as (b0 & Eb0 & Hb0).
+        assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); exact Hb0.
+      * (** At the kind of levels the function and its argument hold no
+            proof: the function by its kind, the argument by the domain's. *)
+        intros Hkb; rewrite (Hbk _ _ _ Hc0 Eb) in Hkb.
+        destruct (Hcpf Hkb) as [Hcl Hcr].
+        pose proof (Hlvl Hkb) as Hka.
+        split; intros s M HM; inversion HM; subst; cbn; split;
+          [ eapply Hcl; eassumption | eapply Hapf; eassumption | eapply Hcr; eassumption | ].
+        eapply per_top_proof_free_right; [ exact (Hatop _ _ Hc0) | | eassumption ].
+        intros W HW; eapply Hapf; eassumption.
     + intros f f' Hf; apply_relation_equivalence; destruct Hf as [_ _ Happ].
       intro s.
-      assert (Hv : Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel) by (apply Habot; apply var_per_bot).
-      destruct (Happ _ _ Hv) as [fa f'a' Hfa Hf'a' Hrel].
-      match goal with HT : forall c c' (e : in_rel c c'), rel_mod_eval _ B _ B' _ _ |- _ =>
-        destruct (HT _ _ Hv) as [b b' Eb Eb' [HRb (_ & _ & Hbtop)]] end.
+      destruct (Happ _ _ (Hv s)) as [fa f'a' Hfa Hf'a' Hrel].
+      destruct (HTB _ _ (Hv s)) as [b b' Eb Eb' [HRb [_ _ Hbtop _ _]]].
       destruct (Hbtop _ _ Hrel (S s)) as [M0 M0' HM0 HM0' HEM].
       destruct (Hatt s) as [A0 A0' HA0 HA0' HEA].
       apply (mk_normal_reads_alike _ _ _ (λⁿ A0 M0) (λⁿ A0' M0'));
         [ econstructor; eassumption | econstructor; eassumption | apply nf_fn_upto_proofs; assumption ].
-  - (** A neutral type of an evaluated kind: its elements are neutrals. *)
-    repeat split.
+    + (** A function on levels reads back as a [λ] whose domain and body
+          hold no proof. *)
+      intros Hk f f' s W Hf HW; apply_relation_equivalence; destruct Hf as [_ _ Happ].
+      cbn in Hk; pose proof (Hlvl Hk) as Hka.
+      inversion HW; subst;
+        [ exfalso; match goal with Hp : domain_kind (d_pi _ _ _ _ _) = ak_propositional |- _ => cbn in Hp; discriminate Hp end |].
+      cbn; split; [ eapply Hatpf; eassumption |].
+      destruct (Happ _ _ (Hv s)) as [fa f'a' Hfa Hf'a' Hrel].
+      destruct (HTB _ _ (Hv s)) as [b0 b0' Eb Eb' [HRb [_ _ _ Hbpf _]]].
+      functional_eval_rewrite_clear.
+      eapply Hbpf; [ eapply Hbk; [ exact (Hv s) | eassumption ] | exact Hrel | eassumption ].
+    + (** So does the type, its domain and codomain. *)
+      intros Hk s A HA; cbn in Hk; pose proof (Hlvl Hk) as Hka.
+      inversion HA; subst; cbn; split; [ eapply Hatpf; eassumption |].
+      destruct (HTB _ _ (Hv s)) as [b0 b0' Eb Eb' [HRb [_ _ _ _ Hbtpf]]].
+      functional_eval_rewrite_clear.
+      eapply Hbtpf; [ eapply Hbk; [ exact (Hv s) | eassumption ] | eassumption ].
+  - (** A neutral type of the relevant kind: its elements are neutrals. *)
+    match goal with Hk : domain_kind (⇑ a b) = ak_relevant, Hk' : domain_kind (⇑ a' b') = ak_relevant |- _ =>
+      rename Hk into Hka, Hk' into Hka' end.
+    realizable_split.
     + intro s; match goal with Hb : per_bot b b' |- _ => destruct (Hb s) as [M M' HM HM' HE] end.
       (** The two neutral types are at sorts of one kind. *)
       apply (mk_type_reads_alike _ _ _ (⇑ⁿ{domain_kind (⇑ a b)} M) (⇑ⁿ{domain_kind (⇑ a' b')} M'));
         [ constructor; assumption | constructor; assumption
-        | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs];
-          match goal with Hk : domain_kind _ = domain_kind _ |- _ => rewrite Hk, dec_eqb_refl end; exact HE ].
-    + intros c c' Hc; apply_relation_equivalence; constructor; exact Hc.
+        | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; rewrite Hka, Hka', dec_eqb_refl; exact HE ].
+    + intros c c' [_ [Hc _]]; apply_relation_equivalence; constructor; exact Hc.
     + intros m m' Hm; apply_relation_equivalence; destruct Hm as [? ? ? ? Hm]; intro s.
       destruct (Hm s) as [M M' HM HM' HE].
       apply (mk_normal_reads_alike _ _ _ (⇑ⁿ{domain_kind (⇑ a b)} M) (⇑ⁿ{domain_kind (⇑ a' b')} M'));
-        [ apply read_nf_neut; [ eauto with mctt | assumption ] | apply read_nf_neut; [ eauto with mctt | assumption ]
-        | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs];
-          match goal with Hk : domain_kind _ = domain_kind _ |- _ => rewrite Hk, dec_eqb_refl end; exact HE ].
+        [ apply read_nf_neut; [ rewrite Hka; constructor | assumption ] | apply read_nf_neut; [ rewrite Hka'; constructor | assumption ]
+        | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; rewrite Hka, Hka', dec_eqb_refl; exact HE ].
   (** A member of a group of inductive types: [realize_indty], from the
       realisability of the types of its telescopes; its neutrals by
       [ind_rel_neut_canon], the fresh-variable admissibility of the type's
       own uniform parameters following from the type-level one. *)
-  - repeat split; [| intros c c' Hc | intros b b' Hb ];
+  - (** The shapes' domains are not [LevelSort] ([doms_not_level_sort]),
+        so a fresh variable is a neutral of each. *)
+    assert (Hdv : forall m Mm ms ms' c0 gs gs1 t gs2 ws ws' k0 B ys ys', ind_member D m = Some Mm ->
+               tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->
+               ind_con Mm c0 = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+               tele_prefix_rel (ar m ms c0) (List.length (cargs_nonrec gs1)) ws ws' ->
+               List.nth_error (ptyp_doms t) k0 = Some B ->
+               tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) k0 ys ys' ->
+               exists a a', ⟦ B ⟧ components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms ++ ws ++ ys) ↘ a /\
+                 ⟦ B ⟧ components_env D ups' (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ms' ++ ws' ++ ys') ↘ a' /\
+                 Dom a ≈ a' ∈ per_top_typ /\
+                 (forall n, dr m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k0 (shape_doms_tele t)) B
+                    (⇑! a n) (⇑! a' n))).
+    { intros m Mm ms ms' c0 gs gs1 t gs2 ws ws' k0 B ys ys' Hm0 Hm Hc Heq Hw HB Hy.
+      destruct (H13 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Heq Hw HB Hy) as [a a' Ea Ea' (_ & [Htt Hbot _ _ _])].
+      destruct (H17 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Heq Hw HB Hy) as (a0 & Ea0 & Hn0).
+      assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+      exists a, a'; split; [ exact Ea | split; [ exact Ea' | split; [ exact Htt |] ] ].
+      intros n; apply Hbot; apply var_neutral_at; exact Hn0. }
+    realizable_split; [| intros c c' [_ [Hc _]] | intros b b' Hb ];
       apply_relation_equivalence.
     + unshelve epose proof (realize_indty p D ups ups' nr ar dr H H0 H3 H5 H6 H8 H9 H11 H12 H14
-                              _ _ _ H15 H16 k M ns ns' H1 H17) as [Hrt _];
-      [ intros m Mm k0 κ A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
+                              _ _ Hdv H15 H16 k M ns ns' H1 H18) as [Hrt _];
+      [ intros m Mm k0 κ A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & [_ _ Hrb _ _])]; eauto
       | intros m Mm ms ms' c0 gs k0 A vs vs' Hm0 Hm Hc Hk Hp;
-        destruct (H10 _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
-      | intros m Mm ms ms' c0 gs gs1 t gs2 ws ws' k0 B ys ys' Hm0 Hm Hc Heq Hw HB Hy;
-        destruct (H13 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Heq Hw HB Hy) as [a a' Ea Ea' (_ & Htt & Hbot & _)];
-        exists a, a'; repeat split; eauto
+        destruct (H10 _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Hk Hp) as [a a' Ea Ea' (_ & [_ _ Hrb _ _])]; eauto
       | exact Hrt ].
     + unfold grp_rel.
       eapply ind_rel_neut_canon; eassumption.
     + unshelve epose proof (realize_indty p D ups ups' nr ar dr H H0 H3 H5 H6 H8 H9 H11 H12 H14
-                              _ _ _ H15 H16 k M ns ns' H1 H17) as [_ Hre];
-      [ intros m Mm k0 κ A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
+                              _ _ Hdv H15 H16 k M ns ns' H1 H18) as [_ Hre];
+      [ intros m Mm k0 κ A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & [_ _ Hrb _ _])]; eauto
       | intros m Mm ms ms' c0 gs k0 A vs vs' Hm0 Hm Hc Hk Hp;
-        destruct (H10 _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
-      | intros m Mm ms ms' c0 gs gs1 t gs2 ws ws' k0 B ys ys' Hm0 Hm Hc Heq Hw HB Hy;
-        destruct (H13 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Heq Hw HB Hy) as [a a' Ea Ea' (_ & Htt & Hbot & _)];
-        exists a, a'; repeat split; eauto
+        destruct (H10 _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Hk Hp) as [a a' Ea Ea' (_ & [_ _ Hrb _ _])]; eauto
       | unfold grp_rel in *; eapply Hre; eassumption ].
   (** A record type: [realize_record], from the realisability of the types
       of its fields. *)
-  - repeat split; [| intros c c' Hc | intros b b' Hb ];
+  - realizable_split; [| intros c c' [_ [Hc _]] | intros b b' Hb ];
       apply_relation_equivalence.
     + realize_record_from_ih; exact Hrt.
     + realize_record_from_ih; apply Hrn; assumption.
@@ -931,16 +1076,35 @@ Corollary per_univ_then_per_top_typ : forall {i a a' R},
     DF a ≈ a' ∈ per_univ_elem i ↘ R ->
     Dom a ≈ a' ∈ per_top_typ.
 Proof.
-  intros * ?%realize_per_univ_elem_gen; firstorder.
+  intros * H; exact (realizable_type_top_typ _ _ _ (realize_per_univ_elem_gen H)).
 Qed.
 
 Hint Resolve per_univ_then_per_top_typ : mctt.
 
 Corollary per_bot_then_per_elem : forall {i a a' R c c'},
     DF a ≈ a' ∈ per_univ_elem i ↘ R ->
-    Dom c ≈ c' ∈ per_bot -> Dom ⇑ a c ≈ ⇑ a' c' ∈ R.
+    Dom c ≈ c' ∈ neutral_at a -> Dom ⇑ a c ≈ ⇑ a' c' ∈ R.
 Proof.
-  intros * ?%realize_per_univ_elem_gen; firstorder.
+  intros * H; exact (realizable_type_neutral _ _ _ (realize_per_univ_elem_gen H) _ _).
+Qed.
+
+(** An element of a type of levels reads back without proofs (T1). *)
+Corollary read_at_level_type_proof_free : forall {i a a' R b b' s W},
+    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+    domain_kind a = ak_level ->
+    Dom b ≈ b' ∈ R ->
+    Rnf ⇓ a b in gc_deps ⍮ gc_stack ⍮ s ↘ W -> nf_proof_free W.
+Proof.
+  intros * H Hk; exact (realizable_type_elem_proof_free _ _ _ (realize_per_univ_elem_gen H) Hk _ _ _ _).
+Qed.
+
+(** A type of levels reads back without proofs. *)
+Corollary level_type_read_proof_free : forall {i a a' R s A},
+    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+    domain_kind a = ak_level ->
+    Rtyp a in gc_deps ⍮ gc_stack ⍮ s ↘ A -> nf_proof_free A.
+Proof.
+  intros * H Hk; exact (realizable_type_type_proof_free _ _ _ (realize_per_univ_elem_gen H) Hk _ _).
 Qed.
 
 (** [per_bot_then_per_elem] is not a hint: its conclusion has the relation [R]
@@ -951,7 +1115,7 @@ Corollary per_elem_then_per_top : forall {i a a' R b b'},
     DF a ≈ a' ∈ per_univ_elem i ↘ R ->
     Dom b ≈ b' ∈ R -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top.
 Proof.
-  intros * ?%realize_per_univ_elem_gen; firstorder.
+  intros * H; exact (realizable_type_top _ _ _ (realize_per_univ_elem_gen H) _ _).
 Qed.
 
 Hint Resolve per_elem_then_per_top : mctt.
@@ -1060,10 +1224,15 @@ Proof.
     apply_relation_equivalence.
     (** A fresh variable of the type on each side, at the same level: a
         term entry that reads back. *)
+    (** The type is not [LevelSort] ([per_ctx_env_cons]), so the variable is
+        a neutral of it. *)
     match goal with
-    | Ht : tail_rel ?ρ ?ρ', HR : per_univ_elem _ (head_rel _ _ ?Ht) _ _ |- _ =>
+    | Ht : tail_rel ?ρ ?ρ', HR : per_univ_elem _ (head_rel _ _ ?Ht) ?a _, Ea : ⟦ ?A ⟧ ?ρ ↘ ?a,
+      HN : forall ρ0 ρ0', tail_rel ρ0 ρ0' -> value_not_level_sort ?A _ |- _ =>
+        destruct (HN _ _ Ht) as (a0 & Ea0 & Hn0);
+        assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption);
         pose proof (per_ctx_env_length equiv_Γ_Γ') as Hlen; rewrite <- Hlen;
-        pose proof (per_bot_then_per_elem HR (var_per_bot (n := List.length Γ))) as Hv;
+        pose proof (per_bot_then_per_elem HR (var_neutral_at _ (List.length Γ) Hn0)) as Hv;
         unshelve eapply mk_per_ctx_env_cons_rel;
           [ exact Ht | exact Hv | intros _; eexists; reflexivity | intros _; eexists; reflexivity
           | exact (conj (proj1 (entry_readable_of_elem HR Hv)) (le_n 0))
@@ -1189,12 +1358,14 @@ Proof.
                          | solve [ destruct (Hrr s) as [b Hb]; inversion Hb; subst; eexists; eapply read_entry_dm; eassumption ] ].
 Qed.
 
+(** A variable of a type other than [LevelSort] is an element of it. *)
 Lemma var_per_elem : forall {a b i R} n,
     DF a ≈ b ∈ per_univ_elem i ↘ R ->
+    not_level_sort a ->
     Dom ⇑! a n ≈ ⇑! b n ∈ R.
 Proof.
-  intros.
-  eapply per_bot_then_per_elem; mauto.
+  intros * H Ha.
+  exact (per_bot_then_per_elem H (var_neutral_at _ _ Ha)).
 Qed.
 
 End Fixed_GCtx.

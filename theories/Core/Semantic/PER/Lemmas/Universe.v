@@ -35,6 +35,29 @@ Proof.
   exists a'; split; [ exact Ha' | rewrite <- (Hrel _ _ _ HR); exact Hr ].
 Qed.
 
+(** Two related types are both not the sort [LevelSort], or both are: it
+    is related only to itself. *)
+Lemma per_univ_elem_not_level_sort_iff : forall i R a a',
+    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+    (not_level_sort a <-> not_level_sort a').
+Proof.
+  intros * H; per_univ_elem_induction H; intros; unfold not_level_sort;
+    try (split; intros ? ?; discriminate).
+  - tauto.
+  - match goal with Hp : per_prop _ _ |- _ => destruct Hp as [Hl Hr _] end.
+    split; intros _ ->; cbn in *; discriminate.
+Qed.
+
+(** So are two types related modulo evaluation. *)
+Lemma rel_mod_eval_not_level_sort : forall (Rel : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R,
+    (forall R x y, Rel R x y -> (not_level_sort x <-> not_level_sort y)) ->
+    rel_mod_eval Rel A ρ A' ρ' R -> value_not_level_sort A ρ -> value_not_level_sort A' ρ'.
+Proof.
+  intros * Hrel [a a' Ha Ha' HR] (a0 & Ha0 & Hn).
+  assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+  exists a'; split; [ exact Ha' | exact (proj1 (Hrel _ _ _ HR) Hn) ].
+Qed.
+
 Lemma per_univ_elem_right_irrel : forall i i' R a b R' b',
     DF a ≈ b ∈ per_univ_elem i ↘ R ->
     DF a ≈ b' ∈ per_univ_elem i' ↘ R' ->
@@ -73,9 +96,9 @@ Proof.
       assert_fails constr_eq M1 M2; rewrite H1 in H2; injection H2 as <- end.
     destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
     rename H into Hl, H0 into Hass, H1 into HM, H2 into Hh, H6 into HnP, H7 into Hn, H8 into HnI, H9 into HaP, H10 into Ha,
-      H11 into HaI, H12 into HdP, H13 into Hd, H14 into HdI, H17 into Hns.
-    rename H26 into HnP0, H27 into Hn0, H28 into HnI0, H29 into HaP0, H30 into Ha0, H31 into HaI0, H32 into HdP0, H33 into Hd0,
-      H34 into HdI0, H37 into Hns0.
+      H11 into HaI, H12 into HdP, H13 into Hd, H14 into HdI, H18 into Hns.
+    rename H27 into HnP0, H28 into Hn0, H29 into HnI0, H30 into HaP0, H31 into Ha0, H32 into HaI0, H33 into HdP0, H34 into Hd0,
+      H35 into HdI0, H36 into Hadm0, H39 into Hns0.
     assert (Hnr : forall m Mm kk vs vs1 vs2, ind_member D m = Some Mm -> kk < List.length (List.rev (im_nparams Mm)) ->
                     tele_prefix_rel (nr m) kk vs vs1 -> tele_prefix_rel (nr0 m) kk vs vs2 -> (nr m kk vs <~> nr0 m kk vs)).
     { intros m Mm kk vs vs1 vs2 Hm Hk Hp1 Hp2.
@@ -133,7 +156,7 @@ Proof.
     pose proof (tele_rel_nr_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _ HM _ _ Hns) as Hns'.
     pose proof (tele_rel_nr_change' p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _ HM _ _ Hns0) as Hns0'.
     unfold grp_rel; intros m m'; split; intro Hm.
-    - eapply (proj1 (ind_rel_base_r p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 ups'0 H35 ups'
+    - eapply (proj1 (ind_rel_base_r p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 ups'0 Hadm0 ups'
                        (adm_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr ups' H15))); [| reflexivity ].
       eapply (ind_rel_idx p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ _ _ _ ns ns' _ _ _ _ HM);
         [ eapply (proj1 (ind_rel_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _
@@ -144,7 +167,7 @@ Proof.
         | exact (nparams_rel_trans p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ HM _ _ _
                    (nparams_rel_sym p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ HM _ _ Hns') Hns0) ].
     - eapply (proj1 (ind_rel_base_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' H15 ups'0
-                       (adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB ups'0 H35))); [| reflexivity ].
+                       (adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB ups'0 Hadm0))); [| reflexivity ].
       eapply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ ns ns'0 _ _ _ _ HM);
         [ eapply (proj1 (ind_rel_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB _ _
                            (admissible_index_at_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB)
@@ -202,7 +225,7 @@ Proof.
     + apply per_univ_elem_core_univ'; firstorder.
     + intros m m' Hm.
       match goal with HE : _ <~> per_universe_elements _ |- _ => apply HE in Hm; apply HE end.
-      destruct Hm as [[R' HR] Hl Hr]; constructor; [| exact Hr | exact Hl ].
+      destruct Hm as [[R' HR] Hl Hr Hnl Hnr]; constructor; [| exact Hr | exact Hl | exact Hnr | exact Hnl ].
       eexists.
       eapply proj1; mautosolve.
   - (** The two levels are related, hence have the same realiser, so the
@@ -213,7 +236,7 @@ Proof.
         [ apply per_lvl_sym; assumption | rewrite <- Heq | rewrite <- Heq ]; assumption.
     + intros m m' Hm.
       match goal with HE : _ <~> per_universe_elements _ |- _ => apply HE in Hm; apply HE end.
-      destruct Hm as [[R' HR] Hl Hr]; constructor; [| exact Hr | exact Hl ].
+      destruct Hm as [[R' HR] Hl Hr Hnl Hnr]; constructor; [| exact Hr | exact Hl | exact Hnr | exact Hnl ].
       eexists.
       eapply proj1; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
@@ -236,6 +259,16 @@ Proof.
            | HT : forall c c' (e : in_rel c c'), rel_mod_eval _ B _ B' _ _,
              HB : forall c c' (e : in_rel c c'), rel_typ_kind B _ _ |- _ =>
                exact (rel_mod_eval_kind _ _ _ _ _ _ _ (fun _ _ _ H => per_univ_elem_kind _ _ _ _ (proj1 H))
+                        (HT _ _ Hc') (HB _ _ Hc'))
+           end. }
+      2: { match goal with H1 : per_univ_elem _ in_rel a a', Hn : not_level_sort a |- _ =>
+             exact (proj1 (per_univ_elem_not_level_sort_iff _ _ _ _ H1) Hn) end. }
+      2: { intros c c' Hc; assert (Hc' : in_rel c' c) by eauto.
+           match goal with
+           | HT : forall c c' (e : in_rel c c'), rel_mod_eval _ B _ B' _ _,
+             HB : forall c c', in_rel c c' -> value_not_level_sort B _ |- _ =>
+               exact (rel_mod_eval_not_level_sort _ _ _ _ _ _
+                        (fun _ _ _ H => per_univ_elem_not_level_sort_iff _ _ _ _ (proj1 H))
                         (HT _ _ Hc') (HB _ _ Hc'))
            end. }
       2: { etransitivity; [ eassumption | apply pi_elements_kind_irrel; congruence ]. }
@@ -268,15 +301,15 @@ Proof.
         ([adm_iff]). *)
     rename H into Hl, H0 into Hass, H1 into HM, H2 into Hh, H3 into Hu, H4 into Hu', H5 into Hps, H6 into HnP, H7 into Hn,
       H8 into HnI, H9 into HaP, H10 into Ha, H11 into HaI,
-      H12 into HdP, H13 into Hd, H14 into HdI, H15 into Hcl, H16 into Hcd, H17 into Hns,
-      H18 into HE.
+      H12 into HdP, H13 into Hd, H14 into HdI, H15 into Hcl, H16 into Hcd, H17 into Hdnl,
+      H18 into Hns, H19 into HE.
     pose proof (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ Hns) as Hsn.
     pose proof (adm_flip p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hcd) as Hfl.
     split.
     + basic_per_univ_elem_econstructor;
         [ exact Hl | exact Hass | exact HM | exact Hh | exact Hu' | exact Hu | exact (per_top_ps_sym _ _ _ Hps) | exact HnP | | exact HnI
         | exact HaP | | exact HaI | exact HdP | | exact HdI | exact Hfl
-        | exact (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) | exact Hsn |].
+        | exact (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) | | exact Hsn |].
       * intros m Mm k0 κ A vs vs' Hm Hk Hp.
         assert (Hkl : k0 < List.length (List.rev (im_nparams Mm))) by (apply List.nth_error_Some; congruence).
         pose proof (nparams_prefix_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm k0 vs vs' ltac:(lia) Hp) as Hp'.
@@ -312,6 +345,28 @@ Proof.
           as [a a' Ea Ea' (_ & Hsym & _)].
         econstructor; [ exact Ea' | exact Ea |].
         eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Heq Hp HB Hy).
+      * (** The domains at the right parameters are not [LevelSort]: they are
+            related to those at the left ones, along the swapped prefixes. *)
+        intros m Mm ms ms' c gs gs1 t gs2 ws ws' k0 B ys ys' Hm0 Hm Hc Heq Hp HB Hy.
+        assert (Hk1 : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs))
+          by (rewrite Heq, cargs_nonrec_app, List.length_app; lia).
+        assert (Hkl : k0 < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
+        pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm0 _ _ Hm) as Hmm.
+        assert (Hp' : tele_prefix_rel (ar m ms' c) (List.length (cargs_nonrec gs1)) ws' ws)
+          by (eapply (args_prefix_rel_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm0); [ exact Hm | exact Hc | exact Hk1 |];
+              eapply (args_prefix_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm0); [ exact Hmm | exact Hc | exact Hk1 | exact Hp ]).
+        pose proof (args_rel_pre_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm0 ms c gs Hmm Hc _ ws ws' Hk1 Hp) as Hww.
+        assert (Hy' : tele_prefix_rel (shape_doms_rel (dr m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms' ws' t) k0 ys' ys).
+        { eapply (doms_rel_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm0);
+            [ exact Hm | exact Hc | exact Heq | exact Hp | lia |].
+          eapply (doms_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm0 ms c gs gs1 t gs2 ws Hmm Hc Heq Hww);
+            [ lia | exact Hy ]. }
+        clear Hkl.
+        pose proof (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm0 _ _ Hm) as Hms.
+        exact (rel_mod_eval_not_level_sort _ _ _ _ _ _
+                 (fun _ _ _ H => per_univ_elem_not_level_sort_iff _ _ _ _ (proj1 H))
+                 (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hms Hc Heq Hp' HB Hy')
+                 (Hdnl _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hms Hc Heq Hp' HB Hy')).
       * (** The elements: at the bases admissible beside [ups'], which are
             those beside [ups] ([ind_rel_admissible_index_base]), at the exchanged
             indices. *)
@@ -336,10 +391,11 @@ Proof.
         their invariance along related prefixes and the symmetry of the
         field types; the elements are swapped by [record_rel_sym]. *)
     rename H into Hl, H0 into Hnd, H1 into Hn, H2 into Hn', H3 into Hps, H4 into HfP, H5 into Hf, H6 into HfS, H7 into HfI,
-      H8 into HE.
+      H8 into HfN, H9 into HfK, H10 into HE.
     split.
     + basic_per_univ_elem_econstructor;
-        [ exact Hl | exact Hnd | exact Hn' | exact Hn | exact (per_top_ps_sym _ _ _ Hps) | exact HfP | | | exact HfI | exact HE ].
+        [ exact Hl | exact Hnd | exact Hn' | exact Hn | exact (per_top_ps_sym _ _ _ Hps) | exact HfP | | | exact HfI | | exact HfK
+        | exact HE ].
       * intros k f T vs vs' Hk Hp.
         assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
         pose proof (fields_prefix_sym R fr HfP HfI k vs vs' ltac:(lia) Hp) as Hp'.
@@ -353,6 +409,13 @@ Proof.
         pose proof (fields_prefix_sym R fr HfP HfI k vs vs' ltac:(lia) Hp) as Hp'.
         eapply rel_mod_eval_kind; [ | exact (Hf _ _ _ _ _ Hk Hp') | exact (HfS _ _ _ _ _ Hk Hp') ].
         intros ? ? ? [Hx _]; exact (per_univ_elem_kind _ _ _ _ Hx).
+      * (** Nor are they [LevelSort], along the swapped prefixes. *)
+        intros k f T vs vs' Hk Hp.
+        assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
+        pose proof (fields_prefix_sym R fr HfP HfI k vs vs' ltac:(lia) Hp) as Hp'.
+        exact (rel_mod_eval_not_level_sort _ _ _ _ _ _
+                 (fun _ _ _ H => per_univ_elem_not_level_sort_iff _ _ _ _ (proj1 H))
+                 (Hf _ _ _ _ _ Hk Hp') (HfN _ _ _ _ _ Hk Hp')).
     + intros m m' Hm; apply HE in Hm; apply HE; exact (record_rel_sym R fr HfP HfI _ _ Hm).
 Qed.
 
@@ -502,6 +565,11 @@ Proof.
   - (** The pi case. *)
     destruct_conjs.
     basic_per_univ_elem_econstructor; eauto.
+    (** The codomains are not [LevelSort], as those of the first [Π]. *)
+    all: try (intros c c' Hc;
+              match goal with HB : forall c c', _ -> value_not_level_sort ?B0 _ |- value_not_level_sort ?B0 _ =>
+                apply (HB c c') end;
+              handle_per_univ_elem_irrel; intuition).
     4: { etransitivity; [ eassumption | apply pi_elements_kind_irrel;
                                           [ symmetry; eapply per_univ_elem_kind; eassumption | reflexivity ] ]. }
     3: { intros c c' Hc.
@@ -536,10 +604,10 @@ Proof.
     destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
     rename H into Hl, H0 into Hass, H1 into HM, H2 into Hh, H3 into Hu, H4 into Hu', H5 into Hps, H6 into HnP, H7 into Hn,
       H8 into HnI, H9 into HaP, H10 into Ha, H11 into HaI, H12 into HdP, H13 into Hd, H14 into HdI,
-      H15 into Hcl, H16 into Hcd, H17 into Hns, H18 into HE.
-    rename H23 into Hu2, H24 into Hu2', H25 into Hps2, H26 into HnP2, H27 into Hn2, H28 into HnI2,
-      H29 into HaP2, H30 into Ha2, H31 into HaI2, H32 into HdP2, H33 into Hd2, H34 into HdI2,
-      H35 into Hcl2, H37 into Hns2.
+      H15 into Hcl, H16 into Hcd, H17 into Hdnl, H18 into Hns, H19 into HE.
+    rename H24 into Hu2, H25 into Hu2', H26 into Hps2, H27 into HnP2, H28 into Hn2, H29 into HnI2,
+      H30 into HaP2, H31 into Ha2, H32 into HaI2, H33 into HdP2, H34 into Hd2, H35 into HdI2,
+      H36 into Hcl2, H39 into Hns2.
     assert (Hcr : forall m Mm k pa pb pc, ind_member D m = Some Mm -> k < List.length (List.rev (im_nparams Mm)) ->
               tele_prefix_rel (nr m) k pa pb -> tele_prefix_rel (nr0 m) k pb pc -> (nr m k pa <~> nr0 m k pb)).
     { intros m Mm k0 pa pb pc Hm Hk Hp1 Hp2.
@@ -654,7 +722,7 @@ Proof.
     pose proof (adm_flip p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hcd) as Hfl.
     basic_per_univ_elem_econstructor;
       [ exact Hl | exact Hass | exact HM | exact Hh | exact Hu | exact Hu2' | exact (per_top_ps_trans _ _ _ _ Hps Hps2)
-      | exact HnP | | exact HnI | exact HaP | | exact HaI | exact HdP | | exact HdI | | exact Hcd
+      | exact HnP | | exact HnI | exact HaP | | exact HaI | exact HdP | | exact HdI | | exact Hcd | exact Hdnl
       | exact (Hcomp _ _ _ _ _ HM Hns Hns2) | ].
     + intros m Mm k0 κ A vs vs'' Hm Hk Hp.
       assert (Hkl : k0 < List.length (List.rev (im_nparams Mm))) by (apply List.nth_error_Some; congruence).
@@ -719,6 +787,7 @@ Proof.
     match goal with
     | Hf2 : fields_evals (per_univ_elem ?j) ?R ?ns' ?ns'' ?fr0, Hf1 : fields_evals _ ?R ?ns ?ns' ?fr,
       HfP : fields_per ?R ?fr, HfP2 : fields_per ?R ?fr0, HfI : fields_inv ?R ?fr, HfS : fields_kinds ?R ?ns ?fr,
+      HfN : fields_not_level_sort ?R ?ns ?fr, HfK : forall k, field_kind (record_field_kind ?R k),
       Hps : per_top_ps _ ?ns ?ns', Hps2 : per_top_ps _ ?ns' ?ns'',
       Hl : record_lookup _ _ _ = Some ?R, Hnd : List.NoDup _,
       Hn : List.length ?ns = _, Hn2 : List.length ?ns'' = _,
@@ -733,7 +802,7 @@ Proof.
           eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ] |];
         basic_per_univ_elem_econstructor;
           [ exact Hl | exact Hnd | exact Hn | exact Hn2 | exact (per_top_ps_trans _ _ _ _ Hps Hps2) | exact HfP | | exact HfS
-          | exact HfI | exact HE ];
+          | exact HfI | exact HfN | exact HfK | exact HE ];
         intros k f T vs vs'' Hk Hp;
         assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence);
         assert (Hp2 : tele_prefix_rel fr0 k vs'' vs'')

@@ -24,6 +24,7 @@ Lemma per_ctx_env_cons_clean_inversion : forall {Γ Γ' env_relΓ κ A A' env_re
     exists i (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ env_relΓ), relation domain),
       (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ env_relΓ),
           rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) /\
+        (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> value_not_level_sort A ρ) /\
         (env_relΓA <~> per_ctx_env_cons_rel env_relΓ (@head_rel) A A').
 Proof.
   intros * HΓ HΓA.
@@ -31,7 +32,8 @@ Proof.
   handle_per_ctx_env_irrel.
   eexists.
   eexists.
-  split; intros.
+  split; [| split; [ intros ρ ρ' Hρ; match goal with HN : forall ρ ρ', tail_rel ρ ρ' -> value_not_level_sort A _ |- _ =>
+                                       apply (HN ρ ρ'); intuition end |] ]; intros.
   - instantiate (1 := fun ρ ρ' (equiv_ρ_ρ' : env_relΓ ρ ρ') m m' =>
                         forall R,
                           rel_typ i A ρ A' ρ' R ->
@@ -56,7 +58,7 @@ Qed.
 End Fixed_GCtx.
 
 Ltac invert_per_ctx_env H :=
-  (unshelve eapply (per_ctx_env_cons_clean_inversion _) in H; [eassumption | |]; destruct H as [? [? []]])
+  (unshelve eapply (per_ctx_env_cons_clean_inversion _) in H; [eassumption | |]; destruct H as [? [? [? []]]])
   + (inversion H; subst).
 
 Section Fixed_GCtx.
@@ -224,11 +226,12 @@ Lemma per_ctx_env_extend : forall {Δ Δ' κ S S' env_relΔ} {i : nat},
         Dom ρ ≈ ρ' ∈ env_relΔ ->
         exists a a',
           ⟦ S ⟧ ρ ↘ a /\ ⟦ S' ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> value_not_level_sort S ρ) ->
     EF Δ ▹{κ} S ≈ Δ' ▹{κ} S' ∈ per_ctx_env ↘ per_env_extend S S' env_relΔ.
 Proof.
-  intros * HΔ HS.
+  intros * HΔ HS HSn.
   eapply (per_ctx_env_cons' (i := i) (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S' ρ ρ'));
-    [ eassumption | | ].
+    [ eassumption | | exact HSn | ].
   - intros ρ ρ' Hρ.
     destruct (HS _ _ Hρ) as [a [a' [Ha [Ha' [R HR]]]]].
     econstructor; try eassumption.
@@ -537,13 +540,15 @@ Lemma per_univ_elem_pi_canonical : forall {i κd κc a a' in_rel ρ B ρ' B'},
           DF b ≈ b' ∈ per_univ_elem i ↘ R) ->
     (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_kind B (ρ ↦ c ⦂ entry_type_value a) κc) ->
     domain_kind a = κd -> domain_kind a' = κd -> pi_kinds κd κc -> evaluated_kind κc ->
+    not_level_sort a ->
+    (forall c c', Dom c ≈ c' ∈ in_rel -> value_not_level_sort B (ρ ↦ c ⦂ entry_type_value a)) ->
     DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem i ↘ (per_pi a a' in_rel B ρ B' ρ').
 Proof.
-  intros * Ha HB HBr Hd Hd' Hk Hev.
+  intros * Ha HB HBr Hd Hd' Hk Hev Hna HnB.
   eapply (per_univ_elem_pi' _ _ _ _ _ _ _ _ _ in_rel
             (fun c c' (_ : Dom c ≈ c' ∈ in_rel) =>
                per_head B B' (ρ ↦ c ⦂ entry_type_value a) (ρ' ↦ c' ⦂ entry_type_value a')));
-    [ eassumption | | exact HBr | exact Hd | exact Hd' | exact Hk | exact Hev | reflexivity ].
+    [ eassumption | | exact HBr | exact Hd | exact Hd' | exact Hk | exact Hev | exact Hna | exact HnB | reflexivity ].
   intros c c' equiv_c_c'.
   destruct (HB _ _ equiv_c_c') as [b [b' [R [Hb [Hb' HR]]]]].
   econstructor; try eassumption.
@@ -602,10 +607,12 @@ Lemma per_univ_elem_pi_chain : forall {i κd κc in_rel a1 a2 a3 a4 B1 ρ1 B2 ρ
         exists b b', ⟦ B3 ⟧ ρ3 ↦ c ⦂ entry_type_value a3 ↘ b /\ ⟦ B4 ⟧ ρ4 ↦ c' ⦂ entry_type_value a4 ↘ b' /\ Dom b ≈ b' ∈ per_univ i) ->
     (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_kind B1 (ρ1 ↦ c ⦂ entry_type_value a1) κc) ->
     domain_kind a1 = κd -> pi_kinds κd κc -> evaluated_kind κc ->
+    not_level_sort a1 ->
+    (forall c c', Dom c ≈ c' ∈ in_rel -> value_not_level_sort B1 (ρ1 ↦ c ⦂ entry_type_value a1)) ->
     rel_chain (per_univ_elem i (per_pi a2 a3 in_rel B2 ρ2 B3 ρ3))
       ([d_pi κd κc a1 ρ1 B1; d_pi κd κc a2 ρ2 B2; d_pi κd κc a3 ρ3 B3; d_pi κd κc a4 ρ4 B4]).
 Proof.
-  intros * Hchain HB12 HB23 HB34 HB1r Hd1 Hk Hev.
+  intros * Hchain HB12 HB23 HB34 HB1r Hd1 Hk Hev Hn1 HB1n.
   assert (H12 : DF a1 ≈ a2 ∈ per_univ_elem i ↘ in_rel) by pairwise.
   assert (H23 : DF a2 ≈ a3 ∈ per_univ_elem i ↘ in_rel) by pairwise.
   assert (H34 : DF a3 ≈ a4 ∈ per_univ_elem i ↘ in_rel) by pairwise.
@@ -629,6 +636,23 @@ Proof.
     exists b'; split; [ exact Hb' | rewrite <- (per_univ_elem_kind _ _ _ _ HR); exact Hr0 ]. }
   pose proof (Hmove _ _ _ _ _ _ HB12 HB1r) as HB2r.
   pose proof (Hmove _ _ _ _ _ _ HB23 HB2r) as HB3r.
+  (** So are they not [LevelSort], nor the domains. *)
+  assert (Hmoven : forall B ρ t B' ρ' t',
+             (forall c c',
+                 Dom c ≈ c' ∈ in_rel ->
+                 exists b b', ⟦ B ⟧ ρ ↦ c ⦂ t ↘ b /\ ⟦ B' ⟧ ρ' ↦ c' ⦂ t' ↘ b' /\ Dom b ≈ b' ∈ per_univ i) ->
+             (forall c c', Dom c ≈ c' ∈ in_rel -> value_not_level_sort B (ρ ↦ c ⦂ t)) ->
+             (forall c c', Dom c ≈ c' ∈ in_rel -> value_not_level_sort B' (ρ' ↦ c ⦂ t'))).
+  { intros * HB HBn c c' Hc.
+    assert (Hcc : Dom c ≈ c ∈ in_rel) by (etransitivity; [ exact Hc | symmetry; exact Hc ]).
+    destruct (HB _ _ Hcc) as [b [b' [Hb [Hb' [R HR]]]]].
+    destruct (HBn _ _ Hcc) as (b0 & Hb0 & Hn0).
+    assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption).
+    exists b'; split; [ exact Hb' | exact (proj1 (per_univ_elem_not_level_sort_iff _ _ _ _ HR) Hn0) ]. }
+  pose proof (Hmoven _ _ _ _ _ _ HB12 HB1n) as HB2n.
+  pose proof (Hmoven _ _ _ _ _ _ HB23 HB2n) as HB3n.
+  pose proof (proj1 (per_univ_elem_not_level_sort_iff _ _ _ _ H12) Hn1) as Hn2.
+  pose proof (proj1 (per_univ_elem_not_level_sort_iff _ _ _ _ H23) Hn2) as Hn3.
   (** One [per_univ_elem_pi_canonical] per link, adapting the premise's
       [per_univ] to the [exists R] the lemma wants. *)
   assert (Hlink : forall B ρ B' ρ' a a',
@@ -638,15 +662,18 @@ Proof.
                  exists b b', ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\ ⟦ B' ⟧ ρ' ↦ c' ⦂ entry_type_value a' ↘ b' /\ Dom b ≈ b' ∈ per_univ i) ->
              (forall c c', Dom c ≈ c' ∈ in_rel -> rel_typ_kind B (ρ ↦ c ⦂ entry_type_value a) κc) ->
              domain_kind a = κd -> domain_kind a' = κd ->
+             not_level_sort a ->
+             (forall c c', Dom c ≈ c' ∈ in_rel -> value_not_level_sort B (ρ ↦ c ⦂ entry_type_value a)) ->
              DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem i ↘ (per_pi a a' in_rel B ρ B' ρ')).
-  { intros * Ha HB HBr Hda Hda'.
-    apply per_univ_elem_pi_canonical; [ eassumption | | exact HBr | exact Hda | exact Hda' | exact Hk | exact Hev ].
+  { intros * Ha HB HBr Hda Hda' Hna HBn.
+    apply per_univ_elem_pi_canonical;
+      [ eassumption | | exact HBr | exact Hda | exact Hda' | exact Hk | exact Hev | exact Hna | exact HBn ].
     intros c c' Hc.
     destruct (HB _ _ Hc) as [b [b' [Hb [Hb' [R HR]]]]].
     exists b, b', R; repeat split; eassumption. }
-  pose proof (Hlink _ _ _ _ _ _ H12 HB12 HB1r Hd1 Hd2) as HL1.
-  pose proof (Hlink _ _ _ _ _ _ H23 HB23 HB2r Hd2 Hd3) as HL2.
-  pose proof (Hlink _ _ _ _ _ _ H34 HB34 HB3r Hd3 Hd4) as HL3.
+  pose proof (Hlink _ _ _ _ _ _ H12 HB12 HB1r Hd1 Hd2 Hn1 HB1n) as HL1.
+  pose proof (Hlink _ _ _ _ _ _ H23 HB23 HB2r Hd2 Hd3 Hn2 HB2n) as HL2.
+  pose proof (Hlink _ _ _ _ _ _ H34 HB34 HB3r Hd3 Hd4 Hn3 HB3n) as HL3.
   (** The three links are a chain in [per_univ i], so weak functionality puts
       them at one PER, and uniqueness, with [HL2] as anchor, makes it the inner
       link's.  [handle_per_univ_elem_irrel] would keep an unpredictable one of

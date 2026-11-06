@@ -239,6 +239,15 @@ Proof.
     handle_per_univ_elem_irrel.
     econstructor; eauto.
     symmetry; solve [intuition].
+  - (** The swapped type is not [LevelSort] either: it is related to the
+        original one at the swapped tails. *)
+    assert (Hρ' : tail_rel ρ' ρ) by eauto.
+    match goal with
+    | HT : forall ρ0 ρ'0 (e : tail_rel ρ0 ρ'0), rel_mod_eval _ A _ A' _ _,
+      HN : forall ρ0 ρ'0, tail_rel ρ0 ρ'0 -> value_not_level_sort A _ |- _ =>
+        exact (rel_mod_eval_not_level_sort _ _ _ _ _ _ (fun _ _ _ H => per_univ_elem_not_level_sort_iff _ _ _ _ H)
+                 (HT _ _ Hρ') (HN _ _ Hρ'))
+    end.
   - (** The swapped assumption relates the same environments: its types are
         related to the original ones at each tail against itself. *)
     match goal with HE : env_rel <~> _ |- _ => rename HE into HE0 end.
@@ -520,7 +529,7 @@ Proof with solve [eauto using per_univ_trans].
   - (** The right type of the composite is the last one; the right term-head
         field moves to it at the right tail against itself. *)
     econstructor;
-      only 4: (match goal with HT : ?T0 <~> tail_rel |- per_ctx_env_cons_rel _ _ _ _ <~> _ =>
+      only 5: (match goal with HT : ?T0 <~> tail_rel |- per_ctx_env_cons_rel _ _ _ _ <~> _ =>
                  intros ρ ρ'; split; intros [Ht Hh Hl Hr Hrl Hrr];
                  assert (T0 ρ'↯ ρ'↯) by (apply HT; etransitivity; [ symmetry; exact Ht | exact Ht ]);
                  (apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht); [ exact Hh | exact Hl | solve_prop_head | exact Hrl | exact Hrr ])
@@ -701,6 +710,7 @@ Lemma per_ctx_env_cons' : forall {Γ Γ' i κ A A' tail_rel}
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
     (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
         rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
+    (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), value_not_level_sort A ρ) ->
     (env_rel <~> per_ctx_env_cons_rel tail_rel (@head_rel) A A') ->
     EF Γ ▹{κ} A ≈ Γ' ▹{κ} A' ∈ per_ctx_env ↘ env_rel.
 Proof.
