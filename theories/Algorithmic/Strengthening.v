@@ -34,7 +34,7 @@ From Mctt.Core.Syntactic.System.Global Require Import DescTyping LookupSound Pre
 From Mctt.Algorithmic Require Import Subtyping.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Completeness.Records Require Model.
-From Mctt.Core.Completeness.Modules Require Import MemberTypes.
+From Mctt.Core.Completeness.Modules Require Import MemberTypes Values.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness Require Import LetCases.
 Import Domain_Notations Fixed_Notations Wk_Notations.
@@ -645,47 +645,51 @@ Lemma per_subtyp_read : forall i a b,
     forall s, exists A B, Rtyp a in s ↘ A /\ Rtyp b in s ↘ B /\ ⊢anf A ⊆ B.
 Proof.
   induction 1; intros s.
-  1-4: try (match goal with Hb : per_bot _ _ |- _ => destruct (Hb s) as [L [HL HL']] end);
-    do 2 eexists; repeat split; [ econstructor; eassumption | econstructor; eassumption
-                                    | first [ apply alg_subtyping_nf_level; assumption | constructor; cbn; auto ] ].
-  - do 2 eexists; repeat split; [ constructor | constructor | apply alg_subtyping_nf_univ; assumption ].
-  - destruct (H s) as [[c xs] [d ys] HL HL' Hle].
-    do 2 eexists; repeat split; [ econstructor; eassumption | econstructor; eassumption | apply alg_subtyping_nf_suniv; exact Hle ].
-  - destruct (H s) as [W [HW _]].
-    destruct (read_nf_level_real _ _ _ _ HW) as [[c xs] [-> _]].
-    do 2 eexists; repeat split; [ econstructor; eassumption | constructor | apply alg_subtyping_nf_small_large ].
+  - (** Neutrals, read back alike, at the relevant kind *)
+    destruct (H1 s) as [L L' HL HL' HLL].
+    do 2 eexists; split; [ econstructor; exact HL | split; [ econstructor; exact HL' |] ].
+    rewrite H, H0; apply alg_subtyping_nf_refl_case; [ exact I |].
+    unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; rewrite dec_eqb_refl; exact HLL.
+  - do 2 eexists; split; [ econstructor | split; [ econstructor |] ]; apply alg_subtyping_nf_level; assumption.
+  - do 2 eexists; split; [ econstructor | split; [ econstructor |] ]; apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ].
+  - do 2 eexists; split; [ econstructor | split; [ econstructor |] ]; apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ].
+  - do 2 eexists; split; [ econstructor | split; [ econstructor |] ]; apply alg_subtyping_nf_univ; assumption.
+  - destruct (H s) as [[c xs] [d ys] HL HL' Hle _ _].
+    do 2 eexists; split; [ econstructor; exact HL | split; [ econstructor; exact HL' |] ].
+    apply alg_subtyping_nf_suniv; exact Hle.
+  - destruct (per_lvl_reads _ _ H s) as ([c xs] & HW & _ & _).
+    do 2 eexists; split; [ econstructor; exact HW | split; [ econstructor |] ].
+    apply alg_subtyping_nf_small_large.
   - (** The domains read back equally; the codomains at the fresh variable are
         below each other by the induction hypothesis. *)
-    assert (Ha : per_univ_elem i in_rel a a)
-      by (eapply (proj1 (per_univ_elem_trans _ _ _ _ H)); apply (per_univ_elem_sym _ _ _ _ H)).
-    assert (Ha' : per_univ_elem i in_rel a' a')
-      by (eapply (proj1 (per_univ_elem_trans _ _ _ _ (proj1 (per_univ_elem_sym _ _ _ _ H)))); exact H).
-    destruct (per_univ_then_per_top_typ H s) as [A [HA HA']].
-    destruct (per_univ_elem_pi_clean_inversion Ha H2) as [out1 [Hout1 _]].
-    destruct (per_univ_elem_pi_clean_inversion Ha' H3) as [out2 [Hout2 _]].
-    destruct (Hout1 _ _ (per_bot_then_per_elem Ha (var_per_bot (n := s)))) as [b ? Hb ? _].
-    destruct (Hout2 _ _ (per_bot_then_per_elem Ha' (var_per_bot (n := s)))) as [b' ? Hb' ? _].
-    destruct (H1 _ _ _ _ (per_bot_then_per_elem H (var_per_bot (n := s))) Hb Hb' (S s))
-      as (C & C' & HC & HC' & HCC').
-    exists (Πⁿ A C), (Πⁿ A C'); split; [| split ].
-    + eapply read_typ_pi; [ exact HA | exact Hb | exact HC ].
-    + eapply read_typ_pi; [ exact HA' | exact Hb' | exact HC' ].
-    + apply alg_subtyping_nf_pi; [ reflexivity | exact HCC' ].
+    assert (Ha : per_univ_elem i in_rel a a) by (eapply per_univ_trans; [ exact H0 | apply per_univ_sym; exact H0 ]).
+    assert (Ha' : per_univ_elem i in_rel a' a') by (eapply per_univ_trans; [ apply per_univ_sym; exact H0 | exact H0 ]).
+    pose proof (per_univ_elem_pi_domain_not_level_sort H H3) as Hna.
+    pose proof (per_univ_elem_pi_domain_not_level_sort H H4) as Hna'.
+    destruct (per_univ_then_per_top_typ H0 s) as [A A' HA HA' HAA].
+    destruct (per_univ_elem_pi_clean_inversion H Ha H3) as [out1 [Hout1 _]].
+    destruct (per_univ_elem_pi_clean_inversion H Ha' H4) as [out2 [Hout2 _]].
+    destruct (Hout1 _ _ (var_per_elem s Ha Hna)) as [b ? Hb ? _].
+    destruct (Hout2 _ _ (var_per_elem s Ha' Hna')) as [b' ? Hb' ? _].
+    destruct (H2 _ _ _ _ (var_per_elem s H0 Hna) Hb Hb' (S s)) as (C & C' & HC & HC' & HCC').
+    exists (nf_pi κd κc A C), (nf_pi κd κc A' C'); split; [| split ].
+    + econstructor; [ exact HA | exact Hb | exact HC ].
+    + econstructor; [ exact HA' | exact Hb' | exact HC' ].
+    + apply alg_subtyping_nf_pi; [ exact H | exact HAA | exact HCC' ].
   - (** Related inductive types read back alike. *)
-    destruct (per_univ_then_per_top_typ H s) as [W [HW HW']].
-    exists W, W; split; [ exact HW | split; [ exact HW' |] ].
-    inversion HW; subst; apply alg_subtyping_nf_refl_case; cbn; auto.
+    destruct (per_univ_then_per_top_typ H s) as [W W' HW HW' HE].
+    exists W, W'; split; [ exact HW | split; [ exact HW' |] ].
+    inversion HW; subst; apply alg_subtyping_nf_refl_case; [ exact I | exact HE ].
   - (** So do related record types. *)
-    destruct (per_univ_then_per_top_typ H s) as [W [HW HW']].
-    exists W, W; split; [ exact HW | split; [ exact HW' |] ].
-    inversion HW; subst; apply alg_subtyping_nf_refl_case; cbn; auto.
-  - (** So do related propositions, which are no universe and no relevant
-        [Π]. *)
-    destruct H as [Hl Hr Htop]; destruct (Htop s) as [W [HW HW']].
-    exists W, W; split; [ exact HW | split; [ exact HW' |] ].
-    inversion HW; subst; cbn in Hl; try discriminate;
-      first [ apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ]
-            | match goal with |- ⊢anf nf_pi ?r _ _ ⊆ _ => destruct r; [ discriminate | apply alg_subtyping_nf_refl_case; [ exact I | reflexivity ] ] end ].
+    destruct (per_univ_then_per_top_typ H s) as [W W' HW HW' HE].
+    exists W, W'; split; [ exact HW | split; [ exact HW' |] ].
+    inversion HW; subst; apply alg_subtyping_nf_refl_case; [ exact I | exact HE ].
+  - (** So do related propositions, which are no universe and no [Π] into
+        an evaluated kind. *)
+    destruct H as [Hl Hr Htop]; destruct (Htop s) as [W W' HW HW' HE].
+    exists W, W'; split; [ exact HW | split; [ exact HW' |] ].
+    apply alg_subtyping_nf_refl_case; [| exact HE ].
+    inversion HW; subst; cbn in Hl |- *; try discriminate; try exact I; subst; cbn; exact I.
 Qed.
 
 (** ** SubStr: Strengthening a Subtyping
@@ -705,53 +709,33 @@ Lemma subtyp_strengthen : forall Δ Γ κ A T T' i,
 Proof.
   intros * Hass HΓf HT HT' Hs.
   assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; mauto 3).
-  assert (HAs : ⊨ (Γ ▹ A))
-    by (apply completeness_fundamental_ctx; eapply ctx_app_wf_tail; exact HΓf).
-  pose proof HT as HTs; apply completeness_fundamental_exp in HTs.
-  destruct HTs as [R0 HR0 j HTg].
-  pose proof HT' as HTs'; apply completeness_fundamental_exp in HTs'.
-  destruct HTs' as [R0' HR0' j' HTg'].
-  apply completeness_fundamental_subtyp in Hs as [R1 HR1 i' Hsg].
-  destruct (per_ctx_then_per_env_initial_env HR0) as (ρs & ? & Hρs & ? & ?).
-  destruct (long_env Δ Γ A R1 ρs Hass HΓs HΓf HR1 Hρs) as [ρ [Hρ Himg]].
-  pose proof (rel_sub_of_wk (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs)) as Hsb.
-  pose proof (proj1 (eval_sub_of_wk_under (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs) HR1 Hρ)) as Hev.
-  assert (⊨ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list) as HsA
-      by (eexists; exact HR1).
-  destruct (HTg _ _ HR1 _ _ Hsb _ _ _ _ Hρ Hev Hev) as [er [Ht He]].
-  destruct (HTg' _ _ HR1 _ _ Hsb _ _ _ _ Hρ Hev Hev) as [er' [Ht' He']].
-  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (proj1 (eval_sub_id_rel HR1 Hρ)) (proj2 (eval_sub_id_rel HR1 Hρ)))
-    as [aσ a a'σ' a' Ha1 Ha2 Ha3 Ha4 Hau Ha'u Hsub].
-  destruct Ht as [? ? ? ? Hu1 ? ? ? Huc].
-  univ_not_propositional He.
-  destruct He as [? ? ? ? Hp1 Hp2 ? ? Hpc].
-  destruct Ht' as [? ? ? ? Hv1 ? ? ? Hvc].
-  univ_not_propositional He'.
-  destruct He' as [? ? ? ? Hq1 Hq2 ? ? Hqc].
-  rewrite !(exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in * by reflexivity.
-  rewrite !exp_sub_id in *.
-  rewrite Himg in *.
-  functional_eval_rewrite_clear.
-  simplify_evals.
-  (** Both type values are in [per_univ i], at the long environment and at its
-      image; the subtyping moves along them. *)
-  assert (Hu : per_univ_elem j er 𝕌ω@i 𝕌ω@i) by (destruct Huc as [Hx _]; exact Hx).
-  assert (Hu' : per_univ_elem j' er' 𝕌ω@i 𝕌ω@i) by (destruct Hvc as [Hx _]; exact Hx).
-  invert_per_univ_elem Hu.
-  invert_per_univ_elem Hu'.
-  apply_relation_equivalence.
-  assert (Hm : per_univ i mσ0 m'0) by (destruct Hpc as [[Hx _ _] _]; exact Hx).
-  assert (Hn : per_univ i mσ2 m'2) by (destruct Hqc as [[Hx _ _] _]; exact Hx).
-  destruct Hm as [Rm HRm]; destruct Hn as [Rn HRn].
-  assert (Hs2 : Sub m'0 <: m'2 at (max i i')).
-  { eapply per_subtyp_transp;
-      [ eapply per_subtyp_cumu_right; exact Hsub
-      | eapply per_univ_elem_cumu_max_left; exact HRm
-      | eapply per_univ_elem_cumu_max_left; exact HRn ]. }
+  pose proof (rel_type_of_typ (completeness_fundamental_exp _ _ _ HT)) as HTs.
+  pose proof (rel_type_of_typ (completeness_fundamental_exp _ _ _ HT')) as HTs'.
+  apply completeness_fundamental_subtyp in Hs as [R1 HR1 k Hsg].
+  pose proof HTs as [R0 HR0 _ _].
+  pose proof (wf_ctx_scoped _ _ _ HΓs) as Hsc.
+  destruct (per_ctx_then_per_env_initial_env HR0 Hsc Hsc) as (ρs & ρs' & Hρs & Hρs' & _).
+  assert (ρs' = ρs) as -> by (eapply functional_initial_env; eassumption).
+  destruct (long_env _ _ _ _ _ _ Hass HΓs HΓf HR1 Hρs) as (ρ & Hρ & Himg).
+  assert (HsA : ⊨ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list) by (eexists; exact HR1).
+  destruct (eval_sub_id_rel HR1 Hρ) as [Hid Hid'].
+  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ Hid Hid')
+    as [aσ a a'σ a' Ha1 Ha2 Ha3 Ha4 [Rl Hl] [Rr Hr] Hsub].
+  rewrite exp_sub_id in Ha1, Ha3.
+  (** Both type values at the long environment are related to the short
+      ones; the subtyping moves along them. *)
+  destruct (typ_along_qn _ _ _ _ _ _ _ _ Hass HΓs HΓf HTs HR1 Hρ) as (x1 & b & Ex1 & Eb & [R2 H2]).
+  destruct (typ_along_qn _ _ _ _ _ _ _ _ Hass HΓs HΓf HTs' HR1 Hρ) as (x2 & b' & Ex2 & Eb' & [R3 H3]).
+  rewrite Himg in Eb, Eb'.
+  assert (x1 = aσ) as -> by (eapply functional_eval_exp; eassumption).
+  assert (x2 = a'σ) as -> by (eapply functional_eval_exp; eassumption).
+  destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ (per_univ_sym _ _ _ _ Hl) H2) as (Rx & Hx & _).
+  destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ (per_univ_sym _ _ _ _ Hr) H3) as (Ry & Hy & _).
+  pose proof (per_subtyp_transp _ _ _ _ _ _ _ Hsub Hx Hy) as Hs2.
   destruct (per_subtyp_read _ _ _ Hs2 (length (Δ ++ Γ)%list)) as (W & W' & HW & HW' & HWW').
   eapply alg_subtyping_sound; [| exact HT | exact HT' ].
-  econstructor; [ econstructor; [ exact Hρs | eassumption | exact HW ]
-                | econstructor; [ exact Hρs | eassumption | exact HW' ] | exact HWW' ].
+  econstructor; [ econstructor; [ exact Hρs | exact Eb | exact HW ]
+                | econstructor; [ exact Hρs | exact Eb' | exact HW' ] | exact HWW' ].
 Qed.
 
 
