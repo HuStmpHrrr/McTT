@@ -45,13 +45,15 @@ Lemma per_ctx_env_ass_inv : forall Γ Γ' κ κ' A A' R,
     EF Γ ▹{κ} A ≈ Γ' ▹{κ'} A' ∈ per_ctx_env ↘ R ->
     exists RT, EF Γ ≈ Γ' ∈ per_ctx_env ↘ RT /\
       (forall ρ ρ', R ρ ρ' -> RT ρ↯ ρ'↯) /\
-      (forall ρ ρ', RT ρ ρ' -> exists i R0, rel_typ i A ρ A' ρ' R0).
+      (forall ρ ρ', RT ρ ρ' -> exists i R0, rel_typ i A ρ A' ρ' R0) /\
+      (forall ρ ρ', RT ρ ρ' -> value_not_level_sort A ρ).
 Proof.
   intros * H.
-  inversion H as [| ? ? ? ? ? ? tail_rel head_rel ? HT _ Hhead Hiff | | |]; subst.
-  exists tail_rel; split; [ exact HT | split ].
+  inversion H as [| ? ? ? ? ? ? tail_rel head_rel ? HT _ Hhead Hnl Hiff | | |]; subst.
+  exists tail_rel; split; [ exact HT | split; [| split ] ].
   - intros ρ ρ' Hρ; apply Hiff in Hρ; destruct Hρ as [Ht _]; exact Ht.
   - intros ρ ρ' Hρ; exists i, (head_rel _ _ Hρ); exact (Hhead _ _ Hρ).
+  - exact Hnl.
 Qed.
 
 (** A telescope under a substitution, split at a position: the entries
@@ -136,7 +138,7 @@ Section TeleLink.
                   List.length (tele_sub (List.rev (List.skipn (S j) tc)) (sb_qn (S j) σc)))
       by (rewrite !length_tele_sub, !List.length_rev, !List.length_skipn; lia).
     destruct (per_ctx_env_app_tail _ _ _ _ _ Hlt HR) as (RT & HRT).
-    destruct (per_ctx_env_ass_inv _ _ _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty).
+    destruct (per_ctx_env_ass_inv _ _ _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty & _).
     (** The arguments, over [ρS], at the group's prefix under [σg]. *)
     pose proof (all_assumptions_firstn _ j Hag) as Hag'; pose proof (all_assumptions_firstn _ j Hac) as Hac'.
     pose proof (rel_ctx_wf_firstn _ _ j HWg) as HWg'; pose proof (rel_ctx_wf_firstn _ _ j HWc) as HWc'.

@@ -1153,7 +1153,9 @@ Section Sort.
                (per_head T T (components_env D ups Ts (ms ++ ws ++ ys)) (components_env D ups' Ts (ms' ++ ws' ++ ys'))
                   <~> canon_nparams_rel D ups (ptyp_mem t) m (List.firstn m bs)) /\
                (** a non-uniform parameter is relevant *)
-               rel_typ_kind T (components_env D ups Ts (ms ++ ws ++ ys)) ak_relevant).
+               rel_typ_kind T (components_env D ups Ts (ms ++ ws ++ ys)) ak_relevant /\
+               (** and its type, a type of a universe, is not [LevelSort] *)
+               rel_type_not_level_sort (ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk) T).
     Proof.
       intros * Hcon Heq HMj * Hu Hm Hw Hy Hu' Hm' Hw' Hy' Hg Ts.
       rename t into Ps.
@@ -1216,7 +1218,7 @@ Section Sort.
                    (forall m' P T, m' < m -> List.nth_error (ptyp_ps Ps) m' = Some P ->
                       List.nth_error (tele_insts (im_nparams Mj) (sb_of_wk (wk_shiftn L)) (ptyp_ps Ps)) m' = Some T ->
                       (per_head T T E E' <~> canon_nparams_rel D ups (ptyp_mem Ps) m' (List.firstn m' bs)) /\
-                      rel_typ_kind T E ak_relevant)).
+                      rel_typ_kind T E ak_relevant /\ rel_type_not_level_sort Ξ0 T)).
       { induction m as [| m IH]; intros Hmn.
         - cbn [List.firstn sb_of_list]; unfold nparams_prefix; cbn [List.firstn List.rev List.app].
           split; [ exact Hwk |]; exists nil, nil; split; [ constructor | split; [ constructor | split; [ constructor | intros; lia ] ] ].
@@ -1321,7 +1323,8 @@ Section Sort.
               exact (Hil _ _ _ Hlt HP' HT').
             * assert (m' = m) as -> by lia.
               rewrite HT in HT'; injection HT' as <-.
-              split; [| exact (rel_exp_of_typ_sub_relevant HR0 Hτ HAv _ _ HEE) ].
+              split; [| split; [ exact (rel_exp_of_typ_sub_relevant HR0 Hτ HAv _ _ HEE)
+                               | intros R1 HR1 ρ1 ρ1' Hρ1; exact (rel_type_sub_not_level_sort HR1 Hτ (rel_type_of_typ HAv) _ _ Hρ1) ] ].
               rewrite List.firstn_app, Hlbs, Nat.sub_diag, List.firstn_all2 by lia; cbn; rewrite List.app_nil_r.
               unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ _ HMj HA).
               assert (HR22 : DF t2 ≈ t2 ∈ per_univ_elem j ↘ R23)

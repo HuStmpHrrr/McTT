@@ -103,7 +103,7 @@ Section ViewArgs.
     { (** The two head PERs agree *)
       heads_agree : per_head C C Ec Ec <~> per_head G G Eg Eg
       (** The group's type evaluates to a type *)
-    ; group_type_value : exists (i : nat) R b, ⟦ G ⟧ Eg ↘ b /\ DF b ≈ b ∈ per_univ_elem i ↘ R
+    ; group_type_value : exists (i : nat) R b, ⟦ G ⟧ Eg ↘ b /\ DF b ≈ b ∈ per_univ_elem i ↘ R /\ not_level_sort b
       (** The container's type evaluates to a type *)
     ; container_type_value : exists (i : nat) R a, ⟦ C ⟧ Ec ↘ a /\ DF a ≈ a ∈ per_univ_elem i ↘ R
       (** The two values are related types *)
@@ -144,7 +144,7 @@ Section ViewArgs.
                   = List.length (cargs_ctx_aux p D (im_nn Mv) (cargs_pat (gsA ++ g :: nil) ++ nil) gsB))
       by (rewrite length_tele_sub, !length_cargs_ctx_aux; lia).
     destruct (per_ctx_env_app_tail _ _ _ _ _ Hlt HRx) as (RT & HRT).
-    destruct (per_ctx_env_ass_inv _ _ _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty).
+    destruct (per_ctx_env_ass_inv _ _ _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty & HtyN).
     (** The group's prefix, at the arguments. *)
     destruct (valid_group_cargs_sem_all p D Hg Hcv v Mv c gs HMv Hcon gsA (g :: gsB) Heq) as [HWg _].
     destruct (rel_ctx_wf_per_ctx_env HWg) as [RG HRG].
@@ -155,6 +155,11 @@ Section ViewArgs.
     assert (E0 : RG <~> RT0)
       by (destruct (per_ctx_env_sym _ _ _ HRT0) as [HRT0' _]; eapply per_ctx_env_right_irrel; [ exact HRG | exact HRT0' ]).
     destruct (Hty _ _ (proj1 (E0 _ _) HρG)) as (i0 & R0 & [a1 b Ea1 Eb HR0]).
+    (** The group's type is not [LevelSort]: it is related to the
+        container's instance, an assumption's type. *)
+    destruct (HtyN _ _ (proj1 (E0 _ _) HρG)) as (a0n & Ea0n & Hna0).
+    assert (a0n = a1) as -> by (eapply functional_eval_exp; eassumption).
+    pose proof (proj1 (per_univ_elem_not_level_sort_iff _ _ _ _ HR0) Hna0) as Hnb.
     (** The container's type, at its arguments over [cups]. *)
     destruct (valid_group_cargs_sem_all qc Dq HgQ HcvQ i' Mi' c gs' HMi' Hcon' (gsA' ++ g' :: nil) gsB'
                 ltac:(rewrite <- List.app_assoc; exact Heq')) as [HWc1 _].
@@ -253,7 +258,7 @@ Section ViewArgs.
       etransitivity; [ symmetry; exact (per_univ_elem_chain_iff _ _ _ _ _ _ _ HR2 HRk) |].
       etransitivity; [ eapply per_univ_elem_right_irrel; [ exact HR2 | exact HR0 ] |].
       exact (per_head_right Ea1 Eb HR0).
-    - exists i0, R0, b; split; [ exact Eb |].
+    - exists i0, R0, b; split; [ exact Eb | split; [| exact Hnb ] ].
       exact (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HR0) HR0).
     - exists ic, Rk, c2; split; [ exact Ec2 |].
       exact (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRk) HRk).
@@ -345,7 +350,7 @@ Section ViewArgs.
         pose proof (view_arg_link gsA0' _ gsB' gsA _ gsB _ _ _ _ vs0 Heq' Heq ltac:(lia) Hl0 ECc ECg Hg0 Hcn0)
           as HL;
           pose proof (heads_agree _ _ _ _ HL) as EL;
-          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg);
+          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg & Hnbg);
           destruct (container_type_value _ _ _ _ HL) as (ic & Rc & ac & Eac & HRc).
         destruct (valid_group_arg_head qc Dq HgQ HcvQ i' Mi' c gs' gsA0' rA' A' gsB' cups ms vs0 HMi' Hcon' Heq' length_container_uparams ltac:(lia) Hl0' Hcn0)
           as (i1 & R1 & a1 & Ea1 & HR1 & E1).
@@ -380,7 +385,7 @@ Section ViewArgs.
         pose proof (view_arg_link gsA0' _ gsB' gsA _ gsB _ _ _ _ vs0 Heq' Heq ltac:(lia) Hl0 ECc ECg Hg0 Hcn0)
           as HL;
           pose proof (heads_agree _ _ _ _ HL) as EL;
-          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg);
+          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg & Hnbg);
           destruct (container_type_value _ _ _ _ HL) as (ic & Rc & ac & Eac & HRc).
         destruct (valid_group_arg_head qc Dq HgQ HcvQ i' Mi' c gs' gsA0' rA' A' gsB' cups ms vs0 HMi' Hcon' Heq' length_container_uparams ltac:(lia) Hl0' Hcn0)
           as (i1 & R1 & a1 & Ea1 & HR1 & E1).
@@ -407,10 +412,10 @@ Section ViewArgs.
         pose proof (view_arg_link gsA0' _ gsB' gsA _ gsB _ _ _ _ vs0 Heq' Heq ltac:(lia) Hl0 ECc ECg Hg0 Hcn0)
           as HL;
           pose proof (heads_agree _ _ _ _ HL) as EL;
-          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg);
+          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg & Hnbg);
           destruct (container_type_value _ _ _ _ HL) as (ic & Rc & ac & Eac & HRc).
         set (y := ⇑! bg 0).
-        assert (Hyg : Rg y y) by exact (var_per_elem 0 HRg).
+        assert (Hyg : Rg y y) by exact (var_per_elem 0 HRg Hnbg).
         assert (Hyc : Rc y y) by (apply (per_head_left Eac Eac HRc), EL, (per_head_left Ebg Ebg HRg); exact Hyg).
         exists (vs0 ++ y :: nil); constructor.
         * rewrite !List.length_app; cbn; lia.
@@ -451,7 +456,7 @@ Section ViewArgs.
     pose proof (view_arg_link gs1' _ gs2' gs1 _ gs2 _ _ _ _ vs Heq' Heq ltac:(lia) Hl ECc ECg Hg1 Hcn)
       as HL;
           pose proof (heads_agree _ _ _ _ HL) as EL;
-          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg);
+          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg & Hnbg);
           destruct (container_type_value _ _ _ _ HL) as (ic & Rc & ac & Eac & HRc).
     destruct (valid_group_arg_head qc Dq HgQ HcvQ i' Mi' c gs' gs1' rA' A' gs2' cups ms vs HMi' Hcon' Heq' length_container_uparams ltac:(lia) ltac:(lia) Hcn)
       as (i1 & R1 & a1 & Ea1 & HR1 & E1).

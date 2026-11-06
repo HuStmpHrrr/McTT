@@ -1207,6 +1207,15 @@ Section Fixed_GCtx.
                     exists a a', ⟦ eb_motive ba ⟧ env_extend_typed ρa (List.combine (ns ++ m :: nil) ts) ↘ a /\
                       ⟦ eb_motive bb ⟧ env_extend_typed ρb (List.combine (ns' ++ m' :: nil) ts') ↘ a' /\
                       DF a ≈ a' ∈ per_univ_elem i ↘ Rel j ns m ns' m').
+      (** The left motives are types of a universe or propositions
+          ([motive_kind]): not [LevelSort], not types of levels, so a stuck
+          eliminator is a neutral of its motive. *)
+      Hypothesis (Hmotn : forall j Mj ba u u' ns ns' m m' ts a, ind_member D j = Some Mj -> im_is_rview Mj = false ->
+                    List.nth_error Bksa j = Some ba ->
+                    grp_rel p D ups nr ar dr j u u' ns ns' m m' ->
+                    List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts ->
+                    ⟦ eb_motive ba ⟧ env_extend_typed ρa (List.combine (ns ++ m :: nil) ts) ↘ a ->
+                    not_level_sort a /\ domain_kind a <> ak_level).
       (** Related indices and elements read back at some types, on each
           side (the model gives them their types in the motive's context). *)
       Hypothesis (Hidx : forall j Mj u u' ns ns' m m', ind_member D j = Some Mj -> im_is_rview Mj = false ->
@@ -1430,7 +1439,8 @@ Section Fixed_GCtx.
           exists a a', ⟦elim ⇑ (d_ind hd k' as1) e at j of p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ⇑ a (d_elim ρa Bksa p ua j as1 e) /\
             ⟦elim ⇑ (d_ind hd k' as2) e' at j of p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ⇑ a' (d_elim ρb Bksb p ub j as2 e') /\
             DF a ≈ a' ∈ per_univ_elem i ↘ Rel j (List.skipn (im_unu D Mj) as1) (⇑ (d_ind hd k' as1) e)
-                                                (List.skipn (im_unu D Mj) as2) (⇑ (d_ind hd k' as2) e').
+                                                (List.skipn (im_unu D Mj) as2) (⇑ (d_ind hd k' as2) e') /\
+            not_level_sort a /\ domain_kind a <> ak_level.
       Proof.
         intros * HM Hrv Hm.
         pose proof Hm as Hm0.
@@ -1466,8 +1476,9 @@ Section Fixed_GCtx.
                                        (nparams_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI j Mj HM _ _ Hs2))
                            | constructor ] ]. }
         destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb' Hm1 Hra Hrb) as (a & a' & Ea & Ea' & HR).
+        destruct (Hmotn _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hm1 Hra Ea) as [Hna Hka].
         rewrite motive_entries_combine in Ea, Ea'.
-        exists a, a'; split; [| split ]; [| | exact HR ].
+        exists a, a'; split; [| split ]; [| | exact (conj HR (conj Hna Hka)) ].
         - eapply eval_elim_neut; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | | exact Ha
                                  | rewrite (HnmA _ _ _ HM Ha), Hnn; reflexivity | exact Hca | rewrite Hnu; exact Ea ].
           rewrite L1; unfold im_np; lia.
@@ -1486,14 +1497,14 @@ Section Fixed_GCtx.
             Rel j ns (⇑ (d_ind hd k' as1) e) ns' (⇑ (d_ind hd k' as2) e') r r'.
       Proof.
         intros * HM Hrv Hm Hb.
-        destruct (neut_elim_motive _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Hm) as (a & a' & Ea & Ea' & HR).
+        destruct (neut_elim_motive _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Hm) as (a & a' & Ea & Ea' & HR & Hna & Hka).
         exists (⇑ a (d_elim ρa Bksa p ua j as1 e)), (⇑ a' (d_elim ρb Bksb p ub j as2 e')); split; [ exact Ea | split; [ exact Ea' |] ].
         pose proof Hm as Hm0.
         inversion Hm0 as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' u0 u0' HM0 Hrv0 Hr Hn L1 L2 Hs1 Hs2 He |]; subst;
           [| no_rview_rel ].
         rewrite HM in HM0; injection HM0 as <-.
         apply (motive_rel_move _ _ _ _ _ _ _ _ _ _ HM Hrv Hm Hs1 Hs2).
-        exact (per_bot_then_per_elem HR Hb).
+        exact (per_bot_then_per_elem HR (per_bot_neutral_at _ _ _ Hna Hka Hb)).
       Qed.
 
       (** A stuck eliminator at neutrals of a member is defined. *)
@@ -1756,6 +1767,7 @@ Section Fixed_GCtx.
             inversion Hbs as [| ? ? ? Hb0 | ? ? ? Hbot Hb0]; subst; inversion Hb0; subst;
             destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb];
             destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hi Hra Hrb) as (a & a' & Ea & Ea' & HR);
+            destruct (Hmotn _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hi Hra Ea) as [Hnmot Hkmot];
             rewrite combine_tele_entries_snoc in Ea, Ea';
             destruct (neut_elim_eval _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Hi) as (r & r' & Er & Er');
             (refine (mk_ih_pair _ _ _ _ _ _ _ (a :: nil) (a' :: nil) (r :: nil) (r' :: nil) _ _ _ _ _ _ _ _ _);
@@ -1767,7 +1779,7 @@ Section Fixed_GCtx.
             intros out out' Hout; inversion Hout as [| ? ? ? ? ? ? ? ? ? e2 e2' o o' He2 Ho0 | ? ? ? ? ? ? ? ? ? o o' Ho0]; subst;
               inversion Ho0; subst.
             * eapply rec_result_self; [ exact HM | exact Hrv | exact Eb | exact Eb' |].
-              exact (per_bot_then_per_elem HR He2).
+              exact (per_bot_then_per_elem HR (per_bot_neutral_at _ _ _ Hnmot Hkmot He2)).
             * destruct (neut_elim_rel _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Hi (Hbot _ _ _ _ _ _ _ _ _ _ _ HM Hrv Hi))
                 as (r0 & r0' & Er0 & Er0' & HR0).
               pose proof (functional_eval_elim _ _ _ _ _ _ _ _ Er Er0) as <-.

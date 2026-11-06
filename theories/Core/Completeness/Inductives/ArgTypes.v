@@ -1644,7 +1644,7 @@ Section ShapeChar.
         assert (Hρ : RΓ' E E) by exact (tele_args_env_rel _ _ _ _ _ _ HΓ' HWs Hlctx Hctx).
         destruct (wk_term_retag_link _ _ _ _ _ _ _ Hw HPv HΓ' Hρ)
           as (i1 & Ru & u & u' & Eu & Eu' & HRu & [Hpu | (b1 & b & Eb1 & Eb & Hbb)]);
-          rewrite HwkE in Eu'; pose proof (Hil _ _ _ HP HTm) as [Hcan (u0 & Eu0 & Hu0)].
+          rewrite HwkE in Eu'; pose proof (Hil _ _ _ HP HTm) as [Hcan [(u0 & Eu0 & Hu0) _]].
         (** The parameter's type is relevant. *)
         { exfalso; assert (u0 = u') as -> by (eapply functional_eval_exp; eassumption).
           rewrite <- (per_univ_elem_kind _ _ _ _ HRu), Hpu in Hu0; discriminate. }
