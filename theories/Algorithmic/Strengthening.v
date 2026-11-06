@@ -2804,6 +2804,121 @@ Proof.
                                      | apply wf_and; assumption | eapply wf_prop_large; exact HΓs | exact HT | reflexivity | exact Hs ].
 Qed.
 
+(** The sort at a kind next to a universe is a type ([⊢ᵗ]). *)
+Lemma univ_kind_sort_wf_type : forall Γ U κ, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵤ U -> Γ ⊢ᵗ abs_kind_sort κ U.
+Proof.
+  intros * HU.
+  assert (HΓ : ⊢ Γ) by (inversion HU; subst; [ assumption | gen_presups; assumption ]).
+  destruct κ; cbn [abs_kind_sort].
+  - inversion HU; subst.
+    + eapply wf_type_of_sort; [ apply (type_sort_universe (S i)) | apply wf_typ, HΓ ].
+    + eapply wf_type_of_sort; [ apply (type_sort_universe 0) | eapply wf_univ_large_tm; eassumption ].
+  - eapply wf_type_of_sort; [ apply (type_sort_universe 0) | apply wf_prop_large, HΓ ].
+  - apply wf_type_level_sort, HΓ.
+Qed.
+
+(** A [Π] next to a short universe [U], its parts typed long next to the
+    weakening of [U], is typed short next to [U] ([wf_pi]). *)
+Lemma pi_at_univ_str : forall Γ κ A Δ κd κc A' B' U,
+    nf_str_exp Γ κ A A' -> nf_str_exp Γ κ A B' ->
+    all_assumptions Δ -> ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ->
+    gc_deps ⍮ gc_stack ⍮ (Δ ++ Γ)%list ⊢ᵤ U -> pi_kinds κd κc ->
+    (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ A'[wk_qn (length Δ) ↑]ʷ : abs_kind_sort κd U[wk_qn (length Δ) ↑]ʷ ->
+    ((tele_wk Δ ↑ ++ Γ ▹{κ} A) ▹{κd} A'[wk_qn (length Δ) ↑]ʷ)%list
+      ⊢ B'[wk_q (wk_qn (length Δ) ↑)]ʷ : abs_kind_sort κc U[wk_qn (length Δ) ↑]ʷ[↑]ʷ ->
+    (Δ ++ Γ)%list ⊢ a_pi κd κc A' B' : abs_kind_sort κc U.
+Proof.
+  intros * IHA IHB Hass HΓf HU Hk HA HB.
+  rewrite <- exp_wk_shift_wk_q, <- !abs_kind_sort_wk in HB; rewrite <- abs_kind_sort_wk in HA.
+  assert (HΓs : ⊢ (Δ ++ Γ)%list) by (inversion HU; subst; [ assumption | gen_presups; assumption ]).
+  assert (HAs : (Δ ++ Γ)%list ⊢ A' : abs_kind_sort κd U) by (exact (IHA Δ _ Hass HΓf (univ_kind_sort_wf_type _ _ _ HU) HA)).
+  assert (HΓs' : ⊢ ((Δ ++ Γ) ▹{κd} A')%list) by (eapply wf_ctx_extend_univ_kind; eassumption).
+  assert (Hass' : all_assumptions (ce_ass κd A' :: Δ)) by (constructor; [ do 2 eexists; reflexivity | exact Hass ]).
+  assert (HΓf' : ⊢ (tele_wk (ce_ass κd A' :: Δ) ↑ ++ Γ ▹{κ} A)%list) by (gen_presups; assumption).
+  assert (HU' : gc_deps ⍮ gc_stack ⍮ ((Δ ++ Γ) ▹{κd} A')%list ⊢ᵤ U[↑]ʷ).
+  { inversion HU; subst; cbn [exp_wk]; [ apply wf_is_univ_large, HΓs' |].
+    eapply wf_is_univ_small, (wk_preserves_exp _ _ _ _ Level@_); [ eassumption | mauto 2 ]. }
+  assert (HBs : ((Δ ++ Γ) ▹{κd} A')%list ⊢ B' : (abs_kind_sort κc U)[↑]ʷ).
+  { apply (IHB (ce_ass κd A' :: Δ) _ Hass' HΓf'); [ rewrite abs_kind_sort_wk; exact (univ_kind_sort_wf_type _ _ _ HU') | exact HB ]. }
+  eapply wf_pi; eassumption.
+Qed.
+
+(** A [Π]: between types of levels at [LevelSort]; into a proposition, a
+    proposition; into a universe next to a large universe, of that one
+    ([pi_at_univ_str]); next to a small universe at a long level, the
+    short type is a universe ([typ_univ_shape_strengthen]), and the parts,
+    moved up to it, are checked against it. *)
+Lemma pi_str : forall Γ κ A κd κc A' B', nf_str_exp Γ κ A A' -> nf_str_exp Γ κ A B' -> nf_str_exp Γ κ A (a_pi κd κc A' B').
+Proof.
+  intros * IHA IHB Δ T Hass HΓf HTt HW; cbn [exp_wk] in HW.
+  set (φ := wk_qn (length Δ) ↑) in *.
+  set (Lf := (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list) in *.
+  assert (HΓs : ⊢ (Δ ++ Γ)%list) by (destruct HTt; [ gen_presups; assumption | assumption ]).
+  destruct (wf_pi_inversion_at HW) as [U HU HA HB Hk Hsub].
+  rewrite abs_kind_sort_wk in HB.
+  destruct HTt as [T Srt HS HT | _].
+  2:{ (** At [LevelSort]: a [Π] between types of levels *)
+      pose proof (level_sort_typed_former HW) as Hf; inversion Hf; subst.
+      exact (pi_at_univ_str _ _ _ _ _ _ _ _ Typeω@0 IHA IHB Hass HΓf (wf_is_univ_large _ _ _ 0 HΓs) Hk HA HB). }
+  destruct (abs_kind_eq_dec κc ak_level) as [-> | Hl].
+  - (** A [Π] between types of levels is of no sort's type. *)
+    exfalso; destruct Hsub as [Hsub | Hsub]; cbn [abs_kind_sort] in Hsub.
+    + destruct T; cbn [exp_wk] in Hsub; try discriminate; exact (level_sort_untyped HT).
+    + destruct (presup_subtyp_left_sorted Hsub) as (S0 & _ & HL); exact (level_sort_untyped HL).
+  - pose proof (pi_inv_sort_sub HU Hl Hsub) as Hs; clear Hsub.
+    inversion HU; subst.
+    + (** Next to a large universe *)
+      pose proof (pi_at_univ_str _ _ _ _ _ _ _ _ Typeω@i IHA IHB Hass HΓf (wf_is_univ_large _ _ _ i HΓs) Hk HA HB) as HP.
+      destruct κc; [| | contradiction Hl; reflexivity ]; cbn [abs_kind_sort] in HP, Hs.
+      * eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe (S i)) | exact HS
+                                         | exact HP | apply wf_typ, HΓs | exact HT | reflexivity | exact Hs ].
+      * eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
+                                         | exact HP | apply wf_prop_large, HΓs | exact HT | reflexivity | exact Hs ].
+    + (** Next to a small universe at a long level: the parts move up to
+          any short universe the small one is below. *)
+      assert (HLu : Lf ⊢ Type⟨L⟩ : Typeω@0) by (eapply wf_univ_large_tm; eassumption).
+      assert (Hlift : forall U2, gc_deps ⍮ gc_stack ⍮ (Δ ++ Γ)%list ⊢ᵤ U2 -> Lf ⊢ Type⟨L⟩ ⊆ U2[φ]ʷ ->
+                 (Δ ++ Γ)%list ⊢ a_pi κd κc A' B' : abs_kind_sort κc U2).
+      { intros U2 HU2 HsU.
+        assert (exists k2, (Δ ++ Γ)%list ⊢ U2 : Typeω@k2) as [k2 Hk2]
+          by (inversion HU2; subst; [ eexists; apply wf_typ, HΓs | exists 0; eapply wf_univ_large_tm; eassumption ]).
+        pose proof (short_wk_sort _ _ _ _ _ _ HΓf Hk2 (type_sort_universe k2)) as Hk2f; fold φ Lf in Hk2f.
+        assert (HΓf1 : ⊢ (Lf ▹{κd} A'[φ]ʷ)%list) by (gen_presups; assumption).
+        assert (Hw1 : (Lf ▹{κd} A'[φ]ʷ)%list ⊢ʷ ↑ : Lf) by mauto 2.
+        apply (pi_at_univ_str _ _ _ _ _ _ _ _ U2 IHA IHB Hass HΓf HU2 Hk).
+        - destruct κd; cbn [abs_kind_sort] in HA |- *; [ eapply wf_exp_subtyp; [ exact HA | exact Hk2f | constructor | exact HsU ] | exact HA | exact HA ].
+        - destruct κc; cbn [abs_kind_sort] in HB |- *; [| exact HB | contradiction Hl; reflexivity ].
+          eapply wf_exp_subtyp; [ exact HB | | constructor | exact (wk_preserves_subtyp _ _ _ _ _ _ _ HsU Hw1) ].
+          eapply (wk_preserves_exp _ _ _ _ Typeω@k2); eassumption. }
+      destruct κc; [| | contradiction Hl; reflexivity ]; cbn [abs_kind_sort] in Hs, Hlift.
+      * (** Into a universe: the short type is a universe *)
+        destruct HS as [i | |].
+        -- destruct (typ_univ_shape_strengthen _ _ _ _ _ _ _ Hass HΓf HT (univ_term_suniv L) Hs) as [[j Hj] | [M HM]].
+           ++ assert (HTj : (Δ ++ Γ)%list ⊢ T ≈ (Typeωⁿ@j : exp) : Typeω@i) by (eapply soundness_ty'; eassumption).
+              cbn [nf_to_exp] in HTj.
+              pose proof (short_wk_exp_eq _ _ _ _ _ _ _ HΓf HTj) as HTjf; cbn [exp_wk] in HTjf; fold φ Lf in HTjf.
+              assert (HP : (Δ ++ Γ)%list ⊢ a_pi κd ak_relevant A' B' : Typeω@j)
+                by (apply (Hlift Typeω@j (wf_is_univ_large _ _ _ j HΓs)); etransitivity; [ exact Hs | eapply wf_subtyp_refl'; exact HTjf ]).
+              eapply wf_exp_subtyp; [ exact HP | exact HT | constructor | eapply wf_subtyp_refl'; symmetry; exact HTj ].
+           ++ assert (HTM : (Δ ++ Γ)%list ⊢ T ≈ (nf_univ_of M : exp) : Typeω@i) by (eapply soundness_ty'; eassumption).
+              cbn [nf_to_exp nf_univ_of] in HTM.
+              set (Mx := lvl_exp_of (fst M) (List.map atom_exp (snd M))) in *.
+              assert (exists k, (Δ ++ Γ)%list ⊢ Type⟨Mx⟩ : Typeω@k) as [k Hk'] by (gen_presups; eexists; eassumption).
+              destruct (wf_univ_lvl_inversion Hk') as [nM HMx].
+              pose proof (short_wk_exp_eq _ _ _ _ _ _ _ HΓf HTM) as HTMf; cbn [exp_wk] in HTMf; fold φ Lf in HTMf.
+              assert (HP : (Δ ++ Γ)%list ⊢ a_pi κd ak_relevant A' B' : Type⟨Mx⟩)
+                by (apply (Hlift Type⟨Mx⟩ (wf_is_univ_small _ _ _ _ _ HMx)); etransitivity; [ exact Hs | eapply wf_subtyp_refl'; exact HTMf ]).
+              eapply wf_exp_subtyp; [ exact HP | exact HT | constructor | eapply wf_subtyp_refl'; symmetry; exact HTM ].
+        -- exfalso; exact (subtyp_relevant_prop_absurd Hs HLu (short_wk_sort _ _ _ _ _ _ HΓf HT type_sort_prop)).
+        -- exfalso; pose proof (short_wk_sort _ _ _ _ _ _ HΓf HT type_sort_level) as HTl.
+           discriminate (subtyp_same_kind _ _ _ ak_relevant ak_level 0 0 Hs HLu HTl).
+      * (** Into a proposition: a proposition *)
+        assert (HP : (Δ ++ Γ)%list ⊢ a_pi κd ak_propositional A' B' : Propₘ)
+          by (apply (Hlift Typeω@0 (wf_is_univ_large _ _ _ 0 HΓs)); eapply wf_subtyp_small_large; eassumption).
+        eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
+                                           | exact HP | apply wf_prop_large, HΓs | exact HT | reflexivity | exact Hs ].
+Qed.
+
 (** ** The Induction Hypotheses Under the Premise *)
 
 (** The generated hypothesis at a list, of a motive under a premise each
