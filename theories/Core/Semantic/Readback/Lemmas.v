@@ -258,7 +258,7 @@ Import Domain_Notations.
   Lemma read_nf_level_sort : forall {Θ Ξ} s m n l W,
       Rnf ⇓ (Levelᵈ@m) l in Θ ⍮ Ξ ⍮ s ↘ W ->
       Rnf ⇓ (Levelᵈ@n) l in Θ ⍮ Ξ ⍮ s ↘ W.
-  Proof. inversion 1; subst; econstructor; eassumption. Qed.
+  Proof. inversion 1; subst; first [ econstructor; eassumption | discriminate ]. Qed.
 
   Lemma read_nf_level_real : forall {Θ Ξ} s n l W,
       Rnf ⇓ (Levelᵈ@n) l in Θ ⍮ Ξ ⍮ s ↘ W ->

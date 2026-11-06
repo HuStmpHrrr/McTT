@@ -66,8 +66,13 @@ Proof.
   - destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓΓ' HsM _ _ Hrel)
       as [HP HP'].
     destruct (HP (length Γ)) as [P HPr], (HP' (length Γ')) as [P' HPr'].
-    exists (nf_proof P), (nf_proof P'); refine (conj _ (conj _ eq_refl));
-      econstructor; try eassumption; apply nbe_term_proof; first [ congruence | apply read_nf_proof; first [ congruence | eassumption ] ].
+    (** with the propositions, related types, which read back alike *)
+    destruct (per_univ_then_per_top_typ HR (length Γ)) as [Q Q' HQ HQ' HE].
+    rewrite Hlen in HQ'.
+    exists (nf_proof Q P), (nf_proof Q' P'); refine (conj _ (conj _ _));
+      [ econstructor; try eassumption; apply nbe_term_proof; first [ congruence | apply read_nf_proof; first [ congruence | eassumption ] ]
+      | econstructor; try eassumption; apply nbe_term_proof; first [ congruence | apply read_nf_proof; first [ congruence | eassumption ] ]
+      | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; exact HE ].
 Qed.
 
 (** A normal form in the left context has one in the right context, equal up

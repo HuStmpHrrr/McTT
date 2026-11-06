@@ -258,12 +258,13 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ ordinal_zero (mk_level_atom 0 (domain_level_sort a) M :: nil) )
 (** A value of a proposition reads back as a proof term ([read_proof]),
-    whatever the proposition.  This is the only rule at a propositional
-    type. *)
+    with the proposition read back as a type.  This is the only rule at a
+    propositional type. *)
 | read_nf_proof :
   `( domain_kind a = ak_propositional ->
+     Rtyp a in Θ ⍮ Ξ ⍮ s ↘ P ->
      Rprf m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ a m in Θ ⍮ Ξ ⍮ s ↘ nf_proof M )
+     Rnf ⇓ a m in Θ ⍮ Ξ ⍮ s ↘ nf_proof P M )
 (** A proposition, as an element of [Prop], reads back as a type. *)
 | read_nf_prop :
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->

@@ -96,9 +96,16 @@ Proof.
     assert (HsM1 : exp_scoped (length (Γ ▹{κ} A)) M[↑]ʷ) by (eapply exp_scoped_wk; [ exact HsM | intros; cbn; lia ]).
     destruct (per_ctx_env_kept_proof_readable _ _ _ M[↑]ʷ HR1 (exp_scoped_free_bound _ _ HsM1) _ _ Hrel1) as [HP _].
     destruct (HP (length (Γ ▹{κ} A))) as [P HPr].
-    exists (nf_proof P); split.
-    + econstructor; [ exact Hρ1 | exact HaσE | apply nbe_term_proof; [ congruence | apply read_nf_proof; [ congruence | exact HPr ] ] ].
-    + destruct (read_nf_propositional _ _ _ _ Hp HW0) as [P0 ->]; exact eq_refl.
+    (** their propositions: the weakened type reads back, one variable
+        further out, as the weakening of the type's readback
+        ([read_typ_shift]) *)
+    destruct (per_univ_then_per_top_typ HRσT (S (length Γ))) as [D1 D2 HD1 HD2 HE].
+    destruct (read_nf_propositional _ _ _ _ Hp HW0) as (C0 & P0 & -> & HC0).
+    pose proof (read_typ_shift _ _ Γ ρ0 T aT C0 D2 Hρ' HaT HC0 HD2) as Hs.
+    exists (nf_proof D1 P); split.
+    + econstructor; [ exact Hρ1 | exact HaσE | apply nbe_term_proof; [ congruence | apply read_nf_proof; [ congruence | exact HD1 | exact HPr ] ] ].
+    + unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs nf_wk]; change (nf_eq_upto_proofs D1 (nf_wk ↑ C0)).
+      etransitivity; [ exact HE | exact Hs ].
   - (** A type of an evaluated kind: the value of [M[↑]] is related to
         that of [M], so they read back alike one variable further out,
         where the value of [M] reads back as the weakening of [W]

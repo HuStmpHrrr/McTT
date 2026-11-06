@@ -604,7 +604,7 @@ Proof. intros; split; [ apply exp_freshb_sound | apply (proj1 freshb_complete) ]
 Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
-  | nf_proof M => exp_fresh k M
+  | nf_proof P M => nf_fresh k P /\ exp_fresh k M
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh k (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_fresh k A /\ nf_fresh (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_fresh k) Ms
@@ -635,7 +635,7 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_lvl c xs => nf_lvl c (List.map (map_level_atom (ne_unwk k)) xs)
   | nf_prop => nf_prop
   | nf_True => nf_True
-  | nf_proof M => nf_proof M[unwk k]ʷ
+  | nf_proof P M => nf_proof (nf_unwk k P) M[unwk k]ʷ
   | nf_False => nf_False
   | nf_and P Q => nf_and (nf_unwk k P) (nf_unwk (S k) Q)
   | nf_pi κd κc A B => nf_pi κd κc (nf_unwk k A) (nf_unwk (S k) B)
@@ -812,7 +812,7 @@ Qed.
 Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   match W with
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => true
-  | nf_proof M => exp_freshb k M
+  | nf_proof P M => nf_freshb k P && exp_freshb k M
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_freshb k (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_freshb k A && nf_freshb (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => List.forallb (nf_freshb k) Ms
@@ -868,7 +868,7 @@ Qed.
 (** Proof-freedom is decided by a boolean function with the same clauses. *)
 Fixpoint nf_proof_freeb (W : nf) {struct W} : bool :=
   match W with
-  | nf_proof _ => false
+  | nf_proof _ _ => false
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => true
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_proof_freeb (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_proof_freeb A && nf_proof_freeb B

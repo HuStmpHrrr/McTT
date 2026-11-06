@@ -1705,12 +1705,13 @@ Inductive nf : Set :=
 | nf_prop : nf
 (** [⊤] *)
 | nf_True : nf
-(** A proof, as a term.  Proofs are never evaluated, so the term is not
-    normal: it is the proof as written, its free variables bound by local
-    definitions to the readbacks of their values ([Core.Semantic.Readback]).
-    Normal forms are compared up to their proofs
-    ([nf_eq_upto_proofs]). *)
-| nf_proof : exp -> nf
+(** A proof, as a term, with the normal form of the proposition it proves
+    first.  Proofs are never evaluated, so the term is not normal: it is
+    the proof as written, its free variables bound by local definitions to
+    the readbacks of their values ([Core.Semantic.Readback]).  Normal forms
+    are compared up to their proofs ([nf_eq_upto_proofs]): two proofs are
+    related when their propositions are. *)
+| nf_proof : nf -> exp -> nf
 (** [⊥] *)
 | nf_False : nf
 (** A [Σₚ] of normal forms *)
@@ -1783,7 +1784,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_lvl c xs => lvl_exp_of c (List.map (fun a => (atom_offset a, ne_to_exp (atom_level a))) xs)
   | nf_prop => a_prop
   | nf_True => a_True
-  | nf_proof M => M
+  | nf_proof _ M => M
   | nf_False => a_False
   | nf_and P Q => a_and (nf_to_exp P) (nf_to_exp Q)
   | nf_pi κd κc A B => a_pi κd κc (nf_to_exp A) (nf_to_exp B)
@@ -1908,11 +1909,12 @@ Proof. intros ? ? H; destruct H; reflexivity. Qed.
 Lemma is_univ_nf_functional : forall W u v, is_univ_nf W u -> is_univ_nf W v -> u = v.
 Proof. intros ? ? ? H H'; destruct H; inversion H'; reflexivity. Qed.
 
-(** A normal form with no global at the head of a neutral.  Its proofs are
-    not inspected. *)
+(** A normal form with no global at the head of a neutral.  Its proof
+    terms are not inspected; the propositions of its proofs are. *)
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False => True
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
+  | nf_proof P _ => nf_clean P
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_clean (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_clean A /\ nf_clean B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_clean Ms
@@ -2148,11 +2150,12 @@ Fixpoint list_eqb {A : Set} (f : A -> A -> bool) (l l' : list A) : bool :=
 
 (** [nf_eqb_upto_proofs W W'] is the decision procedure for equality of
     normal forms up to their proofs: the two normal forms have the same
-    shape, with the same kinds, indices, names and levels, and any two
-    proofs ([nf_proof], and the proof of a stuck ex falso) are related.
+    shape, with the same kinds, indices, names and levels; two proofs
+    ([nf_proof]) are related when their propositions are, and any two
+    proofs of a stuck ex falso are related.
     Statements use the relation [nf_eq_upto_proofs] below; the checker
-    runs this function.  For example [Vec ⟨n, nf_proof P1⟩] and
-    [Vec ⟨n, nf_proof P2⟩] are related, while [Πⁿ{ak_relevant} A B] and
+    runs this function.  For example [Vec ⟨n, nf_proof Q P1⟩] and
+    [Vec ⟨n, nf_proof Q P2⟩] are related, while [Πⁿ{ak_relevant} A B] and
     [Πⁿ{ak_level} A B] are not. *)
 Fixpoint nf_eqb_upto_proofs (W W' : nf) {struct W} : bool :=
   match W, W' with
@@ -2169,7 +2172,7 @@ Fixpoint nf_eqb_upto_proofs (W W' : nf) {struct W} : bool :=
                             ne_eqb_upto_proofs (atom_level a) (atom_level a')) xs xs'
   | nf_prop, nf_prop => true
   | nf_True, nf_True => true
-  | nf_proof _, nf_proof _ => true
+  | nf_proof P _, nf_proof P' _ => nf_eqb_upto_proofs P P'
   | nf_False, nf_False => true
   | nf_and P Q, nf_and P' Q' => nf_eqb_upto_proofs P P' && nf_eqb_upto_proofs Q Q'
   | nf_pi κd κc A B, nf_pi κd' κc' A' B' =>

@@ -408,8 +408,12 @@ Proof.
   assert (E : R' <~> R0) by (eapply per_univ_elem_right_irrel; eassumption).
   pose proof (per_univ_elem_kind _ _ _ _ HR0) as Hrab.
   destruct HVt as [w Hp Hw | m w Hr Hm Hw].
-  - destruct (read_nf_propositional _ _ _ _ Hp Hw) as [Q ->].
-    destruct (read_nf_propositional _ _ _ _ (eq_trans (eq_sym Hrab) Hp) HRb) as [Q' ->]; exact eq_refl.
+  - (** Two proofs, of related propositions, which read back alike *)
+    destruct (read_nf_propositional _ _ _ _ Hp Hw) as (C0 & Q & -> & HC0).
+    destruct (read_nf_propositional _ _ _ _ (eq_trans (eq_sym Hrab) Hp) HRb) as (C0' & Q' & -> & HC0').
+    destruct (per_univ_then_per_top_typ HR0 (List.length Γ)) as [D D' HD HD' HE].
+    functional_read_rewrite_clear.
+    unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; exact HE.
   - destruct Hexp as [Hp | (m0 & m0' & Hm0 & Hm0' & Hmm)]; [ rewrite Hp in Hr; inversion Hr |].
     pose proof (Hfm _ _ _ HPv _ Hm) as <-; pose proof (Hfm _ _ _ HPv _ Hm0) as <-; pose proof (Hfm _ _ _ HPv _ Hm0') as <-.
     destruct (per_elem_then_per_top HR0 (proj1 (E _ _) Hmm) (List.length Γ)) as [W1 W2 HW1 HW2 HE].

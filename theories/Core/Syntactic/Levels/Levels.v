@@ -176,7 +176,7 @@ Fixpoint nf_code (M : nf) (t : code_tree) : code_tree :=
   | nf_lvl (a, b) xs =>
       code_tree_node 3 (code_tree_node a (code_tree_node b (list_code (atom_code (fun m => ne_code m code_tree_nil)) xs code_tree_nil) code_tree_nil) code_tree_nil) t
   | nf_True => code_tree_node 7 code_tree_nil t
-  | nf_proof _ => code_tree_node 8 code_tree_nil t
+  | nf_proof P _ => code_tree_node 8 (nf_code P code_tree_nil) t
   | nf_False => code_tree_node 9 code_tree_nil t
   | nf_prop => code_tree_node 17 code_tree_nil t
   | nf_and P Q => code_tree_node 19 (nf_code P (nf_code Q code_tree_nil)) t
@@ -711,7 +711,7 @@ Qed.
 Fixpoint nf_proof_free (W : nf) : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
-  | nf_proof _ => False
+  | nf_proof _ _ => False
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_proof_free (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_proof_free A /\ nf_proof_free B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms | nf_record _ Ms => all_list nf_proof_free Ms

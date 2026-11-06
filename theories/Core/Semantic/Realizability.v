@@ -109,10 +109,12 @@ Proof.
   - exact (IH _ _ _ _ _ HA Hv HR).
 Qed.
 
-(** At a propositional type every value reads back as a proof term
-    ([read_nf_proof] is the only rule there). *)
+(** At a propositional type every value reads back as a proof term, with
+    the readback of the proposition ([read_nf_proof] is the only rule
+    there). *)
 Lemma read_nf_propositional : forall s a v W, domain_kind a = ak_propositional ->
-    Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ W -> exists P, W = nf_proof P.
+    Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ W ->
+    exists P M, W = nf_proof P M /\ Rtyp a in gc_deps ⍮ gc_stack ⍮ s ↘ P.
 Proof.
   intros * Ha H; inversion H; subst; cbn in *; try congruence; eauto;
     exfalso; eapply evaluated_kind_not_propositional; eassumption.
@@ -932,8 +934,11 @@ Proof.
         eexists; constructor; eassumption.
     + intros b b' Hb; apply_relation_equivalence; destruct Hb as [Hb Hb']; intro s.
       destruct (Hb s) as [M HM], (Hb' s) as [M' HM'].
-      apply (mk_normal_reads_alike _ _ _ (nf_proof M) (nf_proof M'));
-        [ apply read_nf_proof; assumption | apply read_nf_proof; assumption | reflexivity ].
+      (** with the propositions, which read back alike *)
+      destruct (Ht s) as [C C' HC HC' HE].
+      apply (mk_normal_reads_alike _ _ _ (nf_proof C M) (nf_proof C' M'));
+        [ apply read_nf_proof; assumption | apply read_nf_proof; assumption
+        | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; exact HE ].
   - (** A [Π]: read back under a fresh variable of the domain, a neutral
         proof at a proposition; its neutrals applied are neutrals of the
         relevant codomain. *)
@@ -1279,7 +1284,7 @@ Proof.
                 (forall s, exists B, Rtyp b in gc_deps ⍮ gc_stack ⍮ s ↘ B) ->
                 entry_readable (de_term ⋆ᵈ⟨M0, ρ0⟩ (entry_type_value b))).
       { intros * Hr Hb Hty s; destruct (Hty s) as [B HB]; destruct (Hr s) as [P HP].
-        eexists; econstructor; [ constructor | exact HB | apply read_nf_proof; [ exact Hb | exact HP ] ]. }
+        eexists; econstructor; [ constructor | exact HB | apply read_nf_proof; [ exact Hb | exact HB | exact HP ] ]. }
       do 2 eexists; repeat split;
         only 1-2: (eapply initial_env_cons_def_proof; [ eassumption | eassumption | congruence ]).
       apply_relation_equivalence.

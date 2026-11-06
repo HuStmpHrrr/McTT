@@ -1183,11 +1183,12 @@ Proof. intros * Hb H a Ha; exact (domain_avoids_mono' _ _ _ _ Hb (H a Ha)). Qed.
     normal form [W] outside its proofs; mutually, in the neutral [u].  A
     proof is read back as its term under definitions of the entries it
     reads ([read_proof_kept]), which may include [k], and normal forms are
-    compared up to their proofs, so proofs are exempt. *)
+    compared up to their proofs, so proof terms are exempt; the
+    proposition a proof records is compared, and is not. *)
 Fixpoint nf_fresh_outside_proofs (k : nat) (W : nf) {struct W} : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False
-  | nf_proof _ => True
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
+  | nf_proof P _ => nf_fresh_outside_proofs k P
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh_outside_proofs k (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_fresh_outside_proofs k A /\ nf_fresh_outside_proofs (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_fresh_outside_proofs k) Ms

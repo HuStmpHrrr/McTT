@@ -81,9 +81,12 @@ Proof.
   - destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓ (exp_scoped_free_bound _ _ HsM) _ _ Hrel) as [HP _].
     destruct (per_ctx_env_kept_proof_readable _ _ _ M' HΓ (exp_scoped_free_bound _ _ HsM') _ _ Hrel) as [HP' _].
     destruct (HP (List.length Γ)) as [P HPr], (HP' (List.length Γ)) as [P' HPr'].
-    exact (mk_initial_env_normal_forms _ _ _ _ ρ a (nf_proof P) (nf_proof P') Hρ Ha
-             (nbe_term_proof _ _ _ _ _ _ _ Hr (read_nf_proof _ _ _ _ _ _ Hr HPr))
-             (nbe_term_proof _ _ _ _ _ _ _ Hr (read_nf_proof _ _ _ _ _ _ Hr HPr')) eq_refl).
+    (** with the proposition, read back as a type *)
+    destruct (per_univ_then_per_top_typ HR (List.length Γ)) as [Q _ HQ _ _].
+    apply (mk_initial_env_normal_forms _ _ _ _ ρ a (nf_proof Q P) (nf_proof Q P') Hρ Ha
+             (nbe_term_proof _ _ _ _ _ _ _ Hr (read_nf_proof _ _ _ _ _ _ _ Hr HQ HPr))
+             (nbe_term_proof _ _ _ _ _ _ _ Hr (read_nf_proof _ _ _ _ _ _ _ Hr HQ HPr'))).
+    unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; change (nf_eq_upto_proofs Q Q); reflexivity.
 Qed.
 
 (** The same at a type equality, where the element relation is [per_univ i],
@@ -195,8 +198,12 @@ Proof.
   assert (E : R <~> R') by (eapply per_univ_elem_right_irrel; eassumption).
   pose proof (per_univ_elem_kind _ _ _ _ HR') as Hra.
   destruct HW as [w Hp Hw | m w Hr Hm Hw]; destruct HW' as [w' Hp' Hw' | m' w' Hr' Hm' Hw']; try kind_clash.
-  - destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp Hw) as [P ->].
-    destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp' Hw') as [P' ->]; reflexivity.
+  - (** Two proofs, of propositions read back alike: the types are related *)
+    destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp Hw) as (C & P & -> & HC).
+    destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp' Hw') as (C' & P' & -> & HC').
+    destruct (per_univ_then_per_top_typ HR' (List.length Γ)) as [D D' HD HD' HE].
+    functional_read_rewrite_clear.
+    unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; exact HE.
   - destruct Hexp as [Hp | (m0 & m0' & Hm0 & Hm0' & Hmm)]; [ kind_clash |].
     functional_eval_rewrite_clear.
     destruct (per_elem_then_per_top HR' (proj1 (E _ _) Hmm) (List.length Γ)) as [V V' HV HV' HE].

@@ -309,7 +309,7 @@ Lemma proof_entry_readable : forall a v,
     entry_readable (de_term v (entry_type_value a)).
 Proof.
   intros * Hr Ha Hv s; destruct (Ha s) as [A HA]; destruct (Hv s) as [M HM].
-  eexists; eapply read_entry_term; [ constructor | exact HA | apply read_nf_proof; [ exact Hr | exact HM ] ].
+  eexists; eapply read_entry_term; [ constructor | exact HA | apply read_nf_proof; [ exact Hr | exact HA | exact HM ] ].
 Qed.
 
 (** The values of a proposition read back. *)

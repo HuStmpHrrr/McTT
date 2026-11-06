@@ -5,10 +5,11 @@
     definition or to an axiom ([global_stuck]).  At a transparent context there
     are none, which is [nbe_clean] ([Core.Semantic.Transparency]).
 
-    Proofs are exempt, as in [nf_clean]: a proof reads back as its term
-    under definitions of the variables it reads ([nf_proof]), which may
-    name any global, and is compared up to proofs.  So is the proof an ex falso
-    carries ([ne_absurd]). *)
+    Proof terms are exempt, as in [nf_clean]: a proof reads back as its
+    term under definitions of the variables it reads ([nf_proof]), which
+    may name any global, and is compared up to proofs; the proposition it
+    records is not exempt.  So is the proof an ex falso carries
+    ([ne_absurd]). *)
 
 From Stdlib Require Import List.
 From Mctt Require Import LibTactics.
@@ -20,10 +21,12 @@ Import Domain_Notations.
 (** ** Normal Forms Whose Global Heads Satisfy [G] *)
 
 (** [nf_stuck G W]: every global heading a neutral in [W], outside its
-    proofs, satisfies [G]; mutually, in the neutral [M]. *)
+    proof terms (the propositions of proofs included), satisfies [G];
+    mutually, in the neutral [M]. *)
 Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_proof _ | nf_False => True
+  | nf_typ _ | nf_level _ | nf_level_sort | nf_prop | nf_True | nf_False => True
+  | nf_proof P _ => nf_stuck G P
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_stuck G (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_stuck G A /\ nf_stuck G B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_stuck G) Ms
