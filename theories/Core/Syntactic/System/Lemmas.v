@@ -2018,12 +2018,17 @@ Hint Resolve wf_fn_eta_expand : mctt.
 
 (** ** Closed Neutrals
 
-    A neutral with no global or parameter at its head has a variable there, and
-    the empty context has none. *)
+    A neutral with no global at its head has a variable there, which the
+    empty context has none of, or is an ex falso, whose proof is a closed
+    proof of [⊥].  So a clean neutral typed in the empty context proves
+    [⊥]; no model is needed.  At a global context with an axiom [bot : ⊥],
+    [efqⁿ bot return Prop] is such a neutral: no stronger statement holds at
+    every global context. *)
 
-Lemma no_closed_neutral : forall {Θ Ξ A} {W : ne},
+Lemma closed_clean_neutral_proves_False : forall {Θ Ξ A} {W : ne},
     ne_clean W ->
-    ~ Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A.
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A ->
+    exists M, Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥.
 Proof.
   intros * HW H.
   dependent induction H;
@@ -2032,14 +2037,9 @@ Proof.
     destruct W; try (simpl in *; congruence);
     autoinjections; cbn in *; destruct_all;
     eauto.
-  (** Ex falso keeps no scrutinee: [★ : ⊥] in the empty context is excluded
-      only by consistency, which the model gives. *)
-  1: (* PENDING M3 *) admit.
-  inversion_by_head ctx_lookup.
-Admitted.
-
-#[export]
-Hint Resolve no_closed_neutral : mctt.
+  all: try contradiction.
+  all: try solve [ inversion_by_head ctx_lookup ].
+Qed.
 
 (** ** Conversion
 

@@ -1817,24 +1817,6 @@ Hint Resolve canonical_form_of_pi : mctt.
 #[export]
 Hint Resolve subtyp_spec : mctt.
 
-(** In the empty context, a neutral without a global head has no type: its
-    head would be a variable. *)
-Lemma no_closed_neutral : forall {Θ Ξ A} {W : ne},
-    ne_clean W ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A).
-Proof.
-  intros * HWc HW.
-  dependent induction HW; try (destruct W; simpl in *; congruence);
-    try solve [ eauto ].
-  all: destruct W; simpl in *; try congruence; autoinjections; destruct_all;
-    try contradiction; eauto.
-  all: try solve [ match_by_head ctx_lookup ltac:(fun H => inversion H) ].
-  (* PENDING M3: a neutral ex falso [efq ⋆ⁿ] carries the proof [⋆] of [⊥],
-     typed exactly when [⊥] is proved ([wf_true_inversion]), so this case
-     is consistency itself, from the model *)
-  admit.
-Admitted.
-
 (** ** Canonical Forms and Consistency
 
     These hold only at a transparent global context: otherwise an axiom
@@ -1854,6 +1836,16 @@ Proof.
   (* PENDING M3: a proof of [⊥] normalises to [⋆ⁿ], which says nothing;
      consistency comes from the model, where [⊥] has no element *)
 Admitted.
+
+(** In the empty context, a neutral without a global head has no type: its
+    head would be a variable, or it is an ex falso, whose proof of [⊥]
+    ([closed_clean_neutral_proves_False]) there is none of. *)
+Lemma no_closed_neutral : forall {A} {W : ne},
+    ne_clean W ->
+    ~ (⋅ ⊢ W : A).
+Proof.
+  intros * Hc HW; destruct (closed_clean_neutral_proves_False Hc HW) as [M HM]; exact (consistency_False _ HM).
+Qed.
 
 (** Canonicity at a universe.  A closed type of a universe term [T] has a
     normal form of the shape [typ_nf_below u], where [u] is the normal form
