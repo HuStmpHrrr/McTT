@@ -3,7 +3,7 @@ From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
-From Mctt.Core Require Import Base.
+From Mctt.Core Require Import Base Soundness.
 From Mctt.Core.Completeness.Consequences Require Import Types.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Extraction Require Import Lookup PseudoMonadic TypeCheck.
@@ -220,35 +220,41 @@ Section BridgeInstance.
     exact (Hno _ HA).
   Qed.
 
-  (** A type of either sort infers a sort. *)
-  Lemma alg_type_infer_sort_complete_gc : forall Γ A,
-      gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵗ A -> exists UA r u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA r u.
+  (** A type of the sort of a kind infers a sort of that kind. *)
+  Lemma alg_type_infer_sort_complete_gc : forall Γ κ i A,
+      gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@i -> exists UA u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA κ u.
   Proof.
-    intros * [S HS HA].
+    intros * HA.
     assert (⊢ gc_deps ⍮ gc_stack ⍮ Γ) by (gen_presups; assumption).
-    exact (alg_type_check_sort_infer ltac:(eassumption) HS (alg_type_check_complete_gc _ _ _ HA)).
+    destruct (alg_type_check_kind_sort_infer ltac:(eassumption) (alg_type_check_complete_gc _ _ _ HA)) as (UA & u & ? & ? & _).
+    eauto.
   Qed.
 
-  (** The two ways "is [A] a type of either sort?" can fail, as for a type
-      of a universe. *)
+  (** The two ways "is [A] a type of a sort?" can fail, as for a type of a
+      universe. *)
   Lemma not_wf_type_of_no_infer_gc : forall Γ A,
-      (forall B : nf, ~ Γ ⊢a A ⟹ B) -> ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵗ A.
+      (forall B : nf, ~ Γ ⊢a A ⟹ B) -> forall κ i, ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@i.
   Proof.
-    intros * Hno H.
-    destruct (alg_type_infer_sort_complete_gc _ _ H) as (UA & r & u & HA & _).
+    intros * Hno κ i H.
+    destruct (alg_type_infer_sort_complete_gc _ _ _ _ H) as (UA & u & HA & _).
     exact (Hno _ HA).
   Qed.
 
   Lemma not_wf_type_of_infer_not_sort_gc : forall Γ A (B : nf),
-      Γ ⊢a A ⟹ B -> (forall r u, ~ is_sort_nf B r u) -> ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵗ A.
+      Γ ⊢a A ⟹ B -> (forall r u, ~ is_sort_nf B r u) -> forall κ i, ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@i.
   Proof.
-    intros * HB Hne H.
-    pose proof H as [S _ HA0].
-    destruct (alg_type_infer_sort_complete_gc _ _ H) as (UA & r & u & HA & Hu).
+    intros * HB Hne κ i H.
+    destruct (alg_type_infer_sort_complete_gc _ _ _ _ H) as (UA & u & HA & Hu).
     assert (B = UA)
-      by (eapply functional_alg_type_infer; [ exact (ctx_wf_gctx _ _ _ (presup_exp_ctx HA0)) | eassumption .. ]).
+      by (eapply functional_alg_type_infer; [ exact (ctx_wf_gctx _ _ _ (presup_exp_ctx H)) | eassumption .. ]).
     subst; exact (Hne _ _ Hu).
   Qed.
+
+  (** A type is of the sort of one kind ([nbe_ty_kind]). *)
+  Lemma kind_sort_unique : forall Γ A κ κ' i j,
+      gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@i -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : abs_kind_sort κ' Typeω@j ->
+      κ = κ'.
+  Proof. intros * H H'; exact (nbe_ty_kind_functional (nbe_ty_kind_of_typed H) (nbe_ty_kind_of_typed H')). Qed.
 
   (** [not_wf_typ_of_infer_not_typ] *)
   Lemma not_wf_typ_of_infer_not_typ_gc : forall Γ A (B : nf),
@@ -282,10 +288,17 @@ Definition level_blame_app {F : FCtx} {Γ} Δ (b : level_blame (fc_deps F) (fc_s
   | exist _ (Δ', t) Ht => exist _ (Δ' ++ Δ, t) (level_blame_app_ok _ _ _ _ _ _ Ht)
   end.
 
-(** The type of a well-typed term is a type of either sort. *)
+(** A sort of types is the sort of a kind at a universe. *)
+Lemma type_sort_kind_sort : forall S, type_sort S -> exists κ i, S = abs_kind_sort κ Typeω@i.
+Proof. intros S [i | |]; [ exists ak_relevant, i | exists ak_propositional, 0 | exists ak_level, 0 ]; reflexivity. Qed.
+
+(** The type of a well-typed term, no [LevelSort], is a type of a sort. *)
 Lemma not_exp_of_not_type : forall Θ Ξ Γ A M,
-    ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A -> ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
-Proof. intros * HA HM; exact (HA (presup_exp_typ HM)). Qed.
+    (forall κ i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@i) -> A <> LevelSort -> ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
+Proof.
+  intros * HA HnL HM; destruct (presup_exp_typ_sorted HM HnL) as (S & HS & HA').
+  destruct (type_sort_kind_sort _ HS) as (κ & i & ->); exact (HA _ _ HA').
+Qed.
 
 (** ** Types and Terms at the Core Context of a Fast Context *)
 
@@ -296,6 +309,9 @@ Section check_exp.
   #[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
   #[local] Abbreviation Θ := (fc_deps F).
   #[local] Abbreviation Ξ := (fc_stack F).
+  (** The decision of [levels_abstractable] the checker is given *)
+  Variable levels_abstractable_dec : forall G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G ->
+      { levels_abstractable Θ Ξ G Δ E } + { ~ levels_abstractable Θ Ξ G Δ E }.
 
   (** "Is [A] a type?", decided as in the Π case of [type_check]: infer a type
       for [A], then require it to be a universe. *)
@@ -303,14 +319,14 @@ Section check_exp.
   Equations check_typ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A :
     { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i } + { forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i } :=
   | Γ, HΓ, A =>
-      let*o (exist _ UA _) := type_infer F Γ _ A _ while _ in
+      let*o (exist _ UA _) := type_infer F levels_abstractable_dec Γ _ A _ while _ in
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
       pureo (exist _ (universe_nf_large_index u) _)
   .
   Obligation 1. Qed.
   (** Every user term has an inference order. *)
   Obligation 2. (* type_infer_order A *)
-    apply user_exp_to_type_infer_order, user_exp_all.
+    apply type_infer_order_all.
   Defined.
   Obligation 3. (* nothing is inferred for [A] *)
     eapply not_wf_typ_of_no_infer_gc; eassumption.
@@ -326,20 +342,20 @@ Section check_exp.
     eapply alg_type_infer_univ_sound_gc; eassumption.
   Qed.
 
-  (** "Is [A] a type of either sort?": infer a type for [A], then require it
-      to be a sort ([is_sort_nf]); the answer is the sort, by its relevance,
-      at a universe. *)
+  (** "Is [A] a type of a sort?": infer a type for [A], then require it to
+      be a sort ([is_sort_nf]); the answer is the sort, by its kind, at a
+      universe. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations check_type Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A :
-    { r & { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i } } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A } :=
+    { r & { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort r Typeω@i } } + { forall r i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort r Typeω@i } :=
   | Γ, HΓ, A =>
-      let*o (exist _ UA _) := type_infer F Γ _ A _ while _ in
+      let*o (exist _ UA _) := type_infer F levels_abstractable_dec Γ _ A _ while _ in
       let*o (existT _ r (exist _ u _)) := sort_nf_dec UA while _ in
       pureo (existT _ r (exist _ (universe_nf_large_index u) _))
   .
   Obligation 1. Qed.
   Obligation 2. (* type_infer_order A *)
-    apply user_exp_to_type_infer_order, user_exp_all.
+    apply type_infer_order_all.
   Defined.
   Obligation 3. (* nothing is inferred for [A] *)
     eapply not_wf_type_of_no_infer_gc; eassumption.
@@ -351,7 +367,7 @@ Section check_exp.
     end.
   Qed.
   (** The inferred sort gives the typing at its own large level. *)
-  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@(universe_nf_large_index u) *)
+  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort r Typeω@(universe_nf_large_index u) *)
     destruct_conjs; eapply sort_typed_of_is_sort_nf; [ eapply alg_type_infer_sound; eassumption | eassumption ].
   Qed.
 
@@ -393,13 +409,13 @@ Section check_exp.
   Equations check_level Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) t :
     { n | Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n } + { forall n, ~ Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n } :=
   | Γ, HΓ, t =>
-      let*o (exist _ B _) := type_infer F Γ _ t _ while _ in
+      let*o (exist _ B _) := type_infer F levels_abstractable_dec Γ _ t _ while _ in
       let*o (exist _ n _) := get_level_sort_nf B while _ in
       pureo (exist _ n _)
   .
   Obligation 1. Qed.
   Obligation 2. (* type_infer_order t *)
-    apply user_exp_to_type_infer_order, user_exp_all.
+    apply type_infer_order_all.
   Defined.
   Obligation 3. (* nothing is inferred for [t] *)
     eapply not_level_of_no_infer; eassumption.
@@ -427,14 +443,14 @@ Section check_exp.
         | inleft _ => None
         | inright Ht => Some (exist _ (nil, t) Ht)
         end
-    | a_pi _ A' B =>
+    | a_pi κd _ A' B =>
         match find_level_blame Γ HΓ A' with
         | Some b => Some b
         | None =>
             match check_type Γ HΓ A' with
             | inleft (existT _ r (exist _ i HA)) =>
-                option_map (level_blame_app (ce_ass A' :: nil))
-                  (find_level_blame (Γ ▹ A') (wf_ctx_extend _ _ _ _ _ HA (type_sort_relevance_universe r i)) B)
+                option_map (level_blame_app (ce_ass r A' :: nil))
+                  (find_level_blame (Γ ▹{r} A') (wf_ctx_extend _ _ _ _ _ _ HA (sort_kind_abs_kind_sort r i)) B)
             | inright _ => None
             end
         end
@@ -449,12 +465,16 @@ Section check_exp.
       option (level_blame Θ Ξ Γ) + { ⊢ Θ ⍮ Ξ ⍮ (Δ ++ Γ) } :=
     match Δ as Δ0 return option (level_blame Θ Ξ Γ) + { ⊢ Θ ⍮ Ξ ⍮ (Δ0 ++ Γ) } with
     | nil => inright HΓ
-    | ce_ass A :: Δ' =>
+    | ce_ass κ A :: Δ' =>
         match find_tele_blame Γ HΓ Δ' with
         | inleft b => inleft b
         | inright HΔ' =>
             match check_type (Δ' ++ Γ) HΔ' A with
-            | inleft (existT _ r (exist _ i HA)) => inright (wf_ctx_extend _ _ _ _ _ HA (type_sort_relevance_universe r i))
+            | inleft (existT _ r (exist _ i HA)) =>
+                match abs_kind_eq_dec r κ with
+                | left E => inright (wf_ctx_extend _ _ _ _ _ _ HA (eq_rect r (sort_kind (abs_kind_sort r Typeω@i)) (sort_kind_abs_kind_sort r i) κ E))
+                | right _ => inleft None
+                end
             | inright _ => inleft (option_map (level_blame_app Δ') (find_level_blame (Δ' ++ Γ) HΔ' A))
             end
         end
@@ -472,48 +492,68 @@ Section check_exp.
   Equations check_exp_typed Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A (HA : Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A) M :
     { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
   | Γ, HΓ, A, HA, M =>
-      let*b _ := type_check F Γ A HA M _ while _ in
+      let*b _ := type_check F levels_abstractable_dec Γ A HA M _ while _ in
       pureb _
   .
   Obligation 1. (* type_check_order M *)
-    apply type_check_order_ti, user_exp_to_type_infer_order, user_exp_all.
+    apply type_check_order_ti, type_infer_order_all.
   Defined.
   Obligation 2. (* the algorithmic check fails *)
     eapply H, alg_type_check_complete_gc; eassumption.
   Qed.
   Obligation 3. (* Θ ⍮ Ξ ⍮ Γ ⊢ M : A *)
-    destruct HA as [S HS HA']; eapply alg_type_check_sound_sort; eassumption.
+    destruct HA as [? S HS HA' | HG].
+    - eapply alg_type_check_sound_sort; eassumption.
+    - (** At [LevelSort]: the inferred type is below it, so it is it *)
+      match goal with Hc : _ ⊢a M ⟸ _ |- _ => inversion Hc; subst end.
+      match goal with Hs : _ ⊢a _ ⊆ LevelSort |- _ => destruct Hs as [B' W HB HW Hsub] end.
+      pose proof (nbe_ty_level_sort_self HG) as HL.
+      assert (W = LevelSortⁿ) as -> by (eapply functional_nbe_ty; eassumption).
+      inversion Hsub; subst;
+        try (match goal with HE : nf_eq_upto_proofs _ LevelSortⁿ |- _ => destruct B'; cbn in HE; try discriminate end).
+      match goal with HMi : _ ⊢a M ⟹ ?A0 |- _ =>
+        pose proof (wf_type_of_infer _ _ _ HG HMi) as HBt;
+        assert (HAL : nf_to_exp A0 = LevelSort);
+        [ destruct HBt as [A1 S HS HBs | ]; [| reflexivity ];
+          pose proof (soundness_ty_at_sort HS HBs HB) as HE; cbn [nf_to_exp] in HE;
+          exfalso; eapply level_sort_untyped; eapply presup_exp_eq_right; exact HE
+        | pose proof (alg_type_infer_sound HMi HG) as HM'; rewrite HAL in HM'; exact HM' ] end.
   Qed.
 
   (** A type of the sort of [r] at a universe is a type. *)
-  Definition type_of_check_type Γ A r i (HA : Θ ⍮ Ξ ⍮ Γ ⊢ A : relevance_sort r Typeω@i) : Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A :=
-    mk_wf_type _ (type_sort_relevance_universe r i) HA.
+  Definition type_of_check_type Γ A r i (HA : Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort r Typeω@i) : Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A :=
+    wf_type_of_sort _ (type_sort_kind_universe r i) HA.
 
+  (** "Is [M] of type [A]?": at [LevelSort], or at a type of a sort. *)
   Definition check_exp Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A M :
       { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
-    match check_type Γ HΓ A with
-    | inleft (existT _ r (exist _ i HA)) => check_exp_typed Γ HΓ A (type_of_check_type Γ A r i HA) M
-    | inright HA => right (not_exp_of_not_type _ _ _ _ _ HA)
+    match exp_eq_dec A LevelSort with
+    | left E => check_exp_typed Γ HΓ A (eq_rect_r (fun X => Θ ⍮ Ξ ⍮ Γ ⊢ᵗ X) (wf_type_level_sort HΓ) E) M
+    | right HnL =>
+        match check_type Γ HΓ A with
+        | inleft (existT _ r (exist _ i HA)) => check_exp_typed Γ HΓ A (type_of_check_type Γ A r i HA) M
+        | inright HA => right (not_exp_of_not_type _ _ _ _ _ HA HnL)
+        end
     end.
 
   (** A unit and a module expression, through their algorithmic checks. *)
   Definition check_unit Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) U :
       { Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U } :=
-    match unit_check F Γ HΓ U (unit_order_all U) with
+    match unit_check F levels_abstractable_dec Γ HΓ U (unit_order_all U) with
     | left H => left (alg_unit_sound H HΓ)
     | right H => right (fun H' => H (alg_unit_complete H'))
     end.
 
   Definition check_ext Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) Ψ :
       { Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ } :=
-    match ext_check F Γ HΓ Ψ (ext_order_all Ψ) with
+    match ext_check F levels_abstractable_dec Γ HΓ Ψ (ext_order_all Ψ) with
     | left H => left (alg_ext_sound H HΓ)
     | right H => right (fun H' => H (alg_ext_complete H'))
     end.
 
   Definition check_modexp Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) E :
       { Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E } :=
-    match modexp_check F Γ HΓ E (modexp_order_all E) with
+    match modexp_check F levels_abstractable_dec Γ HΓ E (modexp_order_all E) with
     | left H => left (alg_modexp_sound H HΓ)
     | right H => right (fun H' => H (alg_modexp_complete H'))
     end.
@@ -532,84 +572,70 @@ Section check_ctx.
   (** The fast context each check looks names up in ([Extraction.Lookup]);
       the judgments decided are at the Core context it stands for. *)
   Variable F : FCtx.
+  #[local] Hint Extern 0 GCtx => exact (fc_gctx F) : typeclass_instances.
   #[local] Abbreviation Θ := (fc_deps F).
   #[local] Abbreviation Ξ := (fc_stack F).
+  (** The decision of [levels_abstractable] the checker is given *)
+  Variable levels_abstractable_dec : forall G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G ->
+      { levels_abstractable Θ Ξ G Δ E } + { ~ levels_abstractable Θ Ξ G Δ E }.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations check_ctx (HΞ : ⊢ᵍ Θ ⍮ Ξ) Γ :
     { ⊢ Θ ⍮ Ξ ⍮ Γ } + { ~ ⊢ Θ ⍮ Ξ ⍮ Γ } :=
   | HΞ, ⋅ => pureb _
-  | HΞ, Γ ▹ A =>
+  (** An assumption: a type of the sort of the kind it says *)
+  | HΞ, Γ ▹{κ} A =>
       let*b HΓ := check_ctx HΞ Γ while _ in
-      let*o->b (existT _ r (exist _ i _)) := check_type F Γ HΓ A while _ in
+      let*o->b (existT _ r (exist _ i _)) := check_type F levels_abstractable_dec Γ HΓ A while _ in
+      let*b _ := abs_kind_eq_dec r κ while _ in
       pureb _
+  (** A definition: a type of a sort, and the body at it *)
   | HΞ, Γ ▸ A ≔ M =>
       let*b HΓ := check_ctx HΞ Γ while _ in
-      let*b _ := check_exp F Γ HΓ A M while _ in
+      let*o->b (existT _ r (exist _ i HA)) := check_type F levels_abstractable_dec Γ HΓ A while _ in
+      let*b _ := check_exp_typed F levels_abstractable_dec Γ HΓ A (type_of_check_type F Γ A r i HA) M while _ in
       pureb _
   | HΞ, Γ ▹ₘ U =>
       let*b HΓ := check_ctx HΞ Γ while _ in
-      let*b _ := check_unit F Γ HΓ U while _ in
+      let*b _ := check_unit F levels_abstractable_dec Γ HΓ U while _ in
       pureb _
   (** A definition with a module part: its type is one of a universe *)
   | HΞ, Γ ▸ₘ A ≔ M ‖ U =>
       let*b HΓ := check_ctx HΞ Γ while _ in
-      let*o->b (exist _ i _) := check_typ F Γ HΓ A while _ in
-      let*b _ := check_exp_typed F Γ HΓ A _ M while _ in
-      let*b _ := check_unit F Γ HΓ U while _ in
+      let*o->b (exist _ i _) := check_typ F levels_abstractable_dec Γ HΓ A while _ in
+      let*b _ := check_exp_typed F levels_abstractable_dec Γ HΓ A _ M while _ in
+      let*b _ := check_unit F levels_abstractable_dec Γ HΓ U while _ in
       pureb _
   .
-  (** The empty context is well formed by the global context's. *)
-  Obligation 1. (* ⊢ Θ ⍮ Ξ ⍮ ⋅ *)
-    mauto 2.
-  Qed.
-  (** Each extension fails in two ways: the prefix, or the new entry.  Both
-      contradict a decomposition of the extended context. *)
-  Obligation 2. (* the prefix of an assumption is no context *)
-    eapply H; mauto 2.
-  Qed.
-  Obligation 3. (* the assumption is no type *)
-    destruct (ctx_decomp H0) as [_ HA]; exact (H HA).
-  Qed.
-  Obligation 4. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A *)
-    eapply wf_ctx_extend; [ eassumption | apply type_sort_relevance_universe ].
-  Qed.
-  Obligation 5. (* the prefix of a definition is no context *)
-    eapply H; mauto 2.
-  Qed.
-  Obligation 6. (* the definiens is not of the declared type *)
-    inversion H0; subst; eapply H; eassumption.
-  Qed.
-  Obligation 7. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M *)
-    mauto 2.
-  Qed.
-  Obligation 8. (* the prefix of a module slot is no context *)
-    destruct (ctx_decomp_mod H0); contradiction.
-  Qed.
-  Obligation 9. (* the unit of a module slot is not well formed *)
-    destruct (ctx_decomp_mod H0); contradiction.
-  Qed.
-  Obligation 10. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U *)
-    apply wf_ctx_extend_mod; assumption.
-  Qed.
-  Obligation 11. (* the prefix of a definition with a module part is no context *)
-    eapply H; mauto 2.
-  Qed.
-  Obligation 12. (* its type is no type of a universe *)
-    inversion H0; subst; eapply H; eassumption.
-  Qed.
-  Obligation 13. (* its type is a type *)
-    eapply wf_type_univ; eassumption.
-  Defined.
-  Obligation 14. (* its term part is not of the declared type *)
-    match goal with Hc : ⊢ _ ⍮ _ ⍮ _ ▸ₘ _ ≔ _ ‖ _ |- _ => inversion Hc; subst; contradiction end.
-  Qed.
-  Obligation 15. (* its unit is not well formed *)
-    match goal with Hc : ⊢ _ ⍮ _ ⍮ _ ▸ₘ _ ≔ _ ‖ _ |- _ => inversion Hc; subst; contradiction end.
-  Qed.
-  Obligation 16. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U *)
-    eapply wf_ctx_extend_dm; eassumption.
-  Qed.
+  (** A success is the context rule of the entry; a failure contradicts
+      a decomposition of the extended context: its prefix, or its new
+      entry. *)
+  Solve All Obligations with
+    intros; repeat match goal with |- ~ _ => intro end;
+    first
+      [ (** The empty context, by the global context's *)
+        solve [ apply wf_ctx_empty; assumption ]
+      | solve [ subst; eapply wf_ctx_extend; [ eassumption | apply sort_kind_abs_kind_sort ] ]
+      | solve [ eapply wf_ctx_extend_def; [ eassumption | apply type_sort_kind_universe | eassumption ] ]
+      | solve [ apply wf_ctx_extend_mod; assumption ]
+      | solve [ eapply wf_ctx_extend_dm; eassumption ]
+      | solve [ eapply wf_type_of_sort; [ apply type_sort_universe | eassumption ] ]
+      (** The prefix *)
+      | solve [ match goal with H : ~ ⊢ _ ⍮ _ ⍮ ?G, Hc : ⊢ _ ⍮ _ ⍮ _ :: ?G |- False => exact (H (ctx_decomp_tail Hc)) end ]
+      (** An assumption *)
+      | solve [ match goal with Hc : ⊢ _ ⍮ _ ⍮ _ ▹{_} _ |- False =>
+                  destruct (ctx_decomp_kind Hc) as (S & Hk & HA0);
+                  destruct (sort_kind_abs_kind_sort_inv _ _ Hk) as [j ->];
+                  first [ match goal with Hn : forall r i, ~ _ |- _ => exact (Hn _ _ HA0) end
+                        | match goal with Hne : ?r <> _, HA : _ ⍮ _ ⍮ _ ⊢ _ : abs_kind_sort ?r _ |- _ =>
+                            exact (Hne (kind_sort_unique _ _ _ _ _ _ HA HA0)) end ] end ]
+      (** A definition, with a module part or not, and a module slot *)
+      | solve [ match goal with Hc : ⊢ _ ⍮ _ ⍮ _ :: _ |- False =>
+                  inversion Hc; subst;
+                  first [ contradiction
+                        | match goal with Hn : forall r i, ~ _, HS : type_sort ?S |- _ =>
+                            destruct (type_sort_kind_sort _ HS) as (κ0 & j & ->); eapply Hn; eassumption end
+                        | match goal with Hn : forall i, ~ _ |- _ => eapply Hn; eassumption end ] end ] ].
 
 End check_ctx.
 
