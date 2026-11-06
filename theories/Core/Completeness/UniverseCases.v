@@ -571,6 +571,16 @@ Proof.
   exists a1; split; [ exact Ha1 | exact (Hv _ _ Ha1) ].
 Qed.
 
+(** The value of a type of a valid context at an environment of it is not
+    [LevelSort]. *)
+Lemma rel_type_value_not_level_sort : forall Γ i A A' R ρ ρ' a, Γ ⊨ᵗ A ≈ A' at i -> EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    Dom ρ ≈ ρ' ∈ R -> ⟦ A ⟧ ρ ↘ a -> not_level_sort a.
+Proof.
+  intros * HA HR Hρ Ea.
+  destruct (rel_type_under_ctx_not_level_sort _ _ _ _ HA _ HR _ _ Hρ) as (a0 & Ea0 & Hn).
+  assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption); exact Hn.
+Qed.
+
 End Fixed_GCtx.
 
 #[export]

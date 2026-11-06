@@ -63,16 +63,6 @@ Lemma fresh_var_rel : forall (i : universe_index) R a b s, DF a ≈ b ∈ per_un
     R (⇑! a s) (⇑! b s).
 Proof. intros * H Ha; exact (var_per_elem s H Ha). Qed.
 
-(** The value of a type of a valid context at an environment of it is not
-    [LevelSort]. *)
-Lemma rel_type_value_not_level_sort : forall Γ i A A' R ρ ρ' a, Γ ⊨ᵗ A ≈ A' at i -> EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
-    Dom ρ ≈ ρ' ∈ R -> ⟦ A ⟧ ρ ↘ a -> not_level_sort a.
-Proof.
-  intros * HA HR Hρ Ea.
-  destruct (rel_type_under_ctx_not_level_sort _ _ _ _ HA _ HR _ _ Hρ) as (a0 & Ea0 & Hn).
-  assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption); exact Hn.
-Qed.
-
 Lemma fresh_tele_cons_inv : forall κ A T ρ s vs, Ftele ce_ass κ A :: T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs ->
     exists a vs', vs = ⇑! a s :: vs' /\ ⟦ A ⟧ ρ ↘ a /\
       Ftele T in gc_deps ⍮ gc_stack ⍮ ρ ↦ ⇑! a s ⦂ entry_type_closure A ρ ⍮ S s ↘ vs'.

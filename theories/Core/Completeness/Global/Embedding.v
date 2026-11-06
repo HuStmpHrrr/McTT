@@ -848,8 +848,7 @@ Section FiledOk.
         destruct (rel_type_inversion_simple_at per_ctx_env_nil_true HP nil nil I) as (e & e' & Hev & Hev' & [E0 HE0]);
         pose proof (functional_eval_exp _ _ _ _ Hev' Hev) as ->;
         (* its type, of the empty context, is not [LevelSort] *)
-        destruct (rel_type_under_ctx_not_level_sort _ _ _ _ HP _ per_ctx_env_nil_true nil nil I) as (e0 & Ee0 & Hne);
-        pose proof (functional_eval_exp _ _ _ _ Ee0 Hev) as ->;
+        pose proof (rel_type_value_not_level_sort _ _ _ _ _ nil nil _ HP per_ctx_env_nil_true I Hev) as Hne;
         assert (Hself : rel_self r T A0 (⇑ e (d_glob (qname_app p (x :: nil)))))
           by exact (mk_rel_self _ _ _ _ j E0 e Hev HE0 (per_bot_then_per_elem HE0 (glob_neutral_at _ _ Hne)));
         eapply valid_filed_term_of_value; [ exact HA0 | exact Hpk |];
