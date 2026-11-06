@@ -189,6 +189,10 @@ Section type_check.
   Lemma nbe_order_of_typ : forall G X i, G ⊢ X : Typeω@i -> nbe_ty_order gc_deps gc_stack G X.
   Proof. intros * HX; apply nbe_order_of_type; eapply wf_type_of_sort; [ apply type_sort_universe | exact HX ]. Qed.
 
+  (** The context of a type is well-formed. *)
+  Lemma wf_type_ctx : forall G X, G ⊢ᵗ X -> ⊢ G.
+  Proof. intros * [? S HS HX | HG]; [ gen_presups; assumption | exact HG ]. Qed.
+
   (** The type a term infers is a type. *)
   Lemma wf_type_of_infer : forall G M A, ⊢ G -> G ⊢a M ⟹ A -> G ⊢ᵗ A.
   Proof. intros * HG HM; exact (presup_exp_typ (alg_type_infer_sound HM HG)). Qed.
