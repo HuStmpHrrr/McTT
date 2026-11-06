@@ -3723,7 +3723,8 @@ Section Impl.
     constructor.
     - exact Hpost.
     - exact Hu.
-    - cbn [unit_result_unit decode_unit translate_unit funit_drop fmoddef_drop ff_params ff_body]; rewrite (frame_body_translate _ _ Hf); reflexivity.
+    - pose proof (frame_body_translate _ _ Hf) as Ht; cbn [ff_body] in Ht.
+      cbn [unit_result_unit decode_unit translate_unit funit_drop fmoddef_drop ff_params ff_body]; rewrite Ht; reflexivity.
     - exact Huv.
     - intros fq Efq; injection Efq as <-; cbn [unit_result_unit unit_result_imports unit_result_units ff_params ff_body].
       pose proof (ui_global _ _ _ _ _ _ Hli2) as G2.
