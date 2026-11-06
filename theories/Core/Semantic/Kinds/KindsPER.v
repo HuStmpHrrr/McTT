@@ -2,7 +2,7 @@
 
     Related module values have the same kinds ([per_dmod_kinds_equiv]): two unit
     closures are related through related arguments, and every parameter's
-    type has some, the reflection of a variable ([var_per_elem]); a module
+    type has some ([per_univ_elem_inhabited]); a module
     expression has the kinds of its value ([kind_eval]).  So the
     environments a context PER relates match the context
     ([per_ctx_env_kinds_match]). *)
@@ -21,6 +21,20 @@ Import Domain_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
   Hypothesis Hg : ⊢ᵍ gc_deps ⍮ gc_stack.
+
+  (** Every type relates some elements: the reflection of a variable, or
+      at [LevelSort], which has no variables, [Level@0]. *)
+  Lemma per_univ_elem_inhabited : forall i R a a', DF a ≈ a' ∈ per_univ_elem i ↘ R -> exists c c', R c c'.
+  Proof.
+    intros * H.
+    assert (Hd : a = LevelSortᵈ \/ not_level_sort a) by (destruct a; first [ left; reflexivity | right; discriminate ]).
+    destruct Hd as [-> | Hn]; [| exists (⇑! a 0), (⇑! a' 0); exact (var_per_elem 0 H Hn) ].
+    basic_invert_per_univ_elem H.
+    exists Levelᵈ@0, Levelᵈ@0; apply H.
+    split; [ exists (per_lvl_at 0), Levelᵈ@0; left; constructor; reflexivity |].
+    split; [ exists (per_lvl_at 0), Levelᵈ@0; left; constructor; reflexivity |].
+    exists (per_lvl_at 0); simp per_univ_elem; apply per_univ_elem_core_level; reflexivity.
+  Qed.
 
   (** The environment a body makes, as kinds read it, has the kinds of the
       environment it evaluates to. *)
@@ -46,8 +60,8 @@ Section Fixed_GCtx.
       destruct (per_body_noopen _ _ _ _ p) as [Hn Hn'].
       intros [| y ch] kk; rewrite !dmod_member_kind_local_iff; cbn [gunit_expand];
         rewrite (gm_expand_noopen _ Hn), (gm_expand_noopen _ Hn'); [ split; intros Hu; inversion Hu; subst; apply gunit_member_kind_self | apply H ].
-    - (* a missing parameter: at the reflection of a variable *)
-      match goal with Hu : per_univ_elem _ _ _ _ |- _ => pose proof (var_per_elem 0 Hu) as Hv end.
+    - (* a missing parameter: at some related arguments *)
+      match goal with Hu : per_univ_elem _ _ _ _ |- _ => destruct (per_univ_elem_inhabited _ _ _ _ Hu) as (c0 & c0' & Hv) end.
       match goal with E1 : forall c c', _ -> exists hc, $ᵐ| h & c | _ ⍮ _ ↘ hc,
                       E2 : forall c c', _ -> exists hc', $ᵐ| h' & c' | _ ⍮ _ ↘ hc' |- _ =>
         destruct (E1 _ _ Hv) as (hc & Hc); destruct (E2 _ _ Hv) as (hc' & Hc') end.
@@ -109,7 +123,7 @@ Section Fixed_GCtx.
   Proof.
     induction 1; intros ρ ρ' Hρ.
     - split; apply kinds_match_nil.
-    - apply H1 in Hρ as [Ht _].
+    - apply H2 in Hρ as [Ht _].
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
       split; apply kinds_match_drop_term; first [ assumption | discriminate ].
     - apply H3 in Hρ as [Ht _].
