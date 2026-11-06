@@ -860,43 +860,32 @@ Proof.
                                          | rewrite <- nf_to_exp_univ_nf; exact HnB' ].
 Qed.
 
-(** The parts of a typed [Π] of the sort [r]: the domain of a sort, the
-    codomain of the sort at [r] at a large universe (a small universe is
-    below every large one). *)
-Lemma wf_pi_parts_large : forall Γ r A B C,
-    Γ ⊢ a_pi r A B : C ->
-    exists Sd k, type_sort Sd /\ Γ ⊢ A : Sd /\ Γ ▹ A ⊢ B : abs_kind_sort r Typeω@k.
+(** The parts of a typed [Π] at the kinds [κd] and [κc]: the domain of a
+    sort, the codomain of the sort at [κc] at a large universe
+    ([wf_pi_parts]). *)
+Lemma wf_pi_parts_large : forall Γ κd κc A B C,
+    Γ ⊢ a_pi κd κc A B : C ->
+    exists Sd k, type_sort Sd /\ Γ ⊢ A : Sd /\ Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@k.
 Proof.
   intros * H.
-  destruct (wf_pi_inversion_at H) as [U SA HU HA HD HB _].
-  assert (HΓA : ⊢ Γ ▹ A) by (gen_presups; assumption).
-  inversion HU as [? ? ? i HΓ | ? ? ? n L HL]; subst; destruct HD; destruct r; cbn [abs_kind_sort exp_wk] in HB.
-  - exists Typeω@i, i; repeat split; [ constructor | exact HA | exact HB ].
-  - exists Typeω@i, 0; repeat split; [ constructor | exact HA | exact HB ].
-  - exists Propₘ, i; repeat split; [ constructor | exact HA | exact HB ].
-  - exists Propₘ, 0; repeat split; [ constructor | exact HA | exact HB ].
-  - assert (HL1 : Γ ▹ A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ Level@n); [ exact HL | mauto 2 ]).
-    exists Typeω@0, 0; repeat split; [ constructor | exact (wf_exp_suniv_large HL HA) | exact (wf_exp_suniv_large HL1 HB) ].
-  - exists Typeω@0, 0; repeat split; [ constructor | exact (wf_exp_suniv_large HL HA) | exact HB ].
-  - assert (HL1 : Γ ▹ A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ Level@n); [ exact HL | mauto 2 ]).
-    exists Propₘ, 0; repeat split; [ constructor | exact HA | exact (wf_exp_suniv_large HL1 HB) ].
-  - exists Propₘ, 0; repeat split; [ constructor | exact HA | exact HB ].
+  destruct (wf_pi_parts H) as (_ & (Sd & HSd & HA) & (k & HB)).
+  exists Sd, k; repeat split; [ exact (sort_kind_type_sort _ _ HSd) | exact HA | exact HB ].
 Qed.
 
-(** A type of a sort, of the relevance [r] its value says, is of the sort
-    [r] names ([typed_at_sort_of_initial_relevance]). *)
+(** A type of a sort, of the kind [r] its value says, is of the sort [r]
+    names ([typed_at_sort_of_initial_kind]). *)
 Lemma typed_at_relevance_of_nbe : forall {Γ A S r},
     type_sort S -> Γ ⊢ A : S -> nbe_ty_kind Γ A r ->
     exists k : nat, Γ ⊢ A : abs_kind_sort r Typeω@k.
 Proof.
   intros * HS HA (ρ & a & Hρ & Ha & <-).
-  exact (typed_at_sort_of_initial_relevance HS HA Hρ Ha).
+  exact (typed_at_sort_of_initial_kind HS HA Hρ Ha).
 Qed.
 
-(** Conversely, a type of the sort [r] names is of the relevance [r]: its
-    value at the initial environment is of the sort's relevance
-    ([typed_at_sort_of_initial_relevance]), and no type is of both sorts
-    ([typ_prop_absurd]). *)
+(** Conversely, a type of the sort [r] names is of the kind [r]: its
+    value at the initial environment is of the sort's kind
+    ([typed_at_sort_of_initial_kind]), and no type is of two sorts of
+    different kinds ([subtyp_same_kind]). *)
 Lemma nbe_ty_kind_of_typed : forall {Γ A r} {i : nat},
     Γ ⊢ A : abs_kind_sort r Typeω@i -> nbe_ty_kind Γ A r.
 Proof.
@@ -904,9 +893,9 @@ Proof.
   pose proof (type_sort_kind_universe r i) as HS.
   destruct (nbe_ty_exists_sort HS HA) as [W [ρ a Hρ Ha _]].
   exists ρ, a; split; [ exact Hρ | split; [ exact Ha |] ].
-  destruct (typed_at_sort_of_initial_relevance HS HA Hρ Ha) as [k Hk].
-  destruct r, (domain_kind a); cbn [abs_kind_sort] in *; [ reflexivity | | | reflexivity ];
-    exfalso; eapply typ_prop_absurd; eassumption.
+  destruct (typed_at_sort_of_initial_kind HS HA Hρ Ha) as [k Hk].
+  assert (Hs : Γ ⊢ A ⊆ A) by (eapply wf_subtyp_refl; [ exact HA | exact HS | apply wf_exp_eq_refl; exact HA ]).
+  exact (eq_sym (subtyp_same_kind _ _ _ r (domain_kind a) i k Hs HA Hk)).
 Qed.
 
 Lemma alg_type_sound :
