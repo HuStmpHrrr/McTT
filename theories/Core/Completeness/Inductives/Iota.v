@@ -917,7 +917,8 @@ Section LeafVals.
                       EB mctx_idx_readable HMall j Mj u u' ns ns' x x' HMj Hm) as Hidx.
         pose proof (per_ind_elim_all p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had i _ C (blocks_sub Bks σL) Bks wL u0 Hok
                       Rel HbA1 HBks' HnmA1 HnmA HnaA1 HnaA HarA1 HarA (decl_typed_nodup _ _ _ Hdt)
-                      (EP motive_link Bks HnmA HAA0 _ RSL σL _ C HRSL HwL HEL Hev HCC) Hidx
+                      (EP motive_link Bks HnmA HAA0 _ RSL σL _ C HRSL HwL HEL Hev HCC)
+                      (EP motive_link_not_level_sort Bks HnmA HAA0 _ RSL σL _ C HRSL HwL HEL Hev HCC) Hidx
                       (EB rneut_rel wL u0 HwL0 u0_env' LwL u0_len')
                       (EP branch_out HBc Bks HB0s _ RSL σL _ C HRSL HwL HEL Hev HCC)) as [PE _].
         (** The term's value against the related argument [v']. *)
@@ -1788,7 +1789,7 @@ Section Iota.
     Lemma iota_sem_scrut : forall x y, per_head (ind_mty p D m Us Ns) (ind_mty p D m Us Ns) C C x y -> G m u0 u0 ns ns x y.
     Proof.
       intros x y Hxy.
-      destruct (presup_rel_exp_under_ctx iota_Mc_valid) as [iT HIT].
+      destruct (presup_rel_exp_under_ctx_mty _ _ _ _ _ _ _ _ _ HMm iota_Mc_valid) as [iT HIT].
       destruct (rel_type_inversion_simple_at HRΓ HIT _ _ HCC) as (t1 & t2 & Et1 & Et2 & [R HR]).
       destruct (EB scrut_rel m Mm HMm (HMall _ _ HMm) Ns iota_case_HNl
                   iota_sem_HgN C HCC ns ns HNC HNC t1 t2 _ R Et1 Et2 HR) as [_ ERM].
@@ -1854,7 +1855,7 @@ Section Iota.
       assert (Hev : ⟦ σL : Γ ⟧s env_extend_typed C zs ↘ C).
       { pose proof (@eval_sub_of_wk gc_deps gc_stack Γ (wk_shiftn (List.length zs)) (env_extend_typed C zs) (wk_mono_shiftn _)) as H.
         rewrite eval_wk_shiftn_extend_typed, HCt in H; exact H. }
-      destruct (presup_rel_exp_under_ctx iota_Mc_valid) as [iT HIT].
+      destruct (presup_rel_exp_under_ctx_mty _ _ _ _ _ _ _ _ _ HMm iota_Mc_valid) as [iT HIT].
       destruct (rel_type_inversion_simple_at HRΓ HIT _ _ HCC) as (t1 & _ & Et1 & _ & _).
       destruct (exp_inst_link _ _ _ _ _ _ _ _ _ iota_Mc_valid HRΔ Hw HE Hev
                   (rel_typ_evaluated_of_kind (ex_intro _ t1 (conj Et1 (ind_mty_relevant _ _ _ _ _ _ _ _ HMm Et1))) evaluated_kind_relevant))
@@ -2294,16 +2295,19 @@ Section Iota.
       pose proof (fun j Mj ba bb u u' ns0 ns0' x x' ts ts' HMj (_ : im_is_rview Mj = false) Hba Hbb Hm Ht Ht' =>
                     EB motive_mid C HCC Bks i HMall j Mj ba (eb_motive bb) HMj Hba (HAA _ _ _ _ HMj Hba Hbb) u u' ns0 ns0' x x'
                       ts ts' Hm Ht Ht') as Hmot.
+      pose proof (fun j Mj ba u u' ns0 ns0' x x' ts a HMj (_ : im_is_rview Mj = false) Hba Hm Ht Ea =>
+                    EB motive_mid_not_level_sort C HCC Bks i HMall j Mj ba (eb_motive ba) HMj Hba (HAA _ _ _ _ HMj Hba Hba)
+                      u u' ns0 ns0' x x' ts a Hm Ht Ea) as Hmotn.
       pose proof (fun j Mj u u' ns0 ns0' x x' HMj (_ : im_is_rview Mj = false) Hm =>
                     EB mctx_idx_readable HMall j Mj u u' ns0 ns0' x x' HMj Hm) as Hidx.
       pose proof (EB rneut_rel u0 u0 u0_env' u0_env' u0_len' u0_len') as Hrneut.
       pose proof (EP branch_mid HBc Bks HBB) as Hbrm.
       assert (Hv2 : List.map fst vts2 = ns ++ avs ++ ihe)
         by exact (branch_entries_values p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had i C C Bks Bks u0 u0 Hok Rel
-                    HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hidx Hrneut Hbrm
+                    HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hmotn Hidx Hrneut Hbrm
                     Mm u0 (blocks_motives Bks) C gs ns avs ihe).
       destruct (branch_entries_readable p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had i C C Bks Bks u0 u0 Hok Rel
-                  HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hidx Hrneut Hbrm
+                  HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hmotn Hidx Hrneut Hbrm
                   m Mm c gs u0 u0 ns ns avs avs ihc ihe Had Had HMm Hcon iota_sem_Hns Har Hia Hir) as [_ Hrd2].
       assert (Hr2 : List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts2).
       { rewrite <- Hv2 in Hrd2; pose proof (Forall_combine_of_Forall2 _ _ _ Hrd2) as H0.
@@ -2338,7 +2342,11 @@ Section Iota.
       assert (n0 = r2) as -> by (eapply functional_eval_exp; eassumption).
       exists r1, r; split; [ eapply eval_exp_elim; [ exact HUC | exact EMc | exact Eel ] | split; [ exact Er |] ].
       (** The relations, at the motive's instance. *)
-      destruct (presup_rel_exp_under_ctx HBv') as [iB HTb].
+      assert (HBn : rel_type_not_level_sort (elim_bctx ak_relevant p D Mm gs (blocks_motives Bks) Us ++ Γ)
+                      (elim_branch_type p D m Mm c gs (eb_motive bm) Us))
+        by exact (branch_type_not_level_sort VP p D HP HPD Γ HΓ Us iota_case_HUl iota_case_HUs iota_case_HUss Bks i HMall HAv
+                    m Mm c gs HMm Hcon HBm HrvM bm Hbm).
+      destruct (presup_rel_exp_under_ctx HBv' HBn) as [iB HTb].
       pose proof (per_head_inst_type _ _ _ _ _ _ _ _ _ _ HTb HRΓ (gsub_valid gsub_iota) HCC Hτ Hτ) as ER.
       assert (Lih : List.length (elim_ihs ak_relevant p D Us Bks σP (im_nn Mm) gs As) = cargs_nrec D gs) by (apply length_elim_ihs; exact HAl).
       rewrite (elim_branch_type_iota p D m Mm c gs (eb_motive bm) Us Ns As _ Hc HMm iota_case_HUl iota_case_HNl HAl Lih) in ER.
@@ -2399,12 +2407,12 @@ Section Iota.
     destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].
     destruct (rel_ctx_wf_per_ctx_env Usem) as [RU HRU].
     assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
-    destruct (presup_rel_exp_under_ctx HL) as [iT HT].
     (** The motive's instance is of a universe. *)
     pose proof (rel_exp_under_ctx_gsub (gsub_tau VP p D HP HPD Γ HΓ Us iota_case_HUl m Mm HMm (HMall _ _ HMm) Ns Mc
                                           iota_case_HNl iota_case_HNs HMc
                                           (proj2 (List.Forall_app _ _ _) (conj iota_case_HNss (List.Forall_cons _ iota_Mc_scoped (List.Forall_nil _)))))
                   (HAv _ _ _ HMm Hbm)) as HTm.
+    destruct (presup_rel_exp_under_ctx HL (rel_exp_of_typ_not_level_sort HTm)) as [iT HT].
     apply (rel_exp_under_ctx_of_simple HRΓ HL HR).
     intros ρ ρ' Hρρ'.
     assert (Hρ'ρ' : RΓ ρ' ρ') by (etransitivity; [ symmetry; exact Hρρ' | exact Hρρ' ]).

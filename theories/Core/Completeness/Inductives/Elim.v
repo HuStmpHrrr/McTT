@@ -7063,7 +7063,9 @@ Section GroupElim.
           List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts ->
           ⟦ eb_motive ba ⟧ env_extend_typed ρ0 (List.combine (ns ++ m :: nil) ts) ↘ a ->
           not_level_sort a /\ domain_kind a <> ak_level.
-      Proof.
+      (** Over all the section's variables, as [motive_link], so that the two
+          are instantiated alike. *)
+      Proof using All.
         intros Bks0 Hnm0 HA0s * HRΓ' Hσ0 Hρ0 Hev0 HρC * HMj Hrv Hba Hm Ht Ea.
         destruct (nth_error_blocks_sub_inv _ _ _ _ Hba) as (b0 & Hb0 & ->).
         rewrite eb_motive_sub, (Hnm0 _ _ _ HMj Hb0) in Ea.
