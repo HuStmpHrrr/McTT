@@ -83,7 +83,7 @@ Proof.
     assert (Hc'c' : R' c' c') by (etransitivity; [ symmetry; exact Hc | exact Hc ]).
     repeat split; try assumption; apply E1; assumption. }
   (* the value has the submodule: at an argument it has *)
-  pose proof (var_per_elem 0 HR') as Hc0.
+  destruct (per_univ_elem_inhabited _ _ _ _ HR') as (c1 & c1' & Hc0).
   destruct (Happ _ _ Hc0) as (kc0 & hc0 & Hk0 & Hh0 & Hkh0).
   destruct (Hrefl _ _ Hc0) as (_ & _ & Hc00 & _ & _).
   destruct (Ev _ _ Hc00) as (vc0 & Hv0).
