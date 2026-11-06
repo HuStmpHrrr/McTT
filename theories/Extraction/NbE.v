@@ -1,96 +1,106 @@
 (** * The Normalizer the Checker Runs
 
-    The termination orders of normalization are those of the reference
-    evaluation and readback ([Reference.Evaluation], [Reference.Readback]),
-    which are the specification ([nbe], [nbe_ty]).  The normalizers compute
-    by the evaluation that skips unread recursive results
-    ([Extraction.FastEval]): its values are related to the reference ones
-    ([Extraction.Simulation]), so they read back to the same normal forms,
-    and the specifications are those of [Reference.NbE].
+    Normalization ([nbe], [nbe_ty]) at its termination orders
+    ([initial_env_order], [nbe_order], [nbe_ty_order]), which are stated
+    over the evaluation and readback of [Core.Semantic] and follow from
+    them ([nbe_order_sound] and the like).  The normalizers compute on fast
+    values ([Extraction.Evaluation], [Extraction.Readback]): each fast
+    result erases to the one the specification names.
 
-    An environment the normalizers start from is related to the initial
-    environment of its context ([fast_env]); the checker computes it once per
-    context ([initial_env_impl]) and extends it under binders. *)
+    An environment the normalizers start from is a fast environment that
+    erases to the initial environment of its context ([fast_env]); the
+    checker computes it once per context ([initial_env_impl]) and extends it
+    under binders ([fast_env_ass] and the like). *)
 From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Stdlib Require Import List String.
 From Mctt.Core.Semantic Require Export NbE.
-From Mctt.Reference Require Import Evaluation Readback.
-From Mctt.Core.Syntactic Require Import Fresh.
-From Mctt.Extraction Require Import FastEval FastDomain Simulation.
+From Mctt.Core.Semantic Require Import Evaluation Readback.
+From Mctt.Extraction Require Import FastDomain.
 From Mctt.Extraction Require Evaluation Readback.
-From Mctt.Extraction Require Import Lookup.
+From Mctt.Extraction Require Import Evaluation Readback Lookup.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
 
 Generalizable All Variables.
 
+(** ** The Orders *)
+
+(** The order of the initial environment of a context: each entry's type
+    and, as [initial_env] evaluates them, its body and unit *)
 Inductive initial_env_order (Θ : gdeps) (Ξ : gstack) : ctx -> Prop :=
+(** The empty context *)
 | initial_env_order_nil : initial_env_order Θ Ξ nil
+(** An assumption: its type *)
 | initial_env_order_cons :
   `( initial_env_order Θ Ξ Γ ->
-     (forall p, initial_env Θ Ξ Γ p ->
-           eval_exp_order Θ Ξ A p) ->
-     initial_env_order Θ Ξ (Γ ▹ A))
-(** A definition: its type, then its body at a relevant type only *)
+     (forall ρ, initial_env Θ Ξ Γ ρ -> eval_exp_order Θ Ξ A ρ) ->
+     initial_env_order Θ Ξ (Γ ▹{κ} A))
+(** A definition: its type, then its body at a type of a universe or of
+    levels only *)
 | initial_env_order_cons_def :
   `( initial_env_order Θ Ξ Γ ->
-     (forall p, initial_env Θ Ξ Γ p ->
-           eval_exp_order Θ Ξ A p) ->
-     (forall p a, initial_env Θ Ξ Γ p -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> domain_relevance a = relevant ->
-           eval_exp_order Θ Ξ M p) ->
+     (forall ρ, initial_env Θ Ξ Γ ρ -> eval_exp_order Θ Ξ A ρ) ->
+     (forall ρ a, initial_env Θ Ξ Γ ρ -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> evaluated_kind (domain_kind a) ->
+           eval_exp_order Θ Ξ M ρ) ->
      initial_env_order Θ Ξ (Γ ▸ A ≔ M))
+(** A module: its unit *)
 | initial_env_order_cons_mod :
   `( initial_env_order Θ Ξ Γ ->
-     (forall p, initial_env Θ Ξ Γ p ->
-           eval_modexp_order Θ Ξ (me_lit U) p) ->
+     (forall ρ, initial_env Θ Ξ Γ ρ -> eval_modexp_order Θ Ξ (me_lit U) ρ) ->
      initial_env_order Θ Ξ (Γ ▹ₘ U))
-(** A definition with a module part: its term and its unit *)
+(** A definition with a module part: its type, its term and its unit *)
 | initial_env_order_cons_dm :
   `( initial_env_order Θ Ξ Γ ->
-     (forall p, initial_env Θ Ξ Γ p ->
-           eval_exp_order Θ Ξ M p) ->
-     (forall p, initial_env Θ Ξ Γ p ->
-           eval_modexp_order Θ Ξ (me_lit U) p) ->
+     (forall ρ, initial_env Θ Ξ Γ ρ -> eval_exp_order Θ Ξ A ρ) ->
+     (forall ρ, initial_env Θ Ξ Γ ρ -> eval_exp_order Θ Ξ M ρ) ->
+     (forall ρ, initial_env Θ Ξ Γ ρ -> eval_modexp_order Θ Ξ (me_lit U) ρ) ->
      initial_env_order Θ Ξ (Γ ▸ₘ A ≔ M ‖ U)).
 
 #[local]
 Hint Constructors initial_env_order : mctt.
 
-Lemma initial_env_order_sound : forall Θ Ξ Γ p,
-    initial_env Θ Ξ Γ p ->
+Lemma initial_env_order_sound : forall Θ Ξ Γ ρ,
+    initial_env Θ Ξ Γ ρ ->
     initial_env_order Θ Ξ Γ.
 Proof.
-  induction 1; solve [ econstructor; intros; functional_initial_env_rewrite_clear; functional_eval_rewrite_clear;
-                       first [ congruence | mauto ]
-                     | econstructor; eauto ].
+  induction 1; econstructor; intros; functional_initial_env_rewrite_clear; functional_eval_rewrite_clear;
+    eauto using eval_exp_order_sound, eval_modexp_order_sound;
+    exfalso; eapply evaluated_kind_not_propositional; eassumption.
 Qed.
 
 #[local]
 Hint Resolve initial_env_order_sound : mctt.
 
-(** The order of NbE in [Θ ⍮ Ξ ⍮ Γ]: the term is evaluated and read back
-    at a relevant type only ([nbe_term]). *)
+(** The order of NbE in [Θ ⍮ Ξ ⍮ Γ] ([nbe]): the term is evaluated and
+    read back at a type of a universe or of levels, and kept as a proof,
+    then read back, at a proposition ([nbe_term]). *)
 Record nbe_order Θ Ξ G M A : Prop := nbe_order_run
   { (** The initial environment of the context *)
     nbe_order_init : initial_env_order Θ Ξ G
     (** The type *)
-  ; nbe_order_typ : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p
-    (** The term, at a relevant type *)
-  ; nbe_order_exp : forall p a,
-      initial_env Θ Ξ G p ->
-      ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
-      domain_relevance a = relevant ->
-      eval_exp_order Θ Ξ M p
-    (** Its readback, at a relevant type *)
-  ; nbe_order_read : forall p a m,
-      initial_env Θ Ξ G p ->
-      ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
-      domain_relevance a = relevant ->
-      ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m ->
-      read_nf_order Θ Ξ (List.length G) ⇓ a m }.
+  ; nbe_order_typ : forall ρ, initial_env Θ Ξ G ρ -> eval_exp_order Θ Ξ A ρ
+    (** The term, at a type of a universe or of levels *)
+  ; nbe_order_exp : forall ρ a,
+      initial_env Θ Ξ G ρ ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+      evaluated_kind (domain_kind a) ->
+      eval_exp_order Θ Ξ M ρ
+    (** Its readback there *)
+  ; nbe_order_read : forall ρ a m,
+      initial_env Θ Ξ G ρ ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+      evaluated_kind (domain_kind a) ->
+      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+      read_nf_order Θ Ξ (List.length G) ⇓ a m
+    (** The readback of the kept proof, at a proposition *)
+  ; nbe_order_read_proof : forall ρ a,
+      initial_env Θ Ξ G ρ ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+      domain_kind a = ak_propositional ->
+      read_nf_order Θ Ξ (List.length G) ⇓ a ⋆ᵈ⟨M, ρ⟩ }.
 
 #[local]
 Hint Constructors nbe_order : mctt.
@@ -99,20 +109,25 @@ Lemma nbe_order_sound : forall Θ Ξ G M A w,
     nbe Θ Ξ G M A w ->
     nbe_order Θ Ξ G M A.
 Proof.
-  intros * [ρ a Hi Ha Hw]; destruct Hw as [Hp | m w Hr Hm Hw];
-    (econstructor; intros; functional_initial_env_rewrite_clear;
-     functional_eval_rewrite_clear; first [ congruence | functional_read_rewrite_clear; mauto ]).
+  intros * [ρ a Hi Ha Hw]; destruct Hw as [w Hk Hr | m w Hk Hm Hr];
+    econstructor; intros; functional_initial_env_rewrite_clear; functional_eval_rewrite_clear;
+    eauto using initial_env_order_sound, eval_exp_order_sound, read_nf_order_sound;
+    exfalso; eapply evaluated_kind_not_propositional; eassumption.
 Qed.
 
 #[local]
 Hint Resolve nbe_order_sound : mctt.
 
+(** The order of NbE of a type ([nbe_ty]) *)
 Record nbe_ty_order Θ Ξ G A : Prop := nbe_ty_order_run
-  { nbe_ty_order_init : initial_env_order Θ Ξ G
-  ; nbe_ty_order_typ : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p
-  ; nbe_ty_order_read : forall p a,
-      initial_env Θ Ξ G p ->
-      ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
+  { (** The initial environment of the context *)
+    nbe_ty_order_init : initial_env_order Θ Ξ G
+    (** The type *)
+  ; nbe_ty_order_typ : forall ρ, initial_env Θ Ξ G ρ -> eval_exp_order Θ Ξ A ρ
+    (** Its readback as a type *)
+  ; nbe_ty_order_read : forall ρ a,
+      initial_env Θ Ξ G ρ ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
       read_typ_order Θ Ξ (List.length G) a }.
 
 #[local]
@@ -123,252 +138,169 @@ Lemma nbe_ty_order_sound : forall Θ Ξ G A w,
     nbe_ty_order Θ Ξ G A.
 Proof.
   induction 1;
-    (econstructor; intros; functional_initial_env_rewrite_clear;
-     functional_eval_rewrite_clear; functional_read_rewrite_clear; mauto).
+    econstructor; intros; functional_initial_env_rewrite_clear; functional_eval_rewrite_clear;
+    eauto using initial_env_order_sound, eval_exp_order_sound, read_typ_order_sound.
 Qed.
 
 #[local]
 Hint Resolve nbe_ty_order_sound : mctt.
 
+(** ** The Fast Environments *)
 
-(** ** The Fast Normalizer *)
+(** A right fast environment that erases to the initial environment of
+    [G] *)
+Definition fast_env Θ Ξ G := { ρ : fenv | initial_env Θ Ξ G (fenv_erase ρ) /\ fenv_ok Θ Ξ ρ }.
 
-(** A fast environment related, entry by entry, to the initial environment
-    of [G] ([fast_env_agree]). *)
-Definition fast_env Θ Ξ G := { p' : fenv | exists p, initial_env Θ Ξ G p /\ fast_env_agree Θ Ξ (fun _ => True) p p' }.
-
-Section Orders.
+Section FastEnv.
   Variables (Θ : gdeps) (Ξ : gstack).
 
-  (** The fast evaluation terminates where the reference one does, from an
-      environment that agrees where the term may read, at a related value. *)
-  Lemma fast_eval_of_ref : forall M p p' a,
-      ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> env_agree Θ Ξ (fun x => ~ exp_fresh x M) p p' ->
-      Evaluation.fast_eval_exp_order Θ Ξ M p' /\ forall a', ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p' ↘ a' -> domain_simulation Θ Ξ a a'.
+  (** The empty context's *)
+  Lemma fast_env_nil : initial_env Θ Ξ nil (fenv_erase nil) /\ fenv_ok Θ Ξ nil.
+  Proof. split; constructor. Qed.
+
+  (** An assumption: a fresh variable of its type *)
+  Lemma fast_env_ass : forall G κ A ρ a,
+      initial_env Θ Ξ G (fenv_erase ρ) /\ fenv_ok Θ Ξ ρ ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ fenv_erase ρ ↘ fdomain_erase a /\ fdomain_ok Θ Ξ a ->
+      initial_env Θ Ξ (G ▹{κ} A) (fenv_erase (fextend_env ρ (fd_neut a (fd_var (List.length G))) (fentry_type_value a))) /\
+      fenv_ok Θ Ξ (fextend_env ρ (fd_neut a (fd_var (List.length G))) (fentry_type_value a)).
   Proof.
-    intros * Ha Hp.
-    destruct (fast_eval_exp_sim Θ Ξ _ _ _ Ha _ Hp) as (a'' & Ha'' & Hs).
-    split; [ eapply Evaluation.fast_eval_exp_order_sound; eassumption |].
-    intros a' Ha'; rewrite <- (functional_fast_eval_exp _ _ _ _ Ha'' Ha'); exact Hs.
+    intros * [Hi Hρ] [Ha Hok]; split; [ exact (initial_env_cons _ _ _ _ _ _ _ Hi Ha) |].
+    repeat constructor; assumption.
   Qed.
 
-  Lemma eval_of_order : forall M p, eval_exp_order Θ Ξ M p -> exists a, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ a.
-  Proof. intros * H; destruct (eval_exp_impl Θ Ξ M p H) as [a Ha]; eauto. Qed.
-
-  (** Likewise for a module expression. *)
-  Lemma fast_eval_modexp_of_ref : forall H p p' h,
-      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> env_agree Θ Ξ (fun x => ~ modexp_fresh x H) p p' ->
-      Evaluation.fast_eval_modexp_order Θ Ξ H p' /\ forall h', ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p' ↘ h' -> dmod_simulation Θ Ξ h h'.
+  (** A definition at a type of a universe or of levels: its body's
+      value *)
+  Lemma fast_env_def : forall G A M ρ a m,
+      initial_env Θ Ξ G (fenv_erase ρ) /\ fenv_ok Θ Ξ ρ ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ fenv_erase ρ ↘ fdomain_erase a /\ fdomain_ok Θ Ξ a ->
+      evaluated_kind (fdomain_kind a) ->
+      ⟦ M ⟧ Θ ⍮ Ξ ⍮ fenv_erase ρ ↘ fdomain_erase m /\ fdomain_ok Θ Ξ m ->
+      initial_env Θ Ξ (G ▸ A ≔ M) (fenv_erase (fextend_env ρ m (fentry_type_value a))) /\
+      fenv_ok Θ Ξ (fextend_env ρ m (fentry_type_value a)).
   Proof.
-    intros * Hh Hp.
-    destruct (fast_eval_modexp_sim Θ Ξ _ _ _ Hh _ Hp) as (h'' & Hh'' & Hs).
-    split; [ eapply Evaluation.fast_eval_modexp_order_sound; eassumption |].
-    intros h' Hh'; rewrite <- (functional_fast_eval_modexp _ _ _ _ Hh'' Hh'); exact Hs.
+    intros * [Hi Hρ] [Ha Hok] Hk [Hm Hmok]; split; [| repeat constructor; assumption ].
+    eapply initial_env_cons_def; [ exact Hi | exact Ha | rewrite fdomain_kind_erase; exact Hk | exact Hm ].
   Qed.
 
-  Lemma eval_modexp_of_order : forall H p, eval_modexp_order Θ Ξ H p -> exists h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h.
-  Proof. intros * Ho; destruct (eval_modexp_impl Θ Ξ H p Ho) as [h Hh]; eauto. Qed.
+  (** A definition at a proposition: its body kept *)
+  Lemma fast_env_def_proof : forall G A M ρ a,
+      initial_env Θ Ξ G (fenv_erase ρ) /\ fenv_ok Θ Ξ ρ ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ fenv_erase ρ ↘ fdomain_erase a /\ fdomain_ok Θ Ξ a ->
+      fdomain_kind a = ak_propositional ->
+      initial_env Θ Ξ (G ▸ A ≔ M) (fenv_erase (fextend_env ρ (fd_proof M ρ) (fentry_type_value a))) /\
+      fenv_ok Θ Ξ (fextend_env ρ (fd_proof M ρ) (fentry_type_value a)).
+  Proof.
+    intros * [Hi Hρ] [Ha Hok] Hk; split; [| repeat constructor; assumption ].
+    eapply initial_env_cons_def_proof; [ exact Hi | exact Ha | rewrite fdomain_kind_erase; exact Hk ].
+  Qed.
 
-  Lemma read_typ_of_order : forall s a, read_typ_order Θ Ξ s a -> exists W, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ W.
-  Proof. intros * H; destruct (read_typ_impl Θ Ξ s a H) as [W HW]; eauto. Qed.
+  (** A module: the value of its unit *)
+  Lemma fast_env_mod : forall G U ρ h,
+      initial_env Θ Ξ G (fenv_erase ρ) /\ fenv_ok Θ Ξ ρ ->
+      ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ fenv_erase ρ ↘ fdmod_erase h /\ fdmod_ok Θ Ξ h ->
+      initial_env Θ Ξ (G ▹ₘ U) (fenv_erase (fextend_env_mod ρ h U)) /\ fenv_ok Θ Ξ (fextend_env_mod ρ h U).
+  Proof.
+    intros * [Hi Hρ] [Hh Hok]; split; [ exact (initial_env_cons_mod _ _ _ _ _ _ Hi Hh) | repeat constructor; assumption ].
+  Qed.
 
-  Lemma read_nf_of_order : forall s d, read_nf_order Θ Ξ s d -> exists W, Rnf d in Θ ⍮ Ξ ⍮ s ↘ W.
-  Proof. intros * H; destruct (read_nf_impl Θ Ξ s d H) as [W HW]; eauto. Qed.
+  (** A definition with a module part: its term's value, at its type, and
+      its unit's *)
+  Lemma fast_env_dm : forall G A M U ρ a m h,
+      initial_env Θ Ξ G (fenv_erase ρ) /\ fenv_ok Θ Ξ ρ ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ fenv_erase ρ ↘ fdomain_erase a /\ fdomain_ok Θ Ξ a ->
+      ⟦ M ⟧ Θ ⍮ Ξ ⍮ fenv_erase ρ ↘ fdomain_erase m /\ fdomain_ok Θ Ξ m ->
+      ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ fenv_erase ρ ↘ fdmod_erase h /\ fdmod_ok Θ Ξ h ->
+      initial_env Θ Ξ (G ▸ₘ A ≔ M ‖ U) (fenv_erase (fextend_env_dm ρ m (fentry_type_value a) h U)) /\
+      fenv_ok Θ Ξ (fextend_env_dm ρ m (fentry_type_value a) h U).
+  Proof.
+    intros * [Hi Hρ] [Ha Haok] [Hm Hmok] [Hh Hhok]; split; [| repeat constructor; assumption ].
+    exact (initial_env_cons_dm _ _ _ _ _ _ _ _ _ _ Hi Ha Hm Hh).
+  Qed.
+End FastEnv.
 
-  Lemma agree_all : forall P p p', env_agree Θ Ξ (fun _ => True) p p' -> env_agree Θ Ξ P p p'.
-  Proof. intros * H; eapply env_agree_mono; [ exact H | intros; exact I ]. Qed.
-End Orders.
+(** ** The Fast Normalizers *)
 
+(** A kind other than the propositions' is evaluated. *)
+Lemma evaluated_kind_of_not_propositional : forall κ, κ <> ak_propositional -> evaluated_kind κ.
+Proof. intros κ H; destruct (evaluated_kind_or_propositional κ); [ assumption | contradiction ]. Qed.
+
+(** Split the orders, the fast environments and the fast results; a kind
+    other than the propositions' is evaluated *)
 #[local]
 Ltac fast_nbe_obligation :=
   repeat match goal with
     | H : initial_env_order _ _ (_ :: _) |- _ => progressive_invert H
-    | H : nbe_ty_order _ _ _ _ |- _ => progressive_invert H
-    | H : nbe_order _ _ _ _ _ |- _ => progressive_invert H
-    | H : exists _, _ /\ _ |- _ => destruct H as (? & ? & ?)
-    (** A fast result: its relation and its rightness *)
+    | H : nbe_ty_order _ _ _ _ |- _ => destruct H
+    | H : nbe_order _ _ _ _ _ |- _ => destruct H
     | H : _ /\ _ |- _ => destruct H
+    | H : ?κ <> ak_propositional |- _ => apply evaluated_kind_of_not_propositional in H
     end;
-  cbn [fdomain_erase fdomain_ne_erase fdomain_nf_erase] in *.
-
-(** The reference evaluation of a term or a unit the order quantifies over,
-    at the initial environment, and the fast one, at the related fast
-    environment, related ([fast_eval_of_ref]) *)
-#[local]
-Ltac fast_nbe_obligation_ref_of M :=
-  match goal with
-  | Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ M p, Hi : initial_env _ _ _ ?p0,
-    Hag : fast_env_agree _ _ _ ?p0 _ |- _ =>
-      let a0 := fresh "a0" in let Ha0 := fresh "Ha0" in
-      destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a0 Ha0];
-      pose proof (fast_eval_of_ref _ _ _ _ _ _ Ha0 (fast_env_agree_all _ _ _ _ _ Hag))
-  | Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ M p, Hi : initial_env _ _ _ ?p0,
-    Hag : fast_env_agree _ _ _ ?p0 _ |- _ =>
-      let h0 := fresh "h0" in let Hh0 := fresh "Hh0" in
-      destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h0 Hh0];
-      pose proof (fast_eval_modexp_of_ref _ _ _ _ _ _ Hh0 (fast_env_agree_all _ _ _ _ _ Hag))
-  end.
-
-(** The fast results' relations to the reference ones *)
-#[local]
-Ltac fast_nbe_obligation_sims :=
   repeat match goal with
-    | Hs : _ /\ (forall a', ⟦ ?M ⟧ᶠ _ ⍮ _ ⍮ _ ↘ a' -> _), Ha : ⟦ ?M ⟧ᶠ _ ⍮ _ ⍮ _ ↘ _ |- _ =>
-        pose proof (proj2 Hs _ Ha); clear Hs
-    | Hs : _ /\ (forall h', ⟦ ?M ⟧ᵐᶠ _ ⍮ _ ⍮ _ ↘ h' -> _), Hh : ⟦ ?M ⟧ᵐᶠ _ ⍮ _ ⍮ _ ↘ _ |- _ =>
-        pose proof (proj2 Hs _ Hh); clear Hs
+    | H : evaluated_kind (fdomain_kind ?a) |- _ =>
+        assert_fails (idtac; match goal with _ : evaluated_kind (domain_kind (fdomain_erase a)) |- _ => idtac end);
+        pose proof (eq_rect_r evaluated_kind H (fdomain_kind_erase a))
+    | H : fdomain_kind ?a = ak_propositional |- _ =>
+        assert_fails (idtac; match goal with _ : domain_kind (fdomain_erase a) = _ |- _ => idtac end);
+        pose proof (fdomain_kind_erase_eq _ _ H)
     end.
-
-(** The sort of a reference type, from that of the related fast one *)
-#[local]
-Ltac fast_nbe_obligation_rel :=
-  repeat match goal with
-    | Hs : domain_simulation _ _ ?a0 (fdomain_erase ?a'), Er : fdomain_relevance ?a' = ?r |- _ =>
-        assert_fails (idtac; match goal with _ : domain_relevance a0 = r |- _ => idtac end);
-        pose proof (eq_trans (domain_relevance_sim _ _ _ _ Hs) (fdomain_relevance_erase_eq _ _ Er))
-    end.
-
-(** The reference evaluation of a term the order quantifies over at a
-    relevant type only, at the initial environment where the type's value
-    is relevant, and the fast one, related *)
-#[local]
-Ltac fast_nbe_obligation_ref_cond M :=
-  match goal with
-  | Hord : forall p a, initial_env _ _ _ p -> ⟦ ?A ⟧ _ ⍮ _ ⍮ p ↘ a -> domain_relevance a = relevant -> eval_exp_order _ _ M p,
-    Hi : initial_env _ _ _ ?p0, Hag : fast_env_agree _ _ _ ?p0 _,
-    Ha0 : ⟦ ?A ⟧ _ ⍮ _ ⍮ ?p0 ↘ ?a0, Hr : domain_relevance ?a0 = relevant |- _ =>
-      let m0 := fresh "m0" in let Hm0 := fresh "Hm0" in
-      destruct (eval_of_order _ _ _ _ (Hord _ _ Hi Ha0 Hr)) as [m0 Hm0];
-      pose proof (fast_eval_of_ref _ _ _ _ _ _ Hm0 (fast_env_agree_all _ _ _ _ _ Hag))
-  end.
-
-(** The type's reference value and its sort, then the term's *)
-#[local]
-Ltac fast_nbe_obligation_typ_then_term A M :=
-  fast_nbe_obligation_ref_of A; fast_nbe_obligation_sims; fast_nbe_obligation_rel;
-  fast_nbe_obligation_ref_cond M; fast_nbe_obligation_sims.
 
 (** The obligations of the normalizers *)
 #[local]
 Ltac fast_nbe_obligation_solve :=
-  intros; fast_nbe_obligation;
+  intros; cbv beta in *; fast_nbe_obligation;
   lazymatch goal with
   | |- initial_env_order _ _ _ => assumption
-  | |- fenv_ok _ _ _ => eapply fast_env_agree_ok; eassumption
+  | |- fenv_ok _ _ _ => assumption
   | |- fdomain_ok _ _ _ => assumption
-  | |- fdomain_nf_ok _ _ _ => constructor; assumption
-  (** The order of a fast evaluation, from the reference one *)
-  | |- Evaluation.fast_eval_exp_order _ _ ?M _ =>
-      first [ fast_nbe_obligation_ref_of M; tauto
-            | match goal with
-              | Hord : forall p a, initial_env _ _ _ p -> ⟦ ?A ⟧ _ ⍮ _ ⍮ p ↘ a -> _ -> eval_exp_order _ _ M p |- _ =>
-                  fast_nbe_obligation_typ_then_term A M; tauto
-              end ]
-  | |- Evaluation.fast_eval_modexp_order _ _ ?M _ => fast_nbe_obligation_ref_of M; tauto
-  (** The empty environment *)
-  | |- exists p, initial_env _ _ nil p /\ _ =>
-      exists nil; split; [ constructor | apply fast_env_agree_nil ]
-  (** One entry more: an assumption, a fresh variable or the proof *)
-  | |- exists p, initial_env _ _ (ce_ass ?A :: _) p /\ _ =>
-      fast_nbe_obligation_ref_of A; fast_nbe_obligation_sims;
-      eexists; split; [ econstructor; eassumption |];
-      eapply fast_env_agree_term;
-      [ eassumption
-      | rewrite frelevant_value_erase; apply relevant_value_sim; [ assumption | repeat constructor; assumption ]
-      | apply frelevant_value_ok; repeat constructor; assumption ]
-  (** A definition: the proof at a proposition, its body's value otherwise *)
-  | |- exists p, initial_env _ _ (ce_def ?A ?M :: _) p /\ _ =>
-      fast_nbe_obligation_ref_of A; fast_nbe_obligation_sims; fast_nbe_obligation_rel;
-      first [ eexists; split; [ eapply initial_env_cons_def_proof; eassumption |];
-              eapply fast_env_agree_term; [ eassumption | cbn; constructor | constructor ]
-            | fast_nbe_obligation_ref_cond M; fast_nbe_obligation_sims;
-              eexists; split; [ eapply initial_env_cons_def; eassumption |];
-              eapply fast_env_agree_term; eassumption ]
-  | |- exists p, initial_env _ _ (ce_mod ?U :: _) p /\ _ =>
-      fast_nbe_obligation_ref_of (me_lit U); fast_nbe_obligation_sims;
-      eexists; split; [ econstructor; eassumption |];
-      eapply fast_env_agree_mod; eassumption
-  | |- exists p, initial_env _ _ (ce_dm _ ?M ?U :: _) p /\ _ =>
-      fast_nbe_obligation_ref_of M; fast_nbe_obligation_ref_of (me_lit U); fast_nbe_obligation_sims;
-      eexists; split; [ econstructor; eassumption |];
-      eapply fast_env_agree_dm; eassumption
-  (** The order of a fast readback, and the normal form, from the
-      reference ones *)
-  | |- Readback.fast_read_typ_order _ _ _ _ =>
-      match goal with Hi : initial_env _ _ _ _, HA : forall p, initial_env _ _ _ p -> eval_exp_order _ _ ?A p,
-                      Hrd : forall p a, initial_env _ _ _ p -> _ -> read_typ_order _ _ _ a |- _ =>
-        fast_nbe_obligation_ref_of A; fast_nbe_obligation_sims;
-        match goal with Ha0 : ⟦ A ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => destruct (read_typ_of_order _ _ _ _ (Hrd _ _ Hi Ha0)) as [W HW] end
-      end;
-      eapply Readback.fast_read_typ_order_sound, fast_read_typ_sim; eassumption
-  | |- nbe_ty _ _ _ _ ?w =>
-      match goal with Hi : initial_env _ _ _ _, HA : forall p, initial_env _ _ _ p -> eval_exp_order _ _ ?A p,
-                      Hrd : forall p a, initial_env _ _ _ p -> _ -> read_typ_order _ _ _ a |- _ =>
-        fast_nbe_obligation_ref_of A; fast_nbe_obligation_sims;
-        match goal with Ha0 : ⟦ A ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => destruct (read_typ_of_order _ _ _ _ (Hrd _ _ Hi Ha0)) as [W HW] end
-      end;
-      match goal with Hw : Rtypᶠ _ in _ ⍮ _ ⍮ _ ↘ w, HW : Rtyp _ in _ ⍮ _ ⍮ _ ↘ ?W |- _ =>
-        assert (w = W) as -> by (eapply functional_fast_read_typ; [ exact Hw | eapply fast_read_typ_sim; eassumption ]) end;
-      econstructor; eassumption
-  | |- Readback.fast_read_nf_order _ _ _ _ =>
-      match goal with Hi : initial_env _ _ _ _,
-                      HA : forall p, initial_env _ _ _ p -> eval_exp_order _ _ ?A p,
-                      Hrd : forall p a m, initial_env _ _ _ p -> ⟦ ?A ⟧ _ ⍮ _ ⍮ p ↘ a -> _ -> ⟦ ?M ⟧ _ ⍮ _ ⍮ p ↘ m -> _ |- _ =>
-        fast_nbe_obligation_typ_then_term A M;
-        match goal with Ha0 : ⟦ A ⟧ _ ⍮ _ ⍮ _ ↘ _, Hr : domain_relevance _ = relevant, Hm0 : ⟦ M ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ =>
-          destruct (read_nf_of_order _ _ _ _ (Hrd _ _ _ Hi Ha0 Hr Hm0)) as [W HW] end
-      end;
-      eapply Readback.fast_read_nf_order_sound, fast_read_nf_sim; [ eassumption | constructor; assumption ]
-  (** At a proposition: the proof, the term not evaluated *)
-  | |- nbe _ _ _ _ ?A ⋆ⁿ =>
-      fast_nbe_obligation_ref_of A; fast_nbe_obligation_sims; fast_nbe_obligation_rel;
-      econstructor; [ eassumption | eassumption | apply nbe_term_proof; assumption ]
-  | |- nbe _ _ _ _ _ ?w =>
-      match goal with Hi : initial_env _ _ _ _,
-                      HA : forall p, initial_env _ _ _ p -> eval_exp_order _ _ ?A p,
-                      Hrd : forall p a m, initial_env _ _ _ p -> ⟦ ?A ⟧ _ ⍮ _ ⍮ p ↘ a -> _ -> ⟦ ?M ⟧ _ ⍮ _ ⍮ p ↘ m -> _ |- _ =>
-        fast_nbe_obligation_typ_then_term A M;
-        match goal with Ha0 : ⟦ A ⟧ _ ⍮ _ ⍮ _ ↘ _, Hr : domain_relevance _ = relevant, Hm0 : ⟦ M ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ =>
-          destruct (read_nf_of_order _ _ _ _ (Hrd _ _ _ Hi Ha0 Hr Hm0)) as [W HW] end
-      end;
-      match goal with Hw : Rnfᶠ _ in _ ⍮ _ ⍮ _ ↘ w, HW : Rnf _ in _ ⍮ _ ⍮ _ ↘ ?W |- _ =>
-        assert (w = W) as -> by (eapply functional_fast_read_nf; [ exact Hw | eapply fast_read_nf_sim; [ eassumption | constructor; assumption ] ]) end;
-      econstructor; [ eassumption | eassumption | eapply nbe_term_relevant; eassumption ]
+  | |- fdomain_nf_ok _ _ _ => repeat constructor; assumption
+  | |- eval_exp_order _ _ _ _ => eauto
+  | |- eval_modexp_order _ _ _ _ => eauto
+  | |- initial_env _ _ (ce_ass _ _ :: _) _ /\ _ => apply fast_env_ass; split; assumption
+  | |- initial_env _ _ (ce_mod _ :: _) _ /\ _ => apply fast_env_mod; split; assumption
+  | |- initial_env _ _ (ce_dm _ _ _ :: _) _ /\ _ => apply fast_env_dm; split; assumption
+  | |- initial_env _ _ (ce_def _ _ :: _) _ /\ _ =>
+      first [ apply fast_env_def_proof; [ split | split |]; assumption
+            | apply fast_env_def; [ split | split | | split ]; assumption ]
+  | |- read_typ_order _ _ _ _ => eauto
+  | |- read_nf_order _ _ _ _ => cbn [fdomain_nf_erase fdomain_erase]; eauto
+  | |- nbe_ty _ _ _ _ _ => econstructor; eassumption
+  | |- nbe _ _ _ _ _ _ => econstructor; [ eassumption | eassumption |];
+      first [ eapply nbe_term_proof; [ rewrite fdomain_kind_erase; assumption | eassumption ]
+            | eapply nbe_term_evaluated; [ rewrite fdomain_kind_erase; assumption | eassumption | eassumption ] ]
   end.
-
-(** The operations on fast values, read through their erasure equations *)
-#[local] Opaque fenv_var fenv_mod fextend_env fextend_env_mod fextend_env_dm fenv_args fdomain_level_suc fdomain_level_max
-  fdomain_level_lit fdm_clo fkinds_placeholders fkinds_body_entry fkinds_items_gen_env felim_grp_of carry.
 
 Section InitialEnvImpl.
   Variable F : FCtx.
   #[local] Abbreviation Θ := (fc_deps F).
   #[local] Abbreviation Ξ := (fc_stack F).
 
+  (** The fast initial environment of a context *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations initial_env_impl G (H : initial_env_order Θ Ξ G) : fast_env Θ Ξ G by struct H :=
-  | nil, H => exist _ nil _
-  | cons (ce_ass A) G, H =>
-      let (p, Hp) := initial_env_impl G _ in
-      let (a, Ha) := Evaluation.fast_eval_exp_impl F A p _ _ in
-      exist _ (fextend_env p (frelevant_value a (fd_neut a (fd_var (List.length G))))) _
-  (** A definition, by the sort of its type *)
+  | nil, H => exist _ nil (fast_env_nil Θ Ξ)
+  | cons (ce_ass κ A) G, H =>
+      let (ρ, Hρ) := initial_env_impl G _ in
+      let (a, Ha) := fast_eval_exp_impl F A ρ _ _ in
+      exist _ (fextend_env ρ (fd_neut a (fd_var (List.length G))) (fentry_type_value a)) _
+  (** A definition, by the kind of its type *)
   | cons (ce_def A M) G, H with initial_env_impl G _ := {
-    | exist _ p Hp with Evaluation.fast_eval_exp_impl F A p _ _ := {
-      | exist _ a Ha with inspect (fdomain_relevance a) := {
-        | exist _ relevant Er =>
-            let (m, Hm) := Evaluation.fast_eval_exp_impl F M p _ _ in
-            exist _ (fextend_env p m) _
-        | exist _ propositional Er => exist _ (fextend_env p fd_true) _ } } }
+    | exist _ ρ Hρ with fast_eval_exp_impl F A ρ _ _ := {
+      | exist _ a Ha with abs_kind_eq_dec (fdomain_kind a) ak_propositional := {
+        | left Hk => exist _ (fextend_env ρ (fd_proof M ρ) (fentry_type_value a)) _
+        | right Hk =>
+            let (m, Hm) := fast_eval_exp_impl F M ρ _ _ in
+            exist _ (fextend_env ρ m (fentry_type_value a)) _ } } }
   | cons (ce_mod U) G, H =>
-      let (p, Hp) := initial_env_impl G _ in
-      let (h, Hh) := Evaluation.fast_eval_modexp_impl F (me_lit U) p _ _ in
-      exist _ (fextend_env_mod p h) _
+      let (ρ, Hρ) := initial_env_impl G _ in
+      let (h, Hh) := fast_eval_modexp_impl F (me_lit U) ρ _ _ in
+      exist _ (fextend_env_mod ρ h U) _
   | cons (ce_dm A M U) G, H =>
-      let (p, Hp) := initial_env_impl G _ in
-      let (m, Hm) := Evaluation.fast_eval_exp_impl F M p _ _ in
-      let (h, Hh) := Evaluation.fast_eval_modexp_impl F (me_lit U) p _ _ in
-      exist _ (fextend_env_dm p m h) _.
+      let (ρ, Hρ) := initial_env_impl G _ in
+      let (a, Ha) := fast_eval_exp_impl F A ρ _ _ in
+      let (m, Hm) := fast_eval_exp_impl F M ρ _ _ in
+      let (h, Hh) := fast_eval_modexp_impl F (me_lit U) ρ _ _ in
+      exist _ (fextend_env_dm ρ m (fentry_type_value a) h U) _.
   Solve All Obligations with fast_nbe_obligation_solve.
 End InitialEnvImpl.
 
@@ -377,12 +309,14 @@ Section NbETyEnvDef.
   #[local] Abbreviation Θ := (fc_deps F).
   #[local] Abbreviation Ξ := (fc_stack F).
 
+  (** The normal form of a type, from the fast initial environment of the
+      context *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations nbe_ty_env_impl G (P : fast_env Θ Ξ G) A (H : nbe_ty_order Θ Ξ G A) :
     { w | nbe_ty Θ Ξ G A w } :=
-  | G, exist _ p Hp, A, H =>
-      let (a, Ha) := Evaluation.fast_eval_exp_impl F A p _ _ in
-      let (w, Hw) := Readback.fast_read_typ_impl F (List.length G) a _ _ in
+  | G, exist _ ρ Hρ, A, H =>
+      let (a, Ha) := fast_eval_exp_impl F A ρ _ _ in
+      let (w, Hw) := fast_read_typ_impl F (List.length G) a _ _ in
       exist _ w _.
   Solve All Obligations with fast_nbe_obligation_solve.
 End NbETyEnvDef.
@@ -390,27 +324,7 @@ End NbETyEnvDef.
 (** From scratch, at the initial environment of the context. *)
 Definition nbe_ty_impl (F : FCtx) G A (H : nbe_ty_order (fc_deps F) (fc_stack F) G A) :
     { w | nbe_ty (fc_deps F) (fc_stack F) G A w } :=
-  nbe_ty_env_impl F G (initial_env_impl F G (match H with nbe_ty_order_run _ _ _ _ HG _ _ => HG end)) A H.
-
-Section NbEDef.
-  Variable F : FCtx.
-  #[local] Abbreviation Θ := (fc_deps F).
-  #[local] Abbreviation Ξ := (fc_stack F).
-
-  #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations nbe_impl G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
-  | G, M, A, H with initial_env_impl F G _ => {
-    | exist _ p Hp with Evaluation.fast_eval_exp_impl F A p _ _ := {
-      (** At a proposition: the proof, the term not evaluated *)
-      | exist _ a Ha with inspect (fdomain_relevance a) := {
-        | exist _ propositional Er => exist _ ⋆ⁿ _
-        | exist _ relevant Er =>
-            let (m, Hm) := Evaluation.fast_eval_exp_impl F M p _ _ in
-            let (w, Hw) := Readback.fast_read_nf_impl F (List.length G) (fd_dom a m) _ _ in
-            exist _ w _ } } }.
-  Next Obligation. (* initial_env_order G *) destruct H; assumption. Defined.
-  Solve All Obligations with fast_nbe_obligation_solve.
-End NbEDef.
+  nbe_ty_env_impl F G (initial_env_impl F G (nbe_ty_order_init _ _ _ _ H)) A H.
 
 (** At an environment computed once for the context, as [nbe_ty_env_impl]. *)
 Section NbEEnvDef.
@@ -418,16 +332,24 @@ Section NbEEnvDef.
   #[local] Abbreviation Θ := (fc_deps F).
   #[local] Abbreviation Ξ := (fc_stack F).
 
-  (** The normal form of a term at a type, from an environment related to
-      the context's initial one. *)
+  (** The normal form of a term at a type, from the fast initial
+      environment of the context: at a proposition, the term kept and read
+      back; otherwise, its value read back *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations nbe_env_impl G (P : fast_env Θ Ξ G) M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
-  | G, exist _ p Hp, M, A, H with Evaluation.fast_eval_exp_impl F A p _ _ := {
-    | exist _ a Ha with inspect (fdomain_relevance a) := {
-      | exist _ propositional Er => exist _ ⋆ⁿ _
-      | exist _ relevant Er =>
-          let (m, Hm) := Evaluation.fast_eval_exp_impl F M p _ _ in
-          let (w, Hw) := Readback.fast_read_nf_impl F (List.length G) (fd_dom a m) _ _ in
+  | G, exist _ ρ Hρ, M, A, H with fast_eval_exp_impl F A ρ _ _ := {
+    | exist _ a Ha with abs_kind_eq_dec (fdomain_kind a) ak_propositional := {
+      | left Hk =>
+          let (w, Hw) := fast_read_nf_impl F (List.length G) (fd_dom a (fd_proof M ρ)) _ _ in
+          exist _ w _
+      | right Hk =>
+          let (m, Hm) := fast_eval_exp_impl F M ρ _ _ in
+          let (w, Hw) := fast_read_nf_impl F (List.length G) (fd_dom a m) _ _ in
           exist _ w _ } }.
   Solve All Obligations with fast_nbe_obligation_solve.
 End NbEEnvDef.
+
+(** From scratch, at the initial environment of the context. *)
+Definition nbe_impl (F : FCtx) G M A (H : nbe_order (fc_deps F) (fc_stack F) G M A) :
+    { w | nbe (fc_deps F) (fc_stack F) G M A w } :=
+  nbe_env_impl F G (initial_env_impl F G (nbe_order_init _ _ _ _ _ H)) M A H.
