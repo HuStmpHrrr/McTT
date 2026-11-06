@@ -94,16 +94,30 @@ Section type_check.
     destruct κd; [ right; intros H; inversion H | right; intros H; inversion H | left; constructor ].
   Defined.
 
-  (** Whether a normal form, read as a term, is [LevelSort]: the
+  (** Whether a normal form, read as a term, is no [LevelSort]: the
       condition on the body's type of a λ and of a local binding. *)
-  Definition nf_level_sort_dec (B : nf) : { nf_to_exp B = LevelSort } + { nf_to_exp B <> LevelSort }.
-  Proof. exact (exp_eq_dec (nf_to_exp B) LevelSort). Defined.
+  Definition nf_not_level_sort_dec (B : nf) : { nf_to_exp B <> LevelSort } + { nf_to_exp B = LevelSort }.
+  Proof. destruct (exp_eq_dec (nf_to_exp B) LevelSort); [ right | left ]; assumption. Defined.
+
+  (** Whether a kind is not the levels': the condition on the target of
+      ex falso and on the body's type of a module [let]. *)
+  Definition kind_not_level_dec (κ : abs_kind) : { κ <> ak_level } + { κ = ak_level }.
+  Proof. destruct (abs_kind_eq_dec κ ak_level); [ right | left ]; assumption. Defined.
+
+  (** Whether a body's type of the kind [κC] may be bound by a definition
+      of a type of the kind [r]: a type of levels only under a definition
+      of a level. *)
+  Definition level_binding_dec (κC r : abs_kind) : { κC = ak_level -> r = ak_level } + { ~ (κC = ak_level -> r = ak_level) }.
+  Proof.
+    destruct (abs_kind_eq_dec κC ak_level) as [-> | Hn]; [| left; intros E; contradiction ].
+    destruct (abs_kind_eq_dec r ak_level) as [-> | Hr]; [ left; reflexivity | right; intros H; exact (Hr (H eq_refl)) ].
+  Defined.
 
   (** Extraction should set the 9th bit of [Extraction Flag] (for example,
       [Set Extraction Flag 1007.]); otherwise the decisions that return
       parts introduce redundant pair construction and pattern matching. *)
   Extraction Inline univ_nf_idx_dec sort_nf_dec prop_nf_dec level_sort_nf_dec get_pi_nf get_and_nf
-    get_level_sort_nf pi_kinds_dec nf_level_sort_dec.
+    get_level_sort_nf pi_kinds_dec nf_not_level_sort_dec kind_not_level_dec level_binding_dec.
 
   (** ** Deciding the Side Conditions of Units *)
 
