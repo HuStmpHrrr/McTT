@@ -2919,6 +2919,156 @@ Proof.
                                            | exact HP | apply wf_prop_large, HΓs | exact HT | reflexivity | exact Hs ].
 Qed.
 
+(** A type above a [Π] into an evaluated kind is a [Π] into that kind
+    ([subtyp_spec]). *)
+Lemma subtyp_pi_kind_left_shape : forall Γ κd κc A B T, evaluated_kind κc -> Γ ⊢ a_pi κd κc A B ⊆ T ->
+    exists A' B' k, Γ ⊢ T ≈ a_pi κd κc A' B' : abs_kind_sort κc Typeω@k.
+Proof.
+  intros * Hev H.
+  assert (exists C, Γ ⊢ a_pi κd κc A B : C) as [C HC] by (gen_presups; eexists; eassumption).
+  destruct (wf_pi_typed_kind Hev HC) as [k0 Hk0].
+  destruct (subtyp_spec H)
+    as [(S & HS & Heq) | [(U & V & [k1 HU] & [k2 HV] & HUV)
+       | [(κ1 & κc1 & A1 & A2 & B1 & B2 & Hev1 & [k1 Ha] & [k2 Hb] & _ & _) | (m & n & _ & HL & _)]]].
+  - assert (exists k, Γ ⊢ a_pi κd κc A B ≈ T : abs_kind_sort κc Typeω@k) as [k Heq']
+      by (eapply exp_eq_kind_sort; [ exact HS | exact Hev | exact Heq | left; exact Hk0 ]).
+    exists A, B, k; symmetry; exact Heq'.
+  - exfalso; destruct Hev; cbn [abs_kind_sort] in *.
+    + destruct (univ_sub_sort_term HUV) as [HUt _]; eapply (pi_sort_term_absurd HUt); exact HU.
+    + assert (Γ ⊢ a_pi κd ak_level A B : Typeω@k1) by (gen_presups; assumption).
+      eapply level_type_not_large; eassumption.
+  - assert (κc1 = κc) as ->.
+    { destruct Hev, Hev1; cbn [abs_kind_sort] in *; try reflexivity; exfalso;
+        (assert (Γ ⊢ a_pi κd _ A B : LevelSort) by (gen_presups; first [ exact Hk0 | eassumption ]));
+        (assert (exists k, Γ ⊢ a_pi κd _ A B : Typeω@k) as [? ?] by (gen_presups; eexists; first [ exact Hk0 | eassumption ]));
+        eapply level_type_not_large; eassumption. }
+    destruct (exp_eq_pi_kind_inversion Hev Ha) as (<- & _ & _).
+    exists B1, B2, k2; symmetry; exact Hb.
+  - exfalso; destruct Hev; cbn [abs_kind_sort] in *.
+    + assert (Γ ⊢ a_pi κd ak_relevant A B : LevelSort) by (gen_presups; assumption).
+      eapply level_type_not_large; eassumption.
+    + eapply exp_eq_level_pi_level_absurd; symmetry; exact HL.
+Qed.
+
+(** [short_sort_kind] with the short type above. *)
+Lemma short_sort_kind_r : forall Δ Γ κ A T0 S0 C r k,
+    ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list -> ⊢ (Δ ++ Γ)%list ->
+    type_sort S0 -> (Δ ++ Γ)%list ⊢ T0 : S0 ->
+    (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ C : abs_kind_sort r Typeω@k ->
+    (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ C ⊆ T0[wk_qn (length Δ) ↑]ʷ ->
+    exists j, S0 = abs_kind_sort r Typeω@j.
+Proof.
+  intros * HΓf HΓs HS0 HT0 HC Hs.
+  assert (Hwk : (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ʷ (wk_qn (length Δ) ↑) : (Δ ++ Γ)%list) by (apply wf_wk_qn; assumption).
+  pose proof (wk_preserves_sort _ _ _ _ _ _ _ HT0 HS0 Hwk) as HT0f.
+  destruct HS0 as [j | |]; cbn in HT0f.
+  - pose proof (subtyp_same_kind _ _ _ r ak_relevant k j Hs HC HT0f) as ->; exists j; reflexivity.
+  - pose proof (subtyp_same_kind _ _ _ r ak_propositional k 0 Hs HC HT0f) as ->; exists 0; reflexivity.
+  - pose proof (subtyp_same_kind _ _ _ r ak_level k 0 Hs HC HT0f) as ->; exists 0; reflexivity.
+Qed.
+
+(** A type of a sort at a kind is, at any other sort it has, at the same
+    kind ([subtyp_same_kind]). *)
+Lemma sort_kind_of_typed : forall Γ M S S' κ, Γ ⊢ M : S -> sort_kind S κ -> Γ ⊢ M : S' -> type_sort S' -> sort_kind S' κ.
+Proof.
+  intros * HM HS HM' HS'.
+  destruct (sort_kind_abs_kind_sort_inv _ _ HS) as [a ->].
+  assert (Hs : Γ ⊢ M ⊆ M) by (eapply wf_subtyp_refl; [ exact HM' | exact HS' | apply wf_exp_eq_refl; exact HM' ]).
+  destruct HS' as [j | |].
+  - rewrite (subtyp_same_kind _ _ _ κ ak_relevant a j Hs HM HM'); constructor.
+  - rewrite (subtyp_same_kind _ _ _ κ ak_propositional a 0 Hs HM HM'); constructor.
+  - rewrite (subtyp_same_kind _ _ _ κ ak_level a 0 Hs HM HM'); constructor.
+Qed.
+
+(** A λ-abstraction: its short type is a [Π] into an evaluated kind
+    ([typ_pi_shape_strengthen]) or a [∀] ([typ_all_shape_strengthen]),
+    whose domain is the abstraction's, and the body is checked against its
+    codomain. *)
+Lemma fn_str : forall Γ κ A A' M', nf_str_exp Γ κ A A' -> nf_str_exp Γ κ A M' -> nf_str_exp Γ κ A (λ A' M').
+Proof.
+  intros * IHA IHM Δ T Hass HΓf HTt HW; cbn [exp_wk] in HW.
+  set (φ := wk_qn (length Δ) ↑) in *.
+  set (Lf := (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list) in *.
+  destruct HTt as [T Srt HS HT | _]; [| exfalso; pose proof (level_sort_typed_former HW) as Hf; inversion Hf ].
+  assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
+  destruct (wf_fn_inversion HW) as (κd & κc & B & HM & Hs).
+  assert (HΓf' : ⊢ (Lf ▹{κd} A'[φ]ʷ)%list) by (gen_presups; assumption).
+  destruct (ctx_decomp_kind HΓf') as (SA & HSA & HA).
+  assert (HAs : (Δ ++ Γ)%list ⊢ A' : SA)
+    by (eapply nf_str_at_sort; [ exact IHA | exact Hass | exact HΓf | exact HΓs | exact (sort_kind_type_sort _ _ HSA) | exact HA ]).
+  assert (HΓs' : ⊢ ((Δ ++ Γ) ▹{κd} A')%list) by (eapply wf_ctx_extend; [ exact HAs | exact HSA ]).
+  assert (Hass' : all_assumptions (ce_ass κd A' :: Δ)) by (constructor; [ do 2 eexists; reflexivity | exact Hass ]).
+  assert (exists C0, Lf ⊢ a_pi κd κc A'[φ]ʷ B : C0) as [C0 HC0] by (gen_presups; eexists; eassumption).
+  destruct (evaluated_kind_or_propositional κc) as [Hev | ->].
+  - (** A function, into a universe or between levels *)
+    destruct (wf_pi_typed_kind Hev HC0) as [kP HkP].
+    destruct (short_sort_kind_r _ _ _ _ _ _ _ κc kP HΓf HΓs HS HT HkP Hs) as [i ->].
+    destruct (subtyp_pi_kind_left_shape _ _ _ _ _ _ Hev Hs) as (X & Y & k0 & HTXY).
+    destruct (typ_pi_shape_strengthen _ _ _ _ _ _ _ _ _ _ Hass Hev HΓf HT (subtyp_of_exp_eq_kind Hev HTXY)) as (C & D & HCD).
+    assert (HTCD : (Δ ++ Γ)%list ⊢ T ≈ (nf_pi κd κc C D : exp) : abs_kind_sort κc Typeω@i)
+      by (eapply soundness_ty_at_sort; eassumption).
+    cbn [nf_to_exp] in HTCD.
+    assert (HCDt : (Δ ++ Γ)%list ⊢ a_pi κd κc C D : abs_kind_sort κc Typeω@i) by (gen_presups; assumption).
+    destruct (wf_pi_parts HCDt) as (Hpk & (SC & HSC & HCs) & (iD & HD)).
+    pose proof (short_wk_exp_eq _ _ _ _ _ _ _ HΓf HTCD) as HTCDf; cbn [exp_wk] in HTCDf; fold φ Lf in HTCDf.
+    assert (HTCDf' : Lf ⊢ T[φ]ʷ ≈ a_pi κd κc (C : exp)[φ]ʷ (D : exp)[wk_q φ]ʷ : abs_kind_sort κc Typeω@i)
+      by (destruct Hev; exact HTCDf).
+    assert (Hs' : Lf ⊢ a_pi κd κc A'[φ]ʷ B ⊆ a_pi κd κc (C : exp)[φ]ʷ (D : exp)[wk_q φ]ʷ)
+      by (etransitivity; [ exact Hs | exact (subtyp_of_exp_eq_kind Hev HTCDf') ]).
+    destruct (subtyp_pi_kind_inv _ _ _ _ _ _ _ _ Hev Hs') as (_ & (S0 & HS0 & HAC) & HBD).
+    destruct (exp_eq_strengthen_sort _ _ _ _ _ _ _ _ _ Hass HΓf (sort_kind_type_sort _ _ HSA) (sort_kind_type_sort _ _ HSC)
+                (sort_kind_type_sort _ _ HS0) HAs HCs HAC) as (Sx & HSx & HAx & HACs).
+    pose proof (sort_kind_of_typed _ _ _ _ _ HAs HSA HAx HSx) as HSxk.
+    assert (HDs : ((Δ ++ Γ) ▹{κd} A')%list ⊢ D : abs_kind_sort κc Typeω@iD)
+      by (eapply ctxsub_exp; [ exact (sub_id_extend_of_exp_eq HSxk HACs) | exact HD ]).
+    assert (HSkD : type_sort (abs_kind_sort κc Typeω@iD)) by (destruct Hev; constructor).
+    pose proof (short_wk_sort (ce_ass κd A' :: Δ) _ _ _ _ _ HΓf' HDs HSkD) as HDf; cbn [exp_wk] in HDf.
+    assert (HMf : (Lf ▹{κd} A'[φ]ʷ)%list ⊢ M'[wk_q φ]ʷ : (D : exp)[wk_q φ]ʷ)
+      by (eapply wf_exp_subtyp; [ exact HM | exact HDf | exact HSkD | exact HBD ]).
+    assert (HMs : ((Δ ++ Γ) ▹{κd} A')%list ⊢ M' : D)
+      by (eapply (nf_str_sorted _ _ _ _ IHM (ce_ass κd A' :: Δ) _ _); [ exact Hass' | exact HΓf' | exact HSkD | exact HDs | exact HMf ]).
+    assert (HWs : (Δ ++ Γ)%list ⊢ λ A' M' : a_pi κd κc A' D)
+      by (eapply wf_fn; [ exact HAs | exact HSA | exact HDs | exact Hpk | exact HMs ]).
+    destruct (wf_pi_cong_at_kinds _ _ _ κd κc A' (C : exp) (D : exp) (D : exp) Sx iD HAx HSxk HACs HDs (wf_exp_eq_refl HDs) Hpk)
+      as [Spi HSpi _ HPc].
+    eapply wf_exp_subtyp; [ exact HWs | exact HT | exact HS |].
+    etransitivity; [ eapply (wf_subtyp_refl _ _ _ Spi); [ exact (presup_exp_eq_right HPc) | exact HSpi | exact HPc ] |].
+    eapply (subtyp_of_exp_eq_kind Hev); symmetry; exact HTCD.
+  - (** A proof of a [∀]: [T] is a proposition *)
+    pose proof (prop_former_typed HC0 ltac:(right; right; left; do 3 eexists; reflexivity)) as Hp1.
+    change Propₘ with (abs_kind_sort ak_propositional Typeω@0) in Hp1.
+    destruct (short_sort_kind_r _ _ _ _ _ _ _ ak_propositional 0 HΓf HΓs HS HT Hp1 Hs) as [j0 ->]; cbn [abs_kind_sort] in HT, Hp1.
+    pose proof (short_wk_sort _ _ _ _ _ _ HΓf HT type_sort_prop) as HTl.
+    pose proof (subtyp_prop_eq _ _ _ Hs Hp1 HTl) as HsE.
+    destruct (typ_all_shape_strengthen _ _ _ _ _ _ _ _ Hass HΓf HT
+                (proj2 (wf_subtyp_of_exp_eq _ _ _ _ _ _ Hp1 HTl type_sort_prop HsE))) as (C & D & HCD).
+    pose proof (soundness_ty_at_sort type_sort_prop HT HCD) as HTCD; cbn [nf_to_exp] in HTCD.
+    assert (HCDt : (Δ ++ Γ)%list ⊢ ∀ₚ{κd} C D : Propₘ) by (gen_presups; assumption).
+    destruct (wf_all_inversion _ _ _ _ _ _ _ HCDt) as [SC HSC HCs HD _].
+    pose proof (short_wk_exp_eq _ _ _ _ _ _ _ HΓf HTCD) as HTCDf; cbn [exp_wk] in HTCDf; fold φ Lf in HTCDf.
+    assert (Hs' : Lf ⊢ ∀ₚ{κd} A'[φ]ʷ B ⊆ ∀ₚ{κd} (C : exp)[φ]ʷ (D : exp)[wk_q φ]ʷ).
+    { etransitivity; [ exact Hs |].
+      assert (Lf ⊢ ∀ₚ{κd} (C : exp)[φ]ʷ (D : exp)[wk_q φ]ʷ : Propₘ) by (gen_presups; assumption).
+      exact (proj1 (wf_subtyp_of_exp_eq _ _ _ _ _ _ HTl ltac:(eassumption) type_sort_prop HTCDf)). }
+    destruct (subtyp_all_inv _ _ _ _ _ _ _ Hs') as (_ & (S0 & HS0 & HAC) & HBD).
+    destruct (exp_eq_strengthen_sort _ _ _ _ _ _ _ _ _ Hass HΓf (sort_kind_type_sort _ _ HSA) (sort_kind_type_sort _ _ HSC)
+                (sort_kind_type_sort _ _ HS0) HAs HCs HAC) as (Sx & HSx & HAx & HACs).
+    pose proof (sort_kind_of_typed _ _ _ _ _ HAs HSA HAx HSx) as HSxk.
+    assert (HDs : ((Δ ++ Γ) ▹{κd} A')%list ⊢ D : Propₘ)
+      by (eapply ctxsub_exp; [ exact (sub_id_extend_of_exp_eq HSxk HACs) | exact HD ]).
+    pose proof (short_wk_sort (ce_ass κd A' :: Δ) _ _ _ _ _ HΓf' HDs type_sort_prop) as HDf; cbn [exp_wk] in HDf.
+    assert (HMf : (Lf ▹{κd} A'[φ]ʷ)%list ⊢ M'[wk_q φ]ʷ : (D : exp)[wk_q φ]ʷ)
+      by (eapply wf_exp_subtyp; [ exact HM | exact HDf | constructor | exact HBD ]).
+    assert (HMs : ((Δ ++ Γ) ▹{κd} A')%list ⊢ M' : D)
+      by (eapply (nf_str_sorted _ _ _ _ IHM (ce_ass κd A' :: Δ) _ Propₘ); [ exact Hass' | exact HΓf' | constructor | exact HDs | exact HMf ]).
+    assert (HWs : (Δ ++ Γ)%list ⊢ λ A' M' : ∀ₚ{κd} A' D)
+      by (eapply wf_fn with (κc := ak_propositional) (i := 0); [ exact HAs | exact HSA | exact HDs | constructor | exact HMs ]).
+    pose proof (all_cong_sort HSxk HAx HACs (wf_exp_eq_refl HDs)) as Hall.
+    assert (HE : (Δ ++ Γ)%list ⊢ ∀ₚ{κd} A' D ≈ T : Propₘ) by (etransitivity; [ exact Hall | symmetry; exact HTCD ]).
+    eapply wf_exp_subtyp; [ exact HWs | exact HT | constructor |].
+    exact (proj1 (wf_subtyp_of_exp_eq _ _ _ _ _ _ (presup_exp_eq_left HE) HT type_sort_prop HE)).
+Qed.
+
 (** ** The Induction Hypotheses Under the Premise *)
 
 (** The generated hypothesis at a list, of a motive under a premise each
