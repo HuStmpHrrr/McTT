@@ -130,17 +130,21 @@ Proof.
   eapply wf_exp_subtyp'; [ exact HA | eapply wf_subtyp_small_large; eassumption ].
 Qed.
 
-(** The normal form of a type is its own normal form. *)
+(** The normal form of a type, when it holds no proof, is its own normal
+    form: normalisation is idempotent up to proofs ([idempotent_nbe_ty]),
+    and only itself is equal up to proofs to a normal form without proofs
+    ([nf_ne_proof_free_eq]). *)
 Lemma nbe_ty_self : forall {Γ i A B},
     Γ ⊢ A : Typeω@i ->
     nbe_ty_f Γ A B ->
+    nf_proof_free B ->
     nbe_ty_f Γ B B.
 Proof.
-  intros * HA Hn.
+  intros * HA Hn Hpf.
   assert (Γ ⊢ A ≈ B : Typeω@i) by (eapply soundness_ty'; eassumption).
   assert (HB : Γ ⊢ B : Typeω@i) by (gen_presups; assumption).
   destruct (soundness_ty HB) as (C & HC & _).
-  assert (B = C) as <- by (exact (idempotent_nbe_ty HA Hn HC)).
+  pose proof (proj1 nf_ne_proof_free_eq B Hpf C (idempotent_nbe_ty HA Hn HC)) as <-.
   exact HC.
 Qed.
 
@@ -164,37 +168,49 @@ Proof.
 Qed.
 
 (** The domain of a [Π] the algorithm counts in the universe [u]: a type
-    of [u], or a proposition, where [u] (the least small universe,
-    [is_sort_nf_prop]) is a type. *)
-Definition pi_domain_ok (Γ : ctx) (A : typ) (u : universe_nf) : Prop :=
-  Γ ⊢ A : universe_nf_tm u \/ (Γ ⊢ A : Propₘ /\ exists k, Γ ⊢ universe_nf_tm u : Typeω@k).
+    of the sort at its kind next to [u], where [u] (for a proposition or a
+    type of levels the least small universe, [is_sort_nf_prop],
+    [is_sort_nf_level]) is a type. *)
+Definition pi_domain_ok (Γ : ctx) (A : typ) (κd : abs_kind) (u : universe_nf) : Prop :=
+  Γ ⊢ A : abs_kind_sort κd (universe_nf_tm u) /\ exists k, Γ ⊢ universe_nf_tm u : Typeω@k.
 
-(** A type of a sort normal form [UA] ([is_sort_nf]) is of its sort, a large
-    universe or [Prop]. *)
+(** A type of a sort normal form [UA] ([is_sort_nf]) is of its sort: a
+    large universe, [Prop] or [LevelSort]. *)
 Lemma sort_typed_of_is_sort_nf : forall {Γ A} {UA : nf} {r u},
     Γ ⊢ A : UA -> is_sort_nf UA r u -> Γ ⊢ A : abs_kind_sort r Typeω@(universe_nf_large_index u).
 Proof.
-  intros * HA Hs; destruct Hs as [W u' Hu |]; cbn [abs_kind_sort]; [| exact HA ].
+  intros * HA Hs; destruct Hs as [W u' Hu | |]; cbn [abs_kind_sort]; [| exact HA | exact HA ].
   rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HA.
   exact (wf_exp_universe_nf_large_index HA).
 Qed.
 
 (** The sort above is a sort. *)
 Lemma type_sort_kind_universe : forall r i, type_sort (abs_kind_sort r Typeω@i).
-Proof. intros; apply type_sort_relevance; constructor. Qed.
+Proof. intros; apply type_sort_abs_kind; constructor. Qed.
 
-(** It is a type of the next universe. *)
-Lemma relevance_sort_universe_typed : forall Γ r i, ⊢ Γ -> Γ ⊢ abs_kind_sort r Typeω@i : Typeω@(S i).
-Proof. intros * HΓ; destruct r; cbn [abs_kind_sort]; [ apply wf_typ, HΓ | eapply wf_prop_large; exact HΓ ]. Qed.
-
-(** A type of a sort normal form is a [Π] domain at its universe. *)
-Lemma pi_domain_ok_of_is_sort_nf : forall {Γ A} {UA : nf} {r u},
-    Γ ⊢ A : UA -> is_sort_nf UA r u -> pi_domain_ok Γ A u.
+(** It is a type ([⊢ᵗ]): a large universe or [Prop] of the next universe,
+    [LevelSort] the sort of the types of levels. *)
+Lemma kind_sort_universe_wf_type : forall Γ r i, ⊢ Γ -> Γ ⊢ᵗ abs_kind_sort r Typeω@i.
 Proof.
-  intros * HA Hs; destruct Hs as [W u' Hu |].
-  - left; rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HA; exact HA.
-  - right; split; [ exact HA |].
-    assert (⊢ Γ) by (gen_presups; assumption).
+  intros * HΓ; destruct r; cbn [abs_kind_sort];
+    [ eapply wf_type_of_sort; [ apply (type_sort_universe (S i)) | apply wf_typ, HΓ ]
+    | eapply wf_type_of_sort; [ apply (type_sort_universe 0) | eapply wf_prop_large; exact HΓ ]
+    | apply wf_type_level_sort, HΓ ].
+Qed.
+
+(** A type of a sort normal form is a [Π] domain at its kind and
+    universe. *)
+Lemma pi_domain_ok_of_is_sort_nf : forall {Γ A} {UA : nf} {r u},
+    Γ ⊢ A : UA -> is_sort_nf UA r u -> pi_domain_ok Γ A r u.
+Proof.
+  intros * HA Hs.
+  assert (⊢ Γ) by (gen_presups; assumption).
+  destruct Hs as [W u' Hu | |].
+  - rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HA; split; [ exact HA |].
+    exact (univ_term_typed_large (univ_term_universe_nf_tm _) HA).
+  - split; [ exact HA |].
+    exists 0; cbn; eapply (wf_univ_large_tm (n := 0)); [ assumption | apply wf_llit; [ cbn; lia | assumption ] ].
+  - split; [ exact HA |].
     exists 0; cbn; eapply (wf_univ_large_tm (n := 0)); [ assumption | apply wf_llit; [ cbn; lia | assumption ] ].
 Qed.
 
