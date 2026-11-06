@@ -3974,8 +3974,7 @@ Lemma alg_subtyping_nf_univ_inv : forall W u,
     ⊢anf W ⊆ universe_nf_to_nf u ->
     exists v, W = universe_nf_to_nf v /\ universe_nf_le v u.
 Proof.
-  intros W [[d ys] | j] H; cbn in H; inversion H; subst;
-    try match goal with Hn : not_univ_pi _ |- _ => inversion Hn end.
+  intros W [[d ys] | j] H; cbn in H; inversion H; subst; try refl_case_absurd.
   all: match goal with
        | |- exists v, univⁿ ?c ?xs = _ /\ _ => exists (universe_small (c, xs))
        | |- exists v, Typeωⁿ@?i = _ /\ _ => exists (universe_large i)
@@ -3998,9 +3997,8 @@ Corollary alg_type_infer_typ_complete : forall {Γ T A},
 Proof.
   intros * HA HT HAT.
   pose proof (alg_type_check_complete HA HAT) as Hcheck.
-  inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
-  inversion Hsub as [A'' B' Hnbe1 Hnbe2 Hnfsub]; subst.
-  replace A' with A'' in * by (symmetry; mauto 3).
+  assert (HΓ : ⊢ Γ) by exact (presup_exp_ctx HAT).
+  destruct (alg_type_check_infer_below HΓ Hcheck) as (A' & B' & Hinfer & Hnbe2 & Hnfsub).
   destruct (nbe_ty_univ_term HT Hnbe2) as [u ->].
   destruct (alg_subtyping_nf_univ_inv _ _ Hnfsub) as (v & -> & Hle).
   exists u, v; split; [ exact Hnbe2 | split; [ exact Hinfer | exact Hle ] ].
