@@ -3085,366 +3085,115 @@ Proof. intros P Q; induction xs as [| [k s a] r IH]; cbn; [ auto | intros [Ha Hr
 (** The generated induction hypothesis at a list of normal forms, under
     their proof-freedom [Hpf], as the lemmas on application spines above
     take it: [nf_str_exp] of each term. *)
-Ltac nfs_str_ih Γ A IH Hpf :=
+Ltac nfs_str_ih Γ κ A IH Hpf :=
   let H := fresh "H" in
   pose proof (list_all_Forall_map_premise _ _ (nf_str_exp Γ κ A) nf_to_exp _ IH Hpf (fun _ Hx Hy => Hx Hy)) as H;
   clear IH Hpf; rename H into IH.
 
 (** The same at the blocks of a stuck eliminator, as [elim_str] takes it:
-    of each block's motive and branches. *)
-Ltac blocks_str_ih Γ A IH Hpf :=
+    of each block's scrutinee type, motive and branches. *)
+Ltac blocks_str_ih Γ κ A IH Hpf :=
   let H := fresh "H" in
   match type of IH with list_all _ _ ?l =>
-  assert (H : List.Forall (fun b => eb_ann b = None /\ nf_str_exp Γ κ A (eb_motive b) /\
+  assert (H : List.Forall (fun b => nf_str_exp Γ κ A (eb_scrutinee_type b) /\ nf_str_exp Γ κ A (eb_motive b) /\
                                     List.Forall (fun br => nf_str_exp Γ κ A (snd br)) (eb_brs b))
                 (List.map block_exp l));
   [ apply (list_all_Forall_map_premise _ _ _ block_exp _ IH Hpf);
     let x := fresh "x" in let Hx := fresh "Hx" in let Hy := fresh "Hy" in
-    let HA := fresh "HA" in let Hbrs := fresh "Hbrs" in let HyA := fresh "HyA" in let Hybrs := fresh "Hybrs" in
-    intros x Hx Hy; destruct Hx as [? ? HA ? Hbrs]; destruct Hy as [HyA Hybrs]; cbn;
-    split; [ reflexivity | split; [ exact (HA HyA) |] ];
+    let HZ := fresh "HZ" in let HA := fresh "HA" in let Hbrs := fresh "Hbrs" in
+    let HyZ := fresh "HyZ" in let HyA := fresh "HyA" in let Hybrs := fresh "Hybrs" in
+    intros x Hx Hy; destruct Hx as [? ? HZ ? HA ? Hbrs]; destruct Hy as [HyZ [HyA Hybrs]]; cbn;
+    split; [ exact (HZ HyZ) | split; [ exact (HA HyA) |] ];
     apply (list_all_Forall_map_premise _ _ (fun br => nf_str_exp Γ κ A (snd br)) branch_exp _ Hbrs Hybrs);
     let y := fresh "y" in let Hy' := fresh "Hy" in let Hz := fresh "Hz" in let HB := fresh "HB" in
     intros y Hy' Hz; destruct Hy' as [? ? ? HB]; exact (HB Hz)
   | clear IH Hpf; rename H into IH ]
   end.
 
+(** A variable: the long variable is the image of a short one. *)
+Lemma var_str : forall Γ κ A x, exp_str Γ κ A (a_var x).
+Proof.
+  intros * Δ C Hass HΓf HΓs HW; cbn [exp_wk] in HW.
+  destruct (wf_vlookup_inversion HW) as (A1 & Hl & HsC).
+  destruct (lookup_strengthen _ _ _ _ _ _ Hl) as (T & HlT & ->).
+  assert (Hx : (Δ ++ Γ)%list ⊢ #x : T) by (apply wf_vlookup; assumption).
+  assert (exists ST, type_sort ST /\ (Δ ++ Γ)%list ⊢ T : ST) as (ST & HST & HTj).
+  { (** a variable is no type of levels *)
+    pose proof (presup_exp_typ_cases Hx) as Hp; inversion Hp; [ eexists; split; eassumption |].
+    match goal with H : level_type_former _ |- _ => inversion H end. }
+  exact (mk_short_typ _ _ _ _ _ _ T ST HST Hx HTj HsC).
+Qed.
+
+(** A global: a closed member of a chain from a unit, typed in any
+    context at a closed type; the empty chain names [Prop]. *)
+Lemma glob_str : forall Γ κ A p, exp_str Γ κ A (qname_term p).
+Proof.
+  intros * Δ C Hass HΓf HΓs HW.
+  rewrite qname_term_wk in HW.
+  destruct p as [fp ch].
+  destruct (List.rev ch) as [| x pre] eqn:Er.
+  - apply (f_equal (@List.rev _)) in Er; rewrite List.rev_involutive in Er; cbn in Er; subst ch.
+    unfold qname_term in *; cbn [q_unit q_chain member_ref] in *.
+    apply (mk_short_typ _ _ _ _ _ _ Type@0 Typeω@0 (type_sort_universe 0));
+      [ apply wf_prop, HΓs | apply (wf_univ_large (i := 0)), HΓs | exact (wf_prop_inversion _ _ _ _ HW) ].
+  - apply (f_equal (@List.rev _)) in Er; rewrite List.rev_involutive in Er; cbn in Er; subst ch.
+    change (qname_mk fp (List.rev pre ++ x :: nil)) with (qname_app (qname_mk fp (List.rev pre)) (x :: nil)) in *.
+    rewrite qname_term_snoc in *.
+    destruct (path_mem_any_ctx _ _ _ _ _ (qname_mod_qname _) HW) as (T & HTc & HsT & Hany).
+    pose proof (Hany _ HΓs) as HTs.
+    assert (exists ST, type_sort ST /\ (Δ ++ Γ)%list ⊢ T : ST) as (ST & HST & HTj).
+    { pose proof (presup_exp_typ_cases HTs) as Hp; inversion Hp; [ eexists; split; eassumption |].
+      match goal with H : level_type_former _ |- _ => inversion H end. }
+    apply (mk_short_typ _ _ _ _ _ _ T ST HST); [ exact HTs | exact HTj | rewrite exp_closed_wk by exact HTc; exact HsT ].
+Qed.
+
 (** ** The Theorem
 
     A normal form free of proofs ([nf_proof_free]; [Core.Syntactic.Fresh]
-    shows why the premise is needed), typed weakened at a weakened type of
-    a sort, is typed at that type; a proof-free neutral is typed short
-    ([ne_str]). *)
-Theorem nf_strengthen : forall Γ A,
+    shows why the premise is needed), typed weakened at a weakened type
+    ([⊢ᵗ]), is typed at that type; a proof-free neutral is typed short
+    ([ne_str]).  The kept proofs are not proof-free, so their case is
+    vacuous. *)
+Theorem nf_strengthen : forall Γ κ A,
     (forall (W : nf), nf_proof_free W -> nf_str_exp Γ κ A W) /\
     (forall u, ne_proof_free u -> ne_str Γ κ A u).
 Proof.
-  intros Γ A; apply nf_ne_ind.
-  - (** A large universe. *)
-    intros i _ Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_typ_inversion in HW.
-    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply type_sort_universe | exact HS
-                                       | apply wf_typ, HΓs | apply wf_typ, HΓs | exact HT | reflexivity | exact HW ].
-  - (** A small universe: its level strengthens atom by atom. *)
-    intros c xs IH Hpf Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    apply list_all_level_atoms_all in IH; apply level_atoms_all_all_list in Hpf.
-    pose proof (level_atoms_all_premise _ _ _ IH Hpf) as IHs; clear IH Hpf.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    pose proof (wf_univ_inversion HW) as Hs.
-    apply wf_univ_lvl_inversion in HW as [n HW].
-    rewrite lvl_exp_of_wk in HW.
-    assert (Hla : @level_atoms_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
-      by (eapply level_atoms_wf_strengthen; [ exact IHs | exact Hass | exact HΓf | exact HΓs | eapply lvl_exp_of_atoms; exact HW ]).
-    assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n)
-      by (apply lvl_exp_of_wf; [ exact (lvl_exp_of_const_sort HW) | assumption | assumption ]).
-    eapply wf_exp_subtyp; [ eapply wf_univ; exact HL | exact HT | exact HS |].
-    eapply subtyp_strengthen_sort;
-      [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-      | apply (wf_univ_large_tm (i := 0) (n := n)); [ exact HΓs | eapply wf_succl; exact HL ] | exact HT | exact Hs ].
-  - (** [Level@n]. *)
-    intros n _ Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_level_inversion in HW.
-    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-                                       | apply wf_level, HΓs | apply (wf_univ_large (i := 0)), HΓs | exact HT | reflexivity | exact HW ].
-  - (** A level: a constant with atoms, or a single atom. *)
-    intros c xs IH Hpf Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    apply list_all_level_atoms_all in IH; apply level_atoms_all_all_list in Hpf.
-    pose proof (level_atoms_all_premise _ _ _ IH Hpf) as IHs; clear IH Hpf.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    rewrite lvl_exp_of_wk in HW.
-    destruct (lvl_exp_of_inv _ _ _ _ HW) as [(n & HsL & Hcn & HF) | (a & -> & Hmap)].
-    + assert (Hla : @level_atoms_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
-        by (eapply level_atoms_wf_strengthen; [ exact IHs | exact Hass | exact HΓf | exact HΓs | exact HF ]).
-      assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n)
-        by (apply lvl_exp_of_wf; [ exact Hcn | assumption | assumption ]).
-      eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-                                         | exact HL | apply (wf_level_large (i := 0)), HΓs | exact HT | reflexivity | exact HsL ].
-    + (** A single atom with no offset is the atom itself. *)
-      destruct (level_atoms_map_single _ _ _ Hmap) as (s & u & -> & ->).
-      destruct IHs as [Hu _].
-      cbn in HW |- *.
-      destruct (Hu _ _ Hass HΓf HΓs HW) as [T0 S0 HS0 HuT HT0 Hs].
-      eapply wf_exp_subtyp; [ exact HuT | exact HT | exact HS |].
-      eapply subtyp_strengthen_sort; [ exact Hass | exact HΓf | exact HS0 | exact HS | exact HT0 | exact HT | exact Hs ].
-  - (** [Prop]. *)
-    intros _ Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_prop_inversion in HW.
-    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-                                       | apply wf_prop, HΓs | apply (wf_univ_large (i := 0)), HΓs | exact HT | reflexivity | exact HW ].
-  - (** [⊤]. *)
-    intros _ Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_True_inversion in HW.
-    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-                                       | apply wf_True, HΓs | eapply wf_prop_large; exact HΓs | exact HT | reflexivity | exact HW ].
-  - (** The proof [⋆ⁿ] is not proof-free. *)
-    intros Hpf; destruct Hpf.
-  - (** [⊥]. *)
-    intros _ Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_False_inversion in HW.
-    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-                                       | apply wf_False, HΓs | eapply wf_prop_large; exact HΓs | exact HT | reflexivity | exact HW ].
-  - (** A conjunction: both parts are propositions. *)
-    intros P IHP Q IHQ [HpP HpQ] Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    assert (Hass' : tele_ass (ce_ass P :: Δ)) by (constructor; [ eexists; reflexivity | exact Hass ]).
-    destruct (wf_and_inversion _ _ _ _ _ _ HW) as [HPl HQl Hs].
-    assert (HPs : (Δ ++ Γ)%list ⊢ P : Propₘ)
-      by (eapply nf_str_at_sort; [ exact (IHP HpP) | exact Hass | exact HΓf | exact HΓs | constructor | exact HPl ]).
-    assert (HΓs' : ⊢ ((Δ ++ Γ) ▹ P)%list) by (eapply wf_ctx_extend; [ exact HPs | constructor ]).
-    assert (HΓf' : ⊢ (tele_wk (ce_ass P :: Δ) ↑ ++ Γ ▹{κ} A)%list) by (gen_presups; assumption).
-    assert (HQs : ((Δ ++ Γ) ▹ P)%list ⊢ Q : Propₘ)
-      by (eapply (nf_str_at_sort _ _ _ (ce_ass P :: Δ)); [ exact (IHQ HpQ) | exact Hass' | exact HΓf' | exact HΓs' | constructor | exact HQl ]).
-    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-                                       | apply wf_and; assumption | eapply wf_prop_large; exact HΓs | exact HT | reflexivity | exact Hs ].
-  - (** The placeholder type. *)
-    intros _ Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_placeholder_type_inversion in HW.
-    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-                                       | apply wf_placeholder_type, HΓs | apply (wf_univ_large (i := 0)), HΓs | exact HT | reflexivity | exact HW ].
-  - (** The placeholder. *)
-    intros _ Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_placeholder_inversion in HW.
-    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-                                       | apply wf_placeholder, HΓs | apply (wf_placeholder_type_large (i := 0)), HΓs | exact HT | reflexivity | exact HW ].
-  - (** A [Π] or a [∀]. *)
-    intros r A' IHA B' IHB [HpA HpB] Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    assert (Hass' : tele_ass (ce_ass A' :: Δ)) by (constructor; [ eexists; reflexivity | exact Hass ]).
-    pose proof (IHA HpA) as IHA'; pose proof (IHB HpB) as IHB'; clear IHA IHB HpA HpB.
-    destruct r.
-    + destruct (wf_pi_inversion HW) as [(j & HA & HB & Hs) | (L & nL & HL & HA & HB & Hs)].
-      * (** At a large universe. *)
-        assert (HAs : (Δ ++ Γ)%list ⊢ A' : Typeω@j \/ (Δ ++ Γ)%list ⊢ A' : Propₘ)
-          by (destruct HA as [HA | HA]; [ left | right ];
-              (eapply nf_str_at_sort; [ exact IHA' | exact Hass | exact HΓf | exact HΓs | constructor | exact HA ])).
-        assert (HΓs' : ⊢ ((Δ ++ Γ) ▹ A')%list)
-          by (destruct HAs as [H | H]; (eapply wf_ctx_extend; [ exact H | constructor ])).
-        assert (HΓf' : ⊢ (tele_wk (ce_ass A' :: Δ) ↑ ++ Γ ▹{κ} A)%list) by (gen_presups; assumption).
-        assert (HBs : ((Δ ++ Γ) ▹ A')%list ⊢ B' : Typeω@j)
-          by (eapply (nf_str_at_sort _ _ _ (ce_ass A' :: Δ)); [ exact IHB' | exact Hass' | exact HΓf' | exact HΓs' | constructor | exact HB ]).
-        eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply type_sort_universe | exact HS
-                                           | exact (wf_pi_at_domain _ _ _ _ HAs HBs) | apply wf_typ, HΓs | exact HT | reflexivity | exact Hs ].
-      * (** A small [Π] at a long level: no type of a universe is below a
-            proposition, so [T] is of a universe; the short type is a
-            universe ([typ_univ_shape_strengthen]), and the parts are checked
-            against it. *)
-        assert (HU : (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ Type⟨L⟩ : Typeω@0)
-          by (eapply (wf_univ_large_tm (i := 0)); [ exact HΓf | exact HL ]).
-        destruct HS as [i |];
-          [| exfalso; exact (subtyp_relevant_prop_absurd Hs HU (short_wk_sort _ _ _ _ _ _ HΓf HT type_sort_prop)) ].
-        assert (HΓf1 : ⊢ ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list) by (gen_presups; assumption).
-        assert (Hw1 : ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list ⊢ʷ ↑ : (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list)
-          by mauto 2.
-        assert (HL1 : ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list ⊢ L[↑]ʷ : Level@nL)
-          by (eapply (wk_preserves_exp _ _ _ _ Level@nL); eassumption).
-        destruct (typ_univ_shape_strengthen _ _ _ _ _ _ _ Hass HΓf HT (univ_term_suniv L) Hs)
-          as [[j Hj] | [M HM]].
-        -- assert (HTj : (Δ ++ Γ)%list ⊢ T ≈ (Typeωⁿ@j : exp) : Typeω@i) by (eapply soundness_ty'; eassumption).
-           cbn [nf_to_exp] in HTj.
-           pose proof (short_wk_exp_eq _ _ _ _ _ _ _ HΓf HTj) as HTjf; cbn [exp_wk] in HTjf.
-           assert (Hsj : (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ Type⟨L⟩ ⊆ Typeω@j)
-             by (etransitivity; [ exact Hs | eapply wf_subtyp_refl'; exact HTjf ]).
-           assert (HAs : (Δ ++ Γ)%list ⊢ A' : Typeω@j \/ (Δ ++ Γ)%list ⊢ A' : Propₘ).
-           { destruct HA as [HA | HA]; [ left | right ]; (eapply nf_str_at_sort; [ exact IHA' | exact Hass | exact HΓf | exact HΓs | constructor |]).
-             - eapply wf_exp_subtyp; [ exact HA | apply wf_typ, HΓf | constructor | exact Hsj ].
-             - exact HA. }
-           assert (HΓs' : ⊢ ((Δ ++ Γ) ▹ A')%list)
-             by (destruct HAs as [H | H]; (eapply wf_ctx_extend; [ exact H | constructor ])).
-           assert (HBj : ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list
-                           ⊢ (B' : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ : Typeω@j)
-             by (eapply wf_exp_subtyp; [ exact HB | apply wf_typ, HΓf1 | constructor | eapply wf_subtyp_small_large; eassumption ]).
-           assert (HBs : ((Δ ++ Γ) ▹ A')%list ⊢ B' : Typeω@j)
-             by (eapply (nf_str_at_sort _ _ _ (ce_ass A' :: Δ)); [ exact IHB' | exact Hass' | exact HΓf1 | exact HΓs' | constructor | exact HBj ]).
-           eapply wf_exp_subtyp; [ exact (wf_pi_at_domain _ _ _ _ HAs HBs) | exact HT | constructor |].
-           eapply wf_subtyp_refl'; symmetry; exact HTj.
-        -- assert (HTM : (Δ ++ Γ)%list ⊢ T ≈ (nf_univ_of M : exp) : Typeω@i) by (eapply soundness_ty'; eassumption).
-           cbn [nf_to_exp nf_univ_of] in HTM.
-           set (Mx := lvl_exp_of (fst M) (List.map atom_exp (snd M))) in *.
-           assert (exists k, (Δ ++ Γ)%list ⊢ Type⟨Mx⟩ : Typeω@k) as [k Hk] by (gen_presups; eexists; eassumption).
-           destruct (wf_univ_lvl_inversion Hk) as [nM HMx].
-           pose proof (short_wk_exp_eq _ _ _ _ _ _ _ HΓf HTM) as HTMf; cbn [exp_wk] in HTMf.
-           assert (HsM : (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ Type⟨L⟩ ⊆ Type⟨Mx[wk_qn (length Δ) ↑]ʷ⟩)
-             by (etransitivity; [ exact Hs | eapply wf_subtyp_refl'; exact HTMf ]).
-           assert (HMxl : (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ Type⟨Mx[wk_qn (length Δ) ↑]ʷ⟩ : Typeω@0)
-             by (eapply (wf_univ_large_tm (i := 0)); [ exact HΓf | exact (short_wk_exp _ _ _ _ _ _ HΓf HMx) ]).
-           assert (HAs : (Δ ++ Γ)%list ⊢ A' : Type⟨Mx⟩ \/ (Δ ++ Γ)%list ⊢ A' : Propₘ).
-           { destruct HA as [HA | HA]; [ left | right ].
-             - eapply (nf_str_sorted _ _ _ _ IHA' _ _ Typeω@0); [ exact Hass | exact HΓf | constructor | eapply (wf_univ_large_tm (i := 0)); eassumption |].
-               eapply wf_exp_subtyp; [ exact HA | exact HMxl | constructor | exact HsM ].
-             - eapply nf_str_at_sort; [ exact IHA' | exact Hass | exact HΓf | exact HΓs | constructor | exact HA ]. }
-           assert (HΓs' : ⊢ ((Δ ++ Γ) ▹ A')%list)
-             by (destruct HAs as [H | H]; [ eapply wf_ctx_extend; [ exact (wf_exp_suniv_large (i := 0) HMx H) | constructor ]
-                                          | eapply wf_ctx_extend; [ exact H | constructor ] ]).
-           assert (HMx1 : ((Δ ++ Γ) ▹ A')%list ⊢ Mx[↑]ʷ : Level@nM)
-             by (eapply (wk_preserves_exp _ _ _ _ Level@nM); [ exact HMx | mauto 2 ]).
-           assert (HBM : ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list
-                           ⊢ (B' : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ : Type⟨Mx[↑]ʷ[wk_q (wk_qn (length Δ) ↑)]ʷ⟩).
-           { rewrite exp_wk_shift_wk_q.
-             eapply wf_exp_subtyp; [ exact HB | | constructor |].
-             - eapply (wf_univ_large_tm (i := 0)); [ exact HΓf1 |].
-               eapply (wk_preserves_exp _ _ _ _ Level@nM); [ exact (short_wk_exp _ _ _ _ _ _ HΓf HMx) | exact Hw1 ].
-             - exact (wk_preserves_subtyp _ _ _ _ _ _ _ HsM Hw1). }
-           assert (HBs : ((Δ ++ Γ) ▹ A')%list ⊢ B' : Type⟨Mx[↑]ʷ⟩)
-             by (eapply (nf_str_sorted _ _ _ _ IHB' (ce_ass A' :: Δ) _ Typeω@0);
-                 [ exact Hass' | exact HΓf1 | constructor | eapply (wf_univ_large_tm (i := 0)); eassumption | exact HBM ]).
-           eapply wf_exp_subtyp; [ exact (wf_pi_lvl_at_domain _ _ _ _ _ HMx HAs HBs) | exact HT | constructor |].
-           eapply wf_subtyp_refl'; symmetry; exact HTM.
-    + (** A [∀]: a proposition over a domain of a sort. *)
-      destruct (wf_all_inversion _ _ _ _ _ _ HW) as [SA HSA HA HB Hs].
-      assert (HAs : (Δ ++ Γ)%list ⊢ A' : SA)
-        by (eapply nf_str_at_sort; [ exact IHA' | exact Hass | exact HΓf | exact HΓs | exact HSA | exact HA ]).
-      assert (HΓs' : ⊢ ((Δ ++ Γ) ▹ A')%list) by (eapply wf_ctx_extend; [ exact HAs | exact HSA ]).
-      assert (HΓf' : ⊢ (tele_wk (ce_ass A' :: Δ) ↑ ++ Γ ▹{κ} A)%list) by (gen_presups; assumption).
-      assert (HBs : ((Δ ++ Γ) ▹ A')%list ⊢ B' : Propₘ)
-        by (eapply (nf_str_at_sort _ _ _ (ce_ass A' :: Δ)); [ exact IHB' | exact Hass' | exact HΓf' | exact HΓs' | constructor | exact HB ]).
-      eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
-                                         | exact (wf_all_sort _ _ _ _ HSA HAs HBs) | eapply wf_prop_large; exact HΓs
-                                         | exact HT | reflexivity | exact Hs ].
-  - (** A function, or a proof of a [∀]: its type is one in the short context
-        ([typ_pi_shape_strengthen], [typ_all_shape_strengthen]), whose domain is
-        the function's, and the body is checked against its codomain. *)
-    intros A' IHA M' IHM [HpA HpM] Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp exp_wk] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    assert (Hass' : tele_ass (ce_ass A' :: Δ)) by (constructor; [ eexists; reflexivity | exact Hass ]).
-    pose proof (IHA HpA) as IHA'; pose proof (IHM HpM) as IHM'; clear IHA IHM HpA HpM.
-    destruct (wf_fn_inversion HW) as [B [HM Hs]].
-    assert (HΓf' : ⊢ ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list) by (gen_presups; assumption).
-    destruct (ctx_decomp HΓf') as [_ [SA HSA HA]].
-    assert (HAs : (Δ ++ Γ)%list ⊢ A' : SA)
-      by (eapply nf_str_at_sort; [ exact IHA' | exact Hass | exact HΓf | exact HΓs | exact HSA | exact HA ]).
-    assert (HΓs' : ⊢ ((Δ ++ Γ) ▹ A')%list) by (eapply wf_ctx_extend; [ exact HAs | exact HSA ]).
-    destruct Hs as [Hs | Hs].
-    + (** A function: [T] is of a universe. *)
-      assert (exists C, (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ Π (A' : exp)[wk_qn (length Δ) ↑]ʷ B : C) as [C0 HC0]
-        by (gen_presups; eexists; eassumption).
-      destruct (wf_pi_typed_large HC0) as [k1 Hk1].
-      destruct HS as [i |];
-        [| exfalso; exact (subtyp_relevant_prop_absurd Hs Hk1 (short_wk_sort _ _ _ _ _ _ HΓf HT type_sort_prop)) ].
-      destruct (subtyp_pi_left_shape _ _ _ _ Hs) as (X & Y & k0 & HTXY).
-      destruct (typ_pi_shape_strengthen _ _ _ _ _ _ _ Hass HΓf HT ltac:(eapply wf_subtyp_refl'; exact HTXY)) as (C & D & HCD).
-      assert (HTCD : (Δ ++ Γ)%list ⊢ T ≈ (Πⁿ C D : exp) : Typeω@i) by (eapply soundness_ty'; eassumption).
-      cbn [nf_to_exp] in HTCD.
-      assert (HCDt : (Δ ++ Γ)%list ⊢ Π C D : Typeω@i) by (gen_presups; assumption).
-      destruct (wf_pi_inversion' HCDt) as [HC HD].
-      pose proof (short_wk_exp_eq _ _ _ _ _ _ _ HΓf HTCD) as HTCDf; cbn [exp_wk] in HTCDf.
-      assert (Hs' : (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ Π (A' : exp)[wk_qn (length Δ) ↑]ʷ B
-                      ⊆ Π (C : exp)[wk_qn (length Δ) ↑]ʷ (D : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ)
-        by (etransitivity; [ exact Hs | eapply wf_subtyp_refl'; exact HTCDf ]).
-      destruct (subtyp_pi_inv _ _ _ _ _ Hs') as [(S0 & HS0 & HAC) HBD].
-      assert (exists SC, type_sort SC /\ (Δ ++ Γ)%list ⊢ C : SC) as (SC & HSC & HCs)
-        by (destruct HC as [HC | HC]; eexists; (split; [| exact HC ]); constructor).
-      destruct (exp_eq_strengthen_sort _ _ _ _ _ _ _ _ _ Hass HΓf HSA HSC HS0 HAs HCs HAC) as (Sx & HSx & HAx & HACs).
-      assert (HDs : ((Δ ++ Γ) ▹ A')%list ⊢ D : Typeω@i)
-        by (eapply ctxsub_exp; [ exact (sub_id_extend_of_exp_eq HSx HACs) | exact HD ]).
-      pose proof (short_wk_exp (ce_ass A' :: Δ) _ _ _ _ HΓf' HDs) as HDf; cbn [exp_wk] in HDf.
-      assert (HMf : ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list
-                      ⊢ (M' : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ : (D : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ)
-        by (eapply wf_exp_subtyp; [ exact HM | exact HDf | constructor | exact HBD ]).
-      assert (HMs : ((Δ ++ Γ) ▹ A')%list ⊢ M' : D)
-        by (eapply (nf_str_sorted _ _ _ _ IHM' (ce_ass A' :: Δ) _ Typeω@i); [ exact Hass' | exact HΓf' | constructor | exact HDs | exact HMf ]).
-      assert (HWs : (Δ ++ Γ)%list ⊢ λ A' M' : Π A' D)
-        by (eapply wf_fn with (r := relevant); [ exact HAs | exact HSA | exact HDs | exact HMs ]).
-      destruct (pi_cong_sort HSx HAx HACs (wf_exp_eq_refl HDs)) as [j Hpi].
-      eapply wf_exp_subtyp; [ exact HWs | exact HT | constructor |].
-      eapply wf_subtyp_refl'.
-      eapply exp_eq_trans_typ_max; [ exact Hpi | symmetry; exact HTCD ].
-    + (** A proof of a [∀]: [T] is a proposition. *)
-      assert (exists C, (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ ∀ₚ (A' : exp)[wk_qn (length Δ) ↑]ʷ B : C) as [C0 HC0]
-        by (gen_presups; eexists; eassumption).
-      pose proof (prop_former_typed HC0 ltac:(eauto 6)) as Hp1.
-      destruct HS as [i |];
-        [ exfalso; exact (subtyp_prop_relevant_absurd Hs Hp1 (short_wk_sort _ _ _ _ _ _ HΓf HT (type_sort_universe i))) |].
-      pose proof (short_wk_sort _ _ _ _ _ _ HΓf HT type_sort_prop) as HTl.
-      pose proof (subtyp_prop_eq _ _ _ Hs Hp1 HTl) as HsE.
-      destruct (typ_all_shape_strengthen _ _ _ _ _ _ _ _ Hass HΓf HT
-                  (proj2 (wf_subtyp_of_exp_eq _ _ _ _ _ _ Hp1 HTl type_sort_prop HsE))) as (C & D & HCD).
-      pose proof (soundness_ty_at_sort type_sort_prop HT HCD) as HTCD; cbn [nf_to_exp] in HTCD.
-      assert (HCDt : (Δ ++ Γ)%list ⊢ ∀ₚ C D : Propₘ) by (gen_presups; assumption).
-      destruct (wf_all_inversion _ _ _ _ _ _ HCDt) as [SC HSC HCs HD _].
-      pose proof (short_wk_exp_eq _ _ _ _ _ _ _ HΓf HTCD) as HTCDf; cbn [exp_wk] in HTCDf.
-      assert (Hs' : (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ ∀ₚ (A' : exp)[wk_qn (length Δ) ↑]ʷ B
-                      ⊆ ∀ₚ (C : exp)[wk_qn (length Δ) ↑]ʷ (D : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ).
-      { etransitivity; [ exact Hs |].
-        assert ((tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ ∀ₚ (C : exp)[wk_qn (length Δ) ↑]ʷ (D : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ : Propₘ)
-          by (gen_presups; assumption).
-        exact (proj1 (wf_subtyp_of_exp_eq _ _ _ _ _ _ HTl ltac:(eassumption) type_sort_prop HTCDf)). }
-      destruct (subtyp_all_inv _ _ _ _ _ Hs') as [(S0 & HS0 & HAC) HBD].
-      destruct (exp_eq_strengthen_sort _ _ _ _ _ _ _ _ _ Hass HΓf HSA HSC HS0 HAs HCs HAC) as (Sx & HSx & HAx & HACs).
-      assert (HDs : ((Δ ++ Γ) ▹ A')%list ⊢ D : Propₘ)
-        by (eapply ctxsub_exp; [ exact (sub_id_extend_of_exp_eq HSx HACs) | exact HD ]).
-      pose proof (short_wk_exp (ce_ass A' :: Δ) _ _ _ _ HΓf' HDs) as HDf; cbn [exp_wk] in HDf.
-      assert (HMf : ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list
-                      ⊢ (M' : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ : (D : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ)
-        by (eapply wf_exp_subtyp; [ exact HM | exact HDf | constructor | exact HBD ]).
-      assert (HMs : ((Δ ++ Γ) ▹ A')%list ⊢ M' : D)
-        by (eapply (nf_str_sorted _ _ _ _ IHM' (ce_ass A' :: Δ) _ Propₘ); [ exact Hass' | exact HΓf' | constructor | exact HDs | exact HMf ]).
-      assert (HWs : (Δ ++ Γ)%list ⊢ λ A' M' : ∀ₚ A' D)
-        by (eapply wf_fn with (r := propositional) (Srt' := Typeω@0); [ exact HAs | exact HSA | exact HDs | exact HMs ]).
-      pose proof (all_cong_sort HSx HAx HACs (wf_exp_eq_refl HDs)) as Hall.
-      assert (HE : (Δ ++ Γ)%list ⊢ ∀ₚ A' D ≈ T : Propₘ) by (etransitivity; [ exact Hall | symmetry; exact HTCD ]).
-      eapply wf_exp_subtyp; [ exact HWs | exact HT | constructor |].
-      exact (proj1 (wf_subtyp_of_exp_eq _ _ _ _ _ _ (presup_exp_eq_left HE) HT type_sort_prop HE)).
-  - (** The type former applied. *)
-    intros p k Ms IHMs Hpf; nfs_str_ih Γ A IHMs Hpf; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (ind_str _ _ p k))).
-  - (** A constructor applied. *)
-    intros p k c Ms IHMs Hpf; nfs_str_ih Γ A IHMs Hpf; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (con_str _ _ p k c))).
-  - (** A neutral. *)
-    intros u IH Hpf Δ T Srt Hass HΓf HS HT HW; cbn [nf_to_exp] in HW |- *.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    destruct (IH Hpf _ _ Hass HΓf HΓs HW) as [T0 S0 HS0 HuT HT0 Hs].
-    eapply wf_exp_subtyp; [ exact HuT | exact HT | exact HS |].
-    eapply subtyp_strengthen_sort; [ exact Hass | exact HΓf | exact HS0 | exact HS | exact HT0 | exact HT | exact Hs ].
-  - (** A record type at its parameters. *)
-    intros p Ms IHMs Hpf; nfs_str_ih Γ A IHMs Hpf; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (record_str _ _ p))).
+  intros Γ κ A; apply nf_ne_ind.
+  - intros i _; exact (typ_str _ _ _ i).
+  - intros c xs IH Hpf; apply list_all_level_atoms_all in IH; apply level_atoms_all_all_list in Hpf.
+    exact (univ_str _ _ _ c xs (level_atoms_all_premise _ _ _ IH Hpf)).
+  - intros n _; exact (level_str _ _ _ n).
+  - intros _; exact (level_sort_str _ _ _).
+  - intros c xs IH Hpf; apply list_all_level_atoms_all in IH; apply level_atoms_all_all_list in Hpf.
+    exact (lvl_str _ _ _ c xs (level_atoms_all_premise _ _ _ IH Hpf)).
+  - intros _; exact (prop_str _ _ _).
+  - intros _; exact (True_str _ _ _).
+  - (** A kept proof is not proof-free. *)
+    intros P _ M Hpf; destruct Hpf.
+  - intros _; exact (False_str _ _ _).
+  - intros P IHP Q IHQ [HpP HpQ]; exact (and_str _ _ _ _ _ (IHP HpP) (IHQ HpQ)).
+  - intros κd κc A' IHA B' IHB [HpA HpB]; exact (pi_str _ _ _ κd κc _ _ (IHA HpA) (IHB HpB)).
+  - intros A' IHA M' IHM [HpA HpM]; exact (fn_str _ _ _ _ _ (IHA HpA) (IHM HpM)).
+  - intros p k Ms IHMs Hpf; nfs_str_ih Γ κ A IHMs Hpf; exact (exp_str_at _ _ _ _ (apps_str _ _ _ _ _ IHMs (ind_str _ _ _ p k))).
+  - intros p k c Ms IHMs Hpf; nfs_str_ih Γ κ A IHMs Hpf; exact (exp_str_at _ _ _ _ (apps_str _ _ _ _ _ IHMs (con_str _ _ _ p k c))).
+  - intros r u IH Hpf; exact (exp_str_at _ _ _ _ (IH Hpf)).
+  - intros p Ms IHMs Hpf; nfs_str_ih Γ κ A IHMs Hpf; exact (exp_str_at _ _ _ _ (apps_str _ _ _ _ _ IHMs (record_str _ _ _ p))).
   - (** A tuple ([tuple_str]). *)
-    intros p Ms IHMs fs Fs IHFs [HpMs HpFs]; nfs_str_ih Γ A IHMs HpMs; nfs_str_ih Γ A IHFs HpFs; cbn [nf_to_exp].
+    intros p Ms IHMs fs Fs IHFs [HpMs HpFs]; nfs_str_ih Γ κ A IHMs HpMs; nfs_str_ih Γ κ A IHFs HpFs; cbn [nf_to_exp].
     apply tuple_str; [ exact IHMs |].
     apply List.Forall_forall; intros x Hx.
     apply List.in_map_iff in Hx as ([g y] & <- & Hin); apply List.in_combine_r in Hin.
     exact (proj1 (List.Forall_forall _ _) IHFs _ Hin).
   - (** Ex falso is not proof-free. *)
-    intros A' IHA Hpf; destruct Hpf.
+    intros A' IHA M Hpf; destruct Hpf.
   - (** A stuck eliminator ([elim_str]). *)
-    intros pc Us IHUs k Bks IHBs u IHu (HpUs & HpBs & Hpu); nfs_str_ih Γ A IHUs HpUs; blocks_str_ih Γ A IHBs HpBs.
-    exact (elim_str _ _ _ _ _ _ _ IHUs IHBs (IHu Hpu)).
-  - (** An application. *)
-    intros u IHu w IHw [Hpu Hpw]; exact (app_str _ _ _ _ (IHu Hpu) (IHw Hpw)).
-  - (** A variable: the long variable is the image of a short one. *)
-    intros x _ Δ C Hass HΓf HΓs HW; cbn [ne_to_exp exp_wk] in HW.
-    destruct (wf_vlookup_inversion HW) as (A1 & Hl & HsC).
-    destruct (lookup_strengthen _ _ _ _ _ _ Hl) as (T & HlT & ->).
-    assert (Hx : (Δ ++ Γ)%list ⊢ #x : T) by (apply wf_vlookup; assumption).
-    destruct (presup_exp_typ Hx) as [ST HST HTj].
-    exact (mk_short_typ _ _ _ _ _ _ TST HST Hx HTj HsC).
-  - (** A global: a closed member of a chain from a unit, typed in any
-        context at a closed type; the empty chain is the placeholder. *)
-    intros p _ Δ C Hass HΓf HΓs HW; cbn [ne_to_exp] in HW |- *.
-    rewrite qname_term_wk in HW.
-    destruct p as [fp ch].
-    destruct (List.rev ch) as [| x pre] eqn:Er.
-    + apply (f_equal (@List.rev _)) in Er; rewrite List.rev_involutive in Er; cbn in Er; subst ch.
-      unfold qname_term in *; cbn [q_unit q_chain member_ref] in *.
-      apply wf_placeholder_inversion in HW.
-      apply (mk_short_typ _ _ _ _ _ _ a_placeholder_type Typeω@0 (type_sort_universe 0));
-        [ apply wf_placeholder, HΓs | apply (wf_placeholder_type_large (i := 0)), HΓs | exact HW ].
-    + apply (f_equal (@List.rev _)) in Er; rewrite List.rev_involutive in Er; cbn in Er; subst ch.
-      change (qname_mk fp (List.rev pre ++ x :: nil)) with (qname_app (qname_mk fp (List.rev pre)) (x :: nil)) in *.
-      rewrite qname_term_snoc in *.
-      destruct (path_mem_any_ctx _ _ _ _ _ (qname_mod_qname _) HW) as (T & HTc & HsT & Hany).
-      pose proof (Hany _ HΓs) as HTs.
-      destruct (presup_exp_typ HTs) as [ST HST HTj].
-      apply (mk_short_typ _ _ _ _ _ _ TST HST); [ exact HTs | exact HTj | rewrite exp_closed_wk by exact HTc; exact HsT ].
-  - (** A projection ([proj_str]). *)
-    intros f u IHu Hpf; exact (proj_str _ _ f _ (IHu Hpf)).
+    intros pc Us IHUs k Bks IHBs u IHu (HpUs & HpBs & Hpu); nfs_str_ih Γ κ A IHUs HpUs; blocks_str_ih Γ κ A IHBs HpBs.
+    exact (elim_str _ _ _ _ _ _ _ _ IHUs IHBs (IHu Hpu)).
+  - intros u IHu w IHw [Hpu Hpw]; exact (app_str _ _ _ _ _ (IHu Hpu) (IHw Hpw)).
+  - intros x _; exact (var_str _ _ _ x).
+  - intros p _; exact (glob_str _ _ _ p).
+  - intros f u IHu Hpf; exact (proj_str _ _ _ f _ (IHu Hpf)).
 Qed.
-
 (** ** At the Outermost Variable *)
 
 (** A proof-free normal form typed, weakened, in [Γ ▹ A] at a weakened type
