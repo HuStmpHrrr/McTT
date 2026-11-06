@@ -361,10 +361,20 @@ with alg_params : ctx -> ctx -> Prop :=
      Δ ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
      Γ ⊢aᵖ Δ ▹{ak_relevant} A )
+(** A parameter of a type of levels, which infers the sort of the types
+    of levels ([parameter_sort]) *)
+| alg_params_level :
+  `( Γ ⊢aᵖ Δ ->
+     Δ ++ Γ ⊢a A ⟹ LevelSortⁿ ->
+     Γ ⊢aᵖ Δ ▹{ak_level} A )
 where "Γ '⊢aᵖ' Δ" := (alg_params Γ Δ) : type_scope
 with alg_unit : ctx -> gunit -> Prop :=
 (** A body: its parameters, and its entries, each read as it stands in the
-    expansion of the body before it. *)
+    expansion of the body before it.  What the body denotes can be
+    abstracted over the parameters ([levels_abstractable]), as the
+    declarative rule asks: [module A (n : ℕ) ≔ M], where [M] has
+    [def v : Level ≔ 0l], is rejected, [module A (u : Level) ≔ M]
+    accepted. *)
 | alg_unit_body :
   `( Γ ⊢aᵖ Δ ->
      all_assumptions Δ ->
@@ -372,11 +382,14 @@ with alg_unit : ctx -> gunit -> Prop :=
      body_shape Φ Φ ->
      body_shape Φx Φx ->
      List.NoDup (gm_names Φ) ->
+     levels_abstractable gc_deps gc_stack Γ Δ (me_lit (gu_open nil Φ)) ->
      Γ ⊢aᵘ gu_open Δ Φ )
+(** An alias, its target abstractable over the parameters, as for a body *)
 | alg_unit_alias :
   `( Γ ⊢aᵖ Δ ->
      all_assumptions Δ ->
      Δ ++ Γ ⊢aᵐ E ->
+     levels_abstractable gc_deps gc_stack Γ Δ E ->
      Γ ⊢aᵘ gu_mk Δ (md_alias E) )
 where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope
 (** [Γ ⊢aᵇ Φ ⇝ Φx]: the entries of [Φ] are well-formed in [Γ], each in the

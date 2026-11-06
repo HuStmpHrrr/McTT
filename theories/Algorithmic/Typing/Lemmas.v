@@ -746,8 +746,9 @@ Proof.
   intros * HΓ HM Hl Hfk; cbn [nf_to_exp] in HM.
   (** A record type is of a large universe, never a proposition. *)
   assert (exists i, Γ ⊢ apps (a_record p) (List.map nf_to_exp Rs) : Typeω@i) as [i HRa]
-    by (destruct (presup_exp_typ HM) as [SR HSR HRS]; destruct HSR as [iR |];
-        [ exists iR; exact HRS | exfalso; exact (typ_prop_record_absurd HRS) ]).
+    by (destruct (presup_exp_typ_sorted HM (apps_exp_not_level_sort (List.map nf_to_exp Rs) (a_record p) ltac:(discriminate)))
+          as (SR & HSR & HRS); destruct HSR as [iR | |];
+        [ exists iR; exact HRS | exfalso; exact (typ_prop_record_absurd HRS) | exfalso; exact (record_type_not_level HRS) ]).
   pose proof (wf_record_apps_len _ _ _ _ _ Hl HRa) as HRl.
   pose proof (wf_record_apps_inv _ _ _ _ _ Hl HRa HRl) as HRt.
   destruct (record_former_typed _ _ _ HΓ Hl) as [j [Hrt _]].
