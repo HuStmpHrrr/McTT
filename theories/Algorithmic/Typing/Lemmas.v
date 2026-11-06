@@ -149,12 +149,14 @@ Proof.
 Qed.
 
 (** A universe normal form whose level is a canonical level of a sort its
-    level term has, each atom a level of its own sort: what the normal form
-    of a universe is ([univ_nf_well_scoped]). *)
+    level term has, each atom a level of its own sort and holding no proof:
+    what the normal form of a universe is ([univ_nf_well_scoped],
+    [nbe_ty_univ_proof_free]). *)
 Definition universe_nf_well_scoped (Γ : ctx) (u : universe_nf) : Prop :=
   match u with
-  | universe_small L => exists n, Γ ⊢ lvl_exp_of (fst L) (List.map atom_exp (snd L)) : Level@n /\
-                    fst (fst L) <= n /\ @level_atoms_well_scoped gc_deps gc_stack n Γ (snd L)
+  | universe_small L => (exists n, Γ ⊢ lvl_exp_of (fst L) (List.map atom_exp (snd L)) : Level@n /\
+                    fst (fst L) <= n /\ @level_atoms_well_scoped gc_deps gc_stack n Γ (snd L)) /\
+                    all_list (fun a => ne_proof_free (atom_level a)) (snd L)
   | universe_large _ => True
   end.
 
@@ -164,7 +166,43 @@ Lemma universe_nf_well_scoped_of_nbe : forall {Γ u i},
     universe_nf_well_scoped Γ u.
 Proof.
   intros * Hu Hn; destruct u as [[c xs] | j]; cbn in *; [| exact I ].
-  exact (univ_nf_well_scoped Hu Hn).
+  split; [ exact (univ_nf_well_scoped Hu Hn) | exact (nbe_ty_univ_proof_free Hu Hn) ].
+Qed.
+
+(** The list of a list of terms mapped is checked by the check of its
+    elements mapped. *)
+Lemma forallb_map_eq_list_all : forall {X : Set} (P : X -> Type) (f : X -> bool) (g : X -> X) l,
+    list_all X P l -> (forall x, P x -> f (g x) = f x) -> List.forallb f (List.map g l) = List.forallb f l.
+Proof. intros * Hl Hf; induction Hl as [| x Hx l Hl IH]; cbn; [ reflexivity | rewrite (Hf _ Hx), IH; reflexivity ]. Qed.
+
+(** Un-weakening moves variables only: it keeps proof-freedom. *)
+Lemma nf_ne_unwk_proof_freeb :
+  (forall W k, nf_proof_freeb (nf_unwk k W) = nf_proof_freeb W) /\
+  (forall u k, ne_proof_freeb (ne_unwk k u) = ne_proof_freeb u).
+Proof.
+  apply nf_ne_ind; intros; cbn [nf_unwk ne_unwk nf_proof_freeb ne_proof_freeb]; try reflexivity;
+    repeat match goal with H : forall k, _ = _ |- _ => rewrite H end; try reflexivity.
+  all: repeat match goal with H : list_all _ _ ?l |- context [ ListDef.map ?g ?l ] =>
+                erewrite (forallb_map_eq_list_all _ _ _ _ H) end.
+  all: try reflexivity.
+  all: intros x Hx; first [ solve [ eauto ] | destruct Hx; cbn; solve [ eauto ] | idtac ].
+  all: destruct Hx as [ar Z HZ M HM brs Hbrs]; unfold normal_block_forallb, map_normal_block;
+    cbn [block_arity block_scrutinee_type block_motive block_branches]; rewrite HZ, HM.
+  all: erewrite (forallb_map_eq_list_all _ _ _ _ Hbrs); [ reflexivity | intros br Hbr; destruct Hbr; cbn; eauto ].
+Qed.
+
+Lemma ne_unwk_proof_free : forall k u, ne_proof_free u -> ne_proof_free (ne_unwk k u).
+Proof.
+  intros * H; apply (proj2 nf_proof_freeb_iff); rewrite (proj2 nf_ne_unwk_proof_freeb); apply (proj2 nf_proof_freeb_iff); exact H.
+Qed.
+
+(** The bound of a level without proofs under a binder ([lvl_bound]) holds
+    none. *)
+Lemma level_atoms_unwk_fresh_proof_free : forall k c xs, all_list (fun a => ne_proof_free (atom_level a)) xs ->
+    nf_proof_free (nf_lvl c (List.map (map_level_atom (ne_unwk k)) (level_atoms_fresh_part k xs))).
+Proof.
+  intros k c xs; cbn [nf_proof_free]; induction xs as [| [j s a] r IH]; cbn; [ intros; exact I |].
+  intros [Ha Hr]; destruct (ne_freshb k a); cbn; [ split; [ exact (ne_unwk_proof_free _ _ Ha) | exact (IH Hr) ] | exact (IH Hr) ].
 Qed.
 
 (** The domain of a [Π] the algorithm counts in the universe [u]: a type
