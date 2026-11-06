@@ -2500,9 +2500,9 @@ Lemma alg_elim_complete : forall Γ p D m Mm bm Bks Ps M r i,
     blocks_typed gc_deps gc_stack Γ p D (List.firstn (ind_nu D) Ps) Bks r i ->
     (forall j U T, List.nth_error (List.firstn (ind_nu D) Ps) j = Some U ->
        List.nth_error (tele_insts (ind_uparams D) Id (List.firstn (ind_nu D) Ps)) j = Some T -> Γ ⊢a U ⟸ T) ->
-    (forall j Mj b S, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> type_sort S ->
-       tele_sub (im_nparams Mj) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ++ Γ ⊢ eb_scrutinee_type b : S ->
-       tele_sub (im_nparams Mj) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ++ Γ ⊢a eb_scrutinee_type b ⟸ S) ->
+    (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+       exists UZ u, tele_sub (im_nparams Mj) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ++ Γ ⊢a eb_scrutinee_type b ⟹ UZ /\
+         is_sort_nf UZ ak_relevant u) ->
     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
        elim_mctx p D j Mj (List.firstn (ind_nu D) Ps) ++ Γ ⊢a eb_motive b ⟸ abs_kind_sort r Typeω@i) ->
     (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
@@ -2623,11 +2623,11 @@ Proof.
   { intros j _.
     destruct (ind_member D j) as [Mj |] eqn:Hj; [| exists 0; intros; discriminate ].
     destruct (List.nth_error Bks j) as [b |] eqn:Hbj; [| exists 0; intros; discriminate ].
-    destruct (HZh _ _ _ Hj Hbj) as [SZ HSZ _ _ _ HZt _ _ _].
-    destruct (sort_kind_abs_kind_sort_inv _ _ HSZ) as [l ->]; cbn [abs_kind_sort] in HZt.
-    exists l; intros Mj' b' Hj' Hb'.
+    destruct (HZc _ _ _ Hj Hbj) as (UZ & u & HZi & Hs).
+    inversion Hs as [? ? Hu | |]; subst.
+    exists (universe_nf_large_index u); intros Mj' b' Hj' Hb'.
     assert (Mj' = Mj) as -> by congruence; assert (b' = b) as -> by congruence.
-    exact (HZc _ _ _ _ Hj Hbj (type_sort_universe l) HZt). }
+    eapply alg_type_check_typ_of; [ exact (HΨ _ _ Hj) | exact HZi | exact Hu | apply universe_nf_le_large ]. }
   { intros j l l' Hll HQ Mj b Hj Hbj; eapply Hmono; [ exact (HΨ _ _ Hj) | exact Hll | exact (HQ _ _ Hj Hbj) ]. }
   set (i' := max i L).
   (** The type, the normal form of the motive's instance. *)
@@ -3316,24 +3316,77 @@ Proof.
     [ exact (alg_type_check_prop_infer HΓ HPc) | exact (alg_type_check_prop_infer HΓP HQc) | exact HMc | exact HNc | exact HW ].
 Qed.
 
-(** A term checked against a type of a sort infers a type whose instance
-    along a substitution normalises below the type's instance. *)
-Lemma alg_type_check_nbe_sub : forall {Γ Δ σ B C SC},
-    ⊢ Δ -> Γ ⊢ˢ σ : Δ -> type_sort SC -> Δ ⊢ C : SC -> Δ ⊢a B ⟸ C ->
-    exists C' W, Δ ⊢a B ⟹ C' /\ nbe_ty_f Γ (nf_to_exp C')[σ] W /\ Γ ⊢a W ⊆ C[σ].
+(** A term checked against a type of a sort infers a type of the kind of
+    that sort, no [LevelSort], whose instance along a substitution
+    normalises below the type's instance. *)
+Lemma alg_type_check_nbe_sub : forall {Γ Δ σ B C κ j},
+    ⊢ Δ -> Γ ⊢ˢ σ : Δ -> Δ ⊢ C : abs_kind_sort κ Typeω@j -> Δ ⊢a B ⟸ C ->
+    exists C' W, Δ ⊢a B ⟹ C' /\ nf_to_exp C' <> LevelSort /\ nbe_ty_kind Δ C' κ /\
+      nbe_ty_f Γ (nf_to_exp C')[σ] W /\ Γ ⊢a W ⊆ C[σ].
 Proof.
-  intros * HΔ Hσ HSC HC Hc.
+  intros * HΔ Hσ HC Hc.
+  pose proof (type_sort_kind_universe κ j) as HSC.
   inversion Hc as [? C' ? ? HBi HBs]; subst.
   pose proof (alg_type_infer_sound HBi HΔ) as HB'.
   destruct (alg_infer_below_sorted HΔ HSC HC HBi HBs) as (SC' & HSC' & HC').
   pose proof (alg_subtyping_sound_sort _ _ _ _ _ HSC' HSC HBs HC' HC) as HCC.
+  (** the inferred type is of the checked one's kind ([subtyp_same_kind]) *)
+  assert (exists k, Δ ⊢ (C' : exp) : abs_kind_sort κ Typeω@k) as [k HC'k].
+  { assert (exists r' (j' : nat), SC' = abs_kind_sort r' Typeω@j') as (r' & j' & ->)
+      by (destruct HSC' as [j' | |]; [ exists ak_relevant, j' | exists ak_propositional, 0 | exists ak_level, 0 ]; reflexivity).
+    pose proof (subtyp_same_kind _ _ _ r' κ j' j HCC HC' HC) as <-; exists j'; exact HC'. }
   pose proof (sub_preserves_sort _ _ _ _ _ _ _ HC' HSC' Hσ) as HC'σ.
   destruct (nbe_ty_exists_sort HSC' HC'σ) as [W HW].
   pose proof (soundness_ty_at_sort HSC' HC'σ HW) as HE.
-  exists C', W; split; [ exact HBi | split; [ exact HW |] ].
+  exists C', W; split; [ exact HBi |].
+  split; [ intros E; rewrite E in HC'k; exact (level_sort_untyped HC'k) |].
+  split; [ exact (nbe_ty_kind_of_typed HC'k) |].
+  split; [ exact HW |].
   apply alg_subtyping_complete.
   etransitivity; [| exact (sub_preserves_subtyp _ _ _ _ _ _ _ HCC Hσ) ].
   exact (proj2 (wf_subtyp_of_exp_eq _ _ _ _ _ _ HC'σ (presup_exp_eq_right HE) HSC' HE)).
+Qed.
+
+(** A local definition checks at its body's type instantiated: its
+    annotation infers a sort of its kind; its body's inferred type is of
+    the kind of the body's type's sort, a type of levels only under a
+    level ([level_closed_sort]). *)
+Lemma alg_let_complete : forall Γ A M B C Srt SrtC,
+    ⊢ Γ -> Γ ⊢ A : Srt -> type_sort Srt -> Γ ⊢a A ⟸ Srt -> Γ ⊢ M : A -> Γ ⊢a M ⟸ A ->
+    Γ ▸ A ≔ M ⊢ C : SrtC -> level_closed_sort Srt SrtC -> Γ ▸ A ≔ M ⊢a B ⟸ C ->
+    Γ ⊢a ℓ A ≔ M in B ⟸ C[Id,,M].
+Proof.
+  intros * HΓ HA HS HAc HM HMc HC Hlc HBc.
+  destruct (alg_type_check_sort_infer HΓ HS HAc) as (UA & r & u & HAi & Hs).
+  (** the annotation's kind is its sort's *)
+  assert (exists κ j, Srt = abs_kind_sort κ Typeω@j) as (κ & j & ->)
+    by (destruct HS as [j | |]; [ exists ak_relevant, j | exists ak_propositional, 0 | exists ak_level, 0 ]; reflexivity).
+  pose proof (kind_sort_agree _ _ _ _ _ _ (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ) Hs) HA) as ->.
+  assert (HGd : ⊢ Γ ▸ A ≔ M) by (eapply wf_ctx_extend_def; [ exact HA | exact HS | exact HM ]).
+  assert (exists κC jC, SrtC = abs_kind_sort κC Typeω@jC /\ (κC = ak_level -> κ = ak_level)) as (κC & jC & -> & Hkl).
+  { inversion Hlc as [? i | | E1]; subst.
+    - exists ak_relevant, i; split; [ reflexivity | discriminate ].
+    - exists ak_propositional, 0; split; [ reflexivity | discriminate ].
+    - exists ak_level, 0; split; [ reflexivity | intros _ ].
+      destruct κ; cbn [abs_kind_sort] in E1; congruence. }
+  destruct (alg_type_check_nbe_sub HGd (wf_sub_single_def _ _ _ _ _ _ HA HS HM) HC HBc)
+    as (C' & W & HBi & HnL & Hr & HW & Hsub).
+  econstructor; [ eapply alg_type_infer_let; [ exact HAi | exact Hs | exact HMc | exact HBi | exact HnL | exact Hr | exact Hkl | exact HW ]
+                | exact Hsub ].
+Qed.
+
+(** A module [let] checks at its body's type instantiated: the body's
+    type is no type of levels ([module_body_sort]). *)
+Lemma alg_let_mod_complete : forall Γ U B C Srt,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U -> Γ ⊢aᵘ U -> Γ ▹ₘ U ⊢ C : Srt -> module_body_sort Srt ->
+    Γ ▹ₘ U ⊢a B ⟸ C -> Γ ⊢a ℓₘ U in B ⟸ C[Id ,,ₘ me_lit U].
+Proof.
+  intros * HU HUa HC Hms HBc.
+  assert (HGU : ⊢ Γ ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU).
+  assert (exists κC jC, Srt = abs_kind_sort κC Typeω@jC /\ κC <> ak_level) as (κC & jC & -> & Hkl)
+    by (destruct Hms as [i |]; [ exists ak_relevant, i | exists ak_propositional, 0 ]; split; first [ reflexivity | discriminate ]).
+  destruct (alg_type_check_nbe_sub HGU (wf_sub_single_mod _ _ _ _ HU) HC HBc) as (C' & W & HBi & HnL & Hr & HW & Hsub).
+  econstructor; [ eapply alg_type_infer_let_mod; [ exact HUa | exact HBi | exact HnL | exact Hr | exact Hkl | exact HW ] | exact Hsub ].
 Qed.
 
 (** An application checks against the codomain instantiated: the function
@@ -3486,6 +3539,37 @@ Proof.
   - apply alg_subtyping_nf_pi; [ constructor | reflexivity | eapply alg_subtyping_nf_trans; [ apply alg_subtyping_nf_of_upto_proofs; exact EB | exact Hsub ] ].
 Qed.
 
+(** A type checked against a sort of the kind [κ] infers a sort of that
+    kind ([kind_sort_agree]): an assumption entry. *)
+Lemma alg_entry_ass_of_check : forall Γ A Srt κ,
+    ⊢ Γ -> Γ ⊢ A : Srt -> sort_kind Srt κ -> Γ ⊢a A ⟸ Srt -> exists UA u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA κ u.
+Proof.
+  intros * HΓ HA HSk HAc.
+  destruct (alg_type_check_sort_infer HΓ (sort_kind_type_sort _ _ HSk) HAc) as (UA & r & u & HAi & Hs).
+  destruct (sort_kind_abs_kind_sort_inv _ _ HSk) as [j ->].
+  pose proof (kind_sort_agree _ _ _ _ _ _ (sort_typed_of_is_sort_nf (alg_type_infer_sound HAi HΓ) Hs) HA) as ->.
+  eauto.
+Qed.
+
+(** A [Π] checks against the sort of its codomain's kind at the universe
+    its parts are counted in: into a universe at a large one
+    ([alg_pi_large_complete]) or a small one ([alg_pi_small_complete]),
+    or into [Prop] or [LevelSort] ([alg_pi_irrelevant_complete]). *)
+Lemma alg_pi_complete : forall Γ U A B κd κc,
+    ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵤ U -> Γ ⊢ A : abs_kind_sort κd U -> Γ ⊢a A ⟸ abs_kind_sort κd U ->
+    Γ ▹{κd} A ⊢a B ⟸ (abs_kind_sort κc U)[↑]ʷ -> pi_kinds κd κc ->
+    Γ ⊢a a_pi κd κc A B ⟸ abs_kind_sort κc U.
+Proof.
+  intros * HΓ HU HA HAc HBc Hk.
+  rewrite abs_kind_sort_wk in HBc.
+  destruct κc.
+  - cbn [abs_kind_sort] in HBc |- *; inversion HU; subst; cbn [exp_wk] in HBc.
+    + eapply alg_pi_large_complete; eassumption.
+    + eapply alg_pi_small_complete; eassumption.
+  - eapply alg_pi_irrelevant_complete; [ exact HΓ | exact HU | discriminate | exact Hk | exact HAc | cbn [abs_kind_sort] in *; exact HBc ].
+  - eapply alg_pi_irrelevant_complete; [ exact HΓ | exact HU | discriminate | exact Hk | exact HAc | cbn [abs_kind_sort] in *; exact HBc ].
+Qed.
+
 (** The whole block, the universes included; [alg_type_complete_lets] below
     is the statement without them. *)
 Lemma alg_type_complete_lets_all : forall n,
@@ -3508,7 +3592,7 @@ Proof.
     eapply (alg_modexp_of_wf (modexp_lets H0)); [| | exact HH0 | lia ].
     - intros; eapply IHt; [ eassumption | reflexivity | reflexivity | apply user_exp_all | assumption ].
     - intros * HU0 HlU; exact (proj1 (IHu _ _ _ _ _ HU0 eq_refl eq_refl) HlU). }
-  apply syntactic_wf_mut_ind; intros; try exact I; subst; destruct_let_ann; destruct_univ;
+  apply syntactic_wf_mut_ind; intros; try exact I; subst; destruct_univ;
     repeat match goal with IH : ?x = ?x -> _ |- _ => specialize (IH eq_refl) end;
     repeat match goal with IH : user_exp ?M -> _ |- _ => specialize (IH (user_exp_all M)) end;
     try match goal with Hue : user_exp _ |- _ => clear Hue end;
@@ -3524,8 +3608,9 @@ Proof.
                assert (H' : P /\ Q) by (split; [ exact (proj1 IH) | apply (proj2 IH); lets_bound ]);
                clear IH; rename H' into IH
            end.
-  (** Only the unannotated [let] needs the outer induction. *)
-  all: try (lazymatch goal with |- _ ⊢a ℓ ≔ _ in _ ⟸ _ => fail | _ => clear IHn end).
+  (** The outer induction is needed only for the module expressions
+      ([HmH]). *)
+  all: try clear IHn.
   all: match goal with |- _ ⊢a a_elim _ _ _ _ _ ⟸ _ => idtac | |- _ ⊢a _ ⟸ _ =>
          gen_presups;
          (** A universe, [⊤] and [⊥] infer their own universe. *)
@@ -3587,22 +3672,22 @@ Proof.
         apply (alg_type_check_of_infer_nbe HS HA); intros W HW;
         eapply alg_type_infer_mem; [ apply HmH; [ exact HH | lia ] | exact Hm | exact Ht | exact HW ]
     end.
-  (** [⋆] at [⊤]. *)
-  - apply alg_true_complete; assumption.
+  (** A type of levels at [LevelSort]: its own sort. *)
+  - econstructor; [ apply alg_type_infer_level |].
+    econstructor; [ exact (nbe_ty_level_sort_self H) | exact (nbe_ty_level_sort_self H) | apply alg_subtyping_nf_refl ].
   (** The introduction of [⊤] at [⊤]. *)
   - apply alg_tt_complete; assumption.
-  (** [⋆] at another proposition. *)
-  - (* PENDING design: [⋆] at a proposition other than [⊤] ([wf_star]) infers only [⊤]. *)
-    admit.
-  (** Ex falso, conjunctions and their proofs, the placeholder. *)
-  - match goal with H : ?G ⊢ ?C : ?Srt, Hs : type_sort ?Srt |- ?G ⊢a efq _ return ?C ⟸ ?C =>
+  (** Ex falso, conjunctions and their proofs. *)
+  - match goal with H : ?G ⊢ ?C : ?Srt, Hs : type_sort ?Srt, Hl : level_closed_sort _ ?Srt |- ?G ⊢a efq _ return ?C ⟸ ?C =>
       eapply (alg_absurd_complete (S := Srt)); eassumption end.
-  - apply alg_type_check_prop_of; [ assumption |]; apply alg_type_infer_and; apply alg_type_check_prop_infer; assumption.
+  - match goal with HG : ⊢ ?G, HGP : ⊢ ?G ▹{ak_propositional} ?P |- ?G ⊢a Σₚ ?P ?Q ⟸ _ =>
+      apply alg_type_check_prop_of; [ exact HG |];
+      apply alg_type_infer_and; apply alg_type_check_prop_infer; assumption end.
   - eapply alg_conj_complete; eassumption.
-  - eapply alg_left_complete; eassumption.
-  - match goal with HM : _ ⊢ ?M : Σₚ ?P _ |- _ ⊢a a_right ?M ⟸ _ =>
-      eapply (alg_right_complete (P := P)); eassumption end.
-  - apply alg_placeholder_complete; assumption.
+  - match goal with HG : ⊢ ?G, HM : ?G ⊢ ?M : Σₚ ?P ?Q |- _ ⊢a a_left ?M ⟸ _ =>
+      eapply (alg_left_complete HG (and_typed_of_proof HM)); eassumption end.
+  - match goal with HG : ⊢ ?G, HM : ?G ⊢ ?M : Σₚ ?P ?Q |- _ ⊢a a_right ?M ⟸ _ =>
+      eapply (alg_right_complete HG (and_typed_of_proof HM) HM); eassumption end.
   (** The type former and a constructor: at the normal forms of their
       types. *)
   - destruct (decl_of_lookup _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)) as [HD Hc].
@@ -3617,28 +3702,28 @@ Proof.
   (** The eliminator ([alg_elim_complete]): its parts by the induction
       hypotheses, under the bound on [let]s ([elim_lets_parts]). *)
   - match goal with
-    | Hl : ind_lookup _ _ ?p = Some ?D, Hg : elim_grp ?D ?oq ?p ?m, Hm : ind_member ?D ?m = Some ?Mm,
+    | Hl : ind_lookup _ _ ?p = Some ?D, Hm : ind_member ?D ?m = Some ?Mm,
       Hb : List.nth_error ?Bks ?m = Some ?bm, HPl : List.length ?Ps = im_np ?D ?Mm,
-      Hbd : exp_lets (a_elim ?r ?oq _ ?m ?Bks ?M) <= _,
+      Hbd : exp_lets (a_elim ?r ?p _ ?m ?Bks ?M) <= _,
       HAt : forall k Mk b, ind_member ?D k = Some Mk -> List.nth_error ?Bks k = Some b -> _ ⊢ eb_motive b : abs_kind_sort ?r Typeω@?i,
       HUs : forall k P T, List.nth_error ?Ps k = Some P -> List.nth_error (tele_insts (im_params ?D ?Mm) Id ?Ps) k = Some T ->
               _ = _ -> _ = _ -> user_exp P -> exp_lets P <= _ -> _ ⊢a P ⟸ T,
-      HZs : forall k Mk b Z, ind_member ?D k = Some Mk -> List.nth_error ?Bks k = Some b -> eb_ann b = Some Z ->
-              _ = _ -> _ = _ -> ext_entries _ _ _ /\ _,
+      HZs : forall k Mk b, ind_member ?D k = Some Mk -> List.nth_error ?Bks k = Some b ->
+              _ = _ -> _ = _ -> ext_entries _ _ (_ ▹{ak_relevant} eb_scrutinee_type b) /\ _,
       HAs : forall k Mk b, ind_member ?D k = Some Mk -> List.nth_error ?Bks k = Some b -> _ = _ -> _ = _ ->
               user_exp (eb_motive b) -> exp_lets (eb_motive b) <= _ -> _ ⊢a eb_motive b ⟸ _,
       HBs : forall k Mk b c gs n0 B, ind_member ?D k = Some Mk -> List.nth_error ?Bks k = Some b -> ind_con Mk c = Some gs ->
               List.In (c, n0, B) (eb_brs b) -> _ = _ -> _ = _ -> user_exp B -> exp_lets B <= _ -> _ ⊢a B ⟸ _ |- _ =>
-        destruct (elim_lets_parts r oq (List.firstn (ind_nu D) Ps) m Bks M) as (HLu & HLz & HLa & HLb & _);
+        destruct (elim_lets_parts r p (List.firstn (ind_nu D) Ps) m Bks M) as (HLu & HLz & HLa & HLb & _);
         assert (HΓe : ⊢ Γ) by (gen_presups; assumption);
         destruct (decl_of_lookup _ _ _ _ _ HΓe Hl) as [_ Hc];
-        eapply (alg_elim_complete Γ p D oq m Mm bm Bks Ps M r i);
-          [ exact Hl | exact Hg | exact Hm | exact Hb | exact HPl | eassumption | eassumption | eassumption
-          | constructor; assumption | | | | ];
+        eapply (alg_elim_complete Γ p D m Mm bm Bks Ps M r i);
+          [ exact Hl | exact Hm | exact Hb | exact HPl | eassumption | eassumption | eassumption
+          | constructor; first [ assumption | unfold blocks_binder_count_ok; assumption ] | | | | ];
         [ intros j U T HU HT
-        | intros j Mj b Z Hj Hbj HZ; destruct (HZs _ _ _ _ Hj Hbj HZ eq_refl eq_refl) as [HE _];
+        | intros j Mj b Hj Hbj; destruct (HZs _ _ _ Hj Hbj eq_refl eq_refl) as [HE _];
           apply (ext_entries_head _ _ _ _ HE); cbn [centry_lets];
-          pose proof (HLz b Z (List.nth_error_In _ _ Hbj) HZ); lia
+          pose proof (HLz b (List.nth_error_In _ _ Hbj)); lia
         | intros j Mj b Hj Hbj; apply (HAs _ _ _ Hj Hbj eq_refl eq_refl (user_exp_all _));
           pose proof (HLa b (List.nth_error_In _ _ Hbj)); lia
         | intros j Mj b c gs n1 B Hj Hbj Hcon Hin; apply (HBs _ _ _ _ _ _ _ Hj Hbj Hcon Hin eq_refl eq_refl (user_exp_all _));
@@ -3658,82 +3743,28 @@ Proof.
         apply (HUs j U T HUP HTP eq_refl eq_refl (user_exp_all _));
         pose proof (HLu U (List.nth_error_In _ _ HU)); lia
     end.
-  (** [Π] at a large universe: of functions over a type of it or a
-      proposition ([alg_pi_large_complete]), or a [∀] ([alg_all_complete]). *)
-  - match goal with Hd : pi_domain_sort _ ?Srt, HAt : ?G ⊢ ?A : ?Srt |- ?G ⊢a a_pi ?r ?A _ ⟸ _ =>
-      assert (HSd : type_sort Srt) by (destruct Hd; constructor);
-      destruct r; cbn [abs_kind_sort] in *; destruct_univ;
-      [ eapply alg_pi_large_complete; eassumption
-      | eapply (alg_all_complete (S := Srt)); [ eassumption | exact HSd | exact HAt | eassumption | cbn [exp_wk] in *; eassumption ] ]
-    end.
-  (** [Π] at a small universe: over a type of it ([alg_pi_small_complete])
-      or a proposition ([alg_pi_small_prop_complete]), or a [∀] over a type
-      of it, which infers a small universe. *)
-  - match goal with Hd : pi_domain_sort _ ?Srt, HAt : ?G ⊢ ?A : ?Srt, HG : ⊢ ?G |- ?G ⊢a a_pi ?r ?A _ ⟸ _ =>
-      destruct r; cbn [abs_kind_sort] in *; destruct_univ;
-      [ destruct Hd; [ eapply alg_pi_small_complete; eassumption | eapply alg_pi_small_prop_complete; eassumption ] |];
-      cbn [exp_wk] in *;
-      destruct Hd;
-      [ match goal with Hc : G ⊢a A ⟸ Type⟨_⟩ |- _ =>
-          destruct (alg_type_check_suniv_tm_implies_alg_type_infer_univ HG Hc) as ([c xs] & Lt & HAi & _ & _);
-          eapply (alg_all_complete_of (r := relevant) (u := universe_small (c, xs)) HG); [ eassumption | exact HAi | do 2 constructor | eassumption ]
-        end
-      | eapply (alg_all_complete (S := Propₘ)); [ eassumption | constructor | eassumption .. ] ]
-    end.
+  (** [Π] at a large universe and at a small one ([alg_pi_complete]). *)
+  - match goal with HG : ⊢ ?G, HAt : ?G ⊢ ?A : abs_kind_sort ?κd ?U |- ?G ⊢a a_pi ?κd _ ?A _ ⟸ _ =>
+      eapply (alg_pi_complete _ U); [ exact HG | apply wf_is_univ_large; exact HG | exact HAt | eassumption .. ] end.
+  - match goal with HG : ⊢ ?G, HL : ?G ⊢ ?L : Level@_, HAt : ?G ⊢ ?A : abs_kind_sort ?κd Type⟨?L⟩ |- ?G ⊢a a_pi ?κd _ ?A _ ⟸ _ =>
+      eapply (alg_pi_complete _ Type⟨L⟩); [ exact HG | eapply wf_is_univ_small; exact HL | exact HAt | eassumption .. ] end.
   (** [λ] ([alg_fn_complete]) and an application ([alg_app_complete]). *)
-  - match goal with HAt : ?G ⊢ ?A : ?Srt, HS : type_sort ?Srt, HG : ⊢ ?G |- ?G ⊢a λ ?A _ ⟸ _ =>
-      eapply (alg_fn_complete HG HS HAt); eassumption end.
-  - match goal with HAt : ?G ⊢ ?A : ?Srt, HS : type_sort ?Srt, HG : ⊢ ?G, HM : ?G ⊢ ?M : a_pi _ ?A _ |- ?G ⊢a ?M $ _ ⟸ _ =>
-      eapply (alg_app_complete HG HS HAt); eassumption end.
-  (** An unannotated [let].  The definiens infers [A'], a subtype of the [A]
-      of the derivation, a type of a universe, so the body's derivation is
-      moved to [Γ ▸ A' ≔ M] by refinement.  That derivation is no
-      subderivation, but its subject has fewer unannotated [let]s, which is
-      what the outer induction is for. *)
-  - match goal with
-    | E : ?Srt = Typeω@?i, HAt : ?G ⊢ ?A : ?Srt, HM : ?G ⊢ ?M : ?A, Hc : ?G ⊢a ?M ⟸ ?A,
-      HB : ?G ▸ ?A ≔ ?M ⊢ ?B : ?C, HG : ⊢ ?G |- ?G ⊢a ℓ ≔ ?M in ?B ⟸ _ =>
-        subst Srt;
-        inversion Hc as [? A' ? ? HMi HMs]; subst;
-        pose proof (alg_type_infer_sound HMi HG) as HMA';
-        destruct (presup_exp_typ HMA') as [SA' HSA' HA'0];
-        pose proof (alg_subtyping_sound_sort _ _ _ _ _ HSA' (type_sort_universe _) HMs HA'0 HAt) as HAA;
-        assert (exists k : nat, G ⊢ A' : Typeω@k) as [k HA']
-          by (destruct HSA' as [k |]; [ exists k; exact HA'0 | exfalso; exact (subtyp_prop_relevant_absurd HAA HA'0 HAt) ]);
-        assert (HId : G ▸ A' ≔ M ⊢ˢ Id : G ▸ A ≔ M)
-          by (eapply wf_sub_id_extend_def; [ apply wf_sub_id; exact HG | exact HAt | constructor | exact HA' | constructor
-                                           | exact HAA | exact HM | exact HMA' | apply wf_exp_eq_refl; exact HM ]);
-        assert (HB' : G ▸ A' ≔ M ⊢ B : C) by exact (ctxsub_exp _ _ _ _ _ _ HId HB);
-        assert (HBa : G ▸ A' ≔ M ⊢a B ⟸ C)
-          by (destruct (IHn (exp_lets B) ltac:(lets_bound)) as (_ & IHt & _);
-              eapply IHt; [ exact HB' | reflexivity | reflexivity | apply user_exp_all | lia ]);
-        clear IHn;
-        assert (HGd : ⊢ G ▸ A' ≔ M) by (eapply wf_ctx_extend_def; [ exact HA' | constructor | exact HMA' ]);
-        destruct (presup_exp_typ HB') as [SC HSC HC];
-        destruct (alg_type_check_nbe_sub HGd (wf_sub_single_def _ _ _ _ _ _ HA' (type_sort_universe _) HMA') HSC HC HBa)
-          as (C' & W & HBi & HW & Hsub);
-        econstructor; [ eapply alg_type_infer_let_none; [ exact HMi | exact (nbe_ty_kind_of_typed (r := relevant) HA') | exact HBi | exact HW ]
-                      | exact Hsub ]
-    end.
-  (** An annotated [let]: the annotation of either sort. *)
+  - match goal with HAt : ?G ⊢ ?A : ?Srt, HSk : sort_kind ?Srt _, HG : ⊢ ?G |- ?G ⊢a λ ?A _ ⟸ _ =>
+      eapply (alg_fn_complete HG HAt HSk); eassumption end.
+  - match goal with HG : ⊢ ?G, HM : ?G ⊢ ?M : a_pi _ _ _ _ |- ?G ⊢a ?M $ _ ⟸ _ =>
+      eapply (alg_app_complete HG HM); eassumption end.
+  (** A local definition ([alg_let_complete]) and a module [let]
+      ([alg_let_mod_complete]). *)
   - match goal with
     | HAt : ?G ⊢ ?A : ?Srt, HS : type_sort ?Srt, HAc : ?G ⊢a ?A ⟸ ?Srt, HM : ?G ⊢ ?M : ?A, HMc : ?G ⊢a ?M ⟸ ?A,
-      HB : ?G ▸ ?A ≔ ?M ⊢ ?B : ?C, HBc : ?G ▸ ?A ≔ ?M ⊢a ?B ⟸ ?C, HG : ⊢ ?G |- ?G ⊢a ℓ ?A ≔ ?M in ?B ⟸ _ =>
-        destruct (alg_type_check_sort_infer HG HS HAc) as (UA & r & u & HAi & Hs);
-        assert (HGd : ⊢ G ▸ A ≔ M) by (eapply wf_ctx_extend_def; [ exact HAt | exact HS | exact HM ]);
-        destruct (presup_exp_typ HB) as [SC HSC HC];
-        destruct (alg_type_check_nbe_sub HGd (wf_sub_single_def _ _ _ _ _ _ HAt HS HM) HSC HC HBc)
-          as (C' & W & HBi & HW & Hsub);
-        econstructor; [ eapply alg_type_infer_let_some; [ exact HAi | exact Hs | exact HMc | exact HBi | exact HW ] | exact Hsub ]
+      HC : ?G ▸ ?A ≔ ?M ⊢ ?C : ?SrtC, Hlc : level_closed_sort ?Srt ?SrtC,
+      HBc : ?G ▸ ?A ≔ ?M ⊢a ?B ⟸ ?C, HG : ⊢ ?G |- ?G ⊢a ℓ ?A ≔ ?M in ?B ⟸ _ =>
+        exact (alg_let_complete _ _ _ _ _ _ _ HG HAt HS HAc HM HMc HC Hlc HBc)
     end.
-  (** A module [let], through its body. *)
   - match goal with
-    | HU : _ ⍮ _ ⍮ ?G ⊢ᵘ ?U ≈ ?U, HUa : ?G ⊢aᵘ ?U /\ _, HCt : ?G ▹ₘ ?U ⊢ ?C : ?Srt, HS : type_sort ?Srt,
+    | HU : _ ⍮ _ ⍮ ?G ⊢ᵘ ?U ≈ ?U, HUa : ?G ⊢aᵘ ?U /\ _, HCt : ?G ▹ₘ ?U ⊢ ?C : ?Srt, Hms : module_body_sort ?Srt,
       HBc : ?G ▹ₘ ?U ⊢a ?B ⟸ ?C |- ?G ⊢a ℓₘ ?U in ?B ⟸ _ =>
-        destruct HUa as [HUa _];
-        assert (HGU : ⊢ G ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU);
-        destruct (alg_type_check_nbe_sub HGU (wf_sub_single_mod _ _ _ _ HU) HS HCt HBc) as (C' & W & HBi & HW & Hsub);
-        econstructor; [ eapply alg_type_infer_let_mod; [ exact HUa | exact HBi | exact HW ] | exact Hsub ]
+        exact (alg_let_mod_complete _ _ _ _ _ HU (proj1 HUa) HCt Hms HBc)
     end.
   (** A variable, at the normal form of its type. *)
   - match goal with HA : ?G ⊢ ?A : ?S, HS : type_sort ?S |- ?G ⊢a #_ ⟸ ?A =>
@@ -3743,11 +3774,11 @@ Proof.
   - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl HXr] end.
     split; apply ext_entries_cons; try assumption; intros Hle; cbn [centry_lets alg_entry] in *.
     + pose proof (ext_eq_ctx_left _ _ _ _ _ H) as HΨ.
-      match goal with IHA : exp_lets A <= n -> _ ⊢a A ⟸ ?S, HS : type_sort ?S |- _ =>
-        destruct (alg_type_check_sort_infer HΨ HS (IHA Hle)) as (UA & r & u & Hj & Hs) end; eauto.
+      match goal with IHA : exp_lets A <= n -> _ ⊢a A ⟸ ?S, HSk : sort_kind ?S _, HA : _ ⊢ A : ?S |- _ =>
+        exact (alg_entry_ass_of_check _ _ _ _ HΨ HA HSk (IHA Hle)) end.
     + pose proof (ext_eq_ctx_right _ _ _ _ _ H) as HΨ'.
-      match goal with IHA : exp_lets A' <= n -> _ ⊢a A' ⟸ ?S, HS : type_sort ?S |- _ =>
-        destruct (alg_type_check_sort_infer HΨ' HS (IHA Hle)) as (UA & r & u & Hj & Hs) end; eauto.
+      match goal with IHA : exp_lets A' <= n -> _ ⊢a A' ⟸ ?S, HSk : sort_kind ?S _, HA : _ ⊢ A' : ?S |- _ =>
+        exact (alg_entry_ass_of_check _ _ _ _ HΨ' HA HSk (IHA Hle)) end.
   - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl HXr] end.
     split; apply ext_entries_cons; try assumption; intros Hle; cbn [centry_lets alg_entry] in *.
     + pose proof (ext_eq_ctx_left _ _ _ _ _ H) as HΨ.
@@ -3786,15 +3817,16 @@ Proof.
     | Hx : body_xp _ _ (Δ ++ Γ) Φ Φx, HXe : _ ⍮ _ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ _, HD : _ ⍮ _ ⍮ Γ ⊢ˣ Δ ≈ _,
       Hs : body_shape Φ Φ', Hsx : body_shape Φx Φx', Hnd : List.NoDup (gm_names Φ),
       Ho : forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> _ ⍮ _ ⍮ _ ⊢ᵐ H ≈ H,
-      HR : forall Δ1 T Δ2, Δ = Δ1 ++ ce_ass T :: Δ2 -> _ ⊢ T : Typeω@_ |- _ =>
+      Hps : forall k, parameter_sort _ (?ps k),
+      HR : forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> _ ⊢ T : ?ps (List.length Δ2) |- _ =>
         destruct (body_shape_refl _ _ Hs) as (Hs1 & _ & _);
         destruct (body_shape_refl _ _ Hsx) as (Hsx1 & _ & _);
         pose proof (ext_eq_ctx_left _ _ _ _ _ HXe) as HCx; rewrite <- List.app_assoc in HCx;
         assert (HΓ : ⊢ Γ) by exact (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD));
         rewrite gunit_lets_mk in *; cbn [moddef_lets] in *;
         eapply alg_unit_body;
-          [ eapply (alg_params_of_entries n); [ exact HΓ | exact (ext_entries_app_r _ _ _ _ HXl) | lia | assumption | exact HR ]
-          | assumption | | exact Hs1 | exact Hsx1 | exact Hnd ];
+          [ eapply (alg_params_of_entries n); [ exact HΓ | exact (ext_entries_app_r _ _ _ _ HXl) | lia | assumption | exact Hps | exact HR ]
+          | assumption | | exact Hs1 | exact Hsx1 | exact Hnd | eapply levels_abstractable_of_flag; eassumption ];
         eapply alg_body_of_entries;
           [ eassumption | exact HXl | lia | exact Hs1 | rewrite (body_xp_names _ _ _ _ _ Hx); exact Hnd
           | eapply (body_tagged_of_fill_left _ _ Φx' _ (body_xp_nopens _ _ _ _ _ Hx) Hsx HCx); eassumption | ];
@@ -3807,15 +3839,16 @@ Proof.
     | Hx : body_xp _ _ (Δ' ++ Γ) Φ' Φx', HXe : _ ⍮ _ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δ' ≈ _, HD : _ ⍮ _ ⍮ Γ ⊢ˣ Δ ≈ Δ',
       Hs : body_shape Φ Φ', Hsx : body_shape Φx Φx', Hnd : List.NoDup (gm_names Φ),
       Ho : forall k Ψ H, List.nth_error (body_opens Φ' Φx') k = Some (Ψ, H) -> _ ⍮ _ ⍮ _ ⊢ᵐ H ≈ H,
-      HR : forall Δ1 T Δ2, Δ' = Δ1 ++ ce_ass T :: Δ2 -> _ ⊢ T : Typeω@_ |- _ =>
+      Hps : forall k, parameter_sort _ (?ps k),
+      HR : forall Δ1 κ T Δ2, Δ' = Δ1 ++ ce_ass κ T :: Δ2 -> _ ⊢ T : ?ps (List.length Δ2) |- _ =>
         destruct (body_shape_refl _ _ Hs) as (_ & Hs2 & Hn);
         destruct (body_shape_refl _ _ Hsx) as (_ & Hsx2 & _);
         pose proof (ext_eq_ctx_left _ _ _ _ _ HXe) as HCx; rewrite <- List.app_assoc in HCx;
         assert (HΓ : ⊢ Γ) by exact (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD));
         rewrite gunit_lets_mk in *; cbn [moddef_lets] in *;
         eapply alg_unit_body;
-          [ eapply (alg_params_of_entries n); [ exact HΓ | exact (ext_entries_app_r _ _ _ _ HXr) | lia | assumption | exact HR ]
-          | assumption | | exact Hs2 | exact Hsx2 | rewrite <- Hn; exact Hnd ];
+          [ eapply (alg_params_of_entries n); [ exact HΓ | exact (ext_entries_app_r _ _ _ _ HXr) | lia | assumption | exact Hps | exact HR ]
+          | assumption | | exact Hs2 | exact Hsx2 | rewrite <- Hn; exact Hnd | eapply levels_abstractable_of_flag; eassumption ];
         eapply alg_body_of_entries;
           [ eassumption | exact HXr | lia | exact Hs2 | rewrite (body_xp_names _ _ _ _ _ Hx), <- Hn; exact Hnd
           | eapply (body_tagged_of_fill_right _ Φx _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsx HCx); eassumption | ];
@@ -3825,12 +3858,14 @@ Proof.
   - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl _] end.
     rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
     match goal with HD : _ ⍮ _ ⍮ ?G ⊢ˣ _ ≈ _ |- ?G ⊢aᵘ _ => pose proof (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD)) as HΓ end.
-    econstructor; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXl | lia | assumption | eassumption ] | assumption | ].
+    econstructor; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXl | lia | assumption | eassumption | eassumption ]
+                  | assumption | | eapply levels_abstractable_of_flag; eassumption ].
     apply HmH; [ first [ eapply wf_modexp_eq_refl_left; eassumption | eassumption ] | lia ].
   - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [_ HXr] end.
     rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
     match goal with HD : _ ⍮ _ ⍮ ?G ⊢ˣ _ ≈ _ |- ?G ⊢aᵘ _ => pose proof (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD)) as HΓ end.
-    econstructor; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXr | lia | assumption | eassumption ] | assumption | ].
+    econstructor; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXr | lia | assumption | eassumption | eassumption ]
+                  | assumption | | eapply levels_abstractable_of_flag; eassumption ].
     apply HmH; [ first [ eapply wf_modexp_eq_refl_left; eassumption | eassumption ] | lia ].
   (** Flattening: the alias of the literal, and the unit over both
       telescopes. *)
@@ -3838,17 +3873,21 @@ Proof.
     rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
     match goal with HD : _ ⍮ _ ⍮ ?G ⊢ˣ _ ≈ _ |- ?G ⊢aᵘ _ => pose proof (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD)) as HΓ end.
     match goal with HU : _ ⊢aᵘ _ /\ _ |- _ =>
-      apply alg_unit_alias; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXl | lia | assumption | eassumption ] | assumption | apply alg_modexp_lit, (proj1 HU) ] end.
+      apply alg_unit_alias; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXl | lia | assumption | eassumption | eassumption ]
+                            | assumption | apply alg_modexp_lit, (proj1 HU) | eapply levels_abstractable_of_flag; eassumption ] end.
   - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl _] end.
     rewrite gunit_lets_mk, ctx_lets_app in *.
     match goal with HD : _ ⍮ _ ⍮ ?G ⊢ˣ _ ≈ _ |- ?G ⊢aᵘ _ => pose proof (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD)) as HΓ end.
     match goal with HU : _ ⊢aᵘ _ /\ _ |- _ =>
-      eapply alg_unit_flatten; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXl | lia | assumption | eassumption ] | assumption | exact (proj1 HU) ] end.
-  - destruct H0; assumption.
-  - destruct H0; assumption.
-  - destruct H0 as [H01 _]; assumption.
-  - destruct H2 as [_ H22]; assumption.
-Admitted. (* PENDING design: [wf_star] at a proposition other than [⊤] *)
+      eapply alg_unit_flatten; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXl | lia | assumption | eassumption | eassumption ]
+                               | assumption | exact (proj1 HU) | eapply levels_abstractable_of_flag; eassumption ] end.
+  (** The expansion of a body: its own side, and the expanded one. *)
+  - first [ repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ] | admit ].
+  - first [ repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ] | admit ].
+  (** Symmetry and transitivity: the sides the induction hypotheses give. *)
+  - repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ].
+  - repeat match goal with H0 : _ /\ _ |- _ => destruct H0 end; solve [ auto ].
+Admitted.
 
 Lemma alg_type_complete_lets : forall n,
   (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> True) /\
