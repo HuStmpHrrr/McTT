@@ -1674,6 +1674,26 @@ Proof.
   eapply nbe_evaluated_intro; [ eassumption | apply eval_exp_level | eassumption | eapply read_nf_level_sort; eassumption | constructor ].
 Qed.
 
+(** The normal form of a type that is a small universe holds no proof: the
+    universe's level is related to itself ([per_lvl]), whose canonical
+    forms hold none ([per_lvl_canon_proof_free]). *)
+Lemma nbe_ty_univ_proof_free : forall {Γ A i c xs},
+    Γ ⊢ A : Typeω@i -> nbe_ty_f Γ A (univⁿ c xs) -> nf_proof_free (univⁿ c xs).
+Proof.
+  intros * HA0 Hn.
+  pose proof (completeness_fundamental_exp_eq _ _ _ _ (wf_exp_eq_refl HA0)) as H.
+  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq (wf_exp_eq_refl HA0)) H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  destruct Hn as [ρ0 a0 Hρ0 Ha0 HW].
+  assert (ρ0 = ρ) as -> by (eapply functional_initial_env; eassumption).
+  functional_eval_rewrite_clear.
+  inversion HW; subst.
+  invert_per_univ_elem HR.
+  match goal with Hr : Rnf ⇓ Levelᵈ _ in _ ↘ nf_lvl_of _ |- _ => apply domain_level_canon_of_read in Hr as [_ [L' [Heq HL']]] end.
+  apply nf_lvl_of_inj in Heq as <-.
+  pose proof (per_lvl_canon_proof_free _ _ _ _ ltac:(eassumption) HL') as Hpf.
+  destruct L; exact Hpf.
+Qed.
+
 (** The level of a small universe in normal form is a canonical level of a
     sort its level term has: its constant is of a tier at most that sort, and
     each atom is a level of its own sort ([soundness_lvl_well_scoped]). *)
