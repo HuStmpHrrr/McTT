@@ -1031,7 +1031,7 @@ Section SelfElim.
       List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
       exists a a', ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns ++ x :: nil) ts) ↘ a /\
         ⟦ eb_motive bb ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
-        DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns x ns' x'.
+        DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns x ns' x' /\ not_level_sort a /\ domain_kind a <> ak_level.
   Proof.
     intros * HMj _ Hba Hbb Hm Ht Ht'; rewrite Hba in Hbb; injection Hbb as <-.
     exact (EB motive_mid C1 HC11 Bks iA HMall j Mj ba (eb_motive ba) HMj Hba (HAv _ _ _ HMj Hba) u u' ns ns' x x' ts ts' Hm Ht Ht').
@@ -2267,7 +2267,9 @@ Section SelfElim.
       destruct (rel_exp_under_ctx_simple_at_evaluated HRB HBv _ _ HEτg (rel_typ_evaluated_of_kind (Hbr _ _ HEτg) evaluated_kind_relevant))
         as (n1 & r' & En1 & Er' & Hnr).
       assert (n1 = n0) as -> by (eapply functional_eval_exp; eassumption).
-      destruct (presup_rel_exp_under_ctx HBv) as [iT HT].
+      destruct (presup_rel_exp_under_ctx HBv
+                  (branch_type_not_level_sort VP p D HP HPD Γ HΓ Us HUl HUs HUss Bks iA HMall HAv v Mv c gs HMv Hcon HB HrvMv
+                     bv Hbv)) as [iT HT].
       assert (Eq1 : per_head (elim_branch_type p D v Mv c gs (eb_motive bv) Us) (elim_branch_type p D v Mv c gs (eb_motive bv) Us) Eτ Eτ
                     <~> per_head (elim_branch_type p D v Mv c gs (eb_motive bv) Us) (elim_branch_type p D v Mv c gs (eb_motive bv) Us) Eτ Eg).
       { apply (per_head_of_type_resp HRB HT).
@@ -2307,7 +2309,7 @@ Section SelfElim.
         assert (n1 = m) as -> by (eapply functional_eval_exp; eassumption).
         assert (ERW : RΔ <~> RW) by (eapply per_ctx_env_right_irrel; eassumption).
         apply ERW in HF.
-        destruct (presup_rel_exp_under_ctx HBw) as [iW HTw].
+        destruct (presup_rel_exp_under_ctx HBw (rel_exp_of_typ_not_level_sort HTw0)) as [iW HTw].
         assert (EW : per_head (elim_branch_type p D v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_branch_sub p D D' Us Bks Mv gs' gs]
                        (elim_branch_type p D v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_branch_sub p D D' Us Bks Mv gs' gs] F Eb
                      <~> per_head (elim_branch_type p D v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_branch_sub p D D' Us Bks Mv gs' gs]
@@ -2415,7 +2417,7 @@ Section CrossElim.
                 List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
                 exists a a', ⟦ eb_motive bb ⟧ env_extend_typed ρb (List.combine (ns ++ x :: nil) ts) ↘ a /\
                   ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
-                  DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x').
+                  DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x' /\ not_level_sort a /\ domain_kind a <> ak_level).
   (** The branches, at related constructors and related recursive results,
       their variables stored at any types they read back at (as
       [IndElim]'s [Hbr]). *)
@@ -2567,7 +2569,8 @@ Section CrossElim.
         ⟦elim ⇑ (d_ind hd k as1) e at i' of qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ⇑ a (d_elim ρb VBb qc ub i' as1 e) /\
         ⟦elim ⇑ (d_ind hd k as2) e' at j of p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ⇑ a' (d_elim C1 Bks p u0 j as2 e') /\
         DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j (List.skipn (im_unu D Mj) as1) (⇑ (d_ind hd k as1) e)
-                                            (List.skipn (im_unu D Mj) as2) (⇑ (d_ind hd k as2) e').
+                                            (List.skipn (im_unu D Mj) as2) (⇑ (d_ind hd k as2) e') /\
+        not_level_sort a /\ domain_kind a <> ak_level.
   Proof.
     intros * Hvi HM Hrv Hcur.
     pose proof Hcur as Hcur0.
@@ -2625,10 +2628,10 @@ Section CrossElim.
          exfalso; eapply not_rview_record; eassumption ].
     rewrite HM in HM0; injection HM0 as <-.
     pose proof (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs1 Hs2) as Hm.
-    destruct (cross_neut_values _ _ _ _ _ _ _ _ _ _ _ _ _ Hvi HM Hrv Hcur) as (Mi' & a & a' & HMi' & HrvI & Ea & Ea' & HR).
+    destruct (cross_neut_values _ _ _ _ _ _ _ _ _ _ _ _ _ Hvi HM Hrv Hcur) as (Mi' & a & a' & HMi' & HrvI & Ea & Ea' & HR & Han & Hak).
     apply (cross_member_elim _ _ _ _ _ _ _ _ Mi' Mj _ _ HMi' HrvI HM Hrv Ea Ea').
     apply (self_motive_move _ _ _ _ _ _ _ _ _ _ HM Hrv Hm (tsym _ _ HM _ _ Hs1) (tsym _ _ HM _ _ Hs2)).
-    exact (per_bot_then_per_elem HR Hb).
+    exact (per_bot_then_per_elem HR (per_bot_neutral_at _ _ _ Han Hak Hb)).
   Qed.
 
   Hypothesis (Hbot_x : forall i' j Mj hd k as1 as2 e e' w w' ns ns', List.nth_error vm i' = Some j ->
@@ -2957,7 +2960,7 @@ Section WrappedBlocks.
       List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
       exists a a', ⟦ eb_motive bb ⟧ env_extend_typed C1 (List.combine (ns ++ x :: nil) ts) ↘ a /\
         ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
-        DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x'.
+        DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x' /\ not_level_sort a /\ domain_kind a <> ak_level.
   Proof.
     intros * HMi' Hrv' Hv Hb Hba Hm Ht Ht'; destruct (wrapped_block _ _ HMi' Hrv') as [v0 Mv bv Hv0 HMv _ Hbv Hnn _ Hvb].
     rewrite Hv in Hv0; injection Hv0 as <-; rewrite Hbv in Hba; injection Hba as <-.
@@ -3054,7 +3057,7 @@ Section WrappedBlocks.
         List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ x' :: nil) ts' ->
         exists a a', ⟦ eb_motive bb ⟧ env_extend_typed ρ0 (List.combine (ns ++ x :: nil) ts) ↘ a /\
           ⟦ eb_motive ba ⟧ env_extend_typed C1 (List.combine (ns' ++ x' :: nil) ts') ↘ a' /\
-          DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x'.
+          DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x' /\ not_level_sort a /\ domain_kind a <> ak_level.
     Proof.
       intros * HMi' Hrv' Hv Hb Hba Hm Ht Ht'.
       destruct (nth_error_blocks_sub_inv _ _ _ _ Hb) as (b0 & Hb0 & ->).
