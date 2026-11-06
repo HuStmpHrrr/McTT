@@ -684,27 +684,84 @@ Proof.
     exact (body_tags_gens _ _ _ _ Hg _ _ eq_refl HH Φx nil L eq_refl HCg HL).
 Qed.
 
-(** A body: its parameters, relevant at a level, its expansion, the
+(** The parameters [Δ] over [Γ], each, in the context of those outside
+    it, a type of the universe at [l] or a type of levels, as its kind
+    says: what the algorithmic parameters are ([alg_params_ass],
+    [alg_params_level]). *)
+Definition params_kinded (Γ Δ : ctx) (l : nat) : Prop :=
+  forall Δ1 κ T Δ2, Δ = (Δ1 ++ ce_ass κ T :: Δ2)%list ->
+    (κ = ak_relevant /\ (Δ2 ++ Γ)%list ⊢ T : Typeω@l) \/ (κ = ak_level /\ (Δ2 ++ Γ)%list ⊢ T : LevelSort).
+
+Lemma params_kinded_nil : forall Γ l, params_kinded Γ nil l.
+Proof. intros * Δ1 κ T Δ2 E; destruct Δ1; discriminate. Qed.
+
+(** One more parameter, at a level the others are lifted to. *)
+Lemma params_kinded_snoc : forall Γ Δ κ T l j,
+    params_kinded Γ Δ l ->
+    (κ = ak_relevant /\ (Δ ++ Γ)%list ⊢ T : Typeω@j) \/ (κ = ak_level /\ (Δ ++ Γ)%list ⊢ T : LevelSort) ->
+    params_kinded Γ (ce_ass κ T :: Δ) (max j l).
+Proof.
+  intros * Hl HT Δ1 κ' T' Δ2 E.
+  destruct Δ1 as [| e Δ1]; cbn in E.
+  - injection E as -> -> ->.
+    destruct HT as [[-> HT] | [-> HT]]; [ left; split; [ reflexivity | eapply lift_exp_ge; [| exact HT ]; lia ] | right; split; [ reflexivity | exact HT ] ].
+  - injection E as <- E.
+    destruct (Hl _ _ _ _ E) as [[-> HT'] | [-> HT']]; [ left; split; [ reflexivity | eapply lift_exp_ge; [| exact HT' ]; lia ] | right; split; [ reflexivity | exact HT' ] ].
+Qed.
+
+(** The sort of the parameter at position [k] from the outermost: of the
+    universe at [l], or [LevelSort] for a parameter of levels. *)
+Definition param_sort_at (Δ : ctx) (l : nat) (k : nat) : exp :=
+  match List.nth_error (List.rev Δ) k with Some (ce_ass ak_level _) => LevelSort | _ => Typeω@l end.
+
+Lemma param_sort_at_parameter_sort : forall Δ l k, parameter_sort l (param_sort_at Δ l k).
+Proof.
+  intros; unfold param_sort_at.
+  repeat match goal with |- context [ match ?x with _ => _ end ] => destruct x end; constructor.
+Qed.
+
+Lemma params_kinded_sorts : forall Γ Δ l, params_kinded Γ Δ l ->
+    forall Δ1 κ T Δ2, Δ = (Δ1 ++ ce_ass κ T :: Δ2)%list -> (Δ2 ++ Γ)%list ⊢ T : param_sort_at Δ l (List.length Δ2).
+Proof.
+  intros * Hl * E.
+  assert (Hn : List.nth_error (List.rev Δ) (List.length Δ2) = Some (ce_ass κ T)).
+  { rewrite E, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; cbn [List.app].
+    rewrite List.nth_error_app2 by (rewrite List.length_rev; lia).
+    rewrite List.length_rev, Nat.sub_diag; reflexivity. }
+  unfold param_sort_at; rewrite Hn.
+  destruct (Hl _ _ _ _ E) as [[-> HT] | [-> HT]]; exact HT.
+Qed.
+
+(** A body: its parameters, of their kinds at a level, its expansion, the
     targets of its opens, and its definitions at the sorts of their tags,
     filled in ([wf_gm_fill]), so it is a unit ([unit_full_body]). *)
 Lemma alg_unit_body_sound : forall Γ Δ Φ Φx,
-    (⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ /\ exists l, params_relevant gc_deps gc_stack Γ Δ l) ->
+    (⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ /\ exists l, params_kinded Γ Δ l) ->
     all_assumptions Δ -> alg_body_sound (Δ ++ Γ) Φ Φx ->
     body_shape Φ Φ -> body_shape Φx Φx -> List.NoDup (gm_names Φ) ->
+    levels_abstractable gc_deps gc_stack Γ Δ (me_lit (gu_open nil Φ)) ->
     ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ Φ.
 Proof.
-  intros * HΔ Ht HB Hs Hsx Hn HΓ.
+  intros * HΔ Ht HB Hs Hsx Hn Habs HΓ.
   destruct (HΔ HΓ) as [HΔe [l Hl]].
+  (** The flag, read off the abstractability: all parameters of levels,
+      or what the body denotes has no member of a type of levels *)
+  assert (exists lv Rt, levels_flag gc_deps gc_stack Γ Δ (me_lit (gu_open nil Φ)) lv Rt) as (lv & Rt & Hflag).
+  { destruct Habs as [Hsorted | (R & HR & Hnl)].
+    - exists true, (mdesc_term ak_relevant a_prop None); constructor; [ intros _; exact Hsorted | discriminate | discriminate ].
+    - exists false, R; constructor; [ discriminate | intros _; exact HR | intros _; exact Hnl ]. }
   destruct (HB _ _ eq_refl HΓ HΔe) as [Hbx HX Ho [L HL]].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   (** The sort of each name: its entry's tag, at [L]. *)
   set (es := fun y => abs_kind_sort match gm_prefix_upto Φx y with
                                       | Some (gm_ext _ _ E) => entry_kind E
-                                      | _ => relevant
+                                      | _ => ak_relevant
                                       end Typeω@L).
-  apply unit_eq_of_full; apply (unit_full_body _ _ _ _ _ _ Hbx HC Ho Ht Hs Hsx Hn l Hl es).
+  apply unit_eq_of_full;
+    eapply (unit_full_body _ _ _ _ _ _ Hbx HC Ho Ht Hs Hsx Hn l (param_sort_at Δ l) (param_sort_at_parameter_sort Δ l)
+              (params_kinded_sorts _ _ _ Hl) es); [| | | exact Hflag ].
   - intros y; apply type_sort_kind_universe.
-  - intros * Hp HE; exists L; unfold es; cbv beta; rewrite Hp; reflexivity.
+  - intros * Hp HE; unfold es; cbv beta; rewrite Hp; apply sort_kind_abs_kind_sort.
   - intros * Hp HE Hf; unfold es; cbv beta; rewrite Hp.
     pose proof (HL _ _ _ _ _ Hp HE) as HA.
     pose proof (wf_gm_fill _ _ _ _ _ (presup_exp_ctx HA) Hf) as Hσ.
@@ -857,7 +914,7 @@ Lemma alg_type_sound :
   (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall Srt, type_sort Srt -> Γ ⊢ A : Srt -> Γ ⊢ M : A) /\
     (forall {Γ A M}, Γ ⊢a M ⟹ A -> ⊢ Γ -> Γ ⊢ M : A) /\
     (forall {Γ Ψ}, Γ ⊢aˣ Ψ -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ) /\
-    (forall {Γ Δ}, Γ ⊢aᵖ Δ -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ /\ exists l, params_relevant gc_deps gc_stack Γ Δ l) /\
+    (forall {Γ Δ}, Γ ⊢aᵖ Δ -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ /\ exists l, params_kinded Γ Δ l) /\
     (forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U) /\
     (forall {Γ Φ Φx}, Γ ⊢aᵇ Φ ⇝ Φx -> alg_body_sound Γ Φ Φx) /\
     (forall {Γ H}, Γ ⊢aᵐ H -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H).
@@ -1228,7 +1285,7 @@ Proof. intros; eapply (proj1 (proj2 (proj2 alg_type_sound))); eassumption. Qed.
 (** Checked parameters are an extension, each a type of a universe, all
     at one level ((R) of the unit rules). *)
 Lemma alg_params_sound : forall {Γ Δ}, Γ ⊢aᵖ Δ -> ⊢ Γ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ /\ exists l, params_relevant gc_deps gc_stack Γ Δ l.
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ /\ exists l, params_kinded Γ Δ l.
 Proof. intros; eapply (proj1 (proj2 (proj2 (proj2 alg_type_sound)))); eassumption. Qed.
 
 Lemma alg_unit_sound : forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U.
