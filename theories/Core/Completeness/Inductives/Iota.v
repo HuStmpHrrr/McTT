@@ -917,8 +917,7 @@ Section LeafVals.
                       EB mctx_idx_readable HMall j Mj u u' ns ns' x x' HMj Hm) as Hidx.
         pose proof (per_ind_elim_all p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had i _ C (blocks_sub Bks σL) Bks wL u0 Hok
                       Rel HbA1 HBks' HnmA1 HnmA HnaA1 HnaA HarA1 HarA (decl_typed_nodup _ _ _ Hdt)
-                      (EP motive_link Bks HnmA HAA0 _ RSL σL _ C HRSL HwL HEL Hev HCC)
-                      (EP motive_link_not_level_sort Bks HnmA HAA0 _ RSL σL _ C HRSL HwL HEL Hev HCC) Hidx
+                      (EP motive_link Bks HnmA HAA0 _ RSL σL _ C HRSL HwL HEL Hev HCC) Hidx
                       (EB rneut_rel wL u0 HwL0 u0_env' LwL u0_len')
                       (EP branch_out HBc Bks HB0s _ RSL σL _ C HRSL HwL HEL Hev HCC)) as [PE _].
         (** The term's value against the related argument [v']. *)
@@ -2295,19 +2294,16 @@ Section Iota.
       pose proof (fun j Mj ba bb u u' ns0 ns0' x x' ts ts' HMj (_ : im_is_rview Mj = false) Hba Hbb Hm Ht Ht' =>
                     EB motive_mid C HCC Bks i HMall j Mj ba (eb_motive bb) HMj Hba (HAA _ _ _ _ HMj Hba Hbb) u u' ns0 ns0' x x'
                       ts ts' Hm Ht Ht') as Hmot.
-      pose proof (fun j Mj ba u u' ns0 ns0' x x' ts a HMj (_ : im_is_rview Mj = false) Hba Hm Ht Ea =>
-                    EB motive_mid_not_level_sort C HCC Bks i HMall j Mj ba (eb_motive ba) HMj Hba (HAA _ _ _ _ HMj Hba Hba)
-                      u u' ns0 ns0' x x' ts a Hm Ht Ea) as Hmotn.
       pose proof (fun j Mj u u' ns0 ns0' x x' HMj (_ : im_is_rview Mj = false) Hm =>
                     EB mctx_idx_readable HMall j Mj u u' ns0 ns0' x x' HMj Hm) as Hidx.
       pose proof (EB rneut_rel u0 u0 u0_env' u0_env' u0_len' u0_len') as Hrneut.
       pose proof (EP branch_mid HBc Bks HBB) as Hbrm.
       assert (Hv2 : List.map fst vts2 = ns ++ avs ++ ihe)
         by exact (branch_entries_values p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had i C C Bks Bks u0 u0 Hok Rel
-                    HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hmotn Hidx Hrneut Hbrm
+                    HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hidx Hrneut Hbrm
                     Mm u0 (blocks_motives Bks) C gs ns avs ihe).
       destruct (branch_entries_readable p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had i C C Bks Bks u0 u0 Hok Rel
-                  HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hmotn Hidx Hrneut Hbrm
+                  HBks' HBks' HnmA HnmA HnaA HnaA HarA HarA (decl_typed_nodup _ _ _ Hdt) Hmot Hidx Hrneut Hbrm
                   m Mm c gs u0 u0 ns ns avs avs ihc ihe Had Had HMm Hcon iota_sem_Hns Har Hia Hir) as [_ Hrd2].
       assert (Hr2 : List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) vts2).
       { rewrite <- Hv2 in Hrd2; pose proof (Forall_combine_of_Forall2 _ _ _ Hrd2) as H0.

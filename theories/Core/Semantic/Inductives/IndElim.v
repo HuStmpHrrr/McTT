@@ -1206,16 +1206,12 @@ Section Fixed_GCtx.
                     List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ m' :: nil) ts' ->
                     exists a a', ⟦ eb_motive ba ⟧ env_extend_typed ρa (List.combine (ns ++ m :: nil) ts) ↘ a /\
                       ⟦ eb_motive bb ⟧ env_extend_typed ρb (List.combine (ns' ++ m' :: nil) ts') ↘ a' /\
-                      DF a ≈ a' ∈ per_univ_elem i ↘ Rel j ns m ns' m').
-      (** The left motives are types of a universe or propositions
-          ([motive_kind]): not [LevelSort], not types of levels, so a stuck
-          eliminator is a neutral of its motive. *)
-      Hypothesis (Hmotn : forall j Mj ba u u' ns ns' m m' ts a, ind_member D j = Some Mj -> im_is_rview Mj = false ->
-                    List.nth_error Bksa j = Some ba ->
-                    grp_rel p D ups nr ar dr j u u' ns ns' m m' ->
-                    List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts ->
-                    ⟦ eb_motive ba ⟧ env_extend_typed ρa (List.combine (ns ++ m :: nil) ts) ↘ a ->
-                    not_level_sort a /\ domain_kind a <> ak_level).
+                      DF a ≈ a' ∈ per_univ_elem i ↘ Rel j ns m ns' m' /\
+                      (** The left motive is a type of a universe or a
+                          proposition ([motive_kind]): not [LevelSort], not
+                          a type of levels, so a stuck eliminator is a
+                          neutral of it *)
+                      not_level_sort a /\ domain_kind a <> ak_level).
       (** Related indices and elements read back at some types, on each
           side (the model gives them their types in the motive's context). *)
       Hypothesis (Hidx : forall j Mj u u' ns ns' m m', ind_member D j = Some Mj -> im_is_rview Mj = false ->
@@ -1338,8 +1334,8 @@ Section Fixed_GCtx.
         (** Each side's motive at types its indices read back at. *)
         destruct (Hidx _ _ _ _ _ _ _ _ HM Hrv Hm1) as [(ts1 & T1) (ts1' & T1')].
         destruct (Hidx _ _ _ _ _ _ _ _ HM Hrv Hm2) as [_ (ts2' & T2')].
-        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm1 T1 T1') as (a & a1 & Ea & Ea1 & HR1).
-        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm2 T1 T2') as (b & a2 & Eb & Ea2 & HR2).
+        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm1 T1 T1') as (a & a1 & Ea & Ea1 & HR1 & _).
+        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm2 T1 T2') as (b & a2 & Eb & Ea2 & HR2 & _).
         pose proof (functional_eval_exp _ _ _ _ Ea Eb) as <-.
         eapply per_univ_elem_right_irrel; eassumption.
       Qed.
@@ -1352,8 +1348,8 @@ Section Fixed_GCtx.
         destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb].
         destruct (Hidx _ _ _ _ _ _ _ _ HM Hrv Hm1) as [(ts1 & T1) (ts1' & T1')].
         destruct (Hidx _ _ _ _ _ _ _ _ HM Hrv Hm2) as [(ts2 & T2) _].
-        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm1 T1 T1') as (a1 & a & Ea1 & Ea & HR1).
-        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm2 T2 T1') as (a2 & b & Ea2 & Eb & HR2).
+        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm1 T1 T1') as (a1 & a & Ea1 & Ea & HR1 & _).
+        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hm2 T2 T1') as (a2 & b & Ea2 & Eb & HR2 & _).
         pose proof (functional_eval_exp _ _ _ _ Ea Eb) as <-.
         eapply per_univ_elem_left_irrel; eassumption.
       Qed.
@@ -1475,8 +1471,7 @@ Section Fixed_GCtx.
             | constructor; [ exact (Rb _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Aa Ab Hcb Hm2
                                        (nparams_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI j Mj HM _ _ Hs2))
                            | constructor ] ]. }
-        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb' Hm1 Hra Hrb) as (a & a' & Ea & Ea' & HR).
-        destruct (Hmotn _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hm1 Hra Ea) as [Hna Hka].
+        destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb' Hm1 Hra Hrb) as (a & a' & Ea & Ea' & HR & Hna & Hka).
         rewrite motive_entries_combine in Ea, Ea'.
         exists a, a'; split; [| split ]; [| | exact (conj HR (conj Hna Hka)) ].
         - eapply eval_elim_neut; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | | exact Ha
@@ -1766,8 +1761,7 @@ Section Fixed_GCtx.
                           HM Hrv Href Eb' Hkb) as Hrb.
             inversion Hbs as [| ? ? ? Hb0 | ? ? ? Hbot Hb0]; subst; inversion Hb0; subst;
             destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb];
-            destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hi Hra Hrb) as (a & a' & Ea & Ea' & HR);
-            destruct (Hmotn _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hi Hra Ea) as [Hnmot Hkmot];
+            destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hi Hra Hrb) as (a & a' & Ea & Ea' & HR & Hnmot & Hkmot);
             rewrite combine_tele_entries_snoc in Ea, Ea';
             destruct (neut_elim_eval _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Hi) as (r & r' & Er & Er');
             (refine (mk_ih_pair _ _ _ _ _ _ _ (a :: nil) (a' :: nil) (r :: nil) (r' :: nil) _ _ _ _ _ _ _ _ _);
@@ -2080,7 +2074,7 @@ Section Fixed_GCtx.
             by (rewrite List.map_app; apply List.Forall2_app;
                 [ exact (nparams_entries_readable_at_admissible_base _ _ _ _ _ _ _ _ _ _ Hass Ab HM Hkb) | constructor; [ exact Rvb | constructor ] ]).
           destruct (HbA _ _ HM Hrv) as [ba Ha]; destruct (HbB _ _ HM Hrv) as [bb Hb].
-          destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb HiX Hra Hrb) as (a & a' & Ea & Ea' & HRa).
+          destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb HiX Hra Hrb) as (a & a' & Ea & Ea' & HRa & _).
           rewrite combine_tele_entries_snoc in Ea, Ea'.
           pose proof (proj1 (motive_rel_move _ _ _ _ _ _ _ _ _ _ HM Hrv Hi HbX HbY _ _) HR) as HRX.
           exists (a :: nil), (a' :: nil); split; [| split; [| split ] ].
@@ -2511,7 +2505,7 @@ Section Fixed_GCtx.
             by (unfold motive_entries; rewrite List.map_app; apply List.Forall2_app;
                 [ exact (nparams_entries_readable_at_admissible_base _ _ _ _ _ _ _ _ _ _ Hass Ab HM Hn)
                 | constructor; [ exact (Rb _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Aa Ab Hrb Rel0 Hnnb) | constructor ] ]).
-          destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Rel0 Ma1 Ma2) as (t1 & t2 & T1 & T2 & HR).
+          destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Rel0 Ma1 Ma2) as (t1 & t2 & T1 & T2 & HR & _).
           unfold motive_entries in T1, T2; rewrite combine_tele_entries_snoc in T1, T2.
           rewrite <- !List.app_assoc in Hrr.
           destruct (per_elem_then_per_top HR Hrr (s + (im_nn Mi + List.length gs' + cargs_nrec Dh gs'))) as [B' B'' RB1 RB2 HE].
@@ -2617,7 +2611,7 @@ Section Fixed_GCtx.
             by (unfold motive_entries; rewrite List.map_app; apply List.Forall2_app;
                 [ exact (nparams_entries_readable_at_admissible_base _ _ _ _ _ _ _ _ _ _ Hass Ab HM Hnn0)
                 | constructor; [ exact (Rdb _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Aa Ab Rb Hne Hnnb) | constructor ] ]).
-          destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hne Ma1 Ma2) as (a1 & a2 & Ea1 & Ea2 & HR).
+          destruct (Hmot _ _ _ _ _ _ _ _ _ _ _ _ HM Hrv Ha Hb Hne Ma1 Ma2) as (a1 & a2 & Ea1 & Ea2 & HR & _).
           unfold motive_entries in Ea1, Ea2; rewrite combine_tele_entries_snoc in Ea1, Ea2.
           destruct (per_univ_then_per_top_typ HR (S (s + im_nn Mi))) as [A' A'' RA1 RA2 HEA].
           assert (Hnd' : List.NoDup (List.map (fun b0 => fst (fst b0)) (eb_brs ba)))

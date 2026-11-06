@@ -4358,7 +4358,7 @@ Section GroupElim.
 
       (** The motive of the member [j] at [C1] and a motive equal to it at
           [C2], at related elements: related at the family. *)
-      Lemma motive_mid : forall j Mj b A0, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+      Lemma motive_mid_rel : forall j Mj b A0, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
           elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ A0 : Typeω@iA ->
           forall u u' ns ns' m m' ts ts', G j u u' ns ns' m m' ->
           List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts ->
@@ -4393,6 +4393,25 @@ Section GroupElim.
         exists a, a'; split; [ exact Ea | split; [ exact Ea' |] ].
         unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb), (mctx_tele_at _ _ HMj).
         eapply univ_connect; [ exact Hab | exact (per_univ_elem_at_head Eb1 Ec1 Hbc) | symmetry; exact Hcd ].
+      Qed.
+
+      (** The same, the left motive not [LevelSort], not a type of levels
+          ([motive_mid_not_level_sort]): the hypothesis on the motives of
+          [IndElim]. *)
+      Lemma motive_mid : forall j Mj b A0, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+          elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ A0 : Typeω@iA ->
+          forall u u' ns ns' m m' ts ts', G j u u' ns ns' m m' ->
+          List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts ->
+          List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ m' :: nil) ts' ->
+          exists a a', ⟦ eb_motive b ⟧ env_extend_typed C1 (List.combine (ns ++ m :: nil) ts) ↘ a /\
+            ⟦ A0 ⟧ env_extend_typed C2 (List.combine (ns' ++ m' :: nil) ts') ↘ a' /\
+            DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns m ns' m' /\
+            not_level_sort a /\ domain_kind a <> ak_level.
+      Proof.
+        intros * HMj Hb HA * Hm Ht Ht'.
+        destruct (motive_mid_rel j Mj b A0 HMj Hb HA _ _ _ _ _ _ _ _ Hm Ht Ht') as (a & a' & Ea & Ea' & HR).
+        exists a, a'; split; [ exact Ea | split; [ exact Ea' | split; [ exact HR |] ] ].
+        exact (motive_mid_not_level_sort j Mj b A0 HMj Hb HA _ _ _ _ _ _ _ _ Hm Ht Ea).
       Qed.
 
       (** The motive moved by a semantic substitution [σ0] from [Γ'] at
@@ -4438,7 +4457,7 @@ Section GroupElim.
       (** The motive moved by a semantic substitution [σ0] from [Γ'] at
           [ρ0], against a motive equal to it at the value [ρ0σ0] of [σ0],
           of the class of [C1]. *)
-      Lemma motive_out : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+      Lemma motive_out_rel : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
           forall Γ' RΓ' σ0 ρ0 ρ0σ0 A0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ ->
           RΓ' ρ0 ρ0 -> ⟦ σ0 : Γ ⟧s ρ0 ↘ ρ0σ0 -> RΓ ρ0σ0 C1 ->
           elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ A0 : Typeω@iA ->
@@ -4485,6 +4504,27 @@ Section GroupElim.
         symmetry; exact Hcd.
       Qed.
 
+      (** The same, the left motive not [LevelSort], not a type of levels
+          ([motive_out_not_level_sort]). *)
+      Lemma motive_out : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+          forall Γ' RΓ' σ0 ρ0 ρ0σ0 A0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ ->
+          RΓ' ρ0 ρ0 -> ⟦ σ0 : Γ ⟧s ρ0 ↘ ρ0σ0 -> RΓ ρ0σ0 C1 ->
+          elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ A0 : Typeω@iA ->
+          forall u u' ns ns' m m' ts ts', G j u u' ns ns' m m' ->
+          List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts ->
+          List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ m' :: nil) ts' ->
+            exists a a', ⟦ A0[sb_qn (S (im_nn Mj)) σ0] ⟧ env_extend_typed ρ0 (List.combine (ns ++ m :: nil) ts) ↘ a /\
+              ⟦ A0 ⟧ env_extend_typed ρ0σ0 (List.combine (ns' ++ m' :: nil) ts') ↘ a' /\
+              DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns m ns' m' /\
+              not_level_sort a /\ domain_kind a <> ak_level.
+      Proof.
+        intros * HMj Hb * HRΓ' Hσ0 Hρ0 Hev0 HρC HA0 * Hm Ht Ht'.
+        destruct (motive_out_rel j Mj b HMj Hb Γ' RΓ' σ0 ρ0 ρ0σ0 A0 HRΓ' Hσ0 Hρ0 Hev0 HρC HA0 _ _ _ _ _ _ _ _ Hm Ht Ht')
+          as (a & a' & Ea & Ea' & HR).
+        exists a, a'; split; [ exact Ea | split; [ exact Ea' | split; [ exact HR |] ] ].
+        exact (motive_out_not_level_sort j Mj b HMj Hb Γ' RΓ' σ0 ρ0 ρ0σ0 A0 HRΓ' Hσ0 Hρ0 Hev0 HρC HA0 _ _ _ _ _ _ _ _ Hm Ht Ea).
+      Qed.
+
       (** The family along related elements. *)
       Lemma rel_resp : forall j Mj, ind_member D j = Some Mj -> im_is_rview Mj = false ->
           forall u1 u2 u3 u4 u5 u6 ns1 m1 ns2 m2 ns3 m3 ns4 m4,
@@ -4508,7 +4548,7 @@ Section GroupElim.
         intros * HMj Hrv * Hm.
         destruct (HBks j Mj HMj Hrv) as [b Hb].
         destruct (mctx_idx_readable j Mj _ _ _ _ _ _ HMj Hm) as [(ts & Ht) (ts' & Ht')].
-        destruct (motive_mid j Mj b (eb_motive b) HMj Hb (HAv _ _ _ HMj Hb) _ _ _ _ _ _ _ _ Hm Ht Ht') as (a & a' & _ & _ & H).
+        destruct (motive_mid j Mj b (eb_motive b) HMj Hb (HAv _ _ _ HMj Hb) _ _ _ _ _ _ _ _ Hm Ht Ht') as (a & a' & _ & _ & H & _).
         eapply per_elem_PER; exact H.
       Qed.
 
@@ -7039,7 +7079,8 @@ Section GroupElim.
           List.Forall2 (fun v t => entry_readable (de_term v t)) (ns' ++ m' :: nil) ts' ->
           exists a a', ⟦ eb_motive ba ⟧ env_extend_typed ρ0 (List.combine (ns ++ m :: nil) ts) ↘ a /\
             ⟦ eb_motive bb ⟧ env_extend_typed ρ0σ0 (List.combine (ns' ++ m' :: nil) ts') ↘ a' /\
-            DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns m ns' m'.
+            DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns m ns' m' /\
+            not_level_sort a /\ domain_kind a <> ak_level.
       Proof.
         intros Bks0 Hnm0 HA0s * HRΓ' Hσ0 Hρ0 Hev0 HρC * HMj Hrv Hba Hbb Hm Ht Ht'.
         destruct (nth_error_blocks_sub_inv _ _ _ _ Hba) as (b0 & Hb0 & ->).
@@ -7047,31 +7088,6 @@ Section GroupElim.
         rewrite eb_motive_sub, (Hnm0 _ _ _ HMj Hbb).
         destruct (HBks _ _ HMj Hrv) as [b Hb].
         exact (motive_out j Mj b HMj Hb Γ' RΓ' σ0 ρ0 ρ0σ0 (eb_motive bb) HRΓ' Hσ0 Hρ0 Hev0 HρC (HA0s _ _ _ _ HMj Hb Hbb) _ _ _ _ _ _ _ _ Hm Ht Ht').
-      Qed.
-
-      (** The left motives of such a link are not [LevelSort], not types of
-          levels ([motive_out_not_level_sort]). *)
-      Lemma motive_link_not_level_sort : forall Bks0,
-          (forall j Mj b0, ind_member D j = Some Mj -> List.nth_error Bks0 j = Some b0 -> eb_binder_count b0 = S (im_nn Mj)) ->
-          (forall j Mj b b0, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> List.nth_error Bks0 j = Some b0 ->
-             elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ eb_motive b0 : Typeω@iA) ->
-          forall Γ' RΓ' σ0 ρ0 ρ0σ0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ ->
-          RΓ' ρ0 ρ0 -> ⟦ σ0 : Γ ⟧s ρ0 ↘ ρ0σ0 -> RΓ ρ0σ0 C1 ->
-          forall j Mj ba u u' ns ns' m m' ts a, ind_member D j = Some Mj -> im_is_rview Mj = false ->
-          List.nth_error (blocks_sub Bks0 σ0) j = Some ba ->
-          G j u u' ns ns' m m' ->
-          List.Forall2 (fun v t => entry_readable (de_term v t)) (ns ++ m :: nil) ts ->
-          ⟦ eb_motive ba ⟧ env_extend_typed ρ0 (List.combine (ns ++ m :: nil) ts) ↘ a ->
-          not_level_sort a /\ domain_kind a <> ak_level.
-      (** Over all the section's variables, as [motive_link], so that the two
-          are instantiated alike. *)
-      Proof using All.
-        intros Bks0 Hnm0 HA0s * HRΓ' Hσ0 Hρ0 Hev0 HρC * HMj Hrv Hba Hm Ht Ea.
-        destruct (nth_error_blocks_sub_inv _ _ _ _ Hba) as (b0 & Hb0 & ->).
-        rewrite eb_motive_sub, (Hnm0 _ _ _ HMj Hb0) in Ea.
-        destruct (HBks _ _ HMj Hrv) as [b Hb].
-        exact (motive_out_not_level_sort j Mj b HMj Hb Γ' RΓ' σ0 ρ0 ρ0σ0 (eb_motive b0) HRΓ' Hσ0 Hρ0 Hev0 HρC
-                 (HA0s _ _ _ _ HMj Hb Hb0) _ _ _ _ _ _ _ _ Hm Ht Ea).
       Qed.
 
       (** The conditions on the blocks, moved by a substitution. *)
@@ -7230,22 +7246,18 @@ Section GroupElim.
           as Hidx.
         pose proof (per_ind_elim_all p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had iA ρ C1 (blocks_sub Bks σ) Bks w1 u0 Hok1
                       Rel HbA1 HBks HnmA1 HnmA HnaA1 HnaA HarA1 HarA Hnd
-                      (motive_link Bks HnmA HAs Γ' RΓ' σ ρ C1 HRΓ' (rel_sub_under_ctx_refl_left Hσ) Hρρ Hev HC11)
-                      (motive_link_not_level_sort Bks HnmA HAs Γ' RΓ' σ ρ C1 HRΓ' (rel_sub_under_ctx_refl_left Hσ) Hρρ Hev HC11) Hidx
+                      (motive_link Bks HnmA HAs Γ' RΓ' σ ρ C1 HRΓ' (rel_sub_under_ctx_refl_left Hσ) Hρρ Hev HC11) Hidx
                       (rneut_rel w1 u0 Hw10 u0_env Lw1 u0_len)
                       (branch_out HBc Bks HB0s1 Γ' RΓ' σ ρ C1 HRΓ' (rel_sub_under_ctx_refl_left Hσ) Hρρ Hev HC11)) as [PE1 _].
         pose proof (per_ind_elim_all p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had iA C1 C2 Bks Bks' u0 u3 Hok2
                       Rel HBks HBks' HnmA HnmB HnaA HnaB HarA HarB Hnd
                       (fun j Mj ba bb u u' ns ns' x x' ts ts' HMj _ Hba Hbb Hm Ht Ht' =>
-                         motive_mid j Mj ba (eb_motive bb) HMj Hba (HAA _ _ _ _ HMj Hba Hbb) u u' ns ns' x x' ts ts' Hm Ht Ht')
-                      (fun j Mj ba u u' ns ns' x x' ts a HMj _ Hba Hm Ht Ea =>
-                         motive_mid_not_level_sort j Mj ba (eb_motive ba) HMj Hba (HAs _ _ _ _ HMj Hba Hba) u u' ns ns' x x' ts a Hm Ht Ea) Hidx
+                         motive_mid j Mj ba (eb_motive bb) HMj Hba (HAA _ _ _ _ HMj Hba Hbb) u u' ns ns' x x' ts ts' Hm Ht Ht') Hidx
                       (rneut_rel u0 u3 u0_env Hu30 u0_len Lu3)
                       (branch_mid HBc Bks' HBB)) as [PE2 _].
         pose proof (per_ind_elim_all p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had iA ρ' C2 (blocks_sub Bks' σ') Bks' w4 u3 Hok3
                       Rel HbA3 HBks' HnmA3 HnmB HnaA3 HnaB HarA3 HarB Hnd
-                      (motive_link Bks' HnmB HAA Γ' RΓ' σ' ρ' C2 HRΓ' (rel_sub_under_ctx_refl_right Hσ) Hρ'ρ' Hev' HC21)
-                      (motive_link_not_level_sort Bks' HnmB HAA Γ' RΓ' σ' ρ' C2 HRΓ' (rel_sub_under_ctx_refl_right Hσ) Hρ'ρ' Hev' HC21) Hidx
+                      (motive_link Bks' HnmB HAA Γ' RΓ' σ' ρ' C2 HRΓ' (rel_sub_under_ctx_refl_right Hσ) Hρ'ρ' Hev' HC21) Hidx
                       (rneut_rel w4 u3 Hw40 Hu30 Lw4 Lu3)
                       (branch_out HBc Bks' HB0s3 Γ' RΓ' σ' ρ' C2 HRΓ' (rel_sub_under_ctx_refl_right Hσ) Hρ'ρ' Hev' HC21)) as [PE3 _].
         destruct (member_results_elim_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ (PE1 _ _ _ _ _ _ _ H12 Had Had) HMm Hrvm)
