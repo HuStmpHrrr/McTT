@@ -941,13 +941,15 @@ Lemma subtyp_prop_eq : forall Γ P Q,
 Proof.
   intros * Hs HP HQ.
   destruct (subtyp_spec Hs)
-    as [(S & HS & Heq) | [(U & V & [k1 HU] & [k2 HV] & HUV) | [(κ & A1 & A2 & B1 & B2 & [k1 Ha] & _) | [HPl _]]]].
+    as [(S & HS & Heq) | [(U & V & [k1 HU] & [k2 HV] & HUV) | [(κ & κc & A1 & A2 & B1 & B2 & Hev & [k1 Ha] & _) | (m & n & _ & HPl & _)]]].
   - destruct HS as [k | |]; [| exact Heq |].
     + exfalso; assert (Γ ⊢ P : Typeω@k) by (gen_presups; assumption); eapply typ_prop_absurd; eassumption.
     + exfalso; assert (Γ ⊢ P : LevelSort) by (gen_presups; assumption); eapply level_type_not_prop; eassumption.
   - exfalso; assert (Γ ⊢ P : Typeω@k1) by (gen_presups; assumption); eapply typ_prop_absurd; eassumption.
-  - exfalso; assert (Γ ⊢ P : Typeω@k1) by (gen_presups; assumption); eapply typ_prop_absurd; eassumption.
-  - exfalso; eapply level_type_not_prop; eassumption.
+  - exfalso; destruct Hev; cbn [abs_kind_sort] in *.
+    + assert (Γ ⊢ P : Typeω@k1) by (gen_presups; assumption); eapply typ_prop_absurd; eassumption.
+    + assert (Γ ⊢ P : LevelSort) by (gen_presups; assumption); eapply level_type_not_prop; eassumption.
+  - exfalso; assert (Γ ⊢ P : LevelSort) by (gen_presups; assumption); eapply level_type_not_prop; eassumption.
 Qed.
 
 (** A [Π] over a domain of a sort, into a type of a large universe, is a
