@@ -27,7 +27,7 @@ Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_stuck G (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_stuck G A /\ nf_stuck G B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_stuck G) Ms
-  | nf_neut M => ne_stuck G M
+  | nf_neut _ M => ne_stuck G M
   | nf_record _ Ms => all_list (nf_stuck G) Ms
   | nf_tuple _ Ms _ Ns => all_list (nf_stuck G) Ms /\ all_list (nf_stuck G) Ns
   end

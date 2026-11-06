@@ -396,7 +396,18 @@ Proof.
   match goal with He : evaluated_kind _ |- _ => inversion He; subst; destruct Hn; contradiction end.
 Qed.
 
-(** Algorithmic subtyping is sound for types of any sorts. *)
+(** Algorithmic subtyping relates normal forms of one kind
+    ([nf_type_kind]): equal up to proofs, the universes, the types of
+    levels, and [Π]s at one codomain kind. *)
+Lemma alg_subtyping_nf_kind : forall A B, ⊢anf A ⊆ B -> nf_type_kind A = nf_type_kind B.
+Proof.
+  induction 1; try reflexivity.
+  match goal with H : nf_eq_upto_proofs _ _ |- _ => exact (nf_type_kind_upto_proofs _ _ H) end.
+Qed.
+
+(** Algorithmic subtyping is sound for types of any sorts: the two normal
+    forms are of one kind, so are the two sorts ([nbe_ty_kind_of_sort]),
+    and sorts of one kind have a common sort. *)
 Lemma alg_subtyping_sound_sort : forall Γ A B S S',
     type_sort S -> type_sort S' ->
     Γ ⊢a A ⊆ B ->
@@ -405,21 +416,14 @@ Lemma alg_subtyping_sound_sort : forall Γ A B S S',
     Γ ⊢ A ⊆ B.
 Proof.
   intros * HS HS' Hs HA HB.
-  destruct HS as [i |], HS' as [j |];
-    [ eapply (alg_subtyping_sound _ _ _ (max i j)); [ exact Hs | eapply lift_exp_max_left; exact HA | eapply lift_exp_max_right; exact HB ]
-    | .. ].
-  (** A proposition on a side: the normal forms are equal, so are the types. *)
-  all: destruct Hs as [A' B' HnA HnB Hsub].
-  all: assert (A' = B') as <-
-         by (apply alg_subtyping_nf_not_univ_pi_eq; [ exact Hsub |];
-             first [ right; eapply nbe_ty_prop_not_univ_pi; eassumption | left; eapply nbe_ty_prop_not_univ_pi; eassumption ]).
-  all: let E := fresh "E" in
-       first [ pose proof (exp_eq_of_nbe_ty_same (or_introl HA) (or_intror HB) HnA HnB) as E
-             | pose proof (exp_eq_of_nbe_ty_same (or_intror HA) (or_introl HB) HnA HnB) as E
-             | pose proof (exp_eq_of_nbe_ty_same (i := 0) (or_intror HA) (or_intror HB) HnA HnB) as E ];
-       destruct E as [HE | HE];
-       exact (proj1 (wf_subtyp_of_exp_eq _ _ _ _ _ _ (presup_exp_eq_left HE) (presup_exp_eq_right HE)
-                       ltac:(constructor) HE)).
+  pose proof Hs as [A' B' HnA HnB Hsub].
+  pose proof (eq_trans (eq_sym (nbe_ty_kind_of_sort HS HA HnA))
+                (eq_trans (alg_subtyping_nf_kind _ _ Hsub) (nbe_ty_kind_of_sort HS' HB HnB))) as Hk.
+  destruct HS as [i | |], HS' as [j | |]; cbn [sort_exp_kind] in Hk; try discriminate Hk.
+  - eapply (alg_subtyping_sound _ _ _ (max i j));
+      [ exact Hs | eapply lift_exp_max_left; exact HA | eapply lift_exp_max_right; exact HB ].
+  - exact (alg_subtyping_sound_at _ _ _ _ type_sort_prop Hs HA HB).
+  - exact (alg_subtyping_sound_at _ _ _ _ type_sort_level Hs HA HB).
 Qed.
 
 End Fixed_GCtx.

@@ -1345,6 +1345,12 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
           repeat match goal with E : ?X = true |- context [ ?X ] => rewrite E; clear E end;
           rewrite ?dec_eqb_refl, ?PeanoNat.Nat.eqb_refl; reflexivity
       end end.
+    (** A neutral, at the kind its type records: renaming keeps the kind
+        of a value. *)
+    all: try solve [ match goal with |- context [ dec_eqb _ (domain_kind ⇑ (domain_rename f ?a) (domain_ne_rename f ?b)) _ ] =>
+                       replace (domain_kind ⇑ (domain_rename f a) (domain_ne_rename f b)) with (domain_kind ⇑ a b)
+                         by (destruct a; reflexivity) end;
+                     rewrite dec_eqb_refl; assumption ].
     (** A branch: under the fresh variables of the group read, as many as it
         binds. *)
     all: match goal with |- context [ map_normal_branch _ _ ] =>

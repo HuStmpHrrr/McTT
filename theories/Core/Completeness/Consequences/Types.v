@@ -475,7 +475,9 @@ Proof.
                  let Ht := fresh "Ht" in destruct Hp as [_ _ Ht]; destruct (Ht (length Γ)) as [? ? ? ? HE] end;
                match_by_head read_typ ltac:(fun H => directed dependent destruction H) ].
   all: match_by_head read_ne ltac:(fun H => directed dependent destruction H).
-  all: unfold nf_eq_upto_proofs, ne_eq_upto_proofs in HE; cbn in HE; apply PeanoNat.Nat.eqb_eq in HE; lia.
+  (** A neutral type's recorded kind is compared first; the indices after. *)
+  all: unfold nf_eq_upto_proofs, ne_eq_upto_proofs in HE; cbn in HE;
+    repeat (apply Bool.andb_true_iff in HE as [_ HE]); apply PeanoNat.Nat.eqb_eq in HE; lia.
 Qed.
 
 Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.

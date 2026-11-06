@@ -50,8 +50,8 @@ Admitted.
     ([nf_eq_upto_proofs]) are equal: completeness compares normal forms
     only up to proofs, and proofs are equal by proof irrelevance wherever
     they occur.  For example, with [f : P → ℕ] and [h1 h2 : P], the normal
-    forms of [f h1] and [f h2] are [⇑ⁿ (f $ⁿ nf_proof #1)] and
-    [⇑ⁿ (f $ⁿ nf_proof #0)], related, and [f h1 ≈ f h2 : ℕ] holds by
+    forms of [f h1] and [f h2] are [⇑ⁿ{ak_relevant} (f $ⁿ nf_proof #1)] and
+    [⇑ⁿ{ak_relevant} (f $ⁿ nf_proof #0)], related, and [f h1 ≈ f h2 : ℕ] holds by
     proof irrelevance under the application.  Milestone M2 proves it from
     the gluing model. *)
 Theorem soundness_upto_proofs : forall {Θ Ξ Γ M M' A W W'},

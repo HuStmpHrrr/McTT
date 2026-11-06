@@ -1724,8 +1724,12 @@ Inductive nf : Set :=
 | nf_indty : qname -> nat -> list nf -> nf
 (** A constructor at the parameters of its type and its arguments *)
 | nf_con : qname -> nat -> string -> list nf -> nf
-(** A neutral *)
-| nf_neut : ne -> nf
+(** A neutral, with the kind of what it stands for: a neutral term records
+    the kind of its type, a neutral type the kind of its elements; both are
+    [domain_kind] of the neutral's type value [⇑ a b] at readback
+    ([Core.Semantic.Readback]).  So the kind of a type is read off its
+    normal form ([nf_type_kind]). *)
+| nf_neut : abs_kind -> ne -> nf
 (** A record type at its parameters *)
 | nf_record : qname -> list nf -> nf
 (** An element of the record type at [p], η-long: the type's parameters,
@@ -1786,7 +1790,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_fn A M => a_fn (nf_to_exp A) (nf_to_exp M)
   | nf_indty p k Ms => apps_exp (a_ind p k) (List.map nf_to_exp Ms)
   | nf_con p k c Ms => apps_exp (a_con p k c) (List.map nf_to_exp Ms)
-  | nf_neut M => ne_to_exp M
+  | nf_neut _ M => ne_to_exp M
   | nf_record p Ms => apps_exp (a_record p) (List.map nf_to_exp Ms)
   | nf_tuple p Ms fs Ns => a_tuple (apps_exp (a_record p) (List.map nf_to_exp Ms)) (List.combine fs (List.map nf_to_exp Ns))
   end
@@ -1912,7 +1916,7 @@ Fixpoint nf_clean (W : nf) : Prop :=
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_clean (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_clean A /\ nf_clean B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_clean Ms
-  | nf_neut M => ne_clean M
+  | nf_neut _ M => ne_clean M
   | nf_record _ Ms => all_list nf_clean Ms
   | nf_tuple _ Ms _ Ns => all_list nf_clean Ms /\ all_list nf_clean Ns
   end
@@ -2176,7 +2180,7 @@ Fixpoint nf_eqb_upto_proofs (W W' : nf) {struct W} : bool :=
       dec_eqb qname_eq_dec p p' && Nat.eqb k k' && list_eqb nf_eqb_upto_proofs Ms Ms'
   | nf_con p k c Ms, nf_con p' k' c' Ms' =>
       dec_eqb qname_eq_dec p p' && Nat.eqb k k' && dec_eqb String.string_dec c c' && list_eqb nf_eqb_upto_proofs Ms Ms'
-  | nf_neut M, nf_neut M' => ne_eqb_upto_proofs M M'
+  | nf_neut κ M, nf_neut κ' M' => dec_eqb abs_kind_eq_dec κ κ' && ne_eqb_upto_proofs M M'
   | nf_record p Ms, nf_record p' Ms' => dec_eqb qname_eq_dec p p' && list_eqb nf_eqb_upto_proofs Ms Ms'
   | nf_tuple p Ms fs Ns, nf_tuple p' Ms' fs' Ns' =>
       dec_eqb qname_eq_dec p p' && list_eqb nf_eqb_upto_proofs Ms Ms' &&
@@ -2495,6 +2499,29 @@ Lemma nf_tuple_upto_proofs : forall p Ms Ms' fs Ns Ns', nfs_eq_upto_proofs Ms Ms
     nf_eq_upto_proofs (nf_tuple p Ms fs Ns) (nf_tuple p Ms' fs Ns').
 Proof. intros * H H'; unfold nf_eq_upto_proofs; cbn; rewrite !dec_eqb_refl; unfold nfs_eq_upto_proofs in *; rewrite H, H'; reflexivity. Qed.
 
+(** The kind of the elements of a type in normal form, as [domain_kind]
+    gives it for the type's value ([read_typ_kind]): a [Π]'s is its
+    codomain's, a neutral's the one it records, the propositions' is
+    propositional and the types of levels' that of levels; every other
+    type former (the universes, [Prop], [LevelSort], the inductive and the
+    record types) is relevant. *)
+Definition nf_type_kind (W : nf) : abs_kind :=
+  match W with
+  | nf_pi _ κc _ _ => κc
+  | nf_True | nf_False | nf_and _ _ => ak_propositional
+  | nf_level _ => ak_level
+  | nf_neut κ _ => κ
+  | _ => ak_relevant
+  end.
+
+(** Normal forms equal up to their proofs are of one kind: the kinds a
+    [Π] and a neutral record are compared exactly. *)
+Lemma nf_type_kind_upto_proofs : forall W W', nf_eq_upto_proofs W W' -> nf_type_kind W = nf_type_kind W'.
+Proof.
+  unfold nf_eq_upto_proofs; intros [] [] H; cbn in H |- *; try discriminate H; try reflexivity;
+    eqb_split; eqb_leaves; congruence.
+Qed.
+
 (** [auto] closes reflexive goals of the relations (an atom is in a list
     in which it occurs: [level_atoms_In]). *)
 #[export] Hint Extern 1 (nf_eq_upto_proofs _ _) => reflexivity : core.
@@ -2533,7 +2560,7 @@ Module Nf_Notations.
   Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Πⁿ' '{' κ '}' A B" := (nf_pi κ ak_relevant A B) (at level 2, κ at level 0, A at level 1, B at level 60) : mctt_scope.
   Notation "'Πₗⁿ' A B" := (nf_pi ak_level ak_level A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
-  Notation "'⇑ⁿ' M" := (nf_neut M) (at level 2, M at level 1, format "'⇑ⁿ'  M") : mctt_scope.
+  Notation "'⇑ⁿ' '{' κ '}' M" := (nf_neut κ M) (at level 2, κ at level 0, M at level 1, format "'⇑ⁿ' '{' κ '}'  M") : mctt_scope.
   Notation "'#ⁿ' n" := (ne_var n) (at level 1, n at level 0, format "'#ⁿ' n") : mctt_scope.
   Notation "M '$ⁿ' N" := (ne_app M N) (at level 10, left associativity, format "M  $ⁿ  N") : mctt_scope.
   Notation "'efqⁿ' M 'return' A" := (ne_absurd A M) (at level 2, M at level 60, A at level 60) : mctt_scope.

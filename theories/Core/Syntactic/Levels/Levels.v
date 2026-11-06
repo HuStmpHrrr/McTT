@@ -184,7 +184,7 @@ Fixpoint nf_code (M : nf) (t : code_tree) : code_tree :=
       code_tree_node 10 (code_tree_node (abs_kind_code κd) (code_tree_node (abs_kind_code κc) code_tree_nil code_tree_nil)
                            (nf_code A (nf_code B code_tree_nil))) t
   | nf_fn A M' => code_tree_node 11 (nf_code A (nf_code M' code_tree_nil)) t
-  | nf_neut m => code_tree_node 12 (ne_code m code_tree_nil) t
+  | nf_neut κ m => code_tree_node 12 (code_tree_node (abs_kind_code κ) code_tree_nil (ne_code m code_tree_nil)) t
   | nf_indty p k Ms =>
       code_tree_node 13 (code_tree_node k (strings_code (q_unit p) (strings_code (q_chain p) code_tree_nil))
                     (list_code (fun M => nf_code M code_tree_nil) Ms code_tree_nil)) t
@@ -715,7 +715,7 @@ Fixpoint nf_proof_free (W : nf) : Prop :=
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_proof_free (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_proof_free A /\ nf_proof_free B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms | nf_record _ Ms => all_list nf_proof_free Ms
-  | nf_neut M => ne_proof_free M
+  | nf_neut _ M => ne_proof_free M
   | nf_tuple _ Ms _ Ns => all_list nf_proof_free Ms /\ all_list nf_proof_free Ns
   end
 with ne_proof_free (M : ne) : Prop :=

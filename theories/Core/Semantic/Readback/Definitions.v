@@ -286,11 +286,12 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
      Rnf ⇓ b m' in Θ ⍮ Ξ ⍮ S s ↘ M ->
 
      Rnf ⇓ (d_pi κd κc a ρ B) m in Θ ⍮ Ξ ⍮ s ↘ λⁿ A M )
-(** A neutral at a neutral type that is not a proposition *)
+(** A neutral at a neutral type that is not a proposition, with the kind
+    of its type *)
 | read_nf_neut :
   `( evaluated_kind (domain_kind (⇑ a b)) ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ (⇑ a b) (⇑ c m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
+     Rnf ⇓ (⇑ a b) (⇑ c m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ{domain_kind (⇑ a b)} M )
 (** A constructor at all its parameters and arguments: the parameters are
     read off the type, at the types the declaration gives them, and the
     arguments at theirs. *)
@@ -335,12 +336,14 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
      Rps as' at List.rev (ind_uparams D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
      Rcargs ws at gs of p as' in Θ ⍮ Ξ ⍮ decl_env D as' ⍮ s ↘ Args ->
      Rnf ⇓ (d_ind p j as') v in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (Ps ++ Args) )
+(** A neutral at a member of a group that is no record view, with the
+    kind of its type (relevant) *)
 | read_nf_ind_neut :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
      im_is_rview Mk = false ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ (d_ind p k as') (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
+     Rnf ⇓ (d_ind p k as') (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ{domain_kind (d_ind p k as')} M )
 (** Any value of a record type, η-long and type-directed: the type's
     parameters at their telescope, and each field's projection at the
     field's type at those parameters and the projections before it. *)
@@ -495,9 +498,11 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ Q' ->
 
      Rtyp Σₚᵈ a ρ Q in Θ ⍮ Ξ ⍮ s ↘ Σₚⁿ P' Q')
+(** A neutral type, with the kind of its elements: that of the sort [a]
+    it is an element of *)
 | read_typ_neut :
   `( Rne b in Θ ⍮ Ξ ⍮ s ↘ B ->
-     Rtyp ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ B)
+     Rtyp ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ{domain_kind (⇑ a b)} B)
 (** A member of a group of inductive types at all its parameters, each read
     at its type. *)
 | read_typ_indty :

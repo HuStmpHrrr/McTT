@@ -41,7 +41,7 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   | nf_fn A M => nf_fn (nf_wk φ A) (nf_wk (wk_q φ) M)
   | nf_indty p k Ms => nf_indty p k (List.map (nf_wk φ) Ms)
   | nf_con p k c Ms => nf_con p k c (List.map (nf_wk φ) Ms)
-  | nf_neut u => nf_neut (ne_wk φ u)
+  | nf_neut κ u => nf_neut κ (ne_wk φ u)
   | nf_record p Ms => nf_record p (List.map (nf_wk φ) Ms)
   | nf_tuple p Ms fs Ns => nf_tuple p (List.map (nf_wk φ) Ms) fs (List.map (nf_wk φ) Ns)
   end

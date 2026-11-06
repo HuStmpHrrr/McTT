@@ -272,6 +272,16 @@ Import Domain_Notations.
     - exists (ordinal_zero, (mk_level_atom 0 (domain_level_sort a) M :: nil)%list); split; [ reflexivity | reflexivity ].
   Qed.
 
+(** The kind a type's normal form gives its elements ([nf_type_kind]) is
+    that of its value: a [Π]'s codomain kind is read off the value, and a
+    neutral type records [domain_kind] of itself ([read_typ_neut]). *)
+  Lemma read_typ_kind : forall {Θ Ξ} s a W,
+      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ W ->
+      nf_type_kind W = domain_kind a.
+  Proof.
+    inversion 1; subst; reflexivity.
+  Qed.
+
 #[export]
 Hint Resolve functional_read_nf functional_read_ne functional_read_typ functional_read_level_atoms : mctt.
 

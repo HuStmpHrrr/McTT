@@ -334,19 +334,6 @@ Qed.
 
 Hint Resolve per_lvl_at_sym per_lvl_at_trans per_bot_then_per_lvl_at : mctt.
 
-Lemma per_bot_then_per_top : forall m m' a a' b b' c c',
-    evaluated_kind (domain_kind (⇑ a b)) ->
-    evaluated_kind (domain_kind (⇑ a' b')) ->
-    Dom m ≈ m' ∈ per_bot ->
-    Dom ⇓ (⇑ a b) (⇑ c m) ≈ ⇓ (⇑ a' b') (⇑ c' m') ∈ per_top.
-Proof.
-  intros * Hr Hr' H s.
-  destruct (H s) as [M M' Hl Hr0 HE].
-  exists (nf_neut M) (nf_neut M'); [ apply read_nf_neut; assumption | apply read_nf_neut; assumption | exact HE ].
-Qed.
-
-Hint Resolve per_bot_then_per_top : mctt.
-
 Lemma per_top_typ_sym : forall m n,
     Dom m ≈ n ∈ per_top_typ ->
     Dom n ≈ m ∈ per_top_typ.
@@ -543,8 +530,6 @@ Hint Resolve per_top_sym : mctt.
 #[export]
 Hint Resolve per_top_trans : mctt.
 #[export] Existing Instance per_top_PER.
-#[export]
-Hint Resolve per_bot_then_per_top : mctt.
 #[export]
 Hint Resolve per_top_typ_sym : mctt.
 #[export]

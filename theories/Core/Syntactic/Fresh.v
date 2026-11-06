@@ -608,7 +608,7 @@ Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh k (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_fresh k A /\ nf_fresh (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_fresh k) Ms
-  | nf_neut u => ne_fresh k u
+  | nf_neut _ u => ne_fresh k u
   | nf_record _ Ms => all_list (nf_fresh k) Ms
   | nf_tuple _ Ms _ Ns => all_list (nf_fresh k) Ms /\ all_list (nf_fresh k) Ns
   end
@@ -642,7 +642,7 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_fn A M => nf_fn (nf_unwk k A) (nf_unwk (S k) M)
   | nf_indty p j Ms => nf_indty p j (List.map (nf_unwk k) Ms)
   | nf_con p j c Ms => nf_con p j c (List.map (nf_unwk k) Ms)
-  | nf_neut u => nf_neut (ne_unwk k u)
+  | nf_neut κ u => nf_neut κ (ne_unwk k u)
   | nf_record p Ms => nf_record p (List.map (nf_unwk k) Ms)
   | nf_tuple p Ms fs Ns => nf_tuple p (List.map (nf_unwk k) Ms) fs (List.map (nf_unwk k) Ns)
   end
@@ -816,7 +816,7 @@ Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_freshb k (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_freshb k A && nf_freshb (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => List.forallb (nf_freshb k) Ms
-  | nf_neut u => ne_freshb k u
+  | nf_neut _ u => ne_freshb k u
   | nf_record _ Ms => List.forallb (nf_freshb k) Ms
   | nf_tuple _ Ms _ Ns => List.forallb (nf_freshb k) Ms && List.forallb (nf_freshb k) Ns
   end
@@ -873,7 +873,7 @@ Fixpoint nf_proof_freeb (W : nf) {struct W} : bool :=
   | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_proof_freeb (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_proof_freeb A && nf_proof_freeb B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => List.forallb nf_proof_freeb Ms
-  | nf_neut u => ne_proof_freeb u
+  | nf_neut _ u => ne_proof_freeb u
   | nf_record _ Ms => List.forallb nf_proof_freeb Ms
   | nf_tuple _ Ms _ Ns => List.forallb nf_proof_freeb Ms && List.forallb nf_proof_freeb Ns
   end

@@ -91,6 +91,23 @@ Proof.
   pose proof (functional_eval_exp _ _ _ _ Hx' Hx) as <-; exact Hk.
 Qed.
 
+(** The normal form of a type of a sort gives its elements the sort's
+    kind ([nf_type_kind]): its value at the initial environment is of that
+    kind ([rel_value_kind_of_sort]), and readback keeps the kind of a
+    value ([read_typ_kind]). *)
+Lemma nbe_ty_kind_of_sort : forall {Γ A S W}, type_sort S -> Γ ⊢ A : S -> nbe_ty_f Γ A W ->
+    nf_type_kind W = sort_exp_kind S.
+Proof.
+  intros * HS HA [ρ a Hi Ha Hr].
+  pose proof (completeness_fundamental_exp _ _ _ HA) as HAs.
+  pose proof HAs as [R HR _ _].
+  pose proof (wf_ctx_scoped_exp HA) as HsΓ.
+  destruct (per_ctx_then_per_env_initial_env HR HsΓ HsΓ) as (ρ0 & ρ0' & Hi0 & _ & Hρ).
+  pose proof (functional_initial_env _ _ Hi0 _ Hi) as ->.
+  rewrite (read_typ_kind _ _ _ Hr).
+  exact (rel_value_kind_of_sort HS HAs HR Hρ Ha).
+Qed.
+
 (** A type of levels is of no large universe: at the initial environment
     its value is an element of [LevelSort], a type of levels
     ([per_level_sort]), and an element of the universe, no type of levels
@@ -1450,9 +1467,9 @@ Qed.
 (** Below a large universe, a type constructor that is not neutral. *)
 Lemma typ_nf_below_large : forall i W,
     typ_nf_below (universe_large i) W ->
-    is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
+    is_typ_constr W /\ (forall κ V, W <> ⇑ⁿ{κ} V).
 Proof.
-  intros * H; inversion H; subst; (split; [ cbn; constructor | intros ? Heq; discriminate Heq ]).
+  intros * H; inversion H; subst; (split; [ cbn; constructor | intros ? ? Heq; discriminate Heq ]).
 Qed.
 
 Section Small_Typ.
@@ -1713,7 +1730,7 @@ Lemma typ_nf_below_of_nbe : forall {Γ M T u W},
     Γ ⊢ M : T ->
     nbe_ty_f Γ T (universe_nf_to_nf u) ->
     nbe_f Γ M T W ->
-    (forall V, W <> ⇑ⁿ V) ->
+    (forall κ V, W <> ⇑ⁿ{κ} V) ->
     typ_nf_below u W.
 Proof.
   intros * HT HM HnT Hn Hne.
@@ -1854,7 +1871,7 @@ Proof.
   destruct (nbe_ty_univ_term HT HU) as [u ->].
   exists u, W; split; [ exact HU | split; [ exact Hn |] ].
   eapply typ_nf_below_of_nbe; [ exact HT | exact HM | exact HU | exact Hn |].
-  intros V ->.
+  intros κ V ->.
   pose proof (nbe_clean _ _ Htr _ _ _ _ Hn) as Hc; cbn in Hc.
   assert (⋅ ⊢ V : T) by (gen_presups; assumption).
   eapply no_closed_neutral; eassumption.
@@ -1862,7 +1879,7 @@ Qed.
 
 Corollary canonical_form_of_large_typ : forall {i M},
     ⋅ ⊢ M : Typeω@i ->
-    exists W, nbe_f ⋅ M Typeω@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
+    exists W, nbe_f ⋅ M Typeω@i W /\ is_typ_constr W /\ (forall κ V, W <> ⇑ⁿ{κ} V).
 Proof.
   intros * HM; destruct (canonical_form_of_typ (univ_term_typ i) HM) as (u & W & Hu & Hn & Hb).
   apply nbe_ty_typ_univ_nf in Hu as ->; exists W; split; [ exact Hn | exact (typ_nf_below_large _ _ Hb) ].
@@ -2008,7 +2025,7 @@ Inductive nat_read_step (p : qname) (z s : String.string) : nf -> Prop :=
 | nat_read_step_succ : forall v V, Rnf ⇓ (d_ind p 0 nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ V ->
     nat_read_step p z s (nf_con p 0 s (cons V nil))
 (** A neutral *)
-| nat_read_step_neut : forall M, nat_read_step p z s ⇑ⁿ M.
+| nat_read_step_neut : forall κ M, nat_read_step p z s ⇑ⁿ{κ} M.
 
 Lemma nat_read_step_of_read : forall p D z s W v, ind_lookup gc_deps gc_stack p = Some D -> nat_shape D = Some (z, s) ->
     Rnf ⇓ (d_ind p 0 nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ W -> nat_read_step p z s W.
@@ -2215,7 +2232,7 @@ Proof. intros * Htr HT HM; exact (@canonical_form_of_typ (gc_mk Θ Ξ) Htr T M H
 Corollary canonical_form_of_large_typ_gctx : forall Θ Ξ i M,
     gc_transparent Θ Ξ ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Typeω@i ->
-    exists W, nbe Θ Ξ ⋅ M Typeω@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
+    exists W, nbe Θ Ξ ⋅ M Typeω@i W /\ is_typ_constr W /\ (forall κ V, W <> ⇑ⁿ{κ} V).
 Proof. intros * Htr HM; exact (@canonical_form_of_large_typ (gc_mk Θ Ξ) Htr i M HM). Qed.
 
 Corollary canonical_form_of_typ_lit_gctx : forall Θ Ξ n M,
@@ -2306,7 +2323,7 @@ Inductive nat_chain_stuck (G : qname -> Prop) (p : qname) (z s : String.string) 
 (** The constructor [s] at a chain *)
 | nat_chain_stuck_succ : forall W, nat_chain_stuck G p z s W -> nat_chain_stuck G p z s (nf_con p 0 s (cons W nil))
 (** A neutral headed by a global, its globals satisfying [G] *)
-| nat_chain_stuck_neut : forall W h, ne_head W = Some h -> ne_stuck G W -> nat_chain_stuck G p z s ⇑ⁿ W.
+| nat_chain_stuck_neut : forall κ W h, ne_head W = Some h -> ne_stuck G W -> nat_chain_stuck G p z s ⇑ⁿ{κ} W.
 #[export]
 Hint Constructors nat_chain_stuck : mctt.
 
@@ -2399,7 +2416,7 @@ Theorem canonical_form_of_typ_stuck : forall {T M},
     univ_term T ->
     ⋅ ⊢ M : T ->
     exists u W, nbe_ty_f ⋅ T (universe_nf_to_nf u) /\ nbe_f ⋅ M T W /\ nf_stuck (global_stuck gc_deps gc_stack) W /\
-      (typ_nf_below u W \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
+      (typ_nf_below u W \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
 Proof.
   intros * HT HM.
   destruct (soundness HM) as (W & Hn & HMW).
@@ -2407,9 +2424,9 @@ Proof.
   destruct (soundness_ty Hk) as (U & HU & _).
   destruct (nbe_ty_univ_term HT HU) as [u ->].
   exists u, W; split; [ exact HU | split; [ exact Hn | split; [ exact (nbe_stuck _ _ _ _ _ _ Hn) |] ] ].
-  assert (Hd : (exists V, W = ⇑ⁿ V) \/ (forall V, W <> ⇑ⁿ V))
-    by (destruct W; try (right; intros ? Heq; discriminate Heq); left; eexists; reflexivity).
-  destruct Hd as [[V ->] | Hne].
+  assert (Hd : (exists κ V, W = ⇑ⁿ{κ} V) \/ (forall κ V, W <> ⇑ⁿ{κ} V))
+    by (destruct W; try (right; intros ? ? Heq; discriminate Heq); left; do 2 eexists; reflexivity).
+  destruct Hd as [(κ & V & ->) | Hne].
   - right; assert (HV : ⋅ ⊢ V : T) by (gen_presups; assumption).
     destruct (closed_neutral_head HV) as [p Hp]; eauto.
   - left; eapply typ_nf_below_of_nbe; eassumption.
@@ -2418,7 +2435,7 @@ Qed.
 Corollary canonical_form_of_large_typ_stuck : forall {i M},
     ⋅ ⊢ M : Typeω@i ->
     exists W, nbe_f ⋅ M Typeω@i W /\ nf_stuck (global_stuck gc_deps gc_stack) W /\
-      ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
+      ((is_typ_constr W /\ (forall κ V, W <> ⇑ⁿ{κ} V)) \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
 Proof.
   intros * HM; destruct (canonical_form_of_typ_stuck (univ_term_typ i) HM) as (u & W & Hu & Hn & Hs & Hc).
   apply nbe_ty_typ_univ_nf in Hu as ->; exists W; split; [ exact Hn | split; [ exact Hs |] ].
@@ -2428,7 +2445,7 @@ Qed.
 Corollary canonical_form_of_typ_lit_stuck : forall {n M},
     ⋅ ⊢ M : Type@n ->
     exists W, nbe_f ⋅ M Type@n W /\ nf_stuck (global_stuck gc_deps gc_stack) W /\
-      (small_typ_nf n W \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
+      (small_typ_nf n W \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
 Proof.
   intros * HM; destruct (canonical_form_of_typ_stuck (univ_term_suniv _) HM) as (u & W & Hu & Hn & Hs & Hc).
   apply nbe_ty_lit_univ_nf in Hu as ->; exists W; split; [ exact Hn | split; [ exact Hs |] ].
@@ -2446,19 +2463,19 @@ Corollary canonical_form_of_typ_stuck_gctx : forall Θ Ξ T M,
     univ_term T ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : T ->
     exists u W, nbe_ty Θ Ξ ⋅ T (universe_nf_to_nf u) /\ nbe Θ Ξ ⋅ M T W /\ nf_stuck (global_stuck Θ Ξ) W /\
-      (typ_nf_below u W \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
+      (typ_nf_below u W \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
 Proof. intros * HT HM; exact (@canonical_form_of_typ_stuck (gc_mk Θ Ξ) T M HT HM). Qed.
 
 Corollary canonical_form_of_large_typ_stuck_gctx : forall Θ Ξ i M,
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Typeω@i ->
     exists W, nbe Θ Ξ ⋅ M Typeω@i W /\ nf_stuck (global_stuck Θ Ξ) W /\
-      ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
+      ((is_typ_constr W /\ (forall κ V, W <> ⇑ⁿ{κ} V)) \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
 Proof. intros * HM; exact (@canonical_form_of_large_typ_stuck (gc_mk Θ Ξ) i M HM). Qed.
 
 Corollary canonical_form_of_typ_lit_stuck_gctx : forall Θ Ξ n M,
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@n ->
     exists W, nbe Θ Ξ ⋅ M Type@n W /\ nf_stuck (global_stuck Θ Ξ) W /\
-      (small_typ_nf n W \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
+      (small_typ_nf n W \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
 Proof. intros * HM; exact (@canonical_form_of_typ_lit_stuck (gc_mk Θ Ξ) n M HM). Qed.
 
 (** *** Without Axioms *)
@@ -2527,7 +2544,7 @@ Theorem canonical_form_of_typ_no_axioms : forall Θ Ξ T M,
     univ_term T ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : T ->
     exists u W, nbe_ty Θ Ξ ⋅ T (universe_nf_to_nf u) /\ nbe Θ Ξ ⋅ M T W /\ nf_stuck (global_opaque Θ Ξ) W /\
-      (typ_nf_below u W \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)) /\
+      (typ_nf_below u W \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)) /\
       exists u' V, nbe_ty (gds_unseal Θ) (gs_unseal Ξ) ⋅ T (universe_nf_to_nf u') /\
         nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M T V /\ typ_nf_below u' V /\
         gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : T.
@@ -2549,8 +2566,8 @@ Corollary canonical_form_of_large_typ_no_axioms : forall Θ Ξ i M,
     gc_no_axioms Θ Ξ ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Typeω@i ->
     exists W, nbe Θ Ξ ⋅ M Typeω@i W /\ nf_stuck (global_opaque Θ Ξ) W /\
-      ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)) /\
-      exists V, nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M Typeω@i V /\ is_typ_constr V /\ (forall V', V <> ⇑ⁿ V') /\
+      ((is_typ_constr W /\ (forall κ V, W <> ⇑ⁿ{κ} V)) \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)) /\
+      exists V, nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M Typeω@i V /\ is_typ_constr V /\ (forall κ V', V <> ⇑ⁿ{κ} V') /\
         gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : Typeω@i.
 Proof.
   intros * Hna HM.
@@ -2568,7 +2585,7 @@ Corollary canonical_form_of_typ_lit_no_axioms : forall Θ Ξ n M,
     gc_no_axioms Θ Ξ ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@n ->
     exists W, nbe Θ Ξ ⋅ M Type@n W /\ nf_stuck (global_opaque Θ Ξ) W /\
-      (small_typ_nf n W \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)) /\
+      (small_typ_nf n W \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)) /\
       exists V, nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M Type@n V /\ small_typ_nf n V /\
         gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : Type@n.
 Proof.

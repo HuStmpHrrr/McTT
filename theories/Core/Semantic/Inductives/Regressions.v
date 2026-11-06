@@ -506,7 +506,7 @@ End PhantomViews.
     proof, read back as [⋆ⁿ], and [C T ⋆ⁿ] mentions no recursive
     argument. *)
 
-Lemma nbe_ty_var0 : forall Θ Ξ κ A Γ W, nbe_ty Θ Ξ (ce_ass κ A :: Γ) (a_var 0) W -> W = nf_neut (ne_var 0).
+Lemma nbe_ty_var0 : forall Θ Ξ κ A Γ W, nbe_ty Θ Ξ (ce_ass κ A :: Γ) (a_var 0) W -> exists κ', W = nf_neut κ' (ne_var 0).
 Proof.
   intros * [ρ m Hi He Hr].
   inversion Hi; subst.
@@ -514,7 +514,7 @@ Proof.
   (** The variable's value is the neutral variable *)
   cbn in *; inversion Hr; subst.
   match goal with H : read_ne _ _ _ _ _ |- _ => inversion H; subst end.
-  cbn [List.length]; replace (S (Datatypes.length Γ) - Datatypes.length Γ - 1) with 0 by lia; reflexivity.
+  cbn [List.length]; replace (S (Datatypes.length Γ) - Datatypes.length Γ - 1) with 0 by lia; eexists; reflexivity.
 Qed.
 
 Lemma view_nparams_self_param_absurd : forall Θ Ξ R pC DC MC Nv,
@@ -532,7 +532,7 @@ Proof.
   inversion Hrest; subst.
   (** The parameter's type normalizes to [Self], which is not in the
       image of the weakening past the [Self]s. *)
-  cbn [List.app] in HW; apply nbe_ty_var0 in HW; subst W.
+  cbn [List.app] in HW; apply nbe_ty_var0 in HW as [κ' ->].
   vm_compute in Himg; discriminate.
 Qed.
 
@@ -547,7 +547,7 @@ Lemma nbe_ty_container_at_self : forall Θ Ξ B Γ pC DC MC iU W,
     im_nparams MC = ce_ass ak_relevant (a_var 0) :: nil ->
     ind_sort_univ B ->
     nbe_ty Θ Ξ (ce_ass ak_relevant (a_var 0) :: ce_ass ak_relevant B :: Γ) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) W ->
-    W = nf_indty pC 0 (cons (nf_neut (ne_var 1)) (cons (nf_neut (ne_var 0)) nil)).
+    W = nf_indty pC 0 (cons (nf_neut ak_relevant (ne_var 1)) (cons (nf_neut ak_relevant (ne_var 0)) nil)).
 Proof.
   intros * Hl Hu Hk Hnp HB [ρ m Hi He Hr].
   (** The type's value: the type former, which takes relevant arguments,

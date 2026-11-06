@@ -379,10 +379,10 @@ Proof.
           rewrite env_params_components, firstn_app_exact by exact Hu'; rewrite skipn_app_exact by reflexivity; exact HV'.
     - intros k0 Mk0 hd k' ns0 ns0' as1 as2 m m' _ _ HM Hrv _ _ _ _ _ _ Hm Mk1 xs xs' _ _ _ s;
         destruct (Hm s) as [L L' HL HL' HE].
-      apply (mk_normal_reads_alike _ _ _ (⇑ⁿ L) (⇑ⁿ L'));
+      apply (mk_normal_reads_alike _ _ _ (⇑ⁿ{ak_relevant} L) (⇑ⁿ{ak_relevant} L'));
         [ eapply read_nf_ind_neut; [ exact Hl | exact HM | exact Hrv | exact HL ]
         | eapply read_nf_ind_neut; [ exact Hl | exact HM | exact Hrv | exact HL' ]
-        | exact HE ].
+        | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; rewrite dec_eqb_refl; exact HE ].
     - (** A record view: its projections at the pseudo-constructor's
           arguments, at the group's uniform parameters only. *)
       intros k0 Mk0 qr Is fl c gs v vs v' vs' u u' HM Hh Hnp Hcs Hp Hp' Ha0 Hia IH Mk1 xs xs' HM1 Hx Hx' s.
@@ -815,8 +815,9 @@ Proof.
     + intros c c' Hc; apply_relation_equivalence.
       constructor; [ reflexivity | reflexivity |].
       intro s; destruct (Hc s) as [C C' HC HC' HE].
-      apply (mk_type_reads_alike _ _ _ (⇑ⁿ C) (⇑ⁿ C'));
-        [ constructor; assumption | constructor; assumption | exact HE ].
+      apply (mk_type_reads_alike _ _ _ (⇑ⁿ{ak_propositional} C) (⇑ⁿ{ak_propositional} C'));
+        [ constructor; assumption | constructor; assumption
+        | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; rewrite dec_eqb_refl; exact HE ].
     + intros b b' Hb; apply_relation_equivalence; destruct Hb as [_ _ Ht].
       intro s; destruct (Ht s) as [C C' HC HC' HE].
       apply (mk_normal_reads_alike _ _ _ C C'); [ apply read_nf_prop; assumption | apply read_nf_prop; assumption | exact HE ].
@@ -879,14 +880,18 @@ Proof.
   - (** A neutral type of an evaluated kind: its elements are neutrals. *)
     repeat split.
     + intro s; match goal with Hb : per_bot b b' |- _ => destruct (Hb s) as [M M' HM HM' HE] end.
-      apply (mk_type_reads_alike _ _ _ (⇑ⁿ M) (⇑ⁿ M'));
-        [ constructor; assumption | constructor; assumption | exact HE ].
+      (** The two neutral types are at sorts of one kind. *)
+      apply (mk_type_reads_alike _ _ _ (⇑ⁿ{domain_kind (⇑ a b)} M) (⇑ⁿ{domain_kind (⇑ a' b')} M'));
+        [ constructor; assumption | constructor; assumption
+        | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs];
+          match goal with Hk : domain_kind _ = domain_kind _ |- _ => rewrite Hk, dec_eqb_refl end; exact HE ].
     + intros c c' Hc; apply_relation_equivalence; constructor; exact Hc.
     + intros m m' Hm; apply_relation_equivalence; destruct Hm as [? ? ? ? Hm]; intro s.
       destruct (Hm s) as [M M' HM HM' HE].
-      apply (mk_normal_reads_alike _ _ _ (⇑ⁿ M) (⇑ⁿ M'));
+      apply (mk_normal_reads_alike _ _ _ (⇑ⁿ{domain_kind (⇑ a b)} M) (⇑ⁿ{domain_kind (⇑ a' b')} M'));
         [ apply read_nf_neut; [ eauto with mctt | assumption ] | apply read_nf_neut; [ eauto with mctt | assumption ]
-        | exact HE ].
+        | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs];
+          match goal with Hk : domain_kind _ = domain_kind _ |- _ => rewrite Hk, dec_eqb_refl end; exact HE ].
   (** A member of a group of inductive types: [realize_indty], from the
       realisability of the types of its telescopes; its neutrals by
       [ind_rel_neut_canon], the fresh-variable admissibility of the type's

@@ -1191,7 +1191,7 @@ Fixpoint nf_fresh_outside_proofs (k : nat) (W : nf) {struct W} : Prop :=
   | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh_outside_proofs k (atom_level a)) xs
   | nf_pi _ _ A B | nf_fn A B | nf_and A B => nf_fresh_outside_proofs k A /\ nf_fresh_outside_proofs (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_fresh_outside_proofs k) Ms
-  | nf_neut u => ne_fresh_outside_proofs k u
+  | nf_neut _ u => ne_fresh_outside_proofs k u
   | nf_record _ Ms => all_list (nf_fresh_outside_proofs k) Ms
   | nf_tuple _ Ms _ Ns => all_list (nf_fresh_outside_proofs k) Ms /\ all_list (nf_fresh_outside_proofs k) Ns
   end
