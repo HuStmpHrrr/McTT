@@ -69,9 +69,18 @@ brief says so explicitly.
     step obligations one by one through the rocq MCP);
   - fix the cause (e.g. a rule shape that makes inversion loop, a tactic
     search that explodes), or write that proof out explicitly;
-  - kill any leftover compile processes you started;
+  - kill any leftover compile processes you started, and only those: select
+    PIDs whose `/proc/PID/cwd` is under your own worktree, never by a bare
+    `pkill -f rocqworker…` pattern (worker command lines hold only relative
+    paths, so a pattern kills other agents' compiles too);
   - report the diagnosis.
   Never leave a long build running in the background and carry on.
+- **Restart the MCP's backend after rebuilding dependencies.** `pet` caches the
+  `.vo` digests for the whole session, so after a `make` of dependencies it can
+  report stale state, e.g. empty goals inside an open proof, or "inconsistent
+  assumptions". Call `rocq_start(..., force_restart=True)` once after every
+  dependency rebuild. If the MCP still misbehaves, report the exact call; never
+  fall back to `make` silently.
 - **Never `rewrite !` (or `autorewrite`) with an evar in the goal.** It loops
   forever and eats memory: two agents hit this on 2026-10-26, once each in
   Realizability and in Elim. Build the witness first, e.g. by `match goal`,
@@ -136,3 +145,7 @@ brief says so explicitly.
 ## Documentation (user, 2026-10-21)
 - Every new or changed Record, Inductive, Definition and Fixpoint gets a doc comment saying what it is and what it is for.
 - Every Record field and every Inductive constructor gets its own short `(** … *)` comment above it, saying in plain words what it states (style: `view_agreement` in Core/Semantic/Inductives/ViewCoherence.v).
+
+## Context (owner, 2026-10-30)
+- Never end your run yourself because your context is large or near its limit. Compress instead: bring your handoff file up to date, condense your working state (current file, remaining statements, decisions main approved) into a short summary, set old tool output aside, and continue.
+- Stop only when your milestone is complete, or when you are blocked on a decision only main or the owner can make.
