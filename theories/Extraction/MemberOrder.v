@@ -83,18 +83,22 @@ with moddef_size (ρ : list nat) (D : moddef) {struct D} : nat :=
 with body_size (ρ : list nat) (Φ : gmod) {struct Φ} : prod nat (list nat) :=
   match Φ with
   | gm_nil => (0, nil)
-  | gm_ext Φ _ E =>
-      (fst (body_size ρ Φ) + S (gentry_size (snd (body_size ρ Φ) ++ ρ) E),
-       gentry_size (snd (body_size ρ Φ) ++ ρ) E :: snd (body_size ρ Φ))
-  | gm_open Φ H its =>
-      (fst (body_size ρ Φ) + S (length its) * S (S (S (modexp_size (snd (body_size ρ Φ) ++ ρ) H))),
-       repeat (S (S (modexp_size (snd (body_size ρ Φ) ++ ρ) H))) (length its) ++ snd (body_size ρ Φ))
+  | gm_ext Φ x E =>
+      (fst (body_size ρ Φ) + S (gentry_size (snd (body_size ρ Φ) ++ ρ) x E),
+       gentry_size (snd (body_size ρ Φ) ++ ρ) x E :: snd (body_size ρ Φ))
+  | gm_open Φ H its Φg =>
+      (fst (body_size ρ Φ) + S (gm_binders Φg) * S (S (S (modexp_size (snd (body_size ρ Φ) ++ ρ) H))),
+       repeat (S (S (modexp_size (snd (body_size ρ Φ) ++ ρ) H))) (gm_binders Φg) ++ snd (body_size ρ Φ))
   end
-(** The size of an entry: a module's unit's (of a module or of a
-    definition with a module part), 0 otherwise. *)
-with gentry_size (ρ : list nat) (E : gentry) {struct E} : nat :=
+(** The size of an entry named [x]: a module's unit's (of a module or of a
+    definition with a module part); of a type former, the alias of its
+    module its slot holds ([body_ctx]), one more than the selections of
+    its path; 0 otherwise. *)
+with gentry_size (ρ : list nat) (x : string) (E : gentry) {struct E} : nat :=
   match E with
   | ge_mod _ U | ge_def_mod _ _ _ U => unit_size ρ U
+  | ge_ind _ pq _ _ _ => S (S (length (q_chain (qname_sibling pq x))))
+  | ge_record _ p _ _ => S (S (length (q_chain p)))
   | _ => 0
   end.
 
@@ -174,7 +178,7 @@ Theorem sizes_wk :
   (forall Φ ρ' ρ φ, wk_keeps_sizes ρ' ρ φ ->
      fst (body_size ρ' (gmod_wk Φ φ)) <= fst (body_size ρ Φ) /\
      Forall2 le (snd (body_size ρ' (gmod_wk Φ φ))) (snd (body_size ρ Φ))) /\
-  (forall E ρ' ρ φ, wk_keeps_sizes ρ' ρ φ -> gentry_size ρ' (gentry_wk E φ) <= gentry_size ρ E) /\
+  (forall E x ρ' ρ φ, wk_keeps_sizes ρ' ρ φ -> gentry_size ρ' x (gentry_wk E φ) <= gentry_size ρ x E) /\
   (forall e ρ' ρ φ, wk_keeps_sizes ρ' ρ φ -> centry_size ρ' (centry_wk e φ) <= centry_size ρ e).
 Proof.
   destruct (syn_mut_ind (fun _ => True)
@@ -185,7 +189,7 @@ Proof.
     (fun Φ => forall ρ' ρ φ, wk_keeps_sizes ρ' ρ φ ->
        fst (body_size ρ' (gmod_wk Φ φ)) <= fst (body_size ρ Φ) /\
        Forall2 le (snd (body_size ρ' (gmod_wk Φ φ))) (snd (body_size ρ Φ)))
-    (fun E => forall ρ' ρ φ, wk_keeps_sizes ρ' ρ φ -> gentry_size ρ' (gentry_wk E φ) <= gentry_size ρ E)
+    (fun E => forall x ρ' ρ φ, wk_keeps_sizes ρ' ρ φ -> gentry_size ρ' x (gentry_wk E φ) <= gentry_size ρ x E)
     (fun e => forall ρ' ρ φ, wk_keeps_sizes ρ' ρ φ -> centry_size ρ' (centry_wk e φ) <= centry_size ρ e))
     as (_ & Hm & _ & Hu & Hd & Hg & He & Hc); try solve [ intros; exact I ].
   all: intros.
@@ -207,9 +211,9 @@ Proof.
     assert (Hw' : wk_keeps_sizes (snd (body_size ρ' (gmod_wk Φ φ)) ++ ρ') (snd (body_size ρ Φ) ++ ρ)
                     (wk_qn (gm_binders Φ) φ))
       by (rewrite <- (length_body_size ρ Φ); apply wk_keeps_sizes_qn; assumption).
-    specialize (H0 _ _ _ Hw'); split; [ lia | constructor; assumption ].
-  - cbn [body_size gmod_wk fst snd].
-    destruct (H0 _ _ _ H2) as [H3 H4].
+    specialize (H0 x _ _ _ Hw'); split; [ lia | constructor; assumption ].
+  - cbn [body_size gmod_wk fst snd]; rewrite gm_binders_wk.
+    destruct (H0 _ _ _ H3) as [H4 H5].
     assert (Hw' : wk_keeps_sizes (snd (body_size ρ' (gmod_wk Φ φ)) ++ ρ') (snd (body_size ρ Φ) ++ ρ)
                     (wk_qn (gm_binders Φ) φ))
       by (rewrite <- (length_body_size ρ Φ); apply wk_keeps_sizes_qn; assumption).
@@ -232,7 +236,7 @@ Proof. intros; apply (proj1 sizes_wk); intros x; reflexivity. Qed.
 Lemma modexp_size_mono : forall H ρ' ρ, sizes_le ρ' ρ -> modexp_size ρ' H <= modexp_size ρ H.
 Proof. intros; rewrite <- (modexp_wk_id H) at 1; apply (proj1 sizes_wk), wk_keeps_sizes_id; assumption. Qed.
 
-Lemma gentry_size_mono : forall E ρ' ρ, sizes_le ρ' ρ -> gentry_size ρ' E <= gentry_size ρ E.
+Lemma gentry_size_mono : forall E x ρ' ρ, sizes_le ρ' ρ -> gentry_size ρ' x E <= gentry_size ρ x E.
 Proof.
   intros; rewrite <- (gentry_wk_id E) at 1.
   apply (proj1 (proj2 (proj2 (proj2 (proj2 sizes_wk))))), wk_keeps_sizes_id; assumption.
@@ -277,7 +281,7 @@ Theorem sizes_sub :
   (forall Φ ρ' ρ σ, sub_keeps_sizes ρ' ρ σ ->
      fst (body_size ρ' (gmod_sub Φ σ)) <= fst (body_size ρ Φ) /\
      Forall2 le (snd (body_size ρ' (gmod_sub Φ σ))) (snd (body_size ρ Φ))) /\
-  (forall E ρ' ρ σ, sub_keeps_sizes ρ' ρ σ -> gentry_size ρ' (gentry_sub E σ) <= gentry_size ρ E) /\
+  (forall E x ρ' ρ σ, sub_keeps_sizes ρ' ρ σ -> gentry_size ρ' x (gentry_sub E σ) <= gentry_size ρ x E) /\
   (forall e ρ' ρ σ, sub_keeps_sizes ρ' ρ σ -> centry_size ρ' (centry_sub e σ) <= centry_size ρ e).
 Proof.
   destruct (syn_mut_ind (fun _ => True)
@@ -288,7 +292,7 @@ Proof.
     (fun Φ => forall ρ' ρ σ, sub_keeps_sizes ρ' ρ σ ->
        fst (body_size ρ' (gmod_sub Φ σ)) <= fst (body_size ρ Φ) /\
        Forall2 le (snd (body_size ρ' (gmod_sub Φ σ))) (snd (body_size ρ Φ)))
-    (fun E => forall ρ' ρ σ, sub_keeps_sizes ρ' ρ σ -> gentry_size ρ' (gentry_sub E σ) <= gentry_size ρ E)
+    (fun E => forall x ρ' ρ σ, sub_keeps_sizes ρ' ρ σ -> gentry_size ρ' x (gentry_sub E σ) <= gentry_size ρ x E)
     (fun e => forall ρ' ρ σ, sub_keeps_sizes ρ' ρ σ -> centry_size ρ' (centry_sub e σ) <= centry_size ρ e))
     as (_ & Hm & _ & Hu & Hd & Hg & He & Hc); try solve [ intros; exact I ].
   all: intros.
@@ -310,9 +314,9 @@ Proof.
     assert (Hw' : sub_keeps_sizes (snd (body_size ρ' (gmod_sub Φ σ)) ++ ρ') (snd (body_size ρ Φ) ++ ρ)
                     (sb_qn (gm_binders Φ) σ))
       by (rewrite <- (length_body_size ρ Φ); apply sub_keeps_sizes_qn; assumption).
-    specialize (H0 _ _ _ Hw'); split; [ lia | constructor; assumption ].
-  - cbn [body_size gmod_sub fst snd].
-    destruct (H0 _ _ _ H2) as [H3 H4].
+    specialize (H0 x _ _ _ Hw'); split; [ lia | constructor; assumption ].
+  - cbn [body_size gmod_sub fst snd]; rewrite gm_binders_sub.
+    destruct (H0 _ _ _ H3) as [H4 H5].
     assert (Hw' : sub_keeps_sizes (snd (body_size ρ' (gmod_sub Φ σ)) ++ ρ') (snd (body_size ρ Φ) ++ ρ)
                     (sb_qn (gm_binders Φ) σ))
       by (rewrite <- (length_body_size ρ Φ); apply sub_keeps_sizes_qn; assumption).
@@ -375,18 +379,18 @@ Proof. intros * [| x]; rewrite ctx_sizes_cons; cbn; [ reflexivity | reflexivity 
 (** Splitting a telescope off at its last assumption keeps sizes. *)
 Lemma tele_split_keeps_sizes : forall R Γ,
     match tele_split R with
-    | inl (B, T, τ) => sub_keeps_sizes (ctx_sizes (T ++ ce_ass B :: Γ)) (ctx_sizes (rev R ++ Γ)) τ
+    | inl (B, T, τ) => sub_keeps_sizes (ctx_sizes (T ++ ce_ass (tele_split_kind R) B :: Γ)) (ctx_sizes (rev R ++ Γ)) τ
     | inr τ => sub_keeps_sizes (ctx_sizes Γ) (ctx_sizes (rev R ++ Γ)) τ
     end.
 Proof.
-  induction R as [| [B0 | B0 N | U | B0 N U] R IH]; intros Γ; cbn [rev tele_split].
+  induction R as [| [κ0 B0 | B0 N | U | B0 N U] R IH]; intros Γ; cbn [rev tele_split tele_split_kind].
   - apply sub_keeps_sizes_id.
   - rewrite <- List.app_assoc; cbn [List.app]; apply sub_keeps_sizes_id.
   - specialize (IH (ce_def B0 N :: Γ)); rewrite <- List.app_assoc; cbn [List.app].
     pose proof (sub_keeps_sizes_single Γ (ce_def B0 N) N eq_refl) as Hs.
     destruct (tele_split R) as [[[B' T'] τ] | τ].
     + eapply sub_keeps_sizes_compose; [ exact IH |].
-      pose proof (sub_keeps_sizes_ctx_ext (T' ++ ce_ass B' :: nil) _ _ _ Hs) as Hx.
+      pose proof (sub_keeps_sizes_ctx_ext (T' ++ ce_ass (tele_split_kind R) B' :: nil) _ _ _ Hs) as Hx.
       rewrite <- !ctx_sizes_app, tele_sub_app, length_app in Hx; cbn [tele_sub centry_sub length] in Hx.
       rewrite <- !List.app_assoc in Hx; cbn [List.app] in Hx.
       replace (length T' + 1) with (S (length T')) in Hx by lia; exact Hx.
@@ -395,7 +399,7 @@ Proof.
     pose proof (sub_keeps_sizes_single_mod Γ U) as Hs.
     destruct (tele_split R) as [[[B' T'] τ] | τ].
     + eapply sub_keeps_sizes_compose; [ exact IH |].
-      pose proof (sub_keeps_sizes_ctx_ext (T' ++ ce_ass B' :: nil) _ _ _ Hs) as Hx.
+      pose proof (sub_keeps_sizes_ctx_ext (T' ++ ce_ass (tele_split_kind R) B' :: nil) _ _ _ Hs) as Hx.
       rewrite <- !ctx_sizes_app, tele_sub_app, length_app in Hx; cbn [tele_sub centry_sub length] in Hx.
       rewrite <- !List.app_assoc in Hx; cbn [List.app] in Hx.
       replace (length T' + 1) with (S (length T')) in Hx by lia; exact Hx.
@@ -404,7 +408,7 @@ Proof.
     pose proof (sub_keeps_sizes_single_dm Γ B0 N U) as Hs.
     destruct (tele_split R) as [[[B' T'] τ] | τ].
     + eapply sub_keeps_sizes_compose; [ exact IH |].
-      pose proof (sub_keeps_sizes_ctx_ext (T' ++ ce_ass B' :: nil) _ _ _ Hs) as Hx.
+      pose proof (sub_keeps_sizes_ctx_ext (T' ++ ce_ass (tele_split_kind R) B' :: nil) _ _ _ Hs) as Hx.
       rewrite <- !ctx_sizes_app, tele_sub_app, length_app in Hx; cbn [tele_sub centry_sub length] in Hx.
       rewrite <- !List.app_assoc in Hx; cbn [List.app] in Hx.
       replace (length T' + 1) with (S (length T')) in Hx by lia; exact Hx.
@@ -459,15 +463,21 @@ Proof.
 Qed.
 
 (** The slot sizes of the binders of a body with no open. *)
+(** A chain of selections from a unit is one more than its selections. *)
+Lemma modexp_size_mems : forall ρ H pre, modexp_size ρ (me_mems H pre) = modexp_size ρ H + length pre.
+Proof. intros ρ H pre; revert H; induction pre as [| y pre IH]; intros H; cbn; [ lia | rewrite IH; cbn; lia ]. Qed.
+
 Lemma body_size_noopen_ctx : forall Φ ρ, gm_noopen Φ -> tele_sizes ρ (body_ctx Φ) = snd (body_size ρ Φ).
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its]; intros ρ Hn; cbn in Hn |- *; [ reflexivity | | contradiction ].
-  destruct E as [b pv r A [M |] | pv U | | pv A M U | ]; cbn [body_ctx tele_sizes]; rewrite (IH ρ Hn); reflexivity.
+  induction Φ as [| Φ IH x E | Φ IH H its Φg]; intros ρ Hn; cbn in Hn |- *; [ reflexivity | | contradiction ].
+  destruct E as [b pv r A [M |] | pv U | | pv A M U | ]; cbn [body_ctx tele_sizes]; rewrite (IH ρ Hn); try reflexivity.
+  all: cbn [centry_size gentry_size unit_size moddef_size qname_mod qname_sibling q_chain q_unit];
+    unfold qname_mod, qname_sibling; cbn [q_chain q_unit]; rewrite modexp_size_mems; cbn; reflexivity.
 Qed.
 
 (** An entry of a body with no open is smaller than the body. *)
 Lemma body_size_prefix : forall Φ y Φ' E ρ, gm_noopen Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ' y E) ->
-    fst (body_size ρ Φ') + S (gentry_size (tele_sizes ρ (body_ctx Φ') ++ ρ) E) <= fst (body_size ρ Φ).
+    fst (body_size ρ Φ') + S (gentry_size (tele_sizes ρ (body_ctx Φ') ++ ρ) y E) <= fst (body_size ρ Φ).
 Proof.
   induction Φ as [| Φ IH x E0 | Φ IH H its]; intros * Hn Hp; cbn in Hn, Hp; [ discriminate | | contradiction ].
   cbn [body_size fst].
@@ -498,7 +508,7 @@ Proof.
     destruct (tele_split (rev Δ)) as [[[B Δ'] τ] | τ]; [| discriminate ]; injection Ha as <-; cbn.
     apply le_n_S, (proj1 (proj2 (proj2 (proj2 sizes_sub))) Φx).
     eapply sub_keeps_sizes_compose; [ exact Hc |].
-    pose proof (sub_keeps_sizes_ctx_ext Δ' _ _ _ (sub_keeps_sizes_single Γ (ce_ass B) N eq_refl)) as Hx.
+    pose proof (sub_keeps_sizes_ctx_ext Δ' _ _ _ (sub_keeps_sizes_single Γ (ce_ass (tele_split_kind (rev Δ)) B) N eq_refl)) as Hx.
     rewrite <- !ctx_sizes_app in Hx; exact Hx.
   - destruct (tele_split (rev Θ')) as [[[? ?] ?] | ?]; injection Ha as <-; cbn; lia.
 Qed.
@@ -536,7 +546,7 @@ Section Expansion.
       target's and two more. *)
   Lemma items_gen_shape : forall Γ H its gs, items_gen Θ Ξ Γ H its gs ->
       List.length gs = List.length its /\
-      Forall (fun x => forall ρ, gentry_size ρ (snd (generated_item_entry x)) <= S (S (modexp_size ρ H))) gs.
+      Forall (fun x => forall ρ, gentry_size ρ (fst (generated_item_entry x)) (snd (generated_item_entry x)) <= S (S (modexp_size ρ H))) gs.
   Proof.
     induction 1; [ split; [ reflexivity | constructor ] | ..].
     all: match goal with IH : _ /\ _ |- _ => destruct IH as [IHl IHf] end;
@@ -548,14 +558,14 @@ Section Expansion.
 
   Lemma gens_append_sizes : forall gs Φ k B ρ new c,
       snd (body_size ρ Φ) = new ++ B -> List.length new = k ->
-      Forall (fun g => gentry_size (B ++ ρ) (snd (generated_item_entry g)) <= c) gs ->
+      Forall (fun g => gentry_size (B ++ ρ) (fst (generated_item_entry g)) (snd (generated_item_entry g)) <= c) gs ->
       gens_sizes ρ Φ k gs B new c.
   Proof.
     induction gs as [| g gs IH]; intros * Hs Hk Hgs; cbn [gens_append].
     - apply (mk_gens_sizes ρ Φ k nil B new c ltac:(cbn; lia) nil); cbn; auto.
     - inversion Hgs as [| ? ? Hg Hgs']; subst.
       destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [snd] in Hg.
-      set (s := gentry_size (snd (body_size ρ Φ) ++ ρ) (gentry_wk E (wk_shiftn (List.length new)))).
+      set (s := gentry_size (snd (body_size ρ Φ) ++ ρ) d (gentry_wk E (wk_shiftn (List.length new)))).
       assert (Hsc : s <= c).
       { unfold s; rewrite Hs, <- app_assoc; etransitivity; [| exact Hg ].
         apply (proj1 (proj2 (proj2 (proj2 (proj2 sizes_wk))))).
@@ -569,26 +579,36 @@ Section Expansion.
       + rewrite length_app; cbn; lia.
   Qed.
 
+  (** The entries an open generates bind one index each. *)
+  Lemma gm_binders_gens_append : forall gs Φ k, gm_binders (gens_append Φ k gs) = length gs + gm_binders Φ.
+  Proof.
+    induction gs as [| g gs IH]; intros Φ k; cbn [gens_append]; [ reflexivity |].
+    destruct (generated_item_entry g); rewrite IH; cbn; lia.
+  Qed.
+
+  Lemma gm_binders_gens_body : forall gs, gm_binders (gens_body gs) = length gs.
+  Proof. intros gs; unfold gens_body; rewrite gm_binders_gens_append; cbn; lia. Qed.
+
   (** Expanding a body does not grow it. *)
   Lemma body_xp_size : forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall ρ,
       fst (body_size ρ Φx) <= fst (body_size ρ Φ) /\ Forall2 le (snd (body_size ρ Φx)) (snd (body_size ρ Φ)).
   Proof.
-    induction 1 as [Γ | Γ Φ Φx x E Hx IH | Γ Φ Φx H its R Rm gs Hx IH Hm Hmod Hig Hok]; intros ρ.
+    induction 1 as [Γ | Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R Rm gs Hx IH Hm Hmod Hig Hok ->]; intros ρ.
     - cbn; split; [ lia | constructor ].
     - destruct (IH ρ) as [IH1 IH2]; cbn [body_size fst snd].
-      pose proof (gentry_size_mono E _ _ (sizes_le_app _ _ ρ ρ IH2 (sizes_le_refl ρ))) as He.
+      pose proof (gentry_size_mono E x _ _ (sizes_le_app _ _ ρ ρ IH2 (sizes_le_refl ρ))) as He.
       split; [ lia | constructor; assumption ].
     - destruct (IH ρ) as [IH1 IH2].
       destruct (items_gen_shape _ _ _ _ Hig) as [Hl Hf].
       set (c := S (S (modexp_size (snd (body_size ρ Φx) ++ ρ) H))).
-      assert (Hgs : Forall (fun g => gentry_size (snd (body_size ρ Φx) ++ ρ) (snd (generated_item_entry g)) <= c) gs)
+      assert (Hgs : Forall (fun g => gentry_size (snd (body_size ρ Φx) ++ ρ) (fst (generated_item_entry g)) (snd (generated_item_entry g)) <= c) gs)
         by (eapply Forall_impl; [| exact Hf ]; intros g Hg; apply Hg).
       destruct (gens_append_sizes gs Φx 0 (snd (body_size ρ Φx)) ρ nil c eq_refl eq_refl Hgs) as [G1 new' G2 G3 G4].
       pose proof (modexp_size_mono H _ _ (sizes_le_app _ _ ρ ρ IH2 (sizes_le_refl ρ))) as Hmo.
-      cbn [body_size fst snd]; rewrite G2; cbn [List.app]; split.
-      + unfold c in G1; rewrite Hl in G1; nia.
+      cbn [body_size fst snd]; rewrite G2, gm_binders_gens_body; cbn [List.app]; split.
+      + unfold c in G1; nia.
       + apply Forall2_app; [| exact IH2 ].
-        rewrite <- Hl, <- G4; apply Forall2_le_repeat_r.
+        rewrite <- G4; apply Forall2_le_repeat_r.
         eapply Forall_impl; [| exact G3 ]; intros s Hs; unfold c in Hs; lia.
   Qed.
 End Expansion.
@@ -627,6 +647,8 @@ Section Typed.
   Fixpoint typed_open (Γ : ctx) (R : mdesc) : Prop :=
     match R with
     | mdesc_open Δ _ Φx =>
+        (** the expanded body has no open *)
+        gm_noopen Φx /\
         forall y Φ' E U, gm_prefix_upto Φx y = Some (gm_ext Φ' y E) -> entry_unit E = Some U ->
           typed_instance (body_ctx Φ' ++ Δ ++ Γ) U
     | mdesc_dm _ _ _ Rm => typed_open Γ Rm
@@ -645,15 +667,18 @@ Section Typed.
       typed_open Γ1 (mdesc_open Δ1 Φw Φx) -> sub_mod_compat σ (Δ2 ++ Γ2) (Δ1 ++ Γ1) ->
       typed_open Γ2 (mdesc_open Δ2 Φw' (gmod_sub Φx σ)).
   Proof.
-    intros * HT Hσ; cbn in HT |- *; intros y Φ' E' U Hp HE'.
+    intros * [Hno HT] Hσ; cbn in HT |- *; split; [ exact (gm_noopen_sub _ _ Hno) |].
+    intros y Φ' E' U Hp HE'.
     rewrite gm_prefix_upto_sub in Hp.
     destruct (gm_prefix_upto Φx y) as [Φ1 |] eqn:Hp1; cbn in Hp; [| discriminate ].
     destruct (gm_prefix_entry _ _ _ Hp1) as (Φ0 & E & -> & _).
     cbn in Hp; injection Hp as <- <-.
+    assert (Hn0 : gm_nopens Φ0 = 0)
+      by (pose proof (gm_prefix_upto_nopens _ _ _ Hp1 (gm_noopen_nopens _ Hno)) as Hn; cbn in Hn; exact Hn).
     destruct (entry_unit_sub_inv _ _ _ HE') as (U0 & HE & ->).
-    rewrite body_ctx_sub, List.app_assoc.
+    rewrite (body_ctx_sub _ _ Hn0), List.app_assoc.
     eapply typed_instance_sub; [ apply (HT _ _ _ _ Hp1 HE) |].
-    rewrite <- length_body_ctx, <- !List.app_assoc.
+    rewrite <- (length_body_ctx _ Hn0), <- !List.app_assoc.
     apply sub_mod_compat_ext; exact Hσ.
   Qed.
 
@@ -667,6 +692,7 @@ Section Typed.
   Lemma typed_open_up : forall Γ Θ' R, typed_open (Θ' ++ Γ) R -> typed_open Γ (mdesc_up Θ' R).
   Proof.
     intros Γ Θ' R HT; induction R as [| Δ Φw Φx | |]; cbn in *; try exact I; [| exact (IHR HT) ].
+    destruct HT as [Hno HT]; split; [ exact Hno |].
     intros * Hp HE; rewrite <- List.app_assoc; exact (HT _ _ _ _ Hp HE).
   Qed.
 
@@ -681,7 +707,7 @@ Section Typed.
       destruct (tele_split (rev Δ)) as [[[B Δ'] τ] | τ]; [| discriminate ]; injection Ha as <-.
       eapply typed_open_body_sub; [ exact HT |].
       eapply sub_mod_compat_compose; [ exact Hc |].
-      exact (sub_mod_compat_ext Δ' _ _ _ (sub_mod_compat_single Γ B N)).
+      exact (sub_mod_compat_ext Δ' _ _ _ (sub_mod_compat_single Γ (tele_split_kind (rev Δ)) B N)).
     - destruct (tele_split (rev Θ')) as [[[? ?] ?] | ?]; injection Ha as <-; exact I.
   Qed.
 
@@ -709,6 +735,7 @@ Section Typed.
   Proof.
     intros * Hok; induction Hok as [| Γt Δ Φw Φx ? HΦ Hno Hent _ | | ? ? ? ? ? ? ? ? ? ? ? _ IH ?]; cbn; try exact I.
     2: { apply typed_open_up; exact IH. }
+    split; [ exact Hno |].
     intros y Φ' E U Hp HE.
     destruct (gm_prefix_body_ctx _ _ _ Hno Hp) as (Ψ & HΨ); rewrite HΨ in HΦ.
     rewrite <- !List.app_assoc in HΦ; apply ctx_app_wf_right in HΦ.
@@ -745,8 +772,8 @@ Section Typed.
   Lemma typed_open_entry_order : forall Γ Δ Φw Φx y Γy E rd,
       typed_open Γ (mdesc_open Δ Φw Φx) -> mdesc_entry (mdesc_open Δ Φw Φx) y = Some (Γy, E, rd) -> edenote_order Θ Ξ (Γy ++ Γ) E.
   Proof.
-    intros * HT He; cbn in He.
-    destruct (gm_prefix_upto Φx y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
+    intros * [_ HT] He; cbn in He.
+    destruct (gm_prefix_upto Φx y) as [[| Φ' x E0 | ? ? ? ?] |] eqn:Hp; try discriminate.
     destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
     destruct E0 as [b pv r A oM | pm U | | pv A M U | ].
     - destruct b, oM; try discriminate; injection He as <- <- <-; constructor.
@@ -767,8 +794,8 @@ Section Typed.
       edenote Θ Ξ (Γy ++ Γ) None E R1 -> mdesc_read rd R1 = Some R2 -> typed_open Γ R2.
   Proof.
     pose proof (mdenote_functional_all _ _ Hg) as (_ & Fu & _).
-    intros * HT He Hd Hr; cbn in He.
-    destruct (gm_prefix_upto Φx y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
+    intros * [_ HT] He Hd Hr; cbn in He.
+    destruct (gm_prefix_upto Φx y) as [[| Φ' x E0 | ? ? ? ?] |] eqn:Hp; try discriminate.
     destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
     assert (Hrd : rd = reader_open Δ Φ' /\ Γy = body_ctx Φ' ++ Δ /\ E = E0).
     { destruct E0 as [[|] pv r A [M |] | pm U | | pv A M U | ]; try discriminate; injection He as <- <- <-; auto. }
@@ -830,7 +857,7 @@ Section Stored.
                     forall R, mdenote Θ Ξ (Δa ++ Γ) E' R -> desc_ok Θ Ξ (Δa ++ Γ) R /\ exists Rm, mdesc_mod R = Some Rm).
     { destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? [? [? ?| ?]] | ? ? ?]; cbn in HUa; try discriminate;
         injection HUa as <- <-; cbn [ge_valid syn_V] in HE0;
-        [ destruct HE0 as (? & ? & _ & ?) | destruct (proj1 HE0) as (? & ? & _ & ?) ];
+        [ destruct HE0 as (? & ? & _ & _ & ?) | destruct (proj1 HE0) as (? & ? & _ & _ & ?) ];
         refine (conj _ (conj _ _)); assumption. }
     destruct HE1 as (HE' & HΔ & Hcl).
     destruct (Hcl nil ltac:(rewrite app_nil_r; exact HΔ)) as ((R0 & HR0) & Hok).
@@ -929,7 +956,7 @@ Section Classify.
   Theorem denotation_classified :
     (forall Γ H R, mdenote Θ Ξ Γ H R -> typed_or_bounded Γ R (modexp_size (ctx_sizes Γ) H)) /\
     (forall Γ o U R, udenote Θ Ξ Γ o U R -> typed_or_bounded Γ R (unit_size (ctx_sizes Γ) U)) /\
-    (forall Γ o E R, edenote Θ Ξ Γ o E R -> typed_or_bounded Γ R (gentry_size (ctx_sizes Γ) E)) /\
+    (forall Γ o E R, edenote Θ Ξ Γ o E R -> typed_or_bounded Γ R (gentry_size (ctx_sizes Γ) EmptyString E)) /\
     (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> True) /\
     (forall Γ H its gs, items_gen Θ Ξ Γ H its gs -> True).
   Proof.
@@ -971,6 +998,11 @@ Section Classify.
           pose proof (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hm) Hmod) as Hc; cbn in Hc.
           pose proof (body_size_prefix _ _ _ _ (ctx_sizes (Δ ++ Γ)) Hc Hp) as H2.
           rewrite <- app_assoc, ctx_sizes_app in Hne.
+          (** An entry a reader reads is no type former: its size is not its
+              name's *)
+          match type of Hne with _ <= gentry_size ?X _ _ =>
+            assert (Hy : gentry_size X EmptyString E0 = gentry_size X y E0)
+              by (destruct E0 as [[|] pv r A [M |] | pm U | | pv A M U | ]; try discriminate; reflexivity) end.
           cbn [open_size] in Hn; cbn [modexp_size]; lia.
       + (* a closed module *)
         pose proof (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hm) Hmod) as Hloc; cbn in Hloc.
@@ -1014,7 +1046,7 @@ Section Order.
   (** The order at the entries of what a module expression denotes, given
       the order at the smaller entries. *)
   Lemma entries_order_bounded : forall n Γ H,
-      (forall Γ E, S (gentry_size (ctx_sizes Γ) E) < n -> edenote_order Θ Ξ Γ E) ->
+      (forall Γ E, S (gentry_size (ctx_sizes Γ) EmptyString E) < n -> edenote_order Θ Ξ Γ E) ->
       modexp_size (ctx_sizes Γ) H < n ->
       forall y R0 R0m Γy E rd, mdenote Θ Ξ Γ H R0 -> mdesc_mod R0 = Some R0m ->
         mdesc_entry R0m y = Some (Γy, E, rd) -> edenote_order Θ Ξ (Γy ++ Γ) E.
@@ -1033,7 +1065,11 @@ Section Order.
       apply IHe.
       pose proof (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hm) Hmod) as Hc; cbn in Hc.
       pose proof (body_size_prefix _ _ _ _ (ctx_sizes (Δ ++ Γ)) Hc Hp) as H2.
-      rewrite <- app_assoc, ctx_sizes_app; cbn [open_size] in Hnu; lia.
+      (** An entry a reader reads is no type former: its size is not its
+          name's *)
+      assert (Hy : forall X, gentry_size X EmptyString E0 = gentry_size X y E0)
+        by (intros X; destruct E0 as [[|] pv r A [M |] | pm U | | pv A M U | ]; try discriminate; reflexivity).
+      rewrite Hy, <- app_assoc, ctx_sizes_app; cbn [open_size] in Hnu; lia.
     - (* a closed module *)
       pose proof (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hm) Hmod) as Hloc; cbn in Hloc.
       cbn in He.
@@ -1047,7 +1083,7 @@ Section Order.
   Theorem order_bounded : forall n,
       (forall Γ H, modexp_size (ctx_sizes Γ) H < n -> mdenote_order Θ Ξ Γ H) /\
       (forall Γ U, unit_size (ctx_sizes Γ) U < n -> udenote_order Θ Ξ Γ U) /\
-      (forall Γ E, S (gentry_size (ctx_sizes Γ) E) < n -> edenote_order Θ Ξ Γ E) /\
+      (forall Γ E, S (gentry_size (ctx_sizes Γ) EmptyString E) < n -> edenote_order Θ Ξ Γ E) /\
       (forall Γ Φ, fst (body_size (ctx_sizes Γ) Φ) < n -> body_xp_order Θ Ξ Γ Φ) /\
       (forall Γ H its, S (S (modexp_size (ctx_sizes Γ) H)) < n -> items_gen_order Θ Ξ Γ H its).
   Proof.
