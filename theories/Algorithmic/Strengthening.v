@@ -2676,24 +2676,132 @@ Proof.
     eapply exp_eq_strengthen; [ exact Hass | exact HΓf | exact HM | exact HN | exact HMN ].
 Qed.
 
-(** A [Π] over a type of [Typeω@j] or a proposition, into [Typeω@j], is of
-    [Typeω@j]. *)
-Lemma wf_pi_at_domain : forall Γ A B j,
-    Γ ⊢ A : Typeω@j \/ Γ ⊢ A : Propₘ -> Γ ▹ A ⊢ B : Typeω@j -> Γ ⊢ Π A B : Typeω@j.
+(** ** The Cases of the Theorem
+
+    A closed constant [W], typed in every context at a closed type [K] of a
+    sort and below every type it has, and no type of levels, strengthens
+    ([typed_at_closed_strengthen]); at [LevelSort] it has no type
+    ([level_sort_typed_former]). *)
+Lemma closed_const_str : forall Γ κ A W K SK,
+    (forall φ, W[φ]ʷ = W) -> (forall φ, K[φ]ʷ = K) -> type_sort SK -> ~ level_type_former W ->
+    (forall Γ', ⊢ Γ' -> Γ' ⊢ W : K /\ Γ' ⊢ K : SK) ->
+    (forall Γ' C, Γ' ⊢ W : C -> Γ' ⊢ K ⊆ C) ->
+    nf_str_exp Γ κ A W.
 Proof.
-  intros * HA HB.
-  assert (⊢ Γ) by (destruct HA; gen_presups; assumption).
-  change (Typeω@j) with (relevance_sort relevant Typeω@j).
-  destruct HA as [HA | HA]; (eapply wf_pi; [ apply wf_is_univ_large; assumption | exact HA | constructor | exact HB ]).
+  intros * HWc HKc HSK Hnl Hty Hinv Δ T Hass HΓf HTt HW.
+  rewrite HWc in HW.
+  destruct HTt as [T S HS HT | HΓs].
+  - assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
+    destruct (Hty _ HΓs) as [HWK HK].
+    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | exact HSK | exact HS | exact HWK | exact HK | exact HT | apply HKc | exact (Hinv _ _ HW) ].
+  - exfalso; exact (Hnl (level_sort_typed_former HW)).
 Qed.
 
-(** The same at a small universe. *)
-Lemma wf_pi_lvl_at_domain : forall Γ n L A B,
-    Γ ⊢ L : Level@n -> Γ ⊢ A : Type⟨L⟩ \/ Γ ⊢ A : Propₘ -> Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ -> Γ ⊢ Π A B : Type⟨L⟩.
+(** A large universe, [Prop], [⊤] and [⊥]. *)
+Lemma typ_str : forall Γ κ A i, nf_str_exp Γ κ A Typeω@i.
 Proof.
-  intros * HL HA HB.
-  change (Type⟨L⟩) with (relevance_sort relevant Type⟨L⟩).
-  destruct HA as [HA | HA]; (eapply wf_pi; [ eapply wf_is_univ_small, HL | exact HA | constructor | exact HB ]).
+  intros; apply (closed_const_str _ _ _ _ Typeω@(S i) Typeω@(S (S i)));
+    [ intros; reflexivity | intros; reflexivity | constructor | inversion 1 | intros; split; apply wf_typ; assumption
+    | intros * H; exact (wf_typ_inversion H) ].
+Qed.
+
+Lemma prop_str : forall Γ κ A, nf_str_exp Γ κ A Propₘ.
+Proof.
+  intros; apply (closed_const_str _ _ _ _ Type@0 (Typeω@0));
+    [ intros; reflexivity | intros; reflexivity | constructor | inversion 1 | intros; split; [ apply wf_prop | apply (wf_univ_large (i := 0)) ]; assumption
+    | intros * H; exact (wf_prop_inversion _ _ _ _ H) ].
+Qed.
+
+Lemma True_str : forall Γ κ A, nf_str_exp Γ κ A ⊤.
+Proof.
+  intros; apply (closed_const_str _ _ _ _ Propₘ (Typeω@0));
+    [ intros; reflexivity | intros; reflexivity | constructor | inversion 1 | intros; split; [ apply wf_True | apply wf_prop_large ]; assumption
+    | intros * H; exact (wf_True_inversion _ _ _ _ H) ].
+Qed.
+
+Lemma False_str : forall Γ κ A, nf_str_exp Γ κ A ⊥.
+Proof.
+  intros; apply (closed_const_str _ _ _ _ Propₘ (Typeω@0));
+    [ intros; reflexivity | intros; reflexivity | constructor | inversion 1 | intros; split; [ apply wf_False | apply wf_prop_large ]; assumption
+    | intros * H; exact (wf_False_inversion _ _ _ _ H) ].
+Qed.
+
+(** [Level@n] is of [LevelSort] only ([wf_level_inversion]), which no type
+    of a sort weakens to. *)
+Lemma level_str : forall Γ κ A n, nf_str_exp Γ κ A Level@n.
+Proof.
+  intros * Δ T Hass HΓf HTt HW; cbn [exp_wk] in HW.
+  apply wf_level_inversion in HW.
+  destruct HTt as [T S HS HT | HΓs]; [| apply wf_level, HΓs ].
+  exfalso; destruct T; cbn [exp_wk] in HW; try discriminate.
+  exact (level_sort_untyped HT).
+Qed.
+
+(** [LevelSort] is of no type. *)
+Lemma level_sort_str : forall Γ κ A, nf_str_exp Γ κ A LevelSort.
+Proof. intros * Δ T Hass HΓf HTt HW; exfalso; exact (level_sort_untyped HW). Qed.
+
+(** A level: a constant with atoms, at the type of levels the atoms are
+    of; or a single atom, a neutral.  A level is below no [LevelSort],
+    which is of no sort. *)
+Lemma lvl_str : forall Γ κ A c xs, level_atoms_all (ne_str Γ κ A) xs -> nf_str_exp Γ κ A (lvl_exp_of c (List.map atom_exp xs)).
+Proof.
+  intros * IHs Δ T Hass HΓf HTt HW.
+  assert (HΓs : ⊢ (Δ ++ Γ)%list) by (destruct HTt; [ gen_presups; assumption | assumption ]).
+  rewrite lvl_exp_of_wk in HW.
+  destruct (lvl_exp_of_inv _ _ _ _ HW) as [(n & HsL & Hcn & HF) | (a & -> & Hmap)].
+  - destruct HTt as [T S HS HT | _];
+      [| exfalso; destruct (presup_subtyp_right_sorted HsL) as (S & _ & HL); exact (level_sort_untyped HL) ].
+    assert (Hla : @level_atoms_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
+      by (eapply level_atoms_wf_strengthen; [ exact IHs | exact Hass | exact HΓf | exact HΓs | exact HF ]).
+    assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n)
+      by (apply lvl_exp_of_wf; [ exact Hcn | assumption | assumption ]).
+    eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply type_sort_level | exact HS
+                                       | exact HL | apply wf_level, HΓs | exact HT | reflexivity | exact HsL ].
+  - (** A single atom with no offset is the atom itself. *)
+    destruct (level_atoms_map_single _ _ _ Hmap) as (s & u & -> & ->).
+    destruct IHs as [Hu _].
+    cbn in HW |- *.
+    exact (exp_str_at _ _ _ _ Hu Δ T Hass HΓf HTt HW).
+Qed.
+
+(** A small universe: its level strengthens atom by atom. *)
+Lemma univ_str : forall Γ κ A c xs, level_atoms_all (ne_str Γ κ A) xs ->
+    nf_str_exp Γ κ A (a_univ (lvl_exp_of c (List.map atom_exp xs))).
+Proof.
+  intros * IHs Δ T Hass HΓf HTt HW; cbn [exp_wk] in HW.
+  destruct HTt as [T Srt HS HT | _]; [| exfalso; pose proof (level_sort_typed_former HW) as Hf; inversion Hf ].
+  assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
+  pose proof (wf_univ_inversion HW) as Hs.
+  apply wf_univ_lvl_inversion in HW as [n HW].
+  rewrite lvl_exp_of_wk in HW.
+  assert (Hla : @level_atoms_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
+    by (eapply level_atoms_wf_strengthen; [ exact IHs | exact Hass | exact HΓf | exact HΓs | eapply lvl_exp_of_atoms; exact HW ]).
+  assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n)
+    by (apply lvl_exp_of_wf; [ exact (lvl_exp_of_const_sort HW) | assumption | assumption ]).
+  eapply wf_exp_subtyp; [ eapply wf_univ; exact HL | exact HT | exact HS |].
+  eapply subtyp_strengthen_sort;
+    [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
+    | apply (wf_univ_large_tm (i := 0) (n := n)); [ exact HΓs | eapply wf_succl; exact HL ] | exact HT |].
+  exact Hs.
+Qed.
+
+(** A conjunction: both parts are propositions. *)
+Lemma and_str : forall Γ κ A P Q, nf_str_exp Γ κ A P -> nf_str_exp Γ κ A Q -> nf_str_exp Γ κ A (Σₚ P Q).
+Proof.
+  intros * IHP IHQ Δ T Hass HΓf HTt HW; cbn [exp_wk] in HW.
+  destruct HTt as [T Srt HS HT | _]; [| exfalso; pose proof (level_sort_typed_former HW) as Hf; inversion Hf ].
+  assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
+  assert (Hass' : all_assumptions (ce_ass ak_propositional P :: Δ)) by (constructor; [ do 2 eexists; reflexivity | exact Hass ]).
+  destruct (wf_and_inversion _ _ _ _ _ _ HW) as [HPl HQl Hs].
+  assert (HPs : (Δ ++ Γ)%list ⊢ P : Propₘ)
+    by (eapply nf_str_at_sort; [ exact IHP | exact Hass | exact HΓf | exact HΓs | constructor | exact HPl ]).
+  assert (HΓs' : ⊢ ((Δ ++ Γ) ▹{ak_propositional} P)%list) by (eapply wf_ctx_extend; [ exact HPs | constructor ]).
+  assert (HΓf' : ⊢ (tele_wk (ce_ass ak_propositional P :: Δ) ↑ ++ Γ ▹{κ} A)%list) by (gen_presups; assumption).
+  assert (HQs : ((Δ ++ Γ) ▹{ak_propositional} P)%list ⊢ Q : Propₘ)
+    by (eapply (nf_str_at_sort _ _ _ _ (ce_ass ak_propositional P :: Δ)); [ exact IHQ | exact Hass' | exact HΓf' | exact HΓs' | constructor | exact HQl ]).
+  eapply typed_at_closed_strengthen; [ exact Hass | exact HΓf | apply (type_sort_universe 0) | exact HS
+                                     | apply wf_and; assumption | eapply wf_prop_large; exact HΓs | exact HT | reflexivity | exact Hs ].
 Qed.
 
 (** ** The Induction Hypotheses Under the Premise *)
