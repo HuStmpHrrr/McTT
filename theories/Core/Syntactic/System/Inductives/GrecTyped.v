@@ -693,4 +693,14 @@ Section GrecTyped.
     destruct (recursor_motive_at EK j Mj HMj CT_wf) as [HM2 HA2]; rewrite length_EK in HM2, HA2.
     eapply ctx_fn_wf; [ exact HM2 | exact (HA2 0) | exact (recursor_elim_typed j Mj HMj) ].
   Qed.
+
+  (** The type of that function is a type of a large universe over the
+      module's telescope ([ctx_pi_wf]). *)
+  Lemma recursor_fn_ty_typed : forall j Mj, List.nth_error (ind_block_members D) j = Some Mj ->
+      exists i, Θ ⍮ Ξ ⍮ CT ⊢ recursor_fn_ty p D j Mj : Typeω@i.
+  Proof.
+    intros j Mj HMj; unfold recursor_fn_ty; cbv zeta.
+    destruct (recursor_motive_at EK j Mj HMj CT_wf) as [HM2 HA2]; rewrite length_EK in HM2, HA2.
+    exact (ctx_pi_wf _ _ _ _ _ _ HM2 (HA2 0)).
+  Qed.
 End GrecTyped.

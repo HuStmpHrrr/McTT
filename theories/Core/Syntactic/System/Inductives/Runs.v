@@ -524,6 +524,19 @@ Section RecTyped.
     eapply ctx_fn_wf; [ exact H1 | exact Hj |].
     eapply ctx_fn_wf; [ exact HM2 | exact (HA2 0) | exact He ].
   Qed.
+
+  (** The recursor's type is a type of a large universe over the module's
+      parameters: a [Π] over its telescope into the motive's
+      ([ctx_pi_wf]). *)
+  Lemma rec_ty_typed : exists j, Θ ⍮ Ξ ⍮ Γ0 ⊢ rec_ty p D M : Typeω@j.
+  Proof.
+    unfold rec_ty; cbv zeta.
+    destruct (motive_at _ EK_wf) as [HM2 HA2]; rewrite length_EK in HM2, HA2.
+    rewrite <- rec_tele_eq in HM2, HA2.
+    pose proof EK_wf as H1; rewrite <- rec_tele_eq in H1.
+    destruct (ctx_pi_wf _ _ _ _ _ _ HM2 (HA2 0)) as [j Hj].
+    exact (ctx_pi_wf _ _ _ _ _ _ H1 Hj).
+  Qed.
 End RecTyped.
 
 (** ** The Constructors
@@ -559,4 +572,26 @@ Proof.
                   : Typeω@j') by (rewrite List.app_nil_r; exact Hj').
   pose proof (wf_apps_vars _ _ _ _ _ _ _ (decl_uparams_ass D Hc) HU0 Hj0 HM0) as H.
   rewrite List.app_nil_r in H; exact H.
+Qed.
+
+(** The type of a constructor of a declared member [k] over its
+    non-uniform parameters and arguments is a type of a large universe
+    over the module's parameters ([ctx_pi_wf]). *)
+Lemma con_gen_ty_typed : forall Θ Ξ p D k Mk pm c gs, ⊢ᵍ Θ ⍮ Ξ -> decls_typed Θ Ξ ->
+    ind_lookup Θ Ξ p = Some D -> ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> ind_con Mk c = Some gs ->
+    exists j, Θ ⍮ Ξ ⍮ ind_uparams D
+      ⊢ ctx_pi (im_nparams Mk) (ctx_pi (cargs_ctx p D Mk gs) (apps (a_ind p k) (ind_pvars D Mk (List.length gs)))) : Typeω@j.
+Proof.
+  intros * Hg Hds Hl HMk Hh Hcon.
+  pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
+  destruct (con_cod_typed _ _ _ _ _ _ _ _ Hg Hds Hl HMk Hcon) as [j Hj].
+  destruct (cargs_ctx_wf _ _ _ _ _ _ _ _ Hg Hds Hl HMk Hin gs nil (eq_sym (List.app_nil_r gs))) as (HΨ & _ & _).
+  assert (Hty : ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk))
+                = apps (a_ind p k) (ind_pvars D Mk (List.length gs))).
+  { unfold ind_mty; rewrite HMk; unfold im_ty_at, im_ref, im_pre; rewrite Hh; cbn [fst snd].
+    unfold ind_uvars, ind_pvars, im_np; f_equal.
+    rewrite (vars_from_app (List.length gs) (ind_nu D) (im_nn Mk)); f_equal; lia. }
+  rewrite Hty in Hj; unfold im_params in Hj, HΨ; rewrite List.app_assoc in Hj, HΨ.
+  destruct (ctx_pi_wf _ _ _ _ _ _ HΨ Hj) as [j' Hj']; rewrite ctx_pi_app in Hj'.
+  exists j'; exact Hj'.
 Qed.
