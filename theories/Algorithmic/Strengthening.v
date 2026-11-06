@@ -1064,27 +1064,37 @@ Proof.
   - destruct (List.exists_last (l := Δ)) as (Δ0 & e & ->); [ intros ->; discriminate |].
     rename Δ0 into Δ.
     rewrite List.length_app in Hn; cbn in Hn.
-    unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [[A0 ->] _].
+    unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
     rewrite List.length_app in Hl; cbn in Hl.
     destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; cbn in Hl.
     rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
-    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [SA HSA HA0]].
+    destruct (ctx_decomp_sort_kind (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ (SA & HSA & HA0)].
     cbn [apps_exp] in HMs.
     (** The first argument, of the first type. *)
     assert (Happ : forall T', Γ ⊢ M $ M0 : T' -> Γ ⊢ M0 : A0 /\ Γ ⊢ (ctx_pi Δ B)[Id,,M0] ⊆ T').
     { intros T' HT'.
-      destruct (wf_app_inversion HT') as [X Y [HM | HM] HM0 HYT].
-      2:{ (** A function is no proof of a [∀] *)
-          exfalso; pose proof (HP _ HM) as Hs; rewrite ctx_pi_snoc in Hs; exact (subtyp_pi_all_absurd Hs). }
+      destruct (wf_app_inversion HT') as [κd κc X Y HM HM0 HYT].
       pose proof (HP _ HM) as Hs; rewrite ctx_pi_snoc in Hs.
-      destruct (subtyp_pi_inv _ _ _ _ _ Hs) as [(S & HS & HAX) HBY].
-      assert (HM0' : Γ ⊢ M0 : A0) by (eapply exp_conv_sort; [ exact HS | symmetry; exact HAX | exact HM0 ]).
+      (** A function is no proof of a [∀], nor a [Π] of levels; the [Π]
+          above is one into types *)
+      destruct κc; [| exfalso; exact (subtyp_pi_all_absurd Hs) |].
+      2:{ exfalso.
+          assert (exists C, Γ ⊢ a_pi κd ak_level X Y : C) as [C0 HC0] by (gen_presups; eexists; eassumption).
+          destruct (wf_pi_inversion_at HC0) as [U HU HX HY Hk _].
+          assert (HL : Γ ⊢ a_pi κd ak_level X Y : abs_kind_sort ak_level U) by (eapply wf_pi; eassumption).
+          assert (exists C, Γ ⊢ Π{κ0} A0 (ctx_pi Δ B) : C) as [C1 HC1] by (gen_presups; eexists; eassumption).
+          destruct (wf_pi_typed_large HC1) as [k1 Hk1].
+          cbn [abs_kind_sort] in HL.
+          discriminate (subtyp_same_kind _ _ _ ak_relevant ak_level k1 0 Hs Hk1 HL). }
+      destruct (subtyp_pi_inv _ _ _ _ _ _ _ Hs) as (<- & (S & HS & HAX) & HBY).
+      assert (HM0' : Γ ⊢ M0 : A0)
+        by (eapply exp_conv_sort; [ exact (sort_kind_type_sort _ _ HS) | symmetry; exact HAX | exact HM0 ]).
       split; [ exact HM0' |].
       etransitivity; [| exact HYT ].
       eapply sub_preserves_subtyp; [ exact HBY | eapply wf_sub_single; [ exact HA0 | exact HSA | exact HM0' ] ]. }
     destruct (wf_apps_head _ _ _ HMs) as (T1 & HT1).
     destruct (Happ _ HT1) as [HM0 _].
-    pose proof (wf_sub_single _ _ _ _ _ _ HA0 HSA HM0) as Hs.
+    pose proof (wf_sub_single _ _ _ _ _ _ _ HA0 HSA HM0) as Hs.
     assert (HΔ' : ⊢ (tele_sub Δ (Id,,M0) ++ Γ)%list) by (eapply ctx_sub_wf; eassumption).
     pose proof (wf_sub_ext _ _ _ _ _ _ Hs HΔ' HΔ) as Hs'.
     intros [| k'] N T' HN HT'.
@@ -1092,7 +1102,7 @@ Proof.
       rewrite tele_insts_snoc in HT'; cbn in HT'; injection HT' as <-; rewrite exp_sub_id; exact HM0.
     + cbn in HN.
       eapply (IH (tele_sub Δ (Id,,M0)) Γ (B[sb_qn (List.length Δ) (Id,,M0)]) i (M $ M0) Ms T);
-        [ rewrite length_tele_sub; lia | apply tele_ass_sub; exact Hass | exact HΔ'
+        [ rewrite length_tele_sub; lia | apply all_assumptions_sub; exact Hass | exact HΔ'
         | exact (sub_preserves_exp _ _ _ _ _ _ _ HB Hs') | | rewrite length_tele_sub; lia | exact HMs | exact HN |].
       * intros T'' HT''; destruct (Happ _ HT'') as [_ H']; rewrite ctx_pi_sub in H'; exact H'.
       * rewrite tele_insts_snoc in HT'; cbn [List.nth_error] in HT'.
@@ -1149,8 +1159,9 @@ Lemma wf_record_apps_len : forall Γ p R Ms i, record_lookup gc_deps gc_stack p 
     Γ ⊢ apps (a_record p) Ms : Typeω@i -> List.length Ms = List.length (record_params R).
 Proof.
   intros * Hl H.
+  pose proof (wf_ctx_scoped_exp H) as Hsc.
   apply wf_exp_eq_refl, completeness_fundamental_exp_eq in H.
-  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R0 HR]]]]]]].
+  destruct (rel_typ_under_ctx_at_initial_env Hsc H) as [ρ [a [a' [Hρ [Ha [Ha' [R0 HR]]]]]]].
   apply Modules.eval_apps_exp in Ha as (f & Ef & Hargs).
   inversion Ef; subst; apply Modules.eval_app_args_record in Hargs as (xs & Exs & Eap).
   apply eval_apps_record_inv in Eap; cbn in Eap; subst.
@@ -1174,14 +1185,14 @@ Proof.
   exists j; split.
   - eapply wf_record; [ exact HΓ | exact Hl | exact (typed_nodup _ _ _ Ht) | exact (typed_params_ass _ _ _ Ht) | exact Hj
                       | exact (record_typed_fctx_wf _ _ _ Ht _ (le_n _)) | exact HS | exact (typed_fields _ _ _ Ht)
-                      | exact (typed_relevance_length _ _ _ Ht) ].
+                      | exact (typed_kinds_length _ _ _ Ht) | exact (typed_field_kinds _ _ _ Ht) ].
   - exact (closed_weaken_exp _ _ _ _ _ HΓ Hj (record_ty_scoped _ Hc) ltac:(cbn; exact I)).
 Qed.
 
 (** The parameters and the fields of a tuple before the field [k], typed
     at the instances of the fields' telescope, from their typings at their
     types. *)
-Lemma tuple_prefix_insts : forall Γ R Ns (fs : list (String.string * exp)), tele_ass (record_params R) ->
+Lemma tuple_prefix_insts : forall Γ R Ns (fs : list (String.string * exp)), all_assumptions (record_params R) ->
     List.length Ns = List.length (record_params R) -> List.map fst fs = List.map fst (record_fields R) ->
     (forall j N B, List.nth_error Ns j = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) j = Some B -> Γ ⊢ N : B) ->
     forall k, k <= List.length (record_fields R) ->
@@ -1209,9 +1220,10 @@ Proof.
     assert (g = f) as ->.
     { pose proof (List.map_nth_error fst _ _ Hg) as E1; pose proof (List.map_nth_error fst _ _ Hj') as E2.
       rewrite Hfs in E1; rewrite E1 in E2; injection E2 as ->; reflexivity. }
-    destruct (tele_insts_nth _ _ _ _ _ HB) as (A0 & HA0 & ->).
+    destruct (tele_insts_nth _ _ _ _ _ HB) as (κ0 & A0 & HA0 & ->).
     rewrite Completeness.Records.Model.rev_record_fctx, nth_error_firstn_lt in HA0 by exact Hj'k.
-    unfold Completeness.Records.Model.field_tele in HA0; rewrite List.nth_error_map, Hj' in HA0; cbn in HA0; injection HA0 as <-.
+    destruct (Completeness.Records.Model.field_tele_nth _ _ _ _ HA0) as (f' & Hf' & _).
+    rewrite Hj' in Hf'; injection Hf' as _ <-.
     rewrite <- sb_of_list_app, List.firstn_firstn, Nat.min_l by lia.
     exact (HMs _ _ _ _ Hj'k Hg Hj').
 Qed.
@@ -1256,8 +1268,9 @@ Lemma exp_eq_record_apps_head : forall Γ p p' R X Y i,
     p = p' /\ List.length X = List.length (record_params R).
 Proof.
   intros * H Hl HYl.
+  pose proof (wf_ctx_scoped_exp_eq H) as Hsc.
   apply completeness_fundamental_exp_eq in H.
-  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R0 HR]]]]]]].
+  destruct (rel_typ_under_ctx_at_initial_env Hsc H) as [ρ [a [a' [Hρ [Ha [Ha' [R0 HR]]]]]]].
   apply Modules.eval_apps_exp in Ha as (f & Ef & Hargs).
   inversion Ef; subst; apply Modules.eval_app_args_record in Hargs as (xs & Exs & Eap).
   apply eval_apps_record_inv in Eap; cbn in Eap; subst.
@@ -1283,16 +1296,17 @@ Lemma tele_insts_typed : forall Δ Γ0 Γ σ Ms,
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ j T HT HMs.
   - unfold tele_insts in HT; cbn in HT; destruct Ms, j; discriminate.
-  - unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [[A0 ->] _].
+  - unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
     destruct Ms as [| M0 Ms].
     + unfold tele_insts in HT; rewrite List.rev_app_distr in HT; cbn in HT; destruct j; discriminate.
     + rewrite tele_insts_snoc in HT, HMs.
       rewrite <- List.app_assoc in HΔ; cbn [List.app] in HΔ.
-      destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [SA HS HA0]].
+      destruct (ctx_decomp_sort_kind (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 (SA & HSk & HA0)].
+      pose proof (sort_kind_type_sort _ _ HSk) as HS.
       destruct j as [| j]; cbn in HT.
       * injection HT as <-; exists SA; split; [ exact HS | exact (sub_preserves_sort _ _ _ _ _ _ _ HA0 HS Hσ) ].
       * eapply IH; [ exact Hass | exact HΔ | | exact HT |].
-        -- eapply wf_sub_extend; [ exact Hσ | exact HA0 | exact HS |].
+        -- eapply wf_sub_extend; [ exact Hσ | exact HA0 | exact HSk |].
            apply (HMs 0); [ lia | reflexivity | reflexivity ].
         -- intros j' N T' Hj' HN HT'; apply (HMs (S j')); [ lia | exact HN | exact HT' ].
 Qed.
@@ -1546,8 +1560,8 @@ Proof.
       rewrite (tele_insts_sb_eq _ (sb_of_list Id Us) (sb_of_list Id Us ⨟ Id)) in HT by (intro; symmetry; apply sb_compose_id_right).
       rewrite <- tele_insts_tele_sub in HT.
       eapply (tele_insts_conv_rev _ _ _ _ _ _ HNeq');
-        [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm)
-        | apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HDq _ _ Hk)
+        [ apply all_assumptions_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm)
+        | apply all_assumptions_sub; exact (decl_typed_nparams_ass _ _ _ HDq _ _ Hk)
         | rewrite length_tele_sub; exact HNl | | exact HN | exact HT ].
       intros k1 N1 T1 HN1 HT1; apply (HNp _ _ _ HN1).
       rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (sb_of_list Id (List.map (fun I => I[sb_of_list Id Us]) Is))) in HT1
@@ -1630,8 +1644,8 @@ Proof.
     rewrite (tele_insts_sb_eq _ (sb_of_list Id Us) (sb_of_list Id Us ⨟ Id)) in HT by (intro; symmetry; apply sb_compose_id_right).
     rewrite <- tele_insts_tele_sub in HT.
     eapply (tele_insts_eq_conv_rev _ _ _ _ _ HNeq');
-      [ apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm)
-      | apply tele_ass_sub; exact (decl_typed_nparams_ass _ _ _ HDq _ _ Hk)
+      [ apply all_assumptions_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hm)
+      | apply all_assumptions_sub; exact (decl_typed_nparams_ass _ _ _ HDq _ _ Hk)
       | rewrite length_tele_sub; unfold im_nn in HNk; exact HNk
       | rewrite length_tele_sub; unfold im_nn in HNk; rewrite HNl', <- HNl; exact HNk | | exact HN | exact HN' | exact HT ].
     intros k1 N1 N1' T1 HN1 HN1' HT1; apply (HEn _ _ _ _ HN1 HN1').
@@ -1650,12 +1664,13 @@ Lemma tele_insts_cong_upto : forall Δ Γ0 Γ σ σ' Ms Ms',
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ j T T' HT HT' HMs.
   - unfold tele_insts in HT; cbn in HT; destruct Ms, j; discriminate.
-  - unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [[A0 ->] _].
+  - unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
     destruct Ms as [| M0 Ms]; [ unfold tele_insts in HT; rewrite List.rev_app_distr in HT; cbn in HT; destruct j; discriminate |].
     destruct Ms' as [| M0' Ms']; [ unfold tele_insts in HT'; rewrite List.rev_app_distr in HT'; cbn in HT'; destruct j; discriminate |].
     rewrite tele_insts_snoc in HT, HT', HMs.
     rewrite <- List.app_assoc in HΔ; cbn [List.app] in HΔ.
-    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 [S0 HS0 HA0]].
+    destruct (ctx_decomp_sort_kind (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ0 (S0 & HSk0 & HA0)].
+    pose proof (sort_kind_type_sort _ _ HSk0) as HS0.
     assert (HAA : Γ ⊢ A0[σ] ≈ A0[σ'] : S0) by (eapply sub_eq_preserves_sort; eassumption).
     destruct j as [| j]; cbn in HT, HT'.
     + injection HT as <-; injection HT' as <-; exists S0; split; [ exact HS0 | exact HAA ].
@@ -1663,7 +1678,7 @@ Proof.
       pose proof (sub_preserves_sort _ _ _ _ _ _ _ HA0 HS0 (wf_sub_eq_right _ _ _ _ _ _ Hσ)) as HA0'.
       eapply IH; [ exact Hass | exact HΔ | | exact HT | exact HT' |].
       * eapply wf_sub_eq_extend;
-          [ exact Hσ | exact HA0 | exact HS0 | exact (presup_exp_eq_left HMM)
+          [ exact Hσ | exact HA0 | exact HSk0 | exact (presup_exp_eq_left HMM)
           | eapply wf_conv_sort; [ exact (presup_exp_eq_right HMM) | exact HA0' | exact HS0 | exact HAA ] | exact HMM ].
       * intros j' N N' T0 Hj' HN HN' HT0; apply (HMs (S j')); [ lia | exact HN | exact HN' | exact HT0 ].
 Qed.
@@ -2211,7 +2226,7 @@ Qed.
 
 (** The parameters and the fields of a tuple, as one instance of the
     fields' telescope over the parameters. *)
-Lemma tuple_insts_all : forall Γ R Ns (fs : list (String.string * exp)), tele_ass (record_params R) ->
+Lemma tuple_insts_all : forall Γ R Ns (fs : list (String.string * exp)), all_assumptions (record_params R) ->
     List.length Ns = List.length (record_params R) -> List.map fst fs = List.map fst (record_fields R) ->
     (forall j N B, List.nth_error (Ns ++ List.map snd fs) j = Some N ->
        List.nth_error (tele_insts (record_fctx R (List.length (record_fields R)) ++ record_params R) Id (Ns ++ List.map snd fs)) j
@@ -2239,7 +2254,7 @@ Proof.
     destruct (nth_error_lt_some (tele_insts (record_fctx R n) (sb_of_list Id Ns) (List.map snd fs)) k) as [T HT].
     { rewrite length_tele_insts by exact (record_fctx_ass R n).
       rewrite length_record_fctx, List.length_map by lia; lia. }
-    rewrite HT; destruct (tele_insts_nth _ _ _ _ _ HT) as (A0 & HA0 & ->).
+    rewrite HT; destruct (tele_insts_nth _ _ _ _ _ HT) as (κ0 & A0 & HA0 & ->).
     rewrite Completeness.Records.Model.rev_record_fctx, nth_error_firstn_lt in HA0 by exact Hkl.
     unfold Completeness.Records.Model.field_tele in HA0; rewrite List.nth_error_map, Hk in HA0; cbn in HA0.
     injection HA0 as <-; rewrite <- sb_of_list_app; reflexivity. }
