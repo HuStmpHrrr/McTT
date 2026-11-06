@@ -848,8 +848,7 @@ Proof.
         pose proof (level_sort_typed_former (presup_exp_eq_right HE)) as Hf.
         destruct v; inversion Hf.
     - (** [LevelSort] normalises to itself, no universe *)
-      exfalso; destruct UB; cbn [nf_to_exp] in *; try discriminate.
-      destruct HnB as [ρ a Hρ Ha HW]; inversion Ha; subst; inversion HW; subst; inversion Hv. }
+      exfalso; destruct HnB as [ρ a Hρ Ha HW]; inversion Ha; subst; inversion HW; subst; inversion Hv. }
   assert (HUBe : Δ ⊢ (UB : exp) ≈ UB' : Typeω@kB) by (eapply soundness_ty'; eassumption).
   assert (Hpf : nf_proof_free UB')
     by (rewrite (is_univ_nf_eq _ _ Hv) in HnB |- *; destruct v as [[c xs] | j]; [ exact (nbe_ty_univ_proof_free HUB HnB) | exact I ]).
@@ -1190,8 +1189,8 @@ Proof.
         eapply wf_ext_eq_dm; [ exact HX | exact HA | apply wf_exp_eq_refl; exact HA | exact HM | apply wf_exp_eq_refl; exact HM
                              | exact HA | exact HM | exact (IHU HP) | exact (IHU HP) ]
     end.
-  (** ** Parameters: each of a universe, all at one level *)
-  - split; [ apply wf_ext_eq_nil; assumption | exists 0; apply params_relevant_nil ].
+  (** ** Parameters: each of a universe or of levels, all at one level *)
+  - split; [ apply wf_ext_eq_nil; assumption | exists 0; apply params_kinded_nil ].
   - match goal with
     | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P /\ _, IHA : ⊢ ?P ++ ?G -> ?P ++ ?G ⊢ ?A : (nf_to_exp ?UA), Hu : is_univ_nf ?UA ?u, HG : ⊢ ?G |- _ =>
         destruct (IHX HG) as [HX [l Hl]]; pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HP;
@@ -1199,19 +1198,32 @@ Proof.
         pose proof (wf_exp_universe_nf_large_index HA0) as HA;
         split; [ eapply wf_ext_eq_ass_same; [ exact HX | exact HA | constructor | exact HA ] |];
         exists (max (universe_nf_large_index u) l);
-        change (P ▹ A) with ((ce_ass A :: nil) ++ P);
-        apply params_relevant_app;
-        [ let Δ1 := fresh "Δ1" in let T := fresh "T" in let Δ2 := fresh "Δ2" in let E := fresh "E" in
-          intros Δ1 T Δ2 E; destruct Δ1 as [| ? [| ? ?]]; cbn in E; try discriminate;
-          let HT := fresh "HT" in let HΔ := fresh "HΔ" in injection E as HT HΔ; subst; exact HA
-        | exact Hl ]
+        apply params_kinded_snoc; [ exact Hl | left; split; [ reflexivity | exact HA ] ]
+    end.
+  - (** A parameter of levels *)
+    match goal with
+    | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P /\ _, IHA : ⊢ ?P ++ ?G -> ?P ++ ?G ⊢ ?A : _, HG : ⊢ ?G |- _ =>
+        destruct (IHX HG) as [HX [l Hl]]; pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HP;
+        pose proof (IHA HP) as HA; cbn [nf_to_exp] in HA;
+        split; [ eapply wf_ext_eq_ass_same; [ exact HX | exact HA | constructor | exact HA ] |];
+        exists (max 0 l);
+        apply params_kinded_snoc; [ exact Hl | right; split; [ reflexivity | exact HA ] ]
     end.
   (** ** Units *)
   - eapply alg_unit_body_sound; eassumption.
-  - match goal with
-    | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P /\ _, IHE : ⊢ ?P ++ ?G -> wf_modexp_eq _ _ _ ?E ?E, Ha : all_assumptions ?P, HG : ⊢ ?G |- _ =>
+  - (** An alias: the parameters' sorts by position ([param_sort_at]), and
+        the flag read off the abstractability, as for a body *)
+    match goal with
+    | IHX : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P /\ _, IHE : ⊢ ?P ++ ?G -> wf_modexp_eq _ _ _ ?E ?E, Ha : all_assumptions ?P,
+      Habs : levels_abstractable _ _ ?G ?P ?E, HG : ⊢ ?G |- _ =>
         destruct (IHX HG) as [HX [l Hl]]; pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HP;
-        eapply wf_unit_eq_alias with (param_level := l); [ exact HX | exact Ha | exact Ha | exact (IHE HP) | exact (IHE HP) | exact Hl | exact Hl ]
+        destruct Habs as [Hsorted | (R & HR & Hnl)];
+        [ eapply wf_unit_eq_alias with (param_level := l) (param_sorts := param_sort_at P l) (lv := true) (lv' := true)
+                                         (Rt := mdesc_term ak_relevant a_prop None) (Rt' := mdesc_term ak_relevant a_prop None)
+        | eapply wf_unit_eq_alias with (param_level := l) (param_sorts := param_sort_at P l) (lv := false) (lv' := false)
+                                         (Rt := R) (Rt' := R) ];
+        first [ exact HX | exact Ha | exact (IHE HP) | apply param_sort_at_parameter_sort | exact (params_kinded_sorts _ _ _ Hl)
+              | intros _; assumption | discriminate ]
     end.
   (** ** Bodies, by their own lemmas *)
   - apply alg_body_nil_sound.
