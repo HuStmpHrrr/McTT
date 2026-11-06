@@ -2637,7 +2637,7 @@ Qed.
 
 Definition alg_entry (Γ : ctx) (e : centry) : Prop :=
   match e with
-  | ce_ass A => exists UA r u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA r u
+  | ce_ass κ A => exists UA u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA κ u
   | ce_def A M => (exists UA r u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA r u) /\ Γ ⊢a M ⟸ A
   | ce_mod U => Γ ⊢aᵘ U
   | ce_dm A M U => ((exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ Γ ⊢a M ⟸ A) /\ Γ ⊢aᵘ U
@@ -2681,7 +2681,7 @@ Definition body_tagged (Γ : ctx) (Φ : gmod) : Prop :=
 (** A name a body finds is one of its names. *)
 Lemma gm_prefix_upto_in : forall Φ y Φ', gm_prefix_upto Φ y = Some Φ' -> List.In y (gm_names Φ).
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH H its]; intros y Φ' Hp; cbn in Hp |- *; [ discriminate | |].
+  induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; intros y Φ' Hp; cbn in Hp |- *; [ discriminate | |].
   - destruct (String.eqb_spec y x) as [-> | _]; [ left; reflexivity | right; exact (IH _ _ Hp) ].
   - destruct (List.existsb _ _); [ discriminate | apply List.in_or_app; right; exact (IH _ _ Hp) ].
 Qed.
@@ -2724,12 +2724,15 @@ Proof.
   exact (nodup_app_disjoint _ _ y Hnd Hin (gm_prefix_upto_in _ _ _ Hp)).
 Qed.
 
-(** A type of the sorts at two tags has one tag. *)
-Lemma relevance_sort_agree : forall Γ A r r' i j,
+(** A type of the sorts of two kinds is of one kind ([subtyp_same_kind]
+    at the reflexive subtyping). *)
+Lemma kind_sort_agree : forall Γ A r r' i j,
     Γ ⊢ A : abs_kind_sort r Typeω@i -> Γ ⊢ A : abs_kind_sort r' Typeω@j -> r = r'.
 Proof.
-  intros * H H'; destruct r, r'; cbn [abs_kind_sort] in *; [ reflexivity | | | reflexivity ];
-    exfalso; eapply typ_prop_absurd; eassumption.
+  intros * H H'.
+  assert (Hs : Γ ⊢ A ⊆ A)
+    by (eapply wf_subtyp_refl; [ exact H | apply type_sort_kind_universe | apply wf_exp_eq_refl; exact H ]).
+  exact (subtyp_same_kind _ _ _ r r' i j Hs H H').
 Qed.
 
 (** The entries of an expanded body are of their tagged sorts in the
@@ -2739,13 +2742,13 @@ Qed.
 Lemma body_tagged_of_fill : forall Γ0 Φx (entry_sort : String.string -> exp),
     gm_nopens Φx = 0 -> body_shape Φx Φx -> ⊢ body_ctx Φx ++ Γ0 ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, entry_sort y = abs_kind_sort (entry_kind E) Typeω@i) ->
+       sort_kind (entry_sort y) (entry_kind E)) ->
     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_fill Φ0 = Some σ -> Γ0 ⊢ A[σ] : entry_sort y) ->
     body_tagged Γ0 Φx.
 Proof.
   intros * Hn Hs HC Htag Hfill y Φ0 E A M Hp HE.
-  destruct (Htag _ _ _ _ _ Hp HE) as [i Hi].
+  destruct (sort_kind_abs_kind_sort_inv _ _ (Htag _ _ _ _ _ Hp HE)) as [i Hi].
   destruct (fill_prefix _ _ _ _ (proj1 (body_shape_fill _ _ Hn Hs)) Hp) as [σ Hσf].
   pose proof (Hfill _ _ _ _ _ _ Hp HE Hσf) as HAσ; rewrite Hi in HAσ.
   destruct (prefix_body_ctx _ _ _ Hn Hp) as [X HX].
@@ -2755,14 +2758,16 @@ Proof.
   assert (HAS : ⊢ body_ctx Φ0 ++ Γ0 /\ exists Srt, type_sort Srt /\ body_ctx Φ0 ++ Γ0 ⊢ A : Srt).
   { destruct E as [b pv r A' [M' |] | | | pv A' M' U |]; cbn in HE; try discriminate; injection HE as <- <-;
       cbn [body_ctx List.app] in HC0.
-    - destruct (ctx_decomp_def HC0) as (HΓ & [Srt HS HA'] & _); split; [ exact HΓ | eauto ].
+    - destruct (ctx_decomp_def HC0) as (HΓ & _ & _); split; [ exact HΓ | exact (ctx_decomp_def_sorted HC0) ].
     - destruct (ctx_decomp_dm HC0) as (HΓ & [k HA'] & _ & _); split; [ exact HΓ |].
       exists Typeω@k; split; [ constructor | exact HA' ]. }
   destruct HAS as (HΓ0 & Srt & HS & HA0).
   pose proof (sub_preserves_sort _ _ _ _ _ _ _ HA0 HS (wf_gm_fill _ _ _ _ _ HΓ0 Hσf)) as HAσ'.
-  destruct HS as [j |], (entry_kind E); cbn [abs_kind_sort] in HAσ |- *;
-    [ exists j; exact HA0 | | | exists 0; exact HA0 ];
-    exfalso; eapply typ_prop_absurd; eassumption.
+  (** the sort is the sort of a kind, which the filled-in type fixes *)
+  assert (exists κ j, Srt = abs_kind_sort κ Typeω@j) as (κ & j & ->)
+    by (destruct HS as [j | |]; [ exists ak_relevant, j | exists ak_propositional, 0 | exists ak_level, 0 ]; reflexivity).
+  pose proof (kind_sort_agree _ _ _ _ _ _ HAσ' HAσ) as ->.
+  exists j; exact HA0.
 Qed.
 
 (** The same, read off the premises of a unit rule, which fill in an entry
@@ -2770,7 +2775,7 @@ Qed.
 Lemma body_tagged_of_fill_left : forall Γ0 Φx Φx' (entry_sort : String.string -> exp),
     gm_nopens Φx = 0 -> body_shape Φx Φx' -> ⊢ body_ctx Φx ++ Γ0 ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, entry_sort y = abs_kind_sort (entry_kind E) Typeω@i) ->
+       sort_kind (entry_sort y) (entry_kind E)) ->
     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -2792,7 +2797,7 @@ Qed.
 Lemma body_tagged_of_fill_right : forall Γ0 Φx Φx' (entry_sort : String.string -> exp),
     gm_nopens Φx' = 0 -> body_shape Φx Φx' -> ⊢ body_ctx Φx' ++ Γ0 ->
     (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       exists i, entry_sort y = abs_kind_sort (entry_kind E') Typeω@i) ->
+       sort_kind (entry_sort y) (entry_kind E')) ->
     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
@@ -2822,7 +2827,7 @@ Lemma alg_body_of_entries : forall n Γ0 Δ Φ Φx, body_xp gc_deps gc_stack (Δ
     Δ ++ Γ0 ⊢aᵇ Φ ⇝ Φx.
 Proof.
   intros * Hx; remember (Δ ++ Γ0) as G eqn:HG; revert HG.
-  induction Hx as [G | G Φ Φx x E Hx IH | G Φ Φx H its R Rm gs Hx IH HR HRm Hg Hok];
+  induction Hx as [G | G Φ Φx x E Hx IH | G Φ Φx H its Φg R Rm gs Hx IH HR HRm Hg Hok HΦg];
     intros -> HE Hl Hs Hnd Htg Ho; cbn [gmod_lets] in Hl.
   - constructor.
   - cbn [body_shape] in Hs; destruct Hs as (Hs & _ & HsE).
@@ -2837,7 +2842,7 @@ Proof.
       destruct (Htg x Φx _ A M ltac:(cbn [gm_prefix_upto]; rewrite String.eqb_refl; reflexivity) eq_refl) as [i HAt].
       cbn [entry_kind] in HAt.
       pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HA (presup_exp_ctx HAt)) Hu) as HAs.
-      pose proof (relevance_sort_agree _ _ _ _ _ _ HAs HAt) as ->.
+      pose proof (kind_sort_agree _ _ _ _ _ _ HAs HAt) as ->.
       econstructor; eassumption.
     + pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
       rewrite <- List.app_assoc in He; specialize (He ltac:(lia)).
@@ -2873,7 +2878,7 @@ Proof.
     econstructor; eassumption.
   - destruct (me_mtele _ _ _ HH) as (R & T & Hm & Ht).
     eapply alg_modexp_mem; [ apply IH; [ exact Hgen | lia ] | exact Hm | exact Ht ].
-  - destruct Hgen as (HH0 & R & T & B & T1 & i & Hm & Ht & Hv & HB & HN).
+  - destruct Hgen as (HH0 & R & T & B & T1 & i & Hm & Ht & Hv & HB & _ & HN).
     eapply alg_modexp_app; [ apply IH; [ exact HH0 | lia ] | exact Hm | exact Ht | exact Hv | apply HM; [ exact HN | lia ] ].
   - apply alg_modexp_lit, HU; [ exact (unit_eq_of_full _ _ _ _ Hgen) | exact Hl ].
 Qed.
@@ -2892,36 +2897,91 @@ Proof.
     [ exact HΔ | .. ]; econstructor; rewrite <- ?List.app_assoc; eauto.
 Qed.
 
-(** A unit under parameters [Δ] is the unit over its own parameters and
-    [Δ], the algorithmic counterpart of [wf_unit_eq_flatten]. *)
-Lemma alg_unit_flatten : forall Γ Δ Δ' D,
-    Γ ⊢aᵖ Δ -> all_assumptions Δ -> Δ ++ Γ ⊢aᵘ gu_mk Δ' D -> Γ ⊢aᵘ gu_mk (Δ' ++ Δ) D.
+(** A body abstractable over the outer parameters [Δ] as a literal over
+    its own [Δ'], and over [Δ'], is abstractable over both: with [Δ] of
+    levels, by the inner premise; otherwise the literal's description,
+    with no member of a type of levels, is the body's under both
+    telescopes ([no_level_open_shift]). *)
+Lemma levels_abstractable_flatten_body : forall Γ Δ Δ' Φ,
+    levels_abstractable gc_deps gc_stack Γ Δ (me_lit (gu_open Δ' Φ)) ->
+    levels_abstractable gc_deps gc_stack (Δ ++ Γ) Δ' (me_lit (gu_open nil Φ)) ->
+    levels_abstractable gc_deps gc_stack Γ (Δ' ++ Δ) (me_lit (gu_open nil Φ)).
 Proof.
-  intros * HΔ Ha HU; inversion HU; subst.
-  - eapply alg_unit_body; [ eapply alg_params_app; eassumption | apply List.Forall_app; split; assumption
-                       | rewrite <- List.app_assoc; eassumption | assumption .. ].
-  - eapply alg_unit_alias; [ eapply alg_params_app; eassumption | apply List.Forall_app; split; assumption
-                        | rewrite <- List.app_assoc; eassumption ].
+  intros * [Hs | (R & HR & HN)] Hin.
+  - destruct Hin as [Hs' | (R' & HR' & HN')]; [ left; exact (level_sorted_app _ _ Hs' Hs) |].
+    right; exists R'; rewrite <- List.app_assoc; split; assumption.
+  - right; inversion HR; subst; try (unfold gc_unit, gc_loc in *; cbn in *; discriminate).
+    match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [? ? ? ? ? Φx ? Hx HRb |]; subst end.
+    cbn in HRb; injection HRb as <-.
+    exists (mdesc_open nil Φ Φx); split.
+    + constructor; econstructor; [ rewrite List.app_nil_l, <- List.app_assoc; exact Hx | reflexivity ].
+    + eapply no_level_open_shift; [| exact HN ]; rewrite List.app_nil_l, List.app_assoc; reflexivity.
 Qed.
 
-(** Relevant parameters, each type checked as an entry, are checked
-    parameters: a type of a universe infers a universe, no proposition
-    ([relevance_sort_agree]). *)
-Lemma alg_params_of_entries : forall n Γ Δ l, ⊢ Γ ->
-    ext_entries n Γ Δ -> ctx_lets Δ <= n -> all_assumptions Δ -> params_relevant gc_deps gc_stack Γ Δ l -> Γ ⊢aᵖ Δ.
+(** The same for an alias: the literal denotes the target's module part
+    abstracted over [Δ'] ([udenote_alias]), whose having no member of a
+    type of levels is the target's under [Δ'] ([no_level_up_mod],
+    [no_level_of_mod]). *)
+Lemma levels_abstractable_flatten_alias : forall Γ Δ Δ' E,
+    levels_abstractable gc_deps gc_stack Γ Δ (me_lit (gu_mk Δ' (md_alias E))) ->
+    levels_abstractable gc_deps gc_stack (Δ ++ Γ) Δ' E ->
+    levels_abstractable gc_deps gc_stack Γ (Δ' ++ Δ) E.
 Proof.
-  intros n Γ; induction Δ as [| e Δ IH]; intros l HΓ Hx Hl Ha HR; [ constructor |]; cbn [ctx_lets] in Hl.
-  apply List.Forall_cons_iff in Ha as [[T ->] Ha].
+  intros * [Hs | (R & HR & HN)] Hin.
+  - destruct Hin as [Hs' | (R' & HR' & HN')]; [ left; exact (level_sorted_app _ _ Hs' Hs) |].
+    right; exists R'; rewrite <- List.app_assoc; split; assumption.
+  - right; inversion HR; subst; try (unfold gc_unit, gc_loc in *; cbn in *; discriminate).
+    match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [| ? ? ? ? R0 R1 HE HR1]; subst end.
+    pose proof (proj1 (no_level_up_mod _ _ _ _ _ (mdesc_mod_is_mod _ _ HR1)) HN) as HN1.
+    exists R0; rewrite <- List.app_assoc; split; [ exact HE | exact (no_level_of_mod _ _ _ _ _ HR1 HN1) ].
+Qed.
+
+(** A unit under parameters [Δ] is the unit over its own parameters and
+    [Δ], the algorithmic counterpart of [wf_unit_eq_flatten], given that
+    the literal is abstractable over [Δ], as the rule's flag premise
+    says. *)
+Lemma alg_unit_flatten : forall Γ Δ Δ' D,
+    Γ ⊢aᵖ Δ -> all_assumptions Δ -> Δ ++ Γ ⊢aᵘ gu_mk Δ' D ->
+    levels_abstractable gc_deps gc_stack Γ Δ (me_lit (gu_mk Δ' D)) ->
+    Γ ⊢aᵘ gu_mk (Δ' ++ Δ) D.
+Proof.
+  intros * HΔ Ha HU Habs; inversion HU; subst.
+  - eapply alg_unit_body; [ eapply alg_params_app; eassumption | apply List.Forall_app; split; assumption
+                       | rewrite <- List.app_assoc; eassumption | assumption .. |].
+    eapply levels_abstractable_flatten_body; eassumption.
+  - eapply alg_unit_alias; [ eapply alg_params_app; eassumption | apply List.Forall_app; split; assumption
+                        | rewrite <- List.app_assoc; eassumption |].
+    eapply levels_abstractable_flatten_alias; eassumption.
+Qed.
+
+(** Parameters of the sorts a unit rule gives them, each type checked as
+    an entry, are checked parameters: a type of the universe at [l] infers
+    a universe, a type of levels [LevelSort], as the kind of the entry
+    is the kind of its sort ([kind_sort_agree]). *)
+Lemma alg_params_of_entries : forall n Γ Δ l (param_sorts : nat -> exp), ⊢ Γ ->
+    ext_entries n Γ Δ -> ctx_lets Δ <= n -> all_assumptions Δ ->
+    (forall k, parameter_sort l (param_sorts k)) ->
+    (forall Δ1 κ T Δ2, Δ = (Δ1 ++ ce_ass κ T :: Δ2)%list -> (Δ2 ++ Γ)%list ⊢ T : param_sorts (List.length Δ2)) ->
+    Γ ⊢aᵖ Δ.
+Proof.
+  intros n Γ; induction Δ as [| e Δ IH]; intros l ps HΓ Hx Hl Ha Hps HR; [ constructor |]; cbn [ctx_lets] in Hl.
+  apply List.Forall_cons_iff in Ha as [(κ & T & ->) Ha].
   cbn [centry_lets] in Hl.
   pose proof (ext_entries_head _ _ _ _ Hx ltac:(cbn [centry_lets]; lia)) as He; cbn [alg_entry] in He.
-  destruct He as (UA & r & u & HT & Hs).
-  pose proof (HR nil T Δ eq_refl) as HTl.
+  destruct He as (UA & u & HT & Hs).
+  pose proof (HR nil κ T Δ eq_refl) as HTl.
   pose proof (sort_typed_of_is_sort_nf (alg_type_infer_sound HT (presup_exp_ctx HTl)) Hs) as HTs.
-  pose proof (relevance_sort_agree _ _ relevant _ _ _ HTl HTs) as <-.
-  inversion Hs; subst.
-  econstructor; [| eassumption | eassumption ].
-  apply (IH l HΓ (ext_entries_app_r _ _ (_ :: nil) _ Hx) ltac:(lia) Ha).
-  intros Δ1 T' Δ2 E; exact (HR (ce_ass T :: Δ1) T' Δ2 ltac:(rewrite E; reflexivity)).
+  pose proof (IH l ps HΓ (ext_entries_app_r _ _ (_ :: nil) _ Hx) ltac:(lia) Ha Hps
+                (fun Δ1 κ' T' Δ2 E => HR (ce_ass κ T :: Δ1) κ' T' Δ2 ltac:(rewrite E; reflexivity))) as HΔ.
+  assert (HP : ps (List.length Δ) = Typeω@l \/ ps (List.length Δ) = LevelSort)
+    by (destruct (Hps (List.length Δ)); auto).
+  destruct HP as [EP | EP]; rewrite EP in HTl.
+  - change (Typeω@l) with (abs_kind_sort ak_relevant Typeω@l) in HTl.
+    pose proof (kind_sort_agree _ _ _ _ _ _ HTl HTs) as <-.
+    inversion Hs; subst; eapply alg_params_ass; eassumption.
+  - change LevelSort with (abs_kind_sort ak_level Typeω@0) in HTl.
+    pose proof (kind_sort_agree _ _ _ _ _ _ HTl HTs) as <-.
+    inversion Hs; subst; eapply alg_params_level; eassumption.
 Qed.
 
 (** ** Records, Algorithmically *)
