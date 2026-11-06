@@ -53,7 +53,7 @@ Proof.
   1-2: match goal with HE : _ <~> per_universe_elements (per_univ _) |- _ => apply HE in Hx end;
        destruct Hx as [[R0 HR0] _ _]; exfalso; exact (per_univ_elem_not_con _ _ _ _ HR0 _ _ _ _ eq_refl).
   - match goal with HE : _ <~> per_lvl_at _ |- _ => apply HE in Hx end.
-    destruct (Hx 0) as [L0 L1 HL0 _ _ _]; inversion HL0.
+    destruct (Hx 0) as [L0 HL0 _ _ _]; inversion HL0.
   - match goal with HE : _ <~> per_prop |- _ => apply HE in Hx end.
     exfalso; pose proof (per_prop_left _ _ Hx) as Hl; discriminate Hl.
   - (** A type of levels is no constructor's type. *)
@@ -250,7 +250,7 @@ Theorem rel_exp_under_ctx_con_view : forall P p D, valid_groups P -> P p D ->
 Proof.
   intros P p D HP HPD * HMj Hh HUl HL HR.
   pose proof HL as [RΓ HRΓ i0 _].
-  destruct (presup_rel_exp_under_ctx HL) as [iA HA].
+  destruct (presup_rel_exp_under_ctx_simple_at HRΓ HL) as [iA HA].
   apply (rel_exp_under_ctx_of_simple HRΓ HL HR).
   intros ρ ρ' Hρρ'.
   destruct (rel_exp_under_ctx_simple_at HRΓ HL _ _ Hρρ') as [Hp | (l & l' & El & El' & Hll')]; [ left; exact Hp |].
@@ -258,7 +258,7 @@ Proof.
   right; exists l, r'; split; [ exact El | split; [ exact Er' |] ].
   destruct (con_view_values P p D HP HPD j Mj qc kc Is vm c ρ' Us Ms l' r' HMj Hh HUl El' Er')
     as (Dq & Mk & pm & cs & cs' & ms & Hq & HMk & Hh' & Lcs & Lcs' & -> & ->).
-  destruct (rel_type_inversion_simple_at HRΓ HA _ _ Hρρ') as (t & t' & Et & Et' & [R HR0]).
+  destruct (HA _ _ Hρρ') as (t & t' & Et & Et' & [R HR0]).
   pose proof (per_head_iff Et Et' HR0) as ER.
   assert (HPR : PER R) by (eapply per_elem_PER; exact HR0).
   apply ER; apply ER in Hll'.
