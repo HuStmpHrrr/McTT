@@ -12,6 +12,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
+From Mctt.Core Require Import Completeness.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic Require Export NbE.
 From Mctt.Core.Syntactic Require Import Substitution.
@@ -172,22 +173,46 @@ Record nbe_level_atom (Γ : ctx) (s : nat) (a : ne) : Prop := mk_nbe_level_atom
     (** The atom is one of its atoms, at sort [s] *)
   ; nbe_level_atom_in : List.In (mk_level_atom nbe_level_atom_offset s a) nbe_level_atom_atoms }.
 
+(** The atoms of a level normal form without proofs hold no proofs. *)
+Lemma level_atoms_proof_free_In : forall c xs j s a,
+    nf_proof_free (nf_lvl c xs) -> List.In (mk_level_atom j s a) xs -> ne_proof_free a.
+Proof.
+  intros c xs; cbn [nf_proof_free]; induction xs as [| x xs IH]; intros * Hp Hin; [ destruct Hin |].
+  destruct Hp as [Hx Hxs]; destruct Hin as [-> | Hin]; [ exact Hx | exact (IH _ _ _ Hxs Hin) ].
+Qed.
+
+(** The atoms of a level of sort [n] read off its well scoped normal form
+    ([level_atoms_well_scoped]) are levels of their sorts. *)
+Lemma level_atoms_well_scoped_In : forall n Γ xs j s a,
+    @level_atoms_well_scoped gc_deps gc_stack n Γ xs -> List.In (mk_level_atom j s a) xs -> Γ ⊢ (a : exp) : Level@s.
+Proof.
+  intros n Γ xs; induction xs as [| [k t b] xs IH]; intros * Hw Hin; [ destruct Hin |].
+  destruct Hw as [[_ Hb] Hxs]; destruct Hin as [Heq | Hin];
+    [ injection Heq as -> -> ->; exact Hb | exact (IH _ _ _ Hxs Hin) ].
+Qed.
+
 (** Two atoms of normal forms of levels, of one sort and equal up to their
     proofs, are equal levels: a canonical form keeps one of them in place
-    of the other ([level_atoms_coherent]), and proofs are equal by proof
-    irrelevance wherever they occur.  For example, with [h : P],
-    [F : P → LevelSort] and [g : (F h → F h) → Level@0], the atom of
-    [g (λ x : F h. x)] holds the proof [h] in the annotation of the
-    abstraction, and two such atoms differing only in that proof are
-    equal. *)
+    of the other ([level_atoms_coherent]).  Typed levels hold no proofs
+    ([nbe_level_proof_free]), so the two atoms are the same neutral, a
+    level of its sort ([soundness_lvl_well_scoped]).  For example, the atom
+    [g (λ x : F h. x)] with a proof [h] in an annotation cannot occur:
+    [F : P → LevelSort] is not typable, [LevelSort] being in no universe. *)
 Theorem soundness_nbe_atoms_upto_proofs : forall {Γ s a b},
     nbe_level_atom Γ s a ->
     nbe_level_atom Γ s b ->
     ne_eq_upto_proofs a b ->
     Γ ⊢ (a : exp) ≈ (b : exp) : Level@s.
 Proof.
-  (* PENDING M2: read off the gluing of levels *)
-Admitted.
+  intros * [Ma na ca xsa ja Hta Hnbea Hina] [Mb nb cb xsb jb Htb Hnbeb Hinb] Hab.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  (** The atom holds no proof: it is the other one *)
+  pose proof (nbe_level_proof_free Hta (wf_level _ _ _ _ HΓ) Hnbea) as Hpf.
+  pose proof (ne_proof_free_eq _ _ (level_atoms_proof_free_In _ _ _ _ _ Hpf Hina) Hab) as <-.
+  (** a level of its sort *)
+  destruct (soundness_lvl_well_scoped Hta Hnbea) as [_ Hws].
+  exact (wf_exp_eq_refl (level_atoms_well_scoped_In _ _ _ _ _ _ Hws Hina)).
+Qed.
 
 (** The atoms of the normal forms of typed levels are coherent. *)
 Lemma level_atoms_coherent_of_nbe : forall {Γ} xs,
