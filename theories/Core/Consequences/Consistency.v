@@ -297,7 +297,10 @@ Lemma nbe_ty_of_mutual_subtyp : forall {Γ A A'},
     Γ ⊢ A ⊆ A' -> Γ ⊢ A' ⊆ A -> exists W W', nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W' /\ nf_eq_upto_proofs W W'.
 Proof.
   intros * H H'.
-  destruct (rel_type_of_mutual_subtyp (completeness_fundamental_subtyp _ _ _ H) (completeness_fundamental_subtyp _ _ _ H'))
+  (** [A] is of a sort: not [LevelSort]. *)
+  destruct (presup_subtyp_left_sorted H) as (S & HS & HA).
+  destruct (rel_type_of_mutual_subtyp (completeness_fundamental_subtyp _ _ _ H) (completeness_fundamental_subtyp _ _ _ H')
+              (rel_type_not_level_sort_of_sort HS (completeness_fundamental_exp _ _ _ HA)))
     as [i Hi].
   assert (HsΓ : ctx_scoped 0 Γ) by (gen_presups; eapply wf_ctx_scoped; eassumption).
   exact (nbe_ty_of_rel_type HsΓ Hi).
@@ -526,7 +529,7 @@ Proof.
   pose proof (sort_kind_abs_kind_sort κ i) as HSk.
   (** The codomains, at the variables, read back alike; the right one
       moved to the left domain *)
-  assert (Hc : in_rel (⇑! a (length Γ)) (⇑! a0 (length Γ))) by (apply (per_bot_then_per_elem equiv_a_a'); apply var_per_bot).
+  assert (Hc : in_rel (⇑! a (length Γ)) (⇑! a0 (length Γ))) by (apply (var_per_elem _ equiv_a_a'); assumption).
   match goal with H1 : forall c c' (equiv_c_c' : in_rel c c'), rel_mod_eval _ B _ B' _ _ |- _ =>
     destruct (H1 _ _ Hc) as [b b' Hb Hb' HRb] end.
   destruct (per_univ_then_per_top_typ HRb (Datatypes.S (length Γ))) as [WB WB' HWB HWB' HEB].
@@ -763,9 +766,9 @@ Proof.
   destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) Hsem) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   inversion Ha; subst; inversion Ha'; subst.
   invert_per_univ_elem HR.
-  match goal with Hl : per_lvl ?l ?l' |- _ => destruct (per_lvl_reads _ _ Hl (length Γ)) as (L & L' & HW & HW' & HE) end.
-  (** The two level terms have normal forms equal up to proofs *)
-  eapply soundness_upto_proofs; [ eassumption | eassumption | | | apply nf_lvl_of_upto_proofs; exact HE ];
+  match goal with Hl : per_lvl ?l ?l' |- _ => destruct (per_lvl_reads _ _ Hl (length Γ)) as (L & HW & HW' & _) end.
+  (** The two level terms have the same normal form *)
+  eapply soundness_upto_proofs; [ eassumption | eassumption | | | reflexivity ];
     (eapply nbe_evaluated_intro; [ eassumption | apply eval_exp_level | eassumption
                                  | eapply read_nf_level_sort; eassumption | constructor ]).
 Qed.
@@ -1150,7 +1153,7 @@ Lemma ind_type_not_level : forall {Γ p m X}, Γ ⊢ apps (a_ind p m) X : LevelS
 Proof.
   intros * H; apply (type_value_not_level H); intros ρ a Ha Hl.
   destruct (eval_ind_value _ _ _ _ _ Ha) as [ms ->].
-  destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [=]) | (? & ? & ? & [=])]].
+  destruct (level_code_head _ Hl) as [(? & [=]) | (? & ? & ? & [=])].
 Qed.
 
 (** Nor is a record type. *)
@@ -1158,7 +1161,7 @@ Lemma record_type_not_level : forall {Γ p X}, Γ ⊢ apps (a_record p) X : Leve
 Proof.
   intros * H; apply (type_value_not_level H); intros ρ a Ha Hl.
   destruct (eval_record_value _ _ _ _ Ha) as [ms ->].
-  destruct (level_code_head _ Hl) as [(? & [=]) | [(? & [=]) | (? & ? & ? & [=])]].
+  destruct (level_code_head _ Hl) as [(? & [=]) | (? & ? & ? & [=])].
 Qed.
 
 Lemma subtyp_ind_inv : forall {Γ p m X Y},
@@ -1504,20 +1507,18 @@ Proof.
     (** universes are no propositions *)
     [| match goal with Hp : per_prop _ _ |- _ => destruct Hp; cbn in *; discriminate end ].
   match goal with Hl : per_sublvl _ _ |- _ =>
-    destruct (Hl (length Γ)) as [L0 L1 HL0 HL1 Hle] end.
+    destruct (Hl (length Γ)) as [L0 L1 HL0 HL1 Hle _ _] end.
   (** The values at the identity and at the retagged environment are
       related levels, so read back alike *)
   invert_per_univ_elem Hll; invert_per_univ_elem Hrr.
   repeat match goal with Hp : per_lvl _ _ |- _ =>
-    let La := fresh "La" in let Lb := fresh "Lb" in let HW := fresh "HW" in let HW' := fresh "HW'" in
-    let HE := fresh "HE" in
-    destruct (per_lvl_reads _ _ Hp (length Γ)) as (La & Lb & HW & HW' & HE); clear Hp end.
+    let La := fresh "La" in let HW := fresh "HW" in let HW' := fresh "HW'" in
+    destruct (per_lvl_reads _ _ Hp (length Γ)) as (La & HW & HW' & _); clear Hp end.
   functional_eval_rewrite_clear.
   functional_read_rewrite_clear.
   repeat match goal with H : nf_lvl_of _ = nf_lvl_of _ |- _ => apply nf_lvl_of_inj in H; subst end.
-  (** The readbacks the order is about are, up to proofs, those NbE
-      gives. *)
-  eapply lvl_le_upto_proofs; [ | | exact Hle ]; solve [ eassumption | symmetry; eassumption ].
+  (** The readbacks the order is about are those NbE gives. *)
+  exact Hle.
 Qed.
 
 (** The instance at a literal. *)
