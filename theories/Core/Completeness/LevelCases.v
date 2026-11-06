@@ -622,7 +622,7 @@ Proof.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [t [_ [? ? ? ? ? ? ? ? Hchain]]].
   econstructor; try eassumption.
   eapply rel_chain_mono; [| eassumption ].
-  intros ? ? [Hx Hl Hr]; constructor; [| exact Hl | exact Hr ].
+  intros ? ? [Hx Hl Hr Hnl Hnr]; constructor; [| exact Hl | exact Hr | exact Hnl | exact Hnr ].
   eapply (per_univ_cumu_universe_index (u := us _)); [| exact Hx ]; exact I.
 Qed.
 
@@ -653,7 +653,7 @@ Proof.
   pose proof (per_lvl_real _ _ H34) as E34.
   rewrite domain_level_real_suc.
   apply (mk_rel_exp 𝕌@m1 𝕌@m2 𝕌@m3 𝕌@m4); try (apply eval_exp_univ; eassumption).
-  apply rel_chain_4; (constructor; [| reflexivity | reflexivity ]);
+  apply rel_chain_4; (constructor; [| reflexivity | reflexivity | discriminate | discriminate ]);
     eexists; apply per_univ_elem_core_suniv';
     first [ eassumption | cbn; ordinal_solve | reflexivity ].
 Qed.

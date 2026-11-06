@@ -29,6 +29,7 @@ Lemma per_ctx_extend_type : forall {Γ Γ' κ A A'} {i : nat},
     ⊨ Γ ▹{κ} A ≈ Γ' ▹{κ} A'.
 Proof.
   intros * [env_relΓΓ' HΓΓ'] H.
+  pose proof (rel_type_under_ctx_not_level_sort _ _ _ _ H) as Hn.
   pose proof (rel_type_inversion_simple H) as [env_relΓ [HΓ HA]].
   (** Both witnesses have [Γ] on the left, so they agree up to [<~>].  Naming
     the equivalence, rather than calling [handle_per_ctx_env_irrel], keeps
@@ -36,9 +37,10 @@ Proof.
   assert (Hirrel : env_relΓΓ' <~> env_relΓ)
     by (eapply per_ctx_env_right_irrel; [exact HΓΓ' | exact HΓ]).
   eexists.
-  eapply per_ctx_env_extend; [ eassumption |].
-  intros ρ ρ' Hρ%Hirrel.
-  now apply HA.
+  eapply per_ctx_env_extend; [ eassumption | |].
+  - intros ρ ρ' Hρ%Hirrel.
+    now apply HA.
+  - intros ρ ρ' Hρ%Hirrel; exact (Hn _ HΓ _ _ Hρ).
 Qed.
 
 Corollary per_ctx_extend : forall {Γ Γ' κ A A'} {i : nat},
@@ -241,7 +243,7 @@ Proof.
   intros * HA HM HR HR' ρ ρ' Hρ.
   pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΓ [HΓ HAs]].
   pose proof (per_ctx_env_of_def HΓ HA HM) as Hd.
-  pose proof (per_ctx_env_extend (κ := κ) HΓ HAs) as Ha.
+  pose proof (per_ctx_env_extend (κ := κ) HΓ HAs (rel_exp_of_typ_not_level_sort HA _ HΓ)) as Ha.
   assert (E1 : R <~> per_env_extend_def A M env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (E2 : R' <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   apply E2; apply E1 in Hρ.
@@ -397,7 +399,7 @@ Proof.
   - intros ρ ρ' Hρ.
     pose proof (rel_type_inversion_simple (rel_type_of_prop 0 HA)) as [env_relΓ [HΓ HAs]].
     pose proof (per_ctx_env_of_def_prop (M := M) HΓ HA) as Hd.
-    pose proof (per_ctx_env_extend (κ := κ) HΓ HAs) as Ha.
+    pose proof (per_ctx_env_extend (κ := κ) HΓ HAs (rel_type_not_level_sort_of_sort type_sort_prop HA _ HΓ)) as Ha.
     assert (E1 : R <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     assert (E2 : R' <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     apply E2, E1, Hρ.
@@ -406,7 +408,7 @@ Proof.
     intros ρ ρ' Hρ.
     pose proof (rel_type_inversion_simple (rel_type_of_level_sort 0 HA)) as [env_relΓ [HΓ HAs]].
     pose proof (per_ctx_env_of_def_level HΓ HA HM) as Hd.
-    pose proof (per_ctx_env_extend (κ := κ) HΓ HAs) as Ha.
+    pose proof (per_ctx_env_extend (κ := κ) HΓ HAs (rel_type_not_level_sort_of_sort type_sort_level HA _ HΓ)) as Ha.
     assert (E1 : R <~> per_env_extend_def A M env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     assert (E2 : R' <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     apply E2; apply E1 in Hρ.
@@ -429,10 +431,11 @@ Lemma per_ctx_env_def_conv_evaluated : forall {Γ A} {i : nat} {M M' R R'},
     forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R'.
 Proof.
   intros * HA (r & Hr & HArel) HM HR HR' ρ ρ' Hρ.
+  pose proof (rel_type_under_ctx_not_level_sort _ _ _ _ HA) as HAn.
   pose proof (rel_type_inversion_simple HA) as [env_relΓ [HΓ HAs]].
   pose proof (per_ctx_env_of_def_evaluated Hr HΓ HA (HArel _ HΓ) (rel_exp_under_ctx_refl_left HM)) as Hd.
   pose proof (per_ctx_env_of_def_evaluated Hr HΓ HA (HArel _ HΓ) (rel_exp_under_ctx_refl_right HM)) as Hd'.
-  pose proof (per_ctx_env_extend (κ := r) HΓ HAs) as Ha.
+  pose proof (per_ctx_env_extend (κ := r) HΓ HAs (HAn _ HΓ)) as Ha.
   assert (E1 : R <~> per_env_extend_def A M env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (E2 : R' <~> per_env_extend_def A M' env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
@@ -456,7 +459,9 @@ Corollary per_ctx_env_def_conv : forall {Γ A} {i : nat} {M M' R R'},
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R ->
     EF Γ ▸ A ≔ M' ≈ Γ ▸ A ≔ M' ∈ per_ctx_env ↘ R' ->
     forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R'.
-Proof. intros * HA; exact (per_ctx_env_def_conv_evaluated (rel_type_of_typ HA) (rel_type_evaluated_of_typ HA)). Qed.
+Proof.
+  intros * HA; exact (per_ctx_env_def_conv_evaluated (rel_type_of_typ HA) (rel_type_evaluated_of_typ HA)).
+Qed.
 
 (** A definition with a module part does not refine the definition entry
     of its term part either, for the same reason; its δ is read directly

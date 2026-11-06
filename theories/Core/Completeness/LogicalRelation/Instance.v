@@ -452,7 +452,7 @@ Proof.
     assert (Ev2 : e2 0 = ⋆ᵈ⟨M[τ], ρσ⟩) by (unfold env_var; rewrite Ee2; reflexivity).
     destruct (HAp _ _ He12) as (a & a' & Ha & Ha' & [Hr _ _]).
     assert (Hh : Dom ⋆ᵈ⟨M[τ][σ], ρ⟩ ≈ (e2 0) ∈ per_head B B e1 e2↯) by (rewrite Ev2; eapply per_head_proof; eassumption).
-    pose proof (per_ctx_env_extend (κ := ak_propositional) HΔ HBs') as HΔBa.
+    pose proof (per_ctx_env_extend (κ := ak_propositional) HΔ HBs' (rel_exp_of_prop_not_level_sort HB _ HΔ)) as HΔBa.
     destruct (per_head_closure_readable HΔBa HΔ He12 Hh) as [Hr1 Hr2].
     apply E, per_env_extend_intro.
     + exact He12.
@@ -1204,7 +1204,8 @@ Proof.
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   pose proof (rel_type_inversion HA) as [R0 [HΔ0 HAgen]].
   pose proof (rel_type_inversion_simple_at HΔ HA) as HAs.
-  refine (mk_rel_type_under_ctx _ _ _ _ RΓ HΓ _).
+  refine (mk_rel_type_under_ctx _ _ _ _ RΓ HΓ _ _);
+    [| intros R HR ρ ρ' Hρ; exact (rel_type_sub_not_level_sort HR Hτj HA _ _ Hρ) ].
   intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (HP' : PER R') by (eapply per_env_PER; exact HΓ').
   assert (Hρρ : R' ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).

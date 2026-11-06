@@ -118,12 +118,32 @@ Proof.
     [ constructor; assumption | constructor; assumption | exact HE ].
 Qed.
 
+(** An ex falso is a neutral of its type, which is not [LevelSort] and
+    not a type of levels ([level_closed_sort]): it holds a proof. *)
 Lemma per_elem_absurd : forall {i R c c' p p'},
     DF c ≈ c' ∈ per_univ_elem i ↘ R ->
+    not_level_sort c -> domain_kind c <> ak_level ->
     proof_readable p -> proof_readable p' ->
     Dom ⇑ c (efqᵈ p return c) ≈ ⇑ c' (efqᵈ p' return c') ∈ R.
 Proof.
-  intros * Hc Hp Hp'; apply (per_bot_then_per_elem Hc), per_bot_absurd; [ exact (per_univ_then_per_top_typ Hc) | exact Hp | exact Hp' ].
+  intros * Hc Hn Hk Hp Hp'; apply (per_bot_then_per_elem Hc), per_bot_neutral_at; [ exact Hn | exact Hk |].
+  apply per_bot_absurd; [ exact (per_univ_then_per_top_typ Hc) | exact Hp | exact Hp' ].
+Qed.
+
+(** The values of a type of a sort an ex falso may return into
+    ([level_closed_sort]) are not of the kind of levels. *)
+Definition rel_type_not_level_kind (Γ : ctx) (C : typ) : Prop :=
+  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> exists c, ⟦ C ⟧ ρ ↘ c /\ domain_kind c <> ak_level.
+
+(** A type of a universe or a proposition is so. *)
+Lemma rel_type_not_level_kind_of_closed : forall {Γ C Srt},
+    level_closed_sort Propₘ Srt -> Γ ⊨ C : Srt -> rel_type_not_level_kind Γ C.
+Proof.
+  intros * Hcl HC R HR ρ ρ' Hρ; inversion Hcl; subst.
+  - destruct (rel_exp_of_typ_relevant_at HR HC _ _ Hρ) as (c & Ec & Hk).
+    exists c; split; [ exact Ec | rewrite Hk; discriminate ].
+  - destruct (rel_exp_of_prop_inversion_simple_at HR HC _ _ Hρ) as (c & c' & Ec & _ & Hp).
+    exists c; split; [ exact Ec | rewrite (per_prop_left _ _ Hp); discriminate ].
 Qed.
 
 (** The proofs of [⊥] are kept over the four environments, and read back:
@@ -131,10 +151,12 @@ Qed.
 Lemma rel_exp_under_ctx_absurd : forall {Γ C C' M M'} {i : nat},
     Γ ⊨ᵗ C ≈ C at i ->
     Γ ⊨ᵗ C ≈ C' at i ->
+    rel_type_not_level_kind Γ C ->
     exp_scoped (List.length Γ) M -> exp_scoped (List.length Γ) M' ->
     Γ ⊨ efq M return C ≈ efq M' return C' : C.
 Proof.
-  intros * HCl HC HMs HMs'.
+  intros * HCl HC HCk HMs HMs'.
+  pose proof (rel_type_under_ctx_not_level_sort _ _ _ _ HCl) as HCn.
   pose proof (rel_type_inversion HCl) as [env_relΓl [HΓl HClgen]].
   pose proof (rel_type_inversion HC) as [env_relΓ [HΓ HCgen]].
   handle_per_ctx_env_irrel.
@@ -165,6 +187,15 @@ Proof.
     eapply mk_rel_exp; [ eapply eval_exp_absurd; exact Hc1 | eapply eval_exp_absurd; exact Hc2
                          | eapply eval_exp_absurd; exact He3 | eapply eval_exp_absurd; exact He4 |].
     destruct Hc' as (H12 & H23 & H34).
+    (** The type's value at the substitution's value is not [LevelSort]
+        nor of the kind of levels, and neither are those related to it. *)
+    destruct (HCn _ HΓt _ _ Hρσ) as (c0 & Ec0 & Hn2).
+    destruct (HCk _ HΓt _ _ Hρσ) as (c0' & Ec0' & Hk2).
+    functional_eval_rewrite_clear.
+    pose proof (proj2 (per_univ_elem_not_level_sort_iff _ _ _ _ H12) Hn2) as Hn1.
+    pose proof (proj1 (per_univ_elem_not_level_sort_iff _ _ _ _ H23) Hn2) as Hn3.
+    assert (Hk1 : domain_kind c1 <> ak_level) by (rewrite (per_univ_elem_kind _ _ _ _ H12); exact Hk2).
+    assert (Hk3 : domain_kind e3 <> ak_level) by (rewrite <- (per_univ_elem_kind _ _ _ _ H23); exact Hk2).
     apply rel_chain_4; eapply (per_elem_absurd (i := i)); eassumption.
 Qed.
 
@@ -345,14 +376,15 @@ Lemma rel_exp_of_univ_const : forall {Γ A a u R env_relΓ},
     (forall ρ, ⟦ A ⟧ ρ ↘ a) ->
     (forall σ, A[σ] = A) ->
     domain_kind a = ak_relevant ->
+    not_level_sort a ->
     DF a ≈ a ∈ per_univ_elem u ↘ R ->
     Γ ⊨ A ≈ A : universe_index_term u.
 Proof.
-  intros * HΓ Hev Hs Hr Ha.
+  intros * HΓ Hev Hs Hr Hn Ha.
   apply rel_exp_of_univ; eexists; eexists; [ eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hevσ Hevσ'.
   apply (mk_rel_exp a a a a); [ rewrite Hs; apply Hev | apply Hev | apply Hev | rewrite Hs; apply Hev |].
-  apply rel_chain_4; (constructor; [ eexists; exact Ha | exact Hr | exact Hr ]).
+  apply rel_chain_4; (constructor; [ eexists; exact Ha | exact Hr | exact Hr | exact Hn | exact Hn ]).
 Qed.
 
 Lemma rel_exp_of_univ_prop : forall {Γ u env_relΓ},
@@ -360,7 +392,7 @@ Lemma rel_exp_of_univ_prop : forall {Γ u env_relΓ},
     Γ ⊨ Propₘ ≈ Propₘ : universe_index_term u.
 Proof.
   intros * HΓ; eapply rel_exp_of_univ_const;
-    [ exact HΓ | intros; apply eval_exp_prop | reflexivity | reflexivity | apply per_univ_elem_prop_univ ].
+    [ exact HΓ | intros; apply eval_exp_prop | reflexivity | reflexivity | discriminate | apply per_univ_elem_prop_univ ].
 Qed.
 
 End Fixed_GCtx.
@@ -422,20 +454,22 @@ Proof. intros; eapply sem_False; eassumption. Qed.
 Lemma sem_exp_eq_absurd_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ C : Srt ->
      type_sort Srt ->
+     level_closed_sort Propₘ Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊨ C ≈ C' : Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : ⊥ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M' : ⊥ ->
      exp_scoped (List.length Γ) M -> exp_scoped (List.length Γ) M' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ efq M return C ≈ efq M' return C' : C ).
 Proof.
-  intros * HC HS HCC' _ _ HMs HMs'; sem_intro; [ assumption |].
+  intros * HC HS Hcl HCC' _ _ HMs HMs'; sem_intro; [ assumption |].
   destruct (rel_type_pair_of_sort HS HC HCC') as [i [Hl Hr]].
-  exact (rel_exp_under_ctx_absurd Hl Hr HMs HMs').
+  exact (rel_exp_under_ctx_absurd Hl Hr (rel_type_not_level_kind_of_closed Hcl HC) HMs HMs').
 Qed.
 
 Lemma sem_absurd :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ C : Srt ->
      type_sort Srt ->
+     level_closed_sort Propₘ Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : ⊥ ->
      exp_scoped (List.length Γ) M ->
      Θ ⍮ Ξ ⍮ Γ ⊨ efq M return C : C ).

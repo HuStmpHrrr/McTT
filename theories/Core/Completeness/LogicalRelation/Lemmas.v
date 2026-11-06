@@ -1581,9 +1581,13 @@ Lemma rel_type_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A A'} {i : nat},
     Γ2 ⊨ᵗ A ≈ A' at i ->
     Γ1 ⊨ᵗ A ≈ A' at i.
 Proof.
-  intros * HΓ1 HΓ2 HR Hl Hc [R2' HΓ2' HA].
+  intros * HΓ1 HΓ2 HR Hl Hc [R2' HΓ2' HA HAn].
   assert (ER : R2' <~> R2) by (eapply per_ctx_env_right_irrel; eassumption).
-  refine (mk_rel_type_under_ctx _ _ _ _ R1 HΓ1 _).
+  refine (mk_rel_type_under_ctx _ _ _ _ R1 HΓ1 _ _);
+    [| (** The environments of [Γ1] are environments of [Γ2]. *)
+       intros R HR0 ρ ρ' Hρ;
+       assert (E1 : R <~> R1) by (eapply per_ctx_env_right_irrel; eassumption);
+       exact (HAn _ HΓ2 ρ ρ' (HR _ _ (proj1 (E1 _ _) Hρ))) ].
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ R1) by (eapply rel_sub_under_ctx_at'; eassumption).
   assert (Hρσ' : Dom ρ'σ' ≈ ρσ ∈ R1) by (symmetry; exact Hρσ).
@@ -1650,8 +1654,8 @@ Lemma rel_type_under_ctx_of_simple : forall {Γ A A' env_relΓ} {i : nat},
         exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
     Γ ⊨ᵗ A ≈ A' at i.
 Proof.
-  intros * HΓ [R1' HΓ1 HA] [R2' HΓ2 HA'] Hpt.
-  refine (mk_rel_type_under_ctx _ _ _ _ env_relΓ HΓ _).
+  intros * HΓ [R1' HΓ1 HA HAn] [R2' HΓ2 HA' _] Hpt.
+  refine (mk_rel_type_under_ctx _ _ _ _ env_relΓ HΓ _ HAn).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [v1 v2 v3 v4 Hv1 Hv2 Hv3 Hv4 Hc1].
   destruct (HA' _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hc2].

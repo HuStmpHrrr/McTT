@@ -53,6 +53,7 @@ Lemma per_ctx_env_of_typ : forall {Δ κ A} {i : nat} {env_relΔ},
     EF Δ ▹{κ} A ≈ Δ ▹{κ} A ∈ per_ctx_env ↘ (per_env_extend A A env_relΔ).
 Proof.
   intros * HΔ H.
+  pose proof (rel_type_under_ctx_not_level_sort _ _ _ _ H _ HΔ) as Hn.
   pose proof (rel_type_inversion_simple H) as [env_relΔ' [HΔ' HA]].
   handle_per_ctx_env_irrel.
   eapply per_ctx_env_extend; eassumption.
@@ -70,6 +71,28 @@ Qed.
     [rel_sub_under_ctx_simple] form of the substitution: only two evaluations of
     [σ] at a related pair are needed, not the four of a full four-value
     pattern. *)
+(** A substituted type of a sort is not [LevelSort] either: its values
+    are related to those of the type at the substitution's values. *)
+Lemma rel_type_sub_not_level_sort : forall {Γ Δ σ σ' A A'} {i : nat} {env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ᵗ A ≈ A' at i ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> value_not_level_sort A[σ] ρ.
+Proof.
+  intros * HΓ Hσj HA ρ ρ' Hρ.
+  pose proof (rel_type_under_ctx_not_level_sort _ _ _ _ HA) as HAn.
+  pose proof (rel_type_inversion HA) as [env_relΔ' [HΔ' HAgen]].
+  pose proof (rel_sub_under_ctx_simple (rel_sub_under_ctx_refl_left Hσj))
+    as [env_relΓ2 [HΓ2 [env_relΔ2 [HΔ2 Hσrefl]]]].
+  assert (E : env_relΓ <~> env_relΓ2) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hσrefl _ _ (proj1 (E _ _) Hρ)) as [ρσ [ρ'σ' [Hev [Hev' Hrel]]]].
+  destruct (HAgen _ _ HΓ2 _ _ (rel_sub_under_ctx_refl_left Hσj) _ _ _ _ (proj1 (E _ _) Hρ) Hev Hev')
+    as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 ([R12 H12] & _)].
+  destruct (HAn _ HΔ2 _ _ Hrel) as (b & Eb & Hnb).
+  assert (b = a2) as -> by (eapply functional_eval_exp; eassumption).
+  exists a1; split; [ exact Ha1 | exact (proj2 (per_univ_elem_not_level_sort_iff _ _ _ _ H12) Hnb) ].
+Qed.
+
 Lemma per_ctx_env_of_typ_sub : forall {Γ Δ σ σ' κ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
@@ -77,11 +100,12 @@ Lemma per_ctx_env_of_typ_sub : forall {Γ Δ σ σ' κ A} {i : nat} {env_relΓ},
     EF Γ ▹{κ} A[σ] ≈ Γ ▹{κ} A[σ] ∈ per_ctx_env ↘ (per_env_extend A[σ] A[σ] env_relΓ).
 Proof.
   intros * HΓ Hσj HA.
+  pose proof (rel_type_sub_not_level_sort HΓ Hσj HA) as Hn.
   pose proof (rel_type_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   pose proof (rel_sub_under_ctx_simple (rel_sub_under_ctx_refl_left Hσj))
     as [env_relΓ2 [HΓ2 [env_relΔ2 [HΔ2 Hσrefl]]]].
   handle_per_ctx_env_irrel.
-  eapply (per_ctx_env_extend (i := i)); [ eassumption |].
+  eapply (per_ctx_env_extend (i := i)); [ eassumption | | eassumption ].
   intros ρ ρ' Hρ.
   destruct (Hσrefl _ _ Hρ) as [ρσ [ρ'σ' [Hev [Hev' Hrel]]]].
   destruct (HAgen _ _ HΓ2 _ _ (rel_sub_under_ctx_refl_left Hσj) _ _ _ _ Hρ Hev Hev')
@@ -300,13 +324,21 @@ Proof.
   pose proof (per_ctx_env_of_typ (κ := κ) HΔ' HA) as HΔA.
   assert (HΓA : EF Γ ▹{κ} A[ψ]ʷ ≈ Γ ▹{κ} A[ψ]ʷ ∈ per_ctx_env
                      ↘ (per_env_extend A[ψ]ʷ A[ψ]ʷ env_relΓ)).
-  { eapply (per_ctx_env_extend (i := i)); [ eassumption |].
-    intros ρ ρ' Hρ.
-    destruct (Hcom _ _ Hρ) as [a1 ? ? a4 Ha1 ? ? Ha4 Hchain].
-    rewrite exp_sub_of_wk in Ha1, Ha4.
-    exists a1, a4.
-    repeat split; try eassumption.
-    pairwise. }
+  { eapply (per_ctx_env_extend (i := i)); [ eassumption | |].
+    - intros ρ ρ' Hρ.
+      destruct (Hcom _ _ Hρ) as [a1 ? ? a4 Ha1 ? ? Ha4 Hchain].
+      rewrite exp_sub_of_wk in Ha1, Ha4.
+      exists a1, a4.
+      repeat split; try eassumption.
+      pairwise.
+    - (** The weakened type is not [LevelSort]: its values are related to
+          those of [A] at the weakened environments. *)
+      intros ρ ρ' Hρ.
+      destruct (Hcom _ _ Hρ) as [a1 a2 ? ? Ha1 Ha2 ? ? ([R12 H12] & _)].
+      rewrite exp_sub_of_wk in Ha1.
+      destruct (rel_type_under_ctx_not_level_sort _ _ _ _ HA _ HΔ' _ _ (Hψ _ _ Hρ)) as (b & Eb & Hnb).
+      assert (b = a2) as -> by (eapply functional_eval_exp; eassumption).
+      exists a1; split; [ exact Ha1 | exact (proj2 (per_univ_elem_not_level_sort_iff _ _ _ _ H12) Hnb) ]. }
   eexists_rel_wk.
   - (** Both projections of [⟪q ψ⟫ ρ] are conversions, so nothing is rewritten
       below: [exact] sees through [⟪q ψ⟫ ρ] to [⟪ψ⟫ (ρ ↯)] and to [ρ 0]. *)
@@ -533,16 +565,17 @@ Qed.
 Lemma rel_sub_under_ctx_extend_sub : forall {Γ Δ σ σ' κ T M M'},
     Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ M ≈ M' : T ->
+    rel_type_not_level_sort Δ T ->
     exp_scoped (List.length Δ) M -> exp_scoped (List.length Δ) M' ->
     Γ ⊨ˢ σ,,M[σ] ≈ σ',,M'[σ'] : Δ ▹{κ} T.
 Proof.
-  intros * Hσj HM HMs HMs'.
+  intros * Hσj HM HTn HMs HMs'.
   pose proof Hσj as [env_relΓ HΓ env_relΔ HΔ Hσ Hσs].
   assert (HMσs : exp_scoped (List.length Γ) M[σ])
     by (eapply exp_scoped_sub; [ exact HMs | intros x Hx; exact (proj1 (Hσs x Hx)) ]).
   assert (HMσs' : exp_scoped (List.length Γ) M'[σ'])
     by (eapply exp_scoped_sub; [ exact HMs' | intros x Hx; exact (proj2 (Hσs x Hx)) ]).
-  pose proof (presup_rel_exp_under_ctx HM) as [i HT].
+  pose proof (presup_rel_exp_under_ctx HM HTn) as [i HT].
   pose proof (per_ctx_env_of_typ (κ := κ) HΔ HT) as HΔT.
   pose proof (rel_exp_under_ctx_refl_left HM) as HMrefl.
   pose proof (rel_type_inversion_simple HT) as [env_relΔ4 [HΔ4 HTs]].
@@ -1239,7 +1272,8 @@ Proof.
   intros * HA HArel' HB HN HNs * HΓ' * Hσj Hρ Hev Hev'.
   pose proof (rel_type_inversion HA) as [env_relΓ [HΓ _]].
   pose proof (rel_type_inversion HB) as [env_relΓA [HΓA HBgen]].
-  pose proof (rel_sub_under_ctx_extend_sub (κ := κ) (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
+  pose proof (rel_type_under_ctx_not_level_sort _ _ _ _ HA) as HAn.
+  pose proof (rel_sub_under_ctx_extend_sub (κ := κ) (rel_sub_id (ex_intro _ _ HΓ)) HN HAn HNs HNs) as HidN.
   rewrite exp_sub_id in HidN.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
     by (eapply (rel_sub_under_ctx_at' Hσj HΓ' HΓ); eassumption).
@@ -1272,7 +1306,7 @@ Proof.
     eapply per_head_of; [ exact Ha2 | exact Ha3 | exact Hmid | exact Hwz ]. }
   (** The two instantiations, their outer values rewritten into the goal's
       spelling. *)
-  destruct (HBgen _ _ HΓ' _ _ (rel_sub_under_ctx_extend_sub (κ := κ) Hσj HN HNs HNs) _ _ _ _ Hρ
+  destruct (HBgen _ _ HΓ' _ _ (rel_sub_under_ctx_extend_sub (κ := κ) Hσj HN HAn HNs HNs) _ _ _ _ Hρ
                   ltac:(apply eval_sub_extend; eassumption)
                   ltac:(apply eval_sub_extend; eassumption))
     as [t1 tA2 tA3 t4 Ht1 HtA2 HtA3 Ht4 HtAchain].
@@ -1343,7 +1377,8 @@ Lemma per_univ_of_instance : forall {Γ κ A} {i j : nat} {B N env_relΓ},
           Dom a ≈ a ∈ per_univ i /\ Dom a ≈ b ∈ per_univ i.
 Proof.
   intros * HΓ HA HB HN HNs * Hρ Hn.
-  pose proof (rel_sub_under_ctx_extend_sub (κ := κ) (rel_sub_id (ex_intro _ _ HΓ)) HN HNs HNs) as HidN.
+  pose proof (rel_sub_under_ctx_extend_sub (κ := κ) (rel_sub_id (ex_intro _ _ HΓ)) HN (rel_exp_of_typ_not_level_sort HA) HNs HNs)
+    as HidN.
   rewrite exp_sub_id in HidN.
   pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
   (** [Id,,N] evaluates to the extension of the retagged environment; the

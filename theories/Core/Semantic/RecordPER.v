@@ -50,6 +50,10 @@ Section Fixed_GCtx.
     Hypothesis (Hf : fields_related ns').
     (** The fields' types are of their kinds along related prefixes. *)
     Hypothesis (HfS : fields_kinds R ns fr).
+    (** Nor are they [LevelSort]. *)
+    Hypothesis (HfN : fields_not_level_sort R ns fr).
+    (** Each field is of a field's kind ([wf_record]). *)
+    Hypothesis (HfK : forall k, field_kind (record_field_kind R k)).
 
     (** The evidence at a field, at the head PER. *)
     Lemma canon_fields_evals : fields_evals (per_univ_elem u) R ns ns' fr.
@@ -95,7 +99,7 @@ Section Fixed_GCtx.
     Proof.
       basic_per_univ_elem_econstructor;
         [ exact Hl | exact Hnd | exact Hn | exact Hn' | exact Hps | exact canon_fields_per | exact canon_fields_evals
-        | exact HfS | exact canon_fields_invariant | reflexivity ].
+        | exact HfS | exact canon_fields_invariant | exact HfN | exact HfK | reflexivity ].
     Qed.
   End Canon.
 

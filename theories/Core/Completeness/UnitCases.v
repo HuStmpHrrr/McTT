@@ -509,7 +509,8 @@ Proof.
     constructor; cbn [app].
     - exact (rel_ctx_wf_extend_sort H1 HS HA).
     - exact (rel_ctx_wf_extend_sort H2 HS' HA').
-    - destruct (rel_type_of_mutual_subtyp HAA' HA'A) as [k Hk]; exact (per_ctx_extend_type H3 Hk). }
+    - destruct (rel_type_of_mutual_subtyp HAA' HA'A (rel_type_not_level_sort_of_sort (sort_kind_type_sort _ _ HS) HA))
+        as [k Hk]; exact (per_ctx_extend_type H3 Hk). }
   constructor; [ assumption | exact Hr | apply valid_ctx_ass | apply valid_ctx_ass ];
     first [ assumption | exact (rel_ext_under_ctx_left _ _ _ Hr) | exact (rel_ext_under_ctx_right _ _ _ Hr) ].
 Qed.
@@ -531,7 +532,7 @@ Proof.
   intros * HΨ HA HS HA' HS' HAA' HA'A HM HMM' HM'; sem_intro0.
   assert (Hr : Γ ⊨ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M').
   { destruct HΨ as [H1 H2 [R HR]].
-    destruct (rel_type_of_mutual_subtyp HAA' HA'A) as [k Hk].
+    destruct (rel_type_of_mutual_subtyp HAA' HA'A (rel_type_not_level_sort_of_sort HS HA)) as [k Hk].
     constructor; cbn [app].
     - exact (rel_ctx_wf_extend_def_sort H1 HS HA HM).
     - exact (rel_ctx_wf_extend_def_sort H2 HS' HA' HM').

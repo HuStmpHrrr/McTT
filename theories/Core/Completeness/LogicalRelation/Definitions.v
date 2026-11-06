@@ -292,6 +292,12 @@ Notation "Γ ⊨ M : A" := (valid_exp_under_ctx Γ A M) (at level 70, M at level
     universe), and so is a proposition ([Γ ⊨ A ≈ A' : Prop] relates
     propositions, which are types of every index).  This is what an
     extension of a context, and the domain of a [Π], need of a type. *)
+(** The values of [A] at the environments of [Γ] are not the sort
+    [LevelSort]: [A] is a type of a sort, as the type of a variable or of
+    the domain of a [Π] is ([per_ctx_env_cons], [per_univ_elem_core_pi]). *)
+Definition rel_type_not_level_sort (Γ : ctx) (A : typ) : Prop :=
+  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> value_not_level_sort A ρ.
+
 #[warnings="-cannot-define-projection"]
 Record rel_type_under_ctx Γ (i : nat) A A' : Prop := mk_rel_type_under_ctx
   { (** The relation of the context's environments *)
@@ -304,7 +310,10 @@ Record rel_type_under_ctx Γ (i : nat) A A' : Prop := mk_rel_type_under_ctx
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
         ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
-        rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ i) }.
+        rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ i)
+    (** The type is of a sort: its values are not [LevelSort], which is of
+        none ([wf_type_level_sort]) *)
+  ; rel_type_under_ctx_not_level_sort : rel_type_not_level_sort Γ A }.
 
 Notation "Γ ⊨ᵗ A ≈ A' 'at' i" := (rel_type_under_ctx Γ i A A') (at level 70, A at level 69, A' at level 69, i at level 69).
 

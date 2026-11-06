@@ -285,7 +285,7 @@ Proof.
   intros * HΓ HA HArel HM [env_relΓ' HΓ' env_relΔA HΔA Hσ Hσs] Htie.
   pose proof HArel as (r & Hr & HArelk).
   pose proof (rel_type_inversion_simple HA) as [env_relΔ [HΔ HAs]].
-  pose proof (per_ctx_env_extend (κ := κ) HΔ HAs) as HΔAc.
+  pose proof (per_ctx_env_extend (κ := κ) HΔ HAs (rel_type_under_ctx_not_level_sort _ _ _ _ HA _ HΔ)) as HΔAc.
   pose proof (per_ctx_env_of_def_evaluated Hr HΔ HA (HArelk _ HΔ) HM) as HΔd.
   pose proof (rel_type_inversion_simple_at HΔ HA) as HAat.
   pose proof (rel_exp_under_ctx_simple_at_of_evaluated HΔ
@@ -337,7 +337,7 @@ Proof.
   pose proof Hσj as [env_relΓ HΓ _ _ _ _].
   pose proof (rel_exp_under_ctx_refl_left HM) as HMl.
   eapply (rel_sub_under_ctx_into_def (κ := r)); [ exact HΓ | exact HA | exact HArel | exact HMl | |].
-  - exact (rel_sub_under_ctx_extend_sub Hσj HM HMs HMs').
+  - exact (rel_sub_under_ctx_extend_sub Hσj HM (rel_type_under_ctx_not_level_sort _ _ _ _ HA) HMs HMs').
   - intros ρ ρτ Hρ Hev.
     pose proof (rel_sub_under_ctx_refl_left Hσj) as Hσσ.
     destruct (eval_sub_extend_inv _ _ _ _ _ _ Hev) as [Hev1 Hev0].
@@ -747,7 +747,7 @@ Proof.
   intros * HA Hσj.
   pose proof Hσj as [env_relΓ HΓ env_relΔA HΔA _ _].
   pose proof (rel_type_inversion_simple (rel_type_of_prop 0 HA)) as [env_relΔ [HΔ HAs]].
-  pose proof (per_ctx_env_extend (κ := ak_propositional) HΔ HAs) as HΔAc.
+  pose proof (per_ctx_env_extend (κ := ak_propositional) HΔ HAs (rel_exp_of_prop_not_level_sort HA _ HΔ)) as HΔAc.
   pose proof (per_ctx_env_of_def_prop (M := M) HΔ HA) as HΔd.
   eapply rel_sub_under_ctx_restrict;
     [ exact HΓ | exact HΓ | exact HΔAc | exact HΔd | intros; assumption | intros; assumption | cbn; lia | lia
@@ -796,7 +796,7 @@ Proof.
   assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
   pose proof (per_ctx_env_of_def_prop (M := M) HΓ HA) as HΓd.
   pose proof (per_ctx_env_of_def_prop (M := M') HΓ HA) as HΓd'.
-  pose proof (per_ctx_env_extend (κ := ak_propositional) HΓ HAs) as HΓA.
+  pose proof (per_ctx_env_extend (κ := ak_propositional) HΓ HAs (rel_exp_of_prop_not_level_sort HA _ HΓ)) as HΓA.
   assert (PER (per_env_extend A A env_relΓ)) by (eapply per_env_PER; eassumption).
   (** [B'] in the context of the right-hand definiens: the same PER. *)
   assert (HB'r : Γ ▸ A ≔ M' ⊨ B' ≈ B' : C)
@@ -859,14 +859,14 @@ Proof.
       [B] along [σ,,M[σ]] gives the outer values of the type and the first
       value of the term, and [B] along [Id,,M] at the substituted environments
       gives the inner values of the type and the second value of the term. *)
-  pose proof (rel_sub_under_ctx_into_def_prop (M := M) HA (rel_sub_under_ctx_extend_sub Hσj HMl HMs HMs)) as Hτ.
+  pose proof (rel_sub_under_ctx_into_def_prop (M := M) HA (rel_sub_under_ctx_extend_sub Hσj HMl (rel_exp_of_prop_not_level_sort HA) HMs HMs)) as Hτ.
   destruct (HBlgen _ _ HΓ' _ _ Hτ _ _ _ _ Hρ
               (eval_sub_extend_proof _ _ _ _ _ _ Hev Hh2) (eval_sub_extend_proof _ _ _ _ _ _ Hev' Hh3))
     as [R1 [HI1t HI1e]].
   pose proof HI1t as [c1 cA2 cA3 c4 Hc1 HcA2 HcA3 Hc4 Hc1chain].
   rewrite <- exp_sub_extend_sub in Hc1, Hc4.
   pose proof (rel_sub_under_ctx_into_def_prop (M := M) HA
-                (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HMl HMs HMs)) as HidM.
+                (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HMl (rel_exp_of_prop_not_level_sort HA) HMs HMs)) as HidM.
   rewrite exp_sub_id in HidM.
   (** [Id,,M] evaluates to the extensions of the retagged environments;
       the instance is read at the extensions of [ρσ] and [ρ'σ'] themselves

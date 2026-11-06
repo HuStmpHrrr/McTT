@@ -122,7 +122,9 @@ Section Fixed_GCtx.
       forall m Mm k κ A vs vs', ind_member D m = Some Mm ->
         List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass κ A) -> tele_prefix_rel (nr m) k vs vs' ->
         exists a a', ⟦ A ⟧ components_env D ups (List.rev (im_nparams Mm)) vs ↘ a /\
-          ⟦ A ⟧ components_env D u2 (List.rev (im_nparams Mm)) vs' ↘ a' /\ Dom a ≈ a' ∈ per_univ u.
+          ⟦ A ⟧ components_env D u2 (List.rev (im_nparams Mm)) vs' ↘ a' /\ Dom a ≈ a' ∈ per_univ u /\
+          (** A parameter's type is of a sort, not [LevelSort]: a variable is of it *)
+          not_level_sort a.
     (** The same for the non-recursive arguments' types. *)
     Definition args_related (u2 : list domain) : Prop :=
       forall m Mm ms ms' c gs k A vs vs', ind_member D m = Some Mm ->
@@ -130,7 +132,9 @@ Section Fixed_GCtx.
         List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar m ms c) k vs vs' ->
         exists a a', ⟦ A ⟧ components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms ++ vs) ↘ a /\
           ⟦ A ⟧ components_env D u2 (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms' ++ vs') ↘ a' /\
-          Dom a ≈ a' ∈ per_univ u.
+          Dom a ≈ a' ∈ per_univ u /\
+          (** So is an argument's *)
+          not_level_sort a.
     (** The same for the shapes' domains, relevant types. *)
     Definition doms_related (u2 : list domain) : Prop :=
       forall m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys', ind_member D m = Some Mm ->
@@ -165,7 +169,7 @@ Section Fixed_GCtx.
         rel_mod_eval (per_univ_elem u) A (components_env D ups (List.rev (im_nparams Mm)) vs)
           A (components_env D ups' (List.rev (im_nparams Mm)) vs') (nr m k vs).
     Proof.
-      intros * HM Hk Hp; destruct (Hn _ _ _ _ _ _ _ HM Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
+      intros * HM Hk Hp; destruct (Hn _ _ _ _ _ _ _ HM Hk Hp) as (a & a' & Ea & Ea' & [R HR] & Hna).
       econstructor; [ exact Ea | exact Ea' |].
       unfold nr, canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ _ HM Hk), (member_nparams_eq _ _ _ HM).
       exact (per_head_diag Ea HR).
@@ -226,7 +230,7 @@ Section Fixed_GCtx.
         rel_mod_eval (per_univ_elem u) A (components_env D ups (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms ++ vs))
           A (components_env D ups' (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs) (ms' ++ vs')) (ar m ms c k vs).
     Proof.
-      intros * HM Hm Hc Hk Hp; destruct (Ha _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
+      intros * HM Hm Hc Hk Hp; destruct (Ha _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) as (a & a' & Ea & Ea' & [R HR] & Hna).
       econstructor; [ exact Ea | exact Ea' |].
       unfold ar, canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hc Hk), (member_nparams_eq _ _ _ HM),
         (member_con_tele_eq _ _ _ _ _ HM Hc).
@@ -376,33 +380,42 @@ Section Fixed_GCtx.
         adm_uparams D ups nr ar dr u2.
     Proof.
       intros u2 Hn2 Ha2 Hc2 Hd2; constructor; [ | | exact Hc2 | ].
-      - intros m Mm k κ A vs vs' HM Hk Hp; destruct (Hn2 _ _ _ _ _ _ _ HM Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
+      - intros m Mm k κ A vs vs' HM Hk Hp; destruct (Hn2 _ _ _ _ _ _ _ HM Hk Hp) as (a & a' & Ea & Ea' & [R HR] & Hna).
         unfold nr, canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ _ HM Hk), (member_nparams_eq _ _ _ HM).
         pose proof (per_head_diag Ea HR) as HR'.
         exists a a'; [ exact Ea | exact Ea' | exact (per_univ_then_per_top_typ HR)
                      | intros x x' Hx; exact (per_elem_then_per_top HR' Hx) | intros s ].
-        eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
+        eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR Hna) ].
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
       - intros m Mm ms ms' c gs k A vs vs' HM Hm Hc Hk Hp.
-        destruct (Ha2 _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
+        destruct (Ha2 _ _ _ _ _ _ _ _ _ _ HM Hm Hc Hk Hp) as (a & a' & Ea & Ea' & [R HR] & Hna).
         unfold ar, canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hc Hk), (member_nparams_eq _ _ _ HM),
           (member_con_tele_eq _ _ _ _ _ HM Hc).
         pose proof (per_head_diag Ea HR) as HR'.
         exists a a'; [ exact Ea | exact Ea' | exact (per_univ_then_per_top_typ HR)
                      | intros x x' Hx; exact (per_elem_then_per_top HR' Hx) | intros s ].
-        eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
+        eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR Hna) ].
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
       - intros m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys' HM Hm Hc Heq Hw HB Hy.
-        destruct (Hd2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [[R HR] Hra Hra']).
+        destruct (Hd2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [[R HR] Hra Hra' Hna _]).
         exists a a'; [ exact Ea | exact Ea' | | exact Hra | exact Hra' | exact (per_univ_then_per_top_typ HR) |];
           rewrite (canon_doms_rel_at _ _ _ _ _ _ _ _ _ _ _ _ B Hm Hw Hy
                      ltac:(assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia));
           pose proof (per_head_diag Ea HR) as HR'.
-        + destruct (realize_per_univ_elem_gen HR') as (_ & _ & Hrb).
+        + destruct (realize_per_univ_elem_gen HR') as [_ _ Hrb _ _].
           intros x x' Hx; apply Hrb; exact Hx.
         + (** The domain's variables, as for the arguments' *)
-          intros s; eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
+          intros s; eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR Hna) ].
           eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
+    Qed.
+
+    (** The shapes' domains are not [LevelSort]: they are types of the
+        universe. *)
+    Lemma canon_doms_not_level_sort : doms_not_level_sort D ups nr ar dr.
+    Proof.
+      intros m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys' HM Hm Hc Heq Hw HB Hy.
+      destruct (Hdmd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hc Heq Hw HB Hy) as (a & a' & Ea & _ & [_ _ _ Hna _]).
+      exists a; split; [ exact Ea | exact Hna ].
     Qed.
 
     (** The clause, at a declared member. *)
@@ -415,7 +428,7 @@ Section Fixed_GCtx.
         [ exact Hl | exact Hass | exact HM | exact Hh | exact Hu | exact Hu' | exact Hps | exact canon_nparams_per | | exact canon_nparams_invariant
         | exact canon_args_per | | exact canon_args_invariant | exact canon_doms_per | | exact canon_doms_invariant
         | exact (canon_adm ups' Hn Ha Hcl Hdm) | exact (canon_adm ups Hnd Had Hcd Hdmd)
-        | exact Hns | reflexivity ].
+        | exact canon_doms_not_level_sort | exact Hns | reflexivity ].
       - red; intros; eapply canon_nparams_evals; eassumption.
       - red; intros; eapply canon_args_evals; eassumption.
       - red; intros; eapply canon_doms_evals; eassumption.
