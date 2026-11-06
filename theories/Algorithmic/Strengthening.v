@@ -1738,7 +1738,7 @@ Qed.
     What is proved of a neutral: it has a short type, a type or a
     proposition, whose weakening is below the long one. *)
 #[warnings="-cannot-define-projection"]
-Record short_typ (Γ : ctx) (A : typ) (Δ : ctx) (C : typ) (M : exp) : Prop := mk_short_typ
+Record short_typ (Γ : ctx) (κ : abs_kind) (A : typ) (Δ : ctx) (C : typ) (M : exp) : Prop := mk_short_typ
   { (** The short type *)
     short_typ_typ : typ
     (** Its sort *)
@@ -1752,19 +1752,19 @@ Record short_typ (Γ : ctx) (A : typ) (Δ : ctx) (C : typ) (M : exp) : Prop := m
     (** Its weakening is below the long type *)
   ; short_typ_sub : (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ short_typ_typ[wk_qn (length Δ) ↑]ʷ ⊆ C }.
 
-Definition exp_str (Γ : ctx) (A : typ) (M : exp) : Prop :=
+Definition exp_str (Γ : ctx) (κ : abs_kind) (A : typ) (M : exp) : Prop :=
   forall Δ C,
     all_assumptions Δ ->
     ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ->
     ⊢ (Δ ++ Γ)%list ->
     (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ M[wk_qn (length Δ) ↑]ʷ : C ->
-    short_typ Γ A Δ C M.
+    short_typ Γ κ A Δ C M.
 
-Definition ne_str (Γ : ctx) (A : typ) (u : ne) : Prop := exp_str Γ A u.
+Definition ne_str (Γ : ctx) (κ : abs_kind) (A : typ) (u : ne) : Prop := exp_str Γ κ A u.
 
 (** What is proved of a normal form: typed long at a weakened short type, a
     type or a proposition, it is typed short at that type. *)
-Definition nf_str_exp (Γ : ctx) (A : typ) (W : exp) : Prop :=
+Definition nf_str_exp (Γ : ctx) (κ : abs_kind) (A : typ) (W : exp) : Prop :=
   forall Δ T S,
     all_assumptions Δ ->
     ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ->
@@ -1775,13 +1775,13 @@ Definition nf_str_exp (Γ : ctx) (A : typ) (W : exp) : Prop :=
 
 (** A term strengthened with a short type is strengthened at any short type
     of which the long one is a weakening. *)
-Lemma exp_str_at : forall Γ A M, exp_str Γ A M -> nf_str_exp Γ A M.
+Lemma exp_str_at : forall Γ κ A M, exp_str Γ κ A M -> nf_str_exp Γ κ A M.
 Proof.
   intros * Hu Δ T S Hass HΓf HS HT HW.
   assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
   destruct (Hu _ _ Hass HΓf HΓs HW) as [T0 S0 HS0 HuT HT0 Hs].
   eapply wf_exp_subtyp; [ exact HuT | exact HT | exact HS |].
-  exact (subtyp_strengthen_sort _ _ _ _ _ _ _ Hass HΓf HS0 HS HT0 HT Hs).
+  exact (subtyp_strengthen_sort _ _ _ _ _ _ _ _ Hass HΓf HS0 HS HT0 HT Hs).
 Qed.
 
 (** The sort of a short type whose weakening is below a type of a large
@@ -1805,7 +1805,7 @@ Qed.
 (** An application: the head's short type is a [Π] ([typ_pi_shape_strengthen])
     or, the head a proof, a [∀] ([typ_all_shape_strengthen]), whose domain
     the argument is checked against. *)
-Lemma app_str : forall Γ A M w, exp_str Γ A M -> nf_str_exp Γ A w -> exp_str Γ A (a_app M w).
+Lemma app_str : forall Γ κ A M w, exp_str Γ κ A M -> nf_str_exp Γ κ A w -> exp_str Γ κ A (a_app M w).
 Proof.
   intros Γ A u w IHu IHw Δ C Hass HΓf HΓs HW; cbn [exp_wk] in HW.
   destruct (wf_app_inversion HW) as [X Y [Hu | Hu] Hw HsC].
@@ -1869,7 +1869,7 @@ Proof.
       eapply sub_preserves_subtyp; [ exact HDY | eapply wf_sub_single; [ exact HCf | exact HSC | exact Hwf ] ].
 Qed.
 
-Lemma apps_str : forall Γ A Xs M, List.Forall (nf_str_exp Γ A) Xs -> exp_str Γ A M -> exp_str Γ A (apps M Xs).
+Lemma apps_str : forall Γ κ A Xs M, List.Forall (nf_str_exp Γ κ A) Xs -> exp_str Γ κ A M -> exp_str Γ κ A (apps M Xs).
 Proof.
   intros Γ A Xs; induction Xs as [| X Xs IH]; intros M HXs HM; cbn [apps_exp]; [ exact HM |].
   inversion HXs as [| ? ? HX HXs']; subst.
@@ -1878,7 +1878,7 @@ Qed.
 
 (** The type former and the constructors: typed at their closed types in
     every context. *)
-Lemma ind_str : forall Γ A p k, exp_str Γ A (a_ind p k).
+Lemma ind_str : forall Γ κ A p k, exp_str Γ κ A (a_ind p k).
 Proof.
   intros * Δ C Hass HΓf HΓs HW; cbn [exp_wk] in HW.
   destruct (wf_ind_inversion HW) as [D Mk Hl Hk Hlt Hs].
@@ -1901,7 +1901,7 @@ Proof.
   eapply wf_con_of_lookup; eassumption.
 Qed.
 
-Lemma con_str : forall Γ A p k c, exp_str Γ A (a_con p k c).
+Lemma con_str : forall Γ κ A p k c, exp_str Γ κ A (a_con p k c).
 Proof.
   intros * Δ C Hass HΓf HΓs HW; cbn [exp_wk] in HW.
   destruct (wf_con_inversion HW) as [D Mk gs Hl Hk Hcon Hs].
@@ -1912,8 +1912,8 @@ Proof.
 Qed.
 
 (** A neutral typed at [Level@n] in the long context is in the short one. *)
-Lemma ne_str_level : forall Γ A Δ n (u : ne),
-    ne_str Γ A u ->
+Lemma ne_str_level : forall Γ κ A Δ n (u : ne),
+    ne_str Γ κ A u ->
     all_assumptions Δ ->
     ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ->
     ⊢ (Δ ++ Γ)%list ->
@@ -1927,8 +1927,8 @@ Proof.
     [ exact Hass | exact HΓf | exact HS | constructor | exact HT | apply (wf_level_large (i := 0)), HΓs | exact Hs ].
 Qed.
 
-Lemma level_atoms_wf_strengthen : forall Γ A Δ n xs,
-    level_atoms_all (ne_str Γ A) xs ->
+Lemma level_atoms_wf_strengthen : forall Γ κ A Δ n xs,
+    level_atoms_all (ne_str Γ κ A) xs ->
     all_assumptions Δ ->
     ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ->
     ⊢ (Δ ++ Γ)%list ->
@@ -1968,12 +1968,12 @@ Qed.
     the member's non-uniform parameters ([mty_params_conv]), equal to the
     long ones ([mty_params_inj]); the blocks are typed short by the
     induction hypotheses. *)
-Lemma elim_str : forall Γ A pc Us k Bks u,
-    List.Forall (nf_str_exp Γ A) Us ->
-    List.Forall (fun b => eb_ann b = None /\ nf_str_exp Γ A (eb_motive b) /\
-                          List.Forall (fun br => nf_str_exp Γ A (snd br)) (eb_brs b)) Bks ->
-    exp_str Γ A u ->
-    exp_str Γ A (a_elim relevant (Some pc) Us k Bks u).
+Lemma elim_str : forall Γ κ A pc Us k Bks u,
+    List.Forall (nf_str_exp Γ κ A) Us ->
+    List.Forall (fun b => eb_ann b = None /\ nf_str_exp Γ κ A (eb_motive b) /\
+                          List.Forall (fun br => nf_str_exp Γ κ A (snd br)) (eb_brs b)) Bks ->
+    exp_str Γ κ A u ->
+    exp_str Γ κ A (a_elim relevant (Some pc) Us k Bks u).
 Proof.
   intros * IHUs IHBs IHu Δ C Hass HΓf HΓs HW.
   rewrite exp_wk_elim in HW.
@@ -2213,7 +2213,7 @@ Qed.
 (** ** Records *)
 
 (** A record's type former: typed at its closed type in every context. *)
-Lemma record_str : forall Γ A p, exp_str Γ A (a_record p).
+Lemma record_str : forall Γ κ A p, exp_str Γ κ A (a_record p).
 Proof.
   intros * Δ C Hass HΓf HΓs HW; cbn [exp_wk] in HW.
   destruct (wf_record_inversion HW) as [R Hl Hnd Hass0 i Hty HF HS HFs Hs].
@@ -2292,8 +2292,8 @@ Qed.
 (** A tuple of a record type: its parameters and fields, strengthened as
     one instance of the fields' telescope over the parameters, at its
     record type, whose weakening is below the long type. *)
-Lemma tuple_str : forall Γ A p Ms fs, List.Forall (nf_str_exp Γ A) Ms -> List.Forall (nf_str_exp Γ A) (List.map snd fs) ->
-    nf_str_exp Γ A (a_tuple (apps (a_record p) Ms) fs).
+Lemma tuple_str : forall Γ κ A p Ms fs, List.Forall (nf_str_exp Γ κ A) Ms -> List.Forall (nf_str_exp Γ κ A) (List.map snd fs) ->
+    nf_str_exp Γ κ A (a_tuple (apps (a_record p) Ms) fs).
 Proof.
   intros * IHMs IHFs Δ T S Hass HΓf HS HT HW.
   set (φ := wk_qn (length Δ) ↑) in *.
@@ -2344,7 +2344,7 @@ Proof.
             (Δ ++ Γ)%list ⊢ N : B).
   { eapply tele_insts_typed_all; [ exact HassC | exact HCΓ | apply wf_sub_id; exact HΓs |].
     intros j N B HN HB (SB & HSB & HBt).
-    assert (HNstr : nf_str_exp Γ A N).
+    assert (HNstr : nf_str_exp Γ κ A N).
     { pose proof (List.nth_error_In _ _ HN) as HNi; apply List.in_app_or in HNi as [HNi | HNi];
         [ exact (proj1 (List.Forall_forall _ _) IHMs _ HNi) | exact (proj1 (List.Forall_forall _ _) IHFs _ HNi) ]. }
     apply (HNstr Δ B SB Hass HΓf HSB HBt).
@@ -2370,7 +2370,7 @@ Qed.
 
 (** A projection of a neutral: the neutral's short type is a record type
     ([typ_record_shape_strengthen]), whose field the projection is at. *)
-Lemma proj_str : forall Γ A f u, exp_str Γ A u -> exp_str Γ A (a_proj f u).
+Lemma proj_str : forall Γ κ A f u, exp_str Γ κ A u -> exp_str Γ κ A (a_proj f u).
 Proof.
   intros Γ A f u IHu Δ C Hass HΓf HΓs HW; cbn [exp_wk] in HW.
   set (φ := wk_qn (length Δ) ↑) in *.
@@ -2437,8 +2437,8 @@ Lemma type_sort_typed : forall Γ Srt, ⊢ Γ -> type_sort Srt -> exists j, Γ �
 Proof. intros * HΓ [i |]; [ exists (S i); apply wf_typ, HΓ | exists 0; eapply wf_prop_large; exact HΓ ]. Qed.
 
 (** A term strengthens at a sort: the sort is its own weakening. *)
-Lemma nf_str_at_sort : forall Γ A W Δ Srt,
-    nf_str_exp Γ A W -> all_assumptions Δ -> ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list -> ⊢ (Δ ++ Γ)%list -> type_sort Srt ->
+Lemma nf_str_at_sort : forall Γ κ A W Δ Srt,
+    nf_str_exp Γ κ A W -> all_assumptions Δ -> ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list -> ⊢ (Δ ++ Γ)%list -> type_sort Srt ->
     (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ W[wk_qn (length Δ) ↑]ʷ : Srt ->
     (Δ ++ Γ)%list ⊢ W : Srt.
 Proof.
@@ -2525,7 +2525,7 @@ Proof. intros P Q; induction xs as [| [k s a] r IH]; cbn; [ auto | intros [Ha Hr
     take it: [nf_str_exp] of each term. *)
 Ltac nfs_str_ih Γ A IH Hpf :=
   let H := fresh "H" in
-  pose proof (list_all_Forall_map_premise _ _ (nf_str_exp Γ A) nf_to_exp _ IH Hpf (fun _ Hx Hy => Hx Hy)) as H;
+  pose proof (list_all_Forall_map_premise _ _ (nf_str_exp Γ κ A) nf_to_exp _ IH Hpf (fun _ Hx Hy => Hx Hy)) as H;
   clear IH Hpf; rename H into IH.
 
 (** The same at the blocks of a stuck eliminator, as [elim_str] takes it:
@@ -2533,15 +2533,15 @@ Ltac nfs_str_ih Γ A IH Hpf :=
 Ltac blocks_str_ih Γ A IH Hpf :=
   let H := fresh "H" in
   match type of IH with list_all _ _ ?l =>
-  assert (H : List.Forall (fun b => eb_ann b = None /\ nf_str_exp Γ A (eb_motive b) /\
-                                    List.Forall (fun br => nf_str_exp Γ A (snd br)) (eb_brs b))
+  assert (H : List.Forall (fun b => eb_ann b = None /\ nf_str_exp Γ κ A (eb_motive b) /\
+                                    List.Forall (fun br => nf_str_exp Γ κ A (snd br)) (eb_brs b))
                 (List.map block_exp l));
   [ apply (list_all_Forall_map_premise _ _ _ block_exp _ IH Hpf);
     let x := fresh "x" in let Hx := fresh "Hx" in let Hy := fresh "Hy" in
     let HA := fresh "HA" in let Hbrs := fresh "Hbrs" in let HyA := fresh "HyA" in let Hybrs := fresh "Hybrs" in
     intros x Hx Hy; destruct Hx as [? ? HA ? Hbrs]; destruct Hy as [HyA Hybrs]; cbn;
     split; [ reflexivity | split; [ exact (HA HyA) |] ];
-    apply (list_all_Forall_map_premise _ _ (fun br => nf_str_exp Γ A (snd br)) branch_exp _ Hbrs Hybrs);
+    apply (list_all_Forall_map_premise _ _ (fun br => nf_str_exp Γ κ A (snd br)) branch_exp _ Hbrs Hybrs);
     let y := fresh "y" in let Hy' := fresh "Hy" in let Hz := fresh "Hz" in let HB := fresh "HB" in
     intros y Hy' Hz; destruct Hy' as [? ? ? HB]; exact (HB Hz)
   | clear IH Hpf; rename H into IH ]
@@ -2554,8 +2554,8 @@ Ltac blocks_str_ih Γ A IH Hpf :=
     a sort, is typed at that type; a proof-free neutral is typed short
     ([ne_str]). *)
 Theorem nf_strengthen : forall Γ A,
-    (forall (W : nf), nf_proof_free W -> nf_str_exp Γ A W) /\
-    (forall u, ne_proof_free u -> ne_str Γ A u).
+    (forall (W : nf), nf_proof_free W -> nf_str_exp Γ κ A W) /\
+    (forall u, ne_proof_free u -> ne_str Γ κ A u).
 Proof.
   intros Γ A; apply nf_ne_ind.
   - (** A large universe. *)
@@ -2887,7 +2887,7 @@ Qed.
 
 (** A proof-free normal form typed, weakened, in [Γ ▹ A] at a weakened type
     of [Γ] is typed at that type in [Γ]. *)
-Corollary nf_strengthen_shift : forall Γ A (W : nf) T i,
+Corollary nf_strengthen_shift : forall Γ κ A (W : nf) T i,
     nf_proof_free W ->
     ⊢ Γ ▹ A ->
     Γ ⊢ T : Typeω@i ->
@@ -2900,7 +2900,7 @@ Qed.
 
 (** The case the algorithmic [Π] needs: the level of a codomain's universe,
     when it does not mention the bound variable and holds no proof. *)
-Corollary level_nf_strengthen : forall Γ A n (L : nf),
+Corollary level_nf_strengthen : forall Γ κ A n(L : nf),
     nf_proof_free L ->
     ⊢ Γ ▹ A ->
     Γ ▹ A ⊢ (L : exp)[↑]ʷ : Level@n ->
