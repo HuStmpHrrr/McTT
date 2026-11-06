@@ -185,6 +185,7 @@
 ./Extraction/LookupTwins.v
 ./Extraction/FastState.v
 ./Extraction/FastEval.v
+./Extraction/FastRead.v
 ./Extraction/FastDomain.v
 ./Extraction/Simulation.v
 ./Extraction/FastEvalGrowth.v
