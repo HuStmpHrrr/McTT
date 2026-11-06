@@ -384,7 +384,7 @@ Proof.
     destruct (rel_ctx_wf_per_ctx_env HΓA) as [RA HRA].
     destruct (per_tele_args_of_env_extend ts (Γ ▹{κ} A) RA R1 HRA HC Hts' HR1 (E ↦ y ⦂ t) (E' ↦ y' ⦂ t') vts vts' ltac:(lia) ltac:(lia) H1)
       as [HyA _].
-    destruct (per_ctx_env_cons_clean_inversion HΓ HRA) as (i0 & head_rel & Hhead & HEA).
+    destruct (per_ctx_env_cons_clean_inversion HΓ HRA) as (i0 & head_rel & Hhead & _ & HEA).
     pose proof (proj1 (HEA _ _) HyA) as [Ht Hh Hlp Hrp Hlr Hrr].
     cbn [drop_env tl] in Ht.
     destruct (Hhead _ _ Ht) as [x0 x0' Hx0 Hx0' Hhr].
