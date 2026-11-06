@@ -16,7 +16,7 @@ From Mctt.Core.Semantic Require Import Domain Evaluation.
     declaration was not at hand; a consumer then looks it up, as for a
     Core value.
 
-    The relations of [Extraction.FastEval] stay over Core's values: a fast
+    The implementations are stated over Core's evaluation and values: a fast
     value stands for its erasure ([fdomain_erase]), which drops the
     declarations, and every declaration it carries is the one its group's
     name finds ([fdomain_ok]).  The erasures are for types and proofs only;
@@ -376,7 +376,7 @@ Abbreviation fenv_erase ρ := (List.map fdentry_erase ρ).
 Abbreviation fdomains_erase vs := (List.map fdomain_erase vs).
 
 (** The member a member stands for, on fast values: Core's
-    [(group, member, arguments)] of [fast_eval_mref], with the group's
+    [(group, member, arguments)] of [eval_mref], with the group's
     declaration when it is at hand *)
 Record fast_member_reference : Type := mk_fast_member_reference
   { (** The name of the group of the member stood for *)

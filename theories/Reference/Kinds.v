@@ -28,8 +28,6 @@ Section KindImpl.
     | H : gunit_member_kind_order _ _ _ _ _ |- _ => progressive_invert H
     | H : modexp_member_kind_order _ _ _ _ _ |- _ => progressive_invert H
     | H : kinds_env_order _ _ _ _ |- _ => progressive_invert H
-    | H : kinds_items_gen_order _ _ _ _ _ |- _ => progressive_invert H
-    | H : kinds_body_xp_order _ _ _ _ |- _ => progressive_invert H
     end.
 
   #[local]
@@ -57,12 +55,6 @@ Section KindImpl.
           rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
       | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = None |- _ =>
           rewrite H1 in H2; discriminate H2
-      | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-          rewrite H1 in H2; injection H2; clear H2; intros; subst
-      | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = None |- _ =>
-          rewrite H1 in H2; discriminate H2
-      | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-          rewrite (gm_prefix_item_exclusive _ _ _ H1) in H2; discriminate H2
       | H1 : gc_module _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
           rewrite (gc_module_resolve _ _ _ _ H1) in H2; discriminate H2
       | H1 : gc_frame _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
@@ -72,28 +64,6 @@ Section KindImpl.
           exfalso; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ _ H1 H2)
       | H : (@nil ?T) <> nil \/ _ |- _ => destruct H as [H | H]; [ exfalso; exact (H eq_refl) |]
       | H : (@nil ?T) <> nil |- _ => exfalso; exact (H eq_refl)
-      | H : forall p0, kinds_env _ _ ?qe ?Φ p0 -> _ /\ _, Hk : kinds_env _ _ ?qe ?Φ ?p0 |- _ =>
-          let Ha := fresh "Ha" in let Hb := fresh "Hb" in destruct (H _ Hk) as [Ha Hb]; clear H
-      | H : forall Φx, kinds_body_xp _ _ ?qe ?Φ Φx -> _ /\ _, Hk : kinds_body_xp _ _ ?qe ?Φ ?Φx |- _ =>
-          let Ha := fresh "Ha" in let Hb := fresh "Hb" in destruct (H _ Hk) as [Ha Hb]; clear H
-      | H : ((exists _, modexp_member_kind _ _ ?p0 ?E ?ch (member_kind_term _)) /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_mod /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_dm /\ _),
-        Hk : modexp_member_kind _ _ ?p0 ?E ?ch (member_kind_term _) |- _ =>
-          destruct H as [[_ ?] | [[Hk' _] | [Hk' _]]];
-          [ subst
-          | exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate
-          | exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate ]
-      | H : ((exists _, modexp_member_kind _ _ ?p0 ?E ?ch (member_kind_term _)) /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_mod /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_dm /\ _),
-        Hk : modexp_member_kind _ _ ?p0 ?E ?ch member_kind_mod |- _ =>
-          destruct H as [[(? & Hk') _] | [[_ ?] | [Hk' _]]];
-          [ exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate
-          |
-          | exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate ]
-      | H : ((exists _, modexp_member_kind _ _ ?p0 ?E ?ch (member_kind_term _)) /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_mod /\ _) \/ (modexp_member_kind _ _ ?p0 ?E ?ch member_kind_dm /\ _),
-        Hk : modexp_member_kind _ _ ?p0 ?E ?ch member_kind_dm |- _ =>
-          destruct H as [[(? & Hk') _] | [[Hk' _] | [_ ?]]];
-          [ exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate
-          | exfalso; pose proof (proj1 (proj2 (proj2 (@functional_kind Θ Ξ))) _ _ _ _ Hk _ Hk'); discriminate
-          | ]
       end.
 
   #[local]
@@ -103,8 +73,6 @@ Section KindImpl.
     | H : gunit_member_kind_order _ _ _ _ _ |- _ => dependent destruction H
     | H : modexp_member_kind_order _ _ _ _ _ |- _ => dependent destruction H
     | H : kinds_env_order _ _ _ _ |- _ => dependent destruction H
-    | H : kinds_items_gen_order _ _ _ _ _ |- _ => dependent destruction H
-    | H : kinds_body_xp_order _ _ _ _ |- _ => dependent destruction H
     end.
 
   #[local]
@@ -134,8 +102,6 @@ Section KindImpl.
     | |- gunit_member_kind_order _ _ _ _ _ => kinds_obligation
     | |- modexp_member_kind_order _ _ _ _ _ => kinds_obligation
     | |- kinds_env_order _ _ _ _ => kinds_obligation
-    | |- kinds_items_gen_order _ _ _ _ _ => kinds_obligation
-    | |- kinds_body_xp_order _ _ _ _ => kinds_obligation
     | |- _ => abstract kinds_obligation
     end.
 
@@ -143,8 +109,8 @@ Section KindImpl.
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations dmod_member_kind_impl h ch (H : dmod_member_kind_order Θ Ξ h ch) : { k | dmod_member_kind Θ Ξ h ch k } by struct H :=
   | dm_global pq args, nil, H with inspect (gc_frame Ξ pq) := {
-    | exist _ (Some TΦ) F => exist _ member_kind_mod _
-    | exist _ None F with inspect (gc_module Θ Ξ pq) := {
+    | exist _ (Some TΦ) Ef => exist _ member_kind_mod _
+    | exist _ None Ef with inspect (gc_module Θ Ξ pq) := {
       | exist _ (Some (mr_body T oD)) E => exist _ member_kind_mod _
       | exist _ _ E with inspect (gc_resolve Θ Ξ pq) := {
         | exist _ (Some (ge_def b pv ra A B)) E2 => exist _ (member_kind_term ra) _
@@ -154,18 +120,18 @@ Section KindImpl.
       (** a definition with a module part stored as an alias: [dm_of] its
           alias's kind *)
       | exist _ (Some (mr_alias U)) E =>
-          let (k, Hk) := gunit_member_kind_impl nil U nil _ in
+          let (k, Hk) := gunit_member_kind_impl nil (gunit_expand U) nil _ in
           exist _ (dm_of k) _
       | exist _ _ E => exist _ member_kind_dm _ }
     | _, ch' with inspect (gc_module Θ Ξ (qname_app pq (y :: nil))) := {
       | exist _ (Some (mr_alias U)) E =>
-          let (k, Hk) := gunit_member_kind_impl nil U ch' _ in
+          let (k, Hk) := gunit_member_kind_impl nil (gunit_expand U) ch' _ in
           exist _ k _
       | exist _ _ E =>
           let (k, Hk) := dmod_member_kind_impl (dm_global (qname_app pq (y :: nil)) args) ch' _ in
           exist _ k _ } }
   | dm_local Δ D p, ch, H =>
-      let (k, Hk) := gunit_member_kind_impl p (gu_mk Δ D) ch _ in
+      let (k, Hk) := gunit_member_kind_impl p (gunit_expand (gu_mk Δ D)) ch _ in
       exist _ k _
   | dm_member h ch0, ch, H with dmod_member_kind_impl h (ch0 ++ ch) _ := {
     (** at the empty chain, a member with a term part and a module part is
@@ -177,39 +143,25 @@ Section KindImpl.
 
   with gunit_member_kind_impl p U ch (H : gunit_member_kind_order Θ Ξ p U ch) : { k | gunit_member_kind Θ Ξ p U ch k } by struct H :=
   | p, gu_mk Δ (md_body sm Φ), nil, H => exist _ member_kind_mod _
-  | p, gu_mk Δ (md_body sm Φ), x :: ch, H with inspect (gm_item_upto Φ x) := {
-    | exist _ (Some (Φ0, E, its1, (Some n, d, pv))) Ei with kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ0 _ := {
-      | exist _ p0 Hp0 with modexp_member_kind_impl p0 E (n :: nil) _ := {
-        | exist _ (member_kind_term r) Hk0 => exist _ (member_kind_term r) _
-        | exist _ member_kind_mod Hk0 =>
-            let (k, Hk) := modexp_member_kind_impl p0 E (n :: ch) _ in
-            exist _ k _
-        | exist _ member_kind_dm Hk0 =>
-            let (k, Hk) := modexp_member_kind_impl p0 E (n :: ch) _ in
-            exist _ k _ } }
-    | exist _ (Some (Φ0, E, its1, (None, d, pv))) Ei =>
-        let (p0, Hp0) := kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ0 _ in
-        let (k, Hk) := modexp_member_kind_impl p0 E ch _ in
+  | p, gu_mk Δ (md_body sm Φ), x :: ch, H with inspect (gm_prefix_upto Φ x) := {
+    | exist _ (Some (gm_ext Φ' _ (ge_def b pv ra A B))) P => exist _ (member_kind_term ra) _
+    | exist _ (Some (gm_ext Φ' _ (ge_mod pm Uy))) P =>
+        let (p1, Hp1) := kinds_env_impl (kinds_pads (List.length Δ) p) Φ' _ in
+        let (k, Hk) := gunit_member_kind_impl p1 (gunit_expand Uy) ch _ in
         exist _ k _
-    | exist _ None Ei with inspect (gm_prefix_upto Φ x) := {
-      | exist _ (Some (gm_ext Φ' _ (ge_def b pv ra A B))) P => exist _ (member_kind_term ra) _
-      | exist _ (Some (gm_ext Φ' _ (ge_mod pm Uy))) P =>
-          let (p1, Hp1) := kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ' _ in
-          let (k, Hk) := gunit_member_kind_impl p1 Uy ch _ in
-          exist _ k _
-      | exist _ (Some (gm_ext Φ' _ (ge_def_mod pv A M Uy))) P with ch := {
-        (** itself: [dm_of] its module part's kind *)
-        | nil =>
-            let (p1, Hp1) := kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ' _ in
-            let (k, Hk) := gunit_member_kind_impl p1 Uy nil _ in
-            exist _ (dm_of k) _
-        | c :: ch' =>
-            let (p1, Hp1) := kinds_env_impl (kinds_placeholders (List.length Δ) p) Φ' _ in
-            let (k, Hk) := gunit_member_kind_impl p1 Uy (c :: ch') _ in
-            exist _ k _ }
-      | exist _ _ P => False_rect _ _ } }
+    | exist _ (Some (gm_ext Φ' _ (ge_def_mod pv A M Uy))) P with ch := {
+      (** itself: [dm_of] its module part's kind *)
+      | nil =>
+          let (p1, Hp1) := kinds_env_impl (kinds_pads (List.length Δ) p) Φ' _ in
+          let (k, Hk) := gunit_member_kind_impl p1 (gunit_expand Uy) nil _ in
+          exist _ (dm_of k) _
+      | c :: ch' =>
+          let (p1, Hp1) := kinds_env_impl (kinds_pads (List.length Δ) p) Φ' _ in
+          let (k, Hk) := gunit_member_kind_impl p1 (gunit_expand Uy) (c :: ch') _ in
+          exist _ k _ }
+    | exist _ _ P => False_rect _ _ }
   | p, gu_mk Δ (md_alias E), ch, H =>
-      let (k, Hk) := modexp_member_kind_impl (kinds_placeholders (List.length Δ) p) E ch _ in
+      let (k, Hk) := modexp_member_kind_impl (kinds_pads (List.length Δ) p) E ch _ in
       exist _ k _
 
   with modexp_member_kind_impl p E ch (H : modexp_member_kind_order Θ Ξ p E ch) : { k | modexp_member_kind Θ Ξ p E ch k } by struct H :=
@@ -220,7 +172,7 @@ Section KindImpl.
       let (k, Hk) := dmod_member_kind_impl (env_mod p x) ch _ in
       exist _ k _
   | p, me_lit U, ch, H =>
-      let (k, Hk) := gunit_member_kind_impl p U ch _ in
+      let (k, Hk) := gunit_member_kind_impl p (gunit_expand U) ch _ in
       exist _ k _
   | p, me_mem E y, ch, H with modexp_member_kind_impl p E (y :: ch) _ := {
     (** at the empty chain, a member with a term part and a module part is
@@ -237,42 +189,9 @@ Section KindImpl.
   | p, gm_nil, H => exist _ p _
   | p, gm_ext Φ y E, H =>
       let (p1, Hp1) := kinds_env_impl p Φ _ in
-      exist _ (kinds_body_entry p1 E :: p1) _
-  | p, gm_open Φ E its, H =>
-      let (p1, Hp1) := kinds_env_impl p Φ _ in
-      let (gs, Hgs) := kinds_items_gen_impl p1 E its _ in
-      exist _ (kinds_items_gen_env p1 0 gs) _
-
-  with kinds_items_gen_impl p E its (H : kinds_items_gen_order Θ Ξ p E its) : { gs | kinds_items_gen Θ Ξ p E its gs } by struct H :=
-  | p, E, nil, H => exist _ nil _
-  | p, E, (None, d, pv) :: its, H =>
-      let (gs, Hgs) := kinds_items_gen_impl p E its _ in
-      exist _ (generated_item_alias d pv E :: gs) _
-  | p, E, (Some n, d, pv) :: its, H with modexp_member_kind_impl p E (n :: nil) _ := {
-    | exist _ (member_kind_term r) Hk =>
-        let (gs, Hgs) := kinds_items_gen_impl p E its _ in
-        exist _ (generated_item_def d pv r a_placeholder_type (a_mem E n) :: gs) _
-    | exist _ member_kind_mod Hk =>
-        let (gs, Hgs) := kinds_items_gen_impl p E its _ in
-        exist _ (generated_item_alias d pv (me_mem E n) :: gs) _
-    | exist _ member_kind_dm Hk =>
-        let (gs, Hgs) := kinds_items_gen_impl p E its _ in
-        exist _ (generated_item_def_mod d pv a_placeholder_type (a_mem E n) (me_mem E n) :: gs) _ }.
-
-  Solve All Obligations with kinds_obligation_auto.
-
-  (** A body read through the entries its opens generate. *)
-  #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations kinds_body_xp_impl p Φ (H : kinds_body_xp_order Θ Ξ p Φ) : { Φx | kinds_body_xp Θ Ξ p Φ Φx } by struct H :=
-  | p, gm_nil, H => exist _ gm_nil _
-  | p, gm_ext Φ y E, H =>
-      let (Φx, HΦx) := kinds_body_xp_impl p Φ _ in
-      exist _ (gm_ext Φx y E) _
-  | p, gm_open Φ E its, H =>
-      let (Φx, HΦx) := kinds_body_xp_impl p Φ _ in
-      let (p1, Hp1) := kinds_env_impl p Φx _ in
-      let (gs, Hgs) := kinds_items_gen_impl p1 E its _ in
-      exist _ (gens_append Φx 0 gs) _.
+      exist _ (kinds_body_entry p1 y E :: p1) _
+  (** an open: no order, as kinds read bodies expanded *)
+  | p, gm_open Φ E its Φg, H => False_rect _ _.
 
   Solve All Obligations with kinds_obligation_auto.
 End KindImpl.
