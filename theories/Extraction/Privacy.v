@@ -630,13 +630,14 @@ Proof.
   destruct (gc_module_alias_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T & pv & HV); exact HV.
 Qed.
 
-Lemma sited_V_alias : forall Θ Ξ pv Δ E l Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
-    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    params_relevant Θ Ξ (gs_tele Ξ) Δ l ->
+Lemma sited_V_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
+    all_assumptions Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+    params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
+    levels_flag Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E lv Rt ->
     bodies_valid_along_embeddings sited_Vs sited_F sited_VD sited_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     sited_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
-  intros * _ _ HE _ HG He _; cbn [sited_V].
+  intros * _ _ HE _ _ HG He _; cbn [sited_V].
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) as Hg.
   destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HE) as (_ & (R & _ & HR & _) & _).
