@@ -2148,7 +2148,8 @@ Section GrowDeps.
       assert (Hg0 : ⊢ᵍ Θ ⍮ Ξ) by (eapply ctx_wf_gctx, presup_ext_eq_ctx; eassumption).
       econstructor; try eassumption; intros;
         first [ apply Hx; eauto | apply Hm; eauto | apply He; eauto | apply Hnl; eauto
-              | eapply gctx_embedding_mdenote_no_level; eauto ].
+              | eapply gctx_embedding_mdenote_no_level; eauto
+              | eapply frame_free_embedding; [ exact Hg0 | exact Hem | eassumption ] ].
     - (* a group, before the members of its first member's module: a
          container found at [Θ'] is the one found at [Θ] *)
       assert (Hs : gc_sub Θ Ξ Θ' Ξ) by (apply gc_sub_deps; exact Hsub).
@@ -2201,7 +2202,8 @@ Section GrowDeps.
       assert (Hg0 : ⊢ᵍ Θ ⍮ Ξ) by (eapply ctx_wf_gctx, presup_ext_eq_ctx; eassumption).
       eapply wf_gentry_def_mod; try eassumption; intros;
         first [ apply Hx; eauto | apply Hm; eauto | apply He; eauto | apply Hnl; eauto
-              | eapply gctx_embedding_mdenote_no_level; eauto ].
+              | eapply gctx_embedding_mdenote_no_level; eauto
+              | eapply frame_free_embedding; [ exact Hg0 | exact Hem | eassumption ] ].
     - (* a record *)
       econstructor; try eassumption.
       all: try solve [ intros; apply He; eauto ].
@@ -2487,9 +2489,10 @@ Qed.
 Lemma add_alias_wf : forall Θ Ξ x pv Δ E l,
     ⊢ᵍ Θ ⍮ Ξ -> all_assumptions Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
     params_evaluated Θ Ξ (gs_tele Ξ) Δ l -> levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E ->
+    frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) E ->
     gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ.
 Proof.
-  intros * HΞ Htel HΔ HE HP Hlv Hfr.
+  intros * HΞ Htel HΔ HE HP Hlv HFf Hfr.
   destruct (params_evaluated_sorts _ _ _ _ _ HP) as (ps & Hps & HT).
   destruct (levels_abstractable_flag _ _ _ _ Hlv) as (lv & Rt & Hl1 & Hl2 & Hl3).
   destruct Ξ as [| [[mp K] [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
@@ -2506,9 +2509,10 @@ Lemma add_dm_wf : forall Θ Ξ x pv Δ A M H (i : nat) l,
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) H ->
+    frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) H ->
     gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (dm_entry Ξ pv Δ A M H) Ξ.
 Proof.
-  intros * HΞ Htel HΔ HA HM HH HPr Hlv Hfr.
+  intros * HΞ Htel HΔ HA HM HH HPr Hlv HFf Hfr.
   destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
   destruct (levels_abstractable_flag _ _ _ _ Hlv) as (lv & Rt & Hl1 & Hl2 & Hl3).
   pose proof (presup_exp_ctx HM) as HΔT.
@@ -3061,7 +3065,7 @@ Section WellFormed.
                     | apply stack_in_add; eapply stack_in_tl; exact Hst ].
       apply add_entry_wf; [ exact HΞ0 | eapply wf_gentry_record_body; [ exact HR | exact HΦ ] | exact Hfr ].
     - (* an alias: checked against the frame so far, as a definition is *)
-      intros ch B Rb Θ Ξ x pv Δ l E Htel HΔ HE HPr Hlv Hfr HΞ Hc Hst.
+      intros ch B Rb Θ Ξ x pv Δ l E Htel HΔ HE HPr Hlv HFf Hfr HΞ Hc Hst.
       repeat split; [ eapply add_alias_wf; eassumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl
                     | apply stack_in_add; exact Hst ].
     - (* a shared unit: its record merged in *)
@@ -3091,7 +3095,7 @@ Section WellFormed.
         repeat split; [ exact (proj1 Hcm) | exact (proj2 Hcm) | apply merge_left | exact (proj1 (builtins_merge_le _ _ _ Hm))
                       | exact Hst ].
     - (* an import: what its generated commands make *)
-      intros * _ _ Hg HΞ Hc Hst.
+      intros * _ _ _ Hg HΞ Hc Hst.
       repeat split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl
                     | exact (stack_in_shape _ _ _ (gens_run_shape _ _ _ _ Hg) Hst) ].
     - (* a group: its members, each with its module, then its recursor
@@ -3111,11 +3115,11 @@ Section WellFormed.
                     | exact Hst ].
     - (* an inductive alias: a definition with a module part, checked
          where it is declared *)
-      intros * Htel HΔ HH HPr _ _ HW HM _ Hlv Hfr HΞ Hc Hst.
+      intros * Htel HΔ HH HPr _ _ HW HM _ Hlv HFf Hfr HΞ Hc Hst.
       repeat split; [ eapply add_dm_wf; eassumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl
                     | apply stack_in_add; exact Hst ].
     - (* a record alias: likewise *)
-      intros * Htel HΔ HH HPr _ _ HW HM _ Hlv Hfr HΞ Hc Hst.
+      intros * Htel HΔ HH HPr _ _ HW HM _ Hlv HFf Hfr HΞ Hc Hst.
       repeat split; [ eapply add_dm_wf; eassumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl
                     | apply stack_in_add; exact Hst ].
     - (* a record: checked with an empty module, its module's frame opened
@@ -3322,7 +3326,7 @@ Section WellFormed.
       + eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] | exact Hb ].
       + apply builtins_wf_below; [ exact (wf_gstack_frames _ _ HΞ') |].
         eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub' | eassumption ] | exact HbU ].
-    - intros * _ _ Hg HΞ _ _ Hb HR; split; [| exact HR ].
+    - intros * _ _ _ Hg HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply gens_run_ind_lookup; eassumption.
     - (* a group: its members, then its recursor module *)
       intros * _ _ _ _ _ _ _ Hf _ _ Hm IHm Hr IHr HΞ Hc Hst Hb HR.

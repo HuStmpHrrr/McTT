@@ -1350,7 +1350,7 @@ Proof.
       apply mdenote_lit_inv in HmL; inversion HmL as [| ? ? ? ? R1 R2 HmE HmdE HeqR]; subst.
       rewrite mdesc_up_nil in HmdR' |- *.
       exists E[sb_qn 0 (Id,,N)]ᵐ, R1; split; [ apply unit_nf_sub; exact HE |].
-      split; [ eapply wf_me_trans; [ exact Hβ | apply wf_me_beta_alias0; exact HE' ] |].
+      split; [ eapply wf_me_trans; [ exact Hβ | apply wf_me_beta_alias0; [ exact HE' | exact unit_alias_frame_free ] ] |].
       split; [ exact HmE | rewrite HmdE, HmdR'; reflexivity ].
     + eexists; exists R'; split; [| split; [ exact Hβ | split; [ exact HmL | reflexivity ] ] ].
       apply unit_nf_alias; [ discriminate | apply unit_nf_sub; exact HE ].
@@ -1423,12 +1423,19 @@ Proof.
   - (* an alias: with no parameter its target, otherwise over the unit its target is equal to *)
     intros Γ o Δ E R R' Hm IH HR' -> HU Rm Hmd.
     pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as Hf; cbn [unit_full] in Hf.
-    destruct Hf as [lp ps Hps HΔ Ha HE HRp lv Rt [HLs HLd HLn]].
+    destruct Hf as [lp ps Hps HΔ Ha HE HRp lv Rt [HLs HLd HLn] Hff].
     destruct (IH HE R' HR') as (K & RK & Hnf & HK & HmK & HmdK).
     pose proof (mdesc_mod_is_mod _ _ HR') as Him.
+    (* the target in normal form is no module still being defined: its
+       module part is the target's *)
+    assert (HffK : frame_free_target Θ Ξ (Δ ++ Γ) K).
+    { destruct Hff as (Rf & Hmf & Hnf'); rewrite <- (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm _ Hmf) in Hnf'.
+      exists RK; split; [ exact HmK |].
+      intros (Θ1 & p1 & T1 & Φ1 & Ns1 & Hm1 & Hf1); apply Hnf'; rewrite HmdK in Hm1; injection Hm1 as ->.
+      do 5 eexists; split; [ exact HR' | exact Hf1 ]. }
     destruct Δ as [| e Δ'].
     + rewrite mdesc_up_nil, (mdesc_is_mod_mod _ Him) in Hmd; injection Hmd as <-.
-      exists K, RK; split; [ exact Hnf |]; split; [ eapply wf_me_trans; [ apply wf_me_beta_alias0; exact HE | exact HK ] |].
+      exists K, RK; split; [ exact Hnf |]; split; [ eapply wf_me_trans; [ apply wf_me_beta_alias0; [ exact HE | exact Hff ] | exact HK ] |].
       split; assumption.
     + exists (me_lit (gu_mk (e :: Δ') (md_alias K))), (mdesc_up (e :: Δ') R'); split; [ apply unit_nf_alias; [ discriminate | exact Hnf ] |].
       (* the target in normal form keeps the flag: its module part is the target's *)
@@ -1438,7 +1445,8 @@ Proof.
                | intros _; exact HmK
                | intros Hlv; pose proof (HLn Hlv) as HN;
                  rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ (HLd Hlv) _ Hm) in HN;
-                 exact (no_level_of_mod _ _ _ _ _ HmdK (no_level_mod _ _ _ _ _ HN HR')) ] |].
+                 exact (no_level_of_mod _ _ _ _ _ HmdK (no_level_mod _ _ _ _ _ HN HR'))
+               | exact Hff | exact HffK ] |].
       split; [ apply mdenote_lit; eapply udenote_alias; [ exact HmK | exact HmdK ] | exact Hmd ].
 Qed.
 
@@ -1466,6 +1474,18 @@ Proof.
   intros * HU; pose proof (proj1 (modexp_gen _ _ _ _ _ HU)) as Hf; cbn [gen_m] in Hf; exact (unit_eq_of_full _ _ _ _ Hf).
 Qed.
 
+(** The unit a module part reading no open frame stands for reads none:
+    it denotes that module part again ([mdesc_unit_denote]). *)
+Lemma mdesc_unit_frame_free : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ Rm, mdesc_canonical Θ Ξ Rm -> mdesc_is_mod Rm ->
+    mdesc_xp Θ Ξ Γ Rm -> ~ desc_reads_frame Ξ Rm -> frame_free_target Θ Ξ Γ (mdesc_unit Rm).
+Proof.
+  intros * Hg * Hc Hm Hx Hn.
+  destruct (mdesc_unit_denote _ _ _ Hg Hc Hm _ Hx) as (Ru & Hmu & Hmdu).
+  exists Ru; split; [ exact Hmu |].
+  intros (Θ' & p & T & Φ & Ns & Hm' & Hf); apply Hn; rewrite Hmdu in Hm'; injection Hm' as ->.
+  do 5 eexists; split; [ reflexivity | exact Hf ].
+Qed.
+
 (** The literal an alias of a literal flattens to is well formed when the
     alias is. *)
 Lemma flatten_unit_wf : forall Θ Ξ Γ Δ Δ' D,
@@ -1473,9 +1493,10 @@ Lemma flatten_unit_wf : forall Θ Ξ Γ Δ Δ' D,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk (Δ' ++ Δ) D ≈ gu_mk (Δ' ++ Δ) D.
 Proof.
   intros * HU; pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as Hf; cbn [unit_full] in Hf.
-  destruct Hf as [lp ps Hps HC Ha HE HRp lv Rt [Hf1 Hf2 Hf3]].
+  destruct Hf as [lp ps Hps HC Ha HE HRp lv Rt [Hf1 Hf2 Hf3] Hff].
   eapply wf_unit_eq_refl_right; eapply wf_unit_eq_flatten with (param_level := lp) (param_sorts := ps) (lv := lv) (Rt := Rt);
-    [ apply ext_of_ctx; exact HC | exact Ha | apply lit_unit_wf; exact HE | exact Hps | exact HRp | exact Hf1 | exact Hf2 | exact Hf3 ].
+    [ apply ext_of_ctx; exact HC | exact Ha | apply lit_unit_wf; exact HE | exact Hps | exact HRp | exact Hf1 | exact Hf2 | exact Hf3
+    | exact Hff ].
 Qed.
 
 (** An alias with parameters of the unit of a module part is the unit of
@@ -1486,21 +1507,22 @@ Lemma alias_unit_up : forall Θ Ξ Γ Δ Rm l ps (lv : bool) Rt, Δ <> nil -> Θ
     (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     levels_flag Θ Ξ Γ Δ (mdesc_unit Rm) lv Rt -> mdesc_is_mod Rm ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ mdesc_unit Rm ≈ mdesc_unit Rm ->
+    frame_free_target Θ Ξ (Δ ++ Γ) (mdesc_unit Rm) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_lit (gu_mk Δ (md_alias (mdesc_unit Rm))) ≈ mdesc_unit (mdesc_up Δ Rm).
 Proof.
-  intros * Hne HΔ Ha Hps HRp [Hf1 Hf2 Hf3] Hm HR.
-  destruct Rm as [A om | Δ' Φ | [| e Θ'] p T Φ Ns | ]; cbn in Hm; try contradiction; cbn [mdesc_up mdesc_unit] in Hf1, Hf2, Hf3, HR |- *.
+  intros * Hne HΔ Ha Hps HRp [Hf1 Hf2 Hf3] Hm HR Hff.
+  destruct Rm as [A om | Δ' Φ | [| e Θ'] p T Φ Ns | ]; cbn in Hm; try contradiction; cbn [mdesc_up mdesc_unit] in Hf1, Hf2, Hf3, HR, Hff |- *.
   - (* a local body: flattened *)
     apply wf_me_lit; eapply wf_unit_eq_flatten with (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt);
-      [ exact HΔ | exact Ha | apply lit_unit_wf; exact HR | exact Hps | exact HRp | exact Hf1 | exact Hf2 | exact Hf3 ].
+      [ exact HΔ | exact Ha | apply lit_unit_wf; exact HR | exact Hps | exact HRp | exact Hf1 | exact Hf2 | exact Hf3 | exact Hff ].
   - (* a filed module at arguments: the alias is the unit *)
     rewrite app_nil_l; destruct Δ as [| e Δ]; [ contradiction |]; apply wf_me_lit;
       eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt) (lv' := lv) (Rt' := Rt);
       [ exact HΔ | exact Ha | exact Ha | exact HR | exact HR | exact Hps | exact HRp | exact HRp
-      | exact Hf1 | exact Hf2 | exact Hf3 | exact Hf1 | exact Hf2 | exact Hf3 ].
+      | exact Hf1 | exact Hf2 | exact Hf3 | exact Hf1 | exact Hf2 | exact Hf3 | exact Hff | exact Hff ].
   - (* an alias of a filed module at arguments: flattened *)
     apply wf_me_lit; eapply wf_unit_eq_flatten with (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt);
-      [ exact HΔ | exact Ha | apply lit_unit_wf; exact HR | exact Hps | exact HRp | exact Hf1 | exact Hf2 | exact Hf3 ].
+      [ exact HΔ | exact Ha | apply lit_unit_wf; exact HR | exact Hps | exact HRp | exact Hf1 | exact Hf2 | exact Hf3 | exact Hff ].
 Qed.
 
 Lemma unit_nf_canon : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall K, unit_nf Θ Ξ K -> forall Γ RK Rm,
@@ -1515,11 +1537,18 @@ Proof.
     cbn in Hmd; injection Hmd as <-; cbn [mdesc_unit]; exact HK.
   - (* an alias with parameters: its target, then the alias of the target's unit *)
     pose proof (proj1 (modexp_gen _ _ _ _ _ HK)) as Hf; cbn [gen_m unit_full] in Hf;
-      destruct Hf as [lp ps Hps HC Ha HEE HRp lv Rt HF].
+      destruct Hf as [lp ps Hps HC Ha HEE HRp lv Rt HF Hff].
     apply mdenote_lit_inv in Hm; inversion Hm as [| ? ? ? ? RE R'' HmE HmdE]; subst.
     pose proof (mdesc_mod_is_mod _ _ HmdE) as Him.
     rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ Him)) in Hmd; injection Hmd as <-.
     pose proof (IH _ _ _ HEE HmE HmdE) as HEu.
+    (* the unit of the target's module part is no module still being
+       defined, as the target is not *)
+    assert (HnR : ~ desc_reads_frame Ξ R'').
+    { destruct Hff as (Rf & Hmf & Hnf); rewrite <- (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmE _ Hmf) in Hnf.
+      intros Hr; exact (Hnf (desc_reads_frame_mod _ _ _ HmdE Hr)). }
+    pose proof (mdesc_unit_frame_free _ _ Hg _ _ (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg HmE) HmdE) Him
+                  (wf_mdenote_mod_xp _ _ _ _ _ _ _ HEE HmE HmdE) HnR) as HffU.
     (* the flag premise for the unit of the target's module part: what it
        denotes has the module part the target's has *)
     assert (HFu : exists lv' Rt', levels_flag Θ Ξ Γ Δ (mdesc_unit R'') lv' Rt').
@@ -1539,10 +1568,10 @@ Proof.
         | exact (levels_flag_sorted _ _ _ _ _ _ _ HF) | exact (levels_flag_denotes _ _ _ _ _ _ _ HF)
         | exact (levels_flag_no_level _ _ _ _ _ _ _ HF)
         | exact (levels_flag_sorted _ _ _ _ _ _ _ HFu) | exact (levels_flag_denotes _ _ _ _ _ _ _ HFu)
-        | exact (levels_flag_no_level _ _ _ _ _ _ _ HFu) ] |].
+        | exact (levels_flag_no_level _ _ _ _ _ _ _ HFu) | exact Hff | exact HffU ] |].
     eapply alias_unit_up;
       [ exact HΔ | apply ext_of_ctx; exact HC | exact Ha | exact Hps | exact HRp | exact HFu | exact Him
-      | exact (wf_modexp_eq_refl_right HEu) ].
+      | exact (wf_modexp_eq_refl_right HEu) | exact HffU ].
 Qed.
 
 (** Lookup is sound: a well-formed module expression is equal to the unit
