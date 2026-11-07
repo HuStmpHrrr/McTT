@@ -206,6 +206,7 @@
 ./Extraction/PseudoMonadic.v
 ./Extraction/Readback.v
 ./Extraction/Subtyping.v
+./Extraction/AppSpine.v
 ./Extraction/TypeCheck.v
 ./Extraction/TypeCheckBase.v
 ./Extraction/NoLevelDec.v
