@@ -40,6 +40,7 @@ module Ep = McttExtracted.Entrypoint
 module FG = McttExtracted.FastGlobal
 module Lk = McttExtracted.Lookup
 module LT = McttExtracted.LookupTwins
+module U = McttExtracted.UserSyntax
 
 (* ------------------------------------------------------------------ *)
 (* Tokens and comments *)
@@ -277,6 +278,18 @@ let opt_list = function Some c -> [ c ] | None -> []
 
 let qname_denotation (p : S.qname) = MGlobal (S.Coq_me_unit p.S.q_unit, p.S.q_chain)
 
+(* The head of an open, which the elaborator keeps in the surface syntax,
+   as the core module expression [def_site] reads.  A member of an
+   application is declared where it is in the applied module, whatever the
+   argument ([ms_app] in Core/Syntactic/Members.v), so any argument does;
+   the variable [#0] is given. *)
+let rec core_head (h : U.surface_modexp) : S.modexp =
+  match h with
+  | U.Coq_surface_me_unit p -> S.Coq_me_unit p
+  | U.Coq_surface_me_var x -> S.Coq_me_var x
+  | U.Coq_surface_me_mem (h', z) -> S.Coq_me_mem (core_head h', z)
+  | U.Coq_surface_me_app (h', _) -> S.Coq_me_app (core_head h', S.Coq_a_var 0)
+
 (* A head name, in term or module position; a name no binding has is the
    imported unit of that one-segment path, as [Elaborator.unit_mod]. *)
 let head st env i x : module_denotation =
@@ -289,9 +302,9 @@ let head st env i x : module_denotation =
       refer st i (Member (st.unit, S.Coq_me_unit p.S.q_unit, p.S.q_chain)); qname_denotation p
   | Some (E.Coq_scope_entry_open (d, h, oc), _) ->
       (match oc with
-       | Some c -> refer st i (Member (st.unit, h, [ c ]))
+       | Some c -> refer st i (Member (st.unit, core_head h, [ c ]))
        | None -> refer st i (Site { s_unit = st.unit; s_anchor = d }));
-      MGlobal (h, opt_list oc)
+      MGlobal (core_head h, opt_list oc)
   | Some _ -> MNone
 
 let member_link st m y =
@@ -398,7 +411,7 @@ and target st env fq ip args : module_denotation =
         (match lookup env x with
          | Some (_, Some v) -> (v.v_mod, ip')
          | Some (E.Coq_scope_entry_mem (_, p, _), _) -> (qname_denotation p, ip')
-         | Some (E.Coq_scope_entry_open (_, h, oc), _) -> (MGlobal (h, opt_list oc), ip')
+         | Some (E.Coq_scope_entry_open (_, h, oc), _) -> (MGlobal (core_head h, opt_list oc), ip')
          | None when El.unit_in_b [ x ] env.sc -> (MGlobal (S.Coq_me_unit [ x ], []), ip')
          | _ -> (MNone, ip'))
     | [], x :: ip' -> (head st env (next st x) x, ip')
@@ -835,22 +848,21 @@ let record_value th (h : S.modexp) : (S.qname * S.exp list) option =
 let rec record_selections_exp th (e : S.exp) : (string * S.qname) list =
   match e with
   | S.Coq_a_univ m | S.Coq_a_succl m | S.Coq_a_proj (_, m) | S.Coq_a_left m | S.Coq_a_right m -> record_selections_exp th m
-  | S.Coq_a_maxl (a, b) | S.Coq_a_pi (_, a, b) | S.Coq_a_fn (a, b) | S.Coq_a_app (a, b) | S.Coq_a_and (a, b) ->
+  | S.Coq_a_maxl (a, b) | S.Coq_a_pi (_, _, a, b) | S.Coq_a_fn (a, b) | S.Coq_a_app (a, b) | S.Coq_a_and (a, b) ->
       record_selections_exp th a @ record_selections_exp th b
   | S.Coq_a_absurd (a, m) -> record_selections_exp th m @ record_selections_exp th a
   (* [conj (m : P) n]: its first component, its first proposition, its
      second component, in source order *)
-  | S.Coq_a_conj (t, m, n) ->
-      let p = match t with S.Coq_a_and (p, _) -> p | _ -> t in
+  | S.Coq_a_conj (p, _, m, n) ->
       record_selections_exp th m @ record_selections_exp th p @ record_selections_exp th n
-  | S.Coq_a_let (S.Coq_b_def (oa, m), b) -> record_selections_opt th oa @ record_selections_exp th m @ record_selections_exp th b
+  | S.Coq_a_let (S.Coq_b_def (a, m), b) -> record_selections_exp th a @ record_selections_exp th m @ record_selections_exp th b
   | S.Coq_a_let (S.Coq_b_mod u, b) -> record_selections_unit th u @ record_selections_exp th b
   | S.Coq_a_mem (h, y) -> record_selections_sel th h y
   | S.Coq_a_tuple (t, fs) -> record_selections_exp th t @ List.concat_map (fun (_, m) -> record_selections_exp th m) fs
   | S.Coq_a_elim (_, _, _, _, bks, m) ->
       record_selections_exp th m
-      @ List.concat_map (fun (S.Coq_eb_mk (_, oz, a, bs)) ->
-          record_selections_opt th oz @ record_selections_exp th a @ List.concat_map (fun (_, b) -> record_selections_exp th b) bs) bks
+      @ List.concat_map (fun (S.Coq_eb_mk (_, z, a, bs)) ->
+          record_selections_exp th z @ record_selections_exp th a @ List.concat_map (fun (_, b) -> record_selections_exp th b) bs) bks
   | _ -> []
 
 and record_selections_opt th = function Some e -> record_selections_exp th e | None -> []
@@ -870,7 +882,7 @@ and record_selections_mod th (h : S.modexp) =
 and record_selections_ctx th (d : S.centry list) = List.concat_map (record_selections_centry th) (List.rev d)
 
 and record_selections_centry th = function
-  | S.Coq_ce_ass a -> record_selections_exp th a
+  | S.Coq_ce_ass (_, a) -> record_selections_exp th a
   | S.Coq_ce_def (a, m) -> record_selections_exp th a @ record_selections_exp th m
   | S.Coq_ce_mod u -> record_selections_unit th u
   | S.Coq_ce_dm (a, m, u) -> record_selections_exp th a @ record_selections_exp th m @ record_selections_unit th u
@@ -883,7 +895,7 @@ and record_selections_gmod th = function
   | S.Coq_gm_ext (g, _, e) -> record_selections_gmod th g @ record_selections_gentry th e
   (* An open of a local body: the module opened, then, if it is a record
      value's, each member an item names, a selection from it. *)
-  | S.Coq_gm_open (g, h, its) ->
+  | S.Coq_gm_open (g, h, its, _) ->
       record_selections_gmod th g @ record_selections_mod th h
       @ (match record_value th h with
           | Some (p, _) -> List.filter_map (fun ((on, _), _) -> Option.map (fun n -> (n, p)) on) its
@@ -959,7 +971,7 @@ let rec strip_fns n (e : S.exp) = match n, e with
    frames it is filed over ([cmd_loc]). *)
 let rec skip_pis n (e : S.exp) = match n, e with
   | 0, _ -> e
-  | _, S.Coq_a_pi (_, _, b) -> skip_pis (n - 1) b
+  | _, S.Coq_a_pi (_, _, _, b) -> skip_pis (n - 1) b
   | _, _ -> e
 
 (* The selections through record values of what a command declares. *)
@@ -1005,7 +1017,7 @@ let record_cands th (gu : FG.funit) (log : McttExtracted.Command1.eval_entry lis
       let ty g = match entry_at gu ch g with Some (FG.Coq_fe_def (_, _, _, a, _, _)) -> Some a | _ -> None in
       let rec doms k e = match k, e with
         | 0, _ -> ([], e)
-        | _, S.Coq_a_pi (_, a, b) -> let ds, r = doms (k - 1) b in (a :: ds, r)
+        | _, S.Coq_a_pi (_, _, a, b) -> let ds, r = doms (k - 1) b in (a :: ds, r)
         | _, _ -> ([], e) in
       (match gs with
        | [] -> []

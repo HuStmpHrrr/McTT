@@ -30,7 +30,6 @@ let s_coloncolon = "\u{203A}" (* › for :: *)
 let s_nat = "\u{2115}" (* ℕ for Nat *)
 let s_true_ty = "\u{22A4}" (* ⊤ for True *)
 let s_false_ty = "\u{22A5}" (* ⊥ for False *)
-let s_star = "\u{22C6}" (* ⋆, the proof normal forms hold; no token spells it *)
 let s_and = "\u{2227}" (* ∧ for /\ *)
 let s_omega = "\u{03C9}" (* ω for omega *)
 let s_cdot = "\u{00B7}" (* · for * *)
@@ -587,7 +586,7 @@ let con_of : exp -> (qname * string) option =
        (match chain h with
         | None -> None
         | Some (fp, ms) ->
-           (match Lk.gc_resolve_f !current_fctx { q_unit = fp; q_chain = ms @ [ c ] } with
+           (match Lk.fc_resolve !current_fctx { q_unit = fp; q_chain = ms @ [ c ] } with
             (* A definition naming a constructor, as an [open] declares one,
                not one whose body is a value. *)
             | Some (Coq_ge_def (_, _, _, _, Some (Coq_a_mem (_, c') as body))) when k > 0 && c' = c -> go (k - 1) body
@@ -787,17 +786,15 @@ let exp_to_expression =
        Cst.Coq_num (Option.get (nat_of_chain e))
     (* A member of a frame, applied to the frames' parameters as written. *)
     | (Coq_a_mem _ | Coq_a_app _) as e when frame_use ctx e <> None -> apply_rest ctx (Option.get (frame_use ctx e))
-    | Coq_a_nlit n -> Cst.Coq_num n
-    | Coq_a_ntok -> Cst.Coq_nat
     | Coq_a_level n -> Cst.Coq_level n
     | Coq_a_llit o -> Cst.Coq_llit o
     | Coq_a_succl e -> Cst.Coq_succl (impl ctx e)
     | Coq_a_maxl (e1, e2) -> Cst.Coq_maxl (impl ctx e1, impl ctx e2)
     | Coq_a_prop -> Cst.Coq_prop
+    (* The sort of the types of levels, which no surface syntax spells:
+       it prints as a symbol no token spells. *)
+    | Coq_a_level_sort -> Cst.Coq_var "\u{1D543}"
     | Coq_a_True -> Cst.Coq_true_ty
-    (* [⋆], which normal forms hold for every proof, prints as a symbol no
-       token spells, so that it cannot be pasted back as [true]. *)
-    | Coq_a_true -> Cst.Coq_var s_star
     | Coq_a_tt -> Cst.Coq_true_tm
     | Coq_a_False -> Cst.Coq_false_ty
     | Coq_a_absurd (ec, em) -> Cst.Coq_exfalso (impl ctx em, impl ctx ec)
@@ -807,14 +804,12 @@ let exp_to_expression =
        Cst.Coq_and_ty (px, ep', impl (px :: ctx) eq)
     (* [conj (m : P) n]: the first proposition of its annotation; the
        second, which the typed pass inferred, is not written. *)
-    | Coq_a_conj (et, em, en) ->
-       let ep = match et with Coq_a_and (ep, _) -> ep | _ -> et in
+    | Coq_a_conj (ep, _, em, en) ->
        Cst.Coq_and_intro (impl ctx em, impl ctx ep, impl ctx en)
     | Coq_a_left em -> Cst.Coq_and_left (impl ctx em)
     | Coq_a_right em -> Cst.Coq_and_right (impl ctx em)
     (* The placeholders stand where the typed pass fills a term; a message
        may still show one, as the reserved [_]. *)
-    | Coq_a_placeholder_type | Coq_a_placeholder -> Cst.Coq_var "_"
     | Coq_a_typ i -> Cst.Coq_typ i
     | Coq_a_univ e -> Cst.Coq_suniv (impl ctx e)
     (* A variable past the local binders is a parameter of an open module,
@@ -829,14 +824,14 @@ let exp_to_expression =
        let ef' = impl ctx ef in
        let ea' = impl ctx ea in
        Cst.Coq_app (ef', ea')
-    | Coq_a_pi (_, ep, eret) ->
+    | Coq_a_pi (_, _, ep, eret) ->
        let px = match ep with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
        let ep' = impl ctx ep in
        let eret' = impl (px :: ctx) eret in
        Cst.Coq_pi (px, ep', eret')
-    | Coq_a_let (Coq_b_def (oa, em), ebody) ->
-       let px = match oa with Some (Coq_a_typ _ | Coq_a_univ _) -> new_tyvar () | _ -> new_var () in
-       let ea' = Option.map (impl ctx) oa in
+    | Coq_a_let (Coq_b_def (ea, em), ebody) ->
+       let px = match ea with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
+       let ea' = Some (impl ctx ea) in
        let em' = impl ctx em in
        let ebody' = impl (px :: ctx) ebody in
        Cst.Coq_let_in (Cst.Coq_d_def (px, ea', em'), ebody')
@@ -875,14 +870,14 @@ let exp_to_expression =
     | Coq_a_con (p, k, c) -> let q = member_path p k in path_to_expression q.q_unit (q.q_chain @ [c])
     (* An eliminator: fresh names for what its motive and its branches
        bind. *)
-    | Coq_a_elim (_, oq, _, m, bks, escr) ->
+    | Coq_a_elim (_, q, _, m, bks, escr) ->
        let rec fresh k = if k = 0 then [] else let x = new_var () in x :: fresh (k - 1) in
        let escr' = impl ctx escr in
        let block j (Coq_eb_mk (nm, oz, em, bs)) =
-         let mks = block_members oq bks j in
+         let mks = block_members (Some q) bks j in
          let xs = fresh nm in
          let ys0 = List.filteri (fun i _ -> i < nm - 1) xs in
-         let oz' = Option.map (impl (List.rev ys0 @ ctx)) oz in
+         let oz' = Some (impl (List.rev ys0 @ ctx) oz) in
          let binders = List.mapi (fun i x -> (x, if i = nm - 1 then oz' else None)) xs in
          let em' = impl (List.rev xs @ ctx) em in
          (* The induction hypotheses are of the motive's sort: named as types
@@ -985,10 +980,10 @@ let exp_to_expression =
       List.fold_left
         (fun (ctx, ps) ce ->
           let ty = match ce with
-            | Coq_ce_ass a | Coq_ce_def (a, _) | Coq_ce_dm (a, _, _) -> impl ctx a
+            | Coq_ce_ass (_, a) | Coq_ce_def (a, _) | Coq_ce_dm (a, _, _) -> impl ctx a
             | Coq_ce_mod _ -> Cst.Coq_var "_" in
           let px = match ce with
-            | Coq_ce_ass (Coq_a_typ _ | Coq_a_univ _) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _) -> new_tyvar ()
+            | Coq_ce_ass (_, (Coq_a_typ _ | Coq_a_univ _)) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _) -> new_tyvar ()
             | _ -> new_var () in
           (px :: ctx, (px, ty) :: ps))
         (ctx, []) (List.rev delta)
@@ -1018,7 +1013,7 @@ let exp_to_expression =
          | Coq_ge_record (_, _, _, _) -> Cst.Coq_c_error "record declaration"
        in
        (cs @ [c], x :: ctx')
-    | Coq_gm_open (phi, h, its) ->
+    | Coq_gm_open (phi, h, its, _) ->
        let cs, ctx' = impl_body ctx phi in
        (* The target is a module expression, printed in place of a path;
           each item binds its name. *)
@@ -1035,7 +1030,7 @@ let exp_to_expression =
       (fun (i, names) ce ->
         let px = match List.nth_opt given (n - 1 - i), ce with
           | Some (Some y), _ -> y
-          | _, (Coq_ce_ass (Coq_a_typ _ | Coq_a_univ _) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _)) -> new_tyvar ()
+          | _, (Coq_ce_ass (_, (Coq_a_typ _ | Coq_a_univ _)) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _)) -> new_tyvar ()
           | _, (Coq_ce_mod _ | Coq_ce_dm _) -> new_mod ()
           | _ -> new_var () in
         (i + 1, px :: names))
@@ -1429,7 +1424,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
        (format_exp_in delta) scr pp_utf8 (String.concat " and of " (List.map reading rs))
   (* An eliminator whose blocks are not those of its group: what is
      missing, extra or out of order, then the eliminator as it should be. *)
-  | Coq_run_error_elim_blocks (_, delta, Coq_a_elim (_, Some p, us, _, bks, scr), missing, extra, j) ->
+  | Coq_run_error_elim_blocks (_, delta, Coq_a_elim (_, p, us, _, bks, scr), missing, extra, j) ->
      let ms = match Lk.fc_ind !current_fctx p with
        | Some d -> McttExtracted.Inductives.ind_block_members d
        | None -> [] in

@@ -620,39 +620,6 @@ Section type_check.
         let (A', _) := nbe_ty_env_impl F G P A _ in
         pureo (exist _ A' _)
     }
-  with ext_check G (HG : ⊢ G) Ψ (H : ext_order Ψ) : { G ⊢aˣ Ψ } + { ~ G ⊢aˣ Ψ } by struct H :=
-  | G, HG, nil, H => left _
-  (** An assumption of a type of the kind it says *)
-  | G, HG, ce_ass κ A :: Ψ, H =>
-      let*b _ := ext_check G HG Ψ _ while _ in
-      let HΨ : ⊢ Ψ ++ G := _ in
-      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ (checker_env_of F (Ψ ++ G) HΨ) A _ while _ in
-      let*o->b (existT _ κA (exist _ u _)) := sort_nf_dec UA while _ in
-      let*b _ := abs_kind_eq_dec κA κ while _ in
-      pureb _
-  (** A definition of a type of a sort *)
-  | G, HG, ce_def A M :: Ψ, H =>
-      let*b _ := ext_check G HG Ψ _ while _ in
-      let HΨ : ⊢ Ψ ++ G := _ in
-      let PΨ := checker_env_of F (Ψ ++ G) HΨ in
-      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ PΨ A _ while _ in
-      let*o->b (existT _ rA (exist _ u _)) := sort_nf_dec UA while _ in
-      let*b _ := type_check_in (Ψ ++ G) A _ PΨ M _ while _ in
-      pureb _
-  | G, HG, ce_mod U :: Ψ, H =>
-      let*b _ := ext_check G HG Ψ _ while _ in
-      let*b _ := unit_check (Ψ ++ G) _ U _ while _ in
-      pureb _
-  (** A definition with a module part: as a definition, then its unit. *)
-  | G, HG, ce_dm A M U :: Ψ, H =>
-      let*b _ := ext_check G HG Ψ _ while _ in
-      let HΨ : ⊢ Ψ ++ G := _ in
-      let PΨ := checker_env_of F (Ψ ++ G) HΨ in
-      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ PΨ A _ while _ in
-      let*o->b (exist _ u _) := univ_nf_idx_dec UA while _ in
-      let*b _ := type_check_in (Ψ ++ G) A _ PΨ M _ while _ in
-      let*b _ := unit_check (Ψ ++ G) HΨ U _ while _ in
-      pureb _
   (** The parameters of a unit: assumptions of types of universes or of
       types of levels. *)
   with params_check G (HG : ⊢ G) Δ (H : ext_order Δ) : { G ⊢aᵖ Δ } + { ~ G ⊢aᵖ Δ } by struct H :=
@@ -755,8 +722,48 @@ Section type_check.
   .
   Solve All Obligations with checker_obligation.
 
-  Extraction Inline type_check_in_functional type_infer_in_functional ext_check_functional
+  Extraction Inline type_check_in_functional type_infer_in_functional
     params_check_functional unit_check_functional body_check_functional modexp_check_functional.
+
+  (** A context extension, entry by entry, each in the context of the
+      entries before it.  Nothing in the checker above calls it, so it is
+      defined after it, on its own. *)
+  #[tactic="idtac",derive(equations=no,eliminator=no)]
+  Equations ext_check G (HG : ⊢ G) Ψ (H : ext_order Ψ) : { G ⊢aˣ Ψ } + { ~ G ⊢aˣ Ψ } by struct H :=
+  | G, HG, nil, H => left _
+  (** An assumption of a type of the kind it says *)
+  | G, HG, ce_ass κ A :: Ψ, H =>
+      let*b _ := ext_check G HG Ψ _ while _ in
+      let HΨ : ⊢ Ψ ++ G := _ in
+      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ (checker_env_of F (Ψ ++ G) HΨ) A _ while _ in
+      let*o->b (existT _ κA (exist _ u _)) := sort_nf_dec UA while _ in
+      let*b _ := abs_kind_eq_dec κA κ while _ in
+      pureb _
+  (** A definition of a type of a sort *)
+  | G, HG, ce_def A M :: Ψ, H =>
+      let*b _ := ext_check G HG Ψ _ while _ in
+      let HΨ : ⊢ Ψ ++ G := _ in
+      let PΨ := checker_env_of F (Ψ ++ G) HΨ in
+      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ PΨ A _ while _ in
+      let*o->b (existT _ rA (exist _ u _)) := sort_nf_dec UA while _ in
+      let*b _ := type_check_in (Ψ ++ G) A _ PΨ M _ while _ in
+      pureb _
+  (** A module, by its unit *)
+  | G, HG, ce_mod U :: Ψ, H =>
+      let*b _ := ext_check G HG Ψ _ while _ in
+      let*b _ := unit_check (Ψ ++ G) _ U _ while _ in
+      pureb _
+  (** A definition with a module part: as a definition, then its unit. *)
+  | G, HG, ce_dm A M U :: Ψ, H =>
+      let*b _ := ext_check G HG Ψ _ while _ in
+      let HΨ : ⊢ Ψ ++ G := _ in
+      let PΨ := checker_env_of F (Ψ ++ G) HΨ in
+      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ PΨ A _ while _ in
+      let*o->b (exist _ u _) := univ_nf_idx_dec UA while _ in
+      let*b _ := type_check_in (Ψ ++ G) A _ PΨ M _ while _ in
+      let*b _ := unit_check (Ψ ++ G) HΨ U _ while _ in
+      pureb _.
+  Solve All Obligations with checker_obligation.
 
   (** The checker from scratch: the initial environment of the context is
       computed once, at the start. *)
