@@ -52,10 +52,11 @@ Definition gs_fresh_dec (x : string) (Ξ : gstack) : {gs_fresh x Ξ} + {~ gs_fre
   | nil => right (fun H => H)
   end.
 
-(** A decision of [levels_abstractable] at every global context, the one
-    the checker is given (the flag decides it once units carry it). *)
+(** A decision of [levels_abstractable] at every fast context, for a
+    well-formed target ([levels_abstractable_fast_dec]) *)
 Definition levels_abstractable_decider : Type :=
-  forall Θ Ξ G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G -> { levels_abstractable Θ Ξ G Δ E } + { ~ levels_abstractable Θ Ξ G Δ E }.
+  forall (F : FCtx) G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G -> fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
+    { levels_abstractable (fc_deps F) (fc_stack F) G Δ E } + { ~ levels_abstractable (fc_deps F) (fc_stack F) G Δ E }.
 
 (** The member of a group, with its index. *)
 Definition member_case (D : ind_decl) (k : nat) : {Mk | ind_member D k = Some Mk} + {ind_member D k = None} :=
@@ -742,7 +743,7 @@ Section FieldBlame.
   #[local] Abbreviation Θ := (fc_deps F).
   #[local] Abbreviation Ξ := (fc_stack F).
   (** The decision of [levels_abstractable] the checker is given *)
-  Variable levels_abstractable_dec : forall G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G ->
+  Variable levels_abstractable_dec : forall G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G -> Θ ⍮ Ξ ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
       { levels_abstractable Θ Ξ G Δ E } + { ~ levels_abstractable Θ Ξ G Δ E }.
 
   (** The term [M] in the context [Δ] the frames' parameters are extended
@@ -800,7 +801,7 @@ End FieldBlame.
     command declaring [ox]: a field of a record value in [M] whose value is
     not of its type ([field_value_blame]), otherwise the given error. *)
 Definition field_error (F : FCtx) (ox : option string)
-    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ->
+    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G -> fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
        { levels_abstractable (fc_deps F) (fc_stack F) G Δ E } + { ~ levels_abstractable (fc_deps F) (fc_stack F) G Δ E })
     (HΞ : ⊢ fc_deps F ⍮ fc_stack F ⍮ fc_tele F) (M : exp) (e : run_error) : run_error :=
   match field_value_blame F ox levels_abstractable_dec nil HΞ M with
@@ -1085,7 +1086,7 @@ Proof. intros HA HM; rewrite <- (app_nil_r Γ) in HA, HM; exact (under_typed HA 
     a type is of one kind only ([kind_sort_unique]): [n = 0] is no type
     of a universe. *)
 Definition large_type_dec (F : FCtx)
-    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ->
+    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G -> fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
        { levels_abstractable (fc_deps F) (fc_stack F) G Δ E } + { ~ levels_abstractable (fc_deps F) (fc_stack F) G Δ E })
     (Γ : ctx) (HΓ : ⊢ fc_deps F ⍮ fc_stack F ⍮ Γ) (A : typ) :
     { i : nat | fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : Typeω@i } + { forall i : nat, ~ fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : Typeω@i }.
@@ -1161,13 +1162,13 @@ Proof.
       by (unfold F; rewrite fc_deps_view, fc_stack_frames, <- (fc_tele_ok (mk_fctx v fs Hok None)), fc_stack_frames;
           cbn [fc_view fc_frames]; repeat split).
     destruct Eqs as (Ed & Es & Et).
-    destruct (check_ctx F (lvd _ _) HΞF (fc_tele F)) as [HT | HnT].
+    destruct (check_ctx F (lvd _) HΞF (fc_tele F)) as [HT | HnT].
     2:{ right; exists (mdefs_why_untyped_type x fs A); intros Ξ' Hr'; inversion Hr'; subst; apply HnT.
         rewrite Ed, Es, Et; gen_presups; assumption. }
-    destruct (large_type_dec F (lvd _ _) (fc_tele F) HT A) as [[i HA] | HnA].
+    destruct (large_type_dec F (lvd _) (fc_tele F) HT A) as [[i HA] | HnA].
     2:{ right; exists (mdefs_why_untyped_type x fs A); intros Ξ' Hr'; inversion Hr'; subst.
         match goal with HA0 : _ ⍮ _ ⍮ _ ⊢ A : Typeω@?i0 |- _ => apply (HnA i0); rewrite Ed, Es, Et; exact HA0 end. }
-    destruct (check_exp_typed F (lvd _ _) (fc_tele F) HT A (type_of_check_type F _ _ ak_relevant i HA) M) as [HM | Hn].
+    destruct (check_exp_typed F (lvd _) (fc_tele F) HT A (type_of_check_type F _ _ ak_relevant i HA) M) as [HM | Hn].
     2:{ right; exists (mdefs_why_untyped x fs A M); intros Ξ' Hr'; inversion Hr'; subst; apply Hn.
         rewrite Ed, Es, Et; assumption. }
     pose proof HA as HAF; rewrite Ed, Es, Et in HA.

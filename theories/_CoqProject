@@ -159,6 +159,7 @@
 ./Core/Syntactic/System/Inductives/Syntax.v
 ./Core/Syntactic/System/Records/Syntax.v
 ./Core/Syntactic/System/Global/LookupSound.v
+./Core/Syntactic/System/Global/NoLevelReach.v
 ./Core/Syntactic/System/Inductives/Typing.v
 ./Core/Syntactic/System/Inductives/Runs.v
 ./Core/Syntactic/System/Inductives/GrecTyped.v
@@ -206,6 +207,7 @@
 ./Extraction/Subtyping.v
 ./Extraction/TypeCheck.v
 ./Extraction/TypeCheckBase.v
+./Extraction/NoLevelDec.v
 ./Extraction/IndCheck.v
 ./Extraction/RecordCheck.v
 ./Extraction/Kinds.v

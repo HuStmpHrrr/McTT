@@ -40,7 +40,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberWf Paths LookupSound
 From Mctt.Core.Syntactic.System.Inductives Require Import IndRuns Runs.
 From Mctt.Core.Syntactic.System.Records Require Import RecordRuns.
 From Mctt.Extraction Require Import Lookup NbE TypeCheck GlobalCheck IndDecl RecordDecl MemberType Opens Privacy.
-From Mctt.Extraction Require Import MdefGroup TypedElab FastDesc LookupTwins FastState Command.
+From Mctt.Extraction Require Import MdefGroup TypedElab FastDesc LookupTwins FastState Command NoLevelDec.
 Import Syntax_Notations GlobalCtx_Notations.
 
 Local Open Scope string_scope.
@@ -1957,43 +1957,12 @@ Section Impl.
   (** "Are the parameters [Δ] over [Γ] of evaluated kinds, at a level?" *)
   Definition params_evaluated_dec (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Γ Δ : ctx) :
       {l | params_evaluated (fc_deps F) (fc_stack F) Γ Δ l} + {forall l, ~ params_evaluated (fc_deps F) (fc_stack F) Γ Δ l} :=
-    match params_sorts_dec F (lvd _ _) HΞ Γ Δ with
+    match params_sorts_dec F (lvd _) HΞ Γ Δ with
     | inleft (exist _ (lP, bs) (conj _ HPs)) =>
         inleft (exist _ lP (params_evaluated_of_sorts _ _ _ _ _ (fun k => param_bool_sort lP (List.nth k (List.rev bs) false))
                               (fun k => param_bool_sort_ok _ _) HPs))
     | inright Hn => inright Hn
     end.
-
-  (** Whether every assumption of a telescope is a type of levels, as a
-      boolean *)
-  Fixpoint level_sorted_parameters_b (Δ : ctx) : bool :=
-    match Δ with
-    | nil => true
-    | ce_ass κ _ :: Δ' => (if abs_kind_eq_dec κ ak_level then true else false) && level_sorted_parameters_b Δ'
-    | _ :: Δ' => level_sorted_parameters_b Δ'
-    end.
-
-  Lemma level_sorted_parameters_b_spec : forall Δ, level_sorted_parameters_b Δ = true <-> level_sorted_parameters Δ.
-  Proof.
-    induction Δ as [| e Δ IH].
-    - split; [ intros _ Δ1 κ T Δ2 E; destruct Δ1; discriminate | reflexivity ].
-    - assert (Htl : level_sorted_parameters (e :: Δ) -> level_sorted_parameters Δ)
-        by (intros H Δ1 κ T Δ2 E; apply (H (e :: Δ1) κ T Δ2); rewrite E; reflexivity).
-      destruct e as [κ0 T0 | T0 M0 | U0 | T0 M0 U0]; cbn [level_sorted_parameters_b].
-      + split.
-        * intros Hb Δ1 κ T Δ2 E; apply andb_prop in Hb as [Hk Hb].
-          destruct Δ1 as [| e1 Δ1]; cbn in E; injection E as E1 E2.
-          -- subst; destruct (abs_kind_eq_dec κ ak_level); [ assumption | discriminate ].
-          -- subst; exact (proj1 IH Hb _ _ _ _ eq_refl).
-        * intros H; apply andb_true_intro; split; [| apply IH, Htl, H ].
-          destruct (abs_kind_eq_dec κ0 ak_level) as [| Hn]; [ reflexivity | exfalso; apply Hn, (H nil κ0 T0 Δ); reflexivity ].
-      + split; [ intros Hb Δ1 κ T Δ2 E; destruct Δ1 as [| e1 Δ1]; cbn in E; injection E as E1 E2; [ discriminate | subst; exact (proj1 IH Hb _ _ _ _ eq_refl) ]
-               | intros H; apply IH, Htl, H ].
-      + split; [ intros Hb Δ1 κ T Δ2 E; destruct Δ1 as [| e1 Δ1]; cbn in E; injection E as E1 E2; [ discriminate | subst; exact (proj1 IH Hb _ _ _ _ eq_refl) ]
-               | intros H; apply IH, Htl, H ].
-      + split; [ intros Hb Δ1 κ T Δ2 E; destruct Δ1 as [| e1 Δ1]; cbn in E; injection E as E1 E2; [ discriminate | subst; exact (proj1 IH Hb _ _ _ _ eq_refl) ]
-               | intros H; apply IH, Htl, H ].
-  Qed.
 
   (** What [run_cmd_def] asks of a definition's kind and the frames'
       parameters, decided *)
@@ -2017,6 +1986,10 @@ Section Impl.
 
   (** A context, extended by nothing *)
   Lemma ctx_app_nil {Θ Ξ Γ} : ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ Θ ⍮ Ξ ⍮ Γ ++ ⋅.
+  Proof. rewrite app_nil_r; exact (fun h => h). Qed.
+
+  (** A module expression, in a context extended by nothing *)
+  Lemma modexp_app_nil {Θ Ξ Γ E} : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E -> Θ ⍮ Ξ ⍮ Γ ++ ⋅ ⊢ᵐ E ≈ E.
   Proof. rewrite app_nil_r; exact (fun h => h). Qed.
 
   (** The name a command as written declares, if any *)
@@ -2171,9 +2144,9 @@ Section Impl.
   (** An open's target, checked in the context the error reader builds. *)
   Definition mod_check (F : FCtx) (Hg : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Γ : ctx) (E : modexp)
       : option (fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ᵐ E ≈ E) :=
-    match check_ctx F (lvd _ _) Hg Γ with
+    match check_ctx F (lvd _) Hg Γ with
     | left HΓ =>
-        match check_modexp F (lvd _ _) Γ HΓ E with
+        match check_modexp F (lvd _) Γ HΓ E with
         | left HE => Some HE
         | right _ => None
         end
@@ -2283,25 +2256,25 @@ Section Impl.
     if fill_failure_final e then other else
     match c with
     | surface_cmd_def x _ _ A _ =>
-        match fill_exp_fn F B (lvd _ _) Hg (fc_tele F) A with
+        match fill_exp_fn F B (lvd _) Hg (fc_tele F) A with
         | fill_ok A' =>
-            match check_type F (lvd _ _) (fc_tele F) HΓ A' with
-            | inright _ => blame_error fs (find_level_blame F (lvd _ _) (fc_tele F) HΓ A')
+            match check_type F (lvd _) (fc_tele F) HΓ A' with
+            | inright _ => blame_error fs (find_level_blame F (lvd _) (fc_tele F) HΓ A')
                              (mod_error F (Some x) (A' :: nil) (run_error_def_typ x fs A'))
             | inleft _ => other
             end
         | fill_error _ => other
         end
     | surface_cmd_eval M A =>
-        match fill_exp_fn F B (lvd _ _) Hg (fc_tele F) M with
+        match fill_exp_fn F B (lvd _) Hg (fc_tele F) M with
         | fill_ok M' =>
             if is_surface_hole A then
-              mod_error F None (M' :: nil) (field_error F None (lvd _ _) HΓ M' (run_error_eval_infer fs M'))
+              mod_error F None (M' :: nil) (field_error F None (lvd _) HΓ M' (run_error_eval_infer fs M'))
             else
-              match fill_exp_fn F B (lvd _ _) Hg (fc_tele F) A with
+              match fill_exp_fn F B (lvd _) Hg (fc_tele F) A with
               | fill_ok A' =>
-                  match check_type F (lvd _ _) (fc_tele F) HΓ A' with
-                  | inright _ => blame_error fs (find_level_blame F (lvd _ _) (fc_tele F) HΓ A')
+                  match check_type F (lvd _) (fc_tele F) HΓ A' with
+                  | inright _ => blame_error fs (find_level_blame F (lvd _) (fc_tele F) HΓ A')
                                    (mod_error F None (A' :: nil) (run_error_eval_typ fs M' A'))
                   | inleft _ => other
                   end
@@ -2323,8 +2296,8 @@ Section Impl.
     frames_result ch s K D B fs (core_cmd_def x b pv κ A oM) :=
   | ch, s, K, D, B, fs, x, b, pv, κ, A, oM, H with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
     | right _ => run_failure (run_error_msg (x ++ " is already declared"))
-    | left Hfr with check_type (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A => {
-      | inright _ => run_failure (blame_error fs (find_level_blame (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A)
+    | left Hfr with check_type (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A => {
+      | inright _ => run_failure (blame_error fs (find_level_blame (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A)
                             (mod_error (cmd_F B H) (Some x) (A :: nil) (run_error_def_typ x fs A)))
       | inleft (existT _ κ' (exist _ i HA')) with abs_kind_eq_dec κ' κ => {
         | right _ => run_failure (run_error_msg ("the type of " ++ x ++ " is not of the sort its kind says"))
@@ -2337,7 +2310,7 @@ Section Impl.
           | Some M with level_premise_dec κ (fs_tele fs) => {
             | right _ => run_failure (run_error_levels x)
             | left Hlv
-                with check_exp_typed (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A
+                with check_exp_typed (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A
                        (type_of_check_type (cmd_F B H) _ _ _ _ (kind_cast Eκ HA')) M => {
               | left HM =>
                   let (e, He) := def_entry_rep B H b pv κ i A M (kind_cast Eκ HA') HM in
@@ -2346,7 +2319,7 @@ Section Impl.
                                     (def_ok Hfr (cmd_exp B H nil A _ (kind_cast Eκ HA')) (level_premise_at Hlv) (cmd_exp B H nil M A HM))))
               | right _ =>
                   run_failure (mod_error (cmd_F B H) (Some x) (M :: nil)
-                                 (field_error (cmd_F B H) (Some x) (lvd _ _) (pre_ctx_f B H) M (run_error_def x fs A M))) } } } } } }.
+                                 (field_error (cmd_F B H) (Some x) (lvd _) (pre_ctx_f B H) M (run_error_def x fs A M))) } } } } } }.
 
   (** A frame opened, empty: the frames are still those of their
       reading. *)
@@ -2390,9 +2363,9 @@ Section Impl.
     (x : string) (pv : bool) (Δ : ctx) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_mod_open x pv Δ) :=
   | ch, s, K, D, B, fs, x, pv, Δ, H with all_assumptions_dec Δ => {
     | right _ => run_failure (run_error_msg ("parameters of module " ++ x ++ " that are not assumptions"))
-    | left Htel with check_ctx (cmd_F B H) (lvd _ _) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) => {
+    | left Htel with check_ctx (cmd_F B H) (lvd _) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) => {
       | right _ =>
-          run_failure (tele_blame_error fs (find_tele_blame (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ)
+          run_failure (tele_blame_error fs (find_tele_blame (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ)
                          (run_error_msg ("ill-formed parameters of module " ++ x)))
       | left HΔ with params_evaluated_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) Δ => {
         | inright _ => run_failure (run_error_param_prop x)
@@ -2549,15 +2522,15 @@ Section Impl.
     (x : string) (pv : bool) (Δ : ctx) (E : modexp) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_alias x pv Δ E) :=
   | ch, s, K, D, B, fs, x, pv, Δ, E, H with all_assumptions_dec Δ => {
     | right _ => run_failure (run_error_msg ("parameters of module " ++ x ++ " that are not assumptions"))
-    | left Htel with check_ext (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ => {
+    | left Htel with check_ext (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ => {
       | right _ =>
-          run_failure (tele_blame_error fs (find_tele_blame (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ)
+          run_failure (tele_blame_error fs (find_tele_blame (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ)
                          (run_error_msg ("ill-formed parameters of module " ++ x)))
       | left HΔ with params_evaluated_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) Δ => {
         | inright _ => run_failure (run_error_param_prop x)
-        | inleft (exist _ l HPr) with check_modexp (cmd_F B H) (lvd _ _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
+        | inleft (exist _ l HPr) with check_modexp (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
           | right _ => run_failure (run_error_msg ("ill-formed module expression for module " ++ x))
-          | left HE with lvd _ _ nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
+          | left HE with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
             | right _ => run_failure (run_error_levels ("module " ++ x))
             | left Hlv with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
             | right _ => run_failure (run_error_frame ("module " ++ x))
@@ -2603,7 +2576,7 @@ Section Impl.
         | right _ => run_failure (run_error_msg (d ++ " is already declared"))
         | left Hfr =>
             (** the type, of the sort of the kind the item is tagged with *)
-            match check_type (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A with
+            match check_type (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A with
             | inright _ => run_failure (run_error_def d fs A M)
             | inleft (existT _ κ' (exist _ i HA')) =>
                 match abs_kind_eq_dec κ' κ with
@@ -2612,7 +2585,7 @@ Section Impl.
                     match level_premise_dec κ (fs_tele fs) with
                     | right _ => run_failure (run_error_levels d)
                     | left Hlv =>
-                        match check_exp_typed (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A
+                        match check_exp_typed (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A
                                 (type_of_check_type (cmd_F B H) _ _ _ _ (kind_cast Eκ HA')) M with
                         | right _ => run_failure (run_error_def d fs A M)
                         | left HM =>
@@ -2636,10 +2609,10 @@ Section Impl.
         match fs_fresh_sum d fs (pre_frames _ _ _ _ _ H) (pre_canon H) with
         | right _ => run_failure (run_error_msg (d ++ " is already declared"))
         | left Hfr =>
-            match check_modexp (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E with
+            match check_modexp (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E with
             | right _ => run_failure (run_error_msg ("ill-formed module expression for module " ++ d))
             | left HE =>
-                match lvd _ _ nil (fc_tele (cmd_F B H)) E (ctx_app_nil (pre_ctx_f B H)) with
+                match lvd (cmd_F B H) nil (fc_tele (cmd_F B H)) E (ctx_app_nil (pre_ctx_f B H)) (modexp_app_nil HE) with
                 | right _ => run_failure (run_error_levels ("module " ++ d))
                 | left Hlv =>
                     match frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E HE with
@@ -2665,16 +2638,16 @@ Section Impl.
         match fs_fresh_sum d fs (pre_frames _ _ _ _ _ H) (pre_canon H) with
         | right _ => run_failure (run_error_msg (d ++ " is already declared"))
         | left Hfr =>
-            match type_infer (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) M (type_infer_order_all M) with
+            match type_infer (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) M (type_infer_order_all M) with
             | inright _ => run_failure (run_error_msg ("ill-formed definition " ++ d))
             | inleft (exist _ W HW) =>
-                match check_modexp (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E with
+                match check_modexp (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E with
                 | right _ => run_failure (run_error_msg ("ill-formed module expression for module " ++ d))
                 | left HE =>
-                    match lvd _ _ nil (fc_tele (cmd_F B H)) E (ctx_app_nil (pre_ctx_f B H)) with
+                    match lvd (cmd_F B H) nil (fc_tele (cmd_F B H)) E (ctx_app_nil (pre_ctx_f B H)) (modexp_app_nil HE) with
                     | right _ => run_failure (run_error_levels ("module " ++ d))
                     | left Hlv =>
-                        match large_type_dec (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) (nf_to_exp W) with
+                        match large_type_dec (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) (nf_to_exp W) with
                         | inright _ => run_failure (run_error_msg ("ill-formed definition " ++ d))
                         | inleft (exist _ i HWt) =>
                             match frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E HE with
@@ -2720,7 +2693,7 @@ Section Impl.
     | left Hk with opt_case (modexp_as_term E) => {
       | inright _ => run_failure (builtin_target_error E)
       | inleft (exist _ M Ht)
-          with type_infer (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) M (type_infer_order_all M) => {
+          with type_infer (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) M (type_infer_order_all M) => {
         | inright _ => run_failure (builtin_target_error E)
         | inleft (exist _ W HW) with nf_is_universe_dec W => {
           | right _ => run_failure (builtin_target_error E)
@@ -2768,16 +2741,16 @@ Section Impl.
     (x : string) (pv : bool) (Δ : ctx) (E : modexp) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_inductive_alias x pv Δ E) :=
   | ch, s, K, D, B, fs, x, pv, Δ, E, H with all_assumptions_dec Δ => {
     | right _ => run_failure (run_error_msg ("parameters of inductive alias " ++ x ++ " that are not assumptions"))
-    | left Htel with check_ext (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ => {
+    | left Htel with check_ext (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ => {
       | right _ => run_failure (run_error_msg ("ill-formed inductive alias " ++ x))
-      | left HΔ with check_modexp (cmd_F B H) (lvd _ _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) (fst (me_unapps E)) => {
+      | left HΔ with check_modexp (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) (fst (me_unapps E)) => {
         | right _ => run_failure (alias_target_error x E)
-        | left Hh with check_modexp (cmd_F B H) (lvd _ _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
+        | left Hh with check_modexp (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
           | right _ => run_failure (alias_wf_error x (cmd_F B H) (pre_gctx_f B H) _ E Hh)
           | left HE with opt_case (modexp_as_term E) => {
             | inright _ => run_failure (alias_target_error x E)
             | inleft (exist _ M Ht)
-                with type_infer (cmd_F B H) (lvd _ _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) M (type_infer_order_all M) => {
+                with type_infer (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) M (type_infer_order_all M) => {
               | inright _ => run_failure (alias_target_error x E)
               | inleft (exist _ W HW)
                   with ind_former_dec (cmd_F B H) (Δ ++ fc_tele (cmd_F B H)) M W
@@ -2787,7 +2760,7 @@ Section Impl.
                            (alg_type_infer_sound HW (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
                   | left _ => run_failure (run_error_msg ("inductive alias " ++ x ++ " names a record type: use record"))
                   | right _ => run_failure (alias_target_error x E) }
-                | left Hf with lvd _ _ nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
+                | left Hf with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
                   | right _ => run_failure (run_error_levels ("inductive alias " ++ x))
                   | left Hlv with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
                   | right _ => run_failure (run_error_frame ("inductive alias " ++ x))
@@ -2796,7 +2769,7 @@ Section Impl.
                     | left Hfr with params_evaluated_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) Δ => {
                       | inright _ => run_failure (run_error_param_prop x)
                       | inleft (exist _ l HPr)
-                          with large_type_dec (cmd_F B H) (lvd _ _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) (nf_to_exp W) => {
+                          with large_type_dec (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) (nf_to_exp W) => {
                         | inright _ => run_failure (alias_target_error x E)
                         | inleft (exist _ i HWt) =>
                             let (e, He) := dm_entry_rep B H pv Δ i (nf_to_exp W) M E HWt
@@ -2814,14 +2787,14 @@ Section Impl.
     (x : string) (pv : bool) (Δ : ctx) (E : modexp) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_record_alias x pv Δ E) :=
   | ch, s, K, D, B, fs, x, pv, Δ, E, H with all_assumptions_dec Δ => {
     | right _ => run_failure (run_error_msg ("parameters of record alias " ++ x ++ " that are not assumptions"))
-    | left Htel with check_ext (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ => {
+    | left Htel with check_ext (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ => {
       | right _ => run_failure (run_error_msg ("ill-formed record alias " ++ x))
-      | left HΔ with check_modexp (cmd_F B H) (lvd _ _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
+      | left HΔ with check_modexp (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
         | right _ => run_failure (run_error_msg ("ill-formed record alias " ++ x))
         | left HE with opt_case (modexp_as_term E) => {
           | inright _ => run_failure (recalias_target_error x)
           | inleft (exist _ M Ht)
-              with type_infer (cmd_F B H) (lvd _ _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) M (type_infer_order_all M) => {
+              with type_infer (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) M (type_infer_order_all M) => {
             | inright _ => run_failure (recalias_target_error x)
             | inleft (exist _ W HW)
                 with record_former_dec (cmd_F B H) (Δ ++ fc_tele (cmd_F B H)) M W
@@ -2831,7 +2804,7 @@ Section Impl.
                          (alg_type_infer_sound HW (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
                 | left _ => run_failure (run_error_msg ("record alias " ++ x ++ " names an inductive type: use inductive"))
                 | right _ => run_failure (recalias_target_error x) }
-              | left Hf with lvd _ _ nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
+              | left Hf with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
                 | right _ => run_failure (run_error_levels ("record alias " ++ x))
                 | left Hlv with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
                 | right _ => run_failure (run_error_frame ("record alias " ++ x))
@@ -2840,7 +2813,7 @@ Section Impl.
                   | left Hfr with params_evaluated_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) Δ => {
                     | inright _ => run_failure (run_error_param_prop x)
                     | inleft (exist _ l HPr)
-                        with large_type_dec (cmd_F B H) (lvd _ _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) (nf_to_exp W) => {
+                        with large_type_dec (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) (nf_to_exp W) => {
                       | inright _ => run_failure (recalias_target_error x)
                       | inleft (exist _ i HWt) =>
                           let (e, He) := dm_entry_rep B H pv Δ i (nf_to_exp W) M E HWt
@@ -2875,10 +2848,10 @@ Section Impl.
   | ch, s, K, D, B, fs, b, pv, Δ, nil, H => run_failure (run_error_msg "a mutual definition with no function")
   | ch, s, K, D, B, fs, b, pv, Δ, f0 :: fns, H with all_assumptions_dec Δ => {
     | right _ => run_failure (run_error_msg "parameters of a mutual definition that are not assumptions")
-    | left Htel with check_ctx (cmd_F B H) (lvd _ _) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) => {
-      | right _ => run_failure (tele_blame_error fs (find_tele_blame (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ)
+    | left Htel with check_ctx (cmd_F B H) (lvd _) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) => {
+      | right _ => run_failure (tele_blame_error fs (find_tele_blame (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ)
                            (run_error_msg "ill-formed parameters of a mutual definition"))
-      | left HΔ with mdef_group_dec (cmd_F B H) (lvd _ _) (pre_gctx_f B H) Δ (raw_fun_head_of f0) (List.map raw_fun_head_of fns) => {
+      | left HΔ with mdef_group_dec (cmd_F B H) (lvd _) (pre_gctx_f B H) Δ (raw_fun_head_of f0) (List.map raw_fun_head_of fns) => {
         | inr e => run_failure (mdef_group_why_error e)
         | inl (exist _ (pq, m0, Ps, Dd, Us, ms) Hgp)
             with mdefs_dec lvd (cmd_view s D) b pv (mdef_defs pq Dd Us Δ (f0 :: fns) ms) fs (pre_fctx_ok H) (pre_gctx_view H)
@@ -3051,7 +3024,7 @@ Section Impl.
         match nparams_blame F HΞ U S Δ2 with
         | Some r => Some r
         | None =>
-            if check_exp_at F (lvd _ _) HΞ (Δ2 ++ U)%list S[wk_shiftn (List.length Δ2)]ʷ T then None
+            if check_exp_at F (lvd _) HΞ (Δ2 ++ U)%list S[wk_shiftn (List.length Δ2)]ʷ T then None
             else Some (List.length Δ2, (Δ2 ++ U)%list, T, S[wk_shiftn (List.length Δ2)]ʷ)
         end
     | _ :: Δ2 => nparams_blame F HΞ U S Δ2
@@ -3279,7 +3252,7 @@ Section Impl.
     | inleft (existT _ Mr0 (exist _ Mrs HR))
         with Forall_dec (fun Mr => raw_member_sort Mr = raw_member_sort Mr0) (fun Mr => exp_eq_dec (raw_member_sort Mr) (raw_member_sort Mr0)) Mrs => {
       | right _ => run_failure (run_error_msg ("the types declared with " ++ raw_member_name Mr0 ++ " are not all of its sort"))
-      | left Hsort with raw_members_classify_dec (cmd_F B H) (lvd _ _) (pre_gctx_f B H) R (raw_decl_members R) => {
+      | left Hsort with raw_members_classify_dec (cmd_F B H) (lvd _) (pre_gctx_f B H) R (raw_decl_members R) => {
         | inr (exist _ (x, c, y, classify_why_code sf) _) => run_failure (run_error_msg (classify_msg x c y sf))
         | inr (exist _ (x, c, y, classify_why_unapplied k) _) =>
             run_failure (run_error_msg (classify_msg (List.nth k (List.map raw_member_name (raw_decl_members R)) x) c y 3))
@@ -3308,7 +3281,7 @@ Section Impl.
                     run_failure (run_error_msg (match first_taken fs (raw_decl_members R) with Some x => x | None => raw_member_name Mr0 end
                                          ++ " is already declared"))
                 | left Hfr
-                    with ind_nil_at_dec (cmd_F B H) (lvd _ _) (pre_gctx_f B H) (fs_ind_qname fs (raw_member_name Mr0)) Dd
+                    with ind_nil_at_dec (cmd_F B H) (lvd _) (pre_gctx_f B H) (fs_ind_qname fs (raw_member_name Mr0)) Dd
                            (grp_self_insts (fs_ind_qname fs (raw_member_name Mr0)) Dd) => {
                   | right _ => run_failure (ind_wf_error (cmd_F B H) (pre_gctx_f B H) R Mr0 Dd)
                   | left Hnil with inspect (gen_names_blame_f fs R Dd (raw_member_name Mr0)) => {
@@ -3375,7 +3348,7 @@ Section Impl.
     step_result ch s K D B fs (core_cmd_record_open x pv Δ Srt fds) :=
   | ch, s, K, D, B, fs, x, pv, Δ, Srt, fds, H with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
     | right _ => run_failure (run_error_msg (x ++ " is already declared"))
-    | left Hfr with record_entry_dec (cmd_F B H) (lvd _ _) (pre_gctx_f B H) (fs_ind_qname fs x) pv Δ Srt fds => {
+    | left Hfr with record_entry_dec (cmd_F B H) (lvd _) (pre_gctx_f B H) (fs_ind_qname fs x) pv Δ Srt fds => {
       | inr (exist _ e _) => run_failure (record_why_error x fds e)
       | inl HE
           with gen_items_impl ch s K D B (fs_push_record (fs_ind_qname fs x) (fs_record_at fs Δ Srt fds) Δ fs)
@@ -3577,10 +3550,10 @@ Section Impl.
 
   (** An [eval] rejected: its type no type, or its term not of it *)
   Definition eval_error (F : FCtx) (HΓ : ⊢ fc_deps F ⍮ fc_stack F ⍮ fc_tele F) (M A : exp) : run_error :=
-    match check_type F (lvd _ _) (fc_tele F) HΓ A with
-    | inright _ => blame_error (fc_frames F) (find_level_blame F (lvd _ _) (fc_tele F) HΓ A)
+    match check_type F (lvd _) (fc_tele F) HΓ A with
+    | inright _ => blame_error (fc_frames F) (find_level_blame F (lvd _) (fc_tele F) HΓ A)
                      (mod_error F None (A :: nil) (run_error_eval_typ (fc_frames F) M A))
-    | inleft _ => mod_error F None (M :: nil) (field_error F None (lvd _ _) HΓ M (run_error_eval_check (fc_frames F) M A))
+    | inleft _ => mod_error F None (M :: nil) (field_error F None (lvd _) HΓ M (run_error_eval_check (fc_frames F) M A))
     end.
 
   (** *** One Core Command *)
@@ -3618,7 +3591,7 @@ Section Impl.
                 | run_success (exist _ r Hr, _) with inspect (builtins_merge B (unit_result_builtins r)) => {
                   | exist _ None _ => run_failure (run_error_msg (bound_msg B))
                   | exist _ (Some B') Hm => run_success (exist _ _ (load_res H Hn Hnch Hsrc Hprg Hp Hu Hr Hm), log_nil) } } } } } } } }
-  | ch, L, s, K, D, B, fs, core_cmd_open E its, H with check_modexp (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E => {
+  | ch, L, s, K, D, B, fs, core_cmd_open E its, H with check_modexp (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E => {
     | right _ => run_failure (run_error_import (open_failure_reason_target E))
     | left HE with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E HE => {
     | right _ => run_failure (run_error_frame "an open")
@@ -3630,7 +3603,7 @@ Section Impl.
             run_success (exist _ (mk_run_state s K D B fs')
                            (frames_res H (conj (open_ok (cmd_modexp B H nil E HE) (cmd_frame_free B H nil E Hff)
                                                   (cmd_open_gens B H E its gs HE Eg) Hgs) Hf)), log_nil) } } } }
-  | ch, L, s, K, D, B, fs, core_cmd_eval M A, H with check_exp (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A M => {
+  | ch, L, s, K, D, B, fs, core_cmd_eval M A, H with check_exp (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A M => {
     | left HM => run_success (exist _ _ (state_res H (eval_ok (cmd_exp B H nil M A HM))), eval_log (cmd_F B H) (pre_gctx_f B H) M A HM)
     | right _ => run_failure (eval_error (cmd_F B H) (pre_ctx_f B H) M A) }
   | ch, L, s, K, D, B, fs, core_cmd_inductive pv R, H => ind_step ch s K D B fs pv R H
@@ -3699,7 +3672,7 @@ Section Impl.
       | run_success (exist _ r2 Hr2, l2) => run_success (exist _ r2 (core_cons_res Hr1 Hr2), log_app l1 l2) } }
   | ch, L, ci_written c :: its', s, K, D, B, fs, H with refs_check (cmd_F B H) (pre_gctx_f B H) (cmd_refs c) => {
     | inleft (exist _ e _) => run_failure (run_error_nat (cmd_view s D) fs (nat_view_f (cmd_F B H) B) (privacy_run_error e))
-    | inright Hac with inspect (fill_cmd_fn (cmd_F B H) B (lvd _ _) (pre_gctx_f B H) c) => {
+    | inright Hac with inspect (fill_cmd_fn (cmd_F B H) B (lvd _) (pre_gctx_f B H) c) => {
       | exist _ (fill_error e) _ =>
           run_failure (run_error_nat (cmd_view s D) fs (nat_view_f (cmd_F B H) B) (fill_blame (cmd_F B H) B (pre_gctx_f B H) (pre_ctx_f B H) c e))
       | exist _ (fill_ok its1) Ea with items_impl ch L its1 s K D B fs H => {
@@ -3821,15 +3794,15 @@ Section Impl.
             let F1 := cmd_F (run_state_builtins r1) H1 in
             let Hg1 := pre_gctx_f (run_state_builtins r1) H1 in
             let nat_err := run_error_nat (cmd_view (run_state_units r1) (run_state_imports r1)) nil (nat_view_f F1 (run_state_builtins r1)) in
-            match inspect (fill_params_fn F1 (run_state_builtins r1) (lvd _ _) Hg1 P0) with
+            match inspect (fill_params_fn F1 (run_state_builtins r1) (lvd _) Hg1 P0) with
             | exist _ (fill_error e) _ => run_failure (nat_err (fill_run_error F1 Hg1 None e))
             | exist _ (fill_ok P) Ea =>
             match all_assumptions_dec P with
             | right _ => run_failure (nat_err (tele_error F1 Hg1 nil P (run_error_msg "unit parameters that are not assumptions")))
             | left Htel =>
-            match check_ctx F1 (lvd _ _) Hg1 P with
+            match check_ctx F1 (lvd _) Hg1 P with
             | right _ =>
-                run_failure (nat_err (tele_error F1 Hg1 nil P (tele_blame_error nil (find_tele_blame F1 (lvd _ _) nil (wf_ctx_empty _ _ Hg1) P)
+                run_failure (nat_err (tele_error F1 Hg1 nil P (tele_blame_error nil (find_tele_blame F1 (lvd _) nil (wf_ctx_empty _ _ Hg1) P)
                         (run_error_msg "ill-formed unit parameters"))))
             | left HP =>
             match params_evaluated_dec F1 Hg1 nil P with
@@ -3848,7 +3821,7 @@ Section Impl.
                     match single_case (run_state_frames r2) with
                     | inleft (exist _ f HΞ) =>
                         run_success (exist _ _ (unit_res (s := s) r1 r2 G Hr1
-                                                  (cmd_fill_params (run_state_builtins r1) H1 _ _ (fill_params_fn_sound F1 (run_state_builtins r1) (lvd _ _) Hg1 _ _ Ea))
+                                                  (cmd_fill_params (run_state_builtins r1) H1 _ _ (fill_params_fn_sound F1 (run_state_builtins r1) (lvd _) Hg1 _ _ Ea))
                                                   Htel HP' HPr' (cmd_acc (run_state_builtins r1) H1 _ Hac) Hr2 HΞ),
                                      log_app l1 l2)
                     | inright _ => run_failure (run_error_msg "the body of a unit does not end in its own frame")
@@ -4021,8 +3994,8 @@ Section Impl.
       decided as the derivation has it *)
   Ltac levels_case He Hgr :=
     match goal with
-    | Hla0 : levels_abstractable _ _ _ _ _ |- context [lvd ?a ?b ?c ?d ?e ?f] =>
-        destruct (lvd a b c d e f) as [Hlv_dec | Hlv_dec];
+    | Hla0 : levels_abstractable _ _ _ _ _ |- context [lvd ?a ?c ?d ?e ?f ?g] =>
+        destruct (lvd a c d e f g) as [Hlv_dec | Hlv_dec];
         [| exfalso; apply Hlv_dec; cmd_goal; exact (equiv_levels_abstractable _ _ _ He Hgr _ _ _ Hla0) ]
     end.
 
@@ -4687,7 +4660,7 @@ Section Impl.
         simp items_impl; [ exfalso; apply Hq; cmd_goal; exact (equiv_acc _ _ _ _ (unit_invariant_equiv Hli) Hac) |].
       assert (HfcF : fill_cmd (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) B c its)
         by (cmd_goal; exact (equiv_fill_cmd _ _ _ _ _ _ (unit_invariant_equiv Hli) (unit_invariant_restrict_gctx Hli) Hfc)).
-      pose proof (fill_cmd_fn_complete _ B (lvd _ _) (pre_gctx_f B H) _ _ HfcF) as Ea.
+      pose proof (fill_cmd_fn_complete _ B (lvd _) (pre_gctx_f B H) _ _ HfcF) as Ea.
       destruct (inspect (fill_cmd_fn _ _ _ _ c)) as [[its' | e] Ea']; [ assert (its' = its) as -> by congruence | exfalso; congruence ].
       simp items_impl.
       destruct (IHits Hacc s K D fs H eq_refl Hli Hrb) as [[[r1 Hp1] l1] E1]; rewrite E1; simp items_impl.
@@ -4719,7 +4692,7 @@ Section Impl.
       assert (HPaF : fill_params (fc_deps (cmd_F (run_state_builtins r1) (unit_mid_pre G Hp1))) (fc_stack (cmd_F (run_state_builtins r1) (unit_mid_pre G Hp1)))
                        (run_state_builtins r1) P0 P)
         by (cmd_goal; exact (equiv_fill_params _ _ _ _ _ _ (unit_invariant_equiv Hli1) (unit_invariant_restrict_gctx Hli1) HPa)).
-      pose proof (fill_params_fn_complete _ _ (lvd _ _) (pre_gctx_f (run_state_builtins r1) (unit_mid_pre G Hp1)) _ _ HPaF) as Ea.
+      pose proof (fill_params_fn_complete _ _ (lvd _) (pre_gctx_f (run_state_builtins r1) (unit_mid_pre G Hp1)) _ _ HPaF) as Ea.
       destruct (inspect (fill_params_fn _ _ _ _ P0)) as [[P' | e] Ea'];
         [ assert (P' = P) as -> by congruence | exfalso; congruence ].
       cbv beta iota.

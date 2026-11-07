@@ -49,7 +49,7 @@ Section MdefDecide.
   #[local] Abbreviation Θ := (fc_deps F).
   #[local] Abbreviation Ξ := (fc_stack F).
   (** The decision of [levels_abstractable] the checker is given *)
-  Variable levels_abstractable_dec : forall G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G ->
+  Variable levels_abstractable_dec : forall G Δ E, ⊢ Θ ⍮ Ξ ⍮ Δ ++ G -> Θ ⍮ Ξ ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
       { levels_abstractable Θ Ξ G Δ E } + { ~ levels_abstractable Θ Ξ G Δ E }.
   Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
 
@@ -193,7 +193,7 @@ Qed.
 (** The group of a mutual definition's functions [f0 :: fs] over [Δ],
     checked premise by premise as [mdef_group] reads it. *)
 Definition mdef_group_dec (F : FCtx)
-    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ->
+    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G -> fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
        { levels_abstractable (fc_deps F) (fc_stack F) G Δ E } + { ~ levels_abstractable (fc_deps F) (fc_stack F) G Δ E })
     (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) (Δ : ctx) (f0 : raw_fun_head) (fs : list raw_fun_head) :
     ({r : qname * nat * list nf * ind_decl * list exp * list nat |

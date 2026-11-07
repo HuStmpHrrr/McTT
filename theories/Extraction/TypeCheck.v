@@ -427,6 +427,12 @@ with checker_obligation_positive :=
   | |- subtyping_order _ _ _ => constructor; apply nbe_order_of_type; checker_type
   | |- nbe_ty_order _ _ _ _ => apply nbe_order_of_type; checker_type
   | |- _ ⊢ᵗ _ => checker_type
+  (** a body under no parameter, checked: a unit *)
+  | |- _ ⍮ _ ⍮ _ ⊢ᵐ me_lit (gu_open nil _) ≈ _ =>
+      eapply alg_modexp_sound;
+        [ apply alg_modexp_lit; eapply alg_unit_body;
+          [ constructor | constructor | eassumption | assumption | assumption | assumption | left; let D := fresh "D" in let Ed := fresh "Ed" in intros D ? ? ? Ed; destruct D; discriminate ]
+        | checker_ctx ]
   | |- _ ⍮ _ ⍮ _ ⊢ᵐ _ ≈ _ => eapply alg_modexp_sound; [ eassumption | checker_ctx ]
   | |- _ ⊢aᵐ me_var _ => econstructor; apply ctx_find_mod_sound; eassumption
   | |- _ ⊢aᵇ _ ⇝ _ /\ ⊢ _ =>
@@ -442,7 +448,7 @@ Ltac checker_obligation :=
 
 Section type_check.
   (** The decision of [levels_abstractable], given *)
-  Variable levels_abstractable_dec : forall G Δ E, ⊢ Δ ++ G ->
+  Variable levels_abstractable_dec : forall G Δ E, ⊢ Δ ++ G -> gc_deps ⍮ gc_stack ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
       { levels_abstractable gc_deps gc_stack G Δ E } + { ~ levels_abstractable gc_deps gc_stack G Δ E }.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
@@ -647,14 +653,14 @@ Section type_check.
       let*b _ := body_shape_dec Φ Φ while _ in
       let*b _ := body_shape_dec Φx Φx while _ in
       let*b _ := names_nodup_dec (gm_names Φ) while _ in
-      let*b _ := levels_abstractable_dec G Δ (me_lit (gu_open nil Φ)) HΔ while _ in
+      let*b _ := levels_abstractable_dec G Δ (me_lit (gu_open nil Φ)) HΔ _ while _ in
       pureb _
   | G, HG, gu_mk Δ (md_alias E), H =>
       let*b _ := params_check G HG Δ _ while _ in
       let*b _ := all_assumptions_dec Δ while _ in
       let HΔ : ⊢ Δ ++ G := _ in
       let*b _ := modexp_check (Δ ++ G) HΔ E _ while _ in
-      let*b _ := levels_abstractable_dec G Δ E HΔ while _ in
+      let*b _ := levels_abstractable_dec G Δ E HΔ _ while _ in
       (** the target is no module still being defined *)
       let*b _ := frame_free_target_dec F _ (Δ ++ G) E _ while _ in
       pureb _

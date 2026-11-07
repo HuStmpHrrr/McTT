@@ -67,11 +67,11 @@ Definition view_data_dec (lvd : Command.levels_abstractable_decider) (F : FCtx) 
     (R : raw_decl) (x : view_key) :
     ({a | view_data_ok (fc_deps F) (fc_stack F) R x a} + {e : view_why | forall a, ~ view_data_ok (fc_deps F) (fc_stack F) R x a})%type.
 Proof.
-  destruct (view_siblings_dec F (lvd _ _) HΞ R x) as [[ss Hs] | [e He]];
+  destruct (view_siblings_dec F (lvd _) HΞ R x) as [[ss Hs] | [e He]];
     [| right; exists e; intros a Ha; exact (He _ (data_ok_siblings _ _ _ _ _ Ha)) ].
-  destruct (view_classify_dec F (lvd _ _) HΞ R x) as [[cs Hc] | [e He]];
+  destruct (view_classify_dec F (lvd _) HΞ R x) as [[cs Hc] | [e He]];
     [| right; exists e; intros a Ha; exact (He _ (data_ok_cons _ _ _ _ _ Ha)) ].
-  destruct (view_nparams_dec F (lvd _ _) HΞ R x) as [[Nv Hn] | [e He]];
+  destruct (view_nparams_dec F (lvd _) HΞ R x) as [[Nv Hn] | [e He]];
     [| right; exists e; intros a Ha; exact (He _ (data_ok_nparams _ _ _ _ _ Ha)) ].
   left; exists (mk_view_data ss cs Nv); constructor; assumption.
 Defined.
@@ -231,7 +231,7 @@ Section Clusters.
   Lemma nf_meet_at_list : forall Γ nup np n pat T, exists L, forall z, nf_meet_at Θ Ξ Γ nup np n pat T z <-> In z L.
   Proof.
     intros *.
-    destruct (typ_least_dec F (lvd _ _) HΞ Γ T) as [[i [HT _]] | HnT].
+    destruct (typ_least_dec F (lvd _) HΞ Γ T) as [[i [HT _]] | HnT].
     2:{ exists nil; intros z; split; [ intros [i HT _ _ _ _ _ _ _ _]; exact (HnT _ HT) | intros [] ]. }
     destruct (nbe_ty_impl F Γ T (typ_nbe_ty_order F _ _ _ HT)) as [W HW].
     destruct (nf_proof_freeb W) eqn:Hpf.
@@ -243,7 +243,7 @@ Section Clusters.
       rewrite (classify_arg_rec_ext _ _ _ (rec_info_f_ok F)), (classify_arg_ext _ _ _ _ _ _ _ (grp_info_f_ok F)) in Hn.
     2:{ exists nil; intros z; split; [| intros [] ].
         intros [i' HT' W' HW' _ gw' Hn' _ _ _]; pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; congruence. }
-    destruct (written_carg_key_dec F (lvd _ _) HΞ (List.skipn (List.length pat + (np - nup)) Γ) gw) as [[g Hg] | Hng].
+    destruct (written_carg_key_dec F (lvd _) HΞ (List.skipn (List.length pat + (np - nup)) Γ) gw) as [[g Hg] | Hng].
     2:{ exists nil; intros z; split; [| intros [] ].
         intros [i' HT' W' HW' _ gw' Hn' g' Hk _]; pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
         rewrite Hn in Hn'; injection Hn' as <-; exact (Hng _ Hk). }

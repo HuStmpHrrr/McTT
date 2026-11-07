@@ -7,7 +7,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Semantic Require Import NbE.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Extraction Require Import FastGlobal Command CommandRun.
+From Mctt.Extraction Require Import FastGlobal Command CommandRun NoLevelDec.
 From Mctt.Extraction Require ViewsFound.
 From Mctt.Frontend Require Import Elaborator Parser.
 Import MenhirLibParser.Inter.
@@ -47,9 +47,9 @@ Section Main.
   Variable load_path : list string -> option string.
   Variable read : string -> option Cst.prog.
   Hypothesis Hwf : well_founded (load_step load_path).
-  (** The decision of [levels_abstractable] the checker is given, until the
-      stored level flag replaces it. *)
-  Variable lvd : levels_abstractable_decider.
+  (** The decision of [levels_abstractable]: by the reads of [⊢ⁿˡ], which
+      end over every well-formed global context ([levels_abstractable_fast_dec]) *)
+  #[local] Abbreviation lvd := levels_abstractable_fast_dec.
 
   (** The program is elaborated here, to report the error message, since
       the interpreter's [to_core] returns an option; its unit is then run
