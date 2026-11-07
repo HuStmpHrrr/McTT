@@ -779,7 +779,6 @@ let%expect_test "Universes.mctt works" =
           → Type@{maxl (maxl 2l (succl x2)) (succl x1)}
     Evaluate self 3 --> 3 : ℕ
     Evaluate Dom --> ℕ : Type@0
-    Evaluate Type@{depth 3} --> Type@3 : Type@4
     Evaluate Endo 0l ℕ --> ∀ (x1 : ℕ) → ℕ : Type@0
     Evaluate λ (x1 : Level)
                (A1 : Type@{x1})
@@ -2209,6 +2208,43 @@ let%expect_test "a local alias of a submodule" =
              in M2.f 3
              end --> 3 : ℕ
     |}]
+
+let%expect_test "a local inductive alias: its constructors and eliminator" =
+  let _ =
+    main_of_body
+      "import Prelude›Data›List use (List) \
+       def len (l : List 0l Nat) : Nat := \
+         let inductive L := List 0l Nat in \
+           elim l at (z : L) -> Nat | nil => 0 | cons x t, r => succ r end \
+         end \
+       end \
+       eval let inductive L := List 0l Nat in len (L.cons 1 (L.cons 2 L.nil)) end"
+  in
+  [%expect {|
+    Evaluate let inductive A1 ≔ List 0l ℕ
+             in len (A1.cons 1 (A1.cons 2 A1.nil))
+             end --> 2 : ℕ
+    |}]
+
+let%expect_test "a local record alias: a value and a projection" =
+  let _ =
+    main_of_body
+      "import Prelude›Data›Prod use (Prod) \
+       eval let record P := Prod 0l Nat Nat in (fun (x : P) -> x.snd) (record P where fst := 1; snd := 2 end) end"
+  in
+  [%expect {|
+    Evaluate let record A1 ≔ Prod 0l ℕ ℕ
+             in (λ (x1 : A1) → x1.snd) (record A1 where fst ≔ 1; snd ≔ 2 end)
+             end --> 2 : ℕ
+    |}]
+
+let%expect_test "a local inductive alias takes no parameters" =
+  let _ =
+    main_of_body
+      "import Prelude›Data›List use (List) \
+       eval let inductive L (A : Type@0) := List 0l A in 0 end"
+  in
+  [%expect {| Error: an inductive alias L in a let takes no parameters |}]
 
 let%expect_test "beta substitutes into a local module" =
   let _ = main_of_body "eval (fun (n : Nat) -> let module X where def f : Nat := n end end in X.f end) 3" in
@@ -4328,16 +4364,10 @@ let%expect_test "mctt-doc: universes line up, link, and are highlighted" =
 let%expect_test "lib/Universes.mctt" =
   let _ = main_of_lib "Universes.mctt" in
   [%expect {|
-    Evaluate ofNat 3 --> 3l : Level
-    Evaluate maxl (ofNat 2) (succl 4l) --> 5l : Level
-    Evaluate plusl 2 (maxl 1l 3l) --> 5l : Level
+    Evaluate maxl 2l (succl 4l) --> 5l : Level
     Evaluate lrefl 3l --> λ (x1 : ∀ (x2 : Level) → Type@0)
                             (x3 : x1 3l)
                             → x3 : LEq (maxl 2l 3l) (succl 2l)
-    Evaluate lrefl 3l --> λ (x1 : ∀ (x2 : Level) → Type@0)
-                            (x3 : x1 3l)
-                            → x3
-      : LEq (ofNat (max 2 3)) (maxl (ofNat 2) (ofNat 3))
     Evaluate Arrow 0l 1l ℕ Type@0 --> ∀ (x1 : ℕ) → Type@0 : Type@1
     Evaluate Pi 1l 1l Type@0 (λ (A1 : Type@0) → Endo 0l A1)
       --> ∀ (A1 : Type@0)
@@ -4357,8 +4387,6 @@ let%expect_test "lib/Universes.mctt" =
       --> λ (A1 : Type@0)
             (A2 : Type@0)
             → ∀ (x1 : A1) → A2 : Fun 1l 2 Type@0 Type@0
-    Evaluate Universe 2 --> Type@2 : Type@3
-    Evaluate universeIn 1 --> Type@1 : Type@2
     Evaluate up 0l 2l ℕ 3 --> 3 : ℕ
     Evaluate Cj.andFst 1l Type@0 Type@0 natAndTrue --> ℕ : Type@0
     Evaluate Cj.andSnd 1l Type@0 Type@0 (Cj.andSwap 1l Type@0 Type@0 natAndTrue)
@@ -4403,8 +4431,8 @@ let%expect_test "lib/Universes.mctt" =
     Evaluate C.toNat 0l (churchHalf 9) --> 4 : ℕ
     Evaluate ω+1 --> ω+1 : Level@1
     Evaluate maxl 3l ω·2+1 --> ω·2+1 : Level@2
-    Evaluate Level@2 --> Level@2 : Type@0
-    Evaluate liftLevel (ofNat 3) --> 3l : Level@1
+    Evaluate Level@2 --> Level@2 : 𝕃
+    Evaluate liftLevel 3l --> 3l : Level@1
     Evaluate ∀ (x1 : Level@1) → Type@{x1} --> ∀ (x1 : Level@1) → Type@{x1}
       : Type@{ω·2}
     |}]

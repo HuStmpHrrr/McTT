@@ -856,10 +856,26 @@ let exp_to_expression =
        let px = new_tyvar () in
        let h' = impl_mod ctx h in
        let ebody' = impl (px :: ctx) ebody in
-       let names_record =
-         match chain_of h with
-         | Some (fp, ms) -> Lk.record_lookup_f !current_fctx { q_unit = fp; q_chain = ms } <> None
+       (* The target's head, past the arguments it is applied to, names a
+          record type, or an alias of one, as an [import … use (P)]
+          declares one: a definition with a module part whose unit is an
+          alias. *)
+       let rec head_of = function Coq_me_app (applied, _) -> head_of applied | head -> head in
+       (* Alias chains are finite: cyclic aliases are rejected (L1 and the
+          command run), so the recursion on the target ends. *)
+       let rec names_record target =
+         match chain_of (head_of target) with
+         | Some (unit_path, members) ->
+            let qualified_name = { q_unit = unit_path; q_chain = members } in
+            Lk.record_lookup_f !current_fctx qualified_name <> None ||
+            (match Lk.gc_entry_f !current_fctx qualified_name with
+             | Some (FG.Coq_fe_def_mod (_, _, _, alias_unit, _)) ->
+                (match FG.decode_unit alias_unit with
+                 | Coq_gu_mk (_, Coq_md_alias next_target) -> names_record next_target
+                 | _ -> false)
+             | _ -> false)
          | None -> false in
+       let names_record = names_record h in
        let d = if names_record then Cst.Coq_d_record_alias (px, [], h') else Cst.Coq_d_ind_alias (px, [], h') in
        Cst.Coq_let_in (d, ebody')
     | Coq_a_let (Coq_b_def_mod (ea, em, _), ebody) ->
