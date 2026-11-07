@@ -297,12 +297,13 @@ Ltac solve_retagged_kind :=
   end.
 
 (** How far the unit an environment of [Γ] stores at an entry [e] after
-    [n] entries may reach: [n] at a module slot, which stores its unit over
-    its tail; nothing at any other entry, which stores no unit the
-    readback of a proof would bind. *)
+    [n] entries may reach: [n] at a module slot and at a definition with
+    a module part, which store their units over their tails; nothing at
+    any other entry, which stores no unit the readback of a proof would
+    bind. *)
 Definition centry_unit_bound (e : centry) (n : nat) : nat :=
   match e with
-  | ce_mod _ => n
+  | ce_mod _ | ce_dm _ _ _ => n
   | _ => 0
   end.
 
@@ -378,8 +379,9 @@ Proof.
     assert (D11' : Dom ρ1'↯ ≈ ρ1'↯ ∈ tail_rel) by solve_per.
     assert (D12 : Dom ρ1↯ ≈ ρ2↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | eassumption | eassumption | exact D11 ]).
     assert (D12' : Dom ρ1'↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | eassumption | eassumption | exact D11' ]).
-    destruct (rel_modexp_evals_move _ _ _ _ _ _ D12 H3) as (M1 & M2 & M3 & M4).
-    destruct (rel_modexp_evals_move _ _ _ _ _ _ D12' H3) as (M1' & M2' & M3' & M4').
+    match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> rel_modexp_evals _ _ _ _ |- _ =>
+      destruct (rel_modexp_evals_move _ _ _ _ _ _ D12 HU) as (M1 & M2 & M3 & M4);
+      destruct (rel_modexp_evals_move _ _ _ _ _ _ D12' HU) as (M1' & M2' & M3' & M4') end.
     assert (Dom ρ2↯ ≈ ρ2↯ ∈ tail_rel) by solve_per.
     assert (Dom ρ2'↯ ≈ ρ2'↯ ∈ tail_rel) by solve_per.
     (** The heads are read at the old pair, the new one and the mixed one;
@@ -389,7 +391,7 @@ Proof.
     clear D11 D11'.
     destruct r; cbn [def_heads_at def_bodies_at] in *; [ destruct Hterms; destruct_conjs | | destruct Hterms; destruct_conjs ].
     all: solve_def_heads_pre.
-    all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Dtail2);
+    all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ _ Dtail2);
       try (match goal with |- def_heads_at _ _ _ _ _ _ => cbn [def_heads_at]; constructor end);
       try rewrite <- (env_agree_retagged_var _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_retagged_var _ _ _ Heq' 0 ltac:(cbn; lia));
       try rewrite <- (env_agree_retagged_mod _ _ _ Heq 0 ltac:(cbn; lia)); try rewrite <- (env_agree_retagged_mod _ _ _ Heq' 0 ltac:(cbn; lia));
@@ -625,7 +627,7 @@ Proof.
   2-3,5: match goal with
          | Hρ : per_ctx_env_cons_rel _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _]
          | Hρ : per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _ _]
-         | Hρ : per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _ _ _ _]
+         | Hρ : per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _ _ _ _]
          end;
          (destruct x as [| x];
           [ destruct Hx as [T HT E HE a Ea Hp]; cbn in HT; injection HT as <-; rewrite skipn_one_drop in HE;

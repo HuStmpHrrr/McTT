@@ -373,8 +373,10 @@ Qed.
     related, their heads' terms are related and tied to [M], as at
     [Δ ▸ S ≔ M], and the head of each is tied to the closure of [U] over
     its tail.  The heads are not term entries, so the relation is not
-    [per_env_extend_def]'s. *)
-Record per_env_extend_dm (S : typ) (M : exp) (U : gunit) (R : relation env) (ρ ρ' : env) : Prop := mk_per_env_extend_dm
+    [per_env_extend_def]'s.  [n] is the length of the tail context, which
+    scopes the heads' stored units, as for a module slot
+    ([per_ctx_env_mod_rel]). *)
+Record per_env_extend_dm (S : typ) (M : exp) (U : gunit) (n : nat) (R : relation env) (ρ ρ' : env) : Prop := mk_per_env_extend_dm
   { (** The tails are related *)
     per_env_extend_dm_tail : Dom ρ↯ ≈ ρ'↯ ∈ R
     (** The heads' terms are related at the head PER *)
@@ -387,10 +389,11 @@ Record per_env_extend_dm (S : typ) (M : exp) (U : gunit) (R : relation env) (ρ 
   ; per_env_extend_dm_tie_left : tie_mod (env_mod ρ 0) (me_lit U) ρ↯
     (** The right head's module tied likewise *)
   ; per_env_extend_dm_tie_right : tie_mod (env_mod ρ' 0) (me_lit U) ρ'↯
-    (** The left head reads back at its stored type, and stores no unit *)
-  ; per_env_extend_dm_left_readable : head_readable 0 (env_entry ρ 0)
+    (** The left head reads back at its stored type, its stored unit
+        scoped by the tail *)
+  ; per_env_extend_dm_left_readable : head_readable n (env_entry ρ 0)
     (** So does the right one *)
-  ; per_env_extend_dm_right_readable : head_readable 0 (env_entry ρ' 0)
+  ; per_env_extend_dm_right_readable : head_readable n (env_entry ρ' 0)
     (** The left head is a definition with a module part, at some type and
         unit *)
   ; per_env_extend_dm_left_kind : exists t U0, env_entry ρ 0 = de_dm (ρ 0) t (env_mod ρ 0) U0
@@ -400,6 +403,7 @@ Record per_env_extend_dm (S : typ) (M : exp) (U : gunit) (R : relation env) (ρ 
 (** The premise [per_ctx_env_cons_dm] asks for, at the canonical relation. *)
 Lemma per_ctx_env_extend_dm : forall {Δ S M U env_relΔ} {i : nat},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
+    gunit_free_bound U <= List.length Δ ->
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_relΔ ->
         exists a a', ⟦ S ⟧ ρ ↘ a /\ ⟦ S ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
@@ -408,13 +412,13 @@ Lemma per_ctx_env_extend_dm : forall {Δ S M U env_relΔ} {i : nat},
         exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_typ_kind S ρ ak_relevant) ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> rel_modexp_evals (me_lit U) ρ (me_lit U) ρ') ->
-    EF Δ ▸ₘ S ≔ M ‖ U ≈ Δ ▸ₘ S ≔ M ‖ U ∈ per_ctx_env ↘ per_env_extend_dm S M U env_relΔ.
+    EF Δ ▸ₘ S ≔ M ‖ U ≈ Δ ▸ₘ S ≔ M ‖ U ∈ per_ctx_env ↘ per_env_extend_dm S M U (List.length Δ) env_relΔ.
 Proof.
-  intros * HΔ HS HM HSr HU.
+  intros * HΔ HbU HS HM HSr HU.
   assert (HPER : PER env_relΔ) by (eapply per_env_PER; eassumption).
   eapply per_ctx_env_cons_dm
     with (head_rel := fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S ρ ρ') (r := ak_relevant);
-    [ eassumption | eassumption | | | | | | reflexivity ].
+    [ eassumption | eassumption | exact HbU | exact HbU | | | | | | reflexivity ].
   - intros ρ ρ' Hρ.
     destruct (HS _ _ Hρ) as [a [a' [Ha [Ha' [R HR]]]]].
     econstructor; try eassumption.
@@ -445,7 +449,7 @@ Proof.
       * eexists; split; [ eassumption | apply H2; eassumption ].
     + intros [Ht Hh [[m [Hm Htie]] _ [m' [Hm' Htie']] _] Tl _ Tr _ Hrl Hrr Hkl Hkr].
       destruct (Hmove _ _ Ht) as [H1 H2].
-      apply (mk_per_env_extend_dm _ _ _ _ _ _ Ht Hh); try eassumption.
+      apply (mk_per_env_extend_dm _ _ _ _ _ _ _ Ht Hh); try eassumption.
       * eexists; split; [ eassumption | apply H1; eassumption ].
       * eexists; split; [ eassumption | apply H2; eassumption ].
 Qed.

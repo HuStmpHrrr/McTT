@@ -2017,10 +2017,12 @@ Definition def_heads_at (r : abs_kind) (head_rel : relation domain) (M M' : exp)
 (** The environments a definition with a module part relates, given the
     PER of the tails and the head relation at related tails: those of a
     definition entry of the kind [r] for its terms [M], [M'], and those of
-    a module slot for its units [U], [U'], at the same head. *)
+    a module slot for its units [U], [U'], at the same head; [n] is the
+    length of the tail context, which scopes the stored units as for a
+    module slot ([per_ctx_env_mod_rel]). *)
 Record per_ctx_env_dm_rel (tail_rel : relation env)
     (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
-    (r : abs_kind) (M M' : exp) (U U' : gunit) (ρ ρ' : env) : Prop := mk_per_ctx_env_dm_rel
+    (n : nat) (r : abs_kind) (M M' : exp) (U U' : gunit) (ρ ρ' : env) : Prop := mk_per_ctx_env_dm_rel
   { (** The tails are related *)
     per_ctx_env_dm_rel_tail : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel
     (** The heads are related at the tails' head relation *)
@@ -2035,10 +2037,11 @@ Record per_ctx_env_dm_rel (tail_rel : relation env)
   ; per_ctx_env_dm_rel_right_unit : tie_mod (env_mod ρ' 0) (me_lit U) ρ'↯
     (** and to that of [U'] *)
   ; per_ctx_env_dm_rel_right_unit' : tie_mod (env_mod ρ' 0) (me_lit U') ρ'↯
-    (** The left head reads back at its stored type, and stores no unit *)
-  ; per_ctx_env_dm_rel_left_readable : head_readable 0 (env_entry ρ 0)
+    (** The left head reads back at its stored type, its stored unit
+        scoped by the tail *)
+  ; per_ctx_env_dm_rel_left_readable : head_readable n (env_entry ρ 0)
     (** So does the right one *)
-  ; per_ctx_env_dm_rel_right_readable : head_readable 0 (env_entry ρ' 0)
+  ; per_ctx_env_dm_rel_right_readable : head_readable n (env_entry ρ' 0)
     (** The left head is a definition with a module part, so that it may be
         stored at the declared type and unit ([ctx_retag]) *)
   ; per_ctx_env_dm_rel_left_kind : exists t U0, env_entry ρ 0 = de_dm (ρ 0) t (env_mod ρ 0) U0
@@ -2194,6 +2197,8 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
         (equiv_Γ_Γ' : EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel)
         (r : abs_kind),
         PER tail_rel ->
+        gunit_free_bound U <= List.length Γ ->
+        gunit_free_bound U' <= List.length Γ' ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_kind A ρ r) ->
@@ -2201,7 +2206,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
             rel_elem M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             rel_modexp_evals (me_lit U) ρ (me_lit U') ρ') ->
-        (env_rel <~> per_ctx_env_dm_rel tail_rel (@head_rel) r M M' U U') ->
+        (env_rel <~> per_ctx_env_dm_rel tail_rel (@head_rel) (List.length Γ) r M M' U U') ->
         r = ak_relevant ->
         EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ' ▸ₘ A' ≔ M' ‖ U' ∈ per_ctx_env ↘ env_rel }
 .

@@ -298,6 +298,14 @@ and format_decl (f : Format.formatter) : Cst.decl -> unit =
   | Cst.Coq_d_def (x, None, eb) ->
      fprintf f "@[<hov 2>%s @<1>%s@ %a@]" x s_eq format_expression eb
   | Cst.Coq_d_mod (x, params, md) -> format_module f x params md
+  | Cst.Coq_d_ind_alias (x, params, e) ->
+     fprintf f "@[<hov 2>inductive %s" x;
+     List.iter (fun p -> fprintf f " %a" format_expression_param p) params;
+     fprintf f " @<1>%s@ %a@]" s_eq format_expression e
+  | Cst.Coq_d_record_alias (x, params, e) ->
+     fprintf f "@[<hov 2>record %s" x;
+     List.iter (fun p -> fprintf f " %a" format_expression_param p) params;
+     fprintf f " @<1>%s@ %a@]" s_eq format_expression e
 
 (* [module x (ps) where … end] or [module x (ps) := E]. *)
 and format_module (f : Format.formatter) (x : string) params (md : Cst.mdef) : unit =
@@ -840,6 +848,22 @@ let exp_to_expression =
        let params, md = impl_unit ctx u in
        let ebody' = impl (px :: ctx) ebody in
        Cst.Coq_let_in (Cst.Coq_d_mod (px, params, md), ebody')
+    (* A definition with a module part whose unit is an alias under no
+       parameters, as a local alias of a type has: the alias of its
+       target.  The core term does not say whether the target is an
+       inductive type or a record type; it prints as an inductive alias. *)
+    | Coq_a_let (Coq_b_def_mod (_, _, Coq_gu_mk ([], Coq_md_alias h)), ebody) ->
+       let px = new_tyvar () in
+       let h' = impl_mod ctx h in
+       let ebody' = impl (px :: ctx) ebody in
+       Cst.Coq_let_in (Cst.Coq_d_ind_alias (px, [], h'), ebody')
+    (* Any other: its term part, as a definition *)
+    | Coq_a_let (Coq_b_def_mod (ea, em, _), ebody) ->
+       let px = match ea with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
+       let ea' = Some (impl ctx ea) in
+       let em' = impl ctx em in
+       let ebody' = impl (px :: ctx) ebody in
+       Cst.Coq_let_in (Cst.Coq_d_def (px, ea', em'), ebody')
     (* A member naming the bound type, directly or by an inductive alias
        without arguments, or one of its constructors, prints as they do. *)
     | Coq_a_mem (h, x) when (match chain_of h with

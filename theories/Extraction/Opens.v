@@ -252,7 +252,7 @@ Definition entry_skeleton (E : gentry) : option gunit :=
 
 Definition binding_skeleton (b : binding) : option gunit :=
   match b with
-  | b_mod U => Some U
+  | b_mod U | b_def_mod _ _ U => Some U
   | _ => None
   end.
 
@@ -380,6 +380,11 @@ Section OpenError.
         let+ M' := open_expand_exp S M in
         open_success (b_def A' M')
     | b_mod U => let+ U' := open_expand_unit S U in open_success (b_mod U')
+    | b_def_mod A M U =>
+        let+ A' := open_expand_exp S A in
+        let+ M' := open_expand_exp S M in
+        let+ U' := open_expand_unit S U in
+        open_success (b_def_mod A' M' U')
     end
   with open_expand_unit (S : skeleton) (U : gunit) {struct U} : open_result gunit :=
     match U with

@@ -355,6 +355,12 @@ let rec term st env (o : C.expression) : unit =
       let env' = fst (params st env ps) in
       let m = mdef st env' md in
       term st (push x { v with v_mod = m } env) b
+  (* A local alias of a type: its target, a module; the name binds the
+     module it names *)
+  | C.Coq_let_in ((C.Coq_d_ind_alias (x, _, e) | C.Coq_d_record_alias (x, _, e)), b) ->
+      let v = bind st x in
+      let m = module_position st env e in
+      term st (push x { v with v_mod = m } env) b
   (* An eliminator: each block's binders, the scrutinee's type after its
      name, then its motive, then each branch's constructor, which names no
      global here, and its names. *)
@@ -857,6 +863,9 @@ let rec record_selections_exp th (e : S.exp) : (string * S.qname) list =
       record_selections_exp th m @ record_selections_exp th p @ record_selections_exp th n
   | S.Coq_a_let (S.Coq_b_def (a, m), b) -> record_selections_exp th a @ record_selections_exp th m @ record_selections_exp th b
   | S.Coq_a_let (S.Coq_b_mod u, b) -> record_selections_unit th u @ record_selections_exp th b
+  (* A local alias of a type: its target as written; the type and the
+     former are read off it *)
+  | S.Coq_a_let (S.Coq_b_def_mod (_, _, u), b) -> record_selections_unit th u @ record_selections_exp th b
   | S.Coq_a_mem (h, y) -> record_selections_sel th h y
   | S.Coq_a_tuple (t, fs) -> record_selections_exp th t @ List.concat_map (fun (_, m) -> record_selections_exp th m) fs
   | S.Coq_a_elim (_, _, _, _, bks, m) ->

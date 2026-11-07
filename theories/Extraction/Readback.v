@@ -1235,13 +1235,13 @@ Equations fast_read_nf_impl_c s (d : fdomain_nf) (ck : lookup_cache Θ Ξ) (Hd :
     let (A, HA) := fast_read_typ_impl_c s a ck _ _ in
     let (W, HW) := fast_read_nf_impl_c s (fd_dom a v) ck _ _ in
     exist _ (b_def A W) _
-(** The term part of a definition with a module part, as [read_entry_dm]
-    (update when [b_def_mod] lands) *)
+(** A definition with a module part, as [read_entry_dm]: its term part as
+    a definition's, its stored unit as a module's *)
 | s, fde_dm v t h U, ck, He, H =>
     let (a, Ha) := fast_eval_entry_type_impl F t _ _ in
     let (A, HA) := fast_read_typ_impl_c s a ck _ _ in
     let (W, HW) := fast_read_nf_impl_c s (fd_dom a v) ck _ _ in
-    exist _ (b_def A W) _
+    exist _ (b_def_mod A W U) _
 | s, fde_mod h U, ck, He, H => exist _ (b_mod U) _
 
   with fast_read_typ_impl_c s (d : fdomain) (ck : lookup_cache Θ Ξ) (Hd : fdomain_ok Θ Ξ d)

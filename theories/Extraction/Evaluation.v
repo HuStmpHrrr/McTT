@@ -150,6 +150,17 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( eval_close_order Θ Ξ Δ D p ->
      (forall h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ p ↘ h -> eval_exp_order Θ Ξ B (p ↦ᵐ h ⦂ gu_mk Δ D)) ->
      eval_exp_order Θ Ξ (ℓₘ (gu_mk Δ D) in B) p )
+(** A local definition with a module part: its type, its body and the
+    closure of its unit, as its literal evaluates ([eval_me_lit]), then the
+    rest.  The unit's premise is the closure's order, not the literal's,
+    so that the order of the type is read off as a subterm. *)
+| eval_exp_order_let_dm :
+  `( eval_exp_order Θ Ξ A p ->
+     eval_exp_order Θ Ξ M p ->
+     eval_close_order Θ Ξ Δ D p ->
+     (forall a m h, ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ p ↘ h ->
+        eval_exp_order Θ Ξ B (p ↦ᵈ m ⦂ entry_type_value a ‖ h ⦂ gu_mk Δ D)) ->
+     eval_exp_order Θ Ξ (ℓᵈ A ≔ M ‖ (gu_mk Δ D) in B) p )
 | eval_exp_order_mem :
   `( modexp_spine H = (R, args, pre) ->
      eval_modexp_order Θ Ξ R p ->
@@ -1530,6 +1541,14 @@ Section EvalImpl.
   | a_let (b_mod (gu_mk Δ D)) B, p, Hp, H =>
       let (h, Hh) := fast_eval_close_impl Δ D p Hp _ in
       let (r, Hr) := fast_eval_exp_impl B (fextend_env_mod p h (gu_mk Δ D)) _ _ in
+      exist _ r _
+  (** A local definition with a module part: its type, its body, its
+      unit's literal, then the rest under both *)
+  | a_let (b_def_mod A M (gu_mk Δ D)) B, p, Hp, H =>
+      let (a, Ha) := fast_eval_exp_impl A p Hp _ in
+      let (m, Hm) := fast_eval_exp_impl M p Hp _ in
+      let (h, Hh) := fast_eval_close_impl Δ D p Hp _ in
+      let (r, Hr) := fast_eval_exp_impl B (fextend_env_dm p m (fentry_type_value a) h (gu_mk Δ D)) _ _ in
       exist _ r _
   | a_mem M x, p, Hp, H with inspect (modexp_spine M) := {
     | exist _ (R, args, pre) E =>

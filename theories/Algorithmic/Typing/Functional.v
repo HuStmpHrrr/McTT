@@ -132,6 +132,10 @@ Proof.
   - assert (C = C0) as <- by eauto.
     functional_nbe_rewrite_clear.
     reflexivity.
+  (** A [let] with a module part: the same type of the rest. *)
+  - assert (C = C0) as <- by eauto.
+    functional_nbe_rewrite_clear.
+    reflexivity.
   (** A variable: one type in the context. *)
   - match goal with H1 : ?G ∋ #?x : ?T1, H2 : ?G ∋ #?x : ?T2 |- _ =>
       assert_fails constr_eq T1 T2; assert (T1 = T2) as <- by mauto using ctx_lookup_functional end.

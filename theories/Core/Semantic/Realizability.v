@@ -1352,8 +1352,10 @@ Proof.
     apply_relation_equivalence.
     (** The term parts read back at their types, as elements of them. *)
     destruct (entry_readable_of_elem HR Hmm) as [Hrl Hrr].
+    (** The stored units are the entries' own, scoped by their tails. *)
+    pose proof (per_ctx_env_length equiv_Γ_Γ') as Hlen.
     solve_def_heads_pre.
-    apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ (ρ ↦ᵈ m ⦂ entry_type_value a ‖ h ⦂ U) (ρ' ↦ᵈ m' ⦂ entry_type_value a' ‖ h' ⦂ U') Hρ);
+    apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ (ρ ↦ᵈ m ⦂ entry_type_value a ‖ h ⦂ U) (ρ' ↦ᵈ m' ⦂ entry_type_value a' ‖ h' ⦂ U') Hρ);
       unfold env_mod; cbn [env_entry List.hd extend_env_dm]; cbn;
       try solve [ solve_tie ]; try solve_def_heads_post.
     all: try match goal with |- head_readable _ _ => split end.

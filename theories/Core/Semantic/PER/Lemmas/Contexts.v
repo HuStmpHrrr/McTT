@@ -210,7 +210,7 @@ Proof.
       assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [ exact Ht0 | symmetry; exact Ht0 ]).
       assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [ symmetry; exact Ht0 | exact Ht0 ]).
       same_def_sort; solve_def_heads_pre.
-      all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Ht0); try exact Hrl; try exact Hrr; solve_def_heads_post; solve_tie.
+      all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ _ Ht0); try exact Hrl; try exact Hrr; solve_def_heads_post; solve_tie.
     + assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) by (apply IHHorig; exact Ht).
       assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (etransitivity; [ exact Ht0 | symmetry; exact Ht0 ]).
       assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [ symmetry; exact Ht0 | exact Ht0 ]).
@@ -219,7 +219,7 @@ Proof.
           context's tails, which the ties are read at too. *)
       all: assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [ exact Ht | symmetry; exact Ht ]).
       all: assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [ symmetry; exact Ht | exact Ht ]).
-      all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Ht0); try exact Hrl; try exact Hrr; solve_def_heads_post; solve_tie.
+      all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ _ Ht0); try exact Hrl; try exact Hrr; solve_def_heads_post; solve_tie.
 Qed.
 
 Lemma per_ctx_env_sym : forall Γ Δ R,
@@ -335,11 +335,15 @@ Proof.
     simpl in *; destruct_conjs.
     match goal with
     | HU : forall ρ ρ', tail_rel ρ ρ' -> rel_modexp_evals _ _ _ _,
-      HE : env_rel <~> _, Hs : forall ρ ρ', tail_rel ρ ρ' -> tail_rel ρ' ρ |- _ =>
-        rename HU into HU0; rename HE into HE0; rename Hs into Hs0
+      HE : env_rel <~> _, Hs : forall ρ ρ', tail_rel ρ ρ' -> tail_rel ρ' ρ,
+      Hc : per_ctx_env tail_rel ?Γ1 ?Γ2 |- _ =>
+        rename HU into HU0; rename HE into HE0; rename Hs into Hs0;
+        (** The swapped context's tail has as many entries. *)
+        pose proof (per_ctx_env_length Hc) as Hlen
     end.
     split.
-    + eapply per_ctx_env_cons_dm with (head_rel := head_rel) (r := r); [ eassumption | eassumption | | | | | | assumption ].
+    + eapply per_ctx_env_cons_dm with (head_rel := head_rel) (r := r);
+        [ eassumption | eassumption | eassumption | eassumption | | | | | | assumption ].
       * intros ρ ρ' Hρ.
         assert (tail_rel ρ' ρ) by eauto.
         assert (tail_rel ρ ρ) by (etransitivity; eassumption).
@@ -367,7 +371,9 @@ Proof.
       * intros ρ ρ' Hρ; apply rel_modexp_evals_sym, HU0, Hs0, Hρ.
       * intros ρ ρ'; split; intros Hρ;
           [ apply HE0 in Hρ | apply HE0 ]; destruct Hρ as [Ht Hh Hd ? ? ? ? ? ?];
-          (apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Ht); try assumption; apply def_heads_at_swap; assumption).
+          (apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ _ Ht);
+           first [ assumption | rewrite Hlen in *; assumption | rewrite <- Hlen in *; assumption
+                 | apply def_heads_at_swap; assumption ]).
     + intros ρ ρ' Hρ.
       apply HE0 in Hρ; apply HE0.
       destruct Hρ as [e Hh Hd Hul Hul' Hur Hur' Hrl Hrr].
@@ -380,7 +386,7 @@ Proof.
       all: handle_per_univ_elem_irrel.
       all: match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end.
       all: move_by_relation_equivalence.
-      all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ Ht);
+      all: apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ _ Ht);
         try assumption; try solve_entry_kind; try (move_goal_by_relation_equivalence; solve_per); try exact I;
         constructor; eexists; split; try eassumption; move_goal_by_relation_equivalence; solve_per.
 Qed.
@@ -429,7 +435,7 @@ End Fixed_GCtx.
 (** The environments a definition with a module part relates, taken apart
     into their tails, heads and ties. *)
 Ltac destruct_dm_rels :=
-  repeat match goal with H : per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ |- _ => destruct H end.
+  repeat match goal with H : per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ _ |- _ => destruct H end.
 
 (** Those an assumption and a definition relate, likewise. *)
 Ltac destruct_cons_rels :=
@@ -628,7 +634,8 @@ Proof with solve [eauto using per_univ_trans].
         definition, the right unit as a slot, each moved across the middle
         one. *)
     destruct IHper_ctx_env as [IHctx IHenv].
-    eapply per_ctx_env_cons_dm with (head_rel := head_rel) (r := ak_relevant); [ eauto | eassumption | | | | | | reflexivity ].
+    eapply per_ctx_env_cons_dm with (head_rel := head_rel) (r := ak_relevant);
+      [ eauto | eassumption | eassumption | eassumption | | | | | | reflexivity ].
     + intros.
       assert (tail_rel ρ ρ) by intuition.
       assert (tail_rel0 ρ ρ') by intuition.
