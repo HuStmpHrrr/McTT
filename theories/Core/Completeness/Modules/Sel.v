@@ -619,7 +619,8 @@ Proof.
     split; [| exact HK ].
     exact (valid_sel_resp_r _ _ _ _ _ HS (rel_modexp_under_ctx_beta_alias0 _ _ (valid_unit_rel _ _ Hgf _ _ HK))).
   - destruct (rel_alias_unit_up _ _ Hgm Hgf Γ (e :: Δ0) X l ltac:(discriminate) HΔ HΔw HΔr Hm
-                (up_unit_levels _ _ Hgm _ _ _ Hm HwU) HK) as [Hup HKup].
+                (up_unit_levels _ _ Hgm _ _ _ Hm HwU) HK (up_unit_frame_free _ _ Hgm _ _ _ Hm HwU ltac:(discriminate)))
+      as [Hup HKup].
     split; [ exact (valid_sel_resp_r _ _ _ _ _ HS Hup) | exact HKup ].
 Qed.
 

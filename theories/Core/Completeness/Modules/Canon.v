@@ -108,9 +108,10 @@ Lemma rel_alias_unit_up : forall Γ Δ X l, Δ <> nil -> all_assumptions Δ -> p
     mdesc_is_mod X ->
     (forall R, mdenote Θm Ξm (Δ ++ Γ) (mdesc_unit X) R -> desc_levels_abstractable Θm Ξm Γ Δ R) ->
     valid_unit (Δ ++ Γ) (mdesc_unit X) ->
+    frame_free_target Θm Ξm (Δ ++ Γ) (mdesc_unit X) ->
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias (mdesc_unit X))) ≈ mdesc_unit (mdesc_up Δ X) /\ valid_unit Γ (mdesc_unit (mdesc_up Δ X)).
 Proof.
-  intros * Hne HΔ HΔw HΔr Hm HΔa HK.
+  intros * Hne HΔ HΔw HΔr Hm HΔa HK Hff.
   destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θd Ad Md Rm]; cbn in Hm; try contradiction;
     cbn [mdesc_up mdesc_unit] in HK, HΔa |- *.
   - (* a local body *)
@@ -138,7 +139,7 @@ Proof.
         | exact (levels_flag_sorted _ _ _ _ _ _ _ HF) | exact (levels_flag_denotes _ _ _ _ _ _ _ HF)
         | exact (levels_flag_no_level _ _ _ _ _ _ _ HF)
         | exact (levels_flag_sorted _ _ _ _ _ _ _ HF) | exact (levels_flag_denotes _ _ _ _ _ _ _ HF)
-        | exact (levels_flag_no_level _ _ _ _ _ _ _ HF) ]
+        | exact (levels_flag_no_level _ _ _ _ _ _ _ HF) | exact Hff | exact Hff ]
                     | exact HΔ | exists l; exact HΔr | exact (rel_ctx_wf_app_r _ _ HC) | exact HC | exact HL | exact HE | ].
     destruct (me_denotes _ _ _ _ _ HwE) as (R & Rm & HmR & HmdR).
     exact (valid_modexp_intro _ _ _ _ _ _ _ _ HwE HmR HmdR HE HK HmR HmdR).
@@ -183,14 +184,22 @@ Proof.
       (* the alias's flag: what the unit of the target's module part
          denotes has the module part the target's has *)
       assert (HΔa : forall R, mdenote Θm Ξm ((e :: Δ0) ++ Γ) (mdesc_unit REm) R -> desc_levels_abstractable Θm Ξm Γ (e :: Δ0) R).
-      { destruct Hf as [_ _ _ _ _ HEE _ lv Rt [Hf1 Hf2 Hf3]]; intros R HR; destruct lv; [ left; exact (Hf1 eq_refl) | right ].
+      { destruct Hf as [_ _ _ _ _ HEE _ lv Rt [Hf1 Hf2 Hf3] _]; intros R HR; destruct lv; [ left; exact (Hf1 eq_refl) | right ].
         pose proof (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hgm HmE) HmdE) as Hcan.
         destruct (mdesc_unit_denote _ _ _ Hgm Hcan Him _ (wf_mdenote_mod_xp _ _ _ _ _ _ _ HEE HmE HmdE)) as (Ru & Hmu & Hmdu).
         rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HR _ Hmu).
         rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HmE _ (Hf2 eq_refl)) in HmdE.
         exact (no_level_of_mod _ _ _ _ _ Hmdu (no_level_mod _ _ _ _ _ (Hf3 eq_refl) HmdE)). }
+      (* the unit of the target's module part is no module still being
+         defined, as the target is not *)
+      assert (HffU : frame_free_target Θm Ξm ((e :: Δ0) ++ Γ) (mdesc_unit REm)).
+      { destruct Hf as [_ _ _ _ _ HEE _ _ _ _ (Rf & Hmf & Hnf)].
+        rewrite <- (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ HmE _ Hmf) in Hnf.
+        apply (mdesc_unit_frame_free _ _ Hgm);
+          [ exact (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hgm HmE) HmdE) | exact Him
+          | exact (wf_mdenote_mod_xp _ _ _ _ _ _ _ HEE HmE HmdE) | intros Hr; exact (Hnf (desc_reads_frame_mod _ _ _ HmdE Hr)) ]. }
       destruct (rel_alias_unit_up Γ (e :: Δ0) REm (max lw lr) ltac:(discriminate) HΔ (params_evaluated_max _ _ _ _ _ _ HΔw)
-                  (rel_params_evaluated_ge _ _ lr (max lw lr) ltac:(lia) HΔr) Him HΔa HKu) as [Hup HKup].
+                  (rel_params_evaluated_ge _ _ lr (max lw lr) ltac:(lia) HΔr) Him HΔa HKu HffU) as [Hup HKup].
       split; [| exact HKup ].
       eapply rel_modexp_under_ctx_trans; [| exact Hup ].
       exact (rel_lit_alias _ _ _ _ _ (ext_refl _ _ HΔΓ) HΔ HΔ eq_refl HEu (rel_modexp_refl_right HEu)).

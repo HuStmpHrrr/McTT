@@ -1673,3 +1673,31 @@ Proof.
     rewrite <- List.app_assoc in Hn1.
     exact (proj2 (no_level_up_mod _ _ _ _ _ (mdesc_mod_is_mod _ _ HmdE)) (no_level_mod _ _ _ _ _ Hn1 HmdE)).
 Qed.
+
+(** The same for the frame premise: the unit of a module part that a
+    well-formed unit abstracts over parameters is no module still being
+    defined there, as that unit's alias target is not. *)
+Lemma up_unit_frame_free : forall Θm Ξm, ⊢ᵍ Θm ⍮ Ξm -> forall Γ Δ X, mdesc_is_mod X ->
+    Θm ⍮ Ξm ⍮ Γ ⊢ᵐ mdesc_unit (mdesc_up Δ X) ≈ mdesc_unit (mdesc_up Δ X) -> Δ <> nil ->
+    frame_free_target Θm Ξm (Δ ++ Γ) (mdesc_unit X).
+Proof.
+  intros Θm Ξm Hgm * Hm Hw Hne.
+  pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf.
+  destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θd Ad Md Rm]; cbn in Hm; try contradiction;
+    cbn [mdesc_up mdesc_unit gen_m unit_full] in Hf |- *.
+  - (* an open module part: a body, which denotes an open description *)
+    destruct Hf as [Φx' es lp ps Hps Hx].
+    exists (mdesc_open Δe Φ Φx'); split.
+    + apply mdenote_lit; eapply udenote_body; [ rewrite List.app_assoc; exact Hx | reflexivity ].
+    + intros (? & ? & ? & ? & ? & Hm' & _); cbn in Hm'; discriminate.
+  - (* a filed module at arguments: the alias's own target *)
+    destruct Δ as [| e0 Δ0]; [ contradiction |].
+    destruct Hf as [lp ps Hps HC Ha HE Hp lv Rt HF Hff]; exact Hff.
+  - (* an alias of a filed module at arguments: its target, abstracted *)
+    destruct Hf as [lp ps Hps HC Ha HE Hp lv Rt HF (R1 & Hm1 & Hn1)].
+    destruct (me_denotes _ _ _ _ _ HE) as (R2 & R2m & Hm2 & Hmd2).
+    rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm2 _ Hm1) in Hmd2.
+    exists (mdesc_up (e :: Θ') R2m); split.
+    + apply mdenote_lit; eapply udenote_alias; [ rewrite List.app_assoc; exact Hm1 | exact Hmd2 ].
+    + intros Hr; apply Hn1; exact (desc_reads_frame_mod _ _ _ Hmd2 (proj1 (desc_reads_frame_up _ _ _) Hr)).
+Qed.
