@@ -132,6 +132,7 @@ Proof.
     try first [ exact HE | constructor | intros [=]
               | intros Δ1 ? ? ? Ex; destruct Δ1; discriminate | intros _ Δ1 ? ? ? Ex; destruct Δ1; discriminate ].
   all: try (intros Δ1 ? ? ? Ex; destruct Δ1; discriminate).
+  all: try discriminate.
   exact (presup_modexp_eq_ctx HE).
 Qed.
 
