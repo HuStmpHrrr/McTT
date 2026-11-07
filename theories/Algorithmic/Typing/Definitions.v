@@ -290,6 +290,22 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      κC <> ak_level ->
      nbe_ty_f Γ C[Id ,,ₘ me_lit U] D ->
      Γ ⊢a ℓₘ U in B ⟹ D )
+(** A local definition with a module part: its type infers a large
+    universe and its body is checked against it, as for a definition; its
+    unit, an alias under no parameters, is checked as a local module's; the
+    body's type is as for [alg_type_infer_let_mod] ([wf_let_dm]).  A unit of
+    another shape infers nothing. *)
+| alg_type_infer_let_dm :
+  `( Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
+     Γ ⊢a M ⟸ A ->
+     Γ ⊢aᵘ gu_mk nil (md_alias E) ->
+     Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢a B ⟹ C ->
+     nf_to_exp C <> LevelSort ->
+     nbe_ty_kind (Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)) C κC ->
+     κC <> ak_level ->
+     nbe_ty_f Γ C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] D ->
+     Γ ⊢a ℓᵈ A ≔ M ‖ gu_mk nil (md_alias E) in B ⟹ D )
 (** A member infers the normal form of the term part of what it denotes.
     Neither that type nor the member's δ-reduct is checked: of a well-formed
     module, the one is a type and the other inhabits it. *)

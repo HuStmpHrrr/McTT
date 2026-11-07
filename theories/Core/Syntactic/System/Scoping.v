@@ -57,6 +57,7 @@ with binding_scoped (n : nat) (b : binding) : Prop :=
   match b with
   | b_def A M => exp_scoped n A /\ exp_scoped n M
   | b_mod U => gunit_scoped n U
+  | b_def_mod A M U => exp_scoped n A /\ exp_scoped n M /\ gunit_scoped n U
   end
 with gunit_scoped (n : nat) (U : gunit) : Prop :=
   match U with

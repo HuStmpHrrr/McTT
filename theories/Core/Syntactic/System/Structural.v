@@ -208,6 +208,12 @@ Proof.
   inversion 1; repeat split; eauto using presup_exp_ctx.
 Qed.
 
+(** The unit of a definition with a module part is an alias under no
+    parameters ([wf_ctx_extend_dm]). *)
+Lemma ctx_decomp_dm_alias : forall {Θ Ξ Γ A M U},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U -> exists E, U = gu_mk nil (md_alias E).
+Proof. inversion 1; eauto. Qed.
+
 Corollary ctx_decomp_dm_left : forall {Θ Ξ Γ A M U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U -> ⊢ Θ ⍮ Ξ ⍮ Γ.
 Proof. intros * ?%ctx_decomp_dm; easy. Qed.
 
@@ -346,6 +352,25 @@ Lemma wf_wk_q_mod : forall Θ Ξ Γ Δ φ U,
     Θ ⍮ Ξ ⍮ Δ ▹ₘ gunit_wk U φ ⊢ʷ wk_q φ : Γ ▹ₘ U.
 Proof.
   intros * Hφ ? ?; apply (wf_wk_q_gen _ _ _ _ _ (ce_mod U)); mauto 2.
+Qed.
+
+(** The same over a definition with a module part, whose unit is an alias
+    under no parameters ([wf_ctx_extend_dm]): the weakened unit is again one. *)
+Lemma wf_wk_q_dm : forall Θ Ξ Γ Δ φ A M E i,
+    Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]ʷ : A[φ]ʷ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gu_mk nil (md_alias (modexp_wk E φ)) ≈ gu_mk nil (md_alias (modexp_wk E φ)) ->
+    Θ ⍮ Ξ ⍮ Δ ▸ₘ A[φ]ʷ ≔ M[φ]ʷ ‖ gu_mk nil (md_alias (modexp_wk E φ)) ⊢ʷ wk_q φ
+      : Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E).
+Proof.
+  intros * Hφ ? ? ? ? ? HU.
+  assert (Hc : centry_wk (ce_dm A M (gu_mk nil (md_alias E))) φ = ce_dm A[φ]ʷ M[φ]ʷ (gu_mk nil (md_alias (modexp_wk E φ))))
+    by (cbn [centry_wk]; rewrite gunit_wk_mk; reflexivity).
+  rewrite <- Hc; apply wf_wk_q_gen; [ assumption | rewrite Hc | ]; eapply wf_ctx_extend_dm; eassumption.
 Qed.
 
 (** Lifting over a whole extension, given that both extended contexts are
@@ -2738,7 +2763,6 @@ Proof.
         destruct (wf_wk_ext_of_ext _ _ _ _ _ _ _ Hφ Hx (IHx _ _ Hφ)) as [Hl Hr];
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         first [ eapply wf_ext_eq_mod; [ exact (IHx _ _ Hφ) | .. ]; rewrite ?Hlen in *; eauto
-              | eapply wf_ext_eq_dm; [ exact (IHx _ _ Hφ) | .. ]; rewrite ?Hlen in *; eauto
               | match goal with
                 | HA : wf_exp _ _ (Ψ ++ Γ) ?S ?A, HA' : wf_exp _ _ (Ψ' ++ Γ) ?S' ?A' |- _ =>
                     let HS := fresh "HS" in
@@ -2911,6 +2935,47 @@ Proof.
       IHE : forall _ _, wf_wk _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_wk ?E _) _ |- _ =>
         cbn [modexp_wk gunit_wk moddef_wk tele_wk List.length wk_qn];
         eapply wf_me_beta_alias0; [ exact (IHE _ _ Hφ) | exact (wk_frame_free0 _ _ _ _ _ _ Hφ HE Hf) ]
+    end ].
+  (** The definitions with a module part: the unit is an alias under no
+      parameters, and its weakening is again one ([gunit_wk_mk]); the
+      weakening lifts over the entry by [wf_wk_q_dm]. *)
+  all: try solve [ match goal with
+    | IHU : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_unit_eq _ _ _ (gunit_wk (gu_mk nil (md_alias _)) _) (gunit_wk (gu_mk nil (md_alias _)) _),
+      Hφ : wf_wk _ _ ?Δ ?Γ ?φ |- _ =>
+        pose proof (IHU _ _ Hφ) as HUφ; rewrite !gunit_wk_mk in HUφ; cbn [tele_wk moddef_wk List.length wk_qn] in HUφ;
+        rewrite ?exp_wk_sub_extend_dm; cbn [modexp_wk]; rewrite ?gunit_wk_mk; cbn [tele_wk moddef_wk List.length wk_qn];
+        first [ eapply wf_let_dm | eapply wf_exp_eq_let_dm_zeta ];
+        eauto 6 using wf_wk_q_dm, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop, module_body_universe, module_body_prop
+    end ].
+  all: try solve [ match goal with
+    | IHU : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_unit_eq _ _ _ (gunit_wk (gu_mk nil (md_alias _)) _) (gunit_wk (gu_mk nil (md_alias _)) _),
+      IHL : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_exp _ _ _ _ (a_let (b_def_mod _ _ _) _),
+      Hφ : wf_wk _ _ ?Δ ?Γ ?φ |- _ =>
+        pose proof (IHU _ _ Hφ) as HUφ; pose proof (IHL _ _ Hφ) as HL;
+        rewrite ?exp_wk_sub_extend_dm in HL |- *; cbn [modexp_wk] in HL |- *;
+        rewrite !gunit_wk_mk in HUφ, HL |- *; cbn [tele_wk moddef_wk List.length wk_qn] in HUφ, HL |- *;
+        eapply wf_exp_eq_let_dm_cong;
+        [ eauto | eauto | eauto | eauto | exact HUφ
+        | match goal with IHC : forall _ _, wf_wk _ _ _ (ce_dm _ _ _ :: _) _ -> wf_exp _ _ _ _ ?C[_]ʷ |- wf_exp _ _ _ _ ?C[_]ʷ =>
+            apply IHC; eapply wf_wk_q_dm; eauto using wf_unit_eq_refl_left end
+        | eauto using module_body_universe, module_body_prop
+        | match goal with IHB : forall _ _, wf_wk _ _ _ (ce_dm _ _ _ :: _) _ -> wf_exp_eq _ _ _ _ _ _ |- _ =>
+            apply IHB; eapply wf_wk_q_dm; eauto using wf_unit_eq_refl_left end
+        | exact HL ]
+    end ].
+  all: try solve [ cbn [tele_wk];
+    match goal with
+    | Hx : wf_ext_eq _ _ ?Γ ?Ψ ?Ψ', IHx : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_ext_eq _ _ _ (tele_wk ?Ψ _) (tele_wk ?Ψ' _),
+      IHU : forall _ _, wf_wk _ _ _ (?Ψ ++ ?Γ) _ -> wf_unit_eq _ _ _ (gunit_wk (gu_mk nil (md_alias _)) _) _,
+      IHV : forall _ _, wf_wk _ _ _ (?Ψ' ++ ?Γ) _ -> wf_unit_eq _ _ _ (gunit_wk (gu_mk nil (md_alias _)) _) _,
+      Hφ : wf_wk _ _ ?Δ ?Γ ?φ |- wf_ext_eq _ _ _ (cons (ce_dm _ _ _) _) _ =>
+        let Hl := fresh "Hl" in
+        let Hr := fresh "Hr" in
+        destruct (wf_wk_ext_of_ext _ _ _ _ _ _ _ Hφ Hx (IHx _ _ Hφ)) as [Hl Hr];
+        pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
+        pose proof (IHU _ _ Hl) as HU1; pose proof (IHV _ _ Hr) as HU2;
+        rewrite !gunit_wk_mk in HU1, HU2 |- *; cbn [tele_wk moddef_wk List.length wk_qn] in HU1, HU2 |- *;
+        eapply wf_ext_eq_dm; [ exact (IHx _ _ Hφ) |..]; rewrite ?Hlen in *; eauto
     end ].
   (** A body unit is its expansion: expansion commutes with weakening. *)
   all: match goal with H0 : forall _ _, _ -> wf_unit_eq _ _ _ (gunit_wk (gu_open _ _) _) _, H1 : wf_wk _ _ _ _ _ |- _ =>
@@ -3210,16 +3275,17 @@ Qed.
 
 (** Extension into a definition with a module part: the term part must
     equal the substituted body, and the module part is the literal of the
-    substituted unit. *)
-Lemma wf_sub_extend_dm : forall Θ Ξ Γ Δ σ A M U N i,
+    substituted unit.  The unit is an alias under no parameters, as
+    [wf_ctx_extend_dm] requires. *)
+Lemma wf_sub_extend_dm : forall Θ Ξ Γ Δ σ A M E N i,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ M[σ] : A[σ] ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ,,ᵈ N ‖ me_lit U[σ]ᵘ : Δ ▸ₘ A ≔ M ‖ U.
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ (gu_mk nil (md_alias E))[σ]ᵘ ≈ (gu_mk nil (md_alias E))[σ]ᵘ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ,,ᵈ N ‖ me_lit (gu_mk nil (md_alias E))[σ]ᵘ : Δ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E).
 Proof.
   intros * Hσ ? ? ? ? ? ?; apply wf_sub_extend_gen; [ assumption | mauto 2 | | |];
     intros * Hlk; inversion Hlk; subst; cbn.
@@ -3259,13 +3325,13 @@ Qed.
 
 (** The single substitution into a definition with a module part, by its
     own body and unit. *)
-Corollary wf_sub_single_dm : forall Θ Ξ Γ A M U i,
+Corollary wf_sub_single_dm : forall Θ Ξ Γ A M E i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id ,,ᵈ M ‖ me_lit U : Γ ▸ₘ A ≔ M ‖ U.
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E)) : Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E).
 Proof.
-  intros; rewrite <- (gunit_sub_id U) at 2.
+  intros; rewrite <- (gunit_sub_id (gu_mk nil (md_alias E))) at 2.
   eapply wf_sub_extend_dm; [ mauto 3 | eassumption | eassumption | eassumption
                            | rewrite exp_sub_id; eassumption | | rewrite ?gunit_sub_id; assumption ].
   rewrite !exp_sub_id; mauto 2.
@@ -3366,6 +3432,25 @@ Lemma wf_sub_q_mod : forall Θ Ξ Γ Δ σ U,
     Θ ⍮ Ξ ⍮ Γ ▹ₘ U[σ]ᵘ ⊢ˢ q σ : Δ ▹ₘ U.
 Proof.
   intros * Hσ ? ?; apply (wf_sub_q_gen _ _ _ _ _ (ce_mod U)); mauto 2.
+Qed.
+
+(** The lifted substitution over a definition with a module part, whose unit
+    is an alias under no parameters ([wf_ctx_extend_dm]): the substituted
+    unit is again one. *)
+Lemma wf_sub_q_dm : forall Θ Ξ Γ Δ σ A M E i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] : A[σ] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E[σ]ᵐ) ≈ gu_mk nil (md_alias E[σ]ᵐ) ->
+    Θ ⍮ Ξ ⍮ Γ ▸ₘ A[σ] ≔ M[σ] ‖ gu_mk nil (md_alias E[σ]ᵐ) ⊢ˢ q σ : Δ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E).
+Proof.
+  intros * Hσ ? ? ? ? ? HU.
+  assert (Hc : centry_sub (ce_dm A M (gu_mk nil (md_alias E))) σ = ce_dm A[σ] M[σ] (gu_mk nil (md_alias E[σ]ᵐ)))
+    by (cbn [centry_sub]; rewrite gunit_sub_mk; reflexivity).
+  rewrite <- Hc; apply wf_sub_q_gen; [ assumption | rewrite Hc | ]; eapply wf_ctx_extend_dm; eassumption.
 Qed.
 
 (** Lifting over a whole extension, given that both extended contexts are
@@ -4030,7 +4115,6 @@ Proof.
         destruct (wf_sub_ext_of_ext _ _ _ _ _ _ _ Hσ Hx (IHx _ _ Hσ)) as [Hl Hr];
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
         first [ eapply wf_ext_eq_mod; [ exact (IHx _ _ Hσ) | .. ]; rewrite ?Hlen in *; eauto
-              | eapply wf_ext_eq_dm; [ exact (IHx _ _ Hσ) | .. ]; rewrite ?Hlen in *; eauto
               | match goal with
                 | HA : wf_exp _ _ (Ψ ++ Γ) ?S ?A, HA' : wf_exp _ _ (Ψ' ++ Γ) ?S' ?A' |- _ =>
                     let HS := fresh "HS" in
@@ -4174,6 +4258,47 @@ Proof.
       IHE : forall _ _, wf_sub _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub ?E _) _ |- _ =>
         cbn [modexp_sub gunit_sub moddef_sub tele_sub List.length sb_qn];
         eapply wf_me_beta_alias0; [ exact (IHE _ _ Hσ) | exact (sub_frame_free0 _ _ _ _ _ _ Hσ HE Hf) ]
+    end ].
+  (** The definitions with a module part: the unit is an alias under no
+      parameters, and its substitution is again one ([gunit_sub_mk]); the
+      substitution lifts over the entry by [wf_sub_q_dm]. *)
+  all: try solve [ match goal with
+    | IHU : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_unit_eq _ _ _ (gunit_sub (gu_mk nil (md_alias _)) _) (gunit_sub (gu_mk nil (md_alias _)) _),
+      Hσ : wf_sub _ _ ?Δ ?Γ ?σ |- _ =>
+        pose proof (IHU _ _ Hσ) as HUσ; rewrite !gunit_sub_mk in HUσ; cbn [tele_sub moddef_sub List.length sb_qn] in HUσ;
+        rewrite ?exp_sub_sub_extend_dm; cbn [modexp_sub]; rewrite ?gunit_sub_mk; cbn [tele_sub moddef_sub List.length sb_qn];
+        first [ eapply wf_let_dm | eapply wf_exp_eq_let_dm_zeta ];
+        eauto 6 using wf_sub_q_dm, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop, module_body_universe, module_body_prop
+    end ].
+  all: try solve [ match goal with
+    | IHU : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_unit_eq _ _ _ (gunit_sub (gu_mk nil (md_alias _)) _) (gunit_sub (gu_mk nil (md_alias _)) _),
+      IHL : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_exp _ _ _ _ (a_let (b_def_mod _ _ _) _),
+      Hσ : wf_sub _ _ ?Δ ?Γ ?σ |- _ =>
+        pose proof (IHU _ _ Hσ) as HUσ; pose proof (IHL _ _ Hσ) as HL;
+        rewrite ?exp_sub_sub_extend_dm in HL |- *; cbn [modexp_sub] in HL |- *;
+        rewrite !gunit_sub_mk in HUσ, HL |- *; cbn [tele_sub moddef_sub List.length sb_qn] in HUσ, HL |- *;
+        eapply wf_exp_eq_let_dm_cong;
+        [ eauto | eauto | eauto | eauto | exact HUσ
+        | match goal with IHC : forall _ _, wf_sub _ _ _ (ce_dm _ _ _ :: _) _ -> wf_exp _ _ _ _ ?C[_] |- wf_exp _ _ _ _ ?C[_] =>
+            apply IHC; eapply wf_sub_q_dm; eauto using wf_unit_eq_refl_left end
+        | eauto using module_body_universe, module_body_prop
+        | match goal with IHB : forall _ _, wf_sub _ _ _ (ce_dm _ _ _ :: _) _ -> wf_exp_eq _ _ _ _ _ _ |- _ =>
+            apply IHB; eapply wf_sub_q_dm; eauto using wf_unit_eq_refl_left end
+        | exact HL ]
+    end ].
+  all: try solve [ cbn [tele_sub];
+    match goal with
+    | Hx : wf_ext_eq _ _ ?Γ ?Ψ ?Ψ', IHx : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_ext_eq _ _ _ (tele_sub ?Ψ _) (tele_sub ?Ψ' _),
+      IHU : forall _ _, wf_sub _ _ _ (?Ψ ++ ?Γ) _ -> wf_unit_eq _ _ _ (gunit_sub (gu_mk nil (md_alias _)) _) _,
+      IHV : forall _ _, wf_sub _ _ _ (?Ψ' ++ ?Γ) _ -> wf_unit_eq _ _ _ (gunit_sub (gu_mk nil (md_alias _)) _) _,
+      Hσ : wf_sub _ _ ?Δ ?Γ ?σ |- wf_ext_eq _ _ _ (cons (ce_dm _ _ _) _) _ =>
+        let Hl := fresh "Hl" in
+        let Hr := fresh "Hr" in
+        destruct (wf_sub_ext_of_ext _ _ _ _ _ _ _ Hσ Hx (IHx _ _ Hσ)) as [Hl Hr];
+        pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
+        pose proof (IHU _ _ Hl) as HU1; pose proof (IHV _ _ Hr) as HU2;
+        rewrite !gunit_sub_mk in HU1, HU2 |- *; cbn [tele_sub moddef_sub List.length sb_qn] in HU1, HU2 |- *;
+        eapply wf_ext_eq_dm; [ exact (IHx _ _ Hσ) |..]; rewrite ?Hlen in *; eauto
     end ].
   all: match goal with H0 : forall _ _, _ -> wf_unit_eq _ _ _ (gunit_sub (gu_open _ _) _) _, H1 : wf_sub _ _ _ _ _ |- _ =>
          pose proof (H0 _ _ H1) as HU' end.
@@ -4436,8 +4561,9 @@ Proof.
 Qed.
 
 (** A definition with a module part refines one of a supertype with an
-    equal body and the same unit. *)
-Lemma wf_sub_id_extend_dm : forall Θ Ξ Γ Δ A A' M M' U i,
+    equal body and the same unit, an alias under no parameters as
+    [wf_ctx_extend_dm] requires. *)
+Lemma wf_sub_id_extend_dm : forall Θ Ξ Γ Δ A A' M M' E i,
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
@@ -4445,14 +4571,14 @@ Lemma wf_sub_id_extend_dm : forall Θ Ξ Γ Δ A A' M M' U i,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' ≈ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
-    Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ U ⊢ˢ Id : Γ ▸ₘ A ≔ M ‖ U.
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E) ⊢ˢ Id : Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E).
 Proof.
   intros * HId ? ? ? ? ? ? ? ?; saturate_sub.
-  assert (⊢ Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ U) by (econstructor; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ U ⊢ʷ ↑ : Δ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ U ⊢ A'[↑]ʷ ⊆ A[↑]ʷ) by (eapply wk_preserves_subtyp; eassumption).
+  assert (⊢ Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E)) by (econstructor; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E) ⊢ʷ ↑ : Δ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E) ⊢ A'[↑]ʷ ⊆ A[↑]ʷ) by (eapply wk_preserves_subtyp; eassumption).
   eapply wf_sub_id_extend_gen; [ eassumption | eassumption | econstructor; eassumption | | |];
     intros * Hlk; inversion Hlk; subst.
   - eapply wf_exp_subtyp'; [ mauto 2 | eassumption ].

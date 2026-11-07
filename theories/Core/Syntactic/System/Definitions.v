@@ -413,12 +413,14 @@ Inductive wf_ctx : gdeps -> gstack -> ctx -> Prop :=
      ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U )
 (** A definition with a module part: a definition and a module slot.  Its
     type is a type of a universe: what has a module part is never a
-    proof. *)
+    proof.  Its module part is an alias under no parameters: a local
+    alias is never parameterized, and names no module still being defined
+    ([wf_unit_eq_alias]). *)
 | wf_ctx_extend_dm :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-     ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U )
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+     ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) )
 where "⊢ Θ ⍮ Ξ ⍮ Γ" := (wf_ctx Θ Ξ Γ) : type_scope
 
 with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
@@ -646,17 +648,18 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : C[Id ,,ₘ me_lit U] )
 (** A local definition with a module part: its term part as a definition
     of a type of a large universe, as a definition with a module part is
-    relevant ([wf_ext_eq_dm]), and its unit as a local module, the body's
-    type premised to be a type as for [wf_let_mod] *)
+    relevant ([wf_ext_eq_dm]), and its module part an alias under no
+    parameters, as the command's is; the body's type premised to be a type
+    as for [wf_let_mod] *)
 | wf_let_dm :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ C : Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : Srt ->
      type_sort Srt ->
      module_body_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ B : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in B : C[Id ,,ᵈ M ‖ me_lit U] )
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ gu_mk nil (md_alias E) in B : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] )
 (** A member: the module expression is well formed and looks the member up
     ([mdenote] of the selection) as a term, at the type the lookup reads.
     This is the only typing rule for members.  The type is premised to be a
@@ -938,12 +941,13 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
-     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ C : Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E') ->
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : Srt ->
      module_body_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ B ≈ B' : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A' ≔ M' ‖ U' in B' : C[Id ,,ᵈ M ‖ me_lit U] ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in B ≈ ℓᵈ A' ≔ M' ‖ U' in B' : C[Id ,,ᵈ M ‖ me_lit U] )
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ B ≈ B' : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A' ≔ M' ‖ gu_mk nil (md_alias E') in B' : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ gu_mk nil (md_alias E) in B ≈ ℓᵈ A' ≔ M' ‖ gu_mk nil (md_alias E') in B'
+       : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] )
 (** Members of equivalent module expressions, both looked up as terms, at
     the type the left one is looked up at.  The right-hand side is premised
     to be typed there, as presupposition needs it before any lemma relating
@@ -1110,12 +1114,13 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_let_dm_zeta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ C : Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : Srt ->
      type_sort Srt ->
      module_body_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ B : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in B ≈ B[Id ,,ᵈ M ‖ me_lit U] : C[Id ,,ᵈ M ‖ me_lit U] )
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ gu_mk nil (md_alias E) in B ≈ B[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))]
+       : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] )
 (** [δ] for members: a member is the δ-reduct the lookup reads: the body of
     a transparent definition at the arguments, the name of a filed axiom or
     abstract definition at them, or a type former. *)
@@ -1359,7 +1364,7 @@ with wf_ext_eq : gdeps -> gstack -> ctx -> ctx -> ctx -> Prop :=
      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ᵘ U' ≈ U' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ₘ U ≈ Ψ' ▹ₘ U' )
 (** A definition with a module part: as a definition and as a module
-    slot. *)
+    slot, an alias under no parameters ([wf_ctx_extend_dm]). *)
 | wf_ext_eq_dm :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Typeω@i ->
@@ -1368,9 +1373,9 @@ with wf_ext_eq : gdeps -> gstack -> ctx -> ctx -> ctx -> Prop :=
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M ≈ M' : A ->
      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Typeω@i ->
      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ M' : A' ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ᵘ U ≈ U' ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ᵘ U' ≈ U' ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▸ₘ A ≔ M ‖ U ≈ Ψ' ▸ₘ A' ≔ M' ‖ U' )
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E') ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ᵘ gu_mk nil (md_alias E') ≈ gu_mk nil (md_alias E') ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ≈ Ψ' ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E') )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" := (wf_ext_eq Θ Ξ Γ Ψ Ψ') : type_scope
 
 (** Units.  Each side of a body unit is well formed where it stands: its

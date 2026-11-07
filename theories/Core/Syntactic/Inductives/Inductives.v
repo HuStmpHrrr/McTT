@@ -1250,6 +1250,7 @@ with binding_mvc (n : nat) (b : binding) : Prop :=
   match b with
   | b_def A M => exp_mvc n A /\ exp_mvc n M
   | b_mod U => gunit_mvc n U
+  | b_def_mod A M U => exp_mvc n A /\ exp_mvc n M /\ gunit_mvc n U
   end
 with gunit_mvc (n : nat) (U : gunit) : Prop :=
   match U with

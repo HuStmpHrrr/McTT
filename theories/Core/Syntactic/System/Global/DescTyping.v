@@ -265,7 +265,8 @@ Proof.
     eapply IH; [ eauto using presup_unit_eq_ctx |].
     eapply wf_let_mod_sort; [ eassumption | exact HA | apply HC | apply HCn ].
   - (** A definition with a module part is substituted by its body and
-        unit. *)
+        unit, an alias under no parameters ([wf_ctx_extend_dm]). *)
+    match goal with HU : wf_unit_eq _ _ _ (gu_mk nil (md_alias ?E0)) _ |- _ => set (U := gu_mk nil (md_alias E0)) in * end.
     eapply IH with (i := i); [ eauto using presup_exp_ctx |].
     rewrite <- (type_sort_sub _ (Id ,,ᵈ N ‖ me_lit U) (HC i)).
     eapply sub_preserves_exp; [ eassumption | eapply wf_sub_single_dm; eassumption ].
@@ -308,7 +309,9 @@ Proof.
     eapply wf_subtyp_refl; [ eassumption | apply HC |].
     eapply wf_exp_eq_sym, wf_exp_eq_let_mod_zeta_sort; [ eassumption | exact HA | apply HC | apply HCn ].
   - (** A definition with a module part: the body and the type are
-        substituted alike. *)
+        substituted alike.  The unit is an alias under no parameters
+        ([wf_ctx_extend_dm]). *)
+    match goal with HU : wf_unit_eq _ _ _ (gu_mk nil (md_alias ?E0)) _ |- _ => set (U := gu_mk nil (md_alias E0)) in * end.
     assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ˢ Id ,,ᵈ N ‖ me_lit U : (Δ ++ Γ) ▸ₘ B ≔ N ‖ U) by (eapply wf_sub_single_dm; eassumption).
     eapply IH with (i := i); [ eauto using presup_exp_ctx | |].
     + rewrite <- (type_sort_sub _ (Id ,,ᵈ N ‖ me_lit U) (HC i)); eapply sub_preserves_exp; eassumption.
@@ -606,7 +609,7 @@ Proof.
       eapply wf_ext_eq_mod; [ apply IH; eauto using presup_unit_eq_ctx | exact HU | exact HU ] end.
   - inversion H; subst.
     match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@_, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A,
-                    HU : _ ⍮ _ ⍮ X ++ Γ ⊢ᵘ U ≈ U |- _ =>
+                    HU : _ ⍮ _ ⍮ X ++ Γ ⊢ᵘ ?U ≈ ?U |- _ =>
       eapply wf_ext_eq_dm;
         [ apply IH; eauto using presup_exp_ctx | exact HA | eapply wf_exp_eq_refl; exact HA | exact HM
         | eapply wf_exp_eq_refl; exact HM | exact HA | exact HM | exact HU | exact HU ] end.
@@ -677,13 +680,14 @@ Proof.
   - rewrite <- List.app_assoc in HR; cbn [List.app] in HR.
     pose proof (ctx_app_wf_tail _ _ _ _ HR) as HD.
     destruct (ctx_decomp_dm HD) as (HΓ & [i HB0] & HN & HU).
+    destruct (ctx_decomp_dm_alias HD) as [E0 HE0]; subst U.
     pose proof (wf_sub_single_dm _ _ _ _ _ _ _ HB0 HN HU) as Hs.
     specialize (IH _ HR).
     rewrite <- List.app_assoc; cbn [List.app].
     destruct (tele_split R) as [[[B' T'] τ] | τ].
     + destruct IH as (HB' & HT' & Hτ).
       split; [ exact (sub_preserves_type _ _ _ _ _ _ HB' Hs) |].
-      assert (HT'' : ⊢ Θ ⍮ Ξ ⍮ tele_sub (T' ++ ce_ass (tele_split_kind R) B' :: nil) (Id ,,ᵈ N ‖ me_lit U) ++ Γ)
+      assert (HT'' : ⊢ Θ ⍮ Ξ ⍮ tele_sub (T' ++ ce_ass (tele_split_kind R) B' :: nil) (Id ,,ᵈ N ‖ me_lit (gu_mk nil (md_alias E0))) ++ Γ)
         by (eapply ctx_sub_wf_gen; [ exact Hs | rewrite <- List.app_assoc; exact HT' ]).
       rewrite tele_sub_app in HT''; cbn [tele_sub centry_sub length] in HT''; rewrite <- List.app_assoc in HT''; cbn [List.app] in HT''.
       split; [ exact HT'' |].
@@ -1656,7 +1660,8 @@ Proof.
     + destruct (ctx_decomp_mod HΦ) as (HΓ & HU).
       pose proof (IH _ _ HΓ eq_refl) as Hσ.
       eapply wf_sub_extend_mod; [ exact Hσ | exact HU | eapply sub_preserves_unit; eassumption ].
-    + destruct (ctx_decomp_dm HΦ) as (HΓ & [i HA] & HM & HU).
+    + destruct (ctx_decomp_dm_alias HΦ) as [E1 ->].
+      destruct (ctx_decomp_dm HΦ) as (HΓ & [i HA] & HM & HU).
       pose proof (IH _ _ HΓ eq_refl) as Hσ.
       eapply wf_sub_extend_dm; [ exact Hσ | exact HA | exact HM | exact HU | eapply sub_preserves_exp; eassumption
                                | apply wf_exp_eq_refl; eapply sub_preserves_exp; eassumption

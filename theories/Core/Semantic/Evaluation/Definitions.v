@@ -655,6 +655,15 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ᵐ h ⦂ gu_mk Δ D ↘ r ->
      ⟦ ℓₘ (gu_mk Δ D) in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** A local definition with a module part extends it by the value of its
+    body, at its type, and the value of the unit's literal, at the unit, as
+    an entry of the context's initial environment is ([initial_env]). *)
+| eval_exp_let_dm :
+  `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ᵈ m ⦂ entry_type_value a ‖ h ⦂ U ↘ r ->
+     ⟦ ℓᵈ A ≔ M ‖ U in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A member is read off the root of its module expression, then applied to
     the module's arguments: arguments commute with selection.  Without
     arguments this is selection from the module's value.  The parameters

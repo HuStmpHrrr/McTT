@@ -201,10 +201,12 @@ Hint Constructors eval_entry_type : mctt.
     entry's tail, so it reaches the free variables of the unit; a term
     entry is bound by the readback of its value, which names no position
     of the environment.  A definition with a module part is bound by its
-    term part only ([read_entry_dm]). *)
+    term part and its stored unit ([read_entry_dm]), so it reaches the free
+    variables of the unit as a module entry does. *)
 Definition entry_unit_bound (e : dentry) : nat :=
   match e with
   | de_mod _ U => gunit_free_bound U
+  | de_dm _ _ _ U => gunit_free_bound U
   | _ => 0
   end.
 
@@ -442,12 +444,13 @@ with read_entry (Θ : gdeps) (Ξ : gstack) : nat -> dentry -> binding -> Prop :=
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ W ->
      Rent de_term v t in Θ ⍮ Ξ ⍮ s ↘ b_def A W )
-(** The term part of a definition with a module part *)
+(** A definition with a module part: its term part as a definition is
+    read, and its module part by its stored unit, as a module is *)
 | read_entry_dm :
   `( eval_entry_type Θ Ξ t a ->
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ W ->
-     Rent de_dm v t h U in Θ ⍮ Ξ ⍮ s ↘ b_def A W )
+     Rent de_dm v t h U in Θ ⍮ Ξ ⍮ s ↘ b_def_mod A W U )
 (** A module, by its stored unit *)
 | read_entry_mod :
   `( Rent de_mod h U in Θ ⍮ Ξ ⍮ s ↘ b_mod U )

@@ -28,20 +28,22 @@ Import Syntax_Notations Wk_Notations ListNotations.
 
 (** [ctx_lets Γ bs]: [Γ] extended by the definitions of the let chain
     [bs], outermost first: a term definition as a defined variable, a local
-    module as a module slot. *)
+    module as a module slot, a definition with a module part as both. *)
 Fixpoint ctx_lets (Γ : ctx) (bs : list binding) : ctx :=
   match bs with
   | nil => Γ
   | b_def A M :: bs => ctx_lets (Γ ▸ A ≔ M) bs
   | b_mod U :: bs => ctx_lets (Γ ▹ₘ U) bs
+  | b_def_mod A M U :: bs => ctx_lets (Γ ▸ₘ A ≔ M ‖ U) bs
   end.
 
-(** The substitution a binding is ζ-reduced by: its definition, or its
-    unit as a literal module. *)
+(** The substitution a binding is ζ-reduced by: its definition, its unit
+    as a literal module, or both. *)
 Definition binding_zeta_sub (b : binding) : sub :=
   match b with
   | b_def _ M => Id,,M
   | b_mod U => Id ,,ₘ me_lit U
+  | b_def_mod _ M U => Id ,,ᵈ M ‖ me_lit U
   end.
 
 (** [lets_sub bs]: the ζ-substitution of the let chain [bs], from
@@ -88,16 +90,31 @@ Proof.
   - eapply wf_exp_eq_subtyp; [ eapply IHwf_exp1; eauto | eassumption | eassumption | eassumption ].
 Qed.
 
+(** The same for a definition with a module part. *)
+Lemma let_dm_body_zeta : forall {Θ Ξ Γ A M U Y Y' T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in Y : T ->
+    (forall C, Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ Y : C -> Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ Y ≈ Y' : C) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in Y ≈ Y'[Id ,,ᵈ M ‖ me_lit U] : T.
+Proof.
+  intros * H HY; dependent induction H.
+  - pose proof (HY _ ltac:(eassumption)) as E.
+    assert (Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E0) ⊢ Y' : C) by (gen_presups; assumption).
+    etransitivity; [ eapply wf_exp_eq_let_dm_cong; try eassumption; mauto 3; eapply wf_let_dm; eassumption |].
+    eapply wf_exp_eq_let_dm_zeta; eassumption.
+  - eapply wf_exp_eq_subtyp; [ eapply IHwf_exp1; eauto | eassumption | eassumption | eassumption ].
+Qed.
+
 (** ζ for a whole chain: a typed let chain is its body under the chain's
     ζ-substitution. *)
 Lemma lets_exp_zeta : forall bs {Θ Ξ Γ X T},
     Θ ⍮ Ξ ⍮ Γ ⊢ lets_exp bs X : T ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lets_exp bs X ≈ X[lets_sub bs] : T.
 Proof.
-  induction bs as [| [A M | U] bs IH]; intros * H; cbn [lets_exp List.fold_right lets_sub binding_zeta_sub] in *.
+  induction bs as [| [A M | U | A M U] bs IH]; intros * H; cbn [lets_exp List.fold_right lets_sub binding_zeta_sub] in *.
   - rewrite exp_sub_id; apply wf_exp_eq_refl; exact H.
   - rewrite <- exp_sub_sub; apply (let_body_zeta H); intros C HC; exact (IH _ _ _ _ _ HC).
   - rewrite <- exp_sub_sub; apply (let_mod_body_zeta H); intros C HC; exact (IH _ _ _ _ _ HC).
+  - rewrite <- exp_sub_sub; apply (let_dm_body_zeta H); intros C HC; exact (IH _ _ _ _ _ HC).
 Qed.
 
 (** ** Typing a Chain *)
@@ -109,7 +126,7 @@ Lemma lets_exp_inversion : forall bs {Θ Ξ Γ X T},
     Θ ⍮ Ξ ⍮ Γ ⊢ lets_exp bs X : T ->
     exists C, Θ ⍮ Ξ ⍮ ctx_lets Γ bs ⊢ X : C /\ (C[lets_sub bs] = T \/ Θ ⍮ Ξ ⍮ Γ ⊢ C[lets_sub bs] ⊆ T).
 Proof.
-  induction bs as [| [A M | U] bs IH]; intros * H; cbn [lets_exp List.fold_right lets_sub binding_zeta_sub ctx_lets] in *.
+  induction bs as [| [A M | U | A M U] bs IH]; intros * H; cbn [lets_exp List.fold_right lets_sub binding_zeta_sub ctx_lets] in *.
   - exists T; split; [ exact H |]; rewrite exp_sub_id; left; reflexivity.
   - destruct (wf_let_ann_inversion H) as [S Y HS HA HM HB Hs].
     destruct (IH _ _ _ _ _ HB) as (C & HX & [HC | HC]); exists C; split; [ exact HX | | exact HX |];
@@ -123,6 +140,12 @@ Proof.
     + rewrite HC; exact Hs.
     + eapply wf_subtyp_trans; [| exact Hs ].
       eapply sub_preserves_subtyp; [ exact HC | eapply wf_sub_single_mod; eassumption ].
+  - destruct (wf_let_dm_inversion H) as [i Y E0 -> HA HM HU HB Hs].
+    destruct (IH _ _ _ _ _ HB) as (C & HX & [HC | HC]); exists C; split; [ exact HX | | exact HX |];
+      right; rewrite <- exp_sub_sub.
+    + rewrite HC; exact Hs.
+    + eapply wf_subtyp_trans; [| exact Hs ].
+      eapply sub_preserves_subtyp; [ exact HC | eapply wf_sub_single_dm; eassumption ].
 Qed.
 
 (** The weakening past a chain: [ctx_lets Γ bs] over [Γ]. *)
@@ -133,7 +156,7 @@ Proof.
   - rewrite wk_shiftn_zero; apply wf_wk_id; exact H.
   - assert (E : wk_eq (↑ ⊙ wk_shiftn (List.length bs)) (wk_shiftn (S (List.length bs)))) by (intros x; cbn; lia).
     rewrite <- E.
-    destruct b as [A M | U]; cbn [ctx_lets] in *;
+    destruct b as [A M | U | A M U]; cbn [ctx_lets] in *;
       pose proof (IH _ _ _ H) as Hw; apply (wf_wk_compose _ _ _ _ _ _ _ Hw), wf_wk_shift, (wf_wk_cod _ _ _ _ _ Hw).
 Qed.
 
@@ -148,7 +171,7 @@ Proof.
   - rewrite <- (exp_wk_wk_ext M ↑ (wk_shiftn (List.length bs)) (wk_shiftn (S (List.length bs)))),
       <- (exp_wk_wk_ext A ↑ (wk_shiftn (List.length bs)) (wk_shiftn (S (List.length bs)))) by (intros y; cbn; lia).
     replace (x + S (List.length bs)) with (S x + List.length bs) by lia.
-    destruct b as [A' M' | U']; cbn [ctx_lets]; apply IH; constructor; exact H.
+    destruct b as [A' M' | U' | A' M' U']; cbn [ctx_lets]; apply IH; constructor; exact H.
 Qed.
 
 (** A module slot of [Γ] is one of [ctx_lets Γ bs], past the chain. *)
@@ -160,7 +183,7 @@ Proof.
   - rewrite Nat.add_0_r, (gunit_wk_id_ext U (wk_shiftn 0)) by (intros y; cbn; lia); exact H.
   - rewrite <- (gunit_wk_wk_ext U ↑ (wk_shiftn (List.length bs)) (wk_shiftn (S (List.length bs)))) by (intros y; cbn; lia).
     replace (x + S (List.length bs)) with (S x + List.length bs) by lia.
-    destruct b as [A' M' | U']; cbn [ctx_lets]; apply IH; constructor; exact H.
+    destruct b as [A' M' | U' | A' M' U']; cbn [ctx_lets]; apply IH; constructor; exact H.
 Qed.
 
 (** The ζ-substitution of a chain is typed, from the chain's context back
@@ -170,11 +193,12 @@ Lemma lets_sub_wf : forall bs {Θ Ξ Γ},
 Proof.
   induction bs as [| b bs IH]; intros * H; cbn [lets_sub].
   - apply wf_sub_id; exact H.
-  - destruct b as [A M | U]; cbn [ctx_lets binding_zeta_sub] in *;
+  - destruct b as [A M | U | A M U]; cbn [ctx_lets binding_zeta_sub] in *;
       pose proof (wf_wk_cod _ _ _ _ _ (ctx_lets_wk_shiftn bs H)) as Hb; inversion Hb; subst;
       (eapply wf_sub_compose; [ exact (IH _ _ _ H) |]).
     + eapply wf_sub_single_def; eassumption.
     + apply wf_sub_single_mod; assumption.
+    + eapply wf_sub_single_dm; eassumption.
 Qed.
 
 (** An equation of substitutions moves along a pointwise equality of its
@@ -250,6 +274,47 @@ Proof.
       replace (n + S (List.length bs)) with (S (n + List.length bs)) by lia; exact E.
 Qed.
 
+(** The same over a definition with a module part: its variable is its
+    body and its slot its unit. *)
+Lemma ctx_lets_shift_dm_unfold : forall bs {Θ Ξ Γ A M U},
+    ⊢ Θ ⍮ Ξ ⍮ ctx_lets (Γ ▸ₘ A ≔ M ‖ U) bs ->
+    Θ ⍮ Ξ ⍮ ctx_lets (Γ ▸ₘ A ≔ M ‖ U) bs ⊢ˢ ι (wk_shiftn (List.length bs))
+      ≈ (Id ,,ᵈ M ‖ me_lit U) ⨟ ι (wk_shiftn (S (List.length bs))) : Γ ▸ₘ A ≔ M ‖ U.
+Proof.
+  intros * H.
+  pose proof (ctx_lets_wk_shiftn bs H) as Hw.
+  pose proof (ctx_lets_wk_shiftn (b_def_mod A M U :: bs) H) as Hw'; cbn [ctx_lets List.length] in Hw'.
+  pose proof (wf_wk_cod _ _ _ _ _ Hw) as Hb; inversion Hb; subst.
+  assert (Hs : Θ ⍮ Ξ ⍮ ctx_lets (Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)) bs
+                 ⊢ˢ (Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))) ⨟ ι (wk_shiftn (S (List.length bs)))
+                 : Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E))
+    by (eapply wf_sub_compose; [ eapply wf_sub_single_dm; eassumption | apply wf_sub_of_wk, Hw' ]).
+  constructor; [ apply wf_sub_of_wk, Hw | exact Hs | |].
+  - intros x B HL; inversion HL; subst; cbn.
+    + (** The term part's variable: its body, by [δ] *)
+      assert (HD0 : Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ∋ #0 ≔ M[↑]ʷ : A[↑]ʷ) by constructor.
+      pose proof (ctx_lets_lookup_def bs _ 0 _ _ HD0) as HD; cbn [Nat.add] in HD.
+      pose proof (wf_exp_eq_var_delta _ _ _ _ _ _ H HD) as E1.
+      rewrite !exp_sub_of_wk.
+      rewrite (exp_wk_wk_ext M ↑ (wk_shiftn (List.length bs)) (wk_shiftn (S (List.length bs)))) in E1
+        by (intros y; cbn; lia).
+      exact E1.
+    + (** A variable below it: the same variable on both sides *)
+      replace (n + S (List.length bs)) with (S (n + List.length bs)) by lia.
+      apply wf_exp_eq_refl; exact (wf_sub_apply _ _ _ _ _ (wf_sub_of_wk _ _ _ _ _ Hw) _ _ HL).
+  - intros x U' HL; inversion HL; subst; cbn.
+    + (** The module part's slot: its unit, by [δ] *)
+      assert (HM0 : Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ∋ #0 ≔ₘ gunit_wk (gu_mk nil (md_alias E)) wk_shift) by constructor.
+      pose proof (ctx_lets_lookup_mod bs _ 0 _ HM0) as HM; cbn [Nat.add] in HM.
+      pose proof (wf_me_delta_slot _ _ _ _ _ H HM) as E1.
+      rewrite (gunit_wk_wk_ext (gu_mk nil (md_alias E)) wk_shift (wk_shiftn (List.length bs)) (wk_shiftn (S (List.length bs)))) in E1
+        by (intros y; cbn; lia).
+      rewrite <- gunit_sub_of_wk in E1; exact E1.
+    + (** A slot below it: the same slot on both sides *)
+      pose proof (wf_sub_mod_image _ _ _ _ _ _ _ (wf_sub_of_wk _ _ _ _ _ Hw) HL) as E1; cbn in E1 |- *.
+      replace (n + S (List.length bs)) with (S (n + List.length bs)) by lia; exact E1.
+Qed.
+
 (** In a chain's context, the identity is the chain's ζ-substitution
     weakened back past the chain: every defined variable is its definition,
     every slot its unit. *)
@@ -263,8 +328,8 @@ Proof.
   - assert (K : Θ ⍮ Ξ ⍮ ctx_lets Γ (b :: bs) ⊢ˢ ι (wk_shiftn (List.length bs))
                   ≈ binding_zeta_sub b ⨟ ι (wk_shiftn (S (List.length bs))) : ctx_lets Γ (b :: nil))
       by (destruct b; cbn [ctx_lets binding_zeta_sub] in *;
-          [ apply ctx_lets_shift_def_unfold | apply ctx_lets_shift_mod_unfold ]; exact H).
-    destruct b as [A M | U]; cbn [ctx_lets] in *;
+          [ apply ctx_lets_shift_def_unfold | apply ctx_lets_shift_mod_unfold | apply ctx_lets_shift_dm_unfold ]; exact H).
+    destruct b as [A M | U | A M U]; cbn [ctx_lets] in *;
       (eapply wf_sub_eq_respects_sb_eq;
        [ eapply wf_sub_eq_trans; [ exact (IH _ _ _ H) | eapply wf_sub_eq_compose_right; [ exact (lets_sub_wf bs H) | exact K ] ]
        | symmetry; apply sb_compose_assoc ]).
@@ -299,7 +364,7 @@ Proof.
   - rewrite <- (exp_wk_wk_ext P wk_id wk_id (wk_shiftn 0)), !exp_wk_id in HX by (intros x; cbn; lia); exact HX.
   - rewrite <- (exp_wk_wk_ext P ↑ (wk_shiftn (List.length bs)) (wk_shiftn (S (List.length bs)))) in HX
       by (intros x; cbn; lia).
-    destruct b as [A M | U]; cbn [ctx_lets] in *;
+    destruct b as [A M | U | A M U]; cbn [ctx_lets] in *;
       pose proof (wf_wk_cod _ _ _ _ _ (ctx_lets_wk_shiftn bs HΓ)) as Hb.
     + assert (HP' : Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ P[↑]ʷ : Propₘ)
         by (change Propₘ with (Propₘ[↑]ʷ); eapply (proj1 wk_preserves_wf); [ exact HP | apply wf_wk_shift, Hb ]).
@@ -313,6 +378,12 @@ Proof.
       inversion Hb; subst.
       replace P with (P[↑]ʷ[Id ,,ₘ me_lit U]) by (rewrite exp_shift_sub_extend, exp_sub_id; reflexivity).
       eapply wf_let_mod; [ eassumption | exact HP' | constructor | constructor | exact HL ].
+    + assert (HP' : Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ P[↑]ʷ : Propₘ)
+        by (change Propₘ with (Propₘ[↑]ʷ); eapply (proj1 wk_preserves_wf); [ exact HP | apply wf_wk_shift, Hb ]).
+      pose proof (IH _ _ _ _ _ HΓ HP' HX) as HL.
+      inversion Hb; subst.
+      replace P with (P[↑]ʷ[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))]) by (rewrite exp_shift_sub_extend, exp_sub_id; reflexivity).
+      eapply wf_let_dm; [ eassumption | eassumption | eassumption | exact HP' | constructor | constructor | exact HL ].
 Qed.
 
 (** ** Replacing a Chain

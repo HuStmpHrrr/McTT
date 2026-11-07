@@ -70,6 +70,7 @@ with binding_fresh (k : nat) (b : binding) {struct b} : Prop :=
   match b with
   | b_def A M => exp_fresh k A /\ exp_fresh k M
   | b_mod U => gunit_fresh k U
+  | b_def_mod A M U => exp_fresh k A /\ exp_fresh k M /\ gunit_fresh k U
   end
 with gunit_fresh (k : nat) (U : gunit) {struct U} : Prop :=
   match U with
@@ -394,6 +395,7 @@ with binding_freshb (k : nat) (b : binding) {struct b} : bool :=
   match b with
   | b_def A M => exp_freshb k A && exp_freshb k M
   | b_mod U => gunit_freshb k U
+  | b_def_mod A M U => exp_freshb k A && exp_freshb k M && gunit_freshb k U
   end
 with gunit_freshb (k : nat) (U : gunit) {struct U} : bool :=
   match U with

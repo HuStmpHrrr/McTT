@@ -558,6 +558,46 @@ Qed.
 #[export]
 Hint Resolve wf_let_mod_inversion : mctt.
 
+(** What a local definition with a module part is typed by: its type, of a
+    large universe, its definition, its unit, an alias under no parameters,
+    and the body under the entry, at a type whose instance at the entry is
+    below [T]. *)
+#[warnings="-cannot-define-projection"]
+Record let_dm_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (A M : typ) (U : gunit) (B T : typ) : Prop := mk_let_dm_inv
+  { (** The level of the type's universe *)
+    let_dm_inv_level : nat
+    (** The body's type *)
+  ; let_dm_inv_body_typ : typ
+    (** The target of the unit *)
+  ; let_dm_inv_target : modexp
+    (** The unit is an alias of the target under no parameters *)
+  ; let_dm_inv_unit_shape : U = gu_mk nil (md_alias let_dm_inv_target)
+    (** The type is of the large universe *)
+  ; let_dm_inv_typed : Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@let_dm_inv_level
+    (** The definition is of the type *)
+  ; let_dm_inv_def : Θ ⍮ Ξ ⍮ Γ ⊢ M : A
+    (** The unit is well formed *)
+  ; let_dm_inv_unit : Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U
+    (** The body is typed under the entry *)
+  ; let_dm_inv_body : Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ B : let_dm_inv_body_typ
+    (** The body's type at the entry is below [T] *)
+  ; let_dm_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ let_dm_inv_body_typ[Id ,,ᵈ M ‖ me_lit U] ⊆ T }.
+
+Lemma wf_let_dm_inversion : forall {Θ Ξ Γ A M U B T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in B : T ->
+    let_dm_inv Θ Ξ Γ A M U B T.
+Proof.
+  intros * H.
+  dependent induction H.
+  - apply (mk_let_dm_inv _ _ _ _ _ _ _ _ i C E eq_refl); [ assumption .. |].
+    eapply wf_subtyp_refl_typ; [ eapply sub_preserves_sort; [ eassumption | eassumption | mauto 3 ] | eassumption ].
+  - destruct (IHwf_exp1 _ _ _ _ eq_refl) as [i Y E0 HU HA HM HUw HB Hs].
+    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
+Qed.
+
+#[export]
+Hint Resolve wf_let_dm_inversion : mctt.
+
 Lemma wf_vlookup_inversion : forall {Θ Ξ Γ x A},
     Θ ⍮ Ξ ⍮ Γ ⊢ #x : A ->
     exists A', Γ ∋ #x : A' /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' ⊆ A.
