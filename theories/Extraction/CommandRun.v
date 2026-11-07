@@ -52,10 +52,12 @@ Section Impl.
   Variable lvd : levels_abstractable_decider.
   (** How the views of a group are found: [ViewsFound.views_search], which
       [Entrypoint] supplies (it is defined over [views_found]). *)
-  Variable views_search : forall (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) R csD, run_result (views_found (fc_deps F) (fc_stack F) R csD).
+  Variable views_search : forall (F : FCtx) (HΞ : ⊢ᵍ fc_deps F ⍮ fc_stack F) R csD,
+      Forall2 (raw_member_classify (fc_deps F) (fc_stack F) R) (raw_decl_members R) csD ->
+      run_result (views_found (fc_deps F) (fc_stack F) R csD).
   (** The search finds the views whenever there are some. *)
-  Hypothesis views_search_complete : forall F HΞ R csD Vs Ss csV Nvs,
-      views_ok (fc_deps F) (fc_stack F) R csD Vs Ss csV Nvs -> exists v, views_search F HΞ R csD = run_success v.
+  Hypothesis views_search_complete : forall F HΞ R csD Hcls Vs Ss csV Nvs,
+      views_ok (fc_deps F) (fc_stack F) R csD Vs Ss csV Nvs -> exists v, views_search F HΞ R csD Hcls = run_success v.
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
@@ -3240,10 +3242,13 @@ Section Impl.
         | inr (exist _ (x, c, y, classify_why_proof) _) =>
             run_failure (run_error_msg ("the argument " ++ y ++ " of " ++ c ++ " nests " ++ x
                                           ++ " at an instance that holds a proof, which is not supported"))
+        | inr (exist _ (x, c, y, classify_why_instance) _) =>
+            run_failure (run_error_msg ("the argument " ++ y ++ " of " ++ c ++ " nests " ++ x
+                                          ++ " at an instance whose arguments are not typed over the declaration's parameters"))
         | inr (exist _ (x, c, y, classify_why_rec_kind) _) =>
             run_failure (run_error_msg ("the recursive argument " ++ y ++ " of " ++ c ++ " is written of another kind than a type of "
                                           ++ x ++ ", which is in a universe"))
-        | inl (exist _ csD Hcls) with views_search (cmd_F B H) (pre_gctx_f B H) R csD => {
+        | inl (exist _ csD Hcls) with views_search (cmd_F B H) (pre_gctx_f B H) R csD Hcls => {
           | run_failure e => run_failure e
           | run_success (existT _ Vs (existT _ Ss (existT _ csV (exist _ Nvs Hv))))
               with raw_decl_filed_case (cmd_F B H) R Vs Ss csD csV Nvs => {
@@ -4416,7 +4421,7 @@ Section Impl.
           intros; unfold raw_member_classify in *; eapply classify_cons_in_functional; eassumption).
     simp ind_step.
     assert (HvF : views_ok (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) R csD Vs Ss csV Nvs) by (cmd_goal; exact HvR).
-    destruct (views_search_complete _ (pre_gctx_f B H) _ _ _ _ _ _ HvF) as [v Ev]; rewrite Ev.
+    destruct (views_search_complete _ (pre_gctx_f B H) _ _ Hcls' _ _ _ _ HvF) as [v Ev]; rewrite Ev.
     destruct v as (Vs' & Ss' & csV' & Nvs' & Hv'); simp ind_step.
     destruct (views_ok_functional _ _ _ _ _ _ _ _ _ _ _ _ Hv' HvF) as (-> & -> & -> & ->).
     assert (HfilF : raw_decl_filed (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) R Vs Ss csD csV Nvs = Some Dd)
@@ -4780,7 +4785,8 @@ Section Files.
   Qed.
 
   Corollary prog_impl_complete_wf : forall read to_core lvd vs
-      (Hvs : forall F HΞ R csD Vs Ss csV Nvs, views_ok (fc_deps F) (fc_stack F) R csD Vs Ss csV Nvs -> exists v, vs F HΞ R csD = run_success v)
+      (Hvs : forall F HΞ R csD Hcls Vs Ss csV Nvs, views_ok (fc_deps F) (fc_stack F) R csD Vs Ss csV Nvs ->
+               exists v, vs F HΞ R csD Hcls = run_success v)
       prg B ΘR U,
       prog_sem load_path read to_core prg B ΘR U ->
       exists s u log, prog_impl load_path read to_core lvd vs prg (load_step_wf _) = run_success (B, s, u, log) /\
