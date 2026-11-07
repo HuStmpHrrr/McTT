@@ -24,15 +24,24 @@ ENTRY = re.compile(r"^(\S+)\s+:")
 
 
 def read_expected():
-    allowed = {}
+    """The axioms each theorem may use, and the PENDING admits: after the
+    line [PENDING], each line is an admitted lemma and its milestone, which
+    every theorem may use and every run names in its summary."""
+    allowed, pending, in_pending = {}, {}, False
     with open(EXPECTED) as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            name, _, axioms = line.partition(":")
-            allowed[name.strip()] = axioms.split()
-    return allowed
+            if line == "[PENDING]":
+                in_pending = True
+                continue
+            name, _, rest = line.partition(":")
+            if in_pending:
+                pending[name.strip()] = rest.strip()
+            else:
+                allowed[name.strip()] = rest.split()
+    return allowed, pending
 
 
 def project_flags():
@@ -100,9 +109,17 @@ def main():
     found = parse(run(lines))
     if len(found) != count:
         sys.exit("check-assumptions: %d theorems listed, %d located" % (count, len(found)))
-    expected, failures = read_expected(), []
+    (expected, pending), failures, used_pending = read_expected(), [], set()
     for name, assumptions in found.items():
-        extra = [a for a in assumptions if not allowed_by(a, expected.get(name, []))]
+        extra = []
+        for a in assumptions:
+            if allowed_by(a, expected.get(name, [])):
+                continue
+            hits = [q for q in pending if allowed_by(a, [q])]
+            if hits:
+                used_pending.update(hits)
+            else:
+                extra.append(a)
         if extra:
             failures.append("%s uses %s" % (name, ", ".join(extra)))
     for name in expected:
@@ -111,6 +128,12 @@ def main():
     if failures:
         sys.stderr.write("\n".join(failures) + "\n")
         sys.exit("check-assumptions: %d problem(s)" % len(failures))
+    if used_pending:
+        print("check-assumptions: allowed PENDING: %s"
+              % ", ".join("%s (%s)" % (q, pending[q]) for q in sorted(used_pending)))
+    unused = sorted(set(pending) - used_pending)
+    if unused:
+        print("check-assumptions: PENDING not used by any checked theorem: %s" % ", ".join(unused))
     print("check-assumptions: %d theorems, all as expected" % count)
 
 

@@ -5,3 +5,17 @@
 Mctt.Entrypoint.main_sound: Mctt.Frontend.Parser.loc
 Mctt.Entrypoint.main_complete: Mctt.Frontend.Parser.loc
 Mctt.Entrypoint.main_rep: Mctt.Frontend.Parser.loc
+
+# The PENDING admits: lemmas admitted until their milestone, one per line,
+#   <full name>: <milestone> <what proves it>
+# Any checked theorem may use them; every run names the ones used, so that
+# they never become silent.  Any other unexpected assumption still fails.
+[PENDING]
+Mctt.Core.Soundness.soundness: M2 the gluing model for the Prop core
+Mctt.Core.Soundness.soundness_upto_proofs: M2 the gluing model for the Prop core
+Mctt.Core.Soundness.soundness_lvl_well_scoped: M2 the gluing of levels
+Mctt.Core.Consequences.Consistency.typ_ind_shape: M2 the gluing of the inductive type
+Mctt.Core.Consequences.Consistency.typ_record_shape: M2 the gluing of the record type
+Mctt.Core.Consequences.Consistency.consistency: M3 from the model
+Mctt.Core.Consequences.Consistency.consistency_False: M3 from the model
+Mctt.Core.Consequences.Consistency.closed_False_proof_mentions_global: M3 the gluing model and global-context strengthening

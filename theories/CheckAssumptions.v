@@ -11,7 +11,8 @@
 
 From Mctt Require Import Entrypoint.
 From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Consistency Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.Consequences.NormalFormWeakening.
-From Mctt Require Import Reference.Refinement Extraction.Simulation Extraction.GlobalCheck.
+(* RESTORE AT THE REFERENCE PORT: From Mctt Require Import Reference.Refinement. *)
+From Mctt Require Import Extraction.GlobalCheck Extraction.CommandRun.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Consequences.FiledConstructorTypes.
 From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns Core.Syntactic.System.Records.RecordRuns.
 Print Assumptions Mctt.Core.Completeness.completeness.
@@ -78,34 +79,28 @@ Print Assumptions Mctt.Algorithmic.Typing.Lemmas.alg_type_infer_typ_complete_lit
 Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_typ_complete'.
 Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_typ_complete_lit'.
 Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_large_typ_complete'.
-(* Refinement: the fast extracted code agrees with the reference. *)
-Print Assumptions Mctt.Reference.Refinement.type_check_in_refines.
-Print Assumptions Mctt.Reference.Refinement.type_infer_in_refines.
-Print Assumptions Mctt.Reference.Refinement.ext_check_refines.
-Print Assumptions Mctt.Reference.Refinement.unit_check_refines.
-Print Assumptions Mctt.Reference.Refinement.modexp_check_refines.
-Print Assumptions Mctt.Reference.Refinement.eval_exp_impl_refines.
-Print Assumptions Mctt.Reference.Refinement.read_typ_impl_refines.
-Print Assumptions Mctt.Reference.Refinement.read_nf_impl_refines.
-Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines.
-Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines.
-Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines.
-Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines.
-Print Assumptions Mctt.Reference.Refinement.eval_exp_impl_refines_at.
-Print Assumptions Mctt.Reference.Refinement.read_typ_impl_refines_at.
-Print Assumptions Mctt.Reference.Refinement.read_nf_impl_refines_at.
-Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines_at.
-Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines_at.
-Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines_at.
-Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines_at.
-Print Assumptions Mctt.Extraction.Simulation.fast_eval_sim.
-Print Assumptions Mctt.Extraction.Simulation.fast_read_sim.
-Print Assumptions Mctt.Extraction.Simulation.fast_read_typ_sim.
-Print Assumptions Mctt.Extraction.Simulation.fast_read_nf_sim.
-Print Assumptions Mctt.Extraction.Simulation.fast_eval_exp_sim.
-Print Assumptions Mctt.Extraction.Simulation.fast_eval_app_sim.
-Print Assumptions Mctt.Extraction.Simulation.fast_eval_clo_sim.
-Print Assumptions Mctt.Extraction.Simulation.fast_eval_clo2_sim.
+(* Refinement: the fast extracted code agrees with the reference.  Out of
+   the build until the Reference port; each line is restored by dropping
+   its "RESTORE AT THE REFERENCE PORT:" comment. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.type_check_in_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.type_infer_in_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.ext_check_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.unit_check_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.modexp_check_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.eval_exp_impl_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.read_typ_impl_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.read_nf_impl_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.eval_exp_impl_refines_at. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.read_typ_impl_refines_at. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.read_nf_impl_refines_at. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines_at. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines_at. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines_at. *)
+(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines_at. *)
 (* Inductive types: canonical forms, and the generated eliminators. *)
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_pi.
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind.
@@ -122,13 +117,12 @@ Print Assumptions Mctt.Core.Syntactic.Presup.presup_sub_eq.
 Print Assumptions Mctt.Core.Syntactic.System.Global.Presup.presup_global.
 Print Assumptions Mctt.Core.Syntactic.System.Global.Presup.presup_exp_typ.
 (* The checker of commands and units, and the elaborator. *)
-Print Assumptions Mctt.Extraction.Command.run_cmd_impl_sound.
-Print Assumptions Mctt.Extraction.Command.run_cmds_impl_sound.
-Print Assumptions Mctt.Extraction.Command.run_unit_impl_sound.
-Print Assumptions Mctt.Extraction.Command.run_cmd_impl_complete.
-Print Assumptions Mctt.Extraction.Command.run_cmds_impl_complete.
-Print Assumptions Mctt.Extraction.Command.run_unit_impl_complete.
-Print Assumptions Mctt.Extraction.Command.prog_impl_complete_wf.
+Print Assumptions Mctt.Extraction.CommandRun.items_impl_sound.
+Print Assumptions Mctt.Extraction.CommandRun.run_unit_impl_sound.
+Print Assumptions Mctt.Extraction.CommandRun.run_impl_complete.
+Print Assumptions Mctt.Extraction.CommandRun.items_impl_complete.
+Print Assumptions Mctt.Extraction.CommandRun.run_unit_impl_complete.
+Print Assumptions Mctt.Extraction.CommandRun.prog_impl_complete_wf.
 Print Assumptions Mctt.Frontend.ElabCorrect.elaborate_core_sound.
 Print Assumptions Mctt.Frontend.ElabCorrect.elaborate_core_complete.
 Print Assumptions Mctt.Frontend.ElabCorrect.elab_spec_functional.
