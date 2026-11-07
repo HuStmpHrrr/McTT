@@ -719,12 +719,19 @@ Qed.
       evaluation), so only a fresh instantiation at a related pair of
       environments connects them, as in [rel_sub_under_ctx_extend_sub]. *)
 
-Lemma rel_sub_under_ctx_q : forall {Γ Δ σ σ' κ A} {i : nat},
+(** Stated for any source [e :: Γ] whose environments satisfy the clauses
+    of [Γ ▹ A[σ]]'s ([per_env_head_clauses]): the lifting reads no more of
+    its source.  [rel_sub_under_ctx_q] is the source [Γ ▹ A[σ]] itself; a
+    definition with a module part at a type of a universe is another
+    ([per_env_extend_dm_clauses]). *)
+Lemma rel_sub_under_ctx_q_gen : forall {Γ Δ σ σ' κ A} {i : nat} {e R1},
     Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ᵗ A ≈ A at i ->
-    Γ ▹{κ} A[σ] ⊨ˢ q σ ≈ q σ' : Δ ▹{κ} A.
+    EF (e :: Γ) ≈ (e :: Γ) ∈ per_ctx_env ↘ R1 ->
+    (forall RΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> per_env_head_clauses A[σ] RΓ ρ ρ') ->
+    (e :: Γ) ⊨ˢ q σ ≈ q σ' : Δ ▹{κ} A.
 Proof.
-  intros * Hσj HA.
+  intros * Hσj HA HΓA Hcl.
   pose proof Hσj as [env_relΓ HΓ env_relΔ HΔ Hσ Hσs].
   pose proof (rel_type_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   (** The simple form of the hypothesis, at [σ ≈ σ].  The first of the three type
@@ -742,11 +749,10 @@ Proof.
     assert (E5 : env_relΔ <~> env_relΔ5) by (eapply per_ctx_env_right_irrel; eassumption).
     intros ρ ρ' Hρ%E5; exact (HAs _ _ Hρ). }
   pose proof (per_ctx_env_of_typ (κ := κ) HΔ HA) as HΔA.
-  pose proof (per_ctx_env_of_typ_sub (κ := κ) HΓ Hσj HA) as HΓA.
-  (** [Γ ▹ A[σ] ⊨ˢ σ[↑]ʷ : Δ] — the substitution [q σ] extends.  All four tails
+  (** [e :: Γ ⊨ˢ σ[↑]ʷ : Δ] — the substitution [q σ] extends.  All four tails
       come from this one judgment. *)
   pose proof (rel_wk_shift HΓ HΓA) as Hshift.
-  assert (Hshiftb : forall x, x < List.length Γ -> ↑ x < List.length (Γ ▹{κ} A[σ])) by (intros x Hx; cbn; lia).
+  assert (Hshiftb : forall x, x < List.length Γ -> ↑ x < List.length (e :: Γ)) by (intros x Hx; cbn; lia).
   pose proof (rel_sub_under_ctx_wk_rel Hσj HΓA HΓ Hshift Hshiftb) as Hσwkj.
   pose proof Hσwkj as [env_relΓA HΓA' env_relΔ3 HΔ3 Hσwk _].
   handle_per_ctx_env_irrel.
@@ -754,12 +760,10 @@ Proof.
     [| intros x Hx; split; eapply sb_q_bound; first [ exact Hx | intros y Hy; exact (proj1 (Hσs y Hy))
                                                    | intros y Hy; exact (proj2 (Hσs y Hy)) ] ].
   intros Γ' env_rel' HΓ' ψ Hψ Hψb ρ ρ' Hρ.
-  (** The Kripke stage lands in [Γ ▹ A[σ]], so the pair [ρ ≈ ρ'] splits into a
-      tail pair and a head pair — the [per_env_extend] the context PER just
-      built. *)
-  destruct (Hψ _ _ Hρ) as [Htail Hhead Hle Hre Hrdl Hrdr].
+  (** The Kripke stage lands in [e :: Γ], so the pair [ρ ≈ ρ'] splits into a
+      tail pair and a head pair: the clauses the source satisfies. *)
+  destruct (Hcl _ HΓ _ _ (Hψ _ _ Hρ)) as [Htail Hhead Hle Hre].
   rewrite (eval_wk_app_entry ψ), (eval_wk_app ψ) in Hle, Hre.
-  rewrite (eval_wk_app_entry ψ) in Hrdl, Hrdr.
   destruct (Hσwk _ _ HΓ' _ Hψ Hψb _ _ Hρ) as [x1 y1 y4 x4 Hx1 Hy1 Hy4 Hx4 Htails].
   (** [σ] itself along [↑], which puts [⟦σ⟧((⟪ψ⟫ ρ)↯)] in the same PER as the
     tails: its leftmost value is again [⟦σ[↑]ʷ⟧(⟪ψ⟫ ρ)], so determinism of
@@ -855,6 +859,22 @@ Proof.
         first
           [ destruct (Hlit_l _ Ht Hq) as [ty Hty]; exists (ρ (ψ 0)), ty; exact Hty
           | destruct (Hlit_r _ Ht Hq) as [ty Hty]; exists (ρ' (ψ 0)), ty; exact Hty ] ].
+Qed.
+
+(** The source [Γ ▹ A[σ]]: its environments satisfy the clauses at every
+    PER of [Γ] ([per_env_extend_clauses]). *)
+Corollary rel_sub_under_ctx_q : forall {Γ Δ σ σ' κ A} {i : nat},
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ᵗ A ≈ A at i ->
+    Γ ▹{κ} A[σ] ⊨ˢ q σ ≈ q σ' : Δ ▹{κ} A.
+Proof.
+  intros * Hσj HA.
+  pose proof Hσj as [env_relΓ HΓ _ _ _ _].
+  pose proof (per_ctx_env_of_typ_sub (κ := κ) HΓ Hσj HA) as HΓA.
+  apply (rel_sub_under_ctx_q_gen Hσj HA HΓA).
+  intros RΓ HΓ0 ρ ρ' Hρ.
+  apply per_env_extend_clauses.
+  exact (proj1 (per_ctx_env_right_irrel _ _ _ _ _ HΓA (per_ctx_env_of_typ_sub (κ := κ) HΓ0 Hσj HA) ρ ρ') Hρ).
 Qed.
 
 (** ** Instantiating a Premise in an Extended Context

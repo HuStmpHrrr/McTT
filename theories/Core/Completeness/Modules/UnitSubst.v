@@ -144,10 +144,16 @@ Proof.
         pose proof (IHU (wf_ctx_extend_mod _ _ _ _ HwU0) _ _ Hg' (sub_mod_compat_ext Ψ _ _ _ Hc)) as HsU'.
         assert (HUU : tele_sub Ψ τ ++ Γ ⊨ᵘ U[sb_qn (length Ψ) τ]ᵘ ≈ U[sb_qn (length Ψ) τ]ᵘ)
           by (constructor; [ exact HU' | exact HsU' | exact HsU' ]).
+        assert (HUs : gunit_scoped (List.length (Ψ ++ Δ)) U)
+          by (pose proof (wf_ctx_scoped _ _ _ HwC) as Hs0; cbn in Hs0; destruct Hs0 as [(_ & _ & Hs0) _];
+              rewrite Nat.add_0_r in Hs0; exact Hs0).
         rewrite tele_sub_cons; cbn [centry_sub List.app].
-        split; [ eapply rel_ctx_wf_extend_dm; eassumption
+        split; [ eapply rel_ctx_wf_extend_dm;
+                 [ eassumption | eassumption | eassumption | eassumption
+                 | eapply gunit_scoped_sub;
+                   [ exact HUs | intros x Hx; exact (proj1 (rel_sub_under_ctx_scoped _ _ _ _ (gsub_valid Hg') x Hx)) ] ]
                | eapply gsub_q_dm; [ exact Hg' | exact HA | exact HM | constructor; [ exact HU | exact HsU | exact HsU ]
-                                   | exact HUU ] ].
+                                   | exact HUU | exact HUs ] ].
     + injection Heq as <- ->.
       exact (IHC Ψ2 Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc).
   - (* a body unit *)

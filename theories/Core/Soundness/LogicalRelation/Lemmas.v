@@ -2047,8 +2047,10 @@ Proof.
     assert (HUs : Γ ⊨ᵘ U ≈ U) by (apply (proj1 (proj2 completeness_fundamental_modules)); eassumption).
     assert (⊢ Γ) by mauto 3.
     destruct (rel_ctx_wf_per_ctx_env (completeness_fundamental_ctx _ ltac:(eassumption))) as [tail_rel Htail].
-    pose proof (per_ctx_env_of_dm Htail HAs HMs (rel_unit_under_ctx_lit _ _ _ HUs)) as Hd.
-    assert (E : env_rel <~> per_env_extend_dm A M U tail_rel) by (eapply per_ctx_env_right_irrel; eassumption).
+    assert (HsU : gunit_scoped (List.length Γ) U) by (eapply wf_unit_eq_scoped_left; eassumption).
+    pose proof (per_ctx_env_of_dm Htail HAs HMs (rel_unit_under_ctx_lit _ _ _ HUs) HsU) as Hd.
+    assert (E : env_rel <~> per_env_extend_dm A M U (List.length Γ) tail_rel)
+      by (eapply per_ctx_env_right_irrel; eassumption).
     apply E.
     assert (Hρ : Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (eapply IHHglu; eassumption).
     destruct (rel_exp_of_typ_inversion_simple_at Htail HAs _ _ Hρ) as [a1 [a2 [Ha1 [Ha2 [R HR]]]]].

@@ -36,11 +36,11 @@ Proof.
 Qed.
 
 Lemma rel_ctx_wf_extend_dm : forall {Γ A M U} {i : nat},
-    ⊨ Γ -> Γ ⊨ A : Typeω@i -> Γ ⊨ M : A -> Γ ⊨ᵘ U ≈ U -> ⊨ Γ ▸ₘ A ≔ M ‖ U.
+    ⊨ Γ -> Γ ⊨ A : Typeω@i -> Γ ⊨ M : A -> Γ ⊨ᵘ U ≈ U -> gunit_scoped (List.length Γ) U -> ⊨ Γ ▸ₘ A ≔ M ‖ U.
 Proof.
-  intros * HΓ HA HM [HU HsU _].
+  intros * HΓ HA HM [HU HsU _] HUs.
   destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
-  econstructor; [ exact HΓ | exact (per_ctx_env_of_dm HR HA HM HU) | exact HA | exact HM | exact HU | exact HsU ].
+  econstructor; [ exact HΓ | exact (per_ctx_env_of_dm HR HA HM HU HUs) | exact HA | exact HM | exact HU | exact HsU ].
 Qed.
 
 End Fixed_GCtx.
@@ -62,7 +62,7 @@ Lemma sem_ctx_extend_dm :
      ⊨ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ).
 Proof.
   intros * HA HM HU; sem_intro.
-  apply valid_ctx_dm; [ assumption | eapply rel_ctx_wf_extend_dm; eassumption | assumption ].
+  apply valid_ctx_dm; [ assumption | eapply rel_ctx_wf_extend_dm; [ eassumption | eassumption | eassumption | eassumption | eapply valid_unit_lit_scoped; eassumption ] | assumption ].
 Qed.
 
 Section Fixed_GCtx.
@@ -123,10 +123,10 @@ Qed.
 Lemma gsub_sem : forall {Γ τ Δ}, gsub Γ τ Δ -> ⊨ Γ /\ ⊨ Δ.
 Proof.
   induction 1 as [? HΓ | ? ? ? ? ? ? ? ? [IH1 IH2] HS HB HN _ | ? ? ? ? ? ? ? [IH1 IH2] HS HB HM _
-                 | ? ? ? ? ? [IH1 IH2] HU HUs | ? ? ? ? ? ? ? ? [IH1 IH2] HB HM HU _ _
+                 | ? ? ? ? ? [IH1 IH2] HU HUs | ? ? ? ? ? ? ? ? [IH1 IH2] HB HM HU _ HUs
                  | ? ? ? ? ? [IH1 IH2] Eq | ? ? ? ? ? ? HG [IH1 IH2] HS HB
                  | ? ? ? ? ? ? HG [IH1 IH2] HS HB HM | ? ? ? ? HG [IH1 IH2] HU HU' HUs
-                 | ? ? ? ? ? ? ? HG [IH1 IH2] HB HM HU HU'
+                 | ? ? ? ? ? ? ? HG [IH1 IH2] HB HM HU HU' HUs
                  | ? ? ? ? ? ? [IH1 IH2] HΓ Hσ Hl ];
     try (split; assumption).
   - split; [ assumption | eapply rel_ctx_wf_extend_sort; eassumption ].
@@ -143,7 +143,8 @@ Proof.
     exact (gunit_scoped_rel_sub (gsub_valid HG) HUs).
   - pose proof (rel_exp_under_ctx_gsub HG HB) as H1; cbn in H1.
     pose proof (rel_exp_under_ctx_gsub HG HM) as H2.
-    split; eapply rel_ctx_wf_extend_dm; eassumption.
+    split; eapply rel_ctx_wf_extend_dm; try eassumption.
+    exact (gunit_scoped_rel_sub (gsub_valid HG) HUs).
 Qed.
 
 (** ** Generalizing over a Telescope *)

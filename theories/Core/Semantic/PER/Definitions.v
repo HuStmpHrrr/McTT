@@ -2061,8 +2061,10 @@ Record per_ctx_env_dm_rel (tail_rel : relation env)
     say so by itself: for [T : Prop], the environment [de_dm m t h U :: ρ0]
     has a proof at [0] but is no environment of [Γ ▹ T].  At a relevant
     type nothing is asked of the entry's kind, so the environment
-    [de_dm 0ᵈ t h U :: ρ0] of [Γ ▸ₘ ℕ ≔ 0 ‖ U] is one of [Γ ▸ ℕ ≔ 0] and of
-    [Γ ▹ ℕ].  The readback of a kept proof reads the entries of its
+    [de_dm 0ᵈ t h U :: ρ0] of [Γ ▸ₘ ℕ ≔ 0 ‖ U] satisfies the clauses of
+    [Γ ▹ ℕ] a lifted substitution reads ([per_env_head_clauses]); it is an
+    environment of [Γ ▹ ℕ] only when [U] is closed, as its head stores [U]
+    ([read_entry_dm]).  The readback of a kept proof reads the entries of its
     environment at their stored types ([read_lets]): so an environment the
     model relates has entries that read back ([entry_readable]). *)
 Record per_ctx_env_cons_rel (tail_rel : relation env)

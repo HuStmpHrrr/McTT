@@ -975,18 +975,19 @@ Proof.
   (** The source's environments are those of the definition entry of its
       term part: its type is of a universe, so no head is a proof. *)
   assert (Hqd : Γ' ▸ₘ A[σ] ≔ M[σ] ‖ U[σ]ᵘ ⊨ˢ q σ ≈ q σ' : Γ ▸ A ≔ M).
-  { eapply rel_sub_under_ctx_restrict;
-      [ exact HΓ'dm | exact (per_ctx_env_of_def_sub HΓ' Hσj HA HM) | exact HΓdef | exact HΓdef
-      | | intros; assumption | cbn; lia | cbn; lia | intros ? ? _ ? _; reflexivity
-      | exact (rel_sub_under_ctx_q_def Hσj HA HM) ].
-    intros e e' [Ht Hh Tl Tr _ _ Hrl Hrr _ _].
-    assert (PER R') by (eapply per_env_PER; eassumption).
-    assert (Ht' : Dom e'↯ ≈ e'↯ ∈ R') by (etransitivity; [ symmetry |]; exact Ht).
-    constructor; [ apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht Hh) | exact Tl | exact Tr ];
-      try assumption;
-      intros Hp; exfalso;
-      [ exact (not_rel_typ_propositional_of_typ_sub HΓ' Hσj HA _ _ Ht Hp)
-      | exact (not_rel_typ_propositional_of_typ_sub HΓ' Hσj HA _ _ Ht' Hp) ]. }
+  { apply (rel_sub_under_ctx_q_def_gen Hσj (rel_type_of_typ HA) (rel_type_evaluated_of_typ HA) HM HΓ'dm).
+    - (** The term part's clauses: its type is of a universe, so no head is
+          a proof. *)
+      intros RΓ0 HΓ0 e e' He.
+      assert (PER R') by (eapply per_env_PER; eassumption).
+      pose proof He as [Ht _ _ _ _ _ _ _ _ _].
+      assert (Ht' : Dom e'↯ ≈ e'↯ ∈ R') by (etransitivity; [ symmetry |]; exact Ht).
+      destruct (per_env_extend_dm_clauses He
+                  (fun Hp => not_rel_typ_propositional_of_typ_sub HΓ' Hσj HA _ _ Ht Hp)
+                  (fun Hp => not_rel_typ_propositional_of_typ_sub HΓ' Hσj HA _ _ Ht' Hp)) as [Ht0 Hh Hl Hr].
+      constructor; [ exact (proj1 (per_ctx_env_right_irrel _ _ _ _ _ HΓ' HΓ0 _ _) Ht0) | exact Hh | exact Hl | exact Hr ].
+    - (** The term part's tie to [M[σ]] *)
+      intros e e' [_ _ Tl _ _ _ _ _ _ _]; exact Tl. }
   pose proof Hqd as [Rd1 HΓd1 Rd HΓd Hd _].
   assert (Ed : Rd <~> per_env_extend_def A M R) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (E1 : Rd1 <~> per_env_extend_dm A[σ] M[σ] U[σ]ᵘ (List.length Γ') R') by (eapply per_ctx_env_right_irrel; eassumption).
@@ -1283,15 +1284,20 @@ Lemma sem_ext_eq_dm :
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ▸ₘ A ≔ M ‖ U ≈ Ψ' ▸ₘ A' ≔ M' ‖ U' ).
 Proof.
   intros * HΨ HA HAA' HM HMM' HA' HM' HUU' HU'U'; sem_intro0.
+  (** The literals are scoped by their contexts, as valid units. *)
+  assert (Hs1 : gunit_scoped (List.length (Ψ ++ Γ)) U)
+    by (match goal with Hk : valid_unit _ _ (Ψ ++ Γ) (me_lit U) |- _ => exact (valid_unit_lit_scoped _ _ _ _ Hk) end).
+  assert (Hs2 : gunit_scoped (List.length (Ψ' ++ Γ)) U')
+    by (match goal with Hk : valid_unit _ _ (Ψ' ++ Γ) (me_lit U') |- _ => exact (valid_unit_lit_scoped _ _ _ _ Hk) end).
   assert (Hr : Γ ⊨ˣ Ψ ▸ₘ A ≔ M ‖ U ≈ Ψ' ▸ₘ A' ≔ M' ‖ U').
   { destruct HΨ as [H1 H2 [Rx HRx]]; destruct HUU' as [HU HsU _]; destruct HU'U' as [HU' HsU' _].
     destruct (rel_ctx_wf_per_ctx_env H1) as [R HR].
     destruct (rel_ctx_wf_per_ctx_env H2) as [R' HR'].
     pose proof (rel_modexp_refl_left HU) as HUU.
     constructor; cbn [app].
-    - econstructor; [ exact H1 | exact (per_ctx_env_of_dm HR HA HM HUU HsU) | exact HA | exact HM | exact HUU | exact HsU ].
-    - econstructor; [ exact H2 | exact (per_ctx_env_of_dm HR' HA' HM' HU' HsU') | exact HA' | exact HM' | exact HU' | exact HsU' ].
-    - exact (per_ctx_env_extend_dm_cross HRx HAA' HMM' HU HsU HsU'). }
+    - econstructor; [ exact H1 | exact (per_ctx_env_of_dm HR HA HM HUU Hs1) | exact HA | exact HM | exact HUU | exact HsU ].
+    - econstructor; [ exact H2 | exact (per_ctx_env_of_dm HR' HA' HM' HU' Hs2) | exact HA' | exact HM' | exact HU' | exact HsU' ].
+    - exact (per_ctx_env_extend_dm_cross HRx HAA' HMM' HU Hs1 Hs2). }
   constructor; [ assumption | exact Hr | apply valid_ctx_dm | apply valid_ctx_dm ];
     first [ assumption | exact (rel_ext_under_ctx_left _ _ _ Hr) | exact (rel_ext_under_ctx_right _ _ _ Hr) ].
 Qed.

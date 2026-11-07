@@ -373,28 +373,25 @@ Qed.
     evaluated kind [r], through the assumption entries at [r].  The tie at
     [⟦q σ⟧ρ] is the tie at [ρ] moved along the left commutation of [M] at
     [σ], read at the tail [ρ↯]. *)
-Lemma rel_sub_under_ctx_q_def_evaluated : forall {Γ Δ σ σ' A} {i : nat} {M},
+Lemma rel_sub_under_ctx_q_def_gen : forall {Γ Δ σ σ' A} {i : nat} {M e R1},
     Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ᵗ A ≈ A at i ->
     rel_type_evaluated Δ A ->
     Δ ⊨ M : A ->
-    Γ ▸ A[σ] ≔ M[σ] ⊨ˢ q σ ≈ q σ' : Δ ▸ A ≔ M.
+    EF (e :: Γ) ≈ (e :: Γ) ∈ per_ctx_env ↘ R1 ->
+    (forall RΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> per_env_head_clauses A[σ] RΓ ρ ρ') ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> def_tie A[σ] M[σ] ρ) ->
+    (e :: Γ) ⊨ˢ q σ ≈ q σ' : Δ ▸ A ≔ M.
 Proof.
-  intros * Hσj HA HArel HM.
+  intros * Hσj HA HArel HM HΓd Hcl Hsrc.
   pose proof HArel as (r & Hr & HArelk).
   pose proof Hσj as [env_relΓ HΓ env_relΔ HΔ Hσ _].
-  pose proof (per_ctx_env_of_def_sub_evaluated HΓ Hσj HA HArel HM) as HΓd.
-  pose proof (per_ctx_env_of_typ_sub (κ := r) HΓ Hσj HA) as HΓa.
-  pose proof (per_ctx_env_of_typ (κ := r) HΔ HA) as HΔA.
   eapply (rel_sub_under_ctx_into_def (κ := r)); [ exact HΓd | exact HA | exact HArel | exact HM | |].
-  - eapply rel_sub_under_ctx_restrict;
-      [ exact HΓd | exact HΓa | exact HΔA | exact HΔA
-      | intros ? ? []; assumption | intros; assumption | cbn; lia | cbn; lia
-      | intros ? ? _ ? _; reflexivity
-      | exact (rel_sub_under_ctx_q Hσj HA) ].
+  - exact (rel_sub_under_ctx_q_gen Hσj HA HΓd Hcl).
   - intros ρ ρq Hρ Hev.
     destruct (eval_sub_q_inv _ _ _ _ _ Hev) as [Hev1 Hev0'].
-    pose proof Hρ as [[Ht Hh _ _ _ _] [t [Ht0 Htie]] _].
+    destruct (Hcl _ HΓ _ _ Hρ) as [Ht Hh _ _].
+    destruct (Hsrc _ _ Hρ) as [t [Ht0 Htie]].
     (** [σ] at the Kripke stage [↑], which relates [⟦σ[↑]ʷ⟧ρ] to
         [⟦σ⟧(ρ↯)]. *)
     pose proof (rel_wk_shift HΓ HΓd) as Hshift.
@@ -434,6 +431,27 @@ Proof.
     try handle_per_univ_elem_irrel.
     match goal with |- ?R _ _ => assert (PER R) by (eapply per_elem_PER; eassumption) end.
     solve_per.
+Qed.
+
+(** The source [Γ ▸ A[σ] ≔ M[σ]]: its environments are an assumption's,
+    with the head tied to [M[σ]]. *)
+Corollary rel_sub_under_ctx_q_def_evaluated : forall {Γ Δ σ σ' A} {i : nat} {M},
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ᵗ A ≈ A at i ->
+    rel_type_evaluated Δ A ->
+    Δ ⊨ M : A ->
+    Γ ▸ A[σ] ≔ M[σ] ⊨ˢ q σ ≈ q σ' : Δ ▸ A ≔ M.
+Proof.
+  intros * Hσj HA HArel HM.
+  pose proof Hσj as [env_relΓ HΓ _ _ _ _].
+  pose proof (per_ctx_env_of_def_sub_evaluated HΓ Hσj HA HArel HM) as HΓd.
+  apply (rel_sub_under_ctx_q_def_gen Hσj HA HArel HM HΓd).
+  - intros RΓ HΓ0 ρ ρ' Hρ.
+    apply per_env_extend_clauses.
+    pose proof (proj1 (per_ctx_env_right_irrel _ _ _ _ _ HΓd (per_ctx_env_of_def_sub_evaluated HΓ0 Hσj HA HArel HM) ρ ρ') Hρ)
+      as [Hext _ _].
+    exact Hext.
+  - intros ρ ρ' [_ Htie _]; exact Htie.
 Qed.
 
 (** The same at a type of a universe. *)

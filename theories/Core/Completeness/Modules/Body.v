@@ -381,7 +381,7 @@ Qed.
     walk at them. *)
 Lemma sub_walk_dm : forall Γ' Γ σ Ψ A i M U ρl ρr,
     sub_walk_inv Γ' Γ σ Ψ ρl ρr ->
-    Ψ ++ Γ ⊨ A : Typeω@i -> Ψ ++ Γ ⊨ M : A -> Ψ ++ Γ ⊨ᵐ me_lit U ≈ me_lit U ->
+    Ψ ++ Γ ⊨ A : Typeω@i -> Ψ ++ Γ ⊨ M : A -> Ψ ++ Γ ⊨ᵐ me_lit U ≈ me_lit U -> gunit_scoped (List.length (Ψ ++ Γ)) U ->
     exists j R m m' hl hr, PER.Definitions.rel_typ j A[sb_qn (List.length Ψ) σ] ρl A ρr R /\
       ⟦ M[sb_qn (List.length Ψ) σ] ⟧ ρl ↘ m /\ ⟦ M ⟧ ρr ↘ m' /\ R m m' /\
       ⟦ me_lit U[sb_qn (List.length Ψ) σ]ᵘ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρl ↘ hl /\
@@ -390,7 +390,7 @@ Lemma sub_walk_dm : forall Γ' Γ σ Ψ A i M U ρl ρr,
         (ρl ↦ᵈ m ⦂ entry_type_closure A[sb_qn (List.length Ψ) σ] ρl ‖ hl ⦂ U[sb_qn (List.length Ψ) σ]ᵘ)
         (ρr ↦ᵈ m' ⦂ entry_type_closure A ρr ‖ hr ⦂ U).
 Proof.
-  intros * Hinv HA HM HU.
+  intros * Hinv HA HM HU HUs.
   pose proof (rel_type_of_typ HA) as HAt.
   destruct (sub_walk_def _ _ _ _ _ ak_relevant i _ _ _ Hinv evaluated_kind_relevant HA HM)
     as (k & R & m & m' & [a a' Ha Ha' HR] & _ & _ & Hm1 & Hm3 & Hmm & _).
@@ -423,36 +423,42 @@ Proof.
   pose proof (rel_type_inversion_simple_at HΓr HAt) as HSr.
   pose proof (rel_exp_under_ctx_simple_at_rel HΓr HA HM) as HMr.
   eapply sub_walk_extend with (e := ce_dm A M U);
-    [ exact Hinv | exact (per_ctx_env_of_dm_sub HΓl Hsub HA HM HU) | exact (per_ctx_env_of_dm HΓr HA HM HU)
-    | exact (rel_sub_under_ctx_q_dm Hsub HA HM HU) | | reflexivity |].
+    [ exact Hinv | exact (per_ctx_env_of_dm_sub HΓl Hsub HA HM HU HUs) | exact (per_ctx_env_of_dm HΓr HA HM HU HUs)
+    | exact (rel_sub_under_ctx_q_dm Hsub HA HM HU HUs) | | reflexivity |].
   - assert (Hh1 : per_head A[τ] A[τ] ρl ρl m m) by (eapply per_head_of; [ exact Ha | exact Ha | exact Haa | exact Hm11 ]).
     apply mk_per_env_extend_dm; cbn [drop_env tl env_mod env_entry hd extend_env_dm];
       first [ exact Hl | exact Hh1 | exists m; split; [ exact Hm1 | exact Hh1 ]
-            | exists hl; split; [ exact Hhl | exact Hll ] | split; [ exact Rd1 | cbn; lia ] | do 2 eexists; reflexivity ].
+            | exists hl; split; [ exact Hhl | exact Hll ]
+            | split; [ exact Rd1 | exact (gunit_scoped_free_bound _ _ (gunit_scoped_rel_sub Hsub HUs)) ]
+            | do 2 eexists; reflexivity ].
   - intros Rr0 t HRr0 Ht.
     assert (Er : Rr0 <~> Rr) by (eapply per_ctx_env_right_irrel; eassumption).
     pose proof (proj1 (Er _ _) Ht) as Ht'.
     pose proof (Hhd _ _ HRr0 Ht _ _ (proj1 (E _ _) Hmm)) as Hh.
-    destruct (per_head_dm_readable (h := hl) (h' := hl) (U := U) (per_ctx_env_of_typ (κ := ak_relevant) HRr0 HAt) HRr0 Ht Hh) as [Rl0 _].
+    (** The unit is scoped by the walked context: the heads read back. *)
+    pose proof (gunit_scoped_free_bound _ _ HUs) as HbU.
+    destruct (per_head_dm_readable (h := hl) (h' := hl) (U := U) (List.length (Ψ ++ Γ))
+                (per_ctx_env_of_typ (κ := ak_relevant) HRr0 HAt) HRr0 Ht Hh HbU) as [Rl0 _].
     destruct (unit_chain_at HU HΓr _ _ Ht') as [ht hr' Hht Hhr' Htr'].
     pose proof (functional_eval_modexp _ _ _ _ Hhr Hhr') as <-.
     cbn [env_entry retag_entry centry_slot_unit centry_unit].
-    set (x := de_dm m (centry_tag (ce_dm A M U) (Ψ ++ Γ) t) hl U :: t).
-    assert (Hext : per_env_extend A A Rr x (ρr ↦ᵈ m' ⦂ entry_type_closure A ρr ‖ hr ⦂ U)).
-    { apply (mk_per_ctx_env_cons_rel _ _ _ _ x (ρr ↦ᵈ m' ⦂ entry_type_closure A ρr ‖ hr ⦂ U) Ht');
-        [ exact Hh
+    (** The clauses of the assumption of [A]: the heads are no proofs, [A]
+        being of a universe. *)
+    assert (Hcl : per_env_head_clauses A Rr (de_dm m (centry_tag (ce_dm A M U) (Ψ ++ Γ) t) hl U :: t)
+                    (ρr ↦ᵈ m' ⦂ entry_type_closure A ρr ‖ hr ⦂ U)).
+    { constructor; cbn [drop_env tl env_entry hd extend_env_dm];
+        [ exact Ht' | exact Hh
         | intros Hp; exfalso; exact (not_rel_typ_propositional_of_typ HΓr HA _ _ Ht' Hp)
-        | intros Hp; exfalso; exact (not_rel_typ_propositional_of_typ HΓr HA _ _ ltac:(etransitivity; [ symmetry; exact Ht' | exact Ht' ]) Hp)
-        | exact Rl0 | split; [ exact Rd2 | cbn; lia ] ]. }
+        | intros Hp; exfalso;
+          exact (not_rel_typ_propositional_of_typ HΓr HA _ _ ltac:(etransitivity; [ symmetry; exact Ht' | exact Ht' ]) Hp) ]. }
     assert (Tr : def_tie A M (ρr ↦ᵈ m' ⦂ entry_type_closure A ρr ‖ hr ⦂ U))
       by (exists m'; split; [ exact Hm3 | eapply per_head_of; [ exact Ha' | exact Ha' | exact Ha'a' | exact Hm33 ] ]).
-    assert (HPe : PER (per_env_extend A A Rr)) by (eapply per_env_PER; exact (per_ctx_env_of_typ (κ := ak_relevant) HΓr HAt)).
-    apply mk_per_env_extend_dm; subst x; cbn [drop_env tl env_mod env_entry hd extend_env_dm];
+    apply mk_per_env_extend_dm; cbn [drop_env tl env_mod env_entry hd extend_env_dm];
       first [ exact Ht' | exact Hh | exact Tr | exact Rl0
-            | eapply (def_tie_resp HPr HSr HMr); [ symmetry; exact Hext | exact Tr ]
+            | eapply (def_tie_resp_clauses HPr HSr HMr); [ exact (per_env_head_clauses_sym HPr Hcl) | exact Tr ]
             | exists hr; split; [ exact Hhr | exact Hrr ]
             | exists ht; split; [ exact Hht | etransitivity; [ exact Hlr | symmetry; exact Htr' ] ]
-            | split; [ exact Rd2 | cbn; lia ] | do 2 eexists; reflexivity ].
+            | split; [ exact Rd2 | exact HbU ] | do 2 eexists; reflexivity ].
 Qed.
 
 (** An alias's targets along the walk are related. *)
@@ -516,7 +522,7 @@ Proof.
     + (* a definition with a module part: as a definition and as a submodule *)
       destruct (rel_ctx_wf_dm_inv HΦ) as ([i HA] & HM & HUv).
       pose proof (rel_unit_under_ctx_lit _ _ _ HUv) as HU.
-      destruct (sub_walk_dm _ _ _ _ _ _ _ _ _ _ Hi1 HA HM HU) as (j & R & m & m' & hl & hr & HR & Hm & Hm' & Hmm & Hhl & Hhr & Hlr & Hi).
+      destruct (sub_walk_dm _ _ _ _ _ _ _ _ _ _ Hi1 HA HM HU (proj2 (proj2 HsE))) as (j & R & m & m' & hl & hr & HR & Hm & Hm' & Hmm & Hhl & Hhr & Hlr & Hi).
       rewrite (exp_sub_sb_eq A _ _ Hq), (exp_sub_sb_eq M _ _ Hq), (gunit_sub_sb_eq (gu_mk Δy Dy) _ _ Hq).
       rewrite gunit_sub_mk in Hhl, Hi |- *; apply eval_me_lit_iff in Hhl, Hhr.
       split; [ eapply per_body_dm; [ exact Hb | exact Hb1 | exact Hb1' | exact HR | right; econstructor; eassumption

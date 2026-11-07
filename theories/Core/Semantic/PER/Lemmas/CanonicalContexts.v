@@ -273,6 +273,28 @@ Proof.
     first [ assumption | intros _; eexists; reflexivity | split; [ assumption | cbn; lia ] ].
 Qed.
 
+(** The clauses of the environments of an assumption of [S] that a lifted
+    substitution reads off its source ([rel_sub_under_ctx_q_gen]): related
+    tails, heads related in the head PER of [S], and term entries where [S]
+    is a proposition.  The heads' readability is not among them: the
+    lifting stores the heads retagged at its target.  An environment of
+    [Δ ▹ S] satisfies them ([per_env_extend_clauses]), and so does one of
+    a definition with a module part at a type of a universe, whose head
+    stores a unit scoped by the tail. *)
+Record per_env_head_clauses (S : typ) (R : relation env) (ρ ρ' : env) : Prop := mk_per_env_head_clauses
+  { (** The tails are related *)
+    per_env_head_clauses_tail : Dom ρ↯ ≈ ρ'↯ ∈ R
+    (** The heads are related in the head PER of [S] *)
+  ; per_env_head_clauses_head : Dom (ρ 0) ≈ (ρ' 0) ∈ per_head S S ρ↯ ρ'↯
+    (** The left head is a term entry when [S] is a proposition in its tail *)
+  ; per_env_head_clauses_left : rel_typ_propositional S ρ↯ -> exists t, env_entry ρ 0 = de_term (ρ 0) t
+    (** So is the right one *)
+  ; per_env_head_clauses_right : rel_typ_propositional S ρ'↯ -> exists t, env_entry ρ' 0 = de_term (ρ' 0) t }.
+
+(** An environment of an assumption satisfies the clauses. *)
+Lemma per_env_extend_clauses : forall {S R ρ ρ'}, Dom ρ ≈ ρ' ∈ per_env_extend S S R -> per_env_head_clauses S R ρ ρ'.
+Proof. intros * [Ht Hh Hl Hr _ _]; exact (mk_per_env_head_clauses _ _ _ _ Ht Hh Hl Hr). Qed.
+
 (** ** A Canonical Context PER for a Definition Entry
 
     [def_tie S M ρ] says that the head of [ρ] is the value of [M] in the tail
@@ -400,6 +422,18 @@ Record per_env_extend_dm (S : typ) (M : exp) (U : gunit) (n : nat) (R : relation
     (** So is the right one *)
   ; per_env_extend_dm_right_kind : exists t U0, env_entry ρ' 0 = de_dm (ρ' 0) t (env_mod ρ' 0) U0 }.
 
+(** An environment of a definition with a module part satisfies the
+    clauses of its term part's assumption, at a type that is no
+    proposition at the tails, as a type of a universe is. *)
+Lemma per_env_extend_dm_clauses : forall {S M U n R ρ ρ'},
+    per_env_extend_dm S M U n R ρ ρ' ->
+    ~ rel_typ_propositional S ρ↯ -> ~ rel_typ_propositional S ρ'↯ ->
+    per_env_head_clauses S R ρ ρ'.
+Proof.
+  intros * [Ht Hh _ _ _ _ _ _ _ _] Hn Hn'.
+  constructor; [ exact Ht | exact Hh | intros Hp; contradiction | intros Hp; contradiction ].
+Qed.
+
 (** The premise [per_ctx_env_cons_dm] asks for, at the canonical relation. *)
 Lemma per_ctx_env_extend_dm : forall {Δ S M U env_relΔ} {i : nat},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
@@ -457,7 +491,9 @@ Qed.
 (** The tie propagates along the relation of an assumption entry, and from a
     body to a related one.  So it is enough to establish it at one environment
     of a chain. *)
-Lemma def_tie_resp : forall {S M M' R i ρ ρ'},
+(** Read off the clauses only ([per_env_head_clauses]): the tails and the
+    heads. *)
+Lemma def_tie_resp_clauses : forall {S M M' R i ρ ρ'},
     PER R ->
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ R ->
@@ -465,11 +501,11 @@ Lemma def_tie_resp : forall {S M M' R i ρ ρ'},
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ R ->
         exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
-    Dom ρ ≈ ρ' ∈ per_env_extend S S R ->
+    per_env_head_clauses S R ρ ρ' ->
     def_tie S M ρ ->
     def_tie S M' ρ'.
 Proof.
-  intros * HPER HS HM [Ht Hh] [m [Hm Htie]].
+  intros * HPER HS HM [Ht Hh _ _] [m [Hm Htie]].
   assert (H11 : Dom ρ↯ ≈ ρ↯ ∈ R) by solve_per.
   assert (H22 : Dom ρ'↯ ≈ ρ'↯ ∈ R) by solve_per.
   destruct (HM _ _ Ht) as [m1 [m2 [Hm1 [Hm2 Hm12]]]].
@@ -485,6 +521,30 @@ Proof.
   assert (PER R') by (eapply per_elem_PER; eassumption).
   apply E3; apply E3 in Htie, Hh, Hm12.
   solve_per.
+Qed.
+
+(** The same at an assumption's environments. *)
+Corollary def_tie_resp : forall {S M M' R i ρ ρ'},
+    PER R ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ R ->
+        exists a a', ⟦ S ⟧ ρ ↘ a /\ ⟦ S ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ R ->
+        exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
+    Dom ρ ≈ ρ' ∈ per_env_extend S S R ->
+    def_tie S M ρ ->
+    def_tie S M' ρ'.
+Proof. intros * HPER HS HM Hρ; exact (def_tie_resp_clauses HPER HS HM (per_env_extend_clauses Hρ)). Qed.
+
+(** The clauses are symmetric at a PER of the tails. *)
+Lemma per_env_head_clauses_sym : forall {S R ρ ρ'},
+    PER R -> per_env_head_clauses S R ρ ρ' -> per_env_head_clauses S R ρ' ρ.
+Proof.
+  intros * HPER [Ht Hh Hl Hr]; constructor; [ symmetry; exact Ht | | exact Hr | exact Hl ].
+  intros i R0 a a' Ea Ea' HR0.
+  destruct (per_univ_elem_sym _ _ _ _ HR0) as [HR0' Hsym].
+  apply Hsym; exact (Hh i R0 a' a Ea' Ea HR0').
 Qed.
 
 (** Transporting a [per_head] to another pair of environments, the bridging
