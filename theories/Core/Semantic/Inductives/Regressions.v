@@ -520,7 +520,7 @@ Qed.
 Lemma view_nparams_self_param_absurd : forall Θ Ξ R pC DC MC Nv,
     raw_decl_uparams R = nil -> raw_decl_nmembers R = 1 ->
     ind_lookup Θ Ξ pC = Some DC -> ind_member DC 0 = Some MC -> im_nparams MC = ce_ass ak_relevant (a_var 0) :: nil ->
-    ~ view_nparams Θ Ξ R (vk_ind pC 0 (a_var 0 :: nil)) Nv.
+    ~ view_nparams Θ Ξ R (vk_ind pC 0 (nf_neut ak_relevant (ne_var 0) :: nil)) Nv.
 Proof.
   intros * Hu Hn Hl Hk Hnp Hv.
   inversion Hv as [? ? ? D' Mk' Ws ? Hl' Hk' Hnbe Himg |]; subst.
@@ -622,11 +622,12 @@ Proof.
   inversion Hrest as [| ? ? ? ? ? ? g2 ? Hg2 _ Hrest2]; subst.
   (** The first argument, [x : T], is recursive. *)
   assert (Eg1 : g1 = classified_carg_rec_case (classified_ptyp_self 0 nil)).
-  { inversion Hg1 as [? Hs | ? ? ? Hs]; subst; vm_compute in Hs; [ injection Hs as <-; reflexivity | discriminate ]. }
+  { inversion Hg1 as [? ? Hs Hkey | ? ? ? ? Hs _ _ _ _ _]; subst; vm_compute in Hs; [| discriminate ].
+    injection Hs as <-; inversion Hkey as [| ? ? Hkt]; subst; inversion Hkt; subst; reflexivity. }
   subst g1; cbn [classified_carg_bit] in Hg2.
   (** The second, [c : C T x], mentions it: it is classified neither as
       written nor as its normal form. *)
-  inversion Hg2 as [? Hs | i W ? _ _ HW _ Hs]; subst.
+  inversion Hg2 as [? ? Hs _ | i W ? ? _ _ HW _ Hs _]; subst.
   - rewrite classify_container_at_rec_none in Hs; discriminate.
   - cbn [raw_args_tele List.map List.rev List.app snd] in HW; unfold raw_member_args_ctx, raw_decl_selfs in HW; cbn in HW.
     assert (HSTw : ind_sort_univ ST[wk_shiftn 0]ʷ[wk_shiftn 0]ʷ)

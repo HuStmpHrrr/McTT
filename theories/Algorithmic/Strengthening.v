@@ -1272,6 +1272,27 @@ Proof.
   rewrite <- (Completeness.Inductives.Model.eval_exps_length _ _ _ Exs); assumption.
 Qed.
 
+(** A member's type former applied and typed at a universe is applied to
+    all its parameters, as a record's is. *)
+Lemma wf_ind_apps_len : forall Γ p D k Mk Ms i, ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk ->
+    Γ ⊢ apps (a_ind p k) Ms : Typeω@i -> List.length Ms = im_np D Mk.
+Proof.
+  intros * Hl Hk H.
+  pose proof (wf_ctx_scoped_exp H) as Hsc.
+  apply wf_exp_eq_refl, completeness_fundamental_exp_eq in H.
+  destruct (rel_typ_under_ctx_at_initial_env Hsc H) as [ρ [a [a' [Hρ [Ha [Ha' [R0 HR]]]]]]].
+  apply Modules.eval_apps_exp in Ha as (f & Ef & Hargs).
+  inversion Ef; subst; apply Modules.eval_app_args_ind in Hargs as (xs & Exs & Eap).
+  apply eval_apps_ind_inv in Eap; cbn in Eap; subst.
+  destruct (eval_ind_value _ _ _ _ _ Ha') as [ys ->].
+  invert_per_univ_elem HR.
+  match goal with H' : ind_lookup _ _ p = Some ?D1 |- _ => rewrite Hl in H'; injection H' as <- end.
+  match goal with H' : ind_member D k = Some ?M1 |- _ => rewrite Hk in H'; injection H' as <- end.
+  match goal with H' : tele_rel _ _ _ _ |- _ => destruct H' as [Hl' _] end.
+  rewrite <- (Completeness.Inductives.Model.eval_exps_length _ _ _ Exs), List.length_app.
+  unfold im_np, im_nn; rewrite List.length_rev in Hl'; lia.
+Qed.
+
 (** A record's type former, typed at its type in every context, which is a
     type. *)
 Lemma record_former_typed : forall Γ p R, ⊢ Γ -> record_lookup gc_deps gc_stack p = Some R ->
