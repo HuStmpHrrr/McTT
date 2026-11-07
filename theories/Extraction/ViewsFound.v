@@ -281,8 +281,7 @@ Section Clusters.
   Definition views_search_run (csD : list (list (string * list classified_carg))) :
       result view_data (view_data_ok Θ Ξ R) data_siblings data_meets view_why nil (List.concat (List.map classified_cons_views csD)) :=
     views_search_from view_data (view_data_ok Θ Ξ R) data_siblings data_meets (view_data_functional Θ Ξ R) view_why
-      (view_data_dec F HΞ R) _ view_why_shadowed
-      (reach_finite_key_in view_data (view_data_ok Θ Ξ R) data_siblings data_meets _ (views_reach_finite csD)).
+      (view_data_dec F HΞ R) _ view_why_shadowed (views_reach_finite csD).
 End Clusters.
 
 (** ** The Views Found, as the Checker Asks *)

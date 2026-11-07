@@ -11,15 +11,19 @@
     - The search ([search]) is by structural recursion on an accessibility
       proof in [Prop] (erased by extraction), for the order "more views
       found, or as many and a shorter queue" ([search_lt]); it needs only
-      that the views reachable from the queue form a finite set
-      ([reach_finite]).  It is sound and complete for [views_dfs].
-    - The finiteness itself follows from a cluster argument
-      ([reach_finite_of_clusters]): every view of an invariant [Inv] has a
-      finite cluster closed under siblings, whose meets stay in it or
-      descend a well-founded order [lt]; the meets of any view are of
-      [Inv]; and the siblings of any view are of [Inv], or have the same
-      siblings.  The instances of these hypotheses, read off the PER model,
-      are in [Extraction.ViewsReach]. *)
+      that the keys reachable from the queue are of finitely many views,
+      equal up to their proofs ([reach_finite]): the views found are of
+      pairwise different views ([key_nodup]).  It is sound and complete for
+      [views_dfs].
+    - The finiteness itself follows from a cluster argument, up to proofs
+      ([reach_finite_of_clusters]): every key of an invariant [Inv] has a
+      finite cluster whose views' keys of [Inv] have their siblings of its
+      views and meet instances of its views or of a finite list below it in
+      a well-founded order [lt]; the meets of any view, the siblings of a
+      view of [Inv] and the queue's instances are of [Inv].  The instances
+      of these hypotheses, read off the PER model, are in
+      [Extraction.ViewsReach], [Extraction.ViewsCluster] and
+      [Extraction.ViewsFound]. *)
 
 From Stdlib Require Import List Lia PeanoNat Wf_nat.
 From Mctt.Core Require Import Base.
@@ -323,10 +327,6 @@ Section Search.
     search nil nil init I (Forall2_nil _) (fun y H => match H with end)
       (fun y H => reach_init y H) (search_acc Hfin nil init).
 
-  (** Finitely many reachable keys are of finitely many views. *)
-  Lemma reach_finite_key_in : (exists L, forall y, reach y -> In y L) -> exists L, forall y, reach y -> key_in y L.
-  Proof. intros [L HL]; exists L; intros y Hy; exact (key_in_of_in _ _ (HL y Hy)). Qed.
-
   (** ** Finiteness from Clusters *)
 
   (** The views reachable from one view. *)
@@ -344,132 +344,89 @@ Section Search.
       [ exact Hxy | eapply reach_from_sibling | eapply reach_from_meet ]; eassumption.
   Qed.
 
-  (** Finitely many views are reachable from [x]. *)
-  Definition finite_from (x : view_key) : Prop := exists L, forall y, reach_from x y -> In y L.
+  Lemma key_in_app_l : forall x l1 l2, key_in x l1 -> key_in x (l1 ++ l2).
+  Proof. intros * (y & Hy & Hxy); exists y; split; [ apply in_or_app; left; exact Hy | exact Hxy ]. Qed.
 
-  (** The views of a list that the queue reaches, each either known by
-      [Q] or with finitely many reachable views: one list holds all of
-      those. *)
-  Lemma cover : forall (Q : view_key -> Prop) (ys : list view_key),
-      (forall y, In y ys -> Q y \/ finite_from y) ->
-      exists L, forall y, In y ys -> Q y \/ forall w, reach_from y w -> In w L.
-  Proof.
-    intros Q ys; induction ys as [| y ys IH]; intros H; [ exists nil; intros ? [] |].
-    destruct IH as [L HL]; [ intros; apply H; right; assumption |].
-    destruct (H y (or_introl eq_refl)) as [HQ | [Ly HLy]].
-    - exists L; intros y' [<- | Hin]; [ left; exact HQ | exact (HL _ Hin) ].
-    - exists (Ly ++ L); intros y' [<- | Hin].
-      + right; intros w Hw; apply in_or_app; left; exact (HLy _ Hw).
-      + destruct (HL _ Hin) as [HQ | Hf]; [ left; exact HQ | right; intros w Hw; apply in_or_app; right; exact (Hf _ Hw) ].
-  Qed.
+  Lemma key_in_app_r : forall x l1 l2, key_in x l2 -> key_in x (l1 ++ l2).
+  Proof. intros * (y & Hy & Hxy); exists y; split; [ apply in_or_app; right; exact Hy | exact Hxy ]. Qed.
 
-  (** The instances the views of [L] that have data meet. *)
-  Definition all_meets (L : list view_key) : list view_key :=
-    List.concat (List.map (fun y => match E_dec y with inl (exist _ a _) => meets_of a | inr _ => nil end) L).
-
-  Lemma in_all_meets : forall L y a z, In y L -> E y a -> In z (meets_of a) -> In z (all_meets L).
-  Proof.
-    intros * Hy Ha Hz; unfold all_meets; apply in_concat.
-    exists (match E_dec y with inl (exist _ a _) => meets_of a | inr _ => nil end); split; [ apply in_map_iff; exists y; split; [ reflexivity | exact Hy ] |].
-    destruct (E_dec y) as [[a' Ha'] | [e Hn]]; [ rewrite (E_functional _ _ _ Ha' Ha); exact Hz | exfalso; exact (Hn a Ha) ].
-  Qed.
-
-  Lemma all_meets_in : forall L z, In z (all_meets L) -> exists y a, In y L /\ E y a /\ In z (meets_of a).
-  Proof.
-    intros * Hz; unfold all_meets in Hz; apply in_concat in Hz as (ms & Hms & Hz).
-    apply in_map_iff in Hms as (y & <- & Hy).
-    destruct (E_dec y) as [[a Ha] | [e Hn]]; [ exists y, a; auto | destruct Hz ].
-  Qed.
-
-  (** Every view a view of [L] reaches is in [L], or reached from a view
-      each of whose reachable views is in [L']: so in [L ++ L']. *)
-  Lemma finite_of_anchor : forall x L L', (forall w, reach_from x w -> In w L \/
-        exists u, (forall w', reach_from u w' -> In w' L') /\ reach_from u w) ->
-      finite_from x.
-  Proof.
-    intros * H; exists (L ++ L'); intros w Hw; apply in_or_app.
-    destruct (H w Hw) as [Hin | (u & Hu & Huw)]; [ left; exact Hin | right; exact (Hu _ Huw) ].
-  Qed.
+  (** A key of the view of a key among keys is among them. *)
+  Lemma key_in_trans : forall x y l, view_key_eq x y -> key_in y l -> key_in x l.
+  Proof. intros * Hxy (z & Hz & Hyz); exists z; split; [ exact Hz | etransitivity; eassumption ]. Qed.
 
   Section Clusters.
     (** The views of the invariant: those whose data is read off the PER
-        model. *)
+        model.  It need not respect equality up to proofs. *)
     Variable Inv : view_key -> Prop.
     (** The order the meets leaving a cluster descend. *)
     Variable lt : view_key -> view_key -> Prop.
 
-    (** [L] is a cluster of the view [x]. *)
-    Record cluster_of (x : view_key) (L : list view_key) : Prop := mk_cluster_of
+    (** [L] is a cluster of the view [x], and [M] the instances its views
+        meet outside it, up to proofs: every key of the invariant of the
+        view of one of [L] has its siblings of the views of [L], and meets
+        instances of the views of [L] or of [M]; those of [M] are of the
+        invariant and below [x]. *)
+    Record cluster_of (x : view_key) (L M : list view_key) : Prop := mk_cluster_of
       { (** It holds [x] *)
         cluster_self : In x L
-        (** Its views are of the invariant *)
-      ; cluster_inv : forall y, In y L -> Inv y
-        (** It holds the siblings of its views *)
-      ; cluster_closed : forall y ay, In y L -> E y ay -> incl (sibs_of ay ++ y :: nil) L
-        (** The instances its views meet are in it, or below [x] *)
-      ; cluster_meets : forall y ay z, In y L -> E y ay -> In z (meets_of ay) -> In z L \/ lt z x }.
+        (** It holds the siblings of its views, up to proofs *)
+      ; cluster_closed : forall y ay w, Inv y -> key_in y L -> E y ay -> In w (sibs_of ay) -> key_in w L
+        (** The instances its views meet are of its views or of [M] *)
+      ; cluster_meets : forall y ay z, Inv y -> key_in y L -> E y ay -> In z (meets_of ay) -> key_in z L \/ key_in z M
+        (** Those of [M] are of the invariant, and below [x] *)
+      ; cluster_below : forall z, In z M -> Inv z /\ lt z x }.
 
     Hypothesis lt_acc : forall x, Inv x -> Acc lt x.
     (** A view of the invariant has a cluster. *)
-    Hypothesis cluster : forall x, Inv x -> exists L, cluster_of x L.
+    Hypothesis cluster : forall x, Inv x -> exists L M, cluster_of x L M.
     (** The instances any view meets are of the invariant. *)
     Hypothesis meets_inv : forall x ax z, E x ax -> In z (meets_of ax) -> Inv z.
-    (** The siblings of any view are of the invariant, or have its
-        siblings. *)
-    Hypothesis sibs_inv : forall x ax y, E x ax -> In y (sibs_of ax ++ x :: nil) ->
-      Inv y \/ forall ay, E y ay -> incl (sibs_of ay ++ y :: nil) (sibs_of ax ++ x :: nil).
+    (** The siblings of a view of the invariant are of it. *)
+    Hypothesis sibs_inv : forall x ax y, Inv x -> E x ax -> In y (sibs_of ax) -> Inv y.
+    (** The queue's instances are of the invariant. *)
+    Hypothesis init_inv : forall x, In x init -> Inv x.
 
-    (** From a view of the invariant, finitely many views are reachable:
-        its cluster, and those reachable from the meets below it. *)
-    Lemma finite_of_inv : forall x, Inv x -> finite_from x.
+    (** The keys reachable from the keys of the invariant of the view of
+        [x] are of the views of finitely many keys. *)
+    Definition finite_cls (x : view_key) : Prop :=
+      exists L, forall x', Inv x' -> view_key_eq x' x -> forall v, reach_from x' v -> key_in v L.
+
+    (** One list bounds the reachable keys of the views of a list's keys,
+        each with such a bound. *)
+    Lemma cover_cls : forall ys, (forall y, In y ys -> finite_cls y) ->
+        exists L, forall y, In y ys -> forall x', Inv x' -> view_key_eq x' y -> forall v, reach_from x' v -> key_in v L.
     Proof.
-      intros x Hx; pose proof (lt_acc x Hx) as Hacc; revert Hx; induction Hacc as [x _ IH]; intros Hx.
-      destruct (cluster x Hx) as [L HL].
-      destruct (cover (fun z => In z L) (all_meets L)) as [LL HLL].
-      { intros z Hz; destruct (all_meets_in _ _ Hz) as (y & a & Hy & Ha & Hza).
-        destruct (cluster_meets _ _ HL _ _ _ Hy Ha Hza) as [Hin | Hlt]; [ left; exact Hin |].
-        right; apply IH; [ exact Hlt | exact (meets_inv _ _ _ Ha Hza) ]. }
-      apply (finite_of_anchor x L LL); intros w Hw.
-      induction Hw as [| y a w Hy IHy Ha Hw | y a w Hy IHy Ha Hw].
-      - left; exact (cluster_self _ _ HL).
-      - destruct IHy as [HyL | (u & Hu & Huy)].
-        + left; exact (cluster_closed _ _ HL _ _ HyL Ha _ Hw).
-        + right; exists u; split; [ exact Hu | eapply reach_from_sibling; eassumption ].
-      - destruct IHy as [HyL | (u & Hu & Huy)].
-        + destruct (HLL w (in_all_meets _ _ _ _ HyL Ha Hw)) as [HwL | Hf]; [ left; exact HwL |].
-          right; exists w; split; [ exact Hf | apply reach_from_self ].
-        + right; exists u; split; [ exact Hu | eapply reach_from_meet; eassumption ].
+      induction ys as [| y ys IH]; intros H; [ exists nil; intros ? [] |].
+      destruct IH as [L HL]; [ intros; apply H; right; assumption |].
+      destruct (H y (or_introl eq_refl)) as [Ly HLy].
+      exists (Ly ++ L); intros y' [<- | Hin] x' Hx' Hxy v Hv; [ apply key_in_app_l; exact (HLy _ Hx' Hxy _ Hv) |].
+      apply key_in_app_r; exact (HL _ Hin _ Hx' Hxy _ Hv).
     Qed.
 
-    (** From any view, finitely many views are reachable: its siblings, and
-        those reachable from the siblings of the invariant and from the
-        instances the siblings meet. *)
-    Lemma finite_of_any : forall x, finite_from x.
+    (** From the keys of the invariant of the view of a key of the
+        invariant, the reachable keys are of finitely many views: those of
+        its cluster, and those reachable from the meets below it. *)
+    Lemma finite_of_inv : forall x, Inv x -> finite_cls x.
     Proof.
-      intros x; destruct (E_dec x) as [[ax Hax] | [e Hn]].
-      - set (C := sibs_of ax ++ x :: nil).
-        destruct (cover (fun y => forall ay, E y ay -> incl (sibs_of ay ++ y :: nil) C) C) as [LC HLC].
-        { intros y Hy; destruct (sibs_inv _ _ _ Hax Hy) as [Hi | Hs]; [ right; exact (finite_of_inv _ Hi) | left; exact Hs ]. }
-        destruct (cover (fun _ => False) (all_meets C)) as [LM HLM].
-        { intros z Hz; destruct (all_meets_in _ _ Hz) as (y & a & Hy & Ha & Hza).
-          right; exact (finite_of_inv _ (meets_inv _ _ _ Ha Hza)). }
-        apply (finite_of_anchor x C (LC ++ LM)); intros w Hw.
-        induction Hw as [| y a w Hy IHy Ha Hw | y a w Hy IHy Ha Hw].
-        + left; apply in_or_app; right; left; reflexivity.
-        + destruct IHy as [HyC | (u & Hu & Huy)].
-          * destruct (HLC y HyC) as [Hs | Hf]; [ left; exact (Hs _ Ha _ Hw) |].
-            right; exists y; split; [ intros w' Hw'; apply in_or_app; left; exact (Hf _ Hw') |].
-            eapply reach_from_sibling; [ apply reach_from_self | exact Ha | exact Hw ].
-          * right; exists u; split; [ exact Hu | eapply reach_from_sibling; eassumption ].
-        + destruct IHy as [HyC | (u & Hu & Huy)].
-          * destruct (HLM w (in_all_meets _ _ _ _ HyC Ha Hw)) as [[] | Hf].
-            right; exists w; split; [ intros w' Hw'; apply in_or_app; right; exact (Hf _ Hw') | apply reach_from_self ].
-          * right; exists u; split; [ exact Hu | eapply reach_from_meet; eassumption ].
-      - exists (x :: nil); intros w Hw.
-        assert (Hx : w = x).
-        { induction Hw as [| y a w Hy IHy Ha Hw | y a w Hy IHy Ha Hw]; [ reflexivity | |];
-            subst y; exfalso; exact (Hn a Ha). }
-        subst w; left; reflexivity.
+      intros x Hx; pose proof (lt_acc x Hx) as Hacc; revert Hx; induction Hacc as [x _ IH]; intros Hx.
+      destruct (cluster x Hx) as (L & M & HL).
+      destruct (cover_cls M) as [LM HLM].
+      { intros z Hz; destruct (cluster_below _ _ _ HL _ Hz) as [Hiz Hlt]; exact (IH _ Hlt Hiz). }
+      exists (L ++ LM); intros x' Hx' Hxx' v Hv.
+      assert (Hcl : (Inv v /\ key_in v L) \/ exists z w, In z M /\ Inv w /\ view_key_eq w z /\ reach_from w v).
+      { induction Hv as [| y a w Hy IHy Ha Hw | y a w Hy IHy Ha Hw].
+        - left; split; [ exact Hx' |]; exists x; split; [ exact (cluster_self _ _ _ HL) | exact Hxx' ].
+        - destruct IHy as [[Hiy HyL] | (z & u & Hz & Hu & Huz & Huy)].
+          + apply in_app_or in Hw as [Hw | [<- | []]]; [| left; split; assumption ].
+            left; split; [ exact (sibs_inv _ _ _ Hiy Ha Hw) | exact (cluster_closed _ _ _ HL _ _ _ Hiy HyL Ha Hw) ].
+          + right; exists z, u; repeat split; try assumption; eapply reach_from_sibling; eassumption.
+        - destruct IHy as [[Hiy HyL] | (z & u & Hz & Hu & Huz & Huy)].
+          + pose proof (meets_inv _ _ _ Ha Hw) as Hiw.
+            destruct (cluster_meets _ _ _ HL _ _ _ Hiy HyL Ha Hw) as [HwL | (z & Hz & Hwz)]; [ left; split; assumption |].
+            right; exists z, w; repeat split; [ exact Hz | exact Hiw | exact Hwz | apply reach_from_self ].
+          + right; exists z, u; repeat split; try assumption; eapply reach_from_meet; eassumption. }
+      destruct Hcl as [[_ HvL] | (z & u & Hz & Hu & Huz & Huv)]; [ apply key_in_app_l; exact HvL |].
+      apply key_in_app_r; exact (HLM _ Hz _ Hu Huz _ Huv).
     Qed.
 
     Lemma reach_from_init : forall y, reach y -> exists x, In x init /\ reach_from x y.
@@ -480,12 +437,12 @@ Section Search.
       - destruct IH as (x0 & Hx0 & Hr); exists x0; split; [ exact Hx0 | eapply reach_from_meet; eassumption ].
     Qed.
 
-    (** So the views reachable from the queue are finitely many. *)
-    Theorem reach_finite_of_clusters : exists L, forall y, reach y -> In y L.
+    (** So the keys reachable from the queue are of finitely many views. *)
+    Theorem reach_finite_of_clusters : exists L, forall y, reach y -> key_in y L.
     Proof.
-      destruct (cover (fun _ => False) init) as [L HL]; [ intros y _; right; apply finite_of_any |].
+      destruct (cover_cls init) as [L HL]; [ intros y Hy; exact (finite_of_inv _ (init_inv _ Hy)) |].
       exists L; intros y Hy; destruct (reach_from_init _ Hy) as (x & Hx & Hr).
-      destruct (HL _ Hx) as [[] | Hf]; exact (Hf _ Hr).
+      exact (HL _ Hx _ (init_inv _ Hx) ltac:(reflexivity) _ Hr).
     Qed.
   End Clusters.
 End Search.
