@@ -16,6 +16,9 @@
       ([view_nparams_self_param_absurd]); and [run_cmd_ind_case] rejects the
       declaration, already at [c], whose type mentions the recursive
       argument [x] ([run_cmd_ind_self_param_rejected]).
+    - A container met at two instances differing only in a kept proof:
+      one view, the first met, numbers both
+      ([views_dfs_proof_keys_one_view]).
 
     The model lemmas assume only the lookups of the groups involved: the
     groups' telescopes are abstract, and no well-formedness of the global
@@ -634,4 +637,42 @@ Proof.
       by exact (proj1 (ind_sort_univ_wk _ _ (proj1 (ind_sort_univ_wk _ _ HST)))).
     rewrite (nbe_ty_container_at_self _ _ _ _ _ _ _ _ _ Hl Hu Hk Hnp HSTw HW) in Hs.
     cbn in Hs; rewrite classify_container_at_rec_none in Hs; discriminate.
+Qed.
+
+(** ** Two Instances Differing Only in a Proof Are One View
+
+    A container [Q (h : ⊤)] met twice, at two kept proofs of [⊤]: [x] at
+    [⋆ⁿ #0] and [x'] at [⋆ⁿ #1], keys equal up to their proofs and not
+    equal.  The search finds one view, the first met, [x]: [x'] meets it
+    ([views_met] dedups up to proofs), whatever the tables give elsewhere,
+    and [x'] is numbered as [x]'s view. *)
+
+(** The key of [Q] at a kept proof [M] of [⊤]. *)
+Definition proof_key (qc : qname) (M : exp) : view_key := vk_ind qc 0 (nf_proof nf_True M :: nil).
+
+(** Keys at two proofs are of one view. *)
+Lemma proof_keys_one_view : forall qc M M', view_key_eq (proof_key qc M) (proof_key qc M').
+Proof. intros; unfold view_key_eq, proof_key; cbn; rewrite dec_eqb_refl; reflexivity. Qed.
+
+(** Keys at two different proofs are two keys. *)
+Lemma proof_keys_differ : forall qc, proof_key qc (a_var 0) <> proof_key qc (a_var 1).
+Proof. intros qc H; injection H; discriminate. Qed.
+
+Theorem views_dfs_proof_keys_one_view : forall qc sibs meets Vs,
+    sibs (proof_key qc (a_var 0)) = proof_key qc (a_var 0) :: nil -> meets (proof_key qc (a_var 0)) = nil ->
+    views_dfs sibs meets nil (proof_key qc (a_var 0) :: proof_key qc (a_var 1) :: nil) Vs ->
+    Vs = proof_key qc (a_var 0) :: nil /\ view_key_index (proof_key qc (a_var 1)) Vs = Some 0.
+Proof.
+  intros * Hs Hm H.
+  set (x := proof_key qc (a_var 0)) in *; set (x' := proof_key qc (a_var 1)) in *.
+  assert (Em1 : views_met sibs nil x = x :: nil)
+    by (unfold views_met, views_new, view_key_mem; rewrite Hs; unfold x; cbn; rewrite ?dec_eqb_refl; reflexivity).
+  inversion H as [| acc0 x0 tr0 Vs0 H1]; subst.
+  rewrite Em1 in H1; cbn [List.map List.concat List.app] in H1; rewrite Hm in H1; cbn [List.app] in H1.
+  assert (Em2 : views_met sibs (x :: nil) x' = nil)
+    by (unfold views_met, view_key_mem; unfold x, x'; cbn; rewrite ?dec_eqb_refl; reflexivity).
+  inversion H1 as [| acc1 x1 tr1 Vs1 H2]; subst.
+  rewrite Em2 in H2; cbn [List.map List.concat List.app] in H2.
+  inversion H2; subst.
+  split; [ reflexivity | unfold x, x'; cbn; rewrite ?dec_eqb_refl; reflexivity ].
 Qed.
