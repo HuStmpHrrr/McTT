@@ -1604,6 +1604,9 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
        ≈ me_lit (gu_mk (tele_sub Δ (Id,,N)) (md_alias E[sb_qn (length Δ) (Id,,N)]ᵐ)) )
 | wf_me_beta_alias0 :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E ->
+     (** the alias names no module still being defined, as for
+         [wf_unit_eq_alias] *)
+     frame_free_target Θ Ξ Γ E ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_lit (gu_mk nil (md_alias E)) ≈ E )
 | wf_me_sym :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->

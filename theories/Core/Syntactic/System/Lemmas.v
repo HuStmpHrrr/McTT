@@ -1555,14 +1555,14 @@ Proof.
   (** An alias with no parameter: its target through it. *)
   all: try solve [
     match goal with
-    | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HE : wf_modexp_eq _ _ _ ?E ?E,
+    | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HE : wf_modexp_eq _ _ _ ?E ?E, Hf : frame_free_target _ _ _ ?E,
       IHE : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub ?E _) _ /\ _
       |- wf_modexp_eq _ _ _ (modexp_sub (me_lit (gu_mk nil (md_alias ?E))) ?σ) _ /\ _ =>
         pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hr;
         split; [| exact (proj1 (IHE _ _ _ Hσ)) ];
-        eapply wf_me_trans; [ eapply sub_preserves_modexp; [ eapply wf_me_beta_alias0; exact HE | exact Hl ] |];
+        eapply wf_me_trans; [ eapply sub_preserves_modexp; [ eapply wf_me_beta_alias0; [ exact HE | exact Hf ] | exact Hl ] |];
         eapply wf_me_trans; [ exact (proj1 (IHE _ _ _ Hσ)) |];
-        apply wf_me_sym; eapply sub_preserves_modexp; [ eapply wf_me_beta_alias0; exact HE | exact Hr ]
+        apply wf_me_sym; eapply sub_preserves_modexp; [ eapply wf_me_beta_alias0; [ exact HE | exact Hf ] | exact Hr ]
     end ].
   (** A member: the module expression from one substitution to the other;
       the right-hand side typed at the left one's type by the equation of

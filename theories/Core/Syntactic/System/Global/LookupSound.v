@@ -433,8 +433,13 @@ Proof.
       - exists true, R0; constructor; [ intros _; exact HL | discriminate | discriminate ].
       - exists false, R0; constructor; [ discriminate | intros _; exact HR0 | intros _; exact (no_level_of_mod _ _ _ _ _ HRm0 HN) ]. }
     destruct HF as (lv & Rt & HF).
-    apply Hlit; cbn; refine (mk_unit_alias_full _ _ _ _ _ lΘ ps Hps HΘ' HaΘ _ Hp lv Rt HF).
-    exact (proj1 (filed_apps_wf _ _ _ HΘ' _ _ _ Hc Ha HsT HT _ Hargs)).
+    apply Hlit; cbn; refine (mk_unit_alias_full _ _ _ _ _ lΘ ps Hps HΘ' HaΘ _ Hp lv Rt HF _).
+    + exact (proj1 (filed_apps_wf _ _ _ HΘ' _ _ _ Hc Ha HsT HT _ Hargs)).
+    + (* abstracted over outer parameters, the module is no open frame
+         ([desc_ok_closed]) *)
+      exists R0; split; [ exact HR0 |].
+      intros (? & ? & ? & ? & ? & Hm' & Hf); rewrite HRm0 in Hm'; injection Hm' as _ <- _ _ _.
+      match goal with HF0 : _ :: _ <> nil -> gc_frame _ _ = None |- _ => exact (Hf (HF0 ltac:(discriminate))) end.
 Qed.
 
 Lemma modexp_gen : forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> gen_m Θ Ξ Γ H /\ gen_m Θ Ξ Γ H'.
@@ -457,8 +462,9 @@ Proof.
   - split; [| exact (proj1 IHwf_modexp_eq) ].
     pose proof (presup_modexp_eq_ctx H0) as HΓ.
     cbn; refine (mk_unit_alias_full _ _ _ _ _ 0 (fun _ => Typeω@0) (fun _ => ltac:(constructor)) _ ltac:(constructor) H0
-                   ltac:(intros [| ? ?] ? ? ? Heq; discriminate) true (mdesc_term ak_relevant Typeω@0 None) _); [ exact HΓ |].
-    constructor; [ intros _ [| ? ?] ? ? ? Heq; discriminate | discriminate | discriminate ].
+                   ltac:(intros [| ? ?] ? ? ? Heq; discriminate) true (mdesc_term ak_relevant Typeω@0 None) _ _); [ exact HΓ | |].
+    + constructor; [ intros _ [| ? ?] ? ? ? Heq; discriminate | discriminate | discriminate ].
+    + cbn [List.app]; assumption.
 Qed.
 
 (** ** Parts of Descriptions under Application *)

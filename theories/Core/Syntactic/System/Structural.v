@@ -2612,6 +2612,15 @@ Ltac wk_pose_flags Hφ :=
       clear Hm
   end.
 
+(** The same over no parameters. *)
+Lemma wk_frame_free0 : forall Θ Ξ Γ E Δ φ,
+    Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E -> frame_free_target Θ Ξ Γ E -> frame_free_target Θ Ξ Δ (modexp_wk E φ).
+Proof.
+  intros * Hφ HE Hf.
+  destruct (wf_modexp_eq_scoped _ _ _ _ _ HE) as (_ & HsE & _).
+  exact (wk_frame_free _ _ _ nil _ _ _ Hφ (presup_modexp_eq_ctx HE) HsE Hf).
+Qed.
+
 (** The premise that a target is no module still being defined, weakened
     from the unweakened one. *)
 Ltac frame_free_premise_wk :=
@@ -2893,6 +2902,15 @@ Proof.
         rewrite (im_pre_wk D _ Mj Us) in E2 |- * by eassumption;
         eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
                                     | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
+    end ].
+  (** An alias with no parameter is its target: the target, weakened, is
+      still no module being defined. *)
+  all: try solve [
+    match goal with
+    | Hφ : wf_wk _ _ _ _ _, HE : wf_modexp_eq _ _ _ ?E ?E, Hf : frame_free_target _ _ _ ?E,
+      IHE : forall _ _, wf_wk _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_wk ?E _) _ |- _ =>
+        cbn [modexp_wk gunit_wk moddef_wk tele_wk List.length wk_qn];
+        eapply wf_me_beta_alias0; [ exact (IHE _ _ Hφ) | exact (wk_frame_free0 _ _ _ _ _ _ Hφ HE Hf) ]
     end ].
   (** A body unit is its expansion: expansion commutes with weakening. *)
   all: match goal with H0 : forall _ _, _ -> wf_unit_eq _ _ _ (gunit_wk (gu_open _ _) _) _, H1 : wf_wk _ _ _ _ _ |- _ =>
@@ -3553,6 +3571,15 @@ Proof.
   intros * Hσ HΓ HE Hf; exact (move_frame_free Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_compat Θ Ξ) _ _ _ _ _ Hσ HΓ HE Hf).
 Qed.
 
+(** The same over no parameters. *)
+Lemma sub_frame_free0 : forall Θ Ξ Γ E Δ σ,
+    Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E -> frame_free_target Θ Ξ Γ E -> frame_free_target Θ Ξ Δ E[σ]ᵐ.
+Proof.
+  intros * Hσ HE Hf.
+  destruct (wf_modexp_eq_scoped _ _ _ _ _ HE) as (_ & HsE & _).
+  exact (sub_frame_free _ _ _ nil _ _ _ Hσ (presup_modexp_eq_ctx HE) HsE Hf).
+Qed.
+
 (** In the substitution proof, a flag premise or the premise that a target
     is no module still being defined is also moved by a substitution. *)
 Ltac frame_free_premise_sub :=
@@ -4139,6 +4166,15 @@ Proof.
                                     | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
     end ].
   (** A body unit is its expansion: expansion commutes with substitution. *)
+  (** An alias with no parameter is its target: the target, substituted,
+      is still no module being defined. *)
+  all: try solve [
+    match goal with
+    | Hσ : wf_sub _ _ _ _ _, HE : wf_modexp_eq _ _ _ ?E ?E, Hf : frame_free_target _ _ _ ?E,
+      IHE : forall _ _, wf_sub _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub ?E _) _ |- _ =>
+        cbn [modexp_sub gunit_sub moddef_sub tele_sub List.length sb_qn];
+        eapply wf_me_beta_alias0; [ exact (IHE _ _ Hσ) | exact (sub_frame_free0 _ _ _ _ _ _ Hσ HE Hf) ]
+    end ].
   all: match goal with H0 : forall _ _, _ -> wf_unit_eq _ _ _ (gunit_sub (gu_open _ _) _) _, H1 : wf_sub _ _ _ _ _ |- _ =>
          pose proof (H0 _ _ H1) as HU' end.
   all: rewrite !gunit_sub_mk in HU'; rewrite !gunit_sub_mk; cbn [moddef_sub] in HU' |- *.

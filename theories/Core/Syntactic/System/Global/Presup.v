@@ -130,14 +130,6 @@ Proof.
     constructor; econstructor; [ exact (proj1 (proj2 (proj2 (proj2 (mdenote_grow_all _ _ _ _ Hg1 Hg2 Hs)))) _ _ _ ltac:(eassumption)) | eassumption ].
 Qed.
 
-(** A filed body is no open frame. *)
-Lemma gc_body_not_frame : forall Θ Ξ p TΦ, gc_body Θ Ξ p = Some TΦ -> gc_frame Ξ p = None.
-Proof.
-  intros * Hb; unfold gc_body, gc_frame in *.
-  destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |]; [ discriminate | | reflexivity ].
-  destruct U as [Δ [[|] Φ | E]]; reflexivity.
-Qed.
-
 (** A description whose module part is closed reads a closed body. *)
 Lemma mdesc_mod_closed_closedb : forall R Θ' p T Φ Ns,
     mdesc_mod R = Some (mdesc_closed Θ' p T Φ Ns) -> mdesc_closedb R = true.
@@ -3269,6 +3261,7 @@ Section ModInduction.
       all_assumptions Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
       params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
       levels_flag Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E lv Rt ->
+      frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) E ->
       bodies_valid_along_embeddings Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
       V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
   Hypothesis Hnil : forall Θ Ξ Δ l Θ2 Ξ2,
@@ -3783,7 +3776,9 @@ Definition syn_V (Θ : gdeps) (Ξ : gstack) (T : ctx) (E : gentry) : Prop :=
       (exists (lv : bool) Rt, levels_flag Θ Ξ ⋅ Δa E' lv Rt) /\
       forall Γ, ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ ->
         (exists R, mdenote Θ Ξ (Δa ++ Γ) E' R) /\
-        forall R, mdenote Θ Ξ (Δa ++ Γ) E' R -> desc_ok Θ Ξ (Δa ++ Γ) R /\ exists Rm, mdesc_mod R = Some Rm
+        forall R, mdenote Θ Ξ (Δa ++ Γ) E' R -> desc_ok Θ Ξ (Δa ++ Γ) R /\ (exists Rm, mdesc_mod R = Some Rm) /\
+          (** and it is no module still being defined ([frame_free_target]) *)
+          ~ desc_reads_frame Ξ R
   | ge_record _ _ R _ => record_typed Θ Ξ R
   | _ => True
   end.
@@ -4083,7 +4078,7 @@ Proof.
   destruct (wf_ind_args _ _ _ _ _ _ _ _ HD Hl HMk Hlt HΓ Hargs) as [[i Hi] HM].
   rewrite <- (mdesc_up_nil (mdesc_closed nil pm Tm Φm Ns)).
   eapply desc_ok_dm with (param_level := 0);
-    [ exact HΓ | constructor | exact Hi | exact HM | exact Hok | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
+    [ exact HΓ | constructor | exact Hi | exact HM | exact Hok | apply params_evaluated_nil | apply desc_levels_abstractable_nil | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) ].
 Qed.
 
 (** The type former of a typed record type at arguments for its outermost
@@ -4102,7 +4097,7 @@ Proof.
   destruct (wf_record_args _ _ _ _ _ _ HRt Hl HΓ Hargs) as [[i Hi] HM].
   rewrite <- (mdesc_up_nil (mdesc_closed nil pm Tm Φm Ns)).
   eapply desc_ok_dm with (param_level := 0);
-    [ exact HΓ | constructor | exact Hi | exact HM | exact Hok | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
+    [ exact HΓ | constructor | exact Hi | exact HM | exact Hok | apply params_evaluated_nil | apply desc_levels_abstractable_nil | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) ].
 Qed.
 
 (** [closed_entry_read Θ Ξ Γ Θ' p T Φ Ns M R R' R0]: the entry [R] of the
@@ -4119,7 +4114,10 @@ Record closed_entry_read (Θ : gdeps) (Ξ : gstack) (Γ Θ' : ctx) (p : qname) (
   ; closed_entry_read_typed : desc_ok Θ Ξ (Θ' ++ Γ) (mdesc_named Θ' Ns M R0)
     (** It has no member of a type of levels where the module has none *)
   ; closed_entry_read_no_level : Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_closed nil p T Φ Ns ->
-      Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_named Θ' Ns M R0 }.
+      Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_named Θ' Ns M R0
+    (** It is no module still being defined: what is filed reads no open
+        frame *)
+  ; closed_entry_read_frame_free : ~ desc_reads_frame Ξ (mdesc_named Θ' Ns M R0) }.
 
 (** An entry of a typed closed description, read with the arguments
     recorded, under the outside parameters: typed, and with no member of a
@@ -4154,10 +4152,12 @@ Proof.
   pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
   pose proof (closed_tele_wf _ _ _ _ HsT HT HΘ') as HTΘ.
   exists R0.
-  enough (Hparts : desc_ok Θ Ξ (Θ' ++ Γ) (mdesc_named Θ' Ns (apps (a_mem (qname_mod p) y) Ns) R0) /\
-                   (Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_closed nil p T Φ Ns ->
-                    Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_named Θ' Ns (apps (a_mem (qname_mod p) y) Ns) R0))
-    by (destruct Hparts; constructor; first [ reflexivity | exact Hats | assumption ]).
+  enough (Hparts : ~ desc_reads_frame Ξ R /\
+                   (desc_ok Θ Ξ (Θ' ++ Γ) (mdesc_named Θ' Ns (apps (a_mem (qname_mod p) y) Ns) R0) /\
+                    (Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_closed nil p T Φ Ns ->
+                     Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ⁿˡ mdesc_named Θ' Ns (apps (a_mem (qname_mod p) y) Ns) R0)))
+    by (destruct Hparts as (HFr & HP1 & HP2); constructor; first [ reflexivity | exact Hats | assumption
+         | intros Hr; apply HFr; exact (desc_reads_frame_ats_read _ _ _ _ Hats (proj1 (desc_reads_frame_named _ _ _ _ _) Hr)) ]).
   (* an entry other than a definition, where the module has no member of
      a type of levels, denotes a description with none *)
   assert (HNo : (forall b pv r A oM, E0 <> ge_def b pv r A oM) ->
@@ -4176,6 +4176,8 @@ Proof.
       destruct (HM0 M eq_refl) as (M0 & -> & HM); exists (Some M0); split; [ reflexivity | intros ? [= <-]; exact HM ]. }
     destruct Hom as (om0 & Hom & Hom0).
     rewrite Hom in Hats; change (mdesc_term r (ctx_pi_at r T A0) (option_map (ctx_fn T) om0)) with (mdesc_up T (mdesc_term r A0 om0)) in Hats.
+    (* a definition is no module *)
+    split; [ intros (? & ? & ? & ? & ? & Hm & _); cbn in Hm; discriminate |].
     (* where the module has no member of a type of levels, the type is of
        a large universe *)
     split.
@@ -4219,11 +4221,14 @@ Proof.
     destruct HE0 as [[HaΔT HΔT] _].
     destruct (loc_child_mod _ _ Hg0 _ _ _ Hloc _ _ _ _ _ Hent) as [Hb _].
     rewrite mdesc_named_fix by reflexivity.
+    (* the submodule is filed below, no open frame *)
+    split; [ intros (? & ? & ? & ? & ? & Hm & Hf); cbn in Hm; injection Hm as _ <- _ _ _;
+             destruct (gc_sub_body _ _ _ _ _ _ _ Hsub Hb) as (? & Hb' & _); exact (Hf (gc_body_not_frame _ _ _ _ Hb')) |].
     split; [| intros HNl; eapply no_level_closed_any; exact (HNo ltac:(intros; discriminate) HNl) ].
     eapply desc_ok_closed with (param_level := 0);
       [ exact Hg0 | exact Hsub | right; exact Hb | exact HaΔT
       | exact (proj1 (gctx_closed_body _ _ _ _ _ (wf_gstack_closed _ _ Hg0) Hb)) | exact HΔT | exact HΘ'
-      | apply args_ok_ext; exact Hargs | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
+      | apply args_ok_ext; exact Hargs | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) ].
   - (* an alias: the module part of what its target denotes, at the
        arguments for the telescope it is stored over *)
     cbn in Hgr; subst E1.
@@ -4237,7 +4242,8 @@ Proof.
     pose proof (closed_tele_wf _ _ _ _ HsΔ HΔ HΓ) as HΔΓ.
     pose proof (closed_tele_wf _ _ _ _ HsΔ HΔ (ctx_app_wf_tail _ _ _ _ HTΘ)) as HΔΘ.
     match goal with Hm : mdenote _ _ _ E' ?R1, Hmd : mdesc_mod ?R1 = Some ?R1m |- _ =>
-      destruct (proj2 (Hcl _ HΔΓ) _ Hm) as [Hok1 _];
+      destruct (proj2 (Hcl _ HΔΓ) _ Hm) as (Hok1 & _ & HFr1);
+      assert (HFr1m : ~ desc_reads_frame Ξ R1m) by (intros Hr; exact (HFr1 (desc_reads_frame_mod _ _ _ Hmd Hr)));
       pose proof (desc_ok_mod _ _ Hg _ _ _ Hok1 Hmd) as Hok1m;
       pose proof (proj1 (mdenote_scoped_all _ _ (wf_gstack_closed _ _ Hg)) _ _ _ Hm _
                     (slots_ok_app _ 0 _ ltac:(intros ? ? ?; lia) ltac:(exact HsΔ)) ltac:(rewrite Nat.add_0_r; exact HsE)) as HsR1;
@@ -4250,12 +4256,13 @@ Proof.
     assert (HaΔ : all_assumptions (Δ0 ++ T)) by (apply List.Forall_app; split; assumption).
     pose proof (args_ok_ext _ _ _ _ _ Δ0 Hargs) as Hargs'.
     destruct (ats_up_ok _ _ Hg Ns (Θ' ++ Γ) (Δ0 ++ T) _ lΔ HΔΘ HaΔ (args_ok_length _ _ _ _ _ Hargs') (args_ok_insts _ _ _ _ _ Hargs') Hok2
-                (up_evaluated_of _ _ _ _ _ _ (params_evaluated_closed _ _ _ _ _ HsΔ HRΔ HΔΘ) HLR1m)) as (R2 & HR2 & Hok3).
+                (up_evaluated_of _ _ _ _ _ _ (params_evaluated_closed _ _ _ _ _ HsΔ HRΔ HΔΘ) HLR1m (fun _ => HFr1m))) as (R2 & HR2 & Hok3).
     rewrite mdesc_ats_read_mod in Hats by (apply mdesc_is_mod_up; eapply mdesc_mod_is_mod; eassumption).
     rewrite Hats in HR2; injection HR2 as <-.
     rewrite mdesc_named_fix.
     2:{ apply mdesc_self_mod.
         eapply mdesc_ats_is_mod; [| exact Hats ]; apply mdesc_is_mod_up; eapply mdesc_mod_is_mod; eassumption. }
+    split; [ intros Hr; exact (HFr1m (proj1 (desc_reads_frame_up _ _ _) Hr)) |].
     split; [ exact Hok3 |].
     (* where the module has no member of a type of levels, nor has the
        target's module part *)
@@ -4282,8 +4289,11 @@ Proof.
       as (R1 & HR1 & Hok1).
     { eapply desc_ok_closed with (param_level := 0);
         [ exact Hg | apply gc_sub_refl | right; exact Hbm | exact HaU | exact HsU | exact HU | exact HΘ'
-        | exact HargsU | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil ]. }
+        | exact HargsU | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) ]. }
     rewrite Hats in HR1; injection HR1 as <-.
+    (* the module is filed at the type's path, no open frame *)
+    split; [ intros (? & ? & ? & ? & ? & Hm & Hf); unfold ind_former_desc in Hm; cbn in Hm; injection Hm as _ <- _ _ _;
+             exact (Hf (gc_body_not_frame _ _ _ _ Hbm)) |].
     split; [| intros HNl; apply no_level_named; exact (no_level_former_read _ _ _ _ _ _ _ _ _ _ _ (HNo ltac:(intros; discriminate) HNl) Hats) ].
     unfold ind_former_desc in Hats; cbn [mdesc_ats_read] in Hats; mdesc_dm_read_shape Hats.
     rewrite mdesc_named_fix by reflexivity; exact Hok1.
@@ -4306,7 +4316,8 @@ Proof.
     pose proof (closed_tele_wf _ _ _ _ HsΔ HΔ HΓ) as HΔΓ.
     pose proof (closed_tele_wf _ _ _ _ HsΔ HΔ (ctx_app_wf_tail _ _ _ _ HTΘ)) as HΔΘ.
     match goal with Hm : mdenote _ _ _ ?E' ?R1, Hmd : mdesc_mod ?R1 = Some ?R1m |- _ =>
-      destruct (proj2 (Hcl _ HΔΓ) _ Hm) as [Hok1 _];
+      destruct (proj2 (Hcl _ HΔΓ) _ Hm) as (Hok1 & _ & HFr1);
+      assert (HFr1m : ~ desc_reads_frame Ξ R1m) by (intros Hr; exact (HFr1 (desc_reads_frame_mod _ _ _ Hmd Hr)));
       pose proof (desc_ok_mod _ _ Hg _ _ _ Hok1 Hmd) as Hok1m;
       pose proof (proj1 (mdenote_scoped_all _ _ (wf_gstack_closed _ _ Hg)) _ _ _ Hm _
                     (slots_ok_app _ 0 _ ltac:(intros ? ? ?; lia) ltac:(exact HsΔ)) ltac:(rewrite Nat.add_0_r; exact HsE)) as HsR1;
@@ -4320,7 +4331,7 @@ Proof.
     assert (HaΔ : all_assumptions (Δ0 ++ T)) by (apply List.Forall_app; split; assumption).
     pose proof (args_ok_ext _ _ _ _ _ Δ0 Hargs) as Hargs'.
     destruct (ats_up_ok _ _ Hg Ns (Θ' ++ Γ) (Δ0 ++ T) _ lΔ HΔΘ HaΔ (args_ok_length _ _ _ _ _ Hargs') (args_ok_insts _ _ _ _ _ Hargs') Hok2
-                (up_evaluated_of _ _ _ _ _ _ (params_evaluated_closed _ _ _ _ _ HsΔ HRΔ HΔΘ) HLR1m)) as (R2 & HR2 & Hok3).
+                (up_evaluated_of _ _ _ _ _ _ (params_evaluated_closed _ _ _ _ _ HsΔ HRΔ HΔΘ) HLR1m (fun _ => HFr1m))) as (R2 & HR2 & Hok3).
     (* the term part: as a transparent definition, at the arguments *)
     pose proof (closed_tele_weaken_exp _ _ _ _ _ _ HsT HA0 HTΘ) as HA0Θ.
     destruct (ats_up_ok _ _ Hg Ns (Θ' ++ Γ) T (mdesc_term ak_relevant A0 (Some M0)) 0 HTΘ Ha (args_ok_length _ _ _ _ _ Hargs)
@@ -4333,6 +4344,7 @@ Proof.
     cbn [mdesc_ats_read] in Hats; rewrite (mdesc_term_part_ats_of_ats _ _ _ HR3), HR2 in Hats; cbv beta iota in Hats; injection Hats as <-.
     rewrite mdesc_named_fix by reflexivity.
     pose proof (mdesc_ats_is_mod _ _ _ (mdesc_is_mod_up _ _ HmR1m) HR2) as HmR2.
+    split; [ intros Hr; exact (HFr1m (proj1 (desc_reads_frame_up _ _ _) (proj1 (desc_reads_frame_dm _ _ _ _ _) Hr))) |].
     split.
     2:{ (* where the module has no member of a type of levels, nor has
            the target's module part *)
@@ -4348,7 +4360,7 @@ Proof.
     inversion Hok4 as [? ? ? ? ? HBt HMB | | |]; subst.
     rewrite <- (mdesc_up_nil R2).
     eapply desc_ok_dm with (Θd := nil) (param_level := 0);
-      [ exact HΘ' | constructor | exact HBt | exact (HMB _ eq_refl) | exact Hok3 | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
+      [ exact HΘ' | constructor | exact HBt | exact (HMB _ eq_refl) | exact Hok3 | apply params_evaluated_nil | apply desc_levels_abstractable_nil | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) ].
   - (* a record type, stored at its own path: its type former at the
        arguments, with its module there *)
     destruct E1 as [| ? [? [? ?| ?]] | | | pv1 pr1 Rr1 ΦR1]; cbn in Hgr; try discriminate; try contradiction.
@@ -4369,10 +4381,13 @@ Proof.
     { eapply desc_ok_closed with (param_level := 0);
         [ exact Hg | apply gc_sub_refl | right; exact Hbm | exact HaU
         | exact (record_mod_tele_scoped _ _ (proj2 (proj1 (ctx_scoped_app_iff _ _) HF)))
-        | exact HU | exact HΘ' | | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
+        | exact HU | exact HΘ' | | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) ].
       unfold record_mod_tele; rewrite HΔ0.
       exact (args_ok_ext _ _ _ _ _ (ce_ass (sort_exp_kind (record_sort Rr)) (record_self (qname_in p y) Rr) :: Δ0) Hargs). }
     rewrite Hats in HR1; injection HR1 as <-.
+    (* the module is filed at the type's path, no open frame *)
+    split; [ intros (? & ? & ? & ? & ? & Hm & Hf); unfold record_former_desc in Hm; cbn in Hm; injection Hm as _ <- _ _ _;
+             exact (Hf (gc_body_not_frame _ _ _ _ Hbm)) |].
     split; [| intros HNl; apply no_level_named; exact (no_level_former_read _ _ _ _ _ _ _ _ _ _ _ (HNo ltac:(intros; discriminate) HNl) Hats) ].
     unfold record_former_desc in Hats; cbn [mdesc_ats_read] in Hats; mdesc_dm_read_shape Hats.
     rewrite mdesc_named_fix by reflexivity; exact Hok1.
@@ -4387,9 +4402,9 @@ Lemma desc_ok_entry_closed : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_syn Θ Ξ -
     edenote Θ Ξ (Γy ++ Γ) (Some (qname_in p y)) E R -> mdesc_read rd R = Some R' -> desc_ok Θ Ξ Γ R'.
 Proof.
   intros Θ Ξ Hg Hv * HR He Hed Hr.
-  destruct (desc_ok_entry_closed_read _ _ Hg Hv _ _ _ _ _ _ _ _ _ _ _ _ HR He Hed Hr) as (R0 & [-> _ Hok HN]).
+  destruct (desc_ok_entry_closed_read _ _ Hg Hv _ _ _ _ _ _ _ _ _ _ _ _ HR He Hed Hr) as (R0 & [-> _ Hok HN HFr]).
   inversion HR as [| | Γ0 Θa T0 Φ1 Ns0 Θ0 Ξ0 p0 lΘ Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs HaΘ' HRΘ' HLΘ' |]; subst.
-  apply (desc_ok_up _ _ _ _ _ lΘ); [ exact Hok | exact HΘ' | exact HaΘ' | apply up_evaluated_of; [ exact HRΘ' |] ].
+  apply (desc_ok_up _ _ _ _ _ lΘ); [ exact Hok | exact HΘ' | exact HaΘ' | apply up_evaluated_of; [ exact HRΘ' | | exact (fun _ => HFr) ] ].
   destruct HLΘ' as [HL | HL]; [ left; exact HL | right; exact (HN HL) ].
 Qed.
 
@@ -4456,7 +4471,7 @@ Proof.
   destruct (loc_valid _ _ _ _ _ Hv Hl) as [[Ha HT _ _] _].
   eapply desc_ok_closed with (param_level := 0);
     [ exact (ctx_wf_gctx _ _ _ HΓ) | apply gc_sub_refl | exact Hl | exact Ha | exact (wf_ctx_scoped _ _ _ HT) | exact HT | exact HΓ
-    | | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
+    | | constructor | apply params_evaluated_nil | apply desc_levels_abstractable_nil | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) ].
   exists T nil; [ rewrite List.app_nil_r; reflexivity | reflexivity | constructor | constructor | exact HΓ |].
   intros k ? ? Hk; rewrite List.nth_error_nil in Hk; discriminate.
 Qed.
@@ -4611,12 +4626,17 @@ Qed.
 Lemma desc_ok_alias : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ Δ E R l lv Rt, ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> all_assumptions Δ ->
     params_evaluated Θ Ξ Γ Δ l -> levels_flag Θ Ξ Γ Δ E lv Rt ->
     (forall R0, mdenote Θ Ξ (Δ ++ Γ) E R0 -> desc_ok Θ Ξ (Δ ++ Γ) R0) ->
+    (Δ <> nil -> frame_free_target Θ Ξ (Δ ++ Γ) E) ->
     udenote Θ Ξ Γ None (gu_mk Δ (md_alias E)) R -> desc_ok Θ Ξ Γ R.
 Proof.
-  intros * Hg * HΓ Ha HRΔ Hlv HE HR; inversion HR; subst.
-  apply (desc_ok_up _ _ _ _ _ l); [| exact HΓ | exact Ha | apply up_evaluated_of; [ exact HRΔ |] ].
+  intros * Hg * HΓ Ha HRΔ Hlv HE Hff HR; inversion HR; subst.
+  apply (desc_ok_up _ _ _ _ _ l); [| exact HΓ | exact Ha | apply up_evaluated_of; [ exact HRΔ | | ] ].
   - eapply desc_ok_mod; [ exact Hg | apply HE; eassumption | eassumption ].
   - eapply desc_levels_abstractable_mod; [ eapply levels_flag_here; eassumption | eassumption ].
+  - intros Hne; destruct (Hff Hne) as (R1 & Hm1 & Hn1).
+    match goal with Hm : mdenote _ _ _ E ?R0, Hmd : mdesc_mod ?R0 = Some _ |- _ =>
+      rewrite <- (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm _ Hm1) in Hn1;
+      intros Hr; exact (Hn1 (desc_reads_frame_mod _ _ _ Hmd Hr)) end.
 Qed.
 
 
@@ -4771,7 +4791,7 @@ Proof.
   - (* an alias unit *)
     split; intros R HR; eapply desc_ok_alias; try exact HR;
       first [ exact Hg | eapply presup_modexp_eq_ctx; eassumption | eapply params_evaluated_of_sorts; eassumption
-            | eapply mk_levels_flag; eassumption | assumption | eassumption ].
+            | eapply mk_levels_flag; eassumption | assumption | intros _; assumption | eassumption ].
   - (* an alias of a literal, and the literal over both telescopes *)
     match goal with HU : wf_unit_eq _ _ (?Δ ++ ?Γ) (gu_mk ?Δ' ?D) _, Ha : all_assumptions ?Δ,
                     IH : forall R, udenote _ _ (?Δ ++ ?Γ) None (gu_mk ?Δ' ?D) R -> desc_ok _ _ _ R |- _ =>
@@ -4779,13 +4799,17 @@ Proof.
       destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & (R0 & HR0) & _);
       split; intros R HR;
       [ eapply desc_ok_alias; [ exact Hg | exact HΔ | exact Ha | eapply params_evaluated_of_sorts; eassumption
-                              | eapply mk_levels_flag; eassumption | | exact HR ];
+                              | eapply mk_levels_flag; eassumption | | intros _; eassumption | exact HR ];
         intros R1 HR1; inversion HR1; subst; try (unfold gc_unit in *; cbn in *; discriminate); auto
       | pose proof (udenote_abs _ _ _ _ _ _ HR0) as Habs; cbn [gunit_abs] in Habs;
         rewrite (proj1 (proj2 (mdenote_functional_all _ _ Hg)) _ _ _ _ HR _ Habs);
         eapply desc_ok_up; [ exact (IH _ HR0) | exact HΔ | exact Ha | apply up_evaluated_of ];
         [ eapply params_evaluated_of_sorts; eassumption
-        | eapply levels_flag_here; [ exact Hg | eapply mk_levels_flag; eassumption | constructor; exact HR0 ] ] ]
+        | eapply levels_flag_here; [ exact Hg | eapply mk_levels_flag; eassumption | constructor; exact HR0 ]
+        | (* the literal is no module still being defined *)
+          intros _; match goal with Hff : frame_free_target _ _ _ (me_lit _) |- _ => destruct Hff as (R1 & Hm1 & Hn1) end;
+          assert (HmL : mdenote Θ Ξ (Δ ++ Γ) (me_lit (gu_mk Δ' D)) R0) by (constructor; exact HR0);
+          rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmL _ Hm1); exact Hn1 ] ]
     end.
   - (* a body unit and its expansion *)
     match goal with HU : wf_unit_eq _ _ _ (gu_open _ _) _, IH : forall R, udenote _ _ _ None (gu_open _ _) R -> _ |- _ =>
@@ -4858,7 +4882,7 @@ Proof.
     match goal with HE : wf_modexp_eq _ _ _ E E |- _ => eapply (desc_ok_alias _ _ Hg _ nil E _ 0 true R);
       [ exact (presup_modexp_eq_ctx HE) | constructor | apply params_evaluated_nil
       | constructor; [ intros _ [| ? ?] ? ? ? Heq; discriminate | discriminate | discriminate ]
-      | cbn; assumption | eassumption ] end.
+      | cbn; assumption | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) | eassumption ] end.
 Qed.
 
 (** The term part of a typed description is of a type, and its δ-reduct of
@@ -4928,9 +4952,11 @@ Proof.
     assert (HR : exists l, params_evaluated Θ Ξ Γ (Θ' ++ Δ) l) by (inversion Hok; eexists; eassumption).
     destruct HR as [l HR]; destruct (params_evaluated_app_inv _ _ _ _ _ _ HR) as [HR0 _].
     assert (HL : desc_levels_abstractable Θ Ξ Γ (Θ' ++ Δ) (mdesc_closed nil p T Φ Ns)) by (inversion Hok; assumption).
+    assert (HF : Θ' ++ Δ <> nil -> gc_frame Ξ p = None) by (inversion Hok; assumption).
     apply (desc_ok_closed_root _ _ _ _ _ _ _ _ Ha) in Hok; rewrite <- List.app_assoc in Hok.
     exact (desc_ok_closed_unroot _ _ _ _ _ _ _ _ _ (proj1 (proj1 (List.Forall_app _ _ _) Ha)) HR0
-             (desc_levels_abstractable_app_inv _ _ _ _ _ _ HL) Hok).
+             (desc_levels_abstractable_app_inv _ _ _ _ _ _ HL)
+             (fun Hn => HF ltac:(destruct Θ'; [ contradiction (Hn eq_refl) | discriminate ])) Hok).
 Qed.
 
 Lemma desc_ok_wf_ctx : forall Θ Ξ Γ R, desc_ok Θ Ξ Γ R -> ⊢ Θ ⍮ Ξ ⍮ Γ.
@@ -5118,22 +5144,25 @@ Proof.
   destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Hc & Ht & _ & _ & _ & Hu & _).
   induction 1 as [Γ r A om iA HA HM
                  | Γ Δ Φw Φ lΔ HΦ Hn Hent IH HaΔ Hsh Hnd HUw HRΔ Htg HLΔ
-                 | Γ Θ' T Φ Ns Θ0 Ξ0 p lΘ Hg0 Hs0 Hloc Ha Hsc HT HΘ' Hargs HaΘ HRΘ HLΘ
-                 | Γ Θd A M Rm lΘ iA HΘd HaΘd HBt HMt HRm IH HRΘd HLΘd];
+                 | Γ Θ' T Φ Ns Θ0 Ξ0 p lΘ Hg0 Hs0 Hloc Ha Hsc HT HΘ' Hargs HaΘ HRΘ HLΘ HFΘ
+                 | Γ Θd A M Rm lΘ iA HΘd HaΘd HBt HMt HRm IH HRΘd HLΘd HFΘd];
     intros R2 Hd.
   4: { (* a definition with a module part, or a type former: its module
           part grows *)
        inversion Hd as [? Hcb | | ? ? ? R1' R2' Hd']; subst.
        - (* reading no closed body *)
+         assert (Hcb' : mdesc_closedb Rm = false) by (cbn in Hcb; rewrite mdesc_closedb_up in Hcb; exact Hcb).
          econstructor; [ apply Hc, HΘd | exact HaΘd | exact (Ht _ _ _ HBt) | apply Ht, HMt |
                        | exact (params_evaluated_embed _ _ _ _ _ _ _ He HRΘd)
-                       | eapply desc_levels_abstractable_grow; [ exact He | exact HLΘd | apply mdesc_grows_same ] ].
-         + apply IH, mdesc_grows_same; cbn in Hcb; rewrite mdesc_closedb_up in Hcb; exact Hcb.
+                       | eapply desc_levels_abstractable_grow; [ exact He | exact HLΘd | apply mdesc_grows_same ]
+                       | intros Hne; exact (frame_free_grows _ _ _ _ Hs _ _ (mdesc_grows_same _ _ _ _ _ Hcb') (HFΘd Hne)) ].
+         + apply IH, mdesc_grows_same; exact Hcb'.
          + cbn in Hcb |- *; rewrite mdesc_closedb_up in Hcb; exact Hcb.
        - destruct (mdesc_grows_up_inv _ _ _ _ _ _ _ Hd') as (Rm' & -> & HRm').
          econstructor; [ apply Hc, HΘd | exact HaΘd | exact (Ht _ _ _ HBt) | apply Ht, HMt | exact (IH _ HRm')
                        | exact (params_evaluated_embed _ _ _ _ _ _ _ He HRΘd)
-                       | eapply desc_levels_abstractable_grow; [ exact He | exact HLΘd | constructor; exact HRm' ] ]. }
+                       | eapply desc_levels_abstractable_grow; [ exact He | exact HLΘd | constructor; exact HRm' ]
+                       | intros Hne; exact (frame_free_grows _ _ _ _ Hs _ _ HRm' (HFΘd Hne)) ]. }
   all: inversion Hd as [? Hcb | Θ'' T' Φ1 Φ2 Ns' p' Hl1 Hl2 |]; subst; try (cbn in Hcb; discriminate).
   - econstructor; [ exact (Ht _ _ _ HA) | intros M HM0; apply Ht, HM, HM0 ].
   - econstructor; [ apply Hc, HΦ | exact Hn | | exact HaΔ | exact Hsh | exact Hnd | apply Hu, HUw
@@ -5150,10 +5179,12 @@ Proof.
     destruct (proj1 (proj2 (mdenote_grow_all _ _ _ _ Hg1 Hg2 Hs)) _ _ _ _ HR1 (or_introl eq_refl)) as (R1' & HR1' & Hd1).
     rewrite (proj1 (proj2 (mdenote_functional_all _ _ Hg2)) _ _ _ _ HR _ HR1').
     exact (IH _ _ _ _ Hp HE _ HR1 _ Hd1).
-  - econstructor; [ exact Hg2 | apply gc_sub_refl | exact Hl2 | exact Ha | exact Hsc
+  - eapply desc_ok_closed; [ exact Hg2 | apply gc_sub_refl | exact Hl2 | exact Ha | exact Hsc
                   | apply Hc, HT | apply Hc, HΘ' | exact (gctx_embedding_preserves_args_ok _ _ _ _ _ _ _ He Hargs) | exact HaΘ
                   | exact (params_evaluated_embed _ _ _ _ _ _ _ He HRΘ)
-                  | eapply desc_levels_abstractable_grow; [ exact He | exact HLΘ | constructor; eassumption ] ].
+                  | eapply desc_levels_abstractable_grow; [ exact He | exact HLΘ | constructor; eassumption ] |].
+    intros Hne; apply (proj1 (closed_frame_free_iff Ξ2 Θ' p T Φ2 Ns)).
+    exact (frame_free_grows _ _ _ _ Hs _ _ Hd (proj2 (closed_frame_free_iff Ξ1 Θ' p T Φ Ns) (HFΘ Hne))).
 Qed.
 
 (** ** Presupposition of Typing, over Valid Storage *)
@@ -5381,10 +5412,11 @@ Lemma syn_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 (Θs : gdeps) (�
     all_assumptions Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
     params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     levels_flag Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E lv Rt ->
+    frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) E ->
     bodies_valid_along_embeddings syn_Vs syn_F syn_VD syn_VR Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     syn_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
-  intros * HaΔ Hx HE HRΔ [HL1 Hm1 Hn1] HG He _; cbn [syn_V].
+  intros * HaΔ Hx HE HRΔ [HL1 Hm1 Hn1] (Rf & Hmf & Hnf) HG He _; cbn [syn_V].
   rewrite List.app_nil_r in Hm1, Hn1.
   pose proof (gctx_embedding_with_bodies_embedding _ _ _ _ He) as He'.
   pose proof (gctx_embedding_wf _ _ _ _ He') as Hg2.
@@ -5416,7 +5448,10 @@ Proof.
   split; [ exists R2; exact HR2' |].
   intros R Hm.
   rewrite (proj1 (mdenote_functional_all _ _ Hg2) _ _ _ Hm _ HR2').
-  split; [| exists R2m; exact HR2m ].
+  split; [| split; [ exists R2m; exact HR2m |] ].
+  2:{ (* it is no module still being defined, and stays so *)
+      rewrite <- (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR1 _ Hmf) in Hnf.
+      exact (frame_free_grows _ _ _ _ (gctx_embedding_resolution _ _ _ _ He') _ _ Hd Hnf). }
   pose proof (desc_ok_tele_weaken _ _ Hg2 (Δ ++ gs_tele Ξ) Γ nil R2) as Hw.
   rewrite !List.app_nil_r in Hw.
   apply Hw; [ exact (wf_ctx_scoped _ _ _ (Hc _ HΔ)) | exact (Hc _ HΔ) | exact HΓ | exact HsR2 | exact Hok2 ].
