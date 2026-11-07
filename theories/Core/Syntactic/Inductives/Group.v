@@ -9,7 +9,7 @@
     positivity (the command, [Core.Syntactic.System.Command], normalizes an
     argument type and classifies its normal form). *)
 
-From Stdlib Require Import List String PeanoNat Bool Sorting.Sorted Lia.
+From Stdlib Require Import List String PeanoNat Bool Sorting.Sorted Lia RelationClasses.
 
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Syntax.
@@ -179,26 +179,67 @@ Definition ind_order_ok (D : ind_decl) : Prop :=
     its instance, not yet numbered ([classified_ptyp]); the command numbers the views
     once it has found them all ([classified_ptyp_num]). *)
 
-(** The key of a view during classification: an instance met, which the
-    group files as one of its members. *)
+(** The key of a view: an instance met, its arguments in normal form,
+    which the group files as one of its members.  Two keys are of one
+    view when they are equal up to their proofs ([view_key_eqb]): an
+    instance normalized holds its proofs as kept, and two proofs of one
+    proposition make one type. *)
 Inductive view_key : Set :=
 (** An inductive view: the declared member [k] of the filed group at [qc],
     at the uniform arguments [Cs] *)
-| vk_ind (qc : qname) (k : nat) (Cs : list exp)
+| vk_ind (qc : qname) (k : nat) (Cs : list nf)
 (** A record view: the record at [qr], at the instance [Is] (all its
     parameters) *)
-| vk_record (qr : qname) (Is : list exp).
+| vk_record (qr : qname) (Is : list nf).
 
-(** Decidable equality of the keys of views. *)
-Definition view_key_eq_dec (x y : view_key) : {x = y} + {x <> y}.
+(** An instance met, as the classification reads it off a type: its
+    arguments as they are there, which the command normalizes into the
+    key of its view. *)
+Inductive view_inst : Set :=
+(** The declared member [k] of the filed group at [qc], at the uniform
+    arguments [Cs] *)
+| vi_ind (qc : qname) (k : nat) (Cs : list exp)
+(** The record at [qr], at the instance [Is] *)
+| vi_record (qr : qname) (Is : list exp).
+
+(** Whether two keys are of one view: the same container's member, or
+    the same record, at arguments equal up to their proofs. *)
+Definition view_key_eqb (x y : view_key) : bool :=
+  match x, y with
+  | vk_ind qc k Cs, vk_ind qc' k' Cs' => dec_eqb qname_eq_dec qc qc' && Nat.eqb k k' && list_eqb nf_eqb_upto_proofs Cs Cs'
+  | vk_record qr Is, vk_record qr' Is' => dec_eqb qname_eq_dec qr qr' && list_eqb nf_eqb_upto_proofs Is Is'
+  | _, _ => false
+  end.
+
+(** Two keys of one view: the relation of statements, decided by
+    [view_key_eqb]. *)
+Definition view_key_eq (x y : view_key) : Prop := view_key_eqb x y = true.
+
+#[export] Instance view_key_eq_Equivalence : Equivalence view_key_eq.
 Proof.
-  destruct x as [qc k Cs | qr Is], y as [qc' k' Cs' | qr' Is']; try (right; discriminate).
-  - destruct (qname_eq_dec qc qc') as [<- |]; [| right; congruence ].
-    destruct (Nat.eq_dec k k') as [<- |]; [| right; congruence ].
-    destruct (list_eq_dec exp_eq_dec Cs Cs') as [<- |]; [ left; reflexivity | right; congruence ].
-  - destruct (qname_eq_dec qr qr') as [<- |]; [| right; congruence ].
-    destruct (list_eq_dec exp_eq_dec Is Is') as [<- |]; [ left; reflexivity | right; congruence ].
-Defined.
+  unfold view_key_eq; split.
+  - intros [qc k Cs | qr Is]; cbn; rewrite dec_eqb_refl; [ rewrite Nat.eqb_refl |]; cbn;
+      exact (Equivalence_Reflexive (Equivalence := nfs_eq_upto_proofs_Equivalence) _).
+  - intros [qc k Cs | qr Is] [qc' k' Cs' | qr' Is'] H; cbn in *; try discriminate;
+      repeat (apply andb_prop in H as [H ?]).
+    + apply dec_eqb_true in H; apply Nat.eqb_eq in H1; subst qc' k'; rewrite dec_eqb_refl, Nat.eqb_refl; cbn.
+      exact (Equivalence_Symmetric (Equivalence := nfs_eq_upto_proofs_Equivalence) _ _ H0).
+    + apply dec_eqb_true in H; subst qr'; rewrite dec_eqb_refl; cbn.
+      exact (Equivalence_Symmetric (Equivalence := nfs_eq_upto_proofs_Equivalence) _ _ H0).
+  - intros [qc k Cs | qr Is] [qc' k' Cs' | qr' Is'] [qc'' k'' Cs'' | qr'' Is''] H H'; cbn in *; try discriminate;
+      repeat (apply andb_prop in H as [H ?]); repeat (apply andb_prop in H' as [H' ?]).
+    + apply dec_eqb_true in H, H'; apply Nat.eqb_eq in H1, H3; subst qc' qc'' k' k''; rewrite dec_eqb_refl, Nat.eqb_refl; cbn.
+      exact (Equivalence_Transitive (Equivalence := nfs_eq_upto_proofs_Equivalence) _ _ _ H0 H2).
+    + apply dec_eqb_true in H, H'; subst qr' qr''; rewrite dec_eqb_refl; cbn.
+      exact (Equivalence_Transitive (Equivalence := nfs_eq_upto_proofs_Equivalence) _ _ _ H0 H1).
+Qed.
+
+(** A key among keys, up to the views they are of. *)
+Definition key_in (x : view_key) (Vs : list view_key) : Prop := exists y, In y Vs /\ view_key_eq x y.
+
+(** A key in a list is a key among it. *)
+Lemma key_in_of_in : forall x Vs, In x Vs -> key_in x Vs.
+Proof. intros x Vs H; exists x; split; [ exact H | reflexivity ]. Qed.
 
 (** Whether a key is a record view's. *)
 Definition vk_is_record (x : view_key) : bool := match x with vk_record _ _ => true | vk_ind _ _ _ => false end.
@@ -210,8 +251,19 @@ Definition view_key_head (x : view_key) : exp :=
 
 (** The arguments a view's key fixes: the uniform arguments at an
     inductive view, the instance at a record view. *)
-Definition view_key_args (x : view_key) : list exp :=
+Definition view_key_args (x : view_key) : list nf :=
   match x with vk_ind _ _ Cs => Cs | vk_record _ Is => Is end.
+
+(** Keys of one view have one head and, as many arguments, equal up to
+    their proofs. *)
+Lemma view_key_eq_parts : forall x y, view_key_eq x y ->
+    view_key_head x = view_key_head y /\ vk_is_record x = vk_is_record y /\ nfs_eq_upto_proofs (view_key_args x) (view_key_args y).
+Proof.
+  unfold view_key_eq; intros [qc k Cs | qr Is] [qc' k' Cs' | qr' Is'] H; cbn in *; try discriminate;
+    repeat (apply andb_prop in H as [H ?]).
+  - apply dec_eqb_true in H; apply Nat.eqb_eq in H1; subst qc' k'; split; [ reflexivity | split; [ reflexivity | exact H0 ] ].
+  - apply dec_eqb_true in H; subst qr'; split; [ reflexivity | split; [ reflexivity | exact H0 ] ].
+Qed.
 
 (** The pattern of the weakening from the context of an argument's
     [Self]-free parts into the context the argument is written in: [d]
@@ -249,49 +301,87 @@ Fixpoint app_args (M : exp) : list exp :=
   | _ => nil
   end.
 
-(** The position of an instance among the views. *)
+(** The position of the view of a key among the views: the first key of
+    its view. *)
 Fixpoint view_key_index (x : view_key) (Vs : list view_key) : option nat :=
   match Vs with
   | nil => None
-  | y :: Vs' => if view_key_eq_dec x y then Some 0 else option_map S (view_key_index x Vs')
+  | y :: Vs' => if view_key_eqb x y then Some 0 else option_map S (view_key_index x Vs')
   end.
 
-(** Whether an instance is among the views. *)
+(** Whether the view of a key is among the views. *)
 Definition view_key_mem (x : view_key) (Vs : list view_key) : bool :=
   match view_key_index x Vs with Some _ => true | None => false end.
 
-(** A shape as classified, a nested occurrence at its instance; an
-    argument as classified. *)
-Inductive classified_ptyp : Set :=
+(** Syntactic equality of keys is decidable. *)
+Definition view_key_eq_dec (x y : view_key) : {x = y} + {x <> y}.
+Proof.
+  destruct x as [qc k Cs | qr Is], y as [qc' k' Cs' | qr' Is']; try (right; discriminate).
+  - destruct (qname_eq_dec qc qc') as [<- |]; [| right; congruence ].
+    destruct (Nat.eq_dec k k') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec nf_eq_dec Cs Cs') as [<- |]; [ left; reflexivity | right; congruence ].
+  - destruct (qname_eq_dec qr qr') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec nf_eq_dec Is Is') as [<- |]; [ left; reflexivity | right; congruence ].
+Defined.
+
+(** The position of a key itself among the keys, syntactically: the tables
+    aligned with the views found are read at the key found, its arguments
+    as met, not at another key of its view. *)
+Fixpoint view_key_pos (x : view_key) (Vs : list view_key) : option nat :=
+  match Vs with
+  | nil => None
+  | y :: Vs' => if view_key_eq_dec x y then Some 0 else option_map S (view_key_pos x Vs')
+  end.
+
+(** A shape as classified, a nested occurrence at its instance, of the
+    kind [K] of its instances: [view_inst] as the classification reads
+    them, [view_key] once normalized; an argument as classified. *)
+Inductive classified_ptyp_of (K : Set) : Set :=
 (** The declared member [j] at the non-uniform parameters [Ps]. *)
-| classified_ptyp_self : nat -> list exp -> classified_ptyp
+| classified_ptyp_self : nat -> list exp -> classified_ptyp_of K
 (** A nested occurrence: the view of the instance [x], not yet numbered,
     at the non-uniform parameters [Ns]. *)
-| classified_ptyp_nest : view_key -> list exp -> classified_ptyp
+| classified_ptyp_nest : K -> list exp -> classified_ptyp_of K
 (** A function from a [Self]-free domain into a shape. *)
-| classified_ptyp_pi : exp -> classified_ptyp -> classified_ptyp.
+| classified_ptyp_pi : exp -> classified_ptyp_of K -> classified_ptyp_of K.
+Arguments classified_ptyp_self {K}.
+Arguments classified_ptyp_nest {K}.
+Arguments classified_ptyp_pi {K}.
 
 (** An argument as classified, its views not yet numbered. *)
-Inductive classified_carg : Set :=
+Inductive classified_carg_of (K : Set) : Set :=
 (** A non-recursive argument, of a [Self]-free type, of the kind the
     tag says. *)
-| classified_carg_arg : abs_kind -> exp -> classified_carg
+| classified_carg_arg : abs_kind -> exp -> classified_carg_of K
 (** A recursive argument, of a shape. *)
-| classified_carg_rec_case : classified_ptyp -> classified_carg.
+| classified_carg_rec_case : classified_ptyp_of K -> classified_carg_of K.
+Arguments classified_carg_arg {K}.
+Arguments classified_carg_rec_case {K}.
+
+(** A shape and an argument as the classification reads them off a
+    type, their instances as there *)
+Notation written_ptyp := (classified_ptyp_of view_inst).
+Notation written_carg := (classified_carg_of view_inst).
+
+(** A shape and an argument classified, their instances normalized into
+    the keys of their views *)
+Notation classified_ptyp := (classified_ptyp_of view_key).
+Notation classified_carg := (classified_carg_of view_key).
 
 (** Whether a classified argument is recursive: its bit in the pattern of
     the arguments before the next one. *)
-Definition classified_carg_bit (g : classified_carg) : bool := match g with classified_carg_rec_case _ => true | classified_carg_arg _ _ => false end.
+Definition classified_carg_bit {K} (g : classified_carg_of K) : bool :=
+  match g with classified_carg_rec_case _ => true | classified_carg_arg _ _ => false end.
 
 (** A classified argument at the kind [κ]: a non-recursive one takes it,
     a recursive one keeps its shape.  The syntactic classification
     ([classify_arg]) cannot see sorts; the command tags the non-recursive
     arguments by the sort their types infer to. *)
-Definition classified_carg_tag (κ : abs_kind) (g : classified_carg) : classified_carg :=
+Definition classified_carg_tag {K} (κ : abs_kind) (g : classified_carg_of K) : classified_carg_of K :=
   match g with classified_carg_arg _ A => classified_carg_arg κ A | classified_carg_rec_case t => classified_carg_rec_case t end.
 
-Lemma classified_carg_bit_tag : forall κ g, classified_carg_bit (classified_carg_tag κ g) = classified_carg_bit g.
-Proof. intros κ [] ; reflexivity. Qed.
+Lemma classified_carg_bit_tag : forall {K} κ (g : classified_carg_of K), classified_carg_bit (classified_carg_tag κ g) = classified_carg_bit g.
+Proof. intros K κ [] ; reflexivity. Qed.
 
 (** The views numbered: the view [v] is the member [n + v]. *)
 Fixpoint classified_ptyp_num (n : nat) (Vs : list view_key) (t : classified_ptyp) : option ptyp :=
@@ -407,7 +497,7 @@ Section Classify.
 
   (** A [Self_j] at the uniform parameters and Self-free non-uniform ones,
       under [d] domains: the variable [x] at [args]. *)
-  Definition classify_self (d x : nat) (args : list exp) : option classified_ptyp :=
+  Definition classify_self (d x : nat) (args : list exp) : option written_ptyp :=
     let b := (d + List.length pat + np)%nat in
     if (b <=? x) && (x <? b + n) then
       if list_eq_dec exp_eq_dec (List.firstn nu args) (vars_from (d + List.length pat + (np - nu)) nu)
@@ -418,13 +508,13 @@ Section Classify.
   (** A declared member [k] of a filed group at uniform arguments [Cs] in
       which a [Self] occurs, and no argument, domain or non-uniform
       parameter, and at Self-free non-uniform ones: the view [(qc, k, Cs)]. *)
-  Definition classify_nest (d : nat) (qc : qname) (k : nat) (args : list exp) : option classified_ptyp :=
+  Definition classify_nest (d : nat) (qc : qname) (k : nat) (args : list exp) : option written_ptyp :=
     match grp_nu qc k with
     | Some m =>
         if m <=? List.length args then
           match image_pats (List.repeat true (d + List.length pat + (np - nu))) (List.firstn m args),
                 image_pats (classify_pat d np n pat) (List.skipn m args) with
-          | Some Cs, Some Ns => if selfs_occur nu n Cs then Some (classified_ptyp_nest (vk_ind qc k Cs) Ns) else None
+          | Some Cs, Some Ns => if selfs_occur nu n Cs then Some (classified_ptyp_nest (vi_ind qc k Cs) Ns) else None
           | _, _ => None
           end
         else None
@@ -435,12 +525,12 @@ Section Classify.
       occurs, and no argument, domain or non-uniform parameter, and only
       where a type former or a [Π] takes it ([selfs_guarded]): the record
       view [(qr, Is)], of no non-uniform parameter. *)
-  Definition classify_record_view (d : nat) (qr : qname) (args : list exp) : option classified_ptyp :=
+  Definition classify_record_view (d : nat) (qr : qname) (args : list exp) : option written_ptyp :=
     match rec_np qr with
     | Some m =>
         if Nat.eqb m (List.length args) then
           match image_pats (List.repeat true (d + List.length pat + (np - nu))) args with
-          | Some Is => if selfs_occur nu n Is && selfs_guarded nu n Is then Some (classified_ptyp_nest (vk_record qr Is) nil) else None
+          | Some Is => if selfs_occur nu n Is && selfs_guarded nu n Is then Some (classified_ptyp_nest (vi_record qr Is) nil) else None
           | None => None
           end
         else None
@@ -452,7 +542,7 @@ Section Classify.
       [Self] thus occurs only strictly positively, and in a nested
       occurrence only in its uniform arguments, or in a record's
       instance. *)
-  Fixpoint classify_shape (d : nat) (T : exp) : option classified_ptyp :=
+  Fixpoint classify_shape (d : nat) (T : exp) : option written_ptyp :=
     match T with
     | a_pi ak_relevant ak_relevant B T' =>
         match image_pat (classify_pat d np n pat) B with
@@ -470,7 +560,7 @@ Section Classify.
 
   (** An argument: Self-free (and free of the recursive arguments before
       it), or recursive of a shape. *)
-  Definition classify_arg (T : exp) : option classified_carg :=
+  Definition classify_arg (T : exp) : option written_carg :=
     match image_pat (classify_pat 0 np n pat) T with
     | Some A => Some (classified_carg_arg ak_relevant A)
     | None => option_map classified_carg_rec_case (classify_shape 0 T)
@@ -564,57 +654,96 @@ Inductive views_dfs (sibs meets : view_key -> list view_key) : list view_key -> 
       (List.concat (List.map meets (views_met sibs acc x)) ++ tr) Vs ->
     views_dfs sibs meets acc (x :: tr) Vs.
 
-Lemma view_key_index_in : forall x Vs v, view_key_index x Vs = Some v -> List.nth_error Vs v = Some x.
+(** The view at the index of a key is that key's view. *)
+Lemma view_key_index_in : forall x Vs v, view_key_index x Vs = Some v ->
+    exists y, List.nth_error Vs v = Some y /\ view_key_eq x y.
 Proof.
   induction Vs as [| y Vs IH]; cbn; intros v H; [ discriminate |].
-  destruct (view_key_eq_dec x y) as [-> | _]; [ injection H as <-; reflexivity |].
+  destruct (view_key_eqb x y) eqn:Exy; [ injection H as <-; exists y; split; [ reflexivity | exact Exy ] |].
   destruct (view_key_index x Vs) as [v' |] eqn:E; cbn in H; [ injection H as <-; cbn; apply IH; reflexivity | discriminate ].
 Qed.
 
-Lemma view_key_mem_spec : forall x Vs, view_key_mem x Vs = true <-> In x Vs.
+(** The index is the first view of the key's view. *)
+Lemma view_key_index_first : forall x Vs v, view_key_index x Vs = Some v ->
+    forall w y, w < v -> List.nth_error Vs w = Some y -> ~ view_key_eq x y.
 Proof.
-  unfold view_key_mem; induction Vs as [| y Vs IH]; cbn; [ split; [ discriminate | intros [] ] |].
-  destruct (view_key_eq_dec x y) as [-> | Hne]; [ split; auto |].
-  destruct (view_key_index x Vs); cbn in *; rewrite <- IH; split; auto.
-  intros [-> | H]; [ congruence | exact H ].
+  induction Vs as [| z Vs IH]; cbn; intros v H; [ discriminate |].
+  destruct (view_key_eqb x z) eqn:Exz; [ injection H as <-; intros w y Hw; lia |].
+  destruct (view_key_index x Vs) as [v' |] eqn:E; cbn in H; [ injection H as <- | discriminate ].
+  intros [| w] y Hw Hy; cbn in Hy; [ injection Hy as <-; unfold view_key_eq; congruence |].
+  exact (IH _ eq_refl w y ltac:(lia) Hy).
 Qed.
 
-Lemma views_new_in : forall acc ss x, In x ss -> In x acc \/ In x (views_new acc ss).
+(** A key has an index exactly when its view is among the views. *)
+Lemma view_key_mem_spec : forall x Vs, view_key_mem x Vs = true <-> key_in x Vs.
+Proof.
+  unfold view_key_mem, key_in; induction Vs as [| y Vs IH]; cbn.
+  - split; [ discriminate | intros (? & [] & _) ].
+  - destruct (view_key_eqb x y) eqn:Exy; [ split; [ intros _; exists y; split; [ left; reflexivity | exact Exy ] | reflexivity ] |].
+    assert (E : (match option_map S (view_key_index x Vs) with Some _ => true | None => false end) =
+                (match view_key_index x Vs with Some _ => true | None => false end))
+      by (destruct (view_key_index x Vs); reflexivity).
+    rewrite E, IH; split.
+    + intros (z & Hz & Hxz); exists z; split; [ right; exact Hz | exact Hxz ].
+    + intros (z & [<- | Hz] & Hxz); [ unfold view_key_eq in Hxz; congruence | exists z; split; assumption ].
+Qed.
+
+(** A key among the views has an index. *)
+Lemma view_key_index_in_some : forall x Vs, key_in x Vs -> exists v, view_key_index x Vs = Some v.
+Proof.
+  intros x Vs H; apply view_key_mem_spec in H; unfold view_key_mem in H.
+  destruct (view_key_index x Vs) as [v |]; [ exists v; reflexivity | discriminate ].
+Qed.
+
+(** Among keys one more key: among the first, or of its view. *)
+Lemma key_in_snoc : forall x acc s, key_in x (acc ++ s :: nil) -> key_in x acc \/ view_key_eq x s.
+Proof.
+  intros x acc s (y & Hy & Hxy); apply List.in_app_or in Hy as [Hy | [<- | []]];
+    [ left; exists y; split; assumption | right; exact Hxy ].
+Qed.
+
+(** A key of [ss] is of a view found before or among the new ones. *)
+Lemma views_new_in : forall acc ss x, In x ss -> key_in x acc \/ key_in x (views_new acc ss).
 Proof.
   intros acc ss; revert acc; induction ss as [| s ss IH]; cbn; intros acc x H; [ destruct H |].
   destruct (view_key_mem s acc) eqn:Es.
   - destruct H as [<- | H]; [ left; apply view_key_mem_spec; exact Es | exact (IH _ _ H) ].
-  - destruct H as [<- | H]; [ right; left; reflexivity |].
-    destruct (IH (acc ++ s :: nil) x H) as [H' | H']; [| right; right; exact H' ].
-    apply List.in_app_or in H' as [H' | [<- | []]]; [ left; exact H' | right; left; reflexivity ].
+  - destruct H as [<- | H]; [ right; apply key_in_of_in; left; reflexivity |].
+    destruct (IH (acc ++ s :: nil) x H) as [H' | (y & Hy & Hxy)]; [| right; exists y; split; [ right; exact Hy | exact Hxy ] ].
+    destruct (key_in_snoc _ _ _ H') as [H'' | H'']; [ left; exact H'' | right; exists s; split; [ left; reflexivity | exact H'' ] ].
 Qed.
 
 Lemma views_dfs_incl : forall sibs meets acc tr Vs, views_dfs sibs meets acc tr Vs -> forall y, In y acc -> In y Vs.
 Proof. induction 1; intros y Hy; [ exact Hy | apply IHviews_dfs, List.in_or_app; left; exact Hy ]. Qed.
 
-(** Two runs from the same state whose tables agree at the views both find
-    find the same views. *)
+(** Two runs from the same state whose tables agree at the views both find,
+    and give an instance not found no sibling but itself, find the same
+    views.  An instance met first is then found itself, not another
+    instance of its view: the view's first instance met is its key. *)
 Lemma views_dfs_functional : forall sibs1 meets1 acc tr Vs1, views_dfs sibs1 meets1 acc tr Vs1 ->
     forall sibs2 meets2 Vs2, views_dfs sibs2 meets2 acc tr Vs2 ->
-    (forall x, In x Vs1 -> In x Vs2 -> sibs1 x = sibs2 x /\ meets1 x = meets2 x) -> Vs1 = Vs2.
+    (forall x, In x Vs1 -> In x Vs2 -> sibs1 x = sibs2 x /\ meets1 x = meets2 x) ->
+    (forall x, ~ In x Vs1 -> sibs1 x = x :: nil) -> (forall x, ~ In x Vs2 -> sibs2 x = x :: nil) -> Vs1 = Vs2.
 Proof.
-  induction 1 as [acc | acc x tr Vs1 H1 IH]; intros sibs2 meets2 Vs2 H2 Hag; inversion H2; subst; [ reflexivity |].
+  induction 1 as [acc | acc x tr Vs1 H1 IH]; intros sibs2 meets2 Vs2 H2 Hag Hd1 Hd2; inversion H2; subst; [ reflexivity |].
   match goal with H : views_dfs sibs2 meets2 _ _ Vs2 |- _ => rename H into H5 end.
   assert (Hm : views_met sibs1 acc x = views_met sibs2 acc x).
   { destruct (view_key_mem x acc) eqn:Ex; [ unfold views_met; rewrite Ex; reflexivity |].
-    assert (Hx : forall sibs meets tr' Vs, views_dfs sibs meets (acc ++ views_met sibs acc x) tr' Vs -> In x Vs).
-    { intros * Hb; apply (views_dfs_incl _ _ _ _ _ Hb), List.in_or_app.
-      unfold views_met; rewrite Ex.
-      destruct (views_new_in acc (sibs x ++ x :: nil) x ltac:(apply List.in_or_app; right; left; reflexivity)) as [Hi | Hi];
-        [ left; exact Hi | right; exact Hi ]. }
-    pose proof (proj1 (Hag x (Hx _ _ _ _ H1) (Hx _ _ _ _ H5))) as Es.
+    (* An instance met first is a view found itself: else it has no
+       siblings, and is the one view it adds. *)
+    assert (Hx : forall sibs meets tr' Vs, views_dfs sibs meets (acc ++ views_met sibs acc x) tr' Vs ->
+                 (~ In x Vs -> sibs x = x :: nil) -> In x Vs).
+    { intros * Hb Hd; destruct (in_dec view_key_eq_dec x Vs) as [Hi | Hi]; [ exact Hi |].
+      apply (views_dfs_incl _ _ _ _ _ Hb), List.in_or_app; right.
+      unfold views_met; rewrite Ex, (Hd Hi); cbn; rewrite Ex; left; reflexivity. }
+    pose proof (proj1 (Hag x (Hx _ _ _ _ H1 (Hd1 x)) (Hx _ _ _ _ H5 (Hd2 x)))) as Es.
     unfold views_met; rewrite Ex, Es; reflexivity. }
   assert (Hms : List.map meets1 (views_met sibs1 acc x) = List.map meets2 (views_met sibs1 acc x)).
   { apply List.map_ext_in; intros y Hy.
     assert (Hy1 : In y Vs1) by (apply (views_dfs_incl _ _ _ _ _ H1), List.in_or_app; right; exact Hy).
     assert (Hy2 : In y Vs2) by (rewrite Hm in Hy; apply (views_dfs_incl _ _ _ _ _ H5), List.in_or_app; right; exact Hy).
     exact (proj2 (Hag y Hy1 Hy2)). }
-  apply (IH sibs2 meets2); [| exact Hag ].
+  apply (IH sibs2 meets2); [| exact Hag | exact Hd1 | exact Hd2 ].
   rewrite Hms, Hm; exact H5.
 Qed.
 
@@ -622,12 +751,39 @@ Qed.
     aligned with the views; an instance not among them is alone and meets
     nothing. *)
 Definition siblings_table (Vs : list view_key) (Ss : list (list view_key)) (x : view_key) : list view_key :=
-  match view_key_index x Vs with Some v => List.nth v Ss (x :: nil) | None => x :: nil end.
+  match view_key_pos x Vs with Some v => List.nth v Ss (x :: nil) | None => x :: nil end.
 
 (** The instances the constructors of a view meet, read off a table
     aligned with the views. *)
 Definition meets_table (Vs : list view_key) (Cs : list (list (string * list classified_carg))) (x : view_key) : list view_key :=
-  match view_key_index x Vs with Some v => classified_cons_views (List.nth v Cs nil) | None => nil end.
+  match view_key_pos x Vs with Some v => classified_cons_views (List.nth v Cs nil) | None => nil end.
+
+(** A key not among the views has no siblings but itself. *)
+Lemma siblings_table_absent : forall Vs Ss x, ~ In x Vs -> siblings_table Vs Ss x = x :: nil.
+Proof.
+  intros * Hx; unfold siblings_table.
+  enough (E : view_key_pos x Vs = None) by (rewrite E; reflexivity).
+  induction Vs as [| y Vs IH]; cbn; [ reflexivity |].
+  destruct (view_key_eq_dec x y) as [-> | _]; [ exfalso; apply Hx; left; reflexivity |].
+  rewrite IH; [ reflexivity | intros H; apply Hx; right; exact H ].
+Qed.
+
+(** The position of a key is at that key. *)
+Lemma view_key_pos_in : forall x Vs v, view_key_pos x Vs = Some v -> List.nth_error Vs v = Some x.
+Proof.
+  induction Vs as [| y Vs IH]; cbn; intros v H; [ discriminate |].
+  destruct (view_key_eq_dec x y) as [-> | _]; [ injection H as <-; reflexivity |].
+  destruct (view_key_pos x Vs) as [v' |] eqn:E; cbn in H; [ injection H as <-; cbn; apply IH; reflexivity | discriminate ].
+Qed.
+
+(** A key among the keys has a position. *)
+Lemma view_key_pos_in_some : forall x Vs, In x Vs -> exists v, view_key_pos x Vs = Some v.
+Proof.
+  induction Vs as [| y Vs IH]; cbn; intros H; [ destruct H |].
+  destruct (view_key_eq_dec x y) as [-> | Hne]; [ exists 0; reflexivity |].
+  destruct H as [-> | H]; [ congruence |].
+  destruct (IH H) as [v ->]; exists (S v); reflexivity.
+Qed.
 
 (** ** The Order of the Filed Views
 

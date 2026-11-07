@@ -491,9 +491,11 @@ Record gen_names_free (Ξ : gstack) (R : raw_decl) (D : ind_decl) : Prop := mk_g
     is classified ([classify_arg]) as written when that finds it free or
     recursive in a declared member, and as its normal form otherwise: so
     [Arr Ord], with [Arr X := ℕ → X], is classified as [ℕ → Ord] is, and a
-    nested occurrence is found on normal forms only, where two instances
-    are the same view exactly when they are equal.  The classification is
-    a function of the argument. *)
+    nested occurrence is found on normal forms only.  An instance met is
+    keyed by its arguments normalized ([view_inst_key]); two keys are of
+    one view exactly when they are equal up to their proofs
+    ([view_key_eq]), and a view's key is its first instance met.  The
+    classification is a function of the argument. *)
 
 (** The contexts a group's parts are written in ([raw_decl_selfs], [raw_member_args_ctx],
     [raw_args_tele]) are in [Translations]. *)
@@ -510,23 +512,83 @@ Definition grp_info (Θ : gdeps) (Ξ : gstack) (qc : qname) (k : nat) : option n
 Definition rec_info (Θ : gdeps) (Ξ : gstack) (qr : qname) : option nat :=
   option_map (fun R => List.length (record_params R)) (record_lookup Θ Ξ qr).
 
+(** [nbes Θ Ξ Γ Ms As Ws]: the terms [Ms] normalize pointwise at the
+    types [As] to [Ws], all in [Γ]. *)
+Inductive nbes (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : list exp -> list typ -> list nf -> Prop :=
+(** No term *)
+| nbes_nil : nbes Θ Ξ Γ nil nil nil
+(** The first term, typed at its type first, as normalizing an untyped
+    term need not terminate, then the rest *)
+| nbes_cons : forall M Ms A As W Ws,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> nbe Θ Ξ Γ M A W -> nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ (M :: Ms) (A :: As) (W :: Ws).
+
+(** [view_inst_key Θ Ξ Γ x y]: the instance [x] a classification reads,
+    its arguments terms in [Γ], has the key [y], its arguments normalized
+    at the parameters' types of the container or the record. *)
+Inductive view_inst_key (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : view_inst -> view_key -> Prop :=
+(** The declared member [k] of the filed group at [qc], at the uniform
+    arguments [Cs], normalized at the group's uniform parameters *)
+| view_inst_key_inductive : forall qc k Cs D' Ws,
+    ind_lookup Θ Ξ qc = Some D' ->
+    nbes Θ Ξ Γ Cs (tele_insts (ind_uparams D') sb_id Cs) Ws ->
+    view_inst_key Θ Ξ Γ (vi_ind qc k Cs) (vk_ind qc k Ws)
+(** The record at [qr], at the instance [Is], normalized at the record's
+    parameters *)
+| view_inst_key_record : forall qr Is Rr Ws,
+    record_lookup Θ Ξ qr = Some Rr ->
+    nbes Θ Ξ Γ Is (tele_insts (record_params Rr) sb_id Is) Ws ->
+    view_inst_key Θ Ξ Γ (vi_record qr Is) (vk_record qr Ws).
+
+(** [written_ptyp_key Θ Ξ Γ t t']: the shape [t] as classified has the
+    instance it nests at, if any, keyed ([view_inst_key]) in [Γ], and is
+    otherwise [t']. *)
+Inductive written_ptyp_key (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : written_ptyp -> classified_ptyp -> Prop :=
+(** A declared member: no instance *)
+| written_ptyp_key_self : forall j Ps,
+    written_ptyp_key Θ Ξ Γ (classified_ptyp_self j Ps) (classified_ptyp_self j Ps)
+(** A nested occurrence: its instance keyed *)
+| written_ptyp_key_nest : forall x y Ns,
+    view_inst_key Θ Ξ Γ x y ->
+    written_ptyp_key Θ Ξ Γ (classified_ptyp_nest x Ns) (classified_ptyp_nest y Ns)
+(** A function: its shape keyed *)
+| written_ptyp_key_pi : forall B t t',
+    written_ptyp_key Θ Ξ Γ t t' ->
+    written_ptyp_key Θ Ξ Γ (classified_ptyp_pi B t) (classified_ptyp_pi B t').
+
+(** [written_carg_key Θ Ξ Γ g g']: the argument [g] as classified, its
+    instance keyed in [Γ], is [g']. *)
+Inductive written_carg_key (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : written_carg -> classified_carg -> Prop :=
+(** A non-recursive argument: no instance *)
+| written_carg_key_arg : forall κ A,
+    written_carg_key Θ Ξ Γ (classified_carg_arg κ A) (classified_carg_arg κ A)
+(** A recursive argument: its shape keyed *)
+| written_carg_key_rec : forall t t',
+    written_ptyp_key Θ Ξ Γ t t' ->
+    written_carg_key Θ Ξ Γ (classified_carg_rec_case t) (classified_carg_rec_case t').
+
 (** An argument [T] in the context [Γ], the arguments before it recursive
-    as [pat] says. *)
+    as [pat] says, the [np - nu] non-uniform parameters under them.  An
+    instance it nests at is over the uniform parameters, the [Self]s and the
+    frames' parameters, the context [Γ] without the arguments before it and
+    the non-uniform parameters; it is keyed there. *)
 Inductive classify_arg_in (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (nu np n : nat) (pat : list bool) (T : exp) : classified_carg -> Prop :=
-(** As written. *)
-| classify_in_syn : forall g,
+(** As written.  The classification as written meets no instance
+    ([grp_none], [rec_none]). *)
+| classify_in_syn : forall g g',
     classify_arg grp_none rec_none nu np n pat T = Some g ->
-    classify_arg_in Θ Ξ Γ nu np n pat T g
+    written_carg_key Θ Ξ (List.skipn (List.length pat + (np - nu)) Γ) g g' ->
+    classify_arg_in Θ Ξ Γ nu np n pat T g'
 (** As its normal form, when not as written.  The normal form holds no
     proof ([nf_proof_free]): an instance it nests at is strengthened past
     the arguments before it, which a proof [⋆ⁿ] in it could have used. *)
-| classify_in_nf : forall i W g,
+| classify_in_nf : forall i W g g',
     classify_arg grp_none rec_none nu np n pat T = None ->
     Θ ⍮ Ξ ⍮ Γ ⊢ T : Typeω@i ->
     nbe_ty Θ Ξ Γ T W ->
     nf_proof_free W ->
     classify_arg (grp_info Θ Ξ) (rec_info Θ Ξ) nu np n pat (nf_to_exp W) = Some g ->
-    classify_arg_in Θ Ξ Γ nu np n pat T g.
+    written_carg_key Θ Ξ (List.skipn (List.length pat + (np - nu)) Γ) g g' ->
+    classify_arg_in Θ Ξ Γ nu np n pat T g'.
 
 (** [classify_args_in Θ Ξ Γp nu np n pat args1 args gs]: the arguments [args],
     after [args1] (recursive as [pat] says), classify as [gs], each in the
@@ -556,14 +618,42 @@ Definition classify_cons_in (Θ : gdeps) (Ξ : gstack) (Γp : ctx) (nu np n : na
 Definition raw_member_classify (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (Mr : raw_member) (cs : list (string * list classified_carg)) : Prop :=
   classify_cons_in Θ Ξ (raw_member_args_ctx Ξ R Mr) (raw_decl_nu R) (List.length (raw_member_nparams Mr) + raw_decl_nu R) (raw_decl_nmembers R) (raw_member_cons Mr) cs.
 
+Lemma nbes_functional : forall Θ Ξ Γ Ms As Ws Ws', nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ Ms As Ws' -> Ws = Ws'.
+Proof.
+  intros * H; revert Ws'; induction H; intros Ws' H'; inversion H'; subst; [ reflexivity |].
+  f_equal; [ eapply functional_nbe; eassumption | auto ].
+Qed.
+
+Lemma view_inst_key_functional : forall Θ Ξ Γ x y y', view_inst_key Θ Ξ Γ x y -> view_inst_key Θ Ξ Γ x y' -> y = y'.
+Proof.
+  intros * H H'; destruct H; inversion H'; subst.
+  - match goal with H1 : ind_lookup _ _ ?qn = _, H2 : ind_lookup _ _ ?qn = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+    f_equal; eapply nbes_functional; eassumption.
+  - match goal with H1 : record_lookup _ _ ?qn = _, H2 : record_lookup _ _ ?qn = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+    f_equal; eapply nbes_functional; eassumption.
+Qed.
+
+Lemma written_ptyp_key_functional : forall Θ Ξ Γ t t1 t2, written_ptyp_key Θ Ξ Γ t t1 -> written_ptyp_key Θ Ξ Γ t t2 -> t1 = t2.
+Proof.
+  intros * H; revert t2; induction H; intros t2 H'; inversion H'; subst; [ reflexivity | | ].
+  - f_equal; eapply view_inst_key_functional; eassumption.
+  - f_equal; auto.
+Qed.
+
+Lemma written_carg_key_functional : forall Θ Ξ Γ g g1 g2, written_carg_key Θ Ξ Γ g g1 -> written_carg_key Θ Ξ Γ g g2 -> g1 = g2.
+Proof.
+  intros * H H'; destruct H; inversion H'; subst; [ reflexivity |].
+  f_equal; eapply written_ptyp_key_functional; eassumption.
+Qed.
+
 Lemma classify_arg_in_functional : forall Θ Ξ Γ nu np n pat T g g',
     classify_arg_in Θ Ξ Γ nu np n pat T g -> classify_arg_in Θ Ξ Γ nu np n pat T g' -> g = g'.
 Proof.
-  intros * H H'; destruct H as [g Hg | i W g Hn _ HW Hg]; inversion H' as [g'' Hg' | i' W' g'' Hn' _ HW' Hg']; subst.
-  - congruence.
-  - congruence.
-  - congruence.
-  - pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; congruence.
+  intros * H H'; destruct H as [g0 g Hg Hk | i W g0 g Hn _ HW _ Hg Hk];
+    inversion H' as [g0' g'' Hg' Hk' | i' W' g0' g'' Hn' _ HW' _ Hg' Hk']; subst; try congruence.
+  - rewrite Hg in Hg'; injection Hg' as <-; exact (written_carg_key_functional _ _ _ _ _ _ Hk Hk').
+  - pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
+    rewrite Hg in Hg'; injection Hg' as <-; exact (written_carg_key_functional _ _ _ _ _ _ Hk Hk').
 Qed.
 
 Lemma classify_args_in_functional : forall Θ Ξ Γp nu np n pat args1 args gs gs',
@@ -623,8 +713,8 @@ Inductive view_classify (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : view_key -> 
 | view_classify_inductive : forall qc k Cs D' Mk' cs,
     ind_lookup Θ Ξ qc = Some D' ->
     ind_member D' k = Some Mk' ->
-    classify_cons_in Θ Ξ (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs) ++ raw_decl_uniform_ctx Ξ R) (raw_decl_nu R) (im_nn Mk' + raw_decl_nu R) (raw_decl_nmembers R)
-      (List.map (fun cg => (fst cg, ctx_args (tele_sub (cargs_ctx qc D' Mk' (snd cg)) (sb_qn (im_nn Mk') (sb_of_list sb_id Cs)))))
+    classify_cons_in Θ Ξ (tele_sub (im_nparams Mk') (sb_of_list sb_id (List.map nf_to_exp Cs)) ++ raw_decl_uniform_ctx Ξ R) (raw_decl_nu R) (im_nn Mk' + raw_decl_nu R) (raw_decl_nmembers R)
+      (List.map (fun cg => (fst cg, ctx_args (tele_sub (cargs_ctx qc D' Mk' (snd cg)) (sb_qn (im_nn Mk') (sb_of_list sb_id (List.map nf_to_exp Cs))))))
          (im_cons Mk'))
       cs ->
     view_classify Θ Ξ R (vk_ind qc k Cs) cs
@@ -632,7 +722,7 @@ Inductive view_classify (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : view_key -> 
 | view_classify_record : forall qr Is Rr cs,
     record_lookup Θ Ξ qr = Some Rr ->
     classify_cons_in Θ Ξ (raw_decl_uniform_ctx Ξ R) (raw_decl_nu R) (raw_decl_nu R) (raw_decl_nmembers R)
-      ((rview_con, ctx_args (tele_sub (record_fctx Rr (List.length (record_fields Rr))) (sb_of_list sb_id Is))) :: nil)
+      ((rview_con, ctx_args (tele_sub (record_fctx Rr (List.length (record_fields Rr))) (sb_of_list sb_id (List.map nf_to_exp Is)))) :: nil)
       cs ->
     view_classify Θ Ξ R (vk_record qr Is) cs.
 
@@ -672,27 +762,17 @@ Inductive view_nparams (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : view_key -> c
 | view_nparams_inductive : forall qc k Cs D' Mk' Ws Nv,
     ind_lookup Θ Ξ qc = Some D' ->
     ind_member D' k = Some Mk' ->
-    nbe_tele Θ Ξ (raw_decl_uniform_ctx Ξ R) (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs)) Ws ->
+    nbe_tele Θ Ξ (raw_decl_uniform_ctx Ξ R) (tele_sub (im_nparams Mk') (sb_of_list sb_id (List.map nf_to_exp Cs))) Ws ->
     image_tele (List.repeat false (raw_decl_nu R) ++ List.repeat true (raw_decl_nmembers R)) Ws = Some Nv ->
     view_nparams Θ Ξ R (vk_ind qc k Cs) Nv
 (** A record view *)
 | view_nparams_record : forall qr Is,
     view_nparams Θ Ξ R (vk_record qr Is) nil.
 
-(** [nbes Θ Ξ Γ Ms As Ws]: the terms [Ms] normalize pointwise at the
-    types [As] to [Ws], all in [Γ]. *)
-Inductive nbes (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : list exp -> list typ -> list nf -> Prop :=
-(** No term *)
-| nbes_nil : nbes Θ Ξ Γ nil nil nil
-(** The first term, typed at its type first, as normalizing an untyped
-    term need not terminate, then the rest *)
-| nbes_cons : forall M Ms A As W Ws,
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> nbe Θ Ξ Γ M A W -> nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ (M :: Ms) (A :: As) (W :: Ws).
-
 (** [siblings_from Θ Ξ Γc qc Cs i ms ss]: the members [ms] of the container's
     group at [qc], from position [i], at the uniform arguments [Cs], are
-    the views [ss]. *)
-Inductive siblings_from (Θ : gdeps) (Ξ : gstack) (Γc : ctx) (qc : qname) (Cs : list exp) :
+    the views [ss]: the uniform arguments are a view's key's, normal. *)
+Inductive siblings_from (Θ : gdeps) (Ξ : gstack) (Γc : ctx) (qc : qname) (Cs : list nf) :
     nat -> list imember -> list view_key -> Prop :=
 (** No member left *)
 | siblings_from_nil : forall i, siblings_from Θ Ξ Γc qc Cs i nil nil
@@ -706,19 +786,19 @@ Inductive siblings_from (Θ : gdeps) (Ξ : gstack) (Γc : ctx) (qc : qname) (Cs 
 | siblings_from_view : forall i M ms ss qv kv Iv vmv Dv Ws,
     im_head M = mh_view qv kv Iv vmv ->
     ind_lookup Θ Ξ qv = Some Dv ->
-    nbes Θ Ξ Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Iv)
-      (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (ind_uparams Dv) sb_id Iv)) Ws ->
+    nbes Θ Ξ Γc (List.map (fun I => I[sb_of_list sb_id (List.map nf_to_exp Cs)]) Iv)
+      (List.map (fun T => T[sb_of_list sb_id (List.map nf_to_exp Cs)]) (tele_insts (ind_uparams Dv) sb_id Iv)) Ws ->
     siblings_from Θ Ξ Γc qc Cs (S i) ms ss ->
-    siblings_from Θ Ξ Γc qc Cs i (M :: ms) (vk_ind qv kv (List.map nf_to_exp Ws) :: ss)
+    siblings_from Θ Ξ Γc qc Cs i (M :: ms) (vk_ind qv kv Ws :: ss)
 (** A record view of the container: the record at its instance at [Cs],
     normalized *)
 | siblings_from_record : forall i M ms ss qr Ir fl Rr Ws,
     im_head M = mh_record qr Ir fl ->
     record_lookup Θ Ξ qr = Some Rr ->
-    nbes Θ Ξ Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Ir)
-      (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (record_params Rr) sb_id Ir)) Ws ->
+    nbes Θ Ξ Γc (List.map (fun I => I[sb_of_list sb_id (List.map nf_to_exp Cs)]) Ir)
+      (List.map (fun T => T[sb_of_list sb_id (List.map nf_to_exp Cs)]) (tele_insts (record_params Rr) sb_id Ir)) Ws ->
     siblings_from Θ Ξ Γc qc Cs (S i) ms ss ->
-    siblings_from Θ Ξ Γc qc Cs i (M :: ms) (vk_record qr (List.map nf_to_exp Ws) :: ss).
+    siblings_from Θ Ξ Γc qc Cs i (M :: ms) (vk_record qr Ws :: ss).
 
 (** The siblings of a view [(qc, k, Cs)]: the members of the container's
     group at [Cs], over the group's own context. *)
@@ -770,7 +850,7 @@ Definition raw_view_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Ks : 
     (cs : list (string * list classified_carg)) (Nv : ctx) : option imember :=
   match x with
   | vk_ind qc k Cs =>
-      let Is := List.map (fun C => C[σ]) Cs in
+      let Is := List.map (fun C => (nf_to_exp C)[σ]) Cs in
       match ind_lookup Θ Ξ qc with
       | Some D' =>
           match ind_member D' k, classified_cons_num n Ks cs with
@@ -785,7 +865,7 @@ Definition raw_view_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Ks : 
   | vk_record qr Cs =>
       match record_lookup Θ Ξ qr, classified_cons_num n Ks cs with
       | Some Rr, Some cs' =>
-          Some (mk_imember (mh_record qr (List.map (fun C => C[σ]) Cs) (List.map fst (record_fields Rr))) Nv cs')
+          Some (mk_imember (mh_record qr (List.map (fun C => (nf_to_exp C)[σ]) Cs) (List.map fst (record_fields Rr))) Nv cs')
       | _, _ => None
       end
   end.
@@ -797,7 +877,7 @@ Fixpoint raw_views_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Ks xs 
   match xs with
   | nil => Some nil
   | x :: xs' =>
-      match view_key_index x Vs with
+      match view_key_pos x Vs with
       | Some v =>
           match raw_view_filed Θ Ξ σ n Ks x (List.nth v Ss nil) (List.nth v css nil) (List.nth v Nvs nil),
                 raw_views_filed Θ Ξ σ n Ks xs' Vs Ss css Nvs with
@@ -1544,23 +1624,11 @@ Proof.
   auto.
 Qed.
 
-Lemma Forall2_index : forall {Y} (P : view_key -> Y -> Prop) Vs Ys x v d, Forall2 P Vs Ys -> view_key_index x Vs = Some v ->
+Lemma Forall2_index : forall {Y} (P : view_key -> Y -> Prop) Vs Ys x v d, Forall2 P Vs Ys -> view_key_pos x Vs = Some v ->
     P x (List.nth v Ys d).
 Proof.
-  intros * H Hv; apply view_key_index_in in Hv; revert v Hv; induction H as [| y0 y Vs Ys Hy _ IH]; intros [| v] Hv;
+  intros * H Hv; apply view_key_pos_in in Hv; revert v Hv; induction H as [| y0 y Vs Ys Hy _ IH]; intros [| v] Hv;
     cbn in Hv; try discriminate; [ injection Hv as <-; exact Hy | apply IH; exact Hv ].
-Qed.
-
-Lemma view_key_index_in_some : forall x Vs, In x Vs -> exists v, view_key_index x Vs = Some v.
-Proof.
-  intros x Vs H; apply view_key_mem_spec in H; unfold view_key_mem in H.
-  destruct (view_key_index x Vs); [ eauto | discriminate ].
-Qed.
-
-Lemma nbes_functional : forall Θ Ξ Γ Ms As Ws Ws', nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ Ms As Ws' -> Ws = Ws'.
-Proof.
-  intros * H; revert Ws'; induction H; intros Ws' H'; inversion H'; subst; [ reflexivity |].
-  f_equal; [ eapply functional_nbe; eassumption | auto ].
 Qed.
 
 Lemma siblings_from_functional : forall Θ Ξ Γc qc Cs i ms ss ss',
@@ -1630,11 +1698,11 @@ Proof.
   subst csD'.
   assert (Agree : forall x, In x Vs -> In x Vs' -> siblings_table Vs Ss x = siblings_table Vs' Ss' x /\ meets_table Vs csV x = meets_table Vs' csV' x).
   { intros x Hx Hx'.
-    destruct (view_key_index_in_some _ _ Hx) as [v Hvi]; destruct (view_key_index_in_some _ _ Hx') as [v' Hvi'].
+    destruct (view_key_pos_in_some _ _ Hx) as [v Hvi]; destruct (view_key_pos_in_some _ _ Hx') as [v' Hvi'].
     unfold siblings_table, meets_table; rewrite Hvi, Hvi'; split.
     - eapply view_siblings_functional; eapply Forall2_index; eassumption.
     - f_equal; eapply view_classify_functional; eapply Forall2_index; eassumption. }
-  pose proof (views_dfs_functional _ _ _ _ _ Hb _ _ _ Hb' Agree) as <-.
+  pose proof (views_dfs_functional _ _ _ _ _ Hb _ _ _ Hb' Agree (siblings_table_absent _ _) (siblings_table_absent _ _)) as <-.
   assert (ESs : Ss = Ss') by (eapply Forall2_functional; [ exact (view_siblings_functional Θ Ξ R) | exact Hs | exact Hs' ]).
   assert (EcsV : csV = csV') by (eapply Forall2_functional; [ exact (view_classify_functional Θ Ξ R) | exact Hv | exact Hv' ]).
   assert (ENv : Nvs = Nvs') by (eapply Forall2_functional; [ exact (view_nparams_functional Θ Ξ R) | exact Hn | exact Hn' ]).
@@ -2288,7 +2356,7 @@ Lemma raw_views_filed_views : forall Θ Ξ σ n Ks xs Vs Ss css Nvs Ms, raw_view
 Proof.
   induction xs as [| x xs IH]; intros Vs Ss css Nvs Ms H; cbn in H.
   - injection H as <-; intros M [].
-  - destruct (view_key_index x Vs) as [v |]; [| discriminate ].
+  - destruct (view_key_pos x Vs) as [v |]; [| discriminate ].
     destruct (raw_view_filed _ _ _ _ _ _ _ _ _) as [M0 |] eqn:E0; [| discriminate ].
     destruct (raw_views_filed Θ Ξ σ n Ks xs Vs Ss css Nvs) as [Ms' |] eqn:E; [| discriminate ].
     injection H as <-; intros M [<- | HM]; [| exact (IH _ _ _ _ _ E _ HM) ].
