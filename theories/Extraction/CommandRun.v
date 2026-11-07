@@ -643,14 +643,16 @@ Section Impl.
   Lemma alias_ok {ch Θ K D B Ξ x pv Δ l E} :
     all_assumptions Δ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
     gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E -> params_evaluated (gds_restrict D Θ) Ξ (gs_tele Ξ) Δ l ->
-    levels_abstractable (gds_restrict D Θ) Ξ ⋅ (Δ ++ gs_tele Ξ) E -> gs_fresh x Ξ ->
+    levels_abstractable (gds_restrict D Θ) Ξ ⋅ (Δ ++ gs_tele Ξ) E ->
+    frame_free_target (gds_restrict D Θ) Ξ (Δ ++ gs_tele Ξ) E -> gs_fresh x Ξ ->
     post_cmd ch Θ K D B Ξ (core_cmd_alias x pv Δ E) (mk_run_state_core Θ K D B (gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ)).
   Proof.
-    intros Htel HΔ HE HPr Hlv Hfr; apply same_post; intros ΘR RbR Hli.
+    intros Htel HΔ HE HPr Hlv Hff Hfr; apply same_post; intros ΘR RbR Hli.
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq; pose proof (ui_wf _ _ _ _ _ _ Hli) as HΞ.
     eapply run_cmd_alias; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq HΞ HΔ) | exact (equiv_modexp _ _ _ _ _ Heq HΞ HE)
                           | exact (equiv_params_evaluated _ _ _ _ _ _ Heq HΞ HPr)
-                          | exact (equiv_levels_abstractable _ _ _ Heq HΞ _ _ _ Hlv) | exact Hfr ].
+                          | exact (equiv_levels_abstractable _ _ _ Heq HΞ _ _ _ Hlv) | exact (equiv_frame_free _ _ _ Heq _ _ Hff)
+                          | exact Hfr ].
   Qed.
 
   (** An inductive alias, with the premises of [run_cmd_ind_alias] at the
@@ -665,17 +667,19 @@ Section Impl.
     gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
     ind_former (gds_restrict D Θ) Ξ (Δ ++ gs_tele Ξ) M W ->
     levels_abstractable (gds_restrict D Θ) Ξ ⋅ (Δ ++ gs_tele Ξ) E ->
+    frame_free_target (gds_restrict D Θ) Ξ (Δ ++ gs_tele Ξ) E ->
     gs_fresh x Ξ ->
     post_cmd ch Θ K D B Ξ (core_cmd_inductive_alias x pv Δ E) (mk_run_state_core Θ K D B (gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M E) Ξ)).
   Proof.
-    intros Htel HΔ HE HPr Ht HW HWt HM Hf Hlv Hfr; apply same_post; intros ΘR RbR Hli.
+    intros Htel HΔ HE HPr Ht HW HWt HM Hf Hlv Hff Hfr; apply same_post; intros ΘR RbR Hli.
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq; pose proof (ui_wf _ _ _ _ _ _ Hli) as HΞ.
     eapply run_cmd_ind_alias; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq HΞ HΔ) | exact (equiv_modexp _ _ _ _ _ Heq HΞ HE)
                               | exact (equiv_params_evaluated _ _ _ _ _ _ Heq HΞ HPr) | exact Ht
                               | exact (equiv_alg_infer _ _ _ _ _ _ Heq HΞ HW)
                               | exact (equiv_exp _ _ _ _ _ _ Heq HΞ HWt) | exact (equiv_exp _ _ _ _ _ _ Heq HΞ HM)
                               | exact (equiv_ind_former _ _ _ _ _ _ Heq Hf)
-                              | exact (equiv_levels_abstractable _ _ _ Heq HΞ _ _ _ Hlv) | exact Hfr ].
+                              | exact (equiv_levels_abstractable _ _ _ Heq HΞ _ _ _ Hlv) | exact (equiv_frame_free _ _ _ Heq _ _ Hff)
+                              | exact Hfr ].
   Qed.
 
   (** A record alias, with the premises of [run_cmd_record_alias] at the
@@ -690,17 +694,19 @@ Section Impl.
     gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
     record_former (gds_restrict D Θ) Ξ (Δ ++ gs_tele Ξ) M W ->
     levels_abstractable (gds_restrict D Θ) Ξ ⋅ (Δ ++ gs_tele Ξ) E ->
+    frame_free_target (gds_restrict D Θ) Ξ (Δ ++ gs_tele Ξ) E ->
     gs_fresh x Ξ ->
     post_cmd ch Θ K D B Ξ (core_cmd_record_alias x pv Δ E) (mk_run_state_core Θ K D B (gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M E) Ξ)).
   Proof.
-    intros Htel HΔ HE HPr Ht HW HWt HM Hf Hlv Hfr; apply same_post; intros ΘR RbR Hli.
+    intros Htel HΔ HE HPr Ht HW HWt HM Hf Hlv Hff Hfr; apply same_post; intros ΘR RbR Hli.
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq; pose proof (ui_wf _ _ _ _ _ _ Hli) as HΞ.
     eapply run_cmd_record_alias; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq HΞ HΔ) | exact (equiv_modexp _ _ _ _ _ Heq HΞ HE)
                                  | exact (equiv_params_evaluated _ _ _ _ _ _ Heq HΞ HPr) | exact Ht
                                  | exact (equiv_alg_infer _ _ _ _ _ _ Heq HΞ HW)
                                  | exact (equiv_exp _ _ _ _ _ _ Heq HΞ HWt) | exact (equiv_exp _ _ _ _ _ _ Heq HΞ HM)
                                  | exact (equiv_record_former _ _ _ _ _ _ Heq Hf)
-                                 | exact (equiv_levels_abstractable _ _ _ Heq HΞ _ _ _ Hlv) | exact Hfr ].
+                                 | exact (equiv_levels_abstractable _ _ _ Heq HΞ _ _ _ Hlv) | exact (equiv_frame_free _ _ _ Heq _ _ Hff)
+                              | exact Hfr ].
   Qed.
 
   (** A mutual definition, with the premises of [run_cmd_mdef] at the
@@ -941,17 +947,19 @@ Section Impl.
   Lemma gen_alias_step {ch Θ K D ΘR Ξ d pv E} :
     unit_invariant ch Θ K D ΘR Ξ -> gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     levels_abstractable (gds_restrict D Θ) Ξ ⋅ (gs_tele Ξ) E ->
-    ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E /\ levels_abstractable ΘR Ξ ⋅ (gs_tele Ξ) E /\
+    frame_free_target (gds_restrict D Θ) Ξ (gs_tele Ξ) E ->
+    ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E /\ levels_abstractable ΘR Ξ ⋅ (gs_tele Ξ) E /\ frame_free_target ΘR Ξ (gs_tele Ξ) E /\
     unit_invariant ch Θ K D ΘR (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ).
   Proof.
-    intros Hli Hfr HE Hlv.
+    intros Hli Hfr HE Hlv Hff.
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq; pose proof (ui_wf _ _ _ _ _ _ Hli) as HΞ.
     pose proof (equiv_modexp _ _ _ _ _ Heq HΞ HE) as HE'.
     pose proof (equiv_levels_abstractable _ _ _ Heq HΞ _ _ _ Hlv) as Hlv'.
-    split; [ exact HE' | split; [ exact Hlv' |] ].
+    pose proof (equiv_frame_free _ _ _ Heq _ _ Hff) as Hff'.
+    split; [ exact HE' | split; [ exact Hlv' | split; [ exact Hff' |] ] ].
     apply (unit_invariant_stack Hli); [| exact (stack_in_add _ _ _ _ (ui_stack _ _ _ _ _ _ Hli)) ].
     apply (add_alias_wf _ _ _ _ nil _ 0);
-      [ exact HΞ | constructor | | exact HE' | apply params_evaluated_nil | exact Hlv' | exact Hfr ].
+      [ exact HΞ | constructor | | exact HE' | apply params_evaluated_nil | exact Hlv' | exact Hff' | exact Hfr ].
     constructor; exact (presup_modexp_eq_ctx HE').
   Qed.
 
@@ -964,8 +972,9 @@ Section Impl.
   Lemma gen_alias_pre {ch Θ K D Ξ d pv E} :
     (exists ΘR, unit_invariant ch Θ K D ΘR Ξ) -> gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     levels_abstractable (gds_restrict D Θ) Ξ ⋅ (gs_tele Ξ) E ->
+    frame_free_target (gds_restrict D Θ) Ξ (gs_tele Ξ) E ->
     exists ΘR, unit_invariant ch Θ K D ΘR (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ).
-  Proof. intros [ΘR Hli] Hfr HE Hlv; exists ΘR; exact (proj2 (proj2 (gen_alias_step Hli Hfr HE Hlv))). Qed.
+  Proof. intros [ΘR Hli] Hfr HE Hlv Hff; exists ΘR; exact (proj2 (proj2 (proj2 (gen_alias_step Hli Hfr HE Hlv Hff)))). Qed.
 
   Lemma gen_def_ok {ch Θ K D Ξ d pv κ A M gs Ξ'} {i : nat} :
     gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort κ Typeω@i ->
@@ -980,10 +989,11 @@ Section Impl.
   Lemma gen_alias_ok {ch Θ K D Ξ d pv E gs Ξ'} :
     gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     levels_abstractable (gds_restrict D Θ) Ξ ⋅ (gs_tele Ξ) E ->
+    frame_free_target (gds_restrict D Θ) Ξ (gs_tele Ξ) E ->
     post_gens ch Θ K D (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ) gs Ξ' ->
     post_gens ch Θ K D Ξ (generated_item_alias d pv E :: gs) Ξ'.
   Proof.
-    intros Hfr HE Hlv Hp ΘR Hli; destruct (gen_alias_step (pv := pv) Hli Hfr HE Hlv) as (HE' & Hlv' & Hli').
+    intros Hfr HE Hlv Hff Hp ΘR Hli; destruct (gen_alias_step (pv := pv) Hli Hfr HE Hlv Hff) as (HE' & Hlv' & Hff' & Hli').
     destruct (Hp _ Hli') as [Hg Hli2]; split; [ econstructor; eassumption | exact Hli2 ].
   Qed.
 
@@ -996,21 +1006,25 @@ Section Impl.
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     levels_abstractable (gds_restrict D Θ) Ξ ⋅ (gs_tele Ξ) E ->
+    frame_free_target (gds_restrict D Θ) Ξ (gs_tele Ξ) E ->
     @alg_type_infer (gc_mk ΘR Ξ) (gs_tele Ξ) W M /\ ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i /\
     ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W /\ ΘR ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E /\ levels_abstractable ΘR Ξ ⋅ (gs_tele Ξ) E /\
+    frame_free_target ΘR Ξ (gs_tele Ξ) E /\
     unit_invariant ch Θ K D ΘR (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ).
   Proof.
-    intros Hli Hfr HW HWt HM HE Hlv.
+    intros Hli Hfr HW HWt HM HE Hlv Hff.
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq; pose proof (ui_wf _ _ _ _ _ _ Hli) as HΞ.
     pose proof (equiv_exp _ _ _ _ _ _ Heq HΞ HM) as HM'.
     pose proof (equiv_exp _ _ _ _ _ _ Heq HΞ HWt) as HWt'.
     pose proof (equiv_modexp _ _ _ _ _ Heq HΞ HE) as HE'.
     pose proof (equiv_levels_abstractable _ _ _ Heq HΞ _ _ _ Hlv) as Hlv'.
+    pose proof (equiv_frame_free _ _ _ Heq _ _ Hff) as Hff'.
     split; [ exact (equiv_alg_infer _ _ _ _ _ _ Heq HΞ HW) |].
-    do 4 (split; [ assumption |]).
+    do 5 (split; [ assumption |]).
     apply (unit_invariant_stack Hli); [| exact (stack_in_add _ _ _ _ (ui_stack _ _ _ _ _ _ Hli)) ].
     apply (add_dm_wf _ _ _ _ nil _ _ _ i 0);
-      [ exact HΞ | constructor | | exact HWt' | exact HM' | exact HE' | apply params_evaluated_nil | exact Hlv' | exact Hfr ].
+      [ exact HΞ | constructor | | exact HWt' | exact HM' | exact HE' | apply params_evaluated_nil | exact Hlv' | exact Hff'
+      | exact Hfr ].
     constructor; exact (presup_exp_ctx HM').
   Qed.
 
@@ -1022,10 +1036,11 @@ Section Impl.
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     levels_abstractable (gds_restrict D Θ) Ξ ⋅ (gs_tele Ξ) E ->
+    frame_free_target (gds_restrict D Θ) Ξ (gs_tele Ξ) E ->
     exists ΘR, unit_invariant ch Θ K D ΘR (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ).
   Proof.
-    intros [ΘR Hli] Hfr HW HWt HM HE Hlv; exists ΘR.
-    exact (proj2 (proj2 (proj2 (proj2 (proj2 (gen_dm_step Hli Hfr HW HWt HM HE Hlv)))))).
+    intros [ΘR Hli] Hfr HW HWt HM HE Hlv Hff; exists ΘR.
+    exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (gen_dm_step Hli Hfr HW HWt HM HE Hlv Hff))))))).
   Qed.
 
   (** A generated definition with a module part, then the rest, run as
@@ -1037,11 +1052,12 @@ Section Impl.
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     levels_abstractable (gds_restrict D Θ) Ξ ⋅ (gs_tele Ξ) E ->
+    frame_free_target (gds_restrict D Θ) Ξ (gs_tele Ξ) E ->
     post_gens ch Θ K D (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ) gs Ξ' ->
     post_gens ch Θ K D Ξ (generated_item_def_mod d pv A M E :: gs) Ξ'.
   Proof.
-    intros Hfr HW HWt HM HE Hlv Hp ΘR Hli;
-      destruct (gen_dm_step (pv := pv) Hli Hfr HW HWt HM HE Hlv) as (HW' & HWt' & HM' & HE' & Hlv' & Hli').
+    intros Hfr HW HWt HM HE Hlv Hff Hp ΘR Hli;
+      destruct (gen_dm_step (pv := pv) Hli Hfr HW HWt HM HE Hlv Hff) as (HW' & HWt' & HM' & HE' & Hlv' & Hff' & Hli').
     destruct (Hp _ Hli') as [Hg Hli2]; split; [ econstructor; eassumption | exact Hli2 ].
   Qed.
 
@@ -1059,15 +1075,16 @@ Section Impl.
   (** An open declares what its items generate, which files nothing. *)
   Lemma open_ok {ch Θ K D B Ξ E its gs Ξ'}
     (HE : gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E) :
+    frame_free_target (gds_restrict D Θ) Ξ (gs_tele Ξ) E ->
     open_gens (gds_restrict D Θ) Ξ (gs_tele Ξ) E its gs ->
     post_gens ch Θ K D Ξ gs Ξ' ->
     post_cmd ch Θ K D B Ξ (core_cmd_open E its) (mk_run_state_core Θ K D B Ξ').
   Proof.
-    intros Hgen Hgs ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
+    intros Hff Hgen Hgs ΘR RbR Hli Hrb; cbn [run_state_core_deps run_state_core_closures run_state_core_imports run_state_core_builtins run_state_core_stack].
     destruct (Hgs _ Hli) as [Hr Hli'].
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq.
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR); [| exact Hli' | exact Hrb | apply ext_refl | apply grows_refl ].
-    eapply run_cmd_open; [ exact (equiv_modexp _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HE) | | exact Hr ].
+    eapply run_cmd_open; [ exact (equiv_modexp _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli) HE) | exact (equiv_frame_free _ _ _ Heq _ _ Hff) | | exact Hr ].
     exact (open_gens_equiv _ _ _ _ _ _ _ Heq Hgen).
   Qed.
 
@@ -1675,6 +1692,12 @@ Section Impl.
       levels_abstractable (gds_restrict D (decode_units s)) (decode_stack fs) ⋅ (Δ ++ gs_tele (decode_stack fs)) E.
   Proof. exact (cmd_read B H (fun G Γ => levels_abstractable (@gc_deps G) (@gc_stack G) ⋅ (Δ ++ Γ) E)). Qed.
 
+  (** A target that is no module still being defined *)
+  Lemma cmd_frame_free {ch s K D fs} B (H : pre ch s K D fs) Δ E :
+      frame_free_target (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) (Δ ++ fc_tele (cmd_F B H)) E ->
+      frame_free_target (gds_restrict D (decode_units s)) (decode_stack fs) (Δ ++ gs_tele (decode_stack fs)) E.
+  Proof. exact (cmd_read B H (fun G Γ => frame_free_target (@gc_deps G) (@gc_stack G) (Δ ++ Γ) E)). Qed.
+
   (** The privacy of a command's references *)
   Lemma cmd_acc {ch s K D fs} B (H : pre ch s K D fs) l :
       acc_ok (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) l -> acc_ok (gds_restrict D (decode_units s)) (decode_stack fs) l.
@@ -2016,6 +2039,12 @@ Section Impl.
       a universe ([levels_abstractable]) *)
   Definition run_error_levels (x : string) : run_error :=
     run_error_msg (x ++ " reads a level computed from a parameter that is not a level").
+
+  (** An alias or an open of a module still being defined: of an open
+      frame, the current unit's, a record's with-area's or an inductive
+      type's module ([frame_free_target]) *)
+  Definition run_error_frame (x : string) : run_error :=
+    run_error_msg (x ++ " names a module still being defined: an alias or an open names a finished module only").
 
   (** The last name of the path of an inductive type. *)
   Definition ind_short (p : qname) : string := List.last (q_chain p) EmptyString.
@@ -2530,13 +2559,15 @@ Section Impl.
           | right _ => run_failure (run_error_msg ("ill-formed module expression for module " ++ x))
           | left HE with lvd _ _ nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
             | right _ => run_failure (run_error_levels ("module " ++ x))
-            | left Hlv with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
+            | left Hlv with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
+            | right _ => run_failure (run_error_frame ("module " ++ x))
+            | left Hff with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
               | right _ => run_failure (run_error_msg (x ++ " is already declared"))
               | left Hfr =>
                   run_success (exist _ _ (add_post_translate H (e := translate_entry (ge_mod pv (gu_mk (Δ ++ fs_tele fs) (md_alias E))))
                                 (eq_sym (f_equal (fun T => translate_entry (ge_mod pv (gu_mk (Δ ++ T) (md_alias E)))) (fs_tele_dec fs)))
                                 (alias_ok Htel (cmd_ext B H Δ HΔ) (cmd_modexp B H Δ E HE) (cmd_params_evaluated B H Δ l HPr)
-                                   (cmd_levels_abstractable B H Δ E Hlv) Hfr))) } } } } } }.
+                                   (cmd_levels_abstractable B H Δ E Hlv) (cmd_frame_free B H Δ E Hff) Hfr))) } } } } } } }.
 
   (** *** The Generated Entries of an Open *)
 
@@ -2611,16 +2642,21 @@ Section Impl.
                 match lvd _ _ nil (fc_tele (cmd_F B H)) E (ctx_app_nil (pre_ctx_f B H)) with
                 | right _ => run_failure (run_error_levels ("module " ++ d))
                 | left Hlv =>
+                    match frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E HE with
+                    | right _ => run_failure (run_error_frame ("module " ++ d))
+                    | left Hff =>
                     let HE' := cmd_modexp B H nil E HE in
                     let Hlv' := cmd_levels_abstractable B H nil E Hlv in
-                    let Hl := gen_alias_pre (pv := pv) (pre_unit_invariant _ _ _ _ _ H) Hfr HE' Hlv' in
+                    let Hff' := cmd_frame_free B H nil E Hff in
+                    let Hl := gen_alias_pre (pv := pv) (pre_unit_invariant _ _ _ _ _ H) Hfr HE' Hlv' Hff' in
                     let He := entry_rep_of_eq _ _ _ _ (eq_sym (f_equal (fun T => translate_entry (ge_mod pv (gu_mk T (md_alias E)))) (fs_tele_dec fs))) in
                     match gens_impl ch s K D B (fs_add d (translate_entry (ge_mod pv (gu_mk (fs_tele fs) (md_alias E)))) fs) gs' (pre_add H He Hl) with
                     | run_failure e => run_failure e
                     | run_success (exist _ fs' (conj Hp Hf)) =>
-                        run_success (exist _ fs' (conj (gen_alias_ok Hfr HE' Hlv'
+                        run_success (exist _ fs' (conj (gen_alias_ok Hfr HE' Hlv' Hff'
                                                   (eq_ind _ (fun Ξ1 => post_gens ch (decode_units s) K D Ξ1 gs' (decode_stack fs')) Hp _
                                                      (proj1 (add_dec H He Hl)))) Hf))
+                    end
                     end
                 end
             end
@@ -2641,19 +2677,24 @@ Section Impl.
                         match large_type_dec (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) (nf_to_exp W) with
                         | inright _ => run_failure (run_error_msg ("ill-formed definition " ++ d))
                         | inleft (exist _ i HWt) =>
+                            match frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E HE with
+                            | right _ => run_failure (run_error_frame ("module " ++ d))
+                            | left Hff =>
                             let HW' := cmd_infer B H nil W M HW in
                             let HWt' := cmd_exp B H nil (nf_to_exp W) Typeω@i HWt in
                             let HM' := cmd_exp B H nil M (nf_to_exp W) (alg_type_infer_sound HW (pre_ctx_f B H)) in
                             let HE' := cmd_modexp B H nil E HE in
                             let Hlv' := cmd_levels_abstractable B H nil E Hlv in
-                            let Hl := gen_dm_pre (pv := pv) (pre_unit_invariant _ _ _ _ _ H) Hfr HW' HWt' HM' HE' Hlv' in
+                            let Hff' := cmd_frame_free B H nil E Hff in
+                            let Hl := gen_dm_pre (pv := pv) (pre_unit_invariant _ _ _ _ _ H) Hfr HW' HWt' HM' HE' Hlv' Hff' in
                             let (e0, He) := dm_entry_rep B H pv nil i (nf_to_exp W) M E HWt (alg_type_infer_sound HW (pre_ctx_f B H)) in
                             match gens_impl ch s K D B (fs_add d e0 fs) gs' (pre_add H He Hl) with
                             | run_failure e => run_failure e
                             | run_success (exist _ fs' (conj Hp Hf)) =>
-                                run_success (exist _ fs' (conj (gen_dm_ok (A := A) Hfr HW' HWt' HM' HE' Hlv'
+                                run_success (exist _ fs' (conj (gen_dm_ok (A := A) Hfr HW' HWt' HM' HE' Hlv' Hff'
                                                           (eq_ind _ (fun Ξ1 => post_gens ch (decode_units s) K D Ξ1 gs' (decode_stack fs')) Hp _
                                                              (proj1 (add_dec H He Hl)))) Hf))
+                            end
                             end
                         end
                     end
@@ -2748,7 +2789,9 @@ Section Impl.
                   | right _ => run_failure (alias_target_error x E) }
                 | left Hf with lvd _ _ nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
                   | right _ => run_failure (run_error_levels ("inductive alias " ++ x))
-                  | left Hlv with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
+                  | left Hlv with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
+                  | right _ => run_failure (run_error_frame ("inductive alias " ++ x))
+                  | left Hff with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
                     | right _ => run_failure (run_error_msg (x ++ " is already declared"))
                     | left Hfr with params_evaluated_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) Δ => {
                       | inright _ => run_failure (run_error_param_prop x)
@@ -2762,7 +2805,8 @@ Section Impl.
                                           (indalias_ok Htel (cmd_ext B H Δ HΔ) (cmd_modexp B H Δ E HE) (cmd_params_evaluated B H Δ l HPr)
                                              Ht (cmd_infer B H Δ W M HW) (cmd_exp B H Δ (nf_to_exp W) Typeω@i HWt)
                                              (cmd_exp B H Δ M (nf_to_exp W) (alg_type_infer_sound HW (ext_eq_ctx_left _ _ _ _ _ HΔ)))
-                                             (cmd_ind_former B H Δ M W Hf) (cmd_levels_abstractable B H Δ E Hlv) Hfr))) } } } } } } } } } } }.
+                                             (cmd_ind_former B H Δ M W Hf) (cmd_levels_abstractable B H Δ E Hlv)
+                                             (cmd_frame_free B H Δ E Hff) Hfr))) } } } } } } } } } } } }.
 
   (** A record alias, checked as an inductive alias is, for a type former
       of a record type. *)
@@ -2789,7 +2833,9 @@ Section Impl.
                 | right _ => run_failure (recalias_target_error x) }
               | left Hf with lvd _ _ nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
                 | right _ => run_failure (run_error_levels ("record alias " ++ x))
-                | left Hlv with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
+                | left Hlv with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
+                | right _ => run_failure (run_error_frame ("record alias " ++ x))
+                | left Hff with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
                   | right _ => run_failure (run_error_msg (x ++ " is already declared"))
                   | left Hfr with params_evaluated_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) Δ => {
                     | inright _ => run_failure (run_error_param_prop x)
@@ -2803,7 +2849,8 @@ Section Impl.
                                         (recalias_ok Htel (cmd_ext B H Δ HΔ) (cmd_modexp B H Δ E HE) (cmd_params_evaluated B H Δ l HPr)
                                            Ht (cmd_infer B H Δ W M HW) (cmd_exp B H Δ (nf_to_exp W) Typeω@i HWt)
                                            (cmd_exp B H Δ M (nf_to_exp W) (alg_type_infer_sound HW (ext_eq_ctx_left _ _ _ _ _ HΔ)))
-                                           (cmd_record_former B H Δ M W Hf) (cmd_levels_abstractable B H Δ E Hlv) Hfr))) } } } } } } } } } }.
+                                           (cmd_record_former B H Δ M W Hf) (cmd_levels_abstractable B H Δ E Hlv)
+                                           (cmd_frame_free B H Δ E Hff) Hfr))) } } } } } } } } } } }.
 
   (** The wf of the frames, read at the units a command sees *)
   Lemma pre_gctx_view {ch s K D fs} (H : pre ch s K D fs) : ⊢ᵍ view_deps (cmd_view s D) ⍮ decode_stack fs.
@@ -3573,13 +3620,16 @@ Section Impl.
                   | exist _ (Some B') Hm => run_success (exist _ _ (load_res H Hn Hnch Hsrc Hprg Hp Hu Hr Hm), log_nil) } } } } } } } }
   | ch, L, s, K, D, B, fs, core_cmd_open E its, H with check_modexp (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E => {
     | right _ => run_failure (run_error_import (open_failure_reason_target E))
-    | left HE with inspect (import_gen (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E E HE its) => {
+    | left HE with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E HE => {
+    | right _ => run_failure (run_error_frame "an open")
+    | left Hff with inspect (import_gen (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E E HE its) => {
       | exist _ (open_failure e) _ => run_failure (run_error_import e)
       | exist _ (open_success gs) Eg with gens_impl ch s K D B fs gs H => {
         | run_failure e => run_failure e
         | run_success (exist _ fs' (conj Hgs Hf)) =>
             run_success (exist _ (mk_run_state s K D B fs')
-                           (frames_res H (conj (open_ok (cmd_modexp B H nil E HE) (cmd_open_gens B H E its gs HE Eg) Hgs) Hf)), log_nil) } } }
+                           (frames_res H (conj (open_ok (cmd_modexp B H nil E HE) (cmd_frame_free B H nil E Hff)
+                                                  (cmd_open_gens B H E its gs HE Eg) Hgs) Hf)), log_nil) } } } }
   | ch, L, s, K, D, B, fs, core_cmd_eval M A, H with check_exp (cmd_F B H) (lvd _ _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A M => {
     | left HM => run_success (exist _ _ (state_res H (eval_ok (cmd_exp B H nil M A HM))), eval_log (cmd_F B H) (pre_gctx_f B H) M A HM)
     | right _ => run_failure (eval_error (cmd_F B H) (pre_ctx_f B H) M A) }

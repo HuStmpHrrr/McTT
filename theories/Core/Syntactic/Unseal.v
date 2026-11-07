@@ -728,6 +728,25 @@ Proof.
   exact (proj1 (mdenote_unseal_all _ _ Hg) _ _ _ Hm (or_intror (ex_intro _ H (ex_intro _ x (conj eq_refl (wf_modexp_eq_refl_left HH)))))).
 Qed.
 
+(** A description read unsealed reads an open frame only if it did:
+    unsealing keeps the paths of closed module parts, and the frames. *)
+Lemma desc_reads_frame_unseal : forall Ξ R R', mdesc_unsealed R R' -> desc_reads_frame (gs_unseal Ξ) R' -> desc_reads_frame Ξ R.
+Proof.
+  intros Ξ R R' Hd; induction Hd; intros (Θ1 & p1 & T1 & Φ1 & Ns1 & Hm & Hf); cbn in Hm; try discriminate.
+  - injection Hm as <- <- <- _ <-; exists Θ, p, T, Φ, Ns; split; [ reflexivity |].
+    rewrite gc_frame_unseal in Hf; destruct (gc_frame Ξ p); [ discriminate | contradiction ].
+  - exact (IHHd (ex_intro _ Θ1 (ex_intro _ p1 (ex_intro _ T1 (ex_intro _ Φ1 (ex_intro _ Ns1 (conj Hm Hf))))))).
+Qed.
+
+(** A target that is no module still being defined is none unsealed. *)
+Corollary frame_free_unseal : forall Θ Ξ Γ E E', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E' -> frame_free_target Θ Ξ Γ E ->
+    frame_free_target (gds_unseal Θ) (gs_unseal Ξ) Γ E.
+Proof.
+  intros * HE (R & Hm & Hn).
+  destruct (mdenote_unseal _ _ _ _ _ _ HE Hm) as (R' & Hm' & Hd).
+  exists R'; split; [ exact Hm' | intros Hr; exact (Hn (desc_reads_frame_unseal _ _ _ Hd Hr)) ].
+Qed.
+
 Corollary body_xp_unseal : forall Θ Ξ Γ Φ Φx, ⊢ᵍ Θ ⍮ Ξ -> body_xp Θ Ξ Γ Φ Φx -> body_unseal_precondition Θ Ξ Γ Φ Φx ->
     body_xp (gds_unseal Θ) (gs_unseal Ξ) Γ Φ Φx.
 Proof. intros * Hg; exact (proj1 (proj2 (proj2 (proj2 (mdenote_unseal_all _ _ Hg)))) _ _ _). Qed.
@@ -1058,8 +1077,19 @@ Ltac unseal_params X :=
   let E := fresh "E" in
   assert (E : gs_tele (gs_unseal X) = gs_tele X) by exact (gs_tele_unseal X);
   cbn [gs_unseal] in E; intros; rewrite E; eapply proj2; eauto.
+(** A target that is no module still being defined is none unsealed
+    ([frame_free_unseal]), read off the target's typing. *)
+Ltac frame_free_premise_unseal :=
+  match goal with
+  | |- frame_free_target (gds_unseal _) (gs_unseal _) _ _ =>
+      rewrite ?gs_tele_unseal; eapply frame_free_unseal;
+      [ first [ eassumption | eapply wf_me_sym; eassumption | eapply wf_me_lit; eassumption ] | eassumption ]
+  | |- forall _ _ _, _ -> frame_free_target (gds_unseal _) (gs_unseal _) _ _ =>
+      let Hk := fresh "Hk" in
+      intros ? ? ? Hk; eapply frame_free_unseal; [ solve [ eapply proj1; eauto | eauto ] | eauto ]
+  end.
 Ltac unseal_premise :=
-  first [ eassumption | solve [ intros; eapply proj2; eauto ]
+  first [ eassumption | solve [ frame_free_premise_unseal ] | solve [ intros; eapply proj2; eauto ]
         | solve [ eauto using gc_resolve_unseal_def, gc_resolve_unseal_transparent, gm_fresh_unseal, frame_fresh_unseal ] ].
 
 Lemma unseal_preserves_wf_all :

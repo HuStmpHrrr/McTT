@@ -403,6 +403,8 @@ with alg_unit : ctx -> gunit -> Prop :=
      all_assumptions Δ ->
      Δ ++ Γ ⊢aᵐ E ->
      levels_abstractable gc_deps gc_stack Γ Δ E ->
+     (** the target is no module still being defined *)
+     frame_free_target gc_deps gc_stack (Δ ++ Γ) E ->
      Γ ⊢aᵘ gu_mk Δ (md_alias E) )
 where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope
 (** [Γ ⊢aᵇ Φ ⇝ Φx]: the entries of [Φ] are well-formed in [Γ], each in the
@@ -437,6 +439,8 @@ with alg_body : ctx -> gmod -> gmod -> Prop :=
      body_ctx Φx ++ Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
      mdesc_mod R = Some Rm ->
+     (** the module opened is no module still being defined *)
+     frame_free_target gc_deps gc_stack (body_ctx Φx ++ Γ) H ->
      items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
      items_ok its ->
      (** The entries the open stores are the ones its items generate, as

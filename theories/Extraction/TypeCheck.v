@@ -655,6 +655,8 @@ Section type_check.
       let HΔ : ⊢ Δ ++ G := _ in
       let*b _ := modexp_check (Δ ++ G) HΔ E _ while _ in
       let*b _ := levels_abstractable_dec G Δ E HΔ while _ in
+      (** the target is no module still being defined *)
+      let*b _ := frame_free_target_dec F _ (Δ ++ G) E _ while _ in
       pureb _
   with modexp_check G (HG : ⊢ G) M (H : modexp_order M) : { G ⊢aᵐ M } + { ~ G ⊢aᵐ M } by struct H :=
   | G, HG, me_unit fp, H =>
@@ -715,6 +717,8 @@ Section type_check.
       let*b->o HM := modexp_check (body_ctx Φx ++ G) _ M _ while _ in
       let*o (exist _ R _) := mdenote_dec F _ (body_ctx Φx ++ G) M _ while _ in
       let*o (exist _ Rm _) := mdesc_mod_dec R while _ in
+      (** the module opened is no module still being defined *)
+      let*b->o _ := frame_free_target_dec F _ (body_ctx Φx ++ G) M _ while _ in
       let*o (exist _ gs _) := items_gen_dec F _ (body_ctx Φx ++ G) M its _ while _ in
       let*b->o _ := items_ok_dec its while _ in
       let*b->o _ := gmod_eq_dec Φg (gens_body gs) while _ in

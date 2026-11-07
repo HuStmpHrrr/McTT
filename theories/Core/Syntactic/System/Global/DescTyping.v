@@ -2987,6 +2987,35 @@ Section DescOk.
       rewrite List.app_assoc; assumption.
   Qed.
 
+  (** An entry of a typed open description, read, is no module still being
+      defined: a module entry's unit is well formed where it is, and a
+      definition is no module. *)
+  Lemma entry_open_frame_free : ⊢ᵍ Θ ⍮ Ξ -> forall Γ Δ Φw Φ y Γy E rd R R',
+      desc_ok Γ (mdesc_open Δ Φw Φ) -> mdesc_entry (mdesc_open Δ Φw Φ) y = Some (Γy, E, rd) ->
+      edenote Θ Ξ (Γy ++ Γ) None E R -> mdesc_read rd R = Some R' -> ~ desc_reads_frame Ξ R'.
+  Proof.
+    intros Hg * HR He Hed Hr; inversion HR as [| Γ0 Δ0 Φw0 Φ0 lΔ HΦ Hn Hent HaΔ Hsh Hnd HUw HRΔ Htg HLΔ | |]; subst.
+    cbn in He; destruct (gm_prefix_upto Φ y) as [[| Φ1 x E1 | ? ? ?] |] eqn:Hp; try discriminate.
+    destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
+    destruct (gm_prefix_body_ctx _ _ _ Hn Hp) as (Ψ & HΨ).
+    rewrite HΨ in HΦ.
+    assert (HΦ1 : ⊢ Θ ⍮ Ξ ⍮ body_ctx (Φ1 ⊳ y ↦ E1) ++ Δ ++ Γ)
+      by (eapply ctx_app_wf_tail; rewrite <- List.app_assoc in HΦ; exact HΦ).
+    destruct E1 as [[|] pv ra A [M |] | pv U | | pv A M U | ]; try discriminate; injection He as <- <- <-; cbn in Hr.
+    all: destruct (gm_fill Φ1) as [σ |] eqn:Hf; cbn in Hr; [ injection Hr as <- | discriminate ].
+    all: intros Hr0; apply (proj1 (desc_reads_frame_up _ _ _)) in Hr0; apply desc_reads_frame_sub in Hr0;
+      rewrite <- List.app_assoc in Hed; inversion Hed; subst.
+    all: first
+      [ destruct Hr0 as (? & ? & ? & ? & ? & Hm0 & _); cbn in Hm0; discriminate
+      | match goal with Hu : udenote _ _ _ None ?U _ |- _ =>
+          cbn [body_ctx List.app] in HΦ1;
+          let HU0 := fresh "HU0" in
+          first [ destruct (ctx_decomp_mod HΦ1) as [_ HU0] | destruct (ctx_decomp_dm HΦ1) as (_ & _ & _ & HU0) ];
+          first [ exact (proj1 (wf_unit_frame_free _ _ _ _ _ HU0) _ Hu Hr0)
+                | exact (proj1 (wf_unit_frame_free _ _ _ _ _ HU0) _ Hu (proj1 (desc_reads_frame_dm _ _ _ _ _) Hr0)) ]
+        end ].
+  Qed.
+
   (** A description abstracted over [Δa], given arguments for the outermost
       parameters of [Δa]. *)
   Lemma ats_up_ok : ⊢ᵍ Θ ⍮ Ξ -> forall Ns Γ Δa R l,

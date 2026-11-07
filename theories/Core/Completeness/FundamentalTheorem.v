@@ -371,10 +371,12 @@ Lemma valid_entry_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 Θs Ξs,
     all_assumptions Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
     params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     levels_flag Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E lv Rt ->
+    frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) E ->
     bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
-  intros * HΔ _ HE HP [HFs HFd HFn] HG He Hs HgS; cbn.
+  intros * HΔ _ HE HP [HFs HFd HFn] Hff HG He Hs HgS; cbn.
+  assert (Hff' : frame_free_target Θ Ξ ((Δ ++ gs_tele Ξ) ++ ⋅) E) by (rewrite app_nil_r; exact Hff).
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) as Hg.
   pose proof (valid_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
   assert (Ht : all_assumptions (Δ ++ gs_tele Ξ)) by (apply List.Forall_app; split; [ exact HΔ | exact (gs_tele_all_assumptions_of_bodies_valid _ _ _ _ HG He) ]).
@@ -385,7 +387,7 @@ Proof.
   assert (HU : Θ ⍮ Ξ ⍮ ⋅ ⊢ᵘ gu_mk (Δ ++ gs_tele Ξ) (md_alias E) ≈ gu_mk (Δ ++ gs_tele Ξ) (md_alias E))
     by (apply wf_unit_eq_alias with (param_level := l') (param_sorts := ps) (lv := lv) (Rt := Rt) (lv' := lv) (Rt' := Rt);
         [ exact (ext_of_ctx _ _ _ _ HC) | exact Ht | exact Ht | exact HE' | exact HE' | exact Hps | exact HPs | exact HPs
-        | exact HFs | exact HFd | exact HFn | exact HFs | exact HFd | exact HFn ]).
+        | exact HFs | exact HFd | exact HFn | exact HFs | exact HFd | exact HFn | exact Hff' | exact Hff' ]).
   destruct completeness_fundamental as (_ & _ & _ & _ & _ & _ & Ku & _).
   destruct (Ku _ _ _ _ _ HU _ _ Hμ) as [_ _ HK _].
   exact (valid_unit_grow _ _ _ _ Hg {| gctx_embedding_wf := HgS; gctx_embedding_resolution := Hs |} _ _ HK).

@@ -854,7 +854,8 @@ Section Stored.
     pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0.
     assert (HE1 : Θ ⍮ Ξ ⍮ Δa ⊢ᵐ E' ≈ E' /\ ⊢ Θ ⍮ Ξ ⍮ Δa /\
                   forall Γ, ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> (exists R, mdenote Θ Ξ (Δa ++ Γ) E' R) /\
-                    forall R, mdenote Θ Ξ (Δa ++ Γ) E' R -> desc_ok Θ Ξ (Δa ++ Γ) R /\ exists Rm, mdesc_mod R = Some Rm).
+                    forall R, mdenote Θ Ξ (Δa ++ Γ) E' R -> desc_ok Θ Ξ (Δa ++ Γ) R /\ (exists Rm, mdesc_mod R = Some Rm) /\
+                      ~ desc_reads_frame Ξ R).
     { destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? [? [? ?| ?]] | ? ? ?]; cbn in HUa; try discriminate;
         injection HUa as <- <-; cbn [ge_valid syn_V] in HE0;
         [ destruct HE0 as (? & ? & _ & _ & ?) | destruct (proj1 HE0) as (? & ? & _ & _ & ?) ];

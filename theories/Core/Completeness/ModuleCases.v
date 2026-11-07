@@ -211,11 +211,12 @@ Proof.
 Qed.
 
 (** [β] for an alias with no parameter. *)
-Lemma valid_modexp_beta_alias0 : forall Γ E, Θm ⍮ Ξm ⍮ Γ ⊢ᵐ E ≈ E -> ⊨ Γ -> Γ ⊨ᵐ E ≈ E -> valid_modexp Γ E ->
+Lemma valid_modexp_beta_alias0 : forall Γ E, Θm ⍮ Ξm ⍮ Γ ⊢ᵐ E ≈ E -> frame_free_target Θm Ξm Γ E ->
+    ⊨ Γ -> Γ ⊨ᵐ E ≈ E -> valid_modexp Γ E ->
     Γ ⊨ᵐ me_lit (gu_mk nil (md_alias E)) ≈ E /\ valid_modexp Γ (me_lit (gu_mk nil (md_alias E))).
 Proof.
-  intros * Hw HΓ HE Hs.
-  pose proof (wf_me_beta_alias0 _ _ _ _ Hw) as Hb.
+  intros * Hw Hf HΓ HE Hs.
+  pose proof (wf_me_beta_alias0 _ _ _ _ Hw Hf) as Hb.
   pose proof (wf_me_trans _ _ _ _ _ _ Hb (wf_me_sym _ _ _ _ _ Hb)) as Hw'.
   assert (HL : Γ ⊨ᵐ me_lit (gu_mk nil (md_alias E)) ≈ me_lit (gu_mk nil (md_alias E))).
   { apply rel_lit_alias; [ constructor; [ exact HΓ | exact HΓ | exact (rel_ctx_wf_per_ctx HΓ) ] | constructor | constructor
@@ -777,6 +778,7 @@ Proof. intros; sem_intro0; close_modexp valid_modexp_beta_alias. Qed.
 
 Lemma sem_me_beta_alias0 :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E ->
+     frame_free_target Θ Ξ Γ E ->
      Θ ⍮ Ξ ⍮ Γ ⊨ᵐ E ≈ E ->
      Θ ⍮ Ξ ⍮ Γ ⊨ᵐ me_lit (gu_mk nil (md_alias E)) ≈ E ).
 Proof. intros; sem_intro0; close_modexp_left valid_modexp_beta_alias0. Qed.

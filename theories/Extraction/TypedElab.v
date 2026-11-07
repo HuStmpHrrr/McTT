@@ -107,6 +107,14 @@ Section AlgEquiv.
     apply (deps_grow _ _ _ (proj1 He)); [ constructor; exact Hg' | exact Hnl ].
   Qed.
 
+  (** The frame premise moves along the equivalence: what a target denotes
+      moves unchanged, and the frames are the same. *)
+  Lemma equiv_frame_free : forall Γ E, frame_free_target Θ Ξ Γ E -> frame_free_target Θ' Ξ Γ E.
+  Proof.
+    destruct Hmd as (Hm1 & _).
+    intros * (R & HR & Hn); exists R; split; [ exact (Hm1 _ _ _ HR) | exact Hn ].
+  Qed.
+
   (** Algorithmic typing reads the dependencies through their lookups
       alone, and the flag premise through judgments. *)
   Lemma equiv_alg_all :

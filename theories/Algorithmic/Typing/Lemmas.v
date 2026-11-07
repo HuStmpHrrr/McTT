@@ -627,6 +627,9 @@ Record alg_body_ok (Γ0 Ψ Γ : ctx) (Φ Φx : gmod) : Prop := mk_alg_body_ok
   ; alg_body_ok_ext : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φx ++ Ψ ≈ body_ctx Φx ++ Ψ
     (** The targets of the opens are modules where they stand *)
   ; alg_body_ok_opens : forall k Ψo H, List.nth_error (body_opens Φ Φx) k = Some (Ψo, H) -> gc_deps ⍮ gc_stack ⍮ Ψo ++ Γ ⊢ᵐ H ≈ H
+    (** The targets of the opens are no modules still being defined *)
+  ; alg_body_ok_frame_free : forall k Ψo H, List.nth_error (body_opens Φ Φx) k = Some (Ψo, H) ->
+      frame_free_target gc_deps gc_stack (Ψo ++ Γ) H
     (** The term parts of the expansion are of the sorts at their tags *)
   ; alg_body_ok_tags : exists L, body_tags Γ Φx L }.
 
@@ -635,8 +638,8 @@ Definition alg_body_sound (Γ : ctx) (Φ Φx : gmod) : Prop :=
 
 Lemma alg_body_nil_sound : forall Γ, alg_body_sound Γ gm_nil gm_nil.
 Proof.
-  intros Γ Γ0 Ψ -> HΓ0 HΨ; constructor; [ constructor | exact HΨ | | exists 0; apply body_tags_nil ].
-  intros [| k] * Hk; discriminate.
+  intros Γ Γ0 Ψ -> HΓ0 HΨ; constructor; [ constructor | exact HΨ | | | exists 0; apply body_tags_nil ];
+    intros [| k] * Hk; discriminate.
 Qed.
 
 (** A definition, of the sort at its tag. *)
@@ -647,10 +650,10 @@ Lemma alg_body_def_sound : forall Γ Φ Φx x b pv r A M i,
     alg_body_sound Γ (gm_ext Φ x (ge_def b pv r A (Some M))) (gm_ext Φx x (ge_def b pv r A (Some M))).
 Proof.
   intros * IH HA HM Γ0 Ψ -> HΓ0 HΨ.
-  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho [L HL]].
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho Hof [L HL]].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HA HC); specialize (HM HC).
-  constructor; [ constructor; exact Hbx | | exact Ho |].
+  constructor; [ constructor; exact Hbx | | exact Ho | exact Hof |].
   - rewrite List.app_assoc in HA, HM; cbn [body_ctx List.app].
     eapply wf_ext_eq_def_same; [ exact HX | exact HA | apply type_sort_kind_universe | exact HA | exact HM | exact HM ].
   - exists (max L i); apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HL (Nat.le_max_l L i)) |].
@@ -664,10 +667,10 @@ Lemma alg_body_mod_sound : forall Γ Φ Φx x pm U,
     alg_body_sound Γ (gm_ext Φ x (ge_mod pm U)) (gm_ext Φx x (ge_mod pm U)).
 Proof.
   intros * IH HU Γ0 Ψ -> HΓ0 HΨ.
-  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho [L HL]].
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho Hof [L HL]].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HU HC); rewrite List.app_assoc in HU.
-  constructor; [ constructor; exact Hbx | | exact Ho |].
+  constructor; [ constructor; exact Hbx | | exact Ho | exact Hof |].
   - cbn [body_ctx List.app]; apply wf_ext_eq_mod; [ exact HX | exact HU | exact HU ].
   - exists L; apply body_tags_ext; [ exact HL | intros * [=] ].
 Qed.
@@ -681,10 +684,10 @@ Lemma alg_body_dm_sound : forall Γ Φ Φx x pv A M U i,
     alg_body_sound Γ (gm_ext Φ x (ge_def_mod pv A M U)) (gm_ext Φx x (ge_def_mod pv A M U)).
 Proof.
   intros * IH HA HM HU Γ0 Ψ -> HΓ0 HΨ.
-  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho [L HL]].
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho Hof [L HL]].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HA HC); specialize (HM HC); specialize (HU HC).
-  constructor; [ constructor; exact Hbx | | exact Ho |].
+  constructor; [ constructor; exact Hbx | | exact Ho | exact Hof |].
   - rewrite List.app_assoc in HA, HM, HU; cbn [body_ctx List.app].
     eapply wf_ext_eq_dm; [ exact HX | exact HA | apply wf_exp_eq_refl; exact HA | exact HM | apply wf_exp_eq_refl; exact HM
                          | exact HA | exact HM | exact HU | exact HU ].
@@ -698,19 +701,22 @@ Lemma alg_body_open_sound : forall Γ Φ Φx H R Rm its gs Φg,
     (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵐ H ≈ H) ->
     mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
     mdesc_mod R = Some Rm ->
+    frame_free_target gc_deps gc_stack (body_ctx Φx ++ Γ) H ->
     items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
     Φg = gens_body gs ->
     alg_body_sound Γ (gm_open Φ H its Φg) (gens_append Φx 0 gs).
 Proof.
-  intros * IH HH HR HRm Hg Hok -> Γ0 Ψ -> HΓ0 HΨ.
-  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho [L HL]].
+  intros * IH HH HR HRm HRf Hg Hok -> Γ0 Ψ -> HΓ0 HΨ.
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho Hof [L HL]].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HH HC).
-  pose proof (gens_ext_wf _ _ _ _ _ _ Hg HH HX) as HXg.
-  constructor; [ econstructor; [ eassumption .. | reflexivity ] | exact HXg | |].
+  pose proof (gens_ext_wf _ _ _ _ _ _ Hg HH HRf HX) as HXg.
+  constructor; [ econstructor; [ eassumption .. | reflexivity ] | exact HXg | | |].
   - cbn [body_opens]; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append.
     intros [| k] * Hk; cbn in Hk; [ injection Hk as <- <-; exact HH | exact (Ho _ _ _ Hk) ].
+  - cbn [body_opens]; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append.
+    intros [| k] * Hk; cbn in Hk; [ injection Hk as <- <-; exact HRf | exact (Hof _ _ _ Hk) ].
   - pose proof (ext_eq_ctx_left _ _ _ _ _ HXg) as HCg; rewrite <- List.app_assoc in HCg.
     exact (body_tags_gens _ _ _ _ Hg _ _ eq_refl HH Φx nil L eq_refl HCg HL).
 Qed.
@@ -781,7 +787,7 @@ Proof.
   { destruct Habs as [Hsorted | (R & HR & Hnl)].
     - exists true, (mdesc_term ak_relevant a_prop None); constructor; [ intros _; exact Hsorted | discriminate | discriminate ].
     - exists false, R; constructor; [ discriminate | intros _; exact HR | intros _; exact Hnl ]. }
-  destruct (HB _ _ eq_refl HΓ HΔe) as [Hbx HX Ho [L HL]].
+  destruct (HB _ _ eq_refl HΓ HΔe) as [Hbx HX Ho Hof [L HL]].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   (** The sort of each name: its entry's tag, at [L]. *)
   set (es := fun y => abs_kind_sort match gm_prefix_upto Φx y with
@@ -790,7 +796,7 @@ Proof.
                                       end Typeω@L).
   apply unit_eq_of_full;
     eapply (unit_full_body _ _ _ _ _ _ Hbx HC Ho Ht Hs Hsx Hn l (param_sort_at Δ l) (param_sort_at_parameter_sort Δ l)
-              (params_kinded_sorts _ _ _ Hl) es); [| | | exact Hflag ].
+              (params_kinded_sorts _ _ _ Hl) es); [| | | exact Hflag | exact Hof ].
   - intros y; apply type_sort_kind_universe.
   - intros * Hp HE; unfold es; cbv beta; rewrite Hp; apply sort_kind_abs_kind_sort.
   - intros * Hp HE Hf; unfold es; cbv beta; rewrite Hp.
@@ -1341,7 +1347,7 @@ Proof.
         | eapply wf_unit_eq_alias with (param_level := lp) (param_sorts := param_sort_at P lp) (lv := false) (lv' := false)
                                          (Rt := R) (Rt' := R) ];
         first [ exact HX | exact Ha | exact (IHE HP) | apply param_sort_at_parameter_sort | exact (params_kinded_sorts _ _ _ Hl)
-              | intros _; assumption | discriminate ]
+              | intros _; assumption | discriminate | assumption ]
     end.
   (** ** Bodies, by their own lemmas *)
   - apply alg_body_nil_sound.
@@ -2856,17 +2862,18 @@ Lemma alg_body_of_entries : forall n Γ0 Δ Φ Φx, body_xp gc_deps gc_stack (Δ
     ext_entries n Γ0 (body_ctx Φx ++ Δ) -> gmod_lets Φ <= n -> body_shape Φ Φ ->
     List.NoDup (gm_names Φx) -> body_tagged (Δ ++ Γ0) Φx ->
     (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> S (modexp_lets H) <= n -> Ψ ++ Δ ++ Γ0 ⊢aᵐ H) ->
+    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target gc_deps gc_stack (Ψ ++ Δ ++ Γ0) H) ->
     Δ ++ Γ0 ⊢aᵇ Φ ⇝ Φx.
 Proof.
   intros * Hx; remember (Δ ++ Γ0) as G eqn:HG; revert HG.
   induction Hx as [G | G Φ Φx x E Hx IH | G Φ Φx H its Φg R Rm gs Hx IH HR HRm Hg Hok HΦg];
-    intros -> HE Hl Hs Hnd Htg Ho; cbn [gmod_lets] in Hl.
+    intros -> HE Hl Hs Hnd Htg Ho Hof; cbn [gmod_lets] in Hl.
   - constructor.
   - cbn [body_shape] in Hs; destruct Hs as (Hs & _ & HsE).
     cbn [gm_names] in Hnd; apply List.NoDup_cons_iff in Hnd as [Hx' Hnd].
     assert (HEt : ext_entries n Γ0 (body_ctx Φx ++ Δ)).
     { destruct E as [? ? ? ? [] | | | | ]; cbn [body_ctx List.app] in HE; exact (ext_entries_app_r _ _ (_ :: nil) _ HE). }
-    specialize (IH eq_refl HEt ltac:(lia) Hs Hnd (body_tagged_ext_inv _ _ _ _ Htg Hx') Ho).
+    specialize (IH eq_refl HEt ltac:(lia) Hs Hnd (body_tagged_ext_inv _ _ _ _ Htg Hx') Ho Hof).
     destruct E as [b pv r A [M |] | pm U | ? ? ? ? ? | pv A M U | ? ? ? ?]; cbn in HsE; try contradiction.
     + pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
       rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as ((UA & r' & u & HA & Hu) & HM).
@@ -2884,13 +2891,15 @@ Proof.
       rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as (((UA & u & HA & Hu) & HM) & HU).
       econstructor; eassumption.
   - cbn [body_shape] in Hs; destruct Hs as [Hs _].
-    cbn [body_opens] in Ho; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append in Ho.
+    cbn [body_opens] in Ho, Hof; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append in Ho, Hof.
     pose proof (body_tagged_gens_inv _ _ _ Htg Hnd) as Htg'.
     assert (Hnd' : List.NoDup (gm_names Φx))
       by (rewrite gens_append_names in Hnd; exact (List.NoDup_app_remove_l _ _ Hnd)).
     rewrite gens_body_ctx_base, <- List.app_assoc in HE.
-    specialize (IH eq_refl (ext_entries_app_r _ _ _ _ HE) ltac:(lia) Hs Hnd' Htg' (fun k => Ho (S k))).
+    specialize (IH eq_refl (ext_entries_app_r _ _ _ _ HE) ltac:(lia) Hs Hnd' Htg' (fun k => Ho (S k)) (fun k => Hof (S k))).
     pose proof (Ho 0 _ _ eq_refl ltac:(lia)) as HH.
+    (* the module opened is no module still being defined *)
+    pose proof (Hof 0 _ _ eq_refl) as HHf.
     econstructor; eassumption.
 Qed.
 
@@ -2982,7 +2991,7 @@ Proof.
                        | rewrite <- List.app_assoc; eassumption | assumption .. |].
     eapply levels_abstractable_flatten_body; eassumption.
   - eapply alg_unit_alias; [ eapply alg_params_app; eassumption | apply List.Forall_app; split; assumption
-                        | rewrite <- List.app_assoc; eassumption |].
+                        | rewrite <- List.app_assoc; eassumption | | rewrite <- List.app_assoc; eassumption ].
     eapply levels_abstractable_flatten_alias; eassumption.
 Qed.
 
@@ -3582,7 +3591,7 @@ Ltac expand_case :=
       destruct (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as [Φx0 ? ? ? ? Hx0];
       pose proof (body_xp_result_noopen _ _ _ _ _ Hx0) as Hno; rewrite (body_xp_expand _ _ _ _ _ Hx0) in Hno;
       destruct (proj2 (unit_full_of_eq _ _ _ _ _ (wf_unit_eq_expand _ _ _ _ _ HU)))
-        as [Φx es pl ps Hps Hx HC Hsorts Htags Hdefs Hopens Ha Hs Hsx Hnd HR lv Rt [Hf1 Hf2 Hf3]];
+        as [Φx es pl ps Hps Hx HC Hsorts Htags Hdefs Hopens Ha Hs Hsx Hnd HR lv Rt [Hf1 Hf2 Hf3] Hoff];
       pose proof (body_xp_noopen_id _ _ _ _ _ Hno Hx) as EΦx; subst Φx;
       rewrite gunit_lets_mk in Hb; cbn [moddef_lets] in Hb;
       destruct (IHn (n - 1) ltac:(lia)) as (_ & _ & _ & _ & _ & IHx & _ & _);
@@ -3597,7 +3606,7 @@ Ltac expand_case :=
         [ exact Hx | exact HXl | lets_bound | exact Hs | exact Hnd
         | exact (body_tagged_of_fill _ _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsx HC Htags
                    (fun y Φ0 E A M σ Hp HE Hσ => proj1 (Hdefs y Φ0 E A M σ Hp HE Hσ)))
-        | intros k Ψ0 H0' Hk Hle; apply HmH; [ exact (Hopens _ _ _ Hk) | lia ] ]
+        | intros k Ψ0 H0' Hk Hle; apply HmH; [ exact (Hopens _ _ _ Hk) | lia ] | exact Hoff ]
   end.
 
 (** The whole block, the universes included; [alg_type_complete_lets] below
@@ -3859,7 +3868,7 @@ Proof.
           | assumption | | exact Hs1 | exact Hsx1 | exact Hnd | eapply levels_abstractable_of_flag; eassumption ];
         eapply alg_body_of_entries;
           [ eassumption | exact HXl | lia | exact Hs1 | rewrite (body_xp_names _ _ _ _ _ Hx); exact Hnd
-          | eapply (body_tagged_of_fill_left _ _ Φx' _ (body_xp_nopens _ _ _ _ _ Hx) Hsx HCx); eassumption | ];
+          | eapply (body_tagged_of_fill_left _ _ Φx' _ (body_xp_nopens _ _ _ _ _ Hx) Hsx HCx); eassumption | | eassumption ];
         intros k Ψ0 H0' Hk Hle; apply HmH; [ exact (Ho _ _ _ Hk) | lia ]
     end.
   - match goal with
@@ -3881,7 +3890,7 @@ Proof.
           | assumption | | exact Hs2 | exact Hsx2 | rewrite <- Hn; exact Hnd | eapply levels_abstractable_of_flag; eassumption ];
         eapply alg_body_of_entries;
           [ eassumption | exact HXr | lia | exact Hs2 | rewrite (body_xp_names _ _ _ _ _ Hx), <- Hn; exact Hnd
-          | eapply (body_tagged_of_fill_right _ Φx _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsx HCx); eassumption | ];
+          | eapply (body_tagged_of_fill_right _ Φx _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsx HCx); eassumption | | eassumption ];
         intros k Ψ1 H1' Hk Hle; apply HmH; [ exact (Ho _ _ _ Hk) | lia ]
     end.
   (** An alias: its parameters, and its target, by generation. *)
@@ -3889,13 +3898,13 @@ Proof.
     rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
     match goal with HD : _ ⍮ _ ⍮ ?G ⊢ˣ _ ≈ _ |- ?G ⊢aᵘ _ => pose proof (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD)) as HΓ end.
     econstructor; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXl | lia | assumption | eassumption | eassumption ]
-                  | assumption | | eapply levels_abstractable_of_flag; eassumption ].
+                  | assumption | | eapply levels_abstractable_of_flag; eassumption | eassumption ].
     apply HmH; [ first [ eapply wf_modexp_eq_refl_left; eassumption | eassumption ] | lia ].
   - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [_ HXr] end.
     rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
     match goal with HD : _ ⍮ _ ⍮ ?G ⊢ˣ _ ≈ _ |- ?G ⊢aᵘ _ => pose proof (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD)) as HΓ end.
     econstructor; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXr | lia | assumption | eassumption | eassumption ]
-                  | assumption | | eapply levels_abstractable_of_flag; eassumption ].
+                  | assumption | | eapply levels_abstractable_of_flag; eassumption | eassumption ].
     apply HmH; [ first [ eapply wf_modexp_eq_refl_left; eassumption | eassumption ] | lia ].
   (** Flattening: the alias of the literal, and the unit over both
       telescopes. *)
@@ -3904,7 +3913,8 @@ Proof.
     match goal with HD : _ ⍮ _ ⍮ ?G ⊢ˣ _ ≈ _ |- ?G ⊢aᵘ _ => pose proof (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD)) as HΓ end.
     match goal with HU : _ ⊢aᵘ _ /\ _ |- _ =>
       apply alg_unit_alias; [ eapply (alg_params_of_entries n); [ exact HΓ | exact HXl | lia | assumption | eassumption | eassumption ]
-                            | assumption | apply alg_modexp_lit, (proj1 HU) | eapply levels_abstractable_of_flag; eassumption ] end.
+                            | assumption | apply alg_modexp_lit, (proj1 HU) | eapply levels_abstractable_of_flag; eassumption
+                            | eassumption ] end.
   - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl _] end.
     rewrite gunit_lets_mk, ctx_lets_app in *.
     match goal with HD : _ ⍮ _ ⍮ ?G ⊢ˣ _ ≈ _ |- ?G ⊢aᵘ _ => pose proof (ctx_app_wf_tail _ _ _ _ (ext_eq_ctx_left _ _ _ _ _ HD)) as HΓ end.

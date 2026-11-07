@@ -124,12 +124,13 @@ Qed.
 (** An alias of a well-formed module under no parameters: the premises on
     the parameters hold vacuously ([lv] true). *)
 Lemma wf_unit_eq_alias_nil : forall Γ E,
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E).
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E -> frame_free_target gc_deps gc_stack Γ E ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E).
 Proof.
-  intros * HE.
+  intros * HE HF.
   eapply wf_unit_eq_alias with (param_level := 0) (param_sorts := fun _ => Typeω@0) (lv := true) (lv' := true)
                                (Rt := mdesc_term ak_relevant Typeω@0 None) (Rt' := mdesc_term ak_relevant Typeω@0 None);
-    try first [ exact HE | constructor | intros [=]
+    try first [ exact HE | exact HF | constructor | intros [=]
               | intros Δ1 ? ? ? Ex; destruct Δ1; discriminate | intros _ Δ1 ? ? ? Ex; destruct Δ1; discriminate ].
   all: try (intros Δ1 ? ? ? Ex; destruct Δ1; discriminate).
   all: try discriminate.
@@ -144,22 +145,23 @@ Qed.
     entries generated before it. *)
 Lemma gens_ext_wf_gen : forall Γ1 H its gs, items_gen gc_deps gc_stack Γ1 H its gs ->
     forall Γ0 Ψ, Γ1 = Ψ ++ Γ0 -> gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ H ≈ H ->
+    frame_free_target gc_deps gc_stack (Ψ ++ Γ0) H ->
     forall Φg, gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φg ++ Ψ ≈ body_ctx Φg ++ Ψ ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx (gens_append Φg (List.length (body_ctx Φg)) gs) ++ Ψ ≈
                                 body_ctx (gens_append Φg (List.length (body_ctx Φg)) gs) ++ Ψ.
 Proof.
   induction 1 as [| Γ1 H d pv its gs _ IH | Γ1 H n d pv ra A om its gs Hm _ IH | Γ1 H n d pv R its gs Hm Hmod _ IH
                  | Γ1 H n d pv R A Rm its gs Hm Hty Hmd _ IH ];
-    intros Γ0 Ψ -> HH Φg HX; cbn [gens_append generated_item_entry]; try exact HX.
+    intros Γ0 Ψ -> HH HF Φg HX; cbn [gens_append generated_item_entry]; try exact HX.
   all: pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- app_assoc in HC.
   all: pose proof (wf_wk_shiftn_app' _ _ _ _ HC) as Hw.
   - (* the module itself *)
-    pose proof (wf_unit_eq_alias_nil _ _ HH) as HU0.
+    pose proof (wf_unit_eq_alias_nil _ _ HH HF) as HU0.
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
     cbn [gentry_wk].
     change (S (length (body_ctx Φg)))
       with (length (body_ctx (gm_ext Φg d (ge_mod pv (gunit_wk (gu_mk nil (md_alias H)) (wk_shiftn (length (body_ctx Φg)))))))).
-    apply (IH Γ0 Ψ eq_refl HH).
+    apply (IH Γ0 Ψ eq_refl HH HF).
     cbn [body_ctx app]; apply wf_ext_eq_mod; [ exact HX | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
   - (* a term member: a definition of it, at its type *)
     destruct (member_wf _ _ _ _ _ HH Hm eq_refl) as ((Srt & HS & HA) & _ & HM).
@@ -169,7 +171,7 @@ Proof.
     change (S (length (body_ctx Φg)))
       with (length (body_ctx (gm_ext Φg d (ge_def true pv ra A[wk_shiftn (length (body_ctx Φg))]ʷ
                                                (Some (a_mem H n)[wk_shiftn (length (body_ctx Φg))]ʷ))))).
-    apply (IH Γ0 Ψ eq_refl HH).
+    apply (IH Γ0 Ψ eq_refl HH HF).
     rewrite app_assoc in HA1, HM1; cbn [body_ctx app].
     eapply wf_ext_eq_def_same; [ exact HX | exact HA1 | exact HS | exact HA1 | exact HM1 | exact HM1 ].
   - (* a module member: an alias of it *)
@@ -179,12 +181,15 @@ Proof.
     assert (Hmt : mdesc_mod_tele R = Some T) by (unfold mdesc_mod_tele; rewrite (mdesc_is_mod_mod _ Hmod); exact HT).
     assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
       by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
-    pose proof (wf_unit_eq_alias_nil _ _ HE) as HU0.
+    (* a member of a module that is no module still being defined is none *)
+    assert (HFm : frame_free_target gc_deps gc_stack (Ψ ++ Γ0) (me_mem H n)).
+    { destruct HF as (R0 & HmR0 & Hn0); exists R; split; [ exact Hm | exact (mem_frame_free _ _ Hg Hv _ _ _ _ _ _ HH HmR0 Hn0 Hm) ]. }
+    pose proof (wf_unit_eq_alias_nil _ _ HE HFm) as HU0.
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
     cbn [gentry_wk].
     change (S (length (body_ctx Φg)))
       with (length (body_ctx (gm_ext Φg d (ge_mod pv (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (length (body_ctx Φg)))))))).
-    apply (IH Γ0 Ψ eq_refl HH).
+    apply (IH Γ0 Ψ eq_refl HH HF).
     cbn [body_ctx app]; apply wf_ext_eq_mod; [ exact HX | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
   - (* a member with a term part and a module part: a definition with a
        module part, its term the selection, its module the alias of it *)
@@ -196,7 +201,10 @@ Proof.
     assert (Hmt : mdesc_mod_tele R = Some T) by (unfold mdesc_mod_tele; rewrite Hmd; exact HT).
     assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
       by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
-    pose proof (wf_unit_eq_alias_nil _ _ HE) as HU0.
+    (* a member of a module that is no module still being defined is none *)
+    assert (HFm : frame_free_target gc_deps gc_stack (Ψ ++ Γ0) (me_mem H n)).
+    { destruct HF as (R0 & HmR0 & Hn0); exists R; split; [ exact Hm | exact (mem_frame_free _ _ Hg Hv _ _ _ _ _ _ HH HmR0 Hn0 Hm) ]. }
+    pose proof (wf_unit_eq_alias_nil _ _ HE HFm) as HU0.
     pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
     (* a member with a module part is relevant: its type is of a large universe *)
     destruct (desc_ok_ty_mod _ _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty Hmd) as [iA HAi].
@@ -208,7 +216,7 @@ Proof.
       with (length (body_ctx (gm_ext Φg d (ge_def_mod pv A[wk_shiftn (length (body_ctx Φg))]ʷ
                                                (a_mem H n)[wk_shiftn (length (body_ctx Φg))]ʷ
                                                (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (length (body_ctx Φg)))))))).
-    apply (IH Γ0 Ψ eq_refl HH).
+    apply (IH Γ0 Ψ eq_refl HH HF).
     rewrite app_assoc in HA1, HM1; cbn [body_ctx app].
     eapply wf_ext_eq_dm; [ exact HX | exact HA1 | apply wf_exp_eq_refl; exact HA1 | exact HM1 | apply wf_exp_eq_refl; exact HM1
                          | exact HA1 | exact HM1 | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
@@ -218,13 +226,14 @@ Qed.
 Corollary gens_ext_wf : forall Γ0 Ψ Φx H its gs,
     items_gen gc_deps gc_stack (body_ctx Φx ++ Ψ ++ Γ0) H its gs ->
     gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Ψ ++ Γ0 ⊢ᵐ H ≈ H ->
+    frame_free_target gc_deps gc_stack (body_ctx Φx ++ Ψ ++ Γ0) H ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φx ++ Ψ ≈ body_ctx Φx ++ Ψ ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx (gens_append Φx 0 gs) ++ Ψ ≈ body_ctx (gens_append Φx 0 gs) ++ Ψ.
 Proof.
-  intros * Hg HH HX.
+  intros * Hg HH HF HX.
   rewrite gens_body_ctx_base, <- app_assoc.
-  rewrite app_assoc in Hg, HH.
-  exact (gens_ext_wf_gen _ _ _ _ Hg Γ0 (body_ctx Φx ++ Ψ) eq_refl HH gm_nil HX).
+  rewrite app_assoc in Hg, HH, HF.
+  exact (gens_ext_wf_gen _ _ _ _ Hg Γ0 (body_ctx Φx ++ Ψ) eq_refl HH HF gm_nil HX).
 Qed.
 
 (** ** The Sorts of a Body's Definitions

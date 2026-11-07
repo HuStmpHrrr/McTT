@@ -5198,6 +5198,75 @@ Proof.
   exact (desc_ok_mem _ _ (ctx_wf_gctx _ _ _ HΓ) Hv _ _ _ _ HΓ HR Hm).
 Qed.
 
+(** A path naming an open frame denotes the frame's body so far, as the
+    module part of what it denotes: no entry of the frame is a frame, as
+    an open frame's name is fresh in its parent ([frame_parent]). *)
+Lemma frame_path_desc : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H p T Φ Γ R,
+    mod_qname H = Some p -> gc_frame Ξ p = Some (T, Φ) -> mdenote Θ Ξ Γ H R ->
+    mdesc_mod R = Some (mdesc_closed nil p T Φ nil).
+Proof.
+  (* the unit a path names, when it names an open frame, is the frame *)
+  assert (Hunit : forall Θ Ξ H p TΦ TΦ', mod_qname H = Some p -> gc_frame Ξ p = Some TΦ -> gc_unit Θ Ξ H = Some TΦ' -> TΦ' = TΦ).
+  { intros * Hq Hf Hu; unfold gc_unit in Hu; rewrite Hq in Hu; unfold gc_frame in Hf.
+    destruct (gs_find_tele Ξ p) as [[[U0 ip] T0] |]; [| discriminate ].
+    destruct U0 as [Δ0 [[|] Φ0 | E0]], ip; try discriminate; injection Hf as <-.
+    destruct (gs_find_ind Ξ p), (gs_find_record Ξ p); try discriminate; injection Hu as <-; reflexivity. }
+  intros Θ Ξ Hg H; induction H as [fp | x | H0 IH y | H0 _ N | U]; intros * Hq Hf Hm; try (cbn in Hq; discriminate).
+  all: inversion Hm as [? ? p1 T1 Φ1 Hq1 Hu | ? ? p1 pq k D Mk Tm Φm Hq1 Hk HMk Hl | | | | ? ? y' R0 R0m Γy E rd R1 R' Hm0 Hd He Hed Hr
+                       | ? ? p1 Rr Tm Φm Hq1 Hk Hl ]; subst.
+  all: try (rewrite Hq in Hq1; injection Hq1 as <-).
+  (* a loaded unit or an open frame: the frame *)
+  all: try (pose proof (Hunit _ _ _ _ _ _ Hq Hf Hu) as E; injection E as -> ->; reflexivity).
+  (* the frame of a member's or a record's module: its module part *)
+  all: try (unfold gc_loc in Hl; rewrite Hf in Hl; injection Hl as <- <-; reflexivity).
+  (* a selection: the member would be an entry of its parent frame, where
+     its name is fresh *)
+  cbn in Hq; match type of Hq with context [mod_qname ?H1] => destruct (mod_qname H1) as [p0 |] eqn:Hq0 end;
+    [ injection Hq as <- | discriminate ].
+  pose proof Hf as Hf0; unfold gc_frame in Hf0.
+  match type of Hf0 with context [gs_find_tele Ξ ?qm] => destruct (gs_find_tele Ξ qm) as [[[U0 ip] T0] |] eqn:Et end;
+    [| discriminate ].
+  destruct ip; [| destruct U0 as [? [[|] ? | ?]]; discriminate ].
+  destruct (frame_parent _ _ Hg p0 _ _ _ Et) as (T' & Φ' & Hf' & Hy).
+  rewrite (IH _ _ _ _ _ eq_refl Hf' Hm0) in Hd; injection Hd as <-; cbn in He.
+  rewrite (gm_prefix_upto_fresh _ _ Hy) in He; discriminate.
+Qed.
+
+(** A member of a module that is no module still being defined is none:
+    a member that is itself a frame has a frame as its parent
+    ([frame_parent]), and an entry read reads no frame
+    ([entry_open_frame_free], [closed_entry_read_frame_free]). *)
+Lemma mem_frame_free : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_syn Θ Ξ -> forall Γ H H' y R0 R,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R0 -> ~ desc_reads_frame Ξ R0 ->
+    mdenote Θ Ξ Γ (me_mem H y) R -> ~ desc_reads_frame Ξ R.
+Proof.
+  intros * Hg Hv * HH Hm0 Hn0 Hm.
+  assert (Hpar : forall p, mod_qname (me_mem H y) = Some p -> gc_frame Ξ p <> None -> False).
+  { intros p Hq Hf; cbn in Hq; destruct (mod_qname H) as [p0 |] eqn:Hq0; [ injection Hq as <- | discriminate ].
+    destruct (gc_frame Ξ (qname_in p0 y)) as [[T1 Φ1] |] eqn:Ef; [| contradiction ].
+    unfold gc_frame in Ef; destruct (gs_find_tele Ξ (qname_in p0 y)) as [[[U0 ip] T0] |] eqn:Et; [| discriminate ].
+    destruct ip; [| destruct U0 as [? [[|] ? | ?]]; discriminate ].
+    destruct (frame_parent _ _ Hg _ _ _ _ Et) as (T' & Φ' & Hf' & _).
+    apply Hn0; do 5 eexists; split; [ exact (frame_path_desc _ _ Hg _ _ _ _ _ _ Hq0 Hf' Hm0) | rewrite Hf'; discriminate ]. }
+  inversion Hm; subst.
+  (* a path naming a loaded unit or an open frame *)
+  all: try (intros (? & ? & ? & ? & ? & Hmc & Hfr); cbn in Hmc; injection Hmc as <- <- <- <- <-;
+            match goal with Hq : mod_qname (me_mem _ _) = Some _ |- _ => exact (Hpar _ Hq Hfr) end).
+  (* an entry read *)
+  match goal with Hm1 : mdenote _ _ _ H ?R1, Hd : mdesc_mod ?R1 = Some ?Rm, He : mdesc_entry ?Rm _ = Some _ |- _ =>
+    rewrite <- (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm0 _ Hm1) in Hd;
+    destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 desc_typed)))))) _ _ _ _ _ HH Hv) as (_ & HR & _);
+    pose proof (desc_ok_mod _ _ Hg _ _ _ (HR _ Hm0) Hd) as Hok;
+    destruct Rm; try (cbn in He; discriminate)
+  end.
+  - eapply entry_open_frame_free; eassumption.
+  - match goal with He : mdesc_entry _ _ = Some _, Hed : edenote _ _ _ _ _ _, Hr : mdesc_read _ _ = Some _ |- _ =>
+      cbn [mdesc_entry_path] in Hed;
+      pose proof (desc_ok_entry_closed_read _ _ Hg Hv _ _ _ _ _ _ _ _ _ _ _ _ Hok He Hed Hr) as HcR end.
+    destruct HcR as (Rn & [-> _ _ _ HFr]).
+    intros Hr2; apply (proj1 (desc_reads_frame_up _ _ _)) in Hr2; exact (HFr Hr2).
+Qed.
+
 (** A type of a large universe, given by a level that exists. *)
 Lemma wf_type_of_ex : forall Θ Ξ Γ A, (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
 Proof. intros * [i Hi]; exact (wf_type_univ Hi). Qed.

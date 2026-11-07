@@ -598,6 +598,52 @@ Definition items_gen_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H its (HH : gc_de
     { gs | items_gen gc_deps gc_stack Γ H its gs } + { forall gs, ~ items_gen gc_deps gc_stack Γ H its gs } :=
   items_gen_impl F Hg Γ H its (items_gen_order_of_wf _ _ Hg _ _ _ its HH).
 
+(** The path of the closed module part of a description, if it has one *)
+Definition fmdesc_closed_path (R : fmdesc) : option qname :=
+  match fmdesc_mod R with
+  | Some (fmdesc_closed _ p _ _ _ _) => Some p
+  | _ => None
+  end.
+
+(** A description reads an open frame when its closed module part is at
+    the path of one. *)
+Lemma desc_reads_frame_closed_path : forall R, desc_reads_frame gc_stack (decode_desc R) <->
+    exists p, fmdesc_closed_path R = Some p /\ gc_frame gc_stack p <> None.
+Proof.
+  intros R; unfold desc_reads_frame, fmdesc_closed_path; rewrite fmdesc_mod_dec.
+  destruct (fmdesc_mod R) as [[r A om | Δ Φ Φx | Θ' p T t Ht Ns | Θd A M Rm] |]; cbn [option_map decode_desc];
+    split; first [ intros (? & ? & ? & ? & ? & Hm & Hf); try discriminate | intros (? & Hp & Hf); try discriminate ].
+  - injection Hm as <- <- <- <- <-; exists p; split; [ reflexivity | exact Hf ].
+  - injection Hp as <-; do 5 eexists; split; [ reflexivity | exact Hf ].
+Qed.
+
+(** Whether a description reads an open frame, the frame looked up in the
+    fast context *)
+Definition desc_reads_frame_dec (R : fmdesc) :
+    { desc_reads_frame gc_stack (decode_desc R) } + { ~ desc_reads_frame gc_stack (decode_desc R) }.
+Proof.
+  destruct (fmdesc_closed_path R) as [p |] eqn:E.
+  - destruct (gc_frame_f F p) as [[TΦ |] Ho].
+    + left; apply desc_reads_frame_closed_path; exists p; split; [ exact E | rewrite Ho; discriminate ].
+    + right; intros Hr; apply desc_reads_frame_closed_path in Hr as (p' & E' & Hf).
+      rewrite E in E'; injection E' as <-; exact (Hf Ho).
+  - right; intros Hr; apply desc_reads_frame_closed_path in Hr as (p' & E' & _).
+    rewrite E in E'; discriminate.
+Defined.
+
+(** Whether a well-formed module expression is no module still being
+    defined: what it denotes, computed, reads no open frame. *)
+Definition frame_free_target_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
+    { frame_free_target gc_deps gc_stack Γ H } + { ~ frame_free_target gc_deps gc_stack Γ H }.
+Proof.
+  destruct (mdenote_dec Hg Γ H HH) as [(R & HR) | Hn].
+  - destruct (desc_reads_frame_dec R) as [Hr | Hf].
+    + right; intros (R' & HR' & Hf').
+      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR' _ HR) in Hf'; exact (Hf' Hr).
+    + left; exists (decode_desc R); split; [ exact HR | exact Hf ].
+  - right; intros (R' & HR' & _); exact (Hn _ HR').
+Defined.
+
 Extraction Inline mdenote_dec mem_denote_dec path_denote_dec items_gen_dec.
 
 (** *** The Initial Environment, Computed *)
