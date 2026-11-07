@@ -39,6 +39,9 @@ Section Search.
   Variable E_dec : forall x, ({a | E x a} + {e : Err | forall a, ~ E x a})%type.
   (** The instances the declared members' constructors meet. *)
   Variable init : list view_key.
+  (** Why an instance met first is not a view found: a sibling of its view
+      listed before it is its view's first key. *)
+  Variable shadowed_err : Err.
 
   (** The views reachable from the queue: an over-approximation of what the
       search visits (it follows the siblings of every reachable view, the
@@ -53,11 +56,11 @@ Section Search.
 
   (** The table of the instances met, aligned with the views. *)
   Definition met_table (Vs : list view_key) (Ms : list (list view_key)) (x : view_key) : list view_key :=
-    match view_key_index x Vs with Some v => List.nth v Ms nil | None => nil end.
+    match view_key_pos x Vs with Some v => List.nth v Ms nil | None => nil end.
 
   Lemma meets_table_met_table : forall Vs csV x, meets_table Vs csV x = met_table Vs (List.map classified_cons_views csV) x.
   Proof.
-    intros; unfold meets_table, met_table; destruct (view_key_index x Vs); [| reflexivity ].
+    intros; unfold meets_table, met_table; destruct (view_key_pos x Vs); [| reflexivity ].
     change nil with (classified_cons_views nil) at 2; rewrite List.map_nth; reflexivity.
   Qed.
 
@@ -74,10 +77,8 @@ Section Search.
       siblings_table Vs (List.map sibs_of As) y = sibs_of a /\ met_table Vs (List.map meets_of As) y = meets_of a.
   Proof.
     intros * HF Hy Ha; unfold siblings_table, met_table.
-    destruct (view_key_index y Vs) as [v |] eqn:Hv.
-    2:{ exfalso; destruct (view_key_mem y Vs) eqn:Hm; [| apply (proj2 (view_key_mem_spec y Vs)) in Hy; congruence ].
-        unfold view_key_mem in Hm; rewrite Hv in Hm; discriminate. }
-    apply view_key_index_in in Hv.
+    destruct (view_key_pos_in_some y Vs Hy) as [v Hv]; rewrite Hv.
+    apply view_key_pos_in in Hv.
     destruct (Forall2_nth _ _ _ _ _ HF Hv) as (a' & Ha' & He); rewrite (E_functional _ _ _ He Ha) in Ha'.
     split; apply List.nth_error_nth; rewrite List.nth_error_map, Ha'; reflexivity.
   Qed.
@@ -96,7 +97,27 @@ Section Search.
     replace (acc ++ s :: views_new (acc ++ [s]) ss) with ((acc ++ [s]) ++ views_new (acc ++ [s]) ss)
       by (rewrite <- List.app_assoc; reflexivity).
     apply IH; apply NoDup_app; [ exact Hd | constructor; [ intros [] | constructor ] |].
-    intros y Hy [Heq | []]; subst y; apply (proj2 (view_key_mem_spec s acc)) in Hy; congruence.
+    intros y Hy [Heq | []]; subst y; apply key_in_of_in, (proj2 (view_key_mem_spec s acc)) in Hy; congruence.
+  Qed.
+
+  (** A new view is of no view found before. *)
+  Lemma views_new_fresh : forall acc ss y, In y (views_new acc ss) -> ~ key_in y acc.
+  Proof.
+    intros acc ss; revert acc; induction ss as [| s ss IH]; cbn; intros acc y H Hk; [ exact H |].
+    destruct (view_key_mem s acc) eqn:Hm; [ exact (IH _ _ H Hk) |].
+    destruct H as [<- | H]; [ apply view_key_mem_spec in Hk; congruence |].
+    apply (IH _ _ H); destruct Hk as (z & Hz & Hyz); exists z; split; [ apply in_or_app; left; exact Hz | exact Hyz ].
+  Qed.
+
+  (** A view a run finds is one found before, or of no view found before. *)
+  Lemma views_dfs_fresh : forall sibs meets acc tr Vf, views_dfs sibs meets acc tr Vf ->
+      forall z, In z Vf -> In z acc \/ ~ key_in z acc.
+  Proof.
+    induction 1 as [acc | acc x tr Vf _ IH]; intros z Hz; [ left; exact Hz |].
+    destruct (IH z Hz) as [Hi | Hn].
+    - apply in_app_or in Hi as [Hi | Hi]; [ left; exact Hi | right; unfold views_met in Hi ].
+      destruct (view_key_mem x acc); [ destruct Hi | exact (views_new_fresh _ _ _ Hi) ].
+    - right; intros (w & Hw & Hzw); apply Hn; exists w; split; [ apply in_or_app; left; exact Hw | exact Hzw ].
   Qed.
 
   (** ** The Search's Order
@@ -156,21 +177,27 @@ Section Search.
       views_dfs (siblings_table (fst p) (List.map sibs_of (snd p))) (met_table (fst p) (List.map meets_of (snd p))) Vs tr (fst p)}
     + {ye : view_key * Err | forall sibs meets Vf, views_dfs sibs meets Vs tr Vf ->
         (forall y a, In y Vf -> E y a -> sibs y = sibs_of a /\ meets y = meets_of a) ->
+        (forall y, ~ In y Vf -> sibs y = y :: nil) ->
         (forall y, In y Vf -> exists a, E y a) -> False})%type.
 
-  Lemma views_met_new : forall sibs Vs x, ~ In x Vs -> views_met sibs Vs x = views_new Vs (sibs x ++ [x]).
+  Lemma views_met_new : forall sibs Vs x, ~ key_in x Vs -> views_met sibs Vs x = views_new Vs (sibs x ++ [x]).
   Proof.
     intros * Hx; unfold views_met; destruct (view_key_mem x Vs) eqn:Hm; [| reflexivity ].
     exfalso; apply Hx, view_key_mem_spec, Hm.
   Qed.
 
-  Lemma views_met_old : forall sibs Vs x, In x Vs -> views_met sibs Vs x = nil.
+  Lemma views_met_old : forall sibs Vs x, key_in x Vs -> views_met sibs Vs x = nil.
   Proof. intros * Hx; unfold views_met; apply view_key_mem_spec in Hx; rewrite Hx; reflexivity. Qed.
 
-  Lemma in_views_met : forall sibs Vs x, ~ In x Vs -> In x (views_met sibs Vs x).
+  (** An instance met first is a view the run finds itself: else it has no
+      siblings, and is the one view it adds. *)
+  Lemma met_found : forall sibs meets Vs x tr Vf, views_dfs sibs meets (Vs ++ views_met sibs Vs x) tr Vf ->
+      ~ key_in x Vs -> (forall y, ~ In y Vf -> sibs y = y :: nil) -> In x Vf.
   Proof.
-    intros * Hx; rewrite views_met_new by exact Hx.
-    destruct (views_new_in Vs (sibs x ++ [x]) x ltac:(apply in_or_app; right; left; reflexivity)); tauto.
+    intros * Hb Hx Habs; destruct (in_dec view_key_eq_dec x Vf) as [Hi | Hi]; [ exact Hi |].
+    apply (views_dfs_incl _ _ _ _ _ Hb), in_or_app; right.
+    rewrite views_met_new, (Habs x Hi) by exact Hx; cbn.
+    destruct (view_key_mem x Vs) eqn:Hm; [ exfalso; apply Hx, view_key_mem_spec, Hm | left; reflexivity ].
   Qed.
 
   Lemma map_table : forall Vf Af ys bs, NoDup Vf -> Forall2 E Vf Af -> incl ys Vf -> Forall2 E ys bs ->
@@ -188,27 +215,36 @@ Section Search.
     destruct Hacc as [Hacc].
     destruct tr as [| x tr'].
     { left; exists (Vs, As); cbn; split; [ exact Hd | split; [ exact HF | constructor ] ]. }
-    destruct (in_dec view_key_eq_dec x Vs) as [Hx | Hx].
-    - (* met already: nothing found, the queue shrinks *)
+    destruct (view_key_mem x Vs) eqn:Hmem; [ apply view_key_mem_spec in Hmem as Hx | assert (Hx : ~ key_in x Vs) by
+                                               (intros Hk; apply view_key_mem_spec in Hk; congruence) ].
+    - (* of a view found already: nothing found, the queue shrinks *)
       refine (match search Vs As tr' Hd HF Hr (fun y Hy => Ht y (or_intror Hy)) (Hacc (Vs, tr') _) with
               | inl p => inl _ | inr Hf => inr _ end).
       + split; [ split; assumption | right; cbn; split; [ reflexivity | lia ] ].
       + destruct p as [[Vf Af] (Hd' & HF' & Hb)]; exists (Vf, Af); cbn in *; split; [ exact Hd' | split; [ exact HF' |] ].
         apply views_dfs_step; rewrite views_met_old by exact Hx; cbn; rewrite !app_nil_r; exact Hb.
       + destruct Hf as [ye Hf]; exists ye.
-        intros sibs meets Vf Hb Hag Hex; inversion Hb; subst.
+        intros sibs meets Vf Hb Hag Habs Hex; inversion Hb; subst.
         rewrite views_met_old in * by exact Hx; cbn in *; rewrite !app_nil_r in *.
         eapply Hf; eassumption.
     - destruct (E_dec x) as [[ax Hax] | [e Hn]].
-      2:{ right; exists (x, e); intros sibs meets Vf Hb Hag Hex; inversion Hb; subst.
-          destruct (Hex x) as [a Ha]; [| exact (Hn a Ha) ].
-          eapply views_dfs_incl; [ eassumption | apply in_or_app; right; apply in_views_met, Hx ]. }
+      2:{ right; exists (x, e); intros sibs meets Vf Hb Hag Habs Hex; inversion Hb; subst.
+          destruct (Hex x) as [a Ha]; [ eapply met_found; eassumption | exact (Hn a Ha) ]. }
       remember (views_new Vs (sibs_of ax ++ [x])) as nw eqn:Hnw.
-      assert (Hxnew : In x nw).
-      { rewrite Hnw; destruct (views_new_in Vs (sibs_of ax ++ [x]) x ltac:(apply in_or_app; right; left; reflexivity)); tauto. }
+      destruct (in_dec view_key_eq_dec x nw) as [Hxnew | Hxnew].
+      2:{ (** A sibling listed before [x] is of its view: no run finds [x] *)
+          right; exists (x, shadowed_err); intros sibs meets Vf Hb Hag Habs Hex; inversion Hb; subst.
+          assert (HxVf : In x Vf) by (eapply met_found; eassumption).
+          rewrite views_met_new, (proj1 (Hag x ax HxVf Hax)) in * by exact Hx.
+          match goal with H : views_dfs _ _ (Vs ++ views_new _ _) _ Vf |- _ => rename H into Hb' end.
+          destruct (views_dfs_fresh _ _ _ _ _ Hb' x HxVf) as [Hi | Hn].
+          - apply in_app_or in Hi as [Hi | Hi]; [ exact (Hx (key_in_of_in _ _ Hi)) | exact (Hxnew Hi) ].
+          - apply Hn; destruct (views_new_in Vs (sibs_of ax ++ [x]) x ltac:(apply in_or_app; right; left; reflexivity))
+              as [(w & Hw & Hxw) | (w & Hw & Hxw)]; [ exfalso; apply Hx; exists w; split; assumption |].
+            exists w; split; [ apply in_or_app; right; exact Hw | exact Hxw ]. }
       destruct (data_of x ax Hax nw) as [[bs Hbs] | [ye [Hy Hny]]].
-      2:{ right; exists ye; intros sibs meets Vf Hb Hag Hex; inversion Hb; subst.
-          assert (HxVf : In x Vf) by (eapply views_dfs_incl; [ eassumption | apply in_or_app; right; apply in_views_met, Hx ]).
+      2:{ right; exists ye; intros sibs meets Vf Hb Hag Habs Hex; inversion Hb; subst.
+          assert (HxVf : In x Vf) by (eapply met_found; eassumption).
           rewrite views_met_new, (proj1 (Hag x ax HxVf Hax)) in * by exact Hx.
           destruct (Hex (fst ye)) as [b Hb']; [| exact (Hny b Hb') ].
           eapply views_dfs_incl; [ eassumption | apply in_or_app; right; exact Hy ]. }
@@ -236,8 +272,8 @@ Section Search.
         rewrite (proj1 (table_at _ _ _ _ HF' (Hinc x ltac:(apply in_or_app; right; exact Hxnew)) Hax)).
         rewrite <- Hnw, (map_table _ _ _ _ Hd' HF' (fun y Hy => Hinc y (in_or_app _ _ _ (or_intror Hy))) Hbs); exact Hb.
       + destruct Hf as [ye Hf]; exists ye.
-        intros sibs meets Vf Hb Hag Hex; inversion Hb; subst.
-        assert (HxVf : In x Vf) by (eapply views_dfs_incl; [ eassumption | apply in_or_app; right; apply in_views_met, Hx ]).
+        intros sibs meets Vf Hb Hag Habs Hex; inversion Hb; subst.
+        assert (HxVf : In x Vf) by (eapply met_found; eassumption).
         rewrite views_met_new, (proj1 (Hag x ax HxVf Hax)) in * by exact Hx.
         assert (Hm : List.map meets (views_new Vs (sibs_of ax ++ [x])) = List.map meets_of bs).
         { assert (Hi : incl (views_new Vs (sibs_of ax ++ [x])) Vf)

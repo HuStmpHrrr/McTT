@@ -2348,6 +2348,10 @@ Inductive classify_why : Set :=
     holds a proof ([nf_proof_free]): the instance it nests at could not be
     strengthened past the arguments before it *)
 | classify_why_proof : classify_why
+(** The instance the argument nests at is not keyed: its arguments are not
+    of the container's or the record's parameters' types
+    ([view_inst_key]) *)
+| classify_why_instance : classify_why
 (** A recursive argument written at a kind other than [ak_relevant]: it
     is a type of the group, in its universe *)
 | classify_why_rec_kind : classify_why.
@@ -2480,26 +2484,87 @@ Section Classify.
   Lemma rec_info_f_ok : forall qr, rec_info_f qr = rec_info Θ Ξ qr.
   Proof. intros qr; unfold rec_info_f, rec_info; destruct (record_lookup_f F qr) as [o E]; cbn; rewrite E; reflexivity. Qed.
 
-  (** An argument as written, or, failing that, as its normal form. *)
+  (** Terms normalized pointwise at types, each typed first. *)
+  Fixpoint nbes_dec (Γ : ctx) (Ms : list exp) (As : list typ) {struct Ms} :
+    {Ws | nbes Θ Ξ Γ Ms As Ws} + {forall Ws, ~ nbes Θ Ξ Γ Ms As Ws}.
+  Proof.
+    destruct Ms as [| M Ms'], As as [| A As']; try (right; intros Ws H; inversion H; fail).
+    - left; exists nil; constructor.
+    - destruct (nbes_dec Γ Ms' As') as [[Ws' HWs'] | HnWs']; [| right; intros Ws H; inversion H; subst; eapply HnWs'; eassumption ].
+      destruct (check_exp_at F levels_abstractable_dec HΞ Γ A M) as [HM | HnM]; [| right; intros Ws H; inversion H; subst; contradiction ].
+      destruct (nbe_impl F Γ M A (typed_nbe_order' F _ _ _ HM)) as [W HW].
+      left; exists (W :: Ws'); constructor; assumption.
+  Defined.
+
+  (** The key of an instance: its arguments normalized at the parameters'
+      types of the container or the record ([view_inst_key]). *)
+  Definition view_inst_key_dec (Γ : ctx) (x : view_inst) : {y | view_inst_key Θ Ξ Γ x y} + {forall y, ~ view_inst_key Θ Ξ Γ x y}.
+  Proof.
+    destruct x as [qc k Cs | qr Is].
+    - destruct (ind_lookup_f F qc) as [[D' |] Hl]; [| right; intros y H; inversion H; subst; unify_found; congruence ].
+      destruct (nbes_dec Γ Cs (tele_insts (ind_uparams D') sb_id Cs)) as [[Ws HWs] | HnWs].
+      + left; exists (vk_ind qc k Ws); econstructor; eassumption.
+      + right; intros y H; inversion H; subst; unify_found; eapply HnWs; eassumption.
+    - destruct (record_lookup_f F qr) as [[Rr |] Hl]; [| right; intros y H; inversion H; subst; unify_found; congruence ].
+      destruct (nbes_dec Γ Is (tele_insts (record_params Rr) sb_id Is)) as [[Ws HWs] | HnWs].
+      + left; exists (vk_record qr Ws); econstructor; eassumption.
+      + right; intros y H; inversion H; subst; unify_found; eapply HnWs; eassumption.
+  Defined.
+
+  (** A shape as classified, its instance keyed. *)
+  Fixpoint written_ptyp_key_dec (Γ : ctx) (t : written_ptyp) {struct t} :
+    {t' | written_ptyp_key Θ Ξ Γ t t'} + {forall t', ~ written_ptyp_key Θ Ξ Γ t t'}.
+  Proof.
+    destruct t as [j Ps | x Ns | B t].
+    - left; exists (classified_ptyp_self j Ps); constructor.
+    - destruct (view_inst_key_dec Γ x) as [[y Hy] | Hny].
+      + left; exists (classified_ptyp_nest y Ns); constructor; exact Hy.
+      + right; intros t' H; inversion H; subst; eapply Hny; eassumption.
+    - destruct (written_ptyp_key_dec Γ t) as [[t' Ht] | Hnt].
+      + left; exists (classified_ptyp_pi B t'); constructor; exact Ht.
+      + right; intros t'' H; inversion H; subst; eapply Hnt; eassumption.
+  Defined.
+
+  (** An argument as classified, its instance keyed. *)
+  Definition written_carg_key_dec (Γ : ctx) (g : written_carg) :
+    {g' | written_carg_key Θ Ξ Γ g g'} + {forall g', ~ written_carg_key Θ Ξ Γ g g'}.
+  Proof.
+    destruct g as [κ A | t]; [ left; exists (classified_carg_arg κ A); constructor |].
+    destruct (written_ptyp_key_dec Γ t) as [[t' Ht] | Hnt].
+    - left; exists (classified_carg_rec_case t'); constructor; exact Ht.
+    - right; intros g' H; inversion H; subst; eapply Hnt; eassumption.
+  Defined.
+
+  (** An argument as written, or, failing that, as its normal form, the
+      instance it nests at keyed. *)
   Definition classify_arg_in_dec (Γ : ctx) (nu np n : nat) (pat : list bool) (T : exp) :
     ({g | classify_arg_in Θ Ξ Γ nu np n pat T g} + {r : classify_why | forall g, ~ classify_arg_in Θ Ξ Γ nu np n pat T g})%type.
   Proof.
-    destruct (classify_arg grp_none rec_none nu np n pat T) as [g |] eqn:Hs; [ left; exists g; apply classify_in_syn; exact Hs |].
+    destruct (classify_arg grp_none rec_none nu np n pat T) as [gw |] eqn:Hs.
+    { destruct (written_carg_key_dec (List.skipn (List.length pat + (np - nu)) Γ) gw) as [[g Hg] | Hng].
+      - left; exists g; eapply classify_in_syn; eassumption.
+      - right; exists classify_why_instance; intros g H; inversion H as [gw' g' Hs' Hk | i W gw' g' Hn _ _ _ _ _]; subst;
+          [ rewrite Hs in Hs'; injection Hs' as <-; exact (Hng _ Hk) | congruence ]. }
     destruct (typ_least_dec F levels_abstractable_dec HΞ Γ T) as [[i [HT _]] | HnT].
-    2:{ right; exists (classify_reason np n pat T); intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst;
+    2:{ right; exists (classify_reason np n pat T); intros g H; inversion H as [gw' g' Hs' _ | i W gw' g' _ HT _ _ _ _]; subst;
         [ congruence | exact (HnT _ HT) ]. }
     destruct (nbe_ty_impl F Γ T (typ_nbe_ty_order F _ _ _ HT)) as [W HW].
     destruct (nf_proof_freeb W) eqn:Hpf.
     2:{ right; exists classify_why_proof.
-        intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' HW'pf Hg']; subst; [ congruence |].
+        intros g H; inversion H as [gw' g' Hs' _ | i' W' gw' g' _ _ HW' HW'pf _ _]; subst; [ congruence |].
         pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
         apply (proj1 nf_proof_freeb_iff) in HW'pf; congruence. }
     apply (proj1 nf_proof_freeb_iff) in Hpf.
-    destruct (classify_arg (grp_info_f F) rec_info_f nu np n pat (nf_to_exp W)) as [g |] eqn:Hn;
+    destruct (classify_arg (grp_info_f F) rec_info_f nu np n pat (nf_to_exp W)) as [gw |] eqn:Hn;
       rewrite (classify_arg_rec_ext _ _ _ rec_info_f_ok), (classify_arg_ext _ _ _ _ _ _ _ (grp_info_f_ok F)) in Hn.
-    - left; exists g; eapply classify_in_nf; eassumption.
+    - destruct (written_carg_key_dec (List.skipn (List.length pat + (np - nu)) Γ) gw) as [[g Hg] | Hng].
+      + left; exists g; eapply classify_in_nf; eassumption.
+      + right; exists classify_why_instance.
+        intros g H; inversion H as [gw' g' Hs' _ | i' W' gw' g' _ _ HW' _ Hn' Hk]; subst; [ congruence |].
+        pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
+        rewrite Hn in Hn'; injection Hn' as <-; exact (Hng _ Hk).
     - right; exists (self_arg_in Γ (classify_reason np n pat (nf_to_exp W))).
-      intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' _ Hg']; subst; [ congruence |].
+      intros g H; inversion H as [gw' g' Hs' _ | i' W' gw' g' _ _ HW' _ Hn' _]; subst; [ congruence |].
       pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; congruence.
   Defined.
 
@@ -2595,14 +2660,14 @@ Section Classify.
     2:{ destruct (record_lookup_f F qr) as [[Rr |] Hl];
           [| right; exists view_why_container; intros cs H; inversion H; congruence ].
         destruct (classify_cons_in_dec (raw_decl_uniform_ctx_f R) (raw_decl_nu R) (raw_decl_nu R) (raw_decl_nmembers R)
-                    ((rview_con, ctx_args (tele_sub (record_fctx Rr (List.length (record_fields Rr))) (sb_of_list sb_id Is)))
+                    ((rview_con, ctx_args (tele_sub (record_fctx Rr (List.length (record_fields Rr))) (sb_of_list sb_id (List.map nf_to_exp Is))))
                        :: nil)) as [[cs Hcs] | [[[c y] r] He]]; rewrite (raw_decl_uniform_ctx_f_ok R) in *.
         - left; exists cs; econstructor; eassumption.
         - right; exists (view_why_classify c y r); intros cs H; inversion H; subst; unify_found; eapply He; eassumption. }
     destruct (ind_lookup_f F qc) as [[D' |] Hl]; [| right; exists view_why_container; intros cs H; inversion H; congruence ].
     destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists view_why_container; intros cs H; inversion H; subst; unify_found; congruence ].
-    destruct (classify_cons_in_dec (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs) ++ raw_decl_uniform_ctx_f R) (raw_decl_nu R) (im_nn Mk' + raw_decl_nu R) (raw_decl_nmembers R)
-                (List.map (fun cg => (fst cg, ctx_args (tele_sub (cargs_ctx qc D' Mk' (snd cg)) (sb_qn (im_nn Mk') (sb_of_list sb_id Cs)))))
+    destruct (classify_cons_in_dec (tele_sub (im_nparams Mk') (sb_of_list sb_id (List.map nf_to_exp Cs)) ++ raw_decl_uniform_ctx_f R) (raw_decl_nu R) (im_nn Mk' + raw_decl_nu R) (raw_decl_nmembers R)
+                (List.map (fun cg => (fst cg, ctx_args (tele_sub (cargs_ctx qc D' Mk' (snd cg)) (sb_qn (im_nn Mk') (sb_of_list sb_id (List.map nf_to_exp Cs))))))
                    (im_cons Mk'))) as [[cs Hcs] | [[[c y] r] He]]; rewrite (raw_decl_uniform_ctx_f_ok R) in *.
     - left; exists cs; econstructor; eassumption.
     - right; exists (view_why_classify c y r); intros cs H; inversion H; subst; unify_found; eapply He; eassumption.
@@ -2634,7 +2699,7 @@ Section Classify.
     destruct x as [qc k Cs | qr Is]; [| left; exists nil; constructor ].
     destruct (ind_lookup_f F qc) as [[D' |] Hl]; [| right; exists view_why_container; intros Nv H; inversion H; congruence ].
     destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists view_why_container; intros Nv H; inversion H; subst; unify_found; congruence ].
-    destruct (nbe_tele_dec (raw_decl_uniform_ctx_f R) (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs))) as [[Ws HWs] | HnWs];
+    destruct (nbe_tele_dec (raw_decl_uniform_ctx_f R) (tele_sub (im_nparams Mk') (sb_of_list sb_id (List.map nf_to_exp Cs)))) as [[Ws HWs] | HnWs];
       rewrite (raw_decl_uniform_ctx_f_ok R) in *.
     2:{ right; exists view_why_untyped; intros Nv H; inversion H; subst; unify_found; eapply HnWs; eassumption. }
     destruct (image_tele (List.repeat false (raw_decl_nu R) ++ List.repeat true (raw_decl_nmembers R)) Ws) as [Nv |] eqn:Hi.
@@ -2644,20 +2709,8 @@ Section Classify.
       congruence.
   Defined.
 
-  (** Terms normalized pointwise at types, each typed first. *)
-  Fixpoint nbes_dec (Γ : ctx) (Ms : list exp) (As : list typ) {struct Ms} :
-    {Ws | nbes Θ Ξ Γ Ms As Ws} + {forall Ws, ~ nbes Θ Ξ Γ Ms As Ws}.
-  Proof.
-    destruct Ms as [| M Ms'], As as [| A As']; try (right; intros Ws H; inversion H; fail).
-    - left; exists nil; constructor.
-    - destruct (nbes_dec Γ Ms' As') as [[Ws' HWs'] | HnWs']; [| right; intros Ws H; inversion H; subst; eapply HnWs'; eassumption ].
-      destruct (check_exp_at F levels_abstractable_dec HΞ Γ A M) as [HM | HnM]; [| right; intros Ws H; inversion H; subst; contradiction ].
-      destruct (nbe_impl F Γ M A (typed_nbe_order' F _ _ _ HM)) as [W HW].
-      left; exists (W :: Ws'); constructor; assumption.
-  Defined.
-
   (** The members of a container's group from position [i], at [Cs]. *)
-  Fixpoint siblings_from_dec (Γc : ctx) (qc : qname) (Cs : list exp) (i : nat) (ms : list imember) {struct ms} :
+  Fixpoint siblings_from_dec (Γc : ctx) (qc : qname) (Cs : list nf) (i : nat) (ms : list imember) {struct ms} :
     {ss | siblings_from Θ Ξ Γc qc Cs i ms ss} + {forall ss, ~ siblings_from Θ Ξ Γc qc Cs i ms ss}.
   Proof.
     destruct ms as [| M ms'].
@@ -2668,17 +2721,17 @@ Section Classify.
         [ left; exists (vk_ind qc i Cs :: ss); eapply siblings_from_decl; eassumption | |].
       + destruct (ind_lookup_f F qv) as [[Dv |] Hlv];
           [| right; intros ss' H; inversion H; subst; unify_found; congruence ].
-        destruct (nbes_dec Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Iv)
-                    (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (ind_uparams Dv) sb_id Iv))) as [[Ws HWs] | HnWs].
-        * left; exists (vk_ind qv kv (List.map nf_to_exp Ws) :: ss); eapply siblings_from_view; eassumption.
+        destruct (nbes_dec Γc (List.map (fun I => I[sb_of_list sb_id (List.map nf_to_exp Cs)]) Iv)
+                    (List.map (fun T => T[sb_of_list sb_id (List.map nf_to_exp Cs)]) (tele_insts (ind_uparams Dv) sb_id Iv))) as [[Ws HWs] | HnWs].
+        * left; exists (vk_ind qv kv Ws :: ss); eapply siblings_from_view; eassumption.
         * right; intros ss' H; inversion H; subst; unify_found; try congruence.
           match goal with Hh' : im_head M = mh_view _ _ _ _ |- _ => rewrite Hh in Hh'; injection Hh'; intros; subst end.
           unify_found; eapply HnWs; eassumption.
       + destruct (record_lookup_f F qr) as [[Rr |] Hlr];
           [| right; intros ss' H; inversion H; subst; unify_found; congruence ].
-        destruct (nbes_dec Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Ir)
-                    (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (record_params Rr) sb_id Ir))) as [[Ws HWs] | HnWs].
-        * left; exists (vk_record qr (List.map nf_to_exp Ws) :: ss); eapply siblings_from_record; eassumption.
+        destruct (nbes_dec Γc (List.map (fun I => I[sb_of_list sb_id (List.map nf_to_exp Cs)]) Ir)
+                    (List.map (fun T => T[sb_of_list sb_id (List.map nf_to_exp Cs)]) (tele_insts (record_params Rr) sb_id Ir))) as [[Ws HWs] | HnWs].
+        * left; exists (vk_record qr Ws :: ss); eapply siblings_from_record; eassumption.
         * right; intros ss' H; inversion H; subst; unify_found; try congruence.
           match goal with Hh' : im_head M = mh_record _ _ _ |- _ => rewrite Hh in Hh'; injection Hh'; intros; subst end.
           unify_found; eapply HnWs; eassumption.
@@ -2791,11 +2844,33 @@ Section Equiv.
   Lemma equiv_typ : forall Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ' ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
   Proof. intros; eapply equiv_exp; eassumption. Qed.
 
+  Lemma equiv_nbes : forall Γ Ms As Ws, nbes Θ Ξ Γ Ms As Ws -> nbes Θ' Ξ Γ Ms As Ws.
+  Proof.
+    induction 1; constructor; [ exact (equiv_exp _ _ _ _ _ _ He HΞ' ltac:(eassumption)) | exact (equiv_nbe _ _ _ _ ltac:(eassumption)) | assumption ].
+  Qed.
+
+  Lemma equiv_view_inst_key : forall Γ x y, view_inst_key Θ Ξ Γ x y -> view_inst_key Θ' Ξ Γ x y.
+  Proof.
+    intros * [qc k Cs D' Ws Hl HWs | qr Is Rr Ws Hl HWs]; econstructor.
+    - rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); exact Hl.
+    - exact (equiv_nbes _ _ _ _ HWs).
+    - rewrite <- (gds_equiv_record_lookup _ _ _ _ He); exact Hl.
+    - exact (equiv_nbes _ _ _ _ HWs).
+  Qed.
+
+  Lemma equiv_written_carg_key : forall Γ g g', written_carg_key Θ Ξ Γ g g' -> written_carg_key Θ' Ξ Γ g g'.
+  Proof.
+    intros * [κ A | t t' Ht]; constructor.
+    induction Ht; constructor; [ exact (equiv_view_inst_key _ _ _ ltac:(eassumption)) | assumption ].
+  Qed.
+
   Lemma equiv_classify_arg_in : forall Γ nu np n pat T g,
       classify_arg_in Θ Ξ Γ nu np n pat T g -> classify_arg_in Θ' Ξ Γ nu np n pat T g.
   Proof.
-    intros * H; destruct H as [g Hg | i W g Hn HT HW Hpf Hg]; [ apply classify_in_syn; exact Hg |].
-    eapply classify_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ' HT) | exact (equiv_nbe_ty _ _ _ HW) | exact Hpf |].
+    intros * H; destruct H as [gw g Hg Hk | i W gw g Hn HT HW Hpf Hg Hk];
+      [ eapply classify_in_syn; [ exact Hg | exact (equiv_written_carg_key _ _ _ Hk) ] |].
+    eapply classify_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ' HT) | exact (equiv_nbe_ty _ _ _ HW) | exact Hpf | |
+                            exact (equiv_written_carg_key _ _ _ Hk) ].
     rewrite <- (classify_arg_ext (grp_info Θ Ξ)) by (intros; unfold grp_info; rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity).
     rewrite <- (classify_arg_rec_ext _ (rec_info Θ Ξ)) by (intros; unfold rec_info; rewrite (gds_equiv_record_lookup _ _ _ _ He); reflexivity).
     exact Hg.
@@ -2837,10 +2912,6 @@ Section Equiv.
     apply equiv_nbe_tele; assumption.
   Qed.
 
-  Lemma equiv_nbes : forall Γ Ms As Ws, nbes Θ Ξ Γ Ms As Ws -> nbes Θ' Ξ Γ Ms As Ws.
-  Proof.
-    induction 1; constructor; [ exact (equiv_exp _ _ _ _ _ _ He HΞ' ltac:(eassumption)) | exact (equiv_nbe _ _ _ _ ltac:(eassumption)) | assumption ].
-  Qed.
 
   Lemma equiv_siblings_from : forall Γc qc Cs i ms ss, siblings_from Θ Ξ Γc qc Cs i ms ss -> siblings_from Θ' Ξ Γc qc Cs i ms ss.
   Proof.
