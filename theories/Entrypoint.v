@@ -7,7 +7,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Semantic Require Import NbE.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Extraction Require Import FastGlobal Command.
+From Mctt.Extraction Require Import FastGlobal Command CommandRun.
 From Mctt.Extraction Require ViewsFound.
 From Mctt.Frontend Require Import Elaborator Parser.
 Import MenhirLibParser.Inter.
@@ -47,6 +47,9 @@ Section Main.
   Variable load_path : list string -> option string.
   Variable read : string -> option Cst.prog.
   Hypothesis Hwf : well_founded (load_step load_path).
+  (** The decision of [levels_abstractable] the checker is given, until the
+      stored level flag replaces it. *)
+  Variable lvd : levels_abstractable_decider.
 
   (** The program is elaborated here, to report the error message, since
       the interpreter's [to_core] returns an option; its unit is then run
@@ -57,7 +60,7 @@ Section Main.
         match elaborate_core prg with
         | elab_failure msg => ElaborationFailure prg msg
         | elab_success u0 =>
-            match unit_run load_path read to_core ViewsFound.views_search prg u0 (Hwf _) with
+            match unit_run load_path read to_core lvd (ViewsFound.views_search lvd) prg u0 (Hwf _) with
             | run_success (B, s, u, log) => AllGood prg B s u log
             | run_failure e => RunFailure prg e
             end
@@ -68,8 +71,8 @@ Section Main.
 
   (** Running the unit the program elaborates to is running the program. *)
   Lemma main_unit_run : forall prg u, elaborate_core prg = elab_success u ->
-      unit_run load_path read to_core ViewsFound.views_search prg u (Hwf _) =
-      prog_impl load_path read to_core ViewsFound.views_search prg (Hwf _).
+      unit_run load_path read to_core lvd (ViewsFound.views_search lvd) prg u (Hwf _) =
+      prog_impl load_path read to_core lvd (ViewsFound.views_search lvd) prg (Hwf _).
   Proof.
     intros * He; symmetry; apply prog_impl_unit_run; unfold to_core; rewrite He; reflexivity.
   Qed.
@@ -92,10 +95,10 @@ Section Main.
     destruct (Parser.prog log_fuel buf); try discriminate.
     destruct (elaborate_core _) as [u0 |] eqn:He; try discriminate.
     rewrite (main_unit_run _ _ He) in H.
-    destruct (prog_impl load_path read to_core ViewsFound.views_search _ _) as [[[[B' s'] u'] log'] |] eqn:Hr;
+    destruct (prog_impl load_path read to_core lvd (ViewsFound.views_search lvd) _ _) as [[[[B' s'] u'] log'] |] eqn:Hr;
       try discriminate.
     injection H as <- <- <- <- <-.
-    destruct (prog_impl_sound _ _ _ _ _ _ _ _ _ _ Hr) as [(ΘR & Hsem & Heq) Hlog].
+    destruct (prog_impl_sound _ _ _ _ _ _ _ _ _ _ _ Hr) as [(ΘR & Hsem & Heq) Hlog].
     split; [| exact Hlog ].
     destruct (prog_sem_wf _ _ _ _ _ _ _ Hsem) as [HΘ HU].
     exists ΘR; tauto.
@@ -111,10 +114,10 @@ Section Main.
     destruct (Parser.prog log_fuel buf); try discriminate.
     destruct (elaborate_core _) as [u0 |] eqn:He; try discriminate.
     rewrite (main_unit_run _ _ He) in H.
-    destruct (prog_impl load_path read to_core ViewsFound.views_search _ _) as [[[[B' s'] u'] log'] |] eqn:Hr;
+    destruct (prog_impl load_path read to_core lvd (ViewsFound.views_search lvd) _ _) as [[[[B' s'] u'] log'] |] eqn:Hr;
       try discriminate.
     injection H as <- <- <- <- <-.
-    exact (prog_impl_rep _ _ _ _ _ _ _ _ _ _ Hr).
+    exact (prog_impl_rep _ _ _ _ _ _ _ _ _ _ _ Hr).
   Qed.
 
   (** A program that has a meaning runs to completion. *)
@@ -127,9 +130,9 @@ Section Main.
     intros * Hp Hsem Hel; unfold main; rewrite Hp.
     destruct (elaborate_core prg) eqn:He; [| exfalso; eapply Hel; reflexivity ].
     rewrite (main_unit_run _ _ He).
-    destruct (prog_impl_complete _ _ _ _ ViewsFound.views_search_complete _ _ _ _ Hsem (Hwf _))
-      as (s & u & log & Hr & HU & Heq).
-    rewrite Hr; exists s, u, log; split; [ reflexivity | split; assumption ].
+    destruct (prog_impl_complete _ _ _ lvd _ (ViewsFound.views_search_complete lvd) _ _ _ _ Hsem (Hwf _))
+      as (s0 & u & log & Hr & HU & Heq).
+    rewrite Hr; exists s0, u, log; split; [ reflexivity | split; assumption ].
   Qed.
 End Main.
 
