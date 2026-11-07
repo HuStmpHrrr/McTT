@@ -2420,16 +2420,119 @@ Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.
       ([unseal_exp]) and produces a transparent context
       ([gc_no_axioms_unseal_transparent]). *)
 
-(** The global at the head of a neutral, if any.  Ex falso holds no
-    proof, so it has none. *)
+(** The first of two optional names that is there. *)
+Definition first_qname (o o' : option qname) : option qname :=
+  match o with Some _ => o | None => o' end.
+
+(** The first global a term mentions, scanning the whole term left to
+    right, its annotations included: a member of a module expression rooted
+    at a unit ([mod_qname]), a unit's module, an inductive type, a
+    constructor, an eliminator's group, a record type, and the declarations
+    a local body files.  [⊥] is a constant of the core, no global. *)
+Fixpoint exp_first_global (M : exp) : option qname :=
+  match M with
+  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False | a_var _ => None
+  | a_ind p _ | a_con p _ _ | a_record p => Some p
+  | a_univ M | a_succl M | a_left M | a_right M | a_proj _ M => exp_first_global M
+  | a_maxl M N | a_absurd M N | a_and M N | a_pi _ _ M N | a_fn M N | a_app M N =>
+      first_qname (exp_first_global M) (exp_first_global N)
+  | a_conj P Q M N =>
+      first_qname (exp_first_global P)
+        (first_qname (exp_first_global Q) (first_qname (exp_first_global M) (exp_first_global N)))
+  | a_elim _ p _ _ _ _ => Some p
+  | a_let b B => first_qname (binding_first_global b) (exp_first_global B)
+  | a_mem H x =>
+      match mod_qname H with
+      | Some module_name => Some {| q_unit := q_unit module_name; q_chain := q_chain module_name ++ x :: nil |}
+      | None => modexp_first_global H
+      end
+  | a_tuple T fs =>
+      first_qname (exp_first_global T)
+        ((fix fields_first (fs : list (String.string * exp)) : option qname :=
+            match fs with
+            | nil => None
+            | f :: fs' => first_qname (exp_first_global (snd f)) (fields_first fs')
+            end) fs)
+  end
+with modexp_first_global (H : modexp) : option qname :=
+  match H with
+  | me_unit fp => Some (q_abs fp nil)
+  | me_var _ => None
+  | me_mem H _ => modexp_first_global H
+  | me_app H N => first_qname (modexp_first_global H) (exp_first_global N)
+  | me_lit U => gunit_first_global U
+  end
+with binding_first_global (b : binding) : option qname :=
+  match b with
+  | b_def A M => first_qname (exp_first_global A) (exp_first_global M)
+  | b_mod U => gunit_first_global U
+  | b_def_mod A M U => first_qname (exp_first_global A) (first_qname (exp_first_global M) (gunit_first_global U))
+  end
+with gunit_first_global (U : gunit) : option qname :=
+  match U with
+  | gu_mk Δ D =>
+      first_qname
+        ((fix tele_first (Δ : list centry) : option qname :=
+            match Δ with
+            | nil => None
+            | e :: Δ' => first_qname (centry_first_global e) (tele_first Δ')
+            end) Δ)
+        (moddef_first_global D)
+  end
+with moddef_first_global (D : moddef) : option qname :=
+  match D with
+  | md_body _ Φ => gmod_first_global Φ
+  | md_alias E => modexp_first_global E
+  end
+with gmod_first_global (Φ : gmod) : option qname :=
+  match Φ with
+  | gm_nil => None
+  | gm_ext Φ _ E => first_qname (gmod_first_global Φ) (gentry_first_global E)
+  | gm_open Φ H _ Φg => first_qname (gmod_first_global Φ) (first_qname (modexp_first_global H) (gmod_first_global Φg))
+  end
+with gentry_first_global (E : gentry) : option qname :=
+  match E with
+  | ge_def _ _ _ A B => first_qname (exp_first_global A) (match B with Some M => exp_first_global M | None => None end)
+  | ge_mod _ U => gunit_first_global U
+  | ge_ind _ pq _ _ _ => Some pq
+  | ge_def_mod _ A M U => first_qname (exp_first_global A) (first_qname (exp_first_global M) (gunit_first_global U))
+  | ge_record _ p _ _ => Some p
+  end
+with centry_first_global (e : centry) : option qname :=
+  match e with
+  | ce_ass _ A => exp_first_global A
+  | ce_def A M => first_qname (exp_first_global A) (exp_first_global M)
+  | ce_mod U => gunit_first_global U
+  | ce_dm A M U => first_qname (exp_first_global A) (first_qname (exp_first_global M) (gunit_first_global U))
+  end.
+
+(** The global at the head of a neutral, if any: at an ex falso, the first
+    global its proof of [⊥] mentions, as a closed one mentions one
+    ([closed_False_proof_mentions_global]). *)
 Fixpoint ne_head (W : ne) : option qname :=
   match W with
   | ne_elim _ _ _ _ W | ne_app W _ | ne_proj _ W => ne_head W
-  | ne_absurd _ _ | ne_var _ => None
+  | ne_absurd _ M => exp_first_global M
+  | ne_var _ => None
   | ne_glob p => Some p
   end.
 
-(** In the empty context, a neutral is headed by a global. *)
+(** A closed proof of [⊥] mentions a global.  At the empty global context
+    this is consistency; at any other, every closed proof of [⊥] reaches an
+    axiom through the globals it names. *)
+Lemma closed_False_proof_mentions_global : forall {Θ Ξ M},
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥ ->
+    exists p, exp_first_global M = Some p.
+Proof.
+  (* PENDING M3: proofs are kept, so the PER model has every proof of [⊥];
+     the gluing model (M2), at the empty global context, has none, and a
+     term mentioning no global is typed at the empty global context
+     (strengthening of the global context) *)
+Admitted.
+
+(** In the empty context, a neutral is headed by a global: a variable has
+    no type there, and an ex falso's proof of [⊥] mentions a global
+    ([closed_False_proof_mentions_global]). *)
 Lemma no_closed_neutral_head : forall {Θ Ξ A} {W : ne},
     ne_head W = None ->
     ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A).
@@ -2440,11 +2543,9 @@ Proof.
   all: destruct W; simpl in *; try congruence; autoinjections; destruct_all;
     try contradiction; eauto.
   all: try solve [ match_by_head ctx_lookup ltac:(fun H => inversion H) ].
-  (* PENDING M3: a neutral ex falso [efq ⋆ⁿ] carries the proof [⋆] of [⊥],
-     typed exactly when [⊥] is proved ([wf_true_inversion]), so this case
-     is consistency itself, from the model *)
-  admit.
-Admitted.
+  all: try solve [ match goal with H : _ ⍮ _ ⍮ ⋅ ⊢ ?M : ⊥ |- _ =>
+                     destruct (closed_False_proof_mentions_global H) as [p Hp]; congruence end ].
+Qed.
 
 Lemma closed_neutral_head : forall {Θ Ξ A} {W : ne},
     Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A ->
