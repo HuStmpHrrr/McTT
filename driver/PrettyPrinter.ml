@@ -1457,8 +1457,10 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_run_error_view (x, key, why) ->
      let open McttExtracted.IndDecl in
      let inst = match key with
-       | McttExtracted.Group.Coq_vk_ind (qc, k, cs) -> McttExtracted.Syntax.apps_exp (Coq_a_ind (qc, k)) cs
-       | McttExtracted.Group.Coq_vk_record (qr, is) -> McttExtracted.Syntax.apps_exp (Coq_a_record qr) is in
+       | McttExtracted.Group.Coq_vk_ind (qc, k, cs) ->
+          McttExtracted.Syntax.apps_exp (Coq_a_ind (qc, k)) (List.map McttExtracted.Syntax.nf_to_exp cs)
+       | McttExtracted.Group.Coq_vk_record (qr, is) ->
+          McttExtracted.Syntax.apps_exp (Coq_a_record qr) (List.map McttExtracted.Syntax.nf_to_exp is) in
      (match why with
       | Coq_view_why_container ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ which is no declared type of a filed group@]" x format_exp inst
@@ -1468,7 +1470,9 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
       | Coq_view_why_untyped ->
          fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ at which a parameter or a sibling of the container is not typed@]" x format_exp inst
       | Coq_view_why_mentions_group ->
-         fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ a non-uniform parameter of which mentions the group@]" x format_exp inst)
+         fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ a non-uniform parameter of which mentions the group@]" x format_exp inst
+      | Coq_view_why_shadowed ->
+         fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ whose container lists another instance of it first@]" x format_exp inst)
   | Coq_run_error_ind_nparams (x, k, delta, t, s) ->
      fprintf f "@[<hov 2>Error: the type of the non-uniform parameter %d of %s,@ %a,@ is not in the sort of %s,@ %a@]"
        (k + 1) x (format_exp_in delta) t x (format_exp_in delta) s

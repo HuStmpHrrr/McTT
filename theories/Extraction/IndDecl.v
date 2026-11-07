@@ -2650,7 +2650,10 @@ Section Classify.
       not a type, or not typed *)
   | view_why_untyped : view_why
   (** A non-uniform parameter at the instance mentions the group *)
-  | view_why_mentions_group : view_why.
+  | view_why_mentions_group : view_why
+  (** The instance, met first, is not among its own new views: a sibling
+      of its view is listed before it ([ViewsSearch.search]) *)
+  | view_why_shadowed : view_why.
 
   (** The constructors of a view, classified. *)
   Definition view_classify_dec (R : raw_decl) (x : view_key) :

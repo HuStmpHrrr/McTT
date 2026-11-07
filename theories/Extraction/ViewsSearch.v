@@ -90,14 +90,46 @@ Section Search.
     destruct H as [<- | H]; [ left; reflexivity | right; eapply IH; eauto ].
   Qed.
 
-  Lemma views_new_nodup : forall acc ss, NoDup acc -> NoDup (acc ++ views_new acc ss).
+  (** Keys of pairwise different views. *)
+  Fixpoint key_nodup (l : list view_key) : Prop :=
+    match l with
+    | nil => True
+    | x :: l' => ~ key_in x l' /\ key_nodup l'
+    end.
+
+  Lemma key_nodup_snoc : forall l s, key_nodup l -> ~ key_in s l -> key_nodup (l ++ [s]).
+  Proof.
+    induction l as [| x l IH]; intros s Hd Hs; cbn in *; [ split; [ intros (y & [] & _) | exact I ] |].
+    destruct Hd as [Hx Hd]; split; [| apply IH; [ exact Hd | intros Hk; apply Hs; destruct Hk as (y & Hy & Hsy);
+                                                   exists y; split; [ right; exact Hy | exact Hsy ] ] ].
+    intros (y & Hy & Hxy); apply in_app_or in Hy as [Hy | [<- | []]]; [ apply Hx; exists y; split; assumption |].
+    apply Hs; exists x; split; [ left; reflexivity | symmetry; exact Hxy ].
+  Qed.
+
+  (** Keys of pairwise different views, each of the view of a key of [L],
+      are at most as many as [L]. *)
+  Lemma key_nodup_length : forall Vs L, key_nodup Vs -> (forall y, In y Vs -> key_in y L) -> List.length Vs <= List.length L.
+  Proof.
+    induction Vs as [| x Vs IH]; intros L Hd HL; cbn; [ lia |].
+    destruct Hd as [Hx Hd].
+    destruct (HL x (or_introl eq_refl)) as (l & Hl & Hxl).
+    assert (Hlt : List.length (remove view_key_eq_dec l L) < List.length L) by (apply remove_length_lt; exact Hl).
+    enough (List.length Vs <= List.length (remove view_key_eq_dec l L)) by lia.
+    apply IH; [ exact Hd |].
+    intros y Hy; destruct (HL y (or_intror Hy)) as (l' & Hl' & Hyl').
+    exists l'; split; [| exact Hyl' ].
+    apply in_in_remove; [| exact Hl' ].
+    intros ->; apply Hx; exists y; split; [ exact Hy | etransitivity; [ exact Hxl | symmetry; exact Hyl' ] ].
+  Qed.
+
+  Lemma views_new_nodup : forall acc ss, key_nodup acc -> key_nodup (acc ++ views_new acc ss).
   Proof.
     intros acc ss; revert acc; induction ss as [| s ss IH]; cbn; intros acc Hd; [ rewrite app_nil_r; exact Hd |].
     destruct (view_key_mem s acc) eqn:Hm; [ apply IH, Hd |].
     replace (acc ++ s :: views_new (acc ++ [s]) ss) with ((acc ++ [s]) ++ views_new (acc ++ [s]) ss)
       by (rewrite <- List.app_assoc; reflexivity).
-    apply IH; apply NoDup_app; [ exact Hd | constructor; [ intros [] | constructor ] |].
-    intros y Hy [Heq | []]; subst y; apply key_in_of_in, (proj2 (view_key_mem_spec s acc)) in Hy; congruence.
+    apply IH, key_nodup_snoc; [ exact Hd |].
+    intros Hk; apply view_key_mem_spec in Hk; congruence.
   Qed.
 
   (** A new view is of no view found before. *)
@@ -123,10 +155,11 @@ Section Search.
   (** ** The Search's Order
 
       More views found, or as many and a shorter queue; the views found
-      are distinct and reachable, so there are boundedly many. *)
+      are of pairwise different views and reachable, and the reachable
+      keys are of finitely many views, so there are boundedly many. *)
 
-  (** The views found are distinct and reachable. *)
-  Definition found_ok (Vs : list view_key) : Prop := NoDup Vs /\ forall y, In y Vs -> reach y.
+  (** The views found are of pairwise different views and reachable. *)
+  Definition found_ok (Vs : list view_key) : Prop := key_nodup Vs /\ forall y, In y Vs -> reach y.
 
   (** The order of the search's states (the views found, the queue). *)
   Definition search_lt (s' s : prod (list view_key) (list view_key)) : Prop :=
@@ -135,13 +168,14 @@ Section Search.
      (fst s' = fst s /\ List.length (snd s') < List.length (snd s))).
 
   Section Order.
-    Hypothesis reach_finite : exists L, forall y, reach y -> In y L.
+    (** The reachable keys are of the views of finitely many keys. *)
+    Hypothesis reach_finite : exists L, forall y, reach y -> key_in y L.
 
     Lemma search_acc : forall Vs tr, Acc search_lt (Vs, tr).
     Proof.
       destruct reach_finite as [L HL].
       assert (Hb : forall Vs, found_ok Vs -> List.length Vs <= List.length L).
-      { intros Vs [Hd Hr]; apply NoDup_incl_length; [ exact Hd | intros y Hy; apply HL, Hr, Hy ]. }
+      { intros Vs [Hd Hr]; apply key_nodup_length; [ exact Hd | intros y Hy; apply HL, Hr, Hy ]. }
       assert (H : forall n m Vs tr, List.length L - List.length Vs <= n -> List.length tr <= m -> Acc search_lt (Vs, tr)).
       { induction n as [n IHn] using (well_founded_induction lt_wf); induction m as [m IHm] using (well_founded_induction lt_wf).
         intros Vs tr Hn Hm; constructor; intros [Vs' tr'] Hl; unfold search_lt in Hl; cbn in Hl;
@@ -173,7 +207,7 @@ Section Search.
       all have data. *)
   Definition result (Vs tr : list view_key) : Type :=
     ({p : prod (list view_key) (list A) |
-      NoDup (fst p) /\ Forall2 E (fst p) (snd p) /\
+      key_nodup (fst p) /\ Forall2 E (fst p) (snd p) /\
       views_dfs (siblings_table (fst p) (List.map sibs_of (snd p))) (met_table (fst p) (List.map meets_of (snd p))) Vs tr (fst p)}
     + {ye : view_key * Err | forall sibs meets Vf, views_dfs sibs meets Vs tr Vf ->
         (forall y a, In y Vf -> E y a -> sibs y = sibs_of a /\ meets y = meets_of a) ->
@@ -200,7 +234,7 @@ Section Search.
     destruct (view_key_mem x Vs) eqn:Hm; [ exfalso; apply Hx, view_key_mem_spec, Hm | left; reflexivity ].
   Qed.
 
-  Lemma map_table : forall Vf Af ys bs, NoDup Vf -> Forall2 E Vf Af -> incl ys Vf -> Forall2 E ys bs ->
+  Lemma map_table : forall Vf Af ys bs, key_nodup Vf -> Forall2 E Vf Af -> incl ys Vf -> Forall2 E ys bs ->
       List.map (met_table Vf (List.map meets_of Af)) ys = List.map meets_of bs.
   Proof.
     intros * Hd HF Hi Hy; induction Hy as [| y b ys bs Hb Hys IH]; cbn; [ reflexivity |].
@@ -209,7 +243,7 @@ Section Search.
 
   (** The search, by recursion on the accessibility proof. *)
   Fixpoint search (Vs : list view_key) (As : list A) (tr : list view_key)
-      (Hd : NoDup Vs) (HF : Forall2 E Vs As) (Hr : forall y, In y Vs -> reach y)
+      (Hd : key_nodup Vs) (HF : Forall2 E Vs As) (Hr : forall y, In y Vs -> reach y)
       (Ht : forall y, In y tr -> reach y) (Hacc : Acc search_lt (Vs, tr)) {struct Hacc} : result Vs tr.
   Proof.
     destruct Hacc as [Hacc].
@@ -284,10 +318,14 @@ Section Search.
   Defined.
 
   (** The search from no view found and the declared members' instances,
-      given that the reachable views are finitely many. *)
-  Definition views_search_from (Hfin : exists L, forall y, reach y -> In y L) : result nil init :=
-    search nil nil init (NoDup_nil _) (Forall2_nil _) (fun y H => match H with end)
+      given that the reachable keys are of finitely many views. *)
+  Definition views_search_from (Hfin : exists L, forall y, reach y -> key_in y L) : result nil init :=
+    search nil nil init I (Forall2_nil _) (fun y H => match H with end)
       (fun y H => reach_init y H) (search_acc Hfin nil init).
+
+  (** Finitely many reachable keys are of finitely many views. *)
+  Lemma reach_finite_key_in : (exists L, forall y, reach y -> In y L) -> exists L, forall y, reach y -> key_in y L.
+  Proof. intros [L HL]; exists L; intros y Hy; exact (key_in_of_in _ _ (HL y Hy)). Qed.
 
   (** ** Finiteness from Clusters *)
 

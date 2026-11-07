@@ -286,7 +286,7 @@ Section Fixed_GCtx.
       normal forms of its uniform arguments at [Cs]. *)
   Lemma sibling_of_member : forall Γu qx D Cs Ws ss jm Mjm, ⊢ᵍ gc_deps ⍮ gc_stack -> ind_lookup gc_deps gc_stack qx = Some D ->
       nbes gc_deps gc_stack Γu Cs (tele_insts (ind_uparams D) Id Cs) Ws -> Cs = List.map nf_to_exp Ws ->
-      siblings_from gc_deps gc_stack Γu qx Cs 0 (ind_members D) ss -> ind_member D jm = Some Mjm -> im_is_rview Mjm = false ->
+      siblings_from gc_deps gc_stack Γu qx Ws 0 (ind_members D) ss -> ind_member D jm = Some Mjm -> im_is_rview Mjm = false ->
       exists Dq WQ, ind_lookup gc_deps gc_stack (fst (im_ref qx jm Mjm)) = Some Dq /\
         nbes gc_deps gc_stack Γu (im_pre Mjm Cs) (tele_insts (ind_uparams Dq) Id (im_pre Mjm Cs)) WQ /\
         In (vk_ind (fst (im_ref qx jm Mjm)) (snd (im_ref qx jm Mjm)) (List.map nf_to_exp WQ)) ss.
@@ -308,7 +308,7 @@ Section Fixed_GCtx.
   (** The sibling a record view member [jm] of the group at [qx] gives at
       [Cs]: the record at the normal forms of its instance at [Cs]. *)
   Lemma sibling_of_record_member : forall Γu qx D Cs ss jm Mjm qr Ir fl,
-      siblings_from gc_deps gc_stack Γu qx Cs 0 (ind_members D) ss -> ind_member D jm = Some Mjm ->
+      siblings_from gc_deps gc_stack Γu qx Ws 0 (ind_members D) ss -> ind_member D jm = Some Mjm ->
       im_head Mjm = mh_record qr Ir fl ->
       exists Rr WQ, record_lookup gc_deps gc_stack qr = Some Rr /\
         nbes gc_deps gc_stack Γu (List.map (fun I => I[sb_of_list sb_id Cs]) Ir)
@@ -350,7 +350,7 @@ Section Fixed_GCtx.
   Theorem rec_meet_in_siblings : forall Γu qx D Cs Ws ss m Mi c gs gs1 t gs2 (i : nat) W nu np n pat gz z,
       ⊢ᵍ gc_deps ⍮ gc_stack -> ind_lookup gc_deps gc_stack qx = Some D -> List.length Cs = ind_nu D ->
       nbes gc_deps gc_stack Γu Cs (tele_insts (ind_uparams D) Id Cs) Ws -> Cs = List.map nf_to_exp Ws ->
-      siblings_from gc_deps gc_stack Γu qx Cs 0 (ind_members D) ss ->
+      siblings_from gc_deps gc_stack Γu qx Ws 0 (ind_members D) ss ->
       ind_member D m = Some Mi -> ind_con Mi c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
       tele_sub (cargs_ctx qx D Mi gs1 ++ im_nparams Mi) (sb_of_list Id Cs) ++ Γu
         ⊢ (ptyp_ty qx D (im_nn Mi) (cargs_pat gs1) t)[sb_qn (List.length gs1 + im_nn Mi) (sb_of_list Id Cs)] : Typeω@i ->
@@ -1232,11 +1232,11 @@ Record view_below (Θ : gdeps) (Ξ : gstack) (Γu : ctx) (z x : view_key) : Prop
     (** The values of the arguments the upper view's key fixes *)
   ; below_uparams : list domain
     (** They are those of its arguments at the environment *)
-  ; below_uparams_eval : ⟦ view_key_args x ⟧* Θ ⍮ Ξ ⍮ below_env ↘ below_uparams
+  ; below_uparams_eval : ⟦ List.map nf_to_exp (view_key_args x) ⟧* Θ ⍮ Ξ ⍮ below_env ↘ below_uparams
     (** The values of the arguments the lower view's key fixes *)
   ; below_meet_uparams : list domain
     (** They are those of its arguments at the environment *)
-  ; below_meet_uparams_eval : ⟦ view_key_args z ⟧* Θ ⍮ Ξ ⍮ below_env ↘ below_meet_uparams
+  ; below_meet_uparams_eval : ⟦ List.map nf_to_exp (view_key_args z) ⟧* Θ ⍮ Ξ ⍮ below_env ↘ below_meet_uparams
     (** The values of the non-uniform parameters of the lower type *)
   ; below_meet_nparams : list domain
     (** As many as the lower view's container or record takes *)
@@ -1250,7 +1250,7 @@ Definition view_lt (Θ : gdeps) (Ξ : gstack) (Γu : ctx) (z x : view_key) : Pro
 (** A view whose type is accessible for the nesting steps is accessible
     for [view_lt]. *)
 Lemma view_below_acc : forall Θ Ξ Γu a, @nest_acc (gc_mk Θ Ξ) a ->
-    forall x ρ usx nsx, initial_env Θ Ξ Γu ρ -> ⟦ view_key_args x ⟧* Θ ⍮ Ξ ⍮ ρ ↘ usx ->
+    forall x ρ usx nsx, initial_env Θ Ξ Γu ρ -> ⟦ List.map nf_to_exp (view_key_args x) ⟧* Θ ⍮ Ξ ⍮ ρ ↘ usx ->
     key_arity Θ Ξ x usx -> a = key_type x usx nsx -> Acc (view_lt Θ Ξ Γu) x.
 Proof.
   intros Θ Ξ Γu a H; induction H as [a _ IH]; intros * Hi Eus Har ->.
@@ -1267,25 +1267,26 @@ Qed.
 
 (** A typed record view is accessible for [view_lt]: its type is one of
     the model. *)
-Theorem record_view_inv_acc : forall Θ Ξ Γu qx Isx, ⊢ᵍ Θ ⍮ Ξ -> record_view_inv Θ Ξ Γu qx Isx ->
-    Acc (view_lt Θ Ξ Γu) (vk_record qx Isx).
+Theorem record_view_inv_acc : forall Θ Ξ Γu qx Wsx, ⊢ᵍ Θ ⍮ Ξ -> record_view_inv Θ Ξ Γu qx (List.map nf_to_exp Wsx) ->
+    Acc (view_lt Θ Ξ Γu) (vk_record qx Wsx).
 Proof.
   intros * Hg [[Rx Hl Hlen Hty HΓu] _ _ _].
   pose proof (@valid_rview_record_gc (gc_mk Θ Ξ) _ _ Hg Hl) as HvR.
   pose proof (@completeness_fundamental_ctx (gc_mk Θ Ξ) _ HΓu) as HΓs.
   destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
   destruct (per_ctx_then_per_env_initial_env HRΓ) as (ρ & _ & Hρ & _ & _).
-  destruct (@inst_gargs (gc_mk Θ Ξ) Γu (record_params Rx) Isx ρ (typed_params_ass _ _ _ (valid_rview_record_typed _ _ HvR))
+  destruct (@inst_gargs (gc_mk Θ Ξ) Γu (record_params Rx) (List.map nf_to_exp Wsx) ρ (typed_params_ass _ _ _ (valid_rview_record_typed _ _ HvR))
               (params_valid _ (valid_rview_record_valid _ _ HvR)) HΓu Hlen Hty Hρ
               (params_relevant_valid _ (valid_rview_record_valid _ _ HvR))) as (us & Eus & Hgu & Hlu).
   destruct (@vrr_type_rel (gc_mk Θ Ξ) qx Rx us us HvR Hgu Hlu) as [i HR].
-  exact (view_below_acc Θ Ξ Γu _ (@per_univ_nest_acc_rel (gc_mk Θ Ξ) _ _ _ _ _ _ _ HR HR) (vk_record qx Isx) ρ us nil Hρ Eus
+  exact (view_below_acc Θ Ξ Γu _ (@per_univ_nest_acc_rel (gc_mk Θ Ξ) _ _ _ _ _ _ _ HR HR) (vk_record qx Wsx) ρ us nil Hρ Eus
            (ex_intro _ Rx (conj Hl Hlu)) eq_refl).
 Qed.
 
 (** A typed view is accessible for [view_lt]: its type is one of the
     model. *)
-Theorem view_inv_acc : forall Θ Ξ Γu qx kx Csx, ⊢ᵍ Θ ⍮ Ξ -> view_inv Θ Ξ Γu qx kx Csx -> Acc (view_lt Θ Ξ Γu) (vk_ind qx kx Csx).
+Theorem view_inv_acc : forall Θ Ξ Γu qx kx Wsx, ⊢ᵍ Θ ⍮ Ξ -> view_inv Θ Ξ Γu qx kx (List.map nf_to_exp Wsx) ->
+    Acc (view_lt Θ Ξ Γu) (vk_ind qx kx Wsx).
 Proof.
   intros * Hg [[Dx Hl Hk Hlen Hty HΓu] _ _ _].
   destruct (List.nth_error (ind_members Dx) kx) as [Mk |] eqn:HM;
@@ -1295,12 +1296,12 @@ Proof.
   pose proof (@completeness_fundamental_ctx (gc_mk Θ Ξ) _ HΓu) as HΓs.
   destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
   destruct (per_ctx_then_per_env_initial_env HRΓ) as (ρ & _ & Hρ & _ & _).
-  destruct (@inst_gargs (gc_mk Θ Ξ) Γu (ind_uparams Dx) Csx ρ (decl_closed_ass _ Hc)
+  destruct (@inst_gargs (gc_mk Θ Ξ) Γu (ind_uparams Dx) (List.map nf_to_exp Wsx) ρ (decl_closed_ass _ Hc)
               (@completeness_fundamental_ctx (gc_mk Θ Ξ) _ (decl_typed_uparams_field _ _ _ Hdt)) HΓu
               ltac:(rewrite Hlen; reflexivity) Hty Hρ
               (valid_ind_decl_uparams_relevant _ (@valid_ind_decl_gc (gc_mk Θ Ξ) _ _ Hg Hl))) as (us & Eus & Hgu & Hlu).
   destruct (@decl_member_type (gc_mk Θ Ξ) qx Dx kx Mk us Hg Hl HM Hk Hgu Hlu) as (ns & i & R & HR).
-  exact (view_below_acc Θ Ξ Γu _ (@per_univ_nest_acc_rel (gc_mk Θ Ξ) _ _ _ _ _ _ _ HR HR) (vk_ind qx kx Csx) ρ us ns Hρ Eus
+  exact (view_below_acc Θ Ξ Γu _ (@per_univ_nest_acc_rel (gc_mk Θ Ξ) _ _ _ _ _ _ _ HR HR) (vk_ind qx kx Wsx) ρ us ns Hρ Eus
            (ex_intro _ Dx (conj Hl Hlu)) eq_refl).
 Qed.
 
@@ -1412,7 +1413,7 @@ Section MeetsOffMembers.
       ⊢ᵍ gc_deps ⍮ gc_stack -> ⊢ Γu -> ind_lookup gc_deps gc_stack qx = Some D -> List.length Cs = ind_nu D ->
       (forall j C T, List.nth_error Cs j = Some C -> List.nth_error (tele_insts (ind_uparams D) Id Cs) j = Some T -> Γu ⊢ C : T) ->
       nbes gc_deps gc_stack Γu Cs (tele_insts (ind_uparams D) Id Cs) Ws -> Cs = List.map nf_to_exp Ws ->
-      siblings_from gc_deps gc_stack Γu qx Cs 0 (ind_members D) ss ->
+      siblings_from gc_deps gc_stack Γu qx Ws 0 (ind_members D) ss ->
       ind_member D m = Some Mi -> ind_con Mi c = Some gs -> gs = gs1 ++ g :: gs2 ->
       tele_sub (cargs_ctx qx D Mi gs1 ++ im_nparams Mi) (sb_of_list Id Cs) ++ Γu
         ⊢ (carg_ty qx D (im_nn Mi) (cargs_pat gs1) g)[sb_qn (List.length gs1 + im_nn Mi) (sb_of_list Id Cs)] : Typeω@i ->
@@ -1422,7 +1423,7 @@ Section MeetsOffMembers.
       classify_arg (grp_info gc_deps gc_stack) (rec_info gc_deps gc_stack) nu (im_nn Mi + nu) n pat (nf_to_exp W) = Some gz ->
       In z (classified_carg_view gz) ->
       List.length pat = List.length gs1 ->
-      In z ss \/ view_lt gc_deps gc_stack Γu z (vk_ind qx kx Cs).
+      In z ss \/ view_lt gc_deps gc_stack Γu z (vk_ind qx kx Ws).
   Proof.
     intros * Hg HΓu Hl HCl HCt Hn HCs Hss HM Hcon Heq HT HW Hpf Hcls Hin Hlp.
     destruct g as [r A | t]; cbn [carg_ty] in HT, HW.
@@ -1450,7 +1451,7 @@ Section MeetsOffMembers.
           destruct (nonrec_meet_below_record Γu qx D kx Cs ρ0 us m Mi c gs gs1 r A gs2 i W Bs qz Rs Rz Isz Hg HΓu Hl HCl HCt Hρ0 Eus
                       HM Hcon Heq HT HW HWe Hlz HIzl HIzt HC) as (usz & Eusz & Hlusz & Hstep).
           clear - Hρ0 Eus Eusz Hlz Hlusz Hstep; destruct GC as [Θ0 Ξ0].
-          refine (mk_view_below _ _ _ (vk_record qz Isz) (vk_ind qx kx Cs) ρ0 Hρ0 us Eus usz Eusz nil
+          refine (mk_view_below _ _ _ (vk_record qz Isz) (vk_ind qx kx Ws) ρ0 Hρ0 us Eus usz Eusz nil
                     (ex_intro _ Rz (conj Hlz Hlusz)) _).
           cbn [key_type]; rewrite List.app_nil_r; exact Hstep. }
       destruct (nest_view_inv _ _ _ _ _ _ _ _ _ _ _ _ _ HΔa HlΔ HT HW Hpf Hcls Hin) as [[Dz Hlz Hkz HCzl HCzt _] _ _ _].
@@ -1467,7 +1468,7 @@ Section MeetsOffMembers.
       destruct (nonrec_meet_below Γu qx D kx Cs ρ0 us m Mi c gs gs1 r A gs2 i W Bs qz kz Rs Dz Csz Hg HΓu Hl HCl HCt Hρ0 Eus
                   HM Hcon Heq HT HW HWe Hlz Hkz HCzl HCzt HC) as (usz & nsz & Eusz & Hlusz & Hstep).
       clear - Hρ0 Eus Eusz Hlz Hlusz Hstep; destruct GC as [Θ0 Ξ0].
-      refine (mk_view_below _ _ _ (vk_ind qz kz Csz) (vk_ind qx kx Cs) ρ0 Hρ0 us Eus usz Eusz nsz
+      refine (mk_view_below _ _ _ (vk_ind qz kz Csz) (vk_ind qx kx Ws) ρ0 Hρ0 us Eus usz Eusz nsz
                 (ex_intro _ Dz (conj Hlz Hlusz)) _).
       cbn [key_type]; rewrite List.app_nil_r; exact Hstep.
     - (** a recursive argument: a sibling *)
@@ -1500,13 +1501,13 @@ Section MeetsOffMembers.
       ⊢ᵍ gc_deps ⍮ gc_stack -> ⊢ Γu -> ind_lookup gc_deps gc_stack qx = Some D -> List.length Cs = ind_nu D ->
       (forall j C T, List.nth_error Cs j = Some C -> List.nth_error (tele_insts (ind_uparams D) Id Cs) j = Some T -> Γu ⊢ C : T) ->
       nbes gc_deps gc_stack Γu Cs (tele_insts (ind_uparams D) Id Cs) Ws -> Cs = List.map nf_to_exp Ws ->
-      siblings_from gc_deps gc_stack Γu qx Cs 0 (ind_members D) ss ->
+      siblings_from gc_deps gc_stack Γu qx Ws 0 (ind_members D) ss ->
       ind_member D j = Some Mj ->
       classify_cons_in gc_deps gc_stack (tele_sub (im_nparams Mj) (sb_of_list sb_id Cs) ++ Γu) nu (im_nn Mj + nu) n
         (List.map (fun cg => (fst cg, ctx_args (tele_sub (cargs_ctx qx D Mj (snd cg)) (sb_qn (im_nn Mj) (sb_of_list sb_id Cs)))))
            (im_cons Mj)) cs ->
       In z (classified_cons_views cs) ->
-      In z ss \/ view_lt gc_deps gc_stack Γu z (vk_ind qx kx Cs).
+      In z ss \/ view_lt gc_deps gc_stack Γu z (vk_ind qx kx Ws).
   Proof.
     intros * Hg HΓu Hl HCl HCt Hn HCs Hss HMj Hcls Hz.
     destruct (classify_cons_in_site _ _ _ _ _ _ _ _ Hcls _ Hz) as (rc & pre & y & T & post & pat & g & Hrc & Hsnd & Hgc & Hin & Hlp).
@@ -1561,7 +1562,7 @@ Section MeetsOffMembers.
       ⊢ᵍ gc_deps ⍮ gc_stack -> ⊢ Γu -> ind_lookup gc_deps gc_stack qx = Some D -> List.length Cs = ind_nu D ->
       (forall j C T, List.nth_error Cs j = Some C -> List.nth_error (tele_insts (ind_uparams D) Id Cs) j = Some T -> Γu ⊢ C : T) ->
       nbes gc_deps gc_stack Γu Cs (tele_insts (ind_uparams D) Id Cs) Ws -> Cs = List.map nf_to_exp Ws ->
-      siblings_from gc_deps gc_stack Γu qx Cs 0 (ind_members D) ss ->
+      siblings_from gc_deps gc_stack Γu qx Ws 0 (ind_members D) ss ->
       ind_member D i = Some Mi -> im_head Mi = mh_view qv kv Iv vm -> ind_lookup gc_deps gc_stack qv = Some Dqv ->
       nbes gc_deps gc_stack Γu (List.map (fun I => I[sb_of_list Id Cs]) Iv)
         (List.map (fun T => T[sb_of_list Id Cs]) (tele_insts (ind_uparams Dqv) Id Iv)) Wv ->
@@ -1571,7 +1572,7 @@ Section MeetsOffMembers.
                                                   (sb_qn (im_nn My) (sb_of_list sb_id (List.map nf_to_exp Wv))))))
            (im_cons My)) cs ->
       In z (classified_cons_views cs) ->
-      In z ss \/ view_lt gc_deps gc_stack Γu z (vk_ind qx kx Cs).
+      In z ss \/ view_lt gc_deps gc_stack Γu z (vk_ind qx kx Ws).
   Proof.
     intros * Hg HΓu Hl HCl HCt Hn HCs Hss HMi Hh Hlv Hnv HMy Hcls Hz.
     destruct (classify_cons_in_site _ _ _ _ _ _ _ _ Hcls _ Hz) as (rc & pre & y & T & post & pat & g & Hrc & Hsnd & Hgc & Hin & Hlp).
@@ -1679,7 +1680,7 @@ Section MeetsOffMembers.
       ⊢ᵍ gc_deps ⍮ gc_stack -> ⊢ Γu -> ind_lookup gc_deps gc_stack qx = Some D -> List.length Cs = ind_nu D ->
       (forall j C T, List.nth_error Cs j = Some C -> List.nth_error (tele_insts (ind_uparams D) Id Cs) j = Some T -> Γu ⊢ C : T) ->
       nbes gc_deps gc_stack Γu Cs (tele_insts (ind_uparams D) Id Cs) Ws -> Cs = List.map nf_to_exp Ws ->
-      siblings_from gc_deps gc_stack Γu qx Cs 0 (ind_members D) ss ->
+      siblings_from gc_deps gc_stack Γu qx Ws 0 (ind_members D) ss ->
       ind_member D i = Some Mi -> im_head Mi = mh_record qr Ir fl -> record_lookup gc_deps gc_stack qr = Some Rr ->
       nbes gc_deps gc_stack Γu (List.map (fun I => I[sb_of_list Id Cs]) Ir)
         (List.map (fun T => T[sb_of_list Id Cs]) (tele_insts (record_params Rr) Id Ir)) Wr ->
@@ -1687,7 +1688,7 @@ Section MeetsOffMembers.
         ((rview_con, ctx_args (tele_sub (record_fctx Rr (List.length (record_fields Rr))) (sb_of_list sb_id (List.map nf_to_exp Wr))))
            :: nil) cs ->
       In z (classified_cons_views cs) ->
-      In z ss \/ view_lt gc_deps gc_stack Γu z (vk_ind qx kx Cs).
+      In z ss \/ view_lt gc_deps gc_stack Γu z (vk_ind qx kx Ws).
   Proof.
     intros * Hg HΓu Hl HCl HCt Hn HCs Hss HMi Hh Hlr Hnr Hcls Hz.
     destruct (classify_cons_in_site _ _ _ _ _ _ _ _ Hcls _ Hz) as (rc & pre & y & T & post & pat & g & Hrc & Hsnd & Hgc & Hin & Hlp).
@@ -1840,7 +1841,7 @@ Section MeetsOffMembers.
       ind_member D m = Some Mm -> im_head Mm = mh_view qv kv Iv vm -> ind_lookup gc_deps gc_stack qv = Some Dqv ->
       nbes gc_deps gc_stack Γu (List.map (fun I => I[sb_of_list sb_id Cs]) Iv)
         (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (ind_uparams Dqv) sb_id Iv)) Wv ->
-      siblings_from gc_deps gc_stack Γu qx Cs 0 (ind_members D) ss ->
+      siblings_from gc_deps gc_stack Γu qx Ws 0 (ind_members D) ss ->
       siblings_from gc_deps gc_stack Γu qv (List.map nf_to_exp Wv) 0 (ind_members Dqv) ssy ->
       incl ssy ss.
   Proof.

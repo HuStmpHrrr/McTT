@@ -591,7 +591,7 @@ Proof. intros * Hr *; unfold classify_arg; rewrite (classify_shape_rec_ext _ _ _
 
 (** The instances a classified argument meets, in order: the one its
     shape ends in, if it ends in a nested occurrence. *)
-Fixpoint classified_ptyp_view (t : classified_ptyp) : list view_key :=
+Fixpoint classified_ptyp_view {K : Set} (t : classified_ptyp_of K) : list K :=
   match t with
   | classified_ptyp_nest x _ => x :: nil
   | classified_ptyp_pi _ t' => classified_ptyp_view t'
@@ -600,7 +600,7 @@ Fixpoint classified_ptyp_view (t : classified_ptyp) : list view_key :=
 
 (** The instance a classified argument meets, if it is a nested
     occurrence. *)
-Definition classified_carg_view (g : classified_carg) : list view_key :=
+Definition classified_carg_view {K : Set} (g : classified_carg_of K) : list K :=
   match g with classified_carg_rec_case t => classified_ptyp_view t | classified_carg_arg _ _ => nil end.
 
 (** The instances the constructors [cs] meet, constructors in order,

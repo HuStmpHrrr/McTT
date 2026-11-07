@@ -99,7 +99,7 @@ Section Clusters.
       data_siblings a = vk_record qx Isx :: nil /\
       exists Rx, record_lookup Θ Ξ qx = Some Rx /\
         classify_cons_in Θ Ξ (raw_decl_uniform_ctx Ξ R) (raw_decl_nu R) (raw_decl_nu R) (raw_decl_nmembers R)
-          ((rview_con, ctx_args (tele_sub (record_fctx Rx (List.length (record_fields Rx))) (sb_of_list sb_id Isx))) :: nil)
+          ((rview_con, ctx_args (tele_sub (record_fctx Rx (List.length (record_fields Rx))) (sb_of_list sb_id (List.map nf_to_exp Isx)))) :: nil)
           (data_cons a).
   Proof.
     intros * [Hs Hc _].
@@ -281,7 +281,8 @@ Section Clusters.
   Definition views_search_run (csD : list (list (string * list classified_carg))) :
       result view_data (view_data_ok Θ Ξ R) data_siblings data_meets view_why nil (List.concat (List.map classified_cons_views csD)) :=
     views_search_from view_data (view_data_ok Θ Ξ R) data_siblings data_meets (view_data_functional Θ Ξ R) view_why
-      (view_data_dec F HΞ R) _ (views_reach_finite csD).
+      (view_data_dec F HΞ R) _ view_why_shadowed
+      (reach_finite_key_in view_data (view_data_ok Θ Ξ R) data_siblings data_meets _ (views_reach_finite csD)).
 End Clusters.
 
 (** ** The Views Found, as the Checker Asks *)
@@ -305,7 +306,7 @@ Definition raw_decl_first_name (R : raw_decl) : string :=
   match raw_decl_members R with Mr :: _ => raw_member_name Mr | nil => ""%string end.
 
 (** A run of the search, as the checker asks of the views. *)
-Lemma views_found_ok : forall Θ Ξ R csD Vf Af, NoDup Vf -> Forall2 (view_data_ok Θ Ξ R) Vf Af ->
+Lemma views_found_ok : forall Θ Ξ R csD Vf Af, key_nodup Vf -> Forall2 (view_data_ok Θ Ξ R) Vf Af ->
     views_dfs (siblings_table Vf (List.map data_siblings Af)) (met_table Vf (List.map data_meets Af)) nil (List.concat (List.map classified_cons_views csD)) Vf ->
     Command.views_ok Θ Ξ R csD Vf (List.map data_siblings Af) (List.map data_cons Af) (List.map data_nparams Af).
 Proof.
@@ -336,10 +337,11 @@ Proof.
   destruct (views_search_run F HΞ R csD) as [[[Vf Af] (Hd & HF & Hbf)] | [[x e] Hf]]; [ eexists; reflexivity |].
   exfalso; apply (Hf (siblings_table Vs Ss) (meets_table Vs csV) Vs Hb).
   - intros y a Hy Ha.
-    destruct (view_key_index_in_some _ _ Hy) as [v Hv]; unfold siblings_table, meets_table, data_meets; rewrite Hv; split.
+    destruct (view_key_pos_in_some _ _ Hy) as [v Hv]; unfold siblings_table, meets_table, data_meets; rewrite Hv; split.
     + exact (view_siblings_functional _ _ _ _ _ _ (Forall2_index _ _ _ _ _ _ Hs Hv) (data_ok_siblings _ _ _ _ _ Ha)).
     + f_equal; exact (view_classify_functional _ _ _ _ _ _ (Forall2_index _ _ _ _ _ _ Hc Hv) (data_ok_cons _ _ _ _ _ Ha)).
-  - intros y Hy; destruct (view_key_index_in_some _ _ Hy) as [v Hv].
+  - exact (siblings_table_absent _ _).
+  - intros y Hy; destruct (view_key_pos_in_some _ _ Hy) as [v Hv].
     exists (mk_view_data (List.nth v Ss nil) (List.nth v csV nil) (List.nth v Nvs nil)); constructor; cbn.
     + exact (Forall2_index _ _ _ _ _ _ Hs Hv).
     + exact (Forall2_index _ _ _ _ _ _ Hc Hv).
