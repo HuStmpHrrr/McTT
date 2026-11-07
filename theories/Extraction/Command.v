@@ -321,6 +321,8 @@ Section ModBlame.
     | a_let (b_def A N) B =>
         first_some (mod_blame A) (fun _ => first_some (mod_blame N) (fun _ => mod_blame B))
     | a_let (b_mod _) B => mod_blame B
+    | a_let (b_def_mod A N _) B =>
+        first_some (mod_blame A) (fun _ => first_some (mod_blame N) (fun _ => mod_blame B))
     | a_mem H x => mod_term_blame H x
     | _ => None
     end.
@@ -447,6 +449,8 @@ Section BranchBlame.
     | a_let (b_def A N) B =>
         first_some (brs_blame F A) (fun _ => first_some (brs_blame F N) (fun _ => brs_blame F B))
     | a_let (b_mod _) B => brs_blame F B
+    | a_let (b_def_mod A N _) B =>
+        first_some (brs_blame F A) (fun _ => first_some (brs_blame F N) (fun _ => brs_blame F B))
     | _ => None
     end.
 End BranchBlame.
@@ -564,6 +568,8 @@ Section BlocksBlame.
     | a_let (b_def A N) B =>
         first_some (blocks_blame Γ A) (fun _ => first_some (blocks_blame Γ N) (fun _ => blocks_blame (ce_def A N :: Γ) B))
     | a_let (b_mod U) B => blocks_blame (ce_mod U :: Γ) B
+    | a_let (b_def_mod A N U) B =>
+        first_some (blocks_blame Γ A) (fun _ => first_some (blocks_blame Γ N) (fun _ => blocks_blame (ce_dm A N U :: Γ) B))
     | _ => None
     end.
 End BlocksBlame.
@@ -638,6 +644,8 @@ Section ValueBlame.
     | a_let (b_def A N) B =>
         first_some (value_blame Γ A) (fun _ => first_some (value_blame Γ N) (fun _ => value_blame (ce_def A N :: Γ) B))
     | a_let (b_mod U) B => value_blame (ce_mod U :: Γ) B
+    | a_let (b_def_mod A N U) B =>
+        first_some (value_blame Γ A) (fun _ => first_some (value_blame Γ N) (fun _ => value_blame (ce_dm A N U :: Γ) B))
     | a_tuple T fs =>
         first_some (match record_head T with Some (p, R) => fields_blame p R fs | None => None end)
           (fun _ => first_some (value_blame Γ T) (fun _ =>
@@ -863,21 +871,6 @@ Qed.
 
 Lemma dom_cons : forall fp U Θ fq, In fq (gds_dom ((fp, U) :: Θ)) <-> fq = fp \/ In fq (gds_dom Θ).
 Proof. intros; cbn; split; intros [H | H]; auto. Qed.
-
-(** Being a type former of an inductive type, a normal form, moves along an
-    equivalence. *)
-Lemma equiv_ind_former : forall Θ Θ' Ξ Γ M W, gds_equiv Θ Θ' -> ind_former Θ Ξ Γ M W -> ind_former Θ' Ξ Γ M W.
-Proof.
-  intros * He; unfold ind_former; destruct (nf_pi_tele W) as [Ds C].
-  intros (Hu & p & k & Rs & Hn); split; [ exact Hu | exists p, k, Rs; exact (equiv_nbe _ _ _ He _ _ _ _ Hn) ].
-Qed.
-
-(** Likewise of a record type. *)
-Lemma equiv_record_former : forall Θ Θ' Ξ Γ M W, gds_equiv Θ Θ' -> record_former Θ Ξ Γ M W -> record_former Θ' Ξ Γ M W.
-Proof.
-  intros * He; unfold record_former; destruct (nf_pi_tele W) as [Ds C].
-  intros (Hu & p & Rs & Hn); split; [ exact Hu | exists p, Rs; exact (equiv_nbe _ _ _ He _ _ _ _ Hn) ].
-Qed.
 
 (** A type inferred algorithmically moves along an equivalence to
     well-formed dependencies. *)

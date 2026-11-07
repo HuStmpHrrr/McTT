@@ -369,14 +369,15 @@ with alg_ext : ctx -> ctx -> Prop :=
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢aᵘ U ->
      Γ ⊢aˣ Ψ ▹ₘ U )
-(** A definition with a module part: as a definition and as a module slot. *)
+(** A definition with a module part: as a definition and as a module
+    slot, its unit an alias under no parameters ([wf_ext_eq_dm]). *)
 | alg_ext_dm :
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
      Ψ ++ Γ ⊢a M ⟸ A ->
-     Ψ ++ Γ ⊢aᵘ U ->
-     Γ ⊢aˣ Ψ ▸ₘ A ≔ M ‖ U )
+     Ψ ++ Γ ⊢aᵘ gu_mk nil (md_alias E) ->
+     Γ ⊢aˣ Ψ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) )
 where "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope
 (** The parameters of a unit: assumptions, each of a type of a universe
     (the premise (R) of the unit rules).  A proposition is no parameter. *)
@@ -442,14 +443,16 @@ with alg_body : ctx -> gmod -> gmod -> Prop :=
      body_ctx Φx ++ Γ ⊢aᵘ U ->
      Γ ⊢aᵇ gm_ext Φ x (ge_mod pm U) ⇝ gm_ext Φx x (ge_mod pm U) )
 (** A definition with a module part: its term part as a definition, its
-    unit as a submodule. *)
+    unit, an alias under no parameters as the context entry's is
+    ([wf_ext_eq_dm]), as a submodule.  A unit of another shape is
+    rejected. *)
 | alg_body_dm :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
      body_ctx Φx ++ Γ ⊢a M ⟸ A ->
-     body_ctx Φx ++ Γ ⊢aᵘ U ->
-     Γ ⊢aᵇ gm_ext Φ x (ge_def_mod pv A M U) ⇝ gm_ext Φx x (ge_def_mod pv A M U) )
+     body_ctx Φx ++ Γ ⊢aᵘ gu_mk nil (md_alias E) ->
+     Γ ⊢aᵇ gm_ext Φ x (ge_def_mod pv A M (gu_mk nil (md_alias E))) ⇝ gm_ext Φx x (ge_def_mod pv A M (gu_mk nil (md_alias E))) )
 | alg_body_open :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢aᵐ H ->

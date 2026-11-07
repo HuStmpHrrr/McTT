@@ -163,6 +163,40 @@ Section Facts.
     exact (wf_type_of_sort _ HSC (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_mod _ _ _ _ HU'))).
   Qed.
 
+  (** A local definition with a module part extends the context: its type
+      of a large universe, its definiens checked against it, its unit an
+      alias under no parameters. *)
+  Lemma ctx_dm_of_check : forall G A M E UA u, ⊢ G -> G ⊢a A ⟹ UA -> is_univ_nf UA u -> G ⊢a M ⟸ A ->
+      G ⊢aᵘ gu_mk nil (md_alias E) -> ⊢ G ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E).
+  Proof.
+    intros * HG HA Hu HM HU.
+    assert (HAu : G ⊢ A : Typeω@(universe_nf_large_index u))
+      by (apply wf_exp_universe_nf_large_index; rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
+          exact (alg_type_infer_sound HA HG)).
+    eapply wf_ctx_extend_dm;
+      [ exact HAu | exact (alg_type_check_sound_sort HM HG (type_sort_universe _) HAu) | exact (alg_unit_sound HU HG) ].
+  Qed.
+
+  (** The type of the body of a local definition with a module part, at
+      the definiens and the unit *)
+  Lemma typ_let_dm_inst : forall G A M E B UA u (C : nf) κC, ⊢ G -> G ⊢a A ⟹ UA -> is_univ_nf UA u -> G ⊢a M ⟸ A ->
+      G ⊢aᵘ gu_mk nil (md_alias E) ->
+      G ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢a B ⟹ C -> nf_to_exp C <> LevelSort ->
+      nbe_ty_kind (G ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)) C κC ->
+      G ⊢ᵗ (nf_to_exp C)[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))].
+  Proof.
+    intros * HG HA Hu HM HU HB HnL Hk.
+    pose proof (ctx_dm_of_check _ _ _ _ _ _ HG HA Hu HM HU) as HGd.
+    assert (HAu : G ⊢ A : Typeω@(universe_nf_large_index u))
+      by (apply wf_exp_universe_nf_large_index; rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
+          exact (alg_type_infer_sound HA HG)).
+    pose proof (alg_type_check_sound_sort HM HG (type_sort_universe _) HAu) as HM'.
+    destruct (typed_at_kind_of_nbe (alg_type_infer_sound HB HGd) HnL Hk) as [k HC].
+    pose proof (type_sort_kind_universe κC k) as HSC.
+    exact (wf_type_of_sort _ HSC (sub_preserves_sort _ _ _ _ _ _ _ HC HSC
+                                    (wf_sub_single_dm _ _ _ _ _ _ _ HAu HM' (alg_unit_sound HU HG)))).
+  Qed.
+
   (** A variable's type *)
   Lemma typ_vlookup : forall G x A, ⊢ G -> G ∋ #x : A -> G ⊢ᵗ A.
   Proof.
@@ -258,6 +292,13 @@ Ltac obligation_order :=
   try match goal with H : type_check_order _ |- _ => progressive_invert H end;
   first
     [ eassumption
+    (** the order of a literal part, one inversion down: inverting further
+        would take the literal's own order apart *)
+    | solve [ match goal with
+              | H : type_infer_order _ |- _ => progressive_invert H
+              | H : body_order _ |- _ => progressive_invert H
+              | H : ext_order _ |- _ => progressive_invert H
+              end; eassumption ]
     | repeat match goal with
         | H : type_infer_order _ |- _ => progressive_invert H
         | H : ext_order _ |- _ => progressive_invert H
@@ -301,6 +342,9 @@ Ltac checker_ctx :=
                 exact (ctx_ass_of_sort _ _ _ _ _ HG Ha is_sort_nf_prop) end
             | match goal with HG : ⊢ ?G0, HU : ?G0 ⊢aᵘ ?U |- ⊢ ?G0 ▹ₘ ?U =>
                 exact (wf_ctx_extend_mod _ _ _ _ (alg_unit_sound HU HG)) end
+            | match goal with HG : ⊢ ?G0, Ha : ?G0 ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA _, HM : ?G0 ⊢a ?M ⟸ ?A,
+                HU : ?G0 ⊢aᵘ gu_mk nil (md_alias ?E) |- ⊢ ?G0 ▸ₘ ?A ≔ ?M ‖ gu_mk nil (md_alias ?E) =>
+                exact (ctx_dm_of_check _ _ _ _ _ _ HG Ha Hu HM HU) end
             | match goal with HG : ⊢ ?G0, HX : ?G0 ⊢aˣ ?Ψ |- ⊢ ?Ψ ++ ?G0 =>
                 exact (ext_eq_ctx_left _ _ _ _ _ (alg_ext_sound HX HG)) end
             | match goal with HG : ⊢ ?G0, HX : ?G0 ⊢aᵖ ?Ψ |- ⊢ ?Ψ ++ ?G0 =>
@@ -347,6 +391,11 @@ Ltac checker_type :=
             | match goal with HG : ⊢ G, HU : G ⊢aᵘ ?U, HB : _ ⊢a _ ⟹ ?C, HnL : nf_to_exp ?C <> LevelSort,
                 Hk : nbe_ty_kind _ (nf_to_exp ?C) _ |- _ =>
                 lazymatch X with (nf_to_exp C)[Id ,,ₘ me_lit U] => exact (typ_let_mod_inst _ _ _ _ _ HG HU HB HnL Hk) end end
+            | match goal with HG : ⊢ G, HA : G ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA _, HM : G ⊢a ?M ⟸ ?A,
+                HU : G ⊢aᵘ gu_mk nil (md_alias ?E), HB : _ ⊢a _ ⟹ ?C, HnL : nf_to_exp ?C <> LevelSort,
+                Hk : nbe_ty_kind _ (nf_to_exp ?C) _ |- _ =>
+                lazymatch X with (nf_to_exp C)[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] =>
+                  exact (typ_let_dm_inst _ _ _ _ _ _ _ _ _ HG HA Hu HM HU HB HnL Hk) end end
             | match goal with HG : ⊢ G, Hl : G ∋ #_ : X |- _ => exact (typ_vlookup _ _ _ HG Hl) end
             | match goal with HG : ⊢ G, HM : G ⊢aᵐ ?M, Hm : mdenote _ _ G (me_mem ?M _) _, Ht : mdesc_type _ = Some X |- _ =>
                 exact (member_typ_of_alg _ _ _ _ _ HG HM Hm Ht) end
@@ -613,6 +662,25 @@ Section type_check.
         let*b->o _ := kind_not_level_dec κC while _ in
         let (D, _) := nbe_ty_env_impl F G P (C : nf)[Id ,,ₘ me_lit U] _ in
         pureo (exist _ D _)
+    (** A local definition with a module part: its type of a large
+        universe, its definiens checked against it, its unit, an alias
+        under no parameters, as a local module's, the body's type as for a
+        local module *)
+    | a_let (b_def_mod A' M' (gu_mk nil (md_alias E))) B' =>
+        let*o (exist _ UA _) := type_infer_in G _ P A' _ while _ in
+        let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
+        let*b->o _ := type_check_in G A' _ P M' _ while _ in
+        let*b->o _ := unit_check G HG (gu_mk nil (md_alias E)) _ while _ in
+        let HGD : ⊢ G ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E) := _ in
+        let PD := checker_env_dm F G P A' M' (gu_mk nil (md_alias E)) HGD in
+        let*o (exist _ C _) := type_infer_in (G ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E)) HGD PD B' _ while _ in
+        let*b->o _ := nf_not_level_sort_dec C while _ in
+        let (κC, _) := checker_kind F (G ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E)) PD C _ in
+        let*b->o _ := kind_not_level_dec κC while _ in
+        let (D, _) := nbe_ty_env_impl F G P (C : nf)[Id ,,ᵈ M' ‖ me_lit (gu_mk nil (md_alias E))] _ in
+        pureo (exist _ D _)
+    (** A unit of another shape infers nothing *)
+    | a_let (b_def_mod A' M' U) B' => inright _
     (** A member infers the normal form of the type that the description of
         its module reads. *)
     | a_mem M' x =>
@@ -707,16 +775,16 @@ Section type_check.
       let*b->o _ := unit_check (body_ctx Φx ++ G) _ U _ while _ in
       pureo (exist _ (gm_ext Φx x (ge_mod pm U)) _)
   (** A definition with a module part: its term part as a definition, then
-      its unit. *)
-  | G, HG, gm_ext Φ x (ge_def_mod pv A M U), H =>
+      its unit, an alias under no parameters ([alg_body_dm]). *)
+  | G, HG, gm_ext Φ x (ge_def_mod pv A M (gu_mk nil (md_alias E))), H =>
       let*o (exist _ Φx _) := body_check G HG Φ _ while _ in
       let HGx : ⊢ body_ctx Φx ++ G := _ in
       let PGx := checker_env_of F _ HGx in
       let*o (exist _ UA _) := type_infer_in (body_ctx Φx ++ G) HGx PGx A _ while _ in
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
       let*b->o _ := type_check_in (body_ctx Φx ++ G) A _ PGx M _ while _ in
-      let*b->o _ := unit_check (body_ctx Φx ++ G) HGx U _ while _ in
-      pureo (exist _ (gm_ext Φx x (ge_def_mod pv A M U)) _)
+      let*b->o _ := unit_check (body_ctx Φx ++ G) HGx (gu_mk nil (md_alias E)) _ while _ in
+      pureo (exist _ (gm_ext Φx x (ge_def_mod pv A M (gu_mk nil (md_alias E)))) _)
   | G, HG, gm_ext Φ x E, H => inright _
   | G, HG, gm_open Φ M its Φg, H =>
       let*o (exist _ Φx _) := body_check G HG Φ _ while _ in
@@ -763,16 +831,19 @@ Section type_check.
       let*b _ := ext_check G HG Ψ _ while _ in
       let*b _ := unit_check (Ψ ++ G) _ U _ while _ in
       pureb _
-  (** A definition with a module part: as a definition, then its unit. *)
-  | G, HG, ce_dm A M U :: Ψ, H =>
+  (** A definition with a module part: as a definition, then its unit, an
+      alias under no parameters ([alg_ext_dm]). *)
+  | G, HG, ce_dm A M (gu_mk nil (md_alias E)) :: Ψ, H =>
       let*b _ := ext_check G HG Ψ _ while _ in
       let HΨ : ⊢ Ψ ++ G := _ in
       let PΨ := checker_env_of F (Ψ ++ G) HΨ in
       let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ PΨ A _ while _ in
       let*o->b (exist _ u _) := univ_nf_idx_dec UA while _ in
       let*b _ := type_check_in (Ψ ++ G) A _ PΨ M _ while _ in
-      let*b _ := unit_check (Ψ ++ G) HΨ U _ while _ in
-      pureb _.
+      let*b _ := unit_check (Ψ ++ G) HΨ (gu_mk nil (md_alias E)) _ while _ in
+      pureb _
+  (** A unit of another shape is rejected *)
+  | G, HG, ce_dm A M U :: Ψ, H => right _.
   Solve All Obligations with checker_obligation.
 
   (** The checker from scratch: the initial environment of the context is

@@ -82,6 +82,7 @@ with binding_mvcb (n : nat) (b : binding) {struct b} : bool :=
   match b with
   | b_def A M => exp_mvcb n A && exp_mvcb n M
   | b_mod U => gunit_mvcb n U
+  | b_def_mod A M U => exp_mvcb n A && exp_mvcb n M && gunit_mvcb n U
   end
 with gunit_mvcb (n : nat) (U : gunit) {struct U} : bool :=
   match U with

@@ -17,7 +17,7 @@ From Mctt.Core.Syntactic.System Require Import Privacy Translations.
 From Mctt.Core Require Import TypedElab.
 From Mctt.Core.Semantic Require Import GlobalExt.
 From Mctt.Core.Syntactic.System.Global Require Import Paths.
-From Mctt.Algorithmic.Typing Require Import Definitions Functional.
+From Mctt.Algorithmic.Typing Require Import Definitions Functional Lemmas.
 From Mctt.Extraction Require Import Lookup TypeCheckBase TypeCheck GlobalCheck MemberType MemberOrder Privacy.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Extraction Require Import IndDecl MdefGroup FastDesc LookupTwins Formers.
@@ -59,6 +59,10 @@ Section AlgEquiv.
   Let Hnbt : forall Γ A W, nbe_ty Θ Ξ Γ A W -> nbe_ty Θ' Ξ Γ A W := equiv_nbe_ty Θ Θ' Ξ He.
   Let Hnb : forall Γ M A W, nbe Θ Ξ Γ M A W -> nbe Θ' Ξ Γ M A W := equiv_nbe Θ Θ' Ξ He.
   Let Hmd := gds_equiv_mdenote_all Θ Θ' Ξ He.
+  Let Hif : forall Γ M W, ind_former Θ Ξ Γ M W -> ind_former Θ' Ξ Γ M W :=
+    fun Γ M W => equiv_ind_former Θ Θ' Ξ Γ M W He.
+  Let Hrf : forall Γ M W, record_former Θ Ξ Γ M W -> record_former Θ' Ξ Γ M W :=
+    fun Γ M W => equiv_record_former Θ Θ' Ξ Γ M W He.
 
   Lemma equiv_nfs_agree : forall Γ Ms Rs Ts, @nfs_agree (gc_mk Θ Ξ) Γ Ms Rs Ts -> @nfs_agree (gc_mk Θ' Ξ) Γ Ms Rs Ts.
   Proof. induction 1; [ apply (@nfs_agree_nil (gc_mk Θ' Ξ)) | eapply (@nfs_agree_cons (gc_mk Θ' Ξ)); eauto ]. Qed.

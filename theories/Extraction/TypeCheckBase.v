@@ -366,6 +366,10 @@ Section type_check.
   | type_infer_order_let : forall {A M B}, type_infer_order A -> type_check_order M -> type_infer_order B ->
       type_infer_order (a_let (b_def A M) B)
   | type_infer_order_let_mod : forall {U B}, unit_order U -> type_infer_order B -> type_infer_order (ℓₘ U in B)
+  (** A local definition with a module part infers its type, checks its
+      definiens, checks its unit and infers its body *)
+  | type_infer_order_let_dm : forall {A M U B}, type_infer_order A -> type_check_order M -> unit_order U ->
+      type_infer_order B -> type_infer_order (a_let (b_def_mod A M U) B)
   | type_infer_order_mem : forall {H x}, modexp_order H -> type_infer_order (a_mem H x)
   | type_infer_order_vlookup : forall {x}, type_infer_order #x
   (** A record's type former recurses on nothing *)
@@ -439,6 +443,7 @@ Section type_check.
     (forall b, match b with
            | b_def A M => type_infer_order A /\ type_infer_order M
            | b_mod U => unit_order U
+           | b_def_mod A M U => type_infer_order A /\ type_infer_order M /\ unit_order U
            end) /\
     (forall U, unit_order U) /\
     (forall D, match D with
@@ -458,6 +463,7 @@ Section type_check.
       (fun b => match b with
              | b_def A M => type_infer_order A /\ type_infer_order M
              | b_mod U => unit_order U
+             | b_def_mod A M U => type_infer_order A /\ type_infer_order M /\ unit_order U
              end)
       unit_order
       (fun D => match D with
@@ -489,9 +495,10 @@ Section type_check.
                      match goal with HB : forall x, List.In x _ -> _ /\ _ |- _ =>
                        exact (proj1 (List.Forall_forall _ _) (proj2 (proj2 (HB b Hb))) br Hbr) end ].
     - (* a local binding *)
-      destruct b as [A M | U]; destruct_conjs;
+      destruct b as [A M | U | A M U]; destruct_conjs;
         [ apply type_infer_order_let; [ assumption | constructor; assumption | assumption ]
-        | apply type_infer_order_let_mod; assumption ].
+        | apply type_infer_order_let_mod; assumption
+        | apply type_infer_order_let_dm; [ assumption | constructor; assumption | assumption | assumption ] ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall.
     - destruct E as [b pv κ A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? | ? ? ? ?]; destruct_conjs;
         first [ apply body_order_def; eauto with mctt | apply body_order_mod; assumption

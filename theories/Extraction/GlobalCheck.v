@@ -599,13 +599,16 @@ Section check_ctx.
       let*b HΓ := check_ctx HΞ Γ while _ in
       let*b _ := check_unit F levels_abstractable_dec Γ HΓ U while _ in
       pureb _
-  (** A definition with a module part: its type is one of a universe *)
-  | HΞ, Γ ▸ₘ A ≔ M ‖ U =>
+  (** A definition with a module part: its type is one of a universe, its
+      unit an alias under no parameters ([wf_ctx_extend_dm]) *)
+  | HΞ, Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) =>
       let*b HΓ := check_ctx HΞ Γ while _ in
       let*o->b (exist _ i _) := check_typ F levels_abstractable_dec Γ HΓ A while _ in
       let*b _ := check_exp_typed F levels_abstractable_dec Γ HΓ A _ M while _ in
-      let*b _ := check_unit F levels_abstractable_dec Γ HΓ U while _ in
+      let*b _ := check_unit F levels_abstractable_dec Γ HΓ (gu_mk nil (md_alias E)) while _ in
       pureb _
+  (** A unit of another shape is rejected *)
+  | HΞ, Γ ▸ₘ A ≔ M ‖ U => right _
   .
   (** A success is the context rule of the entry; a failure contradicts
       a decomposition of the extended context: its prefix, or its new

@@ -254,7 +254,7 @@ Proof.
           conclusion does not *)
       eapply sem_app; [ | | | | eassumption | | ]
     | eapply sem_let
-    | eapply sem_let_mod
+    | eapply sem_let_mod | eapply sem_let_dm
     | eapply sem_mem | eapply sem_vlookup | eapply sem_record | eapply sem_tuple | eapply sem_proj | eapply sem_exp_subtyp
     | (** term equality *)
       eapply sem_exp_eq_typ_cong | eapply sem_exp_eq_univ_cong | eapply sem_exp_eq_level_cong
@@ -267,9 +267,10 @@ Proof.
     | eapply sem_exp_eq_ind_cong | eapply sem_exp_eq_con_cong
     | eapply sem_exp_eq_elim_cong | eapply sem_exp_eq_pi_cong | eapply sem_exp_eq_fn_cong
     | eapply sem_exp_eq_app_cong | eapply sem_exp_eq_let_cong | eapply sem_exp_eq_let_mod_cong
+    | eapply sem_exp_eq_let_dm_cong
     | eapply sem_exp_eq_mem_cong | eapply sem_exp_eq_var | eapply sem_exp_eq_pi_beta
     | eapply sem_exp_eq_elim_iota | eapply sem_exp_eq_elim_view | eapply sem_exp_eq_con_view | eapply sem_exp_eq_con_rview
-    | eapply sem_exp_eq_let_zeta | eapply sem_exp_eq_let_mod_zeta
+    | eapply sem_exp_eq_let_zeta | eapply sem_exp_eq_let_mod_zeta | eapply sem_exp_eq_let_dm_zeta
     | eapply sem_exp_eq_mem_delta | eapply sem_exp_eq_var_delta | eapply sem_exp_eq_fn_eta
     | eapply sem_exp_eq_irrelevant | eapply sem_exp_eq_record_cong | eapply sem_exp_eq_tuple_cong
     | eapply sem_exp_eq_proj_cong | eapply sem_exp_eq_field_beta | eapply sem_exp_eq_record_eta

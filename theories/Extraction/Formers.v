@@ -17,7 +17,8 @@ From Mctt.Core.Consequences Require Import Consistency.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core Require Import TypedElab.
 From Mctt.Core.Syntactic.System.Inductives Require Import Runs IndCong.
-From Mctt.Extraction Require Import Lookup NbE.
+From Mctt.Core.Syntactic.System Require Import Command.
+From Mctt.Extraction Require Import Lookup NbE IndDecl.
 Import Syntax_Notations GlobalCtx_Notations.
 
 (** A normal type is the [Π] over its domains ([nf_pi_tele]), a telescope
@@ -112,3 +113,18 @@ Proof.
     try (right; intros (_ & p0 & Rs0 & Hn); pose proof (functional_nbe _ _ _ _ _ HW' Hn) as E; discriminate E).
   left; split; [ exact Hu | do 2 eexists; exact HW' ].
 Defined.
+
+(** Being a type former of an inductive type, a normal form, moves along an
+    equivalence. *)
+Lemma equiv_ind_former : forall Θ Θ' Ξ Γ M W, gds_equiv Θ Θ' -> ind_former Θ Ξ Γ M W -> ind_former Θ' Ξ Γ M W.
+Proof.
+  intros * He; unfold ind_former; destruct (nf_pi_tele W) as [Ds C].
+  intros (Hu & p & k & Rs & Hn); split; [ exact Hu | exists p, k, Rs; exact (equiv_nbe _ _ _ He _ _ _ _ Hn) ].
+Qed.
+
+(** Likewise of a record type. *)
+Lemma equiv_record_former : forall Θ Θ' Ξ Γ M W, gds_equiv Θ Θ' -> record_former Θ Ξ Γ M W -> record_former Θ' Ξ Γ M W.
+Proof.
+  intros * He; unfold record_former; destruct (nf_pi_tele W) as [Ds C].
+  intros (Hu & p & Rs & Hn); split; [ exact Hu | exists p, Rs; exact (equiv_nbe _ _ _ He _ _ _ _ Hn) ].
+Qed.

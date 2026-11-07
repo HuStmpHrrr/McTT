@@ -676,12 +676,13 @@ Proof.
 Qed.
 
 (** A definition with a module part: as a definition and as a submodule. *)
-Lemma alg_body_dm_sound : forall Γ Φ Φx x pv A M U i,
+Lemma alg_body_dm_sound : forall Γ Φ Φx x pv A M E i,
     alg_body_sound Γ Φ Φx ->
     (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@i) ->
     (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ M : A) ->
-    (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵘ U ≈ U) ->
-    alg_body_sound Γ (gm_ext Φ x (ge_def_mod pv A M U)) (gm_ext Φx x (ge_def_mod pv A M U)).
+    (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E)) ->
+    alg_body_sound Γ (gm_ext Φ x (ge_def_mod pv A M (gu_mk nil (md_alias E))))
+      (gm_ext Φx x (ge_def_mod pv A M (gu_mk nil (md_alias E)))).
 Proof.
   intros * IH HA HM HU Γ0 Ψ -> HΓ0 HΨ.
   destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho Hof [L HL]].
@@ -1030,6 +1031,27 @@ Proof.
   exact (exp_conv_sort HSC (soundness_ty_at_sort HSC HCs Hn) (wf_let_mod _ _ _ _ _ _ _ HU HC HSC Hms HB)).
 Qed.
 
+(** A local definition with a module part, of a type of a large universe
+    and a unit an alias under no parameters, whose body's type [C] is no
+    [LevelSort] and no type of levels, is of the normal form of [C]
+    instantiated ([wf_let_dm]). *)
+Lemma let_dm_typed_at_nf : forall {Γ A M E B l} {C D : nf} {κC},
+    Γ ⊢ A : Typeω@l -> Γ ⊢ M : A ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ B : C ->
+    nf_to_exp C <> LevelSort -> nbe_ty_kind (Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)) C κC -> κC <> ak_level ->
+    nbe_ty_f Γ (nf_to_exp C)[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] D ->
+    Γ ⊢ ℓᵈ A ≔ M ‖ (gu_mk nil (md_alias E)) in B : D.
+Proof.
+  intros * HA HM HU HB HnL Hr Hlc Hn.
+  destruct (typed_at_kind_of_nbe HB HnL Hr) as [k HC].
+  pose proof (type_sort_kind_universe κC k) as HSC.
+  assert (Hms : module_body_sort (abs_kind_sort κC Typeω@k))
+    by (destruct κC; cbn [abs_kind_sort]; [ constructor | constructor | contradiction (Hlc eq_refl) ]).
+  pose proof (sub_preserves_sort _ _ _ _ _ _ _ HC HSC (wf_sub_single_dm _ _ _ _ _ _ _ HA HM HU)) as HCs.
+  exact (exp_conv_sort HSC (soundness_ty_at_sort HSC HCs Hn) (wf_let_dm _ _ _ _ _ _ _ _ _ _ HA HM HU HC HSC Hms HB)).
+Qed.
+
 (** The type of a proof of a conjunction is a proposition: it is of a
     sort, being no [LevelSort] ([presup_exp_typ_sorted]), and a
     conjunction of a sort is one of [Prop] ([prop_former_typed]). *)
@@ -1251,6 +1273,22 @@ Proof.
         pose proof (IHU HG) as HU;
         assert (HGU : ⊢ G ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU);
         exact (let_mod_typed_at_nf HU (IHB HGU) HnL Hr Hlc Hn)
+    end.
+  (** A local definition with a module part: its type of a large universe,
+      its definiens checked against it, its unit as a local module's *)
+  - match goal with
+    | IHA : ⊢ ?G -> ?G ⊢ ?A : (nf_to_exp ?UA), Hu : is_univ_nf ?UA ?u,
+      IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ?A : Srt -> ?G ⊢ ?M : ?A,
+      IHU : ⊢ ?G -> gc_deps ⍮ gc_stack ⍮ ?G ⊢ᵘ ?U ≈ ?U, IHB : ⊢ ?G ▸ₘ ?A ≔ ?M ‖ ?U -> _ ⊢ ?B : (nf_to_exp ?C),
+      HnL : nf_to_exp ?C <> LevelSort, Hr : nbe_ty_kind _ (nf_to_exp ?C) ?κC, Hlc : ?κC <> ak_level,
+      Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id ,,ᵈ ?M ‖ me_lit ?U] ?D, HG : ⊢ ?G |- _ =>
+        assert (HAu : G ⊢ A : Typeω@(universe_nf_large_index u))
+          by (apply wf_exp_universe_nf_large_index; rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
+              exact (IHA HG));
+        pose proof (IHM HG _ (type_sort_universe _) HAu) as HM;
+        pose proof (IHU HG) as HU;
+        assert (HGd : ⊢ G ▸ₘ A ≔ M ‖ U) by (eapply wf_ctx_extend_dm; [ exact HAu | exact HM | exact HU ]);
+        exact (let_dm_typed_at_nf HAu HM HU (IHB HGd) HnL Hr Hlc Hn)
     end.
   (** A member, at the normal form of the type its module's description
       reads *)
@@ -1611,6 +1649,23 @@ Proof.
       destruct (typed_at_kind_of_nbe (alg_type_infer_sound HBi HGU) HnL Hr) as [kC HC];
       normal_of_typed (type_sort_kind_universe κC kC)
         (sub_preserves_sort _ _ _ _ _ _ _ HC (type_sort_kind_universe κC kC) (wf_sub_single_mod _ _ _ _ HU)) Hn Hnbe
+  (** A local definition with a module part: the same *)
+  | HAi : ?G ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA ?u, HMc : alg_type_check ?G ?A ?M,
+    HUi : ?G ⊢aᵘ gu_mk nil (md_alias ?E), HBi : ?G ▸ₘ ?A ≔ ?M ‖ _ ⊢a ?B ⟹ ?C,
+    HnL : nf_to_exp ?C <> LevelSort, Hr : nbe_ty_kind _ (nf_to_exp ?C) ?κC,
+    Hn : nbe_ty_f ?G (nf_to_exp ?C)[Id ,,ᵈ ?M ‖ me_lit _] _ |- _ =>
+      assert (HAu : G ⊢ A : Typeω@(universe_nf_large_index u))
+        by (apply wf_exp_universe_nf_large_index; rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
+            exact (alg_type_infer_sound HAi HΓ0));
+      pose proof (alg_type_check_sound_sort HMc HΓ0 (type_sort_universe _) HAu) as HM;
+      pose proof (alg_unit_sound HUi HΓ0) as HU;
+      assert (HGd : ⊢ G ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E))
+        by (eapply wf_ctx_extend_dm; [ exact HAu | exact HM | exact HU ]);
+      let kC := fresh "kC" in let HC := fresh "HC" in
+      destruct (typed_at_kind_of_nbe (alg_type_infer_sound HBi HGd) HnL Hr) as [kC HC];
+      normal_of_typed (type_sort_kind_universe κC kC)
+        (sub_preserves_sort _ _ _ _ _ _ _ HC (type_sort_kind_universe κC kC) (wf_sub_single_dm _ _ _ _ _ _ _ HAu HM HU))
+        Hn Hnbe
   (** A member: the normal form of the type its module's description reads *)
   | HHi : ?G ⊢aᵐ ?H0, Hm : mdenote _ _ _ (me_mem _ _) _, Ht : mdesc_type _ = Some ?A0, Hn : nbe_ty_f _ ?A0 _ |- _ =>
       let SA := fresh "SA" in let HSA := fresh "HSA" in let HA := fresh "HA" in
@@ -2022,6 +2077,7 @@ with binding_lets (b : binding) : nat :=
   match b with
   | b_def A M => exp_lets A + exp_lets M
   | b_mod U => gunit_lets U
+  | b_def_mod A M U => exp_lets A + exp_lets M + gunit_lets U
   end
 with gunit_lets (U : gunit) : nat :=
   match U with
@@ -2678,7 +2734,10 @@ Definition alg_entry (Γ : ctx) (e : centry) : Prop :=
   | ce_ass κ A => exists UA u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA κ u
   | ce_def A M => (exists UA r u, Γ ⊢a A ⟹ UA /\ is_sort_nf UA r u) /\ Γ ⊢a M ⟸ A
   | ce_mod U => Γ ⊢aᵘ U
-  | ce_dm A M U => ((exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ Γ ⊢a M ⟸ A) /\ Γ ⊢aᵘ U
+  | ce_dm A M U =>
+      ((exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ Γ ⊢a M ⟸ A) /\ Γ ⊢aᵘ U /\
+      (** the unit an alias under no parameters ([alg_ext_dm]) *)
+      exists E, U = gu_mk nil (md_alias E)
   end.
 
 Definition ext_entries (n : nat) (Γ Ψ : ctx) : Prop :=
@@ -2705,7 +2764,7 @@ Proof.
   intros n Γ; induction Ψ as [| e Ψ IH]; intros Hx Hl; [ constructor |]; cbn [ctx_lets] in Hl.
   pose proof (ext_entries_head _ _ _ _ Hx ltac:(lia)) as He.
   pose proof (IH (ext_entries_app_r _ _ (e :: nil) _ Hx) ltac:(lia)) as Ht.
-  destruct e; cbn [alg_entry] in He; destruct_all;
+  destruct e; cbn [alg_entry] in He; destruct_all; subst;
     [ eapply alg_ext_ass | eapply alg_ext_def | eapply alg_ext_mod | eapply alg_ext_dm ]; eauto.
 Qed.
 
@@ -2888,7 +2947,7 @@ Proof.
       econstructor; eassumption.
     + (* a definition with a module part: both parts *)
       pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
-      rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as (((UA & u & HA & Hu) & HM) & HU).
+      rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as (((UA & u & HA & Hu) & HM) & HU & (Et & ->)).
       econstructor; eassumption.
   - cbn [body_shape] in Hs; destruct Hs as [Hs _].
     cbn [body_opens] in Ho, Hof; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append in Ho, Hof.
@@ -3400,6 +3459,28 @@ Proof.
   econstructor; [ eapply alg_type_infer_let_mod; [ exact HUa | exact HBi | exact HnL | exact Hr | exact Hkl | exact HW ] | exact Hsub ].
 Qed.
 
+(** A local definition with a module part: its type infers a large
+    universe, and the body's type is as for a module [let]. *)
+Lemma alg_let_dm_complete : forall Γ A i M E B C Srt,
+    ⊢ Γ -> Γ ⊢ A : Typeω@i -> Γ ⊢a A ⟸ Typeω@i -> Γ ⊢ M : A -> Γ ⊢a M ⟸ A ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) -> Γ ⊢aᵘ gu_mk nil (md_alias E) ->
+    Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : Srt -> module_body_sort Srt ->
+    Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢a B ⟸ C ->
+    Γ ⊢a ℓᵈ A ≔ M ‖ (gu_mk nil (md_alias E)) in B ⟸ C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))].
+Proof.
+  intros * HΓ HA HAc HM HMc HU HUa HC Hms HBc.
+  destruct (alg_type_check_typ_implies_alg_type_infer_typ HΓ HAc) as (UA & u & HAi & Hu & _).
+  assert (HGd : ⊢ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E))
+    by (eapply wf_ctx_extend_dm; [ exact HA | exact HM | exact HU ]).
+  assert (exists κC jC, Srt = abs_kind_sort κC Typeω@jC /\ κC <> ak_level) as (κC & jC & -> & Hkl)
+    by (destruct Hms as [j |]; [ exists ak_relevant, j | exists ak_propositional, 0 ]; split; first [ reflexivity | discriminate ]).
+  destruct (alg_type_check_nbe_sub HGd (wf_sub_single_dm _ _ _ _ _ _ _ HA HM HU) HC HBc)
+    as (C' & W & HBi & HnL & Hr & HW & Hsub).
+  econstructor; [ eapply alg_type_infer_let_dm;
+                  [ exact HAi | exact Hu | exact HMc | exact HUa | exact HBi | exact HnL | exact Hr | exact Hkl | exact HW ]
+                | exact Hsub ].
+Qed.
+
 (** An application checks against the codomain instantiated: the function
     infers a [Π] whose codomain is below the [Π]'s ([alg_type_check_pi_implies_alg_type_infer_pi]). *)
 Lemma alg_app_complete : forall {Γ A B M N κd κc},
@@ -3805,6 +3886,13 @@ Proof.
       HBc : ?G ▹ₘ ?U ⊢a ?B ⟸ ?C |- ?G ⊢a ℓₘ ?U in ?B ⟸ _ =>
         exact (alg_let_mod_complete _ _ _ _ _ HU (proj1 HUa) HCt Hms HBc)
     end.
+  (** A local definition with a module part ([alg_let_dm_complete]). *)
+  - match goal with
+    | HAt : ?G ⊢ ?A : Typeω@?i, HAc : ?G ⊢a ?A ⟸ Typeω@?i, HM : ?G ⊢ ?M : ?A, HMc : ?G ⊢a ?M ⟸ ?A,
+      HU : _ ⍮ _ ⍮ ?G ⊢ᵘ ?U ≈ ?U, HUa : ?G ⊢aᵘ ?U /\ _, HCt : ?G ▸ₘ ?A ≔ ?M ‖ ?U ⊢ ?C : ?Srt,
+      Hms : module_body_sort ?Srt, HBc : ?G ▸ₘ ?A ≔ ?M ‖ ?U ⊢a ?B ⟸ ?C, HG : ⊢ ?G |- ?G ⊢a ℓᵈ ?A ≔ ?M ‖ ?U in ?B ⟸ _ =>
+        exact (alg_let_dm_complete _ _ _ _ _ _ _ _ HG HAt HAc HM HMc HU (proj1 HUa) HCt Hms HBc)
+    end.
   (** A variable, at the normal form of its type. *)
   - match goal with HA : ?G ⊢ ?A : ?S, HS : type_sort ?S |- ?G ⊢a #_ ⟸ ?A =>
       apply (alg_type_check_of_infer_nbe HS HA); intros W HW; eapply alg_type_infer_vlookup; eassumption end.
@@ -3837,14 +3925,17 @@ Proof.
     split; apply ext_entries_cons; try assumption; intros Hle; cbn [centry_lets alg_entry] in *.
     + pose proof (ext_eq_ctx_left _ _ _ _ _ H) as HΨ.
       match goal with IHA : exp_lets A <= n -> _ ⊢a A ⟸ _, IHM : exp_lets M <= n -> _ ⊢a M ⟸ _,
-                      IHU : (gunit_lets U <= n -> _ ⊢aᵘ U) /\ _ |- _ =>
+                      IHU : (gunit_lets (gu_mk nil (md_alias E)) <= n -> _ ⊢aᵘ gu_mk nil (md_alias E)) /\ _ |- _ =>
         destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ (IHA ltac:(lia))) as [UA [u [Hj [Hu _]]]];
-        split; [ split; [ eauto | exact (IHM ltac:(lia)) ] | exact (proj1 IHU ltac:(lia)) ] end.
+        split; [ split; [ eauto | exact (IHM ltac:(lia)) ] | split; [ exact (proj1 IHU ltac:(lia)) | eexists; reflexivity ] ]
+      end.
     + pose proof (ext_eq_ctx_right _ _ _ _ _ H) as HΨ'.
       match goal with IHA : exp_lets A' <= n -> _ ⊢a A' ⟸ _, IHM : exp_lets M' <= n -> _ ⊢a M' ⟸ _,
-                      IHU : (gunit_lets U' <= n -> ?G ⊢aᵘ U') /\ _, _ : _ ⍮ _ ⍮ ?G ⊢ᵘ U' ≈ U' |- _ =>
+                      IHU : (gunit_lets (gu_mk nil (md_alias E')) <= n -> ?G ⊢aᵘ gu_mk nil (md_alias E')) /\ _,
+                      _ : _ ⍮ _ ⍮ ?G ⊢ᵘ gu_mk nil (md_alias E') ≈ gu_mk nil (md_alias E') |- _ =>
         destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ' (IHA ltac:(lia))) as [UA [u [Hj [Hu _]]]];
-        split; [ split; [ eauto | exact (IHM ltac:(lia)) ] | exact (proj1 IHU ltac:(lia)) ] end.
+        split; [ split; [ eauto | exact (IHM ltac:(lia)) ] | split; [ exact (proj1 IHU ltac:(lia)) | eexists; reflexivity ] ]
+      end.
   (** Units: the parameters, relevant, as checked parameters
       ([alg_params_of_entries]); a body from the entries of its expansion
       that are its own, each of the sort its tag says
