@@ -644,6 +644,19 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      module_body_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : C[Id ,,ₘ me_lit U] )
+(** A local definition with a module part: its term part as a definition
+    of a type of a large universe, as a definition with a module part is
+    relevant ([wf_ext_eq_dm]), and its unit as a local module, the body's
+    type premised to be a type as for [wf_let_mod] *)
+| wf_let_dm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ C : Srt ->
+     type_sort Srt ->
+     module_body_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in B : C[Id ,,ᵈ M ‖ me_lit U] )
 (** A member: the module expression is well formed and looks the member up
     ([mdenote] of the selection) as a term, at the type the lookup reads.
     This is the only typing rule for members.  The type is premised to be a
@@ -919,6 +932,18 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B ≈ B' : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] )
+(** The same for a local definition with a module part *)
+| wf_exp_eq_let_dm_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ C : Srt ->
+     module_body_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ B ≈ B' : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A' ≔ M' ‖ U' in B' : C[Id ,,ᵈ M ‖ me_lit U] ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in B ≈ ℓᵈ A' ≔ M' ‖ U' in B' : C[Id ,,ᵈ M ‖ me_lit U] )
 (** Members of equivalent module expressions, both looked up as terms, at
     the type the left one is looked up at.  The right-hand side is premised
     to be typed there, as presupposition needs it before any lemma relating
@@ -1080,6 +1105,17 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      module_body_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U] )
+(** [ζ] for a local definition with a module part: both parts are
+    substituted *)
+| wf_exp_eq_let_dm_zeta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ C : Srt ->
+     type_sort Srt ->
+     module_body_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ⊢ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in B ≈ B[Id ,,ᵈ M ‖ me_lit U] : C[Id ,,ᵈ M ‖ me_lit U] )
 (** [δ] for members: a member is the δ-reduct the lookup reads: the body of
     a transparent definition at the arguments, the name of a filed axiom or
     abstract definition at them, or a type former. *)

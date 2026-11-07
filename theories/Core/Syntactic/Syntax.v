@@ -777,6 +777,9 @@ with binding : Set :=
 | b_def : exp -> exp -> binding
 (** [b_mod U]: a local module *)
 | b_mod : gunit -> binding
+(** [b_def_mod A M U]: a definition [M] of the type [A] with the module
+    part [U], an alias: the binding of a context entry [ce_dm A M U] *)
+| b_def_mod : exp -> exp -> gunit -> binding
 with gunit : Set :=
 (** [gu_mk Δ D]: the parameters, innermost first, and the definition under
     them *)
@@ -953,6 +956,7 @@ Section syn_mut_ind.
     (case_me_lit : forall U, Pu U -> Pm (me_lit U))
     (case_b_def : forall A M, Pe A -> Pe M -> Pb (b_def A M))
     (case_b_mod : forall U, Pu U -> Pb (b_mod U))
+    (case_b_def_mod : forall A M U, Pe A -> Pe M -> Pu U -> Pb (b_def_mod A M U))
     (case_gu_mk : forall Δ D, List.Forall Pc Δ -> Pd D -> Pu (gu_mk Δ D))
     (case_md_body : forall s Φ, Pg Φ -> Pd (md_body s Φ))
     (case_md_alias : forall E, Pm E -> Pd (md_alias E))
@@ -1043,6 +1047,7 @@ Section syn_mut_ind.
     match b with
     | b_def A M => case_b_def A M (exp_mut A) (exp_mut M)
     | b_mod U => case_b_mod U (gunit_mut U)
+    | b_def_mod A M U => case_b_def_mod A M U (exp_mut A) (exp_mut M) (gunit_mut U)
     end
   with gunit_mut (U : gunit) : Pu U :=
     match U with
@@ -1277,6 +1282,7 @@ Module Exp_Notations.
   Notation "'Πₗ' A B" := (a_pi ak_level ak_level A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
   Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def A M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
   Notation "'ℓₘ' U 'in' B" := (a_let (b_mod U) B) (at level 2, U at level 1, B at level 60) : mctt_scope.
+  Notation "'ℓᵈ' A ≔ M ‖ U 'in' B" := (a_let (b_def_mod A M U) B) (at level 2, A at level 1, M at level 60, U at level 1, B at level 60) : mctt_scope.
   (** A bare [Prop] would be Rocq's own sort, so the notation is decorated. *)
   Notation "'Propₘ'" := a_prop : mctt_scope.
   Notation "'⊤'" := a_True : mctt_scope.
@@ -2671,6 +2677,7 @@ with binding_wk (b : binding) (φ : wk) : binding :=
   match b with
   | b_def A M => b_def (exp_wk A φ) (exp_wk M φ)
   | b_mod U => b_mod (gunit_wk U φ)
+  | b_def_mod A M U => b_def_mod (exp_wk A φ) (exp_wk M φ) (gunit_wk U φ)
   end
 (** The entry of a telescope at position [i] from the outermost is under [i]
     binders, and the definition under all of them. *)
@@ -2755,6 +2762,7 @@ with binding_free_bound (b : binding) : nat :=
   match b with
   | b_def A M => Nat.max (exp_free_bound A) (exp_free_bound M)
   | b_mod U => gunit_free_bound U
+  | b_def_mod A M U => Nat.max (exp_free_bound A) (Nat.max (exp_free_bound M) (gunit_free_bound U))
   end
 with gunit_free_bound (U : gunit) : nat :=
   match U with
@@ -2959,6 +2967,7 @@ with binding_sub (b : binding) (σ : sub) : binding :=
   match b with
   | b_def A M => b_def (exp_sub A σ) (exp_sub M σ)
   | b_mod U => b_mod (gunit_sub U σ)
+  | b_def_mod A M U => b_def_mod (exp_sub A σ) (exp_sub M σ) (gunit_sub U σ)
   end
 with gunit_sub (U : gunit) (σ : sub) : gunit :=
   match U with
