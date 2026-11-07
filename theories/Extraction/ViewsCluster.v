@@ -457,15 +457,40 @@ Section Fixed_GCtx.
     rewrite (skipn_ctx_app Ψ Γu) by lia; exact Hk.
   Qed.
 
-  (** The instances normal forms meet are of the invariant: typed
-      ([nest_key_inv]) and normal. *)
-  Lemma nf_meet_at_good : forall Δ Γu nu np n pat T z, all_assumptions Δ -> List.length Δ = List.length pat + (np - nu) ->
+  (** The instances normal forms meet are of the invariant: normal, and
+      typed, as their keys normalize typed instances over [Γu], well formed
+      under the argument's type. *)
+  Lemma nf_meet_at_good : forall Δ Γu nu np n pat T z, List.length Δ = List.length pat + (np - nu) ->
       nf_meet_at gc_deps gc_stack (Δ ++ Γu) nu np n pat T z -> key_inv gc_deps gc_stack Γu z /\ key_normal gc_deps gc_stack Γu z.
   Proof.
-    intros * Hass Hl [i HT W HW Hpf gw Hcl g Hk Hin].
+    intros * Hl [i HT W HW Hpf gw Hcl g Hk Hin].
     rewrite (skipn_ctx_app Δ Γu) in Hk by lia.
-    split; [ exact (@nest_key_inv GC _ _ _ _ _ _ _ _ _ _ _ _ Hass Hl HT HW Hpf Hcl Hk Hin) |].
-    destruct (written_carg_key_view _ _ _ _ Hk Hin) as (x & _ & Hx); exists x; exact Hx.
+    destruct (written_carg_key_view _ _ _ _ Hk Hin) as (x & Hx & Hxz).
+    split; [| exists x; exact Hxz ].
+    assert (HΓu : ⊢ Γu) by (assert (HΔΓ : ⊢ Δ ++ Γu) by (gen_presups; assumption); eapply ctx_app_wf_tail; exact HΔΓ).
+    pose proof (ctx_wf_gctx _ _ _ HΓu) as Hg.
+    inversion Hxz as [qc k Cs D Ws Hlc HWs | qr Is Rr Ws Hlr HWs]; subst; cbn [key_inv].
+    - destruct (classify_arg_view _ _ _ _ _ _ _ _ _ _ _ Hcl Hx) as (Bs & E & m & _ & _ & _ & Hg2 & Hm & HC).
+      unfold grp_info in Hg2; rewrite Hlc in Hg2.
+      destruct (k <? ind_ndecl D) eqn:Hk2; [ injection Hg2 as <- | discriminate ]; apply Nat.ltb_lt in Hk2.
+      destruct (decl_of_lookup _ _ _ _ _ HΓu Hlc) as [Hdt Hc].
+      destruct (nbes_nth _ _ _ _ _ _ HWs) as (HlW & _).
+      assert (HCl : List.length Cs = ind_nu D)
+        by (apply (f_equal (@List.length _)) in HC; rewrite List.length_firstn, List.length_map in HC; lia).
+      assert (HWl : List.length (List.map nf_to_exp Ws) = ind_nu D) by (rewrite List.length_map; lia).
+      refine (mk_view_typed _ _ _ _ _ _ D Hlc Hk2 HWl _ HΓu).
+      exact (nbes_inst_inv _ _ _ _ (decl_closed_ass _ Hc) (decl_closed_uparams _ Hc) (decl_typed_uparams_field _ _ _ Hdt) HΓu HWs).
+    - destruct (classify_arg_record_view _ _ _ _ _ _ _ _ _ _ Hcl Hx) as (Bs & E & _ & _ & _ & Hr & _ & HC).
+      unfold rec_info in Hr; rewrite Hlr in Hr; cbn in Hr; injection Hr as Hr.
+      pose proof (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg) Hlr) as HcR.
+      pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hlr) as HRt.
+      pose proof (record_typed_fctx_wf _ _ _ HRt 0 ltac:(lia)) as HP; unfold record_fctx in HP; cbn in HP.
+      destruct (nbes_nth _ _ _ _ _ _ HWs) as (HlW & _).
+      assert (HIl : List.length Is = List.length (record_params Rr))
+        by (apply (f_equal (@List.length _)) in HC; rewrite List.length_map in HC; lia).
+      assert (HWl : List.length (List.map nf_to_exp Ws) = List.length (record_params Rr)) by (rewrite List.length_map; lia).
+      refine (mk_record_view_typed _ _ _ _ _ Rr Hlr HWl _ HΓu).
+      exact (nbes_inst_inv _ _ _ _ (typed_params_ass _ _ _ HRt) (closed_params _ HcR) HP HΓu HWs).
   Qed.
 
   (** The arguments of an instance a proof-free normal form meets, keyed,
