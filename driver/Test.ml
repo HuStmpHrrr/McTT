@@ -5700,6 +5700,16 @@ let%expect_test "a record type with a with-area closes with one end" =
              end --> 2 : ℕ
     |}]
 
+(* An alias or an open names a finished module only: the record being
+   defined is not one, so a cycle through it is rejected. *)
+let%expect_test "a record's with-area aliases no module still being defined" =
+  let _ = main_of_bare_body "record P : Type@1 where a : Type@0 with module S ≔ P end" in
+  [%expect {| Error: module S names a module still being defined: an alias or an open names a finished module only |}]
+
+let%expect_test "a record's with-area opens no module still being defined" =
+  let _ = main_of_bare_body "record P : Type@1 where a : Type@0 with open P end" in
+  [%expect {| Error: an open names a module still being defined: an alias or an open names a finished module only |}]
+
 let%expect_test "a record type without a with-area closes with one end" =
   let _ = main_of_body
     "record Pt : Type@0 where x : Nat; y : Nat end \

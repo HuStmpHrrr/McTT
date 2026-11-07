@@ -2530,11 +2530,11 @@ Section Impl.
         | inright _ => run_failure (run_error_param_prop x)
         | inleft (exist _ l HPr) with check_modexp (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
           | right _ => run_failure (run_error_msg ("ill-formed module expression for module " ++ x))
-          | left HE with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
-            | right _ => run_failure (run_error_levels ("module " ++ x))
-            | left Hlv with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
+          | left HE with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
             | right _ => run_failure (run_error_frame ("module " ++ x))
-            | left Hff with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
+            | left Hff with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
+            | right _ => run_failure (run_error_levels ("module " ++ x))
+            | left Hlv with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
               | right _ => run_failure (run_error_msg (x ++ " is already declared"))
               | left Hfr =>
                   run_success (exist _ _ (add_post_translate H (e := translate_entry (ge_mod pv (gu_mk (Δ ++ fs_tele fs) (md_alias E))))
@@ -2760,11 +2760,11 @@ Section Impl.
                            (alg_type_infer_sound HW (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
                   | left _ => run_failure (run_error_msg ("inductive alias " ++ x ++ " names a record type: use record"))
                   | right _ => run_failure (alias_target_error x E) }
-                | left Hf with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
-                  | right _ => run_failure (run_error_levels ("inductive alias " ++ x))
-                  | left Hlv with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
+                | left Hf with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
                   | right _ => run_failure (run_error_frame ("inductive alias " ++ x))
-                  | left Hff with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
+                  | left Hff with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
+                  | right _ => run_failure (run_error_levels ("inductive alias " ++ x))
+                  | left Hlv with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
                     | right _ => run_failure (run_error_msg (x ++ " is already declared"))
                     | left Hfr with params_evaluated_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) Δ => {
                       | inright _ => run_failure (run_error_param_prop x)
@@ -2804,11 +2804,11 @@ Section Impl.
                          (alg_type_infer_sound HW (ext_eq_ctx_left _ _ _ _ _ HΔ)) => {
                 | left _ => run_failure (run_error_msg ("record alias " ++ x ++ " names an inductive type: use inductive"))
                 | right _ => run_failure (recalias_target_error x) }
-              | left Hf with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
-                | right _ => run_failure (run_error_levels ("record alias " ++ x))
-                | left Hlv with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
+              | left Hf with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
                 | right _ => run_failure (run_error_frame ("record alias " ++ x))
-                | left Hff with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
+                | left Hff with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
+                | right _ => run_failure (run_error_levels ("record alias " ++ x))
+                | left Hlv with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
                   | right _ => run_failure (run_error_msg (x ++ " is already declared"))
                   | left Hfr with params_evaluated_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) Δ => {
                     | inright _ => run_failure (run_error_param_prop x)
@@ -4105,7 +4105,7 @@ Section Impl.
     simp alias_step; params_case He Hgr; simp alias_step.
     match goal with |- context [check_modexp ?f ?l ?a ?b ?c] => destruct (check_modexp f l a b c) as [HE' | HE'] end;
       [| exfalso; apply HE'; cmd_goal; exact (equiv_modexp _ _ _ _ _ He Hgr HE) ].
-    simp alias_step; levels_case He Hgr; simp alias_step; frame_case He; simp alias_step;
+    simp alias_step; frame_case He; simp alias_step; levels_case He Hgr; simp alias_step;
       fresh_case Hfr'; simp alias_step; eexists; reflexivity.
   Qed.
 
@@ -4187,7 +4187,7 @@ Section Impl.
     simp indalias_step.
     match goal with |- context [ind_former_dec ?a ?b ?c ?d ?e] => destruct (ind_former_dec a b c d e) as [Hf' | Hf'] end;
       [| exfalso; apply Hf'; cmd_goal; exact (equiv_ind_former _ _ _ _ _ _ He Hf) ].
-    simp indalias_step; levels_case He Hgr; simp indalias_step; frame_case He; simp indalias_step.
+    simp indalias_step; frame_case He; simp indalias_step; levels_case He Hgr; simp indalias_step.
     fresh_case Hfr'; simp indalias_step.
     params_case He Hgr; simp indalias_step.
     universe_case He Hgr; simp indalias_step; finish_step.
@@ -4225,7 +4225,7 @@ Section Impl.
     simp recalias_step.
     match goal with |- context [record_former_dec ?a ?b ?c ?d ?e] => destruct (record_former_dec a b c d e) as [Hf' | Hf'] end;
       [| exfalso; apply Hf'; cmd_goal; exact (equiv_record_former _ _ _ _ _ _ He Hf) ].
-    simp recalias_step; levels_case He Hgr; simp recalias_step; frame_case He; simp recalias_step.
+    simp recalias_step; frame_case He; simp recalias_step; levels_case He Hgr; simp recalias_step.
     fresh_case Hfr'; simp recalias_step.
     params_case He Hgr; simp recalias_step.
     universe_case He Hgr; simp recalias_step; finish_step.

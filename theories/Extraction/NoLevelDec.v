@@ -3,9 +3,10 @@
     [levels_abstractable Θ Ξ G Δ E]: every parameter of [Δ] is a type of
     levels, or what [E] denotes has no member of a type of levels
     ([⊢ⁿˡ]).  The second is decided by reading the description as [⊢ⁿˡ]
-    does ([nl_desc_dec]), by recursion on the domain [nl_reach], which every
-    description a well-formed module expression denotes has when it reads
-    no open frame ([nl_reach_of_desc_ok]); one that reads an open frame has
+    does ([no_level_desc_dec]), by recursion on the domain
+    [no_level_reachable], which every description a well-formed module
+    expression denotes has when it reads no open frame
+    ([no_level_reachable_of_desc_ok]); one that reads an open frame has
     a member of no filed body, so the premise fails ([no_level_reads_frame]).
     The descriptions are fast, read through the fast context [F]: the
     entries of a filed body are found in its trie. *)
