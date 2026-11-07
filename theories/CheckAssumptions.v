@@ -15,6 +15,7 @@ From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Cons
 From Mctt Require Import Extraction.GlobalCheck Extraction.CommandRun.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Consequences.FiledConstructorTypes.
 From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns Core.Syntactic.System.Records.RecordRuns.
+From Mctt Require Import Extraction.AppSpine Reference.TypeCheckAgreement.
 Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.FundamentalTheorem.completeness_fundamental.
 Print Assumptions Mctt.Core.Soundness.soundness.
@@ -145,3 +146,15 @@ Print Assumptions Mctt.Extraction.TypedElab.fill_cmd_fn_complete.
 Print Assumptions Mctt.Extraction.TypedElab.fill_params_fn_sound.
 Print Assumptions Mctt.Extraction.TypedElab.fill_params_fn_complete.
 Print Assumptions Mctt.Extraction.MdefGroup.mdef_group_dec_complete.
+(* The application spine: one step relates the value of the type to the
+   reference's normal form, and the extracted checker infers the
+   reference checker's types and accepts what it accepts.  All rest on
+   soundness (PENDING M2). *)
+Print Assumptions Mctt.Extraction.AppSpine.spine_step_related.
+Print Assumptions Mctt.Reference.TypeCheckAgreement.type_infer_in_agrees_with_reference.
+Print Assumptions Mctt.Reference.TypeCheckAgreement.type_check_in_agrees_with_reference.
+Print Assumptions Mctt.Reference.TypeCheckAgreement.params_check_agrees_with_reference.
+Print Assumptions Mctt.Reference.TypeCheckAgreement.unit_check_agrees_with_reference.
+Print Assumptions Mctt.Reference.TypeCheckAgreement.modexp_check_agrees_with_reference.
+Print Assumptions Mctt.Reference.TypeCheckAgreement.body_check_agrees_with_reference.
+Print Assumptions Mctt.Reference.TypeCheckAgreement.ext_check_agrees_with_reference.

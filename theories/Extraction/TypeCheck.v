@@ -8,16 +8,21 @@ From Mctt.Core Require Import Consequences.Consistency Semantic.Realizability.
 From Mctt.Core.Syntactic.System.Global Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
-From Mctt.Extraction Require Import FastDomain Evaluation Readback NbE PseudoMonadic Subtyping MemberType.
+From Mctt.Extraction Require Import FastDomain Evaluation Readback NbE PseudoMonadic Subtyping MemberType AppSpine.
 From Mctt.Extraction Require Export TypeCheckBase.
 From Mctt.Extraction Require Import IndCheck RecordCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 (** * The Checker
 
-    The direct implementation of the algorithmic judgments, rule by rule:
-    an application normalizes the instantiated codomain [B[Id,,N]] of the
-    head's type, and a check normalizes both types it compares
+    The direct implementation of the algorithmic judgments, rule by rule,
+    but for applications: an application keeps the type of its head as a
+    value along its spine of arguments, and falls back to normalizing the
+    instantiated codomain [B[Id,,N]] of the head's type where a readback
+    has a proof in it (the application spine, below); [Reference.TypeCheck]
+    is the checker that normalizes at every argument, and
+    [Reference.TypeCheckAgreement] shows the two infer one type.  A check
+    normalizes both types it compares
     ([subtyping_env_impl]).  Every normalization is at the initial
     environment of its context, which the checker carries
     ([checker_env]) and extends under binders. *)
@@ -216,6 +221,225 @@ Section Facts.
     intros * HG HM Hm Ht Hv.
     destruct (mtele_head_wf _ _ _ _ _ _ (alg_modexp_sound HM HG) Hm Ht Hv) as (S & HS & HB).
     exact (wf_type_of_sort _ (evaluated_sort_type_sort _ HS) HB).
+  Qed.
+
+  (** The type of an application, as the spine keeps it: a value related
+      to the value of the inferred normal form at the initial environment
+      ([Extraction.AppSpine]). *)
+  #[warnings="-cannot-define-projection"]
+  Record spine_value_of (G : ctx) (M : exp) (ρ : env) (v : domain) : Prop := mk_spine_value_of
+    { (** The inferred type *)
+      spine_value_type : nf
+      (** It is inferred *)
+    ; spine_value_infer : G ⊢a M ⟹ spine_value_type
+      (** Its value at the initial environment *)
+    ; spine_value_type_value : domain
+      (** It evaluates to it *)
+    ; spine_value_type_eval : ⟦ nf_to_exp spine_value_type ⟧ ρ ↘ spine_value_type_value
+      (** The universe the two are related in *)
+    ; spine_value_index : nat
+      (** The spine's value is related to it *)
+    ; spine_value_related : Dom v ≈ spine_value_type_value ∈ per_univ spine_value_index }.
+
+  (** One step of the spine: from the value [Π] of the type of [M], a
+      domain that reads back proof-free, against which [N] checks, the
+      codomain at the value of [N] is the value of the type of [M N]. *)
+  Lemma alg_spine_step : forall G M N ρ κd a ρ' B' A' n b,
+      ⊢ G -> initial_env_f G ρ ->
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
+      Rtyp a in List.length G ↘ A' -> nf_proof_free A' -> evaluated_kind (domain_kind a) ->
+      G ⊢a N ⟸ A' -> ⟦ N ⟧ ρ ↘ n -> ⟦ B' ⟧ ρ' ↦ n ⦂ entry_type_value a ↘ b ->
+      spine_value_of G (M $ N) ρ b.
+  Proof.
+    intros * HG Hρ [W HMi t Ht i Hrel] HA' Hpf Hk HNc Hn Hb.
+    assert (HN : nf_normal_at G W) by (intros X HX; exact (alg_type_infer_normal HG HMi HX)).
+    destruct (spine_type_pi_of_related _ _ _ _ _ _ _ _ _ HN Hρ Ht Hrel) as [A B a0 -> Ha0 -> HAA].
+    pose proof (proj1 nf_ne_proof_free_eq _ Hpf _ (HAA _ HA')) as <-.
+    destruct (nbe_ty_exists_wf_type (typ_app_cod _ _ _ _ _ _ _ HG HMi HNc)) as [W1 HW1].
+    pose proof (alg_type_infer_sound HMi HG) as HM; cbn [nf_to_exp] in HM.
+    destruct (presup_exp_typ_sorted HM ltac:(discriminate)) as (S & _ & HPi).
+    destruct (wf_pi_parts HPi) as (_ & (SA & HSAk & HAt) & _).
+    pose proof (alg_type_check_sound_sort HNc HG (sort_kind_type_sort _ _ HSAk) HAt) as HN'.
+    destruct (spine_step_related _ _ _ _ _ _ _ _ _ _ _ _ _ _ HPi HN' Hρ Ht Hrel Hk Hn HW1) as [b' Hb' w Hw j Hbw].
+    functional_eval_rewrite_clear.
+    exact (mk_spine_value_of _ _ _ _ W1 (alg_type_infer_app _ _ _ _ _ _ _ _ HMi HNc HW1) w Hw j Hbw).
+  Qed.
+
+  (** The start of the spine: the value of an inferred type that is no
+      [LevelSort]. *)
+  Lemma alg_spine_start : forall G M W ρ t,
+      ⊢ G -> G ⊢a M ⟹ W -> nf_to_exp W <> LevelSort -> initial_env_f G ρ -> ⟦ nf_to_exp W ⟧ ρ ↘ t ->
+      spine_value_of G M ρ t.
+  Proof.
+    intros * HG HMi HnL Hρ Ht.
+    destruct (presup_exp_typ_sorted (alg_type_infer_sound HMi HG) HnL) as (S & HS & HW).
+    destruct (spine_start_related _ _ _ _ _ HS HW Hρ Ht) as [i Hi].
+    exact (mk_spine_value_of _ _ _ _ W HMi t Ht i Hi).
+  Qed.
+
+  (** The end of the spine: a proof-free readback of its value is the
+      inferred type ([nf_ne_proof_free_eq]). *)
+  Lemma alg_spine_end : forall G M ρ v W',
+      ⊢ G -> initial_env_f G ρ -> spine_value_of G M ρ v ->
+      Rtyp v in List.length G ↘ W' -> nf_proof_free W' -> G ⊢a M ⟹ W'.
+  Proof.
+    intros * HG Hρ [W HMi t Ht i Hrel] Hr Hpf.
+    assert (HN : nf_normal_at G W) by (intros X HX; exact (alg_type_infer_normal HG HMi HX)).
+    pose proof (spine_readback_upto_proofs _ _ _ _ _ _ _ HN Hρ Ht Hrel Hr) as HE.
+    rewrite (proj1 nf_ne_proof_free_eq _ Hpf _ HE); exact HMi.
+  Qed.
+
+  (** A spine's value reads back. *)
+  Lemma spine_value_reads : forall G M ρ v s, spine_value_of G M ρ v -> exists W, Rtyp v in s ↘ W.
+  Proof. intros * [W _ t _ i Hrel]; exact (per_univ_readback_exists _ _ _ _ Hrel). Qed.
+
+  (** The domain of a spine's [Π] value reads back. *)
+  Lemma spine_value_domain_reads : forall G M ρ κd a ρ' B' s,
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') -> exists A, Rtyp a in s ↘ A.
+  Proof.
+    intros * [W _ t _ i Hrel]; exact (proj1 (per_univ_pi_domain _ _ _ _ _ _ s Hrel)).
+  Qed.
+
+  (** The codomain of a spine's [Π] value, at the value of a checked
+      argument, evaluates. *)
+  Lemma spine_value_codomain_evals : forall G M N ρ κd a ρ' B' A' n,
+      ⊢ G -> initial_env_f G ρ ->
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
+      Rtyp a in List.length G ↘ A' -> nf_proof_free A' -> evaluated_kind (domain_kind a) ->
+      G ⊢a N ⟸ A' -> ⟦ N ⟧ ρ ↘ n ->
+      exists b, ⟦ B' ⟧ ρ' ↦ n ⦂ entry_type_value a ↘ b.
+  Proof.
+    intros * HG Hρ [W HMi t Ht i Hrel] HA' Hpf Hk HNc Hn.
+    assert (HN : nf_normal_at G W) by (intros X HX; exact (alg_type_infer_normal HG HMi HX)).
+    destruct (spine_type_pi_of_related _ _ _ _ _ _ _ _ _ HN Hρ Ht Hrel) as [A B a0 -> Ha0 -> HAA].
+    pose proof (proj1 nf_ne_proof_free_eq _ Hpf _ (HAA _ HA')) as <-.
+    destruct (nbe_ty_exists_wf_type (typ_app_cod _ _ _ _ _ _ _ HG HMi HNc)) as [W1 HW1].
+    pose proof (alg_type_infer_sound HMi HG) as HM; cbn [nf_to_exp] in HM.
+    destruct (presup_exp_typ_sorted HM ltac:(discriminate)) as (S & _ & HPi).
+    destruct (wf_pi_parts HPi) as (_ & (SA & HSAk & HAt) & _).
+    pose proof (alg_type_check_sound_sort HNc HG (sort_kind_type_sort _ _ HSAk) HAt) as HN'.
+    destruct (spine_step_related _ _ _ _ _ _ _ _ _ _ _ _ _ _ HPi HN' Hρ Ht Hrel Hk Hn HW1) as [b Hb _ _ _ _].
+    exists b; exact Hb.
+  Qed.
+
+  (** The value of a checked argument at a domain of an evaluated kind. *)
+  Lemma spine_argument_evals : forall G M N ρ κd a ρ' B' A',
+      ⊢ G -> initial_env_f G ρ ->
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
+      Rtyp a in List.length G ↘ A' -> nf_proof_free A' -> evaluated_kind (domain_kind a) ->
+      G ⊢a N ⟸ A' -> exists n, ⟦ N ⟧ ρ ↘ n.
+  Proof.
+    intros * HG Hρ [W HMi t Ht i Hrel] HA' Hpf Hk HNc.
+    assert (HN : nf_normal_at G W) by (intros X HX; exact (alg_type_infer_normal HG HMi HX)).
+    destruct (spine_type_pi_of_related _ _ _ _ _ _ _ _ _ HN Hρ Ht Hrel) as [A B a0 -> Ha0 -> HAA].
+    pose proof (proj1 nf_ne_proof_free_eq _ Hpf _ (HAA _ HA')) as <-.
+    pose proof (alg_type_infer_sound HMi HG) as HM; cbn [nf_to_exp] in HM.
+    destruct (presup_exp_typ_sorted HM ltac:(discriminate)) as (S & _ & HPi).
+    destruct (wf_pi_parts HPi) as (_ & (SA & HSAk & HAt) & _).
+    pose proof (alg_type_check_sound_sort HNc HG (sort_kind_type_sort _ _ HSAk) HAt) as HN'.
+    pose proof (proj2 (per_univ_pi_domain _ _ _ _ _ _ 0 Hrel) _ _ _ eq_refl) as Ek.
+    exact (eval_exists_at_initial_env _ _ _ _ _ HN' Hρ Ha0 ltac:(rewrite Ek; exact Hk)).
+  Qed.
+
+  (** A spine's [Π] value whose domain reads back proof-free: the type
+      inferred is a [Π] of that domain. *)
+  Lemma spine_infer_pi : forall G M ρ κd a ρ' B' A',
+      ⊢ G -> initial_env_f G ρ ->
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
+      Rtyp a in List.length G ↘ A' -> nf_proof_free A' ->
+      exists B, G ⊢a M ⟹ nf_pi κd ak_relevant A' B.
+  Proof.
+    intros * HG Hρ [W HMi t Ht i Hrel] HA' Hpf.
+    assert (HN : nf_normal_at G W) by (intros X HX; exact (alg_type_infer_normal HG HMi HX)).
+    destruct (spine_type_pi_of_related _ _ _ _ _ _ _ _ _ HN Hρ Ht Hrel) as [A B a0 -> Ha0 -> HAA].
+    pose proof (proj1 nf_ne_proof_free_eq _ Hpf _ (HAA _ HA')) as <-.
+    exists B; exact HMi.
+  Qed.
+
+  (** The domain the spine checks an argument against is a type. *)
+  Lemma spine_domain_type : forall G M ρ κd a ρ' B' A',
+      ⊢ G -> initial_env_f G ρ ->
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
+      Rtyp a in List.length G ↘ A' -> nf_proof_free A' -> G ⊢ᵗ A'.
+  Proof.
+    intros * HG Hρ Hs HA' Hpf.
+    destruct (spine_infer_pi _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf) as [B HMi].
+    exact (typ_pi_dom _ _ _ _ _ _ HG HMi).
+  Qed.
+
+  (** An application whose head infers no type infers none. *)
+  Lemma app_head_failure : forall G M N, (forall A, ~ G ⊢a M ⟹ A) -> forall A, ~ G ⊢a M $ N ⟹ A.
+  Proof. intros * Hn A H; inversion H; subst; eapply Hn; eassumption. Qed.
+
+  (** An application whose head infers a type that is no [Π] infers
+      none. *)
+  Lemma app_not_pi_failure : forall G M N C,
+      ⊢ G -> G ⊢a M ⟹ C -> (forall κd κc A B, C <> nf_pi κd κc A B) -> forall A, ~ G ⊢a M $ N ⟹ A.
+  Proof.
+    intros * HG HC Hn A H; inversion H; subst.
+    match goal with H1 : G ⊢a M ⟹ nf_pi _ _ _ _ |- _ =>
+      pose proof (functional_alg_type_infer ltac:(gctx_wf_tac) HC H1) as -> end.
+    eapply Hn; reflexivity.
+  Qed.
+
+  (** An application whose argument does not check against the domain of
+      the head's [Π] infers no type. *)
+  Lemma app_check_failure : forall G M N κd κc A B,
+      ⊢ G -> G ⊢a M ⟹ nf_pi κd κc A B -> ~ G ⊢a N ⟸ A -> forall C, ~ G ⊢a M $ N ⟹ C.
+  Proof.
+    intros * HG HC Hn C H; inversion H; subst.
+    match goal with H1 : G ⊢a M ⟹ nf_pi _ _ _ _ |- _ =>
+      pose proof (functional_alg_type_infer ltac:(gctx_wf_tac) HC H1) as E end.
+    injection E; intros; subst; contradiction.
+  Qed.
+
+  (** The same at the spine's [Π] value. *)
+  Lemma spine_check_failure : forall G M N ρ κd a ρ' B' A',
+      ⊢ G -> initial_env_f G ρ ->
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
+      Rtyp a in List.length G ↘ A' -> nf_proof_free A' ->
+      ~ G ⊢a N ⟸ A' -> forall C, ~ G ⊢a M $ N ⟹ C.
+  Proof.
+    intros * HG Hρ Hs HA' Hpf Hn.
+    destruct (spine_infer_pi _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf) as [B HMi].
+    exact (app_check_failure _ _ _ _ _ _ _ HG HMi Hn).
+  Qed.
+
+  (** The orders of the computations of a spine step: the readback of the
+      spine's value and of its domain, the argument's value and the
+      codomain's at it. *)
+  Lemma spine_value_read_order : forall G M ρ v s,
+      spine_value_of G M ρ v -> read_typ_order gc_deps gc_stack s v.
+  Proof. intros * Hs; destruct (spine_value_reads _ _ _ _ s Hs) as [W HW]; exact (read_typ_order_sound _ _ _ _ _ HW). Qed.
+
+  Lemma spine_domain_read_order : forall G M ρ κd a ρ' B' s,
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') -> read_typ_order gc_deps gc_stack s a.
+  Proof.
+    intros * Hs; destruct (spine_value_domain_reads _ _ _ _ _ _ _ s Hs) as [W HW].
+    exact (read_typ_order_sound _ _ _ _ _ HW).
+  Qed.
+
+  Lemma spine_argument_order : forall G M N ρ κd a ρ' B' A',
+      ⊢ G -> initial_env_f G ρ ->
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
+      Rtyp a in List.length G ↘ A' -> nf_proof_free A' -> evaluated_kind (domain_kind a) ->
+      G ⊢a N ⟸ A' -> eval_exp_order gc_deps gc_stack N ρ.
+  Proof.
+    intros * HG Hρ Hs HA' Hpf Hk HNc.
+    destruct (spine_argument_evals _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HNc) as [n Hn].
+    exact (eval_exp_order_sound _ _ _ _ _ Hn).
+  Qed.
+
+  Lemma spine_codomain_order : forall G M N ρ κd a ρ' B' A' n,
+      ⊢ G -> initial_env_f G ρ ->
+      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
+      Rtyp a in List.length G ↘ A' -> nf_proof_free A' -> evaluated_kind (domain_kind a) ->
+      G ⊢a N ⟸ A' -> ⟦ N ⟧ ρ ↘ n ->
+      eval_exp_order gc_deps gc_stack B' (ρ' ↦ n ⦂ entry_type_value a).
+  Proof.
+    intros * HG Hρ Hs HA' Hpf Hk HNc Hn.
+    destruct (spine_value_codomain_evals _ _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HNc Hn) as [b Hb].
+    exact (eval_exp_order_sound _ _ _ _ _ Hb).
   Qed.
 End Facts.
 
@@ -500,6 +724,186 @@ Section type_check.
   Variable levels_abstractable_dec : forall G Δ E, ⊢ Δ ++ G -> gc_deps ⍮ gc_stack ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
       { levels_abstractable gc_deps gc_stack G Δ E } + { ~ levels_abstractable gc_deps gc_stack G Δ E }.
 
+  (** ** The Application Spine
+
+      The type of [M N₁ … Nₖ], kept as a value from the head's type on:
+      each argument is checked against the readback of the value's domain
+      and the value moves on to the codomain closure at the argument's
+      value.  A domain, or the final type, that reads back with a proof in
+      it is left to the reference step, which normalizes [B[Id,,N]]: the
+      value is the normal form only up to proofs there
+      ([Extraction.AppSpine]). *)
+
+  (** A type inferred, or no type *)
+  #[local] Abbreviation infer_result G M := ({ A : nf | G ⊢a M ⟹ A } + { forall A, ~ G ⊢a M ⟹ A })%type.
+
+  (** A check of a term against each type *)
+  #[local] Abbreviation check_against G N := (forall A, G ⊢ᵗ A -> { G ⊢a N ⟸ A } + { ~ G ⊢a N ⟸ A })%type.
+
+  (** What the spine knows of the type of [M] *)
+  Inductive spine_result G (P : checker_env G) (M : exp) : Type :=
+  (** A value related to the inferred type's value at the initial
+      environment *)
+  | spine_value (v : fdomain) (Hv : fdomain_ok gc_deps gc_stack v)
+      (Hs : spine_value_of G M (fenv_erase (proj1_sig P)) (fdomain_erase v))
+  (** The inferred type itself *)
+  | spine_exact (W : nf) (HW : G ⊢a M ⟹ W).
+  Arguments spine_value {G P M}.
+  Arguments spine_exact {G P M}.
+
+  (** What the spine of [M] gives *)
+  Inductive spine_outcome G (P : checker_env G) (M : exp) : Type :=
+  (** [M] is no application: its type is inferred as it is *)
+  | spine_not_application
+  (** The type of the application [M] *)
+  | spine_known (r : spine_result G P M)
+  (** The application [M] infers no type *)
+  | spine_ill_typed (Hn : forall A, ~ G ⊢a M ⟹ A).
+  Arguments spine_not_application {G P M}.
+  Arguments spine_known {G P M}.
+  Arguments spine_ill_typed {G P M}.
+
+  (** The start of the spine: the value of the head's type, unless that
+      type is [LevelSort] *)
+  Definition spine_start G (HG : ⊢ G) (P : checker_env G) M (W : nf) (HW : G ⊢a M ⟹ W) : spine_result G P M :=
+    match nf_not_level_sort_dec W with
+    | left HnL =>
+        let (t, Ht) := fast_eval_exp_impl F (nf_to_exp W) (proj1_sig P) (proj2 (proj2_sig P))
+                         (nbe_ty_order_typ _ _ _ _ (nbe_order_of_type _ _ (wf_type_of_infer _ _ _ HG HW))
+                            _ (proj1 (proj2_sig P))) in
+        spine_value t (proj2 Ht) (alg_spine_start _ _ _ _ _ HG HW HnL (proj1 (proj2_sig P)) (proj1 Ht))
+    | right _ => spine_exact W HW
+    end.
+
+  (** The reference step, from the inferred type [C] of the head: [C] is a
+      [Π], the argument checks against its domain, and the instance of its
+      codomain at the argument is normalized *)
+  Definition app_reference_step G (HG : ⊢ G) (P : checker_env G) M N (C : nf) (HC : G ⊢a M ⟹ C)
+      (check : check_against G N) : infer_result G (M $ N) :=
+    match get_pi_nf C with
+    | inleft (existT _ κd (existT _ κc (existT _ A (exist _ B E)))) =>
+        let HC' : G ⊢a M ⟹ nf_pi κd κc A B := eq_rect _ (fun X => G ⊢a M ⟹ X) HC _ E in
+        match check (nf_to_exp A) (typ_pi_dom _ _ _ _ _ _ HG HC') with
+        | left HN =>
+            let (B', HB') := nbe_ty_env_impl F G P (nf_to_exp B)[Id,,N]
+                               (nbe_order_of_type _ _ (typ_app_cod _ _ _ _ _ _ _ HG HC' HN)) in
+            inleft (exist _ B' (alg_type_infer_app _ _ _ _ _ _ _ _ HC' HN HB'))
+        | right Hn => inright (app_check_failure _ _ _ _ _ _ _ HG HC' Hn)
+        end
+    | inright Hn => inright (app_not_pi_failure _ _ _ _ HG HC Hn)
+    end.
+
+  (** The reference step from the head's type inferred as it is *)
+  Definition app_reference G (HG : ⊢ G) (P : checker_env G) M N
+      (infer_head : unit -> infer_result G M) (check : check_against G N) : infer_result G (M $ N) :=
+    match infer_head tt with
+    | inleft (exist _ C HC) => app_reference_step G HG P M N C HC check
+    | inright Hn => inright (app_head_failure _ _ _ Hn)
+    end.
+
+  (** A type inferred as a spine result *)
+  Definition spine_of_infer G P M (r : infer_result G M) : spine_result G P M + { forall A, ~ G ⊢a M ⟹ A } :=
+    match r with
+    | inleft (exist _ W HW) => inleft (spine_exact W HW)
+    | inright Hn => inright Hn
+    end.
+
+  (** One step of the spine at a [Π] value into a relevant codomain whose
+      domain is of an evaluated kind *)
+  Definition spine_pi_step G (HG : ⊢ G) (P : checker_env G) M N κd a ρ' B'
+      (Hv : fdomain_ok gc_deps gc_stack (fd_pi κd ak_relevant a ρ' B'))
+      (Hs : spine_value_of G M (fenv_erase (proj1_sig P)) (fdomain_erase (fd_pi κd ak_relevant a ρ' B')))
+      (Hk : evaluated_kind (domain_kind (fdomain_erase a)))
+      (infer_head : unit -> infer_result G M) (check : check_against G N) :
+      spine_result G P (M $ N) + { forall A, ~ G ⊢a M $ N ⟹ A } :=
+    let Ha := match Hv in fdomain_ok _ _ v return
+                    match v with fd_pi _ _ a0 ρ0 _ => fdomain_ok gc_deps gc_stack a0 /\ fenv_ok gc_deps gc_stack ρ0 | _ => True end with
+              | fdomain_ok_pi _ _ _ _ _ _ _ Ha Hρ => conj Ha Hρ
+              | _ => I
+              end in
+    let (A', HA') := fast_read_typ_impl F (List.length G) a (proj1 Ha)
+                       (spine_domain_read_order _ _ _ _ _ _ _ _ Hs) in
+    match nf_proof_freeb A' as b return nf_proof_freeb A' = b -> _ with
+    | true => fun Ef =>
+        let Hpf := proj1 (proj1 nf_proof_freeb_iff A') Ef in
+        let Hρ := proj1 (proj2_sig P) in
+        match check (nf_to_exp A') (spine_domain_type _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf) with
+        | left HN =>
+            let (n, Hn) := fast_eval_exp_impl F N (proj1_sig P) (proj2 (proj2_sig P))
+                             (spine_argument_order _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HN) in
+            let (b, Hb) := fast_eval_exp_impl F B' (fextend_env ρ' n (fentry_type_value a))
+                             (Forall_cons _ (fdentry_ok_term _ _ _ _ (proj2 Hn) (fentry_type_ok_value _ _ _ (proj1 Ha)))
+                                (proj2 Ha))
+                             (spine_codomain_order _ _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HN (proj1 Hn)) in
+            inleft (spine_value b (proj2 Hb) (alg_spine_step _ _ _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HN (proj1 Hn) (proj1 Hb)))
+        | right Hn => inright (spine_check_failure _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hn)
+        end
+    | false => fun _ => spine_of_infer G P (M $ N) (app_reference G HG P M N infer_head check)
+    end eq_refl.
+
+  (** One step of the spine: at a [Π] value into a relevant codomain whose
+      domain is of an evaluated kind, by the value; otherwise by the
+      reference step *)
+  Definition spine_step G (HG : ⊢ G) (P : checker_env G) M N (r : spine_result G P M)
+      (infer_head : unit -> infer_result G M) (check : check_against G N) :
+      spine_result G P (M $ N) + { forall A, ~ G ⊢a M $ N ⟹ A } :=
+    match r with
+    | spine_exact W HW => spine_of_infer G P (M $ N) (app_reference_step G HG P M N W HW check)
+    | spine_value v Hv Hs =>
+        match v return fdomain_ok gc_deps gc_stack v -> spine_value_of G M (fenv_erase (proj1_sig P)) (fdomain_erase v) -> _ with
+        | fd_pi κd ak_relevant a ρ' B' => fun Hv Hs =>
+            match abs_kind_eq_dec (fdomain_kind a) ak_propositional with
+            | right Hk =>
+                spine_pi_step G HG P M N κd a ρ' B' Hv Hs
+                  (eq_rect_r evaluated_kind (evaluated_kind_of_not_propositional _ Hk) (fdomain_kind_erase a))
+                  infer_head check
+            | left _ => spine_of_infer G P (M $ N) (app_reference G HG P M N infer_head check)
+            end
+        | _ => fun _ _ => spine_of_infer G P (M $ N) (app_reference G HG P M N infer_head check)
+        end Hv Hs
+    end.
+
+  (** The spine of the head [M] of an application: the outcome of its own
+      spine if it is one, else its type inferred as it is *)
+  Definition spine_head G (HG : ⊢ G) (P : checker_env G) M (o : spine_outcome G P M)
+      (infer_head : unit -> infer_result G M) : spine_result G P M + { forall A, ~ G ⊢a M ⟹ A } :=
+    match o with
+    | spine_not_application =>
+        match infer_head tt with
+        | inleft (exist _ W HW) => inleft (spine_start G HG P M W HW)
+        | inright Hn => inright Hn
+        end
+    | spine_known r => inleft r
+    | spine_ill_typed Hn => inright Hn
+    end.
+
+  (** The spine of [M N], from the outcome of the spine of [M] *)
+  Definition spine_extend G (HG : ⊢ G) (P : checker_env G) M N (o : spine_outcome G P M)
+      (infer_head : unit -> infer_result G M) (check : check_against G N) :
+      spine_result G P (M $ N) + { forall A, ~ G ⊢a M $ N ⟹ A } :=
+    match spine_head G HG P M o infer_head with
+    | inleft r => spine_step G HG P M N r infer_head check
+    | inright Hn => inright (app_head_failure _ _ _ Hn)
+    end.
+
+  (** The end of the spine: the readback of the value, if it is proof-free;
+      otherwise the reference step *)
+  Definition spine_finish G (HG : ⊢ G) (P : checker_env G) M N
+      (r : spine_result G P (M $ N) + { forall A, ~ G ⊢a M $ N ⟹ A })
+      (infer_head : unit -> infer_result G M) (check : check_against G N) : infer_result G (M $ N) :=
+    match r with
+    | inleft (spine_exact W HW) => inleft (exist _ W HW)
+    | inleft (spine_value v Hv Hs) =>
+        let (W', HW') := fast_read_typ_impl F (List.length G) v Hv (spine_value_read_order _ _ _ _ _ Hs) in
+        match nf_proof_freeb W' as b return nf_proof_freeb W' = b -> _ with
+        | true => fun Ef =>
+            inleft (exist _ W' (alg_spine_end _ _ _ _ _ HG (proj1 (proj2_sig P)) Hs HW'
+                                  (proj1 (proj1 nf_proof_freeb_iff W') Ef)))
+        | false => fun _ => app_reference G HG P M N infer_head check
+        end eq_refl
+    | inright Hn => inright Hn
+    end.
+
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations type_check_in G A (HA : G ⊢ᵗ A) (P : checker_env G) M (H : type_check_order M) :
       { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A } by struct H :=
@@ -633,11 +1037,10 @@ Section type_check.
         pureo (exist _ (nf_pi κd κc C B) _)
     (** An application *)
     | M' $ N' =>
-        let*o (exist _ C _) := type_infer_in G _ P M' _ while _ in
-        let*o (existT _ κd (existT _ κc (existT _ A (exist _ B _)))) := get_pi_nf C while _ in
-        let*b->o _ := type_check_in G (A : nf) _ P N' _ while _ in
-        let (B', _) := nbe_ty_env_impl F G P (B : nf)[Id,,N'] _ in
-        pureo (exist _ B' _)
+        spine_finish G HG P M' N'
+          (spine_extend G HG P M' N' (app_type_in G HG P M' _)
+             (fun _ => type_infer_in G HG P M' _) (fun A HA => type_check_in G A HA P N' _))
+          (fun _ => type_infer_in G HG P M' _) (fun A HA => type_check_in G A HA P N' _)
     (** A local definition *)
     | a_let (b_def A' M') B' =>
         let*o (exist _ UA _) := type_infer_in G _ P A' _ while _ in
@@ -693,6 +1096,18 @@ Section type_check.
         let*o (exist _ A _) := lookup F G _ x while _ in
         let (A', _) := nbe_ty_env_impl F G P A _ in
         pureo (exist _ A' _)
+    }
+  (** The spine of an application, as a value of its type ([spine_extend]);
+      no spine for a term that is no application *)
+  with app_type_in G (HG : ⊢ G) (P : checker_env G) M (H : type_infer_order M) : spine_outcome G P M by struct H :=
+  | G, HG, P, M, H with M => {
+    | M1 $ N1 =>
+        match spine_extend G HG P M1 N1 (app_type_in G HG P M1 _)
+                (fun _ => type_infer_in G HG P M1 _) (fun A HA => type_check_in G A HA P N1 _) with
+        | inleft r => spine_known r
+        | inright Hn => spine_ill_typed Hn
+        end
+    | _ => spine_not_application
     }
   (** The parameters of a unit: assumptions of types of universes or of
       types of levels. *)
@@ -800,7 +1215,7 @@ Section type_check.
   .
   Solve All Obligations with checker_obligation.
 
-  Extraction Inline type_check_in_functional type_infer_in_functional
+  Extraction Inline type_check_in_functional type_infer_in_functional app_type_in_functional
     params_check_functional unit_check_functional body_check_functional modexp_check_functional.
 
   (** A context extension, entry by entry, each in the context of the

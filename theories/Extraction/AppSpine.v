@@ -129,10 +129,11 @@ Record spine_step_result (ρ' : env) (B' : exp) (a n : domain) (ρ : env) (W1 : 
     evaluated kind: if the spine's value [v] of the head's type is related
     to the value of its normal form [Π A. B], then the codomain closure of
     [v] at the value of [N] is related to the value of the normal form [W1]
-    of [B[Id,,N]], which is the reference's next type.  Rests on soundness
-    ([soundness_ty_at_sort], PENDING M2) through [per_univ_of_nbe_ty]. *)
-Lemma spine_step_related : forall Γ κd A B N (k : nat) ρ c a ρ' B' n (i : nat) W1,
-    Γ ⊢ a_pi κd ak_relevant (nf_to_exp A) (nf_to_exp B) : Typeω@k ->
+    of [B[Id,,N]], which is the reference's next type.  Its one open
+    dependency is soundness: [soundness_ty'] / [soundness] (PENDING M2),
+    through [soundness_ty_at_sort] in [per_univ_of_nbe_ty]. *)
+Lemma spine_step_related : forall Γ κd A B N S ρ c a ρ' B' n (i : nat) W1,
+    Γ ⊢ a_pi κd ak_relevant (nf_to_exp A) (nf_to_exp B) : S ->
     Γ ⊢ N : nf_to_exp A ->
     initial_env_f Γ ρ ->
     ⟦ a_pi κd ak_relevant (nf_to_exp A) (nf_to_exp B) ⟧ ρ ↘ c ->
@@ -276,6 +277,22 @@ Proof.
   assert (HWX : nbe_ty_f Γ (nf_to_exp W) X2) by (econstructor; eassumption).
   pose proof (HN _ HWX) as HWX2.
   etransitivity; [ exact HX | symmetry; exact HWX2 ].
+Qed.
+
+(** The domain of a [Π] related to a type reads back, and the domain of
+    the type it is related to has the same kind. *)
+Lemma per_univ_pi_domain : forall κd a ρ' B' t (i : nat) s,
+    Dom d_pi κd ak_relevant a ρ' B' ≈ t ∈ per_univ i ->
+    (exists A, Rtyp a in s ↘ A) /\
+    (forall a0 ρ0 B0, t = d_pi κd ak_relevant a0 ρ0 B0 -> domain_kind a0 = domain_kind a).
+Proof.
+  intros * [R Hrel].
+  destruct (per_univ_elem_pi_left _ _ _ _ _ _ _ Hrel) as (a1 & ρ1 & B1 & ->).
+  destruct (per_univ_elem_pi_inv evaluated_kind_relevant Hrel) as (in_rel & _ & Hdom & _).
+  split.
+  - destruct (per_univ_then_per_top_typ Hdom s) as [Y1 _ HY1 _ _]; exists Y1; exact HY1.
+  - intros * E; inversion E; subst.
+    symmetry; exact (per_univ_elem_kind _ _ _ _ Hdom).
 Qed.
 
 (** A value related to a type reads back. *)
