@@ -1223,7 +1223,7 @@ Section FiledThroughUnits.
       (cs : list (string * list classified_carg)) (Nv : ctx) : option imember :=
     match x with
     | vk_ind qc k Cs =>
-        let Is := List.map (fun C => C[σ]) Cs in
+        let Is := List.map (fun C => (nf_to_exp C)[σ]) Cs in
         match fc_ind F qc with
         | Some D' =>
             match ind_member D' k, classified_cons_num n Ks cs with
@@ -1238,7 +1238,7 @@ Section FiledThroughUnits.
     | vk_record qr Cs =>
         match fc_record F qr, classified_cons_num n Ks cs with
         | Some Rr, Some cs' =>
-            Some (mk_imember (mh_record qr (List.map (fun C => C[σ]) Cs) (List.map fst (record_fields Rr))) Nv cs')
+            Some (mk_imember (mh_record qr (List.map (fun C => (nf_to_exp C)[σ]) Cs) (List.map fst (record_fields Rr))) Nv cs')
         | _, _ => None
         end
     end.
@@ -1254,7 +1254,7 @@ Section FiledThroughUnits.
     match xs with
     | nil => Some nil
     | x :: xs' =>
-        match view_key_index x Vs with
+        match view_key_pos x Vs with
         | Some v =>
             match raw_view_filed_f σ n Ks x (List.nth v Ss nil) (List.nth v css nil) (List.nth v Nvs nil),
                   raw_views_filed_f σ n Ks xs' Vs Ss css Nvs with
@@ -1269,7 +1269,7 @@ Section FiledThroughUnits.
       raw_views_filed_f σ n Ks xs Vs Ss css Nvs = raw_views_filed Θ Ξ σ n Ks xs Vs Ss css Nvs.
   Proof.
     induction xs as [| x xs IH]; intros; cbn [raw_views_filed_f raw_views_filed]; [ reflexivity |].
-    destruct (view_key_index x Vs); [ rewrite raw_view_filed_f_ok, IH |]; reflexivity.
+    destruct (view_key_pos x Vs); [ rewrite raw_view_filed_f_ok, IH |]; reflexivity.
   Qed.
 
   (** [raw_decl_filed] through [raw_views_filed_f]. *)
@@ -1341,11 +1341,11 @@ Proof.
   intros * [Hs Hv Hn Hb] [Hs' Hv' Hn' Hb'].
   assert (Agree : forall x, In x Vs -> In x Vs' -> siblings_table Vs Ss x = siblings_table Vs' Ss' x /\ meets_table Vs csV x = meets_table Vs' csV' x).
   { intros x Hx Hx'.
-    destruct (view_key_index_in_some _ _ Hx) as [v Hvi]; destruct (view_key_index_in_some _ _ Hx') as [v' Hvi'].
+    destruct (view_key_pos_in_some _ _ Hx) as [v Hvi]; destruct (view_key_pos_in_some _ _ Hx') as [v' Hvi'].
     unfold siblings_table, meets_table; rewrite Hvi, Hvi'; split.
     - eapply view_siblings_functional; eapply Forall2_index; eassumption.
     - f_equal; eapply view_classify_functional; eapply Forall2_index; eassumption. }
-  pose proof (views_dfs_functional _ _ _ _ _ Hb _ _ _ Hb' Agree) as <-.
+  pose proof (views_dfs_functional _ _ _ _ _ Hb _ _ _ Hb' Agree (siblings_table_absent _ _) (siblings_table_absent _ _)) as <-.
   split; [ reflexivity |].
   split; [ eapply Forall2_functional; [ exact (view_siblings_functional Θ Ξ R) | exact Hs | exact Hs' ] |].
   split; [ eapply Forall2_functional; [ exact (view_classify_functional Θ Ξ R) | exact Hv | exact Hv' ] |].

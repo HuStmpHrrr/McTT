@@ -25,8 +25,10 @@ From Mctt.Core.Syntactic.System.Global Require Import Presup MemberLemmas.
 From Mctt.Core.Syntactic.System.Inductives Require Import Views.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Consequences Require Import FiledConstructorTypes.
+From Mctt.Core.Completeness.Inductives Require Import Elim.
 From Mctt.Extraction Require Import Lookup LookupTwins NbE GlobalCheck IndDecl ViewsSearch ViewsReach ViewsCluster.
 From Mctt.Extraction Require Command.
+Import Syntax_Notations.
 #[local] Open Scope list_scope.
 
 (** The data a view has: its siblings, its classified constructors and
@@ -274,18 +276,18 @@ Section Clusters.
     - destruct (ind_lookup_f F qc) as [[D |] HlD].
       2:{ exists nil; intros z; split; [ intros (D & Mk & Hl & _); congruence | intros [] ]. }
       destruct (ind_member D k) as [Mk |] eqn:HMk.
-      2:{ exists nil; intros z; split; [ intros (D' & Mk & Hl & HMk' & _); rewrite <- HlD in Hl; injection Hl as <-; congruence
+      2:{ exists nil; intros z; split; [ intros (D' & Mk & Hl & HMk' & _); rewrite HlD in Hl; injection Hl as <-; congruence
                                       | intros [] ]. }
       destruct (nf_meet_in_list (tele_sub (im_nparams Mk) (sb_of_list sb_id (List.map nf_to_exp W)) ++ Γu) nu (im_nn Mk + nu) nm
                   (member_rcs qc D Mk W)) as [L HL].
       exists L; intros z; rewrite <- HL; split.
-      + intros (D' & Mk' & Hl & HMk' & Hm); rewrite <- HlD in Hl; injection Hl as <-; rewrite HMk in HMk'; injection HMk' as <-; exact Hm.
+      + intros (D' & Mk' & Hl & HMk' & Hm); rewrite HlD in Hl; injection Hl as <-; rewrite HMk in HMk'; injection HMk' as <-; exact Hm.
       + intros Hm; exists D, Mk; auto.
     - destruct (record_lookup_f F qr) as [[Rr |] HlR].
       2:{ exists nil; intros z; split; [ intros (Rr & Hl & _); congruence | intros [] ]. }
       destruct (nf_meet_in_list Γu nu nu nm (record_rcs Rr W)) as [L HL].
       exists L; intros z; rewrite <- HL; split.
-      + intros (Rr' & Hl & Hm); rewrite <- HlR in Hl; injection Hl as <-; exact Hm.
+      + intros (Rr' & Hl & Hm); rewrite HlR in Hl; injection Hl as <-; exact Hm.
       + intros Hm; exists Rr; auto.
   Qed.
 
@@ -424,18 +426,18 @@ Section Clusters.
       try discriminate.
     - injection Hh as <- <-; rewrite Hl in Hly; injection Hly as <-.
       destruct Hkn as [v Hv]; inversion Hv as [? ? C D2 ? Hl2 HC |]; subst.
-      apply key_in_app_l; apply (Hcase _ j _ Hss); [ exists (vi_ind qx j C); econstructor; eassumption | exact HWW ].
+      apply key_in_app_l; exact (Hcase Wx kx ss Hss (ex_intro _ _ Hv) HWW).
     - injection Hh as <- <-; rewrite Hlv in Hly; injection Hly as <-.
       (** a view sibling: its own siblings are the group's at the view's
           arguments, which are siblings of the group at [Wx] *)
       pose proof (@sibling_view_inv (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ _ _ _ HΞ HΓu Hl HM Hh0 Hlv Hnv) as [Dv' Hlv' _ HWvl HWvt _].
-      rewrite Hlv in Hlv'; injection Hlv' as <-.
+      assert (Dv' = Dv) as -> by (cbn in Hlv'; congruence).
       assert (HWvl' : List.length Wv = ind_nu Dv) by (rewrite List.length_map in HWvl; exact HWvl).
       destruct (@siblings_from_exists (gc_mk Θ Ξ) _ _ _ _ HΞ HΓu Hlv HWvl' HWvt) as [ssv Hssv].
-      assert (Hkv : key_normal Θ Ξ Γu (vk_ind qv kv Wv)).
+      assert (Hkv : key_normal Θ Ξ Γu (vk_ind qy ky Wv)).
       { pose proof Hnv as Hnv'; destruct (decl_of_glookup _ _ _ _ HΞ Hlv) as [_ Hcv].
         rewrite (tele_insts_sub (ind_uparams Dv) 0 Id Id _ Iv (decl_closed_ass _ Hcv) (decl_closed_uparams _ Hcv) ltac:(intros; lia)) in Hnv'.
-        exists (vi_ind qv kv (List.map (fun I => I[sb_of_list Id (List.map nf_to_exp Wx)]) Iv)); econstructor; eassumption. }
+        exists (vi_ind qy ky (List.map (fun I => I[sb_of_list Id (List.map nf_to_exp Wx)]) Iv)); econstructor; eassumption. }
       pose proof (Hcase _ _ _ Hssv Hkv HWW) as Hwv.
       apply key_in_app_l; apply (key_in_compose _ _ _ Hwv).
       exact (@view_entry_siblings (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ HΓu Hl HCl HCt HM Hh0 Hlv Hnv Hss Hssv).
