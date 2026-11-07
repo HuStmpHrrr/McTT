@@ -452,17 +452,22 @@ Lemma per_ctx_env_extend_dm_cross : forall {Δ Δ' A A' M M' U U'} {i : nat} {R}
     Δ ⊨ A ≈ A' : Typeω@i ->
     Δ ⊨ M ≈ M' : A ->
     Δ ⊨ᵐ me_lit U ≈ me_lit U' ->
+    gunit_scoped (List.length Δ) U -> gunit_scoped (List.length Δ') U' ->
     exists R', EF Δ ▸ₘ A ≔ M ‖ U ≈ Δ' ▸ₘ A' ≔ M' ‖ U' ∈ per_ctx_env ↘ R'.
 Proof.
-  intros * HR HA HM HU.
+  intros * HR HA HM HU HsU HsU'.
   pose proof (rel_exp_of_typ_inversion_simple HA) as [RΔ [HΔ HAs]].
   assert (E : R <~> RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
   pose proof (rel_exp_of_typ_inversion_simple_at HΔ (rel_exp_under_ctx_refl_left HA)) as HAl.
   pose proof (rel_exp_under_ctx_simple_at_rel HΔ (rel_exp_under_ctx_refl_left HA) HM) as HMs.
   eexists.
-  eapply (@per_ctx_env_cons_dm _ Δ Δ' i A A' M M' U U' R (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ R) => per_head A A' ρ ρ')
-            (per_ctx_env_dm_rel R (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ R) => per_head A A' ρ ρ') ak_relevant M M' U U') HR ak_relevant);
-    [ eapply per_env_PER; exact HR | | | | | reflexivity | reflexivity ].
+  eapply per_ctx_env_cons_dm
+    with (head_rel := fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ R) => per_head A A' ρ ρ')
+         (env_rel := per_ctx_env_dm_rel R (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ R) => per_head A A' ρ ρ') (List.length Δ)
+                       ak_relevant M M' U U')
+         (r := ak_relevant);
+    [ exact HR | eapply per_env_PER; exact HR | exact (gunit_scoped_free_bound _ _ HsU) | exact (gunit_scoped_free_bound _ _ HsU')
+    | | | | | reflexivity | reflexivity ].
   - intros ρ ρ' Hρ.
     destruct (HAs _ _ (proj1 (E _ _) Hρ)) as [a [a' [Ha [Ha' [R1 HR1]]]]].
     econstructor; try eassumption.
@@ -684,10 +689,11 @@ Lemma per_ctx_env_of_dm : forall {Γ A} {i : nat} {M U R},
     Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
     Γ ⊨ᵐ me_lit U ≈ me_lit U ->
-    EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ ▸ₘ A ≔ M ‖ U ∈ per_ctx_env ↘ per_env_extend_dm A M U R.
+    gunit_scoped (List.length Γ) U ->
+    EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ ▸ₘ A ≔ M ‖ U ∈ per_ctx_env ↘ per_env_extend_dm A M U (List.length Γ) R.
 Proof.
-  intros * HΓ HA HM HU.
-  eapply per_ctx_env_extend_dm; [ exact HΓ | | | | ].
+  intros * HΓ HA HM HU HsU.
+  eapply per_ctx_env_extend_dm; [ exact HΓ | exact (gunit_scoped_free_bound _ _ HsU) | | | | ].
   - exact (rel_exp_of_typ_inversion_simple_at HΓ HA).
   - exact (rel_exp_under_ctx_simple_at_rel HΓ HA HM).
   - exact (rel_exp_of_typ_relevant_at HΓ HA).
@@ -794,21 +800,24 @@ Lemma per_env_extend_dm_combine : forall {Γ κ A M U R RA a b ma mb},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     EF Γ ▹{κ} A ≈ Γ ▹{κ} A ∈ per_ctx_env ↘ RA ->
     Γ ⊨ᵐ me_lit U ≈ me_lit U ->
+    gunit_scoped (List.length Γ) U ->
     per_env_extend_def A M R a b ->
     per_ctx_env_mod_rel R (List.length Γ) U U ma mb ->
     env_agree_upto (List.length Γ) ma↯ a↯ -> env_agree_upto (List.length Γ) mb↯ b↯ ->
-    per_env_extend_dm A M U R
+    per_env_extend_dm A M U (List.length Γ) R
       (de_dm (a 0) (centry_tag (ce_dm A M U) Γ a↯) (env_mod ma 0) (centry_slot_unit (ce_dm A M U)) :: a↯)
       (de_dm (b 0) (centry_tag (ce_dm A M U) Γ b↯) (env_mod mb 0) (centry_slot_unit (ce_dm A M U)) :: b↯).
 Proof.
-  intros * HΓ HΓA HUU Hab Hm Qa Qb.
+  intros * HΓ HΓA HUU HsU Hab Hm Qa Qb.
   assert (HPR : PER R) by (eapply per_env_PER; exact HΓ).
   destruct Hab as [[Hab1 Hab2 _ _ _ _] Hta Htb].
   destruct Hm as [_ Ta _ Tb _ _ _ _ _].
   assert (Raa : R a↯ a↯) by (etransitivity; [ exact Hab1 | symmetry; exact Hab1 ]).
   assert (Rbb : R b↯ b↯) by (etransitivity; [ symmetry; exact Hab1 | exact Hab1 ]).
-  (** The heads read back at [A] over their tails ([per_head_dm_readable]). *)
-  destruct (per_head_dm_readable (h := env_mod ma 0) (h' := env_mod mb 0) (U := U) HΓA HΓ Hab1 Hab2) as [Rda Rdb].
+  (** The heads read back at [A] over their tails, their unit scoped by
+      [Γ] ([per_head_dm_readable]). *)
+  destruct (per_head_dm_readable (h := env_mod ma 0) (h' := env_mod mb 0) (U := U) (List.length Γ) HΓA HΓ Hab1 Hab2
+              (gunit_scoped_free_bound _ _ HsU)) as [Rda Rdb].
   econstructor; [ exact Hab1 | exact Hab2 | exact Hta | exact Htb
                | exact (tie_mod_env_eq HΓ HUU Raa Qa Ta) | exact (tie_mod_env_eq HΓ HUU Rbb Qb Tb)
                | exact Rda | exact Rdb | do 2 eexists; reflexivity | do 2 eexists; reflexivity ].
@@ -839,7 +848,7 @@ Proof.
   pose proof (per_ctx_env_of_typ (κ := ak_relevant) HΓ (rel_type_of_typ HA)) as HΓA.
   assert (E1 : Rd1 <~> R') by (eapply per_ctx_env_right_irrel; eassumption).
   assert (E2 : Rm1 <~> R') by (eapply per_ctx_env_right_irrel; eassumption).
-  refine (mk_rel_sub_under_ctx _ _ _ _ R' HΓ' (per_env_extend_dm A M U R) (per_ctx_env_of_dm HΓ HA HMl HUU) _ _).
+  refine (mk_rel_sub_under_ctx _ _ _ _ R' HΓ' (per_env_extend_dm A M U (List.length Γ) R) (per_ctx_env_of_dm HΓ HA HMl HUU HUs) _ _).
   2:{ intros [| x] Hx; [| exact (Hds (S x) Hx) ].
       destruct (Hds 0 ltac:(cbn; lia)) as [Sd Sd'], (Hms 0 ltac:(cbn; lia)) as [Sm Sm'].
       cbn in Sd, Sd', Sm, Sm' |- *; split; split; assumption. }
@@ -898,19 +907,21 @@ Qed.
 Lemma per_env_extend_dm_of_def : forall {Γ κ A M U R RA a b},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     EF Γ ▹{κ} A ≈ Γ ▹{κ} A ∈ per_ctx_env ↘ RA ->
+    gunit_scoped (List.length Γ) U ->
     per_env_extend_def A M R a b ->
     (exists t U0, env_entry a 0 = de_dm (a 0) t (env_mod a 0) U0) ->
     (exists t U0, env_entry b 0 = de_dm (b 0) t (env_mod b 0) U0) ->
     tie_mod (env_mod a 0) (me_lit U) a↯ -> tie_mod (env_mod b 0) (me_lit U) b↯ ->
-    per_env_extend_dm A M U R
+    per_env_extend_dm A M U (List.length Γ) R
       (retag_entry (centry_tag (ce_dm A M U) Γ a↯) (centry_slot_unit (ce_dm A M U)) (env_entry a 0) :: a↯)
       (retag_entry (centry_tag (ce_dm A M U) Γ b↯) (centry_slot_unit (ce_dm A M U)) (env_entry b 0) :: b↯).
 Proof.
-  intros * HΓ HΓA Hab (ta & Ua & Ka) (tb & Ub & Kb) Ta Tb.
+  intros * HΓ HΓA HsU Hab (ta & Ua & Ka) (tb & Ub & Kb) Ta Tb.
   destruct Hab as [[Hab1 Hab2 _ _ _ _] Hta Htb].
   (** The heads' values and modules are kept; they read back at [A] over
-      their tails ([per_head_dm_readable]). *)
-  destruct (per_head_dm_readable (h := env_mod a 0) (h' := env_mod b 0) (U := U) HΓA HΓ Hab1 Hab2) as [Rda Rdb].
+      their tails, the unit scoped by [Γ] ([per_head_dm_readable]). *)
+  destruct (per_head_dm_readable (h := env_mod a 0) (h' := env_mod b 0) (U := U) (List.length Γ) HΓA HΓ Hab1 Hab2
+              (gunit_scoped_free_bound _ _ HsU)) as [Rda Rdb].
   rewrite Ka, Kb; cbn [retag_entry centry_slot_unit centry_unit].
   econstructor; cbn [drop_env tl env_mod env_entry hd];
     [ exact Hab1 | exact Hab2 | exact Hta | exact Htb | exact Ta | exact Tb
@@ -923,10 +934,13 @@ Lemma per_ctx_env_of_dm_sub : forall {Γ Δ σ σ' A} {i : nat} {M U R},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A : Typeω@i -> Δ ⊨ M : A -> Δ ⊨ᵐ me_lit U ≈ me_lit U ->
-    EF Γ ▸ₘ A[σ] ≔ M[σ] ‖ U[σ]ᵘ ≈ Γ ▸ₘ A[σ] ≔ M[σ] ‖ U[σ]ᵘ ∈ per_ctx_env ↘ per_env_extend_dm A[σ] M[σ] U[σ]ᵘ R.
+    gunit_scoped (List.length Δ) U ->
+    EF Γ ▸ₘ A[σ] ≔ M[σ] ‖ U[σ]ᵘ ≈ Γ ▸ₘ A[σ] ≔ M[σ] ‖ U[σ]ᵘ ∈ per_ctx_env
+      ↘ per_env_extend_dm A[σ] M[σ] U[σ]ᵘ (List.length Γ) R.
 Proof.
-  intros * HΓ Hσj HA HM HU.
-  eapply per_ctx_env_extend_dm; [ exact HΓ | exact (rel_exp_of_typ_sub_simple HΓ Hσj HA)
+  intros * HΓ Hσj HA HM HU HsU.
+  eapply per_ctx_env_extend_dm; [ exact HΓ | exact (gunit_scoped_free_bound _ _ (gunit_scoped_rel_sub Hσj HsU))
+                                | exact (rel_exp_of_typ_sub_simple HΓ Hσj HA)
                                 | exact (rel_exp_under_ctx_sub_simple HΓ Hσj HA HM)
                                 | exact (rel_exp_of_typ_sub_relevant HΓ Hσj HA) |].
   intros ρ ρ' Hρ.
@@ -949,11 +963,12 @@ Qed.
 Lemma rel_sub_under_ctx_q_dm : forall {Γ' Γ σ σ' A} {i : nat} {M U},
     Γ' ⊨ˢ σ ≈ σ' : Γ ->
     Γ ⊨ A : Typeω@i -> Γ ⊨ M : A -> Γ ⊨ᵐ me_lit U ≈ me_lit U ->
+    gunit_scoped (List.length Γ) U ->
     Γ' ▸ₘ A[σ] ≔ M[σ] ‖ U[σ]ᵘ ⊨ˢ q σ ≈ q σ' : Γ ▸ₘ A ≔ M ‖ U.
 Proof.
-  intros * Hσj HA HM HU.
+  intros * Hσj HA HM HU HsU.
   pose proof Hσj as [R' HΓ' R HΓ _ Hσs].
-  pose proof (per_ctx_env_of_dm_sub HΓ' Hσj HA HM HU) as HΓ'dm.
+  pose proof (per_ctx_env_of_dm_sub HΓ' Hσj HA HM HU HsU) as HΓ'dm.
   pose proof (per_ctx_env_of_def HΓ HA HM) as HΓdef.
   pose proof (per_ctx_env_of_typ (κ := ak_relevant) HΓ (rel_type_of_typ HA)) as HΓA.
   assert (HPR : PER R) by (eapply per_env_PER; exact HΓ).
@@ -974,13 +989,13 @@ Proof.
       | exact (not_rel_typ_propositional_of_typ_sub HΓ' Hσj HA _ _ Ht' Hp) ]. }
   pose proof Hqd as [Rd1 HΓd1 Rd HΓd Hd _].
   assert (Ed : Rd <~> per_env_extend_def A M R) by (eapply per_ctx_env_right_irrel; eassumption).
-  assert (E1 : Rd1 <~> per_env_extend_dm A[σ] M[σ] U[σ]ᵘ R') by (eapply per_ctx_env_right_irrel; eassumption).
-  refine (mk_rel_sub_under_ctx _ _ _ _ _ HΓ'dm _ (per_ctx_env_of_dm HΓ HA HM HU) _ _);
+  assert (E1 : Rd1 <~> per_env_extend_dm A[σ] M[σ] U[σ]ᵘ (List.length Γ') R') by (eapply per_ctx_env_right_irrel; eassumption).
+  refine (mk_rel_sub_under_ctx _ _ _ _ _ HΓ'dm _ (per_ctx_env_of_dm HΓ HA HM HU HsU) _ _);
     [| intros x Hx; split; eapply sb_q_bound; first [ exact Hx | intros y Hy; exact (proj1 (Hσs y Hy))
                                                    | intros y Hy; exact (proj2 (Hσs y Hy)) ] ].
   intros Γ'' R'' HΓ'' ψ Hψ Hψb ρ ρ' Hρ.
   destruct (rel_sub_q_tails_tied Hσj HU HΓ HΓ'dm
-              (fun ρ0 ρ0' H0 => conj (per_env_extend_dm_tie_left _ _ _ _ _ _ H0) (per_env_extend_dm_tie_right _ _ _ _ _ _ H0))
+              (fun ρ0 ρ0' H0 => conj (per_env_extend_dm_tie_left _ _ _ _ _ _ _ H0) (per_env_extend_dm_tie_right _ _ _ _ _ _ _ H0))
               _ _ HΓ'' _ Hψ Hψb _ _ Hρ)
     as (x1 & y1 & y4 & x4 & Hx1 & Hy1 & Hy4 & Hx4 & Htails & Hm & Hm').
   destruct (Hd _ _ HΓ'' _ (proj2 (rel_wk_morphism ψ _ _ (reflexivity R'') _ _ E1) Hψ) Hψb _ _ Hρ)
@@ -1023,10 +1038,11 @@ Proof.
              tie_mod (env_mod (ea :: nil) 0) (me_lit U) a -> tie_mod (env_mod (eb :: nil) 0) (me_lit U) b ->
              per_env_extend_def A M R (retag_entry (centry_tag (ce_def A M) Γ a) (centry_slot_unit (ce_def A M)) ea :: a)
                                       (retag_entry (centry_tag (ce_def A M) Γ b) (centry_slot_unit (ce_def A M)) eb :: b) ->
-             per_env_extend_dm A M U R (retag_entry (centry_tag (ce_dm A M U) Γ a) (centry_slot_unit (ce_dm A M U)) ea :: a)
-                                       (retag_entry (centry_tag (ce_dm A M U) Γ b) (centry_slot_unit (ce_dm A M U)) eb :: b)).
+             per_env_extend_dm A M U (List.length Γ) R
+               (retag_entry (centry_tag (ce_dm A M U) Γ a) (centry_slot_unit (ce_dm A M U)) ea :: a)
+               (retag_entry (centry_tag (ce_dm A M U) Γ b) (centry_slot_unit (ce_dm A M U)) eb :: b)).
   { intros * Ea Eb Ta Tb Hab.
-    pose proof (per_env_extend_dm_of_def (U := U) HΓ HΓA Hab) as Hdm.
+    pose proof (per_env_extend_dm_of_def (U := U) HΓ HΓA HsU Hab) as Hdm.
     rewrite <- (retag_entry_twice (centry_tag (ce_dm A M U) Γ a) (centry_slot_unit (ce_dm A M U))
                   (centry_tag (ce_def A M) Γ a) (centry_slot_unit (ce_def A M)) ea),
             <- (retag_entry_twice (centry_tag (ce_dm A M U) Γ b) (centry_slot_unit (ce_dm A M U))
@@ -1273,9 +1289,9 @@ Proof.
     destruct (rel_ctx_wf_per_ctx_env H2) as [R' HR'].
     pose proof (rel_modexp_refl_left HU) as HUU.
     constructor; cbn [app].
-    - econstructor; [ exact H1 | exact (per_ctx_env_of_dm HR HA HM HUU) | exact HA | exact HM | exact HUU | exact HsU ].
-    - econstructor; [ exact H2 | exact (per_ctx_env_of_dm HR' HA' HM' HU') | exact HA' | exact HM' | exact HU' | exact HsU' ].
-    - exact (per_ctx_env_extend_dm_cross HRx HAA' HMM' HU). }
+    - econstructor; [ exact H1 | exact (per_ctx_env_of_dm HR HA HM HUU HsU) | exact HA | exact HM | exact HUU | exact HsU ].
+    - econstructor; [ exact H2 | exact (per_ctx_env_of_dm HR' HA' HM' HU' HsU') | exact HA' | exact HM' | exact HU' | exact HsU' ].
+    - exact (per_ctx_env_extend_dm_cross HRx HAA' HMM' HU HsU HsU'). }
   constructor; [ assumption | exact Hr | apply valid_ctx_dm | apply valid_ctx_dm ];
     first [ assumption | exact (rel_ext_under_ctx_left _ _ _ Hr) | exact (rel_ext_under_ctx_right _ _ _ Hr) ].
 Qed.

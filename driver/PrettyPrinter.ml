@@ -850,14 +850,18 @@ let exp_to_expression =
        Cst.Coq_let_in (Cst.Coq_d_mod (px, params, md), ebody')
     (* A definition with a module part whose unit is an alias under no
        parameters, as a local alias of a type has: the alias of its
-       target.  The core term does not say whether the target is an
-       inductive type or a record type; it prints as an inductive alias. *)
+       target, a record alias when the target names a record type, an
+       inductive alias otherwise. *)
     | Coq_a_let (Coq_b_def_mod (_, _, Coq_gu_mk ([], Coq_md_alias h)), ebody) ->
        let px = new_tyvar () in
        let h' = impl_mod ctx h in
        let ebody' = impl (px :: ctx) ebody in
-       Cst.Coq_let_in (Cst.Coq_d_ind_alias (px, [], h'), ebody')
-    (* Any other: its term part, as a definition *)
+       let names_record =
+         match chain_of h with
+         | Some (fp, ms) -> Lk.record_lookup_f !current_fctx { q_unit = fp; q_chain = ms } <> None
+         | None -> false in
+       let d = if names_record then Cst.Coq_d_record_alias (px, [], h') else Cst.Coq_d_ind_alias (px, [], h') in
+       Cst.Coq_let_in (d, ebody')
     | Coq_a_let (Coq_b_def_mod (ea, em, _), ebody) ->
        let px = match ea with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
        let ea' = Some (impl ctx ea) in

@@ -137,19 +137,30 @@ Section Fixed_GCtx.
 (** The environments of a definition entry from the head relation and the
     bodies' ties taken together, as one goal. *)
 Lemma mk_per_ctx_env_def_rel' : forall tail_rel
-    (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) A A' r M M' ρ ρ'
+    (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) n A A' r M M' ρ ρ'
     (Ht : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel),
     Dom (ρ 0) ≈ (ρ' 0) ∈ head_rel Ht /\ def_heads_at r (head_rel Ht) M M' ρ ρ' ->
     (rel_typ_propositional A ρ↯ -> exists t, env_entry ρ 0 = de_term (ρ 0) t) ->
     (rel_typ_propositional A' ρ'↯ -> exists t, env_entry ρ' 0 = de_term (ρ' 0) t) ->
-    head_readable 0 (env_entry ρ 0) ->
-    head_readable 0 (env_entry ρ' 0) ->
-    per_ctx_env_def_rel tail_rel (@head_rel) A A' r M M' ρ ρ'.
-Proof. intros * [Hh Hd] Hl Hr Hrl Hrr; exact (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht Hh Hd Hl Hr Hrl Hrr). Qed.
+    head_readable n (env_entry ρ 0) ->
+    head_readable n (env_entry ρ' 0) ->
+    per_ctx_env_def_rel tail_rel (@head_rel) n A A' r M M' ρ ρ'.
+Proof. intros * [Hh Hd] Hl Hr Hrl Hrr; exact (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ _ Ht Hh Hd Hl Hr Hrl Hrr). Qed.
 
 (** Related contexts have as many entries. *)
 Lemma per_ctx_env_length : forall {Γ Δ R}, EF Γ ≈ Δ ∈ per_ctx_env ↘ R -> List.length Γ = List.length Δ.
 Proof. induction 1; cbn [List.length]; congruence. Qed.
+
+(** A head readable within the length of one of two related contexts is
+    readable within the other's ([per_ctx_env_length]). *)
+Ltac readable_by_length :=
+  first [ assumption
+        | match goal with
+          | Hc : per_ctx_env _ ?G1 ?G2, H : head_readable _ ?e |- head_readable _ ?e =>
+              let Hl := fresh "Hl" in
+              pose proof (per_ctx_env_length Hc) as Hl;
+              first [ rewrite Hl in H; exact H | rewrite <- Hl in H; exact H ]
+          end ].
 
 Lemma per_ctx_env_right_irrel : forall Γ Δ Δ' R R',
     DF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
@@ -165,10 +176,10 @@ Proof.
   intros ρ ρ'.
   split; intros [Ht Hh Hl Hr Hrl Hrr].
   - assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel0) by intuition;
-      apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht0); [| assumption | solve_prop_head | assumption | assumption ];
+      apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Ht0); [| assumption | solve_prop_head | assumption | assumption ];
       destruct_rel_typ; handle_per_univ_elem_irrel; intuition.
   - assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) by intuition;
-      apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht0); [| assumption | solve_prop_head | assumption | assumption ];
+      apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Ht0); [| assumption | solve_prop_head | assumption | assumption ];
       destruct_rel_typ; handle_per_univ_elem_irrel; intuition.
   - (** A definition: the heads are tied to the bodies, which are related
         across the two right-hand contexts through the left body. *)
@@ -184,7 +195,7 @@ Proof.
         assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (etransitivity; [ exact Ht0 | symmetry; exact Ht0 ]);
         assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [ symmetry; exact Ht0 | exact Ht0 ]) ];
       (** The two derivations give the type one sort, at a related tail. *)
-      same_def_sort; apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht0); try exact Hl; try exact Hrl; try exact Hrr;
+      same_def_sort; apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ _ Ht0); try exact Hl; try exact Hrl; try exact Hrr;
       try solve_prop_head; cbn [def_heads_at]; first [ exact I | solve_def_heads ].
   - (** A slot: the heads are tied to the closures of the left unit, which
         are related to the closures of either right unit. *)
@@ -254,13 +265,14 @@ Proof.
     intros ρ ρ'; split; intros Hρ; [ apply HE0 in Hρ | apply HE0 ]; destruct Hρ as [Ht Hh Hl Hr Hrl Hrr];
       assert (tail_rel ρ↯ ρ↯) by (etransitivity; [ exact Ht | symmetry; exact Ht ]);
       assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; [ symmetry; exact Ht | exact Ht ]);
-      (apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht); [ exact Hh | solve_prop_head | solve_prop_head | assumption | assumption ]).
+      (apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Ht);
+       [ exact Hh | solve_prop_head | solve_prop_head | readable_by_length | readable_by_length ]).
   - apply_relation_equivalence.
-    match goal with H : per_ctx_env_cons_rel _ _ _ _ _ _ |- _ => destruct H as [Ht Hh Hl Hr Hrl Hrr] end.
+    match goal with H : per_ctx_env_cons_rel _ _ _ _ _ _ _ |- _ => destruct H as [Ht Hh Hl Hr Hrl Hrr] end.
     assert (Ht' : tail_rel ρ'↯ ρ↯) by eauto.
     assert (tail_rel ρ↯ ρ↯) by (etransitivity; eassumption).
     assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; eassumption).
-    apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht'); [| solve_prop_head | solve_prop_head | assumption | assumption ].
+    apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Ht'); [| solve_prop_head | solve_prop_head | readable_by_length | readable_by_length ].
     destruct_rel_mod_eval.
     symmetry; handle_per_univ_elem_irrel; intuition.
   - (** A definition.  The swapped context has the same head relation and
@@ -299,8 +311,9 @@ Proof.
           [ apply HE0 in Hρ | apply HE0 ]; destruct Hρ as [e Hh Hd Hl Hr Hrl Hrr];
           assert (tail_rel ρ↯ ρ↯) by (etransitivity; [ exact e | symmetry; exact e ]);
           assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; [ symmetry; exact e | exact e ]);
-          (apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ e);
-           [ exact Hh | apply def_heads_at_swap; exact Hd | solve_prop_head | solve_prop_head | assumption | assumption ]).
+          (apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ _ e);
+           [ exact Hh | apply def_heads_at_swap; exact Hd | solve_prop_head | solve_prop_head
+           | readable_by_length | readable_by_length ]).
     + intros ρ ρ' Hρ.
       apply HE0 in Hρ; apply HE0.
       destruct Hρ as [e ? Hd Hl Hr Hrl Hrr].
@@ -308,7 +321,7 @@ Proof.
       assert (tail_rel ρ↯ ρ↯) by (etransitivity; eassumption).
       assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; eassumption).
       destruct r; cbn [def_heads_at def_bodies_at rel_elem] in *; [ destruct Hd; destruct_conjs | | destruct Hd; destruct_conjs ].
-      all: apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try exact Hrl; try exact Hrr; try solve_prop_head; cbn [def_heads_at].
+      all: apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ _ Ht); try exact Hrl; try exact Hrr; try solve_prop_head; cbn [def_heads_at].
       all: destruct_rel_mod_eval.
       all: handle_per_univ_elem_irrel.
       all: match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end.
@@ -439,10 +452,10 @@ Ltac destruct_dm_rels :=
 
 (** Those an assumption and a definition relate, likewise. *)
 Ltac destruct_cons_rels :=
-  repeat match goal with H : per_ctx_env_cons_rel _ _ _ _ _ _ |- _ => destruct H end.
+  repeat match goal with H : per_ctx_env_cons_rel _ _ _ _ _ _ _ |- _ => destruct H end.
 
 Ltac destruct_def_rels :=
-  repeat match goal with H : per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ |- _ => destruct H end.
+  repeat match goal with H : per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ _ |- _ => destruct H end.
 
 (** Those a module entry relates, likewise. *)
 Ltac destruct_mod_rels :=
@@ -535,10 +548,10 @@ Proof with solve [eauto using per_univ_trans].
   - (** The right type of the composite is the last one; the right term-head
         field moves to it at the right tail against itself. *)
     econstructor;
-      only 5: (match goal with HT : ?T0 <~> tail_rel |- per_ctx_env_cons_rel _ _ _ _ <~> _ =>
+      only 5: (match goal with HT : ?T0 <~> tail_rel |- per_ctx_env_cons_rel _ _ _ _ _ <~> _ =>
                  intros ρ ρ'; split; intros [Ht Hh Hl Hr Hrl Hrr];
                  assert (T0 ρ'↯ ρ'↯) by (apply HT; etransitivity; [ symmetry; exact Ht | exact Ht ]);
-                 (apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht); [ exact Hh | exact Hl | solve_prop_head | exact Hrl | exact Hrr ])
+                 (apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Ht); [ exact Hh | exact Hl | solve_prop_head | exact Hrl | exact Hrr ])
                end);
       eauto.
     + apply_relation_equivalence. intuition.
@@ -550,10 +563,10 @@ Proof with solve [eauto using per_univ_trans].
       econstructor; intuition.
       (** This cannot be [etransitivity], as the two levels [i] differ. *)
       eapply per_univ_trans; [| eassumption]; eassumption.
-  - match goal with H2 : per_ctx_env_cons_rel _ _ _ _ ?ρ1 ?ρ2, H3 : per_ctx_env_cons_rel _ _ _ _ ?ρ2 ?ρ3 |- _ =>
+  - match goal with H2 : per_ctx_env_cons_rel _ _ _ _ _ ?ρ1 ?ρ2, H3 : per_ctx_env_cons_rel _ _ _ _ _ ?ρ2 ?ρ3 |- _ =>
       destruct H2 as [Ht1 Hh1 Hl1 Hr1 Hrl1 Hrr1], H3 as [Ht2 Hh2 Hl2 Hr2 Hrl2 Hrr2] end.
     assert (Ht : tail_rel ρ1↯ ρ3↯) by eauto.
-    apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht);
+    apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Ht);
       [| first [ exact Hl1 | solve_prop_head ] | first [ exact Hr2 | solve_prop_head ] | exact Hrl1 | exact Hrr2 ].
     destruct_rel_typ.
     handle_per_univ_elem_irrel.
@@ -596,13 +609,13 @@ Proof with solve [eauto using per_univ_trans].
         trans_def_sort;
         destruct r; cbn [def_heads_at def_bodies_at] in *;
         repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
-        apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try exact Hl; try exact Hr; try exact Hrl; try exact Hrr;
+        apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ _ Ht); try exact Hl; try exact Hr; try exact Hrl; try exact Hrr;
         try solve_prop_head; cbn [def_heads_at]; first [ exact I | solve_def_heads ].
   - cbn beta in *; destruct_conjs; destruct_def_rels.
     assert (Ht : tail_rel ρ1↯ ρ3↯) by eauto.
     assert (tail_rel ρ1↯ ρ1↯) by (etransitivity; [| symmetry]; eassumption).
     assert (tail_rel ρ3↯ ρ3↯) by (etransitivity; [symmetry |]; eassumption).
-    apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try assumption; try solve_prop_head.
+    apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ _ Ht); try assumption; try solve_prop_head.
     all: destruct r; cbn [def_heads_at def_bodies_at] in *;
       repeat match goal with H : def_heads _ _ _ _ _ |- _ => destruct H end; destruct_conjs;
       first [ exact I | solve_def_heads ].
@@ -718,7 +731,7 @@ Lemma per_ctx_env_cons' : forall {Γ Γ' i κ A A' tail_rel}
     (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
         rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
     (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), value_not_level_sort A ρ) ->
-    (env_rel <~> per_ctx_env_cons_rel tail_rel (@head_rel) A A') ->
+    (env_rel <~> per_ctx_env_cons_rel tail_rel (@head_rel) (List.length Γ) A A') ->
     EF Γ ▹{κ} A ≈ Γ' ▹{κ} A' ∈ per_ctx_env ↘ env_rel.
 Proof.
   intros.

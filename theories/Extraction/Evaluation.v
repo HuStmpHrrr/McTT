@@ -801,6 +801,11 @@ Proof.
     try match goal with H : 0 < List.length ?Δ |- _ => destruct Δ; [ cbn in H; lia |] end;
     try match goal with H : eval_selc _ _ _ ?c _ |- eval_selc_order _ _ _ (_ :: ?c) =>
           destruct c; [ inversion H |] end;
+    (** A local definition with a module part: its unit's literal evaluates
+        as the unit's closure ([eval_me_lit]). *)
+    try match goal with Hm : ⟦ me_lit ?U ⟧ᵐ _ ⍮ _ ⍮ _ ↘ _, Ho : eval_modexp_order _ _ (me_lit ?U) _
+          |- eval_exp_order _ _ (ℓᵈ _ ≔ _ ‖ ?U in _) _ =>
+          inversion Hm; subst; inversion Ho; subst end;
     (** A proof is never an evaluated kind, nor the kind of an evaluated
         argument a proof's. *)
     solve [ econstructor; try eassumption; intros; functional_eval_all;
@@ -1394,6 +1399,9 @@ Section EvalImpl.
     try solve [ econstructor; cbn; lia ];
     (** A stuck eliminator: its member's reference, read off the member *)
     try solve [ eapply eval_elim_neut; eauto using eval_mref_im_ref ];
+    (** A local definition with a module part: its unit's literal is the
+        unit's closure ([eval_me_lit]) *)
+    try solve [ eapply eval_exp_let_dm; [ eassumption | eassumption | eapply eval_me_lit; eassumption | eassumption ] ];
     try solve [ eauto ];
     try econstructor; eauto.
 
