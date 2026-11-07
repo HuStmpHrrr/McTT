@@ -1,28 +1,17 @@
-(* Universe levels as data.  [Level] is a type of [Type@0]; its elements
-   are built from [0l], [succl] and [maxl], and are compared by
-   normalization: a level is a constant and a set of atoms with offsets.
-   So the laws of [maxl] and [succl] hold by conversion, and their proofs
-   are [lrefl].
+(* Universe levels as data.  The elements of [Level] are built from [0l],
+   [succl] and [maxl], and are compared by normalization: a level is a
+   constant and a set of atoms with offsets.  So the laws of [maxl] and
+   [succl] hold by conversion, and their proofs are [lrefl].
 
    Levels have no eliminator, so equality of levels is Leibniz equality,
    [LEq u v]: every predicate of [u] holds of [v].  The order [LLe u v] is
-   [LEq (maxl u v) v].  With them, the unit proves the laws that need
-   induction: the embedding [ofNat] of numbers takes [plus] to iterated
-   [succl], [max] to [maxl], and [Le] to [LLe].
+   [LEq (maxl u v) v].  With them, the unit proves that [LEq] is an
+   equivalence and a congruence, and that [LLe] is a preorder with [maxl]
+   as least upper bound and [succl] monotone.
 
    These are propositions about levels, in [Type@1]; they do not drive
    cumulativity, which only follows the normal forms of levels. *)
 module Prelude›Universe›Levels where
-
-import Prelude›Data›Unit use (Unit)
-import Prelude›Data›Void use (Void)
-import Prelude›Builtin›Nat use (succ)
-import Prelude›Logic
-open Prelude›Logic.Negation as Neg
-import Prelude›Arith›Plus use (plus)
-import Prelude›Arith›MinMax use (max)
-import Prelude›Arith›Order use (Le)
-import Prelude›Function›Iter as Iter
 
 (* Leibniz equality of levels: predicates of [u] are predicates of [v]. *)
 def LEq (u : Level) (v : Level) : Type@1 ≔
@@ -31,16 +20,6 @@ end
 
 (* The order of levels: [u] is below [v] when their join is [v]. *)
 def LLe (u : Level) (v : Level) : Type@1 ≔ LEq (maxl u v) v end
-
-(* The [n]-th level: [ofNat 3] is [3l]. *)
-def ofNat (n : ℕ) : Level ≔
-  elim n at x -> Level | zero ⇒ 0l | succ p, r ⇒ succl r end
-end
-
-(* [plusl n u] is [u] raised by [n] levels: [succl] iterated [n] times. *)
-def plusl (n : ℕ) (u : Level) : Level ≔
-  Iter.iter 0l Level (λ (l : Level) → succl l) n u
-end
 
 (* Leibniz equality is an equivalence and a congruence. *)
 module Equality where
@@ -156,69 +135,6 @@ theorem lleSucclCong : ∀ (u : Level) (v : Level) (h : LLe u v) →
     LLe (succl u) (succl v) ≔
   λ (u : Level) (v : Level) (h : LLe u v) →
     lcong (λ (l : Level) → succl l) (maxl u v) v h
-end
-
-end
-
-open Order use (lleSuccl; lleTrans; lleSucclCong)
-
-(* The embedding of numbers, by induction. *)
-module Embedding where
-
-(* [ofNat] turns addition into raising. *)
-theorem ofNatPlus : ∀ (m : ℕ) (n : ℕ) →
-    LEq (ofNat (plus m n)) (plusl m (ofNat n)) ≔
-  λ (m : ℕ) (n : ℕ) →
-    elim m at x -> LEq (ofNat (plus x n)) (plusl x (ofNat n))
-    | zero ⇒ lrefl (ofNat n)
-    | succ p, ih ⇒
-        lcong (λ (l : Level) → succl l)
-          (ofNat (plus p n)) (plusl p (ofNat n)) ih
-    end
-end
-
-(* [ofNat] turns [max] into [maxl].  In the step, both sides are
-   successors, and [succl] distributes over [maxl] by conversion. *)
-theorem ofNatMax : ∀ (m : ℕ) (n : ℕ) →
-    LEq (ofNat (max m n)) (maxl (ofNat m) (ofNat n)) ≔
-  λ (m : ℕ) →
-    elim m at x -> (∀ (n : ℕ) →
-                         LEq (ofNat (max x n)) (maxl (ofNat x) (ofNat n)))
-    | zero ⇒ λ (n : ℕ) → lrefl (ofNat n)
-    | succ p, ih ⇒ λ (n : ℕ) →
-        elim n at y -> LEq (ofNat (max (succ p) y))
-                              (maxl (succl (ofNat p)) (ofNat y))
-        | zero ⇒ lrefl (succl (ofNat p))
-        | succ q, s ⇒
-            lcong (λ (l : Level) → succl l)
-              (ofNat (max p q)) (maxl (ofNat p) (ofNat q)) (ih q)
-        end
-    end
-end
-
-(* [ofNat] is monotone.  The impossible case is closed with [absurd] at
-   level [1l], where [LLe] lives. *)
-theorem ofNatLe : ∀ (m : ℕ) (n : ℕ) (h : Le m n) → LLe (ofNat m) (ofNat n) ≔
-  λ (m : ℕ) →
-    elim m at x -> (∀ (n : ℕ) (h : Le x n) → LLe (ofNat x) (ofNat n))
-    | zero ⇒ λ (n : ℕ) (h : Unit) → lrefl (ofNat n)
-    | succ p, ih ⇒ λ (n : ℕ) →
-        elim n at y -> (∀ (h : Le (succ p) y) →
-                             LLe (succl (ofNat p)) (ofNat y))
-        | zero ⇒ λ (h : Void) → Neg.absurd 1l (LLe (succl (ofNat p)) 0l) h
-        | succ q, s ⇒ λ (h : Le p q) → lleSucclCong (ofNat p) (ofNat q) (ih q h)
-        end
-    end
-end
-
-(* Raising by [n] levels gives an upper bound. *)
-theorem llePlusl : ∀ (n : ℕ) (u : Level) → LLe u (plusl n u) ≔
-  λ (n : ℕ) (u : Level) →
-    elim n at x -> LLe u (plusl x u)
-    | zero ⇒ lrefl u
-    | succ p, ih ⇒
-        lleTrans u (plusl p u) (succl (plusl p u)) ih (lleSuccl (plusl p u))
-    end
 end
 
 end

@@ -353,10 +353,10 @@ eval ∀ (u : Level) → Type@{u}
    levels above it are in sorted types of levels. [Level@n] holds the
    levels below ω·(n+1), and [Level] is [Level@0]; [Level@{n}] is another
    spelling of [Level@n]. A sort is included in every larger one,
-   [Level@m ⊆ Level@n] for m ≤ n, and every [Level@n] is in [Type@0].
-   Beyond [0l], [1l], …, the literals are [ω], [ω + b] and [ω·a + b], with
-   [*] the ASCII spelling of [·]. The Prelude stays at [Level]: its
-   level-polymorphic definitions take their levels there. *)
+   [Level@m ⊆ Level@n] for m ≤ n. No [Level@n] is in a universe: their
+   sort is [𝕃]. Beyond [0l], [1l], …, the literals are [ω], [ω + b] and
+   [ω·a + b], with [*] the ASCII spelling of [·]. The Prelude stays at
+   [Level]: its level-polymorphic definitions take their levels there. *)
 eval ω + 1 : Level@1
 
 eval ω·2 + 1 : Level@2

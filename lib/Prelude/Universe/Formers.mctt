@@ -6,12 +6,11 @@
    is also one of [Type@{maxl u v}], so lifting and lowering elements are
    identities too.  [Sigma] is a Church-encoded dependent pair; like every
    Church encoding it lives one level up, and only its first component can
-   be projected, since its eliminator is not dependent.  [Universe n] is the
-   universe at the [n]-th level, computed from the number [n]. *)
+   be projected, since its eliminator is not dependent.  [Fun u n A B] is
+   the type of functions of [n] arguments, computed from the number [n]. *)
 module Prelude›Universe›Formers where
 
 import Prelude›Builtin›Nat use (succ)
-import Prelude›Universe›Levels use (ofNat)
 
 def Lift (u : Level) (v : Level) (A : Type@{u}) : Type@{maxl u v} ≔ A end
 
@@ -62,11 +61,5 @@ def sigmaElim (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u})
     (C : Type@{u}) (f : ∀ (a : A) (b : B a) → C) (p : Sigma u A B) : C ≔
   p C f
 end
-
-(* The universe at the [n]-th level, which is in the next one. *)
-def Universe (n : ℕ) : Type@{succl (ofNat n)} ≔ Type@{ofNat n} end
-
-(* Each universe is an element of the next. *)
-def universeIn (n : ℕ) : Universe (succ n) ≔ Universe n end
 
 end

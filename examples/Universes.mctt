@@ -1,9 +1,10 @@
 (* Universe polymorphism with first-class levels.
 
-   [Level] is an ordinary type: its elements are the literals [0l], [1l], …,
-   the operations [succl] and [maxl], and whatever a term of type [Level]
-   computes to.  [Type@{t}] is the small universe at the level [t], so a
-   level-polymorphic definition is an ordinary function of a [Level], and a
+   The elements of [Level] are the literals [0l], [1l], …, the operations
+   [succl] and [maxl], and whatever a term of type [Level] computes to;
+   [Level] itself is in no universe, and a level is computed only from
+   other levels.  [Type@{t}] is the small universe at the level [t], so a
+   level-polymorphic definition is a function of a [Level], and a
    level-polymorphic module an ordinary parametrized module.  Above every
    universe at a finite level sit those at [ω] and [ω+n], [Type@ω] and
    [Type@{ω+n}], with the shorthand [Type@nL]. *)
@@ -43,14 +44,6 @@ eval self 3
 
 eval Dom
 
-(* A function into [Level] may be used in a universe: levels are computed by
-   the same evaluator as everything else. *)
-def depth (n : ℕ) : Level ≔
-  elim n at x -> Level | zero ⇒ 0l | succ y, r ⇒ succl r end
-end
-
-eval Type@{depth 3}
-
 (* A function type of small types is small at their level, even when the
    level is a variable: [Endo u A] is in [Type@{u}], and a function between
    two universes is in the one at their join. *)
@@ -62,12 +55,6 @@ def Arr (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) :
 end
 
 eval Endo 0l ℕ
-
-(* The level may be any term of [Level], here an application. *)
-def Twice (g : ∀ (f : ∀ (n : ℕ) → ℕ) → Level)
-          (A : Type@{g (λ (x : ℕ) → x)}) : Type@{g (λ (x : ℕ) → x)} ≔
-  ∀ (a : A) → A
-end
 
 (* An unannotated [let] gets the principal type, the small universe. *)
 def LetEndo (u : Level) (A : Type@{u}) : Type@{u} ≔

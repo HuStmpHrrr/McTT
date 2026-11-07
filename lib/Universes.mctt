@@ -12,47 +12,26 @@ open Prelude›Logic.Conj as Cj
 open Prelude›Logic.Exist as Ex
 import Prelude›Arith›Equality use (Eq)
 import Prelude›Arith›Plus use (plus)
-import Prelude›Arith›MinMax use (max)
 import Prelude›Arith›Induction
 open Prelude›Arith›Induction.Principles 1l as Large
 import Prelude›Function›Iter as Iter
 import Prelude›Data›Vec as V
-import Prelude›Universe›Levels use (LEq; LLe; ofNat; plusl)
-open Prelude›Universe›Levels.Equality use (lrefl; lsym; ltrans; lcong)
-open Prelude›Universe›Levels.Embedding use (ofNatMax)
+import Prelude›Universe›Levels use (LEq)
+open Prelude›Universe›Levels.Equality use (lrefl)
 import Prelude›Universe›Formers
-  use (up; Arrow; Pi; Endo; Fun; Sigma; pair; first; Universe; universeIn)
+  use (up; Arrow; Pi; Endo; Fun; Sigma; pair; first)
 import Prelude›Data›Church as C
 import Prelude›Data›Church›Levels as CL
 import Prelude›Data›Church›Properties.Arithmetic use (toNatPlus)
 import Prelude›Data›Church›Levels›Properties.Power use (toNatPow)
 import Prelude›Data›Church›Levels›Properties.Moves use (toNatLower)
 
-(* 1. Levels are data.  [ofNat] computes a level from a number, and the laws
-   of [maxl] hold by conversion, so [lrefl] proves their closed instances. *)
+(* 1. Levels are data.  The laws of [maxl] hold by conversion, so [lrefl]
+   proves their closed instances. *)
 
-eval ofNat 3
-
-eval maxl (ofNat 2) (succl 4l)
-
-eval plusl 2 (maxl 1l 3l)
+eval maxl 2l (succl 4l)
 
 eval lrefl 3l : LEq (maxl 2l 3l) (succl 2l)
-
-eval lrefl 3l : LEq (ofNat (max 2 3)) (maxl (ofNat 2) (ofNat 3))
-
-(* With an open number, [ofNat (max m n)] is stuck, and the law needs the
-   induction of [ofNatMax].  From it, [ofNat m] is below [ofNat (max m n)]. *)
-def ofNatMaxBound (m : ℕ) (n : ℕ) : LLe (ofNat m) (ofNat (max m n)) ≔
-  let a ≔ ofNat m;
-      b ≔ ofNat n;
-      x ≔ ofNat (max m n);
-      e : LEq x (maxl a b) ≔ ofNatMax m n
-  in ltrans (maxl a x) (maxl a b) x
-       (lcong (λ (l : Level) → maxl a l) x (maxl a b) e)
-       (lsym x (maxl a b) e)
-  end
-end
 
 (* 2. Type formers are functions of their levels. *)
 
@@ -66,11 +45,6 @@ eval Fun 0l 3 ℕ Unit
 eval Fun 1l 2 Type@0 Type@0
 
 eval (λ (A : Type@0) (B : Type@0) → ∀ (a : A) → B) : Fun 1l 2 Type@0 Type@0
-
-(* A universe computed from a number, and the next one up holding it. *)
-eval Universe 2
-
-eval universeIn 1
 
 (* Lifting is the identity: cumulativity puts [ℕ] in [Type@{maxl 0l 2l}]. *)
 eval up 0l 2l ℕ 3
@@ -165,9 +139,9 @@ eval C.toNat 0l (churchHalf 9)
    levels; the levels from ω on are in sorted types of levels.  [Level@n]
    holds the levels below ω·(n+1), and [Level] is [Level@0]; [Level@{n}] is
    another spelling of [Level@n].  A sort is included in every larger one,
-   [Level@m ⊆ Level@n] for m ≤ n, and every [Level@n] is in [Type@0].  The
-   literals beyond [0l], [1l], … are [ω], [ω + b] and [ω·a + b], with [*]
-   the ASCII spelling of [·]. *)
+   [Level@m ⊆ Level@n] for m ≤ n.  No [Level@n] is in a universe: their
+   sort is [𝕃].  The literals beyond [0l], [1l], … are [ω], [ω + b] and
+   [ω·a + b], with [*] the ASCII spelling of [·]. *)
 
 eval ω + 1 : Level@1
 
@@ -179,7 +153,7 @@ eval Level@2
    levels of [Level@1] too. *)
 def liftLevel (u : Level) : Level@1 ≔ u end
 
-eval liftLevel (ofNat 3)
+eval liftLevel 3l
 
 (* Above the Prelude: a type quantifying over [Level@1] is at ω·2. *)
 eval (∀ (u : Level@1) → Type@{u}) : Type@{ω·2}
