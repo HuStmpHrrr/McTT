@@ -1840,7 +1840,10 @@ Record unit_body_full (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (Φ : gmod) : Pro
   ; unit_body_target : mdesc
     (** The flag premise of [wf_unit_eq_body]: the parameters are types of
         levels, or the body has no member of a type of levels *)
-  ; unit_body_levels : levels_flag Θ Ξ Γ Δ (me_lit (gu_open nil Φ)) unit_body_level_flag unit_body_target }.
+  ; unit_body_levels : levels_flag Θ Ξ Γ Δ (me_lit (gu_open nil Φ)) unit_body_level_flag unit_body_target
+    (** No local open opens a module still being defined *)
+  ; unit_body_frame_free : forall k Ψ H, nth_error (body_opens Φ unit_body_expansion) k = Some (Ψ, H) ->
+      frame_free_target Θ Ξ (Ψ ++ Δ ++ Γ) H }.
 
 (** The parts of a well-formed alias unit [gu_mk Δ (md_alias E)] over [Γ]. *)
 #[warnings="-cannot-define-projection"]
@@ -1866,7 +1869,9 @@ Record unit_alias_full (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (E : modexp) : P
   ; unit_alias_target_desc : mdesc
     (** The flag premise of [wf_unit_eq_alias]: the parameters are types of
         levels, or the target has no member of a type of levels *)
-  ; unit_alias_levels : levels_flag Θ Ξ Γ Δ E unit_alias_level_flag unit_alias_target_desc }.
+  ; unit_alias_levels : levels_flag Θ Ξ Γ Δ E unit_alias_level_flag unit_alias_target_desc
+    (** The target is no module still being defined *)
+  ; unit_alias_frame_free : frame_free_target Θ Ξ (Δ ++ Γ) E }.
 
 (** The parts of a well-formed literal unit.  The parameters of a body or
     an alias are types of a universe at one level or types of levels
@@ -1903,7 +1908,7 @@ Qed.
 Lemma unit_eq_of_full : forall Θ Ξ Γ U, unit_full Θ Ξ Γ U -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
 Proof.
   intros * HU; destruct U as [Δ [[] Φ | E]]; cbn in HU; try contradiction.
-  - destruct HU as [Φx es l ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt HF].
+  - destruct HU as [Φx es l ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt HF Hff].
     assert (HΔ : ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ) by exact (ctx_app_wf_tail _ _ _ _ HC).
     assert (Hsame : forall y Φ0 E Φ0' E', gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) ->
               gm_prefix_upto Φx y = Some (gm_ext Φ0' y E') -> Φ0' = Φ0 /\ E' = E)
@@ -1938,7 +1943,7 @@ Proof.
       pose proof (Ho _ _ _ (body_opens_at_nth _ _ _ _ _ Hk)) as HH.
       eapply sub_preserves_modexp; [ exact HH |].
       apply wf_gm_fill; [ exact (presup_modexp_eq_ctx HH) | exact Hf ].
-  - destruct HU as [l ps Hps HΔ Ha HE Hp lv Rt HF].
+  - destruct HU as [l ps Hps HΔ Ha HE Hp lv Rt HF Hff].
     eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt) (lv' := lv) (Rt' := Rt);
       try eassumption;
       try exact (levels_flag_sorted _ _ _ _ _ _ _ HF); try exact (levels_flag_denotes _ _ _ _ _ _ _ HF);
@@ -1961,11 +1966,12 @@ Lemma unit_full_body : forall Θ Ξ Γ Δ Φ Φx,
     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_fill Φ0 = Some σ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : es y) ->
     forall lv Rt, levels_flag Θ Ξ Γ Δ (me_lit (gu_open nil Φ)) lv Rt ->
+    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target Θ Ξ (Ψ ++ Δ ++ Γ) H) ->
     unit_full Θ Ξ Γ (gu_open Δ Φ).
 Proof.
-  intros * Hx HC Ho Ha Hs Hsx Hn l ps Hps Hp es Hes Htg HA lv Rt HF.
+  intros * Hx HC Ho Ha Hs Hsx Hn l ps Hps Hp es Hes Htg HA lv Rt HF Hff.
   destruct (body_defs_wf _ _ _ _ _ HC (body_xp_result_noopen _ _ _ _ _ Hx)) as (es0 & _ & Hd).
-  cbn [unit_full]; refine (mk_unit_body_full _ _ _ _ _ Φx es l ps Hps Hx HC Hes Htg _ Ho Ha Hs Hsx Hn Hp lv Rt HF).
+  cbn [unit_full]; refine (mk_unit_body_full _ _ _ _ _ Φx es l ps Hps Hx HC Hes Htg _ Ho Ha Hs Hsx Hn Hp lv Rt HF Hff).
   intros * Hp0 HE Hf; split; [ exact (HA _ _ _ _ _ _ Hp0 HE Hf) | exact (proj2 (Hd _ _ _ _ _ _ Hp0 HE Hf)) ].
 Qed.
 

@@ -1740,6 +1740,16 @@ Qed.
     operation [R] that lifts over well-formed extensions and sends each
     module slot to its unit ([sub_mod_compat]): the open case, from the
     induction hypotheses read about [R]; the others are direct. *)
+(** A substituted description reads an open frame only where the original
+    does: substitution keeps the location of a closed module. *)
+Lemma desc_reads_frame_sub : forall Ξ R σ, desc_reads_frame Ξ (mdesc_sub R σ) -> desc_reads_frame Ξ R.
+Proof.
+  intros * (Θ' & p & T & Φ & Ns & Hm & Hf).
+  destruct (mdesc_mod_sub_inv _ _ _ Hm) as (R' & HR' & E).
+  destruct R'; cbn in E; try discriminate; injection E as _ <- _ _ _.
+  do 5 eexists; split; [ exact HR' | exact Hf ].
+Qed.
+
 Section NoLevelMove.
   Variables (Θ : gdeps) (Ξ : gstack) (R : ctx -> sub -> ctx -> Prop).
   Hypothesis R_ext : forall Ψ Γ Δ σ, R Δ σ Γ -> ⊢ Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Δ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ ->
@@ -1756,6 +1766,20 @@ Section NoLevelMove.
     intros * HR HΓ HE Hm Hlv.
     eapply mdenote_sub; [ exact (wf_gctx_closed _ _ _ HΓ) | exact (Hm Hlv) | exact (wf_ctx_scoped _ _ _ HΓ) | exact HE |].
     apply sub_mod_compat_ext, R_compat, HR.
+  Qed.
+
+  (** The premise that a target is no module still being defined, moved:
+      the moved target denotes the moved description, whose module part is
+      stored where the original's is. *)
+  Lemma move_frame_free : forall Γ Δ σ Δu E,
+      R Δ σ Γ -> ⊢ Θ ⍮ Ξ ⍮ Δu ++ Γ -> modexp_scoped (length (Δu ++ Γ)) E ->
+      frame_free_target Θ Ξ (Δu ++ Γ) E ->
+      frame_free_target Θ Ξ (tele_sub Δu σ ++ Δ) E[sb_qn (length Δu) σ]ᵐ.
+  Proof.
+    intros * HR HΓ HE (Rt & Hm & Hn).
+    exists (mdesc_sub Rt (sb_qn (length Δu) σ)); split.
+    - exact (move_flag_mdenote _ _ _ _ _ false Rt HR HΓ HE (fun _ => Hm) eq_refl).
+    - intros Hr; apply Hn; exact (desc_reads_frame_sub _ _ _ Hr).
   Qed.
 
   Lemma move_flag_no_level : forall Γ Δ σ Δu (lv : bool) Rt,
@@ -1908,6 +1932,19 @@ Proof.
   intros Hl1 Δ0 σ0 (φ0 & Heq & Hφ0); rewrite (mdesc_sub_sb_eq _ _ _ Heq); exact (IH3 Hl1 _ _ Hφ0).
 Qed.
 
+(** The premise that a target under the parameters [Δu] is no module still
+    being defined, weakened. *)
+Lemma wk_frame_free : forall Θ Ξ Γ Δu E Δ φ,
+    Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ -> ⊢ Θ ⍮ Ξ ⍮ Δu ++ Γ -> modexp_scoped (length (Δu ++ Γ)) E ->
+    frame_free_target Θ Ξ (Δu ++ Γ) E ->
+    frame_free_target Θ Ξ (tele_wk Δu φ ++ Δ) (modexp_wk E (wk_qn (length Δu) φ)).
+Proof.
+  intros * Hφ HΓ HE Hf.
+  assert (Hqn : sb_eq (ι (wk_qn (length Δu) φ)) (sb_qn (length Δu) (ι φ))) by (apply sb_qn_of_wk_ext; reflexivity).
+  rewrite <- (modexp_sub_of_wk_ext _ _ _ Hqn), <- tele_sub_of_wk.
+  exact (move_frame_free Θ Ξ (wk_as_sub Θ Ξ) (wk_as_sub_compat Θ Ξ) _ _ _ _ _ (wk_as_sub_of _ _ _ _ _ Hφ) HΓ HE Hf).
+Qed.
+
 (** The identity is a weakening. *)
 Lemma wk_as_sub_id : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> wk_as_sub Θ Ξ Γ Id Γ.
 Proof. intros * HΓ; exists wk_id; split; [ symmetry; exact sb_of_wk_id | apply wf_wk_id; exact HΓ ]. Qed.
@@ -2035,6 +2072,10 @@ Lemma unit_body_moved : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps
        Θ ⍮ Ξ ⍮ tele_sub (Ψ ++ Δu) σ ++ Δ ⊢ᵐ H[sb_qn (length (Ψ ++ Δu)) σ]ᵐ ≈ H[sb_qn (length (Ψ ++ Δu)) σ]ᵐ) ->
     (forall k Ψ H, List.nth_error (body_opens Φ' Φx') k = Some (Ψ, H) ->
        Θ ⍮ Ξ ⍮ tele_sub (Ψ ++ Δu') σ' ++ Δ ⊢ᵐ H[sb_qn (length (Ψ ++ Δu')) σ']ᵐ ≈ H[sb_qn (length (Ψ ++ Δu')) σ']ᵐ) ->
+    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) ->
+       frame_free_target Θ Ξ (tele_sub (Ψ ++ Δu) σ ++ Δ) H[sb_qn (length (Ψ ++ Δu)) σ]ᵐ) ->
+    (forall k Ψ H, List.nth_error (body_opens Φ' Φx') k = Some (Ψ, H) ->
+       frame_free_target Θ Ξ (tele_sub (Ψ ++ Δu') σ' ++ Δ) H[sb_qn (length (Ψ ++ Δu')) σ']ᵐ) ->
     (forall k Φ0 H Φ0' H' σf σf',
        List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> List.nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
        gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
@@ -2063,7 +2104,7 @@ Lemma unit_body_moved : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps
     (lv' = false -> Θ ⍮ Ξ ⍮ tele_sub Δu' σ' ++ Δ ⊢ⁿˡ Rt') ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu' Φ')[σ']ᵘ.
 Proof.
-  intros * Hbσ Hbσ' HΔσ Hxσ Hxσ' HD HU HDr HUr Ho Ho' HOo HOr Hb Hb' Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hps HRp HRp'
+  intros * Hbσ Hbσ' HΔσ Hxσ Hxσ' HD HU HDr HUr Ho Ho' Hfo Hfo' HOo HOr Hb Hb' Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hps HRp HRp'
     lv lv' Rt Rt' Hnl1 Hnl2 Hnl3 Hnl1' Hnl2' Hnl3'.
   rewrite !gunit_sub_mk; cbn [moddef_sub].
   eapply wf_unit_eq_body with (entry_sort := entry_sort) (param_level := l) (param_sorts := ps); [ exact Hbσ | exact Hbσ' | .. ].
@@ -2133,6 +2174,22 @@ Proof.
     destruct (List.nth_error (body_opens Φ' Φx') k) as [[Ψ H] |] eqn:Ek; [| discriminate ].
     cbn in Hk; injection Hk as <- <-.
     pose proof (Ho' _ _ _ Ek) as HH.
+    rewrite tele_sub_app, <- List.app_assoc, List.length_app in HH.
+    rewrite (modexp_sub_sb_eq H _ _ (sb_qn_add _ _ _)); exact HH.
+  - (* the opens open no module still being defined, left *)
+    intros k Ψw Hw Hk.
+    rewrite (body_opens_sub _ _ _ _ _ Hb), List.nth_error_map in Hk.
+    destruct (List.nth_error (body_opens Φ Φx) k) as [[Ψ H] |] eqn:Ek; [| discriminate ].
+    cbn in Hk; injection Hk as <- <-.
+    pose proof (Hfo _ _ _ Ek) as HH.
+    rewrite tele_sub_app, <- List.app_assoc, List.length_app in HH.
+    rewrite (modexp_sub_sb_eq H _ _ (sb_qn_add _ _ _)); exact HH.
+  - (* and right *)
+    intros k Ψw Hw Hk.
+    rewrite (body_opens_sub _ _ _ _ _ Hb'), List.nth_error_map in Hk.
+    destruct (List.nth_error (body_opens Φ' Φx') k) as [[Ψ H] |] eqn:Ek; [| discriminate ].
+    cbn in Hk; injection Hk as <- <-.
+    pose proof (Hfo' _ _ _ Ek) as HH.
     rewrite tele_sub_app, <- List.app_assoc, List.length_app in HH.
     rewrite (modexp_sub_sb_eq H _ _ (sb_qn_add _ _ _)); exact HH.
   - (* the opens pairwise, each filled in, then substituted *)
@@ -2236,6 +2293,8 @@ Lemma wk_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l 
     (forall k Ψ' H', List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δu' ++ Γ ⊢ᵐ H' ≈ H') ->
     (forall k Ψ' H', List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') ->
        forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Ψ' ++ Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk H' φ0 ≈ modexp_wk H' φ0) ->
+    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target Θ Ξ (Ψ ++ Δu ++ Γ) H) ->
+    (forall k Ψ' H', List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> frame_free_target Θ Ξ (Ψ' ++ Δu' ++ Γ) H') ->
     (forall k Φ0 H Φ0' H' σf σf',
        List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> List.nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
        gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
@@ -2272,7 +2331,7 @@ Lemma wk_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l 
     Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gunit_wk (gu_open Δu Φ) φ ≈ gunit_wk (gu_open Δu' Φ') φ.
 Proof.
-  intros * Hb Hb' HΔ IHΔ Hx IHx Hx' IHx' IHA IHAA IHM IHMM IHU IHAr IHMr IHUr Ho IHo Ho' IHo' IHOo IHOr
+  intros * Hb Hb' HΔ IHΔ Hx IHx Hx' IHx' IHA IHAA IHM IHMM IHU IHAr IHMr IHUr Ho IHo Ho' IHo' Hfo Hfo' IHOo IHOr
            Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hps _ IHp _ IHp'
            lv lv' Rt Rt' Hf1 Hf2 _ IHf3 Hf1' Hf2' _ IHf3' HU0 Hφ.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact HΔ).
@@ -2286,7 +2345,7 @@ Proof.
   assert (Hqn : forall n, sb_eq (ι (wk_qn n φ)) (sb_qn n (ι φ))) by (intros; apply sb_qn_of_wk_ext; reflexivity).
   rewrite <- !gunit_sub_of_wk.
   eapply (unit_body_moved Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ (ι φ) (ι φ));
-    [ | | | | | | | | | | | | | exact Hb | exact Hb' | exact Ha | exact Ha' | exact Hl | exact Hs | exact Hsx | exact Hn
+    [ | | | | | | | | | | | | | | | exact Hb | exact Hb' | exact Ha | exact Ha' | exact Hl | exact Hs | exact Hsx | exact Hn
     | exact Hes | exact Htg | exact Htg' | exact Hps | |
     | intros Hlv1; exact (level_sorted_parameters_sub _ _ (Hf1 Hlv1))
     | intros Hlv1; exact (move_flag_mdenote Θ Ξ (wk_as_sub Θ Ξ) (wk_as_sub_compat Θ Ξ) _ _ _ _ (me_lit (gu_open nil Φ)) lv Rt
@@ -2355,6 +2414,19 @@ Proof.
       eapply wf_ctx_app_tail; exact HC. }
     pose proof (wf_wk_ext _ _ (Ψ ++ Δu') _ _ _ Hφ HΔ0 ltac:(rewrite <- List.app_assoc; exact (presup_modexp_eq_ctx (Ho' _ _ _ Ek)))) as Hφe.
     rewrite <- List.app_assoc in Hφe; exact (IHo' _ _ _ Ek _ _ Hφe).
+  (* the opens open no module still being defined, moved *)
+  - intros k Ψ H Ek; rewrite <- ?tele_sub_of_wk.
+    pose proof (Ho _ _ _ Ek) as HH0; pose proof (Hfo _ _ _ Ek) as HF.
+    destruct (wf_modexp_eq_scoped _ _ _ _ _ HH0) as (_ & HHs & _).
+    pose proof (presup_modexp_eq_ctx HH0) as HC.
+    rewrite List.app_assoc in HF, HHs, HC.
+    exact (move_frame_free Θ Ξ (wk_as_sub Θ Ξ) (wk_as_sub_compat Θ Ξ) _ _ _ _ _ (wk_as_sub_of _ _ _ _ _ Hφ) HC HHs HF).
+  - intros k Ψ H Ek; rewrite <- ?tele_sub_of_wk.
+    pose proof (Ho' _ _ _ Ek) as HH0; pose proof (Hfo' _ _ _ Ek) as HF.
+    destruct (wf_modexp_eq_scoped _ _ _ _ _ HH0) as (_ & HHs & _).
+    pose proof (presup_modexp_eq_ctx HH0) as HC.
+    rewrite List.app_assoc in HF, HHs, HC.
+    exact (move_frame_free Θ Ξ (wk_as_sub Θ Ξ) (wk_as_sub_compat Θ Ξ) _ _ _ _ _ (wk_as_sub_of _ _ _ _ _ Hφ) HC HHs HF).
   - intros * Ek Ek' Hf0 Hf0'; rewrite ?tele_sub_of_wk, <- Hl, !(modexp_sub_of_wk_ext _ _ _ (Hqn _)).
     exact (IHOo _ _ _ _ _ _ _ Ek Ek' Hf0 Hf0' _ _ Hq).
   - intros * Ek Ek' Hf0 Hf0'; rewrite ?tele_sub_of_wk, !(modexp_sub_of_wk_ext _ _ _ (Hqn _)).
@@ -2540,13 +2612,25 @@ Ltac wk_pose_flags Hφ :=
       clear Hm
   end.
 
-(** A flag premise, from the moved [levels_flag] it is part of. *)
-Ltac flag_premise_from_levels_flag :=
+(** The premise that a target is no module still being defined, weakened
+    from the unweakened one. *)
+Ltac frame_free_premise_wk :=
   match goal with
-  | F : levels_flag _ _ _ _ _ _ _ |- _ =>
-      first [ exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
-            | exact (levels_flag_no_level _ _ _ _ _ _ _ F) ]
+  | Hφ : wf_wk _ _ _ _ _, Hf : frame_free_target _ _ _ ?E |- frame_free_target _ _ _ (modexp_wk ?E _) =>
+      eapply wk_frame_free; [ exact Hφ | eauto using ext_eq_ctx_left, ext_eq_ctx_right | modexp_scoped_tac | exact Hf ]
   end.
+
+(** A flag premise, from the moved [levels_flag] it is part of, or the
+    premise that a target is no module still being defined. *)
+Ltac flag_premise_from_levels_flag :=
+  first
+  [ match goal with
+    | F : levels_flag _ _ _ _ _ _ _ |- _ =>
+        first [ exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
+              | exact (levels_flag_no_level _ _ _ _ _ _ _ F) ]
+    end
+  | frame_free_premise_wk
+  | match goal with |- frame_free_target _ _ _ _ => assumption end ].
 
 (** ** Weakening Preserves the Judgments ([wk_preserves_wf]) *)
 
@@ -2683,9 +2767,12 @@ Proof.
         cbn [moddef_wk modexp_wk];
         pose proof (IHU _ _ Hl) as HU'; revert HU';
         wk_pose_flags Hφ;
-        match goal with F : levels_flag _ _ _ _ _ _ _ |- _ => revert F end;
-        destruct (gunit_wk (gu_mk Δ' D) (wk_qn (length Δ) φ)) as [Δw Dw] eqn:EU; intros F HU'; cbn [gunit_abs];
-        cbn [modexp_wk] in F; rewrite EU in F;
+        assert (HsL : modexp_scoped (length (Δ ++ Γ)) (me_lit (gu_mk Δ' D))) by modexp_scoped_tac;
+        match goal with Hff : frame_free_target _ _ _ (me_lit (gu_mk Δ' D)) |- _ =>
+          pose proof (wk_frame_free _ _ _ _ _ _ _ Hφ (ext_eq_ctx_left _ _ _ _ _ Hx) HsL Hff) as FF end;
+        match goal with F : levels_flag _ _ _ _ _ _ _ |- _ => revert F end; revert FF;
+        destruct (gunit_wk (gu_mk Δ' D) (wk_qn (length Δ) φ)) as [Δw Dw] eqn:EU; intros FF F HU'; cbn [gunit_abs];
+        cbn [modexp_wk] in F, FF; rewrite EU in F, FF;
         eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hφ) | apply all_assumptions_wk; assumption | exact HU' | eassumption | wk_params_case Hφ
                                    | flag_premise_from_levels_flag .. ]
     end ].
@@ -3456,6 +3543,35 @@ Proof.
            Hσ HΓ HΔ HE IH1 Hm IH3).
 Qed.
 
+(** The premise that a target under the parameters [Δu] is no module still
+    being defined, substituted. *)
+Lemma sub_frame_free : forall Θ Ξ Γ Δu E Δ σ,
+    Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ -> ⊢ Θ ⍮ Ξ ⍮ Δu ++ Γ -> modexp_scoped (length (Δu ++ Γ)) E ->
+    frame_free_target Θ Ξ (Δu ++ Γ) E ->
+    frame_free_target Θ Ξ (tele_sub Δu σ ++ Δ) E[sb_qn (length Δu) σ]ᵐ.
+Proof.
+  intros * Hσ HΓ HE Hf; exact (move_frame_free Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_compat Θ Ξ) _ _ _ _ _ Hσ HΓ HE Hf).
+Qed.
+
+(** In the substitution proof, a flag premise or the premise that a target
+    is no module still being defined is also moved by a substitution. *)
+Ltac frame_free_premise_sub :=
+  match goal with
+  | Hσ : wf_sub _ _ _ _ _, Hf : frame_free_target _ _ _ ?E |- frame_free_target _ _ _ ?E[_]ᵐ =>
+      eapply sub_frame_free; [ exact Hσ | eauto using ext_eq_ctx_left, ext_eq_ctx_right | modexp_scoped_tac | exact Hf ]
+  end.
+
+Ltac flag_premise_from_levels_flag ::=
+  first
+  [ match goal with
+    | F : levels_flag _ _ _ _ _ _ _ |- _ =>
+        first [ exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
+              | exact (levels_flag_no_level _ _ _ _ _ _ _ F) ]
+    end
+  | frame_free_premise_wk
+  | frame_free_premise_sub
+  | match goal with |- frame_free_target _ _ _ _ => assumption end ].
+
 (** An open description with no member of a type of levels, substituted,
     from the induction hypotheses about its parts. *)
 Lemma sub_no_level_open_case : forall Θ Ξ Γ Δo Φw Φx (member_descs : String.string -> mdesc) Δ σ,
@@ -3576,6 +3692,8 @@ Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l
     (forall k Ψ' H', List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δu' ++ Γ ⊢ᵐ H' ≈ H') ->
     (forall k Ψ' H', List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') ->
        forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Ψ' ++ Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ H'[σ0]ᵐ ≈ H'[σ0]ᵐ) ->
+    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target Θ Ξ (Ψ ++ Δu ++ Γ) H) ->
+    (forall k Ψ' H', List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> frame_free_target Θ Ξ (Ψ' ++ Δu' ++ Γ) H') ->
     (forall k Φ0 H Φ0' H' σf σf',
        List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> List.nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
        gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
@@ -3612,7 +3730,7 @@ Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu' Φ')[σ]ᵘ.
 Proof.
-  intros * Hb Hb' HΔ IHΔ Hx IHx Hx' IHx' IHA IHAA IHM IHMM IHU IHAr IHMr IHUr Ho IHo Ho' IHo' IHOo IHOr
+  intros * Hb Hb' HΔ IHΔ Hx IHx Hx' IHx' IHA IHAA IHM IHMM IHU IHAr IHMr IHUr Ho IHo Ho' IHo' Hfo Hfo' IHOo IHOr
            Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hps _ IHp _ IHp'
            lv lv' Rt Rt' IHf1 Hf2 _ IHf3 IHf1' Hf2' _ IHf3' HU0 Hσ.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact HΔ).
@@ -3628,7 +3746,7 @@ Proof.
   pose proof (sub_levels_flag _ _ _ _ (me_lit (gu_open nil Φ')) lv' Rt' _ _ Hσ (ext_eq_ctx_right _ _ _ _ _ HΔ)
                 (ext_eq_ctx_right _ _ _ _ _ HΔσ) ltac:(open_lit_scoped HΦs') IHf1' Hf2' IHf3') as F'.
   eapply (unit_body_moved Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sort l ps Δ σ σ);
-    [ | | | | | | | | | | | | | exact Hb | exact Hb' | exact Ha | exact Ha' | exact Hl | exact Hs | exact Hsx | exact Hn
+    [ | | | | | | | | | | | | | | | exact Hb | exact Hb' | exact Ha | exact Ha' | exact Hl | exact Hs | exact Hsx | exact Hn
     | exact Hes | exact Htg | exact Htg' | exact Hps | |
     | exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
     | exact (levels_flag_no_level _ _ _ _ _ _ _ F)
@@ -3679,6 +3797,19 @@ Proof.
       eapply wf_ctx_app_tail; exact HC. }
     pose proof (wf_sub_ext _ _ (Ψ ++ Δu') _ _ _ Hσ HΔ0 ltac:(rewrite <- List.app_assoc; exact (presup_modexp_eq_ctx (Ho' _ _ _ Ek)))) as Hσe.
     rewrite <- List.app_assoc in Hσe; exact (IHo' _ _ _ Ek _ _ Hσe).
+  (* the opens open no module still being defined, moved *)
+  - intros k Ψ H Ek.
+    pose proof (Ho _ _ _ Ek) as HH0; pose proof (Hfo _ _ _ Ek) as HF.
+    destruct (wf_modexp_eq_scoped _ _ _ _ _ HH0) as (_ & HHs & _).
+    pose proof (presup_modexp_eq_ctx HH0) as HC.
+    rewrite List.app_assoc in HF, HHs, HC.
+    exact (move_frame_free Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_compat Θ Ξ) _ _ _ _ _ Hσ HC HHs HF).
+  - intros k Ψ H Ek.
+    pose proof (Ho' _ _ _ Ek) as HH0; pose proof (Hfo' _ _ _ Ek) as HF.
+    destruct (wf_modexp_eq_scoped _ _ _ _ _ HH0) as (_ & HHs & _).
+    pose proof (presup_modexp_eq_ctx HH0) as HC.
+    rewrite List.app_assoc in HF, HHs, HC.
+    exact (move_frame_free Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_compat Θ Ξ) _ _ _ _ _ Hσ HC HHs HF).
   - intros * Ek Ek' Hf0 Hf0'; rewrite <- Hl; exact (IHOo _ _ _ _ _ _ _ Ek Ek' Hf0 Hf0' _ _ Hq).
   - intros * Ek Ek' Hf0 Hf0'; exact (IHOr _ _ _ _ _ _ _ Ek Ek' Hf0 Hf0' _ _ Hq').
 Qed.
@@ -3914,9 +4045,12 @@ Proof.
         cbn [moddef_sub modexp_sub];
         pose proof (IHU _ _ Hl) as HU'; revert HU';
         sub_pose_flags Hσ;
-        match goal with F : levels_flag _ _ _ _ _ _ _ |- _ => revert F end;
-        destruct (gunit_sub (gu_mk Δ' D) (sb_qn (length Δ) σ)) as [Δw Dw] eqn:EU; intros F HU'; cbn [gunit_abs];
-        cbn [modexp_sub] in F; rewrite EU in F;
+        assert (HsL : modexp_scoped (length (Δ ++ Γ)) (me_lit (gu_mk Δ' D))) by modexp_scoped_tac;
+        match goal with Hff : frame_free_target _ _ _ (me_lit (gu_mk Δ' D)) |- _ =>
+          pose proof (sub_frame_free _ _ _ _ _ _ _ Hσ (ext_eq_ctx_left _ _ _ _ _ Hx) HsL Hff) as FF end;
+        match goal with F : levels_flag _ _ _ _ _ _ _ |- _ => revert F end; revert FF;
+        destruct (gunit_sub (gu_mk Δ' D) (sb_qn (length Δ) σ)) as [Δw Dw] eqn:EU; intros FF F HU'; cbn [gunit_abs];
+        cbn [modexp_sub] in F, FF; rewrite EU in F, FF;
         eapply wf_unit_eq_flatten; [ exact (IHx _ _ Hσ) | apply all_assumptions_sub; assumption | exact HU' | eassumption | sub_params_case Hσ
                                    | flag_premise_from_levels_flag .. ]
     end ].

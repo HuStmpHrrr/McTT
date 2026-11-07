@@ -60,7 +60,7 @@ Lemma unit_full_abs : forall Θ Ξ Γ Δ U l, unit_full Θ Ξ (Δ ++ Γ) U -> al
     unit_full Θ Ξ Γ (gunit_abs Δ U).
 Proof.
   intros * HU HaΔ HRΔ HLΔ; destruct U as [Δy [[] Φ | E]]; cbn in HU |- *; try contradiction.
-  - destruct HU as [Φx es lp ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt [Hs1 Hd1 Hn1]].
+  - destruct HU as [Φx es lp ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt [Hs1 Hd1 Hn1] Hff].
     destruct (params_evaluated_sorts _ _ _ _ _
                 (params_evaluated_app _ _ _ _ _ _ _ (params_evaluated_of_sorts _ _ _ _ _ _ Hps Hp) HRΔ)) as (ps' & Hps' & Hp').
     (* the flag premise over both telescopes *)
@@ -75,9 +75,9 @@ Proof.
       - exists false, Rt; constructor; [ discriminate | intros _; rewrite <- List.app_assoc; exact (Hd1 eq_refl)
                                       | intros _; rewrite <- List.app_assoc; exact (Hn1 eq_refl) ]. }
     destruct HF' as (lv' & Rt' & HF').
-    refine (mk_unit_body_full _ _ _ _ _ Φx es (max lp l) ps' Hps' _ _ Hes Htg _ _ _ Hs Hsx Hn Hp' lv' Rt' HF').
+    refine (mk_unit_body_full _ _ _ _ _ Φx es (max lp l) ps' Hps' _ _ Hes Htg _ _ _ Hs Hsx Hn Hp' lv' Rt' HF' _).
     all: rewrite <- ?List.app_assoc; first [ assumption | apply List.Forall_app; split; assumption ].
-  - destruct HU as [lp ps Hps HΔ Ha HE Hp lv Rt [Hs1 Hd1 Hn1]].
+  - destruct HU as [lp ps Hps HΔ Ha HE Hp lv Rt [Hs1 Hd1 Hn1] Hff].
     destruct (params_evaluated_sorts _ _ _ _ _
                 (params_evaluated_app _ _ _ _ _ _ _ (params_evaluated_of_sorts _ _ _ _ _ _ Hps Hp) HRΔ)) as (ps' & Hps' & Hp').
     assert (HF' : exists lv' Rt', levels_flag Θ Ξ Γ (Δy ++ Δ) E lv' Rt').
@@ -91,7 +91,7 @@ Proof.
       - exists false, Rt; constructor; [ discriminate | intros _; rewrite <- List.app_assoc; exact (Hd1 eq_refl)
                                       | intros _; rewrite <- List.app_assoc; exact (Hn1 eq_refl) ]. }
     destruct HF' as (lv' & Rt' & HF').
-    refine (mk_unit_alias_full _ _ _ _ _ (max lp l) ps' Hps' _ _ _ Hp' lv' Rt' HF').
+    refine (mk_unit_alias_full _ _ _ _ _ (max lp l) ps' Hps' _ _ _ Hp' lv' Rt' HF' _).
     all: rewrite <- ?List.app_assoc; first [ assumption | apply List.Forall_app; split; assumption ].
 Qed.
 
@@ -149,7 +149,7 @@ Proof.
       first [ eassumption | eapply wf_modexp_eq_refl_left; eassumption | eapply mk_levels_flag; eassumption ].
   - (* an alias of a literal, and the literal over both telescopes *)
     split; [ exact (mk_unit_alias_full _ _ _ _ _ param_level param_sorts H2 (ext_eq_ctx_left _ _ _ _ _ H) H0 (wf_me_lit _ _ _ _ _ H1) H3 lv Rt
-                     (mk_levels_flag _ _ _ _ _ _ _ H4 H5 H6)) |].
+                     (mk_levels_flag _ _ _ _ _ _ _ H4 H5 H6) H7) |].
     change (unit_full Θ Ξ Γ (gunit_abs Δ (gu_mk Δ' D))).
     apply (unit_full_abs _ _ _ _ _ param_level (proj1 IHwf_unit_eq) H0 (params_evaluated_of_sorts _ _ _ _ _ _ H2 H3)).
     (* the flag premise for the outer parameters, as [unit_full_abs] takes it *)
@@ -159,13 +159,14 @@ Proof.
     rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmR _ (H5 eq_refl)); exact (H6 eq_refl).
   - (* a body and its expansion: the expansion is its own, with no opens *)
     destruct IHwf_unit_eq as [HF _]; split; [ exact HF |].
-    destruct HF as [Φx es lp ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt HL].
+    destruct HF as [Φx es lp ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt HL Hff].
     pose proof (body_xp_expand _ _ _ _ _ Hx) as ->.
     destruct (levels_flag_expand _ _ _ _ _ _ _ HL) as (Rt' & HL').
-    refine (mk_unit_body_full _ _ _ _ _ (gm_expand Φ) es lp ps Hps _ HC Hes Htg Hd _ Ha Hsx Hsx _ Hp lv Rt' HL').
+    refine (mk_unit_body_full _ _ _ _ _ (gm_expand Φ) es lp ps Hps _ HC Hes Htg Hd _ Ha Hsx Hsx _ Hp lv Rt' HL' _).
     + apply body_xp_noopen, gm_noopen_expand.
     + intros k Ψ H0 Hk; rewrite (body_opens_noopen _ (gm_noopen_expand _)), nth_error_nil in Hk; discriminate Hk.
     + rewrite (body_xp_names _ _ _ _ _ Hx); exact Hn.
+    + intros k Ψ H0 Hk; rewrite (body_opens_noopen _ (gm_noopen_expand _)), nth_error_nil in Hk; discriminate Hk.
 Qed.
 
 Lemma unit_full_ctx : forall Θ Ξ Γ Δ D, unit_full Θ Ξ Γ (gu_mk Δ D) -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ /\ all_assumptions Δ.
@@ -197,17 +198,17 @@ Qed.
 Lemma unit_full_unabs : forall Θ Ξ Γ Δ Δy D, unit_full Θ Ξ Γ (gu_mk (Δy ++ Δ) D) -> unit_full Θ Ξ (Δ ++ Γ) (gu_mk Δy D).
 Proof.
   intros * HU; destruct D as [[] Φ | E]; cbn in HU |- *; try contradiction.
-  - destruct HU as [Φx es lp ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt HF].
-    rewrite <- !List.app_assoc in Hx, HC, Hd, Ho.
+  - destruct HU as [Φx es lp ps Hps Hx HC Hes Htg Hd Ho Ha Hs Hsx Hn Hp lv Rt HF Hff].
+    rewrite <- !List.app_assoc in Hx, HC, Hd, Ho, Hff.
     refine (mk_unit_body_full _ _ _ _ _ Φx es lp (fun k => ps (k + length Δ)) (fun k => Hps _) Hx HC Hes Htg Hd Ho
-              _ Hs Hsx Hn _ lv Rt (unabs_levels_flag _ _ _ _ _ _ _ _ HF)).
+              _ Hs Hsx Hn _ lv Rt (unabs_levels_flag _ _ _ _ _ _ _ _ HF) Hff).
     + apply List.Forall_app in Ha; apply Ha.
     + intros Δ1 κ T Δ2 Heq; rewrite List.app_assoc, <- List.length_app.
       apply (Hp Δ1 κ); rewrite Heq, <- List.app_assoc; reflexivity.
-  - destruct HU as [lp ps Hps HΔ Ha HE Hp lv Rt HF].
-    rewrite <- !List.app_assoc in HΔ, HE.
+  - destruct HU as [lp ps Hps HΔ Ha HE Hp lv Rt HF Hff].
+    rewrite <- !List.app_assoc in HΔ, HE, Hff.
     refine (mk_unit_alias_full _ _ _ _ _ lp (fun k => ps (k + length Δ)) (fun k => Hps _) HΔ _ HE _ lv Rt
-              (unabs_levels_flag _ _ _ _ _ _ _ _ HF)).
+              (unabs_levels_flag _ _ _ _ _ _ _ _ HF) Hff).
     + apply List.Forall_app in Ha; apply Ha.
     + intros Δ1 κ T Δ2 Heq; rewrite List.app_assoc, <- List.length_app.
       apply (Hp Δ1 κ); rewrite Heq, <- List.app_assoc; reflexivity.

@@ -225,6 +225,24 @@ Inductive field_kind : abs_kind -> Prop :=
 Definition level_sorted_parameters (Δ : ctx) : Prop :=
   forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> κ = ak_level.
 
+(** [desc_reads_frame Ξ R]: the module part of the description [R] is
+    stored at an open frame of [Ξ]: a unit, a module, the module of an
+    inductive member or of a record type, still being defined. *)
+Definition desc_reads_frame (Ξ : gstack) (R : mdesc) : Prop :=
+  exists Θ' p T Φ Ns, mdesc_mod R = Some (mdesc_closed Θ' p T Φ Ns) /\ gc_frame Ξ p <> None.
+
+(** [frame_free_target Θ Ξ Γ E]: what the module expression [E] denotes in
+    [Γ] is no open frame.  An alias, a definition with a module part and an
+    open never name a module before it is filed, so that no filed module
+    reads itself: in [record P : Type@1 where a : Type@0 with module S ≔ P
+    end] the alias [S] would make [P.S.S…] read [P] forever, and is
+    rejected.  Selecting a finished entry through an open frame is allowed:
+    [module B ≔ A], [A] an earlier module of the same unit, denotes [A]'s
+    own description.  It is stated by the description [E] denotes, which
+    is unique ([mdenote] is functional), so that it moves as [E] does. *)
+Definition frame_free_target (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (E : modexp) : Prop :=
+  exists R, mdenote Θ Ξ Γ E R /\ ~ desc_reads_frame Ξ R.
+
 (** The sorts of the types of an evaluated kind ([evaluated_kind]: no
     proposition), which a definition or a codomain may have: a large
     universe, or [LevelSort]. *)
@@ -1400,6 +1418,9 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
         Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵘ U'[σ']ᵘ ≈ U'[σ']ᵘ) ->
      (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊢ᵐ H ≈ H) ->
      (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δ' ++ Γ ⊢ᵐ H' ≈ H') ->
+     (** No open, on either side, opens a module still being defined *)
+     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target Θ Ξ (Ψ ++ Δ ++ Γ) H) ->
+     (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> frame_free_target Θ Ξ (Ψ' ++ Δ' ++ Γ) H') ->
      (forall k Φ0 H Φ0' H' σ σ',
         nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) ->
         nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
@@ -1462,6 +1483,9 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      (lv' = true -> level_sorted_parameters Δ') ->
      (lv' = false -> mdenote Θ Ξ (Δ' ++ Γ) E' Rt') ->
      (lv' = false -> Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ⁿˡ Rt') ->
+     (** Neither target is a module still being defined *)
+     frame_free_target Θ Ξ (Δ ++ Γ) E ->
+     frame_free_target Θ Ξ (Δ' ++ Γ) E' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') )
 (** An alias of a literal is the literal over both telescopes, the alias's
     outermost: the merge lookup performs ([udenote_alias], [mdesc_up]).  The
@@ -1480,6 +1504,9 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      (lv = true -> level_sorted_parameters Δ) ->
      (lv = false -> mdenote Θ Ξ (Δ ++ Γ) (me_lit (gu_mk Δ' D)) Rt) ->
      (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ Rt) ->
+     (** The literal is no module still being defined, as for
+         [wf_unit_eq_alias] *)
+     frame_free_target Θ Ξ (Δ ++ Γ) (me_lit (gu_mk Δ' D)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D )
 (** A body unit is its expansion: each local open replaced by the
     definitions it stores ([gm_expand]), as evaluation reads it.  For
@@ -1715,6 +1742,8 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (lv = true -> level_sorted_parameters (Δ ++ gs_tele Ξ)) ->
      (lv = false -> mdenote Θ Ξ (Δ ++ gs_tele Ξ) E Rt) ->
      (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ⁿˡ Rt) ->
+     (** The target is no module still being defined *)
+     frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) E ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** A group of inductive types, at its first member, before the members of
     its module: its declaration, with uniform parameters [Δ] over the
@@ -1966,6 +1995,8 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (lv = true -> level_sorted_parameters (Δ ++ gs_tele Ξ)) ->
      (lv = false -> mdenote Θ Ξ (Δ ++ gs_tele Ξ) E Rt) ->
      (lv = false -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ⁿˡ Rt) ->
+     (** The module part's target is no module still being defined *)
+     frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) E ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def_mod pv (ctx_pi (gs_tele Ξ) A) (ctx_fn (gs_tele Ξ) M) (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** A record type, with parameters [Δ] over the frames' parameters, before
     the members of its module: its sort is a universe over the parameters,

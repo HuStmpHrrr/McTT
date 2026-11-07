@@ -769,10 +769,11 @@ Lemma sub_eq_unit_self : forall Θ Ξ Γ Δu Φ Φx entry_sort l ps Γ0 σ σ',
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ᵐ H[σf]ᵐ[τ]ᵐ ≈ H[σf]ᵐ[τ']ᵐ) ->
     all_assumptions Δu -> body_shape Φ Φ -> body_shape Φx Φx -> List.NoDup (gm_names Φ) ->
     forall (lv : bool) Rt, levels_flag Θ Ξ Γ Δu (me_lit (gu_open nil Φ)) lv Rt ->
+    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target Θ Ξ (Ψ ++ Δu ++ Γ) H) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu Φ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu Φ)[σ']ᵘ.
 Proof.
-  intros * Hb Hσ L HΔσ Hx Hes Htg Hps HRp HA IHA HM IHM HU IHU Ho IHo Ha Hs Hsx Hn lv Rt Hf HU0.
+  intros * Hb Hσ L HΔσ Hx Hes Htg Hps HRp HA IHA HM IHM HU IHU Ho IHo Ha Hs Hsx Hn lv Rt Hf Hff HU0.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs0; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs1.
   assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eapply ext_eq_ctx_left; exact Hx).
   destruct (wf_unit_eq_scoped _ _ _ _ _ HU0) as (HΓs & HUs & _).
@@ -791,7 +792,7 @@ Proof.
   pose proof (sub_eq_levels_flag _ _ _ _ (me_lit (gu_open nil Φ)) lv Rt _ _ Hs1 HΔΓ (ext_eq_ctx_right _ _ _ _ _ HΔσ)
                 ltac:(open_lit_scoped HΦs) Hf) as F'.
   eapply (unit_body_moved Θ Ξ Γ Δu Δu Φ Φ Φx Φx entry_sort l ps Γ0 σ σ');
-    [ | | exact HΔσ | exact Hxσ | exact Hxσ' | | | | | | | | | exact Hb | exact Hb | exact Ha | exact Ha
+    [ | | exact HΔσ | exact Hxσ | exact Hxσ' | | | | | | | | | | | exact Hb | exact Hb | exact Ha | exact Ha
     | reflexivity | exact Hs | exact Hsx | exact Hn | exact Hes | exact Htg | exact Htg | exact Hps | |
     | exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
     | exact (levels_flag_no_level _ _ _ _ _ _ _ F)
@@ -839,6 +840,20 @@ Proof.
       eapply wf_ctx_app_tail; exact HC. }
     pose proof (wf_sub_ext _ _ (Ψ ++ Δu) _ _ _ Hs1 HΔ0 ltac:(rewrite <- List.app_assoc; exact (presup_modexp_eq_ctx (Ho _ _ _ Ek)))) as Hσe.
     rewrite <- List.app_assoc in Hσe; exact (sub_preserves_modexp _ _ _ _ _ _ _ (Ho _ _ _ Ek) Hσe).
+  (* the opens open no module still being defined, moved by either
+     substitution *)
+  - intros k Ψ H Ek.
+    pose proof (Ho _ _ _ Ek) as HH0; pose proof (Hff _ _ _ Ek) as HF.
+    destruct (wf_modexp_eq_scoped _ _ _ _ _ HH0) as (_ & HHs & _).
+    pose proof (presup_modexp_eq_ctx HH0) as HC.
+    rewrite List.app_assoc in HF, HHs, HC.
+    exact (sub_frame_free _ _ _ _ _ _ _ Hs0 HC HHs HF).
+  - intros k Ψ H Ek.
+    pose proof (Ho _ _ _ Ek) as HH0; pose proof (Hff _ _ _ Ek) as HF.
+    destruct (wf_modexp_eq_scoped _ _ _ _ _ HH0) as (_ & HHs & _).
+    pose proof (presup_modexp_eq_ctx HH0) as HC.
+    rewrite List.app_assoc in HF, HHs, HC.
+    exact (sub_frame_free _ _ _ _ _ _ _ Hs1 HC HHs HF).
   - intros k Φ0 H Φ0' H' σf σf' Ek Ek' Hf0 Hf0'.
     rewrite Ek in Ek'; injection Ek' as <- <-; rewrite Hf0 in Hf0'; injection Hf0' as <-.
     exact (IHo _ _ _ _ Ek Hf0 _ _ _ L).
@@ -862,9 +877,10 @@ Lemma sub_eq_unit_alias_self : forall Θ Ξ Γ Δu E l ps Γ0 σ σ',
     (forall k, parameter_sort l (ps k)) ->
     (forall Δ1 κ T Δ2, Δu = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     forall (lv : bool) Rt, levels_flag Θ Ξ Γ Δu E lv Rt ->
+    frame_free_target Θ Ξ (Δu ++ Γ) E ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk Δu (md_alias E))[σ]ᵘ ≈ (gu_mk Δu (md_alias E))[σ']ᵘ.
 Proof.
-  intros * Hσ L HΔσ Ha HE IHE Hps HRp lv Rt Hf.
+  intros * Hσ L HΔσ Ha HE IHE Hps HRp lv Rt Hf Hff.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs0; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs1.
   pose proof (presup_modexp_eq_ctx HE) as HΔΓ.
   destruct (wf_modexp_eq_scoped _ _ _ _ _ HE) as (_ & HsE & _).
@@ -879,7 +895,9 @@ Proof.
     | exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
     | exact (levels_flag_no_level _ _ _ _ _ _ _ F)
     | exact (levels_flag_sorted _ _ _ _ _ _ _ F') | exact (levels_flag_denotes _ _ _ _ _ _ _ F')
-    | exact (levels_flag_no_level _ _ _ _ _ _ _ F') ].
+    | exact (levels_flag_no_level _ _ _ _ _ _ _ F')
+    | exact (sub_frame_free _ _ _ _ _ _ _ Hs0 HΔΓ HsE Hff)
+    | exact (sub_frame_free _ _ _ _ _ _ _ Hs1 HΔΓ HsE Hff) ].
   eapply sub_preserves_modexp; [ exact HE |].
   apply wf_sub_ext; [ exact Hs1 | exact (ext_eq_ctx_right _ _ _ _ _ HΔσ) | exact HΔΓ ].
 Qed.
@@ -897,14 +915,15 @@ Lemma sub_eq_unit_flatten_case : forall Θ Ξ Γ Δ Δ' D l ps Γ0 σ σ',
     (forall k, parameter_sort l (ps k)) ->
     (forall Δ1 κ T Δ2, Δ = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ T : ps (List.length Δ2)) ->
     forall (lv : bool) Rt, levels_flag Θ Ξ Γ Δ (me_lit (gu_mk Δ' D)) lv Rt ->
+    frame_free_target Θ Ξ (Δ ++ Γ) (me_lit (gu_mk Δ' D)) ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ]ᵘ ≈ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ']ᵘ /\
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk (Δ' ++ Δ) D)[σ]ᵘ ≈ (gu_mk (Δ' ++ Δ) D)[σ']ᵘ.
 Proof.
-  intros * Hσ L HΔσ HΔ Ha HU IHU Hps HRp lv Rt Hf.
+  intros * Hσ L HΔσ HΔ Ha HU IHU Hps HRp lv Rt Hf Hff.
   pose proof (presup_unit_eq_ctx HU) as HΔΓ.
   assert (HL : Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ]ᵘ ≈ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))[σ']ᵘ).
   { eapply sub_eq_unit_alias_self; [ exact Hσ | exact L | exact HΔσ | exact Ha | apply wf_me_lit; exact HU | | exact Hps | exact HRp
-                                   | exact Hf ].
+                                   | exact Hf | exact Hff ].
     intros * Hτ; cbn [modexp_sub]; apply wf_me_lit, IHU; exact Hτ. }
   split; [ exact HL |].
   assert (Hflat : forall s, Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ s : Γ ->
@@ -918,12 +937,13 @@ Proof.
     pose proof (sub_eq_levels_flag _ _ _ _ (me_lit (gu_mk Δ' D)) lv Rt _ _ Hs HΔΓ (ext_eq_ctx_left _ _ _ _ _ HΔs)
                   HsU Hf) as F.
     cbn [modexp_sub] in F.
-    revert HUs F; destruct ((gu_mk Δ' D)[sb_qn (length Δ) s]ᵘ) as [Δw Dw]; intros HUs F; cbn [gunit_abs].
+    pose proof (sub_frame_free _ _ _ _ (me_lit (gu_mk Δ' D)) _ _ Hs HΔΓ HsU Hff) as FF; cbn [modexp_sub] in FF.
+    revert HUs F FF; destruct ((gu_mk Δ' D)[sb_qn (length Δ) s]ᵘ) as [Δw Dw]; intros HUs F FF; cbn [gunit_abs].
     eapply wf_unit_eq_flatten with (param_level := l) (param_sorts := ps);
       [ exact HΔs | apply all_assumptions_sub; exact Ha | exact HUs | exact Hps
       | sub_eq_params_case Hs HΔΓ (ext_eq_ctx_left _ _ _ _ _ HΔs) Hps HRp
       | exact (levels_flag_sorted _ _ _ _ _ _ _ F) | exact (levels_flag_denotes _ _ _ _ _ _ _ F)
-      | exact (levels_flag_no_level _ _ _ _ _ _ _ F) ]. }
+      | exact (levels_flag_no_level _ _ _ _ _ _ _ F) | exact FF ]. }
   eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym, Hflat, (wf_sub_eq_left _ _ _ _ _ _ Hσ) |].
   eapply wf_unit_eq_trans; [ exact HL | apply Hflat, (wf_sub_eq_right _ _ _ _ _ _ Hσ) ].
 Qed.
@@ -1026,6 +1046,8 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sor
           Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ U'[σf']ᵘ[τ]ᵘ ≈ U'[σf']ᵘ[τ']ᵘ /\ Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ U'[σf']ᵘ[τ]ᵘ ≈ U'[σf']ᵘ[τ']ᵘ) ->
     (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δu ++ Γ ⊢ᵐ H ≈ H) ->
     (forall k Ψ' H', List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δu' ++ Γ ⊢ᵐ H' ≈ H') ->
+    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target Θ Ξ (Ψ ++ Δu ++ Γ) H) ->
+    (forall k Ψ' H', List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> frame_free_target Θ Ξ (Ψ' ++ Δu' ++ Γ) H') ->
     (forall k Φ0 H Φ0' H' σf σf',
         List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> List.nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
@@ -1061,7 +1083,7 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' entry_sor
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_open Δu Φ)[σ]ᵘ ≈ (gu_open Δu Φ)[σ']ᵘ /\
     Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_open Δu' Φ')[σ]ᵘ ≈ (gu_open Δu' Φ')[σ']ᵘ.
 Proof.
-  intros * Hb Hb' HΔ IHΔ Hx Hx' HA IHA HAA HM IHM HMM HU IHU HAr IHAr HMr IHMr HUr IHUr Ho Ho' HOO IHOO HOR IHOR
+  intros * Hb Hb' HΔ IHΔ Hx Hx' HA IHA HAA HM IHM HMM HU IHU HAr IHAr HMr IHMr HUr IHUr Ho Ho' Hff Hff' HOO IHOO HOR IHOR
            Ha Ha' Hl Hs Hsx Hn Hes Htg Htg' Hps HRp HRp' lv lv' Rt Rt' HFl HFr Hσ.
   (* an open of one side has its counterpart on the other, filled in *)
   assert (Hopair : forall k Φ0 H σf, List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> gm_fill Φ0 = Some σf ->
@@ -1104,7 +1126,7 @@ Proof.
   split.
   - eapply sub_eq_unit_self; [ exact Hb | exact Hσ | exact L | exact HΔσ | exact Hx | exact Hes | exact Htg | exact Hps
                              | exact HRp | | | | | | | exact Ho |
-                             | exact Ha | exact Hs1 | exact Hsx1 | exact Hn | exact HFl
+                             | exact Ha | exact Hs1 | exact Hsx1 | exact Hn | exact HFl | exact Hff
                              | eapply wf_unit_eq_trans; [ exact HU0 | apply wf_unit_eq_sym; exact HU0 ] ].
     7: intros k Φ0 H σf Ek Hf0; destruct (Hopair _ _ _ _ Ek Hf0) as (Φ0' & H' & σf' & Ek' & Hf0');
          intros; eapply proj1; eapply IHOO; eassumption.
@@ -1123,7 +1145,7 @@ Proof.
         destruct (entry_shape_unit _ _ _ HS HE) as (U' & HE'); intros; eapply proj1; eapply IHU; eassumption.
   - eapply sub_eq_unit_self; [ exact Hb' | exact Hσ | exact L' | exact HΔσ' | exact Hx' | exact Hes | exact Htg'
                              | exact Hps | exact HRp' | | | | | | | exact Ho' |
-                             | exact Ha' | exact Hs2 | exact Hsx2 | rewrite <- Hnames; exact Hn | exact HFr
+                             | exact Ha' | exact Hs2 | exact Hsx2 | rewrite <- Hnames; exact Hn | exact HFr | exact Hff'
                              | eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym; exact HU0 | exact HU0 ] ].
     7: intros k Φ0' H' σf' Ek' Hf0'; destruct (Hopair' _ _ _ _ Ek' Hf0') as (Φ0 & H & σf & Ek & Hf0);
          intros; eapply proj1; eapply IHOR; [ exact Ek | exact Ek' | exact Hf0 | exact Hf0' | eassumption ].
@@ -1381,10 +1403,10 @@ Proof.
         destruct (IHΔ _ _ _ Hσ) as [HL HR]; destruct (HL Ha) as [L HΔσ]; destruct (HR Ha') as [L' HΔσ'];
         split; [ eapply sub_eq_unit_alias_self; [ exact Hσ | exact L | exact HΔσ | exact Ha | eapply wf_modexp_eq_refl_left; exact HE
                                                 | intros; exact (proj1 (IHE _ _ _ ltac:(eassumption)))
-                                                | eassumption | eassumption | eapply mk_levels_flag; eassumption ]
+                                                | eassumption | eassumption | eapply mk_levels_flag; eassumption | eassumption ]
                | eapply sub_eq_unit_alias_self; [ exact Hσ | exact L' | exact HΔσ' | exact Ha' | exact HE'
                                                 | intros; exact (proj1 (IHE' _ _ _ ltac:(eassumption)))
-                                                | eassumption | eassumption | eapply mk_levels_flag; eassumption ] ]
+                                                | eassumption | eassumption | eapply mk_levels_flag; eassumption | eassumption ] ]
     end ].
   all: try solve [
     match goal with
@@ -1396,7 +1418,7 @@ Proof.
         destruct (IHΔ _ _ _ Hσ) as [HL _]; destruct (HL Ha) as [L HΔσ];
         eapply sub_eq_unit_flatten_case;
         [ exact Hσ | exact L | exact HΔσ | exact HΔ | exact Ha | exact HU | intros; exact (proj1 (IHU _ _ _ ltac:(eassumption)))
-        | eassumption | eassumption | eapply mk_levels_flag; eassumption ]
+        | eassumption | eassumption | eapply mk_levels_flag; eassumption | eassumption ]
     end ].
   (** Symmetry and transitivity: each side as the induction hypotheses give
       it. *)

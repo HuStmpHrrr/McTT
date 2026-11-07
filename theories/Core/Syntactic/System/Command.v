@@ -135,7 +135,8 @@ Inductive gens_run (Θ : gdeps) : gstack -> list generated_item -> gstack -> Pro
     gens_run Θ Ξ (generated_item_def d pv r A M :: gs) Ξ'
 (** A generated module alias, its target checked as [run_cmd_alias] does *)
 | gens_run_alias : forall Ξ d pv E gs Ξ',
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> levels_abstractable Θ Ξ ⋅ (gs_tele Ξ) E -> gs_fresh d Ξ ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> levels_abstractable Θ Ξ ⋅ (gs_tele Ξ) E ->
+    frame_free_target Θ Ξ (gs_tele Ξ) E -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ) gs Ξ' ->
     gens_run Θ Ξ (generated_item_alias d pv E :: gs) Ξ'
 (** A generated definition with a module part: its term [M] at the type
@@ -151,7 +152,8 @@ Inductive gens_run (Θ : gdeps) : gstack -> list generated_item -> gstack -> Pro
     @alg_type_infer (gc_mk Θ Ξ) (gs_tele Ξ) W M ->
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ nf_to_exp W : Typeω@i ->
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> levels_abstractable Θ Ξ ⋅ (gs_tele Ξ) E -> gs_fresh d Ξ ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> levels_abstractable Θ Ξ ⋅ (gs_tele Ξ) E ->
+    frame_free_target Θ Ξ (gs_tele Ξ) E -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ) gs Ξ' ->
     gens_run Θ Ξ (generated_item_def_mod d pv A M E :: gs) Ξ'.
 
@@ -1367,6 +1369,8 @@ Section Semantics.
       (** the parameters are types of a universe, at a common level *)
       params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
       levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E ->
+      (** the target is no module still being defined *)
+      frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) E ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_alias x pv Δ E ⇝ Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ ⍮ B ⍮ Rb
   (** A unit filed already, by an earlier load: shared, not reloaded; the
@@ -1395,6 +1399,8 @@ Section Semantics.
       definitions and aliases its items generate in this frame. *)
   | run_cmd_open : forall ch B Rb Θ Ξ E its gs Ξ',
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
+      (** the module opened is no module still being defined *)
+      frame_free_target Θ Ξ (gs_tele Ξ) E ->
       open_gens Θ Ξ (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_open E its ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
@@ -1470,6 +1476,7 @@ Section Semantics.
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
       ind_former Θ Ξ (Δ ++ gs_tele Ξ) M W ->
       levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) H ->
+      frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) H ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_inductive_alias x pv Δ H ⇝
         Θ ⍮ gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M H) Ξ ⍮ B ⍮ Rb
@@ -1487,6 +1494,7 @@ Section Semantics.
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
       record_former Θ Ξ (Δ ++ gs_tele Ξ) M W ->
       levels_abstractable Θ Ξ ⋅ (Δ ++ gs_tele Ξ) H ->
+      frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) H ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_record_alias x pv Δ H ⇝
         Θ ⍮ gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M H) Ξ ⍮ B ⍮ Rb

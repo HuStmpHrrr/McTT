@@ -130,6 +130,46 @@ Proof.
     constructor; econstructor; [ exact (proj1 (proj2 (proj2 (proj2 (mdenote_grow_all _ _ _ _ Hg1 Hg2 Hs)))) _ _ _ ltac:(eassumption)) | eassumption ].
 Qed.
 
+(** A filed body is no open frame. *)
+Lemma gc_body_not_frame : forall Θ Ξ p TΦ, gc_body Θ Ξ p = Some TΦ -> gc_frame Ξ p = None.
+Proof.
+  intros * Hb; unfold gc_body, gc_frame in *.
+  destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |]; [ discriminate | | reflexivity ].
+  destruct U as [Δ [[|] Φ | E]]; reflexivity.
+Qed.
+
+(** A description whose module part is closed reads a closed body. *)
+Lemma mdesc_mod_closed_closedb : forall R Θ' p T Φ Ns,
+    mdesc_mod R = Some (mdesc_closed Θ' p T Φ Ns) -> mdesc_closedb R = true.
+Proof.
+  induction R as [| | | ? ? ? Rm IH]; intros * Hm; cbn in Hm |- *; try discriminate; [ reflexivity | exact (IH _ _ _ _ _ Hm) ].
+Qed.
+
+(** A description reading no open frame grows into one reading none: what
+    it reads is filed, and stays filed. *)
+Lemma frame_free_grows : forall Θ1 Ξ1 Θ2 Ξ2, gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
+    forall R1 R2, mdesc_grows Θ1 Ξ1 Θ2 Ξ2 R1 R2 -> ~ desc_reads_frame Ξ1 R1 -> ~ desc_reads_frame Ξ2 R2.
+Proof.
+  intros * Hs; induction 1 as [R Hc | Θ' T Φ1 Φ2 Ns p Hl1 Hl2 | Θd A M R1 R2 Hd IH]; intros Hn Hr.
+  - destruct Hr as (? & ? & ? & ? & ? & Hm & _); rewrite (mdesc_mod_closed_closedb _ _ _ _ _ _ Hm) in Hc; discriminate.
+  - destruct Hl1 as [Hf | Hb].
+    + apply Hn; do 5 eexists; split; [ reflexivity | rewrite Hf; discriminate ].
+    + destruct (gc_sub_body _ _ _ _ _ _ _ Hs Hb) as (Φ' & Hb' & _).
+      destruct Hr as (? & ? & ? & ? & ? & Hm & Hf); cbn in Hm; injection Hm as _ <- _ _ _.
+      exact (Hf (gc_body_not_frame _ _ _ _ Hb')).
+  - exact (IH Hn Hr).
+Qed.
+
+(** A target that is no module still being defined is none along an
+    embedding. *)
+Lemma frame_free_embedding : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
+    forall Γ E, frame_free_target Θ1 Ξ1 Γ E -> frame_free_target Θ2 Ξ2 Γ E.
+Proof.
+  intros * Hg1 He * (R1 & Hm & Hn).
+  destruct (gctx_embedding_mdenote _ _ _ _ Hg1 He _ _ _ Hm) as (R2 & Hm2 & Hd).
+  exists R2; split; [ exact Hm2 | exact (frame_free_grows _ _ _ _ (gctx_embedding_resolution _ _ _ _ He) _ _ Hd Hn) ].
+Qed.
+
 (** A judgment moves along an embedding unchanged. *)
 Theorem gctx_embedding_preserves_wf : forall Θ1 Ξ1 Θ2 Ξ2,
     gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
@@ -179,6 +219,28 @@ Proof.
           assert (Hm2 : lv = false -> mdenote Θ2 Ξ2 G E Rt)
             by (intros Hl; exact (gctx_embedding_mdenote_no_level _ _ _ _ HgΘ1 He _ _ _ (Hm Hl) (Hn Hl)));
           clear Hm HgΘ1
+      end.
+    (** A target that is no module still being defined is none there *)
+    all: repeat match goal with
+      | Hf : frame_free_target ?T1 ?X1 ?G ?E |- _ =>
+          assert_fails (constr_eq T1 Θ2);
+          let Hf2 := fresh "Hf2" in
+          let Hg1 := fresh "Hg1" in
+          assert (Hg1 : ⊢ᵍ T1 ⍮ X1)
+            by (eapply ctx_wf_gctx; first [ eapply presup_ext_eq_ctx; eassumption | eapply presup_modexp_eq_ctx; eassumption
+                                          | eapply presup_unit_eq_ctx; eassumption ]);
+          pose proof (frame_free_embedding _ _ _ _ Hg1 He _ _ Hf) as Hf2;
+          clear Hf Hg1
+      | Hf : forall k Ψ H, nth_error ?L k = Some (Ψ, H) -> frame_free_target ?T1 ?X1 (Ψ ++ ?G) H |- _ =>
+          assert_fails (constr_eq T1 Θ2);
+          let Hf2 := fresh "Hf2" in
+          let Hg1 := fresh "Hg1" in
+          assert (Hg1 : ⊢ᵍ T1 ⍮ X1)
+            by (eapply ctx_wf_gctx; first [ eapply presup_ext_eq_ctx; eassumption | eapply presup_modexp_eq_ctx; eassumption
+                                          | eapply presup_unit_eq_ctx; eassumption ]);
+          assert (Hf2 : forall k Ψ H, nth_error L k = Some (Ψ, H) -> frame_free_target Θ2 Ξ2 (Ψ ++ G) H)
+            by (let Hk := fresh "Hk" in intros ? ? ? Hk; exact (frame_free_embedding _ _ _ _ Hg1 He _ _ (Hf _ _ _ Hk)));
+          clear Hf Hg1
       end.
     all: try solve [ econstructor; eauto using gc_sub_resolve, ind_lookup_gc_sub, ind_mlookup_gc_sub, record_lookup_gc_sub ].
     all: try match goal with
@@ -4494,9 +4556,10 @@ Lemma desc_ok_body : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ Δ Φ Φx R,
     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_fill Φ0 = Some σ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : es y) ->
     forall lv Rt, levels_flag Θ Ξ Γ Δ (me_lit (gu_open nil Φ)) lv Rt ->
+    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target Θ Ξ (Ψ ++ Δ ++ Γ) H) ->
     udenote Θ Ξ Γ None (gu_open Δ Φ) R -> desc_ok Θ Ξ Γ R.
 Proof.
-  intros * Hg * Hx HΓ Hs Ha Hsh Hnd Ho Hsw l HRΔ es Hes Htg HA lv Rt Hlv HR.
+  intros * Hg * Hx HΓ Hs Ha Hsh Hnd Ho Hsw l HRΔ es Hes Htg HA lv Rt Hlv Hff HR.
   assert (HUw : Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_open nil Φ ≈ gu_open nil Φ).
   { assert (Hnil : forall Δ1 κ T Δ2, (nil : ctx) = Δ1 ++ ce_ass κ T :: Δ2 -> Θ ⍮ Ξ ⍮ Δ2 ++ Δ ++ Γ ⊢ T : Typeω@0)
       by (intros [| ? ?] ? ? ? E; discriminate).
@@ -4689,7 +4752,7 @@ Proof.
           eapply desc_ok_body; [ exact Hg | exact Hx | exact (ext_eq_ctx_left _ _ _ _ _ HX) | exact Hs | assumption | assumption
                                | assumption | exact Ho | assumption
                                | eapply params_evaluated_of_sorts; eassumption | eassumption | eassumption
-                               | | eapply mk_levels_flag; eassumption | exact Hu ]
+                               | | eapply mk_levels_flag; eassumption | eassumption | exact Hu ]
       end.
     (* the definitions of each side, filled in, at their sorts *)
     all: match goal with
