@@ -178,6 +178,12 @@ Inductive run_error : Type :=
 | run_error_mod_term : qname -> run_error
 (** A path that names no inductive type where one is wanted. *)
 | run_error_not_ind : qname -> run_error
+(** An alias or an open whose target names a module still being defined
+    ([frame_free_target]): [run_error_unfinished_target ox Ξ Δ E], [ox]
+    the alias declared ([Some], as ["module Rc"]) or an open ([None]),
+    the target [E] in the context [Δ] the stack's telescope is extended
+    by, innermost entry first. *)
+| run_error_unfinished_target : option string -> fstack -> ctx -> modexp -> run_error
 (** A literal, a numeral or the token [ℕ], with no natural-number type
     bound ([Builtin]). *)
 | run_error_lit : literal_failure_reason -> run_error

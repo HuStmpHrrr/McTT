@@ -763,7 +763,7 @@ let mark_ihs (k : int) (ys : string list) : string list =
   if k = 0 then ys
   else List.filteri (fun i _ -> i < n - k) ys @ ("," :: List.filteri (fun i _ -> i >= n - k) ys)
 
-let exp_to_expression =
+let exp_to_expression, modexp_to_expression =
   let new_var, reset_var_suffix =
     let suffix = ref 0 in
     ( (fun () ->
@@ -1080,13 +1080,17 @@ let exp_to_expression =
         (i + 1, px :: names))
       (0, []) (List.rev delta))
   in
-  (* A term in the context [delta], whose entries are named first. *)
-  fun ?(delta = []) ?(names = []) exp ->
+  (* The names of the context [delta], the suffixes started afresh. *)
+  let context_names (given : string option list) (delta : centry list) : string list =
     reset_var_suffix ();
     reset_tyvar_suffix ();
     reset_mod_suffix ();
-    let ctx = names_of names delta in
-    impl ctx exp
+    names_of given delta
+  in
+  (* A term in the context [delta], whose entries are named first; and a
+     module expression likewise. *)
+  ( (fun ?(delta = []) ?(names = []) exp -> impl (context_names names delta) exp),
+    fun ?(delta = []) target -> impl_mod (context_names [] delta) target )
 
 let format_exp f exp = format_expression f (exp_to_expression exp)
 
@@ -1349,7 +1353,7 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
    | Coq_run_error_elim_blocks (xi, _, _, _, _, _) | Coq_run_error_elim_scrutinee (xi, _, _, _, _)
    | Coq_run_error_elim_no_group (xi, _, _) | Coq_run_error_elim_ambiguous (xi, _, _, _)
    | Coq_run_error_access_no_type (xi, _, _, _, _) | Coq_run_error_access_not_record (xi, _, _, _, _, _)
-   | Coq_run_error_record_field (xi, _, _, _, _, _, _) ->
+   | Coq_run_error_record_field (xi, _, _, _, _, _, _) | Coq_run_error_unfinished_target (_, xi, _, _) ->
       set_state (fst !current_state) xi;
       set_ind_decls ()
    | _ -> ());
@@ -1394,6 +1398,15 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<hov 2>Error: %a is a module, not a term@]" pp_utf8 (string_of_qualified_path q.q_unit q.q_chain)
   | Coq_run_error_not_ind q ->
      fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_utf8 (string_of_qualified_path q.q_unit q.q_chain)
+  (* An alias or an open whose target is a module still being defined:
+     what is declared, and the target as written, in the binders the
+     target lives under. *)
+  | Coq_run_error_unfinished_target (declared, _, delta, target) ->
+     let what = match declared with
+       | Some x -> x ^ ": the alias target"
+       | None -> "the open target" in
+     fprintf f "@[<hov 2>Error: %s@ %a@ names a module still being defined;@ an alias or an open names a finished module only@]"
+       what format_expression (modexp_to_expression ~delta target)
   | Coq_run_error_private (q, x) ->
      fprintf f "@[<hov 2>Error: %a is private@]" pp_utf8 (string_of_qualified_path q.q_unit (q.q_chain @ [x]))
   (* A member selected from a term, in the binders crossed to reach it:

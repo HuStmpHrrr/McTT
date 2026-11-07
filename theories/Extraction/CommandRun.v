@@ -2013,12 +2013,6 @@ Section Impl.
   Definition run_error_levels (x : string) : run_error :=
     run_error_msg (x ++ " reads a level computed from a parameter that is not a level").
 
-  (** An alias or an open of a module still being defined: of an open
-      frame, the current unit's, a record's with-area's or an inductive
-      type's module ([frame_free_target]) *)
-  Definition run_error_frame (x : string) : run_error :=
-    run_error_msg (x ++ " names a module still being defined: an alias or an open names a finished module only").
-
   (** The last name of the path of an inductive type. *)
   Definition ind_short (p : qname) : string := List.last (q_chain p) EmptyString.
 
@@ -2531,7 +2525,7 @@ Section Impl.
         | inleft (exist _ l HPr) with check_modexp (cmd_F B H) (lvd _) (Δ ++ fc_tele (cmd_F B H)) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
           | right _ => run_failure (run_error_msg ("ill-formed module expression for module " ++ x))
           | left HE with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
-            | right _ => run_failure (run_error_frame ("module " ++ x))
+            | right _ => run_failure (run_error_unfinished_target (Some ("module " ++ x)) fs Δ E)
             | left Hff with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
             | right _ => run_failure (run_error_levels ("module " ++ x))
             | left Hlv with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
@@ -2616,7 +2610,7 @@ Section Impl.
                 | right _ => run_failure (run_error_levels ("module " ++ d))
                 | left Hlv =>
                     match frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E HE with
-                    | right _ => run_failure (run_error_frame ("module " ++ d))
+                    | right _ => run_failure (run_error_unfinished_target (Some ("module " ++ d)) fs nil E)
                     | left Hff =>
                     let HE' := cmd_modexp B H nil E HE in
                     let Hlv' := cmd_levels_abstractable B H nil E Hlv in
@@ -2651,7 +2645,7 @@ Section Impl.
                         | inright _ => run_failure (run_error_msg ("ill-formed definition " ++ d))
                         | inleft (exist _ i HWt) =>
                             match frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E HE with
-                            | right _ => run_failure (run_error_frame ("module " ++ d))
+                            | right _ => run_failure (run_error_unfinished_target (Some ("module " ++ d)) fs nil E)
                             | left Hff =>
                             let HW' := cmd_infer B H nil W M HW in
                             let HWt' := cmd_exp B H nil (nf_to_exp W) Typeω@i HWt in
@@ -2761,7 +2755,7 @@ Section Impl.
                   | left _ => run_failure (run_error_msg ("inductive alias " ++ x ++ " names a record type: use record"))
                   | right _ => run_failure (alias_target_error x E) }
                 | left Hf with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
-                  | right _ => run_failure (run_error_frame ("inductive alias " ++ x))
+                  | right _ => run_failure (run_error_unfinished_target (Some ("inductive alias " ++ x)) fs Δ E)
                   | left Hff with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
                   | right _ => run_failure (run_error_levels ("inductive alias " ++ x))
                   | left Hlv with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
@@ -2805,7 +2799,7 @@ Section Impl.
                 | left _ => run_failure (run_error_msg ("record alias " ++ x ++ " names an inductive type: use inductive"))
                 | right _ => run_failure (recalias_target_error x) }
               | left Hf with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) E HE => {
-                | right _ => run_failure (run_error_frame ("record alias " ++ x))
+                | right _ => run_failure (run_error_unfinished_target (Some ("record alias " ++ x)) fs Δ E)
                 | left Hff with lvd (cmd_F B H) nil (Δ ++ fc_tele (cmd_F B H))%list E (ctx_app_nil (ext_eq_ctx_left _ _ _ _ _ HΔ)) (modexp_app_nil HE) => {
                 | right _ => run_failure (run_error_levels ("record alias " ++ x))
                 | left Hlv with fs_fresh_sum x fs (pre_frames _ _ _ _ _ H) (pre_canon H) => {
@@ -3594,7 +3588,7 @@ Section Impl.
   | ch, L, s, K, D, B, fs, core_cmd_open E its, H with check_modexp (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) E => {
     | right _ => run_failure (run_error_import (open_failure_reason_target E))
     | left HE with frame_free_target_dec (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E HE => {
-    | right _ => run_failure (run_error_frame "an open")
+    | right _ => run_failure (run_error_unfinished_target None fs nil E)
     | left Hff with inspect (import_gen (cmd_F B H) (pre_gctx_f B H) (fc_tele (cmd_F B H)) E E HE its) => {
       | exist _ (open_failure e) _ => run_failure (run_error_import e)
       | exist _ (open_success gs) Eg with gens_impl ch s K D B fs gs H => {
