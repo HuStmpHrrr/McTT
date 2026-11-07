@@ -1591,59 +1591,52 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" := (wf_modexp_eq Θ Ξ Γ H H') : type_
 
     [Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R]: no member of the module description [R], read in
     [Γ], has a type of levels: every term it holds, directly or in a module
-    it holds, is of a type of a large universe or a proposition.  A
+    it holds, is of the kind of a large universe or of a proposition.  A
     description is abstracted over the parameters of an alias ([mdesc_up]),
     which turns a member of type [A] into one of type [Π Δ. A]; over a
     parameter of a universe that is no type when [A] is a type of levels,
     so an alias or a body with such a parameter asks this of its target
     ([no_level_members], [levels_abstractable]).  The judgment walks the
-    description as member lookup reads it; the descriptions of module
-    entries and the levels are arguments of the rules, so that every
-    premise is positive. *)
+    description as member lookup reads it, and reads the kinds the entries
+    are tagged with, not their typings: the typing of a description is
+    [desc_ok]'s, and with the tags it gives the abstracted types.  So, of
+    a well-formed module expression, it is decided by walking what the
+    expression denotes.  The
+    descriptions of module entries are arguments of the rules, so that
+    every premise is positive. *)
 with wf_no_level_members : gdeps -> gstack -> ctx -> mdesc -> Prop :=
-(** A term: of a type of a large universe or a proposition *)
+(** A term: of the kind of a large universe or of a proposition *)
 | wf_no_level_term :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort r Typeω@i ->
-     r <> ak_level ->
+  `( r <> ak_level ->
      Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_term r A om )
-(** An open body module, by its expansion: each definition, filled in, is
-    of a type of a large universe ([member_levels]) or a proposition, and
+(** An open body module, by its expansion, which has no open left and is
+    an extension of the parameters, so that it can be moved: each
+    definition is of the kind of a large universe or of a proposition, and
     the unit of each module entry denotes ([member_descs]) a description
-    with no member of a type of levels, read where the entry is; the
-    expanded body has no open left and is an extension of the parameters,
-    so that it can be moved *)
+    with no member of a type of levels, read where the entry is *)
 | wf_no_level_open :
   `( gm_noopen Φx ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
-     (forall y Φ0 E A M σ, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-        gm_fill Φ0 = Some σ ->
-        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : abs_kind_sort (entry_kind E) Typeω@(member_levels y)) ->
      (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> entry_kind E <> ak_level) ->
      (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
         udenote Θ Ξ (body_ctx Φ0 ++ Δ ++ Γ) None U (member_descs y)) ->
      (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
         Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ Δ ++ Γ ⊢ⁿˡ member_descs y) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_open Δ Φw Φx )
-(** A closed module, by its stored entries: each definition is stored
-    generalized over the telescope [T] ([ctx_pi_at]), of a type
-    ([member_types]) of a large universe ([member_levels]) or a proposition
-    there; every other entry, read as it is stored ([ge_read]), denotes
-    ([member_descs]) a description with no member of a type of levels;
-    stored entries are closed, so they are read at [⋅], in a well-formed
-    global context.  The location is
-    a filed body ([gc_body]: a loaded unit or a finished submodule) with
-    exactly these entries, no open frame: an open frame grows, and an
-    entry filed later is read through every description of the frame.  In
-    [module F where module A (n : ℕ) ≔ F; def w : Level ≔ 0l end] the
-    member [w] of [A] would be of [Π (n : ℕ) Level], so an alias with a
-    parameter of a universe of a still open frame is rejected. *)
+(** A closed module, by its stored entries: each definition is of the kind
+    of a large universe or of a proposition; every other entry, read as it
+    is stored ([ge_read]), denotes ([member_descs]) a description with no
+    member of a type of levels; stored entries are closed, so they are read
+    at [⋅], in a well-formed global context.  The location is a filed body
+    ([gc_body]: a loaded unit or a finished submodule) with exactly these
+    entries, no open frame: an open frame grows, and an entry filed later is
+    read through every description of the frame.  In [module F where module
+    A (n : ℕ) ≔ F; def w : Level ≔ 0l end] the member [w] of [A] would be of
+    [Π (n : ℕ) Level], so an alias with a parameter of a universe of a still
+    open frame is rejected. *)
 | wf_no_level_closed :
   `( ⊢ᵍ Θ ⍮ Ξ ->
      gc_body Θ Ξ p = Some (T, Φ) ->
-     (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
-        A = ctx_pi_at r T (member_types y)) ->
-     (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
-        Θ ⍮ Ξ ⍮ T ⊢ member_types y : abs_kind_sort r Typeω@(member_levels y)) ->
      (forall y Φ0 b pv r A oM, gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) -> r <> ak_level) ->
      (forall y Φ0 E, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> (forall b pv r A oM, E <> ge_def b pv r A oM) ->
         edenote Θ Ξ ⋅ (Some (qname_in p y)) (ge_read T E) (member_descs y)) ->

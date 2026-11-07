@@ -160,10 +160,10 @@ Proof.
     all: try solve [
       first
       [ eapply wf_no_level_closed;
-        [ exact Hg | eapply gc_sub_body_eq; eassumption | eassumption | eauto | eassumption
+        [ exact Hg | eapply gc_sub_body_eq; eassumption | eassumption
         | intros; eapply gctx_embedding_edenote_no_level; eauto | eauto ]
       | eapply wf_no_level_open;
-        [ assumption | eauto | eauto | eassumption
+        [ assumption | eauto | eassumption
         | intros; eapply gctx_embedding_udenote_no_level; [ | exact He | eauto | eauto ];
           eapply ctx_wf_gctx, ext_eq_ctx_left; eassumption
         | eauto ] ] ].
@@ -3822,13 +3822,12 @@ Proof.
   destruct R as [r A [|] | | |]; cbn [mdesc_self]; first [ exact H | exact (no_level_term_any _ _ _ _ _ _ _ H) ].
 Qed.
 
-(** A definition of a closed module with no member of a type of levels:
-    its type is closed by [Π]s over the module's telescope from a type of a
-    large universe. *)
+(** A definition of a closed module with no member of a type of levels is
+    not of the kind of levels. *)
 Lemma no_level_closed_def : forall Θ Ξ Γ Θ' p T Φ Ns y Φ0 b pv r A oM,
     Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_closed Θ' p T Φ Ns -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_def b pv r A oM)) ->
-    r <> ak_level /\ exists A1 i, A = ctx_pi_at r T A1 /\ Θ ⍮ Ξ ⍮ T ⊢ A1 : abs_kind_sort r Typeω@i.
-Proof. intros * H Hp; inversion H; subst; split; [ eauto | do 2 eexists; split; eauto ]. Qed.
+    r <> ak_level.
+Proof. intros * H Hp; inversion H; subst; eauto. Qed.
 
 (** Any other entry of it: what it denotes, read in the empty context, has
     no member of a type of levels. *)
@@ -4119,10 +4118,9 @@ Proof.
        a large universe *)
     split.
     2:{ intros HNl; apply no_level_named.
-        destruct (no_level_closed_def _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HNl Hp) as (Hr1 & A1 & i1 & HA1 & HA1t).
-        rewrite <- (ctx_pi_at_ass_injective _ _ _ _ Ha HA1) in HA1t.
+        pose proof (no_level_closed_def _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HNl Hp) as Hr1.
         eapply no_level_ats_up; [ exact HTΘ | exact Ha | exact (args_ok_length _ _ _ _ _ Hargs) | exact (args_ok_insts _ _ _ _ _ Hargs)
-                                | eapply wf_no_level_term; [ exact (closed_tele_weaken_exp _ _ _ _ _ _ HsT HA1t HTΘ) | exact Hr1 ]
+                                | apply wf_no_level_term; exact Hr1
                                 | exact Hats ]. }
     pose proof (closed_tele_weaken_exp _ _ _ _ _ _ HsT HA0 HTΘ) as HA0Θ.
     assert (HLA : forall om, desc_levels_abstractable Θ Ξ (Θ' ++ Γ) T (mdesc_term r A0 om))
@@ -4268,9 +4266,6 @@ Proof.
     { eapply (desc_ok_term _ _ _ ak_relevant); [ exact HA0Θ
                            | intros M1 [= <-]; exact (closed_tele_weaken_exp _ _ _ _ _ _ HsT HM0' HTΘ) ]. }
     { eapply (closed_term_levels_abstractable _ _ _ _ ak_relevant); [ exact HsT | exact HTΘ | discriminate | exact HA0 ]. }
-    (* at the arguments, still of a universe *)
-    pose proof (no_level_ats_up _ _ Ns (Θ' ++ Γ) T (mdesc_term ak_relevant A0 (Some M0)) _ HTΘ Ha (args_ok_length _ _ _ _ _ Hargs)
-                  (args_ok_insts _ _ _ _ _ Hargs) ltac:(eapply (wf_no_level_term _ _ _ ak_relevant); [ exact HA0Θ | discriminate ]) HR3) as HNB.
     cbn [mdesc_up option_map] in HR3.
     destruct (mdesc_ats_some_red _ _ _ _ _ HR3) as (B & M' & ->).
     cbn [mdesc_ats_read] in Hats; rewrite (mdesc_term_part_ats_of_ats _ _ _ HR3), HR2 in Hats; cbv beta iota in Hats; injection Hats as <-.
@@ -4288,11 +4283,10 @@ Proof.
         all: match goal with Hm : forall Rm', mdesc_mod _ = Some Rm' -> _ |- _ =>
                apply (proj1 (no_level_up_mod _ _ (Θ' ++ Γ) (Δ0 ++ T) _ HmR1m)); apply Hm;
                rewrite mdesc_mod_up, (mdesc_is_mod_mod _ HmR1m); reflexivity end. }
-    inversion Hok4 as [? ? ? ? ? _ HMB | | |]; subst.
-    inversion HNB; subst.
+    inversion Hok4 as [? ? ? ? ? HBt HMB | | |]; subst.
     rewrite <- (mdesc_up_nil R2).
     eapply desc_ok_dm with (Θd := nil) (param_level := 0);
-      [ exact HΘ' | constructor | eassumption | exact (HMB _ eq_refl) | exact Hok3 | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
+      [ exact HΘ' | constructor | exact HBt | exact (HMB _ eq_refl) | exact Hok3 | apply params_evaluated_nil | apply desc_levels_abstractable_nil ].
   - (* a record type, stored at its own path: its type former at the
        arguments, with its module there *)
     destruct E1 as [| ? [? [? ?| ?]] | | | pv1 pr1 Rr1 ΦR1]; cbn in Hgr; try discriminate; try contradiction.

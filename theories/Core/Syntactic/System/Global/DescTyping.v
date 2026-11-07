@@ -2148,10 +2148,7 @@ Lemma no_level_up : forall Θ Ξ Γ Δ R, ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ⁿˡ R -> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ mdesc_up Δ R.
 Proof.
   intros * HΔ HN; destruct R as [r A om | | | Θd A M Rm]; cbn [mdesc_up].
-  - inversion HN; subst.
-    match goal with HA : _ ⍮ _ ⍮ _ ⊢ A : abs_kind_sort r Typeω@_, Hr : r <> ak_level |- _ =>
-      destruct (ctx_pi_at_wf _ _ _ _ _ _ _ Hr HΔ HA) as [j Hj];
-      eapply wf_no_level_term; [ exact Hj | exact Hr ] end.
+  - inversion HN; subst; apply wf_no_level_term; assumption.
   - exact (proj2 (no_level_up_mod _ _ _ _ (mdesc_open _ _ _) I) HN).
   - exact (proj2 (no_level_up_mod _ _ _ _ (mdesc_closed _ _ _ _ _) I) HN).
   - inversion HN; subst; constructor; intros Rw HRw.
@@ -2249,7 +2246,7 @@ Lemma closed_term_levels_abstractable : forall Θ Ξ Γ T r A i om,
     desc_levels_abstractable Θ Ξ Γ T (mdesc_term r A om).
 Proof.
   intros * Hs HTΓ HL HA; destruct r; try (left; exact (HL eq_refl)).
-  all: right; eapply wf_no_level_term; [ exact (closed_tele_weaken_exp _ _ _ _ _ _ Hs HA HTΓ) | discriminate ].
+  all: right; apply wf_no_level_term; discriminate.
 Qed.
 
 (** A term with no member of a type of levels has none whatever its
@@ -2773,15 +2770,13 @@ Section DescOk.
     all: try (destruct HLΔ as [HL | HN]; [ left; exact HL | right ];
       inversion HN; subst; cbn [List.app] in *;
       match goal with
-      | HNA : forall _ _ _ _ _ _, _ -> entry_tm _ = _ -> _ -> _ ⍮ _ ⍮ _ ⊢ _ : _,
-        HNU : forall _ _ _ _, _ -> entry_unit _ = _ -> udenote _ _ _ _ _ _,
+      | HNU : forall _ _ _ _, _ -> entry_unit _ = _ -> udenote _ _ _ _ _ _,
         HNn : forall _ _ _ _, _ -> entry_unit _ = _ -> wf_no_level_members _ _ _ _ |- _ =>
           inversion Hed; subst;
           first
-          [ eapply wf_no_level_term;
-            [ exact (HNA _ _ _ _ _ _ Hp eq_refl Hf)
-            | match goal with HNL : forall _ _ _ _ _, _ -> entry_tm _ = _ -> entry_kind _ <> ak_level |- _ =>
-                exact (HNL _ _ _ _ _ Hp eq_refl) end ]
+          [ apply wf_no_level_term;
+            match goal with HNL : forall _ _ _ _ _, _ -> entry_tm _ = _ -> entry_kind _ <> ak_level |- _ =>
+              exact (HNL _ _ _ _ _ Hp eq_refl) end
           | match goal with Hu : udenote _ _ _ _ _ _ |- _ =>
               rewrite <- List.app_assoc in Hu;
               pose proof (proj1 (proj2 (mdenote_functional_all _ _ Hg)) _ _ _ _ (HNU _ _ _ _ Hp eq_refl) _ Hu) as Heq end;

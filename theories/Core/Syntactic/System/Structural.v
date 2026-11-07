@@ -1778,15 +1778,11 @@ Section NoLevelMove.
     - exact (move_flag_no_level _ _ _ _ _ _ HR HΓ HΔ IH3).
   Qed.
 
-  Lemma move_no_level_open : forall Γ Δ σ Δo Φw Φx (member_levels : String.string -> nat) (member_descs : String.string -> mdesc),
+  Lemma move_no_level_open : forall Γ Δ σ Δo Φw Φx (member_descs : String.string -> mdesc),
       R Δ σ Γ ->
       gm_noopen Φx ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δo ≈ body_ctx Φx ++ Δo ->
       Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (body_ctx Φx ++ Δo) σ ≈ tele_sub (body_ctx Φx ++ Δo) σ ->
-      (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-         gm_fill Φ0 = Some σf ->
-         forall Δ0 σ0, R Δ0 σ0 (Δo ++ Γ) ->
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σf][σ0] : (abs_kind_sort (entry_kind E) Typeω@(member_levels y))[σ0]) ->
       (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> entry_kind E <> ak_level) ->
       (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
          udenote Θ Ξ (body_ctx Φ0 ++ Δo ++ Γ) None U (member_descs y)) ->
@@ -1794,7 +1790,7 @@ Section NoLevelMove.
          forall Δ0 σ0, R Δ0 σ0 (body_ctx Φ0 ++ Δo ++ Γ) -> Θ ⍮ Ξ ⍮ Δ0 ⊢ⁿˡ mdesc_sub (member_descs y) σ0) ->
       Θ ⍮ Ξ ⍮ Δ ⊢ⁿˡ mdesc_sub (mdesc_open Δo Φw Φx) σ.
   Proof.
-    intros * HR Hn Hx Hxσ IHA HnL HU IHn; cbn [mdesc_sub].
+    intros * HR Hn Hx Hxσ HnL HU IHn; cbn [mdesc_sub].
     pose proof (gm_noopen_nopens _ Hn) as Hnx.
     assert (Hpn : forall y Φ0 E, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> gm_nopens Φ0 = 0)
       by (intros * Hp; exact (gm_prefix_upto_nopens _ _ _ Hp Hnx)).
@@ -1805,23 +1801,13 @@ Section NoLevelMove.
     assert (HRo : R (tele_sub Δo σ ++ Δ) τ (Δo ++ Γ))
       by (apply R_ext; [ exact HR | exact (ctx_app_wf_tail _ _ _ _ HΦΔ) | exact (ctx_app_wf_tail _ _ _ _ HΦΓ) ]).
     assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; exact HΦΓ).
-    apply wf_no_level_open with (member_levels := member_levels)
+    apply wf_no_level_open with
       (member_descs := fun y => match gm_prefix_upto Φx y with
                                 | Some (gm_ext Φ0 _ _) => mdesc_sub (member_descs y) (sb_qn (length (body_ctx Φ0)) τ)
                                 | _ => member_descs y
                                 end).
     - apply gm_noopen_sub; exact Hn.
     - unfold τ; rewrite (body_ctx_sub _ _ Hnx), <- tele_sub_app; exact Hxσ.
-    - (* the definitions, each filled in, then moved *)
-      intros y Φ0w Ew Aw Mw σw Hp HEw Hfw.
-      destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->).
-      destruct (entry_tm_sub_inv _ _ _ _ HEw) as (A & M & HE & -> & ->).
-      destruct (gm_fill Φ0) as [σf |] eqn:Hf0; [| apply (proj2 (gm_fill_sub_none Φ0 τ)) in Hf0; congruence ].
-      destruct (gm_fill_sub Φ0 (length Δo) σ σf Hf0) as (τ' & Hτ & Heq); fold τ in Hτ; rewrite Hτ in Hfw; injection Hfw as <-.
-      rewrite (fill_sub_exp _ _ _ _ _ _ Heq).
-      replace (entry_kind (gentry_sub E _)) with (entry_kind E) by (destruct E; reflexivity).
-      pose proof (IHA _ _ _ _ _ _ Hp0 HE Hf0 _ _ HRo) as HA.
-      rewrite abs_kind_sort_sub in HA; exact HA.
     - (* no definition of a type of levels *)
       intros y Φ0w Ew Aw Mw Hp HEw.
       destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->).
@@ -1886,14 +1872,10 @@ Proof. intros * Hφ; exists φ; split; [ reflexivity | exact Hφ ]. Qed.
 
 (** An open description with no member of a type of levels, weakened,
     from the induction hypotheses about its parts. *)
-Lemma wk_no_level_open_case : forall Θ Ξ Γ Δo Φw Φx (member_levels : String.string -> nat) (member_descs : String.string -> mdesc) Δ φ,
+Lemma wk_no_level_open_case : forall Θ Ξ Γ Δo Φw Φx (member_descs : String.string -> mdesc) Δ φ,
     gm_noopen Φx ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δo ≈ body_ctx Φx ++ Δo ->
     (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_wk (body_ctx Φx ++ Δo) φ0 ≈ tele_wk (body_ctx Φx ++ Δo) φ0) ->
-    (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       gm_fill Φ0 = Some σf ->
-       forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δo ++ Γ ->
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σf][φ0]ʷ : (abs_kind_sort (entry_kind E) Typeω@(member_levels y))[φ0]ʷ) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> entry_kind E <> ak_level) ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        udenote Θ Ξ (body_ctx Φ0 ++ Δo ++ Γ) None U (member_descs y)) ->
@@ -1902,10 +1884,9 @@ Lemma wk_no_level_open_case : forall Θ Ξ Γ Δo Φw Φx (member_levels : Strin
     Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ⁿˡ mdesc_sub (mdesc_open Δo Φw Φx) (ι φ).
 Proof.
-  intros * Hn Hx IHx IHA HnL HU IHn Hφ.
+  intros * Hn Hx IHx HnL HU IHn Hφ.
   eapply (move_no_level_open Θ Ξ (wk_as_sub Θ Ξ) (wk_as_sub_ext Θ Ξ) (wk_as_sub_compat Θ Ξ));
-    [ exact (wk_as_sub_of _ _ _ _ _ Hφ) | exact Hn | exact Hx | rewrite tele_sub_of_wk; exact (IHx _ _ Hφ) | | exact HnL | exact HU |].
-  - intros * Hp HE Hf Δ0 σ0 (φ0 & Heq & Hφ0); rewrite !(exp_sub_wk_as _ _ _ Heq); exact (IHA _ _ _ _ _ _ Hp HE Hf _ _ Hφ0).
+    [ exact (wk_as_sub_of _ _ _ _ _ Hφ) | exact Hn | exact Hx | rewrite tele_sub_of_wk; exact (IHx _ _ Hφ) | exact HnL | exact HU |].
   - intros * Hp HE Δ0 σ0 (φ0 & Heq & Hφ0); rewrite (mdesc_sub_sb_eq _ _ _ Heq); exact (IHn _ _ _ _ Hp HE _ _ Hφ0).
 Qed.
 
@@ -2601,10 +2582,7 @@ Proof.
               | cbn [mdesc_sub]; eapply wf_no_level_closed; eassumption
               | cbn [mdesc_sub]; eapply wf_no_level_dm; intros Rw HRw;
                 destruct (mdesc_mod_sub_inv _ _ _ HRw) as (R' & HR' & ->); eauto
-              | cbn [mdesc_sub]; eapply wf_no_level_term; [ rewrite exp_sub_of_wk;
-                match goal with IH : forall _ _, wf_wk _ _ _ _ _ -> wf_exp _ _ _ _ _, Hφ : wf_wk _ _ _ _ _ |- _ =>
-                  pose proof (IH _ _ Hφ) as HA; rewrite type_sort_wk in HA by (apply type_sort_abs_kind; constructor);
-                  exact HA end | assumption ] ];
+              | cbn [mdesc_sub]; eapply wf_no_level_term; assumption ];
     try solve [ wk_elim_case ];
     try solve [ first [ eapply wk_mem_case; eassumption | eapply wk_mem_cong_case; eassumption
                       | eapply wk_mem_delta_case; eassumption
@@ -3480,14 +3458,10 @@ Qed.
 
 (** An open description with no member of a type of levels, substituted,
     from the induction hypotheses about its parts. *)
-Lemma sub_no_level_open_case : forall Θ Ξ Γ Δo Φw Φx (member_levels : String.string -> nat) (member_descs : String.string -> mdesc) Δ σ,
+Lemma sub_no_level_open_case : forall Θ Ξ Γ Δo Φw Φx (member_descs : String.string -> mdesc) Δ σ,
     gm_noopen Φx ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δo ≈ body_ctx Φx ++ Δo ->
     (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (body_ctx Φx ++ Δo) σ0 ≈ tele_sub (body_ctx Φx ++ Δo) σ0) ->
-    (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       gm_fill Φ0 = Some σf ->
-       forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δo ++ Γ ->
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σf][σ0] : (abs_kind_sort (entry_kind E) Typeω@(member_levels y))[σ0]) ->
     (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> entry_kind E <> ak_level) ->
     (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        udenote Θ Ξ (body_ctx Φ0 ++ Δo ++ Γ) None U (member_descs y)) ->
@@ -3496,9 +3470,9 @@ Lemma sub_no_level_open_case : forall Θ Ξ Γ Δo Φw Φx (member_levels : Stri
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ⁿˡ mdesc_sub (mdesc_open Δo Φw Φx) σ.
 Proof.
-  intros * Hn Hx IHx IHA HnL HU IHn Hσ.
-  exact (move_no_level_open Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_ext Θ Ξ) (sub_as_sub_compat Θ Ξ) _ _ _ _ _ _ _ _
-           Hσ Hn Hx (IHx _ _ Hσ) IHA HnL HU IHn).
+  intros * Hn Hx IHx HnL HU IHn Hσ.
+  exact (move_no_level_open Θ Ξ (sub_as_sub Θ Ξ) (sub_as_sub_ext Θ Ξ) (sub_as_sub_compat Θ Ξ) _ _ _ _ _ _ _
+           Hσ Hn Hx (IHx _ _ Hσ) HnL HU IHn).
 Qed.
 
 (** The flag premises of an alias or a flatten, substituted by [Hσ]. *)
@@ -3847,10 +3821,7 @@ Proof.
               | cbn [mdesc_sub]; eapply wf_no_level_closed; eassumption
               | cbn [mdesc_sub]; eapply wf_no_level_dm; intros Rw HRw;
                 destruct (mdesc_mod_sub_inv _ _ _ HRw) as (R' & HR' & ->); eauto
-              | cbn [mdesc_sub]; eapply wf_no_level_term; [
-                match goal with IH : forall _ _, wf_sub _ _ _ _ _ -> wf_exp _ _ _ _ _, Hσ : wf_sub _ _ _ _ _ |- _ =>
-                  pose proof (IH _ _ Hσ) as HA; rewrite type_sort_sub in HA by (apply type_sort_abs_kind; constructor);
-                  exact HA end | assumption ] ];
+              | cbn [mdesc_sub]; eapply wf_no_level_term; assumption ];
     try solve [ sub_elim_case ];
     try solve [ first [ eapply sub_mem_case; eassumption | eapply sub_mem_cong_case; eassumption
                       | eapply sub_mem_delta_case; eassumption
