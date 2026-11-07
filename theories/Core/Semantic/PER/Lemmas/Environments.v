@@ -92,10 +92,8 @@ Proof.
   assert (HPt : PER tail_rel) by (eapply per_env_PER; eassumption).
   assert (Htl : tail_rel ρ↯ ρ↯) by (etransitivity; [ eassumption | symmetry; eassumption ]).
   assert (Htr : tail_rel ρ'↯ ρ'↯) by (etransitivity; [ symmetry; eassumption | eassumption ]).
-  apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Ht).
-  4,5: (** The heads read back, as at [Γ], which is as long as [Δ]. *)
-       match goal with Hs : SubE ?G1 <: ?G2 |- head_readable _ _ =>
-         rewrite <- (per_ctx_subtyp_length _ _ Hs); assumption end.
+  apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht).
+  4,5: (** The heads read back, as at [Γ]. *) assumption.
   2,3: (** A type below a proposition is one. *)
        intros (a' & Ea' & Hp);
        match goal with
@@ -302,13 +300,23 @@ Ltac solve_retagged_kind :=
       end
   end.
 
-(** The entries of an environment of [Γ] read back, each within the
-    entries of its tail: what a context PER asks of every head
-    ([per_ctx_env_heads_readable]).  A head stores its unit, if any, over
-    its tail, so the unit reaches at most the tail's entries. *)
+(** How far the unit an environment of [Γ] stores at an entry [e] after
+    [n] entries may reach: [n] at a module slot and at a definition with
+    a module part, which store their units over their tails; nothing at
+    any other entry, which stores no unit the readback of a proof would
+    bind. *)
+Definition centry_unit_bound (e : centry) (n : nat) : nat :=
+  match e with
+  | ce_mod _ | ce_dm _ _ _ => n
+  | _ => 0
+  end.
+
+(** The entries of an environment of [Γ] read back, at the room their
+    context entry leaves them: what a context PER asks of every head
+    ([per_ctx_env_heads_readable]). *)
 Definition env_heads_readable (Γ : ctx) (ρ : env) : Prop :=
   forall x e, List.nth_error Γ x = Some e ->
-    head_readable (List.length (List.skipn (S x) Γ)) (env_entry ρ x).
+    head_readable (centry_unit_bound e (List.length (List.skipn (S x) Γ))) (env_entry ρ x).
 
 Lemma env_heads_readable_drop : forall e Γ ρ, env_heads_readable (e :: Γ) ρ -> env_heads_readable Γ ρ↯.
 Proof. intros * H x e' Hx; rewrite env_entry_drop; exact (H (S x) e' Hx). Qed.
@@ -415,7 +423,7 @@ Proof.
     assert (Hd' : env_agree_retagged (List.length Γ) ρ1'↯ ρ2'↯) by exact (env_agree_retagged_drop _ _ _ Heq');
     assert (Dmix : Dom ρ1↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption .. ]);
     assert (Dtail2 : Dom ρ2↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; eassumption);
-    first [ apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Dtail2) | apply (mk_per_ctx_env_def_rel' _ _ _ _ _ _ _ _ _ _ Dtail2) ];
+    first [ apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Dtail2) | apply (mk_per_ctx_env_def_rel' _ _ _ _ _ _ _ _ _ Dtail2) ];
     (** The term-head fields: the new tails' types are propositions exactly
         when the old ones' are, through the mixed pair. *)
     try (let Hp := fresh "Hp" in intros Hp; apply (env_agree_retagged_term_head _ _ _ Heq); revert Hp; solve_prop_head);
@@ -621,8 +629,8 @@ Proof.
   (** At an entry with a type, the head is read off the type's relation
       and the deeper entries off the tails'. *)
   2-3,5: match goal with
-         | Hρ : per_ctx_env_cons_rel _ _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _]
-         | Hρ : per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _ _]
+         | Hρ : per_ctx_env_cons_rel _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _]
+         | Hρ : per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _ _]
          | Hρ : per_ctx_env_dm_rel _ _ _ _ _ _ _ _ _ _ |- _ => destruct Hρ as [Ht _ _ _ _ _ _]
          end;
          (destruct x as [| x];

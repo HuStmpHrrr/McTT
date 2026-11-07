@@ -1240,8 +1240,8 @@ Proof.
         pose proof (per_bot_then_per_elem HR (var_neutral_at _ (List.length Γ) Hn0)) as Hv;
         unshelve eapply mk_per_ctx_env_cons_rel;
           [ exact Ht | exact Hv | intros _; eexists; reflexivity | intros _; eexists; reflexivity
-          | exact (conj (proj1 (entry_readable_of_elem HR Hv)) (Nat.le_0_l _))
-          | exact (conj (proj2 (entry_readable_of_elem HR Hv)) (Nat.le_0_l _)) ]
+          | exact (conj (proj1 (entry_readable_of_elem HR Hv)) (le_n 0))
+          | exact (conj (proj2 (entry_readable_of_elem HR Hv)) (le_n 0)) ]
     end.
   - (** A definition slot holds the value of the body at a relevant type,
         the proof at a proposition. *)
@@ -1268,8 +1268,8 @@ Proof.
       apply_relation_equivalence;
       unshelve eapply mk_per_ctx_env_def_rel';
         [ exact Hρ | solve_def_heads | intros _; eexists; reflexivity | intros _; eexists; reflexivity
-        | exact (conj (proj1 (entry_readable_of_elem HR Hmm)) (Nat.le_0_l _))
-        | exact (conj (proj2 (entry_readable_of_elem HR Hmm)) (Nat.le_0_l _)) ].
+        | exact (conj (proj1 (entry_readable_of_elem HR Hmm)) (le_n 0))
+        | exact (conj (proj2 (entry_readable_of_elem HR Hmm)) (le_n 0)) ].
     + (** The kept bodies read back over the initial environments: they
           are scoped by the contexts. *)
       assert (Hp' : domain_kind a' = ak_propositional) by congruence.

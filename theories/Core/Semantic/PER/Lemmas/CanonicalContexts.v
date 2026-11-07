@@ -25,7 +25,7 @@ Lemma per_ctx_env_cons_clean_inversion : forall {Γ Γ' env_relΓ κ A A' env_re
       (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ env_relΓ),
           rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) /\
         (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ -> value_not_level_sort A ρ) /\
-        (env_relΓA <~> per_ctx_env_cons_rel env_relΓ (@head_rel) (List.length Γ) A A').
+        (env_relΓA <~> per_ctx_env_cons_rel env_relΓ (@head_rel) A A').
 Proof.
   intros * HΓ HΓA.
   inversion HΓA; subst.
@@ -49,7 +49,7 @@ Proof.
     split; intros [Ht Hh Hl Hr];
       [ assert (Ht' : Dom ρ↯ ≈ ρ'↯ ∈ env_relΓ) by intuition
       | assert (Ht' : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) by intuition ];
-      apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Ht'); try assumption;
+      apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht'); try assumption;
       (on_all_hyp: destruct_rel_by_assumption tail_rel); intros; intuition.
     destruct_by_head rel_typ.
     handle_per_univ_elem_irrel; intuition.
@@ -88,10 +88,8 @@ Definition per_head (S S' : typ) (ρ ρ' : env) : relation domain :=
       DF a ≈ a' ∈ per_univ_elem i ↘ R ->
       Dom m ≈ m' ∈ R.
 
-(** [n] is the length of the tail context, which scopes the heads' stored
-    units ([per_ctx_env_cons_rel]). *)
-Definition per_env_extend (S S' : typ) (n : nat) (R : relation env) : relation env :=
-  per_ctx_env_cons_rel R (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ R) => per_head S S' ρ ρ') n S S'.
+Definition per_env_extend (S S' : typ) (R : relation env) : relation env :=
+  per_ctx_env_cons_rel R (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ R) => per_head S S' ρ ρ') S S'.
 
 (** [per_head] is the PER the types denote, because evaluation is functional
     and [per_univ_elem] is irrelevant in its relation argument.  This direction
@@ -229,7 +227,7 @@ Lemma per_ctx_env_extend : forall {Δ Δ' κ S S' env_relΔ} {i : nat},
         exists a a',
           ⟦ S ⟧ ρ ↘ a /\ ⟦ S' ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔ -> value_not_level_sort S ρ) ->
-    EF Δ ▹{κ} S ≈ Δ' ▹{κ} S' ∈ per_ctx_env ↘ per_env_extend S S' (List.length Δ) env_relΔ.
+    EF Δ ▹{κ} S ≈ Δ' ▹{κ} S' ∈ per_ctx_env ↘ per_env_extend S S' env_relΔ.
 Proof.
   intros * HΔ HS HSn.
   eapply (per_ctx_env_cons' (i := i) (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S' ρ ρ'));
@@ -247,29 +245,29 @@ Qed.
     to literal extensions.  Completeness needs this generality: it places
     both [⟪q ψ⟫ ρ] and [⟦σ ,, M⟧s ρ] in an extended context PER, and only
     the latter is a literal [ρ ↦ m]. *)
-Lemma per_env_extend_intro : forall {S S' n R ρ ρ'},
+Lemma per_env_extend_intro : forall {S S' R ρ ρ'},
     Dom ρ↯ ≈ ρ'↯ ∈ R ->
     Dom (ρ 0) ≈ (ρ' 0) ∈ per_head S S' ρ↯ ρ'↯ ->
     (rel_typ_propositional S ρ↯ -> exists t, env_entry ρ 0 = de_term (ρ 0) t) ->
     (rel_typ_propositional S' ρ'↯ -> exists t, env_entry ρ' 0 = de_term (ρ' 0) t) ->
-    head_readable n (env_entry ρ 0) ->
-    head_readable n (env_entry ρ' 0) ->
-    Dom ρ ≈ ρ' ∈ per_env_extend S S' n R.
+    head_readable 0 (env_entry ρ 0) ->
+    head_readable 0 (env_entry ρ' 0) ->
+    Dom ρ ≈ ρ' ∈ per_env_extend S S' R.
 Proof.
   intros * Ht Hh Hl Hr Hrl Hrr.
-  exact (mk_per_ctx_env_cons_rel _ (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ R) => per_head S S' ρ ρ') _ _ _ _ _ Ht Hh Hl Hr Hrl Hrr).
+  exact (mk_per_ctx_env_cons_rel _ (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ R) => per_head S S' ρ ρ') _ _ _ _ Ht Hh Hl Hr Hrl Hrr).
 Qed.
 
 (** [per_env_extend_intro] for a literal extension [ρ ↦ m ⦂ t].  The
     premises of the general rule mention [(ρ ↦ m ⦂ t) ↯] and
     [(ρ ↦ m ⦂ t) 0]; these are convertible to [ρ] and [m], but the tactics
     that discharge head obligations match syntactically. *)
-Corollary per_env_extend_intro' : forall {S S' n R ρ ρ' m m' t t'},
+Corollary per_env_extend_intro' : forall {S S' R ρ ρ' m m' t t'},
     Dom ρ ≈ ρ' ∈ R ->
     Dom m ≈ m' ∈ per_head S S' ρ ρ' ->
     entry_readable (de_term m t) ->
     entry_readable (de_term m' t') ->
-    Dom ρ ↦ m ⦂ t ≈ ρ' ↦ m' ⦂ t' ∈ per_env_extend S S' n R.
+    Dom ρ ↦ m ⦂ t ≈ ρ' ↦ m' ⦂ t' ∈ per_env_extend S S' R.
 Proof.
   intros * ? ? ? ?; apply per_env_extend_intro;
     first [ assumption | intros _; eexists; reflexivity | split; [ assumption | cbn; lia ] ].
@@ -280,12 +278,12 @@ Qed.
     [def_tie S M ρ] says that the head of [ρ] is the value of [M] in the tail
     of [ρ], up to the head PER of [S].  Two environments are related at
     [Δ ▸ S ≔ M] when they are related at [Δ ▹ S] and each satisfies the
-    tie.  [n] is the length of the tail context ([per_env_extend]). *)
+    tie. *)
 Definition def_tie (S : typ) (M : exp) (ρ : env) : Prop :=
   exists m, ⟦ M ⟧ ρ↯ ↘ m /\ Dom m ≈ (ρ 0) ∈ per_head S S ρ↯ ρ↯.
 
-Record per_env_extend_def (S : typ) (M : exp) (n : nat) (R : relation env) (ρ ρ' : env) : Prop := mk_per_env_extend_def
-  { per_env_extend_def_ext : Dom ρ ≈ ρ' ∈ per_env_extend S S n R
+Record per_env_extend_def (S : typ) (M : exp) (R : relation env) (ρ ρ' : env) : Prop := mk_per_env_extend_def
+  { per_env_extend_def_ext : Dom ρ ≈ ρ' ∈ per_env_extend S S R
   ; per_env_extend_def_tie_left : def_tie S M ρ
   ; per_env_extend_def_tie_right : def_tie S M ρ' }.
 
@@ -324,7 +322,7 @@ Lemma per_ctx_env_extend_def : forall {Δ S M env_relΔ r} {i : nat},
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_relΔ ->
         exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
-    EF Δ ▸ S ≔ M ≈ Δ ▸ S ≔ M ∈ per_ctx_env ↘ per_env_extend_def S M (List.length Δ) env_relΔ.
+    EF Δ ▸ S ≔ M ≈ Δ ▸ S ≔ M ∈ per_ctx_env ↘ per_env_extend_def S M env_relΔ.
 Proof.
   intros * Hev HΔ HS HSr HM.
   assert (HPER : PER env_relΔ) by (eapply per_env_PER; eassumption).
@@ -355,7 +353,7 @@ Proof.
     split.
     + intros [[Ht Hh Hl Hr] [m [Hm Htie]] [m' [Hm' Htie']]].
       destruct (Hmove _ _ Ht) as [H1 H2].
-      apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ _ Ht); try assumption.
+      apply (mk_per_ctx_env_def_rel _ _ _ _ _ _ _ _ _ Ht); try assumption.
       rewrite def_heads_at_evaluated by exact Hev; constructor.
       * eexists; split; [ eassumption | apply H1; eassumption ].
       * eexists; split; [ eassumption | apply H1; eassumption ].
@@ -364,7 +362,7 @@ Proof.
     + intros [Ht Hh Hd Hl Hr]; rewrite def_heads_at_evaluated in Hd by exact Hev.
       destruct Hd as [[m [Hm Htie]] _ [m' [Hm' Htie']] _].
       destruct (Hmove _ _ Ht) as [H1 H2].
-      constructor; [ apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ _ Ht Hh Hl Hr); assumption | |].
+      constructor; [ apply (mk_per_ctx_env_cons_rel _ _ _ _ _ _ Ht Hh Hl Hr); assumption | |].
       * eexists; split; [ eassumption | apply H1; eassumption ].
       * eexists; split; [ eassumption | apply H2; eassumption ].
 Qed.
@@ -459,7 +457,7 @@ Qed.
 (** The tie propagates along the relation of an assumption entry, and from a
     body to a related one.  So it is enough to establish it at one environment
     of a chain. *)
-Lemma def_tie_resp : forall {S M M' n R i ρ ρ'},
+Lemma def_tie_resp : forall {S M M' R i ρ ρ'},
     PER R ->
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ R ->
@@ -467,7 +465,7 @@ Lemma def_tie_resp : forall {S M M' n R i ρ ρ'},
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ R ->
         exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
-    Dom ρ ≈ ρ' ∈ per_env_extend S S n R ->
+    Dom ρ ≈ ρ' ∈ per_env_extend S S R ->
     def_tie S M ρ ->
     def_tie S M' ρ'.
 Proof.

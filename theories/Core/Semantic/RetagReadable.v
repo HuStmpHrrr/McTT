@@ -71,7 +71,7 @@ Section Fixed_GCtx.
            by exact (per_ctx_env_resp_agree equiv_Γ_Γ' _ _ _ _ (env_agree_upto_env_upto _ _) (reflexivity _) Hl1).
     all: intros [| x] e0 Hx; cbn [List.nth_error] in Hx;
       [ injection Hx as <- | cbn [ctx_retag skipn]; rewrite <- (env_entry_drop (_ :: _) x); exact (Hr1 x e0 Hx) ].
-    all: cbn [ctx_retag skipn List.length centry_tag centry_type centry_slot_unit centry_unit].
+    all: cbn [ctx_retag skipn List.length centry_unit_bound centry_tag centry_type centry_slot_unit centry_unit].
     all: change (env_entry (?d :: ?ρ0) 0) with d; rewrite env_entry_head.
     (* a slot: a module head, by its kind, stored at its unit, scoped by
        its tail *)
@@ -223,7 +223,7 @@ Section Fixed_GCtx.
       EF Δ ▹{κ} A ≈ Δ ▹{κ} A ∈ per_ctx_env ↘ R ->
       EF Δ ≈ Δ ∈ per_ctx_env ↘ S ->
       Dom ρ ≈ ρ' ∈ S -> Dom m ≈ m' ∈ per_head A A ρ ρ' ->
-      Dom ρ ↦ m ⦂ centry_tag (ce_ass κ A) Δ ρ ≈ ρ' ↦ m' ⦂ centry_tag (ce_ass κ A) Δ ρ' ∈ per_env_extend A A (List.length Δ) S.
+      Dom ρ ↦ m ⦂ centry_tag (ce_ass κ A) Δ ρ ≈ ρ' ↦ m' ⦂ centry_tag (ce_ass κ A) Δ ρ' ∈ per_env_extend A A S.
   Proof.
     intros * HΔA HΔ Hρ Hm.
     destruct (per_head_closure_readable HΔA HΔ Hρ Hm) as [Hr Hr'].
@@ -240,12 +240,11 @@ Section Fixed_GCtx.
       (rel_typ_propositional A ρ -> exists v t, e = de_term v t) ->
       (rel_typ_propositional A ρ' -> exists v t, e' = de_term v t) ->
       Dom retag_entry (centry_tag (ce_ass κ A) Δ ρ) (centry_slot_unit (ce_ass κ A)) e :: ρ
-        ≈ retag_entry (centry_tag (ce_ass κ A) Δ ρ') (centry_slot_unit (ce_ass κ A)) e' :: ρ' ∈ per_env_extend A A (List.length Δ) S.
+        ≈ retag_entry (centry_tag (ce_ass κ A) Δ ρ') (centry_slot_unit (ce_ass κ A)) e' :: ρ' ∈ per_env_extend A A S.
   Proof.
     intros * HΔA HΔ Hρ Hm Hp Hp'.
     destruct (per_head_retag_readable HΔA HΔ Hρ Hm) as [Hr Hr'].
-    apply per_env_extend_intro; cbn [drop_env List.tl]; try assumption;
-      try (eapply head_readable_mono; [ apply Nat.le_0_l | eassumption ]).
+    apply per_env_extend_intro; cbn [drop_env List.tl]; try assumption.
     - destruct e, e'; exact Hm.
     - intros Hq; destruct (Hp Hq) as (v & t & ->); eexists; reflexivity.
     - intros Hq; destruct (Hp' Hq) as (v & t & ->); eexists; reflexivity.

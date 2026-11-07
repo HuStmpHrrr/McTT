@@ -241,8 +241,7 @@ Definition env_readable (ρ : env) : Prop := forall x, x < List.length ρ -> ent
     the unit it stores, if any, is scoped by the [n] entries of its tail
     ([entry_unit_bound]), so that the readback of a proof kept over the
     environment binds no entry past the context ([proof_scope]).  A term
-    head stores no unit, so it is readable at every [n]
-    ([head_readable_mono]). *)
+    head stores no unit, and is asked [n = 0]. *)
 Definition head_readable (n : nat) (e : dentry) : Prop := entry_readable e /\ entry_unit_bound e <= n.
 
 (** A head readable within [n] entries is readable within more. *)
@@ -2065,13 +2064,10 @@ Record per_ctx_env_dm_rel (tail_rel : relation env)
     [de_dm 0ᵈ t h U :: ρ0] of [Γ ▸ₘ ℕ ≔ 0 ‖ U] is one of [Γ ▸ ℕ ≔ 0] and of
     [Γ ▹ ℕ].  The readback of a kept proof reads the entries of its
     environment at their stored types ([read_lets]): so an environment the
-    model relates has entries that read back ([entry_readable]), their
-    stored units, if any, scoped by the [n] entries of the tail context, as
-    for a module slot ([per_ctx_env_mod_rel]); the [U] above is scoped by
-    [Γ], as [Γ ▸ₘ ℕ ≔ 0 ‖ U] requires. *)
+    model relates has entries that read back ([entry_readable]). *)
 Record per_ctx_env_cons_rel (tail_rel : relation env)
     (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
-    (n : nat) (A A' : typ) (ρ ρ' : env) : Prop :=
+    (A A' : typ) (ρ ρ' : env) : Prop :=
   mk_per_ctx_env_cons_rel
   { (** The tails are related *)
     per_ctx_env_cons_rel_tail : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel
@@ -2082,21 +2078,19 @@ Record per_ctx_env_cons_rel (tail_rel : relation env)
     (** So is the right one, when [A'] is one in its tail *)
   ; per_ctx_env_cons_rel_right : rel_typ_propositional A' ρ'↯ -> exists t, env_entry ρ' 0 = de_term (ρ' 0) t
     (** The left head reads back at its stored type, and stores no unit
-        the readback of a proof would bind past the tail: for example
-        [de_mod h U :: ρ0], with [U] of free bound [100], is no environment
-        of [Γ ▹ ℕ] for [Γ] shorter than [100] *)
-  ; per_ctx_env_cons_rel_left_readable : head_readable n (env_entry ρ 0)
+        the readback of a proof would bind: for example [de_mod h U :: ρ0],
+        with [U] of free bound [100], is no environment of [Γ ▹ ℕ] *)
+  ; per_ctx_env_cons_rel_left_readable : head_readable 0 (env_entry ρ 0)
     (** So does the right one *)
-  ; per_ctx_env_cons_rel_right_readable : head_readable n (env_entry ρ' 0) }.
+  ; per_ctx_env_cons_rel_right_readable : head_readable 0 (env_entry ρ' 0) }.
 
 (** The environments a definition entry of the sort [r] relates: those of
     an assumption, whose heads, at a relevant type, hold the values of the
     bodies ([def_heads_at]).  The heads are term entries at a proposition,
-    as for an assumption, and their stored units are scoped by the [n]
-    entries of the tail context. *)
+    as for an assumption. *)
 Record per_ctx_env_def_rel (tail_rel : relation env)
     (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
-    (n : nat) (A A' : typ) (r : abs_kind) (M M' : exp) (ρ ρ' : env) : Prop :=
+    (A A' : typ) (r : abs_kind) (M M' : exp) (ρ ρ' : env) : Prop :=
   mk_per_ctx_env_def_rel
   { (** The tails are related *)
     per_ctx_env_def_rel_tail : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel
@@ -2108,11 +2102,10 @@ Record per_ctx_env_def_rel (tail_rel : relation env)
   ; per_ctx_env_def_rel_left : rel_typ_propositional A ρ↯ -> exists t, env_entry ρ 0 = de_term (ρ 0) t
     (** So is the right one, when [A'] is one in its tail *)
   ; per_ctx_env_def_rel_right : rel_typ_propositional A' ρ'↯ -> exists t, env_entry ρ' 0 = de_term (ρ' 0) t
-    (** The left head reads back at its stored type, its stored unit
-        scoped by the tail *)
-  ; per_ctx_env_def_rel_left_readable : head_readable n (env_entry ρ 0)
+    (** The left head reads back at its stored type, and stores no unit *)
+  ; per_ctx_env_def_rel_left_readable : head_readable 0 (env_entry ρ 0)
     (** So does the right one *)
-  ; per_ctx_env_def_rel_right_readable : head_readable n (env_entry ρ' 0) }.
+  ; per_ctx_env_def_rel_right_readable : head_readable 0 (env_entry ρ' 0) }.
 
 (** The environments a module slot of the units [U], [U'] relates, given
     the PER of the tails and the length [n] of the tail context: related
@@ -2161,7 +2154,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
             rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
         (** The type is not the sort [LevelSort]: a variable is of it *)
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), value_not_level_sort A ρ) ->
-        (env_rel <~> per_ctx_env_cons_rel tail_rel (@head_rel) (List.length Γ) A A') ->
+        (env_rel <~> per_ctx_env_cons_rel tail_rel (@head_rel) A A') ->
         EF Γ ▹{κ} A ≈ Γ' ▹{κ} A' ∈ per_ctx_env ↘ env_rel }
 (** A definition entry of the sort [r]: at a relevant type the bodies'
     values are related, and each head of the environment is related to the
@@ -2180,7 +2173,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ_kind A ρ r) ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             def_bodies_at r M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
-        (env_rel <~> per_ctx_env_def_rel tail_rel (@head_rel) (List.length Γ) A A' r M M') ->
+        (env_rel <~> per_ctx_env_def_rel tail_rel (@head_rel) A A' r M M') ->
         EF Γ ▸ A ≔ M ≈ Γ' ▸ A' ≔ M' ∈ per_ctx_env ↘ env_rel }
 (** A module slot: the two units are scoped by their tail contexts, so an
     environment may store them at the slot ([ctx_retag]); as literals they

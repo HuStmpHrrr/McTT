@@ -59,6 +59,7 @@ Proof. intros a; unfold fdomain_is_prop; rewrite fdomain_kind_erase; destruct (f
 Definition fentry_unit_bound (e : fdentry) : nat :=
   match e with
   | fde_mod _ U => gunit_free_bound U
+  | fde_dm _ _ _ U => gunit_free_bound U
   | _ => 0
   end.
 
