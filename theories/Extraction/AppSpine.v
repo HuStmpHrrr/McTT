@@ -222,18 +222,21 @@ Record spine_type_pi (Γ : ctx) (W : nf) (ρ : env) (t : domain) (κd : abs_kind
     (** The spine's domain reads back to [W]'s up to proofs *)
   ; spine_type_pi_domain_upto_proofs : forall A', Rtyp a in List.length Γ ↘ A' -> nf_eq_upto_proofs A' spine_type_pi_domain }.
 
-(** Rests on soundness through [idempotent_nbe_ty_sort] (PENDING M2). *)
-Lemma spine_type_pi_of_related : forall Γ S T W ρ t (i : nat) κd a ρ' B',
-    type_sort S -> Γ ⊢ T : S -> nbe_ty_f Γ T W -> initial_env_f Γ ρ -> ⟦ nf_to_exp W ⟧ ρ ↘ t ->
+(** [W] is a normal form: its own normal form up to proofs, as an inferred
+    type is ([alg_type_infer_normal]). *)
+Definition nf_normal_at (Γ : ctx) (W : nf) : Prop := forall X, nbe_ty_f Γ (nf_to_exp W) X -> nf_eq_upto_proofs W X.
+
+Lemma spine_type_pi_of_related : forall Γ W ρ t (i : nat) κd a ρ' B',
+    nf_normal_at Γ W -> initial_env_f Γ ρ -> ⟦ nf_to_exp W ⟧ ρ ↘ t ->
     Dom d_pi κd ak_relevant a ρ' B' ≈ t ∈ per_univ i ->
     spine_type_pi Γ W ρ t κd a.
 Proof.
-  intros * HS HT HW Hρ Ht [R Hv].
+  intros * HN Hρ Ht [R Hv].
   destruct (per_univ_elem_pi_left _ _ _ _ _ _ _ Hv) as (a0 & ρ0 & B0 & ->).
   destruct (per_univ_then_per_top_typ Hv (List.length Γ)) as [X1 X2 HX1 HX2 HX].
   assert (HWX : nbe_ty_f Γ (nf_to_exp W) X2) by (econstructor; eassumption).
   inversion HX2; subst.
-  pose proof (idempotent_nbe_ty_sort HS HT HW HWX) as HWX2.
+  pose proof (HN _ HWX) as HWX2.
   destruct W; try (unfold nf_eq_upto_proofs in HWX2; cbn in HWX2; discriminate).
   destruct (nf_pi_upto_proofs_inv _ _ _ _ _ _ _ _ HWX2) as (-> & -> & HA & _).
   cbn [nf_to_exp] in Ht; inversion Ht; subst.
@@ -259,21 +262,43 @@ Proof.
   exists i; exact Htt.
 Qed.
 
-(** The end of the spine: a value related to the value of the normal form
-    [W] of a type [T] reads back to [W] up to proofs.  Rests on soundness
-    through [idempotent_nbe_ty_sort] (PENDING M2). *)
-Lemma spine_readback_upto_proofs : forall Γ S T W ρ t v (i : nat) W',
-    type_sort S -> Γ ⊢ T : S -> nbe_ty_f Γ T W -> initial_env_f Γ ρ ->
+(** The end of the spine: a value related to the value of a normal form
+    [W] reads back to [W] up to proofs, and it reads back. *)
+Lemma spine_readback_upto_proofs : forall Γ W ρ t v (i : nat) W',
+    nf_normal_at Γ W -> initial_env_f Γ ρ ->
     ⟦ nf_to_exp W ⟧ ρ ↘ t -> Dom v ≈ t ∈ per_univ i ->
     Rtyp v in List.length Γ ↘ W' ->
     nf_eq_upto_proofs W' W.
 Proof.
-  intros * HS HT HW Hρ Ht [R Hvt] Hv.
+  intros * HN Hρ Ht [R Hvt] Hv.
   destruct (per_univ_then_per_top_typ Hvt (List.length Γ)) as [X1 X2 HX1 HX2 HX].
   functional_read_rewrite_clear.
   assert (HWX : nbe_ty_f Γ (nf_to_exp W) X2) by (econstructor; eassumption).
-  pose proof (idempotent_nbe_ty_sort HS HT HW HWX) as HWX2.
+  pose proof (HN _ HWX) as HWX2.
   etransitivity; [ exact HX | symmetry; exact HWX2 ].
+Qed.
+
+(** A value related to a type reads back. *)
+Lemma per_univ_readback_exists : forall v t (i : nat) s, Dom v ≈ t ∈ per_univ i -> exists W, Rtyp v in s ↘ W.
+Proof.
+  intros * [R Hvt]; destruct (per_univ_then_per_top_typ Hvt s) as [X1 X2 HX1 _ _]; exists X1; exact HX1.
+Qed.
+
+(** A term of a type of an evaluated kind evaluates at the initial
+    environment. *)
+Lemma eval_exists_at_initial_env : forall Γ N A ρ a,
+    Γ ⊢ N : A -> initial_env_f Γ ρ -> ⟦ A ⟧ ρ ↘ a -> evaluated_kind (domain_kind a) ->
+    exists n, ⟦ N ⟧ ρ ↘ n.
+Proof.
+  intros * HN Hρ Ha Hk.
+  pose proof (completeness_fundamental_exp_eq _ _ _ _ (wf_exp_eq_refl HN)) as HNs.
+  pose proof HNs as [env_relΓ HΓr _ _].
+  destruct (rel_exp_under_ctx_simple_full_at HΓr HNs) as [kN HNat].
+  pose proof (per_ctx_then_per_env_initial_env HΓr (wf_ctx_scoped_exp HN) (wf_ctx_scoped_exp HN)) as [ρ1 [ρ1' [Hρ1 [Hρ1' Hrel]]]].
+  assert (ρ1 = ρ) as -> by (eapply functional_initial_env; eassumption).
+  destruct (HNat _ _ Hrel) as (a1 & a1' & RA & Ha1 & Ha1' & HRA & HNe).
+  functional_eval_rewrite_clear.
+  destruct HNe as [Hp | (m & m' & Hm & _ & _)]; [ rewrite Hp in Hk; inversion Hk | exists m; exact Hm ].
 Qed.
 
 End Fixed_GCtx.
