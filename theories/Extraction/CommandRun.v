@@ -4026,6 +4026,15 @@ Section Impl.
         [| exfalso; apply Hlv_dec; cmd_goal; exact (equiv_levels_abstractable _ _ _ He Hgr _ _ _ Hla0) ]
     end.
 
+  (** A target that is no module still being defined, decided as the
+      derivation has it *)
+  Ltac frame_case He :=
+    match goal with
+    | Hf0 : frame_free_target _ _ _ _ |- context [frame_free_target_dec ?a ?b ?c ?d ?e] =>
+        destruct (frame_free_target_dec a b c d e) as [Hff_dec | Hff_dec];
+        [| exfalso; apply Hff_dec; cmd_goal; exact (equiv_frame_free _ _ _ He _ _ Hf0) ]
+    end.
+
   (** A type of a large universe, decided as the derivation has it
       ([large_type_dec]). *)
   Ltac universe_case He Hgr :=
@@ -4123,7 +4132,8 @@ Section Impl.
     simp alias_step; params_case He Hgr; simp alias_step.
     match goal with |- context [check_modexp ?f ?l ?a ?b ?c] => destruct (check_modexp f l a b c) as [HE' | HE'] end;
       [| exfalso; apply HE'; cmd_goal; exact (equiv_modexp _ _ _ _ _ He Hgr HE) ].
-    simp alias_step; levels_case He Hgr; simp alias_step; fresh_case Hfr'; simp alias_step; eexists; reflexivity.
+    simp alias_step; levels_case He Hgr; simp alias_step; frame_case He; simp alias_step;
+      fresh_case Hfr'; simp alias_step; eexists; reflexivity.
   Qed.
 
   Lemma builtin_complete : forall ch B RbR ΘR k E B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
@@ -4204,7 +4214,7 @@ Section Impl.
     simp indalias_step.
     match goal with |- context [ind_former_dec ?a ?b ?c ?d ?e] => destruct (ind_former_dec a b c d e) as [Hf' | Hf'] end;
       [| exfalso; apply Hf'; cmd_goal; exact (equiv_ind_former _ _ _ _ _ _ He Hf) ].
-    simp indalias_step; levels_case He Hgr; simp indalias_step.
+    simp indalias_step; levels_case He Hgr; simp indalias_step; frame_case He; simp indalias_step.
     fresh_case Hfr'; simp indalias_step.
     params_case He Hgr; simp indalias_step.
     universe_case He Hgr; simp indalias_step; finish_step.
@@ -4242,7 +4252,7 @@ Section Impl.
     simp recalias_step.
     match goal with |- context [record_former_dec ?a ?b ?c ?d ?e] => destruct (record_former_dec a b c d e) as [Hf' | Hf'] end;
       [| exfalso; apply Hf'; cmd_goal; exact (equiv_record_former _ _ _ _ _ _ He Hf) ].
-    simp recalias_step; levels_case He Hgr; simp recalias_step.
+    simp recalias_step; levels_case He Hgr; simp recalias_step; frame_case He; simp recalias_step.
     fresh_case Hfr'; simp recalias_step.
     params_case He Hgr; simp recalias_step.
     universe_case He Hgr; simp recalias_step; finish_step.
@@ -4279,7 +4289,7 @@ Section Impl.
       forall ch s K D B fs (Hx : pre ch s K D fs), decode_stack fs = Ξ -> unit_invariant ch (decode_units s) K D ΘR Ξ ->
       exists r, gens_impl ch s K D B fs gs Hx = run_success r.
   Proof.
-    induction 1 as [Ξ | Ξ d pv κ A M i gs Ξ' HA Hlv HM Hfr Hg IH | Ξ d pv E gs Ξ' HE Hla Hfr Hg IH | Ξ d pv A M E W i gs Ξ' HW HWt HM HE Hla Hfr Hg IH];
+    induction 1 as [Ξ | Ξ d pv κ A M i gs Ξ' HA Hlv HM Hfr Hg IH | Ξ d pv E gs Ξ' HE Hla Hff Hfr Hg IH | Ξ d pv A M E W i gs Ξ' HW HWt HM HE Hla Hff Hfr Hg IH];
       intros ch s K D B fs Hx HΞ Hli; subst Ξ; cbn [gens_impl]; [ eexists; reflexivity | | |].
     - fresh_case Hfr'.
       pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
@@ -4304,10 +4314,12 @@ Section Impl.
       match goal with |- context [check_modexp ?f ?l ?a ?b E] => destruct (check_modexp f l a b E) as [HE' | HE'] end;
         [| exfalso; apply HE'; cmd_goal; exact (equiv_modexp _ _ _ _ _ He Hgr HE) ].
       levels_case He Hgr.
+      frame_case He.
       cbv beta iota zeta.
       match goal with |- context [gens_impl ch s K D B ?fs1 gs (pre_add ?H0 ?He0 ?Hl0)] =>
         destruct (IH ch s K D B fs1 (pre_add H0 He0 Hl0) (proj1 (add_dec H0 He0 Hl0))
-                    (proj2 (proj2 (gen_alias_step (pv := pv) Hli Hfr' (cmd_modexp _ Hx nil E HE') (cmd_levels_abstractable _ Hx nil E Hlv_dec)))))
+                    (proj2 (proj2 (proj2 (gen_alias_step (pv := pv) Hli Hfr' (cmd_modexp _ Hx nil E HE') (cmd_levels_abstractable _ Hx nil E Hlv_dec)
+                                            (cmd_frame_free _ Hx nil E Hff_dec))))))
           as [[fs2 [Hp Hf]] E1] end.
       rewrite E1; eexists; reflexivity.
     - (* a definition with a module part: the type inferred is the one *)
@@ -4322,14 +4334,16 @@ Section Impl.
         [| exfalso; apply HE'; cmd_goal; exact (equiv_modexp _ _ _ _ _ He Hgr HE) ].
       levels_case He Hgr.
       universe_case He Hgr.
+      frame_case He.
       match goal with |- context [dm_entry_rep ?a ?b ?c ?d ?e ?f ?g ?h ?k ?l] => destruct (dm_entry_rep a b c d e f g h k l) as [e0 He0] end.
       cbv beta iota zeta.
       match goal with |- context [gens_impl ch s K D B ?fs1 gs (pre_add ?H0 ?He0 ?Hl0)] =>
         destruct (IH ch s K D B fs1 (pre_add H0 He0 Hl0) (proj1 (add_dec H0 He0 Hl0))
-                    (proj2 (proj2 (proj2 (proj2 (proj2 (gen_dm_step (pv := pv) Hli Hfr' (cmd_infer _ Hx nil _ _ HW1)
+                    (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (gen_dm_step (pv := pv) Hli Hfr' (cmd_infer _ Hx nil _ _ HW1)
                                                    (cmd_exp _ Hx nil _ _ ltac:(eassumption))
                                                    (cmd_exp _ Hx nil _ _ (alg_type_infer_sound HW1 (pre_ctx_f _ Hx)))
-                                                   (cmd_modexp _ Hx nil E HE') (cmd_levels_abstractable _ Hx nil E Hlv_dec))))))))
+                                                   (cmd_modexp _ Hx nil E HE') (cmd_levels_abstractable _ Hx nil E Hlv_dec)
+                                                   (cmd_frame_free _ Hx nil E Hff_dec)))))))))
           as [[fs2 [Hp Hf]] E1] end.
       rewrite E1; eexists; reflexivity.
   Qed.
@@ -4630,11 +4644,12 @@ Section Impl.
           [| exfalso; pose proof Em as Em'; cbn [unit_result_read unit_result_core_builtins] in HB; rewrite HB in Em'; congruence ]; simp core_step.
         eexists; reflexivity.
     - (* an open: its target, then its generated entries *)
-      intros ch B Rb ΘR Ξ E its gs Ξ' HE Hgen Hgs Hacc s K D fs H HΞ Hli Hrb; subst Ξ.
+      intros ch B Rb ΘR Ξ E its gs Ξ' HE Hff Hgen Hgs Hacc s K D fs H HΞ Hli Hrb; subst Ξ.
       simp core_step.
       match goal with |- context [check_modexp ?f ?l ?a ?b E] => destruct (check_modexp f l a b E) as [HE' | HE'] end;
         [| exfalso; apply HE'; cmd_goal; exact (equiv_modexp _ _ _ _ _ (unit_invariant_equiv Hli) (unit_invariant_restrict_gctx Hli) HE) ].
       simp core_step.
+      pose proof (unit_invariant_equiv Hli) as He; frame_case He; simp core_step.
       pose proof (open_gens_equiv _ _ _ _ _ _ _ (unit_invariant_equiv Hli) Hgen) as Hgen'.
       assert (HgenF : open_gens (fc_deps (cmd_F B H)) (fc_stack (cmd_F B H)) (fc_tele (cmd_F B H)) E its gs)
         by (cmd_goal; exact Hgen').

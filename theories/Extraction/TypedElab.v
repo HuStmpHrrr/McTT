@@ -128,7 +128,8 @@ Section AlgEquiv.
   Proof.
     destruct Hmd as (Hm1 & Hm2 & Hm3 & Hm4 & Hm5).
     apply (@alg_type_mut_ind (gc_mk Θ Ξ)); intros; cbn [gc_deps gc_stack] in *;
-      solve [ econstructor; eauto 6 using equiv_nfs_agree, equiv_alg_subtyping, equiv_nbe_ty_kind, equiv_alg_ty_conv, equiv_levels_abstractable ].
+      solve [ econstructor; eauto 6 using equiv_nfs_agree, equiv_alg_subtyping, equiv_nbe_ty_kind, equiv_alg_ty_conv, equiv_levels_abstractable,
+                equiv_frame_free ].
   Qed.
 
   Lemma equiv_glob_ok : forall H y, glob_ok Θ Ξ H y -> glob_ok Θ' Ξ H y.
