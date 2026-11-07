@@ -97,8 +97,8 @@ Lemma let_dm_body_zeta : forall {Θ Ξ Γ A M U Y Y' T},
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ U in Y ≈ Y'[Id ,,ᵈ M ‖ me_lit U] : T.
 Proof.
   intros * H HY; dependent induction H.
-  - pose proof (HY _ ltac:(eassumption)) as E.
-    assert (Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E0) ⊢ Y' : C) by (gen_presups; assumption).
+  - pose proof (HY _ ltac:(eassumption)) as HE.
+    assert (Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ Y' : C) by (gen_presups; assumption).
     etransitivity; [ eapply wf_exp_eq_let_dm_cong; try eassumption; mauto 3; eapply wf_let_dm; eassumption |].
     eapply wf_exp_eq_let_dm_zeta; eassumption.
   - eapply wf_exp_eq_subtyp; [ eapply IHwf_exp1; eauto | eassumption | eassumption | eassumption ].

@@ -96,23 +96,9 @@ Definition gs_axiom (b pv : bool) (κ : abs_kind) (Ξ : gstack) (A : exp) : gent
 Definition dm_entry (Ξ : gstack) (pv : bool) (Δ : ctx) (A M : exp) (H : modexp) : gentry :=
   ge_def_mod pv (ctx_pi (gs_tele Ξ) (ctx_pi Δ A)) (ctx_fn (gs_tele Ξ) (ctx_fn Δ M)) (gu_mk (Δ ++ gs_tele Ξ) (md_alias H)).
 
-(** [M], of the normal type [W] in [Γ], is a type former of an inductive
-    type: [W] is [Π]s ending in a universe, and [M] at the variables they
-    bind is, in normal form, a member of a group of inductive types at
-    its parameters. *)
-Definition ind_former (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) (W : nf) : Prop :=
-  let '(Ds, C) := nf_pi_tele W in
-  nf_is_universe C /\
-  exists p k Rs, nbe Θ Ξ (Ds ++ Γ) (exp_applied_to_vars M (List.length Ds)) (nf_to_exp C) (nf_indty p k Rs).
-
-(** [M], of the normal type [W] in [Γ], is a type former of a record type,
-    given any prefix of its parameters: [W] is [Π]s ending in a universe,
-    and [M] at the variables they bind is, in normal form, the record type
-    at its parameters. *)
-Definition record_former (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) (W : nf) : Prop :=
-  let '(Ds, C) := nf_pi_tele W in
-  nf_is_universe C /\
-  exists p Rs, nbe Θ Ξ (Ds ++ Γ) (exp_applied_to_vars M (List.length Ds)) (nf_to_exp C) (nf_record p Rs).
+(** The type-former checks of the alias commands, [ind_former] and
+    [record_former], are in [Fill], which a local alias's fill premises
+    too. *)
 
 (** ** Opens
 

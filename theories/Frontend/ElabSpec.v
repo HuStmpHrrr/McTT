@@ -332,6 +332,16 @@ Inductive spec_exp : list scope_entry -> Cst.expression -> surface_exp -> Prop :
 | spec_exp_let_mod : forall S x ps md ob U B,
     spec_unit S ps md U -> spec_exp (scope_entry_var x :: S) ob B ->
     spec_exp S (Cst.let_in (Cst.d_mod x ps md) ob) (surface_let (surface_b_mod U) B)
+(** [let inductive x := E in B end], under no parameters: [x] binds the
+    type former and the module [E] names; the core checks that it is a
+    type former ([fill_exp_let_ind_alias]). *)
+| spec_exp_let_ind_alias : forall S x oE ob E B,
+    spec_modexp S oE E -> spec_exp (scope_entry_var x :: S) ob B ->
+    spec_exp S (Cst.let_in (Cst.d_ind_alias x nil oE) ob) (surface_let (surface_b_ind_alias E) B)
+(** [let record x := E in B end], as an inductive alias *)
+| spec_exp_let_record_alias : forall S x oE ob E B,
+    spec_modexp S oE E -> spec_exp (scope_entry_var x :: S) ob B ->
+    spec_exp S (Cst.let_in (Cst.d_record_alias x nil oE) ob) (surface_let (surface_b_record_alias E) B)
 (** An eliminator: its blocks, the one marked [at] the scrutinee's.  Its
     group, its uniform parameters and its sort are not written: the core
     fills them ([fill_exp_elim]).  How many binders and branches there

@@ -295,6 +295,62 @@ Proof.
   - intros x U0 Hlk; inversion Hlk; subst; cbn; [ apply wf_me_lit; exact HUσ | eapply wf_sub_eq_apply_mod; eassumption ].
 Qed.
 
+(** Extending equivalent substitutions into a definition with a module
+    part, each by its own term, equal to the transported body, and the
+    literal of its own transported unit, the two units being equal. *)
+Lemma wf_sub_eq_extend_dm : forall Θ Ξ Γ Δ σ σ' A M E N N' i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N : A[σ] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N' : A[σ'] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ M[σ] : A[σ] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N' ≈ M[σ'] : A[σ'] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : A[σ] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ (gu_mk nil (md_alias E))[σ]ᵘ ≈ (gu_mk nil (md_alias E))[σ']ᵘ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ,,ᵈ N ‖ me_lit (gu_mk nil (md_alias E))[σ]ᵘ ≈ σ' ,,ᵈ N' ‖ me_lit (gu_mk nil (md_alias E))[σ']ᵘ
+      : Δ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E).
+Proof.
+  intros * H HA HM HU ? ? ? ? ? HUσ; saturate_sub_eq.
+  econstructor; [ eapply wf_sub_extend_dm; eauto using sub_preserves_unit
+                | eapply wf_sub_extend_dm; eauto using sub_preserves_unit | |].
+  - intros x B Hlk.
+    inversion Hlk; subst; reduce_index; rewrite exp_sub_shift_extend;
+      [ assumption | eapply wf_sub_eq_apply; eassumption ].
+  - intros x U0 Hlk; inversion Hlk; subst; cbn; [ apply wf_me_lit; exact HUσ | eapply wf_sub_eq_apply_mod; eassumption ].
+Qed.
+
+(** A substituted local definition with a module part is its body under
+    the substitution extended by the transported term and unit ([ζ]). *)
+Lemma let_dm_sub_zeta : forall Θ Ξ Γ0 Γ s A M E B C S i,
+    Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ s : Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : S ->
+    type_sort S ->
+    module_body_sort S ->
+    Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ B : C ->
+    Θ ⍮ Ξ ⍮ Γ0 ⊢ ℓᵈ A[s] ≔ M[s] ‖ (gu_mk nil (md_alias E))[s]ᵘ in B[q s]
+      ≈ B[s ,,ᵈ M[s] ‖ me_lit (gu_mk nil (md_alias E))[s]ᵘ] : C[s ,,ᵈ M[s] ‖ me_lit (gu_mk nil (md_alias E))[s]ᵘ].
+Proof.
+  intros * Hs HA HM HU HC HS Hm HB.
+  assert (HUs : Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ (gu_mk nil (md_alias E))[s]ᵘ ≈ (gu_mk nil (md_alias E))[s]ᵘ)
+    by (eapply sub_preserves_unit; eassumption).
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HA Hs) as HAs; cbn in HAs.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HM Hs) as HMs.
+  rewrite <- (exp_sub_q_extend_dm B), <- (exp_sub_q_extend_dm C).
+  rewrite gunit_sub_mk in HUs |- *; cbn [tele_sub moddef_sub List.length sb_qn] in HUs |- *.
+  assert (Hq : Θ ⍮ Ξ ⍮ Γ0 ▸ₘ A[s] ≔ M[s] ‖ gu_mk nil (md_alias E[s]ᵐ) ⊢ˢ q s : Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E))
+    by (eapply wf_sub_q_dm; eassumption).
+  eapply wf_exp_eq_let_dm_zeta;
+    [ exact HAs | exact HMs | exact HUs
+    | eapply sub_preserves_sort; [ exact HC | exact HS | exact Hq ]
+    | exact HS | exact Hm
+    | eapply sub_preserves_exp; [ exact HB | exact Hq ] ].
+Qed.
+
 (** Two sides reduced to equal terms, at types that are equal. *)
 Lemma wf_exp_eq_meet : forall Θ Ξ Γ L N N' L' T T' Srt,
     Θ ⍮ Ξ ⍮ Γ ⊢ L ≈ N : T ->
@@ -1361,6 +1417,39 @@ Ltac sub_eq_let_mod_case :=
         | exact HS | exact HCτ ]
   end.
 
+(** The same for a local definition with a module part ([let_dm_sub_zeta]):
+    both sides meet at the body under the two extended substitutions. *)
+Ltac sub_eq_let_dm_case :=
+  match goal with
+  | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ0 ?Γ ?σ ?σ', HU : wf_unit_eq _ _ ?Γ (gu_mk nil (md_alias ?E)) _,
+    HC : wf_exp _ _ (ce_dm ?A ?M (gu_mk nil (md_alias ?E)) :: ?Γ) ?S ?C, HB : wf_exp _ _ (ce_dm ?A ?M _ :: ?Γ) ?C ?B,
+    HM : wf_exp _ _ ?Γ ?A ?M,
+    Hl : wf_sub _ _ ?Γ0 ?Γ ?σ, Hr : wf_sub _ _ ?Γ0 ?Γ ?σ',
+    IHC : forall _ _ _, wf_sub_eq _ _ _ (ce_dm _ _ _ :: ?Γ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?C _) _,
+    IHB : forall _ _ _, wf_sub_eq _ _ _ (ce_dm _ _ _ :: ?Γ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?B _) _,
+    IHM : forall _ _ _, wf_sub_eq _ _ _ ?Γ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?M _) _,
+    IHU : forall _ _ _, wf_sub_eq _ _ _ ?Γ _ _ -> wf_unit_eq _ _ _ (gunit_sub (gu_mk nil (md_alias ?E)) _) _ /\ _ |- _ =>
+      let HS := fresh "HS" in let Hm := fresh "Hm" in let Hτ := fresh "Hτ" in let HCτ := fresh "HCτ" in
+      let HMl := fresh "HMl" in let HMr := fresh "HMr" in
+      assert (HS : type_sort S) by constructor;
+      assert (Hm : module_body_sort S) by constructor;
+      assert (HMl : Θ ⍮ Ξ ⍮ Γ0 ⊢ M[σ] : A[σ]) by (eapply sub_preserves_exp; eassumption);
+      assert (HMr : Θ ⍮ Ξ ⍮ Γ0 ⊢ M[σ'] : A[σ']) by (eapply sub_preserves_exp; eassumption);
+      assert (Hτ : Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ σ ,,ᵈ M[σ] ‖ me_lit (gu_mk nil (md_alias E))[σ]ᵘ ≈ σ' ,,ᵈ M[σ'] ‖ me_lit (gu_mk nil (md_alias E))[σ']ᵘ
+                    : Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E))
+        by (eapply wf_sub_eq_extend_dm; [ exact Hσ | eassumption | exact HM | exact HU | exact HMl | exact HMr
+                                        | exact (wf_exp_eq_refl HMl) | exact (wf_exp_eq_refl HMr) | exact (IHM _ _ _ Hσ)
+                                        | exact (proj1 (IHU _ _ _ Hσ)) ]);
+      rewrite exp_sub_extend_dm_sub;
+      pose proof (IHC _ _ _ Hτ) as HCτ; try rewrite (type_sort_sub S _) in HCτ by exact HS;
+      eapply wf_exp_eq_meet;
+        [ eapply let_dm_sub_zeta; [ exact Hl | eassumption | exact HM | exact HU | exact HC | exact HS | exact Hm | exact HB ]
+        | exact (IHB _ _ _ Hτ)
+        | eapply let_dm_sub_zeta; [ exact Hr | eassumption | exact HM | exact HU | exact HC | exact HS | exact Hm | exact HB ]
+        | eapply sub_preserves_sort; [ exact HC | exact HS | eapply wf_sub_eq_left; exact Hτ ]
+        | exact HS | exact HCτ ]
+  end.
+
 Lemma sub_eq_preserves_mut :
   (forall Θ Ξ Δ A M, Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
      forall Γ σ σ', Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] ≈ M[σ'] : A[σ]) /\
@@ -1786,6 +1875,8 @@ Proof.
     end ].
   (** A local module: both sides are reduced by [ζ] and meet at the body
       under the two extended substitutions, at the body's type. *)
+  (** A local definition with a module part, likewise. *)
+  all: try solve [ sub_eq_let_dm_case ].
   all: sub_eq_let_mod_case.
   (** The level of a propositional rule's universe is never read: [Propₘ]
       does not mention it. *)

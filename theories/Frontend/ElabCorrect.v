@@ -494,6 +494,12 @@ Proof.
       to_elab; reflexivity.
     + inversion Hg; subst. match goal with Hs : spec_unit _ _ _ _ |- _ => apply Hu in Hs; [| assumption | exact Hmd ] end.
       dest_elab_success. to_elab. reflexivity.
+  - (* d_ind_alias: under no parameters only *)
+    intros x ps _ o [_ IHm] ob IHb S M; destruct ps as [| p ps]; cbn [elab];
+      [ iff_case | split; intros Hg; [ discriminate | inversion Hg ] ].
+  - (* d_record_alias, likewise *)
+    intros x ps _ o [_ IHm] ob IHb S M; destruct ps as [| p ps]; cbn [elab];
+      [ iff_case | split; intros Hg; [ discriminate | inversion Hg ] ].
   - (* md_where *)
     intros cs Hcs S D. apply list_all_Forall in Hcs. rewrite elab_mdef_where, elab_bind_elab_success.
     assert (Hb : forall S Φ Φ', elab_body S Φ cs = elab_success Φ' <-> spec_body S Φ cs Φ').

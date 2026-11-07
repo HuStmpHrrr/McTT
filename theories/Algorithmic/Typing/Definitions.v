@@ -305,7 +305,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      nbe_ty_kind (Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)) C κC ->
      κC <> ak_level ->
      nbe_ty_f Γ C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] D ->
-     Γ ⊢a ℓᵈ A ≔ M ‖ gu_mk nil (md_alias E) in B ⟹ D )
+     Γ ⊢a ℓᵈ A ≔ M ‖ (gu_mk nil (md_alias E)) in B ⟹ D )
 (** A member infers the normal form of the term part of what it denotes.
     Neither that type nor the member's δ-reduct is checked: of a well-formed
     module, the one is a type and the other inhabits it. *)
@@ -615,6 +615,13 @@ Inductive user_exp : exp -> Prop :=
 | user_exp_let_mod :
   `( user_exp B ->
      user_exp (ℓₘ U in B) )
+(** A local definition with a module part: its type, its body and the
+    rest *)
+| user_exp_let_dm :
+  `( user_exp A ->
+     user_exp M ->
+     user_exp B ->
+     user_exp (ℓᵈ A ≔ M ‖ U in B) )
 | user_exp_mem :
   `( user_exp (a_mem H x) )
 | user_exp_vlookup :
@@ -638,7 +645,7 @@ Hint Constructors user_exp : mctt.
 Lemma user_exp_all : forall M, user_exp M.
 Proof.
   eapply proj1, (syn_mut_ind user_exp (fun _ => True)
-    (fun b => match b with b_def A M => user_exp A /\ user_exp M | b_mod _ => True end)
+    (fun b => match b with b_def A M | b_def_mod A M _ => user_exp A /\ user_exp M | b_mod _ => True end)
     (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True));
     intros; try destruct_conjs; try match goal with b : binding |- _ => destruct b; cbn in *; destruct_conjs end;
     try lazymatch goal with

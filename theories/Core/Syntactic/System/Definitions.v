@@ -659,7 +659,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      type_sort Srt ->
      module_body_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ B : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ gu_mk nil (md_alias E) in B : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ (gu_mk nil (md_alias E)) in B : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] )
 (** A member: the module expression is well formed and looks the member up
     ([mdenote] of the selection) as a term, at the type the lookup reads.
     This is the only typing rule for members.  The type is premised to be a
@@ -945,8 +945,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : Srt ->
      module_body_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ B ≈ B' : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A' ≔ M' ‖ gu_mk nil (md_alias E') in B' : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ gu_mk nil (md_alias E) in B ≈ ℓᵈ A' ≔ M' ‖ gu_mk nil (md_alias E') in B'
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A' ≔ M' ‖ (gu_mk nil (md_alias E')) in B' : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ (gu_mk nil (md_alias E)) in B ≈ ℓᵈ A' ≔ M' ‖ (gu_mk nil (md_alias E')) in B'
        : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] )
 (** Members of equivalent module expressions, both looked up as terms, at
     the type the left one is looked up at.  The right-hand side is premised
@@ -1119,7 +1119,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      type_sort Srt ->
      module_body_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ B : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ gu_mk nil (md_alias E) in B ≈ B[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))]
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓᵈ A ≔ M ‖ (gu_mk nil (md_alias E)) in B ≈ B[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))]
        : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] )
 (** [δ] for members: a member is the δ-reduct the lookup reads: the body of
     a transparent definition at the arguments, the name of a filed axiom or

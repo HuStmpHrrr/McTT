@@ -231,6 +231,12 @@ Definition local_alias_error (what x : string) (ps : list (string * Cst.expressi
   | _, _ => general
   end.
 
+(** The rejection of a [let] alias [x] of a type with parameters, [what]
+    being "an inductive alias" or "a record alias": a local alias takes
+    none. *)
+Definition local_param_alias_error (what x : string) : string :=
+  what ++ " " ++ x ++ " in a let takes no parameters".
+
 (** The fields of a record value, each its name and its value. *)
 Definition elab_tuple_fields_with (f : list scope_entry -> Cst.expression -> elab_result surface_exp) (S : list scope_entry) :=
   fix go (fs : list (string * Cst.expression)) : elab_result (list (string * surface_exp)) :=
@@ -324,6 +330,19 @@ Fixpoint elab (S : list scope_entry) (o : Cst.expression) {struct o} : elab_resu
       let* D := elab_mdef (param_scope_entries ps ++ S) md in
       let* B := elab (scope_entry_var x :: S) ob in
       elab_success (surface_let (surface_b_mod (surface_gu_mk (params_tele tys) D)) B)
+  (** A local alias of a type: its target, a module; the name binds a
+      term and a module.  Under parameters it is rejected, as in a local
+      module. *)
+  | Cst.let_in (Cst.d_ind_alias x nil oE) ob =>
+      let* E := elab_mod S oE in
+      let* B := elab (scope_entry_var x :: S) ob in
+      elab_success (surface_let (surface_b_ind_alias E) B)
+  | Cst.let_in (Cst.d_ind_alias x _ _) _ => elab_failure (local_param_alias_error "an inductive alias" x)
+  | Cst.let_in (Cst.d_record_alias x nil oE) ob =>
+      let* E := elab_mod S oE in
+      let* B := elab (scope_entry_var x :: S) ob in
+      elab_success (surface_let (surface_b_record_alias E) B)
+  | Cst.let_in (Cst.d_record_alias x _ _) _ => elab_failure (local_param_alias_error "a record alias" x)
   | Cst.elim om bks =>
       let* M := elab S om in
       let* Bks := elab_blocks_with elab S bks in

@@ -3467,7 +3467,7 @@ Qed.
 
 #[export]
 Hint Resolve wf_sub_extend wf_sub_extend_def wf_sub_extend_mod wf_sub_single wf_sub_single_def
-  wf_sub_single_mod wf_sub_wk wf_sub_q wf_sub_q_def wf_sub_q_mod : mctt.
+  wf_sub_single_mod wf_sub_single_dm wf_sub_wk wf_sub_q wf_sub_q_def wf_sub_q_mod : mctt.
 
 (** As with [wk_preserves_vlookup], it is these two rather than [wf_sub_apply]
     that go into [mctt]: the projection's conclusion mentions [σ x], which

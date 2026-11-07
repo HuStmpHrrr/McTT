@@ -461,11 +461,14 @@ let let_defns :=
   | ~ = let_defn; { [let_defn] }
 
 (* [x : A := a] or [x := a], or a local module [module X (ps) where … end] or
-   [module X (ps) := E] *)
+   [module X (ps) := E], or a local alias of a type [inductive x := E] or
+   [record x := E] (parameters parsed, rejected by the elaborator) *)
 let let_defn :=
   | x = VAR; ":"; a = expression; ":="; b = expression; { Cst.d_def (snd x) (Some a) b }
   | x = VAR; ":="; b = expression; { Cst.d_def (snd x) None b }
   | MODULE; x = VAR; md = mdecl; { Cst.d_mod (snd x) (fst md) (snd md) }
+  | INDUCTIVE; x = VAR; ps = params_opt; ":="; e = expression; { Cst.d_ind_alias (snd x) (List.rev' ps) e }
+  | RECORD; x = VAR; ps = params_opt; ":="; e = expression; { Cst.d_record_alias (snd x) (List.rev' ps) e }
 %%
 
 Extract Constant loc => "Lexing.position * Lexing.position".

@@ -481,6 +481,12 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_letmod_U : forall U B, optional_exp_fresh K (a_let (b_mod U) B) -> optional_gunit_fresh K U.
   Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_letdm_A : forall A M U B, optional_exp_fresh K (a_let (b_def_mod A M U) B) -> optional_exp_fresh K A.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_letdm_M : forall A M U B, optional_exp_fresh K (a_let (b_def_mod A M U) B) -> optional_exp_fresh K M.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma optional_exp_fresh_letdm_lit : forall A M U B, optional_exp_fresh K (a_let (b_def_mod A M U) B) -> optional_modexp_fresh K (me_lit U).
+  Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_mem : forall H x, optional_exp_fresh K (a_mem H x) -> optional_modexp_fresh K H.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_elim_blocks : forall r oq oUs j Bks M, optional_exp_fresh K (a_elim r oq oUs j Bks M) -> blocks_optional_exp_fresh K Bks.
@@ -576,7 +582,8 @@ End OFresh.
   optional_exp_fresh_absurd_type optional_exp_fresh_absurd_proof
   optional_exp_fresh_and_left optional_exp_fresh_and_right optional_exp_fresh_fn_A optional_exp_fresh_let_A optional_exp_fresh_tuple_T
   optional_exp_fresh_pi_A optional_exp_fresh_pi_B optional_exp_fresh_fn_M optional_exp_fresh_app_l optional_exp_fresh_app_r optional_exp_fresh_let_M optional_exp_fresh_let_B
-  optional_exp_fresh_letmod_U optional_exp_fresh_mem optional_exp_fresh_var optional_exp_fresh_tuple_fields optional_exp_fresh_proj optional_modexp_fresh_var optional_modexp_fresh_lit optional_modexp_fresh_mem optional_modexp_fresh_app_l optional_modexp_fresh_app_r
+  optional_exp_fresh_letmod_U optional_exp_fresh_letdm_A optional_exp_fresh_letdm_M optional_exp_fresh_letdm_lit
+  optional_exp_fresh_mem optional_exp_fresh_var optional_exp_fresh_tuple_fields optional_exp_fresh_proj optional_modexp_fresh_var optional_modexp_fresh_lit optional_modexp_fresh_mem optional_modexp_fresh_app_l optional_modexp_fresh_app_r
   optional_gunit_fresh_body optional_gunit_fresh_alias optional_gmod_fresh_def_prefix optional_gmod_fresh_def_body optional_gmod_fresh_mod_prefix optional_gmod_fresh_mod_unit
   optional_gmod_fresh_dm_prefix optional_gmod_fresh_dm_body optional_gmod_fresh_dm_unit
   : avoid.
@@ -654,6 +661,12 @@ Section Eval.
         specialize (H1 x eq_refl); clear H
     | Hs : modexp_spine ?H = _, Hf : optional_exp_fresh ?K (a_mem ?H _) |- _ =>
         apply optional_exp_fresh_mem in Hf; destruct (optional_modexp_fresh_spine _ _ _ _ _ Hs Hf); clear Hs
+    | Hf : optional_exp_fresh ?K (a_let (b_def_mod ?A ?M ?U) ?B) |- _ =>
+        assert (optional_exp_fresh K A) by (eapply optional_exp_fresh_letdm_A; exact Hf);
+        assert (optional_exp_fresh K M) by (eapply optional_exp_fresh_letdm_M; exact Hf);
+        assert (optional_modexp_fresh K (me_lit U)) by (eapply optional_exp_fresh_letdm_lit; exact Hf);
+        assert (optional_exp_fresh (optional_shift 1 K) B) by (eapply optional_exp_fresh_let_B; exact Hf);
+        clear Hf
     | IH : forall K0, env_avoids ?v ?b K0 nil -> _ |- _ => specialize (IH None (env_avoids_nil _ _ None) I)
     | IH : forall K0, env_avoids ?v ?b K0 ?ρ -> _, Hρ : env_avoids ?v ?b ?K ?ρ |- _ => specialize (IH K Hρ)
     | IH : forall K0, env_avoids ?v ?b K0 (extend_env (extend_env ?ρ ?d1 ?t1) ?d2 ?t2) -> _, Hρ : env_avoids ?v ?b ?K ?ρ |- _ =>
@@ -669,6 +682,11 @@ Section Eval.
     | IH : forall K0, env_avoids ?v ?b K0 (extend_env_mod ?ρ ?h ?U) -> _, Hρ : env_avoids ?v ?b ?K ?ρ |- _ =>
         let E1 := fresh "E" in
         assert (E1 : dentry_avoids v b (de_mod h U)) by dentry_avoids_of h;
+        specialize (IH (optional_shift 1 K) (env_avoids_cons _ _ _ _ _ Hρ E1))
+    | IH : forall K0, env_avoids ?v ?b K0 (extend_env_dm ?ρ ?d ?t ?h ?U) -> _, Hρ : env_avoids ?v ?b ?K ?ρ,
+      Hd : domain_avoids ?v ?b ?d, Hh : dmod_avoids ?v ?b ?h |- _ =>
+        let E1 := fresh "E" in
+        assert (E1 : dentry_avoids v b (de_dm d t h U)) by (apply dentry_avoids_dm; [ exact Hd | exact Hh ]);
         specialize (IH (optional_shift 1 K) (env_avoids_cons _ _ _ _ _ Hρ E1))
     | IH : forall K0, env_avoids ?v ?b K0 (decl_env ?D ?ups) -> _, Hu : forall a, In a ?ups -> domain_avoids ?v ?b a |- _ =>
         specialize (IH None (env_avoids_decl_env D ups Hu))

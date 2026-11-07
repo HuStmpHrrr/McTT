@@ -75,6 +75,25 @@ Definition surface_exp_leaf (M : surface_exp) : option exp :=
   | _ => None
   end.
 
+(** [M], of the normal type [W] in [Γ], is a type former of an inductive
+    type: [W] is [Π]s ending in a universe, and [M] at the variables they
+    bind is, in normal form, a member of a group of inductive types at
+    its parameters.  The inductive alias command premises it, and so does
+    the fill of a local inductive alias. *)
+Definition ind_former (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) (W : nf) : Prop :=
+  let '(Ds, C) := nf_pi_tele W in
+  nf_is_universe C /\
+  exists p k Rs, nbe Θ Ξ (Ds ++ Γ) (exp_applied_to_vars M (List.length Ds)) (nf_to_exp C) (nf_indty p k Rs).
+
+(** [M], of the normal type [W] in [Γ], is a type former of a record type,
+    given any prefix of its parameters: [W] is [Π]s ending in a universe,
+    and [M] at the variables they bind is, in normal form, the record type
+    at its parameters.  As [ind_former], for record aliases. *)
+Definition record_former (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) (W : nf) : Prop :=
+  let '(Ds, C) := nf_pi_tele W in
+  nf_is_universe C /\
+  exists p Rs, nbe Θ Ξ (Ds ++ Γ) (exp_applied_to_vars M (List.length Ds)) (nf_to_exp C) (nf_record p Rs).
+
 Section Fill.
   Variables (Θ : gdeps) (Ξ : gstack) (B : builtins).
   #[local] Instance GC : GCtx := gc_mk Θ Ξ.
@@ -202,6 +221,21 @@ Section Fill.
   (** A local module: the rest under the filled unit *)
   | fill_exp_let_mod : forall Γ U U' B B',
       fill_unit Γ U U' -> fill_exp (Γ ▹ₘ U') B B' -> fill_exp Γ (surface_let (surface_b_mod U) B) (a_let (b_mod U') B')
+  (** A local inductive alias: its target, a module, read as a term is a
+      type former of an inductive type ([ind_former]), as for the command;
+      the rest under the definition with a module part of the former at the
+      type it infers and the alias of the target *)
+  | fill_exp_let_ind_alias : forall Γ E E' M W B B',
+      fill_mod Γ E E' None -> modexp_as_term E' = Some M -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ⊢a M ⟹ W ->
+      ind_former Θ Ξ Γ M W ->
+      fill_exp (Γ ▸ₘ nf_to_exp W ≔ M ‖ gu_mk nil (md_alias E')) B B' ->
+      fill_exp Γ (surface_let (surface_b_ind_alias E) B) (a_let (b_def_mod (nf_to_exp W) M (gu_mk nil (md_alias E'))) B')
+  (** A local record alias, as an inductive one ([record_former]) *)
+  | fill_exp_let_record_alias : forall Γ E E' M W B B',
+      fill_mod Γ E E' None -> modexp_as_term E' = Some M -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ⊢a M ⟹ W ->
+      record_former Θ Ξ Γ M W ->
+      fill_exp (Γ ▸ₘ nf_to_exp W ≔ M ‖ gu_mk nil (md_alias E')) B B' ->
+      fill_exp Γ (surface_let (surface_b_record_alias E) B) (a_let (b_def_mod (nf_to_exp W) M (gu_mk nil (md_alias E'))) B')
   (** A member: its module filled; a member of a record value's module
       accessible *)
   | fill_exp_mem : forall Γ H H' op x,

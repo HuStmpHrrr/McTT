@@ -20,7 +20,7 @@ From Mctt.Core.Syntactic.System.Global Require Import Paths.
 From Mctt.Algorithmic.Typing Require Import Definitions Functional.
 From Mctt.Extraction Require Import Lookup TypeCheckBase TypeCheck GlobalCheck MemberType MemberOrder Privacy.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Extraction Require Import IndDecl MdefGroup FastDesc LookupTwins.
+From Mctt.Extraction Require Import IndDecl MdefGroup FastDesc LookupTwins Formers.
 Import Syntax_Notations.
 
 Open Scope string_scope.
@@ -323,6 +323,8 @@ Section surface_mut_ind.
     (case_me_app : forall H N, Pm H -> Pe N -> Pm (surface_me_app H N))
     (case_b_def : forall A M, Pe A -> Pe M -> Pb (surface_b_def A M))
     (case_b_mod : forall U, Pu U -> Pb (surface_b_mod U))
+    (case_b_ind_alias : forall E, Pm E -> Pb (surface_b_ind_alias E))
+    (case_b_record_alias : forall E, Pm E -> Pb (surface_b_record_alias E))
     (case_gu_mk : forall Δ D, List.Forall Pe Δ -> Pd D -> Pu (surface_gu_mk Δ D))
     (case_md_body : forall Φ, Pg Φ -> Pd (surface_md_body Φ))
     (case_md_alias : forall Et, Pm Et -> Pd (surface_md_alias Et))
@@ -395,6 +397,8 @@ Section surface_mut_ind.
     match b with
     | surface_b_def A M => case_b_def A M (surface_exp_mut A) (surface_exp_mut M)
     | surface_b_mod U => case_b_mod U (surface_unit_mut U)
+    | surface_b_ind_alias E => case_b_ind_alias E (surface_modexp_mut E)
+    | surface_b_record_alias E => case_b_record_alias E (surface_modexp_mut E)
     end
   with surface_unit_mut (U : surface_unit) : Pu U :=
     match U with
@@ -463,6 +467,22 @@ Section Decide.
     | left HΓ =>
         match type_infer F levels_abstractable_dec Γ HΓ M (type_infer_order_all M) with
         | inleft (exist _ W _) => Some W
+        | inright _ => None
+        end
+    | right _ => None
+    end.
+
+  (** The type a term infers in a well-formed context, when the term is a
+      type former of an inductive type ([ind] true, [ind_former]) or of a
+      record type ([ind] false, [record_former]) at it. *)
+  Definition former_at (ind : bool) (Γ : ctx) (M : exp) : option nf :=
+    match check_ctx F levels_abstractable_dec Hg Γ with
+    | left HΓ =>
+        match type_infer F levels_abstractable_dec Γ HΓ M (type_infer_order_all M) with
+        | inleft (exist _ W HW) =>
+            if ind
+            then if ind_former_dec F Γ M W (alg_type_infer_sound HW HΓ) then Some W else None
+            else if record_former_dec F Γ M W (alg_type_infer_sound HW HΓ) then Some W else None
         | inright _ => None
         end
     | right _ => None
@@ -632,6 +652,30 @@ Section Decide.
         let%a U' := fill_unit_fn Γ U in
         let%a B' := fill_exp_fn (Γ ▹ₘ U') B0 in
         fill_ok (a_let (b_mod U') B')
+    | surface_let (surface_b_ind_alias E) B0 =>
+        let%a r := fill_mod_of Γ "" (fill_read_fn Γ E) in
+        match snd r, modexp_as_term (fst r) with
+        | None, Some M =>
+            match former_at true Γ M with
+            | Some W =>
+                let%a B' := fill_exp_fn (Γ ▸ₘ nf_to_exp W ≔ M ‖ gu_mk nil (md_alias (fst r))) B0 in
+                fill_ok (a_let (b_def_mod (nf_to_exp W) M (gu_mk nil (md_alias (fst r)))) B')
+            | None => fill_error (fill_failure_message "the target of a local inductive alias is no type former of an inductive type")
+            end
+        | _, _ => fill_error (fill_failure_message "the target of a local inductive alias is no type former of an inductive type")
+        end
+    | surface_let (surface_b_record_alias E) B0 =>
+        let%a r := fill_mod_of Γ "" (fill_read_fn Γ E) in
+        match snd r, modexp_as_term (fst r) with
+        | None, Some M =>
+            match former_at false Γ M with
+            | Some W =>
+                let%a B' := fill_exp_fn (Γ ▸ₘ nf_to_exp W ≔ M ‖ gu_mk nil (md_alias (fst r))) B0 in
+                fill_ok (a_let (b_def_mod (nf_to_exp W) M (gu_mk nil (md_alias (fst r)))) B')
+            | None => fill_error (fill_failure_message "the target of a local record alias is no type former of a record type")
+            end
+        | _, _ => fill_error (fill_failure_message "the target of a local record alias is no type former of a record type")
+        end
     | surface_mem H x =>
         let%a r := fill_mod_of Γ x (fill_read_fn Γ H) in
         match sel_check (snd r) x with
@@ -997,6 +1041,36 @@ Section Decide.
     rewrite (@functional_alg_type_infer (fc_gctx F) _ _ _ _ Hg HW0 HW); reflexivity.
   Qed.
 
+  (** What [former_at] decides: the inference and the former check. *)
+  Definition former_of (ind : bool) (Γ : ctx) (M : exp) (W : nf) : Prop :=
+    if ind then ind_former Θ Ξ Γ M W else record_former Θ Ξ Γ M W.
+
+  Lemma former_at_sound : forall ind Γ M W, former_at ind Γ M = Some W ->
+      ⊢ Θ ⍮ Ξ ⍮ Γ /\ @alg_type_infer (gc_mk Θ Ξ) Γ W M /\ former_of ind Γ M W.
+  Proof.
+    intros * E; unfold former_at in E.
+    destruct (check_ctx F levels_abstractable_dec Hg Γ) as [HΓ |]; [| discriminate ].
+    destruct (type_infer F levels_abstractable_dec Γ HΓ M (type_infer_order_all M)) as [[W0 HW] |]; [| discriminate ].
+    destruct ind; cbn [former_of];
+      [ destruct (ind_former_dec F Γ M W0 (alg_type_infer_sound HW HΓ)) as [Hf |]
+      | destruct (record_former_dec F Γ M W0 (alg_type_infer_sound HW HΓ)) as [Hf |] ]; try discriminate;
+      injection E as <-; rewrite (fc_gctx_eta F) in HW; repeat split; assumption.
+  Qed.
+
+  Lemma former_at_complete : forall ind Γ M W, ⊢ Θ ⍮ Ξ ⍮ Γ -> @alg_type_infer (gc_mk Θ Ξ) Γ W M ->
+      former_of ind Γ M W -> former_at ind Γ M = Some W.
+  Proof.
+    intros * HΓ HW Hf; rewrite <- (fc_gctx_eta F) in HW; unfold former_at.
+    destruct (check_ctx F levels_abstractable_dec Hg Γ) as [HΓ' | Hn]; [| contradiction ].
+    destruct (type_infer F levels_abstractable_dec Γ HΓ' M (type_infer_order_all M)) as [[W0 HW0] | Hn];
+      [| exfalso; exact (Hn _ HW) ].
+    pose proof (@functional_alg_type_infer (fc_gctx F) _ _ _ _ Hg HW0 HW) as <-.
+    destruct ind; cbn [former_of] in Hf;
+      [ destruct (ind_former_dec F Γ M W0 (alg_type_infer_sound HW0 HΓ')) as [| Hn]
+      | destruct (record_former_dec F Γ M W0 (alg_type_infer_sound HW0 HΓ')) as [| Hn] ];
+      [ reflexivity | contradiction | reflexivity | contradiction ].
+  Qed.
+
   Lemma kind_at_sound : forall Γ A what κ, kind_at Γ A what = fill_ok κ ->
       exists W, κ = sort_abs_kind W /\ ⊢ Θ ⍮ Ξ ⍮ Γ /\ @alg_type_infer (gc_mk Θ Ξ) Γ W A.
   Proof.
@@ -1084,6 +1158,7 @@ Section Decide.
     match b with
     | surface_b_def A M => exp_fill_sound A /\ exp_fill_sound M
     | surface_b_mod U => unit_fill_sound U
+    | surface_b_ind_alias E | surface_b_record_alias E => read_fill_sound E
     end.
   Definition entry_fill_sound (E : surface_entry) : Prop :=
     match E with
@@ -1251,7 +1326,7 @@ Section Decide.
       eapply Core.TypedElab.Fill.fill_exp_fn; eauto.
     - cbn [fill_exp_fn] in E; bind_inv; fill_struct.
     - (* a let *)
-      destruct b as [A M0 | U].
+      destruct b as [A M0 | U | E0 | E0].
       + destruct H as [HA HM]; cbn [fill_exp_fn] in E; bind_inv.
         destruct (is_surface_hole A) eqn:Eh.
         * apply is_surface_hole_spec in Eh as ->.
@@ -1261,6 +1336,22 @@ Section Decide.
         * apply is_surface_hole_false in Eh; bind_inv.
           apply fill_exp_let_ann; [ exact Eh | apply HA; assumption | apply HM; assumption | apply H0; assumption ].
       + cbn [fill_exp_fn] in E; bind_inv; apply fill_exp_let_mod; [ apply H; assumption | apply H0; assumption ].
+      + (* a local alias of a type: its target a module, whose term is a
+           type former at the type it infers *)
+        cbn [fill_exp_fn] in E; bind_inv.
+        destruct x as [E' op]; cbn [fst snd] in E.
+        destruct op; [ discriminate |]; destruct (modexp_as_term E') as [M |] eqn:Et; [| discriminate ].
+        destruct (former_at true Γ M) as [W |] eqn:Ef; [| discriminate ]; bind_inv.
+        apply former_at_sound in Ef as (HΓ & HW & Hf).
+        eapply fill_exp_let_ind_alias;
+          [ eapply fill_mod_of_read_sound; eassumption | exact Et | exact HΓ | exact HW | exact Hf | apply H0; assumption ].
+      + cbn [fill_exp_fn] in E; bind_inv.
+        destruct x as [E' op]; cbn [fst snd] in E.
+        destruct op; [ discriminate |]; destruct (modexp_as_term E') as [M |] eqn:Et; [| discriminate ].
+        destruct (former_at false Γ M) as [W |] eqn:Ef; [| discriminate ]; bind_inv.
+        apply former_at_sound in Ef as (HΓ & HW & Hf).
+        eapply fill_exp_let_record_alias;
+          [ eapply fill_mod_of_read_sound; eassumption | exact Et | exact HΓ | exact HW | exact Hf | apply H0; assumption ].
     - (* a member *)
       cbn [fill_exp_fn] in E; bind_inv.
       destruct (sel_check (snd x0) x) as [[qd y] |] eqn:Es; [ discriminate |]; bind_inv.
@@ -1343,6 +1434,10 @@ Section Decide.
           rewrite (kind_at_complete G A s W HG HW) end
       | match goal with HG : ⊢ _ ⍮ _ ⍮ ?G, HW : @alg_type_infer _ ?G ?W ?A |- context [infer_at ?G ?A] =>
           rewrite (infer_at_complete G A W HG HW) end
+      | match goal with HG : ⊢ _ ⍮ _ ⍮ ?G, HW : @alg_type_infer _ ?G ?W ?A, Hf : ind_former _ _ ?G ?A ?W
+          |- context [former_at true ?G ?A] => rewrite (former_at_complete true G A W HG HW Hf) end
+      | match goal with HG : ⊢ _ ⍮ _ ⍮ ?G, HW : @alg_type_infer _ ?G ?W ?A, Hf : record_former _ _ ?G ?A ?W
+          |- context [former_at false ?G ?A] => rewrite (former_at_complete false G A W HG HW Hf) end
       | match goal with Hs : sel_ok _ _ ?op ?y |- context [sel_check ?op ?y] => rewrite (proj2 (sel_check_spec op y) Hs) end
       | match goal with Hm : forall y0, fill_mod_fn ?G y0 ?H = fill_ok _ |- context [fill_mod_of ?G ?y (fill_read_fn ?G ?H)] =>
           unfold fill_mod_fn in Hm; rewrite (Hm y) end

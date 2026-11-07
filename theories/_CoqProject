@@ -200,6 +200,7 @@
 ./Extraction/ViewsFound.v
 ./Extraction/Privacy.v
 ./Extraction/MdefGroup.v
+./Extraction/Formers.v
 ./Extraction/TypedElab.v
 ./Extraction/NbE.v
 ./Extraction/PseudoMonadic.v

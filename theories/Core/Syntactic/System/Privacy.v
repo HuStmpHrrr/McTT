@@ -297,6 +297,7 @@ Definition binding_privacy_table (S : list privacy_table) (b : surface_binding) 
   match b with
   | surface_b_def _ _ => privacy_table_none
   | surface_b_mod U => gunit_privacy_table S U
+  | surface_b_ind_alias E | surface_b_record_alias E => modexp_privacy_table S E
   end.
 
 (** ** Member References *)
@@ -363,6 +364,7 @@ with binding_refs (S : list privacy_table) (b : surface_binding) : list (privacy
   match b with
   | surface_b_def A M => exp_refs S A ++ exp_refs S M
   | surface_b_mod U => gunit_refs S U
+  | surface_b_ind_alias E | surface_b_record_alias E => modexp_refs S E
   end
 with gunit_refs (S : list privacy_table) (U : surface_unit) : list (privacy_table * string)%type :=
   match U with

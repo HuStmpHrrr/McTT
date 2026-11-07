@@ -152,6 +152,11 @@ with decl : Set :=
 | d_def : string -> option expression -> expression -> decl
 (** [module X (ps) md] *)
 | d_mod : string -> list (string * expression) -> mdef -> decl
+(** [inductive x (ps) := E]: a local inductive alias; the elaborator
+    accepts it under no parameters only *)
+| d_ind_alias : string -> list (string * expression) -> expression -> decl
+(** [record x (ps) := E]: a local record alias, as an inductive one *)
+| d_record_alias : string -> list (string * expression) -> expression -> decl
 
 with mdef : Set :=
 (** [where cs end] *)

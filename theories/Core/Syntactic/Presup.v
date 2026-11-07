@@ -224,6 +224,8 @@ Proof.
   (** [let module], left: the body's type is a type, by presupposition. *)
   - eapply wf_let_mod; eauto using wf_unit_eq_refl_left, module_body_sort_type_sort.
 
+  (** [let] with a module part, left: likewise. *)
+  - eapply wf_let_dm; eauto using wf_unit_eq_refl_left, module_body_sort_type_sort.
 Qed.
 
 Theorem presup_exp_eq : forall {Θ Ξ Γ M M' A},

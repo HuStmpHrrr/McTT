@@ -46,7 +46,7 @@ Proof.
       eapply wf_ext_eq_mod; [ apply IH; eauto using presup_unit_eq_ctx | exact HU | exact HU ] end.
   - inversion H; subst.
     match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@_, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A,
-                    HU : _ ⍮ _ ⍮ X ++ Γ ⊢ᵘ U ≈ U |- _ =>
+                    HU : _ ⍮ _ ⍮ X ++ Γ ⊢ᵘ ?U ≈ ?U |- _ =>
       eapply wf_ext_eq_dm;
         [ apply IH; eauto using presup_exp_ctx | exact HA | eapply wf_exp_eq_refl; exact HA | exact HM
         | eapply wf_exp_eq_refl; exact HM | exact HA | exact HM | exact HU | exact HU ] end.

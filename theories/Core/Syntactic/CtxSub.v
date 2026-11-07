@@ -68,8 +68,9 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
     Θ ⍮ Ξ ⊢ Δ ▹ₘ U ⊆ Γ ▹ₘ U
 (** A definition with a module part refines one of a supertype with an
     equal body and the same unit; its types are of a large universe, as
-    such definitions are relevant. *)
-| ctx_sub_extend_dm : forall Δ Γ A A' M M' U i,
+    such definitions are relevant, and its unit an alias under no
+    parameters ([wf_ctx_extend_dm]). *)
+| ctx_sub_extend_dm : forall Δ Γ A A' M M' E i,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
@@ -77,9 +78,9 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' ≈ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
-    Θ ⍮ Ξ ⊢ Δ ▸ₘ A' ≔ M' ‖ U ⊆ Γ ▸ₘ A ≔ M ‖ U
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    Θ ⍮ Ξ ⊢ Δ ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E) ⊆ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)
 where "Θ ⍮ Ξ ⊢ Δ ⊆ Γ" := (ctx_sub Θ Ξ Δ Γ) : type_scope.
 
 #[export]

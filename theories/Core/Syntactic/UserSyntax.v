@@ -103,6 +103,11 @@ with surface_binding : Set :=
 | surface_b_def : surface_exp -> surface_exp -> surface_binding
 (** [surface_b_mod U]: a local module *)
 | surface_b_mod : surface_unit -> surface_binding
+(** [surface_b_ind_alias E]: a local inductive alias of the module [E],
+    under no parameters; the typed pass reads its type former off [E] *)
+| surface_b_ind_alias : surface_modexp -> surface_binding
+(** [surface_b_record_alias E]: a local record alias, as an inductive one *)
+| surface_b_record_alias : surface_modexp -> surface_binding
 with surface_unit : Set :=
 (** [surface_gu_mk Δ D]: the parameters, assumptions, innermost first, and the
     definition under them *)
