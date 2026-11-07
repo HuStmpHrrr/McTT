@@ -190,6 +190,62 @@ Proof.
   eapply per_univ_trans'; eassumption.
 Qed.
 
+(** A type related to a [Π] into a relevant codomain is one. *)
+Lemma per_univ_elem_pi_left : forall i R κd a ρ B t,
+    DF d_pi κd ak_relevant a ρ B ≈ t ∈ per_univ_elem i ↘ R ->
+    exists a' ρ' B', t = d_pi κd ak_relevant a' ρ' B'.
+Proof.
+  intros * H; basic_invert_per_univ_elem H.
+  all: try (exfalso; match goal with Hp : per_prop _ _ |- _ => pose proof (per_prop_left _ _ Hp) as Hl end;
+            cbn [domain_kind] in Hl; discriminate Hl).
+  all: do 3 eexists; reflexivity.
+Qed.
+
+(** What the spine learns from a value [Π] related to the value of the
+    reference's normal form [W]: [W] is a [Π] at the same kinds, its value
+    is the closure of its codomain, and the spine's domain reads back to
+    [W]'s domain up to proofs. *)
+#[warnings="-cannot-define-projection"]
+Record spine_type_pi (Γ : ctx) (W : nf) (ρ : env) (t : domain) (κd : abs_kind) (a : domain) : Prop := mk_spine_type_pi
+  { (** The domain of [W] *)
+    spine_type_pi_domain : nf
+    (** The codomain of [W] *)
+  ; spine_type_pi_codomain : nf
+    (** The value of the domain *)
+  ; spine_type_pi_domain_value : domain
+    (** [W] is the [Π] *)
+  ; spine_type_pi_shape : W = nf_pi κd ak_relevant spine_type_pi_domain spine_type_pi_codomain
+    (** Its domain evaluates to that value *)
+  ; spine_type_pi_domain_eval : ⟦ nf_to_exp spine_type_pi_domain ⟧ ρ ↘ spine_type_pi_domain_value
+    (** [W]'s value is the closure of its codomain *)
+  ; spine_type_pi_value : t = d_pi κd ak_relevant spine_type_pi_domain_value ρ (nf_to_exp spine_type_pi_codomain)
+    (** The spine's domain reads back to [W]'s up to proofs *)
+  ; spine_type_pi_domain_upto_proofs : forall A', Rtyp a in List.length Γ ↘ A' -> nf_eq_upto_proofs A' spine_type_pi_domain }.
+
+(** Rests on soundness through [idempotent_nbe_ty_sort] (PENDING M2). *)
+Lemma spine_type_pi_of_related : forall Γ S T W ρ t (i : nat) κd a ρ' B',
+    type_sort S -> Γ ⊢ T : S -> nbe_ty_f Γ T W -> initial_env_f Γ ρ -> ⟦ nf_to_exp W ⟧ ρ ↘ t ->
+    Dom d_pi κd ak_relevant a ρ' B' ≈ t ∈ per_univ i ->
+    spine_type_pi Γ W ρ t κd a.
+Proof.
+  intros * HS HT HW Hρ Ht [R Hv].
+  destruct (per_univ_elem_pi_left _ _ _ _ _ _ _ Hv) as (a0 & ρ0 & B0 & ->).
+  destruct (per_univ_then_per_top_typ Hv (List.length Γ)) as [X1 X2 HX1 HX2 HX].
+  assert (HWX : nbe_ty_f Γ (nf_to_exp W) X2) by (econstructor; eassumption).
+  inversion HX2; subst.
+  pose proof (idempotent_nbe_ty_sort HS HT HW HWX) as HWX2.
+  destruct W; try (unfold nf_eq_upto_proofs in HWX2; cbn in HWX2; discriminate).
+  destruct (nf_pi_upto_proofs_inv _ _ _ _ _ _ _ _ HWX2) as (-> & -> & HA & _).
+  cbn [nf_to_exp] in Ht; inversion Ht; subst.
+  match goal with Ha : ⟦ nf_to_exp ?D ⟧ ?r ↘ ?x |- spine_type_pi _ (nf_pi _ _ ?D ?C) _ _ _ _ =>
+    apply (mk_spine_type_pi _ _ _ _ _ _ D C x eq_refl Ha eq_refl) end.
+  intros A' HA'.
+  destruct (per_univ_elem_pi_inv evaluated_kind_relevant Hv) as (in_rel & _ & Hdom & _).
+  destruct (per_univ_then_per_top_typ Hdom (List.length Γ)) as [Y1 Y2 HY1 HY2 HY].
+  functional_read_rewrite_clear.
+  etransitivity; [ exact HY | symmetry; exact HA ].
+Qed.
+
 (** The start of the spine: the value of a normal form of a type at the
     initial environment is related to itself. *)
 Lemma spine_start_related : forall Γ S W ρ t,
