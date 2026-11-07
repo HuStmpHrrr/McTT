@@ -3651,7 +3651,9 @@ Section Impl.
 
   (** The items of a run, one after the other: a command as written checked
       for privacy, filled ([fill_cmd_fn]), its items run, then the rest; a
-      core command run by [core_step], then the rest. *)
+      core command run by [core_step], then the rest.  Its unfolding
+      equations are proved without functional extensionality. *)
+  #[local] Unset Equations With Funext.
   Equations items_impl (ch : list path) (L : loader ch) (its : list cmd_item) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins)
     (fs : fstack) (H : pre ch s K D fs) :
     run_result ({r | fast_res (post_cmds ch (decode_units s) K D B (decode_stack fs) its) r} * certified_log)%type
