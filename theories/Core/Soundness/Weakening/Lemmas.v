@@ -199,6 +199,66 @@ Proof.
   assumption.
 Qed.
 
+(** The same at [Prop] and at [LevelSort], and at the sort of a kind next
+    to a universe. *)
+Corollary kripke_preserves_prop : forall Γ Δ M φ,
+    Δ ⊢ M : Propₘ ->
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ⊢ M[φ]ʷ : Propₘ.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk M φ : exp_wk a_prop φ) by mauto 2.
+  assumption.
+Qed.
+
+Corollary kripke_preserves_prop_eq : forall Γ Δ M M' φ,
+    Δ ⊢ M ≈ M' : Propₘ ->
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : Propₘ.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk M φ ≈ exp_wk M' φ : exp_wk a_prop φ) by mauto 2.
+  assumption.
+Qed.
+
+Corollary kripke_preserves_level_sort : forall Γ Δ M φ,
+    Δ ⊢ M : LevelSort ->
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ⊢ M[φ]ʷ : LevelSort.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk M φ : exp_wk a_level_sort φ) by mauto 2.
+  assumption.
+Qed.
+
+Corollary kripke_preserves_level_sort_eq : forall Γ Δ M M' φ,
+    Δ ⊢ M ≈ M' : LevelSort ->
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : LevelSort.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk M φ ≈ exp_wk M' φ : exp_wk a_level_sort φ) by mauto 2.
+  assumption.
+Qed.
+
+Corollary kripke_preserves_kind_sort : forall Γ Δ M φ κ i,
+    Δ ⊢ M : abs_kind_sort κ Typeω@i ->
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ⊢ M[φ]ʷ : abs_kind_sort κ Typeω@i.
+Proof.
+  intros * HM Hφ; destruct κ; cbn [abs_kind_sort] in *;
+    [ eapply kripke_preserves_typ | eapply kripke_preserves_prop | eapply kripke_preserves_level_sort ]; eassumption.
+Qed.
+
+Corollary kripke_preserves_kind_sort_eq : forall Γ Δ M M' φ κ i,
+    Δ ⊢ M ≈ M' : abs_kind_sort κ Typeω@i ->
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : abs_kind_sort κ Typeω@i.
+Proof.
+  intros * HM Hφ; destruct κ; cbn [abs_kind_sort] in *;
+    [ eapply kripke_preserves_typ_eq | eapply kripke_preserves_prop_eq | eapply kripke_preserves_level_sort_eq ]; eassumption.
+Qed.
+
 (** The same for [⊤] and [⊥]. *)
 
 Corollary kripke_preserves_True : forall Γ Δ M φ,
@@ -521,6 +581,8 @@ Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subty
 #[export]
 Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
 kripke_preserves_level kripke_preserves_level_eq
+kripke_preserves_prop kripke_preserves_prop_eq kripke_preserves_level_sort kripke_preserves_level_sort_eq
+kripke_preserves_kind_sort kripke_preserves_kind_sort_eq
 kripke_preserves_typ_eq_typ
 kripke_preserves_typ_eq_suniv kripke_preserves_exp_eq_suniv : mctt.
 #[export]

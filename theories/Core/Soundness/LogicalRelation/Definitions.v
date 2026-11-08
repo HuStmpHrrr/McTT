@@ -183,17 +183,19 @@ Definition prop_univ_glu_exp_pred (U : typ) : glu_exp_pred := prop_univ_glu_exp 
 
 (** ** The Sort of the Types of Levels *)
 
-(** [LevelSort], as a type, in the ambient universe [U]. *)
-Definition level_sort_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ LevelSort : U.
-#[global] Arguments level_sort_glu_typ_pred U Γ A/.
+(** [LevelSort], as a type: [LevelSort] itself, in a context.  It is of
+    no sort ([level_sort_untyped]), so no equation of a sort reaches it,
+    and no other type is equal to it. *)
+Definition level_sort_glu_typ_pred : glu_typ_pred := fun Γ A => A = LevelSort /\ ⊢ Γ.
+#[global] Arguments level_sort_glu_typ_pred Γ A/.
 
 (** An element of [LevelSort]: a type of levels, glued as a type at the
     least small index ([univ_typ]), as the PER model reads the elements of
     [LevelSort] off that index ([per_level_sort_at]). *)
-Record level_sort_glu_exp (U : typ) (univ_typ : domain -> glu_typ_pred) (Γ : ctx) (A : typ) (M : exp) (m : domain) : Prop :=
+Record level_sort_glu_exp (univ_typ : domain -> glu_typ_pred) (Γ : ctx) (A : typ) (M : exp) (m : domain) : Prop :=
   mk_level_sort_glu_exp
   { (** The type is [LevelSort] *)
-    level_sort_glu_exp_typ : Γ ⊢ A ≈ LevelSort : U
+    level_sort_glu_exp_typ : A = LevelSort
     (** The term is of it *)
   ; level_sort_glu_exp_wf : Γ ⊢ M : A
     (** The value is a type of levels *)
@@ -201,8 +203,8 @@ Record level_sort_glu_exp (U : typ) (univ_typ : domain -> glu_typ_pred) (Γ : ct
     (** The term is glued as a type at the value *)
   ; level_sort_glu_exp_glu : Γ ⊢ M ® univ_typ m }.
 
-Definition level_sort_glu_exp_pred (U : typ) (univ_typ : domain -> glu_typ_pred) : glu_exp_pred :=
-  level_sort_glu_exp U univ_typ.
+Definition level_sort_glu_exp_pred (univ_typ : domain -> glu_typ_pred) : glu_exp_pred :=
+  level_sort_glu_exp univ_typ.
 
 (** ** Neutral Types
 
@@ -775,7 +777,7 @@ Hint Extern 1 =>
   | |- suniv_glu_exp_pred' _ _ _ _ _ _ _ => econstructor
   | |- proof_glu_exp_pred _ _ _ _ _ => econstructor
   | |- prop_univ_glu_exp_pred _ _ _ _ _ => econstructor
-  | |- level_sort_glu_exp_pred _ _ _ _ _ _ => econstructor
+  | |- level_sort_glu_exp_pred _ _ _ _ _ => econstructor
   end : mctt.
 
 Section Gluing.
@@ -819,8 +821,8 @@ Section Gluing.
       glued as types at the least small index *)
   | glu_univ_elem_core_level_sort :
     `{ forall typ_rel el_rel (large_i : universe_index_large i),
-          typ_rel <∙> level_sort_glu_typ_pred (Typeω@(large_level i)) ->
-          el_rel <∙> level_sort_glu_exp_pred (Typeω@(large_level i)) (glu_univ_typ_rec (us (0, 0))) ->
+          typ_rel <∙> level_sort_glu_typ_pred ->
+          el_rel <∙> level_sort_glu_exp_pred (glu_univ_typ_rec (us (0, 0))) ->
           DG LevelSortᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   (** A [Π] at the kinds [κd] and [κc], [κc] evaluated: the domain glued,
@@ -839,6 +841,10 @@ Section Gluing.
               ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b ->
               DG b ∈ glu_univ_elem_core ↘ OP _ equiv_c ↘ OEl _ equiv_c) ->
           DF d_pi κd κc a ρ B ≈ d_pi κd κc a ρ B ∈ per_univ_elem i ↘ elem_rel ->
+          (** Not into propositions: a [Π] into propositions is a
+              proposition ([glu_univ_elem_core_prop]), as for
+              [per_univ_elem_core_pi] *)
+          evaluated_kind κc ->
           typ_rel <∙> pi_glu_typ_pred κd κc (Typeω@(large_level i)) in_rel IP IEl OP ->
           el_rel <∙> pi_glu_exp_pred κd κc (Typeω@(large_level i)) in_rel IP IEl elem_rel OEl ->
           DG d_pi κd κc a ρ B ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
@@ -846,6 +852,8 @@ Section Gluing.
   (** A neutral type of the relevant kind, glued by its readback *)
   | glu_univ_elem_core_neut :
     `{ forall typ_rel el_rel,
+          (** Of the relevant kind, as [per_univ_elem_core_neut] has it *)
+          domain_kind (⇑ a b) = ak_relevant ->
           Dom b ≈ b ∈ per_bot ->
           typ_rel <∙> neut_glu_typ_pred (Typeω@(large_level i)) b ->
           el_rel <∙> neut_glu_exp_pred (Typeω@(large_level i)) b ->
@@ -1115,8 +1123,8 @@ Section GluingInduction.
       (case_level_sort :
         forall i (P : glu_typ_pred) (El : glu_exp_pred) (large_i : universe_index_large i),
           (forall P' El' a, DG a ∈ glu_univ_elem (us (0, 0)) ↘ P' ↘ El' -> motive (us (0, 0)) P' El' a) ->
-          P <∙> level_sort_glu_typ_pred (Typeω@(large_level i)) ->
-          El <∙> level_sort_glu_exp_pred (Typeω@(large_level i)) (glu_univ_typ (us (0, 0))) ->
+          P <∙> level_sort_glu_typ_pred ->
+          El <∙> level_sort_glu_exp_pred (glu_univ_typ (us (0, 0))) ->
           motive i P El LevelSortᵈ)
 
       (case_pi :
@@ -1134,6 +1142,7 @@ Section GluingInduction.
               ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b ->
               motive i (OP c equiv_c) (OEl c equiv_c) b) ->
           DF d_pi κd κc a ρ B ≈ d_pi κd κc a ρ B ∈ per_univ_elem i ↘ elem_rel ->
+          evaluated_kind κc ->
           P <∙> pi_glu_typ_pred κd κc (Typeω@(large_level i)) in_rel IP IEl OP ->
           El <∙> pi_glu_exp_pred κd κc (Typeω@(large_level i)) in_rel IP IEl elem_rel OEl ->
           motive i P El (d_pi κd κc a ρ B))
@@ -1149,6 +1158,7 @@ Section GluingInduction.
         forall i b a
           (P : glu_typ_pred)
           (El : glu_exp_pred),
+          domain_kind (⇑ a b) = ak_relevant ->
           Dom b ≈ b ∈ per_bot ->
           P <∙> neut_glu_typ_pred (Typeω@(large_level i)) b ->
           El <∙> neut_glu_exp_pred (Typeω@(large_level i)) b ->
@@ -1540,7 +1550,7 @@ Hint Extern 1 =>
   | |- suniv_glu_exp_pred' _ _ _ _ _ _ _ => econstructor
   | |- proof_glu_exp_pred _ _ _ _ _ => econstructor
   | |- prop_univ_glu_exp_pred _ _ _ _ _ => econstructor
-  | |- level_sort_glu_exp_pred _ _ _ _ _ _ => econstructor
+  | |- level_sort_glu_exp_pred _ _ _ _ _ => econstructor
   | |- univ_glu_exp_pred _ _ _ _ _ _ => econstructor
   | |- suniv_glu_exp_pred _ _ _ _ _ _ => econstructor
   | |- glu_univ_typ _ _ _ _ => econstructor
@@ -1573,8 +1583,8 @@ Ltac glu_univ_elem_induction_core HH ih :=
       [ do 5 intro; do 3 glu_induction_hintro | do 5 intro; do 4 glu_induction_hintro
       | do 4 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
       | do 4 intro; do 3 glu_induction_hintro
-      | do 14 intro; glu_induction_hintro; ih; do 6 glu_induction_hintro
-      | do 4 intro; do 3 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro
+      | do 14 intro; glu_induction_hintro; ih; do 7 glu_induction_hintro
+      | do 4 intro; do 3 glu_induction_hintro | do 5 intro; do 4 glu_induction_hintro
       | do 17 intro; do 17 glu_induction_hintro | do 9 intro; do 7 glu_induction_hintro ]; cbv beta
   end.
 

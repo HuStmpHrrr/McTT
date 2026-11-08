@@ -16,10 +16,21 @@ Ltac rewrite_glu_univ_below :=
         rewrite (glu_univ_below_spec i j) by solve_universe_index
     end.
 
+(** The case of a proposition at a value whose head is of another kind is
+    impossible ([per_prop_left]), and so is a neutral type's at a head of
+    another kind: both are dropped. *)
+Ltac drop_wrong_kind_cases :=
+  try (match goal with
+       | H : per_prop ?a _ |- _ =>
+           let Hk := fresh "Hk" in pose proof (per_prop_left _ _ H) as Hk; cbn in Hk; discriminate Hk
+       | H : domain_kind _ = _ |- _ => cbn in H; discriminate H
+       end).
+
 Ltac basic_invert_glu_univ_elem H :=
   progress simp glu_univ_elem in H;
   unmark_vars;
   dependent destruction H;
+  drop_wrong_kind_cases;
   rewrite_glu_univ_below;
   try rewrite <- glu_univ_elem_equation_1 in *.
 
@@ -37,8 +48,14 @@ Ltac glu_witness2 := first [ do 2 eexists; split | econstructor ].
     [destruct_all] does a conjunction. *)
 Ltac destruct_glu_record1 :=
   match goal with
-  | H : level_glu_exp_pred _ _ _ _ _ _ |- _ => destruct H
-  | H : level_glu_exp _ _ _ _ _ _ |- _ => destruct H
+  | H : level_glu_exp_pred _ _ _ _ _ |- _ => destruct H
+  | H : level_glu_exp _ _ _ _ _ |- _ => destruct H
+  | H : proof_glu_exp_pred _ _ _ _ _ |- _ => destruct H
+  | H : proof_glu_exp _ _ _ _ _ |- _ => destruct H
+  | H : prop_univ_glu_exp_pred _ _ _ _ _ |- _ => destruct H
+  | H : prop_univ_glu_exp _ _ _ _ _ |- _ => destruct H
+  | H : level_sort_glu_exp_pred _ _ _ _ _ |- _ => destruct H
+  | H : level_sort_glu_exp _ _ _ _ _ |- _ => destruct H
   | H : suniv_glu_typ_pred _ _ _ _ |- _ => destruct H
   | H : suniv_glu_typ _ _ _ _ |- _ => destruct H
   | H : univ_glu_exp_pred' _ _ _ _ _ _ _ |- _ => destruct H
@@ -66,9 +83,9 @@ Ltac destruct_ind_glu_exp :=
 
 Ltac invert_glu_rel1 :=
   match goal with
-  | H : pi_glu_typ_pred _ _ _ _ _ _ _ |- _ =>
+  | H : pi_glu_typ_pred _ _ _ _ _ _ _ _ _ |- _ =>
       progressive_invert H
-  | H : pi_glu_exp_pred _ _ _ _ _ _ _ _ _ _ |- _ =>
+  | H : pi_glu_exp_pred _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
       progressive_invert H
   | H : neut_glu_typ_pred _ _ _ _ |- _ =>
       progressive_invert H
