@@ -444,6 +444,57 @@ Proof.
   eapply proj1, wf_subtyp_of_exp_eq; [ | | exact HSC | exact E2 ]; gen_presups; assumption.
 Qed.
 
+(** ** A Chain Over the Images of a Substitution
+
+    A proof [X] of a proposition [P] of [Γ] that reads only the first
+    [|bs|] positions of [Γ], under a chain [bs] of definitions over [Δ]:
+    [τ] maps [Γ] into the chain's context, as the chain's own variables at
+    those positions (so [X[τ] = X]), and the chain's ζ-substitution after
+    [τ] is [σ].  The chain is then typed at [P[σ]], and equal to [X[σ]].
+    This is the readback of a kept proof [⋆ᵈ⟨X, ρ⟩] over an environment
+    [ρ] glued to [σ]: the chain binds the readbacks of the entries of [ρ]
+    ([read_proof_kept]).  For example, with [h : P] at position [0] of
+    [Γ] and [ρ 0] read back as [W], the chain [ℓ y : P' ≔ W in #0]
+    ([τ 0 = #0]) is [#0[σ]] when [W ≈ #0[σ]]. *)
+Lemma lets_exp_of_sub : forall bs {Θ Ξ Δ Γ X P τ σ},
+    Θ ⍮ Ξ ⍮ Γ ⊢ X : P ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+    exp_scoped (List.length bs) X ->
+    Θ ⍮ Ξ ⍮ ctx_lets Δ bs ⊢ˢ τ : Γ ->
+    (forall x, x < List.length bs -> τ x = se_var x) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ˢ τ ⨟ lets_sub bs ≈ σ : Γ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ lets_exp bs X : P[σ] /\ Θ ⍮ Ξ ⍮ Δ ⊢ lets_exp bs X ≈ X[σ] : P[σ].
+Proof.
+  intros * HX HP Hs Hτ Hτx Hz.
+  pose proof (wf_sub_dom _ _ _ _ _ Hτ) as HΓ'.
+  pose proof (wf_sub_eq_right _ _ _ _ _ _ Hz) as Hσ.
+  pose proof (ctx_lets_wk_shiftn bs HΓ') as Hwk.
+  (** The proof in the chain's context, at [P[τ]] *)
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HX Hτ) as HXτ.
+  rewrite (exp_scoped_sub_id _ _ _ Hs Hτx) in HXτ.
+  (** [P[τ]] is [P[σ]], weakened past the chain *)
+  assert (HPτ : Θ ⍮ Ξ ⍮ ctx_lets Δ bs ⊢ P[τ] : Propₘ)
+    by (change Propₘ with (Propₘ[τ]); exact (sub_preserves_exp _ _ _ _ _ _ _ HP Hτ)).
+  pose proof (ctx_lets_unfold_definitions bs HPτ) as E1.
+  pose proof (sub_eq_preserves_exp_eq _ _ _ _ _ _ _ _ _ (wf_exp_eq_refl HP) Hz) as E2; cbn in E2.
+  rewrite exp_sub_sub in E1.
+  assert (E3 : Θ ⍮ Ξ ⍮ ctx_lets Δ bs ⊢ P[τ⨟lets_sub bs][wk_shiftn (List.length bs)]ʷ ≈ P[σ][wk_shiftn (List.length bs)]ʷ : Propₘ)
+    by (change Propₘ with (Propₘ[wk_shiftn (List.length bs)]ʷ); exact (proj1 (proj2 wk_preserves_wf) _ _ _ _ _ _ E2 _ _ Hwk)).
+  assert (HPσ : Θ ⍮ Ξ ⍮ Δ ⊢ P[σ] : Propₘ) by (change Propₘ with (Propₘ[σ]); exact (sub_preserves_exp _ _ _ _ _ _ _ HP Hσ)).
+  assert (HPσw : Θ ⍮ Ξ ⍮ ctx_lets Δ bs ⊢ P[σ][wk_shiftn (List.length bs)]ʷ : Propₘ)
+    by (change Propₘ with (Propₘ[wk_shiftn (List.length bs)]ʷ); exact (proj1 wk_preserves_wf _ _ _ _ _ HPσ _ _ Hwk)).
+  assert (HXw : Θ ⍮ Ξ ⍮ ctx_lets Δ bs ⊢ X : P[σ][wk_shiftn (List.length bs)]ʷ)
+    by (eapply wf_conv_sort; [ exact HXτ | exact HPσw | constructor | etransitivity; [ exact E1 | exact E3 ] ]).
+  pose proof (lets_exp_typed_at_prop bs HΓ' HPσ HXw) as Ht.
+  split; [ exact Ht |].
+  (** ζ, then the substitutions' equation *)
+  etransitivity; [ exact (lets_exp_zeta bs Ht) |].
+  pose proof (sub_eq_preserves_exp_eq _ _ _ _ _ _ _ _ _ (wf_exp_eq_refl HX) Hz) as E4.
+  rewrite <- (exp_sub_sub X τ (lets_sub bs)) in E4.
+  rewrite (exp_scoped_sub_id _ _ _ Hs Hτx) in E4.
+  eapply wf_exp_eq_conv_sort; [ exact E4 | exact HPσ | constructor | exact E2 ].
+Qed.
+
 (** The theorem the executable implementation cites: the readback of a kept
     proof, [bs] binding the positions of the environment it reads and [Ls]
     the local definitions in front of its term [X], replaced by a chain

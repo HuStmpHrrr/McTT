@@ -39,7 +39,7 @@ Section Fixed_GCtx.
 Lemma kripke_id : forall Γ, ⊢ Γ -> Γ ⊢ᵏ wk_id : Γ.
 Proof. intros; eapply wk_kripke_id; [ mauto 2 | reflexivity ]. Qed.
 
-Lemma kripke_shift : forall Γ A, ⊢ Γ ▹ A -> Γ ▹ A ⊢ᵏ ↑ : Γ.
+Lemma kripke_shift : forall Γ κ A, ⊢ Γ ▹{κ} A -> Γ ▹{κ} A ⊢ᵏ ↑ : Γ.
 Proof.
   intros * H; eapply wk_kripke_shift;
     [ apply kripke_id; eassumption
@@ -383,52 +383,62 @@ Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
     substitution, which is all the [Π] clauses of the gluing model need to type
     a codomain in the extended context. *)
 
-Corollary kripke_q_escape : forall Γ Δ A φ i,
-    Δ ⊢ A : Typeω@i ->
+(** The domain is a type of a sort [Srt] of the entry's kind [κ]
+    ([wf_ctx_extend]). *)
+Corollary kripke_q_escape : forall Γ Δ κ A φ Srt,
+    Δ ⊢ A : Srt ->
+    sort_kind Srt κ ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ▹ A[φ]ʷ ⊢ˢ (ι (wk_q φ)) : Δ ▹ A.
+    Γ ▹{κ} A[φ]ʷ ⊢ˢ (ι (wk_q φ)) : Δ ▹{κ} A.
 Proof.
-  intros * ? ?%kripke_escape.
-  rewrite sb_q_of_wk, <- (exp_sub_of_wk A φ); mauto 3.
+  intros * HA HS Hφ%kripke_escape.
+  rewrite sb_q_of_wk, <- (exp_sub_of_wk A φ).
+  eapply wf_sub_q; [ exact Hφ | exact HA | exact HS |].
+  inversion HS; subst; cbn; [ change (Typeω@i) with ((Typeω@i : exp)[ι φ]) | change Propₘ with ((Propₘ : exp)[ι φ])
+    | change LevelSort with ((LevelSort : exp)[ι φ]) ]; mauto 2.
 Qed.
 
-Corollary kripke_preserves_exp_q : forall Γ Δ A B M φ i,
-    Δ ▹ A ⊢ M : B ->
-    Δ ⊢ A : Typeω@i ->
+Corollary kripke_preserves_exp_q : forall Γ Δ κ A B M φ Srt,
+    Δ ▹{κ} A ⊢ M : B ->
+    Δ ⊢ A : Srt ->
+    sort_kind Srt κ ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ▹ A[φ]ʷ ⊢ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
+    Γ ▹{κ} A[φ]ʷ ⊢ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
   intros.
   rewrite <- (exp_sub_of_wk M), <- (exp_sub_of_wk B).
   eauto using kripke_q_escape, sub_preserves_exp.
 Qed.
 
-Corollary kripke_preserves_typ_q : forall Γ Δ A B φ i j,
-    Δ ▹ A ⊢ B : Typeω@j ->
-    Δ ⊢ A : Typeω@i ->
+Corollary kripke_preserves_typ_q : forall Γ Δ κ A B φ Srt j,
+    Δ ▹{κ} A ⊢ B : Typeω@j ->
+    Δ ⊢ A : Srt ->
+    sort_kind Srt κ ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : Typeω@j.
+    Γ ▹{κ} A[φ]ʷ ⊢ B[wk_q φ]ʷ : Typeω@j.
 Proof.
   intros.
-  assert (Γ ▹ A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (a_typ j) (wk_q φ))
+  assert (Γ ▹{κ} A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (a_typ j) (wk_q φ))
     by (eapply kripke_preserves_exp_q; eassumption).
   assumption.
 Qed.
 
-(** The same in any universe: the codomain of a glued [Π] is typed in the
-    ambient universe of the index. *)
-Corollary kripke_preserves_univ_q : forall Γ Δ A B φ u v,
-    Δ ▹ A ⊢ B : universe_index_term v ->
-    Δ ⊢ A : universe_index_term u ->
+(** The same at the sort of a kind next to any universe: the domain and
+    the codomain of a glued [Π] are typed at the sorts of their kinds,
+    next to the ambient universe of the index ([wf_pi]). *)
+Corollary kripke_preserves_univ_q : forall Γ Δ κd κc A B φ u v,
+    Δ ▹{κd} A ⊢ B : abs_kind_sort κc (universe_index_term v) ->
+    Δ ⊢ A : abs_kind_sort κd (universe_index_term u) ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : universe_index_term v.
+    Γ ▹{κd} A[φ]ʷ ⊢ B[wk_q φ]ʷ : abs_kind_sort κc (universe_index_term v).
 Proof.
   intros * HB HA Hφ.
-  assert (Δ ⊢ A : Typeω@(large_level u))
-    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HA ]).
-  assert (Γ ▹ A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (universe_index_term v) (wk_q φ))
-    by (eapply kripke_preserves_exp_q; eassumption).
-  rewrite exp_wk_universe_index_term in *; assumption.
+  assert (HA' : Δ ⊢ A : abs_kind_sort κd Typeω@(large_level u)).
+  { destruct κd; cbn in HA |- *; [| exact HA | exact HA ].
+    eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HA ]. }
+  assert (Γ ▹{κd} A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (abs_kind_sort κc (universe_index_term v)) (wk_q φ))
+    by (eapply kripke_preserves_exp_q; [ exact HB | exact HA' | apply sort_kind_abs_kind_sort | exact Hφ ]).
+  rewrite abs_kind_sort_wk, exp_wk_universe_index_term in *; assumption.
 Qed.
 
 Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ_q : mctt.
@@ -436,21 +446,22 @@ Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ
 (** Extending by the new variable as a term, rather than by the variable
     entry of [q φ]: the two agree on every term, and a type of the extended
     context mentions no slot at the new position. *)
-Corollary kripke_q_var_eq : forall Γ Δ A B M φ i,
-    Δ ▹ A ⊢ M : B ->
-    Δ ⊢ A : Typeω@i ->
+Corollary kripke_q_var_eq : forall Γ Δ κ A B M φ Srt,
+    Δ ▹{κ} A ⊢ M : B ->
+    Δ ⊢ A : Srt ->
+    sort_kind Srt κ ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ▹ A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
+    Γ ▹{κ} A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
-  intros * HM HA Hφ.
+  intros * HM HA HS Hφ.
   rewrite <- (exp_sub_of_wk M), <- (exp_sub_of_wk B).
   apply wf_exp_eq_sym.
-  pose proof (kripke_q_escape _ _ _ _ _ HA Hφ) as Hq.
+  pose proof (kripke_q_escape _ _ _ _ _ _ HA HS Hφ) as Hq.
   pose proof (wf_sub_dom _ _ _ _ _ Hq) as HC.
-  assert (Hk : Γ ▹ A[φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
+  assert (Hk : Γ ▹{κ} A[φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
   pose proof (kripke_escape _ _ _ Hk) as Hs.
-  assert (Hs' : Γ ▹ A[φ]ʷ ⊢ˢ ι (φ ⊙ ↑),,#0 : Δ ▹ A).
-  { eapply wf_sub_extend; [ exact Hs | exact HA |].
+  assert (Hs' : Γ ▹{κ} A[φ]ʷ ⊢ˢ ι (φ ⊙ ↑),,#0 : Δ ▹{κ} A).
+  { eapply wf_sub_extend; [ exact Hs | exact HA | exact HS |].
     rewrite exp_sub_of_wk, <- exp_wk_wk; mauto 3. }
   eapply sub_eq_preserves_exp; [ exact HM |].
   constructor; [ exact Hq | exact Hs' | |].
@@ -463,26 +474,27 @@ Proof.
 Qed.
 
 (** The same with the domain in any universe. *)
-Corollary kripke_q_var_eq_univ : forall Γ Δ A B M φ u,
-    Δ ▹ A ⊢ M : B ->
-    Δ ⊢ A : universe_index_term u ->
+Corollary kripke_q_var_eq_univ : forall Γ Δ κ A B M φ u,
+    Δ ▹{κ} A ⊢ M : B ->
+    Δ ⊢ A : abs_kind_sort κ (universe_index_term u) ->
     Γ ⊢ᵏ φ : Δ ->
-    Γ ▹ A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
+    Γ ▹{κ} A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
   intros * HM HA Hφ.
-  assert (Δ ⊢ A : Typeω@(large_level u))
-    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HA ]).
-  eapply kripke_q_var_eq; eassumption.
+  assert (HA' : Δ ⊢ A : abs_kind_sort κ Typeω@(large_level u)).
+  { destruct κ; cbn in HA |- *; [| exact HA | exact HA ].
+    eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HA ]. }
+  eapply kripke_q_var_eq; [ exact HM | exact HA' | apply sort_kind_abs_kind_sort | exact Hφ ].
 Qed.
 
-Corollary shift_var_eq : forall Δ A B M u,
-    Δ ▹ A ⊢ M : B ->
-    Δ ⊢ A : universe_index_term u ->
-    Δ ▹ A ⊢ M[ι ↑,,#0] ≈ M : B.
+Corollary shift_var_eq : forall Δ κ A B M u,
+    Δ ▹{κ} A ⊢ M : B ->
+    Δ ⊢ A : abs_kind_sort κ (universe_index_term u) ->
+    Δ ▹{κ} A ⊢ M[ι ↑,,#0] ≈ M : B.
 Proof.
   intros * HM HA.
   assert (Hk : Δ ⊢ᵏ wk_id : Δ) by (apply kripke_id; mauto 2).
-  pose proof (kripke_q_var_eq_univ _ _ _ _ _ _ _ HM HA Hk) as H.
+  pose proof (kripke_q_var_eq_univ _ _ _ _ _ _ _ _ HM HA Hk) as H.
   rewrite exp_wk_id, !(exp_wk_id_ext _ _ wk_q_id) in H.
   replace (M[ι ↑,,#0]) with (M[ι (wk_id ⊙ ↑),,#0]); [ exact H |].
   apply exp_sub_sb_eq; intros [| x]; reflexivity.
