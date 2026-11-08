@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Data›Void</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›<wbr>Data›<wbr>Void</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><span class="kw">inductive</span> <a class="mod" href="#Void">Void</a></li><li><details open><summary><span class="kw">module</span> <a class="mod" href="#Absurd">Absurd</a></summary><ul><li><span class="kw">def</span> <a class="def" href="#Absurd.absurd">absurd</a></li></ul></details></li><li><span class="kw">export</span> <a class="def" href="#absurd">absurd</a></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›<wbr>Data›<wbr>Void</h1>
+<div class="doc"><p>The empty type: an inductive type with no constructor, so it has no element.  Eliminating an element of <code>Void</code> gives an element of any type: <code>absurd</code>, at every level <code>u</code>, with its level-0 instance exported.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Void</span> <span class="kw">where</span>
+
+<span class="kw">inductive</span> <span id="Void.Rec"><span id="Void.Rec.rec_Void"><span class="mod bind" id="Void">Void</span></span></span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span> <span class="kw">end</span>
+</pre>
+<div class="doc"><p>From an element of <code>Void</code>, an element of any type <code>A</code> of <code>Type@{u}</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="mod bind" id="Absurd">Absurd</span> <span class="sym">(</span><span class="var bind" id="l5">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="kw">where</span>
+
+<span class="kw">def</span> <span class="def bind" id="Absurd.absurd">absurd</span> <span class="sym">(</span><span class="var bind" id="l7">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l5">u</a><span class="sym">}</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l9">e</span> <span class="sym">:</span> <a class="mod" href="#Void">Void</a><span class="sym">)</span> <span class="sym">:</span> <a class="var" href="#l7">A</a> <span class="sym">≔</span> <span class="kw">elim</span> <a class="var" href="#l9">e</a> <span class="kw">at</span> <span class="sym">(</span><span class="var bind" id="l13">z</span> <span class="sym">:</span> <a class="mod" href="#Void">Void</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l7">A</a> <span class="kw">end</span> <span class="kw">end</span>
+
+<span class="kw">end</span>
+
+<span class="kw">open</span> <a class="mod" href="#Absurd">Absurd</a> <span class="num">0l</span> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="absurd" href="#Absurd.absurd">absurd</a><span class="sym">)</span>
+
+<span class="kw">end</span></pre>
+</body></html>

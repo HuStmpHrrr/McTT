@@ -1,0 +1,629 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+      <a href="./lib/index.html"> Library </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Syntactic.UserSyntax</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab853"></a><h1 class="section">The User Syntax</h1>
+
+
+<div class="paragraph"> </div>
+
+    The syntax after name resolution (level-1 elaboration), before the typed
+    pass (level-2 elaboration, <span class="inlinecode"><span class="id" title="library">TypedElab</span></span>) fills it into the core syntax
+    (<span class="inlinecode"><span class="id" title="keyword">Syntax</span></span>).  It holds what a user writes and nothing else: names are
+    resolved to de Bruijn indices and paths, but no relevance tag, no
+    eliminator group, no inferred annotation is present.  Where a user may
+    omit an annotation the syntax has a hole (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_hole"><span class="id" title="constructor">surface_hole</span></a></span>), which the typed
+    pass fills; a term followed by a field name (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_proj_term"><span class="id" title="constructor">surface_proj_term</span></a></span>) is resolved
+    there too, once the term's type is known.
+
+<div class="paragraph"> </div>
+
+    The core syntax keeps every annotation explicit; the typed pass maps
+    each user term to exactly one core term. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">List</span> <span class="id" title="library">String</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#"><span class="id" title="library">Syntax</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab854"></a><h2 class="section">Terms, Module Expressions and Units</h2>
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="surface_exp" class="idref" href="#surface_exp"><span class="id" title="definition, inductive"><span id="surface_exp_rect" class="id"><span id="surface_exp_ind" class="id"><span id="surface_exp_rec" class="id"><span id="surface_exp_sind" class="id">surface_exp</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+A large universe <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_typ" class="idref" href="#surface_typ"><span class="id" title="constructor">surface_typ</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+A small universe at a level, <span class="inlinecode"><span class="id" title="var">Type@</span>{<a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a>}</span> 
+</div>
+<div class="code">
+| <a id="surface_univ" class="idref" href="#surface_univ"><span class="id" title="constructor">surface_univ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+The type of levels <span class="inlinecode"><span class="id" title="var">Level@n</span></span> 
+</div>
+<div class="code">
+| <a id="surface_level" class="idref" href="#surface_level"><span class="id" title="constructor">surface_level</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+A level literal <span class="inlinecode">ω·<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_llit" class="idref" href="#surface_llit"><span class="id" title="constructor">surface_llit</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Levels.Ordinals.html#o2"><span class="id" title="definition">o2</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+The successor of a level 
+</div>
+<div class="code">
+| <a id="surface_succl" class="idref" href="#surface_succl"><span class="id" title="constructor">surface_succl</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+The join of two levels 
+</div>
+<div class="code">
+| <a id="surface_maxl" class="idref" href="#surface_maxl"><span class="id" title="constructor">surface_maxl</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+The token <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, the type bound by <span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><span class="id" title="var">natural</span></span>; the typed pass
+    replaces it by the bound type's former 
+</div>
+<div class="code">
+| <a id="surface_ntok" class="idref" href="#surface_ntok"><span class="id" title="constructor">surface_ntok</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+A numeral; the typed pass replaces it by the chain of the bound type's
+    constructors 
+</div>
+<div class="code">
+| <a id="surface_nlit" class="idref" href="#surface_nlit"><span class="id" title="constructor">surface_nlit</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="keyword">Prop</span></span> 
+</div>
+<div class="code">
+| <a id="surface_prop" class="idref" href="#surface_prop"><span class="id" title="constructor">surface_prop</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode">⊤</span> 
+</div>
+<div class="code">
+| <a id="surface_True" class="idref" href="#surface_True"><span class="id" title="constructor">surface_True</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+The introduction of <span class="inlinecode">⊤</span> 
+</div>
+<div class="code">
+| <a id="surface_tt" class="idref" href="#surface_tt"><span class="id" title="constructor">surface_tt</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode">⊥</span> 
+</div>
+<div class="code">
+| <a id="surface_False" class="idref" href="#surface_False"><span class="id" title="constructor">surface_False</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_absurd"><span class="id" title="constructor">surface_absurd</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GenericDec.C"><span class="id" title="variable">C</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>: ex falso, the proof <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> of <span class="inlinecode">⊥</span> into <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GenericDec.C"><span class="id" title="variable">C</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_absurd" class="idref" href="#surface_absurd"><span class="id" title="constructor">surface_absurd</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_and"><span class="id" title="constructor">surface_and</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode"><span class="id" title="var">Q</span></span>: the conjunction, <span class="inlinecode"><span class="id" title="var">Q</span></span> binding a proof of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_and" class="idref" href="#surface_and"><span class="id" title="constructor">surface_and</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_conj"><span class="id" title="constructor">surface_conj</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode"><span class="id" title="var">Q</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span>: the proof of the conjunction of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> and <span class="inlinecode"><span class="id" title="var">Q</span></span> (under
+    a binder of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span>) from <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span>; <span class="inlinecode"><span class="id" title="var">Q</span></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_hole"><span class="id" title="constructor">surface_hole</span></a></span> when omitted, as in
+    <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#conj"><span class="id" title="constructor">conj</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a>)</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_conj" class="idref" href="#surface_conj"><span class="id" title="constructor">surface_conj</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+The first component of a proof of a conjunction 
+</div>
+<div class="code">
+| <a id="surface_left" class="idref" href="#surface_left"><span class="id" title="constructor">surface_left</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+Its second component 
+</div>
+<div class="code">
+| <a id="surface_right" class="idref" href="#surface_right"><span class="id" title="constructor">surface_right</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_pi"><span class="id" title="constructor">surface_pi</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> binding the argument; its sort is not written 
+</div>
+<div class="code">
+| <a id="surface_pi" class="idref" href="#surface_pi"><span class="id" title="constructor">surface_pi</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_fn"><span class="id" title="constructor">surface_fn</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> binding the argument 
+</div>
+<div class="code">
+| <a id="surface_fn" class="idref" href="#surface_fn"><span class="id" title="constructor">surface_fn</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+Application 
+</div>
+<div class="code">
+| <a id="surface_app" class="idref" href="#surface_app"><span class="id" title="constructor">surface_app</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+A variable 
+</div>
+<div class="code">
+| <a id="surface_var" class="idref" href="#surface_var"><span class="id" title="constructor">surface_var</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_let"><span class="id" title="constructor">surface_let</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> under the local binding <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_let" class="idref" href="#surface_let"><span class="id" title="constructor">surface_let</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_binding:4"><span class="id" title="inductive">surface_binding</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of the module <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_mem" class="idref" href="#surface_mem"><span class="id" title="constructor">surface_mem</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">t.x</span></span> for a term <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>: the field or member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>'s record type,
+    resolved by the typed pass once <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>'s type is inferred 
+</div>
+<div class="code">
+| <a id="surface_proj_term" class="idref" href="#surface_proj_term"><span class="id" title="constructor">surface_proj_term</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_elim"><span class="id" title="constructor">surface_elim</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Bks"><span class="id" title="variable">Bks</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>: the eliminator of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> of its
+    group, by the blocks <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Bks"><span class="id" title="variable">Bks</span></a></span>, one per member in order; the group, its
+    uniform parameters and the motives' sort are not written 
+</div>
+<div class="code">
+| <a id="surface_elim" class="idref" href="#surface_elim"><span class="id" title="constructor">surface_elim</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_block:2"><span class="id" title="inductive">surface_block</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_tuple"><span class="id" title="constructor">surface_tuple</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="var">fs</span></span>: the element of the record type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> with the fields
+    <span class="inlinecode"><span class="id" title="var">fs</span></span>, by name 
+</div>
+<div class="code">
+| <a id="surface_tuple" class="idref" href="#surface_tuple"><span class="id" title="constructor">surface_tuple</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+</div>
+
+<div class="doc">
+An omitted annotation, which the typed pass fills 
+</div>
+<div class="code">
+| <a id="surface_hole" class="idref" href="#surface_hole"><span class="id" title="constructor">surface_hole</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a><br/>
+<span class="id" title="keyword">with</span> <a id="surface_block" class="idref" href="#surface_block"><span class="id" title="definition, inductive"><span id="surface_block_rect" class="id"><span id="surface_block_ind" class="id"><span id="surface_block_rec" class="id"><span id="surface_block_sind" class="id">surface_block</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_eb_mk"><span class="id" title="constructor">surface_eb_mk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#nm"><span class="id" title="abbreviation">nm</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.Regressions.html#PhantomViews.Z"><span class="id" title="variable">Z</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="var">Bs</span></span>: an eliminator block whose motive <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> binds <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#nm"><span class="id" title="abbreviation">nm</span></a></span>
+    variables (the non-uniform parameters and the scrutinee), the
+    scrutinee's type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.Regressions.html#PhantomViews.Z"><span class="id" title="variable">Z</span></a></span> as written (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_hole"><span class="id" title="constructor">surface_hole</span></a></span> if omitted), and the
+    branches, each a constructor, its number of binders and its body 
+</div>
+<div class="code">
+| <a id="surface_eb_mk" class="idref" href="#surface_eb_mk"><span class="id" title="constructor">surface_eb_mk</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_block:2"><span class="id" title="inductive">surface_block</span></a><br/>
+<span class="id" title="keyword">with</span> <a id="surface_modexp" class="idref" href="#surface_modexp"><span class="id" title="definition, inductive"><span id="surface_modexp_rect" class="id"><span id="surface_modexp_ind" class="id"><span id="surface_modexp_rec" class="id"><span id="surface_modexp_sind" class="id">surface_modexp</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+A unit, by its path 
+</div>
+<div class="code">
+| <a id="surface_me_unit" class="idref" href="#surface_me_unit"><span class="id" title="constructor">surface_me_unit</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#path"><span class="id" title="abbreviation">path</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a><br/>
+</div>
+
+<div class="doc">
+A local module slot 
+</div>
+<div class="code">
+| <a id="surface_me_var" class="idref" href="#surface_me_var"><span class="id" title="constructor">surface_me_var</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a><br/>
+</div>
+
+<div class="doc">
+A submodule 
+</div>
+<div class="code">
+| <a id="surface_me_mem" class="idref" href="#surface_me_mem"><span class="id" title="constructor">surface_me_mem</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a><br/>
+</div>
+
+<div class="doc">
+A module applied to an argument 
+</div>
+<div class="code">
+| <a id="surface_me_app" class="idref" href="#surface_me_app"><span class="id" title="constructor">surface_me_app</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a><br/>
+<span class="id" title="keyword">with</span> <a id="surface_binding" class="idref" href="#surface_binding"><span class="id" title="definition, inductive"><span id="surface_binding_rect" class="id"><span id="surface_binding_ind" class="id"><span id="surface_binding_rec" class="id"><span id="surface_binding_sind" class="id">surface_binding</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_b_def"><span class="id" title="constructor">surface_b_def</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>: a local definition of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_hole"><span class="id" title="constructor">surface_hole</span></a></span> when the
+    type is not written) 
+</div>
+<div class="code">
+| <a id="surface_b_def" class="idref" href="#surface_b_def"><span class="id" title="constructor">surface_b_def</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_binding:4"><span class="id" title="inductive">surface_binding</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_b_mod"><span class="id" title="constructor">surface_b_mod</span></a></span> <span class="inlinecode"><span class="id" title="var">U</span></span>: a local module 
+</div>
+<div class="code">
+| <a id="surface_b_mod" class="idref" href="#surface_b_mod"><span class="id" title="constructor">surface_b_mod</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_unit:5"><span class="id" title="inductive">surface_unit</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_binding:4"><span class="id" title="inductive">surface_binding</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_b_ind_alias"><span class="id" title="constructor">surface_b_ind_alias</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>: a local inductive alias of the module <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>,
+    under no parameters; the typed pass reads its type former off <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_b_ind_alias" class="idref" href="#surface_b_ind_alias"><span class="id" title="constructor">surface_b_ind_alias</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_binding:4"><span class="id" title="inductive">surface_binding</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_b_record_alias"><span class="id" title="constructor">surface_b_record_alias</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>: a local record alias, as an inductive one 
+</div>
+<div class="code">
+| <a id="surface_b_record_alias" class="idref" href="#surface_b_record_alias"><span class="id" title="constructor">surface_b_record_alias</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_binding:4"><span class="id" title="inductive">surface_binding</span></a><br/>
+<span class="id" title="keyword">with</span> <a id="surface_unit" class="idref" href="#surface_unit"><span class="id" title="definition, inductive"><span id="surface_unit_rect" class="id"><span id="surface_unit_ind" class="id"><span id="surface_unit_rec" class="id"><span id="surface_unit_sind" class="id">surface_unit</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_gu_mk"><span class="id" title="constructor">surface_gu_mk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span>: the parameters, assumptions, innermost first, and the
+    definition under them 
+</div>
+<div class="code">
+| <a id="surface_gu_mk" class="idref" href="#surface_gu_mk"><span class="id" title="constructor">surface_gu_mk</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_moddef:6"><span class="id" title="inductive">surface_moddef</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_unit:5"><span class="id" title="inductive">surface_unit</span></a><br/>
+<span class="id" title="keyword">with</span> <a id="surface_moddef" class="idref" href="#surface_moddef"><span class="id" title="definition, inductive"><span id="surface_moddef_rect" class="id"><span id="surface_moddef_ind" class="id"><span id="surface_moddef_rec" class="id"><span id="surface_moddef_sind" class="id">surface_moddef</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+A body 
+</div>
+<div class="code">
+| <a id="surface_md_body" class="idref" href="#surface_md_body"><span class="id" title="constructor">surface_md_body</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_body:7"><span class="id" title="inductive">surface_body</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_moddef:6"><span class="id" title="inductive">surface_moddef</span></a><br/>
+</div>
+
+<div class="doc">
+An alias of a module expression 
+</div>
+<div class="code">
+| <a id="surface_md_alias" class="idref" href="#surface_md_alias"><span class="id" title="constructor">surface_md_alias</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_moddef:6"><span class="id" title="inductive">surface_moddef</span></a><br/>
+<span class="id" title="keyword">with</span> <a id="surface_body" class="idref" href="#surface_body"><span class="id" title="definition, inductive"><span id="surface_body_rect" class="id"><span id="surface_body_ind" class="id"><span id="surface_body_rec" class="id"><span id="surface_body_sind" class="id">surface_body</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+The empty body 
+</div>
+<div class="code">
+| <a id="surface_gm_nil" class="idref" href="#surface_gm_nil"><span class="id" title="constructor">surface_gm_nil</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_body:7"><span class="id" title="inductive">surface_body</span></a><br/>
+</div>
+
+<div class="doc">
+A named entry after the body before it 
+</div>
+<div class="code">
+| <a id="surface_gm_ext" class="idref" href="#surface_gm_ext"><span class="id" title="constructor">surface_gm_ext</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_body:7"><span class="id" title="inductive">surface_body</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_entry:8"><span class="id" title="inductive">surface_entry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_body:7"><span class="id" title="inductive">surface_body</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_gm_open"><span class="id" title="constructor">surface_gm_open</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> <span class="inlinecode"><span class="id" title="var">its</span></span>: an open of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> declaring the items <span class="inlinecode"><span class="id" title="var">its</span></span>; the
+    core's open phase expands it 
+</div>
+<div class="code">
+| <a id="surface_gm_open" class="idref" href="#surface_gm_open"><span class="id" title="constructor">surface_gm_open</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_body:7"><span class="id" title="inductive">surface_body</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp:3"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#import_item"><span class="id" title="definition">import_item</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_body:7"><span class="id" title="inductive">surface_body</span></a><br/>
+<span class="id" title="keyword">with</span> <a id="surface_entry" class="idref" href="#surface_entry"><span class="id" title="definition, inductive"><span id="surface_entry_rect" class="id"><span id="surface_entry_ind" class="id"><span id="surface_entry_rec" class="id"><span id="surface_entry_sind" class="id">surface_entry</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_ge_def"><span class="id" title="constructor">surface_ge_def</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="var">oM</span></span>: a definition, transparent when <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span>, private when
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.pv"><span class="id" title="variable">pv</span></a></span>, of the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, with the body <span class="inlinecode"><span class="id" title="var">oM</span></span> (<span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span> for an axiom); its
+    sort is not written 
+</div>
+<div class="code">
+| <a id="surface_ge_def" class="idref" href="#surface_ge_def"><span class="id" title="constructor">surface_ge_def</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp:1"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_entry:8"><span class="id" title="inductive">surface_entry</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_ge_mod"><span class="id" title="constructor">surface_ge_mod</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><span class="id" title="var">U</span></span>: a submodule 
+</div>
+<div class="code">
+| <a id="surface_ge_mod" class="idref" href="#surface_ge_mod"><span class="id" title="constructor">surface_ge_mod</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_unit:5"><span class="id" title="inductive">surface_unit</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_entry:8"><span class="id" title="inductive">surface_entry</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab855"></a><h2 class="section">Commands</h2>
+
+<div class="paragraph"> </div>
+
+ A member of a group of inductive types as written: its name, its
+    non-uniform parameters (assumptions, innermost first), its sort, and
+    its constructors, each with its named arguments, outermost first. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Record</span> <a id="surface_raw_member" class="idref" href="#surface_raw_member"><span class="id" title="record">surface_raw_member</span></a> : <span class="id" title="keyword">Set</span> := <span class="id" title="var">mk_surface_raw_member</span><br/>
+&nbsp;&nbsp;{ </div>
+
+<div class="doc">
+The member's name 
+</div>
+<div class="code">
+&nbsp;&nbsp;&nbsp;&nbsp;<a id="surface_raw_member_name" class="idref" href="#surface_raw_member_name"><span class="id" title="projection">surface_raw_member_name</span></a> : <span class="id" title="inductive">string</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+Its non-uniform parameters, innermost first 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="surface_raw_member_nparams" class="idref" href="#surface_raw_member_nparams"><span class="id" title="projection">surface_raw_member_nparams</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+Its sort, over the uniform parameters 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="surface_raw_member_sort" class="idref" href="#surface_raw_member_sort"><span class="id" title="projection">surface_raw_member_sort</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+Its constructors, each with its named arguments 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="surface_raw_member_cons" class="idref" href="#surface_raw_member_cons"><span class="id" title="projection">surface_raw_member_cons</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a>)) }.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+A group as written. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Record</span> <a id="surface_raw_decl" class="idref" href="#surface_raw_decl"><span class="id" title="record">surface_raw_decl</span></a> : <span class="id" title="keyword">Set</span> := <span class="id" title="var">mk_surface_raw_decl</span><br/>
+&nbsp;&nbsp;{ </div>
+
+<div class="doc">
+The group's own uniform parameters, innermost first 
+</div>
+<div class="code">
+&nbsp;&nbsp;&nbsp;&nbsp;<a id="surface_raw_decl_uparams" class="idref" href="#surface_raw_decl_uparams"><span class="id" title="projection">surface_raw_decl_uparams</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+The declared members, in order 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="surface_raw_decl_members" class="idref" href="#surface_raw_decl_members"><span class="id" title="projection">surface_raw_decl_members</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_raw_member"><span class="id" title="record">surface_raw_member</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+Whether the group files its recursor module <span class="inlinecode"><span class="id" title="var">Rec</span></span> 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="surface_raw_decl_rec_field" class="idref" href="#surface_raw_decl_rec_field"><span class="id" title="projection">surface_raw_decl_rec_field</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> }.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+A function of a <span class="inlinecode"><span class="id" title="var">mutual</span></span> <span class="inlinecode"><span class="id" title="var">def</span></span> as written. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Record</span> <a id="surface_raw_fun" class="idref" href="#surface_raw_fun"><span class="id" title="record">surface_raw_fun</span></a> : <span class="id" title="keyword">Set</span> := <span class="id" title="var">mk_surface_raw_fun</span><br/>
+&nbsp;&nbsp;{ </div>
+
+<div class="doc">
+The function's name 
+</div>
+<div class="code">
+&nbsp;&nbsp;&nbsp;&nbsp;<a id="surface_raw_fun_name" class="idref" href="#surface_raw_fun_name"><span class="id" title="projection">surface_raw_fun_name</span></a> : <span class="id" title="inductive">string</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+Its non-uniform parameters, innermost first 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="surface_raw_fun_nparams" class="idref" href="#surface_raw_fun_nparams"><span class="id" title="projection">surface_raw_fun_nparams</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+The scrutinee's type 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="surface_raw_fun_scrut" class="idref" href="#surface_raw_fun_scrut"><span class="id" title="projection">surface_raw_fun_scrut</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+The result type 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="surface_raw_fun_res" class="idref" href="#surface_raw_fun_res"><span class="id" title="projection">surface_raw_fun_res</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;</div>
+
+<div class="doc">
+The clauses: constructor name, number of binders, body 
+</div>
+<div class="code">
+&nbsp;&nbsp;; <a id="surface_raw_fun_clauses" class="idref" href="#surface_raw_fun_clauses"><span class="id" title="projection">surface_raw_fun_clauses</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a>) }.<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="surface_cmd" class="idref" href="#surface_cmd"><span class="id" title="definition, inductive"><span id="surface_cmd_rect" class="id"><span id="surface_cmd_ind" class="id"><span id="surface_cmd_rec" class="id"><span id="surface_cmd_sind" class="id">surface_cmd</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> or <span class="inlinecode"><span class="id" title="var">axiom</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>: transparency, privacy, type, body 
+</div>
+<div class="code">
+| <a id="surface_cmd_def" class="idref" href="#surface_cmd_def"><span class="id" title="constructor">surface_cmd_def</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a>)</span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span> 
+</div>
+<div class="code">
+| <a id="surface_cmd_mod" class="idref" href="#surface_cmd_mod"><span class="id" title="constructor">surface_cmd_mod</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_cmd_alias" class="idref" href="#surface_cmd_alias"><span class="id" title="constructor">surface_cmd_alias</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Counts.fp"><span class="id" title="variable">fp</span></a></span>: load the unit <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Counts.fp"><span class="id" title="variable">fp</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_cmd_load" class="idref" href="#surface_cmd_load"><span class="id" title="constructor">surface_cmd_load</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#path"><span class="id" title="abbreviation">path</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><span class="id" title="var">its</span></span> 
+</div>
+<div class="code">
+| <a id="surface_cmd_open" class="idref" href="#surface_cmd_open"><span class="id" title="constructor">surface_cmd_open</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#import_item"><span class="id" title="definition">import_item</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="tactic">eval</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> being <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_hole"><span class="id" title="constructor">surface_hole</span></a></span> when not written 
+</div>
+<div class="code">
+| <a id="surface_cmd_eval" class="idref" href="#surface_cmd_eval"><span class="id" title="constructor">surface_cmd_eval</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">inductive</span></span> <span class="inlinecode">…</span> 
+</div>
+<div class="code">
+| <a id="surface_cmd_inductive" class="idref" href="#surface_cmd_inductive"><span class="id" title="constructor">surface_cmd_inductive</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_raw_decl"><span class="id" title="record">surface_raw_decl</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">mutual</span></span> <span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a>)</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>, abstract and private or not 
+</div>
+<div class="code">
+| <a id="surface_cmd_mdef" class="idref" href="#surface_cmd_mdef"><span class="id" title="constructor">surface_cmd_mdef</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_raw_fun"><span class="id" title="record">surface_raw_fun</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_cmd_builtin" class="idref" href="#surface_cmd_builtin"><span class="id" title="constructor">surface_cmd_builtin</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">inductive</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_cmd_inductive_alias" class="idref" href="#surface_cmd_inductive_alias"><span class="id" title="constructor">surface_cmd_inductive_alias</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">record</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> 
+</div>
+<div class="code">
+| <a id="surface_cmd_record_alias" class="idref" href="#surface_cmd_record_alias"><span class="id" title="constructor">surface_cmd_record_alias</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp"><span class="id" title="inductive">surface_modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">record</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode">;</span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span> 
+</div>
+<div class="code">
+| <a id="surface_cmd_record" class="idref" href="#surface_cmd_record"><span class="id" title="constructor">surface_cmd_record</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd:32"><span class="id" title="inductive">surface_cmd</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+A unit as written: its leading imports, its parameters (innermost
+    first), its body. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="surface_compilation_unit" class="idref" href="#surface_compilation_unit"><span class="id" title="definition">surface_compilation_unit</span></a> : <span class="id" title="keyword">Set</span> := (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd"><span class="id" title="inductive">surface_cmd</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_exp"><span class="id" title="inductive">surface_exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_cmd"><span class="id" title="inductive">surface_cmd</span></a>)%<span class="id" title="keyword">type</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

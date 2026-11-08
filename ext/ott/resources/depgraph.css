@@ -1,0 +1,40 @@
+svg.depgraph {
+    /* The page column shrinks to its content, so size by the window. */
+    width: calc(100vw - 48px);
+    height: calc(100vh - 140px);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+svg.depgraph.depgraph-dragging {
+    cursor: grabbing;
+}
+
+.depgraph-hint {
+    font-size: 90%;
+    color: #666;
+}
+
+svg.depgraph > text:first-of-type {
+    font-weight: bold;
+}
+
+.text-highlight-edges text {
+    opacity: 1 !important;
+    stroke-width: 3;
+    font-weight: bold;
+    fill: indigo;
+}
+
+.edge-highlight path {
+    opacity: 1;
+    stroke-width: 3;
+    stroke: blue;
+}
+
+.edge-highlight polygon {
+    opacity: 1;
+    stroke-width: 3;
+    stroke: blue;
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PairedTrees</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">PairedTrees</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><span class="kw">inductive</span> <a class="mod" href="#T">T</a></li><li><span class="kw">def</span> <a class="def" href="#example">example</a></li><li><span class="kw">def</span> <a class="def" href="#largest">largest</a></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>PairedTrees</h1>
+<div class="doc"><p>A client of the paired trees of <code>Prelude›Data›Tree›Paired</code>: the operations on a closed tree of numbers, and a function written with the type's recursor, whose case at a node takes one result per subtree.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">PairedTrees</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="succ" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="plus" href="Prelude.Arith.Plus.html#plus">plus</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.MinMax.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.MinMax.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.MinMax.html">MinMax</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="max" href="Prelude.Arith.MinMax.html#max">max</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Data.Prod.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Prod.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Prod.html">Prod</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Prod" href="Prelude.Data.Prod.html#Prod">Prod</a><span class="sym">;</span> <a class="def bind" id="pair" href="Prelude.Data.Prod.html#pair">pair</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Data.Tree.Paired.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Tree.Paired.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Tree.Paired.html">Tree</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Tree.Paired.html">Paired</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Paired" href="Prelude.Data.Tree.Paired.html#Paired">Paired</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Data.Tree.Paired.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Tree.Paired.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Tree.Paired.html">Tree</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Tree.Paired.html">Paired</a><span class="sym">.</span><a class="mod" href="Prelude.Data.Tree.Paired.html#Ops">Ops</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="kw">as</span> <span class="mod bind" id="R">R</span>
+
+<span class="kw">inductive</span> <span class="mod bind" id="T">T</span> <span class="sym">≔</span> <a class="mod" href="Prelude.Data.Tree.Paired.html#Paired">Paired</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a>
+</pre>
+<div class="doc"><p>The tree . / \ 1   . / \ 2   3</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="example">example</span> <span class="sym">:</span> <a class="mod" href="#T">T</a> <span class="sym">≔</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.branch">branch</a> <span class="sym">(</span><a class="mod" href="#T">T</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Paired.leaf">leaf</a> <span class="num">1</span><span class="sym">)</span> <span class="sym">(</span><a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.branch">branch</a> <span class="sym">(</span><a class="mod" href="#T">T</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Paired.leaf">leaf</a> <span class="num">2</span><span class="sym">)</span> <span class="sym">(</span><a class="mod" href="#T">T</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Paired.leaf">leaf</a> <span class="num">3</span><span class="sym">)</span><span class="sym">)</span> <span class="kw">end</span>
+
+<span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.size">size</a> <a class="def" href="#example">example</a></pre>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.size example --&gt; 3 : ℕ</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.depth">depth</a> <a class="def" href="#example">example</a></pre>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.depth example --&gt; 3 : ℕ</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.flatten">flatten</a> <a class="def" href="#example">example</a></pre>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.flatten example
+  --&gt; Prelude›Data›List.List.cons 0l ℕ 1
+        (Prelude›Data›List.List.cons 0l ℕ 2
+          (Prelude›Data›List.List.cons 0l ℕ 3
+            (Prelude›Data›List.List.nil 0l ℕ))) : Prelude›Data›List.List 0l ℕ</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.flatten">flatten</a> <span class="sym">(</span><a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.mirror">mirror</a> <a class="def" href="#example">example</a><span class="sym">)</span></pre>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.flatten (R.mirror example)
+  --&gt; Prelude›Data›List.List.cons 0l ℕ 3
+        (Prelude›Data›List.List.cons 0l ℕ 2
+          (Prelude›Data›List.List.cons 0l ℕ 1
+            (Prelude›Data›List.List.nil 0l ℕ))) : Prelude›Data›List.List 0l ℕ</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.flatten">flatten</a> <span class="sym">(</span><a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.map">map</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="def" href="#example">example</a><span class="sym">)</span></pre>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.flatten (R.map ℕ succ example)
+  --&gt; Prelude›Data›List.List.cons 0l ℕ 2
+        (Prelude›Data›List.List.cons 0l ℕ 3
+          (Prelude›Data›List.List.cons 0l ℕ 4
+            (Prelude›Data›List.List.nil 0l ℕ))) : Prelude›Data›List.List 0l ℕ</pre></details>
+<div class="doc"><p>The sum of the labels, as a fold.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#R">R</a><span class="sym">.</span><a class="def" href="Prelude.Data.Tree.Paired.html#Ops.fold">fold</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l65">a</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l65">a</a><span class="sym">)</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="def" href="#example">example</a></pre>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate R.fold ℕ (λ (x1 : ℕ) → x1) plus example --&gt; 6 : ℕ</pre></details>
+<div class="doc"><p>The largest label, by the recursor: the case at a node takes the pair and the results for its two subtrees.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="largest">largest</span> <span class="sym">(</span><span class="var bind" id="l70">t</span> <span class="sym">:</span> <a class="mod" href="#T">T</a><span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span>
+  <a class="mod" href="Prelude.Data.Tree.Paired.html#Paired">Paired</a><span class="sym">.</span><a class="mod" href="Prelude.Data.Tree.Paired.html#Paired">rec</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="num">0l</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l74">z</span> <span class="sym">:</span> <a class="mod" href="#T">T</a><span class="sym">)</span> <span class="sym">→</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span>
+    <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l76">a</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l76">a</a><span class="sym">)</span>
+    <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l78">p</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.Prod.html#Prod">Prod</a> <span class="num">0l</span> <a class="mod" href="#T">T</a> <a class="mod" href="#T">T</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l82">m</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l83">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <a class="var" href="#l82">m</a> <a class="var" href="#l83">n</a><span class="sym">)</span>
+    <a class="var" href="#l70">t</a>
+<span class="kw">end</span>
+
+<span class="kw">eval</span> <a class="def" href="#largest">largest</a> <a class="def" href="#example">example</a></pre>
+<details class="eval" style="--col:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate largest example --&gt; 3 : ℕ</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
+</body></html>

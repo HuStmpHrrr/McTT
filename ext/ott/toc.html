@@ -1,0 +1,5032 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+      <a href="./lib/index.html"> Library </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<div id="toc">
+<h2><a href="Mctt.Algorithmic.Subtyping.html">Mctt.Algorithmic.Subtyping</a></h2>
+<h2><a href="Mctt.Algorithmic.Strengthening.html">Mctt.Algorithmic.Strengthening</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab1">Strengthening: the Semantic Toolkit</a>
+<ul class="doclist">
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab2">The Weakening that Inserts a Variable</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab3">Semantic Weakening at Position <span class="inlinecode"><span class="id" title="var">k</span></span></a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab4">The Types of the Long Environment</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab5">The Long Environment</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab6">EqStr: Strengthening an Equation</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab7">A Long Subtyping of a Short Type</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab8">ShapePi: a Short Type below a <span class="inlinecode"><span class="id" title="var">Π</span></span></a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab9">ShapeAll: a Short Proposition below a <span class="inlinecode">∀</span></a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab10">ShapeInd: a Short Type below an Inductive Type</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab11">ShapeUniv: a Short Type above a Universe</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab12">The Semantic Subtyping, Read Back</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab13">SubStr: Strengthening a Subtyping</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab14">Strengthening Normal Forms</a>
+<ul class="doclist">
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab15">Syntactic Helpers</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab16">The Arguments of an Application of a Head of a <span class="inlinecode"><span class="id" title="var">Π</span></span> over a Telescope</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab17">Record Types, Applied</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab18">Instances of Telescopes</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab19">A Member's Type at the Parameters of its Type Former</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab20">The Induction on Normal Forms</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab21">Records</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab22">The Cases at a Sort</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab23">The Cases of the Theorem</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab24">The Induction Hypotheses Under the Premise</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab25">The Theorem</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Strengthening.html#lab26">At the Outermost Variable</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Algorithmic.Subtyping.Definitions.html">Mctt.Algorithmic.Subtyping.Definitions</a></h2>
+<h2><a href="Mctt.Algorithmic.Subtyping.Lemmas.html">Mctt.Algorithmic.Subtyping.Lemmas</a></h2>
+<h2><a href="Mctt.Algorithmic.Typing.html">Mctt.Algorithmic.Typing</a></h2>
+<h2><a href="Mctt.Algorithmic.Typing.Definitions.html">Mctt.Algorithmic.Typing.Definitions</a></h2>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="Mctt.Algorithmic.Typing.Definitions.html#lab27">User Expressions</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Algorithmic.Typing.Functional.html">Mctt.Algorithmic.Typing.Functional</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Algorithmic.Typing.Functional.html#lab28">Inference Is Functional</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Algorithmic.Typing.Lemmas.html">Mctt.Algorithmic.Typing.Lemmas</a></h2>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab29">Moving Levels Up the Sorts</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab30">Universe Normal Forms as Types</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab31">Checking: by the inferred type, below the checked one</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab32">Inference</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab33">Extensions, entry by entry</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab34">Parameters: each of a universe or of levels, all at one level</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab35">Units</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab36">Bodies, by their own lemmas</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab37">Module expressions</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab38">Unannotated Definitions</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab39">Completeness of the <span class="inlinecode"><span class="id" title="var">Π</span></span> Rule</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab40">Extensions Entry by Entry</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab41">Records, Algorithmically</a>
+
+</li>
+<li><a href="Mctt.Algorithmic.Typing.Lemmas.html#lab42">Completeness of the Rules of Either Sort</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Base.html">Mctt.Core.Base</a></h2>
+<h2><a href="Mctt.Core.Completeness.html">Mctt.Core.Completeness</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.html#lab43">Completeness of Normalization by Evaluation</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.html#lab44">Levels Hold No Proofs</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Consequences.Rules.html">Mctt.Core.Completeness.Consequences.Rules</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Consequences.Rules.html#lab45">Consequences of Completeness: normal forms respect context equality</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Consequences.Types.html">Mctt.Core.Completeness.Consequences.Types</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Consequences.Types.html#lab46">Consequences of Completeness: types are rigid</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Consequences.Types.html#lab47">The Parameters of a Type Former</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Consequences.Types.html#lab48">Universe Terms</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.ContextCases.html">Mctt.Core.Completeness.ContextCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.ContextCases.html#lab49">Contexts</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.ContextCases.html#lab50">Definition Entries</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.FunctionCases.html">Mctt.Core.Completeness.FunctionCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab51">Fundamental Theorem: Π-Types and Universal Propositions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab52">Domains of Either Sort</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab53">The Type Judgment of a Π</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab54">Π-Congruence in a Large Universe</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab55">Π into a Codomain of an Evaluated Kind</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab56">The Small <span class="inlinecode"><span class="id" title="var">Π</span></span> at a Level Term</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab57">The Universal Proposition</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab58">The <span class="inlinecode"><span class="id" title="var">Π</span></span> between Types of Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab59">λ-Congruence</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab60">Application Congruence</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab64">The Type Judgment of an Instantiation at a Proposition</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab69">β</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab81">η</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.FundamentalTheorem.html">Mctt.Core.Completeness.FundamentalTheorem</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.FundamentalTheorem.html#lab82">The Fundamental Theorem of the PER Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.FundamentalTheorem.html#lab83">Scoping side conditions</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FundamentalTheorem.html#lab84">Each entry is valid where it is checked</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FundamentalTheorem.html#lab85">Every well-formed global context embeds soundly into itself</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FundamentalTheorem.html#lab86">The fundamental theorem at the identity embedding</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LetCases.html">Mctt.Core.Completeness.LetCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LetCases.html#lab87">Fundamental Theorem: Local Definitions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LetCases.html#lab88">Simple Forms at a Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LetCases.html#lab89">Substitutions into a Definition Entry</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LetCases.html#lab90">The Let Rules</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LevelCases.html">Mctt.Core.Completeness.LevelCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LevelCases.html#lab104">Fundamental Theorem: Universe Levels</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LevelCases.html#lab105"><span class="inlinecode"><span class="id" title="var">Level@n</span></span> as a Type of Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LevelCases.html#lab106">Levels as Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LevelCases.html#lab107">The Level Forms</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LevelCases.html#lab108">The Level Equations</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LevelCases.html#lab109">Universes at a Level@n Term</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LevelCases.html#lab110">Subtyping of Small Universes</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.html">Mctt.Core.Completeness.LogicalRelation</a></h2>
+<h2><a href="Mctt.Core.Completeness.ModuleCases.html">Mctt.Core.Completeness.ModuleCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.ModuleCases.html#lab111">The Module Rules</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.ModuleCases.html#lab112">1. Valid contexts' slots</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.ModuleCases.html#lab113">2. The cases of the module rules</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.ModuleCases.html#lab114">3. The rules</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html">Mctt.Core.Completeness.LogicalRelation.Definitions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab118">The Semantic Judgments</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab119">1. The Relations at One Global Context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab128">2. Valid Units, and Contexts with Valid Slots</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab129">3. Valid Global Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab130">4. The Semantic Judgments</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html">Mctt.Core.Completeness.LogicalRelation.Lemmas</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab131">Semantic Weakenings</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab132">Evaluating the Identity and the Weakenings at a Context</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab133">Reading a Context PER off <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab134">Semantic Weakenings are Semantic Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab135">Instantiation at the Identity</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab136">Instances at Retagged Environments</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab137">Precomposition with a Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab138">Semantic Weakening of a Term Judgment</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab139">Precomposition by <span class="inlinecode">⇑</span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab140">Symmetry</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab141">Transitivity</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab142">Changing the Context PER</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab143">Equality from Pointwise Relatedness</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.Tactics.html">Mctt.Core.Completeness.LogicalRelation.Tactics</a></h2>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Tactics.html#lab144">The Semantic Judgments</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html">Mctt.Core.Completeness.LogicalRelation.Substitution</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#lab145">Building Semantic Substitutions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#lab146"><span class="inlinecode"><span class="id" title="var">q</span></span> Preserves Semantic Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#lab147">Extension is Semantic</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#lab148">Extension by a Precomposed Term</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#lab149">Double Extension by Precomposed Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#lab150">Lifting is Semantic</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#lab151">Instantiating a Premise in an Extended Context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#lab152">The Type Judgment of an Instantiation</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#lab153">The Diagonal of the Above</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.SubtypingCases.html">Mctt.Core.Completeness.SubtypingCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab154">Subtyping</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab155"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Eq</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab156"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Trans</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab157"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Univ</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab158">Types of Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab159">Small Universes</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab160"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Pi</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab161"><span class="inlinecode"><span class="id" title="var">Subsump</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab162">Symmetry and Transitivity of Term Equality</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.PropCases.html">Mctt.Core.Completeness.PropCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.PropCases.html#lab163">Fundamental Theorem: the Propositions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.PropCases.html#lab164">The Propositions as Elements of <span class="inlinecode"><span class="id" title="keyword">Prop</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.PropCases.html#lab165">Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.PropCases.html#lab166">Ex Falso</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.PropCases.html#lab167">The Conjunction</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.PropCases.html#lab168"><span class="inlinecode"><span class="id" title="keyword">Prop</span></span> and the Placeholder Type as Small Types</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.PropCases.html#lab169">The Rules</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.UnitCases.html">Mctt.Core.Completeness.UnitCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab170">Units: Slots, Module Expressions and Module Lets</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab171">Context PERs of Extended Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab172">Slots</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab173">Module Expressions: Symmetry and Transitivity</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab174">Extensions</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab175">Module Lets</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab176">Definitions with a Module Part</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab181">Local Definitions with a Module Part</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab188">Environments of Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UnitCases.html#lab189">The <span class="inlinecode"><span class="id" title="var">n</span></span>-fold Shift</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.Instance.html">Mctt.Core.Completeness.LogicalRelation.Instance</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Instance.html#lab190">Instances of Judgments along Substitutions Built from Valid Parts</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Instance.html#lab191">Composition</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Instance.html#lab192">Substitutions Built from Valid Parts</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Instance.html#lab193">Instances</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.ModuleVal.html">Mctt.Core.Completeness.Modules.ModuleVal</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.ModuleVal.html#lab194">Operations on Related Module Values</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.ModuleVal.html#lab195">Evaluation Is Deterministic</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ModuleVal.html#lab196">Application</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ModuleVal.html#lab197">Closures and Global Telescopes</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ModuleVal.html#lab198">Selection from a Value Lacking a Parameter</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.Values.html">Mctt.Core.Completeness.Modules.Values</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Values.html#lab199">Semantic Members of Module Expressions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Values.html#lab200">Values of Module Expressions</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Values.html#lab201">Selection from Values Lacking a Parameter</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Values.html#lab202">Semantic Members</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Values.html#lab203">Members of Related Module Expressions</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Values.html#lab204">Members of Values Lacking a Parameter</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.ValidUnit.html">Mctt.Core.Completeness.Modules.ValidUnit</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.ValidUnit.html#lab205">Valid Units: Properties</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.ValidUnit.html#lab206">Instances of Valid Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ValidUnit.html#lab207">A Body Filled in, Against its Environment</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ValidUnit.html#lab208">Kinds of Valid Module Values</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ValidUnit.html#lab209">Bodies Read by Kinds</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ValidUnit.html#lab210">Valid Global Modules</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ValidUnit.html#lab211">The Kinds of Valid Units</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.Body.html">Mctt.Core.Completeness.Modules.Body</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Body.html#lab212">Related Closures of Units</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Body.html#lab213">Walking along a Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Body.html#lab214">Closures Commute with Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Body.html#lab215">Entries of Two Related Bodies</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Body.html#lab216">Walking Two Related Bodies</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Body.html#lab217">Related Closures</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.Filed.html">Mctt.Core.Completeness.Modules.Filed</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Filed.html#lab218">Filed Modules in the PER Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Filed.html#lab219">Global Module Values</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Filed.html#lab220">Instances of Closed Telescopes</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Filed.html#lab221">Members of Global Modules</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Filed.html#lab222">Terms Evaluating Alike</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Filed.html#lab223">Filed Modules</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.UnitSubst.html">Mctt.Core.Completeness.Modules.UnitSubst</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.UnitSubst.html#lab224">Semantic Contexts and Units along Substitutions Built from Valid Parts</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.ModexpRel.html">Mctt.Core.Completeness.Modules.ModexpRel</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.ModexpRel.html#lab225">The Rules of Module Expressions in the PER Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.ModexpRel.html#lab226">Related Values make Related Module Expressions</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ModexpRel.html#lab227">Module Expressions along Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ModexpRel.html#lab228">Slots</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ModexpRel.html#lab229">Applications</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.ModexpRel.html#lab230"><span class="inlinecode"><span class="id" title="var">β</span></span></a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.Unit.html">Mctt.Core.Completeness.Modules.Unit</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Unit.html#lab231">Valid Units: Validity, Substitution, Instantiation, Abstraction</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Unit.html#lab232">Valid Units Are Valid</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Unit.html#lab233">Valid Units along Substitutions, in the PER Model</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Unit.html#lab234">Valid Units along Substitutions Built from Valid Parts</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Unit.html#lab235">Valid Units Given an Argument</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Unit.html#lab236">Valid Units Abstracted over Parameters</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.Mem.html">Mctt.Core.Completeness.Modules.Mem</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Mem.html#lab237">Term Members of Valid Units</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Mem.html#lab238">Definitions of a Body</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Mem.html#lab239">What the Term Members of Literals Denote</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Mem.html#lab240">Units Lacking Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Mem.html#lab241">Definitions of a Saturated Body</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Mem.html#lab242">The Term Members of Valid Units</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.Canon.html">Mctt.Core.Completeness.Modules.Canon</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Canon.html#lab243">Valid Units Are Their Canonical Units</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Canon.html#lab244">Aliases of Literals</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Canon.html#lab245">Aliases of Canonical Units</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Canon.html#lab246">Canonical Units</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.App.html">Mctt.Core.Completeness.Modules.App</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.App.html#lab247">Applications of Valid Units</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.Sel.html">Mctt.Core.Completeness.Modules.Sel</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Sel.html#lab248">Submodules of Valid Units</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.Sel.html#lab249">Submodules at Every Environment</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Sel.html#lab250">Selection from Values Lacking a Parameter</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Sel.html#lab251">What the Submodules of Literals Denote</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Sel.html#lab252">Modules of a Body</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Sel.html#lab253">Submodules of Filed Modules</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.Sel.html#lab254">The Submodules of Valid Units</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Modules.MemberTypes.html">Mctt.Core.Completeness.Modules.MemberTypes</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.MemberTypes.html#lab255">Semantic Contexts of Member Types</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Modules.MemberTypes.html#lab256">Semantic Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.MemberTypes.html#lab257">Generalizing over a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Modules.MemberTypes.html#lab258">Telescopes of Parameters</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Global.Args.html">Mctt.Core.Completeness.Global.Args</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Global.Args.html#lab259">Arguments Related at a Telescope</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Global.Embedding.html">Mctt.Core.Completeness.Global.Embedding</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Global.Embedding.html#lab260">Valid Global Contexts</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Global.Embedding.html#lab261">1. Valid units, read at a bigger global context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Global.Embedding.html#lab262">2. Closed units, in any context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Global.Embedding.html#lab263">3. Descriptions abstracted over a telescope, at arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Global.Embedding.html#lab264">4. What an entry is worth at the target</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Global.Embedding.html#lab265">5. Syntactic facts about stored bodies</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Global.Embedding.html#lab266">6. Valid entries make valid global modules</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.Decl.html">Mctt.Core.Completeness.Inductives.Decl</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab268">Telescopes in the PER Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab269">Environments Extended by Values</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab270">Environments of Exactly their Context's Length</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab271">Arguments at a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab272">The Elements of a <span class="inlinecode"><span class="id" title="var">Π</span></span> over a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab273">Arguments over Another Base</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab274">Environments of Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab275">Universes</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab276">Closed Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab277">The Weakenings of Constructor Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab278">Variables of an Environment of Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Decl.html#lab279">Environments of Arguments, Inverted</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html">Mctt.Core.Completeness.LogicalRelation.Telescope</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab280">Telescopes over a Context in the PER Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab281">A Closed Context over Another</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab282">The Instance of a Closed Context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab283">Relations along a Chain of Types</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab284">Environments of a Context Extended by a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab285"><span class="inlinecode"><span class="id" title="var">q</span>^<span class="id" title="var">n</span></span> of a Semantic Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab286">Instances along a Semantic Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab287">The Instance of a Telescope at the Value of a Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab288">Base Change for a Closed Context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab289">Instances of a Closed Type</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab290">Substitutions Built from Valid Parts, over Telescopes</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab291">Telescopes of <span class="inlinecode"><span class="id" title="var">Π</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#lab292">The Outer Links of a Judgment over a Telescope</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.Model.html">Mctt.Core.Completeness.Inductives.Model</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab293">Valid Groups: the Canonical Model and the Type Formers</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab294">Lists</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab295">The Declaration's Judgments, Positionwise</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab296">Equal Extensions, Entry by Entry</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab297">The Group's Conditions, from its Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab298">A Telescope at the Sort</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab299">The Telescopes of a Member</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab300">The Group at Related Uniform Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab301">The Canonical Model</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab302">The Type Former</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab303">The Members as Values of the Context of the Members as Variables</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab304">The Substitution of the Members for their Variables</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Model.html#lab305">Valid Filed Groups</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.FiledViews.html">Mctt.Core.Completeness.Inductives.FiledViews</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.FiledViews.html#lab306">The View Equations of a Filed Group, Read in the PER Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.FiledViews.html#lab307">A View's Instance, Evaluated</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.FiledViews.html#lab308">A Record View's Instance, Evaluated</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html">Mctt.Core.Completeness.Inductives.ArgTypes</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab309">The Types of a Constructor's Arguments, in the PER Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab310">Semantically Equal Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab311">The Contexts of the Arguments and of the Domains</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab312">The Canonical Model of a Valid Group</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab313">Types in a Universe</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab314">The Members at Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab315">The Contexts of the Arguments of a Valid Group's Members</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab316">The Arguments' Environments, Weakened to the Non-Recursive Ones</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab317">Coherence of a View, and the Relation of its Type</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab318">The Type of the End of a Shape</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab319">The Rest of a Shape is a Type</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab320">One Step Through a Shape's Domains</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab321">The Parameters a Shape Ends In</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab322">A Recursive Argument of a Function Shape</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ArgTypes.html#lab323">The Type of a Recursive Argument, Evaluated by its Shape</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.CargsRel.html">Mctt.Core.Completeness.Inductives.CargsRel</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.CargsRel.html#lab324">The Arguments of a Constructor, Related Canonically</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.CargsRel.html#lab325">From the Telescope to the Canonical Relations</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.CargsRel.html#lab326">From the Canonical Relations to the Telescope</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.ViewEquations.html">Mctt.Core.Completeness.Inductives.ViewEquations</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewEquations.html#lab327">The View Equations, Read in the PER Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewEquations.html#lab328">Positions of a Context Equation</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewEquations.html#lab329">Two Telescopes Equal under Two Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewEquations.html#lab330">A Telescope over Two Related Bases</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.RviewEnds.html">Mctt.Core.Completeness.Inductives.RviewEnds</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.RviewEnds.html#lab331">The Elements of a Record View, as the Record's</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.RviewEnds.html#lab332">The Telescopes of a Record View</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.RviewEnds.html#lab333">The Types at a Position</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.RviewEnds.html#lab334">The Two Telescopes Relate the Same Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.RviewEnds.html#lab335">The Elements</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.RviewEnds.html#lab336">The Pseudo-Constructor of a Record View</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.RviewEnds.html#lab337">The Coherence of a Record View</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html">Mctt.Core.Completeness.Inductives.ViewArgs</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab338">The Arguments of a View's Constructor, Against its Container's</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab339">The Types at a Position</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab340">Arguments Related at Both Telescopes</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab341">An Argument the View Nests Through</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab342">An Argument Non-Recursive in Both</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab343">An Argument Recursive in Both: its Shape, Domain by Domain</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab344">The Non-Uniform Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab345">An Argument Recursive in Both: the Parameters its Shapes End In</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab346">Non-Uniform Parameters Related at a Container's Member</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab347">The Agreement of a View at the Canonical Relations</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab348">Every View Agrees with its Container, and Every Record View with</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewArgs.html#lab349">The Relation of a Member's Type</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.Con.html">Mctt.Core.Completeness.Inductives.Con</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab350">The Constructors of a Valid Group</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab351">The Sorts of a Constructor's Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab352">The Elements of a <span class="inlinecode"><span class="id" title="var">Π</span></span> over a Telescope, Read by a Relation</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab353">The Relation of a Member's Type</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab354">A View's Constructor at its Container</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab355">The Values of a Constructor along its Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab356">The Closed Environments of a Constructor's Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab357">The Parameters of a Member, Split at the Uniform Ones</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab358">The Constructor as an Element of its Type</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab359">The Kinds of the Arguments the Constructor Takes</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Con.html#lab360">The Constructor</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.Elim.html">Mctt.Core.Completeness.Inductives.Elim</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab361">The Eliminator of a Group</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab362">The Head Variable as a Term</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab363">Substitutions Weakened</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab364">The Variables of a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab365">Recursive Results</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab366">Values Paired with their Entry Types</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab367">Relations of Types along Chains</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab368">Branches under a Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab369">Applying a Variable to the Variables of a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab370">The Type of a Recursive Result, by its Leaf</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab371">Stored Uniform Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab372">The Parameters of a Member, Joined at the Uniform Ones</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab373">The Constructors Applied</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab374">A Constructor along its Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab375">A View's Constructor as its Container's</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab376">Instances of a Closed Telescope at Equal Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab377">Substitutions Built from Valid Parts, Moved</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab378">The Eliminator of a Valid Group</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab379">The Arguments Before a Position, Weakened to Their Non-Recursive</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab380">The Fields of a Record View, over <span class="inlinecode"><span class="id" title="var">Γ</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab381">The Frames of a Leaf Path, Syntactically</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab384">The Canonical Uniform Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab385">Instances of a Closed Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab386">A Member's Motive Context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab388">A Constructor's Arguments, Canonically</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab389">The Motives</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab390">The Frames of a Leaf Path</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab394">The Branches' Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab398">The Branches at the Links of an Elimination</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab399">The Motives at the Links of an Elimination</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab400">The Elimination at the Three Links</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab401">The Eliminator, Its Blocks, Uniform Parameters and Scrutinee Varying</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Elim.html#lab402">The Groups along an Embedding</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.Iota.html">Mctt.Core.Completeness.Inductives.Iota</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Iota.html#lab403">The <span class="inlinecode"><span class="id" title="var">ι</span></span> Rule of a Group</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.Iota.html#lab404">The Eliminator at Blocks Moved by a Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Iota.html#lab406">The Recursive Results as Terms, along a Recursive Argument</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Iota.html#lab409">The Sorts of the Entries of a Branch's Context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.Iota.html#lab410">The Rule</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.ViewRules.html">Mctt.Core.Completeness.Inductives.ViewRules</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewRules.html#lab420">The Equations of a View</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewRules.html#lab421">The Stored Uniform Parameters of a Constructor Are Not Read</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewRules.html#lab422">A View's Constructor</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewRules.html#lab423">A Record View's Constructor</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.ViewBranch.html">Mctt.Core.Completeness.Inductives.ViewBranch</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewBranch.html#lab424">The Branches of a View's Blocks in its Container's Eliminator</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewBranch.html#lab425">The Context of a Wrapped Branch</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewBranch.html#lab426">Valid Blocks</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewBranch.html#lab427">Substitutions of the Wrapped Branch's Context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewBranch.html#lab428">A Wrapped Branch</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.ElimView.html">Mctt.Core.Completeness.Inductives.ElimView</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ElimView.html#lab431">The Eliminator at a View, as the Container's (E1′)</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ElimView.html#lab432">The Recursive Results of a View against its Container's</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ElimView.html#lab433">The Skeleton of a Leaf Path</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ElimView.html#lab434">The Leaf Paths the Container Has</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ElimView.html#lab435">The Recursive Results of a Wrapped Branch's Instance</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ElimView.html#lab436">The Branches of a Wrapped Block</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ElimView.html#lab437">The Container's Eliminator against the Group's</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ElimView.html#lab444">The Container's Wrapped Blocks</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.ViewReadback.html">Mctt.Core.Completeness.Inductives.ViewReadback</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewReadback.html#lab447">The Stuck Eliminator at a View, Read as the Container's</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ViewReadback.html#lab448">Fresh Variables of a View's Container and of the Group</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewReadback.html#lab449">The Domains of Two Shapes, Read Alike</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewReadback.html#lab450">Values of Instances of a Closed Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewReadback.html#lab452">Results Taken from Either Side, Path by Path</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewReadback.html#lab453">The Stuck Eliminators, Read Alike</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewReadback.html#lab454">The Container's Marks at a Record View's Fields</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ViewReadback.html#lab461">The Stuck Eliminators</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.ContainerReadable.html">Mctt.Core.Completeness.Inductives.ContainerReadable</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ContainerReadable.html#lab462">The Container's Eliminator's Entries Read Back</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ContainerReadable.html#lab463">A Valid Group at Its Own Uniform Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ContainerReadable.html#lab464">The Domains of a Container's Shape in the Group's Relation</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Inductives.ContainerReadable.html#lab465">The Container's Entries at the Group's Elements</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Inductives.ElimViewRule.html">Mctt.Core.Completeness.Inductives.ElimViewRule</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ElimViewRule.html#lab467">The Eliminator at a View, as Its Container's</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Inductives.ElimViewRule.html#lab470">The Rule</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Records.Model.html">Mctt.Core.Completeness.Records.Model</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab471">Record Types: the Canonical Model and the Type Former</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab472">A Telescope at a Sort</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab473">Lists Related as a Telescope, Position by Position</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab474">Values of Fields by Their Kinds</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab475">The Fields as a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab476">A Valid Record</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab477">The Canonical Model</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab478">The Type Former</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab479">Evaluation of the Type Former at Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab480">The Fields' Types at Instances</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab481">Projections</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab482">Tuples</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.Records.Model.html#lab483">Field-β</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.RecordCases.html">Mctt.Core.Completeness.RecordCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.RecordCases.html#lab484">Record Types: the Semantic Rules</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.RecordCases.html#lab485">A Record along an Embedding</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.RecordCases.html#lab486">The Rules</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.IndCases.html">Mctt.Core.Completeness.IndCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.IndCases.html#lab487">Inductive Types: the Type Formers and the Constructors</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.ElimCases.html">Mctt.Core.Completeness.ElimCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.ElimCases.html#lab488">The Eliminator of a Group of Inductive Types</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.IotaCases.html">Mctt.Core.Completeness.IotaCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.IotaCases.html#lab489">The <span class="inlinecode"><span class="id" title="var">ι</span></span> Rule of a Group of Inductive Types</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.UniverseCases.html">Mctt.Core.Completeness.UniverseCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.UniverseCases.html#lab490">The Universe</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.UniverseCases.html#lab491">The Universes as Judgments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UniverseCases.html#lab492"><span class="inlinecode"><span class="id" title="keyword">Prop</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.UniverseCases.html#lab493">Antisymmetry</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.VariableCases.html">Mctt.Core.Completeness.VariableCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.VariableCases.html#lab494">Fundamental Theorem: Variables</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.VariableCases.html#lab495">Semantic Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.VariableCases.html#lab496">The Variable Case</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.VariableCases.html#lab497">δ for Local Definitions</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Consequences.Consistency.html">Mctt.Core.Consequences.Consistency</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab498">Consistency of the Core</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab499">Types at Their Sorts</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab500">The Parameters of an Inductive Type</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab501">Small Universes Are Injective</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab502">Subtyping of Universe Terms and Level Types</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab503">The Parameters of a Record Type</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab504">The Normal Forms of Small Types</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab505">The Normal Forms of the Types of a Universe</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab506">Canonical Forms and Consistency</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab507">Canonical Forms of Inductive Types</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.Consistency.html#lab508">Opaque Definitions</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.MemberWf.html">Mctt.Core.Semantic.MemberWf</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.MemberWf.html#lab511">What Well-Formed Module Expressions Look Up</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.MemberWf.html#lab512">What a Local Open Generates Is Well-Formed</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.MemberWf.html#lab513">The Sorts of a Body's Definitions</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Domain.html">Mctt.Core.Semantic.Domain</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Domain.html#lab514">The Semantic Domain</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Domain.html#lab515">Semantic Notations</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Domain.html#lab516">Level Values</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Domain.html#lab517">The Kind of a Type Value</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Domain.html#lab518">The Realiser of a Level Value</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Domain.html#lab519">Pointwise Equality</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Domain.html#lab520">Agreement on a Prefix</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Domain.html#lab521">Weakening an Environment</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Evaluation.html">Mctt.Core.Semantic.Evaluation</a></h2>
+<h2><a href="Mctt.Core.Semantic.Evaluation.Definitions.html">Mctt.Core.Semantic.Evaluation.Definitions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab522">Kind-Directed Evaluation</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab523">The Types of the Variables an Eliminator Binds</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab524">The Kinds of Members of Module Values</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab525">Evaluation of Expressions</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab526">Evaluation of Substitutions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab527">The Substitutions that Compute</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Evaluation.Lemmas.html">Mctt.Core.Semantic.Evaluation.Lemmas</a></h2>
+<h2><a href="Mctt.Core.Semantic.Evaluation.Modules.html">Mctt.Core.Semantic.Evaluation.Modules</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Evaluation.Modules.html#lab528">Evaluation of Members</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Evaluation.Modules.html#lab529">Lists of Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Evaluation.Modules.html#lab530">Members of Global Modules</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Evaluation.Modules.html#lab531">Chains of Selections</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Evaluation.Tactics.html">Mctt.Core.Semantic.Evaluation.Tactics</a></h2>
+<h2><a href="Mctt.Core.Semantic.NbE.html">Mctt.Core.Semantic.NbE</a></h2>
+<h2><a href="Mctt.Core.Semantic.GlobalExt.html">Mctt.Core.Semantic.GlobalExt</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.GlobalExt.html#lab532">NbE Reads the Global Context Only Through Its Lookups</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Fixed.html">Mctt.Core.Semantic.Fixed</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Fixed.html#lab533">The Short Forms, for a Fixed Global Context</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Fixed.html#lab534">Judgments</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Fixed.html#lab535">Evaluation and Readback</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Levels.html">Mctt.Core.Semantic.Levels</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Levels.html#lab536">Levels in the Semantics</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Levels.html#lab537">Readback of the Atoms</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Levels.html#lab538">The Canonical Form of a Level at a Length</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Levels.html#lab539">The Level PER through Canonical Forms</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Levels.html#lab540">Levels without Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Levels.html#lab541">The Level Operations Respect the PER</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Levels.html#lab542">Levels of a Sort</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Levels.html#lab543">The Level Equations in the Model</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Levels.html#lab544">The Order on Levels from a Join</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.html">Mctt.Core.Semantic.PER</a></h2>
+<h2><a href="Mctt.Core.Semantic.Kinds.KindsPER.html">Mctt.Core.Semantic.Kinds.KindsPER</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Kinds.KindsPER.html#lab545">Related Module Values Have the Same Kinds</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Chain.html">Mctt.Core.Semantic.PER.Chain</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Chain.html#lab546">Several Values Related by One PER</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Chain.html#lab547">Pairwise</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Chain.html#lab548">Merge</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Chain.html#lab549">The Four-Value Pattern</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.CoreTactics.html">Mctt.Core.Semantic.PER.CoreTactics</a></h2>
+<h2><a href="Mctt.Core.Semantic.PER.Definitions.html">Mctt.Core.Semantic.PER.Definitions</a></h2>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab552">Types of Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab553">Telescopes of Inductive Types</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab555">Admissible Uniform Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab556">Admissibility at the Fresh Variables</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab557">Admissible Indices</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab558">The Elements of a Group</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab559">The Components of a Group</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab560">Records</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab561">Universe/Element PER</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab562">Universe/Element PER Definition</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab563">Universe/Element PER Induction Principle</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab564">Universe Subtyping</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab565">Module PER</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab566">Context/Environment PER</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab567">Context Subtyping</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Tele.html">Mctt.Core.Semantic.PER.Tele</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Tele.html#lab568">Relations at Telescopes</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Tele.html#lab569">Record Views in the Elements</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Tele.html#lab570">Lists of Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Tele.html#lab571">Derived Forms of <span class="inlinecode"><span class="id" title="var">tele_rel_combine</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Tele.html#lab572">A Telescope of PERs</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Tele.html#lab573">The Elements of an Inductive Type, Generically</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Tele.html#lab576">The Domains of a Shape</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Tele.html#lab581">Changing the Relations</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Tele.html#lab582">The Elements of a Record Type</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Lemmas.Basic.html">Mctt.Core.Semantic.PER.Lemmas.Basic</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Basic.html#lab583">PER Lemmas: the Basic PERs</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Basic.html#lab584">The Order on Levels</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Lemmas.Universe.html">Mctt.Core.Semantic.PER.Lemmas.Universe</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Universe.html#lab585">PER Lemmas: the Universe PER</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Universe.html#lab586">Chains of Types</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Lemmas.UniverseSubtyping.html">Mctt.Core.Semantic.PER.Lemmas.UniverseSubtyping</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.UniverseSubtyping.html#lab587">PER Lemmas: Types of Levels, Cumulativity and Subtyping</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.UniverseSubtyping.html#lab588">Types of Levels</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.UniverseSubtyping.html#lab589">The Module PER is a PER</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.UniverseSubtyping.html#lab590">Related Types, Seen from Either Side</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Lemmas.ModuleValues.html">Mctt.Core.Semantic.PER.Lemmas.ModuleValues</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.ModuleValues.html#lab591">PER Lemmas: Module Values</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.ModuleValues.html#lab592">Module Values</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.ModuleValues.html#lab593">Symmetry</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.ModuleValues.html#lab594">Transitivity</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.ModuleValues.html#lab595">Module Expressions Evaluating to Related Values</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.ModuleValues.html#lab596">Closures</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Lemmas.Contexts.html">Mctt.Core.Semantic.PER.Lemmas.Contexts</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Contexts.html#lab597">PER Lemmas: Context PERs</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Lemmas.CanonicalContexts.html">Mctt.Core.Semantic.PER.Lemmas.CanonicalContexts</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.CanonicalContexts.html#lab598">PER Lemmas: Canonical Context PERs</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.CanonicalContexts.html#lab599">A Canonical Extended Context PER</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.CanonicalContexts.html#lab600">A Canonical Context PER for a Definition Entry</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.CanonicalContexts.html#lab601">A Canonical Context PER for a Definition with a Module Part</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.CanonicalContexts.html#lab602">A Canonical Function PER</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.CanonicalContexts.html#lab603">Closing an Extended Context PER Goal</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Lemmas.Environments.html">Mctt.Core.Semantic.PER.Lemmas.Environments</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Environments.html#lab604">PER Lemmas: Environments</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Environments.html#lab605">Agreement up to Retagging</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Environments.html#lab606">Context PERs Respect Agreement of Environments</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Environments.html#lab607">Context PERs Relate Environments Holding Their Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.Environments.html#lab608">Readability of Kept Proofs over Related Environments</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Lemmas.html">Mctt.Core.Semantic.PER.Lemmas</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.html#lab609">PER Lemmas</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Readback.html">Mctt.Core.Semantic.Readback</a></h2>
+<h2><a href="Mctt.Core.Semantic.Readback.Definitions.html">Mctt.Core.Semantic.Readback.Definitions</a></h2>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Readback.Definitions.html#lab610">Fresh Variables of the Telescopes of an Inductive Type</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Readback.Lemmas.html">Mctt.Core.Semantic.Readback.Lemmas</a></h2>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Readback.Lemmas.html#lab611">The Realiser of a Level and Its Readback</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Realizability.html">Mctt.Core.Semantic.Realizability</a></h2>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Realizability.html#lab612">Reading Back at Telescopes</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Realizability.html#lab613">Record Types</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Realizability.html#lab614">Readability of Environments</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.RetagReadable.html">Mctt.Core.Semantic.RetagReadable</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.RetagReadable.html#lab615">Context PERs Relate Retagged Environments</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Inductives.IndPER.html">Mctt.Core.Semantic.Inductives.IndPER</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.IndPER.html#lab616">Groups of Inductive Types in the PER Model, Canonically</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.RecordPER.html">Mctt.Core.Semantic.RecordPER</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.RecordPER.html#lab617">Record Types in the PER Model, Canonically</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.RecordPER.html#lab618">The Projections of a Neutral and the Readback of Fields</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Inductives.IndCanon.html">Mctt.Core.Semantic.Inductives.IndCanon</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.IndCanon.html#lab619">The Clause of a Member of a Group, Canonically</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Inductives.IndElim.html">Mctt.Core.Semantic.Inductives.IndElim</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.IndElim.html#lab620">The Eliminator in the PER Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.IndElim.html#lab621">The Members the Leaf Paths End In</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.IndElim.html#lab622">Fresh Variables of a Group</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.IndElim.html#lab624">The Eliminator at Related Elements</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.IndElim.html#lab632">The Stuck Eliminator</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.IndElim.html#lab633">Related Elements Eliminate to Related Values</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Inductives.ReadPairs.html">Mctt.Core.Semantic.Inductives.ReadPairs</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.ReadPairs.html#lab634">Two Stuck Eliminators Read Alike</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Inductives.ViewCoherence.html">Mctt.Core.Semantic.Inductives.ViewCoherence</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#lab635">The Elements of a View, as the Container's</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#lab636">The Non-Uniform Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#lab637">The Non-Recursive Arguments the Group Has</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#lab638">From the Container's to the Group's</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#lab639">From the Group's to the Container's</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Inductives.ViewCount.html">Mctt.Core.Semantic.Inductives.ViewCount</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCount.html#lab640">The Leaf Paths of a View the Container Has</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCount.html#lab641">The Shapes of a View against its Container's</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCount.html#lab642">The Members a View Takes the Container's To</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCount.html#lab643">A Group's Own Leaf Paths</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.ViewCount.html#lab644">The Count</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Inductives.NestAcc.html">Mctt.Core.Semantic.Inductives.NestAcc</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.NestAcc.html#lab645">The Nesting Order on Semantic Types Is Well Founded</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Inductives.Regressions.html">Mctt.Core.Semantic.Inductives.Regressions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.Regressions.html#lab646">Regressions for Mutual and Nested Inductive Types</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Inductives.Regressions.html#lab647">Concrete Groups</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.Regressions.html#lab648"><span class="inlinecode"><span class="id" title="var">T</span></span> Nested Through a Container with a View</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.Regressions.html#lab649"><span class="inlinecode"><span class="id" title="var">T</span></span> Nested Through <span class="inlinecode"><span class="id" title="var">Rose</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.Regressions.html#lab650"><span class="inlinecode"><span class="id" title="var">T</span></span> Nested Through a Phantom Parameter</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.Regressions.html#lab651">A Container Whose Non-Uniform Parameter Is of Its Uniform One</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Inductives.Regressions.html#lab652">Two Instances Differing Only in a Proof Are One View</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Stuck.html">Mctt.Core.Semantic.Stuck</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Stuck.html#lab653">Stuck Globals in Normal Forms</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Stuck.html#lab654">Normal Forms Whose Global Heads Satisfy <span class="inlinecode"><span class="id" title="var">G</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Stuck.html#lab655">Values Whose Global Neutrals Are Stuck</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Transparency.html">Mctt.Core.Semantic.Transparency</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Transparency.html#lab656">NbE at a Transparent Global Context</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Avoid.html">Mctt.Core.Semantic.Avoid</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Avoid.html#lab657">NbE Invents No Variables</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Avoid.html#lab658">Freshness at an Optional Position</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Avoid.html#lab659">The Invariant</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Avoid.html#lab660">Environments</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Avoid.html#lab661">Freshness Through the Module Syntax</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Avoid.html#lab662">Evaluation Builds No Variable</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Avoid.html#lab663">Freshness Outside Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Avoid.html#lab664">Readback Introduces Only Variables Above the Ones in Scope</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Avoid.html#lab665">The Initial Environment, and the Corollary</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Rename.html">Mctt.Core.Semantic.Rename</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Rename.html#lab666">Renaming the Levels of Values: Readback Commutes with Weakening</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Rename.html#lab667">The Renaming</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Rename.html#lab668">Evaluation Is Equivariant</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Rename.html#lab669">Values that Mention Only the Levels Below <span class="inlinecode"><span class="id" title="var">b</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Rename.html#lab670">Inductive Types</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Rename.html#lab671">Readback Is Equivariant</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Rename.html#lab672">Readback Shift</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Kinds.Kinds.html">Mctt.Core.Semantic.Kinds.Kinds</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Kinds.Kinds.html#lab673">Kinds of Members Under Renaming and Evaluation</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Kinds.KindsEval.html">Mctt.Core.Semantic.Kinds.KindsEval</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Kinds.KindsEval.html#lab680">A Module Expression Has the Kinds of its Value</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Kinds.KindsTyping.html">Mctt.Core.Semantic.Kinds.KindsTyping</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Kinds.KindsTyping.html#lab686">The Kinds of Typed Members</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Kinds.KindsTyping.html#lab687">Generated Entries</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Kinds.KindsTyping.html#lab688">Matching Environments</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Soundness.html">Mctt.Core.Soundness</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Soundness.html#lab689">Soundness of Normalization by Evaluation</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Consequences.FiledConstructorTypes.html">Mctt.Core.Consequences.FiledConstructorTypes</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Consequences.FiledConstructorTypes.html#lab690">The Filed Constructor Types of a Declaration</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Consequences.FiledConstructorTypes.html#lab691">Instances Normalized Equal up to Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.FiledConstructorTypes.html#lab692">Syntax</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.FiledConstructorTypes.html#lab693">The <span class="inlinecode"><span class="id" title="var">Self</span></span>s Instantiated</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.FiledConstructorTypes.html#lab694">A Classified Argument Is Its Filed Entry</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.FiledConstructorTypes.html#lab695">A Shape as Written</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.FiledConstructorTypes.html#lab696">The Filed Group</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.FiledConstructorTypes.html#lab697">Each View Is a Keyed Instance</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.FiledConstructorTypes.html#lab698">The Constructor Types of a Run</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Consequences.NormalFormWeakening.html">Mctt.Core.Consequences.NormalFormWeakening</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Consequences.NormalFormWeakening.html#lab699">NbE Commutes with Weakening</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Consequences.NormalFormWeakening.html#lab700">NbE Commutes with Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.NormalFormWeakening.html#lab701">NbE Invents No Variables, Semantically</a>
+
+</li>
+<li><a href="Mctt.Core.Consequences.NormalFormWeakening.html#lab702">Strengthening an Equation</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Command.html">Mctt.Core.Syntactic.Command</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Command.html#lab703">Commands</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.CoreInversions.html">Mctt.Core.Syntactic.CoreInversions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.CoreInversions.html#lab704">Inverting the Typing Rules</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.CoreInversions.html#lab705">Propositions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.CoreInversions.html#lab706">Inductive Types</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Corollaries.html">Mctt.Core.Syntactic.Corollaries</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Corollaries.html#lab707">Corollaries of the Syntactic Theory</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.CtxSub.html">Mctt.Core.Syntactic.CtxSub</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.CtxSub.html#lab708">Context Refinement</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Members.html">Mctt.Core.Syntactic.Members</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Members.html#lab709">Resolution and Members of Modules</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Members.html#lab710">Resolution in a Module</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab711">Resolution of a Module</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab712">Resolution of a Path</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab713">Entries</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab714">One Lookup for a Global</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab715">How Resolution Grows</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab716">Growth Keeping Bodies</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab717">Transparent Global Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab718">Module Slots</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab719">Syntactic Helpers</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab720">Arities</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab721">Descriptions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab722">What an Open Generates</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab723">What a Module Expression Denotes</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab725">The Module that Declares a Member</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Members.html#lab726">Stored Modules and Entries</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Records.html">Mctt.Core.Syntactic.Records</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Records.html#lab727">Records</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Records.html#lab728">Lemmas</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Opens.html">Mctt.Extraction.Opens</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Opens.html#lab729">Computing What an Open Generates</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Opens.html#lab730">Results</a>
+
+</li>
+<li><a href="Mctt.Extraction.Opens.html#lab731">Generation</a>
+
+</li>
+<li><a href="Mctt.Extraction.Opens.html#lab732">Generation Computes the Relation</a>
+
+</li>
+<li><a href="Mctt.Extraction.Opens.html#lab733">The First Open That Generates Nothing</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Inductives.Group.html">Mctt.Core.Syntactic.Inductives.Group</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Inductives.Group.html#lab734">Groups of Inductive Types: Members, and the Classification of Arguments</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Inductives.Group.html#lab735">Lists of Variables and Pattern Weakenings</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Group.html#lab736">Members</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Group.html#lab737">Classification of an Argument Type in Normal Form</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Group.html#lab738">The Guard of a Record Instance</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Group.html#lab739">The Views of a Group</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Group.html#lab740">The Order of the Filed Views</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Inductives.Inductives.html">Mctt.Core.Syntactic.Inductives.Inductives</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab741">Inductive Types: Reading a Group's Declaration</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab742">Leaf Paths</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab743">A Property of All the Members of a List</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab744">The Types of a Declaration</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab745">Shapes</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab746">The Group's Members as Variables</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab747">The Eliminator</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab748">Reading an Eliminator at its Member</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab749">The Eliminator at a View, as the Container's</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab750">Module Variables</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Inductives.Inductives.html#lab751">Facts About the Types of a Declaration</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Builtin.html">Mctt.Core.Syntactic.Builtin</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Builtin.html#lab752">Builtin Bindings</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Builtin.html#lab753">The Configuration</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Builtin.html#lab754">Merging</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Builtin.html#lab755">Bindings Only Grow</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Inductives.IndCong.html">Mctt.Core.Syntactic.System.Inductives.IndCong</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndCong.html#lab756">Congruences at the Instances of a Telescope</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndCong.html#lab757">The Parameters of an Inductive Type</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Inductives.IndConv.html">Mctt.Core.Syntactic.System.Inductives.IndConv</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndConv.html#lab758">Changing the Parameters of an Eliminator</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndConv.html#lab759">The Eliminator's Premises at Equal Parameters</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Presup.html">Mctt.Core.Syntactic.Presup</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Presup.html#lab760">Presupposition</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Presup.html#lab761">The Two Sides of a Term Equation</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Presup.html#lab762">The Two Sides of a Refinement</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Presup.html#lab763">Substitution Equivalence</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Presup.html#lab764">Saturating the Context, with Equality</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.SubEq.html">Mctt.Core.Syntactic.SubEq</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.SubEq.html#lab765">Equivalent Substitutions Preserve Judgments</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.SubEq.html#lab766">The Equality Half</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.SubEq.html#lab767">The Subtyping Half</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.SubEq.html#lab768">Equal Arguments Give Equal Instances</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Substitution.html">Mctt.Core.Syntactic.Substitution</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab769">The Algebra of Weakenings and Substitutions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab771">Weakenings</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab772">Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab773">Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab774">The Instances the Typing Rules Need</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab775">Automation</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab776">Lifting Under Several Binders, and Application Spines</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Fresh.html">Mctt.Core.Syntactic.Fresh</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab777">Freshness and Un-weakening</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab778">Un-weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab779"><span class="inlinecode">#<span class="id" title="var">k</span></span> Does Not Occur</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab780">Two Classes of Renaming</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab781"><span class="inlinecode"><span class="id" title="var">unwk</span></span> <span class="inlinecode"><span class="id" title="var">k</span></span> Inverts <span class="inlinecode"><span class="id" title="var">q</span>^<span class="id" title="var">k</span></span> <span class="inlinecode">↑</span></a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab782">Normal and Neutral Forms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab783">Deciding Freshness</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab784">Normal Forms Free of Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab785">The Bound of a Level Under a Binder</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Fresh.html#lab786">The Universe of a <span class="inlinecode"><span class="id" title="var">Π</span></span></a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.NfRename.html">Mctt.Core.Syntactic.NfRename</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.NfRename.html#lab787">Renaming Normal Forms</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.NfRename.html#lab788">The Renaming of the Term a Normal Form Denotes</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.NfRename.html#lab789">Renaming Respects Equality up to Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.NfRename.html#lab790">Order-Preserving Renamings Preserve the Order on Atoms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.NfRename.html#lab791">Order-Preserving Renamings Commute with the Canonical Form</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.NfRename.html#lab792">The Canonical Form Sees Atoms up to Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.NfRename.html#lab793">Freshness</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.NfRename.html#lab794">Injectivity</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Levels.Levels.html">Mctt.Core.Syntactic.Levels.Levels</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab795">Canonical Levels</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab796">A Total Order on Normal Forms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab797">Levels and Their Canonical Forms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab798">Properties of Every Atom</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab799">The Order on Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab800">Levels of a Sort</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab801">The Realiser</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab802">Levels Equal up to Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab803">The Order on Universe Normal Forms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.Levels.html#lab804">The Join of Two Universe Normal Forms</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Levels.LevelEq.html">Mctt.Core.Syntactic.Levels.LevelEq</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Levels.LevelEq.html#lab805">Levels as Expressions: the Equations of a Canonical Form</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Levels.LevelEq.html#lab806">The Iterated Successor</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.LevelEq.html#lab807">The Order on Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.LevelEq.html#lab808">The Atoms of a Level, Well Typed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.LevelEq.html#lab809">The Two Folds</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.LevelEq.html#lab810">Sorting, Merging and Dropping</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.LevelEq.html#lab811">The Canonical Form</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.LevelEq.html#lab812">The Atoms of a Well-Typed Level</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Levels.LevelEq.html#lab813">The Order on Canonical Levels, Syntactically</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Levels.Ordinals.html">Mctt.Core.Syntactic.Levels.Ordinals</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Levels.Ordinals.html#lab814">Ordinals below ω²</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Syntax.html">Mctt.Core.Syntactic.Syntax</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab815">Concrete Syntax Tree</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab816">Modifiers</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab817">Definition Keywords</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab818">Objects, Declarations and Commands</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab819">Names and Paths</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab820">Inductive Declarations</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab821">Terms, Module Expressions and Units</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab822">Induction</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab823">Chains of Selections</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab824">Units</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab825">Notations</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab826">Contexts</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab827">Notations</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab828">Universe Indices</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab829">Universes at Any Index, as Terms and Values</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab830">Levels as Expressions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab831">Normal and Neutral Forms</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab832">Operations on the Records</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab833">Using the Generated Hypotheses</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab834">Canonical Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab835">Universe Normal Forms</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab836">Decidable Equality of Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab837">Equality up to Proofs</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab840">Notations</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab841">Weakenings and Substitutions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab842">Weakenings</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab843">The Scope of a Term</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab844">Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab845">Equality of Weakenings and Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab846">Notations</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab847">Telescopes</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab848">The Global Context</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab849">Filed Units</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab850">The Definition Stack</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab851">A Fixed Global Context</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab852">Scope and Notations</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.UserSyntax.html">Mctt.Core.Syntactic.UserSyntax</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.UserSyntax.html#lab853">The User Syntax</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.UserSyntax.html#lab854">Terms, Module Expressions and Units</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.UserSyntax.html#lab855">Commands</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.html">Mctt.Core.Syntactic.System</a></h2>
+<h2><a href="Mctt.Core.Syntactic.System.Translations.html">Mctt.Core.Syntactic.System.Translations</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Translations.html#lab856">Declarations as Written: Their Contexts, and the Translation of Mutual Definitions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Translations.html#lab857">The Contexts of a Group as Written</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Translations.html#lab858">Mutual Definitions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Translations.html#lab859">One Group, One Set of Parts</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.TypedElab.html">Mctt.Core.TypedElab</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.TypedElab.html#lab860">The Typed Elaboration of Commands</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.TypedElab.ElimTarget.html">Mctt.Core.TypedElab.ElimTarget</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.TypedElab.ElimTarget.html#lab861">The Group of an Eliminator</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.TypedElab.Fill.html">Mctt.Core.TypedElab.Fill</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.TypedElab.Fill.html#lab862">The Typed Fill</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.TypedElab.Fill.html#lab863">The Fill of Terms</a>
+
+</li>
+<li><a href="Mctt.Core.TypedElab.Fill.html#lab864">The Fill of Commands</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.TypedElab.Lemmas.html">Mctt.Core.TypedElab.Lemmas</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.TypedElab.Lemmas.html#lab865">The Typed Fill Is Functional</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.TypedElab.Lemmas.html#lab866">The Shape of a Filled Command</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Command.html">Mctt.Core.Syntactic.System.Command</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab867">The Static Semantics of Commands</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab868">The Stack</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab869">Opens</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab870">Groups of Inductive Declarations</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab871">The Recursor Module of a Group</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab872">The Module of a Declared Member</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab873">Classifying the Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab874">The Views</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab875">Filing the Group</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab876">The Views' Instances with the Members as Variables</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab877">Mutual Definitions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab878">Merging Filed Units</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab879">The Records of Filed Units</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab880">Record Declarations</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab881">Privacy</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab882">Running</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab883">A Cycle Has No Meaning</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab884">Running is Deterministic</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab885">Merging Keeps Both Sides</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab886">Filing More Units Keeps an Open Stack Well Formed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab887">Merging Keeps Well-formedness</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab888">Running Keeps the State Well Formed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab889">Inductive Types Stay Where They Are Declared</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab890">Runs of Generated Commands</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab891">Builtin Bindings Stay Well Formed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab892">Restricting to What a Unit Imported</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab893">The Restriction is Well Formed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab894">Chains and Stacks of Runs</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab895">Lookups of a Run of a Declaration</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Command.html#lab896">Deciding the Rank and the Views' Members</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Definitions.html">Mctt.Core.Syntactic.System.Definitions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab897">The Syntactic Judgments</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab898">Context Lookup</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab899">Shapes of Units</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab900">The Mutually Defined Judgments</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab909">Modules</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab913">Descriptions With No Member of a Type of Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab914">Well-formedness of the Global Context</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab915">Parameters of Types of Levels, and Members of No Type of Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab916">Units</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab917">Types of Either Sort</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab918">Weakening and Substitution Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab919">Immediate &amp; Independent Presuppositions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab920">Literal Levels</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab921">The Universe Congruence, Right-Hand Side</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab922">The Context of a Judgment</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab923">Subtyping Rules without Extra Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab924">Term Equality is a PER</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Global.Paths.html">Mctt.Core.Syntactic.System.Global.Paths</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab925">Paths and Descriptions in a Well-Formed Global Context</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab926">Reading Paths</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab927">Prefixes of Extended Paths</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab928">Bodies of Modules</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab929">Coherence of a Body with its Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab930">Coherence of Well-Formed Bodies</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab931">Bodies in a Global Context</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab932">Coherence of What a Well-Formed Context Reads</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab933">A Closed Module Is Read in its Body</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab934">The Facts the Semantics Uses</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab935">Decomposing Paths into Bodies</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab936">Frames Do Not Hide the Members of a Closed Module</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab937">A Name Is a Definition or a Module, Not Both</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab938">Open Frames</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab939">Entries of Stored Bodies</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab940">The Open Frame of a Member's Module</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab941">What a Module Expression Denotes Is Unique</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab942">Bodies Stored at Paths Are What Paths Denote</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab943">An Inductive Type Is Stored at its Own Path</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab944">A Member Is Filed beside its Group</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Paths.html#lab945">Descriptions Grow with the Global Context</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html">Mctt.Core.Syntactic.System.Global.DescTyping</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab946">Typing What Module Expressions Denote</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab947">Telescopes</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab948">Telescopes Filled by Lists of Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab949">Telescopes Substituted</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab950">What Well-Formed Module Expressions Denote Exists</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab951">Applying Abstracted Descriptions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab952">A Literal Given its Outermost Parameter</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab953">Typed Descriptions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab954">Closed Telescopes and Their Outermost Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab955">What a Filed Module Denotes</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab956">Descriptions Read Where They Are Stored</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab957">Local Bodies Read Where They Are</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab958">The Parts of a Well-formed Unit</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab959">Relevant Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.DescTyping.html#lab960">Descriptions Reading No Open Frame</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Global.Presup.html">Mctt.Core.Syntactic.System.Global.Presup</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab961">Presupposition</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab962">Embeddings</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab963">The Induction over Insertion, for an Abstract Notion of Validity</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab964">The Types of a Group Are Types</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab965">The Views of a Filed Group</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab966">The Shapes of the Recursive Arguments, Domain by Domain</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab967">The View Equations of a Filed Group</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab968">Relevant Frame Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab969">Validity of Bodies, by Induction over Insertion</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab972">The Syntactic Validity of Storage</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab973">Members of No Type of Levels, Read from a Closed Module</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab974">Well-formed Module Expressions Denote Typed Descriptions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab975"><span class="inlinecode"><span class="id" title="var">β</span></span> Keeps Descriptions Typed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab976">What a Member Looks Up is Typed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab977">A Filed Member at Arguments is Typed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab978">Typed Descriptions Grow with the Global Context</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab979">Presupposition of Typing, over Valid Storage</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab980">Storage is Valid</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab981">Telescopes Below a Stored Body</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab982">What Resolution Hands Back is Well Typed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.Presup.html#lab983">The Mutual Theorem</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Global.Modules.html">Mctt.Core.Syntactic.System.Global.Modules</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.Modules.html#lab984">Reading the Modules of a Global Context</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Global.MemberWf.html">Mctt.Core.Syntactic.System.Global.MemberWf</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberWf.html#lab985">Well-Formed Parts of Modules</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberWf.html#lab986">The Unit of a Slot</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberWf.html#lab987">An Extension Read off a Context</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberWf.html#lab988">The Parts of a Well-Formed Unit</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberWf.html#lab989">Applied Modules</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberWf.html#lab990">Telescopes of a Valid Global Context</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Lemmas.html">Mctt.Core.Syntactic.System.Lemmas</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab991">Properties of the Judgments, continued</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab992">Presupposition for Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab993">Context Conversion of Substitutions</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab994">Substitution Equivalence</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab995">Equivalent Substitutions Preserve Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab996">The Module Cases of <span class="inlinecode"><span class="id" title="var">sub_eq_preserves_mut</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab997">Substitution Equivalence is a PER</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab998">Composition of Equivalent Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab999">η-Expansion</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab1000">Closed Neutrals</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab1001">Conversion</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab1002">The Global Context</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html">Mctt.Core.Syntactic.System.Global.MemberLemmas</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1003">Member Types under Weakening and Substitution</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1004">Lifting under Many Binders</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1005">Telescopes</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1006">Bodies</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1008">Module Expressions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1009">Chains from a Unit</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1010">The <span class="inlinecode"><span class="id" title="var">Π</span></span> of a Type</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1011">Scoping of Member Types</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1012">Arities</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1014">Every Judgment is Well Scoped</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1015">Consequences</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1017">Descriptions under a Substitution, and Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1018">Descriptions under a Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1020">What a Unit Binds, Substituted</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#lab1021">The Scoping of a Judgment's Parts</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html">Mctt.Core.Syntactic.System.Inductives.Syntax</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1022">The Types of a Declaration under Weakening and Substitution</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1023">Substitutions Built of Lists</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1024">Telescopes at Lists of Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1025">Positions in Lists of Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1026">The Arguments Before a Constructor's Argument</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1027">Facts of a Closed Declaration</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1028">Shapes under Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1029">Blocks under Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1030">Lists of Branches</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1031">The Types of the Type Former and the Constructors</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1032">Weakenings</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#lab1033">The Container's Blocks at a View under Substitution</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Records.Syntax.html">Mctt.Core.Syntactic.System.Records.Syntax</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Records.Syntax.html#lab1034">Records under Substitution</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Records.Syntax.html#lab1035">Substitution</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html">Mctt.Core.Syntactic.System.Global.LookupSound</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1036">Lookup is Sound</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1037">The Parts of a Well-formed Unit</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1038">Descriptions of Well-formed Module Expressions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1039">What a Well-formed Module Expression is Made of</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1040">The Unit a Typed Module Part Stands for Is Well Formed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1041">Parts of Descriptions under Application</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1042">Applied Module Expressions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1043">Local Entries Filled in</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1044">Filed Modules at Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1045">A δ-reduct Applied</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1046">A Member of a Filed Module at Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1047">Members of Module Expressions with One Module Part</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1048">Every Module Is Equal to a Unit</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.LookupSound.html#lab1049">Units in Normal Form Are the Units of What They Denote</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Global.NoLevelReach.html">Mctt.Core.Syntactic.System.Global.NoLevelReach</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.NoLevelReach.html#lab1050">Deciding No Member of a Type of Levels Terminates</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Global.NoLevelReach.html#lab1051">The Domain</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.NoLevelReach.html#lab1052">The Size of the Bodies Stored in a Body</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.NoLevelReach.html#lab1053">Filed Bodies Whose Aliases Are Valid</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.NoLevelReach.html#lab1054">Typed Descriptions, Grown, Have the Domain</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Global.NoLevelReach.html#lab1055">Every Stored Alias Is Valid</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html">Mctt.Core.Syntactic.System.Inductives.Typing</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1056">The Contexts of the Eliminator Are Well Formed</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1057">The Groups in Scope</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1058">Closed Telescopes Under a Context</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1059">The Variables of a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1060">The Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1061">The Motives' Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1062">The Arguments of a Constructor at the Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1063">The Motives' Instances at the Recursive Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1069">The Branches' Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1070">A Constructor Applied</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1071">The Branch's Type</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1072">The Motives Varying</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1073">The Blocks of an Eliminator</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1074">The Recursive Results</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1075">The Instance of a Branch's Context at a Constructor</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Typing.html#lab1076">The Sides of the Eliminator's Equations</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Inductives.Runs.html">Mctt.Core.Syntactic.System.Inductives.Runs</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Runs.html#lab1077">A Declaration the Classifier Accepts Runs</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Runs.html#lab1078">Applying to the Variables of a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Runs.html#lab1079">The Recursor's Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Runs.html#lab1080">The Recursor of a Group of One Member with a Block</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Runs.html#lab1081">The Constructors</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html">Mctt.Core.Syntactic.System.Inductives.GrecTyped</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#lab1082">The Functions of a Recursor Module Type-Check</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#lab1083">The Telescope of a Recursor Module</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#lab1084">The Telescope's Types Are Types of Universes</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#lab1085">The Function of a Member</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html">Mctt.Core.Syntactic.System.Inductives.IndRuns</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#lab1086">An Accepted Declaration Runs</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#lab1087">The Names of the Recursor Module's Functions Are Distinct</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#lab1088">The Recursor Module's Parameters Are Assumptions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#lab1089">What the Declared Members Meet</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#lab1090">Runs of Generated Commands</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#lab1091">An Accepted Declaration Runs</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Inductives.Views.html">Mctt.Core.Syntactic.System.Inductives.Views</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1092">The Eliminator at a View Is Typed as the Container's</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1093">Equal Instances of a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1094">A View's Instance</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1095">The Motives' Contexts at a View</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1096">Equal Telescopes</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1097">Shapes, Domain by Domain</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1098">The Recursive Results of a View's Argument, as the Container's</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1099">A View's Branch, as the Container's</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1100">The Container's Blocks Typed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.Views.html#lab1101">The Right-Hand Side of <span class="inlinecode"><span class="id" title="var">wf_exp_eq_elim_view</span></span></a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html">Mctt.Core.Syntactic.System.Inductives.UniformParams</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#lab1102">The Uniform Parameters of an Eliminator Varying</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#lab1103">Telescopes of Assumptions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#lab1104">The Motives' Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#lab1105">The Recursive Results' Instances</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#lab1106">The Branches' Contexts</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#lab1107">The Branches' Types</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#lab1108">Equal Instances of a Telescope</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#lab1109">The Blocks at Equal Uniform Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#lab1110">The Right-Hand Side of <span class="inlinecode"><span class="id" title="var">wf_exp_eq_elim_cong</span></span></a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Privacy.html">Mctt.Core.Syntactic.System.Privacy</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Privacy.html#lab1111">Privacy</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Privacy.html#lab1112">Entries</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Privacy.html#lab1113">Module Tables</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Privacy.html#lab1114">Member References</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Privacy.html#lab1115">Accessibility</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Scoping.html">Mctt.Core.Syntactic.System.Scoping</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Scoping.html#lab1116">Scoping</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Scoping.html#lab1117">Definitions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Scoping.html#lab1118">Syntactic Facts</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Scoping.html#lab1119">Module Variables</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Scoping.html#lab1120">Telescopes</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Scoping.html#lab1121">Inductive Types</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Scoping.html#lab1122">The Container's Blocks at a View</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Scoping.html#lab1123">Closed Entries</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Structural.html">Mctt.Core.Syntactic.System.Structural</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1124">Properties of the Judgments</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1125">Basic Inversions and Presuppositions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1126">Weakening Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1127">Pushing an Operation Inwards</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1128">Saturating with the Lifted Weakenings</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1129">Facts about Modules for the Transport Lemmas</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1130">Moving the Eliminator along an Operation</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1131">The Rules of Records, Moved</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1132">Bodies with Local Opens</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1133">Weakening Preserves the Judgments (<span class="inlinecode"><span class="id" title="var">wk_preserves_wf</span></span>)</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1134">Reflexivity of Term Equality</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1135">Substitution Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1136">Pushing a Substitution Inwards</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1137">Saturating with the Lifted Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1138">Substituting into the Eliminator</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1139">Substitution Preserves the Judgments (<span class="inlinecode"><span class="id" title="var">sub_preserves_wf</span></span>)</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1140">Context Conversion</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1141">Transporting a Type</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1142">Lifting without the Extra Premise</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1143">Cumulativity</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1144">Types of a Tag's Sort</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Structural.html#lab1145">Types in a Well-formed Context</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Tactics.html">Mctt.Core.Syntactic.System.Tactics</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Tactics.html#lab1146">Saturating the Context with Presuppositions</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.SystemOpt.html">Mctt.Core.Syntactic.SystemOpt</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.SystemOpt.html#lab1147">The Rules with the Redundant Premises Removed</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.SystemOpt.html#lab1148">Rewriting the Type of a Judgment</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.SystemOpt.html#lab1149">The Optimized Rules</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.LetPeeling.html">Mctt.Core.Syntactic.System.LetPeeling</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.LetPeeling.html#lab1150">Peeling the Local Definitions of a Kept Proof</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.LetPeeling.html#lab1151">Let Chains</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.LetPeeling.html#lab1152">ζ Along a Chain</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.LetPeeling.html#lab1153">Typing a Chain</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.LetPeeling.html#lab1154">Replacing a Chain</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Records.Typing.html">Mctt.Core.Syntactic.System.Records.Typing</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Records.Typing.html#lab1155">Records: Inversion and the Types of Projections</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Records.Typing.html#lab1156">The Fields over the Parameters</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Records.Typing.html#lab1157">The Projections of Equal Elements</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Records.Typing.html#lab1158">Instances along a Weakening, and η-Expansions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Records.Typing.html#lab1159">Projections, η-Expansions and Tuples at a Universe</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Records.Typing.html#lab1160">The Projections of a Tuple</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Records.RecordRuns.html">Mctt.Core.Syntactic.System.Records.RecordRuns</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Records.RecordRuns.html#lab1161">An Accepted Record Declaration Runs</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Records.RecordRuns.html#lab1162">The Field Definitions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Records.RecordRuns.html#lab1163">A Field Definition Is Typed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Records.RecordRuns.html#lab1164">An Accepted Declaration Runs</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Unseal.html">Mctt.Core.Syntactic.Unseal</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1165">Unsealing a Global Context</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1166">Unsealing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1167">Resolution Commutes with Unsealing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1168">Freshness</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1169">Members</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1170">Stored Modules under Unsealing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1171">Descriptions under Unsealing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1172">Lookup under Unsealing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1173">Unsealing Preserves Every Judgment</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1174">Descriptions With No Member of a Type of Levels, Unsealed</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1175">Global Contexts without Axioms</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Unseal.html#lab1176">Running Commands Without Axioms</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Entrypoint.html">Mctt.Entrypoint</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Entrypoint.html#lab1177">The Driver's Entry Point</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Command.html">Mctt.Extraction.Command</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Command.html#lab1178">The Checks of Commands</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Command.html#lab1179">Deciders</a>
+
+</li>
+<li><a href="Mctt.Extraction.Command.html#lab1180">Closures and Paths</a>
+
+</li>
+<li><a href="Mctt.Extraction.Command.html#lab1181">Results</a>
+
+</li>
+<li><a href="Mctt.Extraction.Command.html#lab1182">Mutual Definitions</a>
+
+</li>
+<li><a href="Mctt.Extraction.Command.html#lab1183">Values Stored at Definitions</a>
+
+</li>
+<li><a href="Mctt.Extraction.Command.html#lab1184">Filing a Group, Through the Filed Units</a>
+
+</li>
+<li><a href="Mctt.Extraction.Command.html#lab1185">The Views of a Group</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.CommandRun.html">Mctt.Extraction.CommandRun</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.CommandRun.html#lab1186">Running Commands</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.CommandRun.html#lab1187">The Invariants</a>
+
+</li>
+<li><a href="Mctt.Extraction.CommandRun.html#lab1188">Consequences of the Invariants</a>
+
+</li>
+<li><a href="Mctt.Extraction.CommandRun.html#lab1189">One Step per Rule</a>
+
+</li>
+<li><a href="Mctt.Extraction.CommandRun.html#lab1196">The Executable</a>
+
+</li>
+<li><a href="Mctt.Extraction.CommandRun.html#lab1206">Why a Group Is Ill Formed</a>
+
+</li>
+<li><a href="Mctt.Extraction.CommandRun.html#lab1212">Soundness</a>
+
+</li>
+<li><a href="Mctt.Extraction.CommandRun.html#lab1213">The Program</a>
+
+</li>
+<li><a href="Mctt.Extraction.CommandRun.html#lab1214">Completeness</a>
+
+</li>
+<li><a href="Mctt.Extraction.CommandRun.html#lab1219">Finitely Many Files</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Evaluation.html">Mctt.Extraction.Evaluation</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Evaluation.html#lab1220">The Evaluator the Checker Runs</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Evaluation.html#lab1221">Right Typed Entries</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastGlobal.html">Mctt.Extraction.FastGlobal</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1222">The Fast Global Context</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1223">Balanced Maps</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1224">The Fast Module Layer</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1225">Translation from Core</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1226">Decoding to Core</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1227">Canonical Data</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1228">Member Lookup Is <span class="inlinecode"><span class="id" title="var">gm_entry</span></span>'s</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1229">Decoding Undoes the Translation on Canonical Data</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1230">The Filed Units</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1231">What a Unit Sees</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1232">Open Frames</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1233">The Lookups</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1236">Well-Formed Contexts Are Canonical</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1237">What Canonical Contexts Find Is Canonical</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastGlobal.html#lab1238">Forgetting the Stored Values</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastContext.html">Mctt.Extraction.FastContext</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastContext.html#lab1246">The Fast Context</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastContext.html#lab1247">The Declarations Kept</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastContext.html#lab1248">The Fast Context</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Decoding.html">Mctt.Extraction.Decoding</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Decoding.html#lab1249">The Core Context of a Fast Context</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Lookup.html">Mctt.Extraction.Lookup</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Lookup.html#lab1250">What the Implementations Look Up</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Lookup.html#lab1251">The Lookups of a Fast Context</a>
+
+</li>
+<li><a href="Mctt.Extraction.Lookup.html#lab1252">Building a Fast Context</a>
+
+</li>
+<li><a href="Mctt.Extraction.Lookup.html#lab1253">The Fast Context of a Core Context</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastDesc.html">Mctt.Extraction.FastDesc</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastDesc.html#lab1254">Fast Member Descriptions</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastDesc.html#lab1255">Canonical Tries and Entries</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDesc.html#lab1256">Descriptions</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDesc.html#lab1257">Entries of a Description</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDesc.html#lab1258">Located Bodies, Canonical</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.LookupTwins.html">Mctt.Extraction.LookupTwins</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.LookupTwins.html#lab1259">Fast Twins of the Core Functions That Look Names Up</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.LookupTwins.html#lab1260">Entries</a>
+
+</li>
+<li><a href="Mctt.Extraction.LookupTwins.html#lab1261">Walks of Fast Bodies</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastState.html">Mctt.Extraction.FastState</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastState.html#lab1262">The Run's Fast State</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastState.html#lab1263">The Frames, Fast</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastState.html#lab1264">A Fast Context Kept a Translation</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastState.html#lab1265">The Units a Command Sees</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastEval.html">Mctt.Extraction.FastEval</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastEval.html#lab1266">The Evaluation the Extracted Checker Runs</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastEval.html#lab1267">Deciding Freshness</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastEval.html#lab1268">The Relations</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastEval.html#lab1269">Determinism</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastRead.html">Mctt.Extraction.FastRead</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastRead.html#lab1270">The Readback the Extracted Checker Runs</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastRead.html#lab1271">Fresh Variables of the Telescopes of an Inductive Type</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastRead.html#lab1272">Readback</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastRead.html#lab1273">Determinism</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastRead.html#lab1274">Lengths</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastEquiv.html">Mctt.Extraction.FastEquiv</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastEquiv.html#lab1275">With the Skip Off, the Fast Relations Are Core's</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastDomain.html">Mctt.Extraction.FastDomain</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastDomain.html#lab1276">The Values the Extracted Code Computes</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastDomain.html#lab1277">The Values</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1278">Environments, as <span class="inlinecode"><span class="id" title="var">Core.Semantic.Domain</span></span>'s</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1279">The Types of the Variables an Eliminator Binds, as</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1280">Levels, as <span class="inlinecode"><span class="id" title="var">Core.Semantic.Domain</span></span>'s</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1281">The Kind of a Type Value, as <span class="inlinecode"><span class="id" title="var">domain_kind</span></span></a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1282">The Erasure</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1283">The Erasure Commutes with the Operations</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1284">The Core Helpers on Values, Fast</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1285">The Declarations Carried Are Right</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1286">Right Values, by Their Parts</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastDomain.html#lab1287">Reading Erasures as Core Values</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Simulation.html">Mctt.Extraction.Simulation</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Simulation.html#lab1288">The Fast Evaluation Simulates the Reference One</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Simulation.html#lab1289">The Relation</a>
+
+</li>
+<li><a href="Mctt.Extraction.Simulation.html#lab1290">Environments</a>
+
+</li>
+<li><a href="Mctt.Extraction.Simulation.html#lab1291">Relevance</a>
+
+</li>
+<li><a href="Mctt.Extraction.Simulation.html#lab1292">Levels</a>
+
+</li>
+<li><a href="Mctt.Extraction.Simulation.html#lab1293">Environments of Bodies and Spines</a>
+
+</li>
+<li><a href="Mctt.Extraction.Simulation.html#lab1294">Evaluation</a>
+
+</li>
+<li><a href="Mctt.Extraction.Simulation.html#lab1295">Recursive Results</a>
+
+</li>
+<li><a href="Mctt.Extraction.Simulation.html#lab1296">The Leaf Paths of a Recursive Argument</a>
+
+</li>
+<li><a href="Mctt.Extraction.Simulation.html#lab1297">Readback</a>
+
+</li>
+<li><a href="Mctt.Extraction.Simulation.html#lab1298">Fast Values</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastEvalGrowth.html">Mctt.Extraction.FastEvalGrowth</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastEvalGrowth.html#lab1299">The Fast Evaluation Along a Growth of the Global Context</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastEvalGrowth.html#lab1300">Where a Member's Module Is Stored</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastEvalGrowth.html#lab1301">The Lookups</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastEvalGrowth.html#lab1302">The Kinds of Members</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastEvalGrowth.html#lab1303">The Fast Evaluation</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastEvalGrowth.html#lab1304">Right Fast Values</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.FastValues.html">Mctt.Extraction.FastValues</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastValues.html#lab1305">The Values the Fast Data Stores</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.FastValues.html#lab1306">Every Element of a Tree</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastValues.html#lab1307">Right Stored Values</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastValues.html#lab1310">Along a Growth of the Global Context</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastValues.html#lab1311">The Values of the Open Frames</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastValues.html#lab1312">What a Lookup Finds</a>
+
+</li>
+<li><a href="Mctt.Extraction.FastValues.html#lab1313">The Units Seen</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.GlobalCheck.html">Mctt.Extraction.GlobalCheck</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.GlobalCheck.html#lab1314">Deciding the Global-Context Judgments</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.GlobalCheck.html#lab1315">The Bridge to the Algorithmic Judgments</a>
+
+</li>
+<li><a href="Mctt.Extraction.GlobalCheck.html#lab1316">Types and Terms at the Core Context of a Fast Context</a>
+
+</li>
+<li><a href="Mctt.Extraction.GlobalCheck.html#lab1317">Blaming the Level of a Universe</a>
+
+</li>
+<li><a href="Mctt.Extraction.GlobalCheck.html#lab1318">Local Contexts</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.IndDecl.html">Mctt.Extraction.IndDecl</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.IndDecl.html#lab1319">Deciding a Declaration</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.IndDecl.html#lab1320">Module Variables</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1321">Quantifying over Lists</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1322">The Checks of a Group's Views Are Complete</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1323">Quantifying over the Parts of a Group</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1324">Deciding the Judgments a Group Asks For</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1325">Rewriting What a Decision Decides</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1326">The Premises of the First Member, Decided</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1327">The Record Views</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1328">Classifying the Arguments as Written</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1329">The Views' Relations, at a View</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndDecl.html#lab1330">The Declaration's Relations Cross <span class="inlinecode"><span class="id" title="var">gds_equiv</span></span></a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.RecordDecl.html">Mctt.Extraction.RecordDecl</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.RecordDecl.html#lab1331">Deciding a Record Declaration</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.RecordDecl.html#lab1332">Module Variables</a>
+
+</li>
+<li><a href="Mctt.Extraction.RecordDecl.html#lab1333">A Property at Every Position</a>
+
+</li>
+<li><a href="Mctt.Extraction.RecordDecl.html#lab1334">The Declaration</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.MemberType.html">Mctt.Extraction.MemberType</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.MemberType.html#lab1335">Computing Descriptions</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.MemberType.html#lab1336">The Termination Order</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberType.html#lab1337">The Decision Procedure</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberType.html#lab1338">What Denotes Has an Order</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.MemberOrder.html">Mctt.Extraction.MemberOrder</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1339">Every Module Expression Has a Termination Order</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1340">The Unfolded Size of Module Syntax</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1341">The Pointwise Order on Slot Sizes</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1342">Weakening Does Not Grow Sizes</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1343">Substitution Does Not Grow Sizes</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1344">The Size of an Open Description</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1345">What an Open Generates, and the Expansion of a Body</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1346">Typed Open Descriptions</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1347">Stored Modules</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1348">Every Description Is Typed or Bounded</a>
+
+</li>
+<li><a href="Mctt.Extraction.MemberOrder.html#lab1349">The Order</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.ViewsSearch.html">Mctt.Extraction.ViewsSearch</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.ViewsSearch.html#lab1350">The View Search, as a Total Function</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.ViewsSearch.html#lab1351">The Search's Order</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsSearch.html#lab1352">Finiteness from Clusters</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.ViewsReach.html">Mctt.Extraction.ViewsReach</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.ViewsReach.html#lab1353">The Instances the Classification Meets, and the Siblings</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.ViewsReach.html#lab1354">Normal Forms of Types, Read Structurally</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsReach.html#lab1355">Where the Classification Finds a Nested Occurrence</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsReach.html#lab1356">Typed Views</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsReach.html#lab1357">The Pieces of a Normal Form of a Type</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsReach.html#lab1358">The Instances the Classification Meets Are Typed</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsReach.html#lab1359">Normal Instances</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsReach.html#lab1360">The Siblings of a View</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsReach.html#lab1361">Where a Constructor's Classified Arguments Meet an Instance</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.ViewsCluster.html">Mctt.Extraction.ViewsCluster</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1362">The Clusters of the Views, and the Nesting Order Below Them</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1363">The Type of a Recursive Argument, Moved</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1364">Where the Classification Meets an Instance</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1365">Normal Keys and the Instances Normal Forms Meet</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1366">Normal Forms of Chains of <span class="inlinecode"><span class="id" title="var">Π</span></span>s and of Inductive Types</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1367">Meets along Equal Telescopes</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1368">Normal Keys</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1369">A Meet Off a Recursive Argument Is a Sibling</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1370">Instances at the Initial Environment</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1371">Elements of a Telescope</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1372">The End of a Chain of <span class="inlinecode"><span class="id" title="var">Π</span></span>s</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1373">The Shape End of an Argument's Normal Form, Semantically</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1374">A Meet Off a Non-Recursive Argument Is a Nesting Step</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1375">The Order the Meets Leaving a Cluster Descend</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1376">A View Sibling Is Its Member</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1377">Where the Meets Off a Member of the Cluster Land</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1378">The Meets of a Record View Are Below It</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsCluster.html#lab1379">Keys Equal up to Their Proofs</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.ViewsFound.html">Mctt.Extraction.ViewsFound</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.ViewsFound.html#lab1380">Finding the Views of a Group Declaration</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.ViewsFound.html#lab1381">Finite Lists</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsFound.html#lab1382">The Clusters</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsFound.html#lab1383">Termination</a>
+
+</li>
+<li><a href="Mctt.Extraction.ViewsFound.html#lab1384">The Views Found, as the Checker Asks</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Privacy.html">Mctt.Extraction.Privacy</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Privacy.html#lab1385">Checking Privacy</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Privacy.html#lab1386">Where a Module Is Stored, and What It Denotes</a>
+
+</li>
+<li><a href="Mctt.Extraction.Privacy.html#lab1387">What Is Stored Below Stays Below</a>
+
+</li>
+<li><a href="Mctt.Extraction.Privacy.html#lab1388">The Order of Sites</a>
+
+</li>
+<li><a href="Mctt.Extraction.Privacy.html#lab1389">Where a Member is Declared</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.MdefGroup.html">Mctt.Extraction.MdefGroup</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.MdefGroup.html#lab1390">Deciding a Mutual Definition's Group</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Formers.html">Mctt.Extraction.Formers</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Formers.html#lab1391">Deciding Type Formers</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.TypedElab.html">Mctt.Extraction.TypedElab</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.TypedElab.html#lab1392">Deciding the Typed Fill</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.TypedElab.html#lab1393">The Fill Crosses <span class="inlinecode"><span class="id" title="var">gds_equiv</span></span></a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1394">Results</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1395">The Written Syntax, by Induction</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1396">What the Fill Reads</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1397">The Fill, Computed</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1398">The Loops of the Fill</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1399">What the Fill Reads, Specified</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1400">The Computed Fill Is the Relation's</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1401">The Relation's Fill Is Computed</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1402">The Parts of Commands</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1403">Mutual Definitions</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1404">Groups</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypedElab.html#lab1406">Commands, Filled</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.NbE.html">Mctt.Extraction.NbE</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.NbE.html#lab1407">The Normalizer the Checker Runs</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.NbE.html#lab1408">The Orders</a>
+
+</li>
+<li><a href="Mctt.Extraction.NbE.html#lab1409">The Fast Environments, with the Skip On</a>
+
+</li>
+<li><a href="Mctt.Extraction.NbE.html#lab1410">The Exact Environments, with the Skip Off</a>
+
+</li>
+<li><a href="Mctt.Extraction.NbE.html#lab1411">The Normal Forms, from Fast Ones</a>
+
+</li>
+<li><a href="Mctt.Extraction.NbE.html#lab1412">The Exact Normal Forms</a>
+
+</li>
+<li><a href="Mctt.Extraction.NbE.html#lab1413">The Normalizers</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.PseudoMonadic.html">Mctt.Extraction.PseudoMonadic</a></h2>
+<h2><a href="Mctt.Extraction.Readback.html">Mctt.Extraction.Readback</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Readback.html#lab1414">The Readback the Checker Runs</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Readback.html#lab1415">The Kind of a Fast Type</a>
+
+</li>
+<li><a href="Mctt.Extraction.Readback.html#lab1416">The Positions a Kept Proof Reads</a>
+
+</li>
+<li><a href="Mctt.Extraction.Readback.html#lab1417">Along the Leaf Paths of a Recursive Argument</a>
+
+</li>
+<li><a href="Mctt.Extraction.Readback.html#lab1418">The Fresh Variables of the Telescopes of a Group</a>
+
+</li>
+<li><a href="Mctt.Extraction.Readback.html#lab1419">The Orders of Readback</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Subtyping.html">Mctt.Extraction.Subtyping</a></h2>
+<h2><a href="Mctt.Extraction.AppSpine.html">Mctt.Extraction.AppSpine</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.AppSpine.html#lab1420">Checking an Application Spine Against the Value of the Head's Type</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.AppSpine.html#lab1421">The Spine Invariant</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.TypeCheck.html">Mctt.Extraction.TypeCheck</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.TypeCheck.html#lab1422">The Checker</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.TypeCheck.html#lab1423">The Types the Rules Normalize</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypeCheck.html#lab1424">The Spine, Fast</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypeCheck.html#lab1425">The Obligations of the Checker</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypeCheck.html#lab1426">The Application Spine</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.TypeCheckBase.html">Mctt.Extraction.TypeCheckBase</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.TypeCheckBase.html#lab1427">What the Checker's Parts Share</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.TypeCheckBase.html#lab1428">Deciding the Side Conditions of Terms</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypeCheckBase.html#lab1429">Deciding the Side Conditions of Units</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypeCheckBase.html#lab1430">Facts the Obligations Use</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypeCheckBase.html#lab1431">The Initial Environment the Checker Carries</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypeCheckBase.html#lab1432">The Orders of the Checker</a>
+
+</li>
+<li><a href="Mctt.Extraction.TypeCheckBase.html#lab1433">The Computations, Through a Fast Context</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.NoLevelDec.html">Mctt.Extraction.NoLevelDec</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.NoLevelDec.html#lab1436">Deciding the Flag Premise</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.NoLevelDec.html#lab1437">Parameters of Types of Levels</a>
+
+</li>
+<li><a href="Mctt.Extraction.NoLevelDec.html#lab1438">Names</a>
+
+</li>
+<li><a href="Mctt.Extraction.NoLevelDec.html#lab1439">The Reads of an Open Body and of a Filed Body</a>
+
+</li>
+<li><a href="Mctt.Extraction.NoLevelDec.html#lab1440">Reading a Frame Is Reading No Filed Body</a>
+
+</li>
+<li><a href="Mctt.Extraction.NoLevelDec.html#lab1441">The Entries of a Filed Body, Fast</a>
+
+</li>
+<li><a href="Mctt.Extraction.NoLevelDec.html#lab1442">The Domain, Inverted</a>
+
+</li>
+<li><a href="Mctt.Extraction.NoLevelDec.html#lab1443">The Decision</a>
+
+</li>
+<li><a href="Mctt.Extraction.NoLevelDec.html#lab1444">The Flag Premise, Decided</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.IndCheck.html">Mctt.Extraction.IndCheck</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.IndCheck.html#lab1445">Checking the Forms of Inductive Types</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.IndCheck.html#lab1446">Deciding Properties of Lists and of Indices</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndCheck.html#lab1447">The Type Former and the Constructors</a>
+
+</li>
+<li><a href="Mctt.Extraction.IndCheck.html#lab1448">The Eliminator</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.RecordCheck.html">Mctt.Extraction.RecordCheck</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.RecordCheck.html#lab1449">Checking the Forms of Record Types</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.RecordCheck.html#lab1450">The Type Former</a>
+
+</li>
+<li><a href="Mctt.Extraction.RecordCheck.html#lab1451">Projections</a>
+
+</li>
+<li><a href="Mctt.Extraction.RecordCheck.html#lab1452">Tuples</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Extraction.Kinds.html">Mctt.Extraction.Kinds</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Kinds.html#lab1453">Computing the Kinds of Members</a>
+<ul class="doclist">
+<li><a href="Mctt.Extraction.Kinds.html#lab1454">The Outermost Missing Parameter</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Frontend.ElabCorrect.html">Mctt.Frontend.ElabCorrect</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Frontend.ElabCorrect.html#lab1455">The Elaborator Meets Its Specification</a>
+<ul class="doclist">
+<li><a href="Mctt.Frontend.ElabCorrect.html#lab1456">Results</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabCorrect.html#lab1457">Names</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabCorrect.html#lab1458">Open Targets</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabCorrect.html#lab1459">Objects</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabCorrect.html#lab1460">Binders of a Scope</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabCorrect.html#lab1461">Commands</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabCorrect.html#lab1462">Member Counts</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabCorrect.html#lab1463">Units</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Frontend.ElabExamples.html">Mctt.Frontend.ElabExamples</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1464">The Specification on Concrete Programs</a>
+<ul class="doclist">
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1465">Pre-application</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1466"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ModuleParam.mctt</span></span>: a parameterized module and <span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span></a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1467"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ImportUse.mctt</span></span>: privacy, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">as</span></span>, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="var">use</span></span></a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1468"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">multi</span>/<span class="id" title="var">Main.mctt</span></span>: leading imports of other units</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1469"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">TrueFalse.mctt</span></span>: the true and the false proposition</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1470">Conjunctions: the type binds its first proof; <span class="inlinecode"><span class="id" title="var">conj</span></span> leaves its</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1471">Scoping Rules, Positive and Negative</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1472">Definition Keywords</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1473">Axioms</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1474">One Binding per Name per Frame</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1475">Local Definitions</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1476">Module Forms</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1477">Opens Declare Names</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1478">The Running Example of <span class="inlinecode"><span class="id" title="var">ElabSpec</span></span></a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabExamples.html#lab1479">Inductive Types</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Frontend.ElabSpec.html">Mctt.Frontend.ElabSpec</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1480">A Declarative Specification of Elaboration</a>
+<ul class="doclist">
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1481">Entries</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1482">Names in the User Syntax</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1483">What an Entry Denotes</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1484">What an Open Declares</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1485">Eliminators</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1486">Objects</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1487">Inductive Declarations</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1488">Mutual Definitions</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1489">Record Types</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1490">Commands</a>
+
+</li>
+<li><a href="Mctt.Frontend.ElabSpec.html#lab1491">Units</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Frontend.Elaborator.html">Mctt.Frontend.Elaborator</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Frontend.Elaborator.html#lab1492">Elaboration</a>
+<ul class="doclist">
+<li><a href="Mctt.Frontend.Elaborator.html#lab1493">Results</a>
+
+</li>
+<li><a href="Mctt.Frontend.Elaborator.html#lab1494">Names</a>
+
+</li>
+<li><a href="Mctt.Frontend.Elaborator.html#lab1495">Open Targets</a>
+
+</li>
+<li><a href="Mctt.Frontend.Elaborator.html#lab1496">Objects</a>
+
+</li>
+<li><a href="Mctt.Frontend.Elaborator.html#lab1497">Commands</a>
+
+</li>
+<li><a href="Mctt.Frontend.Elaborator.html#lab1498">Units</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Frontend.Parser.html">Mctt.Frontend.Parser</a></h2>
+<h2><a href="Mctt.LibTactics.html">Mctt.LibTactics</a></h2>
+<h2><a href="Mctt.Reference.Kinds.html">Mctt.Reference.Kinds</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Reference.Kinds.html#lab1504">The Reference Kinds of Members</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Reference.Evaluation.html">Mctt.Reference.Evaluation</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Reference.Evaluation.html#lab1505">The Reference Evaluator</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Reference.NbE.html">Mctt.Reference.NbE</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Reference.NbE.html#lab1506">The Reference Normalizer</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Reference.Readback.html">Mctt.Reference.Readback</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Reference.Readback.html#lab1507">The Reference Readback</a>
+<ul class="doclist">
+<li><a href="Mctt.Reference.Readback.html#lab1508">The Fresh Variables of the Telescopes of a Group</a>
+
+</li>
+<li><a href="Mctt.Reference.Readback.html#lab1509">The Orders of Readback</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Reference.Refinement.html">Mctt.Reference.Refinement</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Reference.Refinement.html#lab1510">The Extracted Normalizers Refine the Reference Ones</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Reference.TypeCheck.html">Mctt.Reference.TypeCheck</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Reference.TypeCheck.html#lab1511">The Reference Checker</a>
+<ul class="doclist">
+<li><a href="Mctt.Reference.TypeCheck.html#lab1512">The Types the Rules Normalize</a>
+
+</li>
+<li><a href="Mctt.Reference.TypeCheck.html#lab1513">The Obligations of the Checker</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Reference.TypeCheckAgreement.html">Mctt.Reference.TypeCheckAgreement</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Reference.TypeCheckAgreement.html#lab1514">The Extracted Checker Infers the Reference Checker's Types</a>
+
+</li>
+</ul>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>
