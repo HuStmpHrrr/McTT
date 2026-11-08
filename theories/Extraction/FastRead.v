@@ -410,14 +410,14 @@ with fast_read_typ {SM : SkipMode} (Θ : gdeps) (Ξ : gstack) : nat -> domain ->
 | fast_read_typ_indty_nil :
   `( skip_on = true ->
      Rtypᶠ d_ind p k nil in Θ ⍮ Ξ ⍮ s ↘ nf_indty p k nil )
-(** A member of a group of inductive types at all its parameters, one or
-    more *)
+(** A member of a group of inductive types at all its parameters, as
+    [read_typ_indty] *)
 | fast_read_typ_indty :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
-     List.length (a :: as') = im_np D Mk ->
-     Rpsᶠ a :: as' at List.rev (im_params D Mk) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     Rtypᶠ d_ind p k (a :: as') in Θ ⍮ Ξ ⍮ s ↘ nf_indty p k Ps )
+     List.length as' = im_np D Mk ->
+     Rpsᶠ as' at List.rev (im_params D Mk) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
+     Rtypᶠ d_ind p k as' in Θ ⍮ Ξ ⍮ s ↘ nf_indty p k Ps )
 (** A record type at all its parameters *)
 | fast_read_typ_record :
   `( record_lookup Θ Ξ p = Some R ->
@@ -746,6 +746,19 @@ Proof.
   all: try solve [ repeat match goal with
          | IH : forall x, _ -> ?a = x, H : _ |- _ => let E := fresh "E" in pose proof (IH _ H) as E; clear IH; subst
          end; congruence ].
+  (** A type former, by its two rules: at no argument, no parameter;
+      otherwise one member, the parameters as the induction hypothesis
+      decides them *)
+  all: try solve [ match goal with Ht : fast_read_typ _ _ _ (d_ind _ _ _) _ |- _ =>
+      inversion Ht; subst;
+      repeat match goal with Hp : fast_read_ps _ _ _ _ _ nil _ |- _ => inversion Hp; subst; clear Hp end;
+      try reflexivity;
+      repeat match goal with H1 : ind_lookup ?T ?X ?p = Some _, H2 : ind_lookup ?T ?X ?p = Some _ |- _ =>
+               rewrite H1 in H2; injection H2 as <- end;
+      repeat match goal with H1 : ind_member ?D ?k = Some _, H2 : ind_member ?D ?k = Some _ |- _ =>
+               rewrite H1 in H2; injection H2 as <- end;
+      f_equal; eauto
+    end ].
   all: repeat match goal with
       | H1 : List.length ?v = (?a + ?g)%nat, H2 : List.length ?v = (?b + ?g)%nat |- _ =>
           assert_fails (constr_eq a b); assert (a = b) by lia; subst b
