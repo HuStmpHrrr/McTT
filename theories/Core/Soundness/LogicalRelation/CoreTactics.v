@@ -22,7 +22,12 @@ Ltac rewrite_glu_univ_below :=
 Ltac drop_wrong_kind_cases :=
   try (match goal with
        | H : per_prop ?a _ |- _ =>
-           let Hk := fresh "Hk" in pose proof (per_prop_left _ _ H) as Hk; cbn in Hk; discriminate Hk
+           let Hk := fresh "Hk" in pose proof (per_prop_left _ _ H) as Hk;
+           first [ cbn in Hk; discriminate Hk
+                 (** a neutral type of the relevant kind *)
+                 | congruence
+                 (** a [Π] not into propositions *)
+                 | cbn in Hk; subst; match goal with Hv : evaluated_kind _ |- _ => inversion Hv end ]
        | H : domain_kind _ = _ |- _ => cbn in H; discriminate H
        end).
 

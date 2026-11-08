@@ -241,6 +241,26 @@ Proof.
   assumption.
 Qed.
 
+Corollary kripke_preserves_level_sort_eq_level : forall Γ Δ A φ n,
+    Δ ⊢ A ≈ Level@n : LevelSort ->
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ Level@n : LevelSort.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk (a_level n) φ : exp_wk a_level_sort φ) by mauto 2.
+  assumption.
+Qed.
+
+Corollary kripke_preserves_typ_eq_prop : forall Γ Δ A φ i,
+    Δ ⊢ A ≈ Propₘ : Typeω@i ->
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ Propₘ : Typeω@i.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_prop φ : exp_wk (a_typ i) φ) by mauto 2.
+  assumption.
+Qed.
+
 Corollary kripke_preserves_kind_sort : forall Γ Δ M φ κ i,
     Δ ⊢ M : abs_kind_sort κ Typeω@i ->
     Γ ⊢ᵏ φ : Δ ->
@@ -501,7 +521,20 @@ Proof.
   rewrite abs_kind_sort_wk, exp_wk_universe_index_term in *; assumption.
 Qed.
 
-Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ_q : mctt.
+(** The same at the sort of a kind next to a large universe. *)
+Corollary kripke_preserves_kind_sort_q : forall Γ Δ κd κc A B φ i j,
+    Δ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@j ->
+    Δ ⊢ A : abs_kind_sort κd Typeω@i ->
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ▹{κd} A[φ]ʷ ⊢ B[wk_q φ]ʷ : abs_kind_sort κc Typeω@j.
+Proof.
+  intros * HB HA Hφ.
+  assert (Γ ▹{κd} A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (abs_kind_sort κc Typeω@j) (wk_q φ))
+    by (eapply kripke_preserves_exp_q; [ exact HB | exact HA | apply sort_kind_abs_kind_sort | exact Hφ ]).
+  rewrite abs_kind_sort_wk in *; assumption.
+Qed.
+
+Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ_q kripke_preserves_kind_sort_q : mctt.
 
 (** Extending by the new variable as a term, rather than by the variable
     entry of [q φ]: the two agree on every term, and a type of the extended
@@ -583,6 +616,7 @@ Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
 kripke_preserves_level kripke_preserves_level_eq
 kripke_preserves_prop kripke_preserves_prop_eq kripke_preserves_level_sort kripke_preserves_level_sort_eq
 kripke_preserves_kind_sort kripke_preserves_kind_sort_eq
+kripke_preserves_level_sort_eq_level kripke_preserves_typ_eq_prop
 kripke_preserves_typ_eq_typ
 kripke_preserves_typ_eq_suniv kripke_preserves_exp_eq_suniv : mctt.
 #[export]
@@ -595,7 +629,7 @@ Hint Resolve kripke_preserves_True kripke_preserves_False kripke_preserves_False
 kripke_preserves_typ_eq_True kripke_preserves_typ_eq_False
 kripke_preserves_typ_eq_level : mctt.
 #[export]
-Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ_q : mctt.
+Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ_q kripke_preserves_kind_sort_q : mctt.
 Ltac saturate_kripke :=
   match_by_head wk_kripke ltac:(fun H => pose proof (kripke_dom _ _ _ H);
                                          pose proof (kripke_cod _ _ _ H));
