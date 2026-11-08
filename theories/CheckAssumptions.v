@@ -11,7 +11,7 @@
 
 From Mctt Require Import Entrypoint.
 From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Consistency Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.Consequences.NormalFormWeakening.
-(* RESTORE AT THE REFERENCE PORT: From Mctt Require Import Reference.Refinement. *)
+From Mctt Require Import Reference.Refinement.
 From Mctt Require Import Extraction.GlobalCheck Extraction.CommandRun.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Consequences.FiledConstructorTypes.
 From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns Core.Syntactic.System.Records.RecordRuns.
@@ -80,28 +80,20 @@ Print Assumptions Mctt.Algorithmic.Typing.Lemmas.alg_type_infer_typ_complete_lit
 Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_typ_complete'.
 Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_typ_complete_lit'.
 Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_large_typ_complete'.
-(* Refinement: the fast extracted code agrees with the reference.  Out of
-   the build until the Reference port; each line is restored by dropping
-   its "RESTORE AT THE REFERENCE PORT:" comment. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.type_check_in_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.type_infer_in_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.ext_check_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.unit_check_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.modexp_check_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.eval_exp_impl_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.read_typ_impl_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.read_nf_impl_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.eval_exp_impl_refines_at. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.read_typ_impl_refines_at. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.read_nf_impl_refines_at. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines_at. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines_at. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines_at. *)
-(* RESTORE AT THE REFERENCE PORT: Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines_at. *)
+(* Refinement: the extracted normalizers agree with the reference ones;
+   the checkers' agreement is Reference.TypeCheckAgreement. *)
+Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines_eq.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines_eq.
+Print Assumptions Mctt.Reference.Refinement.nbe_env_impl_refines_eq.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines_eq.
+Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.nbe_env_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines_at.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines_at.
+Print Assumptions Mctt.Reference.Refinement.nbe_env_impl_refines_at.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines_at.
 (* Inductive types: canonical forms, and the generated eliminators. *)
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_pi.
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind.

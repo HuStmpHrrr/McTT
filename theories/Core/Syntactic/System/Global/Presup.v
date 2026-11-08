@@ -5410,8 +5410,8 @@ Proof.
   (* a type of levels is of the sort of the types of levels *)
   all: try solve [ apply (typ_presup_sorted LevelSort); [ constructor | constructor; assumption ] ].
   all: destruct_type_sort.
-  all: try solve [ eapply typ_presup_univ; mauto 3 ].
-  all: try solve [ eapply typ_presup_prop; mauto 3 ].
+  (* The goal-directed cases first, so that only the goals left reach the
+     [mauto] searches below, whose failures dominated this proof. *)
   (* a universe is a type; a variable is of a type of the context *)
   all: try solve [ match goal with HU : _ ⍮ _ ⍮ _ ⊢ᵤ ?U |- typ_presup _ _ _ _ ?U =>
                      destruct (wf_is_univ_typ HU) as [? ?]; eapply typ_presup_univ; eassumption end ].
@@ -5421,9 +5421,11 @@ Proof.
   (* the sort of the types of levels: [Level@n] and a [Π] between types of
      levels *)
   all: try solve [ apply typ_presup_level_sort; [ mauto 2 | constructor ] ].
-  all: match goal with Hl : _ ∋ #_ : _, HΓ : ⊢ _ ⍮ _ ⍮ _ |- _ =>
+  all: try solve [ match goal with Hl : _ ∋ #_ : _, HΓ : ⊢ _ ⍮ _ ⍮ _ |- _ =>
          let S := fresh "S" in let HS := fresh "HS" in let HT := fresh "HT" in
-         destruct (ctx_lookup_wf_sorted _ _ _ _ _ HΓ Hl) as (S & HS & HT); exact (typ_presup_sorted _ HS HT) end.
+         destruct (ctx_lookup_wf_sorted _ _ _ _ _ HΓ Hl) as (S & HS & HT); exact (typ_presup_sorted _ HS HT) end ].
+  all: try solve [ eapply typ_presup_univ; mauto 3 ].
+  all: eapply typ_presup_prop; mauto 3.
 Qed.
 
 Lemma presup_exp_typ_v : forall {Θ Ξ Γ M A},

@@ -486,11 +486,6 @@ Proof.
   exact (rel_value_kind_of_sort HT HXs HR Hρρ Hx).
 Qed.
 
-(** A type at the sort of a kind, at a larger index. *)
-Lemma abs_kind_sort_lift : forall {Θ Ξ Γ κ A j k}, j <= k ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@j -> Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@k.
-Proof. intros * Hjk HA; destruct κ; cbn [abs_kind_sort] in *; [ exact (lift_exp_ge _ _ _ _ _ _ Hjk HA) | exact HA | exact HA ]. Qed.
-
 (** Two types at sorts of one kind are types at the sort of the kind at
     one index. *)
 Lemma sort_kind_common : forall {Θ Ξ Γ κ A A' S S'}, sort_kind S κ -> sort_kind S' κ ->
@@ -499,7 +494,7 @@ Lemma sort_kind_common : forall {Θ Ξ Γ κ A A' S S'}, sort_kind S κ -> sort_
 Proof.
   intros * HS HS' HA HA'.
   destruct (sort_kind_abs_kind_sort_inv _ _ HS) as [j ->]; destruct (sort_kind_abs_kind_sort_inv _ _ HS') as [j' ->].
-  exists (max j j'); split; eapply abs_kind_sort_lift; [| exact HA | | exact HA' ]; lia.
+  exists (max j j'); split; eapply abs_kind_sort_lift; [ exact HA | | exact HA' | ]; lia.
 Qed.
 
 (** [Π] is injective, at its domain's tag too: the two tags are those of

@@ -152,10 +152,10 @@ Proof.
     destruct (wf_pi_parts_at _ _ _ _ _ _ _ _ HB) as [SB iB HSB HdB HcB _].
     destruct (sort_kind_common HSA HSB HdA HdB) as [k0 [HdA' HdB']].
     remember (Nat.max k0 (Nat.max iA iB)) as k eqn:Hkmax.
-    assert (HdAk : Γ ⊢ A : abs_kind_sort κd Typeω@k) by (eapply abs_kind_sort_lift; [| exact HdA' ]; lia).
-    assert (HdBk : Γ ⊢ A' : abs_kind_sort κd Typeω@k) by (eapply abs_kind_sort_lift; [| exact HdB' ]; lia).
-    assert (HcAk : Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@k) by (eapply abs_kind_sort_lift; [| exact HcA ]; lia).
-    assert (HcBk : Γ ▹{κd} A' ⊢ B' : abs_kind_sort κc Typeω@k) by (eapply abs_kind_sort_lift; [| exact HcB ]; lia).
+    assert (HdAk : Γ ⊢ A : abs_kind_sort κd Typeω@k) by (eapply abs_kind_sort_lift; [ exact HdA' | ]; lia).
+    assert (HdBk : Γ ⊢ A' : abs_kind_sort κd Typeω@k) by (eapply abs_kind_sort_lift; [ exact HdB' | ]; lia).
+    assert (HcAk : Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@k) by (eapply abs_kind_sort_lift; [ exact HcA | ]; lia).
+    assert (HcBk : Γ ▹{κd} A' ⊢ B' : abs_kind_sort κc Typeω@k) by (eapply abs_kind_sort_lift; [ exact HcB | ]; lia).
     pose proof (sort_kind_type_sort _ _ (sort_kind_abs_kind_sort κd k)) as HSd;
       pose proof (sort_kind_type_sort _ _ (sort_kind_abs_kind_sort κc k)) as HSc.
     assert (HAA : Γ ⊢ A ≈ A' : abs_kind_sort κd Typeω@k).

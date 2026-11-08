@@ -248,12 +248,6 @@ Definition body_tags (Γ : ctx) (Φ : gmod) (L : nat) : Prop :=
   forall y Φ0 E A M, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
     (body_ctx Φ0 ++ Γ)%list ⊢ A : abs_kind_sort (entry_kind E) Typeω@L.
 
-(** A type of the sort of a kind at a universe is one at every larger
-    universe. *)
-Lemma abs_kind_sort_lift : forall Γ A κ i j,
-    Γ ⊢ A : abs_kind_sort κ Typeω@i -> i <= j -> Γ ⊢ A : abs_kind_sort κ Typeω@j.
-Proof. intros * HA Hij; destruct κ; cbn [abs_kind_sort] in *; [ eapply lift_exp_ge; eassumption | exact HA | exact HA ]. Qed.
-
 Lemma body_tags_mono : forall Γ Φ L L', body_tags Γ Φ L -> L <= L' -> body_tags Γ Φ L'.
 Proof.
   intros * HT HL y Φ0 E A M Hp HE.

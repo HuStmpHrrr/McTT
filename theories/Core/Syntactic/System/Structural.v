@@ -4906,6 +4906,12 @@ Proof.
   induction 1; intros; mauto 3.
 Qed.
 
+(** A type of the sort of a kind at a universe is one at every larger
+    universe: the universe grows, the other sorts are fixed. *)
+Lemma abs_kind_sort_lift : forall {Θ Ξ} Γ A κ i j,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@i -> i <= j -> Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@j.
+Proof. intros * HA Hij; destruct κ; cbn [abs_kind_sort] in *; [ eapply lift_exp_ge; eassumption | exact HA | exact HA ]. Qed.
+
 Lemma lift_exp_eq_ge : forall Θ Ξ Γ A A' i j,
     i <= j ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->

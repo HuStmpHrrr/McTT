@@ -360,13 +360,13 @@ Arguments classified_carg_rec_case {K}.
 
 (** A shape and an argument as the classification reads them off a
     type, their instances as there *)
-Notation written_ptyp := (classified_ptyp_of view_inst).
-Notation written_carg := (classified_carg_of view_inst).
+Abbreviation written_ptyp := (classified_ptyp_of view_inst).
+Abbreviation written_carg := (classified_carg_of view_inst).
 
 (** A shape and an argument classified, their instances normalized into
     the keys of their views *)
-Notation classified_ptyp := (classified_ptyp_of view_key).
-Notation classified_carg := (classified_carg_of view_key).
+Abbreviation classified_ptyp := (classified_ptyp_of view_key).
+Abbreviation classified_carg := (classified_carg_of view_key).
 
 (** Whether a classified argument is recursive: its bit in the pattern of
     the arguments before the next one. *)
