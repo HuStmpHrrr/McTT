@@ -85,10 +85,13 @@ Section ValuesOk.
   Variables (Θ : gdeps) (Ξ : gstack).
 
   (** A value right for a closed term: its fast evaluation in the empty
-      environment, and right itself *)
+      environment with the skip on, and right itself.  A stored value is
+      read by evaluation with the skip on only; with it off, the term is
+      evaluated again ([Extraction.Evaluation]). *)
   Record value_ok (M : exp) (v : fdomain) : Prop := mk_value_ok
-    { (** the term evaluates to it, fast, in the empty environment *)
-      value_ok_eval : ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ fdomain_erase v
+    { (** the term evaluates to it, fast, with the skip on, in the empty
+          environment *)
+      value_ok_eval : @fast_eval_exp skip_on_mode Θ Ξ M nil (fdomain_erase v)
       (** the value is right *)
     ; value_ok_domain : fdomain_ok Θ Ξ v }.
 
@@ -197,7 +200,7 @@ Section ValuesGrow.
   Lemma value_ok_grow : forall M v, value_ok Θ1 Ξ1 M v -> value_ok Θ2 Ξ2 M v.
   Proof.
     intros M v [He Hv]; constructor;
-      [ exact (fast_eval_exp_grow _ _ _ _ Hs Hg1 Hg2 _ _ _ He) | exact (proj1 (fdomain_ok_grow _ _ _ _ Hs) _ Hv) ].
+      [ exact (@fast_eval_exp_grow skip_on_mode _ _ _ _ Hs Hg1 Hg2 _ _ _ He) | exact (proj1 (fdomain_ok_grow _ _ _ _ Hs) _ Hv) ].
   Qed.
 
   Lemma stored_value_grow : forall oM ov, stored_value_ok Θ1 Ξ1 oM ov -> stored_value_ok Θ2 Ξ2 oM ov.

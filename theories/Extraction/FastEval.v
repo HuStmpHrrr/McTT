@@ -355,8 +355,8 @@ with fast_eval_ihs {SM : SkipMode} (Θ : gdeps) (Ξ : gstack) : env -> qname -> 
      ⟦ihsᶠ v :: vs of ca_arg r T :: gs under p ups Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
 (** The branch reads one of the recursive results: they are computed. *)
 | fast_eval_ihs_rec :
-  `( (forall D, ind_lookup Θ Ξ p = Some D ->
-        ihs_skip_at skip_on oB (cargs_nrec D gs) (List.length (shape_leaves (rview_leaves D) 0 t)) = false) ->
+  `( ind_lookup Θ Ξ p = Some D ->
+     ihs_skip_at skip_on oB (cargs_nrec D gs) (List.length (shape_leaves (rview_leaves D) 0 t)) = false ->
      ⟦ihᶠ v of t under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs1 ->
      ⟦ihsᶠ vs of gs under p ups Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ihsᶠ v :: vs of ca_rec t :: gs under p ups Bks for oB ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs1 ++ ihs )
@@ -1019,11 +1019,6 @@ Section FastDeterminism.
             exfalso; exact (evaluated_kind_not_propositional _ H eq_refl)
         end;
       cbn [gu_params List.length] in *; try congruence; try lia; intuition (try congruence; try lia).
-    (** A computed and a skipped result: the skip test decides one *)
-    all: exfalso; match goal with
-         | Hf : forall D0, ind_lookup _ _ _ = Some D0 -> _ = false, HD : ind_lookup _ _ _ = Some _, Ht : _ = true |- _ =>
-             rewrite (Hf _ HD) in Ht; discriminate Ht
-         end.
   Qed.
 
   Corollary functional_fast_eval_exp : forall {Θ Ξ} M ρ m1 m2,

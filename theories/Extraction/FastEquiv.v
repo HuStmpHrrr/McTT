@@ -47,7 +47,10 @@ Section Off.
     (forall f Ms ρ r, eval_app_args Θ Ξ f Ms ρ r -> fast_eval_app_args Θ Ξ f Ms ρ r).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros.
-    all: solve [ eauto 3 with mctt core ].
+    all: try solve [ eauto 3 with mctt core ].
+    (** A recursive argument: its results' computation finds the group *)
+    all: match goal with He : eval_ih _ _ _ _ _ _ _ _ _ |- _ => inversion He; subst end;
+      eapply fast_eval_ihs_rec; eauto; reflexivity.
   Qed.
 
   (** Fast evaluation with the skip off is Core evaluation. *)

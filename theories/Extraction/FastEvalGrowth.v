@@ -155,6 +155,8 @@ Combined Scheme fdomain_ok_mut_ind from fdomain_ok_mut_ind0, fdomain_ne_ok_mut_i
   fentry_type_ok_mut_ind0.
 
 Section Growth.
+  (** The mode the relations run at *)
+  Context {SM : SkipMode}.
   Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
   Hypothesis Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2.
 

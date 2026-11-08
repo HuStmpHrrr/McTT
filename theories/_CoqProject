@@ -186,7 +186,11 @@
 ./Extraction/FastDesc.v
 ./Extraction/LookupTwins.v
 ./Extraction/FastState.v
+./Extraction/FastEval.v
+./Extraction/FastRead.v
+./Extraction/FastEquiv.v
 ./Extraction/FastDomain.v
+./Extraction/Simulation.v
 ./Extraction/FastEvalGrowth.v
 ./Extraction/FastValues.v
 ./Extraction/GlobalCheck.v
