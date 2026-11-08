@@ -3694,12 +3694,7 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate nodes tree --> 3 : ℕ
     Evaluate origin.x --> 0 : ℕ
     Evaluate (onDiagonal 3).sum --> 6 : ℕ
-    Evaluate let x1 : Point ≔
-                   let x2 : Point ≔ record Point where x ≔ 1; y ≔ 2 end
-                   in x2.flip
-                   end
-             in x1.x
-             end --> 2 : ℕ
+    Evaluate (record Point where x ≔ 1; y ≔ 2 end).flip.x --> 2 : ℕ
     Evaluate Point.flip corner --> record Point where x ≔ 5; y ≔ 3 end : Point
     Evaluate Pairs.snd twoThree --> 3 : ℕ
     Evaluate twoThree.snd --> 3 : ℕ
@@ -5758,15 +5753,7 @@ let%expect_test "a record type with a with-area closes with one end" =
        def swap : Prod u B A := record Prod u B A where fst := snd; snd := fst end end \
      end \
      eval (record Prod 0l Nat Nat where fst := 1; snd := 2 end).swap.fst" in
-  [%expect {|
-    Evaluate let x1 : Prod 0l ℕ ℕ ≔
-                   let x2 : Prod 0l ℕ ℕ ≔
-                         record Prod 0l ℕ ℕ where fst ≔ 1; snd ≔ 2 end
-                   in x2.swap
-                   end
-             in x1.fst
-             end --> 2 : ℕ
-    |}]
+  [%expect {| Evaluate (record Prod 0l ℕ ℕ where fst ≔ 1; snd ≔ 2 end).swap.fst --> 2 : ℕ |}]
 
 (* An alias or an open names a finished module only: the record being
    defined is not one, so a cycle through it is rejected. *)
@@ -5788,7 +5775,7 @@ let%expect_test "a record type without a with-area closes with one end" =
   let _ = main_of_body
     "record Pt : Type@0 where x : Nat; y : Nat end \
      eval (record Pt where x := 1; y := 2 end).y" in
-  [%expect {| Evaluate let x1 : Pt ≔ record Pt where x ≔ 1; y ≔ 2 end in x1.y end --> 2 : ℕ |}]
+  [%expect {| Evaluate (record Pt where x ≔ 1; y ≔ 2 end).y --> 2 : ℕ |}]
 
 let%expect_test "an extra end after a record type's with-area" =
   let _ = main_of_body
@@ -5822,18 +5809,13 @@ let%expect_test "a field through a term applied, with no let" =
                                      def g (n : Nat) : Nat := (mk n).fst end eval g 7") in
   [%expect {| Evaluate g 7 --> 7 : ℕ |}]
 
-let%expect_test "a field through a head that is no path, let-bound" =
+let%expect_test "a field through a head that is no path" =
   let _ = main_of_body (pair_decl ^ "eval (record Pair Nat Nat where fst := 5; snd := 6 end).snd \
                                      eval ((λ (q : Pair Nat Nat) → q) (record Pair Nat Nat where fst := 3; snd := 4 end)).fst") in
   [%expect {|
-    Evaluate let x1 : Pair ℕ ℕ ≔ record Pair ℕ ℕ where fst ≔ 5; snd ≔ 6 end
-             in x1.snd
-             end --> 6 : ℕ
-    Evaluate let x1 : Pair ℕ ℕ ≔
-                   (λ (x2 : Pair ℕ ℕ) → x2)
-                     (record Pair ℕ ℕ where fst ≔ 3; snd ≔ 4 end)
-             in x1.fst
-             end --> 3 : ℕ
+    Evaluate (record Pair ℕ ℕ where fst ≔ 5; snd ≔ 6 end).snd --> 6 : ℕ
+    Evaluate ((λ (x1 : Pair ℕ ℕ) → x1)
+               (record Pair ℕ ℕ where fst ≔ 3; snd ≔ 4 end)).fst --> 3 : ℕ
     |}]
 
 let%expect_test "a field through a term in a clause of a mutual definition" =
