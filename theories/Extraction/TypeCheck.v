@@ -12,6 +12,10 @@ From Mctt.Extraction Require Import FastDomain Evaluation Readback NbE PseudoMon
 From Mctt.Extraction Require Export TypeCheckBase.
 From Mctt.Extraction Require Import IndCheck RecordCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
+From Mctt.Extraction Require Import FastEval FastRead Simulation.
+
+(** The checker evaluates with the skip on ([Extraction.NbE]). *)
+#[local] Existing Instance skip_on_mode.
 
 (** * The Checker
 
@@ -408,38 +412,170 @@ Section Facts.
   (** The orders of the computations of a spine step: the readback of the
       spine's value and of its domain, the argument's value and the
       codomain's at it. *)
-  Lemma spine_value_read_order : forall G M ρ v s,
-      spine_value_of G M ρ v -> read_typ_order gc_deps gc_stack s v.
-  Proof. intros * Hs; destruct (spine_value_reads _ _ _ _ s Hs) as [W HW]; exact (read_typ_order_sound _ _ _ _ _ HW). Qed.
+  (** ** The Spine, Fast
 
-  Lemma spine_domain_read_order : forall G M ρ κd a ρ' B' s,
-      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') -> read_typ_order gc_deps gc_stack s a.
+      The spine computes on fast values with the skip on: its value is
+      related ([domain_simulation]) to a value the reference spine keeps
+      ([spine_value_of]), at the initial environment the checker's
+      environment simulates.  A readback of a fast value is the reference
+      one up to proofs, so where it is proof-free it is the reference one,
+      and the reference facts above apply. *)
+
+  (** The fast value [v] of the type of [M] *)
+  Definition spine_value_sim (G : ctx) (M : exp) (v : fdomain) : Prop :=
+    exists ρc v0, initial_env_f G ρc /\ spine_value_of G M ρc v0 /\ domain_simulation gc_deps gc_stack v0 (fdomain_erase v).
+
+  (** The reference spine's [Π] value, at the parts of a fast one *)
+  Lemma spine_value_sim_pi : forall G M κd a ρ' B',
+      spine_value_sim G M (fd_pi κd ak_relevant a ρ' B') ->
+      exists ρc a0 ρ0, initial_env_f G ρc /\ spine_value_of G M ρc (d_pi κd ak_relevant a0 ρ0 B') /\
+        domain_simulation gc_deps gc_stack a0 (fdomain_erase a) /\
+        env_agree gc_deps gc_stack (fun x => ~ exp_fresh (S x) B') ρ0 (fenv_erase ρ').
   Proof.
-    intros * Hs; destruct (spine_value_domain_reads _ _ _ _ _ _ _ s Hs) as [W HW].
-    exact (read_typ_order_sound _ _ _ _ _ HW).
+    intros * (ρc & v0 & Hi & Hs & Hsim); cbn [fdomain_erase] in Hsim; inversion Hsim; subst.
+    do 3 eexists; repeat split; eassumption.
   Qed.
 
-  Lemma spine_argument_order : forall G M N ρ κd a ρ' B' A',
-      ⊢ G -> initial_env_f G ρ ->
-      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
-      Rtyp a in List.length G ↘ A' -> nf_proof_free A' -> evaluated_kind (domain_kind a) ->
-      G ⊢a N ⟸ A' -> eval_exp_order gc_deps gc_stack N ρ.
+  (** The readback of a fast domain proof-free is the reference one. *)
+  Lemma spine_domain_reference : forall G M κd a ρ' B' A' s,
+      spine_value_sim G M (fd_pi κd ak_relevant a ρ' B') ->
+      fast_read_typ gc_deps gc_stack s (fdomain_erase a) A' -> nf_proof_freeb A' = true ->
+      exists ρc a0 ρ0, initial_env_f G ρc /\ spine_value_of G M ρc (d_pi κd ak_relevant a0 ρ0 B') /\
+        domain_simulation gc_deps gc_stack a0 (fdomain_erase a) /\
+        env_agree gc_deps gc_stack (fun x => ~ exp_fresh (S x) B') ρ0 (fenv_erase ρ') /\
+        Rtyp a0 in s ↘ A'.
   Proof.
-    intros * HG Hρ Hs HA' Hpf Hk HNc.
-    destruct (spine_argument_evals _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HNc) as [n Hn].
-    exact (eval_exp_order_sound _ _ _ _ _ Hn).
+    intros * Hs HA' Hpf; destruct (spine_value_sim_pi _ _ _ _ _ _ Hs) as (ρc & a0 & ρ0 & Hi & Hsv & Ha & Hag).
+    destruct (spine_value_domain_reads _ _ _ _ _ _ _ s Hsv) as [A0 HA0].
+    destruct (fast_read_typ_simulation _ _ _ _ _ _ HA0 Ha) as (W' & HW' & Hup).
+    rewrite (functional_fast_read_typ _ _ _ _ HW' HA') in Hup.
+    rewrite (eq_of_upto_proof_free _ _ Hup Hpf) in HA0.
+    exists ρc, a0, ρ0; repeat split; assumption.
+  Qed.
+
+  Lemma spine_value_read_order : forall G M v s,
+      spine_value_sim G M v -> fast_read_typ_order gc_deps gc_stack s (fdomain_erase v).
+  Proof.
+    intros * (ρc & v0 & Hi & Hs & Hsim); destruct (spine_value_reads _ _ _ _ s Hs) as [W HW].
+    destruct (fast_read_typ_simulation _ _ _ _ _ _ HW Hsim) as (W' & HW' & _).
+    exact (fast_read_typ_order_sound _ _ _ _ _ HW').
+  Qed.
+
+  Lemma spine_domain_read_order : forall G M κd a ρ' B' s,
+      spine_value_sim G M (fd_pi κd ak_relevant a ρ' B') -> fast_read_typ_order gc_deps gc_stack s (fdomain_erase a).
+  Proof.
+    intros * Hs; destruct (spine_value_sim_pi _ _ _ _ _ _ Hs) as (ρc & a0 & ρ0 & Hi & Hsv & Ha & Hag).
+    destruct (spine_value_domain_reads _ _ _ _ _ _ _ s Hsv) as [W HW].
+    destruct (fast_read_typ_simulation _ _ _ _ _ _ HW Ha) as (W' & HW' & _).
+    exact (fast_read_typ_order_sound _ _ _ _ _ HW').
+  Qed.
+
+  (** The start of the spine *)
+  Lemma alg_spine_start_fast : forall G M W ρ t,
+      ⊢ G -> G ⊢a M ⟹ W -> nf_to_exp W <> LevelSort -> fast_env_simulates gc_deps gc_stack G ρ ->
+      fast_eval_exp gc_deps gc_stack (nf_to_exp W) (fenv_erase ρ) (fdomain_erase t) -> spine_value_sim G M t.
+  Proof.
+    intros * HG HMi HnL (ρc & Hi & Hag) Ht.
+    destruct (nbe_ty_exists_wf_type (wf_type_of_infer _ _ _ HG HMi)) as [W0 [ρ1 t0 Hi1 Ht0 _]].
+    pose proof (functional_initial_env _ _ Hi1 _ Hi) as ->.
+    exists ρc, t0; repeat split; [ exact Hi | exact (alg_spine_start _ _ _ _ _ HG HMi HnL Hi Ht0) |].
+    exact (fast_eval_value_of_core _ _ _ _ _ _ _ Ht0 Hag Ht).
+  Qed.
+
+  Lemma spine_start_order : forall G M W ρ, ⊢ G -> G ⊢a M ⟹ W -> fast_env_simulates gc_deps gc_stack G ρ ->
+      fast_eval_exp_order gc_deps gc_stack (nf_to_exp W) (fenv_erase ρ).
+  Proof.
+    intros * HG HMi Hs; destruct (nbe_ty_exists_wf_type (wf_type_of_infer _ _ _ HG HMi)) as [W0 HW0].
+    exact (nbe_ty_eval_order _ _ _ _ _ (nbe_ty_order_sound _ _ _ _ _ HW0) Hs).
+  Qed.
+
+  (** The domain the spine checks an argument against is a type. *)
+  Lemma spine_domain_type_fast : forall G M κd a ρ' B' A',
+      ⊢ G -> spine_value_sim G M (fd_pi κd ak_relevant a ρ' B') ->
+      fast_read_typ gc_deps gc_stack (List.length G) (fdomain_erase a) A' -> nf_proof_freeb A' = true -> G ⊢ᵗ A'.
+  Proof.
+    intros * HG Hs HA' Hpf; destruct (spine_domain_reference _ _ _ _ _ _ _ _ Hs HA' Hpf) as (ρc & a0 & ρ0 & Hi & Hsv & _ & _ & HA0).
+    exact (spine_domain_type _ _ _ _ _ _ _ _ HG Hi Hsv HA0 (proj1 (proj1 nf_proof_freeb_iff _) Hpf)).
+  Qed.
+
+  Lemma spine_check_failure_fast : forall G M N κd a ρ' B' A',
+      ⊢ G -> spine_value_sim G M (fd_pi κd ak_relevant a ρ' B') ->
+      fast_read_typ gc_deps gc_stack (List.length G) (fdomain_erase a) A' -> nf_proof_freeb A' = true ->
+      ~ G ⊢a N ⟸ A' -> forall C, ~ G ⊢a M $ N ⟹ C.
+  Proof.
+    intros * HG Hs HA' Hpf Hn; destruct (spine_domain_reference _ _ _ _ _ _ _ _ Hs HA' Hpf) as (ρc & a0 & ρ0 & Hi & Hsv & _ & _ & HA0).
+    exact (spine_check_failure _ _ _ _ _ _ _ _ _ HG Hi Hsv HA0 (proj1 (proj1 nf_proof_freeb_iff _) Hpf) Hn).
+  Qed.
+
+  (** The argument and the codomain at it: their values, fast, are
+      related to the reference ones. *)
+  Lemma spine_argument_order : forall G M N ρ κd a ρ' B' A',
+      ⊢ G -> fast_env_simulates gc_deps gc_stack G ρ -> spine_value_sim G M (fd_pi κd ak_relevant a ρ' B') ->
+      fast_read_typ gc_deps gc_stack (List.length G) (fdomain_erase a) A' -> nf_proof_freeb A' = true ->
+      evaluated_kind (fdomain_kind a) -> G ⊢a N ⟸ A' -> fast_eval_exp_order gc_deps gc_stack N (fenv_erase ρ).
+  Proof.
+    intros * HG (ρc' & Hi' & Hag) Hs HA' Hpf Hk HNc.
+    destruct (spine_domain_reference _ _ _ _ _ _ _ _ Hs HA' Hpf) as (ρc & a0 & ρ0 & Hi & Hsv & Ha & _ & HA0).
+    pose proof (functional_initial_env _ _ Hi' _ Hi) as ->.
+    destruct (spine_argument_evals _ _ _ _ _ _ _ _ _ HG Hi Hsv HA0 (proj1 (proj1 nf_proof_freeb_iff _) Hpf)
+                ltac:(rewrite (fast_kind_of_core _ _ _ _ Ha); exact Hk) HNc) as [n Hn].
+    eapply fast_eval_order_of_core; eassumption.
   Qed.
 
   Lemma spine_codomain_order : forall G M N ρ κd a ρ' B' A' n,
-      ⊢ G -> initial_env_f G ρ ->
-      spine_value_of G M ρ (d_pi κd ak_relevant a ρ' B') ->
-      Rtyp a in List.length G ↘ A' -> nf_proof_free A' -> evaluated_kind (domain_kind a) ->
-      G ⊢a N ⟸ A' -> ⟦ N ⟧ ρ ↘ n ->
-      eval_exp_order gc_deps gc_stack B' (ρ' ↦ n ⦂ entry_type_value a).
+      ⊢ G -> fast_env_simulates gc_deps gc_stack G ρ -> spine_value_sim G M (fd_pi κd ak_relevant a ρ' B') ->
+      fast_read_typ gc_deps gc_stack (List.length G) (fdomain_erase a) A' -> nf_proof_freeb A' = true ->
+      evaluated_kind (fdomain_kind a) -> G ⊢a N ⟸ A' ->
+      fast_eval_exp gc_deps gc_stack N (fenv_erase ρ) (fdomain_erase n) ->
+      fast_eval_exp_order gc_deps gc_stack B' (fenv_erase (fextend_env ρ' n (fentry_type_value a))).
   Proof.
-    intros * HG Hρ Hs HA' Hpf Hk HNc Hn.
-    destruct (spine_value_codomain_evals _ _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HNc Hn) as [b Hb].
-    exact (eval_exp_order_sound _ _ _ _ _ Hb).
+    intros * HG (ρc' & Hi' & Hag) Hs HA' Hpf Hk HNc Hn.
+    destruct (spine_domain_reference _ _ _ _ _ _ _ _ Hs HA' Hpf) as (ρc & a0 & ρ0 & Hi & Hsv & Ha & Hagc & HA0).
+    pose proof (functional_initial_env _ _ Hi' _ Hi) as ->.
+    pose proof (proj1 (proj1 nf_proof_freeb_iff _) Hpf) as Hpf'.
+    assert (Hk0 : evaluated_kind (domain_kind a0)) by (rewrite (fast_kind_of_core _ _ _ _ Ha); exact Hk).
+    destruct (spine_argument_evals _ _ _ _ _ _ _ _ _ HG Hi Hsv HA0 Hpf' Hk0 HNc) as [n0 Hn0].
+    destruct (spine_value_codomain_evals _ _ _ _ _ _ _ _ _ _ HG Hi Hsv HA0 Hpf' Hk0 HNc Hn0) as [b Hb].
+    rewrite fextend_env_erase.
+    destruct (fast_eval_clo_sim _ _ _ _ _ _ _ (entry_type_value a0) (fentry_type_erase (fentry_type_value a)) _ Hagc
+                (fast_eval_value_of_core _ _ _ _ _ _ _ Hn0 Hag Hn) Hb) as (b' & Hb' & _).
+    exact (fast_eval_exp_order_sound _ _ _ _ _ Hb').
+  Qed.
+
+  (** One step of the spine *)
+  Lemma alg_spine_step_fast : forall G M N ρ κd a ρ' B' A' n b,
+      ⊢ G -> fast_env_simulates gc_deps gc_stack G ρ -> spine_value_sim G M (fd_pi κd ak_relevant a ρ' B') ->
+      fast_read_typ gc_deps gc_stack (List.length G) (fdomain_erase a) A' -> nf_proof_freeb A' = true ->
+      evaluated_kind (fdomain_kind a) -> G ⊢a N ⟸ A' ->
+      fast_eval_exp gc_deps gc_stack N (fenv_erase ρ) (fdomain_erase n) ->
+      fast_eval_exp gc_deps gc_stack B' (fenv_erase (fextend_env ρ' n (fentry_type_value a))) (fdomain_erase b) ->
+      spine_value_sim G (M $ N) b.
+  Proof.
+    intros * HG (ρc' & Hi' & Hag) Hs HA' Hpf Hk HNc Hn Hb.
+    destruct (spine_domain_reference _ _ _ _ _ _ _ _ Hs HA' Hpf) as (ρc & a0 & ρ0 & Hi & Hsv & Ha & Hagc & HA0).
+    pose proof (functional_initial_env _ _ Hi' _ Hi) as ->.
+    pose proof (proj1 (proj1 nf_proof_freeb_iff _) Hpf) as Hpf'.
+    assert (Hk0 : evaluated_kind (domain_kind a0)) by (rewrite (fast_kind_of_core _ _ _ _ Ha); exact Hk).
+    destruct (spine_argument_evals _ _ _ _ _ _ _ _ _ HG Hi Hsv HA0 Hpf' Hk0 HNc) as [n0 Hn0].
+    destruct (spine_value_codomain_evals _ _ _ _ _ _ _ _ _ _ HG Hi Hsv HA0 Hpf' Hk0 HNc Hn0) as [b0 Hb0].
+    rewrite fextend_env_erase in Hb.
+    destruct (fast_eval_clo_sim _ _ _ _ _ _ _ (entry_type_value a0) (fentry_type_erase (fentry_type_value a)) _ Hagc
+                (fast_eval_value_of_core _ _ _ _ _ _ _ Hn0 Hag Hn) Hb0) as (b' & Hb' & Hsb).
+    rewrite <- (functional_fast_eval_exp _ _ _ _ Hb Hb') in Hsb.
+    exists ρc, b0; repeat split; [ exact Hi | exact (alg_spine_step _ _ _ _ _ _ _ _ _ _ _ HG Hi Hsv HA0 Hpf' Hk0 HNc Hn0 Hb0) | exact Hsb ].
+  Qed.
+
+  (** The end of the spine: a proof-free readback of its value *)
+  Lemma alg_spine_end_fast : forall G M v W',
+      ⊢ G -> spine_value_sim G M v ->
+      fast_read_typ gc_deps gc_stack (List.length G) (fdomain_erase v) W' -> nf_proof_freeb W' = true -> G ⊢a M ⟹ W'.
+  Proof.
+    intros * HG (ρc & v0 & Hi & Hs & Hsim) Hr Hpf.
+    destruct (spine_value_reads _ _ _ _ (List.length G) Hs) as [W0 HW0].
+    destruct (fast_read_typ_simulation _ _ _ _ _ _ HW0 Hsim) as (W1 & HW1 & Hup).
+    rewrite (functional_fast_read_typ _ _ _ _ HW1 Hr) in Hup.
+    rewrite (eq_of_upto_proof_free _ _ Hup Hpf) in HW0.
+    exact (alg_spine_end _ _ _ _ _ HG Hi Hs HW0 (proj1 (proj1 nf_proof_freeb_iff _) Hpf)).
   Qed.
 End Facts.
 
@@ -744,8 +880,7 @@ Section type_check.
   Inductive spine_result G (P : checker_env G) (M : exp) : Type :=
   (** A value related to the inferred type's value at the initial
       environment *)
-  | spine_value (v : fdomain) (Hv : fdomain_ok gc_deps gc_stack v)
-      (Hs : spine_value_of G M (fenv_erase (proj1_sig P)) (fdomain_erase v))
+  | spine_value (v : fdomain) (Hv : fdomain_ok gc_deps gc_stack v) (Hs : spine_value_sim G M v)
   (** The inferred type itself *)
   | spine_exact (W : nf) (HW : G ⊢a M ⟹ W).
   Arguments spine_value {G P M}.
@@ -768,10 +903,9 @@ Section type_check.
   Definition spine_start G (HG : ⊢ G) (P : checker_env G) M (W : nf) (HW : G ⊢a M ⟹ W) : spine_result G P M :=
     match nf_not_level_sort_dec W with
     | left HnL =>
-        let (t, Ht) := fast_eval_exp_impl F (nf_to_exp W) (proj1_sig P) (proj2 (proj2_sig P))
-                         (nbe_ty_order_typ _ _ _ _ (nbe_order_of_type _ _ (wf_type_of_infer _ _ _ HG HW))
-                            _ (proj1 (proj2_sig P))) in
-        spine_value t (proj2 Ht) (alg_spine_start _ _ _ _ _ HG HW HnL (proj1 (proj2_sig P)) (proj1 Ht))
+        let (t, Ht) := fast_eval_exp_impl F (nf_to_exp W) (proj1_sig P) (fast_env_simulates_ok _ _ _ _ (proj2_sig P))
+                         (spine_start_order _ _ _ _ HG HW (proj2_sig P)) in
+        spine_value t (proj2 Ht) (alg_spine_start_fast _ _ _ _ _ HG HW HnL (proj2_sig P) (proj1 Ht))
     | right _ => spine_exact W HW
     end.
 
@@ -812,8 +946,8 @@ Section type_check.
       domain is of an evaluated kind *)
   Definition spine_pi_step G (HG : ⊢ G) (P : checker_env G) M N κd a ρ' B'
       (Hv : fdomain_ok gc_deps gc_stack (fd_pi κd ak_relevant a ρ' B'))
-      (Hs : spine_value_of G M (fenv_erase (proj1_sig P)) (fdomain_erase (fd_pi κd ak_relevant a ρ' B')))
-      (Hk : evaluated_kind (domain_kind (fdomain_erase a)))
+      (Hs : spine_value_sim G M (fd_pi κd ak_relevant a ρ' B'))
+      (Hk : evaluated_kind (fdomain_kind a))
       (infer_head : unit -> infer_result G M) (check : check_against G N) :
       spine_result G P (M $ N) + { forall A, ~ G ⊢a M $ N ⟹ A } :=
     let Ha := match Hv in fdomain_ok _ _ v return
@@ -822,21 +956,20 @@ Section type_check.
               | _ => I
               end in
     let (A', HA') := fast_read_typ_impl F (List.length G) a (proj1 Ha)
-                       (spine_domain_read_order _ _ _ _ _ _ _ _ Hs) in
+                       (spine_domain_read_order _ _ _ _ _ _ _ Hs) in
     match nf_proof_freeb A' as b return nf_proof_freeb A' = b -> _ with
     | true => fun Ef =>
-        let Hpf := proj1 (proj1 nf_proof_freeb_iff A') Ef in
-        let Hρ := proj1 (proj2_sig P) in
-        match check (nf_to_exp A') (spine_domain_type _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf) with
+        let Hρ := proj2_sig P in
+        match check (nf_to_exp A') (spine_domain_type_fast _ _ _ _ _ _ _ HG Hs HA' Ef) with
         | left HN =>
-            let (n, Hn) := fast_eval_exp_impl F N (proj1_sig P) (proj2 (proj2_sig P))
-                             (spine_argument_order _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HN) in
+            let (n, Hn) := fast_eval_exp_impl F N (proj1_sig P) (fast_env_simulates_ok _ _ _ _ Hρ)
+                             (spine_argument_order _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Ef Hk HN) in
             let (b, Hb) := fast_eval_exp_impl F B' (fextend_env ρ' n (fentry_type_value a))
                              (Forall_cons _ (fdentry_ok_term _ _ _ _ (proj2 Hn) (fentry_type_ok_value _ _ _ (proj1 Ha)))
                                 (proj2 Ha))
-                             (spine_codomain_order _ _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HN (proj1 Hn)) in
-            inleft (spine_value b (proj2 Hb) (alg_spine_step _ _ _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hk HN (proj1 Hn) (proj1 Hb)))
-        | right Hn => inright (spine_check_failure _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Hpf Hn)
+                             (spine_codomain_order _ _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Ef Hk HN (proj1 Hn)) in
+            inleft (spine_value b (proj2 Hb) (alg_spine_step_fast _ _ _ _ _ _ _ _ _ _ _ HG Hρ Hs HA' Ef Hk HN (proj1 Hn) (proj1 Hb)))
+        | right Hn => inright (spine_check_failure_fast _ _ _ _ _ _ _ _ HG Hs HA' Ef Hn)
         end
     | false => fun _ => spine_of_infer G P (M $ N) (app_reference G HG P M N infer_head check)
     end eq_refl.
@@ -850,13 +983,11 @@ Section type_check.
     match r with
     | spine_exact W HW => spine_of_infer G P (M $ N) (app_reference_step G HG P M N W HW check)
     | spine_value v Hv Hs =>
-        match v return fdomain_ok gc_deps gc_stack v -> spine_value_of G M (fenv_erase (proj1_sig P)) (fdomain_erase v) -> _ with
+        match v return fdomain_ok gc_deps gc_stack v -> spine_value_sim G M v -> _ with
         | fd_pi κd ak_relevant a ρ' B' => fun Hv Hs =>
             match abs_kind_eq_dec (fdomain_kind a) ak_propositional with
             | right Hk =>
-                spine_pi_step G HG P M N κd a ρ' B' Hv Hs
-                  (eq_rect_r evaluated_kind (evaluated_kind_of_not_propositional _ Hk) (fdomain_kind_erase a))
-                  infer_head check
+                spine_pi_step G HG P M N κd a ρ' B' Hv Hs (evaluated_kind_of_not_propositional _ Hk) infer_head check
             | left _ => spine_of_infer G P (M $ N) (app_reference G HG P M N infer_head check)
             end
         | _ => fun _ _ => spine_of_infer G P (M $ N) (app_reference G HG P M N infer_head check)
@@ -894,11 +1025,9 @@ Section type_check.
     match r with
     | inleft (spine_exact W HW) => inleft (exist _ W HW)
     | inleft (spine_value v Hv Hs) =>
-        let (W', HW') := fast_read_typ_impl F (List.length G) v Hv (spine_value_read_order _ _ _ _ _ Hs) in
+        let (W', HW') := fast_read_typ_impl F (List.length G) v Hv (spine_value_read_order _ _ _ _ Hs) in
         match nf_proof_freeb W' as b return nf_proof_freeb W' = b -> _ with
-        | true => fun Ef =>
-            inleft (exist _ W' (alg_spine_end _ _ _ _ _ HG (proj1 (proj2_sig P)) Hs HW'
-                                  (proj1 (proj1 nf_proof_freeb_iff W') Ef)))
+        | true => fun Ef => inleft (exist _ W' (alg_spine_end_fast _ _ _ _ HG Hs HW' Ef))
         | false => fun _ => app_reference G HG P M N infer_head check
         end eq_refl
     | inright Hn => inright Hn

@@ -38,68 +38,51 @@ so that the head of an application is a strict subterm at the order of a
 check: `type_infer_val_in` recurses through `type_infer_app_in` on an
 application and calls `type_infer_in` otherwise, both structurally.
 
-## The skipped recursive result (`Extraction/FastEval.v`, `Simulation.v`)
+## The skipped recursive result (`Extraction/FastEval.v`, `FastRead.v`, `FastEquiv.v`, `Simulation.v`, `NbE.v`)
 
-`FastEval.v` copies the evaluation and readback relations of
-`Core/Semantic` with one rule split in two, `fast_eval_ihs_rec` and
-`fast_eval_ihs_skip`: the recursive results of a constructor's arguments are
-computed for the branch `B` (`⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ`), and
-the result of the recursive argument heading `ca_rec t :: gs`, the variable
-`cargs_nrec gs` of `B`, is computed only when `B` reads it; otherwise the
-entry is `𝕌ω@0`.  A function-shaped result is a closure (`d_ihfn`),
-skipped alike.
+Core evaluates every recursive result of an eliminator (`eval_ihs`).  The
+fast relations (`FastEval.v`, `FastRead.v`) copy Core's at a mode
+`{SM : SkipMode}` (`skip_on`); every fast relation, order and
+implementation takes it.
 
-The readback of a stuck eliminator's branch (`fast_read_brs`) gives a
-recursive result the branch does not read (`exp_freshb (cargs_nrec gs) B`)
-the type `𝕌ω@0` instead of evaluating the motive at it (`fast_fresh_ihs_skip`);
-`fast_read_sim` relates the recursive results only where the branch reads them
-(`domain_list_simulation_at`, `env_agree_binders_at`), as for evaluation.
+- With the skip on (`skip_on_mode`): the recursive results of an argument
+  the branch `B` reads none of are `𝕌ω@0` (`fast_eval_ihs_skip`, decided by
+  `ihs_skip_at skip_on (Some B) …`); the fresh results of a branch read back
+  are at `𝕌ω@0` likewise (`fast_fresh_ihs_skip`); a kept proof reads back as
+  its term, with no definitions around it (`fast_read_proof_kept_skipping`);
+  a type former at no argument reads back with no lookup
+  (`fast_read_typ_indty_nil`); stored values (`value_ok`, `stored_def_value`)
+  are read.
+- With the skip off (`skip_off_mode`) none of these rules applies and the
+  fast relations are Core's, one for one (`FastEquiv.v`:
+  `core_to_fast_eval`, `fast_to_core_eval`, `core_to_fast_read`,
+  `fast_to_core_read`); stored values are not read, bodies are evaluated.
 
-Evaluation selects a member of a global module by one lookup of its entry
-(`gc_entry`, `Extraction/Evaluation.v`): a definition (`gc_entry_def`) or the
-module of an inductive type, the type former (`gc_entry_ind`,
-`ind_lookup_entry`); the relation keeps `gc_resolve` and `ind_lookup`.
+`Simulation.v` relates Core values to fast ones at the skip on.
+`domain_simulation a a'` is equality up to the entries of closures'
+environments the body is fresh at, any two kept proofs being related;
+`env_agree P ρ ρ'` is agreement at the entries `P` selects, entry types
+ignored.
 
-The checker of an eliminator (`Extraction/IndCheck.v`) checks and
-normalises nothing for an unapplied head: the type former at no parameter
-is its own normal form, which the algorithmic rule's premises get by
-completeness.
+- `fast_eval_sim` (S2): from environments that agree where the term may
+  read, the fast evaluation terminates whenever Core's does, at a related
+  value.  Recursive results are related only at the entries the branch
+  reads (`domain_list_simulation_at`, `env_agree_binders_at`).
+- `fast_read_simulation` (S3): readback of related values gives a normal
+  form equal up to proofs (`nf_eq_upto_proofs`).
 
-Readback has one rule more: a type former without arguments reads back as
-`nf_indty p nil` without looking its declaration up
-(`fast_read_typ_indty_nil`; the general rule asks `as' <> nil`).
-
-The implementations keep a declaration they looked up (`lookup_cache`,
-`cache_lookup`, `Extraction/Lookup.v`): the eliminator passes the one of
-the constructor it takes apart to the recursive results, and readback of a
-constructor or of a stuck eliminator to what it reads below, so a lookup of
-the same name is a comparison of names.  The relations are unchanged.
-
-Normal forms are compared by `nf_eq_dec` (`Syntax.v`), whose names are
-compared by `string_dec` (native string equality once extracted), not
-taken apart character by character by `decide equality`.  Notations carry `ᶠ` (`⟦ M ⟧ᶠ`, `Rtypᶠ`, …).
-The orders and implementations of `Extraction/Evaluation.v` and
-`Readback.v` are those of `Reference/` over the copied relations.
-
-`Simulation.v` relates the two.  `domain_simulation a a'` (reference `a`, fast `a'`) is
-equality up to the entries of closures' environments at which the body is
-fresh; `env_agree P ρ ρ'` is agreement at the entries `P` selects.
-
-- `fast_eval_sim`: from environments that agree where the term may read
-  (`fun x => ~ exp_fresh x M`), the fast evaluation terminates whenever the
-  reference one does, at a related value.  A body's environment agrees on
-  the entries it adds and, above them, where its input did (`above`).
-  The recursive results are related only at the entries the branch reads
-  (`domain_list_simulation_at (fun x => ~ exp_fresh x B)`: the head of `a :: l` sits at
-  entry `List.length l`), and the branch's environment agrees where the
-  branch reads (`env_agree_binders_at`).
-- `fast_read_sim`: readback of related values gives the same normal form.
-
-So the fast normalizers meet `nbe`/`nbe_ty` (`Extraction/NbE.v`): the order
-gives the reference derivation, `fast_eval_sim`/`fast_read_sim` the fast one, and
-determinism of fast readback the equality.  The checker's environment
-`checker_env G` is `fast_env`: a fast environment related to the initial environment of
-`G` entry by entry.
+`NbE.v`: the orders are the existence of Core's result (`initial_env_order`,
+`nbe_order`, `nbe_ty_order`); the fast termination orders come from S2/S3
+and `*_order_sound`.  The checker's environment `checker_env G` is
+`fast_env`: built at the skip on, it simulates Core's initial environment
+(`fast_env_simulates`).  A normalizer runs at the skip on; a proof-free
+normal form is Core's (`nf_ne_proof_free_eq`, determinism of fast
+evaluation and readback).  Otherwise, and always at a proposition (the
+normal form is a proof), it runs again at the skip off, from an exact
+environment computed afresh (`initial_env_exact_impl`, `exact_env_spec`),
+and gets Core's normal form by `FastEquiv.v`.  The application spine
+(`TypeCheck.v`) keeps a fast value simulating Core's spine value
+(`spine_value_sim`), and uses a readback only where it is proof-free.
 
 ## What the extracted code looks up in (`Extraction/FastContext.v`, `Lookup.v`)
 

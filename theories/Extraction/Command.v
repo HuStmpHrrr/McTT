@@ -33,6 +33,7 @@ From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 From Mctt.Extraction Require Import Lookup NbE TypeCheck GlobalCheck IndDecl RecordDecl MemberType Opens Privacy.
 From Mctt.Extraction Require Import MdefGroup TypedElab FastDesc LookupTwins FastState.
 From Mctt.Extraction Require Export Formers.
+From Mctt.Extraction Require Import FastEval Simulation.
 Import Syntax_Notations GlobalCtx_Notations.
 
 Local Open Scope string_scope.
@@ -956,10 +957,13 @@ Proof. intros * H; exact (proj2 (canon_of_wf _ _ H)). Qed.
     has an order: the term has a normal form ([soundness]), which reads
     its value. *)
 Lemma closed_eval_order {Θ Ξ M A} : (exists i : nat, Θ ⍮ Ξ ⍮ nil ⊢ A : Typeω@i) -> Θ ⍮ Ξ ⍮ nil ⊢ M : A ->
-    Mctt.Extraction.Evaluation.eval_exp_order Θ Ξ M nil.
+    @Mctt.Extraction.Evaluation.fast_eval_exp_order skip_on_mode Θ Ξ M nil.
 Proof.
   intros [i HA] HM; destruct (soundness HM) as (W & [ρ a Hρ Ea Ht] & _).
-  destruct Ht as [w Hp _ | m w _ Em _]; [| inversion Hρ; subst; exact (Mctt.Extraction.Evaluation.eval_exp_order_sound _ _ _ _ _ Em) ].
+  destruct Ht as [w Hp _ | m w _ Em _].
+  2:{ inversion Hρ; subst.
+      destruct (fast_eval_exp_sim _ _ _ _ _ Em nil (env_agree_nil _ _ _)) as (m' & Hm' & _).
+      exact (Mctt.Extraction.Evaluation.fast_eval_exp_order_sound _ _ _ _ _ Hm'). }
   (** a term of a type of a large universe is no proof *)
   exfalso.
   destruct (@typed_at_sort_of_initial_kind (gc_mk Θ Ξ) _ _ _ _ _ (type_sort_universe i) HA Hρ Ea) as [k Hk].
@@ -972,7 +976,7 @@ Qed.
 Definition closed_value (F : FCtx) (M : exp) (A : typ) (HA : exists i : nat, fc_deps F ⍮ fc_stack F ⍮ nil ⊢ A : Typeω@i)
     (HM : fc_deps F ⍮ fc_stack F ⍮ nil ⊢ M : A) :
     { v | value_ok (fc_deps F) (fc_stack F) M v } :=
-  let (v, Hv) := Mctt.Extraction.Evaluation.fast_eval_exp_impl F M nil (Forall_nil _) (closed_eval_order HA HM) in
+  let (v, Hv) := Mctt.Extraction.Evaluation.fast_eval_exp_impl F (SM := skip_on_mode) M nil (Forall_nil _) (closed_eval_order HA HM) in
   exist _ v (mk_value_ok _ _ _ _ (proj1 Hv) (proj2 Hv)).
 
 (** A term of a type of a large universe typed under a telescope, closed

@@ -2148,7 +2148,7 @@ Section Read.
         Hln : List.length ?ns = List.length (List.rev (im_nparams ?Mv)), Hns : domain_list_simulation ?ns ?ns',
         Hpre : domain_list_simulation ?pre ?pre', Hnn : im_nn ?Mv = im_nn ?Mi,
         HA : env_agree (fun x => ~ exp_fresh (S (im_nn ?Mi) + x) ?A) ?ρ ?ρ',
-        HBs : forall c n B, In (c, n, B) ((?c, ?n0, ?B) :: _) -> _,
+        HBs : forall c1 n1 B1, In (c1, n1, B1) ((?c, ?n0, ?B) :: _) -> _,
         IHV : forall n', domain_nf_simulation (⇓ ?t ?b) n' -> exists _, _ /\ _,
         IHT : forall ρ0 ups0 pre0 D1, blocks_agree ?Bks ?ρ ρ0 -> _ |- _ =>
           rewrite e0 in HD0; injection HD0 as <-;

@@ -12,6 +12,10 @@ From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Extraction Require Import FastDomain NbE PseudoMonadic Subtyping FastDesc MemberType.
 From Mctt.Extraction Require Import Evaluation.
 Import Domain_Notations Wk_Notations Fixed_Notations.
+From Mctt.Extraction Require Import FastEval.
+
+(** The checker evaluates with the skip on ([Extraction.NbE]). *)
+#[local] Existing Instance skip_on_mode.
 
 (** * What the Checker's Parts Share
 
@@ -266,54 +270,24 @@ Section type_check.
       exists ρ', initial_env_f (e :: G) ρ'.
   Proof. intros * HG _; exact (initial_env_of_wf _ HG). Qed.
 
-  (** The type of an assumption evaluates at the initial environment. *)
-  Lemma checker_env_order_ass : forall G κ A ρ, ⊢ G ▹{κ} A -> initial_env_f G ρ -> eval_exp_order gc_deps gc_stack A ρ.
+  (** The entries of a context evaluate, fast, at an environment that
+      simulates the context's initial one ([fast_env_ass_order] and the
+      like, at [checker_env_order_of_wf]); so does a type. *)
+  Lemma checker_env_order_type : forall G T ρ, G ⊢ᵗ T -> fast_env_simulates gc_deps gc_stack G ρ ->
+      fast_eval_exp_order gc_deps gc_stack T (fenv_erase ρ).
   Proof.
-    intros * HG Hρ; destruct (initial_env_of_wf _ HG) as [ρ' Hρ'].
-    inversion Hρ'; subst; functional_initial_env_rewrite_clear; eauto using eval_exp_order_sound.
+    intros * HT Hs; destruct (nbe_ty_exists_wf_type HT) as [W HW].
+    exact (nbe_ty_eval_order _ _ _ _ _ (nbe_ty_order_sound _ _ _ _ _ HW) Hs).
   Qed.
 
-  (** So does the type of a definition, and its body at a type of an
-      evaluated kind. *)
-  Lemma checker_env_order_def_typ : forall G A M ρ, ⊢ G ▸ A ≔ M -> initial_env_f G ρ -> eval_exp_order gc_deps gc_stack A ρ.
+  (** The kind of a type is that of its fast value. *)
+  Lemma checker_kind_spec : forall G T ρ a, G ⊢ᵗ T -> fast_env_simulates gc_deps gc_stack G ρ ->
+      fast_eval_exp gc_deps gc_stack T (fenv_erase ρ) (fdomain_erase a) -> nbe_ty_kind G T (fdomain_kind a).
   Proof.
-    intros * HG Hρ; destruct (initial_env_of_wf _ HG) as [ρ' Hρ'].
-    inversion Hρ'; subst; functional_initial_env_rewrite_clear; eauto using eval_exp_order_sound.
-  Qed.
-
-  Lemma checker_env_order_def : forall G A M ρ a, ⊢ G ▸ A ≔ M -> initial_env_f G ρ ->
-      ⟦ A ⟧ ρ ↘ a -> evaluated_kind (domain_kind a) -> eval_exp_order gc_deps gc_stack M ρ.
-  Proof.
-    intros * HG Hρ Ha Hk; destruct (initial_env_of_wf _ HG) as [ρ' Hρ'].
-    inversion Hρ'; subst; functional_initial_env_rewrite_clear; functional_eval_rewrite_clear;
-      eauto using eval_exp_order_sound.
-    exfalso; eapply evaluated_kind_not_propositional; eassumption.
-  Qed.
-
-  (** The unit of a module slot evaluates. *)
-  Lemma checker_env_order_mod : forall G U ρ, ⊢ G ▹ₘ U -> initial_env_f G ρ ->
-      eval_modexp_order gc_deps gc_stack (me_lit U) ρ.
-  Proof.
-    intros * HG Hρ; destruct (initial_env_of_wf _ HG) as [ρ' Hρ'].
-    inversion Hρ'; subst; functional_initial_env_rewrite_clear; eauto using eval_modexp_order_sound.
-  Qed.
-
-  (** The type, the term and the unit of a definition with a module part
-      evaluate. *)
-  Lemma checker_env_order_dm : forall G A M U ρ, ⊢ G ▸ₘ A ≔ M ‖ U -> initial_env_f G ρ ->
-      eval_exp_order gc_deps gc_stack A ρ /\ eval_exp_order gc_deps gc_stack M ρ /\
-      eval_modexp_order gc_deps gc_stack (me_lit U) ρ.
-  Proof.
-    intros * HG Hρ; destruct (initial_env_of_wf _ HG) as [ρ' Hρ'].
-    inversion Hρ'; subst; functional_initial_env_rewrite_clear;
-      eauto 6 using eval_exp_order_sound, eval_modexp_order_sound.
-  Qed.
-
-  (** A type evaluates at the initial environment. *)
-  Lemma checker_env_order_type : forall G T ρ, G ⊢ᵗ T -> initial_env_f G ρ -> eval_exp_order gc_deps gc_stack T ρ.
-  Proof.
-    intros * HT Hρ; destruct (nbe_ty_exists_wf_type HT) as [W [ρ' a Hρ' Ha _]].
-    functional_initial_env_rewrite_clear; eauto using eval_exp_order_sound.
+    intros * HT (ρc & Hi & Hag) Ha; destruct (nbe_ty_exists_wf_type HT) as [W [ρ' m Hρ' Hm _]].
+    functional_initial_env_rewrite_clear.
+    exists ρc, m; split; [ exact Hi | split; [ exact Hm |] ].
+    exact (fast_kind_of_core _ _ _ _ (fast_eval_value_of_core _ _ _ _ _ _ _ Hm Hag Ha)).
   Qed.
 
   (** ** The Orders of the Checker
@@ -663,46 +637,48 @@ Definition checker_env_of G (HG : ⊢ G) : checker_env G :=
     context: one entry more, by its rule of [initial_env]. *)
 Definition checker_env_ass G (P : checker_env G) κ A (HGA : ⊢ G ▹{κ} A) : checker_env (G ▹{κ} A) :=
   let (p, Hp) := P in
-  let (a, Ha) := fast_eval_exp_impl F A p (proj2 Hp) (checker_env_order_ass G κ A _ HGA (proj1 Hp)) in
-  exist _ (fextend_env p (fd_neut a (fd_var (List.length G))) (fentry_type_value a)) (fast_env_ass _ _ _ _ _ _ _ Hp Ha).
+  let Ho := checker_env_order_of_wf _ HGA in
+  let (a, Ha) := fast_eval_exp_impl F A p (fast_env_simulates_ok _ _ _ _ Hp) (fast_env_ass_order _ _ _ _ _ _ Ho Hp) in
+  exist _ (fextend_env p (fd_neut a (fd_var (List.length G))) (fentry_type_value a)) (fast_env_ass _ _ _ _ _ _ _ Ho Hp Ha).
 
 (** The same for a definition entry, by the kind of its type: its body's
     value, or the body kept at a proposition. *)
 Definition checker_env_def G (P : checker_env G) A M (HGA : ⊢ G ▸ A ≔ M) : checker_env (G ▸ A ≔ M) :=
   let (p, Hp) := P in
-  let (a, Ha) := fast_eval_exp_impl F A p (proj2 Hp) (checker_env_order_def_typ G A M _ HGA (proj1 Hp)) in
+  let Ho := checker_env_order_of_wf _ HGA in
+  let (a, Ha) := fast_eval_exp_impl F A p (fast_env_simulates_ok _ _ _ _ Hp) (fast_env_def_typ_order _ _ _ _ _ _ Ho Hp) in
   match abs_kind_eq_dec (fdomain_kind a) ak_propositional with
-  | left Hk => exist _ (fextend_env p (fd_proof M p) (fentry_type_value a)) (fast_env_def_proof _ _ _ _ _ _ _ Hp Ha Hk)
+  | left Hk => exist _ (fextend_env p (fd_proof M p) (fentry_type_value a)) (fast_env_def_proof _ _ _ _ _ _ _ Ho Hp Ha Hk)
   | right Hk =>
-      let Hk' := evaluated_kind_of_not_propositional _ Hk in
-      let (m, Hm) := fast_eval_exp_impl F M p (proj2 Hp)
-                       (checker_env_order_def G A M _ _ HGA (proj1 Hp) (proj1 Ha)
-                          (eq_rect_r evaluated_kind Hk' (fdomain_kind_erase a))) in
-      exist _ (fextend_env p m (fentry_type_value a)) (fast_env_def _ _ _ _ _ _ _ _ Hp Ha Hk' Hm)
+      let (m, Hm) := fast_eval_exp_impl F M p (fast_env_simulates_ok _ _ _ _ Hp)
+                       (fast_env_def_order _ _ _ _ _ _ _ Ho Hp (proj1 Ha) Hk) in
+      exist _ (fextend_env p m (fentry_type_value a)) (fast_env_def _ _ _ _ _ _ _ _ Ho Hp Ha Hk Hm)
   end.
 
 (** The same for a module slot: the closure of its unit. *)
 Definition checker_env_mod G (P : checker_env G) U (HGU : ⊢ G ▹ₘ U) : checker_env (G ▹ₘ U) :=
   let (p, Hp) := P in
-  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (proj2 Hp) (checker_env_order_mod G U _ HGU (proj1 Hp)) in
-  exist _ (fextend_env_mod p h U) (fast_env_mod _ _ _ _ _ _ Hp Hh).
+  let Ho := checker_env_order_of_wf _ HGU in
+  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (fast_env_simulates_ok _ _ _ _ Hp) (fast_env_mod_order _ _ _ _ _ Ho Hp) in
+  exist _ (fextend_env_mod p h U) (fast_env_mod _ _ _ _ _ _ Ho Hp Hh).
 
 (** The same for a definition with a module part: the value of its term
     part's body, at its type, and the closure of its unit, side by side. *)
 Definition checker_env_dm G (P : checker_env G) A M U (HG : ⊢ G ▸ₘ A ≔ M ‖ U) : checker_env (G ▸ₘ A ≔ M ‖ U) :=
   let (p, Hp) := P in
-  let Ho := checker_env_order_dm G A M U _ HG (proj1 Hp) in
-  let (a, Ha) := fast_eval_exp_impl F A p (proj2 Hp) (proj1 Ho) in
-  let (m, Hm) := fast_eval_exp_impl F M p (proj2 Hp) (proj1 (proj2 Ho)) in
-  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (proj2 Hp) (proj2 (proj2 Ho)) in
-  exist _ (fextend_env_dm p m (fentry_type_value a) h U) (fast_env_dm _ _ _ _ _ _ _ _ _ _ Hp Ha Hm Hh).
+  let Hw := checker_env_order_of_wf _ HG in
+  let Ho := fast_env_dm_order _ _ _ _ _ _ _ Hw Hp in
+  let (a, Ha) := fast_eval_exp_impl F A p (fast_env_simulates_ok _ _ _ _ Hp) (proj1 Ho) in
+  let (m, Hm) := fast_eval_exp_impl F M p (fast_env_simulates_ok _ _ _ _ Hp) (proj1 (proj2 Ho)) in
+  let (h, Hh) := fast_eval_modexp_impl F (me_lit U) p (fast_env_simulates_ok _ _ _ _ Hp) (proj2 (proj2 Ho)) in
+  exist _ (fextend_env_dm p m (fentry_type_value a) h U) (fast_env_dm _ _ _ _ _ _ _ _ _ _ Hw Hp Ha Hm Hh).
 
 (** The kind of a type, read off its fast value at the environment the
     checker carries ([nbe_ty_kind]). *)
 Definition checker_kind G (P : checker_env G) T (HT : G ⊢ᵗ T) : { κ | nbe_ty_kind G T κ } :=
   let (p, Hp) := P in
-  let (a, Ha) := fast_eval_exp_impl F T p (proj2 Hp) (checker_env_order_type G T _ HT (proj1 Hp)) in
-  exist _ (fdomain_kind a) (ex_intro _ _ (ex_intro _ _ (conj (proj1 Hp) (conj (proj1 Ha) (fdomain_kind_erase a))))).
+  let (a, Ha) := fast_eval_exp_impl F T p (fast_env_simulates_ok _ _ _ _ Hp) (checker_env_order_type G T _ HT Hp) in
+  exist _ (fdomain_kind a) (checker_kind_spec G T p a HT Hp (proj1 Ha)).
 
 (** The initial environment of an extension [Ψ ++ G], from that of [G]:
     one entry more per entry of [Ψ], rather than all of [G]'s again. *)
