@@ -2038,6 +2038,19 @@ Section Impl.
     | None => run_error_msg "the natural numbers must be bound to an inductive type, named by its path"
     end.
 
+  (** The module expression a term spells, the inverse of
+      [modexp_as_term]: a member of a module, applied *)
+  Fixpoint term_as_modexp (M : exp) : option modexp :=
+    match M with
+    | a_mem H y => Some (me_mem H y)
+    | a_app M' N => option_map (fun H => me_app H N) (term_as_modexp M')
+    | _ => None
+    end.
+
+  (** The module expression a term spells, or a junk one *)
+  Definition term_target (M : exp) : modexp :=
+    match term_as_modexp M with Some E => E | None => me_var 0 end.
+
   (** An inductive alias whose module expression names no inductive type. *)
   Definition alias_target_error (x : string) (E : modexp) : run_error :=
     match mod_qname (fst (me_unapps E)) with
@@ -2222,6 +2235,7 @@ Section Impl.
         | open_success _ => run_error_msg "a local open of a body opens no module"
         end
     | fill_failure_branch_arity c n k a r => run_error_branch_arity c n k a r
+    | fill_failure_not_module _ M => run_error_import (open_failure_reason_target (term_target M))
     | fill_failure_no_kind what Γ A =>
         (** a universe at a term that is no level, in the binders crossed
             to reach it, if that is why *)
@@ -2257,7 +2271,8 @@ Section Impl.
     | fill_failure_private _ _ | fill_failure_mdef_group _ | fill_failure_literal _ | fill_failure_branch_arity _ _ _ _ _ => true
     | fill_failure_elim_scrutinee _ _ (Some _) | fill_failure_elim_none _ _ _ _ _ _ _
     | fill_failure_elim_ambiguous _ _ _ | fill_failure_body _ _ => true
-    | fill_failure_elim_scrutinee _ _ None | fill_failure_no_kind _ _ _ | fill_failure_message _ => false
+    | fill_failure_elim_scrutinee _ _ None | fill_failure_no_kind _ _ _ | fill_failure_not_module _ _
+    | fill_failure_message _ => false
     end.
 
   (** Why a command as written has no fill: a final failure as it is; the
@@ -2283,7 +2298,12 @@ Section Impl.
         match fill_exp_fn F B (lvd _) Hg (fc_tele F) M with
         | fill_ok M' =>
             if is_surface_hole A then
-              mod_error F None (M' :: nil) (field_error F None (lvd _) HΓ M' (run_error_eval_infer fs M'))
+              (** an open of a local body in it that opens nothing as
+                  written, or else the term itself *)
+              match open_expand_exp F Hg (mod_check F Hg) (fc_skeleton F) M' with
+              | open_failure e' => run_error_import e'
+              | open_success _ => mod_error F None (M' :: nil) (field_error F None (lvd _) HΓ M' (run_error_eval_infer fs M'))
+              end
             else
               match fill_exp_fn F B (lvd _) Hg (fc_tele F) A with
               | fill_ok A' =>
@@ -2295,6 +2315,19 @@ Section Impl.
               | fill_error _ => other
               end
         | fill_error _ => other
+        end
+    (** the target of a builtin binding or an inductive alias that is a
+        term of no record type: as the binding's or the alias's check
+        names it *)
+    | surface_cmd_builtin _ _ =>
+        match e with
+        | fill_failure_not_module _ M => builtin_target_error (term_target M)
+        | _ => other
+        end
+    | surface_cmd_inductive_alias x _ _ _ =>
+        match e with
+        | fill_failure_not_module _ M => alias_target_error x (term_target M)
+        | _ => other
         end
     | _ => other
     end.
@@ -3669,6 +3702,25 @@ Section Impl.
       cbn [item_weight]; unfold items_weight; cbn; lia.
   Qed.
 
+  (** Why a command as written has no fill ([fill_blame]); a group a
+      field's type of which has no sort, by the checks of the group filled
+      with a junk kind there ([fill_raw_decl_diagnostic_at]). *)
+  Definition fill_error_run (ch : list path) (L : loader ch) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins)
+      (fs : fstack) (H : pre ch s K D fs) (c : surface_cmd) (e : fill_failure) : run_error :=
+    let other := fill_blame (cmd_F B H) B (pre_gctx_f B H) (pre_ctx_f B H) c e in
+    match e, c with
+    | fill_failure_no_kind _ _ _, surface_cmd_inductive pv R =>
+        match fill_raw_decl_diagnostic_at (cmd_F B H) B (lvd _) (pre_gctx_f B H) (fc_tele (cmd_F B H)) R with
+        | fill_ok Rd =>
+            match core_step ch L s K D B fs (core_cmd_inductive pv Rd) H with
+            | run_failure e' => e'
+            | run_success _ => other
+            end
+        | fill_error _ => other
+        end
+    | _, _ => other
+    end.
+
   (** The items of a run, one after the other: a command as written checked
       for privacy, filled ([fill_cmd_fn]), its items run, then the rest; a
       core command run by [core_step], then the rest.  Its unfolding
@@ -3690,7 +3742,7 @@ Section Impl.
     | inleft (exist _ e _) => run_failure (run_error_nat (cmd_view s D) fs (nat_view_f (cmd_F B H) B) (privacy_run_error e))
     | inright Hac with inspect (fill_cmd_fn (cmd_F B H) B (lvd _) (pre_gctx_f B H) c) => {
       | exist _ (fill_error e) _ =>
-          run_failure (run_error_nat (cmd_view s D) fs (nat_view_f (cmd_F B H) B) (fill_blame (cmd_F B H) B (pre_gctx_f B H) (pre_ctx_f B H) c e))
+          run_failure (run_error_nat (cmd_view s D) fs (nat_view_f (cmd_F B H) B) (fill_error_run ch L s K D B fs H c e))
       | exist _ (fill_ok its1) Ea with items_impl ch L its1 s K D B fs H => {
         | run_failure e => run_failure e
         | run_success (exist _ r1 Hr1, l1)

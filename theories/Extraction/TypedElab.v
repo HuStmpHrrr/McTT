@@ -233,6 +233,10 @@ Inductive fill_failure : Set :=
 (** A local body, in its context, whose entries filled so far have no
     expansion: an open among them generates nothing *)
 | fill_failure_body : ctx -> gmod -> fill_failure
+(** A term, in its context, of no record type, where a module stands with
+    nothing selected from it: the target of an open, an alias or a
+    builtin binding *)
+| fill_failure_not_module : ctx -> exp -> fill_failure
 (** The branch of the constructor [c] of an eliminator, binding [n]
     variables where it needs [k] parameters, [a] arguments and [r]
     recursive results *)
@@ -559,7 +563,9 @@ Section Decide.
 
   (** A module expression, in module position, read as [r]: the module it
       is, with the record it is the module of a value of, if it has a term
-      at its head.  [y] names what is selected from it, for the error. *)
+      at its head.  [y] names what is selected from it, for the error; with
+      nothing selected ([y] empty), a term of no record type stands where
+      a module does. *)
   Definition fill_mod_of (Γ : ctx) (y : string) (r : fill_result module_read) : fill_result (modexp * option qname)%type :=
     match r with
     | fill_error e => fill_error e
@@ -567,8 +573,8 @@ Section Decide.
     | fill_ok (read_term M) =>
         match infer_at Γ M with
         | Some (nf_record p Rs) => fill_ok (record_value_module p Rs M, Some p)
-        | Some W => fill_error (fill_failure_not_record y Γ M W)
-        | None => fill_error (fill_failure_no_type y Γ M)
+        | Some W => fill_error (if String.eqb y "" then fill_failure_not_module Γ M else fill_failure_not_record y Γ M W)
+        | None => fill_error (if String.eqb y "" then fill_failure_not_module Γ M else fill_failure_no_type y Γ M)
         end
     end.
 
@@ -888,15 +894,19 @@ Section Decide.
 
   (** Named types, outermost first, each over the filled ones before it,
       at the kind of the sort its filled type infers to. *)
-  Fixpoint fill_fields_fn (Γ : ctx) (fs : list (string * surface_exp)) : fill_result (list (string * abs_kind * typ)) :=
+  Fixpoint fill_fields_with (kind : ctx -> exp -> string -> fill_result abs_kind) (Γ : ctx) (fs : list (string * surface_exp)) :
+      fill_result (list (string * abs_kind * typ)) :=
     match fs with
     | nil => fill_ok nil
     | (f, T) :: fs0 =>
         let%a T' := fill_exp_fn Γ T in
-        let%a κ := kind_at Γ T' "the type of a field" in
-        let%a fs0' := fill_fields_fn (Γ ▹{κ} T') fs0 in
+        let%a κ := kind Γ T' "the type of a field" in
+        let%a fs0' := fill_fields_with kind (Γ ▹{κ} T') fs0 in
         fill_ok ((f, κ, T') :: fs0')
     end.
+
+  (** The fill of named types: at the kinds of their sorts ([kind_at]) *)
+  #[local] Abbreviation fill_fields_fn := (fill_fields_with kind_at).
 
   (** A term that may be absent. *)
   Definition fill_optional_exp_fn (Γ : ctx) (oM : option surface_exp) : fill_result (option exp) :=
@@ -1715,15 +1725,17 @@ Section Decide.
   (** ** Groups *)
 
   (** Constructors' arguments over [Γ], their names kept. *)
-  Fixpoint fill_raw_cons_fn (Γ : ctx) (cs : list (string * list (string * surface_exp))) :
-      fill_result (list (string * list (string * abs_kind * exp))) :=
+  Fixpoint fill_raw_cons_with (kind : ctx -> exp -> string -> fill_result abs_kind) (Γ : ctx)
+      (cs : list (string * list (string * surface_exp))) : fill_result (list (string * list (string * abs_kind * exp))) :=
     match cs with
     | nil => fill_ok nil
     | (c, args) :: cs0 =>
-        let%a args' := fill_fields_fn Γ args in
-        let%a cs0' := fill_raw_cons_fn Γ cs0 in
+        let%a args' := fill_fields_with kind Γ args in
+        let%a cs0' := fill_raw_cons_with kind Γ cs0 in
         fill_ok ((c, args') :: cs0')
     end.
+
+  #[local] Abbreviation fill_raw_cons_fn := (fill_raw_cons_with kind_at).
 
   (** Declared members' parameters and sorts over [Γ], the uniform
       parameters and the frames'; their constructors are left empty. *)
@@ -1749,24 +1761,51 @@ Section Decide.
 
   (** Declared members' constructors, each over the member's context in
       the group [Rh], whose parameters and sorts [hs] are filled. *)
-  Fixpoint fill_raw_bodies_at (Γt : ctx) (Rh : raw_decl) (ms : list surface_raw_member) (hs : list raw_member) :
-      fill_result (list raw_member) :=
+  Fixpoint fill_raw_bodies_with (kind : ctx -> exp -> string -> fill_result abs_kind) (Γt : ctx) (Rh : raw_decl)
+      (ms : list surface_raw_member) (hs : list raw_member) : fill_result (list raw_member) :=
     match ms, hs with
     | Mr :: ms0, Mh :: hs0 =>
-        let%a cs' := fill_raw_cons_fn (raw_member_args_ctx_at Γt Rh Mh) (surface_raw_member_cons Mr) in
-        let%a ms0' := fill_raw_bodies_at Γt Rh ms0 hs0 in
+        let%a cs' := fill_raw_cons_with kind (raw_member_args_ctx_at Γt Rh Mh) (surface_raw_member_cons Mr) in
+        let%a ms0' := fill_raw_bodies_with kind Γt Rh ms0 hs0 in
         fill_ok (mk_rmem (raw_member_name Mh) (raw_member_nparams Mh) (raw_member_sort Mh) cs' :: ms0')
     | _, _ => fill_ok nil
     end.
 
+  #[local] Abbreviation fill_raw_bodies_at := (fill_raw_bodies_with kind_at).
+
   (** A group as written, filled: its uniform parameters, its members'
       parameters and sorts, then their constructors' arguments in the
       group with those filled. *)
-  Definition fill_raw_decl_at (Γt : ctx) (R : surface_raw_decl) : fill_result raw_decl :=
+  Definition fill_raw_decl_with (kind : ctx -> exp -> string -> fill_result abs_kind) (Γt : ctx) (R : surface_raw_decl) :
+      fill_result raw_decl :=
     let%a ups' := fill_tele_fn Γt (surface_raw_decl_uparams R) in
     let%a hs := fill_raw_heads_fn (ups' ++ Γt) (surface_raw_decl_members R) in
-    let%a ms' := fill_raw_bodies_at Γt (mk_raw ups' hs (surface_raw_decl_rec_field R)) (surface_raw_decl_members R) hs in
+    let%a ms' := fill_raw_bodies_with kind Γt (mk_raw ups' hs (surface_raw_decl_rec_field R)) (surface_raw_decl_members R) hs in
     fill_ok (mk_raw ups' ms' (surface_raw_decl_rec_field R)).
+
+  #[local] Abbreviation fill_raw_decl_at := (fill_raw_decl_with kind_at).
+
+  (** *** A Group Filled for Its Error
+
+      Where a field's type has no sort, the group is filled with a junk
+      kind there ([ak_relevant]), only so that the checks of the group
+      name what is wrong with it (a recursive argument at the wrong
+      parameters, say); it is never run. *)
+
+  (** The kind of a filled type's sort, or a junk one *)
+  Definition kind_or_junk (Γ : ctx) (A : exp) : abs_kind :=
+    match infer_at Γ A with
+    | Some W => sort_abs_kind W
+    | None => ak_relevant
+    end.
+
+  (** The kind of a field for the error: that of its sort, or a junk one *)
+  Definition kind_diagnostic (Γ : ctx) (A : exp) (_ : string) : fill_result abs_kind := fill_ok (kind_or_junk Γ A).
+
+  (** A group as written, as [fill_raw_decl_at], at [kind_diagnostic],
+      for its error *)
+  Definition fill_raw_decl_diagnostic_at (Γt : ctx) (R : surface_raw_decl) : fill_result raw_decl :=
+    fill_raw_decl_with kind_diagnostic Γt R.
 
   Lemma fill_raw_cons_fn_sound : forall Γ cs cs', fill_raw_cons_fn Γ cs = fill_ok cs' ->
       Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_fields Θ Ξ B Γ (snd rc) (snd rc')) cs cs'.
@@ -1833,7 +1872,7 @@ Section Decide.
   (** The computed fill of a group is the relation's. *)
   Lemma fill_raw_decl_fn_sound : forall R R', fill_raw_decl_at (gs_tele Ξ) R = fill_ok R' -> fill_raw_decl Θ Ξ B R R'.
   Proof.
-    intros R R' E; unfold fill_raw_decl_at in E; bind_inv.
+    intros R R' E; unfold fill_raw_decl_with in E; bind_inv.
     rename x into ups', x0 into hs, x1 into ms'.
     pose proof (fill_raw_heads_fn_sound _ _ _ H0) as Hh.
     destruct (fill_raw_bodies_fn_sound _ _ _ _ (Forall2_length Hh) H1) as [Hhm Hc].
@@ -1868,7 +1907,7 @@ Section Decide.
       fill_raw_bodies_at (gs_tele Ξ) Rh ms
         (List.map (fun Mr' => mk_rmem (raw_member_name Mr') (raw_member_nparams Mr') (raw_member_sort Mr') nil) ms') = fill_ok ms'.
   Proof.
-    intros * Eu HG; induction 1 as [| Mr Mr' ms ms' [En Hn Hs Hc] _ IH]; cbn [fill_raw_bodies_at List.map]; [ reflexivity |].
+    intros * Eu HG; induction 1 as [| Mr Mr' ms ms' [En Hn Hs Hc] _ IH]; cbn [fill_raw_bodies_with List.map]; [ reflexivity |].
     change (raw_member_args_ctx_at (gs_tele Ξ)) with (raw_member_args_ctx Ξ).
     rewrite (raw_member_args_ctx_heads_eq Ξ Rh R' (mk_rmem (raw_member_name Mr') (raw_member_nparams Mr') (raw_member_sort Mr') nil)
                Mr' Eu HG eq_refl), (fill_raw_cons_fn_complete _ _ _ Hc); cbn [fill_result_bind].
@@ -1879,7 +1918,7 @@ Section Decide.
   Lemma fill_raw_decl_fn_complete : forall R R', fill_raw_decl Θ Ξ B R R' -> fill_raw_decl_at (gs_tele Ξ) R = fill_ok R'.
   Proof.
     pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
-    intros R R' [Hu Hr Hm]; unfold fill_raw_decl_at; rewrite (Ct _ _ _ Hu); cbn [fill_result_bind].
+    intros R R' [Hu Hr Hm]; unfold fill_raw_decl_with; rewrite (Ct _ _ _ Hu); cbn [fill_result_bind].
     rewrite (fill_raw_heads_fn_complete _ _ _ Hm); cbn [fill_result_bind].
     rewrite (fill_raw_bodies_fn_complete
                (mk_raw (raw_decl_uparams R')
