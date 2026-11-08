@@ -5,7 +5,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Core.Syntactic.System.Global Require Import Paths LookupSound.
 From Mctt.Core.Semantic Require Import Evaluation.
-From Mctt.Extraction Require Import FastDomain.
+From Mctt.Extraction Require Import FastEval FastDomain.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
 
@@ -15,8 +15,8 @@ Import Domain_Notations.
     entry is added to an open frame, a frame is opened or closed, a unit is
     filed or seen.  What [Θ1 ⍮ Ξ1] resolves, [Θ2 ⍮ Ξ2] resolves the same
     way.  So the kinds of members ([dmod_member_kind] and the relations
-    mutual with it), every relation of evaluation
-    ([Core.Semantic.Evaluation]) and the rightness of a fast value
+    mutual with it), every relation of the fast evaluation
+    ([Extraction.FastEval]) and the rightness of a fast value
     ([fdomain_ok]) hold in [Θ2 ⍮ Ξ2] wherever they hold in [Θ1 ⍮ Ξ1].
 
     This is what lets a value computed once, when its definition is added,
@@ -300,7 +300,7 @@ Section Growth.
       same case, evaluated or a proof: a type former, a record's or a
       constructor applied is of a declaration found, and a module member
       always takes an evaluated argument ([dmod_param_kind_evaluated]). *)
-  Lemma arg_kind_grows : forall m n r, eval_app Θ1 Ξ1 m n r ->
+  Lemma arg_kind_grows : forall m n r, fast_eval_app Θ1 Ξ1 m n r ->
       (evaluated_kind (arg_kind Θ1 Ξ1 m) -> evaluated_kind (arg_kind Θ2 Ξ2 m)) /\
       (arg_kind Θ1 Ξ1 m = ak_propositional -> arg_kind Θ2 Ξ2 m = ak_propositional).
   Proof.
@@ -319,40 +319,40 @@ Section Growth.
         split; intro; assumption ].
   Qed.
 
-  Theorem eval_grow :
-    (forall M ρ a, eval_exp Θ1 Ξ1 M ρ a -> eval_exp Θ2 Ξ2 M ρ a) /\
-    (forall m n r, eval_app Θ1 Ξ1 m n r -> eval_app Θ2 Ξ2 m n r) /\
-    (forall Ms ρ ms, eval_exps Θ1 Ξ1 Ms ρ ms -> eval_exps Θ2 Ξ2 Ms ρ ms) /\
-    (forall m args r, eval_apps Θ1 Ξ1 m args r -> eval_apps Θ2 Ξ2 m args r) /\
-    (forall H ρ h, eval_modexp Θ1 Ξ1 H ρ h -> eval_modexp Θ2 Ξ2 H ρ h) /\
-    (forall Δ D ρ h, eval_close Θ1 Ξ1 Δ D ρ h -> eval_close Θ2 Ξ2 Δ D ρ h) /\
-    (forall h n r, eval_appm Θ1 Ξ1 h n r -> eval_appm Θ2 Ξ2 h n r) /\
-    (forall h ns r, eval_appms Θ1 Ξ1 h ns r -> eval_appms Θ2 Ξ2 h ns r) /\
-    (forall h x r, eval_sel Θ1 Ξ1 h x r -> eval_sel Θ2 Ξ2 h x r) /\
-    (forall h y r, eval_selm Θ1 Ξ1 h y r -> eval_selm Θ2 Ξ2 h y r) /\
-    (forall h ch r, eval_selc Θ1 Ξ1 h ch r -> eval_selc Θ2 Ξ2 h ch r) /\
-    (forall h ch r, eval_selmc Θ1 Ξ1 h ch r -> eval_selmc Θ2 Ξ2 h ch r) /\
-    (forall ρ Φ ρ1, eval_body_env Θ1 Ξ1 ρ Φ ρ1 -> eval_body_env Θ2 Ξ2 ρ Φ ρ1) /\
-    (forall ρ p ups Bks j m r, eval_elim Θ1 Ξ1 ρ p ups Bks j m r -> eval_elim Θ2 Ξ2 ρ p ups Bks j m r) /\
-    (forall ρ p ups Bks gs vs r, eval_ihs Θ1 Ξ1 ρ p ups Bks gs vs r -> eval_ihs Θ2 Ξ2 ρ p ups Bks gs vs r) /\
-    (forall ρ p ups Bks t v r, eval_ih Θ1 Ξ1 ρ p ups Bks t v r -> eval_ih Θ2 Ξ2 ρ p ups Bks t v r) /\
-    (forall p ups j r, eval_mref Θ1 Ξ1 p ups j r -> eval_mref Θ2 Ξ2 p ups j r) /\
-    (forall p ups ρ t a, eval_shape_type Θ1 Ξ1 p ups ρ t a -> eval_shape_type Θ2 Ξ2 p ups ρ t a) /\
-    (forall p ups ρm As ρ t v a, eval_ihty Θ1 Ξ1 p ups ρm As ρ t v a -> eval_ihty Θ2 Ξ2 p ups ρm As ρ t v a) /\
-    (forall f m r, eval_proj Θ1 Ξ1 f m r -> eval_proj Θ2 Ξ2 f m r) /\
-    (forall m ρ fl rs, eval_neutral_fields Θ1 Ξ1 m ρ fl rs -> eval_neutral_fields Θ2 Ξ2 m ρ fl rs) /\
-    (forall fl v ws, eval_projs Θ1 Ξ1 fl v ws -> eval_projs Θ2 Ξ2 fl v ws) /\
-    (forall p ups ρm As ρ gs vs as', eval_ihtys Θ1 Ξ1 p ups ρm As ρ gs vs as' -> eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs as') /\
-    (forall rs Ms ρ ms, eval_field_vals Θ1 Ξ1 rs Ms ρ ms -> eval_field_vals Θ2 Ξ2 rs Ms ρ ms) /\
-    (forall f Ms ρ r, eval_app_args Θ1 Ξ1 f Ms ρ r -> eval_app_args Θ2 Ξ2 f Ms ρ r).
+  Theorem fast_eval_grow :
+    (forall M ρ a, fast_eval_exp Θ1 Ξ1 M ρ a -> fast_eval_exp Θ2 Ξ2 M ρ a) /\
+    (forall m n r, fast_eval_app Θ1 Ξ1 m n r -> fast_eval_app Θ2 Ξ2 m n r) /\
+    (forall Ms ρ ms, fast_eval_exps Θ1 Ξ1 Ms ρ ms -> fast_eval_exps Θ2 Ξ2 Ms ρ ms) /\
+    (forall m args r, fast_eval_apps Θ1 Ξ1 m args r -> fast_eval_apps Θ2 Ξ2 m args r) /\
+    (forall H ρ h, fast_eval_modexp Θ1 Ξ1 H ρ h -> fast_eval_modexp Θ2 Ξ2 H ρ h) /\
+    (forall Δ D ρ h, fast_eval_close Θ1 Ξ1 Δ D ρ h -> fast_eval_close Θ2 Ξ2 Δ D ρ h) /\
+    (forall h n r, fast_eval_appm Θ1 Ξ1 h n r -> fast_eval_appm Θ2 Ξ2 h n r) /\
+    (forall h ns r, fast_eval_appms Θ1 Ξ1 h ns r -> fast_eval_appms Θ2 Ξ2 h ns r) /\
+    (forall h x r, fast_eval_sel Θ1 Ξ1 h x r -> fast_eval_sel Θ2 Ξ2 h x r) /\
+    (forall h y r, fast_eval_selm Θ1 Ξ1 h y r -> fast_eval_selm Θ2 Ξ2 h y r) /\
+    (forall h ch r, fast_eval_selc Θ1 Ξ1 h ch r -> fast_eval_selc Θ2 Ξ2 h ch r) /\
+    (forall h ch r, fast_eval_selmc Θ1 Ξ1 h ch r -> fast_eval_selmc Θ2 Ξ2 h ch r) /\
+    (forall ρ Φ ρ1, fast_eval_body_env Θ1 Ξ1 ρ Φ ρ1 -> fast_eval_body_env Θ2 Ξ2 ρ Φ ρ1) /\
+    (forall ρ p ups Bks j m r, fast_eval_elim Θ1 Ξ1 ρ p ups Bks j m r -> fast_eval_elim Θ2 Ξ2 ρ p ups Bks j m r) /\
+    (forall ρ p ups Bks oB gs vs r, fast_eval_ihs Θ1 Ξ1 ρ p ups Bks oB gs vs r -> fast_eval_ihs Θ2 Ξ2 ρ p ups Bks oB gs vs r) /\
+    (forall ρ p ups Bks t v r, fast_eval_ih Θ1 Ξ1 ρ p ups Bks t v r -> fast_eval_ih Θ2 Ξ2 ρ p ups Bks t v r) /\
+    (forall p ups j r, fast_eval_mref Θ1 Ξ1 p ups j r -> fast_eval_mref Θ2 Ξ2 p ups j r) /\
+    (forall p ups ρ t a, fast_eval_shape_type Θ1 Ξ1 p ups ρ t a -> fast_eval_shape_type Θ2 Ξ2 p ups ρ t a) /\
+    (forall p ups ρm As ρ t v a, fast_eval_ihty Θ1 Ξ1 p ups ρm As ρ t v a -> fast_eval_ihty Θ2 Ξ2 p ups ρm As ρ t v a) /\
+    (forall f m r, fast_eval_proj Θ1 Ξ1 f m r -> fast_eval_proj Θ2 Ξ2 f m r) /\
+    (forall m ρ fl rs, fast_eval_neutral_fields Θ1 Ξ1 m ρ fl rs -> fast_eval_neutral_fields Θ2 Ξ2 m ρ fl rs) /\
+    (forall fl v ws, fast_eval_projs Θ1 Ξ1 fl v ws -> fast_eval_projs Θ2 Ξ2 fl v ws) /\
+    (forall p ups ρm As ρ gs vs as', fast_eval_ihtys Θ1 Ξ1 p ups ρm As ρ gs vs as' -> fast_eval_ihtys Θ2 Ξ2 p ups ρm As ρ gs vs as') /\
+    (forall rs Ms ρ ms, fast_eval_field_vals Θ1 Ξ1 rs Ms ρ ms -> fast_eval_field_vals Θ2 Ξ2 rs Ms ρ ms) /\
+    (forall f Ms ρ r, fast_eval_app_args Θ1 Ξ1 f Ms ρ r -> fast_eval_app_args Θ2 Ξ2 f Ms ρ r).
   Proof.
-    apply eval_mut_ind; intros;
+    apply fast_eval_mut_ind; intros;
       (** the kind of an applied function's argument, and the saturation
           of a module a member of which is found *)
       repeat match goal with
-        | H : evaluated_kind (arg_kind Θ1 Ξ1 ?m), Ha : eval_app Θ1 Ξ1 ?m _ _ |- _ =>
+        | H : evaluated_kind (arg_kind Θ1 Ξ1 ?m), Ha : fast_eval_app Θ1 Ξ1 ?m _ _ |- _ =>
             apply (proj1 (arg_kind_grows _ _ _ Ha)) in H
-        | H : arg_kind Θ1 Ξ1 ?m = ak_propositional, Ha : eval_app Θ1 Ξ1 ?m _ _ |- _ =>
+        | H : arg_kind Θ1 Ξ1 ?m = ak_propositional, Ha : fast_eval_app Θ1 Ξ1 ?m _ _ |- _ =>
             apply (proj2 (arg_kind_grows _ _ _ Ha)) in H
         | H : module_saturated Θ1 Ξ1 ?p ?args, Hc : gc_term Θ1 Ξ1 (qname_app ?p (?x :: nil)) = Some _ |- _ =>
             apply (module_saturated_grows _ _ _ (child_found_term _ _ _ _ Hc)) in H
@@ -362,22 +362,22 @@ Section Growth.
             apply (module_saturated_grows _ _ _ (child_found_ind _ _ _ _ Hc)) in H
         | H : module_saturated Θ1 Ξ1 ?p ?args, Hc : record_lookup Θ1 Ξ1 (qname_app ?p (?x :: nil)) = Some _ |- _ =>
             apply (module_saturated_grows _ _ _ (child_found_record _ _ _ _ Hc)) in H
-        | H : gc_loc Θ1 Ξ1 ?p = Some (?T, _) |- eval_sel _ _ _ _ _ =>
+        | H : gc_loc Θ1 Ξ1 ?p = Some (?T, _) |- fast_eval_sel _ _ _ _ _ =>
             let Φ' := fresh "Φ'" in destruct (gc_loc_grows_tele _ _ _ H) as (Φ' & ?); clear H
         end;
       try solve [ econstructor; eauto using ind_lookup_gc_sub, record_lookup_gc_sub, ind_mlookup_gc_sub, gc_sub_resolve, gc_sub_module, gc_term_grows ].
     (** The module of a member of a group, or a record type, as a term:
         still no definition, as it is still such a module *)
     - pose proof (ind_mlookup_gc_sub _ _ _ _ _ _ Hs e0) as e0'.
-      eapply eval_sel_global_ind; [ exact m | exact (ind_mlookup_resolve _ _ _ _ e0') | exact e0' | exact H ].
+      eapply fast_eval_sel_global_ind; [ exact m | exact (ind_mlookup_resolve _ _ _ _ e0') | exact e0' | exact H ].
     - pose proof (record_lookup_gc_sub _ _ _ _ _ _ Hs e0) as e0'.
-      eapply eval_sel_global_record; [ exact m | exact (record_lookup_resolve _ _ _ _ e0') | exact e0' | exact H ].
+      eapply fast_eval_sel_global_record; [ exact m | exact (record_lookup_resolve _ _ _ _ e0') | exact e0' | exact H ].
     (** A submodule located in place: still located, perhaps grown *)
-    - destruct (gc_loc_grows _ _ e) as (TΦ' & e'); eapply eval_selm_global; exact e'.
+    - destruct (gc_loc_grows _ _ e) as (TΦ' & e'); eapply fast_eval_selm_global; exact e'.
   Qed.
 
-  Corollary eval_exp_grow : forall M ρ a, ⟦ M ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a.
-  Proof. exact (proj1 eval_grow). Qed.
+  Corollary fast_eval_exp_grow : forall M ρ a, ⟦ M ⟧ᶠ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦ M ⟧ᶠ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a.
+  Proof. exact (proj1 fast_eval_grow). Qed.
 
   (** ** Right Fast Values *)
 

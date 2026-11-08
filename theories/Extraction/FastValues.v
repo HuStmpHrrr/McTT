@@ -6,7 +6,7 @@ From Mctt.Core.Syntactic.System Require Import Definitions Command.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Global Require Import Paths.
 From Mctt.Core.Semantic Require Import Evaluation.
-From Mctt.Extraction Require Import FastDomain FastEvalGrowth FastGlobal.
+From Mctt.Extraction Require Import FastEval FastDomain FastEvalGrowth FastGlobal.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
 
@@ -88,7 +88,7 @@ Section ValuesOk.
       environment, and right itself *)
   Record value_ok (M : exp) (v : fdomain) : Prop := mk_value_ok
     { (** the term evaluates to it, fast, in the empty environment *)
-      value_ok_eval : ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ fdomain_erase v
+      value_ok_eval : ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ fdomain_erase v
       (** the value is right *)
     ; value_ok_domain : fdomain_ok Θ Ξ v }.
 
@@ -197,7 +197,7 @@ Section ValuesGrow.
   Lemma value_ok_grow : forall M v, value_ok Θ1 Ξ1 M v -> value_ok Θ2 Ξ2 M v.
   Proof.
     intros M v [He Hv]; constructor;
-      [ exact (eval_exp_grow _ _ _ _ Hs Hg1 Hg2 _ _ _ He) | exact (proj1 (fdomain_ok_grow _ _ _ _ Hs) _ Hv) ].
+      [ exact (fast_eval_exp_grow _ _ _ _ Hs Hg1 Hg2 _ _ _ He) | exact (proj1 (fdomain_ok_grow _ _ _ _ Hs) _ Hv) ].
   Qed.
 
   Lemma stored_value_grow : forall oM ov, stored_value_ok Θ1 Ξ1 oM ov -> stored_value_ok Θ2 Ξ2 oM ov.
