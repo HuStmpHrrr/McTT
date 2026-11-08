@@ -78,10 +78,12 @@ let%expect_test "the ASCII spellings parse and print in Unicode" =
      eval elim 2 at y -> Nat | zero => 0 | succ n, r => succ r end \
      eval t eval f eval c" in
   [%expect {|
-    Evaluate elim 2 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2 : ℕ
-    Evaluate t --> ⋆ : ⊤
-    Evaluate f --> λ (x1 : ⊥) → exfalso ⋆ return ℕ : ∀ (x1 : ⊥) → ℕ
-    Evaluate c --> ⋆ : ∀ (x1 : Prop)
+    Evaluate elim 2 at (x1 : ℕ) → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2
+      : ℕ
+    Evaluate t --> t : ⊤
+    Evaluate f --> λ (x1 : ⊥) → exfalso let x2 : ⊥ ≔ x1 in x2 end return ℕ
+      : ∀ (x1 : ⊥) → ℕ
+    Evaluate c --> c : ∀ (x1 : Prop)
                          (x2 : x1)
                          → ∧ (x3 : x1) → x1
     |}]
@@ -96,11 +98,13 @@ let%expect_test "each Unicode spelling parses" =
      eval elim 2 at y -> ℕ | zero ⇒ 0 | succ n, r ⇒ succ r end \
      eval t eval f eval g eval c" in
   [%expect {|
-    Evaluate elim 2 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2 : ℕ
-    Evaluate t --> ⋆ : ⊤
-    Evaluate f --> λ (x1 : ⊥) → exfalso ⋆ return ℕ : ∀ (x1 : ⊥) → ℕ
+    Evaluate elim 2 at (x1 : ℕ) → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2
+      : ℕ
+    Evaluate t --> t : ⊤
+    Evaluate f --> λ (x1 : ⊥) → exfalso let x2 : ⊥ ≔ x1 in x2 end return ℕ
+      : ∀ (x1 : ⊥) → ℕ
     Evaluate g --> λ (x1 : ℕ) → x1 : ∀ (x1 : ℕ) → ℕ
-    Evaluate c --> ⋆ : ∀ (x1 : Prop)
+    Evaluate c --> c : ∀ (x1 : Prop)
                          (x2 : x1)
                          → ∧ (x3 : x1) → x1
     |}]
@@ -165,7 +169,7 @@ let%expect_test "recursion on a natural number that always returns zero is of \
                  Nat" =
   let _ = main_of_body
     "eval elim 3 at y -> Nat | zero => 0 | succ n, r => 0 end : Nat" in
-  [%expect {| Evaluate elim 3 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ 0 end --> 0 : ℕ |}]
+  [%expect {| Evaluate elim 3 at (x1 : ℕ) → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ 0 end --> 0 : ℕ |}]
 
 let%expect_test "SimpleNat.mctt works" =
   let _ = main_of_example "SimpleNat.mctt" in
@@ -175,17 +179,19 @@ let%expect_test "SimpleRec.mctt works" =
   let _ = main_of_example "SimpleRec.mctt" in
   [%expect {|
     Evaluate λ (x1 : ℕ)
-               → elim x1 at x2 → ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
-      --> λ (x1 : ℕ) → elim x1 at x2 → ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
+               → elim x1 at (x2 : ℕ) → ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
+      --> λ (x1 : ℕ)
+            → elim x1 at (x2 : ℕ) → ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
       : ∀ (x1 : ℕ) → ℕ
     |}]
 
 let%expect_test "TrueFalse.mctt works" =
   let _ = main_of_example "TrueFalse.mctt" in
   [%expect {|
-    Evaluate true --> ⋆ : ⊤
-    Evaluate λ (x1 : ⊤) → x1 --> ⋆ : ∀ (x1 : ⊤) → ⊤
-    Evaluate λ (x1 : ⊥) → exfalso x1 return ℕ --> λ (x1 : ⊥) → exfalso ⋆ return ℕ
+    Evaluate true --> true : ⊤
+    Evaluate λ (x1 : ⊤) → x1 --> λ (x1 : ⊤) → x1 : ∀ (x1 : ⊤) → ⊤
+    Evaluate λ (x1 : ⊥) → exfalso x1 return ℕ
+      --> λ (x1 : ⊥) → exfalso let x2 : ⊥ ≔ x1 in x2 end return ℕ
       : ∀ (x1 : ⊥) → ℕ
     |}]
 
@@ -195,7 +201,11 @@ let%expect_test "LetTrueFalse.mctt works" =
     Evaluate let x1 : ⊤ ≔ true;
                  x2 : ∀ (x3 : ⊥) → ℕ ≔ λ (x4 : ⊥) → exfalso x4 return ℕ
              in x1
-             end --> ⋆ : ⊤
+             end
+      --> let x1 : ⊤ ≔ true;
+              x2 : ∀ (x3 : ⊥) → ℕ ≔ λ (x4 : ⊥) → exfalso x4 return ℕ
+          in x1
+          end : ⊤
     |}]
 
 let%expect_test "lib/NatTheory.mctt" =
@@ -256,7 +266,10 @@ let%expect_test "a conjunction and its proofs" =
   let _ = main_of_body
     "def swap (P : Prop) (Q : Prop) (h : /\\ (p : P) -> Q) : /\\ (q : Q) -> P := conj (right h : Q) (left h) end \
      eval swap True True (conj (true : True) true)" in
-  [%expect {| Evaluate swap ⊤ ⊤ (conj (true : ⊤) true) --> ⋆ : ∧ (x1 : ⊤) → ⊤ |}]
+  [%expect {|
+    Evaluate swap ⊤ ⊤ (conj (true : ⊤) true) --> swap ⊤ ⊤ (conj (true : ⊤) true)
+      : ∧ (x1 : ⊤) → ⊤
+    |}]
 
 let%expect_test "the sides of a conjunction are propositions" =
   let _ = main_of_body "eval /\\ (n : Nat) -> True" in
@@ -298,7 +311,7 @@ let%expect_test "left and right need a proof of a conjunction" =
 
 let%expect_test "true proves True" =
   let _ = main_of_body "def t : True := true end eval t" in
-  [%expect {| Evaluate t --> ⋆ : ⊤ |}]
+  [%expect {| Evaluate t --> t : ⊤ |}]
 
 let%expect_test "true proves only True" =
   let _ = main_of_body "def f (P : Prop) (h : P) : P := true end" in
@@ -317,7 +330,8 @@ let%expect_test "the proof a normal form prints cannot be written" =
 let%expect_test "exfalso eliminates a proof of False into any type" =
   let _ = main_of_body "eval fun (f : False) -> exfalso f return Nat" in
   [%expect {|
-    Evaluate λ (x1 : ⊥) → exfalso x1 return ℕ --> λ (x1 : ⊥) → exfalso ⋆ return ℕ
+    Evaluate λ (x1 : ⊥) → exfalso x1 return ℕ
+      --> λ (x1 : ⊥) → exfalso let x2 : ⊥ ≔ x1 in x2 end return ℕ
       : ∀ (x1 : ⊥) → ℕ
     |}]
 
@@ -327,7 +341,7 @@ let%expect_test "exfalso needs a proof of False" =
 
 let%expect_test "a module parameter is no proposition" =
   let _ = main_of_body "module M (P : Prop) (h : P) where end" in
-  [%expect {| Error: a parameter of M is a proposition: the parameters of a module must be types of a universe |}]
+  [%expect {| Error: a parameter of M is a proposition: the parameters of a module must be types of a universe or of levels |}]
 
 let%expect_test "a nested occurrence at an instance holding a proof is rejected" =
   let _ = main_of_body
@@ -438,7 +452,7 @@ let%expect_test "lib/ChurchVector.mctt" =
                      → x8 A6 (succ x24) x25
                          (λ (x26 : ℕ)
                            → elim x26
-                             at x27 → Type@0
+                             at (x27 : ℕ) → Type@0
                              | zero ⇒ ℕ
                              | succ x28, A7 ⇒ A6
                              end)
@@ -446,7 +460,7 @@ let%expect_test "lib/ChurchVector.mctt" =
                          (λ (x29 : ℕ)
                             (x30 : A6)
                             (x31 : elim x29
-                                   at x32 → Type@0
+                                   at (x32 : ℕ) → Type@0
                                    | zero ⇒ ℕ
                                    | succ x33, A8 ⇒ A6
                                    end)
@@ -565,7 +579,7 @@ let%expect_test "LetNary.mctt works" =
     Evaluate let x1 : ∀ (x2 : ℕ) → Type@0 ≔
                    λ (x3 : ℕ)
                      → elim x3
-                       at x4 → Type@0
+                       at (x4 : ℕ) → Type@0
                        | zero ⇒ ℕ
                        | succ x5, A1 ⇒ ∀ (x6 : ℕ) → A1
                        end;
@@ -576,7 +590,7 @@ let%expect_test "LetNary.mctt works" =
                          → x1 x11 ≔
                    λ (x14 : ℕ)
                      (x15 : elim succ x14
-                            at x16 → Type@0
+                            at (x16 : ℕ) → Type@0
                             | zero ⇒ ℕ
                             | succ x17, A2 ⇒ ∀ (x18 : ℕ) → A2
                             end)
@@ -590,7 +604,7 @@ let%expect_test "LetNary.mctt works" =
                          λ (x25 : ℕ)
                            (x26 : ℕ)
                            → elim x25
-                             at x27 → ℕ
+                             at (x27 : ℕ) → ℕ
                              | zero ⇒ x26
                              | succ x28, x29 ⇒ succ x29
                              end
@@ -600,7 +614,7 @@ let%expect_test "LetNary.mctt works" =
                         → x22 x30 (x22 x31 x32)
                    end
              in (elim x20
-                 at x33 → ∀ (x34 : x1 x33) → ℕ
+                 at (x33 : ℕ) → ∀ (x34 : x1 x33) → ℕ
                  | zero ⇒ x7
                  | succ x35, x36 ⇒
                    λ (x37 : x1 (succ x35)) → x36 (x10 x35 x37 (succ x35))
@@ -691,7 +705,7 @@ let%expect_test "LetVector.mctt works" =
                      → x40 A10 (succ x69) x70
                          (λ (x71 : ℕ)
                            → elim x71
-                             at x72 → Type@0
+                             at (x72 : ℕ) → Type@0
                              | zero ⇒ ℕ
                              | succ x73, A11 ⇒ A10
                              end)
@@ -699,7 +713,7 @@ let%expect_test "LetVector.mctt works" =
                          (λ (x74 : ℕ)
                             (x75 : A10)
                             (x76 : elim x74
-                                   at x77 → Type@0
+                                   at (x77 : ℕ) → Type@0
                                    | zero ⇒ ℕ
                                    | succ x78, A12 ⇒ A10
                                    end)
@@ -717,9 +731,11 @@ let%expect_test "DefAbstract.mctt works" =
   let _ = main_of_example "DefAbstract.mctt" in
   [%expect {|
     Evaluate double four
-      --> elim four at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end : ℕ
+      --> elim four at (x1 : ℕ) → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
+      : ℕ
     Evaluate double four
-      --> elim four at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end : ℕ
+      --> elim four at (x1 : ℕ) → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
+      : ℕ
     |}]
 
 let%expect_test "ModuleNested.mctt works" =
@@ -987,7 +1003,7 @@ let%expect_test "ω·2 is not a level of Level@1" =
 
 let%expect_test "every type of levels is in the lowest universe" =
   let _ = main_of_body "eval Level@3 : Type@0" in
-  [%expect {| Evaluate Level@3 --> Level@3 : Type@0 |}]
+  [%expect {| Error: Level@3 is not of type Type@0 |}]
 
 let%expect_test "a finite level is a level of every sort" =
   let _ = main_of_body "eval (λ (u : Level) → u) : ∀ (u : Level) → Level@5" in
@@ -1227,7 +1243,11 @@ let%expect_test "LetMulti.mctt works" =
                  x1 : A1 ≔ 2;
                  x2 : ∀ (x3 : A1) → A1 ≔
                    λ (x4 : A1)
-                     → elim x4 at x5 → A1 | zero ⇒ x1 | succ x6, x7 ⇒ succ x7 end
+                     → elim x4
+                       at (x5 : ℕ) → A1
+                       | zero ⇒ x1
+                       | succ x6, x7 ⇒ succ x7
+                       end
              in x2 x1
              end --> 4 : ℕ
     |}]
@@ -3036,7 +3056,7 @@ let%expect_test "lib/Polynomials.mctt" =
                    def peak : ∀ (x6 : ℕ) → ℕ ≔
                      λ (x7 : ℕ)
                        → elim x7
-                         at x8 → ℕ
+                         at (x8 : ℕ) → ℕ
                          | zero ⇒ 0
                          | succ x9, x10 ⇒ max (value x9) x10
                          end
@@ -3509,7 +3529,7 @@ let%expect_test "an axiom of another unit" =
 
 let%expect_test "an axiom of False makes False inhabited" =
   let _ = main_of_body "axiom bad : False def oops : False := bad end eval oops" in
-  [%expect {| Evaluate oops --> ⋆ : ⊥ |}]
+  [%expect {| Evaluate oops --> oops : ⊥ |}]
 
 let%expect_test "an axiom takes no modifiers" =
   let _ = main_of_body "private axiom x : Nat" in
@@ -3553,15 +3573,19 @@ let%expect_test "lib/Tutorial.mctt" =
                           → x1 : ∀ (A1 : Type@0)
                                    (x1 : A1)
                                    → A1
-    Evaluate elim 3 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end --> 6
-      : ℕ
-    Evaluate elim 2 at x1 → Type@0 | zero ⇒ ℕ | succ x2, A1 ⇒ ∀ (x3 : ℕ) → A1 end
-      --> ∀ (x1 : ℕ)
-            (x2 : ℕ)
-            → ℕ : Type@0
+    Evaluate elim 3 at (x1 : ℕ) → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
+      --> 6 : ℕ
+    Evaluate elim 2
+             at (x1 : ℕ) → Type@0
+             | zero ⇒ ℕ
+             | succ x2, A1 ⇒ ∀ (x3 : ℕ) → A1
+             end --> ∀ (x1 : ℕ)
+                       (x2 : ℕ)
+                       → ℕ : Type@0
     Evaluate unit --> record Prelude›Data›Unit.Unit where end : Unit
     Evaluate λ (x1 : Void) → elim x1 at (x2 : Void) → ℕ end
-      --> λ (x1 : Prelude›Data›Void.Void) → elim x1 at x2 → ℕ end
+      --> λ (x1 : Prelude›Data›Void.Void)
+            → elim x1 at (x2 : Prelude›Data›Void.Void) → ℕ end
       : ∀ (x1 : Prelude›Data›Void.Void) → ℕ
     Evaluate let x1 : ℕ ≔ 2;
                  x2 : ∀ (x3 : ℕ) → ℕ ≔ λ (x4 : ℕ) → succ x4;
@@ -3570,14 +3594,18 @@ let%expect_test "lib/Tutorial.mctt" =
              end --> 4 : ℕ
     Evaluate double 3 --> 6 : ℕ
     Evaluate double four
-      --> elim four at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end : ℕ
+      --> elim four at (x1 : ℕ) → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
+      : ℕ
     Evaluate succ helper --> 2 : ℕ
     Evaluate double two --> 4 : ℕ
     Evaluate double (succ k)
       --> succ
             (succ
-              (elim k at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end))
-      : ℕ
+              (elim k
+               at (x1 : ℕ) → ℕ
+               | zero ⇒ 0
+               | succ x2, x3 ⇒ succ (succ x3)
+               end)) : ℕ
     Evaluate Outer.Inner.next --> 11 : ℕ
     Evaluate Twice.twice ℕ double 1 --> 4 : ℕ
     Evaluate (Twice ℕ double).twice 1 --> 4 : ℕ
@@ -3622,7 +3650,7 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate ∀ (x1 : Level) → Type@{x1} --> ∀ (x1 : Level) → Type@{x1} : Type@ω
     Evaluate ω+1 --> ω+1 : Level@1
     Evaluate ω·2+1 --> ω·2+1 : Level@2
-    Evaluate Level@1 --> Level@1 : Type@0
+    Evaluate Level@1 --> Level@1 : 𝕃
     Evaluate lift 3l --> 3l : Level@1
     Evaluate ∀ (x1 : Level@1) → Type@{x1} --> ∀ (x1 : Level@1) → Type@{x1}
       : Type@{ω·2}
@@ -4187,7 +4215,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    588 evals, 588 boxes, 588 equal to mctt's output
+    583 evals, 583 boxes, 583 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -4264,7 +4292,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    3052 links to Nat, 0 other links, 0 without a link
+    3028 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]
@@ -4306,14 +4334,14 @@ let%expect_test "mctt-doc: universes line up, link, and are highlighted" =
   (* The boxes of the evals that print a universe. *)
   List.iter (fun p -> List.iter (fun b -> if doc_find "Type@" b 0 <> None then print_endline b) (doc_boxes p)) pages;
   [%expect {|
-    118 names: 62 linked, 54 binders
-    u line 59: declares #l65
-    u line 59: Universes#l65
-    u line 60: Universes#l65
-    v line 59: declares #l66
-    v line 59: Universes#l66
-    v line 60: Universes#l66
-    depth line 52: Universes#depth
+    94 names: 53 linked, 41 binders
+    u line 52: declares #l55
+    u line 52: Universes#l55
+    u line 53: Universes#l55
+    v line 52: declares #l56
+    v line 52: Universes#l56
+    v line 53: Universes#l56
+    depth no occurrence
     Level: ty
     Type: ty
     maxl: kw
@@ -4335,7 +4363,6 @@ let%expect_test "mctt-doc: universes line up, link, and are highlighted" =
           (x2 : Level)
           → Type@{maxl (maxl 2l (succl x2)) (succl x1)}
     Evaluate Dom --> ℕ : Type@0
-    Evaluate Type@{depth 3} --> Type@3 : Type@4
     Evaluate Endo 0l ℕ --> ∀ (x1 : ℕ) → ℕ : Type@0
     Evaluate λ (x1 : Level)
                (A1 : Type@{x1})
@@ -4450,8 +4477,12 @@ let%expect_test "Inductives.mctt works" =
     Evaluate count ℕ (List.cons ℕ 1 (List.cons ℕ 2 (List.nil ℕ))) --> 2 : ℕ
     Evaluate λ (x1 : List ℕ) → length ℕ (List.cons ℕ 0 x1)
       --> λ (x1 : List ℕ)
-            → succ (elim x1 at x2 → ℕ | nil ⇒ 0 | cons x3 x4, x5 ⇒ succ x5 end)
-      : ∀ (x1 : List ℕ) → ℕ
+            → succ
+                (elim x1
+                 at (x2 : List ℕ) → ℕ
+                 | nil ⇒ 0
+                 | cons x3 x4, x5 ⇒ succ x5
+                 end) : ∀ (x1 : List ℕ) → ℕ
     Evaluate (List ℕ).cons 0 (List ℕ).nil --> List.cons ℕ 0 (List.nil ℕ) : List ℕ
     Evaluate cons ℕ 1 (nil ℕ) --> List.cons ℕ 1 (List.nil ℕ) : List ℕ
     Evaluate getOr ℕ 0 (Option.some ℕ 5) --> 5 : ℕ
@@ -4467,7 +4498,7 @@ let%expect_test "Inductives.mctt works" =
     Evaluate λ (x1 : ∀ (x2 : ℕ) → Ord) → approx (Ord.lim x1) 1
       --> λ (x1 : ∀ (x2 : ℕ) → Ord)
             → elim x1 1
-              at x3 → ℕ
+              at (x3 : Ord) → ℕ
               | base ⇒ 0
               | next x4, x5 ⇒ succ x5
               | lim x6, x7 ⇒ x7 1
@@ -4575,21 +4606,21 @@ let%expect_test "an eliminator at an application, and applied, round-trip" =
   [%expect {|
     Evaluate λ (x1 : ∀ (x2 : ℕ) → Ord)
                → elim x1 1
-                 at x3 → ℕ
+                 at (x3 : Ord) → ℕ
                  | base ⇒ 0
                  | next x4, x5 ⇒ succ x5
                  | lim x6, x7 ⇒ x7 1
                  end
       --> λ (x1 : ∀ (x2 : ℕ) → Ord)
             → elim x1 1
-              at x3 → ℕ
+              at (x3 : Ord) → ℕ
               | base ⇒ 0
               | next x4, x5 ⇒ succ x5
               | lim x6, x7 ⇒ x7 1
               end : ∀ (x1 : ∀ (x2 : ℕ) → Ord) → ℕ
     Evaluate λ (x1 : Ord)
                → (elim x1
-                  at x2 → ∀ (x3 : ℕ) → ℕ
+                  at (x2 : Ord) → ∀ (x3 : ℕ) → ℕ
                   | base ⇒ λ (x4 : ℕ) → x4
                   | next x5, x6 ⇒ x6
                   | lim x7, x8 ⇒ λ (x9 : ℕ) → x8 x9 x9
@@ -4597,7 +4628,7 @@ let%expect_test "an eliminator at an application, and applied, round-trip" =
                    1
       --> λ (x1 : Ord)
             → (elim x1
-               at x2 → ∀ (x3 : ℕ) → ℕ
+               at (x2 : Ord) → ∀ (x3 : ℕ) → ℕ
                | base ⇒ λ (x4 : ℕ) → x4
                | next x5, x6 ⇒ λ (x7 : ℕ) → x6 x7
                | lim x8, x9 ⇒ λ (x10 : ℕ) → x9 x10 x10
@@ -4703,7 +4734,8 @@ let%expect_test "an inductive type opened under another name has its constructor
                         eval elim (K.s K.z) at k -> Nat | z => 0 | s m, h => succ h end" in
   [%expect {|
     Evaluate K.s K.z --> A.N.s A.N.z : A.N
-    Evaluate elim K.s K.z at x1 → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1 : ℕ
+    Evaluate elim K.s K.z at (x1 : A.N) → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end
+      --> 1 : ℕ
     |}]
 
 let%expect_test "an inductive type imported into a unit with parameters" =
@@ -4714,8 +4746,8 @@ let%expect_test "an inductive type imported into a unit with parameters" =
                                   | z => two | s p, r => r end end" in
   [%expect {|
     Evaluate Lib›Unary.plus two two --> 4 : ℕ
-    Evaluate λ (x1 : ℕ) → elim x1 at x2 → ℕ | z ⇒ two | s x3, x4 ⇒ x4 end
-      --> λ (x1 : ℕ) → elim x1 at x2 → ℕ | z ⇒ 2 | s x3, x4 ⇒ x4 end
+    Evaluate λ (x1 : ℕ) → elim x1 at (x2 : ℕ) → ℕ | z ⇒ two | s x3, x4 ⇒ x4 end
+      --> λ (x1 : ℕ) → elim x1 at (x2 : ℕ) → ℕ | z ⇒ 2 | s x3, x4 ⇒ x4 end
       : ∀ (x1 : ℕ) → ℕ
     |}]
 
@@ -4751,8 +4783,11 @@ let%expect_test "an inductive alias is the type at its arguments, as a term and 
                  | cons x3 x4, x5 ⇒ succ x5
                  end
       --> λ (x1 : List ℕ)
-            → elim x1 at x2 → ℕ | nil ⇒ 0 | cons x3 x4, x5 ⇒ succ x5 end
-      : ∀ (x1 : List ℕ) → ℕ
+            → elim x1
+              at (x2 : List ℕ) → ℕ
+              | nil ⇒ 0
+              | cons x3 x4, x5 ⇒ succ x5
+              end : ∀ (x1 : List ℕ) → ℕ
     Evaluate L.rec ℕ 0l (λ (x1 : List ℕ) → ℕ) 0
                (λ (x2 : ℕ)
                   (x3 : List ℕ)
@@ -4784,7 +4819,10 @@ let%expect_test "a private inductive alias is out of reach outside its module" =
 let%expect_test "an eliminator takes its type from its scrutinee" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
                         eval elim (N.s N.z) at k -> Nat | z => 0 | s m, h => succ h end" in
-  [%expect {| Evaluate elim N.s N.z at x1 → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1 : ℕ |}]
+  [%expect {|
+    Evaluate elim N.s N.z at (x1 : N) → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1
+      : ℕ
+    |}]
 
 let%expect_test "an eliminator with no branches is rejected" =
   let _ = main_of_body "eval fun (n : Nat) -> elim n at k -> Nat end" in
@@ -4818,7 +4856,7 @@ let%expect_test "the recursor of the empty type" =
                         eval fun (e : E) -> E.rec 0l (fun (z : E) -> Nat) e" in
   [%expect {|
     Evaluate λ (x1 : E) → E.rec 0l (λ (x2 : E) → ℕ) x1
-      --> λ (x1 : E) → elim x1 at x2 → ℕ end : ∀ (x1 : E) → ℕ
+      --> λ (x1 : E) → elim x1 at (x2 : E) → ℕ end : ∀ (x1 : E) → ℕ
     |}]
 
 let%expect_test "an argument is classified as its normal form" =
@@ -4990,7 +5028,7 @@ let%expect_test "a bound type with its own constructor names" =
                              eval elim 3 at x -> Num | Z => Z | S k, r => S (S r) end \
                              eval fun (n : Num) -> S (S n) eval S Z : Num" in
   [%expect {|
-    Evaluate elim 3 at x1 → ℕ | Z ⇒ 0 | S x2, x3 ⇒ S (S x3) end --> 6 : ℕ
+    Evaluate elim 3 at (x1 : ℕ) → ℕ | Z ⇒ 0 | S x2, x3 ⇒ S (S x3) end --> 6 : ℕ
     Evaluate λ (x1 : ℕ) → S (S x1) --> λ (x1 : ℕ) → S (S x1) : ∀ (x1 : ℕ) → ℕ
     Evaluate 1 --> 1 : ℕ
     |}]
@@ -5047,8 +5085,9 @@ let%expect_test "a printed eliminator separates the induction hypotheses by a co
   let _ = main_of_body "inductive N : Type@0 where | Z | S (n : N) end \
                         eval fun (n : N) -> elim n at k -> N | Z => N.Z | S m, h => N.S h end" in
   [%expect {|
-    Evaluate λ (x1 : N) → elim x1 at x2 → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
-      --> λ (x1 : N) → elim x1 at x2 → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+    Evaluate λ (x1 : N)
+               → elim x1 at (x2 : N) → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+      --> λ (x1 : N) → elim x1 at (x2 : N) → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
       : ∀ (x1 : N) → N
     |}]
 
@@ -5056,8 +5095,9 @@ let%expect_test "a printed eliminator reads back as itself" =
   let _ = main_of_body "inductive N : Type@0 where | Z | S (n : N) end \
                         eval λ (x1 : N) → elim x1 at x2 -> N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end" in
   [%expect {|
-    Evaluate λ (x1 : N) → elim x1 at x2 → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
-      --> λ (x1 : N) → elim x1 at x2 → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+    Evaluate λ (x1 : N)
+               → elim x1 at (x2 : N) → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+      --> λ (x1 : N) → elim x1 at (x2 : N) → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
       : ∀ (x1 : N) → N
     |}]
 
@@ -6611,7 +6651,7 @@ let%expect_test "an eliminator through a record infers its group from the scruti
        | leaf => 0 | node p, h1 h2 => succ h1 end") in
   [%expect {|
     Evaluate elim T.node (record Pair T T where fst ≔ T.leaf; snd ≔ T.leaf end)
-             at x1 → ℕ
+             at (x1 : T) → ℕ
              | leaf ⇒ 0
              | node x2, x3 x4 ⇒ succ x3
              end --> 1 : ℕ
