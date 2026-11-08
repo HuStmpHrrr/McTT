@@ -1974,7 +1974,8 @@ Section Transparent_GCtx.
 Theorem consistency_False : forall M,
     ~ ⋅ ⊢ M : ⊥.
 Proof.
-  (* PENDING M3: a proof of [⊥] normalises to [⋆ⁿ], which says nothing;
+  (* PENDING M3: a proof of [⊥] normalises to a kept proof
+     [nf_proof ⊥ⁿ M], the term as written, which says nothing;
      consistency comes from the model, where [⊥] has no element *)
 Admitted.
 

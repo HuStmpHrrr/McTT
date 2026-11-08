@@ -506,8 +506,8 @@ End PhantomViews.
     classified neither as written nor as its normal form, and [run_cmd_ind_case]
     rejects the declaration ([run_cmd_ind_self_param_rejected]).  [T] is of
     a universe ([ind_sort_univ]): were it a proposition, [x] would be a
-    proof, read back as [⋆ⁿ], and [C T ⋆ⁿ] mentions no recursive
-    argument. *)
+    proof, read back as a proof normal form [nf_proof T x], and [C T]
+    applied to it would not mention [x] as a recursive argument. *)
 
 Lemma nbe_ty_var0 : forall Θ Ξ κ A Γ W, nbe_ty Θ Ξ (ce_ass κ A :: Γ) (a_var 0) W -> exists κ', W = nf_neut κ' (ne_var 0).
 Proof.
@@ -541,10 +541,11 @@ Qed.
 
 (** The container at [Self] and the argument before it, in normal form,
     where [Self] is of a universe, so the argument is relevant: of a
-    proposition [Self] it would be read back as [⋆ⁿ].  The argument's type
-    is [Self] itself ([a_var 0]), as in the declaration: at a general type
-    [A] the statement is false, since [A] may be a proposition ([⊤]), whose
-    variable is read back as [⋆ⁿ]. *)
+    proposition [Self] it would be read back as a proof normal form
+    ([nf_proof]).  The argument's type is [Self] itself ([a_var 0]), as in
+    the declaration: at a general type [A] the statement is false, since
+    [A] may be a proposition ([⊤]), whose variable is read back as a
+    proof normal form, not a neutral. *)
 Lemma nbe_ty_container_at_self : forall Θ Ξ B Γ pC DC MC iU W,
     ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass ak_relevant (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
     im_nparams MC = ce_ass ak_relevant (a_var 0) :: nil ->
@@ -642,7 +643,7 @@ Qed.
 (** ** Two Instances Differing Only in a Proof Are One View
 
     A container [Q (h : ⊤)] met twice, at two kept proofs of [⊤]: [x] at
-    [⋆ⁿ #0] and [x'] at [⋆ⁿ #1], keys equal up to their proofs and not
+    [nf_proof ⊤ⁿ #0] and [x'] at [nf_proof ⊤ⁿ #1], keys equal up to their proofs and not
     equal.  The search finds one view, the first met, [x]: [x'] meets it
     ([views_met] dedups up to proofs), whatever the tables give elsewhere,
     and [x'] is numbered as [x]'s view. *)

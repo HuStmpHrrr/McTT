@@ -568,7 +568,8 @@ Inductive classify_arg_in (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (nu np n : nat) 
     classify_arg_in Θ Ξ Γ nu np n pat T g'
 (** As its normal form, when not as written.  The normal form holds no
     proof ([nf_proof_free]): an instance it nests at is strengthened past
-    the arguments before it, which a proof [⋆ⁿ] in it could have used. *)
+    the arguments before it, which a kept proof ([nf_proof]) in it could
+    have used. *)
 | classify_in_nf : forall i W g g',
     classify_arg grp_none rec_none nu np n pat T = None ->
     Θ ⍮ Ξ ⍮ Γ ⊢ T : Typeω@i ->
