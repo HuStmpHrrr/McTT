@@ -638,6 +638,8 @@ Proof.
   intros * H1 H2; destruct H1; inversion H2; subst; functional_fast_eval_rewrite_clear; congruence.
 Qed.
 
+End FastReadDeterminism.
+
 Ltac functional_fast_fresh_rewrite_clear :=
   repeat match goal with
     | H1 : fast_eval_entry_type ?T ?X ?t ?a1, H2 : fast_eval_entry_type ?T ?X ?t ?a2 |- _ =>
@@ -677,6 +679,10 @@ Ltac functional_fast_fresh_rewrite_clear :=
     | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
         rewrite H1 in H2; injection H2 as ?; subst
     end.
+
+Section FastReadDeterminismMutual.
+  (** The mode the relations run at *)
+  Context {SM : SkipMode}.
 
 Lemma functional_fast_read : forall {Θ Ξ},
   (forall s m M1, Rnfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 -> forall M2, Rnfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 -> M1 = M2) /\
@@ -785,7 +791,7 @@ Proof. intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder. Qed.
 Corollary functional_fast_read_proof : forall {Θ Ξ} s m M1 M2,
     Rprfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 -> Rprfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 -> M1 = M2.
 Proof. intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder. Qed.
-End FastReadDeterminism.
+End FastReadDeterminismMutual.
 
 #[export]
 Hint Resolve functional_fast_read_nf functional_fast_read_ne functional_fast_read_typ functional_fast_read_level_atoms
