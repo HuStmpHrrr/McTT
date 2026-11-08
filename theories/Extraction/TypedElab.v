@@ -233,6 +233,13 @@ Inductive fill_failure : Set :=
 (** A local body, in its context, whose entries filled so far have no
     expansion: an open among them generates nothing *)
 | fill_failure_body : ctx -> gmod -> fill_failure
+(** The branch of the constructor [c] of an eliminator, binding [n]
+    variables where it needs [k] parameters, [a] arguments and [r]
+    recursive results *)
+| fill_failure_branch_arity : string -> nat -> nat -> nat -> nat -> fill_failure
+(** A type, in its context, whose sort is not inferred, and what it is
+    the type of *)
+| fill_failure_no_kind : string -> ctx -> exp -> fill_failure
 (** Any other reason *)
 | fill_failure_message : string -> fill_failure.
 
@@ -547,7 +554,7 @@ Section Decide.
   Definition items_gen_fn (Γ : ctx) (H : modexp) (its : list import_item) : fill_result (list generated_item) :=
     match items_gen_impl F Hg Γ H its (items_gen_order_any Γ H its) with
     | inleft (exist _ gs _) => fill_ok gs
-    | inright _ => fill_error (fill_failure_message "a local open names a member its module does not have")
+    | inright _ => fill_error (fill_failure_body Γ (gm_open gm_nil H its gm_nil))
     end.
 
   (** A module expression, in module position, read as [r]: the module it
@@ -570,7 +577,7 @@ Section Decide.
   Definition kind_at (Γ : ctx) (A : exp) (what : string) : fill_result abs_kind :=
     match infer_at Γ A with
     | Some W => fill_ok (sort_abs_kind W)
-    | None => fill_error (fill_failure_message (what ++ " infers no type"))
+    | None => fill_error (fill_failure_no_kind what Γ A)
     end.
 
   (** ** The Fill, Computed *)
@@ -768,7 +775,7 @@ Section Decide.
                                                         let%a B' := fill_exp_fn (elim_bctx r p D Mj gs As Us ++ Γ) B0 in
                                                         let%a Bs0' := brs Bs0 in
                                                         fill_ok ((c, n, B') :: Bs0')
-                                                      else fill_error (fill_failure_message ("the branch of " ++ c ++ " binds the wrong number of variables"))
+                                                      else fill_error (fill_failure_branch_arity c n (im_nn Mj) (List.length gs) (cargs_nrec D gs))
                                                   end
                                               end) Bs in
                                          let%a Bks0' := blocks (S j) Bks0 rest0 in
@@ -951,7 +958,7 @@ Section Decide.
                 let%a B' := fill_exp_fn (elim_bctx r p D Mj gs As Us ++ Γ) B0 in
                 let%a Bs0' := brs Bs0 in
                 fill_ok ((c, n, B') :: Bs0')
-              else fill_error (fill_failure_message ("the branch of " ++ c ++ " binds the wrong number of variables"))
+              else fill_error (fill_failure_branch_arity c n (im_nn Mj) (List.length gs) (cargs_nrec D gs))
           end
       end.
 

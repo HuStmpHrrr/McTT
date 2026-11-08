@@ -2221,7 +2221,27 @@ Section Impl.
         | open_failure e' => run_error_import e'
         | open_success _ => run_error_msg "a local open of a body opens no module"
         end
+    | fill_failure_branch_arity c n k a r => run_error_branch_arity c n k a r
+    | fill_failure_no_kind what Γ A =>
+        (** a universe at a term that is no level, in the binders crossed
+            to reach it, if that is why *)
+        match check_ctx F (lvd _) Hg Γ with
+        | left HΓ =>
+            match find_level_blame F (lvd _) Γ HΓ A with
+            | Some (exist _ (Δ, t) _) => run_error_level fs (Δ ++ past Γ) t
+            | None => run_error_msg (what ++ " infers no type")
+            end
+        | right _ => run_error_msg (what ++ " infers no type")
+        end
     | fill_failure_message s => run_error_msg s
+    end.
+
+  (** The type of a definition, or of an axiom ([oM] is [None]), that is
+      no type *)
+  Definition def_typ_error {T : Type} (x : string) (fs : fstack) (A : typ) (oM : option T) : run_error :=
+    match oM with
+    | None => run_error_msg ("the type of axiom " ++ x ++ " is not a type")
+    | Some _ => run_error_def_typ x fs A
     end.
 
   (** Whether a fill failure is final: a member selected through a term
@@ -2234,10 +2254,10 @@ Section Impl.
   Definition fill_failure_final (e : fill_failure) : bool :=
     match e with
     | fill_failure_no_type y _ _ | fill_failure_not_record y _ _ _ => negb (String.eqb y "")
-    | fill_failure_private _ _ | fill_failure_mdef_group _ | fill_failure_literal _ => true
+    | fill_failure_private _ _ | fill_failure_mdef_group _ | fill_failure_literal _ | fill_failure_branch_arity _ _ _ _ _ => true
     | fill_failure_elim_scrutinee _ _ (Some _) | fill_failure_elim_none _ _ _ _ _ _ _
     | fill_failure_elim_ambiguous _ _ _ | fill_failure_body _ _ => true
-    | fill_failure_elim_scrutinee _ _ None | fill_failure_message _ => false
+    | fill_failure_elim_scrutinee _ _ None | fill_failure_no_kind _ _ _ | fill_failure_message _ => false
     end.
 
   (** Why a command as written has no fill: a final failure as it is; the
@@ -2249,12 +2269,12 @@ Section Impl.
     let other := fill_run_error F Hg (surface_cmd_name c) e in
     if fill_failure_final e then other else
     match c with
-    | surface_cmd_def x _ _ A _ =>
+    | surface_cmd_def x _ _ A oM =>
         match fill_exp_fn F B (lvd _) Hg (fc_tele F) A with
         | fill_ok A' =>
             match check_type F (lvd _) (fc_tele F) HΓ A' with
             | inright _ => blame_error fs (find_level_blame F (lvd _) (fc_tele F) HΓ A')
-                             (mod_error F (Some x) (A' :: nil) (run_error_def_typ x fs A'))
+                             (mod_error F (Some x) (A' :: nil) (def_typ_error x fs A' oM))
             | inleft _ => other
             end
         | fill_error _ => other
@@ -2292,7 +2312,7 @@ Section Impl.
     | right _ => run_failure (run_error_msg (x ++ " is already declared"))
     | left Hfr with check_type (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A => {
       | inright _ => run_failure (blame_error fs (find_level_blame (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) A)
-                            (mod_error (cmd_F B H) (Some x) (A :: nil) (run_error_def_typ x fs A)))
+                            (mod_error (cmd_F B H) (Some x) (A :: nil) (def_typ_error x fs A oM)))
       | inleft (existT _ κ' (exist _ i HA')) with abs_kind_eq_dec κ' κ => {
         | right _ => run_failure (run_error_msg ("the type of " ++ x ++ " is not of the sort its kind says"))
         | left Eκ with oM => {
