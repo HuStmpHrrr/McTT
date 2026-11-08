@@ -1285,7 +1285,10 @@ Record glu_elem_bot i a Γ A M m : Prop := glu_elem_bot_make
   ; glu_elem_bot_wf : Γ ⊢ M : A
   ; glu_elem_bot_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
   ; glu_elem_bot_typ : Γ ⊢ A ® P
-  ; glu_elem_bot_per : Dom m ≈ m ∈ per_bot
+    (** A neutral of [a], as the PER has it ([neutral_at]): [a] is not
+        [LevelSort], and at a type of levels the neutral is free of
+        proofs *)
+  ; glu_elem_bot_per : Dom m ≈ m ∈ neutral_at a
   ; glu_elem_bot_read : forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in length Δ ↘ M' -> glu_ne_eq Δ M[φ]ʷ M' A[φ]ʷ }.
 Hint Constructors glu_elem_bot : mctt.
 
