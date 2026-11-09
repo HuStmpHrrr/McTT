@@ -385,6 +385,134 @@ Proof.
            (rel_sub_under_ctx_q Hτs (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAt)))).
 Qed.
 
+(** ** Types of Levels Glue Alike at Every Index
+
+    A type of levels ([per_level_code]) is glued the same way at every
+    universe index: [Level@n] by its levels, a [Π] between types of levels
+    at the sort [LevelSort], which no index changes. *)
+Lemma glu_univ_elem_level_code_irrel : forall R a a', per_level_code R a a' ->
+    forall (u1 u2 : universe_index) P1 El1 P2 El2,
+      DG a ∈ glu_univ_elem u1 ↘ P1 ↘ El1 -> DG a ∈ glu_univ_elem u2 ↘ P2 ↘ El2 -> (P1 <∙> P2) /\ (El1 <∙> El2).
+Proof.
+  apply (per_level_code_strong_ind (fun R a a' => forall (u1 u2 : universe_index) P1 El1 P2 El2,
+      DG a ∈ glu_univ_elem u1 ↘ P1 ↘ El1 -> DG a ∈ glu_univ_elem u2 ↘ P2 ↘ El2 -> (P1 <∙> P2) /\ (El1 <∙> El2))).
+  - intros n elem_rel HE * H1 H2.
+    basic_invert_glu_univ_elem H1; basic_invert_glu_univ_elem H2.
+    split; [ etransitivity; [ exact H | symmetry; exact H1 ] | etransitivity; [ exact H0 | symmetry; exact H2 ] ].
+  - intros * Ha IHa HPin HT HE * H1 H2.
+    basic_invert_glu_univ_elem H1.
+    rename in_rel0 into in1, IP into IP1, IEl into IEl1, OP into OP1, OEl into OEl1, elem_rel0 into er1,
+      H into Hd1, H0 into Hin1, H1 into Hc1, H2 into Her1, H4 into EP1, H5 into EEl1, typ_rel into tr1, el_rel into el1.
+    basic_invert_glu_univ_elem H6.
+    rename in_rel0 into in2, IP into IP2, IEl into IEl2, OP into OP2, OEl into OEl2, elem_rel0 into er2,
+      H into Hd2, H0 into Hin2, H1 into Hc2, H2 into Her2, H5 into EP2, H6 into EEl2, typ_rel into tr2, el_rel into el2.
+    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hin1 Hin2) as E12.
+    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hin1 (per_level_code_univ_elem _ _ _ Ha u1)) as E1c.
+    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Her1 Her2) as Eer.
+    destruct (IHa _ _ _ _ _ _ Hd1 Hd2) as [EIP EIEl].
+    assert (Hcod : forall c (e1 : in1 c c) (e2 : in2 c c),
+               exists b, ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\ (OP1 c e1 <∙> OP2 c e2) /\ (OEl1 c e1 <∙> OEl2 c e2)).
+    { intros c e1 e2.
+      destruct (HT c c (proj1 (E1c _ _) e1)) as [b b' Eb _ [_ IHb]].
+      exists b; split; [ exact Eb |].
+      exact (IHb _ _ _ _ _ _ (Hc1 _ e1 _ Eb) (Hc2 _ e2 _ Eb)). }
+    split.
+    + etransitivity; [ exact EP1 |]; etransitivity; [| symmetry; exact EP2 ].
+      intros Γ A; split; intros [? ? IT OT HAeq HIT HOT HIP HOP]; econstructor; cbn [abs_kind_sort] in *;
+        try eassumption.
+      * intros; apply EIP; eauto.
+      * intros Δ φ M m Hφ HM e2.
+        destruct (Hcod m (proj2 (E12 _ _) e2) e2) as (b & _ & EOP & _).
+        apply EOP; apply HOP; [ exact Hφ | apply EIEl; exact HM ].
+      * intros; apply EIP; eauto.
+      * intros Δ φ M m Hφ HM e1.
+        destruct (Hcod m e1 (proj1 (E12 _ _) e1)) as (b & _ & EOP & _).
+        apply EOP; apply HOP; [ exact Hφ | apply EIEl; exact HM ].
+    + etransitivity; [ exact EEl1 |]; etransitivity; [| symmetry; exact EEl2 ].
+      intros Γ A M m; split; intros [? ? ? ? IT OT HMt Hm HAeq HIT HOT HIP HOP]; econstructor; cbn [abs_kind_sort] in *;
+        try eassumption.
+      * apply Eer; exact Hm.
+      * intros; apply EIP; eauto.
+      * intros Δ φ N n Hφ HN e2.
+        destruct (Hcod n (proj2 (E12 _ _) e2) e2) as (b & _ & _ & EOEl).
+        destruct (HOP Δ φ N n Hφ (proj2 (EIEl _ _ _ _) HN) (proj2 (E12 _ _) e2)) as (mn & Hmn & HOE).
+        exists mn; split; [ exact Hmn | apply EOEl; exact HOE ].
+      * apply Eer; exact Hm.
+      * intros; apply EIP; eauto.
+      * intros Δ φ N n Hφ HN e1.
+        destruct (Hcod n e1 (proj1 (E12 _ _) e1)) as (b & _ & _ & EOEl).
+        destruct (HOP Δ φ N n Hφ (proj1 (EIEl _ _ _ _) HN) (proj1 (E12 _ _) e1)) as (mn & Hmn & HOE).
+        exists mn; split; [ exact Hmn | apply EOEl; exact HOE ].
+Qed.
+
+(** ** The Types of a Glued Context's Entries
+
+    The converse of [glu_rel_exp_sort_typ]: a type of a sort of a kind,
+    glued as a type under every glued substitution, is glued at the sort.
+    So the entries of a glued context are glued judgments
+    ([glu_rel_ctx_ass_inv]), as [rel_ctx_wf_ass_inv] gives them in the PER
+    model. *)
+Lemma glu_rel_exp_of_sort_typ : forall {Γ Sb A κ} {i : nat}, EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Γ ⊢ A : abs_kind_sort κ Typeω@i -> (forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ Sb -> glu_rel_typ_with_sub i Δ A σ ρ) ->
+    exists j : nat, Γ ⊩ A : abs_kind_sort κ Typeω@j.
+Proof.
+  intros * HSb HAt HAg.
+  destruct κ; cbn [abs_kind_sort] in *.
+  - exists i; eapply mk_glu_rel_exp with (glu_rel_exp_lvl := S i); [ exact HSb |].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
+    exact (glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub Hσt (sub_preserves_exp _ _ _ _ _ _ _ HAt Hσt) (HAg _ _ _ Hσ)).
+  - (** A proposition: its value one, glued as one *)
+    exists 0; eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ exact HSb |].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
+    destruct (HAg _ _ _ Hσ) as [a P El Ea Hg HP].
+    assert (Hu : exists P El, DG Propᵈ ∈ glu_univ_elem 0 ↘ P ↘ El)
+      by (eapply per_univ_glu_univ_elem; eexists; apply per_univ_elem_prop_univ).
+    destruct Hu as (Pu & Elu & Hu).
+    econstructor; [ constructor | cbn [domain_kind glu_term_value]; exact Ea | exact Hu |].
+    basic_invert_glu_univ_elem Hu; apply_predicate_equivalence.
+    pose proof (sub_preserves_exp _ _ _ _ _ _ _ HAt Hσt) as HAσ; cbn [exp_sub] in HAσ.
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ ak_propositional 0 Hg HP HAσ) as [Hk _].
+    destruct (glu_univ_elem_per_univ _ _ _ _ Hg) as [Ra HRa].
+    pose proof (per_univ_elem_per_prop_of_kind HRa Hk) as Hpa.
+    destruct (glu_univ_elem_prop_inv _ _ _ _ Hpa Hg) as [HPe _].
+    cbn [exp_sub]; econstructor.
+    { assert (⊢ Δ) by (gen_presups; assumption). apply wf_exp_eq_refl; eapply wf_exp_subtyp'; [ apply wf_prop; assumption |].
+      eapply wf_subtyp_small_large; [ assumption | apply wf_llit_ordinal; assumption ]. }
+    { exact HAσ. }
+    { exact Hpa. }
+    { apply HPe; exact HP. }
+  - (** A type of levels: its value a type of levels, glued alike at the
+        least small index ([glu_univ_elem_level_code_irrel]) *)
+    exists 0; apply (glu_rel_exp_of_level_sort HSb).
+    destruct (glu_ctx_env_per_ctx_env HSb) as [RΓ HRΓ].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
+    pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
+    destruct (HAg _ _ _ Hσ) as [a P El Ea Hg HP].
+    destruct (rel_exp_of_level_sort_inversion_simple_at HRΓ (completeness_fundamental_exp _ _ _ HAt) _ _ Hρ)
+      as (a1 & a2 & Ea1 & _ & Hls).
+    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+    destruct Hls as (Hca & _).
+    destruct (glu_univ_elem_per_univ _ _ _ _ Hg) as [Ra HRa].
+    pose proof (per_univ_elem_level_code _ _ _ _ HRa Hca Hca) as Hcode.
+    destruct (per_univ_glu_univ_elem (us (0, 0)) a (ex_intro _ Ra (per_level_code_univ_elem _ _ _ Hcode _))) as (P0 & El0 & Hg0).
+    destruct (glu_univ_elem_level_code_irrel _ _ _ Hcode _ _ _ _ _ _ Hg Hg0) as [EP _].
+    exists a, P0, El0; repeat split; [ exact Ea | exact Hca | exact (sub_preserves_exp _ _ _ _ _ _ _ HAt Hσt) | exact Hg0 | apply EP; exact HP ].
+Qed.
+
+(** The type of the head of a glued context is glued, at the sort of its
+    kind next to a large universe. *)
+Lemma glu_rel_ctx_ass_inv : forall Γ κ A, ⊩ Γ ▹{κ} A -> exists j : nat, Γ ⊩ A : abs_kind_sort κ Typeω@j.
+Proof.
+  intros * [Sb HSb].
+  assert (HT : exists TSb, EG Γ ∈ glu_ctx_env ↘ TSb) by (inversion HSb; subst; eexists; eassumption).
+  destruct HT as [TSb HTSb].
+  destruct (glu_ctx_env_cons_clean_inversion HTSb HSb) as (i & HA & HT & _).
+  exact (glu_rel_exp_of_sort_typ HTSb HA HT).
+Qed.
+
 (** ** Telescopes
 
     A telescope of assumptions whose entries are glued over the entries
