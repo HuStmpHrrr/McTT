@@ -32,6 +32,7 @@ From Mctt.Core.Soundness Require Import
   LogicalRelation
   SubtypingCases
   VariableCases
+  Instances
   UniverseCases.
 Import Domain_Notations Wk_Notations.
 Import Fixed_Notations.
@@ -136,9 +137,8 @@ Lemma glu_nf_eq_pi : forall {Γ U κd κc A B WA WB},
     glu_nf_eq (Γ ▹{κd} A) B WB (abs_kind_sort κc U)[↑]ʷ ->
     glu_nf_eq Γ (a_pi κd κc A B) (nf_pi κd κc WA WB) (abs_kind_sort κc U).
 Proof.
-  intros * HU HA Hk (WA' & EA & HA') (WB' & EB & HB').
-  exists (nf_pi κd κc WA' WB'); split; [ apply nf_pi_upto_proofs; assumption |].
-  cbn; eapply wf_exp_eq_pi_cong; eassumption.
+  intros * HU HA Hk HA' HB'.
+  unfold glu_nf_eq in *; cbn; eapply wf_exp_eq_pi_cong; eassumption.
 Qed.
 
 (** A glued substitution extended by a term glued at its type, at any
@@ -655,8 +655,10 @@ Qed.
 
 (** An application at a [Π] into a type of an evaluated kind: the
     function's gluing applies it to the glued argument, at the codomain's
-    value at the argument's, which is related to the value of the
-    instantiated type ([per_univ_of_instance_at]). *)
+    value at the argument's.  That value is related to the value of the
+    instantiated type ([per_univ_of_instance_at]), and the application is
+    moved to the instantiated type's gluing, its witness
+    ([glu_univ_elem_exp_conv]). *)
 Lemma glu_rel_exp_app_evaluated : forall {Γ κd κc A B M N} {i : nat},
     Γ ⊩ A : abs_kind_sort κd Typeω@i ->
     Γ ▹{κd} A ⊩ B : abs_kind_sort κc Typeω@i ->
@@ -664,9 +666,11 @@ Lemma glu_rel_exp_app_evaluated : forall {Γ κd κc A B M N} {i : nat},
     evaluated_kind κc ->
     Γ ⊩ M : a_pi κd κc A B ->
     Γ ⊩ N : A ->
+    Γ ⊩ B[Id,,N] : abs_kind_sort κc Typeω@i ->
     Γ ⊩ M $ N : B[Id,,N].
 Proof.
-  intros * HA HB Hk Hev HM HN.
+  intros * HA HB Hk Hev HM HN HW.
+  destruct (glu_rel_exp_sort_typ HW (sort_kind_abs_kind_sort κc i)) as (SbW & kW & HSbW & _ & HWg).
   destruct (presup_ctx_glu_rel_exp HA) as [SbΓ HSbΓ].
   destruct (presup_ctx_glu_rel_exp HB) as [SbB HSbB].
   pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
@@ -688,7 +692,8 @@ Proof.
   pose proof (completeness_fundamental_exp _ _ _ HNt) as HNc.
   destruct (glu_ctx_env_per_ctx_env HSbΓ) as [R HR].
   destruct (glu_ctx_env_per_ctx_env HSbB) as [RB HRB].
-  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ exact HSbΓ |].
+  assert (EW : SbΓ <∙> SbW) by (eapply functional_glu_ctx_env; eassumption).
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := kW); [ exact HSbΓ |].
   intros Δ σ ρ Hσ.
   pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
   destruct (HNg _ _ _ Hσ) as [a n Pa Ela Ea Hn Hga HNσ].
@@ -697,6 +702,9 @@ Proof.
   pose proof (glu_cons_sub_at HSbΓ HSbB Hσ Ea Hga HNσ) as Hc.
   pose proof (glu_ctx_env_per_env HSbB HRB Hc) as Hρn.
   destruct (per_univ_of_instance_at HR HRB HAc HBc HNc HNs Hρ Ea Hn Hρn) as (c & b & Ec & Eb & Hcb).
+  (** The witness: the instantiated type glued at its value *)
+  destruct (HWg _ _ _ (proj1 (EW _ _ _) Hσ)) as [c' Pc Elc Ec' Hgc HWσ].
+  assert (c' = c) by (eapply functional_eval_exp; eassumption); subst c'; clear Ec'.
   destruct (HBg _ _ _ Hc) as [HBc' (b' & Eb' & _ & HbP)].
   destruct (HMg _ _ _ Hσ) as [p m Pp Elp Ep Hm Hgp HMσ].
   inversion Ep; subst; functional_eval_rewrite_clear.
@@ -724,8 +732,6 @@ Proof.
   destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ κc i Hgb HBcP HBc') as [Hkb Hnb].
   destruct Hcb as [Rc HRc].
   pose proof (per_univ_elem_kind _ _ _ _ HRc) as Hkc.
-  assert (Hgc : DG c ∈ glu_univ_elem i ↘ OP n equiv_n ↘ OEl n equiv_n)
-    by (eapply glu_univ_elem_resp_per_univ; [ eexists; symmetry; exact HRc | exact Hgb ]).
   pose proof (per_univ_elem_pi_arg_kind Hev Hel Hmm) as Harg.
   assert (HappE : ⟦ M $ N ⟧ ρ ↘ mn).
   { destruct (evaluated_kind_or_propositional (domain_kind a)) as [Hea | Hpa].
@@ -734,63 +740,20 @@ Proof.
     - rewrite Hpa in Hn; cbn in Hn; subst n.
       eapply eval_exp_app_proof; [ exact HmE | rewrite Harg; exact Hpa | exact Hmn ]. }
   econstructor; [ exact Ec | rewrite Hkc, Hkb; destruct Hev; exact HappE | exact Hgc |].
-  rewrite exp_sub_extend_sub; cbn [exp_sub].
-  rewrite exp_wk_id in HMN.
-  pose proof (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HMN) as HOTP.
-  pose proof (glu_univ_elem_typ_unique_upto_exp_eq' Hgb Hnb HOTP HBcP) as HOTeq.
-  exact (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hgb _ _ _ _ _ HMN HOTeq).
-Qed.
-
-(** A family of propositions at a glued argument is a glued proposition:
-    the value of the instance is related to the family's at the
-    argument's value ([per_univ_of_instance_at]), where the family glues. *)
-Lemma glu_rel_exp_instance_prop : forall {Γ κd A B N} {i : nat},
-    Γ ⊩ A : abs_kind_sort κd Typeω@i ->
-    Γ ▹{κd} A ⊩ B : Propₘ ->
-    Γ ⊩ N : A ->
-    Γ ⊩ B[Id,,N] : Propₘ.
-Proof.
-  intros * HA HB HN.
-  destruct (presup_ctx_glu_rel_exp HA) as [SbΓ HSbΓ].
-  destruct (presup_ctx_glu_rel_exp HB) as [SbB HSbB].
-  pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
-  pose proof (glu_rel_exp_to_wf_exp HB) as HBt.
-  pose proof (glu_rel_exp_to_wf_exp HN) as HNt.
-  pose proof (glu_rel_exp_kind_sort_large_inversion HSbΓ HA) as HAg.
-  assert (HNg : forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ SbΓ -> glu_rel_exp_with_sub i Δ N A σ ρ).
-  { apply (glu_rel_exp_at_typ_index HSbΓ); [| exact HN ].
-    intros Δ σ ρ Hσ; apply glu_rel_typ_with_sub_of_point; exact (proj2 (HAg _ _ _ Hσ)). }
-  assert (HNs : exp_scoped (List.length Γ) N) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HNt))).
-  pose proof (completeness_fundamental_exp _ _ _ HAt) as HAc.
-  pose proof (completeness_fundamental_exp _ _ _ HBt) as HBc.
-  pose proof (completeness_fundamental_exp _ _ _ HNt) as HNc.
-  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [R HR].
-  destruct (glu_ctx_env_per_ctx_env HSbB) as [RB HRB].
-  eapply glu_rel_exp_of_prop; [ exact HSbΓ |].
-  intros Δ σ ρ Hσ.
-  pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
-  destruct (HNg _ _ _ Hσ) as [a n Pa Ela Ea Hn Hga HNσ].
-  pose proof (glu_cons_sub_at HSbΓ HSbB Hσ Ea Hga HNσ) as Hc.
-  pose proof (glu_ctx_env_per_env HSbB HRB Hc) as Hρn.
-  destruct (per_univ_of_instance_at (κc := ak_propositional) (i := 0) HR HRB HAc HBc HNc HNs Hρ Ea Hn Hρn)
-    as (c & b & Ec & Eb & [Rc HRc]).
-  destruct (glu_rel_exp_prop_inversion HSbB HB _ _ _ Hc) as (b' & Eb' & Hpb & HbP).
-  functional_eval_rewrite_clear.
-  exists c; split; [ exact Ec |].
-  assert (HRcc : DF c ≈ c ∈ per_univ_elem 0 ↘ Rc) by (etransitivity; [ exact HRc | symmetry; exact HRc ]).
-  assert (Hkc : domain_kind c = ak_propositional) by (rewrite (per_univ_elem_kind _ _ _ _ HRc); exact (per_prop_left _ _ Hpb)).
-  pose proof (per_univ_elem_per_prop_of_kind HRcc Hkc) as Hpc.
-  split; [ exact Hpc |].
-  assert (Hgb : DG b ∈ glu_univ_elem 0 ↘ prop_glu_typ_pred b ↘ proof_glu_exp_pred b)
-    by (simp glu_univ_elem; eapply glu_univ_elem_core_prop; [ exact Hpb | reflexivity | reflexivity ]).
-  assert (Hgc : DG c ∈ glu_univ_elem 0 ↘ prop_glu_typ_pred b ↘ proof_glu_exp_pred b)
-    by (eapply glu_univ_elem_resp_per_univ; [ eexists; symmetry; exact HRc | exact Hgb ]).
-  destruct (glu_univ_elem_prop_inv _ _ _ _ Hpc Hgc) as [EP _].
-  rewrite exp_sub_extend_sub; apply EP; exact HbP.
+  (** The application at the codomain's value, moved to the witness *)
+  assert (HMNb : Δ ⊢ (M $ N)[σ] : B[Id,,N][σ] ® mn ∈ OEl n equiv_n).
+  { rewrite exp_sub_extend_sub; cbn [exp_sub].
+    rewrite exp_wk_id in HMN.
+    pose proof (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HMN) as HOTP.
+    pose proof (glu_univ_elem_typ_unique_upto_exp_eq' Hgb Hnb HOTP HBcP) as HOTeq.
+    exact (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hgb _ _ _ _ _ HMN HOTeq). }
+  assert (Hbc : Dom b ≈ c ∈ per_univ i) by (eexists; symmetry; exact HRc).
+  exact (glu_univ_elem_exp_conv Hbc Hgb Hgc HMNb HWσ).
 Qed.
 
 (** An application ([wf_app]): of a function into a type of an evaluated
-    kind, or of a proof of a [∀], a proof of the instance. *)
+    kind, or of a proof of a [∀], a proof of the instance.  The instance
+    of the codomain is glued, its witness. *)
 Lemma glu_rel_exp_app : forall {Γ κd κc A Srt B M N} {i : nat},
     Γ ⊩ A : Srt ->
     sort_kind Srt κd ->
@@ -798,15 +761,17 @@ Lemma glu_rel_exp_app : forall {Γ κd κc A Srt B M N} {i : nat},
     pi_kinds κd κc ->
     Γ ⊩ M : a_pi κd κc A B ->
     Γ ⊩ N : A ->
+    Γ ⊩ B[Id,,N] : abs_kind_sort κc Typeω@i ->
     Γ ⊩ M $ N : B[Id,,N].
 Proof.
-  intros * HA HS HB Hk HM HN.
+  intros * HA HS HB Hk HM HN HW.
   destruct (sort_kind_abs_kind_sort_inv HS) as [j ->].
   pose proof (glu_rel_exp_kind_sort_lift (k := max j i) (PeanoNat.Nat.le_max_l j i) HA) as HA'.
   pose proof (glu_rel_exp_kind_sort_lift (k := max j i) (PeanoNat.Nat.le_max_r j i) HB) as HB'.
   destruct (evaluated_kind_or_propositional κc) as [Hev | ->].
-  - exact (glu_rel_exp_app_evaluated HA' HB' Hk Hev HM HN).
-  - apply glu_rel_exp_proof; [ exact (glu_rel_exp_instance_prop HA' HB' HN) |].
+  - pose proof (glu_rel_exp_kind_sort_lift (k := max j i) (PeanoNat.Nat.le_max_r j i) HW) as HW'.
+    exact (glu_rel_exp_app_evaluated HA' HB' Hk Hev HM HN HW').
+  - apply glu_rel_exp_proof; [ exact HW |].
     eapply wf_app; [ exact (glu_rel_exp_to_wf_exp HA') | apply sort_kind_abs_kind_sort
                    | exact (glu_rel_exp_to_wf_exp HB') | exact Hk | exact (glu_rel_exp_to_wf_exp HM)
                    | exact (glu_rel_exp_to_wf_exp HN) ].
@@ -829,11 +794,23 @@ Lemma glu_pi :
      pi_kinds κd κc ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_pi κd κc A B : abs_kind_sort κc U ).
 Proof.
-  glu_intro.
-  match goal with HU : (exists i, ?U = Typeω@i) \/ _ |- _ => destruct HU as [[? ->] | (? & ? & -> & ?)] end.
+  glu_inst_intro.
+  match goal with HU : (exists i, ?U = Typeω@i) \/ _ |- _ => destruct HU as [[? ->] | (L & n & -> & HL)] end.
   - rewrite abs_kind_sort_wk in *; cbn [exp_wk] in *.
-    eapply glu_rel_exp_pi_large; eassumption.
-  - eapply glu_rel_exp_pi_small; eassumption.
+    rewrite abs_kind_sort_sub; cbn [exp_sub].
+    assert (Hq : glu_rel_sub_inst (Γ' ▹{κd} A[τ]) (q τ) (Γ ▹{κd} A))
+      by (eapply glu_rel_sub_inst_q; [ exact Hτ | eassumption | apply sort_kind_abs_kind_sort ]).
+    eapply glu_rel_exp_pi_large; glu_inst_premise.
+  - (** The domain, at a large universe, for the lifted instance *)
+    match goal with HA : glu_rel_exp_under_sub Γ A _ |- _ => rename HA into HAs end.
+    assert (HAl : @glu_rel_exp_under_sub (gc_mk Θ2 Ξ2) Γ A (abs_kind_sort κd Typeω@n)).
+    { eapply glu_rel_exp_under_sub_conv_typ; [| exact HAs ].
+      intros Γ0 τ0 Hτ0 HA0; rewrite !abs_kind_sort_sub in *; cbn [exp_sub] in *.
+      eapply glu_rel_exp_kind_sort_small_large; [ glu_inst | exact HA0 ]. }
+    assert (Hq : glu_rel_sub_inst (Γ' ▹{κd} A[τ]) (q τ) (Γ ▹{κd} A))
+      by (eapply glu_rel_sub_inst_q; [ exact Hτ | exact HAl | apply sort_kind_abs_kind_sort ]).
+    rewrite abs_kind_sort_sub; cbn [exp_sub].
+    eapply glu_rel_exp_pi_small; glu_inst_premise.
 Qed.
 
 Lemma glu_fn :
@@ -843,7 +820,11 @@ Lemma glu_fn :
      pi_kinds κd κc ->
      Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊩ M : B ->
      Θ ⍮ Ξ ⍮ Γ ⊩ λ A M : a_pi κd κc A B ).
-Proof. glu_intro; eapply (glu_rel_exp_fn (A := A) (Srt := Srt)); eassumption. Qed.
+Proof.
+  glu_inst_intro.
+  assert (Hq : glu_rel_sub_inst (Γ' ▹{κd} A[τ]) (q τ) (Γ ▹{κd} A)) by (eapply glu_rel_sub_inst_q; eassumption).
+  eapply (glu_rel_exp_fn (A := A[τ]) (Srt := Srt)); glu_inst_premise.
+Qed.
 
 Lemma glu_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
@@ -853,7 +834,17 @@ Lemma glu_app :
      Θ ⍮ Ξ ⍮ Γ ⊩ M : a_pi κd κc A B ->
      Θ ⍮ Ξ ⍮ Γ ⊩ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M $ N : B[Id,,N] ).
-Proof. glu_intro; eapply (glu_rel_exp_app (A := A) (Srt := Srt)); eassumption. Qed.
+Proof.
+  glu_inst_intro.
+  assert (Hq : glu_rel_sub_inst (Γ' ▹{κd} A[τ]) (q τ) (Γ ▹{κd} A)) by (eapply glu_rel_sub_inst_q; eassumption).
+  (** The codomain's instance at the argument, the witness *)
+  assert (Hext : glu_rel_sub_inst Γ' (τ,,N[τ]) (Γ ▹{κd} A)).
+  { eapply glu_rel_sub_inst_extend; [ exact Hτ | eapply glu_rel_exp_under_sub_wf; eassumption | eassumption
+                                    | eapply glu_rel_exp_under_sub_inst_renaming; eassumption ]. }
+  rewrite <- exp_sub_extend_comm.
+  eapply (glu_rel_exp_app (A := A[τ]) (Srt := Srt) (B := B[q τ])); try glu_inst_premise.
+  rewrite exp_sub_q_extend; glu_inst.
+Qed.
 
 (** The equations glue their context, which their domain's premise
     does. *)

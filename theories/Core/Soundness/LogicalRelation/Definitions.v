@@ -1400,6 +1400,7 @@ Definition nil_glu_sub_pred : glu_sub_pred :=
     environment built stores the declared type's value.  The index is
     the stored type's own, so that two gluings of one context agree on
     it ([functional_glu_ctx_env]). *)
+#[warnings="-cannot-define-projection"]
 Record glu_stored_type (Δ : ctx) (σ : sub) (A : typ) (ρ : env) (t : entry_type) : Prop := mk_glu_stored_type
   { (** The index it is glued at *)
     glu_stored_index : nat
@@ -1566,20 +1567,61 @@ Record glu_rel_exp Γ M A : Prop := mk_glu_rel_exp
       Δ ⊢ˢ σ ® ρ ∈ glu_rel_exp_sb ->
       glu_rel_exp_with_sub glu_rel_exp_lvl Δ M A σ ρ }.
 
-(** The fundamental theorem has two parts, contexts and terms: the system
-    has no substitution judgment, just as [completeness_fundamental] has no
-    substitution part.  Substitution is an operation on syntax, so
-    [⟦τ ⨟ σ⟧(ρ)] and [⟦τ⟧(⟦σ⟧ρ)] are different environments, only related
-    by the context PER (evaluating a substitution also retags the
-    environment at the target context).  A glued substitution
-    ([Γ ⊩ˢ τ : Δ], below) is therefore glued at an environment related to
-    its value, and glued substitutions are not composed; glued weakenings
-    ([Γ ⊩ʷ φ : Δ]) compose, as a weakening acts on environments without
-    evaluation.  Both move term judgments along concrete substitutions
-    ([glu_rel_exp_sub], [glu_rel_exp_wk]). *)
-
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
+
+(** ** The Fundamental Theorem's Judgments
+
+    The value of a substituted term is not the value of the term at the
+    substitution's value: a kept proof [⋆ᵈ⟨N[τ], ρ⟩] is not [⋆ᵈ⟨N, ρτ⟩].
+    So no lemma moves a glued term along a substitution, and the
+    fundamental theorem instead glues every instance of a typed term at
+    substitutions of a fixed form ([glu_rel_exp_under_sub]), each instance
+    at its own value.  The definitions are layered: each mentions only the
+    ones before it.  The components of those substitutions are glued at
+    every renaming ([glu_rel_exp_under_renaming]), which closes them under
+    the weakenings binders introduce; a renaming has no components of its
+    own, so the layering ends there. *)
+
+(** A term glued at every renaming of its context into a glued one. *)
+Definition glu_rel_exp_under_renaming (Γ : ctx) (M A : exp) : Prop :=
+  forall Γ' φ, Γ' ⊢ʷ φ : Γ -> ⊩ Γ' -> Γ' ⊩ M[φ]ʷ : A[φ]ʷ.
+
+(** A substitution the fundamental theorem instantiates terms at: typed,
+    out of a glued context, its term components glued at their types at
+    every renaming.  Module slots are sent to module expressions, whose
+    values are not glued.  The instances are closed under renaming, so a
+    term glued at all of them is glued at every renaming of each. *)
+Record glu_rel_sub_inst (Γ : ctx) (τ : sub) (Δ : ctx) : Prop := mk_glu_rel_sub_inst
+  { (** The substitution is typed *)
+    glu_rel_sub_inst_typed : Γ ⊢ˢ τ : Δ
+    (** Its domain is glued *)
+  ; glu_rel_sub_inst_ctx : ⊩ Γ
+    (** Each term component is glued at its type at every renaming *)
+  ; glu_rel_sub_inst_comps : forall x A, Δ ∋ #x : A -> glu_rel_exp_under_renaming Γ #x[τ] A[τ] }.
+
+(** A glued context whose variables' types are glued at every renaming,
+    each as a term of a sort of types: the fundamental theorem's judgment
+    of contexts.  A variable is then glued at its type at every renaming,
+    so every renaming into a glued context is an instance, the identity
+    among them. *)
+Record glu_rel_ctx_types (Γ : ctx) : Prop := mk_glu_rel_ctx_types
+  { (** The context is glued *)
+    glu_rel_ctx_types_ctx : ⊩ Γ
+    (** The type of each variable is glued, at every renaming, as a term
+        of a sort of types *)
+  ; glu_rel_ctx_types_types : forall x A, Γ ∋ #x : A ->
+      exists S, type_sort S /\ glu_rel_exp_under_renaming Γ A S }.
+
+(** A term all of whose instances at those substitutions are glued, each
+    at its own value, in a context as the fundamental theorem glues it: the
+    fundamental theorem's judgment of terms.  The identity is an instance,
+    so the term is glued. *)
+Record glu_rel_exp_under_sub (Δ : ctx) (M A : exp) : Prop := mk_glu_rel_exp_under_sub
+  { (** The context is glued with its variables' types *)
+    glu_rel_exp_under_sub_ctx : glu_rel_ctx_types Δ
+    (** Each instance is glued *)
+  ; glu_rel_exp_under_sub_inst : forall Γ τ, glu_rel_sub_inst Γ τ Δ -> Γ ⊩ M[τ] : A[τ] }.
 
 (** A weakening glued from [Γ] to [Δ], as [Γ ⊨ʷ φ : Δ] in the PER model:
     precomposed with it, a substitution glued into [Γ] at [ρ] is glued
@@ -1865,20 +1907,26 @@ Record glu_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gsta
     context glues. *)
 
 (** A universe at one target, as its two cases: large, or small at a level
-    that glues. *)
+    that glues at every instance. *)
 Record glu_is_univ_at (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (U : typ) : Prop := mk_glu_is_univ_at
-  { glu_is_univ_at_ctx : @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ
+  { (** The context glues with its variables' types *)
+    glu_is_univ_at_ctx : @glu_rel_ctx_types (gc_mk Θ2 Ξ2) Γ
+    (** A large universe, or a small one at a level glued at its
+        instances *)
   ; glu_is_univ_at_univ : (exists i : nat, U = Typeω@i) \/
-               (exists L (n : nat), U = Type⟨L⟩ /\ @glu_rel_exp (gc_mk Θ2 Ξ2) Γ L (Level@n)) }.
+               (exists L (n : nat), U = Type⟨L⟩ /\ @glu_rel_exp_under_sub (gc_mk Θ2 Ξ2) Γ L (Level@n)) }.
 
 Arguments glu_is_univ_at_ctx {Θ2 Ξ2 Γ U}.
 Arguments glu_is_univ_at_univ {Θ2 Ξ2 Γ U}.
 
+(** A context glues with its variables' types, at every sound
+    embedding. *)
 Definition glu_ctx Θ Ξ Γ : Prop :=
-  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_ctx_types (gc_mk Θ2 Ξ2) Γ.
 
+(** A term glues at each of its instances, at every sound embedding. *)
 Definition glu_exp Θ Ξ Γ A M : Prop :=
-  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_exp_under_sub (gc_mk Θ2 Ξ2) Γ M A.
 
 Definition glu_is_univ Θ Ξ Γ U : Prop :=
   forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> glu_is_univ_at Θ2 Ξ2 Γ U.

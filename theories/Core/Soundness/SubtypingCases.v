@@ -8,7 +8,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Soundness Require Import LogicalRelation VariableCases.
+From Mctt.Core.Soundness Require Import LogicalRelation VariableCases Instances.
 Import Domain_Notations Fixed_Notations.
 
 
@@ -78,8 +78,9 @@ Lemma glu_exp_subtyp :
      Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M : A' ).
 Proof.
-  glu_intro; glu_gctx_embedding_wf;
-    eapply glu_rel_exp_subtyp; [ eassumption | eassumption | eassumption | apply Hwst; eassumption ].
+  glu_inst_intro.
+  eapply (glu_rel_exp_subtyp (A := A[τ])); [ glu_inst_premise | glu_inst_premise | eassumption |].
+  eapply sub_preserves_subtyp; [ apply Hwst; eassumption | apply Hτ ].
 Qed.
 
 Lemma glu_exp_eq_subtyp :

@@ -3,7 +3,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Soundness Require Import LogicalRelation SubtypingCases VariableCases.
+From Mctt.Core.Soundness Require Import LogicalRelation SubtypingCases VariableCases Instances.
 Import Domain_Notations Fixed_Notations.
 
 
@@ -431,12 +431,15 @@ Proof.
   destruct (per_univ_glu_univ_elem 0 t ltac:(eexists; apply per_univ_elem_of_prop; exact Hpt)) as (P & El & Hg).
   destruct (glu_univ_elem_prop_inv _ _ _ _ Hpt Hg) as [_ EEl].
   econstructor; [ exact Ht | cbn; rewrite (per_prop_left _ _ Hpt); reflexivity | exact Hg |].
-  apply EEl; econstructor; [ exact HtP | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hσt) |].
-  destruct (glu_ctx_env_per_ctx_env HSb) as [R HR].
-  pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
-  assert (HsM : exp_scoped (List.length Γ) M) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HM))).
-  destruct (per_ctx_env_kept_proof_readable _ _ _ M HR (exp_scoped_free_bound _ _ HsM) _ _ Hρ) as [Hr _].
-  split; exact Hr.
+  apply EEl; econstructor; [ exact HtP | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hσt) | |].
+  - destruct (glu_ctx_env_per_ctx_env HSb) as [R HR].
+    pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
+    assert (HsM : exp_scoped (List.length Γ) M) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HM))).
+    destruct (per_ctx_env_kept_proof_readable _ _ _ M HR (exp_scoped_free_bound _ _ HsM) _ _ Hρ) as [Hr _].
+    split; exact Hr.
+  - (** The kept proof reads back as the proof, under its lets *)
+    intros Δ' φ R Hφ HR.
+    apply wf_exp_eq_sym; eapply glu_kept_proof_read; [ exact HSb | exact Hσ | exact HM | exact (glu_rel_exp_to_wf_exp HT) | exact Hφ | exact HR ].
 Qed.
 
 End Fixed_GCtx.
@@ -451,7 +454,7 @@ Hint Resolve glu_rel_exp_typ glu_rel_exp_suniv : mctt.
 Lemma glu_typ :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ Typeω@i : Typeω@(S i) ).
-Proof. glu_intro; apply glu_rel_exp_typ; assumption. Qed.
+Proof. glu_inst_intro; cbn; apply glu_rel_exp_typ; apply Hτ. Qed.
 
 Lemma glu_exp_eq_typ_cong :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
@@ -467,7 +470,7 @@ Lemma glu_is_univ_small :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ L : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊩ᵤ Type⟨L⟩ ).
 Proof.
-  glu_intro; [ eapply presup_ctx_glu_rel_exp; eassumption | right; do 2 eexists; split; [ reflexivity | eassumption ] ].
+  glu_intro; [ eapply glu_rel_exp_under_sub_ctx; eassumption | right; do 2 eexists; split; [ reflexivity | eassumption ] ].
 Qed.
 Ltac invert_glu_rel_exp H ::=
   (unshelve eapply (glu_rel_exp_clean_inversion2' _) in H; shelve_unifiable; [eassumption |];

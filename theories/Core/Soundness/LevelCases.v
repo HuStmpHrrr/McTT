@@ -21,6 +21,7 @@ From Mctt.Core.Soundness Require Import
   LogicalRelation
   SubtypingCases
   VariableCases
+  Instances
   UniverseCases.
 Import Domain_Notations Wk_Notations.
 
@@ -456,29 +457,29 @@ Hint Resolve glu_rel_exp_level glu_rel_exp_llit
 Lemma glu_univ :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊩ Type⟨M⟩ : Type⟨succl M⟩ ).
-Proof. glu_intro; eapply glu_rel_exp_univ_lvl; eassumption. Qed.
+Proof. glu_inst_intro; eapply glu_rel_exp_univ_lvl; glu_inst_premise. Qed.
 
 Lemma glu_level :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ Level@n : LevelSort ).
-Proof. glu_intro; apply glu_rel_exp_level; assumption. Qed.
+Proof. glu_inst_intro; apply glu_rel_exp_level; glu_inst_premise. Qed.
 
 Lemma glu_llit :
   `( fst o <= n ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ 𝕃ᵒ o : Level@n ).
-Proof. glu_intro; apply glu_rel_exp_llit; assumption. Qed.
+Proof. glu_inst_intro; apply glu_rel_exp_llit; glu_inst_premise. Qed.
 
 Lemma glu_succl :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊩ succl M : Level@n ).
-Proof. glu_intro; eapply glu_rel_exp_succl; eassumption. Qed.
+Proof. glu_inst_intro; eapply glu_rel_exp_succl; glu_inst_premise. Qed.
 
 Lemma glu_maxl :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊩ N : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊩ maxl M N : Level@n ).
-Proof. glu_intro; eapply glu_rel_exp_maxl; eassumption. Qed.
+Proof. glu_inst_intro; eapply glu_rel_exp_maxl; glu_inst_premise. Qed.
 
 Lemma glu_exp_eq_univ_cong :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->

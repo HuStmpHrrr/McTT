@@ -140,37 +140,15 @@ Proof.
   exists a, a'; eassumption.
 Qed.
 
-(** A variable whose type is weakened past an entry: glued at the value of
-    the weakened type, given an element glued at a related value, at the
-    variable's value at the kind of the type ([glu_term_value_intro]). *)
-Lemma glu_rel_exp_with_sub_var_shift : forall {i j : nat} {Γ' A Δ σ ρ x a1 a2 P El m R},
-    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R ->
-    Dom ρ ≈ ρ ∈ R ->
-    Γ' ⊢ #x : A[↑]ʷ ->
-    ⟦ A[↑]ʷ ⟧ ρ ↘ a1 ->
-    Dom a1 ≈ a2 ∈ per_univ j ->
-    DG a2 ∈ glu_univ_elem i ↘ P ↘ El ->
-    (evaluated_kind (domain_kind a1) -> ⟦ #x ⟧ ρ ↘ m) ->
-    Δ ⊢ #x[σ] : A[↑]ʷ[σ] ® m ∈ El ->
-    glu_rel_exp_with_sub (max i j) Δ #x A[↑]ʷ σ ρ.
-Proof.
-  intros * HR Hρ Hx Ha1 [Ra Ha12] Hglu Hm HN.
-  destruct (glu_univ_elem_cumu_max_left (j := j) Hglu) as (P' & El' & Hglu').
-  assert (HN' : Δ ⊢ #x[σ] : A[↑]ʷ[σ] ® m ∈ El')
-    by (eapply glu_univ_elem_exp_cumu_max_left; [ exact Hglu | exact Hglu' | exact HN ]).
-  assert (Hglu1 : DG a1 ∈ glu_univ_elem (max i j) ↘ P' ↘ El').
-  { eapply glu_univ_elem_resp_per_univ; [| exact Hglu' ].
-    eexists; symmetry; eapply per_univ_elem_cumu_max_right; exact Ha12. }
-  destruct (glu_term_value_intro Hglu1 Hx HR Hρ Hm HN') as (m' & Hm' & HN'').
-  econstructor; [ exact Ha1 | exact Hm' | exact Hglu1 | exact HN'' ].
-Qed.
+(** ** Variables
 
-(** The variable case. Syntactically it is direct: [#(S n)[σ]] is
-    [#n[Wk⨟σ]] and [ρ (S n)] is [ρ↯ n], so one [exp_sub_shift] suffices. The
-    type value needs more work: [cons_glu_sub_pred] supplies [⟦A⟧(ρ↯)] while
-    the goal mentions [⟦A[↑]ʷ⟧(ρ)], and the two are not equal.
-    [completeness_fundamental_typ_shift] relates them, and
-    [glu_univ_elem_resp_per_univ] moves [P] and [El] across. *)
+    Syntactically a variable is direct: [#(S n)[σ]] is [#n[Wk⨟σ]] and
+    [ρ (S n)] is [ρ↯ n].  Its type is not: the glued environment glues the
+    variable at its declared type's value in the environment's tail, while
+    the variable's type is that type weakened, whose value is only related
+    to it.  The variable is moved to the weakened type's value
+    ([glu_univ_elem_exp_conv]) at the weakened type's gluing, which is the
+    witness the lemmas below take. *)
 
 (** The tail of a glued substitution into an extended context glues in
     the tail's gluing. *)
@@ -187,67 +165,85 @@ Proof.
     destruct Hσ; apply E; eassumption.
 Qed.
 
-Lemma glu_rel_exp_vlookup : forall {Γ x A},
-    ⊩ Γ ->
-    Γ ∋ #x : A ->
-    Γ ⊩ #x : A.
+(** A variable of a glued context is glued, at its value in the
+    environment, at a type value related to its type's: the declared type's
+    value in the environment's tail, each weakening past an entry relating
+    the two ([glu_typ_shift_per]). *)
+Lemma glu_ctx_env_lookup_glu : forall Γ x A, Γ ∋ #x : A -> forall Sb, EG Γ ∈ glu_ctx_env ↘ Sb ->
+    forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ Sb ->
+    exists (j : nat) a' P' El', DG a' ∈ glu_univ_elem j ↘ P' ↘ El' /\ Δ ⊢ #x[σ] : A[σ] ® (ρ x) ∈ El' /\
+      forall RΓ a1, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> ⟦ A ⟧ ρ ↘ a1 -> Dom a' ≈ a1 ∈ per_univ j.
 Proof.
-  intros * [Sb HSb] Hx. gen Sb.
-  induction Hx; intros;
+  intros Γ x A Hx; induction Hx; intros Sb HSb Δ σ ρ Hσ;
     assert (He : ⊢ (_ :: Γ)%list) by (eapply glu_ctx_env_wf_ctx; eassumption);
-    destruct (glu_ctx_env_per_ctx_env HSb) as [R HR];
     assert (HT : exists TSb, EG Γ ∈ glu_ctx_env ↘ TSb) by (inversion HSb; subst; eexists; eassumption);
     destruct HT as [TSb HTSb].
-  (** The innermost entry: its head, glued at its type in the tail, at the
-      value of the weakened type ([glu_typ_shift_per]) *)
+  (** The innermost entry: its head, glued at its type in the tail *)
   - destruct (glu_ctx_env_cons_clean_inversion HTSb HSb) as (i & HA & _ & HSbe).
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max i i); [ exact HSb |].
-    intros Δ σ ρ Hσ.
+    pose proof Hσ as Hσ0; apply HSbe in Hσ0; destruct Hσ0 as [? ? ? ? P El Hσt Ea Hglu HN _ _ _].
+    exists i, a, P, El; split; [ exact Hglu | split; [ exact HN |] ].
+    intros RΓ a1 HR Ea1.
     pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
-    apply HSbe in Hσ; destruct Hσ as [? ? ? ? P El Hσt Ea Hglu HN _ _ _].
-    destruct (glu_typ_shift_per He HA HR Hρ) as (a1 & a2 & Ea1 & Ea2 & Hper).
-    functional_eval_rewrite_clear.
-    eapply glu_rel_exp_with_sub_var_shift; [ exact HR | exact Hρ | mauto 3 | exact Ea1 | exact Hper | exact Hglu | intros _; constructor | exact HN ].
+    destruct (glu_typ_shift_per He HA HR Hρ) as (a1' & a2 & Ea1' & Ea2 & Hper).
+    functional_eval_rewrite_clear; symmetry; exact Hper.
   - destruct (glu_ctx_env_cons_def_clean_inversion HTSb HSb) as (i & κ & HA & _ & _ & _ & HSbe).
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max i i); [ exact HSb |].
-    intros Δ σ ρ Hσ.
+    pose proof Hσ as Hσ0; apply HSbe in Hσ0; destruct Hσ0 as [? ? ? ? P El Hσt Ea Hglu HN _ _ _ _].
+    exists i, a, P, El; split; [ exact Hglu | split; [ exact HN |] ].
+    intros RΓ a1 HR Ea1.
     pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
-    apply HSbe in Hσ; destruct Hσ as [? ? ? ? P El Hσt Ea Hglu HN _ _ _ _].
-    destruct (glu_typ_shift_per He HA HR Hρ) as (a1 & a2 & Ea1 & Ea2 & Hper).
-    functional_eval_rewrite_clear.
-    eapply glu_rel_exp_with_sub_var_shift; [ exact HR | exact Hρ | mauto 3 | exact Ea1 | exact Hper | exact Hglu | intros _; constructor | exact HN ].
+    destruct (glu_typ_shift_per He HA HR Hρ) as (a1' & a2 & Ea1' & Ea2 & Hper).
+    functional_eval_rewrite_clear; symmetry; exact Hper.
   - destruct (glu_ctx_env_cons_dm_clean_inversion HTSb HSb) as (i & HA & _ & _ & _ & _ & HSbe).
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max i i); [ exact HSb |].
-    intros Δ σ ρ Hσ.
+    pose proof Hσ as Hσ0; apply HSbe in Hσ0; destruct Hσ0 as [? ? ? ? P El Hσt Ea Hglu HN _ _ _ _ _].
+    exists i, a, P, El; split; [ exact Hglu | split; [ exact HN |] ].
+    intros RΓ a1 HR Ea1.
     pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
-    apply HSbe in Hσ; destruct Hσ as [? ? ? ? P El Hσt Ea Hglu HN _ _ _ _ _].
-    destruct (glu_typ_shift_per (κ := ak_relevant) He HA HR Hρ) as (a1 & a2 & Ea1 & Ea2 & Hper).
-    functional_eval_rewrite_clear.
-    eapply glu_rel_exp_with_sub_var_shift; [ exact HR | exact Hρ | mauto 3 | exact Ea1 | exact Hper | exact Hglu | intros _; constructor | exact HN ].
-  (** Under one more entry: the variable in the tail, by the induction
-      hypothesis, its type weakened past the entry *)
-  - pose proof (IHHx _ HTSb) as Hn.
-    destruct (glu_rel_exp_clean_inversion1 HTSb Hn) as [k Hk].
+    destruct (glu_typ_shift_per (κ := ak_relevant) He HA HR Hρ) as (a1' & a2 & Ea1' & Ea2 & Hper).
+    functional_eval_rewrite_clear; symmetry; exact Hper.
+  (** Under one more entry: the variable in the tail, its type weakened
+      past the entry *)
+  - pose proof (glu_ctx_env_sub_tail HSb HTSb Hσ) as Htl.
+    destruct (IHHx _ HTSb _ _ _ Htl) as (j & a' & P' & El' & Hg & HN & Hper).
     destruct (ctx_lookup_wf_sorted _ _ _ _ _ (glu_ctx_env_wf_ctx HTSb) Hx) as (S & HS & HAS).
-    destruct (type_sort_abs_kind_sort_inv _ HS) as (κ & j & ->).
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max k j); [ exact HSb |].
-    intros Δ σ ρ Hσ.
-    pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
-    pose proof (glu_ctx_env_sub_tail HSb HTSb Hσ) as Htl.
-    destruct (Hk _ _ _ Htl) as [a2 m P El Ea2 Hm Hglu HN].
-    destruct (glu_typ_shift_per He HAS HR Hρ) as (a1 & a2' & Ea1 & Ea2' & Hper).
-    functional_eval_rewrite_clear.
-    eapply (glu_rel_exp_with_sub_var_shift (m := m)); [ exact HR | exact Hρ | mauto 3 | exact Ea1 | exact Hper | exact Hglu | | ].
-    + (** At an evaluated kind the value is the tail's [n]-th, the [S n]-th *)
-      intros Hev.
-      destruct Hper as [Ra Ha12]; rewrite (per_univ_elem_kind _ _ _ _ Ha12) in Hev.
-      destruct (domain_kind a2); cbn in Hm; [ | inversion Hev | ]; inversion Hm; subst;
-        replace (List.tl ρ n) with (ρ (S n)) by (destruct ρ; reflexivity); apply eval_exp_var.
-    + rewrite exp_sub_shift; exact HN.
+    destruct (type_sort_abs_kind_sort_inv _ HS) as (κ & k & ->).
+    destruct (glu_univ_elem_cumu_max_left (j := k) Hg) as (Pm & Elm & Hgm).
+    exists (max j k), a', Pm, Elm; split; [ exact Hgm | split ].
+    + rewrite exp_sub_shift; replace (ρ (S n)) with (ρ↯ n) by (destruct ρ; reflexivity).
+      exact (glu_univ_elem_exp_cumu_max_left Hg Hgm HN).
+    + intros RΓ a1 HR Ea1.
+      pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
+      destruct (glu_typ_shift_per He HAS HR Hρ) as (a1' & a0 & Ea1' & Ea0 & [R0 Hper0]).
+      functional_eval_rewrite_clear.
+      destruct (glu_ctx_env_per_ctx_env HTSb) as [RT HRT].
+      destruct (Hper _ _ HRT Ea0) as [R1 Hper1].
+      assert (H1 : Dom a' ≈ a0 ∈ per_univ (max j k)) by (eexists; eapply per_univ_elem_cumu_max_left; exact Hper1).
+      assert (H2 : Dom a1 ≈ a0 ∈ per_univ (max j k)) by (eexists; eapply per_univ_elem_cumu_max_right; exact Hper0).
+      etransitivity; [ exact H1 | symmetry; exact H2 ].
 Qed.
 
-
-Hint Resolve glu_rel_exp_vlookup : mctt.
+(** A variable of a glued context is glued at its type, given its type's
+    gluing: at the variable's value, moved from the declared type's value
+    to its type's ([glu_univ_elem_exp_conv]), and at a proposition at the
+    proof kept ([glu_term_value_intro]). *)
+Lemma glu_rel_exp_var_witness : forall {Γ x A S},
+    ⊩ Γ -> Γ ∋ #x : A -> type_sort S -> Γ ⊩ A : S -> Γ ⊩ #x : A.
+Proof.
+  intros * [Sb HSb] Hx HS HA.
+  destruct (type_sort_abs_kind_sort_inv _ HS) as (κ & j0 & ->).
+  destruct (glu_rel_exp_sort_typ HA (sort_kind_abs_kind_sort κ _)) as (Sb' & i & HSb' & HAt & HAg).
+  assert (E : Sb <∙> Sb') by (eapply functional_glu_ctx_env; eassumption).
+  destruct (glu_ctx_env_per_ctx_env HSb) as [RΓ HRΓ].
+  assert (Hxt : Γ ⊢ #x : A) by (apply wf_vlookup; [ eapply glu_ctx_env_wf_ctx; exact HSb | exact Hx ]).
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ exact HSb |].
+  intros Δ σ ρ Hσ.
+  pose proof Hσ as Hσ'; apply E in Hσ'.
+  destruct (HAg _ _ _ Hσ') as [a1 P1 El1 Ea1 Hg1 HAσ].
+  destruct (glu_ctx_env_lookup_glu _ _ _ Hx _ HSb _ _ _ Hσ) as (j & a' & P' & El' & Hg' & HN & Hper).
+  pose proof (Hper _ _ HRΓ Ea1) as Hper'.
+  pose proof (glu_univ_elem_exp_conv Hper' Hg' Hg1 HN HAσ) as HN1.
+  destruct (glu_term_value_intro Hg1 HSb Hσ Hxt (fun _ => eval_exp_var _ _ _ _) HN1) as (m & Hm & HN2).
+  econstructor; [ exact Ea1 | exact Hm | exact Hg1 | exact HN2 ].
+Qed.
 
 End Fixed_GCtx.
 
@@ -255,32 +251,3 @@ End Fixed_GCtx.
 Hint Resolve presup_ctx_glu_rel_exp : mctt.
 #[export]
 Hint Resolve presup_typ_glu_rel_exp : mctt.
-#[export]
-Hint Resolve glu_rel_exp_vlookup : mctt.
-
-(** ** The Rules *)
-
-#[local] Generalizable All Variables.
-
-(** The case of a rule whose conclusion only glues its context: a premise
-    glues the context, or a term glued in it. *)
-Ltac glu_ctx_case :=
-  glu_intro; first [ assumption | eapply presup_ctx_glu_rel_exp; eassumption ].
-
-Lemma glu_vlookup :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ∋ #x : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ #x : A ).
-Proof. glu_intro; eapply glu_rel_exp_vlookup; eassumption. Qed.
-
-Lemma glu_exp_eq_var :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ∋ #x : A ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-Lemma glu_exp_eq_var_delta :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ∋ #x ≔ M : A ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
