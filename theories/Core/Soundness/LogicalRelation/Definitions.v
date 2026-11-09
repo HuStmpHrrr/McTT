@@ -68,30 +68,33 @@ Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : T
     ([abs_kind_sort]): a proposition at [Prop], a type of levels at
     [LevelSort], which no universe contains. *)
 
-(** ** Readback Equations up to Proofs
+(** ** Exact Readback Equations
 
-    Two values the PER model relates read back alike up to their proofs
-    ([nf_eq_upto_proofs]): a proof is kept with its environment, and two
-    related proofs may read back as different terms.  So the gluing states
-    a term's equation with its value's readback [W] up to proofs: the term
-    is equal to an annotated normal form ([nf_annotate_proofs]) equal to
-    [W] up to proofs.  The equation is then one of the value's PER class,
-    as [nf_eq_upto_proofs] is an equivalence, and the annotation, which
-    types each proof at its proposition, makes two such witnesses equal
-    ([nf_annotate_proofs_upto]).  The readback itself need not be typed:
-    for example, with [f : P → A] and [h : P], the term [f h] is glued to
-    the value of [f] at a proof [⋆ᵈ⟨𝕃@0, nil⟩], which reads back as the
-    untyped [f 𝕃@0], with the witness [f h]. *)
-Definition glu_nf_eq (Γ : ctx) (M : exp) (W : nf) (A : typ) : Prop :=
-  exists W', nf_eq_upto_proofs W W' /\ Γ ⊢ M ≈ nf_annotate_proofs W' : A.
+    A term is glued to a value by the equation of the term with the
+    value's own readback: soundness is exact, the term is equal to its
+    normal form.  The readback of a proof is the proof term kept with its
+    environment ([read_proof_kept]), so the equation types it.  The
+    gluing is therefore NOT closed under the PERs, which relate a kept
+    proof to any proof: for example, with [f : P → A] and [h : P], the
+    real value of [f h] and the value of [f] at a proof [⋆ᵈ⟨𝕃@0, nil⟩]
+    are related by [per_bot], but the second reads back as the untyped
+    [f 𝕃@0], so only the first is glued to [f h].  A gluing moves to a
+    related value only along that value's own readback.
+
+    The equation is with the annotation of the readback
+    ([nf_annotate_proofs]), which ascribes each proof its proposition:
+    so a glued readback has every proof typed at its proposition, and two
+    glued readbacks equal up to proofs are equal
+    ([nf_annotate_proofs_upto]).  The plain readback is equal to its
+    annotation when the annotation is typed. *)
+Definition glu_nf_eq (Γ : ctx) (M : exp) (W : nf) (A : typ) : Prop := Γ ⊢ M ≈ nf_annotate_proofs W : A.
 
 (** The same for neutrals. *)
-Definition glu_ne_eq (Γ : ctx) (M : exp) (W : ne) (A : typ) : Prop :=
-  exists W', ne_eq_upto_proofs W W' /\ Γ ⊢ M ≈ ne_annotate_proofs W' : A.
+Definition glu_ne_eq (Γ : ctx) (M : exp) (W : ne) (A : typ) : Prop := Γ ⊢ M ≈ ne_annotate_proofs W : A.
 
 (** The same for a list of terms at a closed telescope ([exps_eq_at]). *)
 Definition glu_nfs_eq_at (Γ : ctx) (T : ctx) (Ms : list exp) (Ws : list nf) : Prop :=
-  exists Ws', nfs_eq_upto_proofs Ws Ws' /\ exps_eq_at Γ T Ms (List.map nf_to_exp (List.map nf_annotate_proofs Ws')).
+  exps_eq_at Γ T Ms (List.map nf_to_exp (List.map nf_annotate_proofs Ws)).
 
 (** ** Levels *)
 
@@ -160,7 +163,10 @@ Record proof_glu_exp (a : domain) (Γ : ctx) (A : typ) (M : exp) (m : domain) : 
     (** The term is a proof of it *)
   ; proof_glu_exp_wf : Γ ⊢ M : A
     (** The value is a proof that reads back *)
-  ; proof_glu_exp_per : Dom m ≈ m ∈ per_proof }.
+  ; proof_glu_exp_per : Dom m ≈ m ∈ per_proof
+    (** At every weakening, the value's own readback, a term, is the proof *)
+  ; proof_glu_exp_read : forall Δ φ R, Δ ⊢ᵏ φ : Γ -> Rprf m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ R ->
+      Δ ⊢ M[φ]ʷ ≈ R : A[φ]ʷ }.
 
 Definition proof_glu_exp_pred (a : domain) : glu_exp_pred := proof_glu_exp a.
 

@@ -253,26 +253,69 @@ Lemma map_wk_wk : forall (Ps : list exp) φ ψ,
     List.map (fun P => P[ψ]ʷ) (List.map (fun P => P[φ]ʷ) Ps) = List.map (fun P => P[φ ⊙ ψ]ʷ) Ps.
 Proof. intros; rewrite List.map_map; apply List.map_ext; intros; apply exp_wk_wk. Qed.
 
-(** ** Readback Equations Move up to Proofs
+(** ** Readback Equations Move up to Proofs, to a Typed Annotation
 
-    A readback equation up to proofs holds of every normal form equal to
-    the readback up to proofs: [nf_eq_upto_proofs] is an equivalence.  This
-    is what makes the gluing a property of PER classes. *)
-Lemma glu_nf_eq_upto : forall Γ M W W' A, nf_eq_upto_proofs W W' -> glu_nf_eq Γ M W A -> glu_nf_eq Γ M W' A.
-Proof. intros * E (W0 & E0 & H); exists W0; split; [ etransitivity; [ symmetry; exact E | exact E0 ] | exact H ]. Qed.
+    A readback equation holds of a normal form equal to the readback up to
+    proofs whose annotation is typed: the two annotations are then equal
+    ([nf_annotate_proofs_upto]).  The hypothesis is what excludes a value
+    whose readback holds a junk proof (see [glu_nf_eq]): the gluing moves
+    only to values whose own readback is typed. *)
+Lemma glu_nf_eq_upto : forall Γ M W W' A, nf_eq_upto_proofs W W' -> glu_nf_eq Γ M W A ->
+    (exists T, Γ ⊢ nf_annotate_proofs W' : T) -> glu_nf_eq Γ M W' A.
+Proof.
+  unfold glu_nf_eq; intros * E H HW'.
+  etransitivity; [ exact H | exact (nf_annotate_proofs_upto _ _ _ _ _ _ (presup_exp_eq_right H) HW' E) ].
+Qed.
 
-Lemma glu_ne_eq_upto : forall Γ M W W' A, ne_eq_upto_proofs W W' -> glu_ne_eq Γ M W A -> glu_ne_eq Γ M W' A.
-Proof. intros * E (W0 & E0 & H); exists W0; split; [ etransitivity; [ symmetry; exact E | exact E0 ] | exact H ]. Qed.
+Lemma glu_ne_eq_upto : forall Γ M W W' A, ne_eq_upto_proofs W W' -> glu_ne_eq Γ M W A ->
+    (exists T, Γ ⊢ ne_annotate_proofs W' : T) -> glu_ne_eq Γ M W' A.
+Proof.
+  unfold glu_ne_eq; intros * E H HW'.
+  etransitivity; [ exact H | exact (proj2 nf_ne_annotate_proofs_upto _ _ _ _ E _ _ (presup_exp_eq_right H) HW') ].
+Qed.
 
-Lemma glu_nfs_eq_at_upto : forall Γ T Ms Ws Ws', nfs_eq_upto_proofs Ws Ws' -> glu_nfs_eq_at Γ T Ms Ws -> glu_nfs_eq_at Γ T Ms Ws'.
-Proof. intros * E (W0 & E0 & H); exists W0; split; [ etransitivity; [ symmetry; exact E | exact E0 ] | exact H ]. Qed.
+(** An instance of a telescope at a position exists whenever it does at
+    another list of the same length: it depends only on the shape. *)
+Lemma tele_insts_aux_nth_length : forall Δr σ σ' Ms Ms' k A, List.length Ms = List.length Ms' ->
+    List.nth_error (tele_insts_aux Δr σ Ms) k = Some A -> exists A', List.nth_error (tele_insts_aux Δr σ' Ms') k = Some A'.
+Proof.
+  induction Δr as [| e Δr IH]; intros * L H; [ destruct k; discriminate |].
+  destruct e; destruct Ms as [| M Ms], Ms' as [| M' Ms']; cbn in L, H |- *; try (destruct k; discriminate); try (cbn in L; lia).
+  all: destruct k as [| k]; cbn in H |- *; [ eexists; reflexivity |].
+  all: injection L as L; exact (IH _ _ _ _ _ _ L H).
+Qed.
+
+(** The equations of a list move to a list equal up to proofs whose own
+    equations hold (a witness at the target), as [glu_nf_eq_upto]. *)
+Lemma glu_nfs_eq_at_upto : forall Γ T Ms Ms' Ws Ws', nfs_eq_upto_proofs Ws Ws' -> glu_nfs_eq_at Γ T Ms Ws ->
+    glu_nfs_eq_at Γ T Ms' Ws' -> glu_nfs_eq_at Γ T Ms Ws'.
+Proof.
+  unfold glu_nfs_eq_at; intros * E [L H] [L' H'].
+  pose proof (nfs_eq_upto_proofs_length _ _ E) as LW.
+  rewrite !List.length_map in L, L'.
+  split; [ rewrite !List.length_map; congruence |].
+  intros k X Y A HX HY HA.
+  rewrite !List.nth_error_map in HY.
+  destruct (List.nth_error Ws' k) as [W' |] eqn:HW'; cbn in HY; [| discriminate ]; injection HY as <-.
+  assert (Hk : k < List.length Ws') by (apply List.nth_error_Some; congruence).
+  destruct (List.nth_error Ws k) as [W |] eqn:HW; [| apply List.nth_error_None in HW; lia ].
+  destruct (List.nth_error Ms' k) as [X' |] eqn:HX'; [| apply List.nth_error_None in HX'; lia ].
+  destruct (nfs_eq_upto_proofs_nth _ _ _ _ E HW) as (W'' & HW'' & EW).
+  rewrite HW' in HW''; injection HW'' as <-.
+  assert (HXW : Γ ⊢ X ≈ nf_annotate_proofs W : A) by (apply (H k); [ exact HX | rewrite !List.nth_error_map, HW; reflexivity | exact HA ]).
+  (** The target's own equation types its annotation *)
+  destruct (tele_insts_aux_nth_length (List.rev T) Id Id Ms Ms' k A ltac:(lia) HA) as [A' HA'].
+  assert (HXW' : Γ ⊢ X' ≈ nf_annotate_proofs W' : A') by (apply (H' k); [ exact HX' | rewrite !List.nth_error_map, HW'; reflexivity | exact HA' ]).
+  etransitivity; [ exact HXW |].
+  exact (nf_annotate_proofs_upto _ _ _ _ _ _ (presup_exp_eq_right HXW) (ex_intro _ _ (presup_exp_eq_right HXW')) EW).
+Qed.
 
 (** The readback equations move along an equal term. *)
 Lemma glu_nf_eq_exp_eq : forall Γ M M' W A, Γ ⊢ M' ≈ M : A -> glu_nf_eq Γ M W A -> glu_nf_eq Γ M' W A.
-Proof. intros * E (W0 & E0 & H); exists W0; split; [ exact E0 | etransitivity; [ exact E | exact H ] ]. Qed.
+Proof. unfold glu_nf_eq; intros * E H; etransitivity; [ exact E | exact H ]. Qed.
 
 Lemma glu_ne_eq_exp_eq : forall Γ M M' W A, Γ ⊢ M' ≈ M : A -> glu_ne_eq Γ M W A -> glu_ne_eq Γ M' W A.
-Proof. intros * E (W0 & E0 & H); exists W0; split; [ exact E0 | etransitivity; [ exact E | exact H ] ]. Qed.
+Proof. unfold glu_ne_eq; intros * E H; etransitivity; [ exact E | exact H ]. Qed.
 
 (** A proposition glued at its value, along an equation in [Prop]. *)
 Lemma prop_glu_typ_pred_resp_exp_eq : forall a Γ A A',
@@ -302,29 +345,33 @@ Qed.
 (** The readback equations move along an equation of their types. *)
 Lemma glu_nf_eq_conv : forall Γ M W A A' κ i,
     Γ ⊢ A ≈ A' : abs_kind_sort κ Typeω@i -> glu_nf_eq Γ M W A -> glu_nf_eq Γ M W A'.
-Proof. intros * E (W0 & E0 & H); exists W0; split; [ exact E0 | eapply wf_exp_eq_conv_kind; eassumption ]. Qed.
+Proof. unfold glu_nf_eq; intros * E H; eapply wf_exp_eq_conv_kind; eassumption. Qed.
 
 Lemma glu_ne_eq_conv : forall Γ M W A A' κ i,
     Γ ⊢ A ≈ A' : abs_kind_sort κ Typeω@i -> glu_ne_eq Γ M W A -> glu_ne_eq Γ M W A'.
-Proof. intros * E (W0 & E0 & H); exists W0; split; [ exact E0 | eapply wf_exp_eq_conv_kind; eassumption ]. Qed.
+Proof. unfold glu_ne_eq; intros * E H; eapply wf_exp_eq_conv_kind; eassumption. Qed.
 
 (** The readback of the parameters of related inductive types agrees, up
-    to proofs. *)
-Lemma glu_params_top_resp_per_top_ps : forall Dh Mh as1 as2 Γ Ps,
-    per_top_ps (List.rev (im_params Dh Mh)) as1 as2 -> glu_params_top Dh Mh Γ Ps as1 -> glu_params_top Dh Mh Γ Ps as2.
+    to proofs: parameters glued at one representative are glued at a
+    related one where some parameters are (a witness at the target, whose
+    readback it types). *)
+Lemma glu_params_top_resp_per_top_ps : forall Dh Mh as1 as2 Γ Ps Ps',
+    per_top_ps (List.rev (im_params Dh Mh)) as1 as2 -> glu_params_top Dh Mh Γ Ps as1 ->
+    glu_params_top Dh Mh Γ Ps' as2 -> glu_params_top Dh Mh Γ Ps as2.
 Proof.
-  intros * Ht [L Ht' Hr]; constructor; [ exact L | exact Ht' |].
+  intros * Ht [L Ht' Hr] [_ _ Hr']; constructor; [ exact L | exact Ht' |].
   intros Δ φ Ms Hφ HR.
   destruct (Ht (length Δ)) as [C1 C2 HC1 HC2 E].
   pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (@functional_read gc_deps gc_stack)))))) as Fps.
-  rewrite (Fps _ _ _ _ _ HR _ HC2); exact (glu_nfs_eq_at_upto _ _ _ _ _ E (Hr _ _ _ Hφ HC1)).
+  rewrite (Fps _ _ _ _ _ HR _ HC2); exact (glu_nfs_eq_at_upto _ _ _ _ _ _ E (Hr _ _ _ Hφ HC1) (Hr' _ _ _ Hφ HC2)).
 Qed.
 
-Lemma glu_params_top_resp_per_top : forall hd Dh k Mh as1 as2 Γ Ps, ind_lookup gc_deps gc_stack hd = Some Dh ->
+Lemma glu_params_top_resp_per_top : forall hd Dh k Mh as1 as2 Γ Ps Ps', ind_lookup gc_deps gc_stack hd = Some Dh ->
     ind_member Dh k = Some Mh ->
-    Dom d_ind hd k as1 ≈ d_ind hd k as2 ∈ per_top_typ -> glu_params_top Dh Mh Γ Ps as1 -> glu_params_top Dh Mh Γ Ps as2.
+    Dom d_ind hd k as1 ≈ d_ind hd k as2 ∈ per_top_typ -> glu_params_top Dh Mh Γ Ps as1 ->
+    glu_params_top Dh Mh Γ Ps' as2 -> glu_params_top Dh Mh Γ Ps as2.
 Proof.
-  intros * Hl HM Ht; apply glu_params_top_resp_per_top_ps.
+  intros * Hl HM Ht H1 H2; refine (glu_params_top_resp_per_top_ps _ _ _ _ _ _ _ _ H1 H2).
   intros s; destruct (Ht s) as [C1 C2 HC1 HC2 E].
   inversion HC2; subst; inversion HC1; subst.
   repeat match goal with H : ind_lookup _ _ hd = Some ?D1 |- _ =>
@@ -453,16 +500,21 @@ Proof.
              Hns' Hc Hp' eq_refl ltac:(lia) (tele_prefix_rel_nil _)).
 Qed.
 
-Lemma ind_typ_at_resp_per_top : forall p D ups ns ups' ns' NP NEl AP AEl DP DEl k Mk U Γ A Ps,
+(** A type of a member glued at one representative of the parameters is
+    glued at a related one where some type of the member is (a witness at
+    the target, whose parameters' readback it types). *)
+Lemma ind_typ_at_resp_per_top : forall p D ups ns ups' ns' NP NEl AP AEl DP DEl NP' NEl' AP' AEl' DP' DEl' k Mk U Γ A Ps A' Ps',
     ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk ->
     group_structure D -> ind_canon_props D ups ->
     Dom d_ind p k (ups ++ ns) ≈ d_ind p k (ups' ++ ns') ∈ per_top_typ ->
     ind_fam_agree D (canon_nparams_rel D ups) (canon_nparams_rel D ups') (canon_args_rel D ups) (canon_args_rel D ups')
       (canon_doms_rel D ups) (canon_doms_rel D ups') ->
-    ind_typ_at p D ups ns NP NEl AP AEl DP DEl k Mk U Γ A Ps -> ind_typ_at p D ups' ns' NP NEl AP AEl DP DEl k Mk U Γ A Ps.
+    ind_typ_at p D ups ns NP NEl AP AEl DP DEl k Mk U Γ A Ps ->
+    ind_typ_at p D ups' ns' NP' NEl' AP' AEl' DP' DEl' k Mk U Γ A' Ps' ->
+    ind_typ_at p D ups' ns' NP NEl AP AEl DP DEl k Mk U Γ A Ps.
 Proof.
-  intros * Hl HM Hass Hcp Ht Hfa (HA & Hk); split; [ exact HA |].
-  intros Δ φ Hφ; destruct (Hk Δ φ Hφ) as (Hpt & Hs & Hc); split;
+  intros * Hl HM Hass Hcp Ht Hfa (HA & Hk) (_ & Hk'); split; [ exact HA |].
+  intros Δ φ Hφ; destruct (Hk Δ φ Hφ) as (Hpt & Hs & Hc); destruct (Hk' Δ φ Hφ) as (Hpt' & _ & _); split;
     [ eapply glu_params_top_resp_per_top; eassumption
     | split; [ exact Hs | intros Us HUs; eapply ind_glu_components_move; [ exact Hass | exact Hcp | exact Hfa | eauto ] ] ].
 Qed.
@@ -592,8 +644,11 @@ Section GluIndProps.
       (DP' : nat -> list domain -> list centry -> exp -> glu_typ_pred) (DEl' : nat -> list domain -> list centry -> exp -> glu_exp_pred),
       ind_fam_agree D nr (canon_nparams_rel D ups') ar (canon_args_rel D ups') dr (canon_doms_rel D ups') ->
       adm_uparams D ups nr ar dr ups' ->
-      (forall j Mj bs bs', ind_member D j = Some Mj -> tele_rel (nr j) (List.rev (im_nparams Mj)) bs bs' ->
-         per_top_ps (List.rev (im_params D Mj)) (ups ++ bs) (ups' ++ bs')) ->
+      (** The parameters of a recursive argument's member move to the
+          related representative: the caller's readback of the target
+          ([glu_params_top_resp_per_top_ps], at a witness) *)
+      (forall j Mj bs bs' Γ Ps, ind_member D j = Some Mj -> tele_rel (nr j) (List.rev (im_nparams Mj)) bs bs' ->
+         glu_params_top D Mj Γ Ps (ups ++ bs) -> glu_params_top D Mj Γ Ps (ups' ++ bs')) ->
       (forall m Mm j vs, ind_member D m = Some Mm -> j < im_nn Mm -> tele_prefix_rel (nr m) j vs vs ->
          forall Γ A M n, NEl m j vs Γ A M n -> NEl' m j vs Γ A M n) ->
       (forall m Mm ms c gs j vs, ind_member D m = Some Mm -> tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms ->
@@ -698,7 +753,7 @@ Section GluIndProps.
           pose proof (canon_nparams_rel_refl_r' p D ups Hass Hcp _ _ _ _ HMj H0') as H0''.
           destruct (Hgn _ H0') as [Hg1 Hg2].
           split; [ eapply glu_nparams_mono; [ exact HN | exact HMj | exact H0'' | exact Hg1 ] |].
-          intros Δ φ Hφ; eapply glu_params_top_resp_per_top_ps; [ exact (Hrbt _ _ _ _ HMj H0'') | exact (Hg2 Δ φ Hφ) ].
+          intros Δ φ Hφ; exact (Hrbt _ _ _ _ _ _ HMj H0'' (Hg2 Δ φ Hφ)).
       + intros bsr' Q Hbs' HQ Δ φ Us' Q' Hφ HUl' HQ'.
         destruct (Hev _ Hbs') as (bsr0 & E0 & _).
         exact (IH2 _ _ E0 HQ Δ φ Us' Q' Hφ HUl' HQ').
