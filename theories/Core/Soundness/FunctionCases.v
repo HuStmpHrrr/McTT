@@ -1,19 +1,29 @@
 (** * Π-Types in the Gluing Model
 
-    The Π gluing predicates quantify over Kripke weakenings, so a codomain
-    obligation has the form [OT[(ι φ),,M]]. [exp_sub_q_extend_wk] relates it
-    to the [q]-form, and [sb_wk σ φ] is a substitution followed by a Kripke
-    weakening.
+    A [Π] out of a domain of the kind [κd] into a codomain of the kind
+    [κc] ([pi_kinds]).  Into an evaluated kind it is glued by the [Π]
+    clause ([glu_pi_typ_point]); into propositions it is the universal
+    proposition, glued by its readback ([glu_all_typ_point]).  As a term of
+    its sort it is a type of a large universe, of a small one (whose
+    readback is built from its parts'), a proposition, or a type of levels.
 
-    The extended context PER is built with [per_ctx_env_extend] from what
-    [rel_exp_of_typ_inversion_simple] delivers, so the head obligations follow
-    from [per_env_extend_intro'] and [per_head_of]. *)
+    A λ or an application into an evaluated kind is glued at the [Π]'s
+    element predicate; into propositions it is a proof, kept
+    ([glu_rel_exp_proof]).  The type of an application is an instantiated
+    codomain, whose value is related to the codomain's at the argument's
+    value ([per_univ_of_instance_at]).
+
+    The gluing quantifies over Kripke weakenings, so a codomain obligation
+    has the form [OT[(ι φ),,M]]; [exp_sub_q_extend_wk] relates it to the
+    [q]-form, and [sb_wk σ φ] is a substitution followed by a Kripke
+    weakening.  The sorts' gluings and inversions come first: they are what
+    the sorts of the domain and of the codomain give. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import UniverseCases.
+From Mctt.Core.Completeness Require Import LetCases UniverseCases.
 From Mctt.Core.Completeness Require LevelCases FunctionCases.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import
@@ -24,650 +34,1027 @@ From Mctt.Core.Soundness Require Import
   VariableCases
   UniverseCases.
 Import Domain_Notations Wk_Notations.
-
-(** [cons_glu_sub_pred_helper] postcomposed by a Kripke weakening. Since
-    [A[σ][φ]ʷ] and [A[(sb_wk σ φ)]] are the same expression, the head premise
-    needs only a [rewrite]. *)
 Import Fixed_Notations.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma cons_glu_sub_pred_pi_helper : forall {Γ Sb Γ' σ ρ A a} {i : nat} {P El Γ'' φ M c},
+(** A proposition glues by its value, glued as a proposition. *)
+Lemma glu_rel_exp_of_prop : forall {Γ Sb A},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ' ⊢ˢ σ ® ρ ∈ Sb ->
-    Γ ⊢ A : Typeω@i ->
-    ⟦ A ⟧ ρ ↘ a ->
-    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    Γ'' ⊢ᵏ φ : Γ' ->
-    Γ'' ⊢ M : A[σ][φ]ʷ ® c ∈ El ->
-    Γ'' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ c ∈ cons_glu_sub_pred i Γ A Sb.
-Proof.
-  intros.
-  assert (Γ'' ⊢ˢ (sb_wk σ φ) ® ρ ∈ Sb) by (eapply glu_ctx_env_sub_monotone; eassumption).
-  eapply cons_glu_sub_pred_helper; try eassumption.
-  rewrite <- exp_wk_sub; eassumption.
-Qed.
-
-#[local]
-Hint Resolve cons_glu_sub_pred_pi_helper : mctt.
-
-(** β at a substitution followed by a Kripke weakening. Both sides of the
-    equation needed by the application clause of [pi_glu_exp_pred] are
-    instances of [wf_exp_eq_pi_beta] at [(sb_wk σ φ)], once [exp_wk_sub] has
-    merged the two steps into one substitution and [exp_sub_q_extend] has put
-    both bodies into [q]-form. *)
-Lemma exp_eq_fn_sub_wk_beta : forall {Γ Δ Δ' σ φ A B M N} {i : nat},
-    Δ ⊢ˢ σ : Γ ->
-    Γ ⊢ A : Typeω@i ->
-    Γ ▹ A ⊢ B : Typeω@i ->
-    Γ ▹ A ⊢ M : B ->
-    Δ' ⊢ᵏ φ : Δ ->
-    Δ' ⊢ N : A[(sb_wk σ φ)] ->
-    Δ' ⊢ (λ A M)[σ][φ]ʷ $ N ≈ M[(sb_wk σ φ),,N] : B[(sb_wk σ φ),,N].
-Proof.
-  intros.
-  saturate_kripke_escape.
-  assert (Δ' ⊢ˢ (sb_wk σ φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
-  assert (Δ' ⊢ A[(sb_wk σ φ)] : Typeω@i) by mauto 3.
-  assert (Δ' ▹ A[(sb_wk σ φ)] ⊢ˢ q (sb_wk σ φ) : Γ ▹ A) by mauto 3.
-  assert (Δ' ▹ A[(sb_wk σ φ)] ⊢ B[q (sb_wk σ φ)] : Typeω@i) by mauto 3.
-  assert (Δ' ▹ A[(sb_wk σ φ)] ⊢ M[q (sb_wk σ φ)] : B[q (sb_wk σ φ)]) by mauto 3.
-  rewrite exp_wk_sub.
-  rewrite <- (exp_sub_q_extend M), <- (exp_sub_q_extend B).
-  mauto 3.
-Qed.
-
-(** [Π] at either tier: the rule keeps both sides in the same universe, so
-    the proof is one, at an index [u]. *)
-Lemma glu_rel_exp_pi_univ : forall {Γ A B} {u : universe_index},
-    Γ ⊩ A : universe_index_term u ->
-    Γ ▹ A ⊩ B : universe_index_term u ->
-    Γ ⊩ Π A B : universe_index_term u.
-Proof.
-  intros * HA HB.
-  assert (⊩ Γ) as [SbΓ] by mauto.
-  assert (Γ ⊢ A : universe_index_term u) by mauto 3 using glu_rel_exp_to_wf_exp.
-  assert (Γ ⊢ A : Typeω@(large_level u))
-    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | eassumption ]).
-  pose proof (glu_rel_exp_of_univ_inversion ltac:(eassumption) HA) as HAg.
-  assert (EG Γ ▹ A ∈ glu_ctx_env ↘ cons_glu_sub_pred (large_level u) Γ A SbΓ)
-    by (eapply glu_ctx_env_cons; [ eassumption | eassumption
-                                 | intros Δ σ ρ HΔ; apply glu_rel_typ_with_sub_universe_index;
-                                   destruct (HAg _ _ _ HΔ) as [_ [a [? [? [? _]]]]];
-                                   exists a; repeat split; eassumption
-                                 | reflexivity ]).
-  assert (Γ ▹ A ⊢ B : universe_index_term u) by mauto 3 using glu_rel_exp_to_wf_exp.
-  pose proof (glu_rel_exp_of_univ_inversion ltac:(eassumption) HB) as HBg.
-  assert (Γ ⊨ A : universe_index_term u) as [env_relΓ [HΓ HAsimple]]%rel_exp_of_univ_inversion_simple
-      by mauto 3 using completeness_fundamental_exp.
-  assert (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ ->
-            exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ (large_level u)) as HAlarge
-      by (intros ρ ρ' Hρ; destruct (HAsimple _ _ Hρ) as [a [a' [? [? ?]]]];
-          exists a, a'; repeat split; try eassumption;
-          eapply (per_univ_cumu_universe_index (u := u)); [ apply universe_index_le_large_level | eassumption ]).
-  pose proof (per_ctx_env_extend HΓ HAlarge) as HΓA.
-  assert (Γ ▹ A ⊨ B : universe_index_term u) as [env_relΓA [HΓA' HBsimple]]%rel_exp_of_univ_inversion_simple
-      by mauto 3 using completeness_fundamental_exp.
-  handle_per_ctx_env_irrel.
-  eapply glu_rel_exp_of_univ; [ eassumption |].
-  intros Δ σ ρ HSb.
-  assert (Δ ⊢ˢ σ : Γ) by mauto 4.
-  destruct (HAg _ _ _ HSb) as [HAσ [a [Hae [[in_rel Hin] [HaP HaR]]]]].
-  assert (Δ ▹ A[σ] ⊢ˢ q σ : Γ ▹ A) by mauto 3.
-  assert (Δ ▹ A[σ] ⊢ B[q σ] : universe_index_term u)
-    by (rewrite <- (exp_sub_universe_index_term u (q σ)); mauto 3).
-  split; [ cbn; apply wf_pi_univ; assumption |].
-  assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  assert (Dom Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ u) as [elem_rel Helem].
-  {
-    eexists.
-    eapply per_univ_elem_pi_canonical; [ eassumption |].
-    intros c c' Hc.
-    assert (Dom ρ ↦ c ≈ ρ ↦ c' ∈ per_env_extend A A env_relΓ)
-      by (apply per_env_extend_intro'; [eassumption | eapply per_head_of; eassumption]).
-    destruct (HBsimple _ _ ltac:(eassumption)) as [b [b' [? [? [R ?]]]]].
-    exists b, b', R; mauto 3.
-  }
-  exists (Πᵈ a ρ B); split; [ mauto 3 | split; [ eexists; eassumption | split ] ].
-  2:{ (** The readback clause: the domain's is [A]'s, and the codomain's is
-          [B]'s at the glued variable, which [kripke_q_var_eq] relates to
-          [B[q σ]] under the weakening. *)
-      intros Δ' φ W Hφ Hr.
-      assert (⊢ Δ') by (eapply kripke_dom; eassumption).
-      inversion Hr; subst.
-      assert (HA0 : Δ' ⊢ A[σ][φ]ʷ ≈ A0 : universe_index_term u) by eauto.
-      assert (exists P El, DG a ∈ glu_univ_elem u ↘ P ↘ El) as [Pa [Ela Hga]] by mauto 3.
-      assert (HPa : Δ' ⊢ A[σ][φ]ʷ ® Pa)
-        by (eapply (glu_univ_elem_typ_monotone _ _ _ _ Hga); [ apply (HaP _ _ Hga) | exact Hφ ]).
-      pose proof (var0_glu_elem Hga HPa) as Hv.
-      (** The entry of the glued context is at the large level [large_level u], so
-          the variable moves up by cumulativity. *)
-      assert (exists P' El', DG a ∈ glu_univ_elem (large_level u) ↘ P' ↘ El') as [P' [El' Hl]]
-        by (eapply (glu_univ_elem_cumu_ge_universe_index (i := u)); [ apply universe_index_le_large_level | exact Hga ]).
-      assert (Hv' : Δ' ▹ A[σ][φ]ʷ ⊢ #0 : A[σ][φ]ʷ[↑]ʷ ® ⇑! a (length Δ') ∈ El')
-        by (eapply (glu_univ_elem_exp_cumu_ge_universe_index (i := u) (j := large_level u));
-            [ apply universe_index_le_large_level | exact Hga | exact Hl | exact Hv ]).
-      assert (HAφ : Δ' ⊢ A[σ][φ]ʷ : universe_index_term u) by (gen_presups; eassumption).
-      assert (Δ' ⊢ A[σ][φ]ʷ : Typeω@(large_level u))
-        by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HAφ ]).
-      assert (⊢ Δ' ▹ A[σ][φ]ʷ) by mauto 3.
-      assert (Hk : Δ' ▹ A[σ][φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
-      rewrite exp_wk_wk in Hv'.
-      assert (Hcons : Δ' ▹ A[σ][φ]ʷ ⊢ˢ (sb_wk σ (φ ⊙ ↑)),,#0 ® ρ ↦ ⇑! a (length Δ')
-                        ∈ cons_glu_sub_pred (large_level u) Γ A SbΓ) by mauto 2.
-      destruct (HBg _ _ _ Hcons) as [_ [b0 [Hb0 [_ [_ HbR]]]]].
-      simplify_evals.
-      assert (HBW : Δ' ▹ A[σ][φ]ʷ ⊢ B[sb_wk σ (φ ⊙ ↑),,#0][wk_id]ʷ ≈ B' : universe_index_term u)
-        by (apply HbR; [ mauto 3 | eassumption ]).
-      rewrite exp_wk_id in HBW.
-      assert (HAσl : Δ ⊢ A[σ] : Typeω@(large_level u))
-        by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HAσ ]).
-      pose proof (kripke_q_var_eq _ _ _ _ _ _ _ H6 HAσl Hφ) as Hq.
-      rewrite exp_sub_q_extend_wk, exp_wk_universe_index_term in Hq.
-      cbn [exp_sub exp_wk].
-      apply wf_exp_eq_pi_cong_univ; [ exact HA0 |].
-      etransitivity; [ symmetry; exact Hq | exact HBW ]. }
-  intros P El HPEl.
-  invert_glu_univ_elem HPEl.
-  handle_per_univ_elem_irrel.
-  handle_functional_glu_univ_elem.
-  (** [(Π A B)[σ]] is [Π A[σ] B[q σ]] by definition, so the first premise of
-      [mk_pi_glu_typ_pred] is reflexivity; it determines [IT] and [OT]. *)
-  assert (Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Typeω@(large_level u)) as HPieq
-    by (eapply (lift_exp_eq_universe_index _ _ _ _ _ u (large_level u));
-        [ apply universe_index_le_large_level | apply wf_exp_eq_pi_cong_univ; mauto 3 ]).
-  (** The type-level gluing is at the ambient large universe of the index. *)
-  assert (Δ ⊢ A[σ] : Typeω@(large_level u))
-    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | exact HAσ ]).
-  assert (Δ ▹ A[σ] ⊢ B[q σ] : Typeω@(large_level u))
-    by (eapply (lift_exp_universe_index _ _ _ _ u (large_level u)); [ apply universe_index_le_large_level | eassumption ]).
-  econstructor; [ eassumption | mauto 3 | eassumption | | ]; intros Δ' φ **.
-  - (** The domain's gluing predicate is an existential from
-        [invert_glu_univ_elem], so take it from the context. *)
-    match goal with Hx : glu_univ_elem u ?P ?El a |- _ =>
-      assert (Δ ⊢ A[σ] ® P) by exact (HaP P El Hx) end.
-    eapply glu_univ_elem_typ_monotone; eassumption.
-  - rewrite exp_sub_q_extend_wk.
-    (** The entry of the glued context is at the large level [large_level u], so the
-        element of the domain moves up by cumulativity. *)
-    match goal with Hx : glu_univ_elem u ?P ?El a, HM : ?El _ _ ?M ?m |- _ =>
-      assert (exists P' El', DG a ∈ glu_univ_elem (large_level u) ↘ P' ↘ El') as [P' [El' Hl]]
-        by (eapply (glu_univ_elem_cumu_ge_universe_index (i := u)); [ apply universe_index_le_large_level | exact Hx ]);
-      assert (Δ' ⊢ M : A[σ][φ]ʷ ® m ∈ El')
-        by (eapply (glu_univ_elem_exp_cumu_ge_universe_index (i := u) (j := large_level u));
-            [ apply universe_index_le_large_level | exact Hx | exact Hl | exact HM ]) end.
-    assert (Δ' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred (large_level u) Γ A SbΓ) as Hcons by mauto 2.
-    destruct (HBg _ _ _ Hcons) as [? [b [Hbe [? [HbP _]]]]].
-    simplify_evals.
-    (** The codomain families are existentials from [invert_glu_univ_elem], so
-        take the instance needed here from the family rather than by name. *)
-    match goal with
-    | H : forall c (equiv_c : in_rel c c) b, ⟦ B ⟧ ρ ↦ c ↘ b -> glu_univ_elem _ _ _ b |- _ =>
-        exact (HbP _ _ (H m equiv_m _ ltac:(eassumption)))
-    end.
-Qed.
-
-Lemma glu_rel_exp_pi : forall {Γ A B} {i : nat},
-    Γ ⊩ A : Typeω@i ->
-    Γ ▹ A ⊩ B : Typeω@i ->
-    Γ ⊩ Π A B : Typeω@i.
-Proof. intros; apply (glu_rel_exp_pi_univ (u := ul i)); assumption. Qed.
-
-Hint Resolve glu_rel_exp_pi : mctt.
-
-(** The small [Π] at a level term.  At each glued substitution the level's
-    value has a realiser [n], and the proof is that of [glu_rel_exp_pi_univ]
-    at the index [us n]: the codomain's gluing is at the realiser of the
-    weakened level's value at the extended environment, which is [n]
-    ([Completeness.FunctionCases.suniv_real_shift]). *)
-Lemma glu_rel_exp_pi_small_tm : forall {Γ L A B nL},
-    Γ ⊩ L : Level@nL ->
-    Γ ⊩ A : Type⟨L⟩ ->
-    Γ ▹ A ⊩ B : Type⟨L[↑]ʷ⟩ ->
-    Γ ⊩ Π A B : Type⟨L⟩.
-Proof.
-  intros * HL HA HB.
-  assert (⊩ Γ) as [SbΓ HSbΓ] by mauto.
-  assert (HLw : Γ ⊢ L : Level@nL) by (eapply glu_rel_exp_to_wf_exp; exact HL).
-  assert (HAw : Γ ⊢ A : Type⟨L⟩) by (eapply glu_rel_exp_to_wf_exp; exact HA).
-  assert (HAl : Γ ⊢ A : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
-  pose proof (glu_rel_exp_of_suniv_tm_inversion HSbΓ HL HA) as HAg.
-  assert (HSbA : EG Γ ▹ A ∈ glu_ctx_env ↘ cons_glu_sub_pred 0 Γ A SbΓ).
-  { eapply glu_ctx_env_cons; [ eassumption | exact HAl | | reflexivity ].
-    intros Δ σ ρ HΔ.
-    destruct (HAg _ _ _ HΔ) as (l & _ & _ & _ & _ & a & ? & ? & ? & _).
-    apply (glu_rel_typ_with_sub_universe_index (u := us (domain_level_real l))).
-    exists a; repeat split; eassumption. }
-  assert (HBw : Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩) by (eapply glu_rel_exp_to_wf_exp; exact HB).
-  pose proof (glu_rel_exp_of_suniv_tm_inversion' HSbA HB) as HBg.
-  (** The PER side: the context PER of [Γ ▹ A], and the realisers. *)
-  assert (HLc : Γ ⊨ L : Level@nL) by mauto 3 using completeness_fundamental_exp.
-  assert (Γ ⊨ A : Typeω@0) as [env_relΓ [HΓ HAsimple]]%rel_exp_of_typ_inversion_simple
-      by mauto 3 using completeness_fundamental_exp.
-  pose proof (per_ctx_env_extend HΓ HAsimple) as HΓA.
-  assert (Γ ▹ A ⊨ B : Type⟨L[↑]ʷ⟩) as [env_relΓA [HΓA' HBsimple]]%LevelCases.rel_exp_of_suniv_tm_inversion_simple
-      by mauto 3 using completeness_fundamental_exp.
-  handle_per_ctx_env_irrel.
-  assert (HAc : Γ ⊨ A ≈ A : Typeω@0) by mauto 3 using completeness_fundamental_exp.
-  eapply glu_rel_exp_of_suniv_tm; [ exact HSbΓ | exact HL |].
-  intros Δ σ ρ HSb l Hl.
-  assert (Δ ⊢ˢ σ : Γ) by mauto 4.
-  destruct (HAg _ _ _ HSb) as (l0 & Hl0 & Hlper & Hlglu & HAσ & a & Hae & [in_rel Hin] & HaP & HaR).
-  assert (l0 = l) as -> by (eapply functional_eval_exp; eassumption).
-  assert (⊢ Δ) by mauto 3.
-  assert (HLσ : Δ ⊢ L[σ] : Level@nL) by (eapply (glu_lvl_escape _ _ _ _ Hlper Hlglu); assumption).
-  assert (HAσl : Δ ⊢ A[σ] : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
-  assert (Hq : Δ ▹ A[σ] ⊢ˢ q σ : Γ ▹ A) by mauto 3.
-  assert (HBq : Δ ▹ A[σ] ⊢ B[q σ] : Type⟨L[σ][↑]ʷ⟩)
-    by (rewrite <- exp_wk_shift_sub_q; eapply (sub_preserves_exp _ _ _ _ Type⟨L[↑]ʷ⟩); eassumption).
-  split; [ cbn [exp_sub]; eapply wf_pi_lvl; eassumption |].
-  assert (Hρ : Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  set (n := domain_level_real l) in *.
-  (** Every realiser met below is [n]. *)
-  assert (Hreal : forall e x e' x' t, Dom e ↦ x ≈ e' ↦ x' ∈ per_env_extend A A env_relΓ ->
-                   ⟦ L[↑]ʷ ⟧ e ↦ x ↘ t -> ⟦ L ⟧ e' ↘ l -> domain_level_real t = n).
-  { intros * Hee Ht Hl'; exact (FunctionCases.suniv_real_shift HAc HLc HΓA' _ _ _ _ _ _ Hee Ht Hl'). }
-  assert (Hrealg : forall Δ0 σ0 x, Δ0 ⊢ˢ σ0 ® ρ ↦ x ∈ cons_glu_sub_pred 0 Γ A SbΓ ->
-                    forall t, ⟦ L[↑]ʷ ⟧ ρ ↦ x ↘ t -> domain_level_real t = n).
-  { intros * Hc t Ht.
-    assert (Dom ρ ↦ x ≈ ρ ↦ x ∈ per_env_extend A A env_relΓ) as Hxx
-      by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-    exact (Hreal _ _ _ _ _ Hxx Ht Hl). }
-  assert (Dom Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ (us n)) as [elem_rel Helem].
-  { eexists.
-    eapply per_univ_elem_pi_canonical; [ eassumption |].
-    intros c c' Hc.
-    assert (Hpair : Dom ρ ↦ c ≈ ρ ↦ c' ∈ per_env_extend A A env_relΓ)
-      by (apply per_env_extend_intro'; [ eassumption | eapply per_head_of; eassumption ]).
-    destruct (HBsimple _ _ Hpair) as [b [b' [t [Hb [Hb' [Ht [R HR]]]]]]].
-    rewrite (Hreal _ _ _ _ _ Hpair Ht Hl) in HR.
-    exists b, b', R; mauto 3. }
-  exists (Πᵈ a ρ B); split; [ mauto 3 | split; [ eexists; eassumption | split ] ].
-  2:{ (** The readback clause, as in [glu_rel_exp_pi_univ], at the universe of
-          the weakened level. *)
-      intros Δ' φ W Hφ Hr.
-      assert (⊢ Δ') by (eapply kripke_dom; eassumption).
-      inversion Hr; subst.
-      assert (HA0 : Δ' ⊢ A[σ][φ]ʷ ≈ A0 : Type⟨L[σ][φ]ʷ⟩) by eauto.
-      assert (exists P El, DG a ∈ glu_univ_elem (us n) ↘ P ↘ El) as [Pa [Ela Hga]] by mauto 3.
-      assert (HPa : Δ' ⊢ A[σ][φ]ʷ ® Pa)
-        by (eapply (glu_univ_elem_typ_monotone _ _ _ _ Hga); [ apply (HaP _ _ Hga) | exact Hφ ]).
-      pose proof (var0_glu_elem Hga HPa) as Hv.
-      assert (exists P' El', DG a ∈ glu_univ_elem 0 ↘ P' ↘ El') as [P' [El' Hl0']]
-        by (eapply (glu_univ_elem_cumu_ge_universe_index (i := us n)); [ exact I | exact Hga ]).
-      assert (Hv' : Δ' ▹ A[σ][φ]ʷ ⊢ #0 : A[σ][φ]ʷ[↑]ʷ ® ⇑! a (length Δ') ∈ El')
-        by (eapply (glu_univ_elem_exp_cumu_ge_universe_index (i := us n) (j := ul 0));
-            [ exact I | exact Hga | exact Hl0' | exact Hv ]).
-      assert (HAφ : Δ' ⊢ A[σ][φ]ʷ : Type⟨L[σ][φ]ʷ⟩) by (gen_presups; eassumption).
-      assert (exists k, Δ' ⊢ Type⟨L[σ][φ]ʷ⟩ : Typeω@k) as [k Hk] by (gen_presups; eexists; eassumption).
-      assert (exists nk, Δ' ⊢ L[σ][φ]ʷ : Level@nk) as [nk HLφ] by (eapply wf_univ_lvl_inversion; exact Hk).
-      assert (Δ' ⊢ A[σ][φ]ʷ : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
-      assert (⊢ Δ' ▹ A[σ][φ]ʷ) by mauto 3.
-      assert (Hk' : Δ' ▹ A[σ][φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
-      rewrite exp_wk_wk in Hv'.
-      assert (Hcons : Δ' ▹ A[σ][φ]ʷ ⊢ˢ (sb_wk σ (φ ⊙ ↑)),,#0 ® ρ ↦ ⇑! a (length Δ')
-                        ∈ cons_glu_sub_pred 0 Γ A SbΓ) by mauto 2.
-      destruct (HBg _ _ _ Hcons) as (l' & Hl' & _ & _ & b0 & Hb0 & _ & _ & HbR).
-      pose proof (Hrealg _ _ _ Hcons _ Hl') as Hn'.
-      simplify_evals.
-      assert (HBW : Δ' ▹ A[σ][φ]ʷ ⊢ B[sb_wk σ (φ ⊙ ↑),,#0][wk_id]ʷ ≈ B'
-                      : Type⟨L[↑]ʷ[sb_wk σ (φ ⊙ ↑),,#0][wk_id]ʷ⟩)
-        by (apply HbR; [ mauto 3 | eassumption ]).
-      rewrite !exp_wk_id in HBW.
-      pose proof (kripke_q_var_eq _ _ _ _ _ _ _ HBq HAσl Hφ) as Hq'.
-      rewrite exp_sub_q_extend_wk in Hq'.
-      assert (E1 : L[↑]ʷ[sb_wk σ (φ ⊙ ↑),,#0] = L[σ][φ]ʷ[↑]ʷ)
-        by (rewrite exp_sub_shift_extend, <- exp_wk_sub, exp_wk_wk; reflexivity).
-      cbn [exp_wk] in Hq'.
-      rewrite exp_wk_shift_wk_q in Hq'.
-      rewrite E1 in HBW.
-      eapply wf_exp_eq_pi_cong_lvl; [ exact HLφ | exact HAφ | exact HA0 |].
-      etransitivity; [ symmetry; exact Hq' | exact HBW ]. }
-  intros P El HPEl.
-  invert_glu_univ_elem HPEl.
-  handle_per_univ_elem_irrel.
-  handle_functional_glu_univ_elem.
-  assert (HPieq : Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Typeω@0).
-  { eapply wf_exp_eq_suniv_large; [ exact HLσ |].
-    eapply wf_exp_eq_pi_cong_lvl; [ exact HLσ | exact HAσ | mauto 3 | mauto 3 ]. }
-  assert (Δ ▹ A[σ] ⊢ B[q σ] : Typeω@0)
-    by (eapply wf_exp_suniv_large; [| exact HBq ]; eapply (wk_preserves_exp _ _ _ _ (Level@nL)); mauto 3).
-  econstructor; [ eassumption | mauto 3 | eassumption | | ]; intros Δ' φ **.
-  - match goal with Hx : glu_univ_elem (us n) ?P ?El a |- _ => assert (Δ ⊢ A[σ] ® P) by exact (HaP P El Hx) end.
-    eapply glu_univ_elem_typ_monotone; eassumption.
-  - rewrite exp_sub_q_extend_wk.
-    match goal with Hx : glu_univ_elem (us n) ?P ?El a, HM : ?El _ _ ?M ?m |- _ =>
-      assert (exists P' El', DG a ∈ glu_univ_elem 0 ↘ P' ↘ El') as [P' [El' Hl0']]
-        by (eapply (glu_univ_elem_cumu_ge_universe_index (i := us n)); [ exact I | exact Hx ]);
-      assert (Δ' ⊢ M : A[σ][φ]ʷ ® m ∈ El')
-        by (eapply (glu_univ_elem_exp_cumu_ge_universe_index (i := us n) (j := ul 0));
-            [ exact I | exact Hx | exact Hl0' | exact HM ]) end.
-    assert (Δ' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred 0 Γ A SbΓ) as Hcons by mauto 2.
-    destruct (HBg _ _ _ Hcons) as (l' & Hl' & _ & _ & b & Hbe & _ & HbP & _).
-    pose proof (Hrealg _ _ _ Hcons _ Hl') as Hn'.
-    rewrite Hn' in HbP.
-    simplify_evals.
-    match goal with
-    | H : forall c (equiv_c : in_rel c c) b, ⟦ B ⟧ ρ ↦ c ↘ b -> glu_univ_elem _ _ _ b |- _ =>
-        exact (HbP _ _ (H m equiv_m _ ltac:(eassumption)))
-    end.
-Qed.
-
-
-
-Lemma glu_rel_exp_of_pi : forall {Γ M A B} {i : nat} {Sb},
-    EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊨ Π A B : Typeω@i ->
     (forall Δ σ ρ,
         Δ ⊢ˢ σ ® ρ ∈ Sb ->
-        exists a m,
-          ⟦ A ⟧ ρ ↘ a /\
-            ⟦ M ⟧ ρ ↘ m /\
-            forall (P : glu_typ_pred) (El : glu_exp_pred), DG Πᵈ a ρ B ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ M[σ] : (Π A B)[σ] ® m ∈ El) ->
-    Γ ⊩ M : Π A B.
+        exists a, ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a ∈ per_prop /\ Δ ⊢ A[σ] ® prop_glu_typ_pred a) ->
+    Γ ⊩ A : Propₘ.
 Proof.
-  intros * ? HPi%rel_exp_of_typ_inversion_simple Hbody.
-  destruct HPi as [env_relΓ [HΓ HPisimple]].
-  econstructor; [ mauto 3 |]; intros Δ σ ρ HSb.
-  edestruct Hbody as [a [m [? [? Hglu]]]]; [eassumption |].
-  assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  destruct (HPisimple _ _ ltac:(eassumption)) as [? [? [? [? ?]]]].
-  simplify_evals.
-  mauto 4.
+  intros * HSb Hbody.
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ exact HSb |].
+  intros Δ σ ρ Hσ.
+  destruct (Hbody _ _ _ Hσ) as (a & Ha & Hpa & HaP).
+  assert (⊢ Δ) by (eapply glu_ctx_env_sub_escape in Hσ; [| exact HSb ]; gen_presups; assumption).
+  destruct (per_univ_glu_univ_elem 0 Propᵈ ltac:(eexists; apply per_univ_elem_prop_univ)) as (P & El & Hglu).
+  econstructor; [ constructor | cbn; exact Ha | exact Hglu |].
+  basic_invert_glu_univ_elem Hglu; apply_predicate_equivalence.
+  econstructor; [ cbn; mauto 3 | destruct HaP; assumption | exact Hpa | exact HaP ].
 Qed.
 
-Lemma glu_rel_exp_fn_helper : forall {Γ M A B} {i : nat},
-    Γ ⊩ A : Typeω@i ->
-    Γ ▹ A ⊩ B : Typeω@i ->
-    Γ ▹ A ⊩ M : B ->
-    Γ ⊩ λ A M : Π A B.
+(** The inverse: a glued proposition, at a glued substitution. *)
+Lemma glu_rel_exp_prop_inversion : forall {Γ Sb A},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Γ ⊩ A : Propₘ ->
+    forall Δ σ ρ,
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
+      exists a, ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a ∈ per_prop /\ Δ ⊢ A[σ] ® prop_glu_typ_pred a.
 Proof.
-  intros * HA HB HM.
-  assert (⊩ Γ) as [SbΓ] by mauto 3.
-  assert (Γ ⊢ A : Typeω@i) by mauto 3.
-  invert_glu_rel_exp HA.
-  pose (SbΓA := cons_glu_sub_pred i Γ A SbΓ).
-  assert (EG Γ ▹ A ∈ glu_ctx_env ↘ SbΓA) by (econstructor; mauto 3; reflexivity).
-  assert (Γ ▹ A ⊢ B : Typeω@i) by mauto 3.
-  assert (Γ ▹ A ⊢ M : B) by mauto 3.
-  invert_glu_rel_exp HM.
-  destruct_conjs.
-  assert (Γ ⊨ A : Typeω@i) as [env_relΓ [HΓ HAsimple]]%rel_exp_of_typ_inversion_simple
-      by mauto 3 using completeness_fundamental_exp.
-  pose proof (per_ctx_env_extend HΓ HAsimple) as HΓA.
-  assert (Γ ▹ A ⊨ M : B) as [env_relΓA [HΓA' [k HMsimple]]]%rel_exp_under_ctx_simple
-      by mauto 3 using completeness_fundamental_exp.
-  handle_per_ctx_env_irrel.
-  assert (Γ ⊨ Π A B : Typeω@i) by mauto 3 using completeness_fundamental_exp.
-  eapply glu_rel_exp_of_pi; mauto 3.
-  intros Δ σ ρ HSb.
-  assert (Δ ⊢ˢ σ : Γ) by mauto 4.
-  assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  destruct_glu_rel_exp_with_sub.
-  simplify_evals.
-  match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
-  apply_predicate_equivalence.
-  destruct_glu_records.
-  destruct_conjs.
-  handle_functional_glu_univ_elem.
-  rename m into a.
-  do 2 eexists; repeat split; mauto 3.
-  intros P El HPEl.
-  invert_glu_univ_elem HPEl.
-  handle_per_univ_elem_irrel.
-  handle_functional_glu_univ_elem.
-  match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
-  apply_relation_equivalence.
-  assert (Δ ▹ A[σ] ⊢ˢ q σ : Γ ▹ A) by mauto 3.
-  assert (Δ ▹ A[σ] ⊢ B[q σ] : Typeω@i) by mauto 3.
-  assert (Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Typeω@i) as HPieq by mauto 3.
-  econstructor; [ mauto 3 | | eassumption | mauto 3 | eassumption | | ]; intros.
-  - assert (Dom ρ ↦ c ≈ ρ ↦ c' ∈ per_env_extend A A env_relΓ) as HrelΓA
-        by (apply per_env_extend_intro'; [eassumption | eapply per_head_of; eassumption]).
-    destruct_rel_mod_eval.
-    destruct (HMsimple _ _ HrelΓA) as [? [? [? ?]]].
-    destruct_conjs.
-    handle_per_univ_elem_irrel.
-    econstructor; mauto 3.
-  - eapply glu_univ_elem_typ_monotone; eassumption.
-  - assert (Dom ρ ↦ n ≈ ρ ↦ n ∈ per_env_extend A A env_relΓ) as HrelΓA
-        by (apply per_env_extend_intro'; [eassumption | eapply per_head_of; eassumption]).
-    destruct_rel_mod_eval.
-    destruct (HMsimple _ _ HrelΓA) as [? [? [? ?]]].
-    destruct_conjs.
-    handle_per_univ_elem_irrel.
-    eexists; split; [mauto 3 |].
-    match goal with
-    | _: ⟦ B ⟧ ρ ↦ n ↘ ?b' |- _ => rename b' into b
-    end.
-    assert (DG b ∈ glu_univ_elem i ↘ OP n equiv_n ↘ OEl n equiv_n) by mauto 3.
+  intros * HSb HA Δ σ ρ Hσ.
+  destruct (glu_rel_exp_clean_inversion1 HSb HA) as [k Hk].
+  destruct (Hk _ _ _ Hσ) as [s m Ps Els Es Hm Hgs HAs].
+  simplify_evals; cbn [domain_kind glu_term_value] in Hm.
+  basic_invert_glu_univ_elem Hgs; apply_predicate_equivalence.
+  destruct HAs as [_ _ Hpm HP].
+  exact (ex_intro _ m (conj Hm (conj Hpm HP))).
+Qed.
+
+(** A type of levels glues by its value, a type of levels glued as a type
+    at the least small index. *)
+Lemma glu_rel_exp_of_level_sort : forall {Γ Sb A},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    (forall Δ σ ρ,
+        Δ ⊢ˢ σ ® ρ ∈ Sb ->
+        exists a P El, ⟦ A ⟧ ρ ↘ a /\ level_code a /\ Δ ⊢ A[σ] : LevelSort /\
+                  DG a ∈ glu_univ_elem (us (0, 0)) ↘ P ↘ El /\ Δ ⊢ A[σ] ® P) ->
+    Γ ⊩ A : LevelSort.
+Proof.
+  intros * HSb Hbody.
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ exact HSb |].
+  intros Δ σ ρ Hσ.
+  destruct (Hbody _ _ _ Hσ) as (a & Pa & Ela & Ha & Hca & HAσ & Hga & HaP).
+  destruct (per_univ_glu_univ_elem 0 LevelSortᵈ ltac:(eexists; apply Completeness.UniverseCases.per_univ_elem_level_sort_univ; exact I))
+    as (P & El & Hglu).
+  econstructor; [ constructor | cbn; exact Ha | exact Hglu |].
+  basic_invert_glu_univ_elem Hglu; apply_predicate_equivalence.
+  econstructor; [ reflexivity | exact HAσ | exact Hca |].
+  econstructor; [ exact Hga | exact HaP ].
+Qed.
+
+Lemma glu_rel_exp_level_sort_inversion : forall {Γ Sb A},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Γ ⊩ A : LevelSort ->
+    forall Δ σ ρ,
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
+      exists a P El, ⟦ A ⟧ ρ ↘ a /\ level_code a /\ Δ ⊢ A[σ] : LevelSort /\
+                DG a ∈ glu_univ_elem (us (0, 0)) ↘ P ↘ El /\ Δ ⊢ A[σ] ® P.
+Proof.
+  intros * HSb HA Δ σ ρ Hσ.
+  destruct (glu_rel_exp_clean_inversion1 HSb HA) as [k Hk].
+  destruct (Hk _ _ _ Hσ) as [s m Ps Els Es Hm Hgs HAs].
+  simplify_evals; cbn [domain_kind glu_term_value] in Hm.
+  basic_invert_glu_univ_elem Hgs; apply_predicate_equivalence.
+  destruct HAs as [_ HAσ Hcm [Pm Elm Hgm Hpm]].
+  exists m, Pm, Elm; split; [ assumption | split; [ assumption | split; [ assumption | split; assumption ] ] ].
+Qed.
+
+(** A proposition is a type at every index, glued as a proposition. *)
+Lemma glu_prop_typ_at_index : forall {u : universe_index} {Γ A a},
+    Dom a ≈ a ∈ per_prop ->
+    Γ ⊢ A ® prop_glu_typ_pred a ->
+    Dom a ≈ a ∈ per_univ u /\ forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Γ ⊢ A ® P.
+Proof.
+  intros * Hpa HaP; split; [ eexists; apply per_univ_elem_of_prop; exact Hpa |].
+  intros P El Hg; destruct (glu_univ_elem_prop_inv _ _ _ _ Hpa Hg) as [EP _]; apply EP; exact HaP.
+Qed.
+
+(** The least small index is below every index. *)
+Lemma universe_index_le_least : forall u, universe_index_le (us (0, 0)) u.
+Proof. intros [j | j]; cbn; [ unfold ordinal_le; cbn; lia | exact I ]. Qed.
+
+(** A type glued at the least small index is a type at every index,
+    glued there. *)
+Lemma glu_least_typ_at_index : forall {u : universe_index} {Γ A a P El},
+    DG a ∈ glu_univ_elem (us (0, 0)) ↘ P ↘ El ->
+    Γ ⊢ A ® P ->
+    Dom a ≈ a ∈ per_univ u /\ forall P' El', DG a ∈ glu_univ_elem u ↘ P' ↘ El' -> Γ ⊢ A ® P'.
+Proof.
+  intros * Hg HaP.
+  destruct (glu_univ_elem_cumu_ge_universe_index (universe_index_le_least u) Hg) as (P1 & El1 & Hg1).
+  split; [ eapply glu_univ_elem_per_univ; exact Hg1 |].
+  intros P' El' Hg'.
+  destruct (functional_glu_univ_elem _ _ _ _ _ _ Hg1 Hg') as [EP _].
+  apply EP; eapply glu_univ_elem_typ_cumu_ge_universe_index; [ exact (universe_index_le_least u) | exact Hg | exact Hg1 | exact HaP ].
+Qed.
+
+(** A type of the sort of a kind next to a large universe [Typeω@i], at a
+    glued substitution: its value is glued as a type at [i]. *)
+Lemma glu_rel_exp_kind_sort_large_inversion : forall {Γ Sb A κ} {i : nat},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Γ ⊩ A : abs_kind_sort κ Typeω@i ->
+    forall Δ σ ρ,
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
+      Δ ⊢ A[σ] : abs_kind_sort κ Typeω@i /\
+        exists a, ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a ∈ per_univ i /\
+             forall P El, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ A[σ] ® P.
+Proof.
+  intros * HSb HA Δ σ ρ Hσ.
+  destruct κ; cbn [abs_kind_sort] in *.
+  - destruct (glu_rel_exp_of_univ_inversion (u := ul i) HSb HA _ _ _ Hσ) as [HAσ (a & Ha & Hpa & HaP & _)].
+    split; [ exact HAσ | exists a; split; [ exact Ha | split; [ exact Hpa | exact HaP ] ] ].
+  - destruct (glu_rel_exp_prop_inversion HSb HA _ _ _ Hσ) as (a & Ha & Hpa & HaP).
+    destruct (glu_prop_typ_at_index (u := ul i) Hpa HaP) as [Hpi HPi].
+    split; [ destruct HaP; assumption | exists a; split; [ exact Ha | split; [ exact Hpi | exact HPi ] ] ].
+  - destruct (glu_rel_exp_level_sort_inversion HSb HA _ _ _ Hσ) as (a & Pa & Ela & Ha & _ & HAσ & Hga & HaP).
+    destruct (glu_least_typ_at_index (u := ul i) Hga HaP) as [Hpi HPi].
+    split; [ exact HAσ | exists a; split; [ exact Ha | split; [ exact Hpi | exact HPi ] ] ].
+Qed.
+
+(** The same next to a small universe [Type⟨L⟩], at the realiser of the
+    level's value, with the readback at the sort. *)
+Lemma glu_rel_exp_kind_sort_small_inversion : forall {Γ Sb A κ L} {n : nat},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Γ ⊩ L : Level@n ->
+    Γ ⊩ A : abs_kind_sort κ Type⟨L⟩ ->
+    forall Δ σ ρ,
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
+      forall l, ⟦ L ⟧ ρ ↘ l ->
+      Δ ⊢ A[σ] : abs_kind_sort κ Type⟨L[σ]⟩ /\
+        exists a, ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a ∈ per_univ (us (domain_level_real l)) /\
+             (forall P El, DG a ∈ glu_univ_elem (us (domain_level_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
+             (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
+                        glu_nf_eq Δ' A[σ][φ]ʷ W (abs_kind_sort κ Type⟨L[σ]⟩)[φ]ʷ).
+Proof.
+  intros * HSb HL HA Δ σ ρ Hσ l Hl.
+  destruct κ; cbn [abs_kind_sort] in *.
+  - destruct (glu_rel_exp_of_suniv_tm_inversion HSb HL HA _ _ _ Hσ) as (l0 & Hl0 & _ & _ & HAσ & a & Ha & Hpa & HaP & Hrd).
+    functional_eval_rewrite_clear.
+    split; [ exact HAσ | exists a; split; [ exact Ha | split; [ exact Hpa | split; [ exact HaP | exact Hrd ] ] ] ].
+  - destruct (glu_rel_exp_prop_inversion HSb HA _ _ _ Hσ) as (a & Ha & Hpa & HaP).
+    destruct (glu_prop_typ_at_index (u := us (domain_level_real l)) Hpa HaP) as [Hpi HPi].
+    destruct HaP as [HAσ HR].
+    split; [ exact HAσ | exists a; split; [ exact Ha | split; [ exact Hpi | split; [ exact HPi | exact HR ] ] ] ].
+  - destruct (glu_rel_exp_level_sort_inversion HSb HA _ _ _ Hσ) as (a & Pa & Ela & Ha & _ & HAσ & Hga & HaP).
+    destruct (glu_least_typ_at_index (u := us (domain_level_real l)) Hga HaP) as [Hpi HPi].
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ ak_level 0 Hga HaP HAσ) as [Hk Hna].
+    destruct (realize_glu_typ_top _ _ _ _ Hga Hna _ _ HaP) as [_ _ Hrd].
+    rewrite Hk in Hrd.
+    split; [ exact HAσ | exists a; split; [ exact Ha | split; [ exact Hpi | split; [ exact HPi | exact Hrd ] ] ] ].
+Qed.
+
+(** [wf_pi] at a large universe, the codomain's sort unweakened. *)
+Lemma wf_pi_large : forall {Γ κd κc A B} {n : nat},
+    ⊢ Γ ->
+    Γ ⊢ A : abs_kind_sort κd Typeω@n ->
+    Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@n ->
+    pi_kinds κd κc ->
+    Γ ⊢ a_pi κd κc A B : abs_kind_sort κc Typeω@n.
+Proof.
+  intros * HΓ HA HB Hk.
+  eapply wf_pi with (U := Typeω@n); [ constructor; assumption | exact HA | | exact Hk ].
+  rewrite abs_kind_sort_wk; exact HB.
+Qed.
+
+Lemma glu_pi_typ_point : forall {u : universe_index} {κd κc Γ A B SbΓ SbB Δ σ ρ a P El},
+    EG Γ ∈ glu_ctx_env ↘ SbΓ ->
+    EG Γ ▹{κd} A ∈ glu_ctx_env ↘ SbB ->
+    Δ ⊢ˢ σ ® ρ ∈ SbΓ ->
+    pi_kinds κd κc ->
+    evaluated_kind κc ->
+    Δ ⊢ A[σ] : abs_kind_sort κd Typeω@(large_level u) ->
+    Δ ▹{κd} A[σ] ⊢ B[q σ] : abs_kind_sort κc Typeω@(large_level u) ->
+    ⟦ A ⟧ ρ ↘ a ->
+    (forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) ->
+    (forall Δ' σ' c, Δ' ⊢ˢ σ' ® ρ ↦ c ⦂ entry_type_value a ∈ SbB ->
+       exists b, ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\
+         forall P El, DG b ∈ glu_univ_elem u ↘ P ↘ El -> Δ' ⊢ B[σ'] ® P) ->
+    DG d_pi κd κc a ρ B ∈ glu_univ_elem u ↘ P ↘ El ->
+    Δ ⊢ (a_pi κd κc A B)[σ] ® P.
+Proof.
+  intros * HΓ HΓA Hσ Hk Hev HAσ HBσ Ha HaP HB Hglu.
+  destruct (glu_ctx_env_cons_clean_inversion HΓ HΓA) as (j & HAj & HAg & ESb).
+  invert_glu_univ_elem Hglu.
+  match goal with H4 : ?tr <∙> pi_glu_typ_pred _ _ _ _ _ _ _ |- ?tr _ _ => apply H4 end.
+  assert (⊢ Δ) by (gen_presups; eassumption).
+  econstructor; [ | exact HAσ | exact HBσ | |].
+  - apply wf_exp_eq_refl; cbn [exp_sub]; apply wf_pi_large; assumption.
+  - intros Δ' φ Hφ.
+    match goal with Hg : glu_univ_elem _ _ _ a |- _ =>
+      exact (glu_univ_elem_typ_monotone _ _ _ _ Hg _ _ _ _ (HaP _ _ Hg) Hφ) end.
+  - intros Δ' φ M m Hφ HM equiv_m.
+    pose proof (glu_ctx_env_sub_monotone _ _ HΓ _ _ _ _ _ Hσ Hφ) as Hσ'.
+    destruct (HAg _ _ _ Hσ') as [a' P' El' Ea' Hg' HP'].
+    functional_eval_rewrite_clear.
+    assert (HM' : Δ' ⊢ M : A[sb_wk σ φ] ® m ∈ El').
+    { rewrite <- exp_wk_sub.
+      match goal with Hg : glu_univ_elem u _ _ a, Hp : per_univ_elem u _ a a |- _ =>
+        assert (Hpa : Dom a ≈ a ∈ per_univ u) by (eexists; exact Hp);
+        eapply (glu_univ_elem_exp_conv_universe_index Hpa Hg Hg' HM) end.
+      rewrite exp_wk_sub; exact HP'. }
+    assert (Hc : Δ' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ m ⦂ entry_type_value a ∈ SbB)
+      by (apply ESb; eapply cons_glu_sub_pred_helper; [ exact HΓ | exact Hσ' | exact HAj | exact Ha | exact Hg' | exact HM' ]).
+    destruct (HB _ _ _ Hc) as (b & Hb & HbP).
     rewrite exp_sub_q_extend_wk.
-    assert (Δ0 ⊢ N : A[(sb_wk σ φ)]) by (rewrite <- exp_wk_sub; mauto 2 using glu_univ_elem_trm_escape).
-    (** The [pi_glu_exp_pred] app clause states the head in [exp_sub]-reduced
-        form, so the [β] equation must be spelled that way for [rewrite]. *)
-    assert (Δ0 ⊢ (λ A[σ] M[q σ])[φ]ʷ $ N ≈ M[(sb_wk σ φ),,N] : B[(sb_wk σ φ),,N]) as ->
-        by (eapply exp_eq_fn_sub_wk_beta; eassumption).
-    assert (Δ0 ⊢ˢ (sb_wk σ φ),,N ® ρ ↦ n ∈ SbΓA) as HSbΓA by (unfold SbΓA; mauto 2).
-    (on_all_hyp: destruct_glu_rel_by_assumption SbΓA).
-    simplify_evals.
-    match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
-    handle_functional_glu_univ_elem.
-    eassumption.
+    match goal with H1 : forall c (equiv_c : _ c c) b, _ -> glu_univ_elem _ _ _ b |- _ =>
+      exact (HbP _ _ (H1 _ equiv_m _ Hb)) end.
 Qed.
 
-Lemma glu_rel_exp_fn : forall {Γ M A B} {i : nat},
-    Γ ⊩ A : Typeω@i ->
-    Γ ▹ A ⊩ M : B ->
-    Γ ⊩ λ A M : Π A B.
+Lemma glu_nf_eq_pi : forall {Γ U κd κc A B WA WB},
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵤ U ->
+    Γ ⊢ A : abs_kind_sort κd U ->
+    pi_kinds κd κc ->
+    glu_nf_eq Γ A WA (abs_kind_sort κd U) ->
+    glu_nf_eq (Γ ▹{κd} A) B WB (abs_kind_sort κc U)[↑]ʷ ->
+    glu_nf_eq Γ (a_pi κd κc A B) (nf_pi κd κc WA WB) (abs_kind_sort κc U).
 Proof.
-  intros * HA HM.
-  assert (exists j, Γ ▹ A ⊩ B : Typeω@j) as [j] by mauto 3.
-  assert (⊩ Γ) by mauto 3.
-  assert (i <= max i j) by lia.
-  assert (Γ ⊢ Typeω@i ⊆ Typeω@(max i j)) by mauto 4.
-  assert (Γ ⊩ A : Typeω@(max i j)) by mauto 3.
-  assert (⊩ Γ ▹ A) by mauto 3.
-  assert (j <= max i j) by lia.
-  assert (Γ ▹ A ⊢ Typeω@j ⊆ Typeω@(max i j)) by mauto 4.
-  assert (Γ ▹ A ⊩ B : Typeω@(max i j)) by mauto 3.
-  mauto 3 using glu_rel_exp_fn_helper.
+  intros * HU HA Hk (WA' & EA & HA') (WB' & EB & HB').
+  exists (nf_pi κd κc WA' WB'); split; [ apply nf_pi_upto_proofs; assumption |].
+  cbn; eapply wf_exp_eq_pi_cong; eassumption.
 Qed.
 
-Hint Resolve glu_rel_exp_fn : mctt.
+(** A glued substitution extended by a term glued at its type, at any
+    index, glues into the extended context, at whatever index its gluing
+    is ([glu_ctx_env_cons_clean_inversion]). *)
+Lemma glu_cons_sub_at : forall {u : universe_index} {κd Γ A SbΓ SbB Δ σ ρ a P El M m},
+    EG Γ ∈ glu_ctx_env ↘ SbΓ ->
+    EG Γ ▹{κd} A ∈ glu_ctx_env ↘ SbB ->
+    Δ ⊢ˢ σ ® ρ ∈ SbΓ ->
+    ⟦ A ⟧ ρ ↘ a ->
+    DG a ∈ glu_univ_elem u ↘ P ↘ El ->
+    Δ ⊢ M : A[σ] ® m ∈ El ->
+    Δ ⊢ˢ σ,,M ® ρ ↦ m ⦂ entry_type_value a ∈ SbB.
+Proof.
+  intros * HΓ HΓA Hσ Ha Hg HM.
+  destruct (glu_ctx_env_cons_clean_inversion HΓ HΓA) as (j & HAj & HAg & ESb).
+  destruct (HAg _ _ _ Hσ) as [a' P' El' Ea' Hg' HP'].
+  functional_eval_rewrite_clear.
+  destruct (glu_univ_elem_per_univ _ _ _ _ Hg) as [R HR].
+  pose proof (glu_univ_elem_exp_conv_universe_index (ex_intro _ R HR) Hg Hg' HM HP') as HM'.
+  apply ESb; eapply cons_glu_sub_pred_helper; [ exact HΓ | exact Hσ | exact HAj | exact Ha | exact Hg' | exact HM' ].
+Qed.
 
-Lemma glu_rel_exp_app_helper : forall {Γ M N A B} {i : nat},
-    Γ ⊩ A : Typeω@i ->
-    Γ ▹ A ⊩ B : Typeω@i ->
-    Γ ⊩ M : Π A B ->
+(** The same after a Kripke weakening. *)
+Lemma glu_cons_sub_of_elem : forall {u : universe_index} {κd Γ A SbΓ SbB Δ σ ρ a P El Δ' φ M m},
+    EG Γ ∈ glu_ctx_env ↘ SbΓ ->
+    EG Γ ▹{κd} A ∈ glu_ctx_env ↘ SbB ->
+    Δ ⊢ˢ σ ® ρ ∈ SbΓ ->
+    ⟦ A ⟧ ρ ↘ a ->
+    DG a ∈ glu_univ_elem u ↘ P ↘ El ->
+    Δ' ⊢ᵏ φ : Δ ->
+    Δ' ⊢ M : A[σ][φ]ʷ ® m ∈ El ->
+    Δ' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ m ⦂ entry_type_value a ∈ SbB.
+Proof.
+  intros * HΓ HΓA Hσ Ha Hg Hφ HM.
+  rewrite exp_wk_sub in HM.
+  exact (glu_cons_sub_at HΓ HΓA (glu_ctx_env_sub_monotone _ _ HΓ _ _ _ _ _ Hσ Hφ) Ha Hg HM).
+Qed.
+
+Lemma glu_all_typ_point : forall {u : universe_index} {κd Γ A B SbΓ SbB Δ σ ρ a},
+    EG Γ ∈ glu_ctx_env ↘ SbΓ ->
+    EG Γ ▹{κd} A ∈ glu_ctx_env ↘ SbB ->
+    Δ ⊢ˢ σ ® ρ ∈ SbΓ ->
+    Δ ⊢ A[σ] : abs_kind_sort κd Typeω@(large_level u) ->
+    Δ ▹{κd} A[σ] ⊢ B[q σ] : Propₘ ->
+    ⟦ A ⟧ ρ ↘ a ->
+    Dom a ≈ a ∈ per_univ u ->
+    (forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) ->
+    (forall Δ' σ' c, Δ' ⊢ˢ σ' ® ρ ↦ c ⦂ entry_type_value a ∈ SbB ->
+       exists b, ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\ Δ' ⊢ B[σ'] ® prop_glu_typ_pred b) ->
+    Δ ⊢ (a_pi κd ak_propositional A B)[σ] ® prop_glu_typ_pred (d_pi κd ak_propositional a ρ B).
+Proof.
+  intros * HΓ HΓA Hσ HAσ HBσ Ha Hpa HaP HB.
+  assert (⊢ Δ) by (gen_presups; eassumption).
+  assert (HΠ : Δ ⊢ (a_pi κd ak_propositional A B)[σ] : Propₘ).
+  { cbn [exp_sub].
+    apply (wf_pi_large (κc := ak_propositional) (n := large_level u)); [ assumption | exact HAσ | exact HBσ | constructor ]. }
+  split; [ exact HΠ |].
+  intros Δ' φ W Hφ HW.
+  inversion HW; subst.
+  destruct Hpa as [Ra HRa].
+  assert (exists Pa Ela, DG a ∈ glu_univ_elem u ↘ Pa ↘ Ela) as (Pa & Ela & Hga) by mauto 3.
+  destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ κd _ Hga (HaP _ _ Hga) HAσ) as [Hka Hna].
+  assert (HPa : Δ' ⊢ A[σ][φ]ʷ ® Pa) by exact (glu_univ_elem_typ_monotone _ _ _ _ Hga _ _ _ _ (HaP _ _ Hga) Hφ).
+  destruct (realize_glu_typ_top _ _ _ _ Hga Hna _ _ HPa) as [HAφ _ HArd].
+  rewrite Hka in HAφ, HArd.
+  assert (⊢ Δ') by (eapply kripke_dom; eassumption).
+  assert (HArd' : glu_nf_eq Δ' A[σ][φ]ʷ A0 (abs_kind_sort κd Typeω@(large_level u))).
+  { pose proof (HArd Δ' wk_id A0 ltac:(mauto 3) ltac:(eassumption)) as Hr; rewrite exp_wk_id in Hr; exact Hr. }
+  pose proof (var0_glu_elem Hga Hna HPa) as Hv.
+  rewrite Hka in Hv.
+  assert (⊢ Δ' ▹{κd} A[σ][φ]ʷ) by (econstructor; [ eassumption | apply sort_kind_abs_kind_sort ]).
+  assert (Hk : Δ' ▹{κd} A[σ][φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
+  rewrite exp_wk_wk in Hv.
+  pose proof (glu_cons_sub_of_elem HΓ HΓA Hσ Ha Hga Hk Hv) as Hc.
+  destruct (HB _ _ _ Hc) as (b' & Hb' & HbP).
+  functional_eval_rewrite_clear.
+  destruct HbP as [_ HbR].
+  pose proof (HbR _ wk_id B' ltac:(mauto 3) ltac:(eassumption)) as HBW; rewrite exp_wk_id in HBW.
+  pose proof (kripke_q_var_eq _ _ _ _ _ _ _ _ HBσ HAσ (sort_kind_abs_kind_sort _ _) Hφ) as Hq.
+  rewrite exp_sub_q_extend_wk in Hq.
+  cbn [exp_sub exp_wk].
+  eapply (glu_nf_eq_pi (U := Typeω@(large_level u)) (κc := ak_propositional)); [ constructor; assumption | exact HAφ | constructor | exact HArd' |].
+  eapply glu_nf_eq_exp_eq; [ apply wf_exp_eq_sym; exact Hq | exact HBW ].
+Qed.
+
+(** A codomain of the sort of a kind next to a large universe, moved
+    along [q σ]. *)
+Lemma sub_preserves_codomain : forall {Γ Δ σ κd κc A B} {n : nat},
+    Δ ⊢ˢ σ : Γ ->
+    Γ ⊢ A : abs_kind_sort κd Typeω@n ->
+    Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@n ->
+    Δ ⊢ A[σ] : abs_kind_sort κd Typeω@n /\ Δ ▹{κd} A[σ] ⊢ B[q σ] : abs_kind_sort κc Typeω@n.
+Proof.
+  intros * Hσ HA HB.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HA Hσ) as HAσ; rewrite abs_kind_sort_sub in HAσ; cbn [exp_sub] in HAσ.
+  pose proof (wf_sub_q _ _ _ _ _ _ _ _ Hσ HA (sort_kind_abs_kind_sort _ _) HAσ) as Hq.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB Hq) as HBq; rewrite abs_kind_sort_sub in HBq; cbn [exp_sub] in HBq.
+  split; assumption.
+Qed.
+
+(** [Π] at a large universe: a type of the universe, the universal
+    proposition, or a [Π] between types of levels. *)
+Lemma glu_rel_exp_pi_large : forall {Γ κd κc A B} {i : nat},
+    Γ ⊩ A : abs_kind_sort κd Typeω@i ->
+    Γ ▹{κd} A ⊩ B : abs_kind_sort κc Typeω@i ->
+    pi_kinds κd κc ->
+    Γ ⊩ a_pi κd κc A B : abs_kind_sort κc Typeω@i.
+Proof.
+  intros * HA HB Hk.
+  destruct (presup_ctx_glu_rel_exp HA) as [SbΓ HSbΓ].
+  destruct (presup_ctx_glu_rel_exp HB) as [SbB HSbB].
+  pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
+  pose proof (glu_rel_exp_to_wf_exp HB) as HBt.
+  pose proof (glu_ctx_env_wf_ctx HSbΓ) as HΓ.
+  assert (HΠt : Γ ⊢ a_pi κd κc A B : abs_kind_sort κc Typeω@i) by (apply wf_pi_large; assumption).
+  pose proof (completeness_fundamental_exp _ _ _ HΠt) as HΠc.
+  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [R HR].
+  pose proof (glu_rel_exp_kind_sort_large_inversion HSbΓ HA) as HAg.
+  destruct Hk as [κd | κd |]; cbn [abs_kind_sort] in *.
+  - (** A type of the universe *)
+    eapply glu_rel_exp_of_typ; [ exact HSbΓ |].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ) as Hσt.
+    pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
+    destruct (sub_preserves_codomain (κc := ak_relevant) Hσt HAt HBt) as [HAσ HBσ].
+    assert (⊢ Δ) by (gen_presups; assumption).
+    destruct (HAg _ _ _ Hσ) as [_ (a & Ha & _ & HaP)].
+    split; [ cbn [exp_sub]; apply (wf_pi_large (κc := ak_relevant)); [ assumption | exact HAσ | exact HBσ | constructor ] |].
+    exists (d_pi κd ak_relevant a ρ B); split; [ constructor; exact Ha |].
+    destruct (rel_exp_of_typ_inversion_simple_at HR HΠc _ _ Hρ) as (p & p' & Ep & Ep' & Hp).
+    inversion Ep; inversion Ep'; subst; functional_eval_rewrite_clear.
+    split; [ exact Hp |].
+    intros P El Hg.
+    eapply (glu_pi_typ_point (u := ul i)); [ exact HSbΓ | exact HSbB | exact Hσ | constructor | constructor
+                                           | exact HAσ | exact HBσ | exact Ha | exact HaP | | exact Hg ].
+    intros Δ' σ' c Hc.
+    destruct (glu_rel_exp_of_univ_inversion (u := ul i) HSbB HB _ _ _ Hc) as [_ (b & Hb & _ & HbP & _)].
+    exists b; split; [ exact Hb | exact HbP ].
+  - (** The universal proposition *)
+    eapply glu_rel_exp_of_prop; [ exact HSbΓ |].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ) as Hσt.
+    pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
+    destruct (sub_preserves_codomain (κc := ak_propositional) (n := i) Hσt HAt HBt) as [HAσ HBσ].
+    destruct (HAg _ _ _ Hσ) as [_ (a & Ha & Hpa & HaP)].
+    exists (d_pi κd ak_propositional a ρ B); split; [ constructor; exact Ha |].
+    destruct (rel_exp_of_prop_inversion_simple_at HR HΠc _ _ Hρ) as (p & p' & Ep & Ep' & Hp).
+    inversion Ep; inversion Ep'; subst; functional_eval_rewrite_clear.
+    split; [ exact Hp |].
+    eapply (glu_all_typ_point (u := ul i)); [ exact HSbΓ | exact HSbB | exact Hσ | exact HAσ | exact HBσ | exact Ha | exact Hpa | exact HaP |].
+    intros Δ' σ' c Hc.
+    destruct (glu_rel_exp_prop_inversion HSbB HB _ _ _ Hc) as (b & Hb & _ & HbP).
+    exists b; split; [ exact Hb | exact HbP ].
+  - (** A [Π] between types of levels *)
+    eapply glu_rel_exp_of_level_sort; [ exact HSbΓ |].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ) as Hσt.
+    pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
+    destruct (sub_preserves_codomain (κd := ak_level) (κc := ak_level) (n := 0) Hσt HAt HBt) as [HAσ HBσ].
+    assert (⊢ Δ) by (gen_presups; assumption).
+    destruct (glu_rel_exp_level_sort_inversion HSbΓ HA _ _ _ Hσ) as (a & Pa & Ela & Ha & _ & _ & Hga & HaP).
+    destruct (rel_exp_of_level_sort_inversion_simple_at HR HΠc _ _ Hρ) as (p & p' & Ep & Ep' & Hp).
+    inversion Ep; inversion Ep'; subst; functional_eval_rewrite_clear.
+    destruct Hp as (Hcp & _ & Hpp).
+    destruct (per_univ_glu_univ_elem _ _ Hpp) as (P & El & Hg).
+    exists (d_pi ak_level ak_level a ρ B), P, El.
+    split; [ exact Ep | split; [ exact Hcp | split; [ cbn [exp_sub]; apply (wf_pi_large (κc := ak_level) (n := 0)); [ assumption | exact HAσ | exact HBσ | constructor ] | split; [ exact Hg |] ] ] ].
+    eapply (glu_pi_typ_point (u := us (0, 0))); [ exact HSbΓ | exact HSbB | exact Hσ | constructor | constructor
+                                                | exact HAσ | exact HBσ | exact Ha | | | exact Hg ].
+    + exact (proj2 (glu_least_typ_at_index (u := us (0, 0)) Hga HaP)).
+    + intros Δ' σ' c Hc.
+      destruct (glu_rel_exp_level_sort_inversion HSbB HB _ _ _ Hc) as (b & Pb & Elb & Hb & _ & _ & Hgb & HbP).
+      exists b; split; [ exact Hb | exact (proj2 (glu_least_typ_at_index (u := us (0, 0)) Hgb HbP)) ].
+Qed.
+
+(** A type of the sort of a kind next to a small universe is one next to
+    every large universe. *)
+Lemma lift_kind_sort_small : forall {Δ A κ L} {n j : nat},
+    Δ ⊢ L : Level@n ->
+    Δ ⊢ A : abs_kind_sort κ Type⟨L⟩ ->
+    Δ ⊢ A : abs_kind_sort κ Typeω@j.
+Proof. intros * HL HA; destruct κ; cbn in *; [ eapply wf_exp_suniv_large; eassumption | exact HA | exact HA ]. Qed.
+
+(** [wf_pi] at a small universe, into it. *)
+Lemma wf_pi_small : forall {Γ κd A B L} {n : nat},
+    Γ ⊢ L : Level@n ->
+    Γ ⊢ A : abs_kind_sort κd Type⟨L⟩ ->
+    Γ ▹{κd} A ⊢ B : Type⟨L[↑]ʷ⟩ ->
+    Γ ⊢ a_pi κd ak_relevant A B : Type⟨L⟩.
+Proof.
+  intros * HL HA HB.
+  change Type⟨L⟩ with (abs_kind_sort ak_relevant Type⟨L⟩).
+  eapply wf_pi; [ econstructor; exact HL | exact HA | exact HB | constructor ].
+Qed.
+
+(** [Π] into a small universe: its realiser is the level's at every
+    glued substitution, the codomain's the weakened level's at the extended
+    one, which is the same ([Completeness.FunctionCases.suniv_real_shift]). *)
+Lemma glu_rel_exp_pi_small_relevant : forall {Γ κd A B L} {n : nat},
+    Γ ⊩ L : Level@n ->
+    Γ ⊩ A : abs_kind_sort κd Type⟨L⟩ ->
+    Γ ▹{κd} A ⊩ B : Type⟨L[↑]ʷ⟩ ->
+    Γ ⊩ a_pi κd ak_relevant A B : Type⟨L⟩.
+Proof.
+  intros * HL HA HB.
+  destruct (presup_ctx_glu_rel_exp HA) as [SbΓ HSbΓ].
+  destruct (presup_ctx_glu_rel_exp HB) as [SbB HSbB].
+  pose proof (glu_rel_exp_to_wf_exp HL) as HLt.
+  pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
+  pose proof (glu_rel_exp_to_wf_exp HB) as HBt.
+  pose proof (glu_ctx_env_wf_ctx HSbΓ) as HΓ.
+  pose proof (lift_kind_sort_small (j := 0) HLt HAt) as HAl.
+  assert (⊢ Γ ▹{κd} A) by (econstructor; [ exact HAl | apply sort_kind_abs_kind_sort ]).
+  pose proof (wk_preserves_exp _ _ _ _ _ _ _ HLt (wf_wk_shift _ _ _ _ ltac:(eassumption))) as HLA; cbn [exp_wk] in HLA.
+  pose proof (wf_pi_small HLt HAt HBt) as HΠt.
+  pose proof (completeness_fundamental_exp _ _ _ HΠt) as HΠc.
+  destruct (LevelCases.rel_exp_of_suniv_tm_inversion_simple HΠc) as [R [HR HΠs]].
+  destruct (glu_ctx_env_per_ctx_env HSbB) as [RB HRB].
+  pose proof (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAl)) as HAc.
+  pose proof (completeness_fundamental_exp _ _ _ HLt) as HLc.
+  eapply glu_rel_exp_of_suniv_tm; [ exact HSbΓ | exact HL |].
+  intros Δ σ ρ Hσ l Hl.
+  pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ) as Hσt.
+  pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
+  assert (⊢ Δ) by (gen_presups; assumption).
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HLt Hσt) as HLσ; cbn [exp_sub] in HLσ.
+  destruct (glu_rel_exp_kind_sort_small_inversion HSbΓ HL HA _ _ _ Hσ l Hl) as [HAσ (a & Ha & Hpa & HaP & HaR)].
+  pose proof (lift_kind_sort_small (j := 0) HLσ HAσ) as HAσl.
+  pose proof (wf_sub_q _ _ _ _ _ _ _ _ Hσt HAl (sort_kind_abs_kind_sort _ _) HAσl) as Hq.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HBt Hq) as HBq; cbn [exp_sub] in HBq; rewrite exp_wk_shift_sub_q in HBq.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HLA Hq) as HLq; cbn [exp_sub] in HLq; rewrite exp_wk_shift_sub_q in HLq.
+  pose proof (wf_exp_suniv_large (i := 0) HLq HBq) as HBql.
+  (** The codomain at the extended substitutions, at the level's realiser *)
+  assert (HBg : forall Δ' σ' c, Δ' ⊢ˢ σ' ® ρ ↦ c ⦂ entry_type_value a ∈ SbB ->
+             exists b, ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\
+               (forall P El, DG b ∈ glu_univ_elem (us (domain_level_real l)) ↘ P ↘ El -> Δ' ⊢ B[σ'] ® P) /\
+               (forall Δ'' φ W, Δ'' ⊢ᵏ φ : Δ' -> Rtyp b in length Δ'' ↘ W ->
+                           glu_nf_eq Δ'' B[σ'][φ]ʷ W Type⟨L[↑]ʷ[σ']⟩[φ]ʷ)).
+  { intros Δ' σ' c Hc.
+    destruct (glu_rel_exp_of_suniv_tm_inversion' HSbB HB _ _ _ Hc) as (l' & Hl' & _ & _ & b & Hb & _ & HbP & HbR).
+    pose proof (glu_ctx_env_per_env HSbB HRB Hc) as Hρc.
+    rewrite (FunctionCases.suniv_real_shift HAc HLc HRB _ _ _ _ _ _ _ _ Hρc Hl' Hl) in HbP.
+    exists b; split; [ exact Hb | split; [ exact HbP | exact HbR ] ]. }
+  split; [ cbn [exp_sub]; eapply wf_pi_small; [ exact HLσ | exact HAσ | exact HBq ] |].
+  exists (d_pi κd ak_relevant a ρ B); split; [ constructor; exact Ha |].
+  destruct (HΠs _ _ Hρ) as (p & p' & t & Ep & Ep' & Ht & Hp).
+  inversion Ep; inversion Ep'; subst; functional_eval_rewrite_clear.
+  split; [ exact (per_universe_elements_rel _ _ _ Hp) | split ].
+  - intros P El Hg.
+    eapply (glu_pi_typ_point (u := us (domain_level_real l))); [ exact HSbΓ | exact HSbB | exact Hσ | constructor | constructor
+                                                             | exact HAσl | exact HBql | exact Ha | exact HaP | | exact Hg ].
+    intros Δ' σ' c Hc; destruct (HBg _ _ _ Hc) as (b & Hb & HbP & _); exists b; split; assumption.
+  - (** The readback: the domain's at the small universe, and the
+        codomain's at the glued variable, which [kripke_q_var_eq] relates
+        to [B[q σ]] under the weakening. *)
+    intros Δ' φ W Hφ HW.
+    inversion HW; subst.
+    assert (⊢ Δ') by (eapply kripke_dom; eassumption).
+    pose proof (HaR _ _ _ Hφ ltac:(eassumption)) as HArd; rewrite abs_kind_sort_wk in HArd; cbn [exp_wk] in HArd.
+    destruct Hpa as [Ra HRa].
+    assert (exists Pa Ela, DG a ∈ glu_univ_elem (us (domain_level_real l)) ↘ Pa ↘ Ela) as (Pa & Ela & Hga) by mauto 3.
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ κd _ Hga (HaP _ _ Hga) HAσl) as [Hka Hna].
+    assert (HPa : Δ' ⊢ A[σ][φ]ʷ ® Pa) by exact (glu_univ_elem_typ_monotone _ _ _ _ Hga _ _ _ _ (HaP _ _ Hga) Hφ).
+    pose proof (kripke_preserves_exp _ _ _ _ _ HAσl Hφ) as HAφl; rewrite abs_kind_sort_wk in HAφl; cbn [exp_wk] in HAφl.
+    pose proof (kripke_preserves_exp _ _ _ _ _ HAσ Hφ) as HAφ; rewrite abs_kind_sort_wk in HAφ; cbn [exp_wk] in HAφ.
+    pose proof (kripke_preserves_exp _ _ _ _ _ HLσ Hφ) as HLφ; cbn [exp_wk] in HLφ.
+    pose proof (var0_glu_elem Hga Hna HPa) as Hv.
+    rewrite Hka in Hv.
+    assert (⊢ Δ' ▹{κd} A[σ][φ]ʷ) by (econstructor; [ exact HAφl | apply sort_kind_abs_kind_sort ]).
+    assert (Hk' : Δ' ▹{κd} A[σ][φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
+    rewrite exp_wk_wk in Hv.
+    pose proof (glu_cons_sub_of_elem HSbΓ HSbB Hσ Ha Hga Hk' Hv) as Hc.
+    destruct (HBg _ _ _ Hc) as (b' & Hb' & _ & HbR).
+    functional_eval_rewrite_clear.
+    pose proof (HbR _ wk_id _ ltac:(mauto 3) ltac:(eassumption)) as HBW; rewrite !exp_wk_id in HBW.
+    rewrite exp_sub_shift_extend, <- exp_wk_sub, <- exp_wk_wk in HBW.
+    pose proof (kripke_q_var_eq _ _ _ _ _ _ _ _ HBq HAσl (sort_kind_abs_kind_sort _ _) Hφ) as Hqv.
+    rewrite exp_sub_q_extend_wk in Hqv; cbn [exp_wk] in Hqv; rewrite exp_wk_shift_wk_q in Hqv.
+    cbn [exp_sub exp_wk].
+    eapply (glu_nf_eq_pi (U := Type⟨L[σ][φ]ʷ⟩) (κc := ak_relevant)); [ econstructor; exact HLφ | exact HAφ | constructor | exact HArd |].
+    eapply glu_nf_eq_exp_eq; [ apply wf_exp_eq_sym; exact Hqv | exact HBW ].
+Qed.
+
+(** A glued type of the sort of a kind next to a small universe glues next
+    to every large one ([glu_rel_exp_subtyp]). *)
+Lemma glu_rel_exp_kind_sort_small_large : forall {Γ A κ L} {n j : nat},
+    Γ ⊩ L : Level@n ->
+    Γ ⊩ A : abs_kind_sort κ Type⟨L⟩ ->
+    Γ ⊩ A : abs_kind_sort κ Typeω@j.
+Proof.
+  intros * HL HA; destruct κ; cbn in *; [| exact HA | exact HA ].
+  pose proof (presup_ctx_glu_rel_exp HA) as HΓ.
+  eapply glu_rel_exp_subtyp; [ exact HA | apply glu_rel_exp_typ; exact HΓ | constructor |].
+  eapply wf_subtyp_small_large; [ destruct HΓ as [? HΓ]; exact (glu_ctx_env_wf_ctx HΓ) | exact (glu_rel_exp_to_wf_exp HL) ].
+Qed.
+
+(** [Π] at a small universe: into the universe, or the universal
+    proposition and a [Π] between types of levels, which do not depend on
+    the universe. *)
+Lemma glu_rel_exp_pi_small : forall {Γ κd κc A B L} {n : nat},
+    Γ ⊩ L : Level@n ->
+    Γ ⊩ A : abs_kind_sort κd Type⟨L⟩ ->
+    Γ ▹{κd} A ⊩ B : (abs_kind_sort κc Type⟨L⟩)[↑]ʷ ->
+    pi_kinds κd κc ->
+    Γ ⊩ a_pi κd κc A B : abs_kind_sort κc Type⟨L⟩.
+Proof.
+  intros * HL HA HB Hk.
+  destruct Hk as [κd | κd |]; cbn [abs_kind_sort exp_wk] in *.
+  - exact (glu_rel_exp_pi_small_relevant HL HA HB).
+  - exact (glu_rel_exp_pi_large (i := 0) (κc := ak_propositional) (glu_rel_exp_kind_sort_small_large (j := 0) HL HA) HB (pi_kinds_prop _)).
+  - exact (glu_rel_exp_pi_large (i := 0) (κd := ak_level) (κc := ak_level) HA HB pi_kinds_level).
+Qed.
+
+(** A proof of a glued proposition glues, kept: its typing is all a proof
+    glues by. *)
+Lemma glu_rel_exp_proof : forall {Γ M T},
+    Γ ⊩ T : Propₘ ->
+    Γ ⊢ M : T ->
+    Γ ⊩ M : T.
+Proof.
+  intros * HT HM.
+  destruct (presup_ctx_glu_rel_exp HT) as [Sb HSb].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ exact HSb |].
+  intros Δ σ ρ Hσ.
+  destruct (glu_rel_exp_prop_inversion HSb HT _ _ _ Hσ) as (t & Ht & Hpt & HtP).
+  pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
+  destruct (per_univ_glu_univ_elem 0 t ltac:(eexists; apply per_univ_elem_of_prop; exact Hpt)) as (P & El & Hg).
+  destruct (glu_univ_elem_prop_inv _ _ _ _ Hpt Hg) as [_ EEl].
+  econstructor; [ exact Ht | cbn; rewrite (per_prop_left _ _ Hpt); reflexivity | exact Hg |].
+  apply EEl; econstructor; [ exact HtP | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hσt) |].
+  destruct (glu_ctx_env_per_ctx_env HSb) as [R HR].
+  pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
+  assert (HsM : exp_scoped (List.length Γ) M) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HM))).
+  destruct (per_ctx_env_kept_proof_readable _ _ _ M HR (exp_scoped_free_bound _ _ HsM) _ _ Hρ) as [Hr _].
+  split; exact Hr.
+Qed.
+
+(** β at a substitution followed by a Kripke weakening: an instance of
+    [wf_exp_eq_pi_beta] at [sb_wk σ φ], once [exp_wk_sub] has merged the
+    two steps and [exp_sub_q_extend] has put both bodies into [q]-form. *)
+Lemma exp_eq_fn_sub_wk_beta : forall {Γ Δ Δ' σ φ κd κc A B M N} {i : nat},
+    Δ ⊢ˢ σ : Γ ->
+    Γ ⊢ A : abs_kind_sort κd Typeω@i ->
+    Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@i ->
+    pi_kinds κd κc ->
+    Γ ▹{κd} A ⊢ M : B ->
+    Δ' ⊢ᵏ φ : Δ ->
+    Δ' ⊢ N : A[sb_wk σ φ] ->
+    Δ' ⊢ (λ A M)[σ][φ]ʷ $ N ≈ M[(sb_wk σ φ),,N] : B[(sb_wk σ φ),,N].
+Proof.
+  intros * Hσ HA HB Hk HM Hφ HN.
+  saturate_kripke_escape.
+  assert (Hτ : Δ' ⊢ˢ sb_wk σ φ : Γ) by (rewrite sb_wk_compose; mauto 3).
+  destruct (sub_preserves_codomain Hτ HA HB) as [HAτ HBτ].
+  pose proof (wf_sub_q _ _ _ _ _ _ _ _ Hτ HA (sort_kind_abs_kind_sort _ _) HAτ) as Hq.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HM Hq) as HMτ.
+  rewrite exp_wk_sub; cbn [exp_sub].
+  rewrite <- (exp_sub_q_extend M), <- (exp_sub_q_extend B).
+  eapply wf_exp_eq_pi_beta; [ exact HAτ | apply sort_kind_abs_kind_sort | exact HBτ | exact Hk | exact HMτ | exact HN ].
+Qed.
+
+(** A λ into a type of an evaluated kind: a function glued at its [Π],
+    applied to a glued argument glued as its body at the extended
+    substitution, up to β. *)
+Lemma glu_rel_exp_fn_evaluated : forall {Γ κd κc A B M} {i : nat},
+    Γ ⊩ A : abs_kind_sort κd Typeω@i ->
+    Γ ▹{κd} A ⊩ B : abs_kind_sort κc Typeω@i ->
+    pi_kinds κd κc ->
+    evaluated_kind κc ->
+    Γ ▹{κd} A ⊩ M : B ->
+    Γ ⊩ λ A M : a_pi κd κc A B.
+Proof.
+  intros * HA HB Hk Hev HM.
+  destruct (presup_ctx_glu_rel_exp HA) as [SbΓ HSbΓ].
+  destruct (presup_ctx_glu_rel_exp HB) as [SbB HSbB].
+  pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
+  pose proof (glu_rel_exp_to_wf_exp HB) as HBt.
+  pose proof (glu_rel_exp_to_wf_exp HM) as HMt.
+  pose proof (glu_ctx_env_wf_ctx HSbΓ) as HΓ.
+  assert (HΠt : Γ ⊢ a_pi κd κc A B : abs_kind_sort κc Typeω@i) by (apply wf_pi_large; assumption).
+  assert (Hλt : Γ ⊢ λ A M : a_pi κd κc A B)
+    by (eapply wf_fn; [ exact HAt | apply sort_kind_abs_kind_sort | exact HBt | exact Hk | exact HMt ]).
+  pose proof (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HΠt)) as HΠc.
+  pose proof (completeness_fundamental_exp _ _ _ Hλt) as Hλc.
+  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [R HR].
+  destruct (rel_exp_under_ctx_simple_full_at HR Hλc) as [jλ Hλs].
+  pose proof (glu_rel_exp_kind_sort_large_inversion HSbΓ HA) as HAg.
+  pose proof (glu_rel_exp_kind_sort_large_inversion HSbB HB) as HBg.
+  destruct (glu_rel_exp_clean_inversion1 HSbB HM) as [kM HMk].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ exact HSbΓ |].
+  intros Δ σ ρ Hσ.
+  pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ) as Hσt.
+  pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
+  assert (⊢ Δ) by (gen_presups; assumption).
+  destruct (sub_preserves_codomain Hσt HAt HBt) as [HAσ HBσ].
+  destruct (HAg _ _ _ Hσ) as [_ (a & Ha & _ & HaP)].
+  destruct (rel_type_inversion_simple_at HR HΠc _ _ Hρ) as (p & p' & Ep & Ep' & Hp).
+  inversion Ep; inversion Ep'; subst; functional_eval_rewrite_clear.
+  destruct (per_univ_glu_univ_elem _ _ Hp) as (P & El & Hg).
+  pose proof Hg as Hg0.
+  econstructor; [ exact Ep | destruct Hev; cbn; apply eval_exp_fn; exact Ha | exact Hg |].
+  (** The value of the λ, related to itself at the [Π]'s element PER *)
+  destruct (Hλs _ _ Hρ) as (a1 & a2 & R1 & Ha1 & Ha2 & HR1 & [Hkp | (m1 & m2 & Hm1 & Hm2 & Hmm)]);
+    functional_eval_rewrite_clear; [ destruct Hev; cbn in Hkp; discriminate |].
+  inversion Hm1; subst; functional_eval_rewrite_clear.
+  invert_glu_univ_elem Hg.
+  match goal with HE : ?el <∙> pi_glu_exp_pred _ _ _ _ _ _ _ _ |- ?el _ _ _ _ => apply HE end.
+  econstructor; [ exact (sub_preserves_exp _ _ _ _ _ _ _ Hλt Hσt) | | | exact HAσ | exact HBσ | |].
+  - match goal with Hp2 : per_univ_elem _ ?er (d_pi _ _ _ _ _) (d_pi _ _ _ _ _) |- ?er _ _ =>
+      apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hp2 HR1); exact Hmm end.
+  - apply wf_exp_eq_refl; cbn [exp_sub]; apply wf_pi_large; assumption.
+  - intros Δ' φ Hφ.
+    match goal with Hga : glu_univ_elem _ _ _ a |- _ =>
+      exact (glu_univ_elem_typ_monotone _ _ _ _ Hga _ _ _ _ (HaP _ _ Hga) Hφ) end.
+  - intros Δ' φ N n Hφ HN equiv_n.
+    match goal with Hga : glu_univ_elem _ _ _ a |- _ =>
+      pose proof (glu_cons_sub_of_elem HSbΓ HSbB Hσ Ha Hga Hφ HN) as Hc;
+      pose proof (glu_univ_elem_trm_escape _ _ _ _ Hga _ _ _ _ HN) as HNt end.
+    rewrite exp_wk_sub in HNt.
+    destruct (HMk _ _ _ Hc) as [b mb Pb Elb Eb Hmb Hgb HMb].
+    destruct (HBg _ _ _ Hc) as [HBc (b' & Eb' & _ & HbP)].
+    functional_eval_rewrite_clear.
+    match goal with H1 : forall c (equiv_c : _ c c) b, _ -> glu_univ_elem _ _ _ b |- _ =>
+      pose proof (H1 _ equiv_n _ Eb) as Hgb' end.
+    pose proof (HbP _ _ Hgb') as HBcP.
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ κc i Hgb' HBcP HBc) as [Hkb _].
+    rewrite Hkb in Hmb.
+    exists mb; split; [ apply eval_app_fn; destruct Hev; exact Hmb |].
+    rewrite exp_sub_q_extend_wk.
+    destruct (glu_univ_elem_per_univ _ _ _ _ Hgb) as [Rb HRb].
+    pose proof (glu_univ_elem_exp_conv_universe_index (ex_intro _ Rb HRb) Hgb Hgb' HMb HBcP) as HM'.
+    eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hgb' | exact HM' |].
+    apply wf_exp_eq_sym; eapply exp_eq_fn_sub_wk_beta; eassumption.
+Qed.
+
+(** A glued type of the sort of a kind next to a large universe glues
+    next to every larger one. *)
+Lemma glu_rel_exp_kind_sort_lift : forall {Γ A κ} {i k : nat},
+    i <= k ->
+    Γ ⊩ A : abs_kind_sort κ Typeω@i ->
+    Γ ⊩ A : abs_kind_sort κ Typeω@k.
+Proof.
+  intros * Hle HA; destruct κ; cbn in *; [| exact HA | exact HA ].
+  exact (glu_rel_exp_lift_universe_index (u := ul i) (v := ul k) Hle HA).
+Qed.
+
+(** A sort of a kind is the sort of the kind next to a large universe. *)
+Lemma sort_kind_abs_kind_sort_inv : forall {S κ}, sort_kind S κ -> exists j : nat, S = abs_kind_sort κ Typeω@j.
+Proof. intros * []; [ exists i | exists 0 | exists 0 ]; reflexivity. Qed.
+
+(** A λ ([wf_fn]): a function into a type of an evaluated kind, or a
+    proof of a [∀], kept. *)
+Lemma glu_rel_exp_fn : forall {Γ κd κc A Srt B M} {i : nat},
+    Γ ⊩ A : Srt ->
+    sort_kind Srt κd ->
+    Γ ▹{κd} A ⊩ B : abs_kind_sort κc Typeω@i ->
+    pi_kinds κd κc ->
+    Γ ▹{κd} A ⊩ M : B ->
+    Γ ⊩ λ A M : a_pi κd κc A B.
+Proof.
+  intros * HA HS HB Hk HM.
+  destruct (sort_kind_abs_kind_sort_inv HS) as [j ->].
+  pose proof (glu_rel_exp_kind_sort_lift (k := max j i) (PeanoNat.Nat.le_max_l j i) HA) as HA'.
+  pose proof (glu_rel_exp_kind_sort_lift (k := max j i) (PeanoNat.Nat.le_max_r j i) HB) as HB'.
+  destruct (evaluated_kind_or_propositional κc) as [Hev | ->].
+  - exact (glu_rel_exp_fn_evaluated HA' HB' Hk Hev HM).
+  - apply glu_rel_exp_proof; [ exact (glu_rel_exp_pi_large (κc := ak_propositional) HA' HB' Hk) |].
+    eapply wf_fn; [ exact (glu_rel_exp_to_wf_exp HA') | apply sort_kind_abs_kind_sort
+                  | exact (glu_rel_exp_to_wf_exp HB') | exact Hk | exact (glu_rel_exp_to_wf_exp HM) ].
+Qed.
+
+(** The value of an instantiated type at one environment, as the gluing
+    model reads it: [⟦B[Id,,N]⟧ρ] is related to [B]'s value at [ρ]
+    extended by [N]'s value at its kind, at the tag the gluing model
+    stores, [entry_type_value a].  [Id ,, N] extends the retagged
+    environment at the closure tag ([eval_sub_extend],
+    [eval_sub_extend_proof]); the two extensions of [ρ], at the two tags,
+    are related in the context PER of [Γ ▹{κ} A], where [B]'s values
+    are. *)
+Lemma per_univ_of_instance_at : forall {Γ κ κc A B N R RA} {i j : nat} {ρ a n},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    EF Γ ▹{κ} A ≈ Γ ▹{κ} A ∈ per_ctx_env ↘ RA ->
+    Γ ⊨ A : abs_kind_sort κ Typeω@j ->
+    Γ ▹{κ} A ⊨ B : abs_kind_sort κc Typeω@i ->
+    Γ ⊨ N : A ->
+    exp_scoped (List.length Γ) N ->
+    Dom ρ ≈ ρ ∈ R ->
+    ⟦ A ⟧ ρ ↘ a ->
+    glu_term_value N ρ (domain_kind a) n ->
+    Dom ρ ↦ n ⦂ entry_type_value a ≈ ρ ↦ n ⦂ entry_type_value a ∈ RA ->
+    exists c b, ⟦ B[Id,,N] ⟧ ρ ↘ c /\ ⟦ B ⟧ ρ ↦ n ⦂ entry_type_value a ↘ b /\ Dom c ≈ b ∈ per_univ i.
+Proof.
+  intros * HΓ HΓA HA HB HN HNs Hρ Ha Hn Hρn.
+  pose proof (rel_type_of_abs_kind_sort HA) as HAt.
+  pose proof (rel_type_of_abs_kind_sort HB) as HBt.
+  pose proof (rel_sub_under_ctx_extend_sub (κ := κ) (rel_sub_id (ex_intro _ _ HΓ)) HN
+                (rel_type_not_level_sort_of_sort (type_sort_abs_kind _ _ (type_sort_universe _)) HA) HNs HNs) as HidN.
+  rewrite exp_sub_id in HidN.
+  pose proof (rel_type_inversion HBt) as [RA' [HΓA' HBgen]].
+  destruct (eval_sub_id_rel HΓ Hρ) as [Hid _].
+  pose proof (per_ctx_env_of_typ (κ := κ) HΓ HAt) as HΓA0.
+  assert (EA : RA' <~> per_env_extend A A R) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (EA2 : RA <~> per_env_extend A A R) by (eapply per_ctx_env_right_irrel; eassumption).
+  pose proof (rel_type_inversion_simple_at HΓ HAt) as HAs.
+  pose proof (per_ctx_env_retag HΓ _ _ Hρ) as Hρr.
+  pose proof (per_ctx_env_retag_left HΓ _ _ Hρ) as Hρl.
+  destruct (HAs _ _ Hρl) as (ar & a0 & Ear & Ea0 & [Rar Har]).
+  functional_eval_rewrite_clear.
+  pose proof (per_univ_elem_kind _ _ _ _ Har) as Hkar.
+  pose proof (proj1 (EA2 _ _) Hρn) as Hρn'.
+  destruct Hρn' as [_ Hhead _ Hright _ Hrr].
+  change (Dom n ≈ n ∈ per_head A A ρ ρ) in Hhead.
+  (** [Id ,, N] at [ρ] *)
+  assert (Hev1 : ⟦ Id,,N : Γ ▹{κ} A ⟧s ρ ↘ ctx_retag Γ ρ ↦ n ⦂ centry_tag (ce_ass κ A) Γ (ctx_retag Γ ρ)).
+  { destruct (evaluated_kind_or_propositional (domain_kind a)) as [Hev | Hp].
+    - assert (Hnp : ~ head_propositional gc_deps gc_stack (ce_ass κ A) Γ (ctx_retag Γ ρ)).
+      { intros Hhp; apply (head_propositional_iff (e := ce_ass κ A) HΓ eq_refl HAs Hρr Ear) in Hhp.
+        rewrite Hkar in Hhp; destruct Hev; discriminate. }
+      destruct (domain_kind a); [| inversion Hev |]; cbn in Hn; exact (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn).
+    - assert (Hhp : head_propositional gc_deps gc_stack (ce_ass κ A) Γ (ctx_retag Γ ρ))
+        by (apply (head_propositional_iff (e := ce_ass κ A) HΓ eq_refl HAs Hρr Ear); rewrite Hkar; exact Hp).
+      rewrite Hp in Hn; cbn in Hn; subst n.
+      exact (eval_sub_extend_proof _ _ _ _ _ N Hid Hhp). }
+  pose proof (per_env_extend_intro_tagged HΓA0 HΓ Hρ Hhead) as Hext0.
+  pose proof (proj2 (EA _ _) Hext0) as Hext.
+  destruct (rel_type_body_of_retagged HΓA' HBgen _ _ HΓ _ _ HidN ρ ρ
+                (ρ ↦ n ⦂ centry_tag (ce_ass κ A) Γ ρ) (ρ ↦ n ⦂ centry_tag (ce_ass κ A) Γ ρ) Hρ Hev1 Hev1 Hext)
+    as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Hchain].
+  destruct Hchain as [Ht12 _].
+  (** The two tags *)
+  destruct Hext0 as [_ _ Hleft _ Hlr _].
+  assert (Hcross : Dom ρ ↦ n ⦂ centry_tag (ce_ass κ A) Γ ρ ≈ ρ ↦ n ⦂ entry_type_value a ∈ RA).
+  { apply EA2; apply per_env_extend_intro; [ exact Hρ | exact Hhead | exact Hleft | exact Hright | exact Hlr | exact Hrr ]. }
+  destruct (rel_type_inversion_simple_at HΓA HBt _ _ Hcross) as (b1 & b2 & Eb1 & Eb2 & Hb12).
+  functional_eval_rewrite_clear.
+  exists t1, b2; split; [ exact Ht1 | split; [ exact Eb2 |] ].
+  etransitivity; eassumption.
+Qed.
+
+(** An element of a [Π] takes arguments of its domain's kind. *)
+Lemma per_univ_elem_pi_arg_kind : forall {i κd κc a ρ B a' ρ' B' R f f'},
+    evaluated_kind κc ->
+    DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem i ↘ R ->
+    Dom f ≈ f' ∈ R ->
+    arg_kind gc_deps gc_stack f = domain_kind a.
+Proof.
+  intros * Hev HR Hf.
+  invert_per_univ_elem HR.
+  match goal with HE : _ <~> pi_elements _ _ _ _ |- _ => apply HE in Hf end.
+  exact (pi_elements_left _ _ _ _ _ _ Hf).
+Qed.
+
+(** A type glued at every gluing of its value is glued at the index. *)
+Lemma glu_rel_typ_with_sub_of_point : forall {i : nat} {Δ A σ ρ},
+    (exists a, ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a ∈ per_univ i /\
+          forall P El, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ A[σ] ® P) ->
+    glu_rel_typ_with_sub i Δ A σ ρ.
+Proof.
+  intros * (a & Ha & Hp & HP).
+  destruct (per_univ_glu_univ_elem _ _ Hp) as (P & El & Hg).
+  econstructor; [ exact Ha | exact Hg | exact (HP _ _ Hg) ].
+Qed.
+
+(** An application at a [Π] into a type of an evaluated kind: the
+    function's gluing applies it to the glued argument, at the codomain's
+    value at the argument's, which is related to the value of the
+    instantiated type ([per_univ_of_instance_at]). *)
+Lemma glu_rel_exp_app_evaluated : forall {Γ κd κc A B M N} {i : nat},
+    Γ ⊩ A : abs_kind_sort κd Typeω@i ->
+    Γ ▹{κd} A ⊩ B : abs_kind_sort κc Typeω@i ->
+    pi_kinds κd κc ->
+    evaluated_kind κc ->
+    Γ ⊩ M : a_pi κd κc A B ->
     Γ ⊩ N : A ->
     Γ ⊩ M $ N : B[Id,,N].
 Proof.
-  intros * HA HB HM HN.
-  assert (⊩ Γ) as [SbΓ] by mauto 3.
-  assert (Γ ⊩ Π A B : Typeω@i) by mauto 4.
-  assert (Γ ⊢ N : A) by mauto 2.
-  invert_glu_rel_exp HN.
-  assert (Γ ⊢ A : Typeω@i) by mauto 3.
-  invert_glu_rel_exp HA.
-  pose (SbΓA := cons_glu_sub_pred i Γ A SbΓ).
-  assert (EG Γ ▹ A ∈ glu_ctx_env ↘ SbΓA) by (econstructor; mauto 3; reflexivity).
-  assert (Γ ▹ A ⊢ B : Typeω@i) by mauto 2.
-  invert_glu_rel_exp HB.
-  destruct_conjs.
-  assert (Γ ⊢ M : Π A B) by mauto 2.
-  invert_glu_rel_exp HM.
-  (** The type of an application is an instantiated codomain, which the gluing
-      model cannot evaluate: [⟦B[Id,,N]⟧ρ] is stuck, and it is not
-      [⟦B⟧(ρ ↦ ⟦N⟧ρ)]. [per_univ_of_instance] relates the two, and
-      [glu_univ_elem_resp_per_univ] transports the predicate. *)
-  assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
-  assert (Γ ▹ A ⊨ B : Typeω@i) by mauto 3 using completeness_fundamental_exp.
-  assert (Γ ⊨ N : A) by mauto 3 using completeness_fundamental_exp.
-  econstructor; [eassumption |].
-  intros Δ σ ρ HSb.
-  destruct_glu_rel_exp_with_sub.
-  simplify_evals.
-  match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
-  apply_predicate_equivalence.
-  destruct_glu_records.
-  destruct_conjs.
-  handle_functional_glu_univ_elem.
-  match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
-  inversion_clear_by_head pi_glu_exp_pred.
-  match goal with
-  | _: ⟦ N ⟧ ρ ↘ ?n' |- _ => rename n' into n
-  end.
-  assert (Dom a ≈ a ∈ per_univ i) as [] by mauto 3.
-  handle_per_univ_elem_irrel.
-  assert (Dom n ≈ n ∈ in_rel) as equiv_n by (eapply glu_univ_elem_per_elem; revgoals; eassumption).
-  (on_all_hyp: destruct_rel_by_assumption in_rel).
-  simplify_evals.
-  match goal with
-  | _: ⟦ B ⟧ ρ ↦ n ↘ ?b' |- _ => rename b' into b
-  end.
-  assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  destruct (per_univ_of_instance HΓ ltac:(eassumption) ltac:(eassumption) _ _ ltac:(eassumption) ltac:(eassumption))
-    as [c [b' [Hc [Hb' [Hcc Hcb]]]]].
-  functional_eval_rewrite_clear.
-  eapply mk_glu_rel_exp_with_sub''; [ exact Hc | mauto 3 | exact Hcc |].
-  intros P El HPEl.
-  assert (DG b ∈ glu_univ_elem i ↘ OP n equiv_n ↘ OEl n equiv_n) by mauto 3.
-  (** The gluing predicate lives at [b]; move it to [c] along [Hcb]. *)
-  assert (Dom b ≈ c ∈ per_univ i) by (symmetry; eassumption).
-  assert (DG c ∈ glu_univ_elem i ↘ OP n equiv_n ↘ OEl n equiv_n)
-      by (eapply glu_univ_elem_resp_per_univ; eassumption).
-  handle_functional_glu_univ_elem.
-  assert (Δ ⊢ᵏ wk_id : Δ) by mauto 3.
-  assert (Δ ⊢ IT[wk_id]ʷ ® IP) as HIT by mauto 2.
-  rewrite exp_wk_id in HIT.
-  assert (Δ ⊢ IT : Typeω@i) by (eapply (glu_univ_elem_univ_lvl (ul i)); revgoals; [ eassumption | eassumption | reflexivity ]).
-  assert (Δ ⊢ IT ≈ A[σ] : Typeω@i) as HAeq
-      by (eapply (glu_univ_elem_typ_unique_upto_exp_eq' (i := ul i)); revgoals; eassumption).
-  assert (Δ ⊢ N[σ] : IT[wk_id]ʷ ® n ∈ IEl) by (rewrite exp_wk_id, HAeq; eassumption).
-  assert (exists mn, $| m & n |↘ mn /\ Δ ⊢ M[σ][wk_id]ʷ $ N[σ] : OT[(ι wk_id),,N[σ]] ® mn ∈ OEl n equiv_n) as [] by mauto 2.
-  destruct_conjs.
-  functional_eval_rewrite_clear.
-  rewrite exp_wk_id in *.
-  assert (Δ ⊢ˢ σ : Γ) by mauto 2.
-  assert (Δ ⊢ N[σ] : A[σ]) by mauto 2.
-  assert (Δ ⊢ N[σ] : A[σ][wk_id]ʷ ® n ∈ IEl) by (rewrite exp_wk_id; eassumption).
-  assert (Δ ⊢ˢ σ,,N[σ] ® ρ ↦ n ∈ SbΓA) as Hcons by (unfold SbΓA; mauto 2).
-  (on_all_hyp: destruct_glu_rel_by_assumption SbΓA).
-  simplify_evals.
-  match_by_head1 glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
-  apply_predicate_equivalence.
-  destruct_glu_records.
-  destruct_conjs.
-  handle_functional_glu_univ_elem.
-  rewrite exp_sub_extend_sub.
-  assert (Δ ⊢ OT[(ι wk_id),,N[σ]] ® OP n equiv_n) by (eapply glu_univ_elem_trm_typ; eassumption).
-  assert (Δ ⊢ B[σ,,N[σ]] ≈ OT[(ι wk_id),,N[σ]] : Typeω@i) as ->
-      by (eapply (glu_univ_elem_typ_unique_upto_exp_eq' (i := ul _)); revgoals; eassumption).
-  eassumption.
+  intros * HA HB Hk Hev HM HN.
+  destruct (presup_ctx_glu_rel_exp HA) as [SbΓ HSbΓ].
+  destruct (presup_ctx_glu_rel_exp HB) as [SbB HSbB].
+  pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
+  pose proof (glu_rel_exp_to_wf_exp HB) as HBt.
+  pose proof (glu_rel_exp_to_wf_exp HN) as HNt.
+  pose proof (glu_rel_exp_pi_large HA HB Hk) as HΠ.
+  pose proof (glu_rel_exp_kind_sort_large_inversion HSbΓ HA) as HAg.
+  pose proof (glu_rel_exp_kind_sort_large_inversion HSbΓ HΠ) as HΠg.
+  pose proof (glu_rel_exp_kind_sort_large_inversion HSbB HB) as HBg.
+  assert (HMg : forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ SbΓ -> glu_rel_exp_with_sub i Δ M (a_pi κd κc A B) σ ρ).
+  { apply (glu_rel_exp_at_typ_index HSbΓ); [| exact HM ].
+    intros Δ σ ρ Hσ; apply glu_rel_typ_with_sub_of_point; exact (proj2 (HΠg _ _ _ Hσ)). }
+  assert (HNg : forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ SbΓ -> glu_rel_exp_with_sub i Δ N A σ ρ).
+  { apply (glu_rel_exp_at_typ_index HSbΓ); [| exact HN ].
+    intros Δ σ ρ Hσ; apply glu_rel_typ_with_sub_of_point; exact (proj2 (HAg _ _ _ Hσ)). }
+  assert (HNs : exp_scoped (List.length Γ) N) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HNt))).
+  pose proof (completeness_fundamental_exp _ _ _ HAt) as HAc.
+  pose proof (completeness_fundamental_exp _ _ _ HBt) as HBc.
+  pose proof (completeness_fundamental_exp _ _ _ HNt) as HNc.
+  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [R HR].
+  destruct (glu_ctx_env_per_ctx_env HSbB) as [RB HRB].
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ exact HSbΓ |].
+  intros Δ σ ρ Hσ.
+  pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
+  destruct (HNg _ _ _ Hσ) as [a n Pa Ela Ea Hn Hga HNσ].
+  destruct (HAg _ _ _ Hσ) as [HAσ (a0 & Ea0 & _ & HaP)].
+  assert (a0 = a) by (eapply functional_eval_exp; eassumption); subst a0; clear Ea0.
+  pose proof (glu_cons_sub_at HSbΓ HSbB Hσ Ea Hga HNσ) as Hc.
+  pose proof (glu_ctx_env_per_env HSbB HRB Hc) as Hρn.
+  destruct (per_univ_of_instance_at HR HRB HAc HBc HNc HNs Hρ Ea Hn Hρn) as (c & b & Ec & Eb & Hcb).
+  destruct (HBg _ _ _ Hc) as [HBc' (b' & Eb' & _ & HbP)].
+  destruct (HMg _ _ _ Hσ) as [p m Pp Elp Ep Hm Hgp HMσ].
+  inversion Ep; subst; functional_eval_rewrite_clear.
+  assert (HmE : ⟦ M ⟧ ρ ↘ m) by (destruct Hev; exact Hm).
+  invert_glu_univ_elem Hgp.
+  match goal with HE : ?el <∙> pi_glu_exp_pred _ _ _ _ _ _ _ _, HMσ' : ?el _ _ _ _ |- _ => apply HE in HMσ' end.
+  inversion_clear HMσ as [? ? ? ? IT OT HMσt Hmm HΠeq HIT HOT HIP Happ].
+  match goal with Hg2 : glu_univ_elem _ IP IEl a |- _ => rename Hg2 into Hga2 end.
+  match goal with Hp2 : per_univ_elem _ in_rel a a |- _ => rename Hp2 into Hin end.
+  match goal with Hp2 : per_univ_elem _ elem_rel (d_pi _ _ _ _ _) _ |- _ => rename Hp2 into Hel end.
+  destruct (functional_glu_univ_elem _ _ _ _ _ _ Hga Hga2) as [_ EEl].
+  destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ κd i Hga2 (HaP _ _ Hga2) HAσ) as [_ Hna].
+  assert (⊢ Δ) by (gen_presups; assumption).
+  assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
+  pose proof (HIP _ _ Hid) as HITP; rewrite exp_wk_id in HITP.
+  pose proof (glu_univ_elem_typ_unique_upto_exp_eq' Hga2 Hna HITP (HaP _ _ Hga2)) as HITeq.
+  assert (HNσ' : Δ ⊢ N[σ] : IT[wk_id]ʷ ® n ∈ IEl).
+  { rewrite exp_wk_id; apply EEl in HNσ.
+    eapply glu_univ_elem_trm_resp_typ_exp_eq; [ exact Hga2 | exact HNσ | apply wf_exp_eq_sym; exact HITeq ]. }
+  pose proof (glu_univ_elem_per_elem _ _ _ _ Hga2 _ _ _ _ _ HNσ' Hin) as equiv_n.
+  destruct (Happ _ _ _ _ Hid HNσ' equiv_n) as (mn & Hmn & HMN).
+  match goal with H1 : forall c (equiv_c : _ c c) b, _ -> glu_univ_elem _ _ _ b |- _ =>
+    pose proof (H1 _ equiv_n _ Eb) as Hgb end.
+  pose proof (HbP _ _ Hgb) as HBcP.
+  destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ κc i Hgb HBcP HBc') as [Hkb Hnb].
+  destruct Hcb as [Rc HRc].
+  pose proof (per_univ_elem_kind _ _ _ _ HRc) as Hkc.
+  assert (Hgc : DG c ∈ glu_univ_elem i ↘ OP n equiv_n ↘ OEl n equiv_n)
+    by (eapply glu_univ_elem_resp_per_univ; [ eexists; symmetry; exact HRc | exact Hgb ]).
+  pose proof (per_univ_elem_pi_arg_kind Hev Hel Hmm) as Harg.
+  assert (HappE : ⟦ M $ N ⟧ ρ ↘ mn).
+  { destruct (evaluated_kind_or_propositional (domain_kind a)) as [Hea | Hpa].
+    - eapply eval_exp_app; [ exact HmE | rewrite Harg; exact Hea | | exact Hmn ].
+      destruct (domain_kind a); [| inversion Hea |]; exact Hn.
+    - rewrite Hpa in Hn; cbn in Hn; subst n.
+      eapply eval_exp_app_proof; [ exact HmE | rewrite Harg; exact Hpa | exact Hmn ]. }
+  econstructor; [ exact Ec | rewrite Hkc, Hkb; destruct Hev; exact HappE | exact Hgc |].
+  rewrite exp_sub_extend_sub; cbn [exp_sub].
+  rewrite exp_wk_id in HMN.
+  pose proof (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HMN) as HOTP.
+  pose proof (glu_univ_elem_typ_unique_upto_exp_eq' Hgb Hnb HOTP HBcP) as HOTeq.
+  exact (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hgb _ _ _ _ _ HMN HOTeq).
 Qed.
 
-Lemma glu_rel_exp_app : forall {Γ M N A B} {i : nat},
-    Γ ▹ A ⊩ B : Typeω@i ->
-    Γ ⊩ M : Π A B ->
+(** A family of propositions at a glued argument is a glued proposition:
+    the value of the instance is related to the family's at the
+    argument's value ([per_univ_of_instance_at]), where the family glues. *)
+Lemma glu_rel_exp_instance_prop : forall {Γ κd A B N} {i : nat},
+    Γ ⊩ A : abs_kind_sort κd Typeω@i ->
+    Γ ▹{κd} A ⊩ B : Propₘ ->
+    Γ ⊩ N : A ->
+    Γ ⊩ B[Id,,N] : Propₘ.
+Proof.
+  intros * HA HB HN.
+  destruct (presup_ctx_glu_rel_exp HA) as [SbΓ HSbΓ].
+  destruct (presup_ctx_glu_rel_exp HB) as [SbB HSbB].
+  pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
+  pose proof (glu_rel_exp_to_wf_exp HB) as HBt.
+  pose proof (glu_rel_exp_to_wf_exp HN) as HNt.
+  pose proof (glu_rel_exp_kind_sort_large_inversion HSbΓ HA) as HAg.
+  assert (HNg : forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ SbΓ -> glu_rel_exp_with_sub i Δ N A σ ρ).
+  { apply (glu_rel_exp_at_typ_index HSbΓ); [| exact HN ].
+    intros Δ σ ρ Hσ; apply glu_rel_typ_with_sub_of_point; exact (proj2 (HAg _ _ _ Hσ)). }
+  assert (HNs : exp_scoped (List.length Γ) N) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HNt))).
+  pose proof (completeness_fundamental_exp _ _ _ HAt) as HAc.
+  pose proof (completeness_fundamental_exp _ _ _ HBt) as HBc.
+  pose proof (completeness_fundamental_exp _ _ _ HNt) as HNc.
+  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [R HR].
+  destruct (glu_ctx_env_per_ctx_env HSbB) as [RB HRB].
+  eapply glu_rel_exp_of_prop; [ exact HSbΓ |].
+  intros Δ σ ρ Hσ.
+  pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
+  destruct (HNg _ _ _ Hσ) as [a n Pa Ela Ea Hn Hga HNσ].
+  pose proof (glu_cons_sub_at HSbΓ HSbB Hσ Ea Hga HNσ) as Hc.
+  pose proof (glu_ctx_env_per_env HSbB HRB Hc) as Hρn.
+  destruct (per_univ_of_instance_at (κc := ak_propositional) (i := 0) HR HRB HAc HBc HNc HNs Hρ Ea Hn Hρn)
+    as (c & b & Ec & Eb & [Rc HRc]).
+  destruct (glu_rel_exp_prop_inversion HSbB HB _ _ _ Hc) as (b' & Eb' & Hpb & HbP).
+  functional_eval_rewrite_clear.
+  exists c; split; [ exact Ec |].
+  assert (HRcc : DF c ≈ c ∈ per_univ_elem 0 ↘ Rc) by (etransitivity; [ exact HRc | symmetry; exact HRc ]).
+  assert (Hkc : domain_kind c = ak_propositional) by (rewrite (per_univ_elem_kind _ _ _ _ HRc); exact (per_prop_left _ _ Hpb)).
+  pose proof (per_univ_elem_per_prop_of_kind HRcc Hkc) as Hpc.
+  split; [ exact Hpc |].
+  assert (Hgb : DG b ∈ glu_univ_elem 0 ↘ prop_glu_typ_pred b ↘ proof_glu_exp_pred b)
+    by (simp glu_univ_elem; eapply glu_univ_elem_core_prop; [ exact Hpb | reflexivity | reflexivity ]).
+  assert (Hgc : DG c ∈ glu_univ_elem 0 ↘ prop_glu_typ_pred b ↘ proof_glu_exp_pred b)
+    by (eapply glu_univ_elem_resp_per_univ; [ eexists; symmetry; exact HRc | exact Hgb ]).
+  destruct (glu_univ_elem_prop_inv _ _ _ _ Hpc Hgc) as [EP _].
+  rewrite exp_sub_extend_sub; apply EP; exact HbP.
+Qed.
+
+(** An application ([wf_app]): of a function into a type of an evaluated
+    kind, or of a proof of a [∀], a proof of the instance. *)
+Lemma glu_rel_exp_app : forall {Γ κd κc A Srt B M N} {i : nat},
+    Γ ⊩ A : Srt ->
+    sort_kind Srt κd ->
+    Γ ▹{κd} A ⊩ B : abs_kind_sort κc Typeω@i ->
+    pi_kinds κd κc ->
+    Γ ⊩ M : a_pi κd κc A B ->
     Γ ⊩ N : A ->
     Γ ⊩ M $ N : B[Id,,N].
 Proof.
-  intros * HB HM HN.
-  assert (⊩ Γ ▹ A) as [SbΓA] by mauto 3.
-  match_by_head (glu_ctx_env SbΓA) invert_glu_ctx_env.
-  apply_predicate_equivalence.
-  rename i0 into j.
-  rename TSb into SbΓ.
-  assert (Γ ▹ A ⊩ B : Typeω@i) by mauto 4.
-  assert (Γ ⊩ A : Typeω@j) by (econstructor; [eassumption |]; mauto 4).
-  assert (⊩ Γ) by mauto 2.
-  assert (j <= max i j) by lia.
-  assert (Γ ⊢ Typeω@j ⊆ Typeω@(max i j)) by mauto 3.
-  assert (Γ ⊩ A : Typeω@(max i j)) by mauto 3.
-  assert (⊩ Γ ▹ A) by mauto 2.
-  assert (i <= max i j) by lia.
-  assert (Γ ▹ A ⊢ Typeω@i ⊆ Typeω@(max i j)) by mauto 4.
-  assert (Γ ▹ A ⊩ B : Typeω@(max i j)) by mauto 3.
-  mauto 2 using glu_rel_exp_app_helper.
+  intros * HA HS HB Hk HM HN.
+  destruct (sort_kind_abs_kind_sort_inv HS) as [j ->].
+  pose proof (glu_rel_exp_kind_sort_lift (k := max j i) (PeanoNat.Nat.le_max_l j i) HA) as HA'.
+  pose proof (glu_rel_exp_kind_sort_lift (k := max j i) (PeanoNat.Nat.le_max_r j i) HB) as HB'.
+  destruct (evaluated_kind_or_propositional κc) as [Hev | ->].
+  - exact (glu_rel_exp_app_evaluated HA' HB' Hk Hev HM HN).
+  - apply glu_rel_exp_proof; [ exact (glu_rel_exp_instance_prop HA' HB' HN) |].
+    eapply wf_app; [ exact (glu_rel_exp_to_wf_exp HA') | apply sort_kind_abs_kind_sort
+                   | exact (glu_rel_exp_to_wf_exp HB') | exact Hk | exact (glu_rel_exp_to_wf_exp HM)
+                   | exact (glu_rel_exp_to_wf_exp HN) ].
 Qed.
-
-Hint Resolve glu_rel_exp_app : mctt.
 
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve glu_rel_exp_pi : mctt.
-#[export]
-Hint Resolve glu_rel_exp_fn : mctt.
-#[export]
-Hint Resolve glu_rel_exp_app : mctt.
+Hint Resolve glu_rel_exp_fn glu_rel_exp_app : mctt.
 
 (** ** The Rules *)
 
 #[local] Generalizable All Variables.
 
-(** [Π] at a universe: the case of a large universe and that of a small
-    one. *)
+(** [Π] at a universe ([wf_pi]): at a large universe, or at a small one. *)
 Lemma glu_pi :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ A : U ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : U[↑]ʷ ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ Π A B : U ).
+     Θ ⍮ Ξ ⍮ Γ ⊩ A : abs_kind_sort κd U ->
+     Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊩ B : (abs_kind_sort κc U)[↑]ʷ ->
+     pi_kinds κd κc ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ a_pi κd κc A B : abs_kind_sort κc U ).
 Proof.
   glu_intro.
-  match goal with HU : (exists i, ?U = Typeω@i) \/ _ |- _ => destruct HU as [[? ->] | (? & ? & -> & ?)] end;
-    [ eapply glu_rel_exp_pi | eapply glu_rel_exp_pi_small_tm ]; eassumption.
+  match goal with HU : (exists i, ?U = Typeω@i) \/ _ |- _ => destruct HU as [[? ->] | (? & ? & -> & ?)] end.
+  - rewrite abs_kind_sort_wk in *; cbn [exp_wk] in *.
+    eapply glu_rel_exp_pi_large; eassumption.
+  - eapply glu_rel_exp_pi_small; eassumption.
 Qed.
 
 Lemma glu_fn :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ M : B ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ λ A M : Π A B ).
-Proof. glu_intro; eapply glu_rel_exp_fn; eassumption. Qed.
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
+     sort_kind Srt κd ->
+     Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊩ B : abs_kind_sort κc Typeω@i ->
+     pi_kinds κd κc ->
+     Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊩ M : B ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ λ A M : a_pi κd κc A B ).
+Proof. glu_intro; eapply (glu_rel_exp_fn (A := A) (Srt := Srt)); eassumption. Qed.
 
 Lemma glu_app :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ M : Π A B ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
+     sort_kind Srt κd ->
+     Θ ⍮ Ξ ⍮ Γ ▹{κd} A ⊩ B : abs_kind_sort κc Typeω@i ->
+     pi_kinds κd κc ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : a_pi κd κc A B ->
      Θ ⍮ Ξ ⍮ Γ ⊩ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M $ N : B[Id,,N] ).
-Proof. glu_intro; eapply glu_rel_exp_app; eassumption. Qed.
+Proof. glu_intro; eapply (glu_rel_exp_app (A := A) (Srt := Srt)); eassumption. Qed.
 
+(** The equations glue their context, which their domain's premise
+    does. *)
 Lemma glu_exp_eq_pi_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ A : U ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ A ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : abs_kind_sort κd U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
 
 Lemma glu_exp_eq_fn_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ A ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
 
 Lemma glu_exp_eq_app_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : Typeω@i ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
 
 Lemma glu_exp_eq_pi_beta :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ M : B ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ N : A ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
 
 Lemma glu_exp_eq_fn_eta :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ M : Π A B ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
