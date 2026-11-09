@@ -1497,12 +1497,17 @@ Record glu_rel_exp Γ M A : Prop := mk_glu_rel_exp
       Δ ⊢ˢ σ ® ρ ∈ glu_rel_exp_sb ->
       glu_rel_exp_with_sub glu_rel_exp_lvl Δ M A σ ρ }.
 
-(** There is no gluing judgment for substitutions, so the fundamental theorem
-    has two parts. A gluing predicate is indexed by a value, and
-    [⟦τ ⨟ σ⟧(ρ) = ⟦τ⟧(⟦σ⟧ρ)] is not an equation when substitution is an
-    operation, so such a judgment cannot be stated. Concrete substitutions are
-    handled by lemmas about [glu_rel_exp] instead, just as
-    [completeness_fundamental] has no substitution part. *)
+(** The fundamental theorem has two parts, contexts and terms: the system
+    has no substitution judgment, just as [completeness_fundamental] has no
+    substitution part.  Substitution is an operation on syntax, so
+    [⟦τ ⨟ σ⟧(ρ)] and [⟦τ⟧(⟦σ⟧ρ)] are different environments, only related
+    by the context PER (evaluating a substitution also retags the
+    environment at the target context).  A glued substitution
+    ([Γ ⊩ˢ τ : Δ], below) is therefore glued at an environment related to
+    its value, and glued substitutions are not composed; glued weakenings
+    ([Γ ⊩ʷ φ : Δ]) compose, as a weakening acts on environments without
+    evaluation.  Both move term judgments along concrete substitutions
+    ([glu_rel_exp_sub], [glu_rel_exp_wk]). *)
 
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
@@ -1530,6 +1535,33 @@ Record glu_rel_wk Γ φ Δ : Prop := mk_glu_rel_wk
   ; glu_rel_wk_glu : forall Δ' σ ρ, Δ' ⊢ˢ σ ® ρ ∈ glu_rel_wk_sb -> Δ' ⊢ˢ ι φ ⨟ σ ® ⟪φ⟫ ρ ∈ glu_rel_wk_sb' }.
 
 Notation "Γ ⊩ʷ φ : Δ" := (glu_rel_wk Γ φ Δ) (at level 70, φ constr at level 0, Δ at level 69).
+
+(** A substitution glued from [Γ] to [Δ]: precomposed with it, a
+    substitution glued into [Γ] at [ρ] is glued into [Δ] at an environment
+    the context PER of [Δ] relates to the value of [τ] at [ρ].  The value
+    itself stores the entries at [Δ]'s types ([ctx_retag], [centry_tag]),
+    the glued environment at any related ones.  It is semantic, so the
+    values of [M[τ]] at [ρ] and of [M] there are related, and term
+    judgments move along it ([glu_rel_exp_sub]). *)
+#[warnings="-cannot-define-projection"]
+Record glu_rel_sub Γ τ Δ : Prop := mk_glu_rel_sub
+  { (** The glued substitutions into the source *)
+    glu_rel_sub_sb : glu_sub_pred
+  ; glu_rel_sub_ctx : EG Γ ∈ glu_ctx_env ↘ glu_rel_sub_sb
+    (** The glued substitutions into the target *)
+  ; glu_rel_sub_sb' : glu_sub_pred
+  ; glu_rel_sub_ctx' : EG Δ ∈ glu_ctx_env ↘ glu_rel_sub_sb'
+    (** The substitution is well formed *)
+  ; glu_rel_sub_typed : Γ ⊢ˢ τ : Δ
+    (** It is semantic *)
+  ; glu_rel_sub_sem : Γ ⊨ˢ τ ≈ τ : Δ
+    (** A substitution glued into the source, precomposed with it, is glued
+        into the target at an environment related to its value *)
+  ; glu_rel_sub_glu : forall Δ' σ ρ, Δ' ⊢ˢ σ ® ρ ∈ glu_rel_sub_sb ->
+      exists ρτ, Δ' ⊢ˢ τ ⨟ σ ® ρτ ∈ glu_rel_sub_sb' /\
+        forall RΔ ρτ0, EF Δ ≈ Δ ∈ per_ctx_env ↘ RΔ -> ⟦ τ : Δ ⟧s ρ ↘ ρτ0 -> Dom ρτ0 ≈ ρτ ∈ RΔ }.
+
+Notation "Γ ⊩ˢ τ : Δ" := (glu_rel_sub Γ τ Δ) (at level 70, τ at level 69, Δ at level 69).
 
 End Fixed_GCtx.
 
@@ -1588,6 +1620,7 @@ Hint Extern 1 =>
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
 Notation "Γ ⊩ʷ φ : Δ" := (glu_rel_wk Γ φ Δ) (at level 70, φ constr at level 0, Δ at level 69).
+Notation "Γ ⊩ˢ τ : Δ" := (glu_rel_sub Γ τ Δ) (at level 70, τ at level 69, Δ at level 69).
 
 (** [induction H using glu_univ_elem_ind] does not apply, for the reason
     [per_univ_elem_induction] explains. The tactics below perform the same

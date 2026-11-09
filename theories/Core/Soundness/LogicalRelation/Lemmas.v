@@ -2912,6 +2912,78 @@ Proof.
   econstructor; [ exact Ea1 | exact Hm' | exact Hg1 | exact HN ].
 Qed.
 
+(** ** Glued Substitutions
+
+    A term judgment moves along a glued substitution, as along a glued
+    weakening: the values of [M[τ]] at [ρ] and of [M] at the value of [τ]
+    at [ρ] are related by the judgment of [M] in the PER model, read along
+    [τ]. *)
+Lemma glu_rel_exp_sub : forall {Γ Δ τ A M},
+    Γ ⊩ˢ τ : Δ -> Δ ⊩ M : A -> Γ ⊩ M[τ] : A[τ].
+Proof.
+  intros * [SbΓ HSbΓ SbΔ HSbΔ Hτt Hτs Hτg] HM.
+  pose proof HM as [SbΔ' HSbΔ' i HMb].
+  assert (E : SbΔ <∙> SbΔ') by (eapply functional_glu_ctx_env; eassumption).
+  pose proof (glu_rel_exp_to_wf_exp HM) as HMt.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HMt Hτt) as HMτ.
+  destruct (completeness_fundamental_exp _ _ _ HMt) as [RΔ HRΔ j HMgen].
+  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [RΓ HRΓ].
+  destruct (rel_sub_under_ctx_simple Hτs) as [RΓ1 [HRΓ1 [RΔ1 [HRΔ1 Hs]]]].
+  assert (E1 : RΓ <~> RΓ1) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (rel_exp_under_ctx_simple (completeness_fundamental_exp _ _ _ HMt)) as (RΔ2 & HRΔ2 & j2 & Hsim).
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max i j); [ exact HSbΓ |].
+  intros Δ' σ ρ Hσ.
+  pose proof (glu_ctx_env_per_env HSbΓ HRΓ Hσ) as Hρ.
+  destruct (Hs _ _ (proj1 (E1 _ _) Hρ)) as [ρτ0 [ρτ0' [Hev [_ _]]]].
+  destruct (Hτg _ _ _ Hσ) as (ρτ & Hσ' & Hrel); apply E in Hσ'.
+  pose proof (Hrel _ _ HRΔ2 Hev) as Hρτ.
+  destruct (HMb _ _ _ Hσ') as [a m P El Ea Em Hg HE].
+  rewrite <- !exp_sub_sub in HE.
+  (** The substituted judgment's values at [ρ] against [M]'s at the value
+      of [τ], and those against [M]'s at the glued environment *)
+  destruct (HMgen _ _ HRΓ _ _ Hτs _ _ _ _ Hρ Hev Hev) as [R [Htyp Hexp]].
+  pose proof Htyp as [a1 a2 a3 a4 Ea1 Ea2 _ _ Hch].
+  destruct Hch as (HR & _).
+  destruct (Hsim _ _ Hρτ) as (b & b' & R' & Eb & Eb' & HR' & Hm').
+  assert (b = a2) as -> by (eapply functional_eval_exp; eassumption).
+  assert (b' = a) as -> by (eapply functional_eval_exp; eassumption).
+  assert (HR22 : DF a2 ≈ a2 ∈ per_univ_elem j ↘ R) by (eapply per_univ_trans; [ apply per_univ_sym; exact HR | exact HR ]).
+  pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR22 HR') as ERR'.
+  assert (HRR' : DF a2 ≈ a ∈ per_univ_elem j2 ↘ R) by (eapply per_univ_elem_resp_iff; [ exact HR' | symmetry; exact ERR' ]).
+  pose proof (per_univ_trans _ _ _ _ _ _ HR HRR') as HR1.
+  assert (HPR0 : PER R) by (eapply per_elem_PER; exact HR).
+  (** The gluing at the substituted type's value, at the larger level *)
+  destruct (glu_univ_elem_cumu_max_left (j := j) Hg) as (P' & El' & Hg').
+  assert (HE' : Δ' ⊢ M[τ][σ] : A[τ][σ] ® m ∈ El')
+    by (eapply glu_univ_elem_exp_cumu_max_left; [ exact Hg | exact Hg' | exact HE ]).
+  pose proof (per_univ_elem_cumu_max_right i j _ _ _ HR1) as HRk.
+  assert (Hg1 : DG a1 ∈ glu_univ_elem (max i j) ↘ P' ↘ El')
+    by (eapply glu_univ_elem_resp_per_univ; [| exact Hg' ]; eexists; symmetry; exact HRk).
+  pose proof (per_univ_elem_kind _ _ _ _ HR1) as Hk.
+  pose proof (per_univ_elem_kind _ _ _ _ HR) as Hk2.
+  (** The term's value: the substituted term's, moved along the relation *)
+  assert (Hv : exists m1, (evaluated_kind (domain_kind a1) -> ⟦ M[τ] ⟧ ρ ↘ m1) /\ Δ' ⊢ M[τ][σ] : A[τ][σ] ® m1 ∈ El').
+  { destruct (domain_kind a1) eqn:Hk1;
+      [| exists m; split; [ intros Hek; inversion Hek | exact HE' ] |].
+    all: destruct Hexp as [(c & Hc & Hp) | [v1 v2 v3 v4 Hv1 Hv2 _ _ Hvc]];
+      [ assert (c = a1) as -> by (eapply functional_eval_exp; eassumption); congruence |].
+    all: destruct Hm' as [Hp' | (w2 & w & Ew2 & Ew & Hw)]; [ congruence |].
+    all: destruct Hvc as (Hm12 & _).
+    all: exists v1; split; [ intros _; exact Hv1 |].
+    all: rewrite <- Hk in Em; cbn [glu_term_value] in Em.
+    all: pose proof (functional_eval_exp _ _ _ _ Ew Em) as ->.
+    all: pose proof (functional_eval_exp _ _ _ _ Ew2 Hv2) as ->.
+    all: assert (Hm12' : R v1 m) by (etransitivity; [ exact Hm12 | apply ERR'; exact Hw ]).
+    all: clear Hm12; rename Hm12' into Hm12.
+    all: destruct (glu_univ_elem_per_univ _ _ _ _ Hg') as [R2 HR2].
+    all: pose proof (per_univ_elem_left_irrel _ _ _ _ _ _ _ HRk HR2) as ER.
+    all: assert (HPR : PER R2) by (eapply per_elem_PER; exact HR2).
+    all: apply (glu_univ_elem_trm_resp_per_elem _ _ _ _ Hg' _ HR2 _ _ _ _ _ HE'); symmetry; apply ER; exact Hm12. }
+  destruct Hv as (m1 & Em1 & HE1).
+  destruct (glu_term_value_intro Hg1 HMτ HRΓ Hρ Em1 HE1) as (m' & Hmv & HN).
+  econstructor; [ exact Ea1 | exact Hmv | exact Hg1 | exact HN ].
+Qed.
+
 End Fixed_GCtx.
 
 #[export]
