@@ -882,6 +882,24 @@ Section GroupSort.
       replace (x + k) with (List.length L + x) by lia.
       apply sb_of_list_ge.
   Qed.
+
+  (** A view's instance is glued at the container's uniform telescope over
+      the group's uniform parameters: its instance over the members as
+      variables ([glu_views_self_is]) along [grp_sb p D]
+      ([valid_group_views_view_is]). *)
+  Lemma glu_group_view_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some Dq -> decl_closed Dq -> List.nth_error Is j = Some I ->
+      List.nth_error (tele_insts (ind_uparams Dq) Id Is) j = Some T ->
+      ind_uparams D ⊩ I : T.
+  Proof.
+    intros * HMk Hh Hq HcQ HI HT.
+    destruct (glu_ind_decl_view_self _ HG) as [IsS HV].
+    rewrite (glu_views_self_link _ _ HV _ (valid_group_mpath _ _ Hg) _ _ _ _ _ _ HMk Hh) in HI, HT.
+    rewrite <- (tele_insts_sub (ind_uparams Dq) 0 Id Id (grp_sb p D) (IsS k) (decl_closed_ass _ HcQ) (decl_closed_uparams _ HcQ)
+                  ltac:(intros; lia)) in HT.
+    apply nth_error_map_inv in HI as (I0 & HI0 & ->); apply nth_error_map_inv in HT as (T0 & HT0 & ->).
+    exact (glu_rel_exp_sub glu_grp_sb (glu_views_self_is _ _ HV _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HI0 HT0)).
+  Qed.
 End GroupSort.
 
 (** ** The Contexts of the Arguments, Given the Weakening Before
