@@ -2803,6 +2803,51 @@ Qed.
 
 Hint Resolve glu_rel_exp_to_wf_exp : mctt.
 
+(** *** The Value of a Term at the Kind of Its Type
+
+    A glued term's value is the proof kept, [⋆ᵈ⟨M, ρ⟩], at a proposition
+    ([glu_term_value]).  An element glued at an evaluated value gives one
+    glued at the term's value: at a proposition any proof that reads back is
+    an element, and a proof kept over an environment of the context reads
+    back ([per_ctx_env_kept_proof_readable]). *)
+
+(** A type value of the propositional kind is a proposition. *)
+Lemma per_univ_elem_per_prop_of_kind : forall {i R a a'},
+    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+    domain_kind a = ak_propositional ->
+    Dom a ≈ a' ∈ per_prop.
+Proof.
+  intros * H Hk.
+  basic_invert_per_univ_elem H; try assumption.
+  all: cbn in Hk; try discriminate Hk.
+  all: match goal with H : evaluated_kind _ |- _ => inversion H; subst; discriminate end.
+Qed.
+
+Lemma glu_term_value_intro : forall {i a P El Γ M B Δ A N m ρ R},
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    Γ ⊢ M : B ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    Dom ρ ≈ ρ ∈ R ->
+    (evaluated_kind (domain_kind a) -> ⟦ M ⟧ ρ ↘ m) ->
+    Δ ⊢ N : A ® m ∈ El ->
+    exists m', glu_term_value M ρ (domain_kind a) m' /\ Δ ⊢ N : A ® m' ∈ El.
+Proof.
+  intros * Hglu HM HΓ Hρ Hm HN.
+  destruct (domain_kind a) eqn:Hk.
+  - exists m; split; [ apply Hm; constructor | exact HN ].
+  - (** At a proposition: the proof kept *)
+    exists ⋆ᵈ⟨M, ρ⟩; split; [ reflexivity |].
+    destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R' HR'].
+    pose proof (per_univ_elem_per_prop_of_kind HR' Hk) as Hp.
+    destruct (glu_univ_elem_prop_inv _ _ _ _ Hp Hglu) as [_ HEl].
+    apply HEl in HN; apply HEl.
+    destruct HN as [HAt HNt _].
+    assert (HsM : exp_scoped (List.length Γ) M) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HM))).
+    destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓ (exp_scoped_free_bound _ _ HsM) _ _ Hρ) as [Hr _].
+    econstructor; [ exact HAt | exact HNt | split; exact Hr ].
+  - exists m; split; [ apply Hm; constructor | exact HN ].
+Qed.
+
 End Fixed_GCtx.
 
 #[export]

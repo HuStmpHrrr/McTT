@@ -5,7 +5,7 @@
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem.
+From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation.
 Import Domain_Notations Fixed_Notations.
@@ -15,14 +15,23 @@ Import Wk_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** The presuppositions of a glued term: its context glues, and so does
+    its type, as a type, at every substitution its context glues: its value
+    is glued and the type is glued at it.  The type need not be a term of a
+    universe: it may be a proposition, or a type of levels, of [LevelSort]
+    (itself in no sort), as [⊢ᵗ] says syntactically. *)
 Lemma presup_glu_rel_exp : forall {Γ M A},
     Γ ⊩ M : A ->
-    ⊩ Γ /\ (exists i, Γ ⊩ A : Typeω@i).
+    ⊩ Γ /\
+      (exists Sb i, EG Γ ∈ glu_ctx_env ↘ Sb /\
+                 forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ Sb -> glu_rel_typ_with_sub i Δ A σ ρ).
 Proof.
-  intros * [? ? ? ?].
-  split; [eexists; eassumption |].
-  eexists; econstructor; [eassumption |].
-  intros; mauto 4.
+  intros * [Sb HSb i HM].
+  split; [ eexists; eassumption |].
+  exists Sb, i; split; [ exact HSb |].
+  intros Δ σ ρ Hσ.
+  destruct (HM _ _ _ Hσ) as [a m P El Ha Hm Hglu HMg].
+  econstructor; [ exact Ha | exact Hglu | eapply glu_univ_elem_trm_typ; eassumption ].
 Qed.
 
 Lemma presup_ctx_glu_rel_exp : forall {Γ M A},
@@ -37,7 +46,8 @@ Hint Resolve presup_ctx_glu_rel_exp : mctt.
 
 Lemma presup_typ_glu_rel_exp : forall {Γ M A},
     Γ ⊩ M : A ->
-    exists i, Γ ⊩ A : Typeω@i.
+    exists Sb i, EG Γ ∈ glu_ctx_env ↘ Sb /\
+            forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ Sb -> glu_rel_typ_with_sub i Δ A σ ρ.
 Proof.
   intros * []%presup_glu_rel_exp.
   eassumption.
@@ -45,176 +55,136 @@ Qed.
 
 Hint Resolve presup_typ_glu_rel_exp : mctt.
 
+(** A sort of types is the sort of a kind next to a large universe. *)
+Lemma type_sort_abs_kind_sort_inv : forall S, type_sort S -> exists κ (j : nat), S = abs_kind_sort κ Typeω@j.
+Proof. intros S []; [ exists ak_relevant, i | exists ak_propositional, 0 | exists ak_level, 0 ]; reflexivity. Qed.
+
+(** The value of a type weakened past an entry is related to its value in
+    the tail ([completeness_fundamental_typ_shift] at any sort). *)
+Lemma glu_typ_shift_per : forall {Γ e κ A} {i : nat} {env_rel ρ},
+    ⊢ (e :: Γ)%list ->
+    Γ ⊢ A : abs_kind_sort κ Typeω@i ->
+    EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ env_rel ->
+    Dom ρ ≈ ρ ∈ env_rel ->
+    exists a a', ⟦ A[↑]ʷ ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ↯ ↘ a' /\ Dom a ≈ a' ∈ per_univ i.
+Proof.
+  intros * He HA Hper Hρ.
+  assert ((e :: Γ)%list ⊨ʷ ↑ : Γ)
+    by (apply rel_wk_under_ctx_shift, completeness_fundamental_ctx; eassumption).
+  assert (Γ ⊨ᵗ A ≈ A at i) by (eapply rel_type_of_abs_kind_sort, completeness_fundamental_exp; eassumption).
+  destruct (rel_type_inversion_wk ltac:(eassumption) ltac:(eassumption)) as [env_rel' [Hper' Hbridge]].
+  handle_per_ctx_env_irrel.
+  destruct (Hbridge _ _ Hρ) as [a [a' ?]].
+  rewrite eval_wk_shift in *.
+  exists a, a'; eassumption.
+Qed.
+
+(** A variable whose type is weakened past an entry: glued at the value of
+    the weakened type, given an element glued at a related value, at the
+    variable's value at the kind of the type ([glu_term_value_intro]). *)
+Lemma glu_rel_exp_with_sub_var_shift : forall {i j : nat} {Γ' A Δ σ ρ x a1 a2 P El m R},
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R ->
+    Dom ρ ≈ ρ ∈ R ->
+    Γ' ⊢ #x : A[↑]ʷ ->
+    ⟦ A[↑]ʷ ⟧ ρ ↘ a1 ->
+    Dom a1 ≈ a2 ∈ per_univ j ->
+    DG a2 ∈ glu_univ_elem i ↘ P ↘ El ->
+    (evaluated_kind (domain_kind a1) -> ⟦ #x ⟧ ρ ↘ m) ->
+    Δ ⊢ #x[σ] : A[↑]ʷ[σ] ® m ∈ El ->
+    glu_rel_exp_with_sub (max i j) Δ #x A[↑]ʷ σ ρ.
+Proof.
+  intros * HR Hρ Hx Ha1 [Ra Ha12] Hglu Hm HN.
+  destruct (glu_univ_elem_cumu_max_left (j := j) Hglu) as (P' & El' & Hglu').
+  assert (HN' : Δ ⊢ #x[σ] : A[↑]ʷ[σ] ® m ∈ El')
+    by (eapply glu_univ_elem_exp_cumu_max_left; [ exact Hglu | exact Hglu' | exact HN ]).
+  assert (Hglu1 : DG a1 ∈ glu_univ_elem (max i j) ↘ P' ↘ El').
+  { eapply glu_univ_elem_resp_per_univ; [| exact Hglu' ].
+    eexists; symmetry; eapply per_univ_elem_cumu_max_right; exact Ha12. }
+  destruct (glu_term_value_intro Hglu1 Hx HR Hρ Hm HN') as (m' & Hm' & HN'').
+  econstructor; [ exact Ha1 | exact Hm' | exact Hglu1 | exact HN'' ].
+Qed.
+
 (** The variable case. Syntactically it is direct: [#(S n)[σ]] is
     [#n[Wk⨟σ]] and [ρ (S n)] is [ρ↯ n], so one [exp_sub_shift] suffices. The
     type value needs more work: [cons_glu_sub_pred] supplies [⟦A⟧(ρ↯)] while
     the goal mentions [⟦A[↑]ʷ⟧(ρ)], and the two are not equal.
     [completeness_fundamental_typ_shift] relates them, and
     [glu_univ_elem_resp_per_univ] moves [P] and [El] across. *)
+
+(** The tail of a glued substitution into an extended context glues in
+    the tail's gluing. *)
+Lemma glu_ctx_env_sub_tail : forall {e Γ Sb TSb Δ σ ρ},
+    EG (e :: Γ)%list ∈ glu_ctx_env ↘ Sb ->
+    EG Γ ∈ glu_ctx_env ↘ TSb ->
+    Δ ⊢ˢ σ ® ρ ∈ Sb ->
+    Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb.
+Proof.
+  intros * H HT Hσ.
+  inversion H; subst; apply_predicate_equivalence;
+    match goal with HT' : EG Γ ∈ glu_ctx_env ↘ ?TSb' |- _ =>
+      assert (E : TSb' <∙> TSb) by (eapply functional_glu_ctx_env; eassumption) end;
+    destruct Hσ; apply E; eassumption.
+Qed.
+
 Lemma glu_rel_exp_vlookup : forall {Γ x A},
     ⊩ Γ ->
     Γ ∋ #x : A ->
     Γ ⊩ #x : A.
 Proof.
-  intros * [Sb] Hx. gen Sb.
-  induction Hx; intros; [ | | | destruct e as [B | B N | U | B N U] ];
-    match_by_head1 glu_ctx_env ltac:(fun H => invert_glu_ctx_env H).
-  - eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [econstructor; try reflexivity; mauto |].
-    intros Δ σ ρ HSb.
-    assert (glu_ctx_env (cons_glu_sub_pred i Γ A TSb) (Γ ▹ A))
-      by (econstructor; try reflexivity; eassumption).
-    assert (⊢ Γ ▹ A) by mauto 3.
-    assert (exists R, EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R) as [env_relΓA] by mauto 3.
-    assert (Dom ρ ≈ ρ ∈ env_relΓA) by (eapply glu_ctx_env_per_env; eassumption).
-    destruct (completeness_fundamental_typ_shift (A := A)
-                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
-      as [a' [a'' [? [? ?]]]].
-    destruct_by_head cons_glu_sub_pred.
+  intros * [Sb HSb] Hx. gen Sb.
+  induction Hx; intros;
+    assert (He : ⊢ (_ :: Γ)%list) by (eapply glu_ctx_env_wf_ctx; eassumption);
+    destruct (glu_ctx_env_per_ctx_env HSb) as [R HR];
+    assert (HT : exists TSb, EG Γ ∈ glu_ctx_env ↘ TSb) by (inversion HSb; subst; eexists; eassumption);
+    destruct HT as [TSb HTSb].
+  (** The innermost entry: its head, glued at its type in the tail, at the
+      value of the weakened type ([glu_typ_shift_per]) *)
+  - destruct (glu_ctx_env_cons_clean_inversion HTSb HSb) as (i & HA & _ & HSbe).
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max i i); [ exact HSb |].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
+    apply HSbe in Hσ; destruct Hσ as [? ? ? ? P El Hσt Ea Hglu HN _ _ _].
+    destruct (glu_typ_shift_per He HA HR Hρ) as (a1 & a2 & Ea1 & Ea2 & Hper).
     functional_eval_rewrite_clear.
-    assert (glu_univ_elem i P El a')
-      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
-    econstructor; mauto 3.
-  - (** The head of a definition entry glues as the head of an assumption
-        entry. *)
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [econstructor; try reflexivity; mauto |].
-    intros Δ σ ρ HSb.
-    assert (glu_ctx_env (cons_def_glu_sub_pred i Γ A M TSb) (Γ ▸ A ≔ M))
-      by (econstructor; try reflexivity; eassumption).
-    assert (⊢ Γ ▸ A ≔ M) by mauto 3.
-    assert (exists R, EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R) as [env_relΓA] by mauto 3.
-    assert (Dom ρ ≈ ρ ∈ env_relΓA) by (eapply glu_ctx_env_per_env; eassumption).
-    destruct (completeness_fundamental_typ_shift (A := A)
-                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
-      as [a' [a'' [? [? ?]]]].
-    destruct_by_head cons_def_glu_sub_pred.
+    eapply glu_rel_exp_with_sub_var_shift; [ exact HR | exact Hρ | mauto 3 | exact Ea1 | exact Hper | exact Hglu | intros _; constructor | exact HN ].
+  - destruct (glu_ctx_env_cons_def_clean_inversion HTSb HSb) as (i & κ & HA & _ & _ & _ & HSbe).
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max i i); [ exact HSb |].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
+    apply HSbe in Hσ; destruct Hσ as [? ? ? ? P El Hσt Ea Hglu HN _ _ _ _].
+    destruct (glu_typ_shift_per He HA HR Hρ) as (a1 & a2 & Ea1 & Ea2 & Hper).
     functional_eval_rewrite_clear.
-    assert (glu_univ_elem i P El a')
-      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
-    econstructor; mauto 3.
-  - (** The head of a definition with a module part glues as the head of a
-        definition entry. *)
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [econstructor; try reflexivity; mauto |].
-    intros Δ σ ρ HSb.
-    assert (glu_ctx_env (cons_dm_glu_sub_pred i Γ A M U TSb) (Γ ▸ₘ A ≔ M ‖ U))
-      by (econstructor; try reflexivity; eassumption).
-    assert (⊢ Γ ▸ₘ A ≔ M ‖ U) by mauto 3.
-    assert (exists R, EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ ▸ₘ A ≔ M ‖ U ∈ per_ctx_env ↘ R) as [env_relΓA] by mauto 3.
-    assert (Dom ρ ≈ ρ ∈ env_relΓA) by (eapply glu_ctx_env_per_env; eassumption).
-    destruct (completeness_fundamental_typ_shift (A := A)
-                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
-      as [a' [a'' [? [? ?]]]].
-    destruct_by_head cons_dm_glu_sub_pred.
+    eapply glu_rel_exp_with_sub_var_shift; [ exact HR | exact Hρ | mauto 3 | exact Ea1 | exact Hper | exact Hglu | intros _; constructor | exact HN ].
+  - destruct (glu_ctx_env_cons_dm_clean_inversion HTSb HSb) as (i & HA & _ & _ & _ & _ & HSbe).
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max i i); [ exact HSb |].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
+    apply HSbe in Hσ; destruct Hσ as [? ? ? ? P El Hσt Ea Hglu HN _ _ _ _ _].
+    destruct (glu_typ_shift_per (κ := ak_relevant) He HA HR Hρ) as (a1 & a2 & Ea1 & Ea2 & Hper).
     functional_eval_rewrite_clear.
-    assert (glu_univ_elem i P El a')
-      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
-    econstructor; mauto 3.
-  - assert (Γ ⊩ #n : A) as Hn by mauto.
-    assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
-    invert_glu_rel_exp Hn.
-    rename x into k.
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max j k); [econstructor; try reflexivity; mauto |].
-    intros Δ σ ρ HSb.
-    assert (glu_ctx_env (cons_glu_sub_pred i Γ B TSb) (Γ ▹ B))
-      by (econstructor; try reflexivity; eassumption).
-    assert (⊢ Γ ▹ B) by mauto 3.
-    assert (exists R, EF Γ ▹ B ≈ Γ ▹ B ∈ per_ctx_env ↘ R) as [env_relΓB] by mauto 3.
-    assert (Dom ρ ≈ ρ ∈ env_relΓB) by (eapply glu_ctx_env_per_env; eassumption).
-    assert (Γ ⊢ A : Typeω@(max j k)) by mauto 3 using lift_exp_max_left.
-    destruct (completeness_fundamental_typ_shift (A := A) (i := max j k)
-                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
-      as [a' [a'' [? [? ?]]]].
-    destruct_by_head cons_glu_sub_pred.
-    destruct_glu_rel_exp_with_sub.
-    simplify_evals.
-    assert (exists P' El', glu_univ_elem (max j k) P' El' a'') as [P' [El' HP']]
-      by (eapply glu_univ_elem_cumu_max_right; eassumption).
-    assert (glu_univ_elem (max j k) P' El' a')
-      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
-    econstructor; try eassumption.
-    1: mauto 3.
-    rewrite exp_sub_shift.
-    eapply glu_univ_elem_exp_cumu_max_right; [| exact HP' |]; eassumption.
-  - assert (Γ ⊩ #n : A) as Hn by mauto.
-    assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
-    invert_glu_rel_exp Hn.
-    rename x into k.
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max j k); [econstructor; try reflexivity; mauto |].
-    intros Δ σ ρ HSb.
-    assert (glu_ctx_env (cons_def_glu_sub_pred i Γ B N TSb) (Γ ▸ B ≔ N))
-      by (econstructor; try reflexivity; eassumption).
-    assert (⊢ Γ ▸ B ≔ N) by mauto 3.
-    assert (exists R, EF Γ ▸ B ≔ N ≈ Γ ▸ B ≔ N ∈ per_ctx_env ↘ R) as [env_relΓB] by mauto 3.
-    assert (Dom ρ ≈ ρ ∈ env_relΓB) by (eapply glu_ctx_env_per_env; eassumption).
-    assert (Γ ⊢ A : Typeω@(max j k)) by mauto 3 using lift_exp_max_left.
-    destruct (completeness_fundamental_typ_shift (A := A) (i := max j k)
-                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
-      as [a' [a'' [? [? ?]]]].
-    destruct_by_head cons_def_glu_sub_pred.
-    destruct_glu_rel_exp_with_sub.
-    simplify_evals.
-    assert (exists P' El', glu_univ_elem (max j k) P' El' a'') as [P' [El' HP']]
-      by (eapply glu_univ_elem_cumu_max_right; eassumption).
-    assert (glu_univ_elem (max j k) P' El' a')
-      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
-    econstructor; try eassumption.
-    1: mauto 3.
-    rewrite exp_sub_shift.
-    eapply glu_univ_elem_exp_cumu_max_right; [| exact HP' |]; eassumption.
-  - (** Past a module slot: as past a definition, without the tie. *)
-    assert (Γ ⊩ #n : A) as Hn by mauto.
-    assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
-    invert_glu_rel_exp Hn.
-    rename x into k.
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max j k); [econstructor; try reflexivity; mauto |].
-    intros Δ σ ρ HSb.
-    assert (glu_ctx_env (cons_mod_glu_sub_pred Γ U TSb) (Γ ▹ₘ U))
-      by (econstructor; try reflexivity; eassumption).
-    assert (⊢ Γ ▹ₘ U) by mauto 3.
-    assert (exists R, EF Γ ▹ₘ U ≈ Γ ▹ₘ U ∈ per_ctx_env ↘ R) as [env_relΓB] by mauto 3.
-    assert (Dom ρ ≈ ρ ∈ env_relΓB) by (eapply glu_ctx_env_per_env; eassumption).
-    assert (Γ ⊢ A : Typeω@(max j k)) by mauto 3 using lift_exp_max_left.
-    destruct (completeness_fundamental_typ_shift (A := A) (i := max j k)
-                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
-      as [a' [a'' [? [? ?]]]].
-    destruct_by_head cons_mod_glu_sub_pred.
-    destruct_glu_rel_exp_with_sub.
-    simplify_evals.
-    assert (exists P' El', glu_univ_elem (max j k) P' El' a'') as [P' [El' HP']]
-      by (eapply glu_univ_elem_cumu_max_right; eassumption).
-    assert (glu_univ_elem (max j k) P' El' a')
-      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
-    econstructor; try eassumption.
-    1: mauto 3.
-    rewrite exp_sub_shift.
-    eapply glu_univ_elem_exp_cumu_max_right; [| exact HP' |]; eassumption.
-  - (** Past a definition with a module part: as past a definition. *)
-    assert (Γ ⊩ #n : A) as Hn by mauto.
-    assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
-    invert_glu_rel_exp Hn.
-    rename x into k.
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max j k); [econstructor; try reflexivity; mauto |].
-    intros Δ σ ρ HSb.
-    assert (glu_ctx_env (cons_dm_glu_sub_pred i Γ B N U TSb) (Γ ▸ₘ B ≔ N ‖ U))
-      by (econstructor; try reflexivity; eassumption).
-    assert (⊢ Γ ▸ₘ B ≔ N ‖ U) by mauto 3.
-    assert (exists R, EF Γ ▸ₘ B ≔ N ‖ U ≈ Γ ▸ₘ B ≔ N ‖ U ∈ per_ctx_env ↘ R) as [env_relΓB] by mauto 3.
-    assert (Dom ρ ≈ ρ ∈ env_relΓB) by (eapply glu_ctx_env_per_env; eassumption).
-    assert (Γ ⊢ A : Typeω@(max j k)) by mauto 3 using lift_exp_max_left.
-    destruct (completeness_fundamental_typ_shift (A := A) (i := max j k)
-                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
-      as [a' [a'' [? [? ?]]]].
-    destruct_by_head cons_dm_glu_sub_pred.
-    destruct_glu_rel_exp_with_sub.
-    simplify_evals.
-    assert (exists P' El', glu_univ_elem (max j k) P' El' a'') as [P' [El' HP']]
-      by (eapply glu_univ_elem_cumu_max_right; eassumption).
-    assert (glu_univ_elem (max j k) P' El' a')
-      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
-    econstructor; try eassumption.
-    1: mauto 3.
-    rewrite exp_sub_shift.
-    eapply glu_univ_elem_exp_cumu_max_right; [| exact HP' |]; eassumption.
+    eapply glu_rel_exp_with_sub_var_shift; [ exact HR | exact Hρ | mauto 3 | exact Ea1 | exact Hper | exact Hglu | intros _; constructor | exact HN ].
+  (** Under one more entry: the variable in the tail, by the induction
+      hypothesis, its type weakened past the entry *)
+  - pose proof (IHHx _ HTSb) as Hn.
+    destruct (glu_rel_exp_clean_inversion1 HTSb Hn) as [k Hk].
+    destruct (ctx_lookup_wf_sorted _ _ _ _ _ (glu_ctx_env_wf_ctx HTSb) Hx) as (S & HS & HAS).
+    destruct (type_sort_abs_kind_sort_inv _ HS) as (κ & j & ->).
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max k j); [ exact HSb |].
+    intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
+    pose proof (glu_ctx_env_sub_tail HSb HTSb Hσ) as Htl.
+    destruct (Hk _ _ _ Htl) as [a2 m P El Ea2 Hm Hglu HN].
+    destruct (glu_typ_shift_per He HAS HR Hρ) as (a1 & a2' & Ea1 & Ea2' & Hper).
+    functional_eval_rewrite_clear.
+    eapply (glu_rel_exp_with_sub_var_shift (m := m)); [ exact HR | exact Hρ | mauto 3 | exact Ea1 | exact Hper | exact Hglu | | ].
+    + (** At an evaluated kind the value is the tail's [n]-th, the [S n]-th *)
+      intros Hev.
+      destruct Hper as [Ra Ha12]; rewrite (per_univ_elem_kind _ _ _ _ Ha12) in Hev.
+      destruct (domain_kind a2); cbn in Hm; [ | inversion Hev | ]; inversion Hm; subst;
+        replace (List.tl ρ n) with (ρ (S n)) by (destruct ρ; reflexivity); apply eval_exp_var.
+    + rewrite exp_sub_shift; exact HN.
 Qed.
+
 
 Hint Resolve glu_rel_exp_vlookup : mctt.
 
