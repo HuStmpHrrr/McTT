@@ -55,8 +55,7 @@ Proof.
   - intros Δ φ M' Hφ Hr. progressive_inversion.
     assert (φ 0 = length Δ - length Γ - 1) as <- by (eapply wk_var0_kripke; eassumption).
     (** The variable reads back as itself, which holds no proof *)
-    exists (ne_var (φ 0)); split; [ reflexivity |].
-    cbn [ne_annotate_proofs ne_to_exp].
+    unfold glu_ne_eq; cbn [ne_annotate_proofs ne_to_exp].
     change #(φ 0) with #0[φ]ʷ.
     mauto 5.
 Qed.
@@ -284,8 +283,7 @@ Proof. intros * Hl; unfold components_env; rewrite env_tele_app by (rewrite List
     of any kind. *)
 Lemma glu_nf_eq_neut : forall Γ M W A κ, glu_ne_eq Γ M W A -> glu_nf_eq Γ M (nf_neut κ W) A.
 Proof.
-  intros * (W' & E & H); exists (nf_neut κ W'); split; [| exact H ].
-  unfold nf_eq_upto_proofs, ne_eq_upto_proofs in *; cbn; rewrite dec_eqb_refl; exact E.
+  unfold glu_nf_eq, glu_ne_eq; intros * H; exact H.
 Qed.
 
 (** A normal form free of proofs is its own annotation. *)
@@ -313,7 +311,7 @@ Qed.
 (** A readback free of proofs is glued by its equation alone. *)
 Lemma glu_nf_eq_proof_free : forall Γ M W A, nf_proof_free W -> Γ ⊢ M ≈ W : A -> glu_nf_eq Γ M W A.
 Proof.
-  intros * Hf HM; exists W; split; [ apply nf_eq_upto_proofs_of_eq; reflexivity |].
+  intros * Hf HM; unfold glu_nf_eq.
   rewrite (proj1 nf_ne_annotate_proofs_proof_free W Hf); exact HM.
 Qed.
 
@@ -346,11 +344,9 @@ Section IndRealize.
     assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
     match goal with H : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ms |- _ => pose proof (HPr Δ wk_id Ms Hid H) as HMs end.
     rewrite map_wk_id_exp in HMs.
-    (** The parameters read back up to proofs, annotated *)
-    destruct HMs as (Ms' & EMs & HMl & HMs).
-    exists (nf_indty p k Ms'); split.
-    { unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; rewrite dec_eqb_refl, PeanoNat.Nat.eqb_refl; exact EMs. }
-    cbn [nf_annotate_proofs nf_to_exp]; transitivity (apps (a_ind p k) (List.map (fun P => P[φ]ʷ) Ps)); [ rewrite <- wk_apps_ind; mauto 3 |].
+    (** The parameters are their annotated readbacks *)
+    destruct HMs as (HMl & HMs).
+    unfold glu_nf_eq; cbn [nf_annotate_proofs nf_to_exp]; transitivity (apps (a_ind p k) (List.map (fun P => P[φ]ʷ) Ps)); [ rewrite <- wk_apps_ind; mauto 3 |].
     eapply wf_exp_eq_subtyp'; [| exact Hs ].
     eapply wf_exp_eq_ind_apps; [ exact Hl | exact HMk | exact (decl_member_lt _ _ _ _ _ _ HΔ Hl HMk Hh) | exact HΔ
                                | exact HPl | lia | exact HMs ].
@@ -429,7 +425,24 @@ Section IndRealize.
        let Ts := List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn j (shape_doms_tele t) in
        (forall Γ A R, DF b ≈ b ∈ per_univ_elem i ↘ R -> not_level_sort b -> Γ ⊢ A ® DP m (ms ++ ws ++ ys) Ts B ->
           Γ ⊢ A ® glu_typ_top i b) /\
-       (forall Γ M A n, Γ ⊢ M : A ® n ∈ glu_elem_bot i b -> Γ ⊢ M : A ® ⇑ b n ∈ DEl m (ms ++ ws ++ ys) Ts B)).
+       (forall Γ M A n, Γ ⊢ M : A ® n ∈ glu_elem_bot i b -> Γ ⊢ M : A ® ⇑ b n ∈ DEl m (ms ++ ws ++ ys) Ts B))
+    (** A non-recursive argument's gluing moves to related non-uniform
+        parameters, at a type glued there *)
+    (HmA : forall m Mm ms ms' c gs j A vs, ind_member D m = Some Mm ->
+       tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ms ms' ->
+       ind_con Mm c = Some gs -> List.nth_error (cargs_nonrec gs) j = Some A ->
+       tele_prefix_rel (canon_args_rel D ups m ms c) j vs vs ->
+       forall Γ T N n, Γ ⊢ N : T ® n ∈ AEl m ms c j vs -> Γ ⊢ T ® AP m ms' c j vs -> Γ ⊢ N : T ® n ∈ AEl m ms' c j vs)
+    (** So does a domain's of a recursive argument's shape *)
+    (HmD : forall m Mm ms ms' c gs gs1 t gs2 ws j B ys, ind_member D m = Some Mm ->
+       tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ms ms' ->
+       ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+       tele_prefix_rel (canon_args_rel D ups m ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+       List.nth_error (ptyp_doms t) j = Some B ->
+       tele_prefix_rel (shape_doms_rel (canon_doms_rel D ups m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t) j ys ys ->
+       let Ts := List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn j (shape_doms_tele t) in
+       forall Γ T N n, Γ ⊢ N : T ® n ∈ DEl m (ms ++ ws ++ ys) Ts B -> Γ ⊢ T ® DP m (ms' ++ ws ++ ys) Ts B ->
+         Γ ⊢ N : T ® n ∈ DEl m (ms' ++ ws ++ ys) Ts B).
 
   (** The readback of an element of any member of the group, a view too,
       at the type's parameters [ns'] (the element is related at its own):

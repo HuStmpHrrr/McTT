@@ -346,18 +346,47 @@ Record glu_nparams (k : nat) (Mk : imember) (NEl : nat -> nat -> list domain -> 
     [DR], the rest of the type is the one of the rest of the shape.  The
     domains are indexed, as the PER model's ([canon_doms_rel]), by the
     values [pre] and the telescope [Ts] of the components before them,
-    which grows by each domain, relevant. *)
+    which grows by each domain, relevant.  At the end of the shape, the
+    member [j] at the parameters [Ps], the type satisfies [SE] at the
+    values and the telescope reached there. *)
 Fixpoint glu_shape_typ (DR : list domain -> list centry -> exp -> relation domain)
     (DP : list domain -> list centry -> exp -> glu_typ_pred)
     (DEl : list domain -> list centry -> exp -> glu_exp_pred)
+    (SE : ctx -> list domain -> list centry -> nat -> list exp -> typ -> Prop)
     (Γ : ctx) (pre : list domain) (Ts : list centry) (t : ptyp) (T : typ) {struct t} : Prop :=
   match t with
   | pt_pi B t' => forall IT OT, T = a_pi ak_relevant ak_relevant IT OT ->
       (forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP pre Ts B) /\
       (forall Δ φ b c, Δ ⊢ᵏ φ : Γ -> DR pre Ts B c c -> Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre Ts B ->
-         glu_shape_typ DR DP DEl Δ (pre ++ c :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t' OT[(ι φ),,b])
-  | _ => True
+         glu_shape_typ DR DP DEl SE Δ (pre ++ c :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t' OT[(ι φ),,b])
+  | pt_self j Ps => SE Γ pre Ts j Ps T
   end.
+
+(** The end of the shape of a recursive argument, the member [j] at the
+    shape's parameters [Ps]: the syntactic parameters [Us ++ Q] of the
+    type are glued to the values [bsr] the shape's parameters evaluate to
+    after the components [pre] of the telescope [Ts] ([components_env]),
+    which are related to themselves, the non-uniform ones at their types
+    and all of them by their
+    readback, at every weakening.  These values are the type's own, read
+    off the glued components before the argument, so the readback of an
+    element at them is the readback at the argument's type. *)
+Record glu_self_params_at (D : ind_decl) (ups : list domain) (NEl : nat -> nat -> list domain -> glu_exp_pred)
+    (Γ : ctx) (j : nat) (Mj : imember) (Us Q : list exp) (bsr : list domain) : Prop := mk_glu_self_params_at
+  { (** The values are related to themselves *)
+    glu_self_params_rel : tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bsr bsr
+    (** The non-uniform parameters are glued to them at their types *)
+  ; glu_self_params_nparams : glu_nparams j Mj NEl Γ Us Q bsr
+    (** All the parameters are glued to them by their readback, at every
+        weakening *)
+  ; glu_self_params_top : forall Δ φ, Δ ⊢ᵏ φ : Γ ->
+      glu_params_top D Mj Δ (List.map (fun P => P[φ]ʷ) (Us ++ Q)) (ups ++ bsr) }.
+
+Definition glu_self_params (p : qname) (D : ind_decl) (ups : list domain) (NEl : nat -> nat -> list domain -> glu_exp_pred)
+    (Γ : ctx) (pre : list domain) (Ts : list centry) (j : nat) (Ps : list exp) (T : typ) : Prop :=
+  forall Mj Us Q bsr, ind_member D j = Some Mj -> T = im_ty_at p j Mj Us Q ->
+    ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bsr ->
+    glu_self_params_at D ups NEl Γ j Mj Us Q bsr.
 
 (** The types of the telescopes of the members of a group at its uniform
     parameters [Us], glued at the gluings of the clause, member by member:
@@ -404,7 +433,7 @@ Record ind_glu_components (p : qname) (D : ind_decl) (ups : list domain)
         Γ ⊢ N : T' ® v ∈ AEl m ns c (List.length (cargs_nonrec hs1)) (nonrec_arg_vals hs1 (List.firstn (List.length hs1) vs))) ->
      tele_prefix_rel (canon_args_rel D ups m ns c) (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vs)
        (nonrec_arg_vals gs1 vs) ->
-     glu_shape_typ (canon_doms_rel D ups m) (DP m) (DEl m) Γ (ns ++ nonrec_arg_vals gs1 vs)
+     glu_shape_typ (canon_doms_rel D ups m) (DP m) (DEl m) (glu_self_params p D ups NEl) Γ (ns ++ nonrec_arg_vals gs1 vs)
        (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1) t T }.
 
 (** A type of the declared member [Mk] (the member [k]) of a group at its
@@ -414,7 +443,28 @@ Record ind_glu_components (p : qname) (D : ind_decl) (ups : list domain)
     to the given ones: two types of the same member at the same values may
     have different syntactic parameters, and lowering an element of one to
     a smaller universe needs the components at the parameters of the
-    other. *)
+    other.  The non-uniform parameters are also glued to the type's own
+    values [ns] at their types ([glu_nparams]): an element is read back at
+    the type's values, so its arguments' types are glued there through
+    them ([ind_glu_components]).  The parts at a context are
+    [ind_typ_parts]. *)
+Record ind_typ_parts (p : qname) (D : ind_decl) (ups ns : list domain)
+    (NP : nat -> nat -> list domain -> glu_typ_pred) (NEl : nat -> nat -> list domain -> glu_exp_pred)
+    (AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred)
+    (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : nat -> list domain -> list centry -> exp -> glu_typ_pred) (DEl : nat -> list domain -> list centry -> exp -> glu_exp_pred)
+    (k : nat) (Mk : imember) (U : typ) (Δ : ctx) (Ps : list exp) : Prop := mk_ind_typ_parts
+  { (** The parameters, glued to the values by their readback *)
+    ind_typ_parts_top : glu_params_top D Mk Δ Ps (ups ++ ns)
+    (** The sort at them is in the ambient universe *)
+  ; ind_typ_parts_sort : Δ ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ps] ⊆ U
+    (** The telescopes' types, glued at every equal instance *)
+  ; ind_typ_parts_comps : forall Ps', exps_eq_at Δ (im_params D Mk) Ps Ps' ->
+      ind_glu_components p D ups NP NEl AP AEl DP DEl Δ (List.firstn (ind_nu D) Ps')
+    (** The non-uniform parameters, glued to the type's values at their
+        types *)
+  ; ind_typ_parts_nparams : glu_nparams k Mk NEl Δ (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ns }.
+
 Definition ind_typ_at (p : qname) (D : ind_decl) (ups ns : list domain)
     (NP : nat -> nat -> list domain -> glu_typ_pred) (NEl : nat -> nat -> list domain -> glu_exp_pred)
     (AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred)
@@ -423,10 +473,7 @@ Definition ind_typ_at (p : qname) (D : ind_decl) (ups ns : list domain)
     (k : nat) (Mk : imember) (U : typ) (Γ : ctx) (A : typ) (Ps : list exp) : Prop :=
   Γ ⊢ A ≈ apps (a_ind p k) Ps : U /\
   forall Δ φ, Δ ⊢ᵏ φ : Γ ->
-    glu_params_top D Mk Δ (List.map (fun P => P[φ]ʷ) Ps) (ups ++ ns) /\
-    Δ ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id (List.map (fun P => P[φ]ʷ) Ps)] ⊆ U /\
-    forall Ps', exps_eq_at Δ (im_params D Mk) (List.map (fun P => P[φ]ʷ) Ps) Ps' ->
-      ind_glu_components p D ups NP NEl AP AEl DP DEl Δ (List.firstn (ind_nu D) Ps').
+    ind_typ_parts p D ups ns NP NEl AP AEl DP DEl k Mk U Δ (List.map (fun P => P[φ]ʷ) Ps).
 
 (** The type predicate of the member [k]: a type at some syntactic
     parameters ([ind_typ_at]). *)
@@ -459,9 +506,8 @@ Section GluInd.
       uniform parameters [Us], not at the container's [im_pre Mk Us]: these
       do not determine [Us], and the group's telescopes are at [Us].  The
       non-uniform parameters of a recursive argument's type are glued to
-      every instance related to the values they evaluate to, so that
-      [ind_glu_elem] does not depend on the representative [ups] of the
-      uniform parameters.  A recursive argument is an element at every
+      the values they evaluate to; only those: a value related to them may
+      read back to an untyped normal form.  A recursive argument is an element at every
       weakening and every instance of the parameters equal to those of its
       type, like the element itself in [ind_glu_exp_pred]: weakening
       commutes with the instances of the telescopes only for a closed
@@ -562,26 +608,21 @@ Section GluInd.
       values [pre] of the shape's components (the uniform parameters left
       out).  At the end of the shape, the member [j] it ends in at the
       values [bsr] of the shape's parameters: [A] is the member's type at
-      [Us] and parameters [Q], which are glued to [bsr], and all the
-      parameters [Us ++ Q] are glued to [ups ++ bsr] at the telescope of the
-      group's own member [j], as readback reads them ([read_shape_self],
-      [read_nf_con_view]): at a view, not at the container's, whose uniform
-      parameters [Is] evaluated at two readback-equal [ups] need not read
-      back alike. *)
+      [Us] and parameters [Q], as many as the member takes, and [bsr] is
+      related to itself.  The gluing of [Q] to the values is the type's
+      ([glu_self_params] in [ind_glu_components]), at every glued prefix:
+      the element's own, which the eliminator reads, and the type's, which
+      readback reads ([read_shape_self], [read_nf_con_view]). *)
   with glu_rec : nat -> ctx -> list exp -> list domain -> list centry -> ptyp -> typ -> exp -> domain -> Prop :=
-  (** At the end: an element of the member [j] at glued parameters, at
-      every weakening and every equal instance; the shape's parameters are
+  (** At the end: an element of the member [j], at every weakening and
+      every equal instance of its type's parameters; the shape's parameters are
       evaluated in the environment of the components [pre] of the
       telescope [Ts] ([components_env]), as [rec_arg_self] has them *)
   | glu_rec_self :
     `{ ind_member D j = Some Mj ->
        (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bsr ->
           A = im_ty_at p j Mj Us Q ->
-          List.length Q = im_nn Mj /\ tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bsr bsr /\
-          (forall bsr', tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bsr bsr' ->
-             glu_nparams j Mj NEl Γ Us Q bsr' /\
-             forall Δ φ, Δ ⊢ᵏ φ : Γ ->
-               glu_params_top D Mj Δ (List.map (fun P => P[φ]ʷ) (Us ++ Q)) (ups ++ bsr'))) ->
+          List.length Q = im_nn Mj /\ tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bsr bsr) ->
        (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bsr ->
           A = im_ty_at p j Mj Us Q ->
           forall Δ φ Us' Q', Δ ⊢ᵏ φ : Γ -> List.length Us' = ind_nu D ->
