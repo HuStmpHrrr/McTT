@@ -17,7 +17,7 @@
     has the form [OT[(ι φ),,M]]; [exp_sub_q_extend_wk] relates it to the
     [q]-form, and [sb_wk σ φ] is a substitution followed by a Kripke
     weakening.  The sorts' gluings and inversions come first: they are what
-    the sorts of the domain and of the codomain give. *)
+    the sorts of the domain and of the codomain give ([UniverseCases]). *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -39,134 +39,7 @@ Import Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** A proposition glues by its value, glued as a proposition. *)
-Lemma glu_rel_exp_of_prop : forall {Γ Sb A},
-    EG Γ ∈ glu_ctx_env ↘ Sb ->
-    (forall Δ σ ρ,
-        Δ ⊢ˢ σ ® ρ ∈ Sb ->
-        exists a, ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a ∈ per_prop /\ Δ ⊢ A[σ] ® prop_glu_typ_pred a) ->
-    Γ ⊩ A : Propₘ.
-Proof.
-  intros * HSb Hbody.
-  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ exact HSb |].
-  intros Δ σ ρ Hσ.
-  destruct (Hbody _ _ _ Hσ) as (a & Ha & Hpa & HaP).
-  assert (⊢ Δ) by (eapply glu_ctx_env_sub_escape in Hσ; [| exact HSb ]; gen_presups; assumption).
-  destruct (per_univ_glu_univ_elem 0 Propᵈ ltac:(eexists; apply per_univ_elem_prop_univ)) as (P & El & Hglu).
-  econstructor; [ constructor | cbn; exact Ha | exact Hglu |].
-  basic_invert_glu_univ_elem Hglu; apply_predicate_equivalence.
-  econstructor; [ cbn; mauto 3 | destruct HaP; assumption | exact Hpa | exact HaP ].
-Qed.
-
-(** The inverse: a glued proposition, at a glued substitution. *)
-Lemma glu_rel_exp_prop_inversion : forall {Γ Sb A},
-    EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊩ A : Propₘ ->
-    forall Δ σ ρ,
-      Δ ⊢ˢ σ ® ρ ∈ Sb ->
-      exists a, ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a ∈ per_prop /\ Δ ⊢ A[σ] ® prop_glu_typ_pred a.
-Proof.
-  intros * HSb HA Δ σ ρ Hσ.
-  destruct (glu_rel_exp_clean_inversion1 HSb HA) as [k Hk].
-  destruct (Hk _ _ _ Hσ) as [s m Ps Els Es Hm Hgs HAs].
-  simplify_evals; cbn [domain_kind glu_term_value] in Hm.
-  basic_invert_glu_univ_elem Hgs; apply_predicate_equivalence.
-  destruct HAs as [_ _ Hpm HP].
-  exact (ex_intro _ m (conj Hm (conj Hpm HP))).
-Qed.
-
-(** A type of levels glues by its value, a type of levels glued as a type
-    at the least small index. *)
-Lemma glu_rel_exp_of_level_sort : forall {Γ Sb A},
-    EG Γ ∈ glu_ctx_env ↘ Sb ->
-    (forall Δ σ ρ,
-        Δ ⊢ˢ σ ® ρ ∈ Sb ->
-        exists a P El, ⟦ A ⟧ ρ ↘ a /\ level_code a /\ Δ ⊢ A[σ] : LevelSort /\
-                  DG a ∈ glu_univ_elem (us (0, 0)) ↘ P ↘ El /\ Δ ⊢ A[σ] ® P) ->
-    Γ ⊩ A : LevelSort.
-Proof.
-  intros * HSb Hbody.
-  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ exact HSb |].
-  intros Δ σ ρ Hσ.
-  destruct (Hbody _ _ _ Hσ) as (a & Pa & Ela & Ha & Hca & HAσ & Hga & HaP).
-  destruct (per_univ_glu_univ_elem 0 LevelSortᵈ ltac:(eexists; apply Completeness.UniverseCases.per_univ_elem_level_sort_univ; exact I))
-    as (P & El & Hglu).
-  econstructor; [ constructor | cbn; exact Ha | exact Hglu |].
-  basic_invert_glu_univ_elem Hglu; apply_predicate_equivalence.
-  econstructor; [ reflexivity | exact HAσ | exact Hca |].
-  econstructor; [ exact Hga | exact HaP ].
-Qed.
-
-Lemma glu_rel_exp_level_sort_inversion : forall {Γ Sb A},
-    EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊩ A : LevelSort ->
-    forall Δ σ ρ,
-      Δ ⊢ˢ σ ® ρ ∈ Sb ->
-      exists a P El, ⟦ A ⟧ ρ ↘ a /\ level_code a /\ Δ ⊢ A[σ] : LevelSort /\
-                DG a ∈ glu_univ_elem (us (0, 0)) ↘ P ↘ El /\ Δ ⊢ A[σ] ® P.
-Proof.
-  intros * HSb HA Δ σ ρ Hσ.
-  destruct (glu_rel_exp_clean_inversion1 HSb HA) as [k Hk].
-  destruct (Hk _ _ _ Hσ) as [s m Ps Els Es Hm Hgs HAs].
-  simplify_evals; cbn [domain_kind glu_term_value] in Hm.
-  basic_invert_glu_univ_elem Hgs; apply_predicate_equivalence.
-  destruct HAs as [_ HAσ Hcm [Pm Elm Hgm Hpm]].
-  exists m, Pm, Elm; split; [ assumption | split; [ assumption | split; [ assumption | split; assumption ] ] ].
-Qed.
-
-(** A proposition is a type at every index, glued as a proposition. *)
-Lemma glu_prop_typ_at_index : forall {u : universe_index} {Γ A a},
-    Dom a ≈ a ∈ per_prop ->
-    Γ ⊢ A ® prop_glu_typ_pred a ->
-    Dom a ≈ a ∈ per_univ u /\ forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Γ ⊢ A ® P.
-Proof.
-  intros * Hpa HaP; split; [ eexists; apply per_univ_elem_of_prop; exact Hpa |].
-  intros P El Hg; destruct (glu_univ_elem_prop_inv _ _ _ _ Hpa Hg) as [EP _]; apply EP; exact HaP.
-Qed.
-
-(** The least small index is below every index. *)
-Lemma universe_index_le_least : forall u, universe_index_le (us (0, 0)) u.
-Proof. intros [j | j]; cbn; [ unfold ordinal_le; cbn; lia | exact I ]. Qed.
-
-(** A type glued at the least small index is a type at every index,
-    glued there. *)
-Lemma glu_least_typ_at_index : forall {u : universe_index} {Γ A a P El},
-    DG a ∈ glu_univ_elem (us (0, 0)) ↘ P ↘ El ->
-    Γ ⊢ A ® P ->
-    Dom a ≈ a ∈ per_univ u /\ forall P' El', DG a ∈ glu_univ_elem u ↘ P' ↘ El' -> Γ ⊢ A ® P'.
-Proof.
-  intros * Hg HaP.
-  destruct (glu_univ_elem_cumu_ge_universe_index (universe_index_le_least u) Hg) as (P1 & El1 & Hg1).
-  split; [ eapply glu_univ_elem_per_univ; exact Hg1 |].
-  intros P' El' Hg'.
-  destruct (functional_glu_univ_elem _ _ _ _ _ _ Hg1 Hg') as [EP _].
-  apply EP; eapply glu_univ_elem_typ_cumu_ge_universe_index; [ exact (universe_index_le_least u) | exact Hg | exact Hg1 | exact HaP ].
-Qed.
-
-(** A type of the sort of a kind next to a large universe [Typeω@i], at a
-    glued substitution: its value is glued as a type at [i]. *)
-Lemma glu_rel_exp_kind_sort_large_inversion : forall {Γ Sb A κ} {i : nat},
-    EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊩ A : abs_kind_sort κ Typeω@i ->
-    forall Δ σ ρ,
-      Δ ⊢ˢ σ ® ρ ∈ Sb ->
-      Δ ⊢ A[σ] : abs_kind_sort κ Typeω@i /\
-        exists a, ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a ∈ per_univ i /\
-             forall P El, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ A[σ] ® P.
-Proof.
-  intros * HSb HA Δ σ ρ Hσ.
-  destruct κ; cbn [abs_kind_sort] in *.
-  - destruct (glu_rel_exp_of_univ_inversion (u := ul i) HSb HA _ _ _ Hσ) as [HAσ (a & Ha & Hpa & HaP & _)].
-    split; [ exact HAσ | exists a; split; [ exact Ha | split; [ exact Hpa | exact HaP ] ] ].
-  - destruct (glu_rel_exp_prop_inversion HSb HA _ _ _ Hσ) as (a & Ha & Hpa & HaP).
-    destruct (glu_prop_typ_at_index (u := ul i) Hpa HaP) as [Hpi HPi].
-    split; [ destruct HaP; assumption | exists a; split; [ exact Ha | split; [ exact Hpi | exact HPi ] ] ].
-  - destruct (glu_rel_exp_level_sort_inversion HSb HA _ _ _ Hσ) as (a & Pa & Ela & Ha & _ & HAσ & Hga & HaP).
-    destruct (glu_least_typ_at_index (u := ul i) Hga HaP) as [Hpi HPi].
-    split; [ exact HAσ | exists a; split; [ exact Ha | split; [ exact Hpi | exact HPi ] ] ].
-Qed.
-
-(** The same next to a small universe [Type⟨L⟩], at the realiser of the
+(** A type of the sort of a kind next to a small universe [Type⟨L⟩], at the realiser of the
     level's value, with the readback at the sort. *)
 Lemma glu_rel_exp_kind_sort_small_inversion : forall {Γ Sb A κ L} {n : nat},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
@@ -580,30 +453,6 @@ Proof.
   - exact (glu_rel_exp_pi_large (i := 0) (κd := ak_level) (κc := ak_level) HA HB pi_kinds_level).
 Qed.
 
-(** A proof of a glued proposition glues, kept: its typing is all a proof
-    glues by. *)
-Lemma glu_rel_exp_proof : forall {Γ M T},
-    Γ ⊩ T : Propₘ ->
-    Γ ⊢ M : T ->
-    Γ ⊩ M : T.
-Proof.
-  intros * HT HM.
-  destruct (presup_ctx_glu_rel_exp HT) as [Sb HSb].
-  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ exact HSb |].
-  intros Δ σ ρ Hσ.
-  destruct (glu_rel_exp_prop_inversion HSb HT _ _ _ Hσ) as (t & Ht & Hpt & HtP).
-  pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
-  destruct (per_univ_glu_univ_elem 0 t ltac:(eexists; apply per_univ_elem_of_prop; exact Hpt)) as (P & El & Hg).
-  destruct (glu_univ_elem_prop_inv _ _ _ _ Hpt Hg) as [_ EEl].
-  econstructor; [ exact Ht | cbn; rewrite (per_prop_left _ _ Hpt); reflexivity | exact Hg |].
-  apply EEl; econstructor; [ exact HtP | exact (sub_preserves_exp _ _ _ _ _ _ _ HM Hσt) |].
-  destruct (glu_ctx_env_per_ctx_env HSb) as [R HR].
-  pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
-  assert (HsM : exp_scoped (List.length Γ) M) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HM))).
-  destruct (per_ctx_env_kept_proof_readable _ _ _ M HR (exp_scoped_free_bound _ _ HsM) _ _ Hρ) as [Hr _].
-  split; exact Hr.
-Qed.
-
 (** β at a substitution followed by a Kripke weakening: an instance of
     [wf_exp_eq_pi_beta] at [sb_wk σ φ], once [exp_wk_sub] has merged the
     two steps and [exp_sub_q_extend] has put both bodies into [q]-form. *)
@@ -701,21 +550,6 @@ Proof.
     eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hgb' | exact HM' |].
     apply wf_exp_eq_sym; eapply exp_eq_fn_sub_wk_beta; eassumption.
 Qed.
-
-(** A glued type of the sort of a kind next to a large universe glues
-    next to every larger one. *)
-Lemma glu_rel_exp_kind_sort_lift : forall {Γ A κ} {i k : nat},
-    i <= k ->
-    Γ ⊩ A : abs_kind_sort κ Typeω@i ->
-    Γ ⊩ A : abs_kind_sort κ Typeω@k.
-Proof.
-  intros * Hle HA; destruct κ; cbn in *; [| exact HA | exact HA ].
-  exact (glu_rel_exp_lift_universe_index (u := ul i) (v := ul k) Hle HA).
-Qed.
-
-(** A sort of a kind is the sort of the kind next to a large universe. *)
-Lemma sort_kind_abs_kind_sort_inv : forall {S κ}, sort_kind S κ -> exists j : nat, S = abs_kind_sort κ Typeω@j.
-Proof. intros * []; [ exists i | exists 0 | exists 0 ]; reflexivity. Qed.
 
 (** A λ ([wf_fn]): a function into a type of an evaluated kind, or a
     proof of a [∀], kept. *)
@@ -817,17 +651,6 @@ Proof.
   invert_per_univ_elem HR.
   match goal with HE : _ <~> pi_elements _ _ _ _ |- _ => apply HE in Hf end.
   exact (pi_elements_left _ _ _ _ _ _ Hf).
-Qed.
-
-(** A type glued at every gluing of its value is glued at the index. *)
-Lemma glu_rel_typ_with_sub_of_point : forall {i : nat} {Δ A σ ρ},
-    (exists a, ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a ∈ per_univ i /\
-          forall P El, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ A[σ] ® P) ->
-    glu_rel_typ_with_sub i Δ A σ ρ.
-Proof.
-  intros * (a & Ha & Hp & HP).
-  destruct (per_univ_glu_univ_elem _ _ Hp) as (P & El & Hg).
-  econstructor; [ exact Ha | exact Hg | exact (HP _ _ Hg) ].
 Qed.
 
 (** An application at a [Π] into a type of an evaluated kind: the
