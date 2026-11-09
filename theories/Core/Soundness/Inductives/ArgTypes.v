@@ -1153,4 +1153,158 @@ Section GluArgsCtx.
   Qed.
 End GluArgsCtx.
 
+(** ** The Types of a Group's Members
+
+    The type of a member at the uniform parameters as variables and glued
+    terms of its non-uniform parameters' types is a type of a large
+    universe ([valid_group_mty_valid]): a declared member's former, a
+    view's container's at the view's instance, or a record view's record.
+    The containers are groups of [VP]. *)
+Lemma glu_group_mty : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) -> forall p D, VP p D ->
+    forall j Mj Z nn L Ns, ind_member D j = Some Mj -> ⊩ Z ++ ind_uparams D -> all_assumptions Z -> List.length Z = L + nn ->
+    List.length Ns = im_nn Mj ->
+    (forall m N T, List.nth_error Ns m = Some N ->
+       List.nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D nn L)) Ns) m = Some T -> Z ++ ind_uparams D ⊩ N : T) ->
+    exists i : nat, Z ++ ind_uparams D ⊩ ind_mty p D j (ind_uvars D nn L) Ns : Typeω@i.
+Proof.
+  intros VP HVP HGall p D HPD j Mj Z nn L Ns HMj HΨ HZa HlZ HlN HNs.
+  pose proof (valid_groups_valid VP HVP p D HPD) as Hg; pose proof (HGall _ _ HPD) as HG.
+  pose proof (valid_group_closed _ _ Hg) as Hc; pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)) as Hmv.
+  pose proof (decl_closed_ass _ Hc) as HUa.
+  assert (HΨa : all_assumptions (Z ++ ind_uparams D)) by (apply List.Forall_app; split; assumption).
+  assert (HU : ⊩ ind_uparams D)
+    by (destruct HΨ as [Sb HSb]; destruct (glu_ctx_env_suffix _ _ _ HZa HSb) as [Sb' HSb']; eexists; exact HSb').
+  assert (Hgw : ⊢ᵍ gc_deps ⍮ gc_stack) by (destruct HU as [Sb HSb]; eapply ctx_wf_gctx; exact (glu_ctx_env_wf_ctx HSb)).
+  set (Us := ind_uvars D nn L) in *.
+  assert (HUs : Us = vars_from (List.length Z) (List.length (ind_uparams D))) by (unfold Us, ind_uvars, ind_nu; rewrite HlZ; reflexivity).
+  pose proof (glu_vars_tele Z (ind_uparams D) HUa (decl_closed_uparams _ Hc) (decl_mvc_uparams _ Hmv) HΨ) as HUv.
+  rewrite <- HUs in HUv.
+  assert (HlU : List.length Us = ind_nu D) by (unfold Us, ind_uvars; apply length_vars_from).
+  assert (HlTU : List.length (tele_insts (ind_uparams D) Id Us) = ind_nu D)
+    by (rewrite length_tele_insts by exact HUa; unfold ind_nu in *; lia).
+  unfold ind_mty; rewrite HMj; unfold im_ty_at, im_ref, im_pre.
+  destruct (im_head Mj) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; cbn [fst snd].
+  - (** A declared member: its former *)
+    apply (glu_group_ind_apps p D Hg HG j Mj pm); [ exact HMj | exact Hh | exact HΨ | exact HΨa | rewrite List.length_app; unfold im_np; lia |].
+    intros m N T HN HT.
+    unfold im_params in HT; rewrite tele_insts_app in HT by (exact HUa || (unfold ind_nu in *; lia)).
+    destruct (Nat.lt_ge_cases m (ind_nu D)) as [Hm | Hm].
+    + rewrite List.nth_error_app1 in HN by lia; rewrite List.nth_error_app1 in HT by lia.
+      exact (HUv _ _ _ HN HT).
+    + rewrite List.nth_error_app2 in HN by lia; rewrite List.nth_error_app2 in HT by lia.
+      rewrite HlU in HN; rewrite HlTU in HT.
+      exact (HNs _ _ _ HN HT).
+  - (** A view: the container's former at the view's instance *)
+    destruct (decl_typed_view _ _ _ (valid_group_typed _ _ Hg) _ _ _ _ _ _ HMj Hh) as (Dq & Mk' & Hq & HMk' & Hkd & HIl & _ & Hvm & _).
+    pose proof (valid_groups_containers _ HVP _ _ _ _ _ _ _ _ _ HPD HMj Hh Hq) as HVPq.
+    pose proof (valid_groups_valid VP HVP _ _ HVPq) as HgQ; pose proof (HGall _ _ HVPq) as HGQ.
+    pose proof (valid_group_closed _ _ HgQ) as HcQ; pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ HgQ)) as HmvQ.
+    pose proof (decl_closed_ass _ HcQ) as HaQ.
+    assert (Hhd : exists pm, im_head Mk' = mh_decl pm).
+    { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgQ) _ _ HMk') Hkd) as Hd.
+      unfold im_is_decl in Hd; destruct (im_head Mk'); [ eauto | discriminate .. ]. }
+    destruct Hhd as [pm Hhd].
+    destruct (decl_typed_view_wrap _ _ _ (valid_group_typed _ _ Hg) _ _ _ _ _ _ HMj Hh) as (D2 & Hq2 & Hvw).
+    rewrite Hq in Hq2; injection Hq2 as <-.
+    destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMk' Hvm) as (Mv & HMv & Hnn & _).
+    rewrite HMj in HMv; injection HMv as <-.
+    set (IsU := List.map (fun I => I[sb_of_list Id Us]) Is).
+    assert (HlIsU : List.length IsU = ind_nu Dq) by (unfold IsU; rewrite List.length_map; exact HIl).
+    assert (HlTI : List.length (tele_insts (ind_uparams Dq) Id IsU) = ind_nu Dq)
+      by (rewrite length_tele_insts by exact HaQ; unfold ind_nu in *; lia).
+    apply (glu_group_ind_apps qc Dq HgQ HGQ kc Mk' pm); [ exact HMk' | exact Hhd | exact HΨ | exact HΨa | rewrite List.length_app; unfold im_np; lia |].
+    intros m N T HN HT.
+    unfold im_params in HT; rewrite tele_insts_app in HT by (exact HaQ || (unfold ind_nu in *; lia)).
+    destruct (Nat.lt_ge_cases m (ind_nu Dq)) as [Hm | Hm].
+    + (** The instance, of the container's uniform parameters' types *)
+      rewrite List.nth_error_app1 in HN by lia; rewrite List.nth_error_app1 in HT by lia.
+      unfold IsU in HN; rewrite List.nth_error_map in HN.
+      destruct (List.nth_error Is m) as [I |] eqn:HI; cbn in HN; [ injection HN as <- | discriminate ].
+      assert (Hm' : m < List.length (tele_insts (ind_uparams Dq) Id Is))
+        by (rewrite length_tele_insts by exact HaQ; unfold ind_nu in *; lia).
+      destruct (nth_error_lt_some' _ _ Hm') as [T0 HT0].
+      pose proof (tele_insts_closed_sub _ _ (sb_of_list Id Us) _ _ HaQ (decl_closed_uparams _ HcQ) HT0) as HT1.
+      fold IsU in HT1; rewrite HT in HT1; injection HT1 as ->.
+      pose proof (glu_group_view_is p D Hg HG HU j Mj qc kc Is vm Dq m I T0 HMj Hh Hq HcQ HI HT0) as HIv.
+      rewrite HUs; exact (glu_uvars_inst p D Hg Z I T0 HΨ HZa HIv).
+    + (** The non-uniform arguments, at the container's non-uniform
+          parameters at the instance: the view's, by the view's equation *)
+      rewrite List.nth_error_app2 in HN by lia; rewrite List.nth_error_app2 in HT by lia.
+      rewrite HlIsU in HN; rewrite HlTI in HT.
+      set (τ := sb_of_wk (wk_shiftn (List.length Z))).
+      pose proof (glu_rel_wk_shiftn Z (ind_uparams D) HΨ HU) as Hw.
+      pose proof (glu_rel_sub_of_wk _ _ _ Hw) as Hgτ.
+      pose proof Hgτ as [_ _ _ _ Hτt _ _].
+      pose proof (Syntactic.System.Global.Presup.decl_typed_view_nparams _ _ p D Hgw (valid_group_typed _ _ Hg) (valid_group_lookup _ _ Hg)
+                    _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hq HMk' Hvm HMj) as HX.
+      pose proof (sub_preserves_ext _ _ _ _ _ _ _ HX Hτt) as HXτ.
+      pose proof (decl_closed_nparams_ass D Hc _ _ HMj) as HaX.
+      pose proof (decl_closed_nparams_ass Dq HcQ _ _ HMk') as HaY.
+      pose proof (decl_closed_head_scoped _ Hc _ _ _ _ _ _ HMj Hh) as HsIs.
+      pose proof (proj1 (proj2 (decl_mvc_members _ Hmv _ _ HMj))) as HmIs; rewrite Hh in HmIs; cbn in HmIs.
+      assert (EX : tele_insts (im_nparams Mj) (sb_of_list Id Us) Ns = tele_insts (tele_sub (im_nparams Mj) τ) Id Ns).
+      { rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ _ _ (sb_compose_id_right τ)).
+        apply (tele_insts_agree_mvc _ (ind_nu D));
+          [ exact HaX | exact (proj1 (decl_mvc_members _ Hmv _ _ HMj)) | exact (decl_closed_nparams_scoped _ Hc _ _ HMj) |].
+        intros x Hx; rewrite HUs, sb_of_list_vars by (unfold ind_nu in Hx; exact Hx).
+        unfold τ, sb_of_wk, wk_shiftn; cbn; f_equal; lia. }
+      assert (EY : tele_insts (im_nparams Mk') (sb_of_list Id IsU) Ns
+                   = tele_insts (tele_sub (tele_sub (im_nparams Mk') (sb_of_list Id Is)) τ) Id Ns).
+      { rewrite !tele_insts_tele_sub.
+        apply (tele_insts_agree_mvc _ (ind_nu Dq));
+          [ exact HaY | exact (proj1 (decl_mvc_members _ HmvQ _ _ HMk')) | exact (decl_closed_nparams_scoped _ HcQ _ _ HMk') |].
+        intros x Hx.
+        assert (HxI : x < List.length Is) by (unfold ind_nu in *; lia).
+        assert (HlIsU' : List.length IsU = List.length Is) by (unfold IsU; apply List.length_map).
+        rewrite (sb_of_list_nth IsU _ x a_prop) by lia.
+        unfold sb_compose; rewrite (sb_of_list_nth Is _ x a_prop HxI).
+        rewrite HlIsU'.
+        destruct (nth_error_lt_some' Is (List.length Is - 1 - x) ltac:(lia)) as [I HI'].
+        assert (HIU : List.nth_error IsU (List.length Is - 1 - x) = Some I[sb_of_list Id Us])
+          by (unfold IsU; rewrite List.nth_error_map, HI'; reflexivity).
+        rewrite (List.nth_error_nth _ _ _ HI'), (List.nth_error_nth _ _ _ HIU); cbn [sentry_sub sentry_exp].
+        pose proof (List.nth_error_In _ _ HI') as HIin.
+        change (fun x0 : nat => sentry_sub (τ x0) Id) with (τ ⨟ Id).
+        unfold τ; rewrite <- exp_sub_sub, exp_sub_id, exp_sub_of_wk, HUs.
+        rewrite (exp_at_vars _ _ _ (proj1 (List.Forall_forall _ _) HsIs I HIin) (proj1 (List.Forall_forall _ _) HmIs I HIin)).
+        reflexivity. }
+      rewrite EY in HT.
+      assert (HMsτ : forall m0 N0 T0, List.nth_error Ns m0 = Some N0 ->
+                 List.nth_error (tele_insts (tele_sub (im_nparams Mj) τ) Id Ns) m0 = Some T0 -> Z ++ ind_uparams D ⊩ N0 : T0)
+        by (intros m0 N0 T0 HN0 HT0; rewrite <- EX in HT0; exact (HNs _ _ _ HN0 HT0)).
+      (** The two telescopes' entries, glued over the extension *)
+      assert (HaXU : all_assumptions (im_nparams Mj ++ ind_uparams D)) by (apply List.Forall_app; split; assumption).
+      pose proof (glu_tele_entries_sub _ _ _ _ HaXU Hgτ
+                    (glu_tele_entries_of_ctx _ _ HaX (glu_ind_decl_params _ HG _ _ HMj))) as E1.
+      assert (HUQ : ⊩ ind_uparams Dq).
+      { pose proof (glu_ind_decl_params _ HGQ _ _ HMk') as [Sb HSb]; unfold im_params in HSb.
+        destruct (glu_ctx_env_suffix _ _ _ HaY HSb) as [Sb' HSb']; eexists; exact HSb'. }
+      destruct (glu_closed_app _ _ HaQ (decl_closed_uparams _ HcQ) HUQ HU) as [HUqU _].
+      assert (HaQU : all_assumptions (ind_uparams Dq ++ ind_uparams D)) by (apply List.Forall_app; split; assumption).
+      pose proof (glu_rel_sub_of_list _ _ _ _ _ HaQU (glu_rel_sub_id _ HU) (glu_tele_entries_of_ctx _ _ HaQ HUqU)
+                    ltac:(unfold ind_nu in HIl; exact HIl)
+                    (fun m0 I0 T0 HI0 HT0 => glu_group_view_is p D Hg HG HU j Mj qc kc Is vm Dq m0 I0 T0 HMj Hh Hq HcQ HI0 HT0)) as HgIs.
+      destruct (glu_closed_app _ _ (decl_closed_params_ass Dq _ _ HcQ HMk') (decl_closed_params Dq _ _ HcQ HMk')
+                  (glu_ind_decl_params _ HGQ _ _ HMk') HU) as [HPqU _].
+      unfold im_params in HPqU; rewrite <- List.app_assoc in HPqU.
+      assert (HaYQU : all_assumptions (im_nparams Mk' ++ ind_uparams Dq ++ ind_uparams D))
+        by (apply List.Forall_app; split; assumption).
+      pose proof (glu_tele_entries_sub _ _ _ _ HaYQU HgIs (glu_tele_entries_of_ctx _ _ HaY HPqU)) as E2'.
+      assert (HaY'U : all_assumptions (tele_sub (im_nparams Mk') (sb_of_list Id Is) ++ ind_uparams D))
+        by (apply List.Forall_app; split; [ apply all_assumptions_sub; exact HaY | exact HUa ]).
+      pose proof (glu_tele_entries_sub _ _ _ _ HaY'U Hgτ E2') as E2.
+      exact (glu_tele_insts_conv _ _ _ Ns HXτ (all_assumptions_sub _ _ HaX) (all_assumptions_sub _ _ (all_assumptions_sub _ _ HaY))
+               HΨa HΨ E1 E2 ltac:(rewrite !length_tele_sub, !length_im_nparams; lia) ltac:(rewrite length_tele_sub, length_im_nparams; lia)
+               HMsτ _ _ _ HN HT).
+  - (** A record view: the record at the view's instance, of no
+        non-uniform parameter *)
+    pose proof (rview_struct_nparams _ _ _ (decl_typed_record_struct _ _ _ (valid_group_typed _ _ Hg)) _ _ _ _ _ HMj Hh) as Hnp.
+    destruct Ns; [| unfold im_nn in HlN; rewrite Hnp in HlN; discriminate HlN ].
+    rewrite List.app_nil_r.
+    destruct (glu_group_rview_type p D Hg HG HU j Mj qr Is fl HMj Hh) as [i H0].
+    pose proof (glu_uvars_inst p D Hg Z _ _ HΨ HZa H0) as H2.
+    rewrite apps_exp_sub in H2; cbn [exp_sub] in H2.
+    rewrite HUs; exists i; exact H2.
+Qed.
+
 End Fixed_GCtx.
