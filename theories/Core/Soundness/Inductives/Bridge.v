@@ -2503,9 +2503,10 @@ Section Root.
     (Hbu : ⟦ ind_sort D ⟧ decl_env D ups ↘ bu)
     (Hule : universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
-  (** The filed declarations are glued, and so are the contexts of the
+  (** The groups of [VP] are glued (the containers of the views among
+      them, [valid_groups_containers]), and so are the contexts of the
       arguments of the group's constructors. *)
-  Hypotheses (HGl : forall q0 D0, ind_lookup gc_deps gc_stack q0 = Some D0 -> glu_ind_decl D0)
+  Hypotheses (HGall : forall qn G, VP qn G -> glu_ind_decl G)
     (HΨv : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs -> ⊩ cargs_ctx p D Mj gs ++ im_params D Mj).
 
   (** Non-uniform parameters related at the group's member are related at
@@ -2591,7 +2592,7 @@ Section Root.
     pose proof HQp as HQp'; unfold im_params in HQp'.
     apply glu_args_app in HQp' as [HUs HNs]; [| exact (decl_closed_ass _ Hc) | exact HUl0 | exact Hu ].
     pose proof (view_uparams_glu VP p D HVP HPD HG k Mj qc kc Is vm Dq HMj Hh Hq Δ Us0 ups cups HΔ HUs Ecups) as HUc.
-    pose proof (HGl _ _ Hq) as HGq.
+    pose proof (HGall _ _ (valid_groups_containers _ HVP _ _ _ _ _ _ _ _ _ HPD HMj Hh Hq)) as HGq.
     pose proof (view_nparams_glu VP p D HVP HPD HG k Mj qc kc Is vm Dq HMj Hh Hq HGq Δ Us0 Q0 ups bs cups kc Mkc k Mj HΔ Hu HUs
                   HMkc Hvk HMj HNs Ecups) as HNc.
     assert (HQpc : glu_args Δ (im_params Dq Mkc) Id nil (List.map (fun I => I[sb_of_list Id Us0]) Is ++ Q0) (cups ++ bs)).
@@ -2735,12 +2736,12 @@ End Root.
 (** Every view of a group whose declaration is glued agrees with its
     container. *)
 Theorem glu_views_ok_all : forall VP p D, valid_groups VP -> VP p D -> glu_ind_decl D ->
-    (forall q0 D0, ind_lookup gc_deps gc_stack q0 = Some D0 -> glu_ind_decl D0) ->
+    (forall qn G, VP qn G -> glu_ind_decl G) ->
     (forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs -> ⊩ cargs_ctx p D Mj gs ++ im_params D Mj) ->
     glu_views_ok p D.
 Proof.
-  intros VP p D HVP HPD HG HGl HΨv ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf.
-  exact (glu_view_end_all VP p D HVP HPD HG ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf HGl HΨv).
+  intros VP p D HVP HPD HG HGall HΨv ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf.
+  exact (glu_view_end_all VP p D HVP HPD HG ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf HGall HΨv).
 Qed.
 
 End Fixed_GCtx.

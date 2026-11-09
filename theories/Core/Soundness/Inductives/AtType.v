@@ -75,7 +75,7 @@ Section AtType.
     (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
   (** The contexts of the arguments of the constructors of the filed
       groups are glued. *)
-  Hypothesis (HΨall : forall q0 G0 j Mj c0 gs0, ind_lookup gc_deps gc_stack q0 = Some G0 -> ind_member G0 j = Some Mj ->
+  Hypothesis (HΨall : forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj ->
                  ind_con Mj c0 = Some gs0 -> ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj).
 
   #[local] Abbreviation nr := (canon_nparams_rel D ups).
@@ -892,7 +892,7 @@ Section AtType.
         (** The type, glued at the glued instance of the arguments before:
             the constructor's context is glued. *)
         assert (Heq1 : gs = (gs1 ++ ca_rec t :: nil) ++ gs2) by (rewrite <- List.app_assoc; exact Heq).
-        destruct (cargs_suffix_glu p D Mk gs (gs1 ++ ca_rec t :: nil) gs2 Heq1 (HΨall _ _ _ _ _ _ Hl HMk Hcon)) as [SbT HSbT].
+        destruct (cargs_suffix_glu p D Mk gs (gs1 ++ ca_rec t :: nil) gs2 Heq1 (HΨall _ _ _ _ _ _ HPD HMk Hcon)) as [SbT HSbT].
         rewrite cargs_ctx_snoc in HSbT; cbn [cargs_ctx_aux List.app] in HSbT.
         destruct (glu_ctx_env_suffix (ce_ass ak_relevant (ptyp_ty p D (im_nn Mk) (cargs_pat gs1) t) :: nil) _ _
                     (List.Forall_cons _ (ex_intro _ _ (ex_intro _ _ eq_refl)) (List.Forall_nil _)) HSbT) as [Sb1 HSb1].
@@ -1103,7 +1103,7 @@ Section AtType.
             eapply Completeness.Inductives.Con.con_value_view; [ exact Hh | rewrite !List.length_app; lia |].
             rewrite <- List.app_assoc, firstn_app_exact by exact Hu; rewrite Epre; exact Epy. }
           eapply (con_view_base VP HVP HGall Hviewsall p D HPD k Mk qc kc Is vm c gs HMk Hh Hcon
-                    (fun Dq0 Mc gs0 Hq0 HMc Hc0 => HΨall _ _ _ _ _ _ Hq0 HMc Hc0) Dq Mkc pmc gs' ib);
+                    (fun Dq0 Mc gs0 Hq0 HMc Hc0 => HΨall _ _ _ _ _ _ (valid_groups_containers _ HVP _ _ _ _ _ _ _ _ _ HPD HMk Hh Hq0) HMc Hc0) Dq Mkc pmc gs' ib);
             [ exact Hq | exact HMkc | exact Hhc | exact Hvm | exact Hcon' | exact Hcorr | exact HΔ'
             | intros ρ0 b0 Eb0; eapply universe_index_le_trans; [ exact (Hnbq _ _ _ _ _ _ _ HMk Hh Hq _ _ Eb0) | apply ul_mono; unfold ib; lia ]
             | exact HgAll | exact Hw | exact Eb' | exact Hgb | exact Hper ]. }

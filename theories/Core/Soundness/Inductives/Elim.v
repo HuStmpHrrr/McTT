@@ -1105,10 +1105,9 @@ Section ElimGlu.
   Hypotheses (Hbu : ⟦ ind_sort D ⟧ decl_env D ups ↘ bu)
     (Hule : universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
-  (** The contexts of the arguments of the constructors of the filed
-      groups are glued ([AtType]); the gluing of global contexts gives
-      it. *)
-  Hypothesis (HΨall : forall q0 G0 j Mj c0 gs0, ind_lookup gc_deps gc_stack q0 = Some G0 -> ind_member G0 j = Some Mj ->
+  (** The contexts of the arguments of the constructors of the groups of
+      [VP] are glued ([AtType]; [glu_group_cargs] gives it). *)
+  Hypothesis (HΨall : forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj ->
                  ind_con Mj c0 = Some gs0 -> ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj).
   (** A level above [u] and the sorts of the containers of the views, as
       [AtType] needs ([nb_exists] gives one). *)
@@ -5757,8 +5756,7 @@ End ElimGlu.
     elimination is then glued ([elim_glu_all]) at the motive's value,
     related to the value of the rule's type. *)
 Theorem glu_rel_exp_elim : forall VP p D, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) -> VP p D ->
-    (forall q0 D0, ind_lookup gc_deps gc_stack q0 = Some D0 -> glu_ind_decl D0) ->
-    (forall q0 G0 j Mj c0 gs0, ind_lookup gc_deps gc_stack q0 = Some G0 -> ind_member G0 j = Some Mj -> ind_con Mj c0 = Some gs0 ->
+    (forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj -> ind_con Mj c0 = Some gs0 ->
        ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj) ->
     forall Γ m Mm bm Bks Ps M (i : nat),
     ind_member D m = Some Mm -> List.nth_error Bks m = Some bm ->
@@ -5794,9 +5792,9 @@ Theorem glu_rel_exp_elim : forall VP p D, valid_groups VP -> (forall qn G, VP qn
     blocks_scoped (List.length Γ) Bks ->
     Γ ⊩ a_elim ak_relevant p (List.firstn (ind_nu D) Ps) m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
-  intros VP p D HVP HGall HPD HGlk HΨall Γ m Mm bm Bks Ps M i HMm Hbm HLb HPl HPt HPg HMt HMg Hnm Hann HAt HAg HMx Hna HBx Har HBt HBg HBsc.
-  pose proof (fun qn G H => glu_views_ok_all VP qn G HVP H (HGall _ _ H) HGlk
-                 (fun j Mj c gs HM Hc => HΨall qn G j Mj c gs (valid_group_lookup _ _ (valid_groups_valid VP HVP qn G H)) HM Hc))
+  intros VP p D HVP HGall HPD HΨall Γ m Mm bm Bks Ps M i HMm Hbm HLb HPl HPt HPg HMt HMg Hnm Hann HAt HAg HMx Hna HBx Har HBt HBg HBsc.
+  pose proof (fun qn G H => glu_views_ok_all VP qn G HVP H (HGall _ _ H) HGall
+                 (fun j Mj c gs HM Hc => HΨall qn G j Mj c gs H HM Hc))
     as Hviewsall.
   pose proof (HGall _ _ HPD) as HG.
   pose proof (valid_groups_valid VP HVP p D HPD) as Hvg.
@@ -6047,9 +6045,9 @@ Section ConRviewFT.
   Variable (VP : qname -> ind_decl -> Prop).
   Hypotheses (HVP : valid_groups VP) (HGall : forall qn G, VP qn G -> glu_ind_decl G)
     (Hviewsall : forall qn G, VP qn G -> glu_views_ok qn G).
-  (** The contexts of the arguments of the constructors of the filed
-      groups are glued, as [glu_at_type_all] needs. *)
-  Hypothesis (HΨall : forall q0 G0 j Mj c0 gs0, ind_lookup gc_deps gc_stack q0 = Some G0 -> ind_member G0 j = Some Mj ->
+  (** The contexts of the arguments of the constructors of the groups of
+      [VP] are glued, as [glu_at_type_all] needs. *)
+  Hypothesis (HΨall : forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj ->
                  ind_con Mj c0 = Some gs0 -> ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj).
   Variables (p : qname) (D : ind_decl).
   Hypothesis (HPD : VP p D).
