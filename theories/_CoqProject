@@ -147,6 +147,10 @@
 ./Core/Soundness/Inductives/Elim.v
 ./Core/Soundness/Inductives/ArgTypes.v
 ./Core/Soundness/IndCases.v
+./Core/Soundness/ElimCases.v
+./Core/Soundness/IotaCases.v
+./Core/Soundness/RecordCases.v
+./Core/Soundness/Global/Embedding.v
 ./Core/Soundness.v
 ./Core/Consequences/FiledConstructorTypes.v
 ./Core/Consequences/NormalFormWeakening.v

@@ -44,7 +44,7 @@ Lemma glu_record :
      Θ ⍮ Ξ ⍮ ⋅ ⊢ record_ty R : Typeω@i ->
      Θ ⍮ Ξ ⍮ record_params R ⊩ᵤ record_sort R ->
      (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊩ T : (record_sort R)[wk_shiftn k]ʷ) ->
+        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊩ T : abs_kind_sort (record_field_kind R k) (record_sort R)[wk_shiftn k]ʷ) ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_record p : record_ty R ).
 Proof.
   intros * HΓ HΓg Hl Hty HSg HTg Θ2 Ξ2 Hμ.
