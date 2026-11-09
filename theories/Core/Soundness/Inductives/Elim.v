@@ -1105,10 +1105,6 @@ Section ElimGlu.
   Hypotheses (Hbu : ⟦ ind_sort D ⟧ decl_env D ups ↘ bu)
     (Hule : universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
-  (** The contexts of the arguments of the constructors of the groups of
-      [VP] are glued ([AtType]; [glu_group_cargs] gives it). *)
-  Hypothesis (HΨall : forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj ->
-                 ind_con Mj c0 = Some gs0 -> ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj).
   (** A level above [u] and the sorts of the containers of the views, as
       [AtType] needs ([nb_exists] gives one). *)
   Variable (nb : nat).
@@ -2376,10 +2372,10 @@ Section ElimGlu.
     Proof.
       destruct con_case_rel as [_ Hia].
       pose proof (us_glu_args Δ' σ' Hσ') as HUg'; rewrite <- HUs' in HUg'.
-      destruct (glu_at_type_all VP HVP HGall Hviewsall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf HΨall
+      destruct (glu_at_type_all VP HVP HGall Hviewsall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf
                   nb Hnbu Hnbq Hnbr) as [_ Hrt].
       assert (HΔ' : ⊢ Δ') by (pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ'); gen_presups; assumption).
-      pose proof (at_con_args_prefix VP HVP HGall p D HPD ups u NP NEl AP AEl DP DEl ups_len ups_tele_args Hf HΨall
+      pose proof (at_con_args_prefix VP HVP HGall p D HPD ups u NP NEl AP AEl DP DEl ups_len ups_tele_args Hf
                     k Mk c gs Us' Ns' X vs As Δ' HMk Hcon HNl' con_case_LX Hvl HAl Hb Hv Hnp HAs Harg
                     (fun gs1 t gs2 N A v H1 H2 H3 H4 => Hrt _ _ _ _ _ _ _ _ _ (Hrec gs1 t gs2 N A v H1 H2 H3 H4)) HΔ' HUg' Hia
                     (List.length gs) (le_n _)) as HgA.
@@ -2797,7 +2793,7 @@ Section ElimGlu.
       rewrite Href in Href0; injection Href0 as E1 E2; subst hd0 k0.
       assert (HIG : ind_glu_elem p D ups NEl AEl DP DEl k Δ' Us' Ns' M' (d_con hd k' c (bs ++ vs)))
         by (eapply ind_glu_elem_con; eassumption).
-      destruct (glu_at_type_all VP HVP HGall Hviewsall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf HΨall
+      destruct (glu_at_type_all VP HVP HGall Hviewsall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf
                   nb Hnbu Hnbq Hnbr) as [Hel _].
       pose proof (us_glu_args Δ' σ' Hσ') as HUg'; rewrite <- HUs' in HUg'.
       assert (Hgl : forall (i : nat) P El, nb <= i -> DG d_ind hd k' (pre ++ ns) ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -4385,7 +4381,7 @@ Section ElimGlu.
       (** The motive at the scrutinee, glued in the group ([AtType]). *)
       assert (HIG : ind_glu_elem p D ups NEl AEl DP DEl j Δ' Us' Ns' M' (⇑ (d_ind hd k' as') e))
         by (eapply ind_glu_elem_neut; eassumption).
-      destruct (glu_at_type_all VP HVP HGall Hviewsall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf HΨall
+      destruct (glu_at_type_all VP HVP HGall Hviewsall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf
                   nb Hnbu Hnbq Hnbr) as [Hel _].
       pose proof (us_glu_args Δ' σ' Hσ') as HUg'; rewrite <- HUs' in HUg'.
       assert (Hgl : forall (i : nat) P El, nb <= i -> DG d_ind hd k' (pre ++ ns) ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -5756,8 +5752,6 @@ End ElimGlu.
     elimination is then glued ([elim_glu_all]) at the motive's value,
     related to the value of the rule's type. *)
 Theorem glu_rel_exp_elim : forall VP p D, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) -> VP p D ->
-    (forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj -> ind_con Mj c0 = Some gs0 ->
-       ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj) ->
     forall Γ m Mm bm Bks Ps M (i : nat),
     ind_member D m = Some Mm -> List.nth_error Bks m = Some bm ->
     List.length Bks = ind_nblk D -> List.length Ps = im_np D Mm ->
@@ -5792,10 +5786,8 @@ Theorem glu_rel_exp_elim : forall VP p D, valid_groups VP -> (forall qn G, VP qn
     blocks_scoped (List.length Γ) Bks ->
     Γ ⊩ a_elim ak_relevant p (List.firstn (ind_nu D) Ps) m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
-  intros VP p D HVP HGall HPD HΨall Γ m Mm bm Bks Ps M i HMm Hbm HLb HPl HPt HPg HMt HMg Hnm Hann HAt HAg HMx Hna HBx Har HBt HBg HBsc.
-  pose proof (fun qn G H => glu_views_ok_all VP qn G HVP H (HGall _ _ H) HGall
-                 (fun j Mj c gs HM Hc => HΨall qn G j Mj c gs H HM Hc))
-    as Hviewsall.
+  intros VP p D HVP HGall HPD Γ m Mm bm Bks Ps M i HMm Hbm HLb HPl HPt HPg HMt HMg Hnm Hann HAt HAg HMx Hna HBx Har HBt HBg HBsc.
+  pose proof (fun qn G H => glu_views_ok_all VP qn G HVP H (HGall _ _ H) HGall) as Hviewsall.
   pose proof (HGall _ _ HPD) as HG.
   pose proof (valid_groups_valid VP HVP p D HPD) as Hvg.
   pose proof (valid_group_lookup _ _ Hvg) as Hl; pose proof (valid_group_valid _ _ Hvg) as HD; pose proof (valid_group_closed _ _ Hvg) as Hc.
@@ -5970,7 +5962,7 @@ Proof.
   { assert (H : Δ ⊢ M[σ] : (ind_mty p D m Us Ns)[σ]) by mauto 2.
     rewrite ind_mty_sub in H by assumption; unfold ind_mty in H; rewrite HMm in H; exact H. }
   destruct (proj1 (proj1 (elim_glu_all VP p D HVP HGall Hviewsall HPD Γ RΓ HRΓ HΓs SbΓ HSbΓ RU HRU Us HUl HUs HUg HUss Bks i HBt' HBv HBg'
-                            ρ ups Hρ HUv bu u NP NEl AP AEl DP DEl Hbu Hule Hf HΨall nb Hnb) m Δ _ _ _ mv HIG)
+                            ρ ups Hρ HUv bu u NP NEl AP AEl DP DEl Hbu Hule Hf nb Hnb) m Δ _ _ _ mv HIG)
               Mm σ ns0 HMm Hrvm Hσ eq_refl HMt' Hgn Hns0 HGm) as [r a Er Ea Hper Hglr].
   rewrite (blocks_motives_nth _ _ _ Hbm) in Ea, Hglr.
   destruct (per_univ_glu_univ_elem _ _ Hper) as (P & El & HgE).
@@ -6045,10 +6037,6 @@ Section ConRviewFT.
   Variable (VP : qname -> ind_decl -> Prop).
   Hypotheses (HVP : valid_groups VP) (HGall : forall qn G, VP qn G -> glu_ind_decl G)
     (Hviewsall : forall qn G, VP qn G -> glu_views_ok qn G).
-  (** The contexts of the arguments of the constructors of the groups of
-      [VP] are glued, as [glu_at_type_all] needs. *)
-  Hypothesis (HΨall : forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj ->
-                 ind_con Mj c0 = Some gs0 -> ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj).
   Variables (p : qname) (D : ind_decl).
   Hypothesis (HPD : VP p D).
   Let HG := HGall _ _ HPD.
@@ -6192,7 +6180,7 @@ Section ConRviewFT.
     pose proof (rview_mty_glu VP HVP HGall p D HPD ups Hu Hgu i Hbnd k Mk qr Is _ cups Δ Us i P El (le_n i) HMk Hh Ecups HΔ HUs Hglu')
       as HT.
     exact (proj2 (proj1 (glu_at_type_all VP HVP HGall Hviewsall p D HPD ups bu _ NP NEl AP AEl DP DEl Hu Hgu Hbu (universe_index_le_refl _) Hf
-                           HΨall nb (level_bound_clause _ _ _ _ Hnb) (level_bound_views _ _ _ _ Hnb) (level_bound_records _ _ _ _ Hnb))
+                           nb (level_bound_clause _ _ _ _ Hnb) (level_bound_views _ _ _ _ Hnb) (level_bound_records _ _ _ _ Hnb))
                      k Δ Us nil _ _ Hgi) Mk qr Is _ cups i P El HMk Hh Ecups HUs HMt HGm Hglu' HT).
   Qed.
 

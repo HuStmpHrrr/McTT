@@ -40,7 +40,7 @@ From Mctt.Core.Soundness Require Import
   VariableCases
   UniverseCases.
 From Mctt.Core.Soundness.Records Require Model.
-From Mctt.Core.Soundness.Inductives Require Import Args Comps Con ViewCon.
+From Mctt.Core.Soundness.Inductives Require Import Args Comps Con ViewCon ArgTypes.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 Import Fixed_Notations.
@@ -2504,10 +2504,11 @@ Section Root.
     (Hule : universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
   (** The groups of [VP] are glued (the containers of the views among
-      them, [valid_groups_containers]), and so are the contexts of the
-      arguments of the group's constructors. *)
-  Hypotheses (HGall : forall qn G, VP qn G -> glu_ind_decl G)
-    (HΨv : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs -> ⊩ cargs_ctx p D Mj gs ++ im_params D Mj).
+      them, [valid_groups_containers]), so are the contexts of the
+      arguments of the group's constructors ([glu_group_cargs]). *)
+  Hypotheses (HGall : forall qn G, VP qn G -> glu_ind_decl G).
+  Let HΨv : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs -> ⊩ cargs_ctx p D Mj gs ++ im_params D Mj :=
+    fun j Mj c gs HM Hc => glu_group_cargs VP HVP HGall p D j Mj c gs HPD HM Hc.
 
   (** Non-uniform parameters related at the group's member are related at
       the container's member it views. *)
@@ -2737,11 +2738,10 @@ End Root.
     container. *)
 Theorem glu_views_ok_all : forall VP p D, valid_groups VP -> VP p D -> glu_ind_decl D ->
     (forall qn G, VP qn G -> glu_ind_decl G) ->
-    (forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs -> ⊩ cargs_ctx p D Mj gs ++ im_params D Mj) ->
     glu_views_ok p D.
 Proof.
-  intros VP p D HVP HPD HG HGall HΨv ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf.
-  exact (glu_view_end_all VP p D HVP HPD HG ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf HGall HΨv).
+  intros VP p D HVP HPD HG HGall ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf.
+  exact (glu_view_end_all VP p D HVP HPD HG ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf HGall).
 Qed.
 
 End Fixed_GCtx.

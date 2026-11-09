@@ -40,7 +40,7 @@ From Mctt.Core.Soundness Require Import
   SubtypingCases
   VariableCases
   UniverseCases.
-From Mctt.Core.Soundness.Inductives Require Import Args Comps Con ViewCon Bridge ElimBase.
+From Mctt.Core.Soundness.Inductives Require Import Args Comps Con ViewCon ArgTypes Bridge ElimBase.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 Import Fixed_Notations.
@@ -73,10 +73,11 @@ Section AtType.
     (Hbu : ⟦ ind_sort D ⟧ decl_env D ups ↘ bu)
     (Hule : universe_index_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
-  (** The contexts of the arguments of the constructors of the filed
-      groups are glued. *)
-  Hypothesis (HΨall : forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj ->
-                 ind_con Mj c0 = Some gs0 -> ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj).
+  (** The contexts of the arguments of the constructors of the groups of
+      [VP] are glued ([glu_group_cargs]). *)
+  Let HΨall : forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj ->
+                 ind_con Mj c0 = Some gs0 -> ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj :=
+    glu_group_cargs VP HVP HGall.
 
   #[local] Abbreviation nr := (canon_nparams_rel D ups).
   #[local] Abbreviation ar := (canon_args_rel D ups).
