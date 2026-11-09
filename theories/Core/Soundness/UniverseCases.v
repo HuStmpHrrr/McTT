@@ -6,19 +6,6 @@ From Mctt.Core.Soundness Require Import LogicalRelation SubtypingCases VariableC
 Import Domain_Notations Fixed_Notations.
 
 
-(** The readback clause of [glu_rel_exp_of_univ] for a closed type former:
-    the type reads back as itself, so the clause is its congruence rule at
-    the universe ([wf_exp_eq_*_cong_univ]). *)
-Ltac closed_typ_readback :=
-  let Hφ := fresh "Hφ" in
-  let Hr := fresh "Hr" in
-  intros ? ? ? Hφ Hr;
-  assert (⊢ _) by (eapply kripke_dom; exact Hφ);
-  inversion Hr; subst; simplify_subs; cbn [nf_to_exp];
-  first [ apply wf_exp_eq_True_cong_univ
-        | apply wf_exp_eq_False_cong_univ | apply wf_exp_eq_level_cong_univ ];
-  assumption.
-
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
@@ -39,7 +26,7 @@ Lemma glu_rel_exp_of_univ : forall {Γ Sb A} {u : universe_index},
               Dom a ≈ a ∈ per_univ u /\
               (forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
               (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
-                         Δ' ⊢ A[σ][φ]ʷ ≈ W : universe_index_term u)) ->
+                         glu_nf_eq Δ' A[σ][φ]ʷ W (universe_index_term u))) ->
     Γ ⊩ A : universe_index_term u.
 Proof.
   intros * ? Hbody.
@@ -48,7 +35,7 @@ Proof.
   destruct (Hbody _ _ _ HΔ) as [H0 [a [? [[] [H3 Hrb]]]]].
   assert (⊢ Δ) by (gen_presups; eassumption).
   assert (exists P El, DG a ∈ glu_univ_elem u ↘ P ↘ El) as [P [El HPEl]] by mauto 3.
-  econstructor; [ apply eval_universe_index_term | eassumption
+  econstructor; [ apply eval_universe_index_term | destruct u; cbn; eassumption
                 | apply glu_univ_elem_univ_at, universe_index_lt_large_level_above |].
   rewrite exp_sub_universe_index_term.
   destruct u as [n | j]; cbn [univ_glu_exp_pred_at universe_index_term large_level_above] in *.
@@ -58,7 +45,7 @@ Proof.
     + exact H0.
     + apply (mk_suniv_glu_typ _ _ _ _ (𝕃ᵒ n) (fst n)); [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
     + exact (mk_glu_typ_at _ _ _ _ P El HPEl (H3 P El HPEl)).
-    + exact Hrb.
+    + intros Δ' φ W Hφ Hr; pose proof (Hrb _ _ _ Hφ Hr) as Hw; cbn in Hw |- *; exact Hw.
   - econstructor.
     + exact H0.
     + mauto 3.
@@ -96,8 +83,8 @@ Proof.
       inversion Hr; subst; cbn.
     + assert (Hn := read_nf_domain_level_lit n (length Δ')); unfold domain_level_lit in Hn.
       assert (L = lvl_lit n) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
-      cbn; apply wf_exp_eq_univ_cong_large; assumption.
-    + mauto 3.
+      eapply glu_nf_eq_proof_free; [ cbn; repeat constructor | cbn; apply wf_exp_eq_univ_cong_large; assumption ].
+    + eapply glu_nf_eq_proof_free; [ cbn; repeat constructor | mauto 3 ].
 Qed.
 
 Lemma glu_rel_exp_of_univ_inversion : forall {Γ Sb A} {u : universe_index},
@@ -111,7 +98,7 @@ Lemma glu_rel_exp_of_univ_inversion : forall {Γ Sb A} {u : universe_index},
             Dom a ≈ a ∈ per_univ u /\
             (forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
             (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
-                       Δ' ⊢ A[σ][φ]ʷ ≈ W : universe_index_term u).
+                       glu_nf_eq Δ' A[σ][φ]ʷ W (universe_index_term u)).
 Proof.
   intros * HΓ HA * HΔ.
   assert (Γ ⊩ universe_index_term u : Typeω@(large_level_above u)) by (eapply glu_rel_exp_univ_tm; eexists; eassumption).
@@ -144,8 +131,11 @@ Proof.
     + intros P' El' H'.
       handle_functional_glu_univ_elem.
       assumption.
-    + assert (Δ ⊢ A[σ] ® glu_typ_top j m) as [] by mauto 3.
-      intros; eauto.
+    + (** By realizability: a type of a universe reads back as itself up to
+          proofs ([realize_glu_typ_top]) *)
+      destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ ak_relevant _ HPEl HP HAσ) as [Hk Hnl].
+      destruct (realize_glu_typ_top _ _ _ _ HPEl Hnl _ _ HP) as [_ _ Hrd].
+      rewrite Hk in Hrd; exact Hrd.
 Qed.
 
 (** A type at an index [u] is a type at the large level [large_level u], which is
@@ -177,6 +167,7 @@ Proof.
   eapply glu_rel_exp_subtyp;
     [ exact HA
     | eapply glu_rel_exp_univ_tm; destruct HA as [Sb ? ? ?]; eexists; eassumption
+    | constructor
     | apply wf_subtyp_universe_index; assumption ].
 Qed.
 
@@ -224,7 +215,7 @@ Proof.
     inversion Hr; subst.
     assert (Hn := read_nf_domain_level_lit (a, n) (length Δ')); unfold domain_level_lit in Hn.
     assert (L = lvl_lit (a, n)) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
-    cbn; apply wf_exp_eq_univ_cong_lit; assumption.
+    eapply glu_nf_eq_proof_free; [ cbn; repeat constructor | cbn; apply wf_exp_eq_univ_cong_lit; assumption ].
 Qed.
 
 Hint Resolve glu_rel_exp_suniv : mctt.
