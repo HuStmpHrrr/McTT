@@ -385,6 +385,103 @@ Proof.
            (rel_sub_under_ctx_q Hτs (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAt)))).
 Qed.
 
+(** ** Telescopes
+
+    A telescope of assumptions whose entries are glued over the entries
+    after them ([glu_tele_entries]), as [rel_ctx_wf] gives them in the PER
+    model: lifted along a glued substitution ([glu_rel_sub_qn]), its
+    entries glued along it ([glu_tele_entries_sub]), its [Π] glued
+    ([glu_rel_exp_ctx_pi]), and an element of the [Π] applied to glued
+    terms of its entries' instances glued ([glu_rel_exp_apps_ctx_pi_n],
+    [rel_exp_apps_ctx_pi_n]). *)
+Definition glu_tele_entries (Δ Γ : ctx) : Prop :=
+  forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> exists j : nat, Δ2 ++ Γ ⊩ A : abs_kind_sort κ Typeω@j.
+
+Lemma glu_tele_entries_tail : forall e Δ Γ, glu_tele_entries (e :: Δ) Γ -> glu_tele_entries Δ Γ.
+Proof. intros * H Δ1 κ A Δ2 E; apply (H (e :: Δ1)); rewrite E; reflexivity. Qed.
+
+Lemma glu_rel_sub_qn : forall Pre Γ0 τ Δ0, all_assumptions (Pre ++ Δ0) -> Γ0 ⊩ˢ τ : Δ0 -> glu_tele_entries Pre Δ0 ->
+    tele_sub Pre τ ++ Γ0 ⊩ˢ sb_qn (List.length Pre) τ : Pre ++ Δ0.
+Proof.
+  induction Pre as [| e Pre IH]; intros * Hass Hτ HP; cbn [tele_sub List.app List.length sb_qn]; [ exact Hτ |].
+  cbn [List.app] in Hass; apply List.Forall_cons_iff in Hass as [(κ & B & ->) Hass].
+  destruct (HP nil κ B Pre eq_refl) as [j HB].
+  exact (glu_rel_sub_q _ _ _ _ _ j Hass (IH _ _ _ Hass Hτ (glu_tele_entries_tail _ _ _ HP)) HB).
+Qed.
+
+Lemma glu_tele_entries_sub : forall Pre Γ0 τ Δ0, all_assumptions (Pre ++ Δ0) -> Γ0 ⊩ˢ τ : Δ0 -> glu_tele_entries Pre Δ0 ->
+    glu_tele_entries (tele_sub Pre τ) Γ0.
+Proof.
+  induction Pre as [| e Pre IH]; intros * Hass Hτ HP Δ1 κ A Δ2 E; [ destruct Δ1; discriminate |].
+  cbn [List.app] in Hass; pose proof Hass as Hass0; apply List.Forall_cons_iff in Hass as [(κ0 & B & ->) Hass].
+  cbn [tele_sub centry_sub] in E.
+  destruct Δ1 as [| e1 Δ1]; cbn [List.app] in E.
+  - injection E as <- <- <-.
+    destruct (HP nil κ0 B Pre eq_refl) as [j HB].
+    exists j; pose proof (glu_rel_exp_sub (glu_rel_sub_qn _ _ _ _ Hass Hτ (glu_tele_entries_tail _ _ _ HP)) HB) as H.
+    rewrite abs_kind_sort_sub in H; exact H.
+  - injection E as _ E.
+    exact (IH _ _ _ Hass Hτ (glu_tele_entries_tail _ _ _ HP) _ _ _ _ E).
+Qed.
+
+Lemma glu_rel_exp_ctx_pi : forall Δ Γ B (i : nat), all_assumptions Δ -> glu_tele_entries Δ Γ -> Δ ++ Γ ⊩ B : Typeω@i ->
+    exists j : nat, Γ ⊩ ctx_pi Δ B : Typeω@j.
+Proof.
+  induction Δ as [| e Δ IH]; intros * HΔa HΔ HB; [ exists i; exact HB |].
+  apply List.Forall_cons_iff in HΔa as [(κ & A & ->) HΔa].
+  destruct (HΔ nil κ A Δ eq_refl) as [k HA].
+  cbn [ctx_pi_at].
+  apply (IH _ _ (max k i) HΔa (glu_tele_entries_tail _ _ _ HΔ)).
+  exact (glu_rel_exp_pi_large (glu_rel_exp_kind_sort_lift (Nat.le_max_l k i) HA)
+           (glu_rel_exp_kind_sort_lift (κ := ak_relevant) (Nat.le_max_r k i) HB) (pi_kinds_relevant κ)).
+Qed.
+
+Lemma glu_rel_exp_apps_ctx_pi_n : forall n Δ Γ B (i : nat) M Ms,
+    List.length Δ = n -> all_assumptions Δ -> all_assumptions Γ -> ⊩ Γ -> glu_tele_entries Δ Γ ->
+    Δ ++ Γ ⊩ B : Typeω@i -> Γ ⊩ M : ctx_pi Δ B ->
+    List.length Ms = List.length Δ ->
+    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ Id Ms) k = Some T -> Γ ⊩ N : T) ->
+    Γ ⊩ apps M Ms : B[sb_of_list Id Ms].
+Proof.
+  induction n as [| n IH]; intros * Hn Hass HΓa HΓ HΔ HB HM Hl HMs.
+  - destruct Δ; [| discriminate ]; destruct Ms; [| discriminate ]; cbn; rewrite exp_sub_id; exact HM.
+  - destruct (List.exists_last (l := Δ)) as (Δ0 & e & ->); [ intros ->; discriminate |].
+    rename Δ0 into Δ.
+    rewrite List.length_app in Hn; cbn in Hn.
+    unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
+    rewrite List.length_app in Hl; cbn in Hl.
+    destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; cbn in Hl.
+    rewrite ctx_pi_snoc in HM; rewrite <- List.app_assoc in HB; cbn [List.app] in HB.
+    destruct (HΔ Δ κ0 A0 nil eq_refl) as [j HA0]; cbn [List.app] in HA0.
+    assert (HΔ' : glu_tele_entries Δ (Γ ▹{κ0} A0)).
+    { intros Δ1 κ A Δ2 E; destruct (HΔ Δ1 κ A (Δ2 ++ ce_ass κ0 A0 :: nil)) as [j' H];
+        [ rewrite E, <- List.app_assoc; reflexivity | exists j'; rewrite <- List.app_assoc in H; exact H ]. }
+    assert (HΓA : ⊩ Γ ▹{κ0} A0) by exact (glu_rel_ctx_extend HΓ HA0 (sort_kind_abs_kind_sort κ0 j)).
+    assert (HassΓA : all_assumptions (Γ ▹{κ0} A0)) by (constructor; [ eauto | exact HΓa ]).
+    destruct (glu_rel_exp_ctx_pi _ _ _ _ Hass HΔ' HB) as [k HPi].
+    assert (HM0 : Γ ⊩ M0 : A0)
+      by (rewrite <- (exp_sub_id A0); apply (HMs 0); [ reflexivity | rewrite tele_insts_snoc; reflexivity ]).
+    (** The application *)
+    pose proof (glu_rel_exp_app HA0 (sort_kind_abs_kind_sort κ0 j) (glu_rel_exp_kind_sort_lift (κ := ak_relevant) (le_n k) HPi)
+                  (pi_kinds_relevant κ0) HM HM0) as Happ.
+    rewrite ctx_pi_sub in Happ.
+    assert (Hg0 : Γ ⊩ˢ Id,,M0 : Γ ▹{κ0} A0)
+      by (apply (glu_rel_sub_ext _ _ _ _ _ _ j HΓa (glu_rel_sub_id _ HΓ) HA0); rewrite exp_sub_id; exact HM0).
+    assert (HassΔΓ : all_assumptions (Δ ++ Γ ▹{κ0} A0)) by (apply List.Forall_app; split; assumption).
+    pose proof (glu_rel_sub_qn _ _ _ _ HassΔΓ Hg0 HΔ') as Hgq.
+    pose proof (glu_rel_exp_sub Hgq HB) as HB'; cbn [exp_sub] in HB'.
+    cbn [apps_exp sb_of_list].
+    replace (B[sb_of_list (Id,,M0) Ms]) with (B[sb_qn (List.length Δ) (Id,,M0)][sb_of_list Id Ms])
+      by (replace (List.length Δ) with (List.length Ms) by lia; apply exp_sub_qn_of_list).
+    eapply (IH (tele_sub Δ (Id,,M0)) Γ (B[sb_qn (List.length Δ) (Id,,M0)]) i (M $ M0) Ms);
+      [ rewrite length_tele_sub; lia | apply all_assumptions_sub; exact Hass | exact HΓa | exact HΓ
+      | exact (glu_tele_entries_sub _ _ _ _ HassΔΓ Hg0 HΔ') | exact HB' | exact Happ | rewrite length_tele_sub; lia | ].
+    intros k' N T HN HT; apply (HMs (S k')); [ exact HN |].
+    rewrite tele_insts_snoc; cbn [List.nth_error].
+    rewrite tele_insts_tele_sub in HT; rewrite <- HT; f_equal.
+    apply tele_insts_sb_eq; symmetry; apply sb_compose_id_right.
+Qed.
+
 (** ** Types of a Group's Sort
 
     A type of the sort of a valid glued group, weakened past the
