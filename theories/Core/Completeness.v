@@ -199,8 +199,8 @@ Proof.
   pose proof (per_univ_elem_kind _ _ _ _ HR') as Hra.
   destruct HW as [w Hp Hw | m w Hr Hm Hw]; destruct HW' as [w' Hp' Hw' | m' w' Hr' Hm' Hw']; try kind_clash.
   - (** Two proofs, of propositions read back alike: the types are related *)
-    destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp Hw) as (C & P & -> & HC).
-    destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp' Hw') as (C' & P' & -> & HC').
+    destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp Hw) as (C & P & -> & HC & _).
+    destruct (@read_nf_propositional (gc_mk Θ Ξ) _ _ _ _ Hp' Hw') as (C' & P' & -> & HC' & _).
     destruct (per_univ_then_per_top_typ HR' (List.length Γ)) as [D D' HD HD' HE].
     functional_read_rewrite_clear.
     unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; exact HE.

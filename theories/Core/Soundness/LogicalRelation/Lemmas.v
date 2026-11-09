@@ -380,79 +380,6 @@ Proof.
              Hns Hcon Hp eq_refl ltac:(lia) (tele_prefix_rel_nil _)).
 Qed.
 
-(** Equal lists of terms at a closed telescope are equal at every
-    weakening. *)
-Lemma exps_eq_at_wk : forall Δ Δ' φ T Xs Ys, all_assumptions T -> ctx_scoped 0 T -> Δ' ⊢ᵏ φ : Δ ->
-    exps_eq_at Δ T Xs Ys -> exps_eq_at Δ' T (List.map (fun X => X[φ]ʷ) Xs) (List.map (fun Y => Y[φ]ʷ) Ys).
-Proof.
-  intros * Hass Hs Hφ [Hl H]; split; [ rewrite !List.length_map; exact Hl |].
-  intros k X Y A HX HY HA.
-  rewrite List.nth_error_map in HX, HY.
-  destruct (List.nth_error Xs k) as [X0 |] eqn:HX0; [| discriminate ]; injection HX as <-.
-  destruct (List.nth_error Ys k) as [Y0 |] eqn:HY0; [| discriminate ]; injection HY as <-.
-  rewrite <- (tele_insts_closed_wk _ _ _ Hass Hs), List.nth_error_map in HA.
-  destruct (List.nth_error (tele_insts T Id Xs) k) as [A0 |] eqn:HA0; [| discriminate ]; injection HA as <-.
-  pose proof (H _ _ _ _ HX0 HY0 HA0); mauto 3.
-Qed.
-
-(** The parameters of a type predicate at a weakening, at a list equal to
-    them there, are equal to the ones of another predicate glued to the same
-    values. *)
-Lemma exps_eq_at_params_wk : forall p D k Mk Δ Δ' φ Xs Ys, ind_lookup gc_deps gc_stack p = Some D ->
-    ind_member D k = Some Mk -> Δ' ⊢ᵏ φ : Δ ->
-    exps_eq_at Δ (im_params D Mk) Xs Ys ->
-    exps_eq_at Δ' (im_params D Mk) (List.map (fun X => X[φ]ʷ) Xs) (List.map (fun Y => Y[φ]ʷ) Ys).
-Proof.
-  intros * Hl HMk Hφ H.
-  assert (HΔ : ⊢ Δ) by (eapply kripke_cod; eassumption).
-  destruct (decl_of_lookup _ _ _ _ _ HΔ Hl) as [_ Hc].
-  eapply exps_eq_at_wk; [ eapply decl_closed_params_ass; eassumption | eapply decl_closed_params; eassumption
-                       | exact Hφ | exact H ].
-Qed.
-
-(** Equal parameters are equal at their uniform part. *)
-Lemma exps_eq_at_uparams_of_params : forall D Mk Δ Xs Ys, decl_closed D ->
-    List.length Xs = im_np D Mk -> exps_eq_at Δ (im_params D Mk) Xs Ys ->
-    exps_eq_at Δ (ind_uparams D) (List.firstn (ind_nu D) Xs) (List.firstn (ind_nu D) Ys).
-Proof.
-  intros * Hc HXl [Hl H]; split; [ rewrite !List.length_firstn; lia |].
-  pose proof (decl_uparams_ass D Hc) as HassU.
-  intros k X Y A HX HY HA.
-  rewrite List.nth_error_firstn in HX, HY.
-  destruct (Nat.ltb_spec k (ind_nu D)); [| discriminate ].
-  apply (H k X Y A HX HY).
-  unfold im_params; rewrite <- (List.firstn_skipn (ind_nu D) Xs), tele_insts_app
-    by (try exact HassU; rewrite List.length_firstn; unfold im_np, ind_nu in *; lia).
-  rewrite List.nth_error_app1; [ exact HA |].
-  rewrite length_tele_insts by exact HassU; rewrite List.length_firstn; unfold im_np, ind_nu in *; lia.
-Qed.
-
-(** Parameters with an equal uniform part, the rest unchanged. *)
-Lemma exps_eq_at_params_of_uparams : forall D Mk Δ Xs Us', decl_closed D ->
-    List.length Xs = im_np D Mk ->
-    (forall k X A, List.nth_error Xs k = Some X -> List.nth_error (tele_insts (im_params D Mk) Id Xs) k = Some A -> Δ ⊢ X : A) ->
-    exps_eq_at Δ (ind_uparams D) (List.firstn (ind_nu D) Xs) Us' ->
-    exps_eq_at Δ (im_params D Mk) Xs (Us' ++ List.skipn (ind_nu D) Xs).
-Proof.
-  intros * Hc HXl HXt [Hl H].
-  pose proof (decl_uparams_ass D Hc) as HassU.
-  assert (LU : List.length (List.firstn (ind_nu D) Xs) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in HXl; lia).
-  pose proof Hl as Hl0; rewrite LU in Hl0.
-  split; [ rewrite List.length_app, List.length_skipn; unfold im_np, im_nn in HXl; lia |].
-  intros k X Y A HX HY HA.
-  destruct (Nat.lt_ge_cases k (ind_nu D)) as [Hk | Hk].
-  - rewrite List.nth_error_app1 in HY by lia.
-    apply (H k X Y A); [ rewrite List.nth_error_firstn; destruct (Nat.ltb_spec k (ind_nu D)); [ exact HX | lia ] | exact HY |].
-    unfold im_params in HA; rewrite <- (List.firstn_skipn (ind_nu D) Xs), tele_insts_app in HA
-      by (try exact HassU; rewrite LU; unfold ind_nu; lia).
-    rewrite List.nth_error_app1 in HA; [ exact HA |].
-    rewrite length_tele_insts by exact HassU; rewrite LU; unfold ind_nu in *; lia.
-  - rewrite List.nth_error_app2 in HY by lia.
-    rewrite List.nth_error_skipn in HY.
-    replace (ind_nu D + (k - List.length Us')) with k in HY by lia.
-    rewrite HX in HY; injection HY as <-.
-    apply wf_exp_eq_refl; eapply HXt; eassumption.
-Qed.
 
 (** The right side of equal parameters is typed at its own telescope. *)
 Lemma exps_eq_at_typed_r : forall p D k Mk Δ Xs Ys, ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk -> ⊢ Δ ->
@@ -468,17 +395,6 @@ Proof.
   pose proof (HXY _ _ _ _ HX HY HT0) as HXY0.
   destruct (params_types_cong _ _ _ _ _ _ _ Hl HMk HΔ HXl ltac:(rewrite <- HlXY; exact HXl) HXY _ _ _ HT0 HA) as (S & HS & HTT).
   eapply wf_conv_sort; [ gen_presups; eassumption | exact (presup_exp_eq_right HTT) | exact HS | exact HTT ].
-Qed.
-
-Lemma exps_eq_at_uparams_trans : forall p D Δ Xs Ys Zs, ind_lookup gc_deps gc_stack p = Some D -> ⊢ Δ ->
-    List.length Xs = ind_nu D -> exps_eq_at Δ (ind_uparams D) Xs Ys -> exps_eq_at Δ (ind_uparams D) Ys Zs ->
-    exps_eq_at Δ (ind_uparams D) Xs Zs.
-Proof.
-  intros * Hl HΔ HXl [Hl1 H1] [Hl2 H2].
-  destruct (decl_of_lookup _ _ _ _ _ HΔ Hl) as [_ Hc].
-  split; [ congruence |].
-  unfold ind_nu in HXl.
-  eapply (tele_eq_trans Δ (ind_uparams D) Xs Ys Zs (decl_uparams_ass D Hc) (uparams_ctx_wf _ _ _ Hl HΔ)); [ lia | lia | lia | exact H1 | exact H2 ].
 Qed.
 
 Lemma map_wk_id : forall Ps, List.map (fun P => P[wk_id]ʷ) Ps = Ps.
@@ -1047,60 +963,6 @@ Proof.
   - destruct (Nat.eq_dec a b) as [<- | Hne]; [ exact Hs |].
     eapply wf_subtyp_trans; [ exact Hs | apply wf_subtyp_univ; [ eapply kripke_dom; eassumption | lia ] ].
   - intros Ns' HNs'; exact (record_fields_glu_cumu _ _ _ _ _ _ _ _ HF (Hf Ns' HNs')).
-Qed.
-
-(** The right side of equal lists at a closed telescope is typed at its
-    own instance of the telescope. *)
-Lemma tele_eq_typed_r : forall Δ C Xs Ys, all_assumptions C -> ⊢ C ++ Δ ->
-    List.length Xs = List.length C -> List.length Ys = List.length C ->
-    (forall k X Y T, List.nth_error Xs k = Some X -> List.nth_error Ys k = Some Y ->
-       List.nth_error (tele_insts C Id Xs) k = Some T -> Δ ⊢ X ≈ Y : T) ->
-    forall j Y T, List.nth_error Ys j = Some Y -> List.nth_error (tele_insts C Id Ys) j = Some T -> Δ ⊢ Y : T.
-Proof.
-  intros * Hass HC HXl HYl HXY j Y T HY HT.
-  assert (HΔ : ⊢ Δ) by (eapply ctx_app_wf_tail; exact HC).
-  destruct (nth_error_lt_some Xs j ltac:(rewrite HXl, <- HYl; apply List.nth_error_Some; congruence)) as [X HX].
-  destruct (nth_error_lt_some (tele_insts C Id Xs) j) as [T0 HT0].
-  { rewrite length_tele_insts by exact Hass.
-    assert (j < List.length Ys) by (apply List.nth_error_Some; congruence); lia. }
-  destruct (tele_insts_cong C Δ Δ Id Id Xs Ys Hass HC ltac:(apply wf_sub_eq_refl; mauto 3) HXl HYl HXY _ _ _ HT0 HT)
-    as (S & HS & HTT).
-  eapply wf_conv_sort; [ exact (presup_exp_eq_right (HXY _ _ _ _ HX HY HT0)) | exact (presup_exp_eq_right HTT) | exact HS | exact HTT ].
-Qed.
-
-(** Lists equal to the annotations of readbacks related up to proofs, at
-    a closed telescope, are equal ([nf_annotate_proofs_upto]). *)
-Lemma tele_eq_annotate_upto : forall Δ C Ps Qs W1 W2, all_assumptions C -> ⊢ C ++ Δ ->
-    List.length Ps = List.length C -> List.length Qs = List.length C ->
-    exps_eq_at Δ C Ps (List.map nf_to_exp (List.map nf_annotate_proofs W1)) ->
-    exps_eq_at Δ C Qs (List.map nf_to_exp (List.map nf_annotate_proofs W2)) ->
-    nfs_eq_upto_proofs W1 W2 -> exps_eq_at Δ C Ps Qs.
-Proof.
-  intros * Hass HC HPl HQl HP HQ E.
-  set (A1 := List.map nf_to_exp (List.map nf_annotate_proofs W1)) in *.
-  set (A2 := List.map nf_to_exp (List.map nf_annotate_proofs W2)) in *.
-  destruct HP as [HlP HP], HQ as [HlQ HQ].
-  assert (HA1 : List.length A1 = List.length C) by congruence.
-  assert (HA2 : List.length A2 = List.length C) by congruence.
-  assert (H12 : forall j X Y T, List.nth_error A1 j = Some X -> List.nth_error A2 j = Some Y ->
-                  List.nth_error (tele_insts C Id A1) j = Some T -> Δ ⊢ X ≈ Y : T).
-  { intros j X Y T HX HY HT.
-    unfold A1, A2 in HX, HY; rewrite !List.nth_error_map in HX, HY.
-    destruct (List.nth_error W1 j) as [w1 |] eqn:Hw1; [| discriminate ];
-      destruct (List.nth_error W2 j) as [w2 |] eqn:Hw2; [| discriminate ]; cbn in HX, HY; injection HX as <-; injection HY as <-.
-    destruct (nfs_eq_upto_proofs_nth _ _ _ _ E Hw1) as (w2' & Hw2' & Ew); rewrite Hw2 in Hw2'; injection Hw2' as <-.
-    destruct (nth_error_lt_some (tele_insts C Id A2) j) as [T2 HT2].
-    { rewrite length_tele_insts by exact Hass; rewrite <- HA2, ?PeanoNat.Nat.min_id; apply List.nth_error_Some.
-      unfold A2; rewrite !List.nth_error_map, Hw2; discriminate. }
-    eapply nf_annotate_proofs_upto; [ | eexists | exact Ew ].
-    - eapply (tele_eq_typed_r Δ C Ps A1 Hass HC HPl HA1 HP); [| exact HT ].
-      unfold A1; rewrite !List.nth_error_map, Hw1; reflexivity.
-    - eapply (tele_eq_typed_r Δ C Qs A2 Hass HC HQl HA2 HQ); [| exact HT2 ].
-      unfold A2; rewrite !List.nth_error_map, Hw2; reflexivity. }
-  split; [ congruence |].
-  eapply (tele_eq_trans _ C Ps A1 Qs Hass HC HPl HA1 HQl HP).
-  eapply (tele_eq_trans _ C A1 A2 Qs Hass HC HA1 HA2 HQl H12).
-  eapply (tele_eq_sym _ C Qs A2 Hass HC HQl HA2 HQ).
 Qed.
 
 (** Two lists of parameters of a record glued to the same values are

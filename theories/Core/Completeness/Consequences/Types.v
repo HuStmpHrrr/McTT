@@ -409,8 +409,8 @@ Proof.
   pose proof (per_univ_elem_kind _ _ _ _ HR0) as Hrab.
   destruct HVt as [w Hp Hw | m w Hr Hm Hw].
   - (** Two proofs, of related propositions, which read back alike *)
-    destruct (read_nf_propositional _ _ _ _ Hp Hw) as (C0 & Q & -> & HC0).
-    destruct (read_nf_propositional _ _ _ _ (eq_trans (eq_sym Hrab) Hp) HRb) as (C0' & Q' & -> & HC0').
+    destruct (read_nf_propositional _ _ _ _ Hp Hw) as (C0 & Q & -> & HC0 & _).
+    destruct (read_nf_propositional _ _ _ _ (eq_trans (eq_sym Hrab) Hp) HRb) as (C0' & Q' & -> & HC0' & _).
     destruct (per_univ_then_per_top_typ HR0 (List.length Γ)) as [D D' HD HD' HE].
     functional_read_rewrite_clear.
     unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; exact HE.

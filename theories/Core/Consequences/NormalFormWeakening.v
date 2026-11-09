@@ -100,7 +100,7 @@ Proof.
         further out, as the weakening of the type's readback
         ([read_typ_shift]) *)
     destruct (per_univ_then_per_top_typ HRσT (S (length Γ))) as [D1 D2 HD1 HD2 HE].
-    destruct (read_nf_propositional _ _ _ _ Hp HW0) as (C0 & P0 & -> & HC0).
+    destruct (read_nf_propositional _ _ _ _ Hp HW0) as (C0 & P0 & -> & HC0 & _).
     pose proof (read_typ_shift _ _ Γ ρ0 T aT C0 D2 Hρ' HaT HC0 HD2) as Hs.
     exists (nf_proof D1 P); split.
     + econstructor; [ exact Hρ1 | exact HaσE | apply nbe_term_proof; [ congruence | apply read_nf_proof; [ congruence | exact HD1 | exact HPr ] ] ].

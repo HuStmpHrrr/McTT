@@ -114,7 +114,7 @@ Qed.
     there). *)
 Lemma read_nf_propositional : forall s a v W, domain_kind a = ak_propositional ->
     Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ W ->
-    exists P M, W = nf_proof P M /\ Rtyp a in gc_deps ⍮ gc_stack ⍮ s ↘ P.
+    exists P M, W = nf_proof P M /\ Rtyp a in gc_deps ⍮ gc_stack ⍮ s ↘ P /\ Rprf v in gc_deps ⍮ gc_stack ⍮ s ↘ M.
 Proof.
   intros * Ha H; inversion H; subst; cbn in *; try congruence; eauto;
     exfalso; eapply evaluated_kind_not_propositional; eassumption.
