@@ -32,6 +32,7 @@ From Mctt.Core.Soundness Require Import
   VariableCases
   UniverseCases.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes.
+From Mctt.Core.Soundness.Inductives Require Import Args Comps Con.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 Import Fixed_Notations.
@@ -528,6 +529,45 @@ Definition glu_tele_entries (Δ Γ : ctx) : Prop :=
 Lemma glu_tele_entries_tail : forall e Δ Γ, glu_tele_entries (e :: Δ) Γ -> glu_tele_entries Δ Γ.
 Proof. intros * H Δ1 κ A Δ2 E; apply (H (e :: Δ1)); rewrite E; reflexivity. Qed.
 
+(** The entries of a glued telescope of assumptions are glued
+    ([glu_rel_ctx_ass_inv]). *)
+Lemma glu_tele_entries_of_ctx : forall C Γ, all_assumptions C -> ⊩ C ++ Γ -> glu_tele_entries C Γ.
+Proof.
+  intros * Hass [Sb HSb] Δ1 κ A Δ2 ->.
+  unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass1 _].
+  rewrite <- List.app_assoc in HSb; cbn [List.app] in HSb.
+  destruct (glu_ctx_env_suffix _ _ _ Hass1 HSb) as [Sb' HSb'].
+  exact (glu_rel_ctx_ass_inv _ _ _ (ex_intro _ _ HSb')).
+Qed.
+
+(** Terms glued along a telescope make a glued substitution, as
+    [gsub_of_list]. *)
+Lemma glu_rel_sub_of_list : forall Δ Γ Γ1 σ0 Ms, all_assumptions (Δ ++ Γ1) -> Γ ⊩ˢ σ0 : Γ1 -> glu_tele_entries Δ Γ1 ->
+    List.length Ms = List.length Δ ->
+    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ σ0 Ms) k = Some T -> Γ ⊩ N : T) ->
+    Γ ⊩ˢ sb_of_list σ0 Ms : Δ ++ Γ1.
+Proof.
+  induction Δ as [| e Δ IH]; intros Γ Γ1 σ0 Ms Hass Hg0 HΔ Hl HMs.
+  - destruct Ms; cbn in Hl; [| discriminate ]; cbn; exact Hg0.
+  - cbn [List.app] in Hass; pose proof Hass as Hass0; apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
+    assert (HCa' : all_assumptions Δ) by (unfold all_assumptions in Hass; apply List.Forall_app in Hass as [H _]; exact H).
+    destruct (HΔ nil κ A Δ eq_refl) as [j HA].
+    destruct (List.exists_last (l := Ms) ltac:(intros ->; cbn in Hl; discriminate)) as (Ms' & M & ->).
+    rewrite List.length_app in Hl; cbn in Hl.
+    assert (Hl' : List.length Ms' = List.length Δ) by lia; clear Hl.
+    assert (Hti : tele_insts (ce_ass κ A :: Δ) σ0 (Ms' ++ M :: nil) = tele_insts Δ σ0 Ms' ++ A[sb_of_list σ0 Ms'] :: nil).
+    { change (ce_ass κ A :: Δ) with ((ce_ass κ A :: nil) ++ Δ).
+      rewrite tele_insts_app by (try exact HCa'; lia); reflexivity. }
+    assert (HlT : List.length (tele_insts Δ σ0 Ms') = List.length Δ) by (rewrite length_tele_insts by exact HCa'; lia).
+    rewrite sb_of_list_app; cbn [sb_of_list List.app].
+    apply (glu_rel_sub_ext _ _ _ _ _ _ j Hass); [ apply (IH _ _ _ _ Hass Hg0 (glu_tele_entries_tail _ _ _ HΔ) Hl') | exact HA |].
+    + intros k N T HN HT.
+      assert (Hk : k < List.length Δ) by (rewrite <- HlT; apply List.nth_error_Some; congruence).
+      apply (HMs k); [ rewrite List.nth_error_app1 by lia; exact HN | rewrite Hti, List.nth_error_app1 by lia; exact HT ].
+    + apply (HMs (List.length Δ)); [ rewrite List.nth_error_app2, Hl', Nat.sub_diag by lia; reflexivity |].
+      rewrite Hti, List.nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity.
+Qed.
+
 Lemma glu_rel_sub_qn : forall Pre Γ0 τ Δ0, all_assumptions (Pre ++ Δ0) -> Γ0 ⊩ˢ τ : Δ0 -> glu_tele_entries Pre Δ0 ->
     tele_sub Pre τ ++ Γ0 ⊩ˢ sb_qn (List.length Pre) τ : Pre ++ Δ0.
 Proof.
@@ -610,6 +650,31 @@ Proof.
     apply tele_insts_sb_eq; symmetry; apply sb_compose_id_right.
 Qed.
 
+(** A closed glued telescope of assumptions extends a glued context, its
+    weakening past the context glued ([closed_app_sem], [closed_app_valid]):
+    its entries, closed, are their own weakenings. *)
+Lemma glu_closed_app : forall C Ψ, all_assumptions C -> ctx_scoped 0 C -> ⊩ C -> ⊩ Ψ ->
+    ⊩ C ++ Ψ /\ C ++ Ψ ⊩ʷ (wk_qn (List.length C) (wk_shiftn (List.length Ψ))) : C.
+Proof.
+  induction C as [| e C IH]; intros Ψ Hass Hsc HC HΨ.
+  - cbn [List.app List.length wk_qn]; split; [ exact HΨ |].
+    pose proof HΨ as [SbΨ HSbΨ].
+    pose proof (glu_rel_wk_shiftn Ψ ⋅ ltac:(rewrite List.app_nil_r; exact HΨ)
+                  (glu_rel_ctx_empty (ctx_wf_gctx _ _ _ (glu_ctx_env_wf_ctx HSbΨ)))) as H.
+    rewrite List.app_nil_r in H; exact H.
+  - apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
+    destruct Hsc as [HsA Hsc]; cbn [ce_scoped] in HsA; rewrite Nat.add_0_r in HsA.
+    assert (HCt : ⊩ C) by (destruct HC as [Sb HSb]; inversion HSb; subst; eexists; eassumption).
+    destruct (IH Ψ Hass Hsc HCt HΨ) as [HCΨ Hw].
+    destruct (glu_rel_ctx_ass_inv _ _ _ HC) as [j HA].
+    pose proof (glu_rel_exp_wk Hw HA) as HAw; rewrite abs_kind_sort_wk in HAw; cbn [exp_wk] in HAw.
+    pose proof (glu_rel_wk_q _ _ _ _ _ j Hw HA) as Hq.
+    assert (EA : A[wk_qn (List.length C) (wk_shiftn (List.length Ψ))]ʷ = A)
+      by (apply (exp_scoped_wk_id _ (List.length C)); [ exact HsA | intros; apply wk_qn_lt; assumption ]).
+    rewrite EA in HAw, Hq.
+    split; [ exact (glu_rel_ctx_extend HCΨ HAw (sort_kind_abs_kind_sort κ j)) | exact Hq ].
+Qed.
+
 (** ** Types of a Group's Sort
 
     A type of the sort of a valid glued group, weakened past the
@@ -631,6 +696,57 @@ Section GroupSort.
     pose proof (glu_rel_exp_wk Hw Hn) as Hn'; cbn [exp_wk] in Hn'.
     rewrite (exp_wk_wk_ext _ _ _ (wk_shiftn (List.length Ψ + im_nn Mk))) in Hn' by (intros x; cbn; lia).
     exists 0; exact (glu_rel_exp_kind_sort_small_large Hn' HA).
+  Qed.
+
+  (** The sort, over a member's parameters, is a type of a large
+      universe. *)
+  Lemma glu_group_sort_typ : forall k Mk, ind_member D k = Some Mk ->
+      exists j : nat, im_params D Mk ⊩ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ : Typeω@j.
+  Proof.
+    intros * HM.
+    pose proof (glu_ind_decl_params _ HG _ _ HM) as HP.
+    destruct (valid_group_sort _ _ Hg) as [[i0 Heq] | [t Heq]]; rewrite Heq; cbn [exp_wk];
+      [ exists (S i0); exact (glu_rel_exp_typ HP) |].
+    destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n Hn]; rewrite Heq in Hn; cbn [ind_sort_lvl] in Hn.
+    exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) (glu_rel_exp_succl Hn) (glu_rel_exp_univ_lvl Hn)).
+  Qed.
+
+  (** A declared member's type former at glued terms of its parameters'
+      types is a type of a large universe ([valid_group_valid_ind_apps]). *)
+  Lemma glu_group_ind_apps : forall k Mk pm Ψ Ms, ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
+      ⊩ Ψ -> all_assumptions Ψ -> List.length Ms = im_np D Mk ->
+      (forall m N T, List.nth_error Ms m = Some N -> List.nth_error (tele_insts (im_params D Mk) Id Ms) m = Some T -> Ψ ⊩ N : T) ->
+      exists j : nat, Ψ ⊩ apps (a_ind p k) Ms : Typeω@j.
+  Proof.
+    intros k Mk pm Ψ Ms HM Hh HΨ HΨa HMl HMs.
+    pose proof (valid_group_closed _ _ Hg) as Hc.
+    pose proof (decl_closed_params_ass D k Mk Hc HM) as Hpa.
+    pose proof (glu_ind_decl_params _ HG _ _ HM) as HP.
+    destruct (glu_closed_app _ _ Hpa (decl_closed_params D k Mk Hc HM) HP HΨ) as [HPΨ Hw].
+    destruct (glu_group_sort_typ k Mk HM) as [i HB].
+    pose proof (glu_rel_exp_wk Hw HB) as HBΨ; cbn [exp_wk] in HBΨ.
+    assert (HBs : exp_scoped (List.length (im_params D Mk)) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)
+      by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ (glu_rel_exp_to_wf_exp HB)))).
+    rewrite (exp_scoped_wk_id _ _ _ HBs (fun x Hx => wk_qn_lt _ _ x Hx)) in HBΨ.
+    pose proof (glu_rel_exp_nil_weaken _ _ _ HΨ
+                  (glu_rel_exp_ind0 p D (valid_group_lookup _ _ Hg) HG Hc (valid_group_typed _ _ Hg) (valid_group_sort _ _ Hg)
+                     (valid_group_ass _ _ Hg) k Mk pm HM Hh)) as HMv.
+    unfold ind_ty in HMv.
+    assert (HMl' : List.length Ms = List.length (im_params D Mk)) by (rewrite length_im_params; exact HMl).
+    pose proof (glu_rel_exp_apps_ctx_pi_n _ (im_params D Mk) Ψ _ i (a_ind p k) Ms eq_refl Hpa HΨa HΨ
+                  (glu_tele_entries_of_ctx _ _ Hpa HPΨ) HBΨ HMv HMl' HMs) as HR.
+    destruct (valid_group_sort _ _ Hg) as [[i0 Heq] | [t Heq]]; rewrite Heq in HR; cbn [exp_wk exp_sub] in HR;
+      [ exists i0; exact HR |].
+    (** At a small universe: its level, at the terms, glued *)
+    destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n Hn]; rewrite Heq in Hn; cbn [ind_sort_lvl] in Hn.
+    pose proof (glu_rel_exp_wk Hw Hn) as Hn1; cbn [exp_wk] in Hn1.
+    assert (Hts : exp_scoped (List.length (im_params D Mk)) t[wk_shiftn (im_nn Mk)]ʷ)
+      by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ (glu_rel_exp_to_wf_exp Hn)))).
+    rewrite (exp_scoped_wk_id _ _ _ Hts (fun x Hx => wk_qn_lt _ _ x Hx)) in Hn1.
+    assert (HΨass : all_assumptions (im_params D Mk ++ Ψ)) by (apply List.Forall_app; split; assumption).
+    pose proof (glu_rel_sub_of_list _ _ _ _ _ HΨass (glu_rel_sub_id _ HΨ) (glu_tele_entries_of_ctx _ _ Hpa HPΨ) HMl' HMs) as Hgs.
+    pose proof (glu_rel_exp_sub Hgs Hn1) as Hn2; cbn [exp_sub] in Hn2.
+    exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) Hn2 HR).
   Qed.
 End GroupSort.
 
