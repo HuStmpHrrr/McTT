@@ -204,6 +204,19 @@ Proof.
   - exact (IH k Hk ltac:(lia)).
 Qed.
 
+(** The same, with the values at the entry, related there. *)
+Lemma per_tele_args_nth_elem : forall ts ρ ρ' xs xs' k κ A, per_tele_args ts ρ ρ' xs xs' ->
+    List.nth_error ts k = Some (ce_ass κ A) -> k < List.length xs ->
+    exists (i : nat) R a a' x x', ⟦ A ⟧ env_tele ρ ts (List.firstn k xs) ↘ a /\ ⟦ A ⟧ env_tele ρ' ts (List.firstn k xs') ↘ a' /\
+      DF a ≈ a' ∈ per_univ_elem i ↘ R /\ List.nth_error xs k = Some x /\ List.nth_error xs' k = Some x' /\ R x x'.
+Proof.
+  intros * H; revert k; induction H as [| ? ? ? ? ? ? ? ? ? ? ? HA Ha Hr IH]; intros k Hk Hl; [ cbn in Hl; lia |].
+  destruct k as [| k]; cbn in Hk, Hl |- *.
+  - injection Hk as <- <-.
+    match goal with HA : rel_typ _ _ _ _ _ _ |- _ => destruct HA as [a0 a0' E E' HR] end; eauto 15.
+  - exact (IH k Hk ltac:(lia)).
+Qed.
+
 Lemma firstn_seq_le : forall k n s, k <= n -> List.firstn k (List.seq s n) = List.seq s k.
 Proof.
   intros * Hk; replace n with (k + (n - k)) by lia.

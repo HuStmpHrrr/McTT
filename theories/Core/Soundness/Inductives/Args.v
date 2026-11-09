@@ -203,6 +203,50 @@ Proof.
     exact (IH _ _ _ _ _ _ _ _ Hass HC HC1 Hσ1 Hg).
 Qed.
 
+(** A substitution glued into a telescope of assumptions [C] over [Γ0],
+    at [ρ0] extended by typed values [vts], is glued at [ρ0] extended by
+    the same values at other types [vts'], when the context's PER relates
+    the two environments: the heads' types evaluate to related types in
+    the related tails, and the PER says the new heads read back. *)
+Lemma glu_sub_retype : forall C Γ0 Sb RC, all_assumptions C -> EG C ++ Γ0 ∈ glu_ctx_env ↘ Sb ->
+    EF C ++ Γ0 ≈ C ++ Γ0 ∈ per_ctx_env ↘ RC ->
+    forall Δ σ ρ0 vts vts', List.map fst vts = List.map fst vts' -> List.length vts = List.length C ->
+    RC (env_extend_typed ρ0 vts) (env_extend_typed ρ0 vts') ->
+    Δ ⊢ˢ σ ® env_extend_typed ρ0 vts ∈ Sb -> Δ ⊢ˢ σ ® env_extend_typed ρ0 vts' ∈ Sb.
+Proof.
+  induction C as [| e C IH]; intros * Hass HC HRC * Hv Lv HE Hσ.
+  - destruct vts; [| discriminate ]; destruct vts'; [| discriminate ]; exact Hσ.
+  - apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
+    assert (Lv' : List.length vts' = S (List.length C))
+      by (rewrite <- (List.length_map fst vts'), <- Hv, List.length_map; exact Lv).
+    destruct (List.exists_last (l := vts) ltac:(intros ->; discriminate)) as (vts1 & vt & ->).
+    destruct (List.exists_last (l := vts') ltac:(intros ->; discriminate)) as (vts1' & vt' & ->).
+    rewrite !List.map_app in Hv; cbn [List.map] in Hv.
+    apply List.app_inj_tail in Hv as [Hv1 Hv0].
+    rewrite List.length_app in Lv; cbn [List.length] in Lv.
+    rewrite !env_extend_typed_app in HE, Hσ |- *; cbn [env_extend_typed List.fold_left] in HE, Hσ |- *.
+    rewrite env_extend_typed_app in HE; cbn [env_extend_typed List.fold_left] in HE.
+    cbn [List.app] in HC, HRC.
+    destruct (glu_ctx_env_suffix (ce_ass κ A :: nil) (C ++ Γ0) _ ltac:(repeat constructor; eauto) HC) as [TSb HTSb].
+    destruct (glu_ctx_env_cons_clean_inversion HTSb HC) as (i & HA & HT & HSb).
+    destruct (glu_ctx_env_per_ctx_env HTSb) as [RT HRT].
+    destruct (per_ctx_env_cons_clean_inversion HRT HRC) as (i' & hr & Hhr & _ & HRCe).
+    apply HRCe in HE as [HEt _ _ HEr _ HErr].
+    apply HSb in Hσ; inversion Hσ as [? ? ? ? P El Hσt Ha Hg Hh _ _ Htl]; subst.
+    cbn [tl extend_env drop_env] in HEt, Htl, Ha.
+    pose proof (IH _ _ _ Hass HTSb HRT _ _ _ _ _ Hv1 ltac:(lia) HEt Htl) as Htl'.
+    destruct (HT _ _ _ Htl') as [a' P' El' Ha' Hg' HP'].
+    destruct (Hhr _ _ HEt) as [a1 a1' Ea1 Ea1' HR1].
+    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a1' = a') as -> by (eapply functional_eval_exp; eassumption).
+    apply HSb; econstructor; [ exact Hσt | exact Ha' | exact Hg' | | exact HEr | exact HErr | exact Htl' ].
+    assert (Haa : Dom a ≈ a' ∈ per_univ i') by (eexists; exact HR1).
+    replace ((env_extend_typed ρ0 vts1' ↦ fst vt' ⦂ snd vt') 0) with ((env_extend_typed ρ0 vts1 ↦ fst vt ⦂ snd vt) 0)
+      by (cbn; rewrite Hv0; reflexivity).
+    refine (glu_univ_elem_exp_conv Haa Hg Hg' Hh _).
+    rewrite <- exp_sub_of_wk, exp_sub_sub; exact HP'.
+Qed.
+
 (** ** Constants of [Π]-Types over Telescopes *)
 
 (** A type of a glued context, glued at a glued substitution. *)
