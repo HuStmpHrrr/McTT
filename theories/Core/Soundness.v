@@ -62,15 +62,24 @@ Qed.
 
 End Fixed_GCtx.
 
-(** A typed term has a normal form, equal to it: it glues by the
-    fundamental theorem of the gluing model, read at the identity
-    embedding. *)
+(** A typed term has a normal form, equal up to its proofs to one equal to
+    the term: it glues by the fundamental theorem of the gluing model, read
+    at the identity embedding, and the annotated witness of
+    [soundness_of_glu] is equal up to proofs to the witness
+    ([nf_annotate_proofs_upto_proofs]).  The normal form itself need not
+    be equal to the term: a proof is kept as it is met, in its closure
+    ([(λ (n : ℕ). (n, h n) : R) 3] keeps [ℓ n : ℕ ≔ 3 in h n] in its
+    normal form), and nothing in the gluing types it there. *)
 Theorem soundness : forall {Θ Ξ Γ M A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    exists W, nbe Θ Ξ Γ M A W /\ Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
+    exists W W', nbe Θ Ξ Γ M A W /\ nf_eq_upto_proofs W W' /\ Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W' : A.
 Proof.
-  (* PENDING M2: the gluing model for the Prop core *)
-Admitted.
+  intros * H.
+  pose proof (proj1 (proj2 soundness_fundamental) _ _ _ _ _ H _ _ (glu_gctx_embedding_refl _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as HG.
+  destruct (@soundness_of_glu (gc_mk Θ Ξ) _ _ _ H HG) as (W & W' & Hn & E & HE).
+  exists W, (nf_annotate_proofs W'); split; [ exact Hn | split; [| exact HE ] ].
+  etransitivity; [ exact E | exact (nf_annotate_proofs_upto_proofs W') ].
+Qed.
 
 (** Two terms of one type whose normal forms are equal up to their proofs
     ([nf_eq_upto_proofs]) are equal: completeness compares normal forms
@@ -104,39 +113,33 @@ Proof.
   etransitivity; [ exact HE1 | etransitivity; [ exact H12 | symmetry; exact HE2 ] ].
 Qed.
 
-(** The normal form NbE computes is equal to the term. *)
+(** The normal form NbE computes is equal, up to its proofs, to one equal
+    to the term. *)
 Theorem soundness' : forall {Θ Ξ Γ M A W},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     nbe Θ Ξ Γ M A W ->
+    exists W', nf_eq_upto_proofs W W' /\ Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W' : A.
+Proof.
+  intros * (W0 & W' & Hn0 & E & HE)%soundness Hn.
+  pose proof (functional_nbe _ _ _ _ _ Hn Hn0) as <-.
+  exists W'; split; assumption.
+Qed.
+
+(** A normal form without proofs is equal to the term: it is the only
+    normal form equal to it up to proofs ([nf_ne_proof_free_eq]). *)
+Corollary soundness_proof_free : forall {Θ Ξ Γ M A W},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    nbe Θ Ξ Γ M A W ->
+    nf_proof_free W ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
 Proof.
-  intros * [? []]%soundness ?.
-  functional_nbe_rewrite_clear.
-  eassumption.
+  intros * HM Hn Hp.
+  destruct (soundness' HM Hn) as (W' & E & HE).
+  rewrite <- (proj1 nf_ne_proof_free_eq _ Hp _ E) in HE; exact HE.
 Qed.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
-
-Lemma soundness_ty : forall {Γ} {i : nat} {A},
-    Γ ⊢ A : Typeω@i ->
-    exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Typeω@i.
-Proof.
-  intros.
-  assert (exists W', nbe_f Γ A Typeω@i W' /\ Γ ⊢ A ≈ W' : Typeω@i) as [? [?%nbe_type_to_nbe_ty Heq]] by mauto using soundness.
-  firstorder.
-Qed.
-
-Lemma soundness_ty' : forall {Γ} {i : nat} {A B},
-    Γ ⊢ A : Typeω@i ->
-    nbe_ty_f Γ A B ->
-    Γ ⊢ A ≈ B : Typeω@i.
-Proof.
-  intros.
-  assert (exists B', nbe_ty_f Γ A B' /\ Γ ⊢ A ≈ B' : Typeω@i) as [? [? Heq]] by mauto using soundness_ty.
-  functional_nbe_rewrite_clear.
-  eassumption.
-Qed.
 
 (** [nbe] of a type, at a large universe it lives in. *)
 Lemma nbe_ty_to_nbe_type : forall Γ T i W, nbe_ty_f Γ T W -> nbe_f Γ T Typeω@i W.
@@ -161,17 +164,67 @@ Proof.
   econstructor; [ eassumption | constructor | eapply nbe_term_evaluated; [ constructor | eassumption | constructor; eassumption ] ].
 Qed.
 
-(** A type of a sort ([type_sort]) is equal there to its normal form. *)
+(** [nbe] of a type, at the sort it lives in. *)
+Lemma nbe_ty_to_nbe_at_sort : forall Γ S T W, type_sort S -> nbe_ty_f Γ T W -> nbe_f Γ T S W.
+Proof.
+  intros * [i | |] Hn;
+    [ exact (nbe_ty_to_nbe_type _ _ i _ Hn) | exact (nbe_ty_to_nbe_prop _ _ _ Hn) | exact (nbe_ty_to_nbe_level_sort _ _ _ Hn) ].
+Qed.
+
+(** A type of a sort ([type_sort]) is equal there, up to its proofs, to its
+    normal form ([soundness']). *)
 Lemma soundness_ty_at_sort : forall {Γ S A W},
     type_sort S ->
     Γ ⊢ A : S ->
     nbe_ty_f Γ A W ->
-    Γ ⊢ A ≈ W : S.
+    exists W', nf_eq_upto_proofs W W' /\ Γ ⊢ A ≈ W' : S.
+Proof. intros * HS HA Hn; exact (soundness' HA (nbe_ty_to_nbe_at_sort _ _ _ _ HS Hn)). Qed.
+
+Lemma soundness_ty' : forall {Γ} {i : nat} {A B},
+    Γ ⊢ A : Typeω@i ->
+    nbe_ty_f Γ A B ->
+    exists B', nf_eq_upto_proofs B B' /\ Γ ⊢ A ≈ B' : Typeω@i.
+Proof. intros * HA Hn; exact (soundness_ty_at_sort (type_sort_universe i) HA Hn). Qed.
+
+Lemma soundness_ty : forall {Γ} {i : nat} {A},
+    Γ ⊢ A : Typeω@i ->
+    exists W W', nbe_ty_f Γ A W /\ nf_eq_upto_proofs W W' /\ Γ ⊢ A ≈ W' : Typeω@i.
 Proof.
-  intros * [i | |] HA Hn;
-    [ exact (soundness_ty' HA Hn)
-    | exact (soundness' HA (nbe_ty_to_nbe_prop _ _ _ Hn))
-    | exact (soundness' HA (nbe_ty_to_nbe_level_sort _ _ _ Hn)) ].
+  intros * HA.
+  destruct (soundness HA) as (W & W' & Hn & E & HE).
+  exists W, W'; split; [ apply nbe_type_to_nbe_ty in Hn; exact Hn | split; assumption ].
+Qed.
+
+(** A normal form of a type without proofs is equal to the type
+    ([soundness_proof_free]). *)
+Lemma soundness_ty_at_sort_proof_free : forall {Γ S A W},
+    type_sort S ->
+    Γ ⊢ A : S ->
+    nbe_ty_f Γ A W ->
+    nf_proof_free W ->
+    Γ ⊢ A ≈ W : S.
+Proof. intros * HS HA Hn Hp; exact (soundness_proof_free HA (nbe_ty_to_nbe_at_sort _ _ _ _ HS Hn) Hp). Qed.
+
+Lemma soundness_ty_proof_free' : forall {Γ} {i : nat} {A B},
+    Γ ⊢ A : Typeω@i ->
+    nbe_ty_f Γ A B ->
+    nf_proof_free B ->
+    Γ ⊢ A ≈ B : Typeω@i.
+Proof. intros * HA Hn Hp; exact (soundness_ty_at_sort_proof_free (type_sort_universe i) HA Hn Hp). Qed.
+
+(** Two types of a sort whose normal forms are equal up to their proofs
+    are equal ([soundness_upto_proofs]). *)
+Lemma soundness_ty_upto_proofs : forall {Γ S A B W W'},
+    type_sort S ->
+    Γ ⊢ A : S ->
+    Γ ⊢ B : S ->
+    nbe_ty_f Γ A W ->
+    nbe_ty_f Γ B W' ->
+    nf_eq_upto_proofs W W' ->
+    Γ ⊢ A ≈ B : S.
+Proof.
+  intros * HS HA HB HnA HnB E.
+  exact (soundness_upto_proofs HA HB (nbe_ty_to_nbe_at_sort _ _ _ _ HS HnA) (nbe_ty_to_nbe_at_sort _ _ _ _ HS HnB) E).
 Qed.
 
 (** The normal form of a level of sort [n] is a canonical level of sort [n]:

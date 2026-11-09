@@ -687,14 +687,42 @@ Proof.
 Qed.
 
 (** A type whose normal form is an inductive type is equal to the type
-    former at typed parameters, whose normal forms the normal form has. *)
+    former at typed parameters, equal to annotated normal forms equal up to
+    their proofs to the normal form's ([glu_nfs_eq_at]): the gluing of the
+    inductive type at the identity. *)
 Lemma typ_ind_shape : forall Γ T i p k Rs, Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_indty p k Rs) ->
     exists D Mk Ps, ind_lookup gc_deps gc_stack p = Some D /\ ind_member D k = Some Mk /\ List.length Ps = im_np D Mk /\
       (forall j P A, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ps) j = Some A -> Γ ⊢ P : A) /\
-      Γ ⊢ T ≈ apps (a_ind p k) Ps : Typeω@i /\ exps_eq_at Γ (im_params D Mk) Ps (List.map nf_to_exp Rs).
+      Γ ⊢ T ≈ apps (a_ind p k) Ps : Typeω@i /\
+      exists Rs', nfs_eq_upto_proofs Rs Rs' /\
+        exps_eq_at Γ (im_params D Mk) Ps (List.map nf_to_exp (List.map nf_annotate_proofs Rs')).
 Proof.
-  (* PENDING M2: read off the gluing of the inductive type (Soundness.Inductives.Args) *)
-Admitted.
+  intros * HT HW.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  inversion HW as [ρ a Hinit Ea HRa]; subst.
+  inversion HRa; subst.
+  destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
+  pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
+  destruct (Soundness.Inductives.Args.glu_rel_typ_at _ _ _ _ _ _ _ HSb (soundness_fundamental_exp _ _ _ HT) Hσ) as (_ & a' & Ea' & Hpa & HPa).
+  assert (a' = d_ind p k as') as -> by (eapply functional_eval_exp; eassumption).
+  destruct (per_univ_glu_univ_elem _ _ Hpa) as (P & El & Hg).
+  pose proof (HPa P El Hg) as HP; rewrite exp_sub_id in HP.
+  invert_glu_univ_elem Hg.
+  match goal with H : _ <∙> ind_glu_typ_pred _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => apply H in HP end.
+  destruct HP as (Ps & Heq & HK).
+  assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
+  destruct (HK Γ wk_id Hid) as (Htop & _ & _).
+  rewrite map_wk_id in Htop.
+  match goal with H : ind_lookup _ _ p = Some ?D0, H' : ind_lookup _ _ p = Some ?D1 |- _ =>
+    assert (D0 = D1) as -> by congruence end.
+  match goal with H : ind_member _ k = Some ?M0, H' : ind_member _ k = Some ?M1 |- _ =>
+    assert (M0 = M1) as -> by congruence end.
+  destruct Htop as [HPl HPt Hrb].
+  eexists _, _, Ps; split; [ eassumption | split; [ eassumption | split; [ exact HPl | split; [ exact HPt | split; [ exact Heq |] ] ] ] ].
+  (** The parameters' readback, the normal form's ([glu_params_top]) *)
+  match goal with Hr : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ Rs |- _ => pose proof (Hrb Γ wk_id Rs Hid Hr) as H' end.
+  rewrite map_wk_id in H'; exact H'.
+Qed.
 
 (** Two instances [X], [Y] of a closed telescope [C] whose terms have
     normal forms equal, up to proofs, to the same list (two lists equal
@@ -1369,14 +1397,40 @@ Proof.
 Qed.
 
 (** A type whose normal form is a record type is equal to the type former
-    at typed parameters, whose normal forms the normal form has. *)
+    at typed parameters, equal to annotated normal forms equal up to their
+    proofs to the normal form's ([glu_nfs_eq_at]): the gluing of the record
+    type at the identity. *)
 Lemma typ_record_shape : forall Γ T i p Rs, Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_record p Rs) ->
     exists R Ps, record_lookup gc_deps gc_stack p = Some R /\ List.length Ps = List.length (record_params R) /\
       (forall j P A, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (record_params R) Id Ps) j = Some A -> Γ ⊢ P : A) /\
-      Γ ⊢ T ≈ apps (a_record p) Ps : Typeω@i /\ exps_eq_at Γ (record_params R) Ps (List.map nf_to_exp Rs).
+      Γ ⊢ T ≈ apps (a_record p) Ps : Typeω@i /\
+      exists Rs', nfs_eq_upto_proofs Rs Rs' /\
+        exps_eq_at Γ (record_params R) Ps (List.map nf_to_exp (List.map nf_annotate_proofs Rs')).
 Proof.
-  (* PENDING M2: read off the gluing of the record type (Soundness.Inductives.Args) *)
-Admitted.
+  intros * HT HW.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  inversion HW as [ρ a Hinit Ea HRa]; subst.
+  inversion HRa; subst.
+  destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
+  pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
+  destruct (Soundness.Inductives.Args.glu_rel_typ_at _ _ _ _ _ _ _ HSb (soundness_fundamental_exp _ _ _ HT) Hσ) as (_ & a' & Ea' & Hpa & HPa).
+  assert (a' = d_record p ns) as -> by (eapply functional_eval_exp; eassumption).
+  destruct (per_univ_glu_univ_elem _ _ Hpa) as (P & El & Hg).
+  pose proof (HPa P El Hg) as HP; rewrite exp_sub_id in HP.
+  invert_glu_univ_elem Hg.
+  match goal with H : _ <∙> record_glu_typ_pred _ _ _ _ _ _ |- _ => apply H in HP end.
+  destruct HP as (Ps & [Heq HK]).
+  assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
+  destruct (HK Γ wk_id Hid) as [Htop _ _].
+  rewrite map_wk_id in Htop.
+  destruct Htop as [HPl HPt Hrb].
+  match goal with H : record_lookup _ _ p = Some ?R0, H' : record_lookup _ _ p = Some ?R1 |- _ =>
+    assert (R0 = R1) as -> by congruence end.
+  eexists _, Ps; split; [ eassumption | split; [ exact HPl | split; [ exact HPt | split; [ exact Heq |] ] ] ].
+  (** The parameters' readback, the normal form's ([params_glu_top]) *)
+  match goal with Hr : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ Rs |- _ => pose proof (Hrb Γ wk_id Rs Hid Hr) as H' end.
+  rewrite map_wk_id in H'; exact H'.
+Qed.
 
 Corollary exp_eq_record_apps_inv : forall Γ p R X Y i, record_lookup gc_deps gc_stack p = Some R ->
     Γ ⊢ apps (a_record p) X ≈ apps (a_record p) Y : Typeω@i ->
