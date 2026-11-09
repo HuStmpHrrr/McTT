@@ -32,7 +32,7 @@ From Mctt.Core.Soundness Require Import
   VariableCases
   UniverseCases.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes.
-From Mctt.Core.Soundness.Inductives Require Import Args Comps Con ViewCon Bridge.
+From Mctt.Core.Soundness.Inductives Require Import Args Comps Con ViewCon ArgTypes Bridge.
 Require Import Mctt.Core.Soundness.Inductives.Elim.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.
@@ -77,7 +77,7 @@ Lemma glu_con :
      ⊩ Θ ⍮ Ξ ⍮ cargs_ctx p D M gs ++ im_params D M ->
      (forall gs1 t gs2 j, gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
         ⊢ Θ ⍮ Ξ ⍮ (shape_domains_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D M gs1 ++ im_params D M)
-                  ▹ ptyp_ty p D (im_nn M) (List.repeat false j ++ cargs_pat gs1) (ptyp_skip j t)) ->
+                  ▹{ak_relevant} ptyp_ty p D (im_nn M) (List.repeat false j ++ cargs_pat gs1) (ptyp_skip j t)) ->
      Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D k M gs : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_con p k c : con_ty p D k M gs ).
 Proof.
@@ -87,14 +87,17 @@ Proof.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg0.
   pose proof (valid_groups_of_glu_gctx_embedding _ _ _ _ Hg0 Hem) as HVP.
   pose proof (glu_gctx_embedding_ind_field _ _ _ _ Hμ) as HGall.
-  pose proof (fun qn G H => glu_views_ok_all _ qn G HVP H (HGall _ _ H)) as Hviewsall.
+  pose proof (fun qn G H => glu_views_ok_all _ qn G HVP H (HGall _ _ H) HGall) as Hviewsall.
   assert (Hc0 : Θ ⍮ Ξ ⍮ ⋅ ⊢ a_con p k c : con_ty p D k M gs)
     by (eapply wf_con; [ constructor; exact Hg0 | eassumption .. ]).
   pose proof (Hwe _ _ _ HT) as HT2; pose proof (Hwe _ _ _ Hc0) as Hc2.
   apply glu_rel_exp_nil_weaken; [ exact (HΓg _ _ Hμ) |].
   destruct (im_head M) as [pm | qc kc Is vm | qr Is fl] eqn:Hh.
   - exact (glu_rel_exp_con0 _ p D HVP Hl (HGall _ _ Hl) (Hviewsall _ _ Hl) k M pm c gs HM Hh Hcon (HΨg _ _ Hμ) i HT2 Hc2).
-  - exact (glu_rel_exp_con_view0 _ HVP HGall Hviewsall p D Hl k M qc kc Is vm c gs HM Hh Hcon (HΨg _ _ Hμ) i HT2 Hc2).
+  - exact (glu_rel_exp_con_view0 _ HVP HGall Hviewsall p D Hl k M qc kc Is vm c gs HM Hh Hcon (HΨg _ _ Hμ)
+             (fun Dq Mc gs' Hq HMc Hc => glu_group_cargs _ HVP HGall qc Dq kc Mc c gs'
+                                         (valid_groups_containers _ HVP _ _ _ _ _ _ _ _ _ Hl HM Hh Hq) HMc Hc)
+             i HT2 Hc2).
   - exact (glu_rel_exp_con_rview0 _ HVP HGall Hviewsall p D Hl k M qr Is fl c gs HM Hh Hcon (HΨg _ _ Hμ) i HT2 Hc2).
 Qed.
 

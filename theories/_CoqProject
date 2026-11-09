@@ -146,6 +146,7 @@
 ./Core/Soundness/Inductives/AtType.v
 ./Core/Soundness/Inductives/Elim.v
 ./Core/Soundness/Inductives/ArgTypes.v
+./Core/Soundness/IndCases.v
 ./Core/Soundness.v
 ./Core/Consequences/FiledConstructorTypes.v
 ./Core/Consequences/NormalFormWeakening.v
