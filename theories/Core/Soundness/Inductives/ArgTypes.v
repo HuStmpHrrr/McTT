@@ -1307,4 +1307,126 @@ Proof.
     rewrite HUs; exists i; exact H2.
 Qed.
 
+(** ** The Contexts of the Arguments of a Group's Members
+
+    The end of a recursive argument's type, under the shape's domains, is
+    a type of a large universe ([valid_group_shape_leaf]): the member's
+    type at the uniform parameters as variables and the shape's parameters,
+    weakened past the recursive arguments. *)
+Lemma glu_group_shape_leaf : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) -> forall p D, VP p D ->
+    forall k Mk c gs gs1 t gs2, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+    ⊩ cargs_ctx p D Mk gs1 ++ im_params D Mk ->
+    cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ʷ (wk_pat (cargs_pat gs1)) : cargs_nonrec_ctx gs1 ++ im_params D Mk ->
+    exists j : nat, shape_domains_ctx (cargs_pat gs1) (ptyp_doms t) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk
+      ⊩ ptyp_ty p D (im_nn Mk) (List.repeat false (List.length (ptyp_doms t)) ++ cargs_pat gs1) (pt_self (ptyp_mem t) (ptyp_ps t))
+      : Typeω@j.
+Proof.
+  intros VP HVP HGall p D HPD k Mk c gs gs1 t gs2 HM Hcon Heq HΨ IHw.
+  pose proof (valid_groups_valid VP HVP p D HPD) as Hg; pose proof (HGall _ _ HPD) as HG.
+  pose proof (valid_group_valid _ _ Hg) as HD; pose proof (valid_group_closed _ _ Hg) as Hc.
+  pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)) as Hmv.
+  set (pat := cargs_pat gs1).
+  set (L := List.length (ptyp_doms t)).
+  set (pat' := List.repeat false L ++ pat).
+  set (Φ := shape_domains_ctx pat (ptyp_doms t)).
+  assert (HlΦ : List.length Φ = L) by (unfold Φ; apply length_shape_domains_ctx).
+  assert (HΦ : ⊩ Φ ++ cargs_ctx p D Mk gs1 ++ im_params D Mk).
+  { pose proof (glu_shape_domains_ctx_gen p D k Mk c gs Hg HG HM Hcon gs1 t gs2 Heq HΨ IHw L (le_n _)) as H.
+    unfold L in H; rewrite List.firstn_all in H; exact H. }
+  assert (HwΦ : Φ ++ cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ʷ (wk_pat pat')
+                  : doms_ctx (ptyp_doms t) ++ cargs_nonrec_ctx gs1 ++ im_params D Mk).
+  { pose proof (glu_shape_domains_ctx_wk_gen p D k Mk c gs Hg HG HM Hcon gs1 t gs2 Heq IHw L (le_n _)) as H.
+    unfold L in H; rewrite List.firstn_all in H; exact H. }
+  destruct (length_rec_ps D HD k Mk HM c gs gs1 t gs2 Hcon Heq) as (Mj & HMj & HlPs).
+  cbn [ptyp_ty].
+  assert (HE : ⊩ (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk) ++ ind_uparams D)
+    by (unfold im_params in HΦ; rewrite <- !List.app_assoc; exact HΦ).
+  assert (HZa : all_assumptions (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk)).
+  { apply List.Forall_app; split; [ apply shape_domains_ctx_ass |].
+    apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_nparams_ass D Hc _ _ HM) ]. }
+  assert (Hpat : List.length pat = List.length gs1) by apply length_cargs_pat.
+  assert (Hpat' : List.length pat' = L + List.length gs1) by (unfold pat'; rewrite List.length_app, List.repeat_length; lia).
+  assert (Hnargs : pat_nargs pat' = L + List.length (cargs_nonrec_ctx gs1)).
+  { unfold pat', pat; rewrite pat_nargs_app, pat_nargs_cargs_pat; f_equal.
+    clear; induction L as [| L IH]; cbn; lia. }
+  destruct (glu_group_mty VP HVP HGall p D HPD (ptyp_mem t) Mj (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk) (im_nn Mk) (List.length pat')
+              (List.map (fun P => P[wk_pat pat']ʷ) (ptyp_ps t)) HMj HE HZa) as [j0 Hv].
+  - rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia.
+  - rewrite List.length_map; exact HlPs.
+  - intros m N T HN HT.
+    apply nth_error_map_inv in HN as (P & HPm & ->).
+    set (s := L + List.length (cargs_nonrec_ctx gs1) + im_nn Mk).
+    assert (Hti : tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mk) (List.length pat')))
+                    (List.map (fun P => P[wk_pat pat']ʷ) (ptyp_ps t))
+                  = List.map (fun T => T[wk_pat pat']ʷ) (tele_insts (im_nparams Mj) (sb_of_wk (wk_shiftn s)) (ptyp_ps t))).
+    { rewrite <- !map_sub_of_wk; symmetry.
+      eapply (tele_insts_sub_mvc _ (ind_nu D));
+        [ exact (decl_closed_nparams_ass D Hc _ _ HMj) | exact (proj1 (decl_mvc_members _ Hmv _ _ HMj))
+        | exact (decl_closed_nparams_scoped _ Hc _ _ HMj) |].
+      intros x Hx; unfold ind_uvars; rewrite sb_of_list_vars by exact Hx; cbn.
+      unfold s, wk_shiftn; rewrite <- Hnargs.
+      replace (x + (pat_nargs pat' + im_nn Mk)) with (pat_nargs pat' + (im_nn Mk + x)) by lia.
+      rewrite wk_pat_ge; f_equal; lia. }
+    rewrite Hti in HT; apply nth_error_map_inv in HT as (T0 & HT0 & ->).
+    assert (Hσ : s = ptyp_depth t + List.length (cargs_nonrec gs1) + im_nn Mk)
+      by (unfold s, ptyp_depth; fold L; rewrite cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; reflexivity).
+    rewrite Hσ in HT0.
+    pose proof (glu_ind_decl_rec_field _ HG k Mk c gs gs1 t gs2 Mj m P T0 HM Hcon Heq HMj HPm HT0) as HP0.
+    rewrite Heq, <- cargs_nonrec_ctx_nonrec_args_prefix in HP0.
+    pose proof (glu_rel_exp_wk HwΦ HP0) as H.
+    unfold im_params in H; rewrite <- !List.app_assoc; exact H.
+  - exists j0; unfold im_params; rewrite <- !List.app_assoc in Hv; exact Hv.
+Qed.
+
+(** Each prefix of the arguments of a constructor of a member of a group
+    of [VP] is a glued context over the member's parameters, weakened to
+    its non-recursive arguments by [wk_pat] ([valid_group_cargs_sem_all]). *)
+Lemma glu_group_cargs_all : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) -> forall p D, VP p D ->
+    forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> forall gs1 gs2, gs = gs1 ++ gs2 ->
+      ⊩ cargs_ctx p D Mk gs1 ++ im_params D Mk /\
+      cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ʷ (wk_pat (cargs_pat gs1)) : cargs_nonrec_ctx gs1 ++ im_params D Mk.
+Proof.
+  intros VP HVP HGall p D HPD k Mk c gs HM Hcon.
+  pose proof (valid_groups_valid VP HVP p D HPD) as Hg; pose proof (HGall _ _ HPD) as HG.
+  induction gs1 as [| g gs1 IH] using List.rev_ind; intros gs2 Heq.
+  - cbn [cargs_ctx cargs_ctx_aux cargs_nonrec_ctx cargs_pat List.rev List.map List.app].
+    pose proof (glu_ind_decl_params _ HG _ _ HM) as HP.
+    split; [ exact HP | exact (glu_rel_wk_id _ HP) ].
+  - rewrite <- List.app_assoc in Heq; cbn [List.app] in Heq.
+    destruct (IH _ Heq) as [HΨ IHw].
+    rewrite cargs_ctx_snoc, cargs_pat_snoc.
+    destruct g as [r A | t]; cbn [cargs_ctx_aux List.app wk_pat].
+    + rewrite cargs_nonrec_ctx_snoc_arg.
+      destruct (glu_group_arg_large p D k Mk c gs Hg HG HM Hcon gs1 r A gs2 Heq) as [j HA].
+      pose proof (glu_rel_exp_wk IHw HA) as HAw; rewrite abs_kind_sort_wk in HAw; cbn [exp_wk] in HAw.
+      split; [ exact (glu_rel_ctx_extend HΨ HAw (sort_kind_abs_kind_sort r j))
+             | exact (glu_rel_wk_q _ _ _ _ _ j IHw HA) ].
+    + rewrite cargs_nonrec_ctx_snoc_rec.
+      (** The recursive argument's type, the [Π] over its domains of the
+          end ([glu_group_shape_leaf]) *)
+      assert (Hj : exists j : nat, cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ ptyp_ty p D (im_nn Mk) (cargs_pat gs1) t : Typeω@j).
+      { rewrite (ptyp_ty_ctx_pi p D (im_nn Mk) t (cargs_pat gs1)).
+        assert (HΦa : all_assumptions (shape_domains_ctx (cargs_pat gs1) (ptyp_doms t))) by apply shape_domains_ctx_ass.
+        assert (HΦ : ⊩ shape_domains_ctx (cargs_pat gs1) (ptyp_doms t) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk).
+        { pose proof (glu_shape_domains_ctx_gen p D k Mk c gs Hg HG HM Hcon gs1 t gs2 Heq HΨ IHw _ (le_n _)) as H.
+          rewrite List.firstn_all in H; exact H. }
+        destruct (glu_group_shape_leaf VP HVP HGall p D HPD k Mk c gs gs1 t gs2 HM Hcon Heq HΨ IHw) as [j0 Hleaf].
+        exact (glu_rel_exp_ctx_pi _ _ _ _ HΦa (glu_tele_entries_of_ctx _ _ HΦa HΦ) Hleaf). }
+      destruct Hj as [j Hj].
+      pose proof (glu_rel_ctx_extend HΨ Hj (sort_kind_abs_kind_sort ak_relevant j)) as HC.
+      split; [ exact HC |].
+      exact (glu_rel_wk_compose _ _ _ _ _ (glu_rel_wk_shift _ _ HC) IHw).
+Qed.
+
+(** The context of a constructor's arguments over its member's parameters
+    is glued, for every group of [VP]: the premise [HΨall] of the gluing of
+    the inductive types ([AtType], [Elim]). *)
+Corollary glu_group_cargs : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) ->
+    forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj -> ind_con Mj c0 = Some gs0 ->
+      ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj.
+Proof.
+  intros * HVP HGall * HPD HM Hcon.
+  exact (proj1 (glu_group_cargs_all VP HVP HGall q0 G0 HPD j Mj c0 gs0 HM Hcon gs0 nil (eq_sym (List.app_nil_r gs0)))).
+Qed.
+
 End Fixed_GCtx.
