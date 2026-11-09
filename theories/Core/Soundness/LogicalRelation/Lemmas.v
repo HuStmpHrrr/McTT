@@ -2823,16 +2823,18 @@ Proof.
   all: match goal with H : evaluated_kind _ |- _ => inversion H; subst; discriminate end.
 Qed.
 
-Lemma glu_term_value_intro : forall {i a P El Γ M B Δ A N m ρ R},
+(** The same from the term's scope alone: at a proposition the proof kept
+    reads back over an environment of the context. *)
+Lemma glu_term_value_intro_scoped : forall {i a P El Γ M Δ A N m ρ R},
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    Γ ⊢ M : B ->
+    exp_scoped (List.length Γ) M ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     Dom ρ ≈ ρ ∈ R ->
     (evaluated_kind (domain_kind a) -> ⟦ M ⟧ ρ ↘ m) ->
     Δ ⊢ N : A ® m ∈ El ->
     exists m', glu_term_value M ρ (domain_kind a) m' /\ Δ ⊢ N : A ® m' ∈ El.
 Proof.
-  intros * Hglu HM HΓ Hρ Hm HN.
+  intros * Hglu HsM HΓ Hρ Hm HN.
   destruct (domain_kind a) eqn:Hk.
   - exists m; split; [ apply Hm; constructor | exact HN ].
   - (** At a proposition: the proof kept *)
@@ -2842,10 +2844,72 @@ Proof.
     destruct (glu_univ_elem_prop_inv _ _ _ _ Hp Hglu) as [_ HEl].
     apply HEl in HN; apply HEl.
     destruct HN as [HAt HNt _].
-    assert (HsM : exp_scoped (List.length Γ) M) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HM))).
     destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓ (exp_scoped_free_bound _ _ HsM) _ _ Hρ) as [Hr _].
     econstructor; [ exact HAt | exact HNt | split; exact Hr ].
   - exists m; split; [ apply Hm; constructor | exact HN ].
+Qed.
+
+Lemma glu_term_value_intro : forall {i a P El Γ M B Δ A N m ρ R},
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    Γ ⊢ M : B ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    Dom ρ ≈ ρ ∈ R ->
+    (evaluated_kind (domain_kind a) -> ⟦ M ⟧ ρ ↘ m) ->
+    Δ ⊢ N : A ® m ∈ El ->
+    exists m', glu_term_value M ρ (domain_kind a) m' /\ Δ ⊢ N : A ® m' ∈ El.
+Proof.
+  intros * Hglu HM.
+  exact (glu_term_value_intro_scoped Hglu (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HM)))).
+Qed.
+
+(** ** Glued Weakenings
+
+    A term judgment weakens along a glued weakening.  As in the PER model
+    ([rel_exp_under_ctx_wk]) the values of [M[φ]ʷ] at [ρ] and of [M] at
+    [⟪φ⟫ ρ] are not equal, only related ([rel_exp_under_ctx_wk_simple]);
+    the gluing moves along the relation. *)
+Lemma glu_rel_exp_wk : forall {Γ Δ φ A M},
+    Γ ⊩ʷ φ : Δ -> Δ ⊩ M : A -> Γ ⊩ M[φ]ʷ : A[φ]ʷ.
+Proof.
+  intros * [SbΓ HSbΓ SbΔ HSbΔ _ Hφs Hφg] HM.
+  pose proof HM as [SbΔ' HSbΔ' i HMb].
+  assert (E : SbΔ <∙> SbΔ') by (eapply functional_glu_ctx_env; eassumption).
+  pose proof (glu_rel_exp_to_wf_exp HM) as HMt.
+  destruct (rel_exp_under_ctx_wk_simple Hφs (completeness_fundamental_exp _ _ _ HMt)) as (RΓ & HRΓ & j & Hs).
+  assert (Hsc : exp_scoped (List.length Γ) M[φ]ʷ).
+  { eapply exp_scoped_wk; [ exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HMt))) |].
+    exact (rel_wk_under_ctx_bound _ _ _ Hφs). }
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max i j); [ exact HSbΓ |].
+  intros Δ' σ ρ Hσ.
+  pose proof (glu_ctx_env_per_env HSbΓ HRΓ Hσ) as Hρ.
+  pose proof (Hφg _ _ _ Hσ) as Hσ'; apply E in Hσ'.
+  destruct (HMb _ _ _ Hσ') as [a m P El Ea Em Hg HE].
+  destruct (Hs _ _ Hρ) as (a1 & a2 & R & Ea1 & Ea2 & HR & Hm).
+  assert (a2 = a) as -> by (eapply functional_eval_exp; eassumption).
+  rewrite <- !exp_sub_wk in HE.
+  (** The gluing at the weakened type's value, at the larger level *)
+  destruct (glu_univ_elem_cumu_max_left (j := j) Hg) as (P' & El' & Hg').
+  assert (HE' : Δ' ⊢ M[φ]ʷ[σ] : A[φ]ʷ[σ] ® m ∈ El')
+    by (eapply glu_univ_elem_exp_cumu_max_left; [ exact Hg | exact Hg' | exact HE ]).
+  pose proof (per_univ_elem_cumu_max_right i j _ _ _ HR) as HRk.
+  assert (Hg1 : DG a1 ∈ glu_univ_elem (max i j) ↘ P' ↘ El')
+    by (eapply glu_univ_elem_resp_per_univ; [| exact Hg' ]; eexists; symmetry; exact HRk).
+  pose proof (per_univ_elem_kind _ _ _ _ HR) as Hk.
+  (** The term's value: the weakened term's, moved along the relation *)
+  assert (Hev : exists m1, (evaluated_kind (domain_kind a1) -> ⟦ M[φ]ʷ ⟧ ρ ↘ m1) /\ Δ' ⊢ M[φ]ʷ[σ] : A[φ]ʷ[σ] ® m1 ∈ El').
+  { destruct (domain_kind a1) eqn:Hk1;
+      [| exists m; split; [ intros Hek; inversion Hek | exact HE' ] |].
+    all: destruct Hm as [Hp | (m1 & m2 & Em1 & Em2 & Hm12)]; [ congruence |].
+    all: exists m1; split; [ intros _; exact Em1 |].
+    all: rewrite <- Hk in Em; cbn [glu_term_value] in Em.
+    all: pose proof (functional_eval_exp _ _ _ _ Em2 Em) as ->.
+    all: destruct (glu_univ_elem_per_univ _ _ _ _ Hg') as [R2 HR2].
+    all: pose proof (per_univ_elem_left_irrel _ _ _ _ _ _ _ HRk HR2) as ER.
+    all: assert (HPR : PER R2) by (eapply per_elem_PER; exact HR2).
+    all: apply (glu_univ_elem_trm_resp_per_elem _ _ _ _ Hg' _ HR2 _ _ _ _ _ HE'); symmetry; apply ER; exact Hm12. }
+  destruct Hev as (m1 & Em1 & HE1).
+  destruct (glu_term_value_intro_scoped Hg1 Hsc HRΓ Hρ Em1 HE1) as (m' & Hm' & HN).
+  econstructor; [ exact Ea1 | exact Hm' | exact Hg1 | exact HN ].
 Qed.
 
 End Fixed_GCtx.

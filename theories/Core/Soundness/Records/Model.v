@@ -92,32 +92,6 @@ Proof.
       rewrite List.length_map in HXk; lia.
 Qed.
 
-(** A term's value at the kind of its type ([glu_term_value_intro]), from
-    the term's scope alone: at a proposition the proof kept reads back
-    over an environment of the context. *)
-Lemma glu_term_value_intro_scoped : forall {i a P El Γ M Δ A N m ρ R},
-    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    exp_scoped (List.length Γ) M ->
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
-    Dom ρ ≈ ρ ∈ R ->
-    (evaluated_kind (domain_kind a) -> ⟦ M ⟧ ρ ↘ m) ->
-    Δ ⊢ N : A ® m ∈ El ->
-    exists m', glu_term_value M ρ (domain_kind a) m' /\ Δ ⊢ N : A ® m' ∈ El.
-Proof.
-  intros * Hglu HsM HΓ Hρ Hm HN.
-  destruct (domain_kind a) eqn:Hk.
-  - exists m; split; [ apply Hm; constructor | exact HN ].
-  - exists ⋆ᵈ⟨M, ρ⟩; split; [ reflexivity |].
-    destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R' HR'].
-    pose proof (per_univ_elem_per_prop_of_kind HR' Hk) as Hp.
-    destruct (glu_univ_elem_prop_inv _ _ _ _ Hp Hglu) as [_ HEl].
-    apply HEl in HN; apply HEl.
-    destruct HN as [HAt HNt _].
-    destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓ (exp_scoped_free_bound _ _ HsM) _ _ Hρ) as [Hr _].
-    econstructor; [ exact HAt | exact HNt | split; exact Hr ].
-  - exists m; split; [ apply Hm; constructor | exact HN ].
-Qed.
-
 (** ** A Record at its Model *)
 
 Section RecordAt.
