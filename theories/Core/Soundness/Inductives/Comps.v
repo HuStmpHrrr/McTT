@@ -95,15 +95,6 @@ Record ind_fams_glu (D : ind_decl) (ups : list domain) (u : universe_index)
         ↘ DP m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn j (shape_doms_tele t)) B
         ↘ DEl m (ms ++ ws ++ ys) (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn j (shape_doms_tele t)) B }.
 
-(** A shape after [d] of its domains, at a domain: the next one. *)
-Lemma ptyp_skip_pi : forall d t0 B t, ptyp_skip d t0 = pt_pi B t ->
-    List.nth_error (ptyp_doms t0) d = Some B /\ ptyp_skip (S d) t0 = t.
-Proof.
-  induction d as [| d IH]; intros [j Ps | B0 t0] B t H; cbn in H |- *; try discriminate.
-  - injection H as -> ->; split; reflexivity.
-  - exact (IH _ _ _ H).
-Qed.
-
 (** ** The Components of an Inductive Type at Glued Parameters
 
     The types of the telescopes of a valid declaration, at uniform
@@ -606,7 +597,7 @@ Section Comps.
     induction t' as [? ? | B t'' IH]; intros k ys Δ τ Us Ys SbC Hsk Hk Hy HΔ HUl HYl HSbC Hσ;
       cbn [glu_shape_typ]; [ exact I |].
     intros IT OT HT; cbn [ptyp_ty_at] in HT; injection HT as <- <-.
-    destruct (ptyp_skip_pi _ _ _ _ Hsk) as [HB Hs'].
+    destruct (Tele.ptyp_skip_pi _ _ _ _ Hsk) as [HB Hs'].
     assert (Hkl : k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
     assert (Hyl : List.length ys = k) by (destruct Hy as [Hyl _]; exact Hyl).
     pose proof (glu_ind_decl_dom _ HG _ _ _ _ _ _ _ _ _ HM Hcon Heq HB) as HBv.

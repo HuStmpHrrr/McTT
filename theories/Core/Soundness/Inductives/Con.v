@@ -721,7 +721,7 @@ Section ConGlu.
     2:{ (** A domain: an element of the domain's gluing, moved to the gluing
             of the [Π]'s domain, applied to the argument gives a recursive
             argument of the rest of the shape. *)
-        destruct (ptyp_skip_pi _ _ _ _ Hsk) as [HB Hs'].
+        destruct (Tele.ptyp_skip_pi _ _ _ _ Hsk) as [HB Hs'].
         assert (Hkl : kk < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
         pose proof Hy as Hy0; rewrite tele_prefix_rel_iff in Hy0; destruct Hy0 as (Hly & _ & _).
         assert (HUl : List.length Us = ind_nu D) by (destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _]; exact LU).

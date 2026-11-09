@@ -506,7 +506,7 @@ Section AtType.
       cbn [ptyp_ty_at]; unfold ind_mty; rewrite HMj.
       exact (mty_glu j Mj _ _ _ Δ' Us' _ _ i P El Hi HMj Hr HΔ' HUs (proj1 (Hgn _ Hbs)) Hbs Hglu).
     - subst pre A Ts; destruct (glu_rec_pi_inv _ _ _ _ _ _ _ _ _ _ Hgr) as (Hq1 & Hq2 & Hq3).
-      destruct (ptyp_skip_pi _ _ _ _ Hsk) as [HB Hsk'].
+      destruct (Tele.ptyp_skip_pi _ _ _ _ Hsk) as [HB Hsk'].
       cbn [ptyp_ty_at] in HAt, Hq1, Hq2, Hq3 |- *.
       set (IT := B[σs]) in *.
       set (OTy := ptyp_ty_at p D (List.map (fun U => U[↑]ʷ) Us') (q σs) t) in *.
@@ -647,7 +647,7 @@ Section AtType.
     intros * Hq1 Hq2 Hq3 IH; unfold rec_glu_at_type.
     intros Mk ms c0 gs1 t0 gs2 ws d ys σs a i P El HMk Hc0 Hpre HTs Hms Hws Hsk Hys HUs HA HN Ea HRv Hglu HAP.
     subst pre A Ts.
-    destruct (ptyp_skip_pi _ _ _ _ Hsk) as [HB Hsk'].
+    destruct (Tele.ptyp_skip_pi _ _ _ _ Hsk) as [HB Hsk'].
     cbn [ptyp_ty_at] in Hq1, Hq2, Hq3, IH, HN, HAP |- *.
     set (IT := B[σs]) in *.
     set (OTy := ptyp_ty_at p D (List.map (fun U => U[↑]ʷ) Us) (q σs) t) in *.

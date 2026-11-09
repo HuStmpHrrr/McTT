@@ -324,24 +324,6 @@ Proof.
   apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR' HRa); exact (var_per_elem _ HR' Hn).
 Qed.
 
-(** The readback of the fresh variable of a variable's level, at every
-    weakening, is the variable. *)
-Lemma var_readback_wk : forall Δ T x, Δ ⊢ #x : T -> x < List.length Δ ->
-    forall Δ' φ M', Δ' ⊢ᵏ φ : Δ -> Rne d_var (List.length Δ - 1 - x) in gc_deps ⍮ gc_stack ⍮ length Δ' ↘ M' ->
-    Δ' ⊢ #x[φ]ʷ ≈ M' : T[φ]ʷ.
-Proof.
-  intros * Hx Hlt Δ' φ M' Hφ HR.
-  inversion HR; subst.
-  destruct (kripke_shiftn _ _ _ Hφ) as [Hle _].
-  pose proof (wk_var_kripke _ _ _ x Hφ) as Hφx.
-  change (#x[φ]ʷ) with (a_var (φ x)); rewrite Hφx.
-  cbn [ne_to_exp].
-  replace (List.length Δ' - (List.length Δ - 1 - x) - 1) with (x + (List.length Δ' - List.length Δ)) by lia.
-  apply wf_exp_eq_refl.
-  rewrite <- Hφx; change (a_var (φ x)) with (#x[φ]ʷ).
-  exact (kripke_preserves_exp _ _ _ _ _ Hx Hφ).
-Qed.
-
 (** ** The Families of a Group, at its Sort
 
     The types of the telescopes of a valid group at uniform parameters
@@ -1813,7 +1795,7 @@ Section ElimGlu.
       HiAj Hnbj Hg HIT.
     pose proof Hctx as [HMk Hc0 Hpre Hts Hms Hws Hsk Hdp Hys Hσ' HUs'].
     subst pre Us' Ts.
-    destruct (ptyp_skip_pi _ _ _ _ Hsk) as [HB Hsk'].
+    destruct (Tele.ptyp_skip_pi _ _ _ _ Hsk) as [HB Hsk'].
     (** The leaf path, the result and its type. *)
     cbn [shape_leaves] in Hleaf; apply nth_error_map_inv in Hleaf as (l' & Hl' & ->).
     pose proof (eval_ih_pi_inv _ _ _ _ _ _ _ _ _ Hl Er) as ->.
@@ -4176,12 +4158,6 @@ Section ElimGlu.
       Rne d_elim ρ Bks p ups j as' e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
       glu_ne_eq Δ (a_elim ak_relevant p (List.map (fun U => U[σ'']) Us) j (blocks_sub Bks σ'') M) M0
         ((List.nth j (blocks_motives Bks) a_prop)[sb_qn (S (im_nn Mj)) σ''][sb_of_list Id (Ns ++ M :: nil)]).
-
-  Lemma elim_readback_decl_ok : forall j Mj pm, ind_member D j = Some Mj -> im_head Mj = mh_decl pm -> elim_readback_ok j.
-  Proof.
-    intros j Mj pm HMj Hh Mj' as' e Δ σ'' Ns M M0 HMj'; rewrite HMj in HMj'; injection HMj' as <-.
-    exact (elim_readback_decl j Mj pm HMj Hh as' e Δ σ'' Ns M M0).
-  Qed.
 
   Lemma motive_inst_wk : forall X n σ' L φ, List.length L = n ->
       (X[sb_qn n σ'][sb_of_list Id L])[φ]ʷ = X[sb_qn n (sb_wk σ' φ)][sb_of_list Id (List.map (fun N => N[φ]ʷ) L)].
