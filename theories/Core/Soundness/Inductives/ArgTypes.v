@@ -169,6 +169,222 @@ Proof.
   - rewrite eval_wk_q_zero_entry; exact Hrd.
 Qed.
 
+(** ** Glued Substitutions
+
+    The constructions of [Γ ⊩ˢ τ : Δ] the iterated application of a type
+    former needs, as the PER model's [gsub]: the identity, the extension
+    by a glued term, and the lifting under an assumption.  The targets are
+    telescopes of assumptions, where a glued substitution moves along the
+    context PER: an environment related to a glued one is glued. *)
+
+Lemma glu_sub_resp_per : forall Γ Sb R, all_assumptions Γ -> EG Γ ∈ glu_ctx_env ↘ Sb -> EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    forall Δ σ ρ ρ', Dom ρ ≈ ρ' ∈ R -> Δ ⊢ˢ σ ® ρ ∈ Sb -> Δ ⊢ˢ σ ® ρ' ∈ Sb.
+Proof.
+  induction Γ as [| e Γ IH]; intros * Hass HC HR * Hρ Hσ.
+  - inversion HC; subst.
+    match goal with E : Sb <∙> nil_glu_sub_pred |- _ => apply E; apply E in Hσ; exact Hσ end.
+  - apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
+    assert (HT : exists TSb, EG Γ ∈ glu_ctx_env ↘ TSb) by (inversion HC; subst; eexists; eassumption).
+    destruct HT as [TSb HTSb].
+    destruct (glu_ctx_env_cons_clean_inversion HTSb HC) as (i & _ & HTT & HSb).
+    destruct (glu_ctx_env_per_ctx_env HTSb) as [RT HRT].
+    destruct (per_ctx_env_cons_clean_inversion HRT HR) as (i' & hr & Hhr & _ & HRCe).
+    apply HRCe in Hρ as [HEt Hhd _ HEr _ HErr].
+    apply HSb in Hσ; inversion Hσ as [? ? ? a P El Hσt Ha Hg Hh _ _ Htl]; subst.
+    pose proof (IH _ _ Hass HTSb HRT _ _ _ _ HEt Htl) as Htl'.
+    destruct (HTT _ _ _ Htl') as [a' P' El' Ha' Hg' HP'].
+    destruct (Hhr _ _ HEt) as [a1 a1' Ea1 Ea1' HR1].
+    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a1' = a') as -> by (eapply functional_eval_exp; eassumption).
+    apply HSb; econstructor; [ exact Hσt | exact Ha' | exact Hg' | | exact HEr | exact HErr | exact Htl' ].
+    assert (Haa : Dom a ≈ a' ∈ per_univ i') by (eexists; exact HR1).
+    pose proof (glu_univ_elem_exp_conv Haa Hg Hg' Hh ltac:(rewrite <- exp_sub_of_wk, exp_sub_sub; exact HP')) as Hh'.
+    destruct (glu_univ_elem_per_univ _ _ _ _ Hg') as [R2 HR2].
+    pose proof (per_univ_elem_left_irrel _ _ _ _ _ _ _ HR1 HR2) as ER.
+    exact (glu_univ_elem_trm_resp_per_elem _ _ _ _ Hg' _ HR2 _ _ _ _ _ Hh' (proj1 (ER _ _) Hhd)).
+Qed.
+
+Lemma glu_rel_sub_id : forall Γ, ⊩ Γ -> Γ ⊩ˢ Id : Γ.
+Proof.
+  intros Γ [Sb HSb].
+  pose proof (glu_ctx_env_wf_ctx HSb) as HΓw.
+  refine (mk_glu_rel_sub _ _ _ Sb HSb Sb HSb (wf_sub_id _ _ _ HΓw)
+            (rel_sub_id (rel_ctx_wf_per_ctx_env (completeness_fundamental_ctx _ HΓw))) _).
+  intros Δ σ ρ Hσ; exists ρ; split.
+  - eapply glu_sub_resp_sb_eq; [ exact HSb | exact Hσ |]; symmetry; apply sb_compose_id_left.
+  - intros R ρτ0 HR Hev.
+    pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
+    assert (HPR : PER R) by (eapply per_env_PER; exact HR).
+    pose proof (rel_sub_under_ctx_at' (rel_sub_id (rel_ctx_wf_per_ctx_env (completeness_fundamental_ctx _ HΓw))) HR HR
+                  _ _ _ _ Hρ Hev (eval_sub_id _ _)) as H1.
+    etransitivity; [ exact H1 | exact (per_ctx_env_retag_left HR _ _ Hρ) ].
+Qed.
+
+(** The extension of a substitution by an entry, evaluated: the
+    substitution's value is the tail, and the entry's value the head when
+    it is no proposition ([eval_sub_extend_inv], at any entry). *)
+#[local] Transparent eval_sub.
+Lemma eval_sub_extend_gen_inv : forall e0 Δ σ e ρ ρτ,
+    ⟦ sb_extend σ e : e0 :: Δ ⟧s ρ ↘ ρτ ->
+    ⟦ σ : Δ ⟧s ρ ↘ ρτ↯ /\
+      (~ entry_propositional gc_deps gc_stack (e0 :: Δ)%list ρτ 0 -> ⟦ sentry_exp e ⟧ ρ ↘ ρτ 0).
+Proof.
+  intros * H; split.
+  - intros x Hx; rewrite env_entry_drop, (ctx_entry_tag_drop e0); change (ctx_entry_unit Δ x) with (ctx_entry_unit (e0 :: Δ) (S x)); split.
+    + intros Hp; apply (H (S x) ltac:(cbn; lia)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
+    + intros Hn; apply (H (S x) ltac:(cbn; lia)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
+  - intros Hn; pose proof (proj2 (H 0 ltac:(cbn; lia)) Hn) as Hx; cbn in Hx.
+    assert (E0 : ρτ 0 = match hd absent_entry ρτ with de_mod _ _ => Propᵈ | de_term d _ | de_dm d _ _ _ => d end)
+      by (destruct ρτ; reflexivity).
+    rewrite E0; clear E0.
+    destruct e as [y | M | Hm | N Hm]; cbn [sentry_exp eval_sentry] in Hx |- *.
+    + rewrite Hx.
+      replace (match retag_entry _ _ (env_entry ρ y) with de_mod _ _ => Propᵈ | de_term d _ | de_dm d _ _ _ => d end)
+        with (env_var ρ y) by (unfold env_var; destruct (env_entry ρ y); reflexivity).
+      econstructor.
+    + destruct Hx as (m0 & -> & Hx0); exact Hx0.
+    + destruct Hx as (h0 & -> & _); econstructor.
+    + destruct Hx as (n0 & h0 & -> & Hx0 & _); exact Hx0.
+Qed.
+#[local] Opaque eval_sub.
+
+(** Extended by an entry whose term is glued: glued at a value of the
+    extension, its tail moved to it along the target's PER
+    ([glu_sub_resp_per]), its head the term's value. *)
+Lemma glu_rel_sub_extend_gen : forall Γ τ Δ κ A e (i : nat), all_assumptions Δ ->
+    Γ ⊩ˢ τ : Δ -> Δ ⊩ A : abs_kind_sort κ Typeω@i -> Γ ⊩ sentry_exp e : A[τ] ->
+    Γ ⊢ˢ sb_extend τ e : Δ ▹{κ} A -> Γ ⊨ˢ sb_extend τ e ≈ sb_extend τ e : Δ ▹{κ} A ->
+    Γ ⊩ˢ sb_extend τ e : Δ ▹{κ} A.
+Proof.
+  intros * HassΔ Hτ HA HN Hst Hs.
+  pose proof Hτ as [SbΓ HSbΓ SbΔ HSbΔ Hτt Hτs Hτg].
+  pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
+  pose proof (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAt)) as HAv.
+  destruct (glu_rel_ctx_extend (ex_intro _ _ HSbΔ) HA (sort_kind_abs_kind_sort κ i)) as [SbΔA HSbΔA].
+  refine (mk_glu_rel_sub _ _ _ SbΓ HSbΓ SbΔA HSbΔA Hst Hs _).
+  intros Δ' σ ρ Hσ.
+  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [RΓ HRΓ].
+  destruct (glu_ctx_env_per_ctx_env HSbΔ) as [RΔ HRΔ].
+  destruct (glu_ctx_env_per_ctx_env HSbΔA) as [RΔA HRΔA].
+  pose proof (glu_ctx_env_per_env HSbΓ HRΓ Hσ) as Hρ.
+  destruct (rel_sub_under_ctx_simple Hs) as [RΓ1 [HRΓ1 [RΔA1 [HRΔA1 Hsim]]]].
+  assert (E1 : RΓ <~> RΓ1) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hsim _ _ (proj1 (E1 _ _) Hρ)) as [ρτ' [_ [Hev _]]].
+  exists ρτ'; split; [| intros R ρτ0 HR Hev0; exact (rel_sub_under_ctx_at' Hs HRΓ HR _ _ _ _ Hρ Hev0 Hev) ].
+  destruct (eval_sub_extend_gen_inv _ _ _ _ _ _ Hev) as [Hevt Hhd].
+  (** The tail, moved to the value's *)
+  destruct (Hτg _ _ _ Hσ) as (ρτ & Hσ' & Hrel).
+  assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HRΔ).
+  pose proof (glu_sub_resp_per _ _ _ HassΔ HSbΔ HRΔ _ _ _ _ (symmetry (Hrel _ _ HRΔ Hevt)) Hσ') as Htl.
+  destruct (glu_ctx_env_cons_clean_inversion HSbΔ HSbΔA) as (i2 & _ & HT2 & E2).
+  apply E2.
+  assert (Htl2 : Δ' ⊢ˢ Wk ⨟ ((sb_extend τ e) ⨟ σ) ® ρτ'↯ ∈ SbΔ)
+    by (eapply glu_sub_resp_sb_eq; [ exact HSbΔ | exact Htl | intros x; reflexivity ]).
+  destruct (HT2 _ _ _ Htl2) as [a0 P0 El0 Ea0 Hg0 HP0].
+  (** The head: the term's value, glued at its type moved to the value *)
+  pose proof HN as [SbΓ' HSbΓ' iN HNb].
+  assert (E' : SbΓ <∙> SbΓ') by (eapply functional_glu_ctx_env; eassumption).
+  destruct (HNb _ _ _ (proj1 (E' _ _ _) Hσ)) as [aN n PN ElN EaN En HgN HEN].
+  destruct (Completeness.LogicalRelation.Telescope.typ_inst_link _ _ _ _ _ _ _ _ _ HAv HRΓ Hτs Hρ Hevt) as (b1 & b2 & Eb1 & Eb2 & Hb).
+  assert (b1 = aN) as -> by (eapply functional_eval_exp; eassumption).
+  assert (b2 = a0) as -> by (eapply functional_eval_exp; eassumption).
+  assert (ET : A[↑]ʷ[(sb_extend τ e) ⨟ σ] = A[τ][σ]) by (rewrite exp_sub_wk, exp_sub_sub; apply exp_sub_sb_eq; intros x; reflexivity).
+  assert (ET2 : A[Wk ⨟ ((sb_extend τ e) ⨟ σ)] = A[τ][σ]) by (rewrite exp_sub_sub; apply exp_sub_sb_eq; intros x; reflexivity).
+  rewrite ET2 in HP0.
+  pose proof (glu_univ_elem_exp_conv Hb HgN Hg0 HEN HP0) as HE0.
+  pose proof (rel_sub_under_ctx_at' Hs HRΓ HRΔA _ _ _ _ Hρ Hev Hev) as Hρτ'.
+  destruct (per_ctx_env_cons_clean_inversion HRΔ HRΔA) as (i3 & hr & Hhr & _ & HRe).
+  apply HRe in Hρτ' as [Ht' Hh' Hl' _ Hrd' _].
+  econstructor; [ exact (wf_sub_compose _ _ _ _ _ _ _ Hst (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ)) | exact Ea0 | exact Hg0 | | exact Hl' | exact Hrd' | exact Htl2 ].
+  rewrite ET; replace (#0[(sb_extend τ e) ⨟ σ]) with ((sentry_exp e)[σ]) by (rewrite sentry_exp_sub; reflexivity).
+  (** The value there is the term's: the same at an evaluated kind, both
+      proofs at a proposition *)
+  destruct (glu_univ_elem_per_univ _ _ _ _ Hg0) as [R0 HR0].
+  apply (glu_univ_elem_trm_resp_per_elem _ _ _ _ Hg0 _ HR0 _ _ _ _ _ HE0).
+  destruct Hb as [Rb HRb]; pose proof (per_univ_elem_kind _ _ _ _ HRb) as Hk.
+  destruct (Hhr _ _ Ht') as [c1 c2 Ec1 Ec2 HRc].
+  assert (c1 = a0) as -> by (eapply functional_eval_exp; eassumption).
+  assert (c2 = a0) as -> by (eapply functional_eval_exp; eassumption).
+  pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRc HR0) as Ehr.
+  assert (HPR0 : PER R0) by (eapply per_elem_PER; exact HR0).
+  destruct (domain_kind a0) eqn:Hk0.
+  2:{ (** At a proposition both are proofs *)
+    pose proof (per_univ_elem_propositional _ _ _ _ HR0 Hk0) as Ep.
+    destruct (glu_univ_elem_per_univ _ _ _ _ HgN) as [RN HRN].
+    destruct (glu_univ_elem_prop_inv _ _ _ _ (per_univ_elem_per_prop_of_kind HRN Hk) HgN) as [_ HElN].
+    apply HElN in HEN; destruct HEN as [_ _ Hpn].
+    apply Ep; split; [ exact (proj1 Hpn) | exact (proj1 (proj1 (Ep _ _) (proj1 (Ehr _ _) Hh'))) ]. }
+  (** At an evaluated kind the head is the term's value *)
+  all: assert (Hnp : ~ entry_propositional gc_deps gc_stack (Δ ▹{κ} A) ρτ' 0)
+         by (intros Hp; apply (proj1 (entry_propositional_zero_head _ _ _)) in Hp;
+             apply (proj1 (head_propositional_of_rel_typ (e := ce_ass κ A) (A := A) hr _ _ HRΔ ltac:(reflexivity) Hhr Ht')) in Hp;
+             destruct Hp as (c & Ec & Hc); assert (c = a0) as -> by (eapply functional_eval_exp; eassumption); congruence).
+  all: rewrite Hk in En; cbn [glu_term_value] in En.
+  all: pose proof (functional_eval_exp _ _ _ _ (Hhd Hnp) En) as Heqn; rewrite <- Heqn.
+  all: apply Ehr; exact Hh'.
+Qed.
+
+(** Extended by a glued term *)
+Lemma glu_rel_sub_ext : forall Γ τ Δ κ A N (i : nat), all_assumptions Δ ->
+    Γ ⊩ˢ τ : Δ -> Δ ⊩ A : abs_kind_sort κ Typeω@i -> Γ ⊩ N : A[τ] -> Γ ⊩ˢ τ,,N : Δ ▹{κ} A.
+Proof.
+  intros * HassΔ Hτ HA HN.
+  pose proof Hτ as [_ _ _ _ Hτt Hτs _].
+  pose proof (glu_rel_exp_to_wf_exp HA) as HAt; pose proof (glu_rel_exp_to_wf_exp HN) as HNt.
+  pose proof (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAt)) as HAv.
+  assert (HNs : exp_scoped (List.length Γ) N) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HNt))).
+  exact (glu_rel_sub_extend_gen _ _ _ _ _ (se_exp N) i HassΔ Hτ HA HN
+           (wf_sub_extend _ _ _ _ _ _ _ _ _ Hτt HAt (sort_kind_abs_kind_sort κ i) HNt)
+           (rel_sub_under_ctx_extend (κ := κ) Hτs HAv (completeness_fundamental_exp _ _ _ HNt) HNs HNs)).
+Qed.
+
+(** Postcomposed with a glued weakening: glued at the substitution's
+    glued environment at the weakened one, related to the values of the
+    composite by the semantic substitution's Kripke clause. *)
+Lemma glu_rel_sub_wk : forall Γ' ψ Γ τ Δ, Γ' ⊩ʷ ψ : Γ -> Γ ⊩ˢ τ : Δ -> Γ' ⊩ˢ sb_wk τ ψ : Δ.
+Proof.
+  intros * [SbΓ' HSbΓ' SbΓ1 HSbΓ1 Hψt Hψs Hψg] [SbΓ HSbΓ SbΔ HSbΔ Hτt Hτs Hτg].
+  assert (E : SbΓ1 <∙> SbΓ) by (eapply functional_glu_ctx_env; eassumption).
+  pose proof (rel_sub_under_ctx_wk Hτs Hψs) as Hs.
+  refine (mk_glu_rel_sub _ _ _ SbΓ' HSbΓ' SbΔ HSbΔ (wf_sub_wk _ _ _ _ _ _ _ Hτt Hψt) Hs _).
+  intros Δ' σ ρ Hσ.
+  pose proof (Hψg _ _ _ Hσ) as Hσ1; apply E in Hσ1.
+  destruct (Hτg _ _ _ Hσ1) as (ρτ & Hστ & Hrel).
+  exists ρτ; split.
+  - eapply glu_sub_resp_sb_eq; [ exact HSbΔ | exact Hστ |].
+    rewrite sb_wk_compose, sb_compose_assoc; reflexivity.
+  - intros R X HR HX.
+    pose proof Hψs as [R1 HR1 R2 HR2 Hψw Hψb _].
+    pose proof Hτs as [RΓ0 HRΓ0 RΔ0 HRΔ0 Hb _].
+    assert (E2 : R2 <~> RΓ0) by (eapply per_ctx_env_right_irrel; eassumption).
+    assert (Hψw' : rel_wk ψ R1 RΓ0) by (destruct Hψw as [Hm Hw]; split; [ exact Hm | intros; apply E2, Hw; assumption ]).
+    pose proof (glu_ctx_env_per_env HSbΓ' HR1 Hσ) as Hρ.
+    destruct (Hb _ _ HR1 _ Hψw' Hψb _ _ Hρ) as [ρ1 ρ2 ρ3 ρ4 E1 E2' _ _ Hch].
+    destruct Hch as (H12 & _).
+    assert (E3 : RΔ0 <~> R) by (eapply per_ctx_env_right_irrel; eassumption).
+    assert (HPR : PER R) by (eapply per_env_PER; exact HR).
+    etransitivity; [ exact (rel_sub_under_ctx_at' Hs HR1 HR _ _ _ _ Hρ HX E1) |].
+    etransitivity; [ apply E3; exact H12 | exact (Hrel _ _ HR E2') ].
+Qed.
+
+(** Lifted under an assumption: [q τ] is [τ] weakened past the new entry,
+    extended by its variable ([glu_rel_sub_extend_gen]). *)
+Lemma glu_rel_sub_q : forall Γ τ Δ κ A (i : nat), all_assumptions Δ ->
+    Γ ⊩ˢ τ : Δ -> Δ ⊩ A : abs_kind_sort κ Typeω@i -> Γ ▹{κ} A[τ] ⊩ˢ q τ : Δ ▹{κ} A.
+Proof.
+  intros * HassΔ Hτ HA.
+  pose proof Hτ as [SbΓ HSbΓ _ _ Hτt Hτs _].
+  pose proof (glu_rel_exp_sub Hτ HA) as HAτ; rewrite abs_kind_sort_sub in HAτ; cbn [exp_sub] in HAτ.
+  pose proof (glu_rel_ctx_extend (ex_intro _ _ HSbΓ) HAτ (sort_kind_abs_kind_sort κ i)) as HΓA.
+  pose proof (glu_rel_exp_to_wf_exp HA) as HAt; pose proof (glu_rel_exp_to_wf_exp HAτ) as HAτt.
+  pose proof (glu_rel_sub_wk _ _ _ _ _ (glu_rel_wk_shift _ _ HΓA) Hτ) as Hw.
+  assert (H0 : Γ ▹{κ} A[τ] ⊩ sentry_exp (se_var 0) : A[sb_wk τ ↑]).
+  { cbn [sentry_exp]; rewrite <- exp_wk_sub; exact (glu_rel_exp_vlookup HΓA (here _ _ _)). }
+  exact (glu_rel_sub_extend_gen _ _ _ _ _ (se_var 0) i HassΔ Hw HA H0
+           (wf_sub_q _ _ _ _ _ _ _ _ Hτt HAt (sort_kind_abs_kind_sort κ i) HAτt)
+           (rel_sub_under_ctx_q Hτs (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAt)))).
+Qed.
+
 (** ** Types of a Group's Sort
 
     A type of the sort of a valid glued group, weakened past the
