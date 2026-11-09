@@ -368,6 +368,24 @@ Proof.
     etransitivity; [ apply E3; exact H12 | exact (Hrel _ _ HR E2') ].
 Qed.
 
+(** A glued weakening is a glued substitution ([gsub_wk]): glued at the
+    weakened environment, which the target's PER relates to its retagging,
+    the substitution's value ([eval_sub_of_wk]). *)
+Lemma glu_rel_sub_of_wk : forall Γ φ Δ, Γ ⊩ʷ φ : Δ -> Γ ⊩ˢ ι φ : Δ.
+Proof.
+  intros * [SbΓ HSbΓ SbΔ HSbΔ Hφt Hφs Hφg].
+  refine (mk_glu_rel_sub _ _ _ SbΓ HSbΓ SbΔ HSbΔ (wf_sub_of_wk _ _ _ _ _ Hφt) (rel_sub_of_wk Hφs) _).
+  intros Δ' σ ρ Hσ; exists (⟪φ⟫ ρ); split; [ exact (Hφg _ _ _ Hσ) |].
+  intros R ρτ0 HR Hev.
+  pose proof (glu_ctx_env_per_env HSbΔ HR (Hφg _ _ _ Hσ)) as Hρ.
+  assert (Hφm : WkMono φ) by (destruct Hφs as [? ? ? ? Hw _ _]; exact (rel_wk_mono _ _ _ Hw)).
+  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [RΓ HRΓ].
+  pose proof (glu_ctx_env_per_env HSbΓ HRΓ Hσ) as HρΓ.
+  pose proof (rel_sub_under_ctx_at' (rel_sub_of_wk Hφs) HRΓ HR _ _ _ _ HρΓ Hev (eval_sub_of_wk _ _ _ (Hφ := Hφm))) as H1.
+  assert (HPR : PER R) by (eapply per_env_PER; exact HR).
+  etransitivity; [ exact H1 | exact (per_ctx_env_retag_left HR _ _ Hρ) ].
+Qed.
+
 (** Lifted under an assumption: [q τ] is [τ] weakened past the new entry,
     extended by its variable ([glu_rel_sub_extend_gen]). *)
 Lemma glu_rel_sub_q : forall Γ τ Δ κ A (i : nat), all_assumptions Δ ->
@@ -648,6 +666,68 @@ Proof.
     rewrite tele_insts_snoc; cbn [List.nth_error].
     rewrite tele_insts_tele_sub in HT; rewrite <- HT; f_equal.
     apply tele_insts_sb_eq; symmetry; apply sb_compose_id_right.
+Qed.
+
+(** Terms glued at the instances of a telescope are glued at those of an
+    equal one ([tele_insts_rel_conv]): the equality is syntactic, the
+    right telescope's entries glued, and each term moves by subtyping
+    ([glu_rel_exp_subtyp]). *)
+Lemma glu_tele_insts_conv : forall Γ Δ Δ' Ms, gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
+    all_assumptions Δ -> all_assumptions Δ' -> all_assumptions Γ -> ⊩ Γ -> glu_tele_entries Δ Γ -> glu_tele_entries Δ' Γ ->
+    List.length Δ' = List.length Δ -> List.length Ms = List.length Δ ->
+    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ Id Ms) k = Some T -> Γ ⊩ N : T) ->
+    forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ' Id Ms) k = Some T -> Γ ⊩ N : T.
+Proof.
+  induction Δ as [| e Δ IH]; intros Δ' Ms HX Ha Ha' HΓa HΓ HE HE' Hll Hl HMs k N T HN HT.
+  - destruct Ms; [ destruct k; discriminate | discriminate ].
+  - destruct Δ' as [| e' Δ']; [ discriminate |].
+    inversion Ha as [| ? ? (κ & A & ->) HaΔ]; subst; inversion Ha' as [| ? ? (κ' & A' & ->) HaΔ']; subst.
+    cbn [List.length] in Hll, Hl.
+    inversion HX; subst.
+    match goal with
+    | H : gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ', H' : gc_deps ⍮ gc_stack ⍮ Δ ++ Γ ⊢ A ⊆ A' |- _ => rename H into HX0, H' into HAA'
+    end.
+    rename κ' into κ.
+    destruct (List.exists_last (l := Ms) ltac:(intros ->; cbn in Hl; discriminate)) as (Ms0 & M & ->).
+    rewrite List.length_app in Hl; cbn in Hl.
+    assert (Hl0 : List.length Ms0 = List.length Δ) by lia.
+    assert (Hti : forall X Y, all_assumptions Y -> List.length Ms0 = List.length Y ->
+               tele_insts (ce_ass κ X :: Y) Id (Ms0 ++ M :: nil) = tele_insts Y Id Ms0 ++ X[sb_of_list Id Ms0] :: nil).
+    { intros X Y HY HlY; change (ce_ass κ X :: Y) with ((ce_ass κ X :: nil) ++ Y).
+      rewrite tele_insts_app by (try exact HY; lia); reflexivity. }
+    assert (HlT : forall Y, all_assumptions Y -> List.length Ms0 = List.length Y -> List.length (tele_insts Y Id Ms0) = List.length Y)
+      by (intros Y HY HlY; rewrite length_tele_insts by exact HY; lia).
+    pose proof (HlT _ HaΔ Hl0) as HlT0; pose proof (HlT _ HaΔ' ltac:(lia)) as HlT0'.
+    rewrite (Hti _ _ HaΔ' ltac:(lia)) in HT.
+    assert (HMs0 : forall k N T, List.nth_error Ms0 k = Some N -> List.nth_error (tele_insts Δ Id Ms0) k = Some T -> Γ ⊩ N : T).
+    { intros k0 N0 T0 HN0 HT0.
+      assert (Hk0 : k0 < List.length Δ) by (rewrite <- HlT0; apply List.nth_error_Some; congruence).
+      apply (HMs k0); [ rewrite List.nth_error_app1 by lia; exact HN0 | rewrite (Hti _ _ HaΔ Hl0), List.nth_error_app1 by lia; exact HT0 ]. }
+    pose proof (IH _ _ HX0 HaΔ HaΔ' HΓa HΓ (glu_tele_entries_tail _ _ _ HE) (glu_tele_entries_tail _ _ _ HE') ltac:(lia) Hl0 HMs0)
+      as HMs0'.
+    destruct (Nat.lt_ge_cases k (List.length Δ')) as [Hk | Hk].
+    + rewrite List.nth_error_app1 in HN by lia; rewrite List.nth_error_app1 in HT by lia.
+      exact (HMs0' _ _ _ HN HT).
+    + assert (k = List.length Δ') as ->.
+      { assert (Hk' : k < List.length (Ms0 ++ M :: nil)) by (apply List.nth_error_Some; congruence).
+        rewrite List.length_app in Hk'; cbn in Hk'; lia. }
+      rewrite List.nth_error_app2, HlT0', Nat.sub_diag in HT by lia; injection HT as <-.
+      rewrite List.nth_error_app2 in HN by lia.
+      replace (List.length Δ' - List.length Ms0) with 0 in HN by lia; injection HN as <-.
+      pose proof (HMs (List.length Δ) M (A[sb_of_list Id Ms0])) as HM.
+      rewrite List.nth_error_app2 in HM by lia.
+      rewrite (Hti _ _ HaΔ Hl0), List.nth_error_app2 in HM by lia.
+      rewrite Hl0, HlT0, !Nat.sub_diag in HM.
+      specialize (HM eq_refl eq_refl).
+      assert (HaΔΓ : all_assumptions (Δ ++ Γ)) by (apply List.Forall_app; split; assumption).
+      assert (HaΔΓ' : all_assumptions (Δ' ++ Γ)) by (apply List.Forall_app; split; assumption).
+      pose proof (glu_rel_sub_of_list _ _ _ _ _ HaΔΓ (glu_rel_sub_id _ HΓ) (glu_tele_entries_tail _ _ _ HE) Hl0 HMs0) as Hgs.
+      pose proof (glu_rel_sub_of_list Δ' Γ Γ Id Ms0 HaΔΓ' (glu_rel_sub_id _ HΓ) (glu_tele_entries_tail _ _ _ HE') ltac:(lia) HMs0')
+        as Hgs'.
+      destruct (HE' nil κ A' Δ' eq_refl) as [j HA'].
+      pose proof (glu_rel_exp_sub Hgs' HA') as HA's; rewrite abs_kind_sort_sub in HA's; cbn [exp_sub] in HA's.
+      pose proof Hgs as [_ _ _ _ Hgst _ _].
+      exact (glu_rel_exp_subtyp HM HA's (sort_kind_type_sort _ _ (sort_kind_abs_kind_sort κ j)) (sub_preserves_subtyp _ _ _ _ _ _ _ HAA' Hgst)).
 Qed.
 
 (** A closed glued telescope of assumptions extends a glued context, its
