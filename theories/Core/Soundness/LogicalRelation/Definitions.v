@@ -1431,23 +1431,23 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
         Sb <∙> nil_glu_sub_pred ->
         ⊢ᵍ gc_deps ⍮ gc_stack ->
         EG ⋅ ∈ glu_ctx_env ↘ Sb }
-(** An assumption, of a type of a sort of its kind *)
+(** An assumption, of a type of the sort of its kind next to the large
+    universe of the gluing's index [i] *)
 | glu_ctx_env_cons :
-  `{ forall i TSb Sb Srt,
+  `{ forall i TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
-        Γ ⊢ A : Srt ->
-        sort_kind Srt κ ->
+        Γ ⊢ A : abs_kind_sort κ Typeω@i ->
         (forall Δ σ ρ,
             Δ ⊢ˢ σ ® ρ ∈ TSb ->
             glu_rel_typ_with_sub i Δ A σ ρ) ->
         Sb <∙> cons_glu_sub_pred i Γ κ A TSb ->
         EG Γ ▹{κ} A ∈ glu_ctx_env ↘ Sb }
-(** A definition, of a type of a sort *)
+(** A definition, of a type of the sort of a kind [κ] next to the large
+    universe of the gluing's index [i] *)
 | glu_ctx_env_cons_def :
-  `{ forall i TSb Sb Srt,
+  `{ forall i κ TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
-        Γ ⊢ A : Srt ->
-        type_sort Srt ->
+        Γ ⊢ A : abs_kind_sort κ Typeω@i ->
         Γ ⊢ M : A ->
         (forall Δ σ ρ,
             Δ ⊢ˢ σ ® ρ ∈ TSb ->
@@ -1464,13 +1464,15 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
         Sb <∙> cons_mod_glu_sub_pred Γ U TSb ->
         EG Γ ▹ₘ U ∈ glu_ctx_env ↘ Sb }
 (** A definition with a module part: the premises of a definition entry
-    and the well-formedness of the unit *)
+    and the well-formedness of the entry *)
 | glu_ctx_env_cons_dm :
   `{ forall i TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
         Γ ⊢ A : Typeω@i ->
         Γ ⊢ M : A ->
-        gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+        (** The entry is well formed: its unit an alias under no
+            parameters ([wf_ctx_extend_dm]) *)
+        ⊢ Γ ▸ₘ A ≔ M ‖ U ->
         (forall Δ σ ρ,
             Δ ⊢ˢ σ ® ρ ∈ TSb ->
             glu_rel_typ_with_sub i Δ A σ ρ) ->
