@@ -5023,7 +5023,6 @@ Section ElimGlu.
           by (rewrite List.length_firstn, List.length_rev, !List.length_app; lia).
         rewrite List.app_assoc, firstn_app_le by (rewrite List.length_app; lia); exact Ea.
     Qed.
-    Check TEMP_STOP_PORT.
 
     (** The substitution of the wrapped branch, glued at the environment the
         readback evaluates the view's branch in: the parameters and the
@@ -5031,22 +5030,22 @@ Section ElimGlu.
         container's variables or the eliminator at the argument
         ([view_branch_nested]). *)
     Lemma view_branch_glu_sub : forall SbB, EG C ++ Γ ∈ glu_ctx_env ↘ SbB ->
-        Δc ⊢ˢ sb_of_list σw Ms ® env_args ρ (ns ++ vs ++ wihs) ∈ SbB.
+        Δc ⊢ˢ sb_of_list σw Ms ® env_tele ρ (List.rev C) (ns ++ vs ++ wihs) ∈ SbB.
     Proof.
       intros SbB HSbB.
       pose proof (view_branch_prefix_args SbB HSbB) as Hpre.
       pose proof (fresh_tele_length _ _ _ _ Fn) as Ln; rewrite List.length_rev, length_im_nparams in Ln.
       pose proof (fresh_cargs_length _ _ _ _ _ _ Fc) as Lv.
-      destruct (Completeness.Inductives.Elim.rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li _].
+      destruct (Completeness.Inductives.Elim.rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li _].
       pose proof view_branch_na as Xna.
       pose proof view_branch_lenc as Xlc.
-      eapply glu_sub_of_list_by; [ exact (elim_bctx_ass p D v Mv gs (blocks_motives Bks) Us Hc HMv) | exact HSbB | exact HSbΓ | exact view_branch_σw
-                                 | exact view_branch_len | rewrite length_elim_bctx, !List.length_app; lia |].
-      intros kk M T w A a i P El HMk HT Hw HA Ea Hg HTP.
+      eapply glu_sub_of_list_by; [ exact (elim_bctx_ass ak_relevant p D v Mv gs (blocks_motives Bks) Us Hc HMv) | exact HSbB | exact HSbΓ
+                                 | exact view_branch_σw | exact view_branch_len | rewrite length_elim_bctx, !List.length_app; lia |].
+      intros kk M T w κ A a i P El HMk HT Hw HA Ea Hg HTP.
       destruct (Nat.lt_ge_cases kk (im_nn Mv + List.length gs)) as [Hk | Hk];
-        [ exact (view_branch_prefix_entry kk M T w A a i P El Hk HMk HT Hw HA Ea Hg HTP) |].
+        [ exact (view_branch_prefix_entry kk M T w κ A a i P El Hk HMk HT Hw HA Ea Hg HTP) |].
       pose proof (view_branch_typed kk M T HMk HT) as HMt.
-      destruct (bctx_link_gen v Mv c gs HMv Hcon view_branch_rv (length Δ) ns vs wihs hd k0 pre Fn Fc Lpre HGm Hir kk A a HA Ea)
+      destruct (bctx_link_gen v Mv c gs HMv Hcon view_branch_rv (length Δ) ns vs wihs hd k0 pre Fn Fc Lpre HGm Hir kk κ A a HA Ea)
         as [[Hk' _] | [gs1 t gs2 idx v' lv Rv x Heq Hidx -> Hv' Hshv Hdv Hlty Hx HRa Hxx]]; [ lia |].
       (** A recursive result: the one along the leaf path [idx] of the
           recursive argument after [gs1]. *)
@@ -5084,37 +5083,45 @@ Section ElimGlu.
       { rewrite <- (vars_from_nth (cargs_nrec D' gs') (List.length gs') (List.length gs' - 1 - List.length gs1) (a_var 0)) by lia.
         replace (List.length gs' - 1 - (List.length gs' - 1 - List.length gs1)) with (List.length gs1) by lia.
         apply List.nth_error_nth'; rewrite length_vars_from; lia. }
-      pose proof (elim_ihs_nth p D (Some p) Usw (blocks_wk Bks'' (wk_shiftn n')) σ0 (im_nn Mv) gs gs1 t gs2 avars _ idx l' Heq
+      pose proof (elim_ihs_nth ak_relevant p D Usw (blocks_wk Bks'' (wk_shiftn n')) σ0 (im_nn Mv) gs gs1 t gs2 avars _ idx l' Heq
                     ltac:(rewrite length_vars_from; exact Xna) HN Hl'') as EI.
       fold j in EI.
-      destruct g' as [A' | t'].
+      destruct g' as [rA A' | t'].
       - (** Recursive in the view only: nested through. *)
         rewrite EI in HMk; injection HMk as <-.
-        exact (view_branch_nested gs1' (ca_arg A') gs2' gs1 t gs2 idx l l' v' rs x a lv Rv i P El T Egs' Heq Hl1 Hln
+        exact (view_branch_nested gs1' (ca_arg rA A') gs2' gs1 t gs2 idx l l' v' rs x a lv Rv i P El T Egs' Heq Hl1 Hln
                  (fun t1 E => ltac:(discriminate E)) Hl' Hv' Ers (eq_sym Hwj) Hlty HRa Hxx Hg HTP Hpre).
       - destruct (leaf_in D' t' l) eqn:Hin.
         + (** A path of the container's: its variable. *)
           injection HMk as <-.
           assert (Fi' : Fihs vs at (gs1' ++ ca_rec t' :: gs2') (gs1 ++ ca_rec t :: gs2) of D' under ρ (blocks_motives Bks) at p ups
-                          in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns) ⍮ (length Δ + im_nn Mv + List.length gs') ↘ ihs)
+                          in gc_deps ⍮ gc_stack ⍮ env_tele (decl_env D ups) (List.rev (im_nparams Mv)) ns
+                          ⍮ (length Δ + im_nn Mv + List.length gs') ↘ ihs)
             by (rewrite <- Egs', <- Heq; exact Fi).
           destruct (fresh_ihs_nth ρ (blocks_motives Bks) p ups D' D Hl gs1' t' gs2' gs1 t gs2 _ vs _ ihs Hl1 Fi' v' idx l Hv' Hln Hin)
             as (as' & b0 & Eas & Hb0 & Hih).
           rewrite Hih in Hwj; injection Hwj as ->.
-          rewrite <- env_args_app, <- List.app_assoc in Eas.
+          assert (Ldecl : List.length ns = List.length (List.rev (im_nparams Mv))) by (rewrite List.length_rev, length_im_nparams; lia).
+          rewrite <- env_tele_app in Eas by exact Ldecl;
+            fold (components_env D ups (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1)
+                    (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))) in Eas.
           assert (Hnv : is_neut v').
           { destruct (fresh_cargs_nth _ _ _ _ _ _ Fc gs1 (ca_rec t) gs2 Heq) as [_ Fr].
             destruct (Fr t eq_refl) as (a0 & _ & Hv0); rewrite Hv' in Hv0; injection Hv0 as ->.
             exists a0, (d_var (length Δ + im_nn Mv + List.length gs1)); reflexivity. }
-          destruct (leaf_ihty_link _ _ _ _ _ Hlty v (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))
-                      ltac:(rewrite List.app_assoc; reflexivity) Hidx Hshv Hnv Hdv lv Rv HRa as' Eas) as (b1 & Hb1 & Hab).
+          assert (Lp : List.length (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))
+                       = List.length (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1)).
+          { rewrite !List.length_app, <- Ldecl, length_cargs_nonrec_tele, length_nonrec_arg_vals; [ reflexivity |].
+            rewrite List.length_firstn, Lv, Heq, List.length_app; cbn; lia. }
+          destruct (leaf_ihty_link _ _ _ _ _ _ Hlty v Lp Hidx Hshv Hnv Hdv lv Rv HRa as' Eas) as (b1 & Hb1 & Hab).
           rewrite Hb0 in Hb1; injection Hb1 as <-.
           (** The variable's position, below the container's recursive
               results. *)
           pose proof (fresh_ihs_length _ _ _ _ _ _ _ _ _ _ _ _ Hl Fi) as LFi.
           rewrite view_branch_container_count in LFi.
           pose proof (nth_error_lt_length _ _ _ Hih) as Hpos; rewrite LFi in Hpos.
-          pose proof (var_glu_elem_per i a b0 lv P El Δc T _ Hg HTP HMt ltac:(rewrite Xlc; lia) Hab) as H.
+          pose proof (var_glu_elem_per i a b0 lv P El Δc T _ Hg (glu_var_typ_not_level_sort _ _ _ _ _ _ _ Hg HTP HMt) HTP HMt
+                        ltac:(rewrite Xlc; lia) Hab) as H.
           replace (length Δc - 1 - (cargs_nrec D' gs' - 1 - (cargs_container_count D D' gs1' gs1
                                      + leaves_in_count D' t' (List.firstn idx (shape_leaves (rview_leaves D) 0 t)))))
             with (length Δ + im_nn Mv + List.length gs' + (cargs_container_count D D' gs1' gs1
@@ -5130,40 +5137,98 @@ Section ElimGlu.
     (** The wrapped branch, against its readback: glued at its type's value
         at the substitution's environment ([view_branch_glu_sub]), read back there,
         at the container's branch type ([view_branch_type_conv]). *)
-    Lemma readback_branch_view : forall n B bv t0 Bn, brs_lookup (eb_brs b) c = Some (n, B) -> im_ref p v Mv = (hd, k0) ->
-        ⟦ B ⟧ env_args ρ (ns ++ vs ++ wihs) ↘ bv ->
-        ⟦ eb_motive b ⟧ env_args ρ (ns ++ d_con hd k0 c (pre ++ ns ++ vs) :: nil) ↘ t0 ->
+    Lemma readback_branch_view : forall n B bv t0 Bn, brs_lookup (eb_brs b) c = Some (n, B) ->
+        ⟦mref v of p ups ⟧ gc_deps ⍮ gc_stack ↘ (hd, k0, pre) ->
+        ⟦ B ⟧ env_extend_typed ρ (branch_entries D Mv p ups (blocks_motives Bks) ρ gs ns vs wihs) ↘ bv ->
+        ⟦ eb_motive b ⟧ env_extend_typed ρ (motive_entries D Mv ups ns (d_ind hd k0 (pre ++ ns)) (d_con hd k0 c (pre ++ ns ++ vs))) ↘ t0 ->
         Rnf ⇓ t0 bv in gc_deps ⍮ gc_stack ⍮ (length Δ + (im_nn Mi' + List.length gs' + cargs_nrec D' gs')) ↘ Bn ->
-        Δc ⊢ snd (wrap_branch p D D' Us'' Bks'' Mv (eb_brs (eblock_sub b σ'')) c gs') ≈ Bn
-          : elim_branch_type qc D' i' Mi' c gs' (eb_motive (eblock_sub b σ'')) Is''.
+        glu_nf_eq Δc (snd (wrap_branch ak_relevant p D D' Us'' Bks'' Mv (eb_brs (eblock_sub b σ'')) c gs')) Bn
+          (elim_branch_type qc D' i' Mi' c gs' (eb_motive (eblock_sub b σ'')) Is'').
     Proof.
-      intros n B bv t0 Bn Hlk Href Ebv Et0 HRn.
+      intros n B bv t0 Bn Hlk Er Ebv Et0 HRn.
+      destruct (Completeness.Inductives.ViewReadback.mref_ref_len p D v Mv ups hd k0 pre Hl HMv ups_len Er) as [Href _].
       pose proof (brs_lookup_in _ _ _ _ Hlk) as HinB.
       pose proof (Har _ _ _ _ _ _ _ HMv Hb Hcon HinB) as Hn.
       pose proof (fresh_tele_length _ _ _ _ Fn) as Ln; rewrite List.length_rev, length_im_nparams in Ln.
       pose proof (fresh_cargs_length _ _ _ _ _ _ Fc) as Lv.
-      destruct (Completeness.Inductives.Elim.rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li _].
+      destruct (Completeness.Inductives.Elim.rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li _].
       pose proof view_branch_na as Xna.
       assert (XLM : List.length Ms = (im_nn Mv + List.length gs + cargs_nrec D gs)%nat)
         by (pose proof view_branch_len as XL; rewrite length_elim_bctx in XL; lia).
-      (** The branch, glued and read back. *)
+      destruct view_branch_rel as (Hns & Hia & Hav).
+      (** The branch's own environment, related to its telescope's
+          ([canonical_bctx_elem]); both read back. *)
+      pose proof (valid_blocks_bctx _ _ _ _ _ _ HBv v Mv c gs HMv Hcon) as HBs.
+      destruct (rel_ctx_wf_per_ctx_env HBs) as [RB HRB].
+      pose proof (EB Completeness.Inductives.Elim.canonical_bctx ρ Hρ Bks iA HBks HMall HAv v Mv c gs HMv Hcon HBs view_branch_rv
+                    ρ ρ Hρ Hρ ns ns vs vs wihs wihs Hns Hav Hia Hir RB HRB) as HEc.
+      assert (HBr : ⊨ List.rev (List.rev C) ++ Γ) by (rewrite List.rev_involutive; exact HBs).
+      assert (HRBr : EF List.rev (List.rev C) ++ Γ ≈ List.rev (List.rev C) ++ Γ ∈ per_ctx_env ↘ RB)
+        by (rewrite List.rev_involutive; exact HRB).
+      assert (HtaB : all_assumptions (List.rev C)) by (apply List.Forall_rev; exact (elim_bctx_ass ak_relevant p D v Mv gs _ Us Hc HMv)).
+      assert (Lx : List.length (ns ++ vs ++ wihs) = List.length C) by (rewrite length_elim_bctx, !List.length_app; lia).
+      assert (LB : List.length (ns ++ vs ++ wihs) = List.length (List.rev C)) by (rewrite List.length_rev; exact Lx).
+      unfold env_tele in HEc.
+      destruct (per_tele_args_of_env_extend_readable _ _ _ _ HRΓ HBr HtaB HRBr _ _ _ _ ltac:(rewrite Decl.tele_entries_length; exact LB)
+                  ltac:(rewrite Decl.tele_entries_length; exact LB) HEc) as [Hr1 _].
+      set (bes := branch_entries D Mv p ups (blocks_motives Bks) ρ gs ns vs wihs) in *.
+      destruct (ER branch_entries_readable v Mv c gs ups ups ns ns vs vs wihs wihs Had Had HMv Hcon Hns Hav Hia Hir) as [Hrd2 _].
+      assert (Hv2 : List.map fst bes = ns ++ vs ++ wihs) by exact (ER branch_entries_values Mv ups (blocks_motives Bks) ρ gs ns vs wihs).
+      assert (Hr2 : List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) bes).
+      { rewrite <- Hv2 in Hrd2; pose proof (Completeness.Inductives.Elim.Forall_combine_of_Forall2 _ _ _ Hrd2) as H0.
+        rewrite combine_map_fst_snd in H0; exact H0. }
+      pose proof (EB Completeness.Inductives.Elim.canonical_bctx_elem ρ Hρ Bks iA HBks HMall HAv v Mv c gs HMv Hcon HBs view_branch_rv
+                    ρ ρ Hρ Hρ ups ups hd k0 (pre ++ ns) (pre ++ ns) vs vs wihs wihs
+                    ltac:(rewrite skipn_app_exact by exact Lpre; exact HGm) ltac:(rewrite skipn_app_exact by exact Lpre; exact Hir)
+                    RB HRB _ _ ltac:(rewrite tele_entries_values, skipn_app_exact by exact Lpre; reflexivity)
+                    ltac:(rewrite skipn_app_exact by exact Lpre; exact Hv2) Hr1 Hr2) as HE.
+      (** The branch, glued at the wrapped substitution, at its own
+          environment ([glu_sub_retype]). *)
       destruct (glu_blocks_branch _ _ _ _ _ _ HBg _ _ _ _ _ _ _ HMv Hb Hcon HinB) as [SbB HSbB lvl Hbody].
-      destruct (Hbody _ _ _ (view_branch_glu_sub SbB HSbB)) as [eb rb Pb Elb Eeb Erb Hgb HBgl].
-      assert (rb = bv) as -> by (eapply functional_eval_exp; eassumption).
-      destruct view_branch_rel as (Hns & _ & _).
+      pose proof (view_branch_glu_sub SbB HSbB) as Hτ0; unfold env_tele in Hτ0.
+      assert (Hv1 : List.map fst (tele_entries ρ (List.rev C) (ns ++ vs ++ wihs)) = List.map fst bes)
+        by (rewrite tele_entries_values; symmetry; exact Hv2).
+      assert (Lv1 : List.length (tele_entries ρ (List.rev C) (ns ++ vs ++ wihs)) = List.length C)
+        by (rewrite Decl.tele_entries_length; exact Lx).
+      pose proof (glu_sub_retype _ _ _ _ (elim_bctx_ass ak_relevant p D v Mv gs _ Us Hc HMv) HSbB HRB _ _ _ _ _ Hv1 Lv1 HE Hτ0) as Hτ.
+      destruct (Hbody _ _ _ Hτ) as [eb rb Pb Elb Eeb Erb Hgb HBgl].
+      (** The branch type's value, against the motive's at the constructor. *)
       assert (Lbs : List.length (pre ++ ns) = (im_unu D Mv + im_nn Mv)%nat) by (rewrite List.length_app; lia).
       assert (HG' : G v ups ups (List.skipn (im_unu D Mv) (pre ++ ns)) (List.skipn (im_unu D Mv) (pre ++ ns))
                       (d_con hd k0 c ((pre ++ ns) ++ vs)) (d_con hd k0 c ((pre ++ ns) ++ vs)))
         by (rewrite skipn_app_exact by exact Lpre; exact HGm).
       assert (Hir' : rec_results_rel D dr Rel v ups ups (List.skipn (im_unu D Mv) (pre ++ ns)) (List.skipn (im_unu D Mv) (pre ++ ns))
-                       gs vs vs wihs wihs)
+                       (List.rev (im_nparams Mv)) gs vs vs wihs wihs)
         by (rewrite skipn_app_exact by exact Lpre; exact Hir).
-      assert (Eeb' : ⟦ elim_branch_type p D v Mv c gs (eb_motive b) Us ⟧ env_args ρ (List.skipn (im_unu D Mv) (pre ++ ns) ++ vs ++ wihs) ↘ eb)
-        by (rewrite skipn_app_exact by exact Lpre; exact Eeb).
-      rewrite List.app_assoc in Et0.
       assert (Hns' : tele_rel (nr v) (List.rev (im_nparams Mv)) ns (List.skipn (im_unu D Mv) (pre ++ ns)))
         by (rewrite skipn_app_exact by exact Lpre; exact Hns).
-      pose proof (branch_type_val_rel v Mv c gs b HMv Hcon view_branch_rv Hb hd k0 (pre ++ ns) vs wihs ns eb t0 Href Lbs HG' Hir' Hns' Eeb' Et0) as Hrel.
+      rewrite List.app_assoc in Et0.
+      set (xc := d_con hd k0 c ((pre ++ ns) ++ vs)) in *.
+      set (mes := motive_entries D Mv ups ns (d_ind hd k0 (pre ++ ns)) xc) in *.
+      assert (Hv0 : List.map fst mes = ns ++ xc :: nil) by exact (motive_entries_values D Mv ups ns (d_ind hd k0 (pre ++ ns)) xc).
+      assert (Hr0 : List.Forall (fun vt => entry_readable (de_term (fst vt) (snd vt))) mes).
+      { unfold mes, motive_entries; apply List.Forall_app; split.
+        - pose proof (nparams_entries_readable_at_admissible_base D ups nr ar dr ups v Mv ns ns Hass Had HMv Hns) as H0.
+          rewrite <- (tele_entries_values ns (decl_env D ups) (List.rev (im_nparams Mv))) in H0 at 1.
+          pose proof (Completeness.Inductives.Elim.Forall_combine_of_Forall2 _ _ _ H0) as H1.
+          rewrite combine_map_fst_snd in H1; exact H1.
+        - constructor; [| constructor ].
+          exact (elim_ups_ok_member_elements_readable_at_ua _ _ _ _ _ _ _ _ Hups v Mv hd k0 pre ups ups ns ns ns xc xc HMv
+                   view_branch_rv Had Had Er HGm Hns). }
+      assert (Hv2' : List.map fst bes = List.skipn (im_unu D Mv) (pre ++ ns) ++ vs ++ wihs)
+        by (rewrite skipn_app_exact by exact Lpre; exact Hv2).
+      pose proof (branch_type_val_rel v Mv c gs b HMv Hcon view_branch_rv Hb hd k0 (pre ++ ns) vs wihs ns eb t0 bes mes Href Lbs HG' Hir'
+                    Hns' Hv2' Hr2 Hv0 Hr0 Eeb Et0) as Hrel.
+      (** Relevant, as the motive's value is. *)
+      destruct (rel_ctx_wf_per_ctx_env (HMall _ _ HMv)) as [RM HRM].
+      pose proof (EB Completeness.Inductives.Elim.mctx_at_typed HMall v Mv HMv ρ ρ Hρ Hρ RM HRM _ _ _ _ _ _ HGm _ _
+                    Hv0 Hv0 Hr0 Hr0) as HEm.
+      destruct (rel_exp_of_typ_relevant_at HRM (HAv _ _ _ HMv Hb) _ _ HEm) as (a1 & Ea1 & Hk1).
+      assert (a1 = t0) as -> by (eapply functional_eval_exp; eassumption).
+      assert (Hkr : domain_kind eb = ak_relevant)
+        by (destruct Hrel as [R1 HR1]; rewrite (per_univ_elem_kind _ _ _ _ HR1); exact Hk1).
+      rewrite Hkr in Erb; cbn [glu_term_value] in Erb.
+      assert (rb = bv) as -> by (eapply functional_eval_exp; eassumption).
       pose proof (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HBgl) as HTP.
       destruct (glu_transfer_per lvl iA eb t0 Pb Elb _ _ _ bv Hgb Hrel HTP HBgl) as (k' & P' & El' & Hg' & HP' & HM').
       destruct (realize_glu_elem_top _ _ _ _ Hg' _ _ _ _ HM') as [? ? _ _ _ _ Hrbs].
@@ -5174,12 +5239,12 @@ Section ElimGlu.
       (** The substitution of the wrapped branch. *)
       assert (Esb : sb_eq (sb_qn (List.length Ms) σ'' ⨟ sb_of_list (ι (wk_shiftn n')) Ms) (sb_of_list σw Ms))
         by (etransitivity; [ apply sb_qn_of_list | apply sb_of_list_cong; symmetry; apply sb_wk_compose ]).
-      assert (ELHS : snd (wrap_branch p D D' Us'' Bks'' Mv (eb_brs (eblock_sub b σ'')) c gs') = B[sb_of_list σw Ms]).
+      assert (ELHS : snd (wrap_branch ak_relevant p D D' Us'' Bks'' Mv (eb_brs (eblock_sub b σ'')) c gs') = B[sb_of_list σw Ms]).
       { unfold wrap_branch; cbv zeta; rewrite Hcon, Completeness.Inductives.Elim.eb_brs_sub, brs_lookup_sub, Hlk; cbn [option_map fst snd].
         rewrite exp_sub_sub, Hn, <- XLM; apply exp_sub_sb_eq; exact Esb. }
       (** Its type, the container's. *)
       assert (Hb'' : List.nth_error Bks'' v = Some (eblock_sub b σ'')) by (rewrite nth_error_blocks_sub, Hb; reflexivity).
-      pose proof (view_branch_type_conv Δ p D m Mm qc kc Is vm D' Us'' Bks'' iA (ctx_wf_gctx _ _ _ view_branch_Δ) (decls_of_ctx _ _ _ view_branch_Δ)
+      pose proof (view_branch_type_conv Δ p D m Mm qc kc Is vm D' Us'' Bks'' ak_relevant iA (ctx_wf_gctx _ _ _ view_branch_Δ) (decls_of_ctx _ _ _ view_branch_Δ)
                     Hl Hm Hh Hq Hvw view_branch_Δ view_branch_HUl view_branch_HUs view_branch_HBt i' Mi' v Mv c gs' gs (eblock_sub b σ'') W
                     Hi' Hri' Hv HMv Hcon' Hcon Hcorr Hb''
                     (length_wrap_ihs _ _ _ _ _ _ _ _ Hcorr ltac:(apply length_elim_ihs; rewrite length_vars_from; exact Xna))) as Hty.
@@ -5189,8 +5254,7 @@ Section ElimGlu.
         rewrite <- (elim_branch_type_sub p D v Mv c gs (eb_motive b) Us σ'' Hc HMv HUl).
         rewrite exp_sub_sub, <- XLM; apply exp_sub_sb_eq; exact Esb. }
       rewrite ETy in Hty.
-      destruct (presup_exp_eq Hty) as (_ & _ & HT2 & _).
-      rewrite ELHS; exact (wf_exp_eq_conv _ _ _ _ _ _ _ _ H HT2 Hty).
+      rewrite ELHS; exact (glu_nf_eq_conv _ _ _ _ _ ak_relevant iA Hty H).
     Qed.
   End ViewBranch.
 
@@ -5207,22 +5271,31 @@ Section ElimGlu.
          elim_readback_ok (leaf_mem l)) ->
       forall Δ σ'' NBks, Δ ⊢ˢ σ'' ® ρ ∈ SbΓ ->
       Rblks 0 (ind_block_members D') of D' from p ups Bks (Some vm) in gc_deps ⍮ gc_stack ⍮ ρ ⍮ length Δ ↘ NBks ->
-      forall k Mk b b', ind_member D' k = Some Mk ->
-        List.nth_error (view_wrap p D D' vm (List.map (fun U => U[σ'']) Us) (blocks_sub Bks σ'')) k = Some b ->
-        List.nth_error (List.map block_exp NBks) k = Some b' ->
-        eb_binder_count b' = S (im_nn Mk) /\ eb_ann b' = None /\
-        elim_mctx qc D' k Mk (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is) ++ Δ
-          ⊢ eb_motive b ≈ eb_motive b' : Typeω@iA /\
-        List.map fst (eb_brs b) = List.map fst (eb_brs b') /\
-        forall i c n B B' gs, List.nth_error (eb_brs b) i = Some (c, n, B) -> List.nth_error (eb_brs b') i = Some (c, n, B') ->
+      forall k Mk b nbk, ind_member D' k = Some Mk ->
+        List.nth_error (view_wrap ak_relevant p qc D D' vm (List.map (fun U => U[σ'']) Us)
+                          (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is) (blocks_sub Bks σ'')) k = Some b ->
+        List.nth_error NBks k = Some nbk ->
+        block_arity nbk = S (im_nn Mk) /\
+        (exists Zw, nf_eq_upto_proofs (block_scrutinee_type nbk) Zw /\
+           gc_deps ⍮ gc_stack ⍮ Δ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is))
+                 ▹{ak_relevant} nf_annotate_proofs Zw
+               ≈ elim_mctx qc D' k Mk (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is)) /\
+        glu_nf_eq (elim_mctx qc D' k Mk (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is) ++ Δ)
+          (eb_motive b) (block_motive nbk) Typeω@iA /\
+        List.map fst (eb_brs b) = List.map (fun br => (branch_constructor br, branch_arity br)) (block_branches nbk) /\
+        forall i c n B br gs, List.nth_error (eb_brs b) i = Some (c, n, B) -> List.nth_error (block_branches nbk) i = Some br ->
           ind_con Mk c = Some gs ->
-          elim_bctx qc D' Mk gs (blocks_motives (view_wrap p D D' vm (List.map (fun U => U[σ'']) Us) (blocks_sub Bks σ'')))
-                    (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is) ++ Δ
-            ⊢ B ≈ B' : elim_branch_type qc D' k Mk c gs (eb_motive b) (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is).
+          glu_nf_eq (elim_bctx ak_relevant qc D' Mk gs
+                       (blocks_motives (view_wrap ak_relevant p qc D D' vm (List.map (fun U => U[σ'']) Us)
+                                          (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is) (blocks_sub Bks σ'')))
+                       (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is) ++ Δ)
+            B (branch_body br)
+            (elim_branch_type qc D' k Mk c gs (eb_motive b) (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is)).
   Proof.
-    intros m Mm qc kc Is vm D' HMm Hh Hq Hvw Hok Δ σ'' NBks Hσ'' HR k Mk b b' HMk Hb Hb'.
+    intros m Mm qc kc Is vm D' HMm Hh Hq Hvw Hok Δ σ'' NBks Hσ'' HR k Mk b nbk HMk Hb Hnbk.
     destruct (read_blocks_nth _ _ _ _ _ _ HR) as [_ HRn].
-    destruct (HRn k b' Hb') as (Mi & Mv & b0 & hd & k0 & pre & ns & a & A' & Bs' & HMi & HMv & Hb0 & Hnm0 & Er & Fn & Ea & HRA & HRB & ->).
+    destruct (HRn k nbk Hnbk) as (Mi & Mv & b0 & hd & k0 & pre & ns & Z' & a & A' & Bs' & HMi & HMv & Hb0 & Hnm0 & Er & Fn & HRZ & Ea
+                                  & HRA & HRB & ->).
     cbn [Nat.add] in *.
     destruct (ind_block_members_member _ _ _ HMi) as [HMi' Hkb].
     assert (Mi = Mk) as -> by congruence.
@@ -5237,43 +5310,68 @@ Section ElimGlu.
     destruct (view_wrap_ok_members _ _ _ Hvw k Mk v HMk Hv) as (Mv' & HMv' & Hnn & Hnames & Hcorr).
     rewrite HMv in HMv'; injection HMv' as <-.
     assert (Hb0'' : List.nth_error (blocks_sub Bks σ'') v = Some (eblock_sub b0 σ'')) by (rewrite nth_error_blocks_sub, Hb0; reflexivity).
-    rewrite (nth_error_view_wrap _ _ _ _ _ _ _ _ Hsuf HMk Hrk) in Hb; injection Hb as <-.
-    rewrite (view_wrap_block_eq _ _ _ _ _ _ _ _ _ _ _ Hv Hb0'' HMv).
-    cbn [eb_binder_count eb_ann eb_motive eb_brs].
+    rewrite (nth_error_view_wrap _ _ _ _ _ _ _ _ _ _ _ Hsuf HMk Hrk) in Hb; injection Hb as <-.
+    rewrite (view_wrap_block_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hv Hb0'' HMv).
+    cbn [eb_binder_count eb_scrutinee_type eb_motive eb_brs block_arity block_scrutinee_type block_motive block_branches].
     rewrite Completeness.Inductives.Elim.eb_motive_sub, (Hnm _ _ _ HMv Hb0).
     destruct (read_brs_nth _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hl HRB) as (LB1 & LB2 & HBn).
     pose proof (decls_of_ctx _ _ _ (view_branch_Δ Δ σ'' Hσ'')) as XDs.
     pose proof (decl_typed_nodup _ _ _ (XDs _ _ Hq)) as Hnd'.
-    split; [ reflexivity | split; [ reflexivity | split ] ].
+    pose proof (view_mctx_ext _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ (view_branch_Δ Δ σ'' Hσ'')) XDs Hl HMm Hh Hq HMk Hrk Hv HMv
+                  (view_branch_Δ Δ σ'' Hσ'') (view_branch_HUl σ'') (view_branch_HUs Δ σ'' Hσ'')) as Hx.
+    split; [ reflexivity | split; [| split ] ].
+    - (** The scrutinee's type, against the container's member's type: in
+          the view's context, and moved to the container's
+          ([view_mctx_ext]). *)
+      rewrite <- Hnn in HRZ.
+      destruct (readback_scrutinee_type v Mv HMv Δ σ'' hd k0 pre ns Z' Hσ'' Er Fn HRZ) as (jZ & Zw & HZw & HZe).
+      exists Zw; split; [ exact HZw |].
+      pose proof Hx as Hx0; unfold elim_mctx in Hx0; apply ext_eq_ass_inv in Hx0.
+      destruct Hx0 as [Sl _ Sr HSr Htail _ HAc Hsub Hsub'].
+      pose proof (ctxsub_ext _ _ _ _ _ Htail (all_assumptions_sub _ _ (decl_closed_nparams_ass D Hc _ _ HMv))) as Hs.
+      pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ HZe Hs) as HZe'; rewrite !exp_sub_id in HZe'.
+      pose proof (sub_preserves_subtyp _ _ _ _ _ _ _ Hsub Hs) as Hsub1; rewrite !exp_sub_id in Hsub1.
+      pose proof (sub_preserves_subtyp _ _ _ _ _ _ _ Hsub' Hs) as Hsub1'; rewrite !exp_sub_id in Hsub1'.
+      destruct (wf_subtyp_of_exp_eq _ _ _ _ _ _ (presup_exp_eq_left HZe') (presup_exp_eq_right HZe')
+                  (sort_kind_type_sort _ _ (sort_kind_abs_kind_sort ak_relevant jZ)) HZe') as [HAZ HZA].
+      pose proof (view_blocks_typed gc_deps gc_stack Δ p D m Mm qc kc Is vm D' (List.map (fun U => U[σ'']) Us) (blocks_sub Bks σ'')
+                    ak_relevant iA (ctx_wf_gctx _ _ _ (view_branch_Δ Δ σ'' Hσ'')) XDs Hl HMm Hh Hq Hvw (view_branch_Δ Δ σ'' Hσ'')
+                    (view_branch_HUl σ'') (view_branch_HUs Δ σ'' Hσ'') (view_branch_HBt Δ σ'' Hσ'')) as HBtc.
+      pose proof (blocks_typed_mctx _ _ _ _ _ _ _ _ _ HBtc k Mk HMk) as HMc.
+      unfold elim_mctx in HMc |- *; apply ext_eq_cons_inv in HMc.
+      eapply wf_ext_eq_ass; [ exact HMc | exact (presup_exp_eq_right HZe') | exact (sort_kind_abs_kind_sort ak_relevant jZ)
+                            | exact HAc | exact HSr | eapply wf_subtyp_trans; [ exact HZA | exact Hsub1 ]
+                            | eapply wf_subtyp_trans; [ exact Hsub1' | exact HAZ ] ].
     - (** The motives, in the container's member's context. *)
       rewrite <- Hnn in Ea, HRA.
-      pose proof (readback_motive v Mv b0 HMv Hb0 Δ σ'' hd k0 pre ns a A' Hσ'' Er Fn Ea HRA) as H.
-      pose proof (view_mctx_ext _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ (view_branch_Δ Δ σ'' Hσ'')) XDs Hl HMm Hh Hq HMk Hrk Hv HMv
-                    (view_branch_Δ Δ σ'' Hσ'') (view_branch_HUl σ'') (view_branch_HUs Δ σ'' Hσ'')) as Hx.
+      destruct (readback_motive v Mv b0 HMv Hb0 Δ σ'' hd k0 pre ns a A' Hσ'' Er Fn Ea HRA) as (Aw & HAw & HAe).
       pose proof (ctxsub_ext _ _ _ _ _ Hx (elim_mctx_ass _ _ _ _ _ Hc HMv)) as Hs.
-      pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ H Hs) as H'.
-      rewrite !exp_sub_id in H'; exact H'.
+      pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ HAe Hs) as H'.
+      rewrite !exp_sub_id in H'; exists Aw; split; [ exact HAw | exact H' ].
     - split.
       + (** The names and counts. *)
-        apply List.nth_error_ext; intros idx; rewrite !List.nth_error_map, <- (List.nth_error_map branch_exp).
-        destruct (List.nth_error (List.map branch_exp Bs') idx) as [[[c1 n1] B1] |] eqn:E1.
-        * destruct (HBn idx c1 n1 B1 E1) as [gs' gs n0 B0 ns' vs ihs wihs bv t Bn HB0 Hcs _ _ En _ _ _ _ _ _ _ _ _].
+        apply List.nth_error_ext; intros idx; rewrite !List.nth_error_map.
+        destruct (List.nth_error Bs' idx) as [br |] eqn:E1.
+        * destruct (HBn idx br E1) as [gs' gs n0 B0 ns' vs ihs wihs bv t Bn HB0 Hcs _ _ En _ _ _ _ _ _ _ _ _ _].
           rewrite Hcs; cbn; rewrite En, Hnn; reflexivity.
         * rewrite (proj2 (List.nth_error_None (im_cons Mk) idx)); [ reflexivity |].
           apply List.nth_error_None in E1; lia.
       + (** A branch, by the fresh variables the PER model has. *)
-        intros i c n B B' gs HBi HBi' Hcn.
+        intros i c n B br gs HBi HBi' Hcn.
         rewrite List.nth_error_map in HBi.
         destruct (List.nth_error (im_cons Mk) i) as [[c0 gs0] |] eqn:Hci; cbn in HBi; [| discriminate ].
-        destruct (HBn i c n B' HBi') as [gs' gsv n0 B0 ns' vs ihs wihs bv t Bn HB0 Hcs Hcnv En0 En
-                                         Hpl Fn' Fc Fi Wi Ebv Et Rn ->].
-        rewrite Hci in Hcs; injection Hcs as <- <-.
+        destruct (HBn i br HBi') as [gs' gsv n0 B0 ns' vs ihs wihs bv t Bn HB0 Hcs Hcnv En0 En
+                                     Hpl Hcc Fn' Fc Fi Wi Ebv Et Rn EBn].
+        rewrite Hci in Hcs; injection Hcs as Ec0 <-.
         assert (Hcn' : ind_con Mk c0 = Some gs0) by (exact (cons_lookup_nodup_in _ _ _ (Hnd' _ _ HMk) (List.nth_error_In _ _ Hci))).
-        assert (Ewb : wrap_branch p D D' (List.map (fun U => U[σ'']) Us) (blocks_sub Bks σ'') Mv (eb_brs (eblock_sub b0 σ'')) c0 gs0
+        assert (Ewb : wrap_branch ak_relevant p D D' (List.map (fun U => U[σ'']) Us) (blocks_sub Bks σ'') Mv (eb_brs (eblock_sub b0 σ'')) c0 gs0
                       = (c0, (im_nn Mv + List.length gs0 + cargs_nrec D' gs0)%nat,
-                         snd (wrap_branch p D D' (List.map (fun U => U[σ'']) Us) (blocks_sub Bks σ'') Mv (eb_brs (eblock_sub b0 σ'')) c0 gs0)))
+                         snd (wrap_branch ak_relevant p D D' (List.map (fun U => U[σ'']) Us) (blocks_sub Bks σ'') Mv
+                                (eb_brs (eblock_sub b0 σ'')) c0 gs0)))
           by reflexivity.
-        rewrite Ewb in HBi; injection HBi as <- <-.
+        rewrite Ewb in HBi; injection HBi as <- <- <-.
+        rewrite <- Ec0 in *; cbn [fst snd] in Et.
+        rewrite En in Rn; rewrite EBn.
         rewrite Hcn in Hcn'; injection Hcn' as <-.
         pose proof (functional_fresh_tele' _ _ _ _ _ Fn Fn') as <-.
         (** The PER model's fresh variables are the readback's. *)
@@ -5294,21 +5392,22 @@ Section ElimGlu.
         pose proof (functional_wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ Wa _ Wi) as ->.
         pose proof (functional_wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ Wb _ Wi) as ->.
         rewrite !List.app_assoc in Hrel.
-        destruct (Completeness.Inductives.ViewReadback.mref_ref_len p D v Mv ups hd k0 pre Hl HMv ups_len Er) as [Href Lpre].
+        destruct (Completeness.Inductives.ViewReadback.mref_ref_len p D v Mv ups hd k0 pre Hl HMv ups_len Er) as [_ Lpre].
         rewrite <- Hnn in Fc, Fi.
         (** The view's branch, looked up by name. *)
         assert (HndB : List.NoDup (List.map (fun b1 => fst (fst b1)) (eb_brs b0)))
           by (rewrite <- (Hna _ _ _ HMv Hb0); exact (Hnd _ _ HMv)).
         pose proof (brs_lookup_of_nth _ _ _ _ _ HndB HB0) as Hlk.
         pose proof (Hcorr c0 gs gsv (List.nth_error_In _ _ Hci) Hcnv) as Hcr.
-        rewrite Hnn in Rn.
+        try rewrite Hnn in Rn.
         rewrite <- (Hnm _ _ _ HMv Hb0), <- Completeness.Inductives.Elim.eb_motive_sub.
         exact (readback_branch_view m Mm qc kc Is vm D' HMm Hh Hq Hvw k Mk v Mv b0 c0 gs gsv HMk Hrk Hv HMv Hb0 Hcn Hcnv Hcr Δ σ'' Hσ''
                  ns vs ihs wihs hd k0 pre Lpre Fn Fc Fi Wi Hrel Hrecs
                  (fun gs1' g' gs2' gs1 t gs2 l E1 E2 E3 E4 E5 =>
                     Hok k Mk v Mv c0 gs gsv gs1' g' gs2' gs1 t gs2 l HMk Hv HMv Hcn Hcnv E1 E2 E3 E4 E5)
-                 n0 B0 bv t Bn Hlk Href Ebv Et Rn).
+                 n0 B0 bv t Bn Hlk Er Ebv Et Rn).
   Qed.
+  Check TEMP_STOP_PORT.
 
   (** The readback of a stuck eliminator at a view is the elimination's,
       when the readbacks at the members of lower rank are: the eliminator
