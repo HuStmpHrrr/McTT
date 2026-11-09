@@ -1,13 +1,11 @@
 (** * Soundness of Normalization by Evaluation
 
     The fundamental theorem of the gluing model, instantiated at the identity
-    embedding and the identity substitution.
-
-    During milestone M1 of the Prop landing the gluing model
-    ([Core/Soundness/*]) is not ported to relevance-directed evaluation: the
-    files are out of the build, and the theorems below keep their statements
-    with their proofs pending ([PENDING M2]).  The proofs before the landing
-    are in the history of this file. *)
+    embedding and the identity substitution.  The gluing model compares a
+    term with its readback up to proofs: the readback is equal up to its
+    proofs to a normal form whose annotation ([nf_annotate_proofs]) is equal
+    to the term ([soundness_of_glu]).  Two terms whose normal forms are
+    equal up to proofs are then equal ([soundness_upto_proofs]). *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -17,23 +15,50 @@ From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic Require Export NbE.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic.Levels Require Export LevelEq.
+From Mctt.Core.Soundness Require Export FundamentalTheorem.
+From Mctt.Core.Soundness Require Import LevelCases.
+From Mctt.Core.Completeness.Consequences Require Import AnnotatedUpto.
 Import Domain_Notations Fixed_Notations.
 
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** The readback of a level of sort [n] is a canonical level of sort [n]:
-    its constant is of a tier at most [n], and each atom is a level of its
-    own sort ([level_atoms_well_scoped]).  The atoms' sorts are read off the
-    types of the neutrals, and this is what makes them reliable: the
-    equations of a canonical form drop an atom by absorption, which needs it
-    typed at its sort. *)
-Definition nf_lvl_well_scoped (n : nat) (Δ : ctx) (L : nf) : Prop :=
-  match L with
-  | nf_lvl c xs => fst c <= n /\ @level_atoms_well_scoped gc_deps gc_stack n Δ xs
-  | _ => False
-  end.
+(** A typed term that glues has a normal form, equal up to its proofs to
+    one whose annotation ([nf_annotate_proofs]) is equal to the term: its
+    glued value at the initial environment is read back
+    ([realize_glu_elem_top]); it is the term's value at an evaluated kind
+    and the term kept at a proposition, as [nbe_term] has it. *)
+Lemma soundness_of_glu : forall {Γ M A},
+    Γ ⊢ M : A ->
+    Γ ⊩ M : A ->
+    exists W W', nbe_f Γ M A W /\ nf_eq_upto_proofs W W' /\ Γ ⊢ M ≈ nf_annotate_proofs W' : A.
+Proof.
+  intros * H HG.
+  assert (⊢ Γ) by mauto 3.
+  assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ]
+      by mauto 3 using completeness_fundamental_ctx, rel_ctx_wf_per_ctx_env.
+  destruct HG as [Sb ? i ?].
+  pose proof (wf_ctx_scoped_exp H) as HsΓ.
+  pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption) HsΓ HsΓ) as [ρ [? ?]].
+  destruct_conjs.
+  functional_initial_env_rewrite_clear.
+  assert (Γ ⊢ˢ Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
+  destruct_glu_rel_exp_with_sub.
+  pose proof (realize_glu_elem_top _ _ _ _ glu_rel_exp_with_sub_univ _ _ _ _ glu_rel_exp_with_sub_exp) as Htop.
+  destruct Htop.
+  destruct (glu_elem_top_per (length Γ)) as [W W0 HW _ _].
+  assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
+  destruct (glu_elem_top_read _ _ _ Hid HW) as (W' & HWW' & HeqW).
+  rewrite !exp_wk_id, !exp_sub_id in HeqW.
+  exists W, W'; split; [| split; [ exact HWW' | exact HeqW ] ].
+  econstructor; [ eassumption | eassumption |].
+  (** The term's value at an evaluated kind, the term kept at a proposition *)
+  destruct (domain_kind a) eqn:Hk; cbn [glu_term_value] in glu_rel_exp_with_sub_eval.
+  - eapply nbe_term_evaluated; [ rewrite Hk; constructor | exact glu_rel_exp_with_sub_eval | exact HW ].
+  - subst m; eapply nbe_term_proof; [ exact Hk | exact HW ].
+  - eapply nbe_term_evaluated; [ rewrite Hk; constructor | exact glu_rel_exp_with_sub_eval | exact HW ].
+Qed.
 
 End Fixed_GCtx.
 
@@ -63,8 +88,21 @@ Theorem soundness_upto_proofs : forall {Θ Ξ Γ M M' A W W'},
     nf_eq_upto_proofs W W' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A.
 Proof.
-  (* PENDING M2: the gluing model for the Prop core *)
-Admitted.
+  intros * HM HM' Hn Hn' E.
+  pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) as Hg.
+  pose proof (glu_gctx_embedding_refl _ _ Hg) as Hμ.
+  destruct (@soundness_of_glu (gc_mk Θ Ξ) _ _ _ HM (proj1 (proj2 soundness_fundamental) _ _ _ _ _ HM _ _ Hμ))
+    as (W1 & W1' & Hn1 & E1 & HE1).
+  destruct (@soundness_of_glu (gc_mk Θ Ξ) _ _ _ HM' (proj1 (proj2 soundness_fundamental) _ _ _ _ _ HM' _ _ Hμ))
+    as (W2 & W2' & Hn2 & E2 & HE2).
+  pose proof (functional_nbe _ _ _ _ _ Hn Hn1) as <-.
+  pose proof (functional_nbe _ _ _ _ _ Hn' Hn2) as <-.
+  (** The two annotated normal forms, typed, are equal up to their proofs:
+      equal ([nf_annotate_proofs_upto]) *)
+  assert (E12 : nf_eq_upto_proofs W1' W2') by (etransitivity; [ symmetry; exact E1 | etransitivity; [ exact E | exact E2 ] ]).
+  pose proof (nf_annotate_proofs_upto _ _ _ _ _ _ (presup_exp_eq_right HE1) (ex_intro _ _ (presup_exp_eq_right HE2)) E12) as H12.
+  etransitivity; [ exact HE1 | etransitivity; [ exact H12 | symmetry; exact HE2 ] ].
+Qed.
 
 (** The normal form NbE computes is equal to the term. *)
 Theorem soundness' : forall {Θ Ξ Γ M A W},
@@ -146,8 +184,24 @@ Theorem soundness_lvl_well_scoped : forall {Γ M n W},
     nbe_f Γ M Level@n W ->
     nf_lvl_well_scoped n Γ W.
 Proof.
-  (* PENDING M2: read off the gluing of levels *)
-Admitted.
+  intros * H Hn.
+  assert (⊢ Γ) by mauto 3.
+  assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ]
+      by mauto 3 using completeness_fundamental_ctx, rel_ctx_wf_per_ctx_env.
+  pose proof (soundness_fundamental_exp _ _ _ H) as HM.
+  destruct HM as [Sb HSb _ _].
+  pose proof (wf_ctx_scoped_exp H) as HsΓ.
+  pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption) HsΓ HsΓ) as [ρ [? ?]].
+  destruct_conjs.
+  functional_initial_env_rewrite_clear.
+  assert (HId : Γ ⊢ˢ Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
+  destruct (glu_rel_exp_level_elim (n := n) HSb (soundness_fundamental_exp _ _ _ H) _ _ _ HId)
+    as [m [Hev [_ Hglu]]].
+  destruct (nbe_evaluated_inv Hn ρ _ ltac:(eassumption) ltac:(econstructor) ltac:(cbn; constructor)) as (m' & Hm' & Hr).
+  functional_eval_rewrite_clear.
+  assert (Γ ⊢ᵏ wk_id : Γ) by mauto 3.
+  exact (proj2 (Hglu _ _ _ ltac:(eassumption) (read_nf_level_sort _ _ 0 _ _ Hr))).
+Qed.
 
 (** A neutral is an atom of sort [s] of the normal form of a typed level:
     the atoms whose coherence soundness gives
@@ -172,24 +226,6 @@ Record nbe_level_atom (Γ : ctx) (s : nat) (a : ne) : Prop := mk_nbe_level_atom
                            (nf_lvl nbe_level_atom_constant nbe_level_atom_atoms)
     (** The atom is one of its atoms, at sort [s] *)
   ; nbe_level_atom_in : List.In (mk_level_atom nbe_level_atom_offset s a) nbe_level_atom_atoms }.
-
-(** The atoms of a level normal form without proofs hold no proofs. *)
-Lemma level_atoms_proof_free_In : forall c xs j s a,
-    nf_proof_free (nf_lvl c xs) -> List.In (mk_level_atom j s a) xs -> ne_proof_free a.
-Proof.
-  intros c xs; cbn [nf_proof_free]; induction xs as [| x xs IH]; intros * Hp Hin; [ destruct Hin |].
-  destruct Hp as [Hx Hxs]; destruct Hin as [-> | Hin]; [ exact Hx | exact (IH _ _ _ Hxs Hin) ].
-Qed.
-
-(** The atoms of a level of sort [n] read off its well scoped normal form
-    ([level_atoms_well_scoped]) are levels of their sorts. *)
-Lemma level_atoms_well_scoped_In : forall n Γ xs j s a,
-    @level_atoms_well_scoped gc_deps gc_stack n Γ xs -> List.In (mk_level_atom j s a) xs -> Γ ⊢ (a : exp) : Level@s.
-Proof.
-  intros n Γ xs; induction xs as [| [k t b] xs IH]; intros * Hw Hin; [ destruct Hin |].
-  destruct Hw as [[_ Hb] Hxs]; destruct Hin as [Heq | Hin];
-    [ injection Heq as -> -> ->; exact Hb | exact (IH _ _ _ Hxs Hin) ].
-Qed.
 
 (** Two atoms of normal forms of levels, of one sort and equal up to their
     proofs, are equal levels: a canonical form keeps one of them in place

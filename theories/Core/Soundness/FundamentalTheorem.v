@@ -12,10 +12,11 @@
     soundly into itself ([glu_gctx_embedding_refl]), from what [Global/Embedding.v] makes of
     valid entries.  At that embedding the gluing judgments are the gluing
     relations at the global context, as the corollaries below state them for
-    contexts and terms.  There is no part for substitutions, since the
-    gluing model has no substitution judgment, and none for equalities,
-    since the model relates a term to a value rather than two terms to each
-    other. *)
+    contexts and terms.  There is no part for substitutions: the syntactic
+    substitution judgment is not in the mutual block, and the glued
+    substitutions ([⊩ˢ]) are built from glued terms where they are needed.
+    There is none for equalities, since the model relates a term to a value
+    rather than two terms to each other. *)
 
 From Stdlib Require Import Lia List PeanoNat.
 
@@ -29,7 +30,7 @@ From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import ContextCases VariableCases UnitCases
-  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases.
+  SubtypingCases UniverseCases FunctionCases LetCases PropCases.
 From Mctt.Core.Soundness.Inductives Require Import Con.
 From Mctt.Core.Soundness Require Import IndCases ModuleCases RecordCases.
 From Mctt.Core.Soundness.Global Require Import Embedding.
@@ -59,9 +60,14 @@ Proof.
       eapply glu_ctx_empty | eapply glu_ctx_extend | eapply glu_ctx_extend_def | eapply glu_ctx_extend_mod
     | eapply glu_ctx_extend_dm
     | (** terms *)
-      eapply glu_typ | eapply glu_univ | eapply glu_level | eapply glu_llit | eapply glu_succl | eapply glu_maxl
-    | eapply glu_True | eapply glu_true | eapply glu_False | eapply glu_exfalso | eapply glu_ind | eapply glu_con
-    | eapply glu_elim | eapply glu_pi | eapply glu_fn | eapply glu_app | eapply glu_let | eapply glu_let_mod
+      eapply glu_typ | eapply glu_univ | eapply glu_level | eapply glu_llit | eapply glu_succl
+    | eapply glu_maxl
+    | eapply glu_prop | eapply glu_True | eapply glu_tt | eapply glu_False | eapply glu_absurd
+    | eapply glu_and | eapply glu_conj | eapply glu_left | eapply glu_right
+    | eapply glu_ind | eapply glu_con
+    | eapply glu_elim | eapply glu_pi | eapply glu_fn | eapply glu_app
+    | eapply glu_let
+    | eapply glu_let_mod | eapply glu_let_dm
     | eapply glu_mem | eapply glu_vlookup | eapply glu_record | eapply glu_tuple | eapply glu_proj | eapply glu_exp_subtyp
     | (** term equality *)
       eapply glu_exp_eq_typ_cong | eapply glu_exp_eq_univ_cong | eapply glu_exp_eq_level_cong
@@ -69,17 +75,18 @@ Proof.
     | eapply glu_exp_eq_llit_succl | eapply glu_exp_eq_maxl_absorb | eapply glu_exp_eq_maxl_zero
     | eapply glu_exp_eq_maxl_assoc | eapply glu_exp_eq_maxl_comm | eapply glu_exp_eq_maxl_idem
     | eapply glu_exp_eq_succl_maxl | eapply glu_exp_eq_maxl_succl
-    | eapply glu_exp_eq_True_cong | eapply glu_exp_eq_true_cong | eapply glu_exp_eq_False_cong
-    | eapply glu_exp_eq_exfalso_cong | eapply glu_exp_eq_ind_cong | eapply glu_exp_eq_con_cong
+    | eapply glu_exp_eq_prop_cong | eapply glu_exp_eq_True_cong | eapply glu_exp_eq_False_cong
+    | eapply glu_exp_eq_absurd_cong | eapply glu_exp_eq_and_cong
+    | eapply glu_exp_eq_ind_cong | eapply glu_exp_eq_con_cong
     | eapply glu_exp_eq_elim_cong | eapply glu_exp_eq_pi_cong | eapply glu_exp_eq_fn_cong
     | eapply glu_exp_eq_app_cong | eapply glu_exp_eq_let_cong | eapply glu_exp_eq_let_mod_cong
-    | eapply glu_exp_eq_mem_cong with (R := R) (A := A) | eapply glu_exp_eq_var | eapply glu_exp_eq_pi_beta
+    | eapply glu_exp_eq_let_dm_cong
+    | eapply glu_exp_eq_mem_cong | eapply glu_exp_eq_var | eapply glu_exp_eq_pi_beta
     | eapply glu_exp_eq_elim_iota | eapply glu_exp_eq_elim_view | eapply glu_exp_eq_con_view | eapply glu_exp_eq_con_rview
-    | eapply glu_exp_eq_let_zeta | eapply glu_exp_eq_let_mod_zeta
+    | eapply glu_exp_eq_let_zeta | eapply glu_exp_eq_let_mod_zeta | eapply glu_exp_eq_let_dm_zeta
     | eapply glu_exp_eq_mem_delta | eapply glu_exp_eq_var_delta | eapply glu_exp_eq_fn_eta
-    | eapply glu_exp_eq_true_eta
-    | eapply glu_exp_eq_record_cong | eapply glu_exp_eq_tuple_cong | eapply glu_exp_eq_proj_cong
-    | eapply glu_exp_eq_field_beta | eapply glu_exp_eq_record_eta
+    | eapply glu_exp_eq_irrelevant | eapply glu_exp_eq_record_cong | eapply glu_exp_eq_tuple_cong
+    | eapply glu_exp_eq_proj_cong | eapply glu_exp_eq_field_beta | eapply glu_exp_eq_record_eta
     | eapply glu_exp_eq_subtyp | eapply glu_exp_eq_sym | eapply glu_exp_eq_trans
     | (** subtyping *)
       eapply glu_subtyp_refl | eapply glu_subtyp_trans | eapply glu_subtyp_univ | eapply glu_subtyp_suniv
@@ -87,18 +94,18 @@ Proof.
     | (** universes *)
       eapply glu_is_univ_large | eapply glu_is_univ_small
     | (** extensions *)
-      eapply glu_ext_eq_nil | eapply glu_ext_eq_ass with (Ψ := Ψ) (Ψ' := Ψ')
-    | eapply glu_ext_eq_def with (Ψ := Ψ) (Ψ' := Ψ') | eapply glu_ext_eq_mod
-    | eapply glu_ext_eq_dm with (Ψ := Ψ) (Ψ' := Ψ')
+      eapply glu_ext_eq_nil | eapply glu_ext_eq_ass | eapply glu_ext_eq_def | eapply glu_ext_eq_mod
+    | eapply glu_ext_eq_dm
     | (** units *)
-      eapply glu_unit_eq_body with (Δ := Δ) (Δ' := Δ') (Φ := Φ) (Φ' := Φ') (Φx := Φx) (Φx' := Φx')
-    | eapply glu_unit_eq_alias | eapply glu_unit_eq_flatten
-    | eapply glu_unit_eq_sym | eapply glu_unit_eq_trans
+      eapply glu_unit_eq_body | eapply glu_unit_eq_alias | eapply glu_unit_eq_flatten
+    | eapply glu_unit_eq_expand | eapply glu_unit_eq_sym | eapply glu_unit_eq_trans
     | (** module expressions *)
       eapply glu_me_unit | eapply glu_me_var | eapply glu_me_lit | eapply glu_me_mem | eapply glu_me_app
     | eapply glu_me_delta_slot | eapply glu_me_delta_sel | eapply glu_me_beta_body | eapply glu_me_beta_alias
     | eapply glu_me_beta_alias0 | eapply glu_me_sym | eapply glu_me_trans ];
-    eassumption.
+    (** A premise whose variables the conclusion does not fix may match a
+        wrong hypothesis first; [multimatch] backtracks over the choices. *)
+    multimatch goal with H : _ |- _ => exact H end.
 Qed.
 
 (** A closed typed term, glued along a sound embedding. *)
@@ -110,46 +117,60 @@ Proof. intros * Hμ HM; exact (proj1 (proj2 soundness_fundamental) _ _ _ _ _ HM 
 
 (** ** Each entry is valid where it is checked *)
 
-Lemma glu_entry_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
+(** A definition: its type, closed over its telescope at the sort of its
+    kind ([ctx_pi_type_kind]), glued at [⋅]. *)
+Lemma glu_entry_def : forall Θ Ξ T r A M i b pv Θ2 Ξ2,
+    Θ ⍮ Ξ ⍮ T ⊢ A : abs_kind_sort r Typeω@i ->
+    (r = ak_level -> level_sorted_parameters T) -> all_assumptions T ->
     Θ ⍮ Ξ ⍮ T ⊢ M : A -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
     gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ ->
-    forall Θs Ξs, glu_entry Θs Ξs Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
+    forall Θs Ξs, glu_entry Θs Ξs Θ2 Ξ2 T (ge_def b pv r (ctx_pi_at r T A) (Some (ctx_fn T M))).
 Proof.
-  intros * HM _ He HΘ HΞ Θs Ξs.
+  intros * HA HL HTa HM _ He HΘ HΞ Θs Ξs.
   pose proof (glu_gctx_embedding_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) He HΘ HΞ) as Hμ.
-  destruct (presup_exp_typ HM) as [i HA].
-  destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
+  assert (HT0 : ⊢ Θ ⍮ Ξ ⍮ T ++ ⋅) by (rewrite List.app_nil_r; exact (presup_exp_ctx HA)).
+  rewrite <- (List.app_nil_r T) in HA.
+  destruct (ctx_pi_type_kind _ _ _ _ _ _ _ HT0 (fun _ => HTa) HL HA) as [[j HT] _].
   exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT).
 Qed.
 
-Lemma glu_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
-    glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
+(** An axiom, of no type of levels: as a definition's. *)
+Lemma glu_entry_ax : forall Θ Ξ r A i b pv Θ2 Ξ2 Θs Ξs,
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i -> r <> ak_level -> all_assumptions (gs_tele Ξ) ->
+    bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None).
 Proof.
-  intros * HA HG He _.
+  intros * HA Hr HTa HG He _.
   pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
-  destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
+  assert (HT0 : ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ ++ ⋅) by (rewrite List.app_nil_r; exact (presup_exp_ctx HA)).
+  rewrite <- (List.app_nil_r (gs_tele Ξ)) in HA.
+  destruct (ctx_pi_at_wf _ _ _ _ _ _ _ Hr HT0 HA) as [j HT].
   exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT).
 Qed.
 
-Lemma glu_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
-    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+Lemma glu_entry_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 Θs Ξs,
+    all_assumptions Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+    params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
+    levels_flag Θ Ξ ⋅ (Δ ++ gs_tele Ξ) E lv Rt ->
+    frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) E ->
     bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof. intros; exact I. Qed.
 
-Lemma glu_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
+Lemma glu_mod_tele_nil : forall Θ Ξ Δ l Θ2 Ξ2,
+    all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
+    bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     glu_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof. intros; exact I. Qed.
 
 (** A declaration typed at the source glues at the target: its judgments,
     glued. *)
-Lemma glu_entry_ind : forall Θ Ξ D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
+Lemma glu_entry_ind : forall Θ Ξ D l Θ2 Ξ2,
+    decl_typed Θ Ξ D -> params_evaluated Θ Ξ nil (ind_uparams D) l ->
+    bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     glu_ind_decl_entry Θ2 Ξ2 D /\ glu_mod_tele Θ2 Ξ2 (ind_uparams D).
 Proof.
-  intros * Hdt HG He; split; [| exact I ]; unfold glu_ind_decl_entry.
+  intros * Hdt _ HG He; split; [| exact I ]; unfold glu_ind_decl_entry.
   destruct (decl_typed_uparams _ _ _ Hdt) as [HUw _].
   pose proof (ctx_wf_gctx _ _ _ HUw) as Hg.
   pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
@@ -167,24 +188,26 @@ Proof.
       exact (wk_preserves_exp _ _ _ _ _ _ _ Hn Hw). }
     exact (Ke _ _ _ _ _ Hn' _ _ Hμ).
   - intros * HMk HA0.
-    destruct (Completeness.Inductives.Model.nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
+    destruct (Completeness.Inductives.Model.nparams_nth_split _ _ _ _ HA0) as [Δ1 HΔ1].
     assert (Hk : j < im_nn Mk) by (unfold im_nn; rewrite <- List.length_rev; apply List.nth_error_Some; congruence).
-    pose proof (decl_typed_nparams _ _ _ Hdt _ _ _ _ _ HMk HΔ1) as HT.
+    pose proof (decl_typed_nparams _ _ _ Hdt _ _ _ _ _ _ HMk HΔ1) as HT.
     rewrite Completeness.Inductives.Model.length_nparams_prefix in HT by lia.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
-  - intros * HMk Hcon HA0.
-    destruct (Completeness.Inductives.Model.nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & Heq & Hk).
-    pose proof (decl_typed_args _ _ _ Hdt _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
-    assert (Hls : List.length (cargs_strat gs1) = j)
-      by (rewrite Completeness.Inductives.Model.cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
-    rewrite Hls, (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
+  - intros * HMk Hcon HA0 Hr.
+    destruct (Completeness.Inductives.Model.nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & r0 & Heq & Hk).
+    assert (r0 = r) as <-
+      by (rewrite Heq, <- Hk, Completeness.Inductives.ArgTypes.nonrec_kind_at in Hr; congruence).
+    pose proof (decl_typed_args _ _ _ Hdt _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
+    assert (Hls : List.length (cargs_nonrec_ctx gs1) = j)
+      by (rewrite Completeness.Inductives.Model.cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; exact Hk).
+    rewrite Hls, (Completeness.Inductives.Model.cargs_nonrec_ctx_nonrec_args_prefix gs1 (ca_arg r0 A :: gs2)), Hk, <- Heq in HT.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
   - intros * HMk Hcon Heq HMj HPk HT.
-    assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_strat gs1))
-      by (rewrite Completeness.Inductives.Model.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+    assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_nonrec_ctx gs1))
+      by (rewrite Completeness.Inductives.Model.cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; reflexivity).
     rewrite Hls in HT.
     pose proof (decl_typed_rec_ps _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq HMj HPk HT) as H.
-    rewrite (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
+    rewrite (Completeness.Inductives.Model.cargs_nonrec_ctx_nonrec_args_prefix gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (Ke _ _ _ _ _ H _ _ Hμ).
   - intros * HMk Hcon Heq HB.
     assert (Hsplit : ptyp_doms t = List.firstn j (ptyp_doms t) ++ B :: List.skipn (S j) (ptyp_doms t))
@@ -192,13 +215,13 @@ Proof.
     pose proof (decl_typed_doms _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq Hsplit) as HT.
     assert (Hk : List.length (List.firstn j (ptyp_doms t)) = j)
       by (rewrite List.length_firstn; assert (j < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
-    assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
-      by (rewrite Completeness.Inductives.Model.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
-    rewrite Hk, Hls, (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in HT.
+    assert (Hls : List.length (cargs_nonrec_ctx gs1) = List.length (cargs_nonrec gs1))
+      by (rewrite Completeness.Inductives.Model.cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; reflexivity).
+    rewrite Hk, Hls, (Completeness.Inductives.Model.cargs_nonrec_ctx_nonrec_args_prefix gs1 (ca_rec t :: gs2)), <- Heq in HT.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
   - intros * HMk Hcon Heq Hk.
     pose proof (doms_prefix_wf _ _ _ _ _ _ _ Hdt HMk (cons_lookup_in _ _ _ Hcon) _ _ _ Heq _ Hk) as H.
-    rewrite (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
+    rewrite (Completeness.Inductives.Model.cargs_nonrec_ctx_nonrec_args_prefix gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (Kc _ _ _ H _ _ Hμ).
   - destruct (decl_typed_selfs _ _ _ Hdt) as [IsS HV]; exists IsS; constructor.
     + exact (views_self_typed_link _ _ _ _ HV).
@@ -233,7 +256,8 @@ Qed.
 Theorem glu_gctx_embedding_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> glu_gctx_embedding Θ Ξ Θ Ξ.
 Proof.
   intros * Hg; apply glu_gctx_embedding_of_bodies_valid; [ exact Hg | | apply gctx_embedding_with_bodies_refl; exact Hg ].
-  exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry glu_entry_def glu_entry_ax glu_entry_alias glu_mod_tele_nil glu_entry_ind ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg).
+  exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry glu_entry_def glu_entry_ax glu_entry_alias
+           glu_mod_tele_nil glu_entry_ind ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg).
 Qed.
 
 (** ** The fundamental theorem at the identity embedding *)

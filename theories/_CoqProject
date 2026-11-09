@@ -151,6 +151,7 @@
 ./Core/Soundness/IotaCases.v
 ./Core/Soundness/RecordCases.v
 ./Core/Soundness/Global/Embedding.v
+./Core/Soundness/FundamentalTheorem.v
 ./Core/Soundness.v
 ./Core/Consequences/FiledConstructorTypes.v
 ./Core/Consequences/NormalFormWeakening.v
