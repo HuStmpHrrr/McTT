@@ -118,6 +118,7 @@
 ./Core/Semantic/Kinds/KindsEval.v
 ./Core/Semantic/Kinds/KindsTyping.v
 ./Core/Soundness/Weakening/Definitions.v
+./Core/Soundness/KeptProofs.v
 ./Core/Soundness/LogicalRelation/Definitions.v
 ./Core/Soundness/LogicalRelation/CoreTactics.v
 ./Core/Soundness/Weakening/Lemmas.v
