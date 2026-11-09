@@ -675,6 +675,42 @@ Proof.
     split; [ exact (glu_rel_ctx_extend HCΨ HAw (sort_kind_abs_kind_sort κ j)) | exact Hq ].
 Qed.
 
+(** The variables of a closed telescope, past an extension, are glued at
+    its instances there ([valid_vars_tele]). *)
+Lemma glu_vars_tele : forall Φ Δ,
+    all_assumptions Δ -> ctx_scoped 0 Δ -> ctx_mvc Δ -> ⊩ Φ ++ Δ ->
+    forall k N T, List.nth_error (vars_from (List.length Φ) (List.length Δ)) k = Some N ->
+      List.nth_error (tele_insts Δ Id (vars_from (List.length Φ) (List.length Δ))) k = Some T ->
+      Φ ++ Δ ⊩ N : T.
+Proof.
+  intros * Hass Hs Hmv HΔ k N T HN HT.
+  apply vars_from_nth_error in HN as [Hk ->].
+  apply tele_insts_nth in HT as (κA & A & HA & ->).
+  destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
+  assert (HΔeq : Δ = List.rev l2 ++ ce_ass κA A :: List.rev l1)
+    by (rewrite <- (List.rev_involutive Δ), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
+  assert (Hlen : List.length Δ = List.length l2 + S k)
+    by (rewrite HΔeq, List.length_app; cbn [List.length]; rewrite !List.length_rev; lia).
+  assert (HsA : exp_scoped k A).
+  { rewrite HΔeq in Hs; apply ctx_scoped_app in Hs as [_ Hs]; cbn in Hs; destruct Hs as [HsA _].
+    rewrite List.length_rev, Nat.add_0_r in HsA; congruence. }
+  assert (HmA : exp_mvc 0 A).
+  { unfold ctx_mvc in Hmv; rewrite HΔeq in Hmv; apply List.Forall_app in Hmv as [_ Hmv].
+    apply List.Forall_cons_iff in Hmv as [HmA _]; exact HmA. }
+  replace (A[sb_of_list Id (List.firstn k (vars_from (List.length Φ) (List.length Δ)))])
+    with (A[wk_shiftn (List.length Φ + List.length l2 + 1)]ʷ).
+  - apply glu_rel_exp_vlookup; [ exact HΔ |].
+    replace (List.length Φ + (List.length Δ - 1 - k)) with (0 + List.length (Φ ++ List.rev l2))
+      by (rewrite List.length_app, List.length_rev; lia).
+    replace (A[wk_shiftn (List.length Φ + List.length l2 + 1)]ʷ)
+      with (A[wk_shift]ʷ[wk_shiftn (List.length (Φ ++ List.rev l2))]ʷ)
+      by (rewrite exp_wk_wk; apply exp_wk_wk_eq; intros x; cbn; rewrite List.length_app, List.length_rev; lia).
+    rewrite HΔeq, List.app_assoc.
+    apply ctx_lookup_app_r; constructor.
+  - rewrite <- exp_sub_of_wk; eapply exp_scoped_mvc_agree; [ exact HsA | exact HmA |].
+    intros x Hx; rewrite sb_of_list_firstn_vars by lia; cbn; f_equal; lia.
+Qed.
+
 (** ** Types of a Group's Sort
 
     A type of the sort of a valid glued group, weakened past the
@@ -747,6 +783,104 @@ Section GroupSort.
     pose proof (glu_rel_sub_of_list _ _ _ _ _ HΨass (glu_rel_sub_id _ HΨ) (glu_tele_entries_of_ctx _ _ Hpa HPΨ) HMl' HMs) as Hgs.
     pose proof (glu_rel_exp_sub Hgs Hn1) as Hn2; cbn [exp_sub] in Hn2.
     exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) Hn2 HR).
+  Qed.
+
+  (** *** The Members as Variables
+
+      The gluing counterpart of [Model]'s [Selfs] section: the members'
+      types over the uniform parameters, their context, and [grp_sb p D],
+      the substitution of the type formers for them. *)
+  Hypothesis (HU : ⊩ ind_uparams D).
+
+  Lemma glu_self_ty : forall j Mj, ind_member D j = Some Mj -> exists i : nat, ind_uparams D ⊩ self_ty D Mj : Typeω@i.
+  Proof.
+    intros * HMj.
+    pose proof (valid_group_closed _ _ Hg) as Hc.
+    pose proof (glu_ind_decl_params _ HG _ _ HMj) as HP.
+    destruct (glu_group_sort_typ j Mj HMj) as [i HS].
+    unfold self_ty; unfold im_params in HP, HS.
+    exact (glu_rel_exp_ctx_pi _ _ _ i (decl_closed_nparams_ass D Hc _ _ HMj)
+             (glu_tele_entries_of_ctx _ _ (decl_closed_nparams_ass D Hc _ _ HMj) HP) HS).
+  Qed.
+
+  Lemma glu_grp_selfs_prefix : forall n, n <= ind_ndecl D ->
+      ⊩ grp_selfs_from D 0 (List.firstn n (ind_members D)) ++ ind_uparams D.
+  Proof.
+    induction n as [| n IH]; intros Hn; [ exact HU |].
+    pose proof (ind_ndecl_le D) as Hle.
+    destruct (List.nth_error (ind_members D) n) as [Mn |] eqn:HMn; [| apply List.nth_error_None in HMn; lia ].
+    rewrite (firstn_S_nth_error _ _ _ HMn), grp_selfs_from_snoc; cbn [Nat.add List.app].
+    pose proof (IH ltac:(lia)) as HC.
+    destruct (glu_self_ty _ _ HMn) as [i Hi].
+    pose proof (glu_rel_exp_wk (glu_rel_wk_shiftn _ _ HC HU) Hi) as Hw; cbn [exp_wk] in Hw.
+    rewrite length_grp_selfs_from in Hw.
+    exact (glu_rel_ctx_extend HC Hw (sort_kind_abs_kind_sort ak_relevant i)).
+  Qed.
+
+  Lemma glu_grp_selfs_ctx : ⊩ grp_selfs_ctx D.
+  Proof. unfold grp_selfs_ctx, grp_selfs; exact (glu_grp_selfs_prefix _ (le_n _)). Qed.
+
+  Lemma glu_self_apps : forall j Mj, ind_member D j = Some Mj -> j < ind_ndecl D ->
+      ind_uparams D ⊩ apps (a_ind p j) (vars_from 0 (ind_nu D)) : self_ty D Mj.
+  Proof.
+    intros * HMj Hj.
+    pose proof (valid_group_closed _ _ Hg) as Hc.
+    pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)) as Hmv.
+    pose proof (decl_closed_ass _ Hc) as HUa.
+    assert (Hd : im_is_decl Mj = true) by (apply (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ Hg) _ _ HMj)); exact Hj).
+    assert (Hh : exists pm, im_head Mj = mh_decl pm)
+      by (unfold im_is_decl in Hd; destruct (im_head Mj); [ eauto | discriminate .. ]).
+    destruct Hh as [pm Hh].
+    pose proof (glu_rel_exp_nil_weaken _ _ _ HU
+                  (glu_rel_exp_ind0 p D (valid_group_lookup _ _ Hg) HG Hc (valid_group_typed _ _ Hg) (valid_group_sort _ _ Hg)
+                     (valid_group_ass _ _ Hg) j Mj pm HMj Hh)) as HI.
+    unfold ind_ty, im_params in HI; rewrite ctx_pi_app in HI; fold (self_ty D Mj) in HI.
+    destruct (glu_self_ty _ _ HMj) as [i Hi].
+    destruct (glu_closed_app _ _ HUa (decl_closed_uparams _ Hc) HU HU) as [HUU HwU].
+    pose proof (glu_rel_exp_wk HwU Hi) as HiU; cbn [exp_wk] in HiU.
+    rewrite (exp_scoped_wk_id _ _ _ (self_ty_scoped _ _ _ Hc HMj) (fun x Hx => wk_qn_lt _ _ x Hx)) in HiU.
+    pose proof (glu_rel_exp_apps_ctx_pi_n _ (ind_uparams D) (ind_uparams D) _ i (a_ind p j) (vars_from 0 (ind_nu D)) eq_refl
+                  HUa HUa HU (glu_tele_entries_of_ctx _ _ HUa HUU) HiU HI ltac:(rewrite length_vars_from; reflexivity)) as H.
+    rewrite (exp_at_vars _ _ _ (self_ty_scoped _ _ _ Hc HMj) (self_ty_mvc _ _ _ Hc Hmv HMj)) in H.
+    rewrite (exp_wk_id_ext (self_ty D Mj) _ wk_shiftn_zero) in H.
+    apply H.
+    intros k N T HN HT.
+    pose proof (glu_vars_tele nil (ind_uparams D) HUa (decl_closed_uparams _ Hc) (decl_mvc_uparams _ Hmv) HU k N T) as Hv.
+    cbn [List.length List.app] in Hv; exact (Hv HN HT).
+  Qed.
+
+  (** [grp_sb p D] is a glued substitution from the uniform parameters into
+      the members as variables ([grp_sb_gsub]). *)
+  Lemma glu_grp_sb : ind_uparams D ⊩ˢ grp_sb p D : grp_selfs_ctx D.
+  Proof.
+    pose proof (valid_group_closed _ _ Hg) as Hc.
+    assert (Hsa : all_assumptions (grp_selfs D)).
+    { unfold grp_selfs; generalize 0; induction (List.firstn (ind_ndecl D) (ind_members D)) as [| M ms IH]; intros j;
+        cbn [grp_selfs_from]; [ constructor |].
+      apply List.Forall_app; split; [ apply IH | constructor; [ do 2 eexists; reflexivity | constructor ] ]. }
+    assert (Hass : all_assumptions (grp_selfs_ctx D)) by (apply List.Forall_app; split; [ exact Hsa | exact (decl_closed_ass _ Hc) ]).
+    unfold grp_sb, grp_selfs_ctx.
+    apply glu_rel_sub_of_list; [ exact Hass | exact (glu_rel_sub_id _ HU) | exact (glu_tele_entries_of_ctx _ _ Hsa glu_grp_selfs_ctx) | |].
+    - unfold grp_selfs; rewrite length_grp_sb_list, length_grp_selfs_from, List.length_firstn.
+      pose proof (ind_ndecl_le D); lia.
+    - intros k N T HN HT.
+      rewrite List.nth_error_map in HN.
+      destruct (List.nth_error (List.seq 0 (ind_ndecl D)) k) as [j |] eqn:Hj; cbn in HN; [| discriminate ].
+      injection HN as <-.
+      assert (Hk : k < ind_ndecl D)
+        by (rewrite <- (List.length_seq (ind_ndecl D) 0); apply List.nth_error_Some; congruence).
+      assert (j = k) as -> by (rewrite (List.nth_error_nth' _ 0 (n := k)) in Hj by (rewrite List.length_seq; exact Hk);
+                               injection Hj as <-; rewrite List.seq_nth by exact Hk; reflexivity).
+      apply tele_insts_nth in HT as (κA & A & HA & ->).
+      destruct (nth_rev_grp_selfs D (ind_ndecl D) k (le_n _) Hk) as (Mk & HMk & HAk).
+      unfold grp_selfs in HA; rewrite HAk in HA; injection HA as <- <-.
+      rewrite exp_sub_wk, (exp_sub_sb_eq _ _ Id), exp_sub_id; [ exact (glu_self_apps _ _ HMk Hk) |].
+      intros x; cbn [sb_compose sb_of_wk sentry_sub wk_shiftn].
+      set (L := List.firstn k (List.map (fun j => apps (a_ind p j) (vars_from 0 (ind_nu D))) (List.seq 0 (ind_ndecl D)))).
+      assert (HL : List.length L = k)
+        by (unfold L; rewrite List.length_firstn, length_grp_sb_list; lia).
+      replace (x + k) with (List.length L + x) by lia.
+      apply sb_of_list_ge.
   Qed.
 End GroupSort.
 
