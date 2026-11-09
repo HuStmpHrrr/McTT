@@ -33,6 +33,7 @@ From Mctt.Core.Soundness Require Import
   UniverseCases.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes.
 From Mctt.Core.Soundness.Inductives Require Import Args Comps Con.
+From Mctt.Core.Soundness.Records Require Model.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 Import Fixed_Notations.
@@ -865,6 +866,36 @@ Section GroupSort.
     exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) Hn2 HR).
   Qed.
 
+  (** A judgment over the uniform parameters holds past an extension [Z],
+      at the uniform parameters as variables there ([closed_app_valid]
+      along [gsub_of_list] in the PER model). *)
+  Lemma glu_uvars_inst : forall Z X T, ⊩ Z ++ ind_uparams D -> all_assumptions Z -> ind_uparams D ⊩ X : T ->
+      Z ++ ind_uparams D ⊩ X[sb_of_list Id (vars_from (List.length Z) (ind_nu D))] : T[sb_of_list Id (vars_from (List.length Z) (ind_nu D))].
+  Proof.
+    intros * HΨ HZa HX.
+    pose proof (valid_group_closed _ _ Hg) as Hc.
+    pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)) as Hmv.
+    pose proof (decl_closed_ass _ Hc) as HUa.
+    assert (HU0 : ⊩ ind_uparams D)
+      by (destruct HΨ as [Sb HSb]; destruct (glu_ctx_env_suffix _ _ _ HZa HSb) as [Sb' HSb']; eexists; exact HSb').
+    assert (HΨa : all_assumptions (Z ++ ind_uparams D)) by (apply List.Forall_app; split; assumption).
+    destruct (glu_closed_app _ _ HUa (decl_closed_uparams _ Hc) HU0 HΨ) as [HUΨ Hw].
+    pose proof (glu_rel_exp_wk Hw HX) as HXw.
+    pose proof (glu_rel_exp_to_wf_exp HX) as HXt.
+    assert (HXs : exp_scoped (List.length (ind_uparams D)) X) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HXt))).
+    assert (HTs : exp_scoped (List.length (ind_uparams D)) T).
+    { pose proof (presup_exp HXt) as Hp; destruct Hp as [_ [Hp | Hp]];
+        [ match goal with H : type_sort ?S0, H' : _ ⊢ _ : ?S0 |- _ => exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ H'))) end
+        | subst; cbn; exact I ]. }
+    rewrite (exp_scoped_wk_id _ _ _ HXs (fun x Hx => wk_qn_lt _ _ x Hx)),
+      (exp_scoped_wk_id _ _ _ HTs (fun x Hx => wk_qn_lt _ _ x Hx)) in HXw.
+    assert (HUΨa : all_assumptions (ind_uparams D ++ Z ++ ind_uparams D)) by (apply List.Forall_app; split; assumption).
+    pose proof (glu_vars_tele Z (ind_uparams D) HUa (decl_closed_uparams _ Hc) (decl_mvc_uparams _ Hmv) HΨ) as HUv.
+    pose proof (glu_rel_sub_of_list _ _ _ _ _ HUΨa (glu_rel_sub_id _ HΨ) (glu_tele_entries_of_ctx _ _ HUa HUΨ)
+                  ltac:(rewrite length_vars_from; reflexivity) HUv) as Hgs.
+    exact (glu_rel_exp_sub Hgs HXw).
+  Qed.
+
   (** *** The Members as Variables
 
       The gluing counterpart of [Model]'s [Selfs] section: the members'
@@ -961,6 +992,66 @@ Section GroupSort.
         by (unfold L; rewrite List.length_firstn, length_grp_sb_list; lia).
       replace (x + k) with (List.length L + x) by lia.
       apply sb_of_list_ge.
+  Qed.
+
+  (** A record view's record at its instance is a type of a large
+      universe over the uniform parameters ([valid_group_views_rview_type]):
+      the record's former ([glu_rel_exp_record0]) at the instance over the
+      members as variables ([glu_views_self_record_instances]), along
+      [grp_sb p D]. *)
+  Lemma glu_group_rview_type : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
+      exists j : nat, ind_uparams D ⊩ apps (a_record qr) Is : Typeω@j.
+  Proof.
+    intros * HMk Hh.
+    destruct (glu_ind_decl_view_self _ HG) as [IsS HV].
+    destruct (valid_group_records _ _ Hg _ _ _ _ _ HMk Hh) as [R HR].
+    pose proof (valid_rview_record_lookup _ _ HR) as HlR.
+    pose proof (glu_views_self_records _ _ HV _ _ _ _ _ _ HMk Hh HlR) as HGR.
+    pose proof (valid_rview_record_typed _ _ HR) as HtR.
+    pose proof (valid_rview_record_closed _ _ HR) as HcR.
+    destruct (record_typed_ty _ _ _ HtR) as [i0 Hty].
+    assert (Hgw : ⊢ᵍ gc_deps ⍮ gc_stack) by (destruct HU as [Sb HSb]; eapply ctx_wf_gctx; exact (glu_ctx_env_wf_ctx HSb)).
+    pose proof (Mctt.Core.Soundness.Records.Model.glu_rel_exp_record0 qr R Hgw HlR HGR i0 Hty) as HRec.
+    pose proof glu_grp_selfs_ctx as HS.
+    pose proof (glu_rel_exp_nil_weaken _ _ _ HS HRec) as HRecS; unfold record_ty in HRecS.
+    pose proof (glued_params _ HGR) as HP.
+    pose proof (typed_params_ass _ _ _ HtR) as HPa.
+    assert (HSa : all_assumptions (grp_selfs_ctx D)).
+    { apply List.Forall_app; split; [| exact (decl_closed_ass _ (valid_group_closed _ _ Hg)) ].
+      unfold grp_selfs; generalize 0; induction (List.firstn (ind_ndecl D) (ind_members D)) as [| M ms IH]; intros j;
+        cbn [grp_selfs_from]; [ constructor |].
+      apply List.Forall_app; split; [ apply IH | constructor; [ do 2 eexists; reflexivity | constructor ] ]. }
+    destruct (glu_closed_app _ _ HPa (closed_params _ HcR) HP HS) as [HPS HwS].
+    (** The record's sort, a type of a large universe over its parameters *)
+    assert (HB : exists j, record_params R ⊩ record_sort R : Typeω@j).
+    { destruct (glued_sort _ HGR) as [[i Heq] | (L & n & Heq & HL)]; rewrite Heq;
+        [ exists (S i); exact (glu_rel_exp_typ HP) |].
+      exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) (glu_rel_exp_succl HL) (glu_rel_exp_univ_lvl HL)). }
+    destruct HB as [j HB].
+    pose proof (glu_rel_exp_wk HwS HB) as HBS; cbn [exp_wk] in HBS.
+    rewrite (exp_scoped_wk_id _ _ _ (closed_sort _ HcR) (fun x Hx => wk_qn_lt _ _ x Hx)) in HBS.
+    rewrite (glu_views_self_record_link _ _ HV _ (valid_group_mpath _ _ Hg) _ _ _ _ _ HMk Hh).
+    assert (HlIs : List.length (IsS k) = List.length (record_params R)).
+    { pose proof (Completeness.Inductives.FiledViews.rview_record_len p D Hg k Mk qr Is fl R HMk Hh HR) as HIl.
+      rewrite (glu_views_self_record_link _ _ HV _ (valid_group_mpath _ _ Hg) _ _ _ _ _ HMk Hh), List.length_map in HIl; exact HIl. }
+    pose proof (glu_rel_exp_apps_ctx_pi_n _ (record_params R) (grp_selfs_ctx D) _ j (a_record qr) (IsS k) eq_refl HPa HSa HS
+                  (glu_tele_entries_of_ctx _ _ HPa HPS) HBS HRecS HlIs
+                  (fun m I T HI HT => glu_views_self_record_instances _ _ HV _ _ _ _ _ _ _ _ _ HMk Hh HlR HI HT)) as HA.
+    (** At a small universe its level, at the instance, is glued *)
+    assert (HA' : exists j', grp_selfs_ctx D ⊩ apps (a_record qr) (IsS k) : Typeω@j').
+    { destruct (glued_sort _ HGR) as [[i Heq] | (L & n & Heq & HL)]; rewrite Heq in HA; cbn [exp_sub] in HA; [ exists i; exact HA |].
+      pose proof (glu_rel_exp_wk HwS HL) as HLS; cbn [exp_wk] in HLS.
+      assert (HLs : exp_scoped (List.length (record_params R)) L)
+        by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ (glu_rel_exp_to_wf_exp HL)))).
+      rewrite (exp_scoped_wk_id _ _ _ HLs (fun x Hx => wk_qn_lt _ _ x Hx)) in HLS.
+      assert (HPSa : all_assumptions (record_params R ++ grp_selfs_ctx D)) by (apply List.Forall_app; split; assumption).
+      pose proof (glu_rel_sub_of_list _ _ _ _ _ HPSa (glu_rel_sub_id _ HS) (glu_tele_entries_of_ctx _ _ HPa HPS) HlIs
+                    (fun m I T HI HT => glu_views_self_record_instances _ _ HV _ _ _ _ _ _ _ _ _ HMk Hh HlR HI HT)) as Hgs.
+      pose proof (glu_rel_exp_sub Hgs HLS) as HL2; cbn [exp_sub] in HL2.
+      exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) HL2 HA). }
+    destruct HA' as [j' HA'].
+    pose proof (glu_rel_exp_sub glu_grp_sb HA') as H; rewrite apps_exp_sub in H; cbn [exp_sub] in H.
+    exists j'; exact H.
   Qed.
 
   (** A view's instance is glued at the container's uniform telescope over
