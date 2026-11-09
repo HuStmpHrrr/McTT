@@ -56,27 +56,6 @@ Proof.
   injection H as H ->; rewrite (IH _ H); reflexivity.
 Qed.
 
-(** ** Glued Arguments Relate in the PER Model *)
-
-(** Each argument's type is a type and the argument an element of it, so
-    glued arguments are related to themselves along the telescope. *)
-Lemma glu_args_per_tele_args : forall C Δ τ ρ Ms vs, all_assumptions C -> glu_args Δ C τ ρ Ms vs ->
-    per_tele_args (List.rev C) ρ ρ vs vs.
-Proof.
-  induction C as [| e C IH] using List.rev_ind; intros * Hass Hg.
-  - destruct (glu_args_length _ _ _ _ _ _ Hg) as [_ Hl]; destruct vs; [ constructor | discriminate ].
-  - unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He].
-    apply List.Forall_cons_iff in He as [(κ & A & ->) _].
-    destruct (glu_args_length _ _ _ _ _ _ Hg) as [L1 L2]; rewrite List.length_app in L1, L2; cbn in L1, L2.
-    destruct Ms as [| M Ms]; [ cbn in L1; lia |]; destruct vs as [| v vs]; [ cbn in L2; lia |].
-    apply glu_args_snoc in Hg as [[i a P El Ha Hglu _ HM] Hg].
-    rewrite List.rev_app_distr; cbn [List.rev List.app].
-    destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
-    pose proof (glu_univ_elem_per_elem _ _ _ _ Hglu _ _ _ _ _ HM HR) as Hv.
-    apply (per_tele_args_cons (i := large_level i) R);
-      [ exact (mk_rel_mod_eval a a Ha Ha (per_univ_elem_cumu_universe_index _ _ _ _ HR _ (universe_index_le_large_level i)))
-      | exact Hv | exact (IH _ _ _ _ _ Hass Hg) ].
-Qed.
 
 Lemma cargs_rev_nth_arg : forall p D Mk gs gs1 r B gs2, gs = gs1 ++ ca_arg r B :: gs2 ->
     List.nth_error (List.rev (cargs_ctx p D Mk gs)) (List.length gs1) = Some (ce_ass r B[wk_pat (cargs_pat gs1)]ʷ).

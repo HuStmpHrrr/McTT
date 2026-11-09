@@ -236,6 +236,18 @@ Proof.
   rewrite List.nth_error_firstn in HN; destruct (Nat.ltb_spec k (List.length Pre)); [ exact HN | discriminate ].
 Qed.
 
+(** Terms typed at the instances of a telescope are scoped by the context. *)
+Lemma typed_insts_scoped : forall Γ C Ms, all_assumptions C -> List.length Ms = List.length C ->
+    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊢ N : T) ->
+    List.Forall (exp_scoped (List.length Γ)) Ms.
+Proof.
+  intros * Hass Hl HMs; apply List.Forall_forall; intros N HN.
+  destruct (List.In_nth_error _ _ HN) as [k Hk].
+  assert (Hk' : k < List.length C) by (rewrite <- Hl; apply List.nth_error_Some; congruence).
+  destruct (nth_error_lt_some (tele_insts C Id Ms) k) as [Tk HTk]; [ rewrite length_tele_insts by exact Hass; lia |].
+  exact (wf_exp_scoped_term _ _ _ _ _ (HMs _ _ _ Hk HTk)).
+Qed.
+
 (** The instances of a closed telescope of parameters of evaluated kinds
     are of evaluated sorts: each entry's sort, substituted
     ([rel_exp_under_ctx_gsub]). *)

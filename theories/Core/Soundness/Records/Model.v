@@ -57,7 +57,7 @@ Qed.
 
 (** Arguments glued along a closed telescope are glued to their values by
     their readback. *)
-Lemma glu_args_params_glu_top : forall C Δ Ms vs, tele_ass C -> ctx_scoped 0 C ->
+Lemma glu_args_params_glu_top : forall C Δ Ms vs, all_assumptions C -> ctx_scoped 0 C ->
     glu_args Δ C Id nil Ms vs -> params_glu_top C Δ Ms vs.
 Proof.
   intros * Hass Hs Hg; pose proof Hg as [L1 L2 H].
@@ -65,26 +65,57 @@ Proof.
   - intros k M T HM HT.
     assert (Hk : k < List.length C) by (rewrite <- L1; apply List.nth_error_Some; congruence).
     destruct (nth_error_lt_some vs k ltac:(lia)) as [v Hv].
-    destruct (glu_args_ass_nth _ _ Hass Hk) as [A He].
-    destruct (H _ _ _ _ _ HM HT Hv He) as [i a P El _ Hglu _ HMg].
+    destruct (glu_args_ass_nth _ _ Hass Hk) as (κ & A & He).
+    destruct (H _ _ _ _ _ _ HM HT Hv He) as [i a P El _ Hglu _ HMg].
     eapply glu_univ_elem_trm_escape; eassumption.
   - intros Δ' φ Rs Hφ HRs.
     destruct (read_ps_nth _ _ _ _ _ HRs) as [HRl HRn].
-    split; [ rewrite List.length_map, HRl; congruence |].
-    intros k X Y T HX HY HT.
-    rewrite List.nth_error_map in HX.
-    destruct (List.nth_error Ms k) as [M |] eqn:HM; [| discriminate ]; injection HX as <-.
-    rewrite <- (tele_insts_closed_wk _ _ _ Hass Hs), List.nth_error_map in HT.
-    destruct (List.nth_error (tele_insts C Id Ms) k) as [T0 |] eqn:HT0; [| discriminate ]; injection HT as <-.
-    assert (Hk : k < List.length C) by (rewrite <- L1; apply List.nth_error_Some; congruence).
-    destruct (nth_error_lt_some vs k ltac:(lia)) as [v Hv].
-    destruct (glu_args_ass_nth _ _ Hass Hk) as [A He].
-    destruct (HRn _ _ _ Hv He) as (a' & V & Ha' & HV & HY').
-    rewrite HY' in HY; injection HY as <-.
-    destruct (H _ _ _ _ _ HM HT0 Hv He) as [i a P El Ha Hglu HP HMg].
-    assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
-    destruct (realize_glu_elem_top _ _ _ _ Hglu _ _ _ _ HMg) as [? ? _ _ _ _ Hrb].
-    exact (Hrb _ _ _ Hφ HV).
+    apply glu_nfs_eq_at_of_nth; [ rewrite List.length_map, HRl; congruence | |].
+    + intros k X Y T HX HY HT.
+      rewrite List.nth_error_map in HX.
+      destruct (List.nth_error Ms k) as [M |] eqn:HM; [| discriminate ]; injection HX as <-.
+      rewrite <- (tele_insts_closed_wk _ _ _ Hass Hs), List.nth_error_map in HT.
+      destruct (List.nth_error (tele_insts C Id Ms) k) as [T0 |] eqn:HT0; [| discriminate ]; injection HT as <-.
+      assert (Hk : k < List.length C) by (rewrite <- L1; apply List.nth_error_Some; congruence).
+      destruct (nth_error_lt_some vs k ltac:(lia)) as [v Hv].
+      destruct (glu_args_ass_nth _ _ Hass Hk) as (κ & A & He).
+      destruct (HRn _ _ _ _ Hv He) as (a' & V & Ha' & HV & HY').
+      rewrite HY' in HY; injection HY as <-.
+      destruct (H _ _ _ _ _ _ HM HT0 Hv He) as [i a P El Ha Hglu HP HMg].
+      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
+      destruct (realize_glu_elem_top _ _ _ _ Hglu _ _ _ _ HMg) as [? ? _ _ _ _ Hrb].
+      exact (Hrb _ _ _ Hφ HV).
+    + intros k X HX.
+      apply nth_error_lt_some.
+      rewrite <- (tele_insts_closed_wk _ _ _ Hass Hs), List.length_map, length_tele_insts by exact Hass.
+      assert (HXk : k < List.length (List.map (fun P => P[φ]ʷ) Ms)) by (apply List.nth_error_Some; congruence).
+      rewrite List.length_map in HXk; lia.
+Qed.
+
+(** A term's value at the kind of its type ([glu_term_value_intro]), from
+    the term's scope alone: at a proposition the proof kept reads back
+    over an environment of the context. *)
+Lemma glu_term_value_intro_scoped : forall {i a P El Γ M Δ A N m ρ R},
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    exp_scoped (List.length Γ) M ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    Dom ρ ≈ ρ ∈ R ->
+    (evaluated_kind (domain_kind a) -> ⟦ M ⟧ ρ ↘ m) ->
+    Δ ⊢ N : A ® m ∈ El ->
+    exists m', glu_term_value M ρ (domain_kind a) m' /\ Δ ⊢ N : A ® m' ∈ El.
+Proof.
+  intros * Hglu HsM HΓ Hρ Hm HN.
+  destruct (domain_kind a) eqn:Hk.
+  - exists m; split; [ apply Hm; constructor | exact HN ].
+  - exists ⋆ᵈ⟨M, ρ⟩; split; [ reflexivity |].
+    destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R' HR'].
+    pose proof (per_univ_elem_per_prop_of_kind HR' Hk) as Hp.
+    destruct (glu_univ_elem_prop_inv _ _ _ _ Hp Hglu) as [_ HEl].
+    apply HEl in HN; apply HEl.
+    destruct HN as [HAt HNt _].
+    destruct (per_ctx_env_kept_proof_readable _ _ _ M HΓ (exp_scoped_free_bound _ _ HsM) _ _ Hρ) as [Hr _].
+    econstructor; [ exact HAt | exact HNt | split; exact Hr ].
+  - exists m; split; [ apply Hm; constructor | exact HN ].
 Qed.
 
 (** ** A Record at its Model *)
@@ -103,6 +134,8 @@ Section RecordAt.
   Let HSv := sort_valid _ (model_valid _ _ Hmodel).
   Let HFv := field_ctx_valid _ (model_valid _ _ Hmodel).
   Let HTv := fields_valid _ (model_valid _ _ Hmodel).
+  Let HPr := params_evaluated_valid _ (model_valid _ _ Hmodel).
+  Let HFk := fields_kind_valid _ (model_valid _ _ Hmodel).
 
   (** Parameters glued at their telescope, along a glued substitution: glued
       arguments of it. *)
@@ -120,7 +153,9 @@ Section RecordAt.
     pose proof (completeness_fundamental_ctx _ HΓ) as HΓs.
     destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
     eapply params_glu_args; [ exact Hass | exact (closed_params _ Hc) | eapply record_params_sem; exact HFv
-                            | exact HΓs | exact HRΓ | exact HSb | exact Hσ | exact Hn | | exact HNg | exact Ens ].
+                            | exact HΓs | exact HRΓ | exact HSb | exact Hσ | exact Hn |
+                            | exact (params_evaluated_valid _ (model_valid _ _ Hmodel))
+                            | exact (typed_insts_scoped _ _ _ Hass Hn HNt) | exact HNg | exact Ens ].
     intros * HN HA; exact (completeness_fundamental_exp _ _ _ (HNt _ _ _ HN HA)).
   Qed.
 
@@ -147,6 +182,45 @@ Section RecordAt.
     pose proof (glu_univ_elem_per_univ _ _ _ _ Hu) as Huu.
     pose proof (per_univ_trans' _ _ _ _ _ Huu (per_univ_sym' _ _ _ Htu)) as Hut.
     exact (glu_univ_elem_resp_per_univ _ _ _ _ _ Hut Hu).
+  Qed.
+
+  (** The fields' environment at the values of the first fields: the
+      parameters' telescope, then the fields'. *)
+  Lemma record_fields_env_tele : forall ns vs k, List.length ns = List.length (record_params R) ->
+      List.length vs <= k -> k <= List.length (record_fields R) ->
+      record_fields_env R ns vs = env_tele (env_tele nil (List.rev (record_params R)) ns) (List.rev (record_fctx R k)) vs.
+  Proof.
+    intros * Hlns Hlvs Hk.
+    rewrite (record_fields_env_closed R ns vs Hlns), List.rev_app_distr, env_tele_app by (rewrite List.length_rev; exact Hlns).
+    rewrite !rev_record_fctx, (env_tele_firstn _ (List.firstn (List.length vs) _)),
+      (env_tele_firstn _ (List.firstn k _)), !List.firstn_firstn, !Nat.min_l by lia.
+    reflexivity.
+  Qed.
+
+  (** A field's type at related values of the parameters and the fields
+      before it is of the field's kind. *)
+  Lemma record_field_type_kind : forall ns vs n f U u,
+      per_tele_args (List.rev (record_params R)) nil nil ns ns -> List.length ns = List.length (record_params R) ->
+      tele_prefix_rel (canon_fields_rel R ns) n vs vs -> List.length vs = n ->
+      List.nth_error (record_fields R) n = Some (f, U) -> ⟦ U ⟧ record_fields_env R ns vs ↘ u ->
+      domain_kind u = record_field_kind R n.
+  Proof.
+    intros * Hgp Hlns Hpre Hlv Hfk Eu.
+    assert (Hlt : n < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
+    destruct (sort_tele_value _ _ HPv HSv ns Hgp Hlns) as [a0 Ha0].
+    pose proof (canon_fields_tele_args R Hsu HFv HSv HTv HFk ns ns a0 Hgp Hlns Ha0 n vs vs ltac:(lia) Hpre) as Hgf.
+    assert (Hgms : per_tele_args (List.rev (record_fctx R n ++ record_params R)) nil nil (ns ++ vs) (ns ++ vs)).
+    { rewrite List.rev_app_distr, rev_record_fctx.
+      apply Decl.per_tele_args_app_intro; [ rewrite List.length_rev; exact Hlns | exact Hgp | exact Hgf ]. }
+    pose proof (record_fctx_sem R HFv n ltac:(lia)) as HC0.
+    destruct (rel_ctx_wf_per_ctx_env HC0) as [RC HRC].
+    assert (Hlz : List.length (ns ++ vs) = List.length (record_fctx R n ++ record_params R)).
+    { rewrite !List.length_app, length_record_fctx by lia; lia. }
+    pose proof (Completeness.Inductives.Model.tele_args_env_rel (record_fctx R n ++ record_params R) RC
+                  (ns ++ vs) (ns ++ vs) nil nil HRC HC0 Hlz Hgms) as HE0.
+    rewrite (record_fields_env_closed R ns vs Hlns), Hlv in Eu.
+    rewrite <- (List.app_nil_r (record_fctx R n ++ record_params R)) in HRC.
+    exact (field_type_kind R Hass Hsu HFv HTv HFk ⋅ n f U RC _ _ u Hfk ltac:(constructor) HRC HE0 Eu).
   Qed.
 
   (** ** Projections *)
@@ -197,27 +271,57 @@ Section RecordAt.
     rewrite map_wk_id in Htop0.
     assert (HEq : exps_eq_at Δ (record_params R) Ns0 (List.map (fun N => N[σ]) Ns)).
     { eapply record_params_glu_eq; [ exact Hass | exact HCw | | exact Htop0 | exact HNσ ].
-      destruct (Htop (length Δ)) as (Cs & HCs & _); exists Cs; exact HCs. }
+      destruct (Htop (length Δ)) as [Cs ? HCs _ _]; exists Cs; exact HCs. }
     pose proof (Hk Δ wk_id (List.map (fun N => N[σ]) Ns) Hid ltac:(rewrite map_wk_id; exact HEq) k f U r Hfk Hr) as HPk.
     rewrite exp_wk_id in HPk.
     (* the field's type at the parameters and the projections before *)
+    cbn [domain_kind glu_term_value] in Em.
     assert (Ems : ⟦ Ns ++ record_pre R k M ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns ++ List.firstn k vs)
       by (apply eval_exps_app; [ exact Ens | exact (eval_record_pre _ _ _ _ _ Em Hvs k ltac:(lia)) ]).
     assert (HMv : Γ ⊨ M : apps_exp (a_record p) Ns) by exact (completeness_fundamental_exp _ _ _ HMt).
     assert (HNv : forall j N A, List.nth_error Ns j = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) j = Some A ->
                     Γ ⊨ N : A)
       by (intros * HN HA; exact (completeness_fundamental_exp _ _ _ (HNt _ _ _ HN HA))).
-    destruct (field_inst_link R Hass Hsu HFv HTv Γ k f U (Ns ++ record_pre R k M) RΓ ρ (ns ++ List.firstn k vs)
+    pose proof (typed_insts_scoped _ _ _ Hass Hn HNt) as HNss.
+    pose proof (wf_exp_scoped_term _ _ _ _ _ HMt) as HMsc.
+    assert (HMss : List.Forall (exp_scoped (List.length Γ)) (Ns ++ record_pre R k M))
+      by (apply List.Forall_app; split; [ exact HNss | exact (record_pre_scoped _ _ k _ HMsc) ]).
+    pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
+    (** The parameters' values and the fields' before, related at the
+        fields' telescope. *)
+    assert (Hlns : List.length ns = List.length (record_params R))
+      by (rewrite <- Hn; exact (Completeness.Inductives.Model.eval_exps_length _ _ _ Ens)).
+    pose proof (params_inst_tele_args R Hass HFv HPr Γ Ns RΓ ρ ρ ns ns HΓs HRΓ Hn HNv HNss Hρ Ens Ens) as Hgp.
+    destruct (sort_tele_value _ _ HPv HSv ns Hgp Hlns) as [a0 Ha0].
+    pose proof (canon_fields_tele_args R Hsu HFv HSv HTv HFk ns ns a0 Hgp Hlns Ha0 k (List.firstn k vs) (List.firstn k vs)
+                  ltac:(lia) Hpre) as Hgf.
+    assert (Hgms : per_tele_args (List.rev (record_fctx R k ++ record_params R)) nil nil
+                     (ns ++ List.firstn k vs) (ns ++ List.firstn k vs)).
+    { rewrite List.rev_app_distr, rev_record_fctx.
+      apply Decl.per_tele_args_app_intro; [ rewrite List.length_rev; exact Hlns | exact Hgp | exact Hgf ]. }
+    destruct (field_inst_link R Hass Hsu HFv HTv HPr HFk Γ k f U (Ns ++ record_pre R k M) RΓ ρ (ns ++ List.firstn k vs)
                 Hfk HΓs HRΓ ltac:(rewrite List.length_app, length_record_pre by lia; lia)
                 ltac:(apply record_pre_insts; try assumption; [ lia |];
                       intros j0 g U0 Hj0 Hg0; eapply valid_exp_under_ctx_proj; eassumption)
-                (glu_ctx_env_per_env HSb HRΓ Hσ) Ems) as (j0 & t & u & Et & Eu & Htu).
+                HMss Hρ ltac:(rewrite !List.length_app, length_record_pre, List.length_firstn by lia; lia) Hgms
+                ltac:(intros j1 N1 m1 HN1 Hm1; left;
+                      destruct (Completeness.Inductives.Model.eval_exps_nth _ _ _ _ _ Ems HN1) as (m1' & Hm1' & Em1');
+                      rewrite Hm1 in Hm1'; injection Hm1' as <-; exact Em1'))
+      as (j0 & t & u & Et & Eu & Htu).
+    pose proof (record_fields_env_closed R ns (List.firstn k vs) Hlns) as Efe.
+    rewrite List.length_firstn, Nat.min_l in Efe by lia; rewrite <- Efe in Eu.
     pose proof (HgF0 k f U (List.firstn k vs) u Hfk Hpre Eu) as Hgu.
     pose proof (glu_univ_elem_resp_per_univ_at _ _ _ _ _ _ Hgu Htu) as Hgt.
-    econstructor; [ exact Et | econstructor; [ exact Em | exact (Forall2_nth_both _ _ _ _ _ _ Hvs Hfk Hr) ] | exact Hgt |].
-    cbn [exp_sub].
-    rewrite (record_field_sub R k f U Ns (record_pre R k M) σ Hc Hfk Hn ltac:(apply length_record_pre; lia)), record_pre_sub.
-    exact HPk.
+    (** The projection's value: its evaluation, or the proof kept at a
+        proposition. *)
+    assert (HPk' : Δ ⊢ (a_proj f M)[σ] : (U[sb_of_list Id (Ns ++ record_pre R k M)])[σ] ® r ∈ FEl k (List.firstn k vs)).
+    { cbn [exp_sub].
+      rewrite (record_field_sub R k f U Ns (record_pre R k M) σ Hc Hfk Hn ltac:(apply length_record_pre; lia)), record_pre_sub.
+      exact HPk. }
+    clear HPk; rename HPk' into HPk.
+    destruct (glu_term_value_intro_scoped Hgt (HMsc : exp_scoped (List.length Γ) (a_proj f M)) HRΓ Hρ
+                (fun _ => eval_exp_proj _ _ _ _ _ _ _ Em (Forall2_nth_both _ _ _ _ _ _ Hvs Hfk Hr)) HPk) as (m' & Hm' & HM').
+    exact (mk_glu_rel_exp_with_sub _ _ _ _ _ _ t m' _ _ Et Hm' Hgt HM').
   Qed.
 
   (** ** Tuples *)
@@ -276,12 +380,18 @@ Section RecordAt.
       by exact (per_univ_trans' _ _ _ _ _ (per_univ_sym' _ _ _ Ha12) Ha12).
     destruct (per_univ_glu_univ_elem _ _ Hdd) as (P & El & Hglu).
     pose proof (glu_univ_elem_resp_per_univ_at _ _ _ _ _ _ Hglu Ha12) as Hga.
-    destruct (Htrel ρ ρ (proj1 (ER2 _ _) Hρ)) as (b & b' & Rb & Eb & _ & HRb & mt & mt' & Emt & Emt' & Hmt).
+    destruct (Htrel ρ ρ (proj1 (ER2 _ _) Hρ)) as (b & b' & Rb & Eb & _ & HRb & [Hp | (mt & mt' & Emt & Emt' & Hmt)]);
+      [ assert (b = a) as -> by (eapply functional_eval_exp; eassumption);
+        destruct Ha12 as [R12 HR12]; rewrite (per_univ_elem_kind _ _ _ _ HR12) in Hp; discriminate Hp |].
     assert (b = a) as -> by (eapply functional_eval_exp; eassumption).
     assert (mt' = mt) as -> by (eapply functional_eval_exp; eassumption).
     pose proof Emt as Emt0; inversion Emt0; subst.
-    match goal with H : ⟦ List.map snd fs ⟧* _ ⍮ _ ⍮ ρ ↘ ?vs |- _ => rename vs into ms; rename H into Ems end.
-    econstructor; [ exact Ea | exact Emt | exact Hga |].
+    match goal with H : eval_field_vals _ _ _ (List.map snd fs) ρ ?vs |- _ => rename vs into ms; rename H into Ems end.
+    match goal with H1 : ⟦ T ⟧ ρ ↘ d_record ?p0 ?ns0, H2 : record_lookup _ _ ?p0 = Some ?R0 |- _ =>
+      assert (a = d_record p0 ns0) as -> by (eapply functional_eval_exp; eassumption);
+      assert (p0 = p) as -> by (destruct Ha12 as [R12 HR12]; basic_invert_per_univ_elem HR12; reflexivity);
+      rewrite Hl in H2; injection H2 as <- end.
+    econstructor; [ exact Ea | cbn [domain_kind glu_term_value]; exact Emt | exact Hga |].
     pose proof Hglu as Hglu'; invert_glu_univ_elem Hglu'.
     match goal with H : record_lookup _ _ p = Some ?R0 |- _ => rewrite Hl in H; injection H as <- end.
     match goal with H0 : per_univ_elem _ _ (d_record p ns) (d_record p ns) |- _ => rename H0 into Hper end.
@@ -297,13 +407,13 @@ Section RecordAt.
       exact (proj1 (E2 _ _) (proj2 (E1 _ _) Hmt)). }
     pose proof (proj1 (HE _ _) Hm) as HrelM.
     assert (Hlms : List.length ms = List.length (record_fields R))
-      by (rewrite (Completeness.Inductives.Model.eval_exps_length _ _ _ Ems), List.length_map; exact Hlf).
+      by (rewrite (eval_field_vals_length _ _ _ _ Ems), List.length_map; exact Hlf).
     pose proof (tuple_projs R Hnd fs ms Hfs Hlms) as Hvs.
     pose proof (record_params_glu_args_at _ _ _ _ _ _ _ HSb Hσ Hn HNt HNg Ens) as HNσ.
     (* the type is the record type at the substituted parameters *)
     assert (HTat : record_typ_at p R ns FP FEl Typeω@(large_level i) Δ T[σ] (List.map (fun N => N[σ]) Ns)).
     { destruct (proj1 (HPP _ _) (HPa _ _ Hga)) as [Ns1 HNs1].
-      eapply record_typ_at_params_change; [ exact Hl | intros n0; destruct (Htop n0) as (Cs & HCs & _); exists Cs; exact HCs | | exact HNs1 ].
+      eapply record_typ_at_params_change; [ exact Hl | intros n0; destruct (Htop n0) as [Cs ? HCs _ _]; exists Cs; exact HCs | | exact HNs1 ].
       intros Δ' φ Hφ; apply glu_args_params_glu_top; [ exact Hass | exact (closed_params _ Hc) |].
       eapply glu_args_wk; [ exact Hass | exact (closed_params _ Hc) | exact Hφ | exact HNσ ]. }
     destruct (record_typ_wk _ _ _ _ _ _ _ _ _ HTat Δ wk_id Hid) as [Htop1 Hsort1 Hfg1].
@@ -313,6 +423,34 @@ Section RecordAt.
       intros k X Y A HX HY HA; rewrite HX in HY; injection HY as <-.
       apply wf_exp_eq_refl; exact (params_glu_typ _ _ _ _ Htop1 _ _ _ HX HA). }
     set (Ms := List.map snd fs) in *.
+    (** A field's type at the fields' values before it is of the field's
+        kind. *)
+    assert (Hkind : forall n f U u, List.nth_error (record_fields R) n = Some (f, U) ->
+               ⟦ U ⟧ record_fields_env R ns (List.firstn n ms) ↘ u -> domain_kind u = record_field_kind R n).
+    { intros n f U u Hfk Eu.
+      assert (Hlt : n < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
+      pose proof (record_projs_prefix_diag _ _ _ _ n HrelM Hvs ltac:(lia)) as Hpre.
+      assert (Hlns : List.length ns = List.length (record_params R))
+        by (rewrite <- Hn; exact (Completeness.Inductives.Model.eval_exps_length _ _ _ Ens)).
+      pose proof (params_inst_tele_args R Hass HFv HPr Γ Ns RΓ ρ ρ ns ns HΓs HRΓ Hn HNv
+                    (typed_insts_scoped _ _ _ Hass Hn HNt) Hρ Ens Ens) as Hgp.
+      destruct (sort_tele_value _ _ HPv HSv ns Hgp Hlns) as [a0 Ha0].
+      pose proof (canon_fields_tele_args R Hsu HFv HSv HTv HFk ns ns a0 Hgp Hlns Ha0 n (List.firstn n ms) (List.firstn n ms)
+                    ltac:(lia) Hpre) as Hgf.
+      assert (Hgms : per_tele_args (List.rev (record_fctx R n ++ record_params R)) nil nil
+                       (ns ++ List.firstn n ms) (ns ++ List.firstn n ms)).
+      { rewrite List.rev_app_distr, rev_record_fctx.
+        apply Decl.per_tele_args_app_intro; [ rewrite List.length_rev; exact Hlns | exact Hgp | exact Hgf ]. }
+      pose proof (record_fctx_sem R HFv n ltac:(lia)) as HC0.
+      destruct (rel_ctx_wf_per_ctx_env HC0) as [RC HRC].
+      assert (Hlz : List.length (ns ++ List.firstn n ms) = List.length (record_fctx R n ++ record_params R)).
+      { rewrite !List.length_app, List.length_firstn, length_record_fctx by lia; lia. }
+      pose proof (Completeness.Inductives.Model.tele_args_env_rel (record_fctx R n ++ record_params R) RC
+                    (ns ++ List.firstn n ms) (ns ++ List.firstn n ms) nil nil HRC HC0 Hlz Hgms) as HE0.
+      pose proof (record_fields_env_closed R ns (List.firstn n ms) Hlns) as Efe.
+      rewrite List.length_firstn, Nat.min_l in Efe by lia; rewrite Efe in Eu.
+      rewrite <- (List.app_nil_r (record_fctx R n ++ record_params R)) in HRC.
+      exact (field_type_kind R Hass Hsu HFv HTv HFk ⋅ n f U RC _ _ u Hfk ltac:(constructor) HRC HE0 Eu). }
     (* each field, glued at its family, by induction on the position *)
     assert (HG : forall n k f M U r, k < n -> List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
                List.nth_error ms k = Some r ->
@@ -324,17 +462,61 @@ Section RecordAt.
       assert (Hlt : n < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
       destruct (glu_rel_exp_clean_inversion1 HSb (HMg _ _ _ _ Hk Hfk)) as [ik Hik].
       destruct (Hik _ _ _ Hσ) as [ak mk Pk Elk Eak Emk Hgk HMk].
-      destruct (Completeness.Inductives.Model.eval_exps_nth _ _ _ _ _ Ems
-                  ltac:(unfold Ms; rewrite List.nth_error_map, Hk; reflexivity)) as (v & Hv & Ev).
+      destruct (eval_field_vals_nth _ _ _ _ Ems n M ltac:(unfold Ms; rewrite List.nth_error_map, Hk; reflexivity))
+        as (v & Hv & Hev & Hpv).
       rewrite Hr in Hv; injection Hv as <-.
-      assert (mk = r) as -> by (eapply functional_eval_exp; eassumption).
       pose proof (record_projs_prefix_diag _ _ _ _ n HrelM Hvs ltac:(lia)) as Hpre.
-      destruct (field_inst_link R Hass Hsu HFv HTv Γ n f U (Ns ++ List.firstn n Ms) RΓ ρ (ns ++ List.firstn n ms)
+      (** The parameters' values and the fields' before, related at the
+          fields' telescope. *)
+      assert (Hlns : List.length ns = List.length (record_params R))
+        by (rewrite <- Hn; exact (Completeness.Inductives.Model.eval_exps_length _ _ _ Ens)).
+      pose proof (params_inst_tele_args R Hass HFv HPr Γ Ns RΓ ρ ρ ns ns HΓs HRΓ Hn HNv
+                    (typed_insts_scoped _ _ _ Hass Hn HNt) Hρ Ens Ens) as Hgp.
+      destruct (sort_tele_value _ _ HPv HSv ns Hgp Hlns) as [a0 Ha0].
+      pose proof (canon_fields_tele_args R Hsu HFv HSv HTv HFk ns ns a0 Hgp Hlns Ha0 n (List.firstn n ms) (List.firstn n ms)
+                    ltac:(lia) Hpre) as Hgf.
+      assert (Hgms : per_tele_args (List.rev (record_fctx R n ++ record_params R)) nil nil
+                       (ns ++ List.firstn n ms) (ns ++ List.firstn n ms)).
+      { rewrite List.rev_app_distr, rev_record_fctx.
+        apply Decl.per_tele_args_app_intro; [ rewrite List.length_rev; exact Hlns | exact Hgp | exact Hgf ]. }
+      assert (HMss : List.Forall (exp_scoped (List.length Γ)) (Ns ++ List.firstn n Ms)).
+      { apply List.Forall_app; split; [ exact (typed_insts_scoped _ _ _ Hass Hn HNt) |].
+        apply Forall_firstn'; unfold Ms; apply List.Forall_map, List.Forall_forall; intros [g0 M0] Hin.
+        destruct (List.In_nth_error _ _ Hin) as [j0 Hj0].
+        destruct (nth_error_lt_some' (record_fields R) j0) as [[g1 U1] Hj1];
+          [ rewrite <- Hlf; exact (nth_error_lt_length _ _ _ Hj0) |].
+        assert (g1 = g0) as ->.
+        { pose proof (List.map_nth_error fst _ _ Hj0) as E1; pose proof (List.map_nth_error fst _ _ Hj1) as E2.
+          rewrite Hfs in E1; rewrite E1 in E2; injection E2 as ->; reflexivity. }
+        exact (wf_exp_scoped_term _ _ _ _ _ (HMt _ _ _ _ Hj0 Hj1)). }
+      destruct (field_inst_link R Hass Hsu HFv HTv HPr HFk Γ n f U (Ns ++ List.firstn n Ms) RΓ ρ (ns ++ List.firstn n ms)
                   Hfk HΓs HRΓ ltac:(unfold Ms; rewrite List.length_app, List.length_firstn, List.length_map; lia)
-                  ltac:(eapply tuple_insts; try eassumption; lia) Hρ
-                  ltac:(apply eval_exps_app; [ exact Ens | apply Completeness.Records.Model.eval_exps_firstn; exact Ems ]))
+                  ltac:(eapply tuple_insts; try eassumption; lia) HMss Hρ
+                  ltac:(unfold Ms; rewrite !List.length_app, !List.length_firstn, List.length_map; lia) Hgms
+                  ltac:(intros j1 N1 m1 HN1 Hm1;
+                        exact (tuple_prefix_vals_sorted R Ns ns Ms ρ ms n Ens Ems
+                                 ltac:(unfold Ms; rewrite List.length_map; lia) j1 N1 m1 HN1 Hm1)))
         as (j0 & t & u & Et & Eu & Htu).
       assert (t = ak) as -> by (eapply functional_eval_exp; eassumption).
+      (** The field's value is the term's at its kind, which is its type's. *)
+      assert (Hkak : domain_kind ak = record_field_kind R n).
+      { destruct Htu as [Rtu HRtu]; rewrite (per_univ_elem_kind _ _ _ _ HRtu).
+        pose proof (record_fctx_sem R HFv n ltac:(lia)) as HC0.
+        destruct (rel_ctx_wf_per_ctx_env HC0) as [RC HRC].
+        assert (Hlz : List.length (ns ++ List.firstn n ms) = List.length (record_fctx R n ++ record_params R)).
+        { rewrite !List.length_app, List.length_firstn, length_record_fctx by lia; lia. }
+        pose proof (Completeness.Inductives.Model.tele_args_env_rel (record_fctx R n ++ record_params R) RC
+                      (ns ++ List.firstn n ms) (ns ++ List.firstn n ms) nil nil HRC HC0 Hlz Hgms) as HE0.
+        rewrite <- (List.app_nil_r (record_fctx R n ++ record_params R)) in HRC.
+        exact (field_type_kind R Hass Hsu HFv HTv HFk ⋅ n f U RC _ _ u Hfk ltac:(constructor) HRC HE0 Eu). }
+      assert (mk = r) as ->.
+      { pose proof (HFk n) as Hfkn; unfold glu_term_value in Emk; rewrite Hkak in Emk.
+        unfold record_field_kind in *.
+        destruct (List.nth n (record_field_kinds R) ak_relevant) eqn:Erk; inversion Hfkn.
+        - eapply functional_eval_exp; [ exact Emk | apply Hev; constructor ].
+        - rewrite Emk; symmetry; apply Hpv; reflexivity. }
+      pose proof (record_fields_env_closed R ns (List.firstn n ms) Hlns) as Efe.
+      rewrite List.length_firstn, Nat.min_l in Efe by lia; rewrite <- Efe in Eu.
       pose proof (HgF0 n f U (List.firstn n ms) u Hfk Hpre Eu) as Hgu.
       pose proof (glu_univ_elem_resp_per_univ_at _ _ _ _ _ _ Hgu Htu) as Hgak.
       assert (HFPk : Δ ⊢ U[sb_of_list Id (List.map (fun N => N[σ]) Ns ++ List.firstn n (List.map (fun N => N[σ]) Ms))]
@@ -368,7 +550,9 @@ Section RecordAt.
     (* the projection is the field, at the field's type at the projections *)
     destruct (tuple_proj_eq _ _ _ _ _ _ _ _ _ Ht HTeq Hrt Hl Hn HNt Hfs HMt k f M U Hk Hfk) as [HUU HPM].
     assert (HUUσ : Δ ⊢ U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))][σ]
-                     ≈ U[sb_of_list Id (Ns ++ List.firstn k Ms)][σ] : (record_sort R)[sb_of_list Id Ns][σ]) by mauto 3.
+                     ≈ U[sb_of_list Id (Ns ++ List.firstn k Ms)][σ]
+                     : (abs_kind_sort (record_field_kind R k) (record_sort R)[sb_of_list Id Ns])[σ]) by mauto 3.
+    rewrite abs_kind_sort_sub in HUUσ.
     assert (HPMσ : Δ ⊢ (a_proj f (a_tuple T fs))[σ] ≈ M[σ] : U[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))][σ])
       by mauto 3.
     change ((a_proj f (a_tuple T fs))[σ]) with (a_proj f (a_tuple T fs)[σ]) in HPMσ.
@@ -377,7 +561,13 @@ Section RecordAt.
       record_pre_sub in HUUσ, HPMσ.
     rewrite (record_field_sub R k f U Ns (List.firstn k Ms) σ Hc Hfk Hn ltac:(unfold Ms; rewrite List.length_firstn, List.length_map; lia)),
       <- List.firstn_map in HUUσ.
-    assert (HUUi := wf_exp_eq_subtyp' _ _ _ _ _ _ _ HUUσ Hsort1).
+    pose proof (Hkind k f U u Hfk Eu) as Hku.
+    assert (HUUi : Δ ⊢ U[sb_of_list Id (List.map (fun N => N[σ]) Ns ++ record_pre R k (a_tuple T fs)[σ])]
+                     ≈ U[sb_of_list Id (List.map (fun N => N[σ]) Ns ++ List.firstn k (List.map (fun N => N[σ]) Ms))]
+                     : abs_kind_sort (domain_kind u) Typeω@(large_level i)).
+    { rewrite Hku; pose proof (HFk k) as Hfkk; revert HUUσ.
+      destruct (record_field_kind R k); inversion Hfkk; cbn [abs_kind_sort]; intros HUUσ;
+        first [ exact (wf_exp_eq_subtyp' _ _ _ _ _ _ _ HUUσ Hsort1) | exact HUUσ ]. }
     pose proof (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hgu _ _ _ _ _ HGk (symmetry HUUi)) as HG1.
     pose proof (glu_univ_elem_trm_resp_exp_eq _ _ _ _ Hgu _ _ _ _ _ HG1 (symmetry HPMσ)) as HG2.
     pose proof (glu_univ_elem_exp_monotone _ _ _ _ Hgu _ _ _ _ _ _ HG2 Hφ) as HG3.
@@ -393,6 +583,7 @@ Section RecordAt.
     assert (Htφ : Δ' ⊢ (a_tuple T fs)[σ][φ]ʷ : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) (List.map (fun N => N[σ]) Ns)))
       by (rewrite <- wk_apps_record; mauto 3).
     assert (Hrt' : Δ' ⊢ a_record p : record_ty R) by (gen_presups; eapply wf_record_own_apps; eassumption).
+    rewrite Hku.
     eapply record_field_params_cong;
       [ exact Htφ | exact Hrt' | exact Hl | exact (params_glu_len _ _ _ _ Htop2) | rewrite <- HlN; exact (params_glu_len _ _ _ _ Htop2)
       | exact (params_glu_typ _ _ _ _ Htop2) | exact HNN | exact Hsort2 | exact Hfk ].
@@ -414,7 +605,7 @@ Section RecordAt.
   Proof.
     intros * Ht HTeq Hrt Hn HNt Hfs HF.
     set (n := List.length (record_fields R)) in *.
-    pose proof HF as [L1 L2 HFk].
+    pose proof HF as [L1 L2 HFg].
     rewrite List.length_map, length_record_fctx in L1 by lia.
     rewrite length_record_fctx in L2 by lia.
     (** The fields, typed at the record's fields at [Ns]. *)
@@ -426,16 +617,17 @@ Section RecordAt.
       { rewrite length_tele_insts by apply record_fctx_ass; rewrite length_record_fctx, List.length_map by lia; lia. }
       pose proof (glu_args_typed _ _ _ _ _ _ (record_fctx_ass _ _) HF k M T0
                     ltac:(rewrite List.nth_error_map, Hk; reflexivity) HT0) as HM.
-      destruct (tele_insts_nth _ _ _ _ _ HT0) as (A1 & HA1 & ->).
+      destruct (tele_insts_nth _ _ _ _ _ HT0) as (κ1 & A1 & HA1 & ->).
       rewrite Completeness.Records.Model.rev_record_fctx, List.firstn_all2 in HA1
         by (rewrite Completeness.Records.Model.length_field_tele; lia).
-      unfold Completeness.Records.Model.field_tele in HA1; rewrite List.nth_error_map, Hfk in HA1; cbn in HA1; injection HA1 as <-.
+      destruct (Completeness.Records.Model.field_tele_nth _ _ _ _ HA1) as (f1 & Hf1 & _).
+      rewrite Hfk in Hf1; injection Hf1 as _ <-.
       rewrite <- sb_of_list_app in HM; exact HM. }
     constructor; [ rewrite length_record_pre, length_record_fctx by lia; reflexivity | rewrite length_record_fctx by lia; exact L2 |].
-    intros k M U' v A HM HT Hv HA.
+    intros k M U' v κ A HM HT Hv HA.
     rewrite Completeness.Records.Model.rev_record_fctx, List.firstn_all2 in HA
       by (rewrite Completeness.Records.Model.length_field_tele; lia).
-    destruct (Completeness.Records.Model.field_tele_nth _ _ _ HA) as [f Hf].
+    destruct (Completeness.Records.Model.field_tele_nth _ _ _ _ HA) as (f & Hf & Hκ).
     assert (Hkn : k < n) by exact (nth_error_lt_length _ _ _ Hf).
     destruct (nth_error_lt_some' fs k ltac:(lia)) as [[g Mk] Hk].
     assert (g = f) as ->.
@@ -443,22 +635,22 @@ Section RecordAt.
       rewrite Hfs in E1; rewrite E1 in E2; injection E2 as ->; reflexivity. }
     unfold record_pre in HM; rewrite List.firstn_all2 in HM by lia.
     rewrite List.nth_error_map, Hf in HM; cbn in HM; injection HM as <-.
-    destruct (tele_insts_nth _ _ _ _ _ HT) as (A1 & HA1 & ->).
+    destruct (tele_insts_nth _ _ _ _ _ HT) as (κ1 & A1 & HA1 & ->).
     rewrite Completeness.Records.Model.rev_record_fctx, List.firstn_all2 in HA1
       by (rewrite Completeness.Records.Model.length_field_tele; lia).
-    unfold Completeness.Records.Model.field_tele in HA1; rewrite List.nth_error_map, Hf in HA1; cbn in HA1; injection HA1 as <-.
+    rewrite HA in HA1; injection HA1 as <- <-.
     rewrite <- sb_of_list_app.
     replace (List.firstn k (record_pre R n (a_tuple T fs))) with (record_pre R k (a_tuple T fs))
       by (unfold record_pre; rewrite List.firstn_map, List.firstn_firstn, Nat.min_l by lia; reflexivity).
     (** The field's own gluing. *)
     destruct (nth_error_lt_some' (tele_insts (record_fctx R n) (sb_of_list Id Ns) (List.map snd fs)) k) as [T0 HT0].
     { rewrite length_tele_insts by apply record_fctx_ass; rewrite length_record_fctx, List.length_map by lia; lia. }
-    assert (HA0 : List.nth_error (List.rev (record_fctx R n)) k = Some (ce_ass A)).
+    assert (HA0 : List.nth_error (List.rev (record_fctx R n)) k = Some (ce_ass κ A)).
     { rewrite Completeness.Records.Model.rev_record_fctx, List.firstn_all2
         by (rewrite Completeness.Records.Model.length_field_tele; lia); exact HA. }
-    pose proof (HFk k Mk T0 v A ltac:(rewrite List.nth_error_map, Hk; reflexivity) HT0 Hv HA0) as [lv a P El Ea Hga HP HMg].
-    destruct (tele_insts_nth _ _ _ _ _ HT0) as (A1 & HA1 & ->).
-    rewrite HA0 in HA1; injection HA1 as <-.
+    pose proof (HFg k Mk T0 v κ A ltac:(rewrite List.nth_error_map, Hk; reflexivity) HT0 Hv HA0) as [lv a P El Ea Hga HP HMg].
+    destruct (tele_insts_nth _ _ _ _ _ HT0) as (κ1 & A1 & HA1 & ->).
+    rewrite HA0 in HA1; injection HA1 as <- <-.
     rewrite <- sb_of_list_app in HP, HMg.
     (** Field-β, at a universe. *)
     destruct (tuple_proj_eq _ _ _ _ _ _ _ _ _ Ht HTeq Hrt Hl Hn HNt Hfs HMt k f Mk A Hk Hf) as [HUU HPM].
@@ -471,13 +663,25 @@ Section RecordAt.
       rewrite <- (List.app_nil_r (record_params R)).
       eapply wf_sub_of_list; [ exact (typed_params_ass _ _ _ HRt) | rewrite List.app_nil_r; exact HPw
                              | exact (wf_sub_to_nil _ _ _ HΔ) | exact Hn | exact HNt ]. }
-    destruct (wf_exp_eq_is_univ_large HSs HUU) as [j HUUj].
+    (** The two types are equal at the field's kind, at a universe. *)
+    assert (HUUj : exists j : nat, Δ ⊢ A[sb_of_list Id (Ns ++ record_pre R k (a_tuple T fs))]
+                     ≈ A[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))] : abs_kind_sort κ Typeω@j).
+    { subst κ; pose proof (HFk k) as Hfkk; revert HUU.
+      destruct (record_field_kind R k); inversion Hfkk; cbn [abs_kind_sort]; intros HUU;
+        first [ exact (wf_exp_eq_is_univ_large HSs HUU) | exists 0; exact HUU ]. }
+    destruct HUUj as [j HUUj].
+    (** The field's type's value is of the field's kind. *)
+    assert (Hka : domain_kind a = κ).
+    { destruct (presup_exp_eq HUUj) as (_ & _ & HAr & _).
+      exact (proj1 (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hga HP HAr)). }
     set (nn := Nat.max (large_level lv) j).
     assert (Hle : universe_index_le lv (ul nn)) by (apply universe_index_le_ul_max; unfold nn; lia).
     destruct (glu_univ_elem_cumu_ge_universe_index Hle Hga) as (Pn & Eln & Hgn).
     pose proof (glu_univ_elem_typ_cumu_ge_universe_index Hle Hga Hgn HP) as HPn.
     pose proof (glu_univ_elem_exp_cumu_ge_universe_index Hle Hga Hgn HMg) as HMn.
-    pose proof (lift_exp_eq_ge _ _ _ _ _ j nn ltac:(unfold nn; lia) HUUj) as HUUn.
+    assert (Hjn : j <= nn) by (unfold nn; lia).
+    pose proof (lift_kind_sort_eq_ge Hjn HUUj) as HUUn.
+    rewrite <- Hka in HUUn.
     refine (mk_glu_arg _ _ _ _ _ _ (ul nn) a Pn Eln Ea Hgn _ _).
     - exact (glu_univ_elem_typ_resp_exp_eq _ _ _ _ Hgn _ _ _ HPn (wf_exp_eq_sym _ _ _ _ _ _ HUUn)).
     - pose proof (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hgn _ _ _ _ _ HMn (wf_exp_eq_sym _ _ _ _ _ _ HUUn)) as H1.
@@ -495,14 +699,15 @@ Section RecordAt.
       DG d_record p ns ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ W ® P -> Δ ⊢ M : W ->
       glu_args Δ (record_params R) Id nil Ns ns ->
       Dom m ≈ m ∈ record_rel R (canon_fields_rel R ns) -> record_projs R m ms ->
-      glu_args Δ (record_fctx R (List.length (record_fields R))) (sb_of_list Id Ns) (env_args nil ns)
+      glu_args Δ (record_fctx R (List.length (record_fields R))) (sb_of_list Id Ns) (env_tele nil (List.rev (record_params R)) ns)
         (record_pre R (List.length (record_fields R)) M) ms ->
       Δ ⊢ M : W ® m ∈ El.
   Proof.
     intros * Hglu HW HM HNs Hm Hvs HF.
     assert (HΔ : ⊢ Δ) by (gen_presups; assumption).
     assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
-    destruct (glu_args_length _ _ _ _ _ _ HNs) as [LN _].
+    destruct (glu_args_length _ _ _ _ _ _ HNs) as [LN LNv].
+    pose proof (glu_args_per_tele_args _ _ _ _ _ _ Hass HNs) as Hgp.
     invert_glu_univ_elem Hglu.
     match goal with H : record_lookup _ _ p = Some ?R0 |- _ => assert_fails constr_eq R0 R; rewrite Hl in H; injection H as <- end.
     match goal with H0 : per_univ_elem _ _ (d_record p ns) (d_record p ns) |- _ => rename H0 into Hper end.
@@ -516,7 +721,7 @@ Section RecordAt.
     destruct (proj1 (HPP _ _) HW) as [Ns0 HNs0].
     assert (HTat : record_typ_at p R ns FP FEl Typeω@(large_level i) Δ W Ns).
     { eapply record_typ_at_params_change;
-        [ exact Hl | intros n0; destruct (Htop n0) as (Cs & HCs & _); exists Cs; exact HCs | | exact HNs0 ].
+        [ exact Hl | intros n0; destruct (Htop n0) as [Cs ? HCs _ _]; exists Cs; exact HCs | | exact HNs0 ].
       intros Δ' φ Hφ; apply glu_args_params_glu_top; [ exact Hass | exact (closed_params _ Hc) |].
       eapply glu_args_wk; [ exact Hass | exact (closed_params _ Hc) | exact Hφ | exact HNs ]. }
     destruct (record_typ_wk _ _ _ _ _ _ _ _ _ HTat Δ wk_id Hid) as [Htop1 Hsort1 Hfg1].
@@ -534,23 +739,23 @@ Section RecordAt.
       destruct (Nat.lt_ge_cases k n0) as [Hkn' | Hkn']; [ exact (IH _ _ _ _ Hkn' Hfk Hr) |].
       assert (k = n0) as -> by lia; clear Hkn Hkn'.
       assert (Hlt : n0 < n) by exact (nth_error_lt_length _ _ _ Hfk).
-      pose proof HF as [L1 L2 HFk].
+      pose proof HF as [L1 L2 HFg].
       assert (HM0 : List.nth_error (record_pre R n M) n0 = Some (a_proj f M))
         by (unfold record_pre; rewrite List.firstn_all2 by lia; rewrite List.nth_error_map, Hfk; reflexivity).
-      assert (HA0 : List.nth_error (List.rev (record_fctx R n)) n0 = Some (ce_ass U)).
+      assert (HA0 : List.nth_error (List.rev (record_fctx R n)) n0 = Some (ce_ass (record_field_kind R n0) U)).
       { rewrite Completeness.Records.Model.rev_record_fctx, List.firstn_all2
           by (rewrite Completeness.Records.Model.length_field_tele; lia).
-        unfold Completeness.Records.Model.field_tele; rewrite List.nth_error_map, Hfk; reflexivity. }
+        exact (Completeness.Records.Model.field_tele_nth_of _ _ _ _ Hfk). }
       destruct (nth_error_lt_some' (tele_insts (record_fctx R n) (sb_of_list Id Ns) (record_pre R n M)) n0) as [T0 HT0].
       { rewrite length_tele_insts by apply record_fctx_ass; rewrite length_record_fctx, length_record_pre by lia; lia. }
-      pose proof (HFk _ _ _ _ _ HM0 HT0 Hr HA0) as [j' a P' El' Ea Hg' HP' HM'].
-      destruct (tele_insts_nth _ _ _ _ _ HT0) as (A1 & HA1 & ->).
-      rewrite HA0 in HA1; injection HA1 as <-.
+      pose proof (HFg _ _ _ _ _ _ HM0 HT0 Hr HA0) as [j' a P' El' Ea Hg' HP' HM'].
+      destruct (tele_insts_nth _ _ _ _ _ HT0) as (κ1 & A1 & HA1 & ->).
+      rewrite HA0 in HA1; injection HA1 as <- <-.
       rewrite <- sb_of_list_app in HP', HM'.
       replace (List.firstn n0 (record_pre R n M)) with (record_pre R n0 M) in HP', HM'
         by (unfold record_pre; rewrite List.firstn_map, List.firstn_firstn, Nat.min_l by lia; reflexivity).
       pose proof (record_projs_prefix_diag _ _ _ _ n0 Hm Hvs ltac:(lia)) as Hpre.
-      rewrite <- env_args_app in Ea.
+      rewrite <- (record_fields_env_tele ns (List.firstn n0 ms) n) in Ea by (rewrite ?List.length_firstn; lia).
       pose proof (HgF0 n0 f U (List.firstn n0 ms) a Hfk Hpre Ea) as Hgu.
       assert (HFPk : Δ ⊢ U[sb_of_list Id (Ns ++ record_pre R n0 M)] ® FP n0 (List.firstn n0 ms)).
       { apply (Hfg n0 f U (record_pre R n0 M) (List.firstn n0 ms) Hfk);
@@ -574,6 +779,8 @@ Section RecordAt.
     pose proof (record_projs_prefix_diag _ _ _ _ k Hm Hvs ltac:(lia)) as Hpre.
     destruct (HeT0 k f U (List.firstn k ms) Hfk Hpre) as [u Eu].
     pose proof (HgF0 k f U (List.firstn k ms) u Hfk Hpre Eu) as Hgu.
+    pose proof (record_field_type_kind ns (List.firstn k ms) k f U u Hgp ltac:(lia) Hpre
+                  ltac:(rewrite List.length_firstn; lia) Hfk Eu) as Hku.
     pose proof (glu_univ_elem_exp_monotone _ _ _ _ Hgu _ _ _ _ _ _ HGk Hφ) as HG3.
     change ((a_proj f M)[φ]ʷ) with (a_proj f M[φ]ʷ) in HG3.
     rewrite (record_field_wk R k f U Ns (record_pre R k M) φ Hc Hfk LN ltac:(apply length_record_pre; lia)), record_pre_wk in HG3.
@@ -584,7 +791,10 @@ Section RecordAt.
       by (eapply wf_conv'; [ exact HM | exact (record_typ_eq _ _ _ _ _ _ _ _ _ HTat) ]).
     assert (Htφ : Δ' ⊢ M[φ]ʷ : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns))
       by (rewrite <- wk_apps_record; mauto 3).
-    assert (Hrt' : Δ' ⊢ a_record p : record_ty R) by (gen_presups; eapply wf_record_own_apps; eassumption).
+    assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
+    assert (Hrt' : Δ' ⊢ a_record p : record_ty R)
+      by exact (record_typed_former _ _ _ _ _ (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl) Hl HΔ').
+    rewrite Hku.
     eapply record_field_params_cong;
       [ exact Htφ | exact Hrt' | exact Hl | exact (params_glu_len _ _ _ _ Htop2) | rewrite <- HlN; exact (params_glu_len _ _ _ _ Htop2)
       | exact (params_glu_typ _ _ _ _ Htop2) | exact HNN | exact Hsort2 | exact Hfk ].
@@ -608,15 +818,12 @@ Section RecordAt.
     (** The type former, in every context. *)
     Lemma record_former_wf : forall Δ, ⊢ Δ -> Δ ⊢ a_record p : record_ty R.
     Proof.
-      intros Δ HΔ.
-      eapply wf_record; [ exact HΔ | exact Hl | exact (typed_nodup _ _ _ Ht) | exact Hass | exact Hty
-                        | exact (record_typed_fctx_wf _ _ _ Ht _ (le_n _)) | exact (typed_sort _ _ _ Ht)
-                        | exact (typed_fields _ _ _ Ht) ].
+      intros Δ HΔ; exact (record_typed_former _ _ _ _ _ Ht Hl HΔ).
     Qed.
 
     (** Arguments glued along the parameters: a glued substitution. *)
     Lemma record_params_glu_sub : forall Δ Ms vs Sb, ⊢ Δ -> EG record_params R ∈ glu_ctx_env ↘ Sb ->
-        glu_args Δ (record_params R) Id nil Ms vs -> Δ ⊢ˢ sb_of_list Id Ms ® env_args nil vs ∈ Sb.
+        glu_args Δ (record_params R) Id nil Ms vs -> Δ ⊢ˢ sb_of_list Id Ms ® env_tele nil (List.rev (record_params R)) vs ∈ Sb.
     Proof.
       intros * HΔ HSb Hgs.
       eapply glu_sub_of_list with (C := record_params R) (Γ0 := ⋅) (Sb0 := nil_glu_sub_pred);
@@ -626,7 +833,7 @@ Section RecordAt.
 
     (** The sort at glued parameters is below the universe it denotes. *)
     Lemma record_sort_le : forall Δ Ms vs b, ⊢ Δ -> glu_args Δ (record_params R) Id nil Ms vs ->
-        ⟦ record_sort R ⟧ env_args nil vs ↘ b ->
+        ⟦ record_sort R ⟧ env_tele nil (List.rev (record_params R)) vs ↘ b ->
         Δ ⊢ (record_sort R)[sb_of_list Id Ms] ⊆ Typeω@(large_level (Completeness.Inductives.Decl.univ_idx b)).
     Proof.
       intros * HΔ Hgs Hb.
@@ -644,14 +851,21 @@ Section RecordAt.
     (** A type over the parameters and a prefix [Pre], at the sort shifted
         past [Pre], glued at a glued substitution: its value is glued at the
         universe the sort denotes at the parameters' values. *)
-    Lemma record_sort_typ_glued : forall Pre A Sb Δ σ vs zs bu, ⊢ Pre ++ record_params R -> List.length zs = List.length Pre ->
-        ⟦ record_sort R ⟧ env_args nil vs ↘ bu ->
-        EG Pre ++ record_params R ∈ glu_ctx_env ↘ Sb -> Pre ++ record_params R ⊩ A : (record_sort R)[wk_shiftn (List.length Pre)]ʷ ->
-        Δ ⊢ˢ σ ® env_args nil (vs ++ zs) ∈ Sb ->
-        exists a, ⟦ A ⟧ env_args nil (vs ++ zs) ↘ a /\ Dom a ≈ a ∈ per_univ (Completeness.Inductives.Decl.univ_idx bu) /\
+    Lemma record_sort_typ_glued : forall Pre A Sb Δ σ vs zs bu κ, ⊢ Pre ++ record_params R -> List.length zs = List.length Pre ->
+        List.length vs = List.length (record_params R) ->
+        ⟦ record_sort R ⟧ env_tele nil (List.rev (record_params R)) vs ↘ bu -> field_kind κ ->
+        EG Pre ++ record_params R ∈ glu_ctx_env ↘ Sb ->
+        Pre ++ record_params R ⊩ A : abs_kind_sort κ (record_sort R)[wk_shiftn (List.length Pre)]ʷ ->
+        Δ ⊢ˢ σ ® env_tele nil (List.rev (Pre ++ record_params R)) (vs ++ zs) ∈ Sb ->
+        exists a, ⟦ A ⟧ env_tele nil (List.rev (Pre ++ record_params R)) (vs ++ zs) ↘ a /\ Dom a ≈ a ∈ per_univ (Completeness.Inductives.Decl.univ_idx bu) /\
           forall P El, DG a ∈ glu_univ_elem (Completeness.Inductives.Decl.univ_idx bu) ↘ P ↘ El -> Δ ⊢ A[σ] ® P.
     Proof.
-      intros * HPre Hzs Hbu HSb HA Hσ.
+      intros * HPre Hzs Hlvs Hbu Hκ HSb HA Hσ.
+      (** A proposition: a type of every index. *)
+      destruct κ; inversion Hκ; cbn [abs_kind_sort] in HA.
+      2:{ destruct (glu_rel_exp_prop_inversion HSb HA _ _ _ Hσ) as (a & Ha & Hpa & HP).
+          exists a; split; [ exact Ha | split; [ eexists; exact (per_univ_elem_of_prop _ _ _ Hpa) |] ].
+          intros P El Hglu; destruct (glu_univ_elem_prop_inv _ _ _ _ Hpa Hglu) as [HPe _]; apply HPe; exact HP. }
       destruct (wf_is_univ_typ (typed_sort _ _ _ Ht)) as [iS HS].
       destruct Hsu as [[j Heq] | [t Heq]]; rewrite Heq in HA, HS, Hbu; cbn [exp_wk] in HA.
       - destruct (glu_rel_exp_of_univ_inversion (u := ul j) HSb HA _ _ _ Hσ) as (_ & a & Ha & Hpa & HP & _).
@@ -664,10 +878,12 @@ Section RecordAt.
           assert (HSs : record_params R ⊨ Type⟨t⟩ : Typeω@iS) by (apply completeness_fundamental_exp; exact HS).
           destruct (rel_ctx_wf_per_ctx_env HCs) as [RC HRC].
           pose proof (glu_ctx_env_per_env HSb HRC Hσ) as HE.
-          assert (Eb : ⟦ Type⟨t⟩[wk_shiftn (List.length Pre)]ʷ ⟧ env_args nil (vs ++ zs) ↘ d_suniv l)
+          assert (Eb : ⟦ Type⟨t⟩[wk_shiftn (List.length Pre)]ʷ ⟧ env_tele nil (List.rev (Pre ++ record_params R)) (vs ++ zs) ↘ d_suniv l)
             by (cbn [exp_wk]; econstructor; exact Hlv).
-          assert (Ea : ⟦ Type⟨t⟩ ⟧ ⟪wk_shiftn (List.length Pre)⟫ (env_args nil (vs ++ zs)) ↘ bu)
-            by (rewrite env_args_app, <- Hzs, Completeness.UnitCases.eval_wk_shiftn_args; exact Hbu).
+          assert (Hlvs' : List.length vs = List.length (List.rev (record_params R))) by (rewrite List.length_rev; exact Hlvs).
+          assert (Ea : ⟦ Type⟨t⟩ ⟧ ⟪wk_shiftn (List.length Pre)⟫ (env_tele nil (List.rev (Pre ++ record_params R)) (vs ++ zs)) ↘ bu)
+            by (rewrite List.rev_app_distr, env_tele_app, <- Hzs, Completeness.Inductives.Decl.eval_wk_shiftn_env_tele by exact Hlvs';
+                exact Hbu).
           pose proof (Completeness.Inductives.Decl.univ_idx_wk _ _ _ _ _ _ _ _ _ HCs HSs HRC HE Eb Ea ltac:(right; eauto)) as Hi.
           rewrite Hi; reflexivity. }
         rewrite Hidx; split; [ exact Hpa | exact HP ].
@@ -676,12 +892,12 @@ Section RecordAt.
     (** The fields at glued parameters are glued at the families of the
         clause of [d_record] at the universe the sort denotes. *)
     Lemma record_fields_glu_of_args : forall Δ Ns vs b (u : universe_index) FP FEl, ⊢ Δ ->
-        glu_args Δ (record_params R) Id nil Ns vs -> ⟦ record_sort R ⟧ env_args nil vs ↘ b ->
+        glu_args Δ (record_params R) Id nil Ns vs -> ⟦ record_sort R ⟧ env_tele nil (List.rev (record_params R)) vs ↘ b ->
         universe_index_le (Completeness.Inductives.Decl.univ_idx b) u ->
         (forall k f T ws, List.nth_error (record_fields R) k = Some (f, T) ->
-           tele_prefix_rel (canon_fields_rel R vs) k ws ws -> exists c, ⟦ T ⟧ env_args nil (vs ++ ws) ↘ c) ->
+           tele_prefix_rel (canon_fields_rel R vs) k ws ws -> exists c, ⟦ T ⟧ record_fields_env R vs ws ↘ c) ->
         (forall k f T ws c, List.nth_error (record_fields R) k = Some (f, T) ->
-           tele_prefix_rel (canon_fields_rel R vs) k ws ws -> ⟦ T ⟧ env_args nil (vs ++ ws) ↘ c ->
+           tele_prefix_rel (canon_fields_rel R vs) k ws ws -> ⟦ T ⟧ record_fields_env R vs ws ↘ c ->
            DG c ∈ glu_univ_elem u ↘ FP k ws ↘ FEl k ws) ->
         record_fields_glu R vs FP FEl Δ Ns.
     Proof.
@@ -692,30 +908,31 @@ Section RecordAt.
       pose proof (record_typed_fctx_wf _ _ _ Ht k ltac:(lia)) as HCk.
       pose proof (length_record_fctx R k ltac:(lia)) as HlenF.
       destruct (glu_args_length _ _ _ _ _ _ HNs) as [LN Lv].
-      assert (Hσ : Δ ⊢ˢ sb_of_list Id (Ns ++ Mfs) ® env_args nil (vs ++ mfs) ∈ Sbk).
+      assert (Hσ : Δ ⊢ˢ sb_of_list Id (Ns ++ Mfs) ® env_tele nil (List.rev (record_fctx R k ++ record_params R)) (vs ++ mfs) ∈ Sbk).
       { eapply glu_sub_of_list with (C := record_fctx R k ++ record_params R) (Γ0 := ⋅) (Sb0 := nil_glu_sub_pred);
           [ exact HassC | rewrite List.app_nil_r; exact HSbk | econstructor; [ reflexivity | exact Hg ]
           | cbn; apply wf_sub_nil'; exact HΔ |].
         apply glu_args_app; [ exact Hass | exact LN | exact Lv |].
         split; [ exact HNs |].
         constructor; [ lia | lia |].
-        intros j M T' v A HM HT' Hv HA.
+        intros j M T' v κ A HM HT' Hv HA.
         assert (Hj : j < k) by (pose proof (nth_error_lt_length _ _ _ HM); lia).
-        destruct (tele_insts_nth _ _ _ _ _ HT') as (A0 & HA0 & ->).
-        rewrite HA in HA0; injection HA0 as <-.
+        destruct (tele_insts_nth _ _ _ _ _ HT') as (κ0 & A0 & HA0 & ->).
+        rewrite HA in HA0; injection HA0 as <- <-.
         rewrite rev_record_fctx, nth_error_firstn_lt in HA by exact Hj.
-        unfold field_tele in HA; rewrite List.nth_error_map in HA.
-        destruct (List.nth_error (record_fields R) j) as [[g Tj] |] eqn:Hj'; cbn in HA; [ injection HA as <- | discriminate ].
+        destruct (field_tele_nth _ _ _ _ HA) as (g & Hj' & _).
         pose proof (tele_prefix_rel_of_pre _ _ _ _ j Hp ltac:(lia)) as Hpj.
-        destruct (HeT j g Tj (List.firstn j mfs) Hj' Hpj) as [c Ec].
+        destruct (HeT j g A (List.firstn j mfs) Hj' Hpj) as [c Ec].
         pose proof (HgF _ _ _ _ _ Hj' Hpj Ec) as Hgc.
-        pose proof (HMs j g Tj M v Hj' HM Hv) as HMg.
+        pose proof (HMs j g A M v Hj' HM Hv) as HMg.
         rewrite <- sb_of_list_app.
         apply (mk_glu_arg _ _ _ _ _ _ u c (FP j (List.firstn j mfs)) (FEl j (List.firstn j mfs)));
-          [ rewrite <- env_args_app; exact Ec | exact Hgc | eapply glu_univ_elem_trm_typ; eassumption | exact HMg ]. }
-      destruct (record_sort_typ_glued (record_fctx R k) T Sbk Δ _ vs mfs b HCk ltac:(lia) Hb HSbk
+          [ rewrite <- (record_fields_env_tele vs (List.firstn j mfs) k) by (rewrite ?List.length_firstn; lia); exact Ec
+          | exact Hgc | eapply glu_univ_elem_trm_typ; eassumption | exact HMg ]. }
+      destruct (record_sort_typ_glued (record_fctx R k) T Sbk Δ _ vs mfs b _ HCk ltac:(lia) Lv Hb (HFk k) HSbk
                   ltac:(rewrite HlenF; exact HTk) Hσ) as (a & Ha & Hpa & HP).
       destruct (per_univ_glu_univ_elem _ _ Hpa) as (P0 & El0 & Hg0).
+      pose proof (record_fields_env_closed R vs mfs Lv) as Efe; rewrite Hml in Efe; rewrite <- Efe in Ha.
       exact (glu_univ_elem_typ_cumu_ge_universe_index Hub Hg0 (HgF _ _ _ _ _ Hk Hp Ha) (HP _ _ Hg0)).
     Qed.
 
@@ -723,7 +940,7 @@ Section RecordAt.
         at them. *)
     Lemma record_former_base : forall Δ Ms vs (i : nat) b P El, ⊢ Δ ->
         glu_args Δ (record_params R) Id nil Ms vs ->
-        ⟦ record_sort R ⟧ env_args nil vs ↘ b -> DG b ∈ glu_univ_elem i ↘ P ↘ El ->
+        ⟦ record_sort R ⟧ env_tele nil (List.rev (record_params R)) vs ↘ b -> DG b ∈ glu_univ_elem i ↘ P ↘ El ->
         (forall Rr, DF b ≈ b ∈ per_univ_elem i ↘ Rr -> Rr (d_record p vs) (d_record p vs)) ->
         Δ ⊢ apps_exp (a_record p) Ms : (record_sort R)[sb_of_list Id Ms] ® d_record p vs ∈ El.
     Proof.
@@ -740,7 +957,7 @@ Section RecordAt.
       assert (Hub : Completeness.Inductives.Decl.is_univ b)
         by (destruct Hsu as [[j Heq] | [t Heq]]; rewrite Heq in Hb; cbn in Hb; inversion Hb; [ left | right ]; eauto).
       destruct (Completeness.Inductives.Decl.per_univ_elem_univ _ _ _ _ HRb Hub) as [_ HRb'].
-      apply HRb' in Hdrec; destruct Hdrec as [R' HR'].
+      apply HRb' in Hdrec; destruct Hdrec as [[R' HR'] _].
       destruct (per_univ_glu_univ_elem _ _ (ex_intro _ R' HR')) as (Pd & Eld & Hglud).
       pose proof Hglud as Hglud'; invert_glu_univ_elem Hglud'.
       match goal with H : record_lookup _ _ p = Some ?R0 |- _ => rewrite Hl in H; injection H as <- end.
@@ -780,7 +997,11 @@ Section RecordAt.
         + intros Δ' φ W Hφ HW.
           inversion HW; subst.
           match goal with H : record_lookup _ _ p = Some ?R1 |- _ => rewrite Hl in H; injection H as <- end.
-          match goal with HR : Rps vs at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Rs |- _ => pose proof (HMr _ _ _ Hφ HR) as [HRl HRs] end.
+          match goal with HR : Rps vs at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Rs |- _ =>
+            pose proof (HMr _ _ _ Hφ HR) as (Ps' & EPs & HRl & HRs) end.
+          exists (nf_record p Ps'); split.
+          { unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; rewrite dec_eqb_refl; exact EPs. }
+          cbn [nf_annotate_proofs].
           assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
           assert (Hsw : (record_sort R)[sb_of_list Id Ms][φ]ʷ = (record_sort R)[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ms)]).
           { rewrite <- exp_sub_of_wk, (record_sort_sub _ _ _ Hc HMl); f_equal; f_equal.
@@ -798,7 +1019,7 @@ Section RecordAt.
         gluing of the record type at them, at a universe above the sort's
         value there. *)
     Lemma record_typ_glu : forall Δ Ms vs b (i : nat) P El, ⊢ Δ -> glu_args Δ (record_params R) Id nil Ms vs ->
-        ⟦ record_sort R ⟧ env_args nil vs ↘ b -> universe_index_le (Completeness.Inductives.Decl.univ_idx b) i ->
+        ⟦ record_sort R ⟧ env_tele nil (List.rev (record_params R)) vs ↘ b -> universe_index_le (Completeness.Inductives.Decl.univ_idx b) i ->
         DG d_record p vs ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ apps_exp (a_record p) Ms ® P.
     Proof.
       intros * HΔ HMs Hb Hbi Hglu.
@@ -840,7 +1061,11 @@ Section RecordAt.
       assert (Hty0 : ⋅ ⊢ a_record p : record_ty R) by (apply record_former_wf; constructor; exact Hg).
       destruct (rel_exp_under_ctx_simple (completeness_fundamental_exp _ _ _ Hty0)) as (env_rel & Henv & j & Hsimp).
       assert (Hnil : env_rel nil nil) by (inversion Henv; subst; match goal with H : _ <~> _ |- _ => apply H; exact I end).
-      destruct (Hsimp _ _ Hnil) as (a1 & a2 & R1 & Ha1 & Ha2 & HR1 & m1 & m2 & Hm1 & Hm2 & Hmm).
+      destruct (Completeness.ContextCases.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hty) _ Henv _ _ Hnil)
+        as (a0 & Ea0 & Hk0).
+      destruct (Hsimp _ _ Hnil) as (a1 & a2 & R1 & Ha1 & Ha2 & HR1 & [Hp | (m1 & m2 & Hm1 & Hm2 & Hmm)]).
+      { (* the type of a type former is relevant *)
+        assert (a1 = a0) as -> by (eapply functional_eval_exp; eassumption); congruence. }
       assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
       assert (a2 = a) as -> by (eapply functional_eval_exp; eassumption).
       inversion Hm1; subst; inversion Hm2; subst.
@@ -892,6 +1117,7 @@ Section RecordAt.
         apply (glu_args_closed_base _ _ _ Id _ _ _ Hass (closed_params _ Hc)) in Hgs.
         destruct (glu_args_length _ _ _ _ _ _ Hgs) as [HMl _].
         rewrite (record_sort_base _ _ Id HMl).
+        rewrite List.app_nil_r in Hb.
         exact (record_former_base _ _ _ _ _ _ _ HΔ' Hgs Hb Hglub HPb).
     Qed.
 
