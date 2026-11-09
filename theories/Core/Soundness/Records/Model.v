@@ -1125,4 +1125,41 @@ Section RecordAt.
 
 End RecordAt.
 
+(** ** The Fields' Context, Glued
+
+    At a glued declaration, the fields over the parameters are a glued
+    context, field by field: each is a glued type of the sort of its kind
+    next to the record's sort ([glued_fields]).  A relevant field of a
+    record whose sort is a small universe [Type⟨L⟩] is first moved to
+    [Typeω@0] by subtyping ([wf_subtyp_small_large]), as a context entry
+    is of a large universe, [Prop] or [LevelSort]. *)
+Lemma record_fctx_glued : forall R, glu_record_decl R ->
+    forall k, k <= List.length (record_fields R) -> ⊩ record_fctx R k ++ record_params R.
+Proof.
+  intros R HG; induction k as [| k IH]; intros Hk.
+  - change (record_fctx R 0) with (@nil centry); exact (glued_params _ HG).
+  - destruct (nth_error_lt_some' (record_fields R) k ltac:(lia)) as [[f T] HfT].
+    rewrite (record_fctx_succ R k f T HfT); cbn [List.app].
+    pose proof (IH ltac:(lia)) as HΓ.
+    pose proof (glued_fields _ HG k f T HfT) as HT.
+    destruct (glued_sort _ HG) as [[i Hs] | (L & n & Hs & HL)]; rewrite Hs in HT; cbn [exp_wk] in HT.
+    + exact (glu_rel_ctx_extend HΓ HT (sort_kind_abs_kind_sort _ _)).
+    + destruct (record_field_kind R k) eqn:Hκ; cbn [abs_kind_sort] in HT.
+      * (** A relevant field of a small universe: at [Typeω@0]. *)
+        destruct HΓ as [SbΓ HSbΓ].
+        pose proof (glu_ctx_env_wf_ctx HSbΓ) as HΓw.
+        pose proof (wf_wk_shiftn_app' _ _ _ _ HΓw) as Hw.
+        rewrite length_record_fctx in Hw by lia.
+        pose proof (glu_rel_exp_to_wf_exp HL) as HLt.
+        assert (HLw : record_fctx R k ++ record_params R ⊢ L[wk_shiftn k]ʷ : Level@n).
+        { replace (Level@n) with (Level@n)[wk_shiftn k]ʷ by reflexivity; mauto 3. }
+        assert (HT0 : record_fctx R k ++ record_params R ⊩ T : Typeω@0).
+        { eapply glu_rel_exp_subtyp;
+            [ exact HT | exact (glu_rel_exp_typ (ex_intro _ SbΓ HSbΓ)) | constructor
+            | eapply wf_subtyp_small_large; [ exact HΓw | exact HLw ] ]. }
+        exact (glu_rel_ctx_extend (ex_intro _ SbΓ HSbΓ) HT0 (sort_kind_universe _)).
+      * exact (glu_rel_ctx_extend HΓ HT sort_kind_prop).
+      * exact (glu_rel_ctx_extend HΓ HT sort_kind_level).
+Qed.
+
 End Fixed_GCtx.
