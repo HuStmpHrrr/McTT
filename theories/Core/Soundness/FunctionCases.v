@@ -838,7 +838,7 @@ Proof.
   glu_inst_intro.
   assert (Hq : glu_rel_sub_inst (Γ' ▹{κd} A[τ]) (q τ) (Γ ▹{κd} A)) by (eapply glu_rel_sub_inst_q; eassumption).
   (** The codomain's instance at the argument, the witness *)
-  assert (Hext : glu_rel_sub_inst Γ' (τ,,N[τ]) (Γ ▹{κd} A)).
+  assert (Hext : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) Γ' (τ,,N[τ]) (Γ ▹{κd} A)).
   { eapply glu_rel_sub_inst_extend; [ exact Hτ | eapply glu_rel_exp_under_sub_wf; eassumption | eassumption
                                     | eapply glu_rel_exp_under_sub_inst_renaming; eassumption ]. }
   rewrite <- exp_sub_extend_comm.

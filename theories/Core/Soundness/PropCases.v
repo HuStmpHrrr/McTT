@@ -20,7 +20,8 @@ From Mctt.Core.Soundness Require Import
   LogicalRelation
   SubtypingCases
   UniverseCases
-  VariableCases.
+  VariableCases
+  Instances.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -108,9 +109,8 @@ Lemma glu_nf_eq_and : forall {Γ P Q WP WQ},
     glu_nf_eq (Γ ▹{ak_propositional} P) Q WQ Propₘ ->
     glu_nf_eq Γ (Σₚ P Q) (nf_and WP WQ) Propₘ.
 Proof.
-  intros * HP (WP' & EP & HP') (WQ' & EQ & HQ').
-  exists (nf_and WP' WQ'); split; [ apply nf_and_upto_proofs; assumption |].
-  cbn; eapply wf_exp_eq_and_cong; eassumption.
+  intros * HP HP' HQ'.
+  unfold glu_nf_eq in *; cbn; eapply wf_exp_eq_and_cong; eassumption.
 Qed.
 
 (** A conjunction is glued by its readback, its second component's at the
@@ -233,17 +233,22 @@ Proof.
   econstructor; [ exact (sub_preserves_exp _ _ _ _ _ _ _ Hefq Hσt) | exact Hg | exact (HcP _ _ Hg) | |].
   - apply per_bot_neutral_at; [ exact Hn | rewrite Hk; discriminate |].
     apply per_bot_absurd; [ exact (per_univ_then_per_top_typ HRc) | exact Hpr | exact Hpr ].
-  - intros Δ' φ W Hφ HW.
+  - (** The type read back, and the proof kept read back as a proof of
+        [⊥] ([glu_kept_proof_read]) *)
+    intros Δ' φ W Hφ HW.
     inversion HW; subst.
     destruct (realize_glu_typ_top _ _ _ _ Hg Hn _ _ (HcP _ _ Hg)) as [_ _ Hrd].
     rewrite Hk in Hrd.
-    destruct (Hrd _ _ _ Hφ ltac:(eassumption)) as (C'' & EC & HCeq).
-    exists (efqⁿ M[σ][φ]ʷ return C''); split; [ unfold ne_eq_upto_proofs; cbn; exact EC |].
+    pose proof (Hrd _ _ _ Hφ ltac:(eassumption)) as HCeq.
+    assert (HFt : Γ ⊢ ⊥ : Propₘ) by (constructor; exact (glu_ctx_env_wf_ctx HSbΓ)).
+    pose proof (glu_kept_proof_read _ _ HSbΓ _ _ _ Hσ _ _ HMt HFt _ _ _ Hφ ltac:(eassumption)) as HMeq.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ HMt Hσt) as HMσ.
-    cbn [exp_sub exp_wk ne_annotate_proofs ne_to_exp].
+    pose proof (kripke_preserves_exp _ _ _ _ _ HMσ Hφ) as HMφ.
+    cbn [exp_sub exp_wk] in HMeq, HMφ.
+    unfold glu_ne_eq, glu_nf_eq in *; cbn [exp_sub exp_wk ne_annotate_proofs ne_to_exp].
     eapply wf_exp_eq_absurd_cong;
       [ exact (kripke_preserves_exp _ _ _ _ _ HCσ Hφ) | constructor | constructor | exact HCeq
-      | exact (kripke_preserves_exp _ _ _ _ _ HMσ Hφ) | exact (kripke_preserves_exp _ _ _ _ _ HMσ Hφ) ].
+      | exact HMφ | exact (presup_exp_eq_left HMeq) ].
 Qed.
 
 (** Ex falso ([wf_absurd]): into a type of a universe, or a proof of a
@@ -274,22 +279,22 @@ Hint Resolve glu_rel_exp_prop_univ glu_rel_exp_True glu_rel_exp_False glu_rel_ex
 Lemma glu_prop :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ Propₘ : Type@0 ).
-Proof. glu_intro; apply glu_rel_exp_prop_univ; assumption. Qed.
+Proof. glu_inst_intro; apply glu_rel_exp_prop_univ; glu_inst_premise. Qed.
 
 Lemma glu_True :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ ⊤ : Propₘ ).
-Proof. glu_intro; apply glu_rel_exp_True; assumption. Qed.
+Proof. glu_inst_intro; apply glu_rel_exp_True; glu_inst_premise. Qed.
 
 Lemma glu_tt :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_tt : ⊤ ).
-Proof. glu_intro; apply glu_rel_exp_tt; assumption. Qed.
+Proof. glu_inst_intro; apply glu_rel_exp_tt; glu_inst_premise. Qed.
 
 Lemma glu_False :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ ⊥ : Propₘ ).
-Proof. glu_intro; apply glu_rel_exp_False; assumption. Qed.
+Proof. glu_inst_intro; apply glu_rel_exp_False; glu_inst_premise. Qed.
 
 Lemma glu_absurd :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ C : Srt ->
@@ -297,13 +302,18 @@ Lemma glu_absurd :
      level_closed_sort Propₘ Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M : ⊥ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ efq M return C : C ).
-Proof. glu_intro; eapply (glu_rel_exp_absurd (C := C)); eassumption. Qed.
+Proof. glu_inst_intro; eapply (glu_rel_exp_absurd (C := C[τ]) (Srt := Srt)); glu_inst_premise. Qed.
 
 Lemma glu_and :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ P : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊩ Q : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ Σₚ P Q : Propₘ ).
-Proof. glu_intro; eapply glu_rel_exp_and; eassumption. Qed.
+Proof.
+  glu_inst_intro.
+  assert (Hq : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) (Γ' ▹{ak_propositional} P[τ]) (q τ) (Γ ▹{ak_propositional} P))
+    by (eapply glu_rel_sub_inst_q; [ exact Hτ | eassumption | constructor ]).
+  eapply glu_rel_exp_and; glu_inst_premise.
+Qed.
 
 Lemma glu_conj :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ P : Propₘ ->
@@ -311,14 +321,24 @@ Lemma glu_conj :
      Θ ⍮ Ξ ⍮ Γ ⊩ M : P ->
      Θ ⍮ Ξ ⍮ Γ ⊩ N : Q[Id,,M] ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_conj P Q M N : Σₚ P Q ).
-Proof. glu_intro; eapply (glu_rel_exp_conj (P := P) (Q := Q)); eassumption. Qed.
+Proof.
+  glu_inst_intro.
+  assert (Hq : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) (Γ' ▹{ak_propositional} P[τ]) (q τ) (Γ ▹{ak_propositional} P))
+    by (eapply glu_rel_sub_inst_q; [ exact Hτ | eassumption | constructor ]).
+  eapply (glu_rel_exp_conj (P := P[τ]) (Q := Q[q τ])); glu_inst_premise.
+Qed.
 
 Lemma glu_left :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ P : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊩ Q : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M : Σₚ P Q ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_left M : P ).
-Proof. glu_intro; eapply (glu_rel_exp_left (P := P) (Q := Q)); eassumption. Qed.
+Proof.
+  glu_inst_intro.
+  assert (Hq : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) (Γ' ▹{ak_propositional} P[τ]) (q τ) (Γ ▹{ak_propositional} P))
+    by (eapply glu_rel_sub_inst_q; [ exact Hτ | eassumption | constructor ]).
+  eapply (glu_rel_exp_left (P := P[τ]) (Q := Q[q τ])); glu_inst_premise.
+Qed.
 
 Lemma glu_right :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ P : Propₘ ->
@@ -326,7 +346,14 @@ Lemma glu_right :
      Θ ⍮ Ξ ⍮ Γ ⊩ M : Σₚ P Q ->
      Θ ⍮ Ξ ⍮ Γ ⊩ Q[Id,,a_left M] : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_right M : Q[Id,,a_left M] ).
-Proof. glu_intro; eapply (glu_rel_exp_right (P := P) (Q := Q)); eassumption. Qed.
+Proof.
+  glu_inst_intro.
+  assert (Hq : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) (Γ' ▹{ak_propositional} P[τ]) (q τ) (Γ ▹{ak_propositional} P))
+    by (eapply glu_rel_sub_inst_q; [ exact Hτ | eassumption | constructor ]).
+  rewrite <- exp_sub_extend_comm.
+  eapply (glu_rel_exp_right (P := P[τ]) (Q := Q[q τ]) (M := M[τ])); try glu_inst_premise.
+  change (a_left M[τ]) with ((a_left M)[τ]); rewrite exp_sub_extend_comm; glu_inst.
+Qed.
 
 (** The equations glue their context. *)
 Lemma glu_exp_eq_prop_cong :

@@ -443,6 +443,57 @@ Proof.
     rewrite exp_sub_shift_extend; exact HN.
 Qed.
 
+(** An instance extended by the instance of a definition's body, for the
+    definition: the body glued at its instances is glued at every renaming
+    of this one. *)
+Lemma glu_rel_sub_inst_extend_def : forall {Γ Δ τ A S M},
+    glu_rel_sub_inst Γ τ Δ ->
+    Δ ⊢ A : S ->
+    type_sort S ->
+    glu_rel_exp_under_sub Δ M A ->
+    glu_rel_sub_inst Γ (τ,,M[τ]) (Δ ▸ A ≔ M).
+Proof.
+  intros * Hτ HA HS HM.
+  pose proof (glu_rel_exp_to_wf_exp (glu_rel_exp_under_sub_inst _ _ _ HM _ _ Hτ)) as HMτ.
+  apply (glu_rel_sub_inst_extend_gen (e := ce_def A M)); [ exact Hτ | |].
+  - eapply wf_sub_extend_def; [ apply Hτ | exact HA | exact HS | exact (glu_rel_exp_under_sub_wf HM) | exact HMτ
+                              | apply wf_exp_eq_refl; exact HMτ ].
+  - intros A' Hx; inversion Hx; subst.
+    rewrite exp_sub_shift_extend; eapply glu_rel_exp_under_sub_inst_renaming; eassumption.
+Qed.
+
+(** An instance extended by a unit's literal, for a module slot of the
+    unit: no component is a term. *)
+Lemma glu_rel_sub_inst_extend_mod : forall {Γ Δ τ U},
+    glu_rel_sub_inst Γ τ Δ ->
+    gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵘ U ≈ U ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U[τ]ᵘ ≈ U[τ]ᵘ ->
+    glu_rel_sub_inst Γ (τ ,,ₘ me_lit U[τ]ᵘ) (Δ ▹ₘ U).
+Proof.
+  intros * Hτ HU HUτ.
+  apply (glu_rel_sub_inst_extend_gen (e := ce_mod U)); [ exact Hτ | eapply wf_sub_extend_mod; [ apply Hτ | exact HU | exact HUτ ] |].
+  intros A' Hx; inversion Hx.
+Qed.
+
+(** An instance extended by the instance of a definition's body and a
+    unit's literal, for a definition with a module part. *)
+Lemma glu_rel_sub_inst_extend_dm : forall {Γ Δ τ A M E} {i : nat},
+    glu_rel_sub_inst Γ τ Δ ->
+    Δ ⊢ A : Typeω@i ->
+    glu_rel_exp_under_sub Δ M A ->
+    gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ (gu_mk nil (md_alias E))[τ]ᵘ ≈ (gu_mk nil (md_alias E))[τ]ᵘ ->
+    glu_rel_sub_inst Γ (τ ,,ᵈ M[τ] ‖ me_lit (gu_mk nil (md_alias E))[τ]ᵘ) (Δ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)).
+Proof.
+  intros * Hτ HA HM HU HUτ.
+  pose proof (glu_rel_exp_to_wf_exp (glu_rel_exp_under_sub_inst _ _ _ HM _ _ Hτ)) as HMτ.
+  apply (glu_rel_sub_inst_extend_gen (e := ce_dm A M (gu_mk nil (md_alias E)))); [ exact Hτ | |].
+  - eapply wf_sub_extend_dm; [ apply Hτ | exact HA | exact (glu_rel_exp_under_sub_wf HM) | exact HU | exact HMτ
+                             | apply wf_exp_eq_refl; exact HMτ | exact HUτ ].
+  - intros A' Hx; inversion Hx; subst.
+    rewrite exp_sub_shift_extend; eapply glu_rel_exp_under_sub_inst_renaming; eassumption.
+Qed.
+
 End Fixed_GCtx.
 
 (** ** The Rules
@@ -471,9 +522,11 @@ Ltac glu_inst :=
   | Hτ : glu_rel_sub_inst ?Γ' ?τ ?Δ, H : glu_rel_exp_under_sub ?Δ ?M ?A |- ?Γ' ⊩ ?M' : _ =>
       unify M' (exp_sub M τ);
       eapply (glu_rel_exp_under_sub_inst_conv H Hτ);
-      first [ apply type_sort_sub; first [ assumption | constructor | apply type_sort_abs_kind; constructor ]
+      first [ apply type_sort_sub;
+              first [ assumption | eapply sort_kind_type_sort; eassumption | constructor | apply type_sort_abs_kind; constructor ]
             | reflexivity
-            | rewrite ?exp_wk_shift_sub_q, ?abs_kind_sort_sub, ?abs_kind_sort_wk; reflexivity ]
+            | rewrite ?exp_wk_shift_sub_q, ?abs_kind_sort_sub, ?abs_kind_sort_wk; reflexivity
+            | rewrite ?exp_sub_extend_sub, ?exp_sub_q_extend; reflexivity ]
   end.
 
 (** A premise of a local rule at an instance: a term glued at the

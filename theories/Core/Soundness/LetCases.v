@@ -15,7 +15,8 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import
   ContextCases
   LogicalRelation
-  VariableCases.
+  VariableCases
+  Instances.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -47,7 +48,10 @@ Proof.
   - rewrite exp_sub_shift_extend; exact HMσ.
   - intros Hev; exists m; split; [ destruct (domain_kind a); [ exact Hm | inversion Hev | exact Hm ] |].
     exact (per_head_of Ha Ha HR Hmm).
-  - intros _; eexists; reflexivity.
+  - (** The stored type is the type's value *)
+    eexists; split; [ reflexivity |].
+    refine (mk_glu_stored_type _ _ _ _ _ i a P El ltac:(constructor) Hglu _).
+    rewrite exp_sub_shift_extend; exact HMσ.
   - split; [ exact (proj1 (entry_readable_of_elem HR Hmm)) | cbn; lia ].
   - first [ exact Hσg | cbn; exact Hσg | eapply glu_ctx_env_sub_resp_sub_eq; [ eassumption | exact Hσg | mauto 3 ] ].
 Qed.
@@ -95,7 +99,8 @@ Proof.
 Qed.
 
 (** A [let] ([wf_let]): glued as its body at the extended substitution, up
-    to [ζ], at the value of its type related to the body's type's. *)
+    to [ζ], then moved from the body's type's value to the related value of
+    its type, at the type's gluing, its witness ([glu_univ_elem_exp_conv]). *)
 Lemma glu_rel_exp_let : forall {Γ A S M C SC B},
     Γ ⊩ A : S ->
     type_sort S ->
@@ -103,9 +108,13 @@ Lemma glu_rel_exp_let : forall {Γ A S M C SC B},
     Γ ▸ A ≔ M ⊢ C : SC ->
     level_closed_sort S SC ->
     Γ ▸ A ≔ M ⊩ B : C ->
+    Γ ⊩ C[Id,,M] : SC ->
     Γ ⊩ ℓ A ≔ M in B : C[Id,,M].
 Proof.
-  intros * HA HS HM HCt HSC HB.
+  intros * HA HS HM HCt HSC HB HW.
+  assert (HSk : exists κ, sort_kind SC κ) by (destruct HSC; eexists; constructor).
+  destruct HSk as [κW HSk].
+  destruct (glu_rel_exp_sort_typ HW HSk) as (SbW & kW & HSbW & _ & HWg).
   pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
   pose proof (glu_rel_exp_to_wf_exp HM) as HMt.
   pose proof (glu_rel_exp_to_wf_exp HB) as HBt.
@@ -116,7 +125,8 @@ Proof.
   destruct (glu_ctx_env_per_ctx_env HSbΓ) as [R HR].
   destruct (let_typ_value HS HAt HMt HCt (level_closed_sort_type_sort _ _ HSC) HR) as [j HCv].
   assert (Hζ0 : Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : C[Id,,M]) by (eapply wf_exp_eq_let_zeta; [ exact HAt | exact HS | exact HMt | exact HCt | exact HSC | exact HBt ]).
-  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := max k j); [ exact HSbΓ |].
+  assert (EW : SbΓ <∙> SbW) by (eapply functional_glu_ctx_env; eassumption).
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := kW); [ exact HSbΓ |].
   intros Δ σ ρ Hσ.
   pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ) as Hσt.
   pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
@@ -126,19 +136,17 @@ Proof.
   destruct (HBk _ _ _ Hc) as [c' b Pc Elc Ec' Hb Hgc HBσ].
   destruct (HCv _ _ _ Hρ Ea Hm) as (c & c'' & Ec & Ec'' & Hcc).
   functional_eval_rewrite_clear.
-  (** Both at the larger index *)
-  destruct (glu_univ_elem_cumu_max_left (j := j) Hgc) as (P' & El' & Hglu').
-  assert (HBσ' : Δ ⊢ B[σ,,M[σ]] : C[σ,,M[σ]] ® b ∈ El')
-    by (eapply glu_univ_elem_exp_cumu_max_left; [ exact Hgc | exact Hglu' | exact HBσ ]).
-  destruct Hcc as [Rc Hcc].
-  assert (Hglu'' : DG c ∈ glu_univ_elem (max k j) ↘ P' ↘ El').
-  { eapply glu_univ_elem_resp_per_univ; [| exact Hglu' ].
-    eexists; symmetry; eapply per_univ_elem_cumu_max_right; exact Hcc. }
+  (** The witness: the type glued at its value *)
+  destruct (HWg _ _ _ (proj1 (EW _ _ _) Hσ)) as [c0 Pw Elw Ec0 Hgw HWσ].
+  assert (c0 = c) by (eapply functional_eval_exp; eassumption); subst c0; clear Ec0.
   assert (Hζ : Δ ⊢ (ℓ A ≔ M in B)[σ] ≈ B[Id,,M][σ] : C[Id,,M][σ]) by (eapply sub_preserves_exp_eq; eassumption).
   rewrite !exp_sub_extend_sub in Hζ.
-  assert (HN : Δ ⊢ (ℓ A ≔ M in B)[σ] : C[Id,,M][σ] ® b ∈ El').
+  assert (HN0 : Δ ⊢ (ℓ A ≔ M in B)[σ] : C[Id,,M][σ] ® b ∈ Elc).
   { rewrite exp_sub_extend_sub.
-    eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hglu'' | exact HBσ' | apply wf_exp_eq_sym; exact Hζ ]. }
+    eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hgc | exact HBσ | apply wf_exp_eq_sym; exact Hζ ]. }
+  destruct Hcc as [Rc Hcc].
+  assert (Hc'c : Dom c' ≈ c ∈ per_univ j) by (eexists; symmetry; exact Hcc).
+  pose proof (glu_univ_elem_exp_conv Hc'c Hgc Hgw HN0 HWσ) as HN.
   (** The term's value at the kind of its type *)
   assert (Hevb : evaluated_kind (domain_kind c) -> ⟦ ℓ A ≔ M in B ⟧ ρ ↘ b).
   { intros Hev.
@@ -150,8 +158,8 @@ Proof.
       destruct (domain_kind a); [ exact Hm | inversion Hea | exact Hm ].
     - rewrite Hpa in Hm; cbn in Hm; subst m.
       eapply eval_exp_let_proof; [ exact Ea | exact Hpa | exact Hb' ]. }
-  destruct (glu_term_value_intro Hglu'' (presup_exp_eq_left Hζ0) HR Hρ Hevb HN) as (m' & Hm' & HMg').
-  econstructor; [ exact Ec | exact Hm' | exact Hglu'' | exact HMg' ].
+  destruct (glu_term_value_intro Hgw HSbΓ Hσ (presup_exp_eq_left Hζ0) Hevb HN) as (m' & Hm' & HMg').
+  econstructor; [ exact Ec | exact Hm' | exact Hgw | exact HMg' ].
 Qed.
 
 End Fixed_GCtx.
@@ -171,13 +179,23 @@ Lemma glu_let :
      type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : SrtC ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊩ C : SrtC ->
      level_closed_sort Srt SrtC ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊩ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊩ ℓ A ≔ M in B : C[Id,,M] ).
 Proof.
-  glu_intro; glu_gctx_embedding_wf.
-  eapply (@glu_rel_exp_let (gc_mk _ _) _ A Srt);
-    [ eassumption | eassumption | eassumption | apply Hwe; eassumption | eassumption | eassumption ].
+  glu_inst_intro.
+  match goal with HSC : level_closed_sort _ _ |- _ => pose proof (level_closed_sort_type_sort _ _ HSC) as HSCt end.
+  assert (Hq : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) (Γ' ▸ A[τ] ≔ M[τ]) (q τ) (Γ ▸ A ≔ M))
+    by (eapply glu_rel_sub_inst_q_def; eassumption).
+  (** The type's instance at the definiens, the witness *)
+  assert (Hext : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) Γ' (τ,,M[τ]) (Γ ▸ A ≔ M))
+    by (eapply glu_rel_sub_inst_extend_def; [ exact Hτ | eapply glu_rel_exp_under_sub_wf; eassumption | eassumption | eassumption ]).
+  rewrite <- exp_sub_extend_comm.
+  eapply (glu_rel_exp_let (A := A[τ]) (S := Srt) (C := C[q τ])); try glu_inst_premise.
+  - rewrite <- (type_sort_sub SrtC (q τ) HSCt).
+    eapply sub_preserves_exp; [ apply Hwe; eassumption | apply Hq ].
+  - rewrite exp_sub_q_extend; glu_inst.
 Qed.
 
 (** The equations glue their context, which their annotation's premise
