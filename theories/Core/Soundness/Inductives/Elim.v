@@ -5744,7 +5744,6 @@ Section ElimGlu.
       intros IT OT HAp Δ φ b c fc Hφ Hdc Hb Efc σs' HOT.
       exact (IH IT OT HAp Δ φ b c fc Hφ Hdc Hb Efc σs' HOT).
   Qed.
-  Check TEMP_STOP_PORT.
 
 End ElimGlu.
 
@@ -5758,6 +5757,9 @@ End ElimGlu.
     elimination is then glued ([elim_glu_all]) at the motive's value,
     related to the value of the rule's type. *)
 Theorem glu_rel_exp_elim : forall VP p D, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) -> VP p D ->
+    (forall q0 D0, ind_lookup gc_deps gc_stack q0 = Some D0 -> glu_ind_decl D0) ->
+    (forall q0 G0 j Mj c0 gs0, ind_lookup gc_deps gc_stack q0 = Some G0 -> ind_member G0 j = Some Mj -> ind_con Mj c0 = Some gs0 ->
+       ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj) ->
     forall Γ m Mm bm Bks Ps M (i : nat),
     ind_member D m = Some Mm -> List.nth_error Bks m = Some bm ->
     List.length Bks = ind_nblk D -> List.length Ps = im_np D Mm ->
@@ -5789,10 +5791,13 @@ Theorem glu_rel_exp_elim : forall VP p D, valid_groups VP -> (forall qn G, VP qn
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
        elim_bctx ak_relevant p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊩ B
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    blocks_scoped (List.length Γ) Bks ->
     Γ ⊩ a_elim ak_relevant p (List.firstn (ind_nu D) Ps) m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
-  intros VP p D HVP HGall HPD Γ m Mm bm Bks Ps M i HMm Hbm HLb HPl HPt HPg HMt HMg Hnm Hann HAt HAg HMx Hna HBx Har HBt HBg.
-  pose proof (fun qn G H => glu_views_ok_all VP qn G HVP H (HGall _ _ H)) as Hviewsall.
+  intros VP p D HVP HGall HPD HGlk HΨall Γ m Mm bm Bks Ps M i HMm Hbm HLb HPl HPt HPg HMt HMg Hnm Hann HAt HAg HMx Hna HBx Har HBt HBg HBsc.
+  pose proof (fun qn G H => glu_views_ok_all VP qn G HVP H (HGall _ _ H) HGlk
+                 (fun j Mj c gs HM Hc => HΨall qn G j Mj c gs (valid_group_lookup _ _ (valid_groups_valid VP HVP qn G H)) HM Hc))
+    as Hviewsall.
   pose proof (HGall _ _ HPD) as HG.
   pose proof (valid_groups_valid VP HVP p D HPD) as Hvg.
   pose proof (valid_group_lookup _ _ Hvg) as Hl; pose proof (valid_group_valid _ _ Hvg) as HD; pose proof (valid_group_closed _ _ Hvg) as Hc.
@@ -5821,7 +5826,8 @@ Proof.
   pose proof (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ Hdt)) as Hsuf.
   (** The eliminated member has a block: it is no record view. *)
   pose proof (block_not_rview D Bks m Mm bm Hsuf HLb HMm Hbm) as Hrvm.
-  assert (HBt' : blocks_typed gc_deps gc_stack Γ p D Us Bks i) by (constructor; assumption).
+  assert (HBt' : blocks_typed gc_deps gc_stack Γ p D Us Bks ak_relevant i)
+    by (constructor; first [ assumption | exact motive_kind_relevant ]).
   assert (HBv : valid_blocks p D Γ Us Bks i).
   { constructor; try assumption.
     - intros j Mj HMj; exact (completeness_fundamental_ctx _ (ext_eq_ctx_left _ _ _ _ _ (HMx _ _ HMj))).
@@ -5836,32 +5842,56 @@ Proof.
   pose proof (glu_ctx_env_per_env HSbΓ HRΓ Hσ) as Hρ.
   assert (HΔ : ⊢ Δ) by (pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ); gen_presups; assumption).
   assert (Hσt : Δ ⊢ˢ σ : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ).
-  destruct (Completeness.Inductives.Model.eval_exps_each Us ρ) as [ups HUv].
-  { intros k N HN.
+  (** The uniform parameters' values ([us_vals]). *)
+  assert (HUss : List.Forall (exp_scoped (List.length Γ)) Us).
+  { apply List.Forall_forall; intros U HU.
+    destruct (List.In_nth_error _ _ HU) as [k Hk].
     destruct (nth_error_lt_some' (tele_insts (ind_uparams D) Id Us) k) as [T HT].
     { rewrite length_tele_insts by exact (decl_uparams_ass D Hc).
       assert (k < List.length Us) by (apply List.nth_error_Some; congruence); unfold ind_nu in *; lia. }
-    destruct (rel_exp_under_ctx_simple_at HRΓ (HUs _ _ _ HN HT) _ _ Hρ) as (v1 & v2 & E1 & _); eauto. }
-  pose proof (Completeness.Inductives.Elim.u0_tele_args VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs ρ ups Hρ HUv) as Hgu.
+    exact (wf_exp_scoped_term _ _ _ _ _ (HUt _ _ _ Hk HT)). }
+  destruct (Completeness.Inductives.Elim.us_vals VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs HUss ρ ρ Hρ)
+    as (ups & _ & HUv & _ & _).
+  pose proof (Completeness.Inductives.Elim.u0_tele_args VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs HUss ρ ups Hρ HUv) as Hgu.
   assert (Hu : List.length ups = ind_nu D) by (rewrite (Completeness.Inductives.Model.eval_exps_length _ _ _ HUv); exact HUl).
   destruct (HiM _ _ _ Hσ) as [aM mv PM ElM EaM Em HgM HMσ].
   destruct (eval_mty_inv p D m Mm Us Ns ρ aM HMm Hrvm EaM) as (cs & ns0 & Ecs & Ens & EaMd).
+  (** The scrutinee is relevant: it is evaluated. *)
+  assert (Em' : ⟦ M ⟧ ρ ↘ mv) by (rewrite EaMd in Em; cbn [domain_kind glu_term_value] in Em; exact Em).
   destruct (glu_univ_elem_per_univ _ _ _ _ HgM) as [RM HRM].
   assert (HMa : ⊨ elim_mctx p D m Mm Us ++ Γ) by exact (valid_blocks_mctx _ _ _ _ _ _ HBv m Mm HMm).
-  pose proof (Completeness.Inductives.Elim.gsub_ns VP p D HVP HPD Γ HΓs Us m Mm HMm HMa Ns HNl HNs) as HgN.
-  destruct (Completeness.Inductives.Elim.scrut_rel VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs ρ ups Hρ HUv m Mm HMm HMa Ns HNl HgN
+  assert (HNss : List.Forall (exp_scoped (List.length Γ)) Ns).
+  { apply List.Forall_forall; intros N0 HN0.
+    destruct (List.In_nth_error _ _ HN0) as [k Hk].
+    destruct (nth_error_lt_some' (tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns) k) as [T HT].
+    { rewrite length_tele_insts by exact (decl_closed_nparams_ass D Hc _ _ HMm).
+      assert (k < List.length Ns) by (apply List.nth_error_Some; congruence); rewrite length_im_nparams; lia. }
+    exact (wf_exp_scoped_term _ _ _ _ _ (HNt _ _ _ Hk HT)). }
+  pose proof (Completeness.Inductives.Elim.gsub_ns VP p D HVP HPD Γ HΓs Us m Mm HMm HMa Ns HNl HNs HNss) as HgN.
+  destruct (Completeness.Inductives.Elim.scrut_rel VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs HUss ρ ups Hρ HUv m Mm HMm HMa Ns HNl HgN
               ρ Hρ ns0 ns0 Ens Ens aM aM iM RM EaM EaM HRM) as [Hns0 ERM].
   pose proof (glu_univ_elem_per_elem _ _ _ _ HgM _ _ _ _ _ HMσ HRM) as Hmv.
-  assert (HGm : grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) m ups ups ns0 ns0 mv mv)
+  assert (HGm : grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups) m ups ups ns0 ns0 mv mv)
     by (apply ERM; exact Hmv).
   (** The parameters, glued. *)
   assert (EPs : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ups ++ ns0)
     by (rewrite <- (List.firstn_skipn (ind_nu D) Ps); fold Us Ns; apply eval_exps_app; assumption).
   pose proof (decl_closed_params_ass D m Mm Hc HMm) as HassP.
   pose proof (decl_closed_params D m Mm Hc HMm) as HsP.
+  assert (HPev : exists l, rel_params_evaluated nil (im_params D Mm) l).
+  { apply rel_params_evaluated_of_entries; intros Δ1 κ A Δ2 E.
+    destruct (Completeness.Inductives.Model.im_params_evaluated D HD m Mm HMm Δ1 κ A Δ2 E) as [l Hl0].
+    exists l; rewrite List.app_nil_r; exact Hl0. }
+  assert (HPss : List.Forall (exp_scoped (List.length Γ)) Ps).
+  { apply List.Forall_forall; intros P0 HP0.
+    destruct (List.In_nth_error _ _ HP0) as [k Hk].
+    destruct (nth_error_lt_some' (tele_insts (im_params D Mm) Id Ps) k) as [T HT].
+    { rewrite length_tele_insts by exact HassP.
+      assert (k < List.length Ps) by (apply List.nth_error_Some; congruence); rewrite length_im_params; lia. }
+    exact (wf_exp_scoped_term _ _ _ _ _ (HPt _ _ _ Hk HT)). }
   pose proof (params_glu_args (im_params D Mm) Γ RΓ SbΓ Δ σ ρ Ps (ups ++ ns0) HassP HsP (valid_ind_decl_params _ HD _ _ HMm) HΓs HRΓ HSbΓ Hσ
                 ltac:(rewrite length_im_params; exact HPl)
-                ltac:(intros; eapply completeness_fundamental_exp; eauto) HPg EPs) as Hpa.
+                ltac:(intros; eapply completeness_fundamental_exp; eauto) HPev HPss HPg EPs) as Hpa.
   assert (EPσ : List.map (fun P => P[σ]) Ps = List.map (fun U => U[σ]) Us ++ List.map (fun N => N[σ]) Ns)
     by (rewrite <- List.map_app; unfold Us, Ns; rewrite List.firstn_skipn; reflexivity).
   pose proof Hpa as Hpa'; rewrite EPσ in Hpa'; unfold im_params in Hpa'.
@@ -5909,17 +5939,17 @@ Proof.
       destruct (rel_ctx_wf_per_ctx_env (valid_ind_decl_uparams _ (valid_group_valid _ _ HgQ))) as [RQ HRQ].
       destruct (FiledViews.valid_group_views_view_args_values p D Hvg (containers_valid_of_groups VP HVP p D HPD) _ _ _ _ _ _ _ HMm Hh Hq
                   ups ups Hgu Hu) as (cups & _ & Ecups & _ & _).
-      destruct (ElimViewRule.pre_base VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs Bks i HBv qc D' m Mm kc Is vm Hq HMm Hh
-                  ρ ups cups Hρ HUv Ecups RQ HRQ) as (uB & EuB & HB).
+      destruct (ElimViewRule.pre_base VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs HUss Bks i HBv HBsc qc D' m Mm kc Is vm Hq HMm Hh
+                  ρ ups cups Hρ HUv Ecups) as (uB & EuB & HB).
       pose proof (functional_eval_exps' _ _ _ _ EuB Ecs) as <-.
-      pose proof (ElimViewRule.pre_length VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs Bks i HBv qc D' m Mm kc Is vm Hq HMm Hh)
+      pose proof (ElimViewRule.pre_length VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs HUss Bks i HBv HBsc qc D' m Mm kc Is vm Hq HMm Hh)
         as HIl.
       assert (Lcups : List.length cups = List.length (ind_uparams D'))
         by (rewrite (eval_exps_length _ _ _ Ecups); exact HIl).
       assert (LuB : List.length uB = List.length (ind_uparams D'))
         by (rewrite (eval_exps_length _ _ _ EuB); unfold im_pre; rewrite Hh, List.length_map; exact HIl).
-      pose proof (Completeness.Inductives.Model.uparams_of_env D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) cups uB RQ HRQ
-                    Lcups LuB ltac:(symmetry; exact HB)) as Hcs.
+      pose proof (uparams_sym D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) uB cups HB
+                    ltac:(rewrite LuB; reflexivity)) as Hcs.
       unfold im_ref in EaMd; rewrite Hh in EaMd; cbn in EaMd; subst aM.
       assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
       rewrite EPσ in Hpa.
@@ -5941,18 +5971,16 @@ Proof.
   assert (HMt' : Δ ⊢ M[σ] : im_ty_at p m Mm (List.map (fun U => U[σ]) Us) (List.map (fun N => N[σ]) Ns)).
   { assert (H : Δ ⊢ M[σ] : (ind_mty p D m Us Ns)[σ]) by mauto 2.
     rewrite ind_mty_sub in H by assumption; unfold ind_mty in H; rewrite HMm in H; exact H. }
-  destruct (proj1 (proj1 (elim_glu_all VP p D HVP HGall Hviewsall HPD Γ RΓ HRΓ HΓs SbΓ HSbΓ RU HRU Us HUl HUs HUg Bks i HBt' HBv HBg'
-                            ρ ups Hρ HUv bu u NP NEl AP AEl DP DEl Hbu Hule Hf nb Hnb) m Δ _ _ _ mv HIG)
-              Mm σ oq ns0 HMm Hrvm Hgrp Hσ eq_refl HMt' Hgn Hns0 HGm) as [r a Er Ea Hper Hglr].
+  destruct (proj1 (proj1 (elim_glu_all VP p D HVP HGall Hviewsall HPD Γ RΓ HRΓ HΓs SbΓ HSbΓ RU HRU Us HUl HUs HUg HUss Bks i HBt' HBv HBg'
+                            ρ ups Hρ HUv bu u NP NEl AP AEl DP DEl Hbu Hule Hf HΨall nb Hnb) m Δ _ _ _ mv HIG)
+              Mm σ ns0 HMm Hrvm Hσ eq_refl HMt' Hgn Hns0 HGm) as [r a Er Ea Hper Hglr].
   rewrite (blocks_motives_nth _ _ _ Hbm) in Ea, Hglr.
   destruct (per_univ_glu_univ_elem _ _ Hper) as (P & El & HgE).
   pose proof (Hglr P El HgE) as HE.
   (** The type at the instance, against the motive at the values. *)
   assert (Hevl : ⟦ Ns ++ M :: nil ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns0 ++ mv :: nil)
-    by (apply eval_exps_app; [ exact Ens | econstructor; [ exact Em | constructor ] ]).
+    by (apply eval_exps_app; [ exact Ens | econstructor; [ exact Em' | constructor ] ]).
   pose proof (Completeness.Inductives.Decl.eval_sb_of_list _ _ _ _ _ (eval_sub_id ρ) Hevl) as Hevτ.
-  destruct (Completeness.Inductives.Elim.elim_grp_of_elem _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMm HGm (decl_typed_order _ _ _ Hdt) oq Hgrp)
-    as [Hgo _].
   assert (HMv : Γ ⊨ M : ind_mty p D m Us Ns) by (eapply completeness_fundamental_exp; exact HMt).
   pose proof (Completeness.Inductives.Elim.gsub_tau VP p D HVP HPD Γ HΓs Us HUl m Mm HMm HMa Ns M HNl HNs HMv) as Hgτ.
   pose proof (completeness_fundamental_exp _ _ _ (HAt m Mm bm HMm Hbm)) as HAv.
@@ -5962,7 +5990,7 @@ Proof.
   assert (Hba : per_univ i a ares) by (apply per_univ_sym'; exact Hab).
   pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ Hba HgE) as Hgres.
   refine (mk_glu_rel_exp_with_sub _ _ _ _ _ _ ares r P El Eares _ Hgres _);
-    [ eapply eval_exp_elim; [ exact HUv | exact Em | exact Hgo | exact Er ] |].
+    [ eapply eval_exp_elim; [ exact HUv | exact Em' | exact Er ] |].
   cbn [exp_sub].
   assert (HL : List.length (List.map (fun N => N[σ]) Ns ++ M[σ] :: nil) = S (im_nn Mm))
     by (rewrite List.length_app, List.length_map; cbn; lia).
@@ -5980,6 +6008,7 @@ Qed.
     ([con_rview_ind_glu_elem]), so glued at the record type at the view's
     instance ([glu_at_type_all], [rview_glu_at_type]); along its
     telescopes, as for a declared member ([glu_rel_exp_con0]). *)
+Check TEMP_STOP_PORT.
 Section ConRviewFT.
   Variable (VP : qname -> ind_decl -> Prop).
   Hypotheses (HVP : valid_groups VP) (HGall : forall qn G, VP qn G -> glu_ind_decl G)
