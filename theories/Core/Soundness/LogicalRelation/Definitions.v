@@ -320,8 +320,8 @@ Record glu_params_top (Dh : ind_decl) (Mh : imember) (Γ : ctx) (Ps : list exp) 
     (** Each typed at the member's telescope *)
   ; glu_params_top_typ : forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params Dh Mh) Id Ps) k = Some A ->
       Γ ⊢ P : A
-    (** At every weakening, equal to the readback of the values, up to
-        proofs *)
+    (** At every weakening, equal to the annotated readback of the
+        values *)
   ; glu_params_top_read : forall Δ φ Ms, Δ ⊢ᵏ φ : Γ -> Rps as' at List.rev (im_params Dh Mh) in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ ↘ Ms ->
       glu_nfs_eq_at Δ (im_params Dh Mh) (List.map (fun P => P[φ]ʷ) Ps) Ms }.
 
@@ -698,8 +698,8 @@ Record params_glu_top (T : ctx) (Γ : ctx) (Ps : list exp) (ps : list domain) : 
     (** Each typed at the telescope *)
   ; params_glu_typ : forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts T Id Ps) k = Some A ->
       Γ ⊢ P : A
-    (** At every weakening, equal to the readback of the values, up to
-        proofs *)
+    (** At every weakening, equal to the annotated readback of the
+        values *)
   ; params_glu_read : forall Δ φ Ms, Δ ⊢ᵏ φ : Γ -> Rps ps at List.rev T in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ ↘ Ms ->
       glu_nfs_eq_at Δ T (List.map (fun P => P[φ]ʷ) Ps) Ms }.
 
@@ -1393,14 +1393,36 @@ Definition nil_glu_sub_pred : glu_sub_pred :=
   fun Δ σ ρ => Δ ⊢ˢ σ : ⋅.
 #[global] Arguments nil_glu_sub_pred Δ σ ρ/.
 
+(** The head of an environment glued at the stored type of its entry: the
+    readback of a kept proof binds the entries of its environment at
+    their stored types ([read_entry_term]), so the stored type's value is
+    glued too, the head glued at it as at the declared type.  Every
+    environment built stores the declared type's value.  The index is
+    the stored type's own, so that two gluings of one context agree on
+    it ([functional_glu_ctx_env]). *)
+Record glu_stored_type (Δ : ctx) (σ : sub) (A : typ) (ρ : env) (t : entry_type) : Prop := mk_glu_stored_type
+  { (** The index it is glued at *)
+    glu_stored_index : nat
+    (** The stored type's value *)
+  ; glu_stored_value : domain
+    (** Its type predicate *)
+  ; glu_stored_P : glu_typ_pred
+    (** Its element predicate *)
+  ; glu_stored_El : glu_exp_pred
+    (** The stored type evaluates to it *)
+  ; glu_stored_eval : eval_entry_type gc_deps gc_stack t glu_stored_value
+    (** It is glued *)
+  ; glu_stored_univ : DG glu_stored_value ∈ glu_univ_elem glu_stored_index ↘ glu_stored_P ↘ glu_stored_El
+    (** The head is glued at it *)
+  ; glu_stored_glu : Δ ⊢ #0[σ] : A[↑]ʷ[σ] ® (ρ 0) ∈ glu_stored_El }.
+
 (** An assumption entry glues by its head, at the gluing of its type, and
     by its tail.  The parameters come before the relation's own arguments,
     so that the predicate is a [glu_sub_pred]. *)
 Variant cons_glu_sub_pred (i : nat) Γ κ A (TSb : glu_sub_pred) : glu_sub_pred :=
 (** The substitution is typed, its head glues at the type's predicate and
-    its tail glues by [TSb]; the head is an entry the context PER relates
-    ([per_ctx_env_cons_rel]): a term entry at a proposition, and one that
-    reads back at its stored type *)
+    its tail glues by [TSb]; the head is a term entry glued at its stored
+    type, and one that reads back *)
 | mk_cons_glu_sub_pred :
   `{ forall P El,
         Δ ⊢ˢ σ : Γ ▹{κ} A ->
@@ -1409,7 +1431,7 @@ Variant cons_glu_sub_pred (i : nat) Γ κ A (TSb : glu_sub_pred) : glu_sub_pred 
         (** [A[↑]ʷ[σ]] rather than [A[Wk ⨟ σ]]: it is the direct instance of
             [Γ ▹ A ⊢ #0 : A[↑]ʷ] along [σ]. *)
         Δ ⊢ #0[σ] : A[↑]ʷ[σ] ® (ρ 0) ∈ El ->
-        (rel_typ_propositional A ρ↯ -> exists t, env_entry ρ 0 = de_term (ρ 0) t) ->
+        (exists t, env_entry ρ 0 = de_term (ρ 0) t /\ glu_stored_type Δ σ A ρ t) ->
         head_readable 0 (env_entry ρ 0) ->
         Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
         Δ ⊢ˢ σ ® ρ ∈ cons_glu_sub_pred i Γ κ A TSb }.
@@ -1429,7 +1451,7 @@ Variant cons_def_glu_sub_pred (i : nat) Γ A M (TSb : glu_sub_pred) : glu_sub_pr
         DG a ∈ glu_univ_elem i ↘ P ↘ El ->
         Δ ⊢ #0[σ] : A[↑]ʷ[σ] ® (ρ 0) ∈ El ->
         (evaluated_kind (domain_kind a) -> def_tie A M ρ) ->
-        (rel_typ_propositional A ρ↯ -> exists t, env_entry ρ 0 = de_term (ρ 0) t) ->
+        (exists t, env_entry ρ 0 = de_term (ρ 0) t /\ glu_stored_type Δ σ A ρ t) ->
         head_readable 0 (env_entry ρ 0) ->
         Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
         Δ ⊢ˢ σ ® ρ ∈ cons_def_glu_sub_pred i Γ A M TSb }.
@@ -1445,7 +1467,7 @@ Variant cons_mod_glu_sub_pred Γ U (TSb : glu_sub_pred) : glu_sub_pred :=
 | mk_cons_mod_glu_sub_pred :
   `{ Δ ⊢ˢ σ : Γ ▹ₘ U ->
      tie_mod (env_mod ρ 0) (me_lit U) ρ↯ ->
-     (exists U0, env_entry ρ 0 = de_mod (env_mod ρ 0) U0) ->
+     env_entry ρ 0 = de_mod (env_mod ρ 0) U ->
      head_readable (List.length Γ) (env_entry ρ 0) ->
      Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
      Δ ⊢ˢ σ ® ρ ∈ cons_mod_glu_sub_pred Γ U TSb }.
@@ -1465,7 +1487,7 @@ Variant cons_dm_glu_sub_pred (i : nat) Γ A M U (TSb : glu_sub_pred) : glu_sub_p
         Δ ⊢ #0[σ] : A[↑]ʷ[σ] ® (ρ 0) ∈ El ->
         def_tie A M ρ ->
         tie_mod (env_mod ρ 0) (me_lit U) ρ↯ ->
-        (exists t U0, env_entry ρ 0 = de_dm (ρ 0) t (env_mod ρ 0) U0) ->
+        (exists t, env_entry ρ 0 = de_dm (ρ 0) t (env_mod ρ 0) U /\ glu_stored_type Δ σ A ρ t) ->
         head_readable (List.length Γ) (env_entry ρ 0) ->
         Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
         Δ ⊢ˢ σ ® ρ ∈ cons_dm_glu_sub_pred i Γ A M U TSb }.
