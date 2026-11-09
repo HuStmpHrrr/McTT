@@ -120,6 +120,7 @@
 ./Core/Soundness/Weakening/Definitions.v
 ./Core/Soundness/KeptProofs.v
 ./Core/Soundness/LogicalRelation/Definitions.v
+./Core/Soundness/LogicalRelation/KeptProofsTyped.v
 ./Core/Soundness/LogicalRelation/CoreTactics.v
 ./Core/Soundness/Weakening/Lemmas.v
 ./Core/Soundness/LogicalRelation/CoreLemmas.v
