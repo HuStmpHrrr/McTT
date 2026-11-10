@@ -1587,31 +1587,85 @@ Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A a
 Definition glu_rel_exp_under_renaming (Γ : ctx) (M A : exp) : Prop :=
   forall Γ' φ, Γ' ⊢ʷ φ : Γ -> ⊩ Γ' -> Γ' ⊩ M[φ]ʷ : A[φ]ʷ.
 
+(** A glued context whose variables' types are glued at every renaming,
+    each as a term of a sort of types.  Its module slots' units are not
+    covered: [glu_rel_ctx_types] adds them. *)
+Record glu_rel_ctx_glued (Γ : ctx) : Prop := mk_glu_rel_ctx_glued
+  { (** The context is glued *)
+    glu_rel_ctx_glued_ctx : ⊩ Γ
+    (** The type of each variable is glued, at every renaming, as a term
+        of a sort of types *)
+  ; glu_rel_ctx_glued_types : forall x A, Γ ∋ #x : A ->
+      exists S, type_sort S /\ glu_rel_exp_under_renaming Γ A S }.
+
+(** A unit glued at the context [Γ] it is closed over: a body's
+    expansions, its entries over the unit's parameters over [Γ], are glued
+    contexts, and so is each module entry's unit, recursively, at the
+    context of the entries before it; an alias's parameters are glued.  The
+    recursion is on the unit: a body's module entries are its subterms.
+    The entries a local open generates are definitions and aliases, so they
+    need nothing more than the body's context. *)
+Fixpoint glu_unit_at (Γ : ctx) (U : gunit) {struct U} : Prop :=
+  match U with
+  | gu_mk Δu (md_body _ Φ) =>
+      (forall Φx, body_xp gc_deps gc_stack (Δu ++ Γ) Φ Φx -> glu_rel_ctx_glued (body_ctx Φx ++ Δu ++ Γ)) /\
+      glu_gmod_units (Δu ++ Γ) Φ
+  | gu_mk Δu (md_alias _) => glu_rel_ctx_glued (Δu ++ Γ)
+  end
+(** The module entries of a body over [Γ], each glued at the context of
+    the entries before it. *)
+with glu_gmod_units (Γ : ctx) (Φ : gmod) {struct Φ} : Prop :=
+  match Φ with
+  | gm_nil => True
+  | gm_ext Φ' _ (ge_mod _ U) =>
+      glu_gmod_units Γ Φ' /\ forall Φx', body_xp gc_deps gc_stack Γ Φ' Φx' -> glu_unit_at (body_ctx Φx' ++ Γ) U
+  | gm_ext Φ' _ (ge_def_mod _ _ _ U) =>
+      glu_gmod_units Γ Φ' /\ forall Φx', body_xp gc_deps gc_stack Γ Φ' Φx' -> glu_unit_at (body_ctx Φx' ++ Γ) U
+  | gm_ext Φ' _ _ => glu_gmod_units Γ Φ'
+  | gm_open Φ' _ _ _ => glu_gmod_units Γ Φ'
+  end.
+
+(** A unit glued at every renaming of its context into a glued one. *)
+Definition glu_unit_under_renaming (Γ : ctx) (U : gunit) : Prop :=
+  forall Γ' φ, Γ' ⊢ʷ φ : Γ -> ⊩ Γ' -> glu_unit_at Γ' (gunit_wk U φ).
+
 (** A substitution the fundamental theorem instantiates terms at: typed,
     out of a glued context, its term components glued at their types at
-    every renaming.  Module slots are sent to module expressions, whose
-    values are not glued.  The instances are closed under renaming, so a
-    term glued at all of them is glued at every renaming of each. *)
+    every renaming, and the units of its module components glued at every
+    renaming.  Module values are not glued: a member of a module is reached
+    through its unit's body context.  The instances are closed under
+    renaming, so a term glued at all of them is glued at every renaming of
+    each. *)
 Record glu_rel_sub_inst (Γ : ctx) (τ : sub) (Δ : ctx) : Prop := mk_glu_rel_sub_inst
   { (** The substitution is typed *)
     glu_rel_sub_inst_typed : Γ ⊢ˢ τ : Δ
     (** Its domain is glued *)
   ; glu_rel_sub_inst_ctx : ⊩ Γ
     (** Each term component is glued at its type at every renaming *)
-  ; glu_rel_sub_inst_comps : forall x A, Δ ∋ #x : A -> glu_rel_exp_under_renaming Γ #x[τ] A[τ] }.
+  ; glu_rel_sub_inst_comps : forall x A, Δ ∋ #x : A -> glu_rel_exp_under_renaming Γ #x[τ] A[τ]
+    (** The unit of each module component is glued at every renaming *)
+  ; glu_rel_sub_inst_mods : forall x U, Δ ∋ #x ≔ₘ U -> glu_unit_under_renaming Γ U[τ]ᵘ }.
 
 (** A glued context whose variables' types are glued at every renaming,
-    each as a term of a sort of types: the fundamental theorem's judgment
-    of contexts.  A variable is then glued at its type at every renaming,
-    so every renaming into a glued context is an instance, the identity
-    among them. *)
+    each as a term of a sort of types, and whose module slots' units are
+    glued at every renaming: the fundamental theorem's judgment of
+    contexts.  A variable is then glued at its type at every renaming, so
+    every renaming into a glued context is an instance, the identity among
+    them. *)
 Record glu_rel_ctx_types (Γ : ctx) : Prop := mk_glu_rel_ctx_types
   { (** The context is glued *)
     glu_rel_ctx_types_ctx : ⊩ Γ
     (** The type of each variable is glued, at every renaming, as a term
         of a sort of types *)
   ; glu_rel_ctx_types_types : forall x A, Γ ∋ #x : A ->
-      exists S, type_sort S /\ glu_rel_exp_under_renaming Γ A S }.
+      exists S, type_sort S /\ glu_rel_exp_under_renaming Γ A S
+    (** The unit of each module slot is glued at every renaming *)
+  ; glu_rel_ctx_types_slots : forall x U, Γ ∋ #x ≔ₘ U -> glu_unit_under_renaming Γ U }.
+
+(** A unit glued at each of its instances: the fundamental theorem's
+    judgment of units. *)
+Definition glu_rel_unit_under_sub (Δ : ctx) (U : gunit) : Prop :=
+  forall Γ τ, glu_rel_sub_inst Γ τ Δ -> glu_unit_at Γ U[τ]ᵘ.
 
 (** A term all of whose instances at those substitutions are glued, each
     at its own value, in a context as the fundamental theorem glues it: the
@@ -1838,41 +1892,43 @@ Record glu_views_self (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_glu_vi
 (** A group glued: the judgments of its typing, read in the gluing model
     (see the section header). *)
 Record glu_ind_decl (D : ind_decl) : Prop := mk_glu_ind_decl
-{ (** Each member's parameters are a glued context *)
-  glu_ind_decl_params : forall k Mk, ind_member D k = Some Mk -> ⊩ im_params D Mk
-(** The sort's level is a glued level over the uniform parameters *)
-; glu_ind_decl_lvl : exists n, ind_uparams D ⊩ ind_sort_lvl (ind_sort D) : Level@n
+{ (** Each member's parameters are a context glued with its types *)
+  glu_ind_decl_params : forall k Mk, ind_member D k = Some Mk -> glu_rel_ctx_types (im_params D Mk)
+(** The sort's level is a level glued at its instances over the uniform
+    parameters *)
+; glu_ind_decl_lvl : exists n, glu_rel_exp_under_sub (ind_uparams D) (ind_sort_lvl (ind_sort D)) (Level@n)
 (** And over each member's parameters *)
 ; glu_ind_decl_lvlP : forall k Mk, ind_member D k = Some Mk ->
-    exists n, im_params D Mk ⊩ (ind_sort_lvl (ind_sort D))[wk_shiftn (im_nn Mk)]ʷ : Level@n
-(** Each non-uniform parameter is a glued type of the sort, over those
-    before it *)
+    exists n, glu_rel_exp_under_sub (im_params D Mk) (ind_sort_lvl (ind_sort D))[wk_shiftn (im_nn Mk)]ʷ (Level@n)
+(** Each non-uniform parameter is a type of the sort glued at its
+    instances, over those before it *)
 ; glu_ind_decl_nparams : forall k Mk j κ A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass κ A) ->
-    nparams_prefix Mk j ++ ind_uparams D ⊩ A : (ind_sort D)[wk_shiftn j]ʷ
-(** Each non-recursive argument is a glued type of the sort of its kind
-    next to the group's sort, over the non-recursive arguments before it *)
+    glu_rel_exp_under_sub (nparams_prefix Mk j ++ ind_uparams D) A (ind_sort D)[wk_shiftn j]ʷ
+(** Each non-recursive argument is a type of the sort of its kind next to
+    the group's sort glued at its instances, over the non-recursive
+    arguments before it *)
 ; glu_ind_decl_arg : forall k Mk c gs j r A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     List.nth_error (cargs_nonrec gs) j = Some A -> List.nth_error (cargs_nonrec_kinds gs) j = Some r ->
-    nonrec_args_prefix gs j ++ im_params D Mk ⊩ A : abs_kind_sort r (ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ
+    glu_rel_exp_under_sub (nonrec_args_prefix gs j ++ im_params D Mk) A (abs_kind_sort r (ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ)
 (** Each parameter of a recursive argument's shape is glued at its
-    member's telescope *)
+    instances at its member's telescope *)
 ; glu_ind_decl_rec_field : forall k Mk c gs gs1 t gs2 Mj m P T, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
     List.nth_error (ptyp_ps t) m = Some P ->
     List.nth_error (tele_insts (im_nparams Mj)
                       (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + im_nn Mk))) (ptyp_ps t)) m
       = Some T ->
-    ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk ⊩ P : T
+    glu_rel_exp_under_sub (ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk) P T
 (** The domains of a recursive argument's shape, each over those before
-    it, are types of the sort. *)
+    it, are types of the sort glued at their instances. *)
 ; glu_ind_decl_dom : forall k Mk c gs gs1 t gs2 j B, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error (ptyp_doms t) j = Some B ->
-    doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
-      ⊩ B : (ind_sort D)[wk_shiftn (j + List.length (cargs_nonrec gs1) + im_nn Mk)]ʷ
-(** The contexts of a shape's domains are glued *)
+    glu_rel_exp_under_sub (doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk)
+      B (ind_sort D)[wk_shiftn (j + List.length (cargs_nonrec gs1) + im_nn Mk)]ʷ
+(** The contexts of a shape's domains are glued with their types *)
 ; glu_ind_decl_dctx : forall k Mk c gs gs1 t gs2 j, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
-    ⊩ doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
+    glu_rel_ctx_types (doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk)
 (** The uniform arguments of a view's container, each at the instance of
     the container's telescope, over the group's members as variables. *)
 ; glu_ind_decl_view_self : exists IsS, glu_views_self D IsS
@@ -1931,9 +1987,15 @@ Definition glu_exp Θ Ξ Γ A M : Prop :=
 Definition glu_is_univ Θ Ξ Γ U : Prop :=
   forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> glu_is_univ_at Θ2 Ξ2 Γ U.
 
+(** A unit glues at each of its instances, at every sound embedding. *)
+Definition glu_unit Θ Ξ Γ U : Prop :=
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_unit_under_sub (gc_mk Θ2 Ξ2) Γ U.
+
 Notation "⊩ Θ ⍮ Ξ ⍮ Γ" := (glu_ctx Θ Ξ Γ)
   (at level 70, Θ at next level, Ξ at level 69, Γ at level 69) : type_scope.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊩ M : A" := (glu_exp Θ Ξ Γ A M)
   (at level 70, Ξ at level 69, Γ at level 69, M at level 69, A at level 69) : type_scope.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U" := (glu_is_univ Θ Ξ Γ U)
+  (at level 70, Ξ at level 69, Γ at level 69, U at level 69) : type_scope.
+Notation "Θ ⍮ Ξ ⍮ Γ ⊩ᵘ U" := (glu_unit Θ Ξ Γ U)
   (at level 70, Ξ at level 69, Γ at level 69, U at level 69) : type_scope.

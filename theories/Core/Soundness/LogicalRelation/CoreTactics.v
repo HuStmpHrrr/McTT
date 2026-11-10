@@ -105,7 +105,7 @@ Ltac invert_glu_rel1 :=
     its target, take the universes apart, and state a universe at the
     target by its two parts. *)
 Ltac glu_intro :=
-  unfold glu_ctx, glu_exp, glu_is_univ in *; intros;
+  unfold glu_ctx, glu_exp, glu_is_univ, glu_unit in *; intros;
   repeat match goal with IH : forall _ _, glu_gctx_embedding _ _ _ _ -> _, Hμ : glu_gctx_embedding _ _ _ _ |- _ =>
     specialize (IH _ _ Hμ) end;
   repeat match goal with H : glu_is_univ_at _ _ _ _ |- _ => destruct H end;

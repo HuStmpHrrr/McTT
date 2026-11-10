@@ -29,6 +29,7 @@ From Mctt.Core.Soundness Require Import
   LogicalRelation
   SubtypingCases
   VariableCases
+  Instances
   UniverseCases.
 From Mctt.Core.Soundness.Inductives Require Import Args.
 Import Domain_Notations Wk_Notations.
@@ -340,7 +341,7 @@ Section Comps.
     pose proof (decl_closed_nparams_ass D Hc m Mm HM) as HassN0.
     assert (Hk' : k < List.length (List.rev (im_nparams Mm))) by (rewrite List.length_rev, length_im_nparams; lia).
     destruct (nparams_lt_ass D m Mm k Hass HM Hk') as (κ & A & HA).
-    pose proof (glu_ind_decl_nparams _ HG m Mm k κ A HM HA) as HV.
+    pose proof (glu_rel_exp_of_under_sub (glu_ind_decl_nparams _ HG m Mm k κ A HM HA)) as HV.
     pose proof HV as [SbC HSbC _ _].
     pose proof (nparams_prefix_ass_member m Mm k HM) as HassC.
     pose proof (length_nparams_prefix Mm k ltac:(lia)) as Hlpre.
@@ -520,7 +521,7 @@ Section Comps.
     pose proof (decl_closed_params_ass D m Mm Hc HM) as HassP.
     assert (HA0 : List.nth_error (cargs_nonrec gs) k = Some A0)
       by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2 by lia; unfold k; rewrite Nat.sub_diag; reflexivity).
-    pose proof (glu_ind_decl_arg _ HG m Mm c gs k r0 A0 HM Hcon HA0 Hk0) as HV.
+    pose proof (glu_rel_exp_of_under_sub (glu_ind_decl_arg _ HG m Mm c gs k r0 A0 HM Hcon HA0 Hk0)) as HV.
     pose proof HV as [SbC HSbC _ _].
     assert (HlAs : List.length gs1 < List.length As).
     { assert (Hs : List.nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) <> None) by congruence.
@@ -693,7 +694,7 @@ Section Comps.
     destruct (Tele.ptyp_skip_pi _ _ _ _ Hsk) as [HB Hs'].
     assert (Hkl : k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
     assert (Hyl : List.length ys = k) by (destruct Hy as [Hyl _]; exact Hyl).
-    pose proof (glu_ind_decl_dom _ HG _ _ _ _ _ _ _ _ _ HM Hcon Heq HB) as HBv.
+    pose proof (glu_rel_exp_of_under_sub (glu_ind_decl_dom _ HG _ _ _ _ _ _ _ _ _ HM Hcon Heq HB)) as HBv.
     destruct (HeD _ _ _ _ _ _ _ _ _ _ _ _ HM Hns Hcon Heq Hnv HB Hy) as [b0 Hb0].
     pose proof (HDP _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hns Hcon Heq Hnv HB Hy Hb0) as Hgb0.
     rewrite <- (shape_env_eq Mm gs gs1 t gs2 k) in Hb0 by (first [ exact Heq | exact Hnsl | exact Hnvl | lia ]).
@@ -722,7 +723,7 @@ Section Comps.
     split; [ exact HTy |].
     intros Δ' φ b c' Hφ Hc' Hb.
     assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
-    destruct (glu_ind_decl_dctx _ HG _ _ _ _ _ _ _ (S k) HM Hcon Heq ltac:(lia)) as [SbC' HSbC'].
+    destruct (glu_rel_ctx_types_ctx _ (glu_ind_decl_dctx _ HG _ _ _ _ _ _ _ (S k) HM Hcon Heq ltac:(lia))) as [SbC' HSbC'].
     pose proof (shape_sub_step m Mm c gs gs1 t gs2 k B ns nv ys Δ τ Us Ys SbC SbC' Δ' φ b b0 c' _ _ HM Hcon Heq HB
                   ltac:(change (List.length (ns ++ nv ++ ys) = List.length Pre); rewrite HlPre, !List.length_app; lia)
                   HSbC HSbC' Hσ Hφ Hb0 Hgb0 (HTy _ _ Hφ) Hb) as Hσ''.
@@ -764,7 +765,7 @@ Section Comps.
     { destruct (Nat.lt_ge_cases (List.length gs1) (List.length As)) as [| Hge]; [ assumption |].
       rewrite (proj2 (List.nth_error_None _ _)) in HT; [ discriminate |].
       rewrite length_tele_insts by apply cargs_ctx_aux_ass; rewrite length_cargs_ctx; subst gs; rewrite List.length_app; cbn; lia. }
-    destruct (glu_ind_decl_dctx _ HG _ _ _ _ _ _ _ 0 HM Hcon Heq ltac:(lia)) as [SbC0 HSbC0].
+    destruct (glu_rel_ctx_types_ctx _ (glu_ind_decl_dctx _ HG _ _ _ _ _ _ _ 0 HM Hcon Heq ltac:(lia))) as [SbC0 HSbC0].
     cbn [List.firstn doms_ctx List.map List.rev List.app] in HSbC0.
     pose proof (nonrec_args_prefix_glu_sub Δ Us HΔ HUs m Mm c gs gs1 (ca_rec t) gs2 Ns ns As vs SbC0 HM Hcon Heq Hnp Hns Hvl
                   ltac:(lia) Hpre Hp HSbC0) as Hσ.
@@ -992,12 +993,12 @@ Section Former.
     - inversion Hb; subst; exists (d_univ i0); split; [ constructor | reflexivity ].
     - inversion Hb; subst.
       match goal with Hlv : ⟦ t[wk_shiftn _]ʷ ⟧ _ ↘ ?l |- _ => rename l into lv; rename Hlv into Hlv0 end.
-      destruct (glu_ind_decl_lvl _ HG) as [n HLu]; rewrite Heq in HLu; cbn [ind_sort_lvl] in HLu.
+      destruct (glu_ind_decl_lvl _ HG) as [n HLu]; apply glu_rel_exp_of_under_sub in HLu; rewrite Heq in HLu; cbn [ind_sort_lvl] in HLu.
       pose proof HLu as [SbU HSbU _ _].
       pose proof (glu_sub_uparams _ _ _ _ HΔ HSbU (glu_args_uparams_of_params _ _ _ _ Hg)) as Hσu.
       destruct (glu_rel_exp_level_elim HSbU HLu _ _ _ Hσu) as (l' & Hl' & _).
       exists (d_suniv l'); split; [ econstructor; exact Hl' |].
-      pose proof (glu_ind_decl_params _ HG _ _ HM) as [SbP HSbP].
+      pose proof (glu_rel_ctx_types_ctx _ (glu_ind_decl_params _ HG _ _ HM)) as [SbP HSbP].
       pose proof (glu_sub_params _ _ _ _ _ _ HM HΔ HSbP Hg) as Hσ.
       assert (HCs : ⊨ im_nparams Mk ++ ind_uparams D) by (apply completeness_fundamental_ctx; exact HΔP).
       assert (HSs : ind_uparams D ⊨ Type⟨t⟩ : Typeω@iS) by (apply completeness_fundamental_exp; exact HS).
@@ -1084,7 +1085,7 @@ Section Former.
     - invert_glu_univ_elem Hglu.
       apply_predicate_equivalence.
       cbn [Completeness.Inductives.Decl.univ_idx] in Hidx; rewrite Hidx in Hgd.
-      destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n HLv]; rewrite Heq in HLv; cbn [ind_sort_lvl exp_wk] in HLv.
+      destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n HLv]; apply glu_rel_exp_of_under_sub in HLv; rewrite Heq in HLv; cbn [ind_sort_lvl exp_wk] in HLv.
       pose proof HLv as [SbP HSbP _ _].
       rewrite <- Hvs in Hg.
       pose proof (glu_sub_params _ _ _ _ _ _ HM HΔ HSbP Hg) as Hσ.
@@ -1122,12 +1123,12 @@ Section Former.
   Proof.
     intros * HM HT.
     apply glu_entry_valid_of_rel.
-    destruct (glu_ind_decl_params _ HG _ _ HM) as [SbP HSbP].
+    destruct (glu_rel_ctx_types_ctx _ (glu_ind_decl_params _ HG _ _ HM)) as [SbP HSbP].
     rewrite List.app_nil_r in HT |- *.
     assert (HΓ : ⊩ im_params D Mk) by (eexists; exact HSbP).
     destruct Hsu as [[j Heq] | [t Heq]]; rewrite Heq in HT |- *; cbn [exp_wk] in HT |- *.
     - eapply glu_rel_exp_subtyp; [ exact (glu_rel_exp_typ HΓ) | exact (glu_rel_exp_typ HΓ) | constructor | exact (wf_typ_inversion HT) ].
-    - destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n HLv]; rewrite Heq in HLv; cbn [ind_sort_lvl] in HLv.
+    - destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n HLv]; apply glu_rel_exp_of_under_sub in HLv; rewrite Heq in HLv; cbn [ind_sort_lvl] in HLv.
       eapply glu_rel_exp_subtyp; [ eapply glu_rel_exp_univ_lvl; exact HLv | exact (glu_rel_exp_typ HΓ) | constructor
                                  | exact (wf_univ_inversion HT) ].
   Qed.
@@ -1169,7 +1170,7 @@ Section Former.
     pose proof (decl_closed_params_ass D k Mk Hc HM) as HassP.
     pose proof (decl_closed_params D k Mk Hc HM) as Hs.
     destruct (ind_ty_typed0 _ _ _ _ _ Hdt HM) as [j Hj].
-    destruct (glu_ind_decl_params _ HG _ _ HM) as [SbP HSbP].
+    destruct (glu_rel_ctx_types_ctx _ (glu_ind_decl_params _ HG _ _ HM)) as [SbP HSbP].
     assert (HSbP0 : EG im_params D Mk ++ ⋅ ∈ glu_ctx_env ↘ SbP) by (rewrite List.app_nil_r; exact HSbP).
     destruct (glu_ctx_env_entries_valid _ _ _ HassP HSbP0 j) as (i & Hji & HAents).
     assert (Hi : ⋅ ⊢ ind_ty D Mk : Typeω@i) by (eapply lift_exp_ge; [ exact Hji | exact Hj ]).

@@ -68,6 +68,26 @@ Proof.
   rewrite <- (type_sort_wk S φ HS); apply HA; assumption.
 Qed.
 
+(** A unit glued at every renaming is glued at every renaming of a
+    renaming of it. *)
+Lemma glu_unit_under_renaming_wk : forall {Γ Γ' U ψ},
+    glu_unit_under_renaming Γ U ->
+    Γ' ⊢ʷ ψ : Γ ->
+    glu_unit_under_renaming Γ' (gunit_wk U ψ).
+Proof.
+  intros * HU Hψ Γ'' φ Hφ HΓ''.
+  rewrite gunit_wk_wk; apply HU; [ eapply wf_wk_compose; eassumption | exact HΓ'' ].
+Qed.
+
+(** The same past one more entry. *)
+Lemma glu_unit_under_renaming_shift : forall {e Γ U},
+    ⊢ (e :: Γ)%list ->
+    glu_unit_under_renaming Γ U ->
+    glu_unit_under_renaming (e :: Γ)%list (gunit_wk U ↑).
+Proof.
+  intros * He HU; eapply glu_unit_under_renaming_wk; [ exact HU | apply wf_wk_shift; exact He ].
+Qed.
+
 (** ** Weakened Instances *)
 
 (** An instance postcomposed with a renaming into a glued context is an
@@ -78,10 +98,22 @@ Lemma glu_rel_sub_inst_wk : forall {Γ Γ' Δ τ ψ},
     ⊩ Γ' ->
     glu_rel_sub_inst Γ' (sb_wk τ ψ) Δ.
 Proof.
-  intros * [Hτ HΓ Hc] Hψ HΓ'.
-  econstructor; [ eapply wf_sub_wk; eassumption | exact HΓ' |].
-  intros x A Hx; rewrite <- !exp_wk_sub.
-  eapply glu_rel_exp_under_renaming_wk; [ apply Hc; exact Hx | exact Hψ ].
+  intros * [Hτ HΓ Hc Hm] Hψ HΓ'.
+  econstructor; [ eapply wf_sub_wk; eassumption | exact HΓ' | |].
+  - intros x A Hx; rewrite <- !exp_wk_sub.
+    eapply glu_rel_exp_under_renaming_wk; [ apply Hc; exact Hx | exact Hψ ].
+  - intros x U Hx; rewrite <- gunit_wk_sub.
+    eapply glu_unit_under_renaming_wk; [ exact (Hm _ _ Hx) | exact Hψ ].
+Qed.
+
+(** A unit glued at its instances is glued at every renaming of each. *)
+Lemma glu_rel_unit_under_sub_inst_renaming : forall {Γ Δ τ U},
+    glu_rel_unit_under_sub Δ U ->
+    glu_rel_sub_inst Γ τ Δ ->
+    glu_unit_under_renaming Γ U[τ]ᵘ.
+Proof.
+  intros * HU Hτ Γ' φ Hφ HΓ'.
+  rewrite gunit_wk_sub; apply HU; eapply glu_rel_sub_inst_wk; eassumption.
 Qed.
 
 (** A term glued at its instances is glued at every renaming of each. *)
@@ -104,13 +136,15 @@ Lemma glu_rel_ctx_types_renaming : forall {Γ Γ' φ},
     ⊩ Γ' ->
     glu_rel_sub_inst Γ' (ι φ) Γ.
 Proof.
-  intros * [HΓ Ht] Hφ HΓ'.
-  econstructor; [ apply wf_sub_of_wk; exact Hφ | exact HΓ' |].
-  intros x A Hx; rewrite !exp_sub_of_wk.
-  destruct (Ht _ _ Hx) as (S & HS & HA).
-  change (#x[φ]ʷ) with (#(φ x)).
-  eapply glu_rel_exp_under_renaming_var; [ eapply wf_wk_lookup; eassumption | exact HS |].
-  rewrite <- (type_sort_wk S φ HS); eapply glu_rel_exp_under_renaming_wk; eassumption.
+  intros * [HΓ Ht Hs] Hφ HΓ'.
+  econstructor; [ apply wf_sub_of_wk; exact Hφ | exact HΓ' | |].
+  - intros x A Hx; rewrite !exp_sub_of_wk.
+    destruct (Ht _ _ Hx) as (S & HS & HA).
+    change (#x[φ]ʷ) with (#(φ x)).
+    eapply glu_rel_exp_under_renaming_var; [ eapply wf_wk_lookup; eassumption | exact HS |].
+    rewrite <- (type_sort_wk S φ HS); eapply glu_rel_exp_under_renaming_wk; eassumption.
+  - intros x U Hx; rewrite gunit_sub_of_wk.
+    eapply glu_unit_under_renaming_wk; [ exact (Hs _ _ Hx) | exact Hφ ].
 Qed.
 
 (** The identity is an instance. *)
@@ -122,9 +156,10 @@ Proof.
   assert (H : glu_rel_sub_inst Γ (ι wk_id) Γ).
   { apply glu_rel_ctx_types_renaming; [ exact HΓ | | apply HΓ ].
     apply wf_wk_id; destruct (glu_rel_ctx_types_ctx _ HΓ) as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb. }
-  destruct H as [_ HΓ' Hc].
-  econstructor; [ apply wf_sub_id; destruct HΓ' as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb | exact HΓ' |].
-  intros x A Hx; specialize (Hc _ _ Hx); rewrite !exp_sub_of_wk, !exp_wk_id in Hc; rewrite !exp_sub_id; exact Hc.
+  destruct H as [_ HΓ' Hc Hm].
+  econstructor; [ apply wf_sub_id; destruct HΓ' as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb | exact HΓ' | |].
+  - intros x A Hx; specialize (Hc _ _ Hx); rewrite !exp_sub_of_wk, !exp_wk_id in Hc; rewrite !exp_sub_id; exact Hc.
+  - intros x U Hx; specialize (Hm _ _ Hx); rewrite gunit_sub_of_wk, gunit_wk_id in Hm; rewrite gunit_sub_id; exact Hm.
 Qed.
 
 (** A term glued at its instances is glued. *)
@@ -186,22 +221,38 @@ Proof. intros * HM; exact (glu_rel_exp_to_wf_exp (glu_rel_exp_of_under_sub HM)).
 
 (** ** Contexts Glued with their Variables' Types *)
 
-(** One more entry: the types of the variables under it are weakened past
-    it, and the head's is given. *)
+(** A unit glued at its instances is glued at every renaming of a context
+    glued with its types. *)
+Lemma glu_rel_unit_under_sub_renaming : forall {Γ U},
+    glu_rel_ctx_types Γ ->
+    glu_rel_unit_under_sub Γ U ->
+    glu_unit_under_renaming Γ U.
+Proof.
+  intros * HΓ HU Γ' φ Hφ HΓ'.
+  rewrite <- gunit_sub_of_wk; apply HU.
+  apply glu_rel_ctx_types_renaming; [ exact HΓ | exact Hφ | exact HΓ' ].
+Qed.
+
+(** One more entry: the types of the variables and the units of the slots
+    under it are weakened past it, and the head's are given. *)
 Lemma glu_rel_ctx_types_cons : forall {e Γ},
     glu_rel_ctx_types Γ ->
     ⊩ (e :: Γ)%list ->
     (forall A, (e :: Γ)%list ∋ #0 : A -> exists S, type_sort S /\ glu_rel_exp_under_renaming (e :: Γ)%list A S) ->
+    (forall U, (e :: Γ)%list ∋ #0 ≔ₘ U -> glu_unit_under_renaming (e :: Γ)%list U) ->
     glu_rel_ctx_types (e :: Γ)%list.
 Proof.
-  intros * [HΓ Ht] HeΓ Hhead.
+  intros * [HΓ Ht Hs] HeΓ Hhead Hheadm.
   assert (He : ⊢ (e :: Γ)%list) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
-  econstructor; [ exact HeΓ |].
-  intros [| n] A Hx; [ exact (Hhead _ Hx) |].
-  inversion Hx; subst.
-  destruct (Ht _ _ ltac:(eassumption)) as (S & HS & HA).
-  exists S; split; [ exact HS |].
-  rewrite <- (type_sort_wk S ↑ HS); apply glu_rel_exp_under_renaming_shift; assumption.
+  econstructor; [ exact HeΓ | |].
+  - intros [| n] A Hx; [ exact (Hhead _ Hx) |].
+    inversion Hx; subst.
+    destruct (Ht _ _ ltac:(eassumption)) as (S & HS & HA).
+    exists S; split; [ exact HS |].
+    rewrite <- (type_sort_wk S ↑ HS); apply glu_rel_exp_under_renaming_shift; assumption.
+  - intros [| n] U Hx; [ exact (Hheadm _ Hx) |].
+    inversion Hx; subst.
+    apply glu_unit_under_renaming_shift; [ exact He | eapply Hs; eassumption ].
 Qed.
 
 (** The head of an entry whose type is glued at its instances: its type,
@@ -221,8 +272,7 @@ Qed.
 (** As [wf_ctx_empty]. *)
 Lemma glu_rel_ctx_types_empty : ⊢ᵍ gc_deps ⍮ gc_stack -> glu_rel_ctx_types ⋅.
 Proof.
-  intros Hg; econstructor; [ apply glu_rel_ctx_empty; exact Hg |].
-  intros x A Hx; inversion Hx.
+  intros Hg; econstructor; [ apply glu_rel_ctx_empty; exact Hg | intros x A Hx; inversion Hx | intros x U Hx; inversion Hx ].
 Qed.
 
 (** An assumption of a type of a sort of its kind. *)
@@ -234,7 +284,7 @@ Proof.
   intros * HA HS.
   pose proof (glu_rel_exp_of_under_sub HA) as HAg.
   assert (HeΓ : ⊩ Γ ▹{κ} A) by (eapply glu_rel_ctx_extend; [ eapply presup_ctx_glu_rel_exp | |]; eassumption).
-  apply glu_rel_ctx_types_cons; [ apply HA | exact HeΓ |].
+  apply glu_rel_ctx_types_cons; [ apply HA | exact HeΓ | | intros U Hx; inversion Hx ].
   intros A' Hx; inversion Hx; subst.
   eapply glu_rel_ctx_types_head; [ destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb
                                  | eapply sort_kind_type_sort; exact HS | exact HA ].
@@ -251,36 +301,45 @@ Proof.
   pose proof (glu_rel_exp_of_under_sub HA) as HAg.
   assert (HeΓ : ⊩ Γ ▸ A ≔ M)
     by (eapply glu_rel_ctx_extend_def; [ eapply presup_ctx_glu_rel_exp; exact HAg | exact HAg | exact HS | exact (glu_rel_exp_of_under_sub HM) ]).
-  apply glu_rel_ctx_types_cons; [ apply HA | exact HeΓ |].
+  apply glu_rel_ctx_types_cons; [ apply HA | exact HeΓ | | intros U Hx; inversion Hx ].
   intros A' Hx; inversion Hx; subst.
   eapply glu_rel_ctx_types_head; [ destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb | exact HS | exact HA ].
 Qed.
 
-(** A module slot of a well-formed unit: no variable of a type. *)
+(** A module slot of a well-formed unit glued at its instances: no
+    variable of a type, and the slot's unit. *)
 Lemma glu_rel_ctx_types_extend_mod : forall {Γ U},
     glu_rel_ctx_types Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+    glu_rel_unit_under_sub Γ U ->
     glu_rel_ctx_types (Γ ▹ₘ U).
 Proof.
-  intros * HΓ HU.
-  apply glu_rel_ctx_types_cons; [ exact HΓ | apply glu_rel_ctx_extend_mod; [ apply HΓ | exact HU ] |].
-  intros A' Hx; inversion Hx.
+  intros * HΓ HU HUg.
+  assert (HeΓ : ⊩ Γ ▹ₘ U) by (apply glu_rel_ctx_extend_mod; [ apply HΓ | exact HU ]).
+  assert (He : ⊢ Γ ▹ₘ U) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
+  apply glu_rel_ctx_types_cons; [ exact HΓ | exact HeΓ | intros A' Hx; inversion Hx |].
+  intros U' Hx; inversion Hx; subst.
+  apply glu_unit_under_renaming_shift; [ exact He | exact (glu_rel_unit_under_sub_renaming HΓ HUg) ].
 Qed.
 
-(** A definition with a module part. *)
+(** A definition with a module part, its unit glued at its instances. *)
 Lemma glu_rel_ctx_types_extend_dm : forall {Γ A M E} {i : nat},
     glu_rel_exp_under_sub Γ A Typeω@i ->
     glu_rel_exp_under_sub Γ M A ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    glu_rel_unit_under_sub Γ (gu_mk nil (md_alias E)) ->
     glu_rel_ctx_types (Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)).
 Proof.
-  intros * HA HM HU.
+  intros * HA HM HU HUg.
   pose proof (glu_rel_exp_of_under_sub HA) as HAg.
   assert (HeΓ : ⊩ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E))
     by (eapply glu_rel_ctx_extend_dm; [ eapply presup_ctx_glu_rel_exp; exact HAg | exact HAg | exact (glu_rel_exp_of_under_sub HM) | exact HU ]).
-  apply glu_rel_ctx_types_cons; [ apply HA | exact HeΓ |].
-  intros A' Hx; inversion Hx; subst.
-  eapply glu_rel_ctx_types_head; [ destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb | constructor | exact HA ].
+  assert (He : ⊢ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
+  apply glu_rel_ctx_types_cons; [ apply HA | exact HeΓ | |].
+  - intros A' Hx; inversion Hx; subst.
+    eapply glu_rel_ctx_types_head; [ exact He | constructor | exact HA ].
+  - intros U' Hx; inversion Hx; subst.
+    apply glu_unit_under_renaming_shift; [ exact He | exact (glu_rel_unit_under_sub_renaming (glu_rel_exp_under_sub_ctx _ _ _ HA) HUg) ].
 Qed.
 
 (** ** Lifted Instances *)
@@ -295,19 +354,37 @@ Lemma glu_rel_sub_inst_q_gen : forall {Γ Δ τ e},
     (forall A, (e :: Δ)%list ∋ #0 : A ->
           (centry_sub e τ :: Γ)%list ∋ #0 : A[q τ] /\
           exists S, type_sort S /\ glu_rel_exp_under_renaming (centry_sub e τ :: Γ)%list A[q τ] S) ->
+    (forall U, (e :: Δ)%list ∋ #0 ≔ₘ U -> glu_unit_under_renaming (centry_sub e τ :: Γ)%list U[q τ]ᵘ) ->
     glu_rel_sub_inst (centry_sub e τ :: Γ)%list (q τ) (e :: Δ)%list.
 Proof.
-  intros * [Hτ HΓ Hc] HeΓ Hq Hhead.
+  intros * [Hτ HΓ Hc Hm] HeΓ Hq Hhead Hheadm.
   assert (He : ⊢ (centry_sub e τ :: Γ)%list) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
-  econstructor; [ exact Hq | exact HeΓ |].
-  intros [| n] A Hx.
-  - destruct (Hhead _ Hx) as (Hx' & S & HS & HA).
-    change (#0[q τ]) with (#0).
-    eapply glu_rel_exp_under_renaming_var; eassumption.
-  - inversion Hx; subst.
-    change (#(S n)[q τ]) with (sentry_exp (sentry_wk (τ n) ↑)).
-    rewrite <- sentry_exp_wk, exp_wk_shift_sub_q.
-    apply glu_rel_exp_under_renaming_shift; [ exact He | apply Hc; eassumption ].
+  econstructor; [ exact Hq | exact HeΓ | |].
+  - intros [| n] A Hx.
+    + destruct (Hhead _ Hx) as (Hx' & S & HS & HA).
+      change (#0[q τ]) with (#0).
+      eapply glu_rel_exp_under_renaming_var; eassumption.
+    + inversion Hx; subst.
+      change (#(S n)[q τ]) with (sentry_exp (sentry_wk (τ n) ↑)).
+      rewrite <- sentry_exp_wk, exp_wk_shift_sub_q.
+      apply glu_rel_exp_under_renaming_shift; [ exact He | apply Hc; eassumption ].
+  - intros [| n] U Hx; [ exact (Hheadm _ Hx) |].
+    inversion Hx; subst.
+    rewrite gunit_wk_shift_sub_q.
+    apply glu_unit_under_renaming_shift; [ exact He | eapply Hm; eassumption ].
+Qed.
+
+(** The slot of an entry lifted over an instance, its unit glued at the
+    instances: the slot's unit, weakened past it. *)
+Lemma glu_rel_sub_inst_q_head_mod : forall {Γ Δ τ e U},
+    glu_rel_sub_inst Γ τ Δ ->
+    ⊢ (centry_sub e τ :: Γ)%list ->
+    glu_rel_unit_under_sub Δ U ->
+    glu_unit_under_renaming (centry_sub e τ :: Γ)%list (gunit_wk U ↑)[q τ]ᵘ.
+Proof.
+  intros * Hτ He HU.
+  rewrite gunit_wk_shift_sub_q; apply glu_unit_under_renaming_shift; [ exact He |].
+  eapply glu_rel_unit_under_sub_inst_renaming; eassumption.
 Qed.
 
 (** The head of an entry lifted over an instance, its type glued at the
@@ -342,7 +419,7 @@ Proof.
     by (pose proof (glu_rel_exp_under_sub_inst _ _ _ HA _ _ Hτ) as H; rewrite (type_sort_sub S τ HSt) in H; exact H).
   assert (HeΓ : ⊩ Γ ▹{κ} A[τ]) by (eapply glu_rel_ctx_extend; [ apply Hτ | exact HAτ | exact HS ]).
   assert (He : ⊢ Γ ▹{κ} A[τ]) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
-  apply (glu_rel_sub_inst_q_gen (e := ce_ass κ A)); [ exact Hτ | exact HeΓ | |].
+  apply (glu_rel_sub_inst_q_gen (e := ce_ass κ A)); [ exact Hτ | exact HeΓ | | | intros U Hx; inversion Hx ].
   - eapply wf_sub_q; [ apply Hτ | exact (glu_rel_exp_under_sub_wf HA) | exact HS | exact (glu_rel_exp_to_wf_exp HAτ) ].
   - intros A' Hx; inversion Hx; subst.
     eapply glu_rel_sub_inst_q_head; [ exact Hτ | exact He | constructor | exact HSt | exact HA ].
@@ -363,7 +440,7 @@ Proof.
   assert (HMτ : Γ ⊩ M[τ] : A[τ]) by (apply HM; exact Hτ).
   assert (HeΓ : ⊩ Γ ▸ A[τ] ≔ M[τ]) by (eapply glu_rel_ctx_extend_def; [ apply Hτ | exact HAτ | exact HS | exact HMτ ]).
   assert (He : ⊢ Γ ▸ A[τ] ≔ M[τ]) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
-  apply (glu_rel_sub_inst_q_gen (e := ce_def A M)); [ exact Hτ | exact HeΓ | |].
+  apply (glu_rel_sub_inst_q_gen (e := ce_def A M)); [ exact Hτ | exact HeΓ | | | intros U Hx; inversion Hx ].
   - eapply wf_sub_q_def; [ apply Hτ | exact (glu_rel_exp_under_sub_wf HA) | exact HS | exact (glu_rel_exp_under_sub_wf HM)
                          | exact (glu_rel_exp_to_wf_exp HAτ) | exact (glu_rel_exp_to_wf_exp HMτ) ].
   - intros A' Hx; inversion Hx; subst.
@@ -371,18 +448,21 @@ Proof.
 Qed.
 
 (** An instance lifted over a module slot whose unit is well formed at
-    the instance. *)
+    the instance and glued at the instances. *)
 Lemma glu_rel_sub_inst_q_mod : forall {Γ Δ τ U},
     glu_rel_sub_inst Γ τ Δ ->
     gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵘ U ≈ U ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U[τ]ᵘ ≈ U[τ]ᵘ ->
+    glu_rel_unit_under_sub Δ U ->
     glu_rel_sub_inst (Γ ▹ₘ U[τ]ᵘ) (q τ) (Δ ▹ₘ U).
 Proof.
-  intros * Hτ HU HUτ.
+  intros * Hτ HU HUτ HUg.
   assert (HeΓ : ⊩ Γ ▹ₘ U[τ]ᵘ) by (apply glu_rel_ctx_extend_mod; [ apply Hτ | exact HUτ ]).
-  apply (glu_rel_sub_inst_q_gen (e := ce_mod U)); [ exact Hτ | exact HeΓ | |].
+  assert (He : ⊢ Γ ▹ₘ U[τ]ᵘ) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
+  apply (glu_rel_sub_inst_q_gen (e := ce_mod U)); [ exact Hτ | exact HeΓ | | intros A' Hx; inversion Hx |].
   - eapply wf_sub_q_mod; [ apply Hτ | exact HU | exact HUτ ].
-  - intros A' Hx; inversion Hx.
+  - intros U' Hx; inversion Hx; subst.
+    exact (glu_rel_sub_inst_q_head_mod (e := ce_mod U) Hτ He HUg).
 Qed.
 
 (** An instance lifted over a definition with a module part. *)
@@ -392,19 +472,22 @@ Lemma glu_rel_sub_inst_q_dm : forall {Γ Δ τ A M E} {i : nat},
     glu_rel_exp_under_sub Δ M A ->
     gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E[τ]ᵐ) ≈ gu_mk nil (md_alias E[τ]ᵐ) ->
+    glu_rel_unit_under_sub Δ (gu_mk nil (md_alias E)) ->
     glu_rel_sub_inst (Γ ▸ₘ A[τ] ≔ M[τ] ‖ gu_mk nil (md_alias E[τ]ᵐ)) (q τ) (Δ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)).
 Proof.
-  intros * Hτ HA HM HU HUτ.
+  intros * Hτ HA HM HU HUτ HUg.
   assert (HAτ : Γ ⊩ A[τ] : Typeω@i) by (apply HA; exact Hτ).
   assert (HMτ : Γ ⊩ M[τ] : A[τ]) by (apply HM; exact Hτ).
   assert (HeΓ : ⊩ Γ ▸ₘ A[τ] ≔ M[τ] ‖ gu_mk nil (md_alias E[τ]ᵐ))
     by (eapply glu_rel_ctx_extend_dm; [ apply Hτ | exact HAτ | exact HMτ | exact HUτ ]).
   assert (He : ⊢ Γ ▸ₘ A[τ] ≔ M[τ] ‖ gu_mk nil (md_alias E[τ]ᵐ)) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
-  apply (glu_rel_sub_inst_q_gen (e := ce_dm A M (gu_mk nil (md_alias E)))); [ exact Hτ | exact HeΓ | |].
+  apply (glu_rel_sub_inst_q_gen (e := ce_dm A M (gu_mk nil (md_alias E)))); [ exact Hτ | exact HeΓ | | |].
   - eapply wf_sub_q_dm; [ apply Hτ | exact (glu_rel_exp_under_sub_wf HA) | exact (glu_rel_exp_under_sub_wf HM) | exact HU
                         | exact (glu_rel_exp_to_wf_exp HAτ) | exact (glu_rel_exp_to_wf_exp HMτ) | exact HUτ ].
   - intros A' Hx; inversion Hx; subst.
     eapply glu_rel_sub_inst_q_head; [ exact Hτ | exact He | constructor | constructor | exact HA ].
+  - intros U' Hx; inversion Hx; subst.
+    exact (glu_rel_sub_inst_q_head_mod (e := ce_dm A M (gu_mk nil (md_alias E))) Hτ He HUg).
 Qed.
 
 (** ** Extended Instances *)
@@ -416,14 +499,18 @@ Lemma glu_rel_sub_inst_extend_gen : forall {Γ Δ τ e en},
     glu_rel_sub_inst Γ τ Δ ->
     Γ ⊢ˢ sb_extend τ en : (e :: Δ)%list ->
     (forall A, (e :: Δ)%list ∋ #0 : A -> glu_rel_exp_under_renaming Γ (sentry_exp en) A[sb_extend τ en]) ->
+    (forall U, (e :: Δ)%list ∋ #0 ≔ₘ U -> glu_unit_under_renaming Γ U[sb_extend τ en]ᵘ) ->
     glu_rel_sub_inst Γ (sb_extend τ en) (e :: Δ)%list.
 Proof.
-  intros * [Hτ HΓ Hc] Hτe Hhead.
-  econstructor; [ exact Hτe | exact HΓ |].
-  intros [| n] A Hx; [ exact (Hhead _ Hx) |].
-  inversion Hx; subst.
-  change (#(S n)[sb_extend τ en]) with (#n[τ]).
-  rewrite exp_sub_shift_extend; apply Hc; eassumption.
+  intros * [Hτ HΓ Hc Hm] Hτe Hhead Hheadm.
+  econstructor; [ exact Hτe | exact HΓ | |].
+  - intros [| n] A Hx; [ exact (Hhead _ Hx) |].
+    inversion Hx; subst.
+    change (#(S n)[sb_extend τ en]) with (#n[τ]).
+    rewrite exp_sub_shift_extend; apply Hc; eassumption.
+  - intros [| n] U Hx; [ exact (Hheadm _ Hx) |].
+    inversion Hx; subst.
+    rewrite gunit_sub_shift_extend; eapply Hm; eassumption.
 Qed.
 
 (** An instance extended by a term glued at its type at every renaming,
@@ -436,7 +523,7 @@ Lemma glu_rel_sub_inst_extend : forall {Γ Δ τ A S κ N},
     glu_rel_sub_inst Γ (τ,,N) (Δ ▹{κ} A).
 Proof.
   intros * Hτ HA HS HN.
-  apply (glu_rel_sub_inst_extend_gen (e := ce_ass κ A)); [ exact Hτ | |].
+  apply (glu_rel_sub_inst_extend_gen (e := ce_ass κ A)); [ exact Hτ | | | intros U Hx; inversion Hx ].
   - eapply wf_sub_extend; [ apply Hτ | exact HA | exact HS |].
     apply glu_rel_exp_to_wf_exp, glu_rel_exp_of_under_renaming; [ apply Hτ | exact HN ].
   - intros A' Hx; inversion Hx; subst.
@@ -455,7 +542,7 @@ Lemma glu_rel_sub_inst_extend_def : forall {Γ Δ τ A S M},
 Proof.
   intros * Hτ HA HS HM.
   pose proof (glu_rel_exp_to_wf_exp (glu_rel_exp_under_sub_inst _ _ _ HM _ _ Hτ)) as HMτ.
-  apply (glu_rel_sub_inst_extend_gen (e := ce_def A M)); [ exact Hτ | |].
+  apply (glu_rel_sub_inst_extend_gen (e := ce_def A M)); [ exact Hτ | | | intros U Hx; inversion Hx ].
   - eapply wf_sub_extend_def; [ apply Hτ | exact HA | exact HS | exact (glu_rel_exp_under_sub_wf HM) | exact HMτ
                               | apply wf_exp_eq_refl; exact HMτ ].
   - intros A' Hx; inversion Hx; subst.
@@ -463,16 +550,20 @@ Proof.
 Qed.
 
 (** An instance extended by a unit's literal, for a module slot of the
-    unit: no component is a term. *)
+    unit glued at its instances: no component is a term, and the slot's
+    unit is the unit's instance. *)
 Lemma glu_rel_sub_inst_extend_mod : forall {Γ Δ τ U},
     glu_rel_sub_inst Γ τ Δ ->
     gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵘ U ≈ U ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U[τ]ᵘ ≈ U[τ]ᵘ ->
+    glu_rel_unit_under_sub Δ U ->
     glu_rel_sub_inst Γ (τ ,,ₘ me_lit U[τ]ᵘ) (Δ ▹ₘ U).
 Proof.
-  intros * Hτ HU HUτ.
-  apply (glu_rel_sub_inst_extend_gen (e := ce_mod U)); [ exact Hτ | eapply wf_sub_extend_mod; [ apply Hτ | exact HU | exact HUτ ] |].
-  intros A' Hx; inversion Hx.
+  intros * Hτ HU HUτ HUg.
+  apply (glu_rel_sub_inst_extend_gen (e := ce_mod U));
+    [ exact Hτ | eapply wf_sub_extend_mod; [ apply Hτ | exact HU | exact HUτ ] | intros A' Hx; inversion Hx |].
+  intros U' Hx; inversion Hx; subst.
+  rewrite gunit_sub_shift_extend; eapply glu_rel_unit_under_sub_inst_renaming; eassumption.
 Qed.
 
 (** An instance extended by the instance of a definition's body and a
@@ -483,15 +574,18 @@ Lemma glu_rel_sub_inst_extend_dm : forall {Γ Δ τ A M E} {i : nat},
     glu_rel_exp_under_sub Δ M A ->
     gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ (gu_mk nil (md_alias E))[τ]ᵘ ≈ (gu_mk nil (md_alias E))[τ]ᵘ ->
+    glu_rel_unit_under_sub Δ (gu_mk nil (md_alias E)) ->
     glu_rel_sub_inst Γ (τ ,,ᵈ M[τ] ‖ me_lit (gu_mk nil (md_alias E))[τ]ᵘ) (Δ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)).
 Proof.
-  intros * Hτ HA HM HU HUτ.
+  intros * Hτ HA HM HU HUτ HUg.
   pose proof (glu_rel_exp_to_wf_exp (glu_rel_exp_under_sub_inst _ _ _ HM _ _ Hτ)) as HMτ.
-  apply (glu_rel_sub_inst_extend_gen (e := ce_dm A M (gu_mk nil (md_alias E)))); [ exact Hτ | |].
+  apply (glu_rel_sub_inst_extend_gen (e := ce_dm A M (gu_mk nil (md_alias E)))); [ exact Hτ | | |].
   - eapply wf_sub_extend_dm; [ apply Hτ | exact HA | exact (glu_rel_exp_under_sub_wf HM) | exact HU | exact HMτ
                              | apply wf_exp_eq_refl; exact HMτ | exact HUτ ].
   - intros A' Hx; inversion Hx; subst.
     rewrite exp_sub_shift_extend; eapply glu_rel_exp_under_sub_inst_renaming; eassumption.
+  - intros U' Hx; inversion Hx; subst.
+    rewrite gunit_sub_shift_extend; eapply glu_rel_unit_under_sub_inst_renaming; eassumption.
 Qed.
 
 End Fixed_GCtx.
@@ -552,23 +646,29 @@ Lemma glu_ctx_extend_def :
      ⊩ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ).
 Proof. glu_intro; eapply glu_rel_ctx_types_extend_def; eassumption. Qed.
 
-(** A slot glues when the context does and its unit is well formed. *)
+(** A slot glues when the context does and its unit is well formed and
+    glues. *)
 Lemma glu_ctx_extend_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ᵘ U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
-Proof. glu_intro; glu_gctx_embedding_wf; eapply (@glu_rel_ctx_types_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption ]. Qed.
+Proof.
+  glu_intro; glu_gctx_embedding_wf.
+  eapply (@glu_rel_ctx_types_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption | eassumption ].
+Qed.
 
 (** A definition with a module part glues when its term part does and its
-    unit is well formed. *)
+    unit is well formed and glues. *)
 Lemma glu_ctx_extend_dm :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ᵘ gu_mk nil (md_alias E) ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ).
 Proof.
   glu_intro; glu_gctx_embedding_wf.
-  eapply (@glu_rel_ctx_types_extend_dm (gc_mk _ _)); [ eassumption | eassumption | apply Hwu; eassumption ].
+  eapply (@glu_rel_ctx_types_extend_dm (gc_mk _ _)); [ eassumption | eassumption | apply Hwu; eassumption | eassumption ].
 Qed.
 
 (** A variable at an instance is the instance's component, glued at its

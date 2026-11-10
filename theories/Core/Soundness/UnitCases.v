@@ -263,6 +263,7 @@ Hint Resolve glu_rel_ctx_tail glu_rel_ctx_extend_mod glu_rel_exp_let_mod : mctt.
 Lemma glu_let_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ᵘ U ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ C : Srt ->
      type_sort Srt ->
@@ -292,6 +293,7 @@ Lemma glu_let_dm :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ᵘ gu_mk nil (md_alias E) ->
      Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : Srt ->
      Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊩ C : Srt ->
      type_sort Srt ->
@@ -306,12 +308,12 @@ Proof.
   assert (HAt : Θ2 ⍮ Ξ2 ⍮ Γ ⊢ A : Typeω@i) by (eapply (@glu_rel_exp_under_sub_wf (gc_mk Θ2 Ξ2)); eassumption).
   assert (Hq : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) (Γ' ▸ₘ A[τ] ≔ M[τ] ‖ gu_mk nil (md_alias E[τ]ᵐ)) (q τ)
                  (Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)))
-    by (eapply glu_rel_sub_inst_q_dm; [ exact Hτ | eassumption | eassumption | exact HU2 | exact HUτ ]).
+    by (eapply glu_rel_sub_inst_q_dm; [ exact Hτ | eassumption | eassumption | exact HU2 | exact HUτ | eassumption ]).
   (** The type's instance at the definiens and the unit's literal, the
       witness *)
   assert (Hext : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) Γ' (τ ,,ᵈ M[τ] ‖ me_lit (gu_mk nil (md_alias E))[τ]ᵘ)
                    (Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)))
-    by (eapply glu_rel_sub_inst_extend_dm; [ exact Hτ | exact HAt | eassumption | exact HU2 | exact HUτ ]).
+    by (eapply glu_rel_sub_inst_extend_dm; [ exact Hτ | exact HAt | eassumption | exact HU2 | exact HUτ | eassumption ]).
   rewrite exp_sub_extend_dm_sub, <- exp_sub_q_extend_dm.
   match goal with HS : type_sort Srt |- _ => rename HS into HSt end.
   eapply (glu_rel_exp_let_dm (A := A[τ]) (M := M[τ]) (E := E[τ]ᵐ) (C := C[q τ]) (S := Srt)); try glu_inst_premise.
