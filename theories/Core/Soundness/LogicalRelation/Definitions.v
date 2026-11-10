@@ -348,18 +348,23 @@ Record glu_nparams (k : nat) (Mk : imember) (NEl : nat -> nat -> list domain -> 
     values [pre] and the telescope [Ts] of the components before them,
     which grows by each domain, relevant.  At the end of the shape, the
     member [j] at the parameters [Ps], the type satisfies [SE] at the
-    values and the telescope reached there. *)
+    values and the telescope reached there, at the type's own uniform
+    parameters [Us] (weakened along the domains): the type alone does not
+    fix them, as the former of a view or a record view sees only its
+    instance [Is[Us]] (a view at [Is := [A]] of a group over [A B] has the
+    type [C A] at [Us = [A; B]] and at [Us = [A; ℕ]]). *)
 Fixpoint glu_shape_typ (DR : list domain -> list centry -> exp -> relation domain)
     (DP : list domain -> list centry -> exp -> glu_typ_pred)
     (DEl : list domain -> list centry -> exp -> glu_exp_pred)
-    (SE : ctx -> list domain -> list centry -> nat -> list exp -> typ -> Prop)
-    (Γ : ctx) (pre : list domain) (Ts : list centry) (t : ptyp) (T : typ) {struct t} : Prop :=
+    (SE : ctx -> list exp -> list domain -> list centry -> nat -> list exp -> typ -> Prop)
+    (Γ : ctx) (Us : list exp) (pre : list domain) (Ts : list centry) (t : ptyp) (T : typ) {struct t} : Prop :=
   match t with
   | pt_pi B t' => forall IT OT, T = a_pi ak_relevant ak_relevant IT OT ->
       (forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP pre Ts B) /\
       (forall Δ φ b c, Δ ⊢ᵏ φ : Γ -> DR pre Ts B c c -> Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre Ts B ->
-         glu_shape_typ DR DP DEl SE Δ (pre ++ c :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t' OT[(ι φ),,b])
-  | pt_self j Ps => SE Γ pre Ts j Ps T
+         glu_shape_typ DR DP DEl SE Δ (List.map (fun U => U[φ]ʷ) Us) (pre ++ c :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t'
+           OT[(ι φ),,b])
+  | pt_self j Ps => SE Γ Us pre Ts j Ps T
   end.
 
 (** The end of the shape of a recursive argument, the member [j] at the
@@ -382,9 +387,11 @@ Record glu_self_params_at (D : ind_decl) (ups : list domain) (NEl : nat -> nat -
   ; glu_self_params_top : forall Δ φ, Δ ⊢ᵏ φ : Γ ->
       glu_params_top D Mj Δ (List.map (fun P => P[φ]ʷ) (Us ++ Q)) (ups ++ bsr) }.
 
+(** At the type's own uniform parameters [Us] ([glu_shape_typ]), the
+    non-uniform ones [Q] are fixed by the type. *)
 Definition glu_self_params (p : qname) (D : ind_decl) (ups : list domain) (NEl : nat -> nat -> list domain -> glu_exp_pred)
-    (Γ : ctx) (pre : list domain) (Ts : list centry) (j : nat) (Ps : list exp) (T : typ) : Prop :=
-  forall Mj Us Q bsr, ind_member D j = Some Mj -> T = im_ty_at p j Mj Us Q ->
+    (Γ : ctx) (Us : list exp) (pre : list domain) (Ts : list centry) (j : nat) (Ps : list exp) (T : typ) : Prop :=
+  forall Mj Q bsr, ind_member D j = Some Mj -> T = im_ty_at p j Mj Us Q ->
     ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bsr ->
     glu_self_params_at D ups NEl Γ j Mj Us Q bsr.
 
@@ -433,7 +440,7 @@ Record ind_glu_components (p : qname) (D : ind_decl) (ups : list domain)
         Γ ⊢ N : T' ® v ∈ AEl m ns c (List.length (cargs_nonrec hs1)) (nonrec_arg_vals hs1 (List.firstn (List.length hs1) vs))) ->
      tele_prefix_rel (canon_args_rel D ups m ns c) (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vs)
        (nonrec_arg_vals gs1 vs) ->
-     glu_shape_typ (canon_doms_rel D ups m) (DP m) (DEl m) (glu_self_params p D ups NEl) Γ (ns ++ nonrec_arg_vals gs1 vs)
+     glu_shape_typ (canon_doms_rel D ups m) (DP m) (DEl m) (glu_self_params p D ups NEl) Γ Us (ns ++ nonrec_arg_vals gs1 vs)
        (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1) t T }.
 
 (** A type of the declared member [Mk] (the member [k]) of a group at its

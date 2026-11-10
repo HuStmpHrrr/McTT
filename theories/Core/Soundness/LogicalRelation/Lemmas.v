@@ -323,15 +323,15 @@ Proof.
                   Hp) as H.
     subst gs.
     (** The end of the shape: the parameters' gluings grow *)
-    assert (HSE : forall Γ0 pre Ts j Ps T0, glu_self_params p D ups NEl Γ0 pre Ts j Ps T0 ->
-                  glu_self_params p D ups NEl' Γ0 pre Ts j Ps T0).
-    { intros * HS Mj Us0 Q bsr HMj HT0 Hb; destruct (HS Mj Us0 Q bsr HMj HT0 Hb) as [Hr Hn Ht].
+    assert (HSE : forall Γ0 Us0 pre Ts j Ps T0, glu_self_params p D ups NEl Γ0 Us0 pre Ts j Ps T0 ->
+                  glu_self_params p D ups NEl' Γ0 Us0 pre Ts j Ps T0).
+    { intros * HS Mj Q bsr HMj HT0 Hb; destruct (HS Mj Q bsr HMj HT0 Hb) as [Hr Hn Ht].
       constructor; [ exact Hr | | exact Ht ].
       eapply (glu_nparams_mono D ups NEl); [ exact HN' | exact HMj | exact Hr | exact Hn ]. }
     exact (glu_shape_typ_change p D ups ups m Mm (DP m) (DP' m) (DEl m) (DEl' m) _ _ Hass Hcp HM HSE ltac:(intros; reflexivity)
              (fun ms0 c1 gs0 gs3 t1 gs4 ws0 j0 B0 ys0 Hm0 Hc0 Heq0 Hw0 HB0 Hy0 =>
                 HD m Mm ms0 c1 gs0 gs3 t1 gs4 ws0 j0 B0 ys0 HM Hm0 Hc0 Heq0 Hw0 HB0 Hy0)
-             t Γ _ _ T H ns c gs1 t gs2 (nonrec_arg_vals gs1 vs) 0 nil ltac:(rewrite List.app_nil_r; reflexivity)
+             t Γ _ _ _ T H ns c gs1 t gs2 (nonrec_arg_vals gs1 vs) 0 nil ltac:(rewrite List.app_nil_r; reflexivity)
              ltac:(cbn [List.firstn]; rewrite List.app_nil_r; reflexivity)
              Hns Hcon Hp eq_refl ltac:(lia) (tele_prefix_rel_nil _)).
 Qed.

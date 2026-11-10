@@ -1258,6 +1258,75 @@ Section ConGlu.
 
 End ConGlu.
 
+(** The ends of the recursive arguments' shapes of a group of [VP] are glued
+    at every admissible uniform parameters ([glu_self_ends_all]): at the
+    type's own uniform parameters [Us], the shape's parameters [Q] are its
+    non-uniform ones; their values are related ([adm_rec_params]), glued at
+    their types ([rec_params_args], [nparams_of_uparams_glu]), and glued
+    with [Us] by their readback ([glu_args_params_top]).  No gluing of the
+    ends is used. *)
+Lemma valid_group_self_ends : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) ->
+    forall p D, VP p D -> glu_self_ends_all p D.
+Proof.
+  intros VP HVP HGall p D HPD.
+  pose proof (HGall _ _ HPD) as HG.
+  pose proof (valid_groups_valid VP HVP p D HPD) as Hg.
+  pose proof (valid_group_valid _ _ Hg) as HD; pose proof (valid_group_closed _ _ Hg) as Hc.
+  pose proof (valid_group_sort _ _ Hg) as Hsu; pose proof (valid_group_ass _ _ Hg) as Hass.
+  pose proof (valid_group_typed _ _ Hg) as Hdt.
+  intros ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf.
+  intros m Mm c gs gs1 t gs2 ns nv ys Δ τ Us Ys SbC HM Hcon Heq Hns Hnv Lns Lnv Hys HΔ HUs LYs HSbC Hσ.
+  intros Mj Q bsr HMj HT Hb.
+  destruct (glu_args_length _ _ _ _ _ _ HUs) as [HUl _].
+  set (σ := sb_of_list τ (Us ++ Ys)) in *.
+  (** The type's non-uniform parameters are the shape's *)
+  assert (EQ : Q = List.map (fun P => P[σ]) (ptyp_ps t)).
+  { cbn [ptyp_ty_at] in HT; unfold ind_mty in HT; rewrite HMj in HT; unfold im_ty_at in HT.
+    destruct (im_head Mj);
+      first [ apply apps_ind_inj, List.app_inv_head in HT | apply apps_record_inj, List.app_inv_head in HT ];
+      symmetry; exact HT. }
+  subst Q.
+  set (Ts := List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) in *.
+  (** Their values, related ([adm_rec_params]) *)
+  pose proof (valid_group_adm p D Hg ups ups Hgu Hu Hgu) as Had.
+  assert (Hys' : tele_rel (shape_doms_rel (canon_doms_rel D ups m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ns nv t)
+                   (ptyp_doms t) ys ys)
+    by (apply tele_rel_of_pre; exact Hys).
+  destruct (adm_rec_params _ _ _ _ _ _ Had m Mm ns ns c gs gs1 t gs2 nv nv ys ys HM Hns Hcon Heq Hnv Hys') as [b0 b1 E0 E1 R01].
+  fold Ts in E0, E1.
+  pose proof (functional_eval_exps' _ _ _ _ E0 Hb) as ->; pose proof (functional_eval_exps' _ _ _ _ E1 Hb) as ->.
+  unfold nparams_tele_rel in R01; rewrite HMj in R01.
+  (** Glued at their types ([rec_params_args]) *)
+  assert (Hly : List.length ys = ptyp_depth t) by (destruct Hys as [Hly _]; unfold ptyp_depth; exact Hly).
+  pose proof (Completeness.Inductives.Model.rec_prefix_tele_args D HD Hc Hsu m Mm HM c gs gs1 t gs2 ups ups bu ns ns nv nv ys ys
+                Hcon Heq Hgu Hu Hbu Hns Hnv (List.length (ptyp_doms t)) (le_n _) Hys) as Hgnr.
+  rewrite List.firstn_all in Hgnr.
+  pose proof (Completeness.Inductives.Model.rec_closure D HD Hc m Mm HM c gs gs1 t gs2 Mj Hcon Heq HMj ups ups ns ns nv nv ys ys
+                Hu Lns Lnv Hly Hu Lns Lnv Hly Hgnr) as Hrc; cbv zeta in Hrc.
+  destruct Hrc as (bsa & bsb & Ebsa & Ebsb & Hgb & _).
+  assert (bsa = bsr) as -> by exact (functional_eval_exps' _ _ _ _ Ebsa Hb).
+  assert (bsb = bsr) as -> by exact (functional_eval_exps' _ _ _ _ Ebsb Hb).
+  assert (Hσf : Δ ⊢ˢ σ ® components_env D ups Ts (ns ++ nv ++ ys) ∈ SbC).
+  { pose proof Hσ as Hσf.
+    unfold ptyp_tele in Hσf; rewrite <- (List.firstn_all (ptyp_doms t)) in Hσf.
+    pose proof Hly as Hly'; unfold ptyp_depth in Hly'.
+    erewrite (shape_env_eq D ups Hu Mm gs gs1 t gs2 (List.length (ptyp_doms t))) in Hσf;
+      [ exact Hσf | first [ exact Heq | exact Lns | exact Lnv | lia ] .. ]. }
+  assert (HQn : glu_args Δ (im_nparams Mj) (sb_of_list Id Us) (decl_env D ups) (List.map (fun P => P[σ]) (ptyp_ps t)) bsr).
+  { unfold σ.
+    eapply (rec_params_args VP p D HVP HPD HG m Mm c gs HM Hcon ups Hu Hgu); try eassumption; unfold ptyp_depth; lia. }
+  pose proof (decl_closed_params_ass D (ptyp_mem t) Mj Hc HMj) as HassPj.
+  pose proof (decl_closed_params D (ptyp_mem t) Mj Hc HMj) as HsPj.
+  assert (HQp : glu_args Δ (im_params D Mj) Id nil (Us ++ List.map (fun P => P[σ]) (ptyp_ps t)) (ups ++ bsr)).
+  { unfold im_params; apply glu_args_app; [ exact (group_structure_uparams _ Hass) | exact HUl | exact Hu |].
+    split; [ exact HUs | exact HQn ]. }
+  constructor.
+  - exact R01.
+  - eapply nparams_of_uparams_glu; eassumption.
+  - intros Δ' φ Hφ.
+    exact (glu_args_params_top _ _ _ _ _ HassPj HsPj (glu_args_wk _ _ _ _ _ _ _ HassPj HsPj Hφ HQp)).
+Qed.
+
 (** The views of a group cohere with their containers in the gluing model:
     at every uniform parameters related to themselves, at the families of
     the clause. *)

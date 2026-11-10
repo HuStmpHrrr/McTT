@@ -1460,7 +1460,7 @@ Section ElimGlu.
     forall Mk ms c0 gs1 t0 gs2 ws d ys σ',
       elim_arg_context k Mk ms c0 gs1 t0 gs2 ws d ys pre Ts t σ' Δ' Us' ->
       (** The argument's type is glued along its shape *)
-      glu_shape_typ (dr k) (DP k) (DEl k) (glu_self_params p D ups NEl) Δ' pre Ts t (ptyp_ty_at p D Us' σs t) ->
+      glu_shape_typ (dr k) (DP k) (DEl k) (glu_self_params p D ups NEl) Δ' Us' pre Ts t (ptyp_ty_at p D Us' σs t) ->
       forall σs' N' rs,
       Δ' ⊢ˢ σs : arg_shape_ctx Mk gs1 t0 d -> Δ' ⊢ˢ σs ≈ σs' : arg_shape_ctx Mk gs1 t0 d ->
       shape_uc D Us (arg_shape_ctx Mk gs1 t0 d) σs σ' ->
@@ -2070,7 +2070,7 @@ Section ElimGlu.
     pose proof (kripke_id _ HΔ') as Hid.
     (** The shape's parameters, glued at their values by the type's gluing
         along its shape ([glu_self_params]) *)
-    destruct (Hst Mj Us' Q bs HMj HAQ Ebs) as [_ Hgn' Htop].
+    destruct (Hst Mj Q bs HMj HAQ Ebs) as [_ Hgn' Htop].
     assert (HUl' : List.length Us' = ind_nu D) by (rewrite HUs', List.length_map; exact HUl).
     pose proof (IH _ Q Ebs (eq_trans HA HAQ) Δ' wk_id _ Q Hid HUl'
                   ltac:(pose proof (glu_params_top_refl _ _ _ _ _ (Htop _ _ Hid)) as H; rewrite map_wk_id in H; rewrite map_wk_id; exact H)) as HE.
@@ -2588,7 +2588,7 @@ Section ElimGlu.
     forall Mk ms c0 gs1 t0 gs2 ws d ys σ',
       elim_arg_context k Mk ms c0 gs1 t0 gs2 ws d ys pre Ts t σ' Δ' Us' ->
       (** The argument's type is glued along its shape *)
-      glu_shape_typ (dr k) (DP k) (DEl k) (glu_self_params p D ups NEl) Δ' pre Ts t (ptyp_ty_at p D Us' σs t) ->
+      glu_shape_typ (dr k) (DP k) (DEl k) (glu_self_params p D ups NEl) Δ' Us' pre Ts t (ptyp_ty_at p D Us' σs t) ->
       forall σs' N',
       Δ' ⊢ˢ σs : arg_shape_ctx Mk gs1 t0 d -> Δ' ⊢ˢ σs ≈ σs' : arg_shape_ctx Mk gs1 t0 d ->
       shape_uc D Us (arg_shape_ctx Mk gs1 t0 d) σs σ' ->
@@ -2656,7 +2656,7 @@ Section ElimGlu.
     destruct (presup_exp_eq HN) as (HΔ' & HN0 & HN1 & _).
     destruct (Hs1 _ Q Ebs (eq_trans HA HAQ)) as (HQl & Hbs).
     pose proof (kripke_id _ HΔ') as Hid.
-    destruct (Hst Mj Us' Q bs HMj HAQ Ebs) as [_ Hgn' Htop].
+    destruct (Hst Mj Q bs HMj HAQ Ebs) as [_ Hgn' Htop].
     assert (HUl' : List.length Us' = ind_nu D) by (rewrite HUs', List.length_map; exact HUl).
     pose proof (Hs2 _ Q Ebs (eq_trans HA HAQ) Δ' wk_id _ Q Hid HUl'
                   ltac:(pose proof (glu_params_top_refl _ _ _ _ _ (Htop _ _ Hid)) as H; rewrite map_wk_id in H; rewrite map_wk_id; exact H)) as HE.
@@ -5826,7 +5826,7 @@ Section ElimGlu.
                      (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ List.firstn 0 (shape_doms_tele t)) t σ' Δq Usx)
       by (constructor; first [ exact HMv | exact Hc0 | reflexivity | exact Hns | exact Hpk | lia
                              | exact (tele_prefix_rel_nil _) | exact Hσ' ]).
-    assert (Hst2 : glu_shape_typ (dr v) (DP v) (DEl v) (glu_self_params p D ups NEl) Δq (ns ++ nv ++ nil)
+    assert (Hst2 : glu_shape_typ (dr v) (DP v) (DEl v) (glu_self_params p D ups NEl) Δq Usx (ns ++ nv ++ nil)
                      (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1 ++ List.firstn 0 (shape_doms_tele t)) t
                      (ptyp_ty_at p D Usx σi t))
       by (rewrite List.app_nil_r; cbn [List.firstn]; rewrite List.app_nil_r, <- HTNi; exact Hst).
@@ -7774,7 +7774,7 @@ Section ElimGlu.
           Δc ⊢ a_var (cargs_nrec D' gs' + (List.length gs' - 1 - List.length gs1))
             : ptyp_ty_at p D (List.map (fun U => U[σw]) Us) (cargs_sub σ0 gs1 avars) t ® v' ∈ Elb
         (** The type is glued along the shape *)
-      ; view_rec_arg_shape : glu_shape_typ (dr v) (DP v) (DEl v) (glu_self_params p D ups NEl) Δc
+      ; view_rec_arg_shape : glu_shape_typ (dr v) (DP v) (DEl v) (glu_self_params p D ups NEl) Δc (List.map (fun U => U[σw]) Us)
           (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1) t
           (ptyp_ty_at p D (List.map (fun U => U[σw]) Us) (cargs_sub σ0 gs1 avars) t)
         (** The variable is glued at its shape in the group ([con_rec_glu]) *)
@@ -8071,7 +8071,7 @@ Section ElimGlu.
         rewrite (List.nth_indep _ a_prop (a_prop[σ''])) by (rewrite List.length_map; lia).
         rewrite (List.map_nth (fun U0 => U0[σ''])), exp_sub_sub; apply exp_sub_sb_eq; symmetry; apply sb_wk_compose. }
       (** The argument's type, glued along its shape at [σs] *)
-      assert (Hstσ : glu_shape_typ (dr v) (DP v) (DEl v) (glu_self_params p D ups NEl) Δc (ns ++ nv)
+      assert (Hstσ : glu_shape_typ (dr v) (DP v) (DEl v) (glu_self_params p D ups NEl) Δc Usx (ns ++ nv)
                        (List.rev (im_nparams Mv) ++ cargs_nonrec_tele gs1) t (ptyp_ty_at p D Usx σs t))
         by (rewrite <- ETσ, <- HTNeq; exact Hst).
       exists a_sh, jA.

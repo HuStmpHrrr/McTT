@@ -195,7 +195,7 @@ Section AtType.
       ptyp_skip d t0 = t ->
       tele_prefix_rel (shape_doms_rel (dr k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) d ys ys ->
       glu_args Δ' (ind_uparams D) Id nil Us' ups -> A = ptyp_ty_at p D Us' σs t ->
-      glu_shape_typ (dr k) (DP k) (DEl k) (glu_self_params p D ups NEl) Δ' pre Ts t A -> Δ' ⊢ N : A ->
+      glu_shape_typ (dr k) (DP k) (DEl k) (glu_self_params p D ups NEl) Δ' Us' pre Ts t A -> Δ' ⊢ N : A ->
       ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ a ->
       (forall R, DF a ≈ a ∈ per_univ_elem i ↘ R -> R v v) ->
       DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ' ⊢ A ® P -> Δ' ⊢ N : A ® v ∈ El.
@@ -689,7 +689,7 @@ Section AtType.
   (** A type glued along a shape ([glu_shape_typ]) is glued at the value
       of the shape's type, at and above [nb]. *)
   Lemma rec_typ_glu : forall t k Δ' Us' pre Ts A,
-      glu_shape_typ (dr k) (DP k) (DEl k) (glu_self_params p D ups NEl) Δ' pre Ts t A ->
+      glu_shape_typ (dr k) (DP k) (DEl k) (glu_self_params p D ups NEl) Δ' Us' pre Ts t A ->
       forall Mk ms c0 gs1 t0 gs2 ws d ys σs a (j0 i : nat) P El,
       ind_member D k = Some Mk -> ind_con Mk c0 = Some (gs1 ++ ca_rec t0 :: gs2) -> pre = ms ++ ws ++ ys ->
       Ts = List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1 ++ List.firstn d (shape_doms_tele t0) ->
@@ -719,7 +719,7 @@ Section AtType.
         cbn [ptyp_ty_at List.map]; unfold ind_mty; rewrite HMj.
         exact (rview_mty_glu j Mj qr Is fl cups Δ' Us' i P El Hi HMj Hh Ecups HΔ' HUs Hglu). }
       destruct (eval_shape_type_self_inv _ _ _ _ _ HMj Hrv Ea) as (bs & pc & kc & pre' & Ebs & Hr & ->).
-      destruct (Hgr Mj Us' (List.map (fun P0 => P0[σs]) Ps) bs HMj
+      destruct (Hgr Mj (List.map (fun P0 => P0[σs]) Ps) bs HMj
                   ltac:(cbn [ptyp_ty_at]; unfold ind_mty; rewrite HMj; reflexivity) Ebs) as [Hbs Hgn _].
       cbn [ptyp_ty_at]; unfold ind_mty; rewrite HMj.
       exact (mty_glu j Mj _ _ _ Δ' Us' _ _ i P El Hi HMj Hr HΔ' HUs Hgn Hbs Hglu).
@@ -819,7 +819,7 @@ Section AtType.
       destruct Ps; [| discriminate HPl ].
       assert (HAQ : A = im_ty_at p j Mj Us nil) by (rewrite HA; cbn [ptyp_ty_at List.map]; unfold ind_mty; rewrite HMj; reflexivity).
       assert (Ebs : ⟦ nil ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ nil) by constructor.
-      destruct (Hst Mj Us nil nil HMj HAQ Ebs) as [_ _ Htop].
+      destruct (Hst Mj nil nil HMj HAQ Ebs) as [_ _ Htop].
       pose proof (IH _ _ Ebs HAQ Γ wk_id Us nil Hid LU
                     ltac:(pose proof (glu_params_top_refl _ _ _ _ _ (Htop _ _ Hid)) as H; rewrite map_wk_id in H;
                           rewrite map_wk_id; exact H)) as [_ He].
@@ -831,7 +831,7 @@ Section AtType.
     destruct (eval_shape_type_self_inv _ _ _ _ _ HMj Hrv Ea) as (bs & pc & kc & pre' & Ebs & Hr & ->).
     assert (HAQ : A = im_ty_at p j Mj Us (List.map (fun P0 => P0[σs]) Ps))
       by (rewrite HA; cbn [ptyp_ty_at]; unfold ind_mty; rewrite HMj; reflexivity).
-    destruct (Hst Mj Us _ bs HMj HAQ Ebs) as [Hbs Hgn' Htop].
+    destruct (Hst Mj _ bs HMj HAQ Ebs) as [Hbs Hgn' Htop].
     pose proof (IH _ _ Ebs HAQ Γ wk_id Us (List.map (fun P0 => P0[σs]) Ps) Hid LU
                   ltac:(pose proof (glu_params_top_refl _ _ _ _ _ (Htop _ _ Hid)) as H; rewrite map_wk_id in H;
                         rewrite map_wk_id; exact H)) as [He _].

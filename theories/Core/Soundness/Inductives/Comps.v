@@ -181,7 +181,7 @@ Definition glu_self_ends_ok (p : qname) (D : ind_decl) (ups : list domain)
     Δ ⊢ˢ sb_of_list τ (Us ++ Ys)
       ® components_env D ups (List.rev (ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_nparams Mm))
           (ns ++ nv ++ ys) ∈ SbC ->
-    glu_self_params p D ups NEl Δ (ns ++ nv ++ ys)
+    glu_self_params p D ups NEl Δ Us (ns ++ nv ++ ys)
       (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ shape_doms_tele t) (ptyp_mem t) (ptyp_ps t)
       (ptyp_ty_at p D Us (sb_of_list τ (Us ++ Ys)) (pt_self (ptyp_mem t) (ptyp_ps t))).
 
@@ -590,6 +590,43 @@ Section Comps.
     eapply glu_univ_elem_exp_conv_universe_index; [ eapply glu_univ_elem_per_univ; exact Hglu' | exact Hglu' | exact Hgu | exact HM' | exact HTP ].
   Qed.
 
+  (** The same at glued uniform parameters, the types of the non-uniform
+      parameters glued by [components_nparams]: no gluing of the ends of
+      the shapes is needed ([valid_group_self_ends] uses it). *)
+  Lemma nparams_of_uparams_glu : forall m Mm Δ Us Ns ns, ind_member D m = Some Mm -> ⊢ Δ ->
+      glu_args Δ (ind_uparams D) Id nil Us ups ->
+      glu_args Δ (im_nparams Mm) (sb_of_list Id Us) (decl_env D ups) Ns ns ->
+      tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ns ns ->
+      glu_nparams m Mm NEl Δ Us Ns ns.
+  Proof.
+    intros * HM HΔ HUs Hg Hns.
+    pose proof (components_nparams Δ Us HΔ HUs) as HCN.
+    pose proof Hg as [L1 L2 H].
+    rewrite length_im_nparams in L1, L2.
+    constructor; [ exact L1 | exact L2 |].
+    enough (forall n, n <= im_nn Mm -> forall j N T v, j < n -> List.nth_error Ns j = Some N ->
+              List.nth_error (tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns) j = Some T ->
+              List.nth_error ns j = Some v -> Δ ⊢ N : T ® v ∈ NEl m j (List.firstn j ns)) as Hm.
+    { intros j N T v HN HT Hv.
+      assert (Hj : j < im_nn Mm) by (rewrite <- L2; apply List.nth_error_Some; congruence).
+      exact (Hm (im_nn Mm) ltac:(lia) _ _ _ _ Hj HN HT Hv). }
+    induction n as [| n IH]; intros Hn j N T v Hj HN HT Hv; [ lia |].
+    destruct (Nat.eq_dec j n) as [-> | Hne]; [| eapply IH; eauto; lia ].
+    assert (Hk' : n < List.length (List.rev (im_nparams Mm))) by (rewrite List.length_rev, length_im_nparams; lia).
+    destruct (nparams_lt_ass D m Mm n Hass HM Hk') as (κ & A & HA).
+    destruct (H _ _ _ _ _ _ HN HT Hv HA) as [i' a P' El' Ha Hglu' HP' HM'].
+    assert (Hpm : tele_prefix_rel (canon_nparams_rel D ups m) n (List.firstn n ns) (List.firstn n ns))
+      by (eapply tele_prefix_rel_of_full; [ exact Hns | rewrite List.length_rev, length_im_nparams; lia ]).
+    pose proof (HNP _ _ _ _ _ _ _ HM HA Hpm Ha) as Hgu.
+    assert (HTP : Δ ⊢ T ® NP m n (List.firstn n ns)).
+    { eapply (HCN m Mm n Ns (List.firstn n ns) T HM); [ rewrite List.length_firstn; lia | lia | exact HT | | exact Hpm ].
+      intros j' N' T' v' Hj' HN' HT' Hv'.
+      rewrite List.firstn_firstn, Nat.min_l by lia.
+      rewrite List.nth_error_firstn in Hv'; destruct (Nat.ltb_spec j' n); [| discriminate ].
+      eapply IH; eauto; lia. }
+    eapply glu_univ_elem_exp_conv_universe_index; [ eapply glu_univ_elem_per_univ; exact Hglu' | exact Hglu' | exact Hgu | exact HM' | exact HTP ].
+  Qed.
+
   (** The components of the context of a shape's domains before the [k]th,
       read at the telescope of all the shape's domains. *)
   Lemma shape_env_eq : forall Mm gs gs1 t gs2 k ns nv ys, gs = gs1 ++ ca_rec t :: gs2 ->
@@ -675,7 +712,7 @@ Section Comps.
           ® components_env D ups
               (List.rev (doms_ctx (List.firstn k (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_nparams Mm))
               (ns ++ nv ++ ys) ∈ SbC ->
-        glu_shape_typ (canon_doms_rel D ups m) (DP m) (DEl m) (glu_self_params p D ups NEl) Δ (ns ++ nv ++ ys)
+        glu_shape_typ (canon_doms_rel D ups m) (DP m) (DEl m) (glu_self_params p D ups NEl) Δ Us (ns ++ nv ++ ys)
           (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t)) t'
           (ptyp_ty_at p D Us (sb_of_list τ (Us ++ Ys)) t').
   Proof.
@@ -755,7 +792,7 @@ Section Comps.
            List.nth_error vs (List.length hs1) = Some v ->
            Δ ⊢ N : T' ® v ∈ AEl m ns c (List.length (cargs_nonrec hs1)) (nonrec_arg_vals hs1 (List.firstn (List.length hs1) vs))) ->
         tele_prefix_rel (canon_args_rel D ups m ns c) (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vs) (nonrec_arg_vals gs1 vs) ->
-        glu_shape_typ (canon_doms_rel D ups m) (DP m) (DEl m) (glu_self_params p D ups NEl) Δ (ns ++ nonrec_arg_vals gs1 vs)
+        glu_shape_typ (canon_doms_rel D ups m) (DP m) (DEl m) (glu_self_params p D ups NEl) Δ Us (ns ++ nonrec_arg_vals gs1 vs)
           (List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1) t T.
   Proof.
     intros Δ Us HΔ HUs m Mm c gs gs1 t gs2 Ns ns As vs T HM Hcon Heq Hnp Hns Hvl HT Hpre Hp.

@@ -506,7 +506,7 @@ Section IndRealize.
                 tele_prefix_rel (shape_doms_rel (dr k') (List.rev (im_nparams Mk')) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys ->
                 rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k' ups ups pre pre Ts t v v ->
                 List.length Us = ind_nu D ->
-                glu_shape_typ (dr k') (DP k') (DEl k') (glu_self_params p D ups NEl) Γ (xs ++ ws ++ ys) Ts t A ->
+                glu_shape_typ (dr k') (DP k') (DEl k') (glu_self_params p D ups NEl) Γ Us (xs ++ ws ++ ys) Ts t A ->
                 (forall Δ φ, Δ ⊢ᵏ φ : Γ -> ind_glu_components p D ups NP NEl AP AEl DP DEl Δ (List.map (fun U => U[φ]ʷ) Us)) ->
                 forall (V : nf), Rsh v at t of p ups in gc_deps ⍮ gc_stack ⍮ components_env D ups Ts (xs ++ ws ++ ys) ⍮ length Γ ↘ V ->
                 glu_nf_eq Γ N V A)).
@@ -636,7 +636,7 @@ Section IndRealize.
                           (nonrec_arg_vals gs1 (List.firstn (length gs1) vs)))
           by exact (args_prefix_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k' Mk0 HMk0 ms ns' c gs (length (cargs_nonrec gs1)) _ _ Hsm Hc
                       ltac:(rewrite Heq0, cargs_nonrec_app, List.length_app; cbn; lia) Hpre).
-        assert (Hsht : glu_shape_typ (dr k') (DP k') (DEl k') (glu_self_params p D ups NEl) Γ
+        assert (Hsht : glu_shape_typ (dr k') (DP k') (DEl k') (glu_self_params p D ups NEl) Γ Us
                          (ns' ++ nonrec_arg_vals gs1 (List.firstn (length gs1) vs))
                          (List.rev (im_nparams Mk0) ++ cargs_nonrec_tele gs1) Pr T).
         { apply (ind_glu_components_recs _ _ _ _ _ _ _ _ _ _ _ Hcomp0 k' Mk0 c gs gs1 Pr gs2 Ns ns' As (List.firstn (length gs1) vs) T
@@ -764,7 +764,7 @@ Section IndRealize.
         assert (Hnil : glu_nparams k' Mk0 NEl Γ Us nil nil).
         { constructor; [ unfold im_nn; rewrite Hnp0; reflexivity | unfold im_nn; rewrite Hnp0; reflexivity |].
           intros j0 N0 A1 n0 HN0; destruct j0; discriminate HN0. }
-        assert (Hsht : glu_shape_typ (dr k') (DP k') (DEl k') (glu_self_params p D ups NEl) Γ
+        assert (Hsht : glu_shape_typ (dr k') (DP k') (DEl k') (glu_self_params p D ups NEl) Γ Us
                          (nil ++ nonrec_arg_vals gs1 (List.firstn (length gs1) vs))
                          (List.rev (im_nparams Mk0) ++ cargs_nonrec_tele gs1) Pr T).
         { apply (ind_glu_components_recs _ _ _ _ _ _ _ _ _ _ _ Hcomp0 k' Mk0 c gs gs1 Pr gs2 nil nil As (List.firstn (length gs1) vs) T
@@ -821,7 +821,7 @@ Section IndRealize.
       pose proof (functional_eval_exps' _ _ _ _ Ebs E0) as ->; pose proof (functional_eval_exps' _ _ _ _ Ebs' E0) as ->.
       unfold nparams_tele_rel in R0T; rewrite HMj in R0T.
       (** The type's parameters, glued at the values at the type's prefix *)
-      destruct (Hsht Mj Us _ bT HMj HA Ebt) as [_ Hnq HQt].
+      destruct (Hsht Mj _ bT HMj HA Ebt) as [_ Hnq HQt].
       assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
       pose proof (HQt Γ wk_id Hid) as Hpt0; rewrite map_wk_id_exp in Hpt0.
       pose proof (IH2 _ _ E0 HA Γ wk_id Us _ Hid HUl ltac:(rewrite map_wk_id_exp; exact (glu_params_top_refl _ _ _ _ _ Hpt0))

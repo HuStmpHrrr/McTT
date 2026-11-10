@@ -386,9 +386,9 @@ Qed.
     given [SE]. *)
 Lemma glu_shape_typ_change : forall (p : qname) D ups ups' m Mm (DP DP' : list domain -> list centry -> exp -> glu_typ_pred)
     (DEl DEl' : list domain -> list centry -> exp -> glu_exp_pred)
-    (SE SE' : ctx -> list domain -> list centry -> nat -> list exp -> typ -> Prop),
+    (SE SE' : ctx -> list exp -> list domain -> list centry -> nat -> list exp -> typ -> Prop),
     group_structure D -> ind_canon_props D ups -> ind_member D m = Some Mm ->
-    (forall Γ pre Ts j Ps T, SE Γ pre Ts j Ps T -> SE' Γ pre Ts j Ps T) ->
+    (forall Γ Us pre Ts j Ps T, SE Γ Us pre Ts j Ps T -> SE' Γ Us pre Ts j Ps T) ->
     (forall ms c gs gs1 t gs2 ws k B ys, tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ms ms ->
        ind_con Mm c = Some gs ->
        gs = gs1 ++ ca_rec t :: gs2 -> tele_prefix_rel (canon_args_rel D ups m ms c) (List.length (cargs_nonrec gs1)) ws ws ->
@@ -404,7 +404,7 @@ Lemma glu_shape_typ_change : forall (p : qname) D ups ups' m Mm (DP DP' : list d
        let Ts := List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t) in
        (forall Γ A, DP (ms ++ ws ++ ys) Ts B Γ A -> DP' (ms ++ ws ++ ys) Ts B Γ A) /\
        (forall Γ A M n, DP (ms ++ ws ++ ys) Ts B Γ A -> DEl' (ms ++ ws ++ ys) Ts B Γ A M n -> DEl (ms ++ ws ++ ys) Ts B Γ A M n)) ->
-    forall t Γ pre Ts T, glu_shape_typ (canon_doms_rel D ups m) DP DEl SE Γ pre Ts t T ->
+    forall t Γ Us pre Ts T, glu_shape_typ (canon_doms_rel D ups m) DP DEl SE Γ Us pre Ts t T ->
       forall ms c0 gs1 t0 gs2 ws k ys, pre = ms ++ ws ++ ys ->
         Ts = List.rev (im_nparams Mm) ++ cargs_nonrec_tele gs1 ++ List.firstn k (shape_doms_tele t0) ->
         tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ms ms ->
@@ -412,12 +412,12 @@ Lemma glu_shape_typ_change : forall (p : qname) D ups ups' m Mm (DP DP' : list d
         tele_prefix_rel (canon_args_rel D ups m ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
         ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) ->
         tele_prefix_rel (shape_doms_rel (canon_doms_rel D ups m) (List.rev (im_nparams Mm)) (cargs_nonrec_tele gs1) ms ws t0) k ys ys ->
-        glu_shape_typ (canon_doms_rel D ups' m) DP' DEl' SE' Γ pre Ts t T.
+        glu_shape_typ (canon_doms_rel D ups' m) DP' DEl' SE' Γ Us pre Ts t T.
 Proof.
   intros p D ups ups' m Mm DP DP' DEl DEl' SE SE' Hass Hcp HM HSE Hdr HD t.
   pose proof Hcp as [HnP HnI HaP HaI HdP HdI].
-  induction t as [? ? | B t IH]; intros Γ pre Ts T H ms c0 gs1 t0 gs2 ws k ys Hpre HTs Hm Hc Hw Hsk Hk Hy;
-    cbn [glu_shape_typ] in *; [ exact (HSE _ _ _ _ _ _ H) |].
+  induction t as [? ? | B t IH]; intros Γ Us pre Ts T H ms c0 gs1 t0 gs2 ws k ys Hpre HTs Hm Hc Hw Hsk Hk Hy;
+    cbn [glu_shape_typ] in *; [ exact (HSE _ _ _ _ _ _ _ H) |].
   intros IT OT HT; destruct (H _ _ HT) as [H1 H2].
   destruct (shape_pi_step p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel D ups) Hass HnP HnI HaP HaI HdP HdI
               m Mm ms c0 gs1 t0 gs2 ws ws k ys ys B t HM Hm Hc Hw Hsk Hy) as (HB & Hs' & Hk' & _ & Hstep).
@@ -428,7 +428,7 @@ Proof.
   - intros Δ φ Hφ; exact (HDP _ _ (H1 Δ φ Hφ)).
   - intros Δ φ b c Hφ Hc' Hb.
     pose proof (proj2 (Edr _ _) Hc') as Hc0.
-    eapply (IH _ _ _ _ (H2 Δ φ b c Hφ Hc0 (HDEl _ _ _ _ (H1 Δ φ Hφ) Hb)) ms c0 gs1 t0 gs2 ws (S k) (ys ++ c :: nil));
+    eapply (IH _ _ _ _ _ (H2 Δ φ b c Hφ Hc0 (HDEl _ _ _ _ (H1 Δ φ Hφ) Hb)) ms c0 gs1 t0 gs2 ws (S k) (ys ++ c :: nil));
       [ rewrite <- !List.app_assoc; reflexivity | exact (prefix_tele_snoc_dom _ _ _ _ _ HB) | exact Hm | exact Hc | exact Hw
       | exact Hs' | exact Hk' | exact (Hstep _ _ Hc0) ].
 Qed.
@@ -644,7 +644,7 @@ Section GluIndProps.
                 ptyp_skip kk t0 = t -> kk <= List.length (ptyp_doms t0) ->
                 tele_prefix_rel (shape_doms_rel (dr k) (List.rev (im_nparams Mk)) (cargs_nonrec_tele gs1) ms ws t0) kk ys ys ->
                 List.length Us = ind_nu D -> exps_eq_at Γ (ind_uparams D) Us Us -> CH Γ Us ->
-                glu_shape_typ (canon_doms_rel D ups' k) (DP' k) (DEl' k) (glu_self_params p D ups' NEl') Γ pre Ts t A ->
+                glu_shape_typ (canon_doms_rel D ups' k) (DP' k) (DEl' k) (glu_self_params p D ups' NEl') Γ Us pre Ts t A ->
                 glu_rec p D ups' NEl' AEl' DP' DEl' k Γ Us pre Ts t A N v)).
     - intros k Mk hd k' c gs Us Ns bs vs As Γ M HMk Hrv Href Hc HUl HNl Hbl Hvl HAl Heq Hnr Har Hnp Htyp Harg Hrec IHrec
         HΓ HUs HCH.
@@ -690,7 +690,7 @@ Section GluIndProps.
         pose proof (nonrec_prefix_pre _ _ _ _ _ _ Har' Hvl Heq0) as Hpre'.
         assert (Hl1 : List.length (List.firstn (List.length gs1) vs) = List.length gs1)
           by (rewrite List.length_firstn, Hvl, Heq0, List.length_app; cbn; lia).
-        assert (Hsht : glu_shape_typ (canon_doms_rel D ups' k) (DP' k) (DEl' k) (glu_self_params p D ups' NEl') Γ
+        assert (Hsht : glu_shape_typ (canon_doms_rel D ups' k) (DP' k) (DEl' k) (glu_self_params p D ups' NEl') Γ Us
                          (ms ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))
                          (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1) t A).
         { apply (ind_glu_components_recs _ _ _ _ _ _ _ _ _ _ _ Hcomp0 k Mk c gs gs1 t gs2 Ns ms As (List.firstn (List.length gs1) vs) A
@@ -764,7 +764,7 @@ Section GluIndProps.
         pose proof (nonrec_prefix_pre _ _ _ _ _ _ Har' Hvl Heq0) as Hpre'.
         assert (Hl1 : List.length (List.firstn (List.length gs1) vs) = List.length gs1)
           by (rewrite List.length_firstn, Hvl, Heq0, List.length_app; cbn; lia).
-        assert (Hsht : glu_shape_typ (canon_doms_rel D ups' k) (DP' k) (DEl' k) (glu_self_params p D ups' NEl') Γ
+        assert (Hsht : glu_shape_typ (canon_doms_rel D ups' k) (DP' k) (DEl' k) (glu_self_params p D ups' NEl') Γ Us
                          (nil ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))
                          (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1) t A).
         { apply (ind_glu_components_recs _ _ _ _ _ _ _ _ _ _ _ Hcomp0 k Mk c gs gs1 t gs2 nil nil As (List.firstn (List.length gs1) vs) A
@@ -1006,15 +1006,15 @@ Proof.
                   Hns Hvl HT (Hargs _ _ _ _ _ _ _ _ _ _ _ HM Hc Heq Hns Hvl Hp Hpre) Hp) as H.
     subst gs.
     (** The end of the shape: the parameters' gluings are the same *)
-    assert (HSE : forall Γ0 pre Ts j Ps T0, glu_self_params p D ups NEl Γ0 pre Ts j Ps T0 ->
-                  glu_self_params p D ups NEl' Γ0 pre Ts j Ps T0).
-    { intros * HS Mj Us0 Q bsr HMj HT0 Hb; destruct (HS Mj Us0 Q bsr HMj HT0 Hb) as [Hr Hn Ht].
+    assert (HSE : forall Γ0 Us0 pre Ts j Ps T0, glu_self_params p D ups NEl Γ0 Us0 pre Ts j Ps T0 ->
+                  glu_self_params p D ups NEl' Γ0 Us0 pre Ts j Ps T0).
+    { intros * HS Mj Q bsr HMj HT0 Hb; destruct (HS Mj Q bsr HMj HT0 Hb) as [Hr Hn Ht].
       constructor; [ exact Hr | | exact Ht ].
       eapply (glu_nparams_mono D ups NEl); [ exact HN' | exact HMj | exact Hr | exact Hn ]. }
     exact (glu_shape_typ_change p D ups ups m Mm (DP m) (DP' m) (DEl m) (DEl' m) _ _ Hass Hcp HM HSE ltac:(intros; reflexivity)
              (fun ms0 c1 gs0 gs3 t1 gs4 ws0 j0 B0 ys0 Hm0 Hc0 Heq0 Hw0 HB0 Hy0 =>
                 HD m Mm ms0 c1 gs0 gs3 t1 gs4 ws0 j0 B0 ys0 HM Hm0 Hc0 Heq0 Hw0 HB0 Hy0)
-             t Γ _ _ T H ns c gs1 t gs2 (nonrec_arg_vals gs1 vs) 0 nil ltac:(rewrite List.app_nil_r; reflexivity)
+             t Γ _ _ _ T H ns c gs1 t gs2 (nonrec_arg_vals gs1 vs) 0 nil ltac:(rewrite List.app_nil_r; reflexivity)
              ltac:(cbn [List.firstn]; rewrite List.app_nil_r; reflexivity)
              Hns Hc Hp eq_refl ltac:(lia) (tele_prefix_rel_nil _)).
 Qed.
