@@ -106,7 +106,10 @@ Record glu_fresh_substitution (C : ctx) (σ : sub) (ρ : env) (Sb : glu_sub_pred
     [σ'], and at that of [C] at [σ]: each variable is glued at the value of
     the type of [C'] it is fresh at, and moves to the value of the type of
     [C] at its position, related to it, by the type's gluing at [σ]
-    ([glu_univ_elem_exp_conv_universe_index]). *)
+    ([glu_univ_elem_exp_conv_universe_index]).  Use it when a telescope
+    [C'] annotates the variables exactly (the declared non-uniform
+    parameters); otherwise give a witness per position
+    ([glu_sub_fresh_at]). *)
 Lemma glu_sub_fresh : forall C Γb Sb_b C' Γ' Sb'_b, all_assumptions C -> all_assumptions C' ->
     EG Γb ∈ glu_ctx_env ↘ Sb_b -> EG Γ' ∈ glu_ctx_env ↘ Sb'_b ->
     forall Sb Sb', EG C ++ Γb ∈ glu_ctx_env ↘ Sb -> EG C' ++ Γ' ∈ glu_ctx_env ↘ Sb' ->
@@ -313,6 +316,106 @@ Proof.
       exact Hv.
     + change (Wk ⨟ sb_q (sb_qn (List.length C) σ)) with (sb_wk (sb_qn (List.length C) σ) ↑).
       exact (glu_tele_stored_monotone _ _ _ _ Hst _ _ Hwk).
+Qed.
+
+(** The witness a fresh variable of the type [A] of a telescope is glued
+    by, at its annotation [d]: [d] glued, [A] glued there (the typed
+    witness [glu_sub_fresh_cons_at] moves the variable by), and [d]
+    related to the value [a] of [A] in the context's environment. *)
+Record glu_fresh_variable_witness (Δ : ctx) (A : typ) (a d : domain) (i : nat) (P : glu_typ_pred) (El : glu_exp_pred) : Prop :=
+  mk_glu_fresh_variable_witness
+  { (** The annotation's gluing *)
+    fresh_witness_univ : DG d ∈ glu_univ_elem i ↘ P ↘ El
+    (** The type, glued at it *)
+  ; fresh_witness_typ : Δ ⊢ A ® P
+    (** The annotation, related to the context's value *)
+  ; fresh_witness_rel : exists j : nat, Dom d ≈ a ∈ per_univ j }.
+
+(** Past [q^n σ] glued at the entries [vtsb] of a telescope [Cb], a
+    telescope [Ct] of fresh variables [vts], each at its annotation in
+    [ds], its stored type of that value, and its type glued there given
+    the variables before it ([glu_fresh_variable_witness]): the extension
+    is glued, position by position ([glu_sub_fresh_cons_at]), and so are
+    its stored types.  Use it where no telescope annotates the variables
+    exactly (a constructor's arguments, the recursive results), on top of
+    a base glued by [glu_sub_fresh]. *)
+Lemma glu_sub_fresh_at : forall Ct Cb Γb Sbb, all_assumptions Ct -> EG Cb ++ Γb ∈ glu_ctx_env ↘ Sbb ->
+    forall Δ σ ρ vtsb vts ds, List.length vtsb = List.length Cb -> List.length vts = List.length Ct -> List.length ds = List.length Ct ->
+    tele_sub Cb σ ++ Δ ⊢ˢ sb_qn (List.length Cb) σ ® env_tele ρ (List.rev Cb) (List.map fst vtsb) ∈ Sbb ->
+    glu_tele_stored (tele_sub Cb σ ++ Δ) Cb (sb_qn (List.length Cb) σ) (env_extend_typed ρ vtsb) ->
+    (** Each variable is fresh at its annotation, its stored type of it *)
+    (forall k v t d, List.nth_error vts k = Some (v, t) -> List.nth_error ds k = Some d ->
+       v = ⇑! d (List.length Δ + List.length Cb + k) /\ eval_entry_type gc_deps gc_stack t d) ->
+    (** Each type is glued at its annotation, given the variables before *)
+    (forall Cpost κ A Cpre d a, Ct = Cpost ++ ce_ass κ A :: Cpre -> List.nth_error ds (List.length Cpre) = Some d ->
+       ⟦ A ⟧ env_tele ρ (List.rev (Cpre ++ Cb)) (List.map fst (vtsb ++ List.firstn (List.length Cpre) vts)) ↘ a ->
+       (forall Sbk, EG (Cpre ++ Cb) ++ Γb ∈ glu_ctx_env ↘ Sbk ->
+          tele_sub (Cpre ++ Cb) σ ++ Δ ⊢ˢ sb_qn (List.length (Cpre ++ Cb)) σ
+            ® env_tele ρ (List.rev (Cpre ++ Cb)) (List.map fst (vtsb ++ List.firstn (List.length Cpre) vts)) ∈ Sbk) ->
+       glu_tele_stored (tele_sub (Cpre ++ Cb) σ ++ Δ) (Cpre ++ Cb) (sb_qn (List.length (Cpre ++ Cb)) σ)
+         (env_extend_typed ρ (vtsb ++ List.firstn (List.length Cpre) vts)) ->
+       exists i P El, glu_fresh_variable_witness (tele_sub (Cpre ++ Cb) σ ++ Δ) A[sb_qn (List.length (Cpre ++ Cb)) σ] a d i P El) ->
+    forall Sb, EG (Ct ++ Cb) ++ Γb ∈ glu_ctx_env ↘ Sb ->
+    tele_sub (Ct ++ Cb) σ ++ Δ ⊢ˢ sb_qn (List.length (Ct ++ Cb)) σ ® env_tele ρ (List.rev (Ct ++ Cb)) (List.map fst (vtsb ++ vts)) ∈ Sb /\
+    glu_tele_stored (tele_sub (Ct ++ Cb) σ ++ Δ) (Ct ++ Cb) (sb_qn (List.length (Ct ++ Cb)) σ) (env_extend_typed ρ (vtsb ++ vts)).
+Proof.
+  induction Ct as [| e Ct IH]; intros Cb Γb Sbb Hass HCb Δ σ ρ vtsb vts ds Lb Lv Ld Hτb Hstb Hx Hw Sb HSb.
+  - destruct vts; [| discriminate ]; cbn [List.app]; rewrite !List.app_nil_r.
+    split; [ apply (functional_glu_ctx_env HCb HSb); exact Hτb | exact Hstb ].
+  - apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass0].
+    destruct (List.exists_last (l := vts)) as (vts' & [y t] & ->); [ intros ->; discriminate |].
+    destruct (List.exists_last (l := ds)) as (ds' & d & ->); [ intros ->; discriminate |].
+    rewrite List.length_app in Lv, Ld; cbn in Lv, Ld.
+    cbn [List.app] in HSb.
+    assert (HC0 : exists TSb, EG (Ct ++ Cb) ++ Γb ∈ glu_ctx_env ↘ TSb) by (inversion HSb; subst; eauto).
+    destruct HC0 as [TSb HTSb].
+    assert (Ef : forall k, k <= List.length Ct -> List.firstn k (vts' ++ (y, t) :: nil) = List.firstn k vts')
+      by (intros k Hk; apply firstn_app_le; lia).
+    (** The prefix *)
+    assert (Hx' : forall k v t0 d0, List.nth_error vts' k = Some (v, t0) -> List.nth_error ds' k = Some d0 ->
+                    v = ⇑! d0 (List.length Δ + List.length Cb + k) /\ eval_entry_type gc_deps gc_stack t0 d0).
+    { intros k v t0 d0 Hv0 Hd0.
+      assert (Hk : k < List.length ds') by (apply List.nth_error_Some; congruence).
+      apply (Hx k); rewrite List.nth_error_app1 by lia; assumption. }
+    assert (Hw' : forall Cpost κ0 A0 Cpre d0 a0, Ct = Cpost ++ ce_ass κ0 A0 :: Cpre -> List.nth_error ds' (List.length Cpre) = Some d0 ->
+       ⟦ A0 ⟧ env_tele ρ (List.rev (Cpre ++ Cb)) (List.map fst (vtsb ++ List.firstn (List.length Cpre) vts')) ↘ a0 ->
+       (forall Sbk, EG (Cpre ++ Cb) ++ Γb ∈ glu_ctx_env ↘ Sbk ->
+          tele_sub (Cpre ++ Cb) σ ++ Δ ⊢ˢ sb_qn (List.length (Cpre ++ Cb)) σ
+            ® env_tele ρ (List.rev (Cpre ++ Cb)) (List.map fst (vtsb ++ List.firstn (List.length Cpre) vts')) ∈ Sbk) ->
+       glu_tele_stored (tele_sub (Cpre ++ Cb) σ ++ Δ) (Cpre ++ Cb) (sb_qn (List.length (Cpre ++ Cb)) σ)
+         (env_extend_typed ρ (vtsb ++ List.firstn (List.length Cpre) vts')) ->
+       exists i P El, glu_fresh_variable_witness (tele_sub (Cpre ++ Cb) σ ++ Δ) A0[sb_qn (List.length (Cpre ++ Cb)) σ] a0 d0 i P El).
+    { intros Cpost κ0 A0 Cpre d0 a0 Heq Hd0 Ea0 Hτ0 Hst0.
+      assert (Hk : List.length Cpre < List.length Ct) by (rewrite Heq, List.length_app; cbn; lia).
+      assert (Ek := Ef _ (Nat.lt_le_incl _ _ Hk)).
+      apply (Hw (ce_ass κ A :: Cpost) κ0 A0 Cpre d0 a0 ltac:(rewrite Heq; reflexivity)
+               ltac:(rewrite List.nth_error_app1 by lia; exact Hd0)); rewrite Ek; assumption. }
+    pose proof (fun Sb' HSb' => IH Cb Γb Sbb Hass0 HCb Δ σ ρ vtsb vts' ds' Lb ltac:(lia) ltac:(lia) Hτb Hstb Hx' Hw' Sb' HSb') as HIH.
+    destruct (HIH TSb HTSb) as [Hτ Hst].
+    (** The last variable: its annotation, and its type's witness *)
+    destruct (Hx (List.length Ct) y t d
+                ltac:(rewrite List.nth_error_app2 by lia; replace (List.length Ct - List.length vts') with 0 by lia; reflexivity)
+                ltac:(rewrite List.nth_error_app2 by lia; replace (List.length Ct - List.length ds') with 0 by lia; reflexivity))
+      as [-> Et].
+    destruct (glu_ctx_env_cons_clean_inversion HTSb HSb) as (i0 & _ & HT & _).
+    destruct (HT _ _ _ Hτ) as [a P0 El0 Ea _ _].
+    assert (Ea' : ⟦ A ⟧ env_tele ρ (List.rev (Ct ++ Cb)) (List.map fst (vtsb ++ List.firstn (List.length Ct) (vts' ++ (⇑! d (List.length Δ + List.length Cb + List.length Ct), t) :: nil))) ↘ a)
+      by (rewrite (Ef _ (le_n _)), List.firstn_all2 by lia; exact Ea).
+    destruct (Hw nil κ A Ct d a eq_refl
+                ltac:(rewrite List.nth_error_app2 by lia; replace (List.length Ct - List.length ds') with 0 by lia; reflexivity) Ea'
+                ltac:(intros Sbk HSbk; rewrite (Ef _ (le_n _)), List.firstn_all2 by lia; exact (proj1 (HIH Sbk HSbk)))
+                ltac:(rewrite (Ef _ (le_n _)), List.firstn_all2 by lia; exact Hst))
+      as (i & P & El & [Hg HTP Hrel]).
+    destruct (glu_sub_fresh_cons_at (Ct ++ Cb) Γb κ A TSb Sb HTSb HSb Δ σ ρ (List.map fst (vtsb ++ vts')) i d P El
+                ltac:(rewrite List.length_map, !List.length_app; lia) Hτ Hg HTP
+                ltac:(intros a' Ea0; assert (a' = a) as -> by (eapply functional_eval_exp; eassumption); exact Hrel))
+      as [Hτc Hstc].
+    replace (List.length Δ + List.length (Ct ++ Cb)) with (List.length Δ + List.length Cb + List.length Ct) in Hτc, Hstc
+      by (rewrite List.length_app; lia).
+    split.
+    + rewrite List.app_assoc, List.map_app; exact Hτc.
+    + rewrite List.app_assoc.
+      exact (Hstc (vtsb ++ vts') t eq_refl Et Hst).
 Qed.
 
 (** A variable of a context, at a type glued at the gluing of a type's
