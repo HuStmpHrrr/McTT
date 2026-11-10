@@ -253,6 +253,68 @@ Proof.
         exact (glu_tele_stored_monotone _ _ _ _ (Hst vts' Hvts' Hts') _ _ Hwk).
 Qed.
 
+(** Past [q^n σ] glued at fresh variables [xs] of a telescope [C], the
+    next variable, fresh at a value [d] related to the value [a] of the
+    head type [A] at [xs], with [A] at [q^n σ] glued at [d] (the typed
+    witness): the extension is glued at [a] (the variable glued at [d],
+    then moved to [a] by [glu_univ_elem_exp_conv_universe_index]), and a
+    stored type of value [d] at it is glued (the variable at [d]
+    itself). *)
+Lemma glu_sub_fresh_cons_at : forall C Γb κ A TSb Sb,
+    EG C ++ Γb ∈ glu_ctx_env ↘ TSb -> EG (ce_ass κ A :: C) ++ Γb ∈ glu_ctx_env ↘ Sb ->
+    forall Δ σ ρ xs (i : nat) d P El, List.length xs = List.length C ->
+    tele_sub C σ ++ Δ ⊢ˢ sb_qn (List.length C) σ ® env_tele ρ (List.rev C) xs ∈ TSb ->
+    DG d ∈ glu_univ_elem i ↘ P ↘ El ->
+    tele_sub C σ ++ Δ ⊢ A[sb_qn (List.length C) σ] ® P ->
+    (forall a, ⟦ A ⟧ env_tele ρ (List.rev C) xs ↘ a -> exists j : nat, Dom d ≈ a ∈ per_univ j) ->
+    tele_sub (ce_ass κ A :: C) σ ++ Δ ⊢ˢ sb_qn (List.length (ce_ass κ A :: C)) σ
+      ® env_tele ρ (List.rev (ce_ass κ A :: C)) (xs ++ ⇑! d (List.length Δ + List.length C) :: nil) ∈ Sb /\
+    (forall vts t, List.map fst vts = xs -> eval_entry_type gc_deps gc_stack t d ->
+       glu_tele_stored (tele_sub C σ ++ Δ) C (sb_qn (List.length C) σ) (env_extend_typed ρ vts) ->
+       glu_tele_stored (tele_sub (ce_ass κ A :: C) σ ++ Δ) (ce_ass κ A :: C) (sb_qn (List.length (ce_ass κ A :: C)) σ)
+         (env_extend_typed ρ (vts ++ (⇑! d (List.length Δ + List.length C), t) :: nil))).
+Proof.
+  intros * HTSb HSb0 * Lx Hτ Hg HTP Hrel.
+  cbn [List.app] in HSb0.
+  destruct (glu_ctx_env_cons_clean_inversion HTSb HSb0) as (i0 & HA & HT & HSb).
+  destruct (HT _ _ _ Hτ) as [a Pa Ela Ea Hga HTPa].
+  destruct (Hrel a Ea) as [j Hda].
+  (** The head type at [q^n σ], typed *)
+  assert (HAτ : tele_sub C σ ++ Δ ⊢ A[sb_qn (List.length C) σ] : abs_kind_sort κ Typeω@i0)
+    by (pose proof (glu_ctx_env_sub_escape HTSb _ _ _ Hτ);
+        replace (abs_kind_sort κ Typeω@i0) with (abs_kind_sort κ Typeω@i0)[sb_qn (List.length C) σ]
+          by (rewrite abs_kind_sort_sub; reflexivity); mauto 3).
+  (** The variable, glued at [d], and at [a] *)
+  destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hg HTP HAτ) as [Hkd Hnd].
+  pose proof (var0_glu_elem Hg Hnd HTP) as Hv; rewrite Hkd in Hv.
+  rewrite List.length_app, length_tele_sub, Nat.add_comm in Hv.
+  assert (Hwk : (tele_sub C σ ++ Δ) ▹{κ} A[sb_qn (List.length C) σ] ⊢ᵏ ↑ : tele_sub C σ ++ Δ).
+  { assert (⊢ (tele_sub C σ ++ Δ) ▹{κ} A[sb_qn (List.length C) σ])
+      by (econstructor; [ exact HAτ | apply sort_kind_abs_kind_sort ]).
+    mauto 3. }
+  pose proof (glu_univ_elem_exp_conv_universe_index Hda Hg Hga Hv
+                (glu_univ_elem_typ_monotone _ _ _ _ Hga _ _ _ _ HTPa Hwk)) as Hva.
+  split.
+  - cbn [tele_sub List.length sb_qn List.app centry_sub].
+    assert (ErC : List.rev (ce_ass κ A :: C) = List.rev C ++ ce_ass κ A :: nil) by reflexivity.
+    rewrite ErC, env_tele_snoc by (rewrite List.length_rev; lia).
+    apply HSb.
+    unfold sb_q; eapply cons_glu_sub_pred_helper_closure_gen;
+      [ exact HTSb | exact (glu_ctx_env_sub_monotone _ _ HTSb _ _ _ _ _ Hτ Hwk) | exact HA | exact Ea | exact Hga | ].
+    cbn [sentry_exp]; rewrite <- exp_wk_sub; exact Hva.
+  - (** The stored types: the last variable at [d], the rest along the
+        weakening. *)
+    intros vts t Hvts Et Hst.
+    rewrite env_extend_typed_app; cbn [env_extend_typed List.fold_left glu_tele_stored tele_sub List.length sb_qn List.app centry_sub].
+    split.
+    + exists t; split; [ reflexivity |].
+      refine (mk_glu_stored_type _ _ _ _ t i d P El Et Hg _).
+      unfold sb_q; cbn [exp_sub sentry_exp]; rewrite exp_sub_shift_extend, <- exp_wk_sub.
+      exact Hv.
+    + change (Wk ⨟ sb_q (sb_qn (List.length C) σ)) with (sb_wk (sb_qn (List.length C) σ) ↑).
+      exact (glu_tele_stored_monotone _ _ _ _ Hst _ _ Hwk).
+Qed.
+
 (** A variable of a context, at a type glued at the gluing of a type's
     value other than [LevelSort], is glued at it to the fresh variable of
     its level. *)
