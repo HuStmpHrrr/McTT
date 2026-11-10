@@ -472,19 +472,22 @@ Proof.
   - intros x U Hx; rewrite <- (gunit_sub_Proper U U eq_refl _ _ E); exact (Hm _ _ Hx).
 Qed.
 
-(** A substitution [σ0] from [Γ0] into [Δ0] that makes an instance of
-    [Δ0] of every instance of [Γ0], followed by it. *)
-Definition glu_rel_sub_transformer (Γ0 : ctx) (σ0 : sub) (Δ0 : ctx) : Prop :=
+(** A substitution [σ0] from [Γ0] into [Δ0] sends instances of [Γ0] to
+    instances of [Δ0]: followed by an instance of [Γ0], it is an instance of
+    [Δ0].  Only this implication, an abbreviation of a premise; no new
+    judgment. *)
+Definition glu_rel_sub_sends_instances (Γ0 : ctx) (σ0 : sub) (Δ0 : ctx) : Prop :=
   forall Γ' σ, glu_rel_sub_inst Γ' σ Γ0 -> glu_rel_sub_inst Γ' (σ0 ⨟ σ) Δ0.
 
-(** A telescope of glued entries over [Δ0], substituted by such a
-    substitution: a telescope of glued entries over [Γ0], extending it to a
-    context glued with its types, the substitution lifted over it being
-    one such ([glu_rel_sub_qn] in the PER model). *)
+(** A telescope of glued entries over [Δ0], substituted by a substitution
+    sending instances of [Γ0] to instances of [Δ0]: a telescope of glued
+    entries over [Γ0], extending it to a context glued with its types, and
+    the substitution lifted over it sends instances too
+    ([glu_rel_sub_qn] in the PER model). *)
 Lemma glu_tele_entries_sub : forall Pre Γ0 σ0 Δ0, all_assumptions Pre -> glu_rel_ctx_types Γ0 ->
-    Γ0 ⊢ˢ σ0 : Δ0 -> glu_rel_sub_transformer Γ0 σ0 Δ0 -> glu_tele_entries Pre Δ0 ->
+    Γ0 ⊢ˢ σ0 : Δ0 -> glu_rel_sub_sends_instances Γ0 σ0 Δ0 -> glu_tele_entries Pre Δ0 ->
     glu_rel_ctx_types (tele_sub Pre σ0 ++ Γ0) /\ tele_sub Pre σ0 ++ Γ0 ⊢ˢ sb_qn (List.length Pre) σ0 : Pre ++ Δ0 /\
-      glu_rel_sub_transformer (tele_sub Pre σ0 ++ Γ0) (sb_qn (List.length Pre) σ0) (Pre ++ Δ0) /\
+      glu_rel_sub_sends_instances (tele_sub Pre σ0 ++ Γ0) (sb_qn (List.length Pre) σ0) (Pre ++ Δ0) /\
       glu_tele_entries (tele_sub Pre σ0) Γ0.
 Proof.
   induction Pre as [| e Pre IH]; intros * Hass HΓ0 Hσ0 HT HP.
@@ -1279,7 +1282,7 @@ Proof.
       (** The container's non-uniform parameters at the instance, glued
           entries there ([glu_tele_entries_sub]) *)
       set (σ0 := sb_of_list Id Is ⨟ τ).
-      assert (HTσ0 : glu_rel_sub_transformer (Z ++ ind_uparams D) σ0 (ind_uparams Dq)).
+      assert (HTσ0 : glu_rel_sub_sends_instances (Z ++ ind_uparams D) σ0 (ind_uparams Dq)).
       { intros Γ' σ Hσ.
         pose proof (glu_rel_sub_inst_of_wk_comp Hσ Hw) as HUσ.
         set (σ' := (ι (wk_shiftn (List.length Z))) ⨟ σ) in *.
