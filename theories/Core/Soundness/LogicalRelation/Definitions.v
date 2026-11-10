@@ -1610,32 +1610,32 @@ Definition glu_rel_exp_under_renaming (Γ : ctx) (M A : exp) : Prop :=
 Definition glu_rel_ext_under_renaming (Γ Ψ : ctx) : Prop :=
   forall Γ' φ, Γ' ⊢ʷ φ : Γ -> ⊩ Γ' -> ⊩ (tele_wk Ψ φ ++ Γ')%list.
 
-(** A unit glued at the context [Γ] it is closed over: a body's
-    expansions, its entries over the unit's parameters, are extensions of
-    [Γ] glued at every renaming of [Γ], and so is each module entry's unit,
-    recursively, at the context of the entries before it; an alias's
-    parameters are an extension glued so.  The recursion is on the unit: a
-    body's module entries are its subterms.  The entries a local open
-    generates are definitions and aliases, so they need nothing more than
-    the body's context. *)
+(** A unit glued at the context [Γ] it is closed over: a body's expansion
+    ([gm_expand], as evaluation reads the body), its entries over the
+    unit's parameters, is an extension of [Γ] glued at every renaming of
+    [Γ], and so is each module entry's unit, recursively, at the context of
+    the expanded entries before it; an alias's parameters are an extension
+    glued so.  The recursion is on the unit: a body's module entries, those
+    of the fragments its opens store included, are its subterms. *)
 Fixpoint glu_unit_at (Γ : ctx) (U : gunit) {struct U} : Prop :=
   match U with
   | gu_mk Δu (md_body _ Φ) =>
-      (forall Φx, body_xp gc_deps gc_stack (Δu ++ Γ) Φ Φx -> glu_rel_ext_under_renaming Γ (body_ctx Φx ++ Δu)) /\
-      glu_gmod_units (Δu ++ Γ) Φ
+      glu_rel_ext_under_renaming Γ (body_ctx (gm_expand Φ) ++ Δu) /\ glu_gmod_units (Δu ++ Γ) Φ
   | gu_mk Δu (md_alias _) => glu_rel_ext_under_renaming Γ Δu
   end
 (** The module entries of a body over [Γ], each glued at the context of
-    the entries before it. *)
+    the expanded entries before it, and those of the fragment each open
+    stores, which the expansion grafts after the entries before the
+    open. *)
 with glu_gmod_units (Γ : ctx) (Φ : gmod) {struct Φ} : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ' _ (ge_mod _ U) =>
-      glu_gmod_units Γ Φ' /\ forall Φx', body_xp gc_deps gc_stack Γ Φ' Φx' -> glu_unit_at (body_ctx Φx' ++ Γ) U
+      glu_gmod_units Γ Φ' /\ glu_unit_at (body_ctx (gm_expand Φ') ++ Γ) U
   | gm_ext Φ' _ (ge_def_mod _ _ _ U) =>
-      glu_gmod_units Γ Φ' /\ forall Φx', body_xp gc_deps gc_stack Γ Φ' Φx' -> glu_unit_at (body_ctx Φx' ++ Γ) U
+      glu_gmod_units Γ Φ' /\ glu_unit_at (body_ctx (gm_expand Φ') ++ Γ) U
   | gm_ext Φ' _ _ => glu_gmod_units Γ Φ'
-  | gm_open Φ' _ _ _ => glu_gmod_units Γ Φ'
+  | gm_open Φ' _ _ Φg => glu_gmod_units Γ Φ' /\ glu_gmod_units (body_ctx (gm_expand Φ') ++ Γ) Φg
   end.
 
 (** A unit glued at every renaming of its context into a glued one. *)
@@ -2073,6 +2073,19 @@ Definition glu_unit Θ Ξ Γ U : Prop :=
     embedding. *)
 Definition glu_ext Θ Ξ Γ Ψ : Prop :=
   forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_ext_under_sub (gc_mk Θ2 Ξ2) Γ Ψ.
+
+(** A unit equation glues: its context glues with its variables' types,
+    and each of its units glues at the instances of the context.  It has no
+    notation: [Θ ⍮ Ξ ⍮ Γ ⊩ᵘ U ≈ U'] would extend the notation
+    [Θ ⍮ Ξ ⍮ Γ ⊩ᵘ U] of [glu_unit] past its end, which the parser does not
+    accept beside it. *)
+Record glu_unit_eq (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U U' : gunit) : Prop := mk_glu_unit_eq
+  { (** The context glues *)
+    glu_unit_eq_ctx : glu_ctx Θ Ξ Γ
+    (** The left unit glues at the instances *)
+  ; glu_unit_eq_left : glu_unit Θ Ξ Γ U
+    (** The right unit glues at the instances *)
+  ; glu_unit_eq_right : glu_unit Θ Ξ Γ U' }.
 
 Notation "⊩ Θ ⍮ Ξ ⍮ Γ" := (glu_ctx Θ Ξ Γ)
   (at level 70, Θ at next level, Ξ at level 69, Γ at level 69) : type_scope.

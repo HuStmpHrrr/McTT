@@ -695,7 +695,7 @@ Proof. glu_intro; eapply glu_rel_ctx_types_extend_def; eassumption. Qed.
 Lemma glu_ctx_extend_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ᵘ U ->
+     glu_unit_eq Θ Ξ Γ U U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
 Proof.
   glu_intro; glu_gctx_embedding_wf.
@@ -708,7 +708,7 @@ Lemma glu_ctx_extend_dm :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ᵘ gu_mk nil (md_alias E) ->
+     glu_unit_eq Θ Ξ Γ (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E)) ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ).
 Proof.
   glu_intro; glu_gctx_embedding_wf.

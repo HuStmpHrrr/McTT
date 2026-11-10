@@ -263,7 +263,7 @@ Hint Resolve glu_rel_ctx_tail glu_rel_ctx_extend_mod glu_rel_exp_let_mod : mctt.
 Lemma glu_let_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ᵘ U ->
+     glu_unit_eq Θ Ξ Γ U U ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ C : Srt ->
      type_sort Srt ->
@@ -293,7 +293,7 @@ Lemma glu_let_dm :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ᵘ gu_mk nil (md_alias E) ->
+     glu_unit_eq Θ Ξ Γ (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E)) ->
      Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : Srt ->
      Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊩ C : Srt ->
      type_sort Srt ->

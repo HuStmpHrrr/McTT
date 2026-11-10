@@ -101,10 +101,11 @@ Ltac invert_glu_rel1 :=
 
 (** ** The Gluing Judgments *)
 
-(** Open the case of a rule: fix a sound embedding, read every premise at
-    its target, take the universes apart, and state a universe at the
-    target by its two parts. *)
+(** Open the case of a rule: fix a sound embedding, take the unit
+    equations apart, read every premise at its target, take the universes
+    apart, and state a universe at the target by its two parts. *)
 Ltac glu_intro :=
+  repeat match goal with |- glu_unit_eq _ _ _ _ _ -> _ => let H := fresh "HU" in intros H; destruct H | |- forall _, _ => intro end;
   unfold glu_ctx, glu_exp, glu_is_univ, glu_unit in *; intros;
   repeat match goal with IH : forall _ _, glu_gctx_embedding _ _ _ _ -> _, Hμ : glu_gctx_embedding _ _ _ _ |- _ =>
     specialize (IH _ _ Hμ) end;
