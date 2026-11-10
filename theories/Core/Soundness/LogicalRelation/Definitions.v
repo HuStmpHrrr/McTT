@@ -553,7 +553,10 @@ Section GluInd.
        ind_glu_elem k Γ Us Ns M (d_con hd k' c (bs ++ vs)) }
   (** A neutral of the member, not a record view (whose neutrals are only
       [ind_glu_elem_record]'s, by their projections), equal to its
-      readback at every weakening *)
+      readback at every weakening, its annotation's non-uniform parameters
+      related to themselves, and glued from some syntactic parameters at
+      the element's uniform ones (the typed type it was created at): the
+      stuck eliminator's motive is at those *)
   | ind_glu_elem_neut :
     `{ ind_member D k = Some Mk ->
        im_is_rview Mk = false ->
@@ -561,6 +564,9 @@ Section GluInd.
        per_bot m m ->
        (forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
           glu_ne_eq Δ M[φ]ʷ M' (im_ty_at p k Mk Us Ns)[φ]ʷ) ->
+       tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams Mk)) (List.skipn (im_unu D Mk) as')
+         (List.skipn (im_unu D Mk) as') ->
+       (exists NsX, glu_nparams k Mk NEl Γ Us NsX (List.skipn (im_unu D Mk) as')) ->
        ind_glu_elem k Γ Us Ns M (⇑ (d_ind hd k' as') m) }
   (** An element of a record view, a tuple and a neutral alike (η): equal
       to the record view's constructor at the group's uniform parameters

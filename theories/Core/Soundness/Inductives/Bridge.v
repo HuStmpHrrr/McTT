@@ -1083,33 +1083,6 @@ Section ToGroup.
   Lemma length_container_uparams : List.length cups = ind_nu Dq.
   Proof. rewrite (eval_exps_length _ _ _ Ecups); exact (view_is_length VP p D HVP HPD k Mk qc kc Is vm Dq HMk Hh Hq). Qed.
 
-  (** *** At a Neutral of a Member of the Container *)
-
-  Section AtNeut.
-    Variables (i' : nat) (Mi' : imember) (v : nat) (Mv : imember).
-    Hypotheses (HMi' : ind_member Dq i' = Some Mi') (HVM : view_member p D qc Dq vm i' Mi' v Mv).
-    Let Hv := view_member_v _ _ _ _ _ _ _ _ _ HVM.
-    Let HMv := view_member_mem _ _ _ _ _ _ _ _ _ HVM.
-    Variables (Γ : ctx) (Us Ns : list exp).
-    Hypotheses (HΓ : ⊢ Γ) (HUl : List.length Us = ind_nu D) (HNl : List.length Ns = im_nn Mv)
-      (HPs : forall j X T, List.nth_error (Us ++ Ns) j = Some X ->
-               List.nth_error (tele_insts (im_params D Mv) Id (Us ++ Ns)) j = Some T -> Γ ⊢ X : T).
-
-    Lemma at_neut : forall hd k' as' m M, im_is_rview Mi' = false -> im_ref qc i' Mi' = (hd, k') -> per_bot m m ->
-        (forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
-           glu_ne_eq Δ M[φ]ʷ M' (im_ty_at qc i' Mi' (view_args Us) Ns)[φ]ʷ) ->
-        ind_glu_elem p D ups NEl AEl DP DEl v Γ Us Ns M (⇑ (d_ind hd k' as') m).
-    Proof.
-      intros * Hrv Href Hm HM.
-      destruct (view_heads_ty_eq p D Hdt Hl Hc k Mk qc kc Is vm Dq HMk Hh Hq i' Mi' v Mv HMi' Hv HMv Γ Us Ns HΓ HUl HNl HPs) as [i Hi].
-      eapply ind_glu_elem_neut; [ exact HMv | rewrite (view_member_is_rview _ _ _ _ _ _ _ _ _ HVM); exact Hrv
-                                | rewrite (view_member_ref _ _ _ _ _ _ _ _ _ HVM Hrv); exact Href | exact Hm |].
-      intros Δ φ M' Hφ HR.
-      pose proof (kripke_preserves_typ_eq _ _ _ _ _ _ Hi Hφ) as Hiφ.
-      exact (glu_ne_eq_conv _ _ _ _ _ ak_relevant _ Hiφ (HM Δ φ M' Hφ HR)).
-    Qed.
-  End AtNeut.
-
   (** *** At a Constructor of a Member of the Container *)
 
   Section AtCon.
@@ -1520,6 +1493,45 @@ Section ToGroup.
         + exact (Hboth gs1 t gs2 gs1' t' gs2' N A x Heq Heq' Hl1 HN HA Hx).
     Qed.
   End AtCon.
+
+  (** *** At a Neutral of a Member of the Container *)
+
+  Section AtNeut.
+    Variables (i' : nat) (Mi' : imember) (v : nat) (Mv : imember).
+    Hypotheses (HMi' : ind_member Dq i' = Some Mi') (HVM : view_member p D qc Dq vm i' Mi' v Mv).
+    Let Hv := view_member_v _ _ _ _ _ _ _ _ _ HVM.
+    Let HMv := view_member_mem _ _ _ _ _ _ _ _ _ HVM.
+    Variables (Γ : ctx) (Us Ns : list exp).
+    Hypotheses (HΓ : ⊢ Γ) (HUl : List.length Us = ind_nu D) (HNl : List.length Ns = im_nn Mv)
+      (HPs : forall j X T, List.nth_error (Us ++ Ns) j = Some X ->
+               List.nth_error (tele_insts (im_params D Mv) Id (Us ++ Ns)) j = Some T -> Γ ⊢ X : T).
+
+    (** A neutral of the container's member is one of the group's member:
+        its annotation's non-uniform parameters, related and glued at the
+        container from some parameters at [view_args Us], are at the group
+        ([at_ns_g], [at_nparams]), the two members having as many own
+        uniform parameters ([view_member_unu]) *)
+    Lemma at_neut : forall hd k' as' m M, im_is_rview Mi' = false -> im_ref qc i' Mi' = (hd, k') -> per_bot m m ->
+        (forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
+           glu_ne_eq Δ M[φ]ʷ M' (im_ty_at qc i' Mi' (view_args Us) Ns)[φ]ʷ) ->
+        glu_args Γ (ind_uparams D) Id nil Us ups ->
+        tele_rel (canon_nparams_rel Dq cups i') (List.rev (im_nparams Mi')) (List.skipn (im_unu Dq Mi') as')
+          (List.skipn (im_unu Dq Mi') as') ->
+        (exists NsX, glu_nparams i' Mi' NEl' Γ (view_args Us) NsX (List.skipn (im_unu Dq Mi') as')) ->
+        ind_glu_elem p D ups NEl AEl DP DEl v Γ Us Ns M (⇑ (d_ind hd k' as') m).
+    Proof.
+      intros * Hrv Href Hm HM HUs Hnr' [NsX Hnp'].
+      destruct (view_heads_ty_eq p D Hdt Hl Hc k Mk qc kc Is vm Dq HMk Hh Hq i' Mi' v Mv HMi' Hv HMv Γ Us Ns HΓ HUl HNl HPs) as [i Hi].
+      eapply ind_glu_elem_neut; [ exact HMv | rewrite (view_member_is_rview _ _ _ _ _ _ _ _ _ HVM); exact Hrv
+                                | rewrite (view_member_ref _ _ _ _ _ _ _ _ _ HVM Hrv); exact Href | exact Hm |
+                                | rewrite (view_member_unu _ _ _ _ _ _ _ _ _ HVM Hrv); exact (at_ns_g i' Mi' v Mv HMi' HVM _ Hnr')
+                                | rewrite (view_member_unu _ _ _ _ _ _ _ _ _ HVM Hrv); exists NsX;
+                                  exact (at_nparams i' Mi' v Mv HMi' HVM Γ Us NsX _ HΓ HUs Hnr' Hnp') ].
+      intros Δ φ M' Hφ HR.
+      pose proof (kripke_preserves_typ_eq _ _ _ _ _ _ Hi Hφ) as Hiφ.
+      exact (glu_ne_eq_conv _ _ _ _ _ ak_relevant _ Hiφ (HM Δ φ M' Hφ HR)).
+    Qed.
+  End AtNeut.
 
   (** *** Along an Argument Recursive in Both *)
 
@@ -2087,11 +2099,11 @@ Section ToGroup.
                hd k' bs M Hrv Href Hbl eq_refl HM).
       exact (con_recs_to_group i' Mi' v Mv c gs' gs Γ Us Ns ns As vs HMi' HVM Hcon' Hcon Hcorr HΓ HUs Hns' Hnp' HAl Hvl HAty'
                Har' Harg' HNl IHrec).
-    - intros i' Mi' hd k' m Γ M Us0 Ns as' HMi' Hrv Href Hm HM.
+    - intros i' Mi' hd k' m Γ M Us0 Ns as' HMi' Hrv Href Hm HM Hnr' Hnp'.
       intros Mi0 v Mv Us HMi0 HVM HUs0 HΓ HUs HNl HPs.
       rewrite HMi' in HMi0; injection HMi0 as <-; subst Us0.
       destruct (glu_args_length _ _ _ _ _ _ HUs) as [HUl _].
-      exact (at_neut i' Mi' v Mv HMi' HVM Γ Us Ns HΓ HUl HNl HPs hd k' as' m M Hrv Href Hm HM).
+      exact (at_neut i' Mi' v Mv HMi' HVM Γ Us Ns HΓ HUl HNl HPs hd k' as' m M Hrv Href Hm HM HUs Hnr' Hnp').
     - (** A record view: by its fields, as a constructor's arguments. *)
       intros i' Mi' qr Is'' fl'' c gs' Us0 Ns As m vs Γ M HMi' Hhi Hcs' HUl0 HNl0 HAl Hps HM Har' HAty' Harg' _ IHrec.
       intros Mi0 v Mv Us HMi0 HVM HUs0 HΓ HUs HNl HPs.

@@ -352,6 +352,12 @@ Section IndRealize.
                                | exact HPl | lia | exact HMs ].
   Qed.
 
+  (** The gluings of the member's non-uniform parameters move along an
+      equation of terms to a type glued at [NP] (they are gluings of the
+      parameters' types' values) *)
+  Hypothesis (HNresp : forall Γ j A A' N N' n, j < im_nn Mk -> Γ ⊢ N : A ® n ∈ NEl k j (List.firstn j ns) ->
+      Γ ⊢ N ≈ N' : A -> Γ ⊢ A' ® NP k j (List.firstn j ns) -> Γ ⊢ N' : A' ® n ∈ NEl k j (List.firstn j ns)).
+
   Lemma ind_realize_bot : forall Γ M A m,
       DG d_ind p k (ups ++ ns) ∈ glu_univ_elem i ↘ P ↘ El ->
       Γ ⊢ M : A ® m ∈ glu_elem_bot i (d_ind p k (ups ++ ns)) ->
@@ -366,9 +372,27 @@ Section IndRealize.
       exact Hm. }
     intros Δ φ Ps' Hφ HPs'.
     pose proof (ind_typ_at_params_conv p D ups ns NP NEl AP AEl DP DEl k Mk pm _ Γ A Ps Δ φ Ps' Hl HMk Hh HPs Hφ HPs') as HPeq.
+    assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
+    (** The annotation's non-uniform parameters are the type's own [ns],
+        related to themselves ([ind_canon_clause_ns]) and glued from the
+        type's parameters, moved to [Ps'] ([glu_nparams_params_eq]) *)
+    assert (Hsk : List.skipn (im_unu D Mk) (ups ++ ns) = ns) by (unfold im_unu; rewrite Hh; apply skipn_app_exact; exact Hu).
+    assert (Hns : tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams Mk)) ns ns).
+    { pose proof (ind_canon_clause_ns _ _ _ _ _ _ _ _ (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ _ Hper Hl Hu Hu)) as H.
+      unfold member_nparams in H; rewrite HMk in H; exact H. }
+    pose proof HPs as [_ HPk]; destruct (HPk Δ φ Hφ) as [Hpt _ Hcs Hnp].
+    pose proof (glu_params_top_len _ _ _ _ _ Hpt) as HLP.
+    assert (Hnp' : glu_nparams k Mk NEl Δ (List.firstn (ind_nu D) Ps') (List.skipn (ind_nu D) Ps') ns).
+    { rewrite <- (List.firstn_skipn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) in HPs'.
+      exact (glu_nparams_params_eq p D ups NP NEl AP AEl DP DEl k Mk Δ
+               (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) (List.skipn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps))
+               ns Ps' Hl HMk HΔ ltac:(rewrite List.length_firstn; unfold im_np in HLP; lia) Hns
+               (Hcs Ps' ltac:(rewrite List.firstn_skipn in HPs'; exact HPs'))
+               (fun j0 A0 A0' N0 N0' n0 Hj0 => HNresp Δ j0 A0 A0' N0 N0' n0 Hj0) Hnp HPs'). }
     destruct HPs as [HAPs _].
     eapply ind_glu_elem_neut; [ exact HMk | unfold im_is_rview; rewrite Hh; reflexivity | unfold im_ref; rewrite Hh; reflexivity
-                              | exact (proj1 (proj2 Hm)) |].
+                              | exact (proj1 (proj2 Hm)) | | rewrite Hsk; exact Hns
+                              | rewrite Hsk; exists (List.skipn (ind_nu D) Ps'); exact Hnp' ].
     intros Θ ψ M' Hψ Hr.
     pose proof (kripke_compose _ _ _ _ _ Hψ Hφ) as Hc.
     rewrite exp_wk_wk, (im_ty_at_decl _ _ _ _ _ _ Hh), List.firstn_skipn.
@@ -487,7 +511,7 @@ Section IndRealize.
                 forall (V : nf), Rsh v at t of p ups in gc_deps ⍮ gc_stack ⍮ components_env D ups Ts (xs ++ ws ++ ys) ⍮ length Γ ↘ V ->
                 glu_nf_eq Γ N V A)).
     2:{ (** A neutral reads back by its gluing. *)
-        intros k' Mk0 hd k'' m Γ Us Ns M as' HMk0 Hrv Href Hm Hr HΓ Mk' ns' HMk' Hpt Hnp' Hcomp Hrel w Hw.
+        intros k' Mk0 hd k'' m Γ Us Ns M as' HMk0 Hrv Href Hm Hr _ _ HΓ Mk' ns' HMk' Hpt Hnp' Hcomp Hrel w Hw.
         rewrite HMk0 in HMk'; injection HMk' as <-.
         clear - Hr Hw HΓ HMk0 Hrv Hl. inversion Hw; subst;
           try (match goal with H : domain_kind (d_ind _ _ _) = _ |- _ => cbn in H; discriminate H end);
@@ -1527,7 +1551,34 @@ Proof.
   9:{ (** An inductive type. *)
       refine (conj _ (conj _ (conj _ (conj _ _)))); [ intros | intros | intros | idtac | idtac ].
       - eapply ind_realize_typ; eassumption.
-      - eapply ind_realize_bot; eassumption.
+      - eapply ind_realize_bot; try eassumption.
+        (** The non-uniform parameters' gluings move along an equation of
+            terms to a type glued there: the two types are equal, by the
+            motive at the parameter's type ([LevelSort]'s is [LevelSort]
+            only) *)
+        intros Γ0 j A0 A0' N0 N0' n0 Hj HN0 HNN HA0'.
+        assert (Hns0 : tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams M)) ns ns).
+        { pose proof (ind_canon_clause_ns _ _ _ _ _ _ _ _ (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ _ H4 H H3 H3)) as Hc0.
+          unfold member_nparams in Hc0; rewrite H1 in Hc0; exact Hc0. }
+        assert (Hj' : j < length (List.rev (im_nparams M))) by (rewrite List.length_rev; exact Hj).
+        destruct (nparams_lt_ass D k M j H0 H1 Hj') as (κ & S & HS).
+        assert (Hp : tele_prefix_rel (canon_nparams_rel D ups k) j (List.firstn j ns) (List.firstn j ns))
+          by (apply tele_prefix_rel_of_full with (T := List.rev (im_nparams M)); [ exact Hns0 | lia ]).
+        destruct (H5 _ _ _ _ _ _ H1 HS Hp) as [b Eb].
+        pose proof (H7 _ _ _ _ _ _ _ H1 HS Hp Eb) as Hgb.
+        destruct (H8 _ _ _ _ _ _ _ H1 HS Hp Eb) as (_ & _ & _ & _ & Huq).
+        pose proof (glu_univ_elem_trm_resp_exp_eq _ _ _ _ Hgb _ _ _ _ _ HN0 HNN) as HN1.
+        pose proof (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HN0) as HA0P.
+        destruct (glu_univ_elem_per_univ _ _ _ _ Hgb) as [Rb HRb].
+        assert (Hls : b = LevelSortᵈ \/ not_level_sort b) by (destruct b; first [ left; reflexivity | right; discriminate ]).
+        destruct Hls as [-> | Hnl].
+        + basic_invert_glu_univ_elem Hgb.
+          match goal with HT : NP k j (List.firstn j ns) <∙> level_sort_glu_typ_pred,
+                          HE : NEl k j (List.firstn j ns) <∙> level_sort_glu_exp_pred _ |- _ =>
+            apply HT in HA0P; apply HT in HA0'; apply HE in HN1; apply HE
+          end.
+          destruct HA0P as [-> _], HA0' as [-> _]; exact HN1.
+        + exact (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hgb _ _ _ _ _ HN1 (Huq b _ _ Rb HRb Hgb Hnl _ _ _ HA0P HA0')).
       - destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ _ H4 H H3 H3) as [Hass _ Hcp _ _ _ _ _].
         pose proof Hcp as [HnP HnI HaP HaI HdP HdI].
         destruct (per_univ_elem_ind_evals _ _ _ _ _ _ _ _ _ H4 H H3 H3) as (_ & HevA & HevD).
