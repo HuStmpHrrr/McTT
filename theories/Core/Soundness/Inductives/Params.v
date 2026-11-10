@@ -42,33 +42,6 @@ Proof.
   rewrite <- (List.rev_involutive C), E, List.rev_app_distr; cbn; rewrite <- List.app_assoc; reflexivity.
 Qed.
 
-(** The values of an entry's type, at the values of a telescope before it
-    on two related sides, are related. *)
-Lemma per_tele_args_nth : forall ts ρ ρ' xs xs' k κ A, per_tele_args ts ρ ρ' xs xs' ->
-    List.nth_error ts k = Some (ce_ass κ A) -> k < List.length xs ->
-    exists (i : nat) R a a', ⟦ A ⟧ env_tele ρ ts (List.firstn k xs) ↘ a /\ ⟦ A ⟧ env_tele ρ' ts (List.firstn k xs') ↘ a' /\
-      DF a ≈ a' ∈ per_univ_elem i ↘ R.
-Proof.
-  intros * H; revert k; induction H as [| ? ? ? ? ? ? ? ? ? ? ? HA Ha Hr IH]; intros k Hk Hl; [ cbn in Hl; lia |].
-  destruct k as [| k]; cbn in Hk, Hl |- *.
-  - injection Hk as <- <-.
-    match goal with HA : rel_typ _ _ _ _ _ _ |- _ => destruct HA as [a0 a0' E E' HR] end; eauto 10.
-  - exact (IH k Hk ltac:(lia)).
-Qed.
-
-(** The same, with the values at the entry, related there. *)
-Lemma per_tele_args_nth_elem : forall ts ρ ρ' xs xs' k κ A, per_tele_args ts ρ ρ' xs xs' ->
-    List.nth_error ts k = Some (ce_ass κ A) -> k < List.length xs ->
-    exists (i : nat) R a a' x x', ⟦ A ⟧ env_tele ρ ts (List.firstn k xs) ↘ a /\ ⟦ A ⟧ env_tele ρ' ts (List.firstn k xs') ↘ a' /\
-      DF a ≈ a' ∈ per_univ_elem i ↘ R /\ List.nth_error xs k = Some x /\ List.nth_error xs' k = Some x' /\ R x x'.
-Proof.
-  intros * H; revert k; induction H as [| ? ? ? ? ? ? ? ? ? ? ? HA Ha Hr IH]; intros k Hk Hl; [ cbn in Hl; lia |].
-  destruct k as [| k]; cbn in Hk, Hl |- *.
-  - injection Hk as <- <-.
-    match goal with HA : rel_typ _ _ _ _ _ _ |- _ => destruct HA as [a0 a0' E E' HR] end; eauto 15.
-  - exact (IH k Hk ltac:(lia)).
-Qed.
-
 (** A prefix of a sequence is the shorter sequence. *)
 Lemma firstn_seq_le : forall k n s, k <= n -> List.firstn k (List.seq s n) = List.seq s k.
 Proof.

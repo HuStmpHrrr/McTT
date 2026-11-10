@@ -484,17 +484,27 @@ Definition glu_rel_sub_sends_instances (Γ0 : ctx) (σ0 : sub) (Δ0 : ctx) : Pro
     entries over [Γ0], extending it to a context glued with its types, and
     the substitution lifted over it sends instances too
     ([glu_rel_sub_qn] in the PER model). *)
+Record glu_tele_entries_substituted (Pre Γ0 : ctx) (σ0 : sub) (Δ0 : ctx) : Prop := mk_glu_tele_entries_substituted
+  { (** The substituted telescope extends [Γ0] to a context glued with its
+        types *)
+    glu_tele_entries_substituted_ctx : glu_rel_ctx_types (tele_sub Pre σ0 ++ Γ0)
+    (** The substitution lifted over it is typed *)
+  ; glu_tele_entries_substituted_typed : tele_sub Pre σ0 ++ Γ0 ⊢ˢ sb_qn (List.length Pre) σ0 : Pre ++ Δ0
+    (** It sends instances to instances *)
+  ; glu_tele_entries_substituted_sends : glu_rel_sub_sends_instances (tele_sub Pre σ0 ++ Γ0) (sb_qn (List.length Pre) σ0) (Pre ++ Δ0)
+    (** The substituted entries are glued over [Γ0] *)
+  ; glu_tele_entries_substituted_entries : glu_tele_entries (tele_sub Pre σ0) Γ0 }.
+
+(** Every telescope of glued entries, substituted so. *)
 Lemma glu_tele_entries_sub : forall Pre Γ0 σ0 Δ0, all_assumptions Pre -> glu_rel_ctx_types Γ0 ->
     Γ0 ⊢ˢ σ0 : Δ0 -> glu_rel_sub_sends_instances Γ0 σ0 Δ0 -> glu_tele_entries Pre Δ0 ->
-    glu_rel_ctx_types (tele_sub Pre σ0 ++ Γ0) /\ tele_sub Pre σ0 ++ Γ0 ⊢ˢ sb_qn (List.length Pre) σ0 : Pre ++ Δ0 /\
-      glu_rel_sub_sends_instances (tele_sub Pre σ0 ++ Γ0) (sb_qn (List.length Pre) σ0) (Pre ++ Δ0) /\
-      glu_tele_entries (tele_sub Pre σ0) Γ0.
+    glu_tele_entries_substituted Pre Γ0 σ0 Δ0.
 Proof.
   induction Pre as [| e Pre IH]; intros * Hass HΓ0 Hσ0 HT HP.
-  - cbn [tele_sub List.app List.length sb_qn]; split; [ exact HΓ0 | split; [ exact Hσ0 | split; [ exact HT |] ] ].
+  - cbn [tele_sub List.app List.length sb_qn]; constructor; [ exact HΓ0 | exact Hσ0 | exact HT |].
     intros [] *; discriminate.
   - apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
-    destruct (IH _ _ _ Hass HΓ0 Hσ0 HT (glu_tele_entries_tail _ _ _ HP)) as (HC & Hρ & HTρ & HE).
+    destruct (IH _ _ _ Hass HΓ0 Hσ0 HT (glu_tele_entries_tail _ _ _ HP)) as [HC Hρ HTρ HE].
     set (ρ := sb_qn (List.length Pre) σ0) in *.
     destruct (HP nil κ A Pre eq_refl) as [j HA].
     (** The new entry, glued at its instances *)
@@ -510,7 +520,7 @@ Proof.
     assert (Hq : (tele_sub Pre σ0 ++ Γ0) ▹{κ} A[ρ] ⊢ˢ q ρ : (Pre ++ Δ0) ▹{κ} A)
       by (eapply wf_sub_q; [ exact Hρ | exact (glu_rel_exp_under_sub_wf HA) | exact (sort_kind_abs_kind_sort κ j)
                            | exact (glu_rel_exp_under_sub_wf HAρ) ]).
-    split; [ exact HC' | split; [ exact Hq | split ] ].
+    constructor; [ exact HC' | exact Hq | |].
     + (** Lifted over the entry: the head, then the tail's instance *)
       intros Γ' σ Hσ.
       pose proof (glu_rel_sub_inst_of_wk_comp Hσ (wf_wk_shift _ _ _ _ HC'w)) as Htl.
@@ -1304,8 +1314,9 @@ Proof.
       assert (Hσ0t : Z ++ ind_uparams D ⊢ˢ σ0 : ind_uparams Dq).
       { pose proof (glu_rel_sub_inst_typed _ _ _ (HTσ0 _ _ (glu_rel_ctx_types_id HΨ))) as H.
         exact (proj1 (proj2 (proj2 (presup_sub_eq (wf_sub_eq_of_sb_eq _ _ _ _ _ _ H (sb_compose_id_right σ0)))))). }
-      destruct (glu_tele_entries_sub (im_nparams Mk') (Z ++ ind_uparams D) σ0 (ind_uparams Dq) HaY HΨ Hσ0t HTσ0
-                  (glu_nparams_entries qc Dq HgQ HGQ _ _ HMk')) as (_ & _ & _ & E2).
+      pose proof (glu_tele_entries_substituted_entries _ _ _ _
+                    (glu_tele_entries_sub (im_nparams Mk') (Z ++ ind_uparams D) σ0 (ind_uparams Dq) HaY HΨ Hσ0t HTσ0
+                       (glu_nparams_entries qc Dq HgQ HGQ _ _ HMk'))) as E2.
       exact (glu_tele_insts_conv_under_sub _ _ _ Ns ltac:(rewrite tele_sub_sub in HXτ; exact HXτ)
                (all_assumptions_sub _ _ HaX) (all_assumptions_sub _ _ HaY) HΨ E2
                ltac:(rewrite !length_tele_sub, !length_im_nparams; lia) ltac:(rewrite length_tele_sub, length_im_nparams; lia)
