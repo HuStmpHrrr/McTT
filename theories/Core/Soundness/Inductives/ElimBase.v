@@ -572,8 +572,8 @@ Proof.
     rewrite Hb; do 3 f_equal; lia.
 Qed.
 
-(** The annotation of a fresh variable [⇑! a s]: [a] (any other value is
-    its own). *)
+(** The annotation of a fresh variable [⇑! a s]: [a].  It is used only on
+    fresh variables; any other value is its own (a junk value). *)
 Definition fresh_annotation (v : domain) : domain :=
   match v with d_neut a _ => a | _ => v end.
 
