@@ -250,6 +250,24 @@ Proof.
       intros * Hk; exact (Ke _ _ _ _ _ (typed_fields _ _ _ Ht _ _ _ Hk) _ _ Hμ).
 Qed.
 
+(** A record typed at the source, where it is filed, glues at the target:
+    its parameters, sort and fields, glued ([glu_record_decl]).  Its
+    judgments are typed before it is filed, so they look up only what is
+    filed already. *)
+Lemma glu_entry_record : forall Θ Ξ R l Θ2 Ξ2,
+    record_typed Θ Ξ R -> params_evaluated Θ Ξ nil (record_params R) l ->
+    bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ ->
+    gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> glu_record_decl_entry Θ2 Ξ2 R.
+Proof.
+  intros * Ht _ HG He; unfold glu_record_decl_entry.
+  pose proof (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) as Hg.
+  pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
+  destruct soundness_fundamental as (_ & Ke & _ & _ & Ku & _).
+  destruct (Ku _ _ _ _ (typed_sort _ _ _ Ht) _ _ Hμ) as [HPg HSu].
+  constructor; [ exact HPg | exact HSu |].
+  intros * Hk; exact (Ke _ _ _ _ _ (typed_fields _ _ _ Ht _ _ _ Hk) _ _ Hμ).
+Qed.
+
 (** ** Every well-formed global context glues
 
     The identity is a sound embedding. *)
@@ -257,7 +275,7 @@ Theorem glu_gctx_embedding_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> glu_gctx_emb
 Proof.
   intros * Hg; apply glu_gctx_embedding_of_bodies_valid; [ exact Hg | | apply gctx_embedding_with_bodies_refl; exact Hg ].
   exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry glu_entry_def glu_entry_ax glu_entry_alias
-           glu_mod_tele_nil glu_entry_ind ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg).
+           glu_mod_tele_nil glu_entry_ind glu_entry_record ltac:(intros; exact I) _ _ Hg).
 Qed.
 
 (** ** The fundamental theorem at the identity embedding *)

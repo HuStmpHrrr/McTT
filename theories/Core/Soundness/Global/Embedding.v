@@ -199,10 +199,10 @@ Definition glu_mod_tele (_ : gdeps) (_ : gstack) (_ : ctx) : Prop := True.
 
 Definition glu_ind_decl_entry (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop := @glu_ind_decl (gc_mk Θ2 Ξ2) D.
 
-(** A record declaration needs nothing: the rules of records premise the
-    facts about the declaration, whose gluings soundness reads off the
-    derivation. *)
-Definition glu_record_decl_entry (_ : gdeps) (_ : gstack) (_ : record_decl) : Prop := True.
+(** A record declaration is glued at the target, as a group is: its
+    tuples and projections move their parameters along the glued
+    parameters' telescope ([glu_record_decl]). *)
+Definition glu_record_decl_entry (Θ2 : gdeps) (Ξ2 : gstack) (R : record_decl) : Prop := @glu_record_decl (gc_mk Θ2 Ξ2) R.
 
 (** A stored body of the source, valid. *)
 Lemma glu_loc_valid : forall Θ Ξ Θs Ξs Θ2 Ξ2 p T Φ,
@@ -222,7 +222,8 @@ Theorem glu_gctx_embedding_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_e
     gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> glu_gctx_embedding Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg He HΘ HΞ; pose proof He as [Hg2 Hs].
-  constructor; [ exact He | intros p D Hl; exact (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) |].
+  constructor; [ exact He | intros p D Hl; exact (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)
+               | intros p R Hl; exact (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) |].
   intros * Hl Hp Hn HΓ.
   apply glu_rel_exp_nil_weaken; [ exact HΓ |].
   (* the type glues, by the entry's validity *)
