@@ -218,6 +218,131 @@ Fixpoint glu_tele_stored (Δ : ctx) (C : ctx) (σ : sub) (ρ : env) : Prop :=
   | _ :: _ => True
   end.
 
+(** A term [M] of type [T] glued to the value [v] at the stored type [t]
+    of its entry: [t]'s value [a], glued at the universe [i] by [P] and
+    [El], is the one [M] is glued at. *)
+Record glu_stored_at (Δ : ctx) (T M : exp) (v : domain) (t : entry_type) (i : nat) (a : domain)
+    (P : glu_typ_pred) (El : glu_exp_pred) : Prop := mk_glu_stored_at
+  { (** The stored type evaluates to [a] *)
+    glu_stored_at_eval : eval_entry_type gc_deps gc_stack t a
+    (** [a] is glued *)
+  ; glu_stored_at_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
+    (** [M] at [T] is glued to [v] there *)
+  ; glu_stored_at_glu : Δ ⊢ M : T ® v ∈ El }.
+
+(** An argument glued at its type's value in [ρ] is glued at its type's
+    closure in [ρ], at a natural universe above its own. *)
+Lemma glu_arg_stored : forall Δ ρ A T M v, glu_arg Δ ρ A T M v ->
+    exists (i : nat) a P El, glu_stored_at Δ T M v (entry_type_closure A ρ) i a P El.
+Proof.
+  intros * [i a P El Ea Hg HP HM].
+  set (n := large_level i).
+  assert (Hin : universe_index_le i (ul n)) by (apply universe_index_le_ul_max; unfold n; lia).
+  destruct (glu_univ_elem_cumu_ge_universe_index Hin Hg) as (Pn & Eln & Hn).
+  exists n, a, Pn, Eln; constructor; [ apply eval_entry_type_closure; exact Ea | exact Hn |].
+  eapply glu_univ_elem_exp_cumu_ge_universe_index; [ exact Hin | exact Hg | exact Hn | exact HM ].
+Qed.
+
+(** The [k]-th entry of a telescope's environment: the [k]-th value, at
+    the closure of the [k]-th type after the values before. *)
+Lemma tele_entries_nth : forall vs ρ T k κ A x, List.nth_error T k = Some (ce_ass κ A) -> List.nth_error vs k = Some x ->
+    List.nth_error (tele_entries ρ T vs) k = Some (x, entry_type_closure A (env_tele ρ T (List.firstn k vs))).
+Proof.
+  induction vs as [| v vs IH]; intros ρ T k κ A x HT Hx; [ destruct k; discriminate |].
+  destruct T as [| e T]; [ destruct k; discriminate |].
+  destruct k as [| k]; cbn in HT, Hx |- *.
+  - injection HT as ->; injection Hx as ->; reflexivity.
+  - rewrite (IH _ _ _ _ _ _ HT Hx); reflexivity.
+Qed.
+
+(** Glued arguments along [C] in [ρ] are glued at their entries' stored
+    types in the telescope's environment ([tele_entries]). *)
+Lemma glu_args_stored : forall Δ C τ ρ Ms vs k κ A M x, all_assumptions C -> glu_args Δ C τ ρ Ms vs ->
+    List.nth_error (List.rev C) k = Some (ce_ass κ A) -> List.nth_error Ms k = Some M -> List.nth_error vs k = Some x ->
+    List.nth_error (tele_entries ρ (List.rev C) vs) k = Some (x, entry_type_closure A (env_tele ρ (List.rev C) (List.firstn k vs))) /\
+    exists (i : nat) a P El, glu_stored_at Δ A[sb_of_list τ (List.firstn k Ms)] M x
+                               (entry_type_closure A (env_tele ρ (List.rev C) (List.firstn k vs))) i a P El.
+Proof.
+  intros * Hass [L1 L2 Hg] HA HM Hx.
+  split; [ exact (tele_entries_nth _ _ _ _ _ _ _ HA Hx) |].
+  assert (Hk : k < List.length (tele_insts C τ Ms)).
+  { rewrite length_tele_insts by exact Hass; rewrite L1, Nat.min_id.
+    rewrite <- List.length_rev; apply List.nth_error_Some; congruence. }
+  destruct (nth_error_lt_some _ _ Hk) as [T HT].
+  destruct (tele_insts_nth _ _ _ _ _ HT) as (κ' & A' & HA' & ->).
+  rewrite HA in HA'; injection HA' as <- <-.
+  exact (glu_arg_stored _ _ _ _ _ _ (Hg _ _ _ _ _ _ HM HT Hx HA)).
+Qed.
+
+(** The type an argument of kind [g] is stored at in [ρ] ([cargs_entries]):
+    a non-recursive one its declared type's closure, a recursive one its
+    shape's type. *)
+Definition cargs_entry_type (p : qname) (ups : list domain) (ρ : env) (g : carg) : entry_type :=
+  match g with ca_arg _ A => entry_type_closure A ρ | ca_rec t => entry_type_shape p ups ρ t end.
+
+(** The entry of the argument after [gs1] among a constructor's arguments
+    over the components [pre] of [Ts]: its value, at the type of its kind in
+    the components extended by the non-recursive arguments before it. *)
+Lemma cargs_entries_nth : forall p D ups gs1 g gs2 Ts pre vs v, List.length pre = List.length Ts ->
+    List.nth_error vs (List.length gs1) = Some v ->
+    List.nth_error (cargs_entries p ups (components_env D ups Ts pre) (gs1 ++ g :: gs2) vs) (List.length gs1) =
+    Some (v, cargs_entry_type p ups (components_env D ups (Ts ++ cargs_nonrec_tele gs1)
+                                       (pre ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))) g).
+Proof.
+  intros p D ups gs1; induction gs1 as [| g1 gs1 IH]; intros * Lp Hv.
+  - destruct vs as [| w vs]; [ discriminate |]; cbn in Hv; injection Hv as ->.
+    destruct g; cbn; rewrite !List.app_nil_r; reflexivity.
+  - destruct vs as [| w vs]; [ discriminate |]; cbn [List.length List.nth_error] in Hv.
+    destruct g1 as [r A | t]; cbn [List.app cargs_entries List.length List.nth_error List.firstn nonrec_arg_vals cargs_nonrec_tele].
+    + rewrite <- (components_env_snoc D ups Ts pre r A w Lp).
+      rewrite (IH g gs2 (Ts ++ ce_ass r A :: nil) (pre ++ w :: nil) vs v ltac:(rewrite !List.length_app; cbn; lia) Hv).
+      rewrite <- !List.app_assoc; reflexivity.
+    + exact (IH g gs2 Ts pre vs v Lp Hv).
+Qed.
+
+(** The stored types of a telescope of assumptions [C], extended by the
+    typed values [vts] at the terms [Ms], are glued when each term is glued
+    to its value at its entry's stored type, at the instance of its type
+    at the terms before it ([glu_stored_at]). *)
+Lemma glu_tele_stored_of_heads : forall C Δ σ0 Ms ρ0 vts, all_assumptions C ->
+    List.length Ms = List.length C -> List.length vts = List.length C ->
+    (forall k κ A M v t, List.nth_error (List.rev C) k = Some (ce_ass κ A) -> List.nth_error Ms k = Some M ->
+       List.nth_error vts k = Some (v, t) ->
+       exists (i : nat) a P El, glu_stored_at Δ A[sb_of_list σ0 (List.firstn k Ms)] M v t i a P El) ->
+    glu_tele_stored Δ C (sb_of_list σ0 Ms) (env_extend_typed ρ0 vts).
+Proof.
+  induction C as [| e C IH]; intros * Hass LM Lv Hh; [ cbn; exact I |].
+  apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
+  destruct (List.exists_last (l := Ms) ltac:(intros ->; discriminate)) as (Ms' & M & ->).
+  destruct (List.exists_last (l := vts) ltac:(intros ->; discriminate)) as (vts' & [v t] & ->).
+  rewrite List.length_app in LM, Lv; cbn in LM, Lv.
+  assert (ErC : List.rev (ce_ass κ A :: C) = List.rev C ++ ce_ass κ A :: nil) by reflexivity.
+  rewrite sb_of_list_app, env_extend_typed_app; cbn [sb_of_list env_extend_typed List.fold_left glu_tele_stored].
+  split.
+  - (** The head: the last term, at its value's stored type *)
+    destruct (Hh (List.length C) κ A M v t
+                ltac:(rewrite ErC, List.nth_error_app2 by (rewrite List.length_rev; lia); rewrite List.length_rev, Nat.sub_diag; reflexivity)
+                ltac:(rewrite List.nth_error_app2 by lia; replace (List.length C - List.length Ms') with 0 by lia; reflexivity)
+                ltac:(rewrite List.nth_error_app2 by lia; replace (List.length C - List.length vts') with 0 by lia; reflexivity))
+      as (i & a & P & El & [Ea Hg HM]).
+    replace (List.length C) with (List.length Ms') in HM by lia; rewrite firstn_app_exact in HM by reflexivity.
+    exists t; split; [ reflexivity |].
+    refine (mk_glu_stored_type _ _ _ _ t i a P El Ea Hg _).
+    rewrite exp_sub_shift_extend; exact HM.
+  - (** The tail, at the terms before *)
+    change (Wk⨟(sb_of_list σ0 Ms',,M)) with (sb_of_list σ0 Ms').
+    cbn [drop_env extend_env tl].
+    apply IH; [ exact Hass | lia | lia |].
+    intros k κ0 A0 M0 v0 t0 HA0 HM0 Hv0.
+    assert (Hk : k < List.length C) by (rewrite <- List.length_rev; apply List.nth_error_Some; congruence).
+    destruct (Hh k κ0 A0 M0 v0 t0
+                ltac:(rewrite ErC, List.nth_error_app1 by (rewrite List.length_rev; lia); exact HA0)
+                ltac:(rewrite List.nth_error_app1 by lia; exact HM0)
+                ltac:(rewrite List.nth_error_app1 by lia; exact Hv0)) as (i & a & P & El & H).
+    rewrite List.firstn_app, (proj2 (Nat.sub_0_le k (List.length Ms'))), List.app_nil_r in H by lia.
+    exists i, a, P, El; exact H.
+Qed.
+
 (** A substitution glued into a telescope of assumptions [C] over [Γ0],
     at [ρ0] extended by typed values [vts], is glued at [ρ0] extended by
     the same values at other types [vts'], when the context's PER relates
