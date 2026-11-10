@@ -1410,7 +1410,7 @@ Section ConViewFT.
       apply (per_univ_elem_left_irrel _ _ _ _ _ _ _ HR Hbb).
       apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRb Hbb); exact Hww. }
     (** The container's constructor. *)
-    pose proof (con_base VP qc Dq HVP HPq (HGall _ _ HPq) (Hviewsall _ _ HPq) HGall HSall kc Mkc pmc c gs' HMkc Hhc Hcon' Δ
+    pose proof (con_base VP qc Dq HVP HPq (HGall _ _ HPq) (Hviewsall _ _ HPq) HSall kc Mkc pmc c gs' HMkc Hhc Hcon' Δ
                   ((List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns) ++ As) ((cs ++ ns) ++ ws) (d_con qc kc c ((cs ++ ns) ++ ws))
                   i b' P' El' HΔ Hbnd HgC (Completeness.Inductives.Con.con_value_decl qc Dq kc Mkc c pmc _ Hhc) Eb' Hglu' HPER') as Hcc.
     rewrite (con_codomain_inst qc Dq kc Mkc pmc gs' HMkc Hhc)
