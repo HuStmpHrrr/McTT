@@ -1,23 +1,33 @@
 (** * The Contexts of the Arguments of a Group's Constructors, Glued
 
-    The gluing counterpart of [Completeness/Inductives/ArgTypes.v]: each
-    prefix of the arguments of a constructor of a member of a filed group
-    is a glued context over the member's parameters, weakened to its
-    non-recursive arguments by [wk_pat] ([glu_group_cargs_all]).  A
-    recursive argument's type is the [Π] over its shape's domains of the
-    type of the member it ends in ([glu_group_shape_leaf]), and a member's
-    type is a declared member's type former at the uniform parameters as
-    variables, a view's container's at the view's instance, or a record
-    view's record ([glu_group_mty]).  Where the PER model substitutes the
-    uniform parameters as variables ([gsub]), the substitution is a
-    weakening, so glued weakenings ([Γ ⊩ʷ φ : Δ]) suffice. *)
+    The gluing counterpart of [Completeness/Inductives/ArgTypes.v], at
+    instances: each prefix of the arguments of a constructor of a member
+    of a group of [VP] is a context glued with its types over the member's
+    parameters ([glu_group_cargs_all]), and the type of a recursive
+    argument after some of its shape's domains is a type of a large
+    universe glued at its instances there ([glu_group_shape_typ]).
+
+    A member's type is a declared member's type former at the uniform
+    parameters as variables, a view's container's at the view's instance,
+    or a record view's record ([glu_group_mty]).  A type former applied to
+    terms glued at the instances of its parameters' telescope is glued at
+    every instance ([glu_rel_exp_const_apps]): the terms are glued
+    arguments at their values ([params_glu_args]), the former at them is
+    glued at the value of its type at the canonical environment
+    ([ctx_pi_glu_elem_by]), and moves to the value of its type at the
+    instance, the type glued there being the witness
+    ([glu_univ_elem_exp_conv]).  A view's instance is glued over the
+    members as variables ([glu_views_self_is]), at the instance sending
+    them to the group's own type formers applied to the uniform
+    parameters ([glu_rel_sub_inst_grp_sb]). *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases UnitCases.
-From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution Telescope.
+From Mctt.Core.Completeness.Modules Require Filed.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
@@ -26,14 +36,19 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Soundness Require Import
   ContextCases
   FunctionCases
+  Instances
   LevelCases
   LogicalRelation
   SubtypingCases
   VariableCases
   UniverseCases.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes.
-From Mctt.Core.Soundness.Inductives Require Import Args Comps Con.
-From Mctt.Core.Soundness.Records Require Model.
+From Mctt.Core.Soundness.Inductives Require Import Args Params Comps.
+From Mctt.Core.Completeness Require Import RecordCases.
+From Mctt.Core.Completeness.Records Require Model.
+From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
+From Mctt.Core.Syntactic Require Import Records.
+From Mctt.Core.Soundness.Records Require Import Former.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 Import Fixed_Notations.
@@ -41,530 +56,104 @@ Import Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** ** Glued Weakenings
+(** ** Types and Telescopes at Instances *)
 
-    The constructions of [Γ ⊩ʷ φ : Δ] the arguments' contexts need, as
-    the PER model's of [Γ ⊨ʷ φ : Δ]: the identity, the shift past an entry,
-    composition, the shift past a prefix and the lifting under an
-    assumption. *)
-
-(** A glued substitution may be presented in any pointwise equal form. *)
-Lemma glu_sub_resp_sb_eq : forall Γ Sb Δ σ σ' ρ, EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Δ ⊢ˢ σ ® ρ ∈ Sb -> sb_eq σ σ' -> Δ ⊢ˢ σ' ® ρ ∈ Sb.
+(** A type of a large universe glued at its instances is glued there at a
+    larger one. *)
+Lemma glu_rel_exp_under_sub_kind_sort_lift : forall {Γ A κ} {i k : nat},
+    i <= k ->
+    glu_rel_exp_under_sub Γ A (abs_kind_sort κ Typeω@i) ->
+    glu_rel_exp_under_sub Γ A (abs_kind_sort κ Typeω@k).
 Proof.
-  intros * HSb Hσ E.
-  exact (glu_ctx_env_sub_resp_sub_eq HSb Hσ (wf_sub_eq_of_sb_eq _ _ _ _ _ _ (glu_ctx_env_sub_escape HSb _ _ _ Hσ) E)).
+  intros * Hle HA.
+  apply (glu_rel_exp_under_sub_conv_typ (A := abs_kind_sort κ Typeω@i)); [| exact HA ].
+  intros Γ' τ _ H; rewrite !abs_kind_sort_sub in *; cbn [exp_sub] in *.
+  exact (glu_rel_exp_kind_sort_lift Hle H).
 Qed.
 
-Lemma glu_rel_wk_id : forall Γ, ⊩ Γ -> Γ ⊩ʷ wk_id : Γ.
+(** A [Π] of types of a large universe glued at their instances, at the
+    instances: the codomain at the instance lifted over the domain
+    ([glu_rel_sub_inst_q]). *)
+Lemma glu_rel_exp_under_sub_pi_large : forall {Γ κd κc A B} {i : nat},
+    glu_rel_exp_under_sub Γ A (abs_kind_sort κd Typeω@i) ->
+    glu_rel_exp_under_sub (Γ ▹{κd} A) B (abs_kind_sort κc Typeω@i) ->
+    pi_kinds κd κc ->
+    glu_rel_exp_under_sub Γ (a_pi κd κc A B) (abs_kind_sort κc Typeω@i).
 Proof.
-  intros Γ [Sb HSb].
-  destruct (glu_ctx_env_per_ctx_env HSb) as [R HR].
-  refine (mk_glu_rel_wk _ _ _ Sb HSb Sb HSb (wf_wk_id _ _ _ (glu_ctx_env_wf_ctx HSb)) _ _).
-  - eapply rel_wk_under_ctx_intro; [ exact HR | exact HR | exact (rel_wk_id R) | intros x Hx; exact Hx |].
-    intros ρ ρ' _ x _; apply entry_propositional_id_wk.
-  - intros Δ σ ρ Hσ; rewrite eval_wk_id.
-    eapply glu_sub_resp_sb_eq; [ exact HSb | exact Hσ |].
-    rewrite sb_of_wk_id; symmetry; apply sb_compose_id_left.
+  intros * HA HB Hk.
+  econstructor; [ apply HA |]; intros Γ' τ Hτ.
+  pose proof (glu_rel_sub_inst_q Hτ HA (sort_kind_abs_kind_sort κd i)) as Hq.
+  pose proof (glu_rel_exp_under_sub_inst_sort HA (sort_kind_type_sort _ _ (sort_kind_abs_kind_sort κd i)) Hτ) as HAτ.
+  pose proof (glu_rel_exp_under_sub_inst_sort HB (sort_kind_type_sort _ _ (sort_kind_abs_kind_sort κc i)) Hq) as HBτ.
+  rewrite (type_sort_sub _ τ (sort_kind_type_sort _ _ (sort_kind_abs_kind_sort κc i))); cbn [exp_sub].
+  exact (glu_rel_exp_pi_large HAτ HBτ Hk).
 Qed.
 
-Lemma glu_rel_wk_shift : forall Γ e, ⊩ e :: Γ -> e :: Γ ⊩ʷ ↑ : Γ.
-Proof.
-  intros Γ e [Sb HSb].
-  assert (HT : exists TSb, EG Γ ∈ glu_ctx_env ↘ TSb) by (inversion HSb; subst; eexists; eassumption).
-  destruct HT as [TSb HTSb].
-  refine (mk_glu_rel_wk _ _ _ Sb HSb TSb HTSb (wf_wk_shift _ _ _ _ (glu_ctx_env_wf_ctx HSb)) _ _).
-  - exact (rel_wk_under_ctx_shift (completeness_fundamental_ctx _ (glu_ctx_env_wf_ctx HSb))).
-  - intros Δ σ ρ Hσ; rewrite eval_wk_shift.
-    eapply glu_sub_resp_sb_eq; [ exact HTSb | exact (glu_ctx_env_sub_tail HSb HTSb Hσ) |].
-    rewrite sb_of_wk_shift; reflexivity.
-Qed.
-
-Lemma glu_rel_wk_compose : forall Γ Δ Θ' φ ψ, Γ ⊩ʷ ψ : Δ -> Δ ⊩ʷ φ : Θ' -> Γ ⊩ʷ (φ ⊙ ψ) : Θ'.
-Proof.
-  intros * [SbΓ HSbΓ SbΔ HSbΔ Hψt Hψs Hψg] [SbΔ' HSbΔ' SbΘ HSbΘ Hφt Hφs Hφg].
-  assert (E : SbΔ <∙> SbΔ') by (eapply functional_glu_ctx_env; eassumption).
-  refine (mk_glu_rel_wk _ _ _ SbΓ HSbΓ SbΘ HSbΘ (wf_wk_compose _ _ _ _ _ _ _ Hψt Hφt)
-            (rel_wk_under_ctx_compose _ _ _ _ _ Hψs Hφs) _).
-  intros Δ0 σ ρ Hσ.
-  pose proof (Hψg _ _ _ Hσ) as H1; apply E in H1.
-  pose proof (Hφg _ _ _ H1) as H2.
-  assert (Hψm : WkMono ψ) by (destruct Hψs as [? ? ? ? Hw _ _]; exact (rel_wk_mono _ _ _ Hw)).
-  assert (Hφm : WkMono φ) by (destruct Hφs as [? ? ? ? Hw _ _]; exact (rel_wk_mono _ _ _ Hw)).
-  rewrite eval_wk_compose by assumption.
-  eapply glu_sub_resp_sb_eq; [ exact HSbΘ | exact H2 |].
-  rewrite sb_of_wk_compose, sb_compose_assoc; reflexivity.
-Qed.
-
-(** A glued substitution into [Ψ ++ Γ], past [Ψ]: glued into [Γ] at the
-    environment's tail past [Ψ]. *)
-Lemma glu_sub_shiftn : forall Ψ Γ Sb TSb, EG Ψ ++ Γ ∈ glu_ctx_env ↘ Sb -> EG Γ ∈ glu_ctx_env ↘ TSb ->
-    forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ Sb -> Δ ⊢ˢ ι (wk_shiftn (List.length Ψ)) ⨟ σ ® List.skipn (List.length Ψ) ρ ∈ TSb.
-Proof.
-  induction Ψ as [| e Ψ IH]; intros * HSb HT * Hσ; cbn [List.length List.app List.skipn] in *.
-  - eapply glu_sub_resp_sb_eq; [ exact HT | apply (functional_glu_ctx_env HSb HT); exact Hσ |].
-    intros x; cbn; f_equal; lia.
-  - assert (HT' : exists TSb', EG Ψ ++ Γ ∈ glu_ctx_env ↘ TSb') by (inversion HSb; subst; eexists; eassumption).
-    destruct HT' as [TSb' HTSb'].
-    pose proof (IH _ _ _ HTSb' HT _ _ _ (glu_ctx_env_sub_tail HSb HTSb' Hσ)) as H.
-    destruct ρ as [| d ρ]; cbn [drop_env List.tl] in H |- *; [ rewrite List.skipn_nil in H |].
-    all: eapply glu_sub_resp_sb_eq; [ exact HT | exact H |].
-    all: intros x; cbn; f_equal; lia.
-Qed.
-
-Lemma glu_rel_wk_shiftn : forall Ψ Γ, ⊩ Ψ ++ Γ -> ⊩ Γ -> Ψ ++ Γ ⊩ʷ (wk_shiftn (List.length Ψ)) : Γ.
-Proof.
-  intros Ψ Γ [Sb HSb] [TSb HT].
-  refine (mk_glu_rel_wk _ _ _ Sb HSb TSb HT (wf_wk_shiftn_app' _ _ _ _ (glu_ctx_env_wf_ctx HSb))
-            (rel_wk_under_ctx_shiftn _ _ (completeness_fundamental_ctx _ (glu_ctx_env_wf_ctx HSb))) _).
-  intros Δ σ ρ Hσ; rewrite eval_wk_shiftn; exact (glu_sub_shiftn _ _ _ _ HSb HT _ _ _ Hσ).
-Qed.
-
-(** Lifted under an assumption: the head is the source's, glued at the
-    type's value at the weakened tail, related to the weakened type's
-    value at the tail ([rel_type_inversion_wk]). *)
-Lemma glu_rel_wk_q : forall Γ ψ Δ κ A (i : nat), Γ ⊩ʷ ψ : Δ -> Δ ⊩ A : abs_kind_sort κ Typeω@i ->
-    Γ ▹{κ} A[ψ]ʷ ⊩ʷ (wk_q ψ) : Δ ▹{κ} A.
-Proof.
-  intros * Hψ HA.
-  pose proof Hψ as [SbΓ HSbΓ SbΔ HSbΔ Hψt Hψs Hψg].
-  pose proof (glu_rel_exp_wk Hψ HA) as HAw; rewrite abs_kind_sort_wk in HAw; cbn [exp_wk] in HAw.
-  pose proof (glu_rel_exp_to_wf_exp HA) as HAt; pose proof (glu_rel_exp_to_wf_exp HAw) as HAwt.
-  destruct (glu_rel_ctx_extend (ex_intro _ _ HSbΓ) HAw (sort_kind_abs_kind_sort κ i)) as [SbΓA HSbΓA].
-  destruct (glu_rel_ctx_extend (ex_intro _ _ HSbΔ) HA (sort_kind_abs_kind_sort κ i)) as [SbΔA HSbΔA].
-  pose proof (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAt)) as HAv.
-  pose proof (wf_wk_q _ _ _ _ _ _ _ _ Hψt HAt (sort_kind_abs_kind_sort κ i) HAwt) as Hqt.
-  refine (mk_glu_rel_wk _ _ _ SbΓA HSbΓA SbΔA HSbΔA Hqt (rel_wk_under_ctx_q Hψs HAv) _).
-  intros Δ' σ ρ Hσ.
-  assert (Hψm : WkMono ψ) by (destruct Hψs as [? ? ? ? Hw _ _]; exact (rel_wk_mono _ _ _ Hw)).
-  destruct (glu_ctx_env_cons_clean_inversion HSbΓ HSbΓA) as (i1 & _ & _ & E1).
-  destruct (glu_ctx_env_cons_clean_inversion HSbΔ HSbΔA) as (i2 & _ & HT2 & E2).
-  pose proof (glu_ctx_env_sub_escape HSbΓA _ _ _ Hσ) as Hσt.
-  apply E1 in Hσ; inversion Hσ as [? ? ? a P El _ Ea Hg Hh Hpr Hrd Htl]; subst.
-  apply E2.
-  (** The tail: the source's, weakened *)
-  assert (Htl2 : Δ' ⊢ˢ Wk ⨟ (ι (wk_q ψ) ⨟ σ) ® (⟪wk_q ψ⟫ ρ)↯ ∈ SbΔ).
-  { rewrite eval_wk_q_tail by exact Hψm.
-    eapply glu_sub_resp_sb_eq; [ exact HSbΔ | exact (Hψg _ _ _ Htl) | intros x; reflexivity ]. }
-  destruct (HT2 _ _ _ Htl2) as [a2 P2 El2 Ea2 Hg2 HP2].
-  (** The two values of the head's type, related *)
-  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [RΓ HRΓ].
-  pose proof (glu_ctx_env_per_env HSbΓ HRΓ Htl) as Hρt.
-  destruct (rel_type_inversion_wk Hψs HAv) as (R0 & HR0 & Hw).
-  assert (E0 : RΓ <~> R0) by (eapply per_ctx_env_right_irrel; eassumption).
-  destruct (Hw _ _ (proj1 (E0 _ _) Hρt)) as (b1 & b2 & Eb1 & Eb2 & Hb).
-  rewrite eval_wk_q_tail in Ea2 by exact Hψm.
-  assert (b1 = a) as -> by (eapply functional_eval_exp; eassumption).
-  assert (b2 = a2) as -> by (eapply functional_eval_exp; eassumption).
-  (** The head's type, syntactically *)
-  assert (ET : A[↑]ʷ[ι (wk_q ψ) ⨟ σ] = A[ψ]ʷ[↑]ʷ[σ]) by (rewrite !exp_sub_wk; apply exp_sub_sb_eq; intros x; reflexivity).
-  assert (ET2 : A[Wk ⨟ (ι (wk_q ψ) ⨟ σ)] = A[↑]ʷ[ι (wk_q ψ) ⨟ σ])
-    by (rewrite exp_sub_wk; apply exp_sub_sb_eq; rewrite sb_of_wk_shift; reflexivity).
-  rewrite ET2, ET in HP2.
-  rewrite <- (eval_wk_q_tail ψ ρ) in Ea2 by exact Hψm.
-  econstructor; [ exact (wf_sub_compose _ _ _ _ _ _ _ (wf_sub_of_wk _ _ _ _ _ Hqt) Hσt) | exact Ea2 | exact Hg2 | | | | exact Htl2 ].
-  - rewrite eval_wk_q_zero, ET.
-    exact (glu_univ_elem_exp_conv Hb Hg Hg2 Hh HP2).
-  - intros (c & Ec & Hc); rewrite eval_wk_q_zero_entry, eval_wk_q_zero; apply Hpr.
-    assert (c = a2) as -> by (eapply functional_eval_exp; eassumption).
-    destruct Hb as [Rb HRb]; exists a; split; [ exact Ea | rewrite (per_univ_elem_kind _ _ _ _ HRb); exact Hc ].
-  - rewrite eval_wk_q_zero_entry; exact Hrd.
-Qed.
-
-(** ** Glued Substitutions
-
-    The constructions of [Γ ⊩ˢ τ : Δ] the iterated application of a type
-    former needs, as the PER model's [gsub]: the identity, the extension
-    by a glued term, and the lifting under an assumption.  The targets are
-    any contexts: an extension keeps the glued environment of the
-    substitution as its tail, so no definition or module entry is
-    moved along the context PER. *)
-
-Lemma glu_rel_sub_id : forall Γ, ⊩ Γ -> Γ ⊩ˢ Id : Γ.
-Proof.
-  intros Γ [Sb HSb].
-  pose proof (glu_ctx_env_wf_ctx HSb) as HΓw.
-  refine (mk_glu_rel_sub _ _ _ Sb HSb Sb HSb (wf_sub_id _ _ _ HΓw)
-            (rel_sub_id (rel_ctx_wf_per_ctx_env (completeness_fundamental_ctx _ HΓw))) _).
-  intros Δ σ ρ Hσ; exists ρ; split.
-  - eapply glu_sub_resp_sb_eq; [ exact HSb | exact Hσ |]; symmetry; apply sb_compose_id_left.
-  - intros R ρτ0 HR Hev.
-    pose proof (glu_ctx_env_per_env HSb HR Hσ) as Hρ.
-    assert (HPR : PER R) by (eapply per_env_PER; exact HR).
-    pose proof (rel_sub_under_ctx_at' (rel_sub_id (rel_ctx_wf_per_ctx_env (completeness_fundamental_ctx _ HΓw))) HR HR
-                  _ _ _ _ Hρ Hev (eval_sub_id _ _)) as H1.
-    etransitivity; [ exact H1 | exact (per_ctx_env_retag_left HR _ _ Hρ) ].
-Qed.
-
-(** The extension of a substitution by an entry, evaluated: the
-    substitution's value is the tail, and the entry's value the head when
-    it is no proposition ([eval_sub_extend_inv], at any entry). *)
-#[local] Transparent eval_sub.
-Lemma eval_sub_extend_gen_inv : forall e0 Δ σ e ρ ρτ,
-    ⟦ sb_extend σ e : e0 :: Δ ⟧s ρ ↘ ρτ ->
-    ⟦ σ : Δ ⟧s ρ ↘ ρτ↯ /\
-      (~ entry_propositional gc_deps gc_stack (e0 :: Δ)%list ρτ 0 -> ⟦ sentry_exp e ⟧ ρ ↘ ρτ 0).
-Proof.
-  intros * H; split.
-  - intros x Hx; rewrite env_entry_drop, (ctx_entry_tag_drop e0); change (ctx_entry_unit Δ x) with (ctx_entry_unit (e0 :: Δ) (S x)); split.
-    + intros Hp; apply (H (S x) ltac:(cbn; lia)); exact (proj2 (entry_propositional_succ _ _ _ _) Hp).
-    + intros Hn; apply (H (S x) ltac:(cbn; lia)); intros Hp; exact (Hn (proj1 (entry_propositional_succ _ _ _ _) Hp)).
-  - intros Hn; pose proof (proj2 (H 0 ltac:(cbn; lia)) Hn) as Hx; cbn in Hx.
-    assert (E0 : ρτ 0 = match hd absent_entry ρτ with de_mod _ _ => Propᵈ | de_term d _ | de_dm d _ _ _ => d end)
-      by (destruct ρτ; reflexivity).
-    rewrite E0; clear E0.
-    destruct e as [y | M | Hm | N Hm]; cbn [sentry_exp eval_sentry] in Hx |- *.
-    + rewrite Hx.
-      replace (match retag_entry _ _ (env_entry ρ y) with de_mod _ _ => Propᵈ | de_term d _ | de_dm d _ _ _ => d end)
-        with (env_var ρ y) by (unfold env_var; destruct (env_entry ρ y); reflexivity).
-      econstructor.
-    + destruct Hx as (m0 & -> & Hx0); exact Hx0.
-    + destruct Hx as (h0 & -> & _); econstructor.
-    + destruct Hx as (n0 & h0 & -> & Hx0 & _); exact Hx0.
-Qed.
-#[local] Opaque eval_sub.
-
-(** Extended by an entry whose term is glued: glued at the substitution's
-    glued environment extended by the head of a value of the extension,
-    which is the term's value.  The tail is not moved, so the target may
-    hold definitions and modules. *)
-Lemma glu_rel_sub_extend_gen : forall Γ τ Δ κ A e (i : nat),
-    Γ ⊩ˢ τ : Δ -> Δ ⊩ A : abs_kind_sort κ Typeω@i -> Γ ⊩ sentry_exp e : A[τ] ->
-    Γ ⊢ˢ sb_extend τ e : Δ ▹{κ} A -> Γ ⊨ˢ sb_extend τ e ≈ sb_extend τ e : Δ ▹{κ} A ->
-    Γ ⊩ˢ sb_extend τ e : Δ ▹{κ} A.
-Proof.
-  intros * Hτ HA HN Hst Hs.
-  pose proof Hτ as [SbΓ HSbΓ SbΔ HSbΔ Hτt Hτs Hτg].
-  pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
-  pose proof (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAt)) as HAv.
-  destruct (glu_rel_ctx_extend (ex_intro _ _ HSbΔ) HA (sort_kind_abs_kind_sort κ i)) as [SbΔA HSbΔA].
-  refine (mk_glu_rel_sub _ _ _ SbΓ HSbΓ SbΔA HSbΔA Hst Hs _).
-  intros Δ' σ ρ Hσ.
-  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [RΓ HRΓ].
-  destruct (glu_ctx_env_per_ctx_env HSbΔ) as [RΔ HRΔ].
-  destruct (glu_ctx_env_per_ctx_env HSbΔA) as [RΔA HRΔA].
-  pose proof (glu_ctx_env_per_env HSbΓ HRΓ Hσ) as Hρ.
-  destruct (rel_sub_under_ctx_simple Hs) as [RΓ1 [HRΓ1 [RΔA1 [HRΔA1 Hsim]]]].
-  assert (E1 : RΓ <~> RΓ1) by (eapply per_ctx_env_right_irrel; eassumption).
-  destruct (Hsim _ _ (proj1 (E1 _ _) Hρ)) as [ρτ' [_ [Hev _]]].
-  destruct (eval_sub_extend_gen_inv _ _ _ _ _ _ Hev) as [Hevt Hhd].
-  destruct (Hτg _ _ _ Hσ) as (ρτ & Hσ' & Hrel).
-  pose proof (Hrel _ _ HRΔ Hevt) as Hρτ.
-  pose proof (rel_sub_under_ctx_at' Hs HRΓ HRΔA _ _ _ _ Hρ Hev Hev) as Hρτ'.
-  destruct (per_ctx_env_cons_clean_inversion HRΔ HRΔA) as (i3 & hr & Hhr & _ & HRe).
-  pose proof Hρτ' as Hρτ'0; apply HRe in Hρτ'0 as [Ht' Hh' Hl' _ Hrd' _].
-  (** The types at the value's tail and at the glued one *)
-  destruct (Hhr _ _ Ht') as [c1 c2 Ec1 Ec2 HRc].
-  assert (c2 = c1) as -> by (eapply functional_eval_exp; eassumption).
-  destruct (Hhr _ _ Hρτ) as [d1 a0 Ed1 Ea0 HRd].
-  assert (d1 = c1) as -> by (eapply functional_eval_exp; eassumption).
-  pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRc HRd) as Ecd.
-  (** The glued environment: the glued tail, extended by the value's head *)
-  set (ρx := env_entry ρτ' 0 :: ρτ).
-  assert (Hlx : rel_typ_propositional A ρτ -> exists t, env_entry ρx 0 = de_term (ρx 0) t)
-    by (intros Hp; exact (Hl' (rel_typ_propositional_left (Hhr _ _ Hρτ) Hp))).
-  assert (Hxx : RΔA ρτ' ρx).
-  { apply HRe; unshelve econstructor; [ exact Hρτ | | exact Hl' | exact Hlx | exact Hrd' | exact Hrd' ].
-    exact (proj1 (Ecd _ _) Hh'). }
-  exists ρx; split.
-  2:{ intros R ρτ0 HR Hev0.
-      pose proof (rel_sub_under_ctx_at' Hs HRΓ HR _ _ _ _ Hρ Hev0 Hev) as H0.
-      assert (ER : RΔA <~> R) by (eapply per_ctx_env_right_irrel; eassumption).
-      assert (HPR : PER R) by (eapply per_env_PER; exact HR).
-      etransitivity; [ exact H0 | exact (proj1 (ER _ _) Hxx) ]. }
-  destruct (glu_ctx_env_cons_clean_inversion HSbΔ HSbΔA) as (i2 & _ & HT2 & E2).
-  apply E2.
-  assert (Htl2 : Δ' ⊢ˢ Wk ⨟ ((sb_extend τ e) ⨟ σ) ® ρx↯ ∈ SbΔ)
-    by (eapply glu_sub_resp_sb_eq; [ exact HSbΔ | exact Hσ' | intros x; reflexivity ]).
-  destruct (HT2 _ _ _ Htl2) as [a0' P0 El0 Ea0' Hg0 HP0].
-  assert (a0' = a0) as -> by (eapply functional_eval_exp; eassumption).
-  (** The head: the term's value, glued at its type moved to the value *)
-  pose proof HN as [SbΓ' HSbΓ' iN HNb].
-  assert (E' : SbΓ <∙> SbΓ') by (eapply functional_glu_ctx_env; eassumption).
-  destruct (HNb _ _ _ (proj1 (E' _ _ _) Hσ)) as [aN n PN ElN EaN En HgN HEN].
-  destruct (Completeness.LogicalRelation.Telescope.typ_inst_link _ _ _ _ _ _ _ _ _ HAv HRΓ Hτs Hρ Hevt) as (b1 & b2 & Eb1 & Eb2 & Hb).
-  assert (b1 = aN) as -> by (eapply functional_eval_exp; eassumption).
-  assert (b2 = c1) as -> by (eapply functional_eval_exp; eassumption).
-  assert (Hb0 : Dom aN ≈ a0 ∈ per_univ i).
-  { eapply per_univ_trans'; [ exact Hb | exists (hr _ _ Hρτ); exact HRd ]. }
-  assert (ET : A[↑]ʷ[(sb_extend τ e) ⨟ σ] = A[τ][σ]) by (rewrite exp_sub_wk, exp_sub_sub; apply exp_sub_sb_eq; intros x; reflexivity).
-  assert (ET2 : A[Wk ⨟ ((sb_extend τ e) ⨟ σ)] = A[τ][σ]) by (rewrite exp_sub_sub; apply exp_sub_sb_eq; intros x; reflexivity).
-  rewrite ET2 in HP0.
-  pose proof (glu_univ_elem_exp_conv Hb0 HgN Hg0 HEN HP0) as HE0.
-  econstructor; [ exact (wf_sub_compose _ _ _ _ _ _ _ Hst (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ)) | exact Ea0 | exact Hg0 | | exact Hlx | exact Hrd' | exact Htl2 ].
-  rewrite ET; replace (#0[(sb_extend τ e) ⨟ σ]) with ((sentry_exp e)[σ]) by (rewrite sentry_exp_sub; reflexivity).
-  change (ρx 0) with (ρτ' 0).
-  (** The value there is the term's: the same at an evaluated kind, both
-      proofs at a proposition *)
-  destruct (glu_univ_elem_per_univ _ _ _ _ Hg0) as [R0 HR0].
-  apply (glu_univ_elem_trm_resp_per_elem _ _ _ _ Hg0 _ HR0 _ _ _ _ _ HE0).
-  pose proof (per_univ_elem_left_irrel _ _ _ _ _ _ _ HRd HR0) as Ed0.
-  assert (Hhx : R0 (ρτ' 0) (ρτ' 0)) by (apply Ed0, Ecd; exact Hh').
-  destruct Hb0 as [Rb HRb]; pose proof (per_univ_elem_kind _ _ _ _ HRb) as Hk.
-  assert (HPR0 : PER R0) by (eapply per_elem_PER; exact HR0).
-  destruct (domain_kind a0) eqn:Hk0.
-  2:{ (** At a proposition both are proofs *)
-    pose proof (per_univ_elem_propositional _ _ _ _ HR0 Hk0) as Ep.
-    destruct (glu_univ_elem_per_univ _ _ _ _ HgN) as [RN HRN].
-    destruct (glu_univ_elem_prop_inv _ _ _ _ (per_univ_elem_per_prop_of_kind HRN Hk) HgN) as [_ HElN].
-    apply HElN in HEN; destruct HEN as [_ _ Hpn].
-    apply Ep; split; [ exact (proj1 Hpn) | exact (proj1 (proj1 (Ep _ _) Hhx)) ]. }
-  (** At an evaluated kind the head is the term's value *)
-  all: assert (Hkc : domain_kind c1 = domain_kind a0) by (exact (per_univ_elem_kind _ _ _ _ HRd)).
-  all: assert (Hnp : ~ entry_propositional gc_deps gc_stack (Δ ▹{κ} A) ρτ' 0)
-         by (intros Hp; apply (proj1 (entry_propositional_zero_head _ _ _)) in Hp;
-             apply (proj1 (head_propositional_of_rel_typ (e := ce_ass κ A) (A := A) hr _ _ HRΔ ltac:(reflexivity) Hhr Ht')) in Hp;
-             destruct Hp as (c & Ec & Hc); assert (c = c1) as -> by (eapply functional_eval_exp; eassumption); congruence).
-  all: rewrite Hk in En; cbn [glu_term_value] in En.
-  all: pose proof (functional_eval_exp _ _ _ _ (Hhd Hnp) En) as Heqn; rewrite <- Heqn.
-  all: exact Hhx.
-Qed.
-
-(** Extended by a glued term *)
-Lemma glu_rel_sub_ext : forall Γ τ Δ κ A N (i : nat),
-    Γ ⊩ˢ τ : Δ -> Δ ⊩ A : abs_kind_sort κ Typeω@i -> Γ ⊩ N : A[τ] -> Γ ⊩ˢ τ,,N : Δ ▹{κ} A.
-Proof.
-  intros * Hτ HA HN.
-  pose proof Hτ as [_ _ _ _ Hτt Hτs _].
-  pose proof (glu_rel_exp_to_wf_exp HA) as HAt; pose proof (glu_rel_exp_to_wf_exp HN) as HNt.
-  pose proof (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAt)) as HAv.
-  assert (HNs : exp_scoped (List.length Γ) N) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HNt))).
-  exact (glu_rel_sub_extend_gen _ _ _ _ _ (se_exp N) i Hτ HA HN
-           (wf_sub_extend _ _ _ _ _ _ _ _ _ Hτt HAt (sort_kind_abs_kind_sort κ i) HNt)
-           (rel_sub_under_ctx_extend (κ := κ) Hτs HAv (completeness_fundamental_exp _ _ _ HNt) HNs HNs)).
-Qed.
-
-(** Postcomposed with a glued weakening: glued at the substitution's
-    glued environment at the weakened one, related to the values of the
-    composite by the semantic substitution's Kripke clause. *)
-Lemma glu_rel_sub_wk : forall Γ' ψ Γ τ Δ, Γ' ⊩ʷ ψ : Γ -> Γ ⊩ˢ τ : Δ -> Γ' ⊩ˢ sb_wk τ ψ : Δ.
-Proof.
-  intros * [SbΓ' HSbΓ' SbΓ1 HSbΓ1 Hψt Hψs Hψg] [SbΓ HSbΓ SbΔ HSbΔ Hτt Hτs Hτg].
-  assert (E : SbΓ1 <∙> SbΓ) by (eapply functional_glu_ctx_env; eassumption).
-  pose proof (rel_sub_under_ctx_wk Hτs Hψs) as Hs.
-  refine (mk_glu_rel_sub _ _ _ SbΓ' HSbΓ' SbΔ HSbΔ (wf_sub_wk _ _ _ _ _ _ _ Hτt Hψt) Hs _).
-  intros Δ' σ ρ Hσ.
-  pose proof (Hψg _ _ _ Hσ) as Hσ1; apply E in Hσ1.
-  destruct (Hτg _ _ _ Hσ1) as (ρτ & Hστ & Hrel).
-  exists ρτ; split.
-  - eapply glu_sub_resp_sb_eq; [ exact HSbΔ | exact Hστ |].
-    rewrite sb_wk_compose, sb_compose_assoc; reflexivity.
-  - intros R X HR HX.
-    pose proof Hψs as [R1 HR1 R2 HR2 Hψw Hψb _].
-    pose proof Hτs as [RΓ0 HRΓ0 RΔ0 HRΔ0 Hb _].
-    assert (E2 : R2 <~> RΓ0) by (eapply per_ctx_env_right_irrel; eassumption).
-    assert (Hψw' : rel_wk ψ R1 RΓ0) by (destruct Hψw as [Hm Hw]; split; [ exact Hm | intros; apply E2, Hw; assumption ]).
-    pose proof (glu_ctx_env_per_env HSbΓ' HR1 Hσ) as Hρ.
-    destruct (Hb _ _ HR1 _ Hψw' Hψb _ _ Hρ) as [ρ1 ρ2 ρ3 ρ4 E1 E2' _ _ Hch].
-    destruct Hch as (H12 & _).
-    assert (E3 : RΔ0 <~> R) by (eapply per_ctx_env_right_irrel; eassumption).
-    assert (HPR : PER R) by (eapply per_env_PER; exact HR).
-    etransitivity; [ exact (rel_sub_under_ctx_at' Hs HR1 HR _ _ _ _ Hρ HX E1) |].
-    etransitivity; [ apply E3; exact H12 | exact (Hrel _ _ HR E2') ].
-Qed.
-
-(** A glued weakening is a glued substitution ([gsub_wk]): glued at the
-    weakened environment, which the target's PER relates to its retagging,
-    the substitution's value ([eval_sub_of_wk]). *)
-Lemma glu_rel_sub_of_wk : forall Γ φ Δ, Γ ⊩ʷ φ : Δ -> Γ ⊩ˢ ι φ : Δ.
-Proof.
-  intros * [SbΓ HSbΓ SbΔ HSbΔ Hφt Hφs Hφg].
-  refine (mk_glu_rel_sub _ _ _ SbΓ HSbΓ SbΔ HSbΔ (wf_sub_of_wk _ _ _ _ _ Hφt) (rel_sub_of_wk Hφs) _).
-  intros Δ' σ ρ Hσ; exists (⟪φ⟫ ρ); split; [ exact (Hφg _ _ _ Hσ) |].
-  intros R ρτ0 HR Hev.
-  pose proof (glu_ctx_env_per_env HSbΔ HR (Hφg _ _ _ Hσ)) as Hρ.
-  assert (Hφm : WkMono φ) by (destruct Hφs as [? ? ? ? Hw _ _]; exact (rel_wk_mono _ _ _ Hw)).
-  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [RΓ HRΓ].
-  pose proof (glu_ctx_env_per_env HSbΓ HRΓ Hσ) as HρΓ.
-  pose proof (rel_sub_under_ctx_at' (rel_sub_of_wk Hφs) HRΓ HR _ _ _ _ HρΓ Hev (eval_sub_of_wk _ _ _ (Hφ := Hφm))) as H1.
-  assert (HPR : PER R) by (eapply per_env_PER; exact HR).
-  etransitivity; [ exact H1 | exact (per_ctx_env_retag_left HR _ _ Hρ) ].
-Qed.
-
-(** Lifted under an assumption: [q τ] is [τ] weakened past the new entry,
-    extended by its variable ([glu_rel_sub_extend_gen]). *)
-Lemma glu_rel_sub_q : forall Γ τ Δ κ A (i : nat),
-    Γ ⊩ˢ τ : Δ -> Δ ⊩ A : abs_kind_sort κ Typeω@i -> Γ ▹{κ} A[τ] ⊩ˢ q τ : Δ ▹{κ} A.
-Proof.
-  intros * Hτ HA.
-  pose proof Hτ as [SbΓ HSbΓ _ _ Hτt Hτs _].
-  pose proof (glu_rel_exp_sub Hτ HA) as HAτ; rewrite abs_kind_sort_sub in HAτ; cbn [exp_sub] in HAτ.
-  pose proof (glu_rel_ctx_extend (ex_intro _ _ HSbΓ) HAτ (sort_kind_abs_kind_sort κ i)) as HΓA.
-  pose proof (glu_rel_exp_to_wf_exp HA) as HAt; pose proof (glu_rel_exp_to_wf_exp HAτ) as HAτt.
-  pose proof (glu_rel_sub_wk _ _ _ _ _ (glu_rel_wk_shift _ _ HΓA) Hτ) as Hw.
-  assert (H0 : Γ ▹{κ} A[τ] ⊩ sentry_exp (se_var 0) : A[sb_wk τ ↑]).
-  { cbn [sentry_exp]; rewrite <- exp_wk_sub; exact (glu_rel_exp_vlookup HΓA (here _ _ _)). }
-  exact (glu_rel_sub_extend_gen _ _ _ _ _ (se_var 0) i Hw HA H0
-           (wf_sub_q _ _ _ _ _ _ _ _ Hτt HAt (sort_kind_abs_kind_sort κ i) HAτt)
-           (rel_sub_under_ctx_q Hτs (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAt)))).
-Qed.
-
-(** ** Types of Levels Glue Alike at Every Index
-
-    A type of levels ([per_level_code]) is glued the same way at every
-    universe index: [Level@n] by its levels, a [Π] between types of levels
-    at the sort [LevelSort], which no index changes. *)
-Lemma glu_univ_elem_level_code_irrel : forall R a a', per_level_code R a a' ->
-    forall (u1 u2 : universe_index) P1 El1 P2 El2,
-      DG a ∈ glu_univ_elem u1 ↘ P1 ↘ El1 -> DG a ∈ glu_univ_elem u2 ↘ P2 ↘ El2 -> (P1 <∙> P2) /\ (El1 <∙> El2).
-Proof.
-  apply (per_level_code_strong_ind (fun R a a' => forall (u1 u2 : universe_index) P1 El1 P2 El2,
-      DG a ∈ glu_univ_elem u1 ↘ P1 ↘ El1 -> DG a ∈ glu_univ_elem u2 ↘ P2 ↘ El2 -> (P1 <∙> P2) /\ (El1 <∙> El2))).
-  - intros n elem_rel HE * H1 H2.
-    basic_invert_glu_univ_elem H1; basic_invert_glu_univ_elem H2.
-    split; [ etransitivity; [ exact H | symmetry; exact H1 ] | etransitivity; [ exact H0 | symmetry; exact H2 ] ].
-  - intros * Ha IHa HPin HT HE * H1 H2.
-    basic_invert_glu_univ_elem H1.
-    rename in_rel0 into in1, IP into IP1, IEl into IEl1, OP into OP1, OEl into OEl1, elem_rel0 into er1,
-      H into Hd1, H0 into Hin1, H1 into Hc1, H2 into Her1, H4 into EP1, H5 into EEl1, typ_rel into tr1, el_rel into el1.
-    basic_invert_glu_univ_elem H6.
-    rename in_rel0 into in2, IP into IP2, IEl into IEl2, OP into OP2, OEl into OEl2, elem_rel0 into er2,
-      H into Hd2, H0 into Hin2, H1 into Hc2, H2 into Her2, H5 into EP2, H6 into EEl2, typ_rel into tr2, el_rel into el2.
-    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hin1 Hin2) as E12.
-    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hin1 (per_level_code_univ_elem _ _ _ Ha u1)) as E1c.
-    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Her1 Her2) as Eer.
-    destruct (IHa _ _ _ _ _ _ Hd1 Hd2) as [EIP EIEl].
-    assert (Hcod : forall c (e1 : in1 c c) (e2 : in2 c c),
-               exists b, ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\ (OP1 c e1 <∙> OP2 c e2) /\ (OEl1 c e1 <∙> OEl2 c e2)).
-    { intros c e1 e2.
-      destruct (HT c c (proj1 (E1c _ _) e1)) as [b b' Eb _ [_ IHb]].
-      exists b; split; [ exact Eb |].
-      exact (IHb _ _ _ _ _ _ (Hc1 _ e1 _ Eb) (Hc2 _ e2 _ Eb)). }
-    split.
-    + etransitivity; [ exact EP1 |]; etransitivity; [| symmetry; exact EP2 ].
-      intros Γ A; split; intros [? ? IT OT HAeq HIT HOT HIP HOP]; econstructor; cbn [abs_kind_sort] in *;
-        try eassumption.
-      * intros; apply EIP; eauto.
-      * intros Δ φ M m Hφ HM e2.
-        destruct (Hcod m (proj2 (E12 _ _) e2) e2) as (b & _ & EOP & _).
-        apply EOP; apply HOP; [ exact Hφ | apply EIEl; exact HM ].
-      * intros; apply EIP; eauto.
-      * intros Δ φ M m Hφ HM e1.
-        destruct (Hcod m e1 (proj1 (E12 _ _) e1)) as (b & _ & EOP & _).
-        apply EOP; apply HOP; [ exact Hφ | apply EIEl; exact HM ].
-    + etransitivity; [ exact EEl1 |]; etransitivity; [| symmetry; exact EEl2 ].
-      intros Γ A M m; split; intros [? ? ? ? IT OT HMt Hm HAeq HIT HOT HIP HOP]; econstructor; cbn [abs_kind_sort] in *;
-        try eassumption.
-      * apply Eer; exact Hm.
-      * intros; apply EIP; eauto.
-      * intros Δ φ N n Hφ HN e2.
-        destruct (Hcod n (proj2 (E12 _ _) e2) e2) as (b & _ & _ & EOEl).
-        destruct (HOP Δ φ N n Hφ (proj2 (EIEl _ _ _ _) HN) (proj2 (E12 _ _) e2)) as (mn & Hmn & HOE).
-        exists mn; split; [ exact Hmn | apply EOEl; exact HOE ].
-      * apply Eer; exact Hm.
-      * intros; apply EIP; eauto.
-      * intros Δ φ N n Hφ HN e1.
-        destruct (Hcod n e1 (proj1 (E12 _ _) e1)) as (b & _ & _ & EOEl).
-        destruct (HOP Δ φ N n Hφ (proj1 (EIEl _ _ _ _) HN) (proj1 (E12 _ _) e1)) as (mn & Hmn & HOE).
-        exists mn; split; [ exact Hmn | apply EOEl; exact HOE ].
-Qed.
-
-(** ** The Types of a Glued Context's Entries
-
-    The converse of [glu_rel_exp_sort_typ]: a type of a sort of a kind,
-    glued as a type under every glued substitution, is glued at the sort.
-    So the entries of a glued context are glued judgments
-    ([glu_rel_ctx_ass_inv]), as [rel_ctx_wf_ass_inv] gives them in the PER
-    model. *)
-Lemma glu_rel_exp_of_sort_typ : forall {Γ Sb A κ} {i : nat}, EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊢ A : abs_kind_sort κ Typeω@i -> (forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ Sb -> glu_rel_typ_with_sub i Δ A σ ρ) ->
-    exists j : nat, Γ ⊩ A : abs_kind_sort κ Typeω@j.
-Proof.
-  intros * HSb HAt HAg.
-  destruct κ; cbn [abs_kind_sort] in *.
-  - exists i; eapply mk_glu_rel_exp with (glu_rel_exp_lvl := S i); [ exact HSb |].
-    intros Δ σ ρ Hσ.
-    pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
-    exact (glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub Hσt (sub_preserves_exp _ _ _ _ _ _ _ HAt Hσt) (HAg _ _ _ Hσ)).
-  - (** A proposition: its value one, glued as one *)
-    exists 0; eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ exact HSb |].
-    intros Δ σ ρ Hσ.
-    pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
-    destruct (HAg _ _ _ Hσ) as [a P El Ea Hg HP].
-    assert (Hu : exists P El, DG Propᵈ ∈ glu_univ_elem 0 ↘ P ↘ El)
-      by (eapply per_univ_glu_univ_elem; eexists; apply per_univ_elem_prop_univ).
-    destruct Hu as (Pu & Elu & Hu).
-    econstructor; [ constructor | cbn [domain_kind glu_term_value]; exact Ea | exact Hu |].
-    basic_invert_glu_univ_elem Hu; apply_predicate_equivalence.
-    pose proof (sub_preserves_exp _ _ _ _ _ _ _ HAt Hσt) as HAσ; cbn [exp_sub] in HAσ.
-    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ ak_propositional 0 Hg HP HAσ) as [Hk _].
-    destruct (glu_univ_elem_per_univ _ _ _ _ Hg) as [Ra HRa].
-    pose proof (per_univ_elem_per_prop_of_kind HRa Hk) as Hpa.
-    destruct (glu_univ_elem_prop_inv _ _ _ _ Hpa Hg) as [HPe _].
-    cbn [exp_sub]; econstructor.
-    { assert (⊢ Δ) by (gen_presups; assumption). apply wf_exp_eq_refl; eapply wf_exp_subtyp'; [ apply wf_prop; assumption |].
-      eapply wf_subtyp_small_large; [ assumption | apply wf_llit_ordinal; assumption ]. }
-    { exact HAσ. }
-    { exact Hpa. }
-    { apply HPe; exact HP. }
-  - (** A type of levels: its value a type of levels, glued alike at the
-        least small index ([glu_univ_elem_level_code_irrel]) *)
-    exists 0; apply (glu_rel_exp_of_level_sort HSb).
-    destruct (glu_ctx_env_per_ctx_env HSb) as [RΓ HRΓ].
-    intros Δ σ ρ Hσ.
-    pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
-    pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
-    destruct (HAg _ _ _ Hσ) as [a P El Ea Hg HP].
-    destruct (rel_exp_of_level_sort_inversion_simple_at HRΓ (completeness_fundamental_exp _ _ _ HAt) _ _ Hρ)
-      as (a1 & a2 & Ea1 & _ & Hls).
-    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
-    destruct Hls as (Hca & _).
-    destruct (glu_univ_elem_per_univ _ _ _ _ Hg) as [Ra HRa].
-    pose proof (per_univ_elem_level_code _ _ _ _ HRa Hca Hca) as Hcode.
-    destruct (per_univ_glu_univ_elem (us (0, 0)) a (ex_intro _ Ra (per_level_code_univ_elem _ _ _ Hcode _))) as (P0 & El0 & Hg0).
-    destruct (glu_univ_elem_level_code_irrel _ _ _ Hcode _ _ _ _ _ _ Hg Hg0) as [EP _].
-    exists a, P0, El0; repeat split; [ exact Ea | exact Hca | exact (sub_preserves_exp _ _ _ _ _ _ _ HAt Hσt) | exact Hg0 | apply EP; exact HP ].
-Qed.
-
-(** The type of the head of a glued context is glued, at the sort of its
-    kind next to a large universe. *)
-Lemma glu_rel_ctx_ass_inv : forall Γ κ A, ⊩ Γ ▹{κ} A -> exists j : nat, Γ ⊩ A : abs_kind_sort κ Typeω@j.
-Proof.
-  intros * [Sb HSb].
-  assert (HT : exists TSb, EG Γ ∈ glu_ctx_env ↘ TSb) by (inversion HSb; subst; eexists; eassumption).
-  destruct HT as [TSb HTSb].
-  destruct (glu_ctx_env_cons_clean_inversion HTSb HSb) as (i & HA & HT & _).
-  exact (glu_rel_exp_of_sort_typ HTSb HA HT).
-Qed.
-
-(** ** Telescopes
-
-    A telescope of assumptions whose entries are glued over the entries
-    after them ([glu_tele_entries]), as [rel_ctx_wf] gives them in the PER
-    model: lifted along a glued substitution ([glu_rel_sub_qn]), its
-    entries glued along it ([glu_tele_entries_sub]), its [Π] glued
-    ([glu_rel_exp_ctx_pi]), and an element of the [Π] applied to glued
-    terms of its entries' instances glued ([glu_rel_exp_apps_ctx_pi_n],
-    [rel_exp_apps_ctx_pi_n]). *)
+(** The entries of a telescope of assumptions [Δ] over [Γ], each a type of
+    the sort of its kind next to a large universe glued at its instances
+    over the entries after it. *)
 Definition glu_tele_entries (Δ Γ : ctx) : Prop :=
-  forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> exists j : nat, Δ2 ++ Γ ⊩ A : abs_kind_sort κ Typeω@j.
+  forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> exists j : nat, glu_rel_exp_under_sub (Δ2 ++ Γ) A (abs_kind_sort κ Typeω@j).
 
 Lemma glu_tele_entries_tail : forall e Δ Γ, glu_tele_entries (e :: Δ) Γ -> glu_tele_entries Δ Γ.
 Proof. intros * H Δ1 κ A Δ2 E; apply (H (e :: Δ1)); rewrite E; reflexivity. Qed.
 
-(** The entries of a glued telescope of assumptions are glued
-    ([glu_rel_ctx_ass_inv]). *)
-Lemma glu_tele_entries_of_ctx : forall C Γ, all_assumptions C -> ⊩ C ++ Γ -> glu_tele_entries C Γ.
+(** The entries of a telescope past its last entry, over the context
+    extended by it. *)
+Lemma glu_tele_entries_snoc : forall Δ e Γ, glu_tele_entries (Δ ++ e :: nil) Γ -> glu_tele_entries Δ (e :: Γ).
 Proof.
-  intros * Hass [Sb HSb] Δ1 κ A Δ2 ->.
-  unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass1 _].
-  rewrite <- List.app_assoc in HSb; cbn [List.app] in HSb.
-  destruct (glu_ctx_env_suffix _ _ _ Hass1 HSb) as [Sb' HSb'].
-  exact (glu_rel_ctx_ass_inv _ _ _ (ex_intro _ _ HSb')).
+  intros * H Δ1 κ A Δ2 E.
+  destruct (H Δ1 κ A (Δ2 ++ e :: nil)) as [j Hj]; [ rewrite E, <- List.app_assoc; reflexivity |].
+  exists j; rewrite <- List.app_assoc in Hj; exact Hj.
 Qed.
 
-(** Terms glued along a telescope make a glued substitution, as
-    [gsub_of_list]. *)
-Lemma glu_rel_sub_of_list : forall Δ Γ Γ1 σ0 Ms, all_assumptions Δ -> Γ ⊩ˢ σ0 : Γ1 -> glu_tele_entries Δ Γ1 ->
+(** A telescope of glued entries extends a context glued with its types. *)
+Lemma glu_rel_ctx_types_app : forall Δ Γ, all_assumptions Δ -> glu_rel_ctx_types Γ -> glu_tele_entries Δ Γ ->
+    glu_rel_ctx_types (Δ ++ Γ).
+Proof.
+  induction Δ as [| e Δ IH]; intros * Hass HΓ HΔ; [ exact HΓ |].
+  apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
+  destruct (HΔ nil κ A Δ eq_refl) as [j HA].
+  exact (glu_rel_ctx_types_extend HA (sort_kind_abs_kind_sort κ j)).
+Qed.
+
+(** The [Π] over a telescope of glued entries of a type of a large
+    universe glued at its instances. *)
+Lemma glu_rel_exp_under_sub_ctx_pi : forall Δ Γ B (i : nat), all_assumptions Δ -> glu_tele_entries Δ Γ ->
+    glu_rel_exp_under_sub (Δ ++ Γ) B Typeω@i ->
+    exists j : nat, glu_rel_exp_under_sub Γ (ctx_pi Δ B) Typeω@j.
+Proof.
+  induction Δ as [| e Δ IH]; intros * HΔa HΔ HB; [ exists i; exact HB |].
+  apply List.Forall_cons_iff in HΔa as [(κ & A & ->) HΔa].
+  destruct (HΔ nil κ A Δ eq_refl) as [k HA].
+  cbn [ctx_pi_at].
+  apply (IH _ _ (max k i) HΔa (glu_tele_entries_tail _ _ _ HΔ)).
+  exact (glu_rel_exp_under_sub_pi_large (glu_rel_exp_under_sub_kind_sort_lift (Nat.le_max_l k i) HA)
+           (glu_rel_exp_under_sub_kind_sort_lift (κ := ak_relevant) (Nat.le_max_r k i) HB) (pi_kinds_relevant κ)).
+Qed.
+
+(** The instance into nothing. *)
+Lemma glu_rel_sub_inst_nil : forall Γ σ, ⊩ Γ -> glu_rel_sub_inst Γ σ ⋅.
+Proof.
+  intros * HΓ.
+  econstructor; [ apply wf_sub_nil'; destruct HΓ as [Sb HSb]; exact (glu_ctx_env_wf_ctx HSb) | exact HΓ
+                | intros x A Hx; inversion Hx | intros x U Hx; inversion Hx ].
+Qed.
+
+(** An instance extended by terms glued at every renaming at the instances
+    of a telescope of glued entries, as [gsub_of_list]. *)
+Lemma glu_rel_sub_inst_of_list : forall Δ Γ Γ1 σ0 Ms, all_assumptions Δ -> glu_rel_sub_inst Γ σ0 Γ1 -> ⊢ Δ ++ Γ1 ->
     List.length Ms = List.length Δ ->
-    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ σ0 Ms) k = Some T -> Γ ⊩ N : T) ->
-    Γ ⊩ˢ sb_of_list σ0 Ms : Δ ++ Γ1.
+    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ σ0 Ms) k = Some T ->
+       glu_rel_exp_under_renaming Γ N T) ->
+    glu_rel_sub_inst Γ (sb_of_list σ0 Ms) (Δ ++ Γ1).
 Proof.
   induction Δ as [| e Δ IH]; intros Γ Γ1 σ0 Ms Hass Hg0 HΔ Hl HMs.
   - destruct Ms; cbn in Hl; [| discriminate ]; cbn; exact Hg0.
   - apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
     pose proof Hass as HCa'.
-    destruct (HΔ nil κ A Δ eq_refl) as [j HA].
+    cbn [List.app] in HΔ; inversion HΔ; subst.
+    match goal with H : _ ⊢ A : ?S, H' : sort_kind ?S κ |- _ => rename H into HA, H' into HS0, S into S0 end.
     destruct (List.exists_last (l := Ms) ltac:(intros ->; cbn in Hl; discriminate)) as (Ms' & M & ->).
     rewrite List.length_app in Hl; cbn in Hl.
     assert (Hl' : List.length Ms' = List.length Δ) by lia; clear Hl.
@@ -573,7 +162,8 @@ Proof.
       rewrite tele_insts_app by (try exact HCa'; lia); reflexivity. }
     assert (HlT : List.length (tele_insts Δ σ0 Ms') = List.length Δ) by (rewrite length_tele_insts by exact HCa'; lia).
     rewrite sb_of_list_app; cbn [sb_of_list List.app].
-    apply (glu_rel_sub_ext _ _ _ _ _ _ j); [ apply (IH _ _ _ _ Hass Hg0 (glu_tele_entries_tail _ _ _ HΔ) Hl') | exact HA |].
+    eapply (glu_rel_sub_inst_extend (S := S0));
+      [ apply (IH _ _ _ _ Hass Hg0 (presup_exp_ctx HA) Hl') | exact HA | exact HS0 |].
     + intros k N T HN HT.
       assert (Hk : k < List.length Δ) by (rewrite <- HlT; apply List.nth_error_Some; congruence).
       apply (HMs k); [ rewrite List.nth_error_app1 by lia; exact HN | rewrite Hti, List.nth_error_app1 by lia; exact HT ].
@@ -581,387 +171,711 @@ Proof.
       rewrite Hti, List.nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity.
 Qed.
 
-Lemma glu_rel_sub_qn : forall Pre Γ0 τ Δ0, all_assumptions Pre -> Γ0 ⊩ˢ τ : Δ0 -> glu_tele_entries Pre Δ0 ->
-    tele_sub Pre τ ++ Γ0 ⊩ˢ sb_qn (List.length Pre) τ : Pre ++ Δ0.
+(** ** Type Formers Applied at Instances *)
+
+(** A term scoped by a list instance does not see the instance's base. *)
+Lemma exp_sub_sb_of_list_base : forall M Ms σ τ, exp_scoped (List.length Ms) M -> M[sb_of_list σ Ms] = M[sb_of_list τ Ms].
 Proof.
-  induction Pre as [| e Pre IH]; intros * Hass Hτ HP; cbn [tele_sub List.app List.length sb_qn]; [ exact Hτ |].
-  apply List.Forall_cons_iff in Hass as [(κ & B & ->) Hass].
-  destruct (HP nil κ B Pre eq_refl) as [j HB].
-  exact (glu_rel_sub_q _ _ _ _ _ j (IH _ _ _ Hass Hτ (glu_tele_entries_tail _ _ _ HP)) HB).
+  intros * Hs; eapply exp_scoped_sub_agree; [ exact Hs |]; intros x Hx.
+  rewrite !(sb_of_list_nth _ _ _ (a_var 0)) by lia; reflexivity.
 Qed.
 
-Lemma glu_tele_entries_sub : forall Pre Γ0 τ Δ0, all_assumptions Pre -> Γ0 ⊩ˢ τ : Δ0 -> glu_tele_entries Pre Δ0 ->
-    glu_tele_entries (tele_sub Pre τ) Γ0.
+(** A list instance followed by a substitution, on a term it scopes: the
+    list of the substituted terms. *)
+Lemma exp_sub_sb_of_list_compose : forall M Ms σ, exp_scoped (List.length Ms) M ->
+    M[sb_of_list Id Ms][σ] = M[sb_of_list Id (List.map (fun N => N[σ]) Ms)].
 Proof.
-  induction Pre as [| e Pre IH]; intros * Hass Hτ HP Δ1 κ A Δ2 E; [ destruct Δ1; discriminate |].
-  apply List.Forall_cons_iff in Hass as [(κ0 & B & ->) Hass].
-  cbn [tele_sub centry_sub] in E.
-  destruct Δ1 as [| e1 Δ1]; cbn [List.app] in E.
-  - injection E as <- <- <-.
-    destruct (HP nil κ0 B Pre eq_refl) as [j HB].
-    exists j; pose proof (glu_rel_exp_sub (glu_rel_sub_qn _ _ _ _ Hass Hτ (glu_tele_entries_tail _ _ _ HP)) HB) as H.
-    rewrite abs_kind_sort_sub in H; exact H.
-  - injection E as _ E.
-    exact (IH _ _ _ Hass Hτ (glu_tele_entries_tail _ _ _ HP) _ _ _ _ E).
+  intros * Hs; rewrite exp_sub_sub; eapply exp_scoped_sub_agree; [ exact Hs |]; intros x Hx.
+  cbn [sb_compose]; apply sb_of_list_lt_compose; exact Hx.
 Qed.
 
-Lemma glu_rel_exp_ctx_pi : forall Δ Γ B (i : nat), all_assumptions Δ -> glu_tele_entries Δ Γ -> Δ ++ Γ ⊩ B : Typeω@i ->
-    exists j : nat, Γ ⊩ ctx_pi Δ B : Typeω@j.
+(** The telescope of the arguments after [Xs], at the list instance of
+    [Xs] over two bases, when it is scoped past them. *)
+Lemma tele_insts_sb_of_list_base : forall Δt Xs σ τ Ms, all_assumptions Δt -> ctx_scoped (List.length Xs) Δt ->
+    tele_insts Δt (sb_of_list σ Xs) Ms = tele_insts Δt (sb_of_list τ Xs) Ms.
 Proof.
-  induction Δ as [| e Δ IH]; intros * HΔa HΔ HB; [ exists i; exact HB |].
-  apply List.Forall_cons_iff in HΔa as [(κ & A & ->) HΔa].
-  destruct (HΔ nil κ A Δ eq_refl) as [k HA].
-  cbn [ctx_pi_at].
-  apply (IH _ _ (max k i) HΔa (glu_tele_entries_tail _ _ _ HΔ)).
-  exact (glu_rel_exp_pi_large (glu_rel_exp_kind_sort_lift (Nat.le_max_l k i) HA)
-           (glu_rel_exp_kind_sort_lift (κ := ak_relevant) (Nat.le_max_r k i) HB) (pi_kinds_relevant κ)).
+  intros * Hass Hs; apply (tele_insts_agree _ _ _ _ _ Hass Hs); intros x Hx.
+  rewrite !(sb_of_list_nth _ _ _ (a_var 0)) by lia; reflexivity.
 Qed.
 
-Lemma glu_rel_exp_apps_ctx_pi_n : forall n Δ Γ B (i : nat) M Ms,
-    List.length Δ = n -> all_assumptions Δ -> ⊩ Γ -> glu_tele_entries Δ Γ ->
-    Δ ++ Γ ⊩ B : Typeω@i -> Γ ⊩ M : ctx_pi Δ B ->
-    List.length Ms = List.length Δ ->
-    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ Id Ms) k = Some T -> Γ ⊩ N : T) ->
-    Γ ⊩ apps M Ms : B[sb_of_list Id Ms].
+(** A closed constant [X] applied to terms [Us] glued at the instances of
+    the outer part [Γb] of a closed telescope [Δt ++ Γb] is glued at the
+    instance of the [Π] over the rest [Δt]: as [ctx_pi_glu_elem_by] says
+    of the terms' values at the canonical environment of [Γb], after the
+    terms are glued arguments there ([params_glu_args]); then, the values
+    of the [Π] at the canonical environment and of its instance at the
+    environment being related ([closed_inst_typ]), the instance, glued, is
+    the witness the constant moves to ([glu_univ_elem_exp_conv]).  [Fr]
+    relates the constant's values to its arguments'; [Hbase] glues it at
+    all its arguments. *)
+Lemma glu_rel_exp_const_apps : forall (Fr : list domain -> domain -> Prop) X T,
+    (forall σ, X[σ] = X) ->
+    (forall Δ1 Γ' Sb' Δ' σ' xs x w, T = Δ1 ++ Γ' -> EG Γ' ∈ glu_ctx_env ↘ Sb' ->
+       Δ' ⊢ˢ σ' ® env_tele nil (List.rev Γ') (xs ++ x :: nil) ∈ Sb' -> List.length Γ' = S (List.length xs) -> Fr xs w ->
+       exists u, $| w & x | gc_deps ⍮ gc_stack ↘ u /\ Fr (xs ++ x :: nil) u) ->
+    forall Δt Γb SbB SbT B (i : nat),
+      all_assumptions (Δt ++ Γb) -> ctx_scoped 0 (Δt ++ Γb) -> ⊨ Γb -> (exists l, rel_params_evaluated ⋅ Γb l) ->
+      EG Γb ∈ glu_ctx_env ↘ SbB -> EG Δt ++ Γb ∈ glu_ctx_env ↘ SbT -> (exists Δ0, T = Δ0 ++ Δt ++ Γb) ->
+      (forall Δ1 κ A Δ2, Δt = Δ1 ++ ce_ass κ A :: Δ2 -> glu_entry_valid_at i (Δ2 ++ Γb) κ A) ->
+      (forall Δ1 Δ2, Δt = Δ1 ++ Δ2 -> Δ2 ++ Γb ⊢ ctx_pi Δ1 B : Typeω@i) ->
+      glu_entry_valid_at i (Δt ++ Γb) ak_relevant B ->
+      Γb ⊨ apps X (vars_from 0 (List.length Γb)) : ctx_pi Δt B ->
+      (forall xs w, Fr xs w -> List.length xs = List.length Γb ->
+         ⟦ apps X (vars_from 0 (List.length Γb)) ⟧ env_tele nil (List.rev Γb) xs ↘ w) ->
+      (forall Δ' Ms vs w', ⊢ Δ' -> glu_args Δ' (Δt ++ Γb) Id nil Ms vs -> Fr vs w' ->
+         forall b P El, ⟦ B ⟧ env_tele nil (List.rev (Δt ++ Γb)) vs ↘ b -> DG b ∈ glu_univ_elem i ↘ P ↘ El ->
+           (forall R, DF b ≈ b ∈ per_univ_elem i ↘ R -> R w' w') ->
+           Δ' ⊢ apps X Ms : B[sb_of_list Id Ms] ® w' ∈ El) ->
+      forall Γ' Us (i' : nat),
+        (forall ρ us, ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ us -> exists w, ⟦ apps X Us ⟧ ρ ↘ w /\ Fr us w) ->
+        ⊩ Γ' -> List.length Us = List.length Γb ->
+        (forall m N T', List.nth_error Us m = Some N -> List.nth_error (tele_insts Γb Id Us) m = Some T' -> Γ' ⊩ N : T') ->
+        Γ' ⊩ (ctx_pi Δt B)[sb_of_list Id Us] : Typeω@i' ->
+        Γ' ⊢ apps X Us : (ctx_pi Δt B)[sb_of_list Id Us] ->
+        Γ' ⊩ apps X Us : (ctx_pi Δt B)[sb_of_list Id Us].
 Proof.
-  induction n as [| n IH]; intros * Hn Hass HΓ HΔ HB HM Hl HMs.
-  - destruct Δ; [| discriminate ]; destruct Ms; [| discriminate ]; cbn; rewrite exp_sub_id; exact HM.
-  - destruct (List.exists_last (l := Δ)) as (Δ0 & e & ->); [ intros ->; discriminate |].
-    rename Δ0 into Δ.
-    rewrite List.length_app in Hn; cbn in Hn.
-    unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [(κ0 & A0 & ->) _].
-    rewrite List.length_app in Hl; cbn in Hl.
-    destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; cbn in Hl.
-    rewrite ctx_pi_snoc in HM; rewrite <- List.app_assoc in HB; cbn [List.app] in HB.
-    destruct (HΔ Δ κ0 A0 nil eq_refl) as [j HA0]; cbn [List.app] in HA0.
-    assert (HΔ' : glu_tele_entries Δ (Γ ▹{κ0} A0)).
-    { intros Δ1 κ A Δ2 E; destruct (HΔ Δ1 κ A (Δ2 ++ ce_ass κ0 A0 :: nil)) as [j' H];
-        [ rewrite E, <- List.app_assoc; reflexivity | exists j'; rewrite <- List.app_assoc in H; exact H ]. }
-    assert (HΓA : ⊩ Γ ▹{κ0} A0) by exact (glu_rel_ctx_extend HΓ HA0 (sort_kind_abs_kind_sort κ0 j)).
-    destruct (glu_rel_exp_ctx_pi _ _ _ _ Hass HΔ' HB) as [k HPi].
-    assert (HM0 : Γ ⊩ M0 : A0)
-      by (rewrite <- (exp_sub_id A0); apply (HMs 0); [ reflexivity | rewrite tele_insts_snoc; reflexivity ]).
-    (** The application *)
-    pose proof (glu_rel_exp_app HA0 (sort_kind_abs_kind_sort κ0 j) (glu_rel_exp_kind_sort_lift (κ := ak_relevant) (le_n k) HPi)
-                  (pi_kinds_relevant κ0) HM HM0) as Happ.
-    rewrite ctx_pi_sub in Happ.
-    assert (Hg0 : Γ ⊩ˢ Id,,M0 : Γ ▹{κ0} A0)
-      by (apply (glu_rel_sub_ext _ _ _ _ _ _ j (glu_rel_sub_id _ HΓ) HA0); rewrite exp_sub_id; exact HM0).
-    pose proof (glu_rel_sub_qn _ _ _ _ Hass Hg0 HΔ') as Hgq.
-    pose proof (glu_rel_exp_sub Hgq HB) as HB'; cbn [exp_sub] in HB'.
-    cbn [apps_exp sb_of_list].
-    replace (B[sb_of_list (Id,,M0) Ms]) with (B[sb_qn (List.length Δ) (Id,,M0)][sb_of_list Id Ms])
-      by (replace (List.length Δ) with (List.length Ms) by lia; apply exp_sub_qn_of_list).
-    eapply (IH (tele_sub Δ (Id,,M0)) Γ (B[sb_qn (List.length Δ) (Id,,M0)]) i (M $ M0) Ms);
-      [ rewrite length_tele_sub; lia | apply all_assumptions_sub; exact Hass | exact HΓ
-      | exact (glu_tele_entries_sub _ _ _ _ Hass Hg0 HΔ') | exact HB' | exact Happ | rewrite length_tele_sub; lia | ].
-    intros k' N T HN HT; apply (HMs (S k')); [ exact HN |].
-    rewrite tele_insts_snoc; cbn [List.nth_error].
-    rewrite tele_insts_tele_sub in HT; rewrite <- HT; f_equal.
-    apply tele_insts_sb_eq; symmetry; apply sb_compose_id_right.
+  intros Fr X T HXw Happ Δt Γb SbB SbT B i Hass Hsc HΓb HΓbev HSbB HSbT HT HA HCs HBv HV HXev Hbase
+    Γ' Us i' Heval HΓ' HlU HUs Hwit HXt.
+  unfold all_assumptions in Hass; pose proof Hass as Hass'; apply List.Forall_app in Hass' as [HassT HassB].
+  pose proof Hsc as Hsc'; apply ctx_scoped_app in Hsc' as [HscT HscB].
+  pose proof HΓ' as [SbΓ HSbΓ].
+  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [RΓ HRΓ].
+  pose proof (glu_ctx_env_wf_ctx HSbΓ) as HΓw.
+  pose proof (completeness_fundamental_ctx _ HΓw) as HΓs.
+  (** The [Π], typed over [Γb] *)
+  pose proof (HCs Δt nil ltac:(rewrite List.app_nil_r; reflexivity)) as HPi; cbn [List.app] in HPi.
+  assert (HPis : exp_scoped (List.length Γb) (ctx_pi Δt B))
+    by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HPi))).
+  (** The constant at related values is in the relation of the [Π]: the
+      constant at the variables is valid, of a relevant type *)
+  assert (HPER : forall xs w R a, Fr xs w -> per_tele_args (List.rev Γb) nil nil xs xs -> List.length xs = List.length Γb ->
+             ⟦ ctx_pi Δt B ⟧ env_tele nil (List.rev Γb) xs ↘ a -> DF a ≈ a ∈ per_univ_elem i ↘ R -> R w w).
+  { intros xs w R0 a0 Hw Hxs Hlx Ea0 HR0.
+    destruct (rel_exp_under_ctx_simple HV) as (RU2 & HRU2 & l & Hsim).
+    pose proof (tele_args_env_rel _ _ _ _ _ _ HRU2 HΓb Hlx Hxs) as HρU2.
+    destruct (Hsim _ _ HρU2) as (b0 & b0' & R1 & Eb0 & Eb0' & HR1 & [Hp | (m & m' & Em & Em' & Hmm)]).
+    { destruct (Completeness.ContextCases.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ HPi) _ HRU2 _ _ HρU2)
+        as (b1 & Eb1 & Hk1).
+      assert (b1 = b0) as -> by (eapply functional_eval_exp; eassumption); congruence. }
+    pose proof (HXev _ _ Hw Hlx) as Ed.
+    assert (m = w) as -> by (eapply functional_eval_exp; eassumption).
+    assert (m' = w) as -> by (eapply functional_eval_exp; eassumption).
+    assert (b0 = a0) as -> by (eapply functional_eval_exp; eassumption).
+    assert (b0' = a0) as -> by (eapply functional_eval_exp; eassumption).
+    apply (per_univ_elem_left_irrel _ _ _ _ _ _ _ HR1 HR0); exact Hmm. }
+  assert (HUt : forall m N T', List.nth_error Us m = Some N -> List.nth_error (tele_insts Γb Id Us) m = Some T' -> Γ' ⊢ N : T')
+    by (intros; eapply glu_rel_exp_to_wf_exp; eauto).
+  assert (HUc : forall m N T', List.nth_error Us m = Some N -> List.nth_error (tele_insts Γb Id Us) m = Some T' -> Γ' ⊨ N : T')
+    by (intros; eapply completeness_fundamental_exp; eauto).
+  pose proof (typed_insts_scoped _ _ _ HassB HlU HUt) as HUss.
+  pose proof (closed_inst_sorts Γb Γ' Us HassB HΓb HΓs HΓbev HlU HUc HUss) as HTs.
+  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i'); [ exact HSbΓ |].
+  intros Δ σ ρ Hσ.
+  pose proof (glu_ctx_env_per_env HSbΓ HRΓ Hσ) as Hρ.
+  assert (HΔ : ⊢ Δ) by exact (wf_sub_dom _ _ _ _ _ (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ)).
+  (** The witness: the instance of the [Π], glued at its value *)
+  destruct (glu_rel_exp_of_univ_inversion (u := ul i') HSbΓ Hwit _ _ _ Hσ) as (_ & a' & Ea' & Hper' & HPw & _).
+  (** The values of the arguments, and of the [Π] at the instance and at
+      the canonical environment *)
+  destruct (Completeness.Modules.Filed.closed_inst_typ Γb Γ' Us (ctx_pi Δt B) i RΓ HassB HΓb HΓs HlU HUc HTs HUss
+              (rel_type_of_typ (completeness_fundamental_exp _ _ _ HPi)) HRΓ ρ Hρ) as (us & a'' & b & i'' & R & Eus & Ea'' & Eb & HR).
+  assert (a'' = a') as -> by (eapply functional_eval_exp; eassumption).
+  (** The arguments, glued at their telescope *)
+  pose proof (params_glu_args Γb SbB Γ' RΓ SbΓ Δ σ ρ Us us HassB HscB HΓb HΓs HSbB HRΓ HSbΓ Hσ HlU HUc HΓbev HUss HUs Eus)
+    as HgU.
+  set (Xs := List.map (fun N => N[σ]) Us) in *.
+  assert (HSbB0 : EG Γb ++ ⋅ ∈ glu_ctx_env ↘ SbB) by (rewrite List.app_nil_r; exact HSbB).
+  assert (Hσb : Δ ⊢ˢ sb_of_list Id Xs ® env_tele nil (List.rev Γb) us ∈ SbB).
+  { eapply (glu_sub_of_list Γb ⋅ SbB nil_glu_sub_pred Δ Id nil Xs us);
+      [ exact HassB | exact HSbB0 | econstructor; [ reflexivity | eapply ctx_wf_gctx; exact HΔ ] | cbn; apply wf_sub_nil'; exact HΔ
+      | exact HgU ]. }
+  destruct (Heval _ _ Eus) as (w & Ew & Hw).
+  (** The [Π] at the canonical environment, glued *)
+  pose proof (glu_args_per_tele_args _ _ _ _ _ _ HassB HgU) as Hgus.
+  destruct (rel_ctx_wf_per_ctx_env HΓb) as [RB HRB].
+  assert (HEb : RB (env_tele nil (List.rev Γb) us) (env_tele nil (List.rev Γb) us)).
+  { apply (tele_args_env_rel _ _ _ _ _ _ HRB HΓb); [| exact Hgus ].
+    destruct (glu_args_length _ _ _ _ _ _ HgU) as [_ L]; exact L. }
+  destruct (typ_values_rel (κ := ak_relevant) HPi HRB _ _ HEb) as (b1 & b2 & Eb1 & Eb2 & Hbb).
+  assert (b1 = b) as -> by (eapply functional_eval_exp; eassumption).
+  assert (b2 = b) as -> by (eapply functional_eval_exp; eassumption).
+  destruct (per_univ_glu_univ_elem _ _ Hbb) as (Pb & Elb & Hgb).
+  (** The type of the constant's application at the arguments' instances *)
+  assert (EXt : (ctx_pi Δt B)[sb_of_list Id Us][σ] = (ctx_pi Δt B)[sb_of_list Id Xs])
+    by (unfold Xs; apply exp_sub_sb_of_list_compose; rewrite HlU; exact HPis).
+  assert (HXσ : Δ ⊢ apps X Xs : (ctx_pi Δt B)[sb_of_list Id Xs]).
+  { rewrite <- EXt; unfold Xs.
+    replace (apps X (List.map (fun N => N[σ]) Us)) with (apps X Us)[σ] by (rewrite apps_exp_sub, HXw; reflexivity).
+    exact (sub_preserves_exp _ _ _ _ _ _ _ HXt (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ)). }
+  (** The constant glued at the rest of its arguments: at all of them *)
+  assert (HbaseK : forall Δ' φ Ms vs w', Δ' ⊢ᵏ φ : Δ ->
+             glu_args Δ' Δt (sb_wk (sb_of_list Id Xs) φ) (env_tele nil (List.rev Γb) us) Ms vs -> Fr (us ++ vs) w' ->
+             forall b0 P El, ⟦ B ⟧ env_tele nil (List.rev (Δt ++ Γb)) (us ++ vs) ↘ b0 -> DG b0 ∈ glu_univ_elem i ↘ P ↘ El ->
+               (forall R, DF b0 ≈ b0 ∈ per_univ_elem i ↘ R -> R w' w') ->
+               Δ' ⊢ apps X (List.map (fun N => N[φ]ʷ) Xs ++ Ms) : B[sb_of_list (sb_wk (sb_of_list Id Xs) φ) Ms] ® w' ∈ El).
+  { intros Δ' φ Ms vs w' Hφ HgM Hw' b0 P El Eb0 Hgb0 HPb0.
+    assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
+    pose proof (glu_args_wk _ _ _ _ _ _ _ HassB HscB Hφ HgU) as HgUφ.
+    destruct (glu_args_length _ _ _ _ _ _ HgUφ) as [LX LV].
+    assert (HgM' : glu_args Δ' Δt (sb_of_list Id (List.map (fun N => N[φ]ʷ) Xs)) (env_tele nil (List.rev Γb) us) Ms vs).
+    { pose proof (glu_args_sb_eq _ _ _ _ _ _ _ (sb_wk_sb_of_list Xs Id φ) HgM) as HgM1.
+      destruct HgM1 as [L1 L2 H]; constructor; [ exact L1 | exact L2 |].
+      rewrite (tele_insts_sb_of_list_base _ _ (sb_wk Id φ) Id) in H;
+        [ exact H | exact HassT | rewrite LX; rewrite Nat.add_0_r in HscT; exact HscT ]. }
+    pose proof (proj2 (glu_args_app Δ' Γb Δt Id nil _ Ms us vs HassB LX LV) (conj HgUφ HgM')) as Hall.
+    pose proof (Hbase Δ' _ _ w' HΔ' Hall Hw' b0 P El Eb0 Hgb0 HPb0) as H.
+    destruct (glu_args_length _ _ _ _ _ _ Hall) as [LA _].
+    assert (HBs : exp_scoped (List.length (List.map (fun M => M[φ]ʷ) Xs ++ Ms)) B)
+      by (rewrite LA; exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ (proj1 HBv))))).
+    replace (B[sb_of_list (sb_wk (sb_of_list Id Xs) φ) Ms]) with (B[sb_of_list Id (List.map (fun M => M[φ]ʷ) Xs ++ Ms)]);
+      [ exact H |].
+    eapply exp_scoped_sub_agree; [ exact HBs |]; intros x Hx.
+    rewrite List.length_app in Hx; rewrite sb_of_list_app.
+    destruct (Nat.lt_ge_cases x (List.length Ms)) as [Hxm | Hxm].
+    - rewrite !(sb_of_list_nth Ms _ _ (a_var 0)) by lia; reflexivity.
+    - replace x with (List.length Ms + (x - List.length Ms)) by lia; rewrite !sb_of_list_ge.
+      rewrite (sb_wk_sb_of_list Xs Id φ (x - List.length Ms)).
+      rewrite List.length_map in Hx.
+      rewrite !(sb_of_list_nth (List.map _ Xs) _ _ (a_var 0)) by (rewrite List.length_map; lia); reflexivity. }
+  assert (HXw' : forall φ, X[φ]ʷ = X) by (intros φ; rewrite <- exp_sub_of_wk; apply HXw).
+  pose proof (ctx_pi_glu_elem_by Fr X T HXw' Happ Δt Γb SbB SbT B i HassT HSbB HSbT HT HA HCs HBv Δ (sb_of_list Id Xs) us Xs w
+                Hσb ltac:(destruct (glu_args_length _ _ _ _ _ _ HgU) as [_ L]; congruence) Hw HXσ
+                (fun R0 a0 Ea0 HR0 => HPER us w R0 a0 Hw Hgus ltac:(destruct (glu_args_length _ _ _ _ _ _ HgU) as [_ L]; exact L)
+                                        Ea0 HR0) HbaseK b Pb Elb Eb Hgb) as Hel.
+  (** Moved to the value of the instance, its type glued there *)
+  destruct (per_univ_glu_univ_elem _ _ Hper') as (P' & El' & Hg').
+  assert (Hba : Dom b ≈ a' ∈ per_univ i'') by (eexists; apply per_univ_elem_sym; exact HR).
+  rewrite <- EXt in Hel.
+  assert (EM : (apps X Us)[σ] = apps X Xs) by (rewrite apps_exp_sub, HXw; reflexivity).
+  rewrite <- EM in Hel.
+  pose proof (glu_univ_elem_exp_conv_universe_index Hba Hgb Hg' Hel (HPw _ _ Hg')) as Hel'.
+  destruct (glu_term_value_intro Hg' HSbΓ Hσ HXt (fun _ => Ew) Hel') as (m' & Hm' & HM').
+  econstructor; [ exact Ea' | exact Hm' | exact Hg' | exact HM' ].
 Qed.
 
-(** Terms glued at the instances of a telescope are glued at those of an
-    equal one ([tele_insts_rel_conv]): the equality is syntactic, the
-    right telescope's entries glued, and each term moves by subtyping
-    ([glu_rel_exp_subtyp]). *)
-Lemma glu_tele_insts_conv : forall Γ Δ Δ' Ms, gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
-    all_assumptions Δ -> all_assumptions Δ' -> ⊩ Γ -> glu_tele_entries Δ Γ -> glu_tele_entries Δ' Γ ->
-    List.length Δ' = List.length Δ -> List.length Ms = List.length Δ ->
-    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ Id Ms) k = Some T -> Γ ⊩ N : T) ->
-    forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ' Id Ms) k = Some T -> Γ ⊩ N : T.
+(** The variables of a closed telescope at an instance of it are glued at
+    every renaming at the telescope's instances at them: each is the
+    instance's component, its type the instance of the variable's
+    ([glu_vars_tele] in the PER model). *)
+Lemma glu_rel_sub_inst_vars : forall Γ' τ Δ, all_assumptions Δ -> ctx_scoped 0 Δ -> ctx_mvc Δ -> glu_rel_sub_inst Γ' τ Δ ->
+    forall m N T, List.nth_error (List.map (fun X => X[τ]) (vars_from 0 (List.length Δ))) m = Some N ->
+      List.nth_error (tele_insts Δ Id (List.map (fun X => X[τ]) (vars_from 0 (List.length Δ)))) m = Some T ->
+      glu_rel_exp_under_renaming Γ' N T.
 Proof.
-  induction Δ as [| e Δ IH]; intros Δ' Ms HX Ha Ha' HΓ HE HE' Hll Hl HMs k N T HN HT.
-  - destruct Ms; [ destruct k; discriminate | discriminate ].
-  - destruct Δ' as [| e' Δ']; [ discriminate |].
-    inversion Ha as [| ? ? (κ & A & ->) HaΔ]; subst; inversion Ha' as [| ? ? (κ' & A' & ->) HaΔ']; subst.
-    cbn [List.length] in Hll, Hl.
-    inversion HX; subst.
-    match goal with
-    | H : gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ', H' : gc_deps ⍮ gc_stack ⍮ Δ ++ Γ ⊢ A ⊆ A' |- _ => rename H into HX0, H' into HAA'
-    end.
-    rename κ' into κ.
-    destruct (List.exists_last (l := Ms) ltac:(intros ->; cbn in Hl; discriminate)) as (Ms0 & M & ->).
-    rewrite List.length_app in Hl; cbn in Hl.
-    assert (Hl0 : List.length Ms0 = List.length Δ) by lia.
-    assert (Hti : forall X Y, all_assumptions Y -> List.length Ms0 = List.length Y ->
-               tele_insts (ce_ass κ X :: Y) Id (Ms0 ++ M :: nil) = tele_insts Y Id Ms0 ++ X[sb_of_list Id Ms0] :: nil).
-    { intros X Y HY HlY; change (ce_ass κ X :: Y) with ((ce_ass κ X :: nil) ++ Y).
-      rewrite tele_insts_app by (try exact HY; lia); reflexivity. }
-    assert (HlT : forall Y, all_assumptions Y -> List.length Ms0 = List.length Y -> List.length (tele_insts Y Id Ms0) = List.length Y)
-      by (intros Y HY HlY; rewrite length_tele_insts by exact HY; lia).
-    pose proof (HlT _ HaΔ Hl0) as HlT0; pose proof (HlT _ HaΔ' ltac:(lia)) as HlT0'.
-    rewrite (Hti _ _ HaΔ' ltac:(lia)) in HT.
-    assert (HMs0 : forall k N T, List.nth_error Ms0 k = Some N -> List.nth_error (tele_insts Δ Id Ms0) k = Some T -> Γ ⊩ N : T).
-    { intros k0 N0 T0 HN0 HT0.
-      assert (Hk0 : k0 < List.length Δ) by (rewrite <- HlT0; apply List.nth_error_Some; congruence).
-      apply (HMs k0); [ rewrite List.nth_error_app1 by lia; exact HN0 | rewrite (Hti _ _ HaΔ Hl0), List.nth_error_app1 by lia; exact HT0 ]. }
-    pose proof (IH _ _ HX0 HaΔ HaΔ' HΓ (glu_tele_entries_tail _ _ _ HE) (glu_tele_entries_tail _ _ _ HE') ltac:(lia) Hl0 HMs0)
-      as HMs0'.
-    destruct (Nat.lt_ge_cases k (List.length Δ')) as [Hk | Hk].
-    + rewrite List.nth_error_app1 in HN by lia; rewrite List.nth_error_app1 in HT by lia.
-      exact (HMs0' _ _ _ HN HT).
-    + assert (k = List.length Δ') as ->.
-      { assert (Hk' : k < List.length (Ms0 ++ M :: nil)) by (apply List.nth_error_Some; congruence).
-        rewrite List.length_app in Hk'; cbn in Hk'; lia. }
-      rewrite List.nth_error_app2, HlT0', Nat.sub_diag in HT by lia; injection HT as <-.
-      rewrite List.nth_error_app2 in HN by lia.
-      replace (List.length Δ' - List.length Ms0) with 0 in HN by lia; injection HN as <-.
-      pose proof (HMs (List.length Δ) M (A[sb_of_list Id Ms0])) as HM.
-      rewrite List.nth_error_app2 in HM by lia.
-      rewrite (Hti _ _ HaΔ Hl0), List.nth_error_app2 in HM by lia.
-      rewrite Hl0, HlT0, !Nat.sub_diag in HM.
-      specialize (HM eq_refl eq_refl).
-      pose proof (glu_rel_sub_of_list _ _ _ _ _ HaΔ (glu_rel_sub_id _ HΓ) (glu_tele_entries_tail _ _ _ HE) Hl0 HMs0) as Hgs.
-      pose proof (glu_rel_sub_of_list Δ' Γ Γ Id Ms0 HaΔ' (glu_rel_sub_id _ HΓ) (glu_tele_entries_tail _ _ _ HE') ltac:(lia) HMs0')
-        as Hgs'.
-      destruct (HE' nil κ A' Δ' eq_refl) as [j HA'].
-      pose proof (glu_rel_exp_sub Hgs' HA') as HA's; rewrite abs_kind_sort_sub in HA's; cbn [exp_sub] in HA's.
-      pose proof Hgs as [_ _ _ _ Hgst _ _].
-      exact (glu_rel_exp_subtyp HM HA's (sort_kind_type_sort _ _ (sort_kind_abs_kind_sort κ j)) (sub_preserves_subtyp _ _ _ _ _ _ _ HAA' Hgst)).
-Qed.
-
-(** A closed glued telescope of assumptions extends a glued context, its
-    weakening past the context glued ([closed_app_sem], [closed_app_valid]):
-    its entries, closed, are their own weakenings. *)
-Lemma glu_closed_app : forall C Ψ, all_assumptions C -> ctx_scoped 0 C -> ⊩ C -> ⊩ Ψ ->
-    ⊩ C ++ Ψ /\ C ++ Ψ ⊩ʷ (wk_qn (List.length C) (wk_shiftn (List.length Ψ))) : C.
-Proof.
-  induction C as [| e C IH]; intros Ψ Hass Hsc HC HΨ.
-  - cbn [List.app List.length wk_qn]; split; [ exact HΨ |].
-    pose proof HΨ as [SbΨ HSbΨ].
-    pose proof (glu_rel_wk_shiftn Ψ ⋅ ltac:(rewrite List.app_nil_r; exact HΨ)
-                  (glu_rel_ctx_empty (ctx_wf_gctx _ _ _ (glu_ctx_env_wf_ctx HSbΨ)))) as H.
-    rewrite List.app_nil_r in H; exact H.
-  - apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
-    destruct Hsc as [HsA Hsc]; cbn [ce_scoped] in HsA; rewrite Nat.add_0_r in HsA.
-    assert (HCt : ⊩ C) by (destruct HC as [Sb HSb]; inversion HSb; subst; eexists; eassumption).
-    destruct (IH Ψ Hass Hsc HCt HΨ) as [HCΨ Hw].
-    destruct (glu_rel_ctx_ass_inv _ _ _ HC) as [j HA].
-    pose proof (glu_rel_exp_wk Hw HA) as HAw; rewrite abs_kind_sort_wk in HAw; cbn [exp_wk] in HAw.
-    pose proof (glu_rel_wk_q _ _ _ _ _ j Hw HA) as Hq.
-    assert (EA : A[wk_qn (List.length C) (wk_shiftn (List.length Ψ))]ʷ = A)
-      by (apply (exp_scoped_wk_id _ (List.length C)); [ exact HsA | intros; apply wk_qn_lt; assumption ]).
-    rewrite EA in HAw, Hq.
-    split; [ exact (glu_rel_ctx_extend HCΨ HAw (sort_kind_abs_kind_sort κ j)) | exact Hq ].
-Qed.
-
-(** The variables of a closed telescope, past an extension, are glued at
-    its instances there ([valid_vars_tele]). *)
-Lemma glu_vars_tele : forall Φ Δ,
-    all_assumptions Δ -> ctx_scoped 0 Δ -> ctx_mvc Δ -> ⊩ Φ ++ Δ ->
-    forall k N T, List.nth_error (vars_from (List.length Φ) (List.length Δ)) k = Some N ->
-      List.nth_error (tele_insts Δ Id (vars_from (List.length Φ) (List.length Δ))) k = Some T ->
-      Φ ++ Δ ⊩ N : T.
-Proof.
-  intros * Hass Hs Hmv HΔ k N T HN HT.
-  apply vars_from_nth_error in HN as [Hk ->].
+  intros * Hass Hs Hmv Hτ m N T HN HT.
+  apply nth_error_map_inv in HN as (V & HV & ->).
+  apply vars_from_nth_error in HV as [Hk ->].
   apply tele_insts_nth in HT as (κA & A & HA & ->).
   destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
   assert (HΔeq : Δ = List.rev l2 ++ ce_ass κA A :: List.rev l1)
     by (rewrite <- (List.rev_involutive Δ), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
-  assert (Hlen : List.length Δ = List.length l2 + S k)
+  assert (Hlen : List.length Δ = List.length l2 + S m)
     by (rewrite HΔeq, List.length_app; cbn [List.length]; rewrite !List.length_rev; lia).
-  assert (HsA : exp_scoped k A).
+  assert (HsA : exp_scoped m A).
   { rewrite HΔeq in Hs; apply ctx_scoped_app in Hs as [_ Hs]; cbn in Hs; destruct Hs as [HsA _].
     rewrite List.length_rev, Nat.add_0_r in HsA; congruence. }
   assert (HmA : exp_mvc 0 A).
   { unfold ctx_mvc in Hmv; rewrite HΔeq in Hmv; apply List.Forall_app in Hmv as [_ Hmv].
     apply List.Forall_cons_iff in Hmv as [HmA _]; exact HmA. }
-  replace (A[sb_of_list Id (List.firstn k (vars_from (List.length Φ) (List.length Δ)))])
-    with (A[wk_shiftn (List.length Φ + List.length l2 + 1)]ʷ).
-  - apply glu_rel_exp_vlookup; [ exact HΔ |].
-    replace (List.length Φ + (List.length Δ - 1 - k)) with (0 + List.length (Φ ++ List.rev l2))
-      by (rewrite List.length_app, List.length_rev; lia).
-    replace (A[wk_shiftn (List.length Φ + List.length l2 + 1)]ʷ)
-      with (A[wk_shift]ʷ[wk_shiftn (List.length (Φ ++ List.rev l2))]ʷ)
-      by (rewrite exp_wk_wk; apply exp_wk_wk_eq; intros x; cbn; rewrite List.length_app, List.length_rev; lia).
-    rewrite HΔeq, List.app_assoc.
-    apply ctx_lookup_app_r; constructor.
-  - rewrite <- exp_sub_of_wk; eapply exp_scoped_mvc_agree; [ exact HsA | exact HmA |].
-    intros x Hx; rewrite sb_of_list_firstn_vars by lia; cbn; f_equal; lia.
+  (** The variable's type in the telescope *)
+  assert (Hx : Δ ∋ #(List.length Δ - 1 - m) : A[wk_shiftn (List.length l2 + 1)]ʷ).
+  { replace (List.length Δ - 1 - m) with (0 + List.length (List.rev l2)) by (rewrite List.length_rev; lia).
+    replace (A[wk_shiftn (List.length l2 + 1)]ʷ) with (A[wk_shift]ʷ[wk_shiftn (List.length (List.rev l2))]ʷ)
+      by (rewrite exp_wk_wk; apply exp_wk_wk_eq; intros x; cbn; rewrite List.length_rev; lia).
+    rewrite HΔeq; apply ctx_lookup_app_r; constructor. }
+  pose proof (glu_rel_sub_inst_comps _ _ _ Hτ _ _ Hx) as H; cbn [Nat.add] in H.
+  replace (A[sb_of_list Id (List.firstn m (List.map (fun X => X[τ]) (vars_from 0 (List.length Δ))))])
+    with (A[wk_shiftn (List.length l2 + 1)]ʷ[τ]); [ exact H |].
+  rewrite <- exp_sub_of_wk, exp_sub_sub.
+  eapply exp_scoped_mvc_agree; [ exact HsA | exact HmA |]; intros y Hy.
+  rewrite List.firstn_map, <- sb_of_list_lt_compose by (rewrite List.length_firstn, length_vars_from; lia).
+  rewrite sb_of_list_firstn_vars by lia.
+  cbn [sb_compose sb_of_wk sentry_sub sentry_exp wk_shiftn exp_sub].
+  f_equal; f_equal; lia.
 Qed.
 
-(** ** Types of a Group's Sort
+(** A list instance followed by a substitution: the list of the
+    substituted terms over the composed base. *)
+Lemma sb_of_list_compose_base : forall Ms σ τ, sb_eq (sb_of_list σ Ms ⨟ τ) (sb_of_list (σ ⨟ τ) (List.map (fun M => M[τ]) Ms)).
+Proof.
+  induction Ms as [| M Ms IH]; intros σ τ; cbn [sb_of_list List.map]; [ reflexivity |].
+  intros x; rewrite (IH (σ,,M) τ x); apply sb_of_list_cong, sb_extend_compose.
+Qed.
 
-    A type of the sort of a valid glued group, weakened past the
-    parameters and an extension, is a type of a large universe: the sort
-    is one, or small at a level glued over the parameters
-    ([glu_ind_decl_lvlP]), weakened. *)
-Section GroupSort.
+(** The variables of a context glued with its types are glued at the
+    instances of its telescope at them. *)
+Lemma glu_rel_ctx_types_vars : forall Δ, all_assumptions Δ -> ctx_scoped 0 Δ -> ctx_mvc Δ -> glu_rel_ctx_types Δ ->
+    forall m N T, List.nth_error (vars_from 0 (List.length Δ)) m = Some N ->
+      List.nth_error (tele_insts Δ Id (vars_from 0 (List.length Δ))) m = Some T -> Δ ⊩ N : T.
+Proof.
+  intros * Hass Hs Hmv HΔ m N T HN HT.
+  pose proof (glu_rel_sub_inst_vars Δ Id Δ Hass Hs Hmv (glu_rel_ctx_types_id HΔ) m N T) as H.
+  rewrite (List.map_ext _ (fun X => X) exp_sub_id), List.map_id in H.
+  exact (glu_rel_exp_of_under_renaming (glu_rel_ctx_types_ctx _ HΔ) (H HN HT)).
+Qed.
+
+(** ** A Record's Type Former Applied *)
+
+(** A record's type former at terms glued at their instances at the
+    instances of its parameters' telescope is a type of a large universe
+    glued at its instances: at an instance, the terms' instances are an
+    instance of the parameters, where the sort is glued
+    ([glued_sort]). *)
+Lemma glu_record_apps : forall qr R Ψ Ms, record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R ->
+    glu_rel_ctx_types Ψ -> List.length Ms = List.length (record_params R) ->
+    (forall m N T, List.nth_error Ms m = Some N -> List.nth_error (tele_insts (record_params R) Id Ms) m = Some T ->
+       glu_rel_exp_under_sub Ψ N T) ->
+    exists j : nat, glu_rel_exp_under_sub Ψ (apps (a_record qr) Ms) Typeω@j.
+Proof.
+  intros qr R Ψ Ms HlR HGR HΨ HMl HMs.
+  assert (Hg : ⊢ᵍ gc_deps ⍮ gc_stack)
+    by (destruct (glu_rel_ctx_types_ctx _ HΨ) as [? HSb]; eapply ctx_wf_gctx; exact (glu_ctx_env_wf_ctx HSb)).
+  pose proof (record_model_at qr R Hg HlR) as Hmodel.
+  pose proof (model_closed _ _ Hmodel) as Hc; pose proof (model_params_ass _ _ Hmodel) as Hpa.
+  pose proof (closed_params _ Hc) as Hps.
+  pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ HlR) as Ht.
+  pose proof (params_mvc _ (typed_mvc _ _ _ Ht)) as Hpm.
+  destruct (record_typed_ty _ _ _ Ht) as [i0 Hty].
+  pose proof (glued_params _ HGR) as HP.
+  destruct (glu_rel_ctx_types_ctx _ HP) as [SbP HSbP].
+  assert (HSbP0 : EG record_params R ++ ⋅ ∈ glu_ctx_env ↘ SbP) by (rewrite List.app_nil_r; exact HSbP).
+  destruct (glu_ctx_env_entries_valid _ _ _ Hpa HSbP0 i0) as (i & Hji & _).
+  assert (Hi : ⋅ ⊢ record_ty R : Typeω@i) by (eapply lift_exp_ge; [ exact Hji | exact Hty ]).
+  pose proof Hi as Hi'; unfold record_ty in Hi'.
+  destruct (ctx_pi_split_typed _ _ _ _ Hpa Hi') as [HCs0 _].
+  pose proof (HCs0 nil _ eq_refl) as HS0; cbn [ctx_pi_at] in HS0.
+  pose proof HS0 as HS; rewrite List.app_nil_r in HS.
+  (** The sort, a type of a large universe glued at its instances *)
+  assert (Hj : exists j : nat, forall Γ' Ms', glu_rel_sub_inst Γ' (sb_of_list Id Ms') (record_params R) ->
+                 (Γ' ⊩ apps (a_record qr) Ms' : (record_sort R)[sb_of_list Id Ms'] -> Γ' ⊩ apps (a_record qr) Ms' : Typeω@j) /\
+                 Γ' ⊩ (record_sort R)[sb_of_list Id Ms'] : Typeω@i).
+  { destruct (glued_sort _ HGR) as [[i1 Heq] | (L & n & Heq & HL)]; rewrite Heq in HS |- *; cbn [exp_sub].
+    - exists i1; intros Γ' Ms' Hinst; split; [ intros H; exact H |].
+      eapply glu_rel_exp_subtyp; [ exact (glu_rel_exp_typ (glu_rel_sub_inst_ctx _ _ _ Hinst))
+                                 | exact (glu_rel_exp_typ (glu_rel_sub_inst_ctx _ _ _ Hinst)) | constructor |].
+      pose proof (sub_preserves_subtyp _ _ _ _ _ _ _ (wf_typ_inversion HS) (glu_rel_sub_inst_typed _ _ _ Hinst)) as H'.
+      cbn [exp_sub] in H'; exact H'.
+    - exists 0; intros Γ' Ms' Hinst.
+      pose proof (glu_rel_exp_under_sub_inst _ _ _ HL _ _ Hinst) as HLτ; cbn [exp_sub] in HLτ.
+      split; [ intros H; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) HLτ H) |].
+      eapply glu_rel_exp_subtyp; [ eapply glu_rel_exp_univ_lvl; exact HLτ | exact (glu_rel_exp_typ (glu_rel_sub_inst_ctx _ _ _ Hinst))
+                                 | constructor |].
+      pose proof (sub_preserves_subtyp _ _ _ _ _ _ _ (wf_univ_inversion HS) (glu_rel_sub_inst_typed _ _ _ Hinst)) as H'.
+      cbn [exp_sub] in H'; exact H'. }
+  destruct Hj as [j Hj].
+  exists j; econstructor; [ exact HΨ |]; intros Γ' τ Hτ.
+  pose proof (glu_rel_sub_inst_ctx _ _ _ Hτ) as HΓ'.
+  assert (HΓ'w : ⊢ Γ') by (destruct HΓ' as [? HSb]; exact (glu_ctx_env_wf_ctx HSb)).
+  set (Ms' := List.map (fun N => N[τ]) Ms).
+  rewrite apps_exp_sub; cbn [exp_sub]; fold Ms'.
+  assert (HlM' : List.length Ms' = List.length (record_params R)) by (unfold Ms'; rewrite List.length_map; exact HMl).
+  assert (HUs : forall m N T, List.nth_error Ms' m = Some N -> List.nth_error (tele_insts (record_params R) Id Ms') m = Some T ->
+                  glu_rel_exp_under_renaming Γ' N T).
+  { intros m N T HN HT; unfold Ms' in HN, HT.
+    rewrite <- (tele_insts_sub _ 0 Id Id τ Ms Hpa Hps ltac:(intros; lia)) in HT.
+    apply nth_error_map_inv in HN as (N0 & HN0 & ->); apply nth_error_map_inv in HT as (T0 & HT0 & ->).
+    exact (glu_rel_exp_under_sub_inst_renaming (HMs _ _ _ HN0 HT0) Hτ). }
+  assert (Hinst : glu_rel_sub_inst Γ' (sb_of_list Id Ms') (record_params R)).
+  { rewrite <- (List.app_nil_r (record_params R)).
+    apply glu_rel_sub_inst_of_list; [ exact Hpa | exact (glu_rel_sub_inst_nil _ _ HΓ') | rewrite List.app_nil_r
+                                   | exact HlM' | exact HUs ].
+    exact (presup_exp_ctx HS). }
+  assert (HUt : forall m N T, List.nth_error Ms' m = Some N -> List.nth_error (tele_insts (record_params R) Id Ms') m = Some T ->
+                  Γ' ⊢ N : T)
+    by (intros; eapply glu_rel_exp_to_wf_exp, glu_rel_exp_of_under_renaming; [ exact HΓ' | eauto ]).
+  assert (HXt : Γ' ⊢ apps (a_record qr) Ms' : (record_sort R)[sb_of_list Id Ms']).
+  { eapply wf_apps_closed_pi; [ exact Hpa | exact Hps | exact (closed_sort _ Hc) | exact HS | exact HΓ'w | | exact HlM' | exact HUt ].
+    exact (record_former_wf qr R Hg HlR _ HΓ'w). }
+  destruct (Hj _ _ Hinst) as [Hconv Hwit]; apply Hconv.
+  (** The type former at the instances *)
+  pose proof (model_valid _ _ Hmodel) as HV0.
+  assert (HV : record_params R ⊨ apps (a_record qr) (vars_from 0 (List.length (record_params R))) : record_sort R).
+  { apply completeness_fundamental_exp.
+    pose proof (glu_rel_ctx_types_vars _ Hpa Hps Hpm HP) as Hvs.
+    assert (HPw : ⊢ record_params R) by exact (presup_exp_ctx HS).
+    pose proof (wf_apps_closed_pi _ _ _ _ _ _ (a_record qr) (vars_from 0 (List.length (record_params R))) Hpa Hps (closed_sort _ Hc) HS HPw
+                  (record_former_wf qr R Hg HlR _ HPw) ltac:(rewrite length_vars_from; reflexivity)
+                  ltac:(intros; eapply glu_rel_exp_to_wf_exp, Hvs; eassumption)) as H.
+    rewrite (exp_at_vars _ _ _ (closed_sort _ Hc) (sort_mvc _ (typed_mvc _ _ _ Ht))) in H.
+    rewrite (exp_wk_id_ext (record_sort R) _ wk_shiftn_zero) in H; exact H. }
+  eapply (glu_rel_exp_const_apps (fun xs w => w = d_record qr xs) (a_record qr) (record_params R))
+    with (Δt := nil) (Γb := record_params R) (SbB := SbP) (SbT := SbP) (i := i);
+    [ reflexivity | | exact Hpa | exact Hps | exact (params_valid _ HV0) | exact (params_evaluated_valid _ HV0) | exact HSbP | exact HSbP
+    | exists nil; reflexivity | intros [] ? ? ? E; discriminate | | | exact HV | | | | exact HΓ' | exact HlM'
+    | intros m N T HN HT; exact (glu_rel_exp_of_under_renaming HΓ' (HUs m N T HN HT)) | exact Hwit | exact HXt ].
+  - intros Δ1 Γ'' Sb' Δ'' σ' xs x w HT _ _ HlΓ ->.
+    exists (d_record qr (xs ++ x :: nil)); split; [| reflexivity ].
+    eapply eval_app_record; [ exact HlR |].
+    assert (List.length Γ'' <= List.length (record_params R)) by (rewrite HT, List.length_app; lia).
+    lia.
+  - intros Δ1 Δ2 E; symmetry in E; apply List.app_eq_nil in E as [-> ->]; exact HS.
+  - cbn [List.app]; rewrite <- (List.app_nil_r (record_params R)) at 1.
+    exact (record_sort_entry_valid R HGR i HS0).
+  - intros xs w -> Hlx; rewrite <- Hlx.
+    apply (Completeness.Records.Model.eval_record_apps qr R HlR); [| rewrite length_vars_from; exact Hlx ].
+    pose proof (Decl.eval_vars_from_args (tele_entries nil (List.rev (record_params R)) xs) nil nil) as H.
+    rewrite List.app_nil_r, tele_entries_values, Decl.tele_entries_length in H; cbn [List.length] in H; exact H.
+  - intros Δ' Ms0 vs w' HΔ' HgM -> b P El Eb Hgb HPb.
+    exact (record_former_base qr R Hg HlR HGR i0 Hty Δ' Ms0 vs i b P El HΔ' HgM Eb Hgb HPb).
+  - intros ρ us Eus; exists (d_record qr us); split; [| reflexivity ].
+    apply (Completeness.Records.Model.eval_record_apps qr R HlR); [ exact Eus | exact HlM' ].
+Qed.
+
+(** ** A Group's Type Formers Applied *)
+
+Section IndApps.
   Variables (p : qname) (D : ind_decl).
   Hypotheses (Hg : valid_group p D) (HG : glu_ind_decl D).
+  (** The ends of the recursive arguments' shapes are glued ([Comps]) *)
+  Hypothesis (Hselfs : glu_self_ends_all p D).
+  Let Hl := valid_group_lookup _ _ Hg.
+  Let HD := valid_group_valid _ _ Hg.
+  Let Hc := valid_group_closed _ _ Hg.
+  Let Hdt := valid_group_typed _ _ Hg.
+  Let Hsu := valid_group_sort _ _ Hg.
+  Let Hass := valid_group_ass _ _ Hg.
 
-  Lemma glu_group_sort_large : forall Ψ k Mk κ A, ind_member D k = Some Mk -> ⊩ Ψ ++ im_params D Mk ->
-      Ψ ++ im_params D Mk ⊩ A : abs_kind_sort κ (ind_sort D)[wk_shiftn (List.length Ψ + im_nn Mk)]ʷ ->
-      exists i : nat, Ψ ++ im_params D Mk ⊩ A : abs_kind_sort κ Typeω@i.
+  (** A type of the group's sort over the uniform parameters and [Ψ],
+      glued at its instances, is a type of a large universe glued at them:
+      the sort is one, or small at a level glued at its instances
+      ([glu_ind_decl_lvl]), weakened. *)
+  Lemma glu_group_sort_large : forall Ψ κ A,
+      glu_rel_exp_under_sub (Ψ ++ ind_uparams D) A (abs_kind_sort κ (ind_sort D)[wk_shiftn (List.length Ψ)]ʷ) ->
+      exists i : nat, glu_rel_exp_under_sub (Ψ ++ ind_uparams D) A (abs_kind_sort κ Typeω@i).
   Proof.
-    intros * HM HΨ HA.
-    destruct (valid_group_sort _ _ Hg) as [[i0 Heq] | [t Heq]]; rewrite Heq in HA; cbn [exp_wk] in HA; [ exists i0; exact HA |].
-    destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n Hn]; rewrite Heq in Hn; cbn [ind_sort_lvl] in Hn.
-    pose proof (glu_rel_wk_shiftn Ψ (im_params D Mk) HΨ (glu_ind_decl_params _ HG _ _ HM)) as Hw.
-    pose proof (glu_rel_exp_wk Hw Hn) as Hn'; cbn [exp_wk] in Hn'.
-    rewrite (exp_wk_wk_ext _ _ _ (wk_shiftn (List.length Ψ + im_nn Mk))) in Hn' by (intros x; cbn; lia).
-    exists 0; exact (glu_rel_exp_kind_sort_small_large Hn' HA).
+    intros * HA.
+    destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in HA; cbn [exp_wk] in HA; [ exists i0; exact HA |].
+    destruct (glu_ind_decl_lvl _ HG) as [n Hn]; rewrite Heq in Hn; cbn [ind_sort_lvl] in Hn.
+    pose proof (wf_wk_shiftn_app' _ _ _ _ (presup_exp_ctx (glu_rel_exp_under_sub_wf HA))) as Hw.
+    pose proof (glu_rel_exp_under_sub_wk Hn (glu_rel_exp_under_sub_ctx _ _ _ HA) Hw) as Hn'; cbn [exp_wk] in Hn'.
+    exists 0; apply (glu_rel_exp_under_sub_conv_typ (A := abs_kind_sort κ Type⟨t[wk_shiftn (List.length Ψ)]ʷ⟩)); [| exact HA ].
+    intros Γ' τ Hτ H; rewrite !abs_kind_sort_sub in *; cbn [exp_sub] in *.
+    pose proof (glu_rel_exp_under_sub_inst _ _ _ Hn' _ _ Hτ) as HL; cbn [exp_sub] in HL.
+    exact (glu_rel_exp_kind_sort_small_large HL H).
   Qed.
 
-  (** The sort, over a member's parameters, is a type of a large
-      universe. *)
+  (** The sort, over a member's parameters, is a type of a large universe
+      glued at its instances. *)
   Lemma glu_group_sort_typ : forall k Mk, ind_member D k = Some Mk ->
-      exists j : nat, im_params D Mk ⊩ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ : Typeω@j.
+      exists j : nat, glu_rel_exp_under_sub (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ Typeω@j.
   Proof.
     intros * HM.
     pose proof (glu_ind_decl_params _ HG _ _ HM) as HP.
-    destruct (valid_group_sort _ _ Hg) as [[i0 Heq] | [t Heq]]; rewrite Heq; cbn [exp_wk];
-      [ exists (S i0); exact (glu_rel_exp_typ HP) |].
-    destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n Hn]; rewrite Heq in Hn; cbn [ind_sort_lvl] in Hn.
-    exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) (glu_rel_exp_succl Hn) (glu_rel_exp_univ_lvl Hn)).
+    destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq; cbn [exp_wk].
+    - exists (S i0); econstructor; [ exact HP |]; intros Γ' τ Hτ; cbn [exp_sub].
+      exact (glu_rel_exp_typ (glu_rel_sub_inst_ctx _ _ _ Hτ)).
+    - destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n Hn]; rewrite Heq in Hn; cbn [ind_sort_lvl exp_wk] in Hn.
+      exists 0; econstructor; [ exact HP |]; intros Γ' τ Hτ; cbn [exp_sub].
+      pose proof (glu_rel_exp_under_sub_inst _ _ _ Hn _ _ Hτ) as HL; cbn [exp_sub] in HL.
+      exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) (glu_rel_exp_succl HL) (glu_rel_exp_univ_lvl HL)).
   Qed.
 
-  (** A declared member's type former at glued terms of its parameters'
-      types is a type of a large universe ([valid_group_valid_ind_apps]). *)
+  (** A member's type over the uniform parameters is a type of a large
+      universe glued at its instances. *)
+  Lemma glu_self_ty_under_sub : forall j Mj, ind_member D j = Some Mj ->
+      exists i : nat, glu_rel_exp_under_sub (ind_uparams D) (self_ty D Mj) Typeω@i.
+  Proof.
+    intros * HMj.
+    destruct (glu_group_sort_typ _ _ HMj) as [i HS].
+    unfold self_ty; unfold im_params in HS.
+    apply (glu_rel_exp_under_sub_ctx_pi _ _ _ i (decl_closed_nparams_ass D Hc _ _ HMj)); [| exact HS ].
+    intros Δ1 κ A Δ2 E.
+    assert (Hn : List.nth_error (List.rev (im_nparams Mj)) (List.length Δ2) = Some (ce_ass κ A)).
+    { rewrite E, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc.
+      rewrite List.nth_error_app2 by (rewrite List.length_rev; lia).
+      rewrite List.length_rev, Nat.sub_diag; reflexivity. }
+    pose proof (glu_ind_decl_nparams _ HG _ _ _ _ _ HMj Hn) as HA.
+    assert (EP : nparams_prefix Mj (List.length Δ2) = Δ2).
+    { unfold nparams_prefix; rewrite E, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc.
+      rewrite firstn_app_exact by (rewrite List.length_rev; reflexivity); apply List.rev_involutive. }
+    rewrite EP in HA.
+    (** The non-uniform parameters are relevant *)
+    rewrite (decl_typed_nparams_kind _ _ _ Hdt _ _ _ _ _ _ HMj E).
+    exact (glu_group_sort_large Δ2 ak_relevant A HA).
+  Qed.
+
+  (** A member's sort, over its parameters, at the parameters as
+      variables. *)
+  Lemma sort_shift_at_vars : forall Mk, (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id (vars_from 0 (im_np D Mk))]
+                                        = (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ.
+  Proof.
+    intros Mk; rewrite <- !exp_sub_of_wk, exp_sub_sub.
+    eapply exp_scoped_mvc_agree; [ exact (decl_closed_sort _ Hc) | exact (decl_mvc_sort _ (decl_typed_mvc _ _ _ Hdt)) |].
+    intros x Hx; cbn [sb_compose sb_of_wk sentry_sub wk_shiftn].
+    rewrite sb_of_list_vars by (unfold im_np, ind_nu in *; lia); cbn; f_equal; lia.
+  Qed.
+
+  (** A declared member's type former at its parameters as variables is
+      valid at its sort. *)
+  Lemma valid_ind_apps_vars : forall k Mk pm, ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
+      im_params D Mk ⊨ apps (a_ind p k) (vars_from 0 (im_np D Mk)) : (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ.
+  Proof.
+    intros k Mk pm HM Hh.
+    pose proof (decl_closed_params_ass D k Mk Hc HM) as Hpa.
+    pose proof (decl_closed_params D k Mk Hc HM) as Hps.
+    pose proof (decl_typed_mvc _ _ _ Hdt) as Hmv.
+    assert (Hpm : ctx_mvc (im_params D Mk))
+      by (unfold im_params, ctx_mvc; apply List.Forall_app; split;
+          [ exact (proj1 (decl_mvc_members _ Hmv _ _ HM)) | exact (decl_mvc_uparams _ Hmv) ]).
+    destruct (valid_ind_decl_sort D HD) as [i HS].
+    pose proof (valid_ind_decl_params D HD k Mk HM) as HP.
+    pose proof HP as HP'; unfold im_params in HP'.
+    pose proof (rel_wk_under_ctx_shiftn _ _ HP') as Hw; rewrite length_im_nparams in Hw.
+    assert (HB : im_params D Mk ⊨ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ : Typeω@i)
+      by (pose proof (rel_exp_under_ctx_wk Hw HS) as H; cbn [exp_wk] in H; exact H).
+    destruct (closed_app_sem _ _ Hpa HP HP) as [HPP _].
+    pose proof (closed_app_valid _ _ _ _ _ Hpa HP HP HB) as HBP.
+    pose proof (closed_weaken_valid _ _ _ _ HP (valid_exp_under_ctx_ind D HD Hc Hsu p Hl Hass k Mk pm HM Hh)) as HMv.
+    unfold ind_ty in HMv.
+    assert (Hl0 : List.length (vars_from 0 (im_np D Mk)) = List.length (im_params D Mk))
+      by (rewrite length_vars_from, length_im_params; reflexivity).
+    pose proof (valid_vars_tele nil (im_params D Mk) Hpa Hps Hpm HP) as Hvars; cbn [List.length List.app] in Hvars.
+    rewrite length_im_params in Hvars.
+    assert (Hvs : List.Forall (exp_scoped (List.length (im_params D Mk))) (vars_from 0 (im_np D Mk))).
+    { apply List.Forall_forall; intros N HN; destruct (List.In_nth_error _ _ HN) as [m Hm].
+      apply vars_from_nth_error in Hm as [Hm ->]; cbn; rewrite length_im_params; lia. }
+    pose proof (rel_exp_apps_ctx_pi_n _ (im_params D Mk) (im_params D Mk) _ i (a_ind p k) (vars_from 0 (im_np D Mk)) eq_refl Hpa
+                  HPP HBP HMv Hl0 Hvars Hvs) as HR.
+    rewrite sort_shift_at_vars in HR; exact HR.
+  Qed.
+
+  (** A declared member's type former at its parameters as variables, at
+      the canonical environment of their values. *)
+  Lemma eval_ind_apps_vars : forall k Mk C xs, ind_member D k = Some Mk -> List.length xs <= im_np D Mk ->
+      ⟦ apps (a_ind p k) (vars_from 0 (List.length xs)) ⟧ env_tele nil C xs ↘ d_ind p k xs.
+  Proof.
+    intros * HM Hlx.
+    apply Modules.eval_apps_exp; exists (d_ind p k nil); split; [ constructor |].
+    apply Modules.eval_app_args_ind; exists xs; split; [| exact (eval_apps_indty p D k Mk xs nil Hl HM ltac:(cbn; lia)) ].
+    pose proof (Decl.eval_vars_from_args (tele_entries nil C xs) nil nil) as H.
+    rewrite List.app_nil_r, tele_entries_values, Decl.tele_entries_length in H; cbn [List.length] in H; exact H.
+  Qed.
+
+  (** A declared member's type former at terms glued at the instances of
+      the outer part [Γb] of its parameters (the uniform ones, or all of
+      them) is glued at the instance of the [Π] over the rest. *)
+  Lemma glu_rel_exp_ind_apps_gen : forall k Mk pm Δt Γb Γ' Us (i' : nat), ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
+      im_params D Mk = Δt ++ Γb -> Γb = ind_uparams D \/ Δt = nil ->
+      ⊩ Γ' -> List.length Us = List.length Γb ->
+      (forall m N T', List.nth_error Us m = Some N -> List.nth_error (tele_insts Γb Id Us) m = Some T' -> Γ' ⊩ N : T') ->
+      Γ' ⊩ (ctx_pi Δt (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)[sb_of_list Id Us] : Typeω@i' ->
+      Γ' ⊢ apps (a_ind p k) Us : (ctx_pi Δt (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)[sb_of_list Id Us] ->
+      Γ' ⊩ apps (a_ind p k) Us : (ctx_pi Δt (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)[sb_of_list Id Us].
+  Proof.
+    intros k Mk pm Δt Γb Γ' Us i' HM Hh EP Hcase HΓ' HlU HUs Hwit HXt.
+    pose proof (decl_closed_params_ass D k Mk Hc HM) as HassP.
+    pose proof (decl_closed_params D k Mk Hc HM) as HsP.
+    assert (Hg0 : ⊢ᵍ gc_deps ⍮ gc_stack) by (eapply ctx_wf_gctx; exact (member_params_wf _ _ _ _ _ Hdt HM)).
+    assert (HΔ0 : ⊢ ⋅) by (constructor; exact Hg0).
+    assert (Hlt : k < ind_ndecl D) by (eapply decl_member_lt; [ exact HΔ0 | eassumption | eassumption | eassumption ]).
+    destruct (ind_ty_typed0 _ _ _ _ _ Hdt HM) as [j Hj].
+    destruct (glu_rel_ctx_types_ctx _ (glu_ind_decl_params _ HG _ _ HM)) as [SbP HSbP].
+    pose proof HassP as HassP'; rewrite EP in HassP'.
+    pose proof HassP' as HassP''; unfold all_assumptions in HassP''; apply List.Forall_app in HassP'' as [HassT HassB].
+    pose proof HSbP as HSbT; rewrite EP in HSbT.
+    destruct (glu_ctx_env_entries_valid _ _ _ HassT HSbT j) as (i & Hji & HAents).
+    destruct (glu_ctx_env_suffix _ _ _ HassT HSbT) as [SbB HSbB].
+    assert (Hi : ⋅ ⊢ ind_ty D Mk : Typeω@i) by (eapply lift_exp_ge; [ exact Hji | exact Hj ]).
+    pose proof Hi as Hi'; unfold ind_ty in Hi'.
+    destruct (ctx_pi_split_typed _ _ _ _ HassP Hi') as [HCs0 _].
+    pose proof (valid_ind_decl_params D HD k Mk HM) as HP; rewrite EP in HP.
+    pose proof (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HP) as HPb.
+    assert (HBev : exists l, rel_params_evaluated ⋅ Γb l).
+    { apply rel_params_evaluated_of_entries; intros Δ1 κ A Δ2 E.
+      destruct (im_params_evaluated D HD k Mk HM (Δt ++ Δ1) κ A Δ2 ltac:(rewrite EP, E, List.app_assoc; reflexivity)) as [l Hl0].
+      exists l; rewrite List.app_nil_r; exact Hl0. }
+    assert (Hlen : forall C, im_params D Mk = C -> List.length C = im_np D Mk) by (intros C <-; apply length_im_params).
+    eapply (glu_rel_exp_const_apps (fun xs w => w = d_ind p k xs) (a_ind p k) (im_params D Mk))
+      with (Δt := Δt) (Γb := Γb) (SbB := SbB) (SbT := SbP) (i := i);
+      [ reflexivity | | exact HassP' | rewrite <- EP; exact HsP | exact HPb | exact HBev | exact HSbB | rewrite <- EP; exact HSbP
+      | exists nil; rewrite EP; reflexivity | exact HAents | | | | | | | exact HΓ' | exact HlU | exact HUs | exact Hwit | exact HXt ].
+    - (** One more argument: the former at it *)
+      intros Δ1 Γ'' Sb' Δ'' σ' xs x w HT _ _ HlΓ ->.
+      exists (d_ind p k (xs ++ x :: nil)); split; [| reflexivity ].
+      eapply eval_app_indty; [ exact Hl | exact HM |].
+      assert (List.length Γ'' <= List.length (im_params D Mk)) by (rewrite HT, List.length_app; lia).
+      rewrite length_im_params in *; lia.
+    - intros Δ1 Δ2 Heq.
+      pose proof (HCs0 Δ1 (Δ2 ++ Γb) ltac:(rewrite EP, Heq, List.app_assoc; reflexivity)) as H.
+      rewrite List.app_nil_r in H; exact H.
+    - pose proof (sort_entry_valid D HG Hsu k Mk i HM (HCs0 nil _ eq_refl)) as H.
+      rewrite List.app_nil_r, EP in H; exact H.
+    - destruct Hcase as [-> | ->].
+      + assert (Δt = im_nparams Mk) as -> by (unfold im_params in EP; apply List.app_inv_tail in EP; congruence).
+        exact (valid_self_apps D HD Hc Hsu p Hl Hass (decl_typed_order _ _ _ Hdt) (decl_typed_mvc _ _ _ Hdt) k Mk HM Hlt).
+      + cbn [List.app] in EP; subst Γb; rewrite length_im_params; exact (valid_ind_apps_vars k Mk pm HM Hh).
+    - intros xs w -> Hlx; rewrite <- Hlx.
+      apply (eval_ind_apps_vars k Mk); [ exact HM | rewrite Hlx; pose proof (Hlen _ EP) as E; rewrite List.length_app in E; lia ].
+    - intros Δ' Ms vs w' HΔ' HgM -> b P El Eb Hgb HPb'.
+      rewrite <- EP in HgM, Eb.
+      exact (ind_former_base p D Hl HG Hc Hdt Hsu Hass Hselfs k Mk pm Δ' _ _ i b P El HM Hh HΔ' HgM Eb Hgb HPb').
+    - intros ρ us Eus; exists (d_ind p k us); split; [| reflexivity ].
+      pose proof (Completeness.Inductives.Model.eval_exps_length _ _ _ Eus) as Lus.
+      apply Modules.eval_apps_exp; exists (d_ind p k nil); split; [ constructor |].
+      apply Modules.eval_app_args_ind; exists us; split; [ exact Eus |].
+      apply (eval_apps_indty p D k Mk us nil Hl HM); cbn.
+      pose proof (Hlen _ EP) as E; rewrite List.length_app in E; lia.
+  Qed.
+
+  (** A list instance of the variables of the uniform parameters
+      at an instance, on a term over them: the instance. *)
+  Lemma uparams_vars_inst : forall M τ, exp_scoped (ind_nu D) M -> exp_mvc 0 M ->
+      M[τ] = M[sb_of_list Id (List.map (fun X => X[τ]) (vars_from 0 (ind_nu D)))].
+  Proof.
+    intros * Hs Hm; eapply exp_scoped_mvc_agree; [ exact Hs | exact Hm |]; intros x Hx.
+    rewrite <- sb_of_list_lt_compose by (rewrite length_vars_from; exact Hx).
+    rewrite sb_of_list_vars by exact Hx; reflexivity.
+  Qed.
+
+  (** A declared member's type former at the uniform parameters as
+      variables is glued at its instances at the member's type. *)
+  Lemma glu_self_apps_under_sub : forall j Mj, ind_member D j = Some Mj -> j < ind_ndecl D ->
+      glu_rel_exp_under_sub (ind_uparams D) (apps (a_ind p j) (vars_from 0 (ind_nu D))) (self_ty D Mj).
+  Proof.
+    intros * HMj Hj.
+    destruct (member_lt_decl _ _ _ _ _ Hdt HMj Hj) as [pm Hh].
+    destruct (glu_self_ty_under_sub _ _ HMj) as [i HST].
+    pose proof (decl_closed_ass _ Hc) as HassU.
+    pose proof (decl_closed_uparams _ Hc) as HsU.
+    pose proof (decl_mvc_uparams _ (decl_typed_mvc _ _ _ Hdt)) as HmU.
+    econstructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ HST) |]; intros Γ' τ Hτ.
+    pose proof (glu_rel_sub_inst_ctx _ _ _ Hτ) as HΓ'.
+    set (Us := List.map (fun X => X[τ]) (vars_from 0 (ind_nu D))).
+    assert (EU : (apps (a_ind p j) (vars_from 0 (ind_nu D)))[τ] = apps (a_ind p j) Us) by (rewrite apps_exp_sub; reflexivity).
+    assert (ET : (self_ty D Mj)[τ] = (self_ty D Mj)[sb_of_list Id Us])
+      by exact (uparams_vars_inst _ τ (self_ty_scoped _ _ _ Hc HMj) (self_ty_mvc _ _ _ Hc (decl_typed_mvc _ _ _ Hdt) HMj)).
+    assert (HlU : List.length Us = List.length (ind_uparams D)) by (unfold Us; rewrite List.length_map, length_vars_from; reflexivity).
+    assert (HUs : forall m N T, List.nth_error Us m = Some N -> List.nth_error (tele_insts (ind_uparams D) Id Us) m = Some T ->
+                    Γ' ⊩ N : T)
+      by (intros m N T HN HT; exact (glu_rel_exp_of_under_renaming HΓ' (glu_rel_sub_inst_vars Γ' τ _ HassU HsU HmU Hτ m N T HN HT))).
+    pose proof (glu_rel_exp_under_sub_inst _ _ _ HST _ _ Hτ) as HSTτ; cbn [exp_sub] in HSTτ.
+    rewrite EU, ET.
+    apply (glu_rel_exp_ind_apps_gen j Mj pm (im_nparams Mj) (ind_uparams D) Γ' Us i HMj Hh eq_refl (or_introl eq_refl) HΓ' HlU HUs);
+      fold (self_ty D Mj); [ rewrite <- ET; exact HSTτ |].
+    eapply wf_apps_closed_pi; [ exact HassU | exact HsU | exact (self_ty_scoped _ _ _ Hc HMj) | exact (glu_rel_exp_under_sub_wf HST)
+                              | destruct HΓ' as [? HSb]; exact (glu_ctx_env_wf_ctx HSb) | | exact HlU
+                              | intros; eapply glu_rel_exp_to_wf_exp; eauto ].
+    unfold self_ty; rewrite <- ctx_pi_app; change (ctx_pi (im_nparams Mj ++ ind_uparams D) (ind_sort D)[wk_shiftn (im_nn Mj)]ʷ)
+      with (ind_ty D Mj).
+    eapply wf_ind; [ destruct HΓ' as [? HSb]; exact (glu_ctx_env_wf_ctx HSb) | eassumption .. ].
+  Qed.
+
+  (** A declared member's type former at terms glued at their instances
+      at the instances of its parameters' telescope is a type of a large
+      universe glued at its instances ([valid_group_valid_ind_apps]): at an
+      instance, the terms' instances are an instance of the parameters,
+      where the sort is glued ([glu_group_sort_typ]). *)
   Lemma glu_group_ind_apps : forall k Mk pm Ψ Ms, ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
-      ⊩ Ψ -> List.length Ms = im_np D Mk ->
-      (forall m N T, List.nth_error Ms m = Some N -> List.nth_error (tele_insts (im_params D Mk) Id Ms) m = Some T -> Ψ ⊩ N : T) ->
-      exists j : nat, Ψ ⊩ apps (a_ind p k) Ms : Typeω@j.
+      glu_rel_ctx_types Ψ -> List.length Ms = im_np D Mk ->
+      (forall m N T, List.nth_error Ms m = Some N -> List.nth_error (tele_insts (im_params D Mk) Id Ms) m = Some T ->
+         glu_rel_exp_under_sub Ψ N T) ->
+      exists j : nat, glu_rel_exp_under_sub Ψ (apps (a_ind p k) Ms) Typeω@j.
   Proof.
     intros k Mk pm Ψ Ms HM Hh HΨ HMl HMs.
-    pose proof (valid_group_closed _ _ Hg) as Hc.
     pose proof (decl_closed_params_ass D k Mk Hc HM) as Hpa.
-    pose proof (glu_ind_decl_params _ HG _ _ HM) as HP.
-    destruct (glu_closed_app _ _ Hpa (decl_closed_params D k Mk Hc HM) HP HΨ) as [HPΨ Hw].
-    destruct (glu_group_sort_typ k Mk HM) as [i HB].
-    pose proof (glu_rel_exp_wk Hw HB) as HBΨ; cbn [exp_wk] in HBΨ.
-    assert (HBs : exp_scoped (List.length (im_params D Mk)) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)
-      by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ (glu_rel_exp_to_wf_exp HB)))).
-    rewrite (exp_scoped_wk_id _ _ _ HBs (fun x Hx => wk_qn_lt _ _ x Hx)) in HBΨ.
-    pose proof (glu_rel_exp_nil_weaken _ _ _ HΨ
-                  (glu_rel_exp_ind0 p D (valid_group_lookup _ _ Hg) HG Hc (valid_group_typed _ _ Hg) (valid_group_sort _ _ Hg)
-                     (valid_group_ass _ _ Hg) k Mk pm HM Hh)) as HMv.
-    unfold ind_ty in HMv.
-    assert (HMl' : List.length Ms = List.length (im_params D Mk)) by (rewrite length_im_params; exact HMl).
-    pose proof (glu_rel_exp_apps_ctx_pi_n _ (im_params D Mk) Ψ _ i (a_ind p k) Ms eq_refl Hpa HΨ
-                  (glu_tele_entries_of_ctx _ _ Hpa HPΨ) HBΨ HMv HMl' HMs) as HR.
-    destruct (valid_group_sort _ _ Hg) as [[i0 Heq] | [t Heq]]; rewrite Heq in HR; cbn [exp_wk exp_sub] in HR;
-      [ exists i0; exact HR |].
-    (** At a small universe: its level, at the terms, glued *)
-    destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n Hn]; rewrite Heq in Hn; cbn [ind_sort_lvl] in Hn.
-    pose proof (glu_rel_exp_wk Hw Hn) as Hn1; cbn [exp_wk] in Hn1.
-    assert (Hts : exp_scoped (List.length (im_params D Mk)) t[wk_shiftn (im_nn Mk)]ʷ)
-      by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ (glu_rel_exp_to_wf_exp Hn)))).
-    rewrite (exp_scoped_wk_id _ _ _ Hts (fun x Hx => wk_qn_lt _ _ x Hx)) in Hn1.
-    pose proof (glu_rel_sub_of_list _ _ _ _ _ Hpa (glu_rel_sub_id _ HΨ) (glu_tele_entries_of_ctx _ _ Hpa HPΨ) HMl' HMs) as Hgs.
-    pose proof (glu_rel_exp_sub Hgs Hn1) as Hn2; cbn [exp_sub] in Hn2.
-    exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) Hn2 HR).
-  Qed.
-
-  (** A judgment over the uniform parameters holds past an extension [Z],
-      at the uniform parameters as variables there ([closed_app_valid]
-      along [gsub_of_list] in the PER model). *)
-  Lemma glu_uvars_inst : forall Z X T, ⊩ Z ++ ind_uparams D -> all_assumptions Z -> ind_uparams D ⊩ X : T ->
-      Z ++ ind_uparams D ⊩ X[sb_of_list Id (vars_from (List.length Z) (ind_nu D))] : T[sb_of_list Id (vars_from (List.length Z) (ind_nu D))].
-  Proof.
-    intros * HΨ HZa HX.
-    pose proof (valid_group_closed _ _ Hg) as Hc.
-    pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)) as Hmv.
-    pose proof (decl_closed_ass _ Hc) as HUa.
-    assert (HU0 : ⊩ ind_uparams D)
-      by (destruct HΨ as [Sb HSb]; destruct (glu_ctx_env_suffix _ _ _ HZa HSb) as [Sb' HSb']; eexists; exact HSb').
-    destruct (glu_closed_app _ _ HUa (decl_closed_uparams _ Hc) HU0 HΨ) as [HUΨ Hw].
-    pose proof (glu_rel_exp_wk Hw HX) as HXw.
-    pose proof (glu_rel_exp_to_wf_exp HX) as HXt.
-    assert (HXs : exp_scoped (List.length (ind_uparams D)) X) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HXt))).
-    assert (HTs : exp_scoped (List.length (ind_uparams D)) T).
-    { pose proof (presup_exp HXt) as Hp; destruct Hp as [_ [Hp | Hp]];
-        [ match goal with H : type_sort ?S0, H' : _ ⊢ _ : ?S0 |- _ => exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ H'))) end
-        | subst; cbn; exact I ]. }
-    rewrite (exp_scoped_wk_id _ _ _ HXs (fun x Hx => wk_qn_lt _ _ x Hx)),
-      (exp_scoped_wk_id _ _ _ HTs (fun x Hx => wk_qn_lt _ _ x Hx)) in HXw.
-    pose proof (glu_vars_tele Z (ind_uparams D) HUa (decl_closed_uparams _ Hc) (decl_mvc_uparams _ Hmv) HΨ) as HUv.
-    pose proof (glu_rel_sub_of_list _ _ _ _ _ HUa (glu_rel_sub_id _ HΨ) (glu_tele_entries_of_ctx _ _ HUa HUΨ)
-                  ltac:(rewrite length_vars_from; reflexivity) HUv) as Hgs.
-    exact (glu_rel_exp_sub Hgs HXw).
+    pose proof (decl_closed_params D k Mk Hc HM) as Hps.
+    destruct (glu_group_sort_typ k Mk HM) as [i HS].
+    assert (Hj : exists j : nat, forall Γ', ⊩ Γ' -> forall Ms', glu_rel_sub_inst Γ' (sb_of_list Id Ms') (im_params D Mk) ->
+                 Γ' ⊩ apps (a_ind p k) Ms' : (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms'] ->
+                 Γ' ⊩ apps (a_ind p k) Ms' : Typeω@j).
+    { destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq; cbn [exp_wk exp_sub].
+      - exists i0; intros; assumption.
+      - destruct (glu_ind_decl_lvlP _ HG _ _ HM) as [n Hn]; rewrite Heq in Hn; cbn [ind_sort_lvl exp_wk] in Hn.
+        exists 0; intros Γ' HΓ' Ms' Hinst H.
+        pose proof (glu_rel_exp_under_sub_inst _ _ _ Hn _ _ Hinst) as HL; cbn [exp_sub] in HL.
+        exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) HL H). }
+    destruct Hj as [j Hj].
+    exists j; econstructor; [ exact HΨ |]; intros Γ' τ Hτ.
+    pose proof (glu_rel_sub_inst_ctx _ _ _ Hτ) as HΓ'.
+    assert (HΓ'w : ⊢ Γ') by (destruct HΓ' as [? HSb]; exact (glu_ctx_env_wf_ctx HSb)).
+    set (Ms' := List.map (fun N => N[τ]) Ms).
+    rewrite apps_exp_sub; cbn [exp_sub]; fold Ms'.
+    assert (HlM' : List.length Ms' = List.length (im_params D Mk)) by (unfold Ms'; rewrite List.length_map, length_im_params; exact HMl).
+    assert (HUs : forall m N T, List.nth_error Ms' m = Some N -> List.nth_error (tele_insts (im_params D Mk) Id Ms') m = Some T ->
+                    glu_rel_exp_under_renaming Γ' N T).
+    { intros m N T HN HT; unfold Ms' in HN, HT.
+      rewrite <- (tele_insts_sub _ 0 Id Id τ Ms Hpa Hps ltac:(intros; lia)) in HT.
+      apply nth_error_map_inv in HN as (N0 & HN0 & ->); apply nth_error_map_inv in HT as (T0 & HT0 & ->).
+      exact (glu_rel_exp_under_sub_inst_renaming (HMs _ _ _ HN0 HT0) Hτ). }
+    assert (Hinst : glu_rel_sub_inst Γ' (sb_of_list Id Ms') (im_params D Mk)).
+    { rewrite <- (List.app_nil_r (im_params D Mk)).
+      apply glu_rel_sub_inst_of_list; [ exact Hpa | exact (glu_rel_sub_inst_nil _ _ HΓ') | rewrite List.app_nil_r
+                                     | exact HlM' | exact HUs ].
+      exact (member_params_wf _ _ _ _ _ Hdt HM). }
+    pose proof (glu_rel_exp_under_sub_inst _ _ _ HS _ _ Hinst) as HSτ; cbn [exp_sub] in HSτ.
+    apply (Hj _ HΓ' _ Hinst).
+    apply (glu_rel_exp_ind_apps_gen k Mk pm nil (im_params D Mk) Γ' Ms' i HM Hh eq_refl (or_intror eq_refl) HΓ' HlM'
+             (fun m N T HN HT => glu_rel_exp_of_under_renaming HΓ' (HUs m N T HN HT)) HSτ).
+    eapply wf_apps_closed_pi; [ exact Hpa | exact Hps | rewrite length_im_params; exact (sort_shift_scoped D Hc Mk)
+                              | exact (glu_rel_exp_under_sub_wf HS) | exact HΓ'w | | exact HlM'
+                              | intros; eapply glu_rel_exp_to_wf_exp, glu_rel_exp_of_under_renaming; [ exact HΓ' | eauto ] ].
+    change (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) with (ind_ty D Mk).
+    assert (Hlt : k < ind_ndecl D) by (eapply decl_member_lt; [ exact HΓ'w | eassumption .. ]).
+    eapply wf_ind; [ exact HΓ'w | eassumption .. ].
   Qed.
 
   (** *** The Members as Variables
 
-      The gluing counterpart of [Model]'s [Selfs] section: the members'
-      types over the uniform parameters, their context, and [grp_sb p D],
-      the substitution of the type formers for them. *)
-  Hypothesis (HU : ⊩ ind_uparams D).
-
-  Lemma glu_self_ty : forall j Mj, ind_member D j = Some Mj -> exists i : nat, ind_uparams D ⊩ self_ty D Mj : Typeω@i.
-  Proof.
-    intros * HMj.
-    pose proof (valid_group_closed _ _ Hg) as Hc.
-    pose proof (glu_ind_decl_params _ HG _ _ HMj) as HP.
-    destruct (glu_group_sort_typ j Mj HMj) as [i HS].
-    unfold self_ty; unfold im_params in HP, HS.
-    exact (glu_rel_exp_ctx_pi _ _ _ i (decl_closed_nparams_ass D Hc _ _ HMj)
-             (glu_tele_entries_of_ctx _ _ (decl_closed_nparams_ass D Hc _ _ HMj) HP) HS).
-  Qed.
+      The gluing counterpart of [Model]'s [Selfs] section: the context of
+      the members as variables over the uniform parameters, glued with its
+      types, and [grp_sb p D] at an instance of the uniform parameters, an
+      instance of it. *)
 
   Lemma glu_grp_selfs_prefix : forall n, n <= ind_ndecl D ->
-      ⊩ grp_selfs_from D 0 (List.firstn n (ind_members D)) ++ ind_uparams D.
+      glu_rel_ctx_types (grp_selfs_from D 0 (List.firstn n (ind_members D)) ++ ind_uparams D) /\
+      glu_tele_entries (grp_selfs_from D 0 (List.firstn n (ind_members D))) (ind_uparams D).
   Proof.
-    induction n as [| n IH]; intros Hn; [ exact HU |].
-    pose proof (ind_ndecl_le D) as Hle.
-    destruct (List.nth_error (ind_members D) n) as [Mn |] eqn:HMn; [| apply List.nth_error_None in HMn; lia ].
-    rewrite (firstn_S_nth_error _ _ _ HMn), grp_selfs_from_snoc; cbn [Nat.add List.app].
-    pose proof (IH ltac:(lia)) as HC.
-    destruct (glu_self_ty _ _ HMn) as [i Hi].
-    pose proof (glu_rel_exp_wk (glu_rel_wk_shiftn _ _ HC HU) Hi) as Hw; cbn [exp_wk] in Hw.
-    rewrite length_grp_selfs_from in Hw.
-    exact (glu_rel_ctx_extend HC Hw (sort_kind_abs_kind_sort ak_relevant i)).
+    induction n as [| n IH]; intros Hn.
+    - destruct (glu_ind_decl_lvl _ HG) as [l Hlv].
+      split; [ exact (glu_rel_exp_under_sub_ctx _ _ _ Hlv) | intros [] *; discriminate ].
+    - pose proof (ind_ndecl_le D) as Hle.
+      destruct (List.nth_error (ind_members D) n) as [Mn |] eqn:HMn; [| apply List.nth_error_None in HMn; lia ].
+      rewrite (firstn_S_nth_error _ _ _ HMn), grp_selfs_from_snoc; cbn [Nat.add].
+      destruct (IH ltac:(lia)) as [HC HE].
+      assert (HMn' : ind_member D n = Some Mn) by exact HMn.
+      destruct (glu_self_ty_under_sub _ _ HMn') as [i Hi].
+      set (S0 := grp_selfs_from D 0 (List.firstn n (ind_members D))) in *.
+      assert (HS0 : List.length S0 = n)
+        by (unfold S0; rewrite length_grp_selfs_from, List.length_firstn; lia).
+      assert (Hlf : List.length (List.firstn n (ind_members D)) = n) by (rewrite List.length_firstn; lia).
+      rewrite Hlf.
+      pose proof (wf_wk_shiftn_app' _ _ _ _ ltac:(destruct (glu_rel_ctx_types_ctx _ HC) as [? HSb]; exact (glu_ctx_env_wf_ctx HSb)))
+        as Hw; rewrite HS0 in Hw.
+      pose proof (glu_rel_exp_under_sub_wk Hi HC Hw) as Hiw; cbn [exp_wk] in Hiw.
+      split.
+      + exact (glu_rel_ctx_types_extend Hiw (sort_kind_abs_kind_sort ak_relevant i)).
+      + intros [| e Δ1] κ A Δ2 E; cbn [List.app] in E.
+        * injection E as <- <- <-; exists i; exact Hiw.
+        * injection E as _ E; exact (HE _ _ _ _ E).
   Qed.
 
-  Lemma glu_grp_selfs_ctx : ⊩ grp_selfs_ctx D.
-  Proof. unfold grp_selfs_ctx, grp_selfs; exact (glu_grp_selfs_prefix _ (le_n _)). Qed.
+  (** The members as variables over the uniform parameters, glued with its
+      types. *)
+  Lemma glu_grp_selfs_ctx_types : glu_rel_ctx_types (grp_selfs_ctx D).
+  Proof. unfold grp_selfs_ctx, grp_selfs; exact (proj1 (glu_grp_selfs_prefix _ (le_n _))). Qed.
 
-  Lemma glu_self_apps : forall j Mj, ind_member D j = Some Mj -> j < ind_ndecl D ->
-      ind_uparams D ⊩ apps (a_ind p j) (vars_from 0 (ind_nu D)) : self_ty D Mj.
+  (** [grp_sb p D] followed by an instance of the uniform parameters is an
+      instance of the members as variables: the group's type formers at
+      the instance's uniform parameters ([glu_self_apps_under_sub]). *)
+  Lemma glu_rel_sub_inst_grp_sb : forall Γ' τ, glu_rel_sub_inst Γ' τ (ind_uparams D) ->
+      glu_rel_sub_inst Γ' (sb_of_list τ (List.map (fun X => X[τ])
+                                          (List.map (fun j => apps (a_ind p j) (vars_from 0 (ind_nu D))) (List.seq 0 (ind_ndecl D)))))
+        (grp_selfs_ctx D).
   Proof.
-    intros * HMj Hj.
-    pose proof (valid_group_closed _ _ Hg) as Hc.
-    pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)) as Hmv.
-    pose proof (decl_closed_ass _ Hc) as HUa.
-    assert (Hd : im_is_decl Mj = true) by (apply (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ Hg) _ _ HMj)); exact Hj).
-    assert (Hh : exists pm, im_head Mj = mh_decl pm)
-      by (unfold im_is_decl in Hd; destruct (im_head Mj); [ eauto | discriminate .. ]).
-    destruct Hh as [pm Hh].
-    pose proof (glu_rel_exp_nil_weaken _ _ _ HU
-                  (glu_rel_exp_ind0 p D (valid_group_lookup _ _ Hg) HG Hc (valid_group_typed _ _ Hg) (valid_group_sort _ _ Hg)
-                     (valid_group_ass _ _ Hg) j Mj pm HMj Hh)) as HI.
-    unfold ind_ty, im_params in HI; rewrite ctx_pi_app in HI; fold (self_ty D Mj) in HI.
-    destruct (glu_self_ty _ _ HMj) as [i Hi].
-    destruct (glu_closed_app _ _ HUa (decl_closed_uparams _ Hc) HU HU) as [HUU HwU].
-    pose proof (glu_rel_exp_wk HwU Hi) as HiU; cbn [exp_wk] in HiU.
-    rewrite (exp_scoped_wk_id _ _ _ (self_ty_scoped _ _ _ Hc HMj) (fun x Hx => wk_qn_lt _ _ x Hx)) in HiU.
-    pose proof (glu_rel_exp_apps_ctx_pi_n _ (ind_uparams D) (ind_uparams D) _ i (a_ind p j) (vars_from 0 (ind_nu D)) eq_refl
-                  HUa HU (glu_tele_entries_of_ctx _ _ HUa HUU) HiU HI ltac:(rewrite length_vars_from; reflexivity)) as H.
-    rewrite (exp_at_vars _ _ _ (self_ty_scoped _ _ _ Hc HMj) (self_ty_mvc _ _ _ Hc Hmv HMj)) in H.
-    rewrite (exp_wk_id_ext (self_ty D Mj) _ wk_shiftn_zero) in H.
-    apply H.
-    intros k N T HN HT.
-    pose proof (glu_vars_tele nil (ind_uparams D) HUa (decl_closed_uparams _ Hc) (decl_mvc_uparams _ Hmv) HU k N T) as Hv.
-    cbn [List.length List.app] in Hv; exact (Hv HN HT).
-  Qed.
-
-  (** [grp_sb p D] is a glued substitution from the uniform parameters into
-      the members as variables ([grp_sb_gsub]). *)
-  Lemma glu_grp_sb : ind_uparams D ⊩ˢ grp_sb p D : grp_selfs_ctx D.
-  Proof.
-    pose proof (valid_group_closed _ _ Hg) as Hc.
+    intros * Hτ.
+    pose proof (decl_closed_ass _ Hc) as HassU.
     assert (Hsa : all_assumptions (grp_selfs D)).
     { unfold grp_selfs; generalize 0; induction (List.firstn (ind_ndecl D) (ind_members D)) as [| M ms IH]; intros j;
         cbn [grp_selfs_from]; [ constructor |].
       apply List.Forall_app; split; [ apply IH | constructor; [ do 2 eexists; reflexivity | constructor ] ]. }
-    unfold grp_sb, grp_selfs_ctx.
-    apply glu_rel_sub_of_list; [ exact Hsa | exact (glu_rel_sub_id _ HU) | exact (glu_tele_entries_of_ctx _ _ Hsa glu_grp_selfs_ctx) | |].
-    - unfold grp_selfs; rewrite length_grp_sb_list, length_grp_selfs_from, List.length_firstn.
+    unfold grp_selfs_ctx.
+    apply glu_rel_sub_inst_of_list;
+      [ exact Hsa | exact Hτ
+      | destruct (glu_rel_ctx_types_ctx _ glu_grp_selfs_ctx_types) as [? HSb]; exact (glu_ctx_env_wf_ctx HSb) | |].
+    - unfold grp_selfs; rewrite List.length_map, length_grp_sb_list, length_grp_selfs_from, List.length_firstn.
       pose proof (ind_ndecl_le D); lia.
     - intros k N T HN HT.
-      rewrite List.nth_error_map in HN.
+      rewrite !List.nth_error_map in HN.
       destruct (List.nth_error (List.seq 0 (ind_ndecl D)) k) as [j |] eqn:Hj; cbn in HN; [| discriminate ].
       injection HN as <-.
       assert (Hk : k < ind_ndecl D)
@@ -971,77 +885,28 @@ Section GroupSort.
       apply tele_insts_nth in HT as (κA & A & HA & ->).
       destruct (nth_rev_grp_selfs D (ind_ndecl D) k (le_n _) Hk) as (Mk & HMk & HAk).
       unfold grp_selfs in HA; rewrite HAk in HA; injection HA as <- <-.
-      rewrite exp_sub_wk, (exp_sub_sb_eq _ _ Id), exp_sub_id; [ exact (glu_self_apps _ _ HMk Hk) |].
-      intros x; cbn [sb_compose sb_of_wk sentry_sub wk_shiftn].
-      set (L := List.firstn k (List.map (fun j => apps (a_ind p j) (vars_from 0 (ind_nu D))) (List.seq 0 (ind_ndecl D)))).
-      assert (HL : List.length L = k)
-        by (unfold L; rewrite List.length_firstn, length_grp_sb_list; lia).
-      replace (x + k) with (List.length L + x) by lia.
-      apply sb_of_list_ge.
+      replace ((self_ty D Mk)[wk_shiftn k]ʷ[sb_of_list τ (List.firstn k (List.map (fun X => X[τ])
+                 (List.map (fun j => apps (a_ind p j) (vars_from 0 (ind_nu D))) (List.seq 0 (ind_ndecl D)))))])
+        with ((self_ty D Mk)[τ]).
+      + exact (glu_rel_exp_under_sub_inst_renaming (glu_self_apps_under_sub _ _ HMk Hk) Hτ).
+      + rewrite <- exp_sub_of_wk, exp_sub_sub; apply exp_sub_sb_eq; intros x.
+        cbn [sb_compose sb_of_wk sentry_sub wk_shiftn].
+        set (L := List.firstn k _).
+        assert (HL : List.length L = k)
+          by (unfold L; rewrite List.length_firstn, !List.length_map, List.length_seq; lia).
+        replace (x + k) with (List.length L + x) by lia.
+        symmetry; apply sb_of_list_ge.
   Qed.
 
-  (** A record view's record at its instance is a type of a large
-      universe over the uniform parameters ([valid_group_views_rview_type]):
-      the record's former ([glu_rel_exp_record0]) at the instance over the
-      members as variables ([glu_views_self_record_instances]), along
-      [grp_sb p D]. *)
-  Lemma glu_group_rview_type : forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
-      exists j : nat, ind_uparams D ⊩ apps (a_record qr) Is : Typeω@j.
-  Proof.
-    intros * HMk Hh.
-    destruct (glu_ind_decl_view_self _ HG) as [IsS HV].
-    destruct (valid_group_records _ _ Hg _ _ _ _ _ HMk Hh) as [R HR].
-    pose proof (valid_rview_record_lookup _ _ HR) as HlR.
-    pose proof (glu_views_self_records _ _ HV _ _ _ _ _ _ HMk Hh HlR) as HGR.
-    pose proof (valid_rview_record_typed _ _ HR) as HtR.
-    pose proof (valid_rview_record_closed _ _ HR) as HcR.
-    destruct (record_typed_ty _ _ _ HtR) as [i0 Hty].
-    assert (Hgw : ⊢ᵍ gc_deps ⍮ gc_stack) by (destruct HU as [Sb HSb]; eapply ctx_wf_gctx; exact (glu_ctx_env_wf_ctx HSb)).
-    pose proof (Mctt.Core.Soundness.Records.Model.glu_rel_exp_record0 qr R Hgw HlR HGR i0 Hty) as HRec.
-    pose proof glu_grp_selfs_ctx as HS.
-    pose proof (glu_rel_exp_nil_weaken _ _ _ HS HRec) as HRecS; unfold record_ty in HRecS.
-    pose proof (glued_params _ HGR) as HP.
-    pose proof (typed_params_ass _ _ _ HtR) as HPa.
-    destruct (glu_closed_app _ _ HPa (closed_params _ HcR) HP HS) as [HPS HwS].
-    (** The record's sort, a type of a large universe over its parameters *)
-    assert (HB : exists j, record_params R ⊩ record_sort R : Typeω@j).
-    { destruct (glued_sort _ HGR) as [[i Heq] | (L & n & Heq & HL)]; rewrite Heq;
-        [ exists (S i); exact (glu_rel_exp_typ HP) |].
-      exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) (glu_rel_exp_succl HL) (glu_rel_exp_univ_lvl HL)). }
-    destruct HB as [j HB].
-    pose proof (glu_rel_exp_wk HwS HB) as HBS; cbn [exp_wk] in HBS.
-    rewrite (exp_scoped_wk_id _ _ _ (closed_sort _ HcR) (fun x Hx => wk_qn_lt _ _ x Hx)) in HBS.
-    rewrite (glu_views_self_record_link _ _ HV _ (valid_group_mpath _ _ Hg) _ _ _ _ _ HMk Hh).
-    assert (HlIs : List.length (IsS k) = List.length (record_params R)).
-    { pose proof (Completeness.Inductives.FiledViews.rview_record_len p D Hg k Mk qr Is fl R HMk Hh HR) as HIl.
-      rewrite (glu_views_self_record_link _ _ HV _ (valid_group_mpath _ _ Hg) _ _ _ _ _ HMk Hh), List.length_map in HIl; exact HIl. }
-    pose proof (glu_rel_exp_apps_ctx_pi_n _ (record_params R) (grp_selfs_ctx D) _ j (a_record qr) (IsS k) eq_refl HPa HS
-                  (glu_tele_entries_of_ctx _ _ HPa HPS) HBS HRecS HlIs
-                  (fun m I T HI HT => glu_views_self_record_instances _ _ HV _ _ _ _ _ _ _ _ _ HMk Hh HlR HI HT)) as HA.
-    (** At a small universe its level, at the instance, is glued *)
-    assert (HA' : exists j', grp_selfs_ctx D ⊩ apps (a_record qr) (IsS k) : Typeω@j').
-    { destruct (glued_sort _ HGR) as [[i Heq] | (L & n & Heq & HL)]; rewrite Heq in HA; cbn [exp_sub] in HA; [ exists i; exact HA |].
-      pose proof (glu_rel_exp_wk HwS HL) as HLS; cbn [exp_wk] in HLS.
-      assert (HLs : exp_scoped (List.length (record_params R)) L)
-        by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ (glu_rel_exp_to_wf_exp HL)))).
-      rewrite (exp_scoped_wk_id _ _ _ HLs (fun x Hx => wk_qn_lt _ _ x Hx)) in HLS.
-      pose proof (glu_rel_sub_of_list _ _ _ _ _ HPa (glu_rel_sub_id _ HS) (glu_tele_entries_of_ctx _ _ HPa HPS) HlIs
-                    (fun m I T HI HT => glu_views_self_record_instances _ _ HV _ _ _ _ _ _ _ _ _ HMk Hh HlR HI HT)) as Hgs.
-      pose proof (glu_rel_exp_sub Hgs HLS) as HL2; cbn [exp_sub] in HL2.
-      exists 0; exact (glu_rel_exp_kind_sort_small_large (κ := ak_relevant) HL2 HA). }
-    destruct HA' as [j' HA'].
-    pose proof (glu_rel_exp_sub glu_grp_sb HA') as H; rewrite apps_exp_sub in H; cbn [exp_sub] in H.
-    exists j'; exact H.
-  Qed.
-
-  (** A view's instance is glued at the container's uniform telescope over
-      the group's uniform parameters: its instance over the members as
-      variables ([glu_views_self_is]) along [grp_sb p D]
+  (** A view's instance is glued at its instances at the container's
+      uniform telescope over the group's uniform parameters: its instance
+      over the members as variables ([glu_views_self_is]), at the instance
+      [grp_sb p D] makes of an instance of the uniform parameters
       ([valid_group_views_view_is]). *)
   Lemma glu_group_view_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> decl_closed Dq -> List.nth_error Is j = Some I ->
       List.nth_error (tele_insts (ind_uparams Dq) Id Is) j = Some T ->
-      ind_uparams D ⊩ I : T.
+      glu_rel_exp_under_sub (ind_uparams D) I T.
   Proof.
     intros * HMk Hh Hq HcQ HI HT.
     destruct (glu_ind_decl_view_self _ HG) as [IsS HV].
@@ -1049,357 +914,15 @@ Section GroupSort.
     rewrite <- (tele_insts_sub (ind_uparams Dq) 0 Id Id (grp_sb p D) (IsS k) (decl_closed_ass _ HcQ) (decl_closed_uparams _ HcQ)
                   ltac:(intros; lia)) in HT.
     apply nth_error_map_inv in HI as (I0 & HI0 & ->); apply nth_error_map_inv in HT as (T0 & HT0 & ->).
-    exact (glu_rel_exp_sub glu_grp_sb (glu_views_self_is _ _ HV _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HI0 HT0)).
-  Qed.
-End GroupSort.
-
-(** ** The Contexts of the Arguments, Given the Weakening Before
-
-    As [shape_domains_ctx_wk_gen] and [shape_domains_ctx_sem_gen]: the
-    domains of a recursive argument's shape, over the arguments before it,
-    from the weakening of those to their non-recursive ones. *)
-Section GluArgsCtx.
-  Variables (p : qname) (D : ind_decl) (k : nat) (Mk : imember) (c : String.string) (gs : list carg).
-  Hypotheses (Hg : valid_group p D) (HG : glu_ind_decl D) (HM : ind_member D k = Some Mk) (Hcon : ind_con Mk c = Some gs).
-
-  (** A non-recursive argument's type, over the non-recursive arguments
-      before it, is a type of a large universe of its kind *)
-  Lemma glu_group_arg_large : forall gs1 r A gs2, gs = gs1 ++ ca_arg r A :: gs2 ->
-      exists i : nat, cargs_nonrec_ctx gs1 ++ im_params D Mk ⊩ A : abs_kind_sort r Typeω@i.
-  Proof.
-    intros * Heq.
-    assert (HA : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec gs1)) = Some A)
-      by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-    pose proof (nonrec_kind_at gs1 gs2 r A) as Hr; rewrite <- Heq in Hr.
-    pose proof (glu_ind_decl_arg _ HG _ _ _ _ _ _ _ HM Hcon HA Hr) as HAg.
-    rewrite Heq, <- cargs_nonrec_ctx_nonrec_args_prefix in HAg.
-    pose proof HAg as [SbX HSbX _ _].
-    assert (Hl : List.length (cargs_nonrec_ctx gs1) = List.length (cargs_nonrec gs1))
-      by (rewrite cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; reflexivity).
-    rewrite <- Hl in HAg.
-    exact (glu_group_sort_large p D Hg HG _ _ _ _ _ HM (ex_intro _ _ HSbX) HAg).
+    pose proof (glu_views_self_is _ _ HV _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HI0 HT0) as H0.
+    destruct (glu_ind_decl_lvl _ HG) as [l Hlv].
+    econstructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ Hlv) |]; intros Γ' τ Hτ.
+    pose proof (glu_rel_exp_under_sub_inst _ _ _ H0 _ _ (glu_rel_sub_inst_grp_sb _ _ Hτ)) as H.
+    unfold grp_sb; rewrite !exp_sub_sub, !(exp_sub_sb_eq _ _ _ (sb_of_list_compose_base _ Id τ)).
+    rewrite !(exp_sub_sb_eq _ _ _ (sb_of_list_cong _ _ _ (sb_compose_id_left τ))).
+    exact H.
   Qed.
 
-  (** A domain of a recursive argument's shape, over the domains before it
-      and the non-recursive arguments before the argument, is a type of a
-      large universe *)
-  Lemma glu_group_dom_large : forall gs1 t gs2 j B, gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error (ptyp_doms t) j = Some B ->
-      exists i : nat, doms_ctx (List.firstn j (ptyp_doms t)) ++ cargs_nonrec_ctx gs1 ++ im_params D Mk ⊩ B : Typeω@i.
-  Proof.
-    intros * Heq HB.
-    pose proof (glu_ind_decl_dom _ HG _ _ _ _ _ _ _ _ _ HM Hcon Heq HB) as HBg.
-    rewrite Heq, <- cargs_nonrec_ctx_nonrec_args_prefix, List.app_assoc in HBg.
-    pose proof HBg as [SbX HSbX _ _].
-    assert (Hj : j < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
-    assert (Hl : List.length (doms_ctx (List.firstn j (ptyp_doms t)) ++ cargs_nonrec_ctx gs1) = j + List.length (cargs_nonrec gs1))
-      by (rewrite List.length_app, length_doms_ctx, List.length_firstn, cargs_nonrec_ctx_rev_tele, List.length_rev,
-            length_cargs_nonrec_tele; lia).
-    rewrite <- Hl in HBg.
-    destruct (glu_group_sort_large p D Hg HG _ _ _ ak_relevant _ HM (ex_intro _ _ HSbX) HBg) as [i HB'].
-    rewrite <- List.app_assoc in HB'; exists i; exact HB'.
-  Qed.
-
-  Lemma glu_shape_domains_ctx_wk_gen : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
-      cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ʷ (wk_pat (cargs_pat gs1)) : cargs_nonrec_ctx gs1 ++ im_params D Mk ->
-      forall j, j <= List.length (ptyp_doms t) ->
-        shape_domains_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk
-          ⊩ʷ (wk_pat (List.repeat false j ++ cargs_pat gs1))
-          : doms_ctx (List.firstn j (ptyp_doms t)) ++ cargs_nonrec_ctx gs1 ++ im_params D Mk.
-  Proof.
-    intros * Heq Hw0; induction j as [| j IH]; intros Hj.
-    - exact Hw0.
-    - destruct (nth_error_lt_some' (ptyp_doms t) j ltac:(lia)) as [B HB].
-      destruct (glu_group_dom_large _ _ _ _ _ Heq HB) as [i HBg].
-      rewrite (firstn_S_snoc _ _ _ HB), shape_domains_ctx_snoc, doms_ctx_snoc, List.length_firstn, Nat.min_l by lia.
-      cbn [List.repeat List.app wk_pat].
-      exact (glu_rel_wk_q _ _ _ ak_relevant _ i (IH ltac:(lia)) HBg).
-  Qed.
-
-  Lemma glu_shape_domains_ctx_gen : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
-      ⊩ cargs_ctx p D Mk gs1 ++ im_params D Mk ->
-      cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ʷ (wk_pat (cargs_pat gs1)) : cargs_nonrec_ctx gs1 ++ im_params D Mk ->
-      forall j, j <= List.length (ptyp_doms t) ->
-        ⊩ shape_domains_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk.
-  Proof.
-    intros * Heq HC0 Hw0; induction j as [| j IH]; intros Hj.
-    - exact HC0.
-    - destruct (nth_error_lt_some' (ptyp_doms t) j ltac:(lia)) as [B HB].
-      pose proof (glu_shape_domains_ctx_wk_gen _ _ _ Heq Hw0 j ltac:(lia)) as Hw.
-      destruct (glu_group_dom_large _ _ _ _ _ Heq HB) as [i HBg].
-      pose proof (glu_rel_exp_wk Hw HBg) as HBw; cbn [exp_wk] in HBw.
-      rewrite (firstn_S_snoc _ _ _ HB), shape_domains_ctx_snoc, List.length_firstn, Nat.min_l by lia.
-      cbn [List.app].
-      exact (glu_rel_ctx_extend (IH ltac:(lia)) HBw (sort_kind_abs_kind_sort ak_relevant i)).
-  Qed.
-End GluArgsCtx.
-
-(** ** The Types of a Group's Members
-
-    The type of a member at the uniform parameters as variables and glued
-    terms of its non-uniform parameters' types is a type of a large
-    universe ([valid_group_mty_valid]): a declared member's former, a
-    view's container's at the view's instance, or a record view's record.
-    The containers are groups of [VP]. *)
-Lemma glu_group_mty : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) -> forall p D, VP p D ->
-    forall j Mj Z nn L Ns, ind_member D j = Some Mj -> ⊩ Z ++ ind_uparams D -> all_assumptions Z -> List.length Z = L + nn ->
-    List.length Ns = im_nn Mj ->
-    (forall m N T, List.nth_error Ns m = Some N ->
-       List.nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D nn L)) Ns) m = Some T -> Z ++ ind_uparams D ⊩ N : T) ->
-    exists i : nat, Z ++ ind_uparams D ⊩ ind_mty p D j (ind_uvars D nn L) Ns : Typeω@i.
-Proof.
-  intros VP HVP HGall p D HPD j Mj Z nn L Ns HMj HΨ HZa HlZ HlN HNs.
-  pose proof (valid_groups_valid VP HVP p D HPD) as Hg; pose proof (HGall _ _ HPD) as HG.
-  pose proof (valid_group_closed _ _ Hg) as Hc; pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)) as Hmv.
-  pose proof (decl_closed_ass _ Hc) as HUa.
-  assert (HU : ⊩ ind_uparams D)
-    by (destruct HΨ as [Sb HSb]; destruct (glu_ctx_env_suffix _ _ _ HZa HSb) as [Sb' HSb']; eexists; exact HSb').
-  assert (Hgw : ⊢ᵍ gc_deps ⍮ gc_stack) by (destruct HU as [Sb HSb]; eapply ctx_wf_gctx; exact (glu_ctx_env_wf_ctx HSb)).
-  set (Us := ind_uvars D nn L) in *.
-  assert (HUs : Us = vars_from (List.length Z) (List.length (ind_uparams D))) by (unfold Us, ind_uvars, ind_nu; rewrite HlZ; reflexivity).
-  pose proof (glu_vars_tele Z (ind_uparams D) HUa (decl_closed_uparams _ Hc) (decl_mvc_uparams _ Hmv) HΨ) as HUv.
-  rewrite <- HUs in HUv.
-  assert (HlU : List.length Us = ind_nu D) by (unfold Us, ind_uvars; apply length_vars_from).
-  assert (HlTU : List.length (tele_insts (ind_uparams D) Id Us) = ind_nu D)
-    by (rewrite length_tele_insts by exact HUa; unfold ind_nu in *; lia).
-  unfold ind_mty; rewrite HMj; unfold im_ty_at, im_ref, im_pre.
-  destruct (im_head Mj) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; cbn [fst snd].
-  - (** A declared member: its former *)
-    apply (glu_group_ind_apps p D Hg HG j Mj pm); [ exact HMj | exact Hh | exact HΨ | rewrite List.length_app; unfold im_np; lia |].
-    intros m N T HN HT.
-    unfold im_params in HT; rewrite tele_insts_app in HT by (exact HUa || (unfold ind_nu in *; lia)).
-    destruct (Nat.lt_ge_cases m (ind_nu D)) as [Hm | Hm].
-    + rewrite List.nth_error_app1 in HN by lia; rewrite List.nth_error_app1 in HT by lia.
-      exact (HUv _ _ _ HN HT).
-    + rewrite List.nth_error_app2 in HN by lia; rewrite List.nth_error_app2 in HT by lia.
-      rewrite HlU in HN; rewrite HlTU in HT.
-      exact (HNs _ _ _ HN HT).
-  - (** A view: the container's former at the view's instance *)
-    destruct (decl_typed_view _ _ _ (valid_group_typed _ _ Hg) _ _ _ _ _ _ HMj Hh) as (Dq & Mk' & Hq & HMk' & Hkd & HIl & _ & Hvm & _).
-    pose proof (valid_groups_containers _ HVP _ _ _ _ _ _ _ _ _ HPD HMj Hh Hq) as HVPq.
-    pose proof (valid_groups_valid VP HVP _ _ HVPq) as HgQ; pose proof (HGall _ _ HVPq) as HGQ.
-    pose proof (valid_group_closed _ _ HgQ) as HcQ; pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ HgQ)) as HmvQ.
-    pose proof (decl_closed_ass _ HcQ) as HaQ.
-    assert (Hhd : exists pm, im_head Mk' = mh_decl pm).
-    { pose proof (proj2 (decl_typed_order _ _ _ (valid_group_typed _ _ HgQ) _ _ HMk') Hkd) as Hd.
-      unfold im_is_decl in Hd; destruct (im_head Mk'); [ eauto | discriminate .. ]. }
-    destruct Hhd as [pm Hhd].
-    destruct (decl_typed_view_wrap _ _ _ (valid_group_typed _ _ Hg) _ _ _ _ _ _ HMj Hh) as (D2 & Hq2 & Hvw).
-    rewrite Hq in Hq2; injection Hq2 as <-.
-    destruct (view_wrap_ok_members _ _ _ Hvw _ _ _ HMk' Hvm) as (Mv & HMv & Hnn & _).
-    rewrite HMj in HMv; injection HMv as <-.
-    set (IsU := List.map (fun I => I[sb_of_list Id Us]) Is).
-    assert (HlIsU : List.length IsU = ind_nu Dq) by (unfold IsU; rewrite List.length_map; exact HIl).
-    assert (HlTI : List.length (tele_insts (ind_uparams Dq) Id IsU) = ind_nu Dq)
-      by (rewrite length_tele_insts by exact HaQ; unfold ind_nu in *; lia).
-    apply (glu_group_ind_apps qc Dq HgQ HGQ kc Mk' pm); [ exact HMk' | exact Hhd | exact HΨ | rewrite List.length_app; unfold im_np; lia |].
-    intros m N T HN HT.
-    unfold im_params in HT; rewrite tele_insts_app in HT by (exact HaQ || (unfold ind_nu in *; lia)).
-    destruct (Nat.lt_ge_cases m (ind_nu Dq)) as [Hm | Hm].
-    + (** The instance, of the container's uniform parameters' types *)
-      rewrite List.nth_error_app1 in HN by lia; rewrite List.nth_error_app1 in HT by lia.
-      unfold IsU in HN; rewrite List.nth_error_map in HN.
-      destruct (List.nth_error Is m) as [I |] eqn:HI; cbn in HN; [ injection HN as <- | discriminate ].
-      assert (Hm' : m < List.length (tele_insts (ind_uparams Dq) Id Is))
-        by (rewrite length_tele_insts by exact HaQ; unfold ind_nu in *; lia).
-      destruct (nth_error_lt_some' _ _ Hm') as [T0 HT0].
-      pose proof (tele_insts_closed_sub _ _ (sb_of_list Id Us) _ _ HaQ (decl_closed_uparams _ HcQ) HT0) as HT1.
-      fold IsU in HT1; rewrite HT in HT1; injection HT1 as ->.
-      pose proof (glu_group_view_is p D Hg HG HU j Mj qc kc Is vm Dq m I T0 HMj Hh Hq HcQ HI HT0) as HIv.
-      rewrite HUs; exact (glu_uvars_inst p D Hg Z I T0 HΨ HZa HIv).
-    + (** The non-uniform arguments, at the container's non-uniform
-          parameters at the instance: the view's, by the view's equation *)
-      rewrite List.nth_error_app2 in HN by lia; rewrite List.nth_error_app2 in HT by lia.
-      rewrite HlIsU in HN; rewrite HlTI in HT.
-      set (τ := sb_of_wk (wk_shiftn (List.length Z))).
-      pose proof (glu_rel_wk_shiftn Z (ind_uparams D) HΨ HU) as Hw.
-      pose proof (glu_rel_sub_of_wk _ _ _ Hw) as Hgτ.
-      pose proof Hgτ as [_ _ _ _ Hτt _ _].
-      pose proof (Syntactic.System.Global.Presup.decl_typed_view_nparams _ _ p D Hgw (valid_group_typed _ _ Hg) (valid_group_lookup _ _ Hg)
-                    _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hq HMk' Hvm HMj) as HX.
-      pose proof (sub_preserves_ext _ _ _ _ _ _ _ HX Hτt) as HXτ.
-      pose proof (decl_closed_nparams_ass D Hc _ _ HMj) as HaX.
-      pose proof (decl_closed_nparams_ass Dq HcQ _ _ HMk') as HaY.
-      pose proof (decl_closed_head_scoped _ Hc _ _ _ _ _ _ HMj Hh) as HsIs.
-      pose proof (proj1 (proj2 (decl_mvc_members _ Hmv _ _ HMj))) as HmIs; rewrite Hh in HmIs; cbn in HmIs.
-      assert (EX : tele_insts (im_nparams Mj) (sb_of_list Id Us) Ns = tele_insts (tele_sub (im_nparams Mj) τ) Id Ns).
-      { rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ _ _ (sb_compose_id_right τ)).
-        apply (tele_insts_agree_mvc _ (ind_nu D));
-          [ exact HaX | exact (proj1 (decl_mvc_members _ Hmv _ _ HMj)) | exact (decl_closed_nparams_scoped _ Hc _ _ HMj) |].
-        intros x Hx; rewrite HUs, sb_of_list_vars by (unfold ind_nu in Hx; exact Hx).
-        unfold τ, sb_of_wk, wk_shiftn; cbn; f_equal; lia. }
-      assert (EY : tele_insts (im_nparams Mk') (sb_of_list Id IsU) Ns
-                   = tele_insts (tele_sub (tele_sub (im_nparams Mk') (sb_of_list Id Is)) τ) Id Ns).
-      { rewrite !tele_insts_tele_sub.
-        apply (tele_insts_agree_mvc _ (ind_nu Dq));
-          [ exact HaY | exact (proj1 (decl_mvc_members _ HmvQ _ _ HMk')) | exact (decl_closed_nparams_scoped _ HcQ _ _ HMk') |].
-        intros x Hx.
-        assert (HxI : x < List.length Is) by (unfold ind_nu in *; lia).
-        assert (HlIsU' : List.length IsU = List.length Is) by (unfold IsU; apply List.length_map).
-        rewrite (sb_of_list_nth IsU _ x a_prop) by lia.
-        unfold sb_compose; rewrite (sb_of_list_nth Is _ x a_prop HxI).
-        rewrite HlIsU'.
-        destruct (nth_error_lt_some' Is (List.length Is - 1 - x) ltac:(lia)) as [I HI'].
-        assert (HIU : List.nth_error IsU (List.length Is - 1 - x) = Some I[sb_of_list Id Us])
-          by (unfold IsU; rewrite List.nth_error_map, HI'; reflexivity).
-        rewrite (List.nth_error_nth _ _ _ HI'), (List.nth_error_nth _ _ _ HIU); cbn [sentry_sub sentry_exp].
-        pose proof (List.nth_error_In _ _ HI') as HIin.
-        change (fun x0 : nat => sentry_sub (τ x0) Id) with (τ ⨟ Id).
-        unfold τ; rewrite <- exp_sub_sub, exp_sub_id, exp_sub_of_wk, HUs.
-        rewrite (exp_at_vars _ _ _ (proj1 (List.Forall_forall _ _) HsIs I HIin) (proj1 (List.Forall_forall _ _) HmIs I HIin)).
-        reflexivity. }
-      rewrite EY in HT.
-      assert (HMsτ : forall m0 N0 T0, List.nth_error Ns m0 = Some N0 ->
-                 List.nth_error (tele_insts (tele_sub (im_nparams Mj) τ) Id Ns) m0 = Some T0 -> Z ++ ind_uparams D ⊩ N0 : T0)
-        by (intros m0 N0 T0 HN0 HT0; rewrite <- EX in HT0; exact (HNs _ _ _ HN0 HT0)).
-      (** The two telescopes' entries, glued over the extension *)
-      pose proof (glu_tele_entries_sub _ _ _ _ HaX Hgτ
-                    (glu_tele_entries_of_ctx _ _ HaX (glu_ind_decl_params _ HG _ _ HMj))) as E1.
-      assert (HUQ : ⊩ ind_uparams Dq).
-      { pose proof (glu_ind_decl_params _ HGQ _ _ HMk') as [Sb HSb]; unfold im_params in HSb.
-        destruct (glu_ctx_env_suffix _ _ _ HaY HSb) as [Sb' HSb']; eexists; exact HSb'. }
-      destruct (glu_closed_app _ _ HaQ (decl_closed_uparams _ HcQ) HUQ HU) as [HUqU _].
-      pose proof (glu_rel_sub_of_list _ _ _ _ _ HaQ (glu_rel_sub_id _ HU) (glu_tele_entries_of_ctx _ _ HaQ HUqU)
-                    ltac:(unfold ind_nu in HIl; exact HIl)
-                    (fun m0 I0 T0 HI0 HT0 => glu_group_view_is p D Hg HG HU j Mj qc kc Is vm Dq m0 I0 T0 HMj Hh Hq HcQ HI0 HT0)) as HgIs.
-      destruct (glu_closed_app _ _ (decl_closed_params_ass Dq _ _ HcQ HMk') (decl_closed_params Dq _ _ HcQ HMk')
-                  (glu_ind_decl_params _ HGQ _ _ HMk') HU) as [HPqU _].
-      unfold im_params in HPqU; rewrite <- List.app_assoc in HPqU.
-      pose proof (glu_tele_entries_sub _ _ _ _ HaY HgIs (glu_tele_entries_of_ctx _ _ HaY HPqU)) as E2'.
-      pose proof (glu_tele_entries_sub _ _ _ _ (all_assumptions_sub _ _ HaY) Hgτ E2') as E2.
-      exact (glu_tele_insts_conv _ _ _ Ns HXτ (all_assumptions_sub _ _ HaX) (all_assumptions_sub _ _ (all_assumptions_sub _ _ HaY))
-               HΨ E1 E2 ltac:(rewrite !length_tele_sub, !length_im_nparams; lia) ltac:(rewrite length_tele_sub, length_im_nparams; lia)
-               HMsτ _ _ _ HN HT).
-  - (** A record view: the record at the view's instance, of no
-        non-uniform parameter *)
-    pose proof (rview_struct_nparams _ _ _ (decl_typed_record_struct _ _ _ (valid_group_typed _ _ Hg)) _ _ _ _ _ HMj Hh) as Hnp.
-    destruct Ns; [| unfold im_nn in HlN; rewrite Hnp in HlN; discriminate HlN ].
-    rewrite List.app_nil_r.
-    destruct (glu_group_rview_type p D Hg HG HU j Mj qr Is fl HMj Hh) as [i H0].
-    pose proof (glu_uvars_inst p D Hg Z _ _ HΨ HZa H0) as H2.
-    rewrite apps_exp_sub in H2; cbn [exp_sub] in H2.
-    rewrite HUs; exists i; exact H2.
-Qed.
-
-(** ** The Contexts of the Arguments of a Group's Members
-
-    The end of a recursive argument's type, under the shape's domains, is
-    a type of a large universe ([valid_group_shape_leaf]): the member's
-    type at the uniform parameters as variables and the shape's parameters,
-    weakened past the recursive arguments. *)
-Lemma glu_group_shape_leaf : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) -> forall p D, VP p D ->
-    forall k Mk c gs gs1 t gs2, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-    ⊩ cargs_ctx p D Mk gs1 ++ im_params D Mk ->
-    cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ʷ (wk_pat (cargs_pat gs1)) : cargs_nonrec_ctx gs1 ++ im_params D Mk ->
-    exists j : nat, shape_domains_ctx (cargs_pat gs1) (ptyp_doms t) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk
-      ⊩ ptyp_ty p D (im_nn Mk) (List.repeat false (List.length (ptyp_doms t)) ++ cargs_pat gs1) (pt_self (ptyp_mem t) (ptyp_ps t))
-      : Typeω@j.
-Proof.
-  intros VP HVP HGall p D HPD k Mk c gs gs1 t gs2 HM Hcon Heq HΨ IHw.
-  pose proof (valid_groups_valid VP HVP p D HPD) as Hg; pose proof (HGall _ _ HPD) as HG.
-  pose proof (valid_group_valid _ _ Hg) as HD; pose proof (valid_group_closed _ _ Hg) as Hc.
-  pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)) as Hmv.
-  set (pat := cargs_pat gs1).
-  set (L := List.length (ptyp_doms t)).
-  set (pat' := List.repeat false L ++ pat).
-  set (Φ := shape_domains_ctx pat (ptyp_doms t)).
-  assert (HlΦ : List.length Φ = L) by (unfold Φ; apply length_shape_domains_ctx).
-  assert (HΦ : ⊩ Φ ++ cargs_ctx p D Mk gs1 ++ im_params D Mk).
-  { pose proof (glu_shape_domains_ctx_gen p D k Mk c gs Hg HG HM Hcon gs1 t gs2 Heq HΨ IHw L (le_n _)) as H.
-    unfold L in H; rewrite List.firstn_all in H; exact H. }
-  assert (HwΦ : Φ ++ cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ʷ (wk_pat pat')
-                  : doms_ctx (ptyp_doms t) ++ cargs_nonrec_ctx gs1 ++ im_params D Mk).
-  { pose proof (glu_shape_domains_ctx_wk_gen p D k Mk c gs Hg HG HM Hcon gs1 t gs2 Heq IHw L (le_n _)) as H.
-    unfold L in H; rewrite List.firstn_all in H; exact H. }
-  destruct (length_rec_ps D HD k Mk HM c gs gs1 t gs2 Hcon Heq) as (Mj & HMj & HlPs).
-  cbn [ptyp_ty].
-  assert (HE : ⊩ (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk) ++ ind_uparams D)
-    by (unfold im_params in HΦ; rewrite <- !List.app_assoc; exact HΦ).
-  assert (HZa : all_assumptions (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk)).
-  { apply List.Forall_app; split; [ apply shape_domains_ctx_ass |].
-    apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_nparams_ass D Hc _ _ HM) ]. }
-  assert (Hpat : List.length pat = List.length gs1) by apply length_cargs_pat.
-  assert (Hpat' : List.length pat' = L + List.length gs1) by (unfold pat'; rewrite List.length_app, List.repeat_length; lia).
-  assert (Hnargs : pat_nargs pat' = L + List.length (cargs_nonrec_ctx gs1)).
-  { unfold pat', pat; rewrite pat_nargs_app, pat_nargs_cargs_pat; f_equal.
-    clear; induction L as [| L IH]; cbn; lia. }
-  destruct (glu_group_mty VP HVP HGall p D HPD (ptyp_mem t) Mj (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk) (im_nn Mk) (List.length pat')
-              (List.map (fun P => P[wk_pat pat']ʷ) (ptyp_ps t)) HMj HE HZa) as [j0 Hv].
-  - rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia.
-  - rewrite List.length_map; exact HlPs.
-  - intros m N T HN HT.
-    apply nth_error_map_inv in HN as (P & HPm & ->).
-    set (s := L + List.length (cargs_nonrec_ctx gs1) + im_nn Mk).
-    assert (Hti : tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mk) (List.length pat')))
-                    (List.map (fun P => P[wk_pat pat']ʷ) (ptyp_ps t))
-                  = List.map (fun T => T[wk_pat pat']ʷ) (tele_insts (im_nparams Mj) (sb_of_wk (wk_shiftn s)) (ptyp_ps t))).
-    { rewrite <- !map_sub_of_wk; symmetry.
-      eapply (tele_insts_sub_mvc _ (ind_nu D));
-        [ exact (decl_closed_nparams_ass D Hc _ _ HMj) | exact (proj1 (decl_mvc_members _ Hmv _ _ HMj))
-        | exact (decl_closed_nparams_scoped _ Hc _ _ HMj) |].
-      intros x Hx; unfold ind_uvars; rewrite sb_of_list_vars by exact Hx; cbn.
-      unfold s, wk_shiftn; rewrite <- Hnargs.
-      replace (x + (pat_nargs pat' + im_nn Mk)) with (pat_nargs pat' + (im_nn Mk + x)) by lia.
-      rewrite wk_pat_ge; f_equal; lia. }
-    rewrite Hti in HT; apply nth_error_map_inv in HT as (T0 & HT0 & ->).
-    assert (Hσ : s = ptyp_depth t + List.length (cargs_nonrec gs1) + im_nn Mk)
-      by (unfold s, ptyp_depth; fold L; rewrite cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; reflexivity).
-    rewrite Hσ in HT0.
-    pose proof (glu_ind_decl_rec_field _ HG k Mk c gs gs1 t gs2 Mj m P T0 HM Hcon Heq HMj HPm HT0) as HP0.
-    rewrite Heq, <- cargs_nonrec_ctx_nonrec_args_prefix in HP0.
-    pose proof (glu_rel_exp_wk HwΦ HP0) as H.
-    unfold im_params in H; rewrite <- !List.app_assoc; exact H.
-  - exists j0; unfold im_params; rewrite <- !List.app_assoc in Hv; exact Hv.
-Qed.
-
-(** Each prefix of the arguments of a constructor of a member of a group
-    of [VP] is a glued context over the member's parameters, weakened to
-    its non-recursive arguments by [wk_pat] ([valid_group_cargs_sem_all]). *)
-Lemma glu_group_cargs_all : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) -> forall p D, VP p D ->
-    forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> forall gs1 gs2, gs = gs1 ++ gs2 ->
-      ⊩ cargs_ctx p D Mk gs1 ++ im_params D Mk /\
-      cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ʷ (wk_pat (cargs_pat gs1)) : cargs_nonrec_ctx gs1 ++ im_params D Mk.
-Proof.
-  intros VP HVP HGall p D HPD k Mk c gs HM Hcon.
-  pose proof (valid_groups_valid VP HVP p D HPD) as Hg; pose proof (HGall _ _ HPD) as HG.
-  induction gs1 as [| g gs1 IH] using List.rev_ind; intros gs2 Heq.
-  - cbn [cargs_ctx cargs_ctx_aux cargs_nonrec_ctx cargs_pat List.rev List.map List.app].
-    pose proof (glu_ind_decl_params _ HG _ _ HM) as HP.
-    split; [ exact HP | exact (glu_rel_wk_id _ HP) ].
-  - rewrite <- List.app_assoc in Heq; cbn [List.app] in Heq.
-    destruct (IH _ Heq) as [HΨ IHw].
-    rewrite cargs_ctx_snoc, cargs_pat_snoc.
-    destruct g as [r A | t]; cbn [cargs_ctx_aux List.app wk_pat].
-    + rewrite cargs_nonrec_ctx_snoc_arg.
-      destruct (glu_group_arg_large p D k Mk c gs Hg HG HM Hcon gs1 r A gs2 Heq) as [j HA].
-      pose proof (glu_rel_exp_wk IHw HA) as HAw; rewrite abs_kind_sort_wk in HAw; cbn [exp_wk] in HAw.
-      split; [ exact (glu_rel_ctx_extend HΨ HAw (sort_kind_abs_kind_sort r j))
-             | exact (glu_rel_wk_q _ _ _ _ _ j IHw HA) ].
-    + rewrite cargs_nonrec_ctx_snoc_rec.
-      (** The recursive argument's type, the [Π] over its domains of the
-          end ([glu_group_shape_leaf]) *)
-      assert (Hj : exists j : nat, cargs_ctx p D Mk gs1 ++ im_params D Mk ⊩ ptyp_ty p D (im_nn Mk) (cargs_pat gs1) t : Typeω@j).
-      { rewrite (ptyp_ty_ctx_pi p D (im_nn Mk) t (cargs_pat gs1)).
-        assert (HΦa : all_assumptions (shape_domains_ctx (cargs_pat gs1) (ptyp_doms t))) by apply shape_domains_ctx_ass.
-        assert (HΦ : ⊩ shape_domains_ctx (cargs_pat gs1) (ptyp_doms t) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk).
-        { pose proof (glu_shape_domains_ctx_gen p D k Mk c gs Hg HG HM Hcon gs1 t gs2 Heq HΨ IHw _ (le_n _)) as H.
-          rewrite List.firstn_all in H; exact H. }
-        destruct (glu_group_shape_leaf VP HVP HGall p D HPD k Mk c gs gs1 t gs2 HM Hcon Heq HΨ IHw) as [j0 Hleaf].
-        exact (glu_rel_exp_ctx_pi _ _ _ _ HΦa (glu_tele_entries_of_ctx _ _ HΦa HΦ) Hleaf). }
-      destruct Hj as [j Hj].
-      pose proof (glu_rel_ctx_extend HΨ Hj (sort_kind_abs_kind_sort ak_relevant j)) as HC.
-      split; [ exact HC |].
-      exact (glu_rel_wk_compose _ _ _ _ _ (glu_rel_wk_shift _ _ HC) IHw).
-Qed.
-
-(** The context of a constructor's arguments over its member's parameters
-    is glued, for every group of [VP]: the premise [HΨall] of the gluing of
-    the inductive types ([AtType], [Elim]). *)
-Corollary glu_group_cargs : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) ->
-    forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj -> ind_con Mj c0 = Some gs0 ->
-      ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj.
-Proof.
-  intros * HVP HGall * HPD HM Hcon.
-  exact (proj1 (glu_group_cargs_all VP HVP HGall q0 G0 HPD j Mj c0 gs0 HM Hcon gs0 nil (eq_sym (List.app_nil_r gs0)))).
-Qed.
+End IndApps.
 
 End Fixed_GCtx.

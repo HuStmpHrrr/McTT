@@ -182,6 +182,50 @@ Proof.
   apply glu_rel_ctx_types_renaming; [ apply HM | exact Hφ | exact HΓ' ].
 Qed.
 
+(** An instance precomposed with a renaming is an instance: its
+    components are the instance's at the renamed variables and slots. *)
+Lemma glu_rel_sub_inst_of_wk_comp : forall {Γ Σ Σ' τ φ},
+    glu_rel_sub_inst Γ τ Σ' ->
+    Σ' ⊢ʷ φ : Σ ->
+    glu_rel_sub_inst Γ ((ι φ) ⨟ τ) Σ.
+Proof.
+  intros * [Hτ HΓ Hc Hm] Hφ.
+  econstructor; [ eapply wf_sub_compose; [ apply wf_sub_of_wk; exact Hφ | exact Hτ ] | exact HΓ | |].
+  - intros x A Hx.
+    replace (A[(ι φ) ⨟ τ]) with (A[φ]ʷ[τ]) by (rewrite <- exp_sub_of_wk, exp_sub_sub; reflexivity).
+    change (#x[(ι φ) ⨟ τ]) with (#(φ x)[τ]).
+    apply Hc; eapply wf_wk_lookup; eassumption.
+  - intros x U Hx.
+    replace (U[(ι φ) ⨟ τ]ᵘ) with ((gunit_wk U φ)[τ]ᵘ) by (rewrite <- gunit_sub_of_wk, gunit_sub_sub; reflexivity).
+    eapply Hm; eapply wf_wk_lookup_mod; eassumption.
+Qed.
+
+(** A term glued at its instances is glued at the instances of each of its
+    renamings into a context glued with its types. *)
+Lemma glu_rel_exp_under_sub_wk : forall {Σ Σ' M A φ},
+    glu_rel_exp_under_sub Σ M A ->
+    glu_rel_ctx_types Σ' ->
+    Σ' ⊢ʷ φ : Σ ->
+    glu_rel_exp_under_sub Σ' M[φ]ʷ A[φ]ʷ.
+Proof.
+  intros * HM HΣ' Hφ.
+  econstructor; [ exact HΣ' |].
+  intros Γ τ Hτ.
+  rewrite <- !exp_sub_of_wk, !exp_sub_sub.
+  apply HM; eapply glu_rel_sub_inst_of_wk_comp; eassumption.
+Qed.
+
+(** The same for a unit. *)
+Lemma glu_rel_unit_under_sub_wk : forall {Σ Σ' U φ},
+    glu_rel_unit_under_sub Σ U ->
+    Σ' ⊢ʷ φ : Σ ->
+    glu_rel_unit_under_sub Σ' (gunit_wk U φ).
+Proof.
+  intros * HU Hφ Γ τ Hτ.
+  rewrite <- gunit_sub_of_wk, gunit_sub_sub.
+  apply HU; eapply glu_rel_sub_inst_of_wk_comp; eassumption.
+Qed.
+
 (** A type of a sort of types glued at its instances is glued at each,
     at the sort. *)
 Lemma glu_rel_exp_under_sub_inst_sort : forall {Γ Δ τ A S},

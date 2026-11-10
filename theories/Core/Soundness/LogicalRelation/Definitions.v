@@ -1846,15 +1846,16 @@ Section Fixed_GCtx.
 (** The judgments of a record's declaration, glued: what the rule of the
     type former premises, read in the gluing model. *)
 Record glu_record_decl (R : record_decl) : Prop := mk_glu_record_decl
-  { (** The parameters are a glued context *)
-    glued_params : ⊩ record_params R
-    (** The sort is a universe, small at a glued level *)
+  { (** The parameters are a context glued with its types *)
+    glued_params : glu_rel_ctx_types (record_params R)
+    (** The sort is a universe, small at a level glued at its instances *)
   ; glued_sort : (exists i : nat, record_sort R = Typeω@i) \/
-      (exists L (n : nat), record_sort R = Type⟨L⟩ /\ record_params R ⊩ L : Level@n)
-    (** Each field is glued at the sort of its kind next to the record's
-        sort, over the fields before it *)
+      (exists L (n : nat), record_sort R = Type⟨L⟩ /\ glu_rel_exp_under_sub (record_params R) L (Level@n))
+    (** Each field is glued at its instances at the sort of its kind next
+        to the record's sort, over the fields before it *)
   ; glued_fields : forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
-      record_fctx R k ++ record_params R ⊩ T : abs_kind_sort (record_field_kind R k) (record_sort R)[wk_shiftn k]ʷ }.
+      glu_rel_exp_under_sub (record_fctx R k ++ record_params R) T
+        (abs_kind_sort (record_field_kind R k) (record_sort R)[wk_shiftn k]ʷ) }.
 
 (** The views of a group with its members as variables ([grp_selfs_ctx]), as
     [views_self_valid] reads them in the PER model: each view's instance is
@@ -1868,22 +1869,22 @@ Record glu_views_self (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_glu_vi
       forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
     (** Each instance argument is glued at the container's uniform
-        telescope, over the members as variables *)
+        telescope at its instances over the members as variables *)
   ; glu_views_self_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> List.nth_error (IsS k) j = Some I ->
       List.nth_error (tele_insts (ind_uparams Dq) Id (IsS k)) j = Some T ->
-      grp_selfs_ctx D ⊩ I : T
+      glu_rel_exp_under_sub (grp_selfs_ctx D) I T
     (** Each record view's instance is its [IsS] instance with the members
         sent to the group's own type formers *)
   ; glu_views_self_record_link : forall mp, ind_mpath D 0 = Some mp ->
       forall k Mk qr Is fl, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
         Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
     (** Each record view's instance argument is glued at the record's
-        parameters, over the members as variables *)
+        parameters at its instances over the members as variables *)
   ; glu_views_self_record_instances : forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       record_lookup gc_deps gc_stack qr = Some R -> List.nth_error (IsS k) j = Some I ->
       List.nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
-      grp_selfs_ctx D ⊩ I : T
+      glu_rel_exp_under_sub (grp_selfs_ctx D) I T
     (** Each record view's record is glued: the local counterpart of
         completeness' [valid_group_records] *)
   ; glu_views_self_records : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->

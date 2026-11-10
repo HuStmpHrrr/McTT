@@ -872,15 +872,7 @@ Section ConGlu.
       - intros bsr Q Hbsr HQ.
         rewrite HPs0 in Hbsr; inversion Hbsr; subst bsr.
         pose proof (EQ _ HQ) as ->.
-        split; [ unfold im_nn; rewrite Hnp0; reflexivity | split; [ rewrite Hnp0; split; reflexivity + exact I |] ].
-        intros bsr' Hb'.
-        assert (bsr' = nil) as ->
-          by (rewrite tele_rel_iff in Hb'; destruct Hb' as (_ & Hb' & _); rewrite Hnp0 in Hb';
-              destruct bsr'; [ reflexivity | cbn in Hb'; lia ]).
-        split; [ constructor; [ unfold im_nn; rewrite Hnp0; reflexivity | unfold im_nn; rewrite Hnp0; reflexivity
-                              | intros [] ? ? ? _ _ Hn; discriminate Hn ] |].
-        intros Δ0 φ Hφ; rewrite !List.app_nil_r.
-        exact (glu_args_params_top _ _ _ _ _ HassPj HsPj (glu_args_wk _ _ _ _ _ _ _ HassPj HsPj Hφ HQp)).
+        split; [ unfold im_nn; rewrite Hnp0; reflexivity | rewrite Hnp0; split; reflexivity + exact I ].
       - intros bsr Q Hbsr HQ Δ' φ Us' Q' Hφ HUl' HQ'.
         pose proof (EQ _ HQ) as ->.
         rewrite List.app_nil_r in HQ'.
@@ -941,12 +933,7 @@ Section ConGlu.
       rewrite (List.firstn_all2 (n := kk)) in Hbsr by (unfold shape_doms_tele; rewrite List.length_map; lia).
       pose proof (functional_eval_exps' _ _ _ _ Hbsr Ebs) as ->.
       pose proof (EQ _ HQ) as ->.
-      split; [ exact HQl | split; [ exact H01 |] ].
-      intros bsr' Hb'.
-      split; [ exact (glu_nparams_resp_per D ups NEl nel_resp_per _ _ _ _ _ _ _ HMj Hb' HnQ) |].
-      intros Δ0 φ Hφ.
-      pose proof (glu_args_params_top _ _ _ _ _ HassPj HsPj (glu_args_wk _ _ _ _ _ _ _ HassPj HsPj Hφ HQp)) as Ht.
-      exact (glu_params_top_resp_per_top_ps _ _ _ _ _ _ (canon_params_per_top _ _ _ _ HMj Hb') Ht).
+      split; [ exact HQl | exact H01 ].
     - intros bsr Q Hbsr HQ Δ' φ Us' Q' Hφ HUl' HQ'.
       rewrite (List.firstn_all2 (n := kk)) in Hbsr by (unfold shape_doms_tele; rewrite List.length_map; lia).
       pose proof (functional_eval_exps' _ _ _ _ Hbsr Ebs) as ->.
