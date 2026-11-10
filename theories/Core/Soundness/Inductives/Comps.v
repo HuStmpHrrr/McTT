@@ -881,6 +881,14 @@ Proof.
   apply IH; [ exact Hl | exact HM | rewrite List.length_app; cbn in *; lia ].
 Qed.
 
+(** The records of the record views of the groups of [VP] are glued: the
+    records the gluing of a record view's elements reads.  Only these:
+    a sound embedding glues the records of its source, which these are,
+    not every record of the target. *)
+Definition glu_rview_records (VP : qname -> ind_decl -> Prop) : Prop :=
+  forall qn G j Mj qr Is fl R, VP qn G -> ind_member G j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+    record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R.
+
 (** The ends of the recursive arguments' shapes of [D] are glued at every
     admissible uniform parameters, at the gluings of the clause there
     ([glu_self_ends_ok]). *)

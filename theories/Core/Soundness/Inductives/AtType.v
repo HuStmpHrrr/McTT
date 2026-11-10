@@ -118,8 +118,8 @@ Section AtType.
   (** The ends of the recursive arguments' shapes of the groups of [VP] are
       glued *)
   Hypothesis (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G).
-  (** The records are glued ([glu_gctx_embedding_record_field]) *)
-  Hypothesis (HRall : forall qr R, record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R).
+  (** The records of their record views are glued ([glu_rview_records]) *)
+  Hypothesis (HRall : glu_rview_records VP).
   Variables (p : qname) (D : ind_decl).
   Hypothesis (HPD : VP p D).
   Let HG := HGall _ _ HPD.
@@ -577,7 +577,7 @@ Section AtType.
     destruct (valid_group_records _ _ Hvg _ _ _ _ _ HMj Hh) as [R HR].
     pose proof (valid_rview_record_lookup _ _ HR) as HlR.
     pose proof (ctx_wf_gctx _ _ _ HΔ) as Hgc.
-    pose proof (HRall _ _ HlR) as HGR.
+    pose proof (HRall _ _ _ _ _ _ _ _ HPD HMj Hh HlR) as HGR.
     pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs j Mj qr Is fl R HMj Hh HR Δ Us' ups cups HΔ HUs Ecups) as HNs.
     pose proof (valid_rview_record_valid _ _ HR) as [HWR _ [is HS] _ _ _].
     destruct (Completeness.Records.Model.sort_tele_value (record_params R) (record_sort R) HWR (ex_intro _ is HS) cups
@@ -1656,7 +1656,7 @@ Section AtType.
     rewrite !List.app_nil_r, (RviewEnds.rview_args_params p D Hvg k Mk qr Is fl HMk Hh) in HgC.
     (** Along the record's fields, at the view's instance: the record's
         field context is glued ([record_fctx_glued]). *)
-    pose proof (HRall _ _ HlR) as HGR.
+    pose proof (HRall _ _ _ _ _ _ _ _ HPD HMk Hh HlR) as HGR.
     pose proof (glu_rel_ctx_types_ctx _ (Mctt.Core.Soundness.Records.Former.record_fctx_glued R HGR _ (le_n _))) as HΨr.
     set (Ns' := List.map (fun I => I[sb_of_list Id Us]) Is).
     pose proof (valid_rview_record_closed _ _ HR) as HcR.

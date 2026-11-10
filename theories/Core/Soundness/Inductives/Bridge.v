@@ -2488,8 +2488,8 @@ Section Root.
   Hypotheses (HGall : forall qn G, VP qn G -> glu_ind_decl G).
   (** And the ends of their recursive arguments' shapes *)
   Hypotheses (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G).
-  (** And the records, glued globally ([glu_gctx_embedding_record_field]) *)
-  Hypothesis (HRall : forall qr R, record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R).
+  (** And the records of their record views ([glu_rview_records]) *)
+  Hypothesis (HRall : glu_rview_records VP).
   Let Hselfs := HSall _ _ HPD.
   Let HΨv : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs -> ⊩ cargs_ctx p D Mj gs ++ im_params D Mj :=
     fun j Mj c gs HM Hc => glu_rel_ctx_types_ctx _ (glu_group_cargs VP HVP HGall HSall p D j Mj c gs HPD HM Hc).
@@ -2682,7 +2682,7 @@ Section Root.
     pose proof (per_univ_elem_cumu_universe_index _ _ _ _ HR2 _ Hi2n) as HR2n.
     destruct (per_univ_glu_univ_elem m _ (ex_intro _ (record_rel R0 (canon_fields_rel R0 cups)) HR2n)) as (Pc & Elc & Hgl').
     pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs j Mj qr Is fl R0 HMj Hh HR Δ Us ups cups HΔ HUs Ecups) as HNs0.
-    pose proof (Mctt.Core.Soundness.Records.Former.record_typ_glu qr R0 (ctx_wf_gctx _ _ _ HΔ) HlR (HRall _ _ HlR) Δ _ cups b m Pc Elc HΔ HNs0 Eb Hbn Hgl') as HTc.
+    pose proof (Mctt.Core.Soundness.Records.Former.record_typ_glu qr R0 (ctx_wf_gctx _ _ _ HΔ) HlR (HRall _ _ _ _ _ _ _ _ HPD HMj Hh HlR) Δ _ cups b m Pc Elc HΔ HNs0 Eb Hbn Hgl') as HTc.
     (** The element's value is related to the record type at the instance,
         so the element's type is it ([glu_univ_elem_typ_unique]), and the
         element is glued at it. *)
@@ -2772,7 +2772,7 @@ End Root.
 Theorem glu_views_ok_all : forall VP p D, valid_groups VP -> VP p D -> glu_ind_decl D ->
     (forall qn G, VP qn G -> glu_ind_decl G) ->
     (forall qn G, VP qn G -> glu_self_ends_all qn G) ->
-    (forall qr R, record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R) ->
+    glu_rview_records VP ->
     glu_views_ok p D.
 Proof.
   intros VP p D HVP HPD HG HGall HSall HRall ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf.

@@ -1291,9 +1291,8 @@ Section ElimGlu.
   Hypotheses (HVP : valid_groups VP) (HGall : forall qn G, VP qn G -> glu_ind_decl G)
     (Hviewsall : forall qn G, VP qn G -> glu_views_ok qn G) (HPD : VP p D).
   (** The ends of the recursive arguments' shapes of the groups of [VP] are
-      glued, and so are the records ([glu_gctx_embedding_record_field]) *)
-  Hypotheses (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G)
-    (HRall : forall qr R, record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R).
+      glued, and so are the records of their record views ([glu_rview_records]) *)
+  Hypotheses (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G) (HRall : glu_rview_records VP).
   Let HG := HGall _ _ HPD.
   Let Hvg := valid_groups_valid VP HVP p D HPD.
   Let Hcv := containers_valid_of_groups VP HVP p D HPD.
@@ -9419,7 +9418,7 @@ End ElimGlu.
     related to the value of the rule's type. *)
 Theorem glu_rel_exp_elim : forall VP p D, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) ->
     (forall qn G, VP qn G -> glu_self_ends_all qn G) ->
-    (forall qr R, record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R) -> VP p D ->
+    glu_rview_records VP -> VP p D ->
     forall Γ m Mm bm Bks Ps M (i : nat),
     ind_member D m = Some Mm -> List.nth_error Bks m = Some bm ->
     List.length Bks = ind_nblk D -> List.length Ps = im_np D Mm ->
@@ -9722,9 +9721,8 @@ Section ConRviewFT.
   Hypotheses (HVP : valid_groups VP) (HGall : forall qn G, VP qn G -> glu_ind_decl G)
     (Hviewsall : forall qn G, VP qn G -> glu_views_ok qn G).
   (** The ends of the groups' recursive arguments' shapes are glued, and so
-      are the records *)
-  Hypotheses (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G)
-    (HRall : forall qr R, record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R).
+      are the records of their record views *)
+  Hypotheses (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G) (HRall : glu_rview_records VP).
   Variables (p : qname) (D : ind_decl).
   Hypothesis (HPD : VP p D).
   Let HG := HGall _ _ HPD.
@@ -10009,4 +10007,21 @@ Proof.
     destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (D' & Mk' & Hq & _).
     pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hq) as Hq'.
     rewrite Hq' in Hq2; injection Hq2 as <-; exact Hq.
+Qed.
+
+(** The records of the record views of the groups of the source are glued
+    at the target of a sound embedding: each is a record of the source
+    ([rview_struct_record]), which the embedding sends to itself and glues
+    ([glu_gctx_embedding_record_field]). *)
+Lemma glu_rview_records_of_glu_gctx_embedding : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> glu_gctx_embedding Θ Ξ Θ2 Ξ2 ->
+    @glu_rview_records (gc_mk Θ2 Ξ2) (fun qn G => ind_lookup Θ Ξ qn = Some G).
+Proof.
+  intros * Hg Hμ qn G j Mj qr Is fl R Hlq HMj Hh HlR.
+  pose proof (gctx_embedding_resolution _ _ _ _ (glu_gctx_embedding_embedding _ _ _ _ Hμ)) as Hs.
+  destruct (Completeness.Inductives.Elim.decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt _].
+  destruct (rview_struct_record _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HMj Hh) as [R0 HR0].
+  pose proof (rview_record_lookup _ _ _ _ _ _ HR0) as HlR0.
+  pose proof (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR0) as HlR2.
+  cbn in HlR; rewrite HlR2 in HlR; injection HlR as <-.
+  exact (glu_gctx_embedding_record_field _ _ _ _ Hμ _ _ HlR0).
 Qed.
