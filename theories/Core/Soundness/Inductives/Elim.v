@@ -4187,7 +4187,7 @@ Section ElimGlu.
       rewrite Href in Href0; injection Href0 as E1 E2; subst hd0 k0.
       assert (HIG : ind_glu_elem p D ups NEl AEl DP DEl k Δ' Us' Ns' M' (d_con hd k' c (bs ++ vs)))
         by (eapply ind_glu_elem_con; eassumption).
-      destruct (glu_at_type_all VP HVP HGall Hviewsall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf
+      destruct (glu_at_type_all VP HVP HGall Hviewsall HSall HRall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf
                   nb Hnbu Hnbq Hnbr) as [Hel _].
       pose proof (us_glu_args Δ' σ' Hσ') as HUg'; rewrite <- HUs' in HUg'.
       assert (Hgl : forall (i : nat) P El, nb <= i -> DG d_ind hd k' (pre ++ ns) ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -5589,7 +5589,7 @@ Section ElimGlu.
       (** The motive at the scrutinee, glued in the group ([AtType]). *)
       assert (HIG : ind_glu_elem p D ups NEl AEl DP DEl j Δ' Us' Ns' M' (⇑ (d_ind hd k' as') e))
         by (eapply ind_glu_elem_neut; eassumption).
-      destruct (glu_at_type_all VP HVP HGall Hviewsall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf
+      destruct (glu_at_type_all VP HVP HGall Hviewsall HSall HRall p D HPD ups bu u NP NEl AP AEl DP DEl ups_len ups_tele_args Hbu Hule Hf
                   nb Hnbu Hnbq Hnbr) as [Hel _].
       pose proof (us_glu_args Δ' σ' Hσ') as HUg'; rewrite <- HUs' in HUg'.
       assert (Hgl : forall (i : nat) P El, nb <= i -> DG d_ind hd k' (pre ++ ns) ∈ glu_univ_elem i ↘ P ↘ El ->
