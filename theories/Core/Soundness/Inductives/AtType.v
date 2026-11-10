@@ -83,7 +83,11 @@ Qed.
 
 (** So is the gluing at an inductive type of a constructor of its member
     ([ind_glu_exp_pred]): it holds at any other stored uniform parameters
-    at which the value is in the type's relation. *)
+    at which the value is in the type's relation.  This is not a move of
+    the gluing along a relation: the gluing's own clauses do not read the
+    stored uniform parameters ([ind_glu_elem_con] reads [List.skipn
+    (im_unu D Mk) bs] only, [ind_glu_elem_con_prefix]), and the rest of
+    [ind_glu_exp] is about the term and its type. *)
 Lemma glu_ind_con_prefix : forall (i : universe_index) hd k' xs P El Γ A M c pre pre' rest,
     DG d_ind hd k' xs ∈ glu_univ_elem i ↘ P ↘ El ->
     (forall D0, ind_lookup gc_deps gc_stack hd = Some D0 -> List.length pre = ind_nu D0) -> List.length pre' = List.length pre ->
