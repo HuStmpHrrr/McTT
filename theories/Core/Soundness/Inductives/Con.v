@@ -493,24 +493,6 @@ Section ConGlu.
     exists j, j0, a1, P1, El1; split; [ exact Hg1 | split; [ exact Hab | exact HM1 ] ].
   Qed.
 
-  (** Parameters related canonically read back alike. *)
-  Lemma canon_params_per_top : forall j Mj bs bs', ind_member D j = Some Mj ->
-      tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bs bs' ->
-      per_top_ps (List.rev (im_params D Mj)) (ups ++ bs) (ups ++ bs').
-  Proof.
-    intros * HMj Hbs s.
-    destruct (Decl.per_tele_args_top _ _ _ _ _ Hgu ltac:(rewrite List.length_rev; exact Hu) s) as (Ms1 & Ms1' & HM1 & HM1' & HE1).
-    pose proof (canon_hn D HD Hc Hsu ups bu Hu Hbu ups Hgu) as Hn.
-    assert (Hassn : all_assumptions (List.rev (im_nparams Mj))) by (apply List.Forall_rev; exact (group_structure_nparams _ Hass _ _ HMj)).
-    destruct (read_ps_tele (List.rev (im_nparams Mj)) (canon_nparams_rel D ups j) (decl_env D ups) (decl_env D ups) Hassn
-                ltac:(intros j0 κ0 A pre pre' Hj0 Hp;
-                      destruct (canon_nparams_evals _ _ _ _ Hn _ _ _ _ _ _ _ HMj Hj0 Hp) as [a a' Ea Ea' HRa];
-                      exists a, a'; split; [ exact Ea | split; [ exact Ea' | intros b b' Hb; exact (per_elem_then_per_top HRa Hb) ] ])
-                _ _ Hbs s) as (Ms2 & Ms2' & HM2 & HM2' & HE2).
-    apply (mk_params_read_alike _ _ _ _ (Ms1 ++ Ms2)%list (Ms1' ++ Ms2')%list); rewrite ?rev_im_params_split;
-      [ apply read_ps_app; assumption | apply read_ps_app; assumption | apply nfs_eq_upto_proofs_app; assumption ].
-  Qed.
-
   (** A recursive argument ending in a declared member [j]: glued at a type
       of the value of the type of [j] at parameters glued to related values,
       an element of [j] at every weakening and every instance of the
