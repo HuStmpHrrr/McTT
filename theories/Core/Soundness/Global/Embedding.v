@@ -48,20 +48,20 @@ Section Cook.
   Context {GC : GCtx}.
   Import Fixed_Notations.
 
-  (** A neutral: a closed [G] whose value anywhere applies as [⇑ a d] does,
-      [a] the value of its type at [nil], [d] reading back to [G]. *)
-  Lemma glu_neut_nil : forall T G κ i d,
+  (** A closed [G] whose value anywhere applies as a value [g] does, [g]
+      glued at [a], the value of its type at [nil], wherever the type glues
+      there: glued, at [a] by [app_sim_glu], then at the type's value in
+      the given environment by the move along the type values with the
+      type's gluing there as the witness. *)
+  Lemma glu_closed_value : forall T G κ i,
       evaluated_kind κ ->
       ⋅ ⊩ T : abs_kind_sort κ Typeω@i ->
       (forall σ, T[σ] = T) -> (forall σ, G[σ] = G) ->
-      (forall φ, T[φ]ʷ = T) -> (forall φ, G[φ]ʷ = G) ->
-      (forall Δ, ⊢ Δ -> Δ ⊢ G : T) ->
-      (forall a, not_level_sort a -> Dom d ≈ d ∈ neutral_at a) ->
-      (forall s (M' : ne), Rne d in s ↘ M' -> (ne_annotate_proofs M' : exp) = G) ->
-      (forall a, ⟦ T ⟧ nil ↘ a -> exists ks v, pi_kinds_depth ks a /\ app_sim ks v (⇑ a d) /\ forall ρ, ⟦ G ⟧ ρ ↘ v) ->
+      (forall a, ⟦ T ⟧ nil ↘ a -> exists ks v g, pi_kinds_depth ks a /\ app_sim ks v g /\ (forall ρ, ⟦ G ⟧ ρ ↘ v) /\
+         forall Δ j P El, ⊢ Δ -> not_level_sort a -> DG a ∈ glu_univ_elem j ↘ P ↘ El -> Δ ⊢ T ® P -> Δ ⊢ G : T ® g ∈ El) ->
       ⋅ ⊩ G : T.
   Proof.
-    intros * Hκ HT HTs HGs HTw HGw HGty Hd Hrb Hev.
+    intros * Hκ HT HTs HGs Hev.
     pose proof (glu_rel_exp_to_wf_exp HT) as HTwf.
     destruct (presup_ctx_glu_rel_exp HT) as [Sb0 H0].
     (** The type glues as the type of an assumption *)
@@ -87,20 +87,39 @@ Section Cook.
     (** Its value is of the kind, and no type of levels *)
     destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ HPa HTPa HTΔ) as [Hk _].
     destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ HP0 HTP0 HTΔ) as [_ Hnl0].
-    (** The term's value, applying as the neutral does *)
-    destruct (Hev _ Ha0) as (ks & v & Hks & Hsim & HGv).
+    (** The term's value, applying as the glued value does *)
+    destruct (Hev _ Ha0) as (ks & v & g & Hks & Hsim & HGv & Hg).
     econstructor; [ exact HevT | rewrite Hk; destruct Hκ; cbn [glu_term_value]; exact (HGv ρ) | exact HPa |].
     rewrite HGs, HTs.
-    (** The neutral is glued at [a0] ([realize_glu_elem_bot]), so is the
-        value, which then moves to [m] with [T]'s gluing there *)
-    assert (Hn : El0 Δ T G (⇑ a0 d)).
-    { eapply realize_glu_elem_bot; [ exact HP0 |].
-      econstructor; [ apply HGty; exact HΔ | exact HP0 | exact HTP0 | exact (Hd _ Hnl0) |].
-      intros * Hk' Hr; unfold glu_ne_eq; rewrite (Hrb _ _ Hr), HGw, HTw.
-      pose proof (HGty _ (kripke_dom _ _ _ Hk')); mauto 3. }
-    pose proof (app_sim_glu _ _ _ _ _ Hks HP0 _ _ _ _ _ Hn Hsim) as Hv.
+    pose proof (app_sim_glu _ _ _ _ _ Hks HP0 _ _ _ _ _ (Hg _ _ _ _ HΔ Hnl0 HP0 HTP0) Hsim) as Hv.
     exact (glu_univ_elem_exp_conv (per_univ_sym' _ _ _ Hrel) HP0 HPa Hv HTPa).
   Qed.
+
+  (** A neutral: a closed [G] whose value anywhere applies as [⇑ a d] does,
+      [a] the value of its type at [nil], [d] reading back to [G]: the
+      neutral is glued wherever its type is ([realize_glu_elem_bot]). *)
+  Lemma glu_neut_nil : forall T G κ i d,
+      evaluated_kind κ ->
+      ⋅ ⊩ T : abs_kind_sort κ Typeω@i ->
+      (forall σ, T[σ] = T) -> (forall σ, G[σ] = G) ->
+      (forall φ, T[φ]ʷ = T) -> (forall φ, G[φ]ʷ = G) ->
+      (forall Δ, ⊢ Δ -> Δ ⊢ G : T) ->
+      (forall a, not_level_sort a -> Dom d ≈ d ∈ neutral_at a) ->
+      (forall s (M' : ne), Rne d in s ↘ M' -> (ne_annotate_proofs M' : exp) = G) ->
+      (forall a, ⟦ T ⟧ nil ↘ a -> exists ks v, pi_kinds_depth ks a /\ app_sim ks v (⇑ a d) /\ forall ρ, ⟦ G ⟧ ρ ↘ v) ->
+      ⋅ ⊩ G : T.
+  Proof.
+    intros * Hκ HT HTs HGs HTw HGw HGty Hd Hrb Hev.
+    apply (glu_closed_value _ _ _ _ Hκ HT HTs HGs).
+    intros a Ha; destruct (Hev _ Ha) as (ks & v & Hks & Hsim & HGv).
+    exists ks, v, (⇑ a d); repeat split; [ exact Hks | exact Hsim | exact HGv |].
+    intros Δ j P El HΔ Hnl HP HTP.
+    eapply realize_glu_elem_bot; [ exact HP |].
+    econstructor; [ apply HGty; exact HΔ | exact HP | exact HTP | exact (Hd _ Hnl) |].
+    intros * Hk' Hr; unfold glu_ne_eq; rewrite (Hrb _ _ Hr), HGw, HTw.
+    pose proof (HGty _ (kripke_dom _ _ _ Hk')); mauto 3.
+  Qed.
+
 End Cook.
 
 Section Raw.
@@ -179,6 +198,98 @@ Section Raw.
         destruct T as [| e T'] eqn:ET.
         * apply Hsat; [ reflexivity | constructor ].
         * eapply eval_sel_global_unsat; [ exact Hgl | cbn; lia ].
+  Qed.
+  (** A transparent definition of a stored body, of an evaluated kind,
+      whose type and body glue at [⋅] glues there, unapplied: its value
+      applies as the body's value at [nil] does, a member closure while the
+      module lacks parameters, the body's value applied once it lacks none
+      ([eval_sel_global]); the body's value is glued at [nil], and moves to
+      the member by its δ-reduct, an equation of terms. *)
+  Lemma glob_body_glu : forall p T Φ x Φ0 pv r A M i,
+      loc Θ Ξ p T Φ ->
+      gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def true pv r A (Some M))) ->
+      evaluated_kind r ->
+      @glu_rel_exp (gc_mk Θ Ξ) ⋅ A (abs_kind_sort r Typeω@i) ->
+      @glu_rel_exp (gc_mk Θ Ξ) ⋅ M A ->
+      @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_mem (qname_mod p) x) A.
+  Proof.
+    intros * Hl Hp Hrk HA HM.
+    pose proof (loc_closed _ _ Hg _ _ _ Hl) as [_ HcΦ].
+    pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ [HsA HsM]].
+    pose proof (qname_mod_qname p) as Hpm.
+    destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
+    pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hl x _) Hent) as HeE.
+    apply gc_entry_def in HeE; rewrite qname_in_app in HeE.
+    pose proof (@glu_rel_exp_to_wf_exp (gc_mk Θ Ξ) _ _ _ HA) as HAw.
+    (** The member is its body, in every context *)
+    assert (Hδ : forall Δ, ⊢ Θ ⍮ Ξ ⍮ Δ -> Θ ⍮ Ξ ⍮ Δ ⊢ a_mem (qname_mod p) x ≈ M : A).
+    { intros Δ HΔ.
+      destruct (filed_denote _ _ Hg _ _ _ Δ nil (gc_loc_of_loc _ _ Hg _ _ _ Hl)) as (R1 & Hm & Hmd); cbn [me_apps] in Hm.
+      eapply wf_exp_eq_mem_delta; [ exact (loc_modexp_wf _ _ _ HΔ _ _ _ Hl) | | |].
+      - eapply mdenote_mem; [ exact Hm | exact Hmd | cbn; rewrite Hp; reflexivity | constructor | reflexivity ].
+      - reflexivity.
+      - rewrite mdesc_named_nil; reflexivity. }
+    (** Closed terms *)
+    assert (HMs : forall σ, M[σ] = M)
+      by (intros; apply exp_closed_sub; exact HsM).
+    eapply (@glu_closed_value (gc_mk Θ Ξ)) with (κ := r); [ exact Hrk | exact HA | intros; apply exp_closed_sub; exact HsA
+                                                       | intros; cbn; rewrite (mod_qname_sub _ _ _ Hpm); reflexivity |].
+    intros a Hev.
+    pose proof (valid_gctx_embedding_filed _ _ _ _ (valid_gctx_embedding_refl _ _ Hg)) as Hfm.
+    pose proof (gc_loc_of_loc _ _ Hg _ _ _ Hl) as Hgl.
+    pose proof (Hfm _ _ _ Hgl) as HfM.
+    pose proof (valid_filed_mod_terms _ _ _ _ _ HfM x Φ0 _ _ Hp eq_refl) as Hvt.
+    cbn [entry_term] in Hvt.
+    destruct Hvt as [A0 lv Htyped Hreads _ Hpk].
+    cbn [mdesc_kind] in *.
+    destruct (Hreads nil _ T nil ltac:(rewrite List.app_nil_r; reflexivity) eq_refl eq_refl) as [EA _].
+    cbn [mdesc_type sb_of_list] in EA; injection EA as EA; rewrite exp_sub_id in EA.
+    (** The body's value at [nil] *)
+    destruct HM as [SbM HSbM kM HMb].
+    assert (Hnil : forall Δ σ, ⊢ Θ ⍮ Ξ ⍮ Δ -> Δ ⊢ˢ σ ® nil ∈ SbM)
+      by (intros Δ σ HΔ; inversion HSbM as [Sb' ESb _ | | | | ]; subst; apply ESb; apply wf_sub_nil'; exact HΔ).
+    assert (HΔ0 : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; exact Hg).
+    destruct (HMb _ _ _ (Hnil ⋅ Id HΔ0)) as [a1 f P1 El1 Ea1 Hf HP1 _].
+    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (Hkr : domain_kind a = r).
+    { destruct (glu_rel_exp_sort_typ HA (sort_kind_abs_kind_sort r i)) as (SbA & iA & HSbA & _ & HAg).
+      destruct (HAg ⋅ Id nil ltac:(inversion HSbA as [Sb' ESb _ | | | | ]; subst; apply ESb; apply wf_sub_nil'; exact HΔ0))
+        as [a2 Pa Ela Ea2 HPa HTPa].
+      assert (a2 = a) as -> by (eapply functional_eval_exp; eassumption).
+      rewrite exp_closed_sub in HTPa by exact HsA.
+      exact (proj1 (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ HPa HTPa HAw)). }
+    rewrite Hkr in Hf; assert (Ef : ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f) by (destruct Hrk; exact Hf).
+    (** At all its parameters, the module's member is the body's value applied *)
+    assert (Hsat : forall args r0, List.length args = List.length T ->
+               $*| f & args | Θ ⍮ Ξ ↘ r0 -> dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r0).
+    { intros args r0 Hla Hr0.
+      eapply eval_sel_global; [ intros T' Φ' HT'; rewrite Hgl in HT'; injection HT' as <- _; lia | | exact Ef | exact Hr0 ].
+      unfold gc_term; rewrite HeE; destruct Hrk; reflexivity. }
+    exists (tele_kinds T), (match T with nil => f | _ => d_member (dm_global p nil) (x :: nil) end), f.
+    split; [| split; [| split ] ].
+    - rewrite EA in Hev; rewrite <- (List.app_nil_r (tele_kinds T)).
+      eapply (@eval_ctx_pi_kinds (gc_mk Θ Ξ));
+        [ exact Hrk | exact (glob_tele_kinds _ _ _ _ _ Hg Hl) | exact (valid_filed_mod_tele_all_assumptions _ _ _ _ _ HfM)
+        | intros; exact I | exact Hev ].
+    - eapply (@glob_member_sim (gc_mk Θ Ξ)) with (Tout := nil) (args := nil);
+        [ exact Hgl | exact Hsat | rewrite List.app_nil_r; reflexivity | reflexivity | constructor
+        | intros ->; reflexivity | intros HT; destruct T; [ contradiction | reflexivity ] ].
+    - intros ρ; eapply (@eval_mem_of_sel (gc_mk Θ Ξ)); [ apply (gc_loc_path _ _ Hg _ _ ρ Hgl) |].
+      destruct T as [| e T'] eqn:ET.
+      + apply Hsat; [ reflexivity | constructor ].
+      + eapply eval_sel_global_unsat; [ exact Hgl | cbn; lia ].
+    - (** The body's value, glued at [nil] in every context, is the member's *)
+      intros Δ j P El HΔ _ HP HTP.
+      destruct (HMb _ _ _ (Hnil Δ (sb_of_wk wk_id) HΔ)) as [a2 f2 P2 El2 Ea2 Hf2 HP2 HMσ].
+      assert (a2 = a) as -> by (eapply functional_eval_exp; eassumption).
+      rewrite Hkr in Hf2; assert (f2 = f) as ->
+        by (destruct Hrk; eapply functional_eval_exp; eassumption).
+      rewrite HMs, exp_closed_sub in HMσ by exact HsA.
+      destruct (glu_univ_elem_per_univ _ _ _ _ HP2) as [R2 HR2].
+      eapply glu_univ_elem_trm_resp_exp_eq;
+        [ exact HP
+        | eapply glu_univ_elem_exp_conv_universe_index; [ exists R2; exact HR2 | exact HP2 | exact HP | exact HMσ | exact HTP ]
+        | apply wf_exp_eq_sym, Hδ; exact HΔ ].
   Qed.
 End Raw.
 
