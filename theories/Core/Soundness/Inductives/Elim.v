@@ -4360,6 +4360,43 @@ Section ElimGlu.
              (tele_entries_values _ _ _) Hv2 Hr1 Hr2).
   Qed.
 
+  (** The member's type at the parameters as variables, over the
+      parameters, is a type of a large universe glued at its instances
+      ([glu_group_mty]): the decl-side motive context's head. *)
+  Lemma mctx_decl_glued : forall v Mv, ind_member D v = Some Mv -> exists i1 : nat,
+      glu_rel_exp_under_sub (im_params D Mv) (ind_mty p D v (ind_uvars D (im_nn Mv) 0) (vars_from 0 (im_nn Mv))) Typeω@i1.
+  Proof.
+    intros v Mv HMv.
+    pose proof (glu_ind_decl_params _ HG _ _ HMv) as HC.
+    pose proof (decl_closed_params_ass D v Mv Hc HMv) as HassP.
+    pose proof (decl_closed_params D v Mv Hc HMv) as HsP.
+    pose proof (decl_closed_ass _ Hc) as HassU.
+    pose proof (decl_closed_nparams_ass D Hc _ _ HMv) as HassN.
+    pose proof (decl_typed_mvc _ _ _ Hdt) as Hmv.
+    assert (Hpm : ctx_mvc (im_params D Mv))
+      by (unfold im_params, ctx_mvc; apply List.Forall_app; split;
+          [ exact (proj1 (decl_mvc_members _ Hmv _ _ HMv)) | exact (decl_mvc_uparams _ Hmv) ]).
+    pose proof (Mctt.Core.Soundness.Inductives.ArgTypes.glu_vars_tele_under_sub nil (im_params D Mv) HassP HsP Hpm HC) as HV.
+    rewrite length_im_params in HV; cbn [List.length List.app] in HV.
+    assert (EV : vars_from 0 (im_np D Mv) = ind_uvars D (im_nn Mv) 0 ++ vars_from 0 (im_nn Mv))
+      by (unfold ind_uvars, im_np; rewrite vars_from_app; f_equal; lia).
+    rewrite EV in HV; unfold im_params in HV.
+    rewrite (tele_insts_app _ _ _ _ _ HassU) in HV by (unfold ind_uvars; rewrite length_vars_from; reflexivity).
+    unfold im_params in HC |- *.
+    eapply (Mctt.Core.Soundness.Inductives.ArgTypes.glu_group_mty VP HVP HGall HSall p D HPD v Mv (im_nparams Mv) (im_nn Mv) 0
+              (vars_from 0 (im_nn Mv)) HMv HC HassN);
+      [ rewrite length_im_nparams; reflexivity | apply length_vars_from |].
+    intros m N T HN HT.
+    apply (HV (ind_nu D + m)).
+    - rewrite List.nth_error_app2 by (unfold ind_uvars; rewrite length_vars_from; lia).
+      unfold ind_uvars at 1; rewrite length_vars_from; replace (ind_nu D + m - ind_nu D) with m by lia; exact HN.
+    - assert (Lu : List.length (tele_insts (ind_uparams D) Id (ind_uvars D (im_nn Mv) 0)) = ind_nu D)
+        by (rewrite length_tele_insts by exact HassU; unfold ind_uvars; rewrite length_vars_from; apply Nat.min_id).
+      rewrite List.nth_error_app2 by lia.
+      rewrite Lu; replace (ind_nu D + m - ind_nu D) with m by lia.
+      exact HT.
+  Qed.
+
   (** The readback of the motive of the block of the member [v] under the
       fresh variables, against the motive at [σ''] past its context. *)
   Lemma readback_motive : forall v Mv b, ind_member D v = Some Mv -> List.nth_error Bks v = Some b ->
