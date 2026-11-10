@@ -249,19 +249,87 @@ Section AtType.
              (valid_rview_record_lookup _ _ HR0) Ecups Ecups cups cups i R Hc0 Hc0 HR).
   Qed.
 
-  (** ** Neutrals *)
+  (** ** Neutrals
+
+      The member [mref] references has as many uniform parameters as the
+      member's own ([im_unu]): the group's at a declared member, the
+      container's at a view. *)
+  Lemma im_unu_at_ref : forall k Mk hd k' pre D0, ind_member D k = Some Mk ->
+      ⟦mref k of p ups ⟧ gc_deps ⍮ gc_stack ↘ (hd, k', pre) -> ind_lookup gc_deps gc_stack hd = Some D0 ->
+      im_unu D Mk = ind_nu D0.
+  Proof.
+    intros * HMk Hr HlD0.
+    unfold im_unu; destruct (im_head Mk) as [pm | qc kc Is vm | qr Is fl] eqn:Hh;
+      [| | exfalso; exact (mref_not_rview _ _ _ _ _ _ HMk Hh Hr) ].
+    - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMk Hh Hr) as E; injection E as -> -> ->.
+      rewrite Hl in HlD0; injection HlD0 as <-; reflexivity.
+    - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMk Hh Hr) as (py & E & Epy); injection E as -> -> <-.
+      destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMk Hh) as (Dq & Mkc & Hq & _ & _ & HIsl & _).
+      rewrite Hq in HlD0; injection HlD0 as <-; exact HIsl.
+  Qed.
+
+  (** The non-uniform parameters of a member glued in the group, as the
+      member [mref] references reads them: the parameters at [im_pre]
+      glued at its values (the container's telescopes at a view,
+      [view_uparams_glu], [view_nparams_glu]), and related at its
+      relation ([view_nparams_rel]). *)
+  Lemma nparams_at_ref : forall k Mk hd k' pre D0 M0 Δ' Us' Ns0 ns0, ind_member D k = Some Mk ->
+      ⟦mref k of p ups ⟧ gc_deps ⍮ gc_stack ↘ (hd, k', pre) -> ind_lookup gc_deps gc_stack hd = Some D0 ->
+      ind_member D0 k' = Some M0 -> ⊢ Δ' -> glu_args Δ' (ind_uparams D) Id nil Us' ups ->
+      glu_nparams k Mk NEl Δ' Us' Ns0 ns0 -> tele_rel (nr k) (List.rev (im_nparams Mk)) ns0 ns0 ->
+      glu_args Δ' (im_params D0 M0) Id nil (im_pre Mk Us' ++ Ns0) (pre ++ ns0) /\
+      tele_rel (canon_nparams_rel D0 pre k') (List.rev (im_nparams M0)) ns0 ns0.
+  Proof.
+    intros * HMk Hr HlD0 HM0 HΔ' HUs Hnp Hns.
+    pose proof (glu_args_of_nparams D ups u NP NEl AP AEl DP DEl Hf k Mk Δ' Us' Ns0 ns0 HMk Hnp Hns) as HgN.
+    destruct (glu_args_length _ _ _ _ _ _ HUs) as [HUl _].
+    destruct (im_head Mk) as [pm | qc kc Is vm | qr Is fl] eqn:Hh; [| | exfalso; exact (mref_not_rview _ _ _ _ _ _ HMk Hh Hr) ].
+    - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMk Hh Hr) as E; injection E as -> -> ->.
+      rewrite Hl in HlD0; injection HlD0 as <-; rewrite HMk in HM0; injection HM0 as <-.
+      unfold im_pre; rewrite Hh.
+      split; [| exact Hns ].
+      unfold im_params; apply glu_args_app; [ exact (decl_closed_ass _ Hc) | exact HUl | rewrite Hu; reflexivity |].
+      split; [ exact HUs | exact HgN ].
+    - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMk Hh Hr) as (py & E & Epy); injection E as -> -> <-.
+      destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMk Hh) as (Dq & Mkc & Hq & HMkc & _ & HIsl & _ & Hvk & _).
+      rewrite Hq in HlD0; injection HlD0 as <-; rewrite HMkc in HM0; injection HM0 as <-.
+      pose proof (valid_groups_containers VP HVP p D k Mk qc kc Is vm Dq HPD HMk Hh Hq) as HPq.
+      pose proof (HGall _ _ HPq) as HGq.
+      pose proof (valid_group_closed _ _ (valid_groups_valid VP HVP qc Dq HPq)) as HcQ.
+      unfold im_pre; rewrite Hh.
+      split.
+      + unfold im_params; apply glu_args_app;
+          [ exact (decl_closed_ass _ HcQ) | rewrite List.length_map; exact HIsl | rewrite (eval_exps_length _ _ _ Epy); exact HIsl |].
+        split; [ exact (view_uparams_glu VP p D HVP HPD HG Hselfs k Mk qc kc Is vm Dq HMk Hh Hq HGq Δ' Us' ups pre HΔ' HUs Epy)
+               | exact (view_nparams_glu VP p D HVP HPD HG Hselfs k Mk qc kc Is vm Dq HMk Hh Hq HGq Δ' Us' Ns0 ups ns0 pre kc Mkc k Mk
+                          HΔ' Hu HUs HMkc Hvk HMk HgN Epy) ].
+      + exact (nparams_rel_to_container VP p D HVP HPD ups Hu Hgu k Mk qc kc Is vm Dq pre kc Mkc k Mk HMk Hh Hq Epy HMkc Hvk HMk
+                 ns0 ns0 Hns).
+  Qed.
+
+  (** A neutral glued in the group, its annotation's non-uniform
+      parameters [X] glued from some [NsX], is glued at any gluing of its
+      type: at the referenced member's clause, by its readback, its
+      annotation's parameters glued there at any parameters [Ps'] of the
+      type ([nparams_at_ref]): the type's own parameters are the group's
+      ([glu_params_top_eq]), so the uniform ones are equal to [Ps']'s, and
+      [NsX] moves to them ([glu_args_resp_eq], [nparams_of_glu_args]). *)
   Lemma elem_at_neut : forall k Mk hd k' m Δ' Us' Ns' M' as', ind_member D k = Some Mk -> im_is_rview Mk = false ->
       im_ref p k Mk = (hd, k') -> Dom m ≈ m ∈ per_bot ->
       (forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
          glu_ne_eq Δ M'[φ]ʷ M0 (im_ty_at p k Mk Us' Ns')[φ]ʷ) ->
+      tele_rel (nr k) (List.rev (im_nparams Mk)) (List.skipn (im_unu D Mk) as') (List.skipn (im_unu D Mk) as') ->
+      (exists NsX, glu_nparams k Mk NEl Δ' Us' NsX (List.skipn (im_unu D Mk) as')) ->
       elem_glu_at_type k Δ' Us' Ns' M' (⇑ (d_ind hd k' as') m).
   Proof.
-    intros * HMk Hrv Href Hm Hrb Mk0 ns hd0 k0 pre i P El HMk0 Hr _ HM' _ Hns HGm Hglu HT.
+    intros * HMk Hrv Href Hm Hrb HnrX [NsX HnpX] Mk0 ns hd0 k0 pre i P El HMk0 Hr HUs HM' Hgn Hns HGm Hglu HT.
     rewrite HMk in HMk0; injection HMk0 as <-.
     destruct (ViewReadback.mref_ref_len p D k Mk ups hd0 k0 pre Hl HMk Hu Hr) as [Href0 Lpre].
     rewrite Href in Href0; injection Href0 as <- <-.
     pose proof Hns as H0; rewrite tele_rel_iff in H0; destruct H0 as (Ln & _ & _).
     rewrite List.length_rev, length_im_nparams in Ln.
+    assert (HΔ' : ⊢ Δ') by (gen_presups; assumption).
+    set (X := List.skipn (im_unu D Mk) as') in *.
     (** The neutral, at its own annotation, is in the type's relation *)
     destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
     assert (HmR : R (⇑ (d_ind hd k' as') m) (⇑ (d_ind hd k' as') m))
@@ -276,15 +344,72 @@ Section AtType.
       H11 : _ <∙> ind_glu_typ_pred _ _ _ _ _ _ _ _ _ _ _ _ _, H12 : _ <∙> ind_glu_exp_pred _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
         rename H into HlD0, H1 into HM0, H2 into Hh0, H4 into HR0, H11 into HP0, H12 into HEl0
     end.
+    match type of HM0 with ind_member ?d _ = Some ?mm => rename d into D0, mm into M0 end.
+    (** The clause's uniform values are [pre] *)
+    pose proof (im_unu_at_ref k Mk hd k' pre _ HMk Hr HlD0) as Hunu.
+    match goal with Hx : ?u0 ++ ?n0 = pre ++ ns, Hlu : List.length ?u0 = ind_nu _ |- _ =>
+      destruct (app_split_eq _ _ _ _ Hx ltac:(congruence)) as [-> ->]
+    end.
+    match type of HP0 with _ <∙> ind_glu_typ_pred _ _ _ _ ?a1 ?a2 ?a3 ?a4 ?a5 ?a6 _ _ _ =>
+      rename a1 into NP0, a2 into NEl0, a3 into AP0, a4 into AEl0, a5 into DP0, a6 into DEl0
+    end.
+    eassert (Hf0 : ind_fams_glu _ pre _ NP0 NEl0 AP0 AEl0 DP0 DEl0) by (constructor; eassumption).
+    assert (Lpre0 : List.length pre = ind_nu D0) by (rewrite Lpre; exact Hunu).
+    match goal with Hs0 : group_structure _ |- _ => rename Hs0 into Hass0 end.
+    destruct (decl_of_lookup _ _ _ _ _ HΔ' HlD0) as [Hdt0 Hc0].
+    pose proof (decl_closed_params_ass _ _ _ Hc0 HM0) as HassP0.
+    pose proof (decl_closed_params _ _ _ Hc0 HM0) as HsP0.
+    (** The group's parameters and the annotation's, at the clause *)
+    destruct (nparams_at_ref k Mk hd k' pre _ _ Δ' Us' Ns' ns HMk Hr HlD0 HM0 HΔ' HUs Hgn Hns) as [HgN _].
+    destruct (nparams_at_ref k Mk hd k' pre _ _ Δ' Us' NsX X HMk Hr HlD0 HM0 HΔ' HUs HnpX HnrX) as [HgX HnrX0].
+    assert (EX : List.skipn (im_unu _ M0) as' = X) by (unfold X, im_unu at 1; rewrite Hh0, Hunu; reflexivity).
     apply HEl0; pose proof HT as HT'; apply HP0 in HT'; destruct HT' as (Ps & HPs).
     refine (mk_ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM' _ Ps HPs _).
     { apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR HR0); exact HmR. }
     intros Δ φ Ps' Hφ HPs'.
+    assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
     pose proof (ind_typ_at_params_conv _ _ _ _ _ _ _ _ _ _ k' _ _ _ Δ' _ Ps Δ φ Ps' HlD0 HM0 Hh0 HPs Hφ HPs') as HPeq.
+    pose proof HPs as [_ HPk]; destruct (HPk Δ φ Hφ) as [Hpt _ Hcs _].
+    (** The uniform parameters: the group's, at the clause, are the type's
+        ([glu_params_top_eq]), so equal to [Ps']'s *)
+    pose proof (glu_args_wk _ _ _ _ _ _ _ HassP0 HsP0 Hφ HgN) as HgNφ.
+    pose proof (glu_args_wk _ _ _ _ _ _ _ HassP0 HsP0 Hφ HgX) as HgXφ.
+    destruct (glu_args_length _ _ _ _ _ _ HgN) as [LN _].
+    destruct (glu_args_length _ _ _ _ _ _ HgX) as [LX _].
+    rewrite length_im_params in LN, LX.
+    pose proof (glu_params_top_len _ _ _ _ _ Hpt) as LPs.
+    destruct HPs' as [LPP HPP].
+    assert (LUC : List.length (im_pre Mk Us') = ind_nu D0).
+    { rewrite <- Hunu; destruct (glu_args_length _ _ _ _ _ _ HUs) as [HUl _].
+      unfold im_pre, im_unu; destruct (im_head Mk) eqn:Hh;
+        [ exact HUl | rewrite List.length_map; reflexivity | unfold im_is_rview in Hrv; rewrite Hh in Hrv; discriminate ]. }
+    pose proof (glu_params_top_eq _ _ _ _ Δ _ _ _ HlD0 HM0 HΔ (ind_rps_of_per _ _ _ _ _ _ _ _ HR0 HlD0 HM0 (length Δ))
+                  (glu_args_params_top _ _ _ _ _ HassP0 HsP0 HgNφ) Hpt) as [_ E1].
+    assert (E2 : exps_eq_at Δ (ind_uparams D0) (List.map (fun P => P[φ]ʷ) (im_pre Mk Us')) (List.firstn (ind_nu D0) Ps')).
+    { assert (E1' : exps_eq_at Δ (im_params D0 M0) (List.map (fun P => P[φ]ʷ) (im_pre Mk Us' ++ Ns')) Ps').
+      { split; [ rewrite List.length_map; congruence |].
+        apply (params_eq_trans Δ hd D0 k' M0 (List.map (fun P => P[φ]ʷ) (im_pre Mk Us' ++ Ns')) (List.map (fun P => P[φ]ʷ) Ps) Ps'
+                 HlD0 HM0 HΔ); [ rewrite List.length_map; exact LN | exact LPs | congruence | exact E1 | exact HPP ]. }
+      pose proof (exps_eq_at_uparams_of_params _ _ _ _ _ Hc0 ltac:(rewrite List.length_map; exact LN) E1') as E3.
+      rewrite List.map_app, firstn_app_exact in E3 by (rewrite List.length_map; exact LUC); exact E3. }
+    (** The annotation's parameters, at [Ps']'s uniform ones *)
+    assert (E4 : exps_eq_at Δ (im_params D0 M0) (List.map (fun P => P[φ]ʷ) (im_pre Mk Us' ++ NsX))
+                   (List.firstn (ind_nu D0) Ps' ++ List.map (fun P => P[φ]ʷ) NsX)).
+    { pose proof (exps_eq_at_params_of_uparams D0 M0 Δ (List.map (fun P => P[φ]ʷ) (im_pre Mk Us' ++ NsX)) (List.firstn (ind_nu D0) Ps') Hc0
+                    ltac:(rewrite List.length_map; exact LX)
+                    (glu_args_typed _ _ _ _ _ _ HassP0 HgXφ)
+                    ltac:(rewrite List.map_app, firstn_app_exact by (rewrite List.length_map; exact LUC); exact E2)) as H.
+      rewrite List.map_app, skipn_app_exact in H by (rewrite List.length_map; exact LUC); rewrite List.map_app; exact H. }
+    pose proof (glu_args_resp_eq Δ _ nil _ _ _ HassP0 (member_params_wf _ _ _ _ _ Hdt0 HM0) HΔ E4 HgXφ) as HgX'.
+    unfold im_params in HgX'; apply glu_args_app in HgX' as [_ HgXn];
+      [| exact (decl_closed_ass _ Hc0) | rewrite List.length_firstn; change (List.length (ind_uparams D0)) with (ind_nu D0);
+                                          unfold im_np in LPs; lia | exact Lpre0 ].
+    pose proof (nparams_of_glu_args hd D0 Hass0 pre _ NP0 NEl0 AP0 AEl0 DP0 DEl0 Lpre0 Hf0 k' M0 Δ (List.firstn (ind_nu D0) Ps')
+                  (List.map (fun P => P[φ]ʷ) NsX) X HM0 (Hcs Ps' (conj LPP HPP)) HgXn HnrX0) as HnpX'.
     destruct HPs as [HAPs _].
     eapply ind_glu_elem_neut; [ exact HM0 | unfold im_is_rview; rewrite Hh0; reflexivity | unfold im_ref; rewrite Hh0; reflexivity
-                              | exact Hm |].
-    intros Θ ψ M0 Hψ Hrr.
+                              | exact Hm | | rewrite EX; exact HnrX0 | rewrite EX; eexists; exact HnpX' ].
+    intros Θ ψ Mr Hψ Hrr.
     pose proof (kripke_compose _ _ _ _ _ Hψ Hφ) as Hcm.
     rewrite exp_wk_wk, (im_ty_at_decl _ _ _ _ _ _ Hh0), List.firstn_skipn.
     eapply glu_ne_eq_conv with (κ := ak_relevant); [| exact (Hrb _ _ _ Hcm Hrr) ]; cbn [abs_kind_sort].
@@ -1600,8 +1725,8 @@ Section AtType.
       exact (elem_at_con k Mk c gs Us Ns (List.skipn (im_unu D Mk) bs) vs As Γ HMk Hcon HNl
                ltac:(rewrite List.length_skipn; lia) Hvl HAl Hb Hv Hnp HAs Harg Hrec IH HΓ HUs Hia
                bs hd k' M Hbl eq_refl Href HMeq Mk0 ns hd0 k0 pre i P El HMk0 Hr HUs HM' Hgn Hns HGm Hglu HT).
-    - intros k Mk hd k' m Γ M Us Ns as' HMk Hrv Href Hm Hrb.
-      split; [ exact (elem_at_neut k Mk hd k' m Γ Us Ns M as' HMk Hrv Href Hm Hrb) |].
+    - intros k Mk hd k' m Γ M Us Ns as' HMk Hrv Href Hm Hrb Hnr Hnp.
+      split; [ exact (elem_at_neut k Mk hd k' m Γ Us Ns M as' HMk Hrv Href Hm Hrb Hnr Hnp) |].
       intros Mk0 qr0 Is0 fl0 *; intros HMk0 Hh0; rewrite HMk in HMk0; injection HMk0 as <-.
       exfalso; exact (not_rview_record _ _ _ _ Hrv Hh0).
     - intros * HMk Hh Hcs HUl HNl HAl Hps HMeq Hv HAs Harg Hrec IH.
