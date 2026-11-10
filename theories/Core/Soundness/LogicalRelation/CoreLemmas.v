@@ -351,37 +351,6 @@ Lemma glu_ne_eq_conv : forall Γ M W A A' κ i,
     Γ ⊢ A ≈ A' : abs_kind_sort κ Typeω@i -> glu_ne_eq Γ M W A -> glu_ne_eq Γ M W A'.
 Proof. unfold glu_ne_eq; intros * E H; eapply wf_exp_eq_conv_kind; eassumption. Qed.
 
-(** The readback of the parameters of related inductive types agrees, up
-    to proofs: parameters glued at one representative are glued at a
-    related one where some parameters are (a witness at the target, whose
-    readback it types). *)
-Lemma glu_params_top_resp_per_top_ps : forall Dh Mh as1 as2 Γ Ps Ps',
-    per_top_ps (List.rev (im_params Dh Mh)) as1 as2 -> glu_params_top Dh Mh Γ Ps as1 ->
-    glu_params_top Dh Mh Γ Ps' as2 -> glu_params_top Dh Mh Γ Ps as2.
-Proof.
-  intros * Ht [L Ht' Hr] [_ _ Hr']; constructor; [ exact L | exact Ht' |].
-  intros Δ φ Ms Hφ HR.
-  destruct (Ht (length Δ)) as [C1 C2 HC1 HC2 E].
-  pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (@functional_read gc_deps gc_stack)))))) as Fps.
-  rewrite (Fps _ _ _ _ _ HR _ HC2); exact (glu_nfs_eq_at_upto _ _ _ _ _ _ E (Hr _ _ _ Hφ HC1) (Hr' _ _ _ Hφ HC2)).
-Qed.
-
-Lemma glu_params_top_resp_per_top : forall hd Dh k Mh as1 as2 Γ Ps Ps', ind_lookup gc_deps gc_stack hd = Some Dh ->
-    ind_member Dh k = Some Mh ->
-    Dom d_ind hd k as1 ≈ d_ind hd k as2 ∈ per_top_typ -> glu_params_top Dh Mh Γ Ps as1 ->
-    glu_params_top Dh Mh Γ Ps' as2 -> glu_params_top Dh Mh Γ Ps as2.
-Proof.
-  intros * Hl HM Ht H1 H2; refine (glu_params_top_resp_per_top_ps _ _ _ _ _ _ _ _ H1 H2).
-  intros s; destruct (Ht s) as [C1 C2 HC1 HC2 E].
-  inversion HC2; subst; inversion HC1; subst.
-  repeat match goal with H : ind_lookup _ _ hd = Some ?D1 |- _ =>
-    assert_fails (unify D1 Dh); rewrite Hl in H; injection H as <- end.
-  repeat match goal with H : ind_member Dh k = Some ?M1 |- _ =>
-    assert_fails (unify M1 Mh); rewrite HM in H; injection H as <- end.
-  unfold nf_eq_upto_proofs in E; cbn in E; eqb_split.
-  econstructor; [ eassumption | eassumption | exact H0 ].
-Qed.
-
 (** The relations of the domains of a shape at two representatives of
     the uniform parameters whose families agree, on the diagonal of a
     shape's context. *)
@@ -943,24 +912,6 @@ Section GluIndProps.
                  (ys ++ c :: nil));
           [ exact HMk | rewrite <- !List.app_assoc; reflexivity | exact (prefix_tele_snoc_dom _ _ _ _ _ HB)
           | exact Hm | exact Hc | exact Hw | exact Hs' | exact Hk' | exact (Hstep _ _ Hc') ].
-  Qed.
-
-  Lemma glu_nparams_resp_per :
-      (forall m Mm j vs vs', ind_member D m = Some Mm -> j < im_nn Mm -> tele_prefix_rel (nr m) j vs vs' ->
-         forall Γ A N n n', NEl m j vs Γ A N n -> nr m j vs n n' -> NEl m j vs' Γ A N n') ->
-      forall k Mk Γ Us Ns ns ns', ind_member D k = Some Mk -> tele_rel (nr k) (List.rev (im_nparams Mk)) ns ns' ->
-        glu_nparams k Mk NEl Γ Us Ns ns -> glu_nparams k Mk NEl Γ Us Ns ns'.
-  Proof.
-    intros HNe * HMk Hns [L1 L2 H].
-    pose proof Hns as Hns'; rewrite tele_rel_iff in Hns'; destruct Hns' as (Hl & Hl' & Hr).
-    rewrite List.length_rev in Hl, Hl'.
-    constructor; [ exact L1 | exact Hl' |].
-    intros j N A n' HN0 HA Hn'.
-    assert (Hj : j < im_nn Mk) by (unfold im_nn; rewrite <- Hl'; apply List.nth_error_Some; congruence).
-    destruct (nth_error_lt_some' ns j ltac:(unfold im_nn in Hj; lia)) as [n Hn].
-    eapply HNe; [ exact HMk | exact Hj | | exact (H _ _ _ _ HN0 HA Hn) | exact (Hr _ _ _ Hn Hn') ].
-    apply tele_prefix_rel_of_full with (T := List.rev (im_nparams Mk));
-      [ exact Hns | rewrite List.length_rev; unfold im_nn in Hj; lia ].
   Qed.
 
 End GluIndProps.
