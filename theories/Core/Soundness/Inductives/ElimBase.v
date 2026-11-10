@@ -572,7 +572,12 @@ Proof.
     rewrite Hb; do 3 f_equal; lia.
 Qed.
 
-Lemma fresh_cargs_nth : forall p ups E gs s vs, Fcargs gs of p ups in gc_deps ⍮ gc_stack ⍮ E ⍮ s ↘ vs ->
+(** The annotation of a fresh variable [⇑! a s]: [a] (any other value is
+    its own). *)
+Definition fresh_annotation (v : domain) : domain :=
+  match v with d_neut a _ => a | _ => v end.
+
+Lemma fresh_cargs_nth :forall p ups E gs s vs, Fcargs gs of p ups in gc_deps ⍮ gc_stack ⍮ E ⍮ s ↘ vs ->
     forall gs1 g gs2, gs = gs1 ++ g :: gs2 ->
     (forall r A, g = ca_arg r A ->
        exists a, ⟦ A ⟧ env_tele E (cargs_nonrec_tele gs1) (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
