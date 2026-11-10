@@ -1094,6 +1094,47 @@ Proof.
     exists gs1, tf, gs2, ws, w, idx1; repeat split; assumption.
 Qed.
 
+(** A value paired with its type at a position. *)
+Lemma pair_values_with_types_nth : forall vs ts j v t, List.nth_error vs j = Some v -> List.nth_error ts j = Some t ->
+    List.nth_error (pair_values_with_types vs ts) j = Some (v, t).
+Proof.
+  induction vs as [| v0 vs IH]; intros [| t0 ts] [| j] v t Hv Ht; cbn in *; try discriminate.
+  - injection Hv as ->; injection Ht as ->; reflexivity.
+  - exact (IH _ _ _ _ Hv Ht).
+Qed.
+
+(** The stored type of the recursive result along the leaf path [idx] of
+    the recursive argument after [gs1], over the components [pre] of [Ts]:
+    at the components extended by the non-recursive arguments before it
+    ([ihs_types]). *)
+Lemma ihs_types_nth : forall D p ups ρm As gs1 t gs2 Ts pre vs v idx, List.length pre = List.length Ts ->
+    List.nth_error vs (List.length gs1) = Some v -> idx < List.length (shape_leaves (rview_leaves D) 0 t) ->
+    List.nth_error (ihs_types D p ups ρm As (components_env D ups Ts pre) (gs1 ++ ca_rec t :: gs2) vs) (cargs_nrec D gs1 + idx)
+    = Some (entry_type_induction_hypothesis ρm As p ups
+              (components_env D ups (Ts ++ cargs_nonrec_tele gs1) (pre ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)))
+              t v idx).
+Proof.
+  intros D p ups ρm As gs1; induction gs1 as [| g1 gs1 IH]; intros * Lp Hv Hidx.
+  - destruct vs as [| w vs]; [ discriminate |]; cbn in Hv; injection Hv as ->.
+    cbn [ihs_types cargs_nrec List.app List.length List.firstn nonrec_arg_vals cargs_nonrec_tele Nat.add].
+    rewrite List.nth_error_app1 by (rewrite List.length_map, List.length_seq; exact Hidx).
+    rewrite List.nth_error_map, List.nth_error_seq.
+    destruct (Nat.ltb_spec idx (List.length (shape_leaves (rview_leaves D) 0 t))); [| lia ].
+    rewrite !List.app_nil_r; reflexivity.
+  - destruct vs as [| w vs]; [ discriminate |]; cbn [List.length List.nth_error] in Hv.
+    destruct g1 as [r A | t1]; cbn [List.app ihs_types cargs_nrec List.length List.firstn nonrec_arg_vals cargs_nonrec_tele].
+    + replace (components_env D ups Ts pre ↦ w ⦂ entry_type_closure A (components_env D ups Ts pre))
+        with (components_env D ups (Ts ++ ce_ass r A :: nil) (pre ++ w :: nil))
+        by (unfold components_env; rewrite env_tele_snoc by exact Lp; reflexivity).
+      rewrite (IH t gs2 (Ts ++ ce_ass r A :: nil) (pre ++ w :: nil) vs v idx ltac:(rewrite !List.length_app; cbn; lia) Hv Hidx).
+      rewrite <- !List.app_assoc; reflexivity.
+    + rewrite List.nth_error_app2 by (rewrite List.length_map, List.length_seq; lia).
+      rewrite List.length_map, List.length_seq.
+      replace (List.length (shape_leaves (rview_leaves D) 0 t1) + cargs_nrec D gs1 + idx - List.length (shape_leaves (rview_leaves D) 0 t1))
+        with (cargs_nrec D gs1 + idx) by lia.
+      exact (IH t gs2 Ts pre vs v idx Lp Hv Hidx).
+Qed.
+
 (** The types of the recursive results at a record view: its fields', at
     [v]'s projections, their components over [decl_env]. *)
 Lemma eval_ihty_rview_inv : forall ρm As p D ups ρ j Mj qr Is fl c gs Ps v tys, ind_lookup gc_deps gc_stack p = Some D ->
