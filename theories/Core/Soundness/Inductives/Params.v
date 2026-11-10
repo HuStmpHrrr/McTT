@@ -142,10 +142,9 @@ Proof.
   pose proof (closed_inst_sorts C Γ Ms Hass HC HΓ HCev Hl HMs HMss) as HTs.
   assert (Lv : List.length vs = List.length C) by (rewrite <- Hl; exact (Completeness.Inductives.Model.eval_exps_length _ _ _ Hv)).
   assert (HSbC' : EG C ++ ⋅ ∈ glu_ctx_env ↘ SbC) by (rewrite List.app_nil_r; exact HSbC).
-  destruct (glu_ctx_env_entries_valid C ⋅ SbC Hass HSbC' 0) as (iv & _ & HAv).
   assert (Hnil : EG ⋅ ∈ glu_ctx_env ↘ nil_glu_sub_pred) by (econstructor; [ reflexivity | eapply ctx_wf_gctx; exact HΔ ]).
-  eapply (glu_args_of_related C ⋅ SbC nil_glu_sub_pred iv Δ Id nil);
-    [ exact Hass | exact HSbC' | exact Hnil | exact HAv | cbn; apply wf_sub_nil'; exact HΔ
+  eapply (glu_args_of_related C ⋅ SbC nil_glu_sub_pred Δ Id nil);
+    [ exact Hass | exact HSbC' | exact Hnil | cbn; apply wf_sub_nil'; exact HΔ
     | rewrite List.length_map; exact Hl | exact Lv |].
   intros k M T v κ A b0 HM HT Hv' HA Hb0.
   apply nth_error_map_inv in HM as (N & HN & ->).

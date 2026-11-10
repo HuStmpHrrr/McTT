@@ -394,14 +394,13 @@ Section ConGlu.
     destruct (glu_rel_ctx_types_ctx _ (glu_ind_decl_params _ HG _ _ HMj)) as [SbP HSbP]; unfold im_params in HSbP.
     pose proof (decl_closed_nparams_ass D Hc _ _ HMj) as HassN.
     destruct (glu_ctx_env_suffix _ _ _ HassN HSbP) as [SbU HSbU].
-    destruct (glu_ctx_env_entries_valid _ _ _ HassN HSbP 0) as (iv & _ & HAv').
     assert (HU0 : Δ ⊢ˢ sb_of_list Id Us ® decl_env D ups ∈ SbU).
     { unfold decl_env.
       eapply (glu_sub_of_list (ind_uparams D) ⋅ SbU nil_glu_sub_pred Δ Id nil Us ups);
         [ exact (group_structure_uparams _ Hass) | rewrite List.app_nil_r; exact HSbU
         | econstructor; [ reflexivity | eapply ctx_wf_gctx; exact HΔ ] | cbn; apply wf_sub_nil'; exact HΔ | exact HUs ]. }
-    eapply (glu_args_of_related (im_nparams Mj) (ind_uparams D) SbP SbU iv);
-      [ exact HassN | exact HSbP | exact HSbU | exact HAv' | exact HU0
+    eapply (glu_args_of_related (im_nparams Mj) (ind_uparams D) SbP SbU);
+      [ exact HassN | exact HSbP | exact HSbU | exact HU0
       | rewrite List.length_map, length_im_nparams; exact HPl | rewrite length_im_nparams; lia |].
     intros m M T v κ A b0 HM HT Hv HA Hb0.
     rewrite List.nth_error_map in HM.

@@ -94,18 +94,16 @@ Proof.
       rewrite List.length_map in HXk; lia.
 Qed.
 
-(** A type [A] at an environment [ρ] and a substitution [σ]: its value
-    there is a type of the universe [u], at whose every gluing [A[σ]] is
+(** A type [A] at an environment [ρ] and a substitution [σ], of value
+    [a] there: a type of the universe [u], at whose every gluing [A[σ]] is
     glued. *)
-Record glu_typ_value_at (u : universe_index) (Δ : ctx) (A : typ) (σ : sub) (ρ : env) : Prop := mk_glu_typ_value_at
-  { (** The value of the type *)
-    glu_typ_value_at_value : domain
-    (** [A] evaluates to it at [ρ] *)
-  ; glu_typ_value_at_eval : ⟦ A ⟧ ρ ↘ glu_typ_value_at_value
+Record glu_typ_value_at (u : universe_index) (Δ : ctx) (A : typ) (σ : sub) (ρ : env) (a : domain) : Prop := mk_glu_typ_value_at
+  { (** [A] evaluates to [a] at [ρ] *)
+    glu_typ_value_at_eval : ⟦ A ⟧ ρ ↘ a
     (** It is a type of the universe *)
-  ; glu_typ_value_at_per : Dom glu_typ_value_at_value ≈ glu_typ_value_at_value ∈ per_univ u
+  ; glu_typ_value_at_per : Dom a ≈ a ∈ per_univ u
     (** [A[σ]] is glued at every gluing of it there *)
-  ; glu_typ_value_at_glu : forall P El, DG glu_typ_value_at_value ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P }.
+  ; glu_typ_value_at_glu : forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P }.
 
 (** ** The Type Former at its Model *)
 
@@ -184,19 +182,20 @@ Section RecordFormer.
         EG Pre ++ record_params R ∈ glu_ctx_env ↘ Sb ->
         Pre ++ record_params R ⊩ A : abs_kind_sort κ (record_sort R)[wk_shiftn (List.length Pre)]ʷ ->
         Δ ⊢ˢ σ ® env_tele nil (List.rev (Pre ++ record_params R)) (vs ++ zs) ∈ Sb ->
-        glu_typ_value_at (Completeness.Inductives.Decl.univ_idx bu) Δ A σ (env_tele nil (List.rev (Pre ++ record_params R)) (vs ++ zs)).
+        exists a, glu_typ_value_at (Completeness.Inductives.Decl.univ_idx bu) Δ A σ
+                    (env_tele nil (List.rev (Pre ++ record_params R)) (vs ++ zs)) a.
     Proof.
       intros * HPre Hzs Hlvs Hbu Hκ HSb HA Hσ.
       (** A proposition: a type of every index. *)
       destruct κ; inversion Hκ; cbn [abs_kind_sort] in HA.
       2:{ destruct (glu_rel_exp_prop_inversion HSb HA _ _ _ Hσ) as (a & Ha & Hpa & HP).
-          apply (mk_glu_typ_value_at _ _ _ _ _ a); [ exact Ha | eexists; exact (per_univ_elem_of_prop _ _ _ Hpa) |].
+          exists a; apply mk_glu_typ_value_at; [ exact Ha | eexists; exact (per_univ_elem_of_prop _ _ _ Hpa) |].
           intros P El Hglu; destruct (glu_univ_elem_prop_inv _ _ _ _ Hpa Hglu) as [HPe _]; apply HPe; exact HP. }
       destruct (wf_is_univ_typ (typed_sort _ _ _ Ht)) as [iS HS].
       destruct Hsu as [[j Heq] | [t Heq]]; rewrite Heq in HA, HS, Hbu; cbn [exp_wk] in HA.
       - destruct (glu_rel_exp_of_univ_inversion (u := ul j) HSb HA _ _ _ Hσ) as (_ & a & Ha & Hpa & HP & _).
         inversion Hbu; subst; cbn [Completeness.Inductives.Decl.univ_idx].
-        exact (mk_glu_typ_value_at _ _ _ _ _ a Ha Hpa HP).
+        exact (ex_intro _ a (mk_glu_typ_value_at _ _ _ _ _ a Ha Hpa HP)).
       - destruct (glu_rel_exp_of_suniv_tm_inversion' HSb HA _ _ _ Hσ) as (l & Hlv & _ & _ & a & Ha & Hpa & HP & _).
         assert (Hidx : Completeness.Inductives.Decl.univ_idx bu = us (domain_level_real l)).
         { assert (HCs : ⊨ Pre ++ record_params R) by (apply completeness_fundamental_ctx; exact HPre).
@@ -211,7 +210,7 @@ Section RecordFormer.
                 exact Hbu).
           pose proof (Completeness.Inductives.Decl.univ_idx_wk _ _ _ _ _ _ _ _ _ HCs HSs HRC HE Eb Ea ltac:(right; eauto)) as Hi.
           rewrite Hi; reflexivity. }
-        rewrite Hidx; exact (mk_glu_typ_value_at _ _ _ _ _ a Ha Hpa HP).
+        rewrite Hidx; exact (ex_intro _ a (mk_glu_typ_value_at _ _ _ _ _ a Ha Hpa HP)).
     Qed.
 
     (** The fields at glued parameters are glued at the families of the
@@ -255,7 +254,7 @@ Section RecordFormer.
           [ rewrite <- (record_fields_env_tele vs (List.firstn j mfs) k) by (rewrite ?List.length_firstn; lia); exact Ec
           | exact Hgc | eapply glu_univ_elem_trm_typ; eassumption | exact HMg ]. }
       destruct (record_sort_typ_glued (record_fctx R k) T Sbk Δ _ vs mfs b _ HCk ltac:(lia) Lv Hb (HFk k) HSbk
-                  ltac:(rewrite HlenF; exact HTk) Hσ) as [a Ha Hpa HP].
+                  ltac:(rewrite HlenF; exact HTk) Hσ) as (a & [Ha Hpa HP]).
       destruct (per_univ_glu_univ_elem _ _ Hpa) as (P0 & El0 & Hg0).
       pose proof (record_fields_env_closed R vs mfs Lv) as Efe; rewrite Hml in Efe; rewrite <- Efe in Ha.
       exact (glu_univ_elem_typ_cumu_ge_universe_index Hub Hg0 (HgF _ _ _ _ _ Hk Hp Ha) (HP _ _ Hg0)).

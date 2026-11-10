@@ -356,23 +356,20 @@ Proof.
   exact (rel_type_inversion_simple_at HR (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HT))).
 Qed.
 
-(** Terms glued to their values, each at some type value related to the
-    value of its type at the telescope's own environment, are glued
-    arguments: the telescope's entries are valid, so each type is glued at
-    its own value at the substitution the arguments before it make, which
-    is the witness the element moves to ([glu_univ_elem_exp_conv]). *)
-Lemma glu_args_of_related : forall C Γ0 Sb Sb0 (i : nat) Δ σ0 ρ0 Ms vs,
+(** Arguments of a glued telescope, each glued at its type's own value,
+    where its type is glued by the telescope at the arguments before
+    (the hypothesis is given the type's gluing at the value). *)
+Lemma glu_args_of_typed : forall C Γ0 Sb Sb0 Δ σ0 ρ0 Ms vs,
     all_assumptions C -> EG C ++ Γ0 ∈ glu_ctx_env ↘ Sb -> EG Γ0 ∈ glu_ctx_env ↘ Sb0 ->
-    (forall Δ1 κ A Δ2, C = Δ1 ++ ce_ass κ A :: Δ2 -> glu_entry_valid_at i (Δ2 ++ Γ0) κ A) ->
     Δ ⊢ˢ σ0 ® ρ0 ∈ Sb0 ->
     List.length Ms = List.length C -> List.length vs = List.length C ->
-    (forall k M T v κ A b, List.nth_error Ms k = Some M -> List.nth_error (tele_insts C σ0 Ms) k = Some T ->
+    (forall k M T v κ A b (j : nat) P El, List.nth_error Ms k = Some M -> List.nth_error (tele_insts C σ0 Ms) k = Some T ->
        List.nth_error vs k = Some v -> List.nth_error (List.rev C) k = Some (ce_ass κ A) ->
-       ⟦ A ⟧ env_tele ρ0 (List.rev C) (List.firstn k vs) ↘ b ->
-       exists (j j' : nat) a P El, DG a ∈ glu_univ_elem j ↘ P ↘ El /\ Dom a ≈ b ∈ per_univ j' /\ Δ ⊢ M : T ® v ∈ El) ->
+       ⟦ A ⟧ env_tele ρ0 (List.rev C) (List.firstn k vs) ↘ b -> DG b ∈ glu_univ_elem j ↘ P ↘ El -> Δ ⊢ T ® P ->
+       Δ ⊢ M : T ® v ∈ El) ->
     glu_args Δ C σ0 ρ0 Ms vs.
 Proof.
-  induction C as [| e C IH] using List.rev_ind; intros * Hass HC H0 HA Hσ L1 L2 Hrel.
+  induction C as [| e C IH] using List.rev_ind; intros * Hass HC H0 Hσ L1 L2 Hrel.
   - destruct Ms; [| discriminate ]; destruct vs; [| discriminate ]; apply glu_args_nil.
   - unfold all_assumptions in Hass; apply List.Forall_app in Hass as [Hass He];
       apply List.Forall_cons_iff in He as [(κ & A & ->) _].
@@ -381,29 +378,41 @@ Proof.
     rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
     destruct (glu_ctx_env_suffix _ _ _ Hass HC) as [Sb1 HC1].
     destruct (glu_ctx_env_cons_clean_inversion H0 HC1) as (i' & HAi' & HT & HSb1).
-    (** The head: at its type's value at [ρ0], glued at [σ0] *)
-    destruct (HA C κ A nil eq_refl) as [_ HAg]; cbn [List.app] in HAg.
-    destruct (HAg _ H0 _ _ _ Hσ) as [b Pb Elb Eb Hgb HPb].
-    assert (Hrel0 := Hrel 0 M A[σ0] v κ A b eq_refl ltac:(rewrite tele_insts_snoc; reflexivity) eq_refl
-                       ltac:(rewrite List.rev_app_distr; reflexivity) ltac:(exact Eb)).
-    destruct Hrel0 as (j & j' & a & P & El & Hga & Hab & HM).
-    pose proof (glu_univ_elem_exp_conv Hab Hga Hgb HM HPb) as HMb.
-    apply glu_args_snoc; split; [ exact (mk_glu_arg _ _ _ _ _ _ i b Pb Elb Eb Hgb HPb HMb) |].
+    (** The head, glued at its type's value at [ρ0], where its type is glued *)
+    destruct (HT _ _ _ Hσ) as [b Pb Elb Eb Hgb HPb].
+    pose proof (Hrel 0 M A[σ0] v κ A b i' Pb Elb eq_refl ltac:(rewrite tele_insts_snoc; reflexivity) eq_refl
+                  ltac:(rewrite List.rev_app_distr; reflexivity) Eb Hgb HPb) as HMb.
+    apply glu_args_snoc; split; [ exact (mk_glu_arg _ _ _ _ _ _ i' b Pb Elb Eb Hgb HPb HMb) |].
     (** The rest, after the head *)
-    destruct (HT _ _ _ Hσ) as [b' P' El' Eb' Hg' HP'].
-    assert (b' = b) as -> by (eapply functional_eval_exp; eassumption).
-    assert (Hbb : Dom b ≈ b ∈ per_univ i) by (destruct (glu_univ_elem_per_univ _ _ _ _ Hgb) as [R HR]; eexists; exact HR).
-    pose proof (glu_univ_elem_exp_conv Hbb Hgb Hg' HMb HP') as HM'.
     assert (Hσ1 : Δ ⊢ˢ σ0,,M ® ρ0 ↦ v ⦂ entry_type_closure A ρ0 ∈ Sb1)
       by (apply HSb1; eapply cons_glu_sub_pred_helper_closure; eassumption).
-    eapply IH; [ exact Hass | exact HC | exact HC1 | | exact Hσ1 | cbn in L1; lia | cbn in L2; lia |].
-    + intros Δ1 κ0 A0 Δ2 Heq.
-      pose proof (HA Δ1 κ0 A0 (Δ2 ++ ⋅ ▹{κ} A) ltac:(rewrite Heq, <- List.app_assoc; reflexivity)) as H'.
-      rewrite <- List.app_assoc in H'; exact H'.
-    + intros k M' T v' κ' A' b0 HM0 HT0 Hv0 HA0 Hb0.
-      apply (Hrel (S k) M' T v' κ' A' b0); [ exact HM0 | rewrite tele_insts_snoc; exact HT0 | exact Hv0
-                                          | rewrite List.rev_app_distr; exact HA0 |].
-      rewrite List.rev_app_distr; exact Hb0.
+    eapply IH; [ exact Hass | exact HC | exact HC1 | exact Hσ1 | cbn in L1; lia | cbn in L2; lia |].
+    intros k M' T v' κ' A' b0 j P El HM0 HT0 Hv0 HA0 Hb0 Hg HTP.
+    apply (Hrel (S k) M' T v' κ' A' b0 j P El); [ exact HM0 | rewrite tele_insts_snoc; exact HT0 | exact Hv0
+                                         | rewrite List.rev_app_distr; exact HA0 | rewrite List.rev_app_distr; exact Hb0
+                                         | exact Hg | exact HTP ].
+Qed.
+
+(** Terms glued to their values, each at some type value related to the
+    value of its type at the telescope's own environment, are glued
+    arguments: each type is glued at its own value at the substitution the
+    arguments before it make ([glu_args_of_typed]), which is the witness
+    the element moves to ([glu_univ_elem_exp_conv]). *)
+Lemma glu_args_of_related : forall C Γ0 Sb Sb0 Δ σ0 ρ0 Ms vs,
+    all_assumptions C -> EG C ++ Γ0 ∈ glu_ctx_env ↘ Sb -> EG Γ0 ∈ glu_ctx_env ↘ Sb0 ->
+    Δ ⊢ˢ σ0 ® ρ0 ∈ Sb0 ->
+    List.length Ms = List.length C -> List.length vs = List.length C ->
+    (forall k M T v κ A b, List.nth_error Ms k = Some M -> List.nth_error (tele_insts C σ0 Ms) k = Some T ->
+       List.nth_error vs k = Some v -> List.nth_error (List.rev C) k = Some (ce_ass κ A) ->
+       ⟦ A ⟧ env_tele ρ0 (List.rev C) (List.firstn k vs) ↘ b ->
+       exists (j j' : nat) a P El, DG a ∈ glu_univ_elem j ↘ P ↘ El /\ Dom a ≈ b ∈ per_univ j' /\ Δ ⊢ M : T ® v ∈ El) ->
+    glu_args Δ C σ0 ρ0 Ms vs.
+Proof.
+  intros * Hass HC H0 Hσ L1 L2 Hrel.
+  eapply glu_args_of_typed; [ exact Hass | exact HC | exact H0 | exact Hσ | exact L1 | exact L2 |].
+  intros k M T v κ A b j P El HM HT Hv HA Eb Hgb HPb.
+  destruct (Hrel k M T v κ A b HM HT Hv HA Eb) as (j0 & j' & a & Pa & Ela & Hga & Hab & HMa).
+  exact (glu_univ_elem_exp_conv Hab Hga Hgb HMa HPb).
 Qed.
 
 (** The main induction of [ctx_pi_glu_elem_by], at an environment [ρa]
