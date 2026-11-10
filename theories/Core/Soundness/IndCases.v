@@ -30,7 +30,8 @@ From Mctt.Core.Soundness Require Import
   LogicalRelation
   SubtypingCases
   VariableCases
-  UniverseCases.
+  UniverseCases
+  Instances.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes.
 From Mctt.Core.Soundness.Inductives Require Import Args Comps Con ViewCon ArgTypes Bridge.
 Require Import Mctt.Core.Soundness.Inductives.Elim.
@@ -60,9 +61,12 @@ Proof.
   pose proof (valid_groups_of_glu_gctx_embedding _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) (glu_gctx_embedding_embedding _ _ _ _ Hμ)) as HVP.
   pose proof (valid_groups_valid _ HVP p D Hl) as Hg.
   destruct (member_lt_decl _ _ _ _ _ (valid_group_typed _ _ Hg) HM Hlt) as [pm Hh].
-  apply glu_rel_exp_nil_weaken; [ exact (HΓg _ _ Hμ) |].
+  econstructor; [ exact (HΓg _ _ Hμ) | intros Γ' τ Hτ ].
+  cbn [exp_sub]; rewrite (ind_ty_sub D k M τ (valid_group_closed _ _ Hg) HM).
+  apply glu_rel_exp_nil_weaken; [ exact (glu_rel_sub_inst_ctx _ _ _ Hτ) |].
   exact (glu_rel_exp_ind0 p D (valid_group_lookup _ _ Hg) (glu_gctx_embedding_ind_field _ _ _ _ Hμ _ _ Hl) (valid_group_closed _ _ Hg) (valid_group_typed _ _ Hg)
-           (valid_group_sort _ _ Hg) (valid_group_ass _ _ Hg) k M pm HM Hh).
+           (valid_group_sort _ _ Hg) (valid_group_ass _ _ Hg)
+           (valid_group_self_ends _ HVP (glu_gctx_embedding_ind_field _ _ _ _ Hμ) p D Hl) k M pm HM Hh).
 Qed.
 
 (** A constructor, of a declared member or of a view: glued at the target
@@ -87,18 +91,23 @@ Proof.
   pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg0.
   pose proof (valid_groups_of_glu_gctx_embedding _ _ _ _ Hg0 Hem) as HVP.
   pose proof (glu_gctx_embedding_ind_field _ _ _ _ Hμ) as HGall.
-  pose proof (fun qn G H => glu_views_ok_all _ qn G HVP H (HGall _ _ H) HGall) as Hviewsall.
+  pose proof (valid_group_self_ends _ HVP HGall) as HSall.
+  pose proof (glu_rview_records_of_glu_gctx_embedding _ _ _ _ Hg0 Hμ) as HRall.
+  pose proof (fun qn G H => glu_views_ok_all _ qn G HVP H (HGall _ _ H) HGall HSall HRall) as Hviewsall.
   assert (Hc0 : Θ ⍮ Ξ ⍮ ⋅ ⊢ a_con p k c : con_ty p D k M gs)
     by (eapply wf_con; [ constructor; exact Hg0 | eassumption .. ]).
   pose proof (Hwe _ _ _ HT) as HT2; pose proof (Hwe _ _ _ Hc0) as Hc2.
-  apply glu_rel_exp_nil_weaken; [ exact (HΓg _ _ Hμ) |].
+  pose proof (glu_rel_ctx_types_ctx _ (HΨg _ _ Hμ)) as HΨ2.
+  econstructor; [ exact (HΓg _ _ Hμ) | intros Γ' τ Hτ ].
+  cbn [exp_sub]; rewrite (con_ty_sub p D k M c gs τ (valid_group_closed _ _ (valid_groups_valid _ HVP p D Hl)) HM Hcon).
+  apply glu_rel_exp_nil_weaken; [ exact (glu_rel_sub_inst_ctx _ _ _ Hτ) |].
   destruct (im_head M) as [pm | qc kc Is vm | qr Is fl] eqn:Hh.
-  - exact (glu_rel_exp_con0 _ p D HVP Hl (HGall _ _ Hl) (Hviewsall _ _ Hl) k M pm c gs HM Hh Hcon (HΨg _ _ Hμ) i HT2 Hc2).
-  - exact (glu_rel_exp_con_view0 _ HVP HGall Hviewsall p D Hl k M qc kc Is vm c gs HM Hh Hcon (HΨg _ _ Hμ)
-             (fun Dq Mc gs' Hq HMc Hc => glu_group_cargs _ HVP HGall qc Dq kc Mc c gs'
-                                         (valid_groups_containers _ HVP _ _ _ _ _ _ _ _ _ Hl HM Hh Hq) HMc Hc)
+  - exact (glu_rel_exp_con0 _ p D HVP Hl (HGall _ _ Hl) (Hviewsall _ _ Hl) HGall HSall k M pm c gs HM Hh Hcon HΨ2 i HT2 Hc2).
+  - exact (glu_rel_exp_con_view0 _ HVP HGall Hviewsall HSall p D Hl k M qc kc Is vm c gs HM Hh Hcon HΨ2
+             (fun Dq Mc gs' Hq HMc Hc => glu_rel_ctx_types_ctx _ (glu_group_cargs _ HVP HGall HSall qc Dq kc Mc c gs'
+                                         (valid_groups_containers _ HVP _ _ _ _ _ _ _ _ _ Hl HM Hh Hq) HMc Hc))
              i HT2 Hc2).
-  - exact (glu_rel_exp_con_rview0 _ HVP HGall Hviewsall p D Hl k M qr Is fl c gs HM Hh Hcon (HΨg _ _ Hμ) i HT2 Hc2).
+  - exact (glu_rel_exp_con_rview0 _ HVP HGall Hviewsall HSall HRall p D Hl k M qr Is fl c gs HM Hh Hcon HΨ2 i HT2 Hc2).
 Qed.
 
 Lemma glu_exp_eq_ind_cong :
