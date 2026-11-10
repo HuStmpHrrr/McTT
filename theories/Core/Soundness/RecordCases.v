@@ -18,7 +18,7 @@ From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases.
 From Mctt.Core.Soundness.Inductives Require Import Args.
-From Mctt.Core.Soundness.Records Require Import Model.
+From Mctt.Core.Soundness.Records Require Import Former Model.
 Import Domain_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -87,7 +87,8 @@ Proof.
   intros * HTt HTg HTeq Hrt Hl Hn HNt HNg Hfs HMt HMg Θ2 Ξ2 Hμ.
   glu_gctx_embedding_wf.
   pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx (Hwe _ _ _ HTt))) as Hg2.
-  eapply (@glu_rel_exp_tuple (gc_mk Θ2 Ξ2) p R Hg2 (record_lookup_of_glu_gctx_embedding _ _ _ _ _ _ Hμ Hl));
+  eapply (@glu_rel_exp_tuple (gc_mk Θ2 Ξ2) p R Hg2 (record_lookup_of_glu_gctx_embedding _ _ _ _ _ _ Hμ Hl)
+            (glu_gctx_embedding_record_field _ _ _ _ Hμ _ _ Hl));
     [ exact (HTg _ _ Hμ) | exact (Hweq _ _ _ _ HTeq) | exact (Hwe _ _ _ Hrt) | exact Hn
     | intros * HN HA; exact (Hwe _ _ _ (HNt _ _ _ HN HA)) | intros * HN HA; exact (HNg _ _ _ HN HA _ _ Hμ)
     | exact Hfs | intros * HM HU; exact (Hwe _ _ _ (HMt _ _ _ _ HM HU)) | intros * HM HU; exact (HMg _ _ _ _ HM HU _ _ Hμ) ].
@@ -103,14 +104,17 @@ Lemma glu_proj :
      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
         Θ ⍮ Ξ ⍮ Γ ⊩ N : A) ->
      List.nth_error (record_fields R) k = Some (f, U) ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ U[sb_of_list Id (Ns ++ record_pre R k M)] : Srt ->
+     type_sort Srt ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_proj f M : U[sb_of_list Id (Ns ++ record_pre R k M)] ).
 Proof.
-  intros * HMt HMg Hl Hn HNt HNg Hfk Θ2 Ξ2 Hμ.
+  intros * HMt HMg Hl Hn HNt HNg Hfk HUg HSrt Θ2 Ξ2 Hμ.
   glu_gctx_embedding_wf.
   pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx (Hwe _ _ _ HMt))) as Hg2.
-  eapply (@glu_rel_exp_proj (gc_mk Θ2 Ξ2) p R Hg2 (record_lookup_of_glu_gctx_embedding _ _ _ _ _ _ Hμ Hl));
+  eapply (@glu_rel_exp_proj (gc_mk Θ2 Ξ2) p R Hg2 (record_lookup_of_glu_gctx_embedding _ _ _ _ _ _ Hμ Hl)
+            (glu_gctx_embedding_record_field _ _ _ _ Hμ _ _ Hl));
     [ exact (HMg _ _ Hμ) | exact Hn | intros * HN HA; exact (Hwe _ _ _ (HNt _ _ _ HN HA))
-    | intros * HN HA; exact (HNg _ _ _ HN HA _ _ Hμ) | exact Hfk ].
+    | intros * HN HA; exact (HNg _ _ _ HN HA _ _ Hμ) | exact Hfk | exact (HUg _ _ Hμ) | exact HSrt ].
 Qed.
 
 (** ** The Equations

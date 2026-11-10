@@ -1943,8 +1943,14 @@ End Fixed_GCtx.
     declarations glue there, and so does a member of one of its stored
     bodies that is an axiom or an abstract definition, at its stored type. *)
 Record glu_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  { glu_gctx_embedding_embedding : gctx_embedding Θ1 Ξ1 Θ2 Ξ2
+  { (** It grows into the target *)
+    glu_gctx_embedding_embedding : gctx_embedding Θ1 Ξ1 Θ2 Ξ2
+    (** Each of its groups is glued at the target *)
   ; glu_gctx_embedding_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_ind_decl (gc_mk Θ2 Ξ2) D
+    (** Each of its records is glued at the target *)
+  ; glu_gctx_embedding_record_field : forall p R, record_lookup Θ1 Ξ1 p = Some R -> @glu_record_decl (gc_mk Θ2 Ξ2) R
+    (** An axiom or an abstract definition of a stored body glues at its
+        stored type *)
   ; glu_gctx_embedding_glob : forall p T Φ x Φ0 b pv r A oM Γ,
       loc Θ1 Ξ1 p T Φ ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def b pv r A oM)) ->
