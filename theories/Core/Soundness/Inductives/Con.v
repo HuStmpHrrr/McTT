@@ -156,65 +156,6 @@ Proof.
   exists i0, Rm, m, m'; split; [ exact Em | split; [ exact Em' | exact HRm ] ].
 Qed.
 
-(** ** The Parameters of a Recursive Argument's Type *)
-
-Section RecParams.
-  Variable (D : ind_decl).
-  Hypothesis (HD : valid_ind_decl D) (Hc : decl_closed D) (Hass : group_structure D).
-  Variables (k : nat) (Mk : imember) (c : String.string) (gs : list carg).
-  Hypotheses (HM : ind_member D k = Some Mk) (Hcon : ind_con Mk c = Some gs).
-
-  (** The substitution of the uniform parameters and the parameters of a
-      recursive argument before a position, over the context the recursive
-      argument's parameters are typed in. *)
-  Lemma rec_sub_valid : forall gs1 t gs2 Mj, gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
-      forall m, m <= im_nn Mj ->
-        ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk ⊨ˢ
-          sb_of_list (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + im_nn Mk))) (List.firstn m (ptyp_ps t))
-          ≈ sb_of_list (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + im_nn Mk))) (List.firstn m (ptyp_ps t))
-          : nparams_prefix Mj m ++ ind_uparams D.
-  Proof.
-    intros gs1 t gs2 Mj Heq HMj.
-    set (K := List.length (cargs_nonrec gs1)).
-    set (L := ptyp_depth t + K + im_nn Mk).
-    set (Ξ0 := ptyp_tele t ++ nonrec_args_prefix gs K ++ im_params D Mk).
-    assert (HK : K <= List.length (cargs_nonrec gs)) by (unfold K; rewrite Heq, cargs_nonrec_app, List.length_app; lia).
-    assert (HΞ0 : ⊨ Ξ0).
-    { pose proof (valid_ind_decl_dctx _ HD _ _ _ _ _ _ _ (List.length (ptyp_doms t)) HM Hcon Heq (le_n _)) as H.
-      rewrite List.firstn_all in H; exact H. }
-    destruct (length_rec_ps D HD k Mk HM c gs gs1 t gs2 Hcon Heq) as (Mj' & HMj' & HPl).
-    rewrite HMj in HMj'; injection HMj' as <-.
-    induction m as [| m IH]; intros Hmn.
-    - cbn [List.firstn sb_of_list]; unfold nparams_prefix; cbn [List.firstn List.rev List.app].
-      apply rel_sub_of_wk.
-      assert (HL : L = List.length (ptyp_tele t ++ nonrec_args_prefix gs K ++ im_nparams Mk))
-        by (unfold L, ptyp_tele, ptyp_depth; rewrite !List.length_app, length_nonrec_args_prefix, length_im_nparams, doms_ctx_length
-              by exact HK; lia).
-      assert (HΞe : Ξ0 = (ptyp_tele t ++ nonrec_args_prefix gs K ++ im_nparams Mk) ++ ind_uparams D)
-        by (unfold Ξ0, im_params; rewrite <- !List.app_assoc; reflexivity).
-      fold L; rewrite HΞe, HL; apply Completeness.UnitCases.rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0.
-    - pose proof (IH ltac:(lia)) as Hτ.
-      destruct (nth_error_lt_some (ptyp_ps t) m ltac:(lia)) as [P HP].
-      assert (HT : exists T, List.nth_error (tele_insts (im_nparams Mj) (sb_of_wk (wk_shiftn L)) (ptyp_ps t)) m = Some T).
-      { apply nth_error_lt_some.
-        rewrite length_tele_insts by exact (decl_closed_nparams_ass D Hc _ _ HMj).
-        rewrite length_im_nparams; lia. }
-      destruct HT as [T HT].
-      destruct (tele_insts_nth _ _ _ _ _ HT) as (κ & A & HA & ->).
-      pose proof (valid_ind_decl_rec_field _ HD _ _ _ _ _ _ _ _ _ _ _ HM Hcon Heq HMj HP HT) as HPv.
-      destruct (valid_ind_decl_nparams _ HD _ _ _ _ _ HMj HA) as (_ & j & HAv).
-      assert (HPs : exp_scoped (List.length Ξ0) P).
-      { pose proof (member_closed_recs _ _ (decl_closed_members _ Hc _ _ HM) _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as Ht.
-        pose proof (proj1 (List.Forall_forall _ _) (ptyp_scoped_ps _ _ Ht) P (List.nth_error_In _ _ HP)) as HsP.
-        replace (List.length Ξ0) with (ptyp_depth t + (List.length (cargs_nonrec_ctx gs1) + im_np D Mk)); [ exact HsP |].
-        unfold Ξ0, ptyp_tele, ptyp_depth; rewrite !List.length_app, doms_ctx_length, length_nonrec_args_prefix, length_im_params by exact HK.
-        rewrite cargs_nonrec_ctx_rev_tele, List.length_rev, length_cargs_nonrec_tele; unfold K; lia. }
-      rewrite (firstn_S_snoc _ _ _ HP), sb_of_list_app, (nparams_prefix_S _ _ _ _ HA); cbn [sb_of_list List.app].
-      eapply Completeness.LogicalRelation.Substitution.rel_sub_under_ctx_extend;
-        [ exact Hτ | exact (rel_type_of_typ HAv) | exact HPv | exact HPs | exact HPs ].
-  Qed.
-End RecParams.
-
 (** ** Recursive Arguments Ending in a View
 
     A recursive argument whose shape ends in a view [j] is of the view's
