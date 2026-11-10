@@ -165,71 +165,10 @@ Lemma glu_exp_eq_mem_delta :
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
 
-(** *** Extensions
+(** *** Module expressions
 
-    An extension, a unit and a module expression glue their context, which
-    their first premise does. *)
-
-Lemma glu_ext_eq_nil :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-Lemma glu_ext_eq_ass :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-Lemma glu_ext_eq_def :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-Lemma glu_ext_eq_mod :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-(** A definition with a module part: as a definition and as a module slot. *)
-Lemma glu_ext_eq_dm :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-(** *** Units *)
-
-Lemma glu_unit_eq_body :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-Lemma glu_unit_eq_expand :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-Lemma glu_unit_eq_alias :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-Lemma glu_unit_eq_flatten :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-Lemma glu_unit_eq_sym :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-Lemma glu_unit_eq_trans :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
-
-(** *** Module expressions *)
+    The extensions and the units are in [Extensions.v] and
+    [UnitEqCases.v]. *)
 
 Lemma glu_me_unit :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->

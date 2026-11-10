@@ -26,7 +26,8 @@ From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases UnitCases
   SubtypingCases UniverseCases FunctionCases LetCases PropCases.
 From Mctt.Core.Soundness.Inductives Require Import Args Con.
-From Mctt.Core.Soundness Require Import IndCases ModuleCases.
+From Mctt.Core.Soundness Require Import IndCases.
+From Mctt.Core.Soundness.Global Require Import MemberValues.
 From Mctt.Core.Completeness.Inductives Require Con.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -35,18 +36,20 @@ Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
     A global is a neutral annotated with its type evaluated at [nil]. Since
     [nil_glu_sub_pred] leaves the environment free, the [⋅]-judgment can be
-    instantiated at [nil]: the values of a closed type at two environments
-    are related (completeness at [⋅]), which [glu_univ_elem_resp_per_univ]
-    consumes.  The member's value is related to the neutral at its type,
-    which moves the neutral's gluing to it: a member of a module lacking a
-    parameter is a member closure, not the neutral. *)
+    instantiated at [nil], where the type glues at the neutral's
+    annotation.  The member's value applies as the neutral does
+    ([app_sim]): it is the neutral at a saturated module, and a member
+    closure at one lacking a parameter ([glob_member_sim]), glued as the
+    neutral is ([app_sim_glu]); its gluing at the type's value in the
+    given environment is then the move along the type values with the
+    type's gluing there as the witness ([glu_univ_elem_exp_conv]). *)
 
 Section Cook.
   Context {GC : GCtx}.
   Import Fixed_Notations.
 
-  (** A neutral: a closed [G] that evaluates anywhere to [⇑ a d], [a] the value
-      of its type at [nil], and reads back to itself. *)
+  (** A neutral: a closed [G] whose value anywhere applies as [⇑ a d] does,
+      [a] the value of its type at [nil], [d] reading back to [G]. *)
   Lemma glu_neut_nil : forall T G κ i d,
       evaluated_kind κ ->
       ⋅ ⊩ T : abs_kind_sort κ Typeω@i ->
@@ -55,7 +58,7 @@ Section Cook.
       (forall Δ, ⊢ Δ -> Δ ⊢ G : T) ->
       (forall a, not_level_sort a -> Dom d ≈ d ∈ neutral_at a) ->
       (forall s (M' : ne), Rne d in s ↘ M' -> (ne_annotate_proofs M' : exp) = G) ->
-      (forall ρ a, ⟦ T ⟧ nil ↘ a -> exists v (j : universe_index) R, ⟦ G ⟧ ρ ↘ v /\ per_univ_elem j R a a /\ R (⇑ a d) v) ->
+      (forall a, ⟦ T ⟧ nil ↘ a -> exists ks v, pi_kinds_depth ks a /\ app_sim ks v (⇑ a d) /\ forall ρ, ⟦ G ⟧ ρ ↘ v) ->
       ⋅ ⊩ G : T.
   Proof.
     intros * Hκ HT HTs HGs HTw HGw HGty Hd Hrb Hev.
@@ -69,33 +72,34 @@ Section Cook.
     destruct (HT2 _ _ _ Hσ) as [m Pa Ela HevT HPa HTPa].
     pose proof (glu_ctx_env_sub_escape H0 _ _ _ Hσ) as Hσt.
     assert (HΔ : ⊢ Δ) by exact (wf_sub_dom _ _ _ _ _ Hσt).
-    (** Its values at any two environments are related ([⋅] relates all) *)
+    (** The type at [nil]: the substitution glues there too *)
+    assert (Hσ0 : Δ ⊢ˢ σ ® nil ∈ Sb0).
+    { inversion H0 as [Sb0' ESb _ | | | | ]; subst; apply ESb; exact Hσt. }
+    destruct (HT2 _ _ _ Hσ0) as [a0 P0 El0 Ha0 HP0 HTP0].
+    (** Its values at the two environments are related ([⋅] relates all) *)
     destruct (rel_type_inversion_simple_at Completeness.Global.Args.per_ctx_env_nil_true HTv ρ nil I)
-      as (m' & a0 & Hm' & Ha0 & Hrel).
+      as (m' & a0' & Hm' & Ha0' & Hrel).
     assert (m' = m) as -> by (eapply functional_eval_exp; eassumption).
-    destruct (glu_univ_elem_per_univ _ _ _ _ HPa) as [Rm HRm].
-    assert (Hrel2 : Dom m ≈ a0 ∈ per_univ i2) by (eapply per_univ_trans'; [ exists Rm; exact HRm | exact Hrel ]).
-    pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ Hrel2 HPa) as HPa0.
-    rewrite HTs in HTPa.
+    assert (a0' = a0) as -> by (eapply functional_eval_exp; eassumption).
+    rewrite HTs in HTPa, HTP0.
     assert (HTΔ : Δ ⊢ T : abs_kind_sort κ Typeω@i)
       by (pose proof (sub_preserves_exp _ _ _ _ _ _ _ HTwf Hσt) as H; rewrite abs_kind_sort_sub, HTs in H; exact H).
     (** Its value is of the kind, and no type of levels *)
     destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ HPa HTPa HTΔ) as [Hk _].
-    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ HPa0 HTPa HTΔ) as [_ Hnl0].
-    (** The term's value, related to the neutral at its type *)
-    destruct (Hev ρ _ Ha0) as (v & j & R & HGv & HR & Hdv).
-    destruct (glu_univ_elem_per_univ _ _ _ _ HPa0) as [R0 HR0].
-    assert (ER : R <~> R0) by (eapply per_univ_elem_right_irrel; eassumption).
-    econstructor; [ exact HevT | rewrite Hk; destruct Hκ; cbn [glu_term_value]; exact HGv | exact HPa |].
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ HP0 HTP0 HTΔ) as [_ Hnl0].
+    (** The term's value, applying as the neutral does *)
+    destruct (Hev _ Ha0) as (ks & v & Hks & Hsim & HGv).
+    econstructor; [ exact HevT | rewrite Hk; destruct Hκ; cbn [glu_term_value]; exact (HGv ρ) | exact HPa |].
     rewrite HGs, HTs.
-    (** The neutral is glued ([realize_glu_elem_bot]), so is the value *)
-    assert (Hn : Ela Δ T G (⇑ a0 d)).
-    { eapply realize_glu_elem_bot; [ exact HPa0 |].
-      econstructor; [ apply HGty; exact HΔ | exact HPa0 | exact HTPa | exact (Hd _ Hnl0) |].
-      intros * Hk' Hr; exists M'; split; [ exact (ne_eq_upto_proofs_of_eq _ _ eq_refl) |].
-      rewrite (Hrb _ _ Hr), HGw, HTw.
+    (** The neutral is glued at [a0] ([realize_glu_elem_bot]), so is the
+        value, which then moves to [m] with [T]'s gluing there *)
+    assert (Hn : El0 Δ T G (⇑ a0 d)).
+    { eapply realize_glu_elem_bot; [ exact HP0 |].
+      econstructor; [ apply HGty; exact HΔ | exact HP0 | exact HTP0 | exact (Hd _ Hnl0) |].
+      intros * Hk' Hr; unfold glu_ne_eq; rewrite (Hrb _ _ Hr), HGw, HTw.
       pose proof (HGty _ (kripke_dom _ _ _ Hk')); mauto 3. }
-    exact (glu_univ_elem_trm_resp_per_elem _ _ _ _ HPa0 _ HR0 _ _ _ _ _ Hn (proj1 (ER _ _) Hdv)).
+    pose proof (app_sim_glu _ _ _ _ _ Hks HP0 _ _ _ _ _ Hn Hsim) as Hv.
+    exact (glu_univ_elem_exp_conv (per_univ_sym' _ _ _ Hrel) HP0 HPa Hv HTPa).
   Qed.
 End Cook.
 
@@ -140,11 +144,11 @@ Section Raw.
     - intros Δ HΔ; exact (Hty _ HAw HΔ).
     - intros a Ha; exact (glob_neutral_at _ _ Ha).
     - intros * Hrb; inversion Hrb; subst; cbn [ne_annotate_proofs ne_to_exp]; apply qname_term_snoc.
-    - (** The member's value, related to the neutral at its type, a [Π]
-          over the module's telescope ([glob_dmod_has_mem] at no argument):
-          the neutral itself at a saturated module, a member closure at
-          one lacking a parameter *)
-      intros ρ a Hev.
+    - (** The member's value applies as the neutral does: it is the
+          neutral at a saturated module, and a member closure at one
+          lacking a parameter ([glob_member_sim]); its type is a [Π] over
+          the module's telescope *)
+      intros a Hev.
       pose proof (valid_gctx_embedding_filed _ _ _ _ (valid_gctx_embedding_refl _ _ Hg)) as Hfm.
       pose proof (gc_loc_of_loc _ _ Hg _ _ _ Hl) as Hgl.
       pose proof (Hfm _ _ _ Hgl) as HfM.
@@ -154,31 +158,27 @@ Section Raw.
       cbn [mdesc_kind] in *.
       destruct (Hreads nil _ T nil ltac:(rewrite List.app_nil_r; reflexivity) eq_refl eq_refl) as [EA _].
       cbn [mdesc_type sb_of_list] in EA; injection EA as EA; rewrite exp_sub_id in EA.
-      assert (HSrt : evaluated_sort (abs_kind_sort r Typeω@lv)) by (destruct Hrk; constructor).
-      destruct (rel_type_of_sort (evaluated_sort_type_sort _ HSrt) Htyped) as [iA HA0t].
-      assert (HA0r : Completeness.ContextCases.rel_type_kind T A0 r)
-        by (intros R2 HR2 ρ1 ρ1' Hρ1; exact (rel_exp_of_abs_kind_sort_at HR2 Htyped _ _ Hρ1)).
-      (** The closed type's value and its relation *)
-      pose proof (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAw)) as HP.
-      destruct (rel_type_inversion_simple_at Completeness.Global.Args.per_ctx_env_nil_true HP nil nil I)
-        as (e & e' & He & He' & [E HE]).
-      assert (e = a) as -> by (eapply functional_eval_exp; eassumption).
-      assert (e' = a) as -> by (eapply functional_eval_exp; eassumption).
-      pose proof (rel_type_value_not_level_sort _ _ _ _ _ nil nil _ HP Completeness.Global.Args.per_ctx_env_nil_true I Hev) as Hne.
-      pose proof (per_bot_then_per_elem HE (glob_neutral_at _ (qname_app p (x :: nil)) Hne)) as Hgg.
-      assert (Hgv : global_member_value Θ Ξ p x (⇑ a (d_glob (qname_app p (x :: nil)))))
-        by (eapply global_member_value_neut; [ exact HeE | exact Hrk | destruct b; [ right; exact Hn | left; reflexivity ] | exact Hev ]).
-      rewrite EA in He.
-      destruct (@Filed.glob_dmod_has_mem (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ _ Hgl
-                  (valid_filed_mod_tele_all_assumptions _ _ _ _ _ HfM) (valid_filed_mod_tele_wf _ _ _ _ _ HfM)
-                  (ex_intro _ iA HA0t) Hrk HA0r Hpk (valid_filed_mod_tele_evaluated _ _ _ _ _ HfM) He HE Hgg Hgv
-                  T nil nil ltac:(rewrite List.app_nil_r; reflexivity) eq_refl ltac:(constructor))
-        as (a' & j & R & Ha' & HR & _ & Hred).
-      destruct (Hred _ ltac:(constructor)) as (v & Hv & Hrv).
-      cbn [List.rev env_tele] in Ha'; rewrite <- EA in Ha'.
-      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
-      exists v, j, R; split; [| split; [ exact HR | exact Hrv ] ].
-      eapply (@eval_mem_of_sel (gc_mk Θ Ξ)); [ apply (gc_loc_path _ _ Hg _ _ ρ Hgl) | exact Hv ].
+      (** At all its parameters, the module's member is the neutral applied *)
+      assert (Hsat : forall args r0, List.length args = List.length T ->
+                 $*| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r0 -> dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r0).
+      { intros args r0 Hla Hr0.
+        eapply eval_sel_global_neut;
+          [ intros T' Φ' HT'; rewrite Hgl in HT'; injection HT' as <- _; lia
+          | exact HeE | exact Hrk | destruct b; [ right; exact Hn | left; reflexivity ] | exact Hev | exact Hr0 ]. }
+      exists (tele_kinds T), (match T with nil => ⇑ a (d_glob (qname_app p (x :: nil)))
+                                     | _ => d_member (dm_global p nil) (x :: nil) end).
+      split; [| split ].
+      + rewrite EA in Hev; rewrite <- (List.app_nil_r (tele_kinds T)).
+        eapply (@eval_ctx_pi_kinds (gc_mk Θ Ξ));
+          [ exact Hrk | exact (glob_tele_kinds _ _ _ _ _ Hg Hl) | exact (valid_filed_mod_tele_all_assumptions _ _ _ _ _ HfM)
+          | intros; exact I | exact Hev ].
+      + eapply (@glob_member_sim (gc_mk Θ Ξ)) with (Tout := nil) (args := nil);
+          [ exact Hgl | exact Hsat | rewrite List.app_nil_r; reflexivity | reflexivity | constructor
+          | intros ->; reflexivity | intros HT; destruct T; [ contradiction | reflexivity ] ].
+      + intros ρ; eapply (@eval_mem_of_sel (gc_mk Θ Ξ)); [ apply (gc_loc_path _ _ Hg _ _ ρ Hgl) |].
+        destruct T as [| e T'] eqn:ET.
+        * apply Hsat; [ reflexivity | constructor ].
+        * eapply eval_sel_global_unsat; [ exact Hgl | cbn; lia ].
   Qed.
 End Raw.
 
