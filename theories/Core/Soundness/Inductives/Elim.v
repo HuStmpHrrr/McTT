@@ -2954,6 +2954,213 @@ Section ElimGlu.
       exact (IH IT OT HAp Δ φ b c fc Hφ Hdc Hb Efc σs' HOT).
   Qed.
 
+  (** The domains of the shape of a recursive argument after [gs1],
+      defined after the non-recursive arguments before it. *)
+  Lemma cargs_doms_ok_at : forall X Y k pre pre' Ts gs vs vs', cargs_doms_ok D ups nr dr X Y k pre pre' Ts gs vs vs' ->
+      forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
+      shape_doms_ok D ups nr dr X Y k (pre ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))
+        (pre' ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs')) (Ts ++ cargs_nonrec_tele gs1) t.
+  Proof.
+    intros X Y k pre pre' Ts gs vs vs' H gs1; revert pre pre' Ts gs vs vs' H; induction gs1 as [| g gs1 IH];
+      intros pre pre' Ts gs vs vs' H t gs2 ->; inversion H; subst; cbn [List.app List.length List.firstn nonrec_arg_vals cargs_nonrec_tele] in *.
+    - rewrite !List.app_nil_r; assumption.
+    - match goal with H0 : cargs_doms_ok _ _ _ _ _ _ _ _ _ _ (gs1 ++ _) _ _ |- _ => pose proof (IH _ _ _ _ _ _ H0 t gs2 eq_refl) as H1 end.
+      rewrite <- !List.app_assoc in H1; exact H1.
+    - match goal with H0 : cargs_doms_ok _ _ _ _ _ _ _ _ _ _ (gs1 ++ _) _ _ |- _ => exact (IH _ _ _ _ _ _ H0 t gs2 eq_refl) end.
+  Qed.
+
+  (** The type of the recursive result along a leaf path of a recursive
+      argument, after [pre], against its type as readback and the branch's
+      environment store it ([eval_ihty]): related at the level of the
+      former, for arguments in an invariant [Q] that passes to fields and
+      applications and gives the types at applications. *)
+  Lemma leaf_ihty_link_by : forall (Q : nat -> list domain -> list centry -> ptyp -> domain -> Prop),
+      (** [Q] passes to a record view's field at its projection *)
+      (forall k pre Ts j Mj qr Is fl c gs1 tf gs2 Ps v ws w, ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+         im_cons Mj = (c, gs1 ++ ca_rec tf :: gs2) :: nil -> Q k pre Ts (pt_self j Ps) v ->
+         ⟦projs fl of v ⟧ gc_deps ⍮ gc_stack ↘ ws -> List.nth_error ws (List.length gs1) = Some w ->
+         Q j (nonrec_arg_vals gs1 (List.firstn (List.length gs1) ws)) (cargs_nonrec_tele gs1) tf w) ->
+      (** and to the rest of a function shape at an application, whose
+          results' types are defined *)
+      (forall k pre Ts B t v c fc, Q k pre Ts (pt_pi B t) v -> List.length pre = List.length Ts -> dr k pre Ts B c c ->
+         rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k ups ups (pre ++ c :: nil) (pre ++ c :: nil)
+           (Ts ++ ce_ass ak_relevant B :: nil) t fc fc ->
+         shape_doms_ok D ups nr dr ups ups k (pre ++ c :: nil) (pre ++ c :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t ->
+         $| v & c | gc_deps ⍮ gc_stack ↘ fc ->
+         Q k (pre ++ c :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t fc /\
+         exists tya, ⟦ihty fc of t at p ups under ρ (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack
+                       ⍮ components_env D ups (Ts ++ ce_ass ak_relevant B :: nil) (pre ++ c :: nil) ↘ tya) ->
+      forall pre Ts t v idx a,
+      Elim.leaf_type_at D ups ρ (blocks_motives Bks) mctx_tele pre Ts t v idx a ->
+      forall k, List.length pre = List.length Ts -> idx < List.length (shape_leaves (rview_leaves D) 0 t) ->
+      rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k ups ups pre pre Ts t v v -> Q k pre Ts t v ->
+      shape_doms_ok D ups nr dr ups ups k pre pre Ts t ->
+      forall (i : nat) R, DF a ≈ a ∈ per_univ_elem i ↘ R ->
+      forall bs, ⟦ihty v of t at p ups under ρ (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bs ->
+      exists b, List.nth_error bs idx = Some b /\ Dom a ≈ b ∈ per_univ i.
+  Proof.
+    intros Q HQproj HQapp.
+    induction 1 as [pre Ts j Mj Ps v bs b a i0 HMj Hrv Ebs Eb Hab
+                   | pre Ts j Mj qr Is fl c gs gs1 tf gs2 Ps v ws w idx a HMj Hh Hcs Ew Heq Hw Hidx0 Hlt IH
+                   | pre Ts B t v idx b0 b ρF F i1 Eb0 Hbb0 Hcl IH];
+      intros k Lp Hidx Hsh Hn Hd i R HR bs0 Ety.
+    - (** At the end: the motive at the shape's parameters, at the
+          entries readback stores them at ([motive_rel]). *)
+      inversion Ety; subst;
+        match goal with H : ind_lookup _ _ p = Some ?D1 |- _ => rewrite Hl in H; injection H as <- end.
+      + match goal with H : ⟦ Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?bs1 |- _ => pose proof (functional_eval_exps' _ _ _ _ H Ebs) as -> end.
+        match goal with H : ⟦ List.nth j (blocks_motives Bks) a_prop ⟧ env_extend_typed ρ _ ↘ _ |- _ => rename H into Ea2 end.
+        match goal with H : ind_member D j = Some ?M0 |- _ =>
+          tryif constr_eq M0 Mj then fail else (rewrite HMj in H; injection H as <-) end.
+        destruct (HBks _ _ HMj Hrv) as [bj Hbj].
+        rewrite (blocks_motives_nth _ _ _ Hbj) in Eb, Ea2.
+        destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (b1 & b2 & Eb1 & Eb2 & _ & _ & HGv).
+        pose proof (functional_eval_exps' _ _ _ _ Eb1 Ebs) as ->.
+        pose proof (functional_eval_exps' _ _ _ _ Eb2 Ebs) as ->.
+        pose proof (ind_rel_ns p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ j Mj _ _ _ _ _ _ HMj HGv) as Hbb.
+        destruct (Completeness.Inductives.ViewReadback.mref_exists VP HVP p D HPD ups ups_tele_args ups_len j Mj HMj Hrv)
+          as [[[hd k'] pa] Er].
+        destruct (Completeness.Inductives.ViewReadback.mref_ref_len p D j Mj ups hd k' pa Hl HMj ups_len Er) as [Href _].
+        (** Both environments' entries read back. *)
+        destruct (EB Completeness.Inductives.Elim.mctx_readable HMall j Mj HMj ρ ρ Hρ Hρ _ _ _ _ _ _ HGv) as [Hr1 _].
+        apply (Completeness.Inductives.Elim.Forall2_of_Forall_pairs (fun v t => entry_readable (de_term v t))) in Hr1.
+        rewrite tele_entries_values in Hr1.
+        pose proof (ER motive_self_entries_readable ups (components_env D ups Ts pre) j Mj Ps bs bs hd k' v Had
+                      (elim_ups_ok_mref_a _ _ _ _ _ _ _ _ Hups)
+                      (fun pa0 Er0 => elim_ups_ok_member_elements_readable_at_ua _ _ _ _ _ _ _ _ Hups j Mj hd k' pa0 ups ups bs bs bs v v
+                                        HMj Hrv Had Had Er0 HGv Hbb)
+                      HMj Hrv Href Ebs Hbb) as Hr2.
+        destruct (motive_rel j Mj bj bj ups ups bs bs v v _ _ HMj Hrv Hbj Hbj HGv Hr1 Hr2) as (a1 & a2 & Ea1 & Ea2' & Ha12 & _).
+        rewrite <- (tele_entries_values (bs ++ v :: nil) ρ (List.rev (elim_mctx p D j Mj Us))) in Ea1 at 1.
+        rewrite combine_map_fst_snd in Ea1.
+        assert (Hv2 : List.map fst (tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) bs
+                                    ++ (v, entry_type_shape p ups (components_env D ups Ts pre) (pt_self j Ps)) :: nil) = bs ++ v :: nil)
+          by (rewrite List.map_app, tele_entries_values; reflexivity).
+        rewrite <- Hv2 in Ea2' at 1; rewrite combine_map_fst_snd in Ea2'.
+        lazymatch type of Ea2 with ⟦ _ ⟧ _ ↘ ?a3 => exists a3 end.
+        split; [ reflexivity |].
+        unfold env_tele in Eb; rewrite (mctx_tele_at _ _ HMj) in Eb.
+        assert (a1 = b) as -> by (eapply functional_eval_exp; eassumption).
+        match goal with |- Dom _ ≈ ?a3 ∈ _ => assert (a2 = a3) as -> by (eapply functional_eval_exp; eassumption) end.
+        eapply per_univ_trans'; [ exists R; exact HR |].
+        eapply per_univ_trans'; [ exact Hab | exists (Rel j bs v bs v); exact Ha12 ].
+      + match goal with H1 : ind_member D _ = Some ?M1, H2 : im_head ?M1 = mh_record _ _ _ |- _ =>
+          rewrite HMj in H1; injection H1 as <-; exfalso; exact (not_rview_record _ _ _ _ Hrv H2) end.
+    - (** At a record view: the field's, at its projection. *)
+      inversion Ety; subst;
+        match goal with H : ind_lookup _ _ p = Some ?D1 |- _ => rewrite Hl in H; injection H as <- end;
+        match goal with H1 : ind_member D j = Some ?M1 |- _ => rewrite HMj in H1; injection H1 as <- end.
+      { exfalso; match goal with H3 : im_is_rview Mj = false |- _ => exact (not_rview_record _ _ _ _ H3 Hh) end. }
+      match goal with H1 : im_head Mj = _ |- _ => rewrite Hh in H1; injection H1 as <- <- <- end.
+      match goal with H1 : im_cons Mj = _ |- _ => rewrite Hcs in H1; injection H1 as <- <- end.
+      match goal with H1 : ⟦projs fl of v ⟧ _ ⍮ _ ↘ ?ws1 |- _ => pose proof (functional_eval_projs _ _ _ _ H1 Ew) as -> end.
+      match goal with H1 : ⟦ihtys ws of _ at _ _ under _ _ ⟧ _ ⍮ _ ⍮ _ ↘ bs0 |- _ =>
+        destruct (eval_ihtys_nth p D ups ρ (blocks_motives Bks) Hl Hco gs1 tf gs2 _ ws bs0 w H1 Hw) as (rf & Erf & Hrs) end.
+      destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bsx & bsx' & _ & _ & _ & _ & Hi).
+      inversion Hi; subst;
+        match goal with H1 : ind_member D j = Some ?M1 |- _ => rewrite HMj in H1; injection H1 as <- end;
+        try (exfalso; match goal with H3 : im_is_rview Mj = false |- _ => exact (not_rview_record _ _ _ _ H3 Hh) end).
+      match goal with H1 : im_head Mj = _ |- _ => rewrite Hh in H1; injection H1 as <- <- <- end.
+      match goal with H1 : im_cons Mj = _ |- _ => rewrite Hcs in H1; injection H1 as <- <- end.
+      repeat match goal with H1 : ⟦projs fl of v ⟧ _ ⍮ _ ↘ ?ws1 |- _ =>
+        tryif constr_eq ws1 ws then fail else pose proof (functional_eval_projs _ _ _ _ H1 Ew) as -> end.
+      match goal with H6 : con_args_rel _ _ _ _ _ _ j ups ups nil nil _ _ ws ws,
+                      H5 : tele_rel (ar j nil c) _ _ _ |- _ => rename H6 into Hca, H5 into Hnr end.
+      destruct (Completeness.Inductives.CargsRel.con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca gs1 tf gs2 eq_refl)
+        as (x & x' & Hx & Hx' & Hshf).
+      rewrite Hw in Hx, Hx'; injection Hx as <-; injection Hx' as <-.
+      pose proof (HQproj k pre Ts j Mj qr Is fl c gs1 tf gs2 Ps v ws w HMj Hh Hcs Hn Ew Hw) as Hnw.
+      destruct (ER con_args_rel_length _ _ _ _ _ _ _ _ _ _ Hca) as [Lws _].
+      pose proof (rview_struct_nparams _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HMj Hh) as Enp.
+      destruct Hnr as [_ Hnr'].
+      pose proof (rview_cargs_doms p D ups nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had ups ups Had Had j Mj qr Is fl c _ HMj Hh Hcs
+                    _ nil nil nil ws ws eq_refl Lws Lws (tele_prefix_rel_nil _) Hnr') as Hdf.
+      rewrite Enp in Hdf; cbn [List.rev List.app cargs_nonrec_tele] in Hdf.
+      try (rewrite Enp in Hshf); cbn [List.rev List.app cargs_nonrec_tele] in Hshf.
+      pose proof (cargs_doms_ok_at _ _ _ _ _ _ _ _ _ Hdf gs1 tf gs2 eq_refl) as Hdf1.
+      cbn [List.app] in Hshf, Hdf1.
+      assert (Lp1 : List.length (nonrec_arg_vals gs1 (List.firstn (List.length gs1) ws)) = List.length (cargs_nonrec_tele gs1))
+        by (rewrite length_cargs_nonrec_tele; apply length_nonrec_arg_vals; rewrite List.length_firstn, Lws, List.length_app; lia).
+      destruct (IH j Lp1 Hidx0 Hshf Hnw Hdf1 i R HR rf Erf) as (b & Hb & Hab).
+      exists b; split; [| exact Hab ].
+      rewrite Hrs by (apply List.nth_error_Some; congruence); exact Hb.
+    - (** At a domain: a [Π], its codomains at related arguments by the
+          induction at the function's values there. *)
+      inversion Ety; subst;
+        match goal with H : ind_lookup _ _ p = Some ?D1 |- _ => rewrite Hl in H; injection H as <- end.
+      match goal with H : ⟦ B ⟧ _ ↘ ?b1 |- _ => tryif constr_eq b1 b0 then fail else
+        (assert (b1 = b0) as -> by (eapply functional_eval_exp; eassumption)) end.
+      assert (Hidx' : idx < List.length (shape_leaves (rview_leaves D) 0 t))
+        by (cbn [shape_leaves] in Hidx; rewrite List.length_map, (length_shape_leaves _ _ 1 0) in Hidx; exact Hidx).
+      eexists; split.
+      { rewrite List.nth_error_map, List.nth_error_seq; destruct (Nat.ltb_spec idx (List.length (shape_leaves (rview_leaves D) 0 t)));
+          [ reflexivity | lia ]. }
+      basic_invert_per_univ_elem HR.
+      match goal with H : forall (c c' : domain) (_ : ?ir c c'), rel_mod_eval _ _ _ _ _ _ |- _ => rename H into Hcod end.
+      cbn [Nat.add].
+      destruct Hbb0 as [Rb HRb].
+      destruct (Instance.per_univ_elem_trans_any _ _ _ _ _ _ _ equiv_a_a' HRb) as (Rd & HRd & ERd).
+      eexists; apply (per_univ_elem_pi_canonical HRd).
+      intros c c' Hcc.
+      assert (Hin : in_rel c c') by (apply ERd; exact Hcc).
+      assert (Hin0 : in_rel c' c') by (etransitivity; [ symmetry; exact Hin | exact Hin ]).
+      destruct (Hcod _ _ Hin) as [xc x2 Exc Ex2 Hxx].
+      destruct (Hcod _ _ Hin0) as [x' x'' Ex' Ex'' Hx'x'].
+      assert (x2 = x') as -> by (eapply functional_eval_exp; eassumption).
+      assert (x'' = x') as -> by (eapply functional_eval_exp; eassumption).
+      (** The argument, at the domain's canonical relation. *)
+      destruct (per_univ_trans' _ _ _ _ _ (per_univ_sym' _ _ _ (ex_intro _ Rd HRd)) (ex_intro _ Rd HRd)) as [R2 HR2].
+      assert (Hc2 : R2 c' c') by (apply (per_univ_elem_left_irrel _ _ _ _ _ _ _ HRd HR2); apply ERd; exact Hin0).
+      pose proof (rel_dr D ups k pre Ts B b0 i R2 c' Eb0 HR2 Hc2) as Hdc'.
+      (** The function's value there, and the types of its results
+          ([HQapp]). *)
+      destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c' c' Hdc') as (fc & fc0 & Efc & Efc0 & Hshc).
+      assert (fc0 = fc) as -> by (eapply functional_eval_app; eassumption).
+      inversion Hd as [| ? ? ? ? ? bd bd' Ebd Ebd' _ Hdcl _ _ _ _]; subst.
+      pose proof (Hdcl c' c' Hdc') as Hdc''.
+      assert (Lp' : List.length (pre ++ c' :: nil) = List.length (Ts ++ ce_ass ak_relevant B :: nil))
+        by (rewrite !List.length_app, Lp; reflexivity).
+      destruct (HQapp k pre Ts B t v c' fc Hn Lp Hdc' Hshc Hdc'' Efc) as [Hnfc (tya & Ta)].
+      destruct (IH c' Hdc' x' fc Ex' Efc k Lp' Hidx' Hshc Hnfc Hdc'' i _ Hx'x' tya Ta) as (y & Hy & Hx'y).
+      destruct (per_univ_trans' _ _ _ _ _ (ex_intro _ (out_rel c c' Hin) Hxx) Hx'y) as [R0 HR0].
+      exists xc, y, R0; split; [ exact Exc | split; [| exact HR0 ] ].
+      unfold components_env in Ta; rewrite env_tele_snoc in Ta by exact Lp.
+      eapply eval_fam_cod_ihfam; [ exact Efc | exact Ta | exact Hy ].
+      (** The kinds and the sorts of the [Π]. *)
+      all: first [ intros ? ? Hc0; match goal with Hk : forall c c', ?ir c c' -> rel_typ_kind _ _ _ |- _ =>
+                                     eapply Hk; apply (proj2 (ERd _ _)); exact Hc0 end
+                 | intros ? ? Hc0; match goal with Hk : forall c c', ?ir c c' -> value_not_level_sort _ _ |- _ =>
+                                     eapply Hk; apply (proj2 (ERd _ _)); exact Hc0 end
+                 | assumption
+                 | constructor
+                 | rewrite <- (per_univ_elem_kind _ _ _ _ HRd); assumption ].
+  Qed.
+
+  (** [leaf_ihty_link_by] at a neutral argument: neutrals stay neutral
+      through projections and applications, whose results' types are
+      defined ([ih_leaves_all]). *)
+  Lemma leaf_ihty_link : forall pre Ts t v idx a,
+      Elim.leaf_type_at D ups ρ (blocks_motives Bks) mctx_tele pre Ts t v idx a ->
+      forall k, List.length pre = List.length Ts -> idx < List.length (shape_leaves (rview_leaves D) 0 t) ->
+      rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k ups ups pre pre Ts t v v -> is_neut v ->
+      shape_doms_ok D ups nr dr ups ups k pre pre Ts t ->
+      forall (i : nat) R, DF a ≈ a ∈ per_univ_elem i ↘ R ->
+      forall bs, ⟦ihty v of t at p ups under ρ (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bs ->
+      exists b, List.nth_error bs idx = Some b /\ Dom a ≈ b ∈ per_univ i.
+  Proof.
+    intros *; apply (leaf_ihty_link_by (fun _ _ _ _ v0 => is_neut v0)).
+    - intros k0 pre0 Ts0 j0 Mj0 qr0 Is0 fl0 c0 gs1 tf gs2 Ps0 v0 ws0 w0 _ _ _ Hn0 Ew0 Hw0.
+      exact (proj1 (List.Forall_forall _ _) (is_neut_projs _ _ _ Ew0 Hn0) w0 (List.nth_error_In _ _ Hw0)).
+    - intros k0 pre0 Ts0 B0 t0 v0 c0 fc0 Hn0 Lp0 _ Hshc Hdc Efc0.
+      pose proof (is_neut_app _ _ _ Efc0 Hn0) as Hnfc.
+      assert (Lp' : List.length (pre0 ++ c0 :: nil) = List.length (Ts0 ++ ce_ass ak_relevant B0 :: nil))
+        by (rewrite !List.length_app, Lp0; reflexivity).
+      destruct (proj1 (proj2 (proj2 (ER ih_leaves_all))) k0 ups ups (pre0 ++ c0 :: nil) (pre0 ++ c0 :: nil)
+                  (Ts0 ++ ce_ass ak_relevant B0 :: nil) t0 fc0 fc0 Hshc eq_refl eq_refl Lp' Lp' Hnfc Hnfc Hdc _ (leaf_flags_ok_fresh_all _ _))
+        as [tya tyb resa resb Ta _ _ _ _ _ _ _ _].
+      split; [ exact Hnfc | exists tya; exact Ta ].
+  Qed.
+
   (** The recursive results' telescope of a branch, at a substitution
       [σ'] past the non-uniform parameters and the arguments: the
       telescope of the eliminator at [σ']. *)
@@ -3895,21 +4102,6 @@ Section ElimGlu.
     rewrite exp_wk_id, Hk2 in H; exact H.
   Qed.
 
-  (** The domains of the shape of a recursive argument after [gs1],
-      defined after the non-recursive arguments before it. *)
-  Lemma cargs_doms_ok_at : forall X Y k pre pre' Ts gs vs vs', cargs_doms_ok D ups nr dr X Y k pre pre' Ts gs vs vs' ->
-      forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
-      shape_doms_ok D ups nr dr X Y k (pre ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs))
-        (pre' ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs')) (Ts ++ cargs_nonrec_tele gs1) t.
-  Proof.
-    intros X Y k pre pre' Ts gs vs vs' H gs1; revert pre pre' Ts gs vs vs' H; induction gs1 as [| g gs1 IH];
-      intros pre pre' Ts gs vs vs' H t gs2 ->; inversion H; subst; cbn [List.app List.length List.firstn nonrec_arg_vals cargs_nonrec_tele] in *.
-    - rewrite !List.app_nil_r; assumption.
-    - match goal with H0 : cargs_doms_ok _ _ _ _ _ _ _ _ _ _ (gs1 ++ _) _ _ |- _ => pose proof (IH _ _ _ _ _ _ H0 t gs2 eq_refl) as H1 end.
-      rewrite <- !List.app_assoc in H1; exact H1.
-    - match goal with H0 : cargs_doms_ok _ _ _ _ _ _ _ _ _ _ (gs1 ++ _) _ _ |- _ => exact (IH _ _ _ _ _ _ H0 t gs2 eq_refl) end.
-  Qed.
-
   (** The domains of the shapes of a constructor's arguments, all related
       to themselves: defined at [ups] ([cargs_doms_adm]). *)
   Corollary con_fields_doms : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
@@ -4179,158 +4371,6 @@ Section ElimGlu.
       pose proof (cargs_doms_ok_at _ _ _ _ _ _ _ _ _ (con_fields_doms v Mv c gs HMv Hcon ns vs Hns Lv Hav) gs1 t gs2 Heq) as Hdoms.
       exact (mk_bctx_ih_entry v Mv gs ns vs ihs kk a gs1 t gs2 idx v' i0 Rae x0 Heq Hidx ltac:(unfold j in Hjat; lia) Hv1' Hsh Hdoms
                Hlt ltac:(rewrite <- Hjat; exact Hx0) HRae Hrr).
-  Qed.
-
-  (** The type of the recursive result along a leaf path of a neutral
-      recursive argument, after [pre], against its type as readback reads
-      it ([eval_ihty]): related at the level of the former. *)
-  Lemma leaf_ihty_link : forall pre Ts t v idx a,
-      Elim.leaf_type_at D ups ρ (blocks_motives Bks) mctx_tele pre Ts t v idx a ->
-      forall k, List.length pre = List.length Ts -> idx < List.length (shape_leaves (rview_leaves D) 0 t) ->
-      rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k ups ups pre pre Ts t v v -> is_neut v ->
-      shape_doms_ok D ups nr dr ups ups k pre pre Ts t ->
-      forall (i : nat) R, DF a ≈ a ∈ per_univ_elem i ↘ R ->
-      forall bs, ⟦ihty v of t at p ups under ρ (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bs ->
-      exists b, List.nth_error bs idx = Some b /\ Dom a ≈ b ∈ per_univ i.
-  Proof.
-    induction 1 as [pre Ts j Mj Ps v bs b a i0 HMj Hrv Ebs Eb Hab
-                   | pre Ts j Mj qr Is fl c gs gs1 tf gs2 Ps v ws w idx a HMj Hh Hcs Ew Heq Hw Hidx0 Hlt IH
-                   | pre Ts B t v idx b0 b ρF F i1 Eb0 Hbb0 Hcl IH];
-      intros k Lp Hidx Hsh Hn Hd i R HR bs0 Ety.
-    - (** At the end: the motive at the shape's parameters, at the
-          entries readback stores them at ([motive_rel]). *)
-      inversion Ety; subst;
-        match goal with H : ind_lookup _ _ p = Some ?D1 |- _ => rewrite Hl in H; injection H as <- end.
-      + match goal with H : ⟦ Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?bs1 |- _ => pose proof (functional_eval_exps' _ _ _ _ H Ebs) as -> end.
-        match goal with H : ⟦ List.nth j (blocks_motives Bks) a_prop ⟧ env_extend_typed ρ _ ↘ _ |- _ => rename H into Ea2 end.
-        match goal with H : ind_member D j = Some ?M0 |- _ =>
-          tryif constr_eq M0 Mj then fail else (rewrite HMj in H; injection H as <-) end.
-        destruct (HBks _ _ HMj Hrv) as [bj Hbj].
-        rewrite (blocks_motives_nth _ _ _ Hbj) in Eb, Ea2.
-        destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (b1 & b2 & Eb1 & Eb2 & _ & _ & HGv).
-        pose proof (functional_eval_exps' _ _ _ _ Eb1 Ebs) as ->.
-        pose proof (functional_eval_exps' _ _ _ _ Eb2 Ebs) as ->.
-        pose proof (ind_rel_ns p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ j Mj _ _ _ _ _ _ HMj HGv) as Hbb.
-        destruct (Completeness.Inductives.ViewReadback.mref_exists VP HVP p D HPD ups ups_tele_args ups_len j Mj HMj Hrv)
-          as [[[hd k'] pa] Er].
-        destruct (Completeness.Inductives.ViewReadback.mref_ref_len p D j Mj ups hd k' pa Hl HMj ups_len Er) as [Href _].
-        (** Both environments' entries read back. *)
-        destruct (EB Completeness.Inductives.Elim.mctx_readable HMall j Mj HMj ρ ρ Hρ Hρ _ _ _ _ _ _ HGv) as [Hr1 _].
-        apply (Completeness.Inductives.Elim.Forall2_of_Forall_pairs (fun v t => entry_readable (de_term v t))) in Hr1.
-        rewrite tele_entries_values in Hr1.
-        pose proof (ER motive_self_entries_readable ups (components_env D ups Ts pre) j Mj Ps bs bs hd k' v Had
-                      (elim_ups_ok_mref_a _ _ _ _ _ _ _ _ Hups)
-                      (fun pa0 Er0 => elim_ups_ok_member_elements_readable_at_ua _ _ _ _ _ _ _ _ Hups j Mj hd k' pa0 ups ups bs bs bs v v
-                                        HMj Hrv Had Had Er0 HGv Hbb)
-                      HMj Hrv Href Ebs Hbb) as Hr2.
-        destruct (motive_rel j Mj bj bj ups ups bs bs v v _ _ HMj Hrv Hbj Hbj HGv Hr1 Hr2) as (a1 & a2 & Ea1 & Ea2' & Ha12 & _).
-        rewrite <- (tele_entries_values (bs ++ v :: nil) ρ (List.rev (elim_mctx p D j Mj Us))) in Ea1 at 1.
-        rewrite combine_map_fst_snd in Ea1.
-        assert (Hv2 : List.map fst (tele_entries (decl_env D ups) (List.rev (im_nparams Mj)) bs
-                                    ++ (v, entry_type_shape p ups (components_env D ups Ts pre) (pt_self j Ps)) :: nil) = bs ++ v :: nil)
-          by (rewrite List.map_app, tele_entries_values; reflexivity).
-        rewrite <- Hv2 in Ea2' at 1; rewrite combine_map_fst_snd in Ea2'.
-        lazymatch type of Ea2 with ⟦ _ ⟧ _ ↘ ?a3 => exists a3 end.
-        split; [ reflexivity |].
-        unfold env_tele in Eb; rewrite (mctx_tele_at _ _ HMj) in Eb.
-        assert (a1 = b) as -> by (eapply functional_eval_exp; eassumption).
-        match goal with |- Dom _ ≈ ?a3 ∈ _ => assert (a2 = a3) as -> by (eapply functional_eval_exp; eassumption) end.
-        eapply per_univ_trans'; [ exists R; exact HR |].
-        eapply per_univ_trans'; [ exact Hab | exists (Rel j bs v bs v); exact Ha12 ].
-      + match goal with H1 : ind_member D _ = Some ?M1, H2 : im_head ?M1 = mh_record _ _ _ |- _ =>
-          rewrite HMj in H1; injection H1 as <-; exfalso; exact (not_rview_record _ _ _ _ Hrv H2) end.
-    - (** At a record view: the field's, at its projection. *)
-      inversion Ety; subst;
-        match goal with H : ind_lookup _ _ p = Some ?D1 |- _ => rewrite Hl in H; injection H as <- end;
-        match goal with H1 : ind_member D j = Some ?M1 |- _ => rewrite HMj in H1; injection H1 as <- end.
-      { exfalso; match goal with H3 : im_is_rview Mj = false |- _ => exact (not_rview_record _ _ _ _ H3 Hh) end. }
-      match goal with H1 : im_head Mj = _ |- _ => rewrite Hh in H1; injection H1 as <- <- <- end.
-      match goal with H1 : im_cons Mj = _ |- _ => rewrite Hcs in H1; injection H1 as <- <- end.
-      match goal with H1 : ⟦projs fl of v ⟧ _ ⍮ _ ↘ ?ws1 |- _ => pose proof (functional_eval_projs _ _ _ _ H1 Ew) as -> end.
-      match goal with H1 : ⟦ihtys ws of _ at _ _ under _ _ ⟧ _ ⍮ _ ⍮ _ ↘ bs0 |- _ =>
-        destruct (eval_ihtys_nth p D ups ρ (blocks_motives Bks) Hl Hco gs1 tf gs2 _ ws bs0 w H1 Hw) as (rf & Erf & Hrs) end.
-      destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bsx & bsx' & _ & _ & _ & _ & Hi).
-      inversion Hi; subst;
-        match goal with H1 : ind_member D j = Some ?M1 |- _ => rewrite HMj in H1; injection H1 as <- end;
-        try (exfalso; match goal with H3 : im_is_rview Mj = false |- _ => exact (not_rview_record _ _ _ _ H3 Hh) end).
-      match goal with H1 : im_head Mj = _ |- _ => rewrite Hh in H1; injection H1 as <- <- <- end.
-      match goal with H1 : im_cons Mj = _ |- _ => rewrite Hcs in H1; injection H1 as <- <- end.
-      repeat match goal with H1 : ⟦projs fl of v ⟧ _ ⍮ _ ↘ ?ws1 |- _ =>
-        tryif constr_eq ws1 ws then fail else pose proof (functional_eval_projs _ _ _ _ H1 Ew) as -> end.
-      match goal with H6 : con_args_rel _ _ _ _ _ _ j ups ups nil nil _ _ ws ws,
-                      H5 : tele_rel (ar j nil c) _ _ _ |- _ => rename H6 into Hca, H5 into Hnr end.
-      destruct (Completeness.Inductives.CargsRel.con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca gs1 tf gs2 eq_refl)
-        as (x & x' & Hx & Hx' & Hshf).
-      rewrite Hw in Hx, Hx'; injection Hx as <-; injection Hx' as <-.
-      assert (Hnw : is_neut w)
-        by exact (proj1 (List.Forall_forall _ _) (is_neut_projs _ _ _ Ew Hn) w (List.nth_error_In _ _ Hw)).
-      destruct (ER con_args_rel_length _ _ _ _ _ _ _ _ _ _ Hca) as [Lws _].
-      pose proof (rview_struct_nparams _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HMj Hh) as Enp.
-      destruct Hnr as [_ Hnr'].
-      pose proof (rview_cargs_doms p D ups nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had ups ups Had Had j Mj qr Is fl c _ HMj Hh Hcs
-                    _ nil nil nil ws ws eq_refl Lws Lws (tele_prefix_rel_nil _) Hnr') as Hdf.
-      rewrite Enp in Hdf; cbn [List.rev List.app cargs_nonrec_tele] in Hdf.
-      try (rewrite Enp in Hshf); cbn [List.rev List.app cargs_nonrec_tele] in Hshf.
-      pose proof (cargs_doms_ok_at _ _ _ _ _ _ _ _ _ Hdf gs1 tf gs2 eq_refl) as Hdf1.
-      cbn [List.app] in Hshf, Hdf1.
-      assert (Lp1 : List.length (nonrec_arg_vals gs1 (List.firstn (List.length gs1) ws)) = List.length (cargs_nonrec_tele gs1))
-        by (rewrite length_cargs_nonrec_tele; apply length_nonrec_arg_vals; rewrite List.length_firstn, Lws, List.length_app; lia).
-      destruct (IH j Lp1 Hidx0 Hshf Hnw Hdf1 i R HR rf Erf) as (b & Hb & Hab).
-      exists b; split; [| exact Hab ].
-      rewrite Hrs by (apply List.nth_error_Some; congruence); exact Hb.
-    - (** At a domain: a [Π], its codomains at related arguments by the
-          induction at the function's values there. *)
-      inversion Ety; subst;
-        match goal with H : ind_lookup _ _ p = Some ?D1 |- _ => rewrite Hl in H; injection H as <- end.
-      match goal with H : ⟦ B ⟧ _ ↘ ?b1 |- _ => tryif constr_eq b1 b0 then fail else
-        (assert (b1 = b0) as -> by (eapply functional_eval_exp; eassumption)) end.
-      assert (Hidx' : idx < List.length (shape_leaves (rview_leaves D) 0 t))
-        by (cbn [shape_leaves] in Hidx; rewrite List.length_map, (length_shape_leaves _ _ 1 0) in Hidx; exact Hidx).
-      eexists; split.
-      { rewrite List.nth_error_map, List.nth_error_seq; destruct (Nat.ltb_spec idx (List.length (shape_leaves (rview_leaves D) 0 t)));
-          [ reflexivity | lia ]. }
-      basic_invert_per_univ_elem HR.
-      match goal with H : forall (c c' : domain) (_ : ?ir c c'), rel_mod_eval _ _ _ _ _ _ |- _ => rename H into Hcod end.
-      cbn [Nat.add].
-      destruct Hbb0 as [Rb HRb].
-      destruct (Instance.per_univ_elem_trans_any _ _ _ _ _ _ _ equiv_a_a' HRb) as (Rd & HRd & ERd).
-      eexists; apply (per_univ_elem_pi_canonical HRd).
-      intros c c' Hcc.
-      assert (Hin : in_rel c c') by (apply ERd; exact Hcc).
-      assert (Hin0 : in_rel c' c') by (etransitivity; [ symmetry; exact Hin | exact Hin ]).
-      destruct (Hcod _ _ Hin) as [xc x2 Exc Ex2 Hxx].
-      destruct (Hcod _ _ Hin0) as [x' x'' Ex' Ex'' Hx'x'].
-      assert (x2 = x') as -> by (eapply functional_eval_exp; eassumption).
-      assert (x'' = x') as -> by (eapply functional_eval_exp; eassumption).
-      (** The argument, at the domain's canonical relation. *)
-      destruct (per_univ_trans' _ _ _ _ _ (per_univ_sym' _ _ _ (ex_intro _ Rd HRd)) (ex_intro _ Rd HRd)) as [R2 HR2].
-      assert (Hc2 : R2 c' c') by (apply (per_univ_elem_left_irrel _ _ _ _ _ _ _ HRd HR2); apply ERd; exact Hin0).
-      pose proof (rel_dr D ups k pre Ts B b0 i R2 c' Eb0 HR2 Hc2) as Hdc'.
-      (** The function's value there, and the types of its results
-          ([ih_leaves_all]). *)
-      destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c' c' Hdc') as (fc & fc0 & Efc & Efc0 & Hshc).
-      assert (fc0 = fc) as -> by (eapply functional_eval_app; eassumption).
-      inversion Hd as [| ? ? ? ? ? bd bd' Ebd Ebd' _ Hdcl _ _ _ _]; subst.
-      pose proof (Hdcl c' c' Hdc') as Hdc''.
-      pose proof (is_neut_app _ _ _ Efc Hn) as Hnfc.
-      assert (Lp' : List.length (pre ++ c' :: nil) = List.length (Ts ++ ce_ass ak_relevant B :: nil))
-        by (rewrite !List.length_app, Lp; reflexivity).
-      destruct (proj1 (proj2 (proj2 (ER ih_leaves_all))) k ups ups (pre ++ c' :: nil) (pre ++ c' :: nil)
-                  (Ts ++ ce_ass ak_relevant B :: nil) t fc fc Hshc eq_refl eq_refl Lp' Lp' Hnfc Hnfc Hdc'' _ (leaf_flags_ok_fresh_all _ _))
-        as [tya tyb resa resb Ta _ _ _ _ _ _ _ _].
-      destruct (IH c' Hdc' x' fc Ex' Efc k Lp' Hidx' Hshc Hnfc Hdc'' i _ Hx'x' tya Ta) as (y & Hy & Hx'y).
-      destruct (per_univ_trans' _ _ _ _ _ (ex_intro _ (out_rel c c' Hin) Hxx) Hx'y) as [R0 HR0].
-      exists xc, y, R0; split; [ exact Exc | split; [| exact HR0 ] ].
-      unfold components_env in Ta; rewrite env_tele_snoc in Ta by exact Lp.
-      eapply eval_fam_cod_ihfam; [ exact Efc | exact Ta | exact Hy ].
-      (** The kinds and the sorts of the [Π]. *)
-      all: first [ intros ? ? Hc0; match goal with Hk : forall c c', ?ir c c' -> rel_typ_kind _ _ _ |- _ =>
-                                     eapply Hk; apply (proj2 (ERd _ _)); exact Hc0 end
-                 | intros ? ? Hc0; match goal with Hk : forall c c', ?ir c c' -> value_not_level_sort _ _ |- _ =>
-                                     eapply Hk; apply (proj2 (ERd _ _)); exact Hc0 end
-                 | assumption
-                 | constructor
-                 | rewrite <- (per_univ_elem_kind _ _ _ _ HRd); assumption ].
   Qed.
 
   (** At fresh recursive results, every entry is a fresh variable of a
