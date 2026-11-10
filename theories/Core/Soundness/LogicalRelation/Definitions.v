@@ -1600,30 +1600,30 @@ Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A a
 Definition glu_rel_exp_under_renaming (Γ : ctx) (M A : exp) : Prop :=
   forall Γ' φ, Γ' ⊢ʷ φ : Γ -> ⊩ Γ' -> Γ' ⊩ M[φ]ʷ : A[φ]ʷ.
 
-(** A glued context whose variables' types are glued at every renaming,
-    each as a term of a sort of types.  Its module slots' units are not
-    covered: [glu_rel_ctx_types] adds them. *)
-Record glu_rel_ctx_glued (Γ : ctx) : Prop := mk_glu_rel_ctx_glued
-  { (** The context is glued *)
-    glu_rel_ctx_glued_ctx : ⊩ Γ
-    (** The type of each variable is glued, at every renaming, as a term
-        of a sort of types *)
-  ; glu_rel_ctx_glued_types : forall x A, Γ ∋ #x : A ->
-      exists S, type_sort S /\ glu_rel_exp_under_renaming Γ A S }.
+(** An extension [Ψ] of [Γ] glued at every renaming of [Γ] into a glued
+    context: the extended context, the extension weakened, is glued.  Only
+    the entries of [Ψ] are asked for, not the base's own types: an instance
+    only gives [⊩ Γ'] of its domain, so a judgment asking for the types of
+    the base would not hold at the instances.  The definition is closed
+    under renaming of [Γ], and it holds at each instance of [Γ] through the
+    instance lifted through [Ψ] ([glu_rel_ext_under_sub]). *)
+Definition glu_rel_ext_under_renaming (Γ Ψ : ctx) : Prop :=
+  forall Γ' φ, Γ' ⊢ʷ φ : Γ -> ⊩ Γ' -> ⊩ (tele_wk Ψ φ ++ Γ')%list.
 
 (** A unit glued at the context [Γ] it is closed over: a body's
-    expansions, its entries over the unit's parameters over [Γ], are glued
-    contexts, and so is each module entry's unit, recursively, at the
-    context of the entries before it; an alias's parameters are glued.  The
-    recursion is on the unit: a body's module entries are its subterms.
-    The entries a local open generates are definitions and aliases, so they
-    need nothing more than the body's context. *)
+    expansions, its entries over the unit's parameters, are extensions of
+    [Γ] glued at every renaming of [Γ], and so is each module entry's unit,
+    recursively, at the context of the entries before it; an alias's
+    parameters are an extension glued so.  The recursion is on the unit: a
+    body's module entries are its subterms.  The entries a local open
+    generates are definitions and aliases, so they need nothing more than
+    the body's context. *)
 Fixpoint glu_unit_at (Γ : ctx) (U : gunit) {struct U} : Prop :=
   match U with
   | gu_mk Δu (md_body _ Φ) =>
-      (forall Φx, body_xp gc_deps gc_stack (Δu ++ Γ) Φ Φx -> glu_rel_ctx_glued (body_ctx Φx ++ Δu ++ Γ)) /\
+      (forall Φx, body_xp gc_deps gc_stack (Δu ++ Γ) Φ Φx -> glu_rel_ext_under_renaming Γ (body_ctx Φx ++ Δu)) /\
       glu_gmod_units (Δu ++ Γ) Φ
-  | gu_mk Δu (md_alias _) => glu_rel_ctx_glued (Δu ++ Γ)
+  | gu_mk Δu (md_alias _) => glu_rel_ext_under_renaming Γ Δu
   end
 (** The module entries of a body over [Γ], each glued at the context of
     the entries before it. *)
@@ -1690,18 +1690,63 @@ Record glu_rel_exp_under_sub (Δ : ctx) (M A : exp) : Prop := mk_glu_rel_exp_und
     (** Each instance is glued *)
   ; glu_rel_exp_under_sub_inst : forall Γ τ, glu_rel_sub_inst Γ τ Δ -> Γ ⊩ M[τ] : A[τ] }.
 
-(** An extension [Ψ] of a context [Γ] glued at the instances of [Γ]: the
-    context is glued with its variables' types, and each instance of it,
-    lifted through the extension, is an instance of [Ψ ++ Γ].  A term
-    glued at the instances of [Ψ ++ Γ] is then glued at each instance of
-    [Γ] lifted through [Ψ], as a binder's body is: the fundamental
-    theorem's judgment of extensions. *)
-Record glu_rel_ext_under_sub (Γ Ψ : ctx) : Prop := mk_glu_rel_ext_under_sub
-  { (** The context is glued with its variables' types *)
-    glu_rel_ext_under_sub_ctx : glu_rel_ctx_types Γ
-    (** Each instance, lifted through the extension, is an instance *)
-  ; glu_rel_ext_under_sub_inst : forall Γ' τ, glu_rel_sub_inst Γ' τ Γ ->
-      glu_rel_sub_inst (tele_sub Ψ τ ++ Γ')%list (sb_qn (List.length Ψ) τ) (Ψ ++ Γ)%list }.
+(** A definition entry [A ≔ M] glued at the instances of the context [Δ]
+    it extends. *)
+Record glu_rel_def_entry_under_sub (Δ : ctx) (A M : exp) : Prop := mk_glu_rel_def_entry_under_sub
+  { (** The sort of the type *)
+    glu_rel_def_entry_under_sub_sort : typ
+    (** It is a sort of types *)
+  ; glu_rel_def_entry_under_sub_type_sort : type_sort glu_rel_def_entry_under_sub_sort
+    (** The type is glued at the instances at its sort *)
+  ; glu_rel_def_entry_under_sub_type : glu_rel_exp_under_sub Δ A glu_rel_def_entry_under_sub_sort
+    (** The body is glued at the instances at the type *)
+  ; glu_rel_def_entry_under_sub_body : glu_rel_exp_under_sub Δ M A }.
+
+(** A definition with a module part [A ≔ M ‖ U] glued at the instances of
+    the context [Δ] it extends: its module part is an alias under no
+    parameters ([wf_ctx_extend_dm]). *)
+Record glu_rel_module_def_entry_under_sub (Δ : ctx) (A M : exp) (U : gunit) : Prop := mk_glu_rel_module_def_entry_under_sub
+  { (** The level of the type's universe *)
+    glu_rel_module_def_entry_under_sub_level : nat
+    (** The target of the alias *)
+  ; glu_rel_module_def_entry_under_sub_target : modexp
+    (** The module part is an alias of the target under no parameters *)
+  ; glu_rel_module_def_entry_under_sub_alias : U = gu_mk nil (md_alias glu_rel_module_def_entry_under_sub_target)
+    (** The type is glued at the instances in its universe *)
+  ; glu_rel_module_def_entry_under_sub_type : glu_rel_exp_under_sub Δ A Typeω@glu_rel_module_def_entry_under_sub_level
+    (** The body is glued at the instances at the type *)
+  ; glu_rel_module_def_entry_under_sub_body : glu_rel_exp_under_sub Δ M A
+    (** The module part is well formed *)
+  ; glu_rel_module_def_entry_under_sub_unit_wf : gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵘ U ≈ U
+    (** The module part is glued at the instances *)
+  ; glu_rel_module_def_entry_under_sub_unit : glu_rel_unit_under_sub Δ U }.
+
+(** The parts of an entry glued at the instances of the context [Δ] it
+    extends: an assumption's type at a sort of its kind, a definition's
+    type and body, a module slot's unit, well formed, and a definition with
+    a module part's type, body and alias. *)
+Definition glu_rel_entry_under_sub (Δ : ctx) (e : centry) : Prop :=
+  match e with
+  | ce_ass κ A => exists S, sort_kind S κ /\ glu_rel_exp_under_sub Δ A S
+  | ce_def A M => glu_rel_def_entry_under_sub Δ A M
+  | ce_mod U => gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵘ U ≈ U /\ glu_rel_unit_under_sub Δ U
+  | ce_dm A M U => glu_rel_module_def_entry_under_sub Δ A M U
+  end.
+
+(** An extension [Ψ] of a context [Γ] glued at the instances: the context
+    is glued with its variables' types, and each entry's parts are glued at
+    the instances of the context before it.  An instance of [Γ] then lifts
+    through [Ψ] and through every suffix of it ([Extensions.v]), and a term
+    glued at the instances of [Ψ ++ Γ] is glued at each lifted instance, as
+    a binder's body is: the fundamental theorem's judgment of extensions.
+    Each entry is glued at its own prefix's instances, not only at the
+    whole extension's: the unit of a module entry is read at the context
+    before it, as a nested module's members are. *)
+Fixpoint glu_rel_ext_under_sub (Γ Ψ : ctx) : Prop :=
+  match Ψ with
+  | nil => glu_rel_ctx_types Γ
+  | e :: Ψ' => glu_rel_ext_under_sub Γ Ψ' /\ glu_rel_entry_under_sub (Ψ' ++ Γ)%list e
+  end.
 
 (** A weakening glued from [Γ] to [Δ], as [Γ ⊨ʷ φ : Δ] in the PER model:
     precomposed with it, a substitution glued into [Γ] at [ρ] is glued
