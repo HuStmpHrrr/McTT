@@ -3161,6 +3161,52 @@ Section ElimGlu.
       split; [ exact Hnfc | exists tya; exact Ta ].
   Qed.
 
+  (** [leaf_ihty_link_by] at an argument whose recursive results are
+      related ([rec_result_rel]): so are the fields' at the projections and
+      the rest's at applications, whose results' types are defined
+      ([ih_results_readable_all]). *)
+  Lemma leaf_ihty_link_canon : forall pre Ts t v idx a,
+      Elim.leaf_type_at D ups ρ (blocks_motives Bks) mctx_tele pre Ts t v idx a ->
+      forall k, List.length pre = List.length Ts -> idx < List.length (shape_leaves (rview_leaves D) 0 t) ->
+      rec_arg_rel p D (admissible_index_at D ups nr) nr ar dr k ups ups pre pre Ts t v v ->
+      forall rs, rec_result_rel D dr Rel k ups ups pre pre Ts t v v rs rs ->
+      shape_doms_ok D ups nr dr ups ups k pre pre Ts t ->
+      forall (i : nat) R, DF a ≈ a ∈ per_univ_elem i ↘ R ->
+      forall bs, ⟦ihty v of t at p ups under ρ (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bs ->
+      exists b, List.nth_error bs idx = Some b /\ Dom a ≈ b ∈ per_univ i.
+  Proof.
+    intros pre Ts t v idx a Hlt k Lp Hidx Hsh rs Hrr.
+    refine (leaf_ihty_link_by (fun k0 pre0 Ts0 t0 v0 => exists rs0, rec_result_rel D dr Rel k0 ups ups pre0 pre0 Ts0 t0 v0 v0 rs0 rs0)
+              _ _ pre Ts t v idx a Hlt k Lp Hidx Hsh (ex_intro _ rs Hrr)).
+    - (** At a field, at its projection *)
+      intros k0 pre0 Ts0 j0 Mj0 qr0 Is0 fl0 c0 gs1 tf gs2 Ps0 v0 ws0 w0 HMj0 Hh0 Hcs0 [rs0 Hr0] Ew0 Hw0.
+      destruct (Completeness.Inductives.Elim.rec_result_rview_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj0 Hh0 Hcs0 Hr0)
+        as (ws1 & ws1' & Ew1 & Ew1' & Hrs).
+      pose proof (functional_eval_projs _ _ _ _ Ew1 Ew0) as ->; pose proof (functional_eval_projs _ _ _ _ Ew1' Ew0) as ->.
+      destruct (Completeness.Inductives.Elim.rec_results_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrs gs1 tf gs2 eq_refl)
+        as (x & x' & rf & rf' & ih1 & ih1' & ih2 & ih2' & Hx & Hx' & E1 & E2 & L1 & L1' & Lr & Lr' & Hrf).
+      rewrite Hw0 in Hx, Hx'; injection Hx as <-; injection Hx' as <-.
+      rewrite E1 in E2; apply app_split_eq in E2 as [_ E2]; [| lia ].
+      apply app_split_eq in E2 as [<- _]; [| lia ].
+      cbn [List.app] in Hrf; exists rf; exact Hrf.
+    - (** At an application, the rest *)
+      intros k0 pre0 Ts0 B0 t0 v0 c0 fc0 [rs0 Hr0] Lp0 Hdc Hshc Hdd Efc0.
+      destruct (Completeness.Inductives.Elim.rec_result_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr0 c0 c0 Hdc)
+        as (f1 & f1' & rcs & rcs' & Ef1 & Ef1' & Hfa & Hfa' & Hrest).
+      assert (f1 = fc0) as -> by (eapply functional_eval_app; eassumption).
+      assert (f1' = fc0) as -> by (eapply functional_eval_app; eassumption).
+      assert (Erc : rcs' = rcs).
+      { clear - Hfa Hfa'; revert rcs' Hfa'; induction Hfa as [| f r fs rs1 Hfr Hfs IHf]; intros rcs' Hf';
+          inversion Hf'; subst; [ reflexivity |].
+        f_equal; [ eapply functional_eval_app; eassumption | apply IHf; assumption ]. }
+      rewrite Erc in Hrest.
+      assert (Lp' : List.length (pre0 ++ c0 :: nil) = List.length (Ts0 ++ ce_ass ak_relevant B0 :: nil))
+        by (rewrite !List.length_app, Lp0; reflexivity).
+      destruct (proj1 (ER ih_results_readable_all k0 ups ups) _ _ _ _ _ _ _ _ Hrest Had Had Lp' Lp' Hshc Hdd)
+        as (as1 & as2 & Ta & _ & _ & _).
+      split; [ exists rcs; exact Hrest | exists as1; exact Ta ].
+  Qed.
+
   (** The recursive results' telescope of a branch, at a substitution
       [σ'] past the non-uniform parameters and the arguments: the
       telescope of the eliminator at [σ']. *)
