@@ -69,6 +69,37 @@ Proof.
   - split; [ exact (proj1 (entry_readable_of_elem_closure Ha Ha HR Hcc)) | cbn; lia ].
 Qed.
 
+(** Stored types glued at [τ] stay glued along a weakening, at [τ]
+    weakened ([glu_univ_elem_exp_monotone]). *)
+Lemma glu_tele_stored_monotone : forall C Δ τ ρ, glu_tele_stored Δ C τ ρ ->
+    forall Δ' φ, Δ' ⊢ᵏ φ : Δ -> glu_tele_stored Δ' C (sb_wk τ φ) ρ.
+Proof.
+  induction C as [| e C IH]; intros * Hst * Hφ; [ exact I |].
+  destruct e as [κ A | | |]; cbn [glu_tele_stored] in Hst |- *; try exact I.
+  destruct Hst as [(t & Het & [j b Pb Elb Hb Hgb HEb]) Htl].
+  split.
+  - exists t; split; [ exact Het |].
+    econstructor; [ exact Hb | exact Hgb |].
+    rewrite <- !exp_wk_sub; eapply glu_univ_elem_exp_monotone; eassumption.
+  - change (Wk ⨟ sb_wk τ φ) with (sb_wk (Wk ⨟ τ) φ); exact (IH _ _ _ Htl _ _ Hφ).
+Qed.
+
+(** A substitution at fresh variables, glued along a telescope [C] at [σ]
+    and along a witness telescope [C'] at [σ'] of the same instances. *)
+Record glu_fresh_substitution (C : ctx) (σ : sub) (ρ : env) (Sb : glu_sub_pred) (C' : ctx) (σ' : sub) (ρ' : env)
+    (Sb' : glu_sub_pred) (Δ : ctx) (xs : list domain) : Prop := mk_glu_fresh_substitution
+  { (** Glued at the environment of [C] *)
+    glu_fresh_target : tele_sub C σ ++ Δ ⊢ˢ sb_qn (List.length C) σ ® env_tele ρ (List.rev C) xs ∈ Sb
+    (** Glued at the environment of [C'] *)
+  ; glu_fresh_witness : tele_sub C' σ' ++ Δ ⊢ˢ sb_qn (List.length C) σ' ® env_tele ρ' (List.rev C') xs ∈ Sb'
+    (** At any typed extension of [ρ] by the fresh variables whose stored
+        types evaluate to the values of [C']'s types, the stored types are
+        glued, the variables at their values ([glu_tele_stored]) *)
+  ; glu_fresh_stored : forall vts, List.map fst vts = xs ->
+      (forall k t κ' A' b, List.nth_error (List.map snd vts) k = Some t -> List.nth_error (List.rev C') k = Some (ce_ass κ' A') ->
+         ⟦ A' ⟧ env_tele ρ' (List.rev C') (List.firstn k xs) ↘ b -> eval_entry_type gc_deps gc_stack t b) ->
+      glu_tele_stored (tele_sub C σ ++ Δ) C (sb_qn (List.length C) σ) (env_extend_typed ρ vts) }.
+
 (** The substitution [q^n σ] past a telescope [C], at the fresh variables
     of the types of a telescope [C'] with the same instances
     ([tele_sub C σ = tele_sub C' σ']), is glued at the extension of [C'] at
@@ -88,13 +119,13 @@ Lemma glu_sub_fresh : forall C Γb Sb_b C' Γ' Sb'_b, all_assumptions C -> all_a
     (forall k κ A a κ' A' b, List.nth_error (List.rev C) k = Some (ce_ass κ A) -> List.nth_error (List.rev C') k = Some (ce_ass κ' A') ->
        ⟦ A ⟧ env_tele ρ (List.rev C) (List.firstn k xs) ↘ a -> ⟦ A' ⟧ env_tele ρ' (List.rev C') (List.firstn k xs) ↘ b ->
        exists j : nat, Dom b ≈ a ∈ per_univ j) ->
-    tele_sub C σ ++ Δ ⊢ˢ sb_qn (List.length C) σ ® env_tele ρ (List.rev C) xs ∈ Sb /\
-    tele_sub C' σ' ++ Δ ⊢ˢ sb_qn (List.length C) σ' ® env_tele ρ' (List.rev C') xs ∈ Sb'.
+    glu_fresh_substitution C σ ρ Sb C' σ' ρ' Sb' Δ xs.
 Proof.
   induction C as [| e C IH]; intros Γb Sb_b C' Γ' Sb'_b Hass Hass' HΓb HΓ' Sb Sb' HC HC' Δ σ ρ σ' ρ' xs Hσ Hσ' Etl Hl Hx Hrel.
   - destruct C' as [| e' C']; [| discriminate ].
     destruct xs; [| discriminate ]; cbn.
-    split; [ apply (functional_glu_ctx_env HΓb HC); exact Hσ | apply (functional_glu_ctx_env HΓ' HC'); exact Hσ' ].
+    constructor; [ apply (functional_glu_ctx_env HΓb HC); exact Hσ | apply (functional_glu_ctx_env HΓ' HC'); exact Hσ' |].
+    intros vts _ _; exact I.
   - destruct C' as [| e' C']; [ discriminate |].
     apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass0].
     apply List.Forall_cons_iff in Hass' as [(κ' & A' & ->) Hass0'].
@@ -136,7 +167,7 @@ Proof.
                ltac:(rewrite (Ef k ltac:(lia)), ErC, env_tele_app_long by (rewrite List.length_firstn, List.length_rev; lia); exact Ea)
                ltac:(rewrite (Ef k ltac:(lia)), ErC', env_tele_app_long by (rewrite List.length_firstn, List.length_rev; lia); exact Eb)). }
     destruct (IH Γb Sb_b C' Γ' Sb'_b Hass0 Hass0' HΓb HΓ' TSb TSb' HTSb HTSb' Δ σ ρ σ' ρ' xs' Hσ Hσ' Etl ltac:(lia) Hx' Hrel')
-      as [Hτ Hτ'].
+      as [Hτ Hτ' Hst].
     (** The types at the prefixes, glued *)
     destruct (HT _ _ _ Hτ) as [a P El Ea Hg HTP].
     rewrite <- HlC in Hτ'.
@@ -178,18 +209,48 @@ Proof.
       mauto 3. }
     pose proof (glu_univ_elem_exp_conv_universe_index Hba Hg' Hg
                   ltac:(rewrite <- EA, <- Etl in Hv; exact Hv) (glu_univ_elem_typ_monotone _ _ _ _ Hg _ _ _ _ HTP Hwk)) as Hva.
-    cbn [tele_sub List.length sb_qn List.app centry_sub].
-    rewrite ErC, ErC', !env_tele_snoc by (rewrite List.length_rev; lia).
     rewrite HlC in *.
-    split.
-    + apply HSb.
+    constructor; cbn [tele_sub List.length sb_qn List.app centry_sub].
+    + rewrite ErC, !env_tele_snoc by (rewrite List.length_rev; lia).
+      apply HSb.
       unfold sb_q; eapply cons_glu_sub_pred_helper_closure_gen;
         [ exact HTSb | exact (glu_ctx_env_sub_monotone _ _ HTSb _ _ _ _ _ Hτ Hwk) | exact HA | exact Ea | exact Hg | ].
       cbn [sentry_exp]; rewrite <- exp_wk_sub; exact Hva.
-    + apply HSb'.
+    + rewrite ?HlC, ErC', !env_tele_snoc by (rewrite List.length_rev; lia).
+      apply HSb'.
       unfold sb_q; eapply cons_glu_sub_pred_helper_closure_gen;
         [ exact HTSb' | exact (glu_ctx_env_sub_monotone _ _ HTSb' _ _ _ _ _ Hτ' Hwk') | exact HA' | exact Eb | exact Hg' | ].
       cbn [sentry_exp]; rewrite <- exp_wk_sub; exact Hv.
+    + (** The stored types: the last variable at its value [b], the rest
+          along the weakening. *)
+      intros vts Hvts Hts.
+      destruct (List.exists_last (l := vts)) as (vts' & [x' t] & ->).
+      { intros ->; apply (f_equal (@List.length _)) in Hvts; rewrite List.length_app in Hvts; cbn in Hvts; lia. }
+      rewrite List.map_app in Hvts; cbn in Hvts; apply List.app_inj_tail in Hvts as [Hvts' ->].
+      assert (Lv' : List.length vts' = List.length C) by (rewrite <- (List.length_map fst), Hvts'; lia).
+      rewrite env_extend_typed_app; cbn [env_extend_typed List.fold_left glu_tele_stored].
+      split.
+      * exists t; split; [ reflexivity |].
+        assert (Et : eval_entry_type gc_deps gc_stack t b).
+        { apply (Hts (List.length C) t κ A' b).
+          - rewrite List.map_app, List.nth_error_app2 by (rewrite List.length_map; lia).
+            rewrite List.length_map, Lv', Nat.sub_diag; reflexivity.
+          - exact Hxk'.
+          - rewrite <- Lx, firstn_app_exact, ErC', env_tele_app_long by (rewrite ?List.length_rev; lia); exact Eb. }
+        refine (mk_glu_stored_type _ _ _ _ t i' b P' El' Et Hg' _).
+        unfold sb_q; cbn [exp_sub sentry_exp]; rewrite exp_sub_shift_extend, <- exp_wk_sub.
+        rewrite <- EA, <- Etl in Hv; exact Hv.
+      * change (Wk ⨟ sb_q (sb_qn (List.length C) σ)) with (sb_wk (sb_qn (List.length C) σ) ↑).
+        assert (Hts' : forall k t0 κ0 A0 b0, List.nth_error (List.map snd vts') k = Some t0 ->
+                         List.nth_error (List.rev C') k = Some (ce_ass κ0 A0) ->
+                         ⟦ A0 ⟧ env_tele ρ' (List.rev C') (List.firstn k xs') ↘ b0 -> eval_entry_type gc_deps gc_stack t0 b0).
+        { intros k t0 κ0 A0 b0 Ht0 HA0 Eb0.
+          assert (Hk : k < List.length C') by (rewrite <- List.length_rev; apply List.nth_error_Some; congruence).
+          apply (Hts k t0 κ0 A0 b0).
+          - rewrite List.map_app, List.nth_error_app1 by (rewrite List.length_map; lia); exact Ht0.
+          - rewrite ErC', List.nth_error_app1 by (rewrite List.length_rev; lia); exact HA0.
+          - rewrite (Ef k ltac:(lia)), ErC', env_tele_app_long by (rewrite List.length_firstn, List.length_rev; lia); exact Eb0. }
+        exact (glu_tele_stored_monotone _ _ _ _ (Hst vts' Hvts' Hts') _ _ Hwk).
 Qed.
 
 (** A variable of a context, at a type glued at the gluing of a type's
