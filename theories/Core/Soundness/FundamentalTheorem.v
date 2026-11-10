@@ -120,7 +120,8 @@ Proof. intros * Hμ HM; exact (proj1 (proj2 soundness_fundamental) _ _ _ _ _ HM 
 (** ** Each entry is valid where it is checked *)
 
 (** A definition: its type, closed over its telescope at the sort of its
-    kind ([ctx_pi_type_kind]), glued at [⋅]. *)
+    kind, and its body, closed over the telescope at that type
+    ([ctx_pi_type_kind]), glued at [⋅]. *)
 Lemma glu_entry_def : forall Θ Ξ T r A M i b pv Θ2 Ξ2,
     Θ ⍮ Ξ ⍮ T ⊢ A : abs_kind_sort r Typeω@i ->
     (r = ak_level -> level_sorted_parameters T) -> all_assumptions T ->
@@ -131,9 +132,10 @@ Proof.
   intros * HA HL HTa HM _ He HΘ HΞ Θs Ξs.
   pose proof (glu_gctx_embedding_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) He HΘ HΞ) as Hμ.
   assert (HT0 : ⊢ Θ ⍮ Ξ ⍮ T ++ ⋅) by (rewrite List.app_nil_r; exact (presup_exp_ctx HA)).
-  rewrite <- (List.app_nil_r T) in HA.
-  destruct (ctx_pi_type_kind _ _ _ _ _ _ _ HT0 (fun _ => HTa) HL HA) as [[j HT] _].
-  exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT).
+  rewrite <- (List.app_nil_r T) in HA, HM.
+  destruct (ctx_pi_type_kind _ _ _ _ _ _ _ HT0 (fun _ => HTa) HL HA) as [[j HT] Hfn].
+  split; [ exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT) |].
+  intros M0 [= <-]; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ (Hfn _ HM)).
 Qed.
 
 (** An axiom, of no type of levels: as a definition's. *)
@@ -147,7 +149,7 @@ Proof.
   assert (HT0 : ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ ++ ⋅) by (rewrite List.app_nil_r; exact (presup_exp_ctx HA)).
   rewrite <- (List.app_nil_r (gs_tele Ξ)) in HA.
   destruct (ctx_pi_at_wf _ _ _ _ _ _ _ Hr HT0 HA) as [j HT].
-  exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT).
+  split; [ exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT) | intros ? [=] ].
 Qed.
 
 Lemma glu_entry_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 Θs Ξs,

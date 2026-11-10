@@ -186,12 +186,15 @@ End Raw.
 (** ** 2. Valid entries make a sound embedding *)
 
 (** What an entry is worth at [Θ2 ⍮ Ξ2]: a definition's type glues, in the
-    empty context, at the sort of its kind ([abs_kind_sort]).  Bodies need
-    nothing: a member with a δ-reduct glues as the reduct, which [wf_mem]
-    premises typed. *)
+    empty context, at the sort of its kind ([abs_kind_sort]), and its body,
+    if any, at its type: the value a member with a δ-reduct is read off is
+    the body's ([eval_sel_global]).  A definition with a module part is
+    valid as its term part, a definition ([ge_valid]). *)
 Definition glu_entry (_ : gdeps) (_ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (_ : ctx) (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ r A _ => exists i, @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ A (abs_kind_sort r Typeω@i)
+  | ge_def _ _ r A oM =>
+      (exists i, @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ A (abs_kind_sort r Typeω@i)) /\
+      forall M, oM = Some M -> @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ M A
   | _ => True
   end.
 
@@ -223,11 +226,18 @@ Theorem glu_gctx_embedding_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_e
 Proof.
   intros * Hg He HΘ HΞ; pose proof He as [Hg2 Hs].
   constructor; [ exact He | intros p D Hl; exact (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)
-               | intros p R Hl; exact (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) |].
+               | intros p R Hl; exact (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) | |].
+  2:{ (** A body glues at its type, by the entry's validity: a definition's,
+          or a definition with a module part's as its term part *)
+      intros * Hl Hp HE.
+      pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp) as Hv.
+      destruct E as [b pv r A' [M' |] | | | pv A' M' U |]; cbn in HE, Hv; try discriminate; injection HE as <- <-.
+      - exact (proj2 Hv _ eq_refl).
+      - destruct Hv as (_ & [_ HM] & _); exact (HM _ eq_refl). }
   intros * Hl Hp Hn HΓ.
   apply glu_rel_exp_nil_weaken; [ exact HΓ |].
   (* the type glues, by the entry's validity *)
-  pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp) as [i HA].
+  pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp) as [[i HA] _].
   (* the entry, stored at the target where it is at the source *)
   destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
   pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hl x _) Hent) as HeE.

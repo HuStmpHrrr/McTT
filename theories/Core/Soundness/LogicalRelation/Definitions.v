@@ -2028,6 +2028,14 @@ Record glu_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gsta
       (if b then oM else None) = None ->
       @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ ->
       @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_mem (qname_mod p) x) A
+    (** The body of a definition of a stored body glues at its stored type,
+        in the empty context: the value a member with a δ-reduct is read
+        off ([eval_sel_global]) *)
+  ; glu_gctx_embedding_body : forall p T Φ x Φ0 E A M,
+      loc Θ1 Ξ1 p T Φ ->
+      gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
+      entry_tm E = Some (A, M) ->
+      @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ M A
   }.
 
 (** ** The Gluing Judgments
