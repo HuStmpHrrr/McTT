@@ -1690,6 +1690,19 @@ Record glu_rel_exp_under_sub (Δ : ctx) (M A : exp) : Prop := mk_glu_rel_exp_und
     (** Each instance is glued *)
   ; glu_rel_exp_under_sub_inst : forall Γ τ, glu_rel_sub_inst Γ τ Δ -> Γ ⊩ M[τ] : A[τ] }.
 
+(** An extension [Ψ] of a context [Γ] glued at the instances of [Γ]: the
+    context is glued with its variables' types, and each instance of it,
+    lifted through the extension, is an instance of [Ψ ++ Γ].  A term
+    glued at the instances of [Ψ ++ Γ] is then glued at each instance of
+    [Γ] lifted through [Ψ], as a binder's body is: the fundamental
+    theorem's judgment of extensions. *)
+Record glu_rel_ext_under_sub (Γ Ψ : ctx) : Prop := mk_glu_rel_ext_under_sub
+  { (** The context is glued with its variables' types *)
+    glu_rel_ext_under_sub_ctx : glu_rel_ctx_types Γ
+    (** Each instance, lifted through the extension, is an instance *)
+  ; glu_rel_ext_under_sub_inst : forall Γ' τ, glu_rel_sub_inst Γ' τ Γ ->
+      glu_rel_sub_inst (tele_sub Ψ τ ++ Γ')%list (sb_qn (List.length Ψ) τ) (Ψ ++ Γ)%list }.
+
 (** A weakening glued from [Γ] to [Δ], as [Γ ⊨ʷ φ : Δ] in the PER model:
     precomposed with it, a substitution glued into [Γ] at [ρ] is glued
     into [Δ] at [⟪φ⟫ ρ].  Unlike a substitution, a weakening acts on
@@ -2011,6 +2024,11 @@ Definition glu_is_univ Θ Ξ Γ U : Prop :=
 Definition glu_unit Θ Ξ Γ U : Prop :=
   forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_unit_under_sub (gc_mk Θ2 Ξ2) Γ U.
 
+(** An extension glues at each instance of its context, at every sound
+    embedding. *)
+Definition glu_ext Θ Ξ Γ Ψ : Prop :=
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_ext_under_sub (gc_mk Θ2 Ξ2) Γ Ψ.
+
 Notation "⊩ Θ ⍮ Ξ ⍮ Γ" := (glu_ctx Θ Ξ Γ)
   (at level 70, Θ at next level, Ξ at level 69, Γ at level 69) : type_scope.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊩ M : A" := (glu_exp Θ Ξ Γ A M)
@@ -2019,3 +2037,5 @@ Notation "Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U" := (glu_is_univ Θ Ξ Γ U)
   (at level 70, Ξ at level 69, Γ at level 69, U at level 69) : type_scope.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊩ᵘ U" := (glu_unit Θ Ξ Γ U)
   (at level 70, Ξ at level 69, Γ at level 69, U at level 69) : type_scope.
+Notation "Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ" := (glu_ext Θ Ξ Γ Ψ)
+  (at level 70, Ξ at level 69, Γ at level 69, Ψ at level 69) : type_scope.

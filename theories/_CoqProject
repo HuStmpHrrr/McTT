@@ -130,6 +130,7 @@
 ./Core/Soundness/VariableCases.v
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/Instances.v
+./Core/Soundness/Extensions.v
 ./Core/Soundness/SubtypingCases.v
 ./Core/Soundness/UniverseCases.v
 ./Core/Soundness/LevelCases.v
