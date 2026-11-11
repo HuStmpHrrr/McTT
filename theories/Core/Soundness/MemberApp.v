@@ -46,6 +46,24 @@ Proof.
     exact (Hne _ _ _ _ _ Hp HE Hk) end.
 Qed.
 
+(** The member [x], of type [A], of a module expression [H] lacking a
+    parameter of type [B], given the argument [N]: [A] is a [Π] over [B]
+    into [C], the member of [H] given [N] is described by [R'], of type
+    [C] at [N], and the member of [H] applied to [N] is it. *)
+Record mem_app_shape (Γ : ctx) (H : modexp) (N : exp) (x : String.string) (A B C : typ) (R' : mdesc) : Prop :=
+  mk_mem_app_shape
+  { (** [B] is the next parameter of [H]'s module part *)
+    mem_app_shape_param : forall R0 T T1 B', mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod_tele R0 = Some T ->
+      tele_view T = Some (B', T1) -> B' = B
+    (** The member's type is a [Π] over [B] into [C] *)
+  ; mem_app_shape_type : exists κ κc, A = a_pi κ κc B C
+    (** The member of [H] given [N] is described by [R'] *)
+  ; mem_app_shape_mem : mdenote gc_deps gc_stack Γ (me_mem (me_app H N) x) R'
+    (** Of type [C] at [N] *)
+  ; mem_app_shape_mem_type : mdesc_type R' = Some C[Id,,N]
+    (** The member applied to [N] is the member of [H] given [N] *)
+  ; mem_app_shape_eq : Γ ⊢ a_mem H x $ N ≈ a_mem (me_app H N) x : C[Id,,N] }.
+
 (** A member of an open module lacking a parameter, applied to an
     argument, is the member of the module given it: both are δ-equal to
     their reducts, the first a [λ] over the parameter whose body is typed
@@ -55,8 +73,7 @@ Lemma mem_app_eq_open : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H N x R0 Δ Φw
     mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_open Δ Φw Φx) ->
     mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
     Γ ⊢ a_mem H x : A ->
-    exists R' A', mdenote gc_deps gc_stack Γ (me_mem (me_app H N) x) R' /\ mdesc_type R' = Some A' /\
-      Γ ⊢ a_mem H x $ N ≈ a_mem (me_app H N) x : A'.
+    exists B C R', mem_app_shape Γ H N x A B C R'.
 Proof.
   intros Hgw * HHN Hq HR0 HR0m Hm HA HxA.
   pose proof (wf_gstack_closed _ _ Hgw) as Hc.
@@ -133,7 +150,11 @@ Proof.
       | intros Hl; eapply level_sorted_parameters_app_l, open_entry_level_params;
         [ exact Hok | exact Hp | exact HtE | rewrite HkE; exact Hl ]
       | rewrite <- HkE; exact HAj | apply wf_exp_eq_refl; exact HMt ]. }
-  exists R', Ab[Id,,N]; split; [ exact HmNx | split; [ exact HtR' |] ].
+  exists B0, Ab, R'; constructor; [ | exists κ, r; reflexivity | exact HmNx | exact HtR' |].
+  { intros R0x Tx T1x B' HRx HTx Hvx.
+    rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ HRx _ HR0) in HTx.
+    unfold mdesc_mod_tele in HTx; rewrite HR0m in HTx; cbn [mdesc_tele] in HTx; injection HTx as <-.
+    rewrite tele_view_last in Hvx; congruence. }
   eapply wf_exp_eq_trans;
     [ eapply wf_exp_eq_app_cong'; [ eapply wf_exp_eq_mem_delta; [ exact HH | exact Hm | exact HRt | exact HRr ] | apply wf_exp_eq_refl; exact HNt ] |].
   eapply wf_exp_eq_trans; [ eapply wf_exp_eq_pi_beta'; [ exact HAb | exact Hk | exact HMb | exact HNt ] |].
@@ -330,8 +351,7 @@ Lemma mem_app_eq_closed : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H N x R0 Θ p
     mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_closed Θ p T Φ Ns) ->
     mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
     Γ ⊢ a_mem H x : A ->
-    exists R' A', mdenote gc_deps gc_stack Γ (me_mem (me_app H N) x) R' /\ mdesc_type R' = Some A' /\
-      Γ ⊢ a_mem H x $ N ≈ a_mem (me_app H N) x : A'.
+    exists B C R', mem_app_shape Γ H N x A B C R'.
 Proof.
   intros Hgw * HHN Hq HR0 HR0m Hm HA HxA.
   pose proof (wf_gstack_closed _ _ Hgw) as Hc.
@@ -339,6 +359,14 @@ Proof.
   destruct (proj1 (modexp_gen _ _ _ _ _ HHN)) as [HH (R0' & T0 & B & T1 & Srt & HR0' & HT & Hv & HB & HSrt & HNt)].
   rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ HR0' _ HR0) in HT.
   unfold mdesc_mod_tele in HT; rewrite HR0m in HT.
+  pose proof HT as HTk; pose proof Hv as Hvk.
+  (** The next parameter is the module's, whatever reads it *)
+  assert (Hparam : forall R0x Tx T1x B', mdenote gc_deps gc_stack Γ H R0x -> mdesc_mod_tele R0x = Some Tx ->
+                     tele_view Tx = Some (B', T1x) -> B' = B).
+  { intros R0x Tx T1x B' HRx HTx Hvx.
+    rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ HRx _ HR0) in HTx.
+    unfold mdesc_mod_tele in HTx; rewrite HR0m, HTk in HTx; injection HTx as <-; congruence. }
+  clear HTk Hvk.
   pose proof (desc_ok_mod _ _ Hgw _ _ _ (me_desc_ok _ _ _ _ _ _ HH HR0) HR0m) as Hok.
   pose proof Hok as Hok0; inversion Hok0; subst.
   match goal with H : all_assumptions T |- _ => rename H into HTa end.
@@ -379,7 +407,7 @@ Proof.
     assert (HtR' : mdesc_type R' = Some C[Id,,N]) by (unfold R'; rewrite mdesc_up_nil, mdesc_type_named; exact HtR1').
     assert (HmNx : mdenote gc_deps gc_stack Γ (me_mem (me_app H N) x) R').
     { eapply mdenote_mem; [ exact HmX | exact HmR0a | cbn; rewrite Hp; reflexivity | exact Hed | cbn [mdesc_read]; rewrite Hats'; reflexivity ]. }
-    exists R', C[Id,,N]; split; [ exact HmNx | split; [ exact HtR' |] ].
+    exists B0, C, R'; constructor; [ exact Hparam | exists κ, κc; reflexivity | exact HmNx | exact HtR' |].
     pose proof (mem_closed_part _ _ _ _ _ _ _ _ _ _ _ _ _ HH HR0 HR0m Hm HA0) as HL; cbn [ctx_fn ctx_pi_at] in HL.
     pose proof (mem_closed_part _ _ _ _ _ _ _ _ _ _ _ _ _ HHN HmX HmR0a HmNx HtR') as HR; cbn [ctx_fn] in HR.
     rewrite apps_snoc in HR.
@@ -404,11 +432,11 @@ Proof.
     assert (HmNx : mdenote gc_deps gc_stack Γ (me_mem (me_app H N) x) R').
     { eapply mdenote_mem; [ exact HmX | exact HmR0a | cbn; rewrite Hp; reflexivity | exact Hed |].
       cbn [mdesc_read]; unfold R', Ns', σN in *; rewrite Hats'; reflexivity. }
-    exists R', Ab[Id,,N]; split; [ exact HmNx | split; [ exact HtR' |] ].
     (** The member, before the argument, is the body over the outside
         parameters, a [λ] over the outermost *)
     assert (HAΠ : ctx_pi_at (mdesc_kind R1) (Θr ++ ce_ass κ B0 :: nil) A1 = a_pi κ (mdesc_kind R1) B0 Ab)
       by (rewrite ctx_pi_app; reflexivity).
+    exists B0, Ab, R'; constructor; [ exact Hparam | exists κ, (mdesc_kind R1); rewrite mdesc_kind_named; exact HAΠ | exact HmNx | exact HtR' |].
     assert (Hne : Θr ++ ce_ass κ B0 :: nil <> nil \/ Ns <> nil) by (left; intros Hn; destruct Θr; discriminate).
     destruct (mem_closed_part_named_parts _ _ _ _ _ _ _ _ _ _ _ _ _ Hne
                 HH HR0 HR0m Hm HA0) as (M' & A0 & r & i & [_ HAeq Hkeq HΘ' _ Hi Hlv Heq]).
@@ -441,8 +469,7 @@ Theorem wf_exp_eq_mem_app : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H N x R A,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N -> names_no_frame H ->
     mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
     Γ ⊢ a_mem H x : A ->
-    exists R' A', mdenote gc_deps gc_stack Γ (me_mem (me_app H N) x) R' /\ mdesc_type R' = Some A' /\
-      Γ ⊢ a_mem H x $ N ≈ a_mem (me_app H N) x : A'.
+    exists B C R', mem_app_shape Γ H N x A B C R'.
 Proof.
   intros Hgw * HHN Hq Hm HA HxA.
   apply (mdenote_mem_no_frame _ _ _ _ _ Hgw Hq Hm); intros R0 R0m Γy E rd RE Hm0 HR0m _ _ _.
