@@ -486,33 +486,6 @@ End Fixed_GCtx.
 
 (** ** Stored aliases *)
 
-(** An alias stored just below a stored module is a well-formed unit over
-    no context: by its entry's validity ([gc_module_alias_valid], [syn_V]),
-    its parameters the module's telescope extended by assumptions
-    ([loc_alias_params]). *)
-Lemma gc_module_alias_wf : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ y U,
-    gc_loc Θ Ξ p = Some (T, Φ) -> gc_module Θ Ξ (qname_in p y) = Some (mr_alias U) -> Θ ⍮ Ξ ⍮ ⋅ ⊢ᵘ U ≈ U.
-Proof.
-  intros * Hg * Hl Hm.
-  destruct (gc_module_alias_unit _ _ _ _ Hm) as (Δa & E & ->).
-  destruct (loc_alias_params _ _ Hg _ _ _ _ _ Hl Hm) as (Δ & EΔ & HΔ); cbn [gu_params] in EΔ.
-  assert (Ha : all_assumptions Δa)
-    by (rewrite EΔ; apply List.Forall_app; split; [ exact HΔ | exact (gc_loc_tele_all_assumptions _ _ Hg _ _ _ Hl) ]).
-  destruct (gctx_valid_syn _ _ Hg) as [HΘ HΞ].
-  destruct (gc_module_alias_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T0 & pv & Hv); cbn in Hv.
-  destruct Hv as (HE & HwΔ & (l & Hpe) & (lv & Rt & Hlf) & Hden).
-  destruct (params_evaluated_sorts _ _ _ _ _ Hpe) as (ps & Hps & HpΔ).
-  rewrite <- (app_nil_r Δa) in HwΔ, HE.
-  destruct (Hden ⋅ HwΔ) as [(R & HR) Hok]; destruct (Hok R HR) as (_ & _ & Hnf).
-  assert (Hff : frame_free_target Θ Ξ (Δa ++ ⋅) E) by (exists R; split; assumption).
-  eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt) (lv' := lv) (Rt' := Rt);
-    [ exact (ext_of_ctx' _ _ _ _ HwΔ) | exact Ha | exact Ha | exact HE | exact HE | exact Hps | exact HpΔ | exact HpΔ
-    | exact (levels_flag_sorted _ _ _ _ _ _ _ Hlf) | exact (levels_flag_denotes _ _ _ _ _ _ _ Hlf)
-    | exact (levels_flag_no_level _ _ _ _ _ _ _ Hlf)
-    | exact (levels_flag_sorted _ _ _ _ _ _ _ Hlf) | exact (levels_flag_denotes _ _ _ _ _ _ _ Hlf)
-    | exact (levels_flag_no_level _ _ _ _ _ _ _ Hlf) | exact Hff | exact Hff ].
-Qed.
-
 (** A deep alias stored just below a stored module: its literal is glued
     over no context, by (a) at the identity of [⋅] and the construction
     ([glu_unit_modexp_at]). *)

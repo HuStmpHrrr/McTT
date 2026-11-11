@@ -30,68 +30,6 @@ From Mctt.Core.Soundness Require Import UnitDeep ModuleExpressions.
 Import Domain_Notations Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
-(** ** The child entries of a stored module, as it grows *)
-
-(** The child [y] of a body is read off its entry [y]: as the body with
-    that entry alone. *)
-Lemma gm_child_of_entry : forall Φ y E T, gm_entry Φ (y :: nil) = Some E ->
-    gm_submodule T Φ y nil = gm_submodule T (gm_ext gm_nil y E) y nil /\
-    gm_subbody T Φ y nil = gm_subbody T (gm_ext gm_nil y E) y nil.
-Proof.
-  induction Φ as [| Φ IH z E0 | Φ IH H its Φg _]; intros * He; cbn in He |- *; [ discriminate | | exact (IH _ _ _ He) ].
-  destruct (String.eqb y z) eqn:Eyz; [| exact (IH _ _ _ He) ].
-  apply String.eqb_eq in Eyz; subst z; injection He as ->; rewrite String.eqb_refl; split; reflexivity.
-Qed.
-
-(** An entry grown keeps the child it stands for: the same module, and a
-    body over the same telescope. *)
-Lemma gm_child_grows : forall y E1 E2 T, entry_grows E1 E2 ->
-    gm_submodule T (gm_ext gm_nil y E1) y nil = gm_submodule T (gm_ext gm_nil y E2) y nil /\
-    (forall T' Φ2, gm_subbody T (gm_ext gm_nil y E2) y nil = Some (T', Φ2) ->
-       exists Φ1, gm_subbody T (gm_ext gm_nil y E1) y nil = Some (T', Φ1)).
-Proof.
-  intros * Hgr; cbn [gm_submodule gm_subbody]; rewrite String.eqb_refl.
-  destruct E1 as [b pv r A oM | pv [Δ [sm Φ | E]] | pv pq k D Φ | pv A M [Δ [sm Φ | E]] | pv p R Φ];
-    destruct E2 as [b' pv' r' A' oM' | pv' [Δ' [sm' Φ' | E']] | pv' pq' k' D' Φ' | pv' A' M' [Δ' [sm' Φ' | E']] | pv' p' R' Φ'];
-    cbn in Hgr; try discriminate;
-    first [ injection Hgr; intros; subst; split; [ reflexivity | intros * H; eexists; exact H ]
-          | destruct Hgr as (-> & -> & ->); split; [ reflexivity | intros * H; injection H as <- <-; eexists; reflexivity ]
-          | destruct Hgr as (-> & -> & -> & ->); split; [ reflexivity | intros * H; injection H as <- <-; eexists; reflexivity ] ].
-Qed.
-
-(** The child [y] of a module stored at [p] in a global context and in one
-    it grows into, an entry of the smaller one: stored in the bigger one
-    over a telescope, it is stored in the smaller one over the same; an
-    alias in the bigger one is the same alias in the smaller one. *)
-Lemma loc_child_grow : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> ⊢ᵍ Θ2 ⍮ Ξ2 -> gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
-    forall p T Φ1 Φ2 y E1, loc Θ1 Ξ1 p T Φ1 -> loc Θ2 Ξ2 p T Φ2 -> gm_entry Φ1 (y :: nil) = Some E1 ->
-    (forall T' Φ', gc_loc Θ2 Ξ2 (qname_in p y) = Some (T', Φ') -> exists Φ1', gc_loc Θ1 Ξ1 (qname_in p y) = Some (T', Φ1')) /\
-    (forall U, gc_module Θ2 Ξ2 (qname_in p y) = Some (mr_alias U) -> gc_module Θ1 Ξ1 (qname_in p y) = Some (mr_alias U)).
-Proof.
-  intros * Hg1 Hg2 Hs * Hl1 Hl2 He1.
-  pose proof (proj2 (loc_entry _ _ Hg1 _ _ _ Hl1 _ _) He1) as Hc1.
-  destruct (gc_sub_entry_field _ _ _ _ Hs _ _ Hc1) as (E2 & Hc2 & Hgr).
-  pose proof (proj1 (loc_entry _ _ Hg2 _ _ _ Hl2 _ _) Hc2) as He2.
-  destruct (gm_entry_head _ _ _ He1) as (z1 & ip1 & [= <- <-] & Hin1).
-  destruct (gm_entry_head _ _ _ He2) as (z2 & ip2 & [= <- <-] & Hin2).
-  destruct (loc_read _ _ Hg1 _ _ _ Hl1 _ Hin1 nil) as (_ & _ & Hm1 & Hb1).
-  destruct (loc_read _ _ Hg2 _ _ _ Hl2 _ Hin2 nil) as (_ & _ & Hm2 & Hb2).
-  rewrite <- qname_in_app in Hm1, Hb1, Hm2, Hb2.
-  destruct (gm_child_of_entry _ _ _ T He1) as [Em1 Eb1].
-  destruct (gm_child_of_entry _ _ _ T He2) as [Em2 Eb2].
-  destruct (gm_child_grows y _ _ T Hgr) as [Em Eb].
-  (** Neither child is an open frame: each is an entry *)
-  assert (Hnf : forall Θ Ξ E, gc_entry Θ Ξ (qname_in p y) = Some E -> gc_frame Ξ (qname_in p y) = None).
-  { intros * Hc; unfold gc_frame; destruct (gs_find_tele Ξ (qname_in p y)) as [[[[Δ [[|] Φ0 | E0]] [| ? ?]] T0] |] eqn:Ht;
-      try reflexivity.
-    rewrite (gc_entry_tele_nil _ _ _ _ _ Ht) in Hc; discriminate. }
-  split.
-  - intros * Hl'; unfold gc_loc in Hl' |- *; rewrite (Hnf _ _ _ Hc2) in Hl'; rewrite (Hnf _ _ _ Hc1).
-    rewrite Hb2, Eb2 in Hl'; destruct (Eb _ _ Hl') as (Φ1' & HΦ1').
-    exists Φ1'; rewrite Hb1, Eb1; exact HΦ1'.
-  - intros U Hm; rewrite Hm1, Em1, Em, <- Em2, <- Hm2; exact Hm.
-Qed.
-
 Section Fixed_GCtx.
   Context {GC : GCtx}.
   Import Fixed_Notations.
@@ -304,16 +242,6 @@ Proof.
     cbn [mdesc_ats_read] in Ha; mdesc_dm_read_shape Ha; reflexivity.
 Qed.
 
-(** An equation at a type is one at a type equal to it at a sort of
-    types. *)
-Lemma wf_exp_eq_conv_kind : forall Γ M M' A A' κ (l : nat),
-    Γ ⊢ M ≈ M' : A -> Γ ⊢ A ≈ A' : abs_kind_sort κ Typeω@l -> Γ ⊢ M ≈ M' : A'.
-Proof.
-  intros * HM HA.
-  eapply wf_exp_eq_subtyp'; [ exact HM |].
-  eapply wf_subtyp_refl; [ exact (presup_exp_eq_right HA) | apply type_sort_abs_kind; constructor | exact HA ].
-Qed.
-
 (** A type value related to a [Π] into an evaluated kind is a [Π] of the
     same kinds: a [Π] into propositions is the only proposition among
     them. *)
@@ -366,36 +294,6 @@ Proof.
   intros * HA HS HSt HC.
   assert (E : C[q Wk] = C[wk_q wk_shift]ʷ) by (rewrite <- exp_sub_of_wk_q_extend; apply exp_sub_sb_eq; intros [| n]; reflexivity).
   rewrite E; exact (codomain_wk_var0_eq _ _ _ _ _ _ HA HS HSt HC).
-Qed.
-
-(** An equation at the sort of a kind next to a universe holds next to a
-    larger one: the twin of [abs_kind_sort_lift] for equations. *)
-Lemma abs_kind_sort_eq_lift : forall Γ M M' κ (i n : nat), i <= n ->
-    Γ ⊢ M ≈ M' : abs_kind_sort κ Typeω@i -> Γ ⊢ M ≈ M' : abs_kind_sort κ Typeω@n.
-Proof. intros * Hle HM; destruct κ; cbn in *; [ exact (lift_exp_eq_ge _ _ _ _ _ _ _ Hle HM) | exact HM | exact HM ]. Qed.
-
-(** A term of a type is of every type equal to it at a sort of types. *)
-Lemma wf_exp_conv_kind : forall Γ M A A' κ (l : nat),
-    Γ ⊢ M : A -> Γ ⊢ A ≈ A' : abs_kind_sort κ Typeω@l -> Γ ⊢ M : A'.
-Proof.
-  intros * HM HA.
-  eapply wf_exp_subtyp'; [ exact HM |].
-  eapply wf_subtyp_refl; [ exact (presup_exp_eq_right HA) | apply type_sort_abs_kind; constructor | exact HA ].
-Qed.
-
-(** Equal types of a sort have related values at an environment of the
-    context, by completeness. *)
-Lemma eq_type_value_rel : forall Γ A A' S RΓ ρ a',
-    Γ ⊢ A ≈ A' : S -> type_sort S -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> ⟦ A' ⟧ ρ ↘ a' ->
-    exists a (i : nat), ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a' ∈ per_univ i.
-Proof.
-  intros * HAA HS HRΓ Hρ Ea'.
-  destruct (rel_type_of_sort HS (completeness_fundamental_exp_eq _ _ _ _ HAA)) as [i Hi].
-  destruct (rel_type_inversion_simple Hi) as [R' [HR' HAr]].
-  assert (Hirr : RΓ <~> R') by (eapply per_ctx_env_right_irrel; eassumption).
-  destruct (HAr _ _ (proj1 (Hirr _ _) Hρ)) as (a0 & a0' & Ea0 & Ea0' & Ha).
-  pose proof (functional_eval_exp _ _ _ _ Ea0' Ea') as ->.
-  exists a0, i; split; assumption.
 Qed.
 
 (** Related [Π]s into an evaluated kind: their domains are related, and so
@@ -627,21 +525,6 @@ Section Members.
     destruct (proj2 (@App.valid_unit_app_all GCm Hg Θ Ξ Hg (gc_sub_refl _ _) (valid_gctx_embedding_filed _ _ _ _ Hve))
                 _ _ HvH _ _ _ _ _ i #0 Hmw HTw Hvw HS HBw Hrp H0t (completeness_fundamental_exp _ _ _ H0t)) as [Hnp _].
     exact (Hnp _ HRB _ Hρ').
-  Qed.
-
-  (** Every path a stored module's path extends is stored: its parent is
-      ([loc_parent]), up the chain. *)
-  Lemma path_prefix_loc : forall m2 F T Φ, loc Θ Ξ F T Φ -> forall m1, q_chain F = m1 ++ m2 -> m1 <> nil ->
-      exists TΦ, gc_loc Θ Ξ (q_abs (q_unit F) m1) = Some TΦ.
-  Proof.
-    induction m2 as [| z m2 IH] using List.rev_ind; intros * Hl m1 Ec Hne.
-    - rewrite List.app_nil_r in Ec; rewrite <- Ec.
-      destruct F as [u ch]; cbn [q_unit q_chain]; exists (T, Φ); exact (gc_loc_of_loc _ _ Hg _ _ _ Hl).
-    - rewrite List.app_assoc in Ec.
-      assert (EqF : F = qname_in (q_abs (q_unit F) (m1 ++ m2)) z)
-        by (destruct F as [u ch]; cbn in Ec |- *; unfold qname_in; cbn; rewrite <- Ec; reflexivity).
-      rewrite EqF in Hl; destruct (loc_parent _ _ Hg _ _ _ _ Hl) as (T' & Φ' & Hl').
-      exact (IH _ _ _ Hl' m1 eq_refl Hne).
   Qed.
 
   (** The value of a type of a sort at an environment, up to [per_univ],
@@ -1112,7 +995,7 @@ Section Members.
     exists (dm_global pm nil); split.
     - rewrite (mod_qname_inv _ _ Hq).
       apply (Evaluation.Modules.eval_path_mod Θ Ξ); intros m1 m2 Ec Hne.
-      exact (path_prefix_loc _ _ _ _ (gc_loc_loc _ _ _ _ _ Hl) _ Ec Hne).
+      exact (path_prefix_loc _ _ Hg _ _ _ _ (gc_loc_loc _ _ _ _ _ Hl) _ Ec Hne).
     - eapply (@glu_dmod_global_path GCm _ _ _ Hg Hl (gc_loc_tele_all_assumptions _ _ Hg _ _ _ Hl)
                 (proj1 (gc_loc_closed _ _ _ _ _ (wf_gstack_closed _ _ Hg) Hl)) HT (List.length T));
         [ cbn; lia | exact (glu_ctx_env_sub_escape HSb _ _ _ Hσ) | exact HH' | |].

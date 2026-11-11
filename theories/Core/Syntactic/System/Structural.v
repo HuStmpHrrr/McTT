@@ -4920,6 +4920,12 @@ Proof.
   induction 1; intros; mauto 3.
 Qed.
 
+(** An equation at the sort of a kind next to a universe holds next to a
+    larger one: the twin of [abs_kind_sort_lift] for equations. *)
+Lemma abs_kind_sort_eq_lift : forall {Θ Ξ} Γ M M' κ (i n : nat), i <= n ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : abs_kind_sort κ Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : abs_kind_sort κ Typeω@n.
+Proof. intros * Hle HM; destruct κ; cbn in *; [ exact (lift_exp_eq_ge _ _ _ _ _ _ _ Hle HM) | exact HM | exact HM ]. Qed.
+
 #[export]
 Hint Resolve lift_exp_ge lift_exp_eq_ge : mctt.
 

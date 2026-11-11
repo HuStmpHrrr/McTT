@@ -782,6 +782,21 @@ Proof.
   exists a, a'; eassumption.
 Qed.
 
+(** Equal types of a sort have related values at an environment of the
+    context. *)
+Lemma eq_type_value_rel : forall Γ A A' S RΓ ρ a',
+    Γ ⊢ A ≈ A' : S -> type_sort S -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> ⟦ A' ⟧ ρ ↘ a' ->
+    exists a (i : nat), ⟦ A ⟧ ρ ↘ a /\ Dom a ≈ a' ∈ per_univ i.
+Proof.
+  intros * HAA HS HRΓ Hρ Ea'.
+  destruct (rel_type_of_sort HS (completeness_fundamental_exp_eq _ _ _ _ HAA)) as [i Hi].
+  destruct (rel_type_inversion_simple Hi) as [R' [HR' HAr]].
+  assert (Hirr : RΓ <~> R') by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (HAr _ _ (proj1 (Hirr _ _) Hρ)) as (a0 & a0' & Ea0 & Ea0' & Ha).
+  pose proof (functional_eval_exp _ _ _ _ Ea0' Ea') as ->.
+  exists a0, i; split; assumption.
+Qed.
+
 End Corollaries.
 
 #[export]

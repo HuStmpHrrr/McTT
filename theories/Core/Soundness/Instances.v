@@ -780,6 +780,15 @@ Proof.
   apply glu_rel_exp_of_under_renaming; [ apply Hτ | apply Hτ; eassumption ].
 Qed.
 
+(** So at a target: a variable of a context glued with its types is glued
+    at the instances. *)
+Lemma glu_rel_exp_under_sub_vlookup : forall {GC : GCtx} Γ x A,
+    glu_rel_ctx_types Γ -> Γ ∋ #x : A -> glu_rel_exp_under_sub Γ #x A.
+Proof.
+  intros * HΓ Hx; econstructor; [ exact HΓ |].
+  intros Γ' τ Hτ; apply glu_rel_exp_of_under_renaming; [ apply Hτ | apply Hτ; exact Hx ].
+Qed.
+
 Lemma glu_exp_eq_var :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->

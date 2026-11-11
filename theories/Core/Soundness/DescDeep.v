@@ -444,17 +444,6 @@ Qed.
 
 (** ** Entries of a stored module *)
 
-(** The module part of a description read at arguments ([mdesc_ats_read])
-    is its module part given them ([mdesc_mod_ats]): a definition with a
-    module part gives them to its module part as a module. *)
-Lemma mdesc_mod_ats_read : forall Ns R Rm R1, mdesc_mod R = Some Rm -> mdesc_ats_read R Ns = Some R1 ->
-    exists Rm1, mdesc_ats Rm Ns = Some Rm1 /\ mdesc_mod R1 = Some Rm1.
-Proof.
-  intros * Hm Ha; destruct (mdesc_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm0 & r & B & M' & Rm' & -> & -> & _ & E)];
-    [ exact (mdesc_mod_ats _ _ _ _ Hm Ha') |].
-  cbn in Hm |- *; exact (mdesc_mod_ats _ _ _ _ Hm E).
-Qed.
-
 (** An entry of a stored module read at the arguments recorded and
     abstracted over the outside parameters ([reader_closed]) is deep when
     its module part given the arguments is, under the outside

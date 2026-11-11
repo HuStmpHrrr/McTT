@@ -1066,6 +1066,68 @@ Proof.
   rewrite qname_in_app, Hb; exact (proj1 (gm_entry_subbody_record _ T _ _ _ _ _ He)).
 Qed.
 
+(** ** The child entries of a stored module, as it grows *)
+
+(** The child [y] of a body is read off its entry [y]: as the body with
+    that entry alone. *)
+Lemma gm_child_of_entry : forall Φ y E T, gm_entry Φ (y :: nil) = Some E ->
+    gm_submodule T Φ y nil = gm_submodule T (gm_ext gm_nil y E) y nil /\
+    gm_subbody T Φ y nil = gm_subbody T (gm_ext gm_nil y E) y nil.
+Proof.
+  induction Φ as [| Φ IH z E0 | Φ IH H its Φg _]; intros * He; cbn in He |- *; [ discriminate | | exact (IH _ _ _ He) ].
+  destruct (String.eqb y z) eqn:Eyz; [| exact (IH _ _ _ He) ].
+  apply String.eqb_eq in Eyz; subst z; injection He as ->; rewrite String.eqb_refl; split; reflexivity.
+Qed.
+
+(** An entry grown keeps the child it stands for: the same module, and a
+    body over the same telescope. *)
+Lemma gm_child_grows : forall y E1 E2 T, entry_grows E1 E2 ->
+    gm_submodule T (gm_ext gm_nil y E1) y nil = gm_submodule T (gm_ext gm_nil y E2) y nil /\
+    (forall T' Φ2, gm_subbody T (gm_ext gm_nil y E2) y nil = Some (T', Φ2) ->
+       exists Φ1, gm_subbody T (gm_ext gm_nil y E1) y nil = Some (T', Φ1)).
+Proof.
+  intros * Hgr; cbn [gm_submodule gm_subbody]; rewrite String.eqb_refl.
+  destruct E1 as [b pv r A oM | pv [Δ [sm Φ | E]] | pv pq k D Φ | pv A M [Δ [sm Φ | E]] | pv p R Φ];
+    destruct E2 as [b' pv' r' A' oM' | pv' [Δ' [sm' Φ' | E']] | pv' pq' k' D' Φ' | pv' A' M' [Δ' [sm' Φ' | E']] | pv' p' R' Φ'];
+    cbn in Hgr; try discriminate;
+    first [ injection Hgr; intros; subst; split; [ reflexivity | intros * H; eexists; exact H ]
+          | destruct Hgr as (-> & -> & ->); split; [ reflexivity | intros * H; injection H as <- <-; eexists; reflexivity ]
+          | destruct Hgr as (-> & -> & -> & ->); split; [ reflexivity | intros * H; injection H as <- <-; eexists; reflexivity ] ].
+Qed.
+
+(** The child [y] of a module stored at [p] in a global context and in one
+    it grows into, an entry of the smaller one: stored in the bigger one
+    over a telescope, it is stored in the smaller one over the same; an
+    alias in the bigger one is the same alias in the smaller one. *)
+Lemma loc_child_grow : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> ⊢ᵍ Θ2 ⍮ Ξ2 -> gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
+    forall p T Φ1 Φ2 y E1, loc Θ1 Ξ1 p T Φ1 -> loc Θ2 Ξ2 p T Φ2 -> gm_entry Φ1 (y :: nil) = Some E1 ->
+    (forall T' Φ', gc_loc Θ2 Ξ2 (qname_in p y) = Some (T', Φ') -> exists Φ1', gc_loc Θ1 Ξ1 (qname_in p y) = Some (T', Φ1')) /\
+    (forall U, gc_module Θ2 Ξ2 (qname_in p y) = Some (mr_alias U) -> gc_module Θ1 Ξ1 (qname_in p y) = Some (mr_alias U)).
+Proof.
+  intros * Hg1 Hg2 Hs * Hl1 Hl2 He1.
+  pose proof (proj2 (loc_entry _ _ Hg1 _ _ _ Hl1 _ _) He1) as Hc1.
+  destruct (gc_sub_entry_field _ _ _ _ Hs _ _ Hc1) as (E2 & Hc2 & Hgr).
+  pose proof (proj1 (loc_entry _ _ Hg2 _ _ _ Hl2 _ _) Hc2) as He2.
+  destruct (gm_entry_head _ _ _ He1) as (z1 & ip1 & [= <- <-] & Hin1).
+  destruct (gm_entry_head _ _ _ He2) as (z2 & ip2 & [= <- <-] & Hin2).
+  destruct (loc_read _ _ Hg1 _ _ _ Hl1 _ Hin1 nil) as (_ & _ & Hm1 & Hb1).
+  destruct (loc_read _ _ Hg2 _ _ _ Hl2 _ Hin2 nil) as (_ & _ & Hm2 & Hb2).
+  rewrite <- qname_in_app in Hm1, Hb1, Hm2, Hb2.
+  destruct (gm_child_of_entry _ _ _ T He1) as [Em1 Eb1].
+  destruct (gm_child_of_entry _ _ _ T He2) as [Em2 Eb2].
+  destruct (gm_child_grows y _ _ T Hgr) as [Em Eb].
+  (** Neither child is an open frame: each is an entry *)
+  assert (Hnf : forall Θ Ξ E, gc_entry Θ Ξ (qname_in p y) = Some E -> gc_frame Ξ (qname_in p y) = None).
+  { intros * Hc; unfold gc_frame; destruct (gs_find_tele Ξ (qname_in p y)) as [[[[Δ [[|] Φ0 | E0]] [| ? ?]] T0] |] eqn:Ht;
+      try reflexivity.
+    rewrite (gc_entry_tele_nil _ _ _ _ _ Ht) in Hc; discriminate. }
+  split.
+  - intros * Hl'; unfold gc_loc in Hl' |- *; rewrite (Hnf _ _ _ Hc2) in Hl'; rewrite (Hnf _ _ _ Hc1).
+    rewrite Hb2, Eb2 in Hl'; destruct (Eb _ _ Hl') as (Φ1' & HΦ1').
+    exists Φ1'; rewrite Hb1, Eb1; exact HΦ1'.
+  - intros U Hm; rewrite Hm1, Em1, Em, <- Em2, <- Hm2; exact Hm.
+Qed.
+
 (** The unit a module expression names directly. *)
 Lemma gc_unit_cases : forall Θ Ξ H T Φ, gc_unit Θ Ξ H = Some (T, Φ) ->
     exists mp, mod_qname H = Some mp /\

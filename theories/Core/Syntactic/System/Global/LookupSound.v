@@ -355,6 +355,48 @@ Proof.
     exists Tq, Φq; exact Hlq.
 Qed.
 
+(** Every path a stored module's path extends is stored: its parent is
+    ([loc_parent]), up the chain. *)
+Lemma path_prefix_loc : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall m2 F T Φ, loc Θ Ξ F T Φ -> forall m1, q_chain F = m1 ++ m2 -> m1 <> nil ->
+    exists TΦ, gc_loc Θ Ξ (q_abs (q_unit F) m1) = Some TΦ.
+Proof.
+  intros Θ Ξ Hg; induction m2 as [| z m2 IH] using List.rev_ind; intros * Hl m1 Ec Hne.
+  - rewrite List.app_nil_r in Ec; rewrite <- Ec.
+    destruct F as [u ch]; cbn [q_unit q_chain]; exists (T, Φ); exact (gc_loc_of_loc _ _ Hg _ _ _ Hl).
+  - rewrite List.app_assoc in Ec.
+    assert (EqF : F = qname_in (q_abs (q_unit F) (m1 ++ m2)) z)
+      by (destruct F as [u ch]; cbn in Ec |- *; unfold qname_in; cbn; rewrite <- Ec; reflexivity).
+    rewrite EqF in Hl; destruct (loc_parent _ _ Hg _ _ _ _ Hl) as (T' & Φ' & Hl').
+    exact (IH _ _ _ Hl' m1 eq_refl Hne).
+Qed.
+
+(** An alias stored just below a stored module is a well-formed unit over
+    no context: by its entry's validity ([gc_module_alias_valid], [syn_V]),
+    its parameters the module's telescope extended by assumptions
+    ([loc_alias_params]). *)
+Lemma gc_module_alias_wf : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ y U,
+    gc_loc Θ Ξ p = Some (T, Φ) -> gc_module Θ Ξ (qname_in p y) = Some (mr_alias U) -> Θ ⍮ Ξ ⍮ ⋅ ⊢ᵘ U ≈ U.
+Proof.
+  intros * Hg * Hl Hm.
+  destruct (gc_module_alias_unit _ _ _ _ Hm) as (Δa & E & ->).
+  destruct (loc_alias_params _ _ Hg _ _ _ _ _ Hl Hm) as (Δ & EΔ & HΔ); cbn [gu_params] in EΔ.
+  assert (Ha : all_assumptions Δa)
+    by (rewrite EΔ; apply List.Forall_app; split; [ exact HΔ | exact (gc_loc_tele_all_assumptions _ _ Hg _ _ _ Hl) ]).
+  destruct (gctx_valid_syn _ _ Hg) as [HΘ HΞ].
+  destruct (gc_module_alias_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T0 & pv & Hv); cbn in Hv.
+  destruct Hv as (HE & HwΔ & (l & Hpe) & (lv & Rt & Hlf) & Hden).
+  destruct (params_evaluated_sorts _ _ _ _ _ Hpe) as (ps & Hps & HpΔ).
+  rewrite <- (app_nil_r Δa) in HwΔ, HE.
+  destruct (Hden ⋅ HwΔ) as [(R & HR) Hok]; destruct (Hok R HR) as (_ & _ & Hnf).
+  assert (Hff : frame_free_target Θ Ξ (Δa ++ ⋅) E) by (exists R; split; assumption).
+  eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt) (lv' := lv) (Rt' := Rt);
+    [ exact (ext_of_ctx' _ _ _ _ HwΔ) | exact Ha | exact Ha | exact HE | exact HE | exact Hps | exact HpΔ | exact HpΔ
+    | exact (levels_flag_sorted _ _ _ _ _ _ _ Hlf) | exact (levels_flag_denotes _ _ _ _ _ _ _ Hlf)
+    | exact (levels_flag_no_level _ _ _ _ _ _ _ Hlf)
+    | exact (levels_flag_sorted _ _ _ _ _ _ _ Hlf) | exact (levels_flag_denotes _ _ _ _ _ _ _ Hlf)
+    | exact (levels_flag_no_level _ _ _ _ _ _ _ Hlf) | exact Hff | exact Hff ].
+Qed.
+
 Lemma qname_mod_gen : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> forall p T Φ, loc Θ Ξ p T Φ -> gen_m Θ Ξ Γ (qname_mod p).
 Proof.
   intros Θ Ξ Γ HΓ [u ch] T Φ Hl; pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
@@ -527,6 +569,17 @@ Proof.
   destruct (mdesc_at Rm N) as [Rm1 |] eqn:E; [| discriminate ].
   destruct (mdesc_mod_at_inv _ _ _ _ Hm E) as (R1 & -> & Hm1).
   exact (IH _ _ _ Hm1 Ha).
+Qed.
+
+(** The module part of a description read at arguments ([mdesc_ats_read])
+    is its module part given them ([mdesc_mod_ats]): a definition with a
+    module part gives them to its module part as a module. *)
+Lemma mdesc_mod_ats_read : forall Ns R Rm R1, mdesc_mod R = Some Rm -> mdesc_ats_read R Ns = Some R1 ->
+    exists Rm1, mdesc_ats Rm Ns = Some Rm1 /\ mdesc_mod R1 = Some Rm1.
+Proof.
+  intros * Hm Ha; destruct (mdesc_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm0 & r & B & M' & Rm' & -> & -> & _ & E)];
+    [ exact (mdesc_mod_ats _ _ _ _ Hm Ha') |].
+  cbn in Hm |- *; exact (mdesc_mod_ats _ _ _ _ Hm E).
 Qed.
 
 Lemma mdesc_reduct_up : forall Θ' R, mdesc_reduct (mdesc_up Θ' R) = option_map (ctx_fn Θ') (mdesc_reduct R).

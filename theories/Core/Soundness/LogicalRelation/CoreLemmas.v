@@ -342,6 +342,16 @@ Proof.
     [ exact HM | exact (presup_exp_eq_right HA) | apply type_sort_abs_kind; constructor | exact HA ].
 Qed.
 
+(** A term of a type is of every type equal to it at the sort of a
+    kind. *)
+Lemma wf_exp_conv_kind : forall Γ M A A' κ (l : nat),
+    Γ ⊢ M : A -> Γ ⊢ A ≈ A' : abs_kind_sort κ Typeω@l -> Γ ⊢ M : A'.
+Proof.
+  intros * HM HA.
+  eapply wf_exp_subtyp'; [ exact HM |].
+  eapply wf_subtyp_refl; [ exact (presup_exp_eq_right HA) | apply type_sort_abs_kind; constructor | exact HA ].
+Qed.
+
 (** The readback equations move along an equation of their types. *)
 Lemma glu_nf_eq_conv : forall Γ M W A A' κ i,
     Γ ⊢ A ≈ A' : abs_kind_sort κ Typeω@i -> glu_nf_eq Γ M W A -> glu_nf_eq Γ M W A'.

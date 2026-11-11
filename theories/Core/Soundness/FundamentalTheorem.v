@@ -321,15 +321,6 @@ Proof.
   exists j; exact (glu_rel_exp_of_under_sub (proj1 (Ke _ _ _ _ _ H _ _ Hμ))).
 Qed.
 
-(** A variable of a context glued with its types is glued at the
-    instances: each instance's component is glued ([glu_rel_sub_inst]). *)
-Lemma glu_rel_exp_under_sub_vlookup : forall {GC : GCtx} Γ x A,
-    glu_rel_ctx_types Γ -> Γ ∋ #x : A -> glu_rel_exp_under_sub Γ #x A.
-Proof.
-  intros * HΓ Hx; econstructor; [ exact HΓ |].
-  intros Γ' τ Hτ; apply glu_rel_exp_of_under_renaming; [ apply Hτ | apply Hτ; exact Hx ].
-Qed.
-
 (** A record's module telescope, at a target where the record is found:
     its parameters, glued there, and its value, of the type former at the
     parameters as variables ([glu_record_apps]), a type of a universe. *)
