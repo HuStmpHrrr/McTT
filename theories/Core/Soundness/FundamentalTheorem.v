@@ -38,6 +38,7 @@ From Mctt.Core.Soundness.Inductives Require Import Con.
 From Mctt.Core.Soundness Require Import Instances Extensions UnitEqCases IndCases ModuleCases RecordCases.
 From Mctt.Core.Soundness.Global Require Import Embedding.
 From Mctt.Core.Completeness.Inductives Require Con.
+Require Mctt.Core.Soundness.Inductives.ArgTypes.
 Require Import Mctt.Core.Soundness.Inductives.Elim.
 Require Import Mctt.Core.Soundness.ElimCases.
 Require Import Mctt.Core.Soundness.IotaCases.
@@ -116,7 +117,18 @@ Lemma glu_rel_exp_of_embedding : forall Θ1 Ξ1 Θ2 Ξ2 A M,
     glu_gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
     Θ1 ⍮ Ξ1 ⍮ ⋅ ⊢ M : A ->
     @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ M A.
-Proof. intros * Hμ HM; exact (proj1 (proj2 soundness_fundamental) _ _ _ _ _ HM _ _ Hμ). Qed.
+Proof. intros * Hμ HM; exact (glu_rel_exp_of_under_sub (proj1 (proj1 (proj2 soundness_fundamental) _ _ _ _ _ HM _ _ Hμ))). Qed.
+
+(** A record declaration typed at the source glues at the target: its
+    parameters, sort and fields, glued. *)
+Lemma glu_record_decl_of_typed : forall Θ Ξ R Θ2 Ξ2,
+    record_typed Θ Ξ R -> glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_record_decl (gc_mk Θ2 Ξ2) R.
+Proof.
+  intros * Ht Hμ; destruct soundness_fundamental as (_ & Ke & _ & _ & Ku & _).
+  destruct (Ku _ _ _ _ (typed_sort _ _ _ Ht) _ _ Hμ) as [HPg HSu _].
+  constructor; [ exact HPg | exact HSu |].
+  intros * Hk; exact (proj1 (Ke _ _ _ _ _ (typed_fields _ _ _ Ht _ _ _ Hk) _ _ Hμ)).
+Qed.
 
 (** ** Each entry is valid where it is checked *)
 
@@ -132,10 +144,15 @@ Lemma glu_entry_def : forall Θ Ξ T r A M i b pv Θ2 Ξ2,
 Proof.
   intros * HA HL HTa HM _ He HΘ HΞ Θs Ξs.
   pose proof (glu_gctx_embedding_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) He HΘ HΞ) as Hμ.
+  destruct soundness_fundamental as (_ & Ke & _).
+  (** Over the telescope: the type and the body, glued *)
+  assert (Hover : glu_def_over_tele Θ2 Ξ2 T r (ctx_pi_at r T A) (Some (ctx_fn T M)) A i).
+  { constructor; [ reflexivity | exact (glu_rel_exp_of_under_sub (proj1 (Ke _ _ _ _ _ HA _ _ Hμ))) |].
+    intros ? [= <-]; exists M; split; [ reflexivity | exact (glu_rel_exp_of_under_sub (proj1 (Ke _ _ _ _ _ HM _ _ Hμ))) ]. }
   assert (HT0 : ⊢ Θ ⍮ Ξ ⍮ T ++ ⋅) by (rewrite List.app_nil_r; exact (presup_exp_ctx HA)).
   rewrite <- (List.app_nil_r T) in HA, HM.
   destruct (ctx_pi_type_kind _ _ _ _ _ _ _ HT0 (fun _ => HTa) HL HA) as [[j HT] Hfn].
-  split; [ exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT) |].
+  constructor; [ exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT) | | exists A, i; exact Hover ].
   intros M0 [= <-]; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ (Hfn _ HM)).
 Qed.
 
@@ -147,10 +164,13 @@ Lemma glu_entry_ax : forall Θ Ξ r A i b pv Θ2 Ξ2 Θs Ξs,
 Proof.
   intros * HA Hr HTa HG He _.
   pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
+  destruct soundness_fundamental as (_ & Ke & _).
+  assert (Hover : glu_def_over_tele Θ2 Ξ2 (gs_tele Ξ) r (ctx_pi_at r (gs_tele Ξ) A) None A i)
+    by (constructor; [ reflexivity | exact (glu_rel_exp_of_under_sub (proj1 (Ke _ _ _ _ _ HA _ _ Hμ))) | intros ? [=] ]).
   assert (HT0 : ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ ++ ⋅) by (rewrite List.app_nil_r; exact (presup_exp_ctx HA)).
   rewrite <- (List.app_nil_r (gs_tele Ξ)) in HA.
   destruct (ctx_pi_at_wf _ _ _ _ _ _ _ Hr HT0 HA) as [j HT].
-  split; [ exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT) | intros ? [=] ].
+  constructor; [ exists j; exact (glu_rel_exp_of_embedding _ _ _ _ _ _ Hμ HT) | intros ? [=] | exists A, i; exact Hover ].
 Qed.
 
 Lemma glu_entry_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 Θs Ξs,
@@ -160,13 +180,29 @@ Lemma glu_entry_alias : forall Θ Ξ pv Δ E l (lv : bool) Rt Θ2 Ξ2 Θs Ξs,
     frame_free_target Θ Ξ (Δ ++ gs_tele Ξ) E ->
     bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
-Proof. intros; exact I. Qed.
+Proof.
+  intros * _ _ HE _ _ _ HG He _; cbn [glu_entry].
+  pose proof (presup_modexp_eq_ctx HE) as HΔ.
+  pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) HG He) as Hμ.
+  destruct soundness_fundamental as (_ & _ & _ & _ & _ & Kx & _ & Km).
+  (** Its parameters, an extension of no context, and its target over them *)
+  rewrite <- (List.app_nil_r (Δ ++ gs_tele Ξ)) in HΔ.
+  destruct (proj1 (Kx _ _ _ _ _ (ext_of_ctx' _ _ _ _ HΔ)) _ _ Hμ) as [HΔg _].
+  rewrite <- (List.app_nil_r (Δ ++ gs_tele Ξ)) in HE.
+  destruct (proj1 (Km _ _ _ _ _ HE) _ _ Hμ) as [HEi HEp _].
+  constructor; [ exact HΔg | exact HEi | exact HEp ].
+Qed.
 
 Lemma glu_mod_tele_nil : forall Θ Ξ Δ l Θ2 Ξ2,
     all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     glu_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
-Proof. intros; exact I. Qed.
+Proof.
+  intros * _ HΔ _ HG He.
+  pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) HG He) as Hμ.
+  destruct soundness_fundamental as (Kc & _).
+  exact (proj1 (Kc _ _ _ HΔ _ _ Hμ)).
+Qed.
 
 (** A declaration typed at the source glues at the target: its judgments,
     glued. *)
@@ -175,13 +211,25 @@ Lemma glu_entry_ind : forall Θ Ξ D l Θ2 Ξ2,
     bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
     glu_ind_decl_entry Θ2 Ξ2 D /\ glu_mod_tele Θ2 Ξ2 (ind_uparams D).
 Proof.
-  intros * Hdt _ HG He; split; [| exact I ]; unfold glu_ind_decl_entry.
-  destruct (decl_typed_uparams _ _ _ Hdt) as [HUw _].
+  intros * Hdt _ HG He.
+  destruct (decl_typed_uparams _ _ _ Hdt) as [HUw HUa].
   pose proof (ctx_wf_gctx _ _ _ HUw) as Hg.
   pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
   pose proof (gctx_embedding_resolution _ _ _ _ (gctx_embedding_with_bodies_embedding _ _ _ _ He)) as Hs.
   destruct soundness_fundamental as (Kc & Ke & _).
+  split; [| exact (proj1 (Kc _ _ _ HUw _ _ Hμ)) ]; unfold glu_ind_decl_entry.
+  split.
+  2:{ (** The type of each member's type former, split over its parameters *)
+      intros k Mk Δ1 Δ2 HMk Hpar.
+      assert (Hass : all_assumptions (im_params D Mk))
+        by (apply List.Forall_app; split; [ exact (decl_typed_nparams_ass _ _ _ Hdt _ _ HMk) | exact HUa ]).
+      destruct (ind_ty_typed0 _ _ _ _ _ Hdt HMk) as [j Hj]; unfold ind_ty in Hj.
+      pose proof (proj1 (ctx_pi_split_typed _ _ _ _ Hass Hj) _ _ Hpar) as H; rewrite List.app_nil_r in H.
+      exists j; exact (glu_rel_exp_of_under_sub (proj1 (Ke _ _ _ _ _ H _ _ Hμ))). }
   destruct (decl_typed_sort_lvl _ _ _ Hdt) as [n Hn].
+  (** The declaration's judgments are glued at the instances *)
+  pose proof (fun Θ' Ξ' Γ A M H Θ2' Ξ2' Hμ' => proj1 (Ke Θ' Ξ' Γ A M H Θ2' Ξ2' Hμ')) as Ke0; clear Ke; rename Ke0 into Ke.
+  pose proof (fun Θ' Ξ' Γ H Θ2' Ξ2' Hμ' => proj1 (Kc Θ' Ξ' Γ H Θ2' Ξ2' Hμ')) as Kc0; clear Kc; rename Kc0 into Kc.
   constructor.
   - intros * HMk; exact (Kc _ _ _ (member_params_wf _ _ _ _ _ Hdt HMk) _ _ Hμ).
   - exists n; exact (Ke _ _ _ _ _ Hn _ _ Hμ).
@@ -249,10 +297,7 @@ Proof.
       pose proof (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR0) as ElR.
       cbn [gc_deps gc_stack] in HlR; rewrite ElR in HlR; injection HlR as <-.
       pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ HlR0) as Ht.
-      destruct soundness_fundamental as (_ & _ & _ & _ & Ku & _).
-      destruct (Ku _ _ _ _ (typed_sort _ _ _ Ht) _ _ Hμ) as [HPg HSu].
-      constructor; [ exact HPg | exact HSu |].
-      intros * Hk; exact (Ke _ _ _ _ _ (typed_fields _ _ _ Ht _ _ _ Hk) _ _ Hμ).
+      exact (glu_record_decl_of_typed _ _ _ _ _ Ht Hμ).
 Qed.
 
 (** A record typed at the source, where it is filed, glues at the target:
@@ -267,10 +312,49 @@ Proof.
   intros * Ht _ HG He; unfold glu_record_decl_entry.
   pose proof (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) as Hg.
   pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
-  destruct soundness_fundamental as (_ & Ke & _ & _ & Ku & _).
-  destruct (Ku _ _ _ _ (typed_sort _ _ _ Ht) _ _ Hμ) as [HPg HSu].
-  constructor; [ exact HPg | exact HSu |].
-  intros * Hk; exact (Ke _ _ _ _ _ (typed_fields _ _ _ Ht _ _ _ Hk) _ _ Hμ).
+  split; [ exact (glu_record_decl_of_typed _ _ _ _ _ Ht Hμ) |].
+  (** The type former's type, split over the parameters *)
+  intros Δ1 Δ2 Hpar.
+  destruct soundness_fundamental as (_ & Ke & _).
+  destruct (record_typed_ty _ _ _ Ht) as [j Hj]; unfold record_ty in Hj.
+  pose proof (proj1 (ctx_pi_split_typed _ _ _ _ (typed_params_ass _ _ _ Ht) Hj) _ _ Hpar) as H; rewrite List.app_nil_r in H.
+  exists j; exact (glu_rel_exp_of_under_sub (proj1 (Ke _ _ _ _ _ H _ _ Hμ))).
+Qed.
+
+(** A variable of a context glued with its types is glued at the
+    instances: each instance's component is glued ([glu_rel_sub_inst]). *)
+Lemma glu_rel_exp_under_sub_vlookup : forall {GC : GCtx} Γ x A,
+    glu_rel_ctx_types Γ -> Γ ∋ #x : A -> glu_rel_exp_under_sub Γ #x A.
+Proof.
+  intros * HΓ Hx; econstructor; [ exact HΓ |].
+  intros Γ' τ Hτ; apply glu_rel_exp_of_under_renaming; [ apply Hτ | apply Hτ; exact Hx ].
+Qed.
+
+(** A record's module telescope, at a target where the record is found:
+    its parameters, glued there, and its value, of the type former at the
+    parameters as variables ([glu_record_apps]), a type of a universe. *)
+Lemma glu_mod_tele_record : forall Θ Ξ p R Θ2 Ξ2,
+    record_typed Θ Ξ R -> bodies_valid_along_embeddings glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ ->
+    gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
+    glu_mod_tele Θ2 Ξ2 (record_params R) -> glu_mod_tele Θ2 Ξ2 (record_mod_tele p R).
+Proof.
+  intros * Ht HG He Hl HP; unfold glu_mod_tele in *.
+  pose proof (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) as Hg.
+  pose proof (glu_gctx_embedding_of_bodies_valid _ _ _ _ Hg HG He) as Hμ.
+  pose proof (gctx_embedding_with_bodies_wf _ _ _ _ He) as Hg2.
+  pose proof (glu_record_decl_of_typed _ _ _ _ _ Ht Hμ) as HGR.
+  pose proof (closed_params _ (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg2) Hl)) as Hs.
+  destruct (@Mctt.Core.Soundness.Inductives.ArgTypes.glu_record_apps (gc_mk Θ2 Ξ2) p R (record_params R) (vars_from 0 (List.length (record_params R))) Hl HGR HP
+              ltac:(apply length_vars_from)) as [j Hj].
+  { intros m N T HN HT.
+    change 0 with (List.length (@nil centry)) in HN, HT.
+    destruct (tele_vars_lookup_gen nil (record_params R) Id Id nil 0 (typed_params_ass _ _ _ Ht) (params_mvc _ (typed_mvc _ _ _ Ht))
+                Hs ltac:(intros; lia) m N T HN HT) as (x & -> & Hx).
+    rewrite tele_sub_id, List.app_nil_r in Hx; cbn [List.app] in Hx.
+    exact (glu_rel_exp_under_sub_vlookup _ _ _ HP Hx). }
+  unfold record_mod_tele.
+  apply (glu_rel_ctx_types_extend (S := Typeω@j) Hj).
+  destruct (record_typed_sort_univ _ _ _ Ht) as [[i HU] | [L HU]]; rewrite HU; constructor.
 Qed.
 
 (** ** Every well-formed global context glues
@@ -280,7 +364,7 @@ Theorem glu_gctx_embedding_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> glu_gctx_emb
 Proof.
   intros * Hg; apply glu_gctx_embedding_of_bodies_valid; [ exact Hg | | apply gctx_embedding_with_bodies_refl; exact Hg ].
   exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry glu_entry_def glu_entry_ax glu_entry_alias
-           glu_mod_tele_nil glu_entry_ind glu_entry_record ltac:(intros; exact I) _ _ Hg).
+           glu_mod_tele_nil glu_entry_ind glu_entry_record glu_mod_tele_record _ _ Hg).
 Qed.
 
 (** ** The fundamental theorem at the identity embedding *)
@@ -295,13 +379,14 @@ Section soundness_fundamental.
   Corollary soundness_fundamental_ctx : forall Γ, ⊢ Γ -> ⊩ Γ.
   Proof.
     intros * H; destruct soundness_fundamental as (Kc & _).
-    pose proof (Kc _ _ _ H _ _ (glu_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ H))) as H'; destruct GC; exact H'.
+    pose proof (Kc _ _ _ H _ _ (glu_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ H))) as H'; destruct GC; exact (glu_rel_ctx_types_ctx _ (proj1 H')).
   Qed.
 
   Corollary soundness_fundamental_exp : forall Γ M A, Γ ⊢ M : A -> Γ ⊩ M : A.
   Proof.
     intros * H; destruct soundness_fundamental as (_ & Ke & _).
-    pose proof (Ke _ _ _ _ _ H _ _ (glu_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as H'; destruct GC; exact H'.
+    pose proof (Ke _ _ _ _ _ H _ _ (glu_gctx_embedding_refl_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as H'; destruct GC;
+      exact (glu_rel_exp_of_under_sub (proj1 H')).
   Qed.
 End soundness_fundamental.
 
