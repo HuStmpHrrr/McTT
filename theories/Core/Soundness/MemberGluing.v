@@ -1833,6 +1833,30 @@ Section MembersFromSource.
       exact (glu_gctx_embedding_alias_modexp _ _ _ _ _ _ _ _ _ Hμ (gc_loc_of_loc _ _ Hg _ _ _ Hl2) HUs HU).
   Qed.
 
+  (** A module expression naming the module stored at [pm] at the source,
+      read there as that module at no argument, is glued at the target:
+      it is stored there over the same telescope ([gc_loc_grow]), glued by
+      the embedding, and read so as grown ([mdenote_grow_all]). *)
+  Lemma glu_rel_modexp_under_sub_path_of_source : forall Γ H pm T Φs,
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> mod_qname H = Some pm -> loc Θs Ξs pm T Φs ->
+      (forall Γ1, mdenote Θs Ξs Γ1 H (mdesc_closed nil pm T Φs nil)) ->
+      glu_rel_ctx_types Γ -> glu_rel_modexp_under_sub Γ H.
+  Proof.
+    intros * HHs Hq Hl Hd HΓ.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
+    pose proof (gc_loc_of_loc _ _ Hgs _ _ _ Hl) as HlS.
+    destruct (gc_loc_grow _ _ _ _ Hg Hsub _ _ _ HlS) as (Φt & HlT & _ & Hl2).
+    apply (glu_rel_modexp_under_sub_path _ _ Hg Γ H pm T Φt (Hwm _ _ _ HHs) Hq HlT); [| | exact HΓ ].
+    - exact (glu_rel_ctx_types_ctx _ (glu_gctx_embedding_tele _ _ _ _ Hμ _ _ _ HlS)).
+    - intros Γ1 R HmR.
+      destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ (Hd Γ1)) as (R' & HmR' & Hgr).
+      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmR _ HmR').
+      inversion Hgr as [? Hc | ? ? Φ1 Φ2 ? ? Hl1' Hl2' | ]; subst; [ cbn in Hc; discriminate |].
+      cbn; rewrite (proj2 (loc_functional _ _ _ _ _ _ _ Hl2' Hl2)); reflexivity.
+  Qed.
+
   (** A selection typed at the source, read from an entry [y] of the
       stored module [p] the module expression reads, names no open frame at
       the target, at any instance: what it names is unchanged by the

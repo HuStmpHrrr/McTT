@@ -440,6 +440,48 @@ Proof.
   exact (glu_unit_deep_params_join _ _ _ _ HΔ Hσ).
 Qed.
 
+(** ** Module slots *)
+
+(** The unit of a module slot of a context whose module parts are deep is
+    deep, at every renaming into a context glued with its types: the slot's
+    own unit at the context before it ([glu_ctx_deep]), renamed past the
+    entries after it. *)
+Lemma glu_ctx_deep_lookup_wk : forall Γ x U, Γ ∋ #x ≔ₘ U ->
+    forall Γ' φ, Γ' ⊢ʷ φ : Γ -> glu_rel_ctx_types Γ' -> glu_ctx_deep Γ -> glu_unit_deep Γ' (gunit_wk U φ).
+Proof.
+  induction 1 as [ | | ? ? ? ? Hx IH ]; intros Γ' φ Hφ HΓ' Hd; rewrite gunit_wk_wk;
+    match goal with Hφ : _ ⊢ʷ _ : ?Γe |- _ => assert (HwΓ : ⊢ Γe) by (destruct Hφ; assumption) end.
+  - rewrite <- gunit_sub_of_wk.
+    refine (glu_unit_deep_wk _ _ _ _ (Hd nil _ _ _ eq_refl eq_refl) HΓ' _).
+    eapply wf_wk_compose; [ exact Hφ | exact (wf_wk_shift _ _ _ _ HwΓ) ].
+  - rewrite <- gunit_sub_of_wk.
+    refine (glu_unit_deep_wk _ _ _ _ (Hd nil _ _ _ eq_refl eq_refl) HΓ' _).
+    eapply wf_wk_compose; [ exact Hφ | exact (wf_wk_shift _ _ _ _ HwΓ) ].
+  - apply IH; [| exact HΓ' | exact (glu_ctx_deep_tail _ _ Hd) ].
+    eapply wf_wk_compose; [ exact Hφ | exact (wf_wk_shift _ _ _ _ HwΓ) ].
+Qed.
+
+(** So at the context itself. *)
+Lemma glu_ctx_deep_lookup : forall Γ x U,
+    Γ ∋ #x ≔ₘ U -> glu_rel_ctx_types Γ -> glu_ctx_deep Γ -> glu_unit_deep Γ U.
+Proof.
+  intros * Hx HΓ Hd.
+  rewrite <- (gunit_wk_id U).
+  exact (glu_ctx_deep_lookup_wk _ _ _ Hx _ _ (wf_wk_id _ _ _ (glu_rel_ctx_types_wf HΓ)) HΓ Hd).
+Qed.
+
+(** The unit of a module slot is glued at the instances of the context:
+    the instance's component for the slot is glued at the unit moved
+    ([glu_rel_sub_inst_mods]). *)
+Lemma glu_rel_unit_under_sub_slot : forall Γ x U, Γ ∋ #x ≔ₘ U -> glu_rel_unit_under_sub Γ U.
+Proof.
+  intros * Hx Γ' τ Hτ.
+  pose proof (glu_rel_sub_inst_ctx _ _ _ Hτ) as HΓ'.
+  assert (HwΓ' : ⊢ Γ') by (destruct HΓ' as [Sb HSb]; exact (glu_ctx_env_wf_ctx HSb)).
+  pose proof (glu_rel_sub_inst_mods _ _ _ Hτ _ _ Hx _ _ (wf_wk_id _ _ _ HwΓ') HΓ') as Hg.
+  rewrite gunit_wk_id in Hg; exact Hg.
+Qed.
+
 End Fixed_GCtx.
 
 (** ** Stored aliases *)
