@@ -18,7 +18,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas LookupSound Presup Paths DescTyping.
-From Mctt.Core.Soundness Require Import LogicalRelation ModuleValues Instances Extensions UnitEqCases UnitDeep MemberGluing.
+From Mctt.Core.Soundness Require Import LogicalRelation ModuleValues Instances Extensions UnitEqCases UnitDeep Selection MemberGluing.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
@@ -394,21 +394,9 @@ Qed.
 
 (** ** Entries of a stored module *)
 
-(** The module part of a description given arguments is its module part
-    given them. *)
-Lemma mdesc_mod_ats : forall Ns R Rm R1, mdesc_mod R = Some Rm -> mdesc_ats R Ns = Some R1 ->
-    exists Rm1, mdesc_ats Rm Ns = Some Rm1 /\ mdesc_mod R1 = Some Rm1.
-Proof.
-  induction Ns as [| N Ns IH]; intros * Hm Ha; cbn in Ha.
-  - injection Ha as <-; exists Rm; split; [ reflexivity | exact Hm ].
-  - destruct (mdesc_at R N) as [R0 |] eqn:E; [| discriminate ].
-    destruct (mdesc_mod_at _ _ _ _ Hm E) as (Rm0 & E' & Hm0).
-    destruct (IH _ _ _ Hm0 Ha) as (Rm1 & Ha1 & Hm1).
-    exists Rm1; split; [ cbn; rewrite E'; exact Ha1 | exact Hm1 ].
-Qed.
-
-(** So it is read at them ([mdesc_ats_read]): a definition with a module
-    part gives them to its module part as a module. *)
+(** The module part of a description read at arguments ([mdesc_ats_read])
+    is its module part given them ([mdesc_mod_ats]): a definition with a
+    module part gives them to its module part as a module. *)
 Lemma mdesc_mod_ats_read : forall Ns R Rm R1, mdesc_mod R = Some Rm -> mdesc_ats_read R Ns = Some R1 ->
     exists Rm1, mdesc_ats Rm Ns = Some Rm1 /\ mdesc_mod R1 = Some Rm1.
 Proof.
@@ -416,10 +404,6 @@ Proof.
     [ exact (mdesc_mod_ats _ _ _ _ Hm Ha') |].
   cbn in Hm |- *; exact (mdesc_mod_ats _ _ _ _ Hm E).
 Qed.
-
-(** A term read as a name has the module part it had. *)
-Lemma mdesc_mod_named : forall Θ Ns M R, mdesc_mod (mdesc_named Θ Ns M R) = mdesc_mod R.
-Proof. intros; apply (mdesc_named_cases (fun R' => mdesc_mod R' = mdesc_mod R)); [ reflexivity | destruct R as [? ? [] | | |]; reflexivity ]. Qed.
 
 (** An entry of a stored module read at the arguments recorded and
     abstracted over the outside parameters ([reader_closed]) is deep when
