@@ -366,6 +366,151 @@ Section Fixed_GCtx.
     rewrite !(sb_of_list_nth _ _ _ Propₘ Hx); reflexivity.
   Qed.
 
+  (** The value of a module expression whose module part is, through every
+      factorization, a stored module at arguments glued as the value's, is
+      glued as it: saturated, by its arguments ([glu_dmod_global]); lacking
+      a parameter, as a value lacking it ([glu_dmod_fun]), the parameter's
+      type glued by the telescope's gluing ([glu_tele_next_param]), and the
+      value given an argument glued, by recursion, as the application,
+      whose module part is the stored module at one argument more. *)
+  Lemma glu_dmod_global_path : forall p T Φ,
+      ⊢ᵍ gc_deps ⍮ gc_stack -> gc_loc gc_deps gc_stack p = Some (T, Φ) ->
+      all_assumptions T -> ctx_scoped 0 T -> ⊩ T ->
+      forall n Δ σ0 Γ0 H0 args, List.length args + n = List.length T ->
+        Δ ⊢ˢ σ0 : Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
+        (forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+           mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> exists Ns1, mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1)) ->
+        (forall Δ' φ Γ1 ζ σ1 RH Ns1, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+           mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1) ->
+           glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
+        glu_dmod Δ σ0 Γ0 H0 (dm_global p args).
+  Proof.
+    intros p T Φ Hg Hgl HTa HTs HT; induction n as [| n IH]; intros * Hlen Hσ HH Hd Ha.
+    { eapply glu_dmod_global; [ exact Hσ | exact HH | exact Hgl | lia | exact Hd | exact Ha ]. }
+    (** The next parameter, read at the identity factorization *)
+    pose proof (glu_sub_through_id _ _ _ Hσ) as Hst0.
+    pose proof (wf_sub_dom _ _ _ _ _ Hσ) as HΔ.
+    destruct (me_denotes _ _ _ _ _ HH) as (RH0 & Rm0 & Hm0 & _).
+    rewrite <- (modexp_sub_id H0) in Hm0.
+    destruct (Hd _ _ _ _ _ _ Hst0 Hm0) as (Ns0 & HNs0).
+    pose proof (Ha _ _ _ _ _ _ _ Hst0 Hm0 HNs0) as Hargs0.
+    destruct (glu_tele_next_param T Δ _ args HΔ HTa HT ltac:(lia) Hargs0) as (κ & A & a & i & P & El & Hnth & Ea & Hka & Hga & HAP).
+    eapply glu_dmod_fun with (a := a); [ exact Hσ | exact HH | econstructor; eassumption | | | ].
+    (** The type of the parameter, read through any factorization, is the
+        next parameter's type at the arguments *)
+    all: assert (Hshape : forall Δ' φ Γ1 ζ σ1 RH T0 B T1, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+              mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod_tele RH = Some T0 -> tele_view T0 = Some (B, T1) ->
+              exists Ns1, mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1) /\ List.length Ns1 = List.length args /\
+                B = A[sb_of_list Id Ns1] /\ glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args).
+    all: try (intros * Hst Hm HT0 Hv;
+      destruct (Hd _ _ _ _ _ _ Hst Hm) as (Ns1 & HNs1);
+      pose proof (Ha _ _ _ _ _ _ _ Hst Hm HNs1) as Hargs1;
+      pose proof (glu_tele_args_length _ _ _ _ _ _ Hargs1) as HlN; rewrite List.length_map in HlN;
+      destruct (closed_tele_view p T Φ Ns1 κ A ltac:(lia) ltac:(rewrite HlN; exact Hnth)) as (T1' & HT1' & Hv1);
+      unfold mdesc_mod_tele in HT0; rewrite HNs1 in HT0; rewrite HT1' in HT0; injection HT0 as <-;
+      rewrite Hv1 in Hv; injection Hv as <- <-;
+      exists Ns1; split; [ exact HNs1 | split; [ exact HlN | split; [ reflexivity | exact Hargs1 ] ] ]).
+    1:{ (** The parameter's type, glued by the telescope's gluing *)
+      intros * Hst Hm HT0 Hv HS HB.
+      destruct (Hshape _ _ _ _ _ _ _ _ _ Hst Hm HT0 Hv) as (Ns1 & HNs1 & HlN & -> & Hargs1).
+      pose proof (glu_sub_through_rest _ _ _ _ _ _ _ _ Hst) as Hσ1.
+      pose proof (wf_sub_dom _ _ _ _ _ Hσ1) as HΔ'.
+      destruct (glu_tele_next_param T Δ' _ args HΔ' HTa HT ltac:(lia) Hargs1) as (κ' & A' & a' & i' & P' & El' & Hnth' & Ea' & _ & Hga' & HAP').
+      rewrite Hnth in Hnth'; injection Hnth' as <- <-.
+      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
+      exists i', P', El'; constructor; [ exact Hga' |].
+      rewrite tele_type_inst_sub by (rewrite HlN; exact (tele_next_scoped _ _ _ _ HTs Hnth)); exact HAP'. }
+    1:{ (** Given an argument, the module records it *)
+      intros; eexists; econstructor. }
+    (** Given a glued argument, as the application, by recursion *)
+    intros * Hst Hm HT0 Hv HS HB N c hc i2 P2 El2 Hga2 HBP HN Hhc.
+    destruct (Hshape _ _ _ _ _ _ _ _ _ Hst Hm HT0 Hv) as (Ns1 & HNs1 & HlN & -> & Hargs1).
+    clear Hshape Hst0 Hm0 RH0 Rm0 Ns0 HNs0 Hargs0 HAP i P El Hga.
+    inversion Hhc; subst.
+    destruct Hst as [Hφ Hζ Hσ1 HE] eqn:EHst.
+    (** The sort of the parameter's type, of an evaluated kind *)
+    destruct (type_sort_abs_kind_sort_inv _ HS) as (κs & j & ->).
+    pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB Hσ1) as HBσ; rewrite abs_kind_sort_sub in HBσ.
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hga2 HBP HBσ) as [Hks _].
+    pose proof (List.nth_error_split _ _ Hnth) as (l1 & l2 & Erev & Hl1).
+    assert (ET : T = List.rev l2 ++ ce_ass (domain_kind a) A :: List.rev l1)
+      by (rewrite <- (List.rev_involutive T), Erev, List.rev_app_distr; cbn; rewrite <- List.app_assoc; reflexivity).
+    pose proof (glob_tele_kinds _ _ _ _ _ Hg (gc_loc_loc _ _ _ _ _ Hgl) _ _ _ _ ET) as Hκ.
+    subst κs.
+    assert (HSev : evaluated_sort (abs_kind_sort (domain_kind a) Typeω@j)) by (clear - Hκ; revert Hκ; generalize (domain_kind a); intros k Hk; destruct Hk; constructor).
+    pose proof (sort_kind_abs_kind_sort (domain_kind a) j) as Hsk.
+    pose proof (glu_univ_elem_trm_escape _ _ _ _ Hga2 _ _ _ _ HN) as HNt.
+    assert (Hσ1N : Δ' ⊢ˢ σ1,,N : Γ1 ▹{domain_kind a} A[sb_of_list Id Ns1])
+      by (eapply wf_sub_extend; [ exact Hσ1 | exact HB | exact Hsk | exact HNt ]).
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH Hζ) as HHζ.
+    pose proof (wf_me_app_shift _ _ _ _ _ _ _ _ HHζ Hm HT0 Hv HB HSev Hsk) as HHapp.
+    (** Through a factorization of the extended substitution, the
+        application's module part is the stored module at one argument
+        more, the arguments before read through the factorization of
+        [σ0] it gives *)
+    assert (Hfact : forall Δ'' φ' Γ2 ζ' σ2 RH',
+               glu_sub_through Δ' (σ1,,N) (Γ1 ▹{domain_kind a} A[sb_of_list Id Ns1]) Δ'' φ' Γ2 ζ' σ2 ->
+               mdenote gc_deps gc_stack Γ2 (me_app H0[ζ]ᵐ[Wk]ᵐ #0)[ζ']ᵐ RH' ->
+               mdesc_mod RH' = Some (mdesc_closed nil p T Φ (List.map (fun M => M[Wk ⨟ ζ']) Ns1 ++ #0[ζ'] :: nil)) /\
+               glu_tele_args Δ'' (List.rev T) nil nil (List.map (fun M => M[σ2]) (List.map (fun M => M[Wk ⨟ ζ']) Ns1)) args).
+    { intros * Hst' Hm'.
+      cbn [modexp_sub] in Hm'.
+      inversion Hm' as [? ? ? ? ? Hq | ? ? ? ? ? ? ? ? ? Hq | | | ? ? ? R0 ? Hm0' Hat | | ? ? ? ? ? ? Hq]; subst;
+        try (cbn in Hq; discriminate).
+      pose proof (glu_sub_through_extend Hσ1 Hst') as Hst1.
+      pose proof (glu_sub_through_wk Hφ (glu_sub_through_compose Hζ HE Hst1)) as Hst2.
+      assert (EH : H0[ζ]ᵐ[Wk]ᵐ[ζ']ᵐ = H0[ζ ⨟ (Wk ⨟ ζ')]ᵐ)
+        by (rewrite !modexp_sub_sub; apply modexp_sub_sb_eq; intros k; reflexivity).
+      rewrite EH in Hm0'.
+      (** The module part through the composite, the arguments moved *)
+      pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HHζ Hm (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst1)) as HmS.
+      rewrite modexp_sub_sub in HmS.
+      pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HHζ)) as Hgw.
+      pose proof (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ Hm0' _ HmS) as ->.
+      pose proof (mdesc_mod_sub _ _ (Wk ⨟ ζ') HNs1) as HNs0; cbn [mdesc_sub] in HNs0.
+      pose proof (Ha _ _ _ _ _ _ _ Hst2 Hm0' HNs0) as Hargs2.
+      destruct (mdesc_at_mod_part _ _ _ _ Hat HNs0) as (Rm' & HRm' & EM).
+      cbn [mdesc_at tele_split List.rev] in HRm'; injection HRm' as <-.
+      rewrite EM; cbn [mdesc_mod].
+      split; [| exact Hargs2 ].
+      do 2 f_equal; f_equal; rewrite List.map_map; apply List.map_ext; intros; rewrite exp_sub_id; reflexivity. }
+    eapply IH; [ rewrite List.length_app; cbn; lia | exact Hσ1N | exact HHapp | |].
+    - intros * Hst' Hm'; destruct (Hfact _ _ _ _ _ _ Hst' Hm') as [HRm' _]; eexists; exact HRm'.
+    - intros * Hst' Hm' HNs'.
+      destruct (Hfact _ _ _ _ _ _ Hst' Hm') as [HRm' Hargs2].
+      rewrite HRm' in HNs'; injection HNs' as <-.
+      rewrite List.map_app; cbn [List.map].
+      pose proof (glu_tele_args_length _ _ _ _ _ _ Hargs2) as HlN2.
+      clear - Hargs2 HlN2 Hnth Ea Hga2 HBP HN HB Hst' HlN HTs HTa HT Hσ1 Hlen.
+      destruct Hst' as [Hφ' Hζ' Hσ2 E'].
+      pose proof (glu_sub_through_extend Hσ1 (mk_glu_sub_through _ _ _ _ _ _ _ _ Hφ' Hζ' Hσ2 E')) as [_ _ _ E1].
+      set (B' := A[sb_of_list Id Ns1]) in *.
+      assert (Hscop : exp_scoped (List.length Ns1) A) by (rewrite HlN; exact (tele_next_scoped _ _ _ _ HTs Hnth)).
+      assert (EB1 : B'[sb_wk σ1 φ0] = B'[σ1][φ0]ʷ)
+        by (rewrite <- (exp_sub_of_wk_ext B'[σ1] φ0 (ι φ0)) by reflexivity; rewrite exp_sub_sub; apply exp_sub_sb_eq, sb_wk_compose).
+      (** The next parameter's type at the arguments read through the
+          factorization, glued by the telescope's gluing *)
+      pose proof (wf_sub_dom _ _ _ _ _ Hσ2) as HΔ0.
+      destruct (glu_tele_next_param T Δ'0 _ args HΔ0 HTa HT ltac:(lia) Hargs2)
+        as (κ' & A' & a' & i' & P' & El' & Hnth' & Ea' & _ & Hga' & HAP').
+      rewrite Hnth in Hnth'; injection Hnth' as <- <-.
+      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
+      (** The argument, weakened, is the factorization's head *)
+      pose proof (glu_univ_elem_exp_monotone _ _ _ _ Hga2 _ _ _ _ _ _ HN Hφ') as HNw.
+      rewrite <- EB1 in HNw.
+      assert (HΓB : ⊢ Γ1 ▹{domain_kind a} B') by exact (wf_sub_cod _ _ _ _ _ Hζ').
+      assert (H0t : Γ1 ▹{domain_kind a} B' ⊢ #0 : B'[Wk])
+        by (rewrite exp_sub_of_shift; apply wf_vlookup; [ exact HΓB | constructor ]).
+      pose proof (sub_eq_preserves_exp _ _ _ _ _ H0t _ _ _ E') as Heq0.
+      assert (ET0 : B'[Wk][sb_wk (σ1,,N) φ0] = B'[sb_wk σ1 φ0]) by (rewrite exp_sub_sub; apply exp_sub_sb_eq; intros k; reflexivity).
+      rewrite ET0 in Heq0; cbn [exp_sub sb_wk sb_extend sentry_wk sentry_exp sb_compose] in Heq0.
+      pose proof (glu_univ_elem_trm_resp_exp_eq _ _ _ _ Hga2 _ _ _ _ _ HNw Heq0) as HN2.
+      destruct (glu_univ_elem_per_univ _ _ _ _ Hga2) as [Ra HRa].
+      pose proof (glu_univ_elem_per_subtyp_trm_conv (per_subtyp_refl1 _ _ _ _ HRa) Hga2 Hga' HAP' HN2) as HN3.
+      eapply glu_tele_args_snoc; [ exact Hargs2 | rewrite HlN2; exact Hnth | exact Ea | exact Hga' | exact HAP' |].
+      rewrite sentry_exp_sub; exact HN3.
+  Qed.
+
   (** The [Π] over a telescope with a last (outermost) parameter more is
       the [Π] of that parameter over the [Π] of the rest. *)
   Lemma ctx_pi_at_snoc : forall r T κ B A, ctx_pi_at r (T ++ ce_ass κ B :: nil) A = a_pi κ r B (ctx_pi_at r T A).
