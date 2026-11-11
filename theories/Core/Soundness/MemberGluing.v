@@ -26,7 +26,7 @@ From Mctt.Core.Soundness.Inductives Require Import Args.
 From Mctt.Core.Soundness Require UniverseCases.
 From Mctt.Core.Completeness.Consequences Require AnnotatedUpto.
 From Mctt.Core.Soundness.Global Require Import GlobalValues.
-From Mctt.Core.Soundness Require Import UnitDeep.
+From Mctt.Core.Soundness Require Import UnitDeep ModuleExpressions.
 Import Domain_Notations Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -1119,6 +1119,43 @@ Section Members.
       + intros * Hst Hm; rewrite (mod_qname_sub _ _ _ Hq) in Hm; exists nil; exact (Hd _ _ Hm).
       + intros * Hst Hm HR; rewrite (mod_qname_sub _ _ _ Hq) in Hm; rewrite (Hd _ _ Hm) in HR.
         injection HR as <-; constructor.
+  Qed.
+
+  (** An application of a module expression glued at the instances to an
+      argument glued at the instances at its next parameter is glued at the
+      instances: at each, by [glu_modexp_at_app], the module expression's
+      description, telescope and next parameter moved ([wf_sub_mdenote],
+      [mdesc_mod_tele_sub], [tele_view_sub]), its value lacking the
+      parameter by completeness ([valid_unit_app_all]). *)
+  Lemma glu_rel_modexp_under_sub_app : forall Γ H N R T B T1 Srt,
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N -> glu_rel_modexp_under_sub Γ H -> glu_rel_exp_under_sub Γ N B ->
+      mdenote Θ Ξ Γ H R -> mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
+      Γ ⊢ B : Srt -> evaluated_sort Srt -> Γ ⊢ N : B ->
+      glu_rel_modexp_under_sub Γ (me_app H N).
+  Proof.
+    intros * HHN HH HN Hm HT Hv HB HS HNt.
+    destruct (proj1 (modexp_gen _ _ _ _ _ HHN)) as [HHw _].
+    constructor; [ exact (glu_rel_modexp_under_sub_ctx _ _ HH) |].
+    intros Γ' τ Hτ; pose proof (glu_rel_sub_inst_typed _ _ _ Hτ) as Hτt; cbn [modexp_sub].
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HHw Hτt) as HHτ.
+    pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HHw Hm Hτt) as Hmτ.
+    pose proof (mdesc_mod_tele_sub _ _ τ _ (wf_mdenote_scoped _ _ _ _ _ _ HHw Hm) HT) as HTτ.
+    pose proof (tele_view_sub T τ) as Hvτ; rewrite Hv in Hvτ; cbn [option_map fst snd] in Hvτ.
+    pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB Hτt) as HBτ.
+    assert (ES : Srt[τ] = Srt) by (destruct HS; reflexivity); rewrite ES in HBτ.
+    pose proof (sub_preserves_exp _ _ _ _ _ _ _ HNt Hτt) as HNτ.
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HHN Hτt) as HHNτ; cbn [modexp_sub] in HHNτ.
+    (** The value lacks the parameter: completeness at the instance *)
+    pose proof (valid_gctx_embedding_refl _ _ Hg) as Hve.
+    destruct completeness_fundamental as (_ & _ & _ & _ & _ & _ & _ & Km).
+    destruct (Km _ _ _ _ _ HHτ _ _ Hve) as [_ _ HvH _].
+    assert (Hrp : exists i, rel_param_typed Γ' B[τ] i)
+      by (destruct HS; [ exists i; left | exists 0; right ]; exact (completeness_fundamental_exp _ _ _ HBτ)).
+    destruct Hrp as [i Hrp].
+    destruct (proj2 (@App.valid_unit_app_all GCm Hg Θ Ξ Hg (gc_sub_refl _ _) (valid_gctx_embedding_filed _ _ _ _ Hve))
+                _ _ HvH _ _ _ _ _ i N[τ] Hmτ HTτ Hvτ HS HBτ Hrp HNτ (completeness_fundamental_exp _ _ _ HNτ)) as [Hnp _].
+    exact (glu_modexp_at_app _ _ _ _ _ _ _ _ (glu_rel_modexp_under_sub_inst _ _ HH _ _ Hτ)
+             (glu_rel_exp_under_sub_inst _ _ _ HN _ _ Hτ) Hmτ HTτ Hvτ HBτ HS HNτ Hnp HHNτ).
   Qed.
 
 End Members.
