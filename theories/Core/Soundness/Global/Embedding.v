@@ -296,20 +296,38 @@ End Raw.
 
 (** ** 2. Valid entries make a sound embedding *)
 
-(** What an entry is worth at [Θ2 ⍮ Ξ2]: a definition's type glues, in the
-    empty context, at the sort of its kind ([abs_kind_sort]), and its body,
-    if any, at its type: the value a member with a δ-reduct is read off is
-    the body's ([eval_sel_global]).  A definition with a module part is
-    valid as its term part, a definition ([ge_valid]). *)
-Definition glu_entry (_ : gdeps) (_ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (_ : ctx) (E : gentry) : Prop :=
+(** A definition [A ≔ oM] of the kind [r], stored over the telescope [T],
+    at [Θ2 ⍮ Ξ2]: closed, as it is stored, and over [T], as it was
+    checked. *)
+Record glu_stored_def (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (r : abs_kind) (A : typ) (oM : option exp) : Prop :=
+  mk_glu_stored_def
+  { (** The type glues, in the empty context, at the sort of its kind
+        ([abs_kind_sort]) *)
+    glu_stored_def_type : exists i, @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ A (abs_kind_sort r Typeω@i)
+    (** The body, if any, glues there at the type: the value a member with a
+        δ-reduct is read off is the body's ([eval_sel_global]) *)
+  ; glu_stored_def_body : forall M, oM = Some M -> @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ M A
+    (** Both glue over the telescope, before they are closed over it
+        ([glu_def_over_tele]) *)
+  ; glu_stored_def_tele : exists A0 (i : nat), glu_def_over_tele Θ2 Ξ2 T r A oM A0 i }.
+
+(** What an entry filed over the telescope [T] is worth at [Θ2 ⍮ Ξ2]: a
+    definition is glued as stored ([glu_stored_def]); an alias, filed
+    closed with its full telescope, is glued as its literal over no
+    context, as a global alias submodule is selected
+    ([eval_selm_global_alias]).  A definition with a module part is valid
+    as its two views, a definition and an alias ([ge_valid]). *)
+Definition glu_entry (_ : gdeps) (_ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ r A oM =>
-      (exists i, @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ A (abs_kind_sort r Typeω@i)) /\
-      forall M, oM = Some M -> @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ M A
+  | ge_def _ _ r A oM => glu_stored_def Θ2 Ξ2 T r A oM
+  | ge_mod _ (gu_mk Δ (md_alias E')) => @glu_modexp_at (gc_mk Θ2 Ξ2) ⋅ (me_lit (gu_mk Δ (md_alias E')))
   | _ => True
   end.
 
-Definition glu_mod_tele (_ : gdeps) (_ : gstack) (_ : ctx) : Prop := True.
+(** The telescope of a stored module is a context glued with its types
+    at [Θ2 ⍮ Ξ2]: the types of the parameters a global module value
+    lacks. *)
+Definition glu_mod_tele (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) : Prop := @glu_rel_ctx_types (gc_mk Θ2 Ξ2) T.
 
 Definition glu_ind_decl_entry (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop := @glu_ind_decl (gc_mk Θ2 Ξ2) D.
 
@@ -330,6 +348,18 @@ Proof.
   - exact (proj2 (gc_body_valid _ _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)).
 Qed.
 
+(** The telescope of a stored body of the source, valid. *)
+Lemma glu_loc_tele_valid : forall Θ Ξ Θs Ξs Θ2 Ξ2 p T Φ,
+    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θs Ξs Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θs Ξs Θ2 Ξ2 Ξ -> loc Θ Ξ p T Φ ->
+    glu_mod_tele Θ2 Ξ2 T.
+Proof.
+  intros * HΘ HΞ [Hl | Hl].
+  - unfold gc_frame in Hl.
+    destruct (gs_find_tele Ξ p) as [[[[Δ [[|] Φ1 | E]] [| ? ?]] T0] |] eqn:Ef; try discriminate.
+    injection Hl as <- <-; exact (proj1 (gs_valid_find _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ Ef)).
+  - exact (proj1 (gc_body_valid _ _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)).
+Qed.
+
 (** A sound embedding, from the validity at the target of what the source
     files and has open. *)
 Theorem glu_gctx_embedding_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_embedding Θ Ξ Θ2 Ξ2 ->
@@ -337,18 +367,32 @@ Theorem glu_gctx_embedding_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_e
 Proof.
   intros * Hg He HΘ HΞ; pose proof He as [Hg2 Hs].
   constructor; [ exact He | intros p D Hl; exact (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)
-               | intros p R Hl; exact (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) | |].
+               | intros p R Hl; exact (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) | | | | | |].
   2:{ (** A body glues at its type, by the entry's validity: a definition's,
           or a definition with a module part's as its term part *)
       intros * Hl Hp HE.
       pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp) as Hv.
       destruct E as [b pv r A' [M' |] | | | pv A' M' U |]; cbn in HE, Hv; try discriminate; injection HE as <- <-.
-      - exact (proj2 Hv _ eq_refl).
-      - destruct Hv as (_ & [_ HM] & _); exact (HM _ eq_refl). }
+      - exact (glu_stored_def_body _ _ _ _ _ _ Hv _ eq_refl).
+      - destruct Hv as (_ & Hd & _); exact (glu_stored_def_body _ _ _ _ _ _ Hd _ eq_refl). }
+  2:{ (** A definition glues over its telescope, by the entry's validity *)
+      intros * Hl Hp.
+      exact (glu_stored_def_tele _ _ _ _ _ _ (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp)). }
+  2:{ (** So does a definition with a module part, as its term part *)
+      intros * Hl Hp.
+      destruct (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp) as (_ & Hd & _).
+      exact (glu_stored_def_tele _ _ _ _ _ _ Hd). }
+  2:{ (** An alias module glues as its literal, by the entry's validity *)
+      intros p U Hm.
+      destruct (gc_module_alias_unit _ _ _ _ Hm) as (Δ & E & ->).
+      destruct (gc_module_alias_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T & pv & Hv); exact Hv. }
+  2:{ (** The telescope of a stored module glues, by its validity *)
+      intros p T Φ Hl.
+      exact (glu_loc_tele_valid _ _ _ _ _ _ _ _ _ HΘ HΞ (gc_loc_loc _ _ _ _ _ Hl)). }
   intros * Hl Hp Hn HΓ.
   apply glu_rel_exp_nil_weaken; [ exact HΓ |].
   (* the type glues, by the entry's validity *)
-  pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp) as [[i HA] _].
+  pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp) as [[i HA] _ _].
   (* the entry, stored at the target where it is at the source *)
   destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
   pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hl x _) Hent) as HeE.

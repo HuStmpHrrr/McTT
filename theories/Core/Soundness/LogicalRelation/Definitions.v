@@ -2230,6 +2230,19 @@ End Fixed_GCtx.
 
 (** ** Sound Embeddings *)
 
+(** A definition stored over the telescope [T], of the type [A] and the
+    body [oM] closed over it, glued over [T]: the type [A0] it closes, at
+    the sort of the kind [r] at the level [i], and the body [M0] it
+    closes, if any, at [A0]. *)
+Record glu_def_over_tele (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (r : abs_kind) (A : typ) (oM : option exp) (A0 : typ) (i : nat) : Prop :=
+  mk_glu_def_over_tele
+  { (** The type is [A0] closed over [T] *)
+    glu_def_over_tele_type_eq : A = ctx_pi_at r T A0
+    (** [A0] is glued over [T] at the sort of the kind *)
+  ; glu_def_over_tele_type : @glu_rel_exp (gc_mk Θ2 Ξ2) T A0 (abs_kind_sort r Typeω@i)
+    (** The body, if any, is a body [M0] closed over [T], glued over [T] at [A0] *)
+  ; glu_def_over_tele_body : forall M, oM = Some M -> exists M0, M = ctx_fn T M0 /\ @glu_rel_exp (gc_mk Θ2 Ξ2) T M0 A0 }.
+
 (** [Θ1 ⍮ Ξ1] embeds soundly into [Θ2 ⍮ Ξ2]: it grows into it, its
     declarations glue there, and so does a member of one of its stored
     bodies that is an axiom or an abstract definition, at its stored type. *)
@@ -2256,11 +2269,23 @@ Record glu_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gsta
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
       entry_tm E = Some (A, M) ->
       @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ M A
-    (** An alias module stored at a path of the source is glued over no
-        context at the target: the closure a global alias submodule is
-        selected as ([eval_selm_global_alias]) *)
+    (** A definition of a stored body glued over the body's telescope
+        ([glu_def_over_tele]): the closed fields above are it closed over
+        the telescope *)
+  ; glu_gctx_embedding_def_tele : forall p T Φ x Φ0 b pv r A oM,
+      loc Θ1 Ξ1 p T Φ -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def b pv r A oM)) ->
+      exists A0 (i : nat), glu_def_over_tele Θ2 Ξ2 T r A oM A0 i
+    (** So is the term part of a definition with a module part of a
+        stored body, as a definition with a body *)
+  ; glu_gctx_embedding_def_mod_tele : forall p T Φ x Φ0 pv A M U,
+      loc Θ1 Ξ1 p T Φ -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def_mod pv A M U)) ->
+      exists A0 (i : nat), glu_def_over_tele Θ2 Ξ2 T ak_relevant A (Some M) A0 i
+    (** An alias module stored at a path of the source is glued as a
+        literal over no context at the target: the closure a global alias
+        submodule is selected as ([eval_selm_global_alias]), at the empty
+        environment *)
   ; glu_gctx_embedding_alias : forall p U,
-      gc_module Θ1 Ξ1 p = Some (mr_alias U) -> @glu_unit_at (gc_mk Θ2 Ξ2) ⋅ U
+      gc_module Θ1 Ξ1 p = Some (mr_alias U) -> @glu_modexp_at (gc_mk Θ2 Ξ2) ⋅ (me_lit U)
     (** The telescope of a module stored at a path of the source is a
         context glued with its types at the target: the types of the
         parameters a global module value lacks *)
