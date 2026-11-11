@@ -577,7 +577,7 @@ Qed.
     has a next parameter: [X] given [N] takes the entry alike
     ([sel_at_open], [sel_at_closed]). *)
 Lemma mdenote_mem_app_of_app_mem : forall Γ X N y R1 Rm1,
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ X ≈ X -> names_no_frame X ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ X ≈ X -> names_no_frame (me_mem X y) ->
     (forall R0 T0, mdenote gc_deps gc_stack Γ X R0 -> mdesc_mod_tele R0 = Some T0 -> exists B T1, tele_view T0 = Some (B, T1)) ->
     mdenote gc_deps gc_stack Γ (me_app (me_mem X y) N) R1 -> mdesc_mod R1 = Some Rm1 ->
     exists R2, mdenote gc_deps gc_stack Γ (me_mem (me_app X N) y) R2 /\ mdesc_mod R2 = Some Rm1.
@@ -673,7 +673,7 @@ Qed.
     the rest of its stored telescope instantiated by them, which every
     stored entry with a module part extends ([gm_coherent]). *)
 Lemma sel_view : forall Γ X y R0 R0m T0 B0 T10 Rsel T',
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ X ≈ X -> names_no_frame X ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ X ≈ X -> names_no_frame (me_mem X y) ->
     mdenote gc_deps gc_stack Γ X R0 -> mdesc_mod R0 = Some R0m -> mdesc_tele R0m = Some T0 ->
     tele_view T0 = Some (B0, T10) ->
     mdenote gc_deps gc_stack Γ (me_mem X y) Rsel -> mdesc_mod_tele Rsel = Some T' ->
@@ -829,7 +829,7 @@ Qed.
 Lemma same_part_app_mem : forall Γ X y N,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ X ≈ X ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app (me_mem X y) N ≈ me_app (me_mem X y) N ->
-    (forall Γ' ζ, Γ' ⊢ˢ ζ : Γ -> names_no_frame X[ζ]ᵐ) ->
+    (forall Γ' ζ, Γ' ⊢ˢ ζ : Γ -> names_no_frame (me_mem X y)[ζ]ᵐ) ->
     (forall R0 T0, mdenote gc_deps gc_stack Γ X R0 -> mdesc_mod_tele R0 = Some T0 -> exists B T1, tele_view T0 = Some (B, T1)) ->
     same_part Γ (me_mem (me_app X N) y) (me_app (me_mem X y) N) /\ same_part Γ (me_app (me_mem X y) N) (me_mem (me_app X N) y).
 Proof.
@@ -862,7 +862,7 @@ Qed.
     module: the stored module at the submodule's path, at the same
     arguments, whose telescope extends the parent's. *)
 Lemma global_sel_desc : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H y R0 p T Φ Ns1 Rsel Rm T' Φ',
-    names_no_frame H -> mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_closed nil p T Φ Ns1) ->
+    names_no_frame (me_mem H y) -> mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_closed nil p T Φ Ns1) ->
     gc_loc gc_deps gc_stack p = Some (T, Φ) ->
     mdenote gc_deps gc_stack Γ (me_mem H y) Rsel -> mdesc_mod Rsel = Some Rm ->
     gc_loc gc_deps gc_stack (qname_in p y) = Some (T', Φ') ->
@@ -942,7 +942,7 @@ Qed.
     abstracted over the alias's own parameters, the stored telescope
     instantiated by the arguments ([mdesc_ats_up_prefix]). *)
 Lemma global_sel_alias_desc : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H y R0 p T Φ Ns1 Rsel Rm Δa Da,
-    names_no_frame H -> mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_closed nil p T Φ Ns1) ->
+    names_no_frame (me_mem H y) -> mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_closed nil p T Φ Ns1) ->
     gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length Ns1 = List.length T ->
     mdenote gc_deps gc_stack Γ (me_mem H y) Rsel -> mdesc_mod Rsel = Some Rm ->
     gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias (gu_mk Δa Da)) ->
@@ -1212,7 +1212,7 @@ Lemma glu_dmod_sel_global_loc : ⊢ᵍ gc_deps ⍮ gc_stack ->
        glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
     gc_loc gc_deps gc_stack (qname_in p y) = Some (T', Φ') -> ⊩ T' ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
-    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame (me_mem H0 y)[ζ]ᵐ) ->
     glu_dmod Δ σ0 Γ0 (me_mem H0 y) (dm_global (qname_in p y) args).
 Proof.
   intros Hgw * Hσ HH0 Hl Hlen Hd Ha Hl' HT' HHy Hq.
@@ -1419,7 +1419,7 @@ Lemma glu_dmod_sel_global_alias : ⊢ᵍ gc_deps ⍮ gc_stack ->
     gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias (gu_mk Δa Da)) -> glu_sel_globals_at p y ->
     ⟦ Δa ⊢ Da ⟧ᶜ gc_deps ⍮ gc_stack ⍮ nil ↘ h1 -> $ᵐ*| h1 & args | gc_deps ⍮ gc_stack ↘ r ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
-    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame (me_mem H0 y)[ζ]ᵐ) ->
     glu_dmod Δ σ0 Γ0 (me_mem H0 y) r.
 Proof.
   intros Hgw * Hσ HH0 Hl Hlen Hd Ha Hmod Hgl Hcl Happs HHy Hq.
@@ -1488,7 +1488,7 @@ Proof.
   { intros * _; rewrite HKs; apply names_no_frame_of_none.
     destruct (List.map (fun M => M[ζ]) Ns1) as [| ? ? _] using List.rev_ind; [ reflexivity | rewrite me_apps_snoc; reflexivity ]. }
   assert (Hny : forall Γ' ζ, Γ' ⊢ˢ ζ : Γ0 -> names_no_frame (me_mem H0 y)[ζ]ᵐ).
-  { intros * Hζ; cbn [modexp_sub]; apply names_no_frame_mem; [ exact Hgw | exact (Hq _ _ Hζ) ]. }
+  { intros * Hζ; exact (Hq _ _ Hζ). }
   eapply (proj1 glu_dmod_same_part_typed); [ exact HgK | exact HHy | | | exact Hny | exact HnK ].
   - intros Γ' ζ R Rm Hζ Hm HRm.
     destruct (me_denotes _ _ _ _ _ (sub_preserves_modexp _ _ _ _ _ _ _ HK Hζ)) as (R1 & Rm1 & Hm1 & HRm1).
@@ -1532,13 +1532,13 @@ Lemma glu_dmod_sel_of_global :
           glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
        dm_global p args ·ₘ y gc_deps ⍮ gc_stack ↘ r ->
        gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
-       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame (me_mem H0 y)[ζ]ᵐ) ->
        glu_sel_globals Γ0 H0 y ->
        glu_dmod Δ σ0 Γ0 (me_mem H0 y) r) ->
     (forall Δ σ0 Γ0 H0 h, glu_dmod Δ σ0 Γ0 H0 h ->
        forall y r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r ->
        gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
-       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame (me_mem H0 y)[ζ]ᵐ) ->
        glu_sel_globals Γ0 H0 y ->
        glu_dmod Δ σ0 Γ0 (me_mem H0 y) r) /\
     (forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args -> True).
@@ -1591,10 +1591,11 @@ Proof.
       pose proof (sub_preserves_modexp _ _ _ _ _ _ _ (sub_preserves_modexp _ _ _ _ _ _ _ HHy Hζ) HWk) as HHyX.
       cbn [modexp_sub] in HHyX.
       destruct (me_mod_tele_exists HHyX) as (RS & TS & HmS & HTS).
-      assert (HqX : forall Γ' ζ', Γ' ⊢ˢ ζ' : Γ1 ▹{domain_kind a} B -> names_no_frame H0[ζ]ᵐ[Wk]ᵐ[ζ']ᵐ).
-      { intros Γ' ζ' Hζ'; rewrite !modexp_sub_sub; eapply Hq.
+      assert (HqX : forall Γ' ζ', Γ' ⊢ˢ ζ' : Γ1 ▹{domain_kind a} B -> names_no_frame (me_mem H0[ζ]ᵐ[Wk]ᵐ y)[ζ']ᵐ).
+      { intros Γ' ζ' Hζ'; cbn [modexp_sub]; rewrite !modexp_sub_sub.
+        refine (Hq _ (ζ ⨟ (Wk ⨟ ζ')) _).
         repeat first [ eassumption | eapply wf_sub_compose ]. }
-      pose proof (HqX _ Id (wf_sub_id _ _ _ HwΓb)) as HqX0; rewrite modexp_sub_id in HqX0.
+      pose proof (HqX _ Id (wf_sub_id _ _ _ HwΓb)) as HqX0; cbn [modexp_sub] in HqX0; rewrite modexp_sub_id in HqX0.
       destruct (modexp_mod_part _ _ _ HHw HR') as (R'm & HR'm).
       assert (HT'm : mdesc_tele R'm = Some T') by (unfold mdesc_mod_tele in HT''; rewrite HR'm in HT''; exact HT'').
       destruct (sel_view _ _ _ _ _ _ _ _ _ _ HHw HqX0 HR' HR'm HT'm Hv' HmS HTS) as (T1s & HvSX).
@@ -1631,7 +1632,7 @@ Lemma glu_dmod_sel : ⊢ᵍ gc_deps ⍮ gc_stack ->
     forall Δ σ0 Γ0 H0 h, glu_dmod Δ σ0 Γ0 H0 h ->
     forall y r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
-    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame (me_mem H0 y)[ζ]ᵐ) ->
     glu_sel_globals Γ0 H0 y ->
     glu_dmod Δ σ0 Γ0 (me_mem H0 y) r.
 Proof.

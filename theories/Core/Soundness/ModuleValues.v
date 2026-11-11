@@ -458,10 +458,11 @@ Proof.
   exfalso; exact (names_no_frame_mem_tele _ _ _ _ _ Hg Hn Hq Ht).
 Qed.
 
-(** A selection from a module expression naming no open frame is denoted
-    by looking the member up in what the module expression denotes. *)
+(** A selection naming no open frame is denoted by looking the member up in
+    what the module expression selected from denotes: a selection that is
+    an open frame, a group member's or a record type's, names it. *)
 Lemma mdenote_mem_no_frame : forall Γ H y R (P : Prop),
-    ⊢ᵍ gc_deps ⍮ gc_stack -> names_no_frame H -> mdenote gc_deps gc_stack Γ (me_mem H y) R ->
+    ⊢ᵍ gc_deps ⍮ gc_stack -> names_no_frame (me_mem H y) -> mdenote gc_deps gc_stack Γ (me_mem H y) R ->
     (forall R0 R0m Γy E rd R', mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some R0m ->
        mdesc_entry R0m y = Some (Γy, E, rd) -> edenote gc_deps gc_stack (Γy ++ Γ) (mdesc_entry_path R0m y) E R' ->
        mdesc_read rd R' = Some R -> P) ->
@@ -469,13 +470,15 @@ Lemma mdenote_mem_no_frame : forall Γ H y R (P : Prop),
 Proof.
   intros * Hg Hn Hm Hk; inversion Hm; subst.
   - match goal with Hu : gc_unit _ _ _ = Some _ |- _ =>
-      destruct (gc_unit_mem_parent _ _ Hg _ _ _ _ Hu) as (mq & T' & Φ' & Hq & Hf & _) end.
-    rewrite (Hn _ Hq) in Hf; discriminate.
+      destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq & [Hf | (_ & Hc & _)]) end.
+    + rewrite (Hn _ Hq) in Hf; discriminate.
+    + cbn [mod_qname] in Hq; destruct (mod_qname H) as [mq |]; [| discriminate ]; injection Hq as <-.
+      cbn in Hc; apply List.app_eq_nil in Hc as [_ Hc]; discriminate.
   - match goal with Hq : mod_qname _ = Some _, Hk' : gs_find_ind _ _ = Some _ |- _ =>
-      destruct (gs_find_ind_tele _ _ _ Hk') as (U & T0 & Ht); exfalso; exact (names_no_frame_mem_tele _ _ _ _ _ Hg Hn Hq Ht) end.
+      destruct (frame_ind_loc _ _ Hg _ _ _ _ Hk') as (U & T0 & T' & Φ' & Mk' & _ & Hf & _); rewrite (Hn _ Hq) in Hf; discriminate end.
   - eapply Hk; eassumption.
   - match goal with Hq : mod_qname _ = Some _, Hk' : gs_find_record _ _ = Some _ |- _ =>
-      destruct (gs_find_record_tele _ _ _ Hk') as (U & T0 & Ht); exfalso; exact (names_no_frame_mem_tele _ _ _ _ _ Hg Hn Hq Ht) end.
+      destruct (frame_record_loc _ _ Hg _ _ Hk') as (U & T0 & T' & Φ' & _ & Hf & _); rewrite (Hn _ Hq) in Hf; discriminate end.
 Qed.
 
 (** A well-formed module expression denoting no open frame names none at
@@ -555,7 +558,7 @@ Lemma same_denote_mem_part : forall {Γ0 H0 H1} y, same_part Γ0 H0 H1 ->
 Proof.
   intros * Hs Hn0 Γ1 ζ R Hζ Hm; cbn [modexp_sub] in *.
   pose proof (ctx_wf_gctx _ _ _ (wf_sub_cod _ _ _ _ _ Hζ)) as Hg.
-  apply (mdenote_mem_no_frame _ _ _ _ _ Hg (Hn0 _ _ Hζ) Hm); intros * H0m Hmd He Hed Hr.
+  apply (mdenote_mem_no_frame _ _ _ _ _ Hg (names_no_frame_mem _ y Hg (Hn0 _ _ Hζ)) Hm); intros * H0m Hmd He Hed Hr.
   destruct (Hs _ _ _ _ Hζ H0m Hmd) as (R2 & HR2 & Ep).
   eapply mdenote_mem; [ exact HR2 | exact Ep | exact He | exact Hed | exact Hr ].
 Qed.
