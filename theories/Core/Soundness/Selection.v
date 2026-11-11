@@ -97,6 +97,187 @@ Proof.
       rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
 Qed.
 
+(** ** Selection Commutes with Application, on Descriptions *)
+
+(** Reading a term as a name leaves its module part. *)
+Lemma mdesc_mod_named : forall Θ Ns M R, mdesc_mod (mdesc_named Θ Ns M R) = mdesc_mod R.
+Proof.
+  intros; apply (mdesc_named_cases (fun X => mdesc_mod X = mdesc_mod R)); [ reflexivity |].
+  destruct R as [r A [] | | |]; reflexivity.
+Qed.
+
+(** The outermost parameter of a telescope ending in an assumption, the
+    rest left as it is. *)
+Lemma tele_split_last : forall Δ0 κ B, tele_split (rev (Δ0 ++ ce_ass κ B :: nil)) = inl (B, Δ0, Id).
+Proof. intros; rewrite rev_app_distr; cbn; rewrite rev_involutive; reflexivity. Qed.
+
+(** Applying to one more argument, last. *)
+Lemma mdesc_ats_snoc : forall Ns R N,
+    mdesc_ats R (Ns ++ N :: nil) = match mdesc_ats R Ns with Some R1 => mdesc_at R1 N | None => None end.
+Proof.
+  induction Ns as [| N0 Ns IH]; intros; cbn; [ destruct (mdesc_at R N); reflexivity |].
+  destruct (mdesc_at R N0); [ apply IH | reflexivity ].
+Qed.
+
+Lemma mdesc_term_part_ats_snoc : forall Ns R N,
+    mdesc_term_part_ats R (Ns ++ N :: nil) =
+      match mdesc_term_part_ats R Ns with Some R1 => mdesc_term_part_at R1 N | None => None end.
+Proof.
+  induction Ns as [| N0 Ns IH]; intros; cbn; [ destruct (mdesc_term_part_at R N); reflexivity |].
+  destruct (mdesc_term_part_at R N0); [ apply IH | reflexivity ].
+Qed.
+
+(** The term part of a definition with a module part, or of a type former,
+    whose type is a [Π] over a telescope of assumptions and whose body is
+    a [λ] over it or a type former, given fewer arguments than the
+    telescope has, takes one more. *)
+Lemma term_part_ats_more : forall Ns P X r M r' B M' N, all_assumptions P -> List.length Ns < List.length P ->
+    (app_const M = true \/ exists M0, M = ctx_fn P M0) ->
+    mdesc_term_part_ats (mdesc_term r (ctx_pi P X) (Some M)) Ns = Some (mdesc_term r' B (Some M')) ->
+    exists R'', mdesc_term_part_at (mdesc_term r' B (Some M')) N = Some R''.
+Proof.
+  induction Ns as [| N0 Ns IH]; intros * HP Hl HM Ha.
+  - cbn in Ha; injection Ha as <- <- <-.
+    destruct (all_assumptions_last _ HP ltac:(intros ->; cbn in Hl; lia)) as (P0 & κ & A & ->).
+    unfold ctx_pi; rewrite ctx_pi_app; cbn [ctx_pi_at mdesc_term_part_at pi_view].
+    destruct HM as [Hc | (M0 & ->)]; [ destruct (fn_view M); [| rewrite Hc ]; eexists; reflexivity |].
+    rewrite ctx_fn_app; cbn [ctx_fn fn_view]; eexists; reflexivity.
+  - destruct (all_assumptions_last _ HP ltac:(intros ->; cbn in Hl; lia)) as (P0 & κ & A & ->).
+    unfold all_assumptions in HP; apply Forall_app in HP as [HP0 _].
+    cbn [mdesc_term_part_ats] in Ha.
+    unfold ctx_pi in Ha; rewrite ctx_pi_app in Ha; cbn [ctx_pi_at mdesc_term_part_at pi_view] in Ha.
+    rewrite length_app in Hl; cbn in Hl.
+    destruct HM as [Hc | (M0 & ->)].
+    + destruct (fn_view M) as [M1 |] eqn:Ef.
+      * (** a type former applied is no [λ] *)
+        exfalso; clear - Hc Ef; revert M1 Ef; induction M; intros; cbn in *; try discriminate.
+      * rewrite Hc in Ha.
+        rewrite ctx_pi_sub in Ha.
+        refine (IH _ _ _ _ _ _ _ _ _ _ _ Ha); [ apply all_assumptions_sub; exact HP0 | rewrite length_tele_sub; lia | left; cbn; exact Hc ].
+    + rewrite ctx_fn_app in Ha; cbn [ctx_fn fn_view] in Ha.
+      rewrite ctx_pi_sub, ctx_fn_sub in Ha.
+      refine (IH _ _ _ _ _ _ _ _ _ _ _ Ha); [ apply all_assumptions_sub; exact HP0 | rewrite length_tele_sub; lia | right; eexists; reflexivity ].
+Qed.
+
+(** The arguments under the identity. *)
+Lemma map_exp_sub_id : forall Ns, List.map (fun M => M[Id]) Ns = Ns.
+Proof. induction Ns as [| N Ns IH]; cbn; [ reflexivity | rewrite exp_sub_id, IH; reflexivity ]. Qed.
+
+(** The entry [y] of a closed module, read, then given the next
+    parameter, has the module part of the entry read in the module given
+    it: the outermost outside parameter is substituted, the entry being
+    closed; with no outside parameter the argument is recorded, and the
+    entry read at it, a definition with a module part's or a type
+    former's term part taking it, being a [Π] over the stored telescope
+    ([gm_coherent]). *)
+Lemma sel_at_closed : forall Θc Ξc, gctx_closed Θc Ξc ->
+    forall Γ Θ p T Φ Ns N y E rd R Rs Rs' Rsm,
+    gm_coherent T Φ -> all_assumptions T -> unit_closed T Φ -> all_assumptions Θ ->
+    (Θ = nil -> List.length Ns < List.length T) ->
+    mdesc_entry (mdesc_closed Θ p T Φ Ns) y = Some (nil, E, rd) ->
+    edenote Θc Ξc (nil ++ Γ) (Some (qname_in p y)) E R -> mdesc_read rd R = Some Rs ->
+    mdesc_mod Rs = Some Rsm -> mdesc_at Rs N = Some Rs' ->
+    exists R0m' rd', mdesc_at (mdesc_closed Θ p T Φ Ns) N = Some R0m' /\
+      mdesc_entry R0m' y = Some (nil, E, rd') /\ exists Rs'', mdesc_read rd' R = Some Rs'' /\ mdesc_mod Rs'' = mdesc_mod Rs'.
+Proof.
+  intros Θc Ξc Hc * Hco HTa HU HΘa Hlt He Hed Hrd HRs Hat.
+  pose proof (mdesc_entry_closed _ _ _ _ _ _ _ _ _ HU He) as (_ & HsE & ->).
+  pose proof He as He0; cbn in He0.
+  destruct (gm_prefix_upto Φ y) as [[| Φ0 z E0 | ] |] eqn:Hp; try discriminate.
+  injection He0 as <-.
+  destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & Heq & _); injection Heq as <- -> <-.
+  pose proof (gm_coherent_prefix _ _ _ _ _ Hco Hp) as HcoE.
+  (** The entry is closed, and so is what it denotes *)
+  assert (HsR : mdesc_scoped 0 R).
+  { eapply (proj1 (proj2 (proj2 (mdenote_scoped_all _ _ Hc)))); [ exact Hed | intros x U Hx; lia | exact HsE ]. }
+  cbn [mdesc_read] in Hrd; destruct (mdesc_ats_read R Ns) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [| discriminate ].
+  injection Hrd as <-.
+  rewrite mdesc_mod_up, mdesc_mod_named in HRs.
+  destruct (mdesc_mod R1) as [Q |] eqn:HQ; cbn [option_map] in HRs; [ injection HRs as <- | discriminate ].
+  destruct Θ as [| e Θr] using rev_ind.
+  - (** No outside parameter: the argument is recorded *)
+    specialize (Hlt eq_refl).
+    cbn [mdesc_at tele_split rev]; rewrite map_exp_sub_id.
+    exists (mdesc_closed nil p T Φ (Ns ++ N :: nil)), (reader_closed nil (Ns ++ N :: nil) (apps (a_mem (qname_mod p) y) (Ns ++ N :: nil))).
+    split; [ reflexivity | split; [ cbn; rewrite Hp; reflexivity |] ].
+    rewrite mdesc_up_nil in Hat.
+    destruct R as [r0 A0 om | Δr Φr Φxr | Θr pr Tr Φr' Nsr | [| e0 Θd] A0 M0 Rm].
+    + exfalso; destruct (mdesc_ats_term _ _ _ _ _ Hats) as (? & ? & ->); discriminate.
+    + (** A module: read at one more argument *)
+      cbn [mdesc_read mdesc_ats_read]; rewrite mdesc_ats_snoc; cbn [mdesc_ats_read] in Hats; rewrite Hats.
+      assert (Hn : mdesc_named nil Ns (apps (a_mem (qname_mod p) y) Ns) R1 = R1)
+        by (apply mdesc_named_fix; destruct R1; cbn in HQ |- *; first [ discriminate | reflexivity ]).
+      rewrite Hn in Hat; rewrite Hat; cbn [option_map]; eexists; split; [ reflexivity | rewrite mdesc_up_nil, mdesc_mod_named; reflexivity ].
+    + cbn [mdesc_read mdesc_ats_read]; rewrite mdesc_ats_snoc; cbn [mdesc_ats_read] in Hats; rewrite Hats.
+      assert (Hn : mdesc_named nil Ns (apps (a_mem (qname_mod p) y) Ns) R1 = R1)
+        by (apply mdesc_named_fix; destruct R1; cbn in HQ |- *; first [ discriminate | reflexivity ]).
+      rewrite Hn in Hat; rewrite Hat; cbn [option_map]; eexists; split; [ reflexivity | rewrite mdesc_up_nil, mdesc_mod_named; reflexivity ].
+    + (** A definition with a module part, or a type former: both parts
+          take the argument *)
+      cbn [mdesc_ats_read] in Hats.
+      destruct (mdesc_term_part_ats (mdesc_term ak_relevant A0 (Some M0)) Ns) as [[r1 B [M' |] | | |] |] eqn:Htp;
+        try discriminate.
+      destruct (mdesc_ats Rm Ns) as [Rm' |] eqn:HRm; [ injection Hats as <- | discriminate ].
+      rewrite mdesc_named_fix in Hat by reflexivity.
+      cbn [mdesc_at tele_split rev] in Hat.
+      destruct (mdesc_at Rm' N) as [Rm'' |] eqn:HRm''; [ injection Hat as <- | discriminate ].
+      (** The term part is a [Π] over the stored telescope *)
+      assert (Hmore : exists R'', mdesc_term_part_at (mdesc_term r1 B (Some M')) N = Some R'').
+      { cbn [ge_read] in Hed.
+        destruct E0 as [b pv κ A M | pv [Δ [sm Φy | Ea]] | pv pq k D Φ' | pv A M U | pv pr Rr Φ'];
+          [ exfalso; cbn [ge_read] in Hed; inversion Hed
+          | exfalso; destruct sm; cbn [ge_read] in Hed; inversion Hed; subst;
+            match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hm end;
+            cbn in Hm; contradiction
+          | exfalso; cbn [ge_read] in Hed; inversion Hed; subst;
+            match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hm end;
+            cbn in Hm; contradiction
+          | cbn [ge_read] in Hed; inversion Hed; subst ..].
+        - (** a type former of a group *)
+          cbn [ge_coherent] in HcoE; destruct HcoE as [(Δ0 & HuD & HΔ0) _].
+          unfold im_params in Htp; rewrite HuD, !ctx_pi_app in Htp.
+          refine (term_part_ats_more _ T _ _ _ _ _ _ _ HTa Hlt _ Htp); left; reflexivity.
+        - (** a definition with a module part *)
+          cbn [ge_coherent] in HcoE; destruct HcoE as [(A1 & M1 & -> & ->) _].
+          refine (term_part_ats_more _ T _ _ _ _ _ _ _ HTa Hlt _ Htp); right; eexists; reflexivity.
+        - (** a record type *)
+          cbn [ge_coherent] in HcoE; destruct HcoE as [(Δ0 & HpR & HΔ0) _].
+          unfold record_former_desc in *; rewrite HpR, ctx_pi_app in Htp.
+          refine (term_part_ats_more _ T _ _ _ _ _ _ _ HTa Hlt _ Htp); left; reflexivity. }
+      destruct Hmore as (R'' & HR'').
+      cbn [mdesc_read mdesc_ats_read]; rewrite mdesc_term_part_ats_snoc, Htp, HR'', mdesc_ats_snoc, HRm, HRm''.
+      assert (HR''t : exists r2 C M'', R'' = mdesc_term r2 C (Some M'')).
+      { cbn [mdesc_term_part_at] in HR''; destruct (pi_view B) as [[? ?] |]; [| discriminate ].
+        destruct (fn_view M') as [M1 |] eqn:Ef; [| destruct (app_const M') eqn:Ea ]; try discriminate;
+          injection HR'' as <-; eauto. }
+      destruct HR''t as (r2 & C & M'' & ->); cbn [option_map].
+      eexists; split; [ reflexivity | rewrite mdesc_up_nil, mdesc_named_fix by reflexivity; cbn [mdesc_mod]; reflexivity ].
+    + (** A definition with a module part over outside parameters: read as
+          a module part *)
+      cbn [mdesc_read mdesc_ats_read]; rewrite mdesc_ats_snoc; cbn [mdesc_ats_read] in Hats; rewrite Hats.
+      assert (Hn : mdesc_named nil Ns (apps (a_mem (qname_mod p) y) Ns) R1 = R1)
+        by (apply mdesc_named_fix; destruct R1; cbn in HQ |- *; first [ discriminate | reflexivity ]).
+      rewrite Hn in Hat; rewrite Hat; cbn [option_map]; eexists; split; [ reflexivity | rewrite mdesc_up_nil, mdesc_mod_named; reflexivity ].
+  - (** The outermost outside parameter is substituted *)
+    clear IHΘr.
+    unfold all_assumptions in HΘa; apply Forall_app in HΘa as [HΘr He1]; apply Forall_cons_iff in He1 as [(κ & B & ->) _].
+    cbn [mdesc_at]; rewrite tele_split_last.
+    do 2 eexists; split; [ reflexivity | split; [ cbn; rewrite Hp; reflexivity |] ].
+    cbn [mdesc_read].
+    pose proof (mdesc_ats_read_sub _ _ _ (Id ⨟ sb_qn (List.length Θr) (Id,,N)) Hats) as Hats'.
+    rewrite (mdesc_sub_fix R 0) in Hats' by (exact HsR || (intros; lia)).
+    rewrite Hats'; cbn [option_map]; eexists; split; [ reflexivity |]; rewrite mdesc_mod_up, mdesc_mod_named.
+    rewrite (mdesc_mod_sub _ _ _ HQ); cbn [option_map].
+    assert (HRsm : mdesc_mod (mdesc_up (Θr ++ ce_ass κ B :: nil) (mdesc_named (Θr ++ ce_ass κ B :: nil) Ns (apps (a_mem (qname_mod p) y) Ns) R1))
+                   = Some (mdesc_up (Θr ++ ce_ass κ B :: nil) Q))
+      by (rewrite mdesc_mod_up, mdesc_mod_named, HQ; reflexivity).
+    destruct (mdesc_at_mod_part _ _ _ _ Hat HRsm) as (Rm' & HRm' & ->).
+    rewrite mdesc_at_up in HRm'; injection HRm' as <-.
+    pose proof (mdesc_mod_is_mod _ _ HQ) as HQm.
+    rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ (mdesc_is_mod_sub _ _ HQm))).
+    do 2 f_equal; apply mdesc_sub_sb_eq; rewrite sb_compose_id_left; reflexivity.
+Qed.
+
 Section Fixed_GCtx.
   Context {GC : GCtx}.
   Import Fixed_Notations.
