@@ -1223,6 +1223,117 @@ Proof.
   rewrite EH in Hg2; exact Hg2.
 Qed.
 
+(** A glued literal alias over a stored telescope extended, at its
+    closure over no environment, given typed arguments for the stored
+    telescope glued against it, is glued as the literal applied to them,
+    one argument at a time ([glu_dmod_app_val]): the closure lacks each
+    in turn, in the environment of those before. *)
+Lemma glu_dmod_lit_alias_apps : ⊢ᵍ gc_deps ⍮ gc_stack ->
+    forall Δ σ0 Γ0 Δ0 T E Ns1 args h1 r l,
+    Δ ⊢ˢ σ0 : Γ0 -> all_assumptions T -> ctx_scoped 0 T -> ⊩ T -> params_evaluated gc_deps gc_stack nil T l ->
+    args_ok gc_deps gc_stack Γ0 T Ns1 -> List.length Ns1 = List.length T ->
+    glu_tele_args Δ (List.rev T) nil nil (List.map (fun N => N[σ0]) Ns1) args ->
+    glu_dmod Δ σ0 Γ0 (me_lit (gu_mk (Δ0 ++ T) (md_alias E))) h1 ->
+    (Δ0 ++ T <> nil -> h1 = dm_local (Δ0 ++ T) (md_alias E) nil) ->
+    $ᵐ*| h1 & args | gc_deps ⍮ gc_stack ↘ r ->
+    glu_dmod Δ σ0 Γ0 (me_apps (me_lit (gu_mk (Δ0 ++ T) (md_alias E))) Ns1) r.
+Proof.
+  intros Hgw * Hσ HTa HTs HT HRT Hok Hlen Hargs Hg0 Hh1 Happs.
+  pose proof (wf_sub_dom _ _ _ _ _ Hσ) as HΔ.
+  pose proof (glu_tele_args_length _ _ _ _ _ _ Hargs) as HlA; rewrite length_map in HlA.
+  set (U := gu_mk (Δ0 ++ T) (md_alias E)) in *.
+  assert (Hind : forall k, k <= List.length T -> exists hk,
+             $ᵐ*| h1 & List.firstn k args | gc_deps ⍮ gc_stack ↘ hk /\ $ᵐ*| hk & List.skipn k args | gc_deps ⍮ gc_stack ↘ r /\
+             glu_dmod Δ σ0 Γ0 (me_apps (me_lit U) (List.firstn k Ns1)) hk /\
+             (Δ0 ++ List.firstn (List.length T - k) T <> nil ->
+              hk = dm_local (Δ0 ++ List.firstn (List.length T - k) T) (md_alias E) (env_tele nil (List.rev T) (List.firstn k args)))).
+  { induction k as [| k IH]; intros Hk.
+    - exists h1; cbn [List.firstn List.skipn]; split; [ constructor | split; [ exact Happs | split; [ exact Hg0 |] ] ].
+      rewrite Nat.sub_0_r, List.firstn_all; intros Hne; rewrite (Hh1 Hne); reflexivity.
+    - destruct (IH ltac:(lia)) as (hk & Hpre & Hrest & Hgk & Hform).
+      destruct (List.nth_error Ns1 k) as [N |] eqn:HN; [| apply List.nth_error_None in HN; lia ].
+      destruct (List.nth_error args k) as [c |] eqn:Hc; [| apply List.nth_error_None in Hc; lia ].
+      rewrite (skipn_nth_cons _ _ _ Hc) in Hrest.
+      inversion Hrest as [| ? ? hk' ? ? Happ1 Hrest']; subst.
+      (** The argument at [k], glued *)
+      assert (HNσ : List.nth_error (List.map (fun N => N[σ0]) Ns1) k = Some N[σ0]) by (rewrite List.nth_error_map, HN; reflexivity).
+      destruct (glu_tele_args_nth_env _ _ _ _ _ _ Hargs _ _ _ HNσ Hc) as (κ & A & a & i & P & El & Hnth & Ea & Hga & HAP & HNg).
+      cbn [List.app] in HAP, HNg.
+      (** Its kind, by the telescope's gluing *)
+      destruct (glu_tele_next_param T Δ (List.firstn k (List.map (fun N => N[σ0]) Ns1)) (List.firstn k args) HΔ HTa HT
+                  ltac:(rewrite List.firstn_length_le by lia; lia) (glu_tele_args_prefix _ _ _ _ _ _ Hargs k))
+        as (κ' & A' & a' & i' & P' & El' & Hnth' & Ea' & Hka & _ & _).
+      rewrite List.firstn_length_le in Hnth' by lia; rewrite Hnth in Hnth'; injection Hnth' as <- <-.
+      pose proof (functional_eval_exp _ _ _ _ Ea' Ea) as ->.
+      (** The closure lacks it *)
+      rewrite (firstn_rest_split T k _ ltac:(lia) Hnth), app_assoc in Hform.
+      pose proof (Hform ltac:(intros Hnil; apply app_eq_nil in Hnil as [_ Hnil]; discriminate)) as ->.
+      assert (Hnp : next_param (dm_local ((Δ0 ++ List.firstn (List.length T - S k) T) ++ ce_ass κ A :: nil) (md_alias E)
+                                  (env_tele nil (List.rev T) (List.firstn k args))) a)
+        by (constructor; [ exact Ea | exact Hka ]).
+      (** The literal applied so far, its telescope ending in the
+          parameter *)
+      set (Ms := List.firstn k Ns1) in *.
+      assert (HlMs : List.length Ms = k) by (unfold Ms; rewrite List.firstn_length_le; lia).
+      assert (HHk : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_apps (me_lit U) Ms ≈ me_apps (me_lit U) Ms) by (destruct Hgk; assumption).
+      destruct (me_mod_tele_exists HHk) as (Rk & Tk & Hmk & HTk).
+      destruct (lit_alias_apps_desc Γ0 Δ0 T E Ms Rk HTa ltac:(lia) Hmk) as (RE & RmE & _ & HmodE & ->).
+      rewrite HlMs in HTk.
+      destruct (mdesc_mod_tele_up_inv _ _ _ HTk) as (T0' & ->).
+      rewrite HlMs in Hmk.
+      destruct (tele_rest_view T Ms κ A ltac:(lia) ltac:(rewrite HlMs; exact Hnth)) as (T1 & HT1).
+      rewrite HlMs in HT1.
+      set (σk := sb_of_list Id Ms) in *.
+      assert (HvK : exists T1', tele_view (T0' ++ tele_sub (Δ0 ++ List.firstn (List.length T - k) T) σk) = Some (A[σk], T1')).
+      { rewrite tele_sub_app, HT1, !app_assoc, tele_view_last; eexists; reflexivity. }
+      destruct HvK as (T1' & HvK).
+      (** The argument and its type, typed *)
+      pose proof (args_ok_firstn _ _ _ HRT _ Hok (S k)) as HokS.
+      rewrite (firstn_succ_nth _ _ _ HN) in HokS.
+      destruct (args_ok_init _ _ _ _ _ _ _ HokS HRT) as (_ & T1o & κ' & C & T2 & HTe & Hl2 & HσMs & (Srt & HSrt & HC) & HNt).
+      fold Ms in Hl2, HσMs, HNt.
+      assert (HC' : List.nth_error (List.rev T) k = Some (ce_ass κ' C)).
+      { rewrite HTe, List.rev_app_distr; cbn [List.rev]; rewrite <- app_assoc; cbn [List.app].
+        rewrite List.nth_error_app2 by (rewrite List.length_rev; lia).
+        rewrite List.length_rev, Hl2, HlMs, Nat.sub_diag; reflexivity. }
+      rewrite Hnth in HC'; injection HC' as <- <-.
+      pose proof (sub_preserves_exp _ _ _ _ _ _ _ HC HσMs) as HCσ.
+      replace Srt[sb_of_list Id Ms] with Srt in HCσ by (destruct HSrt; reflexivity).
+      pose proof (evaluated_sort_type_sort _ HSrt) as HS'.
+      (** The argument glued at every gluing of the parameter's value *)
+      assert (HNarg : forall (i0 : nat) P0 El0, DG a ∈ glu_univ_elem i0 ↘ P0 ↘ El0 -> Δ ⊢ A[σk][σ0] ® P0 ->
+                 Δ ⊢ N[σ0] : A[σk][σ0] ® c ∈ El0).
+      { intros * Hga0 HP0.
+        pose proof (sub_preserves_exp _ _ _ _ _ _ _ HCσ Hσ) as HAσ.
+        replace Srt[σ0] with Srt in HAσ by (destruct HSrt; reflexivity).
+        unfold σk in HP0, HAσ |- *.
+        rewrite (tele_type_inst_sub A Ms σ0 ltac:(rewrite HlMs; exact (tele_next_scoped _ _ _ _ HTs Hnth))) in HP0, HAσ |- *.
+        rewrite List.firstn_map in HNg; fold Ms in HNg.
+        destruct (type_sort_abs_kind_sort_inv _ HS') as (κs & j & ESrt); rewrite ESrt in HAσ.
+        destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hga0 HP0 HAσ) as [_ Hnl].
+        exact (glu_elem_move_typ Hga Hga0 Hnl HNg HP0). }
+      pose proof (glu_dmod_app_val _ _ _ _ _ _ _ _ _ _ _ _ _ hk' Hσ Hgk Hmk HTk HvK HCσ HS' HNt Hnp HNarg Happ1) as Hgk'.
+      exists hk'; split; [| split; [ exact Hrest' | split ] ].
+      + rewrite (firstn_succ_nth _ _ _ Hc); apply appms_snoc; eexists; split; [ exact Hpre | exact Happ1 ].
+      + unfold Ms in Hgk'; rewrite (firstn_succ_nth _ _ _ HN), me_apps_snoc; exact Hgk'.
+      + intros Hne; clear - Happ1 Hne Hc Hnth Hk HlA Hlen.
+        inversion Happ1 as [| Δ1 κ1 A1 D1 ρ1 n1 r1 Hcl Heq | ]; subst.
+        apply app_inj_tail in Heq as [-> [= -> ->]].
+        inversion Hcl as [| ? ? ? ? Hlt0 | ? ? ? ? Hnil]; subst;
+          [| exfalso; apply Hne; match goal with H : _ = nil |- _ => exact H | H : nil = _ |- _ => symmetry; exact H end ].
+        assert (E1 : env_tele nil (List.rev T) (List.firstn k args) = env_tele nil (List.firstn k (List.rev T)) (List.firstn k args))
+          by (rewrite env_tele_firstn, List.firstn_length_le by lia; reflexivity).
+        rewrite (firstn_succ_nth _ _ _ Hc), (env_tele_firstn nil (List.rev T) (List.firstn k args ++ c :: nil)), length_app.
+        rewrite List.firstn_length_le by lia; cbn [List.length].
+        replace (k + 1) with (S k) by lia.
+        rewrite (firstn_succ_nth _ _ _ Hnth), env_tele_snoc by (rewrite !List.firstn_length_le by (rewrite ?List.length_rev; lia); reflexivity).
+        rewrite E1; reflexivity.
+  }
+  destruct (Hind (List.length T) (le_n _)) as (hk & _ & Hrest & Hgk & _).
+  rewrite List.skipn_all2 in Hrest by lia; inversion Hrest; subst.
+  rewrite List.firstn_all2 in Hgk by lia; exact Hgk.
+Qed.
+
 (** A value lacking a parameter whose selection is applied is applied
     itself. *)
 Lemma appm_of_selm_appm : forall h a, next_param h a -> forall y r c rc,
