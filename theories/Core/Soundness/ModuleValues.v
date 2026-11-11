@@ -1445,6 +1445,81 @@ Proof.
     exact (proj1 glu_dmod_through _ _ _ _ _ Hg _ _ _ HWk Hσt ltac:(apply wf_sub_eq_refl; eapply wf_sub_compose; eassumption)).
 Qed.
 
+(** ** The Members of a Saturated Body Value *)
+
+(** A proof of a body related to another, its type at the environment of
+    the entries before it: a proposition, by the kind its definition is
+    tagged with ([per_body_def]). *)
+Lemma per_body_proof_kind : forall Φ ρ ρ' Φ2, per_body ρ Φ ρ' Φ2 ->
+    forall x Φ1 b pv A M, gm_prefix_upto Φ x = Some (gm_ext Φ1 x (ge_def b pv ak_propositional A (Some M))) ->
+    exists ρ1 a, ⟦ Φ1 ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 /\ ⟦ A ⟧ ρ1 ↘ a /\ domain_kind a = ak_propositional.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H its Φg _]; intros * Hb * Hp; cbn in Hp; [ discriminate | |].
+  - destruct (String.eqb x y) eqn:Exy.
+    + injection Hp as <- <-; inversion Hb; subst;
+        match goal with H2 : _ = ge_def _ _ _ _ _ |- _ => try discriminate H2; injection H2 as -> -> -> -> -> end.
+      match goal with Hk : rel_typ_kind _ _ _, Hb0 : ⟦ _ ⟧ᵇ _ ⍮ _ ⍮ ρ ↘ ?ρ0 |- _ =>
+        destruct Hk as (a0 & Ea0 & Ka0); exists ρ0, a0; repeat split; assumption end.
+    + inversion Hb; subst; eapply IH; eassumption.
+  - inversion Hb.
+Qed.
+
+(** The member of a saturated body value glued as [H], at a type value of
+    an evaluated kind related to the member types of the value
+    ([dmod_mem_type_rel]), is glued as the member there: glued at the
+    entry's own type value through the identity factorization, moved to
+    the related one ([glu_univ_elem_exp_conv_universe_index]).  A proof is
+    no such member: its type is a proposition ([per_body_proof_kind]). *)
+Lemma glu_mem_body_value : forall Δ σ Γ H sm Φ ρh x R A Srt m a2 (k : nat) P2 El2,
+    glu_dmod Δ σ Γ H (dm_local nil (md_body sm Φ) ρh) ->
+    mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A -> type_sort Srt -> Γ ⊢ A : Srt ->
+    dm_local nil (md_body sm Φ) ρh ·ₜ x gc_deps ⍮ gc_stack ↘ m ->
+    per_dmod (dm_local nil (md_body sm Φ) ρh) (dm_local nil (md_body sm Φ) ρh) ->
+    dmod_mem_type_rel (dm_local nil (md_body sm Φ) ρh) x a2 ->
+    evaluated_kind (domain_kind a2) ->
+    DG a2 ∈ glu_univ_elem k ↘ P2 ↘ El2 -> Δ ⊢ A[σ] ® P2 ->
+    Δ ⊢ (a_mem H x)[σ] : A[σ] ® m ∈ El2.
+Proof.
+  intros * Hg Hm HA HS HAt Hsel Hhh Hty Hev Hg2 HP2.
+  inversion Hg; subst;
+    [| exfalso; match goal with Hn : next_param (dm_local nil _ _) _ |- _ => inversion Hn; subst end;
+       match goal with Hl : _ ++ _ :: nil = nil |- _ => destruct Δ0; discriminate end ].
+  match goal with Hσ0 : Δ ⊢ˢ σ : Γ, Hmem0 : forall (x0 : String.string) _ _ _ _ _, _ -> _ -> _ -> _ -> exists _ _, glu_body_member _ _ _ _ _ _ _ _ _ _ |- _ =>
+    rename Hσ0 into Hσ, Hmem0 into Hmem end.
+  inversion Hhh; subst;
+    [| exfalso; match goal with Hn : next_param (dm_local nil _ _) _ |- _ => inversion Hn; subst end;
+       match goal with Hl : _ ++ _ :: nil = nil |- _ => destruct Δ0; discriminate end ].
+  match goal with Hb : per_body ρh Φ ρh Φ |- _ => rename Hb into Hbb end.
+  pose proof (proj1 (KindsPER.per_body_noopen _ _ _ _ Hbb)) as Hno.
+  inversion Hsel; subst.
+  - match goal with Hl : 0 < length nil |- _ => inversion Hl end.
+  - (** A definition of an evaluated kind *)
+    destruct (Hmem _ _ _ _ _ _ H3 H4 H5 H8) as (a & m' & [Ea Em Hfield]).
+    pose proof (functional_eval_exp _ _ _ _ Em H10) as ->.
+    pose proof (dmod_mem_type_body sm Φ ρh x _ _ _ _ _ _ H3 H4 H8 Ea) as Hmt.
+    destruct (Hty _ _ Hhh Hmt) as [j Hj].
+    pose proof (wf_sub_cod _ _ _ _ _ Hσ) as HwΓ.
+    assert (Hst : glu_sub_through Δ σ Γ Δ wk_id Γ Id σ).
+    { constructor; [ apply kripke_id; exact (wf_sub_dom _ _ _ _ _ Hσ) | apply wf_sub_id; exact HwΓ | exact Hσ |].
+      apply wf_sub_eq_of_sb_eq; [ exact (wf_sub_sb_wk Hσ (kripke_id _ (wf_sub_dom _ _ _ _ _ Hσ))) |].
+      rewrite sb_compose_id_left; intros n; unfold sb_wk; destruct (σ n); cbn;
+        [ reflexivity | rewrite exp_wk_id | rewrite modexp_wk_id | rewrite exp_wk_id, modexp_wk_id ]; reflexivity. }
+    rewrite <- (modexp_sub_id H) in Hm.
+    destruct (Hfield _ _ _ _ _ _ _ _ Hst Hm HA HS HAt) as (i & P & El & [Hga HAP HMm]).
+    rewrite !modexp_sub_id in HMm.
+    exact (glu_univ_elem_exp_conv_universe_index (i := ul i) (j := ul k) Hj Hga Hg2 HMm HP2).
+  - (** A proof: its type is a proposition, not of the evaluated kind of
+        the member's type *)
+    exfalso.
+    match goal with Hp : gm_prefix_upto _ x = Some (gm_ext ?Φ1 x ?E), Ht : entry_tm ?E = Some _, Hk : entry_kind ?E = ak_propositional |- _ =>
+      rename Hp into Hp0, Ht into Ht0, Hk into Hk0 end.
+    destruct E as [b pv κ A1 [M1 |] | | | | ]; cbn in Ht0, Hk0; try discriminate; injection Ht0 as <- <-; subst κ.
+    pose proof Hp0 as Hp'; rewrite (gm_expand_noopen _ Hno) in Hp'.
+    destruct (per_body_proof_kind _ _ _ _ Hbb _ _ _ _ _ _ Hp') as (ρ1 & b0 & Hb1 & Eb0 & Kb0).
+    destruct (Hty _ _ Hhh (dmod_mem_type_body _ _ _ _ _ _ _ _ _ _ Hp0 eq_refl Hb1 Eb0)) as [j [Rj Hj]].
+    rewrite <- (per_univ_elem_kind _ _ _ _ Hj), Kb0 in Hev; inversion Hev.
+Qed.
+
 (** A module slot is glued in a glued context. *)
 Lemma glu_slot_modexp_at : forall Γ y U, Γ ∋ #y ≔ₘ U -> glu_modexp_at Γ (me_var y).
 Proof.
