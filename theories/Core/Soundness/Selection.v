@@ -846,6 +846,96 @@ Proof.
              (tele_view_under_sub _ _ HX Hv _ _ Hζ) Hm HRm).
 Qed.
 
+(** A stored alias submodule is the module at its path, an alias. *)
+Lemma gm_entry_alias_submodule : forall Φ T x ip pv Δ E,
+    gm_entry Φ (x :: ip) = Some (ge_mod pv (gu_mk Δ (md_alias E))) ->
+    gm_submodule T Φ x ip = Some (mr_alias (gu_mk Δ (md_alias E))).
+Proof.
+  fix IH 1; intros [| Φ y E0 | Φ H its] T x ip *; cbn; try discriminate; intros He; try (eapply IH; exact He).
+  destruct (String.eqb x y); [| eapply IH; exact He ].
+  destruct ip as [| z ip], E0 as [b' pv' A' B' | pm0 [Δ0 [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' A1 M1 [Δ1 [? Φ1 | E1]] | pv' Rr Φ1];
+    cbn in He |- *; try discriminate; try (injection He as -> -> -> ; reflexivity); eapply IH; exact He.
+Qed.
+
+(** A body submodule selected from a stored module at arguments, as a
+    module: the stored module at the submodule's path, at the same
+    arguments, whose telescope extends the parent's. *)
+Lemma global_sel_desc : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H y R0 p T Φ Ns1 Rsel Rm T' Φ',
+    names_no_frame H -> mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_closed nil p T Φ Ns1) ->
+    gc_loc gc_deps gc_stack p = Some (T, Φ) ->
+    mdenote gc_deps gc_stack Γ (me_mem H y) Rsel -> mdesc_mod Rsel = Some Rm ->
+    gc_loc gc_deps gc_stack (qname_in p y) = Some (T', Φ') ->
+    Rm = mdesc_closed nil (qname_in p y) T' Φ' Ns1 /\ exists Z, T' = Z ++ T.
+Proof.
+  intros Hgw * Hq Hm0 HR0m Hl Hsel HRm Hl'.
+  pose proof (wf_gstack_closed _ _ Hgw) as Hc.
+  apply (mdenote_mem_no_frame _ _ _ _ _ Hgw Hq Hsel); intros R0' R0m' Γy E rd R Hm0' HR0m' He Hed Hrd.
+  rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ Hm0' _ Hm0), HR0m in HR0m'; injection HR0m' as <-.
+  pose proof (gc_loc_closed _ _ _ _ _ Hc Hl) as HU.
+  pose proof (gc_loc_loc _ _ _ _ _ Hl) as Hloc.
+  pose proof (loc_coherent _ _ Hgw _ _ _ Hloc) as Hco.
+  pose proof (mdesc_entry_closed _ _ _ _ _ _ _ _ _ HU He) as (-> & _ & ->).
+  pose proof He as He0; cbn in He0.
+  destruct (gm_prefix_upto Φ y) as [[| Φ0 z E0 | ] |] eqn:Hp; try discriminate.
+  injection He0 as <-.
+  destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & Heq & Hent); injection Heq as <- -> <-.
+  pose proof (gm_coherent_prefix _ _ _ _ _ Hco Hp) as HcoE.
+  destruct (gm_entry_head _ _ _ Hent) as (z & ip & [= <- <-] & Hin).
+  destruct (loc_read _ _ Hgw _ _ _ Hloc _ Hin nil) as (_ & _ & Hmod & _).
+  rewrite <- qname_in_app in Hmod.
+  cbn [mdesc_entry_path] in Hed.
+  cbn [mdesc_read] in Hrd; destruct (mdesc_ats_read R Ns1) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [| discriminate ].
+  injection Hrd as <-.
+  rewrite mdesc_up_nil, mdesc_mod_named in HRm.
+  destruct HU as [_ HbΦ].
+  destruct E0 as [b pv κ A M | pv [Δ [sm Φy | Ea]] | pv pq k' D ΦD | pv A M U | pv pr Rr ΦR]; cbn [ge_read] in Hed.
+  - (** a definition has no module part *)
+    inversion Hed; subst; cbn [mdesc_ats_read] in Hats.
+    destruct (mdesc_ats_term _ _ _ _ _ Hats) as (? & ? & ->); discriminate.
+  - (** a body submodule *)
+    pose proof (body_closed_entry_mod _ _ _ _ _ _ _ HbΦ Hent) as ->.
+    destruct (loc_child_mod _ _ Hgw _ _ _ Hloc _ _ _ _ _ Hent) as [Hb' _].
+    unfold gc_loc in Hl'; rewrite (gc_body_not_frame _ _ _ _ Hb'), Hb' in Hl'; injection Hl' as <- <-.
+    destruct (gm_entry_closed _ _ _ _ HbΦ Hent) as (k & _ & _ & Hck).
+    pose proof (body_closed_noopen _ _ Hck) as Hno.
+    inversion Hed; subst.
+    match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+    match goal with Hx : body_xp _ _ _ Φy ?Φx, Hd : mdesc_body _ _ _ _ _ = Some _ |- _ =>
+      rewrite (body_xp_noopen_id _ _ _ _ _ Hno Hx) in Hd; cbn in Hd; injection Hd as <- end.
+    cbn [mdesc_ats_read] in Hats; rewrite mdesc_ats_closed_nil in Hats; injection Hats as <-.
+    cbn [mdesc_mod] in HRm; injection HRm as <-; split; [ reflexivity | eauto ].
+  - (** an alias is no stored body *)
+    exfalso; rewrite (gm_entry_alias_submodule _ T _ _ _ _ _ Hent) in Hmod.
+    exact (gc_loc_not_alias _ _ _ _ _ Hl' Hmod).
+  - (** a type former of a group: its module, at its path *)
+    cbn [ge_coherent] in HcoE; destruct HcoE as [(Δ0 & HuD & _) _].
+    inversion Hed; subst.
+    pose proof (gc_entry_selfpath _ _ Hgw _ _ _ _ _ _ (proj2 (loc_entry _ _ Hgw _ _ _ Hloc _ _) Hent)) as Hsp.
+    match goal with Hpm : ind_mpath _ _ = Some ?pm, Hlm : gc_loc _ _ ?pm = Some _ |- _ =>
+      rewrite (ind_selfpath_path _ _ _ _ Hsp) in Hpm; injection Hpm as <-; rewrite Hl' in Hlm; injection Hlm as <- <- end.
+    pose proof (loc_child_ind _ _ Hgw _ _ _ _ _ _ _ _ _ Hloc Hent) as Hb'.
+    unfold gc_loc in Hl'; rewrite (gc_body_not_frame _ _ _ _ Hb'), Hb' in Hl'; injection Hl' as <- <-.
+    unfold ind_former_desc in Hats; cbn [mdesc_ats_read] in Hats.
+    destruct (mdesc_term_part_ats _ Ns1) as [[? ? [?|] | | |] |]; try discriminate.
+    rewrite mdesc_ats_closed_nil in Hats; injection Hats as <-.
+    cbn [mdesc_mod] in HRm; injection HRm as <-; split; [ reflexivity | eauto ].
+  - (** a definition with a module part is no stored body *)
+    exfalso; cbn [ge_coherent] in HcoE; destruct HcoE as [_ (Δ0 & Ea & -> & _)].
+    rewrite (gm_entry_def_mod_submodule _ T _ _ _ _ _ _ _ Hent) in Hmod.
+    exact (gc_loc_not_alias _ _ _ _ _ Hl' Hmod).
+  - (** a record type: its module, at its path *)
+    cbn [ge_coherent] in HcoE; destruct HcoE as [(Δ0 & HpR & HΔ0) _].
+    inversion Hed; subst.
+    match goal with Hlm : gc_loc _ _ (qname_in p y) = Some _ |- _ => rewrite Hl' in Hlm; injection Hlm as <- <- end.
+    pose proof (loc_child_record _ _ Hgw _ _ _ _ _ _ _ _ Hloc Hent) as Hb'.
+    unfold gc_loc in Hl'; rewrite (gc_body_not_frame _ _ _ _ Hb'), Hb' in Hl'; injection Hl' as <- <-.
+    unfold record_former_desc in Hats; cbn [mdesc_ats_read] in Hats.
+    destruct (mdesc_term_part_ats _ Ns1) as [[? ? [?|] | | |] |]; try discriminate.
+    rewrite mdesc_ats_closed_nil in Hats; injection Hats as <-.
+    cbn [mdesc_mod] in HRm; injection HRm as <-; split; [ reflexivity |].
+    destruct (record_mod_tele_split pr Rr _ _ HpR HΔ0) as (-> & _); eauto.
+Qed.
+
 (** A value lacking a parameter whose selection is applied is applied
     itself. *)
 Lemma appm_of_selm_appm : forall h a, next_param h a -> forall y r c rc,
