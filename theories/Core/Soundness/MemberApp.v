@@ -40,6 +40,20 @@ Definition not_frame_former (H : modexp) (x : String.string) : Prop :=
 Lemma not_frame_former_of_none : forall H x, mod_qname H = None -> not_frame_former H x.
 Proof. intros * Hq; split; intros * Hp; cbn [mod_qname] in Hp; rewrite Hq in Hp; discriminate. Qed.
 
+(** A typed substitution keeps a member of a well-formed module expression
+    no type former under declaration: it keeps the path the module
+    expression names ([mod_qname_sub_eq]), sending a slot to a literal or
+    a slot, never to a path. *)
+Lemma not_frame_former_sub : forall Γ H Γ1 ζ x,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> Γ1 ⊢ˢ ζ : Γ -> not_frame_former H x -> not_frame_former H[ζ]ᵐ x.
+Proof.
+  intros * HH Hζ [Hi Hr].
+  assert (E : mod_qname (me_mem H[ζ]ᵐ x) = mod_qname (me_mem H x))
+    by (cbn [mod_qname]; rewrite (mod_qname_sub_eq _ _ _ _ (wf_sub_mod_compat _ _ _ _ _ Hζ) (proj1 (modexp_eq_slot_root _ _ _ _ _ HH)));
+        reflexivity).
+  split; intros *; rewrite E; [ apply Hi | apply Hr ].
+Qed.
+
 (** A typed member that is no type former under declaration is read
     through its module's description: the other rules for a selection
     denote a stored unit, of no type, or a type former under
