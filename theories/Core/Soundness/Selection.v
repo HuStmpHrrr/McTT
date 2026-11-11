@@ -515,4 +515,86 @@ Proof.
                         | apply wf_exp_eq_refl; exact HN' | exact HR0 | exact HT0 | exact Hv' | exact HB' | exact HS' | exact HN' ].
 Qed.
 
+(** A module description whose telescope has an outermost parameter
+    takes the next argument. *)
+Lemma mdesc_at_of_view : forall Γ R0m N T0 B T1, desc_ok gc_deps gc_stack Γ R0m -> mdesc_is_mod R0m ->
+    mdesc_tele R0m = Some T0 -> tele_view T0 = Some (B, T1) ->
+    exists R0m', mdesc_at R0m N = Some R0m'.
+Proof.
+  intros * Hok Hm HT Hv.
+  destruct R0m as [| Δ Φw Φx | Θ p T Φ Ns |]; cbn in Hm; try contradiction; cbn [mdesc_at].
+  - cbn in HT; injection HT as ->; unfold tele_view in Hv.
+    destruct (tele_split (rev T0)) as [[[? ?] ?] | τ] eqn:Hs; [ eexists; reflexivity | exfalso ].
+    inversion Hok; subst.
+    destruct T0 as [| e T0' _] using rev_ind; [ discriminate |].
+    match goal with Ha : all_assumptions (T0' ++ e :: nil) |- _ =>
+      unfold all_assumptions in Ha; apply Forall_app in Ha as [_ Ha]; apply Forall_cons_iff in Ha as [(κ & X & ->) _] end.
+    rewrite tele_split_last in Hs; discriminate.
+  - destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; eexists; reflexivity.
+Qed.
+
+(** A selection from [X], then applied to [N], has the module part of
+    the selection from [X] applied to [N], when [X], naming no open frame,
+    has a next parameter: [X] given [N] takes the entry alike
+    ([sel_at_open], [sel_at_closed]). *)
+Lemma mdenote_mem_app_of_app_mem : forall Γ X N y R1 Rm1,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ X ≈ X -> names_no_frame X ->
+    (forall R0 T0, mdenote gc_deps gc_stack Γ X R0 -> mdesc_mod_tele R0 = Some T0 -> exists B T1, tele_view T0 = Some (B, T1)) ->
+    mdenote gc_deps gc_stack Γ (me_app (me_mem X y) N) R1 -> mdesc_mod R1 = Some Rm1 ->
+    exists R2, mdenote gc_deps gc_stack Γ (me_mem (me_app X N) y) R2 /\ mdesc_mod R2 = Some Rm1.
+Proof.
+  intros * HH Hq Hv Hm1 HRm1.
+  pose proof (presup_modexp_eq_ctx HH) as HwΓ.
+  pose proof (ctx_wf_gctx _ _ _ HwΓ) as Hg.
+  pose proof (wf_gctx_closed _ _ _ HwΓ) as Hc.
+  destruct (wf_modexp_eq_scoped _ _ _ _ _ HH) as (HΓ & _ & _).
+  inversion Hm1 as [? ? ? ? ? Hq1 _ | ? ? ? ? ? ? ? ? ? Hq1 _ | | | ? ? ? Rsel ? Hsel Hat | | ? ? ? ? ? ? Hq1 _]; subst;
+    try (cbn in Hq1; discriminate).
+  (** The selection has a module part, as its application does *)
+  assert (HRsel : exists Rsm, mdesc_mod Rsel = Some Rsm).
+  { destruct (mdesc_mod Rsel) as [Rsm |] eqn:E; [ eauto |].
+    rewrite (mdesc_at_no_mod _ _ _ E Hat) in HRm1; discriminate. }
+  destruct HRsel as (Rsm & HRsel).
+  apply (mdenote_mem_no_frame _ _ _ _ _ Hg Hq Hsel); intros R0 R0m Γy E rd R Hm0 HR0m He Hed Hrd.
+  pose proof (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ HH Hm0) HR0m) as Hok.
+  pose proof (mdesc_mod_scoped _ _ _ (wf_mdenote_scoped _ _ _ _ _ _ HH Hm0) HR0m) as Hs0.
+  pose proof (mdesc_mod_is_mod _ _ HR0m) as HisR0m.
+  (** The module part of [X] takes [N] *)
+  destruct (desc_ok_tele _ _ _ _ Hok HisR0m) as (T0 & HT0).
+  destruct (Hv _ T0 Hm0 ltac:(unfold mdesc_mod_tele; rewrite HR0m; exact HT0)) as (B & T1 & HvT).
+  destruct (mdesc_at_of_view _ _ N _ _ _ Hok HisR0m HT0 HvT) as (R0m' & HR0m').
+  destruct (mdesc_at_of_mod_part _ _ _ _ HR0m HR0m') as (R0' & HR0' & HmR0').
+  rewrite (mdesc_is_mod_mod _ (mdesc_at_is_mod _ _ _ HisR0m HR0m')) in HmR0'.
+  assert (HmX : mdenote gc_deps gc_stack Γ (me_app X N) R0') by (eapply mdenote_app; eassumption).
+  destruct R0m as [| Δ Φw Φx | Θ p T Φ Ns |]; cbn in HisR0m; try contradiction.
+  - (** An open module *)
+    inversion Hok; subst.
+    destruct (sel_at_open _ _ Hc _ _ _ _ _ _ _ _ _ _ _ _ _ HΓ Hs0 ltac:(assumption) HR0m' He Hed Hrd Hat)
+      as (Γy' & E' & rd' & R' & He' & Hed' & Hrd').
+    exists R1; split; [| exact HRm1 ].
+    assert (Hpath : mdesc_entry_path R0m' y = None)
+      by (cbn [mdesc_at] in HR0m'; destruct (tele_split (rev Δ)) as [[[? ?] ?] | ?];
+          [ injection HR0m' as <-; reflexivity | discriminate ]).
+    eapply mdenote_mem; [ exact HmX | exact HmR0' | exact He' | rewrite Hpath; exact Hed' | exact Hrd' ].
+  - (** A closed module *)
+    inversion Hok; subst.
+    match goal with Hg0 : ⊢ᵍ ?Θ0 ⍮ ?Ξ0, Hloc : loc ?Θ0 ?Ξ0 p T Φ |- _ =>
+      pose proof (loc_coherent _ _ Hg0 _ _ _ Hloc) as Hco end.
+    match goal with H : all_assumptions T |- _ => rename H into HTa end.
+    match goal with H : all_assumptions Θ |- _ => rename H into HΘa end.
+    destruct Hs0 as (_ & HU & _).
+    pose proof (mdesc_entry_closed _ _ _ _ _ _ _ _ _ HU He) as (-> & _ & _).
+    assert (Hlt : Θ = nil -> List.length Ns < List.length T).
+    { intros ->; cbn in HT0; destruct (Nat.leb (List.length Ns) (List.length T)) eqn:Hle; [| discriminate ].
+      injection HT0 as <-; apply Nat.leb_le in Hle.
+      destruct (Nat.eq_dec (List.length Ns) (List.length T)) as [Heq |]; [| lia ].
+      exfalso; rewrite Heq, Nat.sub_diag in HvT; cbn in HvT; discriminate. }
+    destruct (sel_at_closed _ _ Hc _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hco HTa HU HΘa Hlt He Hed Hrd HRsel Hat)
+      as (R0m'' & rd' & HR0m'' & He' & Rs'' & Hrd' & HRs'').
+    rewrite HR0m' in HR0m''; injection HR0m'' as <-.
+    exists Rs''; split; [| rewrite HRs''; exact HRm1 ].
+    eapply mdenote_mem; [ exact HmX | exact HmR0' | exact He' | | exact Hrd' ].
+    cbn [mdesc_at] in HR0m'; destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; injection HR0m' as <-; exact Hed.
+Qed.
+
 End Fixed_GCtx.
