@@ -845,4 +845,63 @@ Proof.
   cbn [body_sorts_typed] in Hst; exact (IH _ _ _ Hno (proj1 Hst) Hp).
 Qed.
 
+(** The term member [x] of a glued literal body's closure, at a glued
+    environment: its body's value in the body's environment, glued as the
+    literal's member ([glu_lit_body_member]) from the body context's
+    gluing ([glu_body_env]). *)
+Lemma glu_lit_body_mem_field : forall Γ sm Φ Sb Δ σ ρ x Φ' E A M ρ',
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_body sm Φ) ≈ gu_mk nil (md_body sm Φ) ->
+    ⊩ (body_ctx (gm_expand Φ) ++ Γ) -> body_sorts_typed (gm_expand Φ) Γ ->
+    EG Γ ∈ glu_ctx_env ↘ Sb -> Δ ⊢ˢ σ ® ρ ∈ Sb ->
+    gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) -> entry_tm E = Some (A, M) ->
+    evaluated_kind (entry_kind E) -> ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' ->
+    exists a m, glu_body_member Δ σ Γ (me_lit (gu_mk nil (md_body sm Φ))) x A M ρ' a m.
+Proof.
+  intros * HU HC Hst HSb Hσ Hp Ht Hk Hb.
+  pose proof (body_sorts_typed_prefix _ _ _ _ (gm_noopen_expand Φ) Hst Hp) as Hst'.
+  cbn [body_sorts_typed] in Hst'; destruct Hst' as [Hst' HsvE].
+  destruct (eval_body_env_fill _ _ _ Hb) as [ζ Hf].
+  destruct (HsvE _ _ _ Ht Hf) as [iA HAf].
+  destruct (gm_prefix_upto_body_ctx _ _ _ Hp) as [Ψ EΨ].
+  assert (HCx : ⊩ (body_ctx (gm_ext Φ' x E) ++ Γ))
+    by (apply (glu_rel_ctx_app_r Ψ); rewrite List.app_assoc, <- EΨ; exact HC).
+  destruct HCx as [SbE HSbE].
+  (** The entry is a definition, or a definition with a module part *)
+  destruct E as [b pv κ A0 [M0 |] | ? ? | ? ? ? ? ? | pv A0 M0 U0 | ? ? ? ?]; cbn [entry_tm] in Ht; try discriminate;
+    injection Ht as -> ->; cbn [body_ctx app entry_kind] in HSbE, HAf, Hk.
+  all: destruct (glu_rel_ctx_tail (ex_intro _ _ HSbE)) as [SbP HSbP].
+  all: destruct (glu_body_env _ _ _ HSb Hst' _ Hf _ HSbP _ _ _ Hσ) as (σ'' & ρ'' & Eσ & Hb'' & Hσ'').
+  all: pose proof (functional_eval_body_env _ _ _ _ Hb'' Hb) as ->.
+  all: pose proof (glu_ctx_env_sub_escape HSbP _ _ _ Hσ'') as Hσ''s.
+  all: pose proof (glu_ctx_env_wf_ctx HSbP) as HCP.
+  all: pose proof (wf_gm_fill _ _ _ _ _ HCP Hf) as Hζ.
+  - destruct (glu_ctx_env_cons_def_clean_inversion HSbP HSbE) as (i & κ' & HA & HM & _ & HMg & _).
+    destruct (HMg _ _ _ Hσ'') as [a m P El Ea Hm Hglu HMσ].
+    assert (HAσ : Δ ⊢ A[σ''] : abs_kind_sort κ' Typeω@i)
+      by (replace (abs_kind_sort κ' Typeω@i) with ((abs_kind_sort κ' Typeω@i)[σ'']) by (rewrite abs_kind_sort_sub; reflexivity);
+          exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hσ''s)).
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hglu (glu_univ_elem_trm_typ _ _ _ _ Hglu _ _ _ _ HMσ) HAσ) as [Hka _].
+    assert (Hκ : κ' = κ).
+    { assert (HAζ : Γ ⊢ A[ζ] : abs_kind_sort κ' Typeω@i)
+        by (replace (abs_kind_sort κ' Typeω@i) with ((abs_kind_sort κ' Typeω@i)[ζ]) by (rewrite abs_kind_sort_sub; reflexivity);
+            exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hζ)).
+      exact (exp_eq_same_kind _ _ _ _ _ _ _ _ _ (wf_exp_eq_refl HAζ) (sort_kind_abs_kind_sort _ _) HAf (sort_kind_abs_kind_sort _ _)). }
+    subst κ'.
+    assert (Em : ⟦ M ⟧ ρ' ↘ m) by (rewrite Hκ in Hm; destruct Hk; exact Hm).
+    exists a, m; constructor; [ exact Ea | exact Em |].
+    intros * Hst1 Hm1 HA1 _ _.
+    exists i, P, El.
+    exact (glu_lit_body_member _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HU Hp eq_refl Hf HCP HA HM Eσ Hσ''s Hglu HMσ _ _ _ _ _ _ _ Hst1 Hm1 HA1).
+  - destruct (glu_ctx_env_cons_dm_clean_inversion HSbP HSbE) as (i & HA & HM & _ & _ & HMg & _).
+    destruct (HMg _ _ _ Hσ'') as [a m P El Ea Hm Hglu HMσ].
+    assert (HAσ : Δ ⊢ A[σ''] : abs_kind_sort ak_relevant Typeω@i) by (cbn; exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hσ''s)).
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hglu (glu_univ_elem_trm_typ _ _ _ _ Hglu _ _ _ _ HMσ) HAσ) as [Hka _].
+    assert (Em : ⟦ M ⟧ ρ' ↘ m) by (rewrite Hka in Hm; exact Hm).
+    exists a, m; constructor; [ exact Ea | exact Em |].
+    intros * Hst1 Hm1 HA1 _ _.
+    exists i, P, El.
+    assert (HA' : body_ctx Φ' ++ Γ ⊢ A : abs_kind_sort (domain_kind a) Typeω@i) by (rewrite Hka; exact HA).
+    exact (glu_lit_body_member _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HU Hp eq_refl Hf HCP HA' HM Eσ Hσ''s Hglu HMσ _ _ _ _ _ _ _ Hst1 Hm1 HA1).
+Qed.
+
 End Fixed_GCtx.
