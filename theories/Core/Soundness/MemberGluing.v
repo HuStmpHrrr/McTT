@@ -1389,6 +1389,91 @@ Section MembersFromSource.
     unfold glu_term_value; destruct (domain_kind a) eqn:Ek; try (inversion Hev; fail); exact (eval_mem_of_sel _ _ _ _ _ Eh Em).
   Qed.
 
+  (** The member [x] of the frame [F], a type former under declaration of
+      the value [f0] ([d_ind pq k nil] or [d_record p nil]), at a module
+      value given [args] of [F]'s telescope: it is glued as a term [Mm]
+      equal to a term [Mr] glued at the former applied to [args], at its
+      type's value [a], the value of [ctx_pi Trem S] for the parameters
+      [Trem] still missing.  By induction on them: saturated, the member
+      is the former applied ([sel_sat]); lacking one, it is a member
+      closure, glued at the [Π] by its values at glued arguments, the
+      members of the module given them, by induction, against the former
+      applied to them. *)
+  Lemma glu_frame_former_apps : forall F T Φ x f0,
+      gc_loc Θ Ξ F = Some (T, Φ) ->
+      (forall args r, List.length args = List.length T -> $*| f0 & args | Θ ⍮ Ξ ↘ r -> dm_global F args ·ₜ x Θ ⍮ Ξ ↘ r) ->
+      forall n args Trem S ρT, List.length args + n = List.length T -> all_assumptions Trem -> List.length Trem = n ->
+      forall Δ Mm Mr Tin rr a (i : nat) P El R,
+        ⟦ ctx_pi Trem S ⟧ ρT ↘ a ->
+        Δ ⊢ Mm ≈ Mr : Tin -> $*| f0 & args | Θ ⍮ Ξ ↘ rr ->
+        DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ Mr : Tin ® rr ∈ El ->
+        DF a ≈ a ∈ per_univ_elem i ↘ R ->
+        (forall mm, dm_global F args ·ₜ x Θ ⍮ Ξ ↘ mm -> Dom mm ≈ mm ∈ R) ->
+        exists mm, dm_global F args ·ₜ x Θ ⍮ Ξ ↘ mm /\ Δ ⊢ Mm : Tin ® mm ∈ El.
+  Proof.
+    intros * Hgl Hsat n; induction n as [| n IH]; intros * Hlen Ha HlT * Ea Heq Err Hga HMr HR Hself.
+    - (** Saturated: the former applied *)
+      exists rr; split; [ exact (Hsat args _ ltac:(lia) Err) |].
+      eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hga | exact HMr | apply wf_exp_eq_sym; exact Heq ].
+    - (** Lacking a parameter: a member closure, at a [Π] *)
+      destruct (List.rev Trem) as [| e r0] eqn:Er;
+        [ apply (f_equal (@List.length _)) in Er; rewrite List.length_rev in Er; cbn in Er; lia |].
+      assert (ETrem : Trem = List.rev r0 ++ e :: nil) by (rewrite <- (List.rev_involutive Trem), Er; reflexivity).
+      assert (Hin : List.In e Trem) by (rewrite ETrem; apply List.in_or_app; right; left; reflexivity).
+      destruct (proj1 (List.Forall_forall _ _) Ha _ Hin) as (κ & B & ->).
+      assert (Har : all_assumptions (List.rev r0)) by (rewrite ETrem in Ha; apply List.Forall_app in Ha; exact (proj1 Ha)).
+      assert (Hlr : List.length (List.rev r0) = n) by (rewrite ETrem, List.length_app in HlT; cbn in HlT; lia).
+      rewrite ETrem, ctx_pi_app in Ea; cbn [ctx_pi_at] in Ea.
+      inversion Ea; subst.
+      match goal with HB : ⟦ B ⟧ ρT ↘ ?b |- _ => rename HB into EaB; rename b into aB end.
+      assert (Hmm : dm_global F args ·ₜ x Θ ⍮ Ξ ↘ d_member (dm_global F args) (x :: nil))
+        by (eapply eval_sel_global_unsat; [ exact Hgl | lia ]).
+      exists (d_member (dm_global F args) (x :: nil)); split; [ exact Hmm |].
+      destruct (per_univ_pi_parts _ _ _ _ _ _ _ _ _ _ evaluated_kind_relevant HR) as (inr & HaB & Hcod).
+      destruct (glu_univ_elem_pi_clean_inversion1 HaB evaluated_kind_relevant Hga)
+        as (IP & IEl & OP & OEl & elr & HgaB & HgC & Hpel & HP & HEl).
+      pose proof (proj1 (HEl _ _ _ _) HMr) as HMrP.
+      inversion HMrP as [? ? ? ? IT OT HMrt Hrr HTeq HIT HOT HIP Happs]; subst; clear HMrP.
+      apply HEl; econstructor.
+      + exact (presup_exp_eq_left Heq).
+      + apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR Hpel); exact (Hself _ Hmm).
+      + exact HTeq.
+      + exact HIT.
+      + exact HOT.
+      + exact HIP.
+      + intros Δ' φ N n0 Hφ HN equiv.
+        destruct (Happs _ _ _ _ Hφ HN equiv) as (rr' & Err' & HMr').
+        destruct (Hcod _ _ equiv) as (b & b' & Eb & _ & _).
+        pose proof (HgC _ equiv _ Eb) as Hgb.
+        destruct (glu_univ_elem_per_univ _ _ _ _ Hgb) as [Rb HRb].
+        assert (Happm : $ᵐ| dm_global F args & n0 | Θ ⍮ Ξ ↘ dm_global F (args ++ n0 :: nil)) by constructor.
+        (** The applications, equal *)
+        pose proof (wf_exp_eq_conv_kind _ _ _ _ _ _ _ Heq HTeq) as Heq'.
+        pose proof (kripke_preserves_exp_eq _ _ _ _ _ _ Heq' Hφ) as Heqφ; cbn [exp_wk] in Heqφ.
+        pose proof (glu_univ_elem_trm_escape _ _ _ _ HgaB _ _ _ _ HN) as HNt.
+        pose proof (wf_exp_eq_app_cong' _ _ _ _ _ _ _ _ _ _ _ Heqφ (wf_exp_eq_refl HNt)) as HeqN.
+        rewrite exp_sub_wk_q_extend in HeqN.
+        (** The former applied to one argument more *)
+        assert (Err2 : $*| f0 & args ++ n0 :: nil | Θ ⍮ Ξ ↘ rr')
+          by (apply (Evaluation.Modules.eval_apps_app Θ Ξ); exists rr; split; [ exact Err | econstructor; [ exact Err' | constructor ] ]).
+        (** The member there is related to itself, as the member closure applied *)
+        assert (Hself' : forall mm', dm_global F (args ++ n0 :: nil) ·ₜ x Θ ⍮ Ξ ↘ mm' -> Dom mm' ≈ mm' ∈ Rb).
+        { intros mm' Hmm'.
+          destruct (per_univ_elem_pi_clean_inversion evaluated_kind_relevant HaB Hpel) as (out_rel & Hout & Eel).
+          pose proof (proj1 (Eel _ _) (proj1 (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR Hpel _ _) (Hself _ Hmm))) as [_ _ Hpa].
+          destruct (Hpa _ _ equiv) as [fa fa' Efa Efa' Hfa].
+          assert (Eapp : $| d_member (dm_global F args) (x :: nil) & n0 | Θ ⍮ Ξ ↘ mm')
+            by (econstructor; [ exact Happm | constructor; exact Hmm' ]).
+          rewrite (functional_eval_app _ _ _ _ Efa Eapp), (functional_eval_app _ _ _ _ Efa' Eapp) in Hfa.
+          destruct (Hout _ _ equiv) as [b0 b0' Eb0 Eb0' HRo].
+          pose proof (functional_eval_exp _ _ _ _ Eb0 Eb) as ->.
+          apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRo HRb); exact Hfa. }
+        destruct (IH (args ++ n0 :: nil) (List.rev r0) S (ρT ↦ n0 ⦂ entry_type_value aB)
+                    ltac:(rewrite List.length_app; cbn; lia) Har eq_refl _ _ _ _ _ _ _ _ _ _
+                    Eb HeqN Err2 Hgb HMr' HRb Hself') as (mm' & Hmm' & Hglu').
+        exists mm'; split; [ econstructor; [ exact Happm | constructor; exact Hmm' ] | exact Hglu' ].
+  Qed.
+
   (** The member rule at the target of a sound embedding, at every
       instance of the context: the member typed at the source, of a
       module expression whose instances are glued, at a type whose
