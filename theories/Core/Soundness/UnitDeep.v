@@ -20,7 +20,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas LookupSound.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas LookupSound Presup Paths DescTyping.
 From Mctt.Core.Soundness Require Import LogicalRelation ModuleValues Instances Extensions UnitEqCases.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -441,3 +441,57 @@ Proof.
 Qed.
 
 End Fixed_GCtx.
+
+(** ** Stored aliases *)
+
+(** An alias stored just below a stored module is a well-formed unit over
+    no context: by its entry's validity ([gc_module_alias_valid], [syn_V]),
+    its parameters the module's telescope extended by assumptions
+    ([loc_alias_params]). *)
+Lemma gc_module_alias_wf : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ y U,
+    gc_loc Θ Ξ p = Some (T, Φ) -> gc_module Θ Ξ (qname_in p y) = Some (mr_alias U) -> Θ ⍮ Ξ ⍮ ⋅ ⊢ᵘ U ≈ U.
+Proof.
+  intros * Hg * Hl Hm.
+  destruct (gc_module_alias_unit _ _ _ _ Hm) as (Δa & E & ->).
+  destruct (loc_alias_params _ _ Hg _ _ _ _ _ Hl Hm) as (Δ & EΔ & HΔ); cbn [gu_params] in EΔ.
+  assert (Ha : all_assumptions Δa)
+    by (rewrite EΔ; apply List.Forall_app; split; [ exact HΔ | exact (gc_loc_tele_all_assumptions _ _ Hg _ _ _ Hl) ]).
+  destruct (gctx_valid_syn _ _ Hg) as [HΘ HΞ].
+  destruct (gc_module_alias_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T0 & pv & Hv); cbn in Hv.
+  destruct Hv as (HE & HwΔ & (l & Hpe) & (lv & Rt & Hlf) & Hden).
+  destruct (params_evaluated_sorts _ _ _ _ _ Hpe) as (ps & Hps & HpΔ).
+  rewrite <- (app_nil_r Δa) in HwΔ, HE.
+  destruct (Hden ⋅ HwΔ) as [(R & HR) Hok]; destruct (Hok R HR) as (_ & _ & Hnf).
+  assert (Hff : frame_free_target Θ Ξ (Δa ++ ⋅) E) by (exists R; split; assumption).
+  eapply wf_unit_eq_alias with (param_level := l) (param_sorts := ps) (lv := lv) (Rt := Rt) (lv' := lv) (Rt' := Rt);
+    [ exact (ext_of_ctx' _ _ _ _ HwΔ) | exact Ha | exact Ha | exact HE | exact HE | exact Hps | exact HpΔ | exact HpΔ
+    | exact (levels_flag_sorted _ _ _ _ _ _ _ Hlf) | exact (levels_flag_denotes _ _ _ _ _ _ _ Hlf)
+    | exact (levels_flag_no_level _ _ _ _ _ _ _ Hlf)
+    | exact (levels_flag_sorted _ _ _ _ _ _ _ Hlf) | exact (levels_flag_denotes _ _ _ _ _ _ _ Hlf)
+    | exact (levels_flag_no_level _ _ _ _ _ _ _ Hlf) | exact Hff | exact Hff ].
+Qed.
+
+(** A deep alias stored just below a stored module: its literal is glued
+    over no context, by (a) at the identity of [⋅] and the construction
+    ([glu_unit_modexp_at]). *)
+Lemma glu_alias_modexp_of_deep : forall {GC : GCtx}, ⊢ᵍ gc_deps ⍮ gc_stack -> forall p T Φ y U,
+    gc_loc gc_deps gc_stack p = Some (T, Φ) -> gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias U) ->
+    glu_unit_deep ⋅ U -> glu_modexp_at ⋅ (me_lit U).
+Proof.
+  intros GC Hg * Hl Hm HU.
+  pose proof (glu_rel_ctx_types_empty Hg) as H0.
+  apply glu_unit_modexp_at; [ exact (gc_module_alias_wf _ _ Hg _ _ _ _ _ Hl Hm) | exact (glu_rel_ctx_types_ctx _ H0) |].
+  rewrite <- (gunit_sub_id U); exact (glu_unit_deep_inst _ _ HU _ _ (glu_rel_ctx_types_id H0)).
+Qed.
+
+(** The shallow form of [glu_gctx_embedding_alias_deep], for an alias
+    stored just below a module stored at the target. *)
+Lemma glu_gctx_embedding_alias_modexp : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ y U,
+    glu_gctx_embedding Θ1 Ξ1 Θ2 Ξ2 -> gc_loc Θ2 Ξ2 p = Some (T, Φ) ->
+    gc_module Θ1 Ξ1 (qname_in p y) = Some (mr_alias U) -> gc_module Θ2 Ξ2 (qname_in p y) = Some (mr_alias U) ->
+    @glu_modexp_at (gc_mk Θ2 Ξ2) ⋅ (me_lit U).
+Proof.
+  intros * Hμ Hl Hm1 Hm2.
+  pose proof (gctx_embedding_wf _ _ _ _ (glu_gctx_embedding_embedding _ _ _ _ Hμ)) as Hg2.
+  exact (@glu_alias_modexp_of_deep (gc_mk Θ2 Ξ2) Hg2 _ _ _ _ _ Hl Hm2 (glu_gctx_embedding_alias_deep _ _ _ _ Hμ _ _ Hm1)).
+Qed.
