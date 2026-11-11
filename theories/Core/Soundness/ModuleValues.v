@@ -970,4 +970,20 @@ Proof.
   eapply (proj1 glu_dmod_same_part); [ exact Hlitζ | exact HHeq | exact Hs01 | exact Hs10 | intros; reflexivity | intros; reflexivity ].
 Qed.
 
+(** The closure of a saturated literal body, at a glued environment, is
+    glued as the literal: its members and submodules are
+    ([glu_lit_body_mem_field], [glu_lit_body_sub_field]). *)
+Lemma glu_lit_body_modexp_at : forall Γ Φ,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open nil Φ ≈ gu_open nil Φ ->
+    ⊩ (body_ctx (gm_expand Φ) ++ Γ) -> body_sorts_typed (gm_expand Φ) Γ ->
+    glu_modexp_at Γ (me_lit (gu_open nil Φ)).
+Proof.
+  intros * HU HC Hst Sb HSb Δ σ ρ Hσ.
+  exists (dm_local nil (md_body sm_open (gm_expand Φ)) ρ); split; [ apply eval_me_lit_iff; constructor |].
+  apply glu_dmod_body; [ exact (glu_ctx_env_sub_escape HSb _ _ _ Hσ) | exact (wf_me_lit _ _ _ _ _ HU) | |];
+    rewrite (gm_expand_noopen _ (gm_noopen_expand Φ)).
+  - intros * Hp Ht Hk Hb; eapply glu_lit_body_mem_field; eassumption.
+  - intros * Hp Hu Hb Hc; eapply glu_lit_body_sub_field; eassumption.
+Qed.
+
 End Fixed_GCtx.
