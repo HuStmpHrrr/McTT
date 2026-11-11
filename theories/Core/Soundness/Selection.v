@@ -846,4 +846,126 @@ Proof.
              (tele_view_under_sub _ _ HX Hv _ _ Hζ) Hm HRm).
 Qed.
 
+(** A value lacking a parameter whose selection is applied is applied
+    itself. *)
+Lemma appm_of_selm_appm : forall h a, next_param h a -> forall y r c rc,
+    h ·ₘ y gc_deps ⍮ gc_stack ↘ r -> $ᵐ| r & c | gc_deps ⍮ gc_stack ↘ rc ->
+    exists hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc.
+Proof.
+  intros * Hn * Hs Hr; inversion Hs; subst.
+  - eexists; constructor.
+  - eexists; constructor.
+  - inversion Hr; subst; eauto.
+  - exfalso; eapply next_param_body_nil; exact Hn.
+  - inversion Hr; subst.
+    match goal with Hc : eval_selmc _ _ _ (_ ++ _) _ |- _ => apply eval_selmc_snoc_inv in Hc as (h1 & Hc0 & _) end.
+    eexists; econstructor; eassumption.
+Qed.
+
+(** The selections of glued module values are glued, given the case of a
+    saturated global module ([glu_dmod_sel_global] supplies it): from a
+    body, by its submodule clause; from a value lacking a parameter, by
+    recursion through its applications, the selection from the
+    application moved to the application of the selection
+    ([same_part_app_mem]). *)
+Lemma glu_dmod_sel_of_global :
+    ⊢ᵍ gc_deps ⍮ gc_stack ->
+    (forall Δ σ0 Γ0 H0 p T Φ args y r,
+       Δ ⊢ˢ σ0 : Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
+       gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length args = List.length T ->
+       (forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+          mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> exists Ns1, mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1)) ->
+       (forall Δ' φ Γ1 ζ σ1 RH Ns1, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+          mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1) ->
+          glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
+       dm_global p args ·ₘ y gc_deps ⍮ gc_stack ↘ r ->
+       gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+       glu_dmod Δ σ0 Γ0 (me_mem H0 y) r) ->
+    (forall Δ σ0 Γ0 H0 h, glu_dmod Δ σ0 Γ0 H0 h ->
+       forall y r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r ->
+       gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+       glu_dmod Δ σ0 Γ0 (me_mem H0 y) r) /\
+    (forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args -> True).
+Proof.
+  intros Hgw Hglob.
+  apply glu_dmod_mut_ind_all; [ | | | intros; exact I | intros; exact I ].
+  - (** A saturated global module *)
+    intros * Hσ HH0 Hl Hlen Hd Ha _ y r Hs HHy Hq.
+    exact (Hglob _ _ _ _ _ _ _ _ _ _ Hσ HH0 Hl Hlen Hd Ha Hs HHy Hq).
+  - (** A body: its submodule clause *)
+    intros * Hσ HH0 Hmem Hsub _ y r Hs HHy Hq.
+    inversion Hs; subst; [ exfalso; match goal with Hl : 0 < length nil |- _ => cbn in Hl; lia end |].
+    eapply Hsub; eassumption.
+  - (** A value lacking a parameter *)
+    intros * Hσ HH0 Hn Hpar Happ IHapp y r Hs HHy Hq.
+    eapply glu_dmod_fun with (a := a); [ exact Hσ | exact HHy | exact (next_param_selm Hgw _ _ Hn _ _ Hs) | | ].
+    + (** The selection lacks the module's next parameter *)
+      intros * Hst Hm; cbn [modexp_sub] in Hm.
+      pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
+      pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) as HH0ζ.
+      destruct (me_denotes _ _ _ _ _ HH0ζ) as (R0 & R0m & Hm0 & HR0m).
+      destruct (Hpar _ _ _ _ _ _ Hst Hm0) as (T0 & B0 & T10 & [HT0 Hv0 Hgl0]).
+      pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HHy Hζ) as HHyζ; cbn [modexp_sub] in HHyζ.
+      destruct (me_mod_tele_exists HHyζ) as (RS & TS & HmS & HTS).
+      pose proof (ctx_wf_gctx _ _ _ (wf_sub_cod _ _ _ _ _ (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst))) as Hg.
+      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmS _ Hm) in HTS.
+      unfold mdesc_mod_tele in HT0; rewrite HR0m in HT0.
+      destruct (sel_view _ _ _ _ _ _ _ _ _ _ HH0ζ (Hq _ _ Hζ) Hm0 HR0m HT0 Hv0 Hm HTS) as (T1' & HvS).
+      exists TS, B0, T1'; constructor; [ exact HTS | exact HvS | exact Hgl0 ].
+    + (** Applied, as the selection from the application *)
+      intros * Hst Hm HT Hv HS HB N c rc i P El Hu HP HN Hrc; cbn [modexp_sub] in Hm |- *.
+      pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
+      pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) as HH0ζ.
+      destruct (me_denotes _ _ _ _ _ HH0ζ) as (R0 & R0m & Hm0 & HR0m).
+      destruct (Hpar _ _ _ _ _ _ Hst Hm0) as (T0 & B0 & T10 & [HT0 Hv0 _]).
+      (** The parameter is the module's *)
+      assert (HT0' : mdesc_tele R0m = Some T0) by (unfold mdesc_mod_tele in HT0; rewrite HR0m in HT0; exact HT0).
+      destruct (sel_view _ _ _ _ _ _ _ _ _ _ HH0ζ (Hq _ _ Hζ) Hm0 HR0m HT0' Hv0 Hm HT) as (T1' & HvS).
+      rewrite Hv in HvS; injection HvS as <- _.
+      (** The module applied, and its selection *)
+      destruct (appm_of_selm_appm _ _ Hn _ _ _ _ Hs Hrc) as (hc & Hhc).
+      pose proof (proj1 (selm_appm_comm _ _ Hn _ _ _ _ Hs Hhc rc) Hrc) as Hsc.
+      pose proof (Happ _ _ _ _ _ _ _ _ _ _ Hst Hm0 HT0 Hv0 HS HB _ _ _ _ _ _ Hu HP HN Hhc) as Hg1.
+      assert (HHg : gc_deps ⍮ gc_stack ⍮ Γ1 ▹{domain_kind a} B ⊢ᵐ me_app H0[ζ]ᵐ[Wk]ᵐ #0 ≈ me_app H0[ζ]ᵐ[Wk]ᵐ #0)
+        by (destruct Hg1; assumption).
+      destruct (proj1 (modexp_gen _ _ _ _ _ HHg)) as [HHw (R' & T' & B' & T1'' & S' & HR' & HT'' & Hv' & HB' & HS' & HN')].
+      pose proof (presup_modexp_eq_ctx HHg) as HwΓb.
+      assert (HWk : Γ1 ▹{domain_kind a} B ⊢ˢ Wk : Γ1) by (eapply wf_sub_shift; exact HwΓb).
+      (** The selection from the module weakened, typed *)
+      pose proof (sub_preserves_modexp _ _ _ _ _ _ _ (sub_preserves_modexp _ _ _ _ _ _ _ HHy Hζ) HWk) as HHyX.
+      cbn [modexp_sub] in HHyX.
+      destruct (me_mod_tele_exists HHyX) as (RS & TS & HmS & HTS).
+      assert (HqX : forall Γ' ζ', Γ' ⊢ˢ ζ' : Γ1 ▹{domain_kind a} B -> names_no_frame H0[ζ]ᵐ[Wk]ᵐ[ζ']ᵐ).
+      { intros Γ' ζ' Hζ'; rewrite !modexp_sub_sub; eapply Hq.
+        repeat first [ eassumption | eapply wf_sub_compose ]. }
+      pose proof (HqX _ Id (wf_sub_id _ _ _ HwΓb)) as HqX0; rewrite modexp_sub_id in HqX0.
+      destruct (modexp_mod_part _ _ _ HHw HR') as (R'm & HR'm).
+      assert (HT'm : mdesc_tele R'm = Some T') by (unfold mdesc_mod_tele in HT''; rewrite HR'm in HT''; exact HT'').
+      destruct (sel_view _ _ _ _ _ _ _ _ _ _ HHw HqX0 HR' HR'm HT'm Hv' HmS HTS) as (T1s & HvSX).
+      (** The application of the selection, typed *)
+      assert (HK : gc_deps ⍮ gc_stack ⍮ Γ1 ▹{domain_kind a} B ⊢ᵐ me_app (me_mem H0[ζ]ᵐ[Wk]ᵐ y) #0 ≈ me_app (me_mem H0[ζ]ᵐ[Wk]ᵐ y) #0)
+        by (eapply wf_me_app; [ exact HHyX | exact HmS | exact HTS | exact HvSX | exact HB' | exact HS' | exact HN'
+                              | apply wf_exp_eq_refl; exact HN' | exact HmS | exact HTS | exact HvSX | exact HB' | exact HS' | exact HN' ]).
+      assert (HvX : forall R0 T0, mdenote gc_deps gc_stack (Γ1 ▹{domain_kind a} B) H0[ζ]ᵐ[Wk]ᵐ R0 -> mdesc_mod_tele R0 = Some T0 ->
+                 exists B T1, tele_view T0 = Some (B, T1)).
+      { intros * Hx Ht.
+        rewrite (proj1 (mdenote_functional_all _ _ (ctx_wf_gctx _ _ _ HwΓb)) _ _ _ Hx _ HR'), HT'' in Ht; injection Ht as <-; eauto. }
+      destruct (same_part_app_mem _ _ y #0 HHw HK HqX HvX) as [HsAK HsKA].
+      (** The selection from the application, typed: it denotes the
+          application of the selection's module part *)
+      destruct (me_mod_tele_exists HK) as (RK & TK & HmK & HTK).
+      destruct (modexp_mod_part _ _ _ HK HmK) as (RKm & HRKm).
+      destruct (mdenote_mem_app_of_app_mem _ _ _ _ _ _ HHw HqX0 HvX HmK HRKm) as (RA & HmA & HRAm).
+      pose proof (mdesc_mod_tele_part _ _ _ HTK (ex_intro _ RKm (conj HRKm HRAm))) as HTA.
+      assert (HA : gc_deps ⍮ gc_stack ⍮ Γ1 ▹{domain_kind a} B ⊢ᵐ me_mem (me_app H0[ζ]ᵐ[Wk]ᵐ #0) y ≈ me_mem (me_app H0[ζ]ᵐ[Wk]ᵐ #0) y)
+        by (eapply wf_me_mem; [ exact HHg | exact HmA | exact HTA | exact HmA | exact HTA ]).
+      (** By recursion, then moved *)
+      pose proof (IHapp _ _ _ _ _ _ _ _ _ _ Hst Hm0 HT0 Hv0 HS HB _ _ _ _ _ _ Hu HP HN Hhc y rc Hsc HA) as HgA.
+      eapply (proj1 glu_dmod_same_part_typed); [ apply HgA | exact HK | exact HsKA | exact HsAK | | ];
+        intros; apply names_no_frame_of_none; reflexivity.
+      Unshelve. all: intros; apply names_no_frame_of_none; reflexivity.
+Qed.
+
 End Fixed_GCtx.
