@@ -313,6 +313,56 @@ Section Members.
     rewrite mdesc_up_nil, mdesc_named_nil in Hm; exact Hm.
   Qed.
 
+  (** The type of a term member of a module stored at a source of a sound
+      embedding, the [Π] over the module's telescope of a type glued over
+      it at the target: a definition's, a definition with a module part's
+      ([glu_def_over_tele]), a type former's ([glu_gctx_embedding_ind_former_type],
+      [glu_gctx_embedding_record_former_type]), the former's parameters
+      ending in the telescope ([ge_coherent]). *)
+  Lemma stored_type_over_tele : forall Θs Ξs, ⊢ᵍ Θs ⍮ Ξs -> glu_gctx_embedding Θs Ξs Θ Ξ ->
+      forall p T Φ x Φ0 E0 Γ RE As,
+      loc Θs Ξs p T Φ -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x E0) ->
+      edenote Θs Ξs Γ (Some (qname_in p x)) (ge_read T E0) RE -> mdesc_type RE = Some As ->
+      exists A0 (j : nat), As = ctx_pi_at (mdesc_kind RE) T A0 /\ T ⊩ A0 : abs_kind_sort (mdesc_kind RE) Typeω@j.
+  Proof.
+    intros Θs Ξs Hgs Hμ * Hl Hp Hed Ht.
+    pose proof (gm_coherent_prefix _ _ _ _ _ (loc_coherent _ _ Hgs _ _ _ Hl) Hp) as HcoE.
+    destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
+    pose proof (proj2 (loc_entry _ _ Hgs _ _ _ Hl x _) Hent) as HeE.
+    destruct E0 as [b pv r A oM | pv [Δ [sm Φy | Ea]] | pv pq k D Φ' | pv Ad Md U | pv pr Rr Φ'];
+      cbn [ge_read] in Hed.
+    - inversion Hed; subst; cbn in Ht; injection Ht as <-.
+      destruct (glu_gctx_embedding_def_tele _ _ _ _ Hμ _ _ _ _ _ _ _ _ _ _ Hl Hp) as (A0 & j & [Heq HA0 _]).
+      exists A0, j; split; assumption.
+    - exfalso; destruct sm; inversion Hed; subst;
+        match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hm end;
+        destruct RE; cbn in Hm, Ht; first [ contradiction | discriminate ].
+    - exfalso; inversion Hed; subst;
+        match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hm end;
+        destruct RE; cbn in Hm, Ht; first [ contradiction | discriminate ].
+    - (** A type former of a group *)
+      inversion Hed; subst; cbn in Ht; injection Ht as <-.
+      cbn [ge_coherent] in HcoE; destruct HcoE as [(Δ0 & HuD & _) _].
+      destruct (gc_entry_ind _ _ _ _ _ _ _ _ HeE) as [_ Hml].
+      pose proof (ind_mlookup_group _ _ Hgs _ _ _ _ Hml) as Hlk.
+      assert (Hpar : im_params D Mk = (im_nparams Mk ++ Δ0) ++ T) by (unfold im_params; rewrite HuD, app_assoc; reflexivity).
+      destruct (glu_gctx_embedding_ind_former_type _ _ _ _ Hμ _ _ _ _ _ _ Hlk ltac:(eassumption) Hpar) as [j HA0].
+      exists (ctx_pi (im_nparams Mk ++ Δ0) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ), j; split; [| exact HA0 ].
+      cbn [mdesc_kind ind_former_desc]; rewrite Hpar, ctx_pi_app; reflexivity.
+    - (** A definition with a module part: its term part *)
+      inversion Hed; subst; cbn in Ht; injection Ht as <-.
+      destruct (glu_gctx_embedding_def_mod_tele _ _ _ _ Hμ _ _ _ _ _ _ _ _ _ Hl Hp) as (A0 & j & [Heq HA0 _]).
+      exists A0, j; split; assumption.
+    - (** A record type former *)
+      inversion Hed; subst; cbn in Ht; injection Ht as <-.
+      cbn [ge_coherent] in HcoE; destruct HcoE as [(Δ0 & HpR & _) _].
+      assert (Hlk : record_lookup Θs Ξs (qname_in p x) = Some Rr).
+      { unfold record_lookup; rewrite (gc_entry_record_frame_none _ _ _ _ HeE), HeE; reflexivity. }
+      destruct (glu_gctx_embedding_record_former_type _ _ _ _ Hμ _ _ _ _ Hlk HpR) as [j HA0].
+      exists (ctx_pi Δ0 (record_sort Rr)), j; split; [| exact HA0 ].
+      cbn [mdesc_kind record_former_desc]; rewrite HpR, ctx_pi_app; reflexivity.
+  Qed.
+
   (** A term member of a stored module, read bare over no context, is its
       stored entry, even when the module is an open frame: a path naming
       an entry is no open frame's own path ([gc_entry]), and an open frame
