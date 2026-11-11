@@ -338,6 +338,34 @@ Section Fixed_GCtx.
     apply wf_sub_eq_of_sb_eq; [ eapply wf_sub_compose; [ exact HWk | eapply wf_sub_compose; [ exact Hζ | exact Hσ2 ] ] | intros n; reflexivity ].
   Qed.
 
+  (** A next parameter's type of a closed telescope is scoped by the
+      parameters before it. *)
+  Lemma tele_next_scoped : forall T k κ A, ctx_scoped 0 T ->
+      List.nth_error (List.rev T) k = Some (ce_ass κ A) -> exp_scoped k A.
+  Proof.
+    intros * Hs Hnth.
+    pose proof (List.nth_error_split _ _ Hnth) as (l1 & l2 & Erev & Hl1).
+    assert (ET : T = List.rev l2 ++ ce_ass κ A :: List.rev l1)
+      by (rewrite <- (List.rev_involutive T), Erev, List.rev_app_distr; cbn; rewrite <- List.app_assoc; reflexivity).
+    rewrite ET in Hs; apply ctx_scoped_app in Hs as [_ Hs]; cbn in Hs.
+    rewrite List.length_rev, Hl1, Nat.add_0_r in Hs; exact (proj1 Hs).
+  Qed.
+
+  (** A type over the parameters before, instantiated at arguments then
+      substituted, is instantiated at the substituted arguments, read over
+      any base. *)
+  Lemma tele_type_inst_sub : forall A Ns σ, exp_scoped (List.length Ns) A ->
+      A[sb_of_list Id Ns][σ] = A[sb_of_list sb_closed_base (List.map (fun N => N[σ]) Ns)].
+  Proof.
+    intros * Hs.
+    rewrite exp_sub_sb_of_list.
+    rewrite (exp_scoped_sub_agree _ _ _ Id Hs) by (intros x Hx; apply sb_qn_lt; exact Hx).
+    rewrite exp_sub_id.
+    apply (exp_scoped_sub_agree _ _ _ _ Hs).
+    intros x Hx; rewrite <- (List.length_map (fun N => N[σ]) Ns) in Hx.
+    rewrite !(sb_of_list_nth _ _ _ Propₘ Hx); reflexivity.
+  Qed.
+
   (** The [Π] over a telescope with a last (outermost) parameter more is
       the [Π] of that parameter over the [Π] of the rest. *)
   Lemma ctx_pi_at_snoc : forall r T κ B A, ctx_pi_at r (T ++ ce_ass κ B :: nil) A = a_pi κ r B (ctx_pi_at r T A).
