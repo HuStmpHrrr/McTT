@@ -1096,6 +1096,30 @@ Proof.
     + rewrite firstn_all2 by (rewrite length_app; cbn; lia); exact Hok.
 Qed.
 
+(** List facts about the position of the next argument. *)
+Lemma skipn_nth_cons : forall {X} (l : list X) k x, List.nth_error l k = Some x -> List.skipn k l = x :: List.skipn (S k) l.
+Proof. intros X l k; revert l; induction k as [| k IH]; intros [| y l] x H; cbn in *; try discriminate; [ injection H as ->; reflexivity | auto ]. Qed.
+
+Lemma firstn_succ_nth : forall {X} (l : list X) k x, List.nth_error l k = Some x -> List.firstn (S k) l = List.firstn k l ++ x :: nil.
+Proof. intros X l k; revert l; induction k as [| k IH]; intros [| y l] x H; cbn in *; try discriminate; [ injection H as ->; reflexivity | f_equal; auto ]. Qed.
+
+(** The rest of a telescope past [k] arguments ends in the next
+    parameter. *)
+Lemma firstn_rest_split : forall (T : ctx) k e, k < List.length T -> List.nth_error (List.rev T) k = Some e ->
+    List.firstn (List.length T - k) T = List.firstn (List.length T - S k) T ++ e :: nil.
+Proof.
+  intros * Hlt Hnth.
+  pose proof (List.nth_error_split _ _ Hnth) as (l1 & l2 & Erev & Hl1).
+  assert (ET : T = List.rev l2 ++ e :: List.rev l1)
+    by (rewrite <- (List.rev_involutive T), Erev, List.rev_app_distr; cbn; rewrite <- List.app_assoc; reflexivity).
+  rewrite ET, List.length_app; cbn [List.length]; rewrite !List.length_rev, Hl1.
+  replace (List.length l2 + S k - k) with (List.length (List.rev l2) + 1) by (rewrite List.length_rev; lia).
+  replace (List.length l2 + S k - S k) with (List.length (List.rev l2)) by (rewrite List.length_rev; lia).
+  rewrite !List.firstn_app, !List.firstn_all2, Nat.sub_diag by lia.
+  rewrite List.firstn_all.
+  replace (List.length (List.rev l2) + 1 - List.length (List.rev l2)) with 1 by lia; cbn; rewrite app_nil_r; reflexivity.
+Qed.
+
 (** Arguments glued against a telescope are glued against it extended
     further out. *)
 Lemma glu_tele_args_app_r : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
