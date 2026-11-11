@@ -17,6 +17,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping Lo
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases UnitCases.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit Values.
+From Mctt.Core.Completeness.Consequences Require Import AnnotatedUpto.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -322,16 +323,29 @@ Proof.
   - first [ exact Hσg | cbn; exact Hσg | eapply glu_ctx_env_sub_resp_sub_eq; [ eassumption | exact Hσg | mauto 3 ] ].
 Qed.
 
+(** The definitions of a body, filled in, are of the sorts of the kinds
+    they are tagged with: the syntactic counterpart of [body_sorts_valid],
+    as a well-formed unit's description has it ([desc_ok_open]). *)
+Fixpoint body_sorts_typed (Φ : gmod) (Γ : ctx) : Prop :=
+  match Φ with
+  | gm_nil => True
+  | gm_ext Φ' _ E => body_sorts_typed Φ' Γ /\
+      forall A M σ, entry_tm E = Some (A, M) -> gm_fill Φ' = Some σ ->
+        exists i : nat, Γ ⊢ A[σ] : abs_kind_sort (entry_kind E) Typeω@i
+  | gm_open _ _ _ _ => True
+  end.
+
 (** The environment of a body that can be filled in, over a glued
     environment of its context, is glued along the body's context at the
     substitution filling the body in after the context's: entry by entry,
-    a definition's head its body's value there at the kind its type has
-    ([body_sorts_valid]), a module's its unit's closure there, related to
-    itself (the completeness of the unit's literal), and glued by the
-    slot premise of the body context's gluing. *)
+    a definition's head its body's value there at the kind it is tagged
+    with, which is its type's ([body_sorts_typed]), a module's its unit's
+    closure there, related to itself (the completeness of the unit's
+    literal), and glued by the slot premise of the body context's
+    gluing. *)
 Lemma glu_body_env : forall Φ Γ TSb,
     EG Γ ∈ glu_ctx_env ↘ TSb ->
-    body_sorts_valid Φ Γ ->
+    body_sorts_typed Φ Γ ->
     forall ζ, gm_fill Φ = Some ζ ->
     forall Sb, EG body_ctx Φ ++ Γ ∈ glu_ctx_env ↘ Sb ->
     forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ TSb ->
@@ -341,7 +355,7 @@ Proof.
   - injection Hf as <-; cbn in HSb.
     assert (E : TSb <∙> Sb) by (eapply functional_glu_ctx_env; eassumption).
     exists σ, ρ; split; [ intros x; reflexivity | split; [ constructor | apply E; exact Hσ ] ].
-  - cbn [body_sorts_valid] in Hsv; destruct Hsv as [Hsv HsvE].
+  - cbn [body_sorts_typed] in Hsv; destruct Hsv as [Hsv HsvE].
     destruct E as [b pv κ A [M |] | pv [Δy Dy] | ? ? ? ? ? | pv A M [Δy Dy] | ? ? ? ?]; cbn in Hf; try discriminate;
       destruct (gm_fill Φ) as [ζ0 |] eqn:Hf0; cbn in Hf; try discriminate; injection Hf as <-;
       cbn [body_ctx app] in HSb.
@@ -350,12 +364,22 @@ Proof.
       destruct (IH _ _ HΓ Hsv _ eq_refl _ HTSb0 _ _ _ Hσ) as (σ0 & ρ0 & Eσ0 & Hb0 & Hσ0).
       destruct (glu_ctx_env_cons_def_clean_inversion HTSb0 HSb) as (i & κ' & HA & HM & _ & HMg & ESb).
       destruct (HMg _ _ _ Hσ0) as [a m P El Ea Hm Hglu HMσ].
-      destruct (HsvE A M eq_refl) as [iA HAv].
-      destruct (glu_ctx_env_per_ctx_env HTSb0) as [R0 HR0].
-      pose proof (glu_ctx_env_per_env HTSb0 HR0 Hσ0) as Hρ0.
-      destruct (rel_exp_of_abs_kind_sort_at HR0 HAv _ _ Hρ0) as (a' & Ea' & Hka).
-      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
-      cbn [entry_kind] in Hka.
+      (** The kind of the type's value is the tag: the type is of the sort
+          of the tag's kind, filled in, and of its own kind *)
+      destruct (HsvE A M ζ0 eq_refl eq_refl) as [iA HAf]; cbn [entry_kind] in HAf.
+      pose proof (glu_ctx_env_sub_escape HTSb0 _ _ _ Hσ0) as Hσ0s.
+      assert (Hκ : κ' = κ).
+      { pose proof (wf_gm_fill _ _ _ _ _ (glu_ctx_env_wf_ctx HTSb0) Hf0) as Hζ0.
+        assert (HAζ : Γ ⊢ A[ζ0] : abs_kind_sort κ' Typeω@i)
+          by (replace (abs_kind_sort κ' Typeω@i) with ((abs_kind_sort κ' Typeω@i)[ζ0]) by (rewrite abs_kind_sort_sub; reflexivity);
+              exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hζ0)).
+        exact (exp_eq_same_kind _ _ _ _ _ _ _ _ _ (wf_exp_eq_refl HAζ) (sort_kind_abs_kind_sort _ _) HAf (sort_kind_abs_kind_sort _ _)). }
+      subst κ'.
+      assert (Hka : domain_kind a = κ).
+      { assert (HAσ : Δ ⊢ A[σ0] : abs_kind_sort κ Typeω@i)
+          by (replace (abs_kind_sort κ Typeω@i) with ((abs_kind_sort κ Typeω@i)[σ0]) by (rewrite abs_kind_sort_sub; reflexivity);
+            exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hσ0s)).
+        exact (proj1 (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hglu (glu_univ_elem_trm_typ _ _ _ _ Hglu _ _ _ _ HMσ) HAσ)). }
       exists (σ0 ,, M[σ0]), (ρ0 ↦ m ⦂ entry_type_closure A ρ0); split; [| split ].
       * intros [| x]; cbn; [ f_equal; rewrite exp_sub_sub; apply exp_sub_sb_eq; intros z; rewrite (Eσ0 z); reflexivity
                            | exact (Eσ0 x) ].
@@ -399,10 +423,10 @@ Proof.
       pose proof (glu_ctx_env_sub_escape HTSb0 _ _ _ Hσ0) as Hσ0s.
       inversion Hwe; subst.
       match goal with H : _ ⍮ _ ⍮ _ ⊢ᵘ gu_mk nil (md_alias _) ≈ _ |- _ => rename H into HU end.
-      destruct (HsvE A M eq_refl) as [iA HAv].
-      destruct (rel_exp_of_abs_kind_sort_at HR0 HAv _ _ Hρ0) as (a' & Ea' & Hka).
-      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
-      cbn [entry_kind] in Hka; rewrite Hka in Hm; cbn in Hm.
+      assert (Hka : domain_kind a = ak_relevant).
+      { assert (HAσ : Δ ⊢ A[σ0] : abs_kind_sort ak_relevant Typeω@i) by (cbn; exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hσ0s)).
+        exact (proj1 (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hglu (glu_univ_elem_trm_typ _ _ _ _ Hglu _ _ _ _ HMσ) HAσ)). }
+      rewrite Hka in Hm; cbn in Hm.
       assert (HUl : gc_deps ⍮ gc_stack ⍮ body_ctx Φ ++ Γ ⊢ᵐ me_lit (gu_mk nil (md_alias E)) ≈ me_lit (gu_mk nil (md_alias E)))
         by (apply wf_me_lit; exact HU).
       destruct (rel_modexp_at _ _ _ _ _ (proj2 (proj2 completeness_fundamental_modules) _ _ _ HUl) HR0 _ _ Hρ0)
