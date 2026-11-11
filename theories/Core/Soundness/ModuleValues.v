@@ -970,6 +970,24 @@ Proof.
   eapply (proj1 glu_dmod_same_part); [ exact Hlitζ | exact HHeq | exact Hs01 | exact Hs10 | intros; reflexivity | intros; reflexivity ].
 Qed.
 
+(** A well-formed saturated literal body's definitions are of the sorts of
+    their tags, as its description has it ([desc_ok_open]). *)
+Lemma body_sorts_typed_of_unit : forall Γ Φ,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open nil Φ ≈ gu_open nil Φ -> body_sorts_typed (gm_expand Φ) Γ.
+Proof.
+  intros * HU.
+  pose proof (wf_me_lit _ _ _ _ _ HU) as HL.
+  destruct (me_denotes _ _ _ _ _ HL) as (R & ? & HR & _).
+  pose proof (me_desc_ok _ _ _ _ _ _ HL HR) as Hok.
+  apply mdenote_lit_inv in HR; inversion HR; subst.
+  match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
+  match goal with Hx : body_xp _ _ _ Φ ?Φx |- _ => pose proof (body_xp_expand _ _ _ _ _ Hx) as ->; clear Hx end.
+  inversion Hok; subst.
+  apply body_sorts_typed_of_lookups; [ assumption |].
+  intros * Hp Ht Hf.
+  match goal with Hs : forall y Φ0 E A M σ, _ -> _ -> _ -> exists i, _ |- _ => exact (Hs _ _ _ _ _ _ Hp Ht Hf) end.
+Qed.
+
 (** The closure of a saturated literal body, at a glued environment, is
     glued as the literal: its members and submodules are
     ([glu_lit_body_mem_field], [glu_lit_body_sub_field]). *)
