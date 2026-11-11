@@ -590,6 +590,31 @@ Section Fixed_GCtx.
     split; [ exact HM |]; exists RT; split; [ exact HRT | exact Hρ ].
   Qed.
 
+  (** A term glued at its own type value is glued at a related type value,
+      at any type glued there: the two types are equal
+      ([glu_univ_elem_per_univ_typ_escape], at an index above both), and the
+      term moves along the type values ([glu_univ_elem_exp_conv]). *)
+  Lemma glu_elem_to_target : forall {ie i : nat} {k : universe_index} {ae a Pe Ele P El Δ A T M m},
+      Dom ae ≈ a ∈ per_univ k -> DG ae ∈ glu_univ_elem ie ↘ Pe ↘ Ele -> DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+      not_level_sort ae -> Δ ⊢ M : A ® m ∈ Ele -> Δ ⊢ T ® P ->
+      (exists l : nat, Δ ⊢ A ≈ T : abs_kind_sort (domain_kind a) Typeω@l) /\ Δ ⊢ M : T ® m ∈ El.
+  Proof.
+    intros * [R HR] Hge Hga Hnl HM HT.
+    set (n := Nat.max (Nat.max ie i) (large_level k)).
+    destruct (glu_univ_elem_cumu_ge (i := ie) (j := n) ltac:(unfold n; lia) Hge) as (Pn & Eln & Hgn).
+    destruct (glu_univ_elem_cumu_ge (i := i) (j := n) ltac:(unfold n; lia) Hga) as (Pn' & Eln' & Hgn').
+    pose proof (glu_univ_elem_exp_cumu_ge (i := ie) (j := n) ltac:(unfold n; lia) Hge Hgn HM) as HMn.
+    pose proof (glu_univ_elem_trm_typ _ _ _ _ Hgn _ _ _ _ HMn) as HAn.
+    pose proof (glu_univ_elem_typ_cumu_ge (i := i) (j := n) ltac:(unfold n; lia) Hga Hgn' HT) as HTn.
+    assert (HRn : Dom ae ≈ a ∈ per_univ n)
+      by (exists R; eapply per_univ_elem_cumu_universe_index; [ exact HR | apply universe_index_le_ul_max; unfold n; lia ]).
+    pose proof (glu_univ_elem_per_univ_typ_escape HRn Hgn Hgn' Hnl HAn HTn) as HAT.
+    pose proof (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hgn _ _ _ _ _ HMn HAT) as HMT.
+    rewrite (per_univ_elem_kind _ _ _ _ HR) in HAT.
+    split; [ eexists; exact HAT |].
+    exact (glu_univ_elem_exp_conv HRn Hgn Hga HMT HT).
+  Qed.
+
 End Fixed_GCtx.
 
 (** ** A Member of a Stored Body, Read Bare *)
@@ -802,6 +827,94 @@ Section Bare.
     pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Heq0 Hσ1) as Heq1.
     rewrite apps_exp_sub in Heq1; cbn [exp_sub] in Heq1 |- *; rewrite (mod_qname_sub _ _ _ (qname_mod_qname p)) in Heq1.
     exact (glu_univ_elem_trm_resp_exp_eq _ _ _ _ Hga _ _ _ _ _ HY' (wf_exp_eq_sym _ _ _ _ _ _ Heq1)).
+  Qed.
+
+  (** The stored member applied to arguments glued as a saturated global
+      value's, glued at any type [T] glued at a type value related to the
+      member types of the values related to it: as [glu_global_member_at],
+      the stored member applied along the [Π]s of its stored type, then
+      moved to [T] ([glu_elem_to_target]'s move, through the equation of
+      the two types glued at related values). *)
+  Lemma glu_global_apps_at : forall p T Φ x R0 As Δ Ns args m a (i : nat) P El Tin,
+      gc_loc Θ Ξ p = Some (T, Φ) -> List.length args = List.length T ->
+      mdenote Θ Ξ ⋅ (me_mem (qname_mod p) x) R0 -> mdesc_type R0 = Some As -> evaluated_kind (mdesc_kind R0) ->
+      ⋅ ⊩ a_mem (qname_mod p) x : As ->
+      ⊢ Θ ⍮ Ξ ⍮ Δ ->
+      glu_tele_args Δ (List.rev T) nil nil Ns args ->
+      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ m ->
+      (forall h b, per_dmod h (dm_global p args) -> dmod_mem_type h x b -> exists j, Dom b ≈ a ∈ per_univ j) ->
+      not_level_sort a -> DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ Tin ® P ->
+      Δ ⊢ apps (a_mem (qname_mod p) x) Ns : Tin ® m ∈ El.
+  Proof.
+    intros * Hgl Hlen Hm0 Ht0 Hk HGa HΔ Hargs Hsel Hrel Hnl Hga HTin.
+    pose proof (@functional_eval Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & Fsel & _).
+    (** The stored description of the member read bare, valid *)
+    pose proof (valid_gctx_embedding_filed _ _ _ _ (valid_gctx_embedding_refl _ _ Hg)) as Hfm.
+    pose proof (Hfm _ _ _ Hgl) as HfM.
+    destruct (filed_mem_desc _ _ Hg ⋅ p T Φ nil x R0 As Hgl Hm0 Ht0) as (S0 & S1 & Hst & Ha & Hkd & HtS & _).
+    cbn [mdesc_term_part_ats] in Ha; injection Ha as <-; rewrite mdesc_named_nil in HtS.
+    rewrite Hkd in Hk; rewrite Ht0 in HtS.
+    assert (Hvt : valid_filed_term p T x S0).
+    { destruct Hst as [Φ0 E R0' Hp HE | pq k D Mk Hk' HMk | Rr Hr'];
+        [ exact (valid_filed_mod_terms _ _ _ _ _ HfM x Φ0 _ _ Hp HE)
+        | exact (valid_filed_mod_ind_frames _ _ _ _ _ HfM _ _ _ _ _ Hk' HMk)
+        | exact (valid_filed_mod_record_frames _ _ _ _ _ HfM _ _ Hr') ]. }
+    destruct Hvt as [A1 lv Htyped Hreads _ Hpk].
+    destruct (Hreads nil _ T nil ltac:(rewrite List.app_nil_r; reflexivity) eq_refl eq_refl) as [EA _].
+    cbn [sb_of_list] in EA; rewrite <- HtS in EA; injection EA as EA; rewrite exp_sub_id in EA; subst As.
+    destruct (rel_type_at_kind_of_abs_kind_sort _ _ _ _ Htyped) as [[iA HA1] HA1k].
+    destruct (valid_filed_mod_tele_evaluated _ _ _ _ _ HfM) as [l HTr].
+    pose proof (valid_filed_mod_tele_wf _ _ _ _ _ HfM) as HT.
+    pose proof (valid_filed_mod_tele_all_assumptions _ _ _ _ _ HfM) as HTa.
+    assert (HT0 : ⊨ T ++ ⋅) by (rewrite List.app_nil_r; exact HT).
+    assert (HA1' : T ++ ⋅ ⊨ᵗ A1 ≈ A1 at iA) by (rewrite List.app_nil_r; exact HA1).
+    assert (HA1k' : Completeness.ContextCases.rel_type_kind (T ++ ⋅) A1 (mdesc_kind S0)) by (rewrite List.app_nil_r; exact HA1k).
+    destruct (rel_type_ctx_pi _ _ _ _ _ _ HTa HT0 HTr Hpk Hk HA1' HA1k') as [HAv HAk].
+    (** The member read bare, glued at [nil] *)
+    destruct HGa as [SbN HSbN kN HNb].
+    assert (Hnil : Δ ⊢ˢ Id ® nil ∈ SbN)
+      by (inversion HSbN as [Sb' ESb _ | | | | ]; subst; apply ESb; apply wf_sub_nil'; exact HΔ).
+    destruct (HNb _ _ _ Hnil) as [b v Pb Elb Eb Hv Hgb HG].
+    cbn [exp_sub] in HG; rewrite (mod_qname_sub _ _ _ (qname_mod_qname p)), exp_sub_id in HG.
+    destruct (HAk _ Completeness.Global.Args.per_ctx_env_nil_true nil nil I) as (b1 & Eb1 & Hkb).
+    assert (b1 = b) as -> by (eapply functional_eval_exp; eassumption).
+    rewrite Hkb in Hv; assert (Ev : ⟦ a_mem (qname_mod p) x ⟧ nil ↘ v) by (destruct Hk; exact Hv).
+    (** Its value is the selection from the module given no argument *)
+    assert (Hs0 : exists s, dm_global p nil ·ₜ x Θ ⍮ Ξ ↘ s).
+    { destruct T as [| e T'] eqn:ET.
+      - destruct args; [ exists m; exact Hsel | cbn in Hlen; discriminate ].
+      - eexists; eapply eval_sel_global_unsat; [ exact Hgl | cbn; lia ]. }
+    destruct Hs0 as (s & Hs).
+    pose proof (eval_mem_of_sel _ _ _ _ _ (gc_loc_path _ _ Hg _ _ nil Hgl) Hs) as Es.
+    pose proof (functional_eval_exp _ _ _ _ Ev Es) as ->.
+    (** Applied along the [Π]s of its type *)
+    assert (HTa' : all_assumptions (List.rev T)) by (apply List.Forall_rev; exact HTa).
+    assert (HC : ⊨ List.rev (List.rev T) ++ ⋅) by (rewrite List.rev_involutive; exact HT0).
+    assert (Hlen' : List.length Ns = List.length (List.rev T))
+      by (rewrite (glu_tele_args_length _ _ _ _ _ _ Hargs), List.length_rev; exact Hlen).
+    assert (Eb' : ⟦ ctx_pi_at (mdesc_kind S0) (List.rev (List.rev T)) A1 ⟧ nil ↘ b) by (rewrite List.rev_involutive; exact Eb).
+    destruct (@glu_pi_apps_tele GCb _ _ _ _ _ _ Hargs ⋅ _ nil _ A1 _ _ _ _ _ _ _ HTa' HC
+                Completeness.Global.Args.per_ctx_env_nil_true I Hlen' Hk Eb' Hgb HG)
+      as (v' & ρv' & b' & i' & P' & El' & Y' & Happs & Eb2 & Hgb2 & HY & R' & HR' & Hρ').
+    pose proof (global_member_apps p T Φ x args nil s v' Hgl Hs ltac:(cbn; exact Hlen) Happs) as Hm'.
+    cbn [List.app] in Hm'; pose proof (Fsel _ _ _ Hm' _ Hsel) as ->.
+    (** Its type there is related to the value's member type, so to [a] *)
+    rewrite List.rev_involutive in HR'.
+    destruct (rel_type_inversion_simple_at HR' HA1' _ _ Hρ') as (b0 & b0' & Eb0 & Eb0' & [R1 HR1]).
+    assert (b0' = b') as -> by (eapply functional_eval_exp; eassumption).
+    assert (Hmt : dmod_mem_type (dm_global p args) x b0)
+      by (eapply dmod_mem_type_global; [ exact Hgl | exact Hlen | exact Hm0 | exact Ht0 | exact Eb0 ]).
+    assert (Hper : per_dmod (dm_global p args) (dm_global p args)).
+    { econstructor; [ exact Hgl | exact Hlen |].
+      exact (@glu_tele_args_per GCb _ _ _ _ _ _ Hargs ⋅ _ HTa' HC Completeness.Global.Args.per_ctx_env_nil_true I). }
+    destruct (Hrel _ _ Hper Hmt) as [j [R2 HR2]].
+    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR1 HR2) as E12.
+    assert (HR2' : per_univ_elem j R1 b0 a) by (eapply per_univ_elem_resp_iff; [ exact HR2 | symmetry; exact E12 ]).
+    pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HR1) HR2') as HR'a.
+    (** Moved to [T], through the equation of the two types glued at related
+        values *)
+    pose proof (proj2 (per_univ_elem_not_level_sort_iff _ _ _ _ HR'a) Hnl) as Hnlb.
+    exact (proj2 (glu_elem_to_target (ex_intro _ R1 HR'a) Hgb2 Hga Hnlb HY HTin)).
   Qed.
 
 End Bare.

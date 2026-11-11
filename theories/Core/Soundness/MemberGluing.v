@@ -19,8 +19,10 @@ From Mctt.Core.Syntactic Require Import System SystemOpt.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Modules Paths DescTyping LookupSound Presup.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Completeness.Modules Require Import Values.
+From Mctt.Core.Completeness.Modules Require Filed.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation ModuleValues Selection MemberApp.
+From Mctt.Core.Soundness.Global Require Import GlobalValues.
 Import Domain_Notations Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -42,29 +44,72 @@ Proof.
   exact (proj2 (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hg HA HAt)).
 Qed.
 
-(** A term glued at its own type value is glued at a related type value,
-    at any type glued there: the two types are equal
-    ([glu_univ_elem_per_univ_typ_escape], at an index above both), and the
-    term moves along the type values ([glu_univ_elem_exp_conv]). *)
-Lemma glu_elem_to_target : forall {ie i : nat} {k : universe_index} {ae a Pe Ele P El Δ A T M m},
-    Dom ae ≈ a ∈ per_univ k -> DG ae ∈ glu_univ_elem ie ↘ Pe ↘ Ele -> DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    not_level_sort ae -> Δ ⊢ M : A ® m ∈ Ele -> Δ ⊢ T ® P ->
-    (exists l : nat, Δ ⊢ A ≈ T : abs_kind_sort (domain_kind a) Typeω@l) /\ Δ ⊢ M : T ® m ∈ El.
+(** ** The types of members read at arguments *)
+
+(** A term's type at an argument does not depend on its body or its kind:
+    it is read off the type's [Π] ([pi_view]). *)
+Lemma mdesc_at_term_type : forall r A om N R1, mdesc_at (mdesc_term r A om) N = Some R1 ->
+    forall r', exists B, mdesc_at (mdesc_term r' A None) N = Some (mdesc_term r' B None) /\ mdesc_type R1 = Some B.
 Proof.
-  intros * [R HR] Hge Hga Hnl HM HT.
-  set (n := Nat.max (Nat.max ie i) (large_level k)).
-  destruct (glu_univ_elem_cumu_ge (i := ie) (j := n) ltac:(unfold n; lia) Hge) as (Pn & Eln & Hgn).
-  destruct (glu_univ_elem_cumu_ge (i := i) (j := n) ltac:(unfold n; lia) Hga) as (Pn' & Eln' & Hgn').
-  pose proof (glu_univ_elem_exp_cumu_ge (i := ie) (j := n) ltac:(unfold n; lia) Hge Hgn HM) as HMn.
-  pose proof (glu_univ_elem_trm_typ _ _ _ _ Hgn _ _ _ _ HMn) as HAn.
-  pose proof (glu_univ_elem_typ_cumu_ge (i := i) (j := n) ltac:(unfold n; lia) Hga Hgn' HT) as HTn.
-  assert (HRn : Dom ae ≈ a ∈ per_univ n)
-    by (exists R; eapply per_univ_elem_cumu_universe_index; [ exact HR | apply universe_index_le_ul_max; unfold n; lia ]).
-  pose proof (glu_univ_elem_per_univ_typ_escape HRn Hgn Hgn' Hnl HAn HTn) as HAT.
-  pose proof (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hgn _ _ _ _ _ HMn HAT) as HMT.
-  rewrite (per_univ_elem_kind _ _ _ _ HR) in HAT.
-  split; [ eexists; exact HAT |].
-  exact (glu_univ_elem_exp_conv HRn Hgn Hga HMT HT).
+  intros * H r'; cbn [mdesc_at] in H |- *; destruct (pi_view A) as [[X C] |]; [| discriminate ].
+  destruct om as [M |]; [ destruct (fn_view M); [| discriminate ] |]; injection H as <-; eexists; split; reflexivity.
+Qed.
+
+Lemma mdesc_term_part_at_term_type : forall r A om N R1, mdesc_term_part_at (mdesc_term r A om) N = Some R1 ->
+    forall r', exists B, mdesc_at (mdesc_term r' A None) N = Some (mdesc_term r' B None) /\ mdesc_type R1 = Some B.
+Proof.
+  intros * H r'; destruct om as [M |]; [| exact (mdesc_at_term_type _ _ _ _ _ H r') ].
+  cbn [mdesc_term_part_at mdesc_at] in H |- *; destruct (pi_view A) as [[X C] |]; [| discriminate ].
+  destruct (fn_view M); [| destruct (app_const M) ]; try discriminate; injection H as <-; eexists; split; reflexivity.
+Qed.
+
+Lemma mdesc_ats_term_type : forall Ns r A om R1, mdesc_ats (mdesc_term r A om) Ns = Some R1 ->
+    forall r', exists B, mdesc_ats (mdesc_term r' A None) Ns = Some (mdesc_term r' B None) /\ mdesc_type R1 = Some B.
+Proof.
+  induction Ns as [| N Ns IH]; intros * H r'; cbn [mdesc_ats] in H |- *; [ injection H as <-; eexists; split; reflexivity |].
+  destruct (mdesc_at (mdesc_term r A om) N) as [R0 |] eqn:E; [| discriminate ].
+  destruct (mdesc_at_term_type _ _ _ _ _ E r') as (B0 & E0 & HB0); rewrite E0.
+  assert (exists A0 om0, R0 = mdesc_term r A0 om0) as (A0 & om0 & ->)
+    by (cbn [mdesc_at] in E; destruct (pi_view A) as [[? ?] |]; [ destruct om as [M |]; [ destruct (fn_view M) |] |];
+        try discriminate; injection E as <-; eauto).
+  cbn in HB0; injection HB0 as ->; exact (IH _ _ _ _ H r').
+Qed.
+
+Lemma mdesc_term_part_ats_term_type : forall Ns r A om R1, mdesc_term_part_ats (mdesc_term r A om) Ns = Some R1 ->
+    forall r', exists B, mdesc_ats (mdesc_term r' A None) Ns = Some (mdesc_term r' B None) /\ mdesc_type R1 = Some B.
+Proof.
+  induction Ns as [| N Ns IH]; intros * H r'; cbn [mdesc_term_part_ats mdesc_ats] in H |- *;
+    [ injection H as <-; eexists; split; reflexivity |].
+  destruct (mdesc_term_part_at (mdesc_term r A om) N) as [R0 |] eqn:E; [| discriminate ].
+  destruct (mdesc_term_part_at_term_type _ _ _ _ _ E r') as (B0 & E0 & HB0); rewrite E0.
+  destruct (Filed.mdesc_term_part_at_term _ _ _ _ _ E) as (A0 & om0 & ->).
+  cbn in HB0; injection HB0 as ->; exact (IH _ _ _ _ H r').
+Qed.
+
+(** A stored entry's description, of a [Π] over a telescope of assumptions,
+    read at as many arguments: of the codomain at them. *)
+Lemma mdesc_ats_read_type_full : forall Ns T κ A0 RE R1, all_assumptions T -> List.length Ns = List.length T ->
+    mdesc_type RE = Some (ctx_pi_at κ T A0) -> (forall Θd A M Rm, RE = mdesc_dm Θd A M Rm -> Θd = nil) ->
+    mdesc_ats_read RE Ns = Some R1 -> mdesc_type R1 = Some A0[sb_of_list Id Ns].
+Proof.
+  intros * HT Hl Ht Hdm Ha.
+  assert (Hfull : forall B, mdesc_ats (mdesc_term κ (ctx_pi_at κ T A0) None) Ns = Some (mdesc_term κ B None) ->
+                  B = A0[sb_of_list Id Ns]).
+  { intros B HB.
+    change (mdesc_term κ (ctx_pi_at κ T A0) None) with (mdesc_up (nil ++ T) (mdesc_term κ A0 None)) in HB.
+    rewrite (mdesc_ats_up_term_none Ns T nil κ A0 HT ltac:(lia)) in HB; injection HB as <-; reflexivity. }
+  destruct RE as [r A om | | | Θd A M Rm]; cbn in Ht; try discriminate.
+  - injection Ht as ->.
+    rewrite mdesc_ats_read_other in Ha by (intros; discriminate).
+    destruct (mdesc_ats_term_type _ _ _ _ _ Ha κ) as (B & HB & ->).
+    rewrite (Hfull B HB); reflexivity.
+  - pose proof (Hdm _ _ _ _ eq_refl) as ->; cbn in Ht; injection Ht as ->.
+    cbn [mdesc_ats_read] in Ha.
+    destruct (mdesc_term_part_ats (mdesc_term ak_relevant (ctx_pi_at κ T A0) (Some M)) Ns) as [[r1 B [M' |] | | |] |] eqn:Htp;
+      try discriminate.
+    destruct (mdesc_ats Rm Ns) as [Rm' |]; [ injection Ha as <- | discriminate ].
+    destruct (mdesc_term_part_ats_term_type _ _ _ _ _ Htp κ) as (B' & HB' & HtB); cbn in HtB; injection HtB as ->.
+    rewrite (Hfull B' HB'); reflexivity.
 Qed.
 
 (** ** Saturated bodies *)
