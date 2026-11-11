@@ -27,6 +27,10 @@ From Mctt.Core.Completeness.Global Require Args.
 From Mctt.Core.Completeness Require ContextCases.
 From Mctt.Core.Completeness.Modules Require Import Mem.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
+From Mctt.Core.Completeness.LogicalRelation Require Substitution.
+From Mctt.Core.Completeness.Modules Require Import MemberTypes.
+From Mctt.Core.Completeness Require UnitCases.
+From Mctt.Core.Semantic.PER.Lemmas Require Import CanonicalContexts UniverseSubtyping.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -99,6 +103,81 @@ Section Fixed_GCtx.
       by (eapply glu_univ_elem_trm_resp_exp_eq; [ exact HP0 | exact HN0 | apply wf_exp_eq_sym, Hδ; exact HΔ ]).
     pose proof (app_sim_glu _ _ _ _ _ (Hpi _ Ea0) HP0 _ _ _ _ _ HG0 Hsim) as HGv.
     exact (glu_univ_elem_exp_conv (per_univ_sym' _ _ _ Hrel) HP0 HPρ HGv HTPρ).
+  Qed.
+
+  (** The [Π] over a telescope with a last (outermost) parameter more is
+      the [Π] of that parameter over the [Π] of the rest. *)
+  Lemma ctx_pi_at_snoc : forall r T κ B A, ctx_pi_at r (T ++ ce_ass κ B :: nil) A = a_pi κ r B (ctx_pi_at r T A).
+  Proof. intros r; induction T as [| [] T IH]; intros; cbn; [ reflexivity | apply IH | apply IH | apply IH | apply IH ]. Qed.
+
+  (** A function glued at a [Π] over the rest [ts] of a telescope, the
+      [Π]'s environment [ρv] storing the arguments before at the values of
+      their types, applied to the rest's arguments glued at its types in
+      the environment [ρ] storing them at their closures
+      ([glu_tele_args]): the application is glued at the codomain, in the
+      environment extended by the arguments at the values of their types.
+      Each argument moves to the [Π]'s domain along the relation of the
+      two environments ([tele_args_env_rel_typed] reads a context PER only
+      through the readability of the stored types); the element is
+      unchanged.  The extended environments stay related. *)
+  Lemma glu_pi_apps_tele : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
+      forall Tpre RT ρv r B M Y v b (i : nat) P El,
+        all_assumptions ts -> ⊨ List.rev ts ++ Tpre -> EF Tpre ≈ Tpre ∈ per_ctx_env ↘ RT -> RT ρ ρv ->
+        List.length Ns = List.length ts -> evaluated_kind r ->
+        ⟦ ctx_pi_at r (List.rev ts) B ⟧ ρv ↘ b -> DG b ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ M : Y ® v ∈ El ->
+        exists v' ρv' b' (i' : nat) P' El' Y', $*| v & args | gc_deps ⍮ gc_stack ↘ v' /\ ⟦ B ⟧ ρv' ↘ b' /\
+          DG b' ∈ glu_univ_elem i' ↘ P' ↘ El' /\ Δ ⊢ apps_exp M Ns : Y' ® v' ∈ El' /\
+          exists R', EF List.rev ts ++ Tpre ≈ List.rev ts ++ Tpre ∈ per_ctx_env ↘ R' /\ R' (env_tele ρ ts args) ρv'.
+  Proof.
+    induction 1 as [Δ ts ρ Ms | Δ κ A ts ρ Ms N Ns c args a i0 P0 El0 Ea Hga HAP HN Hrest IH];
+      intros * Hts HC HRT Hρ Hlen Hr Eb Hgb HM.
+    2:{ (** The next argument, moved to the [Π]'s domain *)
+      cbn [List.rev] in HC, Eb; rewrite ctx_pi_at_snoc in Eb.
+      rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
+      assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
+      destruct (rel_ctx_wf_ass_typ (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HC)) as [jA HAv].
+      destruct (rel_type_inversion_simple_at HRT HAv _ _ Hρ) as (a' & a1 & Ea' & Ea1 & Haa1).
+      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
+      inversion Eb; subst.
+      assert (a0 = a1) as -> by (eapply functional_eval_exp; eassumption).
+      (** The [Π]'s domain and codomain *)
+      destruct (glu_univ_elem_per_univ _ _ _ _ Hgb) as [Rb HRb].
+      pose proof HRb as HRb0.
+      basic_invert_per_univ_elem HRb0.
+      match goal with Hm : forall c c' (equiv_c_c' : _), rel_mod_eval _ _ _ _ _ _ |- _ => rename Hm into HBB end.
+      match goal with Ha : per_univ_elem _ ?ir a1 a1 |- _ => rename Ha into Ha1 end.
+      destruct (glu_univ_elem_pi_clean_inversion1 Ha1 Hr Hgb) as (IP & IEl & OP & OEl & elr & HIg & HOg & Hel & _ & HEl).
+      apply HEl in HM.
+      destruct HM as [? ? ? ? IT OT HMt Hmm HΠ HIT HOT HIP Happ].
+      assert (HΓ : ⊢ Γ) by exact (presup_exp_ctx HMt).
+      pose proof (kripke_id _ HΓ) as Hid.
+      pose proof (HIP _ _ Hid) as HITP; rewrite exp_wk_id in HITP.
+      destruct Haa1 as [Raa HRaa].
+      (** The argument at the domain *)
+      assert (HN' : Γ ⊢ N : IT[wk_id]ʷ ® c ∈ IEl)
+        by (rewrite exp_wk_id; exact (glu_univ_elem_per_subtyp_trm_conv (per_subtyp_refl1 _ _ _ _ HRaa) Hga HIg HITP HN)).
+      pose proof (glu_univ_elem_per_elem _ _ _ _ HIg _ _ _ _ _ HN' Ha1) as equiv_c.
+      destruct (Happ _ _ _ _ Hid HN' equiv_c) as (mn & Hmn & HMN).
+      destruct (HBB c c equiv_c) as [b1 b1' Eb1 Eb1' Hbb1].
+      pose proof (HOg c equiv_c _ Eb1) as Hgb1.
+      rewrite exp_wk_id in HMN.
+      (** The environments extended by it stay related *)
+      assert (Hcc : Raa c c) by (apply (per_univ_elem_left_irrel _ _ _ _ _ _ _ HRaa Ha1); exact equiv_c).
+      pose proof (per_head_of Ea' Ea1 HRaa Hcc) as Hhead.
+      destruct (entry_readable_of_elem_closure Ea' Ea1 HRaa Hcc) as [Rd1 _].
+      destruct (entry_readable_of_elem Ha1 equiv_c) as [Rd2 _].
+      pose proof (per_env_extend_intro' Hρ Hhead Rd1 Rd2) as Hρ'.
+      pose proof (Mctt.Core.Completeness.LogicalRelation.Substitution.per_ctx_env_of_typ (κ := domain_kind a1) HRT HAv) as HRT'.
+      destruct (IH _ _ _ _ _ _ _ _ _ _ _ _ Hts' HC HRT' Hρ' x Hr Eb1 Hgb1 HMN)
+        as (v' & ρv' & b' & i' & P' & El' & Y' & Happs & Eb' & Hgb' & HMs & R' & HR' & Hρ'').
+      exists v', ρv', b', i', P', El', Y'.
+      split; [ econstructor; [ exact Hmn | exact Happs ] |].
+      split; [ exact Eb' |]; split; [ exact Hgb' |]; split; [ exact HMs |].
+      exists R'; cbn [List.rev]; rewrite <- List.app_assoc; cbn [List.app]; split; [ exact HR' | exact Hρ'' ]. }
+    (** No more arguments *)
+    destruct ts; cbn in Hlen; [| discriminate ].
+    exists v, ρv, b, i, P, El, Y; split; [ constructor |]; split; [ exact Eb |]; split; [ exact Hgb |].
+    split; [ exact HM |]; exists RT; split; [ exact HRT | exact Hρ ].
   Qed.
 
 End Fixed_GCtx.
