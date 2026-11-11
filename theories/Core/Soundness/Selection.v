@@ -1058,6 +1058,44 @@ Proof.
   rewrite length_app, firstn_length_le by (unfold k; lia); reflexivity.
 Qed.
 
+(** The first arguments of glued arguments are glued. *)
+Lemma glu_tele_args_prefix : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
+    forall k, glu_tele_args Δ ts ρ Ms (List.firstn k Ns) (List.firstn k args).
+Proof.
+  induction 1; intros [| k]; cbn [List.firstn]; try constructor.
+  econstructor; eauto.
+Qed.
+
+(** The argument at a position of glued arguments is glued at its
+    parameter's type, read in the environment of the arguments before
+    it. *)
+Lemma glu_tele_args_nth_env : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
+    forall k N c, List.nth_error Ns k = Some N -> List.nth_error args k = Some c ->
+    exists κ A a (i : nat) P El, List.nth_error ts k = Some (ce_ass κ A) /\
+      ⟦ A ⟧ env_tele ρ ts (List.firstn k args) ↘ a /\ DG a ∈ glu_univ_elem i ↘ P ↘ El /\
+      Δ ⊢ A[sb_of_list sb_closed_base (Ms ++ List.firstn k Ns)] ® P /\
+      Δ ⊢ N : A[sb_of_list sb_closed_base (Ms ++ List.firstn k Ns)] ® c ∈ El.
+Proof.
+  induction 1; intros [| k] N0 c0 HN Hc; cbn in HN, Hc; try discriminate.
+  - injection HN as <-; injection Hc as <-.
+    exists κ, A, a, i, P, El; cbn [List.firstn]; rewrite app_nil_r; repeat split; assumption.
+  - destruct (IHglu_tele_args _ _ _ HN Hc) as (κ' & A' & a' & i' & P' & El' & Hnth & Ea & Hg & HP & HN').
+    exists κ', A', a', i', P', El'; cbn [List.firstn List.nth_error]; rewrite <- app_assoc in HP, HN'; cbn [List.app] in HP, HN'.
+    repeat split; try assumption.
+Qed.
+
+(** Typed arguments of a telescope, the first ones only. *)
+Lemma args_ok_firstn : forall Γ T l, params_evaluated gc_deps gc_stack nil T l ->
+    forall Ns, args_ok gc_deps gc_stack Γ T Ns -> forall k, args_ok gc_deps gc_stack Γ T (List.firstn k Ns).
+Proof.
+  intros * HRT Ns; induction Ns as [| N Ns IH] using List.rev_ind; intros Hok k.
+  - rewrite firstn_nil; exact Hok.
+  - destruct (Nat.le_gt_cases k (List.length Ns)) as [Hle | Hgt].
+    + rewrite firstn_app, (proj2 (Nat.sub_0_le _ _) Hle), app_nil_r.
+      exact (IH (proj1 (args_ok_init _ _ _ _ _ _ _ Hok HRT)) k).
+    + rewrite firstn_all2 by (rewrite length_app; cbn; lia); exact Hok.
+Qed.
+
 (** Arguments glued against a telescope are glued against it extended
     further out. *)
 Lemma glu_tele_args_app_r : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
