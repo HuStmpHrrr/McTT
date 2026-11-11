@@ -635,6 +635,174 @@ Proof.
     cbn [mdesc_at] in HR0m'; destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; injection HR0m' as <-; exact Hed.
 Qed.
 
+(** A closed module at arguments still lacking a parameter: the stored
+    telescope split at the arguments, the rest instantiated by them being
+    its telescope. *)
+Lemma closed_tele_split : forall Θ p T Φ Ns T0 B0 T10,
+    mdesc_tele (mdesc_closed Θ p T Φ Ns) = Some T0 -> tele_view T0 = Some (B0, T10) -> Θ = nil ->
+    List.length Ns < List.length T /\
+    T0 = tele_sub (List.firstn (List.length T - List.length Ns) T) (sb_of_list Id Ns).
+Proof.
+  intros * HT Hv ->; cbn in HT.
+  destruct (Nat.leb (List.length Ns) (List.length T)) eqn:Hle; [| discriminate ].
+  injection HT as <-; apply Nat.leb_le in Hle; rewrite app_nil_r in Hv |- *.
+  split; [| reflexivity ].
+  destruct (Nat.eq_dec (List.length Ns) (List.length T)) as [Heq |]; [| lia ].
+  exfalso; rewrite Heq, Nat.sub_diag in Hv; cbn in Hv; discriminate.
+Qed.
+
+(** A closed module description over a stored telescope extending [T] by
+    [Δ], given the arguments [Ns] for the outermost parameters of [T]: its
+    telescope ends in the rest of [T] instantiated by them. *)
+Lemma closed_ext_tele : forall pq Δ T Φ Ns k,
+    k = List.length T - List.length Ns -> List.length Ns < List.length T ->
+    exists Z, mdesc_tele (mdesc_closed nil pq (Δ ++ T) Φ Ns) =
+      Some (Z ++ tele_sub (List.firstn k T) (sb_of_list Id Ns)).
+Proof.
+  intros * -> Hlt; cbn [mdesc_tele].
+  rewrite length_app; replace (Nat.leb (List.length Ns) (List.length Δ + List.length T)) with true
+    by (symmetry; apply Nat.leb_le; lia).
+  replace (List.length Δ + List.length T - List.length Ns) with (List.length Δ + (List.length T - List.length Ns)) by lia.
+  rewrite firstn_app_2, tele_sub_app, app_nil_r; eexists; reflexivity.
+Qed.
+
+(** The outermost parameter of a selection from a module lacking one is
+    the module's: the selection's telescope extends the module's, the
+    module's outside parameters, or, at a closed module given arguments,
+    the rest of its stored telescope instantiated by them, which every
+    stored entry with a module part extends ([gm_coherent]). *)
+Lemma sel_view : forall Γ X y R0 R0m T0 B0 T10 Rsel T',
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ X ≈ X -> names_no_frame X ->
+    mdenote gc_deps gc_stack Γ X R0 -> mdesc_mod R0 = Some R0m -> mdesc_tele R0m = Some T0 ->
+    tele_view T0 = Some (B0, T10) ->
+    mdenote gc_deps gc_stack Γ (me_mem X y) Rsel -> mdesc_mod_tele Rsel = Some T' ->
+    exists T1', tele_view T' = Some (B0, T1').
+Proof.
+  intros * HH Hq Hm0 HR0m HT0 Hv Hsel HT'.
+  pose proof (presup_modexp_eq_ctx HH) as HwΓ.
+  pose proof (ctx_wf_gctx _ _ _ HwΓ) as Hg.
+  apply (mdenote_mem_no_frame _ _ _ _ _ Hg Hq Hsel); intros R0' R0m' Γy E rd R Hm0' HR0m' He Hed Hrd.
+  rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm0' _ Hm0), HR0m in HR0m'; injection HR0m' as <-.
+  pose proof (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ HH Hm0) HR0m) as Hok.
+  pose proof (mdesc_mod_scoped _ _ _ (wf_mdenote_scoped _ _ _ _ _ _ HH Hm0) HR0m) as Hs0.
+  pose proof (mdesc_mod_is_mod _ _ HR0m) as HisR0m.
+  destruct R0m as [| Δ Φw Φx | Θ p T Φ Ns |]; cbn in HisR0m; try contradiction.
+  - (** An open module: the selection is abstracted over its parameters *)
+    cbn in HT0; injection HT0 as <-.
+    cbn in He; destruct (gm_prefix_upto Φx y) as [[| Φ' z E0 | ] |]; try discriminate.
+    destruct E0 as [[|] ? ? ? [] | | | |]; try discriminate; injection He as <- <- <-;
+      cbn [mdesc_read] in Hrd; destruct (gm_fill Φ'); cbn [option_map] in Hrd; try discriminate; injection Hrd as <-;
+      destruct (mdesc_mod_tele_up_inv _ _ _ HT') as (T0' & ->); exact (tele_view_app_r _ _ _ _ Hv).
+  - pose proof (mdesc_entry_closed _ _ _ _ _ _ _ _ _ (proj1 (proj2 Hs0)) He) as (-> & HsE & ->).
+    cbn [mdesc_read] in Hrd; destruct (mdesc_ats_read R Ns) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [| discriminate ].
+    injection Hrd as <-.
+    inversion Hok; subst.
+    match goal with H : all_assumptions Θ |- _ => rename H into HΘa end.
+    match goal with H : all_assumptions T |- _ => rename H into HTa end.
+    destruct Θ as [| e Θr _] using rev_ind.
+    + (** No outside parameter: the stored entry extends the stored
+          telescope *)
+      destruct (closed_tele_split _ _ _ _ _ _ _ _ HT0 Hv eq_refl) as (Hlt & ->).
+      rewrite mdesc_up_nil in HT'; unfold mdesc_mod_tele in HT'; rewrite mdesc_mod_named in HT'.
+      match goal with H : ⊢ᵍ ?Θ0 ⍮ ?Ξ0, Hl : loc ?Θ0 ?Ξ0 p T Φ, Hsub : gc_sub ?Θ0 ?Ξ0 _ _ |- _ =>
+        rename H into Hg0; rename Hl into Hloc; rename Hsub into Hgs end.
+      pose proof (loc_coherent _ _ Hg0 _ _ _ Hloc) as Hco.
+      destruct Hs0 as (_ & [_ HbΦ] & _).
+      pose proof He as He0; cbn in He0.
+      destruct (gm_prefix_upto Φ y) as [[| Φ0 z E0 | ] |] eqn:Hp; try discriminate.
+      injection He0 as <-.
+      destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & Heq & Hent); injection Heq as <- -> <-.
+      pose proof (gm_coherent_prefix _ _ _ _ _ Hco Hp) as HcoE.
+      cbn [mdesc_entry_path] in Hed.
+      set (k := List.length T - List.length Ns) in *.
+      (** The stored telescope split at the arguments *)
+      assert (HTs : T = List.firstn k T ++ List.skipn k T) by (symmetry; apply firstn_skipn).
+      assert (Hlk : List.length (List.skipn k T) = List.length Ns) by (rewrite length_skipn; unfold k; lia).
+      assert (Hak : all_assumptions (List.skipn k T))
+        by (pose proof HTa as Ha; rewrite HTs in Ha; unfold all_assumptions in Ha; apply Forall_app in Ha as [_ Ha]; exact Ha).
+      (** A module part abstracted over the stored telescope extended,
+          given the arguments, ends in the rest instantiated *)
+      assert (Hup : forall Δ0 R' Rx, mdesc_is_mod R' -> mdesc_ats (mdesc_up (Δ0 ++ T) R') Ns = Some Rx ->
+                 mdesc_tele Rx = Some T' -> exists Z, T' = Z ++ tele_sub (List.firstn k T) (sb_of_list Id Ns)).
+      { intros * HR' Hx HTx.
+        rewrite HTs, app_assoc, (mdesc_ats_up_prefix _ _ _ _ Hak Hlk) in Hx; injection Hx as <-.
+        destruct (mdesc_tele_up_inv _ _ _ (mdesc_is_mod_sub _ _ HR') HTx) as (T0' & ->).
+        rewrite tele_sub_app, app_assoc; eexists; reflexivity. }
+      (** A closed module over the stored telescope extended, given the
+          arguments *)
+      assert (Hcl : forall pq Δ Φq, mdesc_tele (mdesc_closed nil pq (Δ ++ T) Φq Ns) = Some T' ->
+                 exists Z, T' = Z ++ tele_sub (List.firstn k T) (sb_of_list Id Ns)).
+      { intros * HTx; destruct (closed_ext_tele pq Δ T Φq Ns k eq_refl Hlt) as (Z & HZ).
+        rewrite HZ in HTx; injection HTx as <-; eauto. }
+      assert (Hext : exists Z, T' = Z ++ tele_sub (List.firstn k T) (sb_of_list Id Ns)).
+      { destruct E0 as [b pv κ A M | pv [Δ [sm Φy | Ea]] | pv pq k' D ΦD | pv A M U | pv pr Rr ΦR];
+          cbn [ge_read] in Hed.
+        - (** a definition has no module part *)
+          inversion Hed; subst; cbn [mdesc_ats_read] in Hats.
+          destruct (mdesc_ats_term _ _ _ _ _ Hats) as (? & ? & ->); discriminate.
+        - (** a body submodule, stored closed *)
+          pose proof (body_closed_entry_mod _ _ _ _ _ _ _ HbΦ Hent) as ->.
+          inversion Hed; subst.
+          match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+          match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
+          cbn [mdesc_ats_read] in Hats; rewrite mdesc_ats_closed_nil in Hats; injection Hats as <-.
+          cbn [mdesc_mod] in HT'; exact (Hcl _ _ _ HT').
+        - (** an alias, over the stored telescope extended *)
+          cbn [ge_coherent] in HcoE; destruct HcoE as (Δ0 & -> & _).
+          inversion Hed; subst.
+          match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+          match goal with Hmd : mdesc_mod ?RE = Some ?R' |- _ => pose proof (mdesc_mod_is_mod _ _ Hmd) as HR' end.
+          rewrite (mdesc_ats_read_mod _ _ (mdesc_is_mod_up _ _ HR')) in Hats.
+          assert (HR1 : mdesc_is_mod R1) by (eapply mdesc_ats_is_mod; [ apply mdesc_is_mod_up; exact HR' | exact Hats ]).
+          rewrite (mdesc_is_mod_mod _ HR1) in HT'.
+          exact (Hup _ _ _ HR' Hats HT').
+        - (** a type former of a group: its module, filed below *)
+          cbn [ge_coherent] in HcoE; destruct HcoE as [(Δ0 & HuD & _) _].
+          inversion Hed; subst.
+          pose proof (gc_entry_selfpath _ _ Hg0 _ _ _ _ _ _ (proj2 (loc_entry _ _ Hg0 _ _ _ Hloc _ _) Hent)) as Hsp.
+          match goal with Hpm : ind_mpath _ _ = Some ?pm, Hlm : gc_loc _ _ ?pm = Some _ |- _ =>
+            rewrite (ind_selfpath_path _ _ _ _ Hsp) in Hpm; injection Hpm as <-;
+            pose proof (gc_sub_body_eq _ _ _ _ _ _ _ Hgs (loc_child_ind _ _ Hg0 _ _ _ _ _ _ _ _ _ Hloc Hent)) as Hb';
+            unfold gc_loc in Hlm; rewrite (gc_body_not_frame _ _ _ _ Hb'), Hb' in Hlm; injection Hlm as <- <- end.
+          unfold ind_former_desc in Hats; cbn [mdesc_ats_read] in Hats.
+          destruct (mdesc_term_part_ats _ Ns) as [[? ? [?|] | | |] |]; try discriminate.
+          rewrite mdesc_ats_closed_nil in Hats; injection Hats as <-.
+          cbn [mdesc_mod] in HT'; rewrite HuD in HT'; exact (Hcl _ _ _ HT').
+        - (** a definition with a module part: its module part, an alias *)
+          cbn [ge_coherent] in HcoE; destruct HcoE as [_ (Δ0 & Ea & -> & _)].
+          inversion Hed; subst.
+          match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+          match goal with Hmd : mdesc_mod ?RE = Some ?R' |- _ => pose proof (mdesc_mod_is_mod _ _ Hmd) as HR' end.
+          cbn [mdesc_ats_read] in Hats.
+          destruct (mdesc_term_part_ats _ Ns) as [[? ? [?|] | | |] |]; try discriminate.
+          destruct (mdesc_ats (mdesc_up (Δ0 ++ T) _) Ns) as [Rx |] eqn:Hx; [ injection Hats as <- | discriminate ].
+          cbn [mdesc_mod] in HT'.
+          assert (HRx : mdesc_is_mod Rx) by (eapply mdesc_ats_is_mod; [ apply mdesc_is_mod_up; exact HR' | exact Hx ]).
+          rewrite (mdesc_is_mod_mod _ HRx) in HT'.
+          exact (Hup _ _ _ HR' Hx HT').
+        - (** a record type: its module, filed below *)
+          cbn [ge_coherent] in HcoE; destruct HcoE as [(Δ0 & HpR & HΔ0) _].
+          inversion Hed; subst.
+          match goal with Hlm : gc_loc _ _ (qname_in p y) = Some _ |- _ =>
+            pose proof (gc_sub_body_eq _ _ _ _ _ _ _ Hgs (loc_child_record _ _ Hg0 _ _ _ _ _ _ _ _ Hloc Hent)) as Hb';
+            unfold gc_loc in Hlm; rewrite (gc_body_not_frame _ _ _ _ Hb'), Hb' in Hlm; injection Hlm as <- <- end.
+          unfold record_former_desc in Hats; cbn [mdesc_ats_read] in Hats.
+          destruct (mdesc_term_part_ats _ Ns) as [[? ? [?|] | | |] |]; try discriminate.
+          rewrite mdesc_ats_closed_nil in Hats; injection Hats as <-.
+          cbn [mdesc_mod] in HT'.
+          destruct (record_mod_tele_split pr Rr _ _ HpR HΔ0) as (Hrt & _); rewrite Hrt in HT'.
+          exact (Hcl _ _ _ HT'). }
+      destruct Hext as (Z & ->).
+      exact (tele_view_app_r _ _ _ _ Hv).
+    + (** The outermost outside parameter *)
+      unfold all_assumptions in HΘa; apply Forall_app in HΘa as [_ He1]; apply Forall_cons_iff in He1 as [(κ & B & ->) _].
+      destruct (mdesc_mod_tele_up_inv _ _ _ HT') as (T0' & ->).
+      cbn [mdesc_tele] in HT0.
+      destruct (Nat.leb (List.length Ns) (List.length T)); [ injection HT0 as <- | discriminate ].
+      rewrite app_assoc, tele_view_last in Hv; injection Hv as <- _.
+      rewrite app_assoc, tele_view_last; eexists; reflexivity.
+Qed.
+
 (** A typed module expression whose telescope has an outermost parameter
     has one at every typed substitution. *)
 Lemma tele_view_under_sub : forall Γ X,
