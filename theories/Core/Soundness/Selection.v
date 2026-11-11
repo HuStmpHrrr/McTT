@@ -936,6 +936,84 @@ Proof.
     destruct (record_mod_tele_split pr Rr _ _ HpR HΔ0) as (-> & _); eauto.
 Qed.
 
+(** An alias submodule selected from a stored module at all its
+    arguments, as a module: the module part of the alias's target,
+    abstracted over the alias's own parameters, the stored telescope
+    instantiated by the arguments ([mdesc_ats_up_prefix]). *)
+Lemma global_sel_alias_desc : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H y R0 p T Φ Ns1 Rsel Rm Δa E,
+    names_no_frame H -> mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_closed nil p T Φ Ns1) ->
+    gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length Ns1 = List.length T ->
+    mdenote gc_deps gc_stack Γ (me_mem H y) Rsel -> mdesc_mod Rsel = Some Rm ->
+    gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias (gu_mk Δa (md_alias E))) ->
+    exists Δ0 RE RmE, Δa = Δ0 ++ T /\ mdenote gc_deps gc_stack (Δa ++ nil ++ Γ) E RE /\ mdesc_mod RE = Some RmE /\
+      Rm = mdesc_up (tele_sub Δ0 (sb_of_list Id Ns1)) (mdesc_sub RmE (sb_qn (List.length Δ0) (sb_of_list Id Ns1))).
+Proof.
+  intros Hgw * Hq Hm0 HR0m Hl Hlen Hsel HRm Hmod'.
+  pose proof (wf_gstack_closed _ _ Hgw) as Hc.
+  apply (mdenote_mem_no_frame _ _ _ _ _ Hgw Hq Hsel); intros R0' R0m' Γy E' rd R Hm0' HR0m' He Hed Hrd.
+  rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ Hm0' _ Hm0), HR0m in HR0m'; injection HR0m' as <-.
+  pose proof (gc_loc_closed _ _ _ _ _ Hc Hl) as HU.
+  pose proof (gc_loc_loc _ _ _ _ _ Hl) as Hloc.
+  pose proof (loc_coherent _ _ Hgw _ _ _ Hloc) as Hco.
+  pose proof (mdesc_entry_closed _ _ _ _ _ _ _ _ _ HU He) as (-> & _ & ->).
+  pose proof He as He0; cbn in He0.
+  destruct (gm_prefix_upto Φ y) as [[| Φ0 z E0 | ] |] eqn:Hp; try discriminate.
+  injection He0 as <-.
+  destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & Heq & Hent); injection Heq as <- -> <-.
+  pose proof (gm_coherent_prefix _ _ _ _ _ Hco Hp) as HcoE.
+  destruct (gm_entry_head _ _ _ Hent) as (z & ip & [= <- <-] & Hin).
+  destruct (loc_read _ _ Hgw _ _ _ Hloc _ Hin nil) as (_ & _ & Hmod & _).
+  rewrite <- qname_in_app in Hmod; rewrite Hmod' in Hmod.
+  cbn [mdesc_entry_path] in Hed.
+  cbn [mdesc_read] in Hrd; destruct (mdesc_ats_read R Ns1) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [| discriminate ].
+  injection Hrd as <-.
+  rewrite mdesc_up_nil, mdesc_mod_named in HRm.
+  destruct HU as [_ HbΦ].
+  (** The stored body's arguments split nothing off the stored telescope *)
+  assert (HupT : forall Δ0 R', mdesc_is_mod R' ->
+            mdesc_ats (mdesc_up (Δ0 ++ T) R') Ns1 =
+              Some (mdesc_up (tele_sub Δ0 (sb_of_list Id Ns1)) (mdesc_sub R' (sb_qn (List.length Δ0) (sb_of_list Id Ns1))))).
+  { intros * _; apply mdesc_ats_up_prefix; [ exact (gc_loc_tele_all_assumptions _ _ Hgw _ _ _ Hl) | lia ]. }
+  destruct E0 as [b pv κ A M | pv [Δ [sm Φy | Ea]] | pv pq k' D ΦD | pv A M U | pv pr Rr ΦR]; cbn [ge_read] in Hed.
+  - (** a definition has no module part *)
+    exfalso; inversion Hed; subst; cbn [mdesc_ats_read] in Hats.
+    destruct (mdesc_ats_term _ _ _ _ _ Hats) as (? & ? & ->); discriminate.
+  - (** a body submodule is no alias *)
+    exfalso; destruct (loc_child_mod _ _ Hgw _ _ _ Hloc _ _ _ _ _ Hent) as [_ Hb]; rewrite Hb in Hmod'; discriminate.
+  - (** an alias *)
+    rewrite (gm_entry_alias_submodule _ T _ _ _ _ _ Hent) in Hmod; injection Hmod as -> ->.
+    cbn [ge_coherent] in HcoE; destruct HcoE as (Δ0 & -> & _).
+    inversion Hed; subst.
+    match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+    match goal with HmE : mdenote _ _ _ ?E1 ?RE, Hmd : mdesc_mod ?RE = Some ?RmE |- _ =>
+      pose proof (mdesc_mod_is_mod _ _ Hmd) as HRmE;
+      rewrite (mdesc_ats_read_mod _ _ (mdesc_is_mod_up _ _ HRmE)), (HupT _ _ HRmE) in Hats; injection Hats as <-;
+      rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ (mdesc_is_mod_sub _ _ HRmE))) in HRm; injection HRm as <-;
+      exists Δ0, RE, RmE; repeat split; assumption end.
+  - (** a type former's module is no alias *)
+    exfalso; pose proof (loc_child_ind _ _ Hgw _ _ _ _ _ _ _ _ _ Hloc Hent) as Hb.
+    assert (Hl' : gc_loc gc_deps gc_stack (qname_in p y) = Some (ind_uparams D, ΦD))
+      by (unfold gc_loc; rewrite (gc_body_not_frame _ _ _ _ Hb), Hb; reflexivity).
+    exact (gc_loc_not_alias _ _ _ _ _ Hl' Hmod').
+  - (** a definition with a module part: its module part, an alias *)
+    cbn [ge_coherent] in HcoE; destruct HcoE as [_ (Δ0 & Ea & -> & _)].
+    rewrite (gm_entry_def_mod_submodule _ T _ _ _ _ _ _ _ Hent) in Hmod; injection Hmod as -> ->.
+    inversion Hed; subst.
+    match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+    match goal with HmE : mdenote _ _ _ ?E1 ?RE, Hmd : mdesc_mod ?RE = Some ?RmE |- _ =>
+      pose proof (mdesc_mod_is_mod _ _ Hmd) as HRmE;
+      cbn [mdesc_ats_read] in Hats; rewrite (HupT _ _ HRmE) in Hats;
+      destruct (mdesc_term_part_ats _ Ns1) as [[? ? [?|] | | |] |]; try discriminate; injection Hats as <-;
+      cbn [mdesc_mod] in HRm;
+      rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ (mdesc_is_mod_sub _ _ HRmE))) in HRm; injection HRm as <-;
+      exists Δ0, RE, RmE; repeat split; assumption end.
+  - (** a record type's module is no alias *)
+    exfalso; pose proof (loc_child_record _ _ Hgw _ _ _ _ _ _ _ _ Hloc Hent) as Hb.
+    assert (Hl' : gc_loc gc_deps gc_stack (qname_in p y) = Some (record_mod_tele pr Rr, ΦR))
+      by (unfold gc_loc; rewrite (gc_body_not_frame _ _ _ _ Hb), Hb; reflexivity).
+    exact (gc_loc_not_alias _ _ _ _ _ Hl' Hmod').
+Qed.
+
 (** Arguments glued against a telescope are glued against it extended
     further out. *)
 Lemma glu_tele_args_app_r : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
