@@ -270,6 +270,88 @@ Proof.
   all: try (do 3 eexists; reflexivity).
 Qed.
 
+(** A term over a weakened context, its top variable put back, then given
+    an extended substitution, is the term at that substitution: the
+    composite agrees with it pointwise. *)
+Lemma exp_sub_shift_var0_extend : forall X τ N, X[Wk,,#0][τ,,N] = X[τ,,N].
+Proof. intros; rewrite exp_sub_sub; apply exp_sub_sb_eq; intros [| n]; reflexivity. Qed.
+
+(** The same, the term lifted over the weakening first. *)
+Lemma exp_sub_q_shift_var0_extend : forall X τ N, X[q Wk][Id,,#0][τ,,N] = X[τ,,N].
+Proof. intros; rewrite exp_sub_q_extend; apply exp_sub_shift_var0_extend. Qed.
+
+(** A module expression weakened, then given an extended substitution, is
+    the module expression at the substitution. *)
+Lemma modexp_sub_shift_extend : forall H τ N, H[Wk]ᵐ[τ,,N]ᵐ = H[τ]ᵐ.
+Proof. intros; rewrite modexp_sub_sub; apply modexp_sub_sb_eq; intros n; reflexivity. Qed.
+
+(** A codomain lifted over the weakening past its domain, then given the
+    top variable, is equal to itself ([wf_sub_eq_var_zero]): the two
+    substitutions differ only on module variables, which a typed term does
+    not read at the top. *)
+Lemma codomain_var0_eq : forall Γ κ A Srt C S, Γ ⊢ A : Srt -> sort_kind Srt κ -> type_sort S ->
+    Γ ▹{κ} A ⊢ C : S -> Γ ▹{κ} A ⊢ C[q Wk][Id,,#0] ≈ C : S.
+Proof.
+  intros * HA HS HSt HC.
+  assert (E : C[q Wk] = C[wk_q wk_shift]ʷ) by (rewrite <- exp_sub_of_wk_q_extend; apply exp_sub_sb_eq; intros [| n]; reflexivity).
+  rewrite E.
+  assert (HΓA : ⊢ Γ ▹{κ} A) by mauto 3.
+  assert (Hw : Γ ▹{κ} A ⊢ʷ wk_shift : Γ) by mauto 2.
+  assert (HC' : Γ ▹{κ} A ▹{κ} A[wk_shift]ʷ ⊢ C[wk_q wk_shift]ʷ : S)
+    by (eapply wk_preserves_sort; [ exact HC | exact HSt | eapply wf_wk_q'; [ exact Hw | exact HA | exact HS ] ]).
+  rewrite <- (exp_wk_q_shift_single C) at 2.
+  eapply sub_eq_preserves_sort; [ exact HC' | exact HSt | eapply wf_sub_eq_var_zero; eassumption ].
+Qed.
+
+(** Related [Π]s into an evaluated kind: their domains are related, and so
+    are their codomains at related arguments. *)
+Lemma per_univ_pi_parts : forall (j : universe_index) R κd κc a ρ B a' ρ' B', evaluated_kind κc ->
+    DF d_pi κd κc a ρ B ≈ d_pi κd κc a' ρ' B' ∈ per_univ_elem j ↘ R ->
+    exists in_rel, DF a ≈ a' ∈ per_univ_elem j ↘ in_rel /\
+      (forall c c', Dom c ≈ c' ∈ in_rel -> exists b b', ⟦ B ⟧ ρ ↦ c ⦂ entry_type_value a ↘ b /\
+         ⟦ B' ⟧ ρ' ↦ c' ⦂ entry_type_value a' ↘ b' /\ Dom b ≈ b' ∈ per_univ j).
+Proof.
+  intros * Hk HR.
+  invert_per_univ_elem HR.
+  exists in_rel; split; [ exact equiv_a_a' |].
+  intros c c' Hc; destruct (H0 _ _ Hc) as [b b' Eb Eb' Hbb'].
+  exists b, b'; split; [ exact Eb | split; [ exact Eb' | eexists; exact Hbb' ] ].
+Qed.
+
+(** The domain of a [Π] into an evaluated kind is of the [Π]'s domain
+    kind, the two kinds those of a [Π]. *)
+Lemma per_univ_pi_kinds : forall (j : universe_index) R κd κc a ρ B a2, evaluated_kind κc ->
+    DF d_pi κd κc a ρ B ≈ a2 ∈ per_univ_elem j ↘ R -> domain_kind a = κd /\ pi_kinds κd κc.
+Proof.
+  intros * Hk HR.
+  invert_per_univ_elem HR; split; first [ reflexivity | assumption ].
+Qed.
+
+(** Related values lacking a parameter: their next parameters are related,
+    and so are their values at related arguments, the left one existing. *)
+Lemma per_dmod_fun_parts : forall h h1 a a1, per_dmod h h1 -> next_param h a -> next_param h1 a1 ->
+    exists (i : universe_index) R, DF a ≈ a1 ∈ per_univ_elem i ↘ R /\
+      (forall c c', Dom c ≈ c' ∈ R -> exists hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc /\
+         forall hc', $ᵐ| h1 & c' | gc_deps ⍮ gc_stack ↘ hc' -> per_dmod hc hc').
+Proof.
+  intros * Hp Hn Hn1; inversion Hp; subst.
+  - (** A saturated global value lacks no parameter *)
+    exfalso; inversion Hn; subst.
+    match goal with Hl : gc_loc _ _ p = Some (T, _), Hl' : gc_loc _ _ p = Some _ |- _ =>
+      rewrite Hl in Hl'; injection Hl' as <- <- end.
+    match goal with Ht : List.nth_error _ _ = Some _ |- _ =>
+      rewrite (proj2 (List.nth_error_None _ _)) in Ht by (rewrite List.length_rev; lia); discriminate end.
+  - (** Nor does a saturated body *)
+    exfalso; inversion Hn; subst.
+    match goal with Hl : _ ++ _ :: nil = nil |- _ => destruct Δ; discriminate end.
+  - match goal with H0 : next_param h ?a0, H1 : next_param h1 ?a0' |- _ =>
+      pose proof (next_param_functional _ _ Hn _ H0) as <-; pose proof (next_param_functional _ _ Hn1 _ H1) as <- end.
+    exists i, R; split; [ assumption |].
+    intros c c' Hc.
+    match goal with Hex : forall c c', R c c' -> exists hc, _, Hrel : forall c c' hc hc', R c c' -> _ -> _ -> per_dmod hc hc' |- _ =>
+      destruct (Hex _ _ Hc) as [hc Ehc]; exists hc; split; [ exact Ehc | intros hc' Ehc'; exact (Hrel _ _ _ _ Hc Ehc Ehc') ] end.
+Qed.
+
 (** [Π]s with equal domains and codomains equal over the right domain are
     equal ([wf_exp_eq_pi_cong_at_max]): the codomains' equation moves to
     the left domain ([ctx_sub_extend_eq]). *)
@@ -450,6 +532,36 @@ Section Members.
     destruct (proj2 (@App.valid_unit_app_all GCm Hg Θ Ξ Hg (gc_sub_refl _ _) (valid_gctx_embedding_filed _ _ _ _ Hve))
                 _ _ HvH _ _ _ _ _ i #0 Hmw HTw Hvw HS HBw Hrp H0t (completeness_fundamental_exp _ _ _ H0t)) as [Hnp _].
     exact (Hnp _ HRB _ Hρ').
+  Qed.
+
+  (** The value of a member's type at an environment, up to [per_univ], is
+      of the member's kind: its type is of the sort of its kind
+      ([desc_ok_ty_at]). *)
+  Lemma mem_type_value_kind : forall Γ H x R A RΓ ρ a2' a2 (j : universe_index),
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
+      EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> ⟦ A ⟧ ρ ↘ a2' -> Dom a2' ≈ a2 ∈ per_univ j ->
+      domain_kind a2 = mdesc_kind R.
+  Proof.
+    intros * HH Hm HA HRΓ Hρ Ea [Ra HRa].
+    pose proof (mem_desc_ok _ _ _ _ _ _ _ (gctx_valid_syn _ _ Hg) HH Hm) as Hok.
+    destruct (desc_ok_ty_at _ _ _ _ _ Hok HA) as [i HAi].
+    pose proof (FunctionCases.rel_type_kind_of_sort_kind (sort_kind_abs_kind_sort _ _) (completeness_fundamental_exp _ _ _ HAi)) as HK.
+    destruct (HK _ HRΓ _ _ Hρ) as (a & Ea0 & Hka).
+    pose proof (functional_eval_exp _ _ _ _ Ea0 Ea) as ->.
+    rewrite <- (per_univ_elem_kind _ _ _ _ HRa); exact Hka.
+  Qed.
+
+  (** The value of a type of a sort at an environment, up to [per_univ],
+      is no [LevelSort] ([rel_type_under_ctx_not_level_sort]). *)
+  Lemma type_value_not_level_sort : forall Γ A Srt RΓ ρ a2' a2 (j : universe_index),
+      Γ ⊢ A : Srt -> type_sort Srt ->
+      EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> ⟦ A ⟧ ρ ↘ a2' -> Dom a2' ≈ a2 ∈ per_univ j -> not_level_sort a2.
+  Proof.
+    intros * HA HS HRΓ Hρ Ea [Ra HRa].
+    destruct (rel_type_of_sort HS (completeness_fundamental_exp _ _ _ HA)) as [i Hi].
+    destruct (rel_type_under_ctx_not_level_sort _ _ _ _ Hi _ HRΓ _ _ Hρ) as (a & Ea0 & Hna).
+    pose proof (functional_eval_exp _ _ _ _ Ea0 Ea) as ->.
+    exact (proj1 (per_univ_elem_not_level_sort_iff _ _ _ _ HRa) Hna).
   Qed.
 
   (** The outermost parameter of what a well-formed module expression
@@ -799,6 +911,86 @@ Section MembersFromSource.
     rewrite <- HkR0 in Hk.
     exact (glu_global_member_value_at _ _ Hg _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
              Hgl Hlen HR0 HtR0 Hk HGa HAs HA0 HH1 Hq1 HmH HRH Hm Ht Hσ1 Hargs Hsel Hrel Hnl Hga HTin).
+  Qed.
+
+  (** What [glu_mem_rec] proves of a module value [h] glued as [H[σ]]
+      over [Δ] ([glu_dmod Δ σ Γ H h]): a term member [x] of [H] typed at
+      the source and the target, at an environment [ρ] of [Γ] where [H]'s
+      value is related to [h], is glued at every type [Tin] glued at a
+      value [a2] related to its type's there, as [h]'s member, its type
+      equal to [Tin]. *)
+  #[local] Definition glu_mem_goal (Δ : ctx) (σ : sub) (Γ : ctx) (H : modexp) (h : dmod) : Prop :=
+    forall x Rs A Srt RΓ ρ h' a2' a2 (j : universe_index) m (k : nat) P2 El2 Tin,
+      (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ -> names_no_frame H[ζ]ᵐ) ->
+      (forall Γ1 ζ, Θs ⍮ Ξs ⍮ Γ1 ⊢ˢ ζ : Γ -> @names_no_frame (gc_mk Θs Ξs) H[ζ]ᵐ) ->
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θs Ξs Γ (me_mem H x) Rs -> mdesc_type Rs = Some A ->
+      Θs ⍮ Ξs ⍮ Γ ⊢ a_mem H x : A ->
+      type_sort Srt -> Γ ⊢ A : Srt -> Γ ⊢ a_mem H x : A ->
+      EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h' -> per_dmod h h' ->
+      ⟦ A ⟧ ρ ↘ a2' -> Dom a2' ≈ a2 ∈ per_univ j -> evaluated_kind (domain_kind a2) ->
+      h ·ₜ x Θ ⍮ Ξ ↘ m ->
+      DG a2 ∈ glu_univ_elem k ↘ P2 ↘ El2 -> Δ ⊢ Tin ® P2 ->
+      (exists l : nat, Δ ⊢ A[σ] ≈ Tin : abs_kind_sort (domain_kind a2) Typeω@l) /\ Δ ⊢ (a_mem H x)[σ] : Tin ® m ∈ El2.
+
+  (** A saturated global module value: its arguments read off the module
+      part through the identity factorization, its member glued from the
+      source's reading ([glu_global_member_src]), whose module part is the
+      same stored module at the same arguments ([mdesc_grows_closed]). *)
+  Lemma glu_mem_global_case : forall Δ σ Γ H p T Φ args,
+      Δ ⊢ˢ σ : Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> gc_loc Θ Ξ p = Some (T, Φ) -> List.length args = List.length T ->
+      (forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through Δ σ Γ Δ' φ Γ1 ζ σ1 ->
+         mdenote Θ Ξ Γ1 H[ζ]ᵐ RH -> exists Ns1, mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1)) ->
+      (forall Δ' φ Γ1 ζ σ1 RH Ns1, glu_sub_through Δ σ Γ Δ' φ Γ1 ζ σ1 ->
+         mdenote Θ Ξ Γ1 H[ζ]ᵐ RH -> mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1) ->
+         glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
+      glu_mem_goal Δ σ Γ H (dm_global p args).
+  Proof.
+    intros * Hσ HH Hgl Hlen Hd Ha; unfold glu_mem_goal.
+    intros x Rs A Srt RΓ ρ h' a2' a2 j m k P2 El2 Tin Hnf Hnfs HHs HmRs HtRs HxAs HS HAt HxA HRΓ Hρ Eh' Hhh' Ea2' Ha2 Hev Hsel Hga2 HTin.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
+    (** The member's description at the target, grown *)
+    destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmRs) as (R & HmR & Hgr).
+    pose proof (mdesc_grows_ty _ _ _ _ _ _ _ Hgr HtRs) as HtR.
+    assert (HkR : mdesc_kind R = mdesc_kind Rs)
+      by (destruct Hgr; [ reflexivity | cbn in HtRs; discriminate | reflexivity ]).
+    (** The module's description at both, the same stored module at the
+        same arguments *)
+    destruct (me_denotes _ _ _ _ _ HHs) as (RHs & Rms & HmHs & HRms).
+    destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmHs) as (RH & HmH & HgrH).
+    pose proof (glu_sub_through_id _ _ _ Hσ) as Hst.
+    assert (HmH' : mdenote Θ Ξ Γ H[Id]ᵐ RH) by (rewrite modexp_sub_id; exact HmH).
+    destruct (Hd _ _ _ _ _ _ Hst HmH') as [Ns1 HNs1].
+    pose proof (Ha _ _ _ _ _ _ _ Hst HmH' HNs1) as Hargs.
+    destruct (mdesc_grows_mod _ _ _ _ _ _ _ HgrH HRms) as (R2m & HR2m & Hgm).
+    rewrite HNs1 in HR2m; injection HR2m as <-.
+    inversion Hgm as [? Hc | ? ? Φ1 ? ? ? _ _ | ]; subst; [ cbn in Hc; discriminate |].
+    (** Naming no open frame, at both *)
+    pose proof (Hnfs _ _ (wf_sub_id _ _ _ (presup_modexp_eq_ctx HHs))) as Hnfs0; rewrite modexp_sub_id in Hnfs0.
+    pose proof (Hnf _ _ (wf_sub_id _ _ _ (presup_modexp_eq_ctx HH))) as Hnf0; rewrite modexp_sub_id in Hnf0.
+    (** The completeness facts of the member *)
+    pose proof (mem_type_value_kind _ _ Hg _ _ _ _ _ _ _ _ _ _ HH HmR HtR HRΓ Hρ Ea2' Ha2) as Hka.
+    assert (Hk : evaluated_kind (mdesc_kind Rs)) by (rewrite <- HkR, <- Hka; exact Hev).
+    destruct (mem_value_facts _ _ Hg _ _ _ _ _ _ _ _ _ _ _ _ _ HH HmR HtR HRΓ Hρ Eh' Hhh' Ea2' Ha2 Hev Hsel) as (_ & Hty & _).
+    pose proof (type_value_not_level_sort _ _ _ _ _ _ _ _ _ _ HAt HS HRΓ Hρ Ea2' Ha2) as Hnl.
+    exact (glu_global_member_src _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+             Hnfs0 HmHs HRms HmRs HtRs Hk Hgl Hlen HH Hnf0 HmH HNs1 HmR HtR Hσ Hargs Hsel Hty Hnl Hga2 HTin).
+  Qed.
+
+  (** A saturated body value: its member is glued at the entry's type
+      ([glu_mem_body_value_at]), with the completeness facts at the value
+      ([mem_value_facts]). *)
+  Lemma glu_mem_body_case : forall Δ σ Γ H sm Φ ρh,
+      glu_dmod Δ σ Γ H (dm_local nil (md_body sm Φ) ρh) -> glu_mem_goal Δ σ Γ H (dm_local nil (md_body sm Φ) ρh).
+  Proof.
+    intros * Hgd; unfold glu_mem_goal.
+    intros x Rs A Srt RΓ ρ h' a2' a2 j m k P2 El2 Tin Hnf Hnfs HHs HmRs HtRs HxAs HS HAt HxA HRΓ Hρ Eh' Hhh' Ea2' Ha2 Hev Hsel Hga2 HTin.
+    assert (HH : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H) by (inversion Hgd; assumption).
+    pose proof (gctx_embedding_resolution _ _ _ _ (glu_gctx_embedding_embedding _ _ _ _ Hμ)) as Hsub.
+    destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmRs) as (R & HmR & Hgr).
+    pose proof (mdesc_grows_ty _ _ _ _ _ _ _ Hgr HtRs) as HtR.
+    destruct (mem_value_facts _ _ Hg _ _ _ _ _ _ _ _ _ _ _ _ _ HH HmR HtR HRΓ Hρ Eh' Hhh' Ea2' Ha2 Hev Hsel) as (Hhh & Hty & _).
+    exact (glu_mem_body_value_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hgd HmR HtR HS HAt Hsel Hhh Hty Hev Hga2 HTin).
   Qed.
 
 End MembersFromSource.
