@@ -1497,6 +1497,15 @@ Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
     gc_loc gc_deps gc_stack p = Some (T, Φ) ->
     List.length args = List.length T ->
     glu_tele_args Δ (List.rev T) nil nil Ns args ->
+    (** Each term member, at a sort of an evaluated kind, glued at its
+        lookup type through every factorization, at a member type of the
+        value *)
+    (forall x m, dm_global p args ·ₜ x gc_deps ⍮ gc_stack ↘ m ->
+       forall Δ' φ Γ1 ζ σ1 R A' Srt, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 (me_mem H0[ζ]ᵐ x) R -> mdesc_type R = Some A' ->
+       evaluated_sort Srt -> Γ1 ⊢ A' : Srt ->
+       exists a (i : nat) P El, dmod_mem_type (dm_global p args) x a /\
+         glu_elem_at Δ' A'[σ1] (a_mem H0[ζ]ᵐ x)[σ1] a m i P El) ->
     glu_dmod Δ σ0 Γ0 H0 (dm_global p args)
 (** A saturated body: each term member of an evaluated kind glued at its
     type in the environment of the entries before it, and each
@@ -2231,6 +2240,11 @@ Record glu_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gsta
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
       entry_tm E = Some (A, M) ->
       @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ M A
+    (** An alias module stored at a path of the source is glued over no
+        context at the target: the closure a global alias submodule is
+        selected as ([eval_selm_global_alias]) *)
+  ; glu_gctx_embedding_alias : forall p U,
+      gc_module Θ1 Ξ1 p = Some (mr_alias U) -> @glu_unit_at (gc_mk Θ2 Ξ2) ⋅ U
   }.
 
 (** ** The Gluing Judgments

@@ -253,18 +253,6 @@ Record rel_mem_val (h k : dmod) (x : String.string) (R : relation domain) : Prop
 Definition dmod_has_mem (k : dmod) (x : String.string) (R : relation domain) : Prop :=
   forall h, per_dmod h k -> rel_mem_val h k x R.
 
-(** The type value of the term member [x] of a saturated body value: the
-    entry's type in the environment the body before it makes, as
-    [eval_sel_body] reads the member. *)
-Inductive dmod_mem_type : dmod -> String.string -> domain -> Prop :=
-(** A definition, or a definition with a module part, of a saturated body *)
-| dmod_mem_type_body : forall sm Φ ρ x Φ' E A M ρ' a,
-    gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
-    entry_tm E = Some (A, M) ->
-    ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' ->
-    ⟦ A ⟧ ρ' ↘ a ->
-    dmod_mem_type (dm_local nil (md_body sm Φ) ρ) x a.
-
 (** The member types of every value related to [k], each related to the
     type value [a]: the type part of a member of [k] at [a]. *)
 Definition dmod_mem_type_rel (k : dmod) (x : String.string) (a : domain) : Prop :=
@@ -274,21 +262,44 @@ Definition dmod_mem_type_rel (k : dmod) (x : String.string) (a : domain) : Prop 
 Lemma dmod_mem_type_rel_resp : forall k k' x a, per_dmod k' k -> dmod_mem_type_rel k x a -> dmod_mem_type_rel k' x a.
 Proof. intros * Hk Hr h b Hh Hb; exact (Hr _ _ (per_dmod_trans _ _ _ Hh Hk) Hb). Qed.
 
-(** A value related to one with a member type is a saturated body. *)
-Lemma per_dmod_mem_type_body : forall h k x b, per_dmod h k -> dmod_mem_type h x b ->
-    exists sm Φ ρ, k = dm_local nil (md_body sm Φ) ρ.
+(** A value with a member type lacks no parameter. *)
+Lemma dmod_mem_type_next_param : forall h x b a, dmod_mem_type h x b -> next_param h a -> False.
 Proof.
-  intros * Hh Hb; inversion Hb; subst; inversion Hh; subst; eauto.
-  match goal with Hn : next_param (dm_local nil (md_body _ _) _) _ |- _ => inversion Hn; subst end.
-  match goal with H : _ ++ _ :: nil = nil |- _ => destruct Δ; discriminate end.
+  intros * Hb Hn; inversion Hb; subst; inversion Hn; subst.
+  - match goal with H3 : _ = nil |- _ => apply (f_equal (@length _)) in H3; rewrite length_app in H3; cbn in H3; lia end.
+  - match goal with Hl : gc_loc _ _ p = Some (T, _), Hl' : gc_loc _ _ p = Some _, Ht : List.nth_error _ _ = Some _ |- _ =>
+      rewrite Hl in Hl'; injection Hl' as <- <-;
+      assert (Hl7 : length args < length (rev T)) by (apply nth_error_Some; rewrite Ht; discriminate) end.
+    rewrite length_rev in Hl7; lia.
 Qed.
 
-(** A value that is no saturated body has no member types to relate. *)
-Lemma dmod_mem_type_rel_not_body : forall k x a, (forall sm Φ ρ, k <> dm_local nil (md_body sm Φ) ρ) ->
-    dmod_mem_type_rel k x a.
+(** A value lacking a parameter has no member types to relate: the values
+    related to it lack one too. *)
+Lemma dmod_mem_type_rel_unsat : forall k a0 x a, next_param k a0 -> dmod_mem_type_rel k x a.
 Proof.
-  intros * Hn h b Hh Hb; exfalso.
-  destruct (per_dmod_mem_type_body _ _ _ _ Hh Hb) as (sm & Φ & ρ & ->); exact (Hn _ _ _ eq_refl).
+  intros * Hk h b Hh Hb; exfalso.
+  inversion Hh; subst.
+  - inversion Hk; subst.
+    match goal with Ht : per_tele_args _ _ _ _ _, Hl : gc_loc _ _ p = Some (T, _), Hl' : gc_loc _ _ p = Some _,
+                    Hn : List.nth_error _ _ = Some _ |- _ =>
+      pose proof (per_tele_args_len_eq _ _ _ _ _ Ht) as Hle; rewrite Hl in Hl'; injection Hl' as <- <-;
+      assert (Hl7 : length args' < length (rev T)) by (apply nth_error_Some; rewrite Hn; discriminate) end.
+    rewrite length_rev in Hl7; lia.
+  - inversion Hk; subst.
+    match goal with H0 : _ = nil |- _ => apply (f_equal (@length _)) in H0; rewrite length_app in H0; cbn in H0; lia end.
+  - eapply dmod_mem_type_next_param; eassumption.
+Qed.
+
+(** A global module lacking a parameter has no member types to relate:
+    the values related to it lack one too. *)
+Lemma dmod_mem_type_rel_global_unsat : forall p T Φ args x a, gc_loc gc_deps gc_stack p = Some (T, Φ) ->
+    List.length args < List.length T -> dmod_mem_type_rel (dm_global p args) x a.
+Proof.
+  intros * Hl Hlt h b Hh Hb; exfalso.
+  inversion Hh; subst.
+  - match goal with Hl' : gc_loc _ _ p = Some _, Ht : per_tele_args _ _ _ _ _ |- _ =>
+      pose proof (per_tele_args_len_eq _ _ _ _ _ Ht); rewrite Hl in Hl'; injection Hl' as <- <- end; lia.
+  - eapply dmod_mem_type_next_param; eassumption.
 Qed.
 
 (** The δ-reduct [M] of the member [x] of [k], at [ρ]: its value is related

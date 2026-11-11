@@ -72,11 +72,13 @@ Lemma glu_dmod_through :
 Proof.
   apply glu_dmod_mut_ind_all; [ | | | intros; exact I | intros; exact I ].
   - (** A global module *)
-    intros * Hσ HH0 HH0p Hl Hlen Hargs _ Γ1 ζ σ1 Hζ Hσ1 Heq.
-    eapply glu_dmod_global; [ exact Hσ1 | exact (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) | | exact Hl | exact Hlen | exact Hargs ].
-    rewrite modexp_sub_sub.
-    eapply wf_me_trans; [| exact HH0p ].
-    apply wf_me_sym; exact (sub_eq_preserves_modexp _ _ _ _ _ HH0 _ _ _ Heq).
+    intros * Hσ HH0 HH0p Hl Hlen Hargs _ Hmem Γ1 ζ σ1 Hζ Hσ1 Heq.
+    eapply glu_dmod_global; [ exact Hσ1 | exact (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) | | exact Hl | exact Hlen | exact Hargs |].
+    + rewrite modexp_sub_sub.
+      eapply wf_me_trans; [| exact HH0p ].
+      apply wf_me_sym; exact (sub_eq_preserves_modexp _ _ _ _ _ HH0 _ _ _ Heq).
+    + intros * Hs * Hst Hm; rewrite modexp_sub_sub in Hm |- *.
+      exact (Hmem _ _ Hs _ _ _ _ _ _ _ _ (glu_sub_through_compose Hζ Heq Hst) Hm).
   - (** A body *)
     intros * Hσ HH0 Hmem Hsub IHsub Γ1 ζ σ1 Hζ Hσ1 Heq.
     apply glu_dmod_body; [ exact Hσ1 | exact (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) | | ].
@@ -213,72 +215,6 @@ Qed.
 Lemma mod_qname_sub_lit : forall U ζ, mod_qname (me_lit U)[ζ]ᵐ = None.
 Proof. reflexivity. Qed.
 
-(** A module value glued as [H1] is glued as an equal [H0] denoting alike
-    both ways at every substitution, neither naming a stored module: its
-    members are looked up alike and equal ([glu_elem_at_same_denote]),
-    and so are its submodules' and its applications'. *)
-Lemma glu_dmod_same_denote :
-  (forall Δ σ0 Γ0 H1 h, glu_dmod Δ σ0 Γ0 H1 h ->
-     forall H0, gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H1 -> same_denote Γ0 H0 H1 -> same_denote Γ0 H1 H0 ->
-       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H0[ζ]ᵐ = None) ->
-       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H1[ζ]ᵐ = None) ->
-       glu_dmod Δ σ0 Γ0 H0 h) /\
-  (forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args -> True).
-Proof.
-  apply glu_dmod_mut_ind_all; [ | | | intros; exact I | intros; exact I ].
-  - (** A global module *)
-    intros * Hσ HH1 HH1p Hl Hlen Hargs _ H0 HH Hs01 Hs10 Hq0 Hq1.
-    eapply glu_dmod_global; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | | exact Hl | exact Hlen | exact Hargs ].
-    eapply wf_me_trans; [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH Hσ) | exact HH1p ].
-  - (** A body *)
-    intros * Hσ HH1 Hmem Hsub IHsub H0 HH Hs01 Hs10 Hq0 Hq1.
-    apply glu_dmod_body; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | | ].
-    + intros * Hp Ht Hk Hb.
-      destruct (Hmem _ _ _ _ _ _ Hp Ht Hk Hb) as (a & m & [Ea Em Hg]).
-      exists a, m; constructor; [ exact Ea | exact Em |].
-      intros * Hst Hm HA HS HAt.
-      pose proof (same_denote_mem x Hs01 Hq0 _ _ _ (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) Hm) as Hm1.
-      destruct (Hg _ _ _ _ _ _ _ _ Hst Hm1 HA HS HAt) as (i & P & El & Hgl).
-      exists i, P, El.
-      eapply glu_elem_at_same_denote;
-        [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst))
-        | exact Hm | exact Hm1 | exact HA | exact (glu_sub_through_rest _ _ _ _ _ _ _ _ Hst) | exact Hgl ].
-    + intros * Hp Hu Hb Hc.
-      pose proof (Hsub _ _ _ _ _ _ _ Hp Hu Hb Hc) as Hg1.
-      assert (HH1y : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y).
-      { apply (wf_modexp_eq_refl_left (H' := me_mem H1 y)).
-        eapply wf_me_mem_same_denote; [ exact HH | | exact (same_denote_mem y Hs10 Hq1) ].
-        destruct Hg1; assumption. }
-      eapply IHsub; [ exact Hp | exact Hu | exact Hb | exact Hc | | exact (same_denote_mem y Hs01 Hq0)
-                    | exact (same_denote_mem y Hs10 Hq1) | intros Γ2 ζ Hζ; cbn; rewrite (Hq0 _ _ Hζ); reflexivity
-                    | intros Γ2 ζ Hζ; cbn; rewrite (Hq1 _ _ Hζ); reflexivity ].
-      eapply wf_me_mem_same_denote; [ exact HH | | exact (same_denote_mem y Hs10 Hq1) ].
-      destruct Hg1; assumption.
-  - (** A value lacking a parameter *)
-    intros * Hσ HH1 Hn Hpar Hex Happ IHapp H0 HH Hs01 Hs10 Hq0 Hq1.
-    eapply glu_dmod_fun; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | exact Hn | | exact Hex | ].
-    + intros * Hst Hm; exact (Hpar _ _ _ _ _ _ _ _ _ _ Hst (Hs01 _ _ _ (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) Hm)).
-    + intros * Hst Hm HT Hv HS HB * Hu HP HN Hhc.
-      pose proof (Hs01 _ _ _ (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) Hm) as Hm1.
-      pose proof (Happ _ _ _ _ _ _ _ _ _ _ Hst Hm1 HT Hv HS HB _ _ _ _ _ _ Hu HP HN Hhc) as Hg1.
-      pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
-      pose proof (same_denote_sub Hζ Hs01) as Hs01'; pose proof (same_denote_sub Hζ Hs10) as Hs10'.
-      eapply IHapp; [ exact Hst | exact Hm1 | exact HT | exact Hv | exact HS | exact HB | exact Hu | exact HP | exact HN | exact Hhc
-                    | | exact (same_denote_app_var _ _ Hs01') | exact (same_denote_app_var _ _ Hs10')
-                    | intros; reflexivity | intros; reflexivity ].
-      (** The applications are equal: the arguments' and the parameters'
-          premises are those of [H1]'s application *)
-      assert (HHg : gc_deps ⍮ gc_stack ⍮ Γ1 ▹{domain_kind a} B ⊢ᵐ me_app H1[ζ]ᵐ[Wk]ᵐ #0 ≈ me_app H1[ζ]ᵐ[Wk]ᵐ #0)
-        by (destruct Hg1; assumption).
-      destruct (proj1 (modexp_gen _ _ _ _ _ HHg)) as [HH1w (R' & T' & B' & T1' & S' & HR' & HT' & Hv' & HB' & HS' & HN')].
-      assert (HR0 : mdenote gc_deps gc_stack (Γ1 ▹{domain_kind a} B) H0[ζ]ᵐ[Wk]ᵐ R').
-      { apply (Hs10' (Γ1 ▹{domain_kind a} B) Wk R'); [ eapply wf_sub_shift; exact (presup_modexp_eq_ctx HHg) | exact HR' ]. }
-      assert (HHw : gc_deps ⍮ gc_stack ⍮ Γ1 ▹{domain_kind a} B ⊢ᵐ H0[ζ]ᵐ[Wk]ᵐ ≈ H1[ζ]ᵐ[Wk]ᵐ).
-      { eapply sub_preserves_modexp; [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH Hζ) |].
-        eapply wf_sub_shift; exact (presup_modexp_eq_ctx HHg). }
-      eapply wf_me_app; [ exact HHw | exact HR0 | exact HT' | exact Hv' | exact HB' | exact HS' | exact HN'
-                        | apply wf_exp_eq_refl; exact HN' | exact HR' | exact HT' | exact Hv' | exact HB' | exact HS' | exact HN' ].
-Qed.
 
 (** ** The Environment of a Body, Glued *)
 
@@ -670,9 +606,16 @@ Lemma glu_dmod_same_part :
 Proof.
   apply glu_dmod_mut_ind_all; [ | | | intros; exact I | intros; exact I ].
   - (** A global module *)
-    intros * Hσ HH1 HH1p Hl Hlen Hargs _ H0 HH Hs01 Hs10 Hq0 Hq1.
-    eapply glu_dmod_global; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | | exact Hl | exact Hlen | exact Hargs ].
-    eapply wf_me_trans; [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH Hσ) | exact HH1p ].
+    intros * Hσ HH1 HH1p Hl Hlen Hargs _ Hmem H0 HH Hs01 Hs10 Hq0 Hq1.
+    eapply glu_dmod_global; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | | exact Hl | exact Hlen | exact Hargs |].
+    + eapply wf_me_trans; [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH Hσ) | exact HH1p ].
+    + intros * Hs * Hst Hm HA HS HAt.
+      pose proof (same_denote_mem_part x Hs01 Hq0 _ _ _ (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) Hm) as Hm1.
+      destruct (Hmem _ _ Hs _ _ _ _ _ _ _ _ Hst Hm1 HA HS HAt) as (a & i & P & El & Hmt & Hgl).
+      exists a, i, P, El; split; [ exact Hmt |].
+      eapply glu_elem_at_same_denote;
+        [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst))
+        | exact Hm | exact Hm1 | exact HA | exact (glu_sub_through_rest _ _ _ _ _ _ _ _ Hst) | exact Hgl ].
   - (** A body *)
     intros * Hσ HH1 Hmem Hsub IHsub H0 HH Hs01 Hs10 Hq0 Hq1.
     apply glu_dmod_body; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | | ].
@@ -1443,6 +1386,16 @@ Proof.
     pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
     assert (HWk : e :: Γ0 ⊢ˢ Wk : Γ0) by (apply wf_sub_shift; exact (wf_sub_cod _ _ _ _ _ Hσt)).
     exact (proj1 glu_dmod_through _ _ _ _ _ Hg _ _ _ HWk Hσt ltac:(apply wf_sub_eq_refl; eapply wf_sub_compose; eassumption)).
+Qed.
+
+(** The identity factorization of a typed substitution. *)
+Lemma glu_sub_through_id : forall Δ σ Γ, Δ ⊢ˢ σ : Γ -> glu_sub_through Δ σ Γ Δ wk_id Γ Id σ.
+Proof.
+  intros * Hσ.
+  constructor; [ apply kripke_id; exact (wf_sub_dom _ _ _ _ _ Hσ) | apply wf_sub_id; exact (wf_sub_cod _ _ _ _ _ Hσ) | exact Hσ |].
+  apply wf_sub_eq_of_sb_eq; [ exact (wf_sub_sb_wk Hσ (kripke_id _ (wf_sub_dom _ _ _ _ _ Hσ))) |].
+  rewrite sb_compose_id_left; intros n; unfold sb_wk; destruct (σ n); cbn;
+    [ reflexivity | rewrite exp_wk_id | rewrite modexp_wk_id | rewrite exp_wk_id, modexp_wk_id ]; reflexivity.
 Qed.
 
 (** ** The Members of a Saturated Body Value *)

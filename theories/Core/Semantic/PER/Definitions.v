@@ -1972,6 +1972,32 @@ Combined Scheme per_dmod_mut_ind_all from
 
 Hint Constructors next_param per_dmod per_tele_args per_body : mctt.
 
+(** ** The Types of Members of Module Values *)
+
+(** The type value of the term member [x] of a saturated module value. *)
+Inductive dmod_mem_type : dmod -> String.string -> domain -> Prop :=
+(** A definition, or a definition with a module part, of a saturated body:
+    the entry's type in the environment the body before it makes, as
+    [eval_sel_body] reads the member *)
+| dmod_mem_type_body : forall sm Φ ρ x Φ' E A M ρ' a,
+    gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
+    entry_tm E = Some (A, M) ->
+    ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' ->
+    ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ ρ' ↘ a ->
+    dmod_mem_type (dm_local nil (md_body sm Φ) ρ) x a
+(** A term member of a saturated global module: the type its bare path's
+    member is read at over no context, a [Π] at the member's kind over the
+    module's telescope ([mdesc_closed] at no argument), its codomain read
+    at the arguments, as the telescope's arguments are stored
+    ([env_tele]) *)
+| dmod_mem_type_global : forall p T Φ args x R κ A0 a,
+    gc_loc gc_deps gc_stack p = Some (T, Φ) ->
+    List.length args = List.length T ->
+    mdenote gc_deps gc_stack nil (me_mem (qname_mod p) x) R ->
+    mdesc_type R = Some (ctx_pi_at κ T A0) ->
+    ⟦ A0 ⟧ gc_deps ⍮ gc_stack ⍮ env_tele nil (List.rev T) args ↘ a ->
+    dmod_mem_type (dm_global p args) x a.
+
 (** Two module expressions evaluate to related module values. *)
 #[warnings="-cannot-define-projection"]
 Record rel_modexp_evals (H : modexp) (ρ : env) (H' : modexp) (ρ' : env) : Prop := mk_rel_modexp_evals

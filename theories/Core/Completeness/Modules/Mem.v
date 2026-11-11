@@ -437,7 +437,7 @@ Proof.
       intros j Rx c HRx Hc kc b Hkc Hb; destruct (Hstep _ _ _ HRx Hc _ _ Hkc Hb) as (l & Rb & HRb & Hm & _).
       exists l, Rb; split; assumption.
     + (** Lacking a parameter, the closure is no saturated body *)
-      apply dmod_mem_type_rel_not_body; intros sm0 Φ0 ρ0 Hk0; subst k; injection Hk0 as Hl _ _; destruct Δ0; discriminate.
+      exact (dmod_mem_type_rel_unsat _ _ _ _ Hnp).
     + intros M0 HM0; rewrite ctx_fn_app; cbn [ctx_fn].
       exists (λᵈ a0 ρ (ctx_fn Δ0 M0)), (d_member k (x :: nil)).
       split; [ apply eval_exp_fn; exact HXa |]; split; [ exact Hsel |].
