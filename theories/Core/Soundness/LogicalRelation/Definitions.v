@@ -2253,6 +2253,13 @@ Record glu_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gsta
   ; glu_gctx_embedding_ind_field : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_ind_decl (gc_mk Θ2 Ξ2) D
     (** Each of its records is glued at the target *)
   ; glu_gctx_embedding_record_field : forall p R, record_lookup Θ1 Ξ1 p = Some R -> @glu_record_decl (gc_mk Θ2 Ξ2) R
+    (** The type of a group member's type former, abstracted over the outer
+        part of its parameters, is glued over the inner part *)
+  ; glu_gctx_embedding_ind_former_type : forall p D k Mk Δ1 Δ2, ind_lookup Θ1 Ξ1 p = Some D -> ind_member D k = Some Mk ->
+      im_params D Mk = Δ1 ++ Δ2 -> exists i : nat, @glu_rel_exp (gc_mk Θ2 Ξ2) Δ2 (ctx_pi Δ1 (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Typeω@i)
+    (** So is a record type former's *)
+  ; glu_gctx_embedding_record_former_type : forall p R Δ1 Δ2, record_lookup Θ1 Ξ1 p = Some R ->
+      record_params R = Δ1 ++ Δ2 -> exists i : nat, @glu_rel_exp (gc_mk Θ2 Ξ2) Δ2 (ctx_pi Δ1 (record_sort R)) (Typeω@i)
     (** An axiom or an abstract definition of a stored body glues at its
         stored type *)
   ; glu_gctx_embedding_glob : forall p T Φ x Φ0 b pv r A oM Γ,

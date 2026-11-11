@@ -329,12 +329,24 @@ Definition glu_entry (_ : gdeps) (_ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (T : 
     lacks. *)
 Definition glu_mod_tele (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) : Prop := @glu_rel_ctx_types (gc_mk Θ2 Ξ2) T.
 
-Definition glu_ind_decl_entry (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop := @glu_ind_decl (gc_mk Θ2 Ξ2) D.
+(** A declaration is glued at the target ([glu_ind_decl]), and the type of
+    each member's type former, abstracted over the outer part of its
+    parameters, is glued over the inner part: the type of a type former
+    of a stored module, over the module's telescope. *)
+Definition glu_ind_decl_entry (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop :=
+  @glu_ind_decl (gc_mk Θ2 Ξ2) D /\
+  forall k Mk Δ1 Δ2, ind_member D k = Some Mk -> im_params D Mk = Δ1 ++ Δ2 -> exists i : nat,
+    @glu_rel_exp (gc_mk Θ2 Ξ2) Δ2 (ctx_pi Δ1 (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Typeω@i).
 
 (** A record declaration is glued at the target, as a group is: its
     tuples and projections move their parameters along the glued
-    parameters' telescope ([glu_record_decl]). *)
-Definition glu_record_decl_entry (Θ2 : gdeps) (Ξ2 : gstack) (R : record_decl) : Prop := @glu_record_decl (gc_mk Θ2 Ξ2) R.
+    parameters' telescope ([glu_record_decl]); and its type former's type,
+    abstracted over the outer part of its parameters, is glued over the
+    inner part. *)
+Definition glu_record_decl_entry (Θ2 : gdeps) (Ξ2 : gstack) (R : record_decl) : Prop :=
+  @glu_record_decl (gc_mk Θ2 Ξ2) R /\
+  forall Δ1 Δ2, record_params R = Δ1 ++ Δ2 -> exists i : nat,
+    @glu_rel_exp (gc_mk Θ2 Ξ2) Δ2 (ctx_pi Δ1 (record_sort R)) (Typeω@i).
 
 (** A stored body of the source, valid. *)
 Lemma glu_loc_valid : forall Θ Ξ Θs Ξs Θ2 Ξ2 p T Φ,
@@ -366,8 +378,10 @@ Theorem glu_gctx_embedding_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> gctx_e
     gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> glu_gctx_embedding Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg He HΘ HΞ; pose proof He as [Hg2 Hs].
-  constructor; [ exact He | intros p D Hl; exact (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)
-               | intros p R Hl; exact (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) | | | | | |].
+  constructor; [ exact He | intros p D Hl; exact (proj1 (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl))
+               | intros p R Hl; exact (proj1 (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl))
+               | intros p D k Mk Δ1 Δ2 Hl; exact (proj2 (ind_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) k Mk Δ1 Δ2)
+               | intros p R Δ1 Δ2 Hl; exact (proj2 (record_lookup_valid _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Δ1 Δ2) | | | | | |].
   2:{ (** A body glues at its type, by the entry's validity: a definition's,
           or a definition with a module part's as its term part *)
       intros * Hl Hp HE.
