@@ -823,4 +823,26 @@ Proof.
   apply wf_exp_eq_sym; exact (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Hδ Hσ1).
 Qed.
 
+(** A glued context's suffix is glued. *)
+Lemma glu_rel_ctx_app_r : forall Ψ Γ, ⊩ (Ψ ++ Γ) -> ⊩ Γ.
+Proof. induction Ψ as [| e Ψ IH]; intros Γ H; [ exact H | apply IH; exact (glu_rel_ctx_tail H) ]. Qed.
+
+(** A body with an environment can be filled in: its entries are
+    definitions with bodies and modules. *)
+Lemma eval_body_env_fill : forall Φ ρ ρ', ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' -> exists ζ, gm_fill Φ = Some ζ.
+Proof.
+  intros * Hb; induction Hb; cbn [gm_fill];
+    try (destruct IHHb as [ζ ->]; eexists; reflexivity); eexists; reflexivity.
+Qed.
+
+(** A prefix of a body whose definitions are of the sorts of their tags
+    has the same property. *)
+Lemma body_sorts_typed_prefix : forall Φ Γ x Φ', gm_noopen Φ -> body_sorts_typed Φ Γ ->
+    gm_prefix_upto Φ x = Some Φ' -> body_sorts_typed Φ' Γ.
+Proof.
+  induction Φ as [| Φ IH y E | ? ? ? ? ? ?]; intros Γ x Φ' Hno Hst Hp; cbn in Hp, Hno; [ discriminate | | contradiction ].
+  destruct (String.eqb x y); [ injection Hp as <-; exact Hst |].
+  cbn [body_sorts_typed] in Hst; exact (IH _ _ _ Hno (proj1 Hst) Hp).
+Qed.
+
 End Fixed_GCtx.
