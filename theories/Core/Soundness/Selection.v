@@ -21,6 +21,7 @@ From Mctt.Core.Completeness.Modules Require Import Values ModuleVal.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases ModuleValues.
 From Mctt.Core.Soundness.Global Require Import GlobalValues.
+From Mctt.Core.Soundness.Inductives Require Import Args.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -1335,6 +1336,105 @@ Proof.
   destruct (Hind (List.length T) (le_n _)) as (hk & _ & Hrest & Hgk & _).
   rewrite List.skipn_all2 in Hrest by lia; inversion Hrest; subst.
   rewrite List.firstn_all2 in Hgk by lia; exact Hgk.
+Qed.
+
+(** An alias submodule of a saturated glued global module, the closure of
+    the stored alias given the module's arguments, is glued as the
+    selection: the stored alias literal is glued over no context
+    ([glu_gctx_embedding_alias]), moved to the selection's context, given
+    the arguments ([glu_dmod_lit_alias_apps]), and moved to the selection,
+    which has its module part ([global_sel_alias_desc]). *)
+Lemma glu_dmod_sel_global_alias : ⊢ᵍ gc_deps ⍮ gc_stack ->
+    (forall p T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) -> ⊩ T) ->
+    (forall pq U, gc_module gc_deps gc_stack pq = Some (mr_alias U) -> glu_modexp_at ⋅ (me_lit U)) ->
+    forall Δ σ0 Γ0 H0 p T Φ args y Δa Da h1 r,
+    Δ ⊢ˢ σ0 : Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
+    gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length args = List.length T ->
+    (forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> exists Ns1, mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1)) ->
+    (forall Δ' φ Γ1 ζ σ1 RH Ns1, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1) ->
+       glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
+    gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias (gu_mk Δa Da)) ->
+    ⟦ Δa ⊢ Da ⟧ᶜ gc_deps ⍮ gc_stack ⍮ nil ↘ h1 -> $ᵐ*| h1 & args | gc_deps ⍮ gc_stack ↘ r ->
+    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+    glu_dmod Δ σ0 Γ0 (me_mem H0 y) r.
+Proof.
+  intros Hgw Htele Halias * Hσ HH0 Hl Hlen Hd Ha Hmod Hcl Happs HHy Hq.
+  pose proof (wf_sub_dom _ _ _ _ _ Hσ) as HΔ.
+  pose proof (wf_sub_cod _ _ _ _ _ Hσ) as HwΓ0.
+  pose proof (wf_gstack_closed _ _ Hgw) as Hc.
+  pose proof (Hq _ Id (wf_sub_id _ _ _ HwΓ0)) as Hq0; rewrite modexp_sub_id in Hq0.
+  (** The module's description and arguments *)
+  pose proof (glu_sub_through_id _ _ _ Hσ) as Hst0.
+  destruct (me_denotes _ _ _ _ _ HH0) as (R0 & Rm0 & Hm0 & _).
+  pose proof Hm0 as Hm0'; rewrite <- (modexp_sub_id H0) in Hm0'.
+  destruct (Hd _ _ _ _ _ _ Hst0 Hm0') as (Ns1 & HNs1).
+  pose proof (Ha _ _ _ _ _ _ _ Hst0 Hm0' HNs1) as Hargs.
+  pose proof (glu_tele_args_length _ _ _ _ _ _ Hargs) as HlN; rewrite length_map in HlN.
+  (** The selection's description *)
+  destruct (me_mod_tele_exists HHy) as (Rsel & TS & HmS & _).
+  destruct (modexp_mod_part _ _ _ HHy HmS) as (Rsm & HRsm).
+  destruct (global_sel_alias_desc Hgw _ _ _ _ _ _ _ _ _ _ _ _ Hq0 Hm0 HNs1 Hl ltac:(lia) HmS HRsm Hmod)
+    as (E & Δ0 & RE & RmE & -> & -> & HsU & _ & _ & _).
+  set (U := gu_mk (Δ0 ++ T) (md_alias E)) in *.
+  (** The literal, glued over no context *)
+  assert (Hnil : EG ⋅ ∈ glu_ctx_env ↘ nil_glu_sub_pred) by (eapply glu_ctx_env_nil; [ reflexivity | exact Hgw ]).
+  destruct (Halias _ _ Hmod _ Hnil Δ σ0 nil (wf_sub_nil' _ _ HΔ)) as (h' & Eh' & Hg').
+  assert (Ecl : ⟦ Δ0 ++ T ⊢ md_alias E ⟧ᶜ gc_deps ⍮ gc_stack ⍮ nil ↘ h') by (inversion Eh'; subst; assumption).
+  pose proof (functional_eval_close _ _ _ _ _ Ecl Hcl) as ->.
+  (** Moved to the selection's context *)
+  assert (Heq : Δ ⊢ˢ σ0 ≈ Id ⨟ σ0 : ⋅)
+    by (apply wf_sub_eq_of_sb_eq; [ exact (wf_sub_nil' _ _ HΔ) | rewrite sb_compose_id_left; reflexivity ]).
+  pose proof (proj1 glu_dmod_through _ _ _ _ _ Hg' _ _ _ (wf_sub_nil' _ Id HwΓ0) Hσ Heq) as Hg0.
+  rewrite modexp_sub_id in Hg0.
+  (** Given the arguments *)
+  pose proof (desc_ok_mod _ _ Hgw _ _ _ (me_desc_ok _ _ _ _ _ _ HH0 Hm0) HNs1) as Hok.
+  inversion Hok; subst.
+  match goal with H : args_ok _ _ _ T Ns1 |- _ => rename H into Hok' end.
+  destruct (loc_params_evaluated _ _ _ _ _ (gctx_valid_syn _ _ Hgw) (gc_loc_loc _ _ _ _ _ Hl)) as [lT HRT].
+  assert (Hh1 : Δ0 ++ T <> nil -> h1 = dm_local (Δ0 ++ T) (md_alias E) nil).
+  { intros Hne; inversion Hcl; subst; try reflexivity.
+    exfalso; apply Hne; match goal with H : _ = nil |- _ => exact H | H : nil = _ |- _ => symmetry; exact H end. }
+  pose proof (glu_dmod_lit_alias_apps Hgw _ _ _ _ _ _ _ _ _ _ _ Hσ (gc_loc_tele_all_assumptions _ _ Hgw _ _ _ Hl)
+                (proj1 (gc_loc_closed _ _ _ _ _ Hc Hl)) (Htele _ _ _ Hl) HRT Hok' ltac:(lia) Hargs Hg0 Hh1 Happs) as HgK.
+  (** Moved to the selection, which has the literal's module part *)
+  assert (HTa : all_assumptions T) by exact (gc_loc_tele_all_assumptions _ _ Hgw _ _ _ Hl).
+  assert (HK : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_apps (me_lit (gu_mk (Δ0 ++ T) (md_alias E))) Ns1 ≈
+                 me_apps (me_lit (gu_mk (Δ0 ++ T) (md_alias E))) Ns1) by (inversion HgK; assumption).
+  set (K := me_apps (me_lit U) Ns1) in *.
+  assert (HKs : forall ζ, K[ζ]ᵐ = me_apps (me_lit U) (List.map (fun M => M[ζ]) Ns1))
+    by (intros; unfold K; rewrite me_apps_sub; cbn [modexp_sub]; rewrite (gunit_closed_sub _ _ HsU); reflexivity).
+  assert (Hpart : forall Γ' ζ R1 R2, Γ' ⊢ˢ ζ : Γ0 -> mdenote gc_deps gc_stack Γ' K[ζ]ᵐ R1 ->
+             mdenote gc_deps gc_stack Γ' (me_mem H0 y)[ζ]ᵐ R2 -> mdesc_mod R1 = mdesc_mod R2).
+  { intros * Hζ Hm1 Hm2; rewrite HKs in Hm1; cbn [modexp_sub] in Hm2.
+    pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HH0 Hm0 Hζ) as Hm0ζ.
+    pose proof (mdesc_mod_sub _ _ ζ HNs1) as HNs1ζ; cbn [mdesc_sub tele_sub sb_qn List.length] in HNs1ζ.
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HHy Hζ) as HHyζ; cbn [modexp_sub] in HHyζ.
+    destruct (modexp_mod_part _ _ _ HHyζ Hm2) as (Rm2 & HRm2).
+    destruct (global_sel_alias_desc Hgw _ _ _ _ _ _ _ _ _ _ _ _ (Hq _ _ Hζ) Hm0ζ HNs1ζ Hl ltac:(rewrite length_map; lia) Hm2 HRm2 Hmod)
+      as (E' & Δ0' & RE' & RmE' & HE' & HΔ' & _ & HmE' & HRmE' & HRm2e).
+    injection HE' as <-; apply app_inv_tail in HΔ' as <-.
+    destruct (lit_alias_apps_desc Γ' Δ0 T E (List.map (fun M => M[ζ]) Ns1) R1 HTa ltac:(rewrite length_map; lia) Hm1)
+      as (RE1 & RmE1 & HmE1 & HRmE1 & ->).
+    cbn [List.app] in HmE'.
+    rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ HmE1 _ HmE'), HRmE' in HRmE1; injection HRmE1 as <-.
+    rewrite HRm2, HRm2e, length_map, HlN, Hlen, Nat.sub_diag, List.firstn_O, app_nil_r, Nat.add_0_r.
+    pose proof (mdesc_mod_is_mod _ _ HRmE') as HisE.
+    apply (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ (mdesc_is_mod_sub _ _ HisE))). }
+  assert (HnK : forall Γ' ζ, Γ' ⊢ˢ ζ : Γ0 -> names_no_frame K[ζ]ᵐ).
+  { intros * _; rewrite HKs; apply names_no_frame_of_none.
+    destruct (List.map (fun M => M[ζ]) Ns1) as [| ? ? _] using List.rev_ind; [ reflexivity | rewrite me_apps_snoc; reflexivity ]. }
+  assert (Hny : forall Γ' ζ, Γ' ⊢ˢ ζ : Γ0 -> names_no_frame (me_mem H0 y)[ζ]ᵐ).
+  { intros * Hζ; cbn [modexp_sub]; apply names_no_frame_mem; [ exact Hgw | exact (Hq _ _ Hζ) ]. }
+  eapply (proj1 glu_dmod_same_part_typed); [ exact HgK | exact HHy | | | exact Hny | exact HnK ].
+  - intros Γ' ζ R Rm Hζ Hm HRm.
+    destruct (me_denotes _ _ _ _ _ (sub_preserves_modexp _ _ _ _ _ _ _ HK Hζ)) as (R1 & Rm1 & Hm1 & HRm1).
+    exists R1; split; [ exact Hm1 |]; rewrite (Hpart _ _ _ _ Hζ Hm1 Hm); exact HRm.
+  - intros Γ' ζ R Rm Hζ Hm HRm.
+    destruct (me_denotes _ _ _ _ _ (sub_preserves_modexp _ _ _ _ _ _ _ HHy Hζ)) as (R2 & Rm2 & Hm2 & HRm2).
+    exists R2; split; [ exact Hm2 |]; rewrite <- (Hpart _ _ _ _ Hζ Hm Hm2); exact HRm.
 Qed.
 
 (** A value lacking a parameter whose selection is applied is applied
