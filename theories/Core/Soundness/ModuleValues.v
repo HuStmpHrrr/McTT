@@ -15,6 +15,8 @@ From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import LetPeeling.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping LookupSound.
 From Mctt.Core.Semantic Require Import Realizability.
+From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases UnitCases.
+From Mctt.Core.Completeness.Modules Require Import ValidUnit Values.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -275,6 +277,159 @@ Proof.
         eapply wf_sub_shift; exact (presup_modexp_eq_ctx HHg). }
       eapply wf_me_app; [ exact HHw | exact HR0 | exact HT' | exact Hv' | exact HB' | exact HS' | exact HN'
                         | apply wf_exp_eq_refl; exact HN' | exact HR' | exact HT' | exact Hv' | exact HB' | exact HS' | exact HN' ].
+Qed.
+
+(** ** The Environment of a Body, Glued *)
+
+(** The tail of a substitution extended by a module part is the
+    substitution. *)
+Lemma sb_eq_wk_extend_mod : forall σ H, sb_eq σ (Wk ⨟ (σ ,,ₘ H)).
+Proof. intros σ H x; reflexivity. Qed.
+
+Lemma sb_eq_wk_extend_dm : forall σ M H, sb_eq σ (Wk ⨟ (σ ,,ᵈ M ‖ H)).
+Proof. intros σ M H x; reflexivity. Qed.
+
+(** [σ,,M[σ]] into a definition entry, the head stored at the closure of
+    the type as a body's environment stores it ([eval_body_env_def]), as
+    [cons_def_glu_sub_pred_helper] at the type's value. *)
+Lemma cons_def_glu_sub_pred_closure : forall {Γ Sb Δ σ ρ κ A a} {i : nat} {P El M m},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Δ ⊢ˢ σ ® ρ ∈ Sb ->
+    Γ ⊢ A : abs_kind_sort κ Typeω@i ->
+    Γ ⊢ M : A ->
+    ⟦ A ⟧ ρ ↘ a ->
+    glu_term_value M ρ (domain_kind a) m ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    Δ ⊢ M[σ] : A[σ] ® m ∈ El ->
+    Δ ⊢ˢ σ,,M[σ] ® ρ ↦ m ⦂ entry_type_closure A ρ ∈ cons_def_glu_sub_pred i Γ A M Sb.
+Proof.
+  intros * HSb Hσg HA HM Ha Hm Hglu HMσ.
+  assert (Hσ : Δ ⊢ˢ σ : Γ) by (eapply glu_ctx_env_sub_escape; eassumption).
+  assert (HMσt : Δ ⊢ M[σ] : A[σ]) by (eapply glu_univ_elem_trm_escape; eassumption).
+  assert (Δ ⊢ˢ σ,,M[σ] : Γ ▸ A ≔ M)
+    by (eapply wf_sub_extend_def; [ exact Hσ | exact HA | apply type_sort_abs_kind; constructor | exact HM
+                                  | exact HMσt | apply wf_exp_eq_refl; exact HMσt ]).
+  destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
+  pose proof (glu_univ_elem_per_elem _ _ _ _ Hglu _ _ _ _ _ HMσ HR) as Hmm.
+  econstructor; [ eassumption | exact Ha | exact Hglu | | | | | ].
+  - rewrite exp_sub_shift_extend; exact HMσ.
+  - intros Hev; exists m; split; [ destruct (domain_kind a); [ exact Hm | inversion Hev | exact Hm ] |].
+    exact (per_head_of Ha Ha HR Hmm).
+  - (** The stored type is the closure of the type, of the type's value *)
+    eexists; split; [ reflexivity |].
+    refine (mk_glu_stored_type _ _ _ _ _ i a P El _ Hglu _); [ econstructor; exact Ha | rewrite exp_sub_shift_extend; exact HMσ ].
+  - split; [ exact (proj1 (entry_readable_of_elem_closure Ha Ha HR Hmm)) | cbn; lia ].
+  - first [ exact Hσg | cbn; exact Hσg | eapply glu_ctx_env_sub_resp_sub_eq; [ eassumption | exact Hσg | mauto 3 ] ].
+Qed.
+
+(** The environment of a body that can be filled in, over a glued
+    environment of its context, is glued along the body's context at the
+    substitution filling the body in after the context's: entry by entry,
+    a definition's head its body's value there at the kind its type has
+    ([body_sorts_valid]), a module's its unit's closure there, related to
+    itself (the completeness of the unit's literal), and glued by the
+    slot premise of the body context's gluing. *)
+Lemma glu_body_env : forall Φ Γ TSb,
+    EG Γ ∈ glu_ctx_env ↘ TSb ->
+    body_sorts_valid Φ Γ ->
+    forall ζ, gm_fill Φ = Some ζ ->
+    forall Sb, EG body_ctx Φ ++ Γ ∈ glu_ctx_env ↘ Sb ->
+    forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ TSb ->
+    exists σ' ρ', sb_eq σ' (ζ ⨟ σ) /\ ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' /\ Δ ⊢ˢ σ' ® ρ' ∈ Sb.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H its Φg _]; intros Γ TSb HΓ Hsv ζ Hf Sb HSb Δ σ ρ Hσ; cbn in Hf; [| | discriminate ].
+  - injection Hf as <-; cbn in HSb.
+    assert (E : TSb <∙> Sb) by (eapply functional_glu_ctx_env; eassumption).
+    exists σ, ρ; split; [ intros x; reflexivity | split; [ constructor | apply E; exact Hσ ] ].
+  - cbn [body_sorts_valid] in Hsv; destruct Hsv as [Hsv HsvE].
+    destruct E as [b pv κ A [M |] | pv [Δy Dy] | ? ? ? ? ? | pv A M [Δy Dy] | ? ? ? ?]; cbn in Hf; try discriminate;
+      destruct (gm_fill Φ) as [ζ0 |] eqn:Hf0; cbn in Hf; try discriminate; injection Hf as <-;
+      cbn [body_ctx app] in HSb.
+    + (** A definition *)
+      destruct (glu_rel_ctx_tail (ex_intro _ _ HSb)) as [TSb0 HTSb0].
+      destruct (IH _ _ HΓ Hsv _ eq_refl _ HTSb0 _ _ _ Hσ) as (σ0 & ρ0 & Eσ0 & Hb0 & Hσ0).
+      destruct (glu_ctx_env_cons_def_clean_inversion HTSb0 HSb) as (i & κ' & HA & HM & _ & HMg & ESb).
+      destruct (HMg _ _ _ Hσ0) as [a m P El Ea Hm Hglu HMσ].
+      destruct (HsvE A M eq_refl) as [iA HAv].
+      destruct (glu_ctx_env_per_ctx_env HTSb0) as [R0 HR0].
+      pose proof (glu_ctx_env_per_env HTSb0 HR0 Hσ0) as Hρ0.
+      destruct (rel_exp_of_abs_kind_sort_at HR0 HAv _ _ Hρ0) as (a' & Ea' & Hka).
+      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
+      cbn [entry_kind] in Hka.
+      exists (σ0 ,, M[σ0]), (ρ0 ↦ m ⦂ entry_type_closure A ρ0); split; [| split ].
+      * intros [| x]; cbn; [ f_equal; rewrite exp_sub_sub; apply exp_sub_sb_eq; intros z; rewrite (Eσ0 z); reflexivity
+                           | exact (Eσ0 x) ].
+      * destruct (evaluated_kind_or_propositional κ) as [Hk | ->].
+        -- eapply eval_body_env_def; [ exact Hk | exact Hb0 |].
+           rewrite Hka in Hm; destruct Hk; exact Hm.
+        -- rewrite Hka in Hm; cbn in Hm; subst m; apply eval_body_env_def_proof; exact Hb0.
+      * apply ESb; eapply cons_def_glu_sub_pred_closure; eassumption.
+    + (** A submodule *)
+      inversion HSb as [| | | ? ? TSb0 ? HTSb0 HU HUv ESb |]; subst.
+      destruct (IH _ _ HΓ Hsv _ eq_refl _ HTSb0 _ _ _ Hσ) as (σ0 & ρ0 & Eσ0 & Hb0 & Hσ0).
+      destruct (glu_ctx_env_per_ctx_env HTSb0) as [R0 HR0].
+      pose proof (glu_ctx_env_per_env HTSb0 HR0 Hσ0) as Hρ0.
+      pose proof (glu_ctx_env_sub_escape HTSb0 _ _ _ Hσ0) as Hσ0s.
+      assert (HUl : gc_deps ⍮ gc_stack ⍮ body_ctx Φ ++ Γ ⊢ᵐ me_lit (gu_mk Δy Dy) ≈ me_lit (gu_mk Δy Dy))
+        by (apply wf_me_lit; exact HU).
+      destruct (rel_modexp_at _ _ _ _ _ (proj2 (proj2 completeness_fundamental_modules) _ _ _ HUl) HR0 _ _ Hρ0)
+        as (h & h' & Hh & Hh' & Hhh).
+      pose proof (functional_eval_modexp _ _ _ _ Hh' Hh) as ->.
+      exists (σ0 ,,ₘ me_lit (gu_mk Δy Dy)[σ0]ᵘ), (ρ0 ↦ᵐ h ⦂ gu_mk Δy Dy); split; [| split ].
+      * intros [| x]; cbn; [ f_equal; f_equal; rewrite gunit_sub_sub; apply gunit_sub_sb_eq; intros z; rewrite (Eσ0 z); reflexivity
+                           | exact (Eσ0 x) ].
+      * eapply eval_body_env_mod; [ exact Hb0 | apply eval_me_lit_iff; exact Hh ].
+      * apply ESb; econstructor.
+        -- apply wf_sub_extend_mod; [ exact Hσ0s | exact HU | eapply sub_preserves_unit; eassumption ].
+        -- exists h; split; [ exact Hh | exact Hhh ].
+        -- eapply (proj1 glu_dmod_resp_sub_eq); [ exact (HUv _ _ _ _ Hσ0 Hh) |].
+           apply wf_sub_eq_of_sb_eq; [ exact Hσ0s | apply sb_eq_wk_extend_mod ].
+        -- eexists; reflexivity.
+        -- split; [ apply mod_entry_readable | cbn; exact (gunit_scoped_free_bound _ _ (wf_unit_eq_scoped_left _ _ _ _ _ HU)) ].
+        -- exact Hσ0.
+    + (** A definition with a module part: as a definition and as a
+          submodule *)
+      destruct (glu_rel_ctx_tail (ex_intro _ _ HSb)) as [TSb0 HTSb0].
+      destruct (IH _ _ HΓ Hsv _ eq_refl _ HTSb0 _ _ _ Hσ) as (σ0 & ρ0 & Eσ0 & Hb0 & Hσ0).
+      destruct (glu_ctx_env_cons_dm_clean_inversion HTSb0 HSb) as (i & HA & HM & Hwe & _ & HMg & ESb).
+      pose proof (glu_ctx_env_lit_inversion (e := ce_dm A M (gu_mk Δy Dy)) HTSb0 HSb eq_refl) as HUv.
+      destruct (HMg _ _ _ Hσ0) as [a m P El Ea Hm Hglu HMσ].
+      destruct (glu_ctx_env_per_ctx_env HTSb0) as [R0 HR0].
+      pose proof (glu_ctx_env_per_env HTSb0 HR0 Hσ0) as Hρ0.
+      pose proof (glu_ctx_env_sub_escape HTSb0 _ _ _ Hσ0) as Hσ0s.
+      inversion Hwe; subst.
+      match goal with H : _ ⍮ _ ⍮ _ ⊢ᵘ gu_mk nil (md_alias _) ≈ _ |- _ => rename H into HU end.
+      destruct (HsvE A M eq_refl) as [iA HAv].
+      destruct (rel_exp_of_abs_kind_sort_at HR0 HAv _ _ Hρ0) as (a' & Ea' & Hka).
+      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
+      cbn [entry_kind] in Hka; rewrite Hka in Hm; cbn in Hm.
+      assert (HUl : gc_deps ⍮ gc_stack ⍮ body_ctx Φ ++ Γ ⊢ᵐ me_lit (gu_mk nil (md_alias E)) ≈ me_lit (gu_mk nil (md_alias E)))
+        by (apply wf_me_lit; exact HU).
+      destruct (rel_modexp_at _ _ _ _ _ (proj2 (proj2 completeness_fundamental_modules) _ _ _ HUl) HR0 _ _ Hρ0)
+        as (h & h' & Hh & Hh' & Hhh).
+      pose proof (functional_eval_modexp _ _ _ _ Hh' Hh) as ->.
+      exists (σ0 ,,ᵈ M[σ0] ‖ me_lit (gu_mk nil (md_alias E))[σ0]ᵘ),
+             (ρ0 ↦ᵈ m ⦂ entry_type_closure A ρ0 ‖ h ⦂ gu_mk nil (md_alias E)); split; [| split ].
+      * intros [| x]; cbn; [ f_equal; [ rewrite exp_sub_sub; apply exp_sub_sb_eq; intros z; rewrite (Eσ0 z); reflexivity
+                                      | f_equal; rewrite gunit_sub_sub; apply gunit_sub_sb_eq; intros z; rewrite (Eσ0 z); reflexivity ]
+                           | exact (Eσ0 x) ].
+      * eapply eval_body_env_dm; [ exact Hb0 | exact Hm | apply eval_me_lit_iff; exact Hh ].
+      * assert (HMσt : Δ ⊢ M[σ0] : A[σ0]) by (eapply glu_univ_elem_trm_escape; eassumption).
+        destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
+        pose proof (glu_univ_elem_per_elem _ _ _ _ Hglu _ _ _ _ _ HMσ HR) as Hmm.
+        apply ESb; econstructor;
+          [ eapply wf_sub_extend_dm; eauto; first [ apply wf_exp_eq_refl; exact HMσt | eapply sub_preserves_unit; eassumption ]
+          | exact Ea | exact Hglu | rewrite exp_sub_shift_extend; exact HMσ
+          | exists m; split; [ exact Hm | exact (per_head_of Ea Ea HR Hmm) ]
+          | exists h; split; [ exact Hh | exact Hhh ]
+          | eapply (proj1 glu_dmod_resp_sub_eq); [ exact (HUv _ _ _ _ Hσ0 Hh) |];
+            apply wf_sub_eq_of_sb_eq; [ exact Hσ0s | apply sb_eq_wk_extend_dm ]
+          | eexists; split; [ reflexivity |];
+            refine (mk_glu_stored_type _ _ _ _ _ i a P El _ Hglu _);
+            [ apply eval_entry_type_closure; exact Ea | rewrite exp_sub_shift_extend; exact HMσ ]
+          | split; [ exact (proj1 (dm_entry_readable_of_elem_closure Ea Ea HR Hmm h h (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E))))
+                   | cbn; exact (gunit_scoped_free_bound _ _ (wf_unit_eq_scoped_left _ _ _ _ _ HU)) ]
+          | exact Hσ0 ].
 Qed.
 
 End Fixed_GCtx.
