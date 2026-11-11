@@ -1707,7 +1707,7 @@ Proof.
     intros * Hσ HH0 HH0p Hl Hlen Hargs _ Hmem σ0' Heq.
     econstructor; [ exact (wf_sub_eq_right _ _ _ _ _ _ Heq) | exact HH0 | | exact Hl | exact Hlen | exact Hargs |].
     + eapply wf_me_trans; [ apply wf_me_sym; exact (sub_eq_preserves_modexp _ _ _ _ _ HH0 _ _ _ Heq) | exact HH0p ].
-    + intros * Hs * Hst; exact (Hmem _ _ Hs _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
+    + intros * Hs * Hst; exact (Hmem _ _ Hs _ _ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
   - (** A body: a factorization of [σ0'] weakened is one of [σ0]'s *)
     intros * Hσ HH0 Hmem Hsub IHsub σ0' Heq.
     apply glu_dmod_body; [ exact (wf_sub_eq_right _ _ _ _ _ _ Heq) | exact HH0 | | ].
@@ -1771,7 +1771,7 @@ Proof.
       rewrite modexp_sub_sub, me_apps_sub, qname_mod_sub in H.
       rewrite (modexp_sub_sb_eq H0 (σ0 ⨟ ι φ) (sb_wk σ0 φ)) in H by (symmetry; apply sb_wk_compose).
       erewrite List.map_ext in H; [ exact H | intros M; apply exp_sub_of_wk ].
-    + intros * Hs * Hst; exact (Hmem _ _ Hs _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
+    + intros * Hs * Hst; exact (Hmem _ _ Hs _ _ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
   - (** A body: a factorization of [σ0] weakened twice is one of [σ0]
         weakened by the composite *)
     intros * Hσ HH0 Hmem Hsub IHsub Δ' φ Hφ.

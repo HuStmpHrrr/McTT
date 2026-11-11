@@ -1498,14 +1498,19 @@ Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
     List.length args = List.length T ->
     glu_tele_args Δ (List.rev T) nil nil Ns args ->
     (** Each term member, at a sort of an evaluated kind, glued at its
-        lookup type through every factorization, at a member type of the
-        value *)
+        lookup type through every factorization, at every type value
+        related to the member types of every value related to it (as
+        completeness's [dmod_mem_type_rel] states) that
+        the lookup type is glued at: the type's gluing is the reader's,
+        as the member's value is the stored value applied, glued only
+        along the [Π]s of its stored type *)
     (forall x m, dm_global p args ·ₜ x gc_deps ⍮ gc_stack ↘ m ->
-       forall Δ' φ Γ1 ζ σ1 R A' Srt, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       forall Δ' φ Γ1 ζ σ1 R A' Srt a (i : nat) P El, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
        mdenote gc_deps gc_stack Γ1 (me_mem H0[ζ]ᵐ x) R -> mdesc_type R = Some A' ->
        evaluated_sort Srt -> Γ1 ⊢ A' : Srt ->
-       exists a (i : nat) P El, dmod_mem_type (dm_global p args) x a /\
-         glu_elem_at Δ' A'[σ1] (a_mem H0[ζ]ᵐ x)[σ1] a m i P El) ->
+       (forall h b, per_dmod h (dm_global p args) -> dmod_mem_type h x b -> exists j, Dom b ≈ a ∈ per_univ j) ->
+       DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ' ⊢ A'[σ1] ® P ->
+       Δ' ⊢ (a_mem H0[ζ]ᵐ x)[σ1] : A'[σ1] ® m ∈ El) ->
     glu_dmod Δ σ0 Γ0 H0 (dm_global p args)
 (** A saturated body: each term member of an evaluated kind glued at its
     type in the environment of the entries before it, and each
