@@ -35,6 +35,29 @@ Definition not_frame_former (H : modexp) (x : String.string) : Prop :=
   (forall p R Tm Φm, mod_qname (me_mem H x) = Some p -> gs_find_record gc_stack p = Some R ->
      gc_loc gc_deps gc_stack p = Some (Tm, Φm) -> False).
 
+(** A member is a type former under declaration, of a group member or of
+    a record type, or it is none: the side conditions are decided. *)
+Lemma frame_former_cases : forall H x (P : Prop),
+    (not_frame_former H x -> P) ->
+    (forall p pq k D Mk Tm Φm, mod_qname (me_mem H x) = Some p -> gs_find_ind gc_stack p = Some (pq, k, D) ->
+       ind_member D k = Some Mk -> gc_loc gc_deps gc_stack p = Some (Tm, Φm) -> P) ->
+    (forall p R Tm Φm, mod_qname (me_mem H x) = Some p -> gs_find_record gc_stack p = Some R ->
+       gc_loc gc_deps gc_stack p = Some (Tm, Φm) -> P) ->
+    P.
+Proof.
+  intros * Hn Hi Hr.
+  destruct (mod_qname (me_mem H x)) as [p |] eqn:Hq;
+    [| apply Hn; split; intros * Hp; rewrite Hq in Hp; discriminate ].
+  destruct (gc_loc gc_deps gc_stack p) as [[Tm Φm] |] eqn:Hl;
+    [| apply Hn; split; intros * Hp; rewrite Hq in Hp; injection Hp as <-; intros; congruence ].
+  destruct (gs_find_ind gc_stack p) as [[[pq k] D] |] eqn:Hf.
+  - destruct (ind_member D k) as [Mk |] eqn:HMk; [ exact (Hi _ _ _ _ _ _ _ eq_refl Hf HMk Hl) |].
+    destruct (gs_find_record gc_stack p) as [R |] eqn:Hfr; [ exact (Hr _ _ _ _ eq_refl Hfr Hl) |].
+    apply Hn; split; intros * Hp; rewrite Hq in Hp; injection Hp as <-; intros; congruence.
+  - destruct (gs_find_record gc_stack p) as [R |] eqn:Hfr; [ exact (Hr _ _ _ _ eq_refl Hfr Hl) |].
+    apply Hn; split; intros * Hp; rewrite Hq in Hp; injection Hp as <-; intros; congruence.
+Qed.
+
 (** A member of a module expression naming no stored module is no type
     former under declaration. *)
 Lemma not_frame_former_of_none : forall H x, mod_qname H = None -> not_frame_former H x.

@@ -952,6 +952,112 @@ Section Members.
     exact (glu_univ_elem_trm_resp_exp_eq _ _ _ _ Hga _ _ _ _ _ Happs (wf_exp_eq_sym _ _ _ _ _ _ Heq2)).
   Qed.
 
+  (** *** Type formers read as members *)
+
+  (** The member [x] of a saturated module [F] that names the module of a
+      group member, under declaration or filed, is the member's type former
+      applied to the module's arguments ([eval_sel_global_ind]). *)
+  Lemma sel_global_ind_former : forall F TF ΦF x pq k D,
+      gc_loc Θ Ξ F = Some (TF, ΦF) -> ind_mlookup Θ Ξ (qname_in F x) = Some (pq, k, D) ->
+      forall args r, List.length args = List.length TF -> $*| d_ind pq k nil & args | Θ ⍮ Ξ ↘ r ->
+        dm_global F args ·ₜ x Θ ⍮ Ξ ↘ r.
+  Proof.
+    intros * HlF Hf * Hl Er.
+    eapply eval_sel_global_ind;
+      [ intros T' Φ' Hl'; rewrite HlF in Hl'; injection Hl' as <- <-; lia
+      | rewrite <- qname_in_app; exact (ind_mlookup_resolve _ _ _ _ Hf)
+      | rewrite <- qname_in_app; exact Hf
+      | exact Er ].
+  Qed.
+
+  (** So is a record type's, the record type former ([eval_sel_global_record]). *)
+  Lemma sel_global_record_former : forall F TF ΦF x R,
+      gc_loc Θ Ξ F = Some (TF, ΦF) -> record_lookup Θ Ξ (qname_in F x) = Some R ->
+      forall args r, List.length args = List.length TF -> $*| d_record (qname_in F x) nil & args | Θ ⍮ Ξ ↘ r ->
+        dm_global F args ·ₜ x Θ ⍮ Ξ ↘ r.
+  Proof.
+    intros * HlF Hf * Hl Er.
+    eapply eval_sel_global_record;
+      [ intros T' Φ' Hl'; rewrite HlF in Hl'; injection Hl' as <- <-; lia
+      | rewrite <- qname_in_app; exact (record_lookup_resolve _ _ _ _ Hf)
+      | rewrite <- qname_in_app; exact Hf
+      | rewrite <- qname_in_app; exact Er ].
+  Qed.
+
+  (** The frame of a group member under declaration at [F.x]: its parent
+      [F] is a frame too, whose telescope ends the member's parameters
+      ([frame_ind_uparams], [gs_find_tele_frame]). *)
+  Lemma frame_ind_former_parent : forall F x pq k D Mk,
+      gs_find_ind Ξ (qname_in F x) = Some (pq, k, D) -> ind_member D k = Some Mk ->
+      exists TF ΦF A1, gc_frame Ξ F = Some (TF, ΦF) /\
+        ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ = ctx_pi TF A1.
+  Proof.
+    intros * Hf HMk.
+    destruct (frame_ind_loc _ _ Hg _ _ _ _ Hf) as (U & T0 & Tp & Φp & Mk' & Htl & Hfr & _ & HMk').
+    rewrite HMk in HMk'; injection HMk' as <-.
+    pose proof (frame_ind_uparams _ _ Hg _ _ _ _ _ _ Hf Hfr) as EUp.
+    destruct (gs_find_tele_body _ _ Hg _ _ _ _ Htl) as (ΔU & ΦU & ->).
+    unfold gc_frame in Hfr; rewrite Htl in Hfr; injection Hfr as <- <-.
+    destruct (gs_find_tele_frame _ _ Hg _ _ _ Htl) as [(Hch & _) | (c & y & V & T1 & Hch & HtF & _ & ET0)];
+      [ cbn in Hch; apply (f_equal (@List.length _)) in Hch; rewrite List.length_app in Hch; cbn in Hch; lia |].
+    cbn [qname_in q_chain q_unit] in Hch, HtF; apply List.app_inj_tail in Hch as [<- <-].
+    replace (q_abs (q_unit F) (q_chain F)) with F in HtF by (destruct F; reflexivity).
+    destruct (gs_find_tele_body _ _ Hg _ _ _ _ HtF) as (ΔV & ΦV & ->); cbn [gu_params] in ET0; subst T0.
+    exists (ΔV ++ T1), ΦV, (ctx_pi (im_nparams Mk ++ ΔU) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ); split.
+    - unfold gc_frame; rewrite HtF; reflexivity.
+    - unfold im_params; rewrite <- EUp, List.app_assoc, ctx_pi_app; reflexivity.
+  Qed.
+
+  (** The frame of a record type under declaration at [F.x]: its parent
+      [F] is a frame too, whose telescope ends the record's parameters
+      ([frame_record_split]). *)
+  Lemma frame_record_former_parent : forall F x R,
+      gs_find_record Ξ (qname_in F x) = Some R ->
+      exists TF ΦF A1, gc_frame Ξ F = Some (TF, ΦF) /\ ctx_pi (record_params R) (record_sort R) = ctx_pi TF A1.
+  Proof.
+    intros * Hf.
+    destruct (frame_record_loc _ _ Hg _ _ Hf) as (U & T0 & Tp & Φp & Htl & _ & _).
+    destruct (frame_record_split _ _ Hg _ _ _ _ Hf Htl) as (Δr & _ & ERp).
+    destruct (gs_find_tele_frame _ _ Hg _ _ _ Htl) as [(Hch & _) | (c & y & V & T1 & Hch & HtF & _ & ET0)];
+      [ cbn in Hch; apply (f_equal (@List.length _)) in Hch; rewrite List.length_app in Hch; cbn in Hch; lia |].
+    cbn [qname_in q_chain q_unit] in Hch, HtF; apply List.app_inj_tail in Hch as [<- <-].
+    replace (q_abs (q_unit F) (q_chain F)) with F in HtF by (destruct F; reflexivity).
+    destruct (gs_find_tele_body _ _ Hg _ _ _ _ HtF) as (ΔV & ΦV & ->); cbn [gu_params] in ET0; subst T0.
+    exists (ΔV ++ T1), ΦV, (ctx_pi Δr (record_sort R)); split.
+    - unfold gc_frame; rewrite HtF; reflexivity.
+    - rewrite ERp, ctx_pi_app; reflexivity.
+  Qed.
+
+  (** The type of the type former of a group member under declaration is
+      closed ([ind_former_desc_scoped]). *)
+  Lemma frame_ind_former_type_closed : forall p pq k D Mk σ,
+      gs_find_ind Ξ p = Some (pq, k, D) -> ind_member D k = Some Mk ->
+      (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)[σ] = ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ.
+  Proof.
+    intros * Hf HMk.
+    destruct (frame_ind_loc _ _ Hg _ _ _ _ Hf) as (U & T0 & Tm & Φm & Mk' & _ & _ & Hlp & _).
+    pose proof (wf_gstack_closed _ _ Hg) as Hc.
+    pose proof (ind_former_desc_scoped pq k D Mk (mdesc_closed nil p Tm Φm nil) 0 (stack_closed_ind _ _ _ _ _ (proj2 Hc) Hf) HMk
+                  (conj I (conj (gc_loc_closed _ _ _ _ _ Hc Hlp) (List.Forall_nil (exp_scoped _))))) as HRs.
+    pose proof (mdesc_type_sub (ind_former_desc pq k D Mk (mdesc_closed nil p Tm Φm nil)) _ σ eq_refl) as E.
+    rewrite (mdesc_closed_sub _ _ HRs) in E; cbn in E; injection E as E; symmetry; exact E.
+  Qed.
+
+  (** So is a record type's under declaration ([record_former_desc_scoped]). *)
+  Lemma frame_record_former_type_closed : forall p R σ,
+      gs_find_record Ξ p = Some R ->
+      (ctx_pi (record_params R) (record_sort R))[σ] = ctx_pi (record_params R) (record_sort R).
+  Proof.
+    intros * Hf.
+    destruct (frame_record_loc _ _ Hg _ _ Hf) as (U & T0 & Tm & Φm & _ & _ & Hlp).
+    pose proof (wf_gstack_closed _ _ Hg) as Hc.
+    destruct (stack_closed_record _ _ _ (proj2 Hc) Hf) as [HF HS0].
+    pose proof (record_former_desc_scoped p R (mdesc_closed nil p Tm Φm nil) 0 (proj2 (proj1 (ctx_scoped_app_iff _ _) HF)) HS0
+                  (conj I (conj (gc_loc_closed _ _ _ _ _ Hc Hlp) (List.Forall_nil (exp_scoped _))))) as HRs.
+    pose proof (mdesc_type_sub (record_former_desc p R (mdesc_closed nil p Tm Φm nil)) _ σ eq_refl) as E.
+    rewrite (mdesc_closed_sub _ _ HRs) in E; cbn in E; injection E as E; symmetry; exact E.
+  Qed.
+
 End Members.
 
 (** ** Saturated global modules, from the source of a sound embedding *)
@@ -1489,71 +1595,41 @@ Section MembersFromSource.
         exists mm'; split; [ econstructor; [ exact Happm | constructor; exact Hmm' ] | exact Hglu' ].
   Qed.
 
-  (** The type former of a group member under declaration, read as the
-      member [x] of its frame's parent, is glued at its type at every
-      instance: its δ-reduct [a_ind pq k] is, and the member is glued
-      against it ([glu_frame_former_apps]) from the parent frame's value
-      at no argument, the former's type over the parent's telescope
-      ([frame_ind_uparams], [gs_find_tele_frame]). *)
-  Lemma glu_rel_exp_ind_former_under_sub : forall Γ H x p pq k D Mk Tm Φm,
-      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mod_qname (me_mem H x) = Some p -> gs_find_ind Ξ p = Some (pq, k, D) ->
-      ind_member D k = Some Mk -> gc_loc Θ Ξ p = Some (Tm, Φm) ->
-      glu_rel_exp_under_sub Γ (a_ind pq k) (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) ->
-      glu_rel_exp_under_sub Γ (a_mem H x) (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ).
+  (** A type former, read as the member [x] of a module expression naming
+      the module [F] (stored, or a frame) as a definition with a module
+      part whose term is [M0], closed, of the value [f0], at a closed type
+      over [F]'s telescope, is glued at its type at every instance when
+      [M0] is, provided that, saturated, the member is [f0] applied: the
+      member is glued against [M0] ([glu_frame_former_apps]) from [F]'s
+      value at no argument.  The type formers of a group member or of a
+      record type, under declaration or filed, are of that form
+      ([sel_global_ind_former], [sel_global_record_former]). *)
+  Lemma glu_rel_exp_former_mem_under_sub : forall Γ H x F TF ΦF A1 M0 f0,
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mod_qname H = Some F -> gc_loc Θ Ξ F = Some (TF, ΦF) ->
+      (forall Γ', exists Rm Rmm, mdenote Θ Ξ Γ' (me_mem H x) (mdesc_dm nil (ctx_pi TF A1) M0 Rm) /\ mdesc_mod Rm = Some Rmm) ->
+      (forall σ, (ctx_pi TF A1)[σ] = ctx_pi TF A1) -> (forall σ, M0[σ] = M0) ->
+      (forall ρ r, ⟦ M0 ⟧ ρ ↘ r -> r = f0) ->
+      (forall args r, List.length args = List.length TF -> $*| f0 & args | Θ ⍮ Ξ ↘ r -> dm_global F args ·ₜ x Θ ⍮ Ξ ↘ r) ->
+      glu_rel_exp_under_sub Γ M0 (ctx_pi TF A1) ->
+      glu_rel_exp_under_sub Γ (a_mem H x) (ctx_pi TF A1).
   Proof.
-    intros * HH Hq Hf HMk Hlp Hred.
-    set (A := ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) in *.
-    (** The member's description, closed, its type and reduct *)
-    set (Rf := ind_former_desc pq k D Mk (mdesc_closed nil p Tm Φm nil)).
-    assert (Hm : forall Γ', mdenote Θ Ξ Γ' (me_mem H x) Rf) by (intros; eapply mdenote_ind_frame; eassumption).
-    pose proof (wf_gstack_closed _ _ Hg) as Hc.
-    assert (HRs : mdesc_scoped 0 Rf)
-      by exact (ind_former_desc_scoped pq k D Mk (mdesc_closed nil p Tm Φm nil) 0 (stack_closed_ind _ _ _ _ _ (proj2 Hc) Hf) HMk
-                  (conj I (conj (gc_loc_closed _ _ _ _ _ Hc Hlp) (List.Forall_nil (exp_scoped _))))).
-    assert (EA : forall σ, A[σ] = A).
-    { intros σ; pose proof (mdesc_type_sub Rf A σ eq_refl) as E; rewrite (mdesc_closed_sub _ _ HRs) in E; cbn in E.
-      injection E as E; symmetry; exact E. }
-    (** The frame's parent, its telescope the former's outer parameters *)
-    assert (Hq' := Hq); cbn [mod_qname] in Hq'.
-    destruct (mod_qname H) as [F |] eqn:HqF; [ injection Hq' as Ep | discriminate ].
-    assert (Ep' : p = qname_in F x) by (rewrite <- Ep; reflexivity); clear Ep; subst p.
-    destruct (frame_ind_loc _ _ Hg _ _ _ _ Hf) as (U & T0 & Tp & Φp & Mk' & Htl & Hfr & Hlp' & HMk').
-    rewrite HMk in HMk'; injection HMk' as <-.
-    pose proof (frame_ind_uparams _ _ Hg _ _ _ _ _ _ Hf Hfr) as EUp.
-    destruct (gs_find_tele_body _ _ Hg _ _ _ _ Htl) as (ΔU & ΦU & ->).
-    unfold gc_frame in Hfr; rewrite Htl in Hfr; injection Hfr as <- <-.
-    destruct (gs_find_tele_frame _ _ Hg _ _ _ Htl) as [(Hch & _) | (c & y & V & T1 & Hch & HtF & _ & ET0)];
-      [ cbn in Hch; apply (f_equal (@List.length _)) in Hch; rewrite List.length_app in Hch; cbn in Hch; lia |].
-    cbn [qname_in q_chain q_unit] in Hch, HtF; apply List.app_inj_tail in Hch as [<- <-].
-    replace (q_abs (q_unit F) (q_chain F)) with F in HtF by (destruct F; reflexivity).
-    destruct (gs_find_tele_body _ _ Hg _ _ _ _ HtF) as (ΔV & ΦV & ->); cbn [gu_params] in ET0; subst T0.
-    assert (HlF : gc_loc Θ Ξ F = Some (ΔV ++ T1, ΦV)) by (unfold gc_loc, gc_frame; rewrite HtF; reflexivity).
-    assert (EA' : A = ctx_pi (ΔV ++ T1) (ctx_pi (im_nparams Mk ++ ΔU) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ))
-      by (unfold A, im_params; rewrite <- EUp, List.app_assoc, ctx_pi_app; reflexivity).
+    intros * HH HqF HlF Hm EA EM Ef Hsat Hred.
+    set (A := ctx_pi TF A1) in *.
     (** The parent's value, at no argument *)
     assert (EhF : forall ρ, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global F nil).
     { intros ρ; rewrite (mod_qname_inv _ _ HqF).
       apply (Evaluation.Modules.eval_path_mod Θ Ξ); intros m1 m2 Ec Hne.
       exact (path_prefix_loc _ _ Hg _ _ _ _ (gc_loc_loc _ _ _ _ _ HlF) _ Ec Hne). }
-    (** Saturated, the member is the former applied *)
-    assert (Hsat : forall args r, List.length args = List.length (ΔV ++ T1) -> $*| d_ind pq k nil & args | Θ ⍮ Ξ ↘ r ->
-                     dm_global F args ·ₜ x Θ ⍮ Ξ ↘ r).
-    { intros * Hl Er.
-      assert (Hfr : gc_frame Ξ (qname_in F x) = Some (ΔU ++ ΔV ++ T1, ΦU)) by (unfold gc_frame; rewrite Htl; reflexivity).
-      eapply eval_sel_global_ind;
-        [ intros T' Φ' Hl'; rewrite HlF in Hl'; injection Hl' as <- <-; lia
-        | rewrite <- qname_in_app; exact (gc_frame_resolve _ _ _ _ Hfr)
-        | rewrite <- qname_in_app, ind_mlookup_unfold, Hf; reflexivity
-        | exact Er ]. }
     constructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ Hred) |].
     intros Γ' τ Hτ.
     pose proof (glu_rel_sub_inst_typed _ _ _ Hτ) as Hτt.
     cbn [exp_sub]; rewrite (mod_qname_sub _ _ τ HqF), EA.
-    pose proof (glu_rel_exp_under_sub_inst _ _ _ Hred _ _ Hτ) as HrA; cbn [exp_sub] in HrA; rewrite EA in HrA.
+    pose proof (glu_rel_exp_under_sub_inst _ _ _ Hred _ _ Hτ) as HrA; rewrite EM, EA in HrA.
     pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH Hτt) as HHτ; rewrite (mod_qname_sub _ _ τ HqF) in HHτ.
-    pose proof (wf_exp_eq_mem_delta _ _ _ _ _ _ _ _ HHτ (Hm Γ') eq_refl eq_refl) as Hδ.
-    pose proof (mem_desc_ok _ _ _ _ _ _ _ (gctx_valid_syn _ _ Hg) HHτ (Hm Γ')) as Hok.
-    destruct (desc_ok_ty_mod _ _ _ _ _ _ Hok eq_refl eq_refl) as [j HAj].
+    destruct (Hm Γ') as (Rm & Rmm & HmΓ & HRmm).
+    pose proof (wf_exp_eq_mem_delta _ _ _ _ _ _ _ _ HHτ HmΓ eq_refl eq_refl) as Hδ.
+    pose proof (mem_desc_ok _ _ _ _ _ _ _ (gctx_valid_syn _ _ Hg) HHτ HmΓ) as Hok.
+    destruct (desc_ok_ty_mod _ _ _ _ _ _ Hok eq_refl HRmm) as [j HAj].
     destruct HrA as [Sb HSb lvl Hb].
     eapply mk_glu_rel_exp with (glu_rel_exp_lvl := lvl); [ exact HSb |].
     intros Δ σ ρ Hσ.
@@ -1563,7 +1639,7 @@ Section MembersFromSource.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ HAj Hσt) as HAjσ; cbn [exp_sub] in HAjσ.
     pose proof (glu_univ_elem_trm_typ _ _ _ _ Hga _ _ _ _ Hmr) as HAP.
     destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ ak_relevant _ Hga HAP HAjσ) as [Hka _].
-    unfold glu_term_value in Emr; rewrite Hka in Emr; inversion Emr; subst.
+    unfold glu_term_value in Emr; rewrite Hka in Emr; apply Ef in Emr; subst mr.
     (** The member at the environment, related to itself (completeness) *)
     destruct (glu_ctx_env_per_ctx_env HSb) as [RΓ HRΓ].
     pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
@@ -1571,7 +1647,7 @@ Section MembersFromSource.
     destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ (proj2 (proj2 (@completeness_fundamental_modules GCt)) _ _ _ HHτ) HRΓ _ _ Hρ)
       as (h0 & h0' & Eh0 & Eh0' & Hhh).
     pose proof (functional_eval_modexp _ _ _ _ Eh0 (EhF ρ)) as ->; pose proof (functional_eval_modexp _ _ _ _ Eh0' (EhF ρ)) as ->.
-    destruct (mem_valid_at _ _ Hg _ _ _ _ _ _ _ HHτ (Hm Γ') eq_refl HRΓ Hρ) as [h1 a1 i1 R1 Eh1 Ea1 HR1 Hhas _ _].
+    destruct (mem_valid_at _ _ Hg _ _ _ _ _ _ _ HHτ HmΓ eq_refl HRΓ Hρ) as [h1 a1 i1 R1 Eh1 Ea1 HR1 Hhas _ _].
     pose proof (functional_eval_modexp _ _ _ _ Eh1 (EhF ρ)) as ->; pose proof (functional_eval_exp _ _ _ _ Ea1 Ea) as ->.
     assert (Hself : forall mm, dm_global F nil ·ₜ x Θ ⍮ Ξ ↘ mm -> Dom mm ≈ mm ∈ Ra).
     { intros mm Emm.
@@ -1579,105 +1655,9 @@ Section MembersFromSource.
       rewrite (functional_eval_sel _ _ _ _ Em1 Emm), (functional_eval_sel _ _ _ _ Em1' Emm) in Hm1.
       apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR1 HRa); exact Hm1. }
     (** Glued against the former applied *)
-    assert (Eac : ⟦ ctx_pi (ΔV ++ T1) (ctx_pi (im_nparams Mk ++ ΔU) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) ⟧ ρ ↘ a)
-      by (rewrite <- EA'; exact Ea).
-    destruct (glu_frame_former_apps _ _ _ _ _ HlF Hsat (List.length (ΔV ++ T1)) nil _ _ _ eq_refl
+    destruct (glu_frame_former_apps _ _ _ _ _ HlF Hsat (List.length TF) nil _ _ _ eq_refl
                 (gc_loc_tele_all_assumptions _ _ Hg _ _ _ HlF) eq_refl _ _ _ _ _ _ _ _ _ _
-                Eac (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Hδ Hσt) ltac:(constructor) Hga Hmr HRa Hself)
-      as (mm & Emm & Hglu).
-    econstructor; [ exact Ea | | exact Hga | exact Hglu ].
-    unfold glu_term_value; rewrite Hka; exact (eval_mem_of_sel _ _ _ _ _ (EhF ρ) Emm).
-  Qed.
-
-  (** The type former of a record type under declaration, read as the
-      member [x] of its frame's parent, as [glu_rel_exp_ind_former_under_sub]:
-      its δ-reduct [a_record p] is glued, and the member against it, the
-      record's parameters ending in the parent's telescope
-      ([frame_record_split]). *)
-  Lemma glu_rel_exp_record_former_under_sub : forall Γ H x p R Tm Φm,
-      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mod_qname (me_mem H x) = Some p -> gs_find_record Ξ p = Some R ->
-      gc_loc Θ Ξ p = Some (Tm, Φm) ->
-      glu_rel_exp_under_sub Γ (a_record p) (ctx_pi (record_params R) (record_sort R)) ->
-      glu_rel_exp_under_sub Γ (a_mem H x) (ctx_pi (record_params R) (record_sort R)).
-  Proof.
-    intros * HH Hq Hf Hlp Hred.
-    set (A := ctx_pi (record_params R) (record_sort R)) in *.
-    (** The member's description, closed, its type and reduct *)
-    set (Rf := record_former_desc p R (mdesc_closed nil p Tm Φm nil)).
-    assert (Hm : forall Γ', mdenote Θ Ξ Γ' (me_mem H x) Rf) by (intros; eapply mdenote_record_frame; eassumption).
-    pose proof (wf_gstack_closed _ _ Hg) as Hc.
-    destruct (stack_closed_record _ _ _ (proj2 Hc) Hf) as [HF HS0].
-    assert (HRs : mdesc_scoped 0 Rf)
-      by exact (record_former_desc_scoped p R (mdesc_closed nil p Tm Φm nil) 0 (proj2 (proj1 (ctx_scoped_app_iff _ _) HF)) HS0
-                  (conj I (conj (gc_loc_closed _ _ _ _ _ Hc Hlp) (List.Forall_nil (exp_scoped _))))).
-    assert (EA : forall σ, A[σ] = A).
-    { intros σ; pose proof (mdesc_type_sub Rf A σ eq_refl) as E; rewrite (mdesc_closed_sub _ _ HRs) in E; cbn in E.
-      injection E as E; symmetry; exact E. }
-    (** The frame's parent, its telescope the record's outer parameters *)
-    assert (Hq' := Hq); cbn [mod_qname] in Hq'.
-    destruct (mod_qname H) as [F |] eqn:HqF; [ injection Hq' as Ep | discriminate ].
-    assert (Ep' : p = qname_in F x) by (rewrite <- Ep; reflexivity); clear Ep; subst p.
-    destruct (frame_record_loc _ _ Hg _ _ Hf) as (U & T0 & Tp & Φp & Htl & Hfr & Hlp').
-    destruct (frame_record_split _ _ Hg _ _ _ _ Hf Htl) as (Δr & _ & ERp).
-    destruct (gs_find_tele_frame _ _ Hg _ _ _ Htl) as [(Hch & _) | (c & y & V & T1 & Hch & HtF & _ & ET0)];
-      [ cbn in Hch; apply (f_equal (@List.length _)) in Hch; rewrite List.length_app in Hch; cbn in Hch; lia |].
-    cbn [qname_in q_chain q_unit] in Hch, HtF; apply List.app_inj_tail in Hch as [<- <-].
-    replace (q_abs (q_unit F) (q_chain F)) with F in HtF by (destruct F; reflexivity).
-    destruct (gs_find_tele_body _ _ Hg _ _ _ _ HtF) as (ΔV & ΦV & ->); cbn [gu_params] in ET0; subst T0.
-    assert (HlF : gc_loc Θ Ξ F = Some (ΔV ++ T1, ΦV)) by (unfold gc_loc, gc_frame; rewrite HtF; reflexivity).
-    assert (EA' : A = ctx_pi (ΔV ++ T1) (ctx_pi Δr (record_sort R))) by (unfold A; rewrite ERp, ctx_pi_app; reflexivity).
-    (** The parent's value, at no argument *)
-    assert (EhF : forall ρ, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global F nil).
-    { intros ρ; rewrite (mod_qname_inv _ _ HqF).
-      apply (Evaluation.Modules.eval_path_mod Θ Ξ); intros m1 m2 Ec Hne.
-      exact (path_prefix_loc _ _ Hg _ _ _ _ (gc_loc_loc _ _ _ _ _ HlF) _ Ec Hne). }
-    (** Saturated, the member is the former applied *)
-    assert (Hsat : forall args r, List.length args = List.length (ΔV ++ T1) ->
-                     $*| d_record (qname_in F x) nil & args | Θ ⍮ Ξ ↘ r -> dm_global F args ·ₜ x Θ ⍮ Ξ ↘ r).
-    { intros * Hl Er.
-      eapply eval_sel_global_record;
-        [ intros T' Φ' Hl'; rewrite HlF in Hl'; injection Hl' as <- <-; lia
-        | rewrite <- qname_in_app; exact (gc_frame_resolve _ _ _ _ Hfr)
-        | rewrite <- qname_in_app; unfold record_lookup; rewrite Hf; reflexivity
-        | rewrite <- qname_in_app; exact Er ]. }
-    constructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ Hred) |].
-    intros Γ' τ Hτ.
-    pose proof (glu_rel_sub_inst_typed _ _ _ Hτ) as Hτt.
-    cbn [exp_sub]; rewrite (mod_qname_sub _ _ τ HqF), EA.
-    pose proof (glu_rel_exp_under_sub_inst _ _ _ Hred _ _ Hτ) as HrA; cbn [exp_sub] in HrA; rewrite EA in HrA.
-    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH Hτt) as HHτ; rewrite (mod_qname_sub _ _ τ HqF) in HHτ.
-    pose proof (wf_exp_eq_mem_delta _ _ _ _ _ _ _ _ HHτ (Hm Γ') eq_refl eq_refl) as Hδ.
-    pose proof (mem_desc_ok _ _ _ _ _ _ _ (gctx_valid_syn _ _ Hg) HHτ (Hm Γ')) as Hok.
-    destruct (desc_ok_ty_mod _ _ _ _ _ _ Hok eq_refl eq_refl) as [j HAj].
-    destruct HrA as [Sb HSb lvl Hb].
-    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := lvl); [ exact HSb |].
-    intros Δ σ ρ Hσ.
-    destruct (Hb _ _ _ Hσ) as [a mr P El Ea Emr Hga Hmr].
-    pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
-    (** Of the relevant kind: a type of a universe *)
-    pose proof (sub_preserves_exp _ _ _ _ _ _ _ HAj Hσt) as HAjσ; cbn [exp_sub] in HAjσ.
-    pose proof (glu_univ_elem_trm_typ _ _ _ _ Hga _ _ _ _ Hmr) as HAP.
-    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ ak_relevant _ Hga HAP HAjσ) as [Hka _].
-    unfold glu_term_value in Emr; rewrite Hka in Emr; inversion Emr; subst.
-    (** The member at the environment, related to itself (completeness) *)
-    destruct (glu_ctx_env_per_ctx_env HSb) as [RΓ HRΓ].
-    pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
-    destruct (glu_univ_elem_per_univ _ _ _ _ Hga) as [Ra HRa].
-    destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ (proj2 (proj2 (@completeness_fundamental_modules GCt)) _ _ _ HHτ) HRΓ _ _ Hρ)
-      as (h0 & h0' & Eh0 & Eh0' & Hhh).
-    pose proof (functional_eval_modexp _ _ _ _ Eh0 (EhF ρ)) as ->; pose proof (functional_eval_modexp _ _ _ _ Eh0' (EhF ρ)) as ->.
-    destruct (mem_valid_at _ _ Hg _ _ _ _ _ _ _ HHτ (Hm Γ') eq_refl HRΓ Hρ) as [h1 a1 i1 R1 Eh1 Ea1 HR1 Hhas _ _].
-    pose proof (functional_eval_modexp _ _ _ _ Eh1 (EhF ρ)) as ->; pose proof (functional_eval_exp _ _ _ _ Ea1 Ea) as ->.
-    assert (Hself : forall mm, dm_global F nil ·ₜ x Θ ⍮ Ξ ↘ mm -> Dom mm ≈ mm ∈ Ra).
-    { intros mm Emm.
-      destruct (Hhas ltac:(rewrite Hka; constructor) _ Hhh) as [m1 m1' Em1 Em1' Hm1].
-      rewrite (functional_eval_sel _ _ _ _ Em1 Emm), (functional_eval_sel _ _ _ _ Em1' Emm) in Hm1.
-      apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR1 HRa); exact Hm1. }
-    (** Glued against the former applied *)
-    assert (Eac : ⟦ ctx_pi (ΔV ++ T1) (ctx_pi Δr (record_sort R)) ⟧ ρ ↘ a) by (rewrite <- EA'; exact Ea).
-    destruct (glu_frame_former_apps _ _ _ _ _ HlF Hsat (List.length (ΔV ++ T1)) nil _ _ _ eq_refl
-                (gc_loc_tele_all_assumptions _ _ Hg _ _ _ HlF) eq_refl _ _ _ _ _ _ _ _ _ _
-                Eac (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Hδ Hσt) ltac:(constructor) Hga Hmr HRa Hself)
+                Ea (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Hδ Hσt) ltac:(constructor) Hga Hmr HRa Hself)
       as (mm & Emm & Hglu).
     econstructor; [ exact Ea | | exact Hga | exact Hglu ].
     unfold glu_term_value; rewrite Hka; exact (eval_mem_of_sel _ _ _ _ _ (EhF ρ) Emm).
@@ -1693,7 +1673,7 @@ Section MembersFromSource.
       ([src_stored_member_of_mem]): substitution keeps the stored module
       ([mdesc_sub_closed_back]), and the target's description grows the
       source's ([mdenote_grow_all]). *)
-  Lemma glu_rel_exp_mem_under_sub : forall Γ H x Rs A Srt,
+  Lemma glu_rel_exp_mem_not_former_under_sub : forall Γ H x Rs A Srt,
       Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> @not_frame_former (gc_mk Θs Ξs) H x ->
       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ -> not_frame_former H[ζ]ᵐ x) ->
       mdenote Θs Ξs Γ (me_mem H x) Rs -> mdesc_type Rs = Some A ->
@@ -1749,6 +1729,128 @@ Section MembersFromSource.
     all: inversion Hgm as [? Hc | ? ? Φ1 ? ? ? _ _ | ]; subst; [ cbn in Hc; discriminate |].
     all: destruct (src_stored_member_of_mem _ _ _ _ _ _ _ _ _ _ _ Hnfs HmHs HRms HmRs HtRs Hk) as (Γe & Φ0 & E0 & REs & As & Hsm).
     all: exists Γe, Φ1, Φ0, E0, REs, As; exact Hsm.
+  Qed.
+
+  (** The member rule at the target of a sound embedding, at every
+      instance of the context, for every member typed at the source whose
+      δ-reduct, if any, is glued at the instances.  A type former under
+      declaration at the target, or at the source and filed at the target,
+      is glued against its reduct ([glu_rel_exp_former_mem_under_sub]):
+      the source's description is the former's, which the target's grows,
+      and its frame's parent, at the source a frame, is stored at the
+      target with the same telescope ([gc_loc_grow]).  Any other member is
+      read through the modules it is stored in
+      ([glu_rel_exp_mem_not_former_under_sub]). *)
+  Lemma glu_rel_exp_member_under_sub : forall Γ H x Rs A Srt,
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H ->
+      mdenote Θs Ξs Γ (me_mem H x) Rs -> mdesc_type Rs = Some A ->
+      Θs ⍮ Ξs ⍮ Γ ⊢ A : Srt -> type_sort Srt -> Θs ⍮ Ξs ⍮ Γ ⊢ a_mem H x : A ->
+      glu_rel_modexp_under_sub Γ H -> glu_rel_exp_under_sub Γ A Srt ->
+      (forall M, mdesc_reduct Rs = Some M -> glu_rel_exp_under_sub Γ M A) ->
+      glu_rel_exp_under_sub Γ (a_mem H x) A.
+  Proof.
+    intros * HHs HmRs HtRs HAs HS HxAs HHg HAg HMg.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
+    pose proof (Hwm _ _ _ HHs) as HH.
+    destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmRs) as (R & HmR & Hgr).
+    pose proof (mdesc_grows_ty _ _ _ _ _ _ _ Hgr HtRs) as HtR.
+    apply (@frame_former_cases GCt H x).
+    - (** No type former under declaration at the target *)
+      intros Hnf.
+      apply (@frame_former_cases (gc_mk Θs Ξs) H x).
+      + intros Hnfs.
+        exact (glu_rel_exp_mem_not_former_under_sub _ _ _ _ _ _ HHs Hnfs
+                 (fun Γ1 ζ Hζ => not_frame_former_sub _ _ _ _ _ HH Hζ Hnf) HmRs HtRs HAs HS HxAs HHg HAg).
+      + (** A group member's under declaration at the source, filed at the target *)
+        intros p pq k D Mk Tm Φm Hq Hf HMk Hlp.
+        pose proof (mdenote_ind_frame Θs Ξs Γ _ _ _ _ _ _ _ _ Hq Hf HMk Hlp) as Hm0.
+        pose proof (proj1 (mdenote_functional_all _ _ Hgs) _ _ _ HmRs _ Hm0) as ->.
+        cbn in HtRs; injection HtRs as <-.
+        assert (Hq' := Hq); cbn [mod_qname] in Hq'.
+        destruct (mod_qname H) as [F |] eqn:HqF; [ injection Hq' as Ep | discriminate ].
+        assert (Ep' : p = qname_in F x) by (rewrite <- Ep; reflexivity); clear Ep; subst p.
+        destruct (frame_ind_former_parent _ _ Hgs _ _ _ _ _ _ Hf HMk) as (TF & ΦF & A1 & HfrF & EA).
+        destruct (gc_loc_grow _ _ _ _ Hg Hsub F TF ΦF ltac:(unfold gc_loc; rewrite HfrF; reflexivity)) as (ΦF' & HlF & _).
+        pose proof (HMg _ eq_refl) as Hred.
+        pose proof (fun σ => frame_ind_former_type_closed _ _ Hgs _ _ _ _ _ σ Hf HMk) as EAc.
+        rewrite EA in Hred, EAc |- *.
+        eapply (glu_rel_exp_former_mem_under_sub _ _ _ _ _ _ _ (a_ind pq k) (d_ind pq k nil) HH HqF HlF);
+          [| exact EAc | reflexivity | intros ρ r E; inversion E; reflexivity
+          | exact (sel_global_ind_former _ _ _ _ _ _ _ _ _ HlF (gc_sub_frame_ind _ _ _ _ _ _ Hsub Hf)) | exact Hred ].
+        intros Γ'.
+        destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ (mdenote_ind_frame Θs Ξs Γ' _ _ _ _ _ _ _ _ Hq Hf HMk Hlp))
+          as (R' & HmR' & Hgr').
+        unfold ind_former_desc in Hgr'; rewrite EA in Hgr'.
+        inversion Hgr' as [? Hc | | ? ? ? ? ? Hgm]; subst; [ cbn in Hc; discriminate |].
+        inversion Hgm; subst; (eexists _, _; split; [ exact HmR' | reflexivity ]).
+      + (** A record type's under declaration at the source, filed at the target *)
+        intros p Rr Tm Φm Hq Hf Hlp.
+        pose proof (mdenote_record_frame Θs Ξs Γ _ _ _ _ _ Hq Hf Hlp) as Hm0.
+        pose proof (proj1 (mdenote_functional_all _ _ Hgs) _ _ _ HmRs _ Hm0) as ->.
+        cbn in HtRs; injection HtRs as <-.
+        assert (Hq' := Hq); cbn [mod_qname] in Hq'.
+        destruct (mod_qname H) as [F |] eqn:HqF; [ injection Hq' as Ep | discriminate ].
+        assert (Ep' : p = qname_in F x) by (rewrite <- Ep; reflexivity); clear Ep; subst p.
+        destruct (frame_record_former_parent _ _ Hgs _ _ _ Hf) as (TF & ΦF & A1 & HfrF & EA).
+        destruct (gc_loc_grow _ _ _ _ Hg Hsub F TF ΦF ltac:(unfold gc_loc; rewrite HfrF; reflexivity)) as (ΦF' & HlF & _).
+        pose proof (HMg _ eq_refl) as Hred.
+        pose proof (fun σ => frame_record_former_type_closed _ _ Hgs _ _ σ Hf) as EAc.
+        rewrite EA in Hred, EAc |- *.
+        eapply (glu_rel_exp_former_mem_under_sub _ _ _ _ _ _ _ (a_record (qname_in F x)) (d_record (qname_in F x) nil) HH HqF HlF);
+          [| exact EAc | reflexivity | intros ρ r E; inversion E; reflexivity
+          | exact (sel_global_record_former _ _ _ _ _ _ _ HlF (gc_sub_frame_record _ _ _ _ _ _ Hsub Hf)) | exact Hred ].
+        intros Γ'.
+        destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ (mdenote_record_frame Θs Ξs Γ' _ _ _ _ _ Hq Hf Hlp))
+          as (R' & HmR' & Hgr').
+        unfold record_former_desc in Hgr'; rewrite EA in Hgr'.
+        inversion Hgr' as [? Hc | | ? ? ? ? ? Hgm]; subst; [ cbn in Hc; discriminate |].
+        inversion Hgm; subst; (eexists _, _; split; [ exact HmR' | reflexivity ]).
+    - (** A group member's under declaration at the target *)
+      intros p pq k D Mk Tm Φm Hq Hf HMk Hlp.
+      pose proof (mdenote_ind_frame Θ Ξ Γ _ _ _ _ _ _ _ _ Hq Hf HMk Hlp) as Hm0.
+      pose proof (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmR _ Hm0) as ->.
+      assert (Hrs : mdesc_reduct Rs = Some (a_ind pq k)) by (inversion Hgr; subst; reflexivity).
+      cbn in HtR; injection HtR as <-.
+      assert (Hq' := Hq); cbn [mod_qname] in Hq'.
+      destruct (mod_qname H) as [F |] eqn:HqF; [ injection Hq' as Ep | discriminate ].
+      assert (Ep' : p = qname_in F x) by (rewrite <- Ep; reflexivity); clear Ep; subst p.
+      destruct (frame_ind_former_parent _ _ Hg _ _ _ _ _ _ Hf HMk) as (TF & ΦF & A1 & HfrF & EA).
+      assert (HlF : gc_loc Θ Ξ F = Some (TF, ΦF)) by (unfold gc_loc; rewrite HfrF; reflexivity).
+      assert (Hfm : ind_mlookup Θ Ξ (qname_in F x) = Some (pq, k, D))
+        by (rewrite ind_mlookup_unfold; replace (gs_find_ind Ξ (qname_in F x)) with (Some (pq, k, D)) by exact (eq_sym Hf); reflexivity).
+      pose proof (HMg _ Hrs) as Hred.
+      pose proof (fun σ => frame_ind_former_type_closed _ _ Hg _ _ _ _ _ σ Hf HMk) as EAc.
+      rewrite EA in Hred, EAc |- *.
+      eapply (glu_rel_exp_former_mem_under_sub _ _ _ _ _ _ _ (a_ind pq k) (d_ind pq k nil) HH HqF HlF);
+        [| exact EAc | reflexivity | intros ρ r E; inversion E; reflexivity
+        | exact (sel_global_ind_former _ _ _ _ _ _ _ _ _ HlF Hfm) | exact Hred ].
+      intros Γ'; pose proof (mdenote_ind_frame Θ Ξ Γ' _ _ _ _ _ _ _ _ Hq Hf HMk Hlp) as Hm'.
+      unfold ind_former_desc in Hm'; rewrite EA in Hm'.
+      eexists _, _; split; [ exact Hm' | reflexivity ].
+    - (** A record type's under declaration at the target *)
+      intros p Rr Tm Φm Hq Hf Hlp.
+      pose proof (mdenote_record_frame Θ Ξ Γ _ _ _ _ _ Hq Hf Hlp) as Hm0.
+      pose proof (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmR _ Hm0) as ->.
+      assert (Hrs : mdesc_reduct Rs = Some (a_record p)) by (inversion Hgr; subst; reflexivity).
+      cbn in HtR; injection HtR as <-.
+      assert (Hq' := Hq); cbn [mod_qname] in Hq'.
+      destruct (mod_qname H) as [F |] eqn:HqF; [ injection Hq' as Ep | discriminate ].
+      assert (Ep' : p = qname_in F x) by (rewrite <- Ep; reflexivity); clear Ep; subst p.
+      destruct (frame_record_former_parent _ _ Hg _ _ _ Hf) as (TF & ΦF & A1 & HfrF & EA).
+      assert (HlF : gc_loc Θ Ξ F = Some (TF, ΦF)) by (unfold gc_loc; rewrite HfrF; reflexivity).
+      assert (Hfm : record_lookup Θ Ξ (qname_in F x) = Some Rr)
+        by (unfold record_lookup; replace (gs_find_record Ξ (qname_in F x)) with (Some Rr) by exact (eq_sym Hf); reflexivity).
+      pose proof (HMg _ Hrs) as Hred.
+      pose proof (fun σ => frame_record_former_type_closed _ _ Hg _ _ σ Hf) as EAc.
+      rewrite EA in Hred, EAc |- *.
+      eapply (glu_rel_exp_former_mem_under_sub _ _ _ _ _ _ _ (a_record (qname_in F x)) (d_record (qname_in F x) nil) HH HqF HlF);
+        [| exact EAc | reflexivity | intros ρ r E; inversion E; reflexivity
+        | exact (sel_global_record_former _ _ _ _ _ _ _ HlF Hfm) | exact Hred ].
+      intros Γ'; pose proof (mdenote_record_frame Θ Ξ Γ' _ _ _ _ _ Hq Hf Hlp) as Hm'.
+      unfold record_former_desc in Hm'; rewrite EA in Hm'.
+      eexists _, _; split; [ exact Hm' | reflexivity ].
   Qed.
 
 End MembersFromSource.
