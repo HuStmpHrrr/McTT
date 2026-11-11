@@ -270,15 +270,9 @@ Proof.
   all: try (do 3 eexists; reflexivity).
 Qed.
 
-(** An equation at the sort of a kind next to a universe holds next to a
-    larger one. *)
-Lemma eq_abs_kind_sort_lift : forall Γ M M' κ (i n : nat), i <= n ->
-    Γ ⊢ M ≈ M' : abs_kind_sort κ Typeω@i -> Γ ⊢ M ≈ M' : abs_kind_sort κ Typeω@n.
-Proof. intros * Hle HM; destruct κ; cbn in *; [ exact (lift_exp_eq_ge _ _ _ _ _ _ _ Hle HM) | exact HM | exact HM ]. Qed.
-
 (** [Π]s with equal domains and codomains equal over the right domain are
-    equal, at the larger of the two universes: the codomains' equation
-    moves to the left domain ([ctx_sub_extend_eq]). *)
+    equal ([wf_exp_eq_pi_cong_at_max]): the codomains' equation moves to
+    the left domain ([ctx_sub_extend_eq]). *)
 Lemma pi_eq_of_parts : forall Δ κd κc A A' C C' (i j : nat),
     Δ ⊢ A ≈ A' : abs_kind_sort κd Typeω@i ->
     Δ ▹{κd} A' ⊢ C ≈ C' : abs_kind_sort κc Typeω@j ->
@@ -286,15 +280,10 @@ Lemma pi_eq_of_parts : forall Δ κd κc A A' C C' (i j : nat),
     Δ ⊢ a_pi κd κc A C ≈ a_pi κd κc A' C' : abs_kind_sort κc Typeω@(Nat.max i j).
 Proof.
   intros * HAA HCC Hk.
-  pose proof (eq_abs_kind_sort_lift _ _ _ _ i (Nat.max i j) ltac:(lia) HAA) as HAAn.
-  pose proof (eq_abs_kind_sort_lift _ _ _ _ j (Nat.max i j) ltac:(lia) HCC) as HCCn.
-  pose proof (presup_exp_eq_left HAAn) as HA.
-  pose proof (presup_exp_eq_right HAAn) as HA'.
-  pose proof (ctx_sub_extend_eq _ _ _ _ _ _ _ HA' HA (sort_kind_abs_kind_sort _ _) (wf_exp_eq_sym _ _ _ _ _ _ HAAn)) as Hsub.
-  pose proof (ctxsub_exp_eq _ _ _ _ _ _ _ (ctx_sub_escape _ _ _ _ Hsub) HCCn) as HCCa.
-  eapply wf_exp_eq_pi_cong with (U := Typeω@(Nat.max i j));
-    [ apply wf_is_univ_large; exact (presup_exp_ctx HA) | exact HA | exact HAAn | | exact Hk ].
-  rewrite abs_kind_sort_wk; exact HCCa.
+  pose proof (presup_exp_eq_left HAA) as HA.
+  pose proof (ctx_sub_extend_eq _ _ _ _ _ _ _ (presup_exp_eq_right HAA) HA (sort_kind_abs_kind_sort _ _)
+                (wf_exp_eq_sym _ _ _ _ _ _ HAA)) as Hsub.
+  exact (wf_exp_eq_pi_cong_at_max _ _ _ _ _ _ _ _ _ _ _ HA HAA (ctxsub_exp_eq _ _ _ _ _ _ _ (ctx_sub_escape _ _ _ _ Hsub) HCC) Hk).
 Qed.
 
 End Fixed_GCtx.
