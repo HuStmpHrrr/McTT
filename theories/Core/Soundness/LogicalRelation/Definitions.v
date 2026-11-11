@@ -1889,29 +1889,25 @@ Record glu_rel_modexp_under_sub (Δ : ctx) (H : modexp) : Prop := mk_glu_rel_mod
   ; glu_rel_modexp_under_sub_inst : forall Γ τ, glu_rel_sub_inst Γ τ Δ -> glu_modexp_at Γ H[τ]ᵐ }.
 
 (** A definition entry [A ≔ M] glued at the instances of the context [Δ]
-    it extends. *)
-Record glu_rel_def_entry_under_sub (Δ : ctx) (A M : exp) : Prop := mk_glu_rel_def_entry_under_sub
-  { (** The sort of the type *)
-    glu_rel_def_entry_under_sub_sort : typ
-    (** It is a sort of types *)
-  ; glu_rel_def_entry_under_sub_type_sort : type_sort glu_rel_def_entry_under_sub_sort
+    it extends, its type at the sort [S]. *)
+Record glu_rel_def_entry_under_sub (Δ : ctx) (A M : exp) (S : typ) : Prop := mk_glu_rel_def_entry_under_sub
+  { (** The sort is a sort of types *)
+    glu_rel_def_entry_under_sub_type_sort : type_sort S
     (** The type is glued at the instances at its sort *)
-  ; glu_rel_def_entry_under_sub_type : glu_rel_exp_under_sub Δ A glu_rel_def_entry_under_sub_sort
+  ; glu_rel_def_entry_under_sub_type : glu_rel_exp_under_sub Δ A S
     (** The body is glued at the instances at the type *)
   ; glu_rel_def_entry_under_sub_body : glu_rel_exp_under_sub Δ M A }.
 
 (** A definition with a module part [A ≔ M ‖ U] glued at the instances of
-    the context [Δ] it extends: its module part is an alias under no
-    parameters ([wf_ctx_extend_dm]). *)
-Record glu_rel_module_def_entry_under_sub (Δ : ctx) (A M : exp) (U : gunit) : Prop := mk_glu_rel_module_def_entry_under_sub
-  { (** The level of the type's universe *)
-    glu_rel_module_def_entry_under_sub_level : nat
-    (** The target of the alias *)
-  ; glu_rel_module_def_entry_under_sub_target : modexp
-    (** The module part is an alias of the target under no parameters *)
-  ; glu_rel_module_def_entry_under_sub_alias : U = gu_mk nil (md_alias glu_rel_module_def_entry_under_sub_target)
+    the context [Δ] it extends, its type in the universe of the level [i]
+    and its module part an alias of [E] under no parameters
+    ([wf_ctx_extend_dm]). *)
+Record glu_rel_module_def_entry_under_sub (Δ : ctx) (A M : exp) (U : gunit) (i : nat) (E : modexp) : Prop :=
+  mk_glu_rel_module_def_entry_under_sub
+  { (** The module part is an alias of the target under no parameters *)
+    glu_rel_module_def_entry_under_sub_alias : U = gu_mk nil (md_alias E)
     (** The type is glued at the instances in its universe *)
-  ; glu_rel_module_def_entry_under_sub_type : glu_rel_exp_under_sub Δ A Typeω@glu_rel_module_def_entry_under_sub_level
+  ; glu_rel_module_def_entry_under_sub_type : glu_rel_exp_under_sub Δ A Typeω@i
     (** The body is glued at the instances at the type *)
   ; glu_rel_module_def_entry_under_sub_body : glu_rel_exp_under_sub Δ M A
     (** The module part is well formed *)
@@ -1926,9 +1922,9 @@ Record glu_rel_module_def_entry_under_sub (Δ : ctx) (A M : exp) (U : gunit) : P
 Definition glu_rel_entry_under_sub (Δ : ctx) (e : centry) : Prop :=
   match e with
   | ce_ass κ A => exists S, sort_kind S κ /\ glu_rel_exp_under_sub Δ A S
-  | ce_def A M => glu_rel_def_entry_under_sub Δ A M
+  | ce_def A M => exists S, glu_rel_def_entry_under_sub Δ A M S
   | ce_mod U => gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵘ U ≈ U /\ glu_rel_unit_under_sub Δ U
-  | ce_dm A M U => glu_rel_module_def_entry_under_sub Δ A M U
+  | ce_dm A M U => exists (i : nat) E, glu_rel_module_def_entry_under_sub Δ A M U i E
   end.
 
 (** An extension [Ψ] of a context [Γ] glued at the instances: the context

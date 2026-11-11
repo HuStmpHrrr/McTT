@@ -42,10 +42,10 @@ Proof.
   pose proof (IH HΨ _ _ Hτ) as Hτ'.
   destruct e as [κ A | A M | U | A M U]; cbn in He |- *.
   - destruct He as (S & HS & HA); exact (glu_rel_sub_inst_q Hτ' HA HS).
-  - destruct He as [S HS HA HM]; exact (glu_rel_sub_inst_q_def Hτ' HA HS HM).
+  - destruct He as (S & [HS HA HM]); exact (glu_rel_sub_inst_q_def Hτ' HA HS HM).
   - destruct He as [HU HUg].
     exact (glu_rel_sub_inst_q_mod Hτ' HU (sub_preserves_unit _ _ _ _ _ _ _ HU (glu_rel_sub_inst_typed _ _ _ Hτ')) HUg).
-  - destruct He as [i E -> HA HM HU HUg].
+  - destruct He as (i & E & [-> HA HM HU HUg]).
     pose proof (sub_preserves_unit _ _ _ _ _ _ _ HU (glu_rel_sub_inst_typed _ _ _ Hτ')) as HUτ.
     exact (glu_rel_sub_inst_q_dm Hτ' HA HM HU HUτ HUg).
 Qed.
