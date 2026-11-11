@@ -1,0 +1,386 @@
+(** * Values of Global Modules, Glued
+
+    The members of a stored body, read bare at the target of a sound
+    embedding ([glu_gctx_embedding]), are glued at their stored types
+    ([glu_bare_member_at]): a member with a δ-reduct as the reduct, which
+    the embedding glues (a stored body, a type former of a group or of a
+    record type), and one without as the filed axiom or abstract
+    definition it is ([mem_alias_filed]).  The values of global modules
+    are glued from them ([glu_dmod]). *)
+
+From Stdlib Require Import Lia List PeanoNat.
+
+From Mctt Require Import LibTactics.
+From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic Require Import System Records.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Modules Paths DescTyping LookupSound Presup.
+From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness.Modules Require Import Values Filed.
+From Mctt.Core.Completeness.Global Require Import Embedding.
+From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
+From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases Instances IndCases.
+From Mctt.Core.Soundness.Inductives Require Import Args.
+From Mctt.Core.Soundness.Records Require Import Former.
+From Mctt.Core.Soundness Require Import RecordCases.
+From Mctt.Core.Soundness.Global Require Import MemberValues.
+From Mctt.Core.Completeness.Global Require Args.
+From Mctt.Core.Completeness Require ContextCases.
+From Mctt.Core.Completeness.Modules Require Import Mem.
+From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
+Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
+#[local] Open Scope list_scope.
+
+(** ** A Member Equal to a Closed Reduct *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+  Import Fixed_Notations.
+
+  (** A member of a stored module, of an evaluated kind, equal in every
+      context to a closed [N] glued at its type over no context, whose
+      value at [nil] the member is at all the module's parameters, is
+      glued over no context: its value applies as [N]'s value at [nil]
+      does ([glob_member_sim]), glued there by [N]'s gluing at [nil] and
+      the equation ([app_sim_glu]), then moved along the type's values
+      with the type's gluing at the given environment as the witness. *)
+  Lemma glu_closed_reduct : forall p T Φ x N A r (i : nat) f,
+      ⊢ᵍ gc_deps ⍮ gc_stack ->
+      gc_loc gc_deps gc_stack p = Some (T, Φ) ->
+      evaluated_kind r ->
+      ⋅ ⊨ᵗ A ≈ A at i ->
+      Completeness.ContextCases.rel_type_kind ⋅ A r ->
+      (forall σ, A[σ] = A) -> (forall σ, N[σ] = N) ->
+      (forall Δ, ⊢ Δ -> Δ ⊢ a_mem (qname_mod p) x ≈ N : A) ->
+      ⋅ ⊩ N : A ->
+      ⟦ N ⟧ nil ↘ f ->
+      (forall a, ⟦ A ⟧ nil ↘ a -> pi_kinds_depth (tele_kinds T) a) ->
+      (forall args r0, List.length args = List.length T -> $*| f & args | gc_deps ⍮ gc_stack ↘ r0 ->
+         dm_global p args ·ₜ x gc_deps ⍮ gc_stack ↘ r0) ->
+      ⋅ ⊩ a_mem (qname_mod p) x : A.
+  Proof.
+    intros * Hg Hgl Hrk HAv HAk HAs HNs Hδ HN Ef Hpi Hsat.
+    pose proof (qname_mod_qname p) as Hpm.
+    destruct HN as [SbN HSbN kN HNb].
+    eapply mk_glu_rel_exp with (glu_rel_exp_lvl := kN); [ exact HSbN |]; intros Δ σ ρ Hσ.
+    pose proof (glu_ctx_env_sub_escape HSbN _ _ _ Hσ) as Hσt.
+    assert (HΔ : ⊢ Δ) by exact (wf_sub_dom _ _ _ _ _ Hσt).
+    assert (Hσ0 : Δ ⊢ˢ σ ® nil ∈ SbN) by (inversion HSbN as [Sb' ESb _ | | | | ]; subst; apply ESb; exact Hσt).
+    destruct (HNb _ _ _ Hσ) as [aρ mρ Pρ Elρ Eaρ Hmρ HPρ HNσ].
+    destruct (HNb _ _ _ Hσ0) as [a0 f0 P0 El0 Ea0 Hf0 HP0 HN0].
+    rewrite HNs, HAs in HNσ, HN0.
+    pose proof (glu_univ_elem_trm_typ _ _ _ _ HPρ _ _ _ _ HNσ) as HTPρ.
+    pose proof (glu_univ_elem_trm_typ _ _ _ _ HP0 _ _ _ _ HN0) as HTP0.
+    (** The type's values are of its kind *)
+    destruct (HAk _ Completeness.Global.Args.per_ctx_env_nil_true ρ ρ I) as (aρ1 & Eaρ1 & Hkρ).
+    assert (aρ1 = aρ) as -> by (eapply functional_eval_exp; eassumption).
+    destruct (HAk _ Completeness.Global.Args.per_ctx_env_nil_true nil nil I) as (a01 & Ea01 & Hk0).
+    assert (a01 = a0) as -> by (eapply functional_eval_exp; eassumption).
+    rewrite Hk0 in Hf0; assert (f0 = f) as -> by (destruct Hrk; eapply functional_eval_exp; eassumption).
+    (** The type's values at the two environments are related ([⋅] relates all) *)
+    destruct (rel_type_inversion_simple_at Completeness.Global.Args.per_ctx_env_nil_true HAv ρ nil I)
+      as (aρ' & a0' & Haρ' & Ha0' & Hrel).
+    assert (aρ' = aρ) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a0' = a0) as -> by (eapply functional_eval_exp; eassumption).
+    (** The member's value *)
+    set (v := match T with nil => f | _ => d_member (dm_global p nil) (x :: nil) end).
+    assert (Hv : ⟦ a_mem (qname_mod p) x ⟧ ρ ↘ v).
+    { eapply eval_mem_of_sel; [ apply (gc_loc_path _ _ Hg _ _ ρ Hgl) |]; subst v.
+      destruct T as [| e T'] eqn:ET.
+      - apply Hsat; [ reflexivity | constructor ].
+      - eapply eval_sel_global_unsat; [ exact Hgl | cbn; lia ]. }
+    assert (Hsim : app_sim (tele_kinds T) v f).
+    { eapply (glob_member_sim p T Φ x f Hgl Hsat) with (Tout := nil) (args := nil);
+        [ rewrite List.app_nil_r; reflexivity | reflexivity | constructor | intros ->; reflexivity
+        | intros Hne; subst v; destruct T; [ contradiction | reflexivity ] ]. }
+    econstructor; [ exact Eaρ | rewrite Hkρ; destruct Hrk; cbn [glu_term_value]; exact Hv | exact HPρ |].
+    cbn [exp_sub]; rewrite (mod_qname_sub _ _ _ Hpm), HAs.
+    (** Glued at [nil]: [N]'s value there, moved to the member by the equation *)
+    assert (HG0 : Δ ⊢ a_mem (qname_mod p) x : A ® f ∈ El0)
+      by (eapply glu_univ_elem_trm_resp_exp_eq; [ exact HP0 | exact HN0 | apply wf_exp_eq_sym, Hδ; exact HΔ ]).
+    pose proof (app_sim_glu _ _ _ _ _ (Hpi _ Ea0) HP0 _ _ _ _ _ HG0 Hsim) as HGv.
+    exact (glu_univ_elem_exp_conv (per_univ_sym' _ _ _ Hrel) HP0 HPρ HGv HTPρ).
+  Qed.
+
+End Fixed_GCtx.
+
+(** ** A Member of a Stored Body, Read Bare *)
+
+Section Bare.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
+  #[local] Instance GCb : GCtx := gc_mk Θ Ξ.
+  Import Fixed_Notations.
+
+  (** A term member of a stored body, of an evaluated kind, read bare over
+      no context, is glued at its type when its δ-reduct is, and, if it has
+      none, when it is: its type is a closed [Π] over the module's
+      telescope ([valid_filed_term]), its reduct the stored body or a type
+      former, whose value at [nil] is the member's at all the module's
+      parameters ([eval_sel_global_apps]). *)
+  Lemma glu_bare_member_of_reduct : forall p T Φ x R A,
+      gc_loc Θ Ξ p = Some (T, Φ) ->
+      mdenote Θ Ξ ⋅ (me_mem (qname_mod p) x) R -> mdesc_type R = Some A ->
+      evaluated_kind (mdesc_kind R) ->
+      (forall N, mdesc_reduct R = Some N -> ⋅ ⊩ N : A) ->
+      (mdesc_reduct R = None -> ⋅ ⊩ a_mem (qname_mod p) x : A) ->
+      ⋅ ⊩ a_mem (qname_mod p) x : A.
+  Proof.
+    intros * Hgl Hm Ht Hk HN Hne.
+    destruct (mdesc_reduct R) as [N |] eqn:Hr; [| exact (Hne eq_refl) ].
+    specialize (HN _ eq_refl); clear Hne.
+    (** Closed, as a description over no context *)
+    pose proof (wf_gstack_closed _ _ Hg) as Hc.
+    assert (Hsl : slots_ok 0 ⋅) by (intros ? ? ? Hx; inversion Hx).
+    assert (Hsc : modexp_scoped 0 (me_mem (qname_mod p) x)) by (cbn; apply qname_mod_scoped).
+    pose proof (proj1 (mdenote_scoped_all _ _ Hc) _ _ _ Hm 0 Hsl Hsc) as HRs.
+    assert (HAs : forall σ, A[σ] = A) by (intros; apply exp_closed_sub; exact (mdesc_type_scoped _ _ _ HRs Ht)).
+    assert (HNs : forall σ, N[σ] = N) by (intros; apply exp_closed_sub; exact (mdesc_reduct_scoped _ _ _ HRs Hr)).
+    pose proof (qname_mod_qname p) as Hpm.
+    (** The member is its reduct in every context *)
+    assert (Hδ : forall Δ, ⊢ Θ ⍮ Ξ ⍮ Δ -> Θ ⍮ Ξ ⍮ Δ ⊢ a_mem (qname_mod p) x ≈ N : A).
+    { intros Δ HΔ.
+      assert (Hcp : sub_mod_compat Id Δ ⋅) by (intros ? ? Hx; inversion Hx).
+      pose proof (proj1 (mdenote_sub_all _ _ Hc) _ _ _ Hm 0 Hsl Hsc _ _ Hcp) as HmΔ.
+      cbn [modexp_sub] in HmΔ; rewrite (mod_qname_sub _ _ _ Hpm) in HmΔ.
+      eapply wf_exp_eq_mem_delta; [ exact (loc_modexp_wf _ _ _ HΔ _ _ _ (gc_loc_loc _ _ _ _ _ Hgl)) | exact HmΔ | |].
+      - rewrite (mdesc_type_sub _ _ _ Ht), HAs; reflexivity.
+      - rewrite (mdesc_reduct_sub _ _ _ Hr), HNs; reflexivity. }
+    (** The stored description, valid *)
+    destruct (filed_mem_desc _ _ Hg ⋅ p T Φ nil x R A Hgl Hm Ht) as (R0 & R1 & Hst & Ha & Hkd & HtR & HrR).
+    cbn [mdesc_term_part_ats] in Ha; injection Ha as <-; rewrite mdesc_named_nil in HtR, HrR.
+    rewrite Hkd in Hk; rewrite Ht in HtR; rewrite Hr in HrR.
+    pose proof (valid_gctx_embedding_filed _ _ _ _ (valid_gctx_embedding_refl _ _ Hg)) as Hfm.
+    pose proof (Hfm _ _ _ Hgl) as HfM.
+    assert (Hvt : valid_filed_term p T x R0).
+    { destruct Hst as [Φ0 E R0' Hp HE | pq k D Mk Hk' HMk | Rr Hr'];
+        [ exact (valid_filed_mod_terms _ _ _ _ _ HfM x Φ0 _ _ Hp HE)
+        | exact (valid_filed_mod_ind_frames _ _ _ _ _ HfM _ _ _ _ _ Hk' HMk)
+        | exact (valid_filed_mod_record_frames _ _ _ _ _ HfM _ _ Hr') ]. }
+    destruct Hvt as [A1 lv Htyped Hreads _ Hpk].
+    destruct (Hreads nil _ T nil ltac:(rewrite List.app_nil_r; reflexivity) eq_refl eq_refl) as [EA _].
+    cbn [sb_of_list] in EA; rewrite <- HtR in EA; injection EA as EA; rewrite exp_sub_id in EA; subst A.
+    (** The type is valid, of the member's kind *)
+    destruct (rel_type_at_kind_of_abs_kind_sort _ _ _ _ Htyped) as [[iA HA1] HA1k].
+    destruct (valid_filed_mod_tele_evaluated _ _ _ _ _ HfM) as [l HTr].
+    assert (HT0 : ⊨ T ++ ⋅) by (rewrite List.app_nil_r; exact (valid_filed_mod_tele_wf _ _ _ _ _ HfM)).
+    assert (HA1' : T ++ ⋅ ⊨ᵗ A1 ≈ A1 at iA) by (rewrite List.app_nil_r; exact HA1).
+    assert (HA1k' : Completeness.ContextCases.rel_type_kind (T ++ ⋅) A1 (mdesc_kind R0)) by (rewrite List.app_nil_r; exact HA1k).
+    destruct (rel_type_ctx_pi _ _ _ _ _ _ (valid_filed_mod_tele_all_assumptions _ _ _ _ _ HfM) HT0 HTr Hpk Hk HA1' HA1k')
+      as [HAv HAk].
+    (** The reduct's value at [nil] *)
+    destruct HN as [SbN HSbN kN HNb] eqn:EHN.
+    assert (HΔ0 : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; exact Hg).
+    assert (Hnil : ⋅ ⊢ˢ Id ® nil ∈ SbN)
+      by (inversion HSbN as [Sb' ESb _ | | | | ]; subst; apply ESb; apply wf_sub_nil'; exact HΔ0).
+    destruct (HNb _ _ _ Hnil) as [a0 f P0 El0 Ea0 Hf _ _].
+    destruct (HAk _ Completeness.Global.Args.per_ctx_env_nil_true nil nil I) as (a01 & Ea01 & Hk0).
+    assert (a01 = a0) as -> by (eapply functional_eval_exp; eassumption).
+    rewrite Hk0 in Hf; assert (Ef : ⟦ N ⟧ nil ↘ f) by (destruct Hk; exact Hf).
+    (** It is the member's stored value *)
+    assert (Hgv : global_member_value Θ Ξ p x f).
+    { destruct Hst as [Φ0 E R0' Hp HE | pq k D Mk Hk' HMk | Rr Hr'].
+      - destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
+        pose proof (proj2 (loc_entry _ _ Hg _ _ _ (gc_loc_loc _ _ _ _ _ Hgl) x _) Hent) as HeE.
+        rewrite qname_in_app in HeE.
+        destruct E as [b pv r A0 oM | pv U | pv pq k D ΦD | pv A0 M0 U | pv pr Rr ΦR]; cbn in HE; try discriminate.
+        + injection HE as <-; cbn in HrR, Hk.
+          destruct b; [| discriminate ]; subst oM.
+          apply gc_entry_def in HeE.
+          eapply global_member_value_term; [ exact (gc_term_of_resolve _ _ _ _ _ _ _ Hk HeE) | exact Ef ].
+        + destruct (ind_member D k) as [Mk |] eqn:HMk; cbn in HE; [ injection HE as <- | discriminate ].
+          cbn in HrR; injection HrR as ->.
+          inversion Ef; subst.
+          destruct (gc_entry_ind _ _ _ _ _ _ _ _ HeE) as [Hres Hind].
+          eapply global_member_value_indty; [ exact Hres | exact Hind ].
+        + injection HE as <-; cbn in HrR; injection HrR as ->.
+          eapply global_member_value_term; [ exact (gc_term_of_def_mod _ _ _ _ _ _ _ HeE) | exact Ef ].
+        + injection HE as <-; cbn in HrR; injection HrR as ->.
+          inversion Ef; subst.
+          rewrite qname_in_app.
+          pose proof (gc_entry_record _ _ _ _ _ _ _ HeE) as Hrl.
+          eapply global_member_value_record; [ exact (record_lookup_resolve _ _ _ _ Hrl) | exact Hrl ].
+      - cbn in HrR; injection HrR as ->; inversion Ef; subst.
+        assert (Hind : ind_mlookup Θ Ξ (qname_in p x) = Some (pq, k, D)) by (rewrite ind_mlookup_unfold, Hk'; reflexivity).
+        rewrite qname_in_app in Hind.
+        eapply global_member_value_indty; [ exact (ind_mlookup_resolve _ _ _ _ Hind) | exact Hind ].
+      - cbn in HrR; injection HrR as ->; inversion Ef; subst.
+        assert (Hrl : record_lookup Θ Ξ (qname_in p x) = Some Rr) by (unfold record_lookup; rewrite Hr'; reflexivity).
+        rewrite qname_in_app in Hrl |- *.
+        eapply global_member_value_record; [ exact (record_lookup_resolve _ _ _ _ Hrl) | exact Hrl ]. }
+    eapply (@glu_closed_reduct GCb p T Φ x N _ (mdesc_kind R0) _ f Hg Hgl Hk HAv HAk HAs HNs Hδ HN Ef).
+    - (** A [Π] over the telescope *)
+      intros a Ea; rewrite <- (List.app_nil_r (tele_kinds T)).
+      eapply eval_ctx_pi_kinds;
+        [ exact Hk | exact (glob_tele_kinds _ _ _ _ _ Hg (gc_loc_loc _ _ _ _ _ Hgl))
+        | exact (valid_filed_mod_tele_all_assumptions _ _ _ _ _ HfM) | intros; exact I | exact Ea ].
+    - (** At all the module's parameters, the member is the value applied *)
+      intros args r0 Hla Hr0.
+      eapply eval_sel_global_apps; [ intros T' Φ' HT'; cbn in HT'; rewrite Hgl in HT'; injection HT' as <- _; lia | exact Hgv | exact Hr0 ].
+  Qed.
+
+End Bare.
+
+(** ** Members Read Bare *)
+
+Lemma mdesc_ats_term_none_eq : forall Ns κ A R, mdesc_ats (mdesc_term κ A None) Ns = Some R -> exists A', R = mdesc_term κ A' None.
+Proof.
+  induction Ns as [| N Ns IH]; intros * Ha; cbn in Ha; [ injection Ha as <-; eauto |].
+  destruct (pi_view A) as [[? ?] |]; [ exact (IH _ _ _ Ha) | discriminate ].
+Qed.
+
+(** A member looked up as a term of no δ-reduct is an axiom or an abstract
+    definition of a stored body, read bare: the module expression's module
+    part is the body's path at no argument and no outside parameter. *)
+Lemma mem_no_red : forall Θ Ξ Γ H x R A,
+    mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = None ->
+    exists R0 p T Φ Φ0 b pv κ oM,
+      mdenote Θ Ξ Γ H R0 /\ mdesc_mod R0 = Some (mdesc_closed nil p T Φ nil) /\
+      gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def b pv κ A oM)) /\ (if b then oM else None) = None.
+Proof.
+  intros * Hm Ht Hr.
+  assert (HR : exists κ, R = mdesc_term κ A None)
+    by (destruct R as [κ A' om | | | ]; cbn in Ht, Hr; try discriminate; subst; injection Ht as ->; eauto).
+  destruct HR as [κ ->].
+  inversion Hm as [| | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hrd |]; subst.
+  destruct R0m as [| Δ Φw Φx | Θ' p T Φ Ns |]; cbn in He; try discriminate.
+  - (* an open body reads only transparent definitions and modules *)
+    destruct (gm_prefix_upto Φx x) as [[| Φ' y E0 | ? ? ?] |]; try discriminate.
+    destruct E0 as [[] pv κ' A' [M |] | pv U | | |]; try discriminate; injection He as <- <- <-.
+    + inversion Hed; subst; cbn in Hrd.
+      destruct (gm_fill Φ'); cbn in Hrd; discriminate.
+    + inversion Hed; subst.
+      match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hmm end.
+      cbn in Hrd; destruct (gm_fill Φ'); cbn in Hrd; [| discriminate ].
+      injection Hrd as Heq; destruct Re; cbn in Hmm, Heq; try contradiction; discriminate.
+    + (* a definition with a module part reads as one, with both parts *)
+      inversion Hed; subst; cbn in Hrd.
+      destruct (gm_fill Φ'); cbn in Hrd; discriminate.
+  - destruct (gm_prefix_upto Φ x) as [[| Φ0 y E0 | ? ? ?] |] eqn:Hp; try discriminate.
+    injection He as <- <- <-.
+    pose proof (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
+    cbn [mdesc_read] in Hrd; destruct (mdesc_ats_read Re Ns) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [| discriminate ].
+    injection Hrd as Heq.
+    destruct E0 as [b pv κ' A' oM | pv [Δ [sm Φy | E'] ] | pv pq k' D ΦD | pv Ad Md Ud | pv Rr ΦR ].
+    + (* a definition: one of no body, read bare *)
+      cbn [ge_read] in Hed; inversion Hed; subst; cbn [mdesc_ats_read] in Hats.
+      destruct (if b then oM else None) as [M |] eqn:Ho.
+      * exfalso; destruct (mdesc_ats_some_red _ _ _ _ _ Hats) as (A1 & M1 & ->).
+        rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
+      * destruct (mdesc_ats_term_none_eq _ _ _ _ Hats) as (A1 & ->).
+        destruct (mdesc_named_term_none Θ' Ns (apps (a_mem (qname_mod p) x) Ns) κ' A1) as [(Hn & -> & ->) | Hn];
+          rewrite Hn in Heq; cbn in Heq; [| discriminate ].
+        cbn in Hats; injection Hats as ->; injection Heq as -> ->.
+        exists R0, p, T, Φ, Φ0, b, pv, κ, oM; repeat split; assumption.
+    + exfalso; assert (Hmm : mdesc_is_mod Re) by (destruct sm; cbn [ge_read] in Hed; inversion Hed; subst; eapply udenote_is_mod; eassumption).
+      rewrite (mdesc_ats_read_mod _ _ Hmm) in Hats.
+      pose proof (mdesc_ats_is_mod _ _ _ Hmm Hats) as Hm1.
+      destruct R1; cbn in Hm1; try contradiction; rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
+    + exfalso; assert (Hmm : mdesc_is_mod Re) by (cbn [ge_read] in Hed; inversion Hed; subst; eapply udenote_is_mod; eassumption).
+      rewrite (mdesc_ats_read_mod _ _ Hmm) in Hats.
+      pose proof (mdesc_ats_is_mod _ _ _ Hmm Hats) as Hm1.
+      destruct R1; cbn in Hm1; try contradiction; rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
+    + (* a member of a group: its type former, a reduct *)
+      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [mdesc_ats_read ind_former_desc] in Hats.
+      mdesc_dm_read_shape Hats.
+      rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
+    + (* a definition with a module part: read with its module part, no term *)
+      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [mdesc_ats_read] in Hats.
+      mdesc_dm_read_shape Hats.
+      rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
+    + (* a record type: its type former, a reduct *)
+      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [mdesc_ats_read record_former_desc] in Hats.
+      mdesc_dm_read_shape Hats.
+      rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
+Qed.
+
+(** The type former of a member of a group of a stored body, read bare, is
+    glued at every sound embedding, as the group's type former. *)
+Lemma glu_ind_former_of_embedding : forall Θ Ξ Θ0 Ξ0 pm pq k D Mk,
+    ⊢ᵍ Θ ⍮ Ξ -> glu_gctx_embedding Θ Ξ Θ0 Ξ0 -> ind_mlookup Θ Ξ pm = Some (pq, k, D) -> ind_member D k = Some Mk ->
+    @glu_rel_exp (gc_mk Θ0 Ξ0) ⋅ (a_ind pq k) (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ).
+Proof.
+  intros * Hg He Hk HMk.
+  pose proof (ind_mlookup_group _ _ Hg _ _ _ _ Hk) as Hl.
+  pose proof (ind_selfpath_decl_field _ _ _ _ (ind_mlookup_selfpath _ _ Hg _ _ _ _ Hk)) as Hlt.
+  exact (@glu_rel_exp_of_under_sub (gc_mk Θ0 Ξ0) _ _ _
+           (glu_ind _ _ _ _ _ _ _ (wf_ctx_empty _ _ Hg) (glu_ctx_empty _ _ Hg) Hl HMk Hlt _ _ He)).
+Qed.
+
+(** The type former of a record type of a stored body, read bare, is
+    glued at every sound embedding, as the record's type former. *)
+Lemma glu_record_former_of_embedding : forall Θ Ξ Θ0 Ξ0 pr Rr,
+    glu_gctx_embedding Θ Ξ Θ0 Ξ0 -> record_lookup Θ Ξ pr = Some Rr ->
+    @glu_rel_exp (gc_mk Θ0 Ξ0) ⋅ (a_record pr) (ctx_pi (record_params Rr) (record_sort Rr)).
+Proof.
+  intros * He Hl.
+  pose proof (gctx_embedding_wf _ _ _ _ (glu_gctx_embedding_embedding _ _ _ _ He)) as Hg0.
+  pose proof (record_lookup_of_glu_gctx_embedding _ _ _ _ _ _ He Hl) as Hl0.
+  destruct (record_typed_ty _ _ _ (record_lookup_typed _ _ Hg0 (gctx_valid_syn _ _ Hg0) _ _ Hl0)) as [i Hty].
+  exact (@glu_rel_exp_record0 (gc_mk Θ0 Ξ0) pr Rr Hg0 Hl0 (glu_gctx_embedding_record_field _ _ _ _ He _ _ Hl) i Hty).
+Qed.
+
+(** A term member of a stored body, of an evaluated kind, read bare over no
+    context, is glued at the target at its type: its δ-reduct, if any, is
+    a stored body, glued by the embedding, or a type former; one without
+    is an axiom or an abstract definition, glued by the embedding. *)
+Lemma glu_bare_member_at : forall Θ Ξ Θ2 Ξ2 p T Φ x R A,
+    ⊢ᵍ Θ ⍮ Ξ -> glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> gc_loc Θ Ξ p = Some (T, Φ) ->
+    mdenote Θ Ξ ⋅ (me_mem (qname_mod p) x) R -> mdesc_type R = Some A -> evaluated_kind (mdesc_kind R) ->
+    @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ (a_mem (qname_mod p) x) A.
+Proof.
+  intros * Hg He Hl Hm Ht Hk.
+  pose proof (gc_loc_loc _ _ _ _ _ Hl) as Hlc.
+  pose proof (glu_gctx_embedding_embedding _ _ _ _ He) as Hem.
+  pose proof (gctx_embedding_wf _ _ _ _ Hem) as Hg2.
+  pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hs.
+  destruct (gc_loc_grow _ _ _ _ Hg2 Hs _ _ _ Hl) as (Φ2 & Hl2 & _).
+  destruct (proj1 (mdenote_grow_all _ _ _ _ Hg Hg2 Hs) _ _ _ Hm) as (R2 & Hm2 & Hgr).
+  pose proof (mdesc_grows_ty _ _ _ _ _ _ _ Hgr Ht) as Ht2.
+  pose proof (mdesc_grows_red _ _ _ _ _ _ Hgr) as Hr2.
+  assert (Hk2 : mdesc_kind R2 = mdesc_kind R)
+    by (destruct Hgr; [ reflexivity | cbn in Ht; discriminate | reflexivity ]).
+  rewrite <- Hk2 in Hk.
+  destruct (filed_mem_desc _ _ Hg ⋅ p T Φ nil x R A Hl Hm Ht) as (R0 & R1 & Hst & Ha & _ & HtR & HrR).
+  cbn [mdesc_term_part_ats] in Ha; injection Ha as <-; rewrite mdesc_named_nil in HtR, HrR.
+  apply (glu_bare_member_of_reduct Θ2 Ξ2 Hg2 p T Φ2 x R2 A Hl2 Hm2 Ht2 Hk).
+  2:{ (** No reduct: an axiom or an abstract definition *)
+      intros HN; rewrite <- Hr2, HrR in HN; rewrite HtR in Ht.
+      destruct Hst as [Φ0 E R0' Hp HE | pq k D Mk Hk' HMk | Rr Hr]; [| cbn in HN; discriminate | cbn in HN; discriminate ].
+      destruct E as [b pv r A0 oM | pv U | pv pq k D ΦD | pv A0 M0 U | pv pr Rr ΦR]; cbn in HE; try discriminate.
+      - injection HE as <-; cbn in HN, Ht; injection Ht as ->.
+        exact (glu_gctx_embedding_glob _ _ _ _ He _ _ _ _ _ _ _ _ _ _ ⋅ Hlc Hp HN
+                 (glu_rel_ctx_types_ctx _ (@glu_rel_ctx_types_empty (gc_mk Θ2 Ξ2) Hg2))).
+      - destruct (ind_member D k); cbn in HE; [ injection HE as <-; cbn in HN; discriminate | discriminate ].
+      - injection HE as <-; cbn in HN; discriminate.
+      - injection HE as <-; cbn in HN; discriminate. }
+  intros M HM; rewrite <- Hr2, HrR in HM; rewrite HtR in Ht.
+  pose proof He as He0.
+  destruct Hst as [Φ0 E R0' Hp HE | pq k D Mk Hk' HMk | Rr Hr].
+  - destruct E as [b pv r A0 oM | pv U | pv pq k D ΦD | pv A0 M0 U | pv pr Rr ΦR]; cbn in HE; try discriminate.
+    + (* a definition: its body, stored *)
+      injection HE as <-; cbn in HM, Ht; injection Ht as ->.
+      destruct b; [| discriminate ]; subst oM.
+      exact (glu_gctx_embedding_body _ _ _ _ He0 _ _ _ _ _ _ _ _ Hlc Hp eq_refl).
+    + (* a member of a group: its type former *)
+      destruct (ind_member D k) as [Mk |] eqn:HMk; cbn in HE; [ injection HE as <- | discriminate ].
+      cbn in HM, Ht; injection HM as <-; injection Ht as <-.
+      destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
+      pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hlc x _) Hent) as HeE.
+      exact (glu_ind_former_of_embedding _ _ _ _ _ _ _ _ _ Hg He0 (proj2 (gc_entry_ind _ _ _ _ _ _ _ _ HeE)) HMk).
+    + (* a definition with a module part: its term, stored *)
+      injection HE as <-; cbn in HM, Ht; injection HM as <-; injection Ht as <-.
+      exact (glu_gctx_embedding_body _ _ _ _ He0 _ _ _ _ _ _ _ _ Hlc Hp eq_refl).
+    + (* a record type: its type former *)
+      injection HE as <-; cbn in HM, Ht; injection HM as <-; injection Ht as <-.
+      destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
+      pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hlc x _) Hent) as HeE.
+      exact (glu_record_former_of_embedding _ _ _ _ _ _ He0 (gc_entry_record _ _ _ _ _ _ _ HeE)).
+  - (* the open frame of a member's module: its type former *)
+    cbn in HM, Ht; injection HM as <-; injection Ht as <-.
+    assert (Hind : ind_mlookup Θ Ξ (qname_in p x) = Some (pq, k, D)) by (rewrite ind_mlookup_unfold, Hk'; reflexivity).
+    exact (glu_ind_former_of_embedding _ _ _ _ _ _ _ _ _ Hg He0 Hind HMk).
+  - (* the open frame of a record type's module: its type former *)
+    cbn in HM, Ht; injection HM as <-; injection Ht as <-.
+    assert (Hrl : record_lookup Θ Ξ (qname_in p x) = Some Rr) by (unfold record_lookup; rewrite Hr; reflexivity).
+    exact (glu_record_former_of_embedding _ _ _ _ _ _ He0 Hrl).
+Qed.
