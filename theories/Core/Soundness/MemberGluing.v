@@ -259,6 +259,44 @@ Proof.
   eapply wf_subtyp_refl; [ exact (presup_exp_eq_right HA) | apply type_sort_abs_kind; constructor | exact HA ].
 Qed.
 
+(** A type value related to a [Π] into an evaluated kind is a [Π] of the
+    same kinds: a [Π] into propositions is the only proposition among
+    them. *)
+Lemma per_univ_pi_left_shape : forall (j : universe_index) R κd κc a ρ B a2, evaluated_kind κc ->
+    DF d_pi κd κc a ρ B ≈ a2 ∈ per_univ_elem j ↘ R -> exists a' ρ' B', a2 = d_pi κd κc a' ρ' B'.
+Proof.
+  intros * Hk HR.
+  invert_per_univ_elem HR.
+  all: try (do 3 eexists; reflexivity).
+Qed.
+
+(** An equation at the sort of a kind next to a universe holds next to a
+    larger one. *)
+Lemma eq_abs_kind_sort_lift : forall Γ M M' κ (i n : nat), i <= n ->
+    Γ ⊢ M ≈ M' : abs_kind_sort κ Typeω@i -> Γ ⊢ M ≈ M' : abs_kind_sort κ Typeω@n.
+Proof. intros * Hle HM; destruct κ; cbn in *; [ exact (lift_exp_eq_ge _ _ _ _ _ _ _ Hle HM) | exact HM | exact HM ]. Qed.
+
+(** [Π]s with equal domains and codomains equal over the right domain are
+    equal, at the larger of the two universes: the codomains' equation
+    moves to the left domain ([ctx_sub_extend_eq]). *)
+Lemma pi_eq_of_parts : forall Δ κd κc A A' C C' (i j : nat),
+    Δ ⊢ A ≈ A' : abs_kind_sort κd Typeω@i ->
+    Δ ▹{κd} A' ⊢ C ≈ C' : abs_kind_sort κc Typeω@j ->
+    pi_kinds κd κc ->
+    Δ ⊢ a_pi κd κc A C ≈ a_pi κd κc A' C' : abs_kind_sort κc Typeω@(Nat.max i j).
+Proof.
+  intros * HAA HCC Hk.
+  pose proof (eq_abs_kind_sort_lift _ _ _ _ i (Nat.max i j) ltac:(lia) HAA) as HAAn.
+  pose proof (eq_abs_kind_sort_lift _ _ _ _ j (Nat.max i j) ltac:(lia) HCC) as HCCn.
+  pose proof (presup_exp_eq_left HAAn) as HA.
+  pose proof (presup_exp_eq_right HAAn) as HA'.
+  pose proof (ctx_sub_extend_eq _ _ _ _ _ _ _ HA' HA (sort_kind_abs_kind_sort _ _) (wf_exp_eq_sym _ _ _ _ _ _ HAAn)) as Hsub.
+  pose proof (ctxsub_exp_eq _ _ _ _ _ _ _ (ctx_sub_escape _ _ _ _ Hsub) HCCn) as HCCa.
+  eapply wf_exp_eq_pi_cong with (U := Typeω@(Nat.max i j));
+    [ apply wf_is_univ_large; exact (presup_exp_ctx HA) | exact HA | exact HAAn | | exact Hk ].
+  rewrite abs_kind_sort_wk; exact HCCa.
+Qed.
+
 End Fixed_GCtx.
 
 (** ** Saturated global modules *)
@@ -284,6 +322,199 @@ Section Members.
     destruct (proj2 (Mem.valid_unit_mem_all Θ Ξ Hg (valid_gctx_embedding_filed _ _ _ _ Hv)) _ _ HvH _ _ _ Hm HA)
       as [[_ _ Hvals] _].
     exact (Hvals _ HRΓ _ Hρ).
+  Qed.
+
+  (** The completeness facts of a member at a value related to the
+      module's value at an environment, at a type value related to the
+      type's there: the value is related to itself, its member types to
+      the type value, and its member to itself at the type value's
+      element PER ([mem_valid_at]). *)
+  Lemma mem_value_facts : forall Γ H x R A RΓ ρ h' h a2' a2 (j : universe_index) m,
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
+      EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h' -> per_dmod h h' ->
+      ⟦ A ⟧ ρ ↘ a2' -> Dom a2' ≈ a2 ∈ per_univ j -> evaluated_kind (domain_kind a2) -> h ·ₜ x Θ ⍮ Ξ ↘ m ->
+      per_dmod h h /\ dmod_mem_type_rel h x a2 /\
+      (forall (i : universe_index) R2, DF a2 ≈ a2 ∈ per_univ_elem i ↘ R2 -> Dom m ≈ m ∈ R2).
+  Proof.
+    intros * HH Hm HA HRΓ Hρ Eh Hhh' Ea Ha Hev Hsel.
+    destruct (mem_valid_at _ _ _ _ _ _ _ HH Hm HA HRΓ Hρ) as [h0 a0 i0 R0 Eh0 Ea0 HR0 Hhas _ Hty].
+    pose proof (functional_eval_modexp _ _ _ _ Eh0 Eh) as ->.
+    pose proof (functional_eval_exp _ _ _ _ Ea0 Ea) as ->.
+    destruct Ha as [Ra HRa].
+    assert (Hev' : evaluated_kind (domain_kind a2')) by (rewrite (per_univ_elem_kind _ _ _ _ HRa); exact Hev).
+    pose proof (proj1 per_dmod_sym_all _ _ Hhh') as Hh'h.
+    pose proof (proj1 per_dmod_trans_all _ _ Hhh' _ Hh'h) as Hhh.
+    split; [ exact Hhh | split ].
+    - intros h0 b Hh0 Hb.
+      destruct (Hty Hev' _ _ (proj1 per_dmod_trans_all _ _ Hh0 _ Hhh') Hb) as [j0 Hb0].
+      exists j0; exact (per_univ_trans' _ _ _ _ _ Hb0 (ex_intro _ Ra HRa)).
+    - intros i R2 HR2.
+      destruct (Hhas Hev' _ Hhh') as [ml mr Eml Emr Hmm].
+      pose proof (functional_eval_sel _ _ _ _ Eml Hsel) as ->.
+      pose proof (per_elem_PER HR0) as HP0.
+      assert (Hm0 : R0 m m) by (etransitivity; [ exact Hmm | symmetry; exact Hmm ]).
+      pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRa HR0) as E1.
+      pose proof (per_univ_elem_left_irrel _ _ _ _ _ _ _ HRa HR2) as E2.
+      apply E2, E1; exact Hm0.
+  Qed.
+
+  (** A context extended by a well-formed type, in the PER model: its PER
+      is the canonical extension ([per_ctx_env_extend]), relating an
+      environment of the context extended by a value related to itself at
+      the type's value there ([per_env_extend_intro']). *)
+  Lemma ctx_env_extend_at : forall Γ B Srt κ RΓ ρ aB (i : universe_index) RB c,
+      Γ ⊢ B : Srt -> sort_kind Srt κ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ ->
+      ⟦ B ⟧ ρ ↘ aB -> DF aB ≈ aB ∈ per_univ_elem i ↘ RB -> Dom c ≈ c ∈ RB ->
+      EF Γ ▹{κ} B ≈ Γ ▹{κ} B ∈ per_ctx_env ↘ per_env_extend B B RΓ /\
+      Dom ρ ↦ c ⦂ entry_type_value aB ≈ ρ ↦ c ⦂ entry_type_value aB ∈ per_env_extend B B RΓ.
+  Proof.
+    intros * HB HS HRΓ Hρ Ea HRB Hc.
+    destruct (rel_type_of_sort (sort_kind_type_sort _ _ HS) (completeness_fundamental_exp _ _ _ HB)) as [i0 Hi].
+    pose proof (rel_type_under_ctx_not_level_sort _ _ _ _ Hi) as Hn.
+    destruct (rel_type_inversion_simple Hi) as [R' [HR' HA]].
+    assert (Hirr : RΓ <~> R') by (eapply per_ctx_env_right_irrel; eassumption).
+    split.
+    - eapply per_ctx_env_extend; [ exact HRΓ | intros ρ1 ρ2 H12; apply HA, Hirr, H12 | intros ρ1 ρ2 H12; exact (Hn _ HRΓ _ _ H12) ].
+    - apply per_env_extend_intro'; [ exact Hρ | | exact (proj1 (entry_readable_of_elem HRB Hc)) | exact (proj1 (entry_readable_of_elem HRB Hc)) ].
+      intros i1 R1 a1 a1' E1 E1' HR1.
+      pose proof (functional_eval_exp _ _ _ _ E1 Ea) as ->; pose proof (functional_eval_exp _ _ _ _ E1' Ea) as ->.
+      pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRB HR1) as E; apply E; exact Hc.
+  Qed.
+
+  (** A well-formed module expression, weakened past an assumption, at an
+      environment of the extended context: its value is related to the
+      module expression's at the tail.  The two values need not be equal,
+      the weakening retagging the tail ([eval_sub_shift]); completeness
+      relates them through the weakening ([rel_modexp]) and the retagged
+      tail ([per_ctx_env_retag_left]). *)
+  Lemma modexp_wk_value_rel : forall Γ κ B H RΓ RB ρ c t h0,
+      ⊢ Γ ▹{κ} B -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ ->
+      EF Γ ▹{κ} B ≈ Γ ▹{κ} B ∈ per_ctx_env ↘ RB -> RB (ρ ↦ c ⦂ t) (ρ ↦ c ⦂ t) ->
+      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h0 ->
+      exists h1, ⟦ H[Wk]ᵐ ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↦ c ⦂ t ↘ h1 /\ per_dmod h1 h0.
+  Proof.
+    intros * HΓB HH HRΓ Hρ HRB Hρ' Eh0.
+    pose proof (proj2 (proj2 completeness_fundamental_modules) _ _ _ HH) as HHc.
+    pose proof (rel_sub_shift (completeness_fundamental_ctx _ HΓB)) as Hw.
+    pose proof HHc as [R0 HR0 Hbody].
+    destruct (Hbody _ _ HRB _ _ Hw _ _ _ _ Hρ' (eval_sub_shift _ _) (eval_sub_shift _ _)) as [hσ hh h' h'σ' E1 E2 E3 E4 Hch].
+    assert (Hσh : per_dmod hσ hh) by (inversion Hch; subst; assumption).
+    change ((ρ ↦ c ⦂ t)↯) with ρ in E2.
+    destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ HHc HRΓ _ _ (per_ctx_env_retag_left HRΓ _ _ Hρ))
+      as (h2 & h3 & Eh2 & Eh3 & Hh23).
+    pose proof (functional_eval_modexp _ _ _ _ Eh2 E2) as ->.
+    pose proof (functional_eval_modexp _ _ _ _ Eh3 Eh0) as ->.
+    exists hσ; split; [ exact E1 | exact (proj1 per_dmod_trans_all _ _ Hσh _ Hh23) ].
+  Qed.
+
+  (** A type, weakened past an assumption, at an environment of the
+      extended context: its value is related to the type's at the tail, as
+      [modexp_wk_value_rel] has it for module expressions. *)
+  Lemma typ_wk_value_rel : forall Γ κ B A Srt RΓ RB ρ c t aA,
+      ⊢ Γ ▹{κ} B -> Γ ⊢ A : Srt -> type_sort Srt -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ ->
+      EF Γ ▹{κ} B ≈ Γ ▹{κ} B ∈ per_ctx_env ↘ RB -> RB (ρ ↦ c ⦂ t) (ρ ↦ c ⦂ t) ->
+      ⟦ A ⟧ ρ ↘ aA ->
+      exists a1 (i : nat), ⟦ A[Wk] ⟧ ρ ↦ c ⦂ t ↘ a1 /\ Dom a1 ≈ aA ∈ per_univ i.
+  Proof.
+    intros * HΓB HA HS HRΓ Hρ HRB Hρ' Ea.
+    destruct (rel_type_of_sort HS (completeness_fundamental_exp _ _ _ HA)) as [i Hi].
+    pose proof (rel_sub_shift (completeness_fundamental_ctx _ HΓB)) as Hw.
+    pose proof Hi as [R0 HR0 Hbody _].
+    destruct (Hbody _ _ HRB _ _ Hw _ _ _ _ Hρ' (eval_sub_shift _ _) (eval_sub_shift _ _)) as [aσ a0 a0' aσ' E1 E2 E3 E4 Hch].
+    assert (Hσa : per_univ i aσ a0) by (inversion Hch; subst; assumption).
+    change ((ρ ↦ c ⦂ t)↯) with ρ in E2.
+    destruct (rel_type_inversion_simple Hi) as [R' [HR' HAr]].
+    assert (Hirr : RΓ <~> R') by (eapply per_ctx_env_right_irrel; eassumption).
+    destruct (HAr _ _ (proj1 (Hirr _ _) (per_ctx_env_retag_left HRΓ _ _ Hρ))) as (a2 & a3 & Ea2 & Ea3 & Ha23).
+    pose proof (functional_eval_exp _ _ _ _ Ea2 E2) as ->.
+    pose proof (functional_eval_exp _ _ _ _ Ea3 Ea) as ->.
+    exists aσ, i; split; [ exact E1 | exact (per_univ_trans' _ _ _ _ _ Hσa Ha23) ].
+  Qed.
+
+  (** A well-formed module expression lacking a parameter, weakened past
+      it, at an environment of the context extended by it: its value lacks
+      a parameter related to the parameter's value there
+      ([valid_unit_app_all] at the variable). *)
+  Lemma next_param_wk_at : forall Γ κ B SrtB H RH T T1 RB ρ',
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ H RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
+      evaluated_sort SrtB -> Γ ⊢ B : SrtB -> sort_kind SrtB κ ->
+      EF Γ ▹{κ} B ≈ Γ ▹{κ} B ∈ per_ctx_env ↘ RB -> RB ρ' ρ' -> ModexpRel.modexp_next_param_at H[Wk]ᵐ B[Wk] ρ'.
+  Proof.
+    intros * HH Hm HT Hv HS HB Hsk HRB Hρ'.
+    assert (HΓB : ⊢ Γ ▹{κ} B) by (eapply wf_ctx_extend; eassumption).
+    assert (HWk : Γ ▹{κ} B ⊢ˢ Wk : Γ) by (eapply wf_sub_shift; exact HΓB).
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH HWk) as HHw.
+    pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HH Hm HWk) as Hmw.
+    pose proof (mdesc_mod_tele_sub _ _ Wk _ (wf_mdenote_scoped _ _ _ _ _ _ HH Hm) HT) as HTw.
+    pose proof (tele_view_sub T Wk) as Hvw; rewrite Hv in Hvw; cbn [option_map fst snd] in Hvw.
+    pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB HWk) as HBw.
+    assert (EBS : SrtB[Wk] = SrtB) by (destruct HS; reflexivity).
+    rewrite EBS in HBw.
+    assert (H0t : Γ ▹{κ} B ⊢ #0 : B[Wk])
+      by (rewrite exp_sub_of_shift; apply wf_vlookup; [ exact HΓB | constructor ]).
+    pose proof (valid_gctx_embedding_refl _ _ Hg) as Hve.
+    destruct completeness_fundamental as (_ & _ & _ & _ & _ & _ & _ & Km).
+    destruct (Km _ _ _ _ _ HHw _ _ Hve) as [_ _ HvH _].
+    assert (Hrp : exists i, rel_param_typed (Γ ▹{κ} B) B[Wk] i)
+      by (destruct HS; [ exists i; left | exists 0; right ]; exact (completeness_fundamental_exp _ _ _ HBw)).
+    destruct Hrp as [i Hrp].
+    destruct (proj2 (@App.valid_unit_app_all GCm Hg Θ Ξ Hg (gc_sub_refl _ _) (valid_gctx_embedding_filed _ _ _ _ Hve))
+                _ _ HvH _ _ _ _ _ i #0 Hmw HTw Hvw HS HBw Hrp H0t (completeness_fundamental_exp _ _ _ H0t)) as [Hnp _].
+    exact (Hnp _ HRB _ Hρ').
+  Qed.
+
+  (** The outermost parameter of what a well-formed module expression
+      denotes is a type of a universe or of levels: an open module's and
+      the outer parameters of a closed one are ([params_evaluated] of
+      [desc_ok]); a closed one's next stored parameter is, in its stored
+      telescope ([loc_params_evaluated]), at the arguments given
+      ([args_ok]). *)
+  Lemma mod_next_param_typed : forall Γ H R T B T1,
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ H R -> mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
+      exists Srt, evaluated_sort Srt /\ Γ ⊢ B : Srt.
+  Proof.
+    intros * HH Hm HT Hv.
+    unfold mdesc_mod_tele in HT; destruct (mdesc_mod R) as [Rm |] eqn:HRm; [| discriminate ].
+    pose proof (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ HH Hm) HRm) as Hok.
+    assert (Hpe : forall Δ l B' T1', params_evaluated Θ Ξ Γ Δ l -> all_assumptions Δ -> tele_view Δ = Some (B', T1') ->
+               exists Srt, evaluated_sort Srt /\ Γ ⊢ B' : Srt).
+    { intros * HP Ha Hv'.
+      destruct (tele_view_ass _ _ _ Ha Hv') as [κ ->].
+      destruct (HP T1' κ B' nil eq_refl) as [HB | HB]; cbn [List.app] in HB; eexists; (split; [ constructor | exact HB ]). }
+    inversion Hok; subst; cbn [mdesc_tele] in HT; try discriminate.
+    - (** An open module: its parameters *)
+      injection HT as <-; eapply Hpe; eassumption.
+    - destruct (length Ns <=? length T0) eqn:Hle; [ injection HT as <- | discriminate ].
+      destruct (List.rev Θ') as [| e r] eqn:Er.
+      2:{ (** A closed module under outer parameters: the outermost one *)
+          assert (Hv' : exists B' T1', tele_view Θ' = Some (B', T1')).
+          { unfold tele_view; rewrite Er.
+            assert (Hin : List.In e Θ') by (apply List.in_rev; rewrite Er; left; reflexivity).
+            destruct (proj1 (List.Forall_forall _ _) H8 _ Hin) as (κ & B' & ->).
+            cbn; eexists; eexists; reflexivity. }
+          destruct Hv' as (B' & T1' & Hv').
+          destruct (tele_view_app_r (tele_sub (firstn (length T0 - length Ns) T0) (sb_of_list Id Ns)) _ _ _ Hv') as (Y1 & HY).
+          rewrite Hv in HY; injection HY as -> _.
+          exact (Hpe _ _ _ _ H9 H8 Hv'). }
+      (** A closed module under no outer parameter: its next stored
+          parameter, at the arguments *)
+      assert (Θ' = nil) as -> by (rewrite <- (List.rev_involutive Θ'), Er; reflexivity).
+      rewrite List.app_nil_r in Hv; cbn [List.app] in H7.
+      destruct H7 as [Tr Tf -> Hl Ha Hs HTf HN].
+      replace (firstn (length (Tr ++ Tf) - length Ns) (Tr ++ Tf)) with Tr in Hv
+        by (rewrite List.length_app, Hl, Nat.add_sub, List.firstn_app, Nat.sub_diag, List.firstn_all; cbn; rewrite List.app_nil_r; reflexivity).
+      rewrite tele_view_sub in Hv.
+      destruct (tele_view Tr) as [[B0 T10] |] eqn:Hv0; cbn in Hv; [ injection Hv as <- _ | discriminate ].
+      assert (Har : all_assumptions Tr) by (apply List.Forall_app in H3; exact (proj1 H3)).
+      destruct (tele_view_ass _ _ _ Har Hv0) as [κ ->].
+      destruct (loc_grow _ _ _ _ H1 _ _ _ H2) as [Φ2 Hl2].
+      destruct (loc_params_evaluated _ _ _ _ _ (gctx_valid_syn _ _ Hg) Hl2) as [lT HRT].
+      assert (HB0 : param_typed Θ Ξ (Tf ++ nil) B0 lT) by (apply (HRT T10 κ B0 Tf); rewrite <- List.app_assoc; reflexivity).
+      rewrite List.app_nil_r in HB0.
+      pose proof (wf_sub_of_list_id _ _ _ _ _ Ha HTf (eq_sym Hl) HN) as Hσ.
+      destruct HB0 as [HB0 | HB0];
+        pose proof (sub_preserves_exp _ _ _ _ _ _ _ (closed_tele_weaken_exp _ _ _ _ _ _ Hs HB0 HTf) Hσ) as HBσ;
+        cbn [exp_sub] in HBσ; eexists; (split; [ constructor | exact HBσ ]).
   Qed.
 
   (** A term member of a stored module read in some context is one read
