@@ -162,6 +162,7 @@
 ./Core/Soundness/Selection.v
 ./Core/Soundness/MemberApp.v
 ./Core/Soundness/MemberGluing.v
+./Core/Soundness/DescDeep.v
 ./Core/Soundness/ModuleCases.v
 ./Core/Soundness/Global/MemberValues.v
 ./Core/Soundness/Global/Embedding.v
