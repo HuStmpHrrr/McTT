@@ -28,4 +28,22 @@ Lemma reduct_up_last : forall Δ0 κ B X M,
     mdesc_reduct (mdesc_up (Δ0 ++ ce_ass κ B :: nil) X) = Some (λ B (ctx_fn Δ0 M)).
 Proof. intros * HM; rewrite mdesc_reduct_up, HM; cbn [option_map]; rewrite ctx_fn_app; reflexivity. Qed.
 
+(** Parameters of types of levels, the inner ones. *)
+Lemma level_sorted_parameters_app_l : forall Δ0 Δ1, level_sorted_parameters (Δ0 ++ Δ1) -> level_sorted_parameters Δ0.
+Proof. intros * H Δa κ T Δb ->; eapply H; rewrite <- app_assoc; reflexivity. Qed.
+
+(** A definition of a type of levels in an open module: the module's
+    parameters are of types of levels ([desc_levels_abstractable]). *)
+Lemma open_entry_level_params : forall Γ Δ Φw Φx y Φ0 E A M,
+    desc_ok gc_deps gc_stack Γ (mdesc_open Δ Φw Φx) ->
+    gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+    entry_kind E = ak_level -> level_sorted_parameters Δ.
+Proof.
+  intros * Hok Hp HE Hk; inversion Hok; subst.
+  match goal with HL : desc_levels_abstractable _ _ _ _ _ |- _ => destruct HL as [HLs | Hnl] end; [ assumption |].
+  exfalso; inversion Hnl; subst.
+  match goal with Hne : forall y Φ0 E A M, gm_prefix_upto _ y = Some _ -> entry_tm E = Some (A, M) -> entry_kind E <> ak_level |- _ =>
+    exact (Hne _ _ _ _ _ Hp HE Hk) end.
+Qed.
+
 End Fixed_GCtx.
