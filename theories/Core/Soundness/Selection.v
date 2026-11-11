@@ -159,6 +159,44 @@ Proof.
       refine (IH _ _ _ _ _ _ _ _ _ _ _ Ha); [ apply all_assumptions_sub; exact HP0 | rewrite length_tele_sub; lia | right; eexists; reflexivity ].
 Qed.
 
+(** A description under a substitution equal to the identity is itself. *)
+Lemma mdesc_sub_id_ext : forall R σ, sb_eq σ Id -> mdesc_sub R σ = R.
+Proof.
+  induction R as [r A om | Δ Φ Φx | Θ p T Φ Ns | Θ A M Rm IH]; intros σ Hσ; cbn [mdesc_sub].
+  - rewrite exp_sub_id_ext by exact Hσ; destruct om; cbn; [ rewrite exp_sub_id_ext by exact Hσ |]; reflexivity.
+  - rewrite (tele_sub_sb_eq Δ σ Id Hσ), tele_sub_id, !gmod_sub_id_ext by (apply sb_qn_id_ext; exact Hσ); reflexivity.
+  - rewrite (tele_sub_sb_eq Θ σ Id Hσ), tele_sub_id; f_equal.
+    induction Ns as [| N Ns IHNs]; cbn; [ reflexivity |].
+    rewrite exp_sub_id_ext by (apply sb_qn_id_ext; exact Hσ); f_equal; exact IHNs.
+  - rewrite (tele_sub_sb_eq Θ σ Id Hσ), tele_sub_id, !exp_sub_id_ext by (apply sb_qn_id_ext; exact Hσ).
+    rewrite (IH _ Hσ); reflexivity.
+Qed.
+
+(** A description abstracted over a telescope ending in assumptions [T2]
+    given as many arguments: the arguments are substituted for the
+    assumptions, in the rest of the telescope and in the description. *)
+Lemma mdesc_ats_up_prefix : forall Ns P T2 R, all_assumptions T2 -> List.length T2 = List.length Ns ->
+    mdesc_ats (mdesc_up (P ++ T2) R) Ns =
+      Some (mdesc_up (tele_sub P (sb_of_list Id Ns)) (mdesc_sub R (sb_qn (List.length P) (sb_of_list Id Ns)))).
+Proof.
+  induction Ns as [| N Ns IH]; intros * HT Hl.
+  - destruct T2; [| cbn in Hl; discriminate ]; cbn.
+    rewrite app_nil_r, tele_sub_id, (mdesc_sub_id_ext R) by (apply sb_qn_id_ext; reflexivity); reflexivity.
+  - destruct (List.exists_last (l := T2)) as (T2' & e & ->); [ intros ->; cbn in Hl; discriminate |].
+    unfold all_assumptions in HT; apply List.Forall_app in HT as [HT' He]; apply List.Forall_cons_iff in He as [(κB & B & ->) _].
+    rewrite List.length_app in Hl; cbn in Hl.
+    cbn [mdesc_ats]; rewrite app_assoc, mdesc_at_up, tele_sub_app.
+    rewrite (IH _ _ _ (all_assumptions_sub _ _ HT') ltac:(rewrite length_tele_sub; lia)).
+    rewrite tele_sub_sub, mdesc_sub_sub_ext with (δ := sb_qn (List.length P) (sb_of_list Id (N :: Ns))).
+    + do 2 f_equal; apply tele_sub_sb_eq; cbn [sb_of_list].
+      replace (length T2') with (length Ns) by lia.
+      etransitivity; [ apply sb_qn_of_list | apply sb_of_list_cong, sb_compose_id_right ].
+    + rewrite length_tele_sub, length_app, sb_qn_plus; cbn [sb_of_list].
+      apply sb_qn_compose_ext.
+      replace (length T2') with (length Ns) by lia.
+      etransitivity; [ apply sb_qn_of_list | apply sb_of_list_cong, sb_compose_id_right ].
+Qed.
+
 (** The arguments under the identity. *)
 Lemma map_exp_sub_id : forall Ns, List.map (fun M => M[Id]) Ns = Ns.
 Proof. induction Ns as [| N Ns IH]; cbn; [ reflexivity | rewrite exp_sub_id, IH; reflexivity ]. Qed.
