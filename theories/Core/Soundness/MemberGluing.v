@@ -218,6 +218,45 @@ Section Members.
   #[local] Instance GCm : GCtx := gc_mk Θ Ξ.
   Import Fixed_Notations.
 
+  (** A term member of a stored module, read bare over no context, is its
+      stored entry, even when the module is an open frame: a path naming
+      an entry is no open frame's own path ([gc_entry]), and an open frame
+      has no entry yet of a name it is defining ([gc_unit_mem_parent]). *)
+  Lemma bare_member_entry : forall p T Φ x Φ0 E0 R0,
+      gc_loc Θ Ξ p = Some (T, Φ) -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x E0) ->
+      mdenote Θ Ξ ⋅ (me_mem (qname_mod p) x) R0 ->
+      edenote Θ Ξ (nil ++ ⋅) (Some (qname_in p x)) (ge_read T E0) R0.
+  Proof.
+    intros * Hgl Hp Hm0.
+    pose proof (gc_loc_loc _ _ _ _ _ Hgl) as Hl.
+    pose proof (loc_closed _ _ Hg _ _ _ Hl) as HU.
+    destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
+    pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hl x _) Hent) as HeE.
+    assert (Hnt : forall U T0, gs_find_tele Ξ (qname_in p x) <> Some (U, nil, T0)).
+    { intros U T0 Ht; unfold gc_entry, gc_entry_u in HeE; rewrite gs_find_tele_find, Ht in HeE; cbn in HeE.
+      rewrite gm_entry_nil in HeE; discriminate. }
+    pose proof (qname_mod_qname p) as Hpq.
+    inversion Hm0 as [? ? pu ? ? Hq Hu | ? ? pu pq k D Mk Tm Φm Hq Hk _ _ | | | | ? ? ? R0' R0m Γy E rd RE ? Hm0' Hmd He Hed Hr
+                     | ? ? pu Rr Tm Φm Hq Hk _]; subst.
+    - (** A unit: the module is an open frame without the entry *)
+      exfalso.
+      destruct (gc_unit_mem_parent _ _ Hg _ _ _ _ Hu) as (mq & T' & Φ' & Hmq & Hf & Hfr).
+      rewrite Hpq in Hmq; injection Hmq as <-.
+      unfold gc_loc in Hgl; rewrite Hf in Hgl; injection Hgl as <- <-.
+      exact (Hfr (gm_prefix_upto_in_names _ _ _ Hp)).
+    - exfalso; cbn in Hq; rewrite Hpq in Hq; injection Hq as <-.
+      destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht); exact (Hnt _ _ Ht).
+    - (** The entry of the stored module, at no argument *)
+      destruct (filed_denote _ _ Hg _ _ _ ⋅ nil Hgl) as (S1 & HS1 & HS1m); cbn [me_apps] in HS1.
+      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm0' _ HS1), HS1m in Hmd; injection Hmd as <-.
+      destruct (mdesc_entry_closed _ _ _ _ _ _ _ _ _ HU He) as (-> & _ & ->).
+      cbn in He; rewrite Hp in He; injection He as <-.
+      cbn [mdesc_read] in Hr; rewrite mdesc_ats_read_nil in Hr; cbn [option_map] in Hr; injection Hr as <-.
+      rewrite mdesc_up_nil, mdesc_named_nil; exact Hed.
+    - exfalso; cbn in Hq; rewrite Hpq in Hq; injection Hq as <-.
+      destruct (gs_find_record_tele _ _ _ Hk) as (U & T0 & Ht); exact (Hnt _ _ Ht).
+  Qed.
+
   (** The member of a module expression whose module part is a saturated
       stored module at arguments glued as the value's, at any type [T]
       glued at a type value related to the member types of the values
@@ -229,7 +268,7 @@ Section Members.
       is [T] ([glu_typ_to_target]).  The stored module is no open frame,
       so that its member read bare is its entry. *)
   Lemma glu_global_member_value_at : forall p T Φ x R0 As A0 (j : nat) Γ1 H1 RH Ns1 R A' Δ σ1 args m a (i : nat) P El Tin,
-      gc_loc Θ Ξ p = Some (T, Φ) -> gc_frame Ξ p = None -> List.length args = List.length T ->
+      gc_loc Θ Ξ p = Some (T, Φ) -> List.length args = List.length T ->
       mdenote Θ Ξ ⋅ (me_mem (qname_mod p) x) R0 -> mdesc_type R0 = Some As -> evaluated_kind (mdesc_kind R0) ->
       ⋅ ⊩ a_mem (qname_mod p) x : As ->
       As = ctx_pi_at (mdesc_kind R0) T A0 -> T ⊩ A0 : abs_kind_sort (mdesc_kind R0) Typeω@j ->
@@ -242,7 +281,7 @@ Section Members.
       not_level_sort a -> DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ Tin ® P ->
       (exists l : nat, Δ ⊢ A'[σ1] ≈ Tin : abs_kind_sort (domain_kind a) Typeω@l) /\ Δ ⊢ (a_mem H1 x)[σ1] : Tin ® m ∈ El.
   Proof.
-    intros * Hgl Hfr Hlen Hm0 Ht0 Hk HGa -> HA0 HH1 Hq1 HmH HRH Hm Ht Hσ1 Hargs Hsel Hrel Hnl Hga HTin.
+    intros * Hgl Hlen Hm0 Ht0 Hk HGa -> HA0 HH1 Hq1 HmH HRH Hm Ht Hσ1 Hargs Hsel Hrel Hnl Hga HTin.
     pose proof (wf_gstack_closed _ _ Hg) as Hc.
     pose proof (wf_sub_dom _ _ _ _ _ Hσ1) as HΔ.
     destruct (glu_global_apps_at _ _ Hg _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hgl Hlen Hm0 Ht0 Hk HGa HΔ Hargs Hsel Hrel Hnl Hga HTin)
@@ -256,20 +295,16 @@ Section Members.
     cbn [mdesc_read] in Hrd; destruct (mdesc_ats_read RE Ns1) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [ injection Hrd as <- | discriminate ].
     rewrite mdesc_up_nil, mdesc_type_named in Ht.
     (** The member read bare is the same entry, at no argument *)
-    assert (Hq0 : names_no_frame (qname_mod p))
-      by (intros pq Hpq; rewrite (qname_mod_qname p) in Hpq; injection Hpq as <-; exact Hfr).
-    apply (@mdenote_mem_no_frame GCm _ _ _ _ _ Hg Hq0 Hm0); intros S0 S0m Γy0 E0 rd0 RE0 Hs0 HS0m He0 Hed0 Hrd0.
-    destruct (filed_denote _ _ Hg _ _ _ ⋅ nil Hgl) as (S1 & HS1 & HS1m); cbn [me_apps] in HS1.
-    rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hs0 _ HS1), HS1m in HS0m; injection HS0m as <-.
-    destruct (mdesc_entry_closed _ _ _ _ _ _ _ _ _ HU He0) as (-> & HsE0 & ->).
-    assert (E0 = E) as ->.
-    { cbn in He, He0; destruct (gm_prefix_upto Φ x) as [[| ? ? ? | ? ? ?] |]; try discriminate.
-      injection He as <-; injection He0 as <-; reflexivity. }
-    cbn [mdesc_read] in Hrd0; rewrite mdesc_ats_read_nil in Hrd0; cbn [option_map] in Hrd0; injection Hrd0 as <-.
-    rewrite ?mdesc_up_nil, ?mdesc_named_nil in *.
-    assert (Hed0' : edenote Θ Ξ (nil ++ Γ1) (mdesc_entry_path (mdesc_closed nil p T Φ Ns1) x) E RE0).
-    { apply (edenote_closed_move _ _ _ _ _ _ _ Id Hc HsE0 Hed0); intros y U Hy; inversion Hy. }
+    pose proof He as He1; cbn in He1.
+    destruct (gm_prefix_upto Φ x) as [[| Φ0 z E0 | ] |] eqn:Hp; try discriminate.
+    injection He1 as <-.
+    destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & Heq & _); injection Heq as <- -> <-.
+    pose proof (bare_member_entry _ _ _ _ _ _ _ Hgl Hp Hm0) as Hed0.
+    assert (Hed0' : edenote Θ Ξ (nil ++ Γ1) (mdesc_entry_path (mdesc_closed nil p T Φ Ns1) x) (ge_read T E0) R0).
+    { apply (edenote_closed_move _ _ _ _ _ _ _ Id Hc HsE Hed0); intros y U Hy; inversion Hy. }
     rewrite (proj1 (proj2 (proj2 (mdenote_functional_all _ _ Hg))) _ _ _ _ Hed _ Hed0') in Hats.
+    rewrite ?mdesc_up_nil, ?mdesc_named_nil in *.
+    set (RE0 := R0) in *.
     (** Its type at the arguments: the stored type over the telescope, at
         them *)
     pose proof (valid_filed_mod_tele_all_assumptions _ _ _ _ _
