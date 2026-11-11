@@ -1717,8 +1717,8 @@ Proof.
       intros * Hst; exact (Hg _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
     + intros * Hp Hu Hb Hc; exact (IHsub _ _ _ _ _ _ _ Hp Hu Hb Hc _ Heq).
   - (** A value lacking a parameter: likewise *)
-    intros * Hσ HH0 Hn Hpar Hex Happ _ σ0' Heq.
-    eapply glu_dmod_fun; [ exact (wf_sub_eq_right _ _ _ _ _ _ Heq) | exact HH0 | exact Hn | | exact Hex | ].
+    intros * Hσ HH0 Hn Hpar Happ _ σ0' Heq.
+    eapply glu_dmod_fun; [ exact (wf_sub_eq_right _ _ _ _ _ _ Heq) | exact HH0 | exact Hn | | ].
     + intros * Hst; exact (Hpar _ _ _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
     + intros * Hst; exact (Happ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
 Qed.
@@ -1778,10 +1778,9 @@ Proof.
       intros * Hst; exact (Hg _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
     + intros * Hp Hu Hb Hc; exact (IHsub _ _ _ _ _ _ _ Hp Hu Hb Hc _ _ Hφ).
   - (** A value lacking a parameter: likewise *)
-    intros * Hσ HH0 Hn Hpar Hex Happ _ Δ' φ Hφ.
-    eapply glu_dmod_fun; [ exact (wf_sub_sb_wk Hσ Hφ) | exact HH0 | exact Hn | | | ].
+    intros * Hσ HH0 Hn Hpar Happ _ Δ' φ Hφ.
+    eapply glu_dmod_fun; [ exact (wf_sub_sb_wk Hσ Hφ) | exact HH0 | exact Hn | | ].
     + intros * Hst; exact (Hpar _ _ _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
-    + intros * Hψ Hu HN; exact (Hex _ _ _ _ _ _ _ _ (kripke_compose _ _ _ _ _ Hψ Hφ) Hu HN).
     + intros * Hst; exact (Happ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
   - (** No more arguments *)
     intros; constructor.

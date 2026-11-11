@@ -395,7 +395,7 @@ Section Fixed_GCtx.
     destruct (Hd _ _ _ _ _ _ Hst0 Hm0) as (Ns0 & HNs0).
     pose proof (Ha _ _ _ _ _ _ _ Hst0 Hm0 HNs0) as Hargs0.
     destruct (glu_tele_next_param T Δ _ args HΔ HTa HT ltac:(lia) Hargs0) as (κ & A & a & i & P & El & Hnth & Ea & Hka & Hga & HAP).
-    eapply glu_dmod_fun with (a := a); [ exact Hσ | exact HH | econstructor; eassumption | | | ].
+    eapply glu_dmod_fun with (a := a); [ exact Hσ | exact HH | econstructor; eassumption | | ].
     (** The type of the parameter, read through any factorization, is the
         next parameter's type at the arguments *)
     all: assert (Hshape : forall Δ' φ Γ1 ζ σ1 RH T0 B T1, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
@@ -420,8 +420,6 @@ Section Fixed_GCtx.
       assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
       exists i', P', El'; constructor; [ exact Hga' |].
       rewrite tele_type_inst_sub by (rewrite HlN; exact (tele_next_scoped _ _ _ _ HTs Hnth)); exact HAP'. }
-    1:{ (** Given an argument, the module records it *)
-      intros; eexists; econstructor. }
     (** Given a glued argument, as the application, by recursion *)
     intros * Hst Hm HT0 Hv HS HB N c hc i2 P2 El2 Hga2 HBP HN Hhc.
     destruct (Hshape _ _ _ _ _ _ _ _ _ Hst Hm HT0 Hv) as (Ns1 & HNs1 & HlN & -> & Hargs1).

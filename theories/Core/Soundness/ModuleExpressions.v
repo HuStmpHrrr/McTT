@@ -17,7 +17,7 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas MemberWf.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
-From Mctt.Core.Completeness Require ContextCases.
+From Mctt.Core.Completeness Require ContextCases UnitCases.
 From Mctt.Core.Completeness.Modules Require Import ModexpRel Values.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases ModuleValues Instances.
 Import Domain_Notations Wk_Notations Fixed_Notations.
@@ -62,9 +62,10 @@ Lemma glu_modexp_at_app : forall Γ H N R T B T1 Srt,
     mdenote gc_deps gc_stack Γ H R -> mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
     Γ ⊢ B : Srt -> evaluated_sort Srt -> Γ ⊢ N : B ->
     modexp_next_param Γ H B ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N ->
     glu_modexp_at Γ (me_app H N).
 Proof.
-  intros * HH HN Hm HT Hv HB HS HNt Hnp Sb HSb Δ σ ρ Hσ.
+  intros * HH HN Hm HT Hv HB HS HNt Hnp HHN Sb HSb Δ σ ρ Hσ.
   destruct (HH _ HSb _ _ _ Hσ) as (h & Eh & Hg).
   pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
   destruct HN as [SbN HSbN kN HNb].
@@ -80,7 +81,7 @@ Proof.
     [ exfalso; eapply next_param_global_sat; eassumption
     | exfalso; inversion Hn; subst; match goal with Hl : _ ++ _ :: nil = nil |- _ => destruct Δ0; discriminate end |].
   match goal with Hn' : next_param h ?a0 |- _ => pose proof (next_param_functional _ _ Hn _ Hn') as <- end.
-  rename H4 into Hpar, H5 into Hex, H6 into Happ.
+  rename H4 into Hpar, H5 into Happ.
   pose proof (glu_sub_through_id _ _ _ Hσt) as Hst.
   rewrite <- (modexp_sub_id H) in Hm.
   pose proof (evaluated_sort_type_sort _ HS) as HTS.
@@ -101,9 +102,19 @@ Proof.
   assert (HNa : Δ ⊢ N[σ] : B[σ] ® n ∈ Ela)
     by (eapply glu_univ_elem_exp_conv_universe_index;
         [ exists RB; apply per_univ_elem_sym; exact HR | exact HgB | exact Hga | exact HNσ | exact HBPa ]).
-  (** The value at the argument *)
-  destruct (Hex Δ wk_id N[σ] B[σ] n j Pa Ela (kripke_id _ (wf_sub_dom _ _ _ _ _ Hσt)) Hga HNa) as (hc & Ehc).
-  exists hc; split; [ econstructor; [ exact Eh | exact En' | exact Ehc ] |].
+  (** The value at the argument: the application evaluates at [ρ]
+      (completeness) *)
+  destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ (proj2 (proj2 completeness_fundamental_modules) _ _ _ HHN) HRΓ _ _ Hρ)
+    as (hN & _ & EhN & _ & _).
+  assert (Ehc : $ᵐ| h & n | gc_deps ⍮ gc_stack ↘ hN).
+  { inversion EhN; subst.
+    match goal with
+    | Eh1 : ⟦ H ⟧ᵐ _ ⍮ _ ⍮ ρ ↘ ?h1, En1 : ⟦ N ⟧ ρ ↘ ?n1 |- _ =>
+        pose proof (functional_eval_modexp _ _ _ _ Eh1 Eh) as ->;
+        pose proof (functional_eval_exp _ _ _ _ En1 En') as ->
+    end.
+    assumption. }
+  exists hN; split; [ exact EhN |].
   (** Glued as the application to the variable over the context extended
       by the parameter, read through [Id,,N] *)
   pose proof (Happ _ _ _ _ _ _ _ _ _ _ Hst Hm HT Hv HTS HB _ _ _ _ _ _ Hga HBPa HNa Ehc) as Hg1.

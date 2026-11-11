@@ -88,8 +88,8 @@ Proof.
       exact (Hg _ _ _ _ _ _ _ _ (glu_sub_through_compose Hζ Heq Hst) Hm).
     + intros * Hp Hu Hb Hc; exact (IHsub _ _ _ _ _ _ _ Hp Hu Hb Hc _ _ _ Hζ Hσ1 Heq).
   - (** A value lacking a parameter *)
-    intros * Hσ HH0 Hn Hpar Hex Happ _ Γ1 ζ σ1 Hζ Hσ1 Heq.
-    eapply glu_dmod_fun; [ exact Hσ1 | exact (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) | exact Hn | | exact Hex | ].
+    intros * Hσ HH0 Hn Hpar Happ _ Γ1 ζ σ1 Hζ Hσ1 Heq.
+    eapply glu_dmod_fun; [ exact Hσ1 | exact (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) | exact Hn | | ].
     + intros * Hst Hm; rewrite modexp_sub_sub in Hm.
       exact (Hpar _ _ _ _ _ _ _ _ _ _ (glu_sub_through_compose Hζ Heq Hst) Hm).
     + intros * Hst Hm; rewrite modexp_sub_sub in Hm; rewrite (modexp_sub_sub H0 ζ ζ0).
@@ -649,8 +649,8 @@ Proof.
                     | intros Γ2 ζ Hζ; apply names_no_frame_mem; [ exact (ctx_wf_gctx _ _ _ (wf_sub_cod _ _ _ _ _ Hζ)) | exact (Hq0 _ _ Hζ) ]
                     | intros Γ2 ζ Hζ; apply names_no_frame_mem; [ exact (ctx_wf_gctx _ _ _ (wf_sub_cod _ _ _ _ _ Hζ)) | exact (Hq1 _ _ Hζ) ] ].
   - (** A value lacking a parameter *)
-    intros * Hσ HH1 Hn Hpar Hex Happ IHapp H0 HH Hs01 Hs10 Hq0 Hq1.
-    eapply glu_dmod_fun; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | exact Hn | | exact Hex | ].
+    intros * Hσ HH1 Hn Hpar Happ IHapp H0 HH Hs01 Hs10 Hq0 Hq1.
+    eapply glu_dmod_fun; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | exact Hn | | ].
     + intros * Hst Hm HT.
       pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
       assert (HRm : exists Rm, mdesc_mod RH = Some Rm)
@@ -1201,7 +1201,7 @@ Proof.
     apply HSbXe; eapply cons_glu_sub_pred_closure;
       [ exact HTSb | exact (HST _ _ _ (glu_ctx_env_sub_monotone _ _ HSb _ _ _ _ _ Hσ Hφ)) | exact HX | exact Ea | exact Hga' | exact HNw ]. }
   exists (dm_local (Δr' ++ ⋅ ▹ {κ} X) D' ρ); split; [ apply eval_me_lit_iff, HD'v; rewrite List.length_app; cbn; lia |].
-  eapply glu_dmod_fun; [ exact Hσt | exact (wf_me_lit _ _ _ _ _ HU) | econstructor; [ exact Ea | exact Hk ] | | |].
+  eapply glu_dmod_fun; [ exact Hσt | exact (wf_me_lit _ _ _ _ _ HU) | econstructor; [ exact Ea | exact Hk ] | |].
   { (** The parameter's type, read through a factorization *)
     intros * Hst Hm HT Hv HS HB.
     pose proof Hst as [Hφ Hζ Hσ1 E].
@@ -1209,12 +1209,6 @@ Proof.
     destruct (HXw _ _ Hφ) as (P' & El' & Hga' & HXP').
     destruct (glu_type_move_sub_eq (type_sort_abs_kind κ _ ltac:(constructor)) HX Hga' HXP' E) as (k & Pk & Elk & Hgk & _ & HXk & _).
     rewrite exp_sub_sub; exists k, Pk, Elk; constructor; assumption. }
-  { (** Every glued argument is taken: the literal lacking one fewer has a
-        value at the extended environment *)
-    intros * Hφ Hg0 HN.
-    destruct (HNX _ _ _ _ _ _ _ _ Hφ Hg0 HN) as [_ Henv].
-    destruct (IHg _ HSbX _ _ _ Henv) as (h' & Eh' & _).
-    exists h'; apply eval_appm_local, HD'e; apply eval_me_lit_iff in Eh'; exact Eh'. }
   (** An application, at a glued argument [N] *)
   intros * Hst Hm HT Hv HS HB N c hc i0 P0 El0 Hg0 HBP HN Hhc.
   pose proof Hst as [Hφ Hζ Hσ1 E].

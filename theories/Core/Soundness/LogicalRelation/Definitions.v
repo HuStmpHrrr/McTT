@@ -1532,11 +1532,12 @@ Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
 (** A value lacking a parameter, whose next parameter's type is [a]: at
     every factorization of [σ0] weakened through [ζ] ([glu_sub_through]),
     the type of the parameter [H0[ζ]] lacks is glued at [a], at some
-    index; the value has a value at every argument glued at [a]; and that
-    value is glued as [H0[ζ]] applied to the argument, at every gluing of
+    index; and the value's value at an argument glued at [a], when it has
+    one, is glued as [H0[ζ]] applied to the argument, at every gluing of
     [a] the parameter's type is glued at: as [H0[ζ][↑] #0] over the
     middle context extended by the parameter, at [σ1] extended by the
-    argument. *)
+    argument.  That it has one is not asked: where a value is applied, at
+    an environment, completeness evaluates the application. *)
 | glu_dmod_fun : forall Δ σ0 Γ0 H0 h a,
     Δ ⊢ˢ σ0 : Γ0 ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
@@ -1544,8 +1545,6 @@ Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
     (forall Δ' φ Γ1 ζ σ1 RH T B T1 Srt, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
        mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
        type_sort Srt -> Γ1 ⊢ B : Srt -> exists (i : nat) P El, glu_type_at Δ' B[σ1] a i P El) ->
-    (forall Δ' φ N B c (i : nat) P El, Δ' ⊢ᵏ φ : Δ -> DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ' ⊢ N : B ® c ∈ El ->
-       exists hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc) ->
     (forall Δ' φ Γ1 ζ σ1 RH T B T1 Srt, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
        mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
        type_sort Srt -> Γ1 ⊢ B : Srt ->
