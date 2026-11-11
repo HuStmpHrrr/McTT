@@ -93,12 +93,13 @@ Qed.
     no stored module at any substitution: its selections are looked up
     in what it denotes, not by path. *)
 Lemma same_denote_mem : forall {Γ0 H0 H1} y, same_denote Γ0 H0 H1 ->
-    (forall ζ, mod_qname H0[ζ]ᵐ = None) ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H0[ζ]ᵐ = None) ->
     same_denote Γ0 (me_mem H0 y) (me_mem H1 y).
 Proof.
   intros * Hs Hq Γ1 ζ R Hζ Hm; cbn [modexp_sub] in *.
   inversion Hm; subst;
-    try (match goal with Hp : mod_qname (me_mem _ _) = Some _ |- _ => cbn [mod_qname] in Hp; rewrite Hq in Hp; discriminate end).
+    try (match goal with Hp : mod_qname (me_mem _ _) = Some _ |- _ =>
+           cbn [mod_qname] in Hp; rewrite (Hq _ _ Hζ) in Hp; discriminate end).
   econstructor; [ eapply Hs; eassumption | eassumption .. ].
 Qed.
 
@@ -165,6 +166,32 @@ Proof.
     | exact (glu_univ_elem_trm_escape _ _ _ _ Hu _ _ _ _ HM) ].
 Qed.
 
+(** A slot denotes what its unit's literal does, both ways, at every
+    typed substitution: the slot goes to the literal at the substitution,
+    or to a slot of that unit ([wf_sub_mod_compat]). *)
+Lemma same_denote_slot : forall {Γ y U}, Γ ∋ #y ≔ₘ U ->
+    same_denote Γ (me_var y) (me_lit U) /\ same_denote Γ (me_lit U) (me_var y).
+Proof.
+  intros * Hy; split; intros Γ1 ζ R Hζ Hm;
+    destruct (wf_sub_mod_compat _ _ _ _ _ Hζ _ _ Hy) as [E | (z & Ez & Hz)];
+    cbn [modexp_sub] in *; rewrite ?E in *; try exact Hm; rewrite Ez in *; cbn [sentry_modexp] in *.
+  - inversion Hm; subst; try (match goal with Hp : mod_qname (me_var _) = Some _ |- _ => cbn in Hp; discriminate end).
+    match goal with Hl : Γ1 ∋ # z ≔ₘ ?U0 |- _ => pose proof (ctx_lookup_mod_functional _ _ _ _ Hl Hz) as -> end.
+    apply mdenote_lit; assumption.
+  - apply mdenote_lit_inv in Hm; eapply mdenote_slot; [ exact Hz | exact Hm ].
+Qed.
+
+(** No typed substitution of a slot, nor any of a literal, names a
+    stored module. *)
+Lemma mod_qname_sub_var : forall Γ y U Γ1 ζ, Γ ∋ #y ≔ₘ U -> Γ1 ⊢ˢ ζ : Γ -> mod_qname (me_var y)[ζ]ᵐ = None.
+Proof.
+  intros * Hy Hζ; destruct (wf_sub_mod_compat _ _ _ _ _ Hζ _ _ Hy) as [E | (z & Ez & _)];
+    cbn [modexp_sub]; [ rewrite E | rewrite Ez ]; reflexivity.
+Qed.
+
+Lemma mod_qname_sub_lit : forall U ζ, mod_qname (me_lit U)[ζ]ᵐ = None.
+Proof. reflexivity. Qed.
+
 (** A module value glued as [H1] is glued as an equal [H0] denoting alike
     both ways at every substitution, neither naming a stored module: its
     members are looked up alike and equal ([glu_elem_at_same_denote]),
@@ -172,7 +199,8 @@ Qed.
 Lemma glu_dmod_same_denote :
   (forall Δ σ0 Γ0 H1 h, glu_dmod Δ σ0 Γ0 H1 h ->
      forall H0, gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H1 -> same_denote Γ0 H0 H1 -> same_denote Γ0 H1 H0 ->
-       (forall ζ, mod_qname H0[ζ]ᵐ = None) -> (forall ζ, mod_qname H1[ζ]ᵐ = None) ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H0[ζ]ᵐ = None) ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H1[ζ]ᵐ = None) ->
        glu_dmod Δ σ0 Γ0 H0 h) /\
   (forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args -> True).
 Proof.
@@ -201,8 +229,8 @@ Proof.
         eapply wf_me_mem_same_denote; [ exact HH | | exact (same_denote_mem y Hs10 Hq1) ].
         destruct Hg1; assumption. }
       eapply IHsub; [ exact Hp | exact Hu | exact Hb | exact Hc | | exact (same_denote_mem y Hs01 Hq0)
-                    | exact (same_denote_mem y Hs10 Hq1) | intros ζ; cbn; rewrite Hq0; reflexivity
-                    | intros ζ; cbn; rewrite Hq1; reflexivity ].
+                    | exact (same_denote_mem y Hs10 Hq1) | intros Γ2 ζ Hζ; cbn; rewrite (Hq0 _ _ Hζ); reflexivity
+                    | intros Γ2 ζ Hζ; cbn; rewrite (Hq1 _ _ Hζ); reflexivity ].
       eapply wf_me_mem_same_denote; [ exact HH | | exact (same_denote_mem y Hs10 Hq1) ].
       destruct Hg1; assumption.
   - (** A value lacking a parameter *)
