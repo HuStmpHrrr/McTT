@@ -597,4 +597,47 @@ Proof.
     cbn [mdesc_at] in HR0m'; destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; injection HR0m' as <-; exact Hed.
 Qed.
 
+(** A typed module expression whose telescope has an outermost parameter
+    has one at every typed substitution. *)
+Lemma tele_view_under_sub : forall Γ X,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ X ≈ X ->
+    (forall R0 T0, mdenote gc_deps gc_stack Γ X R0 -> mdesc_mod_tele R0 = Some T0 -> exists B T1, tele_view T0 = Some (B, T1)) ->
+    forall Γ' ζ, Γ' ⊢ˢ ζ : Γ ->
+    forall R0 T0, mdenote gc_deps gc_stack Γ' X[ζ]ᵐ R0 -> mdesc_mod_tele R0 = Some T0 -> exists B T1, tele_view T0 = Some (B, T1).
+Proof.
+  intros * HH Hv * Hζ * Hm HT.
+  destruct (me_mod_tele_exists HH) as (RX & TX & HmX & HTX).
+  destruct (Hv _ _ HmX HTX) as (B & T1 & HvX).
+  pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HH HmX Hζ) as HmXζ.
+  pose proof (ctx_wf_gctx _ _ _ (wf_sub_dom _ _ _ _ _ Hζ)) as Hg.
+  rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm _ HmXζ) in HT.
+  rewrite (mdesc_mod_tele_sub _ _ ζ _ (wf_mdenote_scoped _ _ _ _ _ _ HH HmX) HTX) in HT; injection HT as <-.
+  rewrite tele_view_sub, HvX; cbn; eauto.
+Qed.
+
+(** The selection from [X] applied to [N] and the selection from [X]
+    given [N] have the same module part both ways, when [X] has a next
+    parameter and names no open frame at any substitution, the former
+    being typed ([mdenote_mem_app_of_app_mem]). *)
+Lemma same_part_app_mem : forall Γ X y N,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ X ≈ X ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app (me_mem X y) N ≈ me_app (me_mem X y) N ->
+    (forall Γ' ζ, Γ' ⊢ˢ ζ : Γ -> names_no_frame X[ζ]ᵐ) ->
+    (forall R0 T0, mdenote gc_deps gc_stack Γ X R0 -> mdesc_mod_tele R0 = Some T0 -> exists B T1, tele_view T0 = Some (B, T1)) ->
+    same_part Γ (me_mem (me_app X N) y) (me_app (me_mem X y) N) /\ same_part Γ (me_app (me_mem X y) N) (me_mem (me_app X N) y).
+Proof.
+  intros * HX HK Hq Hv; split; intros Γ' ζ R Rm Hζ Hm HRm; cbn [modexp_sub] in Hm |- *.
+  - (** The application of the selection denotes, typed; so does the
+        selection from the application, alike *)
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HK Hζ) as HKζ; cbn [modexp_sub] in HKζ.
+    destruct (me_denotes _ _ _ _ _ HKζ) as (R1 & Rm1 & Hm1 & HRm1).
+    destruct (mdenote_mem_app_of_app_mem _ _ _ _ _ _ (sub_preserves_modexp _ _ _ _ _ _ _ HX Hζ) (Hq _ _ Hζ)
+                (tele_view_under_sub _ _ HX Hv _ _ Hζ) Hm1 HRm1) as (R2 & Hm2 & HRm2).
+    pose proof (ctx_wf_gctx _ _ _ (wf_sub_dom _ _ _ _ _ Hζ)) as Hg.
+    rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm2 _ Hm) in HRm2.
+    exists R1; split; [ exact Hm1 | congruence ].
+  - exact (mdenote_mem_app_of_app_mem _ _ _ _ _ _ (sub_preserves_modexp _ _ _ _ _ _ _ HX Hζ) (Hq _ _ Hζ)
+             (tele_view_under_sub _ _ HX Hv _ _ Hζ) Hm HRm).
+Qed.
+
 End Fixed_GCtx.
