@@ -232,6 +232,23 @@ Proof.
     econstructor; [ eassumption | apply eval_selmc_selt with (hc := hc); assumption ].
 Qed.
 
+(** Reading a description at arguments keeps its kind: a term stays a
+    term of its tag, and anything else stays no term. *)
+Lemma mdesc_kind_ats_read : forall Ns R R1, (forall Θd A M Rm, R = mdesc_dm Θd A M Rm -> Θd = nil) ->
+    mdesc_ats_read R Ns = Some R1 -> mdesc_kind R1 = mdesc_kind R.
+Proof.
+  intros * Hdm Ha.
+  destruct R as [r A om | Δ Φ Φx | Θ0 p T Φ Ns' | Θd A M Rm].
+  - rewrite mdesc_ats_read_other in Ha by (intros; discriminate).
+    destruct (mdesc_ats_term _ _ _ _ _ Ha) as (? & ? & ->); reflexivity.
+  - rewrite mdesc_ats_read_other in Ha by (intros; discriminate).
+    assert (Hm : mdesc_is_mod R1) by (eapply mdesc_ats_is_mod; [| exact Ha ]; exact I); destruct R1; cbn in Hm |- *; first [ contradiction | reflexivity ].
+  - rewrite mdesc_ats_read_other in Ha by (intros; discriminate).
+    assert (Hm : mdesc_is_mod R1) by (eapply mdesc_ats_is_mod; [| exact Ha ]; exact I); destruct R1; cbn in Hm |- *; first [ contradiction | reflexivity ].
+  - pose proof (Hdm _ _ _ _ eq_refl) as ->.
+    cbn [mdesc_ats_read] in Ha; mdesc_dm_read_shape Ha; reflexivity.
+Qed.
+
 (** An equation at a type is one at a type equal to it at a sort of
     types. *)
 Lemma wf_exp_eq_conv_kind : forall Γ M M' A A' κ (l : nat),
