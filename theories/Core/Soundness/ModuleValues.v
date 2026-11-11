@@ -16,7 +16,7 @@ From Mctt.Core.Syntactic.System Require Import LetPeeling.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping LookupSound.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases UnitCases.
-From Mctt.Core.Completeness.Modules Require Import ValidUnit Values.
+From Mctt.Core.Completeness.Modules Require Import ValidUnit Values Mem.
 From Mctt.Core.Completeness.Consequences Require Import AnnotatedUpto.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases.
 Import Domain_Notations Wk_Notations Fixed_Notations.
@@ -481,6 +481,78 @@ Proof.
     cbn; destruct (String.eqb_spec z y) as [-> | Hne]; [| exact Hp ].
     exfalso; apply Hy; exact (gm_prefix_upto_in_names _ _ _ Hp).
   - intros A M σ HE Hf; apply (Hl y Φ E A M σ); [ cbn; rewrite String.eqb_refl; reflexivity | exact HE | exact Hf ].
+Qed.
+
+(** A member of a saturated literal body, glued as its body at the body's
+    environment, is glued as the member of the literal at every
+    factorization: the type a lookup reads is the type filled in
+    ([body_mem_desc]), the member is its δ-reduct, the body filled in,
+    and the two are moved along the factorization by the substitution
+    lemmas. *)
+Lemma glu_lit_body_member : forall Γ sm Φ Φ' x E A M Δ σ (i : nat) a m P El σ'' ζ,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_body sm Φ) ≈ gu_mk nil (md_body sm Φ) ->
+    gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) -> entry_tm E = Some (A, M) ->
+    gm_fill Φ' = Some ζ -> ⊢ body_ctx Φ' ++ Γ ->
+    body_ctx Φ' ++ Γ ⊢ A : abs_kind_sort (domain_kind a) Typeω@i -> body_ctx Φ' ++ Γ ⊢ M : A ->
+    sb_eq σ'' (ζ ⨟ σ) -> Δ ⊢ˢ σ'' : body_ctx Φ' ++ Γ ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ M[σ''] : A[σ''] ® m ∈ El ->
+    forall Δ' φ Γ1 ζ1 σ1 R A', glu_sub_through Δ σ Γ Δ' φ Γ1 ζ1 σ1 ->
+      mdenote gc_deps gc_stack Γ1 (me_mem (me_lit (gu_mk nil (md_body sm Φ)))[ζ1]ᵐ x) R -> mdesc_type R = Some A' ->
+      glu_elem_at Δ' A'[σ1] (a_mem (me_lit (gu_mk nil (md_body sm Φ)))[ζ1]ᵐ x)[σ1] a m i P El.
+Proof.
+  intros * HU Hp Ht Hf HC HA HM Eσ Hσ'' Hglu HMg * [Hφ Hζ1 Hσ1 Heq] Hm HA'.
+  cbn [modexp_sub gunit_sub] in Hm |- *.
+  (** A closed body has no description outside its path *)
+  destruct sm.
+  2:{ exfalso; inversion Hm; subst; try (cbn in *; discriminate).
+      match goal with H0 : mdenote _ _ _ (me_lit _) _ |- _ => apply mdenote_lit_inv in H0; inversion H0; subst end.
+      cbn in *; discriminate. }
+  (** The lookup: the member's type is its type filled in, its reduct its
+      body filled in ([body_mem_desc]), at the substituted body *)
+  assert (Hx : exists Φx, body_xp gc_deps gc_stack (nil ++ Γ1) (gmod_sub Φ (sb_qn 0 ζ1)) Φx).
+  { inversion Hm; subst; try (cbn in *; discriminate).
+    match goal with H0 : mdenote _ _ _ (me_lit _) _ |- _ => apply mdenote_lit_inv in H0; inversion H0; subst end.
+    eexists; eassumption. }
+  destruct Hx as [Φx Hx].
+  pose proof (body_xp_expand _ _ _ _ _ Hx) as EΦx; rewrite gm_expand_sub in EΦx; subst Φx.
+  destruct (body_mem_desc _ _ (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HU)) _ _ _ _ _ _ _ Hx Hm HA')
+    as (Φ0w & Ew & A0 & M0 & τ & Hpw & Htw & Hfw & EA' & Ered & _).
+  destruct (gm_prefix_sub_inv _ _ _ _ _ Hpw) as (Φ0 & E0 & Hp0 & -> & ->).
+  rewrite Hp in Hp0; injection Hp0 as <- <-.
+  destruct (entry_tm_sub_inv _ _ _ _ Htw) as (A1 & M1 & Ht1 & -> & ->).
+  rewrite Ht in Ht1; injection Ht1 as <- <-.
+  destruct (gm_fill_sub Φ' 0 ζ1 ζ Hf) as (τ' & Hf' & Eτ).
+  rewrite Hfw in Hf'; injection Hf' as <-.
+  cbn [ctx_pi_at ctx_fn sb_qn] in *.
+  rewrite PeanoNat.Nat.add_0_r in Eτ.
+  assert (EX : forall X, X[sb_qn (gm_binders Φ') ζ1][τ] = X[ζ][ζ1])
+    by (intros X; rewrite !exp_sub_sub; apply exp_sub_sb_eq; exact Eτ).
+  rewrite EX in EA', Ered; subst A'.
+  pose proof (wf_gm_fill _ _ _ _ _ HC Hf) as Hζ.
+  assert (HUl : gc_deps ⍮ gc_stack ⍮ Γ1 ⊢ᵐ me_lit (gu_open nil Φ)[ζ1]ᵘ ≈ me_lit (gu_open nil Φ)[ζ1]ᵘ)
+    by exact (sub_preserves_modexp _ _ _ _ _ _ _ (wf_me_lit _ _ _ _ _ HU) Hζ1).
+  pose proof (wf_exp_eq_mem_delta _ _ _ _ _ _ _ _ HUl Hm HA' Ered) as Hδ.
+  (** The factorization, read at the body's context *)
+  assert (Hw : sb_eq (sb_wk σ'' φ) (ζ ⨟ sb_wk σ φ))
+    by (rewrite (sb_wk_compose σ''), Eσ, sb_compose_assoc, <- sb_wk_compose; reflexivity).
+  assert (Hs : Δ' ⊢ˢ ζ ⨟ (ζ1 ⨟ σ1) ≈ sb_wk σ'' φ : body_ctx Φ' ++ Γ).
+  { eapply wf_sub_eq_respects_sb_eq; [| symmetry; exact Hw ].
+    apply wf_sub_eq_sym; eapply wf_sub_eq_compose_right; [ exact Hζ | exact Heq ]. }
+  (** The body's gluing, weakened, moved to the filled-in type and to the
+      member *)
+  pose proof (glu_univ_elem_exp_monotone _ _ _ _ Hglu _ _ _ _ _ _ HMg Hφ) as HMw.
+  rewrite !exp_wk_sub in HMw.
+  assert (EA : Δ' ⊢ A[ζ][ζ1][σ1] ≈ A[sb_wk σ'' φ] : abs_kind_sort (domain_kind a) Typeω@(large_level i)).
+  { rewrite !exp_sub_sub.
+    pose proof (sub_eq_preserves_exp_eq _ _ _ _ _ _ _ _ _ (wf_exp_eq_refl HA) Hs) as H.
+    rewrite abs_kind_sort_sub in H; exact H. }
+  assert (EM : Δ' ⊢ M[ζ][ζ1][σ1] ≈ M[sb_wk σ'' φ] : A[ζ][ζ1][σ1])
+    by (rewrite !exp_sub_sub; exact (sub_eq_preserves_exp_eq _ _ _ _ _ _ _ _ _ (wf_exp_eq_refl HM) Hs)).
+  pose proof (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hglu _ _ _ _ _ HMw (wf_exp_eq_sym _ _ _ _ _ _ EA)) as HM1.
+  constructor; [ exact Hglu | exact (glu_univ_elem_trm_typ _ _ _ _ Hglu _ _ _ _ HM1) |].
+  eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hglu | exact HM1 |].
+  etransitivity; [ apply wf_exp_eq_sym; exact EM |].
+  apply wf_exp_eq_sym; exact (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Hδ Hσ1).
 Qed.
 
 End Fixed_GCtx.
