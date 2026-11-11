@@ -456,6 +456,92 @@ Proof.
           | exact Hσ0 ].
 Qed.
 
+(** ** Module Expressions with the Same Module Part *)
+
+(** Applying a description to an argument applies its module part: the
+    module part of the result is that of the module part applied, both
+    ways. *)
+Lemma mdesc_at_mod_part : forall R N R' Rm, mdesc_at R N = Some R' -> mdesc_mod R = Some Rm ->
+    exists Rm', mdesc_at Rm N = Some Rm' /\ mdesc_mod R' = mdesc_mod Rm'.
+Proof.
+  induction R as [r A om | Δ Φ Φx | Θ p T Φ Ns | Θ A M Rm0 IH]; intros N R' Rm Ha Hm; cbn [mdesc_mod] in Hm;
+    try discriminate.
+  - injection Hm as <-; exists R'; split; [ exact Ha | reflexivity ].
+  - injection Hm as <-; exists R'; split; [ exact Ha | reflexivity ].
+  - cbn [mdesc_at] in Ha; destruct (mdesc_at Rm0 N) as [Rm0' |] eqn:E; [| discriminate ].
+    destruct (IH _ _ _ E Hm) as (Rm' & HRm' & EM).
+    exists Rm'; split; [ exact HRm' |].
+    destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; injection Ha as <-; cbn [mdesc_mod]; exact EM.
+Qed.
+
+Lemma mdesc_at_of_mod_part : forall R N Rm Rm', mdesc_mod R = Some Rm -> mdesc_at Rm N = Some Rm' ->
+    exists R', mdesc_at R N = Some R' /\ mdesc_mod R' = mdesc_mod Rm'.
+Proof.
+  induction R as [r A om | Δ Φ Φx | Θ p T Φ Ns | Θ A M Rm0 IH]; intros N Rm Rm' Hm Ha; cbn [mdesc_mod] in Hm;
+    try discriminate.
+  - injection Hm as <-; exists Rm'; split; [ exact Ha | reflexivity ].
+  - injection Hm as <-; exists Rm'; split; [ exact Ha | reflexivity ].
+  - destruct (IH _ _ _ Hm Ha) as (Rm0' & E & EM).
+    cbn [mdesc_at]; rewrite E.
+    destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; eexists; split; [ reflexivity | cbn [mdesc_mod]; exact EM
+                                                                       | reflexivity | exact EM ].
+Qed.
+
+(** [H0] has the module part [H1] has, at every typed substitution. *)
+Definition same_part (Γ0 : ctx) (H0 H1 : modexp) : Prop :=
+  forall Γ1 ζ R0 Rm, Γ1 ⊢ˢ ζ : Γ0 -> mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ R0 -> mdesc_mod R0 = Some Rm ->
+    exists R1, mdenote gc_deps gc_stack Γ1 H1[ζ]ᵐ R1 /\ mdesc_mod R1 = Some Rm.
+
+(** Denoting alike is having the same module part. *)
+Lemma same_part_of_denote : forall {Γ0 H0 H1}, same_denote Γ0 H0 H1 -> same_part Γ0 H0 H1.
+Proof. intros * Hs Γ1 ζ R Rm Hζ Hm HRm; exists R; split; [ exact (Hs _ _ _ Hζ Hm) | exact HRm ]. Qed.
+
+(** A description with no module part applied has none. *)
+Lemma mdesc_at_no_mod : forall R N R', mdesc_mod R = None -> mdesc_at R N = Some R' -> mdesc_mod R' = None.
+Proof.
+  induction R as [r A om | | | Θ A M Rm0 IH]; intros N R' Hm Ha; cbn [mdesc_mod] in Hm; try discriminate.
+  - cbn in Ha; destruct (pi_view A) as [[? ?] |]; [| discriminate ].
+    destruct om as [M |]; [ destruct (fn_view M); [| discriminate ] |]; injection Ha as <-; reflexivity.
+  - cbn [mdesc_at] in Ha; destruct (mdesc_at Rm0 N) as [Rm0' |] eqn:E; [| discriminate ].
+    pose proof (IH _ _ Hm E) as H.
+    destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; injection Ha as <-; [ cbn [mdesc_mod] |]; exact H.
+Qed.
+
+(** Selections are looked up in the module part: from module expressions
+    with the same module part naming no stored module, they denote alike. *)
+Lemma same_denote_mem_part : forall {Γ0 H0 H1} y, same_part Γ0 H0 H1 ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H0[ζ]ᵐ = None) ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H1[ζ]ᵐ = None) ->
+    same_denote Γ0 (me_mem H0 y) (me_mem H1 y).
+Proof.
+  intros * Hs Hq0 Hq1 Γ1 ζ R Hζ Hm; cbn [modexp_sub] in *.
+  inversion Hm; subst;
+    try (match goal with Hp : mod_qname (me_mem _ _) = Some _ |- _ =>
+           cbn [mod_qname] in Hp; rewrite (Hq0 _ _ Hζ) in Hp; discriminate end).
+  match goal with H0m : mdenote _ _ _ (modexp_sub H0 ζ) ?R0, Hmd : mdesc_mod ?R0 = Some _ |- _ =>
+    destruct (Hs _ _ _ _ Hζ H0m Hmd) as (R2 & HR2 & Ep) end.
+  eapply mdenote_mem; [ exact HR2 | exact Ep | eassumption | eassumption | eassumption ].
+Qed.
+
+(** Application to the variable of a further parameter keeps the module
+    part. *)
+Lemma same_part_app_var : forall {Γ0 H0 H1} κ B, same_part Γ0 H0 H1 ->
+    same_part (Γ0 ▹{κ} B) (me_app H0[Wk]ᵐ #0) (me_app H1[Wk]ᵐ #0).
+Proof.
+  intros * Hs Γ1 ζ R Rm Hζ Hm HRm; cbn [modexp_sub] in *.
+  rewrite !modexp_sub_sub in *.
+  inversion Hm; subst;
+    try (match goal with Hp : mod_qname (me_app _ _) = Some _ |- _ => cbn in Hp; discriminate end).
+  match goal with H0m : mdenote _ _ _ (modexp_sub H0 _) ?R0, Ha : mdesc_at ?R0 _ = Some _ |- _ =>
+    destruct (mdesc_mod R0) as [Rm0 |] eqn:E0;
+      [| exfalso; rewrite (mdesc_at_no_mod _ _ _ E0 Ha) in HRm; discriminate ];
+    destruct (Hs _ _ _ _ (wf_sub_compose _ _ _ _ _ _ _ (wf_sub_shift _ _ _ _ (wf_sub_cod _ _ _ _ _ Hζ)) Hζ) H0m E0)
+      as (R1 & HR1 & E1);
+    destruct (mdesc_at_mod_part _ _ _ _ Ha E0) as (Rm' & HRm' & EM) end.
+  destruct (mdesc_at_of_mod_part _ _ _ _ E1 HRm') as (R1' & HR1' & EM').
+  exists R1'; split; [ eapply mdenote_app; [ exact HR1 | exact HR1' ] | rewrite EM', <- EM; exact HRm ].
+Qed.
+
 (** ** The Closure of a Glued Unit's Literal *)
 
 Lemma gm_prefix_upto_in_names : forall Φ z P, gm_prefix_upto Φ z = Some P -> List.In z (gm_names Φ).
