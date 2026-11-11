@@ -72,13 +72,12 @@ Lemma glu_dmod_through :
 Proof.
   apply glu_dmod_mut_ind_all; [ | | | intros; exact I | intros; exact I ].
   - (** A global module *)
-    intros * Hσ HH0 HH0p Hl Hlen Hargs _ Hmem Γ1 ζ σ1 Hζ Hσ1 Heq.
-    eapply glu_dmod_global; [ exact Hσ1 | exact (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) | | exact Hl | exact Hlen | exact Hargs |].
-    + rewrite modexp_sub_sub.
-      eapply wf_me_trans; [| exact HH0p ].
-      apply wf_me_sym; exact (sub_eq_preserves_modexp _ _ _ _ _ HH0 _ _ _ Heq).
-    + intros * Hs * Hst Hm; rewrite modexp_sub_sub in Hm |- *.
-      exact (Hmem _ _ Hs _ _ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_compose Hζ Heq Hst) Hm).
+    intros * Hσ HH0 Hl Hlen Hdesc Hargs _ Γ1 ζ σ1 Hζ Hσ1 Heq.
+    eapply glu_dmod_global; [ exact Hσ1 | exact (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) | exact Hl | exact Hlen | |].
+    + intros * Hst Hm; rewrite modexp_sub_sub in Hm.
+      exact (Hdesc _ _ _ _ _ _ (glu_sub_through_compose Hζ Heq Hst) Hm).
+    + intros * Hst Hm; rewrite modexp_sub_sub in Hm.
+      exact (Hargs _ _ _ _ _ _ _ (glu_sub_through_compose Hζ Heq Hst) Hm).
   - (** A body *)
     intros * Hσ HH0 Hmem Hsub IHsub Γ1 ζ σ1 Hζ Hσ1 Heq.
     apply glu_dmod_body; [ exact Hσ1 | exact (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) | | ].
@@ -606,16 +605,26 @@ Lemma glu_dmod_same_part :
 Proof.
   apply glu_dmod_mut_ind_all; [ | | | intros; exact I | intros; exact I ].
   - (** A global module *)
-    intros * Hσ HH1 HH1p Hl Hlen Hargs _ Hmem H0 HH Hs01 Hs10 Hq0 Hq1.
-    eapply glu_dmod_global; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | | exact Hl | exact Hlen | exact Hargs |].
-    + eapply wf_me_trans; [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH Hσ) | exact HH1p ].
-    + intros * Hs * Hst Hm HA HS HAt Hrel Hu HT.
-      pose proof (same_denote_mem_part x Hs01 Hq0 _ _ _ (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) Hm) as Hm1.
-      pose proof (Hmem _ _ Hs _ _ _ _ _ _ _ _ _ _ _ _ Hst Hm1 HA HS HAt Hrel Hu HT) as Hgl.
-      eapply glu_elem_at_term, glu_elem_at_same_denote;
-        [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst))
-        | exact Hm | exact Hm1 | exact HA | exact (glu_sub_through_rest _ _ _ _ _ _ _ _ Hst)
-        | exact (mk_glu_elem_at _ _ _ _ _ _ _ _ Hu HT Hgl) ].
+    intros * Hσ HH1 Hl Hlen Hdesc Hargs _ H0 HH Hs01 Hs10 Hq0 Hq1.
+    (** The same module part, read off [H1[ζ]] *)
+    assert (Hpart : forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+               mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH ->
+               exists R1, mdenote gc_deps gc_stack Γ1 H1[ζ]ᵐ R1 /\ mdesc_mod R1 = mdesc_mod RH).
+    { intros * Hst Hm.
+      pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
+      pose proof (sub_preserves_modexp _ _ _ _ _ _ _ (wf_modexp_eq_refl_left HH) Hζ) as HH0ζ.
+      destruct (me_denotes _ _ _ _ _ HH0ζ) as (R0 & Rm & Hm0 & HRm).
+      pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH0ζ)) as Hg.
+      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm0 _ Hm) in HRm.
+      destruct (Hs01 _ _ _ _ Hζ Hm HRm) as (R1 & Hm1 & HR1m).
+      exists R1; split; [ exact Hm1 | congruence ]. }
+    eapply glu_dmod_global; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | exact Hl | exact Hlen | |].
+    + intros * Hst Hm.
+      destruct (Hpart _ _ _ _ _ _ Hst Hm) as (R1 & Hm1 & E1).
+      rewrite <- E1; exact (Hdesc _ _ _ _ _ _ Hst Hm1).
+    + intros * Hst Hm HNs.
+      destruct (Hpart _ _ _ _ _ _ Hst Hm) as (R1 & Hm1 & E1).
+      rewrite <- E1 in HNs; exact (Hargs _ _ _ _ _ _ _ Hst Hm1 HNs).
   - (** A body *)
     intros * Hσ HH1 Hmem Hsub IHsub H0 HH Hs01 Hs10 Hq0 Hq1.
     apply glu_dmod_body; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | | ].

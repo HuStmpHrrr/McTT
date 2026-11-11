@@ -1488,29 +1488,27 @@ Definition sb_closed_base : sub := fun _ => se_exp Propₘ.
     under [forall] and [->] only, so that the induction principle covers
     them. *)
 Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
-(** The saturated global module [H0[σ0]] is equal to, at glued
-    arguments *)
-| glu_dmod_global : forall Δ σ0 Γ0 H0 p T Φ args Ns,
+(** A saturated global module: the stored module [H0] denotes, at
+    arguments glued as the value's.  Its members are not glued here, as
+    [per_dmod] relates a global value by its arguments only: a member is
+    glued where it is read, from the source's reading of it, the target
+    possibly storing more members than the source (an open frame grown) *)
+| glu_dmod_global : forall Δ σ0 Γ0 H0 p T Φ args,
     Δ ⊢ˢ σ0 : Γ0 ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
-    gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵐ H0[σ0]ᵐ ≈ me_apps (qname_mod p) Ns ->
     gc_loc gc_deps gc_stack p = Some (T, Φ) ->
     List.length args = List.length T ->
-    glu_tele_args Δ (List.rev T) nil nil Ns args ->
-    (** Each term member, at a sort of an evaluated kind, glued at its
-        lookup type through every factorization, at every type value
-        related to the member types of every value related to it (as
-        completeness's [dmod_mem_type_rel] states) that
-        the lookup type is glued at: the type's gluing is the reader's,
-        as the member's value is the stored value applied, glued only
-        along the [Π]s of its stored type *)
-    (forall x m, dm_global p args ·ₜ x gc_deps ⍮ gc_stack ↘ m ->
-       forall Δ' φ Γ1 ζ σ1 R A' Srt a (i : nat) P El, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
-       mdenote gc_deps gc_stack Γ1 (me_mem H0[ζ]ᵐ x) R -> mdesc_type R = Some A' ->
-       evaluated_sort Srt -> Γ1 ⊢ A' : Srt ->
-       (forall h b, per_dmod h (dm_global p args) -> dmod_mem_type h x b -> exists j, Dom b ≈ a ∈ per_univ j) ->
-       DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ' ⊢ A'[σ1] ® P ->
-       Δ' ⊢ (a_mem H0[ζ]ᵐ x)[σ1] : A'[σ1] ® m ∈ El) ->
+    (** Through every factorization, the module part [H0[ζ]] denotes is
+        the stored module at arguments that, at [σ1], are glued as the
+        value's: the arguments are read off the description, as a member
+        lookup reads them, not off a module expression [H0[σ0]] is only
+        equal to *)
+    (forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH ->
+       exists Ns1, mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1)) ->
+    (forall Δ' φ Γ1 ζ σ1 RH Ns1, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1) ->
+       glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
     glu_dmod Δ σ0 Γ0 H0 (dm_global p args)
 (** A saturated body: each term member of an evaluated kind glued at its
     type in the environment of the entries before it, and each
