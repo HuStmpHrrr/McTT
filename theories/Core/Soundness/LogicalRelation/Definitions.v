@@ -1471,9 +1471,9 @@ Record glu_body_member (Δ : ctx) (σ0 : sub) (Γ0 : ctx) (H0 : modexp) (x : Str
   ; glu_body_member_eval : ⟦ M ⟧ ρ' ↘ m
     (** At every factorization and every type a lookup of the member
         reads, the member is glued to the member's value *)
-  ; glu_body_member_glu : forall Δ' φ Γ1 ζ σ1 R A', glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+  ; glu_body_member_glu : forall Δ' φ Γ1 ζ σ1 R A' Srt, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
       mdenote gc_deps gc_stack Γ1 (me_mem H0[ζ]ᵐ x) R -> mdesc_type R = Some A' ->
-      Γ1 ⊢ a_mem H0[ζ]ᵐ x : A' ->
+      type_sort Srt -> Γ1 ⊢ A' : Srt ->
       exists (i : nat) P El, glu_elem_at Δ' A'[σ1] (a_mem H0[ζ]ᵐ x)[σ1] a m i P El }.
 
 (** The base of the instances of a closed telescope: a closed term at

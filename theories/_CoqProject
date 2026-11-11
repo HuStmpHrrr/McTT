@@ -129,6 +129,7 @@
 ./Core/Soundness/LogicalRelation.v
 ./Core/Soundness/VariableCases.v
 ./Core/Soundness/ContextCases.v
+./Core/Soundness/ModuleValues.v
 ./Core/Soundness/Instances.v
 ./Core/Soundness/Extensions.v
 ./Core/Soundness/UnitEqCases.v

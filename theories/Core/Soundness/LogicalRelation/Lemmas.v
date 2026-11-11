@@ -1713,7 +1713,7 @@ Proof.
     + intros * Hp Ht Hk Hb.
       destruct (Hmem _ _ _ _ _ _ Hp Ht Hk Hb) as (a & m & [Ea Em Hg]).
       exists a, m; constructor; [ exact Ea | exact Em |].
-      intros * Hst; exact (Hg _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
+      intros * Hst; exact (Hg _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
     + intros * Hp Hu Hb Hc; exact (IHsub _ _ _ _ _ _ _ Hp Hu Hb Hc _ Heq).
   - (** A value lacking a parameter: likewise *)
     intros * Hσ HH0 Hn Hpar Hex Happ _ σ0' Heq.
@@ -1777,7 +1777,7 @@ Proof.
     + intros * Hp Ht Hk Hb.
       destruct (Hmem _ _ _ _ _ _ Hp Ht Hk Hb) as (a & m & [Ea Em Hg]).
       exists a, m; constructor; [ exact Ea | exact Em |].
-      intros * Hst; exact (Hg _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
+      intros * Hst; exact (Hg _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
     + intros * Hp Hu Hb Hc; exact (IHsub _ _ _ _ _ _ _ Hp Hu Hb Hc _ _ Hφ).
   - (** A value lacking a parameter: likewise *)
     intros * Hσ HH0 Hn Hpar Hex Happ _ Δ' φ Hφ.
