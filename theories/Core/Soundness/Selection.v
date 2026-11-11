@@ -936,6 +936,60 @@ Proof.
     destruct (record_mod_tele_split pr Rr _ _ HpR HΔ0) as (-> & _); eauto.
 Qed.
 
+(** Arguments glued against a telescope are glued against it extended
+    further out. *)
+Lemma glu_tele_args_app_r : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
+    forall ts2, glu_tele_args Δ (ts ++ ts2) ρ Ms Ns args.
+Proof.
+  induction 1; intros; cbn [List.app]; [ constructor |].
+  econstructor; eauto.
+Qed.
+
+(** A body submodule of a saturated glued global module, a stored module
+    at its path, at the same arguments, is glued: as a global module along
+    its telescope ([glu_dmod_global_path]), the module part of the
+    selection being the stored module ([global_sel_desc]). *)
+Lemma glu_dmod_sel_global_loc : ⊢ᵍ gc_deps ⍮ gc_stack ->
+    (forall p T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) -> ⊩ T) ->
+    forall Δ σ0 Γ0 H0 p T Φ args y T' Φ',
+    Δ ⊢ˢ σ0 : Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
+    gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length args = List.length T ->
+    (forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> exists Ns1, mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1)) ->
+    (forall Δ' φ Γ1 ζ σ1 RH Ns1, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1) ->
+       glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
+    gc_loc gc_deps gc_stack (qname_in p y) = Some (T', Φ') ->
+    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+    glu_dmod Δ σ0 Γ0 (me_mem H0 y) (dm_global (qname_in p y) args).
+Proof.
+  intros Hgw Htele * Hσ HH0 Hl Hlen Hd Ha Hl' HHy Hq.
+  pose proof (wf_gstack_closed _ _ Hgw) as Hc.
+  destruct (loc_child_tele _ _ Hgw _ _ _ _ _ _ Hl Hl') as (Z & -> & _).
+  (** The module part of the selection at every factorization *)
+  assert (Hsel : forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+            mdenote gc_deps gc_stack Γ1 (me_mem H0 y)[ζ]ᵐ RH ->
+            exists Ns1 R0, mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ R0 /\ mdesc_mod R0 = Some (mdesc_closed nil p T Φ Ns1) /\
+              mdesc_mod RH = Some (mdesc_closed nil (qname_in p y) (Z ++ T) Φ' Ns1)).
+  { intros * Hst Hm; cbn [modexp_sub] in Hm.
+    pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) as HH0ζ.
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HHy Hζ) as HHyζ; cbn [modexp_sub] in HHyζ.
+    destruct (me_denotes _ _ _ _ _ HH0ζ) as (R0 & R0m & Hm0 & _).
+    destruct (Hd _ _ _ _ _ _ Hst Hm0) as (Ns1 & HNs1).
+    destruct (modexp_mod_part _ _ _ HHyζ Hm) as (Rm & HRm).
+    destruct (global_sel_desc Hgw _ _ _ _ _ _ _ _ _ _ _ _ (Hq _ _ Hζ) Hm0 HNs1 Hl Hm HRm Hl') as (-> & _).
+    exists Ns1, R0; repeat split; assumption. }
+  eapply (glu_dmod_global_path _ _ _ Hgw Hl' (gc_loc_tele_all_assumptions _ _ Hgw _ _ _ Hl')
+            (proj1 (gc_loc_closed _ _ _ _ _ Hc Hl')) (Htele _ _ _ Hl') (List.length Z));
+    [ rewrite length_app; lia | exact Hσ | exact HHy | |].
+  - intros * Hst Hm; destruct (Hsel _ _ _ _ _ _ Hst Hm) as (Ns1 & _ & _ & _ & HRm); eauto.
+  - intros * Hst Hm HNs; destruct (Hsel _ _ _ _ _ _ Hst Hm) as (Ns1' & R0 & Hm0 & HR0 & HRm).
+    rewrite HRm in HNs; injection HNs as <-.
+    rewrite rev_app_distr; apply glu_tele_args_app_r; exact (Ha _ _ _ _ _ _ _ Hst Hm0 HR0).
+Qed.
+
 (** A value lacking a parameter whose selection is applied is applied
     itself. *)
 Lemma appm_of_selm_appm : forall h a, next_param h a -> forall y r c rc,
