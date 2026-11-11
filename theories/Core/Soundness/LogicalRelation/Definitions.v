@@ -1420,27 +1420,47 @@ Record glu_rel_exp_with_sub (i : nat) Δ M A σ ρ : Prop := mk_glu_rel_exp_with
     context gluing, so the context gluing glues the values of its slots
     with it ([cons_mod_glu_sub_pred]). *)
 
+(** The type [T] glued at the type value [a], at the index [i] with the
+    predicates [P] and [El]. *)
+Record glu_type_at (Δ : ctx) (T : typ) (a : domain) (i : nat) (P : glu_typ_pred) (El : glu_exp_pred) : Prop := mk_glu_type_at
+  { (** The type value is glued *)
+    glu_type_at_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
+    (** The type is glued at it *)
+  ; glu_type_at_typ : Δ ⊢ T ® P }.
+
+(** The term [M] of the type [T] glued to the value [m] at the type
+    value [a], at the index [i] with the predicates [P] and [El]. *)
+Record glu_elem_at (Δ : ctx) (T M : exp) (a m : domain) (i : nat) (P : glu_typ_pred) (El : glu_exp_pred) : Prop := mk_glu_elem_at
+  { (** The type value is glued *)
+    glu_elem_at_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
+    (** The type is glued at it *)
+  ; glu_elem_at_typ : Δ ⊢ T ® P
+    (** The term is glued at it to the value *)
+  ; glu_elem_at_term : Δ ⊢ M : T ® m ∈ El }.
+
 (** The term member [x] of a saturated body, [A ≔ M], glued as the
     member of [H0[σ0]]: in the environment [ρ'] the body's entries before
-    it make, its type's value is glued, every type [A'] a lookup of
-    [H0.x] reads in [Γ0] is glued at it at [σ0], and [(H0.x)[σ0]] is
-    glued there to the member's value, its body's value.  [i] is the
-    universe index of the type, [a] its value, [m] the member's value,
-    [P] and [El] the predicates of [a]. *)
+    it make, its type's value is [a] and the member's value [m], its
+    body's value, and [(H0.x)[σ0]] is glued to [m] at [a] at every type
+    [A'] a lookup of [H0.x] reads in [Γ0], at [σ0], at some index: the
+    index depends on the sort [A'] is typed at, so that the gluing moves
+    along [σ0 ≈ σ0']. *)
 Record glu_body_member (Δ : ctx) (σ0 : sub) (Γ0 : ctx) (H0 : modexp) (x : String.string) (A M : exp) (ρ' : env)
-    (i : nat) (a m : domain) (P : glu_typ_pred) (El : glu_exp_pred) : Prop := mk_glu_body_member
+    (a m : domain) : Prop := mk_glu_body_member
   { (** The type evaluates to [a] there *)
     glu_body_member_eval_type : ⟦ A ⟧ ρ' ↘ a
     (** The body evaluates to the member's value there ([eval_sel_body]) *)
   ; glu_body_member_eval : ⟦ M ⟧ ρ' ↘ m
-    (** The type's value is glued *)
-  ; glu_body_member_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
-    (** Every type a lookup of [H0.x] reads in [Γ0] is glued at it at
-        [σ0], and [(H0.x)[σ0]] is glued at that type to the member's
-        value *)
+    (** At every type a lookup of [H0.x] reads in [Γ0], [(H0.x)[σ0]] is
+        glued to the member's value *)
   ; glu_body_member_glu : forall R A', mdenote gc_deps gc_stack Γ0 (me_mem H0 x) R -> mdesc_type R = Some A' ->
       Γ0 ⊢ a_mem H0 x : A' ->
-      Δ ⊢ A'[σ0] ® P /\ Δ ⊢ (a_mem H0 x)[σ0] : A'[σ0] ® m ∈ El }.
+      exists (i : nat) P El, glu_elem_at Δ A'[σ0] (a_mem H0 x)[σ0] a m i P El }.
+
+(** The base of the instances of a closed telescope: a closed term at
+    every variable, never read by a closed telescope, and unchanged by
+    weakening. *)
+Definition sb_closed_base : sub := fun _ => se_exp Propₘ.
 
 (** [glu_dmod Δ σ0 Γ0 H0 h]: the module value [h] glued as the module
     expression [H0[σ0]] over [Δ], [H0] over [Γ0]: the counterpart of
@@ -1470,7 +1490,7 @@ Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
         entry_tm E = Some (A, M) ->
         evaluated_kind (entry_kind E) ->
         ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' ->
-        exists (i : nat) a m P El, glu_body_member Δ σ0 Γ0 H0 x A M ρ' i a m P El) ->
+        exists a m, glu_body_member Δ σ0 Γ0 H0 x A M ρ' a m) ->
     (forall y Φ' E Δy Dy ρ' h',
         gm_prefix_upto (gm_expand Φ) y = Some (gm_ext Φ' y E) ->
         entry_unit E = Some (gu_mk Δy Dy) ->
@@ -1478,30 +1498,36 @@ Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
         ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h' ->
         glu_dmod Δ σ0 Γ0 (me_mem H0 y) h') ->
     glu_dmod Δ σ0 Γ0 H0 (dm_local nil (md_body sm Φ) ρ)
-(** A value lacking a parameter: the type of the parameter [H0] lacks is
-    glued at [σ0] at the value's next parameter's type, the value has a
-    value at every glued argument, and that value, at every Kripke
-    weakening, is glued as [H0] applied to the argument: as
-    [H0[↑] #0] over [Γ0] extended by the parameter, at [σ0] weakened and
-    extended by the argument *)
-| glu_dmod_fun : forall Δ σ0 Γ0 H0 h a (i : nat) P El,
+(** A value lacking a parameter, whose next parameter's type is [a]: the
+    type of the parameter [H0] lacks is glued at [σ0] at [a], at some
+    index; the value has a value at every argument glued at [a]; and that
+    value, at every Kripke weakening and every gluing of [a] the
+    parameter's type is glued at, is glued as [H0] applied to the
+    argument: as [H0[↑] #0] over [Γ0] extended by the parameter, at [σ0]
+    weakened and extended by the argument.  The gluings of [a] are
+    quantified over, so that the gluing moves along [σ0 ≈ σ0']. *)
+| glu_dmod_fun : forall Δ σ0 Γ0 H0 h a,
     Δ ⊢ˢ σ0 : Γ0 ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
     next_param h a ->
-    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     (forall RH T B T1 Srt, mdenote gc_deps gc_stack Γ0 H0 RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
-       Γ0 ⊢ B : Srt -> Δ ⊢ B[σ0] ® P) ->
-    (forall Δ' φ N B c, Δ' ⊢ᵏ φ : Δ -> Δ' ⊢ N : B ® c ∈ El -> exists hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc) ->
+       type_sort Srt -> Γ0 ⊢ B : Srt -> exists (i : nat) P El, glu_type_at Δ B[σ0] a i P El) ->
+    (forall Δ' φ N B c (i : nat) P El, Δ' ⊢ᵏ φ : Δ -> DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ' ⊢ N : B ® c ∈ El ->
+       exists hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc) ->
     (forall RH T B T1 Srt, mdenote gc_deps gc_stack Γ0 H0 RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
-       Γ0 ⊢ B : Srt ->
-       forall Δ' φ N c hc, Δ' ⊢ᵏ φ : Δ -> Δ' ⊢ N : B[σ0][φ]ʷ ® c ∈ El ->
+       type_sort Srt -> Γ0 ⊢ B : Srt ->
+       forall Δ' φ N c hc (i : nat) P El, Δ' ⊢ᵏ φ : Δ -> DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+         Δ' ⊢ B[σ0][φ]ʷ ® P -> Δ' ⊢ N : B[σ0][φ]ʷ ® c ∈ El ->
          $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc ->
          glu_dmod Δ' (sb_wk σ0 φ ,, N) (Γ0 ▹{domain_kind a} B) (me_app H0[Wk]ᵐ #0) hc) ->
     glu_dmod Δ σ0 Γ0 H0 h
 (** [glu_tele_args Δ ts ρ Ms Ns args]: the arguments [Ns] (values
     [args]) of a global module, outermost first, against the rest [ts] of
     its closed telescope, the arguments before them having the values
-    [ρ] and the terms [Ms], innermost first *)
+    [ρ] and the terms [Ms], outermost first.  A parameter's type is
+    instantiated by [sb_of_list sb_closed_base Ms]: the telescope is
+    closed, so the base is never read, and a closed base is unchanged by
+    weakening. *)
 with glu_tele_args : ctx -> list centry -> env -> list exp -> list exp -> list domain -> Prop :=
 (** No more arguments *)
 | glu_tele_args_nil : forall Δ ts ρ Ms,
@@ -1511,9 +1537,9 @@ with glu_tele_args : ctx -> list centry -> env -> list exp -> list exp -> list d
 | glu_tele_args_cons : forall Δ κ A ts ρ Ms N Ns c args a (i : nat) P El,
     ⟦ A ⟧ ρ ↘ a ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    Δ ⊢ A[sb_of_list Id Ms] ® P ->
-    Δ ⊢ N : A[sb_of_list Id Ms] ® c ∈ El ->
-    glu_tele_args Δ ts (ρ ↦ c ⦂ entry_type_closure A ρ) (N :: Ms) Ns args ->
+    Δ ⊢ A[sb_of_list sb_closed_base Ms] ® P ->
+    Δ ⊢ N : A[sb_of_list sb_closed_base Ms] ® c ∈ El ->
+    glu_tele_args Δ ts (ρ ↦ c ⦂ entry_type_closure A ρ) (Ms ++ N :: nil) Ns args ->
     glu_tele_args Δ (ce_ass κ A :: ts) ρ Ms (N :: Ns) (c :: args).
 
 Scheme glu_dmod_mut_ind := Induction for glu_dmod Sort Prop
@@ -1663,14 +1689,22 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
             glu_rel_exp_with_sub i Δ M A σ ρ) ->
         Sb <∙> cons_def_glu_sub_pred i Γ A M TSb ->
         EG Γ ▸ A ≔ M ∈ glu_ctx_env ↘ Sb }
+(** A module slot: its unit well formed, and the closure of its literal
+    glued as the literal at every glued environment of the context, as an
+    assumption's type is glued *)
 | glu_ctx_env_cons_mod :
   `{ forall TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
         gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+        (forall Δ σ ρ h,
+            Δ ⊢ˢ σ ® ρ ∈ TSb ->
+            ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h ->
+            glu_dmod Δ σ Γ (me_lit U) h) ->
         Sb <∙> cons_mod_glu_sub_pred Γ U TSb ->
         EG Γ ▹ₘ U ∈ glu_ctx_env ↘ Sb }
-(** A definition with a module part: the premises of a definition entry
-    and the well-formedness of the entry *)
+(** A definition with a module part: the premises of a definition entry,
+    the well-formedness of the entry, and its unit's literal glued as a
+    slot's is *)
 | glu_ctx_env_cons_dm :
   `{ forall i TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
@@ -1685,6 +1719,10 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
         (forall Δ σ ρ,
             Δ ⊢ˢ σ ® ρ ∈ TSb ->
             glu_rel_exp_with_sub i Δ M A σ ρ) ->
+        (forall Δ σ ρ h,
+            Δ ⊢ˢ σ ® ρ ∈ TSb ->
+            ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h ->
+            glu_dmod Δ σ Γ (me_lit U) h) ->
         Sb <∙> cons_dm_glu_sub_pred i Γ A M U TSb ->
         EG Γ ▸ₘ A ≔ M ‖ U ∈ glu_ctx_env ↘ Sb }.
 
