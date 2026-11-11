@@ -945,7 +945,8 @@ Lemma global_sel_alias_desc : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H y R0 p 
     gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length Ns1 = List.length T ->
     mdenote gc_deps gc_stack Γ (me_mem H y) Rsel -> mdesc_mod Rsel = Some Rm ->
     gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias (gu_mk Δa Da)) ->
-    exists E Δ0 RE RmE, Da = md_alias E /\ Δa = Δ0 ++ T /\ mdenote gc_deps gc_stack (Δa ++ nil ++ Γ) E RE /\ mdesc_mod RE = Some RmE /\
+    exists E Δ0 RE RmE, Da = md_alias E /\ Δa = Δ0 ++ T /\ gunit_scoped 0 (gu_mk Δa Da) /\
+      mdenote gc_deps gc_stack (Δa ++ nil ++ Γ) E RE /\ mdesc_mod RE = Some RmE /\
       Rm = mdesc_up (tele_sub Δ0 (sb_of_list Id Ns1)) (mdesc_sub RmE (sb_qn (List.length Δ0) (sb_of_list Id Ns1))).
 Proof.
   intros Hgw * Hq Hm0 HR0m Hl Hlen Hsel HRm Hmod'.
@@ -989,7 +990,8 @@ Proof.
       pose proof (mdesc_mod_is_mod _ _ Hmd) as HRmE;
       rewrite (mdesc_ats_read_mod _ _ (mdesc_is_mod_up _ _ HRmE)), (HupT _ _ HRmE) in Hats; injection Hats as <-;
       rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ (mdesc_is_mod_sub _ _ HRmE))) in HRm; injection HRm as <-;
-      eexists; exists Δ0, RE, RmE; repeat split; first [ reflexivity | assumption ] end.
+      pose proof (entry_alias_unit_scoped _ _ _ _ _ _ 0 HbΦ Hp eq_refl) as HsU;
+      eexists; exists Δ0, RE, RmE; split; [ reflexivity | split; [ reflexivity | split; [ exact HsU | repeat split; first [ reflexivity | assumption ] ] ] ] end.
   - (** a type former's module is no alias *)
     exfalso; pose proof (loc_child_ind _ _ Hgw _ _ _ _ _ _ _ _ _ Hloc Hent) as Hb.
     assert (Hl' : gc_loc gc_deps gc_stack (qname_in p y) = Some (ind_uparams D, ΦD))
@@ -1006,7 +1008,8 @@ Proof.
       destruct (mdesc_term_part_ats _ Ns1) as [[? ? [?|] | | |] |]; try discriminate; injection Hats as <-;
       cbn [mdesc_mod] in HRm;
       rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ (mdesc_is_mod_sub _ _ HRmE))) in HRm; injection HRm as <-;
-      eexists; exists Δ0, RE, RmE; repeat split; first [ reflexivity | assumption ] end.
+      pose proof (entry_alias_unit_scoped _ _ _ _ _ _ 0 HbΦ Hp eq_refl) as HsU;
+      eexists; exists Δ0, RE, RmE; split; [ reflexivity | split; [ reflexivity | split; [ exact HsU | repeat split; first [ reflexivity | assumption ] ] ] ] end.
   - (** a record type's module is no alias *)
     exfalso; pose proof (loc_child_record _ _ Hgw _ _ _ _ _ _ _ _ Hloc Hent) as Hb.
     assert (Hl' : gc_loc gc_deps gc_stack (qname_in p y) = Some (record_mod_tele pr Rr, ΦR))
