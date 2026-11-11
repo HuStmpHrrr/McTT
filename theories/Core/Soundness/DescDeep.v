@@ -18,6 +18,8 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas LookupSound Presup Paths DescTyping.
+From Mctt.Core.Completeness Require Import FundamentalTheorem.
+From Mctt.Core.Completeness Require UnitCases.
 From Mctt.Core.Soundness Require Import LogicalRelation ModuleValues Instances Extensions UnitEqCases UnitDeep Selection MemberGluing.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -58,6 +60,54 @@ Proof. intros * Trest Tfilled _ _ [| k] *; cbn; discriminate. Qed.
 Lemma glu_desc_deep_closed_nil : forall Γ p T Φ,
     glu_rel_ctx_types Γ -> glu_desc_deep Γ (mdesc_closed nil p T Φ nil).
 Proof. intros * HΓ; split; [ exact HΓ | apply glu_args_deep_nil ]. Qed.
+
+(** Fewer arguments are glued. *)
+Lemma glu_args_deep_prefix : forall Γ T Ns Ms, glu_args_deep Γ T (Ns ++ Ms) -> all_assumptions T ->
+    length (Ns ++ Ms) <= length T -> glu_args_deep Γ T Ns.
+Proof.
+  intros * HN Ha Hl Trest Tfilled ET Hlf k N A HNk HAk.
+  subst T; rewrite length_app in Hl.
+  (** The filled parameters of the longer arguments: [Tfilled] and the
+      innermost of [Trest] *)
+  remember (length Trest - length Ms) as n eqn:En.
+  pose proof (firstn_skipn n Trest) as ETr.
+  apply List.Forall_app in Ha as [HaR HaF].
+  assert (HaS : all_assumptions (skipn n Trest)) by (rewrite <- ETr in HaR; apply List.Forall_app in HaR as [_ H]; exact H).
+  assert (HlS : length (skipn n Trest) = length Ms) by (rewrite length_skipn, length_app in *; lia).
+  assert (Hk : k < length Ns) by (apply List.nth_error_Some; congruence).
+  refine (HN (firstn n Trest) (skipn n Trest ++ Tfilled) _ _ k N A _ _).
+  - rewrite app_assoc, ETr; reflexivity.
+  - rewrite !length_app; lia.
+  - rewrite List.nth_error_app1 by exact Hk; exact HNk.
+  - rewrite tele_insts_app by (first [ exact HaF | lia ]).
+    rewrite List.nth_error_app1 by (rewrite length_tele_insts by exact HaF; lia); exact HAk.
+Qed.
+
+(** The last argument is glued at its parameter, instantiated by those
+    before it. *)
+Lemma glu_args_deep_last : forall Γ T Ns N C T1', glu_args_deep Γ T (Ns ++ N :: nil) -> all_assumptions T ->
+    tele_view (List.firstn (length T - length Ns) T) = Some (C, T1') -> glu_rel_exp_under_sub Γ N C[sb_of_list Id Ns].
+Proof.
+  intros * HN Ha Hv.
+  pose proof (firstn_skipn (length T - length Ns) T) as ET.
+  assert (HaF : all_assumptions (List.firstn (length T - length Ns) T))
+    by (rewrite <- ET in Ha; apply List.Forall_app in Ha as [H _]; exact H).
+  assert (HaS : all_assumptions (skipn (length T - length Ns) T))
+    by (rewrite <- ET in Ha; apply List.Forall_app in Ha as [_ H]; exact H).
+  destruct (tele_view_ass _ _ _ HaF Hv) as (κ & Efst).
+  assert (Hne : length (List.firstn (length T - length Ns) T) > 0) by (rewrite Efst, length_app; cbn; lia).
+  rewrite length_firstn in Hne.
+  assert (HlS : length (skipn (length T - length Ns) T) = length Ns) by (rewrite length_skipn; lia).
+  refine (HN T1' (ce_ass κ C :: skipn (length T - length Ns) T) _ _ (length Ns) N _ _ _).
+  - rewrite <- ET at 1; rewrite Efst, <- app_assoc; reflexivity.
+  - cbn; rewrite length_app, HlS; cbn; lia.
+  - rewrite List.nth_error_app2, Nat.sub_diag by lia; reflexivity.
+  - change (ce_ass κ C :: skipn (length T - length Ns) T) with ((ce_ass κ C :: nil) ++ skipn (length T - length Ns) T).
+    rewrite tele_insts_app by (first [ exact HaS | lia ]).
+    rewrite List.nth_error_app2 by (rewrite length_tele_insts by exact HaS; lia).
+    rewrite length_tele_insts by exact HaS.
+    rewrite HlS, Nat.min_id, Nat.sub_diag; reflexivity.
+Qed.
 
 (** ** Abstraction *)
 
@@ -724,6 +774,236 @@ Section FromSource.
     - (* a definition with a module part: its module part *)
       rename H0 into HΓ, H1 into Hd, H2 into HU, H into IH.
       exact (IH HΓ Hd (HU _ eq_refl)).
+  Qed.
+
+  (** A module stored at the source, applied to arguments glued at the
+      instances at its telescope, is glued at the instances, and its
+      arguments are its deep parts: the stored module by
+      [glu_rel_modexp_under_sub_path], each argument by
+      [glu_rel_modexp_under_sub_app] at its parameter
+      ([glu_args_deep_last]). *)
+  Lemma glu_apps_path_of_source : forall Γ p T Φ Ns,
+      gc_loc Θs Ξs p = Some (T, Φ) ->
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns ->
+      glu_rel_ctx_types Γ -> glu_args_deep Γ T Ns ->
+      glu_rel_modexp_under_sub Γ (me_apps (qname_mod p) Ns) /\ glu_modexp_parts_deep Γ (me_apps (qname_mod p) Ns).
+  Proof.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & Hwe & _ & _ & _ & _ & Hwm & _).
+    intros Γ p T Φ Ns Hl; pose proof (gc_loc_tele_all_assumptions _ _ Hgs _ _ _ Hl) as HaT.
+    destruct (gc_loc_grow _ _ _ _ Hg Hsub _ _ _ Hl) as (Φt & Hlt & _ & _).
+    induction Ns as [| N Ns IH] using List.rev_ind; intros HH HΓ HNs.
+    - (** The stored module *)
+      cbn [me_apps] in *; split; [| unfold qname_mod; apply glu_modexp_parts_deep_mems ].
+      apply (glu_rel_modexp_under_sub_path _ _ Hg Γ _ p T Φt (Hwm _ _ _ HH) (mod_qname_qname_mod p) Hlt
+               (glu_rel_ctx_types_ctx _ (glu_gctx_embedding_tele _ _ _ _ Hμ _ _ _ Hl))); [| exact HΓ ].
+      intros Γ1 R HmR.
+      destruct (filed_denote _ _ Hg _ _ _ Γ1 nil Hlt) as (R' & HmR' & Hmd); cbn [me_apps] in HmR'.
+      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmR _ HmR'); exact Hmd.
+    - (** One more argument, at its parameter *)
+      rewrite me_apps_snoc in *.
+      pose proof (proj1 (modexp_gen _ _ _ _ _ HH)) as Hgen; cbn [gen_m] in Hgen.
+      destruct Hgen as (HH0 & R0 & T0 & B & T1 & Srt & HmR0 & HT0 & Hv & HB & HSrt & HN).
+      destruct (filed_denote _ _ Hgs _ _ _ Γ Ns Hl) as (R0' & HmR0' & Hmd0).
+      rewrite <- (proj1 (mdenote_functional_all _ _ Hgs) _ _ _ HmR0 _ HmR0') in Hmd0.
+      assert (HBC : exists C T1', tele_view (List.firstn (length T - length Ns) T) = Some (C, T1') /\ B = C[sb_of_list Id Ns]).
+      { pose proof HT0 as HT0'; pose proof Hv as Hv'.
+        unfold mdesc_mod_tele in HT0'; rewrite Hmd0 in HT0'; cbn [mdesc_tele] in HT0'.
+        destruct (Nat.leb (length Ns) (length T)); [ injection HT0' as <- | discriminate ].
+        rewrite app_nil_r, tele_view_sub in Hv'.
+        destruct (tele_view (List.firstn (length T - length Ns) T)) as [[C T1'] |]; cbn in Hv'; [| discriminate ].
+        injection Hv' as <- _; exists C, T1'; split; reflexivity. }
+      destruct HBC as (C & T1' & Hv0 & ->).
+      assert (Hlt' : length Ns < length T).
+      { destruct (Nat.lt_ge_cases (length Ns) (length T)) as [? | Hge]; [ assumption |].
+        replace (length T - length Ns) with 0 in Hv0 by lia; discriminate. }
+      pose proof (glu_args_deep_last _ _ _ _ _ _ HNs HaT Hv0) as HNg.
+      destruct (IH HH0 HΓ (glu_args_deep_prefix _ _ _ _ HNs HaT ltac:(rewrite length_app; cbn; lia))) as [HiH HpH].
+      destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmR0) as (Rt & HmRt & Hgr).
+      pose proof (mdesc_grows_mtele _ _ _ _ _ _ _ Hgr HT0) as HTt.
+      split.
+      + exact (glu_rel_modexp_under_sub_app _ _ Hg _ _ _ _ _ _ _ _ (Hwm _ _ _ HH) HiH HNg HmRt HTt Hv
+                 (Hwe _ _ _ HB) HSrt (Hwe _ _ _ HN)).
+      + cbn [glu_modexp_parts_deep]; split; [ exact HpH |].
+        constructor; [ exact (Hwm _ _ _ HH0) |].
+        intros R' T' B' T1'' HmR' HT' Hv''.
+        rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmR' _ HmRt), HTt in HT'; injection HT' as <-.
+        rewrite Hv in Hv''; injection Hv'' as <- _; exact HNg.
+  Qed.
+
+  (** The unit a deep module description of the source stands for
+      ([mdesc_unit]), typed at the source, is glued at the instances, with
+      deep parts: a body's literal by (a); a stored module given its
+      arguments by [glu_apps_path_of_source]; the alias of one over outside
+      parameters, by both. *)
+  Lemma glu_mdesc_unit_of_deep : forall Γ Rm,
+      glu_desc_deep Γ Rm -> mdesc_is_mod Rm -> mdesc_canonical Θs Ξs Rm ->
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ mdesc_unit Rm ≈ mdesc_unit Rm -> glu_rel_ctx_types Γ ->
+      glu_rel_modexp_under_sub Γ (mdesc_unit Rm) /\ glu_modexp_parts_deep Γ (mdesc_unit Rm).
+  Proof.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
+    (** A literal deep unit typed at the source *)
+    assert (Hlit : forall Γ U, Θs ⍮ Ξs ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U -> glu_rel_ctx_types Γ -> glu_unit_deep Γ U ->
+                   glu_rel_modexp_under_sub Γ (me_lit U) /\ glu_modexp_parts_deep Γ (me_lit U)).
+    { intros * HU HΓ HUd; split; [| exact HUd ].
+      apply glu_rel_modexp_under_sub_lit; [ exact HΓ | exact (unit_eq_of_full _ _ _ _ (proj1 (modexp_gen _ _ _ _ _ (Hwm _ _ _ HU)))) |].
+      intros Γ' τ Hτ; exact (glu_unit_deep_inst _ _ HUd _ _ Hτ). }
+    intros Γ Rm HR Him Hc HU HΓ.
+    destruct Rm as [| Δ Φw Φ | [| e Θ'] p T Φ Ns |]; cbn in Him; try contradiction; cbn [mdesc_unit] in HU |- *.
+    - exact (Hlit _ _ HU HΓ HR).
+    - destruct HR as [_ HNs]; cbn in Hc.
+      exact (glu_apps_path_of_source _ _ _ _ _ (gc_loc_of_loc _ _ Hgs _ _ _ Hc) HU HΓ HNs).
+    - destruct HR as [HΘ HNs]; cbn in Hc.
+      pose proof (proj1 (modexp_gen _ _ _ _ _ HU)) as Hf; cbn [gen_m unit_full] in Hf.
+      destruct (glu_apps_path_of_source _ _ _ _ _ (gc_loc_of_loc _ _ Hgs _ _ _ Hc) (unit_alias_target _ _ _ _ _ Hf)
+                  (glu_rel_ext_under_sub_ctx_types _ _ HΘ) HNs) as [Hi Hp].
+      apply (Hlit _ _ HU HΓ); constructor; [ exact HΘ | exact Hi | exact Hp ].
+  Qed.
+
+  (** ** Selections of module expressions *)
+
+  (** A module expression typed at the source naming the module stored at
+      the source at [pm], every description of which reads it as its module
+      part at no argument, is glued at the instances: at the target the
+      descriptions grow into the stored module there
+      ([glu_rel_modexp_under_sub_path]). *)
+  Lemma glu_rel_modexp_under_sub_path_mod_of_source : forall Γ H pm T Φs,
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> mod_qname H = Some pm -> gc_loc Θs Ξs pm = Some (T, Φs) ->
+      (forall Γ1, exists R, mdenote Θs Ξs Γ1 H R /\ mdesc_mod R = Some (mdesc_closed nil pm T Φs nil)) ->
+      glu_rel_ctx_types Γ -> glu_rel_modexp_under_sub Γ H.
+  Proof.
+    intros * HHs Hq Hl Hd HΓ.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
+    destruct (gc_loc_grow _ _ _ _ Hg Hsub _ _ _ Hl) as (Φt & HlT & _ & Hl2).
+    apply (glu_rel_modexp_under_sub_path _ _ Hg Γ H pm T Φt (Hwm _ _ _ HHs) Hq HlT); [| | exact HΓ ].
+    - exact (glu_rel_ctx_types_ctx _ (glu_gctx_embedding_tele _ _ _ _ Hμ _ _ _ Hl)).
+    - intros Γ1 R HmR.
+      destruct (Hd Γ1) as (Rs & HmRs & HRs).
+      destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmRs) as (R' & HmR' & Hgr).
+      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmR _ HmR').
+      destruct (mdesc_grows_mod _ _ _ _ _ _ _ Hgr HRs) as (R2m & HR2m & Hgm); rewrite HR2m.
+      inversion Hgm as [? Hc | ? ? Φ1 Φ2 ? ? Hl1' Hl2' | ]; subst; [ cbn in Hc; discriminate |].
+      rewrite (proj2 (loc_functional _ _ _ _ _ _ _ Hl2' Hl2)); reflexivity.
+  Qed.
+
+  (** A selection from a module expression typed at the source whose
+      module part is open names no open frame at the target, at any
+      instance: were it one, the module expression would name a frame,
+      which it denotes as stored ([frame_parent], as in
+      [names_no_frame_sel_of_source]), not open. *)
+  Lemma names_no_frame_sel_open_of_source : forall Γ H y RHs Δ Φw Φx,
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θs Ξs Γ H RHs -> mdesc_mod RHs = Some (mdesc_open Δ Φw Φx) ->
+      forall Γ' τ, Γ' ⊢ˢ τ : Γ -> names_no_frame (me_mem H y)[τ]ᵐ.
+  Proof.
+    intros * HHs HmHs HRms Γ' τ Hτ pq Hq.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
+    pose proof (Hwm _ _ _ HHs) as HH.
+    cbn [modexp_sub mod_qname] in Hq.
+    rewrite (mod_qname_sub_eq _ _ _ _ (wf_sub_mod_compat _ _ _ _ _ Hτ) (proj1 (modexp_eq_slot_root _ _ _ _ _ HH))) in Hq.
+    destruct (mod_qname H) as [F |] eqn:HqF; [ injection Hq as <- | discriminate ].
+    change (gc_frame Ξ (qname_in F y) = None).
+    unfold gc_frame; destruct (gs_find_tele Ξ (qname_in F y)) as [[[[Δ0 [[|] Φ0 | E0]] [| ? ?]] T0] |] eqn:Ht;
+      try reflexivity; exfalso.
+    destruct (frame_parent _ _ Hg _ _ _ _ Ht) as (TF & ΦF & HfF & _).
+    assert (HD : exists D, mdenote Θ Ξ Γ H D /\ mdesc_mod D = Some (mdesc_closed nil F TF ΦF nil)).
+    { assert (HlF : gc_loc Θ Ξ F = Some (TF, ΦF)) by (unfold gc_loc; rewrite HfF; reflexivity).
+      destruct (gs_find_ind Ξ F) as [[[pq k] D] |] eqn:Hk.
+      - destruct (frame_ind_loc _ _ Hg _ _ _ _ Hk) as (U' & T1 & T' & Φ' & Mk & _ & Hfr & Hl' & HMk).
+        rewrite HfF in Hfr; injection Hfr as <- <-.
+        eexists; split; [ eapply mdenote_ind_frame; eassumption | reflexivity ].
+      - destruct (gs_find_record Ξ F) as [R |] eqn:Hr.
+        + eexists; split; [ eapply mdenote_record_frame; eassumption | reflexivity ].
+        + eexists; split; [ eapply mdenote_unit; [ exact HqF | exact (gc_unit_frame _ _ _ _ _ _ HqF HfF Hk Hr) ] | reflexivity ]. }
+    destruct HD as (D & HmD & HDm).
+    destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmHs) as (RH0 & HmH0 & HgrH).
+    rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmH0 _ HmD) in HgrH.
+    destruct (mdesc_grows_mod _ _ _ _ _ _ _ HgrH HRms) as (R2m & HR2m & Hgm).
+    rewrite HDm in HR2m; injection HR2m as <-.
+    inversion Hgm.
+  Qed.
+
+  (** The global facts a selection reads hold of one from a module
+      expression typed at the source whose module part is open: no
+      instance's description reads a stored module, being open too
+      ([wf_sub_mdenote]). *)
+  Lemma glu_sel_globals_open_of_source : forall Γ H y RHs Δ Φw Φx,
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θs Ξs Γ H RHs -> mdesc_mod RHs = Some (mdesc_open Δ Φw Φx) ->
+      forall Γ' τ, Γ' ⊢ˢ τ : Γ -> glu_sel_globals Γ' H[τ]ᵐ y.
+  Proof.
+    intros * HHs HmHs HRms Γ' τ Hτ Γ1 ζ RH Θ' p T Φ Ns Hζ HmH HRH.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
+    destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmHs) as (RH0 & HmH0 & HgrH).
+    destruct (mdesc_grows_mod _ _ _ _ _ _ _ HgrH HRms) as (R2m & HR2m & Hgm).
+    inversion Hgm as [? Hc | |]; subst.
+    pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ (Hwm _ _ _ HHs) HmH0 (wf_sub_compose _ _ _ _ _ _ _ Hτ Hζ)) as HmS.
+    rewrite <- modexp_sub_sub in HmS.
+    rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmH _ HmS), (mdesc_mod_sub _ _ _ HR2m) in HRH.
+    discriminate.
+  Qed.
+
+  (** A selection of a module from a module expression glued at the
+      instances, typed at the source, is glued at the instances: a path
+      naming a stored module or an open frame, as stored
+      ([glu_rel_modexp_under_sub_path_mod_of_source]); otherwise at each
+      instance its value is selected from the module expression's
+      ([glu_dmod_sel]), whose global facts and frames are read at the
+      source. *)
+  Lemma glu_rel_modexp_under_sub_mem_of_source : forall Γ H y R,
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y -> Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θs Ξs Γ (me_mem H y) R ->
+      glu_rel_modexp_under_sub Γ H -> glu_rel_modexp_under_sub Γ (me_mem H y).
+  Proof.
+    intros * HHy HH Hm HHg.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
+    pose proof (glu_rel_modexp_under_sub_ctx _ _ HHg) as HΓ.
+    inversion Hm as [Γ0 H0 p T Φ Hq Hu | Γ0 H0 p pq k D Mk Tm Φm Hq Hf HMk Hlm | | | |
+                     Γ0 H0 y0 R0 R0m Γy E rd R1 R' Hm0 Hmd He Hed Hr | Γ0 H0 p Rr Tm Φm Hq Hf Hlm]; subst.
+    - (** A stored module or an open frame *)
+      destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq' & HlΦ); rewrite Hq in Hq'; injection Hq' as <-.
+      apply (glu_rel_modexp_under_sub_path_mod_of_source _ _ p T Φ HHy Hq); [| | exact HΓ ].
+      + apply (gc_loc_of_loc _ _ Hgs); destruct HlΦ as [Hl | (_ & _ & Hb & _)]; [ left | right ]; assumption.
+      + intros Γ1; eexists; split; [ eapply mdenote_unit; eassumption | reflexivity ].
+    - (** The open frame of an inductive type's module *)
+      apply (glu_rel_modexp_under_sub_path_mod_of_source _ _ p Tm Φm HHy Hq Hlm); [| exact HΓ ].
+      intros Γ1; eexists; split; [ eapply mdenote_ind_frame; eassumption | reflexivity ].
+    - (** An entry of the module expression's module part *)
+      constructor; [ exact HΓ |]; intros Γ' τ Hτ Sb HSb Δ σ ρ Hσ.
+      pose proof (glu_rel_sub_inst_typed _ _ _ Hτ) as Hτt.
+      pose proof (sub_preserves_modexp _ _ _ _ _ _ _ (Hwm _ _ _ HHy) Hτt) as HHyτ; cbn [modexp_sub] in HHyτ |- *.
+      destruct (glu_ctx_env_per_ctx_env HSb) as [RΓ HRΓ].
+      pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
+      destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ (proj2 (proj2 (@completeness_fundamental_modules GCt)) _ _ _ HHyτ)
+                  HRΓ _ _ Hρ) as (m & _ & Em & _ & _).
+      inversion Em as [| | | ? ? ? h' ? Eh' Esel | ]; subst.
+      destruct (glu_rel_modexp_under_sub_inst _ _ HHg _ _ Hτ _ HSb _ _ _ Hσ) as (h0 & Eh & Hgh).
+      pose proof (functional_eval_modexp _ _ _ _ Eh Eh') as ->.
+      exists m; split; [ exact Em |].
+      pose proof (mdesc_mod_is_mod _ _ Hmd) as Him.
+      apply (@glu_dmod_sel GCt Hg _ _ _ _ _ Hgh _ _ Esel HHyτ).
+      + intros Γ1 ζ Hζ.
+        pose proof (wf_sub_compose _ _ _ _ _ _ _ Hτt Hζ) as Hτζ.
+        cbn [modexp_sub]; rewrite modexp_sub_sub.
+        destruct R0m as [| Δ0 Φw Φx | Θ0 p T Φ Ns0 |]; cbn in Him; try contradiction.
+        * exact (names_no_frame_sel_open_of_source _ _ _ _ _ _ _ HH Hm0 Hmd _ _ Hτζ).
+        * cbn in He; destruct (gm_prefix_upto Φ y) as [Φ1 |] eqn:Hp; [| discriminate ].
+          destruct (gm_prefix_entry _ _ _ Hp) as (? & E1 & _ & Hent).
+          exact (names_no_frame_sel_of_source _ _ _ _ Hgs Hg Hμ _ _ _ _ _ _ _ _ _ _ HH Hm0 Hmd Hent _ _ Hτζ).
+      + destruct R0m as [| Δ0 Φw Φx | Θ0 p T Φ Ns0 |]; cbn in Him; try contradiction.
+        * exact (glu_sel_globals_open_of_source _ _ _ _ _ _ _ HH Hm0 Hmd _ _ Hτt).
+        * cbn in He; destruct (gm_prefix_upto Φ y) as [Φ1 |] eqn:Hp; [| discriminate ].
+          destruct (gm_prefix_entry _ _ _ Hp) as (? & E1 & _ & Hent).
+          exact (glu_sel_globals_of_source _ _ _ _ Hgs Hg Hμ _ _ _ _ _ _ _ _ _ _ HH Hm0 Hmd Hent _ _ Hτt).
+    - (** The open frame of a record type's module *)
+      apply (glu_rel_modexp_under_sub_path_mod_of_source _ _ p Tm Φm HHy Hq Hlm); [| exact HΓ ].
+      intros Γ1; eexists; split; [ eapply mdenote_record_frame; eassumption | reflexivity ].
   Qed.
 
   (** What a module expression typed at the source denotes is deep when
