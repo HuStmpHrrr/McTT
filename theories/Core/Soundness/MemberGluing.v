@@ -274,7 +274,10 @@ Qed.
     an extended substitution, is the term at that substitution: the
     composite agrees with it pointwise. *)
 Lemma exp_sub_shift_var0_extend : forall X τ N, X[Wk,,#0][τ,,N] = X[τ,,N].
-Proof. intros; rewrite exp_sub_sub; apply exp_sub_sb_eq; intros [| n]; reflexivity. Qed.
+Proof.
+  intros; rewrite exp_sub_sub; apply exp_sub_sb_eq; intros n.
+  rewrite (sb_extend_compose _ _ _ n); destruct n; [ reflexivity | exact (sb_shift_extend _ _ n) ].
+Qed.
 
 (** The same, the term lifted over the weakening first. *)
 Lemma exp_sub_q_shift_var0_extend : forall X τ N, X[q Wk][Id,,#0][τ,,N] = X[τ,,N].
@@ -283,7 +286,7 @@ Proof. intros; rewrite exp_sub_q_extend; apply exp_sub_shift_var0_extend. Qed.
 (** A module expression weakened, then given an extended substitution, is
     the module expression at the substitution. *)
 Lemma modexp_sub_shift_extend : forall H τ N, H[Wk]ᵐ[τ,,N]ᵐ = H[τ]ᵐ.
-Proof. intros; rewrite modexp_sub_sub; apply modexp_sub_sb_eq; intros n; reflexivity. Qed.
+Proof. intros; rewrite modexp_sub_sub; apply modexp_sub_sb_eq, sb_shift_extend. Qed.
 
 (** A codomain lifted over the weakening past its domain, then given the
     top variable, is equal to itself ([wf_sub_eq_var_zero]): the two
