@@ -84,7 +84,11 @@ Lemma glu_ext_eq_ass :
      sort_kind Srt' κ ->
      Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ ▹{κ} A) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ' ▹{κ} A') ).
 Proof.
-  intros * [HΨ HΨ'] HA HS HA' HS'; split; intros Θ2 Ξ2 Hμ; (split; [ eauto |]); cbn; eexists; eauto.
+  intros * [HΨ HΨ'] HA HS HA' HS'; split; intros Θ2 Ξ2 Hμ.
+  - destruct (HΨ _ _ Hμ) as [He Hd]; split; [ split; [ exact He | exists Srt; split; [ exact HS | exact (proj1 (HA _ _ Hμ)) ] ] |].
+    apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
+  - destruct (HΨ' _ _ Hμ) as [He Hd]; split; [ split; [ exact He | exists Srt'; split; [ exact HS' | exact (proj1 (HA' _ _ Hμ)) ] ] |].
+    apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
 Qed.
 
 (** A definition: its type at a sort of types and its body at the type, on
@@ -99,7 +103,11 @@ Lemma glu_ext_eq_def :
      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ M' : A' ->
      Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ ▸ A ≔ M) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ' ▸ A' ≔ M') ).
 Proof.
-  intros * [HΨ HΨ'] HA HS HA' HS' HM HM'; split; intros Θ2 Ξ2 Hμ; (split; [ eauto |]); cbn.
-  - eexists; constructor; [ exact HS | exact (HA _ _ Hμ) | exact (HM _ _ Hμ) ].
-  - eexists; constructor; [ exact HS' | exact (HA' _ _ Hμ) | exact (HM' _ _ Hμ) ].
+  intros * [HΨ HΨ'] HA HS HA' HS' HM HM'; split; intros Θ2 Ξ2 Hμ.
+  - destruct (HΨ _ _ Hμ) as [He Hd]; split; [ split; [ exact He |] |].
+    + exists Srt; constructor; [ exact HS | exact (proj1 (HA _ _ Hμ)) | exact (proj1 (HM _ _ Hμ)) ].
+    + apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
+  - destruct (HΨ' _ _ Hμ) as [He Hd]; split; [ split; [ exact He |] |].
+    + exists Srt'; constructor; [ exact HS' | exact (proj1 (HA' _ _ Hμ)) | exact (proj1 (HM' _ _ Hμ)) ].
+    + apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
 Qed.

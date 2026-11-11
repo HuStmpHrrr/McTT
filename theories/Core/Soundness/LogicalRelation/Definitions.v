@@ -1968,6 +1968,120 @@ Fixpoint glu_rel_ext_under_sub (Γ Ψ : ctx) : Prop :=
   | e :: Ψ' => glu_rel_ext_under_sub Γ Ψ' /\ glu_rel_entry_under_sub (Ψ' ++ Γ)%list e
   end.
 
+(** *** Deep Units
+
+    A unit substituted at a substitution that is not an instance at hand,
+    the [β] instance [(Id,,N)] of [wf_me_beta_body] or the fill of a
+    selected submodule ([wf_me_delta_sel]), is glued from its body glued at
+    the instances, not at the renamings only: a deep unit.  The
+    judgments carry the deep module parts of their contexts
+    ([glu_ctx_deep]), which a module slot's description reads. *)
+
+(** The parts of an alias glued deeply ([glu_unit_deep]): its parameters an
+    extension glued at the instances, its target glued at the instances,
+    and the target's own parts deep ([target_parts], the recursive part
+    [glu_modexp_parts_deep], passed as a proposition). *)
+Record glu_alias_deep_parts (Γ Δu : ctx) (E : modexp) (target_parts : Prop) : Prop := mk_glu_alias_deep_parts
+  { (** The parameters are an extension glued at the instances *)
+    glu_alias_deep_parts_params : glu_rel_ext_under_sub Γ Δu
+    (** The target is glued at the instances *)
+  ; glu_alias_deep_parts_target : glu_rel_modexp_under_sub (Δu ++ Γ)%list E
+    (** The target's literals and application arguments are deep *)
+  ; glu_alias_deep_parts_target_parts : target_parts }.
+
+(** The argument [N] of an application of [E] in a module expression,
+    glued deeply: [E] is typed, and [N] is glued at the instances at the
+    outermost parameter of what [E] denotes, as [wf_me_app] types it. *)
+Record glu_app_arg_deep (Γ : ctx) (E : modexp) (N : exp) : Prop := mk_glu_app_arg_deep
+  { (** The module expression applied is typed *)
+    glu_app_arg_deep_fun_wf : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E
+    (** The argument is glued at the instances at its parameter *)
+  ; glu_app_arg_deep_arg : forall R T B T1, mdenote gc_deps gc_stack Γ E R -> mdesc_mod_tele R = Some T ->
+      tele_view T = Some (B, T1) -> glu_rel_exp_under_sub Γ N B }.
+
+(** A unit glued at the instances of the context [Γ] it is closed over: as
+    [glu_unit_at], with every "at every renaming" an "at the instances".  A
+    body's expansion, its entries over the unit's parameters, is an
+    extension glued at the instances ([glu_rel_ext_under_sub]), and each of
+    its module entries' units is deep, recursively, at the context of the
+    expanded entries before it.  An alias's parts are glued at the
+    instances ([glu_alias_deep_parts]). *)
+Fixpoint glu_unit_deep (Γ : ctx) (U : gunit) {struct U} : Prop :=
+  match U with
+  | gu_mk Δu (md_body _ Φ) =>
+      glu_rel_ext_under_sub Γ (body_ctx (gm_expand Φ) ++ Δu)%list /\ glu_gmod_units_deep (Δu ++ Γ)%list Φ
+  | gu_mk Δu (md_alias E) => glu_alias_deep_parts Γ Δu E (glu_modexp_parts_deep (Δu ++ Γ)%list E)
+  end
+(** The module entries of a body, each deep at the context of the expanded
+    entries before it, as [glu_gmod_units] *)
+with glu_gmod_units_deep (Γ : ctx) (Φ : gmod) {struct Φ} : Prop :=
+  match Φ with
+  | gm_nil => True
+  | gm_ext Φ' _ (ge_mod _ U) => glu_gmod_units_deep Γ Φ' /\ glu_unit_deep (body_ctx (gm_expand Φ') ++ Γ)%list U
+  | gm_ext Φ' _ (ge_def_mod _ _ _ U) => glu_gmod_units_deep Γ Φ' /\ glu_unit_deep (body_ctx (gm_expand Φ') ++ Γ)%list U
+  | gm_ext Φ' _ _ => glu_gmod_units_deep Γ Φ'
+  | gm_open Φ' _ _ Φg => glu_gmod_units_deep Γ Φ' /\ glu_gmod_units_deep (body_ctx (gm_expand Φ') ++ Γ)%list Φg
+  end
+(** The parts a module expression is built from, deep: its literals, and
+    the arguments of its applications ([glu_app_arg_deep]) *)
+with glu_modexp_parts_deep (Γ : ctx) (E : modexp) {struct E} : Prop :=
+  match E with
+  | me_lit U => glu_unit_deep Γ U
+  | me_mem E' _ => glu_modexp_parts_deep Γ E'
+  | me_app E' N => glu_modexp_parts_deep Γ E' /\ glu_app_arg_deep Γ E' N
+  | me_unit _ | me_var _ => True
+  end.
+
+(** The arguments [Ns] of a closed module, filling in order the outermost
+    parameters of its telescope [T], glued at the instances, each at its
+    parameter instantiated by those before it, as [args_ok] types them. *)
+Definition glu_args_deep (Γ T : ctx) (Ns : list exp) : Prop :=
+  forall Trest Tfilled, T = (Trest ++ Tfilled)%list -> List.length Tfilled = List.length Ns ->
+  forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts Tfilled Id Ns) k = Some A ->
+    glu_rel_exp_under_sub Γ N A.
+
+(** A description deep in [Γ], in what its module part names as a unit
+    ([mdesc_unit]): an open module's literal is a deep unit; a closed
+    module's outer parameters are an extension glued at the instances, and
+    its arguments are glued at the instances over them.  It is what the
+    right-hand side of [wf_me_delta_sel] needs to be glued at each instance:
+    the literal a selection stands for, or the stored module applied to the
+    description's own arguments, whose values are not those of the module
+    expression selected from. *)
+Definition glu_desc_deep (Γ : ctx) (R : mdesc) : Prop :=
+  match mdesc_mod R with
+  | Some (mdesc_open Δ Φ _) => glu_unit_deep Γ (gu_mk Δ (md_body sm_open Φ))
+  | Some (mdesc_closed Θ' _ T _ Ns) => glu_rel_ext_under_sub Γ Θ' /\ glu_args_deep (Θ' ++ Γ)%list T Ns
+  | _ => True
+  end.
+
+(** The module parts of a context deep, each at the context before it: the
+    unit of a module slot, and of a definition with a module part
+    ([centry_unit]).  It is what a slot root's description needs to be
+    deep: the slot reads its unit. *)
+Definition glu_ctx_deep (Γ : ctx) : Prop :=
+  forall Γ1 e Γ0 U, Γ = (Γ1 ++ e :: Γ0)%list -> centry_unit e = Some U -> glu_unit_deep Γ0 U.
+
+(** The empty context has none. *)
+Lemma glu_ctx_deep_nil : glu_ctx_deep nil.
+Proof. intros [| ? ?] * E; discriminate. Qed.
+
+(** The module parts of a context's suffix are among the context's. *)
+Lemma glu_ctx_deep_suffix : forall Ψ Γ, glu_ctx_deep (Ψ ++ Γ)%list -> glu_ctx_deep Γ.
+Proof. intros * H Γ1 e Γ0 U E Hu; apply (H (Ψ ++ Γ1)%list e Γ0 U); [ rewrite E, List.app_assoc; reflexivity | exact Hu ]. Qed.
+
+(** So are those of its tail. *)
+Lemma glu_ctx_deep_tail : forall e Γ, glu_ctx_deep (e :: Γ)%list -> glu_ctx_deep Γ.
+Proof. intros * H; exact (glu_ctx_deep_suffix (e :: nil) Γ H). Qed.
+
+(** An entry with no module part adds none. *)
+Lemma glu_ctx_deep_cons_term : forall e Γ, centry_unit e = None -> glu_ctx_deep Γ -> glu_ctx_deep (e :: Γ)%list.
+Proof.
+  intros * He H [| e' Γ1] e0 Γ0 U E Hu; cbn in E; injection E as -> E.
+  - rewrite He in Hu; discriminate.
+  - exact (H Γ1 e0 Γ0 U E Hu).
+Qed.
+
 (** A weakening glued from [Γ] to [Δ], as [Γ ⊨ʷ φ : Δ] in the PER model:
     precomposed with it, a substitution glued into [Γ] at [ρ] is glued
     into [Δ] at [⟪φ⟫ ρ].  Unlike a substitution, a weakening acts on
@@ -2287,12 +2401,14 @@ Record glu_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gsta
   ; glu_gctx_embedding_def_mod_tele : forall p T Φ x Φ0 pv A M U,
       loc Θ1 Ξ1 p T Φ -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def_mod pv A M U)) ->
       exists A0 (i : nat), glu_def_over_tele Θ2 Ξ2 T ak_relevant A (Some M) A0 i
-    (** An alias module stored at a path of the source is glued as a
-        literal over no context at the target: the closure a global alias
-        submodule is selected as ([eval_selm_global_alias]), at the empty
-        environment *)
-  ; glu_gctx_embedding_alias : forall p U,
-      gc_module Θ1 Ξ1 p = Some (mr_alias U) -> @glu_modexp_at (gc_mk Θ2 Ξ2) ⋅ (me_lit U)
+    (** An alias module stored at a path of the source is a deep unit over
+        no context at the target: its parameters, its target and the
+        target's parts are glued at the instances ([glu_unit_deep]).  So
+        its literal, the closure a global alias submodule is selected as
+        ([eval_selm_global_alias]), is glued at the empty environment
+        ([glu_gctx_embedding_alias_modexp]) *)
+  ; glu_gctx_embedding_alias_deep : forall p U,
+      gc_module Θ1 Ξ1 p = Some (mr_alias U) -> @glu_unit_deep (gc_mk Θ2 Ξ2) ⋅ U
     (** The telescope of a module stored at a path of the source is a
         context glued with its types at the target: the types of the
         parameters a global module value lacks *)
@@ -2318,36 +2434,61 @@ Record glu_is_univ_at (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (U : typ) : Prop :
     (** A large universe, or a small one at a level glued at its
         instances *)
   ; glu_is_univ_at_univ : (exists i : nat, U = Typeω@i) \/
-               (exists L (n : nat), U = Type⟨L⟩ /\ @glu_rel_exp_under_sub (gc_mk Θ2 Ξ2) Γ L (Level@n)) }.
+               (exists L (n : nat), U = Type⟨L⟩ /\ @glu_rel_exp_under_sub (gc_mk Θ2 Ξ2) Γ L (Level@n))
+    (** The context's module parts are deep *)
+  ; glu_is_univ_at_ctx_deep : @glu_ctx_deep (gc_mk Θ2 Ξ2) Γ }.
 
 Arguments glu_is_univ_at_ctx {Θ2 Ξ2 Γ U}.
 Arguments glu_is_univ_at_univ {Θ2 Ξ2 Γ U}.
+Arguments glu_is_univ_at_ctx_deep {Θ2 Ξ2 Γ U}.
 
-(** A context glues with its variables' types, at every sound
-    embedding. *)
+(** A unit at one target: glued at the instances, deep, its context's
+    module parts deep. *)
+Record glu_unit_at_target (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (U : gunit) : Prop := mk_glu_unit_at_target
+  { (** The unit is glued at the instances *)
+    glu_unit_at_target_inst : @glu_rel_unit_under_sub (gc_mk Θ2 Ξ2) Γ U
+    (** It is deep *)
+  ; glu_unit_at_target_deep : @glu_unit_deep (gc_mk Θ2 Ξ2) Γ U
+    (** The context's module parts are deep *)
+  ; glu_unit_at_target_ctx_deep : @glu_ctx_deep (gc_mk Θ2 Ξ2) Γ }.
+
+(** A module expression at one target: glued at the instances, its parts
+    deep, its context's module parts deep. *)
+Record glu_modexp_at_target (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (H : modexp) : Prop := mk_glu_modexp_at_target
+  { (** It is glued at the instances *)
+    glu_modexp_at_target_inst : @glu_rel_modexp_under_sub (gc_mk Θ2 Ξ2) Γ H
+    (** Its literals and application arguments are deep *)
+  ; glu_modexp_at_target_parts : @glu_modexp_parts_deep (gc_mk Θ2 Ξ2) Γ H
+    (** The context's module parts are deep *)
+  ; glu_modexp_at_target_ctx_deep : @glu_ctx_deep (gc_mk Θ2 Ξ2) Γ }.
+
+(** A context glues with its variables' types, its module parts deep, at
+    every sound embedding. *)
 Definition glu_ctx Θ Ξ Γ : Prop :=
-  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_ctx_types (gc_mk Θ2 Ξ2) Γ.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_ctx_types (gc_mk Θ2 Ξ2) Γ /\ @glu_ctx_deep (gc_mk Θ2 Ξ2) Γ.
 
-(** A term glues at each of its instances, at every sound embedding. *)
+(** A term glues at each of its instances, its context's module parts
+    deep, at every sound embedding. *)
 Definition glu_exp Θ Ξ Γ A M : Prop :=
-  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_exp_under_sub (gc_mk Θ2 Ξ2) Γ M A.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_exp_under_sub (gc_mk Θ2 Ξ2) Γ M A /\ @glu_ctx_deep (gc_mk Θ2 Ξ2) Γ.
 
 Definition glu_is_univ Θ Ξ Γ U : Prop :=
   forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> glu_is_univ_at Θ2 Ξ2 Γ U.
 
-(** A unit glues at each of its instances, at every sound embedding. *)
+(** A unit glues at each of its instances and deeply, its context's module
+    parts deep, at every sound embedding. *)
 Definition glu_unit Θ Ξ Γ U : Prop :=
-  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_unit_under_sub (gc_mk Θ2 Ξ2) Γ U.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> glu_unit_at_target Θ2 Ξ2 Γ U.
 
-(** A module expression glues at each of its instances, at every sound
-    embedding. *)
+(** A module expression glues at each of its instances, its parts deep,
+    its context's module parts deep, at every sound embedding. *)
 Definition glu_modexp Θ Ξ Γ H : Prop :=
-  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_modexp_under_sub (gc_mk Θ2 Ξ2) Γ H.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> glu_modexp_at_target Θ2 Ξ2 Γ H.
 
-(** An extension glues at each instance of its context, at every sound
-    embedding. *)
+(** An extension glues at each instance of its context, the extended
+    context's module parts deep, at every sound embedding. *)
 Definition glu_ext Θ Ξ Γ Ψ : Prop :=
-  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_ext_under_sub (gc_mk Θ2 Ξ2) Γ Ψ.
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_ext_under_sub (gc_mk Θ2 Ξ2) Γ Ψ /\ @glu_ctx_deep (gc_mk Θ2 Ξ2) (Ψ ++ Γ)%list.
 
 (** A unit equation glues: its context glues with its variables' types,
     and each of its units glues at the instances of the context.  It has no

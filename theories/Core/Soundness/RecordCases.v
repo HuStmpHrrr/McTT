@@ -53,13 +53,14 @@ Proof.
   pose proof (ctx_wf_gctx _ _ _ HΓ2) as Hg2.
   pose proof (record_lookup_of_glu_gctx_embedding _ _ _ _ _ _ Hμ Hl) as Hl2.
   pose proof (wf_record_closed _ _ _ _ _ HΓ2 Hl2) as Hc.
-  destruct (HSg _ _ Hμ) as [HPg HSu].
-  econstructor; [ exact (HΓg _ _ Hμ) | intros Γ' τ Hτ ].
+  destruct (HSg _ _ Hμ) as [HPg HSu _].
+  destruct (HΓg _ _ Hμ) as [HΓt HΓd]; split; [| exact HΓd ].
+  econstructor; [ exact HΓt | intros Γ' τ Hτ ].
   cbn [exp_sub]; rewrite record_ty_sub by exact Hc.
   apply glu_rel_exp_nil_weaken; [ exact (glu_rel_sub_inst_ctx _ _ _ Hτ) |].
   eapply (@glu_rel_exp_record0 (gc_mk Θ2 Ξ2) p R Hg2 Hl2); [| exact (Hwe _ _ _ Hty) ].
   constructor; [ exact HPg | exact HSu |].
-  intros * Hk; exact (HTg _ _ _ Hk _ _ Hμ).
+  intros * Hk; exact (proj1 (HTg _ _ _ Hk _ _ Hμ)).
 Qed.
 
 Lemma glu_exp_eq_record_cong :
@@ -94,7 +95,8 @@ Proof.
   pose proof (ctx_wf_gctx _ _ _ HΓ2) as Hg2.
   pose proof (record_lookup_of_glu_gctx_embedding _ _ _ _ _ _ Hμ Hl) as Hl2.
   pose proof (wf_record_closed _ _ _ _ _ HΓ2 Hl2) as Hc.
-  econstructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ (HTg _ _ Hμ)) | intros Γ' τ Hτ ].
+  split; [| exact (proj2 (HTg _ _ Hμ)) ].
+  econstructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ (proj1 (HTg _ _ Hμ))) | intros Γ' τ Hτ ].
   pose proof (glu_rel_sub_inst_typed _ _ _ Hτ) as Hτt.
   cbn [exp_sub].
   (** The fields' terms and the instances of their types, at the instance *)
@@ -115,7 +117,7 @@ Proof.
     exists M0; split; [ reflexivity | exact HM0 ]. }
   eapply (@glu_rel_exp_tuple (gc_mk Θ2 Ξ2) p R Hg2 Hl2 (glu_gctx_embedding_record_field _ _ _ _ Hμ _ _ Hl)
             Γ' T[τ] (List.map (fun N => N[τ]) Ns) (List.map (fun f => (fst f, (snd f)[τ])) fs) i).
-  - exact (glu_rel_exp_under_sub_inst_conv (HTg _ _ Hμ) Hτ eq_refl).
+  - exact (glu_rel_exp_under_sub_inst_conv (proj1 (HTg _ _ Hμ)) Hτ eq_refl).
   - pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ (Hweq _ _ _ _ HTeq) Hτt) as H.
     rewrite apps_exp_sub in H; exact H.
   - pose proof (sub_preserves_exp _ _ _ _ _ _ _ (Hwe _ _ _ Hrt) Hτt) as H.
@@ -128,7 +130,7 @@ Proof.
   - intros j N A HN HA.
     rewrite <- (record_params_insts_sub R Ns τ Hc) in HA.
     apply nth_error_map_inv in HN as (N0 & HN0 & ->); apply nth_error_map_inv in HA as (A0 & HA0 & ->).
-    exact (glu_rel_exp_under_sub_inst _ _ _ (HNg _ _ _ HN0 HA0 _ _ Hμ) _ _ Hτ).
+    exact (glu_rel_exp_under_sub_inst _ _ _ (proj1 (HNg _ _ _ HN0 HA0 _ _ Hμ)) _ _ Hτ).
   - rewrite List.map_map; exact Hfs.
   - intros k f M U HM HU.
     destruct (Hfs' _ _ _ _ HM HU) as (M0 & -> & HM0).
@@ -136,7 +138,7 @@ Proof.
     exact (sub_preserves_exp _ _ _ _ _ _ _ (Hwe _ _ _ (HMt _ _ _ _ HM0 HU)) Hτt).
   - intros k f M U HM HU.
     destruct (Hfs' _ _ _ _ HM HU) as (M0 & -> & HM0).
-    exact (glu_rel_exp_under_sub_inst_conv (HMg _ _ _ _ HM0 HU _ _ Hμ) Hτ (EU _ _ _ HU)).
+    exact (glu_rel_exp_under_sub_inst_conv (proj1 (HMg _ _ _ _ HM0 HU _ _ Hμ)) Hτ (EU _ _ _ HU)).
 Qed.
 
 Lemma glu_proj :
@@ -161,7 +163,8 @@ Proof.
   pose proof (record_lookup_of_glu_gctx_embedding _ _ _ _ _ _ Hμ Hl) as Hl2.
   pose proof (wf_record_closed _ _ _ _ _ HΓ2 Hl2) as Hc.
   assert (Hlt : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
-  econstructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ (HMg _ _ Hμ)) | intros Γ' τ Hτ ].
+  split; [| exact (proj2 (HMg _ _ Hμ)) ].
+  econstructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ (proj1 (HMg _ _ Hμ))) | intros Γ' τ Hτ ].
   pose proof (glu_rel_sub_inst_typed _ _ _ Hτ) as Hτt.
   (** The field's type at the instance *)
   assert (EU : U[sb_of_list Id (Ns ++ record_pre R k M)][τ]
@@ -171,7 +174,7 @@ Proof.
   cbn [exp_sub]; rewrite EU.
   eapply (@glu_rel_exp_proj (gc_mk Θ2 Ξ2) p R Hg2 Hl2 (glu_gctx_embedding_record_field _ _ _ _ Hμ _ _ Hl)
             Γ' M[τ] (List.map (fun N => N[τ]) Ns) k f U Srt).
-  - exact (glu_rel_exp_under_sub_inst_conv (HMg _ _ Hμ) Hτ (apps_exp_sub _ _ _)).
+  - exact (glu_rel_exp_under_sub_inst_conv (proj1 (HMg _ _ Hμ)) Hτ (apps_exp_sub _ _ _)).
   - rewrite List.length_map; exact Hn.
   - intros j N A HN HA.
     rewrite <- (record_params_insts_sub R Ns τ Hc) in HA.
@@ -180,10 +183,10 @@ Proof.
   - intros j N A HN HA.
     rewrite <- (record_params_insts_sub R Ns τ Hc) in HA.
     apply nth_error_map_inv in HN as (N0 & HN0 & ->); apply nth_error_map_inv in HA as (A0 & HA0 & ->).
-    exact (glu_rel_exp_under_sub_inst _ _ _ (HNg _ _ _ HN0 HA0 _ _ Hμ) _ _ Hτ).
+    exact (glu_rel_exp_under_sub_inst _ _ _ (proj1 (HNg _ _ _ HN0 HA0 _ _ Hμ)) _ _ Hτ).
   - exact Hfk.
   - rewrite <- EU.
-    exact (glu_rel_exp_under_sub_inst_conv (HUg _ _ Hμ) Hτ (type_sort_sub Srt τ HSrt)).
+    exact (glu_rel_exp_under_sub_inst_conv (proj1 (HUg _ _ Hμ)) Hτ (type_sort_sub Srt τ HSrt)).
   - exact HSrt.
 Qed.
 

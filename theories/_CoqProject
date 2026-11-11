@@ -134,6 +134,7 @@
 ./Core/Soundness/ModuleExpressions.v
 ./Core/Soundness/Extensions.v
 ./Core/Soundness/UnitEqCases.v
+./Core/Soundness/UnitDeep.v
 ./Core/Soundness/SubtypingCases.v
 ./Core/Soundness/UniverseCases.v
 ./Core/Soundness/LevelCases.v

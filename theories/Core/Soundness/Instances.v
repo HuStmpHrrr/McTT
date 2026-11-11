@@ -732,6 +732,16 @@ Lemma glu_ctx_extend_def :
      ⊩ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ).
 Proof. glu_intro; eapply glu_rel_ctx_types_extend_def; eassumption. Qed.
 
+(** An entry with a deep module part over a context whose module parts are
+    deep. *)
+Lemma glu_ctx_deep_cons_unit : forall {GC : GCtx} e Γ U,
+    centry_unit e = Some U -> glu_unit_deep Γ U -> glu_ctx_deep Γ -> glu_ctx_deep (e :: Γ)%list.
+Proof.
+  intros * He HU HΓ [| e' Γ1] e0 Γ0 U0 E Hu; cbn in E; injection E as -> E.
+  - subst Γ0; rewrite He in Hu; injection Hu as <-; exact HU.
+  - exact (HΓ Γ1 e0 Γ0 U0 E Hu).
+Qed.
+
 (** A slot glues when the context does and its unit is well formed and
     glues. *)
 Lemma glu_ctx_extend_mod :
@@ -741,7 +751,8 @@ Lemma glu_ctx_extend_mod :
      ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
 Proof.
   glu_intro; glu_gctx_embedding_wf.
-  eapply (@glu_rel_ctx_types_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption | eassumption ].
+  - eapply (@glu_rel_ctx_types_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption | eassumption ].
+  - eapply glu_ctx_deep_cons_unit; [ reflexivity | eassumption | eassumption ].
 Qed.
 
 (** A definition with a module part glues when its term part does and its
@@ -754,7 +765,8 @@ Lemma glu_ctx_extend_dm :
      ⊩ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ).
 Proof.
   glu_intro; glu_gctx_embedding_wf.
-  eapply (@glu_rel_ctx_types_extend_dm (gc_mk _ _)); [ eassumption | eassumption | apply Hwu; eassumption | eassumption ].
+  - eapply (@glu_rel_ctx_types_extend_dm (gc_mk _ _)); [ eassumption | eassumption | apply Hwu; eassumption | eassumption ].
+  - eapply glu_ctx_deep_cons_unit; [ reflexivity | eassumption | eassumption ].
 Qed.
 
 (** A variable at an instance is the instance's component, glued at its

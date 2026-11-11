@@ -202,6 +202,101 @@ Proof.
     apply glu_gmod_units_graft; [ exact (IH _ HΦ) | rewrite Eidem; exact (IHg _ HΦg) ].
 Qed.
 
+(** *** Deep units ([glu_unit_deep]) *)
+
+(** An extension glued at the instances extends its context to one glued
+    with its types. *)
+Lemma glu_rel_ext_under_sub_ctx_types : forall Γ Ψ, glu_rel_ext_under_sub Γ Ψ -> glu_rel_ctx_types (Ψ ++ Γ).
+Proof.
+  intros Γ; induction Ψ as [| e Ψ IH]; cbn [glu_rel_ext_under_sub app]; [ intros H; exact H |].
+  intros [HΨ He]; pose proof (IH HΨ) as HΨΓ.
+  destruct e as [κ A | A M | U | A M U]; cbn [glu_rel_entry_under_sub] in He.
+  - destruct He as (S & HS & HA); exact (glu_rel_ctx_types_extend HA HS).
+  - destruct He as (S & [HS HA HM]); exact (glu_rel_ctx_types_extend_def HA HS HM).
+  - destruct He as [HU HUg]; exact (glu_rel_ctx_types_extend_mod HΨΓ HU HUg).
+  - destruct He as (i & E & [-> HA HM HU HUg]); exact (glu_rel_ctx_types_extend_dm HA HM HU HUg).
+Qed.
+
+(** A glued extension split: its outer part is an extension of the context
+    its inner part extends. *)
+Lemma glu_rel_ext_under_sub_app_split : forall Γ Ψ2 Ψ1,
+    glu_rel_ext_under_sub Γ (Ψ1 ++ Ψ2) -> glu_rel_ext_under_sub (Ψ2 ++ Γ) Ψ1.
+Proof.
+  intros Γ Ψ2; induction Ψ1 as [| e Ψ1 IH]; cbn [app glu_rel_ext_under_sub].
+  - intros H; exact (glu_rel_ext_under_sub_ctx_types _ _ H).
+  - intros [H He]; split; [ exact (IH H) | rewrite app_assoc; exact He ].
+Qed.
+
+(** Glued extensions compose: [glu_rel_ext_under_sub_app_split] inverted. *)
+Lemma glu_rel_ext_under_sub_app_join : forall Γ Ψ2 Ψ1,
+    glu_rel_ext_under_sub Γ Ψ2 -> glu_rel_ext_under_sub (Ψ2 ++ Γ) Ψ1 -> glu_rel_ext_under_sub Γ (Ψ1 ++ Ψ2).
+Proof.
+  intros Γ Ψ2; induction Ψ1 as [| e Ψ1 IH]; cbn [app glu_rel_ext_under_sub]; intros H2.
+  - intros _; exact H2.
+  - intros [H1 He]; split; [ exact (IH H2 H1) | rewrite <- app_assoc; exact He ].
+Qed.
+
+(** A deep unit over an extension [Δ] of [Γ], abstracted over [Δ]: deep
+    over [Γ], [Δ] its outer parameters. *)
+Lemma glu_unit_deep_params_join : forall Γ Δ Δy D,
+    glu_rel_ext_under_sub Γ Δ -> glu_unit_deep (Δ ++ Γ) (gu_mk Δy D) -> glu_unit_deep Γ (gu_mk (Δy ++ Δ) D).
+Proof.
+  intros * HΔ HU; destruct D as [sm Φ | E]; cbn [glu_unit_deep] in HU |- *.
+  - destruct HU as [HΦ HΦu]; rewrite <- app_assoc.
+    split; [ rewrite app_assoc; exact (glu_rel_ext_under_sub_app_join _ _ _ HΔ HΦ) | exact HΦu ].
+  - destruct HU as [HΔy HE Hl]; rewrite <- app_assoc.
+    constructor; [ exact (glu_rel_ext_under_sub_app_join _ _ _ HΔ HΔy) | rewrite <- app_assoc; exact HE | exact Hl ].
+Qed.
+
+(** The deep module entries of a body grafted on another, as
+    [glu_gmod_units_graft]. *)
+Lemma glu_gmod_units_deep_graft : forall B A Γ,
+    glu_gmod_units_deep Γ A ->
+    glu_gmod_units_deep (body_ctx (gm_expand A) ++ Γ) B ->
+    glu_gmod_units_deep Γ (gm_graft A B).
+Proof.
+  assert (E : forall A B, body_ctx (gm_expand (gm_graft A B)) = body_ctx (gm_expand B) ++ body_ctx (gm_expand A))
+    by (intros; rewrite gm_expand_graft; apply body_ctx_graft, gm_noopen_expand).
+  induction B as [| B IH x En | B IH H its Bg _]; intros A Γ HA HB; cbn [gm_graft]; [ exact HA | |].
+  - destruct En as [b pv κ T oM | pv U | pv pq k D ΦD | pv T M U | pv p R ΦR]; cbn [glu_gmod_units_deep] in HB |- *;
+      try exact (IH _ _ HA HB).
+    + destruct HB as [HB HU]; split; [ exact (IH _ _ HA HB) | rewrite E, <- app_assoc; exact HU ].
+    + destruct HB as [HB HU]; split; [ exact (IH _ _ HA HB) | rewrite E, <- app_assoc; exact HU ].
+  - cbn [glu_gmod_units_deep] in HB |- *; destruct HB as [HB HBg].
+    split; [ exact (IH _ _ HA HB) | rewrite E, <- app_assoc; exact HBg ].
+Qed.
+
+(** The deep module entries of a body's expansion, as
+    [glu_gmod_units_expand]. *)
+Lemma glu_gmod_units_deep_expand : forall Φ Γ, glu_gmod_units_deep Γ Φ -> glu_gmod_units_deep Γ (gm_expand Φ).
+Proof.
+  pose proof (fun Φ => gm_expand_noopen _ (gm_noopen_expand Φ)) as Eidem.
+  induction Φ as [| Φ IH x En | Φ IH H its Φg IHg]; intros Γ HΦ; cbn [gm_expand]; [ exact HΦ | |].
+  - destruct En as [b pv κ T oM | pv U | pv pq k D ΦD | pv T M U | pv p R ΦR]; cbn [glu_gmod_units_deep] in HΦ |- *;
+      try exact (IH _ HΦ).
+    + destruct HΦ as [HΦ HU]; split; [ exact (IH _ HΦ) | rewrite Eidem; exact HU ].
+    + destruct HΦ as [HΦ HU]; split; [ exact (IH _ HΦ) | rewrite Eidem; exact HU ].
+  - cbn [glu_gmod_units_deep] in HΦ; destruct HΦ as [HΦ HΦg].
+    apply glu_gmod_units_deep_graft; [ exact (IH _ HΦ) | rewrite Eidem; exact (IHg _ HΦg) ].
+Qed.
+
+(** The module entries of a body are deep when the module parts of its
+    expansion's context over [Γ] are: each is the module part of the
+    entry in that context. *)
+Lemma glu_gmod_units_deep_of_ctx : forall Φ Γ, glu_ctx_deep (body_ctx (gm_expand Φ) ++ Γ) -> glu_gmod_units_deep Γ Φ.
+Proof.
+  induction Φ as [| Φ IH x En | Φ IH H its Φg IHg]; intros Γ HΦ; cbn [glu_gmod_units_deep]; [ exact I | |].
+  - cbn [gm_expand] in HΦ.
+    assert (HΦ0 : glu_ctx_deep (body_ctx (gm_expand Φ) ++ Γ))
+      by (destruct En as [? ? ? ? [] | | | | ]; cbn [body_ctx app] in HΦ; exact (glu_ctx_deep_tail _ _ HΦ)).
+    destruct En as [b pv κ T oM | pv U | pv pq k D ΦD | pv T M U | pv p R ΦR]; cbn [glu_gmod_units_deep];
+      try exact (IH _ HΦ0).
+    + split; [ exact (IH _ HΦ0) | exact (HΦ nil _ _ U eq_refl eq_refl) ].
+    + split; [ exact (IH _ HΦ0) | exact (HΦ nil _ _ U eq_refl eq_refl) ].
+  - cbn [gm_expand] in HΦ; rewrite body_ctx_graft, <- app_assoc in HΦ by apply gm_noopen_expand.
+    split; [ exact (IH _ (glu_ctx_deep_suffix _ _ HΦ)) | exact (IHg _ HΦ) ].
+Qed.
+
 End Fixed_GCtx_Expansions.
 
 (** ** The Rules
@@ -226,9 +321,14 @@ Lemma glu_unit_eq_body :
 Proof.
   intros * HΦx HΦx' [HΔ _] [HB _] [HB' _].
   apply body_xp_expand in HΦx, HΦx'; subst Φx Φx'.
-  constructor; intros Θ2 Ξ2 Hμ; [ exact (glu_rel_ext_under_sub_ctx (HΔ _ _ Hμ)) | intros Γ' τ Hτ .. ].
-  - exact (glu_unit_at_body_inst _ _ _ _ (HB _ _ Hμ) _ _ Hτ).
-  - exact (glu_unit_at_body_inst _ _ _ _ (HB' _ _ Hμ) _ _ Hτ).
+  constructor; intros Θ2 Ξ2 Hμ; destruct (HΔ _ _ Hμ) as [HΔg HΔd].
+  - split; [ exact (glu_rel_ext_under_sub_ctx HΔg) | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+  - destruct (HB _ _ Hμ) as [HBg HBd]; rewrite <- app_assoc in HBd.
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_body_inst _ _ _ _ HBg _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; split; [ exact HBg | exact (glu_gmod_units_deep_of_ctx _ _ HBd) ].
+  - destruct (HB' _ _ Hμ) as [HBg HBd]; rewrite <- app_assoc in HBd.
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_body_inst _ _ _ _ HBg _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; split; [ exact HBg | exact (glu_gmod_units_deep_of_ctx _ _ HBd) ].
 Qed.
 
 (** An alias: each side's parameters are an extension the rule glues, and
@@ -240,9 +340,14 @@ Lemma glu_unit_eq_alias :
      glu_unit_eq Θ Ξ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ' (md_alias E')) ).
 Proof.
   intros * [HΔ HΔ'] [HE _] [HE' _].
-  constructor; intros Θ2 Ξ2 Hμ; [ exact (glu_rel_ext_under_sub_ctx (HΔ _ _ Hμ)) | intros Γ' τ Hτ .. ].
-  - exact (glu_unit_at_alias_inst _ _ _ (HΔ _ _ Hμ) (HE _ _ Hμ) _ _ Hτ).
-  - exact (glu_unit_at_alias_inst _ _ _ (HΔ' _ _ Hμ) (HE' _ _ Hμ) _ _ Hτ).
+  constructor; intros Θ2 Ξ2 Hμ; destruct (HΔ _ _ Hμ) as [HΔg HΔd].
+  - split; [ exact (glu_rel_ext_under_sub_ctx HΔg) | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+  - destruct (HE _ _ Hμ) as [HEi HEp _].
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_alias_inst _ _ _ HΔg HEi _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; constructor; [ exact HΔg | exact HEi | exact HEp ].
+  - destruct (HΔ' _ _ Hμ) as [HΔg' _]; destruct (HE' _ _ Hμ) as [HEi HEp _].
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_alias_inst _ _ _ HΔg' HEi _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; constructor; [ exact HΔg' | exact HEi | exact HEp ].
 Qed.
 
 (** An alias of a literal: the alias by its parameters and its target, the
@@ -257,14 +362,20 @@ Lemma glu_unit_eq_flatten :
      glu_unit_eq Θ Ξ Γ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))) (gu_mk (Δ' ++ Δ) D) ).
 Proof.
   intros * [HΔ _] HUt [HUc HU _].
-  constructor; intros Θ2 Ξ2 Hμ; [ exact (glu_rel_ext_under_sub_ctx (HΔ _ _ Hμ)) | intros Γ' τ Hτ .. ].
+  constructor; intros Θ2 Ξ2 Hμ; destruct (HΔ _ _ Hμ) as [HΔg HΔd].
+  - split; [ exact (glu_rel_ext_under_sub_ctx HΔg) | exact (glu_ctx_deep_suffix _ _ HΔd) ].
   - glu_gctx_embedding_wf.
-    exact (glu_unit_at_alias_inst _ _ _ (HΔ _ _ Hμ) (glu_rel_modexp_under_sub_lit (HUc _ _ Hμ) (Hwu _ _ _ HUt) (HU _ _ Hμ)) _ _ Hτ).
-  - pose proof (glu_rel_ext_under_sub_inst (HΔ _ _ Hμ) _ _ Hτ) as Hτ'.
-    pose proof (HU _ _ Hμ _ _ Hτ') as H.
+    destruct (HUc _ _ Hμ) as [HUcg _]; destruct (HU _ _ Hμ) as [HUi HUd _].
+    pose proof (glu_rel_modexp_under_sub_lit HUcg (Hwu _ _ _ HUt) HUi) as HL.
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_alias_inst _ _ _ HΔg HL _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; constructor; [ exact HΔg | exact HL | cbn [glu_modexp_parts_deep]; exact HUd ].
+  - destruct (HU _ _ Hμ) as [HUi HUd _].
+    constructor; [ intros Γ' τ Hτ | exact (glu_unit_deep_params_join _ _ _ _ HΔg HUd) | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    pose proof (glu_rel_ext_under_sub_inst HΔg _ _ Hτ) as Hτ'.
+    pose proof (HUi _ _ Hτ') as H.
     rewrite gunit_sub_mk in H |- *.
     rewrite tele_sub_app, List.length_app, <- (moddef_sub_sb_eq _ _ _ (sb_qn_add _ _ _)).
-    apply glu_unit_at_flatten; [| exact (glu_rel_ext_under_renaming_of_inst (HΔ _ _ Hμ) Hτ) | exact H ].
+    apply glu_unit_at_flatten; [| exact (glu_rel_ext_under_renaming_of_inst HΔg Hτ) | exact H ].
     destruct (glu_rel_sub_inst_ctx _ _ _ Hτ') as [Sb HSb]; exact (glu_ctx_env_wf_ctx HSb).
 Qed.
 
@@ -275,11 +386,15 @@ Lemma glu_unit_eq_expand :
      glu_unit_eq Θ Ξ Γ (gu_open Δ Φ) (gu_open Δ (gm_expand Φ)) ).
 Proof.
   intros * [HΓ HU _]; constructor; [ exact HΓ | exact HU |].
-  intros Θ2 Ξ2 Hμ Γ' τ Hτ; pose proof (HU _ _ Hμ _ _ Hτ) as H.
-  rewrite gunit_sub_mk in H |- *; cbn [moddef_sub glu_unit_at] in H |- *.
-  destruct H as [H1 H2]; split.
-  - rewrite !gm_expand_sub in *; rewrite (gm_expand_noopen _ (gm_noopen_expand _)); exact H1.
-  - rewrite <- gm_expand_sub; exact (glu_gmod_units_expand _ _ H2).
+  intros Θ2 Ξ2 Hμ; destruct (HU _ _ Hμ) as [HUi HUd HUcd]; constructor; [ intros Γ' τ Hτ | | exact HUcd ].
+  - pose proof (HUi _ _ Hτ) as H.
+    rewrite gunit_sub_mk in H |- *; cbn [moddef_sub glu_unit_at] in H |- *.
+    destruct H as [H1 H2]; split.
+    + rewrite !gm_expand_sub in *; rewrite (gm_expand_noopen _ (gm_noopen_expand _)); exact H1.
+    + rewrite <- gm_expand_sub; exact (glu_gmod_units_expand _ _ H2).
+  - cbn [glu_unit_deep] in HUd |- *; destruct HUd as [H1 H2]; split.
+    + rewrite (gm_expand_noopen _ (gm_noopen_expand _)); exact H1.
+    + exact (glu_gmod_units_deep_expand _ _ H2).
 Qed.
 
 Lemma glu_unit_eq_sym :
@@ -309,7 +424,13 @@ Lemma glu_ext_eq_mod :
 Proof.
   intros * [HΨ HΨ'] HUU [_ HU _] HU' [_ HU'g _].
   pose proof (wf_unit_eq_trans _ _ _ _ _ _ HUU (wf_unit_eq_sym _ _ _ _ _ HUU)) as HUw.
-  split; intros Θ2 Ξ2 Hμ; glu_gctx_embedding_wf; cbn; (split; [ eauto | split ]); eauto.
+  split; intros Θ2 Ξ2 Hμ; glu_gctx_embedding_wf.
+  - destruct (HΨ _ _ Hμ) as [HΨg HΨd]; destruct (HU _ _ Hμ) as [HUi HUd _].
+    split; [ cbn; split; [ exact HΨg | split; [ exact (Hwu _ _ _ HUw) | exact HUi ] ] |].
+    exact (glu_ctx_deep_cons_unit (ce_mod U) _ U eq_refl HUd HΨd).
+  - destruct (HΨ' _ _ Hμ) as [HΨg HΨd]; destruct (HU'g _ _ Hμ) as [HUi HUd _].
+    split; [ cbn; split; [ exact HΨg | split; [ exact (Hwu _ _ _ HU') | exact HUi ] ] |].
+    exact (glu_ctx_deep_cons_unit (ce_mod U') _ U' eq_refl HUd HΨd).
 Qed.
 
 Lemma glu_ext_eq_dm :
@@ -326,7 +447,13 @@ Lemma glu_ext_eq_dm :
 Proof.
   intros * [HΨ HΨ'] HA HM HA' HM' HUU [_ HU _] HU' [_ HU'g _].
   pose proof (wf_unit_eq_trans _ _ _ _ _ _ HUU (wf_unit_eq_sym _ _ _ _ _ HUU)) as HUw.
-  split; intros Θ2 Ξ2 Hμ; glu_gctx_embedding_wf; cbn; (split; [ eauto |]).
-  - do 2 eexists; constructor; [ reflexivity | exact (HA _ _ Hμ) | exact (HM _ _ Hμ) | exact (Hwu _ _ _ HUw) | exact (HU _ _ Hμ) ].
-  - do 2 eexists; constructor; [ reflexivity | exact (HA' _ _ Hμ) | exact (HM' _ _ Hμ) | exact (Hwu _ _ _ HU') | exact (HU'g _ _ Hμ) ].
+  split; intros Θ2 Ξ2 Hμ; glu_gctx_embedding_wf.
+  - destruct (HΨ _ _ Hμ) as [HΨg HΨd]; destruct (HU _ _ Hμ) as [HUi HUd _].
+    split; [ cbn; split; [ exact HΨg |] |].
+    + do 2 eexists; constructor; [ reflexivity | exact (proj1 (HA _ _ Hμ)) | exact (proj1 (HM _ _ Hμ)) | exact (Hwu _ _ _ HUw) | exact HUi ].
+    + exact (glu_ctx_deep_cons_unit (ce_dm A M (gu_mk nil (md_alias E))) _ _ eq_refl HUd HΨd).
+  - destruct (HΨ' _ _ Hμ) as [HΨg HΨd]; destruct (HU'g _ _ Hμ) as [HUi HUd _].
+    split; [ cbn; split; [ exact HΨg |] |].
+    + do 2 eexists; constructor; [ reflexivity | exact (proj1 (HA' _ _ Hμ)) | exact (proj1 (HM' _ _ Hμ)) | exact (Hwu _ _ _ HU') | exact HUi ].
+    + exact (glu_ctx_deep_cons_unit (ce_dm A' M' (gu_mk nil (md_alias E'))) _ _ eq_refl HUd HΨd).
 Qed.

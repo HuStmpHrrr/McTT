@@ -101,16 +101,43 @@ Ltac invert_glu_rel1 :=
 
 (** ** The Gluing Judgments *)
 
+(** The module parts of the conclusion's context deep, from a premise's
+    context: the same, the empty context, or a context it extends by
+    entries without module parts or by any entries
+    ([glu_ctx_deep_suffix]), one step deep.  It
+    fails at once otherwise: such a case proves the fact by hand. *)
+Ltac glu_ctx_deep_tac :=
+  first [ assumption
+        | exact glu_ctx_deep_nil
+        | eapply glu_ctx_deep_suffix; eassumption
+        | eapply glu_ctx_deep_tail; eassumption
+        | apply glu_ctx_deep_cons_term;
+          [ reflexivity | first [ assumption | eapply glu_ctx_deep_suffix; eassumption | eapply glu_ctx_deep_tail; eassumption ] ] ].
+
 (** Open the case of a rule: fix a sound embedding, take the unit
-    equations apart, read every premise at its target, take the universes
-    apart, and state a universe at the target by its two parts. *)
+    equations apart, read every premise at its target and take its parts
+    apart, and state a conclusion at the target by its parts.  The deep
+    module parts of the conclusion's context are given by
+    [glu_ctx_deep_tac]; when it does not apply, that part is left as the
+    last goal, for the case to prove. *)
 Ltac glu_intro :=
   repeat match goal with |- glu_unit_eq _ _ _ _ _ -> _ => let H := fresh "HU" in intros H; destruct H | |- forall _, _ => intro end;
-  unfold glu_ctx, glu_exp, glu_is_univ, glu_unit in *; intros;
+  unfold glu_ctx, glu_exp, glu_is_univ, glu_unit, glu_modexp, glu_ext in *; intros;
   repeat match goal with IH : forall _ _, glu_gctx_embedding _ _ _ _ -> _, Hμ : glu_gctx_embedding _ _ _ _ |- _ =>
     specialize (IH _ _ Hμ) end;
-  repeat match goal with H : glu_is_univ_at _ _ _ _ |- _ => destruct H end;
-  try match goal with |- glu_is_univ_at _ _ _ _ => constructor end.
+  repeat match goal with
+         | H : glu_is_univ_at _ _ _ _ |- _ => destruct H
+         | H : glu_unit_at_target _ _ _ _ |- _ => destruct H
+         | H : glu_modexp_at_target _ _ _ _ |- _ => destruct H
+         | H : _ /\ @glu_ctx_deep _ _ |- _ => destruct H
+         end;
+  lazymatch goal with
+  | |- glu_is_univ_at _ _ _ _ => constructor; [ | | first [ glu_ctx_deep_tac | idtac ] ]
+  | |- glu_unit_at_target _ _ _ _ => constructor; [ | | first [ glu_ctx_deep_tac | idtac ] ]
+  | |- glu_modexp_at_target _ _ _ _ => constructor; [ | | first [ glu_ctx_deep_tac | idtac ] ]
+  | |- _ /\ @glu_ctx_deep _ _ => split; [ | first [ glu_ctx_deep_tac | idtac ] ]
+  | _ => idtac
+  end.
 
 (** The syntactic judgments of the source, moved along the sound embedding
     to its target ([gctx_embedding_preserves_wf]). *)
