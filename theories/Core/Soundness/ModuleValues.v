@@ -542,6 +542,98 @@ Proof.
   exists R1'; split; [ eapply mdenote_app; [ exact HR1 | exact HR1' ] | rewrite EM', <- EM; exact HRm ].
 Qed.
 
+Lemma same_part_sub : forall {Γ0 Γ1 ζ H0 H1}, Γ1 ⊢ˢ ζ : Γ0 -> same_part Γ0 H0 H1 -> same_part Γ1 H0[ζ]ᵐ H1[ζ]ᵐ.
+Proof.
+  intros * Hζ Hs Γ2 ζ' R Rm Hζ' Hm HRm; rewrite modexp_sub_sub in *.
+  exact (Hs _ _ _ _ (wf_sub_compose _ _ _ _ _ _ _ Hζ Hζ') Hm HRm).
+Qed.
+
+(** A described module part with a telescope gives the telescope. *)
+Lemma mdesc_mod_tele_part : forall R R' T, mdesc_mod_tele R = Some T -> (exists Rm, mdesc_mod R = Some Rm /\ mdesc_mod R' = Some Rm) ->
+    mdesc_mod_tele R' = Some T.
+Proof. intros * HT (Rm & E & E'); unfold mdesc_mod_tele in *; rewrite E in HT; rewrite E'; exact HT. Qed.
+
+(** A module value glued as [H1] is glued as an equal [H0] with the same
+    module part both ways at every substitution, neither naming a stored
+    module: its members are looked up alike ([same_denote_mem_part]) and
+    equal ([glu_elem_at_same_denote]), and so are its submodules' and its
+    applications'. *)
+Lemma glu_dmod_same_part :
+  (forall Δ σ0 Γ0 H1 h, glu_dmod Δ σ0 Γ0 H1 h ->
+     forall H0, gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H1 -> same_part Γ0 H0 H1 -> same_part Γ0 H1 H0 ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H0[ζ]ᵐ = None) ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H1[ζ]ᵐ = None) ->
+       glu_dmod Δ σ0 Γ0 H0 h) /\
+  (forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args -> True).
+Proof.
+  apply glu_dmod_mut_ind_all; [ | | | intros; exact I | intros; exact I ].
+  - (** A global module *)
+    intros * Hσ HH1 HH1p Hl Hlen Hargs _ H0 HH Hs01 Hs10 Hq0 Hq1.
+    eapply glu_dmod_global; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | | exact Hl | exact Hlen | exact Hargs ].
+    eapply wf_me_trans; [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH Hσ) | exact HH1p ].
+  - (** A body *)
+    intros * Hσ HH1 Hmem Hsub IHsub H0 HH Hs01 Hs10 Hq0 Hq1.
+    apply glu_dmod_body; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | | ].
+    + intros * Hp Ht Hk Hb.
+      destruct (Hmem _ _ _ _ _ _ Hp Ht Hk Hb) as (a & m & [Ea Em Hg]).
+      exists a, m; constructor; [ exact Ea | exact Em |].
+      intros * Hst Hm HA HS HAt.
+      pose proof (same_denote_mem_part x Hs01 Hq0 Hq1 _ _ _ (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) Hm) as Hm1.
+      destruct (Hg _ _ _ _ _ _ _ _ Hst Hm1 HA HS HAt) as (i & P & El & Hgl).
+      exists i, P, El.
+      eapply glu_elem_at_same_denote;
+        [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst))
+        | exact Hm | exact Hm1 | exact HA | exact (glu_sub_through_rest _ _ _ _ _ _ _ _ Hst) | exact Hgl ].
+    + intros * Hp Hu Hb Hc.
+      pose proof (Hsub _ _ _ _ _ _ _ Hp Hu Hb Hc) as Hg1.
+      pose proof (same_denote_mem_part y Hs01 Hq0 Hq1) as Hd01.
+      pose proof (same_denote_mem_part y Hs10 Hq1 Hq0) as Hd10.
+      assert (HHy : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H1 y)
+        by (eapply wf_me_mem_same_denote; [ exact HH | destruct Hg1; assumption | exact Hd10 ]).
+      eapply IHsub; [ exact Hp | exact Hu | exact Hb | exact Hc | exact HHy
+                    | exact (same_part_of_denote Hd01) | exact (same_part_of_denote Hd10)
+                    | intros Γ2 ζ Hζ; cbn; rewrite (Hq0 _ _ Hζ); reflexivity
+                    | intros Γ2 ζ Hζ; cbn; rewrite (Hq1 _ _ Hζ); reflexivity ].
+  - (** A value lacking a parameter *)
+    intros * Hσ HH1 Hn Hpar Hex Happ IHapp H0 HH Hs01 Hs10 Hq0 Hq1.
+    eapply glu_dmod_fun; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | exact Hn | | exact Hex | ].
+    + intros * Hst Hm HT.
+      pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
+      assert (HRm : exists Rm, mdesc_mod RH = Some Rm)
+        by (unfold mdesc_mod_tele in HT; destruct (mdesc_mod RH); [ eexists; reflexivity | discriminate ]).
+      destruct HRm as [Rm HRm].
+      destruct (Hs01 _ _ _ _ Hζ Hm HRm) as (RH1 & Hm1 & HRm1).
+      exact (Hpar _ _ _ _ _ _ _ _ _ _ Hst Hm1 (mdesc_mod_tele_part _ _ _ HT (ex_intro _ Rm (conj HRm HRm1)))).
+    + intros * Hst Hm HT Hv HS HB * Hu HP HN Hhc.
+      pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
+      assert (HRm : exists Rm, mdesc_mod RH = Some Rm)
+        by (unfold mdesc_mod_tele in HT; destruct (mdesc_mod RH); [ eexists; reflexivity | discriminate ]).
+      destruct HRm as [Rm HRm].
+      destruct (Hs01 _ _ _ _ Hζ Hm HRm) as (RH1 & Hm1 & HRm1).
+      pose proof (mdesc_mod_tele_part _ _ _ HT (ex_intro _ Rm (conj HRm HRm1))) as HT1.
+      pose proof (Happ _ _ _ _ _ _ _ _ _ _ Hst Hm1 HT1 Hv HS HB _ _ _ _ _ _ Hu HP HN Hhc) as Hg1.
+      pose proof (same_part_sub Hζ Hs01) as Hs01'; pose proof (same_part_sub Hζ Hs10) as Hs10'.
+      eapply IHapp; [ exact Hst | exact Hm1 | exact HT1 | exact Hv | exact HS | exact HB | exact Hu | exact HP | exact HN
+                    | exact Hhc | | exact (same_part_app_var _ _ Hs01') | exact (same_part_app_var _ _ Hs10')
+                    | intros; reflexivity | intros; reflexivity ].
+      (** The applications are equal: their premises are those of [H1]'s
+          application, the module parts being the same *)
+      assert (HHg : gc_deps ⍮ gc_stack ⍮ Γ1 ▹{domain_kind a} B ⊢ᵐ me_app H1[ζ]ᵐ[Wk]ᵐ #0 ≈ me_app H1[ζ]ᵐ[Wk]ᵐ #0)
+        by (destruct Hg1; assumption).
+      destruct (proj1 (modexp_gen _ _ _ _ _ HHg)) as [HH1w (R' & T' & B' & T1' & S' & HR' & HT' & Hv' & HB' & HS' & HN')].
+      assert (HRm' : exists Rm', mdesc_mod R' = Some Rm')
+        by (unfold mdesc_mod_tele in HT'; destruct (mdesc_mod R'); [ eexists; reflexivity | discriminate ]).
+      destruct HRm' as [Rm' HRm'].
+      destruct (Hs10' (Γ1 ▹{domain_kind a} B) Wk R' Rm' ltac:(eapply wf_sub_shift; exact (presup_modexp_eq_ctx HHg)) HR' HRm')
+        as (R0 & HR0 & HRm0).
+      pose proof (mdesc_mod_tele_part _ _ _ HT' (ex_intro _ Rm' (conj HRm' HRm0))) as HT0.
+      assert (HHw : gc_deps ⍮ gc_stack ⍮ Γ1 ▹{domain_kind a} B ⊢ᵐ H0[ζ]ᵐ[Wk]ᵐ ≈ H1[ζ]ᵐ[Wk]ᵐ).
+      { eapply sub_preserves_modexp; [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH Hζ) |].
+        eapply wf_sub_shift; exact (presup_modexp_eq_ctx HHg). }
+      eapply wf_me_app; [ exact HHw | exact HR0 | exact HT0 | exact Hv' | exact HB' | exact HS' | exact HN'
+                        | apply wf_exp_eq_refl; exact HN' | exact HR' | exact HT' | exact Hv' | exact HB' | exact HS' | exact HN' ].
+Qed.
+
 (** ** The Closure of a Glued Unit's Literal *)
 
 Lemma gm_prefix_upto_in_names : forall Φ z P, gm_prefix_upto Φ z = Some P -> List.In z (gm_names Φ).
