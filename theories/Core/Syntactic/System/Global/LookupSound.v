@@ -1148,11 +1148,36 @@ Proof.
   destruct (frame_denote_mod _ _ Hg _ _ _ _ _ _ _ _ _ _ _ Hq0 Hf Hm Hmd) as (-> & -> & ->); auto.
 Qed.
 
-Lemma mem_closed_part_named : forall Θ Ξ Γ H RH Θ' p T Φ Ns x R A,
+(** The parts of a member [R] of type [A] of a closed module part read at
+    the outside parameters [Θ'], as a name: its δ-reduct is a body over
+    [Θ'] equal to the name [Mn], the filed member at the arguments, at the
+    type [A] is over [Θ'] ([mem_closed_part_named_parts]): the body [M']
+    the δ-reduct abstracts over [Θ'], of the type [A0] over [Θ'], of the
+    kind [r], whose sort is at the level [i]. *)
+Record closed_member_named_parts (Θ : gdeps) (Ξ : gstack) (Γ Θ' : ctx) (R : mdesc) (A Mn M' A0 : exp) (r : abs_kind) (i : nat) : Prop :=
+  mk_closed_member_named_parts
+  { (** The δ-reduct is the body abstracted over [Θ'] *)
+    closed_member_named_reduct : mdesc_reduct R = Some (ctx_fn Θ' M')
+    (** The type is the type over [Θ'] abstracted over it at the kind *)
+  ; closed_member_named_type_eq : A = ctx_pi_at r Θ' A0
+    (** The kind is that of the description *)
+  ; closed_member_named_kind_eq : mdesc_kind R = r
+    (** The outside parameters extend the context *)
+  ; closed_member_named_ctx : ⊢ Θ ⍮ Ξ ⍮ Θ' ++ Γ
+    (** The outside parameters are assumptions *)
+  ; closed_member_named_assumptions : all_assumptions Θ'
+    (** The type over [Θ'] is of the sort of the kind *)
+  ; closed_member_named_sort : Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ A0 : abs_kind_sort r Typeω@i
+    (** A type of levels is over parameters of types of levels *)
+  ; closed_member_named_levels : r = ak_level -> level_sorted_parameters Θ'
+    (** The body is the name over [Θ'] *)
+  ; closed_member_named_body_eq : Θ ⍮ Ξ ⍮ Θ' ++ Γ ⊢ M' ≈ Mn : A0 }.
+
+Lemma mem_closed_part_named_parts : forall Θ Ξ Γ H RH Θ' p T Φ Ns x R A,
     Θ' <> nil \/ Ns <> nil ->
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ H RH -> mdesc_mod RH = Some (mdesc_closed Θ' p T Φ Ns) ->
     mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ ctx_fn Θ' (apps (a_mem (qname_mod p) x) Ns) : A.
+    exists M' A0 r i, closed_member_named_parts Θ Ξ Γ Θ' R A (apps (a_mem (qname_mod p) x) Ns) M' A0 r i.
 Proof.
   intros * Hne HH HmH HmdH Hm Ht.
   pose proof (presup_modexp_eq_ctx HH) as HΓ; pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
@@ -1210,13 +1235,16 @@ Proof.
       exact Hfa.
     - destruct R1 as [? ? [] | | |]; cbn in Er, HA0, HM'; try discriminate; injection HM' as <-.
       eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact Hfa | exact Hfa ]. }
-  apply (wf_exp_eq_trans _ _ _ _ _ (ctx_fn Θ' M')); [ eapply wf_exp_eq_mem_delta; [ exact HH | exact Hm | exact Ht | rewrite mdesc_reduct_up, HM'; reflexivity ] |].
-  rewrite mdesc_kind_up.
+  rewrite (mdesc_named_self _ _ Hne), mdesc_kind_up.
+  change (mdesc_up Θ' (mdesc_self (apps (a_mem (qname_mod p) x) Ns) R1))
+    with (mdesc_up (nil ++ Θ') (mdesc_self (apps (a_mem (qname_mod p) x) Ns) R1)); rewrite mdesc_up_cat.
   set (r := mdesc_kind (mdesc_self (apps (a_mem (qname_mod p) x) Ns) R1)) in *.
   (* the type is of the sort of its kind, abstracted over the outer
      parameters; a type of levels over parameters of types of levels, as a
      module with no member of a type of levels has no such term *)
-  apply (ctx_fn_eq _ _ r _ _ _ _ _ i HaΘ HΘ'); [| exact Hi | exact Heq ].
+  exists M', A0, r, i.
+  refine (mk_closed_member_named_parts _ _ _ _ _ _ _ M' A0 r i _ eq_refl _ HΘ' HaΘ Hi _ Heq);
+    [ rewrite mdesc_reduct_up, HM'; reflexivity | rewrite !mdesc_kind_up; reflexivity |].
   intros Hrl; destruct H0 as [HL | HNl]; [ exact HL | exfalso ].
   assert (Hr0 : mdesc_read (reader_closed Θ' Ns (apps (a_mem (qname_mod p) x) Ns)) Re =
                 Some (mdesc_up Θ' (mdesc_named Θ' Ns (apps (a_mem (qname_mod p) x) Ns) R1)))
@@ -1227,6 +1255,18 @@ Proof.
   subst r; destruct R1 as [r1 A1 om1 | | | Θd A1 M1 Rm1]; cbn [mdesc_self mdesc_up mdesc_kind] in HNx, Hrl; try discriminate.
   (* a term of a type of levels has a member of a type of levels *)
   destruct om1; cbn [mdesc_kind] in Hrl; subst r1; inversion HNx; subst; contradiction.
+Qed.
+
+Lemma mem_closed_part_named : forall Θ Ξ Γ H RH Θ' p T Φ Ns x R A,
+    Θ' <> nil \/ Ns <> nil ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ H RH -> mdesc_mod RH = Some (mdesc_closed Θ' p T Φ Ns) ->
+    mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ ctx_fn Θ' (apps (a_mem (qname_mod p) x) Ns) : A.
+Proof.
+  intros * Hne HH HmH HmdH Hm Ht.
+  destruct (mem_closed_part_named_parts _ _ _ _ _ _ _ _ _ _ _ _ _ Hne HH HmH HmdH Hm Ht) as (M' & A0 & r & i & [HM' -> _ HΘ' HaΘ Hi Hl Heq]).
+  apply (wf_exp_eq_trans _ _ _ _ _ (ctx_fn Θ' M')); [ eapply wf_exp_eq_mem_delta; eassumption |].
+  exact (ctx_fn_eq _ _ r _ _ _ _ _ i HaΘ HΘ' Hl Hi Heq).
 Qed.
 
 
