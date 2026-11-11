@@ -131,6 +131,7 @@
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/ModuleValues.v
 ./Core/Soundness/Instances.v
+./Core/Soundness/ModuleExpressions.v
 ./Core/Soundness/Extensions.v
 ./Core/Soundness/UnitEqCases.v
 ./Core/Soundness/SubtypingCases.v
