@@ -844,7 +844,7 @@ Section Bare.
       dm_global p args ·ₜ x Θ ⍮ Ξ ↘ m ->
       (forall h b, per_dmod h (dm_global p args) -> dmod_mem_type h x b -> exists j, Dom b ≈ a ∈ per_univ j) ->
       not_level_sort a -> DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ Tin ® P ->
-      Δ ⊢ apps (a_mem (qname_mod p) x) Ns : Tin ® m ∈ El.
+      per_dmod (dm_global p args) (dm_global p args) /\ Δ ⊢ apps (a_mem (qname_mod p) x) Ns : Tin ® m ∈ El.
   Proof.
     intros * Hgl Hlen Hm0 Ht0 Hk HGa HΔ Hargs Hsel Hrel Hnl Hga HTin.
     pose proof (@functional_eval Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & Fsel & _).
@@ -914,7 +914,7 @@ Section Bare.
     (** Moved to [T], through the equation of the two types glued at related
         values *)
     pose proof (proj2 (per_univ_elem_not_level_sort_iff _ _ _ _ HR'a) Hnl) as Hnlb.
-    exact (proj2 (glu_elem_to_target (ex_intro _ R1 HR'a) Hgb2 Hga Hnlb HY HTin)).
+    split; [ exact Hper | exact (proj2 (glu_elem_to_target (ex_intro _ R1 HR'a) Hgb2 Hga Hnlb HY HTin)) ].
   Qed.
 
 End Bare.
