@@ -22,7 +22,7 @@ From Mctt.Core.Completeness Require Import ModuleCases.
 From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LevelCases.
-From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases UnitCases.
+From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases UnitCases Selection.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -37,78 +37,9 @@ Proof.
   eapply (@glu_rel_exp_of_eq (gc_mk Θ2 Ξ2)); [ exact Hg | exact (Hwq _ _ _ _ Heq) ].
 Qed.
 
-(** ** 2. Members *)
+(** ** 2. Members
 
-Lemma mdesc_ats_term_none_eq : forall Ns κ A R, mdesc_ats (mdesc_term κ A None) Ns = Some R -> exists A', R = mdesc_term κ A' None.
-Proof.
-  induction Ns as [| N Ns IH]; intros * Ha; cbn in Ha; [ injection Ha as <-; eauto |].
-  destruct (pi_view A) as [[? ?] |]; [ exact (IH _ _ _ Ha) | discriminate ].
-Qed.
-
-(** A member looked up as a term of no δ-reduct is an axiom or an abstract
-    definition of a stored body, read bare: the module expression's module
-    part is the body's path at no argument and no outside parameter. *)
-Lemma mem_no_red : forall Θ Ξ Γ H x R A,
-    mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = None ->
-    exists R0 p T Φ Φ0 b pv κ oM,
-      mdenote Θ Ξ Γ H R0 /\ mdesc_mod R0 = Some (mdesc_closed nil p T Φ nil) /\
-      gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def b pv κ A oM)) /\ (if b then oM else None) = None.
-Proof.
-  intros * Hm Ht Hr.
-  assert (HR : exists κ, R = mdesc_term κ A None)
-    by (destruct R as [κ A' om | | | ]; cbn in Ht, Hr; try discriminate; subst; injection Ht as ->; eauto).
-  destruct HR as [κ ->].
-  inversion Hm as [| | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hrd |]; subst.
-  destruct R0m as [| Δ Φw Φx | Θ' p T Φ Ns |]; cbn in He; try discriminate.
-  - (* an open body reads only transparent definitions and modules *)
-    destruct (gm_prefix_upto Φx x) as [[| Φ' y E0 | ? ? ?] |]; try discriminate.
-    destruct E0 as [[] pv κ' A' [M |] | pv U | | |]; try discriminate; injection He as <- <- <-.
-    + inversion Hed; subst; cbn in Hrd.
-      destruct (gm_fill Φ'); cbn in Hrd; discriminate.
-    + inversion Hed; subst.
-      match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hmm end.
-      cbn in Hrd; destruct (gm_fill Φ'); cbn in Hrd; [| discriminate ].
-      injection Hrd as Heq; destruct Re; cbn in Hmm, Heq; try contradiction; discriminate.
-    + (* a definition with a module part reads as one, with both parts *)
-      inversion Hed; subst; cbn in Hrd.
-      destruct (gm_fill Φ'); cbn in Hrd; discriminate.
-  - destruct (gm_prefix_upto Φ x) as [[| Φ0 y E0 | ? ? ?] |] eqn:Hp; try discriminate.
-    injection He as <- <- <-.
-    pose proof (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
-    cbn [mdesc_read] in Hrd; destruct (mdesc_ats_read Re Ns) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [| discriminate ].
-    injection Hrd as Heq.
-    destruct E0 as [b pv κ' A' oM | pv [Δ [sm Φy | E'] ] | pv pq k' D ΦD | pv Ad Md Ud | pv Rr ΦR ].
-    + (* a definition: one of no body, read bare *)
-      cbn [ge_read] in Hed; inversion Hed; subst; cbn [mdesc_ats_read] in Hats.
-      destruct (if b then oM else None) as [M |] eqn:Ho.
-      * exfalso; destruct (mdesc_ats_some_red _ _ _ _ _ Hats) as (A1 & M1 & ->).
-        rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
-      * destruct (mdesc_ats_term_none_eq _ _ _ _ Hats) as (A1 & ->).
-        destruct (mdesc_named_term_none Θ' Ns (apps (a_mem (qname_mod p) x) Ns) κ' A1) as [(Hn & -> & ->) | Hn];
-          rewrite Hn in Heq; cbn in Heq; [| discriminate ].
-        cbn in Hats; injection Hats as ->; injection Heq as -> ->.
-        exists R0, p, T, Φ, Φ0, b, pv, κ, oM; repeat split; assumption.
-    + exfalso; assert (Hmm : mdesc_is_mod Re) by (destruct sm; cbn [ge_read] in Hed; inversion Hed; subst; eapply udenote_is_mod; eassumption).
-      rewrite (mdesc_ats_read_mod _ _ Hmm) in Hats.
-      pose proof (mdesc_ats_is_mod _ _ _ Hmm Hats) as Hm1.
-      destruct R1; cbn in Hm1; try contradiction; rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
-    + exfalso; assert (Hmm : mdesc_is_mod Re) by (cbn [ge_read] in Hed; inversion Hed; subst; eapply udenote_is_mod; eassumption).
-      rewrite (mdesc_ats_read_mod _ _ Hmm) in Hats.
-      pose proof (mdesc_ats_is_mod _ _ _ Hmm Hats) as Hm1.
-      destruct R1; cbn in Hm1; try contradiction; rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
-    + (* a member of a group: its type former, a reduct *)
-      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [mdesc_ats_read ind_former_desc] in Hats.
-      mdesc_dm_read_shape Hats.
-      rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
-    + (* a definition with a module part: read with its module part, no term *)
-      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [mdesc_ats_read] in Hats.
-      mdesc_dm_read_shape Hats.
-      rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
-    + (* a record type: its type former, a reduct *)
-      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [mdesc_ats_read record_former_desc] in Hats.
-      mdesc_dm_read_shape Hats.
-      rewrite mdesc_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
-Qed.
+    [mem_no_red] is in [Selection.v]. *)
 
 (** A member glues: as its δ-reduct, which glues by the premise of [wf_mem];
     without one, as the filed member it is equal to. *)

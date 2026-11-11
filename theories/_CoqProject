@@ -158,6 +158,7 @@
 ./Core/Soundness/IotaCases.v
 ./Core/Soundness/RecordCases.v
 ./Core/Soundness/Global/GlobalValues.v
+./Core/Soundness/Selection.v
 ./Core/Soundness/ModuleCases.v
 ./Core/Soundness/Global/MemberValues.v
 ./Core/Soundness/Global/Embedding.v
