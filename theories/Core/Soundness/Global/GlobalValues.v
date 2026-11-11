@@ -8,7 +8,7 @@
     definition it is ([mem_alias_filed]).  The values of global modules
     are glued from them ([glu_dmod]). *)
 
-From Stdlib Require Import Lia List PeanoNat.
+From Stdlib Require Import Lia List PeanoNat RelationClasses.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -210,6 +210,67 @@ Section Fixed_GCtx.
       rewrite <- EMs in Hσ'.
       pose proof (IH _ _ Hts' ltac:(cbn in Hlen; lia) HSbA Hσ' _ HSbT) as H.
       rewrite <- List.app_assoc in H; exact H.
+  Qed.
+
+  (** Glued arguments for a telescope are glued arguments for its part they
+      cover. *)
+  Lemma glu_tele_args_firstn : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
+      glu_tele_args Δ (List.firstn (List.length Ns) ts) ρ Ms Ns args.
+  Proof.
+    induction 1; cbn [List.length List.firstn]; [ destruct ts; constructor | econstructor; eassumption ].
+  Qed.
+
+  (** The next parameter of a telescope glued with its types, past glued
+      arguments: its type is glued at its value in the environment the
+      arguments make ([glu_tele_args_env]), at the substitution the
+      arguments make. *)
+  Lemma glu_tele_next_param : forall T Δ Ns args,
+      ⊢ Δ -> all_assumptions T -> ⊩ T -> List.length args < List.length T ->
+      glu_tele_args Δ (List.rev T) nil nil Ns args ->
+      exists κ A a (i : nat) P El,
+        List.nth_error (List.rev T) (List.length args) = Some (ce_ass κ A) /\
+        ⟦ A ⟧ env_tele nil (List.rev T) args ↘ a /\ domain_kind a = κ /\
+        DG a ∈ glu_univ_elem i ↘ P ↘ El /\ Δ ⊢ A[sb_of_list sb_closed_base Ns] ® P.
+  Proof.
+    intros * HΔ HTa HT Hlt Hargs.
+    pose proof (glu_tele_args_length _ _ _ _ _ _ Hargs) as HlN.
+    (** The telescope split at the next parameter *)
+    assert (Hsplit : exists Tin κ A Tout, T = Tin ++ ce_ass κ A :: Tout /\ List.length Tout = List.length args).
+    { destruct (List.nth_error (List.rev T) (List.length args)) as [e |] eqn:He.
+      2:{ apply List.nth_error_None in He; rewrite List.length_rev in He; lia. }
+      pose proof (List.nth_error_split _ _ He) as (l1 & l2 & Erev & Hl1).
+      assert (ET : T = List.rev l2 ++ e :: List.rev l1)
+        by (rewrite <- (List.rev_involutive T), Erev, List.rev_app_distr; cbn; rewrite <- List.app_assoc; reflexivity).
+      assert (Hee : exists κ A, e = ce_ass κ A).
+      { rewrite ET in HTa; apply all_assumptions_app_inv in HTa as [_ HTa2]; inversion HTa2; assumption. }
+      destruct Hee as (κ & A & ->).
+      exists (List.rev l2), κ, A, (List.rev l1); split; [ exact ET | rewrite List.length_rev; exact Hl1 ]. }
+    destruct Hsplit as (Tin & κ & A & Tout & -> & Hlo).
+    assert (Erev : List.rev (Tin ++ ce_ass κ A :: Tout) = List.rev Tout ++ ce_ass κ A :: List.rev Tin)
+      by (rewrite List.rev_app_distr; cbn; rewrite <- List.app_assoc; reflexivity).
+    (** The arguments, an environment of the part before *)
+    destruct (glu_rel_ctx_app_r _ _ HT) as [SbA HSbA].
+    destruct (glu_rel_ctx_tail (ex_intro _ _ HSbA)) as [SbO HSbO].
+    pose proof (glu_tele_args_firstn _ _ _ _ _ _ Hargs) as Hargs'.
+    rewrite HlN, Erev, <- Hlo, <- List.length_rev, List.firstn_app, Nat.sub_diag, List.firstn_all in Hargs'.
+    cbn [List.firstn] in Hargs'; rewrite List.app_nil_r in Hargs'.
+    destruct (glu_ctx_env_cons_clean_inversion HSbO HSbA) as (iA & HAt & HAg & ESbA).
+    pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx HAt)) as Hg.
+    assert (Hnil : EG ⋅ ∈ glu_ctx_env ↘ nil_glu_sub_pred) by (eapply glu_ctx_env_nil; [ reflexivity | exact Hg ]).
+    assert (HTo : all_assumptions (List.rev Tout))
+      by (apply List.Forall_rev; apply all_assumptions_app_inv in HTa as [_ H]; inversion H; assumption).
+    assert (HSbO' : EG List.rev (List.rev Tout) ++ ⋅ ∈ glu_ctx_env ↘ SbO) by (rewrite List.rev_involutive, List.app_nil_r; exact HSbO).
+    pose proof (glu_tele_args_env _ _ _ _ _ _ Hargs' ⋅ _ HTo ltac:(rewrite List.length_rev; lia) Hnil (wf_sub_nil' _ _ HΔ) _ HSbO') as Hσ.
+    cbn [List.app] in Hσ.
+    destruct (HAg _ _ _ Hσ) as [a P El Ea Hga HAP].
+    pose proof (glu_ctx_env_sub_escape HSbO _ _ _ Hσ) as Hσt.
+    pose proof (sub_preserves_exp _ _ _ _ _ _ _ HAt Hσt) as HAσ; rewrite abs_kind_sort_sub in HAσ.
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hga HAP HAσ) as [Hk _].
+    exists κ, A, a, iA, P, El; repeat split; [ | | exact Hk | exact Hga | exact HAP ].
+    - rewrite Erev, List.nth_error_app2 by (rewrite List.length_rev; lia).
+      rewrite List.length_rev, Hlo, Nat.sub_diag; reflexivity.
+    - rewrite env_tele_firstn, Erev, <- Hlo, <- List.length_rev, List.firstn_app, Nat.sub_diag, List.firstn_all.
+      cbn [List.firstn]; rewrite List.app_nil_r; exact Ea.
   Qed.
 
   (** The [Π] over a telescope with a last (outermost) parameter more is
