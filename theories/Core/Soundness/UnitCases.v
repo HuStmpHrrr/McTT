@@ -17,6 +17,7 @@ From Mctt.Core.Soundness Require Import
   ContextCases
   LogicalRelation
   VariableCases
+  ModuleValues
   Instances.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
@@ -72,7 +73,7 @@ Proof.
   intros * HU HCs HS HSm HBt HB HW.
   assert (HCt : Γ ▹ₘ U ⊢ᵗ C) by (econstructor; eassumption).
   pose proof HB as [SbU HΓU k HBi].
-  inversion HΓU as [| | | ? ? TSb ? HΓ _ HSbU |]; subst.
+  inversion HΓU as [| | | ? ? TSb ? HΓ _ _ HSbU |]; subst.
   destruct (glu_ctx_env_per_ctx_env HΓ) as [R HR].
   destruct (let_mod_typ_value HU HCt HR) as [i HCv].
   assert (HSk : exists κ, sort_kind S κ) by (destruct HS; eexists; constructor).
@@ -92,6 +93,10 @@ Proof.
   { apply HSbU; econstructor.
     - apply wf_sub_extend_mod; [ exact Hσs | exact HU | eapply sub_preserves_unit; eassumption ].
     - exists h; split; [ exact Hh | exact Hhh ].
+    - (** The slot's value, glued as the unit's literal by the context's
+          slot premise *)
+      eapply (proj1 glu_dmod_resp_sub_eq); [ exact (glu_ctx_env_lit_inversion HΓ HΓU eq_refl _ _ _ _ Hσ Hh) |].
+      apply wf_sub_eq_of_sb_eq; [ exact Hσs | apply sb_eq_wk_extend_mod ].
     - eexists; reflexivity.
     - split; [ apply mod_entry_readable | cbn; exact (gunit_scoped_free_bound _ _ (wf_unit_eq_scoped_left _ _ _ _ _ HU)) ].
     - exact Hσ. }
@@ -208,12 +213,16 @@ Proof.
   pose proof (glu_univ_elem_per_elem _ _ _ _ Hglu _ _ _ _ _ HMσ HRa) as Hmm.
   pose proof (glu_univ_elem_trm_escape _ _ _ _ Hglu _ _ _ _ HMσ) as HMσt.
   assert (Hc : Δ ⊢ˢ σ ,,ᵈ M[σ] ‖ me_lit U[σ]ᵘ ® ρ ↦ᵈ m ⦂ entry_type_value a ‖ h ⦂ U ∈ SbD).
-  { apply ESb; econstructor; [ | exact Ea | exact Hglu | | | | | | ].
+  { apply ESb; econstructor; [ | exact Ea | exact Hglu | | | | | | | ].
     - eapply wf_sub_extend_dm; [ exact Hσt | exact HAi | exact HMt | exact HU | exact HMσt | apply wf_exp_eq_refl; exact HMσt
                                | eapply sub_preserves_unit; eassumption ].
     - rewrite exp_sub_shift_extend; exact HMσ.
     - exists m; split; [ exact Hm | exact (per_head_of Ea Ea HRa Hmm) ].
     - exists h; split; [ exact Hh | exact Hhh ].
+    - (** The module part's value, glued as the unit's literal by the
+          context's slot premise *)
+      eapply (proj1 glu_dmod_resp_sub_eq); [ exact (glu_ctx_env_lit_inversion HSbΓ HSbD eq_refl _ _ _ _ Hσ Hh) |].
+      apply wf_sub_eq_of_sb_eq; [ exact Hσt | apply sb_eq_wk_extend_dm ].
     - (** The stored type is the type's value *)
       eexists; split; [ reflexivity |].
       refine (mk_glu_stored_type _ _ _ _ _ i' a P El ltac:(constructor) Hglu _).
