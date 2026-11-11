@@ -101,7 +101,8 @@ Lemma body_sel_term : forall D Φ, gm_noopen Φ -> body_shape Φ Φ -> ⊨ body_
     exists ρ' a i RA r, ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' /\ ⟦ A ⟧ ρ' ↘ a /\ per_univ_elem i RA a a /\ ⟦ M ⟧ ρ' ↘ r /\
       forall ρh Φh, per_body ρh Φh ρ Φ ->
         exists Φh' Eh Ah Mh ρh' rh, gm_prefix_upto Φh x = Some (gm_ext Φh' x Eh) /\ entry_tm Eh = Some (Ah, Mh) /\
-          evaluated_kind (entry_kind Eh) /\ ⟦ Φh' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρh ↘ ρh' /\ ⟦ Mh ⟧ ρh' ↘ rh /\ RA rh r.
+          evaluated_kind (entry_kind Eh) /\ ⟦ Φh' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρh ↘ ρh' /\ ⟦ Mh ⟧ ρh' ↘ rh /\ RA rh r /\
+          (forall ah, ⟦ Ah ⟧ ρh' ↘ ah -> exists j, Dom ah ≈ a ∈ per_univ j).
 Proof.
   intros D Φ; revert D; induction Φ as [| Φ IH y E | Φ IH H its Φg];
     intros D Hno Hsx HC Hsv Hsc RD ρ HRD Hρ x Φx' E' A M Hp HEt Hrel; cbn in Hno; try contradiction; [ discriminate |].
@@ -157,7 +158,8 @@ Proof.
              assert (E : Rr <~> RA) by (eapply per_univ_elem_left_irrel; [ exact HRah | exact HRA ]);
              exists Φh0; do 5 eexists; split; [ cbn; rewrite String.eqb_refl; reflexivity |];
              split; [ reflexivity | split; [ cbn [entry_kind]; first [ exact Hrel | constructor ]
-                                           | split; [ exact Hbh1 | split; [ exact Hmh | apply E; exact HRm ] ] ] ]
+                                           | split; [ exact Hbh1 | split; [ exact Hmh | split; [ apply E; exact HRm |] ] ] ] ];
+             intros ah0 Hah0; pose proof (functional_eval_exp _ _ _ _ Hah0 Hah) as ->; eexists; eexists; exact HRah
          end.
   - (* an entry before it *)
     assert (HC0 : ⊨ body_ctx Φ ++ D) by (destruct E as [? ? ? ? [] | | | |]; cbn in HsE; try contradiction; exact (rel_ctx_wf_tail HC)).
@@ -167,8 +169,8 @@ Proof.
     assert (Hrest : exists Φh0 Eh, Φh = gm_ext Φh0 y Eh /\ per_body ρh Φh0 ρ Φ)
       by (inversion Hbh; subst; eauto).
     destruct Hrest as (Φh0 & Eh & -> & Hbh0).
-    destruct (Hh _ _ Hbh0) as (Φh' & Eh' & Ah & Mh & ρh' & rh & Hph & HEh & HrEh & Hbh' & Hmh & Hrr).
-    exists Φh', Eh', Ah, Mh, ρh', rh; split; [ cbn; rewrite Exy; exact Hph | split; [ exact HEh | split; [ exact HrEh | split; [ exact Hbh' | split; assumption ] ] ] ].
+    destruct (Hh _ _ Hbh0) as (Φh' & Eh' & Ah & Mh & ρh' & rh & Hph & HEh & HrEh & Hbh' & Hmh & Hrr & Hty).
+    exists Φh', Eh', Ah, Mh, ρh', rh; split; [ cbn; rewrite Exy; exact Hph | split; [ exact HEh | split; [ exact HrEh | split; [ exact Hbh' | split; [| split ]; assumption ] ] ] ].
 Qed.
 
 (** ** What the Term Members of Literals Denote *)
@@ -321,7 +323,7 @@ Proof.
   destruct Hsm as [HA _ HS].
   constructor; [ exact HA | intros M [= <-]; exact HPx |].
   intros RΓ HR ρ Hρ.
-  destruct (HS _ HR _ Hρ) as [k a i RA Hk Ha HRA Hmt _].
+  destruct (HS _ HR _ Hρ) as [k a i RA Hk Ha HRA Hmt _ Hmty].
   destruct (rel_modexp_at _ _ _ _ _ HEP HR _ _ Hρ) as (k1 & kp & Hk1 & Hkp & Hkk).
   pose proof (functional_eval_modexp _ _ _ _ Hk1 Hk) as ->.
   apply mk_valid_mem_at with (valid_mem_at_mod := k) (valid_mem_at_typ := a) (valid_mem_at_lvl := i) (valid_mem_at_rel := RA); try assumption.
@@ -346,11 +348,11 @@ Lemma unit_walk : forall Δ Γ D x r A0 om0 RΓ lp k0,
     Δ ++ Γ ⊨ᵗ A0 ≈ A0 at k0 -> rel_type_kind (Δ ++ Γ) A0 r ->
     (forall M0, om0 = Some M0 -> Δ ++ Γ ⊨ M0 : A0) ->
     (forall R, EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> forall k, ⟦ nil ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ k ->
-       exists a i Ra, ⟦ A0 ⟧ ρ ↘ a /\ per_univ_elem i Ra a a /\ dmod_has_mem k x Ra /\
+       exists a i Ra, ⟦ A0 ⟧ ρ ↘ a /\ per_univ_elem i Ra a a /\ dmod_has_mem k x Ra /\ dmod_mem_type_rel k x a /\
          forall M0, om0 = Some M0 -> exists m r, ⟦ M0 ⟧ ρ ↘ m /\ k ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ Ra m r) ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
     forall ρ, RΓ ρ ρ -> forall k, ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ k -> per_dmod k k ->
-    exists a i Ra, ⟦ ctx_pi_at r Δ A0 ⟧ ρ ↘ a /\ per_univ_elem i Ra a a /\ dmod_has_mem k x Ra /\
+    exists a i Ra, ⟦ ctx_pi_at r Δ A0 ⟧ ρ ↘ a /\ per_univ_elem i Ra a a /\ dmod_has_mem k x Ra /\ dmod_mem_type_rel k x a /\
       forall M0, om0 = Some M0 -> exists m r, ⟦ ctx_fn Δ M0 ⟧ ρ ↘ m /\ k ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ Ra m r.
 Proof.
   induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HΔr HC Hpk Hev HA HAk HM Hbase HΓ ρ Hρ k Hk Hkk; cbn [List.app] in *.
@@ -413,7 +415,7 @@ Proof.
       inversion Hkc as [| ? ? ? ? ? ? ? Hkc' Hl |]; subst.
       apply app_inj_tail in Hl as [<- [= _ <-]].
       destruct (IH _ _ _ _ _ _ _ _ _ HΔ0 HΔ0r HC Hpk0 Hev HA HAk HM Hbase HΓX _ Hρc _ ltac:(apply eval_close_expand_iff; exact Hkc') Hkk')
-        as (b' & l & Rb & Hb' & HRb & Hm & Hred).
+        as (b' & l & Rb & Hb' & HRb & Hm & _ & Hred).
       destruct (extension_value_closure_type _ _ _ _ _ _ _ _ _ _ _ _ _ HΓ HXt HcodT Hρ HXa HRX HcX Hb Hb') as [Q HQ].
       destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HQ (proj1 (per_univ_elem_sym _ _ _ _ HQ))) as (Rb0 & HRb0 & _).
       assert (ERb : Rb0 <~> Rb) by (eapply per_univ_irrel_rel; [ exact HRb0 | eexists; exact HQ | exact HRb ]).
@@ -430,10 +432,12 @@ Proof.
       assert (Ev : Rv' <~> Rb0) by (eapply per_univ_elem_right_irrel; [ exact HRv' | exact HRb0 ]).
       exists mv, r0; split; [ exact Hmv | split; [ exact Hr |] ].
       etransitivity; [ apply Ev; exact Hmvc | apply ERb; exact Hmr ]. }
-    eexists (d_pi κ r a0 ρ (ctx_pi_at r Δ0 A0)), _, Ra; split; [ exact Ha | split; [ exact HRa | split ] ].
+    eexists (d_pi κ r a0 ρ (ctx_pi_at r Δ0 A0)), _, Ra; split; [ exact Ha | split; [ exact HRa | split; [| split ] ] ].
     + eapply dmod_has_mem_fun; [ exact Hnp | exact Hkk | exact Hev | exact HRa | exists lp, RX; exact HRX | exact Hra0 | | eexists; exact Hsel ].
       intros j Rx c HRx Hc kc b Hkc Hb; destruct (Hstep _ _ _ HRx Hc _ _ Hkc Hb) as (l & Rb & HRb & Hm & _).
       exists l, Rb; split; assumption.
+    + (** Lacking a parameter, the closure is no saturated body *)
+      apply dmod_mem_type_rel_not_body; intros sm0 Φ0 ρ0 Hk0; subst k; injection Hk0 as Hl _ _; destruct Δ0; discriminate.
     + intros M0 HM0; rewrite ctx_fn_app; cbn [ctx_fn].
       exists (λᵈ a0 ρ (ctx_fn Δ0 M0)), (d_member k (x :: nil)).
       split; [ apply eval_exp_fn; exact HXa |]; split; [ exact Hsel |].
@@ -497,6 +501,7 @@ Lemma body_base : forall D Φx x Φ' E A M σ,
     gm_fill Φ' = Some σ ->
     forall RD, EF D ≈ D ∈ per_ctx_env ↘ RD -> forall ρ, RD ρ ρ -> forall sm,
     exists a i Ra, ⟦ A[σ] ⟧ ρ ↘ a /\ per_univ_elem i Ra a a /\ dmod_has_mem (dm_local nil (md_body sm Φx) ρ) x Ra /\
+      dmod_mem_type_rel (dm_local nil (md_body sm Φx) ρ) x a /\
       exists m r, ⟦ M[σ] ⟧ ρ ↘ m /\ dm_local nil (md_body sm Φx) ρ ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ Ra m r.
 Proof.
   intros * Hno Hsx HC Hsv Hsc Hp HEt Hrel Hf RD HD ρ Hρ sm.
@@ -512,16 +517,31 @@ Proof.
   assert (HPR : PER R1) by (eapply per_elem_PER; exact HR13).
   assert (HR11 : per_univ_elem i1 R1 a1 a1) by (etransitivity; [ exact HR13 | symmetry; exact HR13 ]).
   assert (ER : R1 <~> RA) by (eapply per_univ_elem_right_irrel; [ apply per_univ_elem_sym; exact HR13 | exact HRA ]).
-  exists a1, i1, R1; split; [ exact Ha1 | split; [ exact HR11 | split ] ].
+  exists a1, i1, R1; split; [ exact Ha1 | split; [ exact HR11 | split; [| split ] ] ].
   - intros h Hh0.
     inversion Hh0; subst;
       [| exfalso; match goal with Hn0 : next_param (dm_local nil (md_body _ _) _) _ |- _ => exact (next_param_body_nil _ _ _ _ Hn0) end ].
     match goal with Hb0 : per_body ?ρh ?Φh ρ Φx |- _ => rename Hb0 into Hbh end.
-    destruct (Hh _ _ Hbh) as (Φh' & Eh & Ah & Mh & ρh' & rh & Hph & HEh & HrEh & Hbh' & Hmh & Hrr).
+    destruct (Hh _ _ Hbh) as (Φh' & Eh & Ah & Mh & ρh' & rh & Hph & HEh & HrEh & Hbh' & Hmh & Hrr & _).
     pose proof (proj1 (per_body_noopen _ _ _ _ Hbh)) as Hnoh.
     apply (mk_rel_mem_val _ _ _ _ rh r);
       [ eapply eval_sel_body; [ rewrite (gm_expand_noopen _ Hnoh); exact Hph | exact HEh | exact HrEh | exact Hbh' | exact Hmh ]
       | exact Hsel | apply ER; exact Hrr ].
+  - (** The type of the member of a related body: related to the entry's
+        type here, which is related to the type filled in *)
+    intros h b Hh0 Hb.
+    inversion Hh0; subst;
+      [| exfalso; match goal with Hn0 : next_param (dm_local nil (md_body _ _) _) _ |- _ => exact (next_param_body_nil _ _ _ _ Hn0) end ].
+    match goal with Hb0 : per_body ?ρh ?Φh ρ Φx |- _ => rename Hb0 into Hbh end.
+    destruct (Hh _ _ Hbh) as (Φh' & Eh & Ah & Mh & ρh' & rh & Hph & HEh & HrEh & Hbh' & Hmh & Hrr & Hty).
+    pose proof (proj1 (per_body_noopen _ _ _ _ Hbh)) as Hnoh.
+    inversion Hb; subst.
+    match goal with Hp0 : gm_prefix_upto (gm_expand _) x = Some _ |- _ =>
+      rewrite (gm_expand_noopen _ Hnoh), Hph in Hp0; injection Hp0 as <- <- end.
+    match goal with Ht0 : entry_tm Eh = Some _ |- _ => rewrite HEh in Ht0; injection Ht0 as <- <- end.
+    match goal with Hb0 : ⟦ Φh' ⟧ᵇ _ ⍮ _ ⍮ _ ↘ ?ρ0 |- _ => pose proof (functional_eval_body_env _ _ _ _ Hb0 Hbh') as -> end.
+    destruct (Hty _ ltac:(eassumption)) as [j Hj].
+    exists j; eapply per_univ_trans'; [ exact Hj | exists R1; apply per_univ_elem_sym; exact HR13 ].
   - exists m1, r; split; [ exact Hm1 | split; [ exact Hsel | exact HRm ] ].
 Qed.
 
@@ -596,12 +616,12 @@ Proof.
                 ltac:(intros R' HR' ρ' Hρ' k0 Hk0; inversion Hk0; subst;
                       rewrite <- (body_xp_expand _ _ _ _ _ Hx);
                       destruct (body_base _ _ _ _ _ _ _ _ Hno Hsx HC Hsv Hsc Hp HEt Hrel Hf _ HR' _ Hρ' sm_open)
-                        as (a & i' & Ra & Ha & HRa & Hm' & m & r & Hm0 & Hr & Hmr);
+                        as (a & i' & Ra & Ha & HRa & Hm' & Hmty' & m & r & Hm0 & Hr & Hmr);
                       exists a, i', Ra; repeat split; try assumption; intros M1 [= <-]; exists m, r; repeat split; assumption)
                 HRΓ _ Hρ _ Hk Hkk)
-      as (a & i' & Ra & Ha & HRa & Hmt & Hred).
+      as (a & i' & Ra & Ha & HRa & Hmt & Hmty & Hred).
     apply mk_valid_mem_at with (valid_mem_at_mod := k) (valid_mem_at_typ := a) (valid_mem_at_lvl := i') (valid_mem_at_rel := Ra);
-      [ exact Hk' | exact Ha | exact HRa | intros _; exact Hmt |].
+      [ exact Hk' | exact Ha | exact HRa | intros _; exact Hmt | | intros _; exact Hmty ].
     intros _ M' [= <-]; destruct (Hred _ eq_refl) as (m & r & Hm0 & Hr & Hmr).
     exact (mk_rel_mem_reduct _ _ _ _ _ m r Hm0 Hr Hmr).
   - (* an alias *)
@@ -647,18 +667,18 @@ Proof.
     apply eval_me_lit_iff in Hk.
     destruct (unit_walk Δ Γ (md_alias E) x r' A' om' RΓ lp kA HΔ HΔr HΔΓ Hpk Hev HAt HAk HM'
                 ltac:(intros R0 HR0 ρ0 Hρ0 k0 Hk0; inversion Hk0; subst; try (cbn in *; lia);
-                      destruct (HS' _ HR0 _ Hρ0) as [k1 a i' Ra Hk1 Ha HRa Hm1 Hred1];
+                      destruct (HS' _ HR0 _ Hρ0) as [k1 a i' Ra Hk1 Ha HRa Hm1 Hred1 Hmty1];
                       destruct (HAk _ HR0 _ _ Hρ0) as (a0 & Ea0 & Ka0);
                       pose proof (functional_eval_exp _ _ _ _ Ha Ea0) as Eaa; subst a0;
                       assert (Hra : evaluated_kind (domain_kind a)) by (rewrite Ka0; exact Hev);
-                      specialize (Hm1 Hra); specialize (Hred1 Hra);
+                      specialize (Hm1 Hra); specialize (Hred1 Hra); specialize (Hmty1 Hra);
                       match goal with Hk2 : ⟦ E ⟧ᵐ _ ⍮ _ ⍮ ρ0 ↘ k0 |- _ => pose proof (functional_eval_modexp _ _ _ _ Hk1 Hk2) as -> end;
                       exists a, i', Ra; repeat split; try assumption;
                       intros M0 HM0; destruct (Hred1 _ HM0) as [m r Hm2 Hr2 Hmr2]; exists m, r; repeat split; assumption)
                 HRΓ _ Hρ _ Hk Hkk)
-      as (a & i' & Ra & Ha & HRa & Hmt & Hred).
+      as (a & i' & Ra & Ha & HRa & Hmt & Hmty & Hred).
     apply mk_valid_mem_at with (valid_mem_at_mod := k) (valid_mem_at_typ := a) (valid_mem_at_lvl := i') (valid_mem_at_rel := Ra);
-      [ exact Hk' | exact Ha | exact HRa | intros _; exact Hmt |].
+      [ exact Hk' | exact Ha | exact HRa | intros _; exact Hmt | | intros _; exact Hmty ].
     intros _ M Hom; destruct om' as [M' |]; cbn in Hom; [ injection Hom as <- | discriminate ].
     destruct (Hred _ eq_refl) as (m & r & Hm0 & Hr & Hmr).
     exact (mk_rel_mem_reduct _ _ _ _ _ m r Hm0 Hr Hmr).

@@ -253,6 +253,44 @@ Record rel_mem_val (h k : dmod) (x : String.string) (R : relation domain) : Prop
 Definition dmod_has_mem (k : dmod) (x : String.string) (R : relation domain) : Prop :=
   forall h, per_dmod h k -> rel_mem_val h k x R.
 
+(** The type value of the term member [x] of a saturated body value: the
+    entry's type in the environment the body before it makes, as
+    [eval_sel_body] reads the member. *)
+Inductive dmod_mem_type : dmod -> String.string -> domain -> Prop :=
+(** A definition, or a definition with a module part, of a saturated body *)
+| dmod_mem_type_body : forall sm Φ ρ x Φ' E A M ρ' a,
+    gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
+    entry_tm E = Some (A, M) ->
+    ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' ->
+    ⟦ A ⟧ ρ' ↘ a ->
+    dmod_mem_type (dm_local nil (md_body sm Φ) ρ) x a.
+
+(** The member types of every value related to [k], each related to the
+    type value [a]: the type part of a member of [k] at [a]. *)
+Definition dmod_mem_type_rel (k : dmod) (x : String.string) (a : domain) : Prop :=
+  forall h b, per_dmod h k -> dmod_mem_type h x b -> exists j, Dom b ≈ a ∈ per_univ j.
+
+(** The member types are those of the values related to a related one. *)
+Lemma dmod_mem_type_rel_resp : forall k k' x a, per_dmod k' k -> dmod_mem_type_rel k x a -> dmod_mem_type_rel k' x a.
+Proof. intros * Hk Hr h b Hh Hb; exact (Hr _ _ (per_dmod_trans _ _ _ Hh Hk) Hb). Qed.
+
+(** A value related to one with a member type is a saturated body. *)
+Lemma per_dmod_mem_type_body : forall h k x b, per_dmod h k -> dmod_mem_type h x b ->
+    exists sm Φ ρ, k = dm_local nil (md_body sm Φ) ρ.
+Proof.
+  intros * Hh Hb; inversion Hb; subst; inversion Hh; subst; eauto.
+  match goal with Hn : next_param (dm_local nil (md_body _ _) _) _ |- _ => inversion Hn; subst end.
+  match goal with H : _ ++ _ :: nil = nil |- _ => destruct Δ; discriminate end.
+Qed.
+
+(** A value that is no saturated body has no member types to relate. *)
+Lemma dmod_mem_type_rel_not_body : forall k x a, (forall sm Φ ρ, k <> dm_local nil (md_body sm Φ) ρ) ->
+    dmod_mem_type_rel k x a.
+Proof.
+  intros * Hn h b Hh Hb; exfalso.
+  destruct (per_dmod_mem_type_body _ _ _ _ Hh Hb) as (sm & Φ & ρ & ->); exact (Hn _ _ _ eq_refl).
+Qed.
+
 (** The δ-reduct [M] of the member [x] of [k], at [ρ]: its value is related
     at [RA] to the member's. *)
 #[warnings="-cannot-define-projection"]
@@ -291,7 +329,11 @@ Record valid_mem_at (K : modexp) (x : String.string) (A : typ) (om : option exp)
     (** At a type of an evaluated kind, the reduct, if any, related to the
         member *)
   ; valid_mem_at_red : evaluated_kind (domain_kind valid_mem_at_typ) ->
-      forall M, om = Some M -> rel_mem_reduct M ρ valid_mem_at_mod x valid_mem_at_rel }.
+      forall M, om = Some M -> rel_mem_reduct M ρ valid_mem_at_mod x valid_mem_at_rel
+    (** At a type of an evaluated kind, the type of the member of every
+        related saturated body, related to [A]'s value *)
+  ; valid_mem_at_mem_type : evaluated_kind (domain_kind valid_mem_at_typ) ->
+      dmod_mem_type_rel valid_mem_at_mod x valid_mem_at_typ }.
 
 (** The member [x] of [K] is valid at [A], with δ-reduct [om], in [Γ]. *)
 Record valid_mem (Γ : ctx) (K : modexp) (x : String.string) (A : typ) (om : option exp) : Prop := mk_valid_mem

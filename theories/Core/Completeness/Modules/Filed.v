@@ -1130,7 +1130,8 @@ Proof.
     intros RΓ HR ρ Hρ.
     destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & _).
     apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := k) (valid_mem_at_rel := RX); try assumption;
-      [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | intros _; exact Hmt | intros _ ? ?; discriminate ]. }
+      [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | intros _; exact Hmt | intros _ ? ?; discriminate
+      | intros _; apply dmod_mem_type_rel_not_body; discriminate ]. }
   destruct HredR1 as [HredR1 | (M1 & HredR1 & HM1 & HevM1)].
   2:{ (* a reduct: a term over the outer parameters, instantiated *)
     rewrite (mdesc_reduct_named_some _ _ _ _ _ HredR1).
@@ -1140,7 +1141,8 @@ Proof.
     + intros RΓ HR ρ Hρ.
       destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & _ & Hgs2 & Hred).
       apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := k) (valid_mem_at_rel := RX);
-        [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | intros _; exact Hmt |].
+        [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | intros _; exact Hmt |
+        | intros _; apply dmod_mem_type_rel_not_body; discriminate ].
       intros _ M HM; injection HM as <-.
       destruct (closed_inst_exp _ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss HX (ex_intro _ r0 (conj Hev HXr)) HM1 HR _ Hρ)
         as (ns' & m & n & a2 & i2 & R2 & Hns' & Hm' & Hn & Ha2 & HR2 & Hmn).
@@ -1179,7 +1181,8 @@ Proof.
     + intros RΓ HR ρ Hρ.
       destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & Hkk & _).
       apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := k) (valid_mem_at_rel := RX);
-        [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | intros _; exact Hmt |].
+        [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | intros _; exact Hmt |
+        | intros _; apply dmod_mem_type_rel_not_body; discriminate ].
       intros _ M HM; injection HM as <-.
       destruct (Hmt _ Hkk) as [r r' Hr Hr' Hrr].
       pose proof (functional_eval_sel _ _ _ _ Hr Hr') as <-.

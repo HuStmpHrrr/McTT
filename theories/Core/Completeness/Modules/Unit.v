@@ -69,12 +69,13 @@ Lemma valid_mem_transport : forall Γ H K x A om, Γ ⊨ᵐ H ≈ K -> valid_mem
 Proof.
   intros * HHK [HA HM HS]; constructor; [ exact HA | exact HM |].
   intros R HR ρ Hρ.
-  destruct (HS _ HR _ Hρ) as [k a i RA Hk Ha HRA Hm Hred].
+  destruct (HS _ HR _ Hρ) as [k a i RA Hk Ha HRA Hm Hred Hmty].
   destruct (rel_modexp_at _ _ _ _ _ HHK HR _ _ Hρ) as (h & k' & Hh & Hk' & Hhk).
   pose proof (functional_eval_modexp _ _ _ _ Hk' Hk) as ->.
   assert (HPA : PER RA) by (eapply per_elem_PER; exact HRA).
   apply mk_valid_mem_at with (valid_mem_at_mod := h) (valid_mem_at_typ := a) (valid_mem_at_lvl := i) (valid_mem_at_rel := RA); try assumption;
-    [ intros Hrel; eapply dmod_has_mem_resp; [ exact HPA | exact Hhk | exact (Hm Hrel) ] |].
+    [ intros Hrel; eapply dmod_has_mem_resp; [ exact HPA | exact Hhk | exact (Hm Hrel) ] |
+    | intros Hrel; exact (dmod_mem_type_rel_resp _ _ _ _ Hhk (Hmty Hrel)) ].
   intros Hrel M HM0; destruct (Hred Hrel _ HM0) as [m r Hm0 Hr Hmr].
   destruct (Hm Hrel _ Hhk) as [r1 r2 Hr1 Hr2 Hrr].
   pose proof (functional_eval_sel _ _ _ _ Hr2 Hr) as ->.
