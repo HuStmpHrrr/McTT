@@ -335,6 +335,37 @@ Fixpoint body_sorts_typed (Φ : gmod) (Γ : ctx) : Prop :=
   | gm_open _ _ _ _ => True
   end.
 
+(** [σ,,M] into an assumption entry, the head stored at the closure of the
+    type, as a module application stores its argument
+    ([eval_appm_local]). *)
+Lemma cons_glu_sub_pred_closure : forall {Γ Sb Δ σ ρ κ A a} {i : nat} {P El M c},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Δ ⊢ˢ σ ® ρ ∈ Sb ->
+    Γ ⊢ A : abs_kind_sort κ Typeω@i ->
+    ⟦ A ⟧ ρ ↘ a ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    Δ ⊢ M : A[σ] ® c ∈ El ->
+    Δ ⊢ˢ σ,,M ® ρ ↦ c ⦂ entry_type_closure A ρ ∈ cons_glu_sub_pred i Γ κ A Sb.
+Proof.
+  intros * HSb Hσg HA Ha Hglu Hc.
+  assert (Δ ⊢ˢ σ : Γ) by (eapply glu_ctx_env_sub_escape; eassumption).
+  assert (Δ ⊢ M : A[σ]) by (eapply glu_univ_elem_trm_escape; eassumption).
+  assert (⊢ Γ ▹{κ} A) by (econstructor; [ eassumption | apply sort_kind_abs_kind_sort ]).
+  assert (Δ ⊢ˢ σ,,M : Γ ▹{κ} A).
+  { apply wf_sub_extend_gen; [ assumption | assumption | | |].
+    - intros B Hlk; inversion Hlk; subst; rewrite exp_sub_shift_extend; assumption.
+    - intros B L Hlk; inversion Hlk.
+    - intros U Hlk; inversion Hlk. }
+  destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
+  pose proof (glu_univ_elem_per_elem _ _ _ _ Hglu _ _ _ _ _ Hc HR) as Hcc.
+  econstructor; [ eassumption | exact Ha | exact Hglu | | | | ].
+  - rewrite exp_sub_shift_extend; exact Hc.
+  - eexists; split; [ reflexivity |].
+    refine (mk_glu_stored_type _ _ _ _ _ i a P El _ Hglu _); [ econstructor; exact Ha | rewrite exp_sub_shift_extend; exact Hc ].
+  - split; [ exact (proj1 (entry_readable_of_elem_closure Ha Ha HR Hcc)) | cbn; lia ].
+  - first [ exact Hσg | cbn; exact Hσg | eapply glu_ctx_env_sub_resp_sub_eq; [ eassumption | exact Hσg | mauto 3 ] ].
+Qed.
+
 (** The environment of a body that can be filled in, over a glued
     environment of its context, is glued along the body's context at the
     substitution filling the body in after the context's: entry by entry,
