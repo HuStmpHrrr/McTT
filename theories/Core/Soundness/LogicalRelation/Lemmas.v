@@ -1678,6 +1678,23 @@ Proof.
   eapply wf_sub_eq_compose_left; [ exact Heq | eapply kripke_escape; exact Hφ ].
 Qed.
 
+(** A factorization of [σ0'] weakened is one of an equal [σ0]'s. *)
+Lemma glu_sub_through_resp_sub_eq : forall {Δ σ0 σ0' Γ0 Δ' φ Γ1 ζ σ1},
+    Δ ⊢ˢ σ0 ≈ σ0' : Γ0 -> glu_sub_through Δ σ0' Γ0 Δ' φ Γ1 ζ σ1 -> glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1.
+Proof.
+  intros * Heq [Hφ Hζ Hσ1 E]; constructor; [ exact Hφ | exact Hζ | exact Hσ1 |].
+  eapply wf_sub_eq_trans; [ eapply wf_sub_eq_sb_wk; [ exact Heq | exact Hφ ] | exact E ].
+Qed.
+
+(** A factorization of [σ0] weakened by [φ], then by [ψ], is one of
+    [σ0] weakened by the composite. *)
+Lemma glu_sub_through_wk : forall {Δ σ0 Γ0 Δ' φ Δ'' ψ Γ1 ζ σ1},
+    Δ' ⊢ᵏ φ : Δ -> glu_sub_through Δ' (sb_wk σ0 φ) Γ0 Δ'' ψ Γ1 ζ σ1 -> glu_sub_through Δ σ0 Γ0 Δ'' (φ ⊙ ψ) Γ1 ζ σ1.
+Proof.
+  intros * Hφ [Hψ Hζ Hσ1 E]; constructor; [ exact (kripke_compose _ _ _ _ _ Hψ Hφ) | exact Hζ | exact Hσ1 |].
+  apply wf_sub_eq_sym; eapply wf_sub_eq_respects_sb_eq; [ apply wf_sub_eq_sym; exact E | apply sb_wk_wk ].
+Qed.
+
 (** A glued module value moves along [σ0 ≈ σ0']: its members' types and
     terms are those of [Γ0] at [σ0], moved by the substitution lemmas;
     an argument glued at [σ0'] is glued at [σ0] at the same value. *)
@@ -1690,47 +1707,19 @@ Proof.
     intros * Hσ HH0 HH0p Hl Hlen Hargs _ σ0' Heq.
     econstructor; [ exact (wf_sub_eq_right _ _ _ _ _ _ Heq) | exact HH0 | | exact Hl | exact Hlen | exact Hargs ].
     eapply wf_me_trans; [ apply wf_me_sym; exact (sub_eq_preserves_modexp _ _ _ _ _ HH0 _ _ _ Heq) | exact HH0p ].
-  - (** A body: member by member, at the moved gluing *)
+  - (** A body: a factorization of [σ0'] weakened is one of [σ0]'s *)
     intros * Hσ HH0 Hmem Hsub IHsub σ0' Heq.
-    econstructor; [ exact (wf_sub_eq_right _ _ _ _ _ _ Heq) | exact HH0 | | ].
+    apply glu_dmod_body; [ exact (wf_sub_eq_right _ _ _ _ _ _ Heq) | exact HH0 | | ].
     + intros * Hp Ht Hk Hb.
       destruct (Hmem _ _ _ _ _ _ Hp Ht Hk Hb) as (a & m & [Ea Em Hg]).
       exists a, m; constructor; [ exact Ea | exact Em |].
-      intros R A' Hm HA' HMt.
-      destruct (Hg _ _ Hm HA' HMt) as (i & P & El & [Hu _ HMg]).
-      destruct (glu_typed_resp_sub_eq HMt Hu HMg Heq) as (i' & P' & El' & Hu' & HT' & HM').
-      exists i', P', El'; constructor; assumption.
+      intros * Hst; exact (Hg _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
     + intros * Hp Hu Hb Hc; exact (IHsub _ _ _ _ _ _ _ Hp Hu Hb Hc _ Heq).
-  - (** A value lacking a parameter: the parameter's type moved; an
-        argument glued at [σ0'] glued at [σ0] *)
-    intros * Hσ HH0 Hn Hpar Hex Happ IHapp σ0' Heq.
-    pose proof (wf_sub_eq_right _ _ _ _ _ _ Heq) as Hσ'.
-    econstructor; [ exact Hσ' | exact HH0 | exact Hn | | exact Hex | ].
-    + intros * Hm HT Hv HS HB.
-      destruct (Hpar _ _ _ _ _ Hm HT Hv HS HB) as (i & P & El & [Hu HP]).
-      destruct (glu_type_move_sub_eq HS HB Hu HP Heq) as (k & Pk & Elk & Hk & _ & HP' & _).
-      exists k, Pk, Elk; constructor; assumption.
-    + intros * Hm HT Hv HS HB * Hφ Hu HP' HN' Hhc.
-      assert (Heqw : Δ' ⊢ˢ sb_wk σ0' φ ≈ sb_wk σ0 φ : Γ0)
-        by (eapply wf_sub_eq_sb_wk; [ apply wf_sub_eq_sym; exact Heq | exact Hφ ]).
-      rewrite exp_wk_sub in HP', HN'.
-      destruct (glu_type_move_sub_eq HS HB Hu HP' Heqw) as (k & Pk & Elk & Hk & _ & HPk & Hfw & _).
-      assert (HNk : Δ' ⊢ N : B[sb_wk σ0 φ] ® c ∈ Elk) by exact (Hfw _ _ HN').
-      (** The two extended substitutions are equal *)
-      assert (HSk : exists κ (j : nat), Srt = abs_kind_sort κ Typeω@j)
-        by (destruct HS as [j | |]; [ exists ak_relevant, j | exists ak_propositional, 0 | exists ak_level, 0 ]; reflexivity).
-      destruct HSk as (κ & j & ->).
-      assert (HBw : Δ' ⊢ B[sb_wk σ0 φ] : abs_kind_sort κ Typeω@j)
-        by (replace (abs_kind_sort κ Typeω@j) with ((abs_kind_sort κ Typeω@j)[sb_wk σ0 φ]) by (rewrite abs_kind_sort_sub; reflexivity);
-            eapply sub_preserves_exp; [ exact HB | exact (wf_sub_eq_right _ _ _ _ _ _ Heqw) ]).
-      destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hk HPk HBw) as [Hka _].
-      pose proof (glu_univ_elem_trm_escape _ _ _ _ Hk _ _ _ _ HNk) as HNt.
-      pose proof (glu_univ_elem_trm_escape _ _ _ _ Hu _ _ _ _ HN') as HNt'.
-      assert (Hext : Δ' ⊢ˢ sb_wk σ0 φ ,, N ≈ sb_wk σ0' φ ,, N : Γ0 ▹{domain_kind a} B).
-      { rewrite Hka; eapply wf_sub_eq_extend;
-          [ apply wf_sub_eq_sym; exact Heqw | exact HB | apply sort_kind_abs_kind_sort | exact HNt | exact HNt' | apply wf_exp_eq_refl; exact HNt ]. }
-      rewrite <- exp_wk_sub in HPk, HNk.
-      exact (IHapp _ _ _ _ _ Hm HT Hv HS HB _ _ _ _ _ k Pk Elk Hφ Hk HPk HNk Hhc _ Hext).
+  - (** A value lacking a parameter: likewise *)
+    intros * Hσ HH0 Hn Hpar Hex Happ _ σ0' Heq.
+    eapply glu_dmod_fun; [ exact (wf_sub_eq_right _ _ _ _ _ _ Heq) | exact HH0 | exact Hn | | exact Hex | ].
+    + intros * Hst; exact (Hpar _ _ _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
+    + intros * Hst; exact (Happ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
 Qed.
 
 (** A substitution weakened along a Kripke weakening is typed. *)
@@ -1781,32 +1770,21 @@ Proof.
     rewrite modexp_sub_sub, me_apps_sub, qname_mod_sub in H.
     rewrite (modexp_sub_sb_eq H0 (σ0 ⨟ ι φ) (sb_wk σ0 φ)) in H by (symmetry; apply sb_wk_compose).
     erewrite List.map_ext in H; [ exact H | intros M; apply exp_sub_of_wk ].
-  - (** A body *)
+  - (** A body: a factorization of [σ0] weakened twice is one of [σ0]
+        weakened by the composite *)
     intros * Hσ HH0 Hmem Hsub IHsub Δ' φ Hφ.
     apply glu_dmod_body; [ exact (wf_sub_sb_wk Hσ Hφ) | exact HH0 | | ].
     + intros * Hp Ht Hk Hb.
       destruct (Hmem _ _ _ _ _ _ Hp Ht Hk Hb) as (a & m & [Ea Em Hg]).
       exists a, m; constructor; [ exact Ea | exact Em |].
-      intros R A' Hm HA' HMt.
-      destruct (Hg _ _ Hm HA' HMt) as (i & P & El & [Hu HT HM]).
-      exists i, P, El; constructor; [ exact Hu | rewrite <- exp_wk_sub; eapply glu_univ_elem_typ_monotone; eassumption |].
-      rewrite <- !exp_wk_sub; eapply glu_univ_elem_exp_monotone; eassumption.
+      intros * Hst; exact (Hg _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
     + intros * Hp Hu Hb Hc; exact (IHsub _ _ _ _ _ _ _ Hp Hu Hb Hc _ _ Hφ).
-  - (** A value lacking a parameter *)
+  - (** A value lacking a parameter: likewise *)
     intros * Hσ HH0 Hn Hpar Hex Happ _ Δ' φ Hφ.
     eapply glu_dmod_fun; [ exact (wf_sub_sb_wk Hσ Hφ) | exact HH0 | exact Hn | | | ].
-    + intros * Hm HT Hv HS HB.
-      destruct (Hpar _ _ _ _ _ Hm HT Hv HS HB) as (i & P & El & [Hu HP]).
-      exists i, P, El; constructor; [ exact Hu | rewrite <- exp_wk_sub; eapply glu_univ_elem_typ_monotone; eassumption ].
+    + intros * Hst; exact (Hpar _ _ _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
     + intros * Hψ Hu HN; exact (Hex _ _ _ _ _ _ _ _ (kripke_compose _ _ _ _ _ Hψ Hφ) Hu HN).
-    + intros * Hm HT Hv HS HB * Hψ Hu HP HN Hhc.
-      assert (E : B[sb_wk σ0 φ][φ0]ʷ = B[σ0][φ ⊙ φ0]ʷ)
-        by (rewrite !exp_wk_sub; apply exp_sub_sb_eq; apply sb_wk_wk).
-      rewrite E in HP, HN.
-      pose proof (Happ _ _ _ _ _ Hm HT Hv HS HB _ _ _ _ _ _ _ _ (kripke_compose _ _ _ _ _ Hψ Hφ) Hu HP HN Hhc) as Hg.
-      eapply (proj1 glu_dmod_resp_sub_eq); [ exact Hg |].
-      apply wf_sub_eq_of_sb_eq; [ exact (glu_dmod_sub_typed Hg) |].
-      intros [| x]; cbn; [ reflexivity | symmetry; apply sb_wk_wk ].
+    + intros * Hst; exact (Happ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
   - (** No more arguments *)
     intros; constructor.
   - (** An argument, then the rest *)

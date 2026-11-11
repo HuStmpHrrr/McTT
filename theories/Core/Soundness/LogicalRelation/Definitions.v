@@ -1438,24 +1438,43 @@ Record glu_elem_at (Δ : ctx) (T M : exp) (a m : domain) (i : nat) (P : glu_typ_
     (** The term is glued at it to the value *)
   ; glu_elem_at_term : Δ ⊢ M : T ® m ∈ El }.
 
+(** [glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1]: [σ0] weakened by the Kripke
+    weakening [φ] factors, up to equality, through the substitution [ζ]
+    from [Γ1] into [Γ0], as [ζ ⨟ σ1].  The members of a glued module
+    value are glued at every such factorization, so that they are read
+    at whatever context the module expression is substituted into: a
+    slot's unit at the slot's tail is read at the whole context through
+    the weakening past the slot. *)
+Record glu_sub_through (Δ : ctx) (σ0 : sub) (Γ0 : ctx) (Δ' : ctx) (φ : wk) (Γ1 : ctx) (ζ σ1 : sub) : Prop :=
+  mk_glu_sub_through
+  { (** The weakening is a Kripke weakening *)
+    glu_sub_through_wk : Δ' ⊢ᵏ φ : Δ
+    (** The substitution through which it factors is typed *)
+  ; glu_sub_through_mid : Γ1 ⊢ˢ ζ : Γ0
+    (** So is the rest *)
+  ; glu_sub_through_rest : Δ' ⊢ˢ σ1 : Γ1
+    (** It factors so *)
+  ; glu_sub_through_eq : Δ' ⊢ˢ sb_wk σ0 φ ≈ ζ ⨟ σ1 : Γ0 }.
+
 (** The term member [x] of a saturated body, [A ≔ M], glued as the
     member of [H0[σ0]]: in the environment [ρ'] the body's entries before
     it make, its type's value is [a] and the member's value [m], its
-    body's value, and [(H0.x)[σ0]] is glued to [m] at [a] at every type
-    [A'] a lookup of [H0.x] reads in [Γ0], at [σ0], at some index: the
-    index depends on the sort [A'] is typed at, so that the gluing moves
-    along [σ0 ≈ σ0']. *)
+    body's value; at every factorization of [σ0] weakened, through [ζ] as
+    [ζ ⨟ σ1], and at every type [A'] a lookup of [H0[ζ].x] reads in the
+    middle context, [(H0[ζ].x)[σ1]] is glued to [m] at [a], at some
+    index. *)
 Record glu_body_member (Δ : ctx) (σ0 : sub) (Γ0 : ctx) (H0 : modexp) (x : String.string) (A M : exp) (ρ' : env)
     (a m : domain) : Prop := mk_glu_body_member
   { (** The type evaluates to [a] there *)
     glu_body_member_eval_type : ⟦ A ⟧ ρ' ↘ a
     (** The body evaluates to the member's value there ([eval_sel_body]) *)
   ; glu_body_member_eval : ⟦ M ⟧ ρ' ↘ m
-    (** At every type a lookup of [H0.x] reads in [Γ0], [(H0.x)[σ0]] is
-        glued to the member's value *)
-  ; glu_body_member_glu : forall R A', mdenote gc_deps gc_stack Γ0 (me_mem H0 x) R -> mdesc_type R = Some A' ->
-      Γ0 ⊢ a_mem H0 x : A' ->
-      exists (i : nat) P El, glu_elem_at Δ A'[σ0] (a_mem H0 x)[σ0] a m i P El }.
+    (** At every factorization and every type a lookup of the member
+        reads, the member is glued to the member's value *)
+  ; glu_body_member_glu : forall Δ' φ Γ1 ζ σ1 R A', glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+      mdenote gc_deps gc_stack Γ1 (me_mem H0[ζ]ᵐ x) R -> mdesc_type R = Some A' ->
+      Γ1 ⊢ a_mem H0[ζ]ᵐ x : A' ->
+      exists (i : nat) P El, glu_elem_at Δ' A'[σ1] (a_mem H0[ζ]ᵐ x)[σ1] a m i P El }.
 
 (** The base of the instances of a closed telescope: a closed term at
     every variable, never read by a closed telescope, and unchanged by
@@ -1498,28 +1517,30 @@ Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
         ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h' ->
         glu_dmod Δ σ0 Γ0 (me_mem H0 y) h') ->
     glu_dmod Δ σ0 Γ0 H0 (dm_local nil (md_body sm Φ) ρ)
-(** A value lacking a parameter, whose next parameter's type is [a]: the
-    type of the parameter [H0] lacks is glued at [σ0] at [a], at some
+(** A value lacking a parameter, whose next parameter's type is [a]: at
+    every factorization of [σ0] weakened through [ζ] ([glu_sub_through]),
+    the type of the parameter [H0[ζ]] lacks is glued at [a], at some
     index; the value has a value at every argument glued at [a]; and that
-    value, at every Kripke weakening and every gluing of [a] the
-    parameter's type is glued at, is glued as [H0] applied to the
-    argument: as [H0[↑] #0] over [Γ0] extended by the parameter, at [σ0]
-    weakened and extended by the argument.  The gluings of [a] are
-    quantified over, so that the gluing moves along [σ0 ≈ σ0']. *)
+    value is glued as [H0[ζ]] applied to the argument, at every gluing of
+    [a] the parameter's type is glued at: as [H0[ζ][↑] #0] over the
+    middle context extended by the parameter, at [σ1] extended by the
+    argument. *)
 | glu_dmod_fun : forall Δ σ0 Γ0 H0 h a,
     Δ ⊢ˢ σ0 : Γ0 ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
     next_param h a ->
-    (forall RH T B T1 Srt, mdenote gc_deps gc_stack Γ0 H0 RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
-       type_sort Srt -> Γ0 ⊢ B : Srt -> exists (i : nat) P El, glu_type_at Δ B[σ0] a i P El) ->
+    (forall Δ' φ Γ1 ζ σ1 RH T B T1 Srt, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
+       type_sort Srt -> Γ1 ⊢ B : Srt -> exists (i : nat) P El, glu_type_at Δ' B[σ1] a i P El) ->
     (forall Δ' φ N B c (i : nat) P El, Δ' ⊢ᵏ φ : Δ -> DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ' ⊢ N : B ® c ∈ El ->
        exists hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc) ->
-    (forall RH T B T1 Srt, mdenote gc_deps gc_stack Γ0 H0 RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
-       type_sort Srt -> Γ0 ⊢ B : Srt ->
-       forall Δ' φ N c hc (i : nat) P El, Δ' ⊢ᵏ φ : Δ -> DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-         Δ' ⊢ B[σ0][φ]ʷ ® P -> Δ' ⊢ N : B[σ0][φ]ʷ ® c ∈ El ->
+    (forall Δ' φ Γ1 ζ σ1 RH T B T1 Srt, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
+       type_sort Srt -> Γ1 ⊢ B : Srt ->
+       forall N c hc (i : nat) P El, DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+         Δ' ⊢ B[σ1] ® P -> Δ' ⊢ N : B[σ1] ® c ∈ El ->
          $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc ->
-         glu_dmod Δ' (sb_wk σ0 φ ,, N) (Γ0 ▹{domain_kind a} B) (me_app H0[Wk]ᵐ #0) hc) ->
+         glu_dmod Δ' (σ1 ,, N) (Γ1 ▹{domain_kind a} B) (me_app H0[ζ]ᵐ[Wk]ᵐ #0) hc) ->
     glu_dmod Δ σ0 Γ0 H0 h
 (** [glu_tele_args Δ ts ρ Ms Ns args]: the arguments [Ns] (values
     [args]) of a global module, outermost first, against the rest [ts] of
@@ -1729,6 +1750,13 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
 Definition glu_rel_ctx Γ : Prop := exists Sb, EG Γ ∈ glu_ctx_env ↘ Sb.
 #[global] Arguments glu_rel_ctx Γ/.
 
+(** A module expression glued in a context: at every glued environment of
+    the context, its value is glued as it. *)
+Definition glu_modexp_at (Γ : ctx) (H : modexp) : Prop :=
+  forall Sb, EG Γ ∈ glu_ctx_env ↘ Sb ->
+    forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ Sb ->
+      exists h, ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h /\ glu_dmod Δ σ Γ H h.
+
 (** A term glued at its type: the gluing of the context, a universe level
     for the type, and the gluing of the term under every substitution glued
     in the context. *)
@@ -1850,6 +1878,15 @@ Record glu_rel_exp_under_sub (Δ : ctx) (M A : exp) : Prop := mk_glu_rel_exp_und
     glu_rel_exp_under_sub_ctx : glu_rel_ctx_types Δ
     (** Each instance is glued *)
   ; glu_rel_exp_under_sub_inst : forall Γ τ, glu_rel_sub_inst Γ τ Δ -> Γ ⊩ M[τ] : A[τ] }.
+
+(** A module expression all of whose instances are glued, in a context
+    as the fundamental theorem glues it: the fundamental theorem's
+    judgment of module expressions. *)
+Record glu_rel_modexp_under_sub (Δ : ctx) (H : modexp) : Prop := mk_glu_rel_modexp_under_sub
+  { (** The context is glued with its variables' types *)
+    glu_rel_modexp_under_sub_ctx : glu_rel_ctx_types Δ
+    (** Each instance is glued *)
+  ; glu_rel_modexp_under_sub_inst : forall Γ τ, glu_rel_sub_inst Γ τ Δ -> glu_modexp_at Γ H[τ]ᵐ }.
 
 (** A definition entry [A ≔ M] glued at the instances of the context [Δ]
     it extends. *)
@@ -2237,6 +2274,11 @@ Definition glu_is_univ Θ Ξ Γ U : Prop :=
 (** A unit glues at each of its instances, at every sound embedding. *)
 Definition glu_unit Θ Ξ Γ U : Prop :=
   forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_unit_under_sub (gc_mk Θ2 Ξ2) Γ U.
+
+(** A module expression glues at each of its instances, at every sound
+    embedding. *)
+Definition glu_modexp Θ Ξ Γ H : Prop :=
+  forall Θ2 Ξ2, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> @glu_rel_modexp_under_sub (gc_mk Θ2 Ξ2) Γ H.
 
 (** An extension glues at each instance of its context, at every sound
     embedding. *)
