@@ -278,6 +278,69 @@ Proof.
     do 2 f_equal; apply mdesc_sub_sb_eq; rewrite sb_compose_id_left; reflexivity.
 Qed.
 
+(** The entry [y] of an open module, read, then given the next parameter,
+    is the entry read in the module given it: the parameter is
+    substituted into the body ([mdenote_sub_all]), and the entries before
+    the entry filled in alike ([gm_fill_sub]). *)
+Lemma sel_at_open : forall Θc Ξc, gctx_closed Θc Ξc ->
+    forall Γ Δ Φw Φx N R0m' y Γy E rd R Rs Rs',
+    ctx_scoped 0 Γ -> mdesc_scoped (List.length Γ) (mdesc_open Δ Φw Φx) -> all_assumptions Δ ->
+    mdesc_at (mdesc_open Δ Φw Φx) N = Some R0m' ->
+    mdesc_entry (mdesc_open Δ Φw Φx) y = Some (Γy, E, rd) ->
+    edenote Θc Ξc (Γy ++ Γ) None E R -> mdesc_read rd R = Some Rs ->
+    mdesc_at Rs N = Some Rs' ->
+    exists Γy' E' rd' R', mdesc_entry R0m' y = Some (Γy', E', rd') /\
+      edenote Θc Ξc (Γy' ++ Γ) None E' R' /\ mdesc_read rd' R' = Some Rs'.
+Proof.
+  intros Θc Ξc Hc * HΓ Hs HΔa Hat0 He Hed Hrd Hat.
+  pose proof (mdesc_entry_scoped _ _ _ _ _ _ Hs He) as (HsΓy & HsE & _).
+  destruct Δ as [| e Δ0 _] using rev_ind; [ cbn in Hat0; discriminate |].
+  unfold all_assumptions in HΔa; apply Forall_app in HΔa as [HΔ0 He1]; apply Forall_cons_iff in He1 as [(κ & B & ->) _].
+  cbn [mdesc_at] in Hat0; rewrite tele_split_last in Hat0; injection Hat0 as <-.
+  set (σ := sb_qn (List.length Δ0) (Id,,N)).
+  rewrite (gmod_sub_sb_eq Φw _ σ), (gmod_sub_sb_eq Φx _ σ) by (rewrite sb_compose_id_left; reflexivity).
+  pose proof He as He0; cbn in He0.
+  destruct (gm_prefix_upto Φx y) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
+  destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & Heq & _); injection Heq as <- -> <-.
+  (** The read fills the entries before it *)
+  cbn [mdesc_read] in Hrd.
+  assert (HE : exists σf, gm_fill Φ' = Some σf /\ rd = reader_open (Δ0 ++ ce_ass κ B :: nil) Φ' /\
+                 Γy = body_ctx Φ' ++ Δ0 ++ ce_ass κ B :: nil /\ E = E0 /\
+                 mdesc_entry (mdesc_open (tele_sub Δ0 (Id,,N)) (gmod_sub Φw σ) (gmod_sub Φx σ)) y =
+                   Some (body_ctx (gmod_sub Φ' σ) ++ tele_sub Δ0 (Id,,N), gentry_sub E0 (sb_qn (gm_binders Φ') σ),
+                         reader_open (tele_sub Δ0 (Id,,N)) (gmod_sub Φ' σ))).
+  { cbn [mdesc_entry]; rewrite gm_prefix_upto_sub, Hp; cbn [option_map gmod_sub].
+    destruct E0 as [[|] pv r A [M |] | pv U | | pv A M U |]; try discriminate; injection He0 as <- <- <-;
+      cbn [mdesc_read] in Hrd; destruct (gm_fill Φ') as [σf |]; cbn [option_map] in Hrd; try discriminate;
+      exists σf; repeat split. }
+  destruct HE as (σf & Hf & -> & -> & -> & HE').
+  cbn [mdesc_read] in Hrd; rewrite Hf in Hrd; cbn [option_map] in Hrd; injection Hrd as <-.
+  rewrite mdesc_at_up in Hat; injection Hat as <-.
+  pose proof (gm_fill_nopens _ _ Hf) as Hno.
+  set (s := sb_qn (gm_binders Φ') σ).
+  exists (body_ctx (gmod_sub Φ' σ) ++ tele_sub Δ0 (Id,,N)), (gentry_sub E0 s), (reader_open (tele_sub Δ0 (Id,,N)) (gmod_sub Φ' σ)),
+    (mdesc_sub R s).
+  split; [ exact HE' | split ].
+  - (** The entry denotes, substituted *)
+    assert (Hsc : sub_mod_compat s ((body_ctx (gmod_sub Φ' σ) ++ tele_sub Δ0 (Id,,N)) ++ Γ)
+                    ((body_ctx Φ' ++ Δ0 ++ ce_ass κ B :: nil) ++ Γ)).
+    { pose proof (sub_mod_compat_ext (body_ctx Φ' ++ Δ0) (Id,,N) Γ (ce_ass κ B :: Γ) (sub_mod_compat_single Γ κ B N)) as H.
+      rewrite tele_sub_app, length_app, sb_qn_plus in H.
+      rewrite body_ctx_sub by exact Hno.
+      unfold s, σ; rewrite <- (length_body_ctx _ Hno).
+      replace ((body_ctx Φ' ++ Δ0 ++ ce_ass κ B :: nil) ++ Γ) with ((body_ctx Φ' ++ Δ0) ++ ce_ass κ B :: Γ)
+        by (rewrite <- !app_assoc; reflexivity).
+      exact H. }
+    eapply (proj1 (proj2 (proj2 (mdenote_sub_all _ _ Hc)))); [ exact Hed | | rewrite <- length_app in HsE; exact HsE | exact Hsc ].
+    apply slots_ok_ctx, ctx_scoped_app_iff; split; [ exact HsΓy | exact HΓ ].
+  - (** The entries before it filled in alike *)
+    destruct (gm_fill_sub Φ' (List.length Δ0) (Id,,N) σf Hf) as (τ' & Hf' & Hτ).
+    cbn [mdesc_read]; fold σ in Hf'; rewrite Hf'; cbn [option_map]; do 2 f_equal.
+    fold σ.
+    rewrite (mdesc_sub_sub_ext R s τ' (σf ⨟ σ)), (mdesc_sub_sub_ext R σf σ (σf ⨟ σ)); [ reflexivity | reflexivity |].
+    unfold s, σ; rewrite <- sb_qn_plus; exact Hτ.
+Qed.
+
 Section Fixed_GCtx.
   Context {GC : GCtx}.
   Import Fixed_Notations.
