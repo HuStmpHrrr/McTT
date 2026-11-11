@@ -298,6 +298,29 @@ Section Fixed_GCtx.
     unfold tele_view; rewrite List.rev_app_distr; cbn; rewrite List.rev_involutive; reflexivity.
   Qed.
 
+  (** A module expression lacking a parameter, weakened past the parameter
+      and applied to it, is well formed. *)
+  Lemma wf_me_app_shift : forall Γ H R T B T1 Srt κ,
+      gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> mdenote gc_deps gc_stack Γ H R -> mdesc_mod_tele R = Some T ->
+      tele_view T = Some (B, T1) -> Γ ⊢ B : Srt -> evaluated_sort Srt -> sort_kind Srt κ ->
+      gc_deps ⍮ gc_stack ⍮ Γ ▹{κ} B ⊢ᵐ me_app H[Wk]ᵐ #0 ≈ me_app H[Wk]ᵐ #0.
+  Proof.
+    intros * HH Hm HT Hv HB HS Hsk.
+    assert (HΓB : ⊢ Γ ▹{κ} B) by (eapply wf_ctx_extend; eassumption).
+    assert (HWk : Γ ▹{κ} B ⊢ˢ Wk : Γ) by (eapply wf_sub_shift; exact HΓB).
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH HWk) as HHw.
+    pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HH Hm HWk) as Hmw.
+    pose proof (mdesc_mod_tele_sub _ _ Wk _ (wf_mdenote_scoped _ _ _ _ _ _ HH Hm) HT) as HTw.
+    pose proof (tele_view_sub T Wk) as Hvw; rewrite Hv in Hvw; cbn [option_map fst snd] in Hvw.
+    pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB HWk) as HBw.
+    assert (EBS : Srt[Wk] = Srt) by (destruct HS; reflexivity).
+    rewrite EBS in HBw.
+    assert (H0t : Γ ▹{κ} B ⊢ #0 : B[Wk])
+      by (rewrite exp_sub_of_shift; apply wf_vlookup; [ exact HΓB | constructor ]).
+    eapply wf_me_app; [ exact HHw | exact Hmw | exact HTw | exact Hvw | exact HBw | exact HS | exact H0t
+                      | apply wf_exp_eq_refl; exact H0t | exact Hmw | exact HTw | exact Hvw | exact HBw | exact HS | exact H0t ].
+  Qed.
+
   (** A factorization of a substitution extended by an argument gives one
       of the substitution through the weakening past the argument. *)
   Lemma glu_sub_through_extend : forall {Δ' σ1 Γ1 κ B N Δ'' φ' Γ2 ζ' σ2},
