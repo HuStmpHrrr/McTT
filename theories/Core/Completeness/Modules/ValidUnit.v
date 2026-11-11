@@ -845,7 +845,7 @@ Proof.
   destruct (frame_parent _ _ Hgm _ _ _ _ Ht) as (T1 & Φ1 & Hf1 & _).
   assert (Hgl0 : gc_loc Θm Ξm mq = Some (T1, Φ1)) by (unfold gc_loc; rewrite Hf1; reflexivity).
   assert (Hgl : gc_loc Θm Ξm (qname_in mq x) = Some TΦ) by (unfold gc_loc; rewrite Hf; reflexivity).
-  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ Hsub _ _ _ _ _].
+  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ Hsub _ _ _ _ _ _].
   rewrite (mod_qname_inv _ _ Hq0).
   apply (kind_eval_modexp _ _ _ _ _ (Hp ρ)), (Hsub x TΦ); [ exact Hgl | exact Hdm ].
 Qed.
@@ -880,7 +880,7 @@ Proof.
   destruct TΦ as [T Φ].
   assert (Hgl : gc_loc Θm Ξm (qname_in mq x) = Some (T, Φ)) by (unfold gc_loc; rewrite Hf; reflexivity).
   destruct (gc_loc_grow _ _ _ _ Hgw Hsb _ _ _ Hgl) as (Φ2 & Hgl2 & _).
-  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ _ _ _ _ _ _].
+  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ _ _ _ _ _ _ _].
   rewrite (mod_qname_inv _ _ Hq0).
   apply (kind_eval_modexp _ _ _ _ _ (Hp ρ)).
   eapply dmod_member_kind_global_here_dm; [ exact Hdm | exact Hgl2 ].
@@ -992,7 +992,7 @@ Proof.
     destruct (filed_denote _ _ Hgm _ _ _ Γ Ns Hgl) as (R1 & Hm1 & Hmod1).
     rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm _ Hm1), Hmod1 in Hmod; injection Hmod as <-.
     destruct (mdesc_entry_closed_inv _ _ _ _ _ _ _ _ _ He) as (Φ0 & E0 & Hp & ->).
-    destruct (Hgf _ _ _ Hgl) as [_ Hpe _ _ _ Hk _ _ _ _ _ _].
+    destruct (Hgf _ _ _ Hgl) as [_ Hpe _ _ _ Hk _ _ _ _ _ _ _].
     apply modexp_member_kind_apps, (kind_eval_modexp _ _ _ _ _ (Hpe ρ)); rewrite entry_member_kind_read; exact (Hk _ _ _ Hp).
   - (* a body *)
     intros Γ Δ Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hslots IHslots Hs Hsx HK Hopv Hops IHops.

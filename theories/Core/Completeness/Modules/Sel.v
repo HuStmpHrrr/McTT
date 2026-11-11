@@ -697,8 +697,8 @@ Lemma filed_body_sel : forall Γ p T Φ Ns y Tq Φq, gc_loc Θm Ξm p = Some (T,
     valid_unit Γ (me_apps (qname_mod (qname_in p y)) Ns).
 Proof.
   intros * Hgl Hglq HΓ Hs Hw.
-  destruct (Hgf _ _ _ Hgl) as [(Φd & Hm) _ HT HTa _ _ _ _ _ _ _ _].
-  destruct (Hgf _ _ _ Hglq) as [(Φdq & Hmq) _ HTq HTaq _ _ _ _ _ _ _ _].
+  destruct (Hgf _ _ _ Hgl) as [(Φd & Hm) _ HT HTa _ _ _ _ _ _ _ _ _].
+  destruct (Hgf _ _ _ Hglq) as [(Φdq & Hmq) _ HTq HTaq _ _ _ _ _ _ _ _ _].
   destruct (loc_child_tele _ _ Hgw _ _ _ _ _ _ Hm Hmq) as (Δ' & -> & _).
   destruct (gc_loc_sub _ _ _ Hglq) as (TΦ & Hglt).
   pose proof Hs as [T1 T2 HT12 Hlen HTa2 HTs2 HNs].
@@ -756,7 +756,7 @@ Lemma filed_alias_sel : forall Γ p T Φ Ns y Φ0 E Ua, gc_loc Θm Ξm p = Some 
     valid_sel Γ (me_apps (qname_mod p) Ns) y (me_apps (me_lit Ua) Ns) /\ valid_modexp Γ (me_apps (me_lit Ua) Ns).
 Proof.
   intros * Hgl Hp HUa HΓ Hs Hw.
-  destruct (Hgf _ _ _ Hgl) as [(Φd & Hm) _ HT HTa HTs _ _ _ _ _ Hals _].
+  destruct (Hgf _ _ _ Hgl) as [(Φd & Hm) _ HT HTa HTs _ _ _ _ _ Hals _ _].
   destruct (Hals _ _ _ _ Hp HUa) as (HmUa & HsUa).
   assert (HUa' : exists Ta Ea, Ua = gu_mk Ta (md_alias Ea))
     by (destruct E as [| pv [Ta [| Ea]] | | pv Ad Md [Ta [| Ea]] |]; cbn in HUa; try discriminate; injection HUa as <-; eauto).

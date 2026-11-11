@@ -803,7 +803,7 @@ Section Filed.
 Lemma eval_apps_filed : forall p T Φ Ns ρ ns, gc_loc Θm Ξm p = Some (T, Φ) ->
     ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns -> ⟦ me_apps (qname_mod p) Ns ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p ns.
 Proof.
-  intros * Hl Hns; destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _ _ _ _].
+  intros * Hl Hns; destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _ _ _ _ _].
   exact (eval_apps_global _ _ _ nil _ _ (Hp ρ) Hns).
 Qed.
 
@@ -811,7 +811,7 @@ Lemma filed_gval : forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) ->
     forall args args', List.length args <= List.length T -> per_tele_args (rev T) nil nil args args' ->
     per_dmod (dm_global p args) (dm_global p args').
 Proof.
-  intros * Hl * Hle Hg; destruct (Hgf _ _ _ Hl) as [(Φ' & Hm) _ HT HTa _ _ _ _ _ _ _ _].
+  intros * Hl * Hle Hg; destruct (Hgf _ _ _ Hl) as [(Φ' & Hm) _ HT HTa _ _ _ _ _ _ _ _ _].
   exact (gval_rel _ _ _ Hm HTa HT _ _ _ eq_refl Hle Hg).
 Qed.
 
@@ -825,7 +825,7 @@ Lemma filed_lacks : forall Γ p T Φ L κ A T2 Ns, gc_loc Θm Ξm p = Some (T, �
     modexp_next_param Γ (me_apps (qname_mod p) Ns) A[sb_of_list Id Ns].
 Proof.
   intros * Hl HΓ -> Hlen HNs HNr HNss R HR ρ Hρ.
-  destruct (Hgf _ _ _ Hl) as [(oD & Hm) Hp HT HTa HTs _ _ _ _ _ _ HTrel].
+  destruct (Hgf _ _ _ Hl) as [(oD & Hm) Hp HT HTa HTs _ _ _ _ _ _ HTrel _].
   pose proof (rel_ctx_wf_app_r _ _ HT) as HAT2.
   destruct (rel_ctx_wf_ass_inv HAT2) as (Srt & HS & HA).
   pose proof (rel_ctx_wf_tail HAT2) as HT2.
@@ -867,7 +867,7 @@ Proof.
   intros * Hl HΓ [T1 T2 -> Hlen HTa2 HTs2 HNs HNr] HNss.
   revert T1 T2 Hl Hlen HTa2 HTs2 HNs HNr HNss.
   induction Ns as [| N Ns IH] using rev_ind; intros * Hl Hlen HTa2 HTs2 HNs HNr HNss.
-  - destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _ _ _ _].
+  - destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _ _ _ _ _].
     destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
     pose proof (filed_gval _ _ _ Hl nil nil ltac:(cbn; lia) ltac:(constructor)) as Hd.
     cbn [me_apps]; refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -948,7 +948,7 @@ Qed.
       match type of Ha with
       | context [mdesc_ats ?Rx Ns] => destruct (mdesc_ats Rx Ns) as [Rm' |]; [ injection Ha as <- | discriminate ]
       end;
-      (split; [ left; do 2 eexists; split; [ reflexivity | cbn [entry_term];
+      (split; [ eapply stored_term_member_entry; [ eassumption | cbn [entry_term];
                                          try (match goal with HMk : ind_member _ _ = Some _ |- _ => rewrite HMk end);
                                          reflexivity ] | split; [ eassumption |] ]);
       [ .. | rewrite !mdesc_named_fix by reflexivity; split; [ reflexivity | split; reflexivity ] ]
@@ -977,11 +977,7 @@ Proof. intros * [] HA Hk; split; assumption. Qed.
 Lemma filed_mem_desc : forall Γ p T Φ Ns x R A, gc_loc Θm Ξm p = Some (T, Φ) ->
     mdenote Θm Ξm Γ (me_mem (me_apps (qname_mod p) Ns) x) R -> mdesc_type R = Some A ->
     exists R0 R1,
-      ((exists Φ0 E0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E0) /\ entry_term (Some (qname_in p x)) E0 = Some R0) \/
-       (exists pq k D Mk, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) /\ ind_member D k = Some Mk /\
-          R0 = mdesc_term ak_relevant (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))) \/
-       (exists Rr, gs_find_record Ξm (qname_in p x) = Some Rr /\
-          R0 = mdesc_term ak_relevant (ctx_pi (record_params Rr) (record_sort Rr)) (Some (a_record (qname_in p x))))) /\
+      stored_term_member Ξm Φ p x R0 /\
       mdesc_term_part_ats R0 Ns = Some R1 /\
       mdesc_kind R = mdesc_kind R1 /\
       mdesc_type R = mdesc_type (mdesc_named nil Ns (apps (a_mem (qname_mod p) x) Ns) R1) /\
@@ -995,13 +991,13 @@ Proof.
     destruct Ns as [| N Ns'] using List.rev_ind; [| rewrite me_apps_snoc in Hq; discriminate ].
     cbn [me_apps] in Hq; rewrite <- qname_mod_in, mod_qname_qname_mod in Hq; injection Hq as <-.
     eexists; eexists;
-      split; [ right; left; exists pq, k, D, Mk; split; [ exact Hk | split; [ exact HMk | reflexivity ] ] |].
+      split; [ eapply stored_term_member_ind_former; [ exact Hk | exact HMk ] |].
     split; [ reflexivity | rewrite mdesc_named_nil; split; [ reflexivity | split; reflexivity ] ]. }
   2:{ (* the open frame of a record type's module: likewise *)
     destruct Ns as [| N Ns'] using List.rev_ind; [| rewrite me_apps_snoc in Hq; discriminate ].
     cbn [me_apps] in Hq; rewrite <- qname_mod_in, mod_qname_qname_mod in Hq; injection Hq as <-.
     eexists; eexists;
-      split; [ right; right; exists Rr; split; [ exact Hk | reflexivity ] |].
+      split; [ apply stored_term_member_record_former; exact Hk |].
     split; [ reflexivity | rewrite mdesc_named_nil; split; [ reflexivity | split; reflexivity ] ]. }
   destruct (filed_denote _ _ Hgm _ _ _ Γ Ns Hgl) as (R2 & Hm2 & Hmod2).
   rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm0 _ Hm2), Hmod2 in Hmd; injection Hmd as <-.
@@ -1012,7 +1008,7 @@ Proof.
   rewrite mdesc_up_nil in Hty |- *.
   destruct E0 as [b pv r A0 oM | pv U | pv pq D Φd | pv Ad Md Ud | pv Rr Φr].
   - inversion Hed; subst; cbn [mdesc_ats_read] in Ha.
-    do 2 eexists; split; [ left; do 2 eexists; split; reflexivity | split; [ exact (mdesc_term_part_ats_of_ats _ _ _ Ha) |] ].
+    do 2 eexists; split; [ eapply stored_term_member_entry; [ exact Hp | reflexivity ] | split; [ exact (mdesc_term_part_ats_of_ats _ _ _ Ha) |] ].
     split; [ apply mdesc_kind_named | split; reflexivity ].
   - exfalso.
     assert (HU : exists U', ge_read T (ge_mod pv U) = ge_mod pv U') by (destruct U as [? [[] ?|?]]; eexists; reflexivity).
@@ -1031,6 +1027,53 @@ Qed.
 (** The term members of a filed module at arguments valid against its
     telescope are valid at the types they are looked up at, their reducts
     at them too. *)
+(** A [Π] over assumptions determines its codomain, whatever kinds it is
+    read at. *)
+Lemma ctx_pi_at_ass_injective_any : forall T κ κ' A B, all_assumptions T ->
+    ctx_pi_at κ T A = ctx_pi_at κ' T B -> A = B.
+Proof.
+  induction T as [| e T IH]; intros * HT E; cbn [ctx_pi_at] in E; [ exact E |].
+  inversion HT as [| ? ? (κ0 & X & ->) HT']; subst; cbn [ctx_pi_at] in E.
+  pose proof (IH _ _ _ _ HT' E) as E'; injection E' as _ ->; reflexivity.
+Qed.
+
+(** The member types of a saturated global module are related to its
+    stored member's type at the arguments: a related value has related
+    arguments, and its member type is read at the stored member's type
+    ([valid_filed_mod_bare]), valid over the telescope. *)
+Lemma filed_mem_type_rel : forall p T Φ x R0 A0 (iA : nat) ns b0,
+    gc_loc Θm Ξm p = Some (T, Φ) -> stored_term_member Ξm Φ p x R0 ->
+    mdesc_type R0 = Some (ctx_pi_at (mdesc_kind R0) T A0) ->
+    T ⊨ᵗ A0 ≈ A0 at iA ->
+    List.length ns = List.length T ->
+    ⟦ A0 ⟧ env_tele nil (rev T) ns ↘ b0 ->
+    dmod_mem_type_rel (dm_global p ns) x b0.
+Proof.
+  intros * Hl Hst HtR0 HA0 Hlen Hb0 h b Hh Hb.
+  destruct (Hgf _ _ _ Hl) as [(Φ2 & Hl2) _ HT HTa _ _ _ _ _ _ _ _ Hbare].
+  inversion Hh; subst; [| exfalso; eapply dmod_mem_type_next_param; eassumption ].
+  rename H1 into Hl0, H3 into Hlen', H4 into Hargs, args into ns'.
+  rewrite Hl2 in Hl0; injection Hl0 as <- <-.
+  inversion Hb; subst.
+  match goal with Hl' : gc_loc _ _ p = Some _ |- _ => rewrite Hl2 in Hl'; injection Hl' as <- <- end.
+  match goal with Hm : mdenote _ _ _ (me_mem (qname_mod p) x) ?R, Ht : mdesc_type ?R = Some _ |- _ =>
+    pose proof (Hbare _ _ Hst _ Hm) as E; rewrite Ht, HtR0 in E; injection E as E end.
+  pose proof (ctx_pi_at_ass_injective_any _ _ _ _ _ HTa E) as ->.
+  (** The arguments fill the telescope, related *)
+  destruct (rel_ctx_wf_per_ctx_env HT) as [RT HRT].
+  assert (HT' : ⊨ T ++ ⋅) by (rewrite app_nil_r; exact HT).
+  assert (HRT' : EF T ++ ⋅ ≈ T ++ ⋅ ∈ per_ctx_env ↘ RT) by (rewrite app_nil_r; exact HRT).
+  pose proof (tele_args_env_rel_gen T ⋅ _ _ nil nil ns' ns per_ctx_env_nil_true HRT' HT' I Hlen' Hargs) as Hρ.
+  destruct (rel_type_inversion_simple_at HRT HA0 _ _ Hρ) as (c & c' & Hc & Hc' & Hcc).
+  functional_eval_rewrite_clear.
+  exists iA; exact Hcc.
+Qed.
+
+(** The member types relate to a type value related to the given one. *)
+Lemma dmod_mem_type_rel_per : forall k x a a' (j : universe_index), dmod_mem_type_rel k x a -> Dom a ≈ a' ∈ per_univ j ->
+    dmod_mem_type_rel k x a'.
+Proof. intros * Hr Ha h b Hh Hb; destruct (Hr _ _ Hh Hb) as [i Hi]; exists i; eapply per_univ_trans'; eassumption. Qed.
+
 Lemma filed_mem : forall Γ p T Φ Ns x R A, gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ -> valid_args Γ T Ns ->
     List.Forall (exp_scoped (List.length Γ)) Ns ->
     mdenote Θm Ξm Γ (me_mem (me_apps (qname_mod p) Ns) x) R -> mdesc_type R = Some A ->
@@ -1043,17 +1086,17 @@ Proof.
   (* the read description is tagged as the stored one *)
   assert (HrR1 : mdesc_kind R1 = mdesc_kind R0).
   { assert (HR0t : exists r A om, R0 = mdesc_term r A om).
-    { destruct HR0 as [(Φ0 & E & Hp & He) | [(pq & k & D & Mk & Hk & HMk & ->) | (Rr & Hk & ->)]]; [| eauto | eauto ].
+    { destruct HR0 as [Φ0 E Rx Hp He | pq k D Mk Hk HMk | Rr Hk]; [| eauto | eauto ].
       destruct E; cbn [entry_term] in He;
         repeat (match type of He with context [option_map _ ?o] => destruct o; cbn [option_map] in He end);
         try discriminate; injection He as <-; eauto. }
     destruct HR0t as (r & A1 & om & ->).
     destruct (mdesc_term_part_ats_term _ _ _ _ _ Ha) as (A2 & om2 & ->); reflexivity. }
   rewrite HrR1.
-  destruct (Hgf _ _ _ Hl) as [(oD & Hmo) Hpe HT HTa HTs _ _ Hents Hfrs Hrfrs _ HTrel].
+  destruct (Hgf _ _ _ Hl) as [(oD & Hmo) Hpe HT HTa HTs _ _ Hents Hfrs Hrfrs _ HTrel Hbare].
   pose proof Hs as [T1 T2 -> Hlen HTa2 HTs2 HNs HNr].
   assert (Hvt : valid_filed_term p (T1 ++ T2) x R0)
-    by (destruct HR0 as [(Φ0 & E & Hp & He) | [(pq & k & D & Mk & Hk & HMk & ->) | (Rr & Hk & ->)]];
+    by (destruct HR0 as [Φ0 E Rx Hp He | pq k D Mk Hk HMk | Rr Hk];
           [ exact (Hents _ _ _ _ Hp He) | exact (Hfrs _ _ _ _ _ Hk HMk) | exact (Hrfrs _ _ Hk) ]).
   destruct Hvt as [A0 lv HA0 Hats Hval Hpk].
   destruct (Hats _ _ _ _ eq_refl Hlen Ha) as [HtyR1 HredR1].
@@ -1103,7 +1146,8 @@ Proof.
   (* the member, pointwise *)
   assert (Hpt : forall RΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> forall ρ, RΓ ρ ρ ->
              exists ns a k RX, ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns /\ ⟦ (ctx_pi_at r0 T1 A0)[sb_of_list Id Ns] ⟧ ρ ↘ a /\
-               per_univ_elem k RX a a /\ dmod_has_mem (dm_global p ns) x RX /\ per_dmod (dm_global p ns) (dm_global p ns) /\
+               per_univ_elem k RX a a /\ dmod_has_mem (dm_global p ns) x RX /\ dmod_mem_type_rel (dm_global p ns) x a /\
+               per_dmod (dm_global p ns) (dm_global p ns) /\
                per_tele_args (rev T2) nil nil ns ns /\
                forall v, $*| g & ns | gc_deps ⍮ gc_stack ↘ v -> exists r, dm_global p ns ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ RX v r).
   { intros RΓ HR ρ Hρ.
@@ -1122,16 +1166,28 @@ Proof.
     assert (Haa : per_univ_elem k RX a a) by (eapply per_univ_trans; [ exact HRX | apply per_univ_elem_sym; exact HRX ]).
     assert (Hgs2 : per_tele_args (rev T2) nil nil ns ns)
       by (rewrite rev_app_distr in Hgs; eapply per_tele_args_prefix; [ exact Hgs | rewrite length_rev; lia ]).
+    (** The member types: at a module lacking a parameter, none; at a
+        saturated one, related to the stored member's type at the
+        arguments, which is related to [a] *)
+    assert (Hmty : dmod_mem_type_rel (dm_global p ns) x a).
+    { destruct T1 as [| e1 T1'].
+      - destruct (Hats nil R0 T2 nil ltac:(rewrite app_nil_r; reflexivity) eq_refl eq_refl) as [HtR0 _].
+        cbn [sb_of_list] in HtR0; rewrite exp_sub_id in HtR0.
+        eapply dmod_mem_type_rel_per;
+          [ eapply (filed_mem_type_rel _ _ _ _ _ _ iA);
+            [ exact Hl | exact HR0 | exact HtR0 | exact HA0t | cbn [List.app]; exact Hlns | cbn [List.app]; exact Hbb ]
+          | exists RX; apply per_univ_elem_sym; exact HRX ].
+      - eapply dmod_mem_type_rel_global_unsat; [ exact Hmo | rewrite length_app; cbn [List.length]; lia ]. }
     exists ns, a, k, RX; repeat split; [ exact Hns | exact Ha1 | exact Haa | apply (dmod_has_mem_iff _ _ R'); [ exact Hmt | symmetry; exact ER ]
-                                    | apply (filed_gval _ _ _ Hl); [ rewrite length_app; lia | exact Hgs ] | exact Hgs2 |].
+                                    | exact Hmty | apply (filed_gval _ _ _ Hl); [ rewrite length_app; lia | exact Hgs ] | exact Hgs2 |].
     intros v Hv; destruct (Hred _ Hv) as (r & Hr & Hvr); exists r; split; [ exact Hr | apply ER; exact Hvr ]. }
   assert (HS0 : valid_mem Γ K x (ctx_pi_at r0 T1 A0)[sb_of_list Id Ns] None).
   { constructor; [ exists iX; exact HXΓ | discriminate |].
     intros RΓ HR ρ Hρ.
-    destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & _).
+    destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & Hmty & _).
     apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := k) (valid_mem_at_rel := RX); try assumption;
       [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | intros _; exact Hmt | intros _ ? ?; discriminate
-      | intros _; apply dmod_mem_type_rel_not_body; discriminate ]. }
+      | intros _; exact Hmty ]. }
   destruct HredR1 as [HredR1 | (M1 & HredR1 & HM1 & HevM1)].
   2:{ (* a reduct: a term over the outer parameters, instantiated *)
     rewrite (mdesc_reduct_named_some _ _ _ _ _ HredR1).
@@ -1139,10 +1195,10 @@ Proof.
     + intros M HM; injection HM as <-.
       exact (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HM1)).
     + intros RΓ HR ρ Hρ.
-      destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & _ & Hgs2 & Hred).
+      destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & Hmty & _ & Hgs2 & Hred).
       apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := k) (valid_mem_at_rel := RX);
         [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | intros _; exact Hmt |
-        | intros _; apply dmod_mem_type_rel_not_body; discriminate ].
+        | intros _; exact Hmty ].
       intros _ M HM; injection HM as <-.
       destruct (closed_inst_exp _ _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HNr HNss HX (ex_intro _ r0 (conj Hev HXr)) HM1 HR _ Hρ)
         as (ns' & m & n & a2 & i2 & R2 & Hns' & Hm' & Hn & Ha2 & HR2 & Hmn).
@@ -1179,10 +1235,10 @@ Proof.
     constructor; [ exists iX; exact HXΓ | |].
     + intros M HM; injection HM as <-; exact (valid_exp_eval_iff _ _ _ _ HKx Hiff).
     + intros RΓ HR ρ Hρ.
-      destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & Hkk & _).
+      destruct (Hpt _ HR _ Hρ) as (ns & a & k & RX & Hns & Ha1 & Haa & Hmt & Hmty & Hkk & _).
       apply mk_valid_mem_at with (valid_mem_at_mod := dm_global p ns) (valid_mem_at_typ := a) (valid_mem_at_lvl := k) (valid_mem_at_rel := RX);
         [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | intros _; exact Hmt |
-        | intros _; apply dmod_mem_type_rel_not_body; discriminate ].
+        | intros _; exact Hmty ].
       intros _ M HM; injection HM as <-.
       destruct (Hmt _ Hkk) as [r r' Hr Hr' Hrr].
       pose proof (functional_eval_sel _ _ _ _ Hr Hr') as <-.

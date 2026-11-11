@@ -707,6 +707,26 @@ Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) :
         kinds any parameter is *)
   ; valid_filed_term_pi_kinds : forall Δ1 κ A Δ2, T = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ (mdesc_kind R0) }.
 
+(** [stored_term_member Ξm Φ p x R0]: the term member [x] of the module
+    stored at [p] with the body [Φ], read as [R0] where it is stored. *)
+Inductive stored_term_member (Ξm : gstack) (Φ : gmod) (p : qname) (x : String.string) : mdesc -> Prop :=
+(** An entry of the body, read as its term part *)
+| stored_term_member_entry : forall Φ0 E R0,
+    gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
+    entry_term (Some (qname_in p x)) E = Some R0 ->
+    stored_term_member Ξm Φ p x R0
+(** The type former of an inductive type whose open frame is under it *)
+| stored_term_member_ind_former : forall pq k D Mk,
+    gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) ->
+    ind_member D k = Some Mk ->
+    stored_term_member Ξm Φ p x
+      (mdesc_term ak_relevant (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k)))
+(** The type former of a record type whose open frame is under it *)
+| stored_term_member_record_former : forall Rr,
+    gs_find_record Ξm (qname_in p x) = Some Rr ->
+    stored_term_member Ξm Φ p x
+      (mdesc_term ak_relevant (ctx_pi (record_params Rr) (record_sort Rr)) (Some (a_record (qname_in p x)))).
+
 Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_filed_mod
   { valid_filed_mod_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
   ; valid_filed_mod_path : forall ρ, ⟦ qname_mod p ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p nil
@@ -736,7 +756,12 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
     (** The parameters of the telescope are types of a universe, at one
         level: modules take relevant parameters, as the typing of units
         and of modules asks ([params_evaluated]) *)
-  ; valid_filed_mod_tele_evaluated : exists l : nat, rel_params_evaluated nil T l }.
+  ; valid_filed_mod_tele_evaluated : exists l : nat, rel_params_evaluated nil T l
+    (** A term member stored at it is read through its bare path over no
+        context at the target at its stored description's type: the
+        description grows with the global context, its type kept *)
+  ; valid_filed_mod_bare : forall x R0, stored_term_member Ξm Φ p x R0 ->
+      forall R, mdenote gc_deps gc_stack nil (me_mem (qname_mod p) x) R -> mdesc_type R = mdesc_type R0 }.
 
 Definition valid_filed_mods : Prop :=
   forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) -> valid_filed_mod p T Φ.

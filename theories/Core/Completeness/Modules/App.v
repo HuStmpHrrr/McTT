@@ -109,7 +109,7 @@ Proof.
     injection Ht as <-.
     replace (List.length T1s + List.length T2s - List.length Ns) with (List.length T1s) in Hv by lia.
     rewrite List.firstn_app, List.firstn_all, Nat.sub_diag in Hv; cbn [List.firstn] in Hv; rewrite !app_nil_r in Hv.
-    destruct (Hgf _ _ _ Hgl) as [_ _ _ HTa _ _ _ _ _ _ _ _].
+    destruct (Hgf _ _ _ Hgl) as [_ _ _ HTa _ _ _ _ _ _ _ _ _].
     destruct (all_assumptions_app_inv _ _ HTa) as [HTa1 _].
     destruct (List.exists_last (l := T1s)) as (L & e & ->); [ intros ->; cbn in Hv; discriminate |].
     destruct (all_assumptions_app_inv _ _ HTa1) as [_ He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
@@ -122,7 +122,7 @@ Proof.
     assert (Hs' : valid_args Γ (L ++ ce_ass κ A :: T2s) (Ns ++ N :: nil)).
     { apply (mk_valid_args _ _ _ L (ce_ass κ A :: T2s));
         [ reflexivity | cbn; rewrite length_app; cbn; lia | constructor; [ eexists; eexists; reflexivity | exact HTa2 ]
-        | destruct (Hgf _ _ _ Hgl) as [_ _ _ _ HTs _ _ _ _ _ _ _]; exact (proj2 (proj1 (ctx_scoped_app_iff _ _) HTs)) | |].
+        | destruct (Hgf _ _ _ Hgl) as [_ _ _ _ HTs _ _ _ _ _ _ _ _]; exact (proj2 (proj1 (ctx_scoped_app_iff _ _) HTs)) | |].
       all: assert (Hti : tele_insts (ce_ass κ A :: T2s) Id (Ns ++ N :: nil) = tele_insts T2s Id Ns ++ A[sb_of_list Id Ns] :: nil)
         by (change (ce_ass κ A :: T2s) with ((ce_ass κ A :: nil) ++ T2s); rewrite tele_insts_app by (try exact HTa2; lia); reflexivity).
       all: assert (HlT : List.length (tele_insts T2s Id Ns) = List.length Ns) by (rewrite length_tele_insts by exact HTa2; lia).
