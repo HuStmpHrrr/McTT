@@ -198,6 +198,40 @@ Proof.
   eexists; exact HAT.
 Qed.
 
+(** A chain of submodules, then a term member, is a chain ending in the
+    term member. *)
+Lemma eval_selmc_selt : forall h ch hc x r,
+    h ·ₘ* ch gc_deps ⍮ gc_stack ↘ hc -> hc ·ₜ x gc_deps ⍮ gc_stack ↘ r -> h ·ₜ* (ch ++ x :: nil) gc_deps ⍮ gc_stack ↘ r.
+Proof.
+  intros * Hc; induction Hc; intros Hx; cbn [List.app]; [ constructor; exact Hx | econstructor; [ eassumption | auto ] ].
+Qed.
+
+(** The term member of a value lacking a parameter is a member closure,
+    which, given an argument, is the member of the value given it
+    ([eval_app_member]). *)
+Lemma selt_appm_comm : forall h a, next_param h a -> forall x m, h ·ₜ x gc_deps ⍮ gc_stack ↘ m ->
+    forall n hc r, $ᵐ| h & n | gc_deps ⍮ gc_stack ↘ hc -> hc ·ₜ x gc_deps ⍮ gc_stack ↘ r -> $| m & n | gc_deps ⍮ gc_stack ↘ r.
+Proof.
+  intros * Hnp; inversion Hnp; subst; intros * Hsel * Happ Hr.
+  - (** A closure *)
+    inversion Hsel; subst; try (destruct Δ; discriminate).
+    econstructor; [ exact Happ | constructor; exact Hr ].
+  - (** A global module past its arguments *)
+    rename H into Hgl, H0 into Hn.
+    assert (Hlt : List.length args < List.length T)
+      by (pose proof (proj1 (List.nth_error_Some (List.rev T) (List.length args)) ltac:(rewrite Hn; discriminate)) as Hl';
+          rewrite List.length_rev in Hl'; exact Hl').
+    inversion Hsel; subst;
+      try (match goal with Hs : module_saturated _ _ _ _ |- _ => pose proof (Hs _ _ Hgl); lia end);
+      try (match goal with Hl' : gc_loc _ _ p = Some _, Hlen : List.length args = _ |- _ =>
+             rewrite Hgl in Hl'; injection Hl' as <- <-; lia end).
+    econstructor; [ exact Happ | constructor; exact Hr ].
+  - (** A submodule closure: its base given the argument, selected again *)
+    inversion Hsel; subst.
+    inversion Happ; subst.
+    econstructor; [ eassumption | apply eval_selmc_selt with (hc := hc); assumption ].
+Qed.
+
 (** An equation at a type is one at a type equal to it at a sort of
     types. *)
 Lemma wf_exp_eq_conv_kind : forall Γ M M' A A' κ (l : nat),
