@@ -1399,4 +1399,57 @@ Proof.
       [ exact Hf | exact HC | exact (glu_lit_alias_modexp_at _ _ HU0 HE) ].
 Qed.
 
+(** ** The Value of a Module Slot *)
+
+(** The innermost slot's value, glued as its unit's literal over the
+    context before it, is glued as the slot: read through the shift
+    ([glu_dmod_through]), the literal weakened denotes as the slot
+    ([same_denote_slot]). *)
+Lemma glu_dmod_head_slot : forall e Γ U Δ σ h,
+    (e :: Γ) ∋ #0 ≔ₘ gunit_wk U wk_shift -> Δ ⊢ˢ σ : e :: Γ ->
+    glu_dmod Δ (Wk ⨟ σ) Γ (me_lit U) h -> glu_dmod Δ σ (e :: Γ) (me_var 0) h.
+Proof.
+  intros * Hy Hσ Hg.
+  pose proof (wf_sub_cod _ _ _ _ _ Hσ) as Hw.
+  assert (HWk : e :: Γ ⊢ˢ Wk : Γ) by (apply wf_sub_shift; exact Hw).
+  pose proof (proj1 glu_dmod_through _ _ _ _ _ Hg _ _ _ HWk Hσ ltac:(apply wf_sub_eq_refl; eapply wf_sub_compose; eassumption)) as Hg1.
+  assert (E : (me_lit U)[Wk]ᵐ = me_lit (gunit_wk U wk_shift)) by (rewrite <- gunit_sub_of_wk; reflexivity).
+  rewrite E in Hg1.
+  destruct (same_denote_slot Hy) as [Hd01 Hd10].
+  eapply (proj1 glu_dmod_same_part);
+    [ exact Hg1 | eapply wf_me_delta_slot; eassumption | exact (same_part_of_denote Hd01) | exact (same_part_of_denote Hd10)
+    | intros; apply names_no_frame_of_none; eapply mod_qname_sub_var; eassumption
+    | intros; apply names_no_frame_of_none; apply mod_qname_sub_lit ].
+Qed.
+
+(** A module slot's value in a glued environment is glued as the slot: the
+    innermost by the slot's clause of the context gluing, a deeper one by
+    the tail's, read through the shift. *)
+Lemma glu_dmod_slot : forall Γ y U, Γ ∋ #y ≔ₘ U -> forall Sb, EG Γ ∈ glu_ctx_env ↘ Sb ->
+    forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ Sb -> glu_dmod Δ σ Γ (me_var y) (env_mod ρ y).
+Proof.
+  induction 1 as [U0 Γ0 | A0 M0 U0 Γ0 | n U0 Γ0 e Hn IH]; intros Sb HSb Δ σ ρ Hσ.
+  - inversion HSb; subst.
+    match goal with HE : Sb <∙> cons_mod_glu_sub_pred _ _ _ |- _ => apply HE in Hσ end.
+    destruct Hσ as [? ? ? Hσt _ Hg _ _ _].
+    eapply glu_dmod_head_slot; [ constructor | exact Hσt | exact Hg ].
+  - inversion HSb; subst.
+    match goal with HE : Sb <∙> cons_dm_glu_sub_pred _ _ _ _ _ _ |- _ => apply HE in Hσ end.
+    destruct Hσ as [? ? ? ? P El Hσt _ _ _ _ _ Hg _ _ _].
+    eapply glu_dmod_head_slot; [ constructor | exact Hσt | exact Hg ].
+  - destruct (glu_rel_ctx_tail (ex_intro _ _ HSb)) as [TSb HTSb].
+    pose proof (glu_ctx_env_sub_tail HSb HTSb Hσ) as Hσ'.
+    pose proof (IH _ HTSb _ _ _ Hσ') as Hg.
+    pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
+    assert (HWk : e :: Γ0 ⊢ˢ Wk : Γ0) by (apply wf_sub_shift; exact (wf_sub_cod _ _ _ _ _ Hσt)).
+    exact (proj1 glu_dmod_through _ _ _ _ _ Hg _ _ _ HWk Hσt ltac:(apply wf_sub_eq_refl; eapply wf_sub_compose; eassumption)).
+Qed.
+
+(** A module slot is glued in a glued context. *)
+Lemma glu_slot_modexp_at : forall Γ y U, Γ ∋ #y ≔ₘ U -> glu_modexp_at Γ (me_var y).
+Proof.
+  intros * Hy Sb HSb Δ σ ρ Hσ.
+  exists (env_mod ρ y); split; [ constructor | exact (glu_dmod_slot _ _ _ Hy _ HSb _ _ _ Hσ) ].
+Qed.
+
 End Fixed_GCtx.
