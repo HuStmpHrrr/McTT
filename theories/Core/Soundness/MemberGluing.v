@@ -269,6 +269,50 @@ Section Members.
     exact (Hvals _ HRΓ _ Hρ).
   Qed.
 
+  (** A term member of a stored module read in some context is one read
+      bare over no context, of the same type and kind: its entry denotes
+      there too, its module part, if any, by the alias's validity
+      ([syn_V]). *)
+  Lemma bare_member_exists : forall p T Φ x Φ0 E0 Γ RE,
+      gc_loc Θ Ξ p = Some (T, Φ) -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x E0) ->
+      edenote Θ Ξ Γ (Some (qname_in p x)) (ge_read T E0) RE -> mdesc_type RE <> None ->
+      exists R0, mdenote Θ Ξ ⋅ (me_mem (qname_mod p) x) R0 /\ mdesc_type R0 = mdesc_type RE /\ mdesc_kind R0 = mdesc_kind RE.
+  Proof.
+    intros * Hgl Hp Hed Ht.
+    pose proof (gc_loc_loc _ _ _ _ _ Hgl) as Hl.
+    destruct (filed_denote _ _ Hg _ _ _ ⋅ nil Hgl) as (S1 & HS1 & HS1m); cbn [me_apps] in HS1.
+    assert (He : mdesc_entry (mdesc_closed nil p T Φ nil) x = Some (nil, ge_read T E0, reader_closed nil nil (a_mem (qname_mod p) x)))
+      by (cbn; rewrite Hp; reflexivity).
+    assert (HE0 : exists RE0, edenote Θ Ξ (nil ++ ⋅) (Some (qname_in p x)) (ge_read T E0) RE0 /\
+                    mdesc_type RE0 = mdesc_type RE /\ mdesc_kind RE0 = mdesc_kind RE).
+    { destruct E0 as [b pv r A oM | pv [Δ [sm Φy | Ea]] | pv pq k D Φ' | pv Ad Md [Δ [sm Φy | Ea]] | pv pr Rr Φ'];
+        cbn [ge_read] in Hed |- *.
+      - inversion Hed; subst; eexists; split; [ constructor | split; reflexivity ].
+      - exfalso; destruct sm; inversion Hed; subst;
+          match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hm end;
+          destruct RE; cbn in Hm, Ht; first [ contradiction | apply Ht; reflexivity ].
+      - exfalso; inversion Hed; subst;
+          match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hm end;
+          destruct RE; cbn in Hm, Ht; first [ contradiction | apply Ht; reflexivity ].
+      - inversion Hed; subst; eexists; split; [ econstructor; eassumption | split; reflexivity ].
+      - exfalso; inversion Hed.
+      - (** A definition with a module part: its module part denotes over no
+            context, by the alias's validity *)
+        inversion Hed; subst.
+        destruct (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hg) Hl) as [_ HgV].
+        destruct (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ HgV Hp) as (HVm & _ & _).
+        cbn in HVm; destruct HVm as (_ & HΔ & _ & _ & Hall).
+        destruct (Hall ⋅ ltac:(rewrite List.app_nil_r; exact HΔ)) as [(R1 & HR1) Hok].
+        destruct (Hok _ HR1) as (_ & (Rm1 & HRm1) & _).
+        eexists; split; [ econstructor; econstructor; [ cbn [List.app]; exact HR1 | exact HRm1 ] | split; reflexivity ].
+      - inversion Hed; subst; eexists; split; [ econstructor; eassumption | split; reflexivity ]. }
+    destruct HE0 as (RE0 & Hed0 & Ht0 & Hk0).
+    exists RE0; split; [| split; assumption ].
+    assert (Hm : mdenote Θ Ξ ⋅ (me_mem (qname_mod p) x) (mdesc_up nil (mdesc_named nil nil (apps (a_mem (qname_mod p) x) nil) RE0)))
+      by (eapply mdenote_mem; [ exact HS1 | exact HS1m | exact He | exact Hed0 | cbn [mdesc_read]; rewrite mdesc_ats_read_nil; reflexivity ]).
+    rewrite mdesc_up_nil, mdesc_named_nil in Hm; exact Hm.
+  Qed.
+
   (** A term member of a stored module, read bare over no context, is its
       stored entry, even when the module is an open frame: a path naming
       an entry is no open frame's own path ([gc_entry]), and an open frame
