@@ -1068,4 +1068,124 @@ Proof.
   - intros * Hp Hu Hb Hc; eapply glu_lit_body_sub_field; eassumption.
 Qed.
 
+(** The closure of a literal body lacking the parameters [Δr], over the
+    context [Δa ++ Γ] its outer parameters [Δa] have been given in, at a
+    glued environment, is glued as the literal: saturated, as a body
+    ([glu_lit_body_modexp_at]); lacking a parameter, at every glued
+    argument, as the literal lacking one fewer over the context extended
+    by the parameter ([cons_glu_sub_pred_closure]), read through the
+    factorization ([glu_dmod_through]) and moved to the application, which
+    denotes alike ([same_denote_beta]). *)
+Lemma glu_lit_open_params : forall Δr Δa Γ Φ,
+    unit_full gc_deps gc_stack Γ (gu_open (Δr ++ Δa) Φ) ->
+    ⊩ (body_ctx (gm_expand Φ) ++ Δr ++ Δa ++ Γ) ->
+    glu_modexp_at (Δa ++ Γ) (me_lit (gu_open Δr Φ)).
+Proof.
+  induction Δr as [| x Δr' IH] using List.rev_ind; intros Δa Γ Φ Hf HC.
+  - (** Saturated *)
+    pose proof (unit_eq_of_full _ _ _ _ (unit_full_unabs _ _ _ _ nil _ Hf)) as HU; cbn [List.app] in HU, HC.
+    exact (glu_lit_body_modexp_at _ _ HU HC (body_sorts_typed_of_unit _ _ HU)).
+  - (** Lacking the parameter [X], outermost *)
+    pose proof (unit_eq_of_full _ _ _ _ (unit_full_unabs _ _ _ _ _ _ Hf)) as HU.
+    rewrite <- List.app_assoc in Hf, HC; cbn [List.app] in Hf, HC.
+    pose proof (proj2 (unit_full_ctx _ _ _ _ _ Hf)) as Hall.
+    apply List.Forall_app in Hall as [_ Hall]; apply List.Forall_inv in Hall as (κ & X & ->).
+    pose proof (IH (ce_ass κ X :: Δa) Γ Φ Hf HC) as IHg.
+    assert (HCX : ⊩ (ce_ass κ X :: Δa ++ Γ))
+      by (eapply (glu_rel_ctx_app_r (body_ctx (gm_expand Φ) ++ Δr')); rewrite <- List.app_assoc; exact HC).
+    destruct HCX as (SbX & HSbX).
+    intros Sb HSb Δ σ ρ Hσ.
+    inversion HSbX; subst.
+    rename H2 into HTSb, H4 into HX, H5 into HXg, H6 into HSbXe.
+    assert (HST : forall Δ σ ρ, Sb Δ σ ρ -> TSb Δ σ ρ) by (intros; apply (functional_glu_ctx_env HSb HTSb); assumption).
+    (** The literal substituted lacks [X] substituted first *)
+    assert (HBX : forall Γ1 ζ RH T B T1, Γ1 ⊢ˢ ζ : Δa ++ Γ ->
+              mdenote gc_deps gc_stack Γ1 (me_lit (gu_open (Δr' ++ ⋅ ▹ {κ} X) Φ))[ζ]ᵐ RH ->
+              mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) -> B = X[ζ]).
+    { intros * Hζ Hm HT Hv.
+      cbn [modexp_sub] in Hm; apply mdenote_lit_inv in Hm; rewrite gunit_sub_last in Hm.
+      inversion Hm; subst.
+      cbn in H6; injection H6 as <-; cbn in HT; injection HT as <-; rewrite tele_view_last in Hv; injection Hv as <- _; reflexivity. }
+    pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσt.
+    destruct (HXg _ _ _ (HST _ _ _ Hσ)) as [a P El Ea Hga HXσ].
+    assert (HXσt : Δ ⊢ X[σ] : abs_kind_sort κ Typeω@i) by mauto 3.
+    destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hga HXσ HXσt) as [Hk _].
+    (** [X] is glued at every weakening of [σ] *)
+    assert (HXw : forall Δ' φ, Δ' ⊢ᵏ φ : Δ -> exists P' El', DG a ∈ glu_univ_elem i ↘ P' ↘ El' /\ Δ' ⊢ X[sb_wk σ φ] ® P').
+    { intros * Hφ; destruct (HXg _ _ _ (HST _ _ _ (glu_ctx_env_sub_monotone _ _ HSb _ _ _ _ _ Hσ Hφ))) as [a' P' El' Ea' Hga' HXσ'].
+      rewrite (functional_eval_exp _ _ _ _ Ea' Ea) in Hga'; exists P', El'; split; assumption. }
+    exists (dm_local (Δr' ++ ⋅ ▹ {κ} X) (md_body sm_open (gm_expand Φ)) ρ); split; [ apply eval_me_lit_iff; constructor |].
+    eapply glu_dmod_fun; [ exact Hσt | exact (wf_me_lit _ _ _ _ _ HU) | econstructor; [ exact Ea | exact Hk ] | | |].
+    { (** The parameter's type, read through a factorization *)
+      intros * Hst Hm HT Hv HS HB.
+      pose proof Hst as [Hφ Hζ Hσ1 E].
+      rewrite (HBX _ _ _ _ _ _ Hζ Hm HT Hv).
+      destruct (HXw _ _ Hφ) as (P' & El' & Hga' & HXP').
+      destruct (glu_type_move_sub_eq (type_sort_abs_kind κ _ ltac:(constructor)) HX Hga' HXP' E) as (k & Pk & Elk & Hgk & _ & HXk & _).
+      rewrite exp_sub_sub; exists k, Pk, Elk; constructor; assumption. }
+    { (** Every argument is taken *)
+      intros; eexists; apply eval_appm_local; apply eval_close_body. }
+    (** An application, at a glued argument [N] *)
+    intros * Hst Hm HT Hv HS HB N c hc i0 P0 El0 Hg0 HBP HN Hhc.
+    pose proof Hst as [Hφ Hζ Hσ1 E].
+    pose proof (HBX _ _ _ _ _ _ Hζ Hm HT Hv) as ->.
+    rewrite Hk; clear HBX Hm HT Hv.
+    destruct (HXw _ _ Hφ) as (P' & El' & Hga' & HXP').
+    rewrite exp_sub_sub in HBP, HN.
+    destruct (glu_type_move_sub_eq (type_sort_abs_kind κ _ ltac:(constructor)) HX Hg0 HBP (wf_sub_eq_sym _ _ _ _ _ _ E))
+      as (k & Pk & Elk & Hgk & _ & HXk & HNk & _).
+    pose proof (HNk _ _ HN) as HNw.
+    assert (HNw' : Δ' ⊢ N : X[sb_wk σ φ] ® c ∈ El')
+      by (eapply glu_univ_elem_exp_conv; [ exact (glu_univ_elem_per_univ _ _ _ _ Hgk) | exact Hgk | exact Hga' | exact HNw | exact HXP' ]).
+    (** The environment extended by the argument is glued in the context
+        extended by [X], so the literal lacking one fewer is glued there *)
+    pose proof (glu_ctx_env_sub_monotone _ _ HSb _ _ _ _ _ Hσ Hφ) as Hσw.
+    assert (Henv : Δ' ⊢ˢ sb_wk σ φ,,N ® ρ ↦ c ⦂ entry_type_closure X ρ ∈ SbX)
+      by (apply HSbXe; eapply cons_glu_sub_pred_closure;
+          [ exact HTSb | exact (HST _ _ _ Hσw) | exact HX | exact Ea | exact Hga' | exact HNw' ]).
+    destruct (IHg _ HSbX _ _ _ Henv) as (h' & Eh' & Hg').
+    assert (Ehc : hc = h').
+    { apply eval_me_lit_iff in Eh'; inversion Eh'; subst.
+      inversion Hhc; subst.
+      apply app_inj_tail in H as [-> [= -> ->]].
+      inversion H4; subst.
+      rewrite (gm_expand_noopen _ (gm_noopen_expand Φ)); reflexivity. }
+    subst hc.
+    (** Read through [(ζ ⨟ Wk),,#0] *)
+    assert (HSk : sort_kind (abs_kind_sort κ Typeω@i) κ) by apply sort_kind_abs_kind_sort.
+    assert (HXζ : Γ1 ⊢ X[ζ] : abs_kind_sort κ Typeω@i) by mauto 3.
+    assert (HΓ0 : ⊢ Γ1 ▹{κ} X[ζ]) by (eapply wf_ctx_extend; eassumption).
+    assert (Hτ : Γ1 ▹{κ} X[ζ] ⊢ˢ ζ ⨟ Wk : Δa ++ Γ) by (eapply wf_sub_compose; [ exact Hζ | eapply wf_sub_shift; exact HΓ0 ]).
+    assert (H0t : Γ1 ▹{κ} X[ζ] ⊢ #0 : X[ζ ⨟ Wk])
+      by (rewrite <- exp_sub_sub, exp_sub_of_shift; apply wf_vlookup; [ exact HΓ0 | constructor ]).
+    assert (Hq : Γ1 ▹{κ} X[ζ] ⊢ˢ (ζ ⨟ Wk),,#0 : (Δa ++ Γ) ▹{κ} X)
+      by (eapply wf_sub_extend; [ exact Hτ | exact HX | exact HSk | exact H0t ]).
+    assert (HNt : Δ' ⊢ N : X[ζ⨟σ1]) by exact (glu_univ_elem_trm_escape _ _ _ _ Hg0 _ _ _ _ HN).
+    assert (HNt' : Δ' ⊢ N : X[sb_wk σ φ]) by exact (glu_univ_elem_trm_escape _ _ _ _ Hga' _ _ _ _ HNw').
+    assert (Hσ1N : Δ' ⊢ˢ σ1,,N : Γ1 ▹{κ} X[ζ])
+      by (eapply wf_sub_extend; [ exact Hσ1 | exact HXζ | exact HSk | rewrite exp_sub_sub; exact HNt ]).
+    assert (Hsb : sb_eq (((ζ ⨟ Wk),,#0) ⨟ (σ1,,N)) ((ζ ⨟ σ1),,N)).
+    { intros [| n]; cbn; [ reflexivity |]; rewrite sentry_sub_sub; apply sentry_sub_sb_eq; exact (sb_shift_extend _ _). }
+    assert (Heq : Δ' ⊢ˢ sb_wk σ φ,,N ≈ ((ζ ⨟ Wk),,#0) ⨟ (σ1,,N) : (Δa ++ Γ) ▹{κ} X).
+    { eapply wf_sub_eq_respects_sb_eq; [| symmetry; exact Hsb ].
+      eapply wf_sub_eq_extend; [ exact E | exact HX | exact HSk | exact HNt' | exact HNt | mauto 3 ]. }
+    pose proof (proj1 glu_dmod_through _ _ _ _ _ Hg' _ _ _ Hq Hσ1N Heq) as Hg1.
+    (** Moved to the application, which denotes alike *)
+    pose proof (sub_preserves_unit _ _ _ _ _ _ _ HU Hτ) as HUτ; rewrite gunit_sub_last in HUτ.
+    assert (E0 : (me_app (me_lit (gu_open (Δr' ++ ⋅ ▹ {κ} X) Φ))[ζ]ᵐ[Wk]ᵐ #0)
+                 = me_app (me_lit (gu_mk (tele_sub Δr' (q (ζ ⨟ Wk)) ++ ⋅ ▹ {κ} X[ζ ⨟ Wk])
+                                         (moddef_sub (md_body sm_open Φ) (sb_qn (length Δr') (q (ζ ⨟ Wk)))))) #0)
+      by (cbn [modexp_sub]; rewrite gunit_sub_sub, gunit_sub_last; reflexivity).
+    assert (E1 : (me_lit (gu_open Δr' Φ))[(ζ ⨟ Wk),,#0]ᵐ
+                 = me_lit (gu_mk (tele_sub Δr' (q (ζ ⨟ Wk)))
+                                 (moddef_sub (md_body sm_open Φ) (sb_qn (length Δr') (q (ζ ⨟ Wk)))))[Id,,#0]ᵘ).
+    { cbn [modexp_sub]; rewrite <- gunit_sub_mk, gunit_sub_sub; f_equal; apply gunit_sub_sb_eq.
+      rewrite sb_q_compose_extend, sb_compose_id_right; reflexivity. }
+    rewrite E0; rewrite E1 in Hg1.
+    pose proof (same_denote_beta _ _ _ _ _ #0 HUτ) as [Hd01 Hd10].
+    eapply (proj1 glu_dmod_same_part);
+      [ exact Hg1 | apply wf_me_beta; [ reflexivity | exact HUτ | exact H0t ]
+      | exact (same_part_of_denote Hd01) | exact (same_part_of_denote Hd10) | intros; reflexivity | intros; apply mod_qname_sub_lit ].
+Qed.
+
 End Fixed_GCtx.
