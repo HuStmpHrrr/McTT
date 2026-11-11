@@ -939,6 +939,7 @@ Fixpoint exp_self_form (pq : qname) (D : ind_decl) (d : nat) (M : exp) {struct M
       | a_succl M' => a_succl (exp_self_form pq D d M')
       | a_maxl M1 M2 => a_maxl (exp_self_form pq D d M1) (exp_self_form pq D d M2)
       | a_absurd A M' => a_absurd (exp_self_form pq D d A) (exp_self_form pq D d M')
+      | a_proof P M' => a_proof (exp_self_form pq D d P) (exp_self_form pq D d M')
       | a_and P Q => a_and (exp_self_form pq D d P) (exp_self_form pq D (S d) Q)
       | a_conj P Q M1 M2 =>
           a_conj (exp_self_form pq D d P) (exp_self_form pq D (S d) Q) (exp_self_form pq D d M1) (exp_self_form pq D d M2)

@@ -816,6 +816,9 @@ let exp_to_expression, modexp_to_expression =
        Cst.Coq_and_intro (impl ctx em, impl ctx ep, impl ctx en)
     | Coq_a_left em -> Cst.Coq_and_left (impl ctx em)
     | Coq_a_right em -> Cst.Coq_and_right (impl ctx em)
+    (* A proof tagged with its proposition is printed as the proof: the
+       tag is internal and has no effect. *)
+    | Coq_a_proof (_, em) -> impl ctx em
     (* The placeholders stand where the typed pass fills a term; a message
        may still show one, as the reserved [_]. *)
     | Coq_a_typ i -> Cst.Coq_typ i

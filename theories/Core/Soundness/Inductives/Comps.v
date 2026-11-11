@@ -1147,7 +1147,7 @@ Section Former.
         match goal with H : ind_member D k = Some ?M1 |- _ => assert (M1 = Mk) as -> by congruence end.
         match goal with HR : Rps vs at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Rs |- _ =>
           destruct (HMr _ _ _ Hφ HR) as [HRl HRs] end.
-        unfold glu_nf_eq; cbn [nf_annotate_proofs nf_to_exp].
+        unfold glu_nf_eq; cbn [nf_to_exp].
         rewrite apps_wk; cbn [exp_wk].
         assert (HS' : exp_scoped (im_np D Mk) (Type⟨t[wk_shiftn (im_nn Mk)]ʷ⟩))
           by (pose proof (sort_shift_scoped Mk) as Hss; rewrite Heq in Hss; exact Hss).

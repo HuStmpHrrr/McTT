@@ -719,6 +719,11 @@ Inductive exp : Set :=
 | a_left : exp -> exp
 (** The proof of the second component of a conjunction *)
 | a_right : exp -> exp
+(** [a_proof P M]: the proof [M] tagged with the proposition [P] it
+    proves, equal to [M].  It is internal: the term a normal form proof
+    stands for ([nf_to_exp]), so that the proposition of a proof is
+    read off its term. *)
+| a_proof : exp -> exp -> exp
 (** The type former of the member [k] of the group [pq] of inductive types,
     to be applied to its parameters: [pq] names the group, the path of its
     first member's entry ([ge_ind]). *)
@@ -938,6 +943,7 @@ Section syn_mut_ind.
     (case_conj : forall P Q M N, Pe P -> Pe Q -> Pe M -> Pe N -> Pe (a_conj P Q M N))
     (case_left : forall M, Pe M -> Pe (a_left M))
     (case_right : forall M, Pe M -> Pe (a_right M))
+    (case_proof : forall P M, Pe P -> Pe M -> Pe (a_proof P M))
     (case_ind : forall p k, Pe (a_ind p k))
     (case_con : forall p k c, Pe (a_con p k c))
     (case_elim : forall κ pq Us m Bks M,
@@ -998,6 +1004,7 @@ Section syn_mut_ind.
     | a_conj P Q M N => case_conj P Q M N (exp_mut P) (exp_mut Q) (exp_mut M) (exp_mut N)
     | a_left M => case_left M (exp_mut M)
     | a_right M => case_right M (exp_mut M)
+    | a_proof P M => case_proof P M (exp_mut P) (exp_mut M)
     | a_ind p k => case_ind p k
     | a_con p k c => case_con p k c
     | a_elim κ pq Us0 m Bks M =>
@@ -1785,7 +1792,9 @@ Fixpoint apps_exp (M : exp) (args : list exp) : exp :=
   end.
 
 (** The term a normal form stands for (normal forms are a subset of
-    terms). *)
+    terms).  A proof is tagged with the proposition it proves
+    ([a_proof]), so that the proposition of every proof of a normal form
+    is read off its term. *)
 Fixpoint nf_to_exp (M : nf) : exp :=
   match M with
   | nf_typ i => a_typ i
@@ -1795,7 +1804,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_lvl c xs => lvl_exp_of c (List.map (fun a => (atom_offset a, ne_to_exp (atom_level a))) xs)
   | nf_prop => a_prop
   | nf_True => a_True
-  | nf_proof _ M => M
+  | nf_proof P M => a_proof (nf_to_exp P) M
   | nf_False => a_False
   | nf_and P Q => a_and (nf_to_exp P) (nf_to_exp Q)
   | nf_pi κd κc A B => a_pi κd κc (nf_to_exp A) (nf_to_exp B)
@@ -2649,6 +2658,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_conj P Q M N => a_conj (exp_wk P φ) (exp_wk Q (wk_q φ)) (exp_wk M φ) (exp_wk N φ)
   | a_left M => a_left (exp_wk M φ)
   | a_right M => a_right (exp_wk M φ)
+  | a_proof P M => a_proof (exp_wk P φ) (exp_wk M φ)
   | a_ind p k => a_ind p k
   | a_con p k c => a_con p k c
   | a_elim r pq Us m Bks M =>
@@ -2736,7 +2746,7 @@ Fixpoint exp_free_bound (M : exp) : nat :=
   | a_ind _ _ | a_con _ _ _ | a_record _ => 0
   | a_univ t => exp_free_bound t
   | a_succl M | a_left M | a_right M | a_proj _ M => exp_free_bound M
-  | a_maxl M N | a_absurd M N | a_app M N => Nat.max (exp_free_bound M) (exp_free_bound N)
+  | a_maxl M N | a_absurd M N | a_app M N | a_proof M N => Nat.max (exp_free_bound M) (exp_free_bound N)
   | a_and A B | a_pi _ _ A B | a_fn A B => Nat.max (exp_free_bound A) (exp_free_bound B - 1)
   | a_conj P Q M N =>
       Nat.max (Nat.max (exp_free_bound P) (exp_free_bound Q - 1)) (Nat.max (exp_free_bound M) (exp_free_bound N))
@@ -2939,6 +2949,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_conj P Q M N => a_conj (exp_sub P σ) (exp_sub Q (sb_q σ)) (exp_sub M σ) (exp_sub N σ)
   | a_left M => a_left (exp_sub M σ)
   | a_right M => a_right (exp_sub M σ)
+  | a_proof P M => a_proof (exp_sub P σ) (exp_sub M σ)
   | a_ind p k => a_ind p k
   | a_con p k c => a_con p k c
   | a_elim r pq Us m Bks M =>

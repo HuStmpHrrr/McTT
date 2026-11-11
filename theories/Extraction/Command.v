@@ -303,6 +303,7 @@ Section ModBlame.
     | a_succl M | a_univ M | a_left M | a_right M => mod_blame M
     | a_maxl M N | a_pi _ _ M N | a_fn M N | a_app M N | a_and M N => first_some (mod_blame M) (fun _ => mod_blame N)
     | a_absurd A M => first_some (mod_blame M) (fun _ => mod_blame A)
+    | a_proof P M => first_some (mod_blame P) (fun _ => mod_blame M)
     | a_conj P Q M N =>
         first_some (mod_blame P) (fun _ => first_some (mod_blame Q) (fun _ => first_some (mod_blame M) (fun _ => mod_blame N)))
     | a_elim _ _ Us _ Bks M =>
@@ -430,6 +431,7 @@ Section BranchBlame.
     | a_succl M | a_univ M | a_left M | a_right M => brs_blame F M
     | a_maxl M N | a_pi _ _ M N | a_fn M N | a_app M N | a_and M N => first_some (brs_blame F M) (fun _ => brs_blame F N)
     | a_absurd A M => first_some (brs_blame F M) (fun _ => brs_blame F A)
+    | a_proof P M => first_some (brs_blame F P) (fun _ => brs_blame F M)
     | a_conj P Q M N =>
         first_some (brs_blame F P) (fun _ => first_some (brs_blame F Q) (fun _ => first_some (brs_blame F M) (fun _ => brs_blame F N)))
     | a_elim _ _ Us _ Bks M =>
@@ -547,6 +549,7 @@ Section BlocksBlame.
     | a_maxl M N | a_app M N => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ N)
     | a_pi _ _ A B | a_fn A B | a_and A B => first_some (blocks_blame Γ A) (fun _ => blocks_blame (unread_binder :: Γ) B)
     | a_absurd A M => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ A)
+    | a_proof P M => first_some (blocks_blame Γ P) (fun _ => blocks_blame Γ M)
     | a_conj P Q M N =>
         first_some (blocks_blame Γ P) (fun _ => first_some (blocks_blame (unread_binder :: Γ) Q)
           (fun _ => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ N)))
@@ -645,6 +648,7 @@ Section ValueBlame.
         first_some (applied_blame Γ M) (fun _ => first_some (value_blame Γ M0) (fun _ => value_blame Γ N))
     | a_pi _ _ A B | a_fn A B | a_and A B => first_some (value_blame Γ A) (fun _ => value_blame (unread_binder :: Γ) B)
     | a_absurd A M0 => first_some (value_blame Γ M0) (fun _ => value_blame Γ A)
+    | a_proof P M0 => first_some (value_blame Γ P) (fun _ => value_blame Γ M0)
     | a_conj P Q M0 N =>
         first_some (value_blame Γ P) (fun _ => first_some (value_blame (unread_binder :: Γ) Q)
           (fun _ => first_some (value_blame Γ M0) (fun _ => value_blame Γ N)))

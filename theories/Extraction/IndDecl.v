@@ -32,7 +32,7 @@ Fixpoint exp_mvcb (n : nat) (M : exp) {struct M} : bool :=
   match M with
   | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False => true
   | a_succl M | a_univ M | a_left M | a_right M => exp_mvcb n M
-  | a_maxl M N | a_absurd M N => exp_mvcb n M && exp_mvcb n N
+  | a_maxl M N | a_absurd M N | a_proof M N => exp_mvcb n M && exp_mvcb n N
   | a_conj P Q M N => exp_mvcb n P && exp_mvcb (S n) Q && exp_mvcb n M && exp_mvcb n N
   | a_ind _ _ | a_con _ _ _ => true
   | a_elim _ _ Us _ Bks M =>

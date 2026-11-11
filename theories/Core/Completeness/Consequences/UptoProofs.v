@@ -1,27 +1,23 @@
-(** * Annotated Normal Forms Equal up to Their Proofs Are Equal
+(** * Normal Forms Equal up to Their Proofs Are Equal
 
-    Two normal forms equal up to their proofs ([nf_eq_upto_proofs]) whose
-    annotations ([nf_annotate_proofs]) are typed are equal at the type of
-    the first ([nf_annotate_proofs_upto]).  Only the first is asked to be
-    of the type: the second is typed somewhere, so each of its parts is,
-    and the induction compares the parts at the first's types.  At a proof
-    position both ascriptions prove a proposition, the two propositions
-    are equal by induction, and the two proofs are equal by proof
-    irrelevance.
+    Two normal forms equal up to their proofs ([nf_eq_upto_proofs]), both
+    typed, are equal at the type of the first ([nf_to_exp_upto_proofs]).
+    Only the first is asked to be of the type: the second is typed
+    somewhere, so each of its parts is, and the induction compares the
+    parts at the first's types.  A proof of a normal form is tagged with
+    its proposition ([nf_to_exp]), so at a proof position both tags
+    prove a proposition, the two propositions are equal by induction, and
+    the two proofs are equal by proof irrelevance.
 
     The induction needs one fact the syntax does not give: two equal
     domains of functions are types of one kind ([subtyp_same_kind]), so
     the bodies are typed in one context.  It is a consequence of
-    completeness; the lemma is used by soundness ([soundness_upto_proofs]).
-
-    A typed annotation is moreover equal to the plain normal form
-    ([nf_ne_annotate_proofs_plain]): the same induction, one-sided, with
-    an ascribed proof equal to its proof by irrelevance. *)
+    completeness; the lemma is used by soundness ([soundness_upto_proofs]). *)
 
 From Stdlib Require Import List.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import CoreInversions ProofAnnotation.
+From Mctt.Core.Syntactic Require Import CoreInversions.
 From Mctt.Core.Syntactic.System.Records Require Import Typing.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing Views UniformParams.
 From Mctt.Core.Completeness.Consequences Require Import Types.
@@ -219,57 +215,18 @@ Qed.
 
 (** ** Proofs *)
 
-(** An ascribed proof is of its proposition. *)
-Lemma proof_ascription_typed : forall Θ Ξ Γ P M,
-    Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ -> Θ ⍮ Ξ ⍮ Γ ⊢ M : P -> Θ ⍮ Ξ ⍮ Γ ⊢ proof_ascription P M : P.
-Proof.
-  intros * HP HM; unfold proof_ascription.
-  assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) by (gen_presups; assumption).
-  assert (HT : Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊢ a_True : Propₘ) by (apply wf_True; mauto 3).
-  assert (HN : Θ ⍮ Ξ ⍮ Γ ⊢ a_left (a_conj P a_True M a_tt) : P).
-  { eapply wf_left; [ exact HP | exact HT |].
-    eapply wf_conj; [ exact HP | exact HT | exact HM | cbn; apply wf_tt; exact HΓ ]. }
-  assert (HΓN : ⊢ Θ ⍮ Ξ ⍮ Γ ▸ P ≔ a_left (a_conj P a_True M a_tt))
-    by (eapply wf_ctx_extend_def; [ exact HP | constructor | exact HN ]).
-  assert (HPw : Θ ⍮ Ξ ⍮ Γ ▸ P ≔ a_left (a_conj P a_True M a_tt) ⊢ P[↑]ʷ : Propₘ)
-    by (change Propₘ with (Propₘ[↑]ʷ); eapply (proj1 wk_preserves_wf); [ exact HP | apply wf_wk_shift; exact HΓN ]).
-  assert (H : Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def P (a_left (a_conj P a_True M a_tt))) (a_var 0)
-                         : P[↑]ʷ[Id,,a_left (a_conj P a_True M a_tt)]).
-  { eapply wf_let; [ exact HP | constructor | exact HN | exact HPw | constructor |].
-    apply wf_vlookup; [ exact HΓN | constructor ]. }
-  rewrite exp_sub_shift_extend, exp_sub_id in H; exact H.
-Qed.
-
-(** An ascribed proof's proposition is a proposition, its proof a proof
-    of it, and its type that proposition or above it. *)
-Lemma proof_ascription_inversion : forall Θ Ξ Γ P M T,
-    Θ ⍮ Ξ ⍮ Γ ⊢ proof_ascription P M : T ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : P /\ Θ ⍮ Ξ ⍮ Γ ⊢ P ⊆ T.
-Proof.
-  intros * HT; unfold proof_ascription in HT.
-  destruct (wf_let_ann_inversion HT) as [S Y HS HPS HN HB Hs].
-  destruct (wf_left_inversion _ _ _ _ _ HN) as [L R HL HR Harg _].
-  destruct (wf_conj_inversion _ _ _ _ _ _ _ _ Harg) as [HPp _ HMt _ _].
-  split; [ exact HPp | split; [ exact HMt |] ].
-  destruct (wf_vlookup_inversion HB) as (A' & Hl & HA's); inversion Hl; subst.
-  pose proof (wf_sub_single_def _ _ _ _ _ _ HPS HS HN) as Hσ.
-  pose proof (sub_preserves_subtyp _ _ _ _ _ _ _ HA's Hσ) as Hs'.
-  rewrite exp_sub_shift_extend, exp_sub_id in Hs'.
-  eapply wf_subtyp_trans; [ exact Hs' | exact Hs ].
-Qed.
-
-(** Two ascribed proofs of equal propositions are equal, by proof
+(** Two tagged proofs of equal propositions are equal, by proof
     irrelevance, whatever the proofs. *)
 Lemma exp_upto_proof : forall Θ Ξ P M P' M',
-    exp_upto Θ Ξ P P' -> exp_upto Θ Ξ (proof_ascription P M) (proof_ascription P' M').
+    exp_upto Θ Ξ P P' -> exp_upto Θ Ξ (a_proof P M) (a_proof P' M').
 Proof.
   intros * HP Γ T HT [T' HT'].
-  destruct (proof_ascription_inversion _ _ _ _ _ _ HT) as (HPt & HMt & Hs).
-  destruct (proof_ascription_inversion _ _ _ _ _ _ HT') as (HP't & HM't & _).
+  destruct (wf_proof_tag_inversion _ _ _ _ _ _ HT) as [HPt HMt Hs].
+  destruct (wf_proof_tag_inversion _ _ _ _ _ _ HT') as [HP't HM't _].
   pose proof (HP _ _ HPt (ex_intro _ _ HP't)) as HPP.
-  pose proof (proof_ascription_typed _ _ _ _ _ HPt HMt) as H1.
-  pose proof (proof_ascription_typed _ _ _ _ _ HP't HM't) as H2.
-  assert (H2' : Θ ⍮ Ξ ⍮ Γ ⊢ proof_ascription P' M' : P)
+  pose proof (wf_proof_tag _ _ _ _ _ HPt HMt) as H1.
+  pose proof (wf_proof_tag _ _ _ _ _ HP't HM't) as H2.
+  assert (H2' : Θ ⍮ Ξ ⍮ Γ ⊢ a_proof P' M' : P)
     by (eapply wf_conv_sort; [ exact H2 | exact HPt | constructor | symmetry; exact HPP ]).
   eapply wf_exp_eq_subtyp'; [ eapply wf_exp_eq_irrelevant; [ exact HPt | exact H1 | exact H2' ] | exact Hs ].
 Qed.
@@ -469,11 +426,9 @@ Lemma Forall2_map_both : forall {A B : Type} (R : B -> B -> Prop) (g : A -> B) l
     List.Forall2 (fun x y => R (g x) (g y)) l l' -> List.Forall2 R (List.map g l) (List.map g l').
 Proof. intros * H; induction H; constructor; assumption. Qed.
 
-Theorem nf_ne_annotate_proofs_upto :
-  (forall W, forall Θ Ξ W', nf_eqb_upto_proofs W W' = true ->
-      exp_upto Θ Ξ (nf_annotate_proofs W) (nf_annotate_proofs W')) /\
-  (forall M, forall Θ Ξ M', ne_eqb_upto_proofs M M' = true ->
-      exp_upto Θ Ξ (ne_annotate_proofs M) (ne_annotate_proofs M')).
+Theorem nf_ne_to_exp_upto_proofs :
+  (forall W, forall Θ Ξ W', nf_eqb_upto_proofs W W' = true -> exp_upto Θ Ξ W W') /\
+  (forall M, forall Θ Ξ M', ne_eqb_upto_proofs M M' = true -> exp_upto Θ Ξ M M').
 Proof.
   apply nf_ne_ind; intros;
     lazymatch goal with
@@ -481,365 +436,51 @@ Proof.
     | H : ne_eqb_upto_proofs _ ?M = true |- _ => destruct M
     end;
     cbn [nf_eqb_upto_proofs ne_eqb_upto_proofs] in *; try discriminate; eqb_split; eqb_leaves; subst;
-    cbn [nf_annotate_proofs ne_annotate_proofs nf_to_exp ne_to_exp].
+    cbn [nf_to_exp ne_to_exp].
   all: try apply exp_upto_refl.
   (** The formers of one or two parts *)
   all: try solve [ first [ apply exp_upto_and | apply exp_upto_pi | apply exp_upto_fn | apply exp_upto_app | apply exp_upto_proof
                          | apply exp_upto_absurd | apply exp_upto_proj ]; eauto ].
   all: try solve [ eauto ].
   (** Type formers and constructors at their arguments *)
-  all: try (apply exp_upto_apps; [| apply exp_upto_refl ]; rewrite !List.map_map; apply Forall2_map_both;
+  all: try (apply exp_upto_apps; [| apply exp_upto_refl ]; rewrite ?List.map_map; apply Forall2_map_both;
             eapply list_eqb_Forall2_all; [ eassumption | | eassumption ]; cbn; intros x Hx y Hxy; exact (Hx _ _ _ Hxy)).
   (** Levels and small universes, atom by atom *)
-  all: try (try apply exp_upto_univ; apply exp_upto_lvl_exp_of; rewrite !List.map_map; apply Forall2_map_both;
+  all: try (try apply exp_upto_univ; apply exp_upto_lvl_exp_of; rewrite ?List.map_map; apply Forall2_map_both;
             eapply list_eqb_Forall2_all; [ eassumption | | eassumption ]; cbn; intros x Hx y Hxy; destruct Hx; cbn in *;
             eqb_split; eqb_leaves; split; [ assumption | eauto ]).
   - (** A tuple: its type's parameters, its names, its fields *)
     apply exp_upto_tuple.
-    + apply exp_upto_apps; [| apply exp_upto_refl ]; rewrite !List.map_map; apply Forall2_map_both.
+    + apply exp_upto_apps; [| apply exp_upto_refl ]; rewrite ?List.map_map; apply Forall2_map_both.
       eapply list_eqb_Forall2_all; [ eassumption | | eassumption ]; cbn; intros x Hx y Hxy; exact (Hx _ _ _ Hxy).
     + pose proof (list_eqb_length _ _ _ H2) as Hlen.
-      rewrite !List.map_map; clear - Hlen; revert l1 l4 Hlen; induction l3 as [| f l3 IH]; intros [| x l1] [| y l4] Hlen;
+      rewrite ?List.map_map; clear - Hlen; revert l1 l4 Hlen; induction l3 as [| f l3 IH]; intros [| x l1] [| y l4] Hlen;
         cbn in *; try discriminate; try reflexivity; f_equal; apply IH; congruence.
-    + assert (HF : List.Forall2 (exp_upto Θ Ξ) (map nf_to_exp (map nf_annotate_proofs l1))
-                     (map nf_to_exp (map nf_annotate_proofs l4)))
-        by (rewrite !List.map_map; apply Forall2_map_both;
+    + assert (HF : List.Forall2 (exp_upto Θ Ξ) (map nf_to_exp l1) (map nf_to_exp l4))
+        by (rewrite ?List.map_map; apply Forall2_map_both;
             eapply list_eqb_Forall2_all; [ eassumption | | eassumption ]; cbn; intros x Hx y Hxy; exact (Hx _ _ _ Hxy)).
       clear - HF; revert l3; induction HF as [| x y X Y Hxy HF IH]; intros [| f l3]; cbn; constructor; [ exact Hxy | apply IH ].
   - (** A stuck eliminator: its uniform parameters, its blocks, its scrutinee *)
     apply exp_upto_elim.
-    + rewrite !List.map_map; apply Forall2_map_both.
+    + rewrite ?List.map_map; apply Forall2_map_both.
       eapply list_eqb_Forall2_all; [ eassumption | | eassumption ]; cbn; intros x Hx y Hxy; exact (Hx _ _ _ Hxy).
-    + rewrite !List.map_map; apply Forall2_map_both.
+    + rewrite ?List.map_map; apply Forall2_map_both.
       eapply list_eqb_Forall2_all; [ eassumption | | eassumption ]; cbn; intros x Hx y Hxy.
       destruct Hx as [n' Z HZ A' HA brs Hbrs]; cbn in *; eqb_split; eqb_leaves.
       split; [ congruence | split; [ eauto | split; [ eauto |] ] ].
-      rewrite !List.map_map; apply Forall2_map_both.
+      rewrite ?List.map_map; apply Forall2_map_both.
       eapply list_eqb_Forall2_all; [ exact Hbrs | | eassumption ]; cbn; intros br Hbr br' Hbr'.
       destruct Hbr; cbn in *; eqb_split; eqb_leaves; split; [ congruence | eauto ].
     + eauto.
 Qed.
 
-Corollary nf_annotate_proofs_upto : forall Θ Ξ Γ T W W',
-    Θ ⍮ Ξ ⍮ Γ ⊢ nf_annotate_proofs W : T ->
-    (exists T', Θ ⍮ Ξ ⍮ Γ ⊢ nf_annotate_proofs W' : T') ->
+(** Two normal forms equal up to their proofs, both typed, are equal at
+    the type of the first: their proofs are tagged with their
+    propositions ([nf_to_exp]), equal by the induction. *)
+Corollary nf_to_exp_upto_proofs : forall Θ Ξ Γ T (W W' : nf),
+    Θ ⍮ Ξ ⍮ Γ ⊢ W : T ->
+    (exists T', Θ ⍮ Ξ ⍮ Γ ⊢ W' : T') ->
     nf_eq_upto_proofs W W' ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ nf_annotate_proofs W ≈ nf_annotate_proofs W' : T.
-Proof. intros * HW HW' E; exact (proj1 nf_ne_annotate_proofs_upto _ _ _ _ E _ _ HW HW'). Qed.
+    Θ ⍮ Ξ ⍮ Γ ⊢ W ≈ W' : T.
+Proof. intros * HW HW' E; exact (proj1 nf_ne_to_exp_upto_proofs _ _ _ _ E _ _ HW HW'). Qed.
 
-(** ** The Plain Normal Form
-
-    A typed annotation is equal to the plain normal form.  The comparison
-    is one-sided: only the annotation is typed, and each part of the plain
-    form is typed because it is equal to the annotation's part.  An
-    ascribed proof [proof_ascription P M] is the proof [M], which the
-    ascription types, by irrelevance; the formers are congruences. *)
-
-(** [X'] is equal to [X] at every type of [X]. *)
-Definition exp_plain (Θ : gdeps) (Ξ : gstack) (X X' : exp) : Prop :=
-  forall Γ T, Θ ⍮ Ξ ⍮ Γ ⊢ X : T -> Θ ⍮ Ξ ⍮ Γ ⊢ X ≈ X' : T.
-
-Lemma exp_plain_refl : forall Θ Ξ X, exp_plain Θ Ξ X X.
-Proof. intros * Γ T HT; apply wf_exp_eq_refl; exact HT. Qed.
-
-Lemma exp_plain_fn : forall Θ Ξ A M A' M',
-    exp_plain Θ Ξ A A' -> exp_plain Θ Ξ M M' -> exp_plain Θ Ξ (λ A M) (λ A' M').
-Proof.
-  intros * HA HM Γ T HT.
-  destruct (wf_fn_inversion HT) as (κd & κc & B & HMt & Hsub).
-  destruct (presup_subtyp_left_sorted Hsub) as (S0 & HS0 & HPi).
-  destruct (wf_pi_inversion_at HPi) as [U HU HAt HBt Hk _].
-  pose proof (HA _ _ HAt) as HAA.
-  destruct (pi_domain_eq_sort HU HAt (presup_exp_eq_right HAA) HAA) as (S & HSk & HAS & HA'S & HAAS).
-  pose proof (HM _ _ HMt) as HMM.
-  destruct (pi_cod_sort_large _ _ _ _ _ _ _ _ HU HBt) as [j HBj].
-  eapply wf_exp_eq_subtyp'; [| exact Hsub ].
-  eapply wf_exp_eq_fn_cong; [ exact HAS | exact HSk | exact HAAS | exact HBj | exact Hk | exact HMM ].
-Qed.
-
-Lemma exp_plain_pi : forall Θ Ξ κd κc A B A' B',
-    exp_plain Θ Ξ A A' -> exp_plain Θ Ξ B B' -> exp_plain Θ Ξ (a_pi κd κc A B) (a_pi κd κc A' B').
-Proof.
-  intros * HA HB Γ T HT.
-  destruct (wf_pi_inversion_at HT) as [U HU HAt HBt Hk Hs].
-  pose proof (wf_exp_eq_pi_cong _ _ _ _ _ _ _ _ _ _ HU HAt (HA _ _ HAt) (HB _ _ HBt) Hk) as E.
-  destruct Hs as [<- | Hs]; [ exact E | eapply wf_exp_eq_subtyp'; [ exact E | exact Hs ] ].
-Qed.
-
-Lemma exp_plain_and : forall Θ Ξ P Q P' Q',
-    exp_plain Θ Ξ P P' -> exp_plain Θ Ξ Q Q' -> exp_plain Θ Ξ (Σₚ P Q) (Σₚ P' Q').
-Proof.
-  intros * HP HQ Γ T HT.
-  destruct (wf_and_inversion _ _ _ _ _ _ HT) as [HPt HQt Hs].
-  eapply wf_exp_eq_subtyp'; [ eapply wf_exp_eq_and_cong; [ exact HPt | exact (HP _ _ HPt) | exact (HQ _ _ HQt) ] | exact Hs ].
-Qed.
-
-Lemma exp_plain_app : forall Θ Ξ F N F' N',
-    exp_plain Θ Ξ F F' -> exp_plain Θ Ξ N N' -> exp_plain Θ Ξ (F $ N) (F' $ N').
-Proof.
-  intros * HF HN Γ T HT.
-  destruct (wf_app_inversion HT) as [κd κc D C HFt HNt Hs].
-  pose proof (presup_exp_typ_cases HFt) as Hc; inversion Hc as [? S HS HPi |]; subst.
-  destruct (wf_pi_inversion_at HPi) as [U HU HDt HCt Hk _].
-  destruct (pi_domain_sort_kind HU HDt) as (SD & HSD & HDS).
-  destruct (pi_cod_sort_large _ _ _ _ _ _ _ _ HU HCt) as [j HCj].
-  eapply wf_exp_eq_subtyp'; [ eapply wf_exp_eq_app_cong; [ exact HDS | exact HSD | exact HCj | exact Hk
-                                                         | exact (HF _ _ HFt) | exact (HN _ _ HNt) ]
-                            | exact Hs ].
-Qed.
-
-Lemma exp_plain_succl : forall Θ Ξ M M', exp_plain Θ Ξ M M' -> exp_plain Θ Ξ (succl M) (succl M').
-Proof.
-  intros * HM Γ T HT.
-  destruct (wf_succl_inversion _ _ _ _ _ HT) as (n & HMt & Hs).
-  eapply wf_exp_eq_subtyp'; [ eapply wf_exp_eq_succl_cong; exact (HM _ _ HMt) | exact Hs ].
-Qed.
-
-Lemma exp_plain_maxl : forall Θ Ξ M N M' N',
-    exp_plain Θ Ξ M M' -> exp_plain Θ Ξ N N' -> exp_plain Θ Ξ (maxl M N) (maxl M' N').
-Proof.
-  intros * HM HN Γ T HT.
-  destruct (wf_maxl_inversion _ _ _ _ _ _ HT) as (n & HMt & HNt & Hs).
-  eapply wf_exp_eq_subtyp'; [ eapply wf_exp_eq_maxl_cong; [ exact (HM _ _ HMt) | exact (HN _ _ HNt) ] | exact Hs ].
-Qed.
-
-Lemma exp_plain_apps : forall Θ Ξ Ns Ns' H H',
-    List.Forall2 (exp_plain Θ Ξ) Ns Ns' -> exp_plain Θ Ξ H H' -> exp_plain Θ Ξ (apps_exp H Ns) (apps_exp H' Ns').
-Proof.
-  intros * HNs; revert H H'; induction HNs as [| N N' Ns Ns' HN HNs IH]; intros H H' HH; cbn [apps_exp];
-    [ exact HH | apply IH, exp_plain_app; assumption ].
-Qed.
-
-Lemma exp_plain_succl_n : forall Θ Ξ k M M', exp_plain Θ Ξ M M' -> exp_plain Θ Ξ (succl_n k M) (succl_n k M').
-Proof. induction k as [| k IH]; intros * HM; cbn [succl_n]; [ exact HM | apply exp_plain_succl, IH, HM ]. Qed.
-
-Lemma exp_plain_lvl_fold : forall Θ Ξ xs xs' H H',
-    List.Forall2 (fun x x' => fst x = fst x' /\ exp_plain Θ Ξ (snd x) (snd x')) xs xs' ->
-    exp_plain Θ Ξ H H' -> exp_plain Θ Ξ (lvl_fold H xs) (lvl_fold H' xs').
-Proof.
-  intros * Hxs; revert H H'; induction Hxs as [| [k a] [k' a'] xs xs' [Hk Ha] Hxs IH]; intros H H' HH;
-    cbn [lvl_fold fst snd] in *; [ exact HH | subst k' ].
-  apply IH, exp_plain_maxl; [ exact HH | apply exp_plain_succl_n; exact Ha ].
-Qed.
-
-Lemma exp_plain_lvl_exp_of : forall Θ Ξ c xs xs',
-    List.Forall2 (fun x x' => fst x = fst x' /\ exp_plain Θ Ξ (snd x) (snd x')) xs xs' ->
-    exp_plain Θ Ξ (lvl_exp_of c xs) (lvl_exp_of c xs').
-Proof.
-  intros * Hxs; destruct Hxs as [| [k a] [k' a'] xs xs' [Hk Ha] Hxs]; cbn [fst snd] in *; [ apply exp_plain_refl | subst k' ].
-  unfold lvl_exp_of; destruct c as [[| c1] [| c2]];
-    apply exp_plain_lvl_fold; try exact Hxs;
-    first [ apply exp_plain_succl_n; exact Ha | apply exp_plain_maxl; [ apply exp_plain_refl | apply exp_plain_succl_n; exact Ha ] ].
-Qed.
-
-Lemma exp_plain_absurd : forall Θ Ξ C M C', exp_plain Θ Ξ C C' -> exp_plain Θ Ξ (efq M return C) (efq M return C').
-Proof.
-  intros * HC Γ T HT.
-  destruct (wf_absurd_inversion_closed _ _ _ _ _ _ HT) as (S & HS & Hc & HCt & HMt & Hs).
-  eapply wf_exp_eq_subtyp'; [ eapply wf_exp_eq_absurd_cong; [ exact HCt | exact HS | exact Hc | exact (HC _ _ HCt)
-                                                            | exact HMt | exact HMt ]
-                            | exact Hs ].
-Qed.
-
-(** An ascribed proof is the proof, which the ascription types at its
-    proposition. *)
-Lemma exp_plain_proof : forall Θ Ξ P M, exp_plain Θ Ξ (proof_ascription P M) M.
-Proof.
-  intros * Γ T HT.
-  destruct (proof_ascription_inversion _ _ _ _ _ _ HT) as (HPt & HMt & Hs).
-  pose proof (proof_ascription_typed _ _ _ _ _ HPt HMt) as H1.
-  eapply wf_exp_eq_subtyp'; [ eapply wf_exp_eq_irrelevant; [ exact HPt | exact H1 | exact HMt ] | exact Hs ].
-Qed.
-
-Lemma exp_plain_univ : forall Θ Ξ M M', exp_plain Θ Ξ M M' -> exp_plain Θ Ξ (Type⟨M⟩) (Type⟨M'⟩).
-Proof.
-  intros * HM Γ T HT.
-  pose proof (wf_univ_inversion HT) as Hs.
-  destruct (wf_univ_lvl_inversion HT) as [n HMt].
-  eapply wf_exp_eq_subtyp'; [ eapply wf_exp_eq_univ_cong; exact (HM _ _ HMt) | exact Hs ].
-Qed.
-
-Lemma exp_plain_proj : forall Θ Ξ f M M', exp_plain Θ Ξ M M' -> exp_plain Θ Ξ (a_proj f M) (a_proj f M').
-Proof.
-  intros * HM Γ T HT.
-  destruct (wf_proj_inversion HT) as [p R Ns k U S HMt Hr Hl Hn HNs Hfk HUt HS Hs].
-  destruct (record_sort_large _ _ _ _ _ _ Hr Hl Hn HNs) as [n HSn].
-  destruct (record_proj_cong_at _ _ _ _ _ _ _ _ _ _ _ _ (HM _ _ HMt) Hr Hl Hn HNs HSn Hfk) as [_ E].
-  eapply wf_exp_eq_subtyp'; [ exact E | exact Hs ].
-Qed.
-
-(** The plain tuple is typed at its annotation: its fields are equal to
-    the annotation's, so they are of the field types at the plain fields
-    before them, which are equal to the types at the annotation's. *)
-Lemma exp_plain_tuple : forall Θ Ξ T T' fs fs',
-    exp_plain Θ Ξ T T' -> List.map fst fs = List.map fst fs' ->
-    List.Forall2 (fun x x' => exp_plain Θ Ξ (snd x) (snd x')) fs fs' ->
-    exp_plain Θ Ξ (a_tuple T fs) (a_tuple T' fs').
-Proof.
-  intros * HT0 Hnames HF Γ A HA.
-  destruct (wf_tuple_inversion HA) as [p R Ns i HTt HTe Hr Hl Hn HNs Hfs HMs Hsub].
-  pose proof (HT0 _ _ HTt) as HTT.
-  assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) by (gen_presups; assumption).
-  destruct (wf_record_inversion Hr) as [R0 Hl0 Hnd Hass i0 Hty HF0 HS0 HFs _].
-  rewrite Hl in Hl0; injection Hl0 as <-.
-  pose proof (wf_record_closed _ _ _ _ _ HΓ Hl) as Hc.
-  destruct (record_sort_large _ _ _ _ _ _ Hr Hl Hn HNs) as [n HSn].
-  assert (Hfs' : List.map fst fs' = List.map fst fs) by (symmetry; exact Hnames).
-  assert (Hlf : List.length fs = List.length (record_fields R))
-    by (rewrite <- (List.length_map fst fs), <- (List.length_map fst (record_fields R)), Hfs; reflexivity).
-  assert (HMM : forall k f M M' U, List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') ->
-             List.nth_error (record_fields R) k = Some (f, U) ->
-             Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]).
-  { intros k f M M' U Hk Hk' Hfk.
-    exact (Forall2_nth_both _ _ _ HF _ _ _ Hk Hk' _ _ (HMs _ _ _ _ Hk Hfk)). }
-  assert (HNN : forall j X Y T0, List.nth_error Ns j = Some X -> List.nth_error Ns j = Some Y ->
-             List.nth_error (tele_insts (record_params R) Id Ns) j = Some T0 -> Θ ⍮ Ξ ⍮ Γ ⊢ X ≈ Y : T0)
-    by (intros j X Y T0 HX HY HT1; rewrite HX in HY; injection HY as <-; apply wf_exp_eq_refl; exact (HNs _ _ _ HX HT1)).
-  pose proof (record_fields_insts_eq _ _ _ p R Ns Ns fs fs' Hr Hl Hn Hn HNN Hfs Hfs' HMM) as Hins.
-  assert (H1 : Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : T) by (eapply wf_tuple; eassumption).
-  assert (H2 : Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T' fs' : T').
-  { eapply wf_tuple; [ exact (presup_exp_eq_right HTT) | etransitivity; [ symmetry; exact HTT | exact HTe ] | exact Hr | exact Hl
-                     | exact Hn | exact HNs | rewrite Hfs'; exact Hfs |].
-    intros k f M' U Hk' Hfk.
-    assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
-    destruct (nth_error_lt_some fs k ltac:(lia)) as [[g M] Hg].
-    assert (g = f) as ->.
-    { pose proof (List.map_nth_error fst _ _ Hg) as E1; pose proof (List.map_nth_error fst _ _ Hfk) as E2.
-      rewrite Hfs in E1; rewrite E1 in E2; injection E2 as ->; reflexivity. }
-    pose proof (HMM _ _ _ _ _ Hg Hk' Hfk) as HE.
-    assert (Hlf' : List.length fs' = List.length fs)
-      by (rewrite <- (List.length_map fst fs'), <- (List.length_map fst fs), Hfs'; reflexivity).
-    pose proof (record_field_sort_cong _ _ _ R k f U Ns (List.firstn k (List.map snd fs)) (Ns ++ List.firstn k (List.map snd fs'))
-                  Hc Hass HFs HΓ Hfk Hn ltac:(rewrite List.length_firstn, List.length_map; lia)
-                  ltac:(rewrite List.length_app, List.length_firstn, List.length_map; lia) (Hins k ltac:(lia))) as HTTk.
-    eapply wf_conv_rel; [ exact (presup_exp_eq_right HE) | eapply abs_kind_sort_exp_eq_up; [ exact HTTk | exact HSn ] ]. }
-  assert (H2' : Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T' fs' : T) by (eapply wf_conv; [ exact H2 | exact HTt | symmetry; exact HTT ]).
-  eapply wf_exp_eq_subtyp'; [| exact Hsub ].
-  eapply wf_exp_eq_tuple_cong; [ exact H1 | exact HTT | exact HTe | exact Hl | exact Hn | exact HNs | exact Hfs
-                               | exact Hfs' | exact HMM | exact H2' ].
-Qed.
-
-(** A stuck eliminator: the plain blocks at the annotation's uniform
-    parameters, each part equal to the annotation's. *)
-Lemma exp_plain_elim : forall Θ Ξ p Us Us' m Bks Bks' M M',
-    List.Forall2 (exp_plain Θ Ξ) Us Us' ->
-    List.Forall2 (fun b b' => eb_binder_count b = eb_binder_count b' /\
-                   exp_plain Θ Ξ (eb_scrutinee_type b) (eb_scrutinee_type b') /\
-                   exp_plain Θ Ξ (eb_motive b) (eb_motive b') /\
-                   List.Forall2 (fun br br' => fst br = fst br' /\ exp_plain Θ Ξ (snd br) (snd br')) (eb_brs b) (eb_brs b'))
-      Bks Bks' ->
-    exp_plain Θ Ξ M M' ->
-    exp_plain Θ Ξ (a_elim ak_relevant p Us m Bks M) (a_elim ak_relevant p Us' m Bks' M').
-Proof.
-  intros * HUs HBks HM Γ T HT.
-  destruct (wf_elim_inversion HT) as [D Mm bm Ps i Hl Hm Hbm HPl HPs HMt HUe HBt Hs].
-  subst Us.
-  pose proof (presup_exp_ctx HMt) as HΓ.
-  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
-  pose proof (HM _ _ HMt) as HMM.
-  assert (Hnu : ind_nu D <= im_np D Mm) by (unfold im_np; lia).
-  assert (HUl' : List.length Us' = ind_nu D)
-    by (rewrite <- (List.Forall2_length HUs), List.length_firstn; lia).
-  set (Ps'' := Us' ++ List.skipn (ind_nu D) Ps).
-  assert (HPl'' : List.length Ps'' = im_np D Mm) by (unfold Ps''; rewrite List.length_app, HUl', List.length_skipn; lia).
-  assert (HU'' : List.firstn (ind_nu D) Ps'' = Us')
-    by (unfold Ps''; rewrite List.firstn_app, HUl', PeanoNat.Nat.sub_diag, List.firstn_O, List.app_nil_r, <- HUl', List.firstn_all;
-        reflexivity).
-  assert (HPP : forall k P P'' T0, nth_error Ps k = Some P -> nth_error Ps'' k = Some P'' ->
-             nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T0 -> Θ ⍮ Ξ ⍮ Γ ⊢ P ≈ P'' : T0).
-  { intros k P P'' T0 HP HP'' HT0.
-    destruct (PeanoNat.Nat.lt_ge_cases k (ind_nu D)) as [Hk | Hk].
-    - unfold Ps'' in HP''; rewrite List.nth_error_app1 in HP'' by lia.
-      assert (HP1 : nth_error (List.firstn (ind_nu D) Ps) k = Some P)
-        by (rewrite List.nth_error_firstn; destruct (PeanoNat.Nat.ltb_spec k (ind_nu D)); [ exact HP | lia ]).
-      exact (Forall2_nth_both _ _ _ HUs _ _ _ HP1 HP'' _ _ (HPs _ _ _ HP HT0)).
-    - unfold Ps'' in HP''; rewrite List.nth_error_app2 in HP'' by lia; rewrite HUl', List.nth_error_skipn in HP''.
-      replace (ind_nu D + (k - ind_nu D)) with k in HP'' by lia; rewrite HP in HP''; injection HP'' as <-.
-      apply wf_exp_eq_refl; exact (HPs _ _ _ HP HT0). }
-  pose proof (List.Forall2_length HBks) as HlBB.
-  assert (Hb' : forall k b', nth_error Bks' k = Some b' -> exists b, nth_error Bks k = Some b).
-  { intros k b' Hb'; apply nth_error_lt_some; rewrite HlBB; exact (nth_error_lt_length _ _ _ Hb'). }
-  eapply wf_exp_eq_subtyp'; [| exact Hs ].
-  destruct HBt as [HlB Hnm HZ HAb HΨ Hn HΨB Hk HB Hmk].
-  eapply wf_exp_eq_elim_cong with (Ps := Ps) (Ps' := Ps''); try eassumption; try (symmetry; exact HU''); try reflexivity.
-  - rewrite <- HlBB; exact HlB.
-  - (** The plain binder counts *)
-    intros k Mk b' Hk' Hb0'; destruct (Hb' _ _ Hb0') as [b Hb0].
-    destruct (Forall2_nth_both _ _ _ HBks _ _ _ Hb0 Hb0') as (Hc0 & _).
-    rewrite <- Hc0; exact (Hnm _ _ _ Hk' Hb0).
-  - (** The plain scrutinee types, equal to the annotation's *)
-    intros k Mk b' Hk' Hb0'; destruct (Hb' _ _ Hb0') as [b Hb0].
-    destruct (Forall2_nth_both _ _ _ HBks _ _ _ Hb0 Hb0') as (_ & HZZ & _).
-    pose proof (HZ _ _ _ Hk' Hb0) as HZ0; unfold elim_mctx in HZ0 |- *.
-    assert (Hass : all_assumptions (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps))))
-      by (apply all_assumptions_sub; exact (decl_typed_nparams_ass _ _ _ HD _ _ Hk')).
-    destruct (ext_eq_ass_inv _ _ _ _ _ _ _ _ HZ0) as [S1 HS1 S1' HS1' HTT HZt _ _ _].
-    pose proof (HZZ _ _ HZt) as HE.
-    pose proof (sort_kind_type_sort _ _ HS1) as HS1t.
-    eapply ann_ctx_trans; [| exact HZ0 | exact Hass ].
-    eapply wf_ext_eq_ass; [ exact (ctx_ext_refl _ _ _ _ Hass (ext_eq_ctx_left _ _ _ _ _ HTT)) | exact HZt | exact HS1
-                          | exact (presup_exp_eq_right HE) | exact HS1
-                          | eapply wf_subtyp_refl; [ exact (presup_exp_eq_right HE) | exact HS1t | exact HE ]
-                          | eapply wf_subtyp_refl; [ exact HZt | exact HS1t | symmetry; exact HE ] ].
-  - (** The motives *)
-    intros k Mk b b' Hk' Hb0 Hb0'.
-    destruct (Forall2_nth_both _ _ _ HBks _ _ _ Hb0 Hb0') as (_ & _ & HA & _).
-    exact (HA _ _ (HAb _ _ _ Hk' Hb0)).
-  - (** The branches' names *)
-    intros k b b' Hb0 Hb0'; destruct (Forall2_nth_both _ _ _ HBks _ _ _ Hb0 Hb0') as (_ & _ & _ & Hbr).
-    clear - Hbr; induction Hbr as [| x y l l' [Hxy _] _ IH]; cbn; [ reflexivity | rewrite Hxy, IH; reflexivity ].
-  - (** The branches, at the annotation's motives *)
-    intros k Mk b b' i0 c gs n B B' Hk' Hb0 Hb0' HB0 HB0' Hcon.
-    destruct (Forall2_nth_both _ _ _ HBks _ _ _ Hb0 Hb0') as (_ & _ & _ & Hbr).
-    pose proof (Forall2_nth_both _ _ _ Hbr _ _ _ HB0 HB0') as [_ HBB]; cbn [snd] in HBB.
-    exact (HBB _ _ (HB _ _ _ _ _ _ _ Hk' Hb0 Hcon (List.nth_error_In _ _ HB0))).
-Qed.
-
-Theorem nf_ne_annotate_proofs_plain_rel :
-  (forall W Θ Ξ, exp_plain Θ Ξ (nf_annotate_proofs W) W) /\
-  (forall M Θ Ξ, exp_plain Θ Ξ (ne_annotate_proofs M) M).
-Proof.
-  apply nf_ne_ind; intros; cbn [nf_annotate_proofs ne_annotate_proofs nf_to_exp ne_to_exp].
-  all: try apply exp_plain_refl.
-  all: try solve [ first [ apply exp_plain_and | apply exp_plain_pi | apply exp_plain_fn | apply exp_plain_app
-                         | apply exp_plain_absurd | apply exp_plain_proj ]; eauto ].
-  all: try solve [ eauto ].
-  all: try apply exp_plain_proof.
-  (** Type formers and constructors at their arguments *)
-  all: try (apply exp_plain_apps; [| apply exp_plain_refl ]; rewrite !List.map_map;
-            match goal with Hl : Base.list_all _ _ ?l |- _ =>
-              clear - Hl; induction Hl as [| x Hx l' Hl' IH]; cbn; constructor; [ exact (Hx _ _) | exact IH ] end).
-  (** Levels and small universes, atom by atom *)
-  all: try (try apply exp_plain_univ; apply exp_plain_lvl_exp_of; rewrite !List.map_map;
-            match goal with Hl : Base.list_all _ _ ?l |- _ =>
-              clear - Hl; induction Hl as [| x Hx l' Hl' IH]; cbn; constructor; [ destruct Hx; cbn; split; [ reflexivity | eauto ] | exact IH ] end).
-  - (** A tuple: its type's parameters, its names, its fields *)
-    apply exp_plain_tuple.
-    + apply exp_plain_apps; [| apply exp_plain_refl ]; rewrite !List.map_map.
-      match goal with Hl : Base.list_all _ _ ?l |- List.Forall2 _ (List.map _ ?l) (List.map _ ?l) =>
-        clear - Hl; induction Hl as [| x Hx l' Hl' IH]; cbn; constructor; [ exact (Hx _ _) | exact IH ] end.
-    + rewrite !List.map_map; clear; revert l1; induction l0 as [| f l0 IH]; intros [| x l1]; cbn; try reflexivity;
-        f_equal; apply IH.
-    + assert (HF : List.Forall2 (exp_plain Θ Ξ) (map nf_to_exp (map nf_annotate_proofs l1)) (map nf_to_exp l1))
-        by (rewrite !List.map_map; clear - H0; induction H0 as [| x Hx l' Hl' IH]; cbn; constructor; [ exact (Hx _ _) | exact IH ]).
-      clear - HF; revert l0; induction HF as [| x y X Y Hxy HF IH]; intros [| f l0]; cbn; constructor; [ exact Hxy | apply IH ].
-  - (** A stuck eliminator: its uniform parameters, its blocks, its scrutinee *)
-    apply exp_plain_elim.
-    + rewrite !List.map_map.
-      match goal with Hl : Base.list_all _ _ ?l |- List.Forall2 _ (List.map _ ?l) (List.map _ ?l) =>
-        clear - Hl; induction Hl as [| x Hx l' Hl' IH]; cbn; constructor; [ exact (Hx _ _) | exact IH ] end.
-    + rewrite !List.map_map; clear - H0; induction H0 as [| x Hx l' Hl' IH]; cbn; constructor; [| exact IH ].
-      destruct Hx as [n' Z HZ A' HA brs Hbrs]; cbn.
-      split; [ reflexivity | split; [ apply HZ | split; [ apply HA |] ] ].
-      rewrite !List.map_map; clear - Hbrs; induction Hbrs as [| br Hbr brs' Hbrs' IH]; cbn; constructor; [| exact IH ].
-      destruct Hbr; cbn; split; [ reflexivity | eauto ].
-    + eauto.
-Qed.
-
-Theorem nf_ne_annotate_proofs_plain :
-  (forall W Θ Ξ Γ T, Θ ⍮ Ξ ⍮ Γ ⊢ nf_annotate_proofs W : T -> Θ ⍮ Ξ ⍮ Γ ⊢ nf_annotate_proofs W ≈ W : T) /\
-  (forall M Θ Ξ Γ T, Θ ⍮ Ξ ⍮ Γ ⊢ ne_annotate_proofs M : T -> Θ ⍮ Ξ ⍮ Γ ⊢ ne_annotate_proofs M ≈ M : T).
-Proof.
-  split; intros * HT; [ exact (proj1 nf_ne_annotate_proofs_plain_rel _ _ _ _ _ HT)
-                      | exact (proj2 nf_ne_annotate_proofs_plain_rel _ _ _ _ _ HT) ].
-Qed.

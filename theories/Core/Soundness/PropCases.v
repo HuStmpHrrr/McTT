@@ -51,7 +51,7 @@ Proof.
   - intros Δ' φ W Hφ HW.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).
     inversion HW; subst.
-    eapply glu_nf_eq_proof_free; [ cbn; repeat constructor | cbn; apply wf_exp_eq_refl, wf_prop; assumption ].
+    apply glu_nf_eq_intro; cbn; apply wf_exp_eq_refl, wf_prop; assumption.
 Qed.
 
 (** ** The Constant Propositions *)
@@ -70,7 +70,7 @@ Proof.
   intros Δ' φ W Hφ HW.
   assert (⊢ Δ') by (eapply kripke_dom; eassumption).
   inversion HW; subst.
-  eapply glu_nf_eq_proof_free; [ cbn; repeat constructor | cbn; apply wf_exp_eq_refl, wf_True; assumption ].
+  apply glu_nf_eq_intro; cbn; apply wf_exp_eq_refl, wf_True; assumption.
 Qed.
 
 Lemma glu_rel_exp_False : forall {Γ},
@@ -87,7 +87,7 @@ Proof.
   intros Δ' φ W Hφ HW.
   assert (⊢ Δ') by (eapply kripke_dom; eassumption).
   inversion HW; subst.
-  eapply glu_nf_eq_proof_free; [ cbn; repeat constructor | cbn; apply wf_exp_eq_refl, wf_False; assumption ].
+  apply glu_nf_eq_intro; cbn; apply wf_exp_eq_refl, wf_False; assumption.
 Qed.
 
 (** The introduction of [⊤], a proof. *)
@@ -201,6 +201,17 @@ Proof.
   eapply wf_right; apply glu_rel_exp_to_wf_exp; [ exact HP | exact HQ | exact HM | exact HQM ].
 Qed.
 
+(** A tagged proof glues as every proof of a glued proposition does. *)
+Lemma glu_rel_exp_proof_tag : forall {Γ P M},
+    Γ ⊩ P : Propₘ ->
+    Γ ⊩ M : P ->
+    Γ ⊩ a_proof P M : P.
+Proof.
+  intros * HP HM.
+  apply glu_rel_exp_proof; [ exact HP |].
+  apply wf_proof_tag; apply glu_rel_exp_to_wf_exp; assumption.
+Qed.
+
 (** ** Ex Falso *)
 
 (** Into a type of a universe: the neutral of the type's value at the
@@ -245,7 +256,7 @@ Proof.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ HMt Hσt) as HMσ.
     pose proof (kripke_preserves_exp _ _ _ _ _ HMσ Hφ) as HMφ.
     cbn [exp_sub exp_wk] in HMeq, HMφ.
-    unfold glu_ne_eq, glu_nf_eq in *; cbn [exp_sub exp_wk ne_annotate_proofs ne_to_exp].
+    unfold glu_ne_eq, glu_nf_eq in *; cbn [exp_sub exp_wk ne_to_exp].
     eapply wf_exp_eq_absurd_cong;
       [ exact (kripke_preserves_exp _ _ _ _ _ HCσ Hφ) | constructor | constructor | exact HCeq
       | exact HMφ | exact (presup_exp_eq_left HMeq) ].
@@ -353,6 +364,15 @@ Proof.
   rewrite <- exp_sub_extend_comm.
   eapply (glu_rel_exp_right (P := P[τ]) (Q := Q[q τ]) (M := M[τ])); try glu_inst_premise.
   change (a_left M[τ]) with ((a_left M)[τ]); rewrite exp_sub_extend_comm; glu_inst.
+Qed.
+
+Lemma glu_proof_tag :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : P ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ a_proof P M : P ).
+Proof.
+  glu_inst_intro.
+  eapply (glu_rel_exp_proof_tag (P := P[τ]) (M := M[τ])); glu_inst_premise.
 Qed.
 
 (** The equations glue their context. *)

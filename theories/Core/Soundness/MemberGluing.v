@@ -24,7 +24,7 @@ From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation VariableCases ModuleValues Selection MemberApp.
 From Mctt.Core.Soundness.Inductives Require Import Args.
 From Mctt.Core.Soundness Require UniverseCases.
-From Mctt.Core.Completeness.Consequences Require AnnotatedUpto.
+From Mctt.Core.Completeness.Consequences Require UptoProofs.
 From Mctt.Core.Soundness.Global Require Import GlobalValues.
 From Mctt.Core.Soundness Require Import UnitDeep ModuleExpressions.
 Import Domain_Notations Syntax_Notations GlobalCtx_Notations.
@@ -1690,7 +1690,7 @@ Section MembersFromSource.
     all: pose proof (mem_desc_ok _ _ _ _ _ _ _ (gctx_valid_syn _ _ Hg) HH HmR) as Hok;
       destruct (desc_ok_ty_at _ _ _ _ _ Hok HtR) as [i0 HAk].
     all: assert (Hk : evaluated_kind (mdesc_kind Rs))
-           by (rewrite <- HkR; erewrite AnnotatedUpto.exp_eq_same_kind;
+           by (rewrite <- HkR; erewrite UptoProofs.exp_eq_same_kind;
                [ | exact (wf_exp_eq_refl HAk) | exact (sort_kind_abs_kind_sort _ _) | exact HAt | econstructor ]; constructor).
     all: eapply glu_rel_exp_mem_at with (R := mdesc_sub R τ);
       [ exact (sub_preserves_modexp _ _ _ _ _ _ _ HH Hτt)

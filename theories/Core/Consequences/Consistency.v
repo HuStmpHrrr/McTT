@@ -687,15 +687,12 @@ Proof.
 Qed.
 
 (** A type whose normal form is an inductive type is equal to the type
-    former at typed parameters, equal to annotated normal forms equal up to
-    their proofs to the normal form's ([glu_nfs_eq_at]): the gluing of the
-    inductive type at the identity. *)
+    former at typed parameters, equal to the normal form's
+    ([glu_nfs_eq_at]): the gluing of the inductive type at the identity. *)
 Lemma typ_ind_shape : forall Γ T i p k Rs, Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_indty p k Rs) ->
     exists D Mk Ps, ind_lookup gc_deps gc_stack p = Some D /\ ind_member D k = Some Mk /\ List.length Ps = im_np D Mk /\
       (forall j P A, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ps) j = Some A -> Γ ⊢ P : A) /\
-      Γ ⊢ T ≈ apps (a_ind p k) Ps : Typeω@i /\
-      exists Rs', nfs_eq_upto_proofs Rs Rs' /\
-        exps_eq_at Γ (im_params D Mk) Ps (List.map nf_to_exp (List.map nf_annotate_proofs Rs')).
+      Γ ⊢ T ≈ apps (a_ind p k) Ps : Typeω@i /\ exps_eq_at Γ (im_params D Mk) Ps (List.map nf_to_exp Rs).
 Proof.
   intros * HT HW.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
@@ -721,7 +718,7 @@ Proof.
   eexists _, _, Ps; split; [ eassumption | split; [ eassumption | split; [ exact HPl | split; [ exact HPt | split; [ exact Heq |] ] ] ] ].
   (** The parameters' readback, the normal form's ([glu_params_top]) *)
   match goal with Hr : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ Rs |- _ => pose proof (Hrb Γ wk_id Rs Hid Hr) as H' end.
-  rewrite map_wk_id in H'; exists Rs; split; [ reflexivity | exact H' ].
+  rewrite map_wk_id in H'; exact H'.
 Qed.
 
 (** Two instances [X], [Y] of a closed telescope [C] whose terms have
@@ -1397,15 +1394,12 @@ Proof.
 Qed.
 
 (** A type whose normal form is a record type is equal to the type former
-    at typed parameters, equal to annotated normal forms equal up to their
-    proofs to the normal form's ([glu_nfs_eq_at]): the gluing of the record
-    type at the identity. *)
+    at typed parameters, equal to the normal form's ([glu_nfs_eq_at]): the
+    gluing of the record type at the identity. *)
 Lemma typ_record_shape : forall Γ T i p Rs, Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_record p Rs) ->
     exists R Ps, record_lookup gc_deps gc_stack p = Some R /\ List.length Ps = List.length (record_params R) /\
       (forall j P A, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (record_params R) Id Ps) j = Some A -> Γ ⊢ P : A) /\
-      Γ ⊢ T ≈ apps (a_record p) Ps : Typeω@i /\
-      exists Rs', nfs_eq_upto_proofs Rs Rs' /\
-        exps_eq_at Γ (record_params R) Ps (List.map nf_to_exp (List.map nf_annotate_proofs Rs')).
+      Γ ⊢ T ≈ apps (a_record p) Ps : Typeω@i /\ exps_eq_at Γ (record_params R) Ps (List.map nf_to_exp Rs).
 Proof.
   intros * HT HW.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
@@ -1429,7 +1423,7 @@ Proof.
   eexists _, Ps; split; [ eassumption | split; [ exact HPl | split; [ exact HPt | split; [ exact Heq |] ] ] ].
   (** The parameters' readback, the normal form's ([params_glu_top]) *)
   match goal with Hr : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ Rs |- _ => pose proof (Hrb Γ wk_id Rs Hid Hr) as H' end.
-  rewrite map_wk_id in H'; exists Rs; split; [ reflexivity | exact H' ].
+  rewrite map_wk_id in H'; exact H'.
 Qed.
 
 Corollary exp_eq_record_apps_inv : forall Γ p R X Y i, record_lookup gc_deps gc_stack p = Some R ->
@@ -1785,10 +1779,7 @@ Proof.
   destruct (wf_univ_lvl_inversion HA) as [n Ht].
   pose proof (nbe_ty_univ_level (L := (c, xs)) (n := n) Hn) as Hl.
   pose proof (soundness_lvl_well_scoped Ht Hl) as [Hc Hws]; cbn in Hc, Hws.
-  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-  (** A typed level holds no proof: its normal form is its own annotation *)
-  pose proof (soundness_proof_free Ht Hl (nbe_level_proof_free Ht (wf_level _ _ _ _ HΓ) Hl)) as Heq.
-  econstructor; [ exact Heq | exact Hc | exact Hws | exact (nbe_level_atom_of_nbe Ht Hl) ].
+  econstructor; [ exact (soundness' Ht Hl) | exact Hc | exact Hws | exact (nbe_level_atom_of_nbe Ht Hl) ].
 Qed.
 
 (** The atoms of the levels of two small universes in normal form are
@@ -2487,7 +2478,7 @@ Fixpoint exp_first_global (M : exp) : option qname :=
   | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False | a_var _ => None
   | a_ind p _ | a_con p _ _ | a_record p => Some p
   | a_univ M | a_succl M | a_left M | a_right M | a_proj _ M => exp_first_global M
-  | a_maxl M N | a_absurd M N | a_and M N | a_pi _ _ M N | a_fn M N | a_app M N =>
+  | a_maxl M N | a_absurd M N | a_proof M N | a_and M N | a_pi _ _ M N | a_fn M N | a_app M N =>
       first_qname (exp_first_global M) (exp_first_global N)
   | a_conj P Q M N =>
       first_qname (exp_first_global P)

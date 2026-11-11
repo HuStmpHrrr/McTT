@@ -592,6 +592,14 @@ Section type_check.
         let*o (existT _ Pc (exist _ Qc _)) := get_and_nf T while _ in
         let (W, _) := nbe_ty_env_impl F G P (Qc : nf)[Id,,a_left M'] _ in
         pureo (exist _ W _)
+    (** A tagged proof: the tag is a proposition, the proof checks at it,
+        and the term infers the tag's normal form *)
+    | a_proof P' M' =>
+        let*o (exist _ UP _) := type_infer_in G _ P P' _ while _ in
+        let*b->o _ := prop_nf_dec UP while _ in
+        let*b->o _ := type_check_in G P' _ P M' _ while _ in
+        let (W, _) := nbe_ty_env_impl F G P P' _ in
+        pureo (exist _ W _)
     (** The forms of inductive types ([Extraction.IndCheck]); the
         eliminator's recursive calls are passed on. *)
     | a_ind pq k => ind_infer F G HG P pq k

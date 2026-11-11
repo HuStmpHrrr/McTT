@@ -301,12 +301,7 @@ Proof.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).
     inversion Hr; subst.
     assert (Δ' ⊢ M[σ][φ]ʷ ≈ nf_lvl_of L : Level@n) by (eapply glu_lvl_readback; eassumption).
-    (** The readback holds no proof: it is a universe at a level readback *)
-    match goal with Hl : Rnf ⇓ Levelᵈ m in length Δ' ↘ nf_lvl_of L |- _ =>
-      destruct (domain_level_canon_of_read _ _ _ Hl) as [_ (L0 & EL & HL0)] end.
-    apply nf_lvl_of_inj in EL; subst L0.
-    pose proof (per_lvl_canon_proof_free _ _ _ _ Hper HL0) as Hpf.
-    eapply glu_nf_eq_proof_free; [ exact Hpf |].
+    apply glu_nf_eq_intro.
     cbn [exp_wk nf_to_exp nf_univ_of].
     eapply wf_exp_eq_univ_cong; eassumption.
 Qed.

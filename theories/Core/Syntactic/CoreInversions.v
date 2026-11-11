@@ -372,6 +372,51 @@ Qed.
 #[export]
 Hint Resolve wf_left_inversion : mctt.
 
+(** What a tagged proof [a_proof P M] at [C] is typed by. *)
+Record proof_tag_inv Θ Ξ Γ P M C : Prop := mk_proof_tag_inv
+  { (** The tag is a proposition *)
+    proof_tag_inv_prop : Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ
+    (** The proof proves it *)
+  ; proof_tag_inv_proof : Θ ⍮ Ξ ⍮ Γ ⊢ M : P
+    (** The tag is below [C] *)
+  ; proof_tag_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ P ⊆ C }.
+
+Lemma wf_proof_tag_inversion : forall Θ Ξ Γ P M C,
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_proof P M : C ->
+    proof_tag_inv Θ Ξ Γ P M C.
+Proof.
+  intros * H.
+  dependent induction H.
+  - econstructor; try eassumption; mautosolve 3.
+  - destruct (IHwf_exp1 _ _ eq_refl) as [HP HM Hs].
+    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
+Qed.
+
+#[export]
+Hint Resolve wf_proof_tag_inversion : mctt.
+
+(** A tagged proof is equal to its proof, by proof irrelevance. *)
+Lemma wf_exp_eq_proof_tag : forall Θ Ξ Γ P M,
+    Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : P ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_proof P M ≈ M : P.
+Proof. intros * HP HM; apply wf_exp_eq_irrelevant; [ exact HP | apply wf_proof_tag; assumption | exact HM ]. Qed.
+
+(** Tagged proofs of equal propositions are equal, by proof irrelevance. *)
+Lemma wf_exp_eq_proof_tag_cong : forall Θ Ξ Γ P P' M M',
+    Θ ⍮ Ξ ⍮ Γ ⊢ P ≈ P' : Propₘ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : P ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_proof P M ≈ a_proof P' M' : P.
+Proof.
+  intros * HPP HMM.
+  pose proof (presup_exp_eq_left HPP) as HP; pose proof (presup_exp_eq_right HPP) as HP'.
+  pose proof (presup_exp_eq_left HMM) as HM; pose proof (presup_exp_eq_right HMM) as HM'.
+  assert (HM'' : Θ ⍮ Ξ ⍮ Γ ⊢ M' : P') by (eapply wf_conv_sort; [ exact HM' | exact HP' | constructor | exact HPP ]).
+  assert (H2 : Θ ⍮ Ξ ⍮ Γ ⊢ a_proof P' M' : P)
+    by (eapply wf_conv_sort; [ apply wf_proof_tag; assumption | exact HP | constructor | symmetry; exact HPP ]).
+  apply wf_exp_eq_irrelevant; [ exact HP | apply wf_proof_tag; assumption | exact H2 ].
+Qed.
+
 (** What a second projection is typed by: the same, at the first
     projection. *)
 #[warnings="-cannot-define-projection"]

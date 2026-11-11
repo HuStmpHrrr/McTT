@@ -322,6 +322,9 @@ Section type_check.
   (** The components of a proof of a conjunction infer it *)
   | type_infer_order_left : forall {M}, type_infer_order M -> type_infer_order (a_left M)
   | type_infer_order_right : forall {M}, type_infer_order M -> type_infer_order (a_right M)
+  (** A tagged proof infers its tag and checks its proof *)
+  | type_infer_order_proof_tag : forall {P M}, type_infer_order P -> type_check_order M ->
+      type_infer_order (a_proof P M)
   | type_infer_order_indty : forall {p k}, type_infer_order (a_ind p k)
   | type_infer_order_con : forall {p k c}, type_infer_order (a_con p k c)
   (** An eliminator: its scrutinee infers, its uniform parameters, the

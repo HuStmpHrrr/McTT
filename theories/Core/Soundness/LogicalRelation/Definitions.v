@@ -10,7 +10,6 @@ From Mctt.Core.Syntactic Require Export SystemOpt.
 From Mctt.Core.Syntactic.System.Inductives Require Export IndCong.
 From Mctt.Core.Syntactic.Levels Require Import Levels LevelEq.
 From Mctt.Core.Syntactic.System.Global Require Import Presup Paths.
-From Mctt.Core.Syntactic Require Export ProofAnnotation.
 From Mctt.Core.Soundness.Weakening Require Export Definitions.
 (** [nparams_prefix] and [nonrec_args_prefix], which [glu_ind_decl] reads
     as [valid_ind_decl] does. *)
@@ -81,20 +80,18 @@ Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : T
     [f 𝕃@0], so only the first is glued to [f h].  A gluing moves to a
     related value only along that value's own readback.
 
-    The equation is with the annotation of the readback
-    ([nf_annotate_proofs]), which ascribes each proof its proposition:
-    so a glued readback has every proof typed at its proposition, and two
-    glued readbacks equal up to proofs are equal
-    ([nf_annotate_proofs_upto]).  The plain readback is equal to its
-    annotation when the annotation is typed. *)
-Definition glu_nf_eq (Γ : ctx) (M : exp) (W : nf) (A : typ) : Prop := Γ ⊢ M ≈ nf_annotate_proofs W : A.
+    The term of a normal form tags each proof with its proposition
+    ([nf_to_exp], [a_proof]): so a glued readback has every proof typed
+    at its proposition, and two glued readbacks equal up to proofs are
+    equal ([nf_to_exp_upto_proofs]). *)
+Definition glu_nf_eq (Γ : ctx) (M : exp) (W : nf) (A : typ) : Prop := Γ ⊢ M ≈ nf_to_exp W : A.
 
 (** The same for neutrals. *)
-Definition glu_ne_eq (Γ : ctx) (M : exp) (W : ne) (A : typ) : Prop := Γ ⊢ M ≈ ne_annotate_proofs W : A.
+Definition glu_ne_eq (Γ : ctx) (M : exp) (W : ne) (A : typ) : Prop := Γ ⊢ M ≈ ne_to_exp W : A.
 
 (** The same for a list of terms at a closed telescope ([exps_eq_at]). *)
 Definition glu_nfs_eq_at (Γ : ctx) (T : ctx) (Ms : list exp) (Ws : list nf) : Prop :=
-  exps_eq_at Γ T Ms (List.map nf_to_exp (List.map nf_annotate_proofs Ws)).
+  exps_eq_at Γ T Ms (List.map nf_to_exp Ws).
 
 (** ** Levels *)
 

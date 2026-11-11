@@ -84,8 +84,8 @@ Proof.
       inversion Hr; subst; cbn.
     + assert (Hn := read_nf_domain_level_lit n (length Δ')); unfold domain_level_lit in Hn.
       assert (L = lvl_lit n) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
-      eapply glu_nf_eq_proof_free; [ cbn; repeat constructor | cbn; apply wf_exp_eq_univ_cong_large; assumption ].
-    + eapply glu_nf_eq_proof_free; [ cbn; repeat constructor | mauto 3 ].
+      apply glu_nf_eq_intro; cbn; apply wf_exp_eq_univ_cong_large; assumption.
+    + apply glu_nf_eq_intro; mauto 3.
 Qed.
 
 Lemma glu_rel_exp_of_univ_inversion : forall {Γ Sb A} {u : universe_index},
@@ -216,7 +216,7 @@ Proof.
     inversion Hr; subst.
     assert (Hn := read_nf_domain_level_lit (a, n) (length Δ')); unfold domain_level_lit in Hn.
     assert (L = lvl_lit (a, n)) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
-    eapply glu_nf_eq_proof_free; [ cbn; repeat constructor | cbn; apply wf_exp_eq_univ_cong_lit; assumption ].
+    apply glu_nf_eq_intro; cbn; apply wf_exp_eq_univ_cong_lit; assumption.
 Qed.
 
 Hint Resolve glu_rel_exp_suniv : mctt.

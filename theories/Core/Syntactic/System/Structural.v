@@ -3075,7 +3075,7 @@ Proof.
   all: try solve [ eapply wf_exp_eq_irrelevant;
                    [ first [ eassumption | eapply wf_True; eassumption | eapply wf_and; eassumption ]
                    | | ];
-                   eauto 3 using wf_tt, wf_conj, wf_left, wf_right ].
+                   eauto 3 using wf_tt, wf_conj, wf_left, wf_right, wf_proof_tag ].
   (** Ex falso: its own congruence. *)
   all: try solve [ eapply wf_exp_eq_absurd_cong; eassumption ].
   all: first [ eapply wf_exp_eq_let_mod_cong; mauto 3

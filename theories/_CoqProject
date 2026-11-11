@@ -14,7 +14,7 @@
 ./Core/Completeness.v
 ./Core/Completeness/Consequences/Rules.v
 ./Core/Completeness/Consequences/Types.v
-./Core/Completeness/Consequences/AnnotatedUpto.v
+./Core/Completeness/Consequences/UptoProofs.v
 ./Core/Completeness/ContextCases.v
 ./Core/Completeness/FunctionCases.v
 ./Core/Completeness/FundamentalTheorem.v
@@ -172,7 +172,6 @@
 ./Core/Consequences/NormalFormWeakening.v
 ./Core/Syntactic/Command.v
 ./Core/Syntactic/CoreInversions.v
-./Core/Syntactic/ProofAnnotation.v
 ./Core/Syntactic/Corollaries.v
 ./Core/Syntactic/CtxSub.v
 ./Core/Syntactic/Members.v

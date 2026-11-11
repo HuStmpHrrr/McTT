@@ -87,6 +87,10 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 (** The proof of its second component: nothing evaluated *)
 | eval_exp_order_right :
   `( eval_exp_order Θ Ξ (a_right M) p )
+(** A tagged proof: its proof *)
+| eval_exp_order_proof_tag :
+  `( eval_exp_order Θ Ξ M p ->
+     eval_exp_order Θ Ξ (a_proof P M) p )
 (** A type former of a group *)
 | eval_exp_order_indty :
   `( eval_exp_order Θ Ξ (a_ind pq k) p )
@@ -1351,6 +1355,9 @@ Section EvalImpl.
   | a_conj P Q M N, p, H => exist _ (d_proof (a_conj P Q M N) p) _
   | a_left M, p, H => exist _ (d_proof (a_left M) p) _
   | a_right M, p, H => exist _ (d_proof (a_right M) p) _
+  | a_proof P M, p, H =>
+      let (m, Hm) := eval_exp_impl M p _ in
+      exist _ m _
   | a_ind pq k, p, H => exist _ (d_ind pq k nil) _
   | a_con pq k c, p, H with inspect (ind_lookup Θ Ξ pq) := {
     | exist _ (Some D) Ed with inspect (ind_member D k) := {

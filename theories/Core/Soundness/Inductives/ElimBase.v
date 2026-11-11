@@ -431,7 +431,7 @@ Proof.
   inversion HR; subst.
   destruct (kripke_shiftn _ _ _ Hφ) as [Hle _].
   pose proof (wk_var_kripke _ _ _ x Hφ) as Hφx.
-  unfold glu_ne_eq; cbn [ne_annotate_proofs ne_to_exp].
+  unfold glu_ne_eq; cbn [ne_to_exp].
   replace (List.length Δ' - (List.length Δ - 1 - x) - 1) with (φ x) by lia.
   apply wf_exp_eq_refl; change (a_var (φ x)) with (#x[φ]ʷ).
   exact (kripke_preserves_exp _ _ _ _ _ Hx Hφ).

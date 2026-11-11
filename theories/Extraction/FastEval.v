@@ -166,6 +166,10 @@ Inductive fast_eval_exp {SM : SkipMode} (Θ : gdeps) (Ξ : gstack) : exp -> env 
 (** And that of its second. *)
 | fast_eval_exp_right :
   `( ⟦ a_right M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_right M, ρ⟩ )
+(** A tagged proof is its proof. *)
+| fast_eval_exp_proof_tag :
+  `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦ a_proof P M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m )
 (** The type former of a member is a value, with no argument yet. *)
 | fast_eval_exp_indty :
   `( ⟦ a_ind p k ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p k nil )

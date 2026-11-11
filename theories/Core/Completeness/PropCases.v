@@ -528,6 +528,16 @@ Proof.
   exact (rel_exp_under_ctx_proof HQ).
 Qed.
 
+(** A tagged proof, a proof of its tag. *)
+Lemma sem_proof_tag :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : P ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_proof P M : P ).
+Proof.
+  intros * HP _; sem_intro; [ assumption |].
+  exact (rel_exp_under_ctx_proof HP).
+Qed.
+
 Lemma sem_exp_eq_irrelevant :
   `( Θ ⍮ Ξ ⍮ Γ ⊨ P : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ M : P ->

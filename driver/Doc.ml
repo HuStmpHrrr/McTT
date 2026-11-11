@@ -857,6 +857,8 @@ let rec record_selections_exp th (e : S.exp) : (string * S.qname) list =
   | S.Coq_a_maxl (a, b) | S.Coq_a_pi (_, _, a, b) | S.Coq_a_fn (a, b) | S.Coq_a_app (a, b) | S.Coq_a_and (a, b) ->
       record_selections_exp th a @ record_selections_exp th b
   | S.Coq_a_absurd (a, m) -> record_selections_exp th m @ record_selections_exp th a
+  (* A tagged proof: the proof only, as it is printed. *)
+  | S.Coq_a_proof (_, m) -> record_selections_exp th m
   (* [conj (m : P) n]: its first component, its first proposition, its
      second component, in source order *)
   | S.Coq_a_conj (p, _, m, n) ->

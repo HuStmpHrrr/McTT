@@ -67,7 +67,7 @@ Proof.
       eapply glu_typ | eapply glu_univ | eapply glu_level | eapply glu_llit | eapply glu_succl
     | eapply glu_maxl
     | eapply glu_prop | eapply glu_True | eapply glu_tt | eapply glu_False | eapply glu_absurd
-    | eapply glu_and | eapply glu_conj | eapply glu_left | eapply glu_right
+    | eapply glu_and | eapply glu_conj | eapply glu_left | eapply glu_right | eapply glu_proof_tag
     | eapply glu_ind | eapply glu_con
     | eapply glu_elim | eapply glu_pi | eapply glu_fn | eapply glu_app
     | eapply glu_let
@@ -108,8 +108,9 @@ Proof.
     | eapply glu_me_delta_slot | eapply glu_me_delta_sel | eapply glu_me_beta_body | eapply glu_me_beta_alias
     | eapply glu_me_beta_alias0 | eapply glu_me_sym | eapply glu_me_trans ];
     (** A premise whose variables the conclusion does not fix may match a
-        wrong hypothesis first; [multimatch] backtracks over the choices. *)
-    multimatch goal with H : _ |- _ => exact H end.
+        wrong hypothesis first; [multimatch] backtracks over the choices.
+        The context of a unit equation's premise glues by its gluing. *)
+    multimatch goal with H : _ |- _ => first [ exact H | exact (glu_unit_eq_ctx _ _ _ _ _ H) ] end.
 Qed.
 
 (** A closed typed term, glued along a sound embedding. *)

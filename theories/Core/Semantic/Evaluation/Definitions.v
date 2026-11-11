@@ -561,6 +561,10 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** And that of its second. *)
 | eval_exp_right :
   `( ⟦ a_right M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ⟨a_right M, ρ⟩ )
+(** A tagged proof is its proof: the tag has no effect. *)
+| eval_exp_proof_tag :
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦ a_proof P M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m )
 (** The type former and a constructor of a member of a group of inductive
     types are values, with no argument yet. *)
 | eval_exp_indty :

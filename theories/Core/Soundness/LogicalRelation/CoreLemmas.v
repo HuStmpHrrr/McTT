@@ -8,7 +8,7 @@ From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 From Mctt.Core.Syntactic.System.Records Require Import Typing.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic.Inductives Require Import IndCanon.
-From Mctt.Core.Completeness.Consequences Require Import AnnotatedUpto.
+From Mctt.Core.Completeness.Consequences Require Import UptoProofs.
 From Mctt.Core.Soundness.LogicalRelation Require Import CoreTactics Definitions.
 From Mctt.Core.Soundness.Weakening Require Export Lemmas.
 Import Domain_Notations Wk_Notations Fixed_Notations.
@@ -253,25 +253,25 @@ Lemma map_wk_wk : forall (Ps : list exp) φ ψ,
     List.map (fun P => P[ψ]ʷ) (List.map (fun P => P[φ]ʷ) Ps) = List.map (fun P => P[φ ⊙ ψ]ʷ) Ps.
 Proof. intros; rewrite List.map_map; apply List.map_ext; intros; apply exp_wk_wk. Qed.
 
-(** ** Readback Equations Move up to Proofs, to a Typed Annotation
+(** ** Readback Equations Move up to Proofs, to a Typed Normal Form
 
     A readback equation holds of a normal form equal to the readback up to
-    proofs whose annotation is typed: the two annotations are then equal
-    ([nf_annotate_proofs_upto]).  The hypothesis is what excludes a value
+    proofs that is typed: the two are then equal
+    ([nf_to_exp_upto_proofs]).  The hypothesis is what excludes a value
     whose readback holds a junk proof (see [glu_nf_eq]): the gluing moves
     only to values whose own readback is typed. *)
 Lemma glu_nf_eq_upto : forall Γ M W W' A, nf_eq_upto_proofs W W' -> glu_nf_eq Γ M W A ->
-    (exists T, Γ ⊢ nf_annotate_proofs W' : T) -> glu_nf_eq Γ M W' A.
+    (exists T, Γ ⊢ nf_to_exp W' : T) -> glu_nf_eq Γ M W' A.
 Proof.
   unfold glu_nf_eq; intros * E H HW'.
-  etransitivity; [ exact H | exact (nf_annotate_proofs_upto _ _ _ _ _ _ (presup_exp_eq_right H) HW' E) ].
+  etransitivity; [ exact H | exact (nf_to_exp_upto_proofs _ _ _ _ _ _ (presup_exp_eq_right H) HW' E) ].
 Qed.
 
 Lemma glu_ne_eq_upto : forall Γ M W W' A, ne_eq_upto_proofs W W' -> glu_ne_eq Γ M W A ->
-    (exists T, Γ ⊢ ne_annotate_proofs W' : T) -> glu_ne_eq Γ M W' A.
+    (exists T, Γ ⊢ ne_to_exp W' : T) -> glu_ne_eq Γ M W' A.
 Proof.
   unfold glu_ne_eq; intros * E H HW'.
-  etransitivity; [ exact H | exact (proj2 nf_ne_annotate_proofs_upto _ _ _ _ E _ _ (presup_exp_eq_right H) HW') ].
+  etransitivity; [ exact H | exact (proj2 nf_ne_to_exp_upto_proofs _ _ _ _ E _ _ (presup_exp_eq_right H) HW') ].
 Qed.
 
 (** An instance of a telescope at a position exists whenever it does at
@@ -302,12 +302,12 @@ Proof.
   destruct (List.nth_error Ms' k) as [X' |] eqn:HX'; [| apply List.nth_error_None in HX'; lia ].
   destruct (nfs_eq_upto_proofs_nth _ _ _ _ E HW) as (W'' & HW'' & EW).
   rewrite HW' in HW''; injection HW'' as <-.
-  assert (HXW : Γ ⊢ X ≈ nf_annotate_proofs W : A) by (apply (H k); [ exact HX | rewrite !List.nth_error_map, HW; reflexivity | exact HA ]).
-  (** The target's own equation types its annotation *)
+  assert (HXW : Γ ⊢ X ≈ nf_to_exp W : A) by (apply (H k); [ exact HX | rewrite !List.nth_error_map, HW; reflexivity | exact HA ]).
+  (** The target's own equation types its normal form *)
   destruct (tele_insts_aux_nth_length (List.rev T) Id Id Ms Ms' k A ltac:(lia) HA) as [A' HA'].
-  assert (HXW' : Γ ⊢ X' ≈ nf_annotate_proofs W' : A') by (apply (H' k); [ exact HX' | rewrite !List.nth_error_map, HW'; reflexivity | exact HA' ]).
+  assert (HXW' : Γ ⊢ X' ≈ nf_to_exp W' : A') by (apply (H' k); [ exact HX' | rewrite !List.nth_error_map, HW'; reflexivity | exact HA' ]).
   etransitivity; [ exact HXW |].
-  exact (nf_annotate_proofs_upto _ _ _ _ _ _ (presup_exp_eq_right HXW) (ex_intro _ _ (presup_exp_eq_right HXW')) EW).
+  exact (nf_to_exp_upto_proofs _ _ _ _ _ _ (presup_exp_eq_right HXW) (ex_intro _ _ (presup_exp_eq_right HXW')) EW).
 Qed.
 
 (** The readback equations move along an equal term. *)
@@ -2929,17 +2929,17 @@ Proof.
   eapply wf_conv_sort; [ exact (presup_exp_eq_right (HXY _ _ _ _ HX HY HT0)) | exact (presup_exp_eq_right HTT) | exact HS | exact HTT ].
 Qed.
 
-(** Lists equal to the annotations of readbacks related up to proofs, at
-    a closed telescope, are equal ([nf_annotate_proofs_upto]). *)
-Lemma tele_eq_annotate_upto : forall Δ C Ps Qs W1 W2, all_assumptions C -> ⊢ C ++ Δ ->
+(** Lists equal to readbacks related up to proofs, at a closed
+    telescope, are equal ([nf_to_exp_upto_proofs]). *)
+Lemma tele_eq_upto_proofs : forall Δ C Ps Qs W1 W2, all_assumptions C -> ⊢ C ++ Δ ->
     List.length Ps = List.length C -> List.length Qs = List.length C ->
-    exps_eq_at Δ C Ps (List.map nf_to_exp (List.map nf_annotate_proofs W1)) ->
-    exps_eq_at Δ C Qs (List.map nf_to_exp (List.map nf_annotate_proofs W2)) ->
+    exps_eq_at Δ C Ps (List.map nf_to_exp W1) ->
+    exps_eq_at Δ C Qs (List.map nf_to_exp W2) ->
     nfs_eq_upto_proofs W1 W2 -> exps_eq_at Δ C Ps Qs.
 Proof.
   intros * Hass HC HPl HQl HP HQ E.
-  set (A1 := List.map nf_to_exp (List.map nf_annotate_proofs W1)) in *.
-  set (A2 := List.map nf_to_exp (List.map nf_annotate_proofs W2)) in *.
+  set (A1 := List.map nf_to_exp W1) in *.
+  set (A2 := List.map nf_to_exp W2) in *.
   destruct HP as [HlP HP], HQ as [HlQ HQ].
   assert (HA1 : List.length A1 = List.length C) by congruence.
   assert (HA2 : List.length A2 = List.length C) by congruence.
@@ -2953,7 +2953,7 @@ Proof.
     destruct (nth_error_lt_some (tele_insts C Id A2) j) as [T2 HT2].
     { rewrite length_tele_insts by exact Hass; rewrite <- HA2, ?PeanoNat.Nat.min_id; apply List.nth_error_Some.
       unfold A2; rewrite !List.nth_error_map, Hw2; discriminate. }
-    eapply nf_annotate_proofs_upto; [ | eexists | exact Ew ].
+    eapply nf_to_exp_upto_proofs; [ | eexists | exact Ew ].
     - eapply (tele_eq_typed_r Δ C Ps A1 Hass HC HPl HA1 HP); [| exact HT ].
       unfold A1; rewrite !List.nth_error_map, Hw1; reflexivity.
     - eapply (tele_eq_typed_r Δ C Qs A2 Hass HC HQl HA2 HQ); [| exact HT2 ].

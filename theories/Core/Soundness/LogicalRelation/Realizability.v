@@ -10,7 +10,7 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Semantic.Inductives Require Import IndCanon.
 From Mctt.Core.Semantic Require Import RecordPER.
 From Mctt.Core.Syntactic.System Require Import Records.Typing.
-From Mctt.Core.Completeness.Consequences Require Import AnnotatedUpto.
+From Mctt.Core.Completeness.Consequences Require Import UptoProofs.
 From Mctt.Core.Soundness.LogicalRelation Require Export Core.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
@@ -55,7 +55,7 @@ Proof.
   - intros Δ φ M' Hφ Hr. progressive_inversion.
     assert (φ 0 = length Δ - length Γ - 1) as <- by (eapply wk_var0_kripke; eassumption).
     (** The variable reads back as itself, which holds no proof *)
-    unfold glu_ne_eq; cbn [ne_annotate_proofs ne_to_exp].
+    unfold glu_ne_eq; cbn [ne_to_exp].
     change #(φ 0) with #0[φ]ʷ.
     mauto 5.
 Qed.
@@ -286,34 +286,9 @@ Proof.
   unfold glu_nf_eq, glu_ne_eq; intros * H; exact H.
 Qed.
 
-(** A normal form free of proofs is its own annotation. *)
-Lemma nf_ne_annotate_proofs_proof_free :
-  (forall W, nf_proof_free W -> nf_annotate_proofs W = W) /\
-  (forall M, ne_proof_free M -> ne_annotate_proofs M = M).
-Proof.
-  apply nf_ne_ind; intros; cbn [nf_proof_free ne_proof_free] in *; destruct_all;
-    try contradiction; cbn [nf_annotate_proofs ne_annotate_proofs]; f_equal; eauto.
-  (** The lists, element by element *)
-  all: lazymatch goal with Hl : list_all _ _ ?l, Ha : all_list _ ?l |- ListDef.map _ ?l = ?l =>
-         clear - Hl Ha; induction Hl as [| x Hx l' Hl' IH]; cbn in *; [ reflexivity |]; destruct Ha as [Ha1 Ha2];
-           f_equal; [| exact (IH Ha2) ] end.
-  all: try (exact (Hx Ha1)).
-  (** The atoms of a level *)
-  1-2: (destruct Hx as [o s M HM]; cbn in *; rewrite (HM Ha1); reflexivity).
-  (** A block of a stuck eliminator: its scrutinee type, its motive, its
-      branches *)
-  destruct Hx as [n Z HZ A HA brs Hbrs]; destruct Ha1 as (HZ' & HA' & Hbrs'); cbn in *.
-  rewrite (HZ HZ'), (HA HA'); f_equal.
-  clear - Hbrs Hbrs'; induction Hbrs as [| br Hbr brs' Hbrs IH]; cbn in *; [ reflexivity |]; destruct Hbrs' as [Hb1 Hb2].
-  f_equal; [| exact (IH Hb2) ]; destruct Hbr as [c k Bd HB]; cbn in *; rewrite (HB Hb1); reflexivity.
-Qed.
-
-(** A readback free of proofs is glued by its equation alone. *)
-Lemma glu_nf_eq_proof_free : forall Γ M W A, nf_proof_free W -> Γ ⊢ M ≈ W : A -> glu_nf_eq Γ M W A.
-Proof.
-  intros * Hf HM; unfold glu_nf_eq.
-  rewrite (proj1 nf_ne_annotate_proofs_proof_free W Hf); exact HM.
-Qed.
+(** A readback equation is the equation of the term with the readback. *)
+Lemma glu_nf_eq_intro : forall Γ M (W : nf) A, Γ ⊢ M ≈ W : A -> glu_nf_eq Γ M W A.
+Proof. intros * HM; exact HM. Qed.
 
 Lemma map_wk_id_exp :forall Ps, List.map (fun P => P[wk_id]ʷ) Ps = Ps.
 Proof. intros; rewrite (List.map_ext _ (fun P => P) exp_wk_id), List.map_id; reflexivity. Qed.
@@ -344,9 +319,9 @@ Section IndRealize.
     assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
     match goal with H : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ms |- _ => pose proof (HPr Δ wk_id Ms Hid H) as HMs end.
     rewrite map_wk_id_exp in HMs.
-    (** The parameters are their annotated readbacks *)
+    (** The parameters are their readbacks *)
     destruct HMs as (HMl & HMs).
-    unfold glu_nf_eq; cbn [nf_annotate_proofs nf_to_exp]; transitivity (apps (a_ind p k) (List.map (fun P => P[φ]ʷ) Ps)); [ rewrite <- wk_apps_ind; mauto 3 |].
+    unfold glu_nf_eq; cbn [nf_to_exp]; transitivity (apps (a_ind p k) (List.map (fun P => P[φ]ʷ) Ps)); [ rewrite <- wk_apps_ind; mauto 3 |].
     eapply wf_exp_eq_subtyp'; [| exact Hs ].
     eapply wf_exp_eq_ind_apps; [ exact Hl | exact HMk | exact (decl_member_lt _ _ _ _ _ _ HΔ Hl HMk Hh) | exact HΔ
                                | exact HPl | lia | exact HMs ].
@@ -373,7 +348,7 @@ Section IndRealize.
     intros Δ φ Ps' Hφ HPs'.
     pose proof (ind_typ_at_params_conv p D ups ns NP NEl AP AEl DP DEl k Mk pm _ Γ A Ps Δ φ Ps' Hl HMk Hh HPs Hφ HPs') as HPeq.
     assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
-    (** The annotation's non-uniform parameters are the type's own [ns],
+    (** The readback's non-uniform parameters are the type's own [ns],
         related to themselves ([ind_canon_clause_ns]) and glued from the
         type's parameters, moved to [Ps'] ([glu_nparams_params_eq]) *)
     assert (Hsk : List.skipn (im_unu D Mk) (ups ++ ns) = ns) by (unfold im_unu; rewrite Hh; apply skipn_app_exact; exact Hu).
@@ -585,7 +560,7 @@ Section IndRealize.
       assert (Hpw : forall j V, List.nth_error Args j = Some V ->
                  forall N T, List.nth_error As j = Some N ->
                    List.nth_error (tele_insts (cargs_ctx p D Mk0 gs) (sb_of_list Id (Us ++ Ns)) As) j = Some T ->
-                   Γ ⊢ N ≈ nf_annotate_proofs V : T).
+                   Γ ⊢ N ≈ nf_to_exp V : T).
       { intros j V HV N T HN HT.
         enough (HV' : glu_nf_eq Γ N V T) by exact HV'.
       assert (Hj : j < length gs) by (rewrite <- HArl; apply List.nth_error_Some; congruence).
@@ -655,7 +630,7 @@ Section IndRealize.
           | cbn [List.firstn]; rewrite !List.app_nil_r; exact Hsht | exact Hcomp
           | cbn [List.firstn]; rewrite !List.app_nil_r; exact HRV ]. }
       (** The constructor at the parameters and the arguments *)
-      unfold glu_nf_eq; cbn [nf_annotate_proofs nf_to_exp]; rewrite !List.map_app.
+      unfold glu_nf_eq; cbn [nf_to_exp]; rewrite !List.map_app.
       etransitivity; [ exact Heq |].
       replace (im_ty_at p k' Mk0 Us Ns) with (ind_mty p D k' (List.firstn (ind_nu D) (Us ++ Ns)) (List.skipn (ind_nu D) (Us ++ Ns)))
         by (unfold ind_mty; rewrite HMk0, firstn_app_exact, skipn_app_exact by exact HUl; reflexivity).
@@ -700,7 +675,7 @@ Section IndRealize.
       assert (Hpw : forall j V, List.nth_error Args j = Some V ->
                  forall N T, List.nth_error As j = Some N ->
                    List.nth_error (tele_insts (cargs_ctx p D Mk0 gs) (sb_of_list Id Us) As) j = Some T ->
-                   Γ ⊢ N ≈ nf_annotate_proofs V : T).
+                   Γ ⊢ N ≈ nf_to_exp V : T).
       { intros j V HV N T HN HT.
         enough (HV' : glu_nf_eq Γ N V T) by exact HV'.
       assert (Hj : j < length gs) by (rewrite <- HArl; apply List.nth_error_Some; congruence).
@@ -785,7 +760,7 @@ Section IndRealize.
           | exact Hcomp
           | rewrite !List.app_nil_r, List.app_nil_l; exact HRV ]. }
       (** The view's constructor at the uniform parameters and the fields *)
-      unfold glu_nf_eq; cbn [nf_annotate_proofs nf_to_exp]; rewrite !List.map_app.
+      unfold glu_nf_eq; cbn [nf_to_exp]; rewrite !List.map_app.
       etransitivity; [ exact Heq |].
       replace (im_ty_at p k' Mk0 Us nil) with (ind_mty p D k' (List.firstn (ind_nu D) Us) (List.skipn (ind_nu D) Us))
         by (unfold ind_mty; rewrite HMk0, <- HUl, List.firstn_all, List.skipn_all; reflexivity).
@@ -956,7 +931,7 @@ Section IndRealize.
       { pose proof (kripke_q_var_eq Γ Γ ak_relevant IT (Typeω@j) OT wk_id (Typeω@j) HOTj HITj ltac:(constructor) Hid) as H.
         rewrite exp_wk_id in H; rewrite (exp_wk_id_ext OT _ wk_q_id) in H; cbn in H; exact H. }
       (** The function, η-long *)
-      unfold glu_nf_eq in Hbody |- *; rewrite HA; cbn [nf_annotate_proofs nf_to_exp].
+      unfold glu_nf_eq in Hbody |- *; rewrite HA; cbn [nf_to_exp].
       etransitivity; [ eapply wf_exp_eq_fn_eta'; exact HNpi |].
       eapply wf_exp_eq_fn_cong'; [ exact HITeq | constructor | exact HOTj | constructor
                                  | eapply wf_exp_eq_conv'; [ exact Hbody | exact HOT ] ].
@@ -1078,9 +1053,9 @@ Section RecordRealize.
     assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
     match goal with H : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ms |- _ => pose proof (HPr Δ wk_id Ms Hid H) as HMs end.
     rewrite map_wk_id_exp in HMs.
-    (** The parameters are their annotated readbacks *)
+    (** The parameters are their readbacks *)
     destruct HMs as (HMl & HMs).
-    unfold glu_nf_eq; cbn [domain_kind abs_kind_sort nf_annotate_proofs nf_to_exp]; etransitivity; [ exact HAφ |].
+    unfold glu_nf_eq; cbn [domain_kind abs_kind_sort nf_to_exp]; etransitivity; [ exact HAφ |].
     eapply wf_exp_eq_subtyp'; [| exact HS ].
     eapply wf_exp_eq_record_apps; [ exact Hrt | exact Hl | exact HNl | rewrite <- HMl; exact HNl | exact HMs ].
   Qed.
@@ -1177,9 +1152,9 @@ Section RecordRealize.
       match goal with H : Rne m in _ ↘ ?W0 |- _ => rename H into HW0; rename W0 into W1 end.
       pose proof (kripke_compose _ _ _ _ _ Hφ' Hφ) as Hc'.
       pose proof (Hrb _ _ _ Hc' HW0) as HMW.
-      unfold glu_ne_eq in HMW |- *; cbn [ne_annotate_proofs ne_to_exp].
+      unfold glu_ne_eq in HMW |- *; cbn [ne_to_exp].
       destruct (record_typ_at_facts _ _ _ _ _ HNs Hc') as (HAd & Hrt' & HNld & HNtd & HSd).
-      assert (HMW' : Δ' ⊢ M[φ ⊙ φ']ʷ ≈ ne_annotate_proofs W1 : apps_exp (a_record p) (List.map (fun N => N[φ ⊙ φ']ʷ) Ns))
+      assert (HMW' : Δ' ⊢ M[φ ⊙ φ']ʷ ≈ ne_to_exp W1 : apps_exp (a_record p) (List.map (fun N => N[φ ⊙ φ']ʷ) Ns))
         by (eapply wf_exp_eq_conv'; [ exact HMW | exact HAd ]).
       destruct (record_proj_cong_at _ _ _ _ _ p R _ (large_level i) k f T HMW' Hrt' Hl HNld HNtd HSd Hjf) as [_ Hpp].
       assert (HTeq' : Δ' ⊢ T[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ns ++ record_pre R k M[φ]ʷ)][φ']ʷ
@@ -1239,7 +1214,7 @@ Section RecordRealize.
         its type: by the realisability of the type. *)
     assert (Hfw : forall k F, List.nth_error Fs k = Some F ->
                forall f U, List.nth_error (record_fields R) k = Some (f, U) ->
-                 Δ ⊢ a_proj f M[φ]ʷ ≈ nf_annotate_proofs F
+                 Δ ⊢ a_proj f M[φ]ʷ ≈ nf_to_exp F
                    : U[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ns ++ record_pre R k M[φ]ʷ)]).
     { intros k F HF0.
       assert (Hlt : k < List.length (record_fields R)) by (rewrite <- HFl; apply List.nth_error_Some; congruence).
@@ -1264,10 +1239,10 @@ Section RecordRealize.
       pose proof (Hrbt Δ wk_id F Hid HF) as Heq; rewrite !exp_wk_id in Heq.
       intros f' U' Hfk'; rewrite Hfk in Hfk'; injection Hfk' as <- <-; exact Heq. }
     (** The tuple at the parameters and the fields *)
-    unfold glu_nf_eq; cbn [nf_annotate_proofs nf_to_exp].
+    unfold glu_nf_eq; cbn [nf_to_exp].
     assert (Htc : Δ ⊢ a_tuple (apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)) (record_eta_fields R M[φ]ʷ)
-                    ≈ a_tuple (apps_exp (a_record p) (List.map nf_to_exp (List.map nf_annotate_proofs Ps)))
-                        (List.combine (List.map fst (record_fields R)) (List.map nf_to_exp (List.map nf_annotate_proofs Fs)))
+                    ≈ a_tuple (apps_exp (a_record p) (List.map nf_to_exp Ps))
+                        (List.combine (List.map fst (record_fields R)) (List.map nf_to_exp Fs))
                     : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)).
     { eapply wf_exp_eq_tuple_fields;
         [ exact Hetat | exact Hrt | exact Hl | exact HNl | rewrite <- HPl; exact HNl | exact HPs | exact HS
@@ -1278,9 +1253,9 @@ Section RecordRealize.
       rewrite record_eta_fields_pre.
       assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
       destruct (nth_error_lt_some' Fs k ltac:(lia)) as [F HFk].
-      assert (M1' = nf_to_exp (nf_annotate_proofs F)) as ->.
-      { pose proof (nth_error_combine_both (List.map fst (record_fields R)) (List.map nf_to_exp (List.map nf_annotate_proofs Fs))
-                      k f (nf_to_exp (nf_annotate_proofs F))
+      assert (M1' = nf_to_exp F) as ->.
+      { pose proof (nth_error_combine_both (List.map fst (record_fields R)) (List.map nf_to_exp Fs)
+                      k f (nf_to_exp F)
                       ltac:(rewrite List.nth_error_map, Hfk; reflexivity)
                       ltac:(rewrite !List.nth_error_map, HFk; reflexivity)) as E.
         rewrite E in Hk1'; injection Hk1' as <-; reflexivity. }
@@ -1329,7 +1304,7 @@ Proof.
   pose proof (params_glu_read _ _ _ _ Hpt2 _ _ _ Hid HMs') as H2g.
   rewrite !map_wk_id_exp in H1g, H2g.
   pose proof (params_glu_len _ _ _ _ Hpt) as HL1; pose proof (params_glu_len _ _ _ _ Hpt2) as HL2.
-  pose proof (tele_eq_annotate_upto _ _ _ _ _ _ Hass HCw HL1 HL2 H1g H2g E) as HEq.
+  pose proof (tele_eq_upto_proofs _ _ _ _ _ _ Hass HCw HL1 HL2 H1g H2g E) as HEq.
   (** The given instance is one of the element's parameters *)
   assert (HEq'' : exps_eq_at Δ (record_params R) (List.map (fun N => N[φ]ʷ) Ns) Ns'').
   { destruct HEq as [Hl1 H1]; destruct HNs'' as [Hl2 H2]; split; [ congruence |].
@@ -1366,7 +1341,7 @@ Proof.
 Qed.
 
 (** Two types glued at the top of related type values of one kind are
-    equal: both are the annotations of readbacks related up to proofs. *)
+    equal: both are equal to readbacks related up to proofs. *)
 Lemma glu_typ_top_related_unique : forall i a a' Γ A A',
     Dom a ≈ a' ∈ per_top_typ -> domain_kind a = domain_kind a' ->
     Γ ⊢ A ® glu_typ_top i a -> Γ ⊢ A' ® glu_typ_top i a' ->
@@ -1694,7 +1669,7 @@ Proof.
           by (rewrite <- (member_nparams_eq _ _ _ H1); exact Hns).
         pose proof (ind_params_per_top _ _ _ _ _ _ _ _ _ HRa H H3 Hu' k M ns ns' H1 Hns') as Hpp.
         (** The type's parameters on both sides are equal: glued to related
-            values, their annotated readbacks are related up to proofs *)
+            values, their readbacks are related up to proofs *)
         assert (Hpe : forall Δ Xs Ys, ⊢ Δ -> glu_params_top D M Δ Xs (ups ++ ns) -> glu_params_top D M Δ Ys (ups' ++ ns') ->
                         exps_eq_at Δ (im_params D M) Xs Ys).
         { intros Δ Xs Ys HΔ Hpt Hpt2.
@@ -1705,7 +1680,7 @@ Proof.
           pose proof (glu_params_top_read _ _ _ _ _ Hpt2 _ _ _ Hid HMs') as H2g.
           rewrite !map_wk_id_exp in H1g, H2g.
           pose proof (glu_params_top_len _ _ _ _ _ Hpt) as HL1; pose proof (glu_params_top_len _ _ _ _ _ Hpt2) as HL2.
-          exact (tele_eq_annotate_upto _ _ _ _ _ _ (decl_closed_params_ass _ _ _ Hc H1) (params_ctx_wf _ _ _ _ _ H H1 HΔ)
+          exact (tele_eq_upto_proofs _ _ _ _ _ _ (decl_closed_params_ass _ _ _ Hc H1) (params_ctx_wf _ _ _ _ _ H H1 HΔ)
                    ltac:(rewrite length_im_params; exact HL1) ltac:(rewrite length_im_params; exact HL2) H1g H2g E). }
         assert (Hpe' : forall Δ Xs Ys, ⊢ Δ -> glu_params_top D M Δ Xs (ups' ++ ns') -> glu_params_top D M Δ Ys (ups ++ ns) ->
                          exps_eq_at Δ (im_params D M) Xs Ys).
@@ -1717,7 +1692,7 @@ Proof.
           pose proof (glu_params_top_read _ _ _ _ _ Hpt2 _ _ _ Hid HMs) as H2g.
           rewrite !map_wk_id_exp in H1g, H2g.
           pose proof (glu_params_top_len _ _ _ _ _ Hpt) as HL1; pose proof (glu_params_top_len _ _ _ _ _ Hpt2) as HL2.
-          exact (tele_eq_annotate_upto _ _ _ _ _ _ (decl_closed_params_ass _ _ _ Hc H1) (params_ctx_wf _ _ _ _ _ H H1 HΔ)
+          exact (tele_eq_upto_proofs _ _ _ _ _ _ (decl_closed_params_ass _ _ _ Hc H1) (params_ctx_wf _ _ _ _ _ H H1 HΔ)
                    ltac:(rewrite length_im_params; exact HL1) ltac:(rewrite length_im_params; exact HL2) H1g H2g
                    ltac:(symmetry; exact E)). }
         split; intros Γ A M0 m HM HT.
@@ -1842,12 +1817,9 @@ Proof.
         match goal with HL : Rnf ⇓ Levelᵈ l in _ ↘ nf_lvl_of ?L0 |- _ => rename HL into HRL; rename L0 into L end.
         pose proof (glu_lvl_readback _ _ _ _ Hg _ _ _ Hφ HRL) as Ht.
         assert (HAφ : Δ ⊢ A[φ]ʷ ≈ Type⟨t[φ]ʷ⟩ : Typeω@(large_level i)) by mauto 3.
-        apply glu_nf_eq_proof_free.
-        + destruct (per_lvl_reads _ _ H (length Δ)) as (L' & HL' & _ & Hpf).
-          pose proof (functional_read_nf _ _ _ _ HRL HL') as HeqL; rewrite <- HeqL in Hpf.
-          destruct L; exact Hpf.
-        + etransitivity; [ exact HAφ |].
-          eapply wf_exp_eq_univ_cong_large_tm; [ assumption | gen_presups; eassumption | eassumption ].
+        apply glu_nf_eq_intro.
+        etransitivity; [ exact HAφ |].
+        eapply wf_exp_eq_univ_cong_large_tm; [ assumption | gen_presups; eassumption | eassumption ].
       - intros Γ M A m Hglu [P' El' HM Hglu' HAP' Hm Hrb].
         destruct (functional_glu_univ_elem _ _ _ _ _ _ Hglu Hglu') as [HPP _].
         pose proof (proj2 (HPP Γ A) HAP') as HA0; apply H1 in HA0.
@@ -1889,7 +1861,7 @@ Proof.
       - intros Γ A R HR _ HA; apply_equiv_left.
         econstructor; [ cbn [domain_kind abs_kind_sort]; gen_presups; eassumption | exact (per_univ_then_per_top_typ HR) |].
         intros Δ φ A' Hφ Hr; inversion Hr; subst.
-        apply glu_nf_eq_proof_free; [ exact I |]; cbn [domain_kind abs_kind_sort nf_to_exp]; mauto 3.
+        apply glu_nf_eq_intro; cbn [domain_kind abs_kind_sort nf_to_exp]; mauto 3.
       - intros Γ M A m Hglu [P' El' HM Hglu' HAP' Hm Hrb].
         destruct (functional_glu_univ_elem _ _ _ _ _ _ Hglu Hglu') as [HPP _].
         pose proof (proj2 (HPP Γ A) HAP') as HA0; apply H in HA0; cbn in HA0.
@@ -1897,13 +1869,11 @@ Proof.
         pose proof (per_bot_then_per_lvl_at n m m (proj2 Hm)) as Hpl.
         econstructor; [ exact HA0 | exact Hpl |].
         intros Δ φ L Hφ Hr.
-        destruct (Hpl (length Δ)) as [L1 HL1 _ _ Hpf].
+        destruct (Hpl (length Δ)) as [L1 HL1 _ _ _].
         pose proof (functional_read_nf _ _ _ _ HL1 Hr) as HeqL.
         inversion Hr; subst; [| cbn in *; discriminate ].
-        (** The readback is free of proofs, so it is its own annotation *)
-        match goal with H3 : _ = nf_lvl_of L1 |- _ => rewrite <- H3 in Hpf end; cbn in Hpf; destruct Hpf as [HM0f _].
         match goal with H6 : Rne m in _ ↘ ?M1 |- _ => pose proof (Hrb _ _ _ Hφ H6) as HW end.
-        unfold glu_ne_eq in HW; rewrite (proj2 nf_ne_annotate_proofs_proof_free _ HM0f) in HW.
+        unfold glu_ne_eq in HW.
         assert (HMeq : Δ ⊢ M[φ]ʷ ≈ M0 : Level@n)
           by (eapply wf_exp_eq_conv_kind with (κ := ak_level) (i := 0); [ exact HW | cbn; mauto 3 ]).
         split; [ exact HMeq |].
@@ -1917,10 +1887,10 @@ Proof.
           pose proof (glu_lvl_readback _ _ _ _ Hg _ _ _ Hid HL0) as HM0; rewrite exp_wk_id in HM0.
           eapply wf_conv_rel with (r := ak_level) (n := 0); [ exact (presup_exp_eq_left HM0) | cbn; symmetry; exact HA ].
         + intros Δ φ w Hφ Hw.
-          destruct (Hpl (length Δ)) as [L1 HL1 _ _ Hpf].
+          destruct (Hpl (length Δ)) as [L1 HL1 _ _ _].
           pose proof (read_nf_level_sort _ _ 0 _ _ Hw) as Hw0.
           pose proof (functional_read_nf _ _ _ _ HL1 Hw0) as <-.
-          apply glu_nf_eq_proof_free; [ exact Hpf |].
+          apply glu_nf_eq_intro.
           eapply wf_exp_eq_conv_kind with (κ := ak_level) (i := 0);
             [ eapply glu_lvl_readback; eassumption | cbn; symmetry; mauto 3 ].
       - intros a' P' El' R0 HRa Hga; basic_invert_per_univ_elem HRa; basic_invert_glu_univ_elem Hga.
@@ -1934,7 +1904,7 @@ Proof.
       - intros Γ A R HR _ HA; apply_equiv_left.
         econstructor; [ cbn [domain_kind abs_kind_sort]; gen_presups; eassumption | exact (per_univ_then_per_top_typ HR) |].
         intros Δ φ A' Hφ Hr; inversion Hr; subst.
-        apply glu_nf_eq_proof_free; [ exact I |]; cbn [domain_kind abs_kind_sort nf_to_exp]; mauto 3.
+        apply glu_nf_eq_intro; cbn [domain_kind abs_kind_sort nf_to_exp]; mauto 3.
       - intros Γ M A m Hglu [P' El' HM Hglu' HAP' Hm Hrb].
         destruct (functional_glu_univ_elem _ _ _ _ _ _ Hglu Hglu') as [HPP _].
         pose proof (proj2 (HPP Γ A) HAP') as HA0; apply H in HA0; cbn in HA0.
@@ -1993,11 +1963,10 @@ Proof.
         apply H1; econstructor; [ exact HA0 | exact HM | |].
         + apply per_proof_refl; intros s; destruct (proj1 (proj2 Hm) s) as [W1 W2 H3 H4 E].
           eexists; econstructor; exact H3.
-        + (** The readback of a neutral proof is the neutral, plain *)
+        + (** The readback of a neutral proof is the neutral *)
           intros Δ φ R Hφ HR; inversion HR; subst.
           match goal with H6 : Rne m in _ ↘ ?M1 |- _ => pose proof (Hrb _ _ _ Hφ H6) as HW end.
-          unfold glu_ne_eq in HW.
-          etransitivity; [ exact HW | exact (proj2 nf_ne_annotate_proofs_plain _ _ _ _ _ (presup_exp_eq_right HW)) ].
+          unfold glu_ne_eq in HW; exact HW.
       - intros Γ M A m R Hglu HEl HR Hm.
         pose proof HEl as HEl'; apply H1 in HEl'; destruct HEl' as [HAg HMt Hpp Hrd].
         pose proof HAg as [HAt HAr].
@@ -2008,13 +1977,13 @@ Proof.
         (** The proof read back is a proof of the proposition, by the
             readback clause *)
         pose proof (Hrd _ _ _ Hφ HM1) as HMM1.
-        unfold glu_nf_eq; cbn [nf_annotate_proofs nf_to_exp].
+        unfold glu_nf_eq; cbn [nf_to_exp].
         assert (HMφ : Δ ⊢ M[φ]ʷ : A[φ]ʷ) by mauto 3.
         assert (HAφ : Δ ⊢ A[φ]ʷ : Propₘ) by (eapply kripke_preserves_prop; eassumption).
-        assert (HP2 : Δ ⊢ nf_annotate_proofs P1 : Propₘ) by (gen_presups; assumption).
+        assert (HP2 : Δ ⊢ nf_to_exp P1 : Propₘ) by (gen_presups; assumption).
         apply wf_exp_eq_irrelevant; [ exact HAφ | exact HMφ |].
         eapply wf_conv_rel with (r := ak_propositional) (n := 0); [| cbn; symmetry; exact HAeq ].
-        apply proof_ascription_typed; [ exact HP2 |].
+        apply wf_proof_tag; [ exact HP2 |].
         eapply wf_conv_rel with (r := ak_propositional) (n := 0); [ exact (presup_exp_eq_right HMM1) | cbn; exact HAeq ].
       - (** A related type value is a proposition too, glued as one; a
             proof is a proof of it at a type glued there *)
@@ -2123,7 +2092,7 @@ Proof.
     destruct (HOt _ _ _ HRb Hnbb HOPc) as [HOTt _ HOTrb].
     assert (Hid' : Δ ▹{domain_kind a} IT[φ]ʷ ⊢ᵏ wk_id : Δ ▹{domain_kind a} IT[φ]ʷ) by mauto 3.
     pose proof (HOTrb _ wk_id B' Hid' HRB) as HBeq; unfold glu_nf_eq in HBeq; rewrite exp_wk_id, Hkb in HBeq.
-    unfold glu_nf_eq; cbn [nf_annotate_proofs nf_to_exp].
+    unfold glu_nf_eq; cbn [nf_to_exp].
     assert (HAφ : Δ ⊢ A[φ]ʷ ≈ a_pi (domain_kind a) κc IT[φ]ʷ OT[wk_q φ]ʷ : abs_kind_sort κc Typeω@(large_level i))
       by (rewrite <- exp_wk_pi; eapply kripke_preserves_kind_sort_eq; eassumption).
     pose proof (kripke_q_var_eq Δ Γ (domain_kind a) IT (abs_kind_sort κc Typeω@(large_level i)) OT φ _ HOT HIT
@@ -2169,7 +2138,7 @@ Proof.
       assert (Hc : Δ' ⊢ᵏ φ ⊙ φ' : Γ) by (eapply kripke_compose; eassumption).
       pose proof (Hrb _ _ _ Hc HM1) as HMeq; unfold glu_ne_eq in HMeq.
       pose proof (HNrb _ _ _ Hφ' HN1) as HNeq; unfold glu_nf_eq in HNeq.
-      unfold glu_ne_eq; cbn [ne_annotate_proofs ne_to_exp].
+      unfold glu_ne_eq; cbn [ne_to_exp].
       rewrite exp_wk_sub_of_wk_extend, <- exp_sub_wk_q_extend, exp_wk_app, exp_wk_wk.
       eapply wf_exp_eq_app_cong'.
       * eapply wf_exp_eq_conv_kind; [ exact HMeq | exact (HAw _ _ Hc) ].
@@ -2213,7 +2182,7 @@ Proof.
     destruct (H2 _ Hc _ Eb) as (_ & _ & Htop & _).
     destruct (Htop _ _ _ _ _ (H1 _ Hc _ Eb) HOEl HRb1 Hrel) as [_ _ _ _ _ _ Hrbtop].
     pose proof (Hrbtop _ wk_id M' Hid' HRM) as Hbeq; unfold glu_nf_eq in Hbeq; rewrite !exp_wk_id in Hbeq.
-    unfold glu_nf_eq; cbn [nf_annotate_proofs nf_to_exp].
+    unfold glu_nf_eq; cbn [nf_to_exp].
     pose proof (HAw _ _ Hφ) as HAφ.
     assert (HMφ : Δ ⊢ M[φ]ʷ : a_pi (domain_kind a) κc IT[φ]ʷ OT[wk_q φ]ʷ) by (eapply wf_conv_rel; [ mauto 3 | exact HAφ ]).
     pose proof (kripke_q_var_eq Δ Γ (domain_kind a) IT (abs_kind_sort κc Typeω@(large_level i)) OT φ _ HOT HIT

@@ -73,6 +73,10 @@ Inductive fast_eval_exp_order {SM : SkipMode} (Θ : gdeps) (Ξ : gstack) : exp -
   `( fast_eval_exp_order Θ Ξ (a_left M) p )
 | fast_eval_exp_order_right :
   `( fast_eval_exp_order Θ Ξ (a_right M) p )
+(** A tagged proof: its proof *)
+| fast_eval_exp_order_proof_tag :
+  `( fast_eval_exp_order Θ Ξ M p ->
+     fast_eval_exp_order Θ Ξ (a_proof P M) p )
 (** A [Π], at its kinds: its domain *)
 | fast_eval_exp_order_pi :
   `( fast_eval_exp_order Θ Ξ A p ->
@@ -1504,6 +1508,10 @@ Section EvalImpl.
   | a_conj P Q M N, p, Hp, H => exist _ (fd_proof (a_conj P Q M N) p) _
   | a_left M, p, Hp, H => exist _ (fd_proof (a_left M) p) _
   | a_right M, p, Hp, H => exist _ (fd_proof (a_right M) p) _
+  (** A tagged proof: its proof's value *)
+  | a_proof P M, p, Hp, H =>
+      let (m, Hm) := fast_eval_exp_impl M p Hp _ in
+      exist _ m _
   | a_pi κd κc A B , p, Hp, H =>
       let (a , Ha) := fast_eval_exp_impl A p Hp _ in
       exist _ (fd_pi κd κc a p B) _

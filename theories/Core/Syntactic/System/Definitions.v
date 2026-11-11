@@ -510,6 +510,12 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ P Q ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Q[Id,,a_left M] : Propₘ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_right M : Q[Id,,a_left M] )
+(** A proof tagged with its proposition, of that proposition.  It is equal
+    to the proof by proof irrelevance ([wf_exp_eq_irrelevant]). *)
+| wf_proof_tag :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : P ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_proof P M : P )
 (** The type former of a declared member of a group of inductive types, of
     the type the declaration gives: a [Π] over its parameters of the
     sort. *)

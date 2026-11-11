@@ -11,7 +11,7 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Semantic Require Import RecordPER.
-From Mctt.Core.Completeness.Consequences Require Import AnnotatedUpto.
+From Mctt.Core.Completeness.Consequences Require Import UptoProofs.
 From Mctt.Core.Soundness Require Import KeptProofs.
 From Mctt.Core.Syntactic.System Require Import LetPeeling.
 Import Domain_Notations Wk_Notations Fixed_Notations.
@@ -30,7 +30,7 @@ Lemma wf_exp_eq_kind_sort_max_right : forall Γ κ X Y n m,
 Proof. intros * H; destruct κ; cbn in *; [ mauto 3 using lift_exp_eq_max_right | exact H | exact H ]. Qed.
 
 (** Two types glued at the same value are equal: both are equal to its
-    annotated readback. *)
+    readback. *)
 Lemma glu_typ_top_unique : forall i j a Γ A A',
     Γ ⊢ A ® glu_typ_top i a -> Γ ⊢ A' ® glu_typ_top j a ->
     Γ ⊢ A ≈ A' : abs_kind_sort (domain_kind a) Typeω@(max (large_level i) (large_level j)).
@@ -381,7 +381,7 @@ Proof.
   pose proof (glu_params_top_read _ _ _ _ _ HP _ _ _ Hid HMs) as H1.
   pose proof (glu_params_top_read _ _ _ _ _ HQ _ _ _ Hid HMs) as H2.
   rewrite !map_wk_id_exp in H1, H2.
-  exact (tele_eq_annotate_upto _ _ _ _ _ _ (decl_closed_params_ass _ _ _ Hc HMk) (params_ctx_wf _ _ _ _ _ Hl HMk HΔ)
+  exact (tele_eq_upto_proofs _ _ _ _ _ _ (decl_closed_params_ass _ _ _ Hc HMk) (params_ctx_wf _ _ _ _ _ Hl HMk HΔ)
            ltac:(rewrite length_im_params; exact (glu_params_top_len _ _ _ _ _ HP))
            ltac:(rewrite length_im_params; exact (glu_params_top_len _ _ _ _ _ HQ)) H1 H2 ltac:(reflexivity)).
 Qed.
@@ -632,7 +632,7 @@ Proof.
   assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
   pose proof (HPr _ _ _ Hid HMs) as HPMs; pose proof (HQr _ _ _ Hid HMs) as HQMs.
   rewrite (map_wk_id Ps) in HPMs; rewrite (map_wk_id Qs) in HQMs.
-  eapply tele_eq_annotate_upto; [ exact Hass | exact HC | exact HPl | exact HQl | exact HPMs | exact HQMs | reflexivity ].
+  eapply tele_eq_upto_proofs; [ exact Hass | exact HC | exact HPl | exact HQl | exact HPMs | exact HQMs | reflexivity ].
 Qed.
 
 (** A type of a record at parameters [Ps] is one at parameters [Qs] glued
@@ -2651,10 +2651,9 @@ Proof.
   destruct b; reflexivity.
 Qed.
 
-(** A term glued at a type's value reads back, with the type, as plain
-    normal forms equal to them at every weakening: realizability gives
-    the annotated readbacks ([realize_glu_typ_top], [realize_glu_elem_top]),
-    which are the plain ones ([nf_ne_annotate_proofs_plain]). *)
+(** A term glued at a type's value reads back, with the type, as normal
+    forms equal to them at every weakening ([realize_glu_typ_top],
+    [realize_glu_elem_top]). *)
 Lemma glu_stored_readback : forall Δ T N v κ (i j : nat) b P El,
     Δ ⊢ T : abs_kind_sort κ Typeω@i ->
     DG b ∈ glu_univ_elem j ↘ P ↘ El -> Δ ⊢ N : T ® v ∈ El ->
@@ -2672,9 +2671,7 @@ Proof.
   pose proof (realize_glu_elem_top _ _ _ _ Hgm _ _ _ _ HNm) as [_ _ _ _ _ _ Hre].
   pose proof (Hrt _ _ _ Hφ HA') as E1; pose proof (Hre _ _ _ Hφ HW) as E2; unfold glu_nf_eq in E1, E2.
   rewrite Hk in E1; cbn [large_level] in E1.
-  pose proof (proj1 nf_ne_annotate_proofs_plain _ _ _ _ _ (presup_exp_eq_right E1)) as E3.
-  pose proof (proj1 nf_ne_annotate_proofs_plain _ _ _ _ _ (presup_exp_eq_right E2)) as E4.
-  exists (max j i); split; etransitivity; eassumption.
+  exists (max j i); split; eassumption.
 Qed.
 
 (** A scoped term is scoped by its free bound: the readback of a kept

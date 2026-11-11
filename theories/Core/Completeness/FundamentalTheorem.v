@@ -247,7 +247,7 @@ Proof.
       eapply sem_typ | eapply sem_univ | eapply sem_level | eapply sem_llit | eapply sem_succl
     | eapply sem_maxl
     | eapply sem_prop | eapply sem_True | eapply sem_tt | eapply sem_False | eapply sem_absurd
-    | eapply sem_and | eapply sem_conj | eapply sem_left | eapply sem_right
+    | eapply sem_and | eapply sem_conj | eapply sem_left | eapply sem_right | eapply sem_proof_tag
     | eapply sem_ind | eapply sem_con
     | eapply sem_elim | eapply sem_pi | eapply sem_fn
     | (** the function's premise first: it fixes the domain, which the

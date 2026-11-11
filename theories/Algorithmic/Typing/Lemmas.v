@@ -1167,6 +1167,15 @@ Proof.
         exact (exp_conv_sort type_sort_prop (soundness_ty_at_sort type_sort_prop HQL Hn)
                  (wf_right _ _ _ _ _ _ HP HQ HM HQL))
     end.
+  (** A tagged proof, at its tag's normal form *)
+  - match goal with
+    | IHP : ⊢ ?G -> ?G ⊢ ?P : (nf_to_exp Propⁿ),
+      IHM : ⊢ ?G -> forall Srt, _ -> ?G ⊢ ?P : Srt -> ?G ⊢ ?M : _,
+      Hn : nbe_ty_f ?G ?P ?W, HG : ⊢ ?G |- _ =>
+        pose proof (IHP HG) as HP; cbn [nf_to_exp] in HP;
+        pose proof (IHM HG _ type_sort_prop HP) as HM;
+        exact (exp_conv_sort type_sort_prop (soundness_ty_at_sort type_sort_prop HP Hn) (wf_proof_tag _ _ _ _ _ HP HM))
+    end.
   (** The type former, a constructor and the eliminator *)
   - match goal with Hl : ind_lookup _ _ _ = Some ?D, Hk : ind_member ?D _ = Some _, HΓ : ⊢ ?G |- _ =>
       destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc];
@@ -1564,6 +1573,10 @@ Proof.
       assert (HL : G ⊢ a_left M : nf_to_exp P) by (eapply wf_left; eassumption);
       normal_of_typed type_sort_prop
         (sub_preserves_sort _ _ _ _ _ _ _ HQ type_sort_prop (wf_sub_single _ _ _ _ _ _ _ HP ltac:(constructor) HL)) Hn Hnbe
+  (** A tagged proof: the normal form of its tag *)
+  | HPi : ?G ⊢a ?P ⟹ Propⁿ, HMc : alg_type_check ?G ?P ?M, Hn : nbe_ty_f ?G ?P _ |- _ =>
+      pose proof (alg_type_infer_sound HPi HΓ0) as HP; cbn [nf_to_exp] in HP;
+      normal_of_typed type_sort_prop HP Hn Hnbe
   (** The type former and a constructor: the normal forms of closed types *)
   | Hl : ind_lookup _ _ _ = Some ?D, Hk : ind_member ?D _ = Some _, Hlt : _ < ind_ndecl ?D, Hn : nbe_ty_f _ (ind_ty _ _) _ |- _ =>
       destruct (decl_of_lookup _ _ _ _ _ HΓ0 Hl) as [HD Hc];
@@ -2031,6 +2044,7 @@ Fixpoint exp_lets (M : exp) : nat :=
   | a_succl M | a_univ M => exp_lets M
   | a_maxl M N => exp_lets M + exp_lets N
   | a_absurd A M => exp_lets A + exp_lets M
+  | a_proof P M => exp_lets P + exp_lets M
   | a_and P Q => exp_lets P + exp_lets Q
   | a_conj P Q M N => exp_lets P + exp_lets Q + exp_lets M + exp_lets N
   | a_left M | a_right M => exp_lets M
@@ -3386,6 +3400,16 @@ Proof.
     [ exact (alg_type_check_prop_infer HΓ HPc) | exact (alg_type_check_prop_infer HΓP HQc) | exact HMc | exact HNc | exact HW ].
 Qed.
 
+(** A tagged proof checks against its tag: the tag is a proposition, and
+    the proof checks against it. *)
+Lemma alg_proof_tag_complete : forall {Γ P M},
+    ⊢ Γ -> Γ ⊢ P : Propₘ -> Γ ⊢a P ⟸ Propₘ -> Γ ⊢a M ⟸ P -> Γ ⊢a a_proof P M ⟸ P.
+Proof.
+  intros * HΓ HP HPc HMc.
+  apply (alg_type_check_of_infer_nbe type_sort_prop HP); intros W HW.
+  eapply alg_type_infer_proof_tag; [ exact (alg_type_check_prop_infer HΓ HPc) | exact HMc | exact HW ].
+Qed.
+
 (** A term checked against a type of a sort infers a type of the kind of
     that sort, no [LevelSort], whose instance along a substitution
     normalises below the type's instance. *)
@@ -3808,6 +3832,8 @@ Proof.
       eapply (alg_left_complete HG (and_typed_of_proof HM)); eassumption end.
   - match goal with HG : ⊢ ?G, HM : ?G ⊢ ?M : Σₚ ?P ?Q |- _ ⊢a a_right ?M ⟸ _ =>
       eapply (alg_right_complete HG (and_typed_of_proof HM) HM); eassumption end.
+  (** A tagged proof at its tag. *)
+  - eapply alg_proof_tag_complete; eassumption.
   (** The type former and a constructor: at the normal forms of their
       types. *)
   - destruct (decl_of_lookup _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)) as [HD Hc].

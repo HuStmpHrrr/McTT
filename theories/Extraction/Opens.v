@@ -290,6 +290,10 @@ Section OpenError.
         let+ C' := open_expand_exp S C in
         let+ M' := open_expand_exp S M in
         open_success (a_absurd C' M')
+    | a_proof P M =>
+        let+ P' := open_expand_exp S P in
+        let+ M' := open_expand_exp S M in
+        open_success (a_proof P' M')
     (** A conjunction binds its first component in its second *)
     | a_and P Q =>
         let+ P' := open_expand_exp S P in

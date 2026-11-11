@@ -155,6 +155,13 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ⊢a M ⟹ Σₚⁿ P Q ->
      nbe_ty_f Γ (nf_to_exp Q)[Id,,a_left M] W ->
      Γ ⊢a a_right M ⟹ W )
+(** A tagged proof: the tag is a proposition, the proof is checked at it,
+    and the term infers the tag's normal form. *)
+| alg_type_infer_proof_tag :
+  `( Γ ⊢a P ⟹ Propⁿ ->
+     Γ ⊢a M ⟸ P ->
+     nbe_ty_f Γ P W ->
+     Γ ⊢a a_proof P M ⟹ W )
 (** The type former of a declared member and a constructor of any member
     infer the normal forms of their closed types. *)
 | alg_type_infer_ind_case :
@@ -585,6 +592,11 @@ Inductive user_exp : exp -> Prop :=
 | user_exp_right :
   `( user_exp M ->
      user_exp (a_right M) )
+(** A tagged proof: its tag and its proof *)
+| user_exp_proof_tag :
+  `( user_exp P ->
+     user_exp M ->
+     user_exp (a_proof P M) )
 | user_exp_indty :
   `( user_exp (a_ind p k) )
 | user_exp_con :

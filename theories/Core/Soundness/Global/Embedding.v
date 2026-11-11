@@ -105,7 +105,7 @@ Section Cook.
       (forall φ, T[φ]ʷ = T) -> (forall φ, G[φ]ʷ = G) ->
       (forall Δ, ⊢ Δ -> Δ ⊢ G : T) ->
       (forall a, not_level_sort a -> Dom d ≈ d ∈ neutral_at a) ->
-      (forall s (M' : ne), Rne d in s ↘ M' -> (ne_annotate_proofs M' : exp) = G) ->
+      (forall s (M' : ne), Rne d in s ↘ M' -> (ne_to_exp M' : exp) = G) ->
       (forall a, ⟦ T ⟧ nil ↘ a -> exists ks v, pi_kinds_depth ks a /\ app_sim ks v (⇑ a d) /\ forall ρ, ⟦ G ⟧ ρ ↘ v) ->
       ⋅ ⊩ G : T.
   Proof.
@@ -162,7 +162,7 @@ Section Raw.
     - intros; cbn; rewrite (mod_qname_wk _ _ _ Hpm); reflexivity.
     - intros Δ HΔ; exact (Hty _ HAw HΔ).
     - intros a Ha; exact (glob_neutral_at _ _ Ha).
-    - intros * Hrb; inversion Hrb; subst; cbn [ne_annotate_proofs ne_to_exp]; apply qname_term_snoc.
+    - intros * Hrb; inversion Hrb; subst; cbn [ne_to_exp]; apply qname_term_snoc.
     - (** The member's value applies as the neutral does: it is the
           neutral at a saturated module, and a member closure at one
           lacking a parameter ([glob_member_sim]); its type is a [Π] over

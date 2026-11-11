@@ -1724,7 +1724,7 @@ Proof.
     | Hσ : wf_sub_eq _ _ ?Γ0 ?Γ ?σ ?σ' |- wf_exp_eq _ _ ?Γ0 (exp_sub ?A ?σ) (exp_sub ?X ?σ) (exp_sub ?X ?σ') =>
         let HX := fresh "HX" in let HAP := fresh "HAP" in
         assert (HX : wf_exp _ _ Γ A X)
-          by (solve [ eauto 2 using wf_conj, wf_left, wf_right ]);
+          by (solve [ eauto 2 using wf_conj, wf_left, wf_right, wf_proof_tag ]);
         assert (HAP : wf_exp _ _ Γ a_prop A) by (solve [ eauto 2 using wf_and ])
     end.
   (** Where the proposition is a premise, its induction hypothesis moves it

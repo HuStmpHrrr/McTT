@@ -324,7 +324,7 @@ Section RecordFormer.
           match goal with H : record_lookup _ _ p = Some ?R1 |- _ => rewrite Hl in H; injection H as <- end.
           match goal with HR : Rps vs at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Rs |- _ =>
             destruct (HMr _ _ _ Hφ HR) as [HRl HRs] end.
-          unfold glu_nf_eq; cbn [nf_annotate_proofs].
+          unfold glu_nf_eq.
           assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
           assert (Hsw : (record_sort R)[sb_of_list Id Ms][φ]ʷ = (record_sort R)[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ms)]).
           { rewrite <- exp_sub_of_wk, (record_sort_sub _ _ _ Hc HMl); f_equal; f_equal.
