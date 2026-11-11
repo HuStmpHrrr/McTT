@@ -755,6 +755,39 @@ Proof.
       * rewrite mdesc_up_nil; cbn [mdesc_sub mdesc_mod]; rewrite (mdesc_sub_sub_ext _ _ _ _ Eτ); exact HRm.
 Qed.
 
+(** A literal given its outermost parameter denotes as the literal
+    instantiated, both ways at every typed substitution ([mdenote_beta]). *)
+Lemma same_denote_beta : forall Γ0 Δ κ X D N,
+    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵘ gu_mk (Δ ++ ce_ass κ X :: nil) D ≈ gu_mk (Δ ++ ce_ass κ X :: nil) D ->
+    same_denote Γ0 (me_app (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) N) (me_lit (gu_mk Δ D)[Id,,N]ᵘ) /\
+    same_denote Γ0 (me_lit (gu_mk Δ D)[Id,,N]ᵘ) (me_app (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) N).
+Proof.
+  intros * HU.
+  pose proof (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HU)) as Hg.
+  assert (Hgen : forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 ->
+            exists R', mdenote gc_deps gc_stack Γ1 (me_app (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) N)[ζ]ᵐ R' /\
+                       mdenote gc_deps gc_stack Γ1 (me_lit (gu_mk Δ D)[Id,,N]ᵘ)[ζ]ᵐ R').
+  { intros Γ1 ζ Hζ.
+    pose proof (sub_preserves_unit _ _ _ _ _ _ _ HU Hζ) as HUζ.
+    rewrite !gunit_sub_mk, tele_sub_app in HUζ.
+    rewrite List.length_app in HUζ; cbn [List.length tele_sub Nat.add] in HUζ.
+    rewrite PeanoNat.Nat.add_1_r, sb_qn_S in HUζ; cbn [sb_qn] in HUζ.
+    destruct (me_denotes _ _ _ _ _ (wf_me_lit _ _ _ _ _ HUζ)) as (R0 & ? & HR0 & _).
+    apply mdenote_lit_inv in HR0.
+    destruct (mdenote_beta _ _ _ _ _ _ _ N[ζ] HUζ _ HR0) as (R' & HR1 & HR2 & _).
+    exists R'; split.
+    - cbn [modexp_sub]; rewrite gunit_sub_mk, tele_sub_app, List.length_app; cbn [List.length tele_sub Nat.add].
+      rewrite PeanoNat.Nat.add_1_r, sb_qn_S; cbn [sb_qn]; exact HR1.
+    - cbn [modexp_sub]; rewrite gunit_sub_sub.
+      change (q (sb_qn (length Δ) ζ)) with (sb_qn (S (length Δ)) ζ) in HR2.
+      rewrite sb_qn_S, <- (gunit_sub_mk Δ D (q ζ)), gunit_sub_sub in HR2.
+      erewrite gunit_sub_sb_eq; [ exact HR2 |].
+      rewrite sb_q_compose_extend_gen, sb_extend_compose, sb_compose_id_right, sb_compose_id_left; reflexivity. }
+  split; intros Γ1 ζ R Hζ Hm; destruct (Hgen _ _ Hζ) as (R' & HR1 & HR2).
+  - rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm _ HR1); exact HR2.
+  - rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm _ HR2); exact HR1.
+Qed.
+
 (** ** The Closure of a Glued Unit's Literal *)
 
 Lemma gm_prefix_upto_in_names : forall Φ z P, gm_prefix_upto Φ z = Some P -> List.In z (gm_names Φ).
