@@ -1133,12 +1133,75 @@ Proof.
   econstructor; eauto.
 Qed.
 
+(** A substituted description whose module part reads a stored module
+    reads it before the substitution: substitution keeps the stored path,
+    its telescope and its body. *)
+Lemma mdesc_sub_closed_back : forall R σ Θ' p T Φ Ns, mdesc_mod (mdesc_sub R σ) = Some (mdesc_closed Θ' p T Φ Ns) ->
+    exists Θ'' Ns', mdesc_mod R = Some (mdesc_closed Θ'' p T Φ Ns').
+Proof.
+  intros * Hm; destruct (mdesc_mod_sub_inv _ _ _ Hm) as (R'' & HR'' & E).
+  destruct R''; cbn in E; try discriminate; injection E as _ <- <- <- _.
+  do 2 eexists; exact HR''.
+Qed.
+
+(** A description given an argument whose module part reads a stored
+    module reads it before: an open module part stays open, a closed one
+    keeps its path, telescope and body. *)
+Lemma mdesc_at_closed_back : forall R N R' Θ' p T Φ Ns, mdesc_at R N = Some R' ->
+    mdesc_mod R' = Some (mdesc_closed Θ' p T Φ Ns) -> exists Θ'' Ns', mdesc_mod R = Some (mdesc_closed Θ'' p T Φ Ns').
+Proof.
+  intros * Hat Hm'.
+  destruct (mdesc_mod R) as [Rm |] eqn:Hm; [| rewrite (mdesc_at_no_mod _ _ _ Hm Hat) in Hm'; discriminate ].
+  destruct (mdesc_at_mod_part _ _ _ _ Hat Hm) as (Rm' & HRm' & E).
+  rewrite Hm' in E.
+  pose proof (mdesc_mod_is_mod _ _ Hm) as Hmm.
+  destruct Rm as [| Δ0 Φ0 Φx0 | Θ0 p0 T0 Φ0 Ns0 |]; cbn in Hmm; try contradiction; cbn in HRm'.
+  - (** An open module part stays open *)
+    destruct (tele_split (List.rev Δ0)) as [[[? ?] ?] |]; [ injection HRm' as <- | discriminate ]; cbn in E; discriminate.
+  - destruct (tele_split (List.rev Θ0)) as [[[? ?] ?] |]; injection HRm' as <-; cbn in E; injection E as _ <- <- <- _;
+      do 2 eexists; reflexivity.
+Qed.
+
+(** The global facts a selection of [y] from a stored module [p] reads:
+    the module's telescope and the submodule's glued, and an alias
+    submodule's literal glued over no context. *)
+Record glu_sel_globals_at (p : qname) (y : String.string) : Prop := mk_glu_sel_globals_at
+  { (** The module's telescope is glued *)
+    glu_sel_globals_at_tele : forall T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) -> ⊩ T
+    (** So is the submodule's *)
+  ; glu_sel_globals_at_child_tele : forall T' Φ', gc_loc gc_deps gc_stack (qname_in p y) = Some (T', Φ') -> ⊩ T'
+    (** An alias submodule's literal is glued over no context *)
+  ; glu_sel_globals_at_child_alias : forall U, gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias U) ->
+      glu_modexp_at ⋅ (me_lit U) }.
+
+(** The global facts a selection of [y] from [H0] reads, at the modules
+    its descriptions name at every substitution ([glu_sel_globals_at]).
+    They hold at the target of a sound embedding for a selection typed at
+    the source, the module and the submodule being stored there. *)
+Definition glu_sel_globals (Γ0 : ctx) (H0 : modexp) (y : String.string) : Prop :=
+  forall Γ1 ζ RH Θ' p T Φ Ns, Γ1 ⊢ˢ ζ : Γ0 -> mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH ->
+    mdesc_mod RH = Some (mdesc_closed Θ' p T Φ Ns) -> glu_sel_globals_at p y.
+
+(** They pass to the application of [H0] weakened to a variable: its
+    descriptions' module parts, when closed, are [H0]'s
+    ([mdesc_at_closed_back]). *)
+Lemma glu_sel_globals_app_shift : forall Γ0 H0 y Γ1 ζ e,
+    glu_sel_globals Γ0 H0 y -> Γ1 ⊢ˢ ζ : Γ0 -> ⊢ (e :: Γ1)%list ->
+    glu_sel_globals (e :: Γ1)%list (me_app H0[ζ]ᵐ[Wk]ᵐ #0) y.
+Proof.
+  intros * Hs Hζ He Γ2 ζ2 RH Θ' p T Φ Ns Hζ2 Hm HRH; cbn [modexp_sub] in Hm.
+  inversion Hm; subst; try match goal with H : mod_qname (me_app _ _) = Some _ |- _ => cbn in H; discriminate end.
+  match goal with Hat : mdesc_at ?R0 _ = Some RH, Hm0 : mdenote _ _ _ _ ?R0 |- _ =>
+    destruct (mdesc_at_closed_back _ _ _ _ _ _ _ _ Hat HRH) as (Θ'' & Ns' & HR0);
+    rewrite !modexp_sub_sub in Hm0; refine (Hs _ _ _ _ _ _ _ _ _ Hm0 HR0) end.
+  eapply wf_sub_compose; [ exact Hζ | eapply wf_sub_compose; [ eapply wf_sub_shift; exact He | exact Hζ2 ] ].
+Qed.
+
 (** A body submodule of a saturated glued global module, a stored module
     at its path, at the same arguments, is glued: as a global module along
     its telescope ([glu_dmod_global_path]), the module part of the
     selection being the stored module ([global_sel_desc]). *)
 Lemma glu_dmod_sel_global_loc : ⊢ᵍ gc_deps ⍮ gc_stack ->
-    (forall p T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) -> ⊩ T) ->
     forall Δ σ0 Γ0 H0 p T Φ args y T' Φ',
     Δ ⊢ˢ σ0 : Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
     gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length args = List.length T ->
@@ -1147,12 +1210,12 @@ Lemma glu_dmod_sel_global_loc : ⊢ᵍ gc_deps ⍮ gc_stack ->
     (forall Δ' φ Γ1 ζ σ1 RH Ns1, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
        mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1) ->
        glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
-    gc_loc gc_deps gc_stack (qname_in p y) = Some (T', Φ') ->
+    gc_loc gc_deps gc_stack (qname_in p y) = Some (T', Φ') -> ⊩ T' ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
     (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
     glu_dmod Δ σ0 Γ0 (me_mem H0 y) (dm_global (qname_in p y) args).
 Proof.
-  intros Hgw Htele * Hσ HH0 Hl Hlen Hd Ha Hl' HHy Hq.
+  intros Hgw * Hσ HH0 Hl Hlen Hd Ha Hl' HT' HHy Hq.
   pose proof (wf_gstack_closed _ _ Hgw) as Hc.
   destruct (loc_child_tele _ _ Hgw _ _ _ _ _ _ Hl Hl') as (Z & -> & _).
   (** The module part of the selection at every factorization *)
@@ -1170,7 +1233,7 @@ Proof.
     destruct (global_sel_desc Hgw _ _ _ _ _ _ _ _ _ _ _ _ (Hq _ _ Hζ) Hm0 HNs1 Hl Hm HRm Hl') as (-> & _).
     exists Ns1, R0; repeat split; assumption. }
   eapply (glu_dmod_global_path _ _ _ Hgw Hl' (gc_loc_tele_all_assumptions _ _ Hgw _ _ _ Hl')
-            (proj1 (gc_loc_closed _ _ _ _ _ Hc Hl')) (Htele _ _ _ Hl') (List.length Z));
+            (proj1 (gc_loc_closed _ _ _ _ _ Hc Hl')) HT' (List.length Z));
     [ rewrite length_app; lia | exact Hσ | exact HHy | |].
   - intros * Hst Hm; destruct (Hsel _ _ _ _ _ _ Hst Hm) as (Ns1 & _ & _ & _ & HRm); eauto.
   - intros * Hst Hm HNs; destruct (Hsel _ _ _ _ _ _ Hst Hm) as (Ns1' & R0 & Hm0 & HR0 & HRm).
@@ -1345,8 +1408,6 @@ Qed.
     the arguments ([glu_dmod_lit_alias_apps]), and moved to the selection,
     which has its module part ([global_sel_alias_desc]). *)
 Lemma glu_dmod_sel_global_alias : ⊢ᵍ gc_deps ⍮ gc_stack ->
-    (forall p T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) -> ⊩ T) ->
-    (forall pq U, gc_module gc_deps gc_stack pq = Some (mr_alias U) -> glu_modexp_at ⋅ (me_lit U)) ->
     forall Δ σ0 Γ0 H0 p T Φ args y Δa Da h1 r,
     Δ ⊢ˢ σ0 : Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
     gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length args = List.length T ->
@@ -1355,13 +1416,13 @@ Lemma glu_dmod_sel_global_alias : ⊢ᵍ gc_deps ⍮ gc_stack ->
     (forall Δ' φ Γ1 ζ σ1 RH Ns1, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
        mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod RH = Some (mdesc_closed nil p T Φ Ns1) ->
        glu_tele_args Δ' (List.rev T) nil nil (List.map (fun N => N[σ1]) Ns1) args) ->
-    gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias (gu_mk Δa Da)) ->
+    gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias (gu_mk Δa Da)) -> glu_sel_globals_at p y ->
     ⟦ Δa ⊢ Da ⟧ᶜ gc_deps ⍮ gc_stack ⍮ nil ↘ h1 -> $ᵐ*| h1 & args | gc_deps ⍮ gc_stack ↘ r ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
     (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
     glu_dmod Δ σ0 Γ0 (me_mem H0 y) r.
 Proof.
-  intros Hgw Htele Halias * Hσ HH0 Hl Hlen Hd Ha Hmod Hcl Happs HHy Hq.
+  intros Hgw * Hσ HH0 Hl Hlen Hd Ha Hmod Hgl Hcl Happs HHy Hq.
   pose proof (wf_sub_dom _ _ _ _ _ Hσ) as HΔ.
   pose proof (wf_sub_cod _ _ _ _ _ Hσ) as HwΓ0.
   pose proof (wf_gstack_closed _ _ Hgw) as Hc.
@@ -1381,7 +1442,7 @@ Proof.
   set (U := gu_mk (Δ0 ++ T) (md_alias E)) in *.
   (** The literal, glued over no context *)
   assert (Hnil : EG ⋅ ∈ glu_ctx_env ↘ nil_glu_sub_pred) by (eapply glu_ctx_env_nil; [ reflexivity | exact Hgw ]).
-  destruct (Halias _ _ Hmod _ Hnil Δ σ0 nil (wf_sub_nil' _ _ HΔ)) as (h' & Eh' & Hg').
+  destruct (glu_sel_globals_at_child_alias _ _ Hgl _ Hmod _ Hnil Δ σ0 nil (wf_sub_nil' _ _ HΔ)) as (h' & Eh' & Hg').
   assert (Ecl : ⟦ Δ0 ++ T ⊢ md_alias E ⟧ᶜ gc_deps ⍮ gc_stack ⍮ nil ↘ h') by (inversion Eh'; subst; assumption).
   pose proof (functional_eval_close _ _ _ _ _ Ecl Hcl) as ->.
   (** Moved to the selection's context *)
@@ -1398,7 +1459,7 @@ Proof.
   { intros Hne; inversion Hcl; subst; try reflexivity.
     exfalso; apply Hne; match goal with H : _ = nil |- _ => exact H | H : nil = _ |- _ => symmetry; exact H end. }
   pose proof (glu_dmod_lit_alias_apps Hgw _ _ _ _ _ _ _ _ _ _ _ Hσ (gc_loc_tele_all_assumptions _ _ Hgw _ _ _ Hl)
-                (proj1 (gc_loc_closed _ _ _ _ _ Hc Hl)) (Htele _ _ _ Hl) HRT Hok' ltac:(lia) Hargs Hg0 Hh1 Happs) as HgK.
+                (proj1 (gc_loc_closed _ _ _ _ _ Hc Hl)) (glu_sel_globals_at_tele _ _ Hgl _ _ Hl) HRT Hok' ltac:(lia) Hargs Hg0 Hh1 Happs) as HgK.
   (** Moved to the selection, which has the literal's module part *)
   assert (HTa : all_assumptions T) by exact (gc_loc_tele_all_assumptions _ _ Hgw _ _ _ Hl).
   assert (HK : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_apps (me_lit (gu_mk (Δ0 ++ T) (md_alias E))) Ns1 ≈
@@ -1472,25 +1533,27 @@ Lemma glu_dmod_sel_of_global :
        dm_global p args ·ₘ y gc_deps ⍮ gc_stack ↘ r ->
        gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
        (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+       glu_sel_globals Γ0 H0 y ->
        glu_dmod Δ σ0 Γ0 (me_mem H0 y) r) ->
     (forall Δ σ0 Γ0 H0 h, glu_dmod Δ σ0 Γ0 H0 h ->
        forall y r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r ->
        gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
        (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+       glu_sel_globals Γ0 H0 y ->
        glu_dmod Δ σ0 Γ0 (me_mem H0 y) r) /\
     (forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args -> True).
 Proof.
   intros Hgw Hglob.
   apply glu_dmod_mut_ind_all; [ | | | intros; exact I | intros; exact I ].
   - (** A saturated global module *)
-    intros * Hσ HH0 Hl Hlen Hd Ha _ y r Hs HHy Hq.
-    exact (Hglob _ _ _ _ _ _ _ _ _ _ Hσ HH0 Hl Hlen Hd Ha Hs HHy Hq).
+    intros * Hσ HH0 Hl Hlen Hd Ha _ y r Hs HHy Hq Hsg.
+    exact (Hglob _ _ _ _ _ _ _ _ _ _ Hσ HH0 Hl Hlen Hd Ha Hs HHy Hq Hsg).
   - (** A body: its submodule clause *)
-    intros * Hσ HH0 Hmem Hsub _ y r Hs HHy Hq.
+    intros * Hσ HH0 Hmem Hsub _ y r Hs HHy Hq _.
     inversion Hs; subst; [ exfalso; match goal with Hl : 0 < length nil |- _ => cbn in Hl; lia end |].
     eapply Hsub; eassumption.
   - (** A value lacking a parameter *)
-    intros * Hσ HH0 Hn Hpar Happ IHapp y r Hs HHy Hq.
+    intros * Hσ HH0 Hn Hpar Happ IHapp y r Hs HHy Hq Hsg.
     eapply glu_dmod_fun with (a := a); [ exact Hσ | exact HHy | exact (next_param_selm Hgw _ _ Hn _ _ Hs) | | ].
     + (** The selection lacks the module's next parameter *)
       intros * Hst Hm; cbn [modexp_sub] in Hm.
@@ -1553,10 +1616,11 @@ Proof.
       assert (HA : gc_deps ⍮ gc_stack ⍮ Γ1 ▹{domain_kind a} B ⊢ᵐ me_mem (me_app H0[ζ]ᵐ[Wk]ᵐ #0) y ≈ me_mem (me_app H0[ζ]ᵐ[Wk]ᵐ #0) y)
         by (eapply wf_me_mem; [ exact HHg | exact HmA | exact HTA | exact HmA | exact HTA ]).
       (** By recursion, then moved *)
-      pose proof (IHapp _ _ _ _ _ _ _ _ _ _ Hst Hm0 HT0 Hv0 HS HB _ _ _ _ _ _ Hu HP HN Hhc y rc Hsc HA) as HgA.
+      pose proof (IHapp _ _ _ _ _ _ _ _ _ _ Hst Hm0 HT0 Hv0 HS HB _ _ _ _ _ _ Hu HP HN Hhc y rc Hsc HA
+                    ltac:(intros; apply names_no_frame_of_none; reflexivity)
+                    (glu_sel_globals_app_shift _ _ _ _ _ _ Hsg Hζ HwΓb)) as HgA.
       eapply (proj1 glu_dmod_same_part_typed); [ apply HgA | exact HK | exact HsKA | exact HsAK | | ];
         intros; apply names_no_frame_of_none; reflexivity.
-      Unshelve. all: intros; apply names_no_frame_of_none; reflexivity.
 Qed.
 
 (** The selections of glued module values are glued: a submodule of a
@@ -1564,21 +1628,27 @@ Qed.
     ([glu_dmod_sel_global_loc]) or a stored alias given the arguments
     ([glu_dmod_sel_global_alias]); the rest by [glu_dmod_sel_of_global]. *)
 Lemma glu_dmod_sel : ⊢ᵍ gc_deps ⍮ gc_stack ->
-    (forall p T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) -> ⊩ T) ->
-    (forall pq U, gc_module gc_deps gc_stack pq = Some (mr_alias U) -> glu_modexp_at ⋅ (me_lit U)) ->
     forall Δ σ0 Γ0 H0 h, glu_dmod Δ σ0 Γ0 H0 h ->
     forall y r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
     (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+    glu_sel_globals Γ0 H0 y ->
     glu_dmod Δ σ0 Γ0 (me_mem H0 y) r.
 Proof.
-  intros Hgw Htele Halias.
+  intros Hgw.
   refine (proj1 (glu_dmod_sel_of_global Hgw _)).
-  intros * Hσ HH0 Hl Hlen Hd Ha Hs HHy Hq.
+  intros * Hσ HH0 Hl Hlen Hd Ha Hs HHy Hq Hsg.
+  (** The module the expression names, at its own description *)
+  pose proof (wf_sub_cod _ _ _ _ _ Hσ) as HwΓ0.
+  destruct (me_denotes _ _ _ _ _ HH0) as (R0 & Rm0 & Hm0 & _).
+  pose proof Hm0 as Hm0'; rewrite <- (modexp_sub_id H0) in Hm0'.
+  destruct (Hd _ _ _ _ _ _ (glu_sub_through_id _ _ _ Hσ) Hm0') as (Ns1 & HNs1).
+  pose proof (Hsg _ _ _ _ _ _ _ _ (wf_sub_id _ _ _ HwΓ0) Hm0' HNs1) as Hgl.
   inversion Hs; subst.
   - match goal with Hl' : gc_loc _ _ (qname_app p (y :: nil)) = Some ?TΦ |- _ =>
       destruct TΦ as [T' Φ']; rewrite <- qname_in_app in Hl' |- * end.
-    eapply glu_dmod_sel_global_loc; eassumption.
+    eapply glu_dmod_sel_global_loc; try eassumption.
+    exact (glu_sel_globals_at_child_tele _ _ Hgl _ _ ltac:(eassumption)).
   - match goal with Hm : gc_module _ _ (qname_app p (y :: nil)) = Some _ |- _ => rewrite <- qname_in_app in Hm end.
     eapply glu_dmod_sel_global_alias; eassumption.
 Qed.

@@ -335,35 +335,6 @@ Proof.
   exists a0, i; split; assumption.
 Qed.
 
-(** A substituted description whose module part reads a stored module
-    reads it before the substitution: substitution keeps the stored path,
-    its telescope and its body. *)
-Lemma mdesc_sub_closed_back : forall R σ Θ' p T Φ Ns, mdesc_mod (mdesc_sub R σ) = Some (mdesc_closed Θ' p T Φ Ns) ->
-    exists Θ'' Ns', mdesc_mod R = Some (mdesc_closed Θ'' p T Φ Ns').
-Proof.
-  intros * Hm; destruct (mdesc_mod_sub_inv _ _ _ Hm) as (R'' & HR'' & E).
-  destruct R''; cbn in E; try discriminate; injection E as _ <- <- <- _.
-  do 2 eexists; exact HR''.
-Qed.
-
-(** A description given an argument whose module part reads a stored
-    module reads it before: an open module part stays open, a closed one
-    keeps its path, telescope and body. *)
-Lemma mdesc_at_closed_back : forall R N R' Θ' p T Φ Ns, mdesc_at R N = Some R' ->
-    mdesc_mod R' = Some (mdesc_closed Θ' p T Φ Ns) -> exists Θ'' Ns', mdesc_mod R = Some (mdesc_closed Θ'' p T Φ Ns').
-Proof.
-  intros * Hat Hm'.
-  destruct (mdesc_mod R) as [Rm |] eqn:Hm; [| rewrite (mdesc_at_no_mod _ _ _ Hm Hat) in Hm'; discriminate ].
-  destruct (mdesc_at_mod_part _ _ _ _ Hat Hm) as (Rm' & HRm' & E).
-  rewrite Hm' in E.
-  pose proof (mdesc_mod_is_mod _ _ Hm) as Hmm.
-  destruct Rm as [| Δ0 Φ0 Φx0 | Θ0 p0 T0 Φ0 Ns0 |]; cbn in Hmm; try contradiction; cbn in HRm'.
-  - (** An open module part stays open *)
-    destruct (tele_split (List.rev Δ0)) as [[[? ?] ?] |]; [ injection HRm' as <- | discriminate ]; cbn in E; discriminate.
-  - destruct (tele_split (List.rev Θ0)) as [[[? ?] ?] |]; injection HRm' as <-; cbn in E; injection E as _ <- <- <- _;
-      do 2 eexists; reflexivity.
-Qed.
-
 (** Related [Π]s into an evaluated kind: their domains are related, and so
     are their codomains at related arguments. *)
 Lemma per_univ_pi_parts : forall (j : universe_index) R κd κc a ρ B a' ρ' B', evaluated_kind κc ->
