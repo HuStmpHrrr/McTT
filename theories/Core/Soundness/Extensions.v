@@ -100,6 +100,6 @@ Lemma glu_ext_eq_def :
      Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ ▸ A ≔ M) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ' ▸ A' ≔ M') ).
 Proof.
   intros * [HΨ HΨ'] HA HS HA' HS' HM HM'; split; intros Θ2 Ξ2 Hμ; (split; [ eauto |]); cbn.
-  - econstructor; [ exact HS | exact (HA _ _ Hμ) | exact (HM _ _ Hμ) ].
-  - econstructor; [ exact HS' | exact (HA' _ _ Hμ) | exact (HM' _ _ Hμ) ].
+  - eexists; constructor; [ exact HS | exact (HA _ _ Hμ) | exact (HM _ _ Hμ) ].
+  - eexists; constructor; [ exact HS' | exact (HA' _ _ Hμ) | exact (HM' _ _ Hμ) ].
 Qed.

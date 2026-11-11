@@ -14,7 +14,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Soundness Require Import LogicalRelation VariableCases ContextCases.
+From Mctt.Core.Soundness Require Import LogicalRelation VariableCases ContextCases ModuleValues.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -277,6 +277,43 @@ Proof.
   apply glu_rel_ctx_types_renaming; [ exact HΓ | exact Hφ | exact HΓ' ].
 Qed.
 
+(** A well-formed unit glued at the instances of a context glued with its
+    variables' types has its literal glued there: at the identity, by the
+    construction ([glu_unit_modexp_at]). *)
+Lemma glu_rel_unit_under_sub_modexp : forall {Γ U},
+    glu_rel_ctx_types Γ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+    glu_rel_unit_under_sub Γ U ->
+    glu_modexp_at Γ (me_lit U).
+Proof.
+  intros * HΓ HU HUg.
+  pose proof (glu_rel_ctx_types_ctx _ HΓ) as HΓg.
+  assert (HwΓ : ⊢ Γ) by (destruct HΓg as [Sb HSb]; exact (glu_ctx_env_wf_ctx HSb)).
+  pose proof (glu_rel_unit_under_sub_renaming HΓ HUg _ _ (wf_wk_id _ _ _ HwΓ) HΓg) as Hg; rewrite gunit_wk_id in Hg.
+  exact (glu_unit_modexp_at _ _ HU HΓg Hg).
+Qed.
+
+(** The same at an instance, the unit well formed there. *)
+Lemma glu_rel_unit_under_sub_modexp_inst : forall {Γ Δ τ U},
+    glu_rel_sub_inst Γ τ Δ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U[τ]ᵘ ≈ U[τ]ᵘ ->
+    glu_rel_unit_under_sub Δ U ->
+    glu_modexp_at Γ (me_lit U[τ]ᵘ).
+Proof. intros * Hτ HUτ HUg; exact (glu_unit_modexp_at _ _ HUτ (glu_rel_sub_inst_ctx _ _ _ Hτ) (HUg _ _ Hτ)). Qed.
+
+(** The literal of a well-formed unit glued at the instances is glued at
+    the instances: at each, the unit moved is well formed. *)
+Lemma glu_rel_modexp_under_sub_lit : forall {Γ U},
+    glu_rel_ctx_types Γ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+    glu_rel_unit_under_sub Γ U ->
+    glu_rel_modexp_under_sub Γ (me_lit U).
+Proof.
+  intros * HΓ HU HUg; constructor; [ exact HΓ |].
+  intros Γ' τ Hτ; cbn [modexp_sub].
+  exact (glu_rel_unit_under_sub_modexp_inst Hτ (sub_preserves_unit _ _ _ _ _ _ _ HU (glu_rel_sub_inst_typed _ _ _ Hτ)) HUg).
+Qed.
+
 (** One more entry: the types of the variables and the units of the slots
     under it are weakened past it, and the head's are given. *)
 Lemma glu_rel_ctx_types_cons : forall {e Γ},
@@ -359,7 +396,8 @@ Lemma glu_rel_ctx_types_extend_mod : forall {Γ U},
     glu_rel_ctx_types (Γ ▹ₘ U).
 Proof.
   intros * HΓ HU HUg.
-  assert (HeΓ : ⊩ Γ ▹ₘ U) by (apply glu_rel_ctx_extend_mod; [ apply HΓ | exact HU ]).
+  assert (HeΓ : ⊩ Γ ▹ₘ U)
+    by (apply glu_rel_ctx_extend_mod; [ apply HΓ | exact HU | exact (glu_rel_unit_under_sub_modexp HΓ HU HUg) ]).
   assert (He : ⊢ Γ ▹ₘ U) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
   apply glu_rel_ctx_types_cons; [ exact HΓ | exact HeΓ | intros A' Hx; inversion Hx |].
   intros U' Hx; inversion Hx; subst.
@@ -377,7 +415,9 @@ Proof.
   intros * HA HM HU HUg.
   pose proof (glu_rel_exp_of_under_sub HA) as HAg.
   assert (HeΓ : ⊩ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E))
-    by (eapply glu_rel_ctx_extend_dm; [ eapply presup_ctx_glu_rel_exp; exact HAg | exact HAg | exact (glu_rel_exp_of_under_sub HM) | exact HU ]).
+    by (eapply glu_rel_ctx_extend_dm;
+        [ eapply presup_ctx_glu_rel_exp; exact HAg | exact HAg | exact (glu_rel_exp_of_under_sub HM) | exact HU
+        | exact (glu_rel_unit_under_sub_modexp (glu_rel_exp_under_sub_ctx _ _ _ HA) HU HUg) ]).
   assert (He : ⊢ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
   apply glu_rel_ctx_types_cons; [ apply HA | exact HeΓ | |].
   - intros A' Hx; inversion Hx; subst.
@@ -501,7 +541,8 @@ Lemma glu_rel_sub_inst_q_mod : forall {Γ Δ τ U},
     glu_rel_sub_inst (Γ ▹ₘ U[τ]ᵘ) (q τ) (Δ ▹ₘ U).
 Proof.
   intros * Hτ HU HUτ HUg.
-  assert (HeΓ : ⊩ Γ ▹ₘ U[τ]ᵘ) by (apply glu_rel_ctx_extend_mod; [ apply Hτ | exact HUτ ]).
+  assert (HeΓ : ⊩ Γ ▹ₘ U[τ]ᵘ)
+    by (apply glu_rel_ctx_extend_mod; [ apply Hτ | exact HUτ | exact (glu_rel_unit_under_sub_modexp_inst Hτ HUτ HUg) ]).
   assert (He : ⊢ Γ ▹ₘ U[τ]ᵘ) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
   apply (glu_rel_sub_inst_q_gen (e := ce_mod U)); [ exact Hτ | exact HeΓ | | intros A' Hx; inversion Hx |].
   - eapply wf_sub_q_mod; [ apply Hτ | exact HU | exact HUτ ].
@@ -523,7 +564,8 @@ Proof.
   assert (HAτ : Γ ⊩ A[τ] : Typeω@i) by (apply HA; exact Hτ).
   assert (HMτ : Γ ⊩ M[τ] : A[τ]) by (apply HM; exact Hτ).
   assert (HeΓ : ⊩ Γ ▸ₘ A[τ] ≔ M[τ] ‖ gu_mk nil (md_alias E[τ]ᵐ))
-    by (eapply glu_rel_ctx_extend_dm; [ apply Hτ | exact HAτ | exact HMτ | exact HUτ ]).
+    by (eapply glu_rel_ctx_extend_dm;
+        [ apply Hτ | exact HAτ | exact HMτ | exact HUτ | exact (glu_rel_unit_under_sub_modexp_inst (U := gu_mk nil (md_alias E)) Hτ HUτ HUg) ]).
   assert (He : ⊢ Γ ▸ₘ A[τ] ≔ M[τ] ‖ gu_mk nil (md_alias E[τ]ᵐ)) by (destruct HeΓ as [Sb HSb]; eapply glu_ctx_env_wf_ctx; exact HSb).
   apply (glu_rel_sub_inst_q_gen (e := ce_dm A M (gu_mk nil (md_alias E)))); [ exact Hτ | exact HeΓ | | |].
   - eapply wf_sub_q_dm; [ apply Hτ | exact (glu_rel_exp_under_sub_wf HA) | exact (glu_rel_exp_under_sub_wf HM) | exact HU

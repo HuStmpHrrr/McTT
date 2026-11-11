@@ -67,11 +67,6 @@ Proof.
   apply HΨ; [ apply wf_wk_ext; assumption | exact HΔ' ].
 Qed.
 
-(** An alias under no parameters is glued at every context: its
-    parameters are no entry. *)
-Lemma glu_unit_at_alias_nil : forall Γ E, glu_unit_at Γ (gu_mk nil (md_alias E)).
-Proof. intros * Γ' φ _ HΓ'; exact HΓ'. Qed.
-
 (** The context of a body's expansion, moved by a substitution, is the
     expansion's context moved. *)
 Lemma body_ctx_expand_sub : forall Φ σ, body_ctx (gm_expand (gmod_sub Φ σ)) = tele_sub (body_ctx (gm_expand Φ)) σ.
@@ -110,7 +105,7 @@ Proof.
     + destruct HΦ as [HΦ _]; exact (IH _ _ HΦ _ _ Hτ).
     + destruct HΦ as [HΦ [_ HU]]; split; [ exact (IH _ _ HΦ _ _ Hτ) | exact (Hat _ HΦ HU) ].
     + destruct HΦ as [HΦ _]; exact (IH _ _ HΦ _ _ Hτ).
-    + destruct HΦ as [HΦ [? ? ? ? ? ? HU]]; split; [ exact (IH _ _ HΦ _ _ Hτ) | exact (Hat _ HΦ HU) ].
+    + destruct HΦ as [HΦ (? & ? & [? ? ? ? HU])]; split; [ exact (IH _ _ HΦ _ _ Hτ) | exact (Hat _ HΦ HU) ].
     + destruct HΦ as [HΦ _]; exact (IH _ _ HΦ _ _ Hτ).
   - (** An open: the entries before it, and its fragment over them *)
     cbn [gm_expand] in HΦ.
@@ -134,12 +129,18 @@ Proof.
   - exact (glu_gmod_units_inst Φ Γ Δ HΦ Γ' τ Hτ).
 Qed.
 
-(** An alias moved by an instance, its parameters glued at the
-    instances. *)
+(** An alias moved by an instance, its parameters and its target over
+    them glued at the instances: the target at the instance lifted through
+    the parameters. *)
 Lemma glu_unit_at_alias_inst : forall Γ Δ E,
     glu_rel_ext_under_sub Γ Δ ->
+    glu_rel_modexp_under_sub (Δ ++ Γ) E ->
     forall Γ' τ, glu_rel_sub_inst Γ' τ Γ -> glu_unit_at Γ' (gu_mk Δ (md_alias E))[τ]ᵘ.
-Proof. intros * HΔ Γ' τ Hτ; rewrite gunit_sub_mk; cbn [moddef_sub glu_unit_at]; exact (glu_rel_ext_under_renaming_of_inst HΔ Hτ). Qed.
+Proof.
+  intros * HΔ HE Γ' τ Hτ; rewrite gunit_sub_mk; cbn [moddef_sub glu_unit_at]; split.
+  - exact (glu_rel_ext_under_renaming_of_inst HΔ Hτ).
+  - exact (glu_rel_modexp_under_sub_inst _ _ HE _ _ (glu_rel_ext_under_sub_inst HΔ _ _ Hτ)).
+Qed.
 
 (** A unit over the extension [Δ0] of [Γ], glued there, with [Δ0] glued at
     every renaming of [Γ]: the unit over both telescopes is glued at
@@ -154,7 +155,7 @@ Proof.
   - intros [H1 H2]; split.
     + rewrite app_assoc; exact (glu_rel_ext_under_renaming_app Hw HΔ0 H1).
     + rewrite <- app_assoc; exact H2.
-  - intros H1; exact (glu_rel_ext_under_renaming_app Hw HΔ0 H1).
+  - intros [H1 H2]; split; [ exact (glu_rel_ext_under_renaming_app Hw HΔ0 H1) | rewrite <- app_assoc; exact H2 ].
 Qed.
 
 End Fixed_GCtx.
@@ -230,28 +231,35 @@ Proof.
   - exact (glu_unit_at_body_inst _ _ _ _ (HB' _ _ Hμ) _ _ Hτ).
 Qed.
 
-(** An alias: each side's parameters are an extension the rule glues. *)
+(** An alias: each side's parameters are an extension the rule glues, and
+    each side's target over them a module expression it glues. *)
 Lemma glu_unit_eq_alias :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ' ->
+     glu_modexp Θ Ξ (Δ ++ Γ) E /\ glu_modexp Θ Ξ (Δ ++ Γ) E' ->
+     glu_modexp Θ Ξ (Δ' ++ Γ) E' /\ glu_modexp Θ Ξ (Δ' ++ Γ) E' ->
      glu_unit_eq Θ Ξ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ' (md_alias E')) ).
 Proof.
-  intros * [HΔ HΔ'].
+  intros * [HΔ HΔ'] [HE _] [HE' _].
   constructor; intros Θ2 Ξ2 Hμ; [ exact (glu_rel_ext_under_sub_ctx (HΔ _ _ Hμ)) | intros Γ' τ Hτ .. ].
-  - exact (glu_unit_at_alias_inst _ _ _ (HΔ _ _ Hμ) _ _ Hτ).
-  - exact (glu_unit_at_alias_inst _ _ _ (HΔ' _ _ Hμ) _ _ Hτ).
+  - exact (glu_unit_at_alias_inst _ _ _ (HΔ _ _ Hμ) (HE _ _ Hμ) _ _ Hτ).
+  - exact (glu_unit_at_alias_inst _ _ _ (HΔ' _ _ Hμ) (HE' _ _ Hμ) _ _ Hτ).
 Qed.
 
-(** An alias of a literal: the alias by its parameters; the literal over
-    both telescopes by the literal, glued at the instance lifted through
-    the alias's parameters. *)
+(** An alias of a literal: the alias by its parameters and its target, the
+    literal, glued at the instances by the construction
+    ([glu_rel_modexp_under_sub_lit]); the literal over both telescopes by
+    the literal, glued at the instance lifted through the alias's
+    parameters. *)
 Lemma glu_unit_eq_flatten :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ ->
+     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
      glu_unit_eq Θ Ξ (Δ ++ Γ) (gu_mk Δ' D) (gu_mk Δ' D) ->
      glu_unit_eq Θ Ξ Γ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))) (gu_mk (Δ' ++ Δ) D) ).
 Proof.
-  intros * [HΔ _] [_ HU _].
+  intros * [HΔ _] HUt [HUc HU _].
   constructor; intros Θ2 Ξ2 Hμ; [ exact (glu_rel_ext_under_sub_ctx (HΔ _ _ Hμ)) | intros Γ' τ Hτ .. ].
-  - exact (glu_unit_at_alias_inst _ _ _ (HΔ _ _ Hμ) _ _ Hτ).
+  - glu_gctx_embedding_wf.
+    exact (glu_unit_at_alias_inst _ _ _ (HΔ _ _ Hμ) (glu_rel_modexp_under_sub_lit (HUc _ _ Hμ) (Hwu _ _ _ HUt) (HU _ _ Hμ)) _ _ Hτ).
   - pose proof (glu_rel_ext_under_sub_inst (HΔ _ _ Hμ) _ _ Hτ) as Hτ'.
     pose proof (HU _ _ Hμ _ _ Hτ') as H.
     rewrite gunit_sub_mk in H |- *.
@@ -319,6 +327,6 @@ Proof.
   intros * [HΨ HΨ'] HA HM HA' HM' HUU [_ HU _] HU' [_ HU'g _].
   pose proof (wf_unit_eq_trans _ _ _ _ _ _ HUU (wf_unit_eq_sym _ _ _ _ _ HUU)) as HUw.
   split; intros Θ2 Ξ2 Hμ; glu_gctx_embedding_wf; cbn; (split; [ eauto |]).
-  - econstructor; [ reflexivity | exact (HA _ _ Hμ) | exact (HM _ _ Hμ) | exact (Hwu _ _ _ HUw) | exact (HU _ _ Hμ) ].
-  - econstructor; [ reflexivity | exact (HA' _ _ Hμ) | exact (HM' _ _ Hμ) | exact (Hwu _ _ _ HU') | exact (HU'g _ _ Hμ) ].
+  - do 2 eexists; constructor; [ reflexivity | exact (HA _ _ Hμ) | exact (HM _ _ Hμ) | exact (Hwu _ _ _ HUw) | exact (HU _ _ Hμ) ].
+  - do 2 eexists; constructor; [ reflexivity | exact (HA' _ _ Hμ) | exact (HM' _ _ Hμ) | exact (Hwu _ _ _ HU') | exact (HU'g _ _ Hμ) ].
 Qed.

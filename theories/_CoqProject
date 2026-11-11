@@ -138,7 +138,6 @@
 ./Core/Soundness/LevelCases.v
 ./Core/Soundness/FunctionCases.v
 ./Core/Soundness/LetCases.v
-./Core/Soundness/LiteralMembers.v
 ./Core/Soundness/UnitCases.v
 ./Core/Soundness/PropCases.v
 ./Core/Soundness/ModuleCases.v
