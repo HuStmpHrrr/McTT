@@ -1014,6 +1014,50 @@ Proof.
     exact (gc_loc_not_alias _ _ _ _ _ Hl' Hmod').
 Qed.
 
+(** The rest of a telescope past some arguments, instantiated by them,
+    ends in the next parameter instantiated. *)
+Lemma tele_rest_view : forall T Ns κ A, List.length Ns < List.length T ->
+    List.nth_error (List.rev T) (List.length Ns) = Some (ce_ass κ A) ->
+    exists T1, tele_sub (List.firstn (List.length T - List.length Ns) T) (sb_of_list Id Ns) =
+      tele_sub T1 (q (sb_of_list Id Ns)) ++ ce_ass κ A[sb_of_list Id Ns] :: nil.
+Proof.
+  intros * Hlt Hnth.
+  pose proof (List.nth_error_split _ _ Hnth) as (l1 & l2 & Erev & Hl1).
+  assert (ET : T = List.rev l2 ++ ce_ass κ A :: List.rev l1)
+    by (rewrite <- (List.rev_involutive T), Erev, List.rev_app_distr; cbn; rewrite <- List.app_assoc; reflexivity).
+  exists (List.rev l2).
+  assert (Hfn : List.firstn (List.length T - List.length Ns) T = List.rev l2 ++ ce_ass κ A :: nil).
+  { rewrite ET, List.length_app; cbn [List.length]; rewrite !List.length_rev, Hl1.
+    replace (List.length l2 + S (List.length Ns) - List.length Ns) with (List.length (List.rev l2) + 1) by (rewrite List.length_rev; lia).
+    rewrite List.firstn_app, List.firstn_all2 by lia.
+    replace (List.length (List.rev l2) + 1 - List.length (List.rev l2)) with 1 by lia; reflexivity. }
+  rewrite Hfn, tele_sub_app; reflexivity.
+Qed.
+
+(** A literal alias over the stored telescope extended, given arguments
+    for some of the stored telescope's parameters: its target's module
+    part, abstracted over the rest instantiated. *)
+Lemma lit_alias_apps_desc : forall Γ Δ0 T E Ms R,
+    all_assumptions T -> List.length Ms <= List.length T ->
+    mdenote gc_deps gc_stack Γ (me_apps (me_lit (gu_mk (Δ0 ++ T) (md_alias E))) Ms) R ->
+    exists RE RmE, mdenote gc_deps gc_stack ((Δ0 ++ T) ++ Γ) E RE /\ mdesc_mod RE = Some RmE /\
+      R = mdesc_up (tele_sub (Δ0 ++ List.firstn (List.length T - List.length Ms) T) (sb_of_list Id Ms))
+            (mdesc_sub RmE (sb_qn (List.length Δ0 + (List.length T - List.length Ms)) (sb_of_list Id Ms))).
+Proof.
+  intros * HTa Hle Hm.
+  destruct (mdenote_apps_inv _ _ _ _ _ _ Hm) as (R0 & Hm0 & Hats).
+  apply mdenote_lit_inv in Hm0.
+  inversion Hm0; subst.
+  match goal with HmE : mdenote _ _ _ E ?RE, Hmd : mdesc_mod ?RE = Some ?RmE |- _ => exists RE, RmE; split; [ exact HmE | split; [ exact Hmd |] ] end.
+  set (k := List.length T - List.length Ms) in *.
+  assert (HTs : T = List.firstn k T ++ List.skipn k T) by (symmetry; apply firstn_skipn).
+  assert (Hlk : List.length (List.skipn k T) = List.length Ms) by (rewrite length_skipn; unfold k; lia).
+  assert (Hak : all_assumptions (List.skipn k T))
+    by (pose proof HTa as Ha; rewrite HTs in Ha; unfold all_assumptions in Ha; apply Forall_app in Ha as [_ Ha]; exact Ha).
+  rewrite HTs, app_assoc, (mdesc_ats_up_prefix _ _ _ _ Hak Hlk) in Hats; injection Hats as <-.
+  rewrite length_app, firstn_length_le by (unfold k; lia); reflexivity.
+Qed.
+
 (** Arguments glued against a telescope are glued against it extended
     further out. *)
 Lemma glu_tele_args_app_r : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
