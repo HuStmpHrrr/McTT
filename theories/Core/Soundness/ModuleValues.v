@@ -904,4 +904,70 @@ Proof.
     exact (glu_lit_body_member _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HU Hp eq_refl Hf HCP HA' HM Eσ Hσ''s Hglu HMσ _ _ _ _ _ _ _ Hst1 Hm1 HA1).
 Qed.
 
+(** The submodule [y] of a glued literal body's closure: its unit's
+    closure in the body's environment, glued as the unit's literal by the
+    body context's slot premise, then read through the fill
+    ([glu_dmod_through]) and moved to the selection, which has the same
+    module part ([same_part_lit_sel], [glu_dmod_same_part]). *)
+Lemma glu_lit_body_sub_field : forall Γ Φ Sb Δ σ ρ y Φ' E Δy Dy ρ' h',
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open nil Φ ≈ gu_open nil Φ ->
+    ⊩ (body_ctx (gm_expand Φ) ++ Γ) -> body_sorts_typed (gm_expand Φ) Γ ->
+    EG Γ ∈ glu_ctx_env ↘ Sb -> Δ ⊢ˢ σ ® ρ ∈ Sb ->
+    gm_prefix_upto (gm_expand Φ) y = Some (gm_ext Φ' y E) -> entry_unit E = Some (gu_mk Δy Dy) ->
+    ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' -> ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h' ->
+    glu_dmod Δ σ Γ (me_mem (me_lit (gu_open nil Φ)) y) h'.
+Proof.
+  intros * HU HC Hst HSb Hσ Hp HE Hb Hc.
+  pose proof (body_sorts_typed_prefix _ _ _ _ (gm_noopen_expand Φ) Hst Hp) as Hst'.
+  cbn [body_sorts_typed] in Hst'; destruct Hst' as [Hst' _].
+  destruct (eval_body_env_fill _ _ _ Hb) as [ζ Hf].
+  destruct (gm_prefix_upto_body_ctx _ _ _ Hp) as [Ψ EΨ].
+  assert (HCx : ⊩ (body_ctx (gm_ext Φ' y E) ++ Γ))
+    by (apply (glu_rel_ctx_app_r Ψ); rewrite List.app_assoc, <- EΨ; exact HC).
+  destruct HCx as [SbE HSbE].
+  set (U0 := gu_mk Δy Dy) in *.
+  (** The entry's unit, well formed in the context before it, an alias if
+      the entry is a definition with a module part *)
+  assert (HEx : exists e, body_ctx (gm_ext Φ' y E) = e :: body_ctx Φ' /\ centry_unit e = Some U0 /\
+            gc_deps ⍮ gc_stack ⍮ body_ctx Φ' ++ Γ ⊢ᵘ U0 ≈ U0 /\
+            (forall pv A M, E = ge_def_mod pv A M U0 -> exists E', U0 = gu_mk nil (md_alias E'))).
+  { pose proof (glu_ctx_env_wf_ctx HSbE) as HwE.
+    destruct E as [? ? ? ? ? | pv U1 | ? ? ? ? ? | pv A M U1 | ? ? ? ?]; cbn [entry_unit] in HE; try discriminate;
+      injection HE as ->; cbn [body_ctx app] in HwE |- *; eexists; split; try reflexivity; split; try reflexivity.
+    - inversion HwE; subst; split; [ assumption | intros; discriminate ].
+    - inversion HwE; subst; split; [ assumption | intros ? ? ? [= <- <- <-]; eexists; reflexivity ]. }
+  destruct HEx as (e & Ee & HeU & HUy & HEdm).
+  rewrite Ee in HSbE; cbn [app] in HSbE.
+  destruct (glu_rel_ctx_tail (ex_intro _ _ HSbE)) as [SbP HSbP].
+  destruct (glu_body_env _ _ _ HSb Hst' _ Hf _ HSbP _ _ _ Hσ) as (σ'' & ρ'' & Eσ & Hb'' & Hσ'').
+  pose proof (functional_eval_body_env _ _ _ _ Hb'' Hb) as ->.
+  pose proof (glu_ctx_env_sub_escape HSbP _ _ _ Hσ'') as Hσ''s.
+  pose proof (glu_ctx_env_sub_escape HSb _ _ _ Hσ) as Hσs.
+  pose proof (wf_gm_fill _ _ _ _ _ (glu_ctx_env_wf_ctx HSbP) Hf) as Hζ.
+  (** The unit's literal, glued at the body's environment, read through
+      the fill *)
+  pose proof (glu_ctx_env_lit_inversion HSbP HSbE HeU _ _ _ _ Hσ'' (proj2 (eval_me_lit_iff _ _ _ _) Hc)) as Hlit.
+  pose proof (proj1 glu_dmod_through _ _ _ _ _ Hlit _ _ _ Hζ Hσs (wf_sub_eq_of_sb_eq _ _ _ _ _ _ Hσ''s Eσ)) as Hlitζ.
+  cbn [modexp_sub] in Hlitζ.
+  (** The selection has the module part of the literal filled in *)
+  destruct (same_part_lit_sel _ _ _ _ _ _ _ HU Hp HE Hf HUy HEdm) as [Hs01 Hs10].
+  pose proof (sub_preserves_unit _ _ _ _ _ _ _ HUy Hζ) as HUyζ.
+  pose proof (wf_me_lit _ _ _ _ _ HUyζ) as HLζ.
+  destruct (me_mod_tele_exists HLζ) as (R' & T' & HR' & HT').
+  assert (HRm' : exists Rm', mdesc_mod R' = Some Rm')
+    by (unfold mdesc_mod_tele in HT'; destruct (mdesc_mod R'); [ eexists; reflexivity | discriminate ]).
+  destruct HRm' as [Rm' HRm'].
+  pose proof (wf_sub_id _ _ _ (presup_unit_eq_ctx HU)) as HId.
+  destruct (Hs10 _ Id _ _ HId ltac:(rewrite modexp_sub_id; exact HR') HRm') as (R0 & HR0 & HRm0).
+  rewrite modexp_sub_id in HR0.
+  pose proof (mdesc_mod_tele_part _ _ _ HT' (ex_intro _ Rm' (conj HRm' HRm0))) as HT0.
+  assert (HH0 : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem (me_lit (gu_open nil Φ)) y ≈ me_mem (me_lit (gu_open nil Φ)) y).
+  { pose proof (wf_me_lit _ _ _ _ _ HU) as HL.
+    eapply wf_me_mem; [ exact HL | exact HR0 | exact HT0 | exact HR0 | exact HT0 ]. }
+  assert (HHeq : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem (me_lit (gu_open nil Φ)) y ≈ me_lit U0[ζ]ᵘ).
+  { eapply wf_me_trans; [ exact (lookup_sound _ _ _ _ _ _ HH0 HR0 HRm0) |].
+    apply wf_me_sym; exact (lookup_sound _ _ _ _ _ _ HLζ HR' HRm'). }
+  eapply (proj1 glu_dmod_same_part); [ exact Hlitζ | exact HHeq | exact Hs01 | exact Hs10 | intros; reflexivity | intros; reflexivity ].
+Qed.
+
 End Fixed_GCtx.
