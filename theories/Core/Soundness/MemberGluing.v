@@ -19,7 +19,7 @@ From Mctt.Core.Syntactic Require Import System SystemOpt.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Modules Paths DescTyping LookupSound Presup.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Completeness.Modules Require Import Values.
-From Mctt.Core.Completeness.Modules Require Filed.
+From Mctt.Core.Completeness.Modules Require Filed Mem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation VariableCases ModuleValues Selection MemberApp.
 From Mctt.Core.Soundness.Inductives Require Import Args.
@@ -217,6 +217,23 @@ Section Members.
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
   #[local] Instance GCm : GCtx := gc_mk Θ Ξ.
   Import Fixed_Notations.
+
+  (** A member of a well-formed module expression at an environment of its
+      context, in the PER model ([valid_unit_mem_all]): the module's value,
+      the type's, and, at an evaluated kind, the member of every related
+      value and its type related. *)
+  Lemma mem_valid_at : forall Γ H x R A RΓ ρ,
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
+      EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> valid_mem_at H x A (mdesc_reduct R) ρ.
+  Proof.
+    intros * HH Hm HA HRΓ Hρ.
+    pose proof (valid_gctx_embedding_refl _ _ Hg) as Hv.
+    destruct completeness_fundamental as (_ & _ & _ & _ & _ & _ & _ & Km).
+    destruct (Km _ _ _ _ _ HH _ _ Hv) as [_ _ HvH _].
+    destruct (proj2 (Mem.valid_unit_mem_all Θ Ξ Hg (valid_gctx_embedding_filed _ _ _ _ Hv)) _ _ HvH _ _ _ Hm HA)
+      as [[_ _ Hvals] _].
+    exact (Hvals _ HRΓ _ Hρ).
+  Qed.
 
   (** A term member of a stored module, read bare over no context, is its
       stored entry, even when the module is an open frame: a path naming
