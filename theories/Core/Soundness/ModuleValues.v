@@ -487,6 +487,62 @@ Proof.
           | exact Hσ0 ].
 Qed.
 
+(** ** Module Expressions Naming No Open Frame *)
+
+(** [H] names no open frame: if it names a stored module, that module is
+    filed.  A selection from such a module expression is then denoted only
+    by looking the member up in what the module expression denotes
+    ([mdenote_mem]): the other rules for a named selection read an open
+    frame its module is ([gc_unit_mem_parent], [frame_parent]). *)
+Definition names_no_frame (H : modexp) : Prop :=
+  forall p, mod_qname H = Some p -> gc_frame gc_stack p = None.
+
+(** A module expression naming no stored module names no open frame. *)
+Lemma names_no_frame_of_none : forall H, mod_qname H = None -> names_no_frame H.
+Proof. intros * Hq p Hp; rewrite Hq in Hp; discriminate. Qed.
+
+(** A named selection whose path is the entry of an open frame selects
+    from that frame. *)
+Lemma names_no_frame_mem_tele : forall H y p U T0,
+    ⊢ᵍ gc_deps ⍮ gc_stack -> names_no_frame H -> mod_qname (me_mem H y) = Some p ->
+    gs_find_tele gc_stack p = Some (U, nil, T0) -> False.
+Proof.
+  intros * Hg Hn Hq Ht; cbn [mod_qname] in Hq.
+  destruct (mod_qname H) as [mq |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
+  change {| q_unit := q_unit mq; q_chain := q_chain mq ++ y :: nil |} with (qname_in mq y) in Ht.
+  destruct (frame_parent _ _ Hg _ _ _ _ Ht) as (T' & Φ' & Hf & _).
+  rewrite (Hn _ Hq0) in Hf; discriminate.
+Qed.
+
+(** A selection from a module expression naming no open frame names
+    none. *)
+Lemma names_no_frame_mem : forall H y, ⊢ᵍ gc_deps ⍮ gc_stack -> names_no_frame H -> names_no_frame (me_mem H y).
+Proof.
+  intros * Hg Hn p Hq; unfold gc_frame.
+  destruct (gs_find_tele gc_stack p) as [[[U [| ? ?]] T0] |] eqn:Ht; [| destruct U as [? [[|] ? | ?]]; reflexivity | reflexivity ].
+  exfalso; exact (names_no_frame_mem_tele _ _ _ _ _ Hg Hn Hq Ht).
+Qed.
+
+(** A selection from a module expression naming no open frame is denoted
+    by looking the member up in what the module expression denotes. *)
+Lemma mdenote_mem_no_frame : forall Γ H y R (P : Prop),
+    ⊢ᵍ gc_deps ⍮ gc_stack -> names_no_frame H -> mdenote gc_deps gc_stack Γ (me_mem H y) R ->
+    (forall R0 R0m Γy E rd R', mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some R0m ->
+       mdesc_entry R0m y = Some (Γy, E, rd) -> edenote gc_deps gc_stack (Γy ++ Γ) (mdesc_entry_path R0m y) E R' ->
+       mdesc_read rd R' = Some R -> P) ->
+    P.
+Proof.
+  intros * Hg Hn Hm Hk; inversion Hm; subst.
+  - match goal with Hu : gc_unit _ _ _ = Some _ |- _ =>
+      destruct (gc_unit_mem_parent _ _ Hg _ _ _ _ Hu) as (mq & T' & Φ' & Hq & Hf & _) end.
+    rewrite (Hn _ Hq) in Hf; discriminate.
+  - match goal with Hq : mod_qname _ = Some _, Hk' : gs_find_ind _ _ = Some _ |- _ =>
+      destruct (gs_find_ind_tele _ _ _ Hk') as (U & T0 & Ht); exfalso; exact (names_no_frame_mem_tele _ _ _ _ _ Hg Hn Hq Ht) end.
+  - eapply Hk; eassumption.
+  - match goal with Hq : mod_qname _ = Some _, Hk' : gs_find_record _ _ = Some _ |- _ =>
+      destruct (gs_find_record_tele _ _ _ Hk') as (U & T0 & Ht); exfalso; exact (names_no_frame_mem_tele _ _ _ _ _ Hg Hn Hq Ht) end.
+Qed.
+
 (** ** Module Expressions with the Same Module Part *)
 
 (** Applying a description to an argument applies its module part: the
@@ -538,20 +594,18 @@ Proof.
     destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; injection Ha as <-; [ cbn [mdesc_mod] |]; exact H.
 Qed.
 
-(** Selections are looked up in the module part: from module expressions
-    with the same module part naming no stored module, they denote alike. *)
+(** Selections are looked up in the module part: from a module expression
+    naming no open frame, they denote as from one with the same module
+    part. *)
 Lemma same_denote_mem_part : forall {Γ0 H0 H1} y, same_part Γ0 H0 H1 ->
-    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H0[ζ]ᵐ = None) ->
-    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H1[ζ]ᵐ = None) ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
     same_denote Γ0 (me_mem H0 y) (me_mem H1 y).
 Proof.
-  intros * Hs Hq0 Hq1 Γ1 ζ R Hζ Hm; cbn [modexp_sub] in *.
-  inversion Hm; subst;
-    try (match goal with Hp : mod_qname (me_mem _ _) = Some _ |- _ =>
-           cbn [mod_qname] in Hp; rewrite (Hq0 _ _ Hζ) in Hp; discriminate end).
-  match goal with H0m : mdenote _ _ _ (modexp_sub H0 ζ) ?R0, Hmd : mdesc_mod ?R0 = Some _ |- _ =>
-    destruct (Hs _ _ _ _ Hζ H0m Hmd) as (R2 & HR2 & Ep) end.
-  eapply mdenote_mem; [ exact HR2 | exact Ep | eassumption | eassumption | eassumption ].
+  intros * Hs Hn0 Γ1 ζ R Hζ Hm; cbn [modexp_sub] in *.
+  pose proof (ctx_wf_gctx _ _ _ (wf_sub_cod _ _ _ _ _ Hζ)) as Hg.
+  apply (mdenote_mem_no_frame _ _ _ _ _ Hg (Hn0 _ _ Hζ) Hm); intros * H0m Hmd He Hed Hr.
+  destruct (Hs _ _ _ _ Hζ H0m Hmd) as (R2 & HR2 & Ep).
+  eapply mdenote_mem; [ exact HR2 | exact Ep | exact He | exact Hed | exact Hr ].
 Qed.
 
 (** Application to the variable of a further parameter keeps the module
@@ -585,15 +639,15 @@ Lemma mdesc_mod_tele_part : forall R R' T, mdesc_mod_tele R = Some T -> (exists 
 Proof. intros * HT (Rm & E & E'); unfold mdesc_mod_tele in *; rewrite E in HT; rewrite E'; exact HT. Qed.
 
 (** A module value glued as [H1] is glued as an equal [H0] with the same
-    module part both ways at every substitution, neither naming a stored
-    module: its members are looked up alike ([same_denote_mem_part]) and
+    module part both ways at every substitution, neither naming an open
+    frame: its members are looked up alike ([same_denote_mem_part]) and
     equal ([glu_elem_at_same_denote]), and so are its submodules' and its
     applications'. *)
 Lemma glu_dmod_same_part :
   (forall Δ σ0 Γ0 H1 h, glu_dmod Δ σ0 Γ0 H1 h ->
      forall H0, gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H1 -> same_part Γ0 H0 H1 -> same_part Γ0 H1 H0 ->
-       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H0[ζ]ᵐ = None) ->
-       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H1[ζ]ᵐ = None) ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+       (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H1[ζ]ᵐ) ->
        glu_dmod Δ σ0 Γ0 H0 h) /\
   (forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args -> True).
 Proof.
@@ -609,7 +663,7 @@ Proof.
       destruct (Hmem _ _ _ _ _ _ Hp Ht Hk Hb) as (a & m & [Ea Em Hg]).
       exists a, m; constructor; [ exact Ea | exact Em |].
       intros * Hst Hm HA HS HAt.
-      pose proof (same_denote_mem_part x Hs01 Hq0 Hq1 _ _ _ (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) Hm) as Hm1.
+      pose proof (same_denote_mem_part x Hs01 Hq0 _ _ _ (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) Hm) as Hm1.
       destruct (Hg _ _ _ _ _ _ _ _ Hst Hm1 HA HS HAt) as (i & P & El & Hgl).
       exists i, P, El.
       eapply glu_elem_at_same_denote;
@@ -617,14 +671,14 @@ Proof.
         | exact Hm | exact Hm1 | exact HA | exact (glu_sub_through_rest _ _ _ _ _ _ _ _ Hst) | exact Hgl ].
     + intros * Hp Hu Hb Hc.
       pose proof (Hsub _ _ _ _ _ _ _ Hp Hu Hb Hc) as Hg1.
-      pose proof (same_denote_mem_part y Hs01 Hq0 Hq1) as Hd01.
-      pose proof (same_denote_mem_part y Hs10 Hq1 Hq0) as Hd10.
+      pose proof (same_denote_mem_part y Hs01 Hq0) as Hd01.
+      pose proof (same_denote_mem_part y Hs10 Hq1) as Hd10.
       assert (HHy : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H1 y)
         by (eapply wf_me_mem_same_denote; [ exact HH | destruct Hg1; assumption | exact Hd10 ]).
       eapply IHsub; [ exact Hp | exact Hu | exact Hb | exact Hc | exact HHy
                     | exact (same_part_of_denote Hd01) | exact (same_part_of_denote Hd10)
-                    | intros Γ2 ζ Hζ; cbn; rewrite (Hq0 _ _ Hζ); reflexivity
-                    | intros Γ2 ζ Hζ; cbn; rewrite (Hq1 _ _ Hζ); reflexivity ].
+                    | intros Γ2 ζ Hζ; apply names_no_frame_mem; [ exact (ctx_wf_gctx _ _ _ (wf_sub_cod _ _ _ _ _ Hζ)) | exact (Hq0 _ _ Hζ) ]
+                    | intros Γ2 ζ Hζ; apply names_no_frame_mem; [ exact (ctx_wf_gctx _ _ _ (wf_sub_cod _ _ _ _ _ Hζ)) | exact (Hq1 _ _ Hζ) ] ].
   - (** A value lacking a parameter *)
     intros * Hσ HH1 Hn Hpar Hex Happ IHapp H0 HH Hs01 Hs10 Hq0 Hq1.
     eapply glu_dmod_fun; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | exact Hn | | exact Hex | ].
@@ -646,7 +700,7 @@ Proof.
       pose proof (same_part_sub Hζ Hs01) as Hs01'; pose proof (same_part_sub Hζ Hs10) as Hs10'.
       eapply IHapp; [ exact Hst | exact Hm1 | exact HT1 | exact Hv | exact HS | exact HB | exact Hu | exact HP | exact HN
                     | exact Hhc | | exact (same_part_app_var _ _ Hs01') | exact (same_part_app_var _ _ Hs10')
-                    | intros; reflexivity | intros; reflexivity ].
+                    | intros; apply names_no_frame_of_none; reflexivity | intros; apply names_no_frame_of_none; reflexivity ].
       (** The applications are equal: their premises are those of [H1]'s
           application, the module parts being the same *)
       assert (HHg : gc_deps ⍮ gc_stack ⍮ Γ1 ▹{domain_kind a} B ⊢ᵐ me_app H1[ζ]ᵐ[Wk]ᵐ #0 ≈ me_app H1[ζ]ᵐ[Wk]ᵐ #0)
@@ -1031,7 +1085,9 @@ Proof.
   assert (HHeq : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem (me_lit (gu_open nil Φ)) y ≈ me_lit U0[ζ]ᵘ).
   { eapply wf_me_trans; [ exact (lookup_sound _ _ _ _ _ _ HH0 HR0 HRm0) |].
     apply wf_me_sym; exact (lookup_sound _ _ _ _ _ _ HLζ HR' HRm'). }
-  eapply (proj1 glu_dmod_same_part); [ exact Hlitζ | exact HHeq | exact Hs01 | exact Hs10 | intros; reflexivity | intros; reflexivity ].
+  eapply (proj1 glu_dmod_same_part);
+    [ exact Hlitζ | exact HHeq | exact Hs01 | exact Hs10
+    | intros; apply names_no_frame_of_none; reflexivity | intros; apply names_no_frame_of_none; reflexivity ].
 Qed.
 
 (** A well-formed saturated literal body's definitions are of the sorts of
@@ -1185,7 +1241,8 @@ Proof.
     pose proof (same_denote_beta _ _ _ _ _ #0 HUτ) as [Hd01 Hd10].
     eapply (proj1 glu_dmod_same_part);
       [ exact Hg1 | apply wf_me_beta; [ reflexivity | exact HUτ | exact H0t ]
-      | exact (same_part_of_denote Hd01) | exact (same_part_of_denote Hd10) | intros; reflexivity | intros; apply mod_qname_sub_lit ].
+      | exact (same_part_of_denote Hd01) | exact (same_part_of_denote Hd10)
+      | intros; apply names_no_frame_of_none; reflexivity | intros; apply names_no_frame_of_none; apply mod_qname_sub_lit ].
 Qed.
 
 End Fixed_GCtx.
