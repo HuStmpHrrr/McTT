@@ -543,6 +543,23 @@ Proof.
       destruct (gs_find_record_tele _ _ _ Hk') as (U & T0 & Ht); exfalso; exact (names_no_frame_mem_tele _ _ _ _ _ Hg Hn Hq Ht) end.
 Qed.
 
+(** A well-formed module expression denoting no open frame names none at
+    any typed substitution: what it names is unchanged by substitution
+    ([mod_qname_sub_eq]), and a path naming an open frame denotes that
+    frame ([mdenote_of_loc_any]). *)
+Lemma names_no_frame_of_frame_free : forall Γ E Γ1 ζ,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E -> frame_free_target gc_deps gc_stack Γ E -> Γ1 ⊢ˢ ζ : Γ ->
+    names_no_frame E[ζ]ᵐ.
+Proof.
+  intros * HE (R & HR & Hn) Hζ p Hq.
+  pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) as Hg.
+  rewrite (mod_qname_sub_eq _ _ _ _ (wf_sub_mod_compat _ _ _ _ _ Hζ) (proj1 (modexp_eq_slot_root _ _ _ _ _ HE))) in Hq.
+  destruct (gc_frame gc_stack p) as [[T Φ] |] eqn:Hf; [| reflexivity ].
+  destruct (mdenote_of_loc_any _ _ Hg _ _ _ _ Γ Hq (or_introl Hf)) as (R' & HR' & Hmd & _).
+  rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR' _ HR) in Hmd.
+  exfalso; apply Hn; do 5 eexists; split; [ exact Hmd | rewrite Hf; discriminate ].
+Qed.
+
 (** ** Module Expressions with the Same Module Part *)
 
 (** Applying a description to an argument applies its module part: the
