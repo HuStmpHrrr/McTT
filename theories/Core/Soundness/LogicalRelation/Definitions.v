@@ -1402,6 +1402,124 @@ Record glu_rel_exp_with_sub (i : nat) Δ M A σ ρ : Prop := mk_glu_rel_exp_with
   ; glu_rel_exp_with_sub_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
   ; glu_rel_exp_with_sub_exp : Δ ⊢ M[σ] : A[σ] ® m ∈ El }.
 
+(** ** Module Values
+
+    A module value is glued as the module expression it is the value of,
+    as [per_dmod] relates module values: a saturated body by its term
+    members and its submodules, a value lacking a parameter by its values
+    at glued arguments, a saturated global module by its arguments.  The
+    types members are glued at are read off the value, as [per_body]
+    reads them.  The module expression is [H0[σ0]], for [H0] over a
+    context [Γ0] and [σ0] from [Δ] into it, and the syntactic types are
+    those [mdenote] reads off [H0] in [Γ0], at [σ0]: so that the gluing
+    moves along [σ0 ≈ σ0'] and along weakenings of [Δ] by the
+    substitution lemmas alone.  A member of a proposition is not glued here: the value of
+    a proof is the proof kept ([glu_term_value]), whose readback is the
+    proof at the substitution ([glu_kept_proof_read]), so a slot's
+    proofs need nothing of its module value.  The definition mentions no
+    context gluing, so the context gluing glues the values of its slots
+    with it ([cons_mod_glu_sub_pred]). *)
+
+(** The term member [x] of a saturated body, [A ≔ M], glued as the
+    member of [H0[σ0]]: in the environment [ρ'] the body's entries before
+    it make, its type's value is glued, every type [A'] a lookup of
+    [H0.x] reads in [Γ0] is glued at it at [σ0], and [(H0.x)[σ0]] is
+    glued there to the member's value, its body's value.  [i] is the
+    universe index of the type, [a] its value, [m] the member's value,
+    [P] and [El] the predicates of [a]. *)
+Record glu_body_member (Δ : ctx) (σ0 : sub) (Γ0 : ctx) (H0 : modexp) (x : String.string) (A M : exp) (ρ' : env)
+    (i : nat) (a m : domain) (P : glu_typ_pred) (El : glu_exp_pred) : Prop := mk_glu_body_member
+  { (** The type evaluates to [a] there *)
+    glu_body_member_eval_type : ⟦ A ⟧ ρ' ↘ a
+    (** The body evaluates to the member's value there ([eval_sel_body]) *)
+  ; glu_body_member_eval : ⟦ M ⟧ ρ' ↘ m
+    (** The type's value is glued *)
+  ; glu_body_member_univ : DG a ∈ glu_univ_elem i ↘ P ↘ El
+    (** Every type a lookup of [H0.x] reads in [Γ0] is glued at it at
+        [σ0], and [(H0.x)[σ0]] is glued at that type to the member's
+        value *)
+  ; glu_body_member_glu : forall R A', mdenote gc_deps gc_stack Γ0 (me_mem H0 x) R -> mdesc_type R = Some A' ->
+      Γ0 ⊢ a_mem H0 x : A' ->
+      Δ ⊢ A'[σ0] ® P /\ Δ ⊢ (a_mem H0 x)[σ0] : A'[σ0] ® m ∈ El }.
+
+(** [glu_dmod Δ σ0 Γ0 H0 h]: the module value [h] glued as the module
+    expression [H0[σ0]] over [Δ], [H0] over [Γ0]: the counterpart of
+    [per_dmod].  [glu_tele_args] glues the arguments of a global module,
+    as [per_tele_args] relates them.  The recursive occurrences stand
+    under [forall] and [->] only, so that the induction principle covers
+    them. *)
+Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
+(** The saturated global module [H0[σ0]] is equal to, at glued
+    arguments *)
+| glu_dmod_global : forall Δ σ0 Γ0 H0 p T Φ args Ns,
+    Δ ⊢ˢ σ0 : Γ0 ->
+    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
+    gc_deps ⍮ gc_stack ⍮ Δ ⊢ᵐ H0[σ0]ᵐ ≈ me_apps (qname_mod p) Ns ->
+    gc_loc gc_deps gc_stack p = Some (T, Φ) ->
+    List.length args = List.length T ->
+    glu_tele_args Δ (List.rev T) nil nil Ns args ->
+    glu_dmod Δ σ0 Γ0 H0 (dm_global p args)
+(** A saturated body: each term member of an evaluated kind glued at its
+    type in the environment of the entries before it, and each
+    submodule's closure there glued as the selection of the submodule *)
+| glu_dmod_body : forall Δ σ0 Γ0 H0 sm Φ ρ,
+    Δ ⊢ˢ σ0 : Γ0 ->
+    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
+    (forall x Φ' E A M ρ',
+        gm_prefix_upto (gm_expand Φ) x = Some (gm_ext Φ' x E) ->
+        entry_tm E = Some (A, M) ->
+        evaluated_kind (entry_kind E) ->
+        ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' ->
+        exists (i : nat) a m P El, glu_body_member Δ σ0 Γ0 H0 x A M ρ' i a m P El) ->
+    (forall y Φ' E Δy Dy ρ' h',
+        gm_prefix_upto (gm_expand Φ) y = Some (gm_ext Φ' y E) ->
+        entry_unit E = Some (gu_mk Δy Dy) ->
+        ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' ->
+        ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h' ->
+        glu_dmod Δ σ0 Γ0 (me_mem H0 y) h') ->
+    glu_dmod Δ σ0 Γ0 H0 (dm_local nil (md_body sm Φ) ρ)
+(** A value lacking a parameter: the type of the parameter [H0] lacks is
+    glued at [σ0] at the value's next parameter's type, the value has a
+    value at every glued argument, and that value, at every Kripke
+    weakening, is glued as [H0] applied to the argument: as
+    [H0[↑] #0] over [Γ0] extended by the parameter, at [σ0] weakened and
+    extended by the argument *)
+| glu_dmod_fun : forall Δ σ0 Γ0 H0 h a (i : nat) P El,
+    Δ ⊢ˢ σ0 : Γ0 ->
+    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
+    next_param h a ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    (forall RH T B T1 Srt, mdenote gc_deps gc_stack Γ0 H0 RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
+       Γ0 ⊢ B : Srt -> Δ ⊢ B[σ0] ® P) ->
+    (forall Δ' φ N B c, Δ' ⊢ᵏ φ : Δ -> Δ' ⊢ N : B ® c ∈ El -> exists hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc) ->
+    (forall RH T B T1 Srt, mdenote gc_deps gc_stack Γ0 H0 RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
+       Γ0 ⊢ B : Srt ->
+       forall Δ' φ N c hc, Δ' ⊢ᵏ φ : Δ -> Δ' ⊢ N : B[σ0][φ]ʷ ® c ∈ El ->
+         $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc ->
+         glu_dmod Δ' (sb_wk σ0 φ ,, N) (Γ0 ▹{domain_kind a} B) (me_app H0[Wk]ᵐ #0) hc) ->
+    glu_dmod Δ σ0 Γ0 H0 h
+(** [glu_tele_args Δ ts ρ Ms Ns args]: the arguments [Ns] (values
+    [args]) of a global module, outermost first, against the rest [ts] of
+    its closed telescope, the arguments before them having the values
+    [ρ] and the terms [Ms], innermost first *)
+with glu_tele_args : ctx -> list centry -> env -> list exp -> list exp -> list domain -> Prop :=
+(** No more arguments *)
+| glu_tele_args_nil : forall Δ ts ρ Ms,
+    glu_tele_args Δ ts ρ Ms nil nil
+(** An argument glued at its parameter's type, at the arguments before
+    it, then the rest *)
+| glu_tele_args_cons : forall Δ κ A ts ρ Ms N Ns c args a (i : nat) P El,
+    ⟦ A ⟧ ρ ↘ a ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    Δ ⊢ A[sb_of_list Id Ms] ® P ->
+    Δ ⊢ N : A[sb_of_list Id Ms] ® c ∈ El ->
+    glu_tele_args Δ ts (ρ ↦ c ⦂ entry_type_closure A ρ) (N :: Ms) Ns args ->
+    glu_tele_args Δ (ce_ass κ A :: ts) ρ Ms (N :: Ns) (c :: args).
+
+Scheme glu_dmod_mut_ind := Induction for glu_dmod Sort Prop
+with glu_tele_args_mut_ind := Induction for glu_tele_args Sort Prop.
+Combined Scheme glu_dmod_mut_ind_all from glu_dmod_mut_ind, glu_tele_args_mut_ind.
+
 Definition nil_glu_sub_pred : glu_sub_pred :=
   fun Δ σ ρ => Δ ⊢ˢ σ : ⋅.
 #[global] Arguments nil_glu_sub_pred Δ σ ρ/.
@@ -1470,17 +1588,20 @@ Variant cons_def_glu_sub_pred (i : nat) Γ A M (TSb : glu_sub_pred) : glu_sub_pr
         Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
         Δ ⊢ˢ σ ® ρ ∈ cons_def_glu_sub_pred i Γ A M TSb }.
 
-(** A module slot glues by its syntactic typing and by the tie of its value
-    to the closure of its unit over the tail, which is the slot clause of the
-    environment PER.  Module values themselves are not glued: their members
-    are reached through δ, whose reducts are terms. *)
+(** A module slot glues by its syntactic typing, by the tie of its value
+    to the closure of its unit over the tail, which is the slot clause of
+    the environment PER, and by its value, glued as the unit's literal
+    over the tail at the tail of the substitution ([glu_dmod]), which is
+    what the substitution sends the slot to, up to δ. *)
 Variant cons_mod_glu_sub_pred Γ U (TSb : glu_sub_pred) : glu_sub_pred :=
 (** The substitution is typed, the head's module is the closure of the
-    unit over the tail, a module entry that reads back with its stored
-    unit scoped by the tail, and the tail glues by [TSb] *)
+    unit over the tail, glued as the unit's literal, a module entry
+    that reads back with its stored unit scoped by the tail, and the tail
+    glues by [TSb] *)
 | mk_cons_mod_glu_sub_pred :
   `{ Δ ⊢ˢ σ : Γ ▹ₘ U ->
      tie_mod (env_mod ρ 0) (me_lit U) ρ↯ ->
+     glu_dmod Δ (Wk ⨟ σ) Γ (me_lit U) (env_mod ρ 0) ->
      env_entry ρ 0 = de_mod (env_mod ρ 0) U ->
      head_readable (List.length Γ) (env_entry ρ 0) ->
      Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
@@ -1488,7 +1609,8 @@ Variant cons_mod_glu_sub_pred Γ U (TSb : glu_sub_pred) : glu_sub_pred :=
 
 (** A definition with a module part glues as its term part does as a
     definition, and its head's module is tied to the closure of its unit
-    over the tail, as a slot's. *)
+    over the tail and glued as the component's module part, as a
+    slot's. *)
 Variant cons_dm_glu_sub_pred (i : nat) Γ A M U (TSb : glu_sub_pred) : glu_sub_pred :=
 (** The substitution is typed, the head's term value glues at the type's
     predicate and is the body's value in the tail, the head's module is the
@@ -1501,6 +1623,7 @@ Variant cons_dm_glu_sub_pred (i : nat) Γ A M U (TSb : glu_sub_pred) : glu_sub_p
         Δ ⊢ #0[σ] : A[↑]ʷ[σ] ® (ρ 0) ∈ El ->
         def_tie A M ρ ->
         tie_mod (env_mod ρ 0) (me_lit U) ρ↯ ->
+        glu_dmod Δ (Wk ⨟ σ) Γ (me_lit U) (env_mod ρ 0) ->
         (exists t, env_entry ρ 0 = de_dm (ρ 0) t (env_mod ρ 0) U /\ glu_stored_type Δ σ A ρ t) ->
         head_readable (List.length Γ) (env_entry ρ 0) ->
         Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
