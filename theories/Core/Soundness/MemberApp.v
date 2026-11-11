@@ -21,6 +21,43 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
   Import Fixed_Notations.
 
+(** ** Members Read Through Their Module's Description *)
+
+(** [H.x] is no type former of an inductive or record type whose
+    declaration frame is open: the side conditions of [mdenote_ind_frame]
+    and of [mdenote_record_frame], negated.  It is a proof premise only,
+    adding no semantics: it says that those two rules do not apply, so that
+    a typed member [H.x] is read through [H]'s description
+    ([mdenote_mem_typed]). *)
+Definition not_frame_former (H : modexp) (x : String.string) : Prop :=
+  (forall p pq k D Mk Tm Φm, mod_qname (me_mem H x) = Some p -> gs_find_ind gc_stack p = Some (pq, k, D) ->
+     ind_member D k = Some Mk -> gc_loc gc_deps gc_stack p = Some (Tm, Φm) -> False) /\
+  (forall p R Tm Φm, mod_qname (me_mem H x) = Some p -> gs_find_record gc_stack p = Some R ->
+     gc_loc gc_deps gc_stack p = Some (Tm, Φm) -> False).
+
+(** A member of a module expression naming no stored module is no type
+    former under declaration. *)
+Lemma not_frame_former_of_none : forall H x, mod_qname H = None -> not_frame_former H x.
+Proof. intros * Hq; split; intros * Hp; cbn [mod_qname] in Hp; rewrite Hq in Hp; discriminate. Qed.
+
+(** A typed member that is no type former under declaration is read
+    through its module's description: the other rules for a selection
+    denote a stored unit, of no type, or a type former under
+    declaration. *)
+Lemma mdenote_mem_typed : forall Γ H y R A (P : Prop),
+    not_frame_former H y -> mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_type R = Some A ->
+    (forall R0 R0m Γy E rd R', mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some R0m ->
+       mdesc_entry R0m y = Some (Γy, E, rd) -> edenote gc_deps gc_stack (Γy ++ Γ) (mdesc_entry_path R0m y) E R' ->
+       mdesc_read rd R' = Some R -> P) ->
+    P.
+Proof.
+  intros * [Hi Hr] Hm HA Hk; inversion Hm; subst.
+  - cbn in HA; discriminate.
+  - exfalso; eapply Hi; eassumption.
+  - eapply Hk; eassumption.
+  - exfalso; eapply Hr; eassumption.
+Qed.
+
 (** A description abstracted over a telescope ending in an assumption, as
     the term part's reduct: a [λ] over the outermost parameter. *)
 Lemma reduct_up_last : forall Δ0 κ B X M,
@@ -69,7 +106,7 @@ Record mem_app_shape (Γ : ctx) (H : modexp) (N : exp) (x : String.string) (A B 
     their reducts, the first a [λ] over the parameter whose body is typed
     over it ([body_defs_wf], [ctx_fn_eq]), [β]-equal to the second. *)
 Lemma mem_app_eq_open : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H N x R0 Δ Φw Φx R A,
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N -> names_no_frame H ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N -> not_frame_former H x ->
     mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_open Δ Φw Φx) ->
     mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
     Γ ⊢ a_mem H x : A ->
@@ -89,7 +126,7 @@ Proof.
     apply Forall_cons_iff in He1 as [(κ & B0 & ->) _].
   rewrite tele_view_last in Hv; injection Hv as <- <-.
   (** The member's entry, read *)
-  apply (mdenote_mem_no_frame _ _ _ _ _ Hgw Hq Hm); intros R0'' R0m Γy E rd R1 Hm0 HR0m' He Hed Hrd.
+  apply (mdenote_mem_typed _ _ _ _ _ _ Hq Hm HA); intros R0'' R0m Γy E rd R1 Hm0 HR0m' He Hed Hrd.
   rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ Hm0 _ HR0), HR0m in HR0m'; injection HR0m' as <-.
   pose proof He as He0; cbn in He0.
   destruct (gm_prefix_upto Φx x) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
@@ -347,7 +384,7 @@ Proof. intros; apply map_ext; intros; apply exp_sub_sb_eq, sb_compose_id_left. Q
     is substituted by [β] ([mem_closed_part_named_parts] types the body
     over it); with none, it is the next argument. *)
 Lemma mem_app_eq_closed : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H N x R0 Θ p T Φ Ns R A,
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N -> names_no_frame H ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N -> not_frame_former H x ->
     mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some (mdesc_closed Θ p T Φ Ns) ->
     mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
     Γ ⊢ a_mem H x : A ->
@@ -378,7 +415,7 @@ Proof.
   pose proof (mdesc_mod_is_mod _ _ HR0m) as HisR0m.
   (** The member's entry, read at the arguments *)
   pose proof HA as HA0.
-  apply (mdenote_mem_no_frame _ _ _ _ _ Hgw Hq Hm); intros R0'' R0m Γy E rd RE Hm0 HR0m' He Hed Hrd.
+  apply (mdenote_mem_typed _ _ _ _ _ _ Hq Hm HA); intros R0'' R0m Γy E rd RE Hm0 HR0m' He Hed Hrd.
   rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ Hm0 _ HR0), HR0m in HR0m'; injection HR0m' as <-.
   destruct (mdesc_entry_closed _ _ _ _ _ _ _ _ _ HU He) as (-> & HsE & ->).
   pose proof He as He0; cbn in He0.
@@ -466,13 +503,13 @@ Qed.
     module part: open ([mem_app_eq_open]) or closed
     ([mem_app_eq_closed]). *)
 Theorem wf_exp_eq_mem_app : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ H N x R A,
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N -> names_no_frame H ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N -> not_frame_former H x ->
     mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
     Γ ⊢ a_mem H x : A ->
     exists B C R', mem_app_shape Γ H N x A B C R'.
 Proof.
   intros Hgw * HHN Hq Hm HA HxA.
-  apply (mdenote_mem_no_frame _ _ _ _ _ Hgw Hq Hm); intros R0 R0m Γy E rd RE Hm0 HR0m _ _ _.
+  apply (mdenote_mem_typed _ _ _ _ _ _ Hq Hm HA); intros R0 R0m Γy E rd RE Hm0 HR0m _ _ _.
   pose proof (mdesc_mod_is_mod _ _ HR0m) as HisR0m.
   destruct R0m as [| Δ Φw Φx | Θ p T Φ Ns |]; cbn in HisR0m; try contradiction.
   - exact (mem_app_eq_open Hgw _ _ _ _ _ _ _ _ _ _ HHN Hq Hm0 HR0m Hm HA HxA).
