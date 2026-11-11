@@ -634,6 +634,96 @@ Proof.
                         | apply wf_exp_eq_refl; exact HN' | exact HR' | exact HT' | exact Hv' | exact HB' | exact HS' | exact HN' ].
 Qed.
 
+(** What a well-formed unit denotes, substituted, is what the substituted
+    unit denotes ([mdenote_sub_all]). *)
+Lemma udenote_sub_compat : forall {Γp U U' D0 Γ' σ},
+    gc_deps ⍮ gc_stack ⍮ Γp ⊢ᵘ U ≈ U' -> udenote gc_deps gc_stack Γp None U D0 -> sub_mod_compat σ Γ' Γp ->
+    udenote gc_deps gc_stack Γ' None U[σ]ᵘ (mdesc_sub D0 σ).
+Proof.
+  intros * HU HD Hc.
+  pose proof (wf_gctx_closed _ _ _ (presup_unit_eq_ctx HU)) as Hcl.
+  pose proof (wf_unit_eq_scoped_left _ _ _ _ _ HU) as Hs.
+  pose proof (proj1 (proj1 wf_scoped _ _ _ (presup_unit_eq_ctx HU))) as HΓs.
+  eapply (proj1 (proj2 (mdenote_sub_all _ _ Hcl))); [ exact HD | apply slots_ok_ctx; exact HΓs | left; exact Hs | exact Hc ].
+Qed.
+
+(** The submodule [y] of a saturated literal body has the module part of
+    its unit's literal, the entries before it filled in, at every typed
+    substitution, both ways: reading the entry fills the entries before it
+    in ([mdesc_read]), and denoting commutes with substitution. *)
+Lemma same_part_lit_sel : forall Γ Φ y Φ' E Uy ζ,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open nil Φ ≈ gu_open nil Φ ->
+    gm_prefix_upto (gm_expand Φ) y = Some (gm_ext Φ' y E) -> entry_unit E = Some Uy -> gm_fill Φ' = Some ζ ->
+    gc_deps ⍮ gc_stack ⍮ body_ctx Φ' ++ Γ ⊢ᵘ Uy ≈ Uy ->
+    (forall pv A M, E = ge_def_mod pv A M Uy -> exists E', Uy = gu_mk nil (md_alias E')) ->
+    same_part Γ (me_mem (me_lit (gu_open nil Φ)) y) (me_lit Uy[ζ]ᵘ) /\
+    same_part Γ (me_lit Uy[ζ]ᵘ) (me_mem (me_lit (gu_open nil Φ)) y).
+Proof.
+  intros * HU Hp HE Hf HUy HEdm.
+  pose proof (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HU)) as Hg.
+  destruct (me_denotes _ _ _ _ _ (wf_me_lit _ _ _ _ _ HUy)) as (D0 & ? & HRU & _).
+  apply mdenote_lit_inv in HRU.
+  pose proof (gm_fill_nopens _ _ Hf) as Hn0.
+  split; intros Γ1 ζ1 R Rm Hζ1 Hm HRm; cbn [modexp_sub] in *;
+    destruct (gm_fill_sub Φ' 0 ζ1 ζ Hf) as (τ & Hfτ & Eτ); cbn [sb_qn] in Hfτ, Eτ; rewrite PeanoNat.Nat.add_0_r in Eτ;
+    pose proof (sub_mod_compat_ext (body_ctx Φ') _ _ _ (wf_sub_mod_compat _ _ _ _ _ Hζ1)) as Hc1;
+    rewrite (length_body_ctx _ Hn0) in Hc1;
+    pose proof (udenote_sub_compat HUy HRU Hc1) as HD1;
+    pose proof (wf_sub_compose _ _ _ _ _ _ _ (wf_gm_fill _ _ _ _ _ (presup_unit_eq_ctx HUy) Hf) Hζ1) as Hc.
+  - (** The selection reads the entry's unit at the body's substituted
+        prefix, filled in: the unit filled in, substituted *)
+    inversion Hm; subst; try (cbn in *; discriminate).
+    match goal with H0 : mdenote _ _ _ (me_lit _) _ |- _ => apply mdenote_lit_inv in H0; inversion H0; subst end.
+    match goal with H11 : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn [mdesc_body] in H11; injection H11 as <- end.
+    match goal with H10 : body_xp _ _ _ (gmod_sub Φ ζ1) ?Φx |- _ =>
+      pose proof (body_xp_expand _ _ _ _ _ H10) as EΦx; rewrite gm_expand_sub in EΦx; subst Φx end.
+    match goal with H3 : mdesc_mod (mdesc_open _ _ _) = Some _ |- _ => cbn [mdesc_mod] in H3; injection H3 as <- end.
+    match goal with H4 : mdesc_entry _ y = Some _ |- _ =>
+      cbn [mdesc_entry] in H4; rewrite gm_prefix_upto_sub, Hp in H4; cbn [option_map] in H4 end.
+    destruct E as [b pv κ A [M |] | pv U0 | ? ? ? ? ? | pv A M U0 | ? ? ? ?]; cbn [entry_unit] in HE; try discriminate;
+      injection HE as <-.
+    all: match goal with H4 : match gmod_sub _ _ with _ => _ end = Some _ |- _ => cbn [gmod_sub] in H4; injection H4 as <- <- <- end.
+    all: match goal with H6 : edenote _ _ _ _ _ _ |- _ => rewrite List.app_nil_r, (body_ctx_sub _ _ Hn0) in H6; inversion H6; subst end.
+    all: match goal with H8 : mdesc_read _ _ = Some _ |- _ => cbn [mdesc_read] in H8; rewrite Hfτ in H8; cbn [option_map] in H8;
+           injection H8 as <-; rewrite mdesc_up_nil in HRm end.
+    all: cbn [mdesc_entry_path] in *.
+    1: match goal with H5 : udenote _ _ _ None _ ?R1 |- _ =>
+         pose proof (proj1 (proj2 (mdenote_functional_all _ _ Hg)) _ _ _ _ H5 _ HD1) as -> end.
+    2: match goal with H8 : udenote _ _ _ None (gu_mk _ (md_alias _)) ?R1, H7 : gu_mk _ (md_alias _) = _ |- _ =>
+         rewrite <- H7 in HD1; pose proof (proj1 (proj2 (mdenote_functional_all _ _ Hg)) _ _ _ _ H8 _ HD1) as -> end;
+       cbn [mdesc_sub mdesc_mod] in HRm.
+    all: rewrite (mdesc_sub_sub_ext _ _ _ _ Eτ) in HRm.
+    all: exists (mdesc_sub D0 (ζ ⨟ ζ1)); split; [| exact HRm ].
+    all: apply mdenote_lit; rewrite gunit_sub_sub; exact (udenote_sub_compat HUy HRU (wf_sub_mod_compat _ _ _ _ _ Hc)).
+  - (** The literal filled in is read as the selection *)
+    apply mdenote_lit_inv in Hm; rewrite gunit_sub_sub in Hm.
+    pose proof (proj1 (proj2 (mdenote_functional_all _ _ Hg)) _ _ _ _ Hm _ (udenote_sub_compat HUy HRU (wf_sub_mod_compat _ _ _ _ _ Hc))) as ->.
+    destruct (me_denotes _ _ _ _ _ (wf_me_lit _ _ _ _ _ HU)) as (DL & ? & HDL & _).
+    apply mdenote_lit_inv in HDL.
+    pose proof (udenote_sub_compat HU HDL (wf_sub_mod_compat _ _ _ _ _ Hζ1)) as HDL1.
+    inversion HDL; subst.
+    match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
+    match goal with Hx : body_xp _ _ _ Φ ?Φx |- _ => pose proof (body_xp_expand _ _ _ _ _ Hx) as ->; clear Hx end.
+    cbn [mdesc_sub tele_sub List.length sb_qn] in HDL1.
+    destruct E as [b pv κ A [M |] | pv U0 | ? ? ? ? ? | pv A M U0 | ? ? ? ?]; cbn [entry_unit] in HE; try discriminate;
+      injection HE as <-.
+    + exists (mdesc_up nil (mdesc_sub (mdesc_sub D0 (sb_qn (gm_binders Φ') ζ1)) τ)); split.
+      * eapply mdenote_mem; [ apply mdenote_lit; exact HDL1 | reflexivity | cbn [mdesc_entry]; rewrite gm_prefix_upto_sub, Hp; reflexivity | |].
+        -- cbn [mdesc_entry_path gentry_sub]; rewrite List.app_nil_r, (body_ctx_sub _ _ Hn0); constructor; exact HD1.
+        -- transitivity (option_map (fun σ0 => mdesc_up nil (mdesc_sub (mdesc_sub D0 (sb_qn (gm_binders Φ') ζ1)) σ0)) (gm_fill (gmod_sub Φ' ζ1)));
+             [ reflexivity | rewrite Hfτ; reflexivity ].
+      * rewrite mdesc_up_nil, (mdesc_sub_sub_ext _ _ _ _ Eτ); exact HRm.
+    + destruct (HEdm _ _ _ eq_refl) as [E' ->].
+      set (q1 := sb_qn (gm_binders Φ') ζ1) in *.
+      exists (mdesc_up nil (mdesc_sub (mdesc_dm nil A[q1] M[q1] (mdesc_sub D0 q1)) τ)); split.
+      * eapply mdenote_mem; [ apply mdenote_lit; exact HDL1 | reflexivity | cbn [mdesc_entry]; rewrite gm_prefix_upto_sub, Hp; reflexivity | |].
+        -- cbn [mdesc_entry_path gentry_sub]; rewrite List.app_nil_r, (body_ctx_sub _ _ Hn0).
+           cbn [gunit_sub moddef_sub tele_sub List.length] in HD1 |- *; constructor; exact HD1.
+        -- transitivity (option_map (fun σ0 => mdesc_up nil (mdesc_sub (mdesc_dm nil A[q1] M[q1] (mdesc_sub D0 q1)) σ0)) (gm_fill (gmod_sub Φ' ζ1)));
+             [ reflexivity | rewrite Hfτ; reflexivity ].
+      * rewrite mdesc_up_nil; cbn [mdesc_sub mdesc_mod]; rewrite (mdesc_sub_sub_ext _ _ _ _ Eτ); exact HRm.
+Qed.
+
 (** ** The Closure of a Glued Unit's Literal *)
 
 Lemma gm_prefix_upto_in_names : forall Φ z P, gm_prefix_upto Φ z = Some P -> List.In z (gm_names Φ).
