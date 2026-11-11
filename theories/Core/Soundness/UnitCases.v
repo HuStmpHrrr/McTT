@@ -271,7 +271,6 @@ Hint Resolve glu_rel_ctx_tail glu_rel_ctx_extend_mod glu_rel_exp_let_mod : mctt.
 
 Lemma glu_let_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ->
      glu_unit_eq Θ Ξ Γ U U ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Srt ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ C : Srt ->
@@ -342,17 +341,11 @@ Lemma glu_exp_eq_let_dm_zeta :
 Proof. glu_ctx_case. Qed.
 
 Lemma glu_exp_eq_let_mod_cong :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] ->
+  `( glu_unit_eq Θ Ξ Γ U U' ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
 
 Lemma glu_exp_eq_let_mod_zeta :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ C : Srt ->
-     type_sort Srt ->
-     module_body_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ B : C ->
+  `( glu_unit_eq Θ Ξ Γ U U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.

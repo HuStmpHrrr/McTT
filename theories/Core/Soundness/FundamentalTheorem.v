@@ -4,8 +4,9 @@
     every sound embedding ([soundness_fundamental]): a context glues, a term
     glues at its type, a universe is one, both sides of an extension
     equation glue at the instances of the context ([glu_ext]), both sides
-    of a unit equation glue with the context ([glu_unit_eq]), and every
-    other judgment glues its context.  By induction on the derivation, each rule is its gluing rule,
+    of a unit equation glue with the context ([glu_unit_eq]), both sides of
+    a module expression equation glue ([glu_modexp]), and every other
+    judgment glues its context.  By induction on the derivation, each rule is its gluing rule,
     stated and proved in the file of its construct; the case of each rule
     only applies its gluing rule.
 
@@ -34,7 +35,7 @@ From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import ContextCases VariableCases UnitCases
   SubtypingCases UniverseCases FunctionCases LetCases PropCases.
 From Mctt.Core.Soundness.Inductives Require Import Con.
-From Mctt.Core.Soundness Require Import Extensions UnitEqCases IndCases ModuleCases RecordCases.
+From Mctt.Core.Soundness Require Import Instances Extensions UnitEqCases IndCases ModuleCases RecordCases.
 From Mctt.Core.Soundness.Global Require Import Embedding.
 From Mctt.Core.Completeness.Inductives Require Con.
 Require Import Mctt.Core.Soundness.Inductives.Elim.
@@ -52,7 +53,7 @@ Theorem soundness_fundamental :
   (forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U) /\
   (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ') /\
   (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> glu_unit_eq Θ Ξ Γ U U') /\
-  (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> ⊩ Θ ⍮ Ξ ⍮ Γ).
+  (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> glu_modexp Θ Ξ Γ H /\ glu_modexp Θ Ξ Γ H').
 Proof.
   (** A rule whose conclusion only glues the context leaves its other
       variables to its premises; where two premises have the same shape,

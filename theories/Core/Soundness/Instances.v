@@ -746,7 +746,6 @@ Qed.
     glues. *)
 Lemma glu_ctx_extend_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ->
      glu_unit_eq Θ Ξ Γ U U ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
 Proof.

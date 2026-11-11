@@ -313,14 +313,16 @@ Record glu_stored_def (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (r : abs_kind) (A :
 
 (** What an entry filed over the telescope [T] is worth at [Θ2 ⍮ Ξ2]: a
     definition is glued as stored ([glu_stored_def]); an alias, filed
-    closed with its full telescope, is glued as its literal over no
-    context, as a global alias submodule is selected
-    ([eval_selm_global_alias]).  A definition with a module part is valid
+    closed with its full telescope, is a deep unit over no context
+    ([glu_unit_deep]), so its literal is glued there as a global alias
+    submodule is selected ([eval_selm_global_alias],
+    [glu_alias_modexp_of_deep]), and what it denotes is deep
+    ([glu_desc_deep_of_source]).  A definition with a module part is valid
     as its two views, a definition and an alias ([ge_valid]). *)
 Definition glu_entry (_ : gdeps) (_ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ r A oM => glu_stored_def Θ2 Ξ2 T r A oM
-  | ge_mod _ (gu_mk Δ (md_alias E')) => @glu_modexp_at (gc_mk Θ2 Ξ2) ⋅ (me_lit (gu_mk Δ (md_alias E')))
+  | ge_mod _ (gu_mk Δ (md_alias E')) => @glu_unit_deep (gc_mk Θ2 Ξ2) ⋅ (gu_mk Δ (md_alias E'))
   | _ => True
   end.
 
