@@ -273,6 +273,48 @@ Section Fixed_GCtx.
       cbn [List.firstn]; rewrite List.app_nil_r; exact Ea.
   Qed.
 
+  (** The telescope a stored module at fewer arguments than parameters
+      still takes, viewed by its outermost parameter: the next parameter's
+      type at the arguments. *)
+  Lemma closed_tele_view : forall p T Φ Ns κ A,
+      List.length Ns < List.length T ->
+      List.nth_error (List.rev T) (List.length Ns) = Some (ce_ass κ A) ->
+      exists T1, mdesc_tele (mdesc_closed nil p T Φ Ns) = Some (tele_sub T1 (q (sb_of_list Id Ns)) ++ ce_ass κ A[sb_of_list Id Ns] :: nil) /\
+        tele_view (tele_sub T1 (q (sb_of_list Id Ns)) ++ ce_ass κ A[sb_of_list Id Ns] :: nil) =
+          Some (A[sb_of_list Id Ns], tele_sub T1 (q (sb_of_list Id Ns))).
+  Proof.
+    intros * Hlt Hnth.
+    pose proof (List.nth_error_split _ _ Hnth) as (l1 & l2 & Erev & Hl1).
+    assert (ET : T = List.rev l2 ++ ce_ass κ A :: List.rev l1)
+      by (rewrite <- (List.rev_involutive T), Erev, List.rev_app_distr; cbn; rewrite <- List.app_assoc; reflexivity).
+    exists (List.rev l2).
+    assert (Hfn : List.firstn (List.length T - List.length Ns) T = List.rev l2 ++ ce_ass κ A :: nil).
+    { rewrite ET, List.length_app; cbn [List.length]; rewrite !List.length_rev, Hl1.
+      replace (List.length l2 + S (List.length Ns) - List.length Ns) with (List.length (List.rev l2) + 1) by (rewrite List.length_rev; lia).
+      rewrite List.firstn_app, List.firstn_all2 by lia.
+      replace (List.length (List.rev l2) + 1 - List.length (List.rev l2)) with 1 by lia; reflexivity. }
+    cbn [mdesc_tele]; rewrite (proj2 (Nat.leb_le _ _)) by lia; rewrite Hfn, tele_sub_app.
+    split; [ rewrite List.app_nil_r; cbn; reflexivity |].
+    unfold tele_view; rewrite List.rev_app_distr; cbn; rewrite List.rev_involutive; reflexivity.
+  Qed.
+
+  (** A factorization of a substitution extended by an argument gives one
+      of the substitution through the weakening past the argument. *)
+  Lemma glu_sub_through_extend : forall {Δ' σ1 Γ1 κ B N Δ'' φ' Γ2 ζ' σ2},
+      Δ' ⊢ˢ σ1 : Γ1 ->
+      glu_sub_through Δ' (σ1,,N) (Γ1 ▹{κ} B) Δ'' φ' Γ2 ζ' σ2 ->
+      glu_sub_through Δ' σ1 Γ1 Δ'' φ' Γ2 (Wk ⨟ ζ') σ2.
+  Proof.
+    intros * Hσ1 [Hφ Hζ Hσ2 E].
+    pose proof (wf_sub_cod _ _ _ _ _ Hζ) as HΓB.
+    assert (HWk : Γ1 ▹{κ} B ⊢ˢ Wk : Γ1) by (eapply wf_sub_shift; exact HΓB).
+    constructor; [ exact Hφ | eapply wf_sub_compose; [ exact HWk | exact Hζ ] | exact Hσ2 |].
+    pose proof (wf_sub_eq_compose_right _ _ _ _ _ _ _ _ HWk E) as E'.
+    eapply wf_sub_eq_trans; [ apply wf_sub_eq_of_sb_eq; [ exact (wf_sub_sb_wk Hσ1 Hφ) | intros n; reflexivity ] |].
+    eapply wf_sub_eq_trans; [ exact E' |].
+    apply wf_sub_eq_of_sb_eq; [ eapply wf_sub_compose; [ exact HWk | eapply wf_sub_compose; [ exact Hζ | exact Hσ2 ] ] | intros n; reflexivity ].
+  Qed.
+
   (** The [Π] over a telescope with a last (outermost) parameter more is
       the [Π] of that parameter over the [Π] of the rest. *)
   Lemma ctx_pi_at_snoc : forall r T κ B A, ctx_pi_at r (T ++ ce_ass κ B :: nil) A = a_pi κ r B (ctx_pi_at r T A).
