@@ -1316,6 +1316,43 @@ Proof.
       | intros; apply names_no_frame_of_none; reflexivity | intros; apply names_no_frame_of_none; apply mod_qname_sub_lit ].
 Qed.
 
+(** An alias under no parameters and its target have the same module part
+    at every substitution, both ways: the alias denotes the module part of
+    what its target denotes ([udenote_alias]). *)
+Lemma same_part_alias_nil : forall Γ E,
+    same_part Γ (me_lit (gu_mk nil (md_alias E))) E /\ same_part Γ E (me_lit (gu_mk nil (md_alias E))).
+Proof.
+  intros Γ E; split; intros Γ1 ζ R0 Rm Hζ Hm HRm;
+    cbn [modexp_sub] in *; rewrite gunit_sub_mk in *; cbn [tele_sub moddef_sub sb_qn List.length] in *.
+  - apply mdenote_lit_inv in Hm; inversion Hm; subst.
+    rewrite mdesc_up_nil in HRm.
+    match goal with Hmd : mdesc_mod ?R = Some ?R', HE : mdenote _ _ _ _ ?R |- _ =>
+      rewrite (mdesc_is_mod_mod _ (mdesc_mod_is_mod _ _ Hmd)) in HRm; injection HRm as <-;
+      exists R; split; [ exact HE | exact Hmd ] end.
+  - exists Rm; split; [| exact (mdesc_is_mod_mod _ (mdesc_mod_is_mod _ _ HRm)) ].
+    apply mdenote_lit; rewrite <- (mdesc_up_nil Rm); econstructor; [ exact Hm | exact HRm ].
+Qed.
+
+(** An alias under no parameters, its target glued, is glued as its
+    target: its value is the target's ([eval_close_alias0]), and it has
+    the target's module part ([same_part_alias_nil]), neither naming an
+    open frame ([names_no_frame_of_frame_free]). *)
+Lemma glu_lit_alias_modexp_at : forall Γ E,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+    glu_modexp_at Γ E ->
+    glu_modexp_at Γ (me_lit (gu_mk nil (md_alias E))).
+Proof.
+  intros * HU HE Sb HSb Δ σ ρ Hσ.
+  destruct (HE _ HSb _ _ _ Hσ) as (h & Eh & Hg).
+  exists h; split; [ apply eval_me_lit_iff; constructor; exact Eh |].
+  destruct (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as [_ _ _ _ _ HEt _ _ _ _ Hff]; cbn [List.app] in HEt, Hff.
+  destruct (same_part_alias_nil Γ E) as [Hs01 Hs10].
+  eapply (proj1 glu_dmod_same_part);
+    [ exact Hg | apply wf_me_beta_alias0; [ exact HEt | exact Hff ] | exact Hs01 | exact Hs10
+    | intros; apply names_no_frame_of_none; reflexivity
+    | intros; eapply names_no_frame_of_frame_free; eassumption ].
+Qed.
+
 (** A literal body lacking the parameters [Δr]: saturated, it is glued as
     a body ([glu_lit_body_modexp_at]). *)
 Lemma glu_lit_open_params : forall Δr Δa Γ Φ,
@@ -1328,6 +1365,38 @@ Proof.
   pose proof (unit_eq_of_full _ _ _ _ (unit_full_unabs _ _ _ (Δr ++ Δa) nil _ Hf)) as HU.
   rewrite <- List.app_assoc in HU.
   exact (glu_lit_body_modexp_at _ _ HU HC (body_sorts_typed_of_unit _ _ HU)).
+Qed.
+
+(** An extension glued at every renaming of a glued context is glued over
+    it: at the identity. *)
+Lemma glu_rel_ext_under_renaming_here : forall Γ Ψ, ⊩ Γ -> glu_rel_ext_under_renaming Γ Ψ -> ⊩ (Ψ ++ Γ).
+Proof.
+  intros * HΓ HΨ.
+  assert (HwΓ : ⊢ Γ) by (destruct HΓ as [Sb HSb]; exact (glu_ctx_env_wf_ctx HSb)).
+  pose proof (HΨ _ _ (wf_wk_id _ _ _ HwΓ) HΓ) as H.
+  pose proof (gunit_wk_id (gu_mk Ψ (md_alias (me_var 0)))) as E; rewrite gunit_wk_mk in E; injection E as E _.
+  rewrite E in H; exact H.
+Qed.
+
+(** The closure of a well-formed unit glued at a glued context, at a
+    glued environment, is glued as the unit's literal: a body's by its
+    body context's gluing ([glu_lit_open_params]), an alias's by its
+    target's ([glu_lit_alias_modexp_at]), each lacking the unit's
+    parameters ([glu_lit_open_params_gen]). *)
+Lemma glu_unit_modexp_at : forall Γ U,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U -> ⊩ Γ -> glu_unit_at Γ U -> glu_modexp_at Γ (me_lit U).
+Proof.
+  intros Γ [Δu [sm Φ | E]] HU HΓ Hg; pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as Hf; cbn [glu_unit_at] in Hg.
+  - destruct sm; cbn [unit_full] in Hf; [| contradiction ].
+    destruct Hg as [HB _].
+    pose proof (glu_rel_ext_under_renaming_here _ _ HΓ HB) as HC; rewrite <- List.app_assoc in HC.
+    pose proof (glu_lit_open_params Δu nil Γ Φ) as H; rewrite List.app_nil_r in H; cbn [List.app] in H.
+    exact (H (proj1 (unit_full_of_eq _ _ _ _ _ HU)) HC).
+  - destruct Hg as [HΔ HE].
+    pose proof (glu_rel_ext_under_renaming_here _ _ HΓ HΔ) as HC.
+    pose proof (unit_eq_of_full _ _ _ _ (unit_full_unabs _ _ _ Δu nil _ Hf)) as HU0.
+    apply (glu_lit_open_params_gen (md_alias E) I Δu nil Γ); rewrite ?List.app_nil_r;
+      [ exact Hf | exact HC | exact (glu_lit_alias_modexp_at _ _ HU0 HE) ].
 Qed.
 
 End Fixed_GCtx.

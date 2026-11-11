@@ -1804,13 +1804,14 @@ Definition glu_rel_ext_under_renaming (Γ Ψ : ctx) : Prop :=
     unit's parameters, is an extension of [Γ] glued at every renaming of
     [Γ], and so is each module entry's unit, recursively, at the context of
     the expanded entries before it; an alias's parameters are an extension
-    glued so.  The recursion is on the unit: a body's module entries, those
+    glued so, and its target is glued as a module expression over them.
+    The recursion is on the unit: a body's module entries, those
     of the fragments its opens store included, are its subterms. *)
 Fixpoint glu_unit_at (Γ : ctx) (U : gunit) {struct U} : Prop :=
   match U with
   | gu_mk Δu (md_body _ Φ) =>
       glu_rel_ext_under_renaming Γ (body_ctx (gm_expand Φ) ++ Δu) /\ glu_gmod_units (Δu ++ Γ) Φ
-  | gu_mk Δu (md_alias _) => glu_rel_ext_under_renaming Γ Δu
+  | gu_mk Δu (md_alias E) => glu_rel_ext_under_renaming Γ Δu /\ glu_modexp_at (Δu ++ Γ) E
   end
 (** The module entries of a body over [Γ], each glued at the context of
     the expanded entries before it, and those of the fragment each open
