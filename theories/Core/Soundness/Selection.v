@@ -1068,6 +1068,55 @@ Proof.
     rewrite rev_app_distr; apply glu_tele_args_app_r; exact (Ha _ _ _ _ _ _ _ Hst Hm0 HR0).
 Qed.
 
+(** A glued module value lacking a parameter, applied to a typed argument
+    of its next parameter's type whose instance is glued at every gluing
+    of the parameter's value, is glued as the application: as the
+    application to the variable, read through [Id,,N] (the value-level
+    core of [glu_modexp_at_app]). *)
+Lemma glu_dmod_app_val : forall Δ σ Γ H h R T B T1 Srt N a c hc,
+    Δ ⊢ˢ σ : Γ -> glu_dmod Δ σ Γ H h ->
+    mdenote gc_deps gc_stack Γ H R -> mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
+    Γ ⊢ B : Srt -> type_sort Srt -> Γ ⊢ N : B ->
+    next_param h a ->
+    (forall (i : nat) P El, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ B[σ] ® P -> Δ ⊢ N[σ] : B[σ] ® c ∈ El) ->
+    $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc ->
+    glu_dmod Δ σ Γ (me_app H N) hc.
+Proof.
+  intros * Hσt Hg Hm HT Hv HB HS HNt Hn HNg Hhc.
+  inversion Hg; subst;
+    [ exfalso; eapply next_param_global_sat; eassumption
+    | exfalso; inversion Hn; subst; match goal with Hl : _ ++ _ :: nil = nil |- _ => destruct Δ0; discriminate end |].
+  match goal with Hn' : next_param h ?a0 |- _ => pose proof (next_param_functional _ _ Hn _ Hn') as <- end.
+  match goal with
+  | Hp : forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through _ _ _ _ _ _ _ _ -> mdenote _ _ _ _ RH -> exists _ _ _, _,
+    Ha : forall Δ' φ Γ1 ζ σ1 RH T B T1 Srt, glu_sub_through _ _ _ _ _ _ _ _ -> _ |- _ => rename Hp into Hpar, Ha into Happ
+  end.
+  pose proof (glu_sub_through_id _ _ _ Hσt) as Hst.
+  rewrite <- (modexp_sub_id H) in Hm.
+  destruct (Hpar _ _ _ _ _ _ Hst Hm) as (T' & B' & T1' & [HT' Hv' Hgl]).
+  rewrite HT in HT'; injection HT' as <-; rewrite Hv in Hv'; injection Hv' as <- <-.
+  destruct (Hgl _ HS HB) as (j & Pa & Ela & [Hga HBPa]).
+  pose proof (HNg _ _ _ Hga HBPa) as HNa.
+  (** The parameter's kind, the value's *)
+  destruct (type_sort_abs_kind_sort_inv _ HS) as (κs & l & ->).
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB Hσt) as HBσ; rewrite abs_kind_sort_sub in HBσ.
+  destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hga HBPa HBσ) as [Hka _].
+  pose proof (Happ _ _ _ _ _ _ _ _ _ _ Hst Hm HT Hv HS HB _ _ _ _ _ _ Hga HBPa HNa Hhc) as Hg1.
+  rewrite Hka in Hg1.
+  pose proof (sort_kind_abs_kind_sort κs l) as Hsk.
+  assert (HNσt : Δ ⊢ N[σ] : B[σ]) by exact (glu_univ_elem_trm_escape _ _ _ _ Hga _ _ _ _ HNa).
+  assert (HId : Γ ⊢ˢ Id,,N : Γ ▹{κs} B)
+    by (eapply wf_sub_extend; [ exact (wf_sub_id _ _ _ (wf_sub_cod _ _ _ _ _ Hσt)) | exact HB | exact Hsk | rewrite exp_sub_id; exact HNt ]).
+  assert (Hsb : sb_eq ((Id,,N) ⨟ σ) (σ,,N[σ])) by (intros [| k]; reflexivity).
+  assert (Heq : Δ ⊢ˢ σ,,N[σ] ≈ (Id,,N) ⨟ σ : Γ ▹{κs} B).
+  { apply wf_sub_eq_of_sb_eq; [ eapply wf_sub_extend; [ exact Hσt | exact HB | exact Hsk | exact HNσt ] | symmetry; exact Hsb ]. }
+  pose proof (proj1 glu_dmod_through _ _ _ _ _ Hg1 _ _ _ HId Hσt Heq) as Hg2.
+  assert (EH : (me_app H[Id]ᵐ[Wk]ᵐ #0)[Id,,N]ᵐ = me_app H N).
+  { cbn [modexp_sub]; rewrite !modexp_sub_sub; f_equal.
+    rewrite <- (modexp_sub_id H) at 2; apply modexp_sub_sb_eq; intros [| k]; reflexivity. }
+  rewrite EH in Hg2; exact Hg2.
+Qed.
+
 (** A value lacking a parameter whose selection is applied is applied
     itself. *)
 Lemma appm_of_selm_appm : forall h a, next_param h a -> forall y r c rc,
