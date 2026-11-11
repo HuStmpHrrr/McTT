@@ -402,6 +402,54 @@ Qed.
 
 End ApplyTele.
 
+(** The term part of a grown entry is the original's. *)
+Lemma entry_grows_entry_term : forall o E E', entry_grows E E' -> entry_term o E' = entry_term o E.
+Proof.
+  intros o E E' H; destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?];
+    destruct E' as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?]; cbn in H;
+    try (rewrite H; reflexivity); try discriminate; destruct_all; subst; reflexivity.
+Qed.
+
+(** A stored term member of a module is the one its path looks up: a
+    filed entry's term part, or the type former of the member or record
+    type an open frame is the module of; the three exclude each other, as
+    an open frame's path names no entry. *)
+Lemma stored_term_member_of_lookup : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ x R0 R0',
+    gc_loc Θ Ξ p = Some (T, Φ) -> stored_term_member Ξ Φ p x R0' ->
+    ((exists E, gc_entry Θ Ξ (qname_in p x) = Some E /\ entry_term (Some (qname_in p x)) E = Some R0) \/
+     (exists pq k D Mk, ind_mlookup Θ Ξ (qname_in p x) = Some (pq, k, D) /\ ind_member D k = Some Mk /\
+        R0 = mdesc_term ak_relevant (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))) \/
+     (exists Rr, record_lookup Θ Ξ (qname_in p x) = Some Rr /\
+        R0 = mdesc_term ak_relevant (ctx_pi (record_params Rr) (record_sort Rr)) (Some (a_record (qname_in p x))))) ->
+    R0' = R0.
+Proof.
+  intros Θ Ξ Hg * Hl Hst Hlk.
+  pose proof (gc_loc_loc _ _ _ _ _ Hl) as Hlc.
+  assert (Hnoent : forall U T0, gs_find_tele Ξ (qname_in p x) = Some (U, nil, T0) -> gc_entry Θ Ξ (qname_in p x) = None)
+    by (intros; eapply gc_entry_tele_nil; eassumption).
+  destruct Hst as [Φ0 E' R0'' Hp HE' | pq' k' D' Mk' Hk' HMk' | Rr' Hr'].
+  - destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
+    pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hlc x E') Hent) as HeE'.
+    destruct Hlk as [(E & HeE & HR0) | [(pq & k & D & Mk & Hind & HMk & ->) | (Rr & Hrl & ->)]].
+    + rewrite HeE in HeE'; injection HeE' as <-; congruence.
+    + destruct (ind_mlookup_entry _ _ _ _ _ _ Hind) as [(pv & ΦD & HeE) | Hk].
+      * rewrite HeE in HeE'; injection HeE' as <-; cbn in HE'; rewrite HMk in HE'; cbn in HE'; congruence.
+      * destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht); rewrite (Hnoent _ _ Ht) in HeE'; discriminate.
+    + destruct (record_lookup_entry _ _ _ _ Hrl) as [HeE | (pv & pr & ΦR & HeE)]; rewrite HeE in HeE'; [ discriminate |].
+      injection HeE' as <-; cbn in HE'; congruence.
+  - destruct (gs_find_ind_tele _ _ _ Hk') as (U & T0 & Ht); pose proof (Hnoent _ _ Ht) as HeN.
+    destruct Hlk as [(E & HeE & HR0) | [(pq & k & D & Mk & Hind & HMk & ->) | (Rr & Hrl & ->)]].
+    + congruence.
+    + rewrite ind_mlookup_unfold, Hk' in Hind; injection Hind as <- <- <-; congruence.
+    + unfold record_lookup in Hrl; rewrite (gs_find_ind_not_record _ _ _ Hk'), HeN in Hrl; discriminate.
+  - destruct (gs_find_record_tele _ _ _ Hr') as (U & T0 & Ht); pose proof (Hnoent _ _ Ht) as HeN.
+    destruct Hlk as [(E & HeE & HR0) | [(pq & k & D & Mk & Hind & HMk & ->) | (Rr & Hrl & ->)]].
+    + congruence.
+    + destruct (ind_mlookup_entry _ _ _ _ _ _ Hind) as [(pv & ΦD & HeE) | Hk]; [ congruence |].
+      rewrite (gs_find_ind_not_record _ _ _ Hk) in Hr'; discriminate.
+    + unfold record_lookup in Hrl; rewrite Hr' in Hrl; injection Hrl as <-; reflexivity.
+Qed.
+
 Section FiledOk.
   Variables (Θm : gdeps) (Ξm : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
   Hypothesis Hgm : ⊢ᵍ Θm ⍮ Ξm.
@@ -934,6 +982,25 @@ Section FiledOk.
     exact (filed_ok_ind_term _ _ _ _ _ _ _ _ _ Hl Hindm Hsp HMk (eq_sym HTx) Hres2 Hind2).
   Qed.
 
+  (** A stored term member, selected bare at the target, is read at its
+      stored description's type: the target stores, by its lookup, the
+      same term member. *)
+  Lemma filed_ok_bare : forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) ->
+      forall x R0, stored_term_member Ξm Φ p x R0 ->
+      forall R A, mdenote Θ2 Ξ2 ⋅ (me_mem (qname_mod p) x) R -> mdesc_type R = Some A -> mdesc_type R = mdesc_type R0.
+  Proof.
+    intros * Hl * Hst * Hm Hty.
+    destruct (gc_loc_grow _ _ _ _ filed_ok_wf filed_ok_sub _ _ _ Hl) as (Φ2 & Hl2 & _).
+    destruct (filed_mem_desc _ _ filed_ok_wf ⋅ p T Φ2 nil x R A Hl2 Hm Hty) as (R0' & R1 & Hst2 & Ha & _ & HtR & _).
+    cbn [mdesc_term_part_ats] in Ha; injection Ha as <-; rewrite mdesc_named_nil in HtR; rewrite HtR; f_equal.
+    apply (stored_term_member_of_lookup _ _ filed_ok_wf _ _ _ _ _ _ Hl2 Hst2).
+    destruct Hst as [Φ0 E R0'' Hp HE | pq k D Mk Hk HMk | Rr Hr].
+    - destruct (filed_ok_entry _ _ _ _ _ _ Hl Hp) as (? & E2 & _ & _ & HeE2 & Hgr & _).
+      left; exists E2; split; [ exact HeE2 | rewrite (entry_grows_entry_term _ _ _ Hgr); exact HE ].
+    - right; left; exists pq, k, D, Mk; split; [ exact (gc_sub_frame_ind _ _ _ _ _ _ filed_ok_sub Hk) | split; [ exact HMk | reflexivity ] ].
+    - right; right; exists Rr; split; [ exact (gc_sub_frame_record _ _ _ _ _ _ filed_ok_sub Hr) | reflexivity ].
+  Qed.
+
 End FiledOk.
 
 (** What a global context files and has open is worth at a target, read
@@ -950,7 +1017,8 @@ Proof.
     [ eauto | intros ρ; exact (gc_loc_path _ _ (gctx_embedding_wf _ _ _ _ He) _ _ ρ Hl2) | exact HT | exact HTa | exact HTs
     | intros; eapply filed_ok_kind; eassumption | intros; eapply filed_ok_sub_kind; eassumption
     | intros; eapply filed_ok_term; eassumption | intros; eapply filed_ok_ind_frame; eassumption
-    | intros; eapply filed_ok_record_frame; eassumption | intros; eapply filed_ok_alias; eassumption | exact HTr ].
+    | intros; eapply filed_ok_record_frame; eassumption | intros; eapply filed_ok_alias; eassumption | exact HTr
+    | intros; eapply filed_ok_bare; eassumption ].
 Qed.
 
 (** A sound embedding, from the validity at the target of what the source

@@ -1057,7 +1057,7 @@ Proof.
   inversion Hb; subst.
   match goal with Hl' : gc_loc _ _ p = Some _ |- _ => rewrite Hl2 in Hl'; injection Hl' as <- <- end.
   match goal with Hm : mdenote _ _ _ (me_mem (qname_mod p) x) ?R, Ht : mdesc_type ?R = Some _ |- _ =>
-    pose proof (Hbare _ _ Hst _ Hm) as E; rewrite Ht, HtR0 in E; injection E as E end.
+    pose proof (Hbare _ _ Hst _ _ Hm Ht) as E; rewrite Ht, HtR0 in E; injection E as E end.
   pose proof (ctx_pi_at_ass_injective_any _ _ _ _ _ HTa E) as ->.
   (** The arguments fill the telescope, related *)
   destruct (rel_ctx_wf_per_ctx_env HT) as [RT HRT].

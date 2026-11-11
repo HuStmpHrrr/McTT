@@ -761,7 +761,8 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
         context at the target at its stored description's type: the
         description grows with the global context, its type kept *)
   ; valid_filed_mod_bare : forall x R0, stored_term_member Ξm Φ p x R0 ->
-      forall R, mdenote gc_deps gc_stack nil (me_mem (qname_mod p) x) R -> mdesc_type R = mdesc_type R0 }.
+      forall R A, mdenote gc_deps gc_stack nil (me_mem (qname_mod p) x) R -> mdesc_type R = Some A ->
+      mdesc_type R = mdesc_type R0 }.
 
 Definition valid_filed_mods : Prop :=
   forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) -> valid_filed_mod p T Φ.
