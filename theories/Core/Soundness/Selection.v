@@ -1559,4 +1559,28 @@ Proof.
       Unshelve. all: intros; apply names_no_frame_of_none; reflexivity.
 Qed.
 
+(** The selections of glued module values are glued: a submodule of a
+    saturated global module is a stored module at its path
+    ([glu_dmod_sel_global_loc]) or a stored alias given the arguments
+    ([glu_dmod_sel_global_alias]); the rest by [glu_dmod_sel_of_global]. *)
+Lemma glu_dmod_sel : ⊢ᵍ gc_deps ⍮ gc_stack ->
+    (forall p T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) -> ⊩ T) ->
+    (forall pq U, gc_module gc_deps gc_stack pq = Some (mr_alias U) -> glu_modexp_at ⋅ (me_lit U)) ->
+    forall Δ σ0 Γ0 H0 h, glu_dmod Δ σ0 Γ0 H0 h ->
+    forall y r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r ->
+    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ me_mem H0 y ≈ me_mem H0 y ->
+    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> names_no_frame H0[ζ]ᵐ) ->
+    glu_dmod Δ σ0 Γ0 (me_mem H0 y) r.
+Proof.
+  intros Hgw Htele Halias.
+  refine (proj1 (glu_dmod_sel_of_global Hgw _)).
+  intros * Hσ HH0 Hl Hlen Hd Ha Hs HHy Hq.
+  inversion Hs; subst.
+  - match goal with Hl' : gc_loc _ _ (qname_app p (y :: nil)) = Some ?TΦ |- _ =>
+      destruct TΦ as [T' Φ']; rewrite <- qname_in_app in Hl' |- * end.
+    eapply glu_dmod_sel_global_loc; eassumption.
+  - match goal with Hm : gc_module _ _ (qname_app p (y :: nil)) = Some _ |- _ => rewrite <- qname_in_app in Hm end.
+    eapply glu_dmod_sel_global_alias; eassumption.
+Qed.
+
 End Fixed_GCtx.
