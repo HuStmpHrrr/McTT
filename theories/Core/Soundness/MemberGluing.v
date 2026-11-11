@@ -26,8 +26,71 @@ From Mctt.Core.Soundness.Inductives Require Import Args.
 From Mctt.Core.Soundness Require UniverseCases.
 From Mctt.Core.Completeness.Consequences Require AnnotatedUpto.
 From Mctt.Core.Soundness.Global Require Import GlobalValues.
+From Mctt.Core.Soundness Require Import UnitDeep.
 Import Domain_Notations Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
+
+(** ** The child entries of a stored module, as it grows *)
+
+(** The child [y] of a body is read off its entry [y]: as the body with
+    that entry alone. *)
+Lemma gm_child_of_entry : forall Φ y E T, gm_entry Φ (y :: nil) = Some E ->
+    gm_submodule T Φ y nil = gm_submodule T (gm_ext gm_nil y E) y nil /\
+    gm_subbody T Φ y nil = gm_subbody T (gm_ext gm_nil y E) y nil.
+Proof.
+  induction Φ as [| Φ IH z E0 | Φ IH H its Φg _]; intros * He; cbn in He |- *; [ discriminate | | exact (IH _ _ _ He) ].
+  destruct (String.eqb y z) eqn:Eyz; [| exact (IH _ _ _ He) ].
+  apply String.eqb_eq in Eyz; subst z; injection He as ->; rewrite String.eqb_refl; split; reflexivity.
+Qed.
+
+(** An entry grown keeps the child it stands for: the same module, and a
+    body over the same telescope. *)
+Lemma gm_child_grows : forall y E1 E2 T, entry_grows E1 E2 ->
+    gm_submodule T (gm_ext gm_nil y E1) y nil = gm_submodule T (gm_ext gm_nil y E2) y nil /\
+    (forall T' Φ2, gm_subbody T (gm_ext gm_nil y E2) y nil = Some (T', Φ2) ->
+       exists Φ1, gm_subbody T (gm_ext gm_nil y E1) y nil = Some (T', Φ1)).
+Proof.
+  intros * Hgr; cbn [gm_submodule gm_subbody]; rewrite String.eqb_refl.
+  destruct E1 as [b pv r A oM | pv [Δ [sm Φ | E]] | pv pq k D Φ | pv A M [Δ [sm Φ | E]] | pv p R Φ];
+    destruct E2 as [b' pv' r' A' oM' | pv' [Δ' [sm' Φ' | E']] | pv' pq' k' D' Φ' | pv' A' M' [Δ' [sm' Φ' | E']] | pv' p' R' Φ'];
+    cbn in Hgr; try discriminate;
+    first [ injection Hgr; intros; subst; split; [ reflexivity | intros * H; eexists; exact H ]
+          | destruct Hgr as (-> & -> & ->); split; [ reflexivity | intros * H; injection H as <- <-; eexists; reflexivity ]
+          | destruct Hgr as (-> & -> & -> & ->); split; [ reflexivity | intros * H; injection H as <- <-; eexists; reflexivity ] ].
+Qed.
+
+(** The child [y] of a module stored at [p] in a global context and in one
+    it grows into, an entry of the smaller one: stored in the bigger one
+    over a telescope, it is stored in the smaller one over the same; an
+    alias in the bigger one is the same alias in the smaller one. *)
+Lemma loc_child_grow : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> ⊢ᵍ Θ2 ⍮ Ξ2 -> gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
+    forall p T Φ1 Φ2 y E1, loc Θ1 Ξ1 p T Φ1 -> loc Θ2 Ξ2 p T Φ2 -> gm_entry Φ1 (y :: nil) = Some E1 ->
+    (forall T' Φ', gc_loc Θ2 Ξ2 (qname_in p y) = Some (T', Φ') -> exists Φ1', gc_loc Θ1 Ξ1 (qname_in p y) = Some (T', Φ1')) /\
+    (forall U, gc_module Θ2 Ξ2 (qname_in p y) = Some (mr_alias U) -> gc_module Θ1 Ξ1 (qname_in p y) = Some (mr_alias U)).
+Proof.
+  intros * Hg1 Hg2 Hs * Hl1 Hl2 He1.
+  pose proof (proj2 (loc_entry _ _ Hg1 _ _ _ Hl1 _ _) He1) as Hc1.
+  destruct (gc_sub_entry_field _ _ _ _ Hs _ _ Hc1) as (E2 & Hc2 & Hgr).
+  pose proof (proj1 (loc_entry _ _ Hg2 _ _ _ Hl2 _ _) Hc2) as He2.
+  destruct (gm_entry_head _ _ _ He1) as (z1 & ip1 & [= <- <-] & Hin1).
+  destruct (gm_entry_head _ _ _ He2) as (z2 & ip2 & [= <- <-] & Hin2).
+  destruct (loc_read _ _ Hg1 _ _ _ Hl1 _ Hin1 nil) as (_ & _ & Hm1 & Hb1).
+  destruct (loc_read _ _ Hg2 _ _ _ Hl2 _ Hin2 nil) as (_ & _ & Hm2 & Hb2).
+  rewrite <- qname_in_app in Hm1, Hb1, Hm2, Hb2.
+  destruct (gm_child_of_entry _ _ _ T He1) as [Em1 Eb1].
+  destruct (gm_child_of_entry _ _ _ T He2) as [Em2 Eb2].
+  destruct (gm_child_grows y _ _ T Hgr) as [Em Eb].
+  (** Neither child is an open frame: each is an entry *)
+  assert (Hnf : forall Θ Ξ E, gc_entry Θ Ξ (qname_in p y) = Some E -> gc_frame Ξ (qname_in p y) = None).
+  { intros * Hc; unfold gc_frame; destruct (gs_find_tele Ξ (qname_in p y)) as [[[[Δ [[|] Φ0 | E0]] [| ? ?]] T0] |] eqn:Ht;
+      try reflexivity.
+    rewrite (gc_entry_tele_nil _ _ _ _ _ Ht) in Hc; discriminate. }
+  split.
+  - intros * Hl'; unfold gc_loc in Hl' |- *; rewrite (Hnf _ _ _ Hc2) in Hl'; rewrite (Hnf _ _ _ Hc1).
+    rewrite Hb2, Eb2 in Hl'; destruct (Eb _ _ Hl') as (Φ1' & HΦ1').
+    exists Φ1'; rewrite Hb1, Eb1; exact HΦ1'.
+  - intros U Hm; rewrite Hm1, Em1, Em, <- Em2, <- Hm2; exact Hm.
+Qed.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -1029,6 +1092,35 @@ Section Members.
     rewrite (mdesc_closed_sub _ _ HRs) in E; cbn in E; injection E as E; symmetry; exact E.
   Qed.
 
+  (** *** Module expressions naming a stored module *)
+
+  (** A module expression naming the module stored at [q], every
+      description of which reads it with no argument, over a telescope
+      glued, is glued at the instances: at every environment its value is
+      the stored module at no argument ([eval_path_mod]), glued along the
+      telescope ([glu_dmod_global_path]). *)
+  Lemma glu_rel_modexp_under_sub_path : forall Γ H pm T Φ,
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mod_qname H = Some pm -> gc_loc Θ Ξ pm = Some (T, Φ) -> ⊩ T ->
+      (forall Γ1 R, mdenote Θ Ξ Γ1 H R -> mdesc_mod R = Some (mdesc_closed nil pm T Φ nil)) ->
+      glu_rel_ctx_types Γ -> glu_rel_modexp_under_sub Γ H.
+  Proof.
+    intros * HH Hq Hl HT Hd HΓ; constructor; [ exact HΓ |].
+    intros Γ' τ Hτ; rewrite (mod_qname_sub _ _ τ Hq).
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH (glu_rel_sub_inst_typed _ _ _ Hτ)) as HH'.
+    rewrite (mod_qname_sub _ _ τ Hq) in HH'.
+    intros Sb HSb Δ σ ρ Hσ.
+    exists (dm_global pm nil); split.
+    - rewrite (mod_qname_inv _ _ Hq).
+      apply (Evaluation.Modules.eval_path_mod Θ Ξ); intros m1 m2 Ec Hne.
+      exact (path_prefix_loc _ _ _ _ (gc_loc_loc _ _ _ _ _ Hl) _ Ec Hne).
+    - eapply (@glu_dmod_global_path GCm _ _ _ Hg Hl (gc_loc_tele_all_assumptions _ _ Hg _ _ _ Hl)
+                (proj1 (gc_loc_closed _ _ _ _ _ (wf_gstack_closed _ _ Hg) Hl)) HT (List.length T));
+        [ cbn; lia | exact (glu_ctx_env_sub_escape HSb _ _ _ Hσ) | exact HH' | |].
+      + intros * Hst Hm; rewrite (mod_qname_sub _ _ _ Hq) in Hm; exists nil; exact (Hd _ _ Hm).
+      + intros * Hst Hm HR; rewrite (mod_qname_sub _ _ _ Hq) in Hm; rewrite (Hd _ _ Hm) in HR.
+        injection HR as <-; constructor.
+  Qed.
+
 End Members.
 
 (** ** Saturated global modules, from the source of a sound embedding *)
@@ -1700,6 +1792,45 @@ Section MembersFromSource.
     all: inversion Hgm as [? Hc | ? ? Φ1 ? ? ? _ _ | ]; subst; [ cbn in Hc; discriminate |].
     all: destruct (src_stored_member_of_mem _ _ _ _ _ _ _ _ _ _ _ Hnfs HmHs HRms HmRs HtRs Hk) as (Γe & Φ0 & E0 & REs & As & Hsm).
     all: exists Γe, Φ1, Φ0, E0, REs, As; exact Hsm.
+  Qed.
+
+  (** The global facts a selection of [y] reads ([glu_sel_globals]) hold
+      at the target for a module expression typed at the source reading a
+      stored module [p] of which [y] is an entry: every description of its
+      instances reads [p] (grown, [mdesc_grows_closed], and moved,
+      [mdesc_sub_closed_back]); [p]'s telescope is glued by the embedding,
+      the child stored at the target is stored at the source over the same
+      telescope, glued by the embedding, and an alias child is the source's
+      ([loc_child_grow]), glued by the embedding's deep field. *)
+  Lemma glu_sel_globals_of_source : forall Γ H y RHs Θ0 p T Φs Ns0 E,
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θs Ξs Γ H RHs -> mdesc_mod RHs = Some (mdesc_closed Θ0 p T Φs Ns0) ->
+      gm_entry Φs (y :: nil) = Some E ->
+      forall Γ' τ, Γ' ⊢ˢ τ : Γ -> glu_sel_globals Γ' H[τ]ᵐ y.
+  Proof.
+    intros * HHs HmHs HRms He Γ' τ Hτ Γ1 ζ RH Θ' p' T' Φ' Ns Hζ HmH HRH.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
+    pose proof (Hwm _ _ _ HHs) as HH.
+    destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmHs) as (RH0 & HmH0 & HgrH).
+    destruct (mdesc_grows_mod _ _ _ _ _ _ _ HgrH HRms) as (R2m & HR2m & Hgm).
+    inversion Hgm as [? Hc | ? ? Φ1 Φ2 ? ? Hl1 Hl2 | ]; subst; [ cbn in Hc; discriminate |].
+    (** The instance's description is the target's moved *)
+    rewrite modexp_sub_sub in HmH.
+    pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HH HmH0 (wf_sub_compose _ _ _ _ _ _ _ Hτ Hζ)) as HmH'.
+    rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmH _ HmH') in HRH.
+    destruct (mdesc_sub_closed_back _ _ _ _ _ _ _ HRH) as (Θ'' & Ns' & HRH0).
+    rewrite HR2m in HRH0; injection HRH0 as _ <- <- <- _.
+    constructor.
+    - intros T0 Φ0 Hl0; assert (Hl0' : gc_loc Θ Ξ p = Some (T0, Φ0)) by exact Hl0.
+      rewrite (gc_loc_of_loc _ _ Hg _ _ _ Hl2) in Hl0'; injection Hl0' as <- <-.
+      exact (glu_rel_ctx_types_ctx _ (glu_gctx_embedding_tele _ _ _ _ Hμ _ _ _ (gc_loc_of_loc _ _ Hgs _ _ _ Hl1))).
+    - intros T1 Φ1' Hl'.
+      destruct (proj1 (loc_child_grow _ _ _ _ Hgs Hg Hsub _ _ _ _ _ _ Hl1 Hl2 He) _ _ Hl') as (Φs' & Hls').
+      exact (glu_rel_ctx_types_ctx _ (glu_gctx_embedding_tele _ _ _ _ Hμ _ _ _ Hls')).
+    - intros U HU.
+      pose proof (proj2 (loc_child_grow _ _ _ _ Hgs Hg Hsub _ _ _ _ _ _ Hl1 Hl2 He) _ HU) as HUs.
+      exact (glu_gctx_embedding_alias_modexp _ _ _ _ _ _ _ _ _ Hμ (gc_loc_of_loc _ _ Hg _ _ _ Hl2) HUs HU).
   Qed.
 
   (** The member rule at the target of a sound embedding, at every
