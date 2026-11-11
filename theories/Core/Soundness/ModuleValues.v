@@ -456,4 +456,31 @@ Proof.
           | exact Hσ0 ].
 Qed.
 
+(** ** The Closure of a Glued Unit's Literal *)
+
+Lemma gm_prefix_upto_in_names : forall Φ z P, gm_prefix_upto Φ z = Some P -> List.In z (gm_names Φ).
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H its Φg _]; intros z P Hp; cbn in Hp |- *; [ discriminate | |].
+  - destruct (String.eqb_spec z y) as [-> | Hne]; [ left; reflexivity | right; eapply IH; exact Hp ].
+  - destruct (existsb (String.eqb z) (map import_item_name its)); [ discriminate |].
+    apply List.in_or_app; right; eapply IH; exact Hp.
+Qed.
+
+(** The definitions of a body with distinct names are of the sorts of their
+    tags when each, looked up, is. *)
+Lemma body_sorts_typed_of_lookups : forall Φ Γ, List.NoDup (gm_names Φ) ->
+    (forall y Φ0 E A M σ, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σ ->
+       exists i : nat, Γ ⊢ A[σ] : abs_kind_sort (entry_kind E) Typeω@i) ->
+    body_sorts_typed Φ Γ.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H its Φg _]; intros Γ Hnd Hl; cbn [body_sorts_typed]; [ exact I | | exact I ].
+  cbn [gm_names] in Hnd; inversion Hnd as [| ? ? Hy Hnd' ]; subst.
+  split.
+  - apply IH; [ exact Hnd' |]; intros z Φ0 E0 A M σ Hp HE Hf.
+    apply (Hl z Φ0 E0 A M σ); [| exact HE | exact Hf ].
+    cbn; destruct (String.eqb_spec z y) as [-> | Hne]; [| exact Hp ].
+    exfalso; apply Hy; exact (gm_prefix_upto_in_names _ _ _ Hp).
+  - intros A M σ HE Hf; apply (Hl y Φ E A M σ); [ cbn; rewrite String.eqb_refl; reflexivity | exact HE | exact Hf ].
+Qed.
+
 End Fixed_GCtx.
