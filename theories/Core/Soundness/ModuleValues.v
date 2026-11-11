@@ -91,7 +91,7 @@ Proof.
     intros * Hσ HH0 Hn Hpar Happ _ Γ1 ζ σ1 Hζ Hσ1 Heq.
     eapply glu_dmod_fun; [ exact Hσ1 | exact (sub_preserves_modexp _ _ _ _ _ _ _ HH0 Hζ) | exact Hn | | ].
     + intros * Hst Hm; rewrite modexp_sub_sub in Hm.
-      exact (Hpar _ _ _ _ _ _ _ _ _ _ (glu_sub_through_compose Hζ Heq Hst) Hm).
+      exact (Hpar _ _ _ _ _ _ (glu_sub_through_compose Hζ Heq Hst) Hm).
     + intros * Hst Hm; rewrite modexp_sub_sub in Hm; rewrite (modexp_sub_sub H0 ζ ζ0).
       exact (Happ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_compose Hζ Heq Hst) Hm).
 Qed.
@@ -651,13 +651,17 @@ Proof.
   - (** A value lacking a parameter *)
     intros * Hσ HH1 Hn Hpar Happ IHapp H0 HH Hs01 Hs10 Hq0 Hq1.
     eapply glu_dmod_fun; [ exact Hσ | exact (wf_modexp_eq_refl_left HH) | exact Hn | | ].
-    + intros * Hst Hm HT.
+    + intros * Hst Hm.
       pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
-      assert (HRm : exists Rm, mdesc_mod RH = Some Rm)
-        by (unfold mdesc_mod_tele in HT; destruct (mdesc_mod RH); [ eexists; reflexivity | discriminate ]).
-      destruct HRm as [Rm HRm].
+      (** A typed module expression has a module part *)
+      pose proof (sub_preserves_modexp _ _ _ _ _ _ _ (wf_modexp_eq_refl_left HH) Hζ) as HH0ζ.
+      destruct (me_denotes _ _ _ _ _ HH0ζ) as (R0 & Rm & Hm0 & HRm).
+      pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH0ζ)) as Hg.
+      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm0 _ Hm) in HRm.
       destruct (Hs01 _ _ _ _ Hζ Hm HRm) as (RH1 & Hm1 & HRm1).
-      exact (Hpar _ _ _ _ _ _ _ _ _ _ Hst Hm1 (mdesc_mod_tele_part _ _ _ HT (ex_intro _ Rm (conj HRm HRm1)))).
+      destruct (Hpar _ _ _ _ _ _ Hst Hm1) as (T & B & T1 & [HT Hv Hgl]).
+      exists T, B, T1; constructor; [| exact Hv | exact Hgl ].
+      exact (mdesc_mod_tele_part _ _ _ HT (ex_intro _ Rm (conj HRm1 HRm))).
     + intros * Hst Hm HT Hv HS HB * Hu HP HN Hhc.
       pose proof (glu_sub_through_mid _ _ _ _ _ _ _ _ Hst) as Hζ.
       assert (HRm : exists Rm, mdesc_mod RH = Some Rm)
@@ -1147,6 +1151,20 @@ Proof.
     rewrite List.app_assoc, tele_view_last in Hv; injection Hv as <- _; reflexivity.
 Qed.
 
+(** A literal lacking the parameter [X], outermost, denotes a module whose
+    telescope has an outermost parameter. *)
+Lemma lit_param_view : forall Γ L κ X D RH T,
+    udenote gc_deps gc_stack Γ None (gu_mk (L ++ ce_ass κ X :: nil) D) RH ->
+    mdesc_mod_tele RH = Some T -> exists B T1, tele_view T = Some (B, T1).
+Proof.
+  intros * Hu HT; inversion Hu; subst.
+  - match goal with H5 : mdesc_body _ _ _ _ _ = Some _ |- _ =>
+      destruct sm; cbn in H5; try discriminate; injection H5 as <- end.
+    cbn in HT; injection HT as <-; rewrite tele_view_last; eexists _, _; reflexivity.
+  - destruct (mdesc_mod_tele_up_inv _ _ _ HT) as (T0 & ->).
+    rewrite List.app_assoc, tele_view_last; eexists _, _; reflexivity.
+Qed.
+
 (** The closure of a literal body lacking the parameters [Δr], over the
     context [Δa ++ Γ] its outer parameters [Δa] have been given in, at a
     glued environment, is glued as the literal: saturated, as a body
@@ -1202,9 +1220,20 @@ Proof.
       [ exact HTSb | exact (HST _ _ _ (glu_ctx_env_sub_monotone _ _ HSb _ _ _ _ _ Hσ Hφ)) | exact HX | exact Ea | exact Hga' | exact HNw ]. }
   exists (dm_local (Δr' ++ ⋅ ▹ {κ} X) D' ρ); split; [ apply eval_me_lit_iff, HD'v; rewrite List.length_app; cbn; lia |].
   eapply glu_dmod_fun; [ exact Hσt | exact (wf_me_lit _ _ _ _ _ HU) | econstructor; [ exact Ea | exact Hk ] | |].
-  { (** The parameter's type, read through a factorization *)
-    intros * Hst Hm HT Hv HS HB.
+  { (** The literal, read through a factorization, lacks a parameter, its
+        outermost, glued as [X] *)
+    intros * Hst Hm.
     pose proof Hst as [Hφ Hζ Hσ1 E].
+    pose proof (sub_preserves_modexp _ _ _ _ _ _ _ (wf_me_lit _ _ _ _ _ HU) Hζ) as HUζ.
+    destruct (me_mod_tele_exists HUζ) as (R1 & T & Hm1 & HT).
+    pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HUζ)) as Hg.
+    rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm1 _ Hm) in HT.
+    assert (Hv : exists B T1, tele_view T = Some (B, T1)).
+    { pose proof Hm as Hm'; cbn [modexp_sub] in Hm'; apply mdenote_lit_inv in Hm'; rewrite gunit_sub_last in Hm'.
+      exact (lit_param_view _ _ _ _ _ _ _ Hm' HT). }
+    destruct Hv as (B & T1 & Hv).
+    exists T, B, T1; constructor; [ exact HT | exact Hv |].
+    intros Srt HS HB.
     rewrite (HBX _ _ _ _ _ _ Hm HT Hv).
     destruct (HXw _ _ Hφ) as (P' & El' & Hga' & HXP').
     destruct (glu_type_move_sub_eq (type_sort_abs_kind κ _ ltac:(constructor)) HX Hga' HXP' E) as (k & Pk & Elk & Hgk & _ & HXk & _).

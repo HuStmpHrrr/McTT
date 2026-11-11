@@ -85,7 +85,9 @@ Proof.
   pose proof (glu_sub_through_id _ _ _ Hσt) as Hst.
   rewrite <- (modexp_sub_id H) in Hm.
   pose proof (evaluated_sort_type_sort _ HS) as HTS.
-  destruct (Hpar _ _ _ _ _ _ _ _ _ _ Hst Hm HT Hv HTS HB) as (j & Pa & Ela & [Hga HBPa]).
+  destruct (Hpar _ _ _ _ _ _ Hst Hm) as (T' & B' & T1' & [HT' Hv' Hgl]).
+  rewrite HT in HT'; injection HT' as <-; rewrite Hv in Hv'; injection Hv' as <- <-.
+  destruct (Hgl _ HTS HB) as (j & Pa & Ela & [Hga HBPa]).
   (** The parameter's type is of the kind of its sort, an evaluated one *)
   pose proof (completeness_fundamental_exp _ _ _ HB) as HBc.
   assert (Hks : exists κs, sort_kind Srt κs /\ evaluated_kind κs /\ Completeness.ContextCases.rel_type_kind Γ B κs).

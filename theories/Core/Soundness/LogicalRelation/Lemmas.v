@@ -1719,7 +1719,7 @@ Proof.
   - (** A value lacking a parameter: likewise *)
     intros * Hσ HH0 Hn Hpar Happ _ σ0' Heq.
     eapply glu_dmod_fun; [ exact (wf_sub_eq_right _ _ _ _ _ _ Heq) | exact HH0 | exact Hn | | ].
-    + intros * Hst; exact (Hpar _ _ _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
+    + intros * Hst; exact (Hpar _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
     + intros * Hst; exact (Happ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_resp_sub_eq Heq Hst)).
 Qed.
 
@@ -1780,7 +1780,7 @@ Proof.
   - (** A value lacking a parameter: likewise *)
     intros * Hσ HH0 Hn Hpar Happ _ Δ' φ Hφ.
     eapply glu_dmod_fun; [ exact (wf_sub_sb_wk Hσ Hφ) | exact HH0 | exact Hn | | ].
-    + intros * Hst; exact (Hpar _ _ _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
+    + intros * Hst; exact (Hpar _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
     + intros * Hst; exact (Happ _ _ _ _ _ _ _ _ _ _ (glu_sub_through_wk Hφ Hst)).
   - (** No more arguments *)
     intros; constructor.

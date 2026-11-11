@@ -410,9 +410,15 @@ Section Fixed_GCtx.
       unfold mdesc_mod_tele in HT0; rewrite HNs1 in HT0; rewrite HT1' in HT0; injection HT0 as <-;
       rewrite Hv1 in Hv; injection Hv as <- <-;
       exists Ns1; split; [ exact HNs1 | split; [ exact HlN | split; [ reflexivity | exact Hargs1 ] ] ]).
-    1:{ (** The parameter's type, glued by the telescope's gluing *)
-      intros * Hst Hm HT0 Hv HS HB.
-      destruct (Hshape _ _ _ _ _ _ _ _ _ Hst Hm HT0 Hv) as (Ns1 & HNs1 & HlN & -> & Hargs1).
+    1:{ (** The module lacks the next parameter of its telescope, whose type
+          is glued by the telescope's gluing *)
+      intros * Hst Hm.
+      destruct (Hd _ _ _ _ _ _ Hst Hm) as (Ns1 & HNs1).
+      pose proof (Ha _ _ _ _ _ _ _ Hst Hm HNs1) as Hargs1.
+      pose proof (glu_tele_args_length _ _ _ _ _ _ Hargs1) as HlN; rewrite List.length_map in HlN.
+      destruct (closed_tele_view p T Φ Ns1 κ A ltac:(lia) ltac:(rewrite HlN; exact Hnth)) as (T1' & HT1' & Hv1).
+      do 3 eexists; constructor; [ unfold mdesc_mod_tele; rewrite HNs1; exact HT1' | exact Hv1 |].
+      intros Srt HS HB.
       pose proof (glu_sub_through_rest _ _ _ _ _ _ _ _ Hst) as Hσ1.
       pose proof (wf_sub_dom _ _ _ _ _ Hσ1) as HΔ'.
       destruct (glu_tele_next_param T Δ' _ args HΔ' HTa HT ltac:(lia) Hargs1) as (κ' & A' & a' & i' & P' & El' & Hnth' & Ea' & _ & Hga' & HAP').

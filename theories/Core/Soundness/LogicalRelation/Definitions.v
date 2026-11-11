@@ -1476,6 +1476,21 @@ Record glu_body_member (Δ : ctx) (σ0 : sub) (Γ0 : ctx) (H0 : modexp) (x : Str
       type_sort Srt -> Γ1 ⊢ A' : Srt ->
       exists (i : nat) P El, glu_elem_at Δ' A'[σ1] (a_mem H0[ζ]ᵐ x)[σ1] a m i P El }.
 
+(** The description [RH] read in the middle context [Γ1] lacks a
+    parameter, as the value does: the telescope [T] of its module part,
+    whose outermost parameter is [B], the rest being [T1], [B] at any
+    sort it has glued at the value's next parameter's type [a], at
+    [σ1]. *)
+Record glu_dmod_next_param_desc (Δ' : ctx) (Γ1 : ctx) (σ1 : sub) (RH : mdesc) (a : domain) (T : ctx) (B : typ) (T1 : ctx)
+  : Prop := mk_glu_dmod_next_param_desc
+  { (** The module part has the telescope [T] *)
+    glu_dmod_next_param_desc_tele : mdesc_mod_tele RH = Some T
+    (** Its outermost parameter is [B], the rest [T1] *)
+  ; glu_dmod_next_param_desc_view : tele_view T = Some (B, T1)
+    (** [B], at any sort it has, glued at [a] *)
+  ; glu_dmod_next_param_desc_glu : forall Srt, type_sort Srt -> Γ1 ⊢ B : Srt ->
+      exists (i : nat) P El, glu_type_at Δ' B[σ1] a i P El }.
+
 (** The base of the instances of a closed telescope: a closed term at
     every variable, never read by a closed telescope, and unchanged by
     weakening. *)
@@ -1531,8 +1546,8 @@ Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
     glu_dmod Δ σ0 Γ0 H0 (dm_local nil (md_body sm Φ) ρ)
 (** A value lacking a parameter, whose next parameter's type is [a]: at
     every factorization of [σ0] weakened through [ζ] ([glu_sub_through]),
-    the type of the parameter [H0[ζ]] lacks is glued at [a], at some
-    index; and the value's value at an argument glued at [a], when it has
+    what [H0[ζ]] denotes lacks a parameter too, whose type is glued at
+    [a], at some index ([glu_dmod_next_param_desc]); and the value's value at an argument glued at [a], when it has
     one, is glued as [H0[ζ]] applied to the argument, at every gluing of
     [a] the parameter's type is glued at: as [H0[ζ][↑] #0] over the
     middle context extended by the parameter, at [σ1] extended by the
@@ -1542,9 +1557,8 @@ Inductive glu_dmod : ctx -> sub -> ctx -> modexp -> dmod -> Prop :=
     Δ ⊢ˢ σ0 : Γ0 ->
     gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵐ H0 ≈ H0 ->
     next_param h a ->
-    (forall Δ' φ Γ1 ζ σ1 RH T B T1 Srt, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
-       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
-       type_sort Srt -> Γ1 ⊢ B : Srt -> exists (i : nat) P El, glu_type_at Δ' B[σ1] a i P El) ->
+    (forall Δ' φ Γ1 ζ σ1 RH, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
+       mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> exists T B T1, glu_dmod_next_param_desc Δ' Γ1 σ1 RH a T B T1) ->
     (forall Δ' φ Γ1 ζ σ1 RH T B T1 Srt, glu_sub_through Δ σ0 Γ0 Δ' φ Γ1 ζ σ1 ->
        mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ RH -> mdesc_mod_tele RH = Some T -> tele_view T = Some (B, T1) ->
        type_sort Srt -> Γ1 ⊢ B : Srt ->
