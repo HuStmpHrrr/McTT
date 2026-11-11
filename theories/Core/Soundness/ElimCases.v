@@ -224,12 +224,13 @@ Proof.
   pose proof (valid_groups_valid _ HVP p D Hl) as Hvg.
   pose proof (valid_group_closed _ _ Hvg) as Hc.
   pose proof (valid_group_lookup _ _ Hvg) as Hl2.
-  econstructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ (HMg _ _ Hμ)) | intros Γ' τ Hτ ].
+  split; [| exact (proj2 (HMg _ _ Hμ)) ].
+  econstructor; [ exact (glu_rel_exp_under_sub_ctx _ _ _ (proj1 (HMg _ _ Hμ))) | intros Γ' τ Hτ ].
   pose proof (glu_rel_sub_inst_typed _ _ _ Hτ) as Hτt.
   pose proof (sub_preserves_exp _ _ _ _ _ _ _ (Hwe _ _ _ Hel) Hτt) as Helτ.
   assert (HSi : type_sort (abs_kind_sort r Typeω@i)) by (apply type_sort_abs_kind; constructor).
   pose proof (glu_rel_exp_motive_instance_at p D Hc Γ m Mm (eb_motive bm) _ Ps M Γ' τ HMm HPl
-                (fun k P T HP HT => HPg _ _ _ HP HT _ _ Hμ) (HMg _ _ Hμ) (HAg _ _ _ HMm Hbm _ _ Hμ) HSi Hτ) as HAi.
+                (fun k P T HP HT => proj1 (HPg _ _ _ HP HT _ _ Hμ)) (proj1 (HMg _ _ Hμ)) (proj1 (HAg _ _ _ HMm Hbm _ _ Hμ)) HSi Hτ) as HAi.
   destruct Hmk.
   2:{ (** Into propositions: a proof of a glued proposition *)
       exact (glu_rel_exp_proof HAi Helτ). }
@@ -266,16 +267,16 @@ Proof.
   - intros k P T HP HT; destruct (HPs' _ _ _ HP HT) as (P0 & T0 & HP0 & HT0 & -> & ->).
     exact (sub_preserves_exp _ _ _ _ _ _ _ (Hwe _ _ _ (HPt _ _ _ HP0 HT0)) Hτt).
   - intros k P T HP HT; destruct (HPs' _ _ _ HP HT) as (P0 & T0 & HP0 & HT0 & -> & ->).
-    exact (glu_rel_exp_under_sub_inst _ _ _ (HPg _ _ _ HP0 HT0 _ _ Hμ) _ _ Hτ).
+    exact (glu_rel_exp_under_sub_inst _ _ _ (proj1 (HPg _ _ _ HP0 HT0 _ _ Hμ)) _ _ Hτ).
   - rewrite <- Emty; exact (sub_preserves_exp _ _ _ _ _ _ _ (Hwe _ _ _ HMt) Hτt).
-  - rewrite <- Emty; exact (glu_rel_exp_under_sub_inst _ _ _ (HMg _ _ Hμ) _ _ Hτ).
+  - rewrite <- Emty; exact (glu_rel_exp_under_sub_inst _ _ _ (proj1 (HMg _ _ Hμ)) _ _ Hτ).
   - (** The motives, at the instance lifted through their contexts *)
     intros k Mk b' HMk Hb'.
     rewrite nth_error_blocks_sub in Hb'.
     destruct (List.nth_error Bks k) as [[nm Z0 A Bs] |] eqn:Hb; cbn in Hb'; [| discriminate ]; injection Hb' as <-.
     pose proof (Hnm _ _ _ HMk Hb) as Enm; cbn in Enm; subst nm; cbn [eb_motive].
     rewrite <- EUs; erewrite <- elim_mctx_sub by eassumption.
-    pose proof (glu_rel_exp_under_sub_ext_inst (proj1 (HMxg _ _ HMk) _ _ Hμ) (HAg _ _ _ HMk Hb _ _ Hμ) Hτ) as H.
+    pose proof (glu_rel_exp_under_sub_ext_inst (proj1 (proj1 (HMxg _ _ HMk) _ _ Hμ)) (proj1 (HAg _ _ _ HMk Hb _ _ Hμ)) Hτ) as H.
     rewrite length_elim_mctx in H; exact H.
   - (** The branches, at the instance lifted through their contexts *)
     intros k Mk b' c gs n B' HMk Hb' Hcon Hin.
@@ -288,7 +289,7 @@ Proof.
     erewrite <- elim_branch_type_sub by eassumption.
     erewrite <- elim_bctx_sub; [| eassumption | eassumption | apply cons_lookup_in; eassumption | eassumption |].
     2:{ intros j Mj HMj; eapply blocks_motives_sub; eassumption. }
-    pose proof (glu_rel_exp_under_sub_ext_inst (proj1 (HBxg _ _ _ _ HMk Hcon) _ _ Hμ) (HBg _ _ _ _ _ _ _ HMk Hb Hcon Hin _ _ Hμ) Hτ) as H.
+    pose proof (glu_rel_exp_under_sub_ext_inst (proj1 (proj1 (HBxg _ _ _ _ HMk Hcon) _ _ Hμ)) (proj1 (HBg _ _ _ _ _ _ _ HMk Hb Hcon Hin _ _ Hμ)) Hτ) as H.
     rewrite length_elim_bctx in H; replace (cargs_nrec D gs + List.length gs + im_nn Mk)%nat
       with (im_nn Mk + List.length gs + cargs_nrec D gs)%nat in H by lia; exact H.
   - exact (blocks_scoped_of_elim _ _ _ _ _ _ _ _ _ _ Helτ).

@@ -1002,7 +1002,7 @@ Proof.
   pose proof (ind_mlookup_group _ _ Hg _ _ _ _ Hk) as Hl.
   pose proof (ind_selfpath_decl_field _ _ _ _ (ind_mlookup_selfpath _ _ Hg _ _ _ _ Hk)) as Hlt.
   exact (@glu_rel_exp_of_under_sub (gc_mk Θ0 Ξ0) _ _ _
-           (glu_ind _ _ _ _ _ _ _ (wf_ctx_empty _ _ Hg) (glu_ctx_empty _ _ Hg) Hl HMk Hlt _ _ He)).
+           (proj1 (glu_ind _ _ _ _ _ _ _ (wf_ctx_empty _ _ Hg) (glu_ctx_empty _ _ Hg) Hl HMk Hlt _ _ He))).
 Qed.
 
 (** The type former of a record type of a stored body, read bare, is

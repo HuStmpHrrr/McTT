@@ -1341,7 +1341,7 @@ Qed.
 (** An alias submodule of a saturated glued global module, the closure of
     the stored alias given the module's arguments, is glued as the
     selection: the stored alias literal is glued over no context
-    ([glu_gctx_embedding_alias]), moved to the selection's context, given
+    ([glu_gctx_embedding_alias_modexp]), moved to the selection's context, given
     the arguments ([glu_dmod_lit_alias_apps]), and moved to the selection,
     which has its module part ([global_sel_alias_desc]). *)
 Lemma glu_dmod_sel_global_alias : ⊢ᵍ gc_deps ⍮ gc_stack ->
