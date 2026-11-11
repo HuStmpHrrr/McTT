@@ -1833,6 +1833,55 @@ Section MembersFromSource.
       exact (glu_gctx_embedding_alias_modexp _ _ _ _ _ _ _ _ _ Hμ (gc_loc_of_loc _ _ Hg _ _ _ Hl2) HUs HU).
   Qed.
 
+  (** A selection typed at the source, read from an entry [y] of the
+      stored module [p] the module expression reads, names no open frame at
+      the target, at any instance: what it names is unchanged by the
+      instance ([mod_qname_sub_eq]); were it an open frame, so would the
+      module expression's path be ([frame_parent]), which the module
+      expression then denotes as [p] ([mdenote_unit], [mdenote_ind_frame],
+      [mdenote_record_frame]); but [p]'s child [y] is an entry at the
+      source, so at the target ([gc_sub_entry_field]), and no entry is an
+      open frame ([gc_entry_tele_nil]). *)
+  Lemma names_no_frame_sel_of_source : forall Γ H y RHs Θ0 p T Φs Ns0 E,
+      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θs Ξs Γ H RHs -> mdesc_mod RHs = Some (mdesc_closed Θ0 p T Φs Ns0) ->
+      gm_entry Φs (y :: nil) = Some E ->
+      forall Γ' τ, Γ' ⊢ˢ τ : Γ -> names_no_frame (me_mem H y)[τ]ᵐ.
+  Proof.
+    intros * HHs HmHs HRms He Γ' τ Hτ pq Hq.
+    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
+    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
+    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
+    pose proof (Hwm _ _ _ HHs) as HH.
+    cbn [modexp_sub mod_qname] in Hq.
+    rewrite (mod_qname_sub_eq _ _ _ _ (wf_sub_mod_compat _ _ _ _ _ Hτ) (proj1 (modexp_eq_slot_root _ _ _ _ _ HH))) in Hq.
+    destruct (mod_qname H) as [F |] eqn:HqF; [ injection Hq as <- | discriminate ].
+    change (gc_frame Ξ (qname_in F y) = None).
+    unfold gc_frame; destruct (gs_find_tele Ξ (qname_in F y)) as [[[[Δ [[|] Φ0 | E0]] [| ? ?]] T0] |] eqn:Ht;
+      try reflexivity; exfalso.
+    destruct (frame_parent _ _ Hg _ _ _ _ Ht) as (TF & ΦF & HfF & _).
+    (** The module expression then denotes its frame *)
+    assert (HD : exists D, mdenote Θ Ξ Γ H D /\ mdesc_mod D = Some (mdesc_closed nil F TF ΦF nil)).
+    { assert (HlF : gc_loc Θ Ξ F = Some (TF, ΦF)) by (unfold gc_loc; rewrite HfF; reflexivity).
+      destruct (gs_find_ind Ξ F) as [[[pq k] D] |] eqn:Hk.
+      - destruct (frame_ind_loc _ _ Hg _ _ _ _ Hk) as (U' & T1 & T' & Φ' & Mk & _ & Hfr & Hl' & HMk).
+        rewrite HfF in Hfr; injection Hfr as <- <-.
+        eexists; split; [ eapply mdenote_ind_frame; eassumption | reflexivity ].
+      - destruct (gs_find_record Ξ F) as [R |] eqn:Hr.
+        + eexists; split; [ eapply mdenote_record_frame; eassumption | reflexivity ].
+        + eexists; split; [ eapply mdenote_unit; [ exact HqF | exact (gc_unit_frame _ _ _ _ _ _ HqF HfF Hk Hr) ] | reflexivity ]. }
+    destruct HD as (D & HmD & HDm).
+    (** So it reads [p] as its frame *)
+    destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ HmHs) as (RH0 & HmH0 & HgrH).
+    rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmH0 _ HmD) in HgrH.
+    destruct (mdesc_grows_mod _ _ _ _ _ _ _ HgrH HRms) as (R2m & HR2m & Hgm).
+    rewrite HDm in HR2m; injection HR2m as <-.
+    inversion Hgm as [? Hc | ? ? Φ1 Φ2 ? ? Hl1 Hl2 | ]; subst; [ cbn in Hc; discriminate |].
+    (** whose child [y] is an entry, no frame *)
+    pose proof (proj2 (loc_entry _ _ Hgs _ _ _ Hl1 _ _) He) as Hc1.
+    destruct (gc_sub_entry_field _ _ _ _ Hsub _ _ Hc1) as (E' & Hc2 & _).
+    rewrite (gc_entry_tele_nil _ _ _ _ _ Ht) in Hc2; discriminate.
+  Qed.
+
   (** The member rule at the target of a sound embedding, at every
       instance of the context, for every member typed at the source whose
       δ-reduct, if any, is glued at the instances.  A type former under
