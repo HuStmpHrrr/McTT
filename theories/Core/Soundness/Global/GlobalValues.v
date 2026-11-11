@@ -21,7 +21,7 @@ From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases Instances IndCases.
 From Mctt.Core.Soundness.Inductives Require Import Args.
 From Mctt.Core.Soundness.Records Require Import Former.
-From Mctt.Core.Soundness Require Import RecordCases.
+From Mctt.Core.Soundness Require Import RecordCases ModuleValues.
 From Mctt.Core.Soundness.Global Require Import MemberValues.
 From Mctt.Core.Completeness.Global Require Args.
 From Mctt.Core.Completeness Require ContextCases.
@@ -159,6 +159,57 @@ Section Fixed_GCtx.
     pose proof (Mctt.Core.Completeness.LogicalRelation.Substitution.per_ctx_env_of_typ (κ := κ) HRT HAv) as HRT'.
     econstructor; [ econstructor; [ exact Ea | exact Ea | exact HR ] | exact Hcc |].
     exact (IH _ _ Hts' HC HRT' Hρ').
+  Qed.
+
+  (** Glued arguments extended by one more, glued at the next parameter's
+      type in the environment the arguments make. *)
+  Lemma glu_tele_args_snoc : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
+      forall κ A N c a (i : nat) P El,
+        List.nth_error ts (List.length Ns) = Some (ce_ass κ A) ->
+        ⟦ A ⟧ env_tele ρ ts args ↘ a -> DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+        Δ ⊢ A[sb_of_list sb_closed_base (Ms ++ Ns)] ® P -> Δ ⊢ N : A[sb_of_list sb_closed_base (Ms ++ Ns)] ® c ∈ El ->
+        glu_tele_args Δ ts ρ Ms (Ns ++ N :: nil) (args ++ c :: nil).
+  Proof.
+    induction 1 as [Δ ts ρ Ms | Δ κ0 A0 ts ρ Ms N0 Ns c0 args a0 i0 P0 El0 Ea0 Hga0 HAP0 HN0 Hrest IH];
+      intros * Hnth Ea Hga HAP HN.
+    - destruct ts as [| e ts]; cbn in Hnth; [ discriminate | injection Hnth as -> ].
+      rewrite List.app_nil_r in HAP, HN.
+      econstructor; [ exact Ea | exact Hga | exact HAP | exact HN | constructor ].
+    - cbn [List.app]; econstructor; [ exact Ea0 | exact Hga0 | exact HAP0 | exact HN0 |].
+      eapply (IH κ A); [ cbn in Hnth; exact Hnth | exact Ea | exact Hga | rewrite <- List.app_assoc; exact HAP | rewrite <- List.app_assoc; exact HN ].
+  Qed.
+
+  (** Glued arguments for the rest [ts] of a telescope, the arguments before
+      them glued as an environment of the telescope before ([Tpre]), make
+      a glued environment of the telescope: each argument extends it at
+      its type's closure ([cons_glu_sub_pred_closure]), moved to the
+      context's own index. *)
+  Lemma glu_tele_args_env : forall Δ ts ρ Ms Ns args, glu_tele_args Δ ts ρ Ms Ns args ->
+      forall Tpre Sb, all_assumptions ts -> List.length Ns = List.length ts ->
+        EG Tpre ∈ glu_ctx_env ↘ Sb -> Δ ⊢ˢ sb_of_list sb_closed_base Ms ® ρ ∈ Sb ->
+        forall SbT, EG List.rev ts ++ Tpre ∈ glu_ctx_env ↘ SbT ->
+        Δ ⊢ˢ sb_of_list sb_closed_base (Ms ++ Ns) ® env_tele ρ ts args ∈ SbT.
+  Proof.
+    induction 1 as [Δ ts ρ Ms | Δ κ A ts ρ Ms N Ns c args a i0 P0 El0 Ea Hga HAP HN Hrest IH];
+      intros * Hts Hlen HSb Hσ * HSbT.
+    - destruct ts; cbn in Hlen; [| discriminate ].
+      cbn [List.rev List.app] in HSbT; rewrite List.app_nil_r.
+      apply (functional_glu_ctx_env HSb HSbT); exact Hσ.
+    - cbn [List.rev] in HSbT; rewrite <- List.app_assoc in HSbT; cbn [List.app] in HSbT.
+      assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
+      destruct (glu_rel_ctx_app_r _ _ (ex_intro _ _ HSbT)) as [SbA HSbA].
+      destruct (glu_ctx_env_cons_clean_inversion HSb HSbA) as (iA & HAt & HAg & ESbA).
+      destruct (HAg _ _ _ Hσ) as [a' P' El' Ea' Hg' HAP'].
+      assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
+      destruct (glu_univ_elem_per_univ _ _ _ _ Hga) as [Ra HRa].
+      pose proof (glu_univ_elem_exp_conv (ex_intro _ Ra HRa) Hga Hg' HN HAP') as HN'.
+      pose proof (cons_glu_sub_pred_closure HSb Hσ HAt Ea Hg' HN') as Hσ'.
+      apply ESbA in Hσ'.
+      assert (EMs : sb_of_list sb_closed_base (Ms ++ N :: nil) = (sb_of_list sb_closed_base Ms),,N)
+        by (rewrite sb_of_list_app; reflexivity).
+      rewrite <- EMs in Hσ'.
+      pose proof (IH _ _ Hts' ltac:(cbn in Hlen; lia) HSbA Hσ' _ HSbT) as H.
+      rewrite <- List.app_assoc in H; exact H.
   Qed.
 
   (** The [Π] over a telescope with a last (outermost) parameter more is

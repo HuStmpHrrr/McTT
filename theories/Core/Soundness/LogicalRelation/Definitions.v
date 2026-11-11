@@ -2248,6 +2248,11 @@ Record glu_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gsta
         selected as ([eval_selm_global_alias]) *)
   ; glu_gctx_embedding_alias : forall p U,
       gc_module Θ1 Ξ1 p = Some (mr_alias U) -> @glu_unit_at (gc_mk Θ2 Ξ2) ⋅ U
+    (** The telescope of a module stored at a path of the source is a
+        context glued with its types at the target: the types of the
+        parameters a global module value lacks *)
+  ; glu_gctx_embedding_tele : forall p T Φ,
+      gc_loc Θ1 Ξ1 p = Some (T, Φ) -> @glu_rel_ctx_types (gc_mk Θ2 Ξ2) T
   }.
 
 (** ** The Gluing Judgments
