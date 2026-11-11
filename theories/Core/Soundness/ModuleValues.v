@@ -22,6 +22,24 @@ Import Domain_Notations Wk_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** ** The Slot Premise of a Context Gluing *)
+
+(** A glued context extended by a slot or a definition with a module part
+    glues the unit's literal at every glued environment of the context. *)
+Lemma glu_ctx_env_lit_inversion : forall {Γ TSb e U Sb},
+    EG Γ ∈ glu_ctx_env ↘ TSb ->
+    EG (e :: Γ) ∈ glu_ctx_env ↘ Sb ->
+    centry_unit e = Some U ->
+    forall Δ σ ρ h, Δ ⊢ˢ σ ® ρ ∈ TSb -> ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h -> glu_dmod Δ σ Γ (me_lit U) h.
+Proof.
+  intros * HΓ HeΓ HU * Hσ Hh.
+  inversion HeΓ; subst; cbn [centry_unit] in HU; try discriminate; injection HU as <-.
+  all: match goal with
+       | H0 : glu_ctx_env ?T0 _, Hv : forall (_ : ctx) (_ : sub) (_ : env) (_ : dmod), ?T0 _ _ _ -> _ |- _ =>
+           eapply Hv; [ apply (functional_glu_ctx_env HΓ H0); exact Hσ | exact Hh ]
+       end.
+Qed.
+
 (** ** Reading a Glued Module Value Through a Substitution *)
 
 (** A factorization of [σ1] weakened, through [ζ2], gives one of [σ0]
