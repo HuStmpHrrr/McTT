@@ -724,13 +724,6 @@ Proof.
   rewrite List.app_nil_r in H. exact H.
 Qed.
 
-Lemma apply_values_resp : forall ns ns' f f', set_eq f f' -> list_set_eq ns ns' -> set_eq (apply_values f ns) (apply_values f' ns').
-Proof.
-  intros ns ns' f f' Ef H. revert f f' Ef. unfold apply_values.
-  induction H as [| n n' ns ns' En _ IH]; intros f f' Ef; cbn [fold_left]; [exact Ef |].
-  apply IH. apply set_apply_resp; assumption.
-Qed.
-
 (** A term applied to arguments: its value applied to theirs. *)
 Lemma set_interp_apps_inv : forall Ns Γ ρ M v, set_interp T γ Γ ρ (apps_exp M Ns) v ->
     exists v0 ns, set_interp T γ Γ ρ M v0 /\ set_interp_list T γ Γ ρ Ns ns /\ v = apply_values v0 ns.

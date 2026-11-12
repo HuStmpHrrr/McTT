@@ -273,4 +273,203 @@ Proof.
   - intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ)).
 Qed.
 
+(** ** A Unit's Outermost Parameter Moved Into the Context *)
+
+(** A unit's value read at an environment equal pointwise. *)
+Lemma set_interp_gunit_env_ext : forall Γ ρ ρ' U m, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> (forall x, ρ x = ρ' x) ->
+    set_interp_gunit T γ Γ ρ U m -> set_interp_gunit T γ Γ ρ' U m.
+Proof.
+  intros * Hc E Hm.
+  assert (Hs : wk_setting Γ ρ nil Γ Γ wk_id ρ') by (constructor; [reflexivity | exact (wf_wk_id _ _ _ Hc) | intros x; exact (E x)]).
+  pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (set_interp_wk_all T γ))))) _ _ _ _ Hm nil Γ Γ wk_id ρ' Hs) as H.
+  cbn [tele_wk List.app List.length wk_qn] in H.
+  rewrite (proj1 (proj2 (proj2 (proj2 syn_wk_id_ext))) U wk_id ltac:(intros x; reflexivity)) in H. exact H.
+Qed.
+
+(** A unit's proofness, its outermost parameter no slot. *)
+Lemma unit_member_proofs_unbind : forall κs κ X Δ D ys x,
+    unit_member_proofs γ κs (gu_mk (Δ ++ [ce_ass κ X]) D) ys x =
+    unit_member_proofs γ (push_slot_proofs κs (no_slot_proofs γ)) (gu_mk Δ D) ys x.
+Proof. intros. rewrite !unit_member_proofs_tele_out, List.rev_app_distr. reflexivity. Qed.
+
+Lemma env_slot_proofs_extend_term : forall ρ κ v,
+    slot_proofs_eq (env_slot_proofs γ (set_env_extend ρ (set_entry_term κ v))) (push_slot_proofs (env_slot_proofs γ ρ) (no_slot_proofs γ)).
+Proof. intros ρ κ v [| s] ys x; reflexivity. Qed.
+
+(** [set_unit_params_with Γ ρ Δ κ X D m a P f]: the module [m] the unit
+    [gu_mk (Δ ++ [ce_ass κ X]) D] has at [ρ] is the function [f] over the
+    value [a] of its outermost parameter's type, of the proofness [P]; at
+    each value of [a], [f] is the unit without the parameter, over the
+    context extended by it. *)
+Record set_unit_params_with (Γ : ctx) (ρ : set_env) (Δ : ctx) (κ : abs_kind) (X : exp) (D : moddef) (m : set_module)
+    (a : aczel_set) (P : member_proofness) (f : aczel_set -> set_module) : Prop :=
+  { (** [m] is the function [f] over [a], of the proofness [P] *)
+    set_unit_params_module : m = set_module_params a P f
+    (** [a] is the parameter's type's value *)
+  ; set_unit_params_type : set_interp T γ Γ ρ X a
+    (** [P] is the unit's proofness, read off its syntax *)
+  ; set_unit_params_proofs : forall ys x, P ys x = unit_member_proofs γ (env_slot_proofs γ ρ) (gu_mk (Δ ++ [ce_ass κ X]) D) ys x
+    (** At each value of [a], [f] is the unit without the parameter *)
+  ; set_unit_params_body : forall v, set_mem v (code_carrier a) ->
+      set_interp_gunit T γ (ce_ass κ X :: Γ) (set_env_extend ρ (set_entry_term κ v)) (gu_mk Δ D) (f v) }.
+
+(** The function a unit over one more parameter denotes, at the
+    parameter's value, is the unit without it over the context extended. *)
+Lemma set_unit_params_unbind : forall Γ ρ Δ κ X D m, ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ X :: Γ ->
+    set_interp_gunit T γ Γ ρ (gu_mk (Δ ++ [ce_ass κ X]) D) m ->
+    exists a P f, set_unit_params_with Γ ρ Δ κ X D m a P f.
+Proof.
+  intros * Hc Hm. inversion Hm as [? ? ? ? P m' HP HL]; subst.
+  rewrite List.rev_app_distr in HL. cbn [List.rev List.app] in HL.
+  inversion HL as [| ? ? ? ? ? ? ? a f _ HA Hf | | |]; subst.
+  exists a, P, f. constructor; [reflexivity | exact HA | exact HP |].
+  intros v Hv. apply (set_interp_gunit_mk T γ _ _ _ _ P); [| exact (Hf _ Hv)].
+  intros ys x. rewrite HP, unit_member_proofs_unbind.
+  apply (proj1 (proj2 (unit_member_proofs_resp_all γ))). intros s ys' x'. symmetry. apply env_slot_proofs_extend_term.
+Qed.
+
+(** The module a unit over one more parameter denotes at the parameter's
+    value, read at an environment of the context extended by it. *)
+Definition set_module_at_param (F : set_env -> set_module) (ρ : set_env) : set_module :=
+  match F (set_env_tail ρ) with set_module_params _ _ f => f (set_entry_value (ρ 0)) | m => m end.
+
+(** A unit over one more parameter, denoting, denotes without it over the
+    context extended. *)
+Lemma set_unit_denotes_unbind : forall Γ Δ κ X D F, set_ctx T γ (ce_ass κ X :: Γ) -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ X :: Γ ->
+    set_modexp_denotes T γ Γ (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) F ->
+    set_modexp_denotes T γ (ce_ass κ X :: Γ) (me_lit (gu_mk Δ D)) (set_module_at_param F).
+Proof.
+  intros * HC Hc HF. apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HC). intros ρ' [Ht He].
+  cbn [set_entry_rel] in He. destruct He as (x & x' & a' & [Hl _ Ha' Hx _]).
+  pose proof (set_modexp_denotes_exists _ _ _ _ _ HF _ Ht) as Hm.
+  inversion Hm; subst.
+  match goal with Hn : set_interp_gunit _ _ _ _ _ _ |- _ =>
+    destruct (set_unit_params_unbind _ _ _ _ _ _ _ Hc Hn) as (a & P & f & [Heq Ha _ Hf]) end.
+  unfold set_module_at_param. rewrite Heq, Hl. cbn [set_entry_value]. constructor.
+  apply (set_interp_gunit_env_ext _ (set_env_extend (set_env_tail ρ') (set_entry_term κ x))); [exact Hc | intros [| s]; [exact (eq_sym Hl) | reflexivity] |].
+  apply Hf. eapply set_mem_eq_r; [| exact Hx]. apply code_carrier_resp.
+  exact (set_interp_functional T γ Hfn Hmods _ _ _ _ Ha' _ _ (set_env_rel_eq T γ _ _ _ Ht) Ha).
+Qed.
+
+(** Hence it relates to itself there. *)
+Lemma set_unit_rel_unbind : forall Γ Δ κ X D, set_ctx T γ (ce_ass κ X :: Γ) -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ X :: Γ ->
+    set_modexp_rel T γ Γ (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) ->
+    set_modexp_rel T γ (ce_ass κ X :: Γ) (me_lit (gu_mk Δ D)) (me_lit (gu_mk Δ D)).
+Proof.
+  intros * HC Hc (F & _ & [HF _ _]). pose proof (set_unit_denotes_unbind _ _ _ _ _ _ HC Hc HF) as HG.
+  exists (set_module_at_param F), (set_module_at_param F). constructor; [exact HG | exact HG |].
+  intros ρ Hρ. exact (set_modexp_denotes_unique _ _ _ _ _ HG _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HG _ Hρ)).
+Qed.
+
+Lemma set_params_evaluated_unbind : forall Γ Δ e l, set_params_evaluated T γ Γ (Δ ++ [e]) l -> set_params_evaluated T γ (e :: Γ) Δ l.
+Proof.
+  intros * H Δ1 κ A Δ2 ->. specialize (H Δ1 κ A (Δ2 ++ [e]) ltac:(rewrite <- List.app_assoc; reflexivity)).
+  rewrite <- List.app_assoc in H. exact H.
+Qed.
+
+(** A valid literal over one more parameter is valid without it over the
+    context extended. *)
+Lemma set_valid_unit_unbind : forall Γ Δ κ X D, set_valid_unit T γ Γ (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) ->
+    set_valid_unit T γ (ce_ass κ X :: Γ) (me_lit (gu_mk Δ D)).
+Proof.
+  intros * HK. pose proof (set_valid_unit_wf T γ _ _ HK) as Hw.
+  pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m] in Hf.
+  pose proof (unit_full_unabs _ _ _ _ _ _ Hf) as Hf1; cbn [List.app] in Hf1.
+  pose proof (wf_me_lit _ _ _ _ _ (unit_eq_of_full _ _ _ _ Hf1)) as Hw1.
+  pose proof (ctx_app_wf_tail _ _ _ _ (proj1 (unit_full_ctx _ _ _ _ _ Hf1))) as Hc.
+  inversion HK as [| ? Δ0 Φ Φx Hb Hsub Hop | ? Δ0 E Hal HE]; subst;
+    [exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |].
+  - (* a body *)
+    destruct Hb as [_ Hx HΔ [l Hl] HΓ HC Hs Hsh Hshx Hr Hro].
+    rewrite <- !List.app_assoc in Hx, HC, Hs, Hro, Hsub, Hop; cbn [List.app] in Hx, HC, Hs, Hro, Hsub, Hop.
+    pose proof (set_ctx_app_r T γ _ _ (set_ctx_app_r T γ _ _ HC)) as HC1.
+    apply set_valid_unit_body with (Φx := Φx); [| exact Hsub | exact Hop].
+    constructor; [exact Hw1 | exact Hx | exact (proj1 (proj1 (List.Forall_app _ _ _) HΔ)) | exists l; exact (set_params_evaluated_unbind _ _ _ _ Hl)
+                 | exact HC1 | exact HC | exact Hs | exact Hsh | exact Hshx | exact (set_unit_rel_unbind _ _ _ _ _ HC1 Hc Hr) | exact Hro].
+  - (* an alias *)
+    destruct Hal as [_ HΔ [l Hl] HΓ HCΔ Hr Ht].
+    rewrite <- List.app_assoc in HCΔ, Ht, HE; cbn [List.app] in HCΔ, Ht, HE.
+    pose proof (set_ctx_app_r T γ _ _ HCΔ) as HC1.
+    apply set_valid_unit_alias; [| exact HE].
+    constructor; [exact Hw1 | exact (proj1 (proj1 (List.Forall_app _ _ _) HΔ)) | exists l; exact (set_params_evaluated_unbind _ _ _ _ Hl)
+                 | exact HC1 | exact HCΔ | exact (set_unit_rel_unbind _ _ _ _ _ HC1 Hc Hr) | exact Ht].
+Qed.
+
+(** ** [β] *)
+
+(** A literal given its outermost parameter has the proofness of the
+    literal instantiated: an argument holds no slot. *)
+Lemma unit_member_proofs_beta : forall κs Δ κ X D N ys x,
+    unit_member_proofs γ κs (gu_mk (Δ ++ [ce_ass κ X]) D) ys x = unit_member_proofs γ κs (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N))) ys x.
+Proof.
+  intros. rewrite unit_member_proofs_unbind. symmetry.
+  apply (proj2 (unit_member_proofs_sub_all γ)). intros [| s] ys' x'; reflexivity.
+Qed.
+
+(** A literal body or alias given its outermost parameter is the literal
+    instantiated. *)
+Lemma set_rule_me_beta : forall Γ Δ κ X D N, set_ctx T γ Γ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) N ≈ me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N))) ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : X ->
+    set_unit_eq T γ Γ (gu_mk (Δ ++ [ce_ass κ X]) D) (gu_mk (Δ ++ [ce_ass κ X]) D) -> set_exp_eq T γ Γ X N N ->
+    set_modexp_eq T γ Γ (me_app (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) N) (me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N)))).
+Proof.
+  intros * HΓ Hβ HNw (FU & _ & [HFU _ _ HKU _]) (FX & FN & _ & [HFX HFN _ _ HNm]).
+  pose proof (wf_modexp_eq_refl_left Hβ) as HwL.
+  pose proof (set_valid_unit_unbind _ _ _ _ _ HKU) as HKI.
+  pose proof (presup_modexp_eq_ctx (set_valid_unit_wf T γ _ _ HKI)) as Hc.
+  pose proof (set_valid_unit_ctx T γ _ _ HKI) as HCe.
+  (* the argument instantiates the parameter *)
+  destruct (ctx_decomp_kind Hc) as (Srt & HS & HX).
+  pose proof (set_gsub_single T γ _ _ _ _ _ _ HΓ (wf_sub_single _ _ _ _ _ _ _ HX HS HNw) HFX HFN HNm) as Hg.
+  assert (Hs : set_moves_with T γ nil (ce_ass κ X :: Γ) Γ (sb_extend sb_id (se_exp N)) (fun ρ => set_env_extend ρ (set_entry_term κ (FN ρ))))
+    by (constructor; [exact Hg | exact HΓ | exact HCe | exact HΓ | exact Hc]).
+  assert (Hκ : set_sub_slots_coherent γ (ce_ass κ X :: Γ) Γ (sb_extend sb_id (se_exp N))).
+  { intros κs Hκs. split; [| intros U0 HU0; discriminate].
+    eapply set_slots_coherent_resp with (κs := κs); [intros s ys x; reflexivity | exact Hκs]. }
+  pose proof (proj1 (set_valid_unit_modexp_moved T γ Hfn Hmods Hgw) _ _ HKI _ _ _ Hs Hκ) as HK'.
+  change (set_valid_unit T γ Γ (me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N))))) in HK'.
+  (* the denotations *)
+  pose proof (set_unit_denotes_unbind _ _ _ _ _ _ HCe Hc HFU) as HG.
+  pose proof (set_modexp_denotes_moved T γ Hfn Hmods _ _ _ _ _ _ _ Hs HG) as HGm.
+  change (set_modexp_denotes T γ Γ (me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N))))
+            (fun ρ => set_module_at_param FU (set_env_extend ρ (set_entry_term κ (FN ρ))))) in HGm.
+  assert (HFL : set_modexp_denotes T γ Γ (me_app (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) N) (fun ρ => apply_module (FU ρ) (FN ρ))).
+  { apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
+    exact (set_interp_me_app T γ _ _ _ _ _ _ (set_modexp_denotes_exists _ _ _ _ _ HFU _ Hρ) (set_denotes_exists _ _ _ _ _ HFN _ Hρ)). }
+  assert (Hrel : set_modexp_rel T γ Γ (me_app (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) N) (me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N))))).
+  { exists (fun ρ => apply_module (FU ρ) (FN ρ)), (fun ρ => set_module_at_param FU (set_env_extend ρ (set_entry_term κ (FN ρ)))).
+    constructor; [exact HFL | exact HGm |]. intros ρ Hρ.
+    pose proof (set_modexp_denotes_exists _ _ _ _ _ HFU _ Hρ) as Hm. inversion Hm; subst.
+    match goal with Hn : set_interp_gunit _ _ _ _ _ _ |- _ =>
+      destruct (set_unit_params_unbind _ _ _ _ _ _ _ Hc Hn) as (a & P & f & [Heq Ha HP Hf]) end.
+    pose proof (set_denotes_exists _ _ _ _ _ HFX _ Hρ) as HXa.
+    assert (Hv : set_mem (FN ρ) (code_carrier a)).
+    { eapply set_mem_eq_r; [| exact (HNm _ Hρ)]. apply code_carrier_resp.
+      exact (set_interp_functional T γ Hfn Hmods _ _ _ _ HXa _ _ (set_env_rel_eq T γ _ _ _ Hρ) Ha). }
+    pose proof (Hf _ Hv) as Hfv.
+    assert (Hρe : set_env_in T γ (ce_ass κ X :: Γ) (set_env_extend ρ (set_entry_term κ (FN ρ))))
+      by exact (set_env_in_extend_ass T γ _ _ _ _ _ _ Hρ HXa (HNm _ Hρ)).
+    pose proof (set_modexp_denotes_unique _ _ _ _ _ HG _ _ _ Hρe (set_interp_me_lit T γ _ _ _ _ Hfv)) as HGf.
+    unfold set_module_at_param in HGf |- *. change (set_env_tail (set_env_extend ρ (set_entry_term κ (FN ρ)))) with ρ in HGf |- *.
+    rewrite Heq in HGf |- *. cbn [apply_module set_env_extend set_entry_value] in HGf |- *.
+    apply set_module_eq_cond_l; [exact Hv | |].
+    - exact HGf.
+    - intros ys x. rewrite HP.
+      rewrite (proj1 (proj2 (proj2 (proj2 (proj2 (set_interp_member_proofs_all T γ))))) _ _ _ _ Hfv ys x).
+      rewrite unit_member_proofs_unbind.
+      apply (proj1 (proj2 (unit_member_proofs_resp_all γ))). intros s ys' x'. symmetry. apply env_slot_proofs_extend_term. }
+  (* the syntactic descriptions *)
+  pose proof (set_valid_unit_wf T γ _ _ HKU) as HwU.
+  pose proof (unit_eq_of_full _ _ _ _ (proj1 (modexp_gen _ _ _ _ _ HwU))) as HUU.
+  destruct (me_denotes _ _ _ _ _ HwU) as (R0 & _ & HR0 & _).
+  inversion HR0; subst; try match goal with Hq : mod_qname _ = Some _ |- _ => cbn in Hq; discriminate end.
+  match goal with Hu : udenote _ _ _ None _ _ |- _ =>
+    destruct (mdenote_beta _ _ _ _ _ _ _ N HUU _ Hu) as (R' & HmL & HmK & HR') end.
+  apply set_modexp_eq_of_rel; [exact Hrel | | exact (set_valid_modexp_of_unit _ _ HK')].
+  apply (set_valid_modexp_intro T γ _ _ (me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N)))) R' R' R'); [| exact HK'].
+  constructor; [exact HwL | exact HmL | exact HR' | exact Hrel | exact HmK | exact HR' |].
+  intros κs _ ys x. cbn [modexp_member_proofs]. apply unit_member_proofs_beta.
+Qed.
+
 End ModuleCases.
