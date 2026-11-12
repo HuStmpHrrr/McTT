@@ -66,15 +66,32 @@ Lemma set_interp_pi_inv : forall Γ ρ κd κc A B a, set_interp T γ Γ ρ (a_p
       ((κc = ak_propositional /\ a = forall_code a1 F) \/ (κc <> ak_propositional /\ a = pi_code a1 F)).
 Proof. intros * H. inversion H; subst; do 2 eexists; (split; [eassumption | split; [eassumption | eauto]]). Qed.
 
+(** [set_interp_fn_with Γ ρ A M v κd κc C B a X F]: the λ [a_fn A M],
+    typed at a [Π] into types, has the value [v], the graph of the family
+    [F] of its body's values on [X], a set equal to the carrier of the
+    domain's value [a]. *)
+Record set_interp_fn_with (Γ : ctx) (ρ : set_env) (A M : exp) (v : aczel_set) (κd κc : abs_kind) (C B : exp)
+    (a X : aczel_set) (F : aczel_set -> aczel_set) : Prop :=
+  { (** The λ is typed at the [Π] *)
+    set_interp_fn_with_typed : gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc C B
+    (** into types *)
+  ; set_interp_fn_with_kind : κc <> ak_propositional
+    (** The domain reads [a] *)
+  ; set_interp_fn_with_domain : set_interp T γ Γ ρ A a
+    (** [X] is its carrier *)
+  ; set_interp_fn_with_set : set_eq X (code_carrier a)
+    (** The body reads [F x] at each element [x] of the carrier *)
+  ; set_interp_fn_with_body : forall x, set_mem x (code_carrier a) ->
+      set_interp T γ (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) M (F x)
+    (** The value is the graph *)
+  ; set_interp_fn_with_value : v = graph_set X F }.
+
 (** A λ's value: the empty set, typed at a [Π] into propositions, or the
     graph of a family of its body's values, typed at another. *)
 Lemma set_interp_fn_inv : forall Γ ρ A M v, set_interp T γ Γ ρ (a_fn A M) v ->
     (exists κd C B, gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd ak_propositional C B /\ v = empty_set) \/
-    (exists κd κc C B a F, gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc C B /\ κc <> ak_propositional /\
-       set_interp T γ Γ ρ A a /\
-       (forall x, set_mem x (code_carrier a) -> set_interp T γ (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) M (F x)) /\
-       v = graph_set (code_carrier a) F).
-Proof. intros * H. inversion H; subst; [left; eauto | right; do 6 eexists; eauto]. Qed.
+    (exists κd κc C B a X F, set_interp_fn_with Γ ρ A M v κd κc C B a X F).
+Proof. intros * H. inversion H; subst; [left; eauto | right; do 7 eexists; constructor; eauto]. Qed.
 
 (** ** Walking a Unit's Parameters *)
 
@@ -150,14 +167,14 @@ Proof.
     rewrite ctx_fn_app, ctx_pi_at_app in Hty. cbn [ctx_fn ctx_pi_at] in Hty.
     pose proof (set_env_rel_eq T γ _ _ _ Hρ) as Eρ.
     pose proof (set_interp_params_family_respects _ _ _ _ _ _ _ _ _ x Eρ Hf) as Hfr.
-    destruct (set_interp_fn_inv _ _ _ _ _ Hn) as [(κd & C & B' & Hty' & ->) | (κd & κc & C & B' & a & F & Hty' & Hκc & HA1 & HF & ->)].
+    destruct (set_interp_fn_inv _ _ _ _ _ Hn) as [(κd & C & B' & Hty' & ->) | (κd & κc & C & B' & a & X & F & [Hty' Hκc HA1 EX HF ->])].
     + (* a proof *)
       destruct (Hfn _ _ _ _ _ _ _ _ _ _ _ Hty Hty') as [_ ->]. cbn [select_term]. rewrite HP. apply set_eq_refl.
     + destruct (Hfn _ _ _ _ _ _ _ _ _ _ _ Hty Hty') as [<- <-]. cbn [select_term]. rewrite HP.
       destruct r; [| contradiction |]; cbn [is_proof_kind].
       all: pose proof (set_interp_functional T γ Hfn Hmods _ _ _ _ HA _ _ Eρ HA1) as E01.
       all: pose proof (code_carrier_resp _ _ E01) as Ec.
-      all: apply (graph_set_resp_on _ _ _ _ Ec); intros v v' Hv E.
+      all: apply (graph_set_resp_on _ _ _ _ (set_eq_trans _ _ _ Ec (set_eq_sym _ _ EX))); intros v v' Hv E.
       all: pose proof (set_mem_eq_l _ _ _ E Hv) as Hv'.
       all: eapply set_eq_trans; [exact (Hfr _ _ Hv E) |].
       all: apply (IH _ _ P D _ _ B N x HL' (set_env_rel_extend_ass T γ _ _ _ _ _ _ _ _ Hρ HA Hv' (set_eq_refl v')) (Hf _ Hv') HP);

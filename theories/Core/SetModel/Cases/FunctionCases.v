@@ -248,14 +248,14 @@ Lemma set_denotes_fn : forall Γ κd κc A M C B FA FM, fn_kinds_unique -> set_c
 Proof.
   intros * Hk HΓ HT Hc HA HM. destruct (set_env_rel_per _ _ _ HΓ) as [Hsym Htrans]. constructor.
   - intros ρ Hρ. pose proof (set_denotes_exists _ _ _ _ _ HA _ Hρ) as Ha.
-    destruct κc; cbn [fn_denotation]; [eapply set_interp_fn; [exact HT | discriminate | exact Hc | exact Ha |]
+    destruct κc; cbn [fn_denotation]; [eapply set_interp_fn; [exact HT | discriminate | exact Hc | exact Ha | apply set_eq_refl |]
                                      | eapply set_interp_fn_proof; exact HT
-                                     | eapply set_interp_fn; [exact HT | discriminate | exact Hc | exact Ha |]];
+                                     | eapply set_interp_fn; [exact HT | discriminate | exact Hc | exact Ha | apply set_eq_refl |]];
       intros x Hx; apply (set_denotes_exists _ _ _ _ _ HM); exact (set_env_in_extend_ass T γ Γ ρ κd A _ x Hρ Ha Hx).
   - intros ρ ρ' v Hr Hv.
     assert (Hρ : set_env_in T γ Γ ρ) by (eapply Htrans; [exact Hr | apply Hsym; exact Hr]).
     pose proof (set_denotes_exists _ _ _ _ _ HA _ Hρ) as Ha.
-    inversion Hv as [ | | | | | | | | | | | | | | | | | | | | | | | ? ? ? ? κd' C' B' HT' | ? ? ? ? κd' κc' C' B' a' F' HT' Hκ' _ HA' HM' | | | | | | | | | ];
+    inversion Hv as [ | | | | | | | | | | | | | | | | | | | | | | | ? ? ? ? κd' C' B' HT' | ? ? ? ? κd' κc' C' B' a' X' F' HT' Hκ' _ HA' EX' HM' | | | | | | | | | ];
       subst.
     + destruct (Hk _ _ _ _ _ _ _ _ _ _ _ HT HT') as [_ ->]. apply set_eq_refl.
     + destruct (Hk _ _ _ _ _ _ _ _ _ _ _ HT HT') as [<- <-].
@@ -265,7 +265,8 @@ Proof.
         apply (set_denotes_unique _ _ _ _ _ HM _ _ _ (set_env_rel_extend_ass T γ Γ ρ ρ' κd A _ x x' Hr Ha Hx E)).
         apply HM'. eapply set_mem_eq_l; [exact E |]. eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact Ea | exact Hx]. }
       destruct κc; [| contradiction |]; cbn [fn_denotation]; apply set_eq_sym;
-        (apply graph_set_resp_on; [apply code_carrier_resp; apply set_eq_sym; exact Ea | exact Hacross]).
+        (apply graph_set_resp_on; [eapply set_eq_trans; [apply code_carrier_resp; apply set_eq_sym; exact Ea | apply set_eq_sym; exact EX']
+                                  | exact Hacross]).
 Qed.
 
 (** The λ rule: [λ A M : Π{κd,κc} A B]. *)

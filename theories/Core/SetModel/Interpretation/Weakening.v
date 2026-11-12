@@ -192,8 +192,8 @@ Proof.
   - intros Ξ ρ κd κc A B a F Hκ Hc _ IHA _ IHB; start; constructor; [exact Hκ | wkctx Hc (ce_ass κd A) | same IHA |].
     intros x Hx. under (IHB x Hx) (ce_ass κd A).
   - intros Ξ ρ A M κd C B HT; start. eapply set_interp_fn_proof. exact (typing_wk _ _ _ _ _ _ HT Hφ).
-  - intros Ξ ρ A M κd κc C B a F HT Hκ Hc _ IHA _ IHM; start.
-    eapply set_interp_fn; [exact (typing_wk _ _ _ _ _ _ HT Hφ) | exact Hκ | wkctx Hc (ce_ass κd A) | same IHA |].
+  - intros Ξ ρ A M κd κc C B a X F HT Hκ Hc _ IHA EX _ IHM; start.
+    eapply set_interp_fn; [exact (typing_wk _ _ _ _ _ _ HT Hφ) | exact Hκ | wkctx Hc (ce_ass κd A) | same IHA | exact EX |].
     intros x Hx. under (IHM x Hx) (ce_ass κd A).
   - intros Ξ ρ M N f n _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
   - intros Ξ ρ x; start. rewrite (Hag x). constructor.

@@ -227,14 +227,19 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 | set_interp_fn_proof : forall Γ ρ A M κd C B,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd ak_propositional C B ->
     set_interp Γ ρ (a_fn A M) empty_set
-(** Any other λ: the graph of its body on the domain *)
-| set_interp_fn : forall Γ ρ A M κd κc C B a F,
+(** Any other λ: the graph of its body on the domain, given as any set
+    equal to the domain's carrier: the domain's reading is fixed only up
+    to equality (an elimination's is), and without the axiom of choice
+    no function of the environment picks one, so a λ's value is taken
+    over any set equal to it, as [set_elim_resp] does for results *)
+| set_interp_fn : forall Γ ρ A M κd κc C B a X F,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc C B -> κc <> ak_propositional ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     set_interp Γ ρ A a ->
+    set_eq X (code_carrier a) ->
     (forall x, set_mem x (code_carrier a) ->
        set_interp (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) M (F x)) ->
-    set_interp Γ ρ (a_fn A M) (graph_set (code_carrier a) F)
+    set_interp Γ ρ (a_fn A M) (graph_set X F)
 (** An application *)
 | set_interp_app : forall Γ ρ M N f n, set_interp Γ ρ M f -> set_interp Γ ρ N n ->
     set_interp Γ ρ (a_app M N) (set_apply f n)

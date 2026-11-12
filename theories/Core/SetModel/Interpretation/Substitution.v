@@ -195,9 +195,9 @@ Proof.
     intros x Hx. under (IHB x Hx) (ce_ass κd A) Hc.
   - intros Ξ ρ A M κd C B HT; start. eapply set_interp_fn_proof.
     exact (typing_sub _ _ _ _ _ _ HT (sub_setting_typed _ _ _ _ _ _ _ _ Hs)).
-  - intros Ξ ρ A M κd κc C B a F HT Hκ Hc _ IHA _ IHM; start.
+  - intros Ξ ρ A M κd κc C B a X F HT Hκ Hc _ IHA EX _ IHM; start.
     eapply set_interp_fn; [exact (typing_sub _ _ _ _ _ _ HT (sub_setting_typed _ _ _ _ _ _ _ _ Hs)) | exact Hκ
-                          | subctx Hc (ce_ass κd A) Hs | same IHA |].
+                          | subctx Hc (ce_ass κd A) Hs | same IHA | exact EX |].
     intros x Hx. under (IHM x Hx) (ce_ass κd A) Hc.
   - intros Ξ ρ M N f n _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
   - intros Ξ ρ x; start. exact (proj1 (sub_setting_var _ _ _ _ _ _ _ _ x HΞ Hs)).

@@ -249,13 +249,16 @@ Proof.
   - intros Γ ρ A M κd C B HT Γ' ρ' v' HR He H'. inv H'; [apply set_eq_refl |].
     match goal with HT' : gc_deps ⍮ gc_stack ⍮ _ ⊢ a_fn _ _ : a_pi _ _ _ _, Hk : _ <> ak_propositional |- _ =>
       destruct (R_fn_kinds _ _ _ _ _ _ _ _ _ _ _ _ HR HT HT') as [_ <-]; contradiction end.
-  - intros Γ ρ A M κd κc C B a F HT Hκ Hc _ IHA _ IHM Γ' ρ' v' HR He H'. inv H'.
+  - intros Γ ρ A M κd κc C B a X F HT Hκ Hc _ IHA EX _ IHM Γ' ρ' v' HR He H'. inv H'.
     + match goal with HT' : gc_deps ⍮ gc_stack ⍮ _ ⊢ a_fn _ _ : a_pi _ ak_propositional _ _ |- _ =>
         destruct (R_fn_kinds _ _ _ _ _ _ _ _ _ _ _ _ HR HT HT') as [_ ->]; contradiction end.
     + match goal with HT' : gc_deps ⍮ gc_stack ⍮ _ ⊢ a_fn _ _ : a_pi ?κd' _ _ _ |- _ =>
         destruct (R_fn_kinds _ _ _ _ _ _ _ _ _ _ _ _ HR HT HT') as [<- _] end.
       pose proof (IHA _ _ _ HR He ltac:(eassumption)) as Ea.
-      apply graph_set_resp_on; [apply code_carrier_resp; exact Ea |]. intros x x' Hx E.
+      match goal with EX' : set_eq _ (code_carrier _) |- _ =>
+        apply graph_set_resp_on; [eapply set_eq_trans; [exact EX | eapply set_eq_trans; [apply code_carrier_resp; exact Ea |
+                                    apply set_eq_sym; exact EX']] |] end.
+      intros x x' Hx E. apply (set_mem_eq_r _ _ _ EX) in Hx.
       eapply IHM; [exact Hx | apply R_extend_one; [exact HR | exact Hc | eassumption]
                      | apply set_env_eq_extend; [exact He | constructor; exact E] |];
       match goal with HB' : forall y, set_mem y _ -> _ |- _ => apply HB' end; eapply set_mem_eq_l; [exact E |].
