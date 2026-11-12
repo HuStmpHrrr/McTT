@@ -951,6 +951,80 @@ Proof.
   - inversion H'; subst. auto.
 Qed.
 
+  Variable U : aczel_set.
+  Hypothesis HU : grothendieck U.
+  (** The shapes are a member of [U] *)
+  Hypothesis Hshapes : set_mem tree_shapes U.
+  (** So are the positions of each shape *)
+  Hypothesis Hpositions : forall a, set_mem a tree_shapes -> set_mem (shape_positions a) U.
+  (** The non-uniform telescopes respect equality *)
+  Hypothesis Hnparams : forall k Mk, List.nth_error (set_group_members G) k = Some Mk ->
+    Forall list_function_respects (set_member_nparam_types Mk).
+  (** The recursive targets of a good construction are good *)
+  Hypothesis Htargets : forall S k Mk cs ns vals, good_point k ns -> List.nth_error (set_group_members G) k = Some Mk ->
+    In cs (set_member_constructors Mk) -> arguments_fit G U S (us ++ ns) (set_constructor_arguments cs) vals ->
+    targets_good (us ++ ns) (set_constructor_arguments cs) vals.
+
+  (** The construction trees. *)
+  Let trees : aczel_set := tree_set U tree_shapes shape_positions.
+
+  Section Children.
+    Variable points_so_far : aczel_set.
+    (** Every good element of a candidate carrier of [points_so_far] has a
+        tree *)
+    Hypothesis HS : forall k ns w, good_point k ns -> set_mem w (candidate_carrier U points_so_far k ns) ->
+      exists t, set_mem t trees /\ tree_decodes k ns t w.
+
+Lemma children_exist : forall pre gs vals, arguments_fit G U points_so_far pre gs vals -> targets_good pre gs vals -> Forall argument_respects gs ->
+    forall j pos, position_of gs (fst (split_arguments gs vals)) pre j pos ->
+    exists t, set_mem t trees /\ child_tree gs (fst (split_arguments gs vals)) pre j (snd (split_arguments gs vals)) pos t.
+Proof.
+  intros pre gs vals H. induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams ls gs a vals Ha H IH];
+    intros Htg Hr j pos Hpos; inversion Htg as [| ? ? ? ? ? ? Htg' | ? ? ? ? ? ? ? ? ? Hgood Htg']; subst;
+    inversion Hr as [| ? ? Hg Hgs]; subst; cbn [split_arguments] in *.
+  - inversion Hpos.
+  - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst snd] in *.
+    inversion Hpos; subst. destruct (IH Htg' Hgs (S j) pos ltac:(eassumption)) as [t [Ht Hc]].
+    exists t. split; [exact Ht | apply child_tree_after_plain; exact Hc].
+  - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst snd] in *. destruct Hg as [Hds Htp].
+    inversion Hpos as [? ? ? ? ? ? ? ? ? pts ? Hf Ep | |]; subst.
+    + pose proof (shape_set_at _ _ _ _ _ Hds Htp _ _ _ Hf _ Ha) as Hleaf. cbn [List.app] in Hleaf.
+      destruct (HS _ _ _ (Hgood pts Hf) Hleaf) as [t [Ht Hd]].
+      exists t. split; [exact Ht | eapply child_tree_here; eassumption].
+    + destruct (IH Htg' Hgs (S j) pos ltac:(eassumption)) as [t [Ht Hc]].
+      exists t. split; [exact Ht | apply child_tree_after_recursive; exact Hc].
+Qed.
+
+    Variable g : aczel_set.
+    Variable gs0 : list set_argument.
+    Variable pvals0 rs0 : list aczel_set.
+    Variable pre0 : list aczel_set.
+    (** [g] gives each position its child *)
+    Hypothesis Hg : forall pos t, child_tree gs0 pvals0 pre0 0 rs0 pos t -> set_eq (set_apply g pos) t.
+
+Lemma child_decodes_of : forall j target tparams pre ds points a,
+    (forall pts, points_fit ds pre points pts ->
+       tree_decodes target (List.skipn nuniform (tparams (pre ++ points ++ pts))) (set_apply g (tree_position j (points ++ pts)))
+         (apply_points a pts)) ->
+    Forall list_function_respects ds -> list_list_function_respects tparams ->
+    set_mem a (shape_set G U points_so_far pre ds target tparams points) ->
+    child_decodes g j ds target tparams pre points a.
+Proof.
+  intros j target tparams pre ds. induction ds as [| d ds IH]; intros points a Hleaf Hds Htp Ha.
+  - constructor. specialize (Hleaf nil (points_fit_nil _ _)). rewrite !app_nil_r in Hleaf. exact Hleaf.
+  - inversion Hds as [| ? ? Hd Hds']; subst. cbn [shape_set] in Ha.
+    assert (HF : respects_set_eq_fun (fun b => shape_set G U points_so_far pre ds target tparams (points ++ [b]))).
+    { intros x y E. apply shape_set_resp; [exact Hds' | exact Htp | apply list_set_eq_refl |
+        apply list_set_eq_app; [apply list_set_eq_refl | constructor; [exact E | constructor]]]. }
+    constructor.
+    + exact (function_set_is_function_on _ _ _ HF Ha).
+    + intros b Hb. apply IH; [| exact Hds' | exact Htp | exact (function_set_apply _ _ _ _ HF Ha Hb)].
+      intros pts Hf. specialize (Hleaf (b :: pts) (points_fit_cons _ _ _ _ _ _ Hb Hf)).
+      cbn [apply_points] in Hleaf. rewrite <- !app_assoc. exact Hleaf.
+Qed.
+
+  End Children.
+
 End Existence.
 
 End Bound.
