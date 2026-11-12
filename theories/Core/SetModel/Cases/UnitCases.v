@@ -113,8 +113,8 @@ Qed.
 
 (** The unit's module, read in a context and in an equal extension *)
 Lemma set_unit_module_across : forall Γ Ψ Ψ' U U' FU FU' FU2 FU2' ρ, gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
-    set_modexp_eq_with T γ (Ψ ++ Γ) (me_lit U) (me_lit U') FU FU' ->
-    set_modexp_eq_with T γ (Ψ' ++ Γ) (me_lit U') (me_lit U') FU2 FU2' ->
+    set_unit_eq_with T γ (Ψ ++ Γ) U U' FU FU' ->
+    set_unit_eq_with T γ (Ψ' ++ Γ) U' U' FU2 FU2' ->
     set_env_in T γ (Ψ ++ Γ) ρ -> set_env_in T γ (Ψ' ++ Γ) ρ -> set_module_eq (FU ρ) (FU2 ρ).
 Proof.
   intros * HΨ [_ HU' EU _ _] [HU2 _ _ _ _] Hρ Hρ'.
@@ -123,8 +123,8 @@ Qed.
 
 (** A module slot relates the same entries as one of an equal unit. *)
 Lemma set_entry_rel_mod_iff : forall Γ Ψ Ψ' U U' FU FU' FU2 FU2' ρ e e', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
-    set_modexp_eq_with T γ (Ψ ++ Γ) (me_lit U) (me_lit U') FU FU' ->
-    set_modexp_eq_with T γ (Ψ' ++ Γ) (me_lit U') (me_lit U') FU2 FU2' ->
+    set_unit_eq_with T γ (Ψ ++ Γ) U U' FU FU' ->
+    set_unit_eq_with T γ (Ψ' ++ Γ) U' U' FU2 FU2' ->
     set_env_in T γ (Ψ ++ Γ) ρ -> set_env_in T γ (Ψ' ++ Γ) ρ ->
     set_entry_rel T γ (Ψ ++ Γ) ρ (ce_mod U) e e' <-> set_entry_rel T γ (Ψ' ++ Γ) ρ (ce_mod U') e e'.
 Proof.
@@ -146,8 +146,8 @@ Qed.
 Lemma set_entry_rel_dm_iff : forall Γ Ψ Ψ' A A' M M' U U' FA FM FM' FM2 FU FU' FU2 FU2' ρ e e',
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     set_exp_eq_with T γ (Ψ ++ Γ) A M M' FA FM FM' -> set_denotes T γ (Ψ' ++ Γ) M' FM2 ->
-    set_modexp_eq_with T γ (Ψ ++ Γ) (me_lit U) (me_lit U') FU FU' ->
-    set_modexp_eq_with T γ (Ψ' ++ Γ) (me_lit U') (me_lit U') FU2 FU2' ->
+    set_unit_eq_with T γ (Ψ ++ Γ) U U' FU FU' ->
+    set_unit_eq_with T γ (Ψ' ++ Γ) U' U' FU2 FU2' ->
     set_env_in T γ (Ψ ++ Γ) ρ -> set_env_in T γ (Ψ' ++ Γ) ρ ->
     set_entry_rel T γ (Ψ ++ Γ) ρ (ce_dm A M U) e e' <-> set_entry_rel T γ (Ψ' ++ Γ) ρ (ce_dm A' M' U') e e'.
 Proof.
@@ -183,11 +183,11 @@ Lemma set_exp_eq_with_left : forall Γ A M M' FA FM FM', set_exp_eq_with T γ Γ
     set_exp_eq_with T γ Γ A M M FA FM FM.
 Proof. intros * [HA HM _ _ Hm]. constructor; [exact HA | exact HM | exact HM | intros; apply set_eq_refl | exact Hm]. Qed.
 
-(** A module expression equal to another is equal to itself. *)
-Lemma set_modexp_eq_with_left : forall Γ H H' F F', set_modexp_eq_with T γ Γ H H' F F' ->
-    set_modexp_eq_with T γ Γ H H F F.
+(** A unit equal to another denotes, as a slot's must. *)
+Lemma set_modexp_rel_of_unit_eq_with : forall Γ U U' F F', set_unit_eq_with T γ Γ U U' F F' ->
+    set_modexp_rel T γ Γ (me_lit U) (me_lit U).
 Proof.
-  intros * [HF _ _ Hv _]. constructor; [exact HF | exact HF | | exact Hv | exact Hv].
+  intros * [HF _ _ _ _]. exists F, F. constructor; [exact HF | exact HF |].
   intros ρ Hρ. exact (set_modexp_denotes_refl _ _ _ _ _ _ HF Hρ).
 Qed.
 
@@ -219,28 +219,29 @@ Qed.
 
 Lemma set_rule_ext_eq_mod : forall Γ Ψ Ψ' U U' FU FU' FU2 FU2', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     set_ext_eq_with T γ Γ Ψ Ψ' ->
-    set_modexp_eq_with T γ (Ψ ++ Γ) (me_lit U) (me_lit U') FU FU' ->
-    set_modexp_eq_with T γ (Ψ' ++ Γ) (me_lit U') (me_lit U') FU2 FU2' ->
+    set_unit_eq_with T γ (Ψ ++ Γ) U U' FU FU' ->
+    set_unit_eq_with T γ (Ψ' ++ Γ) U' U' FU2 FU2' ->
     set_ext_eq_with T γ Γ (ce_mod U :: Ψ) (ce_mod U' :: Ψ').
 Proof.
   intros * HΨ Hext HUe HU2e.
-  apply set_ext_eq_extend; [exact Hext | do 2 eexists; exact (set_modexp_eq_with_left _ _ _ _ _ HUe) | do 2 eexists; exact HU2e |].
+  apply set_ext_eq_extend; [exact Hext | exact (set_modexp_rel_of_unit_eq_with _ _ _ _ _ HUe)
+                           | exact (set_modexp_rel_of_unit_eq_with _ _ _ _ _ HU2e) |].
   intros. eapply set_entry_rel_mod_iff; eassumption.
 Qed.
 
 Lemma set_rule_ext_eq_dm : forall Γ Ψ Ψ' A A' M M' E E' FA FM FM' FA' FM2 FM2' FU FU' FU2 FU2',
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> set_ext_eq_with T γ Γ Ψ Ψ' ->
     set_exp_eq_with T γ (Ψ ++ Γ) A M M' FA FM FM' -> set_exp_eq_with T γ (Ψ' ++ Γ) A' M' M' FA' FM2 FM2' ->
-    set_modexp_eq_with T γ (Ψ ++ Γ) (me_lit (gu_mk nil (md_alias E))) (me_lit (gu_mk nil (md_alias E'))) FU FU' ->
-    set_modexp_eq_with T γ (Ψ' ++ Γ) (me_lit (gu_mk nil (md_alias E'))) (me_lit (gu_mk nil (md_alias E'))) FU2 FU2' ->
+    set_unit_eq_with T γ (Ψ ++ Γ) (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E')) FU FU' ->
+    set_unit_eq_with T γ (Ψ' ++ Γ) (gu_mk nil (md_alias E')) (gu_mk nil (md_alias E')) FU2 FU2' ->
     set_ext_eq_with T γ Γ (ce_dm A M (gu_mk nil (md_alias E)) :: Ψ) (ce_dm A' M' (gu_mk nil (md_alias E')) :: Ψ').
 Proof.
   intros * HΨ Hext HMe HM2e HUe HU2e.
   apply set_ext_eq_extend; [exact Hext | split | split |].
   - do 3 eexists; exact (set_exp_eq_with_left _ _ _ _ _ _ _ HMe).
-  - do 2 eexists; exact (set_modexp_eq_with_left _ _ _ _ _ HUe).
+  - exact (set_modexp_rel_of_unit_eq_with _ _ _ _ _ HUe).
   - do 3 eexists; exact HM2e.
-  - do 2 eexists; exact HU2e.
+  - exact (set_modexp_rel_of_unit_eq_with _ _ _ _ _ HU2e).
   - intros. destruct HM2e as [_ HM2 _ _ _]. eapply set_entry_rel_dm_iff; eassumption.
 Qed.
 

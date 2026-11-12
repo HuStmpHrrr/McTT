@@ -109,7 +109,7 @@ Qed.
 (** [ℓₘ U in B : C[U]], and [ζ] at it: [ℓₘ U in B ≈ B[U]]. *)
 Lemma set_rule_let_mod_zeta : forall Γ U B C FU FU' FC FB FB2, set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_mod U :: Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_mod (me_lit U)) : ce_mod U :: Γ ->
-    set_modexp_eq_with T γ Γ (me_lit U) (me_lit U) FU FU' ->
+    set_unit_eq_with T γ Γ U U FU FU' ->
     set_exp_eq_with T γ (ce_mod U :: Γ) C B B FC FB FB2 ->
     set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_mod (me_lit U)))) (a_let (b_mod U) B)
       (exp_sub B (sb_extend sb_id (se_mod (me_lit U)))).
@@ -165,7 +165,7 @@ Qed.
 Lemma set_rule_let_dm_zeta : forall Γ A M U B C FA' FM FM2 FU FU' FC FB FB2, set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_dm A M U :: Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_dm M (me_lit U)) : ce_dm A M U :: Γ ->
-    set_exp_eq_with T γ Γ A M M FA' FM FM2 -> set_modexp_eq_with T γ Γ (me_lit U) (me_lit U) FU FU' ->
+    set_exp_eq_with T γ Γ A M M FA' FM FM2 -> set_unit_eq_with T γ Γ U U FU FU' ->
     set_exp_eq_with T γ (ce_dm A M U :: Γ) C B B FC FB FB2 ->
     set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_dm M (me_lit U)))) (a_let (b_def_mod A M U) B)
       (exp_sub B (sb_extend sb_id (se_dm M (me_lit U)))).
@@ -210,7 +210,7 @@ Lemma set_rule_let_mod_cong : forall Γ U U' B B' C FU FU' FC FB FB', set_ctx T 
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_mod U :: Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_mod U' :: Γ ->
     gc_deps ⍮ gc_stack ⍮ ce_mod U' :: Γ ⊢ˢ sb_id : ce_mod U :: Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_mod (me_lit U)) : ce_mod U :: Γ ->
-    set_modexp_eq_with T γ Γ (me_lit U) (me_lit U') FU FU' -> set_exp_eq_with T γ (ce_mod U :: Γ) C B B' FC FB FB' ->
+    set_unit_eq_with T γ Γ U U' FU FU' -> set_exp_eq_with T γ (ce_mod U :: Γ) C B B' FC FB FB' ->
     set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_mod (me_lit U)))) (a_let (b_mod U) B) (a_let (b_mod U') B').
 Proof.
   intros * HΓ Hc Hc' Hid Hσ [HU HU' EU _ _] [HC HB HB' EB HBm].
@@ -236,7 +236,7 @@ Lemma set_rule_let_dm_cong : forall Γ A A' M M' U U' B B' C FA FM FM' FU FU' FC
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_dm A M U :: Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_dm A' M' U' :: Γ ->
     gc_deps ⍮ gc_stack ⍮ ce_dm A' M' U' :: Γ ⊢ˢ sb_id : ce_dm A M U :: Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_dm M (me_lit U)) : ce_dm A M U :: Γ ->
-    set_exp_eq_with T γ Γ A M M' FA FM FM' -> set_modexp_eq_with T γ Γ (me_lit U) (me_lit U') FU FU' ->
+    set_exp_eq_with T γ Γ A M M' FA FM FM' -> set_unit_eq_with T γ Γ U U' FU FU' ->
     set_exp_eq_with T γ (ce_dm A M U :: Γ) C B B' FC FB FB' ->
     set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_dm M (me_lit U)))) (a_let (b_def_mod A M U) B)
       (a_let (b_def_mod A' M' U') B').

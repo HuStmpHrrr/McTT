@@ -14,14 +14,17 @@
     denote one function into the type's carriers ([set_exp_eq]), a subtype
     has the smaller carriers ([set_subtyp]), equal extensions relate the
     same environments ([set_ext_eq]), equal module expressions and units
-    denote one module whose members are of their types ([set_modexp_eq],
-    [set_unit_eq]). *)
+    denote one module and are valid ([set_modexp_eq], [set_unit_eq]):
+    what they are built of denotes, so that their members are of their
+    types. *)
 
 From Stdlib Require Import String List.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel.Interpretation Require Export Functional.
 From Mctt.Core.Syntactic Require Import Syntax Members.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
+From Mctt.Core.Syntactic.System Require Import Definitions Scoping.
 Import ListNotations.
 
 (** The environment without its variable [#0]. *)
@@ -186,34 +189,28 @@ Record set_subtyp_with (Γ : ctx) (A A' : exp) (FA FA' : set_env -> aczel_set) :
 (** [A] is a subtype of [A'] in [Γ]. *)
 Definition set_subtyp (Γ : ctx) (A A' : exp) : Prop := exists FA FA', set_subtyp_with Γ A A' FA FA'.
 
-(** [set_modexp_eq_with Γ H H' F F']: [H] and [H'] denote the equal [F] and
-    [F'], whose members are valid. *)
-Record set_modexp_eq_with (Γ : ctx) (H H' : modexp) (F F' : set_env -> set_module) : Prop :=
+(** [set_modexp_rel_with Γ H H' F F']: [H] and [H'] denote the equal [F]
+    and [F'] in [Γ]. *)
+Record set_modexp_rel_with (Γ : ctx) (H H' : modexp) (F F' : set_env -> set_module) : Prop :=
   { (** The left expression's denotation *)
-    set_modexp_eq_left : set_modexp_denotes Γ H F
+    set_modexp_rel_left : set_modexp_denotes Γ H F
     (** The right expression's *)
-  ; set_modexp_eq_right : set_modexp_denotes Γ H' F'
+  ; set_modexp_rel_right : set_modexp_denotes Γ H' F'
     (** The two are equal *)
-  ; set_modexp_eq_eq : forall ρ, set_env_in Γ ρ -> set_module_eq (F ρ) (F' ρ)
-    (** Its members are of their types *)
-  ; set_modexp_eq_members : set_members_valid Γ H F
-    (** The right expression's members are of their types *)
-  ; set_modexp_eq_members' : set_members_valid Γ H' F' }.
+  ; set_modexp_rel_eq : forall ρ, set_env_in Γ ρ -> set_module_eq (F ρ) (F' ρ) }.
 
-(** [H] and [H'] are equal module expressions in [Γ]. *)
-Definition set_modexp_eq (Γ : ctx) (H H' : modexp) : Prop := exists F F', set_modexp_eq_with Γ H H' F F'.
-
-(** [U] and [U'] are equal units in [Γ]: as literal module expressions. *)
-Definition set_unit_eq (Γ : ctx) (U U' : gunit) : Prop := set_modexp_eq Γ (me_lit U) (me_lit U').
+(** [H] and [H'] denote equal modules in [Γ]. *)
+Definition set_modexp_rel (Γ : ctx) (H H' : modexp) : Prop := exists F F', set_modexp_rel_with Γ H H' F F'.
 
 (** [set_entry_valid Γ ce]: the context entry [ce] is valid in [Γ]: its
-    type, definition or unit denotes. *)
+    type, definition or unit denotes.  A slot's unit is valid besides
+    ([set_valid_slots]). *)
 Definition set_entry_valid (Γ : ctx) (ce : centry) : Prop :=
   match ce with
   | ce_ass _ A => exists FA, set_denotes Γ A FA
   | ce_def A M => set_exp_eq Γ A M M
-  | ce_mod U => set_unit_eq Γ U U
-  | ce_dm A M U => set_exp_eq Γ A M M /\ set_unit_eq Γ U U
+  | ce_mod U => set_modexp_rel Γ (me_lit U) (me_lit U)
+  | ce_dm A M U => set_exp_eq Γ A M M /\ set_modexp_rel Γ (me_lit U) (me_lit U)
   end.
 
 (** [set_ctx Γ]: every entry of [Γ] is valid in the context before it. *)
@@ -222,6 +219,186 @@ Fixpoint set_ctx (Γ : ctx) : Prop :=
   | nil => True
   | ce :: Γ' => set_ctx Γ' /\ set_entry_valid Γ' ce
   end.
+
+(** ** Valid Units and Module Expressions
+
+    A unit is valid when its parts are: a filed module at arguments valid
+    against its telescope; a local body whose context denotes, whose
+    submodules are valid units in the context the body before each makes,
+    and whose opens' targets are valid; an alias whose target is.  A
+    module expression is valid when it denotes a module equal to a valid
+    unit's of the same module part.  The members of a valid module
+    expression are of their types ([set_members_valid]). *)
+
+(** [set_args_valid Γ T Tr Tf Ns]: the arguments [Ns] fill the outermost
+    parameters [Tf] of the closed telescope [T = Tr ++ Tf], each of its
+    parameter's type, instantiated by the arguments before it, of an
+    evaluated sort. *)
+Record set_args_valid (Γ T Tr Tf : ctx) (Ns : list exp) : Prop :=
+  { (** The telescope splits at the arguments *)
+    set_args_split : T = Tr ++ Tf
+    (** One argument per filled parameter *)
+  ; set_args_length : List.length Tf = List.length Ns
+    (** The filled parameters are assumptions *)
+  ; set_args_assumptions : all_assumptions Tf
+    (** They are closed *)
+  ; set_args_scoped : ctx_scoped 0 Tf
+    (** Each argument is of its type *)
+  ; set_args_typed : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Tf sb_id Ns) k = Some A ->
+      set_exp_eq Γ A N N
+    (** Each type is of an evaluated sort *)
+  ; set_args_evaluated : forall k A, nth_error (tele_insts Tf sb_id Ns) k = Some A ->
+      exists Srt, evaluated_sort Srt /\ set_exp_eq Γ Srt A A }.
+
+(** [set_params_evaluated Γ Δ l]: each parameter of [Δ] is a type of the
+    universe at [l] or a type of levels, in the context after it. *)
+Definition set_params_evaluated (Γ Δ : ctx) (l : nat) : Prop :=
+  forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 ->
+    set_exp_eq (Δ2 ++ Γ) (a_typ l) A A \/ set_exp_eq (Δ2 ++ Γ) a_level_sort A A.
+
+(** [set_body_sorts_valid Φ D]: each term part of the body [Φ] over [D] is
+    of the sort its kind tag says, in the context the entries before it
+    make. *)
+Fixpoint set_body_sorts_valid (Φ : gmod) (D : ctx) : Prop :=
+  match Φ with
+  | gm_nil => True
+  | gm_ext Φ0 _ E =>
+      set_body_sorts_valid Φ0 D /\
+      forall A M, entry_tm E = Some (A, M) -> exists i, set_exp_eq (body_ctx Φ0 ++ D) (abs_kind_sort (entry_kind E) (a_typ i)) A A
+  (* read on expansions only, which have no open *)
+  | gm_open Φ0 _ _ _ => set_body_sorts_valid Φ0 D
+  end.
+
+(** [set_body_ok Γ Δ Φ Φx]: the body [Φ] over the parameters [Δ],
+    expanded to [Φx], is well formed and denotes, with its context and its
+    opens' targets. *)
+Record set_body_ok (Γ Δ : ctx) (Φ Φx : gmod) : Prop :=
+  { (** The unit is well formed *)
+    set_body_ok_wf : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_lit (gu_open Δ Φ) ≈ me_lit (gu_open Δ Φ)
+    (** Its expansion *)
+  ; set_body_ok_xp : body_xp gc_deps gc_stack (Δ ++ Γ) Φ Φx
+    (** Its parameters are assumptions *)
+  ; set_body_ok_params : all_assumptions Δ
+    (** Of evaluated sorts *)
+  ; set_body_ok_evaluated : exists l, set_params_evaluated Γ Δ l
+    (** The context denotes *)
+  ; set_body_ok_ctx : set_ctx Γ
+    (** So does the body's context *)
+  ; set_body_ok_body_ctx : set_ctx (body_ctx Φx ++ Δ ++ Γ)
+    (** Each entry is of its tag's sort *)
+  ; set_body_ok_sorts : set_body_sorts_valid Φx (Δ ++ Γ)
+    (** The body has its own shape *)
+  ; set_body_ok_shape : body_shape Φ Φ
+    (** So does its expansion *)
+  ; set_body_ok_shape_xp : body_shape Φx Φx
+    (** The unit denotes *)
+  ; set_body_ok_rel : set_modexp_rel Γ (me_lit (gu_open Δ Φ)) (me_lit (gu_open Δ Φ))
+    (** Each open's target denotes *)
+  ; set_body_ok_opens : forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> set_modexp_rel (Ψ ++ Δ ++ Γ) H H }.
+
+(** [set_alias_ok Γ Δ E]: the alias of [E] over the parameters [Δ] is well
+    formed and denotes, and so does its target. *)
+Record set_alias_ok (Γ Δ : ctx) (E : modexp) : Prop :=
+  { (** The unit is well formed *)
+    set_alias_ok_wf : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_lit (gu_mk Δ (md_alias E)) ≈ me_lit (gu_mk Δ (md_alias E))
+    (** Its parameters are assumptions *)
+  ; set_alias_ok_params : all_assumptions Δ
+    (** Of evaluated sorts *)
+  ; set_alias_ok_evaluated : exists l, set_params_evaluated Γ Δ l
+    (** The context denotes *)
+  ; set_alias_ok_ctx : set_ctx Γ
+    (** So does the parameters' *)
+  ; set_alias_ok_params_ctx : set_ctx (Δ ++ Γ)
+    (** The unit denotes *)
+  ; set_alias_ok_rel : set_modexp_rel Γ (me_lit (gu_mk Δ (md_alias E))) (me_lit (gu_mk Δ (md_alias E)))
+    (** So does its target *)
+  ; set_alias_ok_target : set_modexp_rel (Δ ++ Γ) E E }.
+
+(** [set_modexp_valid_with Γ H K R Rm RK]: [H], well formed and denoting
+    [R] of the module part [Rm], is equal to [K], which denotes [RK] of the
+    same module part. *)
+Record set_modexp_valid_with (Γ : ctx) (H K : modexp) (R Rm RK : mdesc) : Prop :=
+  { (** [H] is well formed *)
+    set_modexp_valid_wf : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H
+    (** It denotes [R] *)
+  ; set_modexp_valid_desc : mdenote gc_deps gc_stack Γ H R
+    (** Of the module part [Rm] *)
+  ; set_modexp_valid_mod : mdesc_mod R = Some Rm
+    (** Its module is [K]'s *)
+  ; set_modexp_valid_rel : set_modexp_rel Γ H K
+    (** [K] denotes [RK] *)
+  ; set_modexp_valid_unit_desc : mdenote gc_deps gc_stack Γ K RK
+    (** Of the same module part *)
+  ; set_modexp_valid_unit_mod : mdesc_mod RK = Some Rm }.
+
+(** [set_valid_unit Γ K]: the unit [K] is valid in [Γ]. *)
+Inductive set_valid_unit : ctx -> modexp -> Prop :=
+(** A filed module at valid arguments *)
+| set_valid_unit_filed : forall Γ p T Φ Tr Tf Ns,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns ->
+    gc_loc gc_deps gc_stack p = Some (T, Φ) -> set_ctx Γ -> set_args_valid Γ T Tr Tf Ns ->
+    set_valid_unit Γ (me_apps (qname_mod p) Ns)
+(** A local body: its parts denote, its submodules are valid units in the
+    context the body before each makes, and its opens' targets are valid *)
+| set_valid_unit_body : forall Γ Δ Φ Φx, set_body_ok Γ Δ Φ Φx ->
+    (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+       set_valid_unit (body_ctx Φ0 ++ Δ ++ Γ) (me_lit U)) ->
+    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> set_valid_modexp (Ψ ++ Δ ++ Γ) H) ->
+    set_valid_unit Γ (me_lit (gu_open Δ Φ))
+(** An alias, its target valid *)
+| set_valid_unit_alias : forall Γ Δ E, set_alias_ok Γ Δ E -> set_valid_modexp (Δ ++ Γ) E ->
+    set_valid_unit Γ (me_lit (gu_mk Δ (md_alias E)))
+(** [set_valid_modexp Γ H]: the module expression [H] is valid in [Γ] *)
+with set_valid_modexp : ctx -> modexp -> Prop :=
+(** [H] is equal to a valid unit of the same module part *)
+| set_valid_modexp_intro : forall Γ H K R Rm RK, set_modexp_valid_with Γ H K R Rm RK -> set_valid_unit Γ K ->
+    set_valid_modexp Γ H.
+
+Scheme set_valid_unit_mut_ind := Induction for set_valid_unit Sort Prop
+with set_valid_modexp_mut_ind := Induction for set_valid_modexp Sort Prop.
+Combined Scheme set_valid_unit_modexp_ind from set_valid_unit_mut_ind, set_valid_modexp_mut_ind.
+
+(** [set_valid_slots Γ]: the unit of each slot of [Γ] is valid in the
+    context before it. *)
+Fixpoint set_valid_slots (Γ : ctx) : Prop :=
+  match Γ with
+  | nil => True
+  | ce :: Γ' => set_valid_slots Γ' /\ forall U, centry_unit ce = Some U -> set_valid_unit Γ' (me_lit U)
+  end.
+
+(** [set_modexp_eq_with Γ H H' F F']: [H] and [H'] denote the equal [F] and
+    [F'], and are valid. *)
+Record set_modexp_eq_with (Γ : ctx) (H H' : modexp) (F F' : set_env -> set_module) : Prop :=
+  { (** The left expression's denotation *)
+    set_modexp_eq_left : set_modexp_denotes Γ H F
+    (** The right expression's *)
+  ; set_modexp_eq_right : set_modexp_denotes Γ H' F'
+    (** The two are equal *)
+  ; set_modexp_eq_eq : forall ρ, set_env_in Γ ρ -> set_module_eq (F ρ) (F' ρ)
+    (** The left expression is valid *)
+  ; set_modexp_eq_valid : set_valid_modexp Γ H
+    (** So is the right one *)
+  ; set_modexp_eq_valid' : set_valid_modexp Γ H' }.
+
+(** [H] and [H'] are equal module expressions in [Γ]. *)
+Definition set_modexp_eq (Γ : ctx) (H H' : modexp) : Prop := exists F F', set_modexp_eq_with Γ H H' F F'.
+
+(** [set_unit_eq_with Γ U U' F F']: the units [U] and [U'] denote the
+    equal [F] and [F'] as literals, and are valid. *)
+Record set_unit_eq_with (Γ : ctx) (U U' : gunit) (F F' : set_env -> set_module) : Prop :=
+  { (** The left unit's denotation *)
+    set_unit_eq_left : set_modexp_denotes Γ (me_lit U) F
+    (** The right unit's *)
+  ; set_unit_eq_right : set_modexp_denotes Γ (me_lit U') F'
+    (** The two are equal *)
+  ; set_unit_eq_eq : forall ρ, set_env_in Γ ρ -> set_module_eq (F ρ) (F' ρ)
+    (** The left unit is valid *)
+  ; set_unit_eq_valid : set_valid_unit Γ (me_lit U)
+    (** So is the right one *)
+  ; set_unit_eq_valid' : set_valid_unit Γ (me_lit U') }.
+
+(** [U] and [U'] are equal units in [Γ]. *)
+Definition set_unit_eq (Γ : ctx) (U U' : gunit) : Prop := exists F F', set_unit_eq_with Γ U U' F F'.
 
 (** [set_ext_eq_with Γ Ψ Ψ']: the extensions [Ψ] and [Ψ'] of [Γ] are
     valid and relate the same environments. *)
@@ -290,7 +467,7 @@ Proof.
       exists v', v, (FM (set_env_tail ρ')). constructor; try assumption; [exact (set_denotes_exists _ _ _ HFM _ Hr) | |].
       * eapply set_eq_trans; [exact Ev' |]. eapply set_eq_trans; [exact Ew | apply set_eq_sym; exact Ew'].
       * eapply set_eq_trans; [exact Ev |]. eapply set_eq_trans; [exact Ew | apply set_eq_sym; exact Ew'].
-    + destruct He as (m & m' & n & [E1 E2 Hn Em Em']). destruct Hce as (FU & FU' & [HFU _ _ _ _]).
+    + destruct He as (m & m' & n & [E1 E2 Hn Em Em']). destruct Hce as (FU & FU' & [HFU _ _]).
       pose proof (set_modexp_denotes_unique _ _ _ HFU _ _ _ Hl (proj2 (set_interp_me_lit_iff _ _ _ _) Hn)) as En.
       pose proof (set_modexp_denotes_rel _ _ _ _ _ HFU Ht Hr) as En'.
       exists m', m, (FU (set_env_tail ρ')). constructor; try assumption;
@@ -298,7 +475,7 @@ Proof.
       * eapply set_module_eq_trans; [exact Em' |]. eapply set_module_eq_trans; [exact En | apply set_module_eq_sym; exact En'].
       * eapply set_module_eq_trans; [exact Em |]. eapply set_module_eq_trans; [exact En | apply set_module_eq_sym; exact En'].
     + destruct He as (v & v' & w & m & m' & n & [E1 E2 Hw Hn Ev Ev' Em Em']).
-      destruct Hce as [(FA & FM & FM' & [_ HFM _ _ _]) (FU & FU' & [HFU _ _ _ _])].
+      destruct Hce as [(FA & FM & FM' & [_ HFM _ _ _]) (FU & FU' & [HFU _ _])].
       pose proof (set_denotes_unique _ _ _ HFM _ _ _ Hl Hw) as Ew.
       pose proof (set_denotes_rel _ _ _ _ _ HFM Ht Hr) as Ew'.
       pose proof (set_modexp_denotes_unique _ _ _ HFU _ _ _ Hl (proj2 (set_interp_me_lit_iff _ _ _ _) Hn)) as En.
@@ -324,7 +501,7 @@ Proof.
       eapply set_eq_trans; [exact Eu3 |]. eapply set_eq_trans; [exact Ew' |].
       eapply set_eq_trans; [exact E12 | apply set_eq_sym; exact Ew].
     + destruct He12 as (m1 & m2 & n & [E1 E2 Hn Em1 Em2]). destruct He23 as (k2 & k3 & n' & [F2 F3 Hn' Ek2 Ek3]).
-      rewrite E2 in F2. injection F2 as <-. destruct Hce as (FU & FU' & [HFU _ _ _ _]).
+      rewrite E2 in F2. injection F2 as <-. destruct Hce as (FU & FU' & [HFU _ _]).
       destruct (Hin _ _ Ht12) as [Hl1 Hr2].
       pose proof (set_modexp_denotes_unique _ _ _ HFU _ _ _ Hl1 (proj2 (set_interp_me_lit_iff _ _ _ _) Hn)) as En.
       pose proof (set_modexp_denotes_unique _ _ _ HFU _ _ _ Hr2 (proj2 (set_interp_me_lit_iff _ _ _ _) Hn')) as En'.
@@ -334,7 +511,7 @@ Proof.
       eapply set_module_eq_trans; [exact E12 | apply set_module_eq_sym; exact En].
     + destruct He12 as (v1 & v2 & w & m1 & m2 & n & [E1 E2 Hw Hn Ev1 Ev2 Em1 Em2]).
       destruct He23 as (u2 & u3 & w' & k2 & k3 & n' & [F2 F3 Hw' Hn' Eu2 Eu3 Ek2 Ek3]).
-      rewrite E2 in F2. injection F2 as <- <-. destruct Hce as [(FA & FM & FM' & [_ HFM _ _ _]) (FU & FU' & [HFU _ _ _ _])].
+      rewrite E2 in F2. injection F2 as <- <-. destruct Hce as [(FA & FM & FM' & [_ HFM _ _ _]) (FU & FU' & [HFU _ _])].
       destruct (Hin _ _ Ht12) as [Hl1 Hr2].
       pose proof (set_denotes_unique _ _ _ HFM _ _ _ Hl1 Hw) as Ew.
       pose proof (set_denotes_unique _ _ _ HFM _ _ _ Hr2 Hw') as Ew'.
