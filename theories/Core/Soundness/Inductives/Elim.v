@@ -8235,15 +8235,15 @@ Section ElimGlu.
       pose proof (valid_groups_containers VP HVP p D m Mm qc kc Is vm D' HPD Hm Hh Hq) as HPq.
       pose proof (valid_group_typed _ _ (valid_groups_valid VP HVP qc D' HPq)) as HdtQ.
       assert (Hvm : forall j' j, List.nth_error vm j' = Some j ->
-                exists Mj' Mj, ind_member D' j' = Some Mj' /\ Semantic.Inductives.ViewCoherence.view_member p D qc D' vm j' Mj' j Mj).
+                exists Mj' Mj, ind_member D' j' = Some Mj' /\ ViewLeaves.view_member p D qc D' vm j' Mj' j Mj).
       { intros j' j Hvj.
         assert (Hj : j' < List.length (ind_members D')) by (rewrite <- (view_wrap_ok_length _ _ _ Hvw); apply List.nth_error_Some; congruence).
         destruct (nth_error_lt_some' _ _ Hj) as [Mj' HMj'].
         destruct (Semantic.Inductives.ViewCount.view_agree_members p D m Mm qc kc Is vm D' Hass Hm Hh Hq j' Mj' HMj')
           as (v1 & Mv1 & Hvm1).
-        pose proof (Semantic.Inductives.ViewCoherence.view_member_v _ _ _ _ _ _ _ _ _ Hvm1) as Hv1; rewrite Hvj in Hv1; injection Hv1 as <-.
+        pose proof (ViewLeaves.view_member_v _ _ _ _ _ _ _ _ _ Hvm1) as Hv1; rewrite Hvj in Hv1; injection Hv1 as <-.
         exists Mj', Mv1; split; [ exact HMj' | exact Hvm1 ]. }
-      exact (Semantic.Inductives.ViewCount.cargs_container_count_view p qc D D' vm Hco
+      exact (ViewLeaves.cargs_container_count_view p qc D D' vm Hco
                (leaves_coherent_of_order D' (rview_struct_order _ _ D' (decl_typed_record_struct _ _ _ HdtQ)))
                (group_structure_record_struct _ Hass) (decl_typed_record_struct _ _ _ HdtQ) Hvm gs' gs Hcorr).
     Qed.

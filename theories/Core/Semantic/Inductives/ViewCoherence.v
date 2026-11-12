@@ -88,31 +88,19 @@ Section Fixed_GCtx.
     #[local] Abbreviation GP := (rec_arg_app_rel p D (admissible_index_at D ups nr) nr ar dr).
 
     (** The member [v] of the group the container's member [i'] is taken
-        to: of the same head, as many parameters, its constructors the
-        container's, each argument corresponding. *)
-    Record view_member (i' : nat) (Mi' : imember) (v : nat) (Mv : imember) : Prop := mk_view_member
-      { (** [vm] takes [i'] to [v] *)
-        view_member_v : List.nth_error vm i' = Some v
-        (** [v] is a member of the group *)
-      ; view_member_mem : ind_member D v = Some Mv
-        (** Both are record views, or neither *)
-      ; view_member_is_rview : im_is_rview Mv = im_is_rview Mi'
-        (** Not a record view, it has the same head: both are the same
-            declared member *)
-      ; view_member_ref : im_is_rview Mi' = false -> im_ref p v Mv = im_ref qc i' Mi'
-        (** Not a record view, as many own uniform parameters *)
-      ; view_member_unu : im_is_rview Mi' = false -> im_unu D Mv = im_unu Dq Mi'
-        (** A record view, a record view of the same record and fields *)
-      ; view_member_rview : forall qr Is fl, im_head Mi' = mh_record qr Is fl -> exists Is', im_head Mv = mh_record qr Is' fl
-        (** The same constructor names, in order *)
-      ; view_member_names : List.map fst (im_cons Mv) = List.map fst (im_cons Mi')
-        (** As many non-uniform parameters *)
-      ; view_member_nn : im_nn Mv = im_nn Mi'
-        (** Each container constructor is one of [Mv]'s, its arguments
-            corresponding *)
-      ; view_member_cons : forall c gs', ind_con Mi' c = Some gs' -> exists gs, ind_con Mv c = Some gs /\ cargs_correspond vm gs' gs
-        (** And conversely *)
-      ; view_member_cons' : forall c gs, ind_con Mv c = Some gs -> exists gs', ind_con Mi' c = Some gs' /\ cargs_correspond vm gs' gs }.
+        to ([view_member], in [Core.Syntactic.System.Inductives.ViewLeaves]),
+        at this group, container and map. *)
+    #[local] Abbreviation view_member := (ViewLeaves.view_member p D qc Dq vm).
+    #[local] Abbreviation view_member_v := (ViewLeaves.view_member_v p D qc Dq vm).
+    #[local] Abbreviation view_member_mem := (ViewLeaves.view_member_mem p D qc Dq vm).
+    #[local] Abbreviation view_member_is_rview := (ViewLeaves.view_member_is_rview p D qc Dq vm).
+    #[local] Abbreviation view_member_ref := (ViewLeaves.view_member_ref p D qc Dq vm).
+    #[local] Abbreviation view_member_unu := (ViewLeaves.view_member_unu p D qc Dq vm).
+    #[local] Abbreviation view_member_rview := (ViewLeaves.view_member_rview p D qc Dq vm).
+    #[local] Abbreviation view_member_names := (ViewLeaves.view_member_names p D qc Dq vm).
+    #[local] Abbreviation view_member_nn := (ViewLeaves.view_member_nn p D qc Dq vm).
+    #[local] Abbreviation view_member_cons := (ViewLeaves.view_member_cons p D qc Dq vm).
+    #[local] Abbreviation view_member_cons' := (ViewLeaves.view_member_cons' p D qc Dq vm).
 
     (** The parameters a shape ends in, at a base and a prefix on each
         side, related at the member of the group the group's shape ends

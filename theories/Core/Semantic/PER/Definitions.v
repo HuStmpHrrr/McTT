@@ -5,6 +5,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export Fixed.
 From Mctt.Core.Syntactic Require Export Records.
+From Mctt.Core.Syntactic.System.Inductives Require Export ViewLeaves.
 Import Domain_Notations Fixed_Notations.
 From Stdlib Require String.
 #[local] Open Scope list_scope.
@@ -749,16 +750,8 @@ Record admissible_index_at (D : ind_decl) (ups : list domain) (nparams_rel : nat
     (** It is related to [bs] at the member [j] *)
   ; admissible_index_rel : nparams_tele_rel D nparams_rel j admissible_index_base bs }.
 
-(** A member's own uniform parameters: the group's for a declared one, the
-    container's for a view.  A record view's pseudo-constructor is the
-    group's own, at the group's uniform parameters (its saturated value is
-    a tuple, never a [d_con], so this is never read). *)
-Definition im_unu (D : ind_decl) (M : imember) : nat :=
-  match im_head M with
-  | mh_decl _ => ind_nu D
-  | mh_view _ _ Is _ => List.length Is
-  | mh_record _ _ _ => ind_nu D
-  end.
+(** A member's own uniform parameters ([im_unu]) are in
+    [Core.Syntactic.System.Inductives.ViewLeaves]. *)
 
 (** ** The Elements of a Group
 
@@ -996,7 +989,7 @@ Record group_structure (D : ind_decl) : Prop := mk_group_structure
     (** A view's container's record views' facts without a judgment, as
         the group's own ([group_structure_record_struct]): what the count of the
         container's leaf paths among the view's reads
-        ([ViewCount.cargs_container_count_view]) *)
+        ([ViewLeaves.cargs_container_count_view]) *)
   ; group_structure_crstruct : forall v Mv qc kc Is vm Dq, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> rview_struct_ok gc_deps gc_stack Dq }.
 

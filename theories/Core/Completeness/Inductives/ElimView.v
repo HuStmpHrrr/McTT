@@ -475,31 +475,10 @@ Proof.
   intros y _; apply ihs_sub_wrap; lia.
 Qed.
 
-(** ** The Branches of a Wrapped Block *)
-Lemma brs_lookup_wrap : forall pq D D' Us Bks Mv Bs cs c,
-    brs_lookup (List.map (fun cg => wrap_branch ak_relevant pq D D' Us Bks Mv Bs (fst cg) (snd cg)) cs) c
-    = option_map (fun gs' => ((im_nn Mv + List.length gs' + cargs_nrec D' gs')%nat, snd (wrap_branch ak_relevant pq D D' Us Bks Mv Bs c gs')))
-        (cons_lookup cs c).
-Proof.
-  induction cs as [| [c' gs'] cs IH]; intros c; [ reflexivity |].
-  cbn [List.map fst snd cons_lookup]; unfold wrap_branch at 1; cbv zeta; cbn [brs_lookup].
-  destruct (String.eqb c c') eqn:E; [ apply String.eqb_eq in E; subst c'; reflexivity | apply IH ].
-Qed.
+(** ** The Branches of a Wrapped Block
 
-Lemma brs_names_wrap : forall pq D D' Us Bks Mv Bs cs,
-    brs_names cs (List.map (fun cg => wrap_branch ak_relevant pq D D' Us Bks Mv Bs (fst cg) (snd cg)) cs).
-Proof.
-  intros; unfold brs_names; rewrite List.map_map; apply List.map_ext; intros [c gs']; reflexivity.
-Qed.
-
-Lemma brs_in_wrap : forall pq D D' Us Bks Mv Bs cs c n B,
-    In (c, n, B) (List.map (fun cg => wrap_branch ak_relevant pq D D' Us Bks Mv Bs (fst cg) (snd cg)) cs) ->
-    exists gs', In (c, gs') cs /\ n = (im_nn Mv + List.length gs' + cargs_nrec D' gs')%nat.
-Proof.
-  intros * H; apply List.in_map_iff in H as ([c0 gs0] & He & Hin).
-  unfold wrap_branch in He; cbv zeta in He; cbn [fst snd] in He; injection He as Hc0 Hn0 _.
-  exists gs0; split; [ rewrite <- Hc0; exact Hin | symmetry; exact Hn0 ].
-Qed.
+    Their lookup, names and arities ([brs_lookup_wrap], [brs_names_wrap],
+    [brs_in_wrap]) are in [Core.Syntactic.System.Inductives.ViewLeaves]. *)
 
 (** The context of a wrapped branch is a telescope of assumptions, of
     as many entries as the branch's arity. *)
@@ -2604,7 +2583,7 @@ Section WrappedBlocks.
     intros * HMi' Hb Hc' Hin.
     destruct (wrapped_block _ _ HMi' (wrapped_at_not_rview _ _ _ HMi' Hb)) as [v Mv bv Hv HMv _ Hbv Hnn _ Hvb].
     rewrite Hvb in Hb; injection Hb as <-; cbn [eb_brs] in Hin.
-    destruct (brs_in_wrap _ _ _ _ _ _ _ _ _ _ _ Hin) as (gs0 & Hin0 & ->).
+    destruct (brs_in_wrap _ _ _ _ _ _ _ _ _ _ _ _ Hin) as (gs0 & Hin0 & ->).
     pose proof (cons_lookup_nodup_in _ _ _ (wrapped_nodup _ _ HMi') Hin0) as Hc0.
     unfold ind_con in Hc'; rewrite Hc0 in Hc'; injection Hc' as ->; rewrite Hnn; reflexivity.
   Qed.
