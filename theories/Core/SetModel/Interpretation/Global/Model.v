@@ -232,6 +232,17 @@ Record set_group_carrier_with (G : set_group) (k : nat) (us ns : list aczel_set)
 Definition uniform_values (D : ind_decl) (Mk : imember) (ρ : set_env) : list aczel_set :=
   set_env_values (ind_uparams D) (set_env_drop (im_nn Mk) ρ).
 
+(** The element the constructor [c] of the member [Mk] builds from the
+    values [vals] of the non-uniform parameters and the arguments: at a
+    record view the tuple of the arguments by field name (a record view
+    has no non-uniform parameter), otherwise its [con_val], as
+    [constructed_element] reads it off the semantic member. *)
+Definition member_constructor_element (Mk : imember) (c : string) (vals : list aczel_set) : aczel_set :=
+  match im_head Mk with
+  | mh_record _ _ fl => tuple_code (List.combine fl vals)
+  | _ => con_val c vals
+  end.
+
 (** [set_group_ok p D G]: [G] is the group [D] at [p]. *)
 Record set_group_ok (p : qname) (D : ind_decl) (G : set_group) : Prop :=
   { (** The uniform parameters' types *)
@@ -262,7 +273,14 @@ Record set_group_ok (p : qname) (D : ind_decl) (G : set_group) : Prop :=
   ; set_group_ok_constructors_value : forall k Mk c gs ρ, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
       set_env_in T γ (cargs_ctx p D Mk gs ++ im_params D Mk) ρ ->
       set_eq (apply_values (global_constructor γ p k c) (set_env_values (cargs_ctx p D Mk gs ++ im_params D Mk) ρ))
-             (con_val c (List.skipn (ind_nu D) (set_env_values (cargs_ctx p D Mk gs ++ im_params D Mk) ρ)))
+             (member_constructor_element Mk c (List.skipn (ind_nu D) (set_env_values (cargs_ctx p D Mk gs ++ im_params D Mk) ρ)))
+    (** A view's constructor at the uniform parameters is its container's
+        at the view's arguments there *)
+  ; set_group_ok_view_constructors : forall k Mk qc k' Is vm c gs ρ is, ind_member D k = Some Mk ->
+      im_head Mk = mh_view qc k' Is vm -> ind_con Mk c = Some gs -> set_env_in T γ (ind_uparams D) ρ ->
+      set_interp_list T γ (ind_uparams D) ρ Is is ->
+      set_eq (apply_values (global_constructor γ p k c) (set_env_values (ind_uparams D) ρ))
+             (apply_values (global_constructor γ qc k' c) is)
     (** The semantic signature respects equality *)
   ; set_group_ok_respects : signature_respects G
     (** A member's constructors have distinct names *)
