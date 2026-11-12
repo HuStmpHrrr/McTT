@@ -554,11 +554,11 @@ Qed.
 Theorem set_valid_unit_app_all :
   (forall Γ K, set_valid_unit T γ Γ K -> forall RK Rm Tl B T1 Srt N, mdenote gc_deps gc_stack Γ K RK -> mdesc_mod RK = Some Rm ->
      mdesc_tele Rm = Some Tl -> tele_view Tl = Some (B, T1) -> evaluated_sort Srt -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B : Srt ->
-     set_exp_eq T γ Γ Srt B B -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_exp_eq T γ Γ B N N ->
+     (exists Srt', evaluated_sort Srt' /\ set_exp_eq T γ Γ Srt' B B) -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_exp_eq T γ Γ B N N ->
      exists K' RK' Rm', set_app_reduct_with Γ K N Rm K' RK' Rm') /\
   (forall Γ H, set_valid_modexp T γ Γ H -> forall R Tl B T1 Srt N, mdenote gc_deps gc_stack Γ H R -> mdesc_mod_tele R = Some Tl ->
      tele_view Tl = Some (B, T1) -> evaluated_sort Srt -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B : Srt ->
-     set_exp_eq T γ Γ Srt B B -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_exp_eq T γ Γ B N N ->
+     (exists Srt', evaluated_sort Srt' /\ set_exp_eq T γ Γ Srt' B B) -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_exp_eq T γ Γ B N N ->
      set_valid_modexp T γ Γ (me_app H N)).
 Proof.
   apply (set_valid_unit_modexp_ind T γ).
@@ -600,7 +600,7 @@ Proof.
         destruct (Nat.lt_ge_cases k (List.length Ns)) as [Hk | Hk].
         + rewrite List.nth_error_app1 in HB0 by lia. exact (HNr _ _ HB0).
         + rewrite List.nth_error_app2 in HB0 by lia. rewrite HlT in HB0.
-          destruct (k - List.length Ns) as [| k']; cbn in HB0; [injection HB0 as <-; exists Srt; split; [exact HSrt | exact HBs] |].
+          destruct (k - List.length Ns) as [| k']; cbn in HB0; [injection HB0 as <-; exact HBs |].
           destruct k'; discriminate. }
     destruct (filed_denote _ _ Hgw _ _ _ Γ (Ns ++ [N]) Hgl) as (R2 & Hm2 & Hmod2).
     assert (HK' : set_valid_unit T γ Γ (me_apps (qname_mod p) (Ns ++ [N]))).
@@ -686,8 +686,8 @@ Proof.
   - apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
     exact (set_interp_me_app T γ _ _ _ _ _ _ (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ) (set_denotes_exists _ _ _ _ _ HFN' _ Hρ)).
   - intros ρ Hρ. exact (apply_module_resp _ _ (E _ Hρ) _ _ (EN _ Hρ)).
-  - exact (proj2 set_valid_unit_app_all _ _ Hv _ _ _ _ _ _ Hm Ht HV HS HBw HB HNw HN).
-  - exact (proj2 set_valid_unit_app_all _ _ Hv' _ _ _ _ _ _ Hm' Ht' HV' HS' HBw' HB' HNw' HN').
+  - exact (proj2 set_valid_unit_app_all _ _ Hv _ _ _ _ _ _ Hm Ht HV HS HBw (ex_intro _ _ (conj HS HB)) HNw HN).
+  - exact (proj2 set_valid_unit_app_all _ _ Hv' _ _ _ _ _ _ Hm' Ht' HV' HS' HBw' (ex_intro _ _ (conj HS' HB')) HNw' HN').
 Qed.
 
 End ModuleCases.
