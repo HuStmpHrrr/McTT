@@ -113,6 +113,15 @@
 ./Core/Semantic/Stuck.v
 ./Core/Semantic/Transparency.v
 ./Core/Semantic/Avoid.v
+./Core/SetModel/Sets/Aczel.v
+./Core/SetModel/Sets/Pairs.v
+./Core/SetModel/Sets/Numbers.v
+./Core/SetModel/Sets/Codes.v
+./Core/SetModel/Sets/Ordinals.v
+./Core/SetModel/Sets/Grothendieck.v
+./Core/SetModel/Sets/Fixpoints.v
+./Core/SetModel/Sets/WSets.v
+./Core/SetModel/Tower.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v
 ./Core/Semantic/Kinds/KindsEval.v
