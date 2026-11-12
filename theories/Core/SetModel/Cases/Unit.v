@@ -266,6 +266,60 @@ Proof.
       eapply set_module_eq_trans; [exact (EG _ Hρ') |]; exact (set_module_eq_sym _ _ (set_modexp_denotes_unique _ _ _ _ _ HG2 _ _ _ Hρ' H2)) end.
 Qed.
 
+(** Over two telescopes of assumptions whose outermost parts are equal
+    extensions of the context, read from one environment, the values of
+    two units agree when what is left of each agrees at every environment
+    past them. *)
+Lemma set_unit_params_eq_ext : forall L L' Ψ Ψ' Γ ρ P1 P2 D1 D2 m1 m2, all_assumptions L -> all_assumptions L' ->
+    List.length L = List.length L' ->
+    (forall k, set_ext_eq_with T γ Γ (List.rev (List.firstn k L) ++ Ψ) (List.rev (List.firstn k L') ++ Ψ')) ->
+    set_env_in T γ (Ψ ++ Γ) ρ -> set_env_in T γ (Ψ' ++ Γ) ρ ->
+    set_interp_unit_params T γ (Ψ ++ Γ) ρ P1 L D1 m1 -> set_interp_unit_params T γ (Ψ' ++ Γ) ρ P2 L' D2 m2 ->
+    (forall ys x, P1 ys x = P2 ys x) ->
+    (forall ρ' n1 n2, set_env_in T γ (List.rev L ++ Ψ ++ Γ) ρ' -> set_env_in T γ (List.rev L' ++ Ψ' ++ Γ) ρ' ->
+       set_interp_moddef T γ (List.rev L ++ Ψ ++ Γ) ρ' D1 n1 -> set_interp_moddef T γ (List.rev L' ++ Ψ' ++ Γ) ρ' D2 n2 ->
+       set_module_eq γ n1 n2) ->
+    set_module_eq γ m1 m2.
+Proof.
+  induction L as [| e L IH]; intros L' Ψ Ψ' Γ ρ P1 P2 D1 D2 m1 m2 HL HL' Hlen Hext Hρ Hρ' H1 H2 EP Hbase.
+  - destruct L'; [| discriminate]. inversion H1; subst. inversion H2; subst. apply (Hbase ρ); assumption.
+  - destruct L' as [| e' L']; [discriminate |]. cbn [List.length] in Hlen. injection Hlen as Hlen.
+    inversion HL as [| ? ? (κ & A & ->) HL0]; subst. inversion HL' as [| ? ? (κ' & A' & ->) HL0']; subst.
+    inversion H1 as [| ? ? ? ? ? ? ? a1 f1 Hc HA1 Hf1 | | |]; subst.
+    inversion H2 as [| ? ? ? ? ? ? ? a2 f2 Hc' HA2 Hf2 | | |]; subst.
+    pose proof (Hext 1) as [_ _ Hrel1]. cbn [List.firstn List.rev List.app] in Hrel1.
+    pose proof (set_env_rel_eq T γ _ _ _ Hρ) as Eρ.
+    (* a value is of one domain exactly when it is of the other *)
+    assert (Hin : forall x, set_mem x (code_carrier a1) -> set_mem x (code_carrier a2)).
+    { intros x Hx. pose proof (proj1 (Hrel1 (set_env_extend ρ (set_entry_term κ x)) (set_env_extend ρ (set_entry_term κ x)))
+                                 (set_env_in_extend_ass T γ _ _ κ _ _ _ Hρ HA1 Hx)) as [_ He].
+      cbn [set_entry_rel] in He. destruct He as (y & y' & a & [Ey _ Ha Hy _]). cbn [set_env_extend] in Ey. injection Ey as -> <-.
+      eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_interp_functional T γ Hfn Hmods _ _ _ _ Ha _ _ Eρ HA2) | exact Hy]. }
+    assert (Hin' : forall x, set_mem x (code_carrier a2) -> set_mem x (code_carrier a1)).
+    { intros x Hx. pose proof (proj2 (Hrel1 (set_env_extend ρ (set_entry_term κ' x)) (set_env_extend ρ (set_entry_term κ' x)))
+                                 (set_env_in_extend_ass T γ _ _ κ' _ _ _ Hρ' HA2 Hx)) as [_ He].
+      cbn [set_entry_rel] in He. destruct He as (y & y' & a & [Ey _ Ha Hy _]). cbn [set_env_extend] in Ey. injection Ey as <- <-.
+      eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_interp_functional T γ Hfn Hmods _ _ _ _ Ha _ _ Eρ HA1) | exact Hy]. }
+    apply set_module_eq_params; [exact (set_eq_intro _ _ Hin Hin') | exact EP |]. intros x x' Hx Exx'.
+    pose proof (set_env_in_extend_ass T γ _ _ κ _ _ _ Hρ HA1 Hx) as Hρx.
+    pose proof (proj1 (Hrel1 _ _) Hρx) as Hρx'.
+    assert (Eκ : κ' = κ).
+    { destruct Hρx' as [_ He]. cbn [set_entry_rel] in He. destruct He as (y & y' & a & [Ey _ _ _ _]).
+      cbn [set_env_extend] in Ey. injection Ey as <- _. reflexivity. }
+    subst κ'.
+    assert (E1 : set_module_eq γ (f1 x) (f2 x)).
+    { apply (IH L' (ce_ass κ A :: Ψ) (ce_ass κ A' :: Ψ') Γ (set_env_extend ρ (set_entry_term κ x)) P1 P2 D1 D2 (f1 x) (f2 x) HL0 HL0' Hlen); [| exact Hρx | exact Hρx' | exact (Hf1 _ Hx)
+                                                                    | exact (Hf2 _ (Hin _ Hx)) | exact EP |].
+      - intros k. pose proof (Hext (S k)) as H. cbn [List.firstn List.rev] in H. rewrite <- !List.app_assoc in H. exact H.
+      - intros ρ' n1 n2 H1' H2' Hn1 Hn2. cbn [List.rev] in Hbase. rewrite <- !List.app_assoc in Hbase.
+        exact (Hbase ρ' n1 n2 H1' H2' Hn1 Hn2). }
+    eapply set_module_eq_trans; [exact E1 |].
+    assert (Eρx : set_env_eq γ (set_env_extend ρ (set_entry_term κ x)) (set_env_extend ρ (set_entry_term κ x')))
+      by (intros [| s]; [constructor; exact Exx' | apply Eρ]).
+    exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (set_interp_functional_all T γ Hfn Hmods)))))) _ _ _ _ _ _
+             (Hf2 _ (Hin _ Hx)) _ P2 _ Eρx ltac:(intros; reflexivity) (Hf2 _ (set_mem_eq_l _ _ _ Exx' (Hin _ Hx)))).
+Qed.
+
 (** ** A Telescope of Assumptions Abstracted *)
 
 (** A valid literal over the context extended by assumptions is valid
