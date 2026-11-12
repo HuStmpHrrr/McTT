@@ -66,15 +66,16 @@ Fixpoint shape_code (G : set_group) (ds : list (list aczel_set -> aczel_set)) (t
   end.
 
 (** [argument_ignores n g pre]: the argument [g], after the values [pre],
-    reads them alike with the [n]-th erased: its type, or its domains at
-    every point and its target's parameters. *)
+    reads them alike with the [n]-th erased: its type, or its domains and
+    its target's parameters at any points, not only at points of the
+    domains: for [node : T → (⊥ → B → T) → T], no point of [⊥] extends to
+    one of [B], and the code of the second argument still reads [B]. *)
 Definition argument_ignores (n : nat) (g : set_argument) (pre : list aczel_set) : Prop :=
   match g with
   | set_argument_plain _ type => set_eq (type pre) (type (erase_at n pre))
   | set_argument_recursive _ ds _ tparams =>
-      (forall points pts, points_fit ds pre points pts ->
-         Forall2 (fun d k => set_eq (d (pre ++ List.firstn k pts)) (d (erase_at n pre ++ List.firstn k pts))) ds (List.seq 0 (List.length ds))) /\
-      (forall pts, points_fit ds pre nil pts -> list_set_eq (tparams (pre ++ pts)) (tparams (erase_at n pre ++ pts)))
+      (forall k d pts, List.nth_error ds k = Some d -> List.length pts = k -> set_eq (d (pre ++ pts)) (d (erase_at n pre ++ pts))) /\
+      (forall pts, List.length pts = List.length ds -> list_set_eq (tparams (pre ++ pts)) (tparams (erase_at n pre ++ pts)))
   end.
 
 Section Model.

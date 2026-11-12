@@ -166,6 +166,147 @@ Qed.
 
 End ClosedInstances.
 
+(** ** Erasing Recursive Arguments
+
+    The carriers read each argument after the arguments before it with the
+    recursive ones erased ([arguments_fit]); the environments hold them.
+    The types ignore each erasure ([set_constructor_ok_ignores]), at any
+    values, so they ignore all of them. *)
+
+(** [l] with the positions [P] erased. *)
+Fixpoint erase_all (P : list nat) (l : list aczel_set) : list aczel_set :=
+  match P with
+  | nil => l
+  | n :: P' => erase_at n (erase_all P' l)
+  end.
+
+Lemma length_erase_at : forall n l, n < List.length l -> List.length (erase_at n l) = List.length l.
+Proof.
+  intros n l Hn. unfold erase_at. rewrite List.length_app, List.length_firstn. cbn [List.length]. rewrite List.length_skipn. lia.
+Qed.
+
+Lemma length_erase_all : forall P l, (forall n, In n P -> n < List.length l) -> List.length (erase_all P l) = List.length l.
+Proof.
+  induction P as [| n P IH]; intros l HP; [reflexivity |]. cbn [erase_all].
+  rewrite length_erase_at; [apply IH; intros; apply HP; right; assumption |].
+  rewrite IH by (intros; apply HP; right; assumption). apply HP. left. reflexivity.
+Qed.
+
+(** A function that ignores each erasure at every list of a length
+    ignores all of them. *)
+Lemma erase_all_ignored : forall (F : list aczel_set -> aczel_set) N P l,
+    (forall n l', In n P -> List.length l' = N -> set_eq (F l') (F (erase_at n l'))) ->
+    (forall n, In n P -> n < N) -> List.length l = N -> set_eq (F l) (F (erase_all P l)).
+Proof.
+  intros F N P. induction P as [| n P IH]; intros l HF HP Hl; cbn [erase_all]; [apply set_eq_refl |].
+  eapply set_eq_trans; [apply IH; [intros; apply HF; [right |]; assumption | intros; apply HP; right; assumption | exact Hl] |].
+  apply HF; [left; reflexivity |]. rewrite length_erase_all; [exact Hl |]. intros m Hm. rewrite Hl. apply HP. right. exact Hm.
+Qed.
+
+Lemma erase_all_ignored_list : forall (F : list aczel_set -> list aczel_set) N P l,
+    (forall n l', In n P -> List.length l' = N -> list_set_eq (F l') (F (erase_at n l'))) ->
+    (forall n, In n P -> n < N) -> List.length l = N -> list_set_eq (F l) (F (erase_all P l)).
+Proof.
+  intros F N P. induction P as [| n P IH]; intros l HF HP Hl; cbn [erase_all]; [apply list_set_eq_refl |].
+  eapply list_set_eq_trans; [apply IH; [intros; apply HF; [right |]; assumption | intros; apply HP; right; assumption | exact Hl] |].
+  apply HF; [left; reflexivity |]. rewrite length_erase_all; [exact Hl |]. intros m Hm. rewrite Hl. apply HP. right. exact Hm.
+Qed.
+
+Lemma nth_error_erase_at : forall n l i, n < List.length l ->
+    List.nth_error (erase_at n l) i = if Nat.eqb i n then Some empty_set else List.nth_error l i.
+Proof.
+  intros n l i Hn. unfold erase_at. destruct (Nat.lt_trichotomy i n) as [Hi | [-> | Hi]].
+  - rewrite List.nth_error_app1 by (rewrite List.length_firstn; lia). rewrite List.nth_error_firstn.
+    destruct (Nat.ltb_spec i n); [| lia]. destruct (Nat.eqb_spec i n); [lia | reflexivity].
+  - rewrite List.nth_error_app2 by (rewrite List.length_firstn; lia). rewrite List.length_firstn, Nat.min_l by lia.
+    rewrite Nat.sub_diag, Nat.eqb_refl. reflexivity.
+  - rewrite List.nth_error_app2 by (rewrite List.length_firstn; lia). rewrite List.length_firstn, Nat.min_l by lia.
+    destruct (i - n) as [| k] eqn:E; [lia |]. cbn [List.nth_error]. rewrite List.nth_error_skipn.
+    destruct (Nat.eqb_spec i n); [lia |]. f_equal. lia.
+Qed.
+
+(** The values of arguments as the carriers read them: the recursive
+    ones erased. *)
+Fixpoint erase_args (sgs : list set_argument) (vals : list aczel_set) : list aczel_set :=
+  match sgs, vals with
+  | set_argument_plain _ _ :: sgs', v :: vals' => v :: erase_args sgs' vals'
+  | set_argument_recursive _ _ _ _ :: sgs', _ :: vals' => empty_set :: erase_args sgs' vals'
+  | _, _ => nil
+  end.
+
+Lemma length_erase_args : forall sgs vals, List.length sgs = List.length vals -> List.length (erase_args sgs vals) = List.length vals.
+Proof. induction sgs as [| [] sgs IH]; intros [| v vals] Hl; cbn in *; try lia; rewrite IH by lia; reflexivity. Qed.
+
+(** The [k]-th argument erased, if recursive, after the first [k]. *)
+Lemma erase_args_firstn_S : forall k sgs vals g v, List.nth_error sgs k = Some g -> List.nth_error vals k = Some v ->
+    erase_args (List.firstn (S k) sgs) (List.firstn (S k) vals) =
+    erase_args (List.firstn k sgs) (List.firstn k vals) ++
+      [match g with set_argument_plain _ _ => v | set_argument_recursive _ _ _ _ => empty_set end].
+Proof.
+  induction k as [| k IH]; intros [| g0 sgs] [| v0 vals] g v Hg Hv; cbn in Hg, Hv; try discriminate.
+  - injection Hg as <-. injection Hv as <-. destruct g0; reflexivity.
+  - change (List.firstn (S (S k)) (g0 :: sgs)) with (g0 :: List.firstn (S k) sgs).
+    change (List.firstn (S (S k)) (v0 :: vals)) with (v0 :: List.firstn (S k) vals).
+    change (List.firstn (S k) (g0 :: sgs)) with (g0 :: List.firstn k sgs).
+    change (List.firstn (S k) (v0 :: vals)) with (v0 :: List.firstn k vals).
+    destruct g0; cbn [erase_args List.app]; rewrite (IH sgs vals g v Hg Hv); reflexivity.
+Qed.
+
+Lemma erase_at_app : forall A x B, erase_at (List.length A) (A ++ x :: B) = A ++ empty_set :: B.
+Proof.
+  intros. unfold erase_at. rewrite List.firstn_app, Nat.sub_diag, List.firstn_all; cbn [List.firstn]. rewrite List.app_nil_r.
+  rewrite List.skipn_app, List.skipn_all2 by lia. replace (S (List.length A) - List.length A) with 1 by lia. reflexivity.
+Qed.
+
+(** A reading that ignores each recursive argument before the [j]-th, at
+    every list of its length, reads the values with them erased alike. *)
+Lemma erase_args_ignored : forall (F : list aczel_set -> aczel_set) L0 sgs vals j,
+    (forall n L' ty ds tg tp, n < j -> List.nth_error sgs n = Some (set_argument_recursive ty ds tg tp) ->
+       List.length L' = List.length L0 + j -> set_eq (F L') (F (erase_at (List.length L0 + n) L'))) ->
+    j <= List.length sgs -> j <= List.length vals ->
+    set_eq (F (L0 ++ List.firstn j vals)) (F (L0 ++ erase_args (List.firstn j sgs) (List.firstn j vals))).
+Proof.
+  intros F L0 sgs vals j HF Hjs Hjv.
+  assert (C : forall k, k <= j ->
+            set_eq (F (L0 ++ List.firstn j vals))
+                   (F (L0 ++ erase_args (List.firstn k sgs) (List.firstn k vals) ++ List.skipn k (List.firstn j vals)))).
+  { induction k as [| k IH]; intros Hk; [cbn; apply set_eq_refl |].
+    eapply set_eq_trans; [apply IH; lia |].
+    destruct (List.nth_error sgs k) as [g |] eqn:Hg; [| apply List.nth_error_None in Hg; lia].
+    destruct (List.nth_error vals k) as [v |] eqn:Hv; [| apply List.nth_error_None in Hv; lia].
+    assert (Hs : List.skipn k (List.firstn j vals) = v :: List.skipn (S k) (List.firstn j vals)).
+    { apply skipn_nth_cons. rewrite List.nth_error_firstn. destruct (Nat.ltb_spec k j); [exact Hv | lia]. }
+    rewrite Hs, (erase_args_firstn_S k sgs vals g v Hg Hv), <- List.app_assoc. cbn [List.app].
+    assert (Hlk : List.length (erase_args (List.firstn k sgs) (List.firstn k vals)) = k)
+      by (rewrite length_erase_args; rewrite !List.length_firstn; lia).
+    destruct g as [κ ty | ty ds tg tp]; [apply set_eq_refl |].
+    rewrite !List.app_assoc.
+    set (A := L0 ++ erase_args (List.firstn k sgs) (List.firstn k vals)).
+    set (Bl := List.skipn (S k) (List.firstn j vals)).
+    assert (HA : List.length A = List.length L0 + k) by (unfold A; rewrite List.length_app, Hlk; reflexivity).
+    rewrite <- (erase_at_app A v Bl), HA. apply (HF k _ ty ds tg tp); [lia | exact Hg |].
+    rewrite List.length_app, HA. cbn [List.length]. unfold Bl. rewrite List.length_skipn, List.length_firstn. lia. }
+  eapply set_eq_trans; [apply (C j (le_n _)) |]. rewrite List.skipn_all2 by (rewrite List.length_firstn; lia).
+  rewrite List.app_nil_r. apply set_eq_refl.
+Qed.
+
+(** [arguments_fit]'s reading of each argument. *)
+Lemma arguments_fit_nth : forall G bound S pre sgs vals, arguments_fit G bound S pre sgs vals ->
+    forall j g v, List.nth_error sgs j = Some g -> List.nth_error vals j = Some v ->
+    match g with
+    | set_argument_plain _ type => set_mem v (code_carrier (type (pre ++ erase_args (List.firstn j sgs) (List.firstn j vals))))
+    | set_argument_recursive _ ds target tparams =>
+        set_mem v (shape_set G bound S (pre ++ erase_args (List.firstn j sgs) (List.firstn j vals)) ds target tparams nil)
+    end.
+Proof.
+  induction 1 as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams gs a vals Ha H IH];
+    intros [| j] g v Hg Hv; cbn in Hg, Hv; try discriminate.
+  - injection Hg as <-. injection Hv as <-. rewrite List.app_nil_r. exact Ha.
+  - specialize (IH j g v Hg Hv). cbn [List.firstn erase_args]. rewrite <- List.app_assoc in IH. exact IH.
+  - injection Hg as <-. injection Hv as <-. rewrite List.app_nil_r. exact Ha.
+  - specialize (IH j g v Hg Hv). cbn [List.firstn erase_args]. rewrite <- List.app_assoc in IH. exact IH.
+Qed.
+
 (** ** The Codes of Recursive Arguments *)
 
 Lemma list_set_eq_firstn : forall n xs ys, list_set_eq xs ys -> list_set_eq (List.firstn n xs) (List.firstn n ys).
