@@ -133,6 +133,7 @@
 ./Core/SetModel/Interpretation/Interp.v
 ./Core/SetModel/Interpretation/Respects.v
 ./Core/SetModel/Interpretation/Functional.v
+./Core/SetModel/Interpretation/ContextRelation.v
 ./Core/SetModel/Interpretation/Weakening.v
 ./Core/SetModel/Interpretation/Substitution.v
 ./Core/SetModel/Judgments.v
