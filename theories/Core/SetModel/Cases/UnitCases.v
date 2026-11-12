@@ -6,13 +6,19 @@
     ([set_interp_functional_ext]): so an entry of one side relates the
     entries the other's relates. *)
 
-From Stdlib Require Import List.
+From Stdlib Require Import String List Lia.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
-From Mctt.Core.SetModel.Interpretation Require Import ContextRelation.
-From Mctt.Core.Syntactic Require Import Syntax.
-From Mctt.Core.Syntactic.System Require Import Definitions.
+From Mctt.Core.SetModel.Interpretation Require Import Respects ContextRelation JudgmentSubstitution.
+From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel.Cases Require Import ValidUnit MemberTypes ModuleCases Unit.
+From Mctt.Core.Syntactic Require Import Syntax Members.
+From Mctt.Core.Syntactic.System Require Import Definitions Structural.
+From Mctt.Core.Syntactic.System.Global Require Import Presup DescTyping MemberLemmas.
+From Mctt.Core.SetModel.Interpretation Require Import Substitution.
+From Mctt.Core.Syntactic.System Require Import Scoping.
+From Mctt.Core.Completeness.Modules Require Import ValidUnit Body.
 Import ListNotations.
 
 Section Units.
@@ -22,6 +28,8 @@ Section Units.
   Hypothesis Hfn : fn_kinds_unique_ext.
   (** Every global module equals itself *)
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
+  (** The valuation models the global context *)
+  Hypothesis Hok : set_gctx_ok T γ.
 
 (** ** Values Read in Equal Extensions *)
 
@@ -243,6 +251,158 @@ Proof.
   - do 3 eexists; exact HM2e.
   - exact (set_modexp_rel_of_unit_eq_with _ _ _ _ _ HU2e).
   - intros. destruct HM2e as [_ HM2 _ _ _]. eapply set_entry_rel_dm_iff; eassumption.
+Qed.
+
+(** ** Units over Equal Telescopes *)
+
+(** Telescopes of assumptions of one length push the same slots. *)
+Lemma tele_out_proofs_assumptions : forall L L' κs, all_assumptions L -> all_assumptions L' -> List.length L = List.length L' ->
+    tele_out_proofs γ κs L = tele_out_proofs γ κs L'.
+Proof.
+  induction L as [| e L IH]; intros [| e' L'] κs HL HL' Hlen; try discriminate; [reflexivity |].
+  inversion HL as [| ? ? (κ & A & ->) HL0]; subst. inversion HL' as [| ? ? (κ' & A' & ->) HL0']; subst.
+  cbn [tele_out_proofs]. apply IH; [exact HL0 | exact HL0' | injection Hlen as Hlen; exact Hlen].
+Qed.
+
+(** The suffixes of equal lengths of telescopes of one length, read
+    outermost first. *)
+Lemma rev_firstn_rev_suffix : forall (Δ : ctx) k, Δ = List.firstn (List.length Δ - k) Δ ++ List.rev (List.firstn k (List.rev Δ)).
+Proof. intros. rewrite List.firstn_rev, List.rev_involutive. symmetry. apply List.firstn_skipn. Qed.
+
+(** An alias over assumptions of evaluated sorts of a valid target is a
+    valid unit. *)
+Lemma set_valid_unit_alias_of : forall Γ Δ E l,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_lit (gu_mk Δ (md_alias E)) ≈ me_lit (gu_mk Δ (md_alias E)) ->
+    all_assumptions Δ -> set_params_evaluated T γ Γ Δ l -> set_valid_modexp T γ (Δ ++ Γ) E ->
+    set_valid_unit T γ Γ (me_lit (gu_mk Δ (md_alias E))).
+Proof.
+  intros * Hw HΔ Hl HvE. pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0.
+  inversion HvE as [? ? K R Rm RK [HwE _ _ HrE _ _ _] HK]; subst.
+  pose proof (set_valid_unit_ctx T γ _ _ HK) as HΔΓ. pose proof (presup_modexp_eq_ctx HwE) as HcΔΓ.
+  pose proof (set_modexp_rel_refl_left T γ _ _ _ HrE) as HEE.
+  apply set_valid_unit_alias; [| exact HvE].
+  constructor; [exact Hw | exact HΔ | exists l; exact Hl | exact (set_ctx_app_r T γ _ _ HΔΓ) | exact HΔΓ | | exact HEE].
+  exact (set_unit_rel_abs T γ Hfn0 Hmods Δ Γ nil _ HΔ HΔΓ HcΔΓ
+           (set_modexp_rel_refl_left T γ _ _ _ (set_alias0_rel T γ Hfn0 Hmods _ _ HΔΓ HEE))).
+Qed.
+
+Lemma set_rule_unit_eq_alias : forall Γ Δ Δ' E E' l,
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
+    (forall X Ψ X' Ψ', Δ = X ++ Ψ -> Δ' = X' ++ Ψ' -> List.length Ψ = List.length Ψ' -> set_ext_eq_with T γ Γ Ψ Ψ') ->
+    all_assumptions Δ -> all_assumptions Δ' ->
+    set_params_evaluated T γ Γ Δ l -> set_params_evaluated T γ Γ Δ' l ->
+    set_modexp_eq T γ (Δ ++ Γ) E E' -> set_modexp_eq T γ (Δ' ++ Γ) E' E' ->
+    set_unit_eq T γ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ' (md_alias E')).
+Proof.
+  intros * HUU HΔw Hext HΔ HΔ' Hl Hl' (G & G' & [HG HG' EG HvE _ HprE]) (G2 & _ & [HG2 _ _ HvE2 _ _]).
+  pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0. pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hlen.
+  pose proof (set_valid_unit_alias_of _ _ _ _ (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_left HUU)) HΔ Hl HvE) as HK.
+  pose proof (set_valid_unit_alias_of _ _ _ _ (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_right HUU)) HΔ' Hl' HvE2) as HK'.
+  destruct (set_valid_unit_rel T γ Hfn0 Hmods Hok _ _ HK) as (F & _ & [HF _ _]).
+  destruct (set_valid_unit_rel T γ Hfn0 Hmods Hok _ _ HK') as (F' & _ & [HF' _ _]).
+  assert (Hpr : forall κs, set_slots_coherent γ Γ κs -> forall ys x,
+             unit_member_proofs γ κs (gu_mk Δ (md_alias E)) ys x = unit_member_proofs γ κs (gu_mk Δ' (md_alias E')) ys x).
+  { intros κs Hκ ys x. rewrite !unit_member_proofs_tele_out. cbn [moddef_member_proofs].
+    rewrite (HprE _ (set_slots_coherent_tele_out γ _ _ _ HΔ Hκ)).
+    rewrite (tele_out_proofs_assumptions (List.rev Δ) (List.rev Δ') κs (List.Forall_rev HΔ) (List.Forall_rev HΔ')
+               ltac:(rewrite !List.length_rev; exact Hlen)).
+    reflexivity. }
+  exists F, F'. constructor; [exact HF | exact HF' | | exact HK | exact HK' | exact Hpr].
+  intros ρ Hρ.
+  pose proof (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) as Hm1. apply set_interp_me_lit_iff in Hm1.
+  pose proof (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ) as Hm2. apply set_interp_me_lit_iff in Hm2.
+  inversion Hm1 as [? ? ? ? P1 m1 HP1 HL1]; subst. inversion Hm2 as [? ? ? ? P2 m2 HP2 HL2]; subst.
+  apply (set_unit_params_eq_ext T γ Hfn0 Hmods (List.rev Δ) (List.rev Δ') nil nil Γ ρ P1 P2 (md_alias E) (md_alias E') (F ρ) (F' ρ)
+           (List.Forall_rev HΔ) (List.Forall_rev HΔ') ltac:(rewrite !List.length_rev; exact Hlen)); [| exact Hρ | exact Hρ | exact HL1 | exact HL2 | |].
+  - intros k. rewrite !List.app_nil_r.
+    apply (Hext (List.firstn (List.length Δ - k) Δ) _ (List.firstn (List.length Δ' - k) Δ') _
+             (rev_firstn_rev_suffix Δ k) (rev_firstn_rev_suffix Δ' k)).
+    rewrite !List.length_rev, !List.length_firstn, !List.length_rev. lia.
+  - intros ys x. rewrite HP1, HP2. exact (Hpr _ (set_slots_coherent_env T γ _ _ Hρ) ys x).
+  - intros ρ' n1 n2 Hρ1 Hρ2 Hn1 Hn2. cbn [List.app] in Hρ1, Hρ2, Hn1, Hn2. rewrite List.rev_involutive in Hρ1, Hρ2, Hn1, Hn2.
+    inversion Hn1 as [| ? ? ? ? H1]; subst. inversion Hn2 as [| ? ? ? ? H2]; subst.
+    eapply set_module_eq_trans; [exact (set_modexp_denotes_unique _ _ _ _ _ HG _ _ _ Hρ1 H1) |].
+    eapply set_module_eq_trans; [exact (EG _ Hρ1) |].
+    eapply set_module_eq_trans; [exact (set_modexp_denotes_across _ _ _ _ _ _ _ HΔw HG' HG2 Hρ1 Hρ2) |].
+    exact (set_module_eq_sym _ _ (set_modexp_denotes_unique _ _ _ _ _ HG2 _ _ _ Hρ2 H2)).
+Qed.
+
+(** ** Bodies over Equal Telescopes *)
+
+(** An entry of a body read in the environment the entries before it make
+    is read as the entry filled in at the body's base environment. *)
+Lemma set_interp_gmod_sub_setting : forall D ρ Φ ms ρo σ, ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx Φ ++ D ->
+    set_interp_gmod T γ D ρ Φ ms ρo -> gm_fill Φ = Some σ ->
+    sub_setting T γ (body_ctx Φ ++ D) ρo nil (body_ctx Φ ++ D) D σ ρ ρ.
+Proof.
+  intros * Hc Hm Hf.
+  constructor; [reflexivity | exact (wf_gm_fill _ _ _ _ _ Hc Hf) | intros k Hk; cbn in Hk; lia
+               | intros; reflexivity | intros k; exact (set_interp_gmod_fill T γ _ _ _ _ _ Hm _ Hf k)].
+Qed.
+
+(** Two bodies of one shape read at one environment of their bases have
+    equal tables, when their definitions and submodules filled in agree
+    there entry by entry. *)
+Lemma set_interp_gmod_eq_filled : forall Φ Φ' D D' ρ ms ms' ρo ρo',
+    body_shape Φ Φ' -> gm_nopens Φ = 0 -> List.NoDup (gm_names Φ) ->
+    set_interp_gmod T γ D ρ Φ ms ρo -> set_interp_gmod T γ D' ρ Φ' ms' ρo' ->
+    (forall y Φ0 E A M Φ0' E' A' M' σ σ' v v',
+       gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       gm_prefix_upto Φ' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+       set_interp T γ D ρ (exp_sub M σ) v -> set_interp T γ D' ρ (exp_sub M' σ') v' -> set_eq v v') ->
+    (forall y Φ0 E U Φ0' E' U' σ σ' m m',
+       gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+       gm_prefix_upto Φ' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
+       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+       set_interp_modexp T γ D ρ (me_lit (gunit_sub U σ)) m -> set_interp_modexp T γ D' ρ (me_lit (gunit_sub U' σ')) m' ->
+       set_module_eq γ m m') ->
+    set_members_eq γ ms ms'.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H its Φg _];
+    intros [| Φ' y' E' | Φ' H' its' Φg'] D D' ρ ms ms' ρo ρo' Hs Hn Hnd Hm Hm' Hdef Hmod; cbn [body_shape gm_nopens] in Hs, Hn;
+    try contradiction; [| | discriminate].
+  - inversion Hm; subst. inversion Hm'; subst. constructor.
+  - destruct Hs as (Hs0 & <- & HsE).
+    assert (Hnd' : List.NoDup (gm_names (gm_ext Φ' y E'))) by (rewrite <- (body_shape_names (gm_ext Φ y E) (gm_ext Φ' y E')); [exact Hnd |];
+                                                              cbn [body_shape]; auto).
+    inversion Hm as [| ? ? ? ? ? ms0 ρo0 e Hc HΦ HE]; subst. inversion Hm' as [| ? ? ? ? ? ms0' ρo0' e' Hc' HΦ' HE']; subst.
+    destruct (body_shape_fill _ _ Hn Hs0) as [Hf0 Hf0'].
+    destruct (gm_fill Φ) as [σ |] eqn:Hf; [| exfalso; exact (Hf0 eq_refl)].
+    destruct (gm_fill Φ') as [σ' |] eqn:Hf'; [| exfalso; exact (Hf0' eq_refl)].
+    pose proof (set_interp_gmod_sub_setting _ _ _ _ _ _ Hc HΦ Hf) as Hsub.
+    pose proof (set_interp_gmod_sub_setting _ _ _ _ _ _ Hc' HΦ' Hf') as Hsub'.
+    assert (Hp : gm_prefix_upto (gm_ext Φ y E) y = Some (gm_ext Φ y E)) by (cbn [gm_prefix_upto]; rewrite String.eqb_refl; reflexivity).
+    assert (Hp' : gm_prefix_upto (gm_ext Φ' y E') y = Some (gm_ext Φ' y E')) by (cbn [gm_prefix_upto]; rewrite String.eqb_refl; reflexivity).
+    apply set_members_eq_app.
+    + apply (IH Φ' D D' ρ ms0 ms0' ρo0 ρo0' Hs0 Hn ltac:(cbn [gm_names] in Hnd; inversion Hnd; assumption) HΦ HΦ').
+      * intros * Hq HEq Hq' HEq'. exact (Hdef _ _ _ _ _ _ _ _ _ _ _ _ _ (prefix_ext_keep _ _ _ _ _ Hnd Hq) HEq
+                                             (prefix_ext_keep _ _ _ _ _ Hnd' Hq') HEq').
+      * intros * Hq HEq Hq' HEq'. exact (Hmod _ _ _ _ _ _ _ _ _ _ _(prefix_ext_keep _ _ _ _ _ Hnd Hq) HEq
+                                             (prefix_ext_keep _ _ _ _ _ Hnd' Hq') HEq').
+    + assert (HvM : forall M v, set_interp T γ (body_ctx Φ ++ D) ρo0 M v -> set_interp T γ D ρ (exp_sub M σ) v)
+        by (intros M v HM; exact (set_interp_sub T γ _ _ _ _ HM Hc _ _ _ _ _ _ Hsub)).
+      assert (HvM' : forall M v, set_interp T γ (body_ctx Φ' ++ D') ρo0' M v -> set_interp T γ D' ρ (exp_sub M σ') v)
+        by (intros M v HM; exact (set_interp_sub T γ _ _ _ _ HM Hc' _ _ _ _ _ _ Hsub')).
+      assert (HvU : forall U m, set_interp_gunit T γ (body_ctx Φ ++ D) ρo0 U m ->
+                 set_interp_modexp T γ D ρ (me_lit (gunit_sub U σ)) m)
+        by (intros U m HU; exact (proj1 (proj2 (proj2 (proj2 (set_interp_sub_all T γ)))) _ _ (me_lit U) _
+                                    ltac:(constructor; exact HU) nil _ _ _ _ _ Hc Hsub)).
+      assert (HvU' : forall U m, set_interp_gunit T γ (body_ctx Φ' ++ D') ρo0' U m ->
+                  set_interp_modexp T γ D' ρ (me_lit (gunit_sub U σ')) m)
+        by (intros U m HU; exact (proj1 (proj2 (proj2 (proj2 (set_interp_sub_all T γ)))) _ _ (me_lit U) _
+                                    ltac:(constructor; exact HU) nil _ _ _ _ _ Hc' Hsub')).
+      constructor; [| constructor].
+      destruct E as [b pv r A [M |] | pv U | | pv A M U |]; destruct E' as [b' pv' r' A' [M' |] | pv' U' | | pv' A' M' U' |];
+        cbn [entry_shape] in HsE; try contradiction.
+      * destruct HsE as (_ & _ & _ & <-). inversion HE; subst. inversion HE'; subst. constructor.
+        exact (Hdef _ _ _ _ _ _ _ _ _ _ _ _ _ Hp eq_refl Hp' eq_refl Hf Hf' (HvM _ _ ltac:(eassumption)) (HvM' _ _ ltac:(eassumption))).
+      * inversion HE; subst. inversion HE'; subst. constructor.
+        exact (Hmod _ _ _ _ _ _ _ _ _ _ _ Hp eq_refl Hp' eq_refl Hf Hf' (HvU _ _ ltac:(eassumption)) (HvU' _ _ ltac:(eassumption))).
+      * inversion HE; subst. inversion HE'; subst. constructor.
+        -- exact (Hdef _ _ _ _ _ _ _ _ _ _ _ _ _ Hp eq_refl Hp' eq_refl Hf Hf' (HvM _ _ ltac:(eassumption)) (HvM' _ _ ltac:(eassumption))).
+        -- exact (Hmod _ _ _ _ _ _ _ _ _ _ _ Hp eq_refl Hp' eq_refl Hf Hf' (HvU _ _ ltac:(eassumption)) (HvU' _ _ ltac:(eassumption))).
 Qed.
 
 End Units.

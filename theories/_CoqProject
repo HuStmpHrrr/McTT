@@ -145,7 +145,6 @@
 ./Core/SetModel/Cases/LetCases.v
 ./Core/SetModel/Cases/SubtypingCases.v
 ./Core/SetModel/Cases/ContextCases.v
-./Core/SetModel/Cases/UnitCases.v
 ./Core/SetModel/Cases/ValidUnit.v
 ./Core/SetModel/Cases/MemberTypes.v
 ./Core/SetModel/Cases/ModuleCases.v
@@ -153,6 +152,7 @@
 ./Core/SetModel/Cases/Canon.v
 ./Core/SetModel/Cases/App.v
 ./Core/SetModel/Cases/Sel.v
+./Core/SetModel/Cases/UnitCases.v
 ./Core/SetModel/Interpretation/JudgmentSubstitution.v
 ./Core/SetModel/Interpretation/Global/Model.v
 ./Core/Semantic/Rename.v
