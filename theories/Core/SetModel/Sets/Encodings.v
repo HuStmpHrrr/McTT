@@ -67,6 +67,27 @@ Proof.
   - apply ordered_pair_inj in E as [Ex Exs]. constructor; [exact Ex | exact (IH _ Exs)].
 Qed.
 
+(** The first [n] entries of a coded list. *)
+Fixpoint list_decode (n : nat) (L : aczel_set) : list aczel_set :=
+  match n with
+  | 0 => nil
+  | S n' => pair_first L :: list_decode n' (pair_second L)
+  end.
+
+Lemma list_decode_resp : forall n L L', set_eq L L' -> list_set_eq (list_decode n L) (list_decode n L').
+Proof.
+  induction n; intros L L' E; cbn [list_decode]; constructor.
+  - apply pair_first_resp. exact E.
+  - apply IHn. apply pair_second_resp. exact E.
+Qed.
+
+Lemma list_decode_code : forall xs, list_set_eq (list_decode (List.length xs) (list_code xs)) xs.
+Proof.
+  induction xs as [| x xs IH]; cbn [List.length list_decode list_code]; constructor.
+  - apply pair_first_ordered_pair.
+  - eapply list_set_eq_trans; [apply list_decode_resp; apply pair_second_ordered_pair | exact IH].
+Qed.
+
 (** The set of the entries of a list. *)
 Fixpoint set_of_list (xs : list aczel_set) : aczel_set :=
   match xs with
