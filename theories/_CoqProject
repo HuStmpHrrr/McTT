@@ -135,6 +135,7 @@
 ./Core/SetModel/Interpretation/Weakening.v
 ./Core/SetModel/Interpretation/Substitution.v
 ./Core/SetModel/Judgments.v
+./Core/SetModel/Cases/Universes.v
 ./Core/SetModel/Interpretation/Global/Model.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v

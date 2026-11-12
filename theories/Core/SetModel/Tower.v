@@ -51,6 +51,31 @@ Proof.
   - f_equal. apply large_ordinal_set_inj. exact E.
 Qed.
 
+(** Every ordinal below [ω²+ω] is a member of every universe of sets. *)
+Section Ordinals.
+  Variable U : aczel_set.
+  Hypothesis HU : grothendieck U.
+
+Lemma grothendieck_iterate_successor : forall n x, set_mem x U -> set_mem (iterate_successor n x) U.
+Proof. induction n as [| n IH]; intros x Hx; cbn [iterate_successor]; [exact Hx | apply (grothendieck_successor _ HU); apply IH; exact Hx]. Qed.
+
+Lemma grothendieck_limit_ordinal : forall a, set_mem (limit_ordinal_set a) U.
+Proof.
+  induction a as [| a IH]; cbn [limit_ordinal_set]; [apply (grothendieck_empty _ HU) |].
+  apply (grothendieck_union _ HU). apply (grothendieck_nat_family _ HU). intros n. apply grothendieck_iterate_successor. exact IH.
+Qed.
+
+Lemma grothendieck_omega_square : set_mem omega_square_set U.
+Proof. unfold omega_square_set. apply (grothendieck_union _ HU). apply (grothendieck_nat_family _ HU). exact grothendieck_limit_ordinal. Qed.
+
+Lemma grothendieck_universe_index_set : forall i, set_mem (universe_index_set i) U.
+Proof.
+  intros [[a b] | k]; cbn [universe_index_set]; unfold pair_ordinal_set, large_ordinal_set; apply grothendieck_iterate_successor;
+    [apply grothendieck_limit_ordinal | apply grothendieck_omega_square].
+Qed.
+
+End Ordinals.
+
 Section Tower.
   Variable T : universe_tower.
 
