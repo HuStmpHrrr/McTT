@@ -169,6 +169,15 @@ Definition level_type_code (n : nat) : aczel_set :=
   type_code level_type_tag (numeral_set n)
     (family_set {o : nat * nat | fst o <= n} (fun o => pair_ordinal_set (proj1_sig o))).
 
+(** A type of levels is a member of every universe of sets. *)
+Lemma grothendieck_level_type_code : forall V n, grothendieck V -> set_mem (level_type_code n) V.
+Proof.
+  intros V n HV. unfold level_type_code. apply (grothendieck_type_code _ HV); [apply (grothendieck_numeral _ HV) |].
+  apply (grothendieck_sub _ HV omega_square_set); [apply (grothendieck_omega_square _ HV) |].
+  intros z [[o Ho] Ez]. cbn in Ez. eapply set_mem_eq_l; [apply set_eq_sym; exact Ez |].
+  exact (pair_ordinal_set_below_large o 0).
+Qed.
+
 (** A code is a type of levels: a [Level@n], or a [Π] between types of
     levels. *)
 Inductive is_level_type_code : aczel_set -> Prop :=
