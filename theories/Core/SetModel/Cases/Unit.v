@@ -29,6 +29,8 @@ Section Unit.
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
+  (** The valuation models the global context *)
+  Hypothesis Hok : set_gctx_ok T γ.
 
 (** ** The Proofness of Function Nodes *)
 
@@ -285,6 +287,122 @@ Proof.
     rewrite List.app_assoc in Hw |- *.
     apply (set_valid_unit_bind _ _ _ _ _ l); [exact (IH _ _ _ _ HK HΔ Hl' Hw') | exact Hw |].
     exact (Hl Δ κ X nil eq_refl).
+Qed.
+
+(** ** The Rules of Units *)
+
+(** Parameters each of a sort a universe at [l] or the type of levels,
+    semantically. *)
+Lemma set_params_evaluated_of_sorts : forall Γ Δ l ps, (forall k, parameter_sort l (ps k)) ->
+    (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> set_exp_eq T γ (Δ2 ++ Γ) (ps (List.length Δ2)) A A) ->
+    set_params_evaluated T γ Γ Δ l.
+Proof.
+  intros * Hps HA Δ1 κ A Δ2 E. pose proof (HA _ _ _ _ E) as H.
+  destruct (Hps (List.length Δ2)); [left | right]; exact H.
+Qed.
+
+Lemma set_rule_unit_eq_sym : forall Γ U U', set_unit_eq T γ Γ U U' -> set_unit_eq T γ Γ U' U.
+Proof.
+  intros * (F & F' & [HF HF' E HU HU']). exists F', F. constructor; [exact HF' | exact HF | | exact HU' | exact HU].
+  intros ρ Hρ. apply set_module_eq_sym. exact (E _ Hρ).
+Qed.
+
+Lemma set_rule_unit_eq_trans : forall Γ U U' U'', set_unit_eq T γ Γ U U' -> set_unit_eq T γ Γ U' U'' -> set_unit_eq T γ Γ U U''.
+Proof.
+  intros * (F & F' & [HF HF' E HU _]) (G & G' & [HG HG' E' _ HU'']). exists F, G'. constructor; [exact HF | exact HG' | | exact HU | exact HU''].
+  intros ρ Hρ. eapply set_module_eq_trans; [exact (E _ Hρ) |]. eapply set_module_eq_trans; [| exact (E' _ Hρ)].
+  exact (set_modexp_denotes_unique _ _ _ _ _ HG _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ)).
+Qed.
+
+(** An alias over assumptions of a literal is the literal over both
+    telescopes. *)
+Lemma set_rule_unit_eq_flatten : forall Γ Δ Δ' D l, all_assumptions Δ -> set_params_evaluated T γ Γ Δ l ->
+    set_unit_eq T γ (Δ ++ Γ) (gu_mk Δ' D) (gu_mk Δ' D) ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D ->
+    set_unit_eq T γ Γ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))) (gu_mk (Δ' ++ Δ) D).
+Proof.
+  intros * HΔ Hl (FU & _ & [HFU _ _ HK _]) HUU.
+  pose proof (set_valid_unit_ctx T γ _ _ HK) as HΔΓ. pose proof (set_ctx_app_r T γ _ _ HΔΓ) as HΓ.
+  pose proof (presup_modexp_eq_ctx (set_valid_unit_wf T γ _ _ HK)) as HcΔΓ.
+  pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_left HUU)) as HwA. pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_right HUU)) as HwF.
+  pose proof (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HK) as HrU.
+  assert (HrA : set_modexp_rel T γ Γ (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))) (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))))).
+  { exact (set_unit_rel_abs Δ Γ nil _ HΔ HΔΓ HcΔΓ
+             (set_modexp_rel_refl_left T γ _ _ _ (set_alias0_rel T γ Hfn Hmods _ _ HΔΓ HrU))). }
+  assert (HKA : set_valid_unit T γ Γ (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))))).
+  { apply set_valid_unit_alias; [| exact (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HK)].
+    constructor; [exact HwA | exact HΔ | exists l; exact Hl | exact HΓ | exact HΔΓ | exact HrA | exact HrU]. }
+  pose proof (set_valid_unit_abs _ _ _ _ _ HK HΔ Hl HwF) as HKF.
+  destruct (set_unit_rel_flatten _ _ _ _ HΔ HrA (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKF)) as (F1 & F2 & [HF1 HF2 E12]).
+  exists F1, F2. constructor; [exact HF1 | exact HF2 | exact E12 | exact HKA | exact HKF].
+Qed.
+
+(** A unit's parameters denote over a definition reading as another. *)
+Lemma set_interp_unit_params_moddef : forall Γ ρ P L D m, set_interp_unit_params T γ Γ ρ P L D m ->
+    forall D', (forall Γ' ρ' n, set_interp_moddef T γ Γ' ρ' D n -> set_interp_moddef T γ Γ' ρ' D' n) ->
+    set_interp_unit_params T γ Γ ρ P L D' m.
+Proof.
+  induction 1 as [Γ ρ P D m Hm | Γ ρ P κ A L D a f Hc HA Hf IH | Γ ρ P A M L D v m Hc HM Hm IH
+                 | Γ ρ P U L D mu m Hc HU Hm IH | Γ ρ P A M U L D v mu m Hc HM HU Hm IH]; intros D' HD.
+  - constructor. exact (HD _ _ _ Hm).
+  - constructor; [exact Hc | exact HA |]. intros x Hx. exact (IH x Hx _ HD).
+  - econstructor; [exact Hc | exact HM | exact (IH _ HD)].
+  - econstructor; [exact Hc | exact HU | exact (IH _ HD)].
+  - econstructor; [exact Hc | exact HM | exact HU | exact (IH _ HD)].
+Qed.
+
+(** A body unit is its expansion. *)
+Lemma set_rule_unit_eq_expand : forall Γ Δ Φ, set_unit_eq T γ Γ (gu_open Δ Φ) (gu_open Δ Φ) ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ (gm_expand Φ) ->
+    set_unit_eq T γ Γ (gu_open Δ Φ) (gu_open Δ (gm_expand Φ)).
+Proof.
+  intros * (F & _ & [HF _ _ HK _]) HUU.
+  pose proof (gm_noopen_expand Φ) as Hno. pose proof (gm_expand_noopen _ Hno) as Hee.
+  assert (HD : forall Γ' ρ' n, set_interp_moddef T γ Γ' ρ' (md_body sm_open Φ) n -> set_interp_moddef T γ Γ' ρ' (md_body sm_open (gm_expand Φ)) n)
+    by (intros * Hn; inversion Hn; subst; eapply set_interp_md_body; rewrite Hee; eassumption).
+  assert (HP : forall ρ ys x, unit_member_proofs γ (env_slot_proofs γ ρ) (gu_open Δ Φ) ys x =
+                             unit_member_proofs γ (env_slot_proofs γ ρ) (gu_open Δ (gm_expand Φ)) ys x).
+  { intros ρ ys x. rewrite !unit_member_proofs_tele_out. cbn [moddef_member_proofs].
+    rewrite (proj2 (body_member_proofs_expand γ Φ _)). reflexivity. }
+  pose proof (set_valid_unit_ctx T γ _ _ HK) as HΓ.
+  set (F' := fun ρ => params_with_proofs (List.rev Δ) (unit_member_proofs γ (env_slot_proofs γ ρ) (gu_open Δ (gm_expand Φ))) (F ρ)).
+  assert (HF' : set_modexp_denotes T γ Γ (me_lit (gu_open Δ (gm_expand Φ))) F').
+  { apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ. constructor.
+    pose proof (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) as Hm. apply set_interp_me_lit_iff in Hm.
+    inversion Hm as [? ? ? ? P m HPm HL]; subst.
+    apply (set_interp_gunit_mk T γ _ _ _ _ (unit_member_proofs γ (env_slot_proofs γ ρ) (gu_open Δ (gm_expand Φ)))); [intros; reflexivity |].
+    exact (set_interp_unit_params_moddef _ _ _ _ _ _ (set_interp_unit_params_with_proofs _ _ _ _ _ _ HL _) _ HD). }
+  assert (E : forall ρ, set_env_in T γ Γ ρ -> set_module_eq γ (F ρ) (F' ρ)).
+  { intros ρ Hρ.
+    pose proof (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) as Hm1. apply set_interp_me_lit_iff in Hm1.
+    pose proof (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ) as Hm2. apply set_interp_me_lit_iff in Hm2.
+    inversion Hm1 as [? ? ? ? P1 m1 HP1 HL1]; subst. inversion Hm2 as [? ? ? ? P2 m2 HP2 HL2]; subst.
+    pose proof HK as HK0. inversion HK0 as [| ? ? ? Φx [_ _ HΔ _ _ _ _ _ _ _ _] _ _ |]; subst;
+      try (exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end).
+    rewrite <- (List.app_nil_r (List.rev Δ)) in HL2.
+    apply (set_unit_params_eq_app (List.rev Δ) Γ ρ P1 P2 _ nil _ _ _ (List.Forall_rev HΔ) Hρ HL1 HL2).
+    - intros ys x. rewrite HP1, HP2. apply HP.
+    - intros ρ' n1 n2 Hρ' _ Hn1 Hn2. inversion Hn2; subst.
+      match goal with Hd : set_interp_moddef _ _ _ _ _ n2 |- _ => inversion Hd; subst end. inversion Hn1; subst.
+      rewrite Hee in *. constructor.
+      match goal with Ha : set_interp_gmod _ _ _ _ (gm_expand Φ) ?ms1 _, Hb : set_interp_gmod _ _ _ _ (gm_expand Φ) ?ms2 _ |-
+                      set_members_eq _ ?ms1 ?ms2 =>
+        exact (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (set_interp_functional_all T γ Hfn Hmods))))))))
+                _ _ _ _ _ Ha _ _ _ (set_env_rel_eq T γ _ _ _ Hρ') Hb)) end. }
+  (* the expansion is a valid body *)
+  assert (HK' : set_valid_unit T γ Γ (me_lit (gu_open Δ (gm_expand Φ)))).
+  { inversion HK as [| ? ? ? Φx Hb Hsub Hop |]; subst;
+      try (exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end).
+    destruct Hb as [_ Hx HΔ Hl HΓ' HC Hs Hsh Hshx _ _].
+    pose proof (body_xp_expand _ _ _ _ _ Hx) as Hxe. subst Φx.
+    apply set_valid_unit_body with (Φx := gm_expand Φ); [| exact Hsub |].
+    - constructor; [exact (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_right HUU)) | exact (body_xp_noopen _ _ _ _ Hno) | exact HΔ | exact Hl
+                   | exact HΓ' | exact HC | exact Hs | exact Hshx | exact Hshx | | ].
+      + exists F', F'. constructor; [exact HF' | exact HF' |].
+        intros ρ Hρ. exact (set_modexp_denotes_unique _ _ _ _ _ HF' _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ)).
+      + intros k Ψ H Hk. rewrite (body_opens_noopen _ Hno) in Hk. destruct k; discriminate.
+    - intros k Ψ H Hk. rewrite (body_opens_noopen _ Hno) in Hk. destruct k; discriminate. }
+  exists F, F'. constructor; [exact HF | exact HF' | exact E | exact HK | exact HK'].
 Qed.
 
 End Unit.
