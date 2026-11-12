@@ -122,6 +122,24 @@ Proof.
     apply HG. eapply set_mem_eq_r; [exact Ec | exact Hx].
 Qed.
 
+(** A [Π] over a member of a universe of sets into members is a member. *)
+Lemma grothendieck_pi_code : forall V dom F, grothendieck V -> set_mem dom V -> respects_on (code_carrier dom) F ->
+    (forall x, set_mem x (code_carrier dom) -> set_mem (F x) V) -> set_mem (pi_code dom F) V.
+Proof.
+  intros * HV Hd HF HFx. set (G := restrict_fun (code_carrier dom) F).
+  assert (HG : respects_set_eq_fun G) by apply restrict_fun_resp.
+  assert (HGx : forall x, set_mem x (code_carrier dom) -> set_mem (G x) V)
+    by (intros x Hx; eapply set_mem_eq_l; [apply set_eq_sym; apply restrict_fun_agree; [exact HF | exact Hx] | apply HFx; exact Hx]).
+  assert (Hc : set_mem (code_carrier dom) V) by (apply (grothendieck_code_carrier _ HV); exact Hd).
+  eapply set_mem_eq_l.
+  - apply pi_code_resp_on with (G := F); [apply set_eq_refl |]. intros x x' Hx E.
+    eapply set_eq_trans; [apply restrict_fun_agree; [exact HF | exact Hx] |]. apply HF; assumption.
+  - unfold pi_code. apply (grothendieck_type_code _ HV).
+    + apply (grothendieck_ordered_pair _ HV); [exact Hd | apply (grothendieck_graph _ HV); assumption].
+    + apply (grothendieck_function _ HV); [intros x y E; apply code_carrier_resp; apply HG; exact E | exact Hc |].
+      intros x Hx. apply (grothendieck_code_carrier _ HV). apply HGx. exact Hx.
+Qed.
+
 Lemma pi_code_relevant : forall dom F, is_relevant_code (pi_code dom F).
 Proof. intros. do 3 eexists. split; [apply set_eq_refl | discriminate]. Qed.
 
