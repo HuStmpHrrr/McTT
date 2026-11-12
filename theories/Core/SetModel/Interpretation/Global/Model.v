@@ -109,6 +109,8 @@ Record set_filed_reduct_with (p : qname) (x : string) (R1 : mdesc) (Ns : list ex
     set_filed_reduct_read : mdesc_reduct R1 = Some (exp_sub M1 (sb_of_list sb_id Ns))
     (** [M1] is of the [Π] over the inner part *)
   ; set_filed_reduct_valid : set_exp_eq T γ T2 (ctx_pi_at r T1 A0) M1 M1
+    (** [M1] is over the outer part only *)
+  ; set_filed_reduct_scoped : exp_scoped (List.length T2) M1
     (** It is the member's value applied *)
   ; set_filed_reduct_value : forall ρ m, set_env_in T γ T2 ρ -> set_interp T γ T2 ρ M1 m ->
       set_eq m (apply_values (snd (global_term γ (qname_in p x))) (set_env_values T2 ρ)) }.
@@ -123,6 +125,8 @@ Record set_filed_reduct_with (p : qname) (x : string) (R1 : mdesc) (Ns : list ex
 Record set_filed_term_with (p : qname) (Tl : ctx) (x : string) (R0 : mdesc) (A0 : exp) (i : nat) : Prop :=
   { (** The type is of the sort of the member's kind *)
     set_filed_term_typed : set_exp_eq T γ Tl (abs_kind_sort (mdesc_kind R0) (a_typ i)) A0 A0
+    (** The type is over the telescope only *)
+  ; set_filed_term_scoped : exp_scoped (List.length Tl) A0
     (** Read at arguments [Ns] for the outer part [T2]: the [Π] over the
         inner part [T1], instantiated, and the reduct, if any, a term over
         [T2] instantiated *)

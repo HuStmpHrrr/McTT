@@ -13,7 +13,8 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects Substitution JudgmentSubstitution.
-From Mctt.Core.SetModel.Cases Require Import PropCases ValidUnit.
+From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel.Cases Require Import PropCases FunctionCases ValidUnit.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import Paths MemberLemmas DescTyping LookupSound.
@@ -571,6 +572,156 @@ Lemma apply_values_empty : forall ns f, set_eq f empty_set -> set_eq (apply_valu
 Proof.
   induction ns as [| n ns IH]; intros f Hf; [exact Hf |]. unfold apply_values in *. cbn [fold_left]. apply IH.
   eapply set_eq_trans; [apply set_apply_resp; [exact Hf | apply set_eq_refl] | apply set_apply_empty].
+Qed.
+
+(** A substitution extended by a term of the next assumption's type. *)
+Lemma set_gsub_extend_ass : forall Γ σ Δ Fσ κ A N FA FN, set_gsub_with T γ Γ σ Δ Fσ -> set_ctx T γ Γ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend σ (se_exp N) : ce_ass κ A :: Δ ->
+    set_denotes T γ Δ A FA -> set_denotes T γ Γ N FN ->
+    (forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA (Fσ ρ)))) ->
+    set_gsub_with T γ Γ (sb_extend σ (se_exp N)) (ce_ass κ A :: Δ) (fun ρ => set_env_extend (Fσ ρ) (set_entry_term κ (FN ρ))).
+Proof.
+  intros * Hg HΓ Hσ HA HN Hm. destruct (set_env_rel_per _ _ _ HΓ) as [Hsym Htrans]. constructor; [exact Hσ | |].
+  - intros ρ [| x] Hρ; [split; cbn; [exact (set_denotes_exists _ _ _ _ _ HN _ Hρ) | constructor] |].
+    exact (set_gsub_agrees _ _ _ _ _ _ Hg _ x Hρ).
+  - intros ρ ρ' Hr.
+    assert (Hl : set_env_in T γ Γ ρ) by (eapply Htrans; [exact Hr | apply Hsym; exact Hr]).
+    assert (Hr' : set_env_in T γ Γ ρ') by (eapply Htrans; [apply Hsym; exact Hr | exact Hr]).
+    pose proof (set_gsub_rel _ _ _ _ _ _ Hg _ _ Hl) as HlΔ.
+    apply (set_env_rel_extend_ass T γ Δ (Fσ ρ) (Fσ ρ') κ A (FA (Fσ ρ))); [exact (set_gsub_rel _ _ _ _ _ _ Hg _ _ Hr)
+      | exact (set_denotes_exists _ _ _ _ _ HA _ HlΔ) | exact (Hm _ Hl) |].
+    apply set_eq_sym. exact (set_denotes_unique _ _ _ _ _ HN _ _ _ Hr (set_denotes_exists _ _ _ _ _ HN _ Hr')).
+Qed.
+
+(** A closed telescope's environments past any context: the entries
+    below it dropped. *)
+Lemma set_gsub_drop : forall Γ, ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
+    set_gsub_with T γ Γ (sb_of_wk (wk_shiftn (List.length Γ))) nil (set_env_drop (List.length Γ)).
+Proof.
+  intros * Hc. constructor.
+  - apply wf_sub_of_wk. pose proof (wf_wk_shiftn_app' _ _ Γ nil ltac:(rewrite List.app_nil_r; exact Hc)) as Hw.
+    rewrite List.app_nil_r in Hw. exact Hw.
+  - intros ρ x _. unfold sb_of_wk, wk_shiftn, set_env_drop. rewrite Nat.add_comm.
+    split; cbn; [exact (set_interp_var T γ _ ρ _) | exact (set_interp_me_var T γ _ ρ _)].
+  - intros ρ ρ' Hr. rewrite <- (List.app_nil_r Γ) in Hr. exact (set_env_rel_drop T γ _ _ _ _ Hr).
+Qed.
+
+(** The [Π] over a telescope of assumptions into a type denotes. *)
+Lemma set_ctx_pi_denotes : forall T1 T2 r A0 FA, all_assumptions T1 -> set_ctx T γ (T1 ++ T2) ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ T1 ++ T2 -> set_denotes T γ (T1 ++ T2) A0 FA -> exists F, set_denotes T γ T2 (ctx_pi_at r T1 A0) F.
+Proof.
+  induction T1 as [| e T1 IH]; intros T2 r A0 FA HT1 HC Hc HA; [exists FA; exact HA |].
+  inversion HT1 as [| ? ? (κ & B & ->) HT1']; subst. cbn [ctx_pi_at].
+  destruct HC as [HC (FB & HB)].
+  pose proof (set_denotes_pi T γ _ κ r B A0 FB FA HC Hc HB HA) as HP.
+  exact (IH _ _ _ _ HT1' HC (ctx_decomp_tail Hc) HP).
+Qed.
+
+Lemma set_interp_list_snoc_inv : forall Γ ρ Ns M vs, set_interp_list T γ Γ ρ (Ns ++ [M]) vs ->
+    exists ns m, vs = ns ++ [m] /\ set_interp_list T γ Γ ρ Ns ns /\ set_interp T γ Γ ρ M m.
+Proof.
+  induction Ns as [| N Ns IH]; intros M vs H; cbn [List.app] in H; inversion H; subst.
+  - inversion H6; subst. exists nil, v. auto using set_interp_list_nil.
+  - destruct (IH _ _ H6) as (ns & m & -> & Hns & Hm). exists (v :: ns), m. split; [reflexivity | split; [constructor |]; assumption].
+Qed.
+
+Lemma set_gsub_id : forall Γ, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_gsub_with T γ Γ sb_id Γ (fun ρ => ρ).
+Proof.
+  intros * Hc. constructor; [apply wf_sub_id; exact Hc | | intros ρ ρ' Hr; exact Hr].
+  intros ρ x _. split; cbn; [exact (set_interp_var T γ _ ρ x) | exact (set_interp_me_var T γ _ ρ x)].
+Qed.
+
+(** Arguments filling a closed telescope of assumptions, each of its
+    parameter's type instantiated by the ones before it, substitute it
+    over the context: the values of the arguments fill it. *)
+Lemma set_gsub_closed_inst : forall Tf Γ Ns, set_ctx T γ Γ -> all_assumptions Tf -> set_ctx T γ (Tf ++ Γ) ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ Tf ++ Γ -> List.length Ns = List.length Tf ->
+    (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts Tf sb_id Ns) k = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : A) ->
+    (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts Tf sb_id Ns) k = Some A -> set_exp_eq T γ Γ A N N) ->
+    exists Fσ, set_gsub_with T γ Γ (sb_of_list sb_id Ns) (Tf ++ Γ) Fσ /\
+      forall ρ ns, set_env_in T γ Γ ρ -> set_interp_list T γ Γ ρ Ns ns -> list_set_eq ns (set_env_values Tf (Fσ ρ)).
+Proof.
+  induction Tf as [| e C IH]; intros Γ Ns HΓ HTf HC Hc Hl HNs HNr.
+  - destruct Ns; [| discriminate]. exists (fun ρ => ρ). split; [exact (set_gsub_id _ Hc) |].
+    intros ρ ns _ Hns. inversion Hns; subst. constructor.
+  - inversion HTf as [| ? ? (κ & A & ->) HC']; subst.
+    destruct (List.exists_last (l := Ns) ltac:(intros ->; discriminate)) as (Ns' & M & ->).
+    rewrite List.length_app in Hl; cbn in Hl. assert (Hl' : List.length Ns' = List.length C) by lia.
+    assert (Hti : tele_insts (ce_ass κ A :: C) sb_id (Ns' ++ [M]) = tele_insts C sb_id Ns' ++ [exp_sub A (sb_of_list sb_id Ns')]).
+    { change (ce_ass κ A :: C) with ([ce_ass κ A] ++ C). rewrite tele_insts_app by (try exact HC'; lia). reflexivity. }
+    assert (HlT : List.length (tele_insts C sb_id Ns') = List.length Ns') by (rewrite length_tele_insts by exact HC'; lia).
+    rewrite Hti in HNs, HNr. cbn [List.app] in Hc, HC. destruct HC as [HC0 (FA & HA)].
+    (* the arguments before the last, then the last *)
+    assert (Hpre : forall k N A0, List.nth_error Ns' k = Some N -> List.nth_error (tele_insts C sb_id Ns') k = Some A0 ->
+              List.nth_error (Ns' ++ [M]) k = Some N /\
+              List.nth_error (tele_insts C sb_id Ns' ++ [exp_sub A (sb_of_list sb_id Ns')]) k = Some A0).
+    { intros k N A0 HN HA0. assert (Hk : k < List.length Ns') by (apply List.nth_error_Some; congruence).
+      split; rewrite List.nth_error_app1 by lia; assumption. }
+    destruct (IH Γ Ns' HΓ HC' HC0 (ctx_decomp_tail Hc) Hl'
+                (fun k N A0 HN HA0 => HNs k N A0 (proj1 (Hpre _ _ _ HN HA0)) (proj2 (Hpre _ _ _ HN HA0)))
+                (fun k N A0 HN HA0 => HNr k N A0 (proj1 (Hpre _ _ _ HN HA0)) (proj2 (Hpre _ _ _ HN HA0))))
+      as (Fσ & Hg & Hvals).
+    assert (Hlast : List.nth_error (Ns' ++ [M]) (List.length Ns') = Some M /\
+                    List.nth_error (tele_insts C sb_id Ns' ++ [exp_sub A (sb_of_list sb_id Ns')]) (List.length Ns') =
+                    Some (exp_sub A (sb_of_list sb_id Ns'))).
+    { split; rewrite List.nth_error_app2 by lia; [rewrite Nat.sub_diag | rewrite HlT, Nat.sub_diag]; reflexivity. }
+    pose proof (HNs _ _ _ (proj1 Hlast) (proj2 Hlast)) as HM.
+    destruct (HNr _ _ _ (proj1 Hlast) (proj2 Hlast)) as (FAσ & FM & FM' & [HAσ HMd _ _ HMm]).
+    rewrite sb_of_list_app. cbn [sb_of_list].
+    exists (fun ρ => set_env_extend (Fσ ρ) (set_entry_term κ (FM ρ))). split.
+    + assert (Hs : set_moves_with T γ nil (C ++ Γ) Γ (sb_of_list sb_id Ns') Fσ)
+        by (constructor; [exact Hg | exact HΓ | exact HC0 | exact HΓ | exact (ctx_decomp_tail Hc)]).
+      pose proof (set_denotes_moved T γ Hfn Hmods _ _ _ _ _ _ _ Hs HA) as HAm.
+      apply (set_gsub_extend_ass _ _ _ _ _ _ _ FA FM Hg HΓ); [| exact HA | exact HMd |].
+      * inversion Hc; subst. eapply wf_sub_extend; [exact (set_gsub_typed _ _ _ _ _ _ Hg) | eassumption | eassumption | exact HM].
+      * intros ρ Hρ. eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HAσ HAm Hρ) |].
+        exact (HMm _ Hρ).
+    + intros ρ ns Hρ Hns. destruct (set_interp_list_snoc_inv _ _ _ _ _ Hns) as (ns' & m & -> & Hns' & Hm).
+      cbn [set_env_values]. apply List.Forall2_app; [exact (Hvals _ _ Hρ Hns') |]. constructor; [| constructor].
+      exact (set_denotes_unique _ _ _ _ _ HMd _ _ _ Hρ Hm).
+Qed.
+
+Lemma set_env_values_above : forall Δ ρ ρb, set_env_values Δ (set_env_above (List.length Δ) ρ ρb) = set_env_values Δ ρ.
+Proof. induction Δ as [| e Δ IH]; intros ρ ρb; [reflexivity |]. cbn [set_env_values List.length set_env_above]. f_equal. apply IH. Qed.
+
+(** A term over a closed telescope [Tf] keeps its value read at the
+    arguments' instance: the environment of [Tf] the instance makes, its
+    entries below [Tf] dropped. *)
+Lemma set_closed_inst_transport : forall Tf Γ Ns Fι X FX, set_gsub_with T γ Γ (sb_of_list sb_id Ns) (Tf ++ Γ) Fι ->
+    set_ctx T γ Γ -> set_ctx T γ Tf -> ctx_scoped 0 Tf -> ⊢ gc_deps ⍮ gc_stack ⍮ Tf -> set_ctx T γ (Tf ++ Γ) ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ Tf ++ Γ -> exp_scoped (List.length Tf) X -> set_denotes T γ Tf X FX ->
+    forall ρ a, set_env_in T γ Γ ρ -> set_interp T γ Γ ρ (exp_sub X (sb_of_list sb_id Ns)) a ->
+    set_eq a (FX (set_env_moved (List.length Tf) (set_env_drop (List.length Γ)) (Fι ρ))).
+Proof.
+  intros * Hι HΓ HT HTs HcT HCΓ HcΓ HXs HX ρ a Hρ Ha.
+  pose proof (ctx_app_wf_tail _ _ _ _ HcΓ) as HcΓ0.
+  pose proof (set_gsub_drop _ HcΓ0) as Hd.
+  assert (Hs1 : set_moves_with T γ Tf nil Γ (sb_of_wk (wk_shiftn (List.length Γ))) (set_env_drop (List.length Γ))).
+  { constructor; [exact Hd | exact HΓ | rewrite List.app_nil_r; exact HT | rewrite tele_sub_closed by exact HTs; exact HCΓ |].
+    rewrite List.app_nil_r. exact HcT. }
+  rewrite <- (List.app_nil_r Tf) in HX at 1.
+  pose proof (set_denotes_moved T γ Hfn Hmods _ _ _ _ _ _ _ Hs1 HX) as HX1.
+  rewrite (tele_sub_closed _ _ HTs), (exp_scoped_sub_id _ _ _ HXs (fun x Hx => sb_qn_lt _ _ _ Hx)) in HX1.
+  assert (Hs2 : set_moves_with T γ nil (Tf ++ Γ) Γ (sb_of_list sb_id Ns) Fι)
+    by (constructor; [exact Hι | exact HΓ | exact HCΓ | exact HΓ | exact HcΓ]).
+  pose proof (set_denotes_moved T γ Hfn Hmods _ _ _ _ _ _ _ Hs2 HX1) as HX2.
+  exact (set_denotes_unique _ _ _ _ _ HX2 _ _ _ Hρ Ha).
+Qed.
+
+(** That environment is one of [Tf], of the arguments' values. *)
+Lemma set_closed_inst_env : forall Tf Γ Ns Fι, set_gsub_with T γ Γ (sb_of_list sb_id Ns) (Tf ++ Γ) Fι ->
+    set_ctx T γ Γ -> set_ctx T γ Tf -> ctx_scoped 0 Tf -> ⊢ gc_deps ⍮ gc_stack ⍮ Tf -> ⊢ gc_deps ⍮ gc_stack ⍮ Tf ++ Γ ->
+    forall ρ, set_env_in T γ Γ ρ ->
+    set_env_in T γ Tf (set_env_moved (List.length Tf) (set_env_drop (List.length Γ)) (Fι ρ)) /\
+    set_env_values Tf (set_env_moved (List.length Tf) (set_env_drop (List.length Γ)) (Fι ρ)) = set_env_values Tf (Fι ρ).
+Proof.
+  intros * Hι HΓ HT HTs HcT HcΓ ρ Hρ. split; [| apply set_env_values_above].
+  pose proof (set_gsub_drop _ (ctx_app_wf_tail _ _ _ _ HcΓ)) as Hd.
+  pose proof (set_gsub_rel _ _ _ _ _ _ Hι _ _ Hρ) as Hιρ.
+  rewrite <- (tele_sub_closed Tf (sb_of_wk (wk_shiftn (List.length Γ))) HTs) in Hιρ.
+  pose proof (set_env_in_moved T γ Hfn Hmods _ _ _ _ _ _ Hd HΓ ltac:(rewrite List.app_nil_r; exact HT)
+                ltac:(rewrite List.app_nil_r; exact HcT) Hιρ) as H.
+  rewrite List.app_nil_r in H. exact H.
 Qed.
 
 (** ** Members of Module Expressions Equal to Valid Units *)
