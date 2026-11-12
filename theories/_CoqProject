@@ -146,7 +146,7 @@
 ./Core/SetModel/Cases/SubtypingCases.v
 ./Core/SetModel/Cases/ContextCases.v
 ./Core/SetModel/Cases/UnitCases.v
-./Core/SetModel/Substitution.v
+./Core/SetModel/Interpretation/JudgmentSubstitution.v
 ./Core/SetModel/Interpretation/Global/Model.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v
