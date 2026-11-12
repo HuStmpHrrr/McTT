@@ -68,21 +68,23 @@ Inductive arguments_fit (S : aczel_set) : list aczel_set -> list set_argument ->
     arguments_fit S (pre ++ [empty_set]) gs vals ->
     arguments_fit S pre (set_argument_recursive type ds target tparams ls :: gs) (a :: vals).
 
+(** [v] is built by the constructor [cs] of the member [Mk], the member
+    [k], at [ns] from the arguments [vals] fitting [S]. *)
+Record constructed_with (S : aczel_set) (k : nat) (ns : list aczel_set) (v : aczel_set)
+    (Mk : set_member) (cs : set_constructor) (vals : list aczel_set) : Prop := mk_constructed_with
+  { (** [Mk] is the member [k] *)
+    constructed_member_at : List.nth_error (set_group_members G) k = Some Mk
+    (** [cs] is one of its constructors *)
+  ; constructed_constructor_in : In cs (set_member_constructors Mk)
+    (** The arguments fit [S] *)
+  ; constructed_fit : arguments_fit S (us ++ ns) (set_constructor_arguments cs) vals
+    (** The element is the constructor's at them *)
+  ; constructed_element_eq : set_eq v (constructed_element Mk cs ns vals) }.
+
 (** [v] is built by a constructor of the member [k] at [ns] from
     arguments fitting [S]. *)
-#[warnings="-cannot-define-projection"]
-Record constructed_from (S : aczel_set) (k : nat) (ns : list aczel_set) (v : aczel_set) : Prop := mk_constructed_from
-  { (** The member *)
-    constructed_member : set_member
-  ; constructed_member_at : List.nth_error (set_group_members G) k = Some constructed_member
-    (** The constructor *)
-  ; constructed_constructor : set_constructor
-  ; constructed_constructor_in : In constructed_constructor (set_member_constructors constructed_member)
-    (** The arguments, fitting [S] *)
-  ; constructed_arguments : list aczel_set
-  ; constructed_fit : arguments_fit S (us ++ ns) (set_constructor_arguments constructed_constructor) constructed_arguments
-    (** The element is the constructor's at them *)
-  ; constructed_element_eq : set_eq v (constructed_element constructed_member constructed_constructor ns constructed_arguments) }.
+Definition constructed_from (S : aczel_set) (k : nat) (ns : list aczel_set) (v : aczel_set) : Prop :=
+  exists Mk cs vals, constructed_with S k ns v Mk cs vals.
 
 (** The points the operator draws from: a member, parameters of [U], an
     element of [bound]. *)
@@ -215,8 +217,8 @@ Section Respecting.
 Lemma constructed_from_resp : forall S k ns ns' v v', list_set_eq ns ns' -> set_eq v v' ->
     constructed_from S k ns v -> constructed_from S k ns' v'.
 Proof.
-  intros S k ns ns' v v' En Ev [Mk HMk cs Hcs vals Hfit Hel].
-  apply (mk_constructed_from S k ns' v' Mk HMk cs Hcs vals).
+  intros S k ns ns' v v' En Ev [Mk [cs [vals [HMk Hcs Hfit Hel]]]].
+  exists Mk, cs, vals. apply (mk_constructed_with S k ns' v' Mk cs vals HMk Hcs).
   - eapply arguments_fit_resp; [exact (Hsig _ _ _ HMk Hcs) | apply list_set_eq_app; [apply list_set_eq_refl | exact En] | apply list_set_eq_refl | exact Hfit].
   - eapply set_eq_trans; [apply set_eq_sym; exact Ev |]. eapply set_eq_trans; [exact Hel |].
     apply constructed_element_resp; [exact En | apply list_set_eq_refl].
@@ -224,8 +226,8 @@ Qed.
 
 Lemma constructed_from_mono : forall S S' k ns v, set_sub S S' -> constructed_from S k ns v -> constructed_from S' k ns v.
 Proof.
-  intros S S' k ns v Hs [Mk HMk cs Hcs vals Hfit Hel].
-  apply (mk_constructed_from S' k ns v Mk HMk cs Hcs vals); [| exact Hel].
+  intros S S' k ns v Hs [Mk [cs [vals [HMk Hcs Hfit Hel]]]].
+  exists Mk, cs, vals. apply (mk_constructed_with S' k ns v Mk cs vals HMk Hcs); [| exact Hel].
   eapply arguments_fit_mono; [exact Hs | exact (Hsig _ _ _ HMk Hcs) | exact Hfit].
 Qed.
 
@@ -266,7 +268,7 @@ Proof.
   apply (least_fixed_point_closed carrier_ambient carrier_operator carrier_operator_monotone carrier_operator_bounded).
   unfold carrier_operator. apply (set_mem_separation _ _ _ (carrier_operator_pred_resp _)). split.
   - apply set_mem_product. exists (numeral_set k), (ordered_pair (list_code ns) v). split.
-    + destruct Hc as [Mk HMk _ _ _ _ _]. assert (Hk : k < List.length (set_group_members G)) by (apply nth_error_Some; congruence).
+    + destruct Hc as [Mk [_ [_ [HMk _ _ _]]]]. assert (Hk : k < List.length (set_group_members G)) by (apply nth_error_Some; congruence).
       exists (exist _ k Hk). apply set_eq_refl.
     + split; [apply set_mem_product; exists (list_code ns), v; split; [exact HU | split; [exact Hb | apply set_eq_refl]] | apply set_eq_refl].
   - exists k, ns, v. split; [apply set_eq_refl | exact Hc].
