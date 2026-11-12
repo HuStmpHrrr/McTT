@@ -52,6 +52,11 @@ Section Weakening.
   Variable T : universe_tower.
   Variable γ : global_valuation.
 
+(** An extension of a context moves along a renaming of the context. *)
+Lemma ctx_wk : forall Ψ Γ Δ φ, ⊢ gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ -> gc_deps ⍮ gc_stack ⍮ Δ ⊢ʷ φ : Γ ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ tele_wk Ψ φ ++ Δ.
+Proof. intros * HΓ Hφ. eapply ext_eq_ctx_left. exact (wk_preserves_ext _ _ _ _ _ _ _ (ext_of_ctx _ _ _ _ HΓ) Hφ). Qed.
+
 (** A typing under an extension moves along a renaming of the context
     under it. *)
 Lemma typing_wk : forall Ψ Γ Δ φ M A, gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ ⊢ M : A -> gc_deps ⍮ gc_stack ⍮ Δ ⊢ʷ φ : Γ ->
@@ -150,6 +155,8 @@ Proof.
   Local Ltac same IH := eapply IH; constructor; [reflexivity | assumption | assumption].
   (* one binder more *)
   Local Ltac under IH e := eapply (IH (e :: _)); constructor; [reflexivity | assumption | apply env_agrees_extend; assumption].
+  (* the extended context is well formed *)
+  Local Ltac wkctx Hc e := exact (ctx_wk (e :: _) _ _ _ Hc ltac:(eassumption)).
   Local Ltac start := intros ?Ψ ?Γ0 ?Δ ?φ ?ρ' [?HΞ ?Hφ ?Hag]; subst.
   Local Ltac start_elim := intros ?Ψ ?Γ0 ?Δ ?φ ?ρ' ?D0 [?HΞ ?Hφ ?Hag] ?Hsh; subst.
   apply (set_interp_combined_ind GC T γ); cbn [exp_wk modexp_wk binding_wk gentry_wk moddef_wk List.map fst snd].
@@ -166,7 +173,7 @@ Proof.
   - intros; constructor.
   - intros; constructor.
   - intros; constructor.
-  - intros Ξ ρ P Q p q _ IHP _ IHQ; start; econstructor; [same IHP | under IHQ (ce_ass ak_propositional P)].
+  - intros Ξ ρ P Q p q Hc _ IHP _ IHQ; start; econstructor; [wkctx Hc (ce_ass ak_propositional P) | same IHP | under IHQ (ce_ass ak_propositional P)].
   - intros; constructor.
   - intros; constructor.
   - intros; constructor.
@@ -178,8 +185,9 @@ Proof.
     destruct (elim_shape_of_typing _ _ _ _ _ _ _ _ HC) as [D HD].
     eapply set_interp_elim; [exact Hr | exact (typing_wk _ _ _ _ _ _ HC Hφ) | same IHM |].
     eapply IHE; [constructor; [reflexivity | assumption | assumption] | exact HD].
-  - intros Ξ ρ κd A B a F _ IHA _ IHB; start; econstructor; [same IHA |]. intros x Hx. under (IHB x Hx) (ce_ass κd A).
-  - intros Ξ ρ κd κc A B a F Hκ _ IHA _ IHB; start; constructor; [exact Hκ | same IHA |].
+  - intros Ξ ρ κd A B a F Hc _ IHA _ IHB; start; econstructor; [wkctx Hc (ce_ass κd A) | same IHA |].
+    intros x Hx. under (IHB x Hx) (ce_ass κd A).
+  - intros Ξ ρ κd κc A B a F Hκ Hc _ IHA _ IHB; start; constructor; [exact Hκ | wkctx Hc (ce_ass κd A) | same IHA |].
     intros x Hx. under (IHB x Hx) (ce_ass κd A).
   - intros Ξ ρ A M κd C B HT; start. eapply set_interp_fn_proof. exact (typing_wk _ _ _ _ _ _ HT Hφ).
   - intros Ξ ρ A M κd κc C B a F HT Hκ _ IHA _ IHM; start.
@@ -187,9 +195,10 @@ Proof.
     intros x Hx. under (IHM x Hx) (ce_ass κd A).
   - intros Ξ ρ M N f n _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
   - intros Ξ ρ x; start. rewrite (Hag x). constructor.
-  - intros Ξ ρ A M B v w _ IHM _ IHB; start; econstructor; [same IHM | under IHB (ce_def A M)].
-  - intros Ξ ρ U B m w _ IHU _ IHB; start; econstructor; [same IHU | under IHB (ce_mod U)].
-  - intros Ξ ρ A M U B v m w _ IHM _ IHU _ IHB; start; econstructor; [same IHM | same IHU | under IHB (ce_dm A M U)].
+  - intros Ξ ρ A M B v w Hc _ IHM _ IHB; start; econstructor; [wkctx Hc (ce_def A M) | same IHM | under IHB (ce_def A M)].
+  - intros Ξ ρ U B m w Hc _ IHU _ IHB; start; econstructor; [wkctx Hc (ce_mod U) | same IHU | under IHB (ce_mod U)].
+  - intros Ξ ρ A M U B v m w Hc _ IHM _ IHU _ IHB; start;
+      econstructor; [wkctx Hc (ce_dm A M U) | same IHM | same IHU | under IHB (ce_dm A M U)].
   - intros Ξ ρ H x m _ IH; start; constructor; same IH.
   - intros; constructor.
   - intros Ξ ρ A fs vs _ IH; start; constructor; same IH.
@@ -210,18 +219,18 @@ Proof.
     pose proof (IH Ψ Γ0 Δ φ ρ' (Build_wk_setting _ _ _ _ _ _ _ eq_refl Hφ Hag)) as H.
     rewrite List.rev_involutive, List.length_rev in H. exact H.
   - intros Ξ ρ D m _ IH; start; cbn [List.rev tele_wk List.length wk_qn]; constructor; same IH.
-  - intros Ξ ρ κ A L D a f _ IHA _ IHL; start.
+  - intros Ξ ρ κ A L D a f Hc _ IHA _ IHL; start.
     rewrite tele_wk_rev_cons, List.rev_involutive. cbn [List.length centry_wk]. rewrite <- wk_qn_q.
-    econstructor; [same IHA |]. intros x Hx. under (IHL x Hx) (ce_ass κ A).
-  - intros Ξ ρ A M L D v m _ IHM _ IHL; start.
+    econstructor; [wkctx Hc (ce_ass κ A) | same IHA |]. intros x Hx. under (IHL x Hx) (ce_ass κ A).
+  - intros Ξ ρ A M L D v m Hc _ IHM _ IHL; start.
     rewrite tele_wk_rev_cons, List.rev_involutive. cbn [List.length centry_wk]. rewrite <- wk_qn_q.
-    econstructor; [same IHM | under IHL (ce_def A M)].
-  - intros Ξ ρ U L D mu m _ IHU _ IHL; start.
+    econstructor; [wkctx Hc (ce_def A M) | same IHM | under IHL (ce_def A M)].
+  - intros Ξ ρ U L D mu m Hc _ IHU _ IHL; start.
     rewrite tele_wk_rev_cons, List.rev_involutive. cbn [List.length centry_wk]. rewrite <- wk_qn_q.
-    econstructor; [same IHU | under IHL (ce_mod U)].
-  - intros Ξ ρ A M U L D v mu m _ IHM _ IHU _ IHL; start.
+    econstructor; [wkctx Hc (ce_mod U) | same IHU | under IHL (ce_mod U)].
+  - intros Ξ ρ A M U L D v mu m Hc _ IHM _ IHU _ IHL; start.
     rewrite tele_wk_rev_cons, List.rev_involutive. cbn [List.length centry_wk]. rewrite <- wk_qn_q.
-    econstructor; [same IHM | same IHU | under IHL (ce_dm A M U)].
+    econstructor; [wkctx Hc (ce_dm A M U) | same IHM | same IHU | under IHL (ce_dm A M U)].
   (** definitions *)
   - intros Ξ ρ sm Φ ms ρo _ IH; start.
     destruct (IH Ψ Γ0 Δ φ ρ' (Build_wk_setting _ _ _ _ _ _ _ eq_refl Hφ Hag)) as [ρo' [H _]].
@@ -229,11 +238,13 @@ Proof.
   - intros Ξ ρ E m _ IH; start; constructor; same IH.
   (** bodies *)
   - intros Ξ ρ; start. exists ρ'. split; [constructor | exact Hag].
-  - intros Ξ ρ Φ x E ms ρo e HΦ IHΦ _ IHE; start.
+  - intros Ξ ρ Φ x E ms ρo e Hc HΦ IHΦ _ IHE; start.
     pose proof (set_interp_gmod_nopens _ _ _ _ _ HΦ) as Hn.
     destruct (IHΦ Ψ Γ0 Δ φ ρ' (Build_wk_setting _ _ _ _ _ _ _ eq_refl Hφ Hag)) as [ρo' [HΦ' Hago]].
     exists (set_env_extend ρo' e). split; [| apply env_agrees_extend; exact Hago].
-    cbn [gmod_wk]. constructor; [exact HΦ' |].
+    cbn [gmod_wk]. constructor; [| exact HΦ' |].
+    { rewrite (body_ctx_wk _ _ Hn), List.app_assoc, <- tele_wk_app.
+      apply (ctx_wk _ Γ0); [rewrite <- List.app_assoc; exact Hc | exact Hφ]. }
     rewrite (body_ctx_wk _ _ Hn), List.app_assoc, <- tele_wk_app, <- (length_body_ctx _ Hn), <- wk_qn_plus, <- List.length_app.
     eapply IHE. constructor; [apply List.app_assoc | exact Hφ |].
     rewrite List.length_app, wk_qn_plus, (length_body_ctx _ Hn). exact Hago.

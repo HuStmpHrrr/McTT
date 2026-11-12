@@ -70,6 +70,7 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 (** A conjunction: both components true, the second at the proof of the
     first, the empty set *)
 | set_interp_and : forall Γ ρ P Q p q,
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass ak_propositional P :: Γ ->
     set_interp Γ ρ P p -> set_interp (ce_ass ak_propositional P :: Γ) (set_env_extend ρ (set_entry_term ak_propositional empty_set)) Q q ->
     set_interp Γ ρ (a_and P Q) (prop_code (prop_true p /\ prop_true q))
 (** A proof of a conjunction *)
@@ -98,6 +99,7 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
     set_interp Γ ρ (a_elim r p Us m Bks M) r0
 (** A [Π] into propositions: the impredicative quantification *)
 | set_interp_pi_prop : forall Γ ρ κd A B a F,
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     set_interp Γ ρ A a ->
     (forall x, set_mem x (code_carrier a) ->
        set_interp (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) B (F x)) ->
@@ -105,6 +107,7 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 (** A [Π] into types or types of levels: the dependent functions *)
 | set_interp_pi : forall Γ ρ κd κc A B a F,
     κc <> ak_propositional ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     set_interp Γ ρ A a ->
     (forall x, set_mem x (code_carrier a) ->
        set_interp (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) B (F x)) ->
@@ -127,16 +130,19 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 | set_interp_var : forall Γ ρ x, set_interp Γ ρ (a_var x) (set_entry_value (ρ x))
 (** A local definition *)
 | set_interp_let_def : forall Γ ρ A M B v w,
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_def A M :: Γ ->
     set_interp Γ ρ M v ->
     set_interp (ce_def A M :: Γ) (set_env_extend ρ (set_entry_term ak_relevant v)) B w ->
     set_interp Γ ρ (a_let (b_def A M) B) w
 (** A local module *)
 | set_interp_let_mod : forall Γ ρ U B m w,
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_mod U :: Γ ->
     set_interp_gunit Γ ρ U m ->
     set_interp (ce_mod U :: Γ) (set_env_extend ρ (set_entry_module m)) B w ->
     set_interp Γ ρ (a_let (b_mod U) B) w
 (** A local definition with a module part *)
 | set_interp_let_dm : forall Γ ρ A M U B v m w,
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_dm A M U :: Γ ->
     set_interp Γ ρ M v -> set_interp_gunit Γ ρ U m ->
     set_interp (ce_dm A M U :: Γ) (set_env_extend ρ (set_entry_both v m)) B w ->
     set_interp Γ ρ (a_let (b_def_mod A M U) B) w
@@ -191,22 +197,26 @@ with set_interp_unit_params : ctx -> set_env -> list centry -> moddef -> set_mod
 | set_interp_unit_params_nil : forall Γ ρ D m, set_interp_moddef Γ ρ D m -> set_interp_unit_params Γ ρ nil D m
 (** A parameter: a function of its value *)
 | set_interp_unit_params_ass : forall Γ ρ κ A Δ D a f,
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ ->
     set_interp Γ ρ A a ->
     (forall x, set_mem x (code_carrier a) ->
        set_interp_unit_params (ce_ass κ A :: Γ) (set_env_extend ρ (set_entry_term κ x)) Δ D (f x)) ->
     set_interp_unit_params Γ ρ (ce_ass κ A :: Δ) D (set_module_params a f)
 (** A definition of the telescope *)
 | set_interp_unit_params_def : forall Γ ρ A M Δ D v m,
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_def A M :: Γ ->
     set_interp Γ ρ M v ->
     set_interp_unit_params (ce_def A M :: Γ) (set_env_extend ρ (set_entry_term ak_relevant v)) Δ D m ->
     set_interp_unit_params Γ ρ (ce_def A M :: Δ) D m
 (** A module slot of the telescope *)
 | set_interp_unit_params_mod : forall Γ ρ U Δ D mu m,
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_mod U :: Γ ->
     set_interp_gunit Γ ρ U mu ->
     set_interp_unit_params (ce_mod U :: Γ) (set_env_extend ρ (set_entry_module mu)) Δ D m ->
     set_interp_unit_params Γ ρ (ce_mod U :: Δ) D m
 (** A definition with a module part of the telescope *)
 | set_interp_unit_params_dm : forall Γ ρ A M U Δ D v mu m,
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_dm A M U :: Γ ->
     set_interp Γ ρ M v -> set_interp_gunit Γ ρ U mu ->
     set_interp_unit_params (ce_dm A M U :: Γ) (set_env_extend ρ (set_entry_both v mu)) Δ D m ->
     set_interp_unit_params Γ ρ (ce_dm A M U :: Δ) D m
@@ -225,6 +235,7 @@ with set_interp_gmod : ctx -> set_env -> gmod -> list (string * set_entry) -> se
 | set_interp_gm_nil : forall Γ ρ, set_interp_gmod Γ ρ gm_nil nil ρ
 (** A named entry, read in the body before it *)
 | set_interp_gm_ext : forall Γ ρ Φ x E ms ρ' e,
+    ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx Φ ++ Γ ->
     set_interp_gmod Γ ρ Φ ms ρ' -> set_interp_gentry (body_ctx Φ ++ Γ) ρ' E e ->
     set_interp_gmod Γ ρ (gm_ext Φ x E) (ms ++ [(x, e)]) (set_env_extend ρ' e)
 (** [set_interp_gentry Γ ρ E e]: the entry [E] denotes [e] *)
