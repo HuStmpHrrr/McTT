@@ -126,3 +126,72 @@ Proof.
     split; [exists (S k); apply set_eq_refl |].
     rewrite iterate_successor_numeral. eapply set_mem_eq_l; [apply set_eq_sym; exact Ek | apply set_mem_successor_self].
 Qed.
+
+(** ** The Members of an Ordinal Below ω² *)
+
+Lemma set_mem_iterate_limit : forall a, (forall z, set_mem z (limit_ordinal_set a) -> exists x, pair_lt x (a, 0) /\ set_eq z (pair_ordinal_set x)) ->
+    forall b z, set_mem z (iterate_successor b (limit_ordinal_set a)) -> exists x, pair_lt x (a, b) /\ set_eq z (pair_ordinal_set x).
+Proof.
+  intros a Ha. induction b as [| b IH]; intros z Hz; cbn [iterate_successor] in Hz.
+  - exact (Ha z Hz).
+  - apply set_mem_successor in Hz as [Hz | Hz].
+    + destruct (IH z Hz) as [x [Hx E]]. exists x. split; [| exact E]. unfold pair_lt in *; cbn in *. lia.
+    + exists (a, b). split; [unfold pair_lt; cbn; lia | exact Hz].
+Qed.
+
+Lemma set_mem_limit_ordinal : forall a z, set_mem z (limit_ordinal_set a) -> exists x, pair_lt x (a, 0) /\ set_eq z (pair_ordinal_set x).
+Proof.
+  induction a as [| a IH]; intros z Hz; cbn [limit_ordinal_set] in Hz; [destruct (set_mem_empty _ Hz) |].
+  apply set_mem_union in Hz as [w [[n Ew] Hz]]. eapply set_mem_eq_r in Hz; [| exact Ew]. cbn in Hz.
+  destruct (set_mem_iterate_limit a IH n z Hz) as [x [Hx E]]. exists x. split; [| exact E]. unfold pair_lt in *; cbn in *. lia.
+Qed.
+
+(** The members of [ω·a + b] are the smaller ordinals. *)
+Lemma set_mem_pair_ordinal : forall y z, set_mem z (pair_ordinal_set y) <-> exists x, pair_lt x y /\ set_eq z (pair_ordinal_set x).
+Proof.
+  intros [a b] z. split.
+  - intros Hz. exact (set_mem_iterate_limit a (set_mem_limit_ordinal a) b z Hz).
+  - intros [x [Hx E]]. eapply set_mem_eq_l; [apply set_eq_sym; exact E | apply pair_ordinal_set_lt; exact Hx].
+Qed.
+
+Lemma pair_lt_trans : forall x y z, pair_lt x y -> pair_lt y z -> pair_lt x z.
+Proof. intros [a b] [a' b'] [a'' b'']; unfold pair_lt; cbn; lia. Qed.
+
+(** A smaller ordinal is included in a larger one. *)
+Lemma pair_ordinal_set_sub : forall x y, pair_lt x y \/ x = y -> set_sub (pair_ordinal_set x) (pair_ordinal_set y).
+Proof.
+  intros x y [H | <-] z Hz; [| exact Hz].
+  apply set_mem_pair_ordinal in Hz as [w [Hw E]]. apply set_mem_pair_ordinal. exists w. split; [eapply pair_lt_trans; eassumption | exact E].
+Qed.
+
+(** The larger of two ordinals. *)
+Definition pair_max (x y : nat * nat) : nat * nat :=
+  if Nat.ltb (fst x) (fst y) then y
+  else if Nat.ltb (fst y) (fst x) then x
+  else (fst x, Nat.max (snd x) (snd y)).
+
+Lemma pair_max_cases : forall x y, (pair_lt x y \/ x = y) /\ pair_max x y = y \/ (pair_lt y x \/ x = y) /\ pair_max x y = x.
+Proof.
+  intros [a b] [a' b']. unfold pair_max, pair_lt; cbn [fst snd].
+  destruct (Nat.ltb_spec a a'); [left; split; [left; left; exact H | reflexivity] |].
+  destruct (Nat.ltb_spec a' a); [right; split; [left; left; exact H0 | reflexivity] |].
+  assert (a = a') by lia. subst a'.
+  destruct (Nat.lt_trichotomy b b') as [Hb | [<- | Hb]].
+  - left. split; [left; right; split; [reflexivity | exact Hb] |]. f_equal. lia.
+  - left. split; [right; reflexivity |]. f_equal. lia.
+  - right. split; [left; right; split; [reflexivity | exact Hb] |]. f_equal. lia.
+Qed.
+
+(** The union of two ordinals is the larger. *)
+Lemma union_pair_ordinal_set : forall x y,
+    set_eq (union_set (unordered_pair_set (pair_ordinal_set x) (pair_ordinal_set y))) (pair_ordinal_set (pair_max x y)).
+Proof.
+  intros x y. apply set_eq_intro; intros z Hz.
+  - apply set_mem_union in Hz as [w [Hw Hz]]. apply set_mem_unordered_pair in Hw.
+    destruct (pair_max_cases x y) as [[Hle ->] | [Hle ->]]; destruct Hw as [Ew | Ew]; eapply set_mem_eq_r in Hz; try exact Ew;
+      first [exact Hz | apply (pair_ordinal_set_sub _ _ Hle); exact Hz | idtac].
+    + destruct Hle as [Hle | <-]; [apply (pair_ordinal_set_sub _ _ (or_introl Hle)); exact Hz | exact Hz].
+  - apply set_mem_union. destruct (pair_max_cases x y) as [[_ E] | [_ E]]; rewrite E in Hz.
+    + exists (pair_ordinal_set y). split; [apply set_mem_unordered_pair; right; apply set_eq_refl | exact Hz].
+    + exists (pair_ordinal_set x). split; [apply set_mem_unordered_pair; left; apply set_eq_refl | exact Hz].
+Qed.
