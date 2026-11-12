@@ -183,6 +183,23 @@ Inductive set_arguments_shape : list carg -> list set_argument -> Prop :=
 | set_arguments_shape_recursive : forall t F ds tparams gs sgs, List.length ds = ptyp_depth t -> set_arguments_shape gs sgs ->
     set_arguments_shape (ca_rec t :: gs) (set_argument_recursive F ds (ptyp_mem t) tparams :: sgs).
 
+(** The context at the end of the shape [t] of a recursive argument of a
+    constructor of [Mk] after the arguments [gs1]: its domains, the
+    arguments before it and the parameters. *)
+Definition recursive_end_ctx (p : qname) (D : ind_decl) (Mk : imember) (gs1 : list carg) (t : ptyp) : ctx :=
+  shape_domains_ctx (cargs_pat gs1) (ptyp_doms t) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk.
+
+(** [set_target_instance_with D target vals Mt ρt]: the values [vals] are
+    those of the environment [ρt] of the parameters of the member [Mt] of
+    [D] at [target]. *)
+Record set_target_instance_with (D : ind_decl) (target : nat) (vals : list aczel_set) (Mt : imember) (ρt : set_env) : Prop :=
+  { (** [Mt] is the member at [target] *)
+    set_target_instance_member : ind_member D target = Some Mt
+    (** [ρt] is an environment of its parameters *)
+  ; set_target_instance_env : set_env_in T γ (im_params D Mt) ρt
+    (** whose values are [vals] *)
+  ; set_target_instance_values : list_set_eq vals (set_env_values (im_params D Mt) ρt) }.
+
 (** [set_constructor_ok p D G Mk gs sgs]: the semantic arguments [sgs] of a
     constructor of the member [Mk] of the group [D] at [p] are those of
     its declared arguments [gs]. *)
@@ -200,7 +217,29 @@ Record set_constructor_ok (p : qname) (D : ind_decl) (G : set_group) (Mk : imemb
     (** No argument reads a recursive argument before it *)
   ; set_constructor_ok_ignores : forall n t j g ρ, List.nth_error gs n = Some (ca_rec t) -> n < j -> List.nth_error sgs j = Some g ->
       set_env_in T γ (List.skipn (List.length gs - j) (cargs_ctx p D Mk gs) ++ im_params D Mk) ρ ->
-      argument_ignores (im_np D Mk + n) g (set_env_values (List.skipn (List.length gs - j) (cargs_ctx p D Mk gs) ++ im_params D Mk) ρ) }.
+      argument_ignores (im_np D Mk + n) g (set_env_values (List.skipn (List.length gs - j) (cargs_ctx p D Mk gs) ++ im_params D Mk) ρ)
+    (** A recursive argument ends in the member its shape names.  For
+        [Vec (A : Type) : ℕ → Type] and [cons : (n : ℕ) → A → Vec A n →
+        Vec A (S n)], the branch of [cons] binds its recursive result at
+        [P n xs]: the recursive argument is in [Vec]'s carrier at [n]
+        exactly, not only at parameters of the same carrier *)
+  ; set_constructor_ok_target : forall gs1 t gs2 F ds target tparams, gs = gs1 ++ ca_rec t :: gs2 ->
+      List.nth_error sgs (List.length gs1) = Some (set_argument_recursive F ds target tparams) -> target = ptyp_mem t
+    (** Its target's non-uniform parameters are the values of the shape's,
+        at the shape's end *)
+  ; set_constructor_ok_target_params : forall gs1 t gs2 F ds target tparams, gs = gs1 ++ ca_rec t :: gs2 ->
+      List.nth_error sgs (List.length gs1) = Some (set_argument_recursive F ds target tparams) ->
+      forall ρ, set_env_in T γ (recursive_end_ctx p D Mk gs1 t) ρ ->
+      set_interp_list T γ (recursive_end_ctx p D Mk gs1 t) ρ (ptyp_ps_at (cargs_pat gs1) t)
+        (List.skipn (ind_nu D) (tparams (set_env_values (recursive_end_ctx p D Mk gs1 t) ρ)))
+    (** With the uniform ones, they are an instance of the target's
+        parameters *)
+  ; set_constructor_ok_target_instance : forall gs1 t gs2 F ds target tparams, gs = gs1 ++ ca_rec t :: gs2 ->
+      List.nth_error sgs (List.length gs1) = Some (set_argument_recursive F ds target tparams) ->
+      forall ρ, set_env_in T γ (recursive_end_ctx p D Mk gs1 t) ρ ->
+      exists Mt ρt, set_target_instance_with D target
+        (List.firstn (ind_nu D) (set_env_values (recursive_end_ctx p D Mk gs1 t) ρ) ++
+         List.skipn (ind_nu D) (tparams (set_env_values (recursive_end_ctx p D Mk gs1 t) ρ))) Mt ρt }.
 
 (** [set_member_ok p D G Mk SMk]: the semantic member [SMk] of [G] is the
     member [Mk] of the group [D] at [p]. *)
@@ -215,22 +254,25 @@ Record set_member_ok (p : qname) (D : ind_decl) (G : set_group) (Mk : imember) (
     (** A record view has its record's field names *)
   ; set_member_ok_record_fields : forall fl, set_member_record_fields SMk = Some fl <-> exists qr Is, im_head Mk = mh_record qr Is fl }.
 
-(** [set_group_carrier_with G k us ns s U l]: at the uniform parameters
-    [us], the sort's value [s] is the universe [U] at the index [l], and
-    the member [k]'s carrier at the non-uniform [ns] is the one [Carriers]
-    builds in [U]. *)
-Record set_group_carrier_with (G : set_group) (k : nat) (us ns : list aczel_set) (s U l : aczel_set) : Prop :=
-  { (** A universe of sets *)
-    set_group_carrier_universe : grothendieck U
-    (** The sort is its universe *)
-  ; set_group_carrier_sort : set_eq s (universe_code l U)
-    (** The carrier is the least fixed point's *)
-  ; set_group_carrier_fixed_point : set_eq (set_group_carrier G k (us ++ ns)) (member_carrier G us U U k ns) }.
-
 (** The values of the uniform parameters and of the rest of an
     environment of a member's parameters. *)
 Definition uniform_values (D : ind_decl) (Mk : imember) (ρ : set_env) : list aczel_set :=
   set_env_values (ind_uparams D) (set_env_drop (im_nn Mk) ρ).
+
+(** [set_group_carriers_with G D us s U l]: at the uniform parameters
+    [us], the sort's value [s] is the universe [U] at the index [l], and
+    every member's carrier at an instance of its parameters is the one
+    [Carriers] builds in [U]: one least fixed point for all the members,
+    which the eliminator's induction runs over. *)
+Record set_group_carriers_with (G : set_group) (D : ind_decl) (us : list aczel_set) (s U l : aczel_set) : Prop :=
+  { (** A universe of sets *)
+    set_group_carriers_universe : grothendieck U
+    (** The sort is its universe *)
+  ; set_group_carriers_sort : set_eq s (universe_code l U)
+    (** Each carrier is the least fixed point's *)
+  ; set_group_carriers_fixed_point : forall k Mk ρ, ind_member D k = Some Mk -> set_env_in T γ (im_params D Mk) ρ ->
+      list_set_eq (uniform_values D Mk ρ) us ->
+      set_eq (set_group_carrier G k (set_env_values (im_params D Mk) ρ)) (member_carrier G us U U k (set_env_values (im_nparams Mk) ρ)) }.
 
 (** The element the constructor [c] of the member [Mk] builds from the
     values [vals] of the non-uniform parameters and the arguments: at a
@@ -253,9 +295,8 @@ Record set_group_ok (p : qname) (D : ind_decl) (G : set_group) : Prop :=
   ; set_group_ok_members : forall k Mk SMk, ind_member D k = Some Mk -> List.nth_error (set_group_members G) k = Some SMk ->
       set_member_ok p D G Mk SMk
     (** The carriers are the least fixed points in the sort's universe *)
-  ; set_group_ok_carriers : forall k Mk ρ s, ind_member D k = Some Mk -> set_env_in T γ (im_params D Mk) ρ ->
-      set_interp T γ (ind_uparams D) (set_env_drop (im_nn Mk) ρ) (ind_sort D) s ->
-      exists U l, set_group_carrier_with G k (uniform_values D Mk ρ) (set_env_values (im_nparams Mk) ρ) s U l
+  ; set_group_ok_carriers : forall ρu s, set_env_in T γ (ind_uparams D) ρu -> set_interp T γ (ind_uparams D) ρu (ind_sort D) s ->
+      exists U l, set_group_carriers_with G D (set_env_values (ind_uparams D) ρu) s U l
     (** A type former's closed type denotes *)
   ; set_group_ok_former_types : forall k Mk, ind_member D k = Some Mk -> exists FA, set_denotes T γ nil (ind_ty D Mk) FA
     (** A type former is of its closed type *)
