@@ -12,7 +12,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel.Cases Require Export PropCases.
 From Mctt.Core.SetModel.Interpretation Require Import Substitution.
 From Mctt.Core.Syntactic Require Import Syntax.
-From Mctt.Core.Syntactic.System Require Import Definitions.
+From Mctt.Core.Syntactic.System Require Import Definitions Structural.
 Import ListNotations.
 
 Section Functions.
@@ -72,6 +72,127 @@ Proof.
         (apply pi_code_resp_on; [apply set_eq_sym; exact Ea | exact (Hacross _ _ Ea HB')]).
 Qed.
 
+(** ** Sorts and Sizes *)
+
+(** A term of [Prop]'s carrier is a proposition code. *)
+Lemma is_prop_code_of_prop_universe : forall C, set_mem C (code_carrier prop_universe_code) -> is_prop_code C.
+Proof.
+  intros C HC. unfold prop_universe_code in HC. eapply set_mem_eq_r in HC; [| apply code_carrier_type_code].
+  destruct HC as [P E]. exists P. exact E.
+Qed.
+
+(** A type of levels is a member of every universe of sets. *)
+Lemma is_level_type_code_mem : forall V C, grothendieck V -> is_level_type_code C -> set_mem C V.
+Proof.
+  intros V C HV H. induction H as [C n E | C dom F HF E Hd IHd Hc IHc].
+  - eapply set_mem_eq_l; [apply set_eq_sym; exact E | apply grothendieck_level_type_code; exact HV].
+  - eapply set_mem_eq_l; [apply set_eq_sym; exact E |]. apply grothendieck_pi_code; [exact HV | exact IHd | | exact IHc].
+    intros x y _ Exy. apply HF. exact Exy.
+Qed.
+
+(** The universe of sets a universe's value is the code of. *)
+Definition universe_shape (FU : set_env -> aczel_set) (ρ : set_env) (V : aczel_set) : Prop :=
+  grothendieck V /\ exists l, set_eq (FU ρ) (universe_code l V).
+
+(** The value of the sort of the kind [κ] over the universe [U]. *)
+Definition kind_sort_value (κ : abs_kind) (FU : set_env -> aczel_set) (ρ : set_env) : aczel_set :=
+  match κ with
+  | ak_relevant => FU ρ
+  | ak_propositional => prop_universe_code
+  | ak_level => level_sort_code (level_types_universe T)
+  end.
+
+Lemma set_denotes_level_sort : forall Γ, set_denotes T γ Γ a_level_sort (fun _ => level_sort_code (level_types_universe T)).
+Proof. intros. apply set_denotes_const; [intros; constructor | intros ρ v H; inversion H; subst; apply set_eq_refl]. Qed.
+
+Lemma set_denotes_kind_sort : forall Γ κ U FU, set_denotes T γ Γ U FU ->
+    set_denotes T γ Γ (abs_kind_sort κ U) (kind_sort_value κ FU).
+Proof. intros * HU. destruct κ; cbn [abs_kind_sort kind_sort_value]; [exact HU | apply set_denotes_prop | apply set_denotes_level_sort]. Qed.
+
+(** A member of a sort's carrier is a member of the universe's sets. *)
+Lemma kind_sort_value_mem : forall κ FU ρ V C, universe_shape FU ρ V -> set_mem C (code_carrier (kind_sort_value κ FU ρ)) ->
+    set_mem C V.
+Proof.
+  intros κ FU ρ V C [HV [l EU]] HC. destruct κ; cbn [kind_sort_value] in HC.
+  - eapply set_mem_eq_r in HC; [| apply code_carrier_resp; exact EU]. unfold universe_code in HC.
+    eapply set_mem_eq_r in HC; [| apply code_carrier_type_code].
+    apply set_mem_separation in HC as [HC _]; [exact HC | exact is_relevant_code_resp].
+  - destruct (is_prop_code_of_prop_universe _ HC) as [P E]. eapply set_mem_eq_l; [apply set_eq_sym; exact E |].
+    apply grothendieck_prop_code. exact HV.
+  - unfold level_sort_code in HC. eapply set_mem_eq_r in HC; [| apply code_carrier_type_code].
+    apply set_mem_separation in HC as [_ HC]; [| exact is_level_type_code_resp]. apply is_level_type_code_mem; assumption.
+Qed.
+
+(** A term keeps its value weakened past one more entry. *)
+Lemma set_interp_shift : forall Γ e ρ d M v, ⊢ gc_deps ⍮ gc_stack ⍮ e :: Γ -> set_interp T γ Γ ρ M v ->
+    set_interp T γ (e :: Γ) (set_env_extend ρ d) (exp_wk M wk_shift) v.
+Proof.
+  intros * Hc HM. exact (set_interp_wk T γ _ _ _ _ HM nil Γ (e :: Γ) wk_shift _ eq_refl (wf_wk_shift _ _ _ _ Hc) (fun y => eq_refl)).
+Qed.
+
+(** The sort of a codomain, read under the domain, is the sort over the
+    universe. *)
+Lemma kind_sort_value_shift : forall Γ κd A κc U FU FA FS ρ x, set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
+    set_denotes T γ Γ U FU -> set_denotes T γ Γ A FA -> set_denotes T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) FS ->
+    set_env_in T γ Γ ρ -> set_mem x (code_carrier (FA ρ)) ->
+    set_eq (FS (set_env_extend ρ (set_entry_term κd x))) (kind_sort_value κc FU ρ).
+Proof.
+  intros * HΓ Hc HU HA HS Hρ Hx.
+  pose proof (set_env_in_extend_ass T γ Γ ρ κd A _ x Hρ (set_denotes_exists _ _ _ _ _ HA _ Hρ) Hx) as Hρx.
+  destruct κc; cbn [abs_kind_sort kind_sort_value exp_wk] in HS |- *.
+  - apply set_eq_sym. exact (set_denotes_unique _ _ _ _ _ HS _ _ _ Hρx (set_interp_shift _ _ _ _ _ _ Hc (set_denotes_exists _ _ _ _ _ HU _ Hρ))).
+  - exact (set_denotes_agree _ _ _ _ _ _ _ HS (set_denotes_prop T γ _) Hρx).
+  - exact (set_denotes_agree _ _ _ _ _ _ _ HS (set_denotes_level_sort _) Hρx).
+Qed.
+
+(** The [Π] formation rule, into the sort of the codomain's kind over a
+    universe. *)
+Lemma set_rule_pi : forall Γ κd κc A B U FU FS FA FA2 FS' FB FB2, set_ctx T γ Γ ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> pi_kinds κd κc ->
+    set_denotes T γ Γ U FU -> (forall ρ, set_env_in T γ Γ ρ -> exists V, universe_shape FU ρ V) ->
+    set_exp_eq_with T γ Γ (abs_kind_sort κd U) A A FS FA FA2 ->
+    set_exp_eq_with T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) B B FS' FB FB2 ->
+    set_exp_eq T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A B).
+Proof.
+  intros * HΓ Hc Hk HU Hshape [HS HA _ _ HAm] [HS' HB _ _ HBm].
+  exists (kind_sort_value κc FU), (pi_denotation κd κc FA FB), (pi_denotation κd κc FA FB).
+  constructor; [apply set_denotes_kind_sort; exact HU | apply set_denotes_pi; assumption .. | intros; apply set_eq_refl |].
+  intros ρ Hρ. destruct (Hshape ρ Hρ) as [V HV].
+  assert (HAk : set_mem (FA ρ) (code_carrier (kind_sort_value κd FU ρ)))
+    by (eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HS (set_denotes_kind_sort _ _ _ _ HU) Hρ)
+                             | apply HAm; exact Hρ]).
+  assert (HBk : forall x, set_mem x (code_carrier (FA ρ)) ->
+            set_mem (body_function κd FB ρ x) (code_carrier (kind_sort_value κc FU ρ))).
+  { intros x Hx. unfold body_function. eapply set_mem_eq_r; [apply code_carrier_resp; exact (kind_sort_value_shift _ _ _ _ _ _ _ _ _ _ HΓ Hc HU HA HS' Hρ Hx) |].
+    apply HBm. exact (set_env_in_extend_ass T γ Γ ρ κd A _ x Hρ (set_denotes_exists _ _ _ _ _ HA _ Hρ) Hx). }
+  pose proof (body_function_respects _ _ _ _ _ _ _ HΓ HA HB Hρ) as HFr.
+  destruct κc; cbn [pi_denotation kind_sort_value] in HBk |- *.
+  - destruct HV as [HV [l El]]. eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact El |].
+    unfold universe_code. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
+    apply set_mem_separation; [exact is_relevant_code_resp |]. split; [| apply pi_code_relevant].
+    apply grothendieck_pi_code; [exact HV | exact (kind_sort_value_mem _ _ _ _ _ (conj HV (ex_intro _ l El)) HAk) | exact HFr |].
+    intros x Hx. exact (kind_sort_value_mem ak_relevant _ _ _ _ (conj HV (ex_intro _ l El)) (HBk x Hx)).
+  - apply prop_code_mem_prop_universe.
+  - inversion Hk; subst. cbn [kind_sort_value] in HAk.
+    unfold level_sort_code in HAk |- *. eapply set_mem_eq_r in HAk; [| apply code_carrier_type_code].
+    apply set_mem_separation in HAk as [_ HAl]; [| exact is_level_type_code_resp].
+    assert (HBl : forall x, set_mem x (code_carrier (FA ρ)) -> is_level_type_code (body_function ak_level FB ρ x)).
+    { intros x Hx. pose proof (HBk x Hx) as H. unfold level_sort_code in H. eapply set_mem_eq_r in H; [| apply code_carrier_type_code].
+      apply set_mem_separation in H as [_ H]; [exact H | exact is_level_type_code_resp]. }
+    assert (Hpl : is_level_type_code (pi_code (FA ρ) (body_function ak_level FB ρ))).
+    { apply (is_level_type_code_pi _ (FA ρ) (restrict_fun (code_carrier (FA ρ)) (body_function ak_level FB ρ)));
+        [apply restrict_fun_resp | | exact HAl |].
+      - apply pi_code_resp_on; [apply set_eq_refl |]. intros x x' Hx E.
+        eapply set_eq_trans; [apply HFr; [exact Hx | exact E] |]. apply set_eq_sym. apply restrict_fun_agree; [exact HFr |].
+        eapply set_mem_eq_l; [exact E | exact Hx].
+      - intros x Hx. eapply is_level_type_code_resp; [apply set_eq_sym; apply restrict_fun_agree; [exact HFr | exact Hx] |].
+        apply HBl. exact Hx. }
+    eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
+    apply set_mem_separation; [exact is_level_type_code_resp |]. split; [| exact Hpl].
+    apply set_mem_union. exists (tower T (us (0, 0))). split; [exists (0, 0); apply set_eq_refl |].
+    apply is_level_type_code_mem; [apply tower_grothendieck | exact Hpl].
+Qed.
+
 (** ** λs *)
 
 (** The value of a λ of the kinds [κd], [κc]: a proof, or the graph of its
@@ -107,13 +228,6 @@ Proof.
         apply HM'. eapply set_mem_eq_l; [exact E |]. eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact Ea | exact Hx]. }
       destruct κc; [| contradiction |]; cbn [fn_denotation]; apply set_eq_sym;
         (apply graph_set_resp_on; [apply code_carrier_resp; apply set_eq_sym; exact Ea | exact Hacross]).
-Qed.
-
-(** A term of [Prop]'s carrier is a proposition code. *)
-Lemma is_prop_code_of_prop_universe : forall C, set_mem C (code_carrier prop_universe_code) -> is_prop_code C.
-Proof.
-  intros C HC. unfold prop_universe_code in HC. eapply set_mem_eq_r in HC; [| apply code_carrier_type_code].
-  destruct HC as [P E]. exists P. exact E.
 Qed.
 
 (** The λ rule: [λ A M : Π{κd,κc} A B]. *)
