@@ -91,19 +91,19 @@ Record set_record : Type := mk_set_record
 
 (** What the globals denote. *)
 Record global_valuation : Type := mk_global_valuation
-  { (** The closed value and type code of the term entry at a path, over
-        the parameters of the modules enclosing it *)
-    global_term : qname -> set_meaning
+  { (** The closed value of the term entry at a path, over the parameters
+        of the modules enclosing it, and its kind *)
+    global_term : qname -> abs_kind * aczel_set
     (** The closed module of the module entry at a path: a body is the
         global module at its path, an alias its target's module *)
   ; global_module : qname -> set_module
     (** The type former of the member [k] of the group at [p] *)
-  ; global_former : qname -> nat -> set_meaning
+  ; global_former : qname -> nat -> aczel_set
     (** The constructor [c] of the member [k] of the group at [p] *)
-  ; global_constructor : qname -> nat -> string -> set_meaning
+  ; global_constructor : qname -> nat -> string -> aczel_set
     (** The semantics of the group at [p] *)
   ; global_group : qname -> set_group
     (** The type former of the record type at [p] *)
-  ; global_record_former : qname -> set_meaning
+  ; global_record_former : qname -> aczel_set
     (** The semantics of the record type at [p] *)
   ; global_record : qname -> set_record }.

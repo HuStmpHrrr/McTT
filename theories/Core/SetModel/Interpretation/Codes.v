@@ -7,10 +7,7 @@
     [∀ (X : Type@5). X → X] would otherwise carry the code of [Type@5].
 
     [cond φ x] is [x] when [φ] holds and the empty set when it fails,
-    without deciding [φ].  [code_below] is the order of codes that
-    subtyping gives: a proposition below a proposition, a universe below a
-    larger one, a [Π] below a [Π] with the same domain and codomains below
-    pointwise. *)
+    without deciding [φ]. *)
 
 From Mctt.Core.SetModel.Sets Require Export Fixpoints WSets.
 From Mctt.Core.SetModel Require Export Tower.
@@ -64,33 +61,6 @@ Lemma cond_resp : forall (φ ψ : Prop) x y, (φ <-> ψ) -> set_eq x y -> set_eq
 Proof.
   intros * Hφ E. unfold cond. apply union_set_resp. apply separation_set_resp;
     [intros ? ? _ H; exact H | intros ? ? _ H; exact H | apply singleton_set_resp; exact E | intros _ _; exact Hφ].
-Qed.
-
-(** The set [x] when [φ], and [y] when [ψ], for exclusive [φ] and [ψ]. *)
-Definition cond_either (φ : Prop) (x : aczel_set) (ψ : Prop) (y : aczel_set) : aczel_set :=
-  union_set (unordered_pair_set (cond φ x) (cond ψ y)).
-
-Lemma union_unordered_pair_empty_r : forall x, set_eq (union_set (unordered_pair_set x empty_set)) x.
-Proof.
-  intros x. apply set_eq_intro; intros z Hz.
-  - apply set_mem_union in Hz as [w [Hw Hz]]. apply set_mem_unordered_pair in Hw as [Hw | Hw].
-    + eapply set_mem_eq_r; [exact Hw | exact Hz].
-    + exfalso. eapply set_mem_empty. eapply set_mem_eq_r; [exact Hw | exact Hz].
-  - apply set_mem_union. exists x. split; [apply set_mem_unordered_pair; left; apply set_eq_refl | exact Hz].
-Qed.
-
-Lemma cond_either_left : forall (φ ψ : Prop) x y, φ -> ~ ψ -> set_eq (cond_either φ x ψ y) x.
-Proof.
-  intros * H1 H2. unfold cond_either. eapply set_eq_trans; [| apply union_unordered_pair_empty_r].
-  apply union_set_resp. apply unordered_pair_set_resp; [apply cond_true; exact H1 | apply cond_false; exact H2].
-Qed.
-
-Lemma cond_either_right : forall (φ ψ : Prop) x y, ~ φ -> ψ -> set_eq (cond_either φ x ψ y) y.
-Proof.
-  intros * H1 H2. unfold cond_either. eapply set_eq_trans; [| apply union_unordered_pair_empty_r].
-  eapply set_eq_trans; [apply union_set_resp; apply set_eq_intro; intros z Hz; apply set_mem_unordered_pair in Hz;
-    apply set_mem_unordered_pair; destruct Hz as [Hz | Hz]; [right | left | right | left]; exact Hz |].
-  apply union_set_resp. apply unordered_pair_set_resp; [apply cond_true; exact H2 | apply cond_false; exact H1].
 Qed.
 
 (** ** Π and ∀ *)
@@ -166,23 +136,3 @@ Qed.
     [U]: its elements are the codes of types of levels of [U]. *)
 Definition level_sort_code (U : aczel_set) : aczel_set :=
   type_code level_sort_tag empty_set (separation_set U is_level_type_code).
-
-(** ** The Order of Codes *)
-
-(** [code_below C D]: a term whose type has the code [C] has a type of the
-    code [D] by subtyping. *)
-Inductive code_below : aczel_set -> aczel_set -> Prop :=
-(** A proposition is below a proposition; proofs have no other content *)
-| code_below_prop : forall C D, is_prop_code C -> is_prop_code D -> code_below C D
-(** A relevant code is below every code equal to it *)
-| code_below_refl : forall C D, is_relevant_code C -> set_eq C D -> code_below C D
-(** A universe is below a universe whose elements include its own *)
-| code_below_universe : forall C D l c l' c', set_eq C (type_code universe_tag l c) -> set_eq D (type_code universe_tag l' c') ->
-    set_sub c c' -> code_below C D
-(** A [Π] is below a [Π] of the same domain whose codomains are pointwise
-    above its own *)
-| code_below_pi : forall C D dom dom' F F', respects_set_eq_fun F -> respects_set_eq_fun F' ->
-    set_eq C (pi_code dom F) -> set_eq D (pi_code dom' F') -> set_eq dom dom' ->
-    (forall x, set_mem x (code_carrier dom) -> code_below (F x) (F' x)) -> code_below C D
-(** The order is transitive *)
-| code_below_trans : forall C D E, code_below C D -> code_below D E -> code_below C E.

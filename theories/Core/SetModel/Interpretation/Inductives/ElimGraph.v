@@ -29,9 +29,10 @@ Definition tuple_field (t : aczel_set) (f : string) : aczel_set := set_apply t (
 Section ElimGraph.
   (** The group *)
   Variable G : set_group.
-  (** The branches: of the member, of the constructor, at the non-uniform
-      parameters, the arguments and the recursive results *)
-  Variable branch : nat -> string -> list aczel_set -> aczel_set.
+  (** The branches, as a relation to their results: of the member, of the
+      constructor, at the non-uniform parameters, the arguments and the
+      recursive results *)
+  Variable branch : nat -> string -> list aczel_set -> aczel_set -> Prop.
 
   (** The number of uniform parameters. *)
   Let nuniform : nat := List.length (set_group_uniform_types G).
@@ -46,7 +47,7 @@ Inductive elim_graph : nat -> list aczel_set -> aczel_set -> aczel_set -> Prop :
     In cs (set_member_constructors Mk) ->
     set_eq v (con_val (set_constructor_name cs) (List.skipn nuniform params ++ vals)) ->
     arguments_results params (set_constructor_arguments cs) vals ihs ->
-    set_eq r (branch k (set_constructor_name cs) (List.skipn nuniform params ++ vals ++ ihs)) ->
+    branch k (set_constructor_name cs) (List.skipn nuniform params ++ vals ++ ihs) r ->
     elim_graph k params v r
 (** [arguments_results pre gs vals ihs]: the arguments [gs] at the values
     [vals], after the values [pre] (the parameters and the arguments before
@@ -150,9 +151,10 @@ Qed.
 
 Section Functional.
   Variable G : set_group.
-  Variable branch : nat -> string -> list aczel_set -> aczel_set.
+  Variable branch : nat -> string -> list aczel_set -> aczel_set -> Prop.
   Hypothesis HG : group_respects G.
-  Hypothesis Hbranch : forall k c vs vs', list_set_eq vs vs' -> set_eq (branch k c vs) (branch k c vs').
+  (** The branches are functional, up to equal inputs *)
+  Hypothesis Hbranch : forall k c vs vs' r r', list_set_eq vs vs' -> branch k c vs r -> branch k c vs' r' -> set_eq r r'.
 
 (** The eliminator is a function: equal elements at equal parameters have
     equal results. *)
@@ -190,8 +192,7 @@ Proof.
     pose proof (list_set_eq_skipn (List.length (set_group_uniform_types G)) _ _ Hps) as Hns.
     destruct (list_set_eq_app_split _ _ _ _ El (list_set_eq_length _ _ Hns)) as [_ Hvals].
     pose proof (IHa ps' vals' ihs' Hps Hvals Ha') as Hihs.
-    eapply set_eq_trans; [exact Er |]. eapply set_eq_trans; [| apply set_eq_sym; exact Er'].
-    apply Hbranch. apply list_set_eq_app; [exact Hns | apply list_set_eq_app; assumption].
+    eapply Hbranch; [| exact Er | exact Er']. apply list_set_eq_app; [exact Hns | apply list_set_eq_app; assumption].
   - (** no argument *)
     intros pre pre' vals' ihs' _ Hv H'. inversion Hv; subst. inversion H'; subst. constructor.
   - (** a non-recursive argument *)
