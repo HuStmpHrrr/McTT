@@ -3891,4 +3891,101 @@ Proof.
   - intros ρ Hρ. destruct (proj2 (Hkey ρ Hρ) bm FSm FMot FMot' Hbm HMotw) as [_ Hmem]. exact Hmem.
 Qed.
 
+(** ** The Eliminator at Other Uniform Parameters and Motives
+
+    The eliminator reads its uniform parameters and motives only in its
+    branches' contexts, so it is the eliminator at others of the same
+    branches whose branches' contexts are substitutions into the first's
+    by the identity. *)
+
+(** The induction on the eliminator's relations alone, [set_elim],
+    [set_ihs] and [set_ih], their premises in the other relations of the
+    interpretation taken as they are *)
+Scheme set_elim_only_ind := Minimality for set_elim Sort Prop
+with set_ihs_only_ind := Minimality for set_ihs Sort Prop
+with set_ih_only_ind := Minimality for set_ih Sort Prop.
+(** The three together *)
+Combined Scheme set_elim_only_combined_ind from set_elim_only_ind, set_ihs_only_ind, set_ih_only_ind.
+
+(** The kinds of the recursive results' entries along leaf paths do not
+    depend on the motives and the uniform parameters. *)
+Lemma leaves_ctx_kinds : forall r nn As Us As' Us' na pat ls j,
+    List.map centry_kind (leaves_ctx r nn As Us na pat j ls) = List.map centry_kind (leaves_ctx r nn As' Us' na pat j ls).
+Proof.
+  intros r nn As Us As' Us' na pat. induction ls as [| l ls IH]; intros j; [reflexivity |].
+  cbn [leaves_ctx]. rewrite !List.map_app, IH. reflexivity.
+Qed.
+
+(** Nor do those of all the recursive results. *)
+Lemma ihs_ctx_aux_kinds : forall r tbl nn As Us As' Us' na gs pat j,
+    List.map centry_kind (ihs_ctx_aux r tbl nn As Us na pat j gs) = List.map centry_kind (ihs_ctx_aux r tbl nn As' Us' na pat j gs).
+Proof.
+  intros r tbl nn As Us As' Us' na. induction gs as [| [κ A | t] gs IH]; intros pat j; cbn [ihs_ctx_aux]; [reflexivity | apply IH |].
+  rewrite !List.map_app, IH, (leaves_ctx_kinds r nn As Us As' Us'). reflexivity.
+Qed.
+
+(** Nor do those of a branch's context. *)
+Lemma ctx_kinds_elim_bctx : forall r pq D M gs As Us As' Us',
+    ctx_kinds (elim_bctx r pq D M gs As Us) = ctx_kinds (elim_bctx r pq D M gs As' Us').
+Proof.
+  intros. unfold elim_bctx. rewrite !ctx_kinds_app, !ctx_kinds_tele_sub. f_equal.
+  unfold ctx_kinds. rewrite (ihs_ctx_aux_kinds r _ _ As Us As' Us'). reflexivity.
+Qed.
+
+(** [elim_transfer_with Γ r p Us Bks Us' Bks']: the blocks [Bks'] have the
+    branches of [Bks], and the branches' contexts at [Us'] and [Bks'] are
+    well formed and substitutions by the identity into those at [Us] and
+    [Bks]. *)
+Record elim_transfer_with (Γ : ctx) (r : abs_kind) (p : qname) (Us : list exp) (Bks : list eblock) (Us' : list exp)
+    (Bks' : list eblock) : Prop :=
+  { (** The same branches *)
+    elim_transfer_blocks : forall j nm Z A Bs, List.nth_error Bks j = Some (eb_mk nm Z A Bs) ->
+      exists nm' Z' A', List.nth_error Bks' j = Some (eb_mk nm' Z' A' Bs)
+    (** The branches' contexts are well formed *)
+  ; elim_transfer_wf : forall D j Mj c gs, ind_lookup gc_deps gc_stack p = Some D -> ind_member D j = Some Mj ->
+      ind_con Mj c = Some gs -> ⊢ gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mj gs (blocks_motives Bks') Us' ++ Γ
+    (** and substitutions into the first's by the identity *)
+  ; elim_transfer_sub : forall D j Mj c gs, ind_lookup gc_deps gc_stack p = Some D -> ind_member D j = Some Mj ->
+      ind_con Mj c = Some gs ->
+      gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mj gs (blocks_motives Bks') Us' ++ Γ ⊢ˢ sb_id
+        : elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ }.
+
+(** The eliminator, its recursive results and those of one argument at
+    [Us] and [Bks] are those at [Us'] and [Bks'], of the same branches whose
+    contexts are substitutions into the first's by the identity. *)
+Lemma set_elim_transfer_all : forall Us' Bks',
+  (forall Γ ρ r p Us Bks j v res, set_elim T γ Γ ρ r p Us Bks j v res -> elim_transfer_with Γ r p Us Bks Us' Bks' ->
+     set_elim T γ Γ ρ r p Us' Bks' j v res) /\
+  (forall Γ ρ r p Us Bks gs vs ihs, set_ihs T γ Γ ρ r p Us Bks gs vs ihs -> elim_transfer_with Γ r p Us Bks Us' Bks' ->
+     set_ihs T γ Γ ρ r p Us' Bks' gs vs ihs) /\
+  (forall Γ ρ r p Us Bks t v ihs, set_ih T γ Γ ρ r p Us Bks t v ihs -> elim_transfer_with Γ r p Us Bks Us' Bks' ->
+     set_ih T γ Γ ρ r p Us' Bks' t v ihs).
+Proof.
+  intros Us' Bks'. apply (set_elim_only_combined_ind GC T γ (fun Γ ρ r p Us Bks j v res =>
+      elim_transfer_with Γ r p Us Bks Us' Bks' -> set_elim T γ Γ ρ r p Us' Bks' j v res)
+    (fun Γ ρ r p Us Bks gs vs ihs => elim_transfer_with Γ r p Us Bks Us' Bks' -> set_ihs T γ Γ ρ r p Us' Bks' gs vs ihs)
+    (fun Γ ρ r p Us Bks t v ihs => elim_transfer_with Γ r p Us Bks Us' Bks' -> set_ih T γ Γ ρ r p Us' Bks' t v ihs)).
+  - intros Γ ρ r p Us Bks j v res D Mj pc k Dq Mk c gs ns vs nm Z A Bs n B ihs
+      HD HMj Href HDq HMk Hgs Hv Hns Hvs Hb HB _ IHihs Hlen Hc HBi Htr.
+    destruct (elim_transfer_blocks _ _ _ _ _ _ _ Htr _ _ _ _ _ Hb) as (nm' & Z' & A' & Hb').
+    pose proof (elim_transfer_wf _ _ _ _ _ _ _ Htr _ _ _ _ _ HD HMj Hgs) as Hc'.
+    pose proof (elim_transfer_sub _ _ _ _ _ _ _ Htr _ _ _ _ _ HD HMj Hgs) as Hs.
+    eapply set_elim_con; [exact HD | exact HMj | exact Href | exact HDq | exact HMk | exact Hgs | exact Hv | exact Hns | exact Hvs
+                         | exact Hb' | exact HB | exact (IHihs Htr) | rewrite !length_elim_bctx in *; exact Hlen | exact Hc' |].
+    rewrite (ctx_kinds_elim_bctx r p D Mj gs (blocks_motives Bks') Us' (blocks_motives Bks) Us).
+    rewrite <- (exp_sub_id B).
+    apply (interp_realized _ (set_env_extend_kinded ρ (ctx_kinds (elim_bctx r p D Mj gs (blocks_motives Bks) Us)) (ns ++ vs ++ ihs))
+             _ _ sb_id B res Hc Hs); [| exact HBi].
+    intros y. split; cbn; [exact (set_interp_var T γ _ _ y) | exact (set_interp_me_var T γ _ _ y)].
+  - intros Γ ρ r p Us Bks j v res res' _ IH E Htr. eapply set_elim_resp; [exact (IH Htr) | exact E].
+  - intros; constructor.
+  - intros Γ ρ r p Us Bks κ A gs v vs ihs _ IH Htr. constructor. exact (IH Htr).
+  - intros Γ ρ r p Us Bks t gs v vs ihs1 ihs2 _ IH1 _ IH2 Htr. constructor; [exact (IH1 Htr) | exact (IH2 Htr)].
+  - intros Γ ρ r p Us Bks D j Mj Ps v r0 HD HMj Hrv _ IH Htr. eapply set_ih_self; [exact HD | exact HMj | exact Hrv | exact (IH Htr)].
+  - intros Γ ρ r p Us Bks D j Mj qr Is fl c gs Ps v rs HD HMj Hh Hc _ IH Htr.
+    eapply set_ih_rview; [exact HD | exact HMj | exact Hh | exact Hc | exact (IH Htr)].
+  - intros Γ ρ r p Us Bks D B t v Rs HD _ IH Htr. eapply set_ih_pi; [exact HD |]. intros b Hb. exact (IH b Hb Htr).
+  - intros Γ ρ r p Us Bks t v rs rs' _ IH E Htr. eapply set_ih_resp; [exact (IH Htr) | exact E].
+Qed.
+
 End Eliminator.
