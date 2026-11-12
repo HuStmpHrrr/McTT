@@ -1025,6 +1025,102 @@ Qed.
 
   End Children.
 
+Lemma child_tree_position : forall gs pvals pre j rs pos t, child_tree gs pvals pre j rs pos t -> position_of gs pvals pre j pos.
+Proof.
+  intros * H. induction H.
+  - eapply position_of_here; eassumption.
+  - apply position_of_after_recursive. assumption.
+  - apply position_of_after_plain. assumption.
+Qed.
+
+Lemma position_of_mem : forall gs pvals pre j pos, Forall argument_respects gs -> position_of gs pvals pre j pos ->
+    set_mem pos (argument_positions gs pvals pre j).
+Proof.
+  intros * Hr H. induction H as [type ds target tparams ls gs pvals pre j pts pos Hf Ep | type ds target tparams ls gs pvals pre j pos H IH
+                                 | κ ty gs p pvals pre j pos H IH];
+    inversion Hr as [| ? ? Hg Hgs]; subst; cbn [argument_positions].
+  - destruct Hg as [Hds _]. apply set_mem_union. eexists. split; [apply set_mem_unordered_pair; left; apply set_eq_refl |].
+    assert (HF : respects_set_eq_fun (fun pts => ordered_pair (numeral_set j) pts)) by (intros x y E; apply ordered_pair_resp; [apply set_eq_refl | exact E]).
+    apply (set_mem_replacement _ _ _ HF). exists (list_code pts). split; [| exact Ep].
+    apply (set_mem_domains_set _ Hds). exists pts. split; [exact Hf | apply set_eq_refl].
+  - apply set_mem_union. eexists. split; [apply set_mem_unordered_pair; right; apply set_eq_refl | auto].
+  - auto.
+Qed.
+
+Lemma children_decode_of_fit : forall Sc g, (forall k ns w, good_point k ns -> set_mem w (candidate_carrier U Sc k ns) ->
+      exists t, set_mem t trees /\ tree_decodes k ns t w) ->
+    forall pre gs vals j, arguments_fit G U Sc pre gs vals -> targets_good pre gs vals -> Forall argument_respects gs ->
+    (forall pos t, child_tree gs (fst (split_arguments gs vals)) pre j (snd (split_arguments gs vals)) pos t -> set_eq (set_apply g pos) t) ->
+    children_decode g gs (fst (split_arguments gs vals)) pre j (snd (split_arguments gs vals)).
+Proof.
+  intros Sc g HS pre gs vals j H. revert j.
+  induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams ls gs a vals Ha H IH];
+    intros j Htg Hr Hg; inversion Htg as [| ? ? ? ? ? ? Htg' | ? ? ? ? ? ? ? ? ? Hgood Htg']; subst;
+    inversion Hr as [| ? ? Hgr Hgs]; subst; cbn [split_arguments] in *.
+  - constructor.
+  - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst snd] in *. constructor.
+    apply IH; [exact Htg' | exact Hgs |]. intros pos t Hc. apply Hg. apply child_tree_after_plain. exact Hc.
+  - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst snd] in *. destruct Hgr as [Hds Htp]. constructor.
+    + apply (child_decodes_of Sc g); [| exact Hds | exact Htp | exact Ha].
+      intros pts Hf. cbn [List.app]. pose proof (shape_set_at _ _ _ _ _ Hds Htp _ _ _ Hf _ Ha) as Hleaf. cbn [List.app] in Hleaf.
+      destruct (HS _ _ _ (Hgood pts Hf) Hleaf) as [t [_ Hd]].
+      assert (Hc : child_tree (set_argument_recursive type ds target tparams ls :: gs) p pre j (a :: r) (tree_position j pts) t)
+        by (eapply child_tree_here; [exact Hf | apply set_eq_refl | exact Hd]).
+      eapply tree_decodes_resp; [apply set_eq_sym; apply Hg; exact Hc | apply set_eq_refl | exact Hd].
+    + apply IH; [exact Htg' | exact Hgs |]. intros pos t Hc. apply Hg. apply child_tree_after_recursive. exact Hc.
+Qed.
+
+(** A good construction from elements with trees has a tree. *)
+Lemma constructed_tree : forall Sc k ns v, (forall k ns w, good_point k ns -> set_mem w (candidate_carrier U Sc k ns) ->
+      exists t, set_mem t trees /\ tree_decodes k ns t w) ->
+    good_point k ns -> constructed_from G us U Sc k ns v -> exists t, set_mem t trees /\ tree_decodes k ns t v.
+Proof.
+  intros Sc k ns v HS Hgood [Mk [cs [vals [HMk Hcs Hfit Hel]]]].
+  destruct (In_nth_error _ _ Hcs) as [i Hi].
+  pose proof (Hsig _ _ _ HMk Hcs) as Hgs.
+  pose proof (Htargets _ _ _ _ _ _ Hgood HMk Hcs Hfit) as Htg.
+  destruct (split_arguments_spec _ _ (arguments_fit_length _ _ _ _ _ Hfit)) as (Hint & Hlp & Hlr).
+  set (args := set_constructor_arguments cs) in *.
+  set (pv := fst (split_arguments args vals)) in *. set (rs := snd (split_arguments args vals)) in *.
+  set (P := argument_positions args pv (us ++ ns) 0).
+  set (pred := fun p => child_tree args pv (us ++ ns) 0 rs (pair_first p) (pair_second p)).
+  assert (Hpred : respects_set_eq pred)
+    by (intros x y E H; unfold pred in *; eapply child_tree_resp; [apply pair_first_resp; exact E | apply pair_second_resp; exact E | exact H]).
+  set (g := separation_set (product_set P trees) pred).
+  assert (Hin : forall b t, set_mem b P -> set_mem t trees -> child_tree args pv (us ++ ns) 0 rs b t -> set_mem (ordered_pair b t) g).
+  { intros b t Hb Ht Hc. apply (set_mem_separation _ _ _ Hpred). split.
+    - apply set_mem_product. exists b, t. split; [exact Hb | split; [exact Ht | apply set_eq_refl]].
+    - unfold pred. eapply child_tree_resp; [apply set_eq_sym; apply pair_first_ordered_pair | apply set_eq_sym; apply pair_second_ordered_pair | exact Hc]. }
+  assert (Hex : forall b, set_mem b P -> exists t, set_mem t trees /\ child_tree args pv (us ++ ns) 0 rs b t)
+    by (intros b Hb; exact (children_exist Sc HS _ _ _ Hfit Htg Hgs 0 b (set_mem_argument_positions _ Hgs _ _ _ _ Hb))).
+  assert (Hfun : is_function_on P g).
+  { split; [| split].
+    - intros p Hp. apply (set_mem_separation _ _ _ Hpred) in Hp as [Hp _]. apply set_mem_product in Hp as [x [y [Hx [_ E]]]]. eauto.
+    - intros b Hb. destruct (Hex b Hb) as [t [Ht Hc]]. exists t. exact (Hin b t Hb Ht Hc).
+    - intros b y y' Hy Hy'. apply (set_mem_separation _ _ _ Hpred) in Hy as [_ Hy]. apply (set_mem_separation _ _ _ Hpred) in Hy' as [_ Hy'].
+      unfold pred in Hy, Hy'.
+      eapply child_tree_resp in Hy; [| apply pair_first_ordered_pair | apply pair_second_ordered_pair].
+      eapply child_tree_resp in Hy'; [| apply pair_first_ordered_pair | apply pair_second_ordered_pair].
+      exact (child_tree_functional _ _ _ _ _ _ _ Hy Hgs _ Hy'). }
+  assert (Happ : forall pos t, child_tree args pv (us ++ ns) 0 rs pos t -> set_eq (set_apply g pos) t).
+  { intros pos t Hc. assert (Hb : set_mem pos P) by exact (position_of_mem _ _ _ _ _ Hgs (child_tree_position _ _ _ _ _ _ _ Hc)).
+    destruct (Hex pos Hb) as [t0 [Ht0 Hc0]].
+    eapply set_eq_trans; [exact (is_function_on_apply _ _ _ _ Hfun (Hin _ _ Hb Ht0 Hc0)) |].
+    exact (child_tree_functional _ _ _ _ _ _ _ Hc0 Hgs _ Hc). }
+  pose proof (children_decode_of_fit Sc g HS _ _ _ 0 Hfit Htg Hgs Happ) as Hch.
+  pose proof (good_point_length k Mk ns HMk (Hnparams _ _ HMk) ltac:(destruct Hgood as [Mk' [HMk' Hm]]; rewrite HMk in HMk'; injection HMk' as <-; exact Hm)) as Hln.
+  assert (HPa : set_eq (shape_positions (tree_shape k i ns pv)) P) by (exact (shape_positions_tree_shape Hsig _ _ _ _ _ _ HMk Hi Hln Hlp)).
+  exists (ordered_pair (tree_shape k i ns pv) g). split.
+  - apply (tree_set_node U HU); [apply shape_positions_resp; exact Hsig | exact Hshapes | exact Hpositions | |].
+    + destruct Hgood as [Mk' [HMk' Hm]]. rewrite HMk in HMk'; injection HMk' as <-.
+      exact (tree_shape_mem Hsig _ _ _ _ _ _ _ _ HMk Hi (Hnparams _ _ HMk) Hm Hfit).
+    + apply is_function_on_function_set; [apply respects_set_eq_fun_const | eapply is_function_on_resp; [apply set_eq_sym; exact HPa | apply set_eq_refl | exact Hfun] |].
+      intros b Hb. eapply set_mem_eq_r in Hb; [| exact HPa]. destruct (Hex b Hb) as [t [Ht Hc]].
+      eapply set_mem_eq_l; [apply set_eq_sym; exact (Happ _ _ Hc) | exact Ht].
+  - eapply tree_decodes_node; [exact HMk | exact Hi | apply set_eq_refl | exact Hlp | exact Hfun | exact Hch |].
+    rewrite <- Hint in Hel. exact Hel.
+Qed.
+
 End Existence.
 
 End Bound.
