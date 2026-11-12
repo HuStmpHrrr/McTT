@@ -20,11 +20,11 @@ From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Weakening Substitution JudgmentSubstitution.
 From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
 From Mctt.Core.SetModel.Cases Require Import UniverseCases PropCases FunctionCases ValidUnit MemberTypes Sel IndCases RecordCases.
-From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
+From Mctt.Core.Syntactic Require Import Syntax Substitution Members Presup.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import Paths DescTyping MemberLemmas.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
-From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing.
+From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing UniformParams.
 Import ListNotations.
 
 Section Eliminator.
@@ -5420,6 +5420,16 @@ Proof.
     exact (leaves_agree_of_closed_ok Γ ρ r p Us Bks Bks2 V D i HDt Hr _ _ _ _ _ _ _ _ Hshape _ _ Hl1).
 Qed.
 
+(** The results of every element of a carrier agree at the two block
+    lists, at every instance of its member's parameters. *)
+Lemma results_agree_of_carrier : forall k ns v, set_mem v (member_carrier G us U U k ns) -> extra_point D XA us k ns v.
+Proof.
+  intros k ns v Hv.
+  pose proof HS1 as [HΓ HcΓ HD Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
+  exact (proj2 (elim_point_of_carrier Γ ρ r p Us Bks V D i Fσ U XA (results_agree_resp Γ ρ r p Us Bks Bks2 V D) HΓ HcΓ Hρ HD Hσ
+                  HDt Hcl HUl HMwf HMot HMctx HMh HBk Hcar Hbτ Hbctx Hbrs HBr HV HBt HUs agree_step k ns v Hv)).
+Qed.
+
 End AgreementStep.
 
 (** ** The Scrutinee of an Eliminator *)
@@ -5868,6 +5878,68 @@ Proof.
     + intros ρ Hρ. destruct (Hbr ρ Hρ) as [Henv _ _]. exact (HFBm _ Henv).
 Qed.
 
+(** ** The Congruence of the Eliminator *)
+
+(** The blocks of [Bks] with the branches of [Bks']: their binder counts,
+    scrutinee types and motives, and the others' branches. *)
+Definition blocks_with_branches (Bks Bks' : list eblock) : list eblock :=
+  List.map (fun bb => eb_mk (eb_binder_count (fst bb)) (eb_scrutinee_type (fst bb)) (eb_motive (fst bb)) (eb_brs (snd bb)))
+    (List.combine Bks Bks').
+
+(** A block of both lists gives the combined block at its place. *)
+Lemma blocks_with_branches_nth : forall Bks Bks' k b b', List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
+    List.nth_error (blocks_with_branches Bks Bks') k = Some (eb_mk (eb_binder_count b) (eb_scrutinee_type b) (eb_motive b) (eb_brs b')).
+Proof.
+  unfold blocks_with_branches. induction Bks as [| b0 Bks IH]; intros [| b0' Bks'] [| k] b b' H H'; cbn in *; try discriminate.
+  - injection H as <-. injection H' as <-. reflexivity.
+  - exact (IH _ _ _ _ H H').
+Qed.
+
+(** A combined block comes from a block of each list at its place. *)
+Lemma blocks_with_branches_inv : forall Bks Bks' k bm, List.nth_error (blocks_with_branches Bks Bks') k = Some bm ->
+    exists b b', List.nth_error Bks k = Some b /\ List.nth_error Bks' k = Some b' /\
+      bm = eb_mk (eb_binder_count b) (eb_scrutinee_type b) (eb_motive b) (eb_brs b').
+Proof.
+  unfold blocks_with_branches. induction Bks as [| b0 Bks IH]; intros [| b0' Bks'] [| k] bm H; cbn in H; try discriminate.
+  - injection H as <-. exists b0, b0'. auto.
+  - exact (IH _ _ _ H).
+Qed.
+
+(** As many combined blocks as blocks of lists of one length. *)
+Lemma length_blocks_with_branches : forall Bks Bks', List.length Bks = List.length Bks' ->
+    List.length (blocks_with_branches Bks Bks') = List.length Bks.
+Proof. intros. unfold blocks_with_branches. rewrite List.length_map, List.length_combine. lia. Qed.
+
+(** Their motives are those of [Bks]. *)
+Lemma blocks_motives_with_branches : forall Bks Bks', List.length Bks = List.length Bks' ->
+    blocks_motives (blocks_with_branches Bks Bks') = blocks_motives Bks.
+Proof.
+  unfold blocks_with_branches, blocks_motives. induction Bks as [| b0 Bks IH]; intros [| b0' Bks'] Hl; cbn in *; try discriminate;
+    [reflexivity |]. f_equal. apply IH. lia.
+Qed.
+
+(** Branches of the same names: a branch has one at its place in the
+    other. *)
+Lemma brs_partner : forall (Bs Bs2 : list (string * nat * exp)) i c n B, List.map fst Bs = List.map fst Bs2 ->
+    List.nth_error Bs i = Some (c, n, B) -> exists B2, List.nth_error Bs2 i = Some (c, n, B2).
+Proof.
+  intros Bs Bs2 i c n B E H. pose proof (f_equal (fun L => List.nth_error L i) E) as Ei. cbn beta in Ei.
+  rewrite !List.nth_error_map, H in Ei. destruct (List.nth_error Bs2 i) as [[[c2 n2] B2] |]; cbn in Ei; [| discriminate].
+  injection Ei as -> ->. eexists. reflexivity.
+Qed.
+
+(** The lookups of one name in branches of the same names are at the same
+    place. *)
+Lemma brs_lookup_same_place : forall (Bs Bs2 : list (string * nat * exp)) c n B n2 B2, List.map fst Bs = List.map fst Bs2 ->
+    brs_lookup Bs c = Some (n, B) -> brs_lookup Bs2 c = Some (n2, B2) ->
+    exists i, List.nth_error Bs i = Some (c, n, B) /\ List.nth_error Bs2 i = Some (c, n2, B2).
+Proof.
+  induction Bs as [| [[c' n'] B'] Bs IH]; intros [| [[c2 n2'] B2'] Bs2] c n B n2 B2 E H H2; cbn in E, H, H2; try discriminate.
+  injection E as -> -> E. destruct (String.eqb_spec c c2) as [-> | Hne].
+  - injection H as -> ->. injection H2 as -> ->. exists 0. split; reflexivity.
+  - destruct (IH _ _ _ _ _ _ E H H2) as (i & Hi & Hi2). exists (S i). split; assumption.
+Qed.
+
 (** ** The Eliminator at Other Uniform Parameters and Motives
 
     The eliminator reads its uniform parameters and motives only in its
@@ -5963,6 +6035,227 @@ Proof.
     eapply set_ih_rview; [exact HD | exact HMj | exact Hh | exact Hc | exact (IH Htr)].
   - intros Γ ρ r p Us Bks D B t v Rs HD _ IH Htr. eapply set_ih_pi; [exact HD |]. intros b Hb. exact (IH b Hb Htr).
   - intros Γ ρ r p Us Bks t v rs rs' _ IH E Htr. eapply set_ih_resp; [exact (IH Htr) | exact E].
+Qed.
+
+(** ** The Congruence of the Eliminator in the Model *)
+
+(** The eliminator's congruence, of which the left parameters and motives
+    hold in the model, the scrutinees and the branches are equal there and
+    the motives' and branches' contexts denote, holds in the model; the
+    right parameters and motives enter only through the right branches'
+    contexts, which the syntax relates to the left's.  The left side is
+    [set_rule_elim].  At every environment, its result at the blocks
+    [Bks] is that at the blocks [blocks_with_branches Bks Bks'], of the
+    motives of [Bks] and the branches of [Bks'], since the branches are
+    equal in the model ([results_agree_of_carrier]); that is the result at
+    [Us'] and [Bks'] ([set_elim_transfer_all]), whose branches' contexts
+    are substitutions by the identity into those at [Us] and [Bks]
+    ([elim_bctx_cong_eq]).  Into propositions, both sides are the proof. *)
+Lemma set_rule_elim_cong : forall Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i,
+    set_ctx T γ Γ ->
+    ind_lookup gc_deps gc_stack p = Some D ->
+    ind_member D m = Some Mm ->
+    List.nth_error Bks m = Some bm ->
+    List.length Bks = ind_nblk D ->
+    List.length Bks' = ind_nblk D ->
+    List.length Ps = im_np D Mm ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
+       gc_deps ⍮ gc_stack ⍮ Γ ⊢ P : A) ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
+       set_exp_eq T γ Γ A P P) ->
+    List.length Ps' = im_np D Mm ->
+    (forall k P P' A, List.nth_error Ps k = Some P -> List.nth_error Ps' k = Some P' ->
+       List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ P ≈ P' : A) ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ M ≈ M' : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
+    set_exp_eq T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M' ->
+    Us = List.firstn (ind_nu D) Ps ->
+    Us' = List.firstn (ind_nu D) Ps' ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ ce_ass ak_relevant (eb_scrutinee_type b) :: tele_sub (im_nparams Mk) (sb_of_list sb_id (List.firstn (ind_nu D) Ps))
+                    ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b ->
+       gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ ce_ass ak_relevant (eb_scrutinee_type b) :: tele_sub (im_nparams Mk) (sb_of_list sb_id (List.firstn (ind_nu D) Ps))
+                    ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       gc_deps ⍮ gc_stack ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r (a_typ i)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       set_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
+    (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
+       gc_deps ⍮ gc_stack ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b' : abs_kind_sort r (a_typ i)) ->
+    (forall k Mk, ind_member D k = Some Mk ->
+       gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk, ind_member D k = Some Mk -> set_ctx T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
+    (forall k b b', List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
+       List.map fst (eb_brs b) = List.map fst (eb_brs b')) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                    ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       set_ctx T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
+    (forall k Mk b b' j c gs n B B', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       List.nth_error Bks' k = Some b' ->
+       List.nth_error (eb_brs b) j = Some (c, n, B) -> List.nth_error (eb_brs b') j = Some (c, n, B') ->
+       ind_con Mk c = Some gs ->
+       gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
+         : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b b' j c gs n B B', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       List.nth_error Bks' k = Some b' ->
+       List.nth_error (eb_brs b) j = Some (c, n, B) -> List.nth_error (eb_brs b') j = Some (c, n, B') ->
+       ind_con Mk c = Some gs ->
+       set_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
+         (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B') ->
+    motive_kind r ->
+    set_exp_eq T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
+      (a_elim r p Us m Bks M) (a_elim r p Us' m Bks' M').
+Proof.
+  intros Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i HΓ HD Hm Hbm HlB HlB' HPl HPs HPsem HPl' HPP HMM HMMsem HUs HUs'
+    Hcnt Hcnt' Hsc Hsc' HMty HMotsem HAA HMx HMxsem Hbrs Hnames HBx HBxsem Hn HBB HBBsem Hmk.
+  assert (Heq : gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_elim r p Us m Bks M ≈ a_elim r p Us' m Bks' M'
+                  : exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
+    by (eapply wf_exp_eq_elim_cong; eassumption).
+  pose proof (presup_exp_eq_ctx Heq) as HcΓ.
+  pose proof (presup_exp_eq_left Heq) as Hel. pose proof (presup_exp_eq_right Heq) as Hel'.
+  pose proof (presup_exp_eq_left HMM) as HMt.
+  subst Us Us'. set (Us := List.firstn (ind_nu D) Ps) in *. set (Us' := List.firstn (ind_nu D) Ps') in *.
+  destruct (decl_of_lookup _ _ _ _ _ HcΓ HD) as [HDt Hcl].
+  pose proof (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HDt)) as Hsuf.
+  pose proof (block_not_rview _ _ _ _ _ Hsuf HlB Hm Hbm) as Hrv.
+  assert (HUl : List.length Us = ind_nu D) by (unfold Us; rewrite List.firstn_length_le; [reflexivity |]; rewrite HPl; unfold im_np; lia).
+  destruct (params_typed_split _ _ D Hcl _ _ Γ Ps Hm HPl HPs) as [HUt _].
+  (* a branch has its partner at its place in the other block *)
+  assert (Hpart : forall k b c n B, List.nth_error Bks k = Some b -> In (c, n, B) (eb_brs b) ->
+    exists b' j B', List.nth_error Bks' k = Some b' /\ List.nth_error (eb_brs b) j = Some (c, n, B) /\
+                    List.nth_error (eb_brs b') j = Some (c, n, B')).
+  { intros k b c n B Hb HIn. destruct (blocks_nth_same Bks Bks' k b ltac:(congruence) Hb) as [b' Hb'].
+    destruct (List.In_nth_error _ _ HIn) as [j Hj]. destruct (brs_partner _ _ j c n B (Hnames k b b' Hb Hb') Hj) as [B' HB'].
+    exists b', j, B'. auto. }
+  assert (Hpart' : forall k b' c n B', List.nth_error Bks' k = Some b' -> In (c, n, B') (eb_brs b') ->
+    exists b j B, List.nth_error Bks k = Some b /\ List.nth_error (eb_brs b) j = Some (c, n, B) /\
+                    List.nth_error (eb_brs b') j = Some (c, n, B')).
+  { intros k b' c n B' Hb' HIn. destruct (blocks_nth_same Bks' Bks k b' ltac:(congruence) Hb') as [b Hb].
+    destruct (List.In_nth_error _ _ HIn) as [j Hj]. destruct (brs_partner _ _ j c n B' (eq_sym (Hnames k b b' Hb Hb')) Hj) as [B HB].
+    exists b, j, B. auto. }
+  (* the left side: [set_rule_elim] *)
+  assert (HBty : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ ⊢ B : elim_branch_type p D k Mk c gs (eb_motive b) Us).
+  { intros k Mk b c gs n B Hk Hb Hc HIn. destruct (Hpart k b c n B Hb HIn) as (b' & j & B' & Hb' & Hj & Hj').
+    exact (presup_exp_eq_left (HBB k Mk b b' j c gs n B B' Hk Hb Hb' Hj Hj' Hc)). }
+  assert (HBsem : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       set_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ) (elim_branch_type p D k Mk c gs (eb_motive b) Us) B B).
+  { intros k Mk b c gs n B Hk Hb Hc HIn. destruct (Hpart k b c n B Hb HIn) as (b' & j & B' & Hb' & Hj & Hj').
+    pose proof (HBBsem k Mk b b' j c gs n B B' Hk Hb Hb' Hj Hj' Hc) as H. exact (set_exp_eq_trans T γ _ _ _ _ _ H (set_exp_eq_sym T γ _ _ _ _ H)). }
+  pose proof (set_exp_eq_trans T γ _ _ _ _ _ HMMsem (set_exp_eq_sym T γ _ _ _ _ HMMsem)) as HMsem.
+  pose proof (set_rule_elim Γ r p Us m Bks M D Mm bm Ps i HΓ HD Hm Hbm HlB HPl HPs HPsem HMt HMsem eq_refl Hcnt Hsc HMty HMotsem
+                HMx HMxsem Hbrs HBx HBxsem Hn HBty HBsem Hmk) as (FA & FL & FL0 & [HFA HFL _ _ HLmem]).
+  (* the right side's blocks are typed, of branches' contexts equal to the left's *)
+  assert (HPs' : forall k P P' A, List.nth_error Ps k = Some P -> List.nth_error Ps' k = Some P' ->
+       List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ P' : A)
+    by (intros; eapply presup_exp_eq_right; eauto).
+  destruct (elim_bctx_cong_eq gc_deps gc_stack Γ p D m Mm Bks Bks' Ps Ps' r i HcΓ HD Hm HlB HlB' HPl HPs HPl' HPs' HPP Hcnt Hcnt' Hsc'
+              HMty ltac:(intros; eapply presup_exp_eq_right; eauto) HAA HMx Hbrs Hnames Hn
+              ltac:(intros; eapply presup_exp_eq_right; eauto) Hmk) as [HBt' Hbeq].
+  fold Us' in HBt', Hbeq.
+  (* the blocks of the left motives and the right branches *)
+  set (BksM := blocks_with_branches Bks Bks').
+  assert (HlM : List.length BksM = ind_nblk D) by (unfold BksM; rewrite length_blocks_with_branches; congruence).
+  assert (HmotM : blocks_motives BksM = blocks_motives Bks) by (apply blocks_motives_with_branches; congruence).
+  (* the eliminator at [Us] and [BksM] is the one at [Us'] and [Bks'] *)
+  assert (Htr : elim_transfer_with Γ r p Us BksM Us' Bks').
+  { constructor.
+    - intros j nm Z A Bs Hj. destruct (blocks_with_branches_inv _ _ _ _ Hj) as (b1 & b1' & _ & Hb1' & E).
+      destruct b1' as [nm' Z' A' Bs']. cbn in E. injection E as _ _ _ ->. exists nm', Z', A'. exact Hb1'.
+    - intros D' j Mj c gs HD' Hj Hc. rewrite HD in HD'. injection HD' as <-.
+      exact (ext_eq_ctx_left _ _ _ _ _ (blocks_typed_bctx _ _ _ _ _ _ _ _ _ HBt' j Mj c gs Hj Hc)).
+    - intros D' j Mj c gs HD' Hj Hc. rewrite HD in HD'. injection HD' as <-. rewrite HmotM.
+      exact (ctxsub_ext _ _ _ _ _ (Hbeq j Mj c gs Hj Hc) (elim_bctx_ass _ _ _ _ _ _ _ _ Hcl Hj)). }
+  (* the scrutinee, and the induction's settings at [Bks] and at [BksM] *)
+  destruct HMMsem as (FA0 & FM & FM' & HMw).
+  destruct (elim_scrutinee_setting Γ p D m Mm Ps M FA0 FM FM HΓ HcΓ HD Hm Hrv HPl HPs HPsem
+              ltac:(destruct HMw as [? ? _ _ ?]; constructor; first [assumption | intros; apply set_eq_refl])) as (Fι & [HFι Hσ HNr Hpts]).
+  set (Fσ := fun ρ => set_env_drop (im_nn Mm) (Fι ρ)) in *.
+  set (V := large_results i).
+  pose proof (elim_setting_of_rule Γ r p Us Bks D i Fσ HΓ HcΓ HD Hσ HUl HUt HlB Hcnt Hsc HMty HMotsem HMx HMxsem Hbrs HBx HBxsem
+                Hn HBty HBsem Hmk) as HS1.
+  assert (HS2 : elim_setting_with Γ r p Us BksM V D i Fσ).
+  { apply (elim_setting_of_rule Γ r p Us BksM D i Fσ HΓ HcΓ HD Hσ HUl HUt HlM); try (rewrite HmotM; assumption); try exact Hmk;
+      try exact HMx; try exact HMxsem.
+    - intros k Mk b Hk Hb. destruct (blocks_with_branches_inv _ _ _ _ Hb) as (b1 & b1' & Hb1 & _ & ->). exact (Hcnt _ _ _ Hk Hb1).
+    - intros k Mk b Hk Hb. destruct (blocks_with_branches_inv _ _ _ _ Hb) as (b1 & b1' & Hb1 & _ & ->). exact (Hsc _ _ _ Hk Hb1).
+    - intros k Mk b Hk Hb. destruct (blocks_with_branches_inv _ _ _ _ Hb) as (b1 & b1' & Hb1 & _ & ->). exact (HMty _ _ _ Hk Hb1).
+    - intros k Mk b Hk Hb. destruct (blocks_with_branches_inv _ _ _ _ Hb) as (b1 & b1' & Hb1 & _ & ->). exact (HMotsem _ _ _ Hk Hb1).
+    - intros k Mk b Hk Hb. destruct (blocks_with_branches_inv _ _ _ _ Hb) as (b1 & b1' & Hb1 & Hb1' & ->). cbn [eb_brs].
+      pose proof (f_equal (List.map fst) (Hnames k b1 b1' Hb1 Hb1')) as E. rewrite !List.map_map in E.
+      unfold brs_names. rewrite (Hbrs _ _ _ Hk Hb1). exact E.
+    - intros k Mk b c gs n B Hk Hb Hc HIn. destruct (blocks_with_branches_inv _ _ _ _ Hb) as (b1 & b1' & Hb1 & Hb1' & ->).
+      cbn [eb_brs] in HIn. destruct (Hpart' k b1' c n B Hb1' HIn) as (b2 & j & B1 & Hb2 & Hj & _).
+      rewrite Hb1 in Hb2. injection Hb2 as <-. exact (Hn _ _ _ _ _ _ B1 Hk Hb1 Hc (List.nth_error_In _ _ Hj)).
+    - rewrite HmotM. intros k Mk b c gs n B Hk Hb Hc HIn. destruct (blocks_with_branches_inv _ _ _ _ Hb) as (b1 & b1' & Hb1 & Hb1' & ->).
+      cbn [eb_brs eb_motive] in HIn |- *. destruct (Hpart' k b1' c n B Hb1' HIn) as (b2 & j & B1 & Hb2 & Hj & Hj').
+      rewrite Hb1 in Hb2. injection Hb2 as <-. exact (presup_exp_eq_right (HBB k Mk b1 b1' j c gs n B1 B Hk Hb1 Hb1' Hj Hj' Hc)).
+    - rewrite HmotM. intros k Mk b c gs n B Hk Hb Hc HIn. destruct (blocks_with_branches_inv _ _ _ _ Hb) as (b1 & b1' & Hb1 & Hb1' & ->).
+      cbn [eb_brs eb_motive] in HIn |- *. destruct (Hpart' k b1' c n B Hb1' HIn) as (b2 & j & B1 & Hb2 & Hj & Hj').
+      rewrite Hb1 in Hb2. injection Hb2 as <-. pose proof (HBBsem k Mk b1 b1' j c gs n B1 B Hk Hb1 Hb1' Hj Hj' Hc) as H.
+      exact (set_exp_eq_trans T γ _ _ _ _ _ (set_exp_eq_sym T γ _ _ _ _ H) H). }
+  (* the agreement's hypotheses: the blocks correspond, of branches equal in the model *)
+  assert (Hcorr : forall k b, List.nth_error Bks k = Some b ->
+    exists b2, List.nth_error BksM k = Some b2 /\ List.map fst (eb_brs b) = List.map fst (eb_brs b2)).
+  { intros k b Hb. destruct (blocks_nth_same Bks Bks' k b ltac:(congruence) Hb) as [b' Hb'].
+    eexists. split; [exact (blocks_with_branches_nth _ _ _ _ _ Hb Hb') | exact (Hnames _ _ _ Hb Hb')]. }
+  assert (HBBM : forall k Mk b b2 c gs n B B2, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+    List.nth_error BksM k = Some b2 -> ind_con Mk c = Some gs -> brs_lookup (eb_brs b) c = Some (n, B) ->
+    brs_lookup (eb_brs b2) c = Some (n, B2) ->
+    exists FS FB FB2, set_exp_eq_with T γ (elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ)
+                        (elim_branch_type p D k Mk c gs (eb_motive b) Us) B B2 FS FB FB2).
+  { intros k Mk b b2 c gs n B B2 Hk Hb Hb2 Hc HL1 HL2.
+    destruct (blocks_with_branches_inv _ _ _ _ Hb2) as (b1 & b1' & Hb1 & Hb1' & ->). rewrite Hb in Hb1. injection Hb1 as <-.
+    cbn [eb_brs] in HL2. destruct (brs_lookup_same_place _ _ c n B n B2 (Hnames _ _ _ Hb Hb1') HL1 HL2) as (j & Hj & Hj').
+    exact (HBBsem k Mk b b1' j c gs n B B2 Hk Hb Hb1' Hj Hj' Hc). }
+  (* at every environment, a result at [Bks] is one at [Us'] and [Bks'] *)
+  assert (Hright : forall ρ, set_env_in T γ Γ ρ -> r <> ak_propositional ->
+    exists res, set_elim T γ Γ ρ r p Us Bks m (FM ρ) res /\ set_elim T γ Γ ρ r p Us' Bks' m (FM ρ) res).
+  { intros ρ Hρ Hr.
+    pose proof HS1 as [HΓ1 HcΓ1 HD1 Hσ1 HDt1 Hcl1 HUl1 HMwf1 HMot1 HMctx1 HMh1 HBk1 Hbτ1 Hbctx1 Hbrs1 HBr1 HV1 HBt1 HUs1 Hcars].
+    pose proof HS2 as [_ _ _ _ _ _ _ HMwf2 HMot2 HMctx2 HMh2 HBk2 Hbτ2 Hbctx2 Hbrs2 HBr2 HV2 HBt2 HUs2 _].
+    destruct (Hcars ρ Hρ) as [U Hcar].
+    destruct (Hpts ρ Hρ) as (θc & [Hθc Huni Ens Hmem]).
+    destruct (proj1 (elim_at_scrutinee Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ1 HcΓ1 Hρ HD1 Hσ1 HDt1 Hcl1 HUl1 HMwf1
+                       HMot1 HMctx1 HMh1 HBk1 Hcar Hbτ1 Hbctx1 Hbrs1 HBr1 HV1 HBt1 HUs1 ltac:(intros; apply no_extra_point)
+                       m Mm θc (FM ρ) Hm Hrv Hθc Huni Hmem) Hr) as (res1 & He1 & HVr1).
+    destruct (proj1 (elim_at_scrutinee Γ ρ r p Us BksM V D i Fσ U no_extra no_extra_resp HΓ1 HcΓ1 Hρ HD1 Hσ1 HDt1 Hcl1 HUl1 HMwf2
+                       HMot2 HMctx2 HMh2 HBk2 Hcar Hbτ2 Hbctx2 Hbrs2 HBr2 HV2 HBt2 HUs2 ltac:(intros; apply no_extra_point)
+                       m Mm θc (FM ρ) Hm Hrv Hθc Huni Hmem) Hr) as (res2 & He2 & HVr2).
+    assert (Hv : set_mem (FM ρ) (member_carrier (global_group γ p) (elim_uniform_values ρ D Fσ) U U m (set_env_values (im_nparams Mm) θc)))
+      by (eapply set_mem_eq_r; [exact (Hcar m Mm θc Hm Hθc Huni) | exact Hmem]).
+    destruct (results_agree_of_carrier Γ ρ r p Us Bks BksM V D i Fσ U HS1 HS2 Hρ Hcar HmotM Hcorr HBBM m _ _ Hv Mm θc Hm Hθc Huni
+                (list_set_eq_refl _)) as [Hblk _].
+    pose proof (Hblk Hr Hrv (FM ρ) (set_eq_refl _)) as Eag.
+    pose proof (elim_result_eq Γ ρ r p Us Bks V Hρ m _ res1 He1 HVr1) as E1.
+    pose proof (elim_result_eq Γ ρ r p Us BksM V Hρ m _ res2 He2 HVr2) as E2.
+    exists res1. split; [exact He1 |].
+    apply (set_elim_resp T γ _ _ _ _ _ _ _ _ res2); [exact (proj1 (set_elim_transfer_all Us' Bks') _ _ _ _ _ _ _ _ _ He2 Htr) |].
+    eapply set_eq_trans; [apply set_eq_sym; exact E2 | eapply set_eq_trans; [apply set_eq_sym; exact Eag | exact E1]]. }
+  (* the right side denotes the left's denotation *)
+  pose proof HMw as [_ HFM HFM' HMeq _].
+  destruct Hmk.
+  - exists FA, FL, FL. constructor; [exact HFA | exact HFL | | intros; apply set_eq_refl | exact HLmem].
+    apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
+    destruct (Hright ρ Hρ ltac:(discriminate)) as (res & He & He').
+    eapply set_interp_elim; [discriminate | exact Hel' | exact (set_denotes_exists _ _ _ _ _ HFM' _ Hρ) |].
+    apply (set_elim_resp T γ _ _ _ _ _ _ _ _ res).
+    + eapply set_elim_resp_value; [exact (HMeq ρ Hρ) | exact He'].
+    + eapply (set_denotes_unique _ _ _ _ _ HFL); [exact Hρ |].
+      eapply set_interp_elim; [discriminate | exact Hel | exact (set_denotes_exists _ _ _ _ _ HFM _ Hρ) | exact He].
+  - exists FA, FL, (fun _ => empty_set). constructor; [exact HFA | exact HFL | | | exact HLmem].
+    + apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ _. apply set_interp_elim_prop.
+    + intros ρ Hρ. apply set_eq_sym. eapply (set_denotes_unique _ _ _ _ _ HFL); [exact Hρ | apply set_interp_elim_prop].
 Qed.
 
 End Eliminator.

@@ -1217,3 +1217,99 @@ Proof.
   eapply wf_conv_sort; [ exact HE | exact H3 | exact HSi |].
   eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact H1 | apply wf_exp_eq_sym; exact H2 ].
 Qed.
+
+(** Under the premises of the eliminator's congruence, the branches'
+    contexts of the left side, at its uniform parameters and motives, are
+    equal extensions to those of the right side: the motives vary
+    ([elim_bctx_eq]), then the uniform parameters ([elim_bctx_us_eq]). *)
+Lemma elim_bctx_cong_eq : forall Θ Ξ Γ p D m Mm (Bks Bks' : list eblock) Ps Ps' r i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    ind_lookup Θ Ξ p = Some D ->
+    ind_member D m = Some Mm ->
+    List.length Bks = ind_nblk D ->
+    List.length Bks' = ind_nblk D ->
+    List.length Ps = im_np D Mm ->
+    (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+    List.length Ps' = im_np D Mm ->
+    (forall k P P' T, nth_error Ps k = Some P -> nth_error Ps' k = Some P' ->
+       nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P' : T) ->
+    (forall k P P' T, nth_error Ps k = Some P -> nth_error Ps' k = Some P' ->
+       nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P ≈ P' : T) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹{ak_relevant} eb_scrutinee_type b
+                    ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r Typeω@i) ->
+    (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b' : abs_kind_sort r Typeω@i) ->
+    (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b' : abs_kind_sort r Typeω@i) ->
+    (forall k Mk, ind_member D k = Some Mk ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
+    (forall k b b', List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
+       List.map fst (eb_brs b) = List.map fst (eb_brs b')) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
+    (forall k Mk b b' i c gs n B B', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       List.nth_error Bks' k = Some b' ->
+       nth_error (eb_brs b) i = Some (c, n, B) -> nth_error (eb_brs b') i = Some (c, n, B') ->
+       ind_con Mk c = Some gs ->
+       Θ ⍮ Ξ ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B'
+         : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    motive_kind r ->
+    blocks_typed Θ Ξ Γ p D (List.firstn (ind_nu D) Ps') Bks' r i /\
+    forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                   ≈ elim_bctx r p D Mk gs (blocks_motives Bks') (List.firstn (ind_nu D) Ps').
+Proof.
+  intros * HΓ Hl Hm HlB HlB' HPl HPs HPl' HPs'' HPP Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB Hmk.
+  pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg; pose proof (decls_of_ctx _ _ _ HΓ) as HDs.
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
+  pose proof (wf_elim_cong_rhs_blocks _ _ _ _ _ _ _ _ _ _ _ _ HΓ Hl Hm HlB HlB' HPl HPs Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB Hmk)
+    as HBt.
+  assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ps ≈ sb_of_list Id Ps' : im_params D Mm ++ Γ).
+  { eapply wf_sub_eq_of_list_left;
+      [ eapply decl_closed_params_ass; eassumption | exact (wf_params_app _ _ _ HD Hc _ _ _ Hm HΓ)
+      | apply wf_sub_eq_refl, wf_sub_id, HΓ | rewrite length_im_params; exact HPl | rewrite length_im_params; exact HPl'
+      | exact HPs | | exact HPP ].
+    intros k N T HN HT.
+    assert (Hk' : k < List.length Ps) by (rewrite HPl, <- HPl'; apply List.nth_error_Some; congruence).
+    destruct (nth_error_lt_some Ps k Hk') as [P HP]; exact (HPs'' _ _ _ _ HP HN HT). }
+  pose proof (wf_sub_of_list_inv _ _ _ _ _ _ _ ltac:(eapply decl_closed_params_ass; eassumption)
+                ltac:(rewrite length_im_params; exact HPl') (wf_sub_eq_right _ _ _ _ _ _ Hσσ)) as HPs'.
+  destruct (params_typed_split _ _ D Hc _ _ Γ Ps Hm HPl HPs) as [HUs _].
+  destruct (params_typed_split _ _ D Hc _ _ Γ Ps' Hm HPl' HPs') as [HUs' _].
+  destruct (params_eq_split Γ D m Mm Ps Ps' Hc Hm HPl HPl' HPP) as [HUe _].
+  set (Us := List.firstn (ind_nu D) Ps) in *; set (Us' := List.firstn (ind_nu D) Ps') in *.
+  assert (HUl : List.length Us = ind_nu D) by (unfold Us; rewrite List.length_firstn; unfold im_np in HPl; lia).
+  assert (HUl' : List.length Us' = ind_nu D) by (unfold Us'; rewrite List.length_firstn; unfold im_np in HPl'; lia).
+  pose proof (blocks_typed_us_conv _ _ _ _ _ _ _ _ Hl HΓ HUl HUs HUl' HUs' HUe HBt) as HBt'.
+  split; [exact HBt' |].
+  pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUs) as Hσ.
+  pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl' HUs') as Hσ'.
+  assert (Hσσu : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ).
+  { eapply wf_sub_eq_of_list_conv; [ exact (decl_closed_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
+                                   | apply wf_sub_eq_refl, wf_sub_id, HΓ | exact HUl | exact HUl' | exact HUs | exact HUs' | exact HUe ]. }
+  pose proof (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HD)) as Hsuf.
+  assert (HMwf : forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ)
+    by (intros j Mj Hj; exact (ext_eq_ctx_left _ _ _ _ _ (HΨ j Mj Hj))).
+  assert (HMwf' : forall j Mj, ind_member D j = Some Mj -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us' ++ Γ)
+    by (intros j Mj Hj; exact (ext_eq_ctx_left _ _ _ _ _ (blocks_typed_mctx _ _ _ _ _ _ _ _ _ HBt' j Mj Hj))).
+  assert (Hmots : motives_typed Θ Ξ Γ p D Us (blocks_motives Bks) r i).
+  { intros j Mj Hj Hr. destruct (blocks_nth _ _ _ _ Hsuf HlB Hj Hr) as [b Hb]. rewrite (blocks_motives_nth _ _ _ Hb). exact (HA j Mj b Hj Hb). }
+  pose proof (blocks_motives_typed _ _ _ _ _ _ _ _ _ Hsuf HBt) as Hmots'.
+  pose proof (blocks_motives_typed _ _ _ _ _ _ _ _ _ Hsuf HBt') as Hmots''.
+  assert (Hmeq : motives_eq Θ Ξ Γ p D Us (blocks_motives Bks) (blocks_motives Bks') r i).
+  { intros j Mj Hj Hr. destruct (blocks_nth _ _ _ _ Hsuf HlB Hj Hr) as [b Hb].
+    destruct (blocks_nth_same Bks Bks' _ _ ltac:(congruence) Hb) as [b' Hb'].
+    rewrite (blocks_motives_nth _ _ _ Hb), (blocks_motives_nth _ _ _ Hb'). exact (HAA j Mj b b' Hj Hb Hb'). }
+  intros k Mk c gs Hk' Hgs.
+  pose proof (elim_bctx_eq _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hg HDs Hl Hk' HΓ HUl Hσ HMwf Hmots Hmots' Hmeq Hmk Hgs) as E1.
+  pose proof (elim_bctx_us_eq _ _ _ _ _ _ _ _ _ _ _ _ Hl Hk' HΓ HUl HUl' Hσ Hσ' Hσσu HMwf HMwf' Hmots' Hmots'' Hmk Hgs) as E2.
+  eapply ext_eq_trans_ass; [ eapply elim_bctx_ass; eassumption | eapply elim_bctx_ass; eassumption | exact E1 | exact E2 ].
+Qed.
