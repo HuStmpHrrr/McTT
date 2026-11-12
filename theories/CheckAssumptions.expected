@@ -13,4 +13,3 @@ Mctt.Entrypoint.main_rep: Mctt.Frontend.Parser.loc
 [PENDING]
 Mctt.Core.Consequences.Consistency.consistency: M3 from the model
 Mctt.Core.Consequences.Consistency.consistency_False: M3 from the model
-Mctt.Core.Consequences.Consistency.closed_False_proof_mentions_global: M3 the gluing model and global-context strengthening

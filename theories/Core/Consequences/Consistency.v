@@ -2449,154 +2449,83 @@ Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.
 
     With [abstract] definitions allowed, a closed normal form of a type
     shaped as the natural numbers can be stuck: an opaque global applied to
-    arguments, as [c] is in [abstract c : Nat := 3].  What survives is:
+    arguments, as [c] is in [abstract c : Nat := 3].  At a global context
+    without axioms (nothing is stated at one with axioms):
 
-    - at the global context itself, every closed normal form of such a type
-      is a chain of its constructors, or one wrapped around a neutral headed
-      by a global that does not unfold ([canonical_form_of_ind_nat_stuck]),
-      with no hypothesis at all;
-    - without axioms that global is an opaque definition with a body, and
-      after unsealing every definition the term computes to a chain, equal
-      in the unsealed context to the sealed normal form
-      ([canonical_form_of_ind_nat_no_axioms]);
-    - without axioms there is no closed proof of [⊥]
-      ([consistency_False_no_axioms]): unsealing preserves typing
-      ([unseal_exp]) and produces a transparent context
-      ([gc_no_axioms_unseal_transparent]). *)
+    - there is no closed proof of [⊥] ([consistency_False_no_axioms]):
+      unsealing preserves typing ([unseal_exp]) and produces a transparent
+      context ([gc_no_axioms_unseal_transparent]);
+    - every closed normal form of such a type is a chain of its
+      constructors, or one wrapped around a neutral headed by an opaque
+      definition with a body, and after unsealing every definition the term
+      computes to a chain, equal in the unsealed context to the sealed
+      normal form ([canonical_form_of_ind_nat_no_axioms]). *)
 
-(** The first of two optional names that is there. *)
-Definition first_qname (o o' : option qname) : option qname :=
-  match o with Some _ => o | None => o' end.
+(** *** Without Axioms *)
 
-(** The first global a term mentions, scanning the whole term left to
-    right, its annotations included: a member of a module expression rooted
-    at a unit ([mod_qname]), a unit's module, an inductive type, a
-    constructor, an eliminator's group, a record type, and the declarations
-    a local body files.  [⊥] is a constant of the core, no global. *)
-Fixpoint exp_first_global (M : exp) : option qname :=
-  match M with
-  | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False | a_var _ => None
-  | a_ind p _ | a_con p _ _ | a_record p => Some p
-  | a_univ M | a_succl M | a_left M | a_right M | a_proj _ M => exp_first_global M
-  | a_maxl M N | a_absurd M N | a_proof M N | a_and M N | a_pi _ _ M N | a_fn M N | a_app M N =>
-      first_qname (exp_first_global M) (exp_first_global N)
-  | a_conj P Q M N =>
-      first_qname (exp_first_global P)
-        (first_qname (exp_first_global Q) (first_qname (exp_first_global M) (exp_first_global N)))
-  | a_elim _ p _ _ _ _ => Some p
-  | a_let b B => first_qname (binding_first_global b) (exp_first_global B)
-  | a_mem H x =>
-      match mod_qname H with
-      | Some module_name => Some {| q_unit := q_unit module_name; q_chain := q_chain module_name ++ x :: nil |}
-      | None => modexp_first_global H
-      end
-  | a_tuple T fs =>
-      first_qname (exp_first_global T)
-        ((fix fields_first (fs : list (String.string * exp)) : option qname :=
-            match fs with
-            | nil => None
-            | f :: fs' => first_qname (exp_first_global (snd f)) (fields_first fs')
-            end) fs)
-  end
-with modexp_first_global (H : modexp) : option qname :=
-  match H with
-  | me_unit fp => Some (q_abs fp nil)
-  | me_var _ => None
-  | me_mem H _ => modexp_first_global H
-  | me_app H N => first_qname (modexp_first_global H) (exp_first_global N)
-  | me_lit U => gunit_first_global U
-  end
-with binding_first_global (b : binding) : option qname :=
-  match b with
-  | b_def A M => first_qname (exp_first_global A) (exp_first_global M)
-  | b_mod U => gunit_first_global U
-  | b_def_mod A M U => first_qname (exp_first_global A) (first_qname (exp_first_global M) (gunit_first_global U))
-  end
-with gunit_first_global (U : gunit) : option qname :=
-  match U with
-  | gu_mk Δ D =>
-      first_qname
-        ((fix tele_first (Δ : list centry) : option qname :=
-            match Δ with
-            | nil => None
-            | e :: Δ' => first_qname (centry_first_global e) (tele_first Δ')
-            end) Δ)
-        (moddef_first_global D)
-  end
-with moddef_first_global (D : moddef) : option qname :=
-  match D with
-  | md_body _ Φ => gmod_first_global Φ
-  | md_alias E => modexp_first_global E
-  end
-with gmod_first_global (Φ : gmod) : option qname :=
-  match Φ with
-  | gm_nil => None
-  | gm_ext Φ _ E => first_qname (gmod_first_global Φ) (gentry_first_global E)
-  | gm_open Φ H _ Φg => first_qname (gmod_first_global Φ) (first_qname (modexp_first_global H) (gmod_first_global Φg))
-  end
-with gentry_first_global (E : gentry) : option qname :=
-  match E with
-  | ge_def _ _ _ A B => first_qname (exp_first_global A) (match B with Some M => exp_first_global M | None => None end)
-  | ge_mod _ U => gunit_first_global U
-  | ge_ind _ pq _ _ _ => Some pq
-  | ge_def_mod _ A M U => first_qname (exp_first_global A) (first_qname (exp_first_global M) (gunit_first_global U))
-  | ge_record _ p _ _ => Some p
-  end
-with centry_first_global (e : centry) : option qname :=
-  match e with
-  | ce_ass _ A => exp_first_global A
-  | ce_def A M => first_qname (exp_first_global A) (exp_first_global M)
-  | ce_mod U => gunit_first_global U
-  | ce_dm A M U => first_qname (exp_first_global A) (first_qname (exp_first_global M) (gunit_first_global U))
-  end.
+Theorem consistency_no_axioms : forall Θ Ξ T M,
+    gc_no_axioms Θ Ξ ->
+    univ_term T ->
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π{ak_relevant} T #0).
+Proof.
+  intros * Hna HT HM.
+  exact (consistency_gctx _ _ _ _ (gc_no_axioms_unseal_transparent _ _ Hna) HT (unseal_exp _ _ _ _ _ HM)).
+Qed.
 
-(** The global at the head of a neutral, if any: at an ex falso, the first
-    global its proof of [⊥] mentions, as a closed one mentions one
-    ([closed_False_proof_mentions_global]). *)
+Corollary consistency_large_no_axioms : forall Θ Ξ i M,
+    gc_no_axioms Θ Ξ ->
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π{ak_relevant} Typeω@i #0).
+Proof. intros * Hna; apply consistency_no_axioms; [ exact Hna | apply univ_term_typ ]. Qed.
+
+Corollary consistency_lit_no_axioms : forall Θ Ξ n M,
+    gc_no_axioms Θ Ξ ->
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π{ak_relevant} Type@n #0).
+Proof. intros * Hna; apply consistency_no_axioms; [ exact Hna | apply univ_term_suniv ]. Qed.
+
+Theorem consistency_False_no_axioms : forall Θ Ξ M,
+    gc_no_axioms Θ Ξ ->
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
+Proof.
+  intros * Hna HM.
+  exact (consistency_False_gctx _ _ _ (gc_no_axioms_unseal_transparent _ _ Hna) (unseal_exp _ _ _ _ _ HM)).
+Qed.
+
+(** The global at the head of a neutral, if any.  An ex falso has none:
+    without axioms no closed one is typed ([consistency_False_no_axioms]). *)
 Fixpoint ne_head (W : ne) : option qname :=
   match W with
   | ne_elim _ _ _ _ W | ne_app W _ | ne_proj _ W => ne_head W
-  | ne_absurd _ M => exp_first_global M
-  | ne_var _ => None
+  | ne_absurd _ _ | ne_var _ => None
   | ne_glob p => Some p
   end.
 
-(** A closed proof of [⊥] mentions a global.  At the empty global context
-    this is consistency; at any other, every closed proof of [⊥] reaches an
-    axiom through the globals it names. *)
-Lemma closed_False_proof_mentions_global : forall {Θ Ξ M},
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥ ->
-    exists p, exp_first_global M = Some p.
-Proof.
-  (* PENDING M3: proofs are kept, so the PER model has every proof of [⊥];
-     the gluing model (M2), at the empty global context, has none, and a
-     term mentioning no global is typed at the empty global context
-     (strengthening of the global context) *)
-Admitted.
-
-(** In the empty context, a neutral is headed by a global: a variable has
-    no type there, and an ex falso's proof of [⊥] mentions a global
-    ([closed_False_proof_mentions_global]). *)
-Lemma no_closed_neutral_head : forall {Θ Ξ A} {W : ne},
+(** In the empty context of a global context without axioms, a neutral is
+    headed by a global: a variable has no type there, and an ex falso
+    would need a closed proof of [⊥] ([consistency_False_no_axioms]). *)
+Local Lemma no_closed_neutral_head : forall {Θ Ξ A} {W : ne},
+    gc_no_axioms Θ Ξ ->
     ne_head W = None ->
     ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A).
 Proof.
-  intros * HWc HW.
+  intros * Hna HWc HW.
   dependent induction HW; try (destruct W; simpl in *; congruence);
     try solve [ eauto ].
   all: destruct W; simpl in *; try congruence; autoinjections; destruct_all;
     try contradiction; eauto.
   all: try solve [ match_by_head ctx_lookup ltac:(fun H => inversion H) ].
   all: try solve [ match goal with H : _ ⍮ _ ⍮ ⋅ ⊢ ?M : ⊥ |- _ =>
-                     destruct (closed_False_proof_mentions_global H) as [p Hp]; congruence end ].
+                     exact (consistency_False_no_axioms _ _ _ Hna H) end ].
 Qed.
 
-Lemma closed_neutral_head : forall {Θ Ξ A} {W : ne},
+(** In the empty context of a global context without axioms, a neutral has
+    a head global. *)
+Local Lemma closed_neutral_head : forall {Θ Ξ A} {W : ne},
+    gc_no_axioms Θ Ξ ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A ->
     exists p, ne_head W = Some p.
 Proof.
-  intros * HW; destruct (ne_head W) as [p |] eqn:Hh; [ eauto |].
-  exfalso; exact (no_closed_neutral_head Hh HW).
+  intros * Hna HW; destruct (ne_head W) as [p |] eqn:Hh; [ eauto |].
+  exfalso; exact (no_closed_neutral_head Hna Hh HW).
 Qed.
 
 (** A chain of the constructors [z] and [s] of [p], possibly around a
@@ -2652,20 +2581,24 @@ Lemma nat_chain_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G'
 Proof.
   intros * HG; induction 1; econstructor; eauto using ne_stuck_mono.
 Qed.
+(** The stuck normal forms of closed terms at a global context without
+    axioms, which may have opaque definitions: the steps of the theorems
+    below. *)
 Section Stuck_GCtx.
   Context {GC : GCtx}.
+  Hypothesis Hna : gc_no_axioms gc_deps gc_stack.
 
 (** The normal forms of a closed term of a type shaped as the natural
-    numbers, read at any global context: a chain of its constructors, possibly
-    around a neutral headed by a stuck global. *)
-Lemma nat_chain_stuck_of_read : forall G p D z s, ind_lookup gc_deps gc_stack p = Some D -> nat_shape D = Some (z, s) ->
+    numbers: a chain of its constructors, possibly around a neutral headed
+    by a stuck global. *)
+Local Lemma nat_chain_stuck_of_read : forall G p D z s, ind_lookup gc_deps gc_stack p = Some D -> nat_shape D = Some (z, s) ->
     forall W v, Rnf ⇓ (d_ind p 0 nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ W -> nf_stuck G W -> ⋅ ⊢ W : a_ind p 0 ->
       nat_chain_stuck G p z s W.
 Proof.
   intros G p D z s Hl Hs W; remember (nf_succ_depth W) as k eqn:Ek; revert W Ek.
   induction k as [| k IH]; intros W Ek v Hr Hc HT.
   all: destruct (nat_read_step_of_read _ _ _ _ _ _ Hl Hs Hr) as [| v' V Hr' | M].
-  all: try (cbn in Hc, HT; destruct (closed_neutral_head HT) as [h Hh]; eapply nat_chain_stuck_neut; eassumption).
+  all: try (cbn in Hc, HT; destruct (closed_neutral_head Hna HT) as [h Hh]; eapply nat_chain_stuck_neut; eassumption).
   - constructor.
   - cbn in Ek; discriminate.
   - constructor.
@@ -2675,10 +2608,10 @@ Proof.
     exact (IH V Ek v' Hr' ltac:(assumption) (nat_succ_arg_typed p D z s V Hl Hs HT)).
 Qed.
 
-(** A closed term of a type shaped as the natural numbers, at any global
-    context: its normal form is a chain of the type's constructors, possibly
-    around a neutral headed by a global that does not unfold. *)
-Theorem canonical_form_of_ind_nat_stuck : forall {M p D z s},
+(** A closed term of a type shaped as the natural numbers: its normal form
+    is a chain of the type's constructors, possibly around a neutral headed
+    by a global that does not unfold. *)
+Local Lemma canonical_form_of_ind_nat_stuck : forall {M p D z s},
     ind_lookup gc_deps gc_stack p = Some D -> nat_shape D = Some (z, s) ->
     ⋅ ⊢ M : a_ind p 0 ->
     exists W, nbe_f ⋅ M (a_ind p 0) W /\ nat_chain_stuck (global_stuck gc_deps gc_stack) p z s W.
@@ -2694,9 +2627,9 @@ Proof.
   eapply nat_chain_stuck_of_read; eassumption.
 Qed.
 
-(** Canonicity at a universe, at any global context: the normal form is of
-    the shape [typ_nf_below u], or a neutral headed by a stuck global. *)
-Theorem canonical_form_of_typ_stuck : forall {T M},
+(** Canonicity at a universe: the normal form is of the shape
+    [typ_nf_below u], or a neutral headed by a stuck global. *)
+Local Lemma canonical_form_of_typ_stuck : forall {T M},
     univ_term T ->
     ⋅ ⊢ M : T ->
     exists u W, nbe_ty_f ⋅ T (universe_nf_to_nf u) /\ nbe_f ⋅ M T W /\ nf_stuck (global_stuck gc_deps gc_stack) W /\
@@ -2712,84 +2645,13 @@ Proof.
     by (destruct W; try (right; intros ? ? Heq; discriminate Heq); left; do 2 eexists; reflexivity).
   destruct Hd as [(κ & V & ->) | Hne].
   - right; assert (HV : ⋅ ⊢ V : T) by (gen_presups; assumption).
-    destruct (closed_neutral_head HV) as [p Hp]; eauto.
+    destruct (closed_neutral_head Hna HV) as [p Hp]; eauto.
   - left; eapply typ_nf_below_of_nbe; eassumption.
-Qed.
-
-Corollary canonical_form_of_large_typ_stuck : forall {i M},
-    ⋅ ⊢ M : Typeω@i ->
-    exists W, nbe_f ⋅ M Typeω@i W /\ nf_stuck (global_stuck gc_deps gc_stack) W /\
-      ((is_typ_constr W /\ (forall κ V, W <> ⇑ⁿ{κ} V)) \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
-Proof.
-  intros * HM; destruct (canonical_form_of_typ_stuck (univ_term_typ i) HM) as (u & W & Hu & Hn & Hs & Hc).
-  apply nbe_ty_typ_univ_nf in Hu as ->; exists W; split; [ exact Hn | split; [ exact Hs |] ].
-  destruct Hc as [Hb | Hneu]; [ left; exact (typ_nf_below_large _ _ Hb) | right; exact Hneu ].
-Qed.
-
-Corollary canonical_form_of_typ_lit_stuck : forall {n M},
-    ⋅ ⊢ M : Type@n ->
-    exists W, nbe_f ⋅ M Type@n W /\ nf_stuck (global_stuck gc_deps gc_stack) W /\
-      (small_typ_nf n W \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
-Proof.
-  intros * HM; destruct (canonical_form_of_typ_stuck (univ_term_suniv _) HM) as (u & W & Hu & Hn & Hs & Hc).
-  apply nbe_ty_lit_univ_nf in Hu as ->; exists W; split; [ exact Hn | split; [ exact Hs |] ].
-  destruct Hc as [Hb | Hneu]; [ left; exact (typ_nf_below_lit _ _ Hb) | right; exact Hneu ].
 Qed.
 
 End Stuck_GCtx.
 
-Corollary canonical_form_of_ind_nat_stuck_gctx : forall Θ Ξ M p D z s,
-    ind_lookup Θ Ξ p = Some D -> nat_shape D = Some (z, s) ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : a_ind p 0 ->
-    exists W, nbe Θ Ξ ⋅ M (a_ind p 0) W /\ nat_chain_stuck (global_stuck Θ Ξ) p z s W.
-Proof. intros * Hl Hs HM; exact (@canonical_form_of_ind_nat_stuck (gc_mk Θ Ξ) M p D z s Hl Hs HM). Qed.
-Corollary canonical_form_of_typ_stuck_gctx : forall Θ Ξ T M,
-    univ_term T ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : T ->
-    exists u W, nbe_ty Θ Ξ ⋅ T (universe_nf_to_nf u) /\ nbe Θ Ξ ⋅ M T W /\ nf_stuck (global_stuck Θ Ξ) W /\
-      (typ_nf_below u W \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
-Proof. intros * HT HM; exact (@canonical_form_of_typ_stuck (gc_mk Θ Ξ) T M HT HM). Qed.
-
-Corollary canonical_form_of_large_typ_stuck_gctx : forall Θ Ξ i M,
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Typeω@i ->
-    exists W, nbe Θ Ξ ⋅ M Typeω@i W /\ nf_stuck (global_stuck Θ Ξ) W /\
-      ((is_typ_constr W /\ (forall κ V, W <> ⇑ⁿ{κ} V)) \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
-Proof. intros * HM; exact (@canonical_form_of_large_typ_stuck (gc_mk Θ Ξ) i M HM). Qed.
-
-Corollary canonical_form_of_typ_lit_stuck_gctx : forall Θ Ξ n M,
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@n ->
-    exists W, nbe Θ Ξ ⋅ M Type@n W /\ nf_stuck (global_stuck Θ Ξ) W /\
-      (small_typ_nf n W \/ (exists κ V p, W = ⇑ⁿ{κ} V /\ ne_head V = Some p)).
-Proof. intros * HM; exact (@canonical_form_of_typ_lit_stuck (gc_mk Θ Ξ) n M HM). Qed.
-
-(** *** Without Axioms *)
-
-Theorem consistency_no_axioms : forall Θ Ξ T M,
-    gc_no_axioms Θ Ξ ->
-    univ_term T ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π{ak_relevant} T #0).
-Proof.
-  intros * Hna HT HM.
-  exact (consistency_gctx _ _ _ _ (gc_no_axioms_unseal_transparent _ _ Hna) HT (unseal_exp _ _ _ _ _ HM)).
-Qed.
-
-Corollary consistency_large_no_axioms : forall Θ Ξ i M,
-    gc_no_axioms Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π{ak_relevant} Typeω@i #0).
-Proof. intros * Hna; apply consistency_no_axioms; [ exact Hna | apply univ_term_typ ]. Qed.
-
-Corollary consistency_lit_no_axioms : forall Θ Ξ n M,
-    gc_no_axioms Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π{ak_relevant} Type@n #0).
-Proof. intros * Hna; apply consistency_no_axioms; [ exact Hna | apply univ_term_suniv ]. Qed.
-
-Theorem consistency_False_no_axioms : forall Θ Ξ M,
-    gc_no_axioms Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
-Proof.
-  intros * Hna HM.
-  exact (consistency_False_gctx _ _ _ (gc_no_axioms_unseal_transparent _ _ Hna) (unseal_exp _ _ _ _ _ HM)).
-Qed.
+(** *** Without Axioms, Opaque Definitions Included *)
 
 (** The sealed normal form of a closed term of a type shaped as the natural
     numbers is a chain of its constructors around a neutral headed by an
@@ -2807,7 +2669,7 @@ Proof.
   intros * Hna Hl Hs HM.
   pose proof (gc_no_axioms_unseal_transparent _ _ Hna) as Htr.
   pose proof (unseal_exp _ _ _ _ _ HM) as HM'.
-  destruct (canonical_form_of_ind_nat_stuck_gctx _ _ _ _ _ _ _ Hl Hs HM) as (W & HW & Hc).
+  destruct (@canonical_form_of_ind_nat_stuck (gc_mk Θ Ξ) Hna _ _ _ _ _ Hl Hs HM) as (W & HW & Hc).
   assert (Hl' : ind_lookup (gds_unseal Θ) (gs_unseal Ξ) p = Some D) by (rewrite ind_lookup_unseal; exact Hl).
   destruct (canonical_form_of_ind_nat_gctx _ _ _ _ _ _ _ Htr Hl' Hs HM') as (V & n & HV & HcV & Hn).
   exists W; split; [ exact HW | split ].
@@ -2836,7 +2698,7 @@ Proof.
   intros * Hna HT HM.
   pose proof (gc_no_axioms_unseal_transparent _ _ Hna) as Htr.
   pose proof (unseal_exp _ _ _ _ _ HM) as HM'.
-  destruct (canonical_form_of_typ_stuck_gctx _ _ _ _ HT HM) as (u & W & Hu & HW & Hs & Hc).
+  destruct (@canonical_form_of_typ_stuck (gc_mk Θ Ξ) Hna _ _ HT HM) as (u & W & Hu & HW & Hs & Hc).
   destruct (canonical_form_of_typ_gctx _ _ _ _ Htr HT HM') as (u' & V & Hu' & HV & HcV).
   exists u, W; split; [ exact Hu | split; [ exact HW | split; [| split; [ exact Hc |] ] ] ].
   - apply (nf_stuck_mono (global_stuck Θ Ξ)); [ intros; apply global_stuck_opaque; assumption | exact Hs ].
