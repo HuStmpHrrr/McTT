@@ -22,24 +22,8 @@ From Mctt.Core.Semantic.Inductives Require Import ViewCoherence.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** ** The Shapes of a View against its Container's
-
-    A shape [t'] of the container's against the view's [t]: as many
-    domains, ending in a member the view's map takes to [t]'s ([cargs_correspond]
-    at a recursive argument). *)
-Fixpoint shape_correspond (vm : list nat) (t' t : ptyp) : Prop :=
-  match t', t with
-  | pt_self j' _, pt_self j _ => List.nth_error vm j' = Some j
-  | pt_pi _ t1', pt_pi _ t1 => shape_correspond vm t1' t1
-  | _, _ => False
-  end.
-
-Lemma shape_correspond_of : forall vm t' t, List.nth_error vm (ptyp_mem t') = Some (ptyp_mem t) -> ptyp_depth t' = ptyp_depth t ->
-    shape_correspond vm t' t.
-Proof.
-  intros vm t'; induction t' as [j' Ps' | B' t' IH]; intros [j Ps | B t] Hm Hd; unfold ptyp_depth in Hd; cbn in *;
-    try discriminate; [ exact Hm | apply IH; [ exact Hm | unfold ptyp_depth; lia ] ].
-Qed.
+(** The shapes of a view against its container's ([shape_correspond],
+    [shape_correspond_of]) are in [Core.Syntactic.Inductives.Inductives]. *)
 
 (** ** The Members a View Takes the Container's To
 
