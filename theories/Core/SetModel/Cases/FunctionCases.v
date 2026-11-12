@@ -19,11 +19,6 @@ Section Functions.
   Variable T : universe_tower.
   Variable γ : global_valuation.
 
-(** Two typings of a λ give it the same kinds. *)
-Definition fn_kinds_unique : Prop :=
-  forall Γ A M κd κc C B κd' κc' C' B', gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc C B ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd' κc' C' B' -> κd = κd' /\ κc = κc'.
-
 (** Two denotations of a term agree at an environment. *)
 Lemma set_denotes_agree : forall Γ M F G ρ, set_denotes T γ Γ M F -> set_denotes T γ Γ M G -> set_env_in T γ Γ ρ ->
     set_eq (F ρ) (G ρ).

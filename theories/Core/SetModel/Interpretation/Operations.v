@@ -17,11 +17,12 @@ Section Modules.
 
 (** A module applied to an argument: a parameter takes it, a global module
     records it. *)
-Definition apply_module (m : set_module) (x : aczel_set) : set_module :=
+Fixpoint apply_module (m : set_module) (x : aczel_set) : set_module :=
   match m with
-  | set_module_params _ f => f x
+  | set_module_params dom f => set_module_cond (set_mem x (code_carrier dom)) (f x)
   | set_module_global p args => set_module_global p (args ++ [x])
   | set_module_members ms => set_module_members ms
+  | set_module_cond φ m' => set_module_cond φ (apply_module m' x)
   end.
 
 (** A module applied to arguments, outermost first. *)
@@ -48,6 +49,7 @@ Fixpoint member_is_proof (m : set_module) (x : string) : Prop :=
   | set_module_params dom f => forall v, set_mem v (code_carrier dom) -> member_is_proof (f v) x
   | set_module_members ms => exists v, members_lookup ms x = Some (set_entry_term ak_propositional v)
   | set_module_global p _ => fst (global_term γ (qname_in p x)) = ak_propositional
+  | set_module_cond φ m' => φ -> member_is_proof m' x
   end.
 
 (** The term member [x] of a module: the closed value of a global one at
@@ -63,6 +65,7 @@ Fixpoint select_term (m : set_module) (x : string) : aczel_set :=
       | None => empty_set
       end
   | set_module_global p args => apply_values (snd (global_term γ (qname_in p x))) args
+  | set_module_cond φ m' => cond φ (select_term m' x)
   end.
 
 (** The submodule [y] of a module: the closed module of a global one at
@@ -77,6 +80,7 @@ Fixpoint select_module (m : set_module) (y : string) : set_module :=
       | None => set_module_members nil
       end
   | set_module_global p args => apply_module_args (global_module γ (qname_in p y)) args
+  | set_module_cond φ m' => set_module_cond φ (select_module m' y)
   end.
 
 End Modules.

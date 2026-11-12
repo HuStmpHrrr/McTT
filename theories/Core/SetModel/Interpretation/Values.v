@@ -28,7 +28,16 @@ with set_module : Type :=
 | set_module_members (members : list (string * set_entry))
 (** The global module at the path [p], at the arguments [args],
     outermost first *)
-| set_module_global (p : qname) (args : list aczel_set).
+| set_module_global (p : qname) (args : list aczel_set)
+(** [m] where [condition] holds, nothing where it fails: a function of a
+    parameter applied to an argument, guarded by the argument being of the
+    parameter's type.  The function is fixed only there, so without the
+    guard two derivations of an ill-typed [me_app U x], at an argument
+    outside [U]'s parameter type, could give unrelated modules; the
+    interpretation is then not functional, and the uniqueness of a
+    substituted term such as [M[N]], whose derivations are not typed node
+    by node, could not be derived *)
+| set_module_cond (condition : Prop) (m : set_module).
 
 (** An environment: an entry for every variable. *)
 Definition set_env : Type := nat -> set_entry.
@@ -105,6 +114,9 @@ with set_module_eq : set_module -> set_module -> Prop :=
 (** One global module at equal arguments *)
 | set_module_eq_global : forall p args args', list_set_eq args args' ->
     set_module_eq (set_module_global p args) (set_module_global p args')
+(** Equivalent conditions, equal modules where they hold *)
+| set_module_eq_cond : forall (φ φ' : Prop) m m', (φ <-> φ') -> (φ -> set_module_eq m m') ->
+    set_module_eq (set_module_cond φ m) (set_module_cond φ' m')
 (** [set_members_eq ms ms']: the tables [ms] and [ms'] have the same names,
     in order, with equal entries *)
 with set_members_eq : list (string * set_entry) -> list (string * set_entry) -> Prop :=

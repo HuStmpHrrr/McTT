@@ -33,6 +33,7 @@ Proof.
     eapply set_mem_eq_l; [exact E |]. eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact Ea | exact Hx].
   - intros ms ms' _ IH. constructor. exact IH.
   - intros p args args' E. constructor. apply list_set_eq_sym. exact E.
+  - intros φ φ' m m' Hφ _ IH. constructor; [tauto | intros Hc; apply IH; apply Hφ; exact Hc].
   - constructor.
   - intros x e e' ms ms' _ IHe _ IHms. constructor; assumption.
 Qed.
@@ -46,12 +47,14 @@ Proof.
   - intros κ v v' E e3 H. inversion H; subst. constructor. eapply set_eq_trans; eassumption.
   - intros m m' _ IH e3 H. inversion H; subst. constructor. apply IH. assumption.
   - intros v v' m m' Ev _ IH e3 H. inversion H; subst. constructor; [eapply set_eq_trans; eassumption | apply IH; assumption].
-  - intros a a' f f' Ea _ IH m3 H. inversion H as [? a'' ? f'' Ea' Hf' | | ]; subst.
+  - intros a a' f f' Ea _ IH m3 H. inversion H as [? a'' ? f'' Ea' Hf' | | | ]; subst.
     constructor; [eapply set_eq_trans; eassumption |]. intros x x' Hx E.
     eapply IH; [exact Hx | apply set_eq_refl |]. apply Hf'; [| exact E].
     eapply set_mem_eq_r; [apply code_carrier_resp; exact Ea | exact Hx].
   - intros ms ms' _ IH m3 H. inversion H; subst. constructor. apply IH. assumption.
   - intros p args args' E m3 H. inversion H; subst. constructor. eapply list_set_eq_trans; eassumption.
+  - intros φ φ' m m' Hφ _ IH m3 H. inversion H as [| | | ? φ'' ? m'' Hφ' Hm']; subst.
+    constructor; [tauto | intros Hc; apply IH; [exact Hc | apply Hm'; apply Hφ; exact Hc]].
   - intros ms3 H. inversion H; subst. constructor.
   - intros x e e' ms ms' _ IHe _ IHms ms3 H. inversion H; subst. constructor; [apply IHe | apply IHms]; assumption.
 Qed.
@@ -116,7 +119,7 @@ Section Operations.
 
 Lemma member_is_proof_resp : forall m m', set_module_eq m m' -> forall x, member_is_proof γ m x <-> member_is_proof γ m' x.
 Proof.
-  intros m m' H. induction H as [a a' f f' Ea Hf IH | ms ms' Hms | p args args' _]; intros x; cbn.
+  intros m m' H. induction H as [a a' f f' Ea Hf IH | ms ms' Hms | p args args' _ | φ φ' m m' Hφ _ IH]; intros x; cbn.
   - pose proof (code_carrier_resp _ _ Ea) as Ec. split.
     + intros Hp v Hv. assert (Hv' : set_mem v (code_carrier a)) by (eapply set_mem_eq_r; [apply set_eq_sym; exact Ec | exact Hv]).
       apply (IH v v Hv' (set_eq_refl _)). apply Hp. exact Hv'.
@@ -126,11 +129,14 @@ Proof.
     + split; intros [v Hv]; injection Hv as ->; inversion E; subst; eexists; reflexivity.
     + split; intros [v Hv]; discriminate.
   - reflexivity.
+  - split; intros Hp Hc.
+    + apply (IH (proj2 Hφ Hc)). apply Hp. apply Hφ. exact Hc.
+    + apply (IH Hc). apply Hp. apply Hφ. exact Hc.
 Qed.
 
 Lemma select_term_resp : forall m m', set_module_eq m m' -> forall x, set_eq (select_term γ m x) (select_term γ m' x).
 Proof.
-  intros m m' H. induction H as [a a' f f' Ea Hf IH | ms ms' Hms | p args args' Hargs]; intros x.
+  intros m m' H. induction H as [a a' f f' Ea Hf IH | ms ms' Hms | p args args' Hargs | φ φ' m m' Hφ _ IH]; intros x.
   - change (set_eq (cond (~ member_is_proof γ (set_module_params a f) x) (graph_set (code_carrier a) (fun v => select_term γ (f v) x)))
                    (cond (~ member_is_proof γ (set_module_params a' f') x) (graph_set (code_carrier a') (fun v => select_term γ (f' v) x)))).
     apply cond_resp.
@@ -139,6 +145,42 @@ Proof.
   - cbn [select_term]. pose proof (members_lookup_resp _ _ Hms x) as E.
     destruct (members_lookup ms x), (members_lookup ms' x); cbn in E; try contradiction; [apply set_entry_value_resp; exact E | apply set_eq_refl].
   - cbn [select_term]. apply apply_values_resp; [apply set_eq_refl | exact Hargs].
+  - cbn [select_term]. apply cond_resp_cond; [exact Hφ |]. intros Hc. apply IH. exact Hc.
+Qed.
+
+Lemma apply_module_resp : forall m m', set_module_eq m m' -> forall x x', set_eq x x' ->
+    set_module_eq (apply_module m x) (apply_module m' x').
+Proof.
+  intros m m' H. induction H as [a a' f f' Ea Hf _ | ms ms' Hms | p args args' Hargs | φ φ' m m' Hφ _ IH]; intros x x' Ex; cbn.
+  - pose proof (code_carrier_resp _ _ Ea) as Ec. constructor.
+    + split; intros Hx; [eapply set_mem_eq_l; [exact Ex | eapply set_mem_eq_r; [exact Ec | exact Hx]]
+                        | eapply set_mem_eq_l; [apply set_eq_sym; exact Ex | eapply set_mem_eq_r; [apply set_eq_sym; exact Ec | exact Hx]]].
+    + intros Hx. apply Hf; assumption.
+  - constructor; exact Hms.
+  - constructor. apply list_set_eq_app; [exact Hargs | constructor; [exact Ex | constructor]].
+  - constructor; [exact Hφ |]. intros Hc. apply IH; assumption.
+Qed.
+
+Lemma apply_module_args_resp : forall args args' m m', set_module_eq m m' -> list_set_eq args args' ->
+    set_module_eq (apply_module_args m args) (apply_module_args m' args').
+Proof.
+  intros args args' m m' Hm H. revert m m' Hm. unfold apply_module_args.
+  induction H as [| a a' args args' Ha _ IH]; intros m m' Hm; cbn [fold_left]; [exact Hm |].
+  apply IH. apply apply_module_resp; assumption.
+Qed.
+
+  (** Every global module equals itself *)
+  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+
+Lemma select_module_resp : forall m m', set_module_eq m m' -> forall y, set_module_eq (select_module γ m y) (select_module γ m' y).
+Proof.
+  intros m m' H. induction H as [a a' f f' Ea Hf IH | ms ms' Hms | p args args' Hargs | φ φ' m m' Hφ _ IH]; intros y; cbn.
+  - constructor; [exact Ea |]. intros v v' Hv E. apply IH; assumption.
+  - pose proof (members_lookup_resp _ _ Hms y) as E.
+    destruct (members_lookup ms y), (members_lookup ms' y); cbn in E; try contradiction;
+      [apply set_entry_module_part_resp; exact E | constructor; constructor].
+  - apply apply_module_args_resp; [apply Hmods | exact Hargs].
+  - constructor; [exact Hφ |]. intros Hc. apply IH. exact Hc.
 Qed.
 
 End Operations.

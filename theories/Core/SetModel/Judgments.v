@@ -20,7 +20,7 @@
 From Stdlib Require Import String List.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.SetModel.Interpretation Require Export Respects.
+From Mctt.Core.SetModel.Interpretation Require Export Functional.
 From Mctt.Core.Syntactic Require Import Syntax Members.
 Import ListNotations.
 
@@ -111,10 +111,12 @@ Definition set_entry_rel (Γ : ctx) (ρ : set_env) (ce : centry) (e e' : set_ent
   | ce_dm _ M U => exists v v' w m m' n, set_definition_module_with Γ ρ M U e e' v v' w m m' n
   end.
 
-(** [set_env_rel Γ ρ ρ']: [ρ] and [ρ'] are related environments of [Γ]. *)
+(** [set_env_rel Γ ρ ρ']: [ρ] and [ρ'] are related environments of [Γ];
+    below the context their entries are equal, as a term read past its
+    context would read them. *)
 Fixpoint set_env_rel (Γ : ctx) (ρ ρ' : set_env) : Prop :=
   match Γ with
-  | nil => True
+  | nil => set_env_eq ρ ρ'
   | ce :: Γ' => set_env_rel Γ' (set_env_tail ρ) (set_env_tail ρ') /\ set_entry_rel Γ' (set_env_tail ρ) ce (ρ 0) (ρ' 0)
   end.
 
@@ -252,7 +254,10 @@ Lemma set_env_rel_per : forall Γ, set_ctx Γ ->
     (forall ρ ρ', set_env_rel Γ ρ ρ' -> set_env_rel Γ ρ' ρ) /\
     (forall ρ1 ρ2 ρ3, set_env_rel Γ ρ1 ρ2 -> set_env_rel Γ ρ2 ρ3 -> set_env_rel Γ ρ1 ρ3).
 Proof.
-  induction Γ as [| ce Γ IH]; intros HΓ; [split; intros; exact I |].
+  induction Γ as [| ce Γ IH]; intros HΓ.
+  { split; cbn [set_env_rel].
+    - intros ρ ρ' H x. apply set_entry_eq_sym. apply H.
+    - intros ρ1 ρ2 ρ3 H1 H2 x. eapply set_entry_eq_trans; [apply H1 | apply H2]. }
   destruct HΓ as [HΓ Hce]. destruct (IH HΓ) as [Hsym Htrans].
   assert (Hin : forall ρ ρ', set_env_rel Γ ρ ρ' -> set_env_in Γ ρ /\ set_env_in Γ ρ')
     by (intros ρ ρ' H; split; [eapply Htrans; [exact H | apply Hsym; exact H] | eapply Htrans; [apply Hsym; exact H | exact H]]).
@@ -331,5 +336,44 @@ Proof.
       * eapply set_module_eq_trans; [exact Ek3 |]. eapply set_module_eq_trans; [exact En' |].
         eapply set_module_eq_trans; [exact F12 | apply set_module_eq_sym; exact En].
 Qed.
+
+(** Related environments have equal entries. *)
+Lemma set_env_rel_eq : forall Γ ρ ρ', set_env_rel Γ ρ ρ' -> set_env_eq ρ ρ'.
+Proof.
+  induction Γ as [| ce Γ IH]; intros ρ ρ' H; [exact H |]. destruct H as [Ht He].
+  pose proof (IH _ _ Ht) as Et. intros [| x]; [| exact (Et x)].
+  destruct ce as [κ A | A M | U | A M U]; cbn [set_entry_rel] in He.
+  - destruct He as (x & x' & a & [-> -> _ _ E]). constructor. exact E.
+  - destruct He as (v & v' & w & [-> -> _ E1 E2]). constructor. eapply set_eq_trans; [exact E1 | apply set_eq_sym; exact E2].
+  - destruct He as (m & m' & n & [-> -> _ E1 E2]). constructor. eapply set_module_eq_trans; [exact E1 | apply set_module_eq_sym; exact E2].
+  - destruct He as (v & v' & w & m & m' & n & [-> -> _ _ E1 E2 E3 E4]). constructor;
+      [eapply set_eq_trans; [exact E1 | apply set_eq_sym; exact E2] | eapply set_module_eq_trans; [exact E3 | apply set_module_eq_sym; exact E4]].
+Qed.
+
+Section Functional.
+  Hypothesis Hfn : fn_kinds_unique.
+  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+
+(** A term that has a value at every environment of a valid context
+    denotes it: functionality gives the uniqueness. *)
+Corollary set_denotes_of_exists : forall Γ M F, set_ctx Γ ->
+    (forall ρ, set_env_in Γ ρ -> set_interp T γ Γ ρ M (F ρ)) -> set_denotes Γ M F.
+Proof.
+  intros * HΓ Hex. constructor; [exact Hex |]. intros ρ ρ' v Hr Hv.
+  destruct (set_env_rel_per _ HΓ) as [Hsym Htrans].
+  assert (Hρ : set_env_in Γ ρ) by (eapply Htrans; [exact Hr | apply Hsym; exact Hr]).
+  apply set_eq_sym. exact (set_interp_functional T γ Hfn Hmods _ _ _ _ (Hex _ Hρ) _ _ (set_env_rel_eq _ _ _ Hr) Hv).
+Qed.
+
+Corollary set_modexp_denotes_of_exists : forall Γ H F, set_ctx Γ ->
+    (forall ρ, set_env_in Γ ρ -> set_interp_modexp T γ Γ ρ H (F ρ)) -> set_modexp_denotes Γ H F.
+Proof.
+  intros * HΓ Hex. constructor; [exact Hex |]. intros ρ ρ' m Hr Hm.
+  destruct (set_env_rel_per _ HΓ) as [Hsym Htrans].
+  assert (Hρ : set_env_in Γ ρ) by (eapply Htrans; [exact Hr | apply Hsym; exact Hr]).
+  apply set_module_eq_sym. exact (set_interp_modexp_functional T γ Hfn Hmods _ _ _ _ (Hex _ Hρ) _ _ (set_env_rel_eq _ _ _ Hr) Hm).
+Qed.
+
+End Functional.
 
 End Judgments.
