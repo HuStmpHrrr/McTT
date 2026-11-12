@@ -211,7 +211,7 @@ Proof.
       intros ys x; rewrite HP, HP'; apply (proj1 (proj2 (unit_member_proofs_resp_all γ))); apply env_slot_proofs_resp; exact He end.
   - intros Γ ρ P D m _ IH Γ' ρ' P' m' HR He EP H'. inv H'. eapply IH; eassumption.
   - intros Γ ρ P κ A L D a f Hc _ IHA _ IHL Γ' ρ' P' m' HR He EP H'. inv H'.
-    pose proof (IHA _ _ _ HR He ltac:(eassumption)) as Ea. constructor; [exact Ea | exact EP |]. intros x x' Hx E.
+    pose proof (IHA _ _ _ HR He ltac:(eassumption)) as Ea. constructor; [exact (code_carrier_resp _ _ Ea) | exact EP |]. intros x x' Hx E.
     eapply IHL; [exact Hx | apply R_extend_one; [exact HR | exact Hc | eassumption]
                      | apply set_env_eq_extend; [exact He | constructor; exact E] | exact EP |];
       match goal with HB' : forall y, set_mem y _ -> _ |- _ => apply HB' end; eapply set_mem_eq_l; [exact E |].

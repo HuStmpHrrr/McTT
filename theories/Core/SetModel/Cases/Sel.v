@@ -99,7 +99,7 @@ Proof.
     inversion H2 as [| ? ? ? ? ? ? ? a2 f2 _ HA2 Hf2 | | |]; subst.
     pose proof (set_env_rel_eq T γ _ _ _ Hρ) as Eρ.
     pose proof (set_interp_functional T γ Hfn Hmods _ _ _ _ HA1 _ _ Eρ HA2) as Ea.
-    cbn [select_module]. apply set_module_eq_params; [exact Ea | exact EP |]. intros x x' Hx Exx'.
+    cbn [select_module]. apply set_module_eq_params; [exact (code_carrier_resp _ _ Ea) | exact EP |]. intros x x' Hx Exx'.
     assert (Hx2 : forall z, set_eq x z -> set_mem z (code_carrier a2))
       by (intros z Ez; eapply set_mem_eq_l; [exact Ez |]; eapply set_mem_eq_r; [apply code_carrier_resp; exact Ea | exact Hx]).
     pose proof (set_env_in_extend_ass T γ _ _ κ _ _ _ Hρ HA1 Hx) as Hρx.

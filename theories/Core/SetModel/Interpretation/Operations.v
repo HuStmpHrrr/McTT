@@ -89,9 +89,12 @@ Inductive set_entry_eq : set_entry -> set_entry -> Prop :=
     set_entry_eq (set_entry_both v m) (set_entry_both v' m')
 (** [set_module_eq m m']: the modules [m] and [m'] are equal *)
 with set_module_eq : set_module -> set_module -> Prop :=
-(** Functions of a parameter: equal domains, the same proofs, equal at
-    equal values of the domain *)
-| set_module_eq_params : forall a a' P P' f f', set_eq a a' -> (forall ys x, P ys x = P' ys x) ->
+(** Functions of a parameter: domains of equal carriers, the same proofs,
+    equal at equal values of the domain.  Only a domain's carrier is ever
+    read, and units over telescopes that are equal extensions have
+    parameters of mutual subtypes, which give equal carriers, not equal
+    codes *)
+| set_module_eq_params : forall a a' P P' f f', set_eq (code_carrier a) (code_carrier a') -> (forall ys x, P ys x = P' ys x) ->
     (forall x x', set_mem x (code_carrier a) -> set_eq x x' -> set_module_eq (f x) (f' x')) ->
     set_module_eq (set_module_params a P f) (set_module_params a' P' f')
 (** Tables with equal entries under the same names *)

@@ -35,7 +35,7 @@ Proof.
   - intros v v' m m' E _ IH. constructor; [apply set_eq_sym; exact E | exact IH].
   - intros a a' P P' f f' Ea EP _ IH. constructor; [apply set_eq_sym; exact Ea | intros; symmetry; apply EP |]. intros x x' Hx E.
     apply IH; [| apply set_eq_sym; exact E].
-    eapply set_mem_eq_l; [exact E |]. eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact Ea | exact Hx].
+    eapply set_mem_eq_l; [exact E |]. eapply set_mem_eq_r; [apply set_eq_sym; exact Ea | exact Hx].
   - intros ms ms' _ IH. constructor. exact IH.
   - intros p args args' E. constructor. apply list_set_eq_sym. exact E.
   - intros φ φ' P P' m m' Hφ EP _ IH. constructor; [tauto | intros; symmetry; apply EP | intros Hc; apply IH; apply Hφ; exact Hc].
@@ -144,7 +144,7 @@ Proof.
     induction H as [? a'' ? P'' ? f'' Ea' EP' Hf' _ | | | | | φ Q m2' m3' Hφ H IHH EQ]; try discriminate.
     + injection E2 as <- <- <-. constructor; [eapply set_eq_trans; eassumption | intros; rewrite EP; apply EP' |]. intros x x' Hx E.
       eapply IH; [exact Hx | apply set_eq_refl |]. apply Hf'; [| exact E].
-      eapply set_mem_eq_r; [apply code_carrier_resp; exact Ea | exact Hx].
+      eapply set_mem_eq_r; [exact Ea | exact Hx].
     + subst. apply set_module_eq_cond_r; [exact Hφ | exact (IHH eq_refl) |]. intros ys x. rewrite EQ. destruct ys; cbn; first [apply EP | symmetry; apply EP].
   - (* tables *)
     intros ms ms' Hms0 IH m3 H. remember (set_module_members ms') as m2 eqn:E2.
@@ -194,7 +194,7 @@ Proof.
   intros m m' H. induction H as [a a' P P' f f' Ea EP Hf IH | ms ms' Hms | p args args' Hargs | φ φ' P P' m m' Hφ EP _ IH
                                 | φ P m m' Hφ _ IH _ | φ P m m' Hφ _ IH _]; intros x.
   - cbn [select_term]. rewrite (EP nil x). destruct (P' nil x); [apply set_eq_refl |].
-    apply graph_set_resp_on; [apply code_carrier_resp; exact Ea |]. intros v v' Hv E. apply IH; assumption.
+    apply graph_set_resp_on; [exact Ea |]. intros v v' Hv E. apply IH; assumption.
   - cbn [select_term]. pose proof (members_lookup_resp _ _ Hms x) as E.
     destruct (members_lookup ms x), (members_lookup ms' x); cbn in E; try contradiction; [apply set_entry_value_resp; exact E | apply set_eq_refl].
   - cbn [select_term]. apply apply_values_resp; [apply set_eq_refl | exact Hargs].
@@ -209,7 +209,7 @@ Proof.
   intros m m' H. induction H as [a a' P P' f f' Ea EP Hf _ | ms ms' Hms | p args args' Hargs | φ φ' P P' m m' Hφ EP _ IH
                                 | φ P m m' Hφ _ IH EP | φ P m m' Hφ _ IH EP];
     intros x x' Ex; cbn [apply_module].
-  - pose proof (code_carrier_resp _ _ Ea) as Ec. constructor; [| exact EP |].
+  - pose proof Ea as Ec. constructor; [| exact EP |].
     + split; intros Hx; [eapply set_mem_eq_l; [exact Ex | eapply set_mem_eq_r; [exact Ec | exact Hx]]
                         | eapply set_mem_eq_l; [apply set_eq_sym; exact Ex | eapply set_mem_eq_r; [apply set_eq_sym; exact Ec | exact Hx]]].
     + intros Hx. apply Hf; assumption.
