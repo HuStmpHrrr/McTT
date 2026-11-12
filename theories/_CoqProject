@@ -142,6 +142,7 @@
 ./Core/SetModel/Cases/LevelCases.v
 ./Core/SetModel/Cases/VariableCases.v
 ./Core/SetModel/Cases/LetCases.v
+./Core/SetModel/Cases/SubtypingCases.v
 ./Core/SetModel/Interpretation/Global/Model.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v

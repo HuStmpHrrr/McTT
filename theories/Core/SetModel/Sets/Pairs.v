@@ -554,6 +554,16 @@ Proof.
   eapply set_eq_trans; [apply set_apply_graph; [apply restrict_fun_resp | exact Hx] |]. apply restrict_fun_agree; assumption.
 Qed.
 
+Lemma function_set_mono_on : forall S F F', respects_on S F -> respects_on S F' ->
+    (forall x, set_mem x S -> set_sub (F x) (F' x)) -> set_sub (function_set S F) (function_set S F').
+Proof.
+  intros S F F' HF HF' H g Hg. eapply set_mem_eq_r in Hg; [| apply function_set_restrict; exact HF].
+  eapply set_mem_eq_r; [apply set_eq_sym; apply function_set_restrict; exact HF' |].
+  revert g Hg. apply function_set_mono; [apply restrict_fun_resp | apply restrict_fun_resp |]. intros x Hx z Hz.
+  eapply set_mem_eq_r; [apply set_eq_sym; apply restrict_fun_agree; [exact HF' | exact Hx] |]. apply H; [exact Hx |].
+  eapply set_mem_eq_r; [apply restrict_fun_agree; [exact HF | exact Hx] | exact Hz].
+Qed.
+
 (** A dependent function is the graph of its application. *)
 Lemma function_set_graph_on : forall g S F, respects_on S F -> set_mem g (function_set S F) -> set_eq g (graph_set S (set_apply g)).
 Proof.
