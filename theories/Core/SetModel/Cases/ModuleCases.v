@@ -78,10 +78,11 @@ Proof.
   intros; reflexivity.
 Qed.
 
-(** Equal module expressions, both valid. *)
+(** Equal module expressions, both valid, of the same proofness. *)
 Lemma set_modexp_eq_of_rel : forall Γ H H', set_modexp_rel T γ Γ H H' -> set_valid_modexp T γ Γ H -> set_valid_modexp T γ Γ H' ->
+    (forall κs, set_slots_coherent γ Γ κs -> forall ys x, modexp_member_proofs γ κs H ys x = modexp_member_proofs γ κs H' ys x) ->
     set_modexp_eq T γ Γ H H'.
-Proof. intros * (F & F' & [HF HF' E]) HH HH'. exists F, F'. constructor; assumption. Qed.
+Proof. intros * (F & F' & [HF HF' E]) HH HH' Hpr. exists F, F'. constructor; assumption. Qed.
 
 (** A denotation on the left relates to itself. *)
 Lemma set_modexp_rel_refl_left : forall Γ H H', set_modexp_rel T γ Γ H H' -> set_modexp_rel T γ Γ H H.
@@ -161,14 +162,16 @@ Lemma set_rule_me_var : forall Γ x U, Γ ∋ #x ≔ₘ U -> set_ctx T γ Γ -> 
     set_modexp_eq T γ Γ (me_var x) (me_var x).
 Proof.
   intros * Hl HC Hsl Hc. destruct (set_valid_modexp_var _ _ _ Hl HC Hsl Hc) as [Hv _].
-  exact (set_modexp_eq_of_rel _ _ _ (set_modexp_rel_refl_left _ _ _ (set_slot_rel _ _ _ Hl HC Hc)) Hv Hv).
+  exact (set_modexp_eq_of_rel _ _ _ (set_modexp_rel_refl_left _ _ _ (set_slot_rel _ _ _ Hl HC Hc)) Hv Hv
+           (fun _ _ _ _ => eq_refl)).
 Qed.
 
 Lemma set_rule_me_delta_slot : forall Γ x U, Γ ∋ #x ≔ₘ U -> set_ctx T γ Γ -> set_valid_slots T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
     set_modexp_eq T γ Γ (me_var x) (me_lit U).
 Proof.
   intros * Hl HC Hsl Hc. destruct (set_valid_modexp_var _ _ _ Hl HC Hsl Hc) as [Hv HK].
-  exact (set_modexp_eq_of_rel _ _ _ (set_slot_rel _ _ _ Hl HC Hc) Hv (set_valid_modexp_of_unit _ _ HK)).
+  exact (set_modexp_eq_of_rel _ _ _ (set_slot_rel _ _ _ Hl HC Hc) Hv (set_valid_modexp_of_unit _ _ HK)
+           (fun κs Hκ ys z => set_slots_coherent_lookup _ _ _ Hl _ Hκ ys z)).
 Qed.
 
 Lemma set_rule_me_unit : forall Γ fp TΦ, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ -> gc_unit gc_deps gc_stack (me_unit fp) = Some TΦ ->
@@ -182,28 +185,31 @@ Proof.
     constructor; [rewrite List.app_nil_r; reflexivity | reflexivity | constructor | exact I
                  | intros [| k] N A HN; discriminate | intros [| k] A HA; discriminate]. }
   pose proof (set_valid_modexp_of_unit _ _ HK) as Hv.
-  exact (set_modexp_eq_of_rel _ _ _ (set_valid_unit_rel _ _ HK) Hv Hv).
+  exact (set_modexp_eq_of_rel _ _ _ (set_valid_unit_rel _ _ HK) Hv Hv (fun _ _ _ _ => eq_refl)).
 Qed.
 
 Lemma set_rule_me_sym : forall Γ H H', set_modexp_eq T γ Γ H H' -> set_modexp_eq T γ Γ H' H.
 Proof.
-  intros * (F & F' & [HF HF' E Hv Hv']). exists F', F. constructor; [exact HF' | exact HF | | exact Hv' | exact Hv].
-  intros ρ Hρ. apply set_module_eq_sym. exact (E _ Hρ).
+  intros * (F & F' & [HF HF' E Hv Hv' Hpr]). exists F', F. constructor; [exact HF' | exact HF | | exact Hv' | exact Hv |].
+  - intros ρ Hρ. apply set_module_eq_sym. exact (E _ Hρ).
+  - intros κs Hκ ys x. exact (eq_sym (Hpr κs Hκ ys x)).
 Qed.
 
 Lemma set_rule_me_trans : forall Γ H H' H'', set_modexp_eq T γ Γ H H' -> set_modexp_eq T γ Γ H' H'' -> set_modexp_eq T γ Γ H H''.
 Proof.
-  intros * (F & F' & [HF HF' E Hv _]) (G & G' & [HG HG' E' _ Hv'']). exists F, G'. constructor; [exact HF | exact HG' | | exact Hv | exact Hv''].
-  intros ρ Hρ. eapply set_module_eq_trans; [exact (E _ Hρ) |]. eapply set_module_eq_trans; [| exact (E' _ Hρ)].
-  exact (set_modexp_denotes_unique _ _ _ _ _ HG _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ)).
+  intros * (F & F' & [HF HF' E Hv _ Hpr]) (G & G' & [HG HG' E' _ Hv'' Hpr']). exists F, G'.
+  constructor; [exact HF | exact HG' | | exact Hv | exact Hv'' |].
+  - intros ρ Hρ. eapply set_module_eq_trans; [exact (E _ Hρ) |]. eapply set_module_eq_trans; [| exact (E' _ Hρ)].
+    exact (set_modexp_denotes_unique _ _ _ _ _ HG _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ)).
+  - intros κs Hκ ys x. exact (eq_trans (Hpr κs Hκ ys x) (Hpr' κs Hκ ys x)).
 Qed.
 
 (** ** Literals *)
 
 Lemma set_rule_me_lit : forall Γ U U', set_unit_eq T γ Γ U U' -> set_modexp_eq T γ Γ (me_lit U) (me_lit U').
 Proof.
-  intros * (F & F' & [HF HF' E HU HU']). exists F, F'.
-  constructor; [exact HF | exact HF' | exact E | exact (set_valid_modexp_of_unit _ _ HU) | exact (set_valid_modexp_of_unit _ _ HU')].
+  intros * (F & F' & [HF HF' E HU HU' Hpr]). exists F, F'.
+  constructor; [exact HF | exact HF' | exact E | exact (set_valid_modexp_of_unit _ _ HU) | exact (set_valid_modexp_of_unit _ _ HU') | exact Hpr].
 Qed.
 
 (** An alias of no parameter denotes its target's module. *)
@@ -239,7 +245,7 @@ Proof.
     - exact HΓ.
     - exact Hrel.
     - exact HEE. }
-  exact (set_modexp_eq_of_rel _ _ _ HrelE (set_valid_modexp_of_unit _ _ HK) HvE).
+  exact (set_modexp_eq_of_rel _ _ _ HrelE (set_valid_modexp_of_unit _ _ HK) HvE (fun _ _ _ _ => eq_refl)).
 Qed.
 
 (** ** Members *)
@@ -518,7 +524,7 @@ Proof.
   intros * _ Hβ HNw (FU & _ & [_ _ _ HKU _]) HN.
   destruct (me_denotes _ _ _ _ _ (set_valid_unit_wf T γ _ _ HKU)) as (R0 & _ & HR0 & _).
   destruct (set_unit_beta_reduct _ _ _ _ _ _ _ HKU HR0 HNw HN) as (R' & [Hat Hrel HK' HmK HR' Hpr]).
-  apply set_modexp_eq_of_rel; [exact Hrel | | exact (set_valid_modexp_of_unit _ _ HK')].
+  apply set_modexp_eq_of_rel; [exact Hrel | | exact (set_valid_modexp_of_unit _ _ HK') | exact Hpr].
   apply (set_valid_modexp_intro T γ _ _ (me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N)))) R' R' R'); [| exact HK'].
   constructor; [exact (wf_modexp_eq_refl_left Hβ) | eapply mdenote_app; [exact HR0 | exact Hat] | exact HR' | exact Hrel | exact HmK | exact HR' |].
   exact Hpr.
@@ -678,7 +684,7 @@ Lemma set_rule_me_app : forall Γ H H' N N' R Tl B T1 Srt R' Tl' B' T1' Srt', se
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ N' : B' -> set_exp_eq T γ Γ B' N' N' ->
     set_modexp_eq T γ Γ (me_app H N) (me_app H' N').
 Proof.
-  intros * HΓ (F & F' & [HF HF' E Hv Hv']) Hm Ht HV HS HBw HB HNw HN (FB & FN & FN' & [_ HFN HFN' EN _])
+  intros * HΓ (F & F' & [HF HF' E Hv Hv' Hpr]) Hm Ht HV HS HBw HB HNw HN (FB & FN & FN' & [_ HFN HFN' EN _])
     Hm' Ht' HV' HS' HBw' HB' HNw' HN'.
   exists (fun ρ => apply_module (F ρ) (FN ρ)), (fun ρ => apply_module (F' ρ) (FN' ρ)). constructor.
   - apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
@@ -688,6 +694,7 @@ Proof.
   - intros ρ Hρ. exact (apply_module_resp _ _ (E _ Hρ) _ _ (EN _ Hρ)).
   - exact (proj2 set_valid_unit_app_all _ _ Hv _ _ _ _ _ _ Hm Ht HV HS HBw (ex_intro _ _ (conj HS HB)) HNw HN).
   - exact (proj2 set_valid_unit_app_all _ _ Hv' _ _ _ _ _ _ Hm' Ht' HV' HS' HBw' (ex_intro _ _ (conj HS' HB')) HNw' HN').
+  - exact Hpr.
 Qed.
 
 End ModuleCases.

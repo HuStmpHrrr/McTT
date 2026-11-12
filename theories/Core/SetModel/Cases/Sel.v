@@ -619,10 +619,11 @@ Lemma set_rule_me_mem : forall Γ H H' y R Tl R' Tl', set_ctx T γ Γ -> set_mod
     mdenote gc_deps gc_stack Γ (me_mem H' y) R' -> mdesc_mod_tele R' = Some Tl' ->
     set_modexp_eq T γ Γ (me_mem H y) (me_mem H' y).
 Proof.
-  intros * HΓ (F & F' & [HF HF' E Hv Hv']) Hm Ht Hm' Ht'.
+  intros * HΓ (F & F' & [HF HF' E Hv Hv' Hpr]) Hm Ht Hm' Ht'.
   destruct (mdesc_mod_tele_mod _ _ Ht) as (Rm & Hmd). destruct (mdesc_mod_tele_mod _ _ Ht') as (Rm' & Hmd').
   apply set_modexp_eq_of_rel; [| exact (proj2 (set_valid_modexp_sel _ _ _ _ _ Hv Hm Hmd))
-                              | exact (proj2 (set_valid_modexp_sel _ _ _ _ _ Hv' Hm' Hmd'))].
+                              | exact (proj2 (set_valid_modexp_sel _ _ _ _ _ Hv' Hm' Hmd'))
+                              | intros κs Hκ ys x; exact (Hpr κs Hκ (y :: ys) x)].
   apply set_modexp_rel_mem; [exact HΓ |]. exists F, F'. constructor; assumption.
 Qed.
 
@@ -632,8 +633,8 @@ Lemma set_rule_me_delta_sel : forall Γ H y R Rm, set_modexp_eq T γ Γ H H ->
     mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
     set_modexp_eq T γ Γ (me_mem H y) (mdesc_unit Rm).
 Proof.
-  intros * (F & F' & [_ _ _ Hv _]) Hm Hmd. destruct (set_valid_modexp_sel _ _ _ _ _ Hv Hm Hmd) as [[Hr HK _] HvS].
-  exact (set_modexp_eq_of_rel T γ _ _ _ Hr HvS (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HK)).
+  intros * (F & F' & [_ _ _ Hv _]) Hm Hmd. destruct (set_valid_modexp_sel _ _ _ _ _ Hv Hm Hmd) as [[Hr HK Hpr] HvS].
+  exact (set_modexp_eq_of_rel T γ _ _ _ Hr HvS (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HK) Hpr).
 Qed.
 
 End Sel.

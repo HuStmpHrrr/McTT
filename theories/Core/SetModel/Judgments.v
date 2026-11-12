@@ -393,7 +393,7 @@ Fixpoint set_valid_slots (Γ : ctx) : Prop :=
   end.
 
 (** [set_modexp_eq_with Γ H H' F F']: [H] and [H'] denote the equal [F] and
-    [F'], and are valid. *)
+    [F'], are valid, and have the same proofness. *)
 Record set_modexp_eq_with (Γ : ctx) (H H' : modexp) (F F' : set_env -> set_module) : Prop :=
   { (** The left expression's denotation *)
     set_modexp_eq_left : set_modexp_denotes Γ H F
@@ -404,13 +404,23 @@ Record set_modexp_eq_with (Γ : ctx) (H H' : modexp) (F F' : set_env -> set_modu
     (** The left expression is valid *)
   ; set_modexp_eq_valid : set_valid_modexp Γ H
     (** So is the right one *)
-  ; set_modexp_eq_valid' : set_valid_modexp Γ H' }.
+  ; set_modexp_eq_valid' : set_valid_modexp Γ H'
+    (** Their members are proofs at the same places, read off the syntax
+        at slots coherent with [Γ], not at environments: in
+        [module M (z : Empty) ≔ N] and [module M (z : Empty) ≔ N'], where
+        the member [k] is a proof in [N] and not in [N'], the two units
+        denote equal modules, as [z : Empty] has no environment, yet
+        [M.k] is [∅] on one side and a graph on the other: equal
+        denotations say nothing there *)
+  ; set_modexp_eq_proofs : forall κs, set_slots_coherent Γ κs -> forall ys x,
+      modexp_member_proofs γ κs H ys x = modexp_member_proofs γ κs H' ys x }.
 
 (** [H] and [H'] are equal module expressions in [Γ]. *)
 Definition set_modexp_eq (Γ : ctx) (H H' : modexp) : Prop := exists F F', set_modexp_eq_with Γ H H' F F'.
 
 (** [set_unit_eq_with Γ U U' F F']: the units [U] and [U'] denote the
-    equal [F] and [F'] as literals, and are valid. *)
+    equal [F] and [F'] as literals, are valid, and have the same
+    proofness. *)
 Record set_unit_eq_with (Γ : ctx) (U U' : gunit) (F F' : set_env -> set_module) : Prop :=
   { (** The left unit's denotation *)
     set_unit_eq_left : set_modexp_denotes Γ (me_lit U) F
@@ -421,7 +431,12 @@ Record set_unit_eq_with (Γ : ctx) (U U' : gunit) (F F' : set_env -> set_module)
     (** The left unit is valid *)
   ; set_unit_eq_valid : set_valid_unit Γ (me_lit U)
     (** So is the right one *)
-  ; set_unit_eq_valid' : set_valid_unit Γ (me_lit U') }.
+  ; set_unit_eq_valid' : set_valid_unit Γ (me_lit U')
+    (** Their members are proofs at the same places, read off the syntax
+        at slots coherent with [Γ] (why not at environments: see
+        [set_modexp_eq_proofs]) *)
+  ; set_unit_eq_proofs : forall κs, set_slots_coherent Γ κs -> forall ys x,
+      unit_member_proofs γ κs U ys x = unit_member_proofs γ κs U' ys x }.
 
 (** [U] and [U'] are equal units in [Γ]. *)
 Definition set_unit_eq (Γ : ctx) (U U' : gunit) : Prop := exists F F', set_unit_eq_with Γ U U' F F'.
