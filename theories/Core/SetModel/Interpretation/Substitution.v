@@ -349,6 +349,22 @@ Proof.
   - intros [| y]; split; cbn; first [exact HN | constructor].
 Qed.
 
+(** A term under any entry [ce], read at an entry [e] that the
+    substitution's entry [s] gives, keeps its value with [s] substituted:
+    the single substitution of a module slot or of a definition with a
+    module part. *)
+Lemma set_interp_single_sub_slot : forall Γ ρ ce s e X v, ⊢ gc_deps ⍮ gc_stack ⍮ ce :: Γ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id s : ce :: Γ ->
+    sub_entry_agrees Γ ρ s e -> set_interp T γ (ce :: Γ) (set_env_extend ρ e) X v ->
+    set_interp T γ Γ ρ (exp_sub X (sb_extend sb_id s)) v.
+Proof.
+  intros * Hc Hσ [Hs Hm] HX.
+  apply (set_interp_sub _ _ _ _ HX Hc nil (ce :: Γ) Γ _ ρ ρ). constructor; [reflexivity | exact Hσ | | |].
+  - intros x Hx. cbn in Hx. lia.
+  - intros y. reflexivity.
+  - intros [| y]; split; cbn; first [exact Hs | exact Hm | constructor].
+Qed.
+
 (** A term of [Γ ▹{κ} A] at the value [n] of a term [N] keeps its value
     with [N] substituted. *)
 Lemma set_interp_single_sub : forall Γ ρ κ A N n X v, ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ ->
