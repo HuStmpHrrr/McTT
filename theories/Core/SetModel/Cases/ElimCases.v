@@ -2602,6 +2602,108 @@ Proof.
   pose proof (Gen (List.combine fl gs) nil eq_refl) as H. rewrite Hf, Hs in H. exact H.
 Qed.
 
+(** A recursive argument of a block member's constructor, drawn from the
+    points having the property, at the environment of the arguments
+    before it and the parameters the open instance reads: an environment
+    of their closed context, at which the argument is a function on its
+    domains whose ends have the property. *)
+Lemma block_arg_closed : forall k Mk SMk cs gs vals θk gs1 t gs2 v,
+    ind_member D k = Some Mk -> List.nth_error (set_group_members G) k = Some SMk -> In cs (set_member_constructors SMk) ->
+    ind_con Mk (set_constructor_name cs) = Some gs ->
+    set_env_in T γ (im_params D Mk) θk -> list_set_eq (uniform_values D Mk θk) us ->
+    arguments_fit G U S (us ++ set_env_values (im_nparams Mk) θk) (set_constructor_arguments cs) vals ->
+    gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error vals (List.length gs1) = Some v ->
+    set_env_in T γ (cargs_ctx p D Mk gs1 ++ im_params D Mk)
+      (set_env_moved (List.length (cargs_ctx p D Mk gs1 ++ im_nparams Mk)) Fσ
+         (set_env_extend_kinded (set_env_extend_kinded ρ (ctx_kinds (im_nparams Mk)) (set_env_values (im_nparams Mk) θk))
+            (ctx_kinds (cargs_ctx p D Mk gs1)) (List.firstn (List.length gs1) vals))) /\
+    shape_closed_ok Γ ρ r p Us Bks V D i (rview_fits Γ ρ r p Us Bks V D us) Mk (cargs_ctx p D Mk gs1) (wk_pat (cargs_pat gs1)) nil t
+      (set_env_moved (List.length (cargs_ctx p D Mk gs1 ++ im_nparams Mk)) Fσ
+         (set_env_extend_kinded (set_env_extend_kinded ρ (ctx_kinds (im_nparams Mk)) (set_env_values (im_nparams Mk) θk))
+            (ctx_kinds (cargs_ctx p D Mk gs1)) (List.firstn (List.length gs1) vals))) v.
+Proof.
+  intros k Mk SMk cs gs vals θk gs1 t gs2 v Hk HSk Hcs Hgs Hθk Huni Hfit Egs Hv.
+  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG. fold G in HG.
+  pose proof (set_member_ok_constructors _ _ _ _ _ _ _ (set_group_ok_members _ _ _ _ _ HG _ _ _ Hk HSk) cs gs Hcs Hgs) as Hcok.
+  set (sgs := set_constructor_arguments cs) in *.
+  pose proof (set_group_ok_respects _ _ _ _ _ HG _ _ _ HSk Hcs) as Hrs. fold sgs in Hrs.
+  pose proof (set_constructor_ok_shape _ _ _ _ _ _ _ _ Hcok) as Hsh.
+  pose proof (cons_lookup_in _ _ _ Hgs) as Hin.
+  set (i0 := List.length gs1). set (nn := im_nn Mk).
+  assert (Hgi : List.nth_error gs i0 = Some (ca_rec t)) by (rewrite Egs, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
+  destruct (set_arguments_shape_nth _ _ Hsh _ _ Hgi) as (sg & Hsg & Hsgk).
+  destruct Hsgk as (Fr & ds & tparams & -> & Hlds).
+  set (ρn := set_env_extend_kinded ρ (ctx_kinds (im_nparams Mk)) (set_env_values (im_nparams Mk) θk)) in *.
+  pose proof (nparams_env Γ ρ p D Us Fσ HΓ HcΓ Hρ HD Hσ k Mk SMk _ _ θk Hk HSk Hin Hθk Huni) as Hρn. fold ρn in Hρn.
+  assert (Hlnp : List.length (ctx_kinds (im_nparams Mk)) = List.length (set_env_values (im_nparams Mk) θk))
+    by (rewrite length_ctx_kinds, length_set_env_values; reflexivity).
+  assert (Hdrop : forall x, set_env_drop (im_nn Mk) ρn x = ρ x).
+  { intros x. unfold set_env_drop, ρn. unfold im_nn. rewrite <- length_ctx_kinds, Hlnp, set_env_extend_kinded_ge. reflexivity. }
+  assert (Hvn : set_env_values (im_nparams Mk) ρn = set_env_values (im_nparams Mk) θk)
+    by (unfold ρn; apply set_env_values_extend_kinded; rewrite length_set_env_values; reflexivity).
+  assert (Hfit' : arguments_fit G U S (elim_uniform_values ρ D Fσ ++ set_env_values (im_nparams Mk) ρn) sgs vals)
+    by (rewrite Hvn; exact Hfit).
+  pose proof (args_env Γ ρ p D Us Fσ HΓ HcΓ Hρ HD Hσ U Hcar S points_in_fixed_point k Mk SMk cs gs ρn vals Hk HSk Hcs Hgs Hcok Hρn Hdrop Hfit'
+                gs1 _ Egs) as Hρo.
+  set (ρo := set_env_extend_kinded ρn (ctx_kinds (cargs_ctx p D Mk gs1)) (List.firstn i0 vals)) in *.
+  destruct (List.nth_error_split vals i0 Hv) as (l1 & l2 & Evals & Hl1).
+  fold i0 in Hρo. fold ρo in Hρo.
+  assert (Hfst : List.firstn i0 vals = l1) by (rewrite Evals, <- Hl1, List.firstn_app, Nat.sub_diag, List.firstn_all; cbn; apply List.app_nil_r).
+  assert (Hρo_drop : forall x, ρo (i0 + nn + x) = ρ x).
+  { intros x. unfold ρo. replace (i0 + nn + x) with (List.length (List.firstn i0 vals) + (nn + x))
+      by (rewrite Hfst, Hl1; lia). rewrite set_env_extend_kinded_ge. rewrite <- Hdrop. reflexivity. }
+  (* the closed environment of the arguments before and the parameters *)
+  set (Ψc := cargs_ctx p D Mk gs1 ++ im_nparams Mk) in *.
+  assert (HΨc : List.length Ψc = i0 + nn) by (unfold Ψc; rewrite List.length_app, length_cargs_ctx; reflexivity).
+  assert (EΨ : Ψc ++ ind_uparams D = cargs_ctx p D Mk gs1 ++ im_params D Mk) by (unfold Ψc, im_params; rewrite <- List.app_assoc; reflexivity).
+  pose proof (cargs_ctx_closed p D k Mk _ gs gs1 (ca_rec t :: gs2) Hcl Hk Hin Egs) as Hs0.
+  pose proof (decls_of_ctx _ _ _ HcΓ) as HDs.
+  destruct (cargs_ctx_wf _ _ _ _ _ _ _ _ Hgw HDs HD Hk Hin gs1 _ Egs) as (Hw0 & _ & _).
+  pose proof (cargs_prefix_ctx p D HD k Mk SMk gs sgs gs1 _ Hk HSk Hcok Egs) as Hc0.
+  assert (Hass0 : all_assumptions (cargs_ctx p D Mk gs1 ++ im_params D Mk))
+    by (apply List.Forall_app; split; [apply cargs_ctx_aux_ass | exact (decl_closed_params_ass _ _ _ Hcl Hk)]).
+  pose proof (wf_ctx_closed_app _ _ _ _ Hass0 Hs0 Hw0 HcΓ) as HwΓ0.
+  assert (HcΓ0 : set_ctx T γ ((cargs_ctx p D Mk gs1 ++ im_params D Mk) ++ Γ)).
+  { pose proof (set_ctx_moved T γ Hfn Hmods _ nil Γ _ _ (set_gsub_drop T γ _ HcΓ) HΓ ltac:(rewrite List.app_nil_r; exact Hc0)
+                  ltac:(rewrite List.app_nil_r; exact Hw0)) as H.
+    rewrite tele_sub_closed in H by exact Hs0. exact H. }
+  rewrite <- EΨ in Hs0, Hw0, Hc0, Hass0, HwΓ0, HcΓ0.
+  destruct (inst_closed_env_in Γ (ind_uparams D) _ Fσ Hσ HΓ HcΓ Ψc ρo Hs0 Hc0 HcΓ0 Hw0 HwΓ0 Hρo) as [Hm Hinst].
+  set (θa := set_env_moved (List.length Ψc) Fσ ρo) in *.
+  assert (Eθi : forall x, x < List.length (Ψc ++ ind_uparams D) -> inst_closed_env Γ (ind_uparams D) Fσ Ψc ρo x = θa x).
+  { intros x Hx. unfold inst_closed_env. fold θa. unfold set_env_moved at 1. rewrite set_env_above_lt' by exact Hx. reflexivity. }
+  assert (Hθa : set_env_in T γ (Ψc ++ ind_uparams D) θa).
+  { apply (env_in_closed_agree _ _ _ Hs0 Hass0 Hc0 Hinst Eθi).
+    rewrite List.app_assoc in Hm. exact (set_env_rel_eq T γ _ _ _ (set_env_rel_drop T γ _ _ _ _ Hm)). }
+  assert (HLθ : list_set_eq (set_env_values (Ψc ++ ind_uparams D) θa)
+                  ((us ++ set_env_values (im_nparams Mk) ρn) ++ List.firstn i0 vals)).
+  { rewrite <- (set_env_values_agree _ _ _ Eθi), inst_closed_env_values. rewrite <- List.app_assoc. apply list_set_eq_app.
+    - apply (inst_uniform_values Γ ρ D Us Fσ HcΓ Hρ Hσ). intros x. unfold set_env_drop. rewrite HΨc. apply Hρo_drop.
+    - unfold Ψc. rewrite set_env_values_app. apply list_set_eq_app.
+      + rewrite (set_env_values_agree (im_nparams Mk) _ ρn); [apply list_set_eq_refl |].
+        intros x _. unfold set_env_drop, ρo. rewrite length_cargs_ctx. fold i0.
+        rewrite Hfst, <- Hl1, set_env_extend_kinded_ge. reflexivity.
+      + unfold ρo. rewrite set_env_values_extend_kinded_any by (rewrite length_cargs_ctx, Hfst, Hl1; reflexivity).
+        apply list_set_eq_refl. }
+  rewrite EΨ in Hθa, HLθ.
+  assert (HL0 : List.length (us ++ set_env_values (im_nparams Mk) ρn) = im_np D Mk)
+    by (unfold us, elim_uniform_values; rewrite List.length_app, !length_set_env_values; unfold im_np, im_nn, ind_nu; lia).
+  destruct (recursive_arg_setting p D HD U S k Mk SMk cs gs (us ++ set_env_values (im_nparams Mk) ρn) vals gs1 t gs2 Fr ds
+              (ptyp_mem t) tparams θa v Hk HSk Hcs Hgs Hcok Hfit' HL0 Egs Hsg Hv Hθa HLθ) as [Hdom Htps HC EC Hmem].
+  destruct (decl_shape_facts _ _ _ _ _ _ _ _ _ _ HDt Hk Hin Egs) as (Mt & HMt & _ & _ & _).
+  assert (Hrsg : argument_respects (set_argument_recursive Fr ds (ptyp_mem t) tparams))
+    by (rewrite List.Forall_forall in Hrs; exact (Hrs _ (List.nth_error_In _ _ Hsg))).
+  destruct Hrsg as [Hds Htp].
+  assert (HLv : list_set_eq (List.firstn (ind_nu D) (set_env_values (cargs_ctx p D Mk gs1 ++ im_params D Mk) θa)) us).
+  { eapply list_set_eq_trans; [apply list_set_eq_firstn; exact HLθ |].
+    assert (Hnu : List.length us = ind_nu D) by (unfold us, elim_uniform_values; rewrite length_set_env_values; reflexivity).
+    rewrite <- !List.app_assoc, List.firstn_app, Hnu, Nat.sub_diag, List.firstn_all2 by lia. cbn [List.firstn].
+    rewrite List.app_nil_r. apply list_set_eq_refl. }
+  split; [exact Hθa |].
+  exact (shape_closed_ok_of_set Γ ρ r p Us Bks V D i HMwf HMot HMctx HD Hcl us U Mk gs sgs gs1 t gs2 Fr ds (ptyp_mem t) tparams
+           _ θa _ (group_uniform_count p D HD) Hcok Egs Hsg Hds Htp Hlds Mt HMt Hθa HLv Hdom Htps HC EC _ Hmem).
+Qed.
+
 (** In a branch's context after the results [E], at an environment
     holding the arguments above [E], a recursive argument drawn from the
     points having the property has its results of their types along its
@@ -2673,50 +2775,11 @@ Proof.
   set (Ψc := cargs_ctx p D Mk gs1 ++ im_nparams Mk) in *.
   assert (HΨc : List.length Ψc = i0 + nn) by (unfold Ψc; rewrite List.length_app, length_cargs_ctx; reflexivity).
   assert (EΨ : Ψc ++ ind_uparams D = cargs_ctx p D Mk gs1 ++ im_params D Mk) by (unfold Ψc, im_params; rewrite <- List.app_assoc; reflexivity).
-  pose proof (cargs_ctx_closed p D k Mk _ gs gs1 (ca_rec t :: gs2) Hcl Hk Hin Egs) as Hs0.
-  destruct (cargs_ctx_wf _ _ _ _ _ _ _ _ Hgw HDs HD Hk Hin gs1 _ Egs) as (Hw0 & HcN & Hφ).
-  pose proof (cargs_prefix_ctx p D HD k Mk SMk gs sgs gs1 _ Hk HSk Hcok Egs) as Hc0.
-  assert (Hass0 : all_assumptions (cargs_ctx p D Mk gs1 ++ im_params D Mk))
-    by (apply List.Forall_app; split; [apply cargs_ctx_aux_ass | exact (decl_closed_params_ass _ _ _ Hcl Hk)]).
-  pose proof (wf_ctx_closed_app _ _ _ _ Hass0 Hs0 Hw0 HcΓ) as HwΓ0.
-  assert (HcΓ0 : set_ctx T γ ((cargs_ctx p D Mk gs1 ++ im_params D Mk) ++ Γ)).
-  { pose proof (set_ctx_moved T γ Hfn Hmods _ nil Γ _ _ (set_gsub_drop T γ _ HcΓ) HΓ ltac:(rewrite List.app_nil_r; exact Hc0)
-                  ltac:(rewrite List.app_nil_r; exact Hw0)) as H.
-    rewrite tele_sub_closed in H by exact Hs0. exact H. }
-  rewrite <- EΨ in Hs0, Hw0, Hc0, Hass0, HwΓ0, HcΓ0.
-  destruct (inst_closed_env_in Γ (ind_uparams D) _ Fσ Hσ HΓ HcΓ Ψc ρo Hs0 Hc0 HcΓ0 Hw0 HwΓ0 Hρo) as [Hm Hinst].
+  destruct (cargs_ctx_wf _ _ _ _ _ _ _ _ Hgw HDs HD Hk Hin gs1 _ Egs) as (_ & HcN & Hφ).
+  destruct (block_arg_closed k Mk SMk cs gs vals θk gs1 t gs2 v Hk HSk Hcs Hgs Hθk Huni Hfit Egs Hv) as [Hθa Hshape].
+  fold i0 ρn ρo Ψc in Hθa, Hshape.
   set (θa := set_env_moved (List.length Ψc) Fσ ρo) in *.
-  assert (Eθi : forall x, x < List.length (Ψc ++ ind_uparams D) -> inst_closed_env Γ (ind_uparams D) Fσ Ψc ρo x = θa x).
-  { intros x Hx. unfold inst_closed_env. fold θa. unfold set_env_moved at 1. rewrite set_env_above_lt' by exact Hx. reflexivity. }
-  assert (Hθa : set_env_in T γ (Ψc ++ ind_uparams D) θa).
-  { apply (env_in_closed_agree _ _ _ Hs0 Hass0 Hc0 Hinst Eθi).
-    rewrite List.app_assoc in Hm. exact (set_env_rel_eq T γ _ _ _ (set_env_rel_drop T γ _ _ _ _ Hm)). }
-  assert (HLθ : list_set_eq (set_env_values (Ψc ++ ind_uparams D) θa)
-                  ((us ++ set_env_values (im_nparams Mk) ρn) ++ List.firstn i0 vals)).
-  { rewrite <- (set_env_values_agree _ _ _ Eθi), inst_closed_env_values. rewrite <- List.app_assoc. apply list_set_eq_app.
-    - apply (inst_uniform_values Γ ρ D Us Fσ HcΓ Hρ Hσ). intros x. unfold set_env_drop. rewrite HΨc. apply Hρo_drop.
-    - unfold Ψc. rewrite set_env_values_app. apply list_set_eq_app.
-      + rewrite (set_env_values_agree (im_nparams Mk) _ ρn); [apply list_set_eq_refl |].
-        intros x _. unfold set_env_drop, ρo. rewrite length_cargs_ctx. fold i0.
-        rewrite Hfst, <- Hl1, set_env_extend_kinded_ge. reflexivity.
-      + unfold ρo. rewrite set_env_values_extend_kinded_any by (rewrite length_cargs_ctx, Hfst, Hl1; reflexivity).
-        apply list_set_eq_refl. }
-  rewrite EΨ in Hθa, HLθ.
-  assert (HL0 : List.length (us ++ set_env_values (im_nparams Mk) ρn) = im_np D Mk)
-    by (unfold us, elim_uniform_values; rewrite List.length_app, !length_set_env_values; unfold im_np, im_nn, ind_nu; lia).
-  destruct (recursive_arg_setting p D HD U S k Mk SMk cs gs (us ++ set_env_values (im_nparams Mk) ρn) vals gs1 t gs2 Fr ds
-              (ptyp_mem t) tparams θa v Hk HSk Hcs Hgs Hcok Hfit' HL0 Egs Hsg Hv Hθa HLθ) as [Hdom Htps HC EC Hmem].
   destruct (decl_shape_facts _ _ _ _ _ _ _ _ _ _ HDt Hk Hin Egs) as (Mt & HMt & HPlt & HBt & HPt).
-  assert (Hrsg : argument_respects (set_argument_recursive Fr ds (ptyp_mem t) tparams))
-    by (rewrite List.Forall_forall in Hrs; exact (Hrs _ (List.nth_error_In _ _ Hsg))).
-  destruct Hrsg as [Hds Htp].
-  assert (HLv : list_set_eq (List.firstn (ind_nu D) (set_env_values (cargs_ctx p D Mk gs1 ++ im_params D Mk) θa)) us).
-  { eapply list_set_eq_trans; [apply list_set_eq_firstn; exact HLθ |].
-    assert (Hnu : List.length us = ind_nu D) by (unfold us, elim_uniform_values; rewrite length_set_env_values; reflexivity).
-    rewrite <- !List.app_assoc, List.firstn_app, Hnu, Nat.sub_diag, List.firstn_all2 by lia. cbn [List.firstn].
-    rewrite List.app_nil_r. apply list_set_eq_refl. }
-  pose proof (shape_closed_ok_of_set Γ ρ r p Us Bks V D i HMwf HMot HMctx HD Hcl us U Mk gs sgs gs1 t gs2 Fr ds (ptyp_mem t) tparams
-                _ θa _ (group_uniform_count p D HD) Hcok Egs Hsg Hds Htp Hlds Mt HMt Hθa HLv Hdom Htps HC EC _ Hmem) as Hshape.
   (* the walk *)
   destruct (rec_arg_inst _ _ _ _ _ _ _ _ _ _ _ _ _ E Hgw HDs HD Hk HcΓ HUl (set_gsub_typed _ _ _ _ _ _ Hσ) Hin Egs HcΨ)
     as (Hβt & Hσt & Huc & Hxt).
@@ -2774,6 +2837,170 @@ Proof.
                 (cargs_ctx p D Mk gs1) (wk_pat pat) _ ρe _ _ _ _ v θa Mt HcΨ Hρe Hβ Hβt Hσt HcN Huc Hrz Hx Hxt HMt HPlt HBt HPt
                 Hshape l Hl') as Hsem.
   exact (leaf_fit Γ ρ r p Us Bks V D i HMwf HMot l _ ρe _ _ _ v A HcΨ Hρe Hβ Hx Hsem HA).
+Qed.
+
+(** The recursive results of the arguments [vs] of the kinds [gs], after
+    arguments told by [pat]: along each leaf path of each recursive one. *)
+Fixpoint ihs_values (nn : nat) (pat : list bool) (gs : list carg) (vs : list aczel_set) : list aczel_set :=
+  match gs, vs with
+  | ca_arg _ _ :: gs', _ :: vs' => ihs_values nn (false :: pat) gs' vs'
+  | ca_rec t :: gs', v :: vs' =>
+      List.map (fun l => leaf_value Γ ρ r p Us Bks V l v) (shape_leaves (rview_leaves D) (pat_nargs pat + nn) t) ++
+      ihs_values nn (true :: pat) gs' vs'
+  | _, _ => nil
+  end.
+
+(** The results of one recursive argument along some of its paths extend
+    an environment of the branch's context above them. *)
+Lemma leaves_env : forall k Mk SMk cs gs vals θk gs1 t gs2 v,
+    ind_member D k = Some Mk -> List.nth_error (set_group_members G) k = Some SMk -> In cs (set_member_constructors SMk) ->
+    ind_con Mk (set_constructor_name cs) = Some gs ->
+    set_env_in T γ (im_params D Mk) θk -> list_set_eq (uniform_values D Mk θk) us ->
+    arguments_fit G U S (us ++ set_env_values (im_nparams Mk) θk) (set_constructor_arguments cs) vals ->
+    gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error vals (List.length gs1) = Some v ->
+    forall ls, List.incl ls (shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t) ->
+    forall E ρe,
+    set_ctx T γ (leaves_ctx r (im_nn Mk) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (List.length E) ls ++
+                 E ++ con_inst_ctx Γ p D Mk Us gs) ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ leaves_ctx r (im_nn Mk) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (List.length E) ls ++
+                 E ++ con_inst_ctx Γ p D Mk Us gs ->
+    set_env_in T γ (E ++ con_inst_ctx Γ p D Mk Us gs) ρe ->
+    (forall z, ρe (List.length E + z) =
+       set_env_extend_kinded (set_env_extend_kinded ρ (ctx_kinds (im_nparams Mk)) (set_env_values (im_nparams Mk) θk))
+         (ctx_kinds (cargs_ctx p D Mk gs)) vals z) ->
+    set_env_in T γ (leaves_ctx r (im_nn Mk) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (List.length E) ls ++
+                    E ++ con_inst_ctx Γ p D Mk Us gs)
+      (set_env_extend_kinded ρe
+         (ctx_kinds (leaves_ctx r (im_nn Mk) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (List.length E) ls))
+         (List.map (fun l => leaf_value Γ ρ r p Us Bks V l v) ls)).
+Proof.
+  intros k Mk SMk cs gs vals θk gs1 t gs2 v Hk HSk Hcs Hgs Hθk Huni Hfit Egs Hv.
+  induction ls as [| l ls IH]; intros Hincl E ρe HC Hc Hρe Eρe; [exact Hρe |].
+  cbn [leaves_ctx List.map] in HC, Hc |- *.
+  rewrite ctx_kinds_app. cbn [ctx_kinds List.map List.rev List.app centry_kind set_env_extend_kinded List.hd List.tl].
+  set (ty := leaf_ihty r (blocks_motives Bks) (sb_of_wk (wk_shiftn (List.length E + List.length gs + im_nn Mk)))
+               (ihs_sub (im_nn Mk) Us (List.length gs) (cargs_pat gs1) (List.length E))
+               (a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1))) l) in *.
+  rewrite <- List.app_assoc in HC, Hc |- *. cbn [List.app] in HC, Hc |- *.
+  change (ce_ass r ty :: E ++ con_inst_ctx Γ p D Mk Us gs) with ((ce_ass r ty :: E) ++ con_inst_ctx Γ p D Mk Us gs) in HC, Hc |- *.
+  assert (HE' : set_env_in T γ ((ce_ass r ty :: E) ++ con_inst_ctx Γ p D Mk Us gs)
+                  (set_env_extend ρe (set_entry_term r (leaf_value Γ ρ r p Us Bks V l v)))).
+  { pose proof (set_ctx_app_r T γ _ _ HC) as HC1. destruct HC1 as [_ [FA HFA]].
+    pose proof (ctx_app_wf_tail _ _ _ _ Hc) as Hc1. pose proof (ctx_decomp_tail Hc1) as Hc2.
+    split; [exact Hρe |]. cbn [set_entry_rel]. exists (leaf_value Γ ρ r p Us Bks V l v), (leaf_value Γ ρ r p Us Bks V l v), (FA ρe).
+    constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HFA _ Hρe) | | apply set_eq_refl].
+    exact (block_arg_fits k Mk SMk cs gs vals θk E ρe gs1 t gs2 v Hk HSk Hcs Hgs Hθk Huni Hfit Hc2 Hρe Eρe Egs Hv l
+             (Hincl l (or_introl eq_refl)) _ (set_denotes_exists _ _ _ _ _ HFA _ Hρe)). }
+  replace (Datatypes.S (List.length E)) with (List.length (ce_ass r ty :: E)) in HC, Hc |- * by reflexivity.
+  apply (IH (fun x Hx => Hincl x (or_intror Hx)) _ _ HC Hc HE').
+  intros z. cbn [List.length]. exact (Eρe z).
+Qed.
+
+(** The results of the arguments after [gs1] extend an environment of
+    the branch's context above them. *)
+Lemma ihs_env : forall k Mk SMk cs gs vals θk,
+    ind_member D k = Some Mk -> List.nth_error (set_group_members G) k = Some SMk -> In cs (set_member_constructors SMk) ->
+    ind_con Mk (set_constructor_name cs) = Some gs ->
+    set_env_in T γ (im_params D Mk) θk -> list_set_eq (uniform_values D Mk θk) us ->
+    arguments_fit G U S (us ++ set_env_values (im_nparams Mk) θk) (set_constructor_arguments cs) vals ->
+    forall gs2 gs1 E ρe, gs = gs1 ++ gs2 ->
+    set_ctx T γ (ihs_ctx_aux r (rview_leaves D) (im_nn Mk) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (List.length E) gs2 ++
+                 E ++ con_inst_ctx Γ p D Mk Us gs) ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ ihs_ctx_aux r (rview_leaves D) (im_nn Mk) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1)
+                 (List.length E) gs2 ++ E ++ con_inst_ctx Γ p D Mk Us gs ->
+    set_env_in T γ (E ++ con_inst_ctx Γ p D Mk Us gs) ρe ->
+    (forall z, ρe (List.length E + z) =
+       set_env_extend_kinded (set_env_extend_kinded ρ (ctx_kinds (im_nparams Mk)) (set_env_values (im_nparams Mk) θk))
+         (ctx_kinds (cargs_ctx p D Mk gs)) vals z) ->
+    set_env_in T γ (ihs_ctx_aux r (rview_leaves D) (im_nn Mk) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (List.length E) gs2 ++
+                    E ++ con_inst_ctx Γ p D Mk Us gs)
+      (set_env_extend_kinded ρe
+         (ctx_kinds (ihs_ctx_aux r (rview_leaves D) (im_nn Mk) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (List.length E) gs2))
+         (ihs_values (im_nn Mk) (cargs_pat gs1) gs2 (List.skipn (List.length gs1) vals))).
+Proof.
+  intros k Mk SMk cs gs vals θk Hk HSk Hcs Hgs Hθk Huni Hfit.
+  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG.
+  pose proof (set_member_ok_constructors _ _ _ _ _ _ _ (set_group_ok_members _ _ _ _ _ HG _ _ _ Hk HSk) cs gs Hcs Hgs) as Hcok.
+  pose proof (arguments_fit_length _ _ _ _ _ _ Hfit) as Hlv.
+  pose proof (set_arguments_shape_length _ _ (set_constructor_ok_shape _ _ _ _ _ _ _ _ Hcok)) as Hlsh.
+  induction gs2 as [| g gs2 IH]; intros gs1 E ρe Egs HC Hc Hρe Eρe.
+  - cbn [ihs_ctx_aux]. destruct (List.skipn (List.length gs1) vals); exact Hρe.
+  - assert (Hlt : List.length gs1 < List.length vals) by (rewrite Hlv, Hlsh, Egs, List.length_app; cbn; lia).
+    destruct (List.nth_error vals (List.length gs1)) as [v |] eqn:Hv; [| apply List.nth_error_None in Hv; lia].
+    destruct (List.nth_error_split vals _ Hv) as (l1 & l2 & Evals & Hl1).
+    assert (Hskp : List.skipn (List.length gs1) vals = v :: l2)
+      by (rewrite Evals, <- Hl1, List.skipn_app, Nat.sub_diag, List.skipn_all; reflexivity).
+    assert (Hskp' : List.skipn (List.length (gs1 ++ [g])) vals = l2)
+      by (rewrite Evals, List.length_app, <- Hl1, List.skipn_app; cbn [List.length];
+          replace (List.length l1 + 1 - List.length l1) with 1 by lia; rewrite List.skipn_all2 by lia; reflexivity).
+    assert (Egs' : gs = (gs1 ++ [g]) ++ gs2) by (rewrite Egs, <- List.app_assoc; reflexivity).
+    rewrite Hskp. destruct g as [κ A | t].
+    + cbn [ihs_ctx_aux ihs_values] in HC, Hc |- *.
+      replace (false :: cargs_pat gs1) with (cargs_pat (gs1 ++ [ca_arg κ A])) in HC, Hc |- * by (rewrite cargs_pat_snoc; reflexivity).
+      rewrite <- Hskp'. exact (IH _ _ _ Egs' HC Hc Hρe Eρe).
+    + cbn [ihs_ctx_aux ihs_values] in HC, Hc |- *.
+      set (ls := shape_leaves (rview_leaves D) (pat_nargs (cargs_pat gs1) + im_nn Mk) t) in *.
+      set (LC := leaves_ctx r (im_nn Mk) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1) (List.length E) ls) in *.
+      rewrite <- List.app_assoc in HC, Hc |- *.
+      rewrite ctx_kinds_app.
+      assert (Hlk : List.length (ctx_kinds LC) = List.length (List.map (fun l => leaf_value Γ ρ r p Us Bks V l v) ls))
+        by (unfold LC; rewrite length_ctx_kinds, length_leaves_ctx, List.length_map; reflexivity).
+      rewrite set_env_extend_kinded_app by exact Hlk.
+      pose proof (leaves_env k Mk SMk cs gs vals θk gs1 t gs2 v Hk HSk Hcs Hgs Hθk Huni Hfit Egs Hv ls (List.incl_refl _) E ρe
+                    (set_ctx_app_r T γ _ _ HC) (ctx_app_wf_tail _ _ _ _ Hc) Hρe Eρe) as HL.
+      fold LC in HL.
+      replace (true :: cargs_pat gs1) with (cargs_pat (gs1 ++ [ca_rec t])) in HC, Hc |- * by (rewrite cargs_pat_snoc; reflexivity).
+      replace (List.length ls + List.length E) with (List.length (LC ++ E)) in HC, Hc |- *
+        by (unfold LC; rewrite List.length_app, length_leaves_ctx; reflexivity).
+      rewrite (List.app_assoc LC E (con_inst_ctx Γ p D Mk Us gs)) in HC, Hc |- *.
+      rewrite <- Hskp'.
+      apply (IH _ _ _ Egs' HC Hc); [rewrite <- List.app_assoc; exact HL |].
+      intros z. rewrite List.length_app, <- Nat.add_assoc.
+      replace (List.length LC) with (List.length (List.map (fun l => leaf_value Γ ρ r p Us Bks V l v) ls))
+        by (rewrite <- Hlk, length_ctx_kinds; reflexivity).
+      rewrite set_env_extend_kinded_ge. exact (Eρe z).
+Qed.
+
+(** Into a sort of relevant terms, the arguments after [gs1] have their
+    results. *)
+Lemma block_ihs : r <> ak_propositional -> forall k Mk SMk cs gs vals θk,
+    ind_member D k = Some Mk -> List.nth_error (set_group_members G) k = Some SMk -> In cs (set_member_constructors SMk) ->
+    ind_con Mk (set_constructor_name cs) = Some gs ->
+    set_env_in T γ (im_params D Mk) θk -> list_set_eq (uniform_values D Mk θk) us ->
+    arguments_fit G U S (us ++ set_env_values (im_nparams Mk) θk) (set_constructor_arguments cs) vals ->
+    forall gs2 gs1, gs = gs1 ++ gs2 ->
+    set_ihs T γ Γ ρ r p Us Bks gs2 (List.skipn (List.length gs1) vals)
+      (ihs_values (im_nn Mk) (cargs_pat gs1) gs2 (List.skipn (List.length gs1) vals)).
+Proof.
+  intros Hr k Mk SMk cs gs vals θk Hk HSk Hcs Hgs Hθk Huni Hfit.
+  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG.
+  pose proof (set_member_ok_constructors _ _ _ _ _ _ _ (set_group_ok_members _ _ _ _ _ HG _ _ _ Hk HSk) cs gs Hcs Hgs) as Hcok.
+  pose proof (arguments_fit_length _ _ _ _ _ _ Hfit) as Hlv.
+  pose proof (set_arguments_shape_length _ _ (set_constructor_ok_shape _ _ _ _ _ _ _ _ Hcok)) as Hlsh.
+  pose proof (leaves_coherent_of_order _ (rview_struct_order _ _ _ (decl_typed_record_struct _ _ _ HDt))) as Hco.
+  assert (Hlvr : forall l x, leaf_value Γ ρ r p Us Bks V l x = leaf_result Γ ρ r p Us Bks V l x)
+    by (intros; unfold leaf_value; destruct r; [reflexivity | contradiction | reflexivity]).
+  induction gs2 as [| g gs2 IH]; intros gs1 Egs.
+  - rewrite List.skipn_all2 by (rewrite Hlv, Hlsh, Egs, List.app_nil_r; lia). constructor.
+  - assert (Hlt : List.length gs1 < List.length vals) by (rewrite Hlv, Hlsh, Egs, List.length_app; cbn; lia).
+    destruct (List.nth_error vals (List.length gs1)) as [v |] eqn:Hv; [| apply List.nth_error_None in Hv; lia].
+    destruct (List.nth_error_split vals _ Hv) as (l1 & l2 & Evals & Hl1).
+    assert (Hskp : List.skipn (List.length gs1) vals = v :: l2)
+      by (rewrite Evals, <- Hl1, List.skipn_app, Nat.sub_diag, List.skipn_all; reflexivity).
+    assert (Hskp' : List.skipn (List.length (gs1 ++ [g])) vals = l2)
+      by (rewrite Evals, List.length_app, <- Hl1, List.skipn_app; cbn [List.length];
+          replace (List.length l1 + 1 - List.length l1) with 1 by lia; rewrite List.skipn_all2 by lia; reflexivity).
+    assert (Egs' : gs = (gs1 ++ [g]) ++ gs2) by (rewrite Egs, <- List.app_assoc; reflexivity).
+    rewrite Hskp. destruct g as [κ A | t]; cbn [ihs_values].
+    + constructor. replace (false :: cargs_pat gs1) with (cargs_pat (gs1 ++ [ca_arg κ A])) by (rewrite cargs_pat_snoc; reflexivity).
+      rewrite <- Hskp'. exact (IH _ Egs').
+    + constructor.
+      * erewrite List.map_ext by (intros l; apply Hlvr).
+        destruct (block_arg_closed k Mk SMk cs gs vals θk gs1 t gs2 v Hk HSk Hcs Hgs Hθk Huni Hfit Egs Hv) as [_ Hcok'].
+        apply (set_ih_of_shape_results Γ ρ r p Us Bks V Hρ D HD Hco HDt).
+        exact (shape_results_of_closed_ok Γ ρ r p Us Bks V D i Hr _ _ _ _ _ _ _ _ Hcok').
+      * replace (true :: cargs_pat gs1) with (cargs_pat (gs1 ++ [ca_rec t])) by (rewrite cargs_pat_snoc; reflexivity).
+        rewrite <- Hskp'. exact (IH _ Egs').
 Qed.
 
 End Induction.
