@@ -353,7 +353,12 @@ Record set_group_ok (p : qname) (D : ind_decl) (G : set_group) : Prop :=
     (** A record view's carrier is its record's at the view's arguments *)
   ; set_group_ok_record_view_carriers : forall k Mk qr Is fl ρ is, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       set_env_in T γ (im_params D Mk) ρ -> set_interp_list T γ (ind_uparams D) (set_env_drop (im_nn Mk) ρ) Is is ->
-      set_eq (set_group_carrier G k (set_env_values (im_params D Mk) ρ)) (set_record_carrier (global_record γ qr) is) }.
+      set_eq (set_group_carrier G k (set_env_values (im_params D Mk) ρ)) (set_record_carrier (global_record γ qr) is)
+    (** A view's instance has a reading at every environment of the
+        uniform parameters: the instance is typed in the declaration, so
+        the model's construction reads it *)
+  ; set_group_ok_view_instances : forall k Mk qc k' Is vm ρ, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      set_env_in T γ (ind_uparams D) ρ -> exists is, set_interp_list T γ (ind_uparams D) ρ Is is }.
 
 (** ** Record Types *)
 
