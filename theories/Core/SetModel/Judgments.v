@@ -30,6 +30,9 @@ Import ListNotations.
 (** The environment without its variable [#0]. *)
 Definition set_env_tail (ρ : set_env) : set_env := fun x => ρ (S x).
 
+(** [ρ] without its first [n] entries. *)
+Definition set_env_drop (n : nat) (ρ : set_env) : set_env := fun x => ρ (n + x).
+
 Section Judgments.
   Context {GC : GCtx}.
   Variable T : universe_tower.

@@ -39,9 +39,6 @@ Fixpoint set_env_values (Δ : ctx) (ρ : set_env) : list aczel_set :=
   | _ :: Δ' => set_env_values Δ' (set_env_tail ρ) ++ [set_entry_value (ρ 0)]
   end.
 
-(** [ρ] without its first [n] entries. *)
-Definition set_env_drop (n : nat) (ρ : set_env) : set_env := fun x => ρ (n + x).
-
 (** [l] with its [n]-th value replaced by the empty set: a recursive
     argument as the types after it read it ([arguments_fit]). *)
 Definition erase_at (n : nat) (l : list aczel_set) : list aczel_set := List.firstn n l ++ empty_set :: List.skipn (S n) l.
