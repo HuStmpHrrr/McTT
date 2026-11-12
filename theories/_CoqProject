@@ -122,6 +122,13 @@
 ./Core/SetModel/Sets/Fixpoints.v
 ./Core/SetModel/Sets/WSets.v
 ./Core/SetModel/Tower.v
+./Core/SetModel/Sets/Encodings.v
+./Core/SetModel/Interpretation/Codes.v
+./Core/SetModel/Interpretation/Values.v
+./Core/SetModel/Interpretation/Global/Valuation.v
+./Core/SetModel/Interpretation/Inductives/ElimGraph.v
+./Core/SetModel/Interpretation/Operations.v
+./Core/SetModel/Interpretation/Inductives/Carriers.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v
 ./Core/Semantic/Kinds/KindsEval.v

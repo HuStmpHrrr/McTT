@@ -376,6 +376,16 @@ Proof.
       split; [exact Hy | eapply set_mem_eq_r; [apply set_eq_sym; apply EFG; exact Hx | exact HyG]].
 Qed.
 
+(** A function set grows with its codomains. *)
+Lemma function_set_mono : forall S F F', respects_set_eq_fun F -> respects_set_eq_fun F' ->
+    (forall x, set_mem x S -> set_sub (F x) (F' x)) -> set_sub (function_set S F) (function_set S F').
+Proof.
+  intros S F F' HF HF' Hsub g Hg. apply (set_mem_function _ _ _ HF) in Hg as [Hp [Ht Hu]].
+  apply (set_mem_function _ _ _ HF'). split; [| split; [| exact Hu]].
+  - intros p Hpg. destruct (Hp p Hpg) as [x [y [Hx [Hy E]]]]. exists x, y. split; [exact Hx | split; [apply Hsub; assumption | exact E]].
+  - intros x Hx. destruct (Ht x Hx) as [y [Hy HyF]]. exists y. split; [exact Hy | apply Hsub; assumption].
+Qed.
+
 (** ** Dependent Pairs *)
 
 (** The pairs of a member [x] of [S] and a member of [F x]. *)
