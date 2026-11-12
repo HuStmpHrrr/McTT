@@ -84,7 +84,7 @@ Lemma set_modexp_eq_of_rel : forall Γ H H', set_modexp_rel T γ Γ H H' -> set_
 Proof. intros * (F & F' & [HF HF' E]) HH HH'. exists F, F'. constructor; assumption. Qed.
 
 (** A denotation on the left relates to itself. *)
-Lemma set_modexp_rel_left : forall Γ H H', set_modexp_rel T γ Γ H H' -> set_modexp_rel T γ Γ H H.
+Lemma set_modexp_rel_refl_left : forall Γ H H', set_modexp_rel T γ Γ H H' -> set_modexp_rel T γ Γ H H.
 Proof.
   intros * (F & F' & [HF _ _]). exists F, F. constructor; [exact HF | exact HF |].
   intros ρ Hρ. exact (set_modexp_denotes_unique _ _ _ _ _ HF _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ)).
@@ -161,7 +161,7 @@ Lemma set_rule_me_var : forall Γ x U, Γ ∋ #x ≔ₘ U -> set_ctx T γ Γ -> 
     set_modexp_eq T γ Γ (me_var x) (me_var x).
 Proof.
   intros * Hl HC Hsl Hc. destruct (set_valid_modexp_var _ _ _ Hl HC Hsl Hc) as [Hv _].
-  exact (set_modexp_eq_of_rel _ _ _ (set_modexp_rel_left _ _ _ (set_slot_rel _ _ _ Hl HC Hc)) Hv Hv).
+  exact (set_modexp_eq_of_rel _ _ _ (set_modexp_rel_refl_left _ _ _ (set_slot_rel _ _ _ Hl HC Hc)) Hv Hv).
 Qed.
 
 Lemma set_rule_me_delta_slot : forall Γ x U, Γ ∋ #x ≔ₘ U -> set_ctx T γ Γ -> set_valid_slots T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
@@ -229,7 +229,7 @@ Proof.
   { exists FE, FE. constructor; [exact HFE | exact HFE |].
     intros ρ Hρ. exact (set_modexp_denotes_unique _ _ _ _ _ HFE _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HFE _ Hρ)). }
   pose proof (set_alias0_rel _ _ HΓ HEE) as HrelE.
-  pose proof (set_modexp_rel_left _ _ _ HrelE) as Hrel.
+  pose proof (set_modexp_rel_refl_left _ _ _ HrelE) as Hrel.
   assert (HK : set_valid_unit T γ Γ (me_lit (gu_mk nil (md_alias E)))).
   { apply set_valid_unit_alias; [constructor | exact HvE].
     - exact Hw.

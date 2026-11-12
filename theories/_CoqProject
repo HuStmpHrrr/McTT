@@ -149,6 +149,8 @@
 ./Core/SetModel/Cases/ValidUnit.v
 ./Core/SetModel/Cases/MemberTypes.v
 ./Core/SetModel/Cases/ModuleCases.v
+./Core/SetModel/Cases/Unit.v
+./Core/SetModel/Cases/Canon.v
 ./Core/SetModel/Interpretation/JudgmentSubstitution.v
 ./Core/SetModel/Interpretation/Global/Model.v
 ./Core/Semantic/Rename.v
