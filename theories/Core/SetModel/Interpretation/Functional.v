@@ -132,14 +132,18 @@ Proof.
   - intros * HR He H'. inv H'. apply set_eq_refl.
   - intros * HR He H'. inv H'. apply set_eq_refl.
   - intros * HR He H'. inv H'. apply set_eq_refl.
-  - intros Γ ρ P Q p q Hc _ IHP _ IHQ Γ' ρ' v' HR He H'. inv H'.
+  - intros Γ ρ P Q p F Hc _ IHP _ IHQ Γ' ρ' v' HR He H'. inv H'.
     pose proof (IHP _ _ _ HR He ltac:(eassumption)) as Ep.
-    assert (Eq : set_eq q q0)
-      by (eapply IHQ; [apply R_extend_one; [exact HR | exact Hc | eassumption]
-                     | apply set_env_eq_extend; [exact He | constructor; apply set_eq_refl] | eassumption]).
-    apply prop_code_eq. split; intros [Hp1 Hp2]; split;
-      first [eapply prop_true_resp; [exact Ep | exact Hp1] | eapply prop_true_resp; [exact Eq | exact Hp2]
-            | eapply prop_true_resp; [apply set_eq_sym; exact Ep | exact Hp1] | eapply prop_true_resp; [apply set_eq_sym; exact Eq | exact Hp2]].
+    match goal with HQ' : forall x, set_mem x (code_carrier _) -> set_interp _ _ _ _ Q (?F0 x) |- _ =>
+      assert (Eq : prop_true p -> set_eq (F empty_set) (F0 empty_set))
+        by (intros Hp; eapply IHQ; [exact Hp | apply R_extend_one; [exact HR | exact Hc | eassumption]
+                                   | apply set_env_eq_extend; [exact He | constructor; apply set_eq_refl]
+                                   | apply HQ'; exact (prop_true_resp _ _ Ep Hp)]) end.
+    apply prop_code_eq. split; intros [Hp1 Hp2]; split.
+    + exact (prop_true_resp _ _ Ep Hp1).
+    + exact (prop_true_resp _ _ (Eq Hp1) Hp2).
+    + exact (prop_true_resp _ _ (set_eq_sym _ _ Ep) Hp1).
+    + exact (prop_true_resp _ _ (set_eq_sym _ _ (Eq (prop_true_resp _ _ (set_eq_sym _ _ Ep) Hp1))) Hp2).
   - intros * HR He H'. inv H'. apply set_eq_refl.
   - intros * HR He H'. inv H'. apply set_eq_refl.
   - intros * HR He H'. inv H'. apply set_eq_refl.

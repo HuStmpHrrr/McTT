@@ -68,11 +68,16 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 (** Ex falso: no element is ever needed, the empty set *)
 | set_interp_absurd : forall Γ ρ C M, set_interp Γ ρ (a_absurd C M) empty_set
 (** A conjunction: both components true, the second at the proof of the
-    first, the empty set *)
-| set_interp_and : forall Γ ρ P Q p q,
+    first, the empty set.  [Q] is read only at proofs of [P], as a [Π]'s
+    codomain is: in [Σₚ ⊥ (efq #0 return Prop)] the second component reads
+    a proof of [⊥], and has a value only at one.  When [P] is false the
+    conjunction is false, whatever [F] is at the empty set. *)
+| set_interp_and : forall Γ ρ P Q p F,
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass ak_propositional P :: Γ ->
-    set_interp Γ ρ P p -> set_interp (ce_ass ak_propositional P :: Γ) (set_env_extend ρ (set_entry_term ak_propositional empty_set)) Q q ->
-    set_interp Γ ρ (a_and P Q) (prop_code (prop_true p /\ prop_true q))
+    set_interp Γ ρ P p ->
+    (forall x, set_mem x (code_carrier p) ->
+       set_interp (ce_ass ak_propositional P :: Γ) (set_env_extend ρ (set_entry_term ak_propositional x)) Q (F x)) ->
+    set_interp Γ ρ (a_and P Q) (prop_code (prop_true p /\ prop_true (F empty_set)))
 (** A proof of a conjunction *)
 | set_interp_conj : forall Γ ρ P Q M N, set_interp Γ ρ (a_conj P Q M N) empty_set
 (** The proof of a conjunction's first component *)

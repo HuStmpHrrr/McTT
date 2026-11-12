@@ -174,8 +174,9 @@ Proof.
   - intros; constructor.
   - intros; constructor.
   - intros; constructor.
-  - intros Ξ ρ P Q p q Hc _ IHP _ IHQ; start;
-      econstructor; [subctx Hc (ce_ass ak_propositional P) Hs | same IHP | under IHQ (ce_ass ak_propositional P) Hc].
+  - intros Ξ ρ P Q p F Hc _ IHP _ IHQ; start;
+      econstructor; [subctx Hc (ce_ass ak_propositional P) Hs | same IHP |].
+    intros x Hx. under (IHQ x Hx) (ce_ass ak_propositional P) Hc.
   - intros; constructor.
   - intros; constructor.
   - intros; constructor.
