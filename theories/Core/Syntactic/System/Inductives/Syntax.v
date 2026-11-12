@@ -1027,6 +1027,13 @@ Proof.
     [ eapply decl_closed_params_ass; eassumption | eapply decl_closed_params; eassumption | lia ].
 Qed.
 
+(** The same for the uniform parameters alone. *)
+Lemma uparams_insts_sub : forall D Us τ,
+    decl_closed D ->
+    List.map (fun T => T[τ]) (tele_insts (ind_uparams D) Id Us)
+    = tele_insts (ind_uparams D) Id (List.map (fun U => U[τ]) Us).
+Proof. intros * HD; apply (tele_insts_sub _ 0); [ apply (decl_closed_ass _ HD) | apply (decl_closed_uparams _ HD) | lia ]. Qed.
+
 Lemma cargs_insts_sub : forall pq D k M c gs Ps As τ,
     decl_closed D -> ind_member D k = Some M -> ind_con M c = Some gs -> List.length Ps = im_np D M ->
     List.map (fun T => T[τ]) (tele_insts (cargs_ctx pq D M gs) (sb_of_list Id Ps) As)

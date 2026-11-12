@@ -759,7 +759,8 @@ Proof.
   assert (HTy : im_ty_at p j Mj Us nil = apps_exp (a_record qr) (List.map (fun I => I[sb_of_list Id Us]) Is))
     by (unfold im_ty_at, im_pre; rewrite Hh, List.app_nil_r; reflexivity).
   assert (Hpre : im_pre Mj Us = List.map (fun I => I[sb_of_list Id Us]) Is) by (unfold im_pre; rewrite Hh; reflexivity).
-  eapply wf_exp_eq_con_rview; [ exact Hl | exact Hj | exact Hh | exact Hcon | exact HUl | lia | exact HCt | rewrite Hpre, HTy; exact Ht ].
+  eapply wf_exp_eq_con_rview; [ exact Hl | exact Hj | exact Hh | exact Hcon | exact HUl | exact HUs | lia | exact HAs | exact HCt
+                              | rewrite Hpre, HTy; exact Ht ].
 Qed.
 
 (** A telescope of assumptions holds no module slot. *)
@@ -1442,7 +1443,11 @@ Section ConViewFT.
     symmetry.
     replace (List.map (fun I : typ => I[sb_of_list Id Us]) Is ++ Ns ++ As) with (im_pre Mk Us ++ Ns ++ As)
       by (unfold im_pre; rewrite Hh; reflexivity).
-    eapply wf_exp_eq_con_view; [ exact Hl | exact HMk | exact Hh | exact HUl | exact HtL |].
+    pose proof (glu_args_params_top _ _ _ _ _ HassP (decl_closed_params D k Mk Hc HMk) HgP) as [_ HPty _].
+    destruct (params_typed_split _ _ D Hc _ _ Δ (Us ++ Ns) HMk ltac:(rewrite List.length_app; unfold im_np in *; lia) HPty)
+      as [HUt _].
+    rewrite firstn_app_exact in HUt by exact HUl.
+    eapply wf_exp_eq_con_view; [ exact Hl | exact HMk | exact Hh | exact HUl | exact HUt | exact HtL |].
     unfold im_pre; rewrite Hh; exact HtR.
   Qed.
 

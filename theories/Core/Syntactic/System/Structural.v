@@ -1389,6 +1389,82 @@ Section ElimMove.
     - rewrite List.firstn_map; eapply move_blocks_brs; eassumption.
     - exact Hr.
   Qed.
+
+  (** The uniform parameters typed one by one, moved. *)
+  Lemma move_uparams : forall Γ Δ σ D Us,
+      decl_closed D ->
+      (forall n U T, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) n = Some T ->
+         forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ U[σ0] : T[σ0]) ->
+      R Δ σ Γ ->
+      forall n U T, List.nth_error (List.map (fun U => U[σ]) Us) n = Some U ->
+        List.nth_error (tele_insts (ind_uparams D) Id (List.map (fun U => U[σ]) Us)) n = Some T ->
+        Θ ⍮ Ξ ⍮ Δ ⊢ U : T.
+  Proof.
+    intros * HD IH HR n U' T' HU HT.
+    rewrite <- uparams_insts_sub in HT by exact HD.
+    apply nth_error_map_inv in HU as (U & HU & ->); apply nth_error_map_inv in HT as (T & HT & ->).
+    eauto.
+  Qed.
+
+  (** A constructor of a view at the uniform parameters, moved: the view's
+      arguments there move with them ([im_pre_sub]). *)
+  Lemma move_con_view_case : forall p D j Mj qc k Is vm c Us Ms A Γ Δ σ,
+      ind_lookup Θ Ξ p = Some D ->
+      ind_member D j = Some Mj ->
+      im_head Mj = mh_view qc k Is vm ->
+      List.length Us = ind_nu D ->
+      (forall n U T, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) n = Some T ->
+         forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ U[σ0] : T[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (apps_exp (a_con p j c) (Us ++ Ms))[σ0] : A[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms))[σ0] : A[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ (apps_exp (a_con p j c) (Us ++ Ms))[σ] ≈ (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms))[σ] : A[σ].
+  Proof.
+    intros * Hl HMj Hh HU IHU IH1 IH2 HR.
+    pose proof (move_decl_closed _ _ _ _ _ HR Hl) as HD.
+    pose proof (IH1 _ _ HR) as E1; pose proof (IH2 _ _ HR) as E2.
+    rewrite apps_exp_sub, List.map_app in E1, E2 |- *; rewrite apps_exp_sub, List.map_app; cbn [exp_sub] in E1, E2 |- *.
+    rewrite (im_pre_sub D _ Mj Us) in E2 |- * by eassumption.
+    eapply wf_exp_eq_con_view; [ exact Hl | exact HMj | exact Hh | rewrite List.length_map; exact HU
+                               | eapply move_uparams; eassumption | exact E1 | exact E2 ].
+  Qed.
+
+  (** A constructor of a record view at the uniform parameters and the
+      fields, moved: the instance moves with the parameters, the tuple's
+      fields with the fields; a record view has no non-uniform
+      parameters, so the fields' telescope is at the uniform ones. *)
+  Lemma move_con_rview_case : forall p D j Mj qr Is fl c gs Us Ms A Γ Δ σ,
+      ind_lookup Θ Ξ p = Some D ->
+      ind_member D j = Some Mj ->
+      im_head Mj = mh_record qr Is fl ->
+      ind_con Mj c = Some gs ->
+      List.length Us = ind_nu D ->
+      (forall n U T, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) n = Some T ->
+         forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ U[σ0] : T[σ0]) ->
+      List.length Ms = List.length fl ->
+      (forall n N T, List.nth_error Ms n = Some N ->
+         List.nth_error (tele_insts (cargs_ctx p D Mj gs) (sb_of_list Id Us) Ms) n = Some T ->
+         forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ N[σ0] : T[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (apps_exp (a_con p j c) (Us ++ Ms))[σ0] : A[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms))[σ0] : A[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ (apps_exp (a_con p j c) (Us ++ Ms))[σ] ≈ (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms))[σ]
+        : A[σ].
+  Proof.
+    intros * Hl HMj Hh Hc HU IHU HF IHM IH1 IH2 HR.
+    pose proof (move_decl_closed _ _ _ _ _ HR Hl) as HD.
+    assert (HnP : List.length Us = im_np D Mj).
+    { unfold im_np, im_nn. rewrite (member_closed_rview_nn _ _ (decl_closed_members _ HD _ _ HMj) _ _ _ Hh). cbn. exact HU. }
+    pose proof (IH1 _ _ HR) as E1; pose proof (IH2 _ _ HR) as E2.
+    rewrite apps_exp_sub, List.map_app in E1; rewrite apps_exp_sub, List.map_app.
+    cbn [exp_sub] in E2 |- *; rewrite apps_exp_sub in E2 |- *; cbn [exp_sub] in E2 |- *.
+    rewrite (combine_map_snd (fun N => N[σ])) in E2 |- *.
+    rewrite (im_pre_sub D _ Mj Us) in E2 |- * by eassumption.
+    eapply wf_exp_eq_con_rview; [ exact Hl | exact HMj | exact Hh | exact Hc | rewrite List.length_map; exact HU
+                                | eapply move_uparams; eassumption | rewrite List.length_map; exact HF
+                                | eapply move_elim_cargs; eassumption | exact E1 | exact E2 ].
+  Qed.
 End ElimMove.
 
 (** ** The Rules of Records, Moved
@@ -2012,6 +2088,8 @@ Ltac wk_elim_case :=
         | eapply (move_elim_cong_case _ _ _ (wk_as_sub_dom _ _) (wk_as_sub_ext _ _))
         | eapply (move_elim_iota_case _ _ _ (wk_as_sub_dom _ _) (wk_as_sub_ext _ _))
         | eapply (move_elim_view_case _ _ _ (wk_as_sub_dom _ _) (wk_as_sub_ext _ _))
+        | eapply (move_con_view_case _ _ _ (wk_as_sub_dom _ _))
+        | eapply (move_con_rview_case _ _ _ (wk_as_sub_dom _ _))
         | eapply (move_record_case _ _ _ (wk_as_sub_dom _ _))
         | eapply (move_record_cong_case _ _ _ (wk_as_sub_dom _ _))
         | eapply (move_tuple_case _ _ _ (wk_as_sub_dom _ _))
@@ -2888,45 +2966,6 @@ Proof.
         try (erewrite (ind_ty_wk D) by eassumption); try (erewrite (con_ty_wk _ D) by eassumption);
         first [ eapply wf_ind | eapply wf_con | eapply wf_exp_eq_ind_cong | eapply wf_exp_eq_con_cong ]; eauto
     end ].
-  (** A constructor of a view at the uniform parameters: the view's
-      arguments there move with them ([im_pre_wk]). *)
-  all: try solve [
-    match goal with
-    | Hl : ind_lookup _ _ _ = Some ?D, HM : ind_member ?D _ = Some ?Mj, HU : List.length ?Us = ind_nu ?D,
-      IH1 : forall Δ0 φ0, wf_wk _ _ Δ0 _ φ0 -> wf_exp _ _ Δ0 _ (apps_exp (a_con _ _ _) (?Us ++ _))[φ0]ʷ,
-      IH2 : forall Δ0 φ0, wf_wk _ _ Δ0 _ φ0 -> wf_exp _ _ Δ0 _ (apps_exp (a_con _ _ _) (im_pre ?Mj ?Us ++ _))[φ0]ʷ,
-      Hφ : wf_wk _ _ _ _ _ |- _ =>
-        let HD := fresh "HD" in
-        assert (HD : decl_closed D)
-          by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_wk_dom _ _ _ _ _ Hφ) | exact Hl ]);
-        pose proof (IH1 _ _ Hφ) as E1; pose proof (IH2 _ _ Hφ) as E2;
-        rewrite apps_exp_wk, List.map_app in E1, E2; rewrite !apps_exp_wk, !List.map_app;
-        cbn in E1, E2 |- *;
-        rewrite (im_pre_wk D _ Mj Us) in E2 |- * by eassumption;
-        eapply wf_exp_eq_con_view; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
-                                   | exact E1 | exact E2 ]
-    end ].
-  (** A constructor of a record view at the uniform parameters and the
-      fields: the instance moves with the parameters, the tuple's fields
-      with the fields. *)
-  all: try solve [
-    match goal with
-    | Hl : ind_lookup _ _ _ = Some ?D, HM : ind_member ?D _ = Some ?Mj, HU : List.length ?Us = ind_nu ?D,
-      HF : List.length ?Ms = List.length ?fl,
-      IH1 : forall Δ0 φ0, wf_wk _ _ Δ0 _ φ0 -> wf_exp _ _ Δ0 _ (apps_exp (a_con _ _ _) (?Us ++ ?Ms))[φ0]ʷ,
-      IH2 : forall Δ0 φ0, wf_wk _ _ Δ0 _ φ0 -> wf_exp _ _ Δ0 _ (a_tuple _ _),
-      Hφ : wf_wk _ _ _ _ ?φ |- _ =>
-        let HD := fresh "HD" in
-        assert (HD : decl_closed D)
-          by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_wk_dom _ _ _ _ _ Hφ) | exact Hl ]);
-        pose proof (IH1 _ _ Hφ) as E1; pose proof (IH2 _ _ Hφ) as E2;
-        rewrite apps_exp_wk, List.map_app in E1; rewrite apps_exp_wk, List.map_app;
-        rewrite apps_exp_wk in E2 |- *; cbn [exp_wk] in E2 |- *;
-        rewrite (combine_map_snd (fun N => N[φ]ʷ)) in E2 |- *;
-        rewrite (im_pre_wk D _ Mj Us) in E2 |- * by eassumption;
-        eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
-                                    | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
-    end ].
   (** An alias with no parameter is its target: the target, weakened, is
       still no module being defined. *)
   all: try solve [
@@ -3723,6 +3762,8 @@ Ltac sub_elim_case :=
         | eapply (move_elim_cong_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _))
         | eapply (move_elim_iota_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _))
         | eapply (move_elim_view_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _))
+        | eapply (move_con_view_case _ _ _ (sub_as_sub_dom _ _))
+        | eapply (move_con_rview_case _ _ _ (sub_as_sub_dom _ _))
         | eapply (move_record_case _ _ _ (sub_as_sub_dom _ _))
         | eapply (move_record_cong_case _ _ _ (sub_as_sub_dom _ _))
         | eapply (move_tuple_case _ _ _ (sub_as_sub_dom _ _))
@@ -4211,43 +4252,6 @@ Proof.
           by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]);
         try (erewrite (ind_ty_sub D) by eassumption); try (erewrite (con_ty_sub _ D) by eassumption);
         first [ eapply wf_ind | eapply wf_con | eapply wf_exp_eq_ind_cong | eapply wf_exp_eq_con_cong ]; eauto
-    end ].
-  (** A constructor of a view at the uniform parameters, as for
-      weakening ([im_pre_sub]). *)
-  all: try solve [
-    match goal with
-    | Hl : ind_lookup _ _ _ = Some ?D, HM : ind_member ?D _ = Some ?Mj, HU : List.length ?Us = ind_nu ?D,
-      IH1 : forall Γ0 σ0, wf_sub _ _ Γ0 _ σ0 -> wf_exp _ _ Γ0 _ (apps_exp (a_con _ _ _) (?Us ++ _))[σ0],
-      IH2 : forall Γ0 σ0, wf_sub _ _ Γ0 _ σ0 -> wf_exp _ _ Γ0 _ (apps_exp (a_con _ _ _) (im_pre ?Mj ?Us ++ _))[σ0],
-      Hσ : wf_sub _ _ _ _ _ |- _ =>
-        let HD := fresh "HD" in
-        assert (HD : decl_closed D)
-          by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]);
-        pose proof (IH1 _ _ Hσ) as E1; pose proof (IH2 _ _ Hσ) as E2;
-        rewrite apps_exp_sub, List.map_app in E1, E2; rewrite !apps_exp_sub, !List.map_app;
-        cbn in E1, E2 |- *;
-        rewrite (im_pre_sub D _ Mj Us) in E2 |- * by eassumption;
-        eapply wf_exp_eq_con_view; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
-                                   | exact E1 | exact E2 ]
-    end ].
-  (** A constructor of a record view, as for weakening. *)
-  all: try solve [
-    match goal with
-    | Hl : ind_lookup _ _ _ = Some ?D, HM : ind_member ?D _ = Some ?Mj, HU : List.length ?Us = ind_nu ?D,
-      HF : List.length ?Ms = List.length ?fl,
-      IH1 : forall Γ0 σ0, wf_sub _ _ Γ0 _ σ0 -> wf_exp _ _ Γ0 _ (apps_exp (a_con _ _ _) (?Us ++ ?Ms))[σ0],
-      IH2 : forall Γ0 σ0, wf_sub _ _ Γ0 _ σ0 -> wf_exp _ _ Γ0 _ (a_tuple _ _),
-      Hσ : wf_sub _ _ _ _ ?σ |- _ =>
-        let HD := fresh "HD" in
-        assert (HD : decl_closed D)
-          by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]);
-        pose proof (IH1 _ _ Hσ) as E1; pose proof (IH2 _ _ Hσ) as E2;
-        rewrite apps_exp_sub, List.map_app in E1; rewrite apps_exp_sub, List.map_app;
-        rewrite apps_exp_sub in E2 |- *; cbn [exp_sub] in E2 |- *;
-        rewrite (combine_map_snd (fun N => N[σ])) in E2 |- *;
-        rewrite (im_pre_sub D _ Mj Us) in E2 |- * by eassumption;
-        eapply wf_exp_eq_con_rview; [ eassumption | eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
-                                    | rewrite List.length_map; exact HF | exact E1 | exact E2 ]
     end ].
   (** A body unit is its expansion: expansion commutes with substitution. *)
   (** An alias with no parameter is its target: the target, substituted,

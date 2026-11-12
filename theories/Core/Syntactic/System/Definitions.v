@@ -1073,12 +1073,18 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A constructor of a view at the group's uniform parameters [Us] is the
     container's constructor at the view's arguments there, both sides at
-    the same type. *)
+    the same type.  The uniform parameters are typed one by one, at the
+    instances of their telescope, as in [wf_exp_eq_elim_iota]: the typing
+    of the application implies it; it is a premise so that proofs by
+    induction on the derivation have an induction hypothesis for each
+    parameter. *)
 | wf_exp_eq_con_view :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_view qc k Is vm ->
      List.length Us = ind_nu D ->
+     (forall n U T, nth_error Us n = Some U -> nth_error (tele_insts (ind_uparams D) Id Us) n = Some T ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ U : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms) : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) ≈ apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms) : A )
@@ -1087,14 +1093,23 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
     record type at the view's instance there, both sides at the same
     type.  The constructor is the view's own ([ind_con]), as in [wf_con]:
     it takes its fields at their sorts, which are the record's
-    ([rview_struct_kinds]), as the tuple does. *)
+    ([rview_struct_kinds]), as the tuple does.  The uniform parameters
+    and the fields are typed one by one, at the instances of their
+    telescopes, as in [wf_exp_eq_elim_iota] (a record view's parameters
+    are the uniform ones): the typing of the application implies it;
+    they are premises so that proofs by induction on the derivation have
+    an induction hypothesis for each parameter and field. *)
 | wf_exp_eq_con_rview :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_record qr Is fl ->
      ind_con Mj c = Some gs ->
      List.length Us = ind_nu D ->
+     (forall n U T, nth_error Us n = Some U -> nth_error (tele_insts (ind_uparams D) Id Us) n = Some T ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ U : T) ->
      List.length Ms = List.length fl ->
+     (forall n N T, nth_error Ms n = Some N -> nth_error (tele_insts (cargs_ctx p D Mj gs) (sb_of_list Id Us) Ms) n = Some T ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) ≈ a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms) : A )

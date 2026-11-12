@@ -684,7 +684,9 @@ Proof.
     unfold im_is_decl in Hdecl; destruct (im_head Mkh); [ reflexivity | discriminate | discriminate ]. }
   rewrite ET in HR.
   replace (Us' ++ Ns ++ As) with (im_pre Mj Us ++ Ns ++ As) by (unfold im_pre; rewrite Hh; reflexivity).
-  eapply wf_exp_eq_con_view; [ exact Hl | exact HMj | exact Hh | exact HUl | gen_presups; eassumption |].
+  destruct (params_typed_split _ _ G Hc _ _ Γ (Us ++ Ns) HMj ltac:(rewrite List.length_app; unfold im_np; lia) HPs) as [HUt _].
+  rewrite firstn_app_exact in HUt by exact HUl.
+  eapply wf_exp_eq_con_view; [ exact Hl | exact HMj | exact Hh | exact HUl | exact HUt | gen_presups; eassumption |].
   unfold im_pre; rewrite Hh; fold Us'; gen_presups; eassumption.
 Qed.
 
