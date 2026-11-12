@@ -187,6 +187,50 @@ Proof.
     apply is_level_type_code_mem; [apply tower_grothendieck | exact Hpl].
 Qed.
 
+(** A term of an extension by [A], read in the extension by an equal
+    [A'], keeps its denotation. *)
+Lemma set_denotes_ctx_conv_ass : forall Γ κ A A' M FA FA' FM, fn_kinds_unique ->
+    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ -> gc_deps ⍮ gc_stack ⍮ ce_ass κ A' :: Γ ⊢ˢ sb_id : ce_ass κ A :: Γ ->
+    set_denotes T γ Γ A FA -> set_denotes T γ Γ A' FA' -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FA ρ) (FA' ρ)) ->
+    set_denotes T γ (ce_ass κ A :: Γ) M FM -> set_denotes T γ (ce_ass κ A' :: Γ) M FM.
+Proof.
+  intros * Hfn Hmods HΓ Hc Hσ HA HA' EA HM. apply set_denotes_of_exists; [exact Hfn | exact Hmods | split; [exact HΓ | exists FA'; exact HA'] |].
+  intros ρ [Ht (x & x' & a & [E1 E2 Ha Hx Ex])]. apply (set_interp_ctx_conv _ _ _ _ _ _ _ Hc Hσ).
+  apply (set_denotes_exists _ _ _ _ _ HM). split; [exact Ht |]. exists x, x', (FA (set_env_tail ρ)). constructor; try assumption.
+  - exact (set_denotes_exists _ _ _ _ _ HA _ Ht).
+  - eapply set_mem_eq_r; [| exact Hx]. apply code_carrier_resp.
+    eapply set_eq_trans; [exact (set_denotes_unique _ _ _ _ _ HA' _ _ _ Ht Ha) | apply set_eq_sym; apply EA; exact Ht].
+Qed.
+
+(** [Π A B ≈ Π A' B'], into the sort of the codomain's kind over a
+    universe. *)
+Lemma set_rule_pi_cong : forall Γ κd κc A A' B B' U FU FS FA FA' FS' FB FB', fn_kinds_unique ->
+    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ->
+    gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ⊢ˢ sb_id : ce_ass κd A :: Γ -> pi_kinds κd κc ->
+    set_denotes T γ Γ U FU -> (forall ρ, set_env_in T γ Γ ρ -> exists V, universe_shape FU ρ V) ->
+    set_exp_eq_with T γ Γ (abs_kind_sort κd U) A A' FS FA FA' ->
+    set_exp_eq_with T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) B B' FS' FB FB' ->
+    set_exp_eq T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A' B').
+Proof.
+  intros * Hfn Hmods HΓ Hc Hc' Hσ Hk HU Hshape [HS HA HA' EA HAm] [HS' HB HB' EB HBm].
+  destruct (set_rule_pi Γ κd κc A B U FU FS FA FA FS' FB FB HΓ Hc Hk HU Hshape
+              (Build_set_exp_eq_with _ _ _ _ _ _ _ _ _ HS HA HA (fun _ _ => set_eq_refl _) HAm)
+              (Build_set_exp_eq_with _ _ _ _ _ _ _ _ _ HS' HB HB (fun _ _ => set_eq_refl _) HBm))
+    as (FK & FL & _ & [HK HL _ _ HLm]).
+  pose proof (set_denotes_ctx_conv_ass _ _ _ _ _ _ _ _ Hfn Hmods HΓ Hc Hσ HA HA' EA HB') as HB''.
+  exists FK, FL, (pi_denotation κd κc FA' FB'). constructor; [exact HK | exact HL | apply set_denotes_pi; assumption | | exact HLm].
+  - intros ρ Hρ. eapply set_eq_trans; [exact (set_denotes_agree _ _ _ _ _ _ _ HL (set_denotes_pi _ _ κc _ _ _ _ HΓ Hc HA HB) Hρ) |].
+    pose proof (set_denotes_exists _ _ _ _ _ HA _ Hρ) as Ha.
+    assert (Hacross : respects_across (code_carrier (FA ρ)) (body_function κd FB ρ) (body_function κd FB' ρ)).
+    { intros x x' Hx E. unfold body_function.
+      eapply set_eq_trans; [exact (EB _ (set_env_in_extend_ass T γ Γ ρ κd A _ x Hρ Ha Hx)) |].
+      exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HB' Hρ _ _ Hx E). }
+    destruct κc; cbn [pi_denotation];
+      first [apply pi_code_resp_on | apply forall_code_resp_on]; first [exact (EA ρ Hρ) | exact Hacross].
+Qed.
+
 (** ** λs *)
 
 (** The value of a λ of the kinds [κd], [κc]: a proof, or the graph of its
@@ -264,22 +308,6 @@ Corollary set_rule_fn : forall Γ κd κc i A M B FA FS FB FB2 FB' FM FM2, fn_ki
     set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M FB' FM FM2 ->
     set_exp_eq T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A M).
 Proof. intros. do 3 eexists. eapply set_rule_fn_with; eassumption. Qed.
-
-(** A term of an extension by [A], read in the extension by an equal
-    [A'], keeps its denotation. *)
-Lemma set_denotes_ctx_conv_ass : forall Γ κ A A' M FA FA' FM, fn_kinds_unique ->
-    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ -> gc_deps ⍮ gc_stack ⍮ ce_ass κ A' :: Γ ⊢ˢ sb_id : ce_ass κ A :: Γ ->
-    set_denotes T γ Γ A FA -> set_denotes T γ Γ A' FA' -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FA ρ) (FA' ρ)) ->
-    set_denotes T γ (ce_ass κ A :: Γ) M FM -> set_denotes T γ (ce_ass κ A' :: Γ) M FM.
-Proof.
-  intros * Hfn Hmods HΓ Hc Hσ HA HA' EA HM. apply set_denotes_of_exists; [exact Hfn | exact Hmods | split; [exact HΓ | exists FA'; exact HA'] |].
-  intros ρ [Ht (x & x' & a & [E1 E2 Ha Hx Ex])]. apply (set_interp_ctx_conv _ _ _ _ _ _ _ Hc Hσ).
-  apply (set_denotes_exists _ _ _ _ _ HM). split; [exact Ht |]. exists x, x', (FA (set_env_tail ρ)). constructor; try assumption.
-  - exact (set_denotes_exists _ _ _ _ _ HA _ Ht).
-  - eapply set_mem_eq_r; [| exact Hx]. apply code_carrier_resp.
-    eapply set_eq_trans; [exact (set_denotes_unique _ _ _ _ _ HA' _ _ _ Ht Ha) | apply set_eq_sym; apply EA; exact Ht].
-Qed.
 
 (** [λ A M ≈ λ A' M']. *)
 Lemma set_rule_fn_cong : forall Γ κd κc i A A' M M' B C' B' Srt FS FA FA' FS2 FB FB2 FB3 FM FM', fn_kinds_unique ->
