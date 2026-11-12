@@ -131,6 +131,8 @@
 ./Core/SetModel/Interpretation/Inductives/Carriers.v
 ./Core/SetModel/Interpretation/Inductives/Bound.v
 ./Core/SetModel/Interpretation/Interp.v
+./Core/SetModel/Interpretation/Respects.v
+./Core/SetModel/Judgments.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v
 ./Core/Semantic/Kinds/KindsEval.v

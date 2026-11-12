@@ -63,6 +63,14 @@ Proof.
     [intros ? ? _ H; exact H | intros ? ? _ H; exact H | apply singleton_set_resp; exact E | intros _ _; exact Hφ].
 Qed.
 
+(** Conditional sets at equivalent conditions, equal where they hold. *)
+Lemma cond_resp_cond : forall (φ ψ : Prop) x y, (φ <-> ψ) -> (φ -> set_eq x y) -> set_eq (cond φ x) (cond ψ y).
+Proof.
+  intros * Hφ E. apply set_eq_intro; intros z Hz; apply set_mem_cond in Hz as [Hc Hz]; apply set_mem_cond.
+  - split; [apply Hφ; exact Hc | eapply set_mem_eq_r; [apply E; exact Hc | exact Hz]].
+  - split; [apply Hφ; exact Hc | eapply set_mem_eq_r; [apply set_eq_sym; apply E; apply Hφ; exact Hc | exact Hz]].
+Qed.
+
 (** ** Π and ∀ *)
 
 (** The [Π] over the domain code [dom] into the codomain codes [F]: its
@@ -94,6 +102,24 @@ Qed.
 Lemma pi_domain_pi_code : forall dom F, set_eq (pi_domain (pi_code dom F)) dom.
 Proof.
   intros. unfold pi_domain, pi_code. eapply set_eq_trans; [apply pair_first_resp; apply code_datum_type_code | apply pair_first_ordered_pair].
+Qed.
+
+Lemma pi_code_resp_on : forall dom dom' F G, set_eq dom dom' -> respects_across (code_carrier dom) F G ->
+    set_eq (pi_code dom F) (pi_code dom' G).
+Proof.
+  intros * Ed H. pose proof (code_carrier_resp _ _ Ed) as Ec. unfold pi_code. apply type_code_resp.
+  - apply ordered_pair_resp; [exact Ed | apply graph_set_resp_on; assumption].
+  - apply function_set_resp_on; [exact Ec |]. intros x x' Hx E. apply code_carrier_resp. apply H; assumption.
+Qed.
+
+Lemma forall_code_resp_on : forall dom dom' F G, set_eq dom dom' -> respects_across (code_carrier dom) F G ->
+    set_eq (forall_code dom F) (forall_code dom' G).
+Proof.
+  intros * Ed H. pose proof (code_carrier_resp _ _ Ed) as Ec. unfold forall_code. apply prop_code_eq. split.
+  - intros HF x Hx. assert (HxS : set_mem x (code_carrier dom)) by (eapply set_mem_eq_r; [apply set_eq_sym; exact Ec | exact Hx]).
+    eapply prop_true_resp; [apply H; [exact HxS | apply set_eq_refl] | apply HF; exact HxS].
+  - intros HG x Hx. eapply prop_true_resp; [apply set_eq_sym; apply H; [exact Hx | apply set_eq_refl] |].
+    apply HG. eapply set_mem_eq_r; [exact Ec | exact Hx].
 Qed.
 
 Lemma pi_code_relevant : forall dom F, is_relevant_code (pi_code dom F).

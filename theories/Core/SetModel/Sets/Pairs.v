@@ -414,3 +414,105 @@ Proof.
     apply (set_mem_sigma _ _ _ HF). exists x, y.
     split; [exact HxS | split; [eapply set_mem_eq_r; [apply set_eq_sym; apply EFG; exact HxS | exact Hy] | exact E]].
 Qed.
+
+(** ** Functions Respecting Equality on a Set
+
+    A binder's body is fixed only at the values of its domain; the
+    restriction of such a function to the domain respects equality
+    everywhere and agrees with it on the domain. *)
+
+(** [F] respects equality at the members of [S]. *)
+Definition respects_on (S : aczel_set) (F : aczel_set -> aczel_set) : Prop :=
+  forall x y, set_mem x S -> set_eq x y -> set_eq (F x) (F y).
+
+(** The restriction of [F] to [S]: at [x], the union of the [F]s of the
+    members of [S] equal to [x]. *)
+Definition restrict_fun (S : aczel_set) (F : aczel_set -> aczel_set) (x : aczel_set) : aczel_set :=
+  union_set (family_set {a : aczel_index S | set_eq (aczel_element S a) x} (fun p => F (aczel_element S (proj1_sig p)))).
+
+Lemma set_mem_restrict_fun : forall S F x z, set_mem z (restrict_fun S F x) <->
+    exists a, set_eq (aczel_element S a) x /\ set_mem z (F (aczel_element S a)).
+Proof.
+  intros. unfold restrict_fun. rewrite set_mem_union. split.
+  - intros [w [Hw Hz]]. apply set_mem_family in Hw as [[a Ha] E]. exists a. split; [exact Ha | eapply set_mem_eq_r; eauto].
+  - intros [a [Ha Hz]]. exists (F (aczel_element S a)). split; [apply set_mem_family; exists (exist _ a Ha); apply set_eq_refl | exact Hz].
+Qed.
+
+Lemma restrict_fun_resp : forall S F, respects_set_eq_fun (restrict_fun S F).
+Proof.
+  intros S F x y E. apply set_eq_intro; intros z Hz; apply set_mem_restrict_fun in Hz as [a [Ha Hz]];
+    apply set_mem_restrict_fun; exists a; split; try exact Hz;
+    [eapply set_eq_trans; [exact Ha | exact E] | eapply set_eq_trans; [exact Ha | apply set_eq_sym; exact E]].
+Qed.
+
+Lemma restrict_fun_agree : forall S F x, respects_on S F -> set_mem x S -> set_eq (restrict_fun S F x) (F x).
+Proof.
+  intros S F x HF Hx. apply set_eq_intro; intros z Hz.
+  - apply set_mem_restrict_fun in Hz as [a [Ha Hz]].
+    eapply set_mem_eq_r; [apply HF; [exists a; apply set_eq_refl | exact Ha] | exact Hz].
+  - destruct Hx as [a Ha]. apply set_mem_restrict_fun. exists a. split; [apply set_eq_sym; exact Ha |].
+    eapply set_mem_eq_r; [apply HF; [exists a; exact Ha | exact Ha] | exact Hz].
+Qed.
+
+(** Families of pointwise equal sets are equal. *)
+Lemma family_set_pointwise : forall A f g, (forall a : A, set_eq (f a) (g a)) -> set_eq (family_set A f) (family_set A g).
+Proof.
+  intros A f g H. apply set_eq_intro; intros z Hz; apply set_mem_family in Hz as [a E]; apply set_mem_family; exists a;
+    [eapply set_eq_trans; [exact E | apply H] | eapply set_eq_trans; [exact E | apply set_eq_sym; apply H]].
+Qed.
+
+(** A function crossing equal arguments of [S] to equal values. *)
+Definition respects_across (S : aczel_set) (F G : aczel_set -> aczel_set) : Prop :=
+  forall x x', set_mem x S -> set_eq x x' -> set_eq (F x) (G x').
+
+Lemma respects_across_left : forall S F G, respects_across S F G -> respects_on S F.
+Proof.
+  intros S F G H x y Hx E. eapply set_eq_trans; [apply H; [exact Hx | exact E] |].
+  apply set_eq_sym. apply H; [eapply set_mem_eq_l; [exact E | exact Hx] | apply set_eq_refl].
+Qed.
+
+Lemma respects_across_right : forall S S' F G, set_eq S S' -> respects_across S F G -> respects_on S' G.
+Proof.
+  intros S S' F G ES H x y Hx E. assert (HxS : set_mem x S) by (eapply set_mem_eq_r; [apply set_eq_sym; exact ES | exact Hx]).
+  eapply set_eq_trans; [apply set_eq_sym; apply H; [exact HxS | apply set_eq_refl] |]. apply H; [exact HxS | exact E].
+Qed.
+
+Lemma graph_set_restrict : forall S F, respects_on S F -> set_eq (graph_set S F) (graph_set S (restrict_fun S F)).
+Proof.
+  intros S F HF. apply family_set_pointwise. intros a. apply ordered_pair_resp; [apply set_eq_refl |].
+  apply set_eq_sym. apply restrict_fun_agree; [exact HF | exists a; apply set_eq_refl].
+Qed.
+
+Lemma graph_set_resp_on : forall S S' F G, set_eq S S' -> respects_across S F G -> set_eq (graph_set S F) (graph_set S' G).
+Proof.
+  intros S S' F G ES H. pose proof (respects_across_left _ _ _ H) as HF. pose proof (respects_across_right _ _ _ _ ES H) as HG.
+  eapply set_eq_trans; [apply graph_set_restrict; exact HF |].
+  eapply set_eq_trans; [| apply set_eq_sym; apply graph_set_restrict; exact HG].
+  apply graph_set_resp; [apply restrict_fun_resp | apply restrict_fun_resp | exact ES |].
+  intros x Hx. eapply set_eq_trans; [apply restrict_fun_agree; [exact HF | exact Hx] |].
+  eapply set_eq_trans; [apply H; [exact Hx | apply set_eq_refl] |].
+  apply set_eq_sym. apply restrict_fun_agree; [exact HG | eapply set_mem_eq_r; [exact ES | exact Hx]].
+Qed.
+
+Lemma function_set_restrict : forall S F, respects_on S F -> set_eq (function_set S F) (function_set S (restrict_fun S F)).
+Proof.
+  intros S F HF. unfold function_set.
+  apply separation_set_resp; [apply is_dependent_function_resp | apply is_dependent_function_resp | |].
+  - apply power_set_resp. apply product_set_resp; [apply set_eq_refl |]. unfold indexed_union_set. apply union_set_resp.
+    apply family_set_pointwise. intros a. apply set_eq_sym. apply restrict_fun_agree; [exact HF | exists a; apply set_eq_refl].
+  - intros g _. unfold is_dependent_function. split; intros [Ht Hu]; split; try exact Hu; intros x Hx; destruct (Ht x Hx) as [y [Hy HyF]];
+      exists y; split; try exact Hy; eapply set_mem_eq_r; try exact HyF;
+      [apply set_eq_sym; apply restrict_fun_agree | apply restrict_fun_agree]; assumption.
+Qed.
+
+Lemma function_set_resp_on : forall S S' F G, set_eq S S' -> respects_across S F G ->
+    set_eq (function_set S F) (function_set S' G).
+Proof.
+  intros S S' F G ES H. pose proof (respects_across_left _ _ _ H) as HF. pose proof (respects_across_right _ _ _ _ ES H) as HG.
+  eapply set_eq_trans; [apply function_set_restrict; exact HF |].
+  eapply set_eq_trans; [| apply set_eq_sym; apply function_set_restrict; exact HG].
+  apply function_set_resp; [apply restrict_fun_resp | apply restrict_fun_resp | exact ES |].
+  intros x Hx. eapply set_eq_trans; [apply restrict_fun_agree; [exact HF | exact Hx] |].
+  eapply set_eq_trans; [apply H; [exact Hx | apply set_eq_refl] |].
+  apply set_eq_sym. apply restrict_fun_agree; [exact HG | eapply set_mem_eq_r; [exact ES | exact Hx]].
+Qed.

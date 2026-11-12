@@ -12,14 +12,6 @@ Import ListNotations.
 (** A value applied to arguments, outermost first. *)
 Definition apply_values (f : aczel_set) (args : list aczel_set) : aczel_set := fold_left set_apply args f.
 
-(** The closure of a member of the kind [κ] over a parameter of the type
-    code [dom]: a proof at [ak_propositional], otherwise the graph. *)
-Definition close_value (κ : abs_kind) (dom : aczel_set) (F : aczel_set -> aczel_set) : aczel_set :=
-  match κ with
-  | ak_propositional => empty_set
-  | _ => graph_set (code_carrier dom) F
-  end.
-
 Section Modules.
   Variable γ : global_valuation.
 
@@ -47,25 +39,24 @@ Fixpoint members_lookup (ms : list (string * set_entry)) (x : string) : option s
       end
   end.
 
-(** The kind of the term member [x] of a module: at a parameter, read at
-    any argument, the members' kinds not depending on it. *)
-Fixpoint member_kind (m : set_module) (x : string) : abs_kind :=
+(** The term member [x] of a module is a proof: at every value of a
+    parameter's type (a function of a parameter is fixed only there), in a
+    table as a proposition's entry, in a global module by the kind of its
+    global. *)
+Fixpoint member_is_proof (m : set_module) (x : string) : Prop :=
   match m with
-  | set_module_params _ f => member_kind (f empty_set) x
-  | set_module_members ms =>
-      match members_lookup ms x with
-      | Some (set_entry_term κ _) => κ
-      | _ => ak_relevant
-      end
-  | set_module_global p _ => fst (global_term γ (qname_in p x))
+  | set_module_params dom f => forall v, set_mem v (code_carrier dom) -> member_is_proof (f v) x
+  | set_module_members ms => exists v, members_lookup ms x = Some (set_entry_term ak_propositional v)
+  | set_module_global p _ => fst (global_term γ (qname_in p x)) = ak_propositional
   end.
 
 (** The term member [x] of a module: the closed value of a global one at
     the module's arguments, a table's entry, or, over a parameter, the
-    member's closure. *)
+    member's closure: the empty set for a proof, otherwise the graph. *)
 Fixpoint select_term (m : set_module) (x : string) : aczel_set :=
   match m with
-  | set_module_params dom f => close_value (member_kind (f empty_set) x) dom (fun v => select_term (f v) x)
+  | set_module_params dom f =>
+      cond (~ member_is_proof m x) (graph_set (code_carrier dom) (fun v => select_term (f v) x))
   | set_module_members ms =>
       match members_lookup ms x with
       | Some e => set_entry_value e

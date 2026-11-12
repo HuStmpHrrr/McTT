@@ -9,7 +9,12 @@
     empty set by its former ([a_tt], [a_conj], an elimination into
     propositions, …) or by its environment (a proof variable holds the
     empty set).  Modules, units and bodies are interpreted alongside
-    ([set_interp_modexp] and the relations after it). *)
+    ([set_interp_modexp] and the relations after it).
+
+    A binder's body is a function [F] of the bound value, related to the
+    body's value at every value of the domain and arbitrary elsewhere;
+    that [F] respects equality on the domain follows from functionality
+    ([set_interp_functional]). *)
 
 From Stdlib Require Import String List.
 From Mctt Require Import LibTactics.
@@ -87,20 +92,21 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 | set_interp_elim : forall Γ ρ r p D Us m Bks M us v ns r0,
     r <> ak_propositional ->
     ind_lookup gc_deps gc_stack p = Some D ->
+    List.length Us = List.length (set_group_uniform_types (global_group γ p)) ->
     set_interp_list Γ ρ Us us ->
     set_interp Γ ρ M v ->
     set_elim_graph Γ ρ r p D Us Bks m (us ++ ns) v r0 ->
     set_interp Γ ρ (a_elim r p Us m Bks M) r0
 (** A [Π] into propositions: the impredicative quantification *)
 | set_interp_pi_prop : forall Γ ρ κd A B a F,
-    set_interp Γ ρ A a -> respects_set_eq_fun F ->
+    set_interp Γ ρ A a ->
     (forall x, set_mem x (code_carrier a) ->
        set_interp (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) B (F x)) ->
     set_interp Γ ρ (a_pi κd ak_propositional A B) (forall_code a F)
 (** A [Π] into types or types of levels: the dependent functions *)
 | set_interp_pi : forall Γ ρ κd κc A B a F,
     κc <> ak_propositional ->
-    set_interp Γ ρ A a -> respects_set_eq_fun F ->
+    set_interp Γ ρ A a ->
     (forall x, set_mem x (code_carrier a) ->
        set_interp (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) B (F x)) ->
     set_interp Γ ρ (a_pi κd κc A B) (pi_code a F)
@@ -112,7 +118,7 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 (** Any other λ: the graph of its body on the domain *)
 | set_interp_fn : forall Γ ρ A M κd κc C B a F,
     Γ ⊢a a_fn A M ⟹ nf_pi κd κc C B -> κc <> ak_propositional ->
-    set_interp Γ ρ A a -> respects_set_eq_fun F ->
+    set_interp Γ ρ A a ->
     (forall x, set_mem x (code_carrier a) ->
        set_interp (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) M (F x)) ->
     set_interp Γ ρ (a_fn A M) (graph_set (code_carrier a) F)

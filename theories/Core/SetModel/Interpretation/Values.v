@@ -6,6 +6,7 @@
     environment gives every variable an entry ([set_env]). *)
 
 From Stdlib Require Import String List.
+From Mctt.Core.SetModel.Sets Require Export Encodings.
 From Mctt.Core.SetModel.Interpretation Require Export Codes.
 From Mctt.Core.Syntactic Require Import Syntax.
 
@@ -67,3 +68,40 @@ Definition set_entry_module_part (e : set_entry) : set_module :=
   | set_entry_module m | set_entry_both _ m => m
   | set_entry_term _ _ => set_module_global (q_abs nil nil) nil
   end.
+
+(** ** Equality of Values *)
+
+(** [set_entry_eq e e']: the entries [e] and [e'] are equal: of one shape
+    and kind, with equal parts. *)
+Inductive set_entry_eq : set_entry -> set_entry -> Prop :=
+(** Two terms of one kind *)
+| set_entry_eq_term : forall κ v v', set_eq v v' -> set_entry_eq (set_entry_term κ v) (set_entry_term κ v')
+(** Two modules *)
+| set_entry_eq_module : forall m m', set_module_eq m m' -> set_entry_eq (set_entry_module m) (set_entry_module m')
+(** Two definitions with module parts *)
+| set_entry_eq_both : forall v v' m m', set_eq v v' -> set_module_eq m m' ->
+    set_entry_eq (set_entry_both v m) (set_entry_both v' m')
+(** [set_module_eq m m']: the modules [m] and [m'] are equal *)
+with set_module_eq : set_module -> set_module -> Prop :=
+(** Functions of a parameter: equal domains, equal at equal values of the
+    domain *)
+| set_module_eq_params : forall a a' f f', set_eq a a' ->
+    (forall x x', set_mem x (code_carrier a) -> set_eq x x' -> set_module_eq (f x) (f' x')) ->
+    set_module_eq (set_module_params a f) (set_module_params a' f')
+(** Tables with equal entries under the same names *)
+| set_module_eq_members : forall ms ms', set_members_eq ms ms' ->
+    set_module_eq (set_module_members ms) (set_module_members ms')
+(** One global module at equal arguments *)
+| set_module_eq_global : forall p args args', list_set_eq args args' ->
+    set_module_eq (set_module_global p args) (set_module_global p args')
+(** [set_members_eq ms ms']: the tables [ms] and [ms'] have the same names,
+    in order, with equal entries *)
+with set_members_eq : list (string * set_entry) -> list (string * set_entry) -> Prop :=
+(** No member *)
+| set_members_eq_nil : set_members_eq nil nil
+(** A member, then the rest *)
+| set_members_eq_cons : forall x e e' ms ms', set_entry_eq e e' -> set_members_eq ms ms' ->
+    set_members_eq ((x, e) :: ms) ((x, e') :: ms').
+
+(** [set_env_eq ρ ρ']: the environments [ρ] and [ρ'] have equal entries. *)
+Definition set_env_eq (ρ ρ' : set_env) : Prop := forall x, set_entry_eq (ρ x) (ρ' x).
