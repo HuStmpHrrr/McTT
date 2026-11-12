@@ -168,11 +168,9 @@ Lemma cargs_container_count_app : forall D D' gs1' gs1 gs2' gs2, cargs_same_kind
     cargs_container_count D D' (gs1' ++ gs2') (gs1 ++ gs2) = cargs_container_count D D' gs1' gs1 + cargs_container_count D D' gs2' gs2.
 Proof. intros D D'; induction gs1' as [| [] gs1' IH]; intros [| [] gs1] * H; cbn in *; try contradiction; rewrite ?IH by exact H; lia. Qed.
 
-(** Which leaf paths of an argument's shape are the container's does not
-    depend on the binders the shape's components are over. *)
-Lemma leaves_in_count_shift : forall D D' t' t m,
-    leaves_in_count D' t' (shape_leaves (rview_leaves D) m t) = leaves_in_count D' t' (shape_leaves (rview_leaves D) 0 t).
-Proof. intros; apply leaves_in_count_ext, leaf_in_shape_leaves. Qed.
+(** Which leaf paths of an argument's shape are the container's
+    ([leaves_in_count_shift]) is in
+    [Core.Syntactic.System.Inductives.ViewLeaves]. *)
 
 Lemma length_wrap_ihs_ctx : forall D D' nn As Us na gs' gs gs0 r,
     cargs_same_kinds gs' gs -> List.length (wrap_ihs_ctx D D' nn As Us na gs0 r gs' gs) = cargs_container_count D D' gs' gs.

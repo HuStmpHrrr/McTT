@@ -23,7 +23,7 @@ From Mctt.Core.Syntactic Require Import Syntax Substitution Members Presup CoreI
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import Paths DescTyping MemberLemmas.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
-From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing UniformParams Views.
+From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing UniformParams Views ViewLeaves.
 Import ListNotations.
 
 Section ElimView.
@@ -207,5 +207,74 @@ Proof.
 Qed.
 
 End ContainerResults.
+
+(** ** The Wrapped Branch's Recursive Results, Read *)
+
+(** An environment extended by values holds, at a variable below them,
+    the value as far from the end. *)
+Lemma set_env_extend_kinded_value : forall vs κs ρ0 x, x < List.length vs ->
+    set_entry_value (set_env_extend_kinded ρ0 κs vs x) = List.nth (List.length vs - 1 - x) vs empty_set.
+Proof.
+  induction vs as [| v vs IH] using List.rev_ind; intros κs ρ0 x Hx; cbn [List.length] in Hx; [lia |].
+  rewrite set_env_extend_kinded_snoc_any, List.length_app. cbn [List.length].
+  destruct x as [| x].
+  - cbn. rewrite List.app_nth2 by lia. replace (List.length vs + 1 - 1 - 0 - List.length vs) with 0 by lia. reflexivity.
+  - rewrite List.length_app in Hx. cbn [List.length] in Hx. cbn [set_env_extend]. rewrite IH by lia.
+    rewrite List.app_nth1 by lia. f_equal. lia.
+Qed.
+
+(** The wrapped recursive results along the group's paths [ls], read at
+    an environment whose last entries [ws] are the container's: the
+    container's at its paths, the group's [ihsE] elsewhere. *)
+Lemma interp_wrap_leaves : forall Ψ ρ0 κs D' t' ls ihs ihsE Y ws r',
+    List.length ihs = List.length ls -> set_interp_list T γ Ψ (set_env_extend_kinded ρ0 κs (Y ++ ws)) ihs ihsE ->
+    r' + leaves_in_count D' t' ls <= List.length ws ->
+    set_interp_list T γ Ψ (set_env_extend_kinded ρ0 κs (Y ++ ws)) (wrap_leaves D' t' ls ihs r' (List.length ws))
+      (merge_leaves empty_set D' t' ls ihsE (List.skipn r' ws)).
+Proof.
+  intros Ψ ρ0 κs D' t'; induction ls as [| l ls IH]; intros [| ih ihs] ihsE Y ws r' Lh Ev Lw; cbn in Lh; try discriminate.
+  - inversion Ev; subst; cbn; constructor.
+  - inversion Ev as [| ? ? ? ? e es Ee Ees]; subst.
+    assert (Hc : leaves_in_count D' t' (l :: ls) = (if leaf_in D' t' l then 1 else 0) + leaves_in_count D' t' ls)
+      by (unfold leaves_in_count; cbn; destruct (leaf_in D' t' l); reflexivity).
+    rewrite Hc in Lw; cbn [wrap_leaves merge_leaves].
+    destruct (leaf_in D' t' l).
+    + destruct (nth_error_lt_some ws r' ltac:(lia)) as [a Ha].
+      rewrite (skipn_nth_cons _ _ _ Ha); cbn [List.hd List.tl].
+      constructor; [| apply IH; [ lia | exact Ees | lia ] ].
+      replace a with (set_entry_value (set_env_extend_kinded ρ0 κs (Y ++ ws) (List.length ws - 1 - r'))); [apply set_interp_var |].
+      rewrite set_env_extend_kinded_value by (rewrite List.length_app; lia).
+      rewrite List.length_app, List.app_nth2 by lia.
+      replace (List.length Y + List.length ws - 1 - (List.length ws - 1 - r') - List.length Y) with r' by lia.
+      apply List.nth_error_nth; exact Ha.
+    + constructor; [ exact Ee | apply IH; [ lia | exact Ees | lia ] ].
+Qed.
+
+(** And over a constructor's arguments, [gs'] as the container has them,
+    [gs] as the group does. *)
+Lemma interp_wrap_ihs : forall Ψ ρ0 κs D' D gs' gs ihs ihsE Y ws r', cargs_same_kinds gs' gs ->
+    List.length ihs = cargs_nrec D gs -> set_interp_list T γ Ψ (set_env_extend_kinded ρ0 κs (Y ++ ws)) ihs ihsE ->
+    r' + cargs_container_count D D' gs' gs <= List.length ws ->
+    set_interp_list T γ Ψ (set_env_extend_kinded ρ0 κs (Y ++ ws)) (wrap_ihs D' D gs' gs ihs r' (List.length ws))
+      (merge_ihs empty_set D' D gs' gs ihsE (List.skipn r' ws)).
+Proof.
+  intros Ψ ρ0 κs D' D; induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] ihs ihsE Y ws r' Hk Lh Ev Lw;
+    cbn in Hk; try contradiction; cbn [wrap_ihs merge_ihs cargs_nrec cargs_container_count] in Lh, Lw |- *.
+  - inversion Ev; subst; constructor.
+  - exact (IH _ _ _ _ _ _ Hk Lh Ev Lw).
+  - set (n0 := List.length (shape_leaves (rview_leaves D) 0 t)) in *.
+    rewrite <- (List.firstn_skipn n0 ihs) in Ev.
+    destruct (set_interp_list_app_inv T γ _ _ _ _ _ Ev) as [Ea Eb].
+    rewrite List.length_firstn, Nat.min_l in Ea, Eb by lia.
+    apply set_interp_list_app; [ exact Ea |].
+    apply IH; [ exact Hk | rewrite List.length_skipn; lia | exact Eb | exact Lw ].
+  - set (ls := shape_leaves (rview_leaves D) 0 t) in *.
+    rewrite <- (List.firstn_skipn (List.length ls) ihs) in Ev.
+    destruct (set_interp_list_app_inv T γ _ _ _ _ _ Ev) as [Ea Eb].
+    rewrite List.length_firstn, Nat.min_l in Ea, Eb by lia.
+    apply set_interp_list_app.
+    + apply interp_wrap_leaves; [ rewrite List.length_firstn; lia | exact Ea | lia ].
+    + rewrite List.skipn_skipn; apply IH; [ exact Hk | rewrite List.length_skipn; lia | exact Eb | lia ].
+Qed.
 
 End ElimView.

@@ -25,6 +25,7 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
+From Mctt.Core.Syntactic.System.Inductives Require Export ViewLeaves.
 From Mctt.Core.Semantic Require Export PER Realizability.
 From Mctt.Core.Semantic.Inductives Require Import IndPER ViewCoherence ViewCount.
 Import Domain_Notations Fixed_Notations.
@@ -137,27 +138,8 @@ Section Fixed_GCtx.
     destruct H as [H | H]; [ congruence | exact (IH _ H) ].
   Qed.
 
-  (** The kinds of a constructor's arguments in the group read ([gs']) and
-      in the group of the eliminator ([gs]): non-recursive in both,
-      recursive in both, or nested through (non-recursive in the group
-      read only). *)
-  Fixpoint cargs_same_kinds (gs' gs : list carg) : Prop :=
-    match gs', gs with
-    | nil, nil => True
-    | ca_arg _ _ :: gs1', ca_arg _ _ :: gs1 => cargs_same_kinds gs1' gs1
-    | ca_rec _ :: gs1', ca_rec _ :: gs1 => cargs_same_kinds gs1' gs1
-    | ca_arg _ _ :: gs1', ca_rec _ :: gs1 => cargs_same_kinds gs1' gs1
-    | _, _ => False
-    end.
-
-  Lemma cargs_same_kinds_refl : forall gs, cargs_same_kinds gs gs.
-  Proof. induction gs as [| [rA A | t] gs IH]; cbn; auto. Qed.
-
-  Lemma cargs_same_kinds_of_correspond : forall vm gs' gs, cargs_correspond vm gs' gs -> cargs_same_kinds gs' gs.
-  Proof.
-    induction gs' as [| [rA' A' | t'] gs' IH]; intros [| [rA A | t] gs] H; cbn in H |- *; try contradiction;
-      [ exact I | exact (IH _ (proj2 H)) | exact (IH _ (proj2 H)) | exact (IH _ (proj2 (proj2 H))) ].
-  Qed.
+  (** The kinds of two constructors' arguments ([cargs_same_kinds]) are in
+      [Core.Syntactic.System.Inductives.ViewLeaves]. *)
 
   Lemma cargs_same_kinds_length : forall gs' gs, cargs_same_kinds gs' gs -> List.length gs' = List.length gs.
   Proof.

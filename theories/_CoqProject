@@ -262,6 +262,7 @@
 ./Core/Syntactic/System/Inductives/GrecTyped.v
 ./Core/Syntactic/System/Inductives/IndRuns.v
 ./Core/Syntactic/System/Inductives/Views.v
+./Core/Syntactic/System/Inductives/ViewLeaves.v
 ./Core/Syntactic/System/Inductives/UniformParams.v
 ./Core/Syntactic/System/Privacy.v
 ./Core/Syntactic/System/Scoping.v
