@@ -214,10 +214,12 @@ Record set_constructor_ok (p : qname) (D : ind_decl) (G : set_group) (Mk : imemb
       set_env_in T γ (List.skipn (List.length gs - i) (cargs_ctx p D Mk gs) ++ im_params D Mk) ρ ->
       set_eq (F (set_env_values (List.skipn (List.length gs - i) (cargs_ctx p D Mk gs) ++ im_params D Mk) ρ))
              (shape_code G ds target tparams (set_env_values (List.skipn (List.length gs - i) (cargs_ctx p D Mk gs) ++ im_params D Mk) ρ) nil)
-    (** No argument reads a recursive argument before it *)
-  ; set_constructor_ok_ignores : forall n t j g ρ, List.nth_error gs n = Some (ca_rec t) -> n < j -> List.nth_error sgs j = Some g ->
-      set_env_in T γ (List.skipn (List.length gs - j) (cargs_ctx p D Mk gs) ++ im_params D Mk) ρ ->
-      argument_ignores (im_np D Mk + n) g (set_env_values (List.skipn (List.length gs - j) (cargs_ctx p D Mk gs) ++ im_params D Mk) ρ)
+    (** No argument reads a recursive argument before it, at any values:
+        for [node : T → T → (n : ℕ) → T], the type of [n] at [[t1; t2]]
+        is the one at [[∅; ∅]], two erasures, the second one at values
+        that are no environment's, as [∅] need not be of [T] *)
+  ; set_constructor_ok_ignores : forall n t j g pre, List.nth_error gs n = Some (ca_rec t) -> n < j -> List.nth_error sgs j = Some g ->
+      List.length pre = im_np D Mk + j -> argument_ignores (im_np D Mk + n) g pre
     (** A recursive argument ends in the member its shape names.  For
         [Vec (A : Type) : ℕ → Type] and [cons : (n : ℕ) → A → Vec A n →
         Vec A (S n)], the branch of [cons] binds its recursive result at
@@ -322,8 +324,17 @@ Record set_group_ok (p : qname) (D : ind_decl) (G : set_group) : Prop :=
       set_interp_list T γ (ind_uparams D) ρ Is is ->
       set_eq (apply_values (global_constructor γ p k c) (set_env_values (ind_uparams D) ρ))
              (apply_values (global_constructor γ qc k' c) is)
+    (** A view's type former at the uniform parameters is its container's
+        at the view's arguments there *)
+  ; set_group_ok_view_formers : forall k Mk qc k' Is vm ρ is, ind_member D k = Some Mk ->
+      im_head Mk = mh_view qc k' Is vm -> set_env_in T γ (ind_uparams D) ρ ->
+      set_interp_list T γ (ind_uparams D) ρ Is is ->
+      set_eq (apply_values (global_former γ p k) (set_env_values (ind_uparams D) ρ)) (apply_values (global_former γ qc k') is)
     (** The semantic signature respects equality *)
   ; set_group_ok_respects : signature_respects G
+    (** So do the carriers, in their parameters: an element of a [Π] code
+        over a shape's domains is read at equal points *)
+  ; set_group_ok_carrier_resp : forall k ps ps', list_set_eq ps ps' -> set_eq (set_group_carrier G k ps) (set_group_carrier G k ps')
     (** A member's constructors have distinct names *)
   ; set_group_ok_names : forall k SMk, List.nth_error (set_group_members G) k = Some SMk ->
       NoDup (List.map set_constructor_name (set_member_constructors SMk))
