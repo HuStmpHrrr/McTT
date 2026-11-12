@@ -287,6 +287,8 @@ Proof.
     rewrite tele_wk_app, <- List.app_assoc, List.length_app, wk_qn_plus in H. apply H.
     constructor; [apply List.app_assoc | exact Hφ |]. rewrite List.length_app, wk_qn_plus, <- Hlen.
     apply env_agrees_extend_kinded. exact Hag.
+  - intros Ξ ρ r p Us Bks j v res res' _ IH E; start_elim. eapply set_elim_resp; [| exact E].
+    eapply IH; [constructor; [reflexivity | assumption | assumption] | exact Hsh].
   - intros; constructor.
   - intros Ξ ρ r p Us Bks κ T0 gs v vs ihs _ IH; start_elim; constructor.
     eapply IH; [constructor; [reflexivity | assumption | assumption] | exact Hsh].
@@ -299,6 +301,8 @@ Proof.
     eapply IH; [constructor; [reflexivity | assumption | assumption] | exact Hsh].
   - intros Ξ ρ r p Us Bks D B t v Rs HD _ IH; start_elim. eapply set_ih_pi; [exact HD |].
     intros b Hb. eapply IH; [exact Hb | constructor; [reflexivity | assumption | assumption] | exact Hsh].
+  - intros Ξ ρ r p Us Bks t v rs rs' _ IH E; start_elim. eapply set_ih_resp; [| exact E].
+    eapply IH; [constructor; [reflexivity | assumption | assumption] | exact Hsh].
 Qed.
 
 (** A term, weakened under the extension [Ψ] by a renaming [φ] of the

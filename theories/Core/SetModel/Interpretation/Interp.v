@@ -388,6 +388,13 @@ with set_elim : ctx -> set_env -> abs_kind -> qname -> list exp -> list eblock -
     set_interp (elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ)
       (set_env_extend_kinded ρ (ctx_kinds (elim_bctx r p D Mj gs (blocks_motives Bks) Us)) (ns ++ vs ++ ihs)) B res ->
     set_elim Γ ρ r p Us Bks j v res
+(** A result equal to one: the eliminator's value as a function of the
+    environment is a set equal to the branch's value, described among the
+    motive's elements ([set_describe]), not the branch's value itself,
+    which only an [∃] gives at each environment; without the axiom of
+    choice no function picks it *)
+| set_elim_resp : forall Γ ρ r p Us Bks j v res res',
+    set_elim Γ ρ r p Us Bks j v res -> set_eq res res' -> set_elim Γ ρ r p Us Bks j v res'
 (** [set_ihs Γ ρ r p Us Bks gs vs ihs]: the arguments [vs] of the kinds
     [gs] have the recursive results [ihs], one per leaf path of each
     recursive argument, in order ([eval_ihs]) *)
@@ -421,7 +428,16 @@ with set_ih : ctx -> set_env -> abs_kind -> qname -> list exp -> list eblock -> 
     (forall b, set_mem b (relation_domain v) -> set_ih Γ ρ r p Us Bks t (set_apply v b) (Rs b)) ->
     set_ih Γ ρ r p Us Bks (pt_pi B t) v
       (List.map (fun i => graph_set (relation_domain v) (fun b => List.nth i (Rs b) empty_set))
-                (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))).
+                (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t))))
+(** Results equal to ones: [Rs] above is a function of the domain's
+    points, and at each point only an [∃] gives the results.  For
+    [inductive Tree : Type := node : (ℕ → Tree) → Tree] and the eliminator
+    at [node f], the recursive result of [f] is the graph of [n ↦] the
+    eliminator at [f n]; without the axiom of choice no function picks the
+    results at every [n], but one gives sets equal to them, described
+    among the elements of the results' types ([set_describe]) *)
+| set_ih_resp : forall Γ ρ r p Us Bks t v rs rs',
+    set_ih Γ ρ r p Us Bks t v rs -> list_set_eq rs rs' -> set_ih Γ ρ r p Us Bks t v rs'.
 
 End Interpretation.
 

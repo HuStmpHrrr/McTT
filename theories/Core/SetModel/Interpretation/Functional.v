@@ -67,6 +67,85 @@ Proof. intros fl v v' E. induction fl; constructor; [apply tuple_field_resp; exa
 Lemma set_env_eq_extend : forall ρ ρ' e e', set_env_eq γ ρ ρ' -> set_entry_eq γ e e' -> set_env_eq γ (set_env_extend ρ e) (set_env_extend ρ' e').
 Proof. exact set_env_extend_resp. Qed.
 
+(** ** The Eliminator's Results Without Their Closure
+
+    A derivation of the eliminator's relations ends, below its closure
+    under equal results ([set_elim_resp], [set_ih_resp]), in one of their
+    other rules, at a result equal to it. *)
+
+(** [set_elim_core Γ ρ r p Us Bks j v res]: [res] is the branch's value at
+    a constructor, by [set_elim_con]'s premises. *)
+Inductive set_elim_core (Γ : ctx) (ρ : set_env) (r : abs_kind) (p : qname) (Us : list exp) (Bks : list eblock)
+    (j : nat) (v res : aczel_set) : Prop :=
+(** [set_elim_con]'s premises *)
+| set_elim_core_con : forall D Mj pc k Dq Mk c gs ns vs nm Z A Bs n B ihs,
+    ind_lookup gc_deps gc_stack p = Some D -> ind_member D j = Some Mj -> im_ref p j Mj = (pc, k) ->
+    ind_lookup gc_deps gc_stack pc = Some Dq -> ind_member Dq k = Some Mk -> ind_con Mj c = Some gs ->
+    set_eq v (con_val c (ns ++ vs)) -> List.length ns = im_nn Mk -> List.length vs = List.length gs ->
+    List.nth_error Bks j = Some (eb_mk nm Z A Bs) -> brs_lookup Bs c = Some (n, B) ->
+    set_ihs T γ Γ ρ r p Us Bks gs vs ihs ->
+    List.length (ns ++ vs ++ ihs) = List.length (elim_bctx r p D Mj gs (blocks_motives Bks) Us) ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ ->
+    set_interp T γ (elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ)
+      (set_env_extend_kinded ρ (ctx_kinds (elim_bctx r p D Mj gs (blocks_motives Bks) Us)) (ns ++ vs ++ ihs)) B res ->
+    set_elim_core Γ ρ r p Us Bks j v res.
+
+(** [set_ih_core Γ ρ r p Us Bks t v ihs]: [ihs] are the recursive results
+    by [set_ih_self], [set_ih_rview] or [set_ih_pi]'s premises. *)
+Inductive set_ih_core (Γ : ctx) (ρ : set_env) (r : abs_kind) (p : qname) (Us : list exp) (Bks : list eblock) :
+    ptyp -> aczel_set -> list aczel_set -> Prop :=
+(** [set_ih_self]'s premises *)
+| set_ih_core_self : forall D j Mj Ps v r0,
+    ind_lookup gc_deps gc_stack p = Some D -> ind_member D j = Some Mj -> im_is_rview Mj = false ->
+    set_elim T γ Γ ρ r p Us Bks j v r0 -> set_ih_core Γ ρ r p Us Bks (pt_self j Ps) v [r0]
+(** [set_ih_rview]'s premises *)
+| set_ih_core_rview : forall D j Mj qr Is fl c gs Ps v rs,
+    ind_lookup gc_deps gc_stack p = Some D -> ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+    im_cons Mj = [(c, gs)] -> set_ihs T γ Γ ρ r p Us Bks gs (List.map (tuple_field v) fl) rs ->
+    set_ih_core Γ ρ r p Us Bks (pt_self j Ps) v rs
+(** [set_ih_pi]'s premises *)
+| set_ih_core_pi : forall D B t v Rs,
+    ind_lookup gc_deps gc_stack p = Some D ->
+    (forall b, set_mem b (relation_domain v) -> set_ih T γ Γ ρ r p Us Bks t (set_apply v b) (Rs b)) ->
+    set_ih_core Γ ρ r p Us Bks (pt_pi B t) v
+      (List.map (fun i => graph_set (relation_domain v) (fun b => List.nth i (Rs b) empty_set))
+                (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))).
+
+Lemma set_elim_ih_strip_all :
+  (forall Γ ρ M v, set_interp T γ Γ ρ M v -> True) /\
+  (forall Γ ρ Ms vs, set_interp_list T γ Γ ρ Ms vs -> True) /\
+  (forall Γ ρ fs vs, set_interp_fields T γ Γ ρ fs vs -> True) /\
+  (forall Γ ρ H m, set_interp_modexp T γ Γ ρ H m -> True) /\
+  (forall Γ ρ U m, set_interp_gunit T γ Γ ρ U m -> True) /\
+  (forall Γ ρ P L D m, set_interp_unit_params T γ Γ ρ P L D m -> True) /\
+  (forall Γ ρ D m, set_interp_moddef T γ Γ ρ D m -> True) /\
+  (forall Γ ρ Φ ms ρo, set_interp_gmod T γ Γ ρ Φ ms ρo -> True) /\
+  (forall Γ ρ E e, set_interp_gentry T γ Γ ρ E e -> True) /\
+  (forall Γ ρ r p Us Bks j v res, set_elim T γ Γ ρ r p Us Bks j v res ->
+     exists res0, set_eq res res0 /\ set_elim_core Γ ρ r p Us Bks j v res0) /\
+  (forall Γ ρ r p Us Bks gs vs ihs, set_ihs T γ Γ ρ r p Us Bks gs vs ihs -> True) /\
+  (forall Γ ρ r p Us Bks t v ihs, set_ih T γ Γ ρ r p Us Bks t v ihs ->
+     exists ihs0, list_set_eq ihs ihs0 /\ set_ih_core Γ ρ r p Us Bks t v ihs0).
+Proof.
+  apply (set_interp_combined_ind GC T γ); intros; try exact I.
+  - eexists; split; [apply set_eq_refl | econstructor; eassumption].
+  - match goal with IH : exists _, _ /\ _, E : set_eq _ _ |- _ => destruct IH as (res0 & E0 & Hc) end.
+    exists res0. split; [| exact Hc]. eapply set_eq_trans; [apply set_eq_sym; eassumption | exact E0].
+  - eexists; split; [apply list_set_eq_refl | econstructor; eassumption].
+  - eexists; split; [apply list_set_eq_refl | econstructor; eassumption].
+  - eexists; split; [apply list_set_eq_refl | econstructor; eassumption].
+  - match goal with IH : exists _, _ /\ _ |- _ => destruct IH as (ihs0 & E0 & Hc) end.
+    exists ihs0. split; [| exact Hc]. eapply list_set_eq_trans; [apply list_set_eq_sym; eassumption | exact E0].
+Qed.
+
+Lemma set_elim_strip : forall Γ ρ r p Us Bks j v res, set_elim T γ Γ ρ r p Us Bks j v res ->
+    exists res0, set_eq res res0 /\ set_elim_core Γ ρ r p Us Bks j v res0.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 set_elim_ih_strip_all)))))))))). Qed.
+
+Lemma set_ih_strip : forall Γ ρ r p Us Bks t v ihs, set_ih T γ Γ ρ r p Us Bks t v ihs ->
+    exists ihs0, list_set_eq ihs ihs0 /\ set_ih_core Γ ρ r p Us Bks t v ihs0.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 set_elim_ih_strip_all))))))))))). Qed.
+
 (** ** Functionality Across Related Contexts
 
     The values of a term read in two contexts related by [R] at equal
@@ -244,7 +323,9 @@ Proof.
   (** the eliminator *)
   - intros Γ ρ r p Us Bks j v res D Mj pc k Dq Mk c gs ns vs nm Z A Bs n B ihs
       HD HMj Href HDq HMk Hgs Hv Hns Hvs Hb HB _ IHihs Hlen Hc _ IHB Γ' ρ' v' res' HR He Ev H'.
-    inversion H' as [? ? ? ? ? ? ? ? ? D' Mj' pc' k' Dq' Mk' c' gs' ns' vs' nm' Z' A' Bs' n' B' ihs'
+    destruct (set_elim_strip _ _ _ _ _ _ _ _ _ H') as (res0 & E0 & H0).
+    eapply set_eq_trans; [| apply set_eq_sym; exact E0]. clear H' E0.
+    inversion H0 as [D' Mj' pc' k' Dq' Mk' c' gs' ns' vs' nm' Z' A' Bs' n' B' ihs'
                      HD' HMj' Href' HDq' HMk' Hgs' Hv' Hns' Hvs' Hb' HB' Hihs' Hlen' Hc' HB'']; subst.
     rewrite HD in HD'. injection HD' as <-. rewrite HMj in HMj'. injection HMj' as <-.
     rewrite Href in Href'. injection Href' as <- <-. rewrite HDq in HDq'. injection HDq' as <-.
@@ -257,17 +338,23 @@ Proof.
     pose proof (IHihs _ _ _ _ HR He Evs Hihs') as Eihs.
     eapply IHB; [apply R_extend; [exact HR | exact Hc | exact Hc'] | | exact HB''].
     apply set_env_extend_kinded_resp; [exact He |]. apply list_set_eq_app; [exact Ens | apply list_set_eq_app; assumption].
+  - intros Γ ρ r p Us Bks j v res res1 _ IH E1 Γ' ρ' v' res' HR He Ev H'.
+    eapply set_eq_trans; [apply set_eq_sym; exact E1 | eapply IH; eassumption].
   - intros * HR He Ev H'. inv H'. constructor.
   - intros Γ ρ r p Us Bks κ T0 gs v vs ihs _ IH Γ' ρ' vs' ihs' HR He Ev H'. inv H'. inversion Ev; subst.
     eapply IH; eassumption.
   - intros Γ ρ r p Us Bks t gs v vs ihs1 ihs2 _ IH1 _ IH2 Γ' ρ' vs' ihs' HR He Ev H'. inv H'. inversion Ev; subst.
     apply list_set_eq_app; [eapply IH1 | eapply IH2]; eassumption.
-  - intros Γ ρ r p Us Bks D j Mj Ps v r0 HD HMj Hrv _ IH Γ' ρ' v' ihs' HR He Ev H'. inv H'.
+  - intros Γ ρ r p Us Bks D j Mj Ps v r0 HD HMj Hrv _ IH Γ' ρ' v' ihs' HR He Ev H'.
+    destruct (set_ih_strip _ _ _ _ _ _ _ _ _ H') as (ihs0 & E0 & H0).
+    eapply list_set_eq_trans; [| apply list_set_eq_sym; exact E0]. clear H' E0. inv H0.
     + constructor; [| constructor]. eapply IH; eassumption.
     + exfalso. match goal with HD' : ind_lookup _ _ p = Some ?D', HM' : ind_member ?D' j = Some ?Mj', Hh : im_head ?Mj' = _ |- _ =>
         rewrite HD in HD'; injection HD' as <-; rewrite HMj in HM'; injection HM' as <-; unfold im_is_rview in Hrv; rewrite Hh in Hrv;
         discriminate end.
-  - intros Γ ρ r p Us Bks D j Mj qr Is fl c gs Ps v rs HD HMj Hh Hc _ IH Γ' ρ' v' ihs' HR He Ev H'. inv H'.
+  - intros Γ ρ r p Us Bks D j Mj qr Is fl c gs Ps v rs HD HMj Hh Hc _ IH Γ' ρ' v' ihs' HR He Ev H'.
+    destruct (set_ih_strip _ _ _ _ _ _ _ _ _ H') as (ihs0 & E0 & H0).
+    eapply list_set_eq_trans; [| apply list_set_eq_sym; exact E0]. clear H' E0. inv H0.
     + exfalso. match goal with HD' : ind_lookup _ _ p = Some ?D', HM' : ind_member ?D' j = Some ?Mj', Hrv : im_is_rview ?Mj' = false |- _ =>
         rewrite HD in HD'; injection HD' as <-; rewrite HMj in HM'; injection HM' as <-; unfold im_is_rview in Hrv; rewrite Hh in Hrv;
         discriminate end.
@@ -275,7 +362,9 @@ Proof.
         rewrite HD in HD'; injection HD' as <-; rewrite HMj in HM'; injection HM' as <-; rewrite Hh in Hh'; injection Hh' as <- <- <-;
         rewrite Hc in Hc'; injection Hc' as <- <- end.
       eapply IH; [exact HR | exact He | apply list_set_eq_map_tuple_field; exact Ev | eassumption].
-  - intros Γ ρ r p Us Bks D B t v Rs HD _ IH Γ' ρ' v' ihs' HR He Ev H'. inv H'.
+  - intros Γ ρ r p Us Bks D B t v Rs HD _ IH Γ' ρ' v' ihs' HR He Ev H'.
+    destruct (set_ih_strip _ _ _ _ _ _ _ _ _ H') as (ihs0 & E0 & H0).
+    eapply list_set_eq_trans; [| apply list_set_eq_sym; exact E0]. clear H' E0. inv H0.
     match goal with HD' : ind_lookup _ _ p = Some ?D' |- _ => rewrite HD in HD'; injection HD' as <- end.
     match goal with HR : forall b, set_mem b (relation_domain v') -> set_ih _ _ _ _ _ _ _ _ _ _ (?Rs' b) |- _ =>
       rename HR into HRs'; set (Rs'0 := Rs') in * end.
@@ -283,6 +372,8 @@ Proof.
     apply graph_set_resp_on; [apply relation_domain_resp; exact Ev |]. intros b b' Hb E.
     apply list_set_eq_nth. eapply IH; [exact Hb | exact HR | exact He | apply set_apply_resp; [exact Ev | exact E] |].
     apply HRs'. eapply set_mem_eq_l; [exact E |]. eapply set_mem_eq_r; [apply relation_domain_resp; exact Ev | exact Hb].
+  - intros Γ ρ r p Us Bks t v rs rs1 _ IH E1 Γ' ρ' v' ihs' HR He Ev H'.
+    eapply list_set_eq_trans; [apply list_set_eq_sym; exact E1 | eapply IH; eassumption].
 Qed.
 
 End Related.

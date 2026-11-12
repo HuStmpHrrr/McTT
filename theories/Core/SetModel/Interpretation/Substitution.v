@@ -311,6 +311,7 @@ Proof.
       rewrite !set_env_extend_kinded_ge. apply Hbd. lia.
     + intros y. rewrite List.length_app, <- Nat.add_assoc, <- Hlen, set_env_extend_kinded_ge. apply Hl.
     + intros y. rewrite List.length_app, <- Nat.add_assoc, <- Hlen, set_env_extend_kinded_ge. apply Hf.
+  - intros Ξ ρ r p Us Bks j v res res' _ IH E; start_elim. eapply set_elim_resp; [| exact E]. eapply IH; eassumption.
   - intros; constructor.
   - intros Ξ ρ r p Us Bks κ T0 gs v vs ihs _ IH; start_elim; constructor. eapply IH; eassumption.
   - intros Ξ ρ r p Us Bks t gs v vs ihs1 ihs2 _ IH1 _ IH2; start_elim; constructor; [eapply IH1 | eapply IH2]; eassumption.
@@ -320,6 +321,7 @@ Proof.
     eapply set_ih_rview; [exact HD | exact HMj | exact Hh | exact Hc |]. eapply IH; eassumption.
   - intros Ξ ρ r p Us Bks D B t v Rs HD _ IH; start_elim. eapply set_ih_pi; [exact HD |].
     intros b Hb. eapply IH; eassumption.
+  - intros Ξ ρ r p Us Bks t v rs rs' _ IH E; start_elim. eapply set_ih_resp; [| exact E]. eapply IH; eassumption.
 Qed.
 
 (** A term of a well-formed context, moved under the extension [Ψ] by a

@@ -210,3 +210,15 @@ Proof.
   - intros z Hz. apply set_mem_union. exists w0. split; auto.
     eapply set_mem_eq_r; [apply set_eq_sym; apply H; exact Hw0 | exact Hz].
 Qed.
+
+(** The member of [S] with the property [P], when there is one and only
+    one up to equality: a definite description, without choice. *)
+Definition set_describe (S : aczel_set) (P : aczel_set -> Prop) : aczel_set := union_set (separation_set S P).
+
+Lemma set_describe_eq : forall S P z, respects_set_eq P -> set_mem z S -> P z ->
+    (forall w, set_mem w S -> P w -> set_eq w z) -> set_eq (set_describe S P) z.
+Proof.
+  intros S P z HP Hz Pz Hu. apply union_set_const.
+  - exists z. apply (set_mem_separation _ _ _ HP). split; assumption.
+  - intros w Hw. apply (set_mem_separation _ _ _ HP) in Hw as [Hw Pw]. exact (Hu _ Hw Pw).
+Qed.
