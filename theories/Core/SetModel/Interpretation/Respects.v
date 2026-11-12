@@ -12,6 +12,62 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel.Interpretation Require Export Interp.
 Import ListNotations.
 
+(** ** The Equalities of Values Are Partial Equivalences *)
+
+Scheme set_entry_eq_mut_ind := Minimality for set_entry_eq Sort Prop
+with set_module_eq_mut_ind := Minimality for set_module_eq Sort Prop
+with set_members_eq_mut_ind := Minimality for set_members_eq Sort Prop.
+Combined Scheme set_value_eq_ind from set_entry_eq_mut_ind, set_module_eq_mut_ind, set_members_eq_mut_ind.
+
+Lemma set_value_eq_sym :
+  (forall e e', set_entry_eq e e' -> set_entry_eq e' e) /\
+  (forall m m', set_module_eq m m' -> set_module_eq m' m) /\
+  (forall ms ms', set_members_eq ms ms' -> set_members_eq ms' ms).
+Proof.
+  apply set_value_eq_ind.
+  - intros κ v v' E. constructor. apply set_eq_sym. exact E.
+  - intros m m' _ IH. constructor. exact IH.
+  - intros v v' m m' E _ IH. constructor; [apply set_eq_sym; exact E | exact IH].
+  - intros a a' f f' Ea _ IH. constructor; [apply set_eq_sym; exact Ea |]. intros x x' Hx E.
+    apply IH; [| apply set_eq_sym; exact E].
+    eapply set_mem_eq_l; [exact E |]. eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact Ea | exact Hx].
+  - intros ms ms' _ IH. constructor. exact IH.
+  - intros p args args' E. constructor. apply list_set_eq_sym. exact E.
+  - constructor.
+  - intros x e e' ms ms' _ IHe _ IHms. constructor; assumption.
+Qed.
+
+Lemma set_value_eq_trans :
+  (forall e1 e2, set_entry_eq e1 e2 -> forall e3, set_entry_eq e2 e3 -> set_entry_eq e1 e3) /\
+  (forall m1 m2, set_module_eq m1 m2 -> forall m3, set_module_eq m2 m3 -> set_module_eq m1 m3) /\
+  (forall ms1 ms2, set_members_eq ms1 ms2 -> forall ms3, set_members_eq ms2 ms3 -> set_members_eq ms1 ms3).
+Proof.
+  apply set_value_eq_ind.
+  - intros κ v v' E e3 H. inversion H; subst. constructor. eapply set_eq_trans; eassumption.
+  - intros m m' _ IH e3 H. inversion H; subst. constructor. apply IH. assumption.
+  - intros v v' m m' Ev _ IH e3 H. inversion H; subst. constructor; [eapply set_eq_trans; eassumption | apply IH; assumption].
+  - intros a a' f f' Ea _ IH m3 H. inversion H as [? a'' ? f'' Ea' Hf' | | ]; subst.
+    constructor; [eapply set_eq_trans; eassumption |]. intros x x' Hx E.
+    eapply IH; [exact Hx | apply set_eq_refl |]. apply Hf'; [| exact E].
+    eapply set_mem_eq_r; [apply code_carrier_resp; exact Ea | exact Hx].
+  - intros ms ms' _ IH m3 H. inversion H; subst. constructor. apply IH. assumption.
+  - intros p args args' E m3 H. inversion H; subst. constructor. eapply list_set_eq_trans; eassumption.
+  - intros ms3 H. inversion H; subst. constructor.
+  - intros x e e' ms ms' _ IHe _ IHms ms3 H. inversion H; subst. constructor; [apply IHe | apply IHms]; assumption.
+Qed.
+
+Corollary set_module_eq_sym : forall m m', set_module_eq m m' -> set_module_eq m' m.
+Proof. exact (proj1 (proj2 set_value_eq_sym)). Qed.
+
+Corollary set_module_eq_trans : forall m1 m2 m3, set_module_eq m1 m2 -> set_module_eq m2 m3 -> set_module_eq m1 m3.
+Proof. intros. eapply (proj1 (proj2 set_value_eq_trans)); eassumption. Qed.
+
+Corollary set_entry_eq_sym : forall e e', set_entry_eq e e' -> set_entry_eq e' e.
+Proof. exact (proj1 set_value_eq_sym). Qed.
+
+Corollary set_entry_eq_trans : forall e1 e2 e3, set_entry_eq e1 e2 -> set_entry_eq e2 e3 -> set_entry_eq e1 e3.
+Proof. intros. eapply (proj1 set_value_eq_trans); eassumption. Qed.
+
 (** ** The Operations Respect Equality *)
 
 Lemma set_entry_value_resp : forall e e', set_entry_eq e e' -> set_eq (set_entry_value e) (set_entry_value e').
