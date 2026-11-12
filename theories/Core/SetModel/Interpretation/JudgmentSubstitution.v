@@ -36,7 +36,7 @@ Section Moves.
   Variable γ : global_valuation.
   Hypothesis Hfn : fn_kinds_unique.
   (** Every global module equals itself *)
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
 (** [set_gsub_with Γ σ Δ Fσ]: [σ] substitutes [Δ] in [Γ], and [Fσ] gives
     the environment of [Δ] its entries read at an environment of [Γ]. *)
@@ -96,11 +96,11 @@ Proof.
 Qed.
 
 (** An environment equal to another is equal to itself. *)
-Lemma set_env_eq_left : forall ρ ρ', set_env_eq ρ ρ' -> set_env_eq ρ ρ.
+Lemma set_env_eq_left : forall ρ ρ', set_env_eq γ ρ ρ' -> set_env_eq γ ρ ρ.
 Proof. intros ρ ρ' H x. eapply set_entry_eq_trans; [apply H | apply set_entry_eq_sym; apply H]. Qed.
 
 Lemma set_interp_gunit_functional : forall Γ ρ U m, set_interp_gunit T γ Γ ρ U m ->
-    forall ρ' m', set_env_eq ρ ρ' -> set_interp_gunit T γ Γ ρ' U m' -> set_module_eq m m'.
+    forall ρ' m', set_env_eq γ ρ ρ' -> set_interp_gunit T γ Γ ρ' U m' -> set_module_eq γ m m'.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (set_interp_functional_all T γ Hfn Hmods)))))). Qed.
 
 (** Related environments of [tele_sub Ψ σ ++ Γ] read related ones of

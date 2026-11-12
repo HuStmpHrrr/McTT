@@ -21,7 +21,7 @@ Section Units.
   Variable γ : global_valuation.
   Hypothesis Hfn : fn_kinds_unique_ext.
   (** Every global module equals itself *)
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
 (** ** Values Read in Equal Extensions *)
 
@@ -41,7 +41,7 @@ Qed.
 (** A module expression the same. *)
 Lemma set_modexp_denotes_across : forall Γ Ψ Ψ' H F F' ρ, gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     set_modexp_denotes T γ (Ψ ++ Γ) H F -> set_modexp_denotes T γ (Ψ' ++ Γ) H F' ->
-    set_env_in T γ (Ψ ++ Γ) ρ -> set_env_in T γ (Ψ' ++ Γ) ρ -> set_module_eq (F ρ) (F' ρ).
+    set_env_in T γ (Ψ ++ Γ) ρ -> set_env_in T γ (Ψ' ++ Γ) ρ -> set_module_eq γ (F ρ) (F' ρ).
 Proof.
   intros * HΨ HF HF' Hρ Hρ'.
   exact (set_interp_modexp_functional_ext T γ Hfn Hmods _ _ _ _ (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) _ _ _
@@ -115,7 +115,7 @@ Qed.
 Lemma set_unit_module_across : forall Γ Ψ Ψ' U U' FU FU' FU2 FU2' ρ, gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     set_unit_eq_with T γ (Ψ ++ Γ) U U' FU FU' ->
     set_unit_eq_with T γ (Ψ' ++ Γ) U' U' FU2 FU2' ->
-    set_env_in T γ (Ψ ++ Γ) ρ -> set_env_in T γ (Ψ' ++ Γ) ρ -> set_module_eq (FU ρ) (FU2 ρ).
+    set_env_in T γ (Ψ ++ Γ) ρ -> set_env_in T γ (Ψ' ++ Γ) ρ -> set_module_eq γ (FU ρ) (FU2 ρ).
 Proof.
   intros * HΨ [_ HU' EU _ _] [HU2 _ _ _ _] Hρ Hρ'.
   eapply set_module_eq_trans; [apply EU; exact Hρ | exact (set_modexp_denotes_across _ _ _ _ _ _ _ HΨ HU' HU2 Hρ Hρ')].

@@ -31,7 +31,7 @@ Qed.
 Lemma tuple_field_resp : forall t t' f, set_eq t t' -> set_eq (tuple_field t f) (tuple_field t' f).
 Proof. intros. unfold tuple_field. apply set_apply_resp; [assumption | apply set_eq_refl]. Qed.
 
-Lemma set_entry_value_eq : forall e e', set_entry_eq e e' -> set_eq (set_entry_value e) (set_entry_value e').
+Lemma set_entry_value_eq {γ : global_valuation} : forall e e', set_entry_eq γ e e' -> set_eq (set_entry_value e) (set_entry_value e').
 Proof. exact set_entry_value_resp. Qed.
 
 Section Functional.
@@ -46,7 +46,7 @@ Definition fn_kinds_unique : Prop :=
 
   Hypothesis Hfn : fn_kinds_unique.
   (** Every global module equals itself *)
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
 Lemma universe_code_resp : forall l l' U U', set_eq l l' -> set_eq U U' -> set_eq (universe_code l U) (universe_code l' U').
 Proof.
@@ -54,7 +54,7 @@ Proof.
   apply separation_set_resp; [exact is_relevant_code_resp | exact is_relevant_code_resp | exact EU | tauto].
 Qed.
 
-Lemma set_members_eq_app : forall ms ms' ns ns', set_members_eq ms ms' -> set_members_eq ns ns' -> set_members_eq (ms ++ ns) (ms' ++ ns').
+Lemma set_members_eq_app : forall ms ms' ns ns', set_members_eq γ ms ms' -> set_members_eq γ ns ns' -> set_members_eq γ (ms ++ ns) (ms' ++ ns').
 Proof. intros * H Hn. induction H; cbn; [exact Hn | constructor; assumption]. Qed.
 
 Lemma list_set_eq_nth : forall l l' i d, list_set_eq l l' -> set_eq (List.nth i l d) (List.nth i l' d).
@@ -64,7 +64,7 @@ Lemma list_set_eq_map_tuple_field : forall fl v v', set_eq v v' ->
     list_set_eq (List.map (tuple_field v) fl) (List.map (tuple_field v') fl).
 Proof. intros fl v v' E. induction fl; constructor; [apply tuple_field_resp; exact E | assumption]. Qed.
 
-Lemma set_env_eq_extend : forall ρ ρ' e e', set_env_eq ρ ρ' -> set_entry_eq e e' -> set_env_eq (set_env_extend ρ e) (set_env_extend ρ' e').
+Lemma set_env_eq_extend : forall ρ ρ' e e', set_env_eq γ ρ ρ' -> set_entry_eq γ e e' -> set_env_eq γ (set_env_extend ρ e) (set_env_extend ρ' e').
 Proof. exact set_env_extend_resp. Qed.
 
 (** ** Functionality Across Related Contexts
@@ -90,29 +90,29 @@ Lemma R_extend_one : forall Δ Δ' e, R Δ Δ' -> ⊢ gc_deps ⍮ gc_stack ⍮ e
 Proof. intros * HR Hc Hc'. exact (R_extend Δ Δ' [e] HR Hc Hc'). Qed.
 
 Lemma set_interp_functional_rel_all :
-  (forall Γ ρ M v, set_interp T γ Γ ρ M v -> forall Γ' ρ' v', R Γ Γ' -> set_env_eq ρ ρ' -> set_interp T γ Γ' ρ' M v' ->
+  (forall Γ ρ M v, set_interp T γ Γ ρ M v -> forall Γ' ρ' v', R Γ Γ' -> set_env_eq γ ρ ρ' -> set_interp T γ Γ' ρ' M v' ->
      set_eq v v') /\
-  (forall Γ ρ Ms vs, set_interp_list T γ Γ ρ Ms vs -> forall Γ' ρ' vs', R Γ Γ' -> set_env_eq ρ ρ' ->
+  (forall Γ ρ Ms vs, set_interp_list T γ Γ ρ Ms vs -> forall Γ' ρ' vs', R Γ Γ' -> set_env_eq γ ρ ρ' ->
      set_interp_list T γ Γ' ρ' Ms vs' -> list_set_eq vs vs') /\
-  (forall Γ ρ fs vs, set_interp_fields T γ Γ ρ fs vs -> forall Γ' ρ' vs', R Γ Γ' -> set_env_eq ρ ρ' ->
+  (forall Γ ρ fs vs, set_interp_fields T γ Γ ρ fs vs -> forall Γ' ρ' vs', R Γ Γ' -> set_env_eq γ ρ ρ' ->
      set_interp_fields T γ Γ' ρ' fs vs' -> fields_set_eq vs vs') /\
-  (forall Γ ρ H m, set_interp_modexp T γ Γ ρ H m -> forall Γ' ρ' m', R Γ Γ' -> set_env_eq ρ ρ' ->
-     set_interp_modexp T γ Γ' ρ' H m' -> set_module_eq m m') /\
-  (forall Γ ρ U m, set_interp_gunit T γ Γ ρ U m -> forall Γ' ρ' m', R Γ Γ' -> set_env_eq ρ ρ' ->
-     set_interp_gunit T γ Γ' ρ' U m' -> set_module_eq m m') /\
-  (forall Γ ρ P L D m, set_interp_unit_params T γ Γ ρ P L D m -> forall Γ' ρ' P' m', R Γ Γ' -> set_env_eq ρ ρ' ->
-     (forall ys x, P ys x = P' ys x) -> set_interp_unit_params T γ Γ' ρ' P' L D m' -> set_module_eq m m') /\
-  (forall Γ ρ D m, set_interp_moddef T γ Γ ρ D m -> forall Γ' ρ' m', R Γ Γ' -> set_env_eq ρ ρ' ->
-     set_interp_moddef T γ Γ' ρ' D m' -> set_module_eq m m') /\
-  (forall Γ ρ Φ ms ρo, set_interp_gmod T γ Γ ρ Φ ms ρo -> forall Γ' ρ' ms' ρo', R Γ Γ' -> set_env_eq ρ ρ' ->
-     set_interp_gmod T γ Γ' ρ' Φ ms' ρo' -> set_members_eq ms ms' /\ set_env_eq ρo ρo') /\
-  (forall Γ ρ E e, set_interp_gentry T γ Γ ρ E e -> forall Γ' ρ' e', R Γ Γ' -> set_env_eq ρ ρ' ->
-     set_interp_gentry T γ Γ' ρ' E e' -> set_entry_eq e e') /\
-  (forall Γ ρ r p Us Bks j v res, set_elim T γ Γ ρ r p Us Bks j v res -> forall Γ' ρ' v' res', R Γ Γ' -> set_env_eq ρ ρ' ->
+  (forall Γ ρ H m, set_interp_modexp T γ Γ ρ H m -> forall Γ' ρ' m', R Γ Γ' -> set_env_eq γ ρ ρ' ->
+     set_interp_modexp T γ Γ' ρ' H m' -> set_module_eq γ m m') /\
+  (forall Γ ρ U m, set_interp_gunit T γ Γ ρ U m -> forall Γ' ρ' m', R Γ Γ' -> set_env_eq γ ρ ρ' ->
+     set_interp_gunit T γ Γ' ρ' U m' -> set_module_eq γ m m') /\
+  (forall Γ ρ P L D m, set_interp_unit_params T γ Γ ρ P L D m -> forall Γ' ρ' P' m', R Γ Γ' -> set_env_eq γ ρ ρ' ->
+     (forall ys x, P ys x = P' ys x) -> set_interp_unit_params T γ Γ' ρ' P' L D m' -> set_module_eq γ m m') /\
+  (forall Γ ρ D m, set_interp_moddef T γ Γ ρ D m -> forall Γ' ρ' m', R Γ Γ' -> set_env_eq γ ρ ρ' ->
+     set_interp_moddef T γ Γ' ρ' D m' -> set_module_eq γ m m') /\
+  (forall Γ ρ Φ ms ρo, set_interp_gmod T γ Γ ρ Φ ms ρo -> forall Γ' ρ' ms' ρo', R Γ Γ' -> set_env_eq γ ρ ρ' ->
+     set_interp_gmod T γ Γ' ρ' Φ ms' ρo' -> set_members_eq γ ms ms' /\ set_env_eq γ ρo ρo') /\
+  (forall Γ ρ E e, set_interp_gentry T γ Γ ρ E e -> forall Γ' ρ' e', R Γ Γ' -> set_env_eq γ ρ ρ' ->
+     set_interp_gentry T γ Γ' ρ' E e' -> set_entry_eq γ e e') /\
+  (forall Γ ρ r p Us Bks j v res, set_elim T γ Γ ρ r p Us Bks j v res -> forall Γ' ρ' v' res', R Γ Γ' -> set_env_eq γ ρ ρ' ->
      set_eq v v' -> set_elim T γ Γ' ρ' r p Us Bks j v' res' -> set_eq res res') /\
-  (forall Γ ρ r p Us Bks gs vs ihs, set_ihs T γ Γ ρ r p Us Bks gs vs ihs -> forall Γ' ρ' vs' ihs', R Γ Γ' -> set_env_eq ρ ρ' ->
+  (forall Γ ρ r p Us Bks gs vs ihs, set_ihs T γ Γ ρ r p Us Bks gs vs ihs -> forall Γ' ρ' vs' ihs', R Γ Γ' -> set_env_eq γ ρ ρ' ->
      list_set_eq vs vs' -> set_ihs T γ Γ' ρ' r p Us Bks gs vs' ihs' -> list_set_eq ihs ihs') /\
-  (forall Γ ρ r p Us Bks t v ihs, set_ih T γ Γ ρ r p Us Bks t v ihs -> forall Γ' ρ' v' ihs', R Γ Γ' -> set_env_eq ρ ρ' ->
+  (forall Γ ρ r p Us Bks t v ihs, set_ih T γ Γ ρ r p Us Bks t v ihs -> forall Γ' ρ' v' ihs', R Γ Γ' -> set_env_eq γ ρ ρ' ->
      set_eq v v' -> set_ih T γ Γ' ρ' r p Us Bks t v' ihs' -> list_set_eq ihs ihs').
 Proof.
   Local Ltac inv H := inversion H; subst; clear H.
@@ -182,7 +182,7 @@ Proof.
       match goal with HB' : forall y, set_mem y _ -> _ |- _ => apply HB' end; eapply set_mem_eq_l; [exact E |].
       eapply set_mem_eq_r; [apply code_carrier_resp; exact Ea | exact Hx].
   - intros Γ ρ M N f n _ IH1 _ IH2 Γ' ρ' v' HR He H'. inv H'. apply set_apply_resp; [eapply IH1 | eapply IH2]; eassumption.
-  - intros Γ ρ x Γ' ρ' v' HR He H'. inv H'. apply set_entry_value_resp. apply He.
+  - intros Γ ρ x Γ' ρ' v' HR He H'. inv H'. apply (set_entry_value_resp (γ := γ)). apply He.
   - intros Γ ρ A M B v w Hc _ IHM _ IHB Γ' ρ' v' HR He H'. inv H'.
     eapply IHB; [apply R_extend_one; [exact HR | exact Hc | eassumption] | | eassumption]; apply set_env_eq_extend; [exact He | constructor; eapply IHM; eassumption].
   - intros Γ ρ U B m w Hc _ IHU _ IHB Γ' ρ' v' HR He H'. inv H'.
@@ -290,28 +290,28 @@ End Related.
 (** ** Functionality in One Context *)
 
 Lemma set_interp_functional_all :
-  (forall Γ ρ M v, set_interp T γ Γ ρ M v -> forall ρ' v', set_env_eq ρ ρ' -> set_interp T γ Γ ρ' M v' -> set_eq v v') /\
-  (forall Γ ρ Ms vs, set_interp_list T γ Γ ρ Ms vs -> forall ρ' vs', set_env_eq ρ ρ' -> set_interp_list T γ Γ ρ' Ms vs' ->
+  (forall Γ ρ M v, set_interp T γ Γ ρ M v -> forall ρ' v', set_env_eq γ ρ ρ' -> set_interp T γ Γ ρ' M v' -> set_eq v v') /\
+  (forall Γ ρ Ms vs, set_interp_list T γ Γ ρ Ms vs -> forall ρ' vs', set_env_eq γ ρ ρ' -> set_interp_list T γ Γ ρ' Ms vs' ->
      list_set_eq vs vs') /\
-  (forall Γ ρ fs vs, set_interp_fields T γ Γ ρ fs vs -> forall ρ' vs', set_env_eq ρ ρ' -> set_interp_fields T γ Γ ρ' fs vs' ->
+  (forall Γ ρ fs vs, set_interp_fields T γ Γ ρ fs vs -> forall ρ' vs', set_env_eq γ ρ ρ' -> set_interp_fields T γ Γ ρ' fs vs' ->
      fields_set_eq vs vs') /\
-  (forall Γ ρ H m, set_interp_modexp T γ Γ ρ H m -> forall ρ' m', set_env_eq ρ ρ' -> set_interp_modexp T γ Γ ρ' H m' ->
-     set_module_eq m m') /\
-  (forall Γ ρ U m, set_interp_gunit T γ Γ ρ U m -> forall ρ' m', set_env_eq ρ ρ' -> set_interp_gunit T γ Γ ρ' U m' ->
-     set_module_eq m m') /\
-  (forall Γ ρ P L D m, set_interp_unit_params T γ Γ ρ P L D m -> forall ρ' P' m', set_env_eq ρ ρ' ->
-     (forall ys x, P ys x = P' ys x) -> set_interp_unit_params T γ Γ ρ' P' L D m' -> set_module_eq m m') /\
-  (forall Γ ρ D m, set_interp_moddef T γ Γ ρ D m -> forall ρ' m', set_env_eq ρ ρ' -> set_interp_moddef T γ Γ ρ' D m' ->
-     set_module_eq m m') /\
-  (forall Γ ρ Φ ms ρo, set_interp_gmod T γ Γ ρ Φ ms ρo -> forall ρ' ms' ρo', set_env_eq ρ ρ' ->
-     set_interp_gmod T γ Γ ρ' Φ ms' ρo' -> set_members_eq ms ms' /\ set_env_eq ρo ρo') /\
-  (forall Γ ρ E e, set_interp_gentry T γ Γ ρ E e -> forall ρ' e', set_env_eq ρ ρ' -> set_interp_gentry T γ Γ ρ' E e' ->
-     set_entry_eq e e') /\
-  (forall Γ ρ r p Us Bks j v res, set_elim T γ Γ ρ r p Us Bks j v res -> forall ρ' v' res', set_env_eq ρ ρ' -> set_eq v v' ->
+  (forall Γ ρ H m, set_interp_modexp T γ Γ ρ H m -> forall ρ' m', set_env_eq γ ρ ρ' -> set_interp_modexp T γ Γ ρ' H m' ->
+     set_module_eq γ m m') /\
+  (forall Γ ρ U m, set_interp_gunit T γ Γ ρ U m -> forall ρ' m', set_env_eq γ ρ ρ' -> set_interp_gunit T γ Γ ρ' U m' ->
+     set_module_eq γ m m') /\
+  (forall Γ ρ P L D m, set_interp_unit_params T γ Γ ρ P L D m -> forall ρ' P' m', set_env_eq γ ρ ρ' ->
+     (forall ys x, P ys x = P' ys x) -> set_interp_unit_params T γ Γ ρ' P' L D m' -> set_module_eq γ m m') /\
+  (forall Γ ρ D m, set_interp_moddef T γ Γ ρ D m -> forall ρ' m', set_env_eq γ ρ ρ' -> set_interp_moddef T γ Γ ρ' D m' ->
+     set_module_eq γ m m') /\
+  (forall Γ ρ Φ ms ρo, set_interp_gmod T γ Γ ρ Φ ms ρo -> forall ρ' ms' ρo', set_env_eq γ ρ ρ' ->
+     set_interp_gmod T γ Γ ρ' Φ ms' ρo' -> set_members_eq γ ms ms' /\ set_env_eq γ ρo ρo') /\
+  (forall Γ ρ E e, set_interp_gentry T γ Γ ρ E e -> forall ρ' e', set_env_eq γ ρ ρ' -> set_interp_gentry T γ Γ ρ' E e' ->
+     set_entry_eq γ e e') /\
+  (forall Γ ρ r p Us Bks j v res, set_elim T γ Γ ρ r p Us Bks j v res -> forall ρ' v' res', set_env_eq γ ρ ρ' -> set_eq v v' ->
      set_elim T γ Γ ρ' r p Us Bks j v' res' -> set_eq res res') /\
-  (forall Γ ρ r p Us Bks gs vs ihs, set_ihs T γ Γ ρ r p Us Bks gs vs ihs -> forall ρ' vs' ihs', set_env_eq ρ ρ' ->
+  (forall Γ ρ r p Us Bks gs vs ihs, set_ihs T γ Γ ρ r p Us Bks gs vs ihs -> forall ρ' vs' ihs', set_env_eq γ ρ ρ' ->
      list_set_eq vs vs' -> set_ihs T γ Γ ρ' r p Us Bks gs vs' ihs' -> list_set_eq ihs ihs') /\
-  (forall Γ ρ r p Us Bks t v ihs, set_ih T γ Γ ρ r p Us Bks t v ihs -> forall ρ' v' ihs', set_env_eq ρ ρ' ->
+  (forall Γ ρ r p Us Bks t v ihs, set_ih T γ Γ ρ r p Us Bks t v ihs -> forall ρ' v' ihs', set_env_eq γ ρ ρ' ->
      set_eq v v' -> set_ih T γ Γ ρ' r p Us Bks t v' ihs' -> list_set_eq ihs ihs').
 Proof.
   assert (Hk : forall Δ Δ' A M κd κc C B κd' κc' C' B', Δ = Δ' ->
@@ -327,11 +327,11 @@ Proof.
 Qed.
 
 Theorem set_interp_functional : forall Γ ρ M v, set_interp T γ Γ ρ M v ->
-    forall ρ' v', set_env_eq ρ ρ' -> set_interp T γ Γ ρ' M v' -> set_eq v v'.
+    forall ρ' v', set_env_eq γ ρ ρ' -> set_interp T γ Γ ρ' M v' -> set_eq v v'.
 Proof. exact (proj1 set_interp_functional_all). Qed.
 
 Theorem set_interp_modexp_functional : forall Γ ρ H m, set_interp_modexp T γ Γ ρ H m ->
-    forall ρ' m', set_env_eq ρ ρ' -> set_interp_modexp T γ Γ ρ' H m' -> set_module_eq m m'.
+    forall ρ' m', set_env_eq γ ρ ρ' -> set_interp_modexp T γ Γ ρ' H m' -> set_module_eq γ m m'.
 Proof. exact (proj1 (proj2 (proj2 (proj2 set_interp_functional_all)))). Qed.
 
 End Functional.

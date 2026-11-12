@@ -26,7 +26,7 @@ Section ModuleCases.
   Variable γ : global_valuation.
   Hypothesis Hfn : fn_kinds_unique.
   (** Every global module equals itself *)
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
   (** The valuation models the global context *)

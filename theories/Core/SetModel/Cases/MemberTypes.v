@@ -30,14 +30,14 @@ Section MemberTypes.
   Variable γ : global_valuation.
   Hypothesis Hfn : fn_kinds_unique.
   (** Every global module equals itself *)
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
 
 (** ** Families Over a Parameter *)
 
 (** Values read past one more assumption respect equality of its value. *)
-Lemma set_interp_family_respects : forall Γ ρ κ A X a F, set_env_eq ρ ρ ->
+Lemma set_interp_family_respects : forall Γ ρ κ A X a F, set_env_eq γ ρ ρ ->
     (forall v, set_mem v (code_carrier a) -> set_interp T γ (ce_ass κ A :: Γ) (set_env_extend ρ (set_entry_term κ v)) X (F v)) ->
     respects_on (code_carrier a) F.
 Proof.
@@ -46,7 +46,7 @@ Proof.
 Qed.
 
 (** So do the modules of a unit over one more parameter. *)
-Lemma set_interp_params_family_respects : forall Γ ρ P κ A L D a f x, set_env_eq ρ ρ ->
+Lemma set_interp_params_family_respects : forall Γ ρ P κ A L D a f x, set_env_eq γ ρ ρ ->
     (forall v, set_mem v (code_carrier a) ->
        set_interp_unit_params T γ (ce_ass κ A :: Γ) (set_env_extend ρ (set_entry_term κ v)) P L D (f v)) ->
     respects_on (code_carrier a) (fun v => select_term γ (f v) x).
@@ -221,7 +221,7 @@ Qed.
 (** A module read in an environment of a context where its unit denotes
     equals itself. *)
 Lemma set_interp_gunit_self_eq : forall Γ ρ U m, set_modexp_rel T γ Γ (me_lit U) (me_lit U) -> set_env_in T γ Γ ρ ->
-    set_interp_gunit T γ Γ ρ U m -> set_module_eq m m.
+    set_interp_gunit T γ Γ ρ U m -> set_module_eq γ m m.
 Proof.
   intros * (F & F' & [HF _ _]) Hρ Hm.
   pose proof (set_modexp_denotes_unique _ _ _ _ _ HF _ _ _ Hρ (set_interp_me_lit T γ _ _ _ _ Hm)) as E.
@@ -415,7 +415,7 @@ Proof.
 Qed.
 
 (** The members of equal modules agree. *)
-Lemma set_member_values_at_resp : forall Γ ρ m m' x R A, set_module_eq m m' ->
+Lemma set_member_values_at_resp : forall Γ ρ m m' x R A, set_module_eq γ m m' ->
     set_member_values_at Γ ρ m x R A -> set_member_values_at Γ ρ m' x R A.
 Proof.
   intros * Em [Hty Hred Hpr]. pose proof (select_term_resp γ _ _ Em x) as Es.
@@ -461,7 +461,7 @@ Lemma set_alias_members : forall Γ Δ E, set_alias_ok T γ Γ Δ E -> gc_deps �
        mdenote gc_deps gc_stack (Δ ++ Γ) (me_mem E x) (mdesc_term r A0 None) ->
        gc_deps ⍮ gc_stack ⍮ Δ ++ Γ ⊢ a_mem (qname_mod p) x : A0 /\
        forall FE, set_modexp_denotes T γ (Δ ++ Γ) E FE -> forall ρ', set_env_in T γ (Δ ++ Γ) ρ' ->
-         forall m, set_interp_modexp T γ (Δ ++ Γ) ρ' (qname_mod p) m -> set_module_eq (FE ρ') m) ->
+         forall m, set_interp_modexp T γ (Δ ++ Γ) ρ' (qname_mod p) m -> set_module_eq γ (FE ρ') m) ->
     (forall κs, set_slots_coherent γ Γ κs -> forall x R A, mdenote gc_deps gc_stack Γ (me_mem (me_lit (gu_mk Δ (md_alias E))) x) R ->
        mdesc_type R = Some A -> modexp_member_proofs γ κs (me_lit (gu_mk Δ (md_alias E))) nil x = is_proof_kind (mdesc_kind R)) /\
     (forall F, set_modexp_denotes T γ Γ (me_lit (gu_mk Δ (md_alias E))) F -> set_members_values Γ (me_lit (gu_mk Δ (md_alias E))) F).
@@ -825,8 +825,8 @@ Proof.
     split; [exact HR0 | split; [exact Hats | split; [exact Hft | split; [rewrite Hk; exact HrR1 | split; [exact HrR1 |]]]]].
     split; [rewrite Hty; apply mdesc_type_named_m | exact Hred]. }
   pose proof (set_filed_mod_path _ _ _ _ _ HFm) as Hpath.
-  assert (Hglob : forall Γ' ρ' m, set_env_eq ρ' ρ' -> set_interp_modexp T γ Γ' ρ' (qname_mod p) m ->
-            set_module_eq m (set_module_global p nil)).
+  assert (Hglob : forall Γ' ρ' m, set_env_eq γ ρ' ρ' -> set_interp_modexp T γ Γ' ρ' (qname_mod p) m ->
+            set_module_eq γ m (set_module_global p nil)).
   { intros Γ' ρ' m Eρ Hm. exact (set_interp_modexp_functional T γ Hfn Hmods _ _ _ _ Hm _ _ Eρ (Hpath Γ' ρ')). }
   split.
   - (* a proof as its stored kind says *)
@@ -838,7 +838,7 @@ Proof.
     destruct (Hdesc _ _ _ Hm Ht) as (R0 & R1 & A0 & i & HR0 & Hats & Hft & Hk & HkR1 & Hty & Hred).
     pose proof (set_env_rel_eq T γ _ _ _ Hρ) as Eρ.
     destruct (set_interp_me_apps_inv _ _ _ _ _ (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ)) as (m0 & ns & Hm0 & Hns & EF).
-    assert (EFg : set_module_eq (F ρ) (set_module_global p ns)).
+    assert (EFg : set_module_eq γ (F ρ) (set_module_global p ns)).
     { rewrite EF, <- (List.app_nil_l ns), <- apply_module_args_global.
       apply apply_module_args_resp; [exact (Hglob _ _ _ Eρ Hm0) | apply list_set_eq_refl]. }
     apply (set_member_values_at_resp _ _ _ _ _ _ _ (set_module_eq_sym _ _ EFg)).
@@ -981,7 +981,7 @@ Qed.
 Definition set_names_filed (Γ : ctx) (H : modexp) : Prop :=
   forall RH p T0 Φ0, mdenote gc_deps gc_stack Γ H RH -> mdesc_mod RH = Some (mdesc_closed nil p T0 Φ0 nil) ->
     forall F, set_modexp_denotes T γ Γ H F -> forall ρ, set_env_in T γ Γ ρ ->
-    forall m, set_interp_modexp T γ Γ ρ (qname_mod p) m -> set_module_eq (F ρ) m.
+    forall m, set_interp_modexp T γ Γ ρ (qname_mod p) m -> set_module_eq γ (F ρ) m.
 
 Theorem set_valid_unit_members_all :
   (forall Γ K, set_valid_unit T γ Γ K -> set_members_all Γ K /\ set_names_filed Γ K) /\

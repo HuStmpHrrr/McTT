@@ -106,7 +106,7 @@ Qed.
 
 (** A [Π] into an evaluated kind is covariant in its codomain. *)
 Lemma set_rule_subtyp_pi : forall Γ κd κc i A A' B B' FS FA FA' FS1 FB FB1 FS2 FB' FB'2 FX FX', fn_kinds_unique ->
-    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ->
     gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ⊢ˢ sb_id : ce_ass κd A :: Γ -> κc <> ak_propositional ->
     set_exp_eq_with T γ Γ (abs_kind_sort κd (a_typ i)) A A' FS FA FA' ->

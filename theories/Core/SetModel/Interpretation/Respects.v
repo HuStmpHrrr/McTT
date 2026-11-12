@@ -14,6 +14,9 @@ From Mctt.Core.Syntactic Require Import Syntax Substitution.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas.
 Import ListNotations.
 
+Section Operations.
+  Variable γ : global_valuation.
+
 (** ** The Equalities of Values Are Partial Equivalences *)
 
 Scheme set_entry_eq_mut_ind := Minimality for set_entry_eq Sort Prop
@@ -22,9 +25,9 @@ with set_members_eq_mut_ind := Minimality for set_members_eq Sort Prop.
 Combined Scheme set_value_eq_ind from set_entry_eq_mut_ind, set_module_eq_mut_ind, set_members_eq_mut_ind.
 
 Lemma set_value_eq_sym :
-  (forall e e', set_entry_eq e e' -> set_entry_eq e' e) /\
-  (forall m m', set_module_eq m m' -> set_module_eq m' m) /\
-  (forall ms ms', set_members_eq ms ms' -> set_members_eq ms' ms).
+  (forall e e', set_entry_eq γ e e' -> set_entry_eq γ e' e) /\
+  (forall m m', set_module_eq γ m m' -> set_module_eq γ m' m) /\
+  (forall ms ms', set_members_eq γ ms ms' -> set_members_eq γ ms' ms).
 Proof.
   apply set_value_eq_ind.
   - intros κ v v' E. constructor. apply set_eq_sym. exact E.
@@ -36,60 +39,36 @@ Proof.
   - intros ms ms' _ IH. constructor. exact IH.
   - intros p args args' E. constructor. apply list_set_eq_sym. exact E.
   - intros φ φ' P P' m m' Hφ EP _ IH. constructor; [tauto | intros; symmetry; apply EP | intros Hc; apply IH; apply Hφ; exact Hc].
+  - intros φ P m m' Hφ _ IH EP. apply set_module_eq_cond_r; [exact Hφ | exact IH | exact EP].
+  - intros φ P m m' Hφ _ IH EP. apply set_module_eq_cond_l; [exact Hφ | exact IH | exact EP].
   - constructor.
   - intros x e e' ms ms' _ IHe _ IHms. constructor; assumption.
 Qed.
 
-Lemma set_value_eq_trans :
-  (forall e1 e2, set_entry_eq e1 e2 -> forall e3, set_entry_eq e2 e3 -> set_entry_eq e1 e3) /\
-  (forall m1 m2, set_module_eq m1 m2 -> forall m3, set_module_eq m2 m3 -> set_module_eq m1 m3) /\
-  (forall ms1 ms2, set_members_eq ms1 ms2 -> forall ms3, set_members_eq ms2 ms3 -> set_members_eq ms1 ms3).
-Proof.
-  apply set_value_eq_ind.
-  - intros κ v v' E e3 H. inversion H; subst. constructor. eapply set_eq_trans; eassumption.
-  - intros m m' _ IH e3 H. inversion H; subst. constructor. apply IH. assumption.
-  - intros v v' m m' Ev _ IH e3 H. inversion H; subst. constructor; [eapply set_eq_trans; eassumption | apply IH; assumption].
-  - intros a a' P P' f f' Ea EP _ IH m3 H. inversion H as [? a'' ? P'' ? f'' Ea' EP' Hf' | | | ]; subst.
-    constructor; [eapply set_eq_trans; eassumption | intros; rewrite EP; apply EP' |]. intros x x' Hx E.
-    eapply IH; [exact Hx | apply set_eq_refl |]. apply Hf'; [| exact E].
-    eapply set_mem_eq_r; [apply code_carrier_resp; exact Ea | exact Hx].
-  - intros ms ms' _ IH m3 H. inversion H; subst. constructor. apply IH. assumption.
-  - intros p args args' E m3 H. inversion H; subst. constructor. eapply list_set_eq_trans; eassumption.
-  - intros φ φ' P P' m m' Hφ EP _ IH m3 H. inversion H as [| | | ? φ'' ? P'' ? m'' Hφ' EP' Hm']; subst.
-    constructor; [tauto | intros; rewrite EP; apply EP' | intros Hc; apply IH; [exact Hc | apply Hm'; apply Hφ; exact Hc]].
-  - intros ms3 H. inversion H; subst. constructor.
-  - intros x e e' ms ms' _ IHe _ IHms ms3 H. inversion H; subst. constructor; [apply IHe | apply IHms]; assumption.
-Qed.
-
-Corollary set_module_eq_sym : forall m m', set_module_eq m m' -> set_module_eq m' m.
+Corollary set_module_eq_sym : forall m m', set_module_eq γ m m' -> set_module_eq γ m' m.
 Proof. exact (proj1 (proj2 set_value_eq_sym)). Qed.
 
-Corollary set_module_eq_trans : forall m1 m2 m3, set_module_eq m1 m2 -> set_module_eq m2 m3 -> set_module_eq m1 m3.
-Proof. intros. eapply (proj1 (proj2 set_value_eq_trans)); eassumption. Qed.
-
-Corollary set_entry_eq_sym : forall e e', set_entry_eq e e' -> set_entry_eq e' e.
+Corollary set_entry_eq_sym : forall e e', set_entry_eq γ e e' -> set_entry_eq γ e' e.
 Proof. exact (proj1 set_value_eq_sym). Qed.
-
-Corollary set_entry_eq_trans : forall e1 e2 e3, set_entry_eq e1 e2 -> set_entry_eq e2 e3 -> set_entry_eq e1 e3.
-Proof. intros. eapply (proj1 set_value_eq_trans); eassumption. Qed.
 
 (** ** The Operations Respect Equality *)
 
-Lemma set_entry_value_resp : forall e e', set_entry_eq e e' -> set_eq (set_entry_value e) (set_entry_value e').
+Lemma set_entry_value_resp : forall e e', set_entry_eq γ e e' -> set_eq (set_entry_value e) (set_entry_value e').
 Proof. intros e e' H. destruct H; cbn [set_entry_value]; first [assumption | apply set_eq_refl]. Qed.
 
-Lemma set_entry_module_part_resp : forall e e', set_entry_eq e e' -> set_module_eq (set_entry_module_part e) (set_entry_module_part e').
+Lemma set_entry_module_part_resp : forall e e', set_entry_eq γ e e' ->
+    set_module_eq γ (set_entry_module_part e) (set_entry_module_part e').
 Proof. intros e e' H. destruct H; cbn; first [assumption | constructor; constructor]. Qed.
 
 (** Equal tables have equal entries under every name. *)
 Definition members_lookup_eq (o o' : option set_entry) : Prop :=
   match o, o' with
-  | Some e, Some e' => set_entry_eq e e'
+  | Some e, Some e' => set_entry_eq γ e e'
   | None, None => True
   | _, _ => False
   end.
 
-Lemma members_lookup_resp : forall ms ms', set_members_eq ms ms' -> forall x,
+Lemma members_lookup_resp : forall ms ms', set_members_eq γ ms ms' -> forall x,
     members_lookup_eq (members_lookup ms x) (members_lookup ms' x).
 Proof.
   intros ms ms' H. induction H as [| y e e' ms ms' He Hms IH]; intros x; cbn; [exact I |].
@@ -97,12 +76,12 @@ Proof.
   destruct (String.eqb x y); cbn; trivial.
 Qed.
 
-Lemma set_env_extend_resp : forall ρ ρ' e e', set_env_eq ρ ρ' -> set_entry_eq e e' ->
-    set_env_eq (set_env_extend ρ e) (set_env_extend ρ' e').
+Lemma set_env_extend_resp : forall ρ ρ' e e', set_env_eq γ ρ ρ' -> set_entry_eq γ e e' ->
+    set_env_eq γ (set_env_extend ρ e) (set_env_extend ρ' e').
 Proof. intros * Hρ He [| x]; cbn; [exact He | apply Hρ]. Qed.
 
-Lemma set_env_extend_kinded_resp : forall vs vs' κs ρ ρ', set_env_eq ρ ρ' -> list_set_eq vs vs' ->
-    set_env_eq (set_env_extend_kinded ρ κs vs) (set_env_extend_kinded ρ' κs vs').
+Lemma set_env_extend_kinded_resp : forall vs vs' κs ρ ρ', set_env_eq γ ρ ρ' -> list_set_eq vs vs' ->
+    set_env_eq γ (set_env_extend_kinded ρ κs vs) (set_env_extend_kinded ρ' κs vs').
 Proof.
   intros vs vs' κs ρ ρ' Hρ H. revert κs ρ ρ' Hρ. induction H as [| v v' vs vs' Hv _ IH]; intros κs ρ ρ' Hρ; cbn; [exact Hρ |].
   apply IH. apply set_env_extend_resp; [exact Hρ | constructor; exact Hv].
@@ -116,16 +95,14 @@ Proof.
   apply IH. apply set_apply_resp; assumption.
 Qed.
 
-Section Operations.
-  Variable γ : global_valuation.
-
 (** Equal modules have the same members' proofness. *)
-Lemma module_member_proofs_resp : forall ys m m', set_module_eq m m' -> forall x,
+Lemma module_member_proofs_resp : forall ys m m', set_module_eq γ m m' -> forall x,
     module_member_proofs γ m ys x = module_member_proofs γ m' ys x.
 Proof.
   induction ys as [| y ys IH]; intros m m' H x;
-    destruct H as [a a' P P' f f' Ea EP Hf | ms ms' Hms | p args args' _ | φ φ' P P' m m' Hφ EP _]; cbn;
-    try apply EP; try reflexivity.
+    destruct H as [a a' P P' f f' Ea EP Hf | ms ms' Hms | p args args' _ | φ φ' P P' m m' Hφ EP _
+                  | φ P m m' Hφ _ EP | φ P m m' Hφ _ EP];
+    try (cbn; apply EP); try (cbn; symmetry; apply EP); cbn; try reflexivity.
   - pose proof (members_lookup_resp _ _ Hms x) as E.
     destruct (members_lookup ms x) as [e |], (members_lookup ms' x) as [e' |]; cbn in E; try contradiction; [| reflexivity].
     destruct E; reflexivity.
@@ -134,25 +111,104 @@ Proof.
     apply IH. apply set_entry_module_part_resp. exact E.
 Qed.
 
-Lemma member_is_proof_resp : forall m m', set_module_eq m m' -> forall x, member_is_proof γ m x <-> member_is_proof γ m' x.
+Lemma apply_module_proofs : forall m v ys x, module_member_proofs γ (apply_module m v) ys x = module_member_proofs γ m ys x.
+Proof. intros [] v [] x; reflexivity. Qed.
+
+Lemma apply_module_args_proofs : forall args m ys x,
+    module_member_proofs γ (apply_module_args m args) ys x = module_member_proofs γ m ys x.
+Proof.
+  induction args as [| a args IH]; intros m ys x; [reflexivity |]. unfold apply_module_args in *. cbn [fold_left].
+  rewrite IH. apply apply_module_proofs.
+Qed.
+
+Lemma select_module_proofs : forall m y ys x, module_member_proofs γ (select_module γ m y) ys x = module_member_proofs γ m (y :: ys) x.
+Proof.
+  intros [dom P f | ms | p args | φ P m'] y ys x; cbn [select_module module_member_proofs].
+  - destruct ys; reflexivity.
+  - destruct (members_lookup ms y); [reflexivity | destruct ys; reflexivity].
+  - apply apply_module_args_proofs.
+  - destruct ys; reflexivity.
+Qed.
+
+Lemma set_value_eq_trans :
+  (forall e1 e2, set_entry_eq γ e1 e2 -> forall e3, set_entry_eq γ e2 e3 -> set_entry_eq γ e1 e3) /\
+  (forall m1 m2, set_module_eq γ m1 m2 -> forall m3, set_module_eq γ m2 m3 -> set_module_eq γ m1 m3) /\
+  (forall ms1 ms2, set_members_eq γ ms1 ms2 -> forall ms3, set_members_eq γ ms2 ms3 -> set_members_eq γ ms1 ms3).
+Proof.
+  apply set_value_eq_ind.
+  - intros κ v v' E e3 H. inversion H; subst. constructor. eapply set_eq_trans; eassumption.
+  - intros m m' _ IH e3 H. inversion H; subst. constructor. apply IH. assumption.
+  - intros v v' m m' Ev _ IH e3 H. inversion H; subst. constructor; [eapply set_eq_trans; eassumption | apply IH; assumption].
+  - (* functions of a parameter *)
+    intros a a' P P' f f' Ea EP Hf0 IH m3 H. remember (set_module_params a' P' f') as m2 eqn:E2.
+    induction H as [? a'' ? P'' ? f'' Ea' EP' Hf' _ | | | | | φ Q m2' m3' Hφ H IHH EQ]; try discriminate.
+    + injection E2 as <- <- <-. constructor; [eapply set_eq_trans; eassumption | intros; rewrite EP; apply EP' |]. intros x x' Hx E.
+      eapply IH; [exact Hx | apply set_eq_refl |]. apply Hf'; [| exact E].
+      eapply set_mem_eq_r; [apply code_carrier_resp; exact Ea | exact Hx].
+    + subst. apply set_module_eq_cond_r; [exact Hφ | exact (IHH eq_refl) |]. intros ys x. rewrite EQ. destruct ys; cbn; first [apply EP | symmetry; apply EP].
+  - (* tables *)
+    intros ms ms' Hms0 IH m3 H. remember (set_module_members ms') as m2 eqn:E2.
+    induction H as [| ? ms'' Hms'' | | | | φ Q m2' m3' Hφ H IHH EQ]; try discriminate.
+    + injection E2 as <-. constructor. apply IH. assumption.
+    + subst. apply set_module_eq_cond_r; [exact Hφ | exact (IHH eq_refl) |]. intros ys x. rewrite EQ.
+      symmetry. apply module_member_proofs_resp. constructor. exact Hms0.
+  - (* global modules *)
+    intros p args args' E m3 H. remember (set_module_global p args') as m2 eqn:E2.
+    induction H as [| | ? ? args'' E' | | | φ Q m2' m3' Hφ H IHH EQ]; try discriminate.
+    + injection E2 as <- <-. constructor. eapply list_set_eq_trans; eassumption.
+    + subst. apply set_module_eq_cond_r; [exact Hφ | exact (IHH eq_refl) |]. intros ys x. rewrite EQ.
+      symmetry. apply module_member_proofs_resp. constructor. exact E.
+  - (* conditions *)
+    intros φ φ' P P' m m' Hφ EP Hm0 IH m3 H. remember (set_module_cond φ' P' m') as m2 eqn:E2.
+    induction H as [| | | ? φ'' ? P'' ? m'' Hφ' EP' Hm' _ | ψ Q n n' Hψ Hn _ EQ | ψ Q n n' Hψ H IHH EQ]; try discriminate.
+    + injection E2 as <- <- <-.
+      constructor; [tauto | intros; rewrite EP; apply EP' | intros Hc; apply IH; [exact Hc | apply Hm'; apply Hφ; exact Hc]].
+    + injection E2 as <- <- <-. apply set_module_eq_cond_l; [apply Hφ; exact Hψ | apply IH; [apply Hφ; exact Hψ | exact Hn] |].
+      intros ys x. rewrite EP. apply EQ.
+    + subst. apply set_module_eq_cond_r; [exact Hψ | exact (IHH eq_refl) |]. intros ys x. rewrite EQ. destruct ys; cbn; first [apply EP | symmetry; apply EP].
+  - (* a condition that holds, on the left *)
+    intros φ P m m' Hφ Hm0 IH EP m3 H. apply set_module_eq_cond_l; [exact Hφ | exact (IH _ H) |].
+    intros ys x. rewrite EP. apply module_member_proofs_resp. exact H.
+  - (* a condition that holds, on the right *)
+    intros φ P m m' Hφ Hm0 IH EP m3 H. remember (set_module_cond φ P m') as m2 eqn:E2.
+    induction H as [| | | ? φ'' ? P'' ? m'' Hφ' EP' Hm' _ | ψ Q n n' Hψ Hn _ EQ | ψ Q n n' Hψ H IHH EQ]; try discriminate.
+    + injection E2 as <- <- <-. apply set_module_eq_cond_r; [apply Hφ'; exact Hφ | exact (IH _ (Hm' Hφ)) |].
+      intros ys x. rewrite <- EP'. apply EP.
+    + injection E2 as <- <- <-. exact (IH _ Hn).
+    + subst. apply set_module_eq_cond_r; [exact Hψ | exact (IHH eq_refl) |]. intros ys x. rewrite EQ. destruct ys; cbn; first [apply EP | symmetry; apply EP].
+  - intros ms3 H. inversion H; subst. constructor.
+  - intros x e e' ms ms' _ IHe _ IHms ms3 H. inversion H; subst. constructor; [apply IHe | apply IHms]; assumption.
+Qed.
+
+Corollary set_module_eq_trans : forall m1 m2 m3, set_module_eq γ m1 m2 -> set_module_eq γ m2 m3 -> set_module_eq γ m1 m3.
+Proof. intros. eapply (proj1 (proj2 set_value_eq_trans)); eassumption. Qed.
+
+Corollary set_entry_eq_trans : forall e1 e2 e3, set_entry_eq γ e1 e2 -> set_entry_eq γ e2 e3 -> set_entry_eq γ e1 e3.
+Proof. intros. eapply (proj1 set_value_eq_trans); eassumption. Qed.
+
+Lemma member_is_proof_resp : forall m m', set_module_eq γ m m' -> forall x, member_is_proof γ m x <-> member_is_proof γ m' x.
 Proof. intros m m' H x. unfold member_is_proof. rewrite (module_member_proofs_resp nil _ _ H x). reflexivity. Qed.
 
-Lemma select_term_resp : forall m m', set_module_eq m m' -> forall x, set_eq (select_term γ m x) (select_term γ m' x).
+Lemma select_term_resp : forall m m', set_module_eq γ m m' -> forall x, set_eq (select_term γ m x) (select_term γ m' x).
 Proof.
-  intros m m' H. induction H as [a a' P P' f f' Ea EP Hf IH | ms ms' Hms | p args args' Hargs | φ φ' P P' m m' Hφ EP _ IH]; intros x.
+  intros m m' H. induction H as [a a' P P' f f' Ea EP Hf IH | ms ms' Hms | p args args' Hargs | φ φ' P P' m m' Hφ EP _ IH
+                                | φ P m m' Hφ _ IH _ | φ P m m' Hφ _ IH _]; intros x.
   - cbn [select_term]. rewrite (EP nil x). destruct (P' nil x); [apply set_eq_refl |].
     apply graph_set_resp_on; [apply code_carrier_resp; exact Ea |]. intros v v' Hv E. apply IH; assumption.
   - cbn [select_term]. pose proof (members_lookup_resp _ _ Hms x) as E.
     destruct (members_lookup ms x), (members_lookup ms' x); cbn in E; try contradiction; [apply set_entry_value_resp; exact E | apply set_eq_refl].
   - cbn [select_term]. apply apply_values_resp; [apply set_eq_refl | exact Hargs].
   - cbn [select_term]. apply cond_resp_cond; [exact Hφ |]. intros Hc. apply IH. exact Hc.
+  - cbn [select_term]. eapply set_eq_trans; [exact (cond_true _ _ Hφ) | apply IH].
+  - cbn [select_term]. eapply set_eq_trans; [apply IH | apply set_eq_sym; exact (cond_true _ _ Hφ)].
 Qed.
 
-Lemma apply_module_resp : forall m m', set_module_eq m m' -> forall x x', set_eq x x' ->
-    set_module_eq (apply_module m x) (apply_module m' x').
+Lemma apply_module_resp : forall m m', set_module_eq γ m m' -> forall x x', set_eq x x' ->
+    set_module_eq γ (apply_module m x) (apply_module m' x').
 Proof.
-  intros m m' H. induction H as [a a' P P' f f' Ea EP Hf _ | ms ms' Hms | p args args' Hargs | φ φ' P P' m m' Hφ EP _ IH];
-    intros x x' Ex; cbn.
+  intros m m' H. induction H as [a a' P P' f f' Ea EP Hf _ | ms ms' Hms | p args args' Hargs | φ φ' P P' m m' Hφ EP _ IH
+                                | φ P m m' Hφ _ IH EP | φ P m m' Hφ _ IH EP];
+    intros x x' Ex; cbn [apply_module].
   - pose proof (code_carrier_resp _ _ Ea) as Ec. constructor; [| exact EP |].
     + split; intros Hx; [eapply set_mem_eq_l; [exact Ex | eapply set_mem_eq_r; [exact Ec | exact Hx]]
                         | eapply set_mem_eq_l; [apply set_eq_sym; exact Ex | eapply set_mem_eq_r; [apply set_eq_sym; exact Ec | exact Hx]]].
@@ -160,10 +216,12 @@ Proof.
   - constructor; exact Hms.
   - constructor. apply list_set_eq_app; [exact Hargs | constructor; [exact Ex | constructor]].
   - constructor; [exact Hφ | exact EP |]. intros Hc. apply IH; assumption.
+  - apply set_module_eq_cond_l; [exact Hφ | exact (IH _ _ Ex) |]. intros ys z. rewrite EP. symmetry. apply apply_module_proofs.
+  - apply set_module_eq_cond_r; [exact Hφ | exact (IH _ _ Ex) |]. intros ys z. rewrite EP. symmetry. apply apply_module_proofs.
 Qed.
 
-Lemma apply_module_args_resp : forall args args' m m', set_module_eq m m' -> list_set_eq args args' ->
-    set_module_eq (apply_module_args m args) (apply_module_args m' args').
+Lemma apply_module_args_resp : forall args args' m m', set_module_eq γ m m' -> list_set_eq args args' ->
+    set_module_eq γ (apply_module_args m args) (apply_module_args m' args').
 Proof.
   intros args args' m m' Hm H. revert m m' Hm. unfold apply_module_args.
   induction H as [| a a' args args' Ha _ IH]; intros m m' Hm; cbn [fold_left]; [exact Hm |].
@@ -175,7 +233,7 @@ Qed.
 (** Two readings of the slots' proofness agree. *)
 Definition slot_proofs_eq (κs κs' : nat -> member_proofness) : Prop := forall s ys x, κs s ys x = κs' s ys x.
 
-Lemma env_slot_proofs_resp : forall ρ ρ', set_env_eq ρ ρ' -> slot_proofs_eq (env_slot_proofs γ ρ) (env_slot_proofs γ ρ').
+Lemma env_slot_proofs_resp : forall ρ ρ', set_env_eq γ ρ ρ' -> slot_proofs_eq (env_slot_proofs γ ρ) (env_slot_proofs γ ρ').
 Proof. intros * H s ys x. unfold env_slot_proofs. apply module_member_proofs_resp. apply set_entry_module_part_resp. apply H. Qed.
 
 Lemma push_slot_proofs_resp : forall κs κs' P P', slot_proofs_eq κs κs' -> (forall ys x, P ys x = P' ys x) ->
@@ -356,21 +414,37 @@ Proof.
 Qed.
 
   (** Every global module equals itself *)
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
-Lemma select_module_resp : forall m m', set_module_eq m m' -> forall y, set_module_eq (select_module γ m y) (select_module γ m' y).
+Lemma select_module_resp : forall m m', set_module_eq γ m m' -> forall y,
+    set_module_eq γ (select_module γ m y) (select_module γ m' y).
 Proof.
-  intros m m' H. induction H as [a a' P P' f f' Ea EP Hf IH | ms ms' Hms | p args args' Hargs | φ φ' P P' m m' Hφ EP _ IH];
-    intros y; cbn.
+  intros m m' H. induction H as [a a' P P' f f' Ea EP Hf IH | ms ms' Hms | p args args' Hargs | φ φ' P P' m m' Hφ EP _ IH
+                                | φ P m m' Hφ _ IH EP | φ P m m' Hφ _ IH EP];
+    intros y; cbn [select_module].
   - constructor; [exact Ea | intros; apply EP |]. intros v v' Hv E. apply IH; assumption.
   - pose proof (members_lookup_resp _ _ Hms y) as E.
     destruct (members_lookup ms y), (members_lookup ms' y); cbn in E; try contradiction;
       [apply set_entry_module_part_resp; exact E | constructor; constructor].
   - apply apply_module_args_resp; [apply Hmods | exact Hargs].
   - constructor; [exact Hφ | intros; apply EP |]. intros Hc. apply IH. exact Hc.
+  - apply set_module_eq_cond_l; [exact Hφ | exact (IH y) |]. intros ys z. rewrite EP. symmetry. apply select_module_proofs.
+  - apply set_module_eq_cond_r; [exact Hφ | exact (IH y) |]. intros ys z. rewrite EP. symmetry. apply select_module_proofs.
 Qed.
 
 End Operations.
+
+Arguments set_module_eq_sym {γ}.
+Arguments set_module_eq_trans {γ}.
+Arguments set_entry_eq_sym {γ}.
+Arguments set_entry_eq_trans {γ}.
+Arguments set_entry_value_resp {γ}.
+Arguments set_entry_module_part_resp {γ}.
+Arguments members_lookup_resp {γ}.
+Arguments set_env_extend_resp {γ}.
+Arguments set_env_extend_kinded_resp {γ}.
+Arguments apply_module_resp {γ}.
+Arguments apply_module_args_resp {γ}.
 
 (** ** A Module's Proofness Is Its Syntax's
 
@@ -382,25 +456,6 @@ Section Proofness.
   Context {GC : GCtx}.
   Variable T : universe_tower.
   Variable γ : global_valuation.
-
-Lemma apply_module_proofs : forall m v ys x, module_member_proofs γ (apply_module m v) ys x = module_member_proofs γ m ys x.
-Proof. intros [] v [] x; reflexivity. Qed.
-
-Lemma apply_module_args_proofs : forall args m ys x,
-    module_member_proofs γ (apply_module_args m args) ys x = module_member_proofs γ m ys x.
-Proof.
-  induction args as [| a args IH]; intros m ys x; [reflexivity |]. unfold apply_module_args in *. cbn [fold_left].
-  rewrite IH. apply apply_module_proofs.
-Qed.
-
-Lemma select_module_proofs : forall m y ys x, module_member_proofs γ (select_module γ m y) ys x = module_member_proofs γ m (y :: ys) x.
-Proof.
-  intros [dom P f | ms | p args | φ P m'] y ys x; cbn [select_module module_member_proofs].
-  - destruct ys; reflexivity.
-  - destruct (members_lookup ms y); [reflexivity | destruct ys; reflexivity].
-  - apply apply_module_args_proofs.
-  - destruct ys; reflexivity.
-Qed.
 
 Lemma members_lookup_snoc : forall ms z e k, members_lookup (ms ++ [(z, e)]) k = if String.eqb k z then Some e else members_lookup ms k.
 Proof.

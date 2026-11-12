@@ -190,7 +190,7 @@ Qed.
 (** A term of an extension by [A], read in the extension by an equal
     [A'], keeps its denotation. *)
 Lemma set_denotes_ctx_conv_ass : forall Γ κ A A' M FA FA' FM, fn_kinds_unique ->
-    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ -> gc_deps ⍮ gc_stack ⍮ ce_ass κ A' :: Γ ⊢ˢ sb_id : ce_ass κ A :: Γ ->
     set_denotes T γ Γ A FA -> set_denotes T γ Γ A' FA' -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FA ρ) (FA' ρ)) ->
     set_denotes T γ (ce_ass κ A :: Γ) M FM -> set_denotes T γ (ce_ass κ A' :: Γ) M FM.
@@ -206,7 +206,7 @@ Qed.
 (** [Π A B ≈ Π A' B'], into the sort of the codomain's kind over a
     universe. *)
 Lemma set_rule_pi_cong : forall Γ κd κc A A' B B' U FU FS FA FA' FS' FB FB', fn_kinds_unique ->
-    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ->
     gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ⊢ˢ sb_id : ce_ass κd A :: Γ -> pi_kinds κd κc ->
     set_denotes T γ Γ U FU -> (forall ρ, set_env_in T γ Γ ρ -> exists V, universe_shape FU ρ V) ->
@@ -311,7 +311,7 @@ Proof. intros. do 3 eexists. eapply set_rule_fn_with; eassumption. Qed.
 
 (** [λ A M ≈ λ A' M']. *)
 Lemma set_rule_fn_cong : forall Γ κd κc i A A' M M' B C' B' Srt FS FA FA' FS2 FB FB2 FB3 FM FM', fn_kinds_unique ->
-    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A' M' : a_pi κd κc C' B' ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ->
     gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ⊢ˢ sb_id : ce_ass κd A :: Γ ->
@@ -403,7 +403,7 @@ Qed.
 
 (** [M ≈ λ A (M[↑] #0) : Π A B]. *)
 Lemma set_rule_fn_eta : forall Γ κd κc i A B M FA FS FB FB2 FP FM FM2, fn_kinds_unique ->
-    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A (a_app (exp_wk M wk_shift) (a_var 0)) : a_pi κd κc A B ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> set_denotes T γ Γ A FA ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
@@ -437,7 +437,7 @@ Qed.
 (** A term of [Γ ▹{κ} A] denotes, with a term [N] of [A] substituted, its
     value at [N]'s. *)
 Lemma set_denotes_single_sub : forall Γ κ A N X FA FN FX, fn_kinds_unique ->
-    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κ A :: Γ ->
     set_denotes T γ Γ A FA -> set_denotes T γ Γ N FN -> (forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA ρ))) ->
     set_denotes T γ (ce_ass κ A :: Γ) X FX ->
@@ -451,7 +451,7 @@ Qed.
 
 (** [(λ A M) N ≈ M[N] : B[N]]. *)
 Lemma set_rule_pi_beta : forall Γ κd κc i A M B N FA FS FB FB2 FB' FM FM2 FA' FN FN2, fn_kinds_unique ->
-    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κd A :: Γ ->
     set_denotes T γ Γ A FA ->

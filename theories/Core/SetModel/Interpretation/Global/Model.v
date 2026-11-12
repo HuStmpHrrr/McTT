@@ -333,10 +333,10 @@ Record set_gctx_ok : Prop :=
     (** A filed module or frame is its own global module *)
   ; set_gctx_ok_bodies : forall q TΦ, gc_loc gc_deps gc_stack q = Some TΦ -> global_module γ q = set_module_global q nil
     (** Every global module equals itself, so selection respects equality *)
-  ; set_gctx_ok_modules : forall q, set_module_eq (global_module γ q) (global_module γ q)
+  ; set_gctx_ok_modules : forall q, set_module_eq γ (global_module γ q) (global_module γ q)
     (** An alias is the module its closed unit denotes *)
   ; set_gctx_ok_aliases : forall q Ua FU, gc_module gc_deps gc_stack q = Some (mr_alias Ua) ->
-      set_modexp_denotes T γ nil (me_lit Ua) FU -> set_module_eq (global_module γ q) (FU empty_set_env)
+      set_modexp_denotes T γ nil (me_lit Ua) FU -> set_module_eq γ (global_module γ q) (FU empty_set_env)
     (** Every group is modelled *)
   ; set_gctx_ok_groups : forall p D, ind_lookup gc_deps gc_stack p = Some D -> set_group_ok p D (global_group γ p)
     (** Every record type is modelled *)

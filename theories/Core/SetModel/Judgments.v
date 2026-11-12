@@ -85,9 +85,9 @@ Record set_module_slot_with (Γ : ctx) (ρ : set_env) (U : gunit) (e e' : set_en
     (** [U] denotes [n] *)
   ; set_module_slot_unit : set_interp_gunit T γ Γ ρ U n
     (** [m] is [n] *)
-  ; set_module_slot_left_eq : set_module_eq m n
+  ; set_module_slot_left_eq : set_module_eq γ m n
     (** [m'] is [n] *)
-  ; set_module_slot_right_eq : set_module_eq m' n }.
+  ; set_module_slot_right_eq : set_module_eq γ m' n }.
 
 (** [set_definition_module_with Γ ρ M U e e' v v' w m m' n]: the entries
     [e] and [e'] of a definition of [M] with the module part [U] are terms
@@ -108,9 +108,9 @@ Record set_definition_module_with (Γ : ctx) (ρ : set_env) (M : exp) (U : gunit
     (** [v'] is [w] *)
   ; set_definition_module_right_eq : set_eq v' w
     (** [m] is [n] *)
-  ; set_definition_module_left_module_eq : set_module_eq m n
+  ; set_definition_module_left_module_eq : set_module_eq γ m n
     (** [m'] is [n] *)
-  ; set_definition_module_right_module_eq : set_module_eq m' n }.
+  ; set_definition_module_right_module_eq : set_module_eq γ m' n }.
 
 (** [set_entry_rel Γ ρ ce e e']: [e] and [e'] are related entries of the
     context entry [ce] of [Γ], at [ρ]. *)
@@ -127,7 +127,7 @@ Definition set_entry_rel (Γ : ctx) (ρ : set_env) (ce : centry) (e e' : set_ent
     context would read them. *)
 Fixpoint set_env_rel (Γ : ctx) (ρ ρ' : set_env) : Prop :=
   match Γ with
-  | nil => set_env_eq ρ ρ'
+  | nil => set_env_eq γ ρ ρ'
   | ce :: Γ' => set_env_rel Γ' (set_env_tail ρ) (set_env_tail ρ') /\ set_entry_rel Γ' (set_env_tail ρ) ce (ρ 0) (ρ' 0)
   end.
 
@@ -149,7 +149,7 @@ Record set_modexp_denotes (Γ : ctx) (H : modexp) (F : set_env -> set_module) : 
   { (** [F ρ] is [H]'s module at every environment *)
     set_modexp_denotes_exists : forall ρ, set_env_in Γ ρ -> set_interp_modexp T γ Γ ρ H (F ρ)
     (** Every module of [H] at a related environment is [F]'s *)
-  ; set_modexp_denotes_unique : forall ρ ρ' m, set_env_rel Γ ρ ρ' -> set_interp_modexp T γ Γ ρ' H m -> set_module_eq m (F ρ) }.
+  ; set_modexp_denotes_unique : forall ρ ρ' m, set_env_rel Γ ρ ρ' -> set_interp_modexp T γ Γ ρ' H m -> set_module_eq γ m (F ρ) }.
 
 (** [set_members_valid Γ H F]: every term member of [H], of [F]'s modules,
     is of its type, and is its δ-reduct when it has one.  A member of a
@@ -202,7 +202,7 @@ Record set_modexp_rel_with (Γ : ctx) (H H' : modexp) (F F' : set_env -> set_mod
     (** The right expression's *)
   ; set_modexp_rel_right : set_modexp_denotes Γ H' F'
     (** The two are equal *)
-  ; set_modexp_rel_eq : forall ρ, set_env_in Γ ρ -> set_module_eq (F ρ) (F' ρ) }.
+  ; set_modexp_rel_eq : forall ρ, set_env_in Γ ρ -> set_module_eq γ (F ρ) (F' ρ) }.
 
 (** [H] and [H'] denote equal modules in [Γ]. *)
 Definition set_modexp_rel (Γ : ctx) (H H' : modexp) : Prop := exists F F', set_modexp_rel_with Γ H H' F F'.
@@ -400,7 +400,7 @@ Record set_modexp_eq_with (Γ : ctx) (H H' : modexp) (F F' : set_env -> set_modu
     (** The right expression's *)
   ; set_modexp_eq_right : set_modexp_denotes Γ H' F'
     (** The two are equal *)
-  ; set_modexp_eq_eq : forall ρ, set_env_in Γ ρ -> set_module_eq (F ρ) (F' ρ)
+  ; set_modexp_eq_eq : forall ρ, set_env_in Γ ρ -> set_module_eq γ (F ρ) (F' ρ)
     (** The left expression is valid *)
   ; set_modexp_eq_valid : set_valid_modexp Γ H
     (** So is the right one *)
@@ -417,7 +417,7 @@ Record set_unit_eq_with (Γ : ctx) (U U' : gunit) (F F' : set_env -> set_module)
     (** The right unit's *)
   ; set_unit_eq_right : set_modexp_denotes Γ (me_lit U') F'
     (** The two are equal *)
-  ; set_unit_eq_eq : forall ρ, set_env_in Γ ρ -> set_module_eq (F ρ) (F' ρ)
+  ; set_unit_eq_eq : forall ρ, set_env_in Γ ρ -> set_module_eq γ (F ρ) (F' ρ)
     (** The left unit is valid *)
   ; set_unit_eq_valid : set_valid_unit Γ (me_lit U)
     (** So is the right one *)
@@ -443,11 +443,11 @@ Lemma set_denotes_rel : forall Γ M F ρ ρ', set_denotes Γ M F -> set_env_rel 
 Proof. intros * [Hex Hun] Hr Hin. exact (Hun _ _ _ Hr (Hex _ Hin)). Qed.
 
 Lemma set_modexp_denotes_rel : forall Γ H F ρ ρ', set_modexp_denotes Γ H F -> set_env_rel Γ ρ ρ' -> set_env_in Γ ρ' ->
-    set_module_eq (F ρ') (F ρ).
+    set_module_eq γ (F ρ') (F ρ).
 Proof. intros * [Hex Hun] Hr Hin. exact (Hun _ _ _ Hr (Hex _ Hin)). Qed.
 
 (** A module expression's module is equal to itself. *)
-Lemma set_modexp_denotes_refl : forall Γ H F ρ, set_modexp_denotes Γ H F -> set_env_in Γ ρ -> set_module_eq (F ρ) (F ρ).
+Lemma set_modexp_denotes_refl : forall Γ H F ρ, set_modexp_denotes Γ H F -> set_env_in Γ ρ -> set_module_eq γ (F ρ) (F ρ).
 Proof. intros * HF Hρ. exact (set_modexp_denotes_unique _ _ _ HF _ _ _ Hρ (set_modexp_denotes_exists _ _ _ HF _ Hρ)). Qed.
 
 Lemma set_interp_me_lit_iff : forall Γ ρ U m, set_interp_modexp T γ Γ ρ (me_lit U) m <-> set_interp_gunit T γ Γ ρ U m.
@@ -574,7 +574,7 @@ Proof.
 Qed.
 
 (** Related environments have equal entries. *)
-Lemma set_env_rel_eq : forall Γ ρ ρ', set_env_rel Γ ρ ρ' -> set_env_eq ρ ρ'.
+Lemma set_env_rel_eq : forall Γ ρ ρ', set_env_rel Γ ρ ρ' -> set_env_eq γ ρ ρ'.
 Proof.
   induction Γ as [| ce Γ IH]; intros ρ ρ' H; [exact H |]. destruct H as [Ht He].
   pose proof (IH _ _ Ht) as Et. intros [| x]; [| exact (Et x)].
@@ -588,7 +588,7 @@ Qed.
 
 Section Functional.
   Hypothesis Hfn : fn_kinds_unique.
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
 (** A term that has a value at every environment of a valid context
     denotes it: functionality gives the uniqueness. *)

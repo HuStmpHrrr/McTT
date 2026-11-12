@@ -133,7 +133,7 @@ Proof. intros * HC HM. eapply set_rule_absurd_cong; [exact HC | exact HM | exact
 Section Conjunctions.
   Hypothesis Hfn : fn_kinds_unique.
   (** Every global module equals itself *)
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
 (** The code of a conjunction: both components true, the second at the
     proof of the first. *)

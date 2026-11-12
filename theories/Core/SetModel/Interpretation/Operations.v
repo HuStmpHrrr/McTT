@@ -75,6 +75,57 @@ Fixpoint module_member_proofs (m : set_module) (ys : list string) (x : string) {
 (** The term member [x] of a module is a proof. *)
 Definition member_is_proof (m : set_module) (x : string) : Prop := module_member_proofs m nil x = true.
 
+(** ** Equality of Values *)
+
+(** [set_entry_eq e e']: the entries [e] and [e'] are equal: of one shape
+    and kind, with equal parts. *)
+Inductive set_entry_eq : set_entry -> set_entry -> Prop :=
+(** Two terms of one kind *)
+| set_entry_eq_term : forall κ v v', set_eq v v' -> set_entry_eq (set_entry_term κ v) (set_entry_term κ v')
+(** Two modules *)
+| set_entry_eq_module : forall m m', set_module_eq m m' -> set_entry_eq (set_entry_module m) (set_entry_module m')
+(** Two definitions with module parts *)
+| set_entry_eq_both : forall v v' m m', set_eq v v' -> set_module_eq m m' ->
+    set_entry_eq (set_entry_both v m) (set_entry_both v' m')
+(** [set_module_eq m m']: the modules [m] and [m'] are equal *)
+with set_module_eq : set_module -> set_module -> Prop :=
+(** Functions of a parameter: equal domains, the same proofs, equal at
+    equal values of the domain *)
+| set_module_eq_params : forall a a' P P' f f', set_eq a a' -> (forall ys x, P ys x = P' ys x) ->
+    (forall x x', set_mem x (code_carrier a) -> set_eq x x' -> set_module_eq (f x) (f' x')) ->
+    set_module_eq (set_module_params a P f) (set_module_params a' P' f')
+(** Tables with equal entries under the same names *)
+| set_module_eq_members : forall ms ms', set_members_eq ms ms' ->
+    set_module_eq (set_module_members ms) (set_module_members ms')
+(** One global module at equal arguments *)
+| set_module_eq_global : forall p args args', list_set_eq args args' ->
+    set_module_eq (set_module_global p args) (set_module_global p args')
+(** Equivalent conditions, the same proofs, equal modules where they hold *)
+| set_module_eq_cond : forall (φ φ' : Prop) P P' m m', (φ <-> φ') -> (forall ys x, P ys x = P' ys x) ->
+    (φ -> set_module_eq m m') -> set_module_eq (set_module_cond φ P m) (set_module_cond φ' P' m')
+(** A condition that holds, on the left: the module under it, of the
+    other side's proofness.  In [module M (n : ℕ) where def k : ℕ ≔ n
+    end], [M 0] is [M]'s function applied, [set_module_cond (0 ∈ ℕ) P m],
+    and its [β]-reduct [M[0]] is the table [m]: they are equal because
+    the condition holds *)
+| set_module_eq_cond_l : forall (φ : Prop) P m m', φ -> set_module_eq m m' ->
+    (forall ys x, P ys x = module_member_proofs m' ys x) -> set_module_eq (set_module_cond φ P m) m'
+(** A condition that holds, on the right: as [set_module_eq_cond_l], with
+    the sides swapped ([M[0]] and [M 0] in the example there) *)
+| set_module_eq_cond_r : forall (φ : Prop) P m m', φ -> set_module_eq m m' ->
+    (forall ys x, P ys x = module_member_proofs m ys x) -> set_module_eq m (set_module_cond φ P m')
+(** [set_members_eq ms ms']: the tables [ms] and [ms'] have the same names,
+    in order, with equal entries *)
+with set_members_eq : list (string * set_entry) -> list (string * set_entry) -> Prop :=
+(** No member *)
+| set_members_eq_nil : set_members_eq nil nil
+(** A member, then the rest *)
+| set_members_eq_cons : forall x e e' ms ms', set_entry_eq e e' -> set_members_eq ms ms' ->
+    set_members_eq ((x, e) :: ms) ((x, e') :: ms').
+
+(** [set_env_eq ρ ρ']: the environments [ρ] and [ρ'] have equal entries. *)
+Definition set_env_eq (ρ ρ' : set_env) : Prop := forall x, set_entry_eq (ρ x) (ρ' x).
+
 (** The term member [x] of a module: the closed value of a global one at
     the module's arguments, a table's entry, or, over a parameter, the
     member's closure: the empty set for a proof, otherwise the graph. *)

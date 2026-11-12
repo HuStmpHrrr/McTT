@@ -18,12 +18,12 @@ Section Variables.
   Variable T : universe_tower.
   Variable γ : global_valuation.
   Hypothesis Hfn : fn_kinds_unique.
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
 Lemma set_denotes_var : forall Γ x, set_denotes T γ Γ (a_var x) (fun ρ => set_entry_value (ρ x)).
 Proof.
   intros. constructor; [intros; constructor |]. intros ρ ρ' v Hr Hv. inversion Hv; subst.
-  apply set_entry_value_resp. apply set_entry_eq_sym. exact (set_env_rel_eq _ _ _ _ _ Hr x).
+  apply (set_entry_value_resp (γ := γ)). apply set_entry_eq_sym. exact (set_env_rel_eq _ _ _ _ _ Hr x).
 Qed.
 
 (** A type weakened past one more entry denotes, read below it. *)

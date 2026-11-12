@@ -90,22 +90,22 @@ Qed.
   Variable γ : global_valuation.
   Hypothesis Hfn : fn_kinds_unique_ext.
   (** Every global module equals itself *)
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
 (** The functionality of every reading across equal extensions *)
 Definition set_interp_functional_ext_all :=
   set_interp_functional_rel_all T γ Hmods ctx_ext_equal Hfn ctx_ext_equal_extend.
 
 Theorem set_interp_functional_ext : forall Δ ρ M v, set_interp T γ Δ ρ M v ->
-    forall Δ' ρ' v', ctx_ext_equal Δ Δ' -> set_env_eq ρ ρ' -> set_interp T γ Δ' ρ' M v' -> set_eq v v'.
+    forall Δ' ρ' v', ctx_ext_equal Δ Δ' -> set_env_eq γ ρ ρ' -> set_interp T γ Δ' ρ' M v' -> set_eq v v'.
 Proof. exact (proj1 set_interp_functional_ext_all). Qed.
 
 Theorem set_interp_modexp_functional_ext : forall Δ ρ H m, set_interp_modexp T γ Δ ρ H m ->
-    forall Δ' ρ' m', ctx_ext_equal Δ Δ' -> set_env_eq ρ ρ' -> set_interp_modexp T γ Δ' ρ' H m' -> set_module_eq m m'.
+    forall Δ' ρ' m', ctx_ext_equal Δ Δ' -> set_env_eq γ ρ ρ' -> set_interp_modexp T γ Δ' ρ' H m' -> set_module_eq γ m m'.
 Proof. exact (proj1 (proj2 (proj2 (proj2 set_interp_functional_ext_all)))). Qed.
 
 Theorem set_interp_gunit_functional_ext : forall Δ ρ U m, set_interp_gunit T γ Δ ρ U m ->
-    forall Δ' ρ' m', ctx_ext_equal Δ Δ' -> set_env_eq ρ ρ' -> set_interp_gunit T γ Δ' ρ' U m' -> set_module_eq m m'.
+    forall Δ' ρ' m', ctx_ext_equal Δ Δ' -> set_env_eq γ ρ ρ' -> set_interp_gunit T γ Δ' ρ' U m' -> set_module_eq γ m m'.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 set_interp_functional_ext_all))))). Qed.
 
 End ContextRelation.

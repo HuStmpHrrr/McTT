@@ -17,7 +17,7 @@ Section Lets.
   Variable T : universe_tower.
   Variable γ : global_valuation.
   Hypothesis Hfn : fn_kinds_unique.
-  Hypothesis Hmods : forall q, set_module_eq (global_module γ q) (global_module γ q).
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
 (** The environment of a definition at its value. *)
 Definition def_env (FM : set_env -> aczel_set) (ρ : set_env) : set_env := set_env_extend ρ (set_entry_term ak_relevant (FM ρ)).
