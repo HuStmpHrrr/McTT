@@ -1,7 +1,7 @@
-(** * The Set Rules of Universes and Propositions
+(** * The Set Rules of Universes
 
-    The set judgments of the rules of the large universes, [Prop], [⊤],
-    [⊥] and [tt]: each term denotes a constant, of its type's carrier. *)
+    The set judgments of the rules of the universes: a universe denotes
+    its code, a member of the next universe's carrier. *)
 
 From Stdlib Require Import String List.
 From Mctt Require Import LibTactics.
@@ -46,6 +46,27 @@ Proof.
   destruct (universe_code_mem (large_ordinal_set i) (tower T (ul i)) _ HV
               (grothendieck_universe_index_set _ HV (ul i)) (tower_increasing T (ul i) (ul (S i)) ltac:(cbn; lia))) as [Hm Hr].
   apply set_mem_separation; [exact is_relevant_code_resp |]. split; assumption.
+Qed.
+
+(** The code of the small universe at a literal level [o]. *)
+Definition small_universe_code (o : o2) : aczel_set :=
+  universe_code (pair_ordinal_set o) (small_universe_set T (pair_ordinal_set o)).
+
+Lemma set_denotes_univ_lit : forall Γ o, set_denotes T γ Γ (a_univ (a_llit o)) (fun _ => small_universe_code o).
+Proof.
+  intros. apply set_denotes_const; [intros; constructor; constructor |].
+  intros ρ v H. inversion H; subst. match goal with Hl : set_interp _ _ _ _ (a_llit _) _ |- _ => inversion Hl; subst end.
+  apply set_eq_refl.
+Qed.
+
+(** A relevant code of the universe of sets at [o] is of the small
+    universe's carrier. *)
+Lemma set_mem_small_universe_code : forall o x, set_mem x (tower T (us o)) -> is_relevant_code x ->
+    set_mem x (code_carrier (small_universe_code o)).
+Proof.
+  intros * Hx Hr. unfold small_universe_code, universe_code. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
+  apply set_mem_separation; [exact is_relevant_code_resp |]. split; [| exact Hr].
+  eapply set_mem_eq_r; [apply set_eq_sym; apply small_universe_set_eq; apply set_eq_refl | exact Hx].
 Qed.
 
 End Universes.
