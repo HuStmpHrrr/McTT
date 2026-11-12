@@ -3194,7 +3194,8 @@ Proof.
     rewrite tele_sub_closed in H by exact Hs. exact H. }
   destruct (inst_closed_env_in Γ (ind_uparams D) _ Fσ Hσ HΓ HcΓ nil ρ Hs HU HUΓ Hw HwΓ Hρ) as [Hm Hinst].
   set (ρu := inst_closed_env Γ (ind_uparams D) Fσ nil ρ) in *.
-  destruct (set_group_ok_view_instances _ _ _ _ _ HG k Mk qc k' Is vm ρu Hk Hh Hinst) as [is His].
+  destruct (set_group_ok_view_instances _ _ _ _ _ HG k Mk qc k' Is vm Hk Hh) as [Fis HFis].
+  set (is := Fis ρu). pose proof (HFis ρu Hinst) as His. fold is in His.
   exists ρu, is. constructor; [exact Hinst | | exact His |].
   { unfold ρu. pose proof (inst_closed_env_values Γ (ind_uparams D) Fσ nil ρ) as E. cbn [List.app] in E.
     rewrite E, List.app_nil_r. reflexivity. }
