@@ -3,9 +3,11 @@
     A valuation models the global context ([set_gctx_ok]) when what it
     gives each global is what the global's stored description denotes:
 
-    - a term member of a filed module or frame, closed over the module's
-      telescope, has its stored kind, is of its closed type and is its
-      closed δ-reduct ([set_filed_term_with]);
+    - a filed module or frame reads its global module at its path, over a
+      denoting closed telescope; a term member of it has its stored kind,
+      is the empty set at a proof, and, applied to an environment of an
+      outer part of the telescope, is of the [Π] over the rest and is its
+      reduct's value ([set_filed_mod], [set_filed_term_with]);
     - a filed body or frame is its own global module, and an alias is the
       module its unit denotes;
     - a group of inductive types has the parameter and argument types its
@@ -26,6 +28,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation.Inductives Require Export Bound.
 From Mctt.Core.Syntactic Require Import Syntax Members Records.
+From Mctt.Core.Syntactic.System Require Import Definitions Scoping.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 Import ListNotations.
 
@@ -95,17 +98,71 @@ Inductive set_tele_types (Γ0 : ctx) : ctx -> list (list aczel_set -> aczel_set)
 
 (** ** Term Members and Modules *)
 
-(** [set_filed_term_with R0 κ g]: the closed member read as [R0] has the
-    kind [κ] and the value [g]: of its type, its δ-reduct's. *)
-Record set_filed_term_with (R0 : mdesc) (κ : abs_kind) (g : aczel_set) : Prop :=
-  { (** The kind is the stored one *)
-    set_filed_term_kind : κ = mdesc_kind R0
-    (** The value is of the closed type *)
-  ; set_filed_term_typed : forall A FA, mdesc_type R0 = Some A -> set_denotes T γ nil A FA ->
-      set_mem g (code_carrier (FA empty_set_env))
-    (** The value is the closed δ-reduct's *)
-  ; set_filed_term_reduct : forall M FM, mdesc_reduct R0 = Some M -> set_denotes T γ nil M FM ->
-      set_eq g (FM empty_set_env) }.
+(** [set_filed_reduct_with p x R1 Ns T1 T2 r A0 M1]: the member [x] of the
+    filed module [p], read as [R1] at the arguments [Ns] for the outer part
+    [T2] of its telescope, has the reduct [M1] over [T2], instantiated: of
+    the [Π] at [r] over the inner part [T1] into [A0], and the member's
+    value applied at every environment of [T2]. *)
+Record set_filed_reduct_with (p : qname) (x : string) (R1 : mdesc) (Ns : list exp) (T1 T2 : ctx) (r : abs_kind)
+    (A0 M1 : exp) : Prop :=
+  { (** The reduct read is [M1] instantiated *)
+    set_filed_reduct_read : mdesc_reduct R1 = Some (exp_sub M1 (sb_of_list sb_id Ns))
+    (** [M1] is of the [Π] over the inner part *)
+  ; set_filed_reduct_valid : set_exp_eq T γ T2 (ctx_pi_at r T1 A0) M1 M1
+    (** It is the member's value applied *)
+  ; set_filed_reduct_value : forall ρ m, set_env_in T γ T2 ρ -> set_interp T γ T2 ρ M1 m ->
+      set_eq m (apply_values (snd (global_term γ (qname_in p x))) (set_env_values T2 ρ)) }.
+
+(** [set_filed_term_with p Tl x R0 A0 i]: the term member [x] of the filed
+    module [p] over its telescope [Tl], read as [R0], of the type [A0] over
+    [Tl], of its kind's sort at the index [i]: read at arguments for the
+    outer part of [Tl] as stored; its value, the valuation's, has its
+    kind, is the empty set at a proof, and, applied to the values of an
+    environment of the outer part, is of the [Π] over the inner part
+    there. *)
+Record set_filed_term_with (p : qname) (Tl : ctx) (x : string) (R0 : mdesc) (A0 : exp) (i : nat) : Prop :=
+  { (** The type is of the sort of the member's kind *)
+    set_filed_term_typed : set_exp_eq T γ Tl (abs_kind_sort (mdesc_kind R0) (a_typ i)) A0 A0
+    (** Read at arguments [Ns] for the outer part [T2]: the [Π] over the
+        inner part [T1], instantiated, and the reduct, if any, a term over
+        [T2] instantiated *)
+  ; set_filed_term_reads : forall Ns R1 T1 T2, Tl = T1 ++ T2 -> List.length T2 = List.length Ns ->
+      mdesc_term_part_ats R0 Ns = Some R1 ->
+      mdesc_type R1 = Some (exp_sub (ctx_pi_at (mdesc_kind R0) T1 A0) (sb_of_list sb_id Ns)) /\
+      (mdesc_reduct R1 = None \/ exists M1, set_filed_reduct_with p x R1 Ns T1 T2 (mdesc_kind R0) A0 M1)
+    (** The value's kind is the stored one *)
+  ; set_filed_term_kind : fst (global_term γ (qname_in p x)) = mdesc_kind R0
+    (** A proof's value is the empty set *)
+  ; set_filed_term_proof : mdesc_kind R0 = ak_propositional -> set_eq (snd (global_term γ (qname_in p x))) empty_set
+    (** Applied to the values of an environment of the outer part, it is
+        of the [Π] over the inner part there *)
+  ; set_filed_term_value : forall T1 T2 ρ a, Tl = T1 ++ T2 -> set_env_in T γ T2 ρ ->
+      set_interp T γ T2 ρ (ctx_pi_at (mdesc_kind R0) T1 A0) a ->
+      set_mem (apply_values (snd (global_term γ (qname_in p x))) (set_env_values T2 ρ)) (code_carrier a)
+    (** The [Π]s over the telescope into the member's kind are formed *)
+  ; set_filed_term_pi_kinds : forall Δ1 κ A Δ2, Tl = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ (mdesc_kind R0) }.
+
+(** [set_filed_mod p Tl Φ]: the filed module [p], over its telescope [Tl],
+    of the stored body [Φ], is modelled. *)
+Record set_filed_mod (p : qname) (Tl : ctx) (Φ : gmod) : Prop :=
+  { (** Its path reads the global module at no argument, anywhere *)
+    set_filed_mod_path : forall Γ ρ, set_interp_modexp T γ Γ ρ (qname_mod p) (set_module_global p nil)
+    (** The telescope denotes *)
+  ; set_filed_mod_tele_ctx : set_ctx T γ Tl
+    (** Of assumptions *)
+  ; set_filed_mod_tele_assumptions : all_assumptions Tl
+    (** Closed *)
+  ; set_filed_mod_tele_scoped : ctx_scoped 0 Tl
+    (** Of evaluated sorts, at one level *)
+  ; set_filed_mod_tele_evaluated : exists l, set_params_evaluated T γ nil Tl l
+    (** Every term member stored at it, of an entry or an open frame's
+        type former, is modelled *)
+  ; set_filed_mod_terms : forall x R0, stored_term_member gc_stack Φ p x R0 -> exists A0 i, set_filed_term_with p Tl x R0 A0 i
+    (** An alias stored in it is the module at its path, and a valid unit
+        in every denoting context *)
+  ; set_filed_mod_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
+      gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
+      forall Γ, set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_valid_unit T γ Γ (me_lit Ua) }.
 
 (** ** Groups of Inductive Types *)
 
@@ -267,10 +324,8 @@ Record set_record_ok (p : qname) (R : record_decl) (SR : set_record) : Prop :=
 
 (** [set_gctx_ok]: [γ] models the global context. *)
 Record set_gctx_ok : Prop :=
-  { (** Every term member stored at a filed module or frame is modelled *)
-    set_gctx_ok_terms : forall p Tl Φ x R0, gc_loc gc_deps gc_stack p = Some (Tl, Φ) ->
-      stored_term_member gc_stack Φ p x R0 ->
-      set_filed_term_with R0 (fst (global_term γ (qname_in p x))) (snd (global_term γ (qname_in p x)))
+  { (** Every filed module or frame is modelled *)
+    set_gctx_ok_filed : forall p Tl Φ, gc_loc gc_deps gc_stack p = Some (Tl, Φ) -> set_filed_mod p Tl Φ
     (** A filed module or frame is its own global module *)
   ; set_gctx_ok_bodies : forall q TΦ, gc_loc gc_deps gc_stack q = Some TΦ -> global_module γ q = set_module_global q nil
     (** Every global module equals itself, so selection respects equality *)
