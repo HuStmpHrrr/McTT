@@ -66,4 +66,32 @@ Proof.
   constructor; [exact HA | apply set_denotes_var .. | intros; apply set_eq_refl | exact Hm].
 Qed.
 
+(** A definition's body denotes, and its variable's value is the body's. *)
+Lemma set_lookup_def_denotes : forall Γ x A M, Γ ∋ #x ≔ M : A -> set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
+    exists FM, set_denotes T γ Γ M FM /\ forall ρ, set_env_in T γ Γ ρ -> set_eq (set_entry_value (ρ x)) (FM ρ).
+Proof.
+  intros * H. induction H as [Γ A M | Γ A M U | Γ n A M e H IH]; intros HΓ Hc.
+  - destruct HΓ as [HΓ' HAM]. pose proof HAM as (FA & FM & FM' & [HA HM _ _ HMm]).
+    exists (fun ρ => FM (set_env_tail ρ)). split; [apply set_denotes_shift; [split; assumption | exact Hc | exact HM] |].
+    intros ρ [Ht (v & v' & w & [E1 E2 Hw Ev _])]. rewrite E1. cbn [set_entry_value].
+    eapply set_eq_trans; [exact Ev | exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Ht Hw)].
+  - destruct HΓ as [HΓ' HAM]. pose proof HAM as [(FA & FM & FM' & [HA HM _ _ HMm]) _].
+    exists (fun ρ => FM (set_env_tail ρ)). split; [apply set_denotes_shift; [split; assumption | exact Hc | exact HM] |].
+    intros ρ [Ht (v & v' & w & m & m' & k & [E1 E2 Hw _ Ev _ _ _])]. rewrite E1. cbn [set_entry_value].
+    eapply set_eq_trans; [exact Ev | exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Ht Hw)].
+  - destruct (IH (proj1 HΓ) (ctx_decomp_tail Hc)) as [FM [HM Hm]].
+    exists (fun ρ => FM (set_env_tail ρ)). split; [apply set_denotes_shift; assumption |].
+    intros ρ [Ht _]. exact (Hm _ Ht).
+Qed.
+
+(** δ: a defined variable is its definition's body. *)
+Lemma set_rule_var_delta : forall Γ x A M, Γ ∋ #x : A -> Γ ∋ #x ≔ M : A -> set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
+    set_exp_eq T γ Γ A (a_var x) M.
+Proof.
+  intros * H Hd HΓ Hc. destruct (set_lookup_denotes _ _ _ H HΓ Hc) as [FA [HA Hm]].
+  destruct (set_lookup_def_denotes _ _ _ _ Hd HΓ Hc) as [FM [HM EM]].
+  exists FA, (fun ρ => set_entry_value (ρ x)), FM.
+  constructor; [exact HA | apply set_denotes_var | exact HM | exact EM | exact Hm].
+Qed.
+
 End Variables.
