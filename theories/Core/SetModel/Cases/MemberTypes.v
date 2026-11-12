@@ -765,6 +765,31 @@ Proof.
     injection Hmod as E -> -> -> ->. destruct Θ1, Θd; try discriminate. exact (IH _ _ _ _ eq_refl).
 Qed.
 
+(** A module expression whose module part is a filed module read bare:
+    its term member with no reduct is the filed module's, typed by name. *)
+Lemma bare_member_typed : forall Γ E RE p T0 Φ0 x r A0, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E ->
+    mdenote gc_deps gc_stack Γ E RE -> mdesc_mod RE = Some (mdesc_closed nil p T0 Φ0 nil) ->
+    mdenote gc_deps gc_stack Γ (me_mem E x) (mdesc_term r A0 None) ->
+    loc gc_deps gc_stack p T0 Φ0 /\ gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem (qname_mod p) x : A0.
+Proof.
+  intros * HwE HmE HmodE Hm.
+  pose proof (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hgw HmE) HmodE) as Hl; cbn in Hl.
+  split; [exact Hl |].
+  pose proof (presup_modexp_eq_ctx HwE) as HΓ.
+  pose proof (gctx_valid_syn _ _ Hgw) as Hvs.
+  destruct (desc_ok_ty_sorted _ _ Hvs _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hvs HwE Hm) eq_refl) as [(S & HS & HA0) _].
+  destruct (qname_mod_denote _ _ Hgw _ _ _ Γ Hl) as (R2 & Hm2 & HR2).
+  assert (Hmod2 : mdesc_mod R2 = Some (mdesc_closed nil p T0 Φ0 nil)) by (destruct HR2 as [-> | (A & M & ->)]; reflexivity).
+  assert (Hm' : mdenote gc_deps gc_stack Γ (me_mem (qname_mod p) x) (mdesc_term r A0 None)).
+  { inversion Hm as [? ? ? ? ? _ _ | ? ? ? pq k D ? ? ? _ _ _ _ | | | | ? ? ? R1 R1m Γy Ee rd R3 ? Hm1 Hmd1 He Hed Hr
+                    | ? ? ? Rr ? ? _ _ _]; subst.
+    pose proof (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ Hm1 _ HmE) as ->.
+    rewrite HmodE in Hmd1. injection Hmd1 as <-.
+    eapply mdenote_mem; [exact Hm2 | exact Hmod2 | exact He | exact Hed | exact Hr]. }
+  eapply wf_mem; [exact (loc_modexp_wf _ _ _ HΓ _ _ _ Hl) | exact Hm' | reflexivity | exact HA0 | exact HS |].
+  intros M HM; discriminate.
+Qed.
+
 (** The valuation models the global context *)
 Hypothesis Hok : set_gctx_ok T γ.
 
@@ -885,6 +910,18 @@ Proof.
       exact (apply_values_empty _ _ (set_filed_term_proof _ _ _ _ _ _ _ _ Hft Ekind)).
 Qed.
 
+(** A filed module read bare. *)
+Lemma set_filed_members_bare : forall Γ p T0 Φ0, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
+    gc_loc gc_deps gc_stack p = Some (T0, Φ0) -> set_members_all Γ (qname_mod p).
+Proof.
+  intros * Hc HΓ Hgl.
+  assert (Hl : loc gc_deps gc_stack p T0 Φ0)
+    by (unfold gc_loc in Hgl; destruct (gc_frame gc_stack p) eqn:E; [injection Hgl as ->; left; exact E | right; exact Hgl]).
+  apply (set_filed_members Γ p T0 Φ0 T0 nil nil); [exact (loc_modexp_wf _ _ _ Hc _ _ _ Hl) | exact Hgl | exact HΓ |].
+  constructor; [rewrite List.app_nil_r; reflexivity | reflexivity | constructor | exact I
+               | intros [| k] N A HN; discriminate | intros [| k] A HA; discriminate].
+Qed.
+
 (** ** Members of Module Expressions Equal to Valid Units *)
 
 (** A term member of a module expression is its unit's, of the same
@@ -911,6 +948,12 @@ Proof.
   - left. exact (Hframe _ Hq (gs_find_record_tele _ _ _ Hk)).
 Qed.
 
+Lemma set_valid_modexp_wf : forall Γ H, set_valid_modexp T γ Γ H -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H.
+Proof. intros * HH. destruct HH as [? ? ? ? ? ? [Hw _ _ _ _ _ _] _]. exact Hw. Qed.
+
+Lemma set_valid_unit_ctx : forall Γ K, set_valid_unit T γ Γ K -> set_ctx T γ Γ.
+Proof. intros * HK. destruct HK as [? ? ? ? ? ? ? _ _ HΓ _ | ? ? ? ? [_ _ _ _ HΓ] _ _ | ? ? ? [_ _ _ HΓ] _]; exact HΓ. Qed.
+
 (** The members of a module expression equal to a valid unit are the
     unit's, or a frame's filed members. *)
 Lemma set_modexp_members : forall Γ H K R0 Rm RK, set_modexp_valid_with T γ Γ H K R0 Rm RK -> set_members_all Γ K ->
@@ -930,5 +973,70 @@ Proof.
       apply set_module_eq_sym. eapply set_module_eq_trans; [| exact (E1K _ Hρ)].
       apply set_module_eq_sym. exact (set_modexp_denotes_unique _ _ _ _ _ HF _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF1 _ Hρ)).
 Qed.
+
+(** ** The Term Members of Valid Units *)
+
+(** [set_names_filed Γ H]: when [H]'s module part is a filed module read
+    bare, [H]'s modules are that module's. *)
+Definition set_names_filed (Γ : ctx) (H : modexp) : Prop :=
+  forall RH p T0 Φ0, mdenote gc_deps gc_stack Γ H RH -> mdesc_mod RH = Some (mdesc_closed nil p T0 Φ0 nil) ->
+    forall F, set_modexp_denotes T γ Γ H F -> forall ρ, set_env_in T γ Γ ρ ->
+    forall m, set_interp_modexp T γ Γ ρ (qname_mod p) m -> set_module_eq (F ρ) m.
+
+Theorem set_valid_unit_members_all :
+  (forall Γ K, set_valid_unit T γ Γ K -> set_members_all Γ K /\ set_names_filed Γ K) /\
+  (forall Γ H, set_valid_modexp T γ Γ H -> set_members_all Γ H /\ set_names_filed Γ H).
+Proof.
+  apply (set_valid_unit_modexp_ind T γ).
+  - (* a filed module at arguments *)
+    intros Γ p T0 Φ Tr Tf Ns Hw Hgl HΓ Ha. split; [exact (set_filed_members _ _ _ _ _ _ _ Hw Hgl HΓ Ha) |].
+    intros RH q T1 Φ1 HmK Hmod F HF ρ Hρ m Hm.
+    destruct (filed_denote _ _ Hgw _ _ _ Γ Ns Hgl) as (R2 & Hm2 & Hmod2).
+    pose proof (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ HmK _ Hm2) as ->.
+    rewrite Hmod2 in Hmod. injection Hmod as -> _ _ ->. cbn [me_apps] in HF.
+    exact (set_module_eq_sym _ _ (set_modexp_denotes_unique _ _ _ _ _ HF _ _ _ Hρ Hm)).
+  - (* a body *)
+    intros Γ Δ Φ Φx Hok' _ _ _ _. destruct (set_body_members _ _ _ _ Hok') as [Hbp Hbv].
+    split; [split; [intros κs _; exact (Hbp κs) | exact Hbv] |].
+    intros RH q T1 Φ1 HmK Hmod.
+    inversion HmK; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
+    match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+    match goal with Hb : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end. discriminate.
+  - (* an alias *)
+    intros Γ Δ E Hok' HEv [IHEm IHEn].
+    pose proof (set_valid_modexp_wf _ _ HEv) as HwE.
+    split.
+    + apply (set_alias_members _ _ _ Hok' HwE (proj1 IHEm) (proj2 IHEm)).
+      intros x RE p T0 Φ0 r A0 HmE HmodE Hm'. split; [exact (proj2 (bare_member_typed _ _ _ _ _ _ _ _ _ HwE HmE HmodE Hm')) |].
+      intros FE HFE ρ' Hρ' m Hm. exact (IHEn _ _ _ _ HmE HmodE _ HFE _ Hρ' _ Hm).
+    + intros RH q T1 Φ1 HmK Hmod F HF ρ Hρ m Hm.
+      inversion HmK; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
+      match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [| ? ? ? ? RE' R' HmE' HmodE']; subst end.
+      pose proof (mdesc_mod_is_mod _ _ HmodE') as HisR'.
+      destruct R' as [| | Θ' p' T' Φ' Ns' |]; cbn in HisR', Hmod; try contradiction; try discriminate.
+      injection Hmod as EΘ -> -> -> ->. destruct Θ', Δ; try discriminate. cbn [List.app] in *.
+      destruct Hok' as [_ _ _ _ _ _ (FE & FE' & [HFE _ _])].
+      pose proof (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) as HFρ. apply set_interp_me_lit_iff in HFρ.
+      inversion HFρ; subst. cbn [List.rev List.app] in *.
+      match goal with HL : set_interp_unit_params _ _ _ _ _ nil _ _ |- _ => inversion HL; subst end.
+      match goal with HD : set_interp_moddef _ _ _ _ (md_alias E) _ |- _ => inversion HD; subst end.
+      eapply set_module_eq_trans; [| exact (IHEn _ _ _ _ HmE' HmodE' _ HFE _ Hρ _ Hm)].
+      apply (set_modexp_denotes_unique _ _ _ _ _ HFE _ _ _ Hρ). assumption.
+  - (* a module expression equal to a valid unit *)
+    intros Γ H K R0 Rm RK Hv HK [IHKm IHKn]. pose proof Hv as [HwH HmH HmodH (F1 & FK & [HF1 HFK E1K]) HmK HmodK _].
+    pose proof (presup_modexp_eq_ctx HwH) as Hc. pose proof (set_valid_unit_ctx _ _ HK) as HΓ.
+    split; [exact (set_modexp_members _ _ _ _ _ _ Hv IHKm (fun p T0 Φ0 Hgl => set_filed_members_bare _ _ _ _ Hc HΓ Hgl)) |].
+    intros RH q T1 Φ1 HmH' Hmod F HF ρ Hρ m Hm.
+    pose proof (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ HmH' _ HmH) as ->. rewrite HmodH in Hmod. injection Hmod as ->.
+    eapply set_module_eq_trans; [| exact (IHKn _ _ _ _ HmK HmodK _ HFK _ Hρ _ Hm)].
+    eapply set_module_eq_trans; [| exact (E1K _ Hρ)].
+    apply set_module_eq_sym. exact (set_modexp_denotes_unique _ _ _ _ _ HF _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF1 _ Hρ)).
+Qed.
+
+(** The term members of a valid module expression are of their types, and
+    are their reducts, at every environment of a denotation of it. *)
+Corollary set_valid_modexp_members : forall Γ H F, set_valid_modexp T γ Γ H -> set_modexp_denotes T γ Γ H F ->
+    set_members_valid T γ Γ H F.
+Proof. intros * HH HF. exact (set_members_valid_of_values _ _ _ (proj2 (proj1 (proj2 set_valid_unit_members_all _ _ HH)) _ HF)). Qed.
 
 End MemberTypes.
