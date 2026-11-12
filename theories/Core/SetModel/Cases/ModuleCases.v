@@ -45,17 +45,6 @@ Proof.
     exact (IH _ _ _ (apply_module m v) vs (set_interp_me_app T γ _ _ _ _ _ _ Hm HN) HNs) end.
 Qed.
 
-(** Terms each of which denotes have their values as a function of the
-    environment. *)
-Lemma set_denotes_list : forall Γ Ns, (forall k N, List.nth_error Ns k = Some N -> exists FN, set_denotes T γ Γ N FN) ->
-    exists Fs, forall ρ, set_env_in T γ Γ ρ -> set_interp_list T γ Γ ρ Ns (Fs ρ).
-Proof.
-  intros Γ Ns. induction Ns as [| N Ns IH]; intros HN; [exists (fun _ => nil); intros; constructor |].
-  destruct (HN 0 N eq_refl) as (FN & HFN).
-  destruct (IH (fun k N' HN' => HN (S k) N' HN')) as (Fs & HFs).
-  exists (fun ρ => FN ρ :: Fs ρ). intros ρ Hρ. constructor; [exact (set_denotes_exists _ _ _ _ _ HFN _ Hρ) | exact (HFs _ Hρ)].
-Qed.
-
 (** A valid unit denotes, alike on both sides. *)
 Lemma set_valid_unit_rel : forall Γ K, set_valid_unit T γ Γ K -> set_modexp_rel T γ Γ K K.
 Proof.
@@ -68,7 +57,7 @@ Proof.
       - destruct (HNr _ _ _ HN EA) as (FA & FN & FN' & [_ HFN _ _ _]). exists FN. exact HFN.
       - exfalso. apply List.nth_error_None in EA. rewrite length_tele_insts in EA by exact HTfa.
         assert (Hk : k < List.length Ns) by (apply List.nth_error_Some; congruence). lia. }
-    destruct (set_denotes_list _ _ HN) as (Fs & HFs).
+    destruct (set_denotes_list T γ _ _ HN) as (Fs & HFs).
     set (F := fun ρ => apply_module_args (set_module_global p nil) (Fs ρ)).
     assert (HF : set_modexp_denotes T γ Γ (me_apps (qname_mod p) Ns) F).
     { apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
@@ -280,6 +269,23 @@ Proof.
   constructor; [exact HA | exact HM | exact HM' | |].
   - intros ρ Hρ. eapply set_eq_trans; [exact (select_term_resp γ _ _ (E _ Hρ) x) |].
     apply (set_denotes_unique _ _ _ _ _ HM' _ _ _ Hρ). constructor. exact (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ).
+  - intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ)).
+Qed.
+
+(** [δ] for members: a term member of a valid module expression is its
+    reduct. *)
+Lemma set_rule_mem_delta : forall Γ H x R A M, set_ctx T γ Γ -> set_modexp_eq T γ Γ H H ->
+    mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M ->
+    set_exp_eq T γ Γ A (a_mem H x) M.
+Proof.
+  intros * HΓ (F & F' & [HF _ _ Hv _]) Hm Ht HM.
+  destruct (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Hok _ _ Hv _ _ _ Hm Ht) as [(FA & HA) HMd].
+  destruct (HMd _ HM) as (FM & HFM).
+  assert (HMem : set_denotes T γ Γ (a_mem H x) (fun ρ => select_term γ (F ρ) x)).
+  { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ. constructor. exact (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ). }
+  exists FA, (fun ρ => select_term γ (F ρ) x), FM.
+  constructor; [exact HA | exact HMem | exact HFM | |].
+  - intros ρ Hρ. exact (proj2 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ) _ _ HM HFM).
   - intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ)).
 Qed.
 
