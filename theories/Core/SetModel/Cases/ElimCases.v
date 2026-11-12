@@ -2461,9 +2461,11 @@ Definition extra_point (XE : nat -> list aczel_set -> aczel_set -> imember -> Pr
 (** No further property: what the eliminator's rules take. *)
 Definition no_extra : nat -> list aczel_set -> aczel_set -> imember -> Prop := fun _ _ _ _ => True.
 
+(** No further property respects equality. *)
 Lemma no_extra_resp : forall k ns ns' w w' Mk, list_set_eq ns ns' -> set_eq w w' -> no_extra k ns w Mk -> no_extra k ns' w' Mk.
 Proof. intros. exact I. Qed.
 
+(** Every element has no further property. *)
 Lemma no_extra_point : forall us k ns w, extra_point no_extra us k ns w.
 Proof. intros. intros ? ? ? ? ? ?. exact I. Qed.
 
@@ -4958,6 +4960,132 @@ Qed.
 
 End Induction.
 
+(** ** The Results at Two Block Lists
+
+    At two block lists [Bks] and [Bks2] of the same motives whose branches
+    are equal in the model, the eliminator's results agree: the carrier
+    induction carries the agreement as its further property. *)
+
+Section Agreement.
+  (** The eliminator's context, environment, sort, group, uniform
+      parameters, the two block lists, the set of its results, the group
+      and the level of its motives *)
+  Variables (Γ : ctx) (ρ : set_env) (r : abs_kind) (p : qname) (Us : list exp) (Bks Bks2 : list eblock) (V : aczel_set).
+  Variables (D : ind_decl) (i : nat).
+
+(** [results_agree k ns w Mk]: the results of [w], at the member [k], [Mk],
+    are the same at [Bks] and at [Bks2]: its eliminator's, at a member with
+    a block, and its fields' along their paths, at a record view. *)
+Record results_agree (k : nat) (ns : list aczel_set) (w : aczel_set) (Mk : imember) : Prop :=
+  { (** At a member with a block, the eliminator's results, at every element equal to it *)
+    results_agree_block : r <> ak_propositional -> im_is_rview Mk = false -> forall w', set_eq w w' ->
+      set_eq (elim_result Γ ρ r p Us Bks V k w') (elim_result Γ ρ r p Us Bks2 V k w')
+    (** At a record view, its fields' results along their paths, at every element equal to it *)
+  ; results_agree_rview : r <> ak_propositional -> forall qr Is fl c gs, im_head Mk = mh_record qr Is fl ->
+      im_cons Mk = (c, gs) :: nil -> forall w', set_eq w w' ->
+      forall l, In l (fields_leaves (rview_leaves D) nil (List.combine fl gs)) ->
+      set_eq (leaf_result Γ ρ r p Us Bks V l w') (leaf_result Γ ρ r p Us Bks2 V l w') }.
+
+(** The agreement respects equality. *)
+Lemma results_agree_resp : forall k ns ns' w w' Mk, list_set_eq ns ns' -> set_eq w w' ->
+    results_agree k ns w Mk -> results_agree k ns' w' Mk.
+Proof.
+  intros k ns ns' w w' Mk _ E [Hb Hrv]. constructor.
+  - intros Hr Hr' w'' E'. exact (Hb Hr Hr' w'' (set_eq_trans _ _ _ E E')).
+  - intros Hr qr Is fl c gs Hh Hc w'' E'. exact (Hrv Hr qr Is fl c gs Hh Hc w'' (set_eq_trans _ _ _ E E')).
+Qed.
+
+(** Along the paths of a shape whose ends agree, the results agree. *)
+Lemma leaves_agree_of_closed_ok : decl_typed gc_deps gc_stack D -> r <> ak_propositional ->
+    forall RV t Mk Ta φ Bs1 θ xv, shape_closed_ok Γ ρ r p Us Bks V D i RV results_agree Mk Ta φ Bs1 t θ xv ->
+    forall m l, In l (shape_leaves (rview_leaves D) m t) ->
+    set_eq (leaf_result Γ ρ r p Us Bks V l xv) (leaf_result Γ ρ r p Us Bks2 V l xv).
+Proof.
+  intros HDt Hr RV t. induction t as [j Ps | B t IH]; intros Mk Ta φ Bs1 θ xv H m l Hl; cbn [shape_closed_ok shape_leaves] in H, Hl.
+  - destruct H as (Mj & ns & [HMj _ _ _ _ [Hblk Hrv]]).
+    destruct (im_is_rview Mj) eqn:Hrj.
+    + destruct (im_head Mj) as [pm | qc k' Is0 vm | qr Is fl] eqn:Hh; unfold im_is_rview in Hrj; rewrite Hh in Hrj; try discriminate.
+      destruct (rview_struct_con _ _ _ (decl_typed_record_struct _ _ _ HDt) _ _ _ _ _ HMj Hh) as (gs & Hcs & _).
+      pose proof (leaves_coherent_of_order _ (rview_struct_order _ _ _ (decl_typed_record_struct _ _ _ HDt))) as Hco.
+      rewrite (Hco _ _ _ _ _ _ _ HMj Hh Hcs) in Hl. apply List.in_map_iff in Hl as (l0 & <- & Hl0).
+      eapply set_eq_trans; [apply leaf_result_wk |]. eapply set_eq_trans; [| apply set_eq_sym; apply leaf_result_wk].
+      exact (Hrv Hr qr Is fl rview_con gs eq_refl Hcs xv (set_eq_refl _) l0 Hl0).
+    + rewrite (rview_leaves_not_rview _ _ _ HMj Hrj) in Hl. destruct Hl as [<- | []]. cbn [leaf_result].
+      exact (Hblk Hr eq_refl xv (set_eq_refl _)).
+  - destruct H as (a & [_ Edom Hrest]). apply List.in_map_iff in Hl as (l' & <- & Hl'). cbn [leaf_result].
+    apply graph_set_resp; [intros b b' Eb; apply leaf_result_resp; apply set_apply_resp; [apply set_eq_refl | exact Eb]
+                          | intros b b' Eb; apply leaf_result_resp; apply set_apply_resp; [apply set_eq_refl | exact Eb]
+                          | apply set_eq_refl |].
+    intros b Hb. exact (IH _ _ _ _ _ _ (Hrest b (set_mem_eq_r _ _ _ Edom Hb)) _ _ Hl').
+Qed.
+
+  (** The uniform parameters' instance and the universe of the carriers *)
+  Variables (Fσ : set_env -> set_env) (U : aczel_set).
+  (** The context denotes and is well formed, the environment is one of it,
+      and the uniform parameters' instance *)
+  Hypotheses (HΓ : set_ctx T γ Γ) (HcΓ : ⊢ gc_deps ⍮ gc_stack ⍮ Γ) (Hρ : set_env_in T γ Γ ρ)
+    (HD : ind_lookup gc_deps gc_stack p = Some D)
+    (Hσ : set_gsub_with T γ Γ (sb_of_list sb_id Us) (ind_uparams D ++ Γ) Fσ).
+  (** The group is typed and closed, at its uniform parameters *)
+  Hypotheses (HDt : decl_typed gc_deps gc_stack D) (Hcl : decl_closed D) (HUl : List.length Us = ind_nu D).
+  (** The motives' contexts are well formed and denote, and the motives denote *)
+  Hypothesis HMwf : forall j Mj, ind_member D j = Some Mj -> ⊢ gc_deps ⍮ gc_stack ⍮ elim_mctx p D j Mj Us ++ Γ.
+  Hypothesis HMot : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+    exists FS FM FM', set_exp_eq_with T γ (elim_mctx p D j Mj Us ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b) FS FM FM'.
+  Hypothesis HMctx : forall j Mj, ind_member D j = Some Mj -> set_ctx T γ (elim_mctx p D j Mj Us ++ Γ).
+  (** The carriers are the least fixed point in [U] *)
+  Hypothesis Hcar : forall k Mk ρk, ind_member D k = Some Mk -> set_env_in T γ (im_params D Mk) ρk ->
+    list_set_eq (uniform_values D Mk ρk) (elim_uniform_values ρ D Fσ) ->
+    set_eq (set_group_carrier (global_group γ p) k (set_env_values (im_params D Mk) ρk))
+           (member_carrier (global_group γ p) (elim_uniform_values ρ D Fσ) U U k (set_env_values (im_nparams Mk) ρk)).
+
+  Let us := elim_uniform_values ρ D Fσ.
+  Let G := global_group γ p.
+  Let S := carrier_points_with G us U U (elim_point_with Γ ρ r p Us Bks V D i results_agree us).
+
+(** Along the recursive arguments of a constructor drawn from the points
+    whose results agree, the recursive results agree. *)
+Lemma ihs_values_agree : r <> ak_propositional -> forall k Mk SMk cs gs vals θk,
+    ind_member D k = Some Mk -> List.nth_error (set_group_members G) k = Some SMk -> In cs (set_member_constructors SMk) ->
+    ind_con Mk (set_constructor_name cs) = Some gs ->
+    set_env_in T γ (im_params D Mk) θk -> list_set_eq (uniform_values D Mk θk) us ->
+    arguments_fit G U S (us ++ set_env_values (im_nparams Mk) θk) (set_constructor_arguments cs) vals ->
+    forall gs2 gs1, gs = gs1 ++ gs2 ->
+    list_set_eq (ihs_values Γ ρ r p Us Bks V D (im_nn Mk) (cargs_pat gs1) gs2 (List.skipn (List.length gs1) vals))
+                (ihs_values Γ ρ r p Us Bks2 V D (im_nn Mk) (cargs_pat gs1) gs2 (List.skipn (List.length gs1) vals)).
+Proof.
+  intros Hr k Mk SMk cs gs vals θk Hk HSk Hcs Hgs Hθk Huni Hfit.
+  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG.
+  pose proof (set_member_ok_constructors _ _ _ _ _ _ _ (set_group_ok_members _ _ _ _ _ HG _ _ _ Hk HSk) cs gs Hcs Hgs) as Hcok.
+  pose proof (arguments_fit_length _ _ _ _ _ _ Hfit) as Hlv.
+  pose proof (set_arguments_shape_length _ _ (set_constructor_ok_shape _ _ _ _ _ _ _ _ Hcok)) as Hlsh.
+  assert (Hlvr : forall Bks0 l x, leaf_value Γ ρ r p Us Bks0 V l x = leaf_result Γ ρ r p Us Bks0 V l x)
+    by (intros; unfold leaf_value; destruct r; [reflexivity | contradiction | reflexivity]).
+  induction gs2 as [| g gs2 IH]; intros gs1 Egs.
+  - rewrite List.skipn_all2 by (rewrite Hlv, Hlsh, Egs, List.app_nil_r; lia). constructor.
+  - assert (Hlt : List.length gs1 < List.length vals) by (rewrite Hlv, Hlsh, Egs, List.length_app; cbn; lia).
+    destruct (List.nth_error vals (List.length gs1)) as [v |] eqn:Hv; [| apply List.nth_error_None in Hv; lia].
+    destruct (List.nth_error_split vals _ Hv) as (l1 & l2 & Evals & Hl1).
+    assert (Hskp : List.skipn (List.length gs1) vals = v :: l2)
+      by (rewrite Evals, <- Hl1, List.skipn_app, Nat.sub_diag, List.skipn_all; reflexivity).
+    assert (Hskp' : List.skipn (List.length (gs1 ++ [g])) vals = l2)
+      by (rewrite Evals, List.length_app, <- Hl1, List.skipn_app; cbn [List.length];
+          replace (List.length l1 + 1 - List.length l1) with 1 by lia; rewrite List.skipn_all2 by lia; reflexivity).
+    assert (Egs' : gs = (gs1 ++ [g]) ++ gs2) by (rewrite Egs, <- List.app_assoc; reflexivity).
+    rewrite Hskp. destruct g as [κ A | t]; cbn [ihs_values].
+    + replace (false :: cargs_pat gs1) with (cargs_pat (gs1 ++ [ca_arg κ A])) by (rewrite cargs_pat_snoc; reflexivity).
+      rewrite <- Hskp'. exact (IH _ Egs').
+    + apply list_set_eq_app.
+      * apply map_set_eq. intros l Hl. rewrite !Hlvr.
+        destruct (block_arg_closed Γ ρ r p Us Bks V D i Fσ U results_agree results_agree_resp HΓ HcΓ Hρ HD Hσ HDt Hcl HUl
+                    HMwf HMot HMctx Hcar k Mk SMk cs gs vals θk gs1 t gs2 v Hk HSk Hcs Hgs Hθk Huni Hfit Egs Hv) as [_ Hcok'].
+        exact (leaves_agree_of_closed_ok HDt Hr _ _ _ _ _ _ _ _ Hcok' _ _ Hl).
+      * replace (true :: cargs_pat gs1) with (cargs_pat (gs1 ++ [ca_rec t])) by (rewrite cargs_pat_snoc; reflexivity).
+        rewrite <- Hskp'. exact (IH _ Egs').
+Qed.
+
+End Agreement.
+
 (** ** The Rule of the Eliminator *)
 
 (** The union of the carriers of the codes of the large universe at [i]:
@@ -5113,6 +5241,186 @@ Proof.
     destruct (set_group_ok_carriers _ _ _ _ _ HG ρu Hinst) as (s & U & l & [_ HC]).
     rewrite Eu in HC. destruct HC as [_ _ Hcar]. exists U. exact Hcar.
 Qed.
+
+(** Branches of the same names: a branch's lookup has one in the other, of
+    the same binder count. *)
+Lemma brs_lookup_same_names : forall (Bs Bs2 : list (string * nat * exp)) c n B, List.map fst Bs = List.map fst Bs2 ->
+    brs_lookup Bs c = Some (n, B) -> exists B2, brs_lookup Bs2 c = Some (n, B2).
+Proof.
+  induction Bs as [| [[c' n'] B'] Bs IH]; intros [| [[c2 n2] B2'] Bs2] c n B E H; cbn in E, H |- *; try discriminate.
+  injection E as -> -> E. destruct (String.eqb c c2).
+  - injection H as -> ->. eexists. reflexivity.
+  - exact (IH _ _ _ _ E H).
+Qed.
+
+(** ** The Agreement Holds at Every Element *)
+
+Section AgreementStep.
+  (** The eliminator's context, environment, sort, group, uniform
+      parameters, the two block lists, the set of its results, the group,
+      the level of its motives, the uniform parameters' instance and the
+      universe of the carriers *)
+  Variables (Γ : ctx) (ρ : set_env) (r : abs_kind) (p : qname) (Us : list exp) (Bks Bks2 : list eblock) (V : aczel_set).
+  Variables (D : ind_decl) (i : nat) (Fσ : set_env -> set_env) (U : aczel_set).
+  (** The induction's settings at both block lists *)
+  Hypotheses (HS1 : elim_setting_with Γ r p Us Bks V D i Fσ) (HS2 : elim_setting_with Γ r p Us Bks2 V D i Fσ).
+  (** The environment is one of the context *)
+  Hypothesis Hρ : set_env_in T γ Γ ρ.
+  (** The carriers are the least fixed point in [U] *)
+  Hypothesis Hcar : forall k Mk ρk, ind_member D k = Some Mk -> set_env_in T γ (im_params D Mk) ρk ->
+    list_set_eq (uniform_values D Mk ρk) (elim_uniform_values ρ D Fσ) ->
+    set_eq (set_group_carrier (global_group γ p) k (set_env_values (im_params D Mk) ρk))
+           (member_carrier (global_group γ p) (elim_uniform_values ρ D Fσ) U U k (set_env_values (im_nparams Mk) ρk)).
+  (** The same motives *)
+  Hypothesis HMeq : blocks_motives Bks2 = blocks_motives Bks.
+  (** Each block has one at the other of branches of the same names *)
+  Hypothesis Hcorr : forall k b, List.nth_error Bks k = Some b ->
+    exists b2, List.nth_error Bks2 k = Some b2 /\ List.map fst (eb_brs b) = List.map fst (eb_brs b2).
+  (** The branches are equal in the model *)
+  Hypothesis HBB : forall k Mk b b2 c gs n B B2, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+    List.nth_error Bks2 k = Some b2 -> ind_con Mk c = Some gs -> brs_lookup (eb_brs b) c = Some (n, B) ->
+    brs_lookup (eb_brs b2) c = Some (n, B2) ->
+    exists FS FB FB2, set_exp_eq_with T γ (elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ)
+                        (elim_branch_type p D k Mk c gs (eb_motive b) Us) B B2 FS FB FB2.
+
+  Let us := elim_uniform_values ρ D Fσ.
+  Let G := global_group γ p.
+  Let XA := results_agree Γ ρ r p Us Bks Bks2 V D.
+  Let S := carrier_points_with G us U U (elim_point_with Γ ρ r p Us Bks V D i XA us).
+
+(** The induction's step for the agreement: an element built from
+    arguments drawn from the points whose results agree has its results
+    agree.  At a member with a block, both results are the branch's at the
+    branch's environment ([block_branch_elim]), whose recursive results
+    agree ([ihs_values_agree]); the branches are equal there.  At a record
+    view, its fields' results along their paths agree
+    ([leaves_agree_of_closed_ok]). *)
+Lemma agree_step : forall k ns v, set_mem (list_code ns) U -> set_mem v U ->
+    constructed_from G us U S k ns v -> extra_point D XA us k ns v.
+Proof.
+  intros k ns v HnsU HvU Hc Mk θk Hk Hθk Huni Hns.
+  pose proof HS1 as [HΓ HcΓ HD Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
+  pose proof HS2 as [_ _ _ _ _ _ _ _ HMot2 _ _ HBk2 Hbτ2 Hbctx2 Hbrs2 HBr2 HV2 HBt2 _ _].
+  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG. fold G in HG.
+  pose proof (set_group_ok_respects _ _ _ _ _ HG) as HGr.
+  (* the fixed point's points are points with [elim_point] at both block lists *)
+  assert (HQ1 : set_sub (carrier_fixed_point G us U U) (carrier_points_with G us U U (elim_point_with Γ ρ r p Us Bks V D i no_extra us))).
+  { apply (fixed_point_in_points_with G us U U HGr). intros k' ns' v' Hn' Hv' Hc'. split; [| apply no_extra_point].
+    eapply elim_point_step; first [eassumption | exact no_extra_resp | intros; apply no_extra_point]. }
+  assert (HQ2 : set_sub (carrier_fixed_point G us U U) (carrier_points_with G us U U (elim_point_with Γ ρ r p Us Bks2 V D i no_extra us))).
+  { apply (fixed_point_in_points_with G us U U HGr). intros k' ns' v' Hn' Hv' Hc'. split; [| apply no_extra_point].
+    eapply elim_point_step; first [eassumption | exact no_extra_resp | intros; apply no_extra_point]. }
+  assert (HSfix : set_sub S (carrier_fixed_point G us U U))
+    by (intros z Hz; apply (set_mem_separation _ _ _ (carrier_points_with_pred_resp _)) in Hz as [Hz _]; exact Hz).
+  destruct Hc as (SMk & cs & vals & [HSk Hcs Hfit Ev]).
+  pose proof (set_group_ok_respects _ _ _ _ _ HG _ _ _ HSk Hcs) as Hrs.
+  pose proof (set_group_ok_members _ _ _ _ _ HG _ _ _ Hk HSk) as Hmok.
+  set (sgs := set_constructor_arguments cs) in *.
+  set (ns0 := set_env_values (im_nparams Mk) θk) in *.
+  assert (Hfit0 : arguments_fit G U S (us ++ ns0) sgs vals)
+    by (eapply arguments_fit_resp; [exact Hrs | apply list_set_eq_app; [apply list_set_eq_refl | apply list_set_eq_sym; exact Hns]
+                                   | apply list_set_eq_refl | exact Hfit]).
+  assert (Hcn : In (set_constructor_name cs) (List.map fst (im_cons Mk)))
+    by (rewrite <- (set_member_ok_names _ _ _ _ _ _ _ Hmok); apply List.in_map; exact Hcs).
+  destruct (cons_lookup_of_names _ _ Hcn) as [gs Hgs]. change (ind_con Mk (set_constructor_name cs) = Some gs) in Hgs.
+  (* the element is in its member's carrier *)
+  assert (Hvm : set_mem v (member_carrier G us U U k ns)).
+  { apply member_carrier_intro; [exact HGr | exact HnsU | exact HvU |].
+    exists SMk, cs, vals. constructor; [exact HSk | exact Hcs | eapply arguments_fit_mono; [exact HSfix | exact Hrs | exact Hfit] | exact Ev]. }
+  assert (Hvm0 : set_mem v (member_carrier G us U U k ns0))
+    by (eapply set_mem_eq_r; [apply candidate_carrier_resp; exact (list_set_eq_sym _ _ Hns) | exact Hvm]).
+  constructor.
+  - (* a member with a block: the branches at the branch's environments *)
+    intros Hr Hrv w' Ew'.
+    pose proof (elim_point_of_carrier Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HD Hσ HDt Hcl HUl HMwf HMot
+                  HMctx HMh HBk Hcar Hbτ Hbctx Hbrs HBr HV HBt HUs (fun k' ns' v' _ _ _ => no_extra_point D _ k' ns' v') k ns0 v Hvm0)
+      as [HP1 _].
+    pose proof (elim_point_of_carrier Γ ρ r p Us Bks2 V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HD Hσ HDt Hcl HUl HMwf HMot2
+                  HMctx HMh HBk2 Hcar Hbτ2 Hbctx2 Hbrs2 HBr2 HV2 HBt2 HUs (fun k' ns' v' _ _ _ => no_extra_point D _ k' ns' v') k ns0 v Hvm0)
+      as [HP2 _].
+    destruct (HP1 Mk θk Hk Hθk Huni (list_set_eq_refl _)) as [Hres1 _ _ _].
+    destruct (HP2 Mk θk Hk Hθk Huni (list_set_eq_refl _)) as [Hres2 _ _ _].
+    destruct (Hres1 Hr w' Ew') as [_ Hblk1 _]. destruct (Hblk1 Hrv) as (res1 & Hel1 & HV1).
+    destruct (Hres2 Hr w' Ew') as [_ Hblk2 _]. destruct (Hblk2 Hrv) as (res2 & Hel2 & HV2').
+    (* the branches *)
+    destruct (HBk k Mk Hk Hrv) as [b Hb].
+    destruct (brs_names_lookup _ _ _ _ (Hbrs k Mk b Hk Hb) Hgs) as (n & B & Hlook & HinB).
+    destruct (HBr k Mk b _ gs n B Hk Hb Hgs HinB) as (FS & FB & FB' & HBr0).
+    destruct (Hcorr k b Hb) as (b2 & Hb2 & Enm).
+    destruct (brs_lookup_same_names _ _ _ _ _ Enm Hlook) as [B2 Hlook2].
+    destruct (HBr2 k Mk b2 _ gs n B2 Hk Hb2 Hgs (brs_lookup_in _ _ _ _ Hlook2)) as (FS2 & FB2 & FB2' & HBr02).
+    destruct (HBB k Mk b b2 _ gs n B B2 Hk Hb Hb2 Hgs Hlook Hlook2) as (FSx & FBx & FBx2 & HBx).
+    (* the branches' environments, and the eliminator there *)
+    assert (Hfit1 : arguments_fit G U (carrier_points_with G us U U (elim_point_with Γ ρ r p Us Bks V D i no_extra us)) (us ++ ns0) sgs vals)
+      by (eapply arguments_fit_mono; [intros z Hz; exact (HQ1 _ (HSfix _ Hz)) | exact Hrs | exact Hfit0]).
+    assert (Hfit2 : arguments_fit G U (carrier_points_with G us U U (elim_point_with Γ ρ r p Us Bks2 V D i no_extra us)) (us ++ ns0) sgs vals)
+      by (eapply arguments_fit_mono; [intros z Hz; exact (HQ2 _ (HSfix _ Hz)) | exact Hrs | exact Hfit0]).
+    destruct (block_branch_elim Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HD Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk
+                Hcar Hbτ Hbctx HBr HV HBt k Mk SMk cs gs vals θk b n B FS FB FB' Hk Hrv HSk Hcs Hgs Hθk Huni Hfit1 Hb Hlook HBr0)
+      as [Hρb1 Helim1].
+    destruct (block_branch_elim Γ ρ r p Us Bks2 V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HD Hσ HDt Hcl HUl HMwf HMot2 HMctx HMh HBk2
+                Hcar Hbτ2 Hbctx2 HBr2 HV2 HBt2 k Mk SMk cs gs vals θk b2 n B2 FS2 FB2 FB2' Hk Hrv HSk Hcs Hgs Hθk Huni Hfit2 Hb2 Hlook2
+                HBr02) as [Hρb2 Helim2].
+    assert (Ew0 : set_eq w' (con_val (set_constructor_name cs) (ns0 ++ vals))).
+    { eapply set_eq_trans; [apply set_eq_sym; exact Ew' |]. eapply set_eq_trans; [exact Ev |].
+      unfold constructed_element. destruct (set_member_record_fields SMk) as [fl |] eqn:Hfl.
+      - exfalso. destruct (proj1 (set_member_ok_record_fields _ _ _ _ _ _ _ Hmok fl) Hfl) as (qr & Is & Hh').
+        unfold im_is_rview in Hrv. rewrite Hh' in Hrv. discriminate.
+      - unfold con_val. apply ordered_pair_resp; [apply set_eq_refl |]. apply list_code_resp.
+        apply list_set_eq_app; [exact (list_set_eq_sym _ _ Hns) | apply list_set_eq_refl]. }
+    pose proof (set_elim_functional Γ ρ r p Us Bks Hρ _ _ _ _ Hel1 (Helim1 Hr w' Ew0)) as E1.
+    pose proof (set_elim_functional Γ ρ r p Us Bks2 Hρ _ _ _ _ Hel2 (Helim2 Hr w' Ew0)) as E2.
+    rewrite HMeq in Hρb2, HBr02, E2.
+    set (bc := elim_bctx r p D Mk gs (blocks_motives Bks) Us) in *.
+    set (L1 := ns0 ++ vals ++ ihs_values Γ ρ r p Us Bks V D (im_nn Mk) (cargs_pat nil) gs vals) in *.
+    set (L2 := ns0 ++ vals ++ ihs_values Γ ρ r p Us Bks2 V D (im_nn Mk) (cargs_pat nil) gs vals) in *.
+    assert (EL : list_set_eq L1 L2).
+    { unfold L1, L2. apply list_set_eq_app; [apply list_set_eq_refl | apply list_set_eq_app; [apply list_set_eq_refl |]].
+      exact (ihs_values_agree Γ ρ r p Us Bks Bks2 V D i Fσ U HΓ HcΓ Hρ HD Hσ HDt Hcl HUl HMwf HMot HMctx Hcar Hr k Mk SMk cs gs vals θk
+               Hk HSk Hcs Hgs Hθk Huni Hfit0 gs nil eq_refl). }
+    assert (HlL : List.length bc = List.length L1).
+    { pose proof (arguments_fit_length _ _ _ _ _ _ Hfit0) as Hlv.
+      pose proof (set_arguments_shape_length _ _ (set_constructor_ok_shape _ _ _ _ _ _ _ _
+                    (set_member_ok_constructors _ _ _ _ _ _ _ Hmok cs gs Hcs Hgs))) as Hlsh. fold sgs in Hlsh.
+      unfold bc, L1. rewrite length_elim_bctx, !List.length_app, length_ihs_values by lia.
+      unfold ns0. rewrite length_set_env_values. unfold im_nn. lia. }
+    assert (Hr12 : set_env_rel T γ (bc ++ Γ) (set_env_extend_kinded ρ (ctx_kinds bc) L1) (set_env_extend_kinded ρ (ctx_kinds bc) L2)).
+    { assert (Hv1 : list_set_eq (set_env_values bc (set_env_extend_kinded ρ (ctx_kinds bc) L1)) L2)
+        by (rewrite set_env_values_extend_kinded_any by exact HlL; exact EL).
+      pose proof (set_env_rel_retarget T γ bc Γ _ L2 (elim_bctx_ass _ _ _ _ _ _ _ _ Hcl Hk) Hρb1 Hv1) as H.
+      eapply set_env_rel_ext; [exact (proj2 (Hbctx k Mk _ gs Hk Hgs)) | intros; reflexivity | | exact H].
+      apply set_env_extend_kinded_base. intros y. unfold set_env_drop. rewrite HlL, set_env_extend_kinded_ge. reflexivity. }
+    (* the branches are equal there *)
+    pose proof HBr0 as [_ HFB _ _ _]. pose proof HBr02 as [_ HFB2 _ _ _]. pose proof HBx as [_ HFBx HFBx2 EBx _].
+    eapply set_eq_trans; [exact (elim_result_eq Γ ρ r p Us Bks V Hρ _ _ _ Hel1 HV1) |].
+    eapply set_eq_trans; [exact E1 |].
+    eapply set_eq_trans; [exact (set_denotes_agree _ _ _ _ _ _ _ HFB HFBx Hρb1) |].
+    eapply set_eq_trans; [apply set_eq_sym; exact (set_denotes_unique _ _ _ _ _ HFBx _ _ _ Hr12 (set_denotes_exists _ _ _ _ _ HFBx _ Hρb2)) |].
+    eapply set_eq_trans; [exact (EBx _ Hρb2) |].
+    eapply set_eq_trans; [exact (set_denotes_agree _ _ _ _ _ _ _ HFBx2 HFB2 Hρb2) |].
+    eapply set_eq_trans; [apply set_eq_sym; exact E2 |].
+    apply set_eq_sym. exact (elim_result_eq Γ ρ r p Us Bks2 V Hρ _ _ _ Hel2 HV2').
+  - (* a record view: its fields' results along their paths *)
+    intros Hr qr Is fl c gs' Hh Hcs1 w' Ew' l Hl.
+    pose proof (member_closed_rview_nn _ _ (decl_closed_members _ Hcl _ _ Hk) _ _ _ Hh) as Hnp.
+    assert (Ens : ns = nil) by (unfold ns0 in Hns; rewrite Hnp in Hns; cbn [set_env_values] in Hns; inversion Hns; reflexivity).
+    subst ns. rewrite List.app_nil_r in Hfit.
+    pose proof (proj2 (set_member_ok_record_fields _ _ _ _ _ _ _ Hmok fl) (ex_intro _ qr (ex_intro _ Is Hh))) as Hfl.
+    destruct (set_group_ok_record_views _ _ _ _ _ HG _ _ _ HSk Hfl) as (Hnd & _ & Hargs).
+    pose proof (arguments_fit_length _ _ _ _ _ _ Hfit) as Hlv.
+    assert (Hlfv : List.length fl = List.length vals) by (rewrite Hlv; symmetry; exact (Hargs cs Hcs)).
+    assert (Exv : set_eq v (tuple_code (List.combine fl vals))) by (unfold constructed_element in Ev; rewrite Hfl in Ev; exact Ev).
+    pose proof (cons_lookup_in _ _ _ Hgs) as Hin. rewrite Hcs1 in Hin. destruct Hin as [E | []]. injection E as _ ->.
+    set (θ0 := set_env_drop (im_nn Mk) θk).
+    assert (Hθ0 : set_env_in T γ (ind_uparams D) θ0) by exact (set_env_rel_drop T γ _ _ _ _ Hθk).
+    apply fields_leaves_in in Hl as (fs1 & f & t & fs2 & l1 & Ec & -> & Hl1). cbn [List.app leaf_result].
+    destruct (rview_field_closed_ok Γ ρ r p Us Bks V D i Fσ U XA (results_agree_resp Γ ρ r p Us Bks Bks2 V D) HD HDt Hcl HUl
+                HMwf HMot HMctx Hcar k Mk qr Is fl SMk cs gs vals w' θ0 fs1 f t fs2 Hk Hh HSk Hcs Hgs Hfit Hnd Hlfv
+                (set_eq_trans _ _ _ (set_eq_sym _ _ Ew') Exv) Hθ0 Huni Ec) as [_ Hshape].
+    exact (leaves_agree_of_closed_ok Γ ρ r p Us Bks Bks2 V D i HDt Hr _ _ _ _ _ _ _ _ Hshape _ _ Hl1).
+Qed.
+
+End AgreementStep.
 
 (** An elimination, typed by its premises, of which the parameters, the
     scrutinee, the motives and the branches hold in the model and the
