@@ -311,6 +311,9 @@ Record set_group_ok (p : qname) (D : ind_decl) (G : set_group) : Prop :=
   ; set_group_ok_carriers : forall ρu, set_env_in T γ (ind_uparams D) ρu -> exists s U l, set_group_carriers_at G D ρu s U l
     (** A type former's closed type denotes *)
   ; set_group_ok_former_types : forall k Mk, ind_member D k = Some Mk -> exists FA, set_denotes T γ nil (ind_ty D Mk) FA
+    (** A constructor's closed type denotes *)
+  ; set_group_ok_constructor_types : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+      exists FA, set_denotes T γ nil (con_ty p D k Mk gs) FA
     (** A type former is of its closed type *)
   ; set_group_ok_formers_typed : forall k Mk FA, ind_member D k = Some Mk -> set_denotes T γ nil (ind_ty D Mk) FA ->
       set_mem (global_former γ p k) (code_carrier (FA empty_set_env))
