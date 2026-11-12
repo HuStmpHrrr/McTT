@@ -666,4 +666,75 @@ Proof. intros. eapply (proj1 tree_decodes_injective_all); eassumption. Qed.
 
 End Injective.
 
+(** ** Splitting Arguments *)
+
+(** The non-recursive and the recursive values among the arguments. *)
+Fixpoint split_arguments (gs : list set_argument) (vals : list aczel_set) : list aczel_set * list aczel_set :=
+  match gs, vals with
+  | set_argument_plain _ _ :: gs', a :: vals' => let '(p, r) := split_arguments gs' vals' in (a :: p, r)
+  | set_argument_recursive _ _ _ _ _ :: gs', a :: vals' => let '(p, r) := split_arguments gs' vals' in (p, a :: r)
+  | _, _ => (nil, nil)
+  end.
+
+Lemma split_arguments_spec : forall gs vals, List.length vals = List.length gs ->
+    interleave_arguments gs (fst (split_arguments gs vals)) (snd (split_arguments gs vals)) = vals /\
+    List.length (fst (split_arguments gs vals)) = plain_count gs /\
+    List.length (snd (split_arguments gs vals)) = recursive_count gs.
+Proof.
+  induction gs as [| [κ t | type ds target tparams ls] gs IH]; intros [| a vals] Hl; cbn in Hl; try discriminate; cbn.
+  - auto.
+  - destruct (IH vals ltac:(lia)) as (H1 & H2 & H3). destruct (split_arguments gs vals) as [p r]. cbn in *. rewrite H1. auto.
+  - destruct (IH vals ltac:(lia)) as (H1 & H2 & H3). destruct (split_arguments gs vals) as [p r]. cbn in *. rewrite H1. auto.
+Qed.
+
+Lemma arguments_fit_length : forall bound S pre gs vals, arguments_fit G bound S pre gs vals -> List.length vals = List.length gs.
+Proof. intros * H. induction H; cbn; congruence. Qed.
+
+(** ** Membership in the Telescopes *)
+
+Lemma set_mem_telescope_set : forall ts, Forall list_function_respects ts -> forall pre vals z,
+    set_mem z (telescope_set ts pre vals) <->
+    exists ws, List.length ws = List.length ts /\ set_eq z (list_code (vals ++ ws)) /\
+      (forall i t w, List.nth_error ts i = Some t -> List.nth_error ws i = Some w ->
+         set_mem w (code_carrier (t (pre ++ vals ++ List.firstn i ws)))).
+Proof.
+  intros ts Hts. induction Hts as [| t ts Ht Hts IH]; intros pre vals z; cbn [telescope_set].
+  - rewrite set_mem_singleton. split.
+    + intros E. exists nil. rewrite app_nil_r. split; [reflexivity | split; [exact E | intros [] ? ? ? ?; discriminate]].
+    + intros [ws [Hl [E _]]]. destruct ws; [rewrite app_nil_r in E; exact E | discriminate].
+  - assert (HF : respects_set_eq_fun (fun a => telescope_set ts pre (vals ++ [a]))).
+    { intros a a' Ea. apply telescope_set_resp; [exact Hts | apply list_set_eq_refl |
+        apply list_set_eq_app; [apply list_set_eq_refl | constructor; [exact Ea | constructor]]]. }
+    rewrite set_mem_union. split.
+    + intros [w [Hw Hz]]. apply (set_mem_replacement _ _ _ HF) in Hw as [a [Ha Ew]].
+      eapply set_mem_eq_r in Hz; [| exact Ew]. apply IH in Hz as [ws [Hl [E Hmem]]].
+      exists (a :: ws). split; [cbn; lia |]. split; [rewrite <- app_assoc in E; exact E |].
+      intros [| i] t' w' Ht' Hw'; cbn in Ht', Hw'.
+      * injection Ht' as <-. injection Hw' as <-. rewrite app_nil_r. exact Ha.
+      * specialize (Hmem i t' w' Ht' Hw'). rewrite <- app_assoc in Hmem. exact Hmem.
+    + intros [[| a ws] [Hl [E Hmem]]]; [discriminate |].
+      exists (telescope_set ts pre (vals ++ [a])). split.
+      * apply (set_mem_replacement _ _ _ HF). exists a. split; [| apply set_eq_refl].
+        specialize (Hmem 0 t a eq_refl eq_refl). cbn in Hmem. rewrite app_nil_r in Hmem. exact Hmem.
+      * apply IH. exists ws. split; [cbn in Hl; lia |]. split; [rewrite <- app_assoc; exact E |].
+        intros i t' w' Ht' Hw'. specialize (Hmem (S i) t' w' Ht' Hw'). cbn in Hmem. rewrite <- app_assoc. exact Hmem.
+Qed.
+
+(** The non-recursive arguments of fitting arguments are in their set. *)
+Lemma plain_arguments_set_of_fit : forall bound S pre gs vals, arguments_fit G bound S pre gs vals -> Forall argument_respects gs ->
+    forall prefix, set_mem (list_code (prefix ++ fst (split_arguments gs vals))) (plain_arguments_set gs pre prefix).
+Proof.
+  intros bound S pre gs vals H. induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams ls gs a vals Ha H IH];
+    intros Hr prefix; cbn [split_arguments plain_arguments_set]; inversion Hr as [| ? ? Hg Hgs]; subst.
+  - rewrite app_nil_r. apply set_mem_singleton. apply set_eq_refl.
+  - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst] in *.
+    assert (HF : respects_set_eq_fun (fun a => plain_arguments_set gs (pre ++ [a]) (prefix ++ [a]))).
+    { intros x y E. apply plain_arguments_set_resp; [exact Hgs | |];
+        (apply list_set_eq_app; [apply list_set_eq_refl | constructor; [exact E | constructor]]). }
+    apply set_mem_union. exists (plain_arguments_set gs (pre ++ [a]) (prefix ++ [a])). split.
+    + apply (set_mem_replacement _ _ _ HF). exists a. split; [exact Ha | apply set_eq_refl].
+    + specialize (IH Hgs (prefix ++ [a])). rewrite <- app_assoc in IH. exact IH.
+  - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst] in *. exact (IH Hgs prefix).
+Qed.
+
 End Bound.
