@@ -207,4 +207,70 @@ Proof.
   exact (set_modexp_denotes_unique _ _ _ _ _ HG _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ)).
 Qed.
 
+(** ** Literals *)
+
+Lemma set_rule_me_lit : forall Γ U U', set_unit_eq T γ Γ U U' -> set_modexp_eq T γ Γ (me_lit U) (me_lit U').
+Proof.
+  intros * (F & F' & [HF HF' E HU HU']). exists F, F'.
+  constructor; [exact HF | exact HF' | exact E | exact (set_valid_modexp_of_unit _ _ HU) | exact (set_valid_modexp_of_unit _ _ HU')].
+Qed.
+
+(** An alias of no parameter is its target. *)
+Lemma set_rule_me_beta_alias0 : forall Γ E, set_ctx T γ Γ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_lit (gu_mk nil (md_alias E)) ≈ me_lit (gu_mk nil (md_alias E)) ->
+    set_modexp_eq T γ Γ E E -> set_modexp_eq T γ Γ (me_lit (gu_mk nil (md_alias E))) E.
+Proof.
+  intros * HΓ Hw (FE & FE' & [HFE HFE' EE HvE _]).
+  assert (HF : set_modexp_denotes T γ Γ (me_lit (gu_mk nil (md_alias E))) FE).
+  { apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ. constructor.
+    apply (set_interp_gunit_mk T γ _ _ _ _ (unit_member_proofs γ (env_slot_proofs γ ρ) (gu_mk nil (md_alias E)))); [intros; reflexivity |].
+    cbn [List.rev]. constructor. constructor. exact (set_modexp_denotes_exists _ _ _ _ _ HFE _ Hρ). }
+  assert (Hrel : set_modexp_rel T γ Γ (me_lit (gu_mk nil (md_alias E))) (me_lit (gu_mk nil (md_alias E))))
+    by (exact (set_modexp_rel_left _ _ _ (ex_intro _ FE (ex_intro _ FE (Build_set_modexp_rel_with T γ _ _ _ _ _ HF HF
+        (fun ρ Hρ => set_modexp_denotes_unique _ _ _ _ _ HF _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ))))))).
+  assert (HK : set_valid_unit T γ Γ (me_lit (gu_mk nil (md_alias E)))).
+  { apply set_valid_unit_alias; [constructor | exact HvE].
+    - exact Hw.
+    - constructor.
+    - exists 0. apply set_params_evaluated_nil.
+    - exact HΓ.
+    - exact HΓ.
+    - exact Hrel.
+    - exists FE, FE. constructor; [exact HFE | exact HFE |].
+      intros ρ Hρ. exact (set_modexp_denotes_unique _ _ _ _ _ HFE _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HFE _ Hρ)). }
+  apply set_modexp_eq_of_rel; [| exact (set_valid_modexp_of_unit _ _ HK) | exact HvE].
+  exists FE, FE. constructor; [exact HF | exact HFE |].
+  intros ρ Hρ. exact (set_modexp_denotes_unique _ _ _ _ _ HFE _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HFE _ Hρ)).
+Qed.
+
+(** ** Members *)
+
+(** A term member of a valid module expression is of its type. *)
+Lemma set_rule_mem : forall Γ H x R A FA, set_ctx T γ Γ -> set_modexp_eq T γ Γ H H ->
+    mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A -> set_denotes T γ Γ A FA ->
+    set_exp_eq T γ Γ A (a_mem H x) (a_mem H x).
+Proof.
+  intros * HΓ (F & F' & [HF _ _ Hv _]) Hm Ht HA.
+  assert (HM : set_denotes T γ Γ (a_mem H x) (fun ρ => select_term γ (F ρ) x)).
+  { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ. constructor. exact (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ). }
+  exists FA, (fun ρ => select_term γ (F ρ) x), (fun ρ => select_term γ (F ρ) x).
+  constructor; [exact HA | exact HM | exact HM | intros; apply set_eq_refl |].
+  intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ)).
+Qed.
+
+(** Members of equal module expressions are equal. *)
+Lemma set_rule_mem_cong : forall Γ H H' x R A, set_ctx T γ Γ -> set_modexp_eq T γ Γ H H' ->
+    mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
+    set_exp_eq T γ Γ A (a_mem H' x) (a_mem H' x) -> set_exp_eq T γ Γ A (a_mem H x) (a_mem H' x).
+Proof.
+  intros * HΓ (F & F' & [HF HF' E Hv _]) Hm Ht (FA & FM' & FM'' & [HA HM' _ _ _]).
+  assert (HM : set_denotes T γ Γ (a_mem H x) (fun ρ => select_term γ (F ρ) x)).
+  { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ. constructor. exact (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ). }
+  exists FA, (fun ρ => select_term γ (F ρ) x), FM'.
+  constructor; [exact HA | exact HM | exact HM' | |].
+  - intros ρ Hρ. eapply set_eq_trans; [exact (select_term_resp γ _ _ (E _ Hρ) x) |].
+    apply (set_denotes_unique _ _ _ _ _ HM' _ _ _ Hρ). constructor. exact (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ).
+  - intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ)).
+Qed.
+
 End ModuleCases.
