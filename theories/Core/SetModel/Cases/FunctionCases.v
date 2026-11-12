@@ -158,4 +158,49 @@ Proof.
     intros x y Hxa E. apply code_carrier_resp. exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HB Hρ _ _ Hxa E).
 Qed.
 
+(** ** Applications *)
+
+Lemma set_denotes_app : forall Γ M N FM FN, set_denotes T γ Γ M FM -> set_denotes T γ Γ N FN ->
+    set_denotes T γ Γ (a_app M N) (fun ρ => set_apply (FM ρ) (FN ρ)).
+Proof.
+  intros * HM HN. constructor.
+  - intros ρ Hρ. constructor; [apply (set_denotes_exists _ _ _ _ _ HM) | apply (set_denotes_exists _ _ _ _ _ HN)]; exact Hρ.
+  - intros ρ ρ' v Hr Hv. inversion Hv; subst. apply set_apply_resp;
+      [exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Hr ltac:(eassumption)) | exact (set_denotes_unique _ _ _ _ _ HN _ _ _ Hr ltac:(eassumption))].
+Qed.
+
+(** The application rule, at the codomain's instance [C], whose
+    denotation is the codomain's at the argument. *)
+Lemma set_rule_app : forall Γ κd κc i A B M N C FA FS FB FP FM FA' FN FC, set_ctx T γ Γ ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> set_denotes T γ Γ A FA ->
+    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB ->
+    set_exp_eq_with T γ Γ (a_pi κd κc A B) M M FP FM ->
+    set_exp_eq_with T γ Γ A N N FA' FN ->
+    set_denotes T γ Γ C FC -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FC ρ) (body_function κd FB ρ (FN ρ))) ->
+    set_exp_eq T γ Γ C (a_app M N) (a_app M N).
+Proof.
+  intros * HΓ Hc HA [HS HB _ HBm] [HP HM _ HMm] [HA' HN _ HNm] HC EC.
+  exists FC, (fun ρ => set_apply (FM ρ) (FN ρ)).
+  constructor; [exact HC | apply set_denotes_app; assumption .. |]. intros ρ Hρ.
+  pose proof (set_denotes_agree _ _ _ _ _ HP (set_denotes_pi _ _ κc _ _ _ _ HΓ Hc HA HB) Hρ) as EP.
+  assert (Hn : set_mem (FN ρ) (code_carrier (FA ρ)))
+    by (eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).
+  pose proof (HMm ρ Hρ) as Hm. eapply set_mem_eq_r in Hm; [| apply code_carrier_resp; exact EP].
+  eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact (EC ρ Hρ) |].
+  destruct κc; cbn [pi_denotation] in Hm.
+  - unfold pi_code in Hm. eapply set_mem_eq_r in Hm; [| apply code_carrier_type_code].
+    apply (function_set_apply_on (FM ρ) (code_carrier (FA ρ)) (fun x => code_carrier (body_function κd FB ρ x)) (FN ρ));
+      [| exact Hm | exact Hn].
+    intros x y Hx E. apply code_carrier_resp. exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HB Hρ _ _ Hx E).
+  - unfold forall_code, prop_code in Hm. eapply set_mem_eq_r in Hm; [| apply code_carrier_type_code].
+    apply set_mem_truth in Hm as [Hall Hm0].
+    eapply set_mem_eq_l; [| exact (Hall _ Hn)].
+    eapply set_eq_trans; [| apply set_eq_sym; apply set_apply_resp; [exact Hm0 | apply set_eq_refl]].
+    apply set_eq_sym. apply set_apply_empty.
+  - unfold pi_code in Hm. eapply set_mem_eq_r in Hm; [| apply code_carrier_type_code].
+    apply (function_set_apply_on (FM ρ) (code_carrier (FA ρ)) (fun x => code_carrier (body_function κd FB ρ x)) (FN ρ));
+      [| exact Hm | exact Hn].
+    intros x y Hx E. apply code_carrier_resp. exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HB Hρ _ _ Hx E).
+Qed.
+
 End Functions.
