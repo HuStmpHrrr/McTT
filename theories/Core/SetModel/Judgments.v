@@ -236,6 +236,17 @@ Proof. intros * [Hex Hun] Hr Hin. exact (Hun _ _ _ Hr (Hex _ Hin)). Qed.
 Lemma set_interp_me_lit_iff : forall Γ ρ U m, set_interp_modexp T γ Γ ρ (me_lit U) m <-> set_interp_gunit T γ Γ ρ U m.
 Proof. intros. split; intros H; [inversion H; subst; assumption | constructor; exact H]. Qed.
 
+(** Related environments extended by equal values of an assumption's
+    type are related. *)
+Lemma set_env_rel_extend_ass : forall Γ ρ ρ' κ A a x x', set_env_rel Γ ρ ρ' -> set_interp T γ Γ ρ A a ->
+    set_mem x (code_carrier a) -> set_eq x x' ->
+    set_env_rel (ce_ass κ A :: Γ) (set_env_extend ρ (set_entry_term κ x)) (set_env_extend ρ' (set_entry_term κ x')).
+Proof. intros * Hr Ha Hx E. split; [exact Hr |]. exists x, x', a. constructor; auto. Qed.
+
+Lemma set_env_in_extend_ass : forall Γ ρ κ A a x, set_env_in Γ ρ -> set_interp T γ Γ ρ A a ->
+    set_mem x (code_carrier a) -> set_env_in (ce_ass κ A :: Γ) (set_env_extend ρ (set_entry_term κ x)).
+Proof. intros * Hr Ha Hx. apply set_env_rel_extend_ass with (a := a); [exact Hr | exact Ha | exact Hx | apply set_eq_refl]. Qed.
+
 (** Related environments of a valid context form a partial equivalence. *)
 Lemma set_env_rel_per : forall Γ, set_ctx Γ ->
     (forall ρ ρ', set_env_rel Γ ρ ρ' -> set_env_rel Γ ρ' ρ) /\

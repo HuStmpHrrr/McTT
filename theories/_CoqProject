@@ -137,6 +137,7 @@
 ./Core/SetModel/Judgments.v
 ./Core/SetModel/Cases/UniverseCases.v
 ./Core/SetModel/Cases/PropCases.v
+./Core/SetModel/Cases/FunctionCases.v
 ./Core/SetModel/Interpretation/Global/Model.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v

@@ -537,3 +537,27 @@ Proof.
   eapply set_eq_trans; [apply H; [exact Hx | apply set_eq_refl] |].
   apply set_eq_sym. apply restrict_fun_agree; [exact HG | eapply set_mem_eq_r; [exact ES | exact Hx]].
 Qed.
+
+Lemma graph_set_function_on : forall S F G, respects_on S F -> respects_on S G ->
+    (forall x, set_mem x S -> set_mem (G x) (F x)) -> set_mem (graph_set S G) (function_set S F).
+Proof.
+  intros S F G HF HG H. eapply set_mem_eq_l; [apply set_eq_sym; apply graph_set_restrict; exact HG |].
+  eapply set_mem_eq_r; [apply set_eq_sym; apply function_set_restrict; exact HF |].
+  apply graph_set_function; [apply restrict_fun_resp | apply restrict_fun_resp |]. intros x Hx.
+  eapply set_mem_eq_l; [apply set_eq_sym; apply restrict_fun_agree; [exact HG | exact Hx] |].
+  eapply set_mem_eq_r; [apply set_eq_sym; apply restrict_fun_agree; [exact HF | exact Hx] | apply H; exact Hx].
+Qed.
+
+Lemma set_apply_graph_on : forall S F x, respects_on S F -> set_mem x S -> set_eq (set_apply (graph_set S F) x) (F x).
+Proof.
+  intros S F x HF Hx. eapply set_eq_trans; [apply set_apply_resp; [apply graph_set_restrict; exact HF | apply set_eq_refl] |].
+  eapply set_eq_trans; [apply set_apply_graph; [apply restrict_fun_resp | exact Hx] |]. apply restrict_fun_agree; assumption.
+Qed.
+
+Lemma function_set_apply_on : forall g S F x, respects_on S F -> set_mem g (function_set S F) -> set_mem x S ->
+    set_mem (set_apply g x) (F x).
+Proof.
+  intros g S F x HF Hg Hx. eapply set_mem_eq_r; [apply restrict_fun_agree; [exact HF | exact Hx] |].
+  apply (function_set_apply g S (restrict_fun S F) x (restrict_fun_resp S F)); [| exact Hx].
+  eapply set_mem_eq_r; [apply function_set_restrict; exact HF | exact Hg].
+Qed.
