@@ -3567,6 +3567,57 @@ Proof.
   - intros Hr. rewrite Hrv in Hr. discriminate.
 Qed.
 
+(** The induction's step: an element built from arguments drawn from the
+    points having the property has the property, at every member. *)
+Lemma elim_point_step : forall k ns v, set_mem (list_code ns) U -> set_mem v U ->
+    constructed_from G us U S k ns v -> Q k ns v.
+Proof.
+  intros k ns v HnsU HvU (SMk & cs & vals & [HSk Hcs Hfit Ev]).
+  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG. fold G in HG.
+  pose proof (set_group_ok_respects _ _ _ _ _ HG _ _ _ HSk Hcs) as Hrs.
+  unfold Q, elim_point. intros Mk θk Hk Hθk Huni Hns.
+  pose proof (set_group_ok_members _ _ _ _ _ HG _ _ _ Hk HSk) as Hmok.
+  destruct (im_is_rview Mk) eqn:Hrv.
+  2:{ (* a member with a block *)
+      apply (block_point k ns v SMk cs vals Mk θk Hk Hrv HSk Hcs Hfit Ev); [| exact Hθk | exact Huni | exact Hns].
+      apply member_carrier_intro; [exact (set_group_ok_respects _ _ _ _ _ HG) | exact HnsU | exact HvU |].
+      exists SMk, cs, vals. constructor; [exact HSk | exact Hcs | | exact Ev].
+      eapply arguments_fit_mono; [exact points_in_fixed_point | exact Hrs | exact Hfit]. }
+  (* a record view: no non-uniform parameter, and its fields *)
+  unfold im_is_rview in Hrv. destruct (im_head Mk) as [pm | qc k' Is vm | qr Is fl] eqn:Hh; try discriminate.
+  pose proof (member_closed_rview_nn _ _ (decl_closed_members _ Hcl _ _ Hk) _ _ _ Hh) as Hnp.
+  assert (Ens : ns = nil) by (rewrite Hnp in Hns; cbn [set_env_values] in Hns; inversion Hns; reflexivity).
+  subst ns. rewrite List.app_nil_r in Hfit.
+  pose proof (proj2 (set_member_ok_record_fields _ _ _ _ _ _ _ Hmok fl) (ex_intro _ qr (ex_intro _ Is Hh))) as Hfl.
+  destruct (set_group_ok_record_views _ _ _ _ _ HG _ _ _ HSk Hfl) as (Hnd & _ & Hargs).
+  pose proof (arguments_fit_length _ _ _ _ _ _ Hfit) as Hlv.
+  assert (Hlfv : List.length fl = List.length vals) by (rewrite Hlv; symmetry; exact (Hargs cs Hcs)).
+  assert (Exv : set_eq v (tuple_code (List.combine fl vals))) by (unfold constructed_element in Ev; rewrite Hfl in Ev; exact Ev).
+  assert (Hcn : In (set_constructor_name cs) (List.map fst (im_cons Mk)))
+    by (rewrite <- (set_member_ok_names _ _ _ _ _ _ _ Hmok); apply List.in_map; exact Hcs).
+  destruct (cons_lookup_of_names _ _ Hcn) as [gs Hgs]. change (ind_con Mk (set_constructor_name cs) = Some gs) in Hgs.
+  set (θ0 := set_env_drop (im_nn Mk) θk).
+  assert (Hθ0 : set_env_in T γ (ind_uparams D) θ0) by exact (set_env_rel_drop T γ _ _ _ _ Hθk).
+  constructor.
+  - intros Hr w' Ew'. constructor; [exact Hk | unfold im_is_rview; rewrite Hh; discriminate |].
+    intros qr' Is' fl' c gs' Hh' Hcs1. rewrite Hh in Hh'. injection Hh' as <- <- <-.
+    pose proof (cons_lookup_in _ _ _ Hgs) as Hin. rewrite Hcs1 in Hin. destruct Hin as [E | []]. injection E as _ ->.
+    exact (rview_point_results Hr k Mk qr Is fl SMk cs gs vals w' θ0 Hk Hh HSk Hcs Hgs Hfit Hnd Hlfv
+             (set_eq_trans _ _ _ (set_eq_sym _ _ Ew') Exv) Hθ0 Huni).
+  - unfold im_is_rview. rewrite Hh. discriminate.
+  - intros _. exact (rview_point_fits k Mk qr Is fl SMk cs gs vals v Hk Hh HSk Hcs Hgs Hfit Hnd Hlfv Exv).
+Qed.
+
+(** The induction on the carriers: every element of a member's carrier
+    has the property. *)
+Lemma elim_point_of_carrier : forall k ns v, set_mem v (member_carrier G us U U k ns) -> Q k ns v.
+Proof.
+  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG. fold G in HG.
+  apply (member_carrier_ind G us U U (set_group_ok_respects _ _ _ _ _ HG) Q).
+  - intros k ns ns' v v' En Ev HQ. unfold Q in *. exact (elim_point_resp Γ ρ r p Us Bks V D i HMwf HMot HMctx Hcl us k ns ns' v v' En Ev HQ).
+  - exact elim_point_step.
+Qed.
+
 End Induction.
 
 End Eliminator.
