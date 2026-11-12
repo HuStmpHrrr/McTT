@@ -7,10 +7,9 @@
     algorithmic judgment, and it infers one type
     ([functional_alg_type_infer]), so they infer the same types.
 
-    The only open dependency is the algorithmic soundness the extracted
+    The agreement rests on the algorithmic soundness the extracted
     checker's postconditions rest on: its spine relates values through
-    [soundness_ty'] / [soundness] (PENDING M2), as [alg_type_infer_sound]
-    does. *)
+    [soundness_ty'] / [soundness], as [alg_type_infer_sound] does. *)
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
@@ -73,7 +72,7 @@ Section type_check.
 
   (** The extracted checker infers the type the reference checker infers,
       at each environment and order.  Rests on [soundness_ty'] /
-      [soundness] (PENDING M2), through the extracted checker. *)
+      [soundness], through the extracted checker. *)
   Theorem type_infer_in_agrees_with_reference : forall G (HG : ⊢ G) P M H,
       inferred_type (Extraction.TypeCheck.type_infer_in F levels_abstractable_dec G HG P M H) =
       inferred_type (Reference.TypeCheck.type_infer_in F levels_abstractable_dec G HG P M H).
@@ -82,8 +81,8 @@ Section type_check.
   (** The two checkers accept the same terms, parameters, units, module
       expressions, bodies (with the same elaborations) and extensions:
       every judgment the mutual block decides goes through its
-      applications.  Rests on [soundness_ty'] / [soundness] (PENDING M2),
-      through the extracted checker. *)
+      applications.  Rests on [soundness_ty'] / [soundness], through the
+      extracted checker. *)
   Theorem type_check_in_agrees_with_reference : forall G A (HA : G ⊢ᵗ A) P M H,
       decided (Extraction.TypeCheck.type_check_in F levels_abstractable_dec G A HA P M H) =
       decided (Reference.TypeCheck.type_check_in F levels_abstractable_dec G A HA P M H).

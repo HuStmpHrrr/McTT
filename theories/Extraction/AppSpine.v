@@ -91,7 +91,7 @@ Qed.
     keeps its normal form [Wᵢ].  The invariant is that [v] is related, in a
     universe, to the value of [Wᵢ] at the initial environment.  Its proofs
     read a normal form back as a type equal to the one it normalizes
-    ([soundness_ty_at_sort]), so they rest on soundness (PENDING M2), as
+    ([soundness_ty_at_sort]), so they rest on soundness, as
     the algorithmic soundness the checker's postconditions rest on. *)
 
 
@@ -129,9 +129,9 @@ Record spine_step_result (ρ' : env) (B' : exp) (a n : domain) (ρ : env) (W1 : 
     evaluated kind: if the spine's value [v] of the head's type is related
     to the value of its normal form [Π A. B], then the codomain closure of
     [v] at the value of [N] is related to the value of the normal form [W1]
-    of [B[Id,,N]], which is the reference's next type.  Its one open
-    dependency is soundness: [soundness_ty'] / [soundness] (PENDING M2),
-    through [soundness_ty_at_sort] in [per_univ_of_nbe_ty]. *)
+    of [B[Id,,N]], which is the reference's next type.  It rests on
+    soundness: [soundness_ty'] / [soundness], through
+    [soundness_ty_at_sort] in [per_univ_of_nbe_ty]. *)
 Lemma spine_step_related : forall Γ κd A B N S ρ c a ρ' B' n (i : nat) W1,
     Γ ⊢ a_pi κd ak_relevant (nf_to_exp A) (nf_to_exp B) : S ->
     Γ ⊢ N : nf_to_exp A ->

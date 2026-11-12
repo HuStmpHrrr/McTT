@@ -79,8 +79,9 @@ Qed.
     they occur.  For example, with [f : P → ℕ] and [h1 h2 : P], the normal
     forms of [f h1] and [f h2] are [⇑ⁿ{ak_relevant} (f $ⁿ nf_proof #1)] and
     [⇑ⁿ{ak_relevant} (f $ⁿ nf_proof #0)], related, and [f h1 ≈ f h2 : ℕ] holds by
-    proof irrelevance under the application.  Milestone M2 proves it from
-    the gluing model. *)
+    proof irrelevance under the application.  A corollary of exact
+    soundness ([soundness_of_glu]): each term is equal to its normal form,
+    and the two normal forms are equal ([nf_to_exp_upto_proofs]). *)
 Theorem soundness_upto_proofs : forall {Θ Ξ Γ M M' A W W'},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A ->
