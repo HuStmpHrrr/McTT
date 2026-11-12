@@ -20,11 +20,6 @@ Section Functions.
   Variable T : universe_tower.
   Variable γ : global_valuation.
 
-(** Two denotations of a term agree at an environment. *)
-Lemma set_denotes_agree : forall Γ M F G ρ, set_denotes T γ Γ M F -> set_denotes T γ Γ M G -> set_env_in T γ Γ ρ ->
-    set_eq (F ρ) (G ρ).
-Proof. intros * HF HG Hρ. exact (set_denotes_unique _ _ _ _ _ HG _ _ _ Hρ (set_denotes_exists _ _ _ _ _ HF _ Hρ)). Qed.
-
 (** The function of a binder's body over its domain. *)
 Definition body_function (κ : abs_kind) (F : set_env -> aczel_set) (ρ : set_env) : aczel_set -> aczel_set :=
   fun x => F (set_env_extend ρ (set_entry_term κ x)).
@@ -136,7 +131,7 @@ Proof.
   assert (Hx : forall x, set_mem x (code_carrier (FA ρ)) -> set_env_in T γ (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)))
     by (intros x Hx; exact (set_env_in_extend_ass T γ Γ ρ κd A _ x Hρ Ha Hx)).
   assert (HMB : forall x, set_mem x (code_carrier (FA ρ)) -> set_mem (body_function κd FM ρ x) (code_carrier (body_function κd FB ρ x))).
-  { intros x Hxa. unfold body_function. eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HB' HB (Hx x Hxa)) |].
+  { intros x Hxa. unfold body_function. eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HB' HB (Hx x Hxa)) |].
     apply HMm. exact (Hx x Hxa). }
   destruct κc; cbn [pi_denotation fn_denotation].
   - unfold pi_code. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
@@ -145,7 +140,7 @@ Proof.
   - unfold forall_code. apply (proj2 (prop_true_prop_code _)). intros x Hxa.
     assert (HP : is_prop_code (body_function κd FB ρ x)).
     { apply is_prop_code_of_prop_universe. cbn [abs_kind_sort] in HS.
-      eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HS (set_denotes_prop T γ _) (Hx x Hxa)) |].
+      eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HS (set_denotes_prop T γ _) (Hx x Hxa)) |].
       apply HBm. exact (Hx x Hxa). }
     pose proof (HMB x Hxa) as Hm. unfold prop_true.
     eapply set_mem_eq_l; [exact (prop_code_carrier_empty _ _ HP Hm) | exact Hm].
@@ -178,9 +173,9 @@ Proof.
   intros * HΓ Hc HA [HS HB _ _ HBm] [HP HM _ _ HMm] [HA' HN _ _ HNm] HC EC.
   exists FC, (fun ρ => set_apply (FM ρ) (FN ρ)), (fun ρ => set_apply (FM ρ) (FN ρ)).
   constructor; [exact HC | apply set_denotes_app; assumption .. | intros; apply set_eq_refl |]. intros ρ Hρ.
-  pose proof (set_denotes_agree _ _ _ _ _ HP (set_denotes_pi _ _ κc _ _ _ _ HΓ Hc HA HB) Hρ) as EP.
+  pose proof (set_denotes_agree _ _ _ _ _ _ _ HP (set_denotes_pi _ _ κc _ _ _ _ HΓ Hc HA HB) Hρ) as EP.
   assert (Hn : set_mem (FN ρ) (code_carrier (FA ρ)))
-    by (eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).
+    by (eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).
   pose proof (HMm ρ Hρ) as Hm. eapply set_mem_eq_r in Hm; [| apply code_carrier_resp; exact EP].
   eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact (EC ρ Hρ) |].
   destruct κc; cbn [pi_denotation] in Hm.
@@ -197,6 +192,26 @@ Proof.
     apply (function_set_apply_on (FM ρ) (code_carrier (FA ρ)) (fun x => code_carrier (body_function κd FB ρ x)) (FN ρ));
       [| exact Hm | exact Hn].
     intros x y Hx E. apply code_carrier_resp. exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HB Hρ _ _ Hx E).
+Qed.
+
+(** [M ≈ M'] and [N ≈ N'] give [M N ≈ M' N'], at the codomain's instance
+    [C] at [N]. *)
+Lemma set_rule_app_cong : forall Γ κd κc i A B M M' N N' C FA FS FB FB2 FP FM FM' FA' FN FN' FC, set_ctx T γ Γ ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> set_denotes T γ Γ A FA ->
+    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
+    set_exp_eq_with T γ Γ (a_pi κd κc A B) M M' FP FM FM' ->
+    set_exp_eq_with T γ Γ A N N' FA' FN FN' ->
+    set_denotes T γ Γ C FC -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FC ρ) (body_function κd FB ρ (FN ρ))) ->
+    set_exp_eq T γ Γ C (a_app M N) (a_app M' N').
+Proof.
+  intros * HΓ Hc HA HB [HP HM HM' EM HMm] [HA' HN HN' EN HNm] HC EC.
+  destruct (set_rule_app Γ κd κc i A B M N C FA FS FB FB2 FP FM FM FA' FN FN FC HΓ Hc HA HB
+              (Build_set_exp_eq_with _ _ _ _ _ _ _ _ _ HP HM HM (fun ρ _ => set_eq_refl _) HMm)
+              (Build_set_exp_eq_with _ _ _ _ _ _ _ _ _ HA' HN HN (fun ρ _ => set_eq_refl _) HNm) HC EC)
+    as (FC0 & FL & _ & [HC0 HL _ _ HLm]).
+  exists FC0, FL, (fun ρ => set_apply (FM' ρ) (FN' ρ)). constructor; [exact HC0 | exact HL | apply set_denotes_app; assumption | | exact HLm].
+  intros ρ Hρ. eapply set_eq_trans; [exact (set_denotes_agree _ _ _ _ _ _ _ HL (set_denotes_app _ _ _ _ _ HM HN) Hρ) |].
+  apply set_apply_resp; [exact (EM ρ Hρ) | exact (EN ρ Hρ)].
 Qed.
 
 (** ** β *)
@@ -229,7 +244,7 @@ Lemma set_rule_pi_beta : forall Γ κd κc i A M B N FA FS FB FB2 FB' FM FM2 FA'
 Proof.
   intros * Hfn Hmods HΓ HT Hc Hσ HA [HS HB _ _ HBm] [HB' HM _ _ HMm] [HA' HN _ _ HNm].
   assert (HNa : forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA ρ)))
-    by (intros ρ Hρ; eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).
+    by (intros ρ Hρ; eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).
   exists (fun ρ => body_function κd FB ρ (FN ρ)), (fun ρ => set_apply (fn_denotation κd κc FA FM ρ) (FN ρ)),
     (fun ρ => body_function κd FM ρ (FN ρ)).
   assert (Hx : forall ρ, set_env_in T γ Γ ρ -> set_env_in T γ (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd (FN ρ))))
@@ -240,8 +255,8 @@ Proof.
     - eapply set_eq_trans; [apply set_apply_empty |]. apply set_eq_sym.
       assert (HP : is_prop_code (FB' (set_env_extend ρ (set_entry_term κd (FN ρ))))).
       { apply is_prop_code_of_prop_universe. cbn [abs_kind_sort] in HS.
-        eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HS (set_denotes_prop T γ _) (Hx ρ Hρ)) |].
-        eapply set_mem_eq_l; [exact (set_denotes_agree _ _ _ _ _ HB HB' (Hx ρ Hρ)) |]. apply HBm. exact (Hx ρ Hρ). }
+        eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HS (set_denotes_prop T γ _) (Hx ρ Hρ)) |].
+        eapply set_mem_eq_l; [exact (set_denotes_agree _ _ _ _ _ _ _ HB HB' (Hx ρ Hρ)) |]. apply HBm. exact (Hx ρ Hρ). }
       exact (prop_code_carrier_empty _ _ HP (HMm _ (Hx ρ Hρ))).
     - apply set_apply_graph_on; [exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HM Hρ) | exact (HNa ρ Hρ)]. }
   constructor.
@@ -250,7 +265,7 @@ Proof.
   - apply (set_denotes_single_sub Γ κd A N _ FA); assumption.
   - exact Heq.
   - intros ρ Hρ. eapply set_mem_eq_l; [apply set_eq_sym; exact (Heq ρ Hρ) |].
-    eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HB' HB (Hx ρ Hρ)) |].
+    eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HB' HB (Hx ρ Hρ)) |].
     apply HMm. exact (Hx ρ Hρ).
 Qed.
 

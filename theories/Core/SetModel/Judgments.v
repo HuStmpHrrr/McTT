@@ -343,6 +343,27 @@ Proof.
         eapply set_module_eq_trans; [exact F12 | apply set_module_eq_sym; exact En].
 Qed.
 
+(** Two denotations of a term agree at an environment. *)
+Lemma set_denotes_agree : forall Γ M F G ρ, set_denotes Γ M F -> set_denotes Γ M G -> set_env_in Γ ρ ->
+    set_eq (F ρ) (G ρ).
+Proof. intros * HF HG Hρ. exact (set_denotes_unique _ _ _ HG _ _ _ Hρ (set_denotes_exists _ _ _ HF _ Hρ)). Qed.
+
+(** Equal terms are equal the other way round. *)
+Lemma set_exp_eq_sym : forall Γ A M M', set_exp_eq Γ A M M' -> set_exp_eq Γ A M' M.
+Proof.
+  intros * (FA & FM & FM' & [HA HM HM' E Hm]). exists FA, FM', FM. constructor; try assumption.
+  - intros ρ Hρ. apply set_eq_sym. exact (E ρ Hρ).
+  - intros ρ Hρ. eapply set_mem_eq_l; [exact (E ρ Hρ) | exact (Hm ρ Hρ)].
+Qed.
+
+(** Equality of terms is transitive. *)
+Lemma set_exp_eq_trans : forall Γ A M M' M'', set_exp_eq Γ A M M' -> set_exp_eq Γ A M' M'' -> set_exp_eq Γ A M M''.
+Proof.
+  intros * (FA & FM & FM' & [HA HM HM' E Hm]) (FA2 & FM2 & FM3 & [_ HM2 HM3 E2 _]). exists FA, FM, FM3.
+  constructor; try assumption. intros ρ Hρ. eapply set_eq_trans; [exact (E ρ Hρ) |].
+  eapply set_eq_trans; [exact (set_denotes_agree _ _ _ _ _ HM' HM2 Hρ) | exact (E2 ρ Hρ)].
+Qed.
+
 (** Related environments have equal entries. *)
 Lemma set_env_rel_eq : forall Γ ρ ρ', set_env_rel Γ ρ ρ' -> set_env_eq ρ ρ'.
 Proof.
