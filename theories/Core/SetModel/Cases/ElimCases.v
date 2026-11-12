@@ -552,6 +552,32 @@ Proof.
   rewrite length_cargs_ctx_aux, Nat.sub_diag. reflexivity.
 Qed.
 
+Lemma points_fit_length : forall ds pre pts1 pts, points_fit ds pre pts1 pts -> List.length pts = List.length ds.
+Proof. induction 1; cbn; congruence. Qed.
+
+Lemma length_shape_domains_ctx : forall Bs pat, List.length (shape_domains_ctx pat Bs) = List.length Bs.
+Proof. induction Bs as [| B Bs IH]; intros pat; cbn [shape_domains_ctx]; [reflexivity |]. rewrite List.length_app, IH. cbn. lia. Qed.
+
+Lemma set_env_extend_kinded_snoc_any : forall vs ρ κs x,
+    set_env_extend_kinded ρ κs (vs ++ [x]) =
+    set_env_extend (set_env_extend_kinded ρ κs vs) (set_entry_term (List.nth (List.length vs) κs ak_relevant) x).
+Proof.
+  induction vs as [| v vs IH]; intros ρ κs x; cbn [List.app set_env_extend_kinded List.length].
+  - destruct κs; reflexivity.
+  - rewrite IH. destruct κs; cbn [List.tl List.nth]; [destruct (List.length vs); reflexivity | reflexivity].
+Qed.
+
+(** The values of an environment extended by values, of any kinds. *)
+Lemma set_env_values_extend_kinded_any : forall Δ ρ κs vs, List.length Δ = List.length vs ->
+    set_env_values Δ (set_env_extend_kinded ρ κs vs) = vs.
+Proof.
+  induction Δ as [| e Δ IH]; intros ρ κs vs Hl.
+  - destruct vs; [reflexivity | discriminate].
+  - destruct (List.exists_last (l := vs) ltac:(intros ->; discriminate)) as (vs1 & x & ->).
+    rewrite List.length_app in Hl; cbn in Hl. rewrite set_env_extend_kinded_snoc_any. cbn [set_env_values].
+    change (set_env_tail (set_env_extend ?r ?e)) with r. rewrite IH by lia. reflexivity.
+Qed.
+
 (** Points of domains equal at every list are points of both. *)
 Lemma points_fit_transfer : forall ds pre pre' pts1 pts, points_fit ds pre pts1 pts ->
     (forall k d pts0, List.nth_error ds k = Some d -> List.length pts0 = List.length pts1 + k ->
@@ -562,6 +588,115 @@ Proof.
   - eapply set_mem_eq_r; [apply code_carrier_resp; apply (Hd 0 d points eq_refl); lia | exact Hb].
   - apply IH. intros k d' pts0 Hk Hl. apply (Hd (S k) d' pts0 Hk). rewrite List.length_app in Hl. cbn in Hl. lia.
 Qed.
+
+Section Arguments.
+  (** The eliminator's context, an environment of it, the group, and the
+      uniform parameters' instance *)
+  Variables (Γ : ctx) (ρ : set_env) (p : qname) (D : ind_decl) (Us : list exp) (Fσ : set_env -> set_env).
+  Hypotheses (HΓ : set_ctx T γ Γ) (HcΓ : ⊢ gc_deps ⍮ gc_stack ⍮ Γ) (Hρ : set_env_in T γ Γ ρ)
+    (HD : ind_lookup gc_deps gc_stack p = Some D)
+    (Hσ : set_gsub_with T γ Γ (sb_of_list sb_id Us) (ind_uparams D ++ Γ) Fσ).
+
+  (** The uniform parameters' values *)
+  Definition elim_uniform_values : list aczel_set := set_env_values (ind_uparams D) (Fσ ρ).
+
+(** An environment of an instance whose part below it is [ρ] at every
+    variable has the uniform parameters' values. *)
+Lemma inst_uniform_values : forall ρ', (forall x, ρ' x = ρ x) ->
+    list_set_eq (set_env_values (ind_uparams D) (Fσ ρ')) elim_uniform_values.
+Proof.
+  intros ρ' E. unfold elim_uniform_values. apply set_env_values_resp.
+  assert (Hr : set_env_rel T γ Γ ρ' ρ) by (eapply set_env_rel_ext; [exact HcΓ | intros x; symmetry; apply E | intros x; reflexivity | exact Hρ]).
+  pose proof (set_env_rel_eq T γ _ _ _ (set_gsub_rel _ _ _ _ _ _ Hσ _ _ Hr)) as E'. intros x. apply E'.
+Qed.
+
+  (** The group's carriers: the least fixed point in [U], at instances of
+      the members' parameters over the uniform values *)
+  Variable U : aczel_set.
+  Hypothesis Hcar : forall k Mk ρk, ind_member D k = Some Mk -> set_env_in T γ (im_params D Mk) ρk ->
+    list_set_eq (uniform_values D Mk ρk) elim_uniform_values ->
+    set_eq (set_group_carrier (global_group γ p) k (set_env_values (im_params D Mk) ρk))
+           (member_carrier (global_group γ p) elim_uniform_values U U k (set_env_values (im_nparams Mk) ρk)).
+  (** The candidate carriers at hand, among the fixed point's points *)
+  Variable S : aczel_set.
+  Hypothesis HS : set_sub S (carrier_fixed_point (global_group γ p) elim_uniform_values U U).
+
+Lemma group_uniform_count : List.length (set_group_uniform_types (global_group γ p)) = ind_nu D.
+Proof.
+  pose proof (set_group_ok_uniform _ _ _ _ _ (set_gctx_ok_groups _ _ Hok _ _ HD)) as H.
+  rewrite (length_set_tele_types T γ _ _ _ H). reflexivity.
+Qed.
+
+(** At the end of a recursive argument's shape, the candidate carriers'
+    elements are the carriers': the argument's points are an instance of
+    its target's parameters ([set_constructor_ok_target_instance]). *)
+Lemma recursive_leaf_sub : forall k Mk gs sgs gs1 t gs2 F ds target tparams θo C pre_e,
+    ind_member D k = Some Mk -> set_constructor_ok T γ p D (global_group γ p) Mk gs sgs ->
+    gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error sgs (List.length gs1) = Some (set_argument_recursive F ds target tparams) ->
+    Forall list_function_respects ds -> list_list_function_respects tparams ->
+    List.length ds = ptyp_depth t ->
+    set_env_in T γ (cargs_ctx p D Mk gs1 ++ im_params D Mk) θo ->
+    set_interp T γ (cargs_ctx p D Mk gs1 ++ im_params D Mk) θo (ptyp_ty p D (im_nn Mk) (cargs_pat gs1) t) C ->
+    set_eq C (shape_code (global_group γ p) ds target tparams (set_env_values (cargs_ctx p D Mk gs1 ++ im_params D Mk) θo) nil) ->
+    list_set_eq (List.firstn (ind_nu D) (set_env_values (cargs_ctx p D Mk gs1 ++ im_params D Mk) θo)) elim_uniform_values ->
+    list_set_eq (List.firstn (ind_nu D) pre_e) elim_uniform_values ->
+    (forall k' d pts0, List.nth_error ds k' = Some d -> List.length pts0 = k' ->
+       set_eq (d (pre_e ++ pts0)) (d (set_env_values (cargs_ctx p D Mk gs1 ++ im_params D Mk) θo ++ pts0))) ->
+    (forall pts, List.length pts = List.length ds ->
+       list_set_eq (tparams (pre_e ++ pts)) (tparams (set_env_values (cargs_ctx p D Mk gs1 ++ im_params D Mk) θo ++ pts))) ->
+    forall pts, points_fit ds pre_e nil pts ->
+    let ps := tparams (pre_e ++ nil ++ pts) in
+    set_sub (candidate_carrier U S target (List.skipn (List.length (set_group_uniform_types (global_group γ p))) ps))
+            (set_group_carrier (global_group γ p) target
+               (List.firstn (List.length (set_group_uniform_types (global_group γ p))) pre_e ++
+                List.skipn (List.length (set_group_uniform_types (global_group γ p))) ps)).
+Proof.
+  intros * Hk Hcok Egs Hsg Hds Htp Hlds Hθo HC EC Hus Hpre Hdom Htps pts Hpts ps.
+  unfold ps. rewrite group_uniform_count. cbn [List.app].
+  set (G := global_group γ p) in *. set (Lv := set_env_values (cargs_ctx p D Mk gs1 ++ im_params D Mk) θo) in *.
+  (* the points are points of the code read at the environment's values *)
+  assert (Hpts' : points_fit ds Lv nil pts)
+    by (apply (points_fit_transfer _ _ _ _ _ Hpts); intros k' d pts0 Hk' Hl; cbn in Hl; exact (Hdom k' d pts0 Hk' Hl)).
+  (* the environment of the shape's end *)
+  destruct (shape_env_of_points (global_group γ p) (set_group_ok_carrier_resp _ _ _ _ _ (set_gctx_ok_groups _ _ Hok _ _ HD))
+              p D (im_nn Mk) ds target tparams Lv t (cargs_pat gs1) _ θo C nil Hds Htp Hθo HC EC Hlds pts Hpts') as [Hθ' _].
+  set (θ' := set_env_extend_kinded θo (List.repeat ak_relevant (List.length pts)) pts) in *.
+  pose proof (points_fit_length _ _ _ _ Hpts) as Hlpts.
+  assert (Hlds' : List.length (shape_domains_ctx (cargs_pat gs1) (ptyp_doms t)) = List.length pts)
+    by (rewrite length_shape_domains_ctx, Hlpts, Hlds; reflexivity).
+  assert (Hθ'v : set_env_values (recursive_end_ctx p D Mk gs1 t) θ' = Lv ++ pts).
+  { unfold recursive_end_ctx, θ'. rewrite set_env_values_app. f_equal.
+    - unfold Lv. apply set_env_values_agree. intros x _. unfold set_env_drop. rewrite Hlds', set_env_extend_kinded_ge. reflexivity.
+    - apply set_env_values_extend_kinded_any. exact Hlds'. }
+  destruct (set_constructor_ok_target_instance _ _ _ _ _ _ _ _ Hcok gs1 t gs2 F ds target tparams Egs Hsg θ' Hθ')
+    as (Mt & ρt & [HMt Hρt Evals]).
+  rewrite Hθ'v in Evals.
+  assert (HlLv : ind_nu D <= List.length Lv)
+    by (unfold Lv; rewrite length_set_env_values, List.length_app, length_im_params; unfold im_np; lia).
+  rewrite List.firstn_app, (proj2 (Nat.sub_0_le (ind_nu D) (List.length Lv)) HlLv), List.app_nil_r in Evals.
+  unfold im_params in Evals. rewrite set_env_values_app in Evals.
+  assert (Hlen : List.length (List.firstn (ind_nu D) Lv) =
+                 List.length (set_env_values (ind_uparams D) (set_env_drop (List.length (im_nparams Mt)) ρt)))
+    by (rewrite List.length_firstn, length_set_env_values, Nat.min_l by exact HlLv; reflexivity).
+  destruct (list_set_eq_app_inv _ _ _ _ Hlen Evals) as [Eu En].
+  assert (Hun : list_set_eq (uniform_values D Mt ρt) elim_uniform_values).
+  { unfold uniform_values. rewrite <- (length_im_nparams Mt). eapply list_set_eq_trans; [apply list_set_eq_sym; exact Eu | exact Hus]. }
+  pose proof (Hcar _ _ _ HMt Hρt Hun) as Ecar.
+  intros z Hz.
+  assert (Hz1 : set_mem z (member_carrier G elim_uniform_values U U target (set_env_values (im_nparams Mt) ρt))).
+  { unfold member_carrier. eapply set_mem_eq_r; [apply candidate_carrier_resp |].
+    - eapply list_set_eq_trans; [| exact En]. apply list_set_eq_skipn. apply Htps. rewrite Hlpts. reflexivity.
+    - exact (candidate_carrier_mono _ _ _ _ _ HS _ Hz). }
+  eapply set_mem_eq_r; [| eapply set_mem_eq_r; [apply set_eq_sym; exact Ecar | exact Hz1]].
+  apply (set_group_ok_carrier_resp _ _ _ _ _ (set_gctx_ok_groups _ _ Hok _ _ HD)).
+  unfold im_params. rewrite set_env_values_app. apply list_set_eq_app.
+  - rewrite (length_im_nparams Mt). eapply list_set_eq_trans; [apply list_set_eq_sym; exact Eu |].
+    eapply list_set_eq_trans; [exact Hus | apply list_set_eq_sym; exact Hpre].
+  - eapply list_set_eq_trans; [apply list_set_eq_sym; exact En |]. apply list_set_eq_skipn. apply list_set_eq_sym. apply Htps.
+    rewrite Hlpts. reflexivity.
+Qed.
+
+End Arguments.
 
 (** ** The Eliminator's Results at One Environment *)
 
