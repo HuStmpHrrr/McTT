@@ -2380,6 +2380,23 @@ Proof.
   - unfold ihs_sub. rewrite length_cargs_pat. apply sb_compose_assoc.
 Qed.
 
+(** Terms whose substitution agrees with the entries of an environment of
+    a telescope, as many as its entries, read its values. *)
+Lemma interp_list_of_sub_agrees : forall Ψ ρe Ms Δ θ, List.length Ms = List.length Δ ->
+    (forall y, y < List.length Δ -> sub_entry_agrees T γ Ψ ρe (sb_of_list sb_id Ms y) (θ y)) ->
+    set_interp_list T γ Ψ ρe Ms (set_env_values Δ θ).
+Proof.
+  intros Ψ ρe Ms Δ. revert Ms. induction Δ as [| e Δ IH]; intros Ms θ Hl H.
+  - destruct Ms; [constructor | discriminate].
+  - destruct (List.exists_last (l := Ms) ltac:(intros ->; discriminate)) as (Ms' & M & ->).
+    rewrite List.length_app in Hl; cbn [List.length] in Hl.
+    cbn [set_env_values]. apply set_interp_list_app.
+    + apply IH; [lia |]. intros y Hy. specialize (H (Datatypes.S y) ltac:(cbn; lia)).
+      rewrite sb_of_list_app in H. cbn [sb_of_list sb_extend] in H. exact H.
+    + constructor; [| constructor]. specialize (H 0 ltac:(cbn; lia)).
+      rewrite sb_of_list_app in H. cbn [sb_of_list sb_extend sentry_exp] in H. exact (proj1 H).
+Qed.
+
 Section Induction.
   (** The eliminator's context, environment, sort, group, uniform
       parameters, blocks, the set of its results, and the level of its
@@ -3618,6 +3635,259 @@ Proof.
   - exact elim_point_step.
 Qed.
 
+(** A member type, not a record view's, at [Us] and arguments reading the
+    non-uniform parameters' values of an environment of its parameters
+    whose uniform ones hold the uniform values: a code of the member's
+    carrier there. *)
+Lemma elim_mty_reading : forall m Mm Ns θ, ind_member D m = Some Mm -> im_is_rview Mm = false ->
+    set_env_in T γ (im_params D Mm) θ -> list_set_eq (uniform_values D Mm θ) us ->
+    set_interp_list T γ Γ ρ Ns (set_env_values (im_nparams Mm) θ) ->
+    exists a, set_interp T γ Γ ρ (ind_mty p D m Us Ns) a /\
+      set_eq (code_carrier a) (set_group_carrier G m (set_env_values (im_params D Mm) θ)).
+Proof.
+  intros m Mm Ns θ Hm Hr Hθ Huni HNs.
+  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG. fold G in HG.
+  destruct (member_pre_values m Mm Hm Hr) as [pre Hpre].
+  set (ns := set_env_values (im_nparams Mm) θ) in *.
+  exists (apply_values (global_former γ (fst (im_ref p m Mm)) (snd (im_ref p m Mm))) (pre ++ ns)). split.
+  - unfold ind_mty. rewrite Hm, (im_ty_at_not_rview _ _ _ _ _ Hr).
+    apply set_interp_apps; [apply set_interp_indty |]. apply set_interp_list_app; [exact (member_pre_interp _ _ _ Hpre) | exact HNs].
+  - pose proof (set_group_ok_formers_value _ _ _ _ _ HG m Mm θ Hm Hθ) as Ef.
+    eapply set_eq_trans; [apply code_carrier_resp |].
+    + apply (set_eq_trans _ (apply_values (global_former γ p m) (us ++ ns))).
+      * rewrite !apply_values_app. apply apply_values_resp; [exact (member_pre_former _ _ _ Hpre) | apply list_set_eq_refl].
+      * eapply set_eq_trans; [| exact Ef]. apply apply_values_resp; [apply set_eq_refl |].
+        unfold im_params. rewrite set_env_values_app. apply list_set_eq_app; [apply list_set_eq_sym; exact Huni | apply list_set_eq_refl].
+    + unfold inductive_code. apply code_carrier_type_code.
+Qed.
+
+(** An element of a member's carrier, not a record view's, at an
+    environment of its parameters whose uniform ones hold the uniform
+    values: into a sort of relevant terms its result is in [V], and the
+    end's facts hold. *)
+Lemma elim_at_scrutinee : forall m Mm θ w, ind_member D m = Some Mm -> im_is_rview Mm = false ->
+    set_env_in T γ (im_params D Mm) θ -> list_set_eq (uniform_values D Mm θ) us ->
+    set_mem w (set_group_carrier G m (set_env_values (im_params D Mm) θ)) ->
+    (r <> ak_propositional -> exists res, set_elim T γ Γ ρ r p Us Bks m w res /\ set_mem res V) /\
+    end_fact Γ ρ r p Us Bks V D i m Mm (set_env_values (im_nparams Mm) θ) w.
+Proof.
+  intros m Mm θ w Hm Hr Hθ Huni Hw.
+  assert (Hw' : set_mem w (member_carrier G us U U m (set_env_values (im_nparams Mm) θ)))
+    by (eapply set_mem_eq_r; [exact (Hcar m Mm θ Hm Hθ Huni) | exact Hw]).
+  pose proof (elim_point_of_carrier _ _ _ Hw' Mm θ Hm Hθ Huni (list_set_eq_refl _)) as Hpt.
+  split.
+  - intros Hr0. destruct (point_ok_results _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hpt Hr0 w (set_eq_refl _)) as [_ Hblk _]. exact (Hblk Hr).
+  - exact (point_ok_fact _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hpt Hr).
+Qed.
+
 End Induction.
+
+(** ** The Rule of the Eliminator *)
+
+(** The union of the carriers of the codes of the large universe at [i]:
+    the set the results of an elimination into it are drawn from. *)
+Definition large_results (i : nat) : aczel_set :=
+  union_set (replacement_set (code_carrier (large_universe_code T i)) code_carrier).
+
+(** An elimination, typed by its premises, of which the parameters, the
+    scrutinee, the motives and the branches hold in the model and the
+    motives' and branches' contexts denote, holds in the model: at every
+    environment the scrutinee's value is in its member's carrier, the
+    least fixed point, and the induction on it gives the eliminator's
+    result, of the motive at the non-uniform parameters and the
+    scrutinee. *)
+Lemma set_rule_elim : forall Γ r p Us m Bks M D Mm bm Ps i,
+    set_ctx T γ Γ ->
+    ind_lookup gc_deps gc_stack p = Some D ->
+    ind_member D m = Some Mm ->
+    List.nth_error Bks m = Some bm ->
+    List.length Bks = ind_nblk D ->
+    List.length Ps = im_np D Mm ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
+       gc_deps ⍮ gc_stack ⍮ Γ ⊢ P : A) ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
+       set_exp_eq T γ Γ A P P) ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
+    set_exp_eq T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M ->
+    Us = List.firstn (ind_nu D) Ps ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ ce_ass ak_relevant (eb_scrutinee_type b) :: tele_sub (im_nparams Mk) (sb_of_list sb_id (List.firstn (ind_nu D) Ps))
+                    ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       gc_deps ⍮ gc_stack ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r (a_typ i)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       set_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
+    (forall k Mk, ind_member D k = Some Mk ->
+       gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk, ind_member D k = Some Mk -> set_ctx T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                    ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       set_ctx T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+         : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       set_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
+         (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B) ->
+    motive_kind r ->
+    set_exp_eq T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
+      (a_elim r p Us m Bks M) (a_elim r p Us m Bks M).
+Proof.
+  intros Γ r p Us m Bks M D Mm bm Ps i HΓ HD Hm Hbm HlB HPl HPs HPsem HMt HMsem HUs Hcnt Hsc HMty HMotsem HMx HMxsem Hbrs
+    HBx HBxsem Hn HBty HBsem Hmk.
+  pose proof (wf_elim _ _ _ _ _ _ _ _ _ _ _ _ _ _ HD Hm Hbm HlB HPl HPs HMt HUs Hcnt Hsc HMty HMx Hbrs HBx Hn HBty Hmk) as Hel.
+  subst Us. set (Us := List.firstn (ind_nu D) Ps) in *. set (Ns := List.skipn (ind_nu D) Ps) in *.
+  pose proof (presup_exp_ctx HMt) as HcΓ.
+  destruct (decl_of_lookup _ _ _ _ _ HcΓ HD) as [HDt Hcl].
+  pose proof (decls_of_ctx _ _ _ HcΓ) as HDs.
+  assert (HUl : List.length Us = ind_nu D) by (unfold Us; rewrite List.firstn_length_le; [reflexivity |]; rewrite HPl; unfold im_np; lia).
+  assert (HNl : List.length Ns = im_nn Mm) by (unfold Ns; rewrite List.length_skipn, HPl; unfold im_np; lia).
+  destruct (params_typed_split _ _ D Hcl _ _ Γ Ps Hm HPl HPs) as [HUt _].
+  pose proof (rview_struct_suffix _ _ _ (decl_typed_record_struct _ _ _ HDt)) as Hsuf.
+  pose proof (block_not_rview _ _ _ _ _ Hsuf HlB Hm Hbm) as Hrv.
+  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG.
+  (* the parameters' instance *)
+  destruct (List.nth_error (set_group_members (global_group γ p)) m) as [SMm |] eqn:HSm.
+  2:{ exfalso. apply List.nth_error_None in HSm. rewrite (set_group_ok_member_count _ _ _ _ _ HG) in HSm.
+      assert (Hlt : m < List.length (ind_members D)) by (apply List.nth_error_Some; unfold ind_member in Hm; congruence). lia. }
+  pose proof (member_params_ctx p D HD m Mm SMm Hm HSm) as HPctx.
+  pose proof (decl_closed_params _ _ _ Hcl Hm) as HPs0.
+  pose proof (decl_closed_params_ass _ _ _ Hcl Hm) as HPass.
+  pose proof (member_params_wf _ _ _ _ _ HDt Hm) as HPw.
+  pose proof (wf_ctx_closed_app _ _ _ _ HPass HPs0 HPw HcΓ) as HPwΓ.
+  assert (HPΓ : set_ctx T γ (im_params D Mm ++ Γ)).
+  { pose proof (set_ctx_moved T γ Hfn Hmods _ nil Γ _ _ (set_gsub_drop T γ _ HcΓ) HΓ ltac:(rewrite List.app_nil_r; exact HPctx)
+                  ltac:(rewrite List.app_nil_r; exact HPw)) as H.
+    rewrite tele_sub_closed in H by exact HPs0. exact H. }
+  destruct (set_gsub_closed_inst T γ Hfn Hmods (im_params D Mm) Γ Ps HΓ HPass HPΓ HPwΓ ltac:(rewrite length_im_params; exact HPl)
+              HPs HPsem) as (Fι & HFι & _).
+  (* the uniform parameters' instance *)
+  set (Fσ := fun ρ => set_env_drop (im_nn Mm) (Fι ρ)).
+  assert (EPs : forall x, sb_of_list sb_id Ps (im_nn Mm + x) = sb_of_list sb_id Us x).
+  { intros x. rewrite <- (List.firstn_skipn (ind_nu D) Ps) at 1. fold Us Ns. rewrite sb_of_list_app, <- HNl, sb_of_list_ge. reflexivity. }
+  assert (EPn : forall x, x < im_nn Mm -> sb_of_list sb_id Ps x = sb_of_list sb_id Ns x).
+  { intros x Hx. rewrite <- (List.firstn_skipn (ind_nu D) Ps) at 1. fold Us Ns. rewrite sb_of_list_app.
+    apply sb_of_list_lt_base. lia. }
+  assert (Hσ : set_gsub_with T γ Γ (sb_of_list sb_id Us) (ind_uparams D ++ Γ) Fσ).
+  { constructor.
+    - exact (wf_sub_uparams _ _ _ HDt Hcl _ _ HcΓ HUl HUt).
+    - intros ρ x Hρ. pose proof (set_gsub_agrees _ _ _ _ _ _ HFι ρ (im_nn Mm + x) Hρ) as H. rewrite EPs in H. exact H.
+    - intros ρ ρ' Hr. pose proof (set_gsub_rel _ _ _ _ _ _ HFι _ _ Hr) as H. unfold im_params in H. rewrite <- List.app_assoc in H.
+      exact (set_env_rel_drop T γ _ _ _ _ H). }
+  (* the hypotheses of the induction that hold at every environment *)
+  set (V := large_results i).
+  assert (HMwf : forall j Mj, ind_member D j = Some Mj -> ⊢ gc_deps ⍮ gc_stack ⍮ elim_mctx p D j Mj Us ++ Γ)
+    by (intros j Mj Hj; exact (ext_eq_ctx_left _ _ _ _ _ (HMx j Mj Hj))).
+  assert (HMh : forall j Mj, ind_member D j = Some Mj -> elim_mctx_head_large gc_deps gc_stack Γ p D j Mj Us)
+    by (intros j Mj Hj; exact (elim_mctx_head_wf _ _ _ _ _ _ _ _ Hgw HDs HD Hj HcΓ HUl HUt)).
+  assert (HBk : forall j Mj, ind_member D j = Some Mj -> im_is_rview Mj = false -> exists b, List.nth_error Bks j = Some b)
+    by (intros j Mj Hj Hr; exact (blocks_nth _ _ _ _ Hsuf HlB Hj Hr)).
+  assert (Hmots : motives_typed gc_deps gc_stack Γ p D Us (blocks_motives Bks) r i).
+  { intros j Mj Hj Hr. destruct (HBk j Mj Hj Hr) as [b Hb]. rewrite (blocks_motives_nth _ _ _ Hb). exact (HMty j Mj b Hj Hb). }
+  assert (Hbτ : forall k Mk c gs, ind_member D k = Some Mk -> im_is_rview Mk = false -> ind_con Mk c = Some gs ->
+    gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ
+      ⊢ˢ sb_of_list (sb_of_wk (wk_shiftn (im_nn Mk + List.length gs + cargs_nrec D gs)))
+           (vars_from (cargs_nrec D gs + List.length gs) (im_nn Mk) ++
+            apps_exp (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c)
+              (im_pre Mk (List.map (fun U => exp_wk U (wk_shiftn (im_nn Mk + List.length gs + cargs_nrec D gs))) Us) ++
+               vars_from (cargs_nrec D gs + List.length gs) (im_nn Mk) ++ vars_from (cargs_nrec D gs) (List.length gs))
+            :: nil)
+      : elim_mctx p D k Mk Us ++ Γ)
+    by (intros k Mk c gs Hk Hr Hc; exact (wf_branch_type_sub _ _ _ _ _ _ _ _ _ _ _ _ _ Hgw HDs HD Hk Hr HcΓ HUl HUt HMwf Hmots Hmk Hc)).
+  assert (Hbctx : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+    set_ctx T γ (elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ) /\
+    ⊢ gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ)
+    by (intros k Mk c gs Hk Hc; exact (conj (HBxsem k Mk c gs Hk Hc) (ext_eq_ctx_left _ _ _ _ _ (HBx k Mk c gs Hk Hc)))).
+  assert (HV : r <> ak_propositional -> forall k Mk b FS FMk FMk' θ, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+    set_exp_eq_with T γ (elim_mctx p D k Mk Us ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b) FS FMk FMk' ->
+    set_env_in T γ (elim_mctx p D k Mk Us ++ Γ) θ -> set_sub (code_carrier (FMk θ)) V).
+  { intros Hr k Mk b FS FMk FMk' θ Hk Hb Hw Hθ z Hz.
+    destruct Hmk; [| contradiction]. cbn [abs_kind_sort] in Hw. destruct Hw as [HFS _ _ _ HFm].
+    pose proof (set_denotes_agree T γ _ _ _ _ _ HFS (set_denotes_typ T γ _ i) Hθ) as E.
+    unfold V, large_results. apply set_mem_union. exists (code_carrier (FMk θ)). split; [| exact Hz].
+    apply set_mem_replacement; [intros a b0 Eab; exact (code_carrier_resp _ _ Eab) |].
+    exists (FMk θ). split; [eapply set_mem_eq_r; [apply code_carrier_resp; exact E | exact (HFm θ Hθ)] | apply set_eq_refl]. }
+  (* the scrutinee and the motive at its member *)
+  destruct HMsem as (FA0 & FM & FM' & HMw).
+  destruct (HMotsem m Mm bm Hm Hbm) as (FSm & FMot & FMot' & HMotw).
+  (* at every environment, the induction *)
+  assert (Hkey : forall ρ, set_env_in T γ Γ ρ ->
+    (r <> ak_propositional -> exists res, set_elim T γ Γ ρ r p Us Bks m (FM ρ) res /\ set_mem res V) /\
+    end_fact Γ ρ r p Us Bks V D i m Mm (set_env_values (im_nparams Mm) (Fι ρ)) (FM ρ)).
+  { intros ρ Hρ.
+    (* the uniform parameters' environment, and the carriers' universe there *)
+    pose proof (set_ctx_of_tele_types T γ Hfn Hmods _ _ _ (set_group_ok_uniform _ _ _ _ _ HG) I) as HU. rewrite List.app_nil_r in HU.
+    pose proof (decl_closed_uparams _ Hcl) as Hs. pose proof (decl_closed_ass _ Hcl) as Hass.
+    destruct (decl_typed_uparams _ _ _ HDt) as [Hw _].
+    pose proof (wf_ctx_closed_app _ _ _ _ Hass Hs Hw HcΓ) as HwΓ.
+    assert (HUΓ : set_ctx T γ (ind_uparams D ++ Γ)).
+    { pose proof (set_ctx_moved T γ Hfn Hmods _ nil Γ _ _ (set_gsub_drop T γ _ HcΓ) HΓ ltac:(rewrite List.app_nil_r; exact HU)
+                    ltac:(rewrite List.app_nil_r; exact Hw)) as H.
+      rewrite tele_sub_closed in H by exact Hs. exact H. }
+    destruct (inst_closed_env_in Γ (ind_uparams D) _ Fσ Hσ HΓ HcΓ nil ρ Hs HU HUΓ Hw HwΓ Hρ) as [_ Hinst].
+    set (ρu := inst_closed_env Γ (ind_uparams D) Fσ nil ρ) in *.
+    assert (Eu : set_env_values (ind_uparams D) ρu = elim_uniform_values ρ D Fσ).
+    { unfold ρu. pose proof (inst_closed_env_values Γ (ind_uparams D) Fσ nil ρ) as E. cbn [List.app] in E.
+      rewrite E, List.app_nil_r. reflexivity. }
+    destruct (set_group_ok_carriers _ _ _ _ _ HG ρu Hinst) as (s & U & l & [_ HC]).
+    rewrite Eu in HC. destruct HC as [_ _ Hcar].
+    (* the parameters' closed environment *)
+    destruct (set_closed_inst_env T γ Hfn Hmods _ _ _ _ HFι HΓ HPctx HPs0 HPw HPwΓ ρ Hρ) as [Hθc _].
+    set (θc := set_env_moved (List.length (im_params D Mm)) (set_env_drop (List.length Γ)) (Fι ρ)) in *.
+    assert (Eθc : forall x, x < List.length (im_params D Mm) -> θc x = Fι ρ x)
+      by (intros x Hx; unfold θc, set_env_moved; apply set_env_above_lt'; exact Hx).
+    assert (Huni : list_set_eq (uniform_values D Mm θc) (elim_uniform_values ρ D Fσ)).
+    { unfold uniform_values, elim_uniform_values, Fσ.
+      rewrite (set_env_values_agree (ind_uparams D) _ (set_env_drop (im_nn Mm) (Fι ρ))); [apply list_set_eq_refl |].
+      intros x Hx. unfold set_env_drop. apply Eθc. rewrite length_im_params. unfold im_np, ind_nu. lia. }
+    assert (Ens : set_env_values (im_nparams Mm) θc = set_env_values (im_nparams Mm) (Fι ρ)).
+    { apply set_env_values_agree. intros x Hx. apply Eθc. rewrite length_im_params. unfold im_np, im_nn. lia. }
+    (* the scrutinee is in its member's carrier *)
+    assert (HNr : set_interp_list T γ Γ ρ Ns (set_env_values (im_nparams Mm) θc)).
+    { rewrite Ens. apply interp_list_of_sub_agrees; [exact HNl |]. intros y Hy. rewrite <- EPn by exact Hy.
+      exact (set_gsub_agrees _ _ _ _ _ _ HFι ρ y Hρ). }
+    assert (Hred : exists a, set_interp T γ Γ ρ (ind_mty p D m Us Ns) a /\
+                     set_eq (code_carrier a) (set_group_carrier (global_group γ p) m (set_env_values (im_params D Mm) θc)))
+      by (eapply elim_mty_reading; eassumption).
+    destruct Hred as (a & Ha & Ea).
+    assert (Hmem : set_mem (FM ρ) (set_group_carrier (global_group γ p) m (set_env_values (im_params D Mm) θc))).
+    { pose proof HMw as [HFA _ _ _ HFMm]. eapply set_mem_eq_r; [exact Ea |].
+      eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact (set_denotes_unique _ _ _ _ _ HFA _ _ _ Hρ Ha) |].
+      exact (HFMm ρ Hρ). }
+    rewrite <- Ens. eapply elim_at_scrutinee; eassumption. }
+  (* the eliminator's denotation, and its type's *)
+  pose proof HMw as [_ HFM _ _ _].
+  pose proof HMotw as [_ HFMot _ _ _].
+  assert (HNr : forall ρ, set_env_in T γ Γ ρ -> set_interp_list T γ Γ ρ Ns (set_env_values (im_nparams Mm) (Fι ρ))).
+  { intros ρ Hρ. apply interp_list_of_sub_agrees; [exact HNl |]. intros y Hy. rewrite <- EPn by exact Hy.
+    exact (set_gsub_agrees _ _ _ _ _ _ HFι ρ y Hρ). }
+  set (θm := fun ρ => set_env_extend_kinded ρ (ctx_kinds (elim_mctx p D m Mm Us)) (set_env_values (im_nparams Mm) (Fι ρ) ++ FM ρ :: nil)).
+  set (F := fun ρ => end_value Γ ρ r p Us Bks V m (FM ρ)).
+  assert (HF : set_denotes T γ Γ (a_elim r p Us m Bks M) F).
+  { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ. unfold F, end_value.
+    destruct Hmk.
+    - destruct (proj1 (Hkey ρ Hρ) ltac:(discriminate)) as (res & He & HVr).
+      eapply set_interp_elim; [discriminate | exact Hel | exact (set_denotes_exists _ _ _ _ _ HFM _ Hρ) |].
+      exact (elim_result_spec Γ ρ _ p Us Bks V Hρ m _ res He HVr).
+    - apply set_interp_elim_prop. }
+  exists (fun ρ => FMot (θm ρ)), F, F. constructor; [| exact HF | exact HF | intros; apply set_eq_refl |].
+  - apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
+    destruct (proj2 (Hkey ρ Hρ) bm FSm FMot FMot' Hbm HMotw) as [Hθ _].
+    apply (interp_realized (elim_mctx p D m Mm Us ++ Γ) (θm ρ) Γ ρ);
+      [exact (HMwf m Mm Hm) | exact (wf_elim_inst_sub _ _ _ _ _ _ _ _ _ Hcl Hm HPl HPs HMt (HMwf m Mm Hm)) | |
+       exact (set_denotes_exists _ _ _ _ _ HFMot _ Hθ)].
+    intros y. unfold θm. apply sub_agrees_of_list; [| intros z; apply sub_agrees_var; reflexivity].
+    apply set_interp_list_app; [exact (HNr ρ Hρ) | constructor; [exact (set_denotes_exists _ _ _ _ _ HFM _ Hρ) | constructor]].
+  - intros ρ Hρ. destruct (proj2 (Hkey ρ Hρ) bm FSm FMot FMot' Hbm HMotw) as [_ Hmem]. exact Hmem.
+Qed.
 
 End Eliminator.
