@@ -152,6 +152,7 @@
 ./Core/SetModel/Cases/Unit.v
 ./Core/SetModel/Cases/Canon.v
 ./Core/SetModel/Cases/App.v
+./Core/SetModel/Cases/Sel.v
 ./Core/SetModel/Interpretation/JudgmentSubstitution.v
 ./Core/SetModel/Interpretation/Global/Model.v
 ./Core/Semantic/Rename.v

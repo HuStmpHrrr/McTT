@@ -52,6 +52,62 @@ Record set_canon_with (Γ : ctx) (K : modexp) (Rm : mdesc) : Prop :=
   ; set_canon_proofs : forall κs, set_slots_coherent γ Γ κs -> forall ys x,
       modexp_member_proofs γ κs K ys x = modexp_member_proofs γ κs (mdesc_unit Rm) ys x }.
 
+(** A module expression of another's modules and proofness has its
+    canonical unit. *)
+Lemma set_canon_trans : forall Γ K K' Rm, set_modexp_rel T γ Γ K K' ->
+    (forall κs, set_slots_coherent γ Γ κs -> forall ys x, modexp_member_proofs γ κs K ys x = modexp_member_proofs γ κs K' ys x) ->
+    set_canon_with Γ K' Rm -> set_canon_with Γ K Rm.
+Proof.
+  intros * HKK' Hpr [Hr Hv Hp]. constructor; [exact (set_modexp_rel_trans T γ _ _ _ _ HKK' Hr) | exact Hv |].
+  intros κs Hκ ys x. exact (eq_trans (Hpr κs Hκ ys x) (Hp κs Hκ ys x)).
+Qed.
+
+(** An alias over assumptions of the unit of a module part is the unit of
+    the module part abstracted over them. *)
+Lemma set_alias_unit_up : forall Γ Δ X l, Δ <> nil -> all_assumptions Δ -> set_params_evaluated T γ Γ Δ l ->
+    set_ctx T γ Γ -> set_ctx T γ (Δ ++ Γ) -> ⊢ gc_deps ⍮ gc_stack ⍮ Δ ++ Γ -> mdesc_is_mod X ->
+    set_valid_unit T γ (Δ ++ Γ) (mdesc_unit X) ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ mdesc_unit (mdesc_up Δ X) ≈ mdesc_unit (mdesc_up Δ X) ->
+    set_canon_with Γ (me_lit (gu_mk Δ (md_alias (mdesc_unit X)))) (mdesc_up Δ X).
+Proof.
+  intros * Hne HΔ Hl HΓ HΔΓ HcΔΓ Him HKu Hwup.
+  assert (Halias : set_modexp_rel T γ Γ (me_lit (gu_mk Δ (md_alias (mdesc_unit X)))) (me_lit (gu_mk Δ (md_alias (mdesc_unit X))))).
+  { exact (set_unit_rel_abs T γ Hfn Hmods Δ Γ nil _ HΔ HΔΓ HcΔΓ
+             (set_modexp_rel_refl_left T γ _ _ _
+                (set_alias0_rel T γ Hfn Hmods _ _ HΔΓ (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKu)))). }
+  destruct Δ as [| e Δ0]; [contradiction |]. set (Δ := e :: Δ0) in *.
+  destruct X as [| Δe Φ Φx | [| e' Θ'] p T' Φ' Ns |]; cbn in Him; try contradiction.
+  - (* a local body: the literal over both telescopes *)
+    cbn [mdesc_up mdesc_unit] in HKu, Halias, Hwup |- *.
+    pose proof (set_valid_unit_abs T γ Hfn Hmods Δ Γ Δe _ l HKu HΔ Hl Hwup) as HKup.
+    constructor; [| exact HKup |].
+    + exact (set_unit_rel_flatten T γ Hfn Hmods _ _ _ _ HΔ Halias (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKup)).
+    + intros κs Hκ ys x. cbn [mdesc_unit modexp_member_proofs]. rewrite !unit_member_proofs_tele_out.
+      cbn [moddef_member_proofs modexp_member_proofs]. rewrite unit_member_proofs_tele_out, List.rev_app_distr, tele_out_proofs_app.
+      reflexivity.
+  - (* a filed module at arguments: the alias of it *)
+    cbn [mdesc_up mdesc_unit List.app] in HKu, Halias, Hwup |- *.
+    constructor; [exact Halias | | intros; reflexivity].
+    apply set_valid_unit_alias; [| exact (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HKu)].
+    constructor; [exact Hwup | exact HΔ | exists l; exact Hl | exact HΓ | exact HΔΓ | exact Halias
+                 | exact (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKu)].
+  - (* an alias of a filed module: the alias over both telescopes *)
+    cbn [mdesc_up mdesc_unit] in HKu, Halias, Hwup |- *.
+    change (match (e' :: Θ') ++ Δ with
+            | [] => me_apps (qname_mod p) Ns
+            | _ :: _ => me_lit (gu_mk ((e' :: Θ') ++ Δ) (md_alias (me_apps (qname_mod p) Ns)))
+            end) with (me_lit (gu_mk ((e' :: Θ') ++ Δ) (md_alias (me_apps (qname_mod p) Ns)))) in Hwup |- *.
+    pose proof (set_valid_unit_abs T γ Hfn Hmods Δ Γ (e' :: Θ') _ l HKu HΔ Hl Hwup) as HKup.
+    constructor; [| exact HKup |].
+    + exact (set_unit_rel_flatten T γ Hfn Hmods _ _ _ _ HΔ Halias (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKup)).
+    + intros κs Hκ ys x.
+      change (modexp_member_proofs γ κs (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk (e' :: Θ') (md_alias (me_apps (qname_mod p) Ns))))))) ys x
+              = modexp_member_proofs γ κs (me_lit (gu_mk ((e' :: Θ') ++ Δ) (md_alias (me_apps (qname_mod p) Ns)))) ys x).
+      cbn [modexp_member_proofs]. rewrite !unit_member_proofs_tele_out.
+      cbn [moddef_member_proofs modexp_member_proofs]. rewrite unit_member_proofs_tele_out, List.rev_app_distr, tele_out_proofs_app.
+      reflexivity.
+Qed.
+
 Theorem set_valid_unit_canon_all :
   (forall Γ K, set_valid_unit T γ Γ K -> forall RK Rm, mdenote gc_deps gc_stack Γ K RK -> mdesc_mod RK = Some Rm ->
      set_canon_with Γ K Rm) /\
@@ -88,52 +144,14 @@ Proof.
       constructor; [| exact HKu | intros κs Hκ ys x; exact (HEp κs Hκ ys x)].
       exact (set_modexp_rel_trans T γ _ _ _ _
                (set_alias0_rel T γ Hfn Hmods _ _ HΓ (set_modexp_rel_refl_left T γ _ _ _ HEu)) HEu).
-    + set (Δ := e :: Δ0) in *.
-      pose proof (presup_modexp_eq_ctx (set_valid_modexp_wf T γ _ _ HE)) as HcΔΓ.
+    + pose proof (presup_modexp_eq_ctx (set_valid_modexp_wf T γ _ _ HE)) as HcΔΓ.
       pose proof (mdesc_unit_wf_of _ _ _ _ HwK Hm0 (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ Him))) as Hwup.
-      (* the alias of the target's unit *)
-      assert (Halias : set_modexp_rel T γ Γ (me_lit (gu_mk Δ (md_alias (mdesc_unit REm)))) (me_lit (gu_mk Δ (md_alias (mdesc_unit REm))))).
-      { exact (set_unit_rel_abs T γ Hfn Hmods Δ Γ nil _ HΔ HΔΓ HcΔΓ
-                 (set_modexp_rel_refl_left T γ _ _ _
-                    (set_alias0_rel T γ Hfn Hmods _ _ HΔΓ (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKu)))). }
-      pose proof (set_alias_rel_cong T γ Hfn Hmods _ _ _ _ HΔ HrA Halias HEu HEp) as Hcong.
-      assert (Hpcong : forall κs, set_slots_coherent γ Γ κs -> forall ys x,
-                 modexp_member_proofs γ κs (me_lit (gu_mk Δ (md_alias E))) ys x =
-                 modexp_member_proofs γ κs (me_lit (gu_mk Δ (md_alias (mdesc_unit REm)))) ys x).
-      { intros κs Hκ ys x. cbn [modexp_member_proofs]. rewrite !unit_member_proofs_tele_out. cbn [moddef_member_proofs].
-        exact (HEp _ (set_slots_coherent_tele_out γ _ _ _ HΔ Hκ) ys x). }
-      destruct REm as [| Δe Φ Φx | [| e' Θ'] p T' Φ' Ns |]; cbn in Him; try contradiction.
-      * (* a local body: the literal over both telescopes *)
-        cbn [mdesc_up mdesc_unit] in HKu, Halias, Hcong, Hpcong, Hwup |- *.
-        pose proof (set_valid_unit_abs T γ Hfn Hmods Δ Γ Δe _ l HKu HΔ Hl Hwup) as HKup.
-        constructor; [| exact HKup |].
-        -- exact (set_modexp_rel_trans T γ _ _ _ _ Hcong
-                    (set_unit_rel_flatten T γ Hfn Hmods _ _ _ _ HΔ Halias (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKup))).
-        -- intros κs Hκ ys x. rewrite (Hpcong _ Hκ). cbn [mdesc_unit modexp_member_proofs]. rewrite !unit_member_proofs_tele_out.
-           cbn [moddef_member_proofs modexp_member_proofs]. rewrite unit_member_proofs_tele_out, List.rev_app_distr, tele_out_proofs_app.
-           reflexivity.
-      * (* a filed module at arguments: the alias of it *)
-        cbn [mdesc_up mdesc_unit List.app] in HKu, Halias, Hcong, Hpcong, Hwup |- *.
-        constructor; [exact Hcong | | exact Hpcong].
-        apply set_valid_unit_alias; [| exact (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HKu)].
-        constructor; [exact Hwup | exact HΔ | exists l; exact Hl | exact HΓ | exact HΔΓ | exact Halias
-                     | exact (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKu)].
-      * (* an alias of a filed module: the alias over both telescopes *)
-        cbn [mdesc_up mdesc_unit] in HKu, Halias, Hcong, Hpcong, Hwup |- *.
-        change (match (e' :: Θ') ++ Δ with
-                | [] => me_apps (qname_mod p) Ns
-                | _ :: _ => me_lit (gu_mk ((e' :: Θ') ++ Δ) (md_alias (me_apps (qname_mod p) Ns)))
-                end) with (me_lit (gu_mk ((e' :: Θ') ++ Δ) (md_alias (me_apps (qname_mod p) Ns)))) in Hwup |- *.
-        pose proof (set_valid_unit_abs T γ Hfn Hmods Δ Γ (e' :: Θ') _ l HKu HΔ Hl Hwup) as HKup.
-        constructor; [| exact HKup |].
-        -- exact (set_modexp_rel_trans T γ _ _ _ _ Hcong
-                    (set_unit_rel_flatten T γ Hfn Hmods _ _ _ _ HΔ Halias (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKup))).
-        -- intros κs Hκ ys x. rewrite (Hpcong _ Hκ).
-           change (modexp_member_proofs γ κs (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk (e' :: Θ') (md_alias (me_apps (qname_mod p) Ns))))))) ys x
-                   = modexp_member_proofs γ κs (me_lit (gu_mk ((e' :: Θ') ++ Δ) (md_alias (me_apps (qname_mod p) Ns)))) ys x).
-           cbn [modexp_member_proofs]. rewrite !unit_member_proofs_tele_out.
-           cbn [moddef_member_proofs modexp_member_proofs]. rewrite unit_member_proofs_tele_out, List.rev_app_distr, tele_out_proofs_app.
-           reflexivity.
+      pose proof (set_alias_unit_up Γ (e :: Δ0) _ _ ltac:(discriminate) HΔ Hl HΓ HΔΓ HcΔΓ Him HKu Hwup) as Hup.
+      pose proof Hup as [Hrup _ _].
+      apply (set_canon_trans _ _ _ _ (set_alias_rel_cong T γ Hfn Hmods _ _ _ _ HΔ HrA (set_modexp_rel_refl_left T γ _ _ _ Hrup) HEu HEp)
+               ltac:(intros κs Hκ ys x; cbn [modexp_member_proofs]; rewrite !unit_member_proofs_tele_out; cbn [moddef_member_proofs];
+                     exact (HEp _ (set_slots_coherent_tele_out γ _ _ _ HΔ Hκ) ys x))
+               Hup).
   - (* a module expression equal to a valid unit: the unit's *)
     intros Γ H K R Rm RK [HwH HmH HmodH HHK HmK HmodK Hpr] HK IHK R' Rm' Hm Hmd.
     rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ Hm _ HmH), HmodH in Hmd; injection Hmd as <-.
