@@ -51,6 +51,15 @@ Proof.
   exfalso; exact (H Hφ).
 Qed.
 
+Lemma set_mem_cond : forall (φ : Prop) x z, set_mem z (cond φ x) <-> φ /\ set_mem z x.
+Proof.
+  intros φ x z. unfold cond. rewrite set_mem_union. split.
+  - intros [w [Hw Hz]]. apply set_mem_separation in Hw as [Hw Hφ]; [| intros ? ? _ Hp; exact Hp].
+    apply set_mem_singleton in Hw. split; [exact Hφ | eapply set_mem_eq_r; [exact Hw | exact Hz]].
+  - intros [Hφ Hz]. exists x. split; [| exact Hz].
+    apply set_mem_separation; [intros ? ? _ Hp; exact Hp |]. split; [apply set_mem_singleton; apply set_eq_refl | exact Hφ].
+Qed.
+
 Lemma cond_resp : forall (φ ψ : Prop) x y, (φ <-> ψ) -> set_eq x y -> set_eq (cond φ x) (cond ψ y).
 Proof.
   intros * Hφ E. unfold cond. apply union_set_resp. apply separation_set_resp;

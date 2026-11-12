@@ -737,4 +737,82 @@ Proof.
   - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst] in *. exact (IH Hgs prefix).
 Qed.
 
+Lemma tree_decodes_resp : forall k ns t t' v v', set_eq t t' -> set_eq v v' -> tree_decodes k ns t v -> tree_decodes k ns t' v'.
+Proof.
+  intros * Et Ev H. destruct H as [k ns Mk i cs pvals g rs t v HMk Hcs Etn Hl Hf Hc Evn].
+  eapply tree_decodes_node; try eassumption.
+  - eapply set_eq_trans; [apply set_eq_sym; exact Et | exact Etn].
+  - eapply set_eq_trans; [apply set_eq_sym; exact Ev | exact Evn].
+Qed.
+
+(** Along the points of its domains, a member of a shape set reaches the
+    candidate carrier of the target. *)
+Lemma shape_set_at : forall bound S ds tparams target, Forall list_function_respects ds -> list_list_function_respects tparams ->
+    forall pre points pts, points_fit ds pre points pts ->
+    forall a, set_mem a (shape_set G bound S pre ds target tparams points) ->
+    set_mem (apply_points a pts) (candidate_carrier bound S target (List.skipn nuniform (tparams (pre ++ points ++ pts)))).
+Proof.
+  intros bound S ds tparams target Hds Htp pre points pts Hf. induction Hf as [pre points | d ds' pre points b pts Hb Hf IH]; intros a Ha.
+  - cbn [shape_set apply_points] in *. rewrite app_nil_r. exact Ha.
+  - inversion Hds as [| ? ? Hd Hds']; subst. cbn [shape_set] in Ha.
+    assert (HF : respects_set_eq_fun (fun b => shape_set G bound S pre ds' target tparams (points ++ [b]))).
+    { intros x y E. apply shape_set_resp; [exact Hds' | exact Htp | apply list_set_eq_refl |
+        apply list_set_eq_app; [apply list_set_eq_refl | constructor; [exact E | constructor]]]. }
+    pose proof (function_set_apply _ _ _ _ HF Ha Hb) as Hab.
+    specialize (IH Hds' _ Hab). cbn [apply_points]. rewrite <- app_assoc in IH. exact IH.
+Qed.
+
+Lemma tree_shape_components : forall k i ns pvals,
+    set_eq (shape_member (tree_shape k i ns pvals)) (numeral_set k) /\
+    set_eq (shape_constructor (tree_shape k i ns pvals)) (numeral_set i) /\
+    set_eq (shape_nparams (tree_shape k i ns pvals)) (list_code ns) /\
+    set_eq (shape_plain (tree_shape k i ns pvals)) (list_code pvals).
+Proof.
+  intros. unfold shape_member, shape_constructor, shape_nparams, shape_plain, tree_shape. cbn [list_code].
+  split; [apply pair_first_ordered_pair |]. split.
+  - eapply set_eq_trans; [apply pair_first_resp; apply pair_second_ordered_pair | apply pair_first_ordered_pair].
+  - split.
+    + eapply set_eq_trans; [apply pair_first_resp; eapply set_eq_trans; [apply pair_second_resp; apply pair_second_ordered_pair | apply pair_second_ordered_pair] |].
+      apply pair_first_ordered_pair.
+    + eapply set_eq_trans; [apply pair_first_resp; eapply set_eq_trans; [apply pair_second_resp; eapply set_eq_trans;
+        [apply pair_second_resp; apply pair_second_ordered_pair | apply pair_second_ordered_pair] | apply pair_second_ordered_pair] |].
+      apply pair_first_ordered_pair.
+Qed.
+
+Section Positions.
+  Hypothesis Hsig : signature_respects G.
+
+Lemma shape_positions_tree_shape : forall k Mk i cs ns pvals,
+    List.nth_error (set_group_members G) k = Some Mk -> List.nth_error (set_member_constructors Mk) i = Some cs ->
+    List.length ns = List.length (set_member_nparam_types Mk) -> List.length pvals = plain_count (set_constructor_arguments cs) ->
+    set_eq (shape_positions (tree_shape k i ns pvals)) (argument_positions (set_constructor_arguments cs) pvals (us ++ ns) 0).
+Proof.
+  intros * HMk Hcs Hln Hlp. destruct (tree_shape_components k i ns pvals) as (Ek & Ei & En & Ep).
+  pose proof (Hsig _ _ _ HMk (nth_error_In _ _ Hcs)) as Hgs.
+  assert (Edec : list_set_eq (list_decode (List.length (set_member_nparam_types Mk)) (shape_nparams (tree_shape k i ns pvals))) ns)
+    by (rewrite <- Hln; eapply list_set_eq_trans; [apply list_decode_resp; exact En | apply list_decode_code]).
+  assert (Edp : list_set_eq (list_decode (plain_count (set_constructor_arguments cs)) (shape_plain (tree_shape k i ns pvals))) pvals)
+    by (rewrite <- Hlp; eapply list_set_eq_trans; [apply list_decode_resp; exact Ep | apply list_decode_code]).
+  unfold shape_positions. apply set_eq_intro; intros z Hz.
+  - apply set_mem_union in Hz as [w [[[[k' i'] Hki] Hw] Hz]]. cbn [proj1_sig fst snd aczel_element family_set] in Hw.
+    eapply set_mem_eq_r in Hz; [| exact Hw].
+    destruct (List.nth_error (set_group_members G) k') as [Mk' |] eqn:HMk'; [| exfalso; exact (set_mem_empty _ Hz)].
+    destruct (List.nth_error (set_member_constructors Mk') i') as [cs' |] eqn:Hcs'; [| exfalso; exact (set_mem_empty _ Hz)].
+    apply set_mem_cond in Hz as [[Hk Hi] Hz].
+    assert (k' = k) as -> by (apply numeral_set_inj; eapply set_eq_trans; [apply set_eq_sym; exact Hk | exact Ek]).
+    assert (i' = i) as -> by (apply numeral_set_inj; eapply set_eq_trans; [apply set_eq_sym; exact Hi | exact Ei]).
+    rewrite HMk in HMk'; injection HMk' as <-. rewrite Hcs in Hcs'; injection Hcs' as <-.
+    eapply set_mem_eq_r; [| exact Hz]. apply argument_positions_resp; [exact Hgs | exact Edp |].
+    apply list_set_eq_app; [apply list_set_eq_refl | exact Edec].
+  - apply set_mem_union.
+    assert (Hki : constructor_index (fst (k, i)) (snd (k, i))) by (exists Mk, cs; split; assumption).
+    eexists. split; [exists (exist _ (k, i) Hki); apply set_eq_refl |]. cbn [aczel_element family_set proj1_sig fst snd].
+    rewrite HMk, Hcs.
+    apply set_mem_cond. split; [split; assumption |].
+    eapply set_mem_eq_r; [| exact Hz]. apply argument_positions_resp; [exact Hgs | apply list_set_eq_sym; exact Edp |].
+    apply list_set_eq_app; [apply list_set_eq_refl | apply list_set_eq_sym; exact Edec].
+Qed.
+
+End Positions.
+
 End Bound.
