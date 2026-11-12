@@ -1199,6 +1199,17 @@ Record leaf_self_with (Ψ : ctx) (ρe : set_env) (β σ : sub) (x : exp) (xv : a
     (** The end's facts *)
   ; leaf_self_fact : end_fact j Mj ns xv }.
 
+(** [leaf_pi_with Ψ ρe σ B xv a rest]: under a domain [B] moved by [σ], of
+    the value [a], [xv] is a function on [a]'s elements, and [rest] holds
+    at each. *)
+Record leaf_pi_with (Ψ : ctx) (ρe : set_env) (σ : sub) (B : exp) (xv a : aczel_set) (rest : aczel_set -> Prop) : Prop :=
+  { (** [a] is the domain's value *)
+    leaf_pi_interp : set_interp T γ Ψ ρe (exp_sub B σ) a
+    (** [xv]'s domain is its carrier *)
+  ; leaf_pi_domain_eq : set_eq (relation_domain xv) (code_carrier a)
+    (** The rest of the path, at each point *)
+  ; leaf_pi_rest : forall b, set_mem b (code_carrier a) -> rest b }.
+
 (** [leaf_sem Ψ ρe β σ x xv l]: the result fits along [l], or, along the
     path [l], the value [xv] of [x]
     has its domains' values and its end's facts, its components moved by
@@ -1208,10 +1219,9 @@ Fixpoint leaf_sem (Ψ : ctx) (ρe : set_env) (β σ : sub) (x : exp) (xv : aczel
   match l with
   | leaf_self j Ps => exists Mj b ns, leaf_self_with Ψ ρe β σ x xv j Ps Mj b ns
   | leaf_pi B l' =>
-      exists a, set_interp T γ Ψ ρe (exp_sub B σ) a /\ set_eq (relation_domain xv) (code_carrier a) /\
-        forall b, set_mem b (code_carrier a) ->
-          leaf_sem (ce_ass ak_relevant (exp_sub B σ) :: Ψ) (set_env_extend ρe (set_entry_term ak_relevant b)) (sb_compose β (sb_of_wk wk_shift))
-            (sb_q σ) (a_app (exp_wk x wk_shift) (a_var 0)) (set_apply xv b) l'
+      exists a, leaf_pi_with Ψ ρe σ B xv a (fun b =>
+        leaf_sem (ce_ass ak_relevant (exp_sub B σ) :: Ψ) (set_env_extend ρe (set_entry_term ak_relevant b)) (sb_compose β (sb_of_wk wk_shift))
+          (sb_q σ) (a_app (exp_wk x wk_shift) (a_var 0)) (set_apply xv b) l')
   | leaf_proj f ns l' => leaf_sem Ψ ρe β (sb_of_list σ (projections_of ns x)) (a_proj f x) (tuple_field xv f) l'
   end.
 
@@ -1244,7 +1254,7 @@ Proof.
     pose proof (set_interp_functional T γ Hfn Hmods _ _ _ _ HA ρe _ (set_env_rel_eq T γ _ _ _ Hρe) H1) as E.
     eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact E |]. exact Hmem.
   - (* a domain: a function of the results there, or their truth *)
-    destruct Hl as (a & Ha & Edom & Hrest).
+    destruct Hl as (a & [Ha Edom Hrest]).
     set (B' := exp_sub B σ) in *.
     assert (Hpi : exists a1 F, ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass ak_relevant B' :: Ψ /\ set_interp T γ Ψ ρe B' a1 /\
                     (forall b, set_mem b (code_carrier a1) ->
@@ -1315,15 +1325,26 @@ Record shape_end_with (Mk : imember) (Bs1 : list exp) (Tb : ctx) (j : nat) (Ps :
     (** At a record view, what it gives *)
   ; shape_end_rview : im_is_rview Mj = true -> RV j ns xv }.
 
+(** [shape_pi_with Mk Bs1 Tb B θ xv a rest]: the shape's next domain [B]
+    has the value [a] at [θ], [xv] is a function on its elements, and
+    [rest] holds at each. *)
+Record shape_pi_with (Mk : imember) (Bs1 : list exp) (Tb : ctx) (B : exp) (θ : set_env) (xv a : aczel_set)
+    (rest : aczel_set -> Prop) : Prop :=
+  { (** [a] is the domain's value *)
+    shape_pi_interp : set_interp T γ (doms_ctx Bs1 ++ Tb ++ im_params D Mk) θ B a
+    (** [xv]'s domain is its carrier *)
+  ; shape_pi_domain_eq : set_eq (relation_domain xv) (code_carrier a)
+    (** The rest of the shape, at each point *)
+  ; shape_pi_rest : forall b, set_mem b (code_carrier a) -> rest b }.
+
 (** [shape_closed_ok Mk Bs1 Tb t θ xv]: at the environment [θ] of the
     shape's components, [xv] is a function on each domain's value, and at
     the end its parameters' values give the end's facts. *)
 Fixpoint shape_closed_ok (Mk : imember) (Bs1 : list exp) (Tb : ctx) (t : ptyp) (θ : set_env) (xv : aczel_set) {struct t} : Prop :=
   match t with
   | pt_pi B t' =>
-      exists a, set_interp T γ (doms_ctx Bs1 ++ Tb ++ im_params D Mk) θ B a /\ set_eq (relation_domain xv) (code_carrier a) /\
-        forall b, set_mem b (code_carrier a) ->
-          shape_closed_ok Mk (Bs1 ++ B :: nil) Tb t' (set_env_extend θ (set_entry_term ak_relevant b)) (set_apply xv b)
+      exists a, shape_pi_with Mk Bs1 Tb B θ xv a (fun b =>
+        shape_closed_ok Mk (Bs1 ++ B :: nil) Tb t' (set_env_extend θ (set_entry_term ak_relevant b)) (set_apply xv b))
   | pt_self j Ps => exists Mj ns, shape_end_with Mk Bs1 Tb j Ps θ xv Mj ns
   end.
 
@@ -1364,9 +1385,9 @@ Proof.
                (shape_leaf_at _ _ _ _ _ _ _ _ HP eq_refl) Hxt).
   - (* a domain: the walk goes on under it *)
     apply List.in_map_iff in Hin as (l' & <- & Hin').
-    destruct Hcok as (a & Ha & Edom & Hrest).
+    destruct Hcok as (a & [Ha Edom Hrest]).
     cbn [leaf_sem]. right. exists a.
-    split; [exact (interp_realized _ _ _ _ _ _ _ HcT Hσt Hσ Ha) |]. split; [exact Edom |].
+    constructor; [exact (interp_realized _ _ _ _ _ _ _ HcT Hσt Hσ Ha) | exact Edom |].
     intros b Hb.
     destruct (HB nil B (ptyp_doms t) eq_refl) as [j1 Hj1]. rewrite List.app_nil_r in Hj1.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hj1 Hσt) as Hj1'. cbn [exp_sub] in Hj1'.
