@@ -261,15 +261,16 @@ Definition set_params_evaluated (Γ Δ : ctx) (l : nat) : Prop :=
   forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 ->
     set_exp_eq (Δ2 ++ Γ) (a_typ l) A A \/ set_exp_eq (Δ2 ++ Γ) a_level_sort A A.
 
-(** [set_body_sorts_valid Φ D]: each term part of the body [Φ] over [D] is
-    of the sort its kind tag says, in the context the entries before it
-    make. *)
+(** [set_body_sorts_valid Φ D]: each term part of the body [Φ] over [D],
+    filled in, is of the sort its kind tag says, in [D]: the typing of a
+    body unit types its definitions filled in. *)
 Fixpoint set_body_sorts_valid (Φ : gmod) (D : ctx) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ0 _ E =>
       set_body_sorts_valid Φ0 D /\
-      forall A M, entry_tm E = Some (A, M) -> exists i, set_exp_eq (body_ctx Φ0 ++ D) (abs_kind_sort (entry_kind E) (a_typ i)) A A
+      forall A M σ, entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σ ->
+        exists i, set_exp_eq D (abs_kind_sort (entry_kind E) (a_typ i)) (exp_sub A σ) (exp_sub A σ)
   (* read on expansions only, which have no open *)
   | gm_open Φ0 _ _ _ => set_body_sorts_valid Φ0 D
   end.

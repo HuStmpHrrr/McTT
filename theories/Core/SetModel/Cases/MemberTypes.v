@@ -182,16 +182,16 @@ Proof.
   - destruct (IH _ _ _ Hp) as (ms' & ρ0 & e' & H0 & H1 & H2 & H3). exists ms', ρ0, e'. auto.
 Qed.
 
-(** The type of a definition of a body is of its kind's sort. *)
-Lemma set_body_sorts_valid_entry : forall Φ D x Φ' E A M, set_body_sorts_valid T γ Φ D ->
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x E) -> entry_tm E = Some (A, M) ->
-    exists i, set_exp_eq T γ (body_ctx Φ' ++ D) (abs_kind_sort (entry_kind E) (a_typ i)) A A.
+(** The type of a definition of a body, filled in, is of its kind's sort. *)
+Lemma set_body_sorts_valid_entry : forall Φ D x Φ' E A M σ, set_body_sorts_valid T γ Φ D ->
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x E) -> entry_tm E = Some (A, M) -> gm_fill Φ' = Some σ ->
+    exists i, set_exp_eq T γ D (abs_kind_sort (entry_kind E) (a_typ i)) (exp_sub A σ) (exp_sub A σ).
 Proof.
-  induction Φ as [| Φ IH y E0 | Φ IH H its Φg _]; intros * Hs Hp HE; cbn [gm_prefix_upto set_body_sorts_valid] in Hp, Hs;
+  induction Φ as [| Φ IH y E0 | Φ IH H its Φg _]; intros * Hs Hp HE Hf; cbn [gm_prefix_upto set_body_sorts_valid] in Hp, Hs;
     [discriminate | |].
-  - destruct Hs as [Hs HE0]. destruct (String.eqb_spec x y) as [-> | _]; [injection Hp as <- <-; exact (HE0 _ _ HE) |].
-    exact (IH _ _ _ _ _ _ Hs Hp HE).
-  - destruct (List.existsb _ _); [discriminate | exact (IH _ _ _ _ _ _ Hs Hp HE)].
+  - destruct Hs as [Hs HE0]. destruct (String.eqb_spec x y) as [-> | _]; [injection Hp as <- <-; exact (HE0 _ _ _ HE Hf) |].
+    exact (IH _ _ _ _ _ _ _ Hs Hp HE Hf).
+  - destruct (List.existsb _ _); [discriminate | exact (IH _ _ _ _ _ _ _ Hs Hp HE Hf)].
 Qed.
 
 (** The entries of a body of definitions and modules, filled in,
@@ -262,7 +262,7 @@ Proof.
   cbn [select_term]. rewrite Hl.
   destruct (prefix_body_ctx _ _ _ Hn Hp) as (X & HX). rewrite HX, <- List.app_assoc in HC.
   pose proof (set_ctx_app_r T γ _ _ HC) as HC1.
-  destruct (set_body_sorts_valid_entry _ _ _ _ _ _ _ Hsv Hp HE) as (i & Hsort).
+  destruct (set_body_sorts_valid_entry _ _ _ _ _ _ _ _ Hsv Hp HE Hf) as (i & Hsort).
   assert (Hsub : sub_setting T γ (body_ctx Φ' ++ D) ρ0 nil (body_ctx Φ' ++ D) D σ ρ ρ).
   { constructor; [reflexivity | exact (wf_gm_fill _ _ _ _ _ Hc0 Hf) | intros k Hk; cbn in Hk; lia
                  | intros; reflexivity | intros k; exact (set_interp_gmod_fill _ _ _ _ _ Hm0 _ Hf k)]. }
@@ -287,8 +287,10 @@ Proof.
     destruct HAM as [HA HM _ _ HMm].
     apply (prop_code_carrier_empty (FA ρ0));
       [| eapply set_mem_eq_l; [apply set_eq_sym; exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Hρ0 ltac:(eassumption)) | exact (HMm _ Hρ0)]].
-    eapply is_prop_code_resp; [exact (set_denotes_agree _ _ _ _ _ _ _ (set_exp_eq_left _ _ _ _ _ _ _ _ _ Hs) HA Hρ0) |].
-    exact (set_prop_is_prop_code _ _ _ _ _ _ _ _ Hs Hρ0).
+    eapply is_prop_code_resp;
+      [apply set_eq_sym; exact (Hval _ _ (set_denotes_exists _ _ _ _ _ HA _ Hρ0) _
+                                  (set_denotes_exists _ _ _ _ _ (set_exp_eq_left _ _ _ _ _ _ _ _ _ Hs) _ Hρ)) |].
+    exact (set_prop_is_prop_code _ _ _ _ _ _ _ _ Hs Hρ).
   - destruct HC1 as [HC0 [(FA & FM & FM' & HAM) _]].
     pose proof (set_interp_gmod_env_in _ _ _ _ _ Hm0 ltac:(rewrite Hf; discriminate) Hρ HC0) as Hρ0.
     split; [intros b Hb; exact (proj1 (Hmem _ _ _ _ _ _ HAM Hρ0 ltac:(eassumption) _ Hb)) |].

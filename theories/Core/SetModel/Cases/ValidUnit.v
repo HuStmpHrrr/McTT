@@ -82,24 +82,26 @@ Proof.
   destruct (Hh _ _ eq_refl) as [Hp | Hp]; [left | right]; exact (set_exp_eq_moved T γ Hfn Hmods _ _ _ _ _ _ _ _ Hs' Hp).
 Qed.
 
-(** The sorts of a body's definitions move along a substitution lifted past
-    the entries before each. *)
-Lemma set_body_sorts_valid_moved : forall Φ D G τ Fτ, gm_nopens Φ = 0 -> set_body_sorts_valid T γ Φ D ->
-    (forall X Ψ, body_ctx Φ = X ++ Ψ -> set_moves_with T γ Ψ D G τ Fτ) ->
-    set_body_sorts_valid T γ (gmod_sub Φ τ) G.
+(** The sorts of a body's definitions, filled in, move along a
+    substitution of the body's base: the moved body's filling is the
+    filling followed by the substitution ([gm_fill_sub]). *)
+Lemma set_body_sorts_valid_moved : forall Φ Ψ D G σ Fσ, set_body_sorts_valid T γ Φ (Ψ ++ D) ->
+    set_moves_with T γ Ψ D G σ Fσ ->
+    set_body_sorts_valid T γ (gmod_sub Φ (sb_qn (List.length Ψ) σ)) (tele_sub Ψ σ ++ G).
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hn Hv Hm; cbn [gmod_sub set_body_sorts_valid gm_nopens] in Hn, Hv |- *;
-    [exact I | | discriminate Hn].
-  assert (Hc : exists e, body_ctx (gm_ext Φ y E) = e :: body_ctx Φ) by (destruct E as [? ? ? ? [] | | | |]; eexists; reflexivity).
-  destruct Hc as [e Hc].
-  split; [apply (IH _ _ _ Fτ Hn (proj1 Hv)); intros X Ψ HX; apply (Hm (e :: X)); rewrite Hc, HX; reflexivity |].
-  intros A' M' He.
+  induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hv Hm; cbn [gmod_sub set_body_sorts_valid] in Hv |- *;
+    [exact I | | exact (IH _ _ _ _ _ Hv Hm)].
+  split; [exact (IH _ _ _ _ _ (proj1 Hv) Hm) |].
+  intros A' M' τ' He Hf'.
   destruct (entry_tm_sub_inv _ _ _ _ He) as (A & M & HeA & -> & ->).
-  destruct (proj2 Hv _ _ HeA) as [i Hi]. exists i.
-  pose proof (set_exp_eq_moved T γ Hfn Hmods _ _ _ _ _ _ _ _ (Hm (e :: nil) (body_ctx Φ) Hc) Hi) as H'.
-  rewrite (body_ctx_sub _ _ Hn); rewrite (length_body_ctx _ Hn) in H'.
-  replace (entry_kind (gentry_sub E (sb_qn (gm_binders Φ) τ))) with (entry_kind E) by (destruct E; reflexivity).
-  rewrite abs_kind_sort_sub in H'. exact H'.
+  destruct (gm_fill Φ) as [τ0 |] eqn:Hf0;
+    [| exfalso; apply (proj2 (gm_fill_sub_none Φ (sb_qn (List.length Ψ) σ))) in Hf0; rewrite Hf0 in Hf'; discriminate].
+  destruct (gm_fill_sub Φ (List.length Ψ) σ τ0 Hf0) as (τ1 & Hf1 & Heq). rewrite Hf' in Hf1. injection Hf1 as <-.
+  destruct (proj2 Hv _ _ _ HeA eq_refl) as [i Hi]. exists i.
+  pose proof (set_exp_eq_moved T γ Hfn Hmods _ _ _ _ _ _ _ _ Hm Hi) as H'.
+  replace (entry_kind (gentry_sub E (sb_qn (gm_binders Φ) (sb_qn (List.length Ψ) σ)))) with (entry_kind E) by (destruct E; reflexivity).
+  rewrite abs_kind_sort_sub in H'.
+  rewrite exp_sub_sub, <- sb_qn_plus, (exp_sub_sb_eq A _ _ Heq), <- exp_sub_sub. exact H'.
 Qed.
 
 (** A context's tail denotes. *)
@@ -178,8 +180,7 @@ Proof.
     + exact HΓ.
     + rewrite (body_ctx_sub _ _ Hn), app_assoc, <- tele_sub_app.
       rewrite app_assoc in HC, HwCx. exact (set_ctx_moved T γ Hfn Hmods _ _ _ _ _ Hg HΓ HC HwCx).
-    + apply (set_body_sorts_valid_moved _ _ _ _ (set_env_moved (List.length Δu) Fσ) Hn Hsv). intros X Ψ HX.
-      rewrite HX, <- app_assoc in HC, HwCx. exact (set_moves_lift _ _ _ _ _ _ HsΔ (set_ctx_app_r _ _ HC) (ctx_app_wf_tail _ _ _ _ HwCx)).
+    + exact (set_body_sorts_valid_moved _ _ _ _ _ _ Hsv HsΔ).
     + apply body_shape_sub; exact Hsh.
     + apply body_shape_sub; exact Hsx.
     + exact HK'.
