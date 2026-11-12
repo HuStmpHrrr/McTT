@@ -190,8 +190,8 @@ Proof.
   - intros Ξ ρ κd κc A B a F Hκ Hc _ IHA _ IHB; start; constructor; [exact Hκ | wkctx Hc (ce_ass κd A) | same IHA |].
     intros x Hx. under (IHB x Hx) (ce_ass κd A).
   - intros Ξ ρ A M κd C B HT; start. eapply set_interp_fn_proof. exact (typing_wk _ _ _ _ _ _ HT Hφ).
-  - intros Ξ ρ A M κd κc C B a F HT Hκ _ IHA _ IHM; start.
-    eapply set_interp_fn; [exact (typing_wk _ _ _ _ _ _ HT Hφ) | exact Hκ | same IHA |].
+  - intros Ξ ρ A M κd κc C B a F HT Hκ Hc _ IHA _ IHM; start.
+    eapply set_interp_fn; [exact (typing_wk _ _ _ _ _ _ HT Hφ) | exact Hκ | wkctx Hc (ce_ass κd A) | same IHA |].
     intros x Hx. under (IHM x Hx) (ce_ass κd A).
   - intros Ξ ρ M N f n _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
   - intros Ξ ρ x; start. rewrite (Hag x). constructor.
@@ -257,7 +257,7 @@ Proof.
   - intros; constructor.
   (** the eliminator *)
   - intros Ξ ρ r p Us Bks j v res D Mj pc k Dq Mk c gs ns vs nm Z A Bs n B ihs
-      HD HMj Href HDq HMk Hgs Hv Hns Hvs Hb HB _ IHihs Hlen _ IHB; start_elim.
+      HD HMj Href HDq HMk Hgs Hv Hns Hvs Hb HB _ IHihs Hlen Hc _ IHB; start_elim.
     pose proof (elim_shape_lookup _ _ _ _ Hsh) as HD0. rewrite HD in HD0. injection HD0 as <-.
     set (bctx := elim_bctx r p D Mj gs (blocks_motives Bks) Us) in *.
     assert (Hw : tele_wk bctx (wk_qn (List.length Ψ) φ) =
@@ -273,7 +273,10 @@ Proof.
                          | apply nth_error_blocks_wk; exact Hb
                          | exact (brs_lookup_map (fun br => exp_wk (snd br) (wk_qn (snd (fst br)) (wk_qn (List.length Ψ) φ))) Bs c n B HB)
                          | eapply IHihs; [constructor; [reflexivity | assumption | assumption] | exact Hsh]
-                         | rewrite length_elim_bctx; subst bctx; rewrite length_elim_bctx in Hlen; exact Hlen |].
+                         | rewrite length_elim_bctx; subst bctx; rewrite length_elim_bctx in Hlen; exact Hlen | |].
+    { fold bctx. rewrite <- Hw.
+      pose proof (ctx_wk (bctx ++ Ψ) Γ0 Δ φ ltac:(rewrite <- List.app_assoc; exact Hc) Hφ) as H.
+      rewrite tele_wk_app, <- List.app_assoc in H. exact H. }
     cbn beta. fold bctx. rewrite <- Hw, ctx_kinds_tele_wk, Hn.
     pose proof (IHB (bctx ++ Ψ) Γ0 Δ φ (set_env_extend_kinded ρ' (ctx_kinds bctx) (ns ++ vs ++ ihs))) as H.
     rewrite tele_wk_app, <- List.app_assoc, List.length_app, wk_qn_plus in H. apply H.

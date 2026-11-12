@@ -119,6 +119,7 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 (** Any other λ: the graph of its body on the domain *)
 | set_interp_fn : forall Γ ρ A M κd κc C B a F,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc C B -> κc <> ak_propositional ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     set_interp Γ ρ A a ->
     (forall x, set_mem x (code_carrier a) ->
        set_interp (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) M (F x)) ->
@@ -268,6 +269,7 @@ with set_elim : ctx -> set_env -> abs_kind -> qname -> list exp -> list eblock -
     List.nth_error Bks j = Some (eb_mk nm Z A Bs) -> brs_lookup Bs c = Some (n, B) ->
     set_ihs Γ ρ r p Us Bks gs vs ihs ->
     List.length (ns ++ vs ++ ihs) = List.length (elim_bctx r p D Mj gs (blocks_motives Bks) Us) ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ ->
     set_interp (elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ)
       (set_env_extend_kinded ρ (ctx_kinds (elim_bctx r p D Mj gs (blocks_motives Bks) Us)) (ns ++ vs ++ ihs)) B res ->
     set_elim Γ ρ r p Us Bks j v res
