@@ -277,6 +277,15 @@ Record set_group_carriers_with (G : set_group) (D : ind_decl) (us : list aczel_s
       list_set_eq (uniform_values D Mk ρ) us ->
       set_eq (set_group_carrier G k (set_env_values (im_params D Mk) ρ)) (member_carrier G us U U k (set_env_values (im_nparams Mk) ρ)) }.
 
+(** [set_group_carriers_at G D ρu s U l]: at the environment [ρu] of the
+    uniform parameters, the sort reads [s], and the carriers are as
+    [set_group_carriers_with] says at their values. *)
+Record set_group_carriers_at (G : set_group) (D : ind_decl) (ρu : set_env) (s U l : aczel_set) : Prop :=
+  { (** The sort reads [s] at [ρu] *)
+    set_group_carriers_at_sort : set_interp T γ (ind_uparams D) ρu (ind_sort D) s
+    (** The carriers at the values of [ρu], in [U] *)
+  ; set_group_carriers_at_fixed : set_group_carriers_with G D (set_env_values (ind_uparams D) ρu) s U l }.
+
 (** The element the constructor [c] of the member [Mk] builds from the
     values [vals] of the non-uniform parameters and the arguments: at a
     record view the tuple of the arguments by field name (a record view
@@ -297,9 +306,9 @@ Record set_group_ok (p : qname) (D : ind_decl) (G : set_group) : Prop :=
     (** Each member is the declared one *)
   ; set_group_ok_members : forall k Mk SMk, ind_member D k = Some Mk -> List.nth_error (set_group_members G) k = Some SMk ->
       set_member_ok p D G Mk SMk
-    (** The carriers are the least fixed points in the sort's universe *)
-  ; set_group_ok_carriers : forall ρu s, set_env_in T γ (ind_uparams D) ρu -> set_interp T γ (ind_uparams D) ρu (ind_sort D) s ->
-      exists U l, set_group_carriers_with G D (set_env_values (ind_uparams D) ρu) s U l
+    (** At every environment of the uniform parameters the sort reads,
+        and the carriers are the least fixed points in its universe *)
+  ; set_group_ok_carriers : forall ρu, set_env_in T γ (ind_uparams D) ρu -> exists s U l, set_group_carriers_at G D ρu s U l
     (** A type former's closed type denotes *)
   ; set_group_ok_former_types : forall k Mk, ind_member D k = Some Mk -> exists FA, set_denotes T γ nil (ind_ty D Mk) FA
     (** A type former is of its closed type *)
