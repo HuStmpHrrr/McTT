@@ -97,6 +97,57 @@ Proof.
     destruct (Nat.even (x - n)); [apply Ed1 | apply Ed2].
 Qed.
 
+(** ** Pointwise Equal Environments *)
+
+Lemma set_interp_env_ext : forall Ξ ρ ρ' M v, ⊢ gc_deps ⍮ gc_stack ⍮ Ξ -> (forall x, ρ x = ρ' x) ->
+    set_interp T γ Ξ ρ M v -> set_interp T γ Ξ ρ' M v.
+Proof.
+  intros * Hc E H. pose proof (set_interp_wk T γ _ _ _ _ H nil Ξ Ξ wk_id ρ' eq_refl (wf_wk_id _ _ _ Hc) ltac:(intros; apply E)) as H'.
+  cbn [tele_wk List.app wk_qn List.length] in H'. rewrite exp_wk_id in H'. exact H'.
+Qed.
+
+Lemma set_interp_gunit_env_ext : forall Ξ ρ ρ' U m, ⊢ gc_deps ⍮ gc_stack ⍮ Ξ -> (forall x, ρ x = ρ' x) ->
+    set_interp_gunit T γ Ξ ρ U m -> set_interp_gunit T γ Ξ ρ' U m.
+Proof.
+  intros * Hc E H.
+  pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (set_interp_wk_all T γ))))) _ _ _ _ H nil Ξ Ξ wk_id ρ'
+                (Build_wk_setting Ξ ρ nil Ξ Ξ wk_id ρ' eq_refl (wf_wk_id _ _ _ Hc) (fun x => E x))) as H'.
+  cbn [tele_wk List.app wk_qn List.length] in H'. rewrite gunit_wk_id in H'. exact H'.
+Qed.
+
+Lemma set_entry_rel_ext : forall Ξ ρ ρ' ce e e', ⊢ gc_deps ⍮ gc_stack ⍮ ce :: Ξ -> (forall x, ρ x = ρ' x) ->
+    set_entry_rel T γ Ξ ρ ce e e' -> set_entry_rel T γ Ξ ρ' ce e e'.
+Proof.
+  intros * Hc E He. pose proof (ctx_decomp_tail Hc) as Hc'.
+  destruct ce as [κ A | A M | U | A M U]; cbn [set_entry_rel] in He |- *.
+  - destruct He as (x & x' & a & [E1 E2 Ha Hx Ex]). exists x, x', a. constructor; try assumption.
+    exact (set_interp_env_ext _ _ _ _ _ Hc' E Ha).
+  - destruct He as (r0 & v & v' & w & [E1 E2 Hw Ev Ev']). exists r0, v, v', w. constructor; try assumption.
+    exact (set_interp_env_ext _ _ _ _ _ Hc' E Hw).
+  - destruct He as (m & m' & n & [E1 E2 Hn Em Em']). exists m, m', n. constructor; try assumption.
+    exact (set_interp_gunit_env_ext _ _ _ _ _ Hc' E Hn).
+  - destruct He as (v & v' & w & m & m' & n & [E1 E2 Hw Hn Ev Ev' Em Em']). exists v, v', w, m, m', n.
+    constructor; try assumption; [exact (set_interp_env_ext _ _ _ _ _ Hc' E Hw) | exact (set_interp_gunit_env_ext _ _ _ _ _ Hc' E Hn)].
+Qed.
+
+(** Related environments of a well-formed context stay related at
+    environments equal to them at every variable. *)
+Lemma set_env_rel_ext : forall Ξ ρ1 ρ2 ρ1' ρ2', ⊢ gc_deps ⍮ gc_stack ⍮ Ξ -> (forall x, ρ1 x = ρ1' x) -> (forall x, ρ2 x = ρ2' x) ->
+    set_env_rel T γ Ξ ρ1 ρ2 -> set_env_rel T γ Ξ ρ1' ρ2'.
+Proof.
+  induction Ξ as [| ce Ξ IH]; intros * Hc E1 E2 H.
+  - intros x. rewrite <- E1, <- E2. apply H.
+  - destruct H as [Ht He]. split.
+    + apply (IH (set_env_tail ρ1) (set_env_tail ρ2)); [exact (ctx_decomp_tail Hc) | intros; apply E1 | intros; apply E2 | exact Ht].
+    + rewrite <- E1, <- E2. eapply set_entry_rel_ext; [exact Hc | | exact He]. intros x. apply E1.
+Qed.
+
+Lemma set_env_values_resp : forall Δ ρ ρ', set_env_eq γ ρ ρ' -> list_set_eq (set_env_values Δ ρ) (set_env_values Δ ρ').
+Proof.
+  induction Δ as [| e Δ IH]; intros ρ ρ' E; cbn [set_env_values]; [constructor |].
+  apply list_set_eq_app; [apply IH; intros x; apply E | constructor; [apply (set_entry_value_resp (γ := γ)); apply E | constructor]].
+Qed.
+
 (** ** Instances of Closed Telescopes
 
     A closed telescope [Ψ] over a closed base [B], instantiated in [Γ] by
@@ -459,6 +510,58 @@ Proof.
 Qed.
 
 End ShapeCodes.
+
+(** ** Arguments as Environments *)
+
+Lemma set_tele_types_suffix : forall Γ0 X Δ Fs, set_tele_types T γ Γ0 (X ++ Δ) Fs ->
+    set_tele_types T γ Γ0 Δ (List.firstn (List.length Δ) Fs).
+Proof.
+  induction X as [| e X IH]; intros Δ Fs H; cbn [List.app] in H.
+  - rewrite <- (length_set_tele_types T γ _ _ _ H), List.firstn_all. exact H.
+  - inversion H as [| κ A Δ0 Fs0 F H0 HA]; subst. pose proof (IH _ _ H0) as H1.
+    rewrite List.firstn_app. rewrite (length_set_tele_types T γ _ _ _ H0), List.length_app.
+    replace (List.length Δ - (List.length X + List.length Δ)) with 0 by lia. cbn. rewrite List.app_nil_r. exact H1.
+Qed.
+
+(** The kinds and the shapes of the semantic arguments, position by
+    position. *)
+Lemma set_arguments_shape_nth : forall gs sgs, set_arguments_shape gs sgs -> forall i g, List.nth_error gs i = Some g ->
+    exists sg, List.nth_error sgs i = Some sg /\
+      match g with
+      | ca_arg κ _ => exists F, sg = set_argument_plain κ F
+      | ca_rec t => exists F ds tparams, sg = set_argument_recursive F ds (ptyp_mem t) tparams /\ List.length ds = ptyp_depth t
+      end.
+Proof.
+  induction 1 as [| κ A F gs sgs H IH | t F ds tparams gs sgs Hl H IH]; intros [| i] g Hg; cbn in Hg; try discriminate.
+  - injection Hg as <-. eexists; split; [reflexivity | eauto].
+  - exact (IH _ _ Hg).
+  - injection Hg as <-. eexists; split; [reflexivity | eauto].
+  - exact (IH _ _ Hg).
+Qed.
+
+Lemma set_arguments_shape_length : forall gs sgs, set_arguments_shape gs sgs -> List.length sgs = List.length gs.
+Proof. induction 1; cbn; congruence. Qed.
+
+(** The arguments' prefix of a constructor's telescope. *)
+Lemma cargs_ctx_prefix : forall p D Mk gs1 rest,
+    List.skipn (List.length (gs1 ++ rest) - List.length gs1) (cargs_ctx p D Mk (gs1 ++ rest)) = cargs_ctx p D Mk gs1.
+Proof.
+  intros. rewrite cargs_ctx_app, List.length_app.
+  replace (List.length gs1 + List.length rest - List.length gs1) with (List.length rest) by lia.
+  rewrite List.skipn_app, List.skipn_all2 by (rewrite length_cargs_ctx_aux; lia).
+  rewrite length_cargs_ctx_aux, Nat.sub_diag. reflexivity.
+Qed.
+
+(** Points of domains equal at every list are points of both. *)
+Lemma points_fit_transfer : forall ds pre pre' pts1 pts, points_fit ds pre pts1 pts ->
+    (forall k d pts0, List.nth_error ds k = Some d -> List.length pts0 = List.length pts1 + k ->
+       set_eq (d (pre ++ pts0)) (d (pre' ++ pts0))) ->
+    points_fit ds pre' pts1 pts.
+Proof.
+  induction 1 as [pre0 points | d ds pre0 points b pts Hb H IH]; intros Hd; constructor.
+  - eapply set_mem_eq_r; [apply code_carrier_resp; apply (Hd 0 d points eq_refl); lia | exact Hb].
+  - apply IH. intros k d' pts0 Hk Hl. apply (Hd (S k) d' pts0 Hk). rewrite List.length_app in Hl. cbn in Hl. lia.
+Qed.
 
 (** ** The Eliminator's Results at One Environment *)
 
