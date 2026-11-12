@@ -293,6 +293,37 @@ Lemma carrier_points_with_pred_resp : forall Q,
     respects_set_eq (fun z => exists k ns v, set_eq z (member_point k ns v) /\ Q k ns v).
 Proof. intros Q x y E [k [ns [v [Ez HQ]]]]. exists k, ns, v. split; [eapply set_eq_trans; [apply set_eq_sym; exact E | exact Ez] | exact HQ]. Qed.
 
+(** Induction on the fixed point: a property of the elements, respecting
+    equality, that holds of every element built from arguments whose
+    recursive ones are drawn from the points having it holds at every
+    point of the fixed point. *)
+Lemma fixed_point_in_points_with : forall Q : nat -> list aczel_set -> aczel_set -> Prop,
+    (forall k ns v, set_mem (list_code ns) U -> set_mem v bound -> constructed_from (carrier_points_with Q) k ns v -> Q k ns v) ->
+    set_sub carrier_fixed_point (carrier_points_with Q).
+Proof.
+  intros Q Hstep.
+  set (P := fun z => exists k ns v, set_eq z (member_point k ns v) /\ Q k ns v).
+  assert (HP : respects_set_eq P) by apply carrier_points_with_pred_resp.
+  assert (Hsub : set_sub (carrier_points_with Q) carrier_fixed_point)
+    by (intros z Hz; apply (set_mem_separation _ _ _ HP) in Hz as [Hz _]; exact Hz).
+  intros z Hz. apply (set_mem_separation _ _ _ HP). split; [exact Hz |]. revert z Hz.
+  apply (least_fixed_point_ind carrier_ambient carrier_operator P HP).
+  intros t Ht. apply (set_mem_separation _ _ _ HP). split.
+  - apply (least_fixed_point_closed carrier_ambient carrier_operator carrier_operator_monotone carrier_operator_bounded).
+    eapply carrier_operator_monotone; [| exact (least_fixed_point_bound _ _) | exact Hsub | exact Ht].
+    intros z Hz. exact (least_fixed_point_bound _ _ _ (Hsub _ Hz)).
+  - unfold carrier_operator in Ht. apply (set_mem_separation _ _ _ (carrier_operator_pred_resp _)) in Ht as [Hamb [k [ns [v [Et Hc]]]]].
+    exists k, ns, v. split; [exact Et |].
+    apply set_mem_product in Hamb as [a [b [_ [Hb Etab]]]].
+    apply set_mem_product in Hb as [x [y [Hx [Hy Exy]]]].
+    assert (E1 : set_eq (ordered_pair a b) (member_point k ns v)) by (eapply set_eq_trans; [apply set_eq_sym; exact Etab | exact Et]).
+    apply ordered_pair_inj in E1 as [_ E2].
+    assert (E3 : set_eq (ordered_pair x y) (ordered_pair (list_code ns) v))
+      by (eapply set_eq_trans; [apply set_eq_sym; exact Exy | exact E2]).
+    apply ordered_pair_inj in E3 as [E4 E5].
+    apply Hstep; [eapply set_mem_eq_l; [exact E4 | exact Hx] | eapply set_mem_eq_l; [exact E5 | exact Hy] | exact Hc].
+Qed.
+
 (** Induction on the carriers: a property of the elements, respecting
     equality, that holds of every element built from arguments whose
     recursive ones are drawn from the points having it holds of every
@@ -303,29 +334,11 @@ Lemma member_carrier_ind : forall Q : nat -> list aczel_set -> aczel_set -> Prop
     forall k ns v, set_mem v (member_carrier k ns) -> Q k ns v.
 Proof.
   intros Q HQ Hstep.
-  set (P := fun z => exists k ns v, set_eq z (member_point k ns v) /\ Q k ns v).
-  assert (HP : respects_set_eq P) by apply carrier_points_with_pred_resp.
-  assert (Hsub : set_sub (carrier_points_with Q) carrier_fixed_point)
-    by (intros z Hz; apply (set_mem_separation _ _ _ HP) in Hz as [Hz _]; exact Hz).
-  assert (Hall : forall z, set_mem z carrier_fixed_point -> P z).
-  { apply (least_fixed_point_ind carrier_ambient carrier_operator P HP).
-    intros t Ht. apply (set_mem_separation _ _ _ HP). split.
-    - apply (least_fixed_point_closed carrier_ambient carrier_operator carrier_operator_monotone carrier_operator_bounded).
-      eapply carrier_operator_monotone; [| exact (least_fixed_point_bound _ _) | exact Hsub | exact Ht].
-      intros z Hz. exact (least_fixed_point_bound _ _ _ (Hsub _ Hz)).
-    - unfold carrier_operator in Ht. apply (set_mem_separation _ _ _ (carrier_operator_pred_resp _)) in Ht as [Hamb [k [ns [v [Et Hc]]]]].
-      exists k, ns, v. split; [exact Et |].
-      apply set_mem_product in Hamb as [a [b [_ [Hb Etab]]]].
-      apply set_mem_product in Hb as [x [y [Hx [Hy Exy]]]].
-      assert (E1 : set_eq (ordered_pair a b) (member_point k ns v)) by (eapply set_eq_trans; [apply set_eq_sym; exact Etab | exact Et]).
-      apply ordered_pair_inj in E1 as [_ E2].
-      assert (E3 : set_eq (ordered_pair x y) (ordered_pair (list_code ns) v))
-        by (eapply set_eq_trans; [apply set_eq_sym; exact Exy | exact E2]).
-      apply ordered_pair_inj in E3 as [E4 E5].
-      apply Hstep; [eapply set_mem_eq_l; [exact E4 | exact Hx] | eapply set_mem_eq_l; [exact E5 | exact Hy] | exact Hc]. }
+  pose proof (fixed_point_in_points_with Q Hstep) as Hall.
   intros k ns v Hv. unfold member_carrier, candidate_carrier in Hv.
   apply (set_mem_separation _ _ _ (member_point_pred_resp _ _ _)) in Hv as [_ Hp].
-  destruct (Hall _ Hp) as [k' [ns' [v' [Et HQ']]]].
+  apply Hall in Hp. apply (set_mem_separation _ _ _ (carrier_points_with_pred_resp _)) in Hp as [_ Hp].
+  destruct Hp as [k' [ns' [v' [Et HQ']]]].
   apply member_point_inj in Et as [<- [En Ev]].
   eapply HQ; [apply list_set_eq_sym; exact En | apply set_eq_sym; exact Ev | exact HQ'].
 Qed.
