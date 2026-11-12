@@ -100,8 +100,8 @@ Lemma set_interp_functional_rel_all :
      set_interp_modexp T γ Γ' ρ' H m' -> set_module_eq m m') /\
   (forall Γ ρ U m, set_interp_gunit T γ Γ ρ U m -> forall Γ' ρ' m', R Γ Γ' -> set_env_eq ρ ρ' ->
      set_interp_gunit T γ Γ' ρ' U m' -> set_module_eq m m') /\
-  (forall Γ ρ L D m, set_interp_unit_params T γ Γ ρ L D m -> forall Γ' ρ' m', R Γ Γ' -> set_env_eq ρ ρ' ->
-     set_interp_unit_params T γ Γ' ρ' L D m' -> set_module_eq m m') /\
+  (forall Γ ρ P L D m, set_interp_unit_params T γ Γ ρ P L D m -> forall Γ' ρ' P' m', R Γ Γ' -> set_env_eq ρ ρ' ->
+     (forall ys x, P ys x = P' ys x) -> set_interp_unit_params T γ Γ' ρ' P' L D m' -> set_module_eq m m') /\
   (forall Γ ρ D m, set_interp_moddef T γ Γ ρ D m -> forall Γ' ρ' m', R Γ Γ' -> set_env_eq ρ ρ' ->
      set_interp_moddef T γ Γ' ρ' D m' -> set_module_eq m m') /\
   (forall Γ ρ Φ ms ρo, set_interp_gmod T γ Γ ρ Φ ms ρo -> forall Γ' ρ' ms' ρo', R Γ Γ' -> set_env_eq ρ ρ' ->
@@ -205,20 +205,26 @@ Proof.
   - intros Γ ρ H N m n _ IH1 _ IH2 Γ' ρ' m' HR He H'. inv H'. apply apply_module_resp; [eapply IH1 | eapply IH2]; eassumption.
   - intros Γ ρ U m _ IH Γ' ρ' m' HR He H'. inv H'. eapply IH; eassumption.
   (** units *)
-  - intros Γ ρ Δ D m _ IH Γ' ρ' m' HR He H'. inv H'. eapply IH; eassumption.
-  - intros Γ ρ D m _ IH Γ' ρ' m' HR He H'. inv H'. eapply IH; eassumption.
-  - intros Γ ρ κ A L D a f Hc _ IHA _ IHL Γ' ρ' m' HR He H'. inv H'.
-    pose proof (IHA _ _ _ HR He ltac:(eassumption)) as Ea. constructor; [exact Ea |]. intros x x' Hx E.
+  - intros Γ ρ Δ D P m HP _ IH Γ' ρ' m' HR He H'. inv H'.
+    eapply IH; [exact HR | exact He | | eassumption].
+    match goal with HP' : forall ys x, ?P0 ys x = _ |- forall ys x, P ys x = ?P0 ys x =>
+      intros ys x; rewrite HP, HP'; apply (proj1 (proj2 (unit_member_proofs_resp_all γ))); apply env_slot_proofs_resp; exact He end.
+  - intros Γ ρ P D m _ IH Γ' ρ' P' m' HR He EP H'. inv H'. eapply IH; eassumption.
+  - intros Γ ρ P κ A L D a f Hc _ IHA _ IHL Γ' ρ' P' m' HR He EP H'. inv H'.
+    pose proof (IHA _ _ _ HR He ltac:(eassumption)) as Ea. constructor; [exact Ea | exact EP |]. intros x x' Hx E.
     eapply IHL; [exact Hx | apply R_extend_one; [exact HR | exact Hc | eassumption]
-                     | apply set_env_eq_extend; [exact He | constructor; exact E] |];
+                     | apply set_env_eq_extend; [exact He | constructor; exact E] | exact EP |];
       match goal with HB' : forall y, set_mem y _ -> _ |- _ => apply HB' end; eapply set_mem_eq_l; [exact E |].
     eapply set_mem_eq_r; [apply code_carrier_resp; exact Ea | exact Hx].
-  - intros Γ ρ A M L D v m Hc _ IHM _ IHL Γ' ρ' m' HR He H'. inv H'.
-    eapply IHL; [apply R_extend_one; [exact HR | exact Hc | eassumption] | | eassumption]; apply set_env_eq_extend; [exact He | constructor; eapply IHM; eassumption].
-  - intros Γ ρ U L D mu m Hc _ IHU _ IHL Γ' ρ' m' HR He H'. inv H'.
-    eapply IHL; [apply R_extend_one; [exact HR | exact Hc | eassumption] | | eassumption]; apply set_env_eq_extend; [exact He | constructor; eapply IHU; eassumption].
-  - intros Γ ρ A M U L D v mu m Hc _ IHM _ IHU _ IHL Γ' ρ' m' HR He H'. inv H'.
-    eapply IHL; [apply R_extend_one; [exact HR | exact Hc | eassumption] | | eassumption]; apply set_env_eq_extend; [exact He | constructor; [eapply IHM | eapply IHU]; eassumption].
+  - intros Γ ρ P A M L D v m Hc _ IHM _ IHL Γ' ρ' P' m' HR He EP H'. inv H'.
+    eapply IHL; [apply R_extend_one; [exact HR | exact Hc | eassumption] | | exact EP | eassumption];
+      apply set_env_eq_extend; [exact He | constructor; eapply IHM; eassumption].
+  - intros Γ ρ P U L D mu m Hc _ IHU _ IHL Γ' ρ' P' m' HR He EP H'. inv H'.
+    eapply IHL; [apply R_extend_one; [exact HR | exact Hc | eassumption] | | exact EP | eassumption];
+      apply set_env_eq_extend; [exact He | constructor; eapply IHU; eassumption].
+  - intros Γ ρ P A M U L D v mu m Hc _ IHM _ IHU _ IHL Γ' ρ' P' m' HR He EP H'. inv H'.
+    eapply IHL; [apply R_extend_one; [exact HR | exact Hc | eassumption] | | exact EP | eassumption];
+      apply set_env_eq_extend; [exact He | constructor; [eapply IHM | eapply IHU]; eassumption].
   (** definitions *)
   - intros Γ ρ sm Φ ms ρo _ IH Γ' ρ' m' HR He H'. inv H'. constructor. eapply IH; eassumption.
   - intros Γ ρ E m _ IH Γ' ρ' m' HR He H'. inv H'. eapply IH; eassumption.
@@ -293,8 +299,8 @@ Lemma set_interp_functional_all :
      set_module_eq m m') /\
   (forall Γ ρ U m, set_interp_gunit T γ Γ ρ U m -> forall ρ' m', set_env_eq ρ ρ' -> set_interp_gunit T γ Γ ρ' U m' ->
      set_module_eq m m') /\
-  (forall Γ ρ L D m, set_interp_unit_params T γ Γ ρ L D m -> forall ρ' m', set_env_eq ρ ρ' ->
-     set_interp_unit_params T γ Γ ρ' L D m' -> set_module_eq m m') /\
+  (forall Γ ρ P L D m, set_interp_unit_params T γ Γ ρ P L D m -> forall ρ' P' m', set_env_eq ρ ρ' ->
+     (forall ys x, P ys x = P' ys x) -> set_interp_unit_params T γ Γ ρ' P' L D m' -> set_module_eq m m') /\
   (forall Γ ρ D m, set_interp_moddef T γ Γ ρ D m -> forall ρ' m', set_env_eq ρ ρ' -> set_interp_moddef T γ Γ ρ' D m' ->
      set_module_eq m m') /\
   (forall Γ ρ Φ ms ρo, set_interp_gmod T γ Γ ρ Φ ms ρo -> forall ρ' ms' ρo', set_env_eq ρ ρ' ->

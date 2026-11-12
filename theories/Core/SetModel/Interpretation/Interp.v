@@ -36,6 +36,112 @@ Section Interpretation.
   Variable T : universe_tower.
   Variable γ : global_valuation.
 
+(** ** Which Members of a Unit Are Proofs
+
+    Read off the unit's syntax, the units of the slots it reads given
+    ([κs]): the members' kinds are its entries' tags, an alias's its
+    target's.  A position that holds no slot reads as a term entry's module
+    part does ([no_slot_proofs]), as an environment does there. *)
+
+(** The proofness at a position holding no slot. *)
+Definition no_slot_proofs : member_proofness := module_member_proofs γ (set_module_global (q_abs nil nil) nil).
+
+(** The slots' proofness past one more entry, of the proofness [P]. *)
+Definition push_slot_proofs (κs : nat -> member_proofness) (P : member_proofness) : nat -> member_proofness :=
+  fun s => match s with 0 => P | S s' => κs s' end.
+
+(** The name a chain selects first: its head, or the member itself. *)
+Definition chain_key (ys : list string) (x : string) : string :=
+  match ys with nil => x | y :: _ => y end.
+
+(** A body's entry is a proof's term. *)
+Definition gentry_is_proof (E : gentry) : bool :=
+  match E with ge_def _ _ κ _ _ => is_proof_kind κ | _ => false end.
+
+Fixpoint modexp_member_proofs (κs : nat -> member_proofness) (H : modexp) {struct H} : member_proofness :=
+  match H with
+  (** A loaded unit: its global module's *)
+  | me_unit fp => module_member_proofs γ (set_module_global (q_abs fp nil) nil)
+  (** A slot: its unit's, given *)
+  | me_var k => κs k
+  (** A submodule: at the chain past it *)
+  | me_mem H' y => fun ys x => modexp_member_proofs κs H' (y :: ys) x
+  (** An application: the module's *)
+  | me_app H' _ => modexp_member_proofs κs H'
+  (** A literal: its unit's *)
+  | me_lit U => unit_member_proofs κs U
+  end
+with unit_member_proofs (κs : nat -> member_proofness) (U : gunit) {struct U} : member_proofness :=
+  match U with
+  (** Under its telescope: an assumption or a definition is no slot, a
+      slot or a definition with a module part one of its unit's *)
+  | gu_mk Δ D =>
+      moddef_member_proofs
+        ((fix tele (Δ : list centry) : nat -> member_proofness :=
+            match Δ with
+            | nil => κs
+            | e :: Δ' =>
+                push_slot_proofs (tele Δ')
+                  (match e with
+                   | ce_mod U' => unit_member_proofs (tele Δ') U'
+                   | ce_dm _ _ U' => unit_member_proofs (tele Δ') U'
+                   | _ => no_slot_proofs
+                   end)
+            end) Δ) D
+  end
+with moddef_member_proofs (κs : nat -> member_proofness) (D : moddef) {struct D} : member_proofness :=
+  match D with
+  (** A body: the entry the chain names *)
+  | md_body _ Φ => fun ys x => match body_member_lookup κs Φ ys x with Some b => b | None => false end
+  (** An alias: its target's *)
+  | md_alias E => modexp_member_proofs κs E
+  end
+with body_slot_proofs (κs : nat -> member_proofness) (Φ : gmod) {struct Φ} : nat -> member_proofness :=
+  match Φ with
+  (** No entry *)
+  | gm_nil => κs
+  (** An entry, after the ones before it *)
+  | gm_ext Φ' _ E => push_slot_proofs (body_slot_proofs κs Φ') (gentry_slot_proofs (body_slot_proofs κs Φ') E)
+  (** An open: its stored entries, after the ones before it *)
+  | gm_open Φ' _ _ Φg => body_slot_proofs (body_slot_proofs κs Φ') Φg
+  end
+with body_member_lookup (κs : nat -> member_proofness) (Φ : gmod) (ys : list string) (x : string) {struct Φ}
+    : option bool :=
+  match Φ with
+  (** No entry *)
+  | gm_nil => None
+  (** The last entry so named: its term's kind, or its module part's member *)
+  | gm_ext Φ' z E =>
+      if String.eqb (chain_key ys x) z
+      then Some (match ys with
+                 | nil => gentry_is_proof E
+                 | _ :: ys' => gentry_slot_proofs (body_slot_proofs κs Φ') E ys' x
+                 end)
+      else body_member_lookup κs Φ' ys x
+  (** An open: its stored entries first, as they come later *)
+  | gm_open Φ' _ _ Φg =>
+      match body_member_lookup (body_slot_proofs κs Φ') Φg ys x with
+      | Some b => Some b
+      | None => body_member_lookup κs Φ' ys x
+      end
+  end
+with gentry_slot_proofs (κs : nat -> member_proofness) (E : gentry) {struct E} : member_proofness :=
+  match E with
+  (** A definition: its module part is no module *)
+  | ge_def _ _ _ _ _ => no_slot_proofs
+  (** A module: its unit's *)
+  | ge_mod _ U => unit_member_proofs κs U
+  (** A definition with a module part: its unit's *)
+  | ge_def_mod _ _ _ U => unit_member_proofs κs U
+  (** An inductive or a record type of a body: none is local, the empty table *)
+  | ge_ind _ _ _ _ _ => module_member_proofs γ (set_module_members nil)
+  | ge_record _ _ _ _ => module_member_proofs γ (set_module_members nil)
+  end.
+
+(** The slots' proofness an environment gives: of its entries' modules. *)
+Definition env_slot_proofs (ρ : set_env) : nat -> member_proofness :=
+  fun s => module_member_proofs γ (set_entry_module_part (ρ s)).
+
 (** [set_interp Γ ρ M v]: the term [M] of the context [Γ] denotes [v] in
     the environment [ρ]. *)
 Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
@@ -193,39 +299,43 @@ with set_interp_modexp : ctx -> set_env -> modexp -> set_module -> Prop :=
 | set_interp_me_lit : forall Γ ρ U m, set_interp_gunit Γ ρ U m -> set_interp_modexp Γ ρ (me_lit U) m
 (** [set_interp_gunit Γ ρ U m]: the unit [U] denotes [m] *)
 with set_interp_gunit : ctx -> set_env -> gunit -> set_module -> Prop :=
-(** Its parameters, outermost first, then its definition *)
-| set_interp_gunit_mk : forall Γ ρ Δ D m, set_interp_unit_params Γ ρ (List.rev Δ) D m ->
+(** Its parameters, outermost first, then its definition, with which of
+    its members are proofs as its syntax says *)
+| set_interp_gunit_mk : forall Γ ρ Δ D P m,
+    (forall ys x, P ys x = unit_member_proofs (env_slot_proofs ρ) (gu_mk Δ D) ys x) ->
+    set_interp_unit_params Γ ρ P (List.rev Δ) D m ->
     set_interp_gunit Γ ρ (gu_mk Δ D) m
-(** [set_interp_unit_params Γ ρ Δ D m]: over the parameters [Δ],
-    outermost first, the definition [D] denotes [m] *)
-with set_interp_unit_params : ctx -> set_env -> list centry -> moddef -> set_module -> Prop :=
+(** [set_interp_unit_params Γ ρ P Δ D m]: over the parameters [Δ],
+    outermost first, the definition [D], of the members' proofness [P],
+    denotes [m] *)
+with set_interp_unit_params : ctx -> set_env -> member_proofness -> list centry -> moddef -> set_module -> Prop :=
 (** No parameter left: the definition *)
-| set_interp_unit_params_nil : forall Γ ρ D m, set_interp_moddef Γ ρ D m -> set_interp_unit_params Γ ρ nil D m
+| set_interp_unit_params_nil : forall Γ ρ P D m, set_interp_moddef Γ ρ D m -> set_interp_unit_params Γ ρ P nil D m
 (** A parameter: a function of its value *)
-| set_interp_unit_params_ass : forall Γ ρ κ A Δ D a f,
+| set_interp_unit_params_ass : forall Γ ρ P κ A Δ D a f,
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ ->
     set_interp Γ ρ A a ->
     (forall x, set_mem x (code_carrier a) ->
-       set_interp_unit_params (ce_ass κ A :: Γ) (set_env_extend ρ (set_entry_term κ x)) Δ D (f x)) ->
-    set_interp_unit_params Γ ρ (ce_ass κ A :: Δ) D (set_module_params a f)
+       set_interp_unit_params (ce_ass κ A :: Γ) (set_env_extend ρ (set_entry_term κ x)) P Δ D (f x)) ->
+    set_interp_unit_params Γ ρ P (ce_ass κ A :: Δ) D (set_module_params a P f)
 (** A definition of the telescope *)
-| set_interp_unit_params_def : forall Γ ρ A M Δ D v m,
+| set_interp_unit_params_def : forall Γ ρ P A M Δ D v m,
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_def A M :: Γ ->
     set_interp Γ ρ M v ->
-    set_interp_unit_params (ce_def A M :: Γ) (set_env_extend ρ (set_entry_term ak_relevant v)) Δ D m ->
-    set_interp_unit_params Γ ρ (ce_def A M :: Δ) D m
+    set_interp_unit_params (ce_def A M :: Γ) (set_env_extend ρ (set_entry_term ak_relevant v)) P Δ D m ->
+    set_interp_unit_params Γ ρ P (ce_def A M :: Δ) D m
 (** A module slot of the telescope *)
-| set_interp_unit_params_mod : forall Γ ρ U Δ D mu m,
+| set_interp_unit_params_mod : forall Γ ρ P U Δ D mu m,
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_mod U :: Γ ->
     set_interp_gunit Γ ρ U mu ->
-    set_interp_unit_params (ce_mod U :: Γ) (set_env_extend ρ (set_entry_module mu)) Δ D m ->
-    set_interp_unit_params Γ ρ (ce_mod U :: Δ) D m
+    set_interp_unit_params (ce_mod U :: Γ) (set_env_extend ρ (set_entry_module mu)) P Δ D m ->
+    set_interp_unit_params Γ ρ P (ce_mod U :: Δ) D m
 (** A definition with a module part of the telescope *)
-| set_interp_unit_params_dm : forall Γ ρ A M U Δ D v mu m,
+| set_interp_unit_params_dm : forall Γ ρ P A M U Δ D v mu m,
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_dm A M U :: Γ ->
     set_interp Γ ρ M v -> set_interp_gunit Γ ρ U mu ->
-    set_interp_unit_params (ce_dm A M U :: Γ) (set_env_extend ρ (set_entry_both v mu)) Δ D m ->
-    set_interp_unit_params Γ ρ (ce_dm A M U :: Δ) D m
+    set_interp_unit_params (ce_dm A M U :: Γ) (set_env_extend ρ (set_entry_both v mu)) P Δ D m ->
+    set_interp_unit_params Γ ρ P (ce_dm A M U :: Δ) D m
 (** [set_interp_moddef Γ ρ D m]: the definition [D] denotes [m] *)
 with set_interp_moddef : ctx -> set_env -> moddef -> set_module -> Prop :=
 (** A body: the table of the members of its expansion, its opens replaced

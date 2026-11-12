@@ -12,6 +12,7 @@ From Stdlib Require Import String List Lia PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel.Interpretation Require Export Interp.
+From Mctt.Core.SetModel.Interpretation Require Import Respects.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members CoreInversions.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Lemmas Scoping.
@@ -128,8 +129,8 @@ Lemma set_interp_wk_all :
      set_interp_modexp T γ (tele_wk Ψ φ ++ Δ) ρ' (modexp_wk H (wk_qn (List.length Ψ) φ)) m) /\
   (forall Ξ ρ U m, set_interp_gunit T γ Ξ ρ U m -> forall Ψ Γ Δ φ ρ', wk_setting Ξ ρ Ψ Γ Δ φ ρ' ->
      set_interp_gunit T γ (tele_wk Ψ φ ++ Δ) ρ' (gunit_wk U (wk_qn (List.length Ψ) φ)) m) /\
-  (forall Ξ ρ L D m, set_interp_unit_params T γ Ξ ρ L D m -> forall Ψ Γ Δ φ ρ', wk_setting Ξ ρ Ψ Γ Δ φ ρ' ->
-     set_interp_unit_params T γ (tele_wk Ψ φ ++ Δ) ρ' (List.rev (tele_wk (List.rev L) (wk_qn (List.length Ψ) φ)))
+  (forall Ξ ρ P L D m, set_interp_unit_params T γ Ξ ρ P L D m -> forall Ψ Γ Δ φ ρ', wk_setting Ξ ρ Ψ Γ Δ φ ρ' ->
+     set_interp_unit_params T γ (tele_wk Ψ φ ++ Δ) ρ' P (List.rev (tele_wk (List.rev L) (wk_qn (List.length Ψ) φ)))
        (moddef_wk D (wk_qn (List.length L) (wk_qn (List.length Ψ) φ))) m) /\
   (forall Ξ ρ D m, set_interp_moddef T γ Ξ ρ D m -> forall Ψ Γ Δ φ ρ', wk_setting Ξ ρ Ψ Γ Δ φ ρ' ->
      set_interp_moddef T γ (tele_wk Ψ φ ++ Δ) ρ' (moddef_wk D (wk_qn (List.length Ψ) φ)) m) /\
@@ -216,20 +217,23 @@ Proof.
   - intros Ξ ρ H N m n _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
   - intros Ξ ρ U m _ IH; start; constructor; same IH.
   (** units *)
-  - intros Ξ ρ Δu D m _ IH; start. rewrite gunit_wk_mk. constructor.
+  - intros Ξ ρ Δu D P m HP _ IH; start.
     pose proof (IH Ψ Γ0 Δ φ ρ' (Build_wk_setting _ _ _ _ _ _ _ eq_refl Hφ Hag)) as H.
-    rewrite List.rev_involutive, List.length_rev in H. exact H.
-  - intros Ξ ρ D m _ IH; start; cbn [List.rev tele_wk List.length wk_qn]; constructor; same IH.
-  - intros Ξ ρ κ A L D a f Hc _ IHA _ IHL; start.
+    rewrite List.rev_involutive, List.length_rev in H.
+    rewrite gunit_wk_mk. apply (set_interp_gunit_mk _ _ _ _ _ _ P); [| exact H].
+    intros ys x. rewrite HP, <- gunit_wk_mk. symmetry. apply (proj2 (unit_member_proofs_wk_all γ)).
+    intros s ys0 x0. unfold env_slot_proofs. rewrite (Hag s). reflexivity.
+  - intros Ξ ρ P D m _ IH; start; cbn [List.rev tele_wk List.length wk_qn]; constructor; same IH.
+  - intros Ξ ρ P κ A L D a f Hc _ IHA _ IHL; start.
     rewrite tele_wk_rev_cons, List.rev_involutive. cbn [List.length centry_wk]. rewrite <- wk_qn_q.
     econstructor; [wkctx Hc (ce_ass κ A) | same IHA |]. intros x Hx. under (IHL x Hx) (ce_ass κ A).
-  - intros Ξ ρ A M L D v m Hc _ IHM _ IHL; start.
+  - intros Ξ ρ P A M L D v m Hc _ IHM _ IHL; start.
     rewrite tele_wk_rev_cons, List.rev_involutive. cbn [List.length centry_wk]. rewrite <- wk_qn_q.
     econstructor; [wkctx Hc (ce_def A M) | same IHM | under IHL (ce_def A M)].
-  - intros Ξ ρ U L D mu m Hc _ IHU _ IHL; start.
+  - intros Ξ ρ P U L D mu m Hc _ IHU _ IHL; start.
     rewrite tele_wk_rev_cons, List.rev_involutive. cbn [List.length centry_wk]. rewrite <- wk_qn_q.
     econstructor; [wkctx Hc (ce_mod U) | same IHU | under IHL (ce_mod U)].
-  - intros Ξ ρ A M U L D v mu m Hc _ IHM _ IHU _ IHL; start.
+  - intros Ξ ρ P A M U L D v mu m Hc _ IHM _ IHU _ IHL; start.
     rewrite tele_wk_rev_cons, List.rev_involutive. cbn [List.length centry_wk]. rewrite <- wk_qn_q.
     econstructor; [wkctx Hc (ce_dm A M U) | same IHM | same IHU | under IHL (ce_dm A M U)].
   (** definitions *)

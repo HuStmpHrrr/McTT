@@ -10,6 +10,10 @@ From Mctt.Core.SetModel.Sets Require Export Encodings.
 From Mctt.Core.SetModel.Interpretation Require Export Codes.
 From Mctt.Core.Syntactic Require Import Syntax.
 
+(** Which members of a module are proofs: [P ys x] says whether the member
+    [x] of the submodule at the chain [ys] is. *)
+Definition member_proofness : Type := list string -> string -> bool.
+
 (** What a variable or a member denotes. *)
 Inductive set_entry : Type :=
 (** A term of the kind [kind], its value.  The kind is the one the syntax
@@ -22,8 +26,15 @@ Inductive set_entry : Type :=
 | set_entry_both (value : aczel_set) (m : set_module)
 with set_module : Type :=
 (** A unit's parameter of the type code [domain]: a function of the
-    parameter's value *)
-| set_module_params (domain : aczel_set) (f : aczel_set -> set_module)
+    parameter's value, with which of its members are proofs.  That is read
+    off the unit's syntax ([unit_member_proofs]), not off [f]: [f] is
+    fixed only on the domain, which may be empty, and an empty domain
+    tells nothing.  In [module M (n : ℕ) (z : Empty) where def k : ℕ ≔ n
+    end] the member [k] is no proof, so [M.k] is the function
+    [n ↦ ∅] of [Π (n : ℕ) (z : Empty), ℕ]; in
+    [module M (n : ℕ) (z : Empty) where def p : ⊤ ≔ tt end] the member
+    [p] is one, so [M.p] is the empty set, as every proof is *)
+| set_module_params (domain : aczel_set) (proofs : member_proofness) (f : aczel_set -> set_module)
 (** A body: its members by name, in order *)
 | set_module_members (members : list (string * set_entry))
 (** The global module at the path [p], at the arguments [args],
@@ -36,8 +47,9 @@ with set_module : Type :=
     outside [U]'s parameter type, could give unrelated modules; the
     interpretation is then not functional, and the uniqueness of a
     substituted term such as [M[N]], whose derivations are not typed node
-    by node, could not be derived *)
-| set_module_cond (condition : Prop) (m : set_module).
+    by node, could not be derived.  Which members are proofs is kept
+    besides, as the function's: outside the domain [m] is anything *)
+| set_module_cond (condition : Prop) (proofs : member_proofness) (m : set_module).
 
 (** An environment: an entry for every variable. *)
 Definition set_env : Type := nat -> set_entry.
@@ -103,20 +115,20 @@ Inductive set_entry_eq : set_entry -> set_entry -> Prop :=
     set_entry_eq (set_entry_both v m) (set_entry_both v' m')
 (** [set_module_eq m m']: the modules [m] and [m'] are equal *)
 with set_module_eq : set_module -> set_module -> Prop :=
-(** Functions of a parameter: equal domains, equal at equal values of the
-    domain *)
-| set_module_eq_params : forall a a' f f', set_eq a a' ->
+(** Functions of a parameter: equal domains, the same proofs, equal at
+    equal values of the domain *)
+| set_module_eq_params : forall a a' P P' f f', set_eq a a' -> (forall ys x, P ys x = P' ys x) ->
     (forall x x', set_mem x (code_carrier a) -> set_eq x x' -> set_module_eq (f x) (f' x')) ->
-    set_module_eq (set_module_params a f) (set_module_params a' f')
+    set_module_eq (set_module_params a P f) (set_module_params a' P' f')
 (** Tables with equal entries under the same names *)
 | set_module_eq_members : forall ms ms', set_members_eq ms ms' ->
     set_module_eq (set_module_members ms) (set_module_members ms')
 (** One global module at equal arguments *)
 | set_module_eq_global : forall p args args', list_set_eq args args' ->
     set_module_eq (set_module_global p args) (set_module_global p args')
-(** Equivalent conditions, equal modules where they hold *)
-| set_module_eq_cond : forall (φ φ' : Prop) m m', (φ <-> φ') -> (φ -> set_module_eq m m') ->
-    set_module_eq (set_module_cond φ m) (set_module_cond φ' m')
+(** Equivalent conditions, the same proofs, equal modules where they hold *)
+| set_module_eq_cond : forall (φ φ' : Prop) P P' m m', (φ <-> φ') -> (forall ys x, P ys x = P' ys x) ->
+    (φ -> set_module_eq m m') -> set_module_eq (set_module_cond φ P m) (set_module_cond φ' P' m')
 (** [set_members_eq ms ms']: the tables [ms] and [ms'] have the same names,
     in order, with equal entries *)
 with set_members_eq : list (string * set_entry) -> list (string * set_entry) -> Prop :=

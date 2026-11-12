@@ -12,6 +12,7 @@ From Stdlib Require Import String List Lia PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel.Interpretation Require Export Weakening.
+From Mctt.Core.SetModel.Interpretation Require Import Respects.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members CoreInversions.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Lemmas Scoping.
@@ -127,9 +128,9 @@ Lemma set_interp_sub_all :
      set_interp_modexp T γ (tele_sub Ψ σ ++ Γ') ρ' (modexp_sub H (sb_qn (List.length Ψ) σ)) m) /\
   (forall Ξ ρ U m, set_interp_gunit T γ Ξ ρ U m -> forall Ψ Γ Γ' σ ρb ρ', ⊢ gc_deps ⍮ gc_stack ⍮ Ξ -> sub_setting Ξ ρ Ψ Γ Γ' σ ρb ρ' ->
      set_interp_gunit T γ (tele_sub Ψ σ ++ Γ') ρ' (gunit_sub U (sb_qn (List.length Ψ) σ)) m) /\
-  (forall Ξ ρ L D m, set_interp_unit_params T γ Ξ ρ L D m -> forall Ψ Γ Γ' σ ρb ρ', ⊢ gc_deps ⍮ gc_stack ⍮ Ξ ->
+  (forall Ξ ρ P L D m, set_interp_unit_params T γ Ξ ρ P L D m -> forall Ψ Γ Γ' σ ρb ρ', ⊢ gc_deps ⍮ gc_stack ⍮ Ξ ->
      sub_setting Ξ ρ Ψ Γ Γ' σ ρb ρ' ->
-     set_interp_unit_params T γ (tele_sub Ψ σ ++ Γ') ρ' (List.rev (tele_sub (List.rev L) (sb_qn (List.length Ψ) σ)))
+     set_interp_unit_params T γ (tele_sub Ψ σ ++ Γ') ρ' P (List.rev (tele_sub (List.rev L) (sb_qn (List.length Ψ) σ)))
        (moddef_sub D (sb_qn (List.length L) (sb_qn (List.length Ψ) σ))) m) /\
   (forall Ξ ρ D m, set_interp_moddef T γ Ξ ρ D m -> forall Ψ Γ Γ' σ ρb ρ', ⊢ gc_deps ⍮ gc_stack ⍮ Ξ -> sub_setting Ξ ρ Ψ Γ Γ' σ ρb ρ' ->
      set_interp_moddef T γ (tele_sub Ψ σ ++ Γ') ρ' (moddef_sub D (sb_qn (List.length Ψ) σ)) m) /\
@@ -222,20 +223,24 @@ Proof.
   - intros Ξ ρ H N m n _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
   - intros Ξ ρ U m _ IH; start; constructor; same IH.
   (** units *)
-  - intros Ξ ρ Δu D m _ IH; start. rewrite gunit_sub_mk. constructor.
+  - intros Ξ ρ Δu D P m HP _ IH; start.
     pose proof (IH _ _ _ _ _ _ HΞ Hs) as H.
-    rewrite List.rev_involutive, List.length_rev in H. exact H.
-  - intros Ξ ρ D m _ IH; start; cbn [List.rev tele_sub List.length sb_qn]; constructor; same IH.
-  - intros Ξ ρ κ A L D a f Hc _ IHA _ IHL; start.
+    rewrite List.rev_involutive, List.length_rev in H.
+    rewrite gunit_sub_mk. apply (set_interp_gunit_mk _ _ _ _ _ _ P); [| exact H].
+    intros ys x. rewrite HP, <- gunit_sub_mk. symmetry. apply (proj2 (unit_member_proofs_sub_all γ)).
+    intros s ys0 x0. unfold env_slot_proofs.
+    apply (set_interp_modexp_member_proofs T γ _ _ _ _ (proj2 (sub_setting_var _ _ _ _ _ _ _ _ s HΞ Hs))).
+  - intros Ξ ρ P D m _ IH; start; cbn [List.rev tele_sub List.length sb_qn]; constructor; same IH.
+  - intros Ξ ρ P κ A L D a f Hc _ IHA _ IHL; start.
     rewrite tele_sub_rev_cons, List.rev_involutive. cbn [List.length centry_sub]. rewrite <- Nat.add_1_r, sb_qn_plus.
     econstructor; [subctx Hc (ce_ass κ A) Hs | same IHA |]. intros x Hx. under (IHL x Hx) (ce_ass κ A) Hc.
-  - intros Ξ ρ A M L D v m Hc _ IHM _ IHL; start.
+  - intros Ξ ρ P A M L D v m Hc _ IHM _ IHL; start.
     rewrite tele_sub_rev_cons, List.rev_involutive. cbn [List.length centry_sub]. rewrite <- Nat.add_1_r, sb_qn_plus.
     econstructor; [subctx Hc (ce_def A M) Hs | same IHM | under IHL (ce_def A M) Hc].
-  - intros Ξ ρ U L D mu m Hc _ IHU _ IHL; start.
+  - intros Ξ ρ P U L D mu m Hc _ IHU _ IHL; start.
     rewrite tele_sub_rev_cons, List.rev_involutive. cbn [List.length centry_sub]. rewrite <- Nat.add_1_r, sb_qn_plus.
     econstructor; [subctx Hc (ce_mod U) Hs | same IHU | under IHL (ce_mod U) Hc].
-  - intros Ξ ρ A M U L D v mu m Hc _ IHM _ IHU _ IHL; start.
+  - intros Ξ ρ P A M U L D v mu m Hc _ IHM _ IHU _ IHL; start.
     rewrite tele_sub_rev_cons, List.rev_involutive. cbn [List.length centry_sub]. rewrite <- Nat.add_1_r, sb_qn_plus.
     econstructor; [subctx Hc (ce_dm A M U) Hs | same IHM | same IHU | under IHL (ce_dm A M U) Hc].
   (** definitions *)
