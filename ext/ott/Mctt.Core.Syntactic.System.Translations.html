@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab856"></a><h1 class="section">Declarations as Written: Their Contexts, and the Translation of Mutual Definitions</h1>
+<a id="lab1112"></a><h1 class="section">Declarations as Written: Their Contexts, and the Translation of Mutual Definitions</h1>
 
 
 <div class="paragraph"> </div>
@@ -79,7 +79,7 @@
 </div>
 
 <div class="doc">
-<a id="lab857"></a><h2 class="section">The Contexts of a Group as Written</h2>
+<a id="lab1113"></a><h2 class="section">The Contexts of a Group as Written</h2>
 
 <div class="paragraph"> </div>
 
@@ -168,7 +168,7 @@ The arguments as filled, as a telescope, innermost first, each at its
 </div>
 
 <div class="doc">
-<a id="lab858"></a><h2 class="section">Mutual Definitions</h2>
+<a id="lab1114"></a><h2 class="section">Mutual Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -186,7 +186,7 @@ The arguments as filled, as a telescope, innermost first, each at its
     branches, moved under <span class="inlinecode"><span class="id" title="var">ys</span></span> and <span class="inlinecode"><span class="id" title="var">z</span></span>. 
 <div class="paragraph"> </div>
 
- The first position of <span class="inlinecode"><span class="id" title="var">W</span></span> among <span class="inlinecode"><span class="id" title="var">Ws</span></span>, of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> among <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.IndPER.Member.Shape.ms"><span class="id" title="variable">ms</span></a></span>. 
+ The first position of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> among <span class="inlinecode"><span class="id" title="var">Ws</span></span>, of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> among <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.IndPER.Member.Shape.ms"><span class="id" title="variable">ms</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="nf_index" class="idref" href="#nf_index"><span class="id" title="definition">nf_index</span></a> (<a id="W:18" class="idref" href="#W:18"><span class="id" title="binder">W</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf"><span class="id" title="inductive">nf</span></a>) (<a id="Ws:19" class="idref" href="#Ws:19"><span class="id" title="binder">Ws</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf"><span class="id" title="inductive">nf</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> :=<br/>
@@ -212,7 +212,7 @@ The first position of <span class="inlinecode"><a class="idref" href="Mctt.Core.
 </div>
 
 <div class="doc">
-The scrutinee's type of a block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, of the group
+The scrutinee's type of a block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, of the group
     <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.CrossRel.pq"><span class="id" title="variable">pq</span></a></span>, at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span>: the member at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> and at
     the block's non-uniform parameters, the type <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#elim_mctx"><span class="id" title="definition">elim_mctx</span></a></span> gives the
     scrutinee (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Translations.html#elim_mctx_scrutinee_type"><span class="id" title="lemma">elim_mctx_scrutinee_type</span></a></span>).  The fill writes it when the
@@ -244,7 +244,7 @@ The block a function makes, under <span class="inlinecode"><a class="idref" href
 </div>
 
 <div class="doc">
-The blocks, one per member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> <span class="inlinecode">&lt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#nm"><span class="id" title="abbreviation">nm</span></a></span>, of the function of member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>. 
+The blocks, one per member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> <span class="inlinecode">&lt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#nm"><span class="id" title="abbreviation">nm</span></a></span>, of the function of member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="mdef_blocks" class="idref" href="#mdef_blocks"><span class="id" title="definition">mdef_blocks</span></a> (<a id="k:41" class="idref" href="#k:41"><span class="id" title="binder">k</span></a> <a id="nm:42" class="idref" href="#nm:42"><span class="id" title="binder">nm</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="fs:43" class="idref" href="#fs:43"><span class="id" title="binder">fs</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#raw_fun"><span class="id" title="record">raw_fun</span></a>) (<a id="ms:44" class="idref" href="#ms:44"><span class="id" title="binder">ms</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#eblock"><span class="id" title="abbreviation">eblock</span></a> :=<br/>
@@ -391,7 +391,7 @@ No member has two functions
 </div>
 
 <div class="doc">
-<a id="lab859"></a><h2 class="section">One Group, One Set of Parts</h2>
+<a id="lab1115"></a><h2 class="section">One Group, One Set of Parts</h2>
 
 </div>
 <div class="code">

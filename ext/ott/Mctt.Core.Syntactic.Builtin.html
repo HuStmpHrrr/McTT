@@ -33,12 +33,12 @@
 </div>
 
 <div class="doc">
-<a id="lab752"></a><h1 class="section">Builtin Bindings</h1>
+<a id="lab1008"></a><h1 class="section">Builtin Bindings</h1>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><span class="id" title="var">natural</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> binds the inductive type <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> as the natural
+    <span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><span class="id" title="var">natural</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> binds the inductive type <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> as the natural
     numbers.  The bindings are a record, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Builtin.html#builtins"><span class="id" title="record">builtins</span></a></span>, apart from the filed
     units and the stack: no typing judgment reads it.  Each unit runs from
     the empty record; it gains the bindings of its own <span class="inlinecode"><span class="id" title="var">builtin</span></span> commands
@@ -121,7 +121,7 @@ The sort the natural numbers are declared in: <span class="inlinecode"><span cla
 </div>
 
 <div class="doc">
-<a id="lab753"></a><h2 class="section">The Configuration</h2>
+<a id="lab1009"></a><h2 class="section">The Configuration</h2>
 
 <div class="paragraph"> </div>
 
@@ -219,7 +219,7 @@ The token <span class="inlinecode"><span class="id" title="var">ℕ</span></span
 </div>
 
 <div class="doc">
-<a id="lab754"></a><h2 class="section">Merging</h2>
+<a id="lab1010"></a><h2 class="section">Merging</h2>
 
 
 <div class="paragraph"> </div>
@@ -305,8 +305,8 @@ A merge of well-formed records is well formed.
 </div>
 
 <div class="doc">
-The binding a <span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><span class="id" title="var">natural</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> command makes, from the bindings
-    before it: <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> names the inductive type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>, with the shape of the
+The binding a <span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><span class="id" title="var">natural</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> command makes, from the bindings
+    before it: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> names the inductive type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>, with the shape of the
     natural numbers, in <span class="inlinecode"><span class="id" title="var">Type@0</span></span>; it merges the binding of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> alone. 
 </div>
 <div class="code">
@@ -316,7 +316,7 @@ The binding a <span class="inlinecode"><span class="id" title="var">builtin</spa
 </div>
 
 <div class="doc">
-<a id="lab755"></a><h2 class="section">Bindings Only Grow</h2>
+<a id="lab1011"></a><h2 class="section">Bindings Only Grow</h2>
 
 
 <div class="paragraph"> </div>

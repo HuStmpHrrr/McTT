@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab231"></a><h1 class="section">Valid Units: Validity, Substitution, Instantiation, Abstraction</h1>
+<a id="lab238"></a><h1 class="section">Valid Units: Validity, Substitution, Instantiation, Abstraction</h1>
 
 
 <div class="paragraph"> </div>
@@ -94,7 +94,7 @@
 </div>
 
 <div class="doc">
-<a id="lab232"></a><h2 class="section">Valid Units Are Valid</h2>
+<a id="lab239"></a><h2 class="section">Valid Units Are Valid</h2>
 
 </div>
 <div class="code">
@@ -129,12 +129,13 @@ Member typing moves along related module expressions.
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">HHK</span> [<span class="id" title="var">HA</span> <span class="id" title="var">HM</span> <span class="id" title="var">HS</span>]; <span class="id" title="tactic">constructor</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HA</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">HM</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">R</span> <span class="id" title="var">HR</span> ρ <span class="id" title="var">H</span>ρ.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">HS</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ) <span class="id" title="keyword">as</span> [<span class="id" title="var">k</span> <span class="id" title="var">a</span> <span class="id" title="var">i</span> <span class="id" title="var">RA</span> <span class="id" title="var">Hk</span> <span class="id" title="var">Ha</span> <span class="id" title="var">HRA</span> <span class="id" title="var">Hm</span> <span class="id" title="var">Hred</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">HS</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ) <span class="id" title="keyword">as</span> [<span class="id" title="var">k</span> <span class="id" title="var">a</span> <span class="id" title="var">i</span> <span class="id" title="var">RA</span> <span class="id" title="var">Hk</span> <span class="id" title="var">Ha</span> <span class="id" title="var">HRA</span> <span class="id" title="var">Hm</span> <span class="id" title="var">Hred</span> <span class="id" title="var">Hmty</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.UnitCases.html#rel_modexp_at"><span class="id" title="lemma">rel_modexp_at</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HHK</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ) <span class="id" title="keyword">as</span> (<span class="id" title="var">h</span> &amp; <span class="id" title="var">k'</span> &amp; <span class="id" title="var">Hh</span> &amp; <span class="id" title="var">Hk'</span> &amp; <span class="id" title="var">Hhk</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Semantic.Evaluation.Lemmas.html#functional_eval_modexp"><span class="id" title="lemma">functional_eval_modexp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hk'</span> <span class="id" title="var">Hk</span>) <span class="id" title="keyword">as</span> -&gt;.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HPA</span> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a> <span class="id" title="var">RA</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.Universe.html#per_elem_PER"><span class="id" title="instance">per_elem_PER</span></a>; <span class="id" title="tactic">exact</span> <span class="id" title="var">HRA</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#mk_valid_mem_at"><span class="id" title="constructor">mk_valid_mem_at</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">valid_mem_at_mod</span> := <span class="id" title="var">h</span>) (<span class="id" title="var">valid_mem_at_typ</span> := <span class="id" title="var">a</span>) (<span class="id" title="var">valid_mem_at_lvl</span> := <span class="id" title="var">i</span>) (<span class="id" title="var">valid_mem_at_rel</span> := <span class="id" title="var">RA</span>); <span class="id" title="tactic">try</span> <span class="id" title="tactic">assumption</span>;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">intros</span> <span class="id" title="var">Hrel</span>; <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#dmod_has_mem_resp"><span class="id" title="lemma">dmod_has_mem_resp</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HPA</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hhk</span> | <span class="id" title="tactic">exact</span> (<span class="id" title="var">Hm</span> <span class="id" title="var">Hrel</span>) ] |].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">intros</span> <span class="id" title="var">Hrel</span>; <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#dmod_has_mem_resp"><span class="id" title="lemma">dmod_has_mem_resp</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HPA</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hhk</span> | <span class="id" title="tactic">exact</span> (<span class="id" title="var">Hm</span> <span class="id" title="var">Hrel</span>) ] |<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">intros</span> <span class="id" title="var">Hrel</span>; <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#dmod_mem_type_rel_resp"><span class="id" title="lemma">dmod_mem_type_rel_resp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hhk</span> (<span class="id" title="var">Hmty</span> <span class="id" title="var">Hrel</span>)) ].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">Hrel</span> <span class="id" title="var">M</span> <span class="id" title="var">HM0</span>; <span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hred</span> <span class="id" title="var">Hrel</span> <span class="id" title="var">_</span> <span class="id" title="var">HM0</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">m</span> <span class="id" title="var">r</span> <span class="id" title="var">Hm0</span> <span class="id" title="var">Hr</span> <span class="id" title="var">Hmr</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hm</span> <span class="id" title="var">Hrel</span> <span class="id" title="var">_</span> <span class="id" title="var">Hhk</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">r1</span> <span class="id" title="var">r2</span> <span class="id" title="var">Hr1</span> <span class="id" title="var">Hr2</span> <span class="id" title="var">Hrr</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#functional_eval_sel"><span class="id" title="lemma">functional_eval_sel</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hr2</span> <span class="id" title="var">Hr</span>) <span class="id" title="keyword">as</span> -&gt;.<br/>
@@ -145,7 +146,7 @@ Member typing moves along related module expressions.
 </div>
 
 <div class="doc">
-<a id="lab233"></a><h2 class="section">Valid Units along Substitutions, in the PER Model</h2>
+<a id="lab240"></a><h2 class="section">Valid Units along Substitutions, in the PER Model</h2>
 
 </div>
 <div class="code">
@@ -187,7 +188,7 @@ The same under one parameter fewer.
 </div>
 
 <div class="doc">
-<a id="lab234"></a><h2 class="section">Valid Units along Substitutions Built from Valid Parts</h2>
+<a id="lab241"></a><h2 class="section">Valid Units along Substitutions Built from Valid Parts</h2>
 
 </div>
 <div class="code">
@@ -393,7 +394,7 @@ The parts of a body, along a substitution built from valid parts, make
 </div>
 
 <div class="doc">
-<a id="lab235"></a><h2 class="section">Valid Units Given an Argument</h2>
+<a id="lab242"></a><h2 class="section">Valid Units Given an Argument</h2>
 
 <div class="paragraph"> </div>
 
@@ -491,7 +492,7 @@ So are the parameters of a valid literal.
 </div>
 
 <div class="doc">
-<a id="lab236"></a><h2 class="section">Valid Units Abstracted over Parameters</h2>
+<a id="lab243"></a><h2 class="section">Valid Units Abstracted over Parameters</h2>
 
 </div>
 <div class="code">

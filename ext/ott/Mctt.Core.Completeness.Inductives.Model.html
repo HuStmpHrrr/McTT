@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab293"></a><h1 class="section">Valid Groups: the Canonical Model and the Type Formers</h1>
+<a id="lab300"></a><h1 class="section">Valid Groups: the Canonical Model and the Type Formers</h1>
 
 
 <div class="paragraph"> </div>
@@ -84,7 +84,7 @@
 </div>
 
 <div class="doc">
-<a id="lab294"></a><h2 class="section">Lists</h2>
+<a id="lab301"></a><h2 class="section">Lists</h2>
 
 </div>
 <div class="code">
@@ -214,7 +214,7 @@ A type former takes its next parameter at the kind the parameter is
 </div>
 
 <div class="doc">
-<a id="lab295"></a><h2 class="section">The Declaration's Judgments, Positionwise</h2>
+<a id="lab302"></a><h2 class="section">The Declaration's Judgments, Positionwise</h2>
 
 
 <div class="paragraph"> </div>
@@ -637,8 +637,8 @@ A substitution extended by terms <span class="inlinecode"><a class="idref" href=
     values <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.IndPER.Member.Shape.ms"><span class="id" title="variable">ms</span></a></span> the terms' values there, and those of the propositional
     one propositions there, the values <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.IndPER.Member.Shape.ms"><span class="id" title="variable">ms</span></a></span> the terms kept as proofs over
     <span class="inlinecode">ρ</span>.  <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> then holds the values <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.IndPER.Member.Shape.ms"><span class="id" title="variable">ms</span></a></span> at their entries' tags over its
-    tail.  The term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at index <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.Ms"><span class="id" title="variable">Ms</span></a></span> is the entry
-    <span class="inlinecode">|<a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.Ms"><span class="id" title="variable">Ms</span></a>|</span> <span class="inlinecode">-</span> <span class="inlinecode">1</span> <span class="inlinecode">-</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>. 
+    tail.  The term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at index <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.Ms"><span class="id" title="variable">Ms</span></a></span> is the entry
+    <span class="inlinecode">|<a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.Ms"><span class="id" title="variable">Ms</span></a>|</span> <span class="inlinecode">-</span> <span class="inlinecode">1</span> <span class="inlinecode">-</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="eval_sb_of_list_sorted_vals" class="idref" href="#eval_sb_of_list_sorted_vals"><span class="id" title="lemma">eval_sb_of_list_sorted_vals</span></a> : <span class="id" title="keyword">forall</span> <a id="Ms:226" class="idref" href="#Ms:226"><span class="id" title="binder">Ms</span></a> <a id="ts:227" class="idref" href="#ts:227"><span class="id" title="binder">ts</span></a> <a id="15b543d33237afd71f9207f2e0e6b6e5" class="idref" href="#15b543d33237afd71f9207f2e0e6b6e5"><span class="id" title="binder">σ</span></a> <a id="56bbc0f8156a118ea51d5697219c46c3" class="idref" href="#56bbc0f8156a118ea51d5697219c46c3"><span class="id" title="binder">Δ</span></a> <a id="fe9a51ed74ff7dbe5be7bb22f4cec0ad" class="idref" href="#fe9a51ed74ff7dbe5be7bb22f4cec0ad"><span class="id" title="binder">ρ</span></a> <a id="E:231" class="idref" href="#E:231"><span class="id" title="binder">E</span></a> <a id="ms:232" class="idref" href="#ms:232"><span class="id" title="binder">ms</span></a> (<a id="rf:233" class="idref" href="#rf:233"><span class="id" title="binder">rf</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#abs_kind"><span class="id" title="inductive">abs_kind</span></a>),<br/>
@@ -962,7 +962,7 @@ Arguments related at a telescope are related by the canonical
 </div>
 
 <div class="doc">
-<a id="lab296"></a><h2 class="section">Equal Extensions, Entry by Entry</h2>
+<a id="lab303"></a><h2 class="section">Equal Extensions, Entry by Entry</h2>
 
 
 <div class="paragraph"> </div>
@@ -1139,7 +1139,7 @@ The variables of a closed telescope, each of the type its telescope
 </div>
 
 <div class="doc">
-<a id="lab297"></a><h2 class="section">The Group's Conditions, from its Typing</h2>
+<a id="lab304"></a><h2 class="section">The Group's Conditions, from its Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -1197,8 +1197,8 @@ The variables of a closed telescope, each of the type its telescope
 
 <div class="doc">
 The values of the declared members of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at the uniform
-    parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>, in order: the values of the members as variables
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#grp_selfs"><span class="id" title="definition">grp_selfs</span></a></span>) the substitution <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#grp_sb"><span class="id" title="definition">grp_sb</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> gives at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>. 
+    parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>, in order: the values of the members as variables
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#grp_selfs"><span class="id" title="definition">grp_selfs</span></a></span>) the substitution <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#grp_sb"><span class="id" title="definition">grp_sb</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> gives at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="selfs_vals" class="idref" href="#selfs_vals"><span class="id" title="definition">selfs_vals</span></a> (<a id="p:376" class="idref" href="#p:376"><span class="id" title="binder">p</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="D:377" class="idref" href="#D:377"><span class="id" title="binder">D</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_decl"><span class="id" title="abbreviation">ind_decl</span></a>) (<a id="ups:378" class="idref" href="#ups:378"><span class="id" title="binder">ups</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> :=<br/>
@@ -1208,7 +1208,7 @@ The values of the declared members of the group at <span class="inlinecode"><a c
 </div>
 
 <div class="doc">
-<a id="lab298"></a><h2 class="section">A Telescope at the Sort</h2>
+<a id="lab305"></a><h2 class="section">A Telescope at the Sort</h2>
 
 
 <div class="paragraph"> </div>
@@ -1522,7 +1522,7 @@ So are those of a prefix of its non-uniform parameters, over the
 </div>
 
 <div class="doc">
-<a id="lab299"></a><h2 class="section">The Telescopes of a Member</h2>
+<a id="lab306"></a><h2 class="section">The Telescopes of a Member</h2>
 
 </div>
 <div class="code">
@@ -1686,7 +1686,7 @@ The substitution of the uniform parameters: a shift past the
 
 <div class="doc">
 The uniform parameters are related at their telescope, and every
-          context of the outer non-uniform parameters of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.GroupElim.Base.Motives.Frame.Base.Mj"><span class="id" title="variable">Mj</span></a></span> is valid. 
+          context of the outer non-uniform parameters of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.Mj"><span class="id" title="variable">Mj</span></a></span> is valid. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hgu</span> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_tele_args"><span class="id" title="inductive">per_tele_args</span></a> (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_uparams"><span class="id" title="projection">ind_uparams</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.Model.html#Fixed_GCtx.Sort.D"><span class="id" title="variable">D</span></a>)) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">ups</span> <span class="id" title="var">ups'</span>).<br/>
@@ -2075,7 +2075,7 @@ The arguments of a constructor before a recursive one, with the
 </div>
 
 <div class="doc">
-<a id="lab300"></a><h2 class="section">The Group at Related Uniform Parameters</h2>
+<a id="lab307"></a><h2 class="section">The Group at Related Uniform Parameters</h2>
 
 </div>
 <div class="code">
@@ -2224,8 +2224,8 @@ The domain reads only the components before it.
 </div>
 
 <div class="doc">
-The conditions of the clause at the canonical relations at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>,
-        and the bases admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>. 
+The conditions of the clause at the canonical relations at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>,
+        and the bases admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="canon_props_at" class="idref" href="#canon_props_at"><span class="id" title="lemma">canon_props_at</span></a> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#group_structure"><span class="id" title="record">group_structure</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.Model.html#Fixed_GCtx.Sort.D"><span class="id" title="variable">D</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndCanon.html#ind_canon_props"><span class="id" title="record">ind_canon_props</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.Model.html#Fixed_GCtx.Sort.D"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.Model.html#Fixed_GCtx.Sort.Canon.ups"><span class="id" title="variable">ups</span></a>.<br/>
@@ -2316,7 +2316,7 @@ Uniform parameters related at their telescope: a PER.
 </div>
 
 <div class="doc">
-<a id="lab301"></a><h2 class="section">The Canonical Model</h2>
+<a id="lab308"></a><h2 class="section">The Canonical Model</h2>
 
 
 <div class="paragraph"> </div>
@@ -2485,7 +2485,7 @@ The type former at the parameters.
 </div>
 
 <div class="doc">
-<a id="lab302"></a><h2 class="section">The Type Former</h2>
+<a id="lab309"></a><h2 class="section">The Type Former</h2>
 
 </div>
 <div class="code">
@@ -2540,14 +2540,14 @@ The parameters are relevant or levels: of evaluated kinds.
 </div>
 
 <div class="doc">
-<a id="lab303"></a><h2 class="section">The Members as Values of the Context of the Members as Variables</h2>
+<a id="lab310"></a><h2 class="section">The Members as Values of the Context of the Members as Variables</h2>
 
 
 <div class="paragraph"> </div>
 
-      The type of <span class="inlinecode"><span class="id" title="var">Self_j</span></span>, the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> with the members as
+      The type of <span class="inlinecode"><span class="id" title="var">Self_j</span></span>, the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> with the members as
       variables, is a type over the uniform parameters, and the type former
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> at uniform parameters is of it there.  So the values of the
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> at uniform parameters is of it there.  So the values of the
       declared members at related uniform parameters, after them, are
       related environments of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#grp_selfs_ctx"><span class="id" title="definition">grp_selfs_ctx</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span>. 
 </div>
@@ -2755,7 +2755,7 @@ The value: the type former at the uniform parameters, of the
 </div>
 
 <div class="doc">
-The values of the declared members at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>,
+The values of the declared members at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>,
         after them: an environment of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#grp_selfs_ctx"><span class="id" title="definition">grp_selfs_ctx</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span>. 
 </div>
 <div class="code">
@@ -2778,7 +2778,7 @@ The values of the declared members at the uniform parameters <span class="inline
 </div>
 
 <div class="doc">
-<a id="lab304"></a><h2 class="section">The Substitution of the Members for their Variables</h2>
+<a id="lab311"></a><h2 class="section">The Substitution of the Members for their Variables</h2>
 
 
 <div class="paragraph"> </div>
@@ -2873,12 +2873,12 @@ The values of the declared members at the uniform parameters <span class="inline
 </div>
 
 <div class="doc">
-<a id="lab305"></a><h2 class="section">Valid Filed Groups</h2>
+<a id="lab312"></a><h2 class="section">Valid Filed Groups</h2>
 
 
 <div class="paragraph"> </div>
 
-    The record a record view is a view of: found at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.qr"><span class="id" title="variable">qr</span></a></span>, valid and
+    The record a record view is a view of: found at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ConRviewFT.qr"><span class="id" title="variable">qr</span></a></span>, valid and
     closed. 
 </div>
 <div class="code">
@@ -2886,7 +2886,7 @@ The values of the declared members at the uniform parameters <span class="inline
 &nbsp;&nbsp;{ </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#Clusters.R"><span class="id" title="variable">R</span></a></span> is the record filed at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.qr"><span class="id" title="variable">qr</span></a></span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#Clusters.R"><span class="id" title="variable">R</span></a></span> is the record filed at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ConRviewFT.qr"><span class="id" title="variable">qr</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<a id="valid_rview_record_lookup" class="idref" href="#valid_rview_record_lookup"><span class="id" title="projection">valid_rview_record_lookup</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#record_lookup"><span class="id" title="definition">record_lookup</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gc_deps"><span class="id" title="method">gc_deps</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gc_stack"><span class="id" title="method">gc_stack</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.Model.html#qr:728"><span class="id" title="variable">qr</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.Model.html#R:729"><span class="id" title="variable">R</span></a><br/>

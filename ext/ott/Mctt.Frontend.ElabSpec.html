@@ -40,13 +40,13 @@
 </div>
 
 <div class="doc">
-<a id="lab1480"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
+<a id="lab1738"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec"><span class="id" title="inductive">elab_spec</span></a></span> <span class="inlinecode"><span class="id" title="var">prg</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> holds when the surface unit <span class="inlinecode"><span class="id" title="var">prg</span></span> elaborates to the
-    unit <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> in the user syntax (<span class="inlinecode"><span class="id" title="library">UserSyntax</span></span>).  <span class="inlinecode"><span class="id" title="var">Frontend</span>/<span class="id" title="var">ElabCorrect.v</span></span>
+    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec"><span class="id" title="inductive">elab_spec</span></a></span> <span class="inlinecode"><span class="id" title="var">prg</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> holds when the surface unit <span class="inlinecode"><span class="id" title="var">prg</span></span> elaborates to the
+    unit <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> in the user syntax (<span class="inlinecode"><span class="id" title="library">UserSyntax</span></span>).  <span class="inlinecode"><span class="id" title="var">Frontend</span>/<span class="id" title="var">ElabCorrect.v</span></span>
     proves that <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#elaborate_core"><span class="id" title="definition">elaborate_core</span></a></span> computes exactly this relation.
 
 <div class="paragraph"> </div>
@@ -117,11 +117,11 @@ y, x, B, id ↦ Main.M.id, A
 
     (innermost first).  <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> lies under three binders (<span class="inlinecode"><span class="id" title="var">y</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>) and
     over one (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>), so it denotes <span class="inlinecode"><span class="id" title="var">Main.M.id</span></span> <span class="inlinecode">$</span> <span class="inlinecode">#3</span>, and <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is
-    <span class="inlinecode"><span class="id" title="var">Main.M.id</span></span> <span class="inlinecode">$</span> <span class="inlinecode">#3</span> <span class="inlinecode">$</span> <span class="inlinecode">#1</span>.  In <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is closed, so <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is the module
+    <span class="inlinecode"><span class="id" title="var">Main.M.id</span></span> <span class="inlinecode">$</span> <span class="inlinecode">#3</span> <span class="inlinecode">$</span> <span class="inlinecode">#1</span>.  In <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is closed, so <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is the module
     <span class="inlinecode">⟨<span class="id" title="var">Main.M</span>⟩</span> and <span class="inlinecode"><span class="id" title="var">M.id</span></span> <span class="inlinecode"><span class="id" title="library">Nat</span></span> selects its member <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> and applies it. 
 <div class="paragraph"> </div>
 
-<a id="lab1481"></a><h2 class="section">Entries</h2>
+<a id="lab1739"></a><h2 class="section">Entries</h2>
 
 </div>
 <div class="code">
@@ -158,7 +158,7 @@ A member of an open frame (an open's declarations included), named by
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a>::<span class="id" title="var">Y</span></span>: the unit <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a>::<span class="id" title="var">Y</span></span> may be named by its path. 
+<span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a>::<span class="id" title="var">Y</span></span>: the unit <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a>::<span class="id" title="var">Y</span></span> may be named by its path. 
 </div>
 <div class="code">
 | <a id="scope_entry_unit" class="idref" href="#scope_entry_unit"><span class="id" title="constructor">scope_entry_unit</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#path"><span class="id" title="abbreviation">path</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#scope_entry:1"><span class="id" title="inductive">scope_entry</span></a><br/>
@@ -287,7 +287,7 @@ The entries of names bound in order, innermost first: the binders of
 </div>
 
 <div class="doc">
-<a id="lab1482"></a><h2 class="section">Names in the User Syntax</h2>
+<a id="lab1740"></a><h2 class="section">Names in the User Syntax</h2>
 
 <div class="paragraph"> </div>
 
@@ -333,7 +333,7 @@ The module named by a qualified name, and the member it names, as
 </div>
 
 <div class="doc">
-<a id="lab1483"></a><h2 class="section">What an Entry Denotes</h2>
+<a id="lab1741"></a><h2 class="section">What an Entry Denotes</h2>
 
 
 <div class="paragraph"> </div>
@@ -460,13 +460,13 @@ A leading open's name: what it names in the module
 </div>
 
 <div class="doc">
-<a id="lab1484"></a><h2 class="section">What an Open Declares</h2>
+<a id="lab1742"></a><h2 class="section">What an Open Declares</h2>
 
 
 <div class="paragraph"> </div>
 
     The items of an open, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#import_item"><span class="id" title="definition">import_item</span></a></span>s, are generated by the core
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#items_gen"><span class="id" title="inductive">items_gen</span></a></span>): <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a>,</span> <span class="inlinecode"><span class="id" title="var">W</span>,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>)</span> declares <span class="inlinecode"><span class="id" title="var">W</span></span> as a private
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#items_gen"><span class="id" title="inductive">items_gen</span></a></span>): <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a>,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>)</span> declares <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> as a private
     alias of the module, <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a>,</span> <span class="inlinecode"><span class="id" title="var">d</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.pv"><span class="id" title="variable">pv</span></a>)</span> declares <span class="inlinecode"><span class="id" title="var">d</span></span> as its member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span>,
     privately when <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.pv"><span class="id" title="variable">pv</span></a></span>. 
 <div class="paragraph"> </div>
@@ -524,7 +524,7 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<a id="lab1485"></a><h2 class="section">Eliminators</h2>
+<a id="lab1743"></a><h2 class="section">Eliminators</h2>
 
 
 <div class="paragraph"> </div>
@@ -550,7 +550,7 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<a id="lab1486"></a><h2 class="section">Objects</h2>
+<a id="lab1744"></a><h2 class="section">Objects</h2>
 
 
 <div class="paragraph"> </div>
@@ -886,7 +886,7 @@ It loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab1487"></a><h2 class="section">Inductive Declarations</h2>
+<a id="lab1745"></a><h2 class="section">Inductive Declarations</h2>
 
 
 <div class="paragraph"> </div>
@@ -934,7 +934,7 @@ The names of the members of a group.
 </div>
 
 <div class="doc">
-The members of a group, under its uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> in the
+The members of a group, under its uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> in the
     scope <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span>, the members' names <span class="inlinecode"><span class="id" title="var">xs</span></span> in scope in every argument outside
     the parameters: each its non-uniform parameters, its sort and its
     constructors. 
@@ -956,7 +956,7 @@ The members of a group, under its uniform parameters <span class="inlinecode"><a
 </div>
 
 <div class="doc">
-<a id="lab1488"></a><h2 class="section">Mutual Definitions</h2>
+<a id="lab1746"></a><h2 class="section">Mutual Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -1002,7 +1002,7 @@ The entries of names filed in order in the open frame at member chain
 </div>
 
 <div class="doc">
-<a id="lab1489"></a><h2 class="section">Record Types</h2>
+<a id="lab1747"></a><h2 class="section">Record Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -1055,7 +1055,7 @@ The names a command declares in its frame.
 </div>
 
 <div class="doc">
-<a id="lab1490"></a><h2 class="section">Commands</h2>
+<a id="lab1748"></a><h2 class="section">Commands</h2>
 
 
 <div class="paragraph"> </div>
@@ -1123,7 +1123,7 @@ The parameters of <span class="inlinecode"><span class="id" title="var">module</
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a>::<span class="id" title="var">Y</span></span> loads the unit, which may be named from then on. 
+<span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a>::<span class="id" title="var">Y</span></span> loads the unit, which may be named from then on. 
 </div>
 <div class="code">
 | <a id="spec_cmd_import" class="idref" href="#spec_cmd_import"><span class="id" title="constructor">spec_cmd_import</span></a> : <span class="id" title="keyword">forall</span> <a id="ch:452" class="idref" href="#ch:452"><span class="id" title="binder">ch</span></a> <a id="P:453" class="idref" href="#P:453"><span class="id" title="binder">P</span></a> <a id="S:454" class="idref" href="#S:454"><span class="id" title="binder">S</span></a> <a id="fq:455" class="idref" href="#fq:455"><span class="id" title="binder">fq</span></a>,<br/>
@@ -1164,7 +1164,7 @@ An evaluation at a type written out
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">inductive</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">U</span></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the uniform
+<span class="inlinecode"><span class="id" title="var">inductive</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">U</span></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the uniform
     parameters are read in the scope, each member's non-uniform ones and
     sort under them, the constructors' arguments under all, with the
     members' names in scope.  It declares each member, a module whose
@@ -1226,7 +1226,7 @@ An evaluation at a type written out
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> is a module, as written; whether it is an
+<span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> is a module, as written; whether it is an
     inductive type of the right shape is the core's to check. 
 </div>
 <div class="code">
@@ -1279,7 +1279,7 @@ The first command, then the rest in the scope it leaves
 </div>
 
 <div class="doc">
-<a id="lab1491"></a><h2 class="section">Units</h2>
+<a id="lab1749"></a><h2 class="section">Units</h2>
 
 
 <div class="paragraph"> </div>

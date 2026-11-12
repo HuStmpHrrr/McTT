@@ -69,7 +69,7 @@
 </div>
 
 <div class="doc">
-<a id="lab610"></a><h2 class="section">Fresh Variables of the Telescopes of an Inductive Type</h2>
+<a id="lab619"></a><h2 class="section">Fresh Variables of the Telescopes of an Inductive Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -82,7 +82,7 @@
     built.  A variable of a propositional type is a neutral proof. 
 <div class="paragraph"> </div>
 
- A telescope, outermost first: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#fresh_tele"><span class="id" title="inductive">fresh_tele</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode"><span class="id" title="var">vs</span></span> gives the variables
+ A telescope, outermost first: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#fresh_tele"><span class="id" title="inductive">fresh_tele</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> gives the variables
     from <span class="inlinecode"><span class="id" title="var">s</span></span> on, the type of each evaluated in <span class="inlinecode">ρ</span> extended by those
     before it. 
 </div>
@@ -113,7 +113,7 @@ The first entry's variable at its type, then the rest with it in the
 </div>
 
 <div class="doc">
-The arguments of a constructor of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>:
+The arguments of a constructor of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>:
     a non-recursive one of the type its declaration gives, in the
     environment of the parameters and the non-recursive arguments before
     it; a recursive one of the type of its shape there. 
@@ -190,13 +190,13 @@ A path nested through: none
 </div>
 
 <div class="doc">
-The recursive results of the arguments <span class="inlinecode"><span class="id" title="var">vs</span></span> of kinds <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>: one per
+The recursive results of the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> of kinds <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>: one per
     leaf path of each argument recursive also in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs'"><span class="id" title="variable">gs'</span></a></span> (the kinds the
     eliminator read has them in, E1′, of the group <span class="inlinecode"><span class="id" title="var">Dc</span></span>) that is a path of
     <span class="inlinecode"><span class="id" title="var">Dc</span></span>'s (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#leaf_in"><span class="id" title="definition">leaf_in</span></a></span>), of the type of its recursive result, the motives
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#LeafConv.As"><span class="id" title="variable">As</span></a></span> in <span class="inlinecode">ρ</span>, the shape's components in the environment <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> of the
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#LeafConv.As"><span class="id" title="variable">As</span></a></span> in <span class="inlinecode">ρ</span>, the shape's components in the environment <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> of the
     parameters and the non-recursive arguments before it, as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> has
-    them, of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>.  A path nested through (of an
+    them, of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>.  A path nested through (of an
     argument recursive in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> only, or through a field the container's
     record view has as non-recursive) has no variable; its result is the
     eliminator's (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#wrap_ihs_eval"><span class="id" title="inductive">wrap_ihs_eval</span></a></span>). 
@@ -215,7 +215,7 @@ No argument, no result
 </div>
 
 <div class="doc">
-A non-recursive argument: none, the argument entering <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> 
+A non-recursive argument: none, the argument entering <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> 
 </div>
 <div class="code">
 | <a id="fresh_ihs_arg" class="idref" href="#fresh_ihs_arg"><span class="id" title="constructor">fresh_ihs_arg</span></a> :<br/>
@@ -251,7 +251,7 @@ An argument recursive in <span class="inlinecode"><a class="idref" href="Mctt.Co
 
 <div class="doc">
 The recursive results along the leaf paths of an argument, its
-    group's <span class="inlinecode"><span class="id" title="var">rs</span></span> and the container's variables <span class="inlinecode"><span class="id" title="var">ihs</span></span>: the next variable at
+    group's <span class="inlinecode"><span class="id" title="var">rs</span></span> and the container's variables <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.ihs"><span class="id" title="variable">ihs</span></a></span>: the next variable at
     a path of the container's, the group's result at a path nested
     through; <span class="inlinecode"><span class="id" title="var">ihs'</span></span> are the variables left. 
 </div>
@@ -287,12 +287,12 @@ A path nested through: the group's result
 <div class="doc">
 The recursive results a branch of a block is read under, when the
     branch is read as one of the eliminator of the group the eliminated
-    member is at (E1′): the arguments <span class="inlinecode"><span class="id" title="var">vs</span></span> of the constructor are those of
+    member is at (E1′): the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> of the constructor are those of
     that group's <span class="inlinecode"><span class="id" title="var">Dc</span></span>, of kinds <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs'"><span class="id" title="variable">gs'</span></a></span>; the branch's group classifies them
-    as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>.  Along a path of <span class="inlinecode"><span class="id" title="var">Dc</span></span>'s, the recursive result <span class="inlinecode"><span class="id" title="var">ihs</span></span> gives (a
+    as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>.  Along a path of <span class="inlinecode"><span class="id" title="var">Dc</span></span>'s, the recursive result <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.ihs"><span class="id" title="variable">ihs</span></a></span> gives (a
     fresh variable); along one nested through, the eliminator of the
     branch's group.  For an eliminator read as its own group's, <span class="inlinecode"><span class="id" title="var">Dc</span></span> is
-    the group, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs'"><span class="id" title="variable">gs'</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> and the results are <span class="inlinecode"><span class="id" title="var">ihs</span></span>. 
+    the group, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs'"><span class="id" title="variable">gs'</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> and the results are <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.ihs"><span class="id" title="variable">ihs</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Inductive</span> <a id="wrap_ihs_eval" class="idref" href="#wrap_ihs_eval"><span class="id" title="definition, inductive"><span id="wrap_ihs_eval_ind" class="id"><span id="wrap_ihs_eval_sind" class="id">wrap_ihs_eval</span></span></span></a> (<a id="6d770762bf219c2cef10c5975cfb5009" class="idref" href="#6d770762bf219c2cef10c5975cfb5009"><span class="id" title="binder">Θ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="686ef53fea6fd20fe22ba99c5a615b55" class="idref" href="#686ef53fea6fd20fe22ba99c5a615b55"><span class="id" title="binder">Ξ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gstack"><span class="id" title="definition">gstack</span></a>) (<a id="eae1f5cf56dcfec04803012f2d4aa365" class="idref" href="#eae1f5cf56dcfec04803012f2d4aa365"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) (<a id="p:111" class="idref" href="#p:111"><span class="id" title="binder">p</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="ups:112" class="idref" href="#ups:112"><span class="id" title="binder">ups</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) (<a id="Bks:113" class="idref" href="#Bks:113"><span class="id" title="binder">Bks</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#eblock"><span class="id" title="abbreviation">eblock</span></a>) (<a id="Dc:114" class="idref" href="#Dc:114"><span class="id" title="binder">Dc</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_decl"><span class="id" title="abbreviation">ind_decl</span></a>) :<br/>
@@ -308,7 +308,7 @@ No argument, no result
 </div>
 
 <div class="doc">
-Recursive in both: along each path, the next of <span class="inlinecode"><span class="id" title="var">ihs</span></span> at a path of
+Recursive in both: along each path, the next of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.ihs"><span class="id" title="variable">ihs</span></a></span> at a path of
     the container's, the eliminator at one nested through 
 </div>
 <div class="code">
@@ -419,9 +419,9 @@ How far past an entry the definition binding it reaches: a module
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#proof_scope_from"><span class="id" title="definition">proof_scope_from</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>: the least scope at least <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> that is closed
-    under the stored units of the entries from <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> on, <span class="inlinecode">ρ</span> the environment
-    from <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> on: the entry at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>, if inside the scope, widens it to the
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#proof_scope_from"><span class="id" title="definition">proof_scope_from</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>: the least scope at least <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> that is closed
+    under the stored units of the entries from <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> on, <span class="inlinecode">ρ</span> the environment
+    from <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> on: the entry at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, if inside the scope, widens it to the
     positions its unit reaches past it.  A unit reaches only into its own
     tail, so one walk outwards from the innermost entry reaches the
     closure; the recursion is on <span class="inlinecode">ρ</span>. 
@@ -679,16 +679,16 @@ Ex falso at the type <span class="inlinecode"><a class="idref" href="Mctt.Core.S
 </div>
 
 <div class="doc">
-A stuck eliminator of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at its member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>, read as the
+A stuck eliminator of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at its member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, read as the
     eliminator of the group the member is at, <span class="inlinecode"><span class="id" title="var">pc</span></span> (E1′: the container's,
     at a view): one block per member of that group, each block that of the
     member of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>'s group <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#im_sel"><span class="id" title="definition">im_sel</span></a></span> gives, read under fresh variables of the
-    telescopes of that member of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>'s group at uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>,
+    telescopes of that member of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>'s group at uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>,
     each block's motive binding its own member's non-uniform parameters
     and the scrutinee (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#blocks_binder_count_at"><span class="id" title="definition">blocks_binder_count_at</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span>), the paths through the
     group's record views ending at as many parameters as those motives
     bind (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#rview_leaf_arity"><span class="id" title="record">rview_leaf_arity</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span>).  The uniform parameters
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> are the eliminator's own; the stuck eliminator carries the
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> are the eliminator's own; the stuck eliminator carries the
     container's at them, read back (<span class="inlinecode"><span class="id" title="var">mref</span></span>, <span class="inlinecode"><span class="id" title="var">Rps</span></span>), as the eliminator of
     the container's group does. 
 </div>
@@ -751,7 +751,7 @@ A kept proof
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">Rlets</span></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><span class="id" title="tactic">at</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↘</span> <span class="inlinecode"><span class="id" title="var">bs</span></span>: the definitions binding the positions
+<span class="inlinecode"><span class="id" title="var">Rlets</span></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><span class="id" title="tactic">at</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↘</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.bs"><span class="id" title="variable">bs</span></a></span>: the definitions binding the positions
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">-</span> <span class="inlinecode">1</span>, …, <span class="inlinecode">0</span> of <span class="inlinecode">ρ</span>, outermost first: each at the depth of the
     definitions before it, so that the readbacks of the entries, which
     name variables by their levels, skip them. 
@@ -780,7 +780,7 @@ The outermost position, then the rest under it
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">Rent</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↘</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span>: the definition an entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> is bound by: a term at
+<span class="inlinecode"><span class="id" title="var">Rent</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↘</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>: the definition an entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> is bound by: a term at
     its type, read back; a module by the unit stored for it, written over
     its tail, whatever its value (REVISIT: a definition with a module
     part is bound by its term part only). 
@@ -924,7 +924,7 @@ The normal form of the second component.
 </div>
 
 <div class="doc">
-A neutral type, with the kind of its elements: that of the sort <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span>
+A neutral type, with the kind of its elements: that of the sort <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>
     it is an element of 
 </div>
 <div class="code">
@@ -1014,7 +1014,7 @@ The first value at its type, then the rest with it in the
 </div>
 
 <div class="doc">
-The fields <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.fl"><span class="id" title="variable">fl</span></a></span> of a record value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, each at its type in <span class="inlinecode">ρ</span> (the
+The fields <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ConRviewFT.fl"><span class="id" title="variable">fl</span></a></span> of a record value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, each at its type in <span class="inlinecode">ρ</span> (the
     type's parameters and the projections of the fields before it), its
     projection read back there. 
 </div>
@@ -1045,7 +1045,7 @@ The next field's projection at its type, then the rest with it in the
 </div>
 
 <div class="doc">
-The arguments of a constructor of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>,
+The arguments of a constructor of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>,
     each at its type: a non-recursive one at the type its declaration gives,
     a recursive one at the type itself. 
 </div>
@@ -1085,7 +1085,7 @@ A recursive argument, along its shape
 
 <div class="doc">
 A recursive argument of shape <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> in <span class="inlinecode">ρ</span>, at the uniform parameters
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>: a function shape under a fresh variable of
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>: a function shape under a fresh variable of
     its domain, and at the end at the member of the group the shape ends
     in, a view too (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_nf_con_view"><span class="id" title="constructor">read_nf_con_view</span></a></span>), at the shape's non-uniform
     parameters.  Its value is of the container's type at a view
@@ -1124,9 +1124,9 @@ The blocks of a stuck eliminator of the group at <span class="inlinecode"><a cla
     eliminated member is at: one per member <span class="inlinecode"><span class="id" title="var">Mi</span></span> of that group, from the
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span>-th on, the block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>'s group <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#elim_src"><span class="id" title="definition">elim_src</span></a></span> <span class="inlinecode"><span class="id" title="var">sel</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span>
     gives: its motive under fresh variables of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span>'s non-uniform
-    parameters at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> and of the scrutinee, its
+    parameters at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> and of the scrutinee, its
     branches under their own variables.  The recursive results are
-    computed by the eliminator at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> too.  <span class="inlinecode"><span class="id" title="var">Dc</span></span> is the group read,
+    computed by the eliminator at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> too.  <span class="inlinecode"><span class="id" title="var">Dc</span></span> is the group read,
     whose tables the branches' recursive results follow (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#leaf_in"><span class="id" title="definition">leaf_in</span></a></span>); a
     member of it may be a view of another group still. 
 </div>
@@ -1172,9 +1172,9 @@ The branches of a block, one per constructor <span class="inlinecode"><span clas
     branches <span class="inlinecode"><span class="id" title="var">Bs</span></span>, those of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>, which has
     the constructor's arguments of kinds <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>: each under fresh variables
     of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span>'s non-uniform parameters and the constructor's arguments at the
-    uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>, and of the recursive results <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs'"><span class="id" title="variable">gs'</span></a></span> has, at
+    uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>, and of the recursive results <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs'"><span class="id" title="variable">gs'</span></a></span> has, at
     the motive's instance at the constructor, the member <span class="inlinecode"><span class="id" title="var">Mi</span></span> being the
-    declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><span class="id" title="definition">hd</span></span> at the uniform parameters
+    declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.hd"><span class="id" title="variable">hd</span></a></span> at the uniform parameters
     <span class="inlinecode"><a class="idref" href="Mctt.Extraction.CommandRun.html#pre"><span class="id" title="record">pre</span></a></span>, of the group read <span class="inlinecode"><span class="id" title="var">Dc</span></span>.  The fresh recursive results, one per
     leaf path of the group's that is one of <span class="inlinecode"><span class="id" title="var">Dc</span></span>'s (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#cargs_container_count"><span class="id" title="definition">cargs_container_count</span></a></span>), are as
     many as the branch read binds (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#cargs_nrec"><span class="id" title="definition">cargs_nrec</span></a></span> <span class="inlinecode"><span class="id" title="var">Dc</span></span>): a gate, the twin of

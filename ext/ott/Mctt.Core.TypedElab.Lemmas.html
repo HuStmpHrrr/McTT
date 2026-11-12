@@ -33,13 +33,13 @@
 </div>
 
 <div class="doc">
-<a id="lab865"></a><h1 class="section">The Typed Fill Is Functional</h1>
+<a id="lab1121"></a><h1 class="section">The Typed Fill Is Functional</h1>
 
 
 <div class="paragraph"> </div>
 
     The fill reads its contexts through lookups, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#mdenote"><span class="id" title="inductive">mdenote</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#body_xp"><span class="id" title="inductive">body_xp</span></a></span>,
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.TypedElab.ElimTarget.html#elim_target"><span class="id" title="definition">elim_target</span></a></span> and <span class="inlinecode">⊢<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, all functional, so a term, a command and a
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.TypedElab.ElimTarget.html#elim_target"><span class="id" title="definition">elim_target</span></a></span> and <span class="inlinecode">⊢<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, all functional, so a term, a command and a
     unit's parameters have one fill each (<span class="inlinecode"><a class="idref" href="Mctt.Core.TypedElab.Lemmas.html#fill_functional_all"><span class="id" title="lemma">fill_functional_all</span></a></span>,
     <span class="inlinecode"><a class="idref" href="Mctt.Core.TypedElab.Lemmas.html#fill_cmd_functional"><span class="id" title="lemma">fill_cmd_functional</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.TypedElab.Lemmas.html#fill_params_functional"><span class="id" title="lemma">fill_params_functional</span></a></span>).  An eliminator's
     blocks read the motives of the filled blocks, which the motives' own
@@ -64,7 +64,7 @@
 </div>
 
 <div class="doc">
-Give the induction hypothesis <span class="inlinecode"><span class="id" title="var">IH</span></span> the derivation <span class="inlinecode"><span class="id" title="var">Hp</span></span> about <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span>, when
+Give the induction hypothesis <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.IH"><span class="id" title="variable">IH</span></a></span> the derivation <span class="inlinecode"><span class="id" title="var">Hp</span></span> about <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span>, when
     what it then says is not trivial: <span class="inlinecode"><span class="id" title="var">Hp</span></span> is the other derivation's, not
     the hypothesis's own. 
 </div>
@@ -460,7 +460,7 @@ A unit's parameter telescope has one fill.
 </div>
 
 <div class="doc">
-<a id="lab866"></a><h2 class="section">The Shape of a Filled Command</h2>
+<a id="lab1122"></a><h2 class="section">The Shape of a Filled Command</h2>
 
 <div class="paragraph"> </div>
 

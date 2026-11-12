@@ -39,12 +39,12 @@
 </div>
 
 <div class="doc">
-<a id="lab795"></a><h1 class="section">Canonical Levels</h1>
+<a id="lab1051"></a><h1 class="section">Canonical Levels</h1>
 
 
 <div class="paragraph"> </div>
 
-    A level is flat: <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a>,</span> <span class="inlinecode"><span class="id" title="var">k₁</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><span class="id" title="var">a₁</span>,</span> <span class="inlinecode">…,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a>ₙ</span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a>ₙ)</span>, a constant and a finite
+    A level is flat: <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a>,</span> <span class="inlinecode"><span class="id" title="var">k₁</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><span class="id" title="var">a₁</span>,</span> <span class="inlinecode">…,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a>ₙ</span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>ₙ)</span>, a constant and a finite
     multiset of atoms under offsets, where an atom is a neutral normal form.
     Evaluation only flattens, so the same level has many flat forms; readback
     canonicalises, and the canonical form is unique:
@@ -72,7 +72,7 @@
     decidable order the universe subtyping rule uses. 
 <div class="paragraph"> </div>
 
-<a id="lab796"></a><h2 class="section">A Total Order on Normal Forms</h2>
+<a id="lab1052"></a><h2 class="section">A Total Order on Normal Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -575,7 +575,7 @@ Neutrals equal in the order compare alike to every other.
 </div>
 
 <div class="doc">
-<a id="lab797"></a><h2 class="section">Levels and Their Canonical Forms</h2>
+<a id="lab1053"></a><h2 class="section">Levels and Their Canonical Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -587,7 +587,7 @@ Neutrals equal in the order compare alike to every other.
     and the assignments that matter are the admissible ones (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lvl_adm"><span class="id" title="record">lvl_adm</span></a></span>),
     which respect the sorts.  Two levels are equal exactly when they agree at
     every admissible assignment.  A constant <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> absorbs every atom of a sort
-    below <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#fst"><span class="id" title="definition">fst</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> (<span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode">(ω,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode">5)</span> is <span class="inlinecode">ω</span> for <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Level@0</span></span>), and no other:
+    below <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#fst"><span class="id" title="definition">fst</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> (<span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode">(ω,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode">5)</span> is <span class="inlinecode">ω</span> for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Level@0</span></span>), and no other:
     an atom of sort <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">≥</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#fst"><span class="id" title="definition">fst</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> can be <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span> for any <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span>.  The type
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#lvl"><span class="id" title="definition">lvl</span></a></span> itself is in <span class="inlinecode"><span class="id" title="library">Core.Syntactic.Syntax</span></span>, with the normal forms it
     indexes. 
@@ -1006,9 +1006,9 @@ Lookup sees an atom up to its proofs.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nf_proof_free"><span class="id" title="definition">nf_proof_free</span></a></span> <span class="inlinecode"><span class="id" title="var">W</span></span>: the normal form <span class="inlinecode"><span class="id" title="var">W</span></span> holds no kept proof
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_proof"><span class="id" title="constructor">nf_proof</span></a></span>) and no ex falso; mutually, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#ne_proof_free"><span class="id" title="definition">ne_proof_free</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> for the
-    neutral <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span>.  A well-typed level atom is so, a level being made of
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nf_proof_free"><span class="id" title="definition">nf_proof_free</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>: the normal form <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> holds no kept proof
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_proof"><span class="id" title="constructor">nf_proof</span></a></span>) and no ex falso; mutually, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#ne_proof_free"><span class="id" title="definition">ne_proof_free</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> for the
+    neutral <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span>.  A well-typed level atom is so, a level being made of
     levels only ("levels only from levels"), and on such normal forms
     equality up to proofs is equality (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nf_ne_proof_free_eq"><span class="id" title="lemma">nf_ne_proof_free_eq</span></a></span>).  The normal
     forms that are strengthened (<span class="inlinecode"><span class="id" title="var">Algorithmic.Strengthening.nf_strengthen</span></span>)
@@ -1442,7 +1442,7 @@ Canonicalising a part of a level does not change its canonical form: this
 </div>
 
 <div class="doc">
-<a id="lab798"></a><h2 class="section">Properties of Every Atom</h2>
+<a id="lab1054"></a><h2 class="section">Properties of Every Atom</h2>
 
 
 <div class="paragraph"> </div>
@@ -1546,7 +1546,7 @@ The atoms of a level are clean, as <span class="inlinecode"><a class="idref" hre
 </div>
 
 <div class="doc">
-<a id="lab799"></a><h2 class="section">The Order on Levels</h2>
+<a id="lab1055"></a><h2 class="section">The Order on Levels</h2>
 
 
 <div class="paragraph"> </div>
@@ -1665,7 +1665,7 @@ The least level, and the literals.
 </div>
 
 <div class="doc">
-<a id="lab800"></a><h2 class="section">Levels of a Sort</h2>
+<a id="lab1056"></a><h2 class="section">Levels of a Sort</h2>
 
 
 <div class="paragraph"> </div>
@@ -1764,7 +1764,7 @@ The literal has no atoms, so the relation is equality here.
 </div>
 
 <div class="doc">
-<a id="lab801"></a><h2 class="section">The Realiser</h2>
+<a id="lab1057"></a><h2 class="section">The Realiser</h2>
 
 
 <div class="paragraph"> </div>
@@ -1819,7 +1819,7 @@ The literal has no atoms, so the relation is equality here.
 </div>
 
 <div class="doc">
-<a id="lab802"></a><h2 class="section">Levels Equal up to Proofs</h2>
+<a id="lab1058"></a><h2 class="section">Levels Equal up to Proofs</h2>
 
 
 <div class="paragraph"> </div>
@@ -1941,7 +1941,7 @@ An atom of a related list is an atom of the list, at its offset and
 </div>
 
 <div class="doc">
-<a id="lab803"></a><h2 class="section">The Order on Universe Normal Forms</h2>
+<a id="lab1059"></a><h2 class="section">The Order on Universe Normal Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -1974,7 +1974,7 @@ An atom of a related list is an atom of the list, at its offset and
 </div>
 
 <div class="doc">
-The large universe a type at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> also lives in. 
+The large universe a type at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> also lives in. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="universe_nf_large_index" class="idref" href="#universe_nf_large_index"><span class="id" title="definition">universe_nf_large_index</span></a> (<a id="u:596" class="idref" href="#u:596"><span class="id" title="binder">u</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#universe_nf"><span class="id" title="inductive">universe_nf</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> := <span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#u:596"><span class="id" title="variable">u</span></a> <span class="id" title="keyword">with</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#universe_small"><span class="id" title="constructor">universe_small</span></a> <span class="id" title="var">_</span> =&gt; 0 | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#universe_large"><span class="id" title="constructor">universe_large</span></a> <span class="id" title="var">n</span> =&gt; <span class="id" title="var">n</span> <span class="id" title="keyword">end</span>.<br/>
@@ -2001,7 +2001,7 @@ The semantic index of a universe normal form.
 </div>
 
 <div class="doc">
-<a id="lab804"></a><h2 class="section">The Join of Two Universe Normal Forms</h2>
+<a id="lab1060"></a><h2 class="section">The Join of Two Universe Normal Forms</h2>
 
 
 <div class="paragraph"> </div>

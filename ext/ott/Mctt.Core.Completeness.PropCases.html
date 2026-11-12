@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab163"></a><h1 class="section">Fundamental Theorem: the Propositions</h1>
+<a id="lab170"></a><h1 class="section">Fundamental Theorem: the Propositions</h1>
 
 
 <div class="paragraph"> </div>
@@ -92,7 +92,7 @@
 </div>
 
 <div class="doc">
-<a id="lab164"></a><h2 class="section">The Propositions as Elements of <span class="inlinecode"><span class="id" title="keyword">Prop</span></span></h2>
+<a id="lab171"></a><h2 class="section">The Propositions as Elements of <span class="inlinecode"><span class="id" title="keyword">Prop</span></span></h2>
 
 <div class="paragraph"> </div>
 
@@ -150,7 +150,7 @@ A closed proposition, in <span class="inlinecode"><span class="id" title="keywor
 </div>
 
 <div class="doc">
-<a id="lab165"></a><h2 class="section">Proofs</h2>
+<a id="lab172"></a><h2 class="section">Proofs</h2>
 
 
 <div class="paragraph"> </div>
@@ -180,7 +180,7 @@ A closed proposition, in <span class="inlinecode"><span class="id" title="keywor
 </div>
 
 <div class="doc">
-<a id="lab166"></a><h2 class="section">Ex Falso</h2>
+<a id="lab173"></a><h2 class="section">Ex Falso</h2>
 
 
 <div class="paragraph"> </div>
@@ -345,7 +345,7 @@ A type of a sort and one equal to it are types of one index.
 </div>
 
 <div class="doc">
-<a id="lab167"></a><h2 class="section">The Conjunction</h2>
+<a id="lab174"></a><h2 class="section">The Conjunction</h2>
 
 
 <div class="paragraph"> </div>
@@ -552,7 +552,7 @@ The instance at the fresh variables <span class="inlinecode"><a class="idref" hr
 </div>
 
 <div class="doc">
-<a id="lab168"></a><h2 class="section"><span class="inlinecode"><span class="id" title="keyword">Prop</span></span> and the Placeholder Type as Small Types</h2>
+<a id="lab175"></a><h2 class="section"><span class="inlinecode"><span class="id" title="keyword">Prop</span></span> and the Placeholder Type as Small Types</h2>
 
 </div>
 <div class="code">
@@ -590,7 +590,7 @@ The instance at the fresh variables <span class="inlinecode"><a class="idref" hr
 </div>
 
 <div class="doc">
-<a id="lab169"></a><h2 class="section">The Rules</h2>
+<a id="lab176"></a><h2 class="section">The Rules</h2>
 
 </div>
 <div class="code">
@@ -751,6 +751,22 @@ The premises begin with the conjunction's proof, which fixes <span class="inline
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HQ</span>; <span class="id" title="var">sem_intro</span>; [ <span class="id" title="tactic">assumption</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Completeness.PropCases.html#rel_exp_under_ctx_proof"><span class="id" title="lemma">rel_exp_under_ctx_proof</span></a> <span class="id" title="var">HQ</span>).<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+A tagged proof, a proof of its tag. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="sem_proof_tag" class="idref" href="#sem_proof_tag"><span class="id" title="lemma">sem_proof_tag</span></a> :<br/>
+&nbsp;&nbsp;`( <span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">⊨</span></a> <span class="id" title="var">P</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#0195a57770aa08789c2281bb9b525de8"><span class="id" title="notation">Prop</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#0195a57770aa08789c2281bb9b525de8"><span class="id" title="notation">ₘ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">⊨</span></a> <span class="id" title="var">M</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">:</span></a> <span class="id" title="var">P</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_proof"><span class="id" title="constructor">a_proof</span></a> <span class="id" title="var">P</span> <span class="id" title="var">M</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#199131e45105803071e2cd7f6645e9c9"><span class="id" title="notation">:</span></a> <span class="id" title="var">P</span> ).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">HP</span> <span class="id" title="var">_</span>; <span class="id" title="var">sem_intro</span>; [ <span class="id" title="tactic">assumption</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Completeness.PropCases.html#rel_exp_under_ctx_proof"><span class="id" title="lemma">rel_exp_under_ctx_proof</span></a> <span class="id" title="var">HP</span>).<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>

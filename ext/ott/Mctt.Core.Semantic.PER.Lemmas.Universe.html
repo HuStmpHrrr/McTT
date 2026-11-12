@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab585"></a><h1 class="section">PER Lemmas: the Universe PER</h1>
+<a id="lab594"></a><h1 class="section">PER Lemmas: the Universe PER</h1>
 
 
 <div class="paragraph"> </div>
@@ -397,10 +397,10 @@ The two levels are related, hence have the same realiser, so the
 
 <div class="doc">
 An inductive type: the same relations serve the swapped type, by
-        the invariance of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.nr"><span class="id" title="variable">nr</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ar"><span class="id" title="variable">ar</span></a></span> along related prefixes and the
+        the invariance of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#nr"><span class="id" title="abbreviation">nr</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#ar"><span class="id" title="abbreviation">ar</span></a></span> along related prefixes and the
         symmetry of their types; the elements are swapped by
         <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#ind_rel_sym_all"><span class="id" title="lemma">ind_rel_sym_all</span></a></span>, their indices exchanged by <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#ind_rel_idx"><span class="id" title="lemma">ind_rel_idx</span></a></span>, and the
-        bases admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> are those admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups'"><span class="id" title="variable">ups'</span></a></span>
+        bases admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> are those admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups'"><span class="id" title="variable">ups'</span></a></span>
         (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#adm_iff"><span class="id" title="lemma">adm_iff</span></a></span>). 
 </div>
 <div class="code">
@@ -481,7 +481,7 @@ The domains at the right parameters are not <span class="inlinecode"><span class
 
 <div class="doc">
 The elements: at the bases admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups'"><span class="id" title="variable">ups'</span></a></span>, which are
-            those beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#ind_rel_admissible_index_base"><span class="id" title="lemma">ind_rel_admissible_index_base</span></a></span>), at the exchanged
+            those beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#ind_rel_admissible_index_base"><span class="id" title="lemma">ind_rel_admissible_index_base</span></a></span>), at the exchanged
             indices. 
 </div>
 <div class="code">
@@ -1123,7 +1123,7 @@ Its elements: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic
 </div>
 
 <div class="doc">
-<a id="lab586"></a><h2 class="section">Chains of Types</h2>
+<a id="lab595"></a><h2 class="section">Chains of Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -1137,8 +1137,8 @@ Its elements: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic
 <div class="paragraph"> </div>
 
     The proof uses irrelevance twice, through the left value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of the given
-    pair: first to the pair <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a>)</span>, which shares <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, then to <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a>)</span>,
-    which shares <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span>. 
+    pair: first to the pair <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a>)</span>, which shares <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, then to <span class="inlinecode">(<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a>)</span>,
+    which shares <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="per_univ_chain_at_in" class="idref" href="#per_univ_chain_at_in"><span class="id" title="lemma">per_univ_chain_at_in</span></a> : <span class="id" title="keyword">forall</span> {<a id="i:592" class="idref" href="#i:592"><span class="id" title="binder">i</span></a> <a id="R:593" class="idref" href="#R:593"><span class="id" title="binder">R</span></a> <a id="l:594" class="idref" href="#l:594"><span class="id" title="binder">l</span></a> <a id="x:595" class="idref" href="#x:595"><span class="id" title="binder">x</span></a> <a id="y:596" class="idref" href="#y:596"><span class="id" title="binder">y</span></a>},<br/>

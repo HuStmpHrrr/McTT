@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1288"></a><h1 class="section">The Fast Evaluation Simulates the Reference One</h1>
+<a id="lab1546"></a><h1 class="section">The Fast Evaluation Simulates the Reference One</h1>
 
 
 <div class="paragraph"> </div>
@@ -46,7 +46,7 @@
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Simulation.html#domain_simulation"><span class="id" title="inductive">domain_simulation</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span>, between a reference value <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and a fast one <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span>, is
+<li> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Simulation.html#domain_simulation"><span class="id" title="inductive">domain_simulation</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span>, between a reference value <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and a fast one <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span>, is
       equality of the two up to the entries of closures' environments at
       which the closure's body is fresh (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#exp_fresh"><span class="id" title="definition">exp_fresh</span></a></span>);
 
@@ -95,7 +95,7 @@ The fast relations here run with the skip on.
 </div>
 
 <div class="doc">
-<a id="lab1289"></a><h2 class="section">The Relation</h2>
+<a id="lab1547"></a><h2 class="section">The Relation</h2>
 
 <div class="paragraph"> </div>
 
@@ -126,7 +126,7 @@ The relation is over a global context: the family of the types of a
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Simulation.html#domain_simulation"><span class="id" title="inductive">domain_simulation</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span>: the reference value <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and the fast value <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span> are equal
+<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Simulation.html#domain_simulation"><span class="id" title="inductive">domain_simulation</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span>: the reference value <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and the fast value <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span> are equal
     up to the entries of closures' environments that the closures' bodies
     do not read; mutually, for neutrals, normal values, module values, level
     atoms, lists of values and environment entries. 
@@ -541,7 +541,7 @@ Agreement of two environments where the blocks of an eliminator may
 </div>
 
 <div class="doc">
-<a id="lab1290"></a><h2 class="section">Environments</h2>
+<a id="lab1548"></a><h2 class="section">Environments</h2>
 
 </div>
 <div class="code">
@@ -601,7 +601,7 @@ Values extended by, at any types, related one for one
 </div>
 
 <div class="doc">
-<a id="lab1291"></a><h2 class="section">Relevance</h2>
+<a id="lab1549"></a><h2 class="section">Relevance</h2>
 
 
 <div class="paragraph"> </div>
@@ -665,7 +665,7 @@ Related functions take arguments of the same kind.
 </div>
 
 <div class="doc">
-<a id="lab1292"></a><h2 class="section">Levels</h2>
+<a id="lab1550"></a><h2 class="section">Levels</h2>
 
 </div>
 <div class="code">
@@ -869,8 +869,8 @@ The environment of a closure under its <span class="inlinecode"><a class="idref"
 
 <div class="doc">
 Two lists of values related at the entries <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> selects, once they
-    extend an environment: the entry of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> in
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_extend_typed"><span class="id" title="definition">env_extend_typed</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode">((<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a>)</span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">l</span>)</span> is <span class="inlinecode"><span class="id" title="var">List.length</span></span> <span class="inlinecode"><span class="id" title="var">l</span></span>. 
+    extend an environment: the entry of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> in
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_extend_typed"><span class="id" title="definition">env_extend_typed</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode">((<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a>)</span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">l</span>)</span> is <span class="inlinecode"><span class="id" title="var">List.length</span></span> <span class="inlinecode"><span class="id" title="var">l</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Inductive</span> <a id="domain_list_simulation_at" class="idref" href="#domain_list_simulation_at"><span class="id" title="definition, inductive"><span id="domain_list_simulation_at_ind" class="id"><span id="domain_list_simulation_at_sind" class="id">domain_list_simulation_at</span></span></span></a> (<a id="P:368" class="idref" href="#P:368"><span class="id" title="binder">P</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="keyword">Prop</span>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="keyword">Prop</span> :=<br/>
@@ -1098,7 +1098,7 @@ And so at every recursive argument of a constructor of <span class="inlinecode">
 </div>
 
 <div class="doc">
-<a id="lab1293"></a><h2 class="section">Environments of Bodies and Spines</h2>
+<a id="lab1551"></a><h2 class="section">Environments of Bodies and Spines</h2>
 
 <div class="paragraph"> </div>
 
@@ -1235,7 +1235,7 @@ The body environment of the empty module is the one it extends.
 </div>
 
 <div class="doc">
-<a id="lab1294"></a><h2 class="section">Evaluation</h2>
+<a id="lab1552"></a><h2 class="section">Evaluation</h2>
 
 <div class="paragraph"> </div>
 
@@ -1454,7 +1454,7 @@ The goal: the fast rule, and the relation between the results, whose
 </div>
 
 <div class="doc">
-<a id="lab1295"></a><h2 class="section">Recursive Results</h2>
+<a id="lab1553"></a><h2 class="section">Recursive Results</h2>
 
 
 <div class="paragraph"> </div>
@@ -2539,7 +2539,7 @@ A field of related values: related values.
 </div>
 
 <div class="doc">
-<a id="lab1296"></a><h2 class="section">The Leaf Paths of a Recursive Argument</h2>
+<a id="lab1554"></a><h2 class="section">The Leaf Paths of a Recursive Argument</h2>
 
 
 <div class="paragraph"> </div>
@@ -2732,7 +2732,7 @@ Nested through: the eliminator's results along each path
 </div>
 
 <div class="doc">
-<a id="lab1297"></a><h2 class="section">Readback</h2>
+<a id="lab1555"></a><h2 class="section">Readback</h2>
 
 
 <div class="paragraph"> </div>
@@ -3217,7 +3217,7 @@ A branch: under the fresh non-uniform parameters, arguments and
 </div>
 
 <div class="doc">
-<a id="lab1298"></a><h2 class="section">Fast Values</h2>
+<a id="lab1556"></a><h2 class="section">Fast Values</h2>
 
 
 <div class="paragraph"> </div>
@@ -3233,7 +3233,7 @@ A branch: under the fresh non-uniform parameters, arguments and
 </div>
 
 <div class="doc">
-The reference value <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and the fast value <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span> 
+The reference value <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and the fast value <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a'"><span class="id" title="projection">a'</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="fast_value_simulation" class="idref" href="#fast_value_simulation"><span class="id" title="definition">fast_value_simulation</span></a> (<a id="a:2166" class="idref" href="#a:2166"><span class="id" title="binder">a</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) (<a id="a':2167" class="idref" href="#a':2167"><span class="id" title="binder">a'</span></a> : <a class="idref" href="Mctt.Extraction.FastDomain.html#fdomain"><span class="id" title="inductive">fdomain</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>

@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1380"></a><h1 class="section">Finding the Views of a Group Declaration</h1>
+<a id="lab1638"></a><h1 class="section">Finding the Views of a Group Declaration</h1>
 
 
 <div class="paragraph"> </div>
@@ -109,7 +109,7 @@ The non-uniform parameters, filed
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> is the data of the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of the declaration <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#Clusters.R"><span class="id" title="variable">R</span></a></span>. 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> is the data of the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of the declaration <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#Clusters.R"><span class="id" title="variable">R</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Record</span> <a id="view_data_ok" class="idref" href="#view_data_ok"><span class="id" title="record">view_data_ok</span></a> (<a id="351691ec1c039c581b03b53a86afbe90" class="idref" href="#351691ec1c039c581b03b53a86afbe90"><span class="id" title="binder">Θ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="8f70be01ff6e9c4f5185b2682401e0b5" class="idref" href="#8f70be01ff6e9c4f5185b2682401e0b5"><span class="id" title="binder">Ξ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gstack"><span class="id" title="definition">gstack</span></a>) (<a id="R:7" class="idref" href="#R:7"><span class="id" title="binder">R</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Command.html#raw_decl"><span class="id" title="record">raw_decl</span></a>) (<a id="x:8" class="idref" href="#x:8"><span class="id" title="binder">x</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#view_key"><span class="id" title="inductive">view_key</span></a>) (<a id="a:9" class="idref" href="#a:9"><span class="id" title="binder">a</span></a> : <a class="idref" href="Mctt.Extraction.ViewsFound.html#view_data"><span class="id" title="record">view_data</span></a>) : <span class="id" title="keyword">Prop</span> := <span class="id" title="var">mk_view_data_ok</span><br/>
@@ -178,7 +178,7 @@ The data of a view, or why it has none: its siblings first, then its
 </div>
 
 <div class="doc">
-<a id="lab1381"></a><h2 class="section">Finite Lists</h2>
+<a id="lab1639"></a><h2 class="section">Finite Lists</h2>
 
 <div class="paragraph"> </div>
 
@@ -304,7 +304,7 @@ The positions of the arguments of constructors: the arguments before,
 </div>
 
 <div class="doc">
-<a id="lab1382"></a><h2 class="section">The Clusters</h2>
+<a id="lab1640"></a><h2 class="section">The Clusters</h2>
 
 </div>
 <div class="code">
@@ -801,7 +801,7 @@ The instances the declared members' constructors meet are good.
 </div>
 
 <div class="doc">
-<a id="lab1383"></a><h2 class="section">Termination</h2>
+<a id="lab1641"></a><h2 class="section">Termination</h2>
 
 
 <div class="paragraph"> </div>
@@ -840,14 +840,14 @@ The instances the declared members' constructors meet are good.
 <li> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Reference.TypeCheckAgreement.html#Fixed_GCtx.F"><span class="id" title="variable">F</span></a>)</span> <span class="inlinecode">|</span> <span class="inlinecode"><span class="id" title="var">mkD</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode">(<span class="id" title="var">λY</span>.</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.TypeCheckAgreement.html#Fixed_GCtx.F"><span class="id" title="variable">F</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Reference.TypeCheckAgreement.html#Fixed_GCtx.F"><span class="id" title="variable">F</span></a></span> <span class="inlinecode"><span class="id" title="var">Y</span>)))</span>,
 
 </li>
-<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode">|</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> <span class="inlinecode">(<span class="id" title="var">d</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> <span class="inlinecode">(<span class="id" title="var">λX</span>.</span> <span class="inlinecode"><span class="id" title="var">Pair</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a>))</span>,
+<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode">|</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> <span class="inlinecode">(<span class="id" title="var">d</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> <span class="inlinecode">(<span class="id" title="var">λX</span>.</span> <span class="inlinecode"><span class="id" title="var">Pair</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a>))</span>,
 
 </li>
 </ul>
       the occurrence of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> in <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> costs <span class="inlinecode"><span class="id" title="var">m_D</span>(<a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a>)</span> <span class="inlinecode">=</span> <span class="inlinecode">1</span> <span class="inlinecode">+</span> <span class="inlinecode"><span class="id" title="var">m_E</span>(<a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a>∘<a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a>)</span>, with
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> the measure of <span class="inlinecode"><span class="id" title="var">λX</span>.</span> <span class="inlinecode"><span class="id" title="var">Pair</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> (one more than its argument,
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> the measure of <span class="inlinecode"><span class="id" title="var">λX</span>.</span> <span class="inlinecode"><span class="id" title="var">Pair</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> (one more than its argument,
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> itself counting nothing): <span class="inlinecode">1</span> <span class="inlinecode">+</span> <span class="inlinecode">(1</span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a>(<a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a>(0)))</span> <span class="inlinecode">=</span> <span class="inlinecode">4</span> levels, and
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> has the 4 views <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> at <span class="inlinecode"><span class="id" title="var">λX</span>.</span> <span class="inlinecode"><span class="id" title="var">Pair</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> at
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> has the 4 views <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> at <span class="inlinecode"><span class="id" title="var">λX</span>.</span> <span class="inlinecode"><span class="id" title="var">Pair</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> at
       <span class="inlinecode"><span class="id" title="var">λY</span>.</span> <span class="inlinecode"><span class="id" title="var">Pair</span></span> <span class="inlinecode">(<span class="id" title="var">Pair</span></span> <span class="inlinecode"><span class="id" title="var">Y</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a>)</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>, <span class="inlinecode"><span class="id" title="var">Pair</span></span> at <span class="inlinecode"><span class="id" title="var">Pair</span></span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>, and <span class="inlinecode"><span class="id" title="var">Pair</span></span>
       at <span class="inlinecode"><span class="id" title="var">ℕ</span></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>.
 
@@ -895,7 +895,7 @@ The search from the instances the declared members' constructors
 </div>
 
 <div class="doc">
-<a id="lab1384"></a><h2 class="section">The Views Found, as the Checker Asks</h2>
+<a id="lab1642"></a><h2 class="section">The Views Found, as the Checker Asks</h2>
 
 <div class="paragraph"> </div>
 

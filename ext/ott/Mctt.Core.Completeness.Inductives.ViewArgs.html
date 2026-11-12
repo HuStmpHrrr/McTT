@@ -33,17 +33,17 @@
 </div>
 
 <div class="doc">
-<a id="lab338"></a><h1 class="section">The Arguments of a View's Constructor, Against its Container's</h1>
+<a id="lab345"></a><h1 class="section">The Arguments of a View's Constructor, Against its Container's</h1>
 
 
 <div class="paragraph"> </div>
 
-    A view <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of a valid group <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> views the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewAgreementCanonical.kc"><span class="id" title="variable">kc</span></a></span> of its
-    container <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.Dq"><span class="id" title="variable">Dq</span></a></span> at the instance <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.Is"><span class="id" title="variable">Is</span></a></span>; the container's member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.i'"><span class="id" title="variable">i'</span></a></span> is
+    A view <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of a valid group <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> views the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.kc"><span class="id" title="variable">kc</span></a></span> of its
+    container <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.Dq"><span class="id" title="variable">Dq</span></a></span> at the instance <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.Is"><span class="id" title="variable">Is</span></a></span>; the container's member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.i'"><span class="id" title="variable">i'</span></a></span> is
     taken to the group's member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.vm"><span class="id" title="variable">vm</span></a></span>), and a constructor <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> of both
     has the container's arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs'"><span class="id" title="variable">gs'</span></a></span> and the group's <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>, position by
     position corresponding (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#cargs_correspond"><span class="id" title="definition">cargs_correspond</span></a></span>).  At the group's uniform
-    parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> and the instance's values <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span> there, with the
+    parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> and the instance's values <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span> there, with the
     values <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.IndPER.Member.Shape.ms"><span class="id" title="variable">ms</span></a></span> of the non-uniform parameters related at both, the semantic
     view equation of the arguments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.FiledViews.html#valid_group_views_view_args"><span class="id" title="lemma">valid_group_views_view_args</span></a></span>) relates, position by
     position, the type of the group's argument to the container's
@@ -146,14 +146,14 @@
 </div>
 
 <div class="doc">
-<a id="lab339"></a><h2 class="section">The Types at a Position</h2>
+<a id="lab346"></a><h2 class="section">The Types at a Position</h2>
 
 
 <div class="paragraph"> </div>
 
-      At arguments <span class="inlinecode"><span class="id" title="var">vs</span></span> before a position related at both telescopes, the
-      types there have the same head PER, the container's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span> and the
-      group's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>; both are types, related to each other. 
+      At arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> before a position related at both telescopes, the
+      types there have the same head PER, the container's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span> and the
+      group's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>; both are types, related to each other. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Record</span> <a id="arg_type_link" class="idref" href="#arg_type_link"><span class="id" title="record">arg_type_link</span></a> (<a id="C:77" class="idref" href="#C:77"><span class="id" title="binder">C</span></a> <a id="G:78" class="idref" href="#G:78"><span class="id" title="binder">G</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#typ"><span class="id" title="abbreviation">typ</span></a>) (<a id="Ec:79" class="idref" href="#Ec:79"><span class="id" title="binder">Ec</span></a> <a id="Eg:80" class="idref" href="#Eg:80"><span class="id" title="binder">Eg</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) : <span class="id" title="keyword">Prop</span> := <span class="id" title="var">mk_arg_type_link</span><br/>
@@ -256,7 +256,7 @@ The group's type is not <span class="inlinecode"><span class="id" title="var">Le
 </div>
 
 <div class="doc">
-The container's type, at its arguments over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span>. 
+The container's type, at its arguments over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.Inductives.ArgTypes.html#valid_group_cargs_sem_all"><span class="id" title="lemma">valid_group_cargs_sem_all</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.qc"><span class="id" title="variable">qc</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Dq"><span class="id" title="variable">Dq</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.HgQ"><span class="id" title="variable">HgQ</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.HcvQ"><span class="id" title="variable">HcvQ</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.i'"><span class="id" title="variable">i'</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Mi'"><span class="id" title="variable">Mi'</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.c"><span class="id" title="variable">c</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.gs'"><span class="id" title="variable">gs'</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.HMi'"><span class="id" title="variable">HMi'</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Hcon'"><span class="id" title="variable">Hcon'</span></a> (<span class="id" title="var">gsA'</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <span class="id" title="var">g'</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>) <span class="id" title="var">gsB'</span><br/>
@@ -281,7 +281,7 @@ The container's type, at its arguments over <span class="inlinecode"><a class="i
 </div>
 
 <div class="doc">
-The arguments over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span> at the container's prefix, moved to the
+The arguments over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span> at the container's prefix, moved to the
         base of the instance. 
 </div>
 <div class="code">
@@ -293,7 +293,7 @@ The arguments over <span class="inlinecode"><a class="idref" href="Mctt.Core.Sem
 
 <div class="doc">
 The instance's value: the container's uniform parameters at
-        <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span>, over the group's. 
+        <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span>, over the group's. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.Inductives.FiledViews.html#valid_group_views_view_args_sub_eval"><span class="id" title="lemma">valid_group_views_view_args_sub_eval</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.p"><span class="id" title="variable">p</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.D"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Hg"><span class="id" title="variable">Hg</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Hcv"><span class="id" title="variable">Hcv</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.HMk"><span class="id" title="variable">HMk</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Hh"><span class="id" title="variable">Hh</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Hq"><span class="id" title="variable">Hq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Hgu"><span class="id" title="variable">Hgu</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Hu"><span class="id" title="variable">Hu</span></a>) <span class="id" title="keyword">as</span> (<span class="id" title="var">cups0</span> &amp; <span class="id" title="var">Ecups0</span> &amp; <span class="id" title="var">E</span>τ).<br/>
@@ -403,15 +403,15 @@ One relation, at a common level, from the group's type to the
 </div>
 
 <div class="doc">
-<a id="lab340"></a><h2 class="section">Arguments Related at Both Telescopes</h2>
+<a id="lab347"></a><h2 class="section">Arguments Related at Both Telescopes</h2>
 
 
 <div class="paragraph"> </div>
 
-      Arguments <span class="inlinecode"><span class="id" title="var">vp</span></span> whose values at the container's non-recursive
-      positions are related canonically give arguments <span class="inlinecode"><span class="id" title="var">vs</span></span> related at the
-      group's telescope over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> and at the container's over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span>: <span class="inlinecode"><span class="id" title="var">vs</span></span>
-      is <span class="inlinecode"><span class="id" title="var">vp</span></span> at the container's non-recursive positions and a fresh
+      Arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.vp"><span class="id" title="variable">vp</span></a></span> whose values at the container's non-recursive
+      positions are related canonically give arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> related at the
+      group's telescope over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> and at the container's over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span>
+      is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.vp"><span class="id" title="variable">vp</span></a></span> at the container's non-recursive positions and a fresh
       variable at the positions recursive in both. 
 </div>
 <div class="code">
@@ -423,7 +423,7 @@ One relation, at a common level, from the group's type to the
 
 <div class="doc">
 The invariant of the walk through the arguments: after the prefixes
-      <span class="inlinecode"><span class="id" title="var">gsA'</span></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ViewReadback.html#Fixed_GCtx.CrossFresh.CrossArgs.gsA"><span class="id" title="variable">gsA</span></a></span>, the arguments <span class="inlinecode"><span class="id" title="var">vs</span></span> built from <span class="inlinecode"><span class="id" title="var">vp</span></span>. 
+      <span class="inlinecode"><span class="id" title="var">gsA'</span></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ViewReadback.html#Fixed_GCtx.CrossFresh.CrossArgs.gsA"><span class="id" title="variable">gsA</span></a></span>, the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> built from <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.vp"><span class="id" title="variable">vp</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Record</span> <a id="view_args_inv" class="idref" href="#view_args_inv"><span class="id" title="record">view_args_inv</span></a> (<a id="gsA':111" class="idref" href="#gsA':111"><span class="id" title="binder">gsA'</span></a> <a id="gsA:112" class="idref" href="#gsA:112"><span class="id" title="binder">gsA</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#carg"><span class="id" title="abbreviation">carg</span></a>) (<a id="vp:113" class="idref" href="#vp:113"><span class="id" title="binder">vp</span></a> <a id="vs:114" class="idref" href="#vs:114"><span class="id" title="binder">vs</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) : <span class="id" title="keyword">Prop</span> := <span class="id" title="var">mk_view_args_inv</span><br/>
@@ -437,7 +437,7 @@ One value per argument
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">vs</span></span> is <span class="inlinecode"><span class="id" title="var">vp</span></span> at the container's non-recursive positions 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.vp"><span class="id" title="variable">vp</span></a></span> at the container's non-recursive positions 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;; <a id="view_args_inv_nonrec_c" class="idref" href="#view_args_inv_nonrec_c"><span class="id" title="projection">view_args_inv_nonrec_c</span></a> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#nonrec_arg_vals"><span class="id" title="definition">nonrec_arg_vals</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#gsA':111"><span class="id" title="variable">gsA'</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#vs:114"><span class="id" title="variable">vs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#nonrec_arg_vals"><span class="id" title="definition">nonrec_arg_vals</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#gsA':111"><span class="id" title="variable">gsA'</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#vp:113"><span class="id" title="variable">vp</span></a><br/>
@@ -451,14 +451,14 @@ and at the group's
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">vs</span></span> is related at the group's telescope over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> is related at the group's telescope over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;; <a id="view_args_inv_grp" class="idref" href="#view_args_inv_grp"><span class="id" title="projection">view_args_inv_grp</span></a> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_tele_args"><span class="id" title="inductive">per_tele_args</span></a> (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#cargs_ctx"><span class="id" title="definition">cargs_ctx</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.p"><span class="id" title="variable">p</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.D"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Mv"><span class="id" title="variable">Mv</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#gsA:112"><span class="id" title="variable">gsA</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_params"><span class="id" title="definition">im_params</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.D"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Mv"><span class="id" title="variable">Mv</span></a>)) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> (<a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.ups"><span class="id" title="variable">ups</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.ms"><span class="id" title="variable">ms</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#vs:114"><span class="id" title="variable">vs</span></a>) (<a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.ups"><span class="id" title="variable">ups</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.ms"><span class="id" title="variable">ms</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#vs:114"><span class="id" title="variable">vs</span></a>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-and at the container's over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span> 
+and at the container's over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;; <a id="view_args_inv_cnt" class="idref" href="#view_args_inv_cnt"><span class="id" title="projection">view_args_inv_cnt</span></a> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_tele_args"><span class="id" title="inductive">per_tele_args</span></a> (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#cargs_ctx"><span class="id" title="definition">cargs_ctx</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.qc"><span class="id" title="variable">qc</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Dq"><span class="id" title="variable">Dq</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Mi'"><span class="id" title="variable">Mi'</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#gsA':111"><span class="id" title="variable">gsA'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_params"><span class="id" title="definition">im_params</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Dq"><span class="id" title="variable">Dq</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.Mi'"><span class="id" title="variable">Mi'</span></a>)) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> (<a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.cups"><span class="id" title="variable">cups</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.ms"><span class="id" title="variable">ms</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#vs:114"><span class="id" title="variable">vs</span></a>) (<a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.cups"><span class="id" title="variable">cups</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewArgs.ms"><span class="id" title="variable">ms</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#vs:114"><span class="id" title="variable">vs</span></a>)<br/>
@@ -618,7 +618,7 @@ Recursive in both: a fresh variable.
 </div>
 
 <div class="doc">
-<a id="lab341"></a><h2 class="section">An Argument the View Nests Through</h2>
+<a id="lab348"></a><h2 class="section">An Argument the View Nests Through</h2>
 
 
 <div class="paragraph"> </div>
@@ -687,7 +687,7 @@ The group's side: the shape's relation, by <span class="inlinecode"><a class="id
 </div>
 
 <div class="doc">
-<a id="lab342"></a><h2 class="section">An Argument Non-Recursive in Both</h2>
+<a id="lab349"></a><h2 class="section">An Argument Non-Recursive in Both</h2>
 
 
 <div class="paragraph"> </div>
@@ -724,7 +724,7 @@ The group's side: the shape's relation, by <span class="inlinecode"><a class="id
 </div>
 
 <div class="doc">
-<a id="lab343"></a><h2 class="section">An Argument Recursive in Both: its Shape, Domain by Domain</h2>
+<a id="lab350"></a><h2 class="section">An Argument Recursive in Both: its Shape, Domain by Domain</h2>
 
 
 <div class="paragraph"> </div>
@@ -997,13 +997,13 @@ An argument recursive in both: the domains of the shapes
 </div>
 
 <div class="doc">
-<a id="lab344"></a><h2 class="section">The Non-Uniform Parameters</h2>
+<a id="lab351"></a><h2 class="section">The Non-Uniform Parameters</h2>
 
 
 <div class="paragraph"> </div>
 
       The container's canonical relation of a non-uniform parameter at
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span> is the group's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> of the member the view takes the
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span> is the group's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> of the member the view takes the
       container's to (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#agree_nparams_rel"><span class="id" title="projection">agree_nparams_rel</span></a></span> at the canonical relations). 
 </div>
 <div class="code">
@@ -1097,17 +1097,17 @@ The two telescopes, equal under the view's instance.
 </div>
 
 <div class="doc">
-<a id="lab345"></a><h2 class="section">An Argument Recursive in Both: the Parameters its Shapes End In</h2>
+<a id="lab352"></a><h2 class="section">An Argument Recursive in Both: the Parameters its Shapes End In</h2>
 
 
 <div class="paragraph"> </div>
 
     The container's shape ends in its member <span class="inlinecode"><span class="id" title="var">j'</span></span>, the group's in the
-    member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> the view takes <span class="inlinecode"><span class="id" title="var">j'</span></span> to; after the domains, the parameters of
-    the two ends are related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>, canonically (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#agree_shape_params"><span class="id" title="projection">agree_shape_params</span></a></span> at
+    member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> the view takes <span class="inlinecode"><span class="id" title="var">j'</span></span> to; after the domains, the parameters of
+    the two ends are related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, canonically (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#agree_shape_params"><span class="id" title="projection">agree_shape_params</span></a></span> at
     the canonical relations).  Through the ends' types, related by the walk
     along the domains: at the container's member <span class="inlinecode"><span class="id" title="var">j'</span></span> if it is declared
-    (the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> is then of the same instance), else at the declared
+    (the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> is then of the same instance), else at the declared
     member both views view, moved to <span class="inlinecode"><span class="id" title="var">j'</span></span> by the container's view <span class="inlinecode"><span class="id" title="var">j'</span></span>. 
 </div>
 <div class="code">
@@ -1278,7 +1278,7 @@ The container's environment of all the arguments, as the
 
 <div class="doc">
 The container's canonical relation at its member <span class="inlinecode"><span class="id" title="var">j'</span></span> is the
-        group's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>, the member the view takes it to. 
+        group's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, the member the view takes it to. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hconv</span> : <span class="id" title="keyword">forall</span> <a id="a:355" class="idref" href="#a:355"><span class="id" title="binder"><span id="a:357" class="id">a</span></span></a> <a id="b:356" class="idref" href="#b:356"><span class="id" title="binder"><span id="b:358" class="id">b</span></span></a>, <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#tele_rel"><span class="id" title="definition">tele_rel</span></a> (<a class="idref" href="Mctt.Core.Semantic.Inductives.IndPER.html#canon_nparams_rel"><span class="id" title="definition">canon_nparams_rel</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewAgreementParts.Dq"><span class="id" title="variable">Dq</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewAgreementParts.cups"><span class="id" title="variable">cups</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ptyp_mem"><span class="id" title="definition">ptyp_mem</span></a> <span class="id" title="var">t'</span>)) (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nparams"><span class="id" title="projection">im_nparams</span></a> <span class="id" title="var">Mj'</span>)) <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#a:355"><span class="id" title="variable">a</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#b:356"><span class="id" title="variable">b</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
@@ -1304,7 +1304,7 @@ The two ends' parameters at all the arguments, related at the
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">j'</span></span> declared: the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> is of it at the same instance. 
+<span class="inlinecode"><span class="id" title="var">j'</span></span> declared: the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> is of it at the same instance. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hhead</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">vm'</span> <span class="id" title="var">Hhj</span>].<br/>
@@ -1323,7 +1323,7 @@ The two ends' parameters at all the arguments, related at the
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">j'</span></span> a view of the container: the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> is of the same
+<span class="inlinecode"><span class="id" title="var">j'</span></span> a view of the container: the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> is of the same
             declared member <span class="inlinecode"><span class="id" title="var">kv</span></span> of the deeper container; at its instance
             there, its relation is the container's at <span class="inlinecode"><span class="id" title="var">j'</span></span>. 
 </div>
@@ -1487,7 +1487,7 @@ Non-recursive in both.
 </div>
 
 <div class="doc">
-<a id="lab346"></a><h2 class="section">Non-Uniform Parameters Related at a Container's Member</h2>
+<a id="lab353"></a><h2 class="section">Non-Uniform Parameters Related at a Container's Member</h2>
 
 
 <div class="paragraph"> </div>
@@ -1530,28 +1530,28 @@ One per non-uniform parameter of <span class="inlinecode"><a class="idref" href=
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-Related canonically at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span> over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> 
+Related canonically at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span> over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;; <a id="params_group_related" class="idref" href="#params_group_related"><span class="id" title="projection">params_group_related</span></a> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#tele_rel"><span class="id" title="definition">tele_rel</span></a> (<a class="idref" href="Mctt.Core.Semantic.Inductives.IndPER.html#canon_nparams_rel"><span class="id" title="definition">canon_nparams_rel</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.D"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.ups"><span class="id" title="variable">ups</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.v"><span class="id" title="variable">v</span></a>) (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nparams"><span class="id" title="projection">im_nparams</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.Mv"><span class="id" title="variable">Mv</span></a>)) <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#ms:421"><span class="id" title="variable">ms</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#ms:421"><span class="id" title="variable">ms</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-Related canonically at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mi'"><span class="id" title="variable">Mi'</span></a></span> over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span> 
+Related canonically at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mi'"><span class="id" title="variable">Mi'</span></a></span> over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;; <a id="params_container_related" class="idref" href="#params_container_related"><span class="id" title="projection">params_container_related</span></a> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#tele_rel"><span class="id" title="definition">tele_rel</span></a> (<a class="idref" href="Mctt.Core.Semantic.Inductives.IndPER.html#canon_nparams_rel"><span class="id" title="definition">canon_nparams_rel</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.Dq"><span class="id" title="variable">Dq</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.cups"><span class="id" title="variable">cups</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.i'"><span class="id" title="variable">i'</span></a>) (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nparams"><span class="id" title="projection">im_nparams</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.Mi'"><span class="id" title="variable">Mi'</span></a>)) <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#ms:421"><span class="id" title="variable">ms</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#ms:421"><span class="id" title="variable">ms</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-Related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span>'s full telescope over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> 
+Related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span>'s full telescope over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;; <a id="params_group_values" class="idref" href="#params_group_values"><span class="id" title="projection">params_group_values</span></a> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_tele_args"><span class="id" title="inductive">per_tele_args</span></a> (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_params"><span class="id" title="definition">im_params</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.D"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.Mv"><span class="id" title="variable">Mv</span></a>)) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> (<a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.ups"><span class="id" title="variable">ups</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#ms:421"><span class="id" title="variable">ms</span></a>) (<a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.ups"><span class="id" title="variable">ups</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#ms:421"><span class="id" title="variable">ms</span></a>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-Related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mi'"><span class="id" title="variable">Mi'</span></a></span>'s full telescope over <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups"><span class="id" title="variable">cups</span></a></span> 
+Related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mi'"><span class="id" title="variable">Mi'</span></a></span>'s full telescope over <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.RviewFields.cups"><span class="id" title="variable">cups</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;; <a id="params_container_values" class="idref" href="#params_container_values"><span class="id" title="projection">params_container_values</span></a> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_tele_args"><span class="id" title="inductive">per_tele_args</span></a> (<span class="id" title="definition">List.rev</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_params"><span class="id" title="definition">im_params</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.Dq"><span class="id" title="variable">Dq</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.Mi'"><span class="id" title="variable">Mi'</span></a>)) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> (<a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.cups"><span class="id" title="variable">cups</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#ms:421"><span class="id" title="variable">ms</span></a>) (<a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewMemberParams.cups"><span class="id" title="variable">cups</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#ms:421"><span class="id" title="variable">ms</span></a>) }.<br/>
@@ -1581,13 +1581,13 @@ Related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.S
 </div>
 
 <div class="doc">
-<a id="lab347"></a><h2 class="section">The Agreement of a View at the Canonical Relations</h2>
+<a id="lab354"></a><h2 class="section">The Agreement of a View at the Canonical Relations</h2>
 
 
 <div class="paragraph"> </div>
 
     The fields of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#view_agreement"><span class="id" title="record">view_agreement</span></a></span> for a view <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> at the canonical
-    relations at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups'"><span class="id" title="variable">ups'</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ArgTypes.html#view_agreement_canonical"><span class="id" title="definition">view_agreement_canonical</span></a></span>), from the
+    relations at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups'"><span class="id" title="variable">ups'</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ArgTypes.html#view_agreement_canonical"><span class="id" title="definition">view_agreement_canonical</span></a></span>), from the
     diagonal ones above: what a field reads at the right side is moved
     along related bases and prefixes. 
 </div>
@@ -1813,7 +1813,7 @@ An argument recursive in both: the parameters the shapes end in
 
 <div class="doc">
 Over the right bases: the container's relations at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.cups'"><span class="id" title="variable">cups'</span></a></span>, the
-          group's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups'"><span class="id" title="variable">ups'</span></a></span> moved back to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>. 
+          group's at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups'"><span class="id" title="variable">ups'</span></a></span> moved back to <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.Inductives.ArgTypes.html#valid_group_fam_agree"><span class="id" title="lemma">valid_group_fam_agree</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewAgreementCanonical.qc"><span class="id" title="variable">qc</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewAgreementCanonical.Dq"><span class="id" title="variable">Dq</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewAgreementCanonical.HgQ"><span class="id" title="variable">HgQ</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewAgreementCanonical.cups"><span class="id" title="variable">cups</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewAgreementCanonical.cups'"><span class="id" title="variable">cups'</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#view_container_uparams_related"><span class="id" title="lemma">view_container_uparams_related</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#Fixed_GCtx.ViewAgreementCanonical.Hlc"><span class="id" title="variable">Hlc</span></a>) <span class="id" title="keyword">as</span> [<span class="id" title="var">Hn</span> <span class="id" title="var">Ha</span> <span class="id" title="var">Hd</span>].<br/>
@@ -1881,7 +1881,7 @@ A view's agreement at the canonical relations, given the relations of
 </div>
 
 <div class="doc">
-<a id="lab348"></a><h2 class="section">Every View Agrees with its Container, and Every Record View with</h2>
+<a id="lab355"></a><h2 class="section">Every View Agrees with its Container, and Every Record View with</h2>
 
        its Record
 
@@ -1908,7 +1908,7 @@ A view's agreement at the canonical relations, given the relations of
 </div>
 
 <div class="doc">
-The members of lower rank, at the bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>. 
+The members of lower rank, at the bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hlow</span> : <span class="id" title="keyword">forall</span> <a id="j':595" class="idref" href="#j':595"><span class="id" title="binder"><span id="j':596" class="id">j'</span></span></a>, <span class="id" title="var">rk</span> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#j':595"><span class="id" title="variable">j'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#::nat_scope:x_'&lt;'_x"><span class="id" title="notation">&lt;</span></a> <span class="id" title="var">rk</span> <span class="id" title="var">j</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ArgTypes.html#view_end_rel"><span class="id" title="definition">view_end_rel</span></a> <span class="id" title="var">p</span> <span class="id" title="var">D</span> <span class="id" title="var">ups</span> <span class="id" title="var">ups</span> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#j':595"><span class="id" title="variable">j'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ArgTypes.html#rview_end_rel"><span class="id" title="definition">rview_end_rel</span></a> <span class="id" title="var">p</span> <span class="id" title="var">D</span> <span class="id" title="var">ups</span> <span class="id" title="var">ups</span> <a class="idref" href="Mctt.Core.Completeness.Inductives.ViewArgs.html#j':595"><span class="id" title="variable">j'</span></a>).<br/>
@@ -1935,7 +1935,7 @@ The members of lower rank, at the bases <span class="inlinecode"><a class="idref
 </div>
 
 <div class="doc">
-<a id="lab349"></a><h2 class="section">The Relation of a Member's Type</h2>
+<a id="lab356"></a><h2 class="section">The Relation of a Member's Type</h2>
 
 
 <div class="paragraph"> </div>

@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1270"></a><h1 class="section">The Readback the Extracted Checker Runs</h1>
+<a id="lab1528"></a><h1 class="section">The Readback the Extracted Checker Runs</h1>
 
 
 <div class="paragraph"> </div>
@@ -104,7 +104,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1271"></a><h2 class="section">Fresh Variables of the Telescopes of an Inductive Type</h2>
+<a id="lab1529"></a><h2 class="section">Fresh Variables of the Telescopes of an Inductive Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -141,7 +141,7 @@ The first entry's variable at its type, then the rest with it in the
 </div>
 
 <div class="doc">
-The arguments of a constructor of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> 
+The arguments of a constructor of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> 
 </div>
 <div class="code">
 <span class="id" title="keyword">Inductive</span> <a id="fast_fresh_cargs" class="idref" href="#fast_fresh_cargs"><span class="id" title="definition, inductive"><span id="fast_fresh_cargs_ind" class="id"><span id="fast_fresh_cargs_sind" class="id">fast_fresh_cargs</span></span></span></a> {<a id="SM:15" class="idref" href="#SM:15"><span class="id" title="binder">SM</span></a> : <a class="idref" href="Mctt.Extraction.FastEval.html#SkipMode"><span class="id" title="class">SkipMode</span></a>} (<a id="92e93b6c147bed15f68bf2ff62fba518" class="idref" href="#92e93b6c147bed15f68bf2ff62fba518"><span class="id" title="binder">Θ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="ec1f4ea86d8bd3a1c4eca7f681a00d30" class="idref" href="#ec1f4ea86d8bd3a1c4eca7f681a00d30"><span class="id" title="binder">Ξ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gstack"><span class="id" title="definition">gstack</span></a>) (<a id="p:18" class="idref" href="#p:18"><span class="id" title="binder">p</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="ups:19" class="idref" href="#ups:19"><span class="id" title="binder">ups</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) :<br/>
@@ -180,7 +180,7 @@ A recursive argument: its variable at its shape's type
 </div>
 
 <div class="doc">
-The recursive results of the arguments <span class="inlinecode"><span class="id" title="var">vs</span></span> of a branch <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> of a stuck
+The recursive results of the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> of a branch <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> of a stuck
     eliminator, as fresh variables, as <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#fresh_ihs"><span class="id" title="inductive">fresh_ihs</span></a></span>: the types of the results
     of an argument the branch reads none of are not computed, and each of
     its variables is at <span class="inlinecode">𝕌ω@0</span>.  The results of the argument heading
@@ -201,7 +201,7 @@ No argument, no result
 </div>
 
 <div class="doc">
-A non-recursive argument: none, the argument entering <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> 
+A non-recursive argument: none, the argument entering <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> 
 </div>
 <div class="code">
 | <a id="fast_fresh_ihs_arg" class="idref" href="#fast_fresh_ihs_arg"><span class="id" title="constructor">fast_fresh_ihs_arg</span></a> :<br/>
@@ -269,7 +269,7 @@ No argument, no result
 </div>
 
 <div class="doc">
-Recursive in both: along each path, the next of <span class="inlinecode"><span class="id" title="var">ihs</span></span> at a path of
+Recursive in both: along each path, the next of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.ihs"><span class="id" title="variable">ihs</span></a></span> at a path of
     the container's, the eliminator at one nested through 
 </div>
 <div class="code">
@@ -360,7 +360,7 @@ The type of a recursive result
 </div>
 
 <div class="doc">
-<a id="lab1272"></a><h2 class="section">Readback</h2>
+<a id="lab1530"></a><h2 class="section">Readback</h2>
 
 
 <div class="paragraph"> </div>
@@ -1104,7 +1104,7 @@ The branch of the next constructor, under its fresh variables, at
 </div>
 
 <div class="doc">
-<a id="lab1273"></a><h2 class="section">Determinism</h2>
+<a id="lab1531"></a><h2 class="section">Determinism</h2>
 
 </div>
 <div class="code">
@@ -1400,7 +1400,7 @@ A type former, by its two rules: at no argument, no parameter;
 </div>
 
 <div class="doc">
-<a id="lab1274"></a><h2 class="section">Lengths</h2>
+<a id="lab1532"></a><h2 class="section">Lengths</h2>
 
 
 <div class="paragraph"> </div>

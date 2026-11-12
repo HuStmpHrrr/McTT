@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab862"></a><h1 class="section">The Typed Fill</h1>
+<a id="lab1118"></a><h1 class="section">The Typed Fill</h1>
 
 
 <div class="paragraph"> </div>
@@ -95,7 +95,7 @@
     A written command is filled to the core commands it runs as: one,
     or, for a module and a record, the opening of its frame, its body's
     commands as written, which are filled when they run, and the closing
-    of the frame.  The fill reads algorithmic inference (<span class="inlinecode">⊢<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span>), which
+    of the frame.  The fill reads algorithmic inference (<span class="inlinecode">⊢<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>), which
     gives one type (<span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Functional.html#functional_alg_type_infer"><span class="id" title="lemma">functional_alg_type_infer</span></a></span>), so the fill, and the
     run, are functional. 
 </div>
@@ -149,8 +149,8 @@ A term as written with no subterm and nothing to fill: its core
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, of the normal type <span class="inlinecode"><span class="id" title="var">W</span></span> in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, is a type former of an inductive
-    type: <span class="inlinecode"><span class="id" title="var">W</span></span> is <span class="inlinecode"><span class="id" title="var">Π</span></span>s ending in a universe, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at the variables they
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, of the normal type <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, is a type former of an inductive
+    type: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> is <span class="inlinecode"><span class="id" title="var">Π</span></span>s ending in a universe, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at the variables they
     bind is, in normal form, a member of a group of inductive types at
     its parameters.  The inductive alias command premises it, and so does
     the fill of a local inductive alias. 
@@ -165,8 +165,8 @@ A term as written with no subterm and nothing to fill: its core
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, of the normal type <span class="inlinecode"><span class="id" title="var">W</span></span> in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, is a type former of a record type,
-    given any prefix of its parameters: <span class="inlinecode"><span class="id" title="var">W</span></span> is <span class="inlinecode"><span class="id" title="var">Π</span></span>s ending in a universe,
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, of the normal type <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, is a type former of a record type,
+    given any prefix of its parameters: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> is <span class="inlinecode"><span class="id" title="var">Π</span></span>s ending in a universe,
     and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at the variables they bind is, in normal form, the record type
     at its parameters.  As <span class="inlinecode"><a class="idref" href="Mctt.Core.TypedElab.Fill.html#ind_former"><span class="id" title="definition">ind_former</span></a></span>, for record aliases. 
 </div>
@@ -236,7 +236,7 @@ A member <span class="inlinecode"><span class="id" title="var">y</span></span> s
 </div>
 
 <div class="doc">
-The kind of a type whose sort is inferred to be <span class="inlinecode"><span class="id" title="var">W</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_propositional"><span class="id" title="constructor">ak_propositional</span></a></span>
+The kind of a type whose sort is inferred to be <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_propositional"><span class="id" title="constructor">ak_propositional</span></a></span>
       at <span class="inlinecode"><span class="id" title="keyword">Prop</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_level"><span class="id" title="constructor">ak_level</span></a></span> at <span class="inlinecode"><span class="id" title="var">LevelSort</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_relevant"><span class="id" title="constructor">ak_relevant</span></a></span> otherwise.  It is
       the kind of a binder over the type, of a <span class="inlinecode"><span class="id" title="var">Π</span></span>'s domain or codomain, of
       an eliminator's motive and of a definition.  At a sort that is none of
@@ -279,13 +279,13 @@ The members an open's items name.
 </div>
 
 <div class="doc">
-<a id="lab863"></a><h2 class="section">The Fill of Terms</h2>
+<a id="lab1119"></a><h2 class="section">The Fill of Terms</h2>
 
 
 <div class="paragraph"> </div>
 
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.TypedElab.Fill.html#fill_exp"><span class="id" title="inductive">fill_exp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><span class="id" title="var">M'</span></span>: the term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> as written, read in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, is filled
-      to the core term <span class="inlinecode"><span class="id" title="var">M'</span></span>.  The contexts are those of algorithmic
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.TypedElab.Fill.html#fill_exp"><span class="id" title="inductive">fill_exp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.M'"><span class="id" title="variable">M'</span></a></span>: the term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> as written, read in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, is filled
+      to the core term <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.M'"><span class="id" title="variable">M'</span></a></span>.  The contexts are those of algorithmic
       typing: a binder's type is its filled type; a <span class="inlinecode"><span class="id" title="keyword">let</span></span> binds its filled
       definition at its filled (or inferred) type; an eliminator's
       annotations, motives and branches are read in the contexts
@@ -551,7 +551,7 @@ The first field, then the rest
 
 <div class="doc">
 The blocks of an eliminator of the group <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span>, from the member
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> on, at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> and the motives <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#LeafConv.As"><span class="id" title="variable">As</span></a></span>: each its
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> on, at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> and the motives <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#LeafConv.As"><span class="id" title="variable">As</span></a></span>: each its
       scrutinee's type over its member's non-uniform parameters, its motive
       over them and the scrutinee, and its branches, with as many binders
       as <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#alg_type_infer_elim"><span class="id" title="constructor">alg_type_infer_elim</span></a></span> asks, at the eliminator's tag <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.r"><span class="id" title="variable">r</span></a></span> 
@@ -568,7 +568,7 @@ No block
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-The block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>, then the rest 
+The block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, then the rest 
 </div>
 <div class="code">
 &nbsp;&nbsp;| <a id="fill_blocks_cons" class="idref" href="#fill_blocks_cons"><span class="id" title="constructor">fill_blocks_cons</span></a> : <span class="id" title="keyword">forall</span> <a id="r:217" class="idref" href="#r:217"><span class="id" title="binder">r</span></a> <a id="b049477b434d1524f13e35137a161630" class="idref" href="#b049477b434d1524f13e35137a161630"><span class="id" title="binder">Γ</span></a> <a id="p:219" class="idref" href="#p:219"><span class="id" title="binder">p</span></a> <a id="D:220" class="idref" href="#D:220"><span class="id" title="binder">D</span></a> <a id="Us:221" class="idref" href="#Us:221"><span class="id" title="binder">Us</span></a> <a id="As:222" class="idref" href="#As:222"><span class="id" title="binder">As</span></a> <a id="j:223" class="idref" href="#j:223"><span class="id" title="binder">j</span></a> <a id="Mj:224" class="idref" href="#Mj:224"><span class="id" title="binder">Mj</span></a> <a id="nm:225" class="idref" href="#nm:225"><span class="id" title="binder">nm</span></a> <a id="Z:226" class="idref" href="#Z:226"><span class="id" title="binder">Z</span></a> <a id="Z':227" class="idref" href="#Z':227"><span class="id" title="binder">Z'</span></a> <a id="A:228" class="idref" href="#A:228"><span class="id" title="binder">A</span></a> <a id="A':229" class="idref" href="#A':229"><span class="id" title="binder">A'</span></a> <a id="Bs:230" class="idref" href="#Bs:230"><span class="id" title="binder">Bs</span></a> <a id="Bs':231" class="idref" href="#Bs':231"><span class="id" title="binder">Bs'</span></a> <a id="Bks:232" class="idref" href="#Bks:232"><span class="id" title="binder">Bks</span></a> <a id="Bks':233" class="idref" href="#Bks':233"><span class="id" title="binder">Bks'</span></a>,<br/>
@@ -583,7 +583,7 @@ The block of the member <span class="inlinecode"><a class="idref" href="Mctt.Cor
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-The scrutinee's type of the block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.GroupElim.Base.Motives.Frame.Base.Mj"><span class="id" title="variable">Mj</span></a></span>, over its
+The scrutinee's type of the block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.Mj"><span class="id" title="variable">Mj</span></a></span>, over its
       non-uniform parameters 
 </div>
 <div class="code">
@@ -612,7 +612,7 @@ Omitted: the member's type at the uniform parameters and the
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-The branches of a block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.GroupElim.Base.Motives.Frame.Base.Mj"><span class="id" title="variable">Mj</span></a></span>, each in its
+The branches of a block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.Mj"><span class="id" title="variable">Mj</span></a></span>, each in its
       constructor's branch context at the tag <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.r"><span class="id" title="variable">r</span></a></span> 
 </div>
 <div class="code">
@@ -924,7 +924,7 @@ The first field, then the rest over it
 </div>
 
 <div class="doc">
-<a id="lab864"></a><h2 class="section">The Fill of Commands</h2>
+<a id="lab1120"></a><h2 class="section">The Fill of Commands</h2>
 
 
 <div class="paragraph"> </div>

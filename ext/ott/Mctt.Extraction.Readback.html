@@ -51,7 +51,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1414"></a><h1 class="section">The Readback the Checker Runs</h1>
+<a id="lab1672"></a><h1 class="section">The Readback the Checker Runs</h1>
 
 
 <div class="paragraph"> </div>
@@ -90,7 +90,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1415"></a><h2 class="section">The Kind of a Fast Type</h2>
+<a id="lab1673"></a><h2 class="section">The Kind of a Fast Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -114,7 +114,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1416"></a><h2 class="section">The Positions a Kept Proof Reads</h2>
+<a id="lab1674"></a><h2 class="section">The Positions a Kept Proof Reads</h2>
 
 
 <div class="paragraph"> </div>
@@ -176,16 +176,16 @@ It is when it says so.
 </div>
 
 <div class="doc">
-<a id="lab1417"></a><h2 class="section">Along the Leaf Paths of a Recursive Argument</h2>
+<a id="lab1675"></a><h2 class="section">Along the Leaf Paths of a Recursive Argument</h2>
 
 
 <div class="paragraph"> </div>
 
     The computations of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#fresh_leaf_vars"><span class="id" title="inductive">fresh_leaf_vars</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#wrap_leaf_vals"><span class="id" title="inductive">wrap_leaf_vals</span></a></span>, by the
-    paths' flags <span class="inlinecode"><span class="id" title="var">bs</span></span>, each sound at lengths its relation has. 
+    paths' flags <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.bs"><span class="id" title="variable">bs</span></a></span>, each sound at lengths its relation has. 
 <div class="paragraph"> </div>
 
- The fresh variables at the flagged paths, from <span class="inlinecode"><span class="id" title="var">s</span></span>, at the types <span class="inlinecode"><span class="id" title="var">as'</span></span> 
+ The fresh variables at the flagged paths, from <span class="inlinecode"><span class="id" title="var">s</span></span>, at the types <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.as'"><span class="id" title="variable">as'</span></a></span> 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="leaf_vars_f" class="idref" href="#leaf_vars_f"><span class="id" title="definition">leaf_vars_f</span></a> (<a id="bs:36" class="idref" href="#bs:36"><span class="id" title="binder">bs</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>) (<a id="as':37" class="idref" href="#as':37"><span class="id" title="binder">as'</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) (<a id="s:38" class="idref" href="#s:38"><span class="id" title="binder">s</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> :=<br/>
@@ -214,8 +214,8 @@ It is when it says so.
 </div>
 
 <div class="doc">
-The results along the paths: the next of <span class="inlinecode"><span class="id" title="var">ihs</span></span> at a flagged path, the
-    path's own result at another; and the rest of <span class="inlinecode"><span class="id" title="var">ihs</span></span> 
+The results along the paths: the next of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.ihs"><span class="id" title="variable">ihs</span></a></span> at a flagged path, the
+    path's own result at another; and the rest of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.ihs"><span class="id" title="variable">ihs</span></a></span> 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="leaf_wrap_f" class="idref" href="#leaf_wrap_f"><span class="id" title="definition">leaf_wrap_f</span></a> (<a id="bs:53" class="idref" href="#bs:53"><span class="id" title="binder">bs</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>) (<a id="rs:54" class="idref" href="#rs:54"><span class="id" title="binder">rs</span></a> <a id="ihs:55" class="idref" href="#ihs:55"><span class="id" title="binder">ihs</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) : (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>)%<span class="id" title="keyword">type</span> :=<br/>
@@ -393,7 +393,7 @@ The erasures of the leaf paths' computations and of the proof scope,
 </div>
 
 <div class="doc">
-<a id="lab1418"></a><h2 class="section">The Fresh Variables of the Telescopes of a Group</h2>
+<a id="lab1676"></a><h2 class="section">The Fresh Variables of the Telescopes of a Group</h2>
 
 
 <div class="paragraph"> </div>
@@ -932,7 +932,7 @@ The type value of an environment's entry
 </div>
 
 <div class="doc">
-<a id="lab1419"></a><h2 class="section">The Orders of Readback</h2>
+<a id="lab1677"></a><h2 class="section">The Orders of Readback</h2>
 
 </div>
 <div class="code">

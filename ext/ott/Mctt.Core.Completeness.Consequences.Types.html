@@ -38,8 +38,8 @@
 
 <div class="paragraph"> </div>
 
-    Distinct type constructors are never judgmentally equal, and <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>
-    forces <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>.  Each proof reads the judgment at the initial environment and
+    Distinct type constructors are never judgmentally equal, and <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>
+    forces <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>.  Each proof reads the judgment at the initial environment and
     inverts the resulting <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span>; only the variable-against-variable case needs
     work, since there the values are neutrals whose levels must be turned back
     into indices.  The same-sort theorem for subtyping reads the kind of each
@@ -410,7 +410,7 @@ So does a record type.
     The normal form of an inductive or record type reads each parameter
     at the parameter's type in the environment of the values of the
     parameters before it (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_ps"><span class="id" title="inductive">read_ps</span></a></span>), the types' closures over the empty
-    environment.  NbE reads it at its instance <span class="inlinecode"><span class="id" title="var">A_j</span>[<span class="id" title="var">Id</span>,,<span class="id" title="var">M_0</span>,…,<span class="id" title="var">M_</span>(<a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a>-1)]</span> in
+    environment.  NbE reads it at its instance <span class="inlinecode"><span class="id" title="var">A_j</span>[<span class="id" title="var">Id</span>,,<span class="id" title="var">M_0</span>,…,<span class="id" title="var">M_</span>(<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a>-1)]</span> in
     the initial environment of the context.  The two type values are
     related, so the two normal forms are equal up to their proofs. 
 <div class="paragraph"> </div>
@@ -596,7 +596,7 @@ NbE of the parameters of a closed telescope <span class="inlinecode"><a class="i
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GenericDec.C"><span class="id" title="variable">C</span></a></span> split at parameter <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ContainerReadable.html#Fixed_GCtx.ContainerReadable.C1"><span class="id" title="variable">C1</span></a></span> holds it and those after it, <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimViewRule.html#Fixed_GCtx.ElimViewRule.Pre.C2"><span class="id" title="variable">C2</span></a></span>
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GenericDec.C"><span class="id" title="variable">C</span></a></span> split at parameter <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ContainerReadable.html#Fixed_GCtx.ContainerReadable.C1"><span class="id" title="variable">C1</span></a></span> holds it and those after it, <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimViewRule.html#Fixed_GCtx.ElimViewRule.Pre.C2"><span class="id" title="variable">C2</span></a></span>
       those before it 
 </div>
 <div class="code">
@@ -619,7 +619,7 @@ NbE of the parameters of a closed telescope <span class="inlinecode"><a class="i
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-The parameters before <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> are an instance of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimViewRule.html#Fixed_GCtx.ElimViewRule.Pre.C2"><span class="id" title="variable">C2</span></a></span> 
+The parameters before <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> are an instance of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimViewRule.html#Fixed_GCtx.ElimViewRule.Pre.C2"><span class="id" title="variable">C2</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Lj</span> : <span class="id" title="var">j</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#::nat_scope:x_'&lt;'_x"><span class="id" title="notation">&lt;</span></a> <span class="id" title="abbreviation">List.length</span> <span class="id" title="var">Ms</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">apply</span> <span class="id" title="lemma">List.nth_error_Some</span>; <span class="id" title="tactic">congruence</span>).<br/>
@@ -643,7 +643,7 @@ The parameters before <span class="inlinecode"><a class="idref" href="Mctt.Core.
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-The type of parameter <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> at its instance and at the values before
+The type of parameter <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> at its instance and at the values before
       it are related 
 </div>
 <div class="code">
@@ -670,7 +670,7 @@ The type of parameter <span class="inlinecode"><a class="idref" href="Mctt.Core.
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_ps"><span class="id" title="inductive">read_ps</span></a></span> reads parameter <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> at the second 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_ps"><span class="id" title="inductive">read_ps</span></a></span> reads parameter <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> at the second 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.Inductives.Model.html#eval_exps_nth"><span class="id" title="lemma">eval_exps_nth</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hvs</span> <span class="id" title="var">HP</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">v</span> &amp; <span class="id" title="var">Hv</span> &amp; <span class="id" title="var">HPv</span>).<br/>
@@ -707,8 +707,8 @@ NbE reads it at the first: the two readbacks agree up to proofs
 Two proofs, of related propositions, which read back alike 
 </div>
 <div class="code">
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Realizability.html#read_nf_propositional"><span class="id" title="lemma">read_nf_propositional</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hp</span> <span class="id" title="var">Hw</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">C0</span> &amp; <span class="id" title="var">Q</span> &amp; -&gt; &amp; <span class="id" title="var">HC0</span>).<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Realizability.html#read_nf_propositional"><span class="id" title="lemma">read_nf_propositional</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#eq_trans"><span class="id" title="lemma">eq_trans</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#eq_sym"><span class="id" title="definition">eq_sym</span></a> <span class="id" title="var">Hrab</span>) <span class="id" title="var">Hp</span>) <span class="id" title="var">HRb</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">C0'</span> &amp; <span class="id" title="var">Q'</span> &amp; -&gt; &amp; <span class="id" title="var">HC0'</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Realizability.html#read_nf_propositional"><span class="id" title="lemma">read_nf_propositional</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hp</span> <span class="id" title="var">Hw</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">C0</span> &amp; <span class="id" title="var">Q</span> &amp; -&gt; &amp; <span class="id" title="var">HC0</span> &amp; <span class="id" title="var">_</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Realizability.html#read_nf_propositional"><span class="id" title="lemma">read_nf_propositional</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#eq_trans"><span class="id" title="lemma">eq_trans</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#eq_sym"><span class="id" title="definition">eq_sym</span></a> <span class="id" title="var">Hrab</span>) <span class="id" title="var">Hp</span>) <span class="id" title="var">HRb</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">C0'</span> &amp; <span class="id" title="var">Q'</span> &amp; -&gt; &amp; <span class="id" title="var">HC0'</span> &amp; <span class="id" title="var">_</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Realizability.html#per_univ_then_per_top_typ"><span class="id" title="lemma">per_univ_then_per_top_typ</span></a> <span class="id" title="var">HR0</span> (<span class="id" title="abbreviation">List.length</span> <span class="id" title="var">Γ</span>)) <span class="id" title="keyword">as</span> [<span class="id" title="var">D</span> <span class="id" title="var">D'</span> <span class="id" title="var">HD</span> <span class="id" title="var">HD'</span> <span class="id" title="var">HE</span>].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">functional_read_rewrite_clear</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_upto_proofs"><span class="id" title="definition">nf_eq_upto_proofs</span></a>; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eqb_upto_proofs"><span class="id" title="definition">nf_eqb_upto_proofs</span></a>]; <span class="id" title="tactic">exact</span> <span class="id" title="var">HE</span>.<br/>
@@ -747,7 +747,7 @@ A universe as a term: a large one, or a small one at any level term.
 </div>
 
 <div class="doc">
-Only the variable case survives: <span class="inlinecode">⇑!</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> has no other constructor to be
+Only the variable case survives: <span class="inlinecode">⇑!</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> has no other constructor to be
       related to. 
 </div>
 <div class="code">

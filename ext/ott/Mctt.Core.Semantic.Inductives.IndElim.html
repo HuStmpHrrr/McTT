@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab620"></a><h1 class="section">The Eliminator in the PER Model</h1>
+<a id="lab629"></a><h1 class="section">The Eliminator in the PER Model</h1>
 
 
 <div class="paragraph"> </div>
@@ -53,7 +53,7 @@
     the uniform parameters the eliminator carries (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#elim_ups_ok"><span class="id" title="record">elim_ups_ok</span></a></span>; model
     P), admissible at the fresh variables (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#adm_fresh"><span class="id" title="record">adm_fresh</span></a></span>); a neutral needs
     no admissibility.  The fresh variables at two admissible bases are related
-    through those at the type's base <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>, and the indices of recursive
+    through those at the type's base <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>, and the indices of recursive
     arguments made of them are admissible by the recursive-index field of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#adm_fresh"><span class="id" title="record">adm_fresh</span></a></span> and the type-level admissibility <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.Hcd"><span class="id" title="variable">Hcd</span></a></span>.  A view's stuck
     eliminator is read as its container's (E1′): an argument the view
@@ -387,8 +387,8 @@ A telescope's entries and one more, as the values combined with
 </div>
 
 <div class="doc">
-A member's non-uniform parameters, related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.nr"><span class="id" title="variable">nr</span></a></span> to those at the
-      type's base <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>, read back at the types of the telescope over any
+A member's non-uniform parameters, related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#nr"><span class="id" title="abbreviation">nr</span></a></span> to those at the
+      type's base <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>, read back at the types of the telescope over any
       base <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span> admissible beside it (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#adm_nparam_types"><span class="id" title="projection">adm_nparam_types</span></a></span>). 
 </div>
 <div class="code">
@@ -416,7 +416,7 @@ A member's non-uniform parameters, related at <span class="inlinecode"><a class=
 </div>
 
 <div class="doc">
-<a id="lab621"></a><h2 class="section">The Members the Leaf Paths End In</h2>
+<a id="lab630"></a><h2 class="section">The Members the Leaf Paths End In</h2>
 
 <div class="paragraph"> </div>
 
@@ -539,7 +539,7 @@ An eliminator's path, at a member <span class="inlinecode"><a class="idref" href
 </div>
 
 <div class="doc">
-Recursive results along leaf paths, flagged <span class="inlinecode"><span class="id" title="var">bs</span></span>, from two sources on
+Recursive results along leaf paths, flagged <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.bs"><span class="id" title="variable">bs</span></a></span>, from two sources on
       each side: a fresh neutral of the types <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.as1"><span class="id" title="variable">as1</span></a></span> and <span class="inlinecode"><span class="id" title="var">as2</span></span> where the
       flag is <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span>, two neutrals that read back alike; the eliminator's
       results <span class="inlinecode"><span class="id" title="var">rs1</span></span> and <span class="inlinecode"><span class="id" title="var">rs2</span></span> where it is <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>. 
@@ -737,7 +737,7 @@ Fresh variables along the paths flagged <span class="inlinecode"><a class="idref
 </div>
 
 <div class="doc">
-<a id="lab622"></a><h2 class="section">Fresh Variables of a Group</h2>
+<a id="lab631"></a><h2 class="section">Fresh Variables of a Group</h2>
 
 </div>
 <div class="code">
@@ -860,7 +860,7 @@ A leaf path of a shape ends in a member of rank at most the
 </div>
 
 <div class="doc">
-<a id="lab623"></a><h3 class="section">The Ends of Shapes</h3>
+<a id="lab632"></a><h3 class="section">The Ends of Shapes</h3>
 
 
 <div class="paragraph"> </div>
@@ -881,14 +881,14 @@ The member the shape ends in
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-It is the group's <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>-th 
+It is the group's <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>-th 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;; <a id="end_adm_member" class="idref" href="#end_adm_member"><span class="id" title="projection">end_adm_member</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_member"><span class="id" title="definition">ind_member</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.D"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#j:350"><span class="id" title="variable">j</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#end_adm_Mj:355"><span class="id" title="method">end_adm_Mj</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-It is the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><span class="id" title="definition">hd</span></span> 
+It is the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.hd"><span class="id" title="variable">hd</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;; <a id="end_adm_ref" class="idref" href="#end_adm_ref"><span class="id" title="projection">end_adm_ref</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_ref"><span class="id" title="definition">im_ref</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.p"><span class="id" title="variable">p</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#j:350"><span class="id" title="variable">j</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#end_adm_Mj:355"><span class="id" title="method">end_adm_Mj</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#hd:351"><span class="id" title="variable">hd</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#k:352"><span class="id" title="variable">k</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a><br/>
@@ -925,11 +925,11 @@ It is not a record view
 
 <div class="doc">
 The type of an argument of a shape after related domains, at a base
-        whose fresh variables are related to those at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>: it is defined.  The type of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> is
+        whose fresh variables are related to those at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>: it is defined.  The type of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> is
         defined: at a member with a block, its declared member's at the
         uniform parameters (a declared member's always, a view's when its
-        instance evaluates at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span>); at a record view, the record at its
-        instance, when the instance evaluates at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span>. 
+        instance evaluates at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span>); at a record view, the record at its
+        instance, when the instance evaluates at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="end_ok" class="idref" href="#end_ok"><span class="id" title="definition">end_ok</span></a> (<a id="X:365" class="idref" href="#X:365"><span class="id" title="binder">X</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) (<a id="j:366" class="idref" href="#j:366"><span class="id" title="binder">j</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -977,12 +977,12 @@ The type of an argument of a shape after related domains, at a base
 <div class="doc">
 A neutral of the type of an argument of a shape, at two bases
         admissible at the fresh variables, after fresh prefixes <span class="inlinecode"><span class="id" title="var">ns1</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">ws1</span></span>
-        and <span class="inlinecode"><span class="id" title="var">ns2</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">ws2</span></span> related to the ones at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> (<span class="inlinecode"><span class="id" title="var">nsu</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">wsu</span></span>) and
+        and <span class="inlinecode"><span class="id" title="var">ns2</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">ws2</span></span> related to the ones at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> (<span class="inlinecode"><span class="id" title="var">nsu</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">wsu</span></span>) and
         related domains <span class="inlinecode"><span class="id" title="var">ys1</span></span> and <span class="inlinecode"><span class="id" title="var">ys2</span></span>: related by the shape, each side at
         its own base.  At the end of the shape, the index is admissible at
-        the element's own prefix (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#admissible_index_at"><span class="id" title="record">admissible_index_at</span></a></span>): through the index at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>'s
+        the element's own prefix (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#admissible_index_at"><span class="id" title="record">admissible_index_at</span></a></span>): through the index at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>'s
         fresh prefix, by the recursive-index field of the fresh
-        admissibility (<span class="inlinecode"><span class="id" title="var">HR1</span></span>, <span class="inlinecode"><span class="id" title="var">HR2</span></span>), and from there to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> at the
+        admissibility (<span class="inlinecode"><span class="id" title="var">HR1</span></span>, <span class="inlinecode"><span class="id" title="var">HR2</span></span>), and from there to <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> at the
         element's prefix by <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.Hcd"><span class="id" title="variable">Hcd</span></a></span>. 
 </div>
 <div class="code">
@@ -1045,7 +1045,7 @@ At a record view, neutrals of the record at the instance at the
 </div>
 
 <div class="doc">
-A side's prefix seen from that side: its relation to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>'s, in
+A side's prefix seen from that side: its relation to <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>'s, in
           the other direction. 
 </div>
 <div class="code">
@@ -1182,7 +1182,7 @@ At the end of the shape, the telescope is all of its domains.
 </div>
 
 <div class="doc">
-The argument of the domain, at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>'s prefix. 
+The argument of the domain, at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>'s prefix. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#proj2"><span class="id" title="lemma">proj2</span></a> (<span class="id" title="var">HI1</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>)) <span class="id" title="tactic">in</span> <span class="id" title="var">Hcc</span>.<br/>
@@ -1225,7 +1225,7 @@ The lengths of the prefixes, to extend their environments.
 </div>
 
 <div class="doc">
-The members' types at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> are defined. 
+The members' types at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> are defined. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="mrefs_ok" class="idref" href="#mrefs_ok"><span class="id" title="definition">mrefs_ok</span></a> (<a id="X:459" class="idref" href="#X:459"><span class="id" title="binder">X</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) : <span class="id" title="keyword">Prop</span> := <span class="id" title="keyword">forall</span> <a id="j:460" class="idref" href="#j:460"><span class="id" title="binder">j</span></a>, <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#end_ok"><span class="id" title="definition">end_ok</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#X:459"><span class="id" title="variable">X</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#j:460"><span class="id" title="variable">j</span></a>.<br/>
@@ -1235,7 +1235,7 @@ The members' types at the uniform parameters <span class="inlinecode"><a class="
 
 <div class="doc">
 The domains of a shape <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, after the components
-        <span class="inlinecode"><a class="idref" href="Mctt.Extraction.CommandRun.html#pre"><span class="id" title="record">pre</span></a></span> and <span class="inlinecode"><span class="id" title="var">pre'</span></span> on each side, at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> and
+        <span class="inlinecode"><a class="idref" href="Mctt.Extraction.CommandRun.html#pre"><span class="id" title="record">pre</span></a></span> and <span class="inlinecode"><span class="id" title="var">pre'</span></span> on each side, at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> and
         <span class="inlinecode"><span class="id" title="var">Y</span></span>: each domain is defined on each side, and at related arguments
         its two values read back alike, and so on for the rest after
         them. 
@@ -1245,9 +1245,9 @@ The domains of a shape <span class="inlinecode"><a class="idref" href="Mctt.Extr
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-At the end: the parameters at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> and at <span class="inlinecode"><span class="id" title="var">Y</span></span> are defined and
+At the end: the parameters at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> and at <span class="inlinecode"><span class="id" title="var">Y</span></span> are defined and
         admissible, as an element's at any admissible base are: so an
-        element at another base reads back at the end's type at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> and
+        element at another base reads back at the end's type at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> and
         <span class="inlinecode"><span class="id" title="var">Y</span></span>, at indices related to its own (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#elim_ups_ok"><span class="id" title="record">elim_ups_ok</span></a></span>) 
 </div>
 <div class="code">
@@ -1293,7 +1293,7 @@ and their variables are related: the arguments η-directed
 
 <div class="doc">
 The parameters at the end of a shape of an argument, among
-        components at an admissible base <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> related to those at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>:
+        components at an admissible base <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> related to those at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>:
         defined and admissible (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#adm_rec_params"><span class="id" title="projection">adm_rec_params</span></a></span> at the components
         themselves). 
 </div>
@@ -1327,7 +1327,7 @@ The parameters at the end of a shape of an argument, among
 
 <div class="doc">
 The domains of a shape of an argument at two bases, after prefixes
-        related to the ones at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>, as <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#shape_neut"><span class="id" title="lemma">shape_neut</span></a></span> has them. 
+        related to the ones at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>, as <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#shape_neut"><span class="id" title="lemma">shape_neut</span></a></span> has them. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="shape_doms_fresh" class="idref" href="#shape_doms_fresh"><span class="id" title="lemma">shape_doms_fresh</span></a> : <span class="id" title="keyword">forall</span> <a id="ua1:499" class="idref" href="#ua1:499"><span class="id" title="binder">ua1</span></a> <a id="ua2:500" class="idref" href="#ua2:500"><span class="id" title="binder">ua2</span></a> <a id="m:501" class="idref" href="#m:501"><span class="id" title="binder">m</span></a> <a id="Mm:502" class="idref" href="#Mm:502"><span class="id" title="binder">Mm</span></a> <a id="c:503" class="idref" href="#c:503"><span class="id" title="binder">c</span></a> <a id="gs1:504" class="idref" href="#gs1:504"><span class="id" title="binder">gs1</span></a> <a id="t0:505" class="idref" href="#t0:505"><span class="id" title="binder">t0</span></a> <a id="gs2:506" class="idref" href="#gs2:506"><span class="id" title="binder">gs2</span></a> <a id="nsu:507" class="idref" href="#nsu:507"><span class="id" title="binder">nsu</span></a> <a id="ns1:508" class="idref" href="#ns1:508"><span class="id" title="binder">ns1</span></a> <a id="ns2:509" class="idref" href="#ns2:509"><span class="id" title="binder">ns2</span></a> <a id="wsu:510" class="idref" href="#wsu:510"><span class="id" title="binder">wsu</span></a> <a id="ws1:511" class="idref" href="#ws1:511"><span class="id" title="binder">ws1</span></a> <a id="ws2:512" class="idref" href="#ws2:512"><span class="id" title="binder">ws2</span></a>,<br/>
@@ -1408,7 +1408,7 @@ The domain reads only the components before it.
 </div>
 
 <div class="doc">
-The domains of the shapes of the arguments <span class="inlinecode"><span class="id" title="var">vs</span></span> and <span class="inlinecode"><span class="id" title="var">vs'</span></span> of kinds
+The domains of the shapes of the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> and <span class="inlinecode"><span class="id" title="var">vs'</span></span> of kinds
         <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, after <span class="inlinecode"><a class="idref" href="Mctt.Extraction.CommandRun.html#pre"><span class="id" title="record">pre</span></a></span> and <span class="inlinecode"><span class="id" title="var">pre'</span></span>, each extended by
         the non-recursive arguments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#shape_doms_ok"><span class="id" title="inductive">shape_doms_ok</span></a></span>). 
 </div>
@@ -1512,7 +1512,7 @@ At related fields, from the start.
 
 <div class="doc">
 The arguments of a constructor of any member, after related
-        non-uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.ns"><span class="id" title="variable">ns</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.ns'"><span class="id" title="variable">ns'</span></a></span> and related non-recursive
+        non-uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.ns"><span class="id" title="variable">ns</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.ns'"><span class="id" title="variable">ns'</span></a></span> and related non-recursive
         arguments: the domains of their shapes at two admissible uniform
         parameters (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#adm_shape_doms"><span class="id" title="projection">adm_shape_doms</span></a></span>). 
 </div>
@@ -1558,13 +1558,13 @@ The arguments of a constructor of any member, after related
 </div>
 
 <div class="doc">
-<a id="lab624"></a><h2 class="section">The Eliminator at Related Elements</h2>
+<a id="lab633"></a><h2 class="section">The Eliminator at Related Elements</h2>
 
 
 <div class="paragraph"> </div>
 
         Two eliminators of the group, their blocks <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.Bksa"><span class="id" title="variable">Bksa</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.Bksb"><span class="id" title="variable">Bksb</span></a></span>
-        closures in <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span>, the family <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.ElimRel.Rel"><span class="id" title="variable">Rel</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> of each member's
+        closures in <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and <span class="inlinecode">ρ<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>, the family <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Rel"><span class="id" title="abbreviation">Rel</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> of each member's
         motives, the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ub"><span class="id" title="variable">ub</span></a></span> they carry.  Their
         motives are related at related elements, and their branches at
         related constructors and related recursive results.
@@ -1572,7 +1572,7 @@ The arguments of a constructor of any member, after related
 <div class="paragraph"> </div>
 
         The uniform parameters of the eliminators, as the blocks are read
-        at them: admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>, each member's type defined at
+        at them: admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>, each member's type defined at
         them, and the uniform parameters of the member's container (its own
         group's at a declared member) reading back alike, as the read
         eliminator carries them. 
@@ -1596,7 +1596,7 @@ So has <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Induct
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span> is admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span> is admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;; <a id="elim_ups_ok_adm_a" class="idref" href="#elim_ups_ok_adm_a"><span class="id" title="projection">elim_ups_ok_adm_a</span></a> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#adm_uparams"><span class="id" title="record">adm_uparams</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.D"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.ups"><span class="id" title="variable">ups</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.nr"><span class="id" title="variable">nr</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.ar"><span class="id" title="variable">ar</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.dr"><span class="id" title="variable">dr</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#ua:645"><span class="id" title="variable">ua</span></a><br/>
@@ -1635,8 +1635,8 @@ The containers' uniform parameters at <span class="inlinecode"><a class="idref" 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The left one of two elements of a member at any bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> and
-            <span class="inlinecode"><span class="id" title="var">u'</span></span> admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> reads back at the member's type at
+The left one of two elements of a member at any bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> and
+            <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.u'"><span class="id" title="variable">u'</span></a></span> admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> reads back at the member's type at
             <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span>, at any indices related to its own: the type a motive's
             scrutinee is stored at, a stuck eliminator's
             (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_elim_neut"><span class="id" title="constructor">eval_elim_neut</span></a></span>), a recursive argument's (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_ihty_self"><span class="id" title="constructor">eval_ihty_self</span></a></span>)
@@ -1678,8 +1678,8 @@ And the right one at <span class="inlinecode"><a class="idref" href="Mctt.Core.S
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The left one of two elements of a record view at any bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span>
-            and <span class="inlinecode"><span class="id" title="var">u'</span></span> admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span> reads back at the record type
+The left one of two elements of a record view at any bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span>
+            and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.u'"><span class="id" title="variable">u'</span></a></span> admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> reads back at the record type
             at the view's instance at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span>: the type a branch stores a
             recursive argument of a shape ending at the view at
             (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_shape_type_rview"><span class="id" title="constructor">eval_shape_type_rview</span></a></span>).  For <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode">≔</span> <span class="inlinecode"><span class="id" title="var">node</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.r"><span class="id" title="variable">r</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#Clusters.R"><span class="id" title="variable">R</span></a>)</span> with the
@@ -1798,8 +1798,8 @@ Neutrals of a record view's record, at its instances at <span class="inlinecode"
 The recursive results <span class="inlinecode"><span class="id" title="var">rs</span></span> and <span class="inlinecode"><span class="id" title="var">rs'</span></span> of recursive arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>
           and <span class="inlinecode"><span class="id" title="var">v'</span></span> of shape <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, one per leaf path of the
           shape, after the values <span class="inlinecode"><a class="idref" href="Mctt.Extraction.CommandRun.html#pre"><span class="id" title="record">pre</span></a></span> and <span class="inlinecode"><span class="id" title="var">pre'</span></span> of the shape's
-          components on each side, the bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> and <span class="inlinecode"><span class="id" title="var">u'</span></span> apart: at the end
-          at a member with a block, related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.ElimRel.Rel"><span class="id" title="variable">Rel</span></a></span> at the parameters the
+          components on each side, the bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.u'"><span class="id" title="variable">u'</span></a></span> apart: at the end
+          at a member with a block, related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Rel"><span class="id" title="abbreviation">Rel</span></a></span> at the parameters the
           shape evaluates to on each side; at a record view, those of its
           fields at the projections; and at a domain, pointwise. 
 </div>
@@ -1809,8 +1809,8 @@ The recursive results <span class="inlinecode"><span class="id" title="var">rs</
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-At the end, at a member with a block: related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.ElimRel.Rel"><span class="id" title="variable">Rel</span></a></span> of the
-          member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>, the parameters evaluated in the environment of the
+At the end, at a member with a block: related at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Rel"><span class="id" title="abbreviation">Rel</span></a></span> of the
+          member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, the parameters evaluated in the environment of the
           components, of the telescope <span class="inlinecode"><span class="id" title="var">Ts</span></span> 
 </div>
 <div class="code">
@@ -1904,9 +1904,9 @@ A recursive argument's results, one per leaf path, are related
 </div>
 
 <div class="doc">
-What the eliminators give two related elements of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span>:
+What the eliminators give two related elements of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>:
           at a member with a block, the eliminators' values, related at
-          <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.ElimRel.Rel"><span class="id" title="variable">Rel</span></a></span>; at a record view, the recursive results of its fields at
+          <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Rel"><span class="id" title="abbreviation">Rel</span></a></span>; at a record view, the recursive results of its fields at
           the projections. 
 </div>
 <div class="code">
@@ -1965,7 +1965,7 @@ The branch's variables stored at any types they read back at
 </div>
 
 <div class="doc">
-<a id="lab625"></a><h3 class="section">The Family Is Invariant</h3>
+<a id="lab634"></a><h3 class="section">The Family Is Invariant</h3>
 
 </div>
 <div class="code">
@@ -2067,10 +2067,10 @@ A member but a record view has its type, the one <span class="inlinecode"><a cla
 
 <div class="doc">
 The entries of the motive at the end of a shape, as <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_ihty_self"><span class="id" title="constructor">eval_ihty_self</span></a></span>
-          types it at uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span> admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>: the
+          types it at uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>: the
           shape's parameters, related to an index at the type's base, and
           an element <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> of the member at the shape's type, read back when
-          <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> does at the member's type at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.X"><span class="id" title="variable">X</span></a></span>. 
+          <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> does at the member's type at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="motive_self_entries_readable" class="idref" href="#motive_self_entries_readable"><span class="id" title="lemma">motive_self_entries_readable</span></a> : <span class="id" title="keyword">forall</span> <a id="X:1030" class="idref" href="#X:1030"><span class="id" title="binder">X</span></a> <a id="63f6b208b5e062aef0540f777864ae14" class="idref" href="#63f6b208b5e062aef0540f777864ae14"><span class="id" title="binder">ρ</span></a> <a id="j:1032" class="idref" href="#j:1032"><span class="id" title="binder">j</span></a> <a id="Mj:1033" class="idref" href="#Mj:1033"><span class="id" title="binder">Mj</span></a> <a id="Ps:1034" class="idref" href="#Ps:1034"><span class="id" title="binder">Ps</span></a> <a id="bs:1035" class="idref" href="#bs:1035"><span class="id" title="binder">bs</span></a> <a id="base:1036" class="idref" href="#base:1036"><span class="id" title="binder">base</span></a> <a id="hd:1037" class="idref" href="#hd:1037"><span class="id" title="binder">hd</span></a> <a id="k':1038" class="idref" href="#k':1038"><span class="id" title="binder">k'</span></a> <a id="v:1039" class="idref" href="#v:1039"><span class="id" title="binder">v</span></a>,<br/>
@@ -2113,7 +2113,7 @@ A neutral of a member but a record view is one at any bases: the
 <div class="doc">
 Stuck eliminators at related neutrals of a member are defined,
           their motives, at the types they store the neutrals at, related
-          at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.ElimRel.Rel"><span class="id" title="variable">Rel</span></a></span> at the neutrals' own non-uniform parameters. 
+          at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Rel"><span class="id" title="abbreviation">Rel</span></a></span> at the neutrals' own non-uniform parameters. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="neut_elim_motive" class="idref" href="#neut_elim_motive"><span class="id" title="lemma">neut_elim_motive</span></a> : <span class="id" title="keyword">forall</span> <a id="j:1057" class="idref" href="#j:1057"><span class="id" title="binder">j</span></a> <a id="Mj:1058" class="idref" href="#Mj:1058"><span class="id" title="binder">Mj</span></a> <a id="u:1059" class="idref" href="#u:1059"><span class="id" title="binder">u</span></a> <a id="u':1060" class="idref" href="#u':1060"><span class="id" title="binder">u'</span></a> <a id="ns:1061" class="idref" href="#ns:1061"><span class="id" title="binder">ns</span></a> <a id="ns':1062" class="idref" href="#ns':1062"><span class="id" title="binder">ns'</span></a> <a id="hd:1063" class="idref" href="#hd:1063"><span class="id" title="binder">hd</span></a> <a id="k':1064" class="idref" href="#k':1064"><span class="id" title="binder">k'</span></a> <a id="as1:1065" class="idref" href="#as1:1065"><span class="id" title="binder">as1</span></a> <a id="as2:1066" class="idref" href="#as2:1066"><span class="id" title="binder">as2</span></a> <a id="e:1067" class="idref" href="#e:1067"><span class="id" title="binder">e</span></a> <a id="e':1068" class="idref" href="#e':1068"><span class="id" title="binder">e'</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_member"><span class="id" title="definition">ind_member</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Fixed_GCtx.ElimGroup.D"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#j:1057"><span class="id" title="variable">j</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Mj:1058"><span class="id" title="variable">Mj</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_is_rview"><span class="id" title="definition">im_is_rview</span></a> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#Mj:1058"><span class="id" title="variable">Mj</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
@@ -2220,7 +2220,7 @@ A stuck eliminator at neutrals of a member is defined.
 </div>
 
 <div class="doc">
-<a id="lab626"></a><h3 class="section">The Recursive Results along the Leaf Paths</h3>
+<a id="lab635"></a><h3 class="section">The Recursive Results along the Leaf Paths</h3>
 
 
 <div class="paragraph"> </div>
@@ -2245,7 +2245,7 @@ A stuck eliminator at neutrals of a member is defined.
 
 <div class="doc">
 The recursive results of the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> and <span class="inlinecode"><span class="id" title="var">v'</span></span> of shape
-          <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>, its components in <span class="inlinecode">ρ1</span> and <span class="inlinecode">ρ2</span>, along paths flagged <span class="inlinecode"><span class="id" title="var">bs</span></span>:
+          <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>, its components in <span class="inlinecode">ρ1</span> and <span class="inlinecode">ρ2</span>, along paths flagged <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.bs"><span class="id" title="variable">bs</span></a></span>:
           the types and the eliminator's results on each side, and results
           taken from either related by <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#Clusters.R"><span class="id" title="variable">R</span></a></span>. 
 </div>
@@ -2350,7 +2350,7 @@ Results taken from either are related
 </div>
 
 <div class="doc">
-Likewise of the arguments <span class="inlinecode"><span class="id" title="var">vs</span></span> and <span class="inlinecode"><span class="id" title="var">vs'</span></span> of kinds <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>. 
+Likewise of the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> and <span class="inlinecode"><span class="id" title="var">vs'</span></span> of kinds <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#[<span class="id" title="var">warnings</span>="-cannot-define-projection"]<br/>
@@ -2767,7 +2767,7 @@ An application: the rest at the function's values.
 </div>
 
 <div class="doc">
-<a id="lab627"></a><h3 class="section">The Readback of the Entries a Branch Binds</h3>
+<a id="lab636"></a><h3 class="section">The Readback of the Entries a Branch Binds</h3>
 
 
 <div class="paragraph"> </div>
@@ -2776,9 +2776,9 @@ An application: the rest at the function's values.
           shapes' types and their recursive results at their types
           (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#branch_entries"><span class="id" title="definition">branch_entries</span></a></span>), and its environment's entries read back
           there.  At a function shape the readback is η-directed: for
-          <span class="inlinecode"><span class="id" title="var">W</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">→</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>)</span> with <span class="inlinecode"><span class="id" title="var">sup</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">→</span> <span class="inlinecode"><span class="id" title="var">W</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>)</span>,
-          the branch of <span class="inlinecode"><span class="id" title="var">sup</span></span> binds <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> at <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">(<span class="id" title="var">W</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>)</span>, where <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span>
-          reads back as <span class="inlinecode"><span class="id" title="var">λ</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>.</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> read at <span class="inlinecode"><span class="id" title="var">W</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>: an element
+          <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">→</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>)</span> with <span class="inlinecode"><span class="id" title="var">sup</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">→</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>)</span>,
+          the branch of <span class="inlinecode"><span class="id" title="var">sup</span></span> binds <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> at <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>)</span>, where <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span>
+          reads back as <span class="inlinecode"><span class="id" title="var">λ</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>.</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> read at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>: an element
           again, as the fresh variable <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of the domain is related to
           itself (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#shape_doms_ok"><span class="id" title="inductive">shape_doms_ok</span></a></span>, from <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#rel_dom_apps_vars"><span class="id" title="projection">rel_dom_apps_vars</span></a></span>), and the
           domain reads back as a type (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#rel_dom_apps_types"><span class="id" title="projection">rel_dom_apps_types</span></a></span>).  At the end of
@@ -2919,8 +2919,8 @@ Related arguments of a shape at the bases <span class="inlinecode"><a class="idr
 </div>
 
 <div class="doc">
-Related arguments of a shape at any admissible bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> and
-          <span class="inlinecode"><span class="id" title="var">u'</span></span> read back at the shape's types at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ub"><span class="id" title="variable">ub</span></a></span>. 
+Related arguments of a shape at any admissible bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> and
+          <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.u'"><span class="id" title="variable">u'</span></a></span> read back at the shape's types at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ub"><span class="id" title="variable">ub</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="shape_elements_readable" class="idref" href="#shape_elements_readable"><span class="id" title="lemma">shape_elements_readable</span></a> : <span class="id" title="keyword">forall</span> <a id="t:1410" class="idref" href="#t:1410"><span class="id" title="binder">t</span></a> <a id="k:1411" class="idref" href="#k:1411"><span class="id" title="binder">k</span></a> <a id="u:1412" class="idref" href="#u:1412"><span class="id" title="binder">u</span></a> <a id="u':1413" class="idref" href="#u':1413"><span class="id" title="binder">u'</span></a> <a id="pre:1414" class="idref" href="#pre:1414"><span class="id" title="binder">pre</span></a> <a id="pre':1415" class="idref" href="#pre':1415"><span class="id" title="binder">pre'</span></a> <a id="Ts:1416" class="idref" href="#Ts:1416"><span class="id" title="binder">Ts</span></a> <a id="v:1417" class="idref" href="#v:1417"><span class="id" title="binder">v</span></a> <a id="v':1418" class="idref" href="#v':1418"><span class="id" title="binder">v'</span></a>,<br/>
@@ -3002,7 +3002,7 @@ Related recursive results of related arguments at the bases <span class="inlinec
           which are defined: at the end of a shape the motive's instance,
           at a function shape a <span class="inlinecode"><span class="id" title="var">Π</span></span> over the domain, whose η-directed
           readback applies them to a fresh variable of the domain, as for
-          <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">→</span> <span class="inlinecode"><span class="id" title="var">W</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> above, read at the motive's instance at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>. 
+          <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">→</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> above, read at the motive's instance at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="ih_results_readable_all" class="idref" href="#ih_results_readable_all"><span class="id" title="lemma">ih_results_readable_all</span></a> : <span class="id" title="keyword">forall</span> <a id="k:1425" class="idref" href="#k:1425"><span class="id" title="binder">k</span></a> <a id="u:1426" class="idref" href="#u:1426"><span class="id" title="binder">u</span></a> <a id="u':1427" class="idref" href="#u':1427"><span class="id" title="binder">u'</span></a>,<br/>
@@ -3288,7 +3288,7 @@ A branch's environment, as its values combined with their types.
 </div>
 
 <div class="doc">
-The non-recursive argument after <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.IndPER.Member.Shape.gs1"><span class="id" title="variable">gs1</span></a></span>. 
+The non-recursive argument after <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.gs1"><span class="id" title="variable">gs1</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="cargs_nonrec_nth_arg" class="idref" href="#cargs_nonrec_nth_arg"><span class="id" title="lemma">cargs_nonrec_nth_arg</span></a> : <span class="id" title="keyword">forall</span> <a id="gs1:1614" class="idref" href="#gs1:1614"><span class="id" title="binder">gs1</span></a> <a id="r:1615" class="idref" href="#r:1615"><span class="id" title="binder">r</span></a> <a id="A:1616" class="idref" href="#A:1616"><span class="id" title="binder">A</span></a> <a id="gs2:1617" class="idref" href="#gs2:1617"><span class="id" title="binder">gs2</span></a>,<br/>
@@ -3434,7 +3434,7 @@ The entries of a branch at related constructors at any
 </div>
 
 <div class="doc">
-<a id="lab628"></a><h3 class="section">Reading the Blocks of a Stuck Eliminator</h3>
+<a id="lab637"></a><h3 class="section">Reading the Blocks of a Stuck Eliminator</h3>
 
 
 <div class="paragraph"> </div>
@@ -3563,8 +3563,8 @@ The recursive results are related
 
 <div class="doc">
 What two related constructors of a member with a block are made
-          of, at their uniform parameters <span class="inlinecode"><span class="id" title="var">bs</span></span> and <span class="inlinecode"><span class="id" title="var">bs'</span></span> of the member's
-          own count and arguments <span class="inlinecode"><span class="id" title="var">vs</span></span> and <span class="inlinecode"><span class="id" title="var">vs'</span></span>. 
+          of, at their uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.bs"><span class="id" title="variable">bs</span></a></span> and <span class="inlinecode"><span class="id" title="var">bs'</span></span> of the member's
+          own count and arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> and <span class="inlinecode"><span class="id" title="var">vs'</span></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#[<span class="id" title="var">warnings</span>="-cannot-define-projection"]<br/>
@@ -3967,7 +3967,7 @@ The block's scrutinee type: the member's type at the fresh
 </div>
 
 <div class="doc">
-<a id="lab629"></a><h3 class="section">The Fresh Arguments of a Branch</h3>
+<a id="lab638"></a><h3 class="section">The Fresh Arguments of a Branch</h3>
 
 
 <div class="paragraph"> </div>
@@ -3975,7 +3975,7 @@ The block's scrutinee type: the member's type at the fresh
           A stuck eliminator reads a branch under fresh arguments of its
           member's constructor at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ub"><span class="id" title="variable">ub</span></a></span>, the
           fresh variables of each telescope at them related to those at
-          <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>, and fresh recursive results where the group read has the
+          <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>, and fresh recursive results where the group read has the
           argument recursive.  An argument the view nests through, or a
           leaf path of one the container has as a non-recursive field, has
           the eliminator's recursive result, stuck at a member of lower rank
@@ -4428,14 +4428,14 @@ The paths nested through end at members of rank below <span class="inlinecode"><
 </div>
 
 <div class="doc">
-<a id="lab630"></a><h3 class="section">The Blocks</h3>
+<a id="lab639"></a><h3 class="section">The Blocks</h3>
 
 
 <div class="paragraph"> </div>
 
           Each block of a stuck eliminator: the one of the member <span class="inlinecode"><span class="id" title="var">Mi</span></span> of
           the group read, the block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span> of this group
-          <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#elim_src"><span class="id" title="definition">elim_src</span></a></span> <span class="inlinecode"><span class="id" title="var">sel</span></span> <span class="inlinecode"><span class="id" title="var">i0</span></span> gives, at admissible uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span> and
+          <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#elim_src"><span class="id" title="definition">elim_src</span></a></span> <span class="inlinecode"><span class="id" title="var">sel</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Records.Former.html#Fixed_GCtx.RecordFormer.Former.i0"><span class="id" title="variable">i0</span></a></span> gives, at admissible uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span> and
           <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ub"><span class="id" title="variable">ub</span></a></span>, when <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span>'s constructors are <span class="inlinecode"><span class="id" title="var">Mi</span></span>'s and their arguments of
           compatible kinds, and the eliminator's results at the members
           the arguments nested through end in are related. 
@@ -4518,7 +4518,7 @@ The paths nested through end at members of rank below <span class="inlinecode"><
 </div>
 
 <div class="doc">
-<a id="lab631"></a><h3 class="section">The Stuck Eliminator at a Member</h3>
+<a id="lab640"></a><h3 class="section">The Stuck Eliminator at a Member</h3>
 
 
 <div class="paragraph"> </div>
@@ -4632,7 +4632,7 @@ as many of the group's paths are the container's as the
 </div>
 
 <div class="doc">
-<a id="lab632"></a><h2 class="section">The Stuck Eliminator</h2>
+<a id="lab641"></a><h2 class="section">The Stuck Eliminator</h2>
 
 
 <div class="paragraph"> </div>
@@ -4679,12 +4679,12 @@ The recursive results of a function shape, applied: those of the
 </div>
 
 <div class="doc">
-<a id="lab633"></a><h2 class="section">Related Elements Eliminate to Related Values</h2>
+<a id="lab642"></a><h2 class="section">Related Elements Eliminate to Related Values</h2>
 
 
 <div class="paragraph"> </div>
 
-          At any bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span> and <span class="inlinecode"><span class="id" title="var">u'</span></span> admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ViewCoherence.html#Fixed_GCtx.ViewCoh.ups"><span class="id" title="variable">ups</span></a></span>: a branch's
+          At any bases <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.u'"><span class="id" title="variable">u'</span></a></span> admissible beside <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span>: a branch's
           entries are read back at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ua"><span class="id" title="variable">ua</span></a></span>'s and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.ReadPairs.html#Fixed_GCtx.ReadPairs.ub"><span class="id" title="variable">ub</span></a></span>'s types, which the
           elements at those bases are elements of (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.IndElim.html#elim_ups_ok"><span class="id" title="record">elim_ups_ok</span></a></span>).  For
           <span class="inlinecode"><span class="id" title="var">Vec</span></span> eliminated at <span class="inlinecode"><span class="id" title="var">w1</span></span> and a scrutinee <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#cons"><span class="id" title="constructor">cons</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><span class="id" title="var">xs</span></span> at the

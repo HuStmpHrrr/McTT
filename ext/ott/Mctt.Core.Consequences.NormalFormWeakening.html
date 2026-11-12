@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab699"></a><h1 class="section">NbE Commutes with Weakening</h1>
+<a id="lab955"></a><h1 class="section">NbE Commutes with Weakening</h1>
 
 
 <div class="paragraph"> </div>
@@ -93,7 +93,7 @@
 </div>
 
 <div class="doc">
-<a id="lab700"></a><h2 class="section">NbE Commutes with Weakening</h2>
+<a id="lab956"></a><h2 class="section">NbE Commutes with Weakening</h2>
 
 
 <div class="paragraph"> </div>
@@ -188,7 +188,7 @@ their propositions: the weakened type reads back, one variable
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Realizability.html#per_univ_then_per_top_typ"><span class="id" title="lemma">per_univ_then_per_top_typ</span></a> <span class="id" title="var">HR</span>σ<span class="id" title="var">T</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#length"><span class="id" title="definition">length</span></a> <span class="id" title="var">Γ</span>))) <span class="id" title="keyword">as</span> [<span class="id" title="var">D1</span> <span class="id" title="var">D2</span> <span class="id" title="var">HD1</span> <span class="id" title="var">HD2</span> <span class="id" title="var">HE</span>].<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Realizability.html#read_nf_propositional"><span class="id" title="lemma">read_nf_propositional</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hp</span> <span class="id" title="var">HW0</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">C0</span> &amp; <span class="id" title="var">P0</span> &amp; -&gt; &amp; <span class="id" title="var">HC0</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Semantic.Realizability.html#read_nf_propositional"><span class="id" title="lemma">read_nf_propositional</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hp</span> <span class="id" title="var">HW0</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">C0</span> &amp; <span class="id" title="var">P0</span> &amp; -&gt; &amp; <span class="id" title="var">HC0</span> &amp; <span class="id" title="var">_</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Semantic.Rename.html#read_typ_shift"><span class="id" title="lemma">read_typ_shift</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Γ</span> ρ0 <span class="id" title="var">T</span> <span class="id" title="var">aT</span> <span class="id" title="var">C0</span> <span class="id" title="var">D2</span> <span class="id" title="var">H</span>ρ' <span class="id" title="var">HaT</span> <span class="id" title="var">HC0</span> <span class="id" title="var">HD2</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Hs</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_proof"><span class="id" title="constructor">nf_proof</span></a> <span class="id" title="var">D1</span> <span class="id" title="var">P</span>); <span class="id" title="tactic">split</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">econstructor</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span>ρ1 | <span class="id" title="tactic">exact</span> <span class="id" title="var">Ha</span>σ<span class="id" title="var">E</span> | <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Semantic.NbE.html#nbe_term_proof"><span class="id" title="constructor">nbe_term_proof</span></a>; [ <span class="id" title="tactic">congruence</span> | <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_nf_proof"><span class="id" title="constructor">read_nf_proof</span></a>; [ <span class="id" title="tactic">congruence</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">HD1</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">HPr</span> ] ] ].<br/>
@@ -199,7 +199,7 @@ their propositions: the weakened type reads back, one variable
 <div class="doc">
 A type of an evaluated kind: the value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a>[↑]</span> is related to
         that of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, so they read back alike one variable further out,
-        where the value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> reads back as the weakening of <span class="inlinecode"><span class="id" title="var">W</span></span>
+        where the value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> reads back as the weakening of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>
         (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#read_shift"><span class="id" title="lemma">read_shift</span></a></span>) 
 </div>
 <div class="code">
@@ -240,7 +240,7 @@ A type of an evaluated kind: the value of <span class="inlinecode"><a class="idr
 </div>
 
 <div class="doc">
-<a id="lab701"></a><h2 class="section">NbE Invents No Variables, Semantically</h2>
+<a id="lab957"></a><h2 class="section">NbE Invents No Variables, Semantically</h2>
 
 
 <div class="paragraph"> </div>
@@ -269,7 +269,7 @@ A type of an evaluated kind: the value of <span class="inlinecode"><a class="idr
 </div>
 
 <div class="doc">
-<a id="lab702"></a><h2 class="section">Strengthening an Equation</h2>
+<a id="lab958"></a><h2 class="section">Strengthening an Equation</h2>
 
 
 <div class="paragraph"> </div>
@@ -298,7 +298,7 @@ A type of an evaluated kind: the value of <span class="inlinecode"><a class="idr
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Eupto</span> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_upto_proofs"><span class="id" title="definition">nf_eq_upto_proofs</span></a> <span class="id" title="var">WM</span> <span class="id" title="var">WN</span>).<br/>
 &nbsp;&nbsp;{ <span class="id" title="tactic">eapply</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#proj1"><span class="id" title="lemma">proj1</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#nf_ne_wk_inj_upto_proofs"><span class="id" title="lemma">nf_ne_wk_inj_upto_proofs</span></a>); [ <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#wk_left_inverse_shift"><span class="id" title="lemma">wk_left_inverse_shift</span></a> |].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">etransitivity</span>; [ <span class="id" title="tactic">symmetry</span>; <span class="id" title="tactic">exact</span> <span class="id" title="var">EM</span> |]; <span class="id" title="var">etransitivity</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HE</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">EN</span> ]. }<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Soundness.html#soundness_upto_proofs"><span class="id" title="axiom">soundness_upto_proofs</span></a> <span class="id" title="var">HM</span> <span class="id" title="var">HN</span> <span class="id" title="var">HnM</span> <span class="id" title="var">HnN</span> <span class="id" title="var">Eupto</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Soundness.html#soundness_upto_proofs"><span class="id" title="lemma">soundness_upto_proofs</span></a> <span class="id" title="var">HM</span> <span class="id" title="var">HN</span> <span class="id" title="var">HnM</span> <span class="id" title="var">HnN</span> <span class="id" title="var">Eupto</span>).<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>

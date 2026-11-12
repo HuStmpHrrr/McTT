@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab657"></a><h1 class="section">NbE Invents No Variables</h1>
+<a id="lab666"></a><h1 class="section">NbE Invents No Variables</h1>
 
 
 <div class="paragraph"> </div>
@@ -46,8 +46,8 @@
 
 <div class="paragraph"> </div>
 
-    The invariant is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span>: the value <span class="inlinecode"><span class="id" title="var">d</span></span> mentions no de Bruijn level
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, and only levels below <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span>.  It cannot be stated on environments
+    The invariant is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span>: the value <span class="inlinecode"><span class="id" title="var">d</span></span> mentions no de Bruijn level
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, and only levels below <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>.  It cannot be stated on environments
     alone: the environment of the extended context holds the new variable,
     at index <span class="inlinecode">0</span>, and so does every closure built in it.  What makes the
     value fresh is that the weakened term never *reads* that index.  So a
@@ -81,7 +81,7 @@
 </div>
 
 <div class="doc">
-<a id="lab658"></a><h2 class="section">Freshness at an Optional Position</h2>
+<a id="lab667"></a><h2 class="section">Freshness at an Optional Position</h2>
 
 </div>
 <div class="code">
@@ -147,7 +147,7 @@ The blocks of an eliminator: each motive fresh under the binders it
 </div>
 
 <div class="doc">
-<a id="lab659"></a><h2 class="section">The Invariant</h2>
+<a id="lab668"></a><h2 class="section">The Invariant</h2>
 
 
 <div class="paragraph"> </div>
@@ -212,7 +212,7 @@ At a function shape: the rest's
 
 <div class="doc">
 <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span>: the value <span class="inlinecode"><span class="id" title="var">d</span></span> mentions no level <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, and only levels below
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span> (see the file header); mutually, for neutrals, normal values,
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> (see the file header); mutually, for neutrals, normal values,
       module values, level atoms and environment entries. 
 </div>
 <div class="code">
@@ -406,7 +406,7 @@ A tuple of avoiding fields
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-A variable other than <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, below <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Eval.b"><span class="id" title="variable">b</span></a></span> 
+A variable other than <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, below <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;| <a id="domain_avoids_var" class="idref" href="#domain_avoids_var"><span class="id" title="constructor">domain_avoids_var</span></a> : <span class="id" title="keyword">forall</span> <a id="x:149" class="idref" href="#x:149"><span class="id" title="binder">x</span></a>, <a class="idref" href="Mctt.Core.Semantic.Avoid.html#x:149"><span class="id" title="variable">x</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#::type_scope:x_'&lt;&gt;'_x"><span class="id" title="notation">&lt;&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Avoid.v"><span class="id" title="variable">v</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Avoid.html#x:149"><span class="id" title="variable">x</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#::nat_scope:x_'&lt;'_x"><span class="id" title="notation">&lt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Avoid.html#Global.Avoid.b"><span class="id" title="variable">b</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_ne_avoids:63"><span class="id" title="inductive">domain_ne_avoids</span></a> (<a class="idref" href="Mctt.Core.Semantic.Domain.html#794796e12831144a16bf49dec0c1542c"><span class="id" title="notation">#ᵈ</span></a> <a class="idref" href="Mctt.Core.Semantic.Avoid.html#x:149"><span class="id" title="variable">x</span></a>)<br/>
@@ -561,7 +561,7 @@ The bound only grows.
 </div>
 
 <div class="doc">
-<a id="lab660"></a><h2 class="section">Environments</h2>
+<a id="lab669"></a><h2 class="section">Environments</h2>
 
 </div>
 <div class="code">
@@ -705,7 +705,7 @@ The atoms of a level value avoid <span class="inlinecode"><a class="idref" href=
 </div>
 
 <div class="doc">
-<a id="lab661"></a><h2 class="section">Freshness Through the Module Syntax</h2>
+<a id="lab670"></a><h2 class="section">Freshness Through the Module Syntax</h2>
 
 </div>
 <div class="code">
@@ -991,7 +991,7 @@ Freshness does not read the group or the member of an eliminator, so
 </div>
 
 <div class="doc">
-<a id="lab662"></a><h2 class="section">Evaluation Builds No Variable</h2>
+<a id="lab671"></a><h2 class="section">Evaluation Builds No Variable</h2>
 
 </div>
 <div class="code">
@@ -1706,7 +1706,7 @@ As many recursive results a branch is read under as the group's
 </div>
 
 <div class="doc">
-The motive of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.RviewEnds.html#Fixed_GCtx.RviewArgs.j"><span class="id" title="variable">j</span></a></span> of the group read, among the blocks'
+The motive of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> of the group read, among the blocks'
     motives: a block's, the one <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#elim_src"><span class="id" title="definition">elim_src</span></a></span> gives, or the default. 
 </div>
 <div class="code">
@@ -1822,13 +1822,13 @@ And so of every recursive argument of a constructor of <span class="inlinecode">
 </div>
 
 <div class="doc">
-<a id="lab663"></a><h2 class="section">Freshness Outside Proofs</h2>
+<a id="lab672"></a><h2 class="section">Freshness Outside Proofs</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#nf_fresh_outside_proofs"><span class="id" title="definition">nf_fresh_outside_proofs</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><span class="id" title="var">W</span></span>: the variable <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> does not occur in the
-    normal form <span class="inlinecode"><span class="id" title="var">W</span></span> outside its proofs; mutually, in the neutral <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.RecordPER.html#Fixed_GCtx.Canon.u"><span class="id" title="variable">u</span></a></span>.  A
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#nf_fresh_outside_proofs"><span class="id" title="definition">nf_fresh_outside_proofs</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>: the variable <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> does not occur in the
+    normal form <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> outside its proofs; mutually, in the neutral <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.u"><span class="id" title="variable">u</span></a></span>.  A
     proof is read back as its term under definitions of the entries it
     reads (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_proof_kept"><span class="id" title="constructor">read_proof_kept</span></a></span>), which may include <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, and normal forms are
     compared up to their proofs, so proof terms are exempt; the
@@ -1862,7 +1862,7 @@ And so of every recursive argument of a constructor of <span class="inlinecode">
 </div>
 
 <div class="doc">
-<a id="lab664"></a><h2 class="section">Readback Introduces Only Variables Above the Ones in Scope</h2>
+<a id="lab673"></a><h2 class="section">Readback Introduces Only Variables Above the Ones in Scope</h2>
 
 </div>
 <div class="code">
@@ -2585,7 +2585,7 @@ Under a binder: the closure is evaluated at a neutral at the readback
 </div>
 
 <div class="doc">
-<a id="lab665"></a><h2 class="section">The Initial Environment, and the Corollary</h2>
+<a id="lab674"></a><h2 class="section">The Initial Environment, and the Corollary</h2>
 
 <div class="paragraph"> </div>
 

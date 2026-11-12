@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1350"></a><h1 class="section">The View Search, as a Total Function</h1>
+<a id="lab1608"></a><h1 class="section">The View Search, as a Total Function</h1>
 
 
 <div class="paragraph"> </div>
@@ -42,8 +42,8 @@
     in <span class="inlinecode"><span class="id" title="library">Core.Syntactic.Inductives.Group</span></span>) from the instances its
     constructors meet.  This file computes them with no fuel, generically
     over the data the checker files for each view: a functional relation
-    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> ("the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> has the data <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span>", from which its siblings
-    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.sibs_of"><span class="id" title="variable">sibs_of</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and the instances its constructors meet <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.meets_of"><span class="id" title="variable">meets_of</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span> are
+    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> ("the view <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> has the data <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>", from which its siblings
+    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.sibs_of"><span class="id" title="variable">sibs_of</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> and the instances its constructors meet <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.meets_of"><span class="id" title="variable">meets_of</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> are
     read), decided by <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E_dec"><span class="id" title="variable">E_dec</span></a></span>.
 
 <div class="paragraph"> </div>
@@ -91,7 +91,7 @@ The data of a view.
 </div>
 
 <div class="doc">
-The view <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> has the data <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span>. 
+The view <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> has the data <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Variable</span> <a id="Search.E" class="idref" href="#Search.E"><span class="id" title="variable">E</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#view_key"><span class="id" title="inductive">view_key</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="keyword">Prop</span>.<br/>
@@ -302,7 +302,7 @@ A view a run finds is one found before, or of no view found before.
 </div>
 
 <div class="doc">
-<a id="lab1351"></a><h2 class="section">The Search's Order</h2>
+<a id="lab1609"></a><h2 class="section">The Search's Order</h2>
 
 
 <div class="paragraph"> </div>
@@ -534,7 +534,7 @@ The search from no view found and the declared members' instances,
 </div>
 
 <div class="doc">
-<a id="lab1352"></a><h2 class="section">Finiteness from Clusters</h2>
+<a id="lab1610"></a><h2 class="section">Finiteness from Clusters</h2>
 
 <div class="paragraph"> </div>
 

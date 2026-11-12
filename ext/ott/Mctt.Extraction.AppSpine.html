@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1420"></a><h1 class="section">Checking an Application Spine Against the Value of the Head's Type</h1>
+<a id="lab1678"></a><h1 class="section">Checking an Application Spine Against the Value of the Head's Type</h1>
 
 
 <div class="paragraph"> </div>
@@ -68,7 +68,7 @@
 </div>
 
 <div class="doc">
-The value an argument <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span> is bound to at a domain of the value <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#a"><span class="id" title="projection">a</span></a></span>,
+The value an argument <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span> is bound to at a domain of the value <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>,
     in the environment <span class="inlinecode">ρ</span>, as an application (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_exp_app"><span class="id" title="constructor">eval_exp_app</span></a></span>,
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_exp_app_proof"><span class="id" title="constructor">eval_exp_app_proof</span></a></span>) and a local definition (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_exp_let"><span class="id" title="constructor">eval_exp_let</span></a></span>,
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_exp_let_proof"><span class="id" title="constructor">eval_exp_let_proof</span></a></span>) bind it. 
@@ -162,16 +162,16 @@ The sort, a type of a large universe
 </div>
 
 <div class="doc">
-<a id="lab1421"></a><h2 class="section">The Spine Invariant</h2>
+<a id="lab1679"></a><h2 class="section">The Spine Invariant</h2>
 
 
 <div class="paragraph"> </div>
 
     The spine keeps the type of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><span class="id" title="var">N₁</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a>ᵢ</span> as a value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>; the reference
-    keeps its normal form <span class="inlinecode"><span class="id" title="var">W</span>ᵢ</span>.  The invariant is that <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> is related, in a
-    universe, to the value of <span class="inlinecode"><span class="id" title="var">W</span>ᵢ</span> at the initial environment.  Its proofs
+    keeps its normal form <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a>ᵢ</span>.  The invariant is that <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> is related, in a
+    universe, to the value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a>ᵢ</span> at the initial environment.  Its proofs
     read a normal form back as a type equal to the one it normalizes
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty_at_sort"><span class="id" title="lemma">soundness_ty_at_sort</span></a></span>), so they rest on soundness (PENDING M2), as
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty_at_sort"><span class="id" title="lemma">soundness_ty_at_sort</span></a></span>), so they rest on soundness, as
     the algorithmic soundness the checker's postconditions rest on. 
 <div class="paragraph"> </div>
 
@@ -251,9 +251,9 @@ One step of the spine at a relevant codomain and a domain of an
     evaluated kind: if the spine's value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> of the head's type is related
     to the value of its normal form <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>.</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>, then the codomain closure of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> at the value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span> is related to the value of the normal form <span class="inlinecode"><span class="id" title="var">W1</span></span>
-    of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>[<span class="id" title="var">Id</span>,,<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a>]</span>, which is the reference's next type.  Its one open
-    dependency is soundness: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty'"><span class="id" title="lemma">soundness_ty'</span></a></span> / <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness"><span class="id" title="lemma">soundness</span></a></span> (PENDING M2),
-    through <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty_at_sort"><span class="id" title="lemma">soundness_ty_at_sort</span></a></span> in <span class="inlinecode"><a class="idref" href="Mctt.Extraction.AppSpine.html#per_univ_of_nbe_ty"><span class="id" title="lemma">per_univ_of_nbe_ty</span></a></span>. 
+    of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>[<span class="id" title="var">Id</span>,,<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a>]</span>, which is the reference's next type.  It rests on
+    soundness: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty'"><span class="id" title="lemma">soundness_ty'</span></a></span> / <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness"><span class="id" title="lemma">soundness</span></a></span>, through
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty_at_sort"><span class="id" title="lemma">soundness_ty_at_sort</span></a></span> in <span class="inlinecode"><a class="idref" href="Mctt.Extraction.AppSpine.html#per_univ_of_nbe_ty"><span class="id" title="lemma">per_univ_of_nbe_ty</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="spine_step_related" class="idref" href="#spine_step_related"><span class="id" title="lemma">spine_step_related</span></a> : <span class="id" title="keyword">forall</span> <a id="ea14d38694f8cf4deaf7317a2f1f13d4" class="idref" href="#ea14d38694f8cf4deaf7317a2f1f13d4"><span class="id" title="binder">Γ</span></a> <a id="a4e2f4c75d3135d1f7f660a39550fbec" class="idref" href="#a4e2f4c75d3135d1f7f660a39550fbec"><span class="id" title="binder">κd</span></a> <a id="A:46" class="idref" href="#A:46"><span class="id" title="binder">A</span></a> <a id="B:47" class="idref" href="#B:47"><span class="id" title="binder">B</span></a> <a id="N:48" class="idref" href="#N:48"><span class="id" title="binder">N</span></a> <a id="S:49" class="idref" href="#S:49"><span class="id" title="binder">S</span></a> <a id="e8d9f9e489db8f8f85a3d70724cda5f2" class="idref" href="#e8d9f9e489db8f8f85a3d70724cda5f2"><span class="id" title="binder">ρ</span></a> <a id="c:51" class="idref" href="#c:51"><span class="id" title="binder">c</span></a> <a id="a:52" class="idref" href="#a:52"><span class="id" title="binder">a</span></a> <a id="062faac3711fdebefc116ee1cc1fc99c" class="idref" href="#062faac3711fdebefc116ee1cc1fc99c"><span class="id" title="binder">ρ'</span></a> <a id="B':54" class="idref" href="#B':54"><span class="id" title="binder">B'</span></a> <a id="n:55" class="idref" href="#n:55"><span class="id" title="binder">n</span></a> (<a id="i:56" class="idref" href="#i:56"><span class="id" title="binder">i</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) <a id="W1:57" class="idref" href="#W1:57"><span class="id" title="binder">W1</span></a>,<br/>
@@ -352,9 +352,9 @@ A type related to a <span class="inlinecode"><span class="id" title="var">Π</sp
 
 <div class="doc">
 What the spine learns from a value <span class="inlinecode"><span class="id" title="var">Π</span></span> related to the value of the
-    reference's normal form <span class="inlinecode"><span class="id" title="var">W</span></span>: <span class="inlinecode"><span class="id" title="var">W</span></span> is a <span class="inlinecode"><span class="id" title="var">Π</span></span> at the same kinds, its value
+    reference's normal form <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> is a <span class="inlinecode"><span class="id" title="var">Π</span></span> at the same kinds, its value
     is the closure of its codomain, and the spine's domain reads back to
-    <span class="inlinecode"><span class="id" title="var">W</span></span>'s domain up to proofs. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>'s domain up to proofs. 
 </div>
 <div class="code">
 #[<span class="id" title="var">warnings</span>="-cannot-define-projection"]<br/>
@@ -362,14 +362,14 @@ What the spine learns from a value <span class="inlinecode"><span class="id" tit
 &nbsp;&nbsp;{ </div>
 
 <div class="doc">
-The domain of <span class="inlinecode"><span class="id" title="var">W</span></span> 
+The domain of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<a id="spine_type_pi_domain" class="idref" href="#spine_type_pi_domain"><span class="id" title="projection">spine_type_pi_domain</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf"><span class="id" title="inductive">nf</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The codomain of <span class="inlinecode"><span class="id" title="var">W</span></span> 
+The codomain of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="spine_type_pi_codomain" class="idref" href="#spine_type_pi_codomain"><span class="id" title="projection">spine_type_pi_codomain</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf"><span class="id" title="inductive">nf</span></a><br/>
@@ -383,7 +383,7 @@ The value of the domain
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">W</span></span> is the <span class="inlinecode"><span class="id" title="var">Π</span></span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> is the <span class="inlinecode"><span class="id" title="var">Π</span></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="spine_type_pi_shape" class="idref" href="#spine_type_pi_shape"><span class="id" title="projection">spine_type_pi_shape</span></a> : <a class="idref" href="Mctt.Extraction.AppSpine.html#W:69"><span class="id" title="variable">W</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_pi"><span class="id" title="constructor">nf_pi</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#d9ad0df15c3fecde16f804931cd300a9"><span class="id" title="variable">κd</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_relevant"><span class="id" title="constructor">ak_relevant</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#spine_type_pi_domain:75"><span class="id" title="method">spine_type_pi_domain</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#spine_type_pi_codomain:76"><span class="id" title="method">spine_type_pi_codomain</span></a><br/>
@@ -397,14 +397,14 @@ Its domain evaluates to that value
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">W</span></span>'s value is the closure of its codomain 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>'s value is the closure of its codomain 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="spine_type_pi_value" class="idref" href="#spine_type_pi_value"><span class="id" title="projection">spine_type_pi_value</span></a> : <a class="idref" href="Mctt.Extraction.AppSpine.html#t:71"><span class="id" title="variable">t</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#d_pi"><span class="id" title="constructor">d_pi</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#d9ad0df15c3fecde16f804931cd300a9"><span class="id" title="variable">κd</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_relevant"><span class="id" title="constructor">ak_relevant</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#spine_type_pi_domain_value:77"><span class="id" title="method">spine_type_pi_domain_value</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#ce3785401854158c53b28effa5de4c65"><span class="id" title="variable">ρ</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_to_exp"><span class="id" title="definition">nf_to_exp</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#spine_type_pi_codomain:76"><span class="id" title="method">spine_type_pi_codomain</span></a>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The spine's domain reads back to <span class="inlinecode"><span class="id" title="var">W</span></span>'s up to proofs 
+The spine's domain reads back to <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>'s up to proofs 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="spine_type_pi_domain_upto_proofs" class="idref" href="#spine_type_pi_domain_upto_proofs"><span class="id" title="projection">spine_type_pi_domain_upto_proofs</span></a> : <span class="id" title="keyword">forall</span> <a id="A':81" class="idref" href="#A':81"><span class="id" title="binder">A'</span></a>, <a class="idref" href="Mctt.Core.Semantic.Fixed.html#8db8cb48b875109ab2eecb5d80f4f9f9"><span class="id" title="notation">Rtyp</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#a:73"><span class="id" title="variable">a</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#8db8cb48b875109ab2eecb5d80f4f9f9"><span class="id" title="notation">in</span></a> <span class="id" title="abbreviation">List.length</span> <a class="idref" href="Mctt.Extraction.AppSpine.html#7414bf024cc8a6b3141a135f5f1ab24c"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#8db8cb48b875109ab2eecb5d80f4f9f9"><span class="id" title="notation">↘</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#A':81"><span class="id" title="variable">A'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_upto_proofs"><span class="id" title="definition">nf_eq_upto_proofs</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#A':81"><span class="id" title="variable">A'</span></a> <a class="idref" href="Mctt.Extraction.AppSpine.html#spine_type_pi_domain:75"><span class="id" title="method">spine_type_pi_domain</span></a> }.<br/>
@@ -413,7 +413,7 @@ The spine's domain reads back to <span class="inlinecode"><span class="id" title
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">W</span></span> is a normal form: its own normal form up to proofs, as an inferred
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> is a normal form: its own normal form up to proofs, as an inferred
     type is (<span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Lemmas.html#alg_type_infer_normal"><span class="id" title="lemma">alg_type_infer_normal</span></a></span>). 
 </div>
 <div class="code">
@@ -467,7 +467,7 @@ The start of the spine: the value of a normal form of a type at the
 
 <div class="doc">
 The end of the spine: a value related to the value of a normal form
-    <span class="inlinecode"><span class="id" title="var">W</span></span> reads back to <span class="inlinecode"><span class="id" title="var">W</span></span> up to proofs, and it reads back. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> reads back to <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> up to proofs, and it reads back. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="spine_readback_upto_proofs" class="idref" href="#spine_readback_upto_proofs"><span class="id" title="lemma">spine_readback_upto_proofs</span></a> : <span class="id" title="keyword">forall</span> <a id="34cd44dd39c6730766cf1b6ffd7a4239" class="idref" href="#34cd44dd39c6730766cf1b6ffd7a4239"><span class="id" title="binder">Γ</span></a> <a id="W:102" class="idref" href="#W:102"><span class="id" title="binder">W</span></a> <a id="64d03f4540734a055cc38bd430860583" class="idref" href="#64d03f4540734a055cc38bd430860583"><span class="id" title="binder">ρ</span></a> <a id="t:104" class="idref" href="#t:104"><span class="id" title="binder">t</span></a> <a id="v:105" class="idref" href="#v:105"><span class="id" title="binder">v</span></a> (<a id="i:106" class="idref" href="#i:106"><span class="id" title="binder">i</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) <a id="W':107" class="idref" href="#W':107"><span class="id" title="binder">W'</span></a>,<br/>

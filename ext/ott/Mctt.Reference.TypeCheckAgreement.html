@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1514"></a><h1 class="section">The Extracted Checker Infers the Reference Checker's Types</h1>
+<a id="lab1772"></a><h1 class="section">The Extracted Checker Infers the Reference Checker's Types</h1>
 
 
 <div class="paragraph"> </div>
@@ -47,10 +47,9 @@
 
 <div class="paragraph"> </div>
 
-    The only open dependency is the algorithmic soundness the extracted
+    The agreement rests on the algorithmic soundness the extracted
     checker's postconditions rest on: its spine relates values through
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty'"><span class="id" title="lemma">soundness_ty'</span></a></span> / <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness"><span class="id" title="lemma">soundness</span></a></span> (PENDING M2), as <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Lemmas.html#alg_type_infer_sound"><span class="id" title="lemma">alg_type_infer_sound</span></a></span>
-    does. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty'"><span class="id" title="lemma">soundness_ty'</span></a></span> / <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness"><span class="id" title="lemma">soundness</span></a></span>, as <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Lemmas.html#alg_type_infer_sound"><span class="id" title="lemma">alg_type_infer_sound</span></a></span> does. 
 </div>
 <div class="code">
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
@@ -162,7 +161,7 @@ The decision of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntac
 <div class="doc">
 The extracted checker infers the type the reference checker infers,
       at each environment and order.  Rests on <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty'"><span class="id" title="lemma">soundness_ty'</span></a></span> /
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness"><span class="id" title="lemma">soundness</span></a></span> (PENDING M2), through the extracted checker. 
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness"><span class="id" title="lemma">soundness</span></a></span>, through the extracted checker. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <a id="type_infer_in_agrees_with_reference" class="idref" href="#type_infer_in_agrees_with_reference"><span class="id" title="lemma">type_infer_in_agrees_with_reference</span></a> : <span class="id" title="keyword">forall</span> <a id="G:34" class="idref" href="#G:34"><span class="id" title="binder">G</span></a> (<a id="HG:35" class="idref" href="#HG:35"><span class="id" title="binder">HG</span></a> : <a class="idref" href="Mctt.Core.Semantic.Fixed.html#f478f7ff183196729a187ddd7c2a86f5"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Reference.TypeCheckAgreement.html#G:34"><span class="id" title="variable">G</span></a>) <a id="P:36" class="idref" href="#P:36"><span class="id" title="binder">P</span></a> <a id="M:37" class="idref" href="#M:37"><span class="id" title="binder">M</span></a> <a id="H:38" class="idref" href="#H:38"><span class="id" title="binder">H</span></a>,<br/>
@@ -177,8 +176,8 @@ The extracted checker infers the type the reference checker infers,
 The two checkers accept the same terms, parameters, units, module
       expressions, bodies (with the same elaborations) and extensions:
       every judgment the mutual block decides goes through its
-      applications.  Rests on <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty'"><span class="id" title="lemma">soundness_ty'</span></a></span> / <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness"><span class="id" title="lemma">soundness</span></a></span> (PENDING M2),
-      through the extracted checker. 
+      applications.  Rests on <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_ty'"><span class="id" title="lemma">soundness_ty'</span></a></span> / <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness"><span class="id" title="lemma">soundness</span></a></span>, through the
+      extracted checker. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <a id="type_check_in_agrees_with_reference" class="idref" href="#type_check_in_agrees_with_reference"><span class="id" title="lemma">type_check_in_agrees_with_reference</span></a> : <span class="id" title="keyword">forall</span> <a id="G:39" class="idref" href="#G:39"><span class="id" title="binder">G</span></a> <a id="A:40" class="idref" href="#A:40"><span class="id" title="binder">A</span></a> (<a id="HA:41" class="idref" href="#HA:41"><span class="id" title="binder">HA</span></a> : <a class="idref" href="Mctt.Reference.TypeCheckAgreement.html#G:39"><span class="id" title="variable">G</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#f95e99d4e07127553868402ebeb89505"><span class="id" title="notation">⊢ᵗ</span></a> <a class="idref" href="Mctt.Reference.TypeCheckAgreement.html#A:40"><span class="id" title="variable">A</span></a>) <a id="P:42" class="idref" href="#P:42"><span class="id" title="binder">P</span></a> <a id="M:43" class="idref" href="#M:43"><span class="id" title="binder">M</span></a> <a id="H:44" class="idref" href="#H:44"><span class="id" title="binder">H</span></a>,<br/>
