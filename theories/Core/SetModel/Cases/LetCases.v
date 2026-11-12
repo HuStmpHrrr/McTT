@@ -73,10 +73,6 @@ Qed.
 
 (** ** Local Modules *)
 
-(** The module a literal unit denotes is the unit's. *)
-Lemma set_interp_gunit_of_lit : forall Γ ρ U m, set_interp_modexp T γ Γ ρ (me_lit U) m -> set_interp_gunit T γ Γ ρ U m.
-Proof. intros * H. inversion H; subst. assumption. Qed.
-
 (** A unit's module is equal to itself. *)
 Lemma set_modexp_denotes_refl : forall Γ H F ρ, set_modexp_denotes T γ Γ H F -> set_env_in T γ Γ ρ -> set_module_eq (F ρ) (F ρ).
 Proof. intros * HF Hρ. exact (set_modexp_denotes_unique _ _ _ _ _ HF _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ)). Qed.
@@ -88,7 +84,7 @@ Lemma set_env_in_mod : forall Γ U FU ρ, set_modexp_denotes T γ Γ (me_lit U) 
     set_env_in T γ (ce_mod U :: Γ) (mod_env FU ρ).
 Proof.
   intros * HU Hρ. split; [exact Hρ |]. exists (FU ρ), (FU ρ), (FU ρ).
-  constructor; [reflexivity | reflexivity | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
+  constructor; [reflexivity | reflexivity | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
                | exact (set_modexp_denotes_refl _ _ _ _ HU Hρ) .. ].
 Qed.
 
@@ -110,7 +106,7 @@ Lemma set_denotes_let_mod : forall Γ U B FU FB, set_ctx T γ Γ -> ⊢ gc_deps 
     set_denotes T γ Γ (a_let (b_mod U) B) (fun ρ => FB (mod_env FU ρ)).
 Proof.
   intros * HΓ Hc HU HB. apply set_denotes_of_exists; [exact Hfn | exact Hmods | exact HΓ |]. intros ρ Hρ.
-  econstructor; [exact Hc | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ) |].
+  econstructor; [exact Hc | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ) |].
   apply (set_denotes_exists _ _ _ _ _ HB). apply set_env_in_mod; assumption.
 Qed.
 
@@ -141,7 +137,7 @@ Lemma set_env_in_dm : forall Γ A M U FM FU ρ, set_denotes T γ Γ M FM -> set_
 Proof.
   intros * HM HU Hρ. split; [exact Hρ |]. exists (FM ρ), (FM ρ), (FM ρ), (FU ρ), (FU ρ), (FU ρ).
   constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ)
-               | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
+               | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
                | apply set_eq_refl | apply set_eq_refl | exact (set_modexp_denotes_refl _ _ _ _ HU Hρ) .. ].
 Qed.
 
@@ -164,7 +160,7 @@ Lemma set_denotes_let_dm : forall Γ A M U B FM FU FB, set_ctx T γ Γ -> ⊢ gc
 Proof.
   intros * HΓ Hc HM HU HB. apply set_denotes_of_exists; [exact Hfn | exact Hmods | exact HΓ |]. intros ρ Hρ.
   econstructor; [exact Hc | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ)
-                | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ) |].
+                | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ) |].
   apply (set_denotes_exists _ _ _ _ _ HB). apply set_env_in_dm; assumption.
 Qed.
 
@@ -224,16 +220,16 @@ Proof.
   intros * HΓ Hc Hc' Hid Hσ [HU HU' EU _] [HC HB HB' EB HBm].
   assert (Hin' : forall ρ, set_env_in T γ Γ ρ -> set_env_in T γ (ce_mod U :: Γ) (mod_env FU' ρ)).
   { intros ρ Hρ. split; [exact Hρ |]. exists (FU' ρ), (FU' ρ), (FU ρ).
-    constructor; [reflexivity | reflexivity | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
+    constructor; [reflexivity | reflexivity | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
                  | apply set_module_eq_sym; apply EU; exact Hρ ..]. }
   assert (Hrel : forall ρ, set_env_in T γ Γ ρ -> set_env_rel T γ (ce_mod U :: Γ) (mod_env FU ρ) (mod_env FU' ρ)).
   { intros ρ Hρ. split; [exact Hρ |]. exists (FU ρ), (FU' ρ), (FU ρ).
-    constructor; [reflexivity | reflexivity | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
+    constructor; [reflexivity | reflexivity | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
                  | exact (set_modexp_denotes_refl _ _ _ _ HU Hρ) | apply set_module_eq_sym; apply EU; exact Hρ]. }
   exists (fun ρ => FC (mod_env FU ρ)), (fun ρ => FB (mod_env FU ρ)), (fun ρ => FB' (mod_env FU' ρ)).
   constructor; [apply set_denotes_mod_sub; assumption | apply set_denotes_let_mod; assumption | | |].
   - apply set_denotes_of_exists; [exact Hfn | exact Hmods | exact HΓ |]. intros ρ Hρ.
-    econstructor; [exact Hc' | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU' _ Hρ) |].
+    econstructor; [exact Hc' | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU' _ Hρ) |].
     apply (set_interp_ctx_conv _ _ _ _ _ _ _ Hc Hid). apply (set_denotes_exists _ _ _ _ _ HB'). apply Hin'; exact Hρ.
   - intros ρ Hρ. eapply set_eq_trans; [apply EB; apply set_env_in_mod; assumption |].
     apply set_eq_sym. exact (set_denotes_unique _ _ _ _ _ HB' _ _ _ (Hrel ρ Hρ) (set_denotes_exists _ _ _ _ _ HB' _ (Hin' ρ Hρ))).
@@ -253,20 +249,20 @@ Proof.
   assert (Hin' : forall ρ, set_env_in T γ Γ ρ -> set_env_in T γ (ce_dm A M U :: Γ) (dm_env FM' FU' ρ)).
   { intros ρ Hρ. split; [exact Hρ |]. exists (FM' ρ), (FM' ρ), (FM ρ), (FU' ρ), (FU' ρ), (FU ρ).
     constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ)
-                 | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
+                 | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
                  | apply set_eq_sym; apply EM; exact Hρ | apply set_eq_sym; apply EM; exact Hρ
                  | apply set_module_eq_sym; apply EU; exact Hρ | apply set_module_eq_sym; apply EU; exact Hρ]. }
   assert (Hrel : forall ρ, set_env_in T γ Γ ρ -> set_env_rel T γ (ce_dm A M U :: Γ) (dm_env FM FU ρ) (dm_env FM' FU' ρ)).
   { intros ρ Hρ. split; [exact Hρ |]. exists (FM ρ), (FM' ρ), (FM ρ), (FU ρ), (FU' ρ), (FU ρ).
     constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ)
-                 | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
+                 | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
                  | apply set_eq_refl | apply set_eq_sym; apply EM; exact Hρ
                  | exact (set_modexp_denotes_refl _ _ _ _ HU Hρ) | apply set_module_eq_sym; apply EU; exact Hρ]. }
   exists (fun ρ => FC (dm_env FM FU ρ)), (fun ρ => FB (dm_env FM FU ρ)), (fun ρ => FB' (dm_env FM' FU' ρ)).
   constructor; [apply set_denotes_dm_sub with (A := A); assumption | apply set_denotes_let_dm; assumption | | |].
   - apply set_denotes_of_exists; [exact Hfn | exact Hmods | exact HΓ |]. intros ρ Hρ.
     econstructor; [exact Hc' | exact (set_denotes_exists _ _ _ _ _ HM' _ Hρ)
-                  | apply set_interp_gunit_of_lit; exact (set_modexp_denotes_exists _ _ _ _ _ HU' _ Hρ) |].
+                  | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU' _ Hρ) |].
     apply (set_interp_ctx_conv _ _ _ _ _ _ _ Hc Hid). apply (set_denotes_exists _ _ _ _ _ HB'). apply Hin'; exact Hρ.
   - intros ρ Hρ. eapply set_eq_trans; [apply EB; apply set_env_in_dm; assumption |].
     apply set_eq_sym. exact (set_denotes_unique _ _ _ _ _ HB' _ _ _ (Hrel ρ Hρ) (set_denotes_exists _ _ _ _ _ HB' _ (Hin' ρ Hρ))).
