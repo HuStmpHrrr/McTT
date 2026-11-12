@@ -1089,6 +1089,151 @@ Qed.
 
 End Shapes.
 
+(** ** The Recursive Results' Types Along Leaf Paths *)
+
+(** A substitution of terms over [β] agrees with the environment extended
+    by their values. *)
+Lemma sub_agrees_of_list : forall Ψ ρe L vals, set_interp_list T γ Ψ ρe L vals ->
+    forall β ρ0 κs, (forall y, sub_entry_agrees T γ Ψ ρe (β y) (ρ0 y)) ->
+    forall y, sub_entry_agrees T γ Ψ ρe (sb_of_list β L y) (set_env_extend_kinded ρ0 κs vals y).
+Proof.
+  intros Ψ ρe L vals H. induction H as [Ξ ρ1 | Ξ ρ1 M Ms v vs HM HMs IH]; intros β ρ0 κs Hβ y; [exact (Hβ y) |].
+  cbn [sb_of_list set_env_extend_kinded]. apply IH. intros [| z]; cbn [sb_extend set_env_extend].
+  - split; cbn; [exact HM | constructor].
+  - exact (Hβ z).
+Qed.
+
+(** An entry's agreement survives one more binder, the entry weakened. *)
+Lemma sub_agrees_shift : forall Ψ ρe e d s v, ⊢ gc_deps ⍮ gc_stack ⍮ e :: Ψ -> sub_entry_agrees T γ Ψ ρe s v ->
+    sub_entry_agrees T γ (e :: Ψ) (set_env_extend ρe d) (sentry_sub s (sb_of_wk wk_shift)) v.
+Proof.
+  intros * Hc [He Hm]. rewrite sentry_sub_of_wk. unfold sub_entry_agrees. rewrite <- sentry_exp_wk, sentry_modexp_wk.
+  assert (Hw : gc_deps ⍮ gc_stack ⍮ e :: Ψ ⊢ʷ wk_shift : Ψ) by (apply wf_wk_shift; exact Hc).
+  assert (Hag : env_agrees ρe (set_env_extend ρe d) (wk_qn (List.length (@nil centry)) wk_shift)) by (intros y; reflexivity).
+  split.
+  - exact (proj1 (set_interp_wk_all T γ) _ _ _ _ He nil Ψ _ _ _ (Build_wk_setting _ _ _ _ _ _ _ eq_refl Hw Hag)).
+  - exact (proj1 (proj2 (proj2 (proj2 (set_interp_wk_all T γ)))) _ _ _ _ Hm nil Ψ _ _ _ (Build_wk_setting _ _ _ _ _ _ _ eq_refl Hw Hag)).
+Qed.
+
+Section LeafFits.
+  (** The group, and the level of the motives *)
+  Variables (D : ind_decl) (i : nat).
+  (** The motives' contexts are well formed *)
+  Hypothesis HMwf : forall j Mj, ind_member D j = Some Mj -> ⊢ gc_deps ⍮ gc_stack ⍮ elim_mctx p D j Mj Us ++ Γ.
+  (** The blocks' motives denote *)
+  Hypothesis HMot : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+    exists FS FM FM', set_exp_eq_with T γ (elim_mctx p D j Mj Us ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b) FS FM FM'.
+
+(** The recursive result at the end of a path: the eliminator's result,
+    or the empty set, a proof, into propositions. *)
+Definition end_value (j : nat) (w : aczel_set) : aczel_set :=
+  match r with ak_propositional => empty_set | _ => elim_result j w end.
+
+(** The recursive result of [v] along the path [l]: the empty set, a
+    proof, into propositions, otherwise [leaf_result]. *)
+Definition leaf_value (l : leaf_path) (v : aczel_set) : aczel_set :=
+  match r with ak_propositional => empty_set | _ => leaf_result l v end.
+
+(** [end_fact j Mj ns w]: the element [w] of the member [j] at the
+    non-uniform parameters [ns] is an environment of the motive's context
+    with [ρ], and the result there is of every reading of the motive. *)
+Definition end_fact (j : nat) (Mj : imember) (ns : list aczel_set) (w : aczel_set) : Prop :=
+  forall b FS FM FM', List.nth_error Bks j = Some b ->
+    set_exp_eq_with T γ (elim_mctx p D j Mj Us ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b) FS FM FM' ->
+    set_env_in T γ (elim_mctx p D j Mj Us ++ Γ) (set_env_extend_kinded ρ (ctx_kinds (elim_mctx p D j Mj Us)) (ns ++ [w])) /\
+    set_mem (end_value j w) (code_carrier (FM (set_env_extend_kinded ρ (ctx_kinds (elim_mctx p D j Mj Us)) (ns ++ [w])))).
+
+(** [leaf_sem Ψ ρe β σ x xv l]: along the path [l], the value [xv] of [x]
+    has its domains' values and its end's facts, its components moved by
+    [σ] and the motives' context by [β], read in [Ψ] at [ρe]. *)
+Fixpoint leaf_sem (Ψ : ctx) (ρe : set_env) (β σ : sub) (x : exp) (xv : aczel_set) (l : leaf_path) {struct l} : Prop :=
+  match l with
+  | leaf_self j Ps =>
+      exists Mj b ns, ind_member D j = Some Mj /\ List.nth_error Bks j = Some b /\
+        set_interp_list T γ Ψ ρe (List.map (fun P => exp_sub P σ) Ps) ns /\
+        gc_deps ⍮ gc_stack ⍮ Ψ ⊢ˢ sb_of_list β (List.map (fun P => exp_sub P σ) Ps ++ x :: nil) : elim_mctx p D j Mj Us ++ Γ /\
+        end_fact j Mj ns xv
+  | leaf_pi B l' =>
+      exists a, set_interp T γ Ψ ρe (exp_sub B σ) a /\ set_eq (relation_domain xv) (code_carrier a) /\
+        forall b, set_mem b (code_carrier a) ->
+          leaf_sem (ce_ass ak_relevant (exp_sub B σ) :: Ψ) (set_env_extend ρe (set_entry_term ak_relevant b)) (sb_compose β (sb_of_wk wk_shift))
+            (sb_q σ) (a_app (exp_wk x wk_shift) (a_var 0)) (set_apply xv b) l'
+  | leaf_proj f ns l' => leaf_sem Ψ ρe β (sb_of_list σ (projections_of ns x)) (a_proj f x) (tuple_field xv f) l'
+  end.
+
+(** The recursive result along a path is of the type the branch's context
+    gives it there. *)
+Lemma leaf_fit : forall l Ψ ρe β σ x xv A, ⊢ gc_deps ⍮ gc_stack ⍮ Ψ -> set_env_in T γ Ψ ρe ->
+    (forall y, sub_entry_agrees T γ Ψ ρe (β y) (ρ y)) -> set_interp T γ Ψ ρe x xv -> leaf_sem Ψ ρe β σ x xv l ->
+    set_interp T γ Ψ ρe (leaf_ihty r (blocks_motives Bks) β σ x l) A -> set_mem (leaf_value l xv) (code_carrier A).
+Proof.
+  induction l as [j Ps | B l IH | f ns l IH]; intros Ψ ρe β σ x xv A HcΨ Hρe Hβ Hx Hl HA; cbn [leaf_sem leaf_ihty] in Hl, HA.
+  - (* the end: the motive at the moved environment *)
+    destruct Hl as (Mj & b & ns & HMj & Hb & Hns & Hτ & Hfact).
+    rewrite (blocks_motives_nth _ _ _ Hb) in HA.
+    destruct (HMot j Mj b HMj Hb) as (FS & FM & FM' & Hw).
+    destruct (Hfact b FS FM FM' Hb Hw) as [Henv Hmem].
+    destruct Hw as [_ HL _ _ _].
+    pose proof (set_denotes_exists _ _ _ _ _ HL _ Henv) as HM0.
+    assert (Hset : sub_setting T γ (elim_mctx p D j Mj Us ++ Γ)
+                     (set_env_extend_kinded ρ (ctx_kinds (elim_mctx p D j Mj Us)) (ns ++ [xv])) nil (elim_mctx p D j Mj Us ++ Γ) Ψ
+                     (sb_of_list β (List.map (fun P => exp_sub P σ) Ps ++ x :: nil)) ρe ρe).
+    { constructor; [reflexivity | exact Hτ | intros y Hy; cbn in Hy; lia | intros y; reflexivity |].
+      intros y. cbn [List.length Nat.add]. apply (sub_agrees_of_list _ _ _ _ (set_interp_list_app T γ _ _ _ _ _ _ Hns
+                    (set_interp_list_cons T γ _ _ _ _ _ _ Hx (set_interp_list_nil T γ _ _))) β ρ _ Hβ). }
+    pose proof (set_interp_sub T γ _ _ _ _ HM0 (HMwf _ _ HMj) _ _ _ _ _ _ Hset) as H1.
+    cbn [tele_sub List.app List.length] in H1. change (sb_qn 0 ?s) with s in H1.
+    pose proof (set_interp_functional T γ Hfn Hmods _ _ _ _ HA ρe _ (set_env_rel_eq T γ _ _ _ Hρe) H1) as E.
+    eapply set_mem_eq_r; [apply code_carrier_resp; apply set_eq_sym; exact E |]. exact Hmem.
+  - (* a domain: a function of the results there, or their truth *)
+    destruct Hl as (a & Ha & Edom & Hrest).
+    set (B' := exp_sub B σ) in *.
+    assert (Hpi : exists a1 F, ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass ak_relevant B' :: Ψ /\ set_interp T γ Ψ ρe B' a1 /\
+                    (forall b, set_mem b (code_carrier a1) ->
+                       set_interp T γ (ce_ass ak_relevant B' :: Ψ) (set_env_extend ρe (set_entry_term ak_relevant b))
+                         (leaf_ihty r (blocks_motives Bks) (sb_compose β (sb_of_wk wk_shift)) (sb_q σ) (a_app (exp_wk x wk_shift) (a_var 0)) l)
+                         (F b)) /\
+                    ((r = ak_propositional /\ A = forall_code a1 F) \/ (r <> ak_propositional /\ A = pi_code a1 F)))
+      by (inversion HA; subst; do 2 eexists; repeat split; eauto).
+    destruct Hpi as (a1 & F & Hc' & Ha1 & HF & Hk).
+    pose proof (set_interp_functional T γ Hfn Hmods _ _ _ _ Ha1 ρe _ (set_env_rel_eq T γ _ _ _ Hρe) Ha) as Ea.
+    assert (Hb1 : forall b, set_mem b (code_carrier a1) -> set_mem b (code_carrier a))
+      by (intros b Hb; eapply set_mem_eq_r; [apply code_carrier_resp; exact Ea | exact Hb]).
+    assert (Hin : forall b, set_mem b (code_carrier a1) -> set_mem (leaf_value l (set_apply xv b)) (code_carrier (F b))).
+    { intros b Hb. apply (IH (ce_ass ak_relevant B' :: Ψ) (set_env_extend ρe (set_entry_term ak_relevant b))
+                              (sb_compose β (sb_of_wk wk_shift)) (sb_q σ) (a_app (exp_wk x wk_shift) (a_var 0)) (set_apply xv b) (F b) Hc').
+      - split; [exact Hρe |]. cbn [set_entry_rel]. exists b, b, a1. constructor; [reflexivity | reflexivity | exact Ha1 | exact Hb | apply set_eq_refl].
+      - intros y. unfold sb_compose. exact (sub_agrees_shift _ _ _ _ _ _ Hc' (Hβ y)).
+      - apply set_interp_app; [| exact (set_interp_var T γ _ _ 0)].
+        assert (Hw : gc_deps ⍮ gc_stack ⍮ ce_ass ak_relevant B' :: Ψ ⊢ʷ wk_shift : Ψ) by (apply wf_wk_shift; exact Hc').
+        exact (proj1 (set_interp_wk_all T γ) _ _ _ _ Hx nil Ψ _ _ _
+                 (Build_wk_setting Ψ ρe nil Ψ _ wk_shift (set_env_extend ρe (set_entry_term ak_relevant b)) eq_refl Hw (fun y => eq_refl))).
+      - exact (Hrest b (Hb1 b Hb)).
+      - exact (HF b Hb). }
+    destruct Hk as [[Hr ->] | [Hr ->]].
+    + unfold leaf_value in Hin |- *. rewrite Hr in Hin |- *. unfold forall_code.
+      eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |]. apply set_mem_truth. split; [| apply set_eq_refl].
+      intros b Hb. exact (Hin b Hb).
+    + assert (Hlv : forall v, leaf_value (leaf_pi B l) v = graph_set (relation_domain v) (fun b => leaf_result l (set_apply v b)))
+        by (intros v; unfold leaf_value; destruct r; [reflexivity | contradiction | reflexivity]).
+      assert (Hlv' : forall v, leaf_value l v = leaf_result l v)
+        by (intros v; unfold leaf_value; destruct r; [reflexivity | contradiction | reflexivity]).
+      rewrite Hlv. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
+      assert (HFr : respects_on (code_carrier a1) F)
+        by exact (set_interp_family_respects T γ Hfn Hmods _ _ _ _ _ _ _ (set_env_rel_eq T γ _ _ _ Hρe) HF).
+      assert (Hres : respects_set_eq_fun (fun b => leaf_result l (set_apply xv b)))
+        by (intros b b' Eb; apply leaf_result_resp; apply set_apply_resp; [apply set_eq_refl | exact Eb]).
+      eapply set_mem_eq_l; [apply graph_set_resp_on; [apply set_eq_sym; eapply set_eq_trans; [exact Edom | apply code_carrier_resp; apply set_eq_sym; exact Ea] |] |].
+      * intros b b' _ Eb. apply Hres. exact Eb.
+      * apply graph_set_function_on.
+        -- intros b b' Hb Eb. apply code_carrier_resp. exact (HFr b b' Hb Eb).
+        -- intros b b' _ Eb. apply Hres. exact Eb.
+        -- intros b Hb. rewrite <- Hlv'. exact (Hin b Hb).
+  - exact (IH Ψ ρe β _ (a_proj f x) (tuple_field xv f) A HcΨ Hρe Hβ (set_interp_proj T γ _ _ _ _ _ Hx) Hl HA).
+Qed.
+
+End LeafFits.
+
 End Results.
 
 End Eliminator.
