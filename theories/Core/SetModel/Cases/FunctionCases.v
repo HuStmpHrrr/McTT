@@ -74,12 +74,6 @@ Qed.
 
 (** ** Sorts and Sizes *)
 
-(** A term of [Prop]'s carrier is a proposition code. *)
-Lemma is_prop_code_of_prop_universe : forall C, set_mem C (code_carrier prop_universe_code) -> is_prop_code C.
-Proof.
-  intros C HC. unfold prop_universe_code in HC. eapply set_mem_eq_r in HC; [| apply code_carrier_type_code].
-  destruct HC as [P E]. exists P. exact E.
-Qed.
 
 (** A type of levels is a member of every universe of sets. *)
 Lemma is_level_type_code_mem : forall V C, grothendieck V -> is_level_type_code C -> set_mem C V.

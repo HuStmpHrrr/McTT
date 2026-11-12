@@ -69,4 +69,28 @@ Proof.
   apply (proj2 (prop_true_prop_code True)). exact I.
 Qed.
 
+(** A term of [Prop]'s carrier is a proposition code. *)
+Lemma is_prop_code_of_prop_universe : forall C, set_mem C (code_carrier prop_universe_code) -> is_prop_code C.
+Proof.
+  intros C HC. unfold prop_universe_code in HC. eapply set_mem_eq_r in HC; [| apply code_carrier_type_code].
+  destruct HC as [P E]. exists P. exact E.
+Qed.
+
+(** Proof irrelevance: two proofs of a proposition are equal. *)
+Lemma set_rule_irrelevant : forall Γ P M M' FPr FP FP2 FPa FM FM2 FPb FM' FM'2,
+    set_exp_eq_with T γ Γ a_prop P P FPr FP FP2 ->
+    set_exp_eq_with T γ Γ P M M FPa FM FM2 -> set_exp_eq_with T γ Γ P M' M' FPb FM' FM'2 ->
+    set_exp_eq T γ Γ P M M'.
+Proof.
+  intros * [HPr HP _ _ HPm] [HPa HM _ _ HMm] [HPb HM' _ _ HM'm]. exists FPa, FM, FM'.
+  constructor; [exact HPa | exact HM | exact HM' | | exact HMm]. intros ρ Hρ.
+  assert (HPc : forall F, set_denotes T γ Γ P F -> is_prop_code (F ρ)).
+  { intros F HF. eapply is_prop_code_resp; [exact (set_denotes_agree _ _ _ _ _ _ _ HP HF Hρ) |].
+    apply is_prop_code_of_prop_universe.
+    eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HPr (set_denotes_prop _) Hρ) |].
+    apply HPm. exact Hρ. }
+  eapply set_eq_trans; [exact (prop_code_carrier_empty _ _ (HPc _ HPa) (HMm ρ Hρ)) |].
+  apply set_eq_sym. exact (prop_code_carrier_empty _ _ (HPc _ HPb) (HM'm ρ Hρ)).
+Qed.
+
 End Props.
