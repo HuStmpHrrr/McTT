@@ -69,4 +69,59 @@ Proof.
   eapply set_mem_eq_r; [apply set_eq_sym; apply small_universe_set_eq; apply set_eq_refl | exact Hx].
 Qed.
 
+(** ** Small Universes at Levels *)
+
+Lemma set_mem_level_type : forall n z, set_mem z (code_carrier (level_type_code n)) <->
+    exists o, fst o <= n /\ set_eq z (pair_ordinal_set o).
+Proof.
+  intros n z. unfold level_type_code. split.
+  - intros Hz. eapply set_mem_eq_r in Hz; [| apply code_carrier_type_code]. destruct Hz as [[o Ho] E]. exists o. auto.
+  - intros [o [Ho E]]. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |]. exists (exist _ o Ho). exact E.
+Qed.
+
+Lemma set_denotes_level : forall Γ n, set_denotes T γ Γ (a_level n) (fun _ => level_type_code n).
+Proof. intros. apply set_denotes_const; [intros; constructor | intros ρ v H; inversion H; subst; apply set_eq_refl]. Qed.
+
+(** The code of the small universe at a level's value. *)
+Definition level_universe_code (l : aczel_set) : aczel_set := universe_code l (small_universe_set T l).
+
+Lemma set_denotes_univ : forall Γ M FM, set_denotes T γ Γ M FM ->
+    set_denotes T γ Γ (a_univ M) (fun ρ => level_universe_code (FM ρ)).
+Proof.
+  intros * HM. constructor; [intros ρ Hρ; constructor; exact (set_denotes_exists _ _ _ _ _ HM _ Hρ) |].
+  intros ρ ρ' v Hr Hv. inversion Hv; subst.
+  pose proof (set_denotes_unique _ _ _ _ _ HM _ _ _ Hr ltac:(eassumption)) as E.
+  unfold level_universe_code, universe_code. apply type_code_resp; [exact E |].
+  apply separation_set_resp; [exact is_relevant_code_resp | exact is_relevant_code_resp | apply small_universe_set_resp; exact E | tauto].
+Qed.
+
+(** [M ≈ M' : Level@n] gives [Type⟨M⟩ ≈ Type⟨M'⟩ : Type⟨succl M⟩]. *)
+Lemma set_rule_univ : forall Γ n M M' FL FM FM', set_exp_eq_with T γ Γ (a_level n) M M' FL FM FM' ->
+    set_exp_eq T γ Γ (a_univ (a_succl M)) (a_univ M) (a_univ M').
+Proof.
+  intros * [HL HM HM' E Hm].
+  exists (fun ρ => level_universe_code (successor_set (FM ρ))), (fun ρ => level_universe_code (FM ρ)),
+    (fun ρ => level_universe_code (FM' ρ)).
+  constructor.
+  - apply set_denotes_univ. constructor; [intros ρ Hρ; constructor; exact (set_denotes_exists _ _ _ _ _ HM _ Hρ) |].
+    intros ρ ρ' v Hr Hv. inversion Hv; subst. apply successor_set_resp. exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Hr ltac:(eassumption)).
+  - apply set_denotes_univ. exact HM.
+  - apply set_denotes_univ. exact HM'.
+  - intros ρ Hρ. unfold level_universe_code, universe_code. apply type_code_resp; [exact (E ρ Hρ) |].
+    apply separation_set_resp; [exact is_relevant_code_resp | exact is_relevant_code_resp | apply small_universe_set_resp; exact (E ρ Hρ) | tauto].
+  - intros ρ Hρ. pose proof (Hm ρ Hρ) as Hl.
+    eapply set_mem_eq_r in Hl; [| apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HL (set_denotes_level _ n) Hρ)].
+    apply set_mem_level_type in Hl as [[a b] [_ Eo]].
+    unfold level_universe_code at 1, universe_code. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
+    apply set_mem_separation; [exact is_relevant_code_resp |].
+    assert (Hs : set_eq (small_universe_set T (successor_set (FM ρ))) (tower T (us (a, S b))))
+      by (apply small_universe_set_eq; apply successor_set_resp; exact Eo).
+    pose proof (tower_grothendieck T (us (a, S b))) as HV.
+    destruct (universe_code_mem (FM ρ) (small_universe_set T (FM ρ)) _ HV) as [Hc Hr].
+    + eapply set_mem_eq_l; [apply set_eq_sym; exact Eo |]. exact (grothendieck_universe_index_set _ HV (us (a, b))).
+    + eapply set_mem_eq_l; [apply set_eq_sym; apply small_universe_set_eq; exact Eo |].
+      apply tower_increasing. cbn. unfold ordinal_lt. cbn. right. split; [reflexivity | lia].
+    + split; [eapply set_mem_eq_r; [apply set_eq_sym; exact Hs | exact Hc] | exact Hr].
+Qed.
+
 End Universes.

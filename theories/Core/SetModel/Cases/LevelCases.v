@@ -17,17 +17,6 @@ Section Levels.
   Variable T : universe_tower.
   Variable γ : global_valuation.
 
-Lemma set_mem_level_type : forall n z, set_mem z (code_carrier (level_type_code n)) <->
-    exists o, fst o <= n /\ set_eq z (pair_ordinal_set o).
-Proof.
-  intros n z. unfold level_type_code. split.
-  - intros Hz. eapply set_mem_eq_r in Hz; [| apply code_carrier_type_code]. destruct Hz as [[o Ho] E]. exists o. auto.
-  - intros [o [Ho E]]. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |]. exists (exist _ o Ho). exact E.
-Qed.
-
-Lemma set_denotes_level : forall Γ n, set_denotes T γ Γ (a_level n) (fun _ => level_type_code n).
-Proof. intros. apply set_denotes_const; [intros; constructor | intros ρ v H; inversion H; subst; apply set_eq_refl]. Qed.
-
 Lemma set_denotes_llit : forall Γ o, set_denotes T γ Γ (a_llit o) (fun _ => pair_ordinal_set o).
 Proof. intros. apply set_denotes_const; [intros; constructor | intros ρ v H; inversion H; subst; apply set_eq_refl]. Qed.
 
@@ -51,7 +40,7 @@ Lemma level_value : forall Γ n M FL FM FM' ρ, set_exp_eq_with T γ Γ (a_level
     exists o, fst o <= n /\ set_eq (FM ρ) (pair_ordinal_set o).
 Proof.
   intros * [HL HM _ _ Hm] Hρ. apply set_mem_level_type.
-  eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HL (set_denotes_level _ n) Hρ) | exact (Hm ρ Hρ)].
+  eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HL (set_denotes_level T γ _ n) Hρ) | exact (Hm ρ Hρ)].
 Qed.
 
 (** [Level@n : LevelSort]. *)
