@@ -629,12 +629,12 @@ Qed.
 
 (** [δ] for submodules: a submodule is the unit its module part stands
     for. *)
-Lemma set_rule_me_delta_sel : forall Γ H y R Rm, set_modexp_eq T γ Γ H H ->
+Lemma set_rule_me_delta_sel : forall Γ H y R Rm, set_modexp_eq T γ Γ (me_mem H y) (me_mem H y) ->
     mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
     set_modexp_eq T γ Γ (me_mem H y) (mdesc_unit Rm).
 Proof.
-  intros * (F & F' & [_ _ _ Hv _]) Hm Hmd. destruct (set_valid_modexp_sel _ _ _ _ _ Hv Hm Hmd) as [[Hr HK Hpr] HvS].
-  exact (set_modexp_eq_of_rel T γ _ _ _ Hr HvS (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HK) Hpr).
+  intros * (F & F' & [_ _ _ Hv _]) Hm Hmd. destruct (set_valid_modexp_canon T γ Hfn Hmods Hgw Hok _ _ _ _ Hv Hm Hmd) as [Hr HK Hpr].
+  exact (set_modexp_eq_of_rel T γ _ _ _ Hr Hv (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HK) Hpr).
 Qed.
 
 End Sel.

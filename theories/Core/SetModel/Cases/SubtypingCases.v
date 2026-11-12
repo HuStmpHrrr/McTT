@@ -27,6 +27,23 @@ Proof.
   apply Hm. exact Hρ.
 Qed.
 
+(** Equality of terms is symmetric. *)
+Lemma set_rule_exp_eq_sym : forall Γ A M M', set_exp_eq T γ Γ A M M' -> set_exp_eq T γ Γ A M' M.
+Proof.
+  intros * (FA & FM & FM' & [HA HM HM' E Hm]). exists FA, FM', FM. constructor; try assumption.
+  - intros ρ Hρ. apply set_eq_sym. exact (E _ Hρ).
+  - intros ρ Hρ. exact (set_mem_eq_l _ _ _ (E _ Hρ) (Hm _ Hρ)).
+Qed.
+
+(** And transitive. *)
+Lemma set_rule_exp_eq_trans : forall Γ A M M' M'', set_exp_eq T γ Γ A M M' -> set_exp_eq T γ Γ A M' M'' -> set_exp_eq T γ Γ A M M''.
+Proof.
+  intros * (FA & FM & FM' & [HA HM HM' E Hm]) (GA & GM & GM' & [_ HGM HGM' E' _]). exists FA, FM, GM'.
+  constructor; try assumption.
+  intros ρ Hρ. eapply set_eq_trans; [exact (E _ Hρ) |]. eapply set_eq_trans; [exact (set_denotes_agree _ _ _ _ _ _ _ HM' HGM Hρ) |].
+  exact (E' _ Hρ).
+Qed.
+
 (** Equal types are subtypes. *)
 Lemma set_rule_subtyp_refl : forall Γ S M M' FS FM FM', set_exp_eq_with T γ Γ S M M' FS FM FM' -> set_subtyp T γ Γ M M'.
 Proof.
