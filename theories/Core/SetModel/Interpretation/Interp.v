@@ -1,26 +1,27 @@
 (** * The Set Interpretation of Terms
 
-    A functional relation ([set_interp]) between a term of a context and
-    its value in an environment, at a universe tower and a valuation of
-    the global context.  It is syntax-directed; a λ is a proof, denoting
-    the empty set, when the algorithmic inference of the λ gives it a [Π]
-    into propositions ([alg_type_infer_fn]): the syntax does not record the
-    codomain's kind, and the typing does.  Every other proof denotes the
-    empty set by its former ([a_tt], [a_conj], an elimination into
-    propositions, …) or by its environment (a proof variable holds the
-    empty set).  Modules, units and bodies are interpreted alongside
-    ([set_interp_modexp] and the relations after it).
+    A relation ([set_interp]) between a term of a context and its value in
+    an environment, at a universe tower and a valuation of the global
+    context.  It is syntax-directed; a λ is a proof, denoting the empty
+    set, when it is typed at a [Π] into propositions: the syntax does not
+    record the codomain's kind, and the typing does, the same at every type
+    of the λ.  Every other proof denotes the empty set by its former
+    ([a_tt], [a_conj], an elimination into propositions, …) or by its
+    environment (a proof variable holds the empty set).  Modules, units and
+    bodies are interpreted alongside ([set_interp_modexp] and the relations
+    after it), and the eliminator reads its recursive results off the
+    declaration, as evaluation does ([set_elim]).
 
     A binder's body is a function [F] of the bound value, related to the
-    body's value at every value of the domain and arbitrary elsewhere;
-    that [F] respects equality on the domain follows from functionality
-    ([set_interp_functional]). *)
+    body's value at every value of the domain and arbitrary elsewhere.  A
+    well-formed term has one value up to equality at related environments,
+    which the fundamental theorem's set field states ([set_denotes]). *)
 
 From Stdlib Require Import String List.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel.Interpretation Require Export Operations.
-From Mctt.Algorithmic.Typing Require Import Definitions.
+From Mctt.Core.Syntactic.System Require Import Definitions.
 From Mctt.Core.Syntactic Require Import Syntax Members.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 Import ListNotations.
@@ -86,9 +87,12 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 (** An elimination into propositions: a proof *)
 | set_interp_elim_prop : forall Γ ρ p Us m Bks M,
     set_interp Γ ρ (a_elim ak_propositional p Us m Bks M) empty_set
-(** An elimination into types: the eliminator at the scrutinee's value *)
-| set_interp_elim : forall Γ ρ r p Us m Bks M v r0,
+(** An elimination into types, typed: the eliminator at the scrutinee's
+    value.  The typing fixes the uniform parameters' and the blocks'
+    shapes, which weakening and substitution move the branches by *)
+| set_interp_elim : forall Γ ρ r p Us m Bks M C v r0,
     r <> ak_propositional ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_elim r p Us m Bks M : C ->
     set_interp Γ ρ M v ->
     set_elim Γ ρ r p Us Bks m v r0 ->
     set_interp Γ ρ (a_elim r p Us m Bks M) r0
@@ -105,14 +109,13 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
     (forall x, set_mem x (code_carrier a) ->
        set_interp (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) B (F x)) ->
     set_interp Γ ρ (a_pi κd κc A B) (pi_code a F)
-(** A λ the algorithmic inference gives a [Π] into propositions: a
-    proof *)
+(** A λ typed at a [Π] into propositions: a proof *)
 | set_interp_fn_proof : forall Γ ρ A M κd C B,
-    Γ ⊢a a_fn A M ⟹ nf_pi κd ak_propositional C B ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd ak_propositional C B ->
     set_interp Γ ρ (a_fn A M) empty_set
 (** Any other λ: the graph of its body on the domain *)
 | set_interp_fn : forall Γ ρ A M κd κc C B a F,
-    Γ ⊢a a_fn A M ⟹ nf_pi κd κc C B -> κc <> ak_propositional ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc C B -> κc <> ak_propositional ->
     set_interp Γ ρ A a ->
     (forall x, set_mem x (code_carrier a) ->
        set_interp (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)) M (F x)) ->
@@ -209,13 +212,14 @@ with set_interp_unit_params : ctx -> set_env -> list centry -> moddef -> set_mod
     set_interp_unit_params Γ ρ (ce_dm A M U :: Δ) D m
 (** [set_interp_moddef Γ ρ D m]: the definition [D] denotes [m] *)
 with set_interp_moddef : ctx -> set_env -> moddef -> set_module -> Prop :=
-(** A body: the table of its members *)
-| set_interp_md_body : forall Γ ρ sm Φ ms ρ', set_interp_gmod Γ ρ Φ ms ρ' ->
+(** A body: the table of the members of its expansion, its opens replaced
+    by the entries they generate, as evaluation reads it *)
+| set_interp_md_body : forall Γ ρ sm Φ ms ρ', set_interp_gmod Γ ρ (gm_expand Φ) ms ρ' ->
     set_interp_moddef Γ ρ (md_body sm Φ) (set_module_members ms)
 (** An alias: its target *)
 | set_interp_md_alias : forall Γ ρ E m, set_interp_modexp Γ ρ E m -> set_interp_moddef Γ ρ (md_alias E) m
-(** [set_interp_gmod Γ ρ Φ ms ρ']: the body [Φ] has the members [ms], and
-    the entries after it see [ρ'] *)
+(** [set_interp_gmod Γ ρ Φ ms ρ']: the body [Φ], with no open, has the
+    members [ms], and the entries after it see [ρ'] *)
 with set_interp_gmod : ctx -> set_env -> gmod -> list (string * set_entry) -> set_env -> Prop :=
 (** The empty body *)
 | set_interp_gm_nil : forall Γ ρ, set_interp_gmod Γ ρ gm_nil nil ρ
@@ -223,10 +227,6 @@ with set_interp_gmod : ctx -> set_env -> gmod -> list (string * set_entry) -> se
 | set_interp_gm_ext : forall Γ ρ Φ x E ms ρ' e,
     set_interp_gmod Γ ρ Φ ms ρ' -> set_interp_gentry (body_ctx Φ ++ Γ) ρ' E e ->
     set_interp_gmod Γ ρ (gm_ext Φ x E) (ms ++ [(x, e)]) (set_env_extend ρ' e)
-(** A local open: the entries it generates, read in the body before it *)
-| set_interp_gm_open : forall Γ ρ Φ H its Φg ms ρ' ms' ρ'',
-    set_interp_gmod Γ ρ Φ ms ρ' -> set_interp_gmod (body_ctx Φ ++ Γ) ρ' Φg ms' ρ'' ->
-    set_interp_gmod Γ ρ (gm_open Φ H its Φg) (ms ++ ms') ρ''
 (** [set_interp_gentry Γ ρ E e]: the entry [E] denotes [e] *)
 with set_interp_gentry : ctx -> set_env -> gentry -> set_entry -> Prop :=
 (** A definition: its body's value, of its kind *)
@@ -256,6 +256,7 @@ with set_elim : ctx -> set_env -> abs_kind -> qname -> list exp -> list eblock -
     set_eq v (con_val c (ns ++ vs)) -> List.length ns = im_nn Mk -> List.length vs = List.length gs ->
     List.nth_error Bks j = Some (eb_mk nm Z A Bs) -> brs_lookup Bs c = Some (n, B) ->
     set_ihs Γ ρ r p Us Bks gs vs ihs ->
+    List.length (ns ++ vs ++ ihs) = List.length (elim_bctx r p D Mj gs (blocks_motives Bks) Us) ->
     set_interp (elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ)
       (set_env_extend_kinded ρ (ctx_kinds (elim_bctx r p D Mj gs (blocks_motives Bks) Us)) (ns ++ vs ++ ihs)) B res ->
     set_elim Γ ρ r p Us Bks j v res
@@ -295,3 +296,19 @@ with set_ih : ctx -> set_env -> abs_kind -> qname -> list exp -> list eblock -> 
                 (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))).
 
 End Interpretation.
+
+Scheme set_interp_mut_ind := Minimality for set_interp Sort Prop
+with set_interp_list_mut_ind := Minimality for set_interp_list Sort Prop
+with set_interp_fields_mut_ind := Minimality for set_interp_fields Sort Prop
+with set_interp_modexp_mut_ind := Minimality for set_interp_modexp Sort Prop
+with set_interp_gunit_mut_ind := Minimality for set_interp_gunit Sort Prop
+with set_interp_unit_params_mut_ind := Minimality for set_interp_unit_params Sort Prop
+with set_interp_moddef_mut_ind := Minimality for set_interp_moddef Sort Prop
+with set_interp_gmod_mut_ind := Minimality for set_interp_gmod Sort Prop
+with set_interp_gentry_mut_ind := Minimality for set_interp_gentry Sort Prop
+with set_elim_mut_ind := Minimality for set_elim Sort Prop
+with set_ihs_mut_ind := Minimality for set_ihs Sort Prop
+with set_ih_mut_ind := Minimality for set_ih Sort Prop.
+Combined Scheme set_interp_combined_ind from set_interp_mut_ind, set_interp_list_mut_ind, set_interp_fields_mut_ind,
+  set_interp_modexp_mut_ind, set_interp_gunit_mut_ind, set_interp_unit_params_mut_ind, set_interp_moddef_mut_ind,
+  set_interp_gmod_mut_ind, set_interp_gentry_mut_ind, set_elim_mut_ind, set_ihs_mut_ind, set_ih_mut_ind.

@@ -637,7 +637,7 @@ Proof.
   - (** a recursive argument *)
     intros g type ds target tparams gs pvals pre j r rs _ IH1 _ IH2 Hr g' pvals' pre' rs' Hpv Hpre Hrs H' pos Hpos.
     inversion Hr as [| ? ? Hg Hgs]; subst. destruct Hg as [Hds Htp].
-    inversion Hrs as [| ? r' ? rs'' Hrr Hrs']; subst. inversion H'; subst. inversion Hpos as [? ? ? ? ? ? ? ? ? pts ? Hf Ep | |]; subst.
+    inversion Hrs as [| ? r' ? rs'' Hrr Hrs']; subst. inversion H'; subst. inversion Hpos as [? ? ? ? ? ? ? ? pts ? Hf Ep | |]; subst.
     + eapply set_eq_trans; [apply set_apply_resp; [apply set_eq_refl | exact Ep] |].
       eapply set_eq_trans; [| apply set_apply_resp; [apply set_eq_refl | apply set_eq_sym; exact Ep]].
       exact (IH1 Hds Htp g' pre' nil r' Hpre (list_set_eq_refl _) Hrr ltac:(eassumption) pts Hf).
@@ -935,7 +935,7 @@ Proof.
   intros * H. induction H as [type ds target tparams gs pvals pre j r rs pts pos t Hf Ep Hd | type ds target tparams gs pvals pre j r rs pos t H IH
                              | κ ty gs p pvals pre j rs pos t H IH]; intros Hr t' H'; inversion Hr as [| ? ? Hg Hgs]; subst.
   - destruct Hg as [Hds Htp].
-    inversion H' as [? ? ? ? ? ? ? ? ? ? ? pts' ? ? Hf' Ep' Hd' | ? ? ? ? ? ? ? ? ? ? ? ? ? H1 |]; subst.
+    inversion H' as [? ? ? ? ? ? ? ? ? ? pts' ? ? Hf' Ep' Hd' | ? ? ? ? ? ? ? ? ? ? ? ? H1 |]; subst.
     + pose proof (set_eq_trans _ _ _ (set_eq_sym _ _ Ep) Ep') as E.
       apply ordered_pair_inj in E as [_ E]. apply list_code_inj in E.
       eapply (tree_decodes_injective Hsig Hnames Hrview); [exact Hd | | apply apply_points_resp; [exact E | apply set_eq_refl] | exact Hd'].
@@ -943,7 +943,7 @@ Proof.
     + exfalso. destruct (child_tree_index _ _ _ _ _ _ _ H1) as [j' [pts' [Hj Ep']]].
       pose proof (set_eq_trans _ _ _ (set_eq_sym _ _ Ep) Ep') as E.
       apply ordered_pair_inj in E as [E _]. apply numeral_set_inj in E. lia.
-  - inversion H' as [? ? ? ? ? ? ? ? ? ? ? pts' ? ? Hf' Ep' Hd' | ? ? ? ? ? ? ? ? ? ? ? ? ? H1 |]; subst.
+  - inversion H' as [? ? ? ? ? ? ? ? ? ? pts' ? ? Hf' Ep' Hd' | ? ? ? ? ? ? ? ? ? ? ? ? H1 |]; subst.
     + exfalso. destruct (child_tree_index _ _ _ _ _ _ _ H) as [j' [pts [Hj Ep]]].
       pose proof (set_eq_trans _ _ _ (set_eq_sym _ _ Ep) Ep') as E.
       apply ordered_pair_inj in E as [E _]. apply numeral_set_inj in E. lia.
@@ -980,14 +980,14 @@ Lemma children_exist : forall pre gs vals, arguments_fit G U points_so_far pre g
     exists t, set_mem t trees /\ child_tree gs (fst (split_arguments gs vals)) pre j (snd (split_arguments gs vals)) pos t.
 Proof.
   intros pre gs vals H. induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams gs a vals Ha H IH];
-    intros Htg Hr j pos Hpos; inversion Htg as [| ? ? ? ? ? ? Htg' | ? ? ? ? ? ? ? ? ? Hgood Htg']; subst;
+    intros Htg Hr j pos Hpos; inversion Htg as [| ? ? ? ? ? ? Htg' | ? ? ? ? ? ? ? ? Hgood Htg']; subst;
     inversion Hr as [| ? ? Hg Hgs]; subst; cbn [split_arguments] in *.
   - inversion Hpos.
   - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst snd] in *.
     inversion Hpos; subst. destruct (IH Htg' Hgs (S j) pos ltac:(eassumption)) as [t [Ht Hc]].
     exists t. split; [exact Ht | apply child_tree_after_plain; exact Hc].
   - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst snd] in *. destruct Hg as [Hds Htp].
-    inversion Hpos as [? ? ? ? ? ? ? ? ? pts ? Hf Ep | |]; subst.
+    inversion Hpos as [? ? ? ? ? ? ? ? pts ? Hf Ep | |]; subst.
     + pose proof (shape_set_at _ _ _ _ _ Hds Htp _ _ _ Hf _ Ha) as Hleaf. cbn [List.app] in Hleaf.
       destruct (HS _ _ _ (Hgood pts Hf) Hleaf) as [t [Ht Hd]].
       exists t. split; [exact Ht | eapply child_tree_here; eassumption].
@@ -1055,7 +1055,7 @@ Lemma children_decode_of_fit : forall Sc g, (forall k ns w, good_point k ns -> s
 Proof.
   intros Sc g HS pre gs vals j H. revert j.
   induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams gs a vals Ha H IH];
-    intros j Htg Hr Hg; inversion Htg as [| ? ? ? ? ? ? Htg' | ? ? ? ? ? ? ? ? ? Hgood Htg']; subst;
+    intros j Htg Hr Hg; inversion Htg as [| ? ? ? ? ? ? Htg' | ? ? ? ? ? ? ? ? Hgood Htg']; subst;
     inversion Hr as [| ? ? Hgr Hgs]; subst; cbn [split_arguments] in *.
   - constructor.
   - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst snd] in *. constructor.

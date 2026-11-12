@@ -128,6 +128,15 @@ Proof. intros. do 3 eexists. split; [apply set_eq_refl | discriminate]. Qed.
 Lemma forall_code_prop : forall dom F, is_prop_code (forall_code dom F).
 Proof. intros. eexists. apply set_eq_refl. Qed.
 
+(** ** Inductive and Record Types *)
+
+(** An inductive type whose elements are [carrier]: no datum, so that no
+    parameter, small or large, is stored. *)
+Definition inductive_code (carrier : aczel_set) : aczel_set := type_code inductive_tag empty_set carrier.
+
+(** A record type whose elements are [carrier], with no datum. *)
+Definition record_code (carrier : aczel_set) : aczel_set := type_code record_tag empty_set carrier.
+
 (** ** Universes, Prop and Levels *)
 
 (** The universe at the index set [l] whose universe of sets is [U]: its
