@@ -121,16 +121,16 @@ Proof.
 Qed.
 
 (** The λ rule: [λ A M : Π{κd,κc} A B]. *)
-Lemma set_rule_fn : forall Γ κd κc i A M B FA FS FB FB' FM, fn_kinds_unique -> set_ctx T γ Γ ->
+Lemma set_rule_fn : forall Γ κd κc i A M B FA FS FB FB2 FB' FM FM2, fn_kinds_unique -> set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     set_denotes T γ Γ A FA ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M FB' FM ->
+    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
+    set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M FB' FM FM2 ->
     set_exp_eq T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A M).
 Proof.
-  intros * Hk HΓ HT Hc HA [HS HB _ HBm] [HB' HM _ HMm].
-  exists (pi_denotation κd κc FA FB), (fn_denotation κd κc FA FM).
-  constructor; [apply set_denotes_pi; assumption | eapply set_denotes_fn; eassumption .. |].
+  intros * Hk HΓ HT Hc HA [HS HB _ _ HBm] [HB' HM _ _ HMm].
+  exists (pi_denotation κd κc FA FB), (fn_denotation κd κc FA FM), (fn_denotation κd κc FA FM).
+  constructor; [apply set_denotes_pi; assumption | eapply set_denotes_fn; eassumption .. | intros; apply set_eq_refl |].
   intros ρ Hρ. pose proof (set_denotes_exists _ _ _ _ _ HA _ Hρ) as Ha.
   assert (Hx : forall x, set_mem x (code_carrier (FA ρ)) -> set_env_in T γ (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd x)))
     by (intros x Hx; exact (set_env_in_extend_ass T γ Γ ρ κd A _ x Hρ Ha Hx)).
@@ -166,17 +166,17 @@ Qed.
 
 (** The application rule, at the codomain's instance [C], whose
     denotation is the codomain's at the argument. *)
-Lemma set_rule_app : forall Γ κd κc i A B M N C FA FS FB FP FM FA' FN FC, set_ctx T γ Γ ->
+Lemma set_rule_app : forall Γ κd κc i A B M N C FA FS FB FB2 FP FM FM2 FA' FN FN2 FC, set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> set_denotes T γ Γ A FA ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB ->
-    set_exp_eq_with T γ Γ (a_pi κd κc A B) M M FP FM ->
-    set_exp_eq_with T γ Γ A N N FA' FN ->
+    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
+    set_exp_eq_with T γ Γ (a_pi κd κc A B) M M FP FM FM2 ->
+    set_exp_eq_with T γ Γ A N N FA' FN FN2 ->
     set_denotes T γ Γ C FC -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FC ρ) (body_function κd FB ρ (FN ρ))) ->
     set_exp_eq T γ Γ C (a_app M N) (a_app M N).
 Proof.
-  intros * HΓ Hc HA [HS HB _ HBm] [HP HM _ HMm] [HA' HN _ HNm] HC EC.
-  exists FC, (fun ρ => set_apply (FM ρ) (FN ρ)).
-  constructor; [exact HC | apply set_denotes_app; assumption .. |]. intros ρ Hρ.
+  intros * HΓ Hc HA [HS HB _ _ HBm] [HP HM _ _ HMm] [HA' HN _ _ HNm] HC EC.
+  exists FC, (fun ρ => set_apply (FM ρ) (FN ρ)), (fun ρ => set_apply (FM ρ) (FN ρ)).
+  constructor; [exact HC | apply set_denotes_app; assumption .. | intros; apply set_eq_refl |]. intros ρ Hρ.
   pose proof (set_denotes_agree _ _ _ _ _ HP (set_denotes_pi _ _ κc _ _ _ _ HΓ Hc HA HB) Hρ) as EP.
   assert (Hn : set_mem (FN ρ) (code_carrier (FA ρ)))
     by (eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).

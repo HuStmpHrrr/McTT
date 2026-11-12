@@ -39,8 +39,8 @@ Qed.
 (** [Typeω@i : Typeω@(S i)]. *)
 Lemma set_rule_typ : forall Γ i, set_exp_eq T γ Γ (a_typ (S i)) (a_typ i) (a_typ i).
 Proof.
-  intros. exists (fun _ => large_universe_code (S i)), (fun _ => large_universe_code i).
-  constructor; [apply set_denotes_typ .. |]. intros ρ _.
+  intros. exists (fun _ => large_universe_code (S i)), (fun _ => large_universe_code i), (fun _ => large_universe_code i).
+  constructor; [apply set_denotes_typ .. | intros; apply set_eq_refl |]. intros ρ _.
   unfold large_universe_code at 1, universe_code. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
   pose proof (tower_grothendieck T (ul (S i))) as HV.
   destruct (universe_code_mem (large_ordinal_set i) (tower T (ul i)) _ HV
