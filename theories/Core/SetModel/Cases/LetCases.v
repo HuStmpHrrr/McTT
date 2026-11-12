@@ -73,10 +73,6 @@ Qed.
 
 (** ** Local Modules *)
 
-(** A unit's module is equal to itself. *)
-Lemma set_modexp_denotes_refl : forall Γ H F ρ, set_modexp_denotes T γ Γ H F -> set_env_in T γ Γ ρ -> set_module_eq (F ρ) (F ρ).
-Proof. intros * HF Hρ. exact (set_modexp_denotes_unique _ _ _ _ _ HF _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ)). Qed.
-
 (** The environment of a local module at its module. *)
 Definition mod_env (FU : set_env -> set_module) (ρ : set_env) : set_env := set_env_extend ρ (set_entry_module (FU ρ)).
 
@@ -85,7 +81,7 @@ Lemma set_env_in_mod : forall Γ U FU ρ, set_modexp_denotes T γ Γ (me_lit U) 
 Proof.
   intros * HU Hρ. split; [exact Hρ |]. exists (FU ρ), (FU ρ), (FU ρ).
   constructor; [reflexivity | reflexivity | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
-               | exact (set_modexp_denotes_refl _ _ _ _ HU Hρ) .. ].
+               | exact (set_modexp_denotes_refl _ _ _ _ _ _ HU Hρ) .. ].
 Qed.
 
 (** A term under a local module denotes, with the unit substituted, its
@@ -138,7 +134,7 @@ Proof.
   intros * HM HU Hρ. split; [exact Hρ |]. exists (FM ρ), (FM ρ), (FM ρ), (FU ρ), (FU ρ), (FU ρ).
   constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ)
                | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
-               | apply set_eq_refl | apply set_eq_refl | exact (set_modexp_denotes_refl _ _ _ _ HU Hρ) .. ].
+               | apply set_eq_refl | apply set_eq_refl | exact (set_modexp_denotes_refl _ _ _ _ _ _ HU Hρ) .. ].
 Qed.
 
 (** A term under a definition with a module part denotes, with both parts
@@ -225,7 +221,7 @@ Proof.
   assert (Hrel : forall ρ, set_env_in T γ Γ ρ -> set_env_rel T γ (ce_mod U :: Γ) (mod_env FU ρ) (mod_env FU' ρ)).
   { intros ρ Hρ. split; [exact Hρ |]. exists (FU ρ), (FU' ρ), (FU ρ).
     constructor; [reflexivity | reflexivity | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
-                 | exact (set_modexp_denotes_refl _ _ _ _ HU Hρ) | apply set_module_eq_sym; apply EU; exact Hρ]. }
+                 | exact (set_modexp_denotes_refl _ _ _ _ _ _ HU Hρ) | apply set_module_eq_sym; apply EU; exact Hρ]. }
   exists (fun ρ => FC (mod_env FU ρ)), (fun ρ => FB (mod_env FU ρ)), (fun ρ => FB' (mod_env FU' ρ)).
   constructor; [apply set_denotes_mod_sub; assumption | apply set_denotes_let_mod; assumption | | |].
   - apply set_denotes_of_exists; [exact Hfn | exact Hmods | exact HΓ |]. intros ρ Hρ.
@@ -257,7 +253,7 @@ Proof.
     constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ)
                  | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
                  | apply set_eq_refl | apply set_eq_sym; apply EM; exact Hρ
-                 | exact (set_modexp_denotes_refl _ _ _ _ HU Hρ) | apply set_module_eq_sym; apply EU; exact Hρ]. }
+                 | exact (set_modexp_denotes_refl _ _ _ _ _ _ HU Hρ) | apply set_module_eq_sym; apply EU; exact Hρ]. }
   exists (fun ρ => FC (dm_env FM FU ρ)), (fun ρ => FB (dm_env FM FU ρ)), (fun ρ => FB' (dm_env FM' FU' ρ)).
   constructor; [apply set_denotes_dm_sub with (A := A); assumption | apply set_denotes_let_dm; assumption | | |].
   - apply set_denotes_of_exists; [exact Hfn | exact Hmods | exact HΓ |]. intros ρ Hρ.

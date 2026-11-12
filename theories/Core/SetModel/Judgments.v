@@ -241,6 +241,10 @@ Lemma set_modexp_denotes_rel : forall Γ H F ρ ρ', set_modexp_denotes Γ H F -
     set_module_eq (F ρ') (F ρ).
 Proof. intros * [Hex Hun] Hr Hin. exact (Hun _ _ _ Hr (Hex _ Hin)). Qed.
 
+(** A module expression's module is equal to itself. *)
+Lemma set_modexp_denotes_refl : forall Γ H F ρ, set_modexp_denotes Γ H F -> set_env_in Γ ρ -> set_module_eq (F ρ) (F ρ).
+Proof. intros * HF Hρ. exact (set_modexp_denotes_unique _ _ _ HF _ _ _ Hρ (set_modexp_denotes_exists _ _ _ HF _ Hρ)). Qed.
+
 Lemma set_interp_me_lit_iff : forall Γ ρ U m, set_interp_modexp T γ Γ ρ (me_lit U) m <-> set_interp_gunit T γ Γ ρ U m.
 Proof. intros. split; intros H; [inversion H; subst; assumption | constructor; exact H]. Qed.
 
