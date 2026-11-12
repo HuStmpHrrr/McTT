@@ -246,6 +246,17 @@ Proof.
                                   | exact (set_modexp_rel_moved _ _ _ _ _ (me_lit U) (me_lit U) Hs HU)].
 Qed.
 
+(** The substitution lifted past the extension sends the environments of
+    the moved extension to the moved environments. *)
+Lemma set_gsub_lift : forall Ψ Δ Γ σ Fσ, set_moves_with Ψ Δ Γ σ Fσ ->
+    set_gsub_with (tele_sub Ψ σ ++ Γ) (sb_qn (List.length Ψ) σ) (Ψ ++ Δ) (set_env_moved (List.length Ψ) Fσ).
+Proof.
+  intros * [Hg HΓ HΔ HΓ' Hc]. constructor.
+  - apply wf_sub_ext; [exact (set_gsub_typed _ _ _ _ Hg) | exact (ctx_sub _ _ _ _ Hc (set_gsub_typed _ _ _ _ Hg)) | exact Hc].
+  - intros ρ x Hρ. exact (sub_setting_var T γ _ _ _ _ _ _ _ _ x Hc (set_sub_setting_moved _ _ _ _ _ _ Hg (set_env_in_drop _ _ _ _ Hρ))).
+  - intros ρ ρ' Hr. exact (set_env_rel_moved _ _ _ _ _ _ _ Hg HΓ HΔ Hc Hr).
+Qed.
+
 (** ** The Instances *)
 
 (** Weakening past one more entry: its environments without their
