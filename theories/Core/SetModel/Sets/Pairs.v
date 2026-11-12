@@ -554,6 +554,17 @@ Proof.
   eapply set_eq_trans; [apply set_apply_graph; [apply restrict_fun_resp | exact Hx] |]. apply restrict_fun_agree; assumption.
 Qed.
 
+(** A dependent function is the graph of its application. *)
+Lemma function_set_graph_on : forall g S F, respects_on S F -> set_mem g (function_set S F) -> set_eq g (graph_set S (set_apply g)).
+Proof.
+  intros g S F HF Hg. eapply set_mem_eq_r in Hg; [| apply function_set_restrict; exact HF].
+  assert (Hr : respects_set_eq_fun (set_apply g)) by (intros x y E; apply set_apply_resp; [apply set_eq_refl | exact E]).
+  apply (function_set_ext _ _ _ _ (restrict_fun_resp S F) Hg).
+  - apply graph_set_function; [apply restrict_fun_resp | exact Hr |]. intros x Hx.
+    apply (function_set_apply _ _ _ _ (restrict_fun_resp S F) Hg Hx).
+  - intros x Hx. apply set_eq_sym. apply set_apply_graph; [exact Hr | exact Hx].
+Qed.
+
 Lemma function_set_apply_on : forall g S F x, respects_on S F -> set_mem g (function_set S F) -> set_mem x S ->
     set_mem (set_apply g x) (F x).
 Proof.
