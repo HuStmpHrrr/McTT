@@ -813,6 +813,144 @@ Proof.
     apply list_set_eq_app; [apply list_set_eq_refl | apply list_set_eq_sym; exact Edec].
 Qed.
 
+(** The parameters of a member are good when they are in its
+    non-uniform telescope. *)
+Definition good_point (k : nat) (ns : list aczel_set) : Prop :=
+  exists Mk, List.nth_error (set_group_members G) k = Some Mk /\
+    set_mem (list_code ns) (telescope_set (set_member_nparam_types Mk) us nil).
+
+Lemma good_point_length : forall k Mk ns, List.nth_error (set_group_members G) k = Some Mk ->
+    Forall list_function_respects (set_member_nparam_types Mk) ->
+    set_mem (list_code ns) (telescope_set (set_member_nparam_types Mk) us nil) ->
+    List.length ns = List.length (set_member_nparam_types Mk).
+Proof.
+  intros * HMk Hts Hm. apply (set_mem_telescope_set _ Hts) in Hm as [ws [Hl [E _]]].
+  apply list_code_inj in E. apply list_set_eq_length in E. cbn in E. lia.
+Qed.
+
+(** The shape of a fitting construction is a shape. *)
+Lemma tree_shape_mem : forall bound S k Mk i cs ns vals, List.nth_error (set_group_members G) k = Some Mk ->
+    List.nth_error (set_member_constructors Mk) i = Some cs ->
+    Forall list_function_respects (set_member_nparam_types Mk) ->
+    set_mem (list_code ns) (telescope_set (set_member_nparam_types Mk) us nil) ->
+    arguments_fit G bound S (us ++ ns) (set_constructor_arguments cs) vals ->
+    set_mem (tree_shape k i ns (fst (split_arguments (set_constructor_arguments cs) vals))) tree_shapes.
+Proof.
+  intros * HMk Hcs Hts Hns Hfit.
+  pose proof (Hsig _ _ _ HMk (nth_error_In _ _ Hcs)) as Hgs.
+  pose proof (good_point_length _ _ _ HMk Hts Hns) as Hln.
+  set (pv := fst (split_arguments (set_constructor_arguments cs) vals)).
+  unfold tree_shapes. apply set_mem_union.
+  assert (Hki : constructor_index (fst (k, i)) (snd (k, i))) by (exists Mk, cs; split; assumption).
+  eexists. split; [exists (exist _ (k, i) Hki); apply set_eq_refl |]. cbn [aczel_element family_set proj1_sig fst snd].
+  rewrite HMk, Hcs.
+  assert (Hdec : forall nsc, set_eq nsc (list_code ns) ->
+            list_set_eq (list_decode (List.length (set_member_nparam_types Mk)) nsc) ns)
+    by (intros nsc E; rewrite <- Hln; eapply list_set_eq_trans; [apply list_decode_resp; exact E | apply list_decode_code]).
+  assert (HFp : forall nsc, respects_set_eq_fun (fun pc => list_code [numeral_set k; numeral_set i; nsc; pc]))
+    by (intros nsc x y E; apply list_code_resp; repeat constructor; try apply set_eq_refl; exact E).
+  assert (HF : respects_set_eq_fun (fun nsc => replacement_set
+                 (plain_arguments_set (set_constructor_arguments cs) (us ++ list_decode (List.length (set_member_nparam_types Mk)) nsc) nil)
+                 (fun pc => list_code [numeral_set k; numeral_set i; nsc; pc]))).
+  { intros x y E. apply replacement_set_resp; [apply HFp | apply HFp | |].
+    - apply plain_arguments_set_resp; [exact Hgs | apply list_set_eq_app; [apply list_set_eq_refl | apply list_decode_resp; exact E] | apply list_set_eq_refl].
+    - intros pc _. apply list_code_resp. repeat constructor; try apply set_eq_refl. exact E. }
+  apply set_mem_union. exists (replacement_set
+                 (plain_arguments_set (set_constructor_arguments cs) (us ++ list_decode (List.length (set_member_nparam_types Mk)) (list_code ns)) nil)
+                 (fun pc => list_code [numeral_set k; numeral_set i; list_code ns; pc])). split.
+  - apply (set_mem_replacement _ _ _ HF). exists (list_code ns). split; [exact Hns | apply set_eq_refl].
+  - apply (set_mem_replacement _ _ _ (HFp _)). exists (list_code pv). split; [| apply set_eq_refl].
+    eapply set_mem_eq_r; [apply plain_arguments_set_resp; [exact Hgs | | apply list_set_eq_refl] |].
+    + apply list_set_eq_app; [apply list_set_eq_refl | apply list_set_eq_sym; apply Hdec; apply set_eq_refl].
+    + exact (plain_arguments_set_of_fit _ _ _ _ _ Hfit Hgs nil).
+Qed.
+
 End Positions.
+
+(** ** Every Good Element Has a Tree *)
+
+(** The recursive targets of fitting arguments are good. *)
+Inductive targets_good : list aczel_set -> list set_argument -> list aczel_set -> Prop :=
+(** No argument *)
+| targets_good_nil : forall pre, targets_good pre nil nil
+(** A non-recursive argument *)
+| targets_good_plain : forall pre κ t gs a vals,
+    targets_good (pre ++ [a]) gs vals -> targets_good pre (set_argument_plain κ t :: gs) (a :: vals)
+(** A recursive argument whose target, at every point of its domains, is
+    good *)
+| targets_good_recursive : forall pre type ds target tparams ls gs a vals,
+    (forall pts, points_fit ds pre nil pts -> good_point target (List.skipn nuniform (tparams (pre ++ pts)))) ->
+    targets_good (pre ++ [empty_set]) gs vals ->
+    targets_good pre (set_argument_recursive type ds target tparams ls :: gs) (a :: vals).
+
+(** [child_tree gs pvals pre j rs pos t]: [t] is the tree of the recursive
+    argument at the position [pos] *)
+Inductive child_tree : list set_argument -> list aczel_set -> list aczel_set -> nat -> list aczel_set -> aczel_set -> aczel_set -> Prop :=
+(** A position of this recursive argument: the tree of its value there *)
+| child_tree_here : forall type ds target tparams ls gs pvals pre j r rs pts pos t,
+    points_fit ds pre nil pts -> set_eq pos (tree_position j pts) ->
+    tree_decodes target (List.skipn nuniform (tparams (pre ++ pts))) t (apply_points r pts) ->
+    child_tree (set_argument_recursive type ds target tparams ls :: gs) pvals pre j (r :: rs) pos t
+(** A position of a later argument, after a recursive one *)
+| child_tree_after_recursive : forall type ds target tparams ls gs pvals pre j r rs pos t,
+    child_tree gs pvals (pre ++ [empty_set]) (S j) rs pos t ->
+    child_tree (set_argument_recursive type ds target tparams ls :: gs) pvals pre j (r :: rs) pos t
+(** A position of a later argument, after a non-recursive one *)
+| child_tree_after_plain : forall κ ty gs p pvals pre j rs pos t,
+    child_tree gs pvals (pre ++ [p]) (S j) rs pos t ->
+    child_tree (set_argument_plain κ ty :: gs) (p :: pvals) pre j rs pos t.
+
+Lemma child_tree_resp : forall gs pvals pre j rs pos t pos' t', set_eq pos pos' -> set_eq t t' ->
+    child_tree gs pvals pre j rs pos t -> child_tree gs pvals pre j rs pos' t'.
+Proof.
+  intros * Ep Et H. induction H.
+  - eapply child_tree_here; [eassumption | eapply set_eq_trans; [apply set_eq_sym; exact Ep | eassumption] |].
+    eapply tree_decodes_resp; [exact Et | apply set_eq_refl | eassumption].
+  - apply child_tree_after_recursive. auto.
+  - apply child_tree_after_plain. auto.
+Qed.
+
+(** A child's position is numbered from the start of its list on. *)
+Lemma child_tree_index : forall gs pvals pre j rs pos t, child_tree gs pvals pre j rs pos t ->
+    exists j' pts, j <= j' /\ set_eq pos (tree_position j' pts).
+Proof.
+  intros * H. induction H.
+  - exists j, pts. split; [lia | assumption].
+  - destruct IHchild_tree as [j' [pts' [Hj Ep]]]. exists j', pts'. split; [lia | exact Ep].
+  - destruct IHchild_tree as [j' [pts' [Hj Ep]]]. exists j', pts'. split; [lia | exact Ep].
+Qed.
+
+Section Existence.
+  Hypothesis Hsig : signature_respects G.
+  Hypothesis Hnames : forall k Mk, List.nth_error (set_group_members G) k = Some Mk ->
+    NoDup (List.map set_constructor_name (set_member_constructors Mk)).
+  Hypothesis Hrview : forall k Mk fl, List.nth_error (set_group_members G) k = Some Mk -> set_member_record_fields Mk = Some fl ->
+    NoDup fl /\ List.length (set_member_constructors Mk) = 1 /\
+    (forall cs, In cs (set_member_constructors Mk) -> List.length (set_constructor_arguments cs) = List.length fl).
+
+(** One child per position. *)
+Lemma child_tree_functional : forall gs pvals pre j rs pos t, child_tree gs pvals pre j rs pos t -> Forall argument_respects gs ->
+    forall t', child_tree gs pvals pre j rs pos t' -> set_eq t t'.
+Proof.
+  intros * H. induction H as [type ds target tparams ls gs pvals pre j r rs pts pos t Hf Ep Hd | type ds target tparams ls gs pvals pre j r rs pos t H IH
+                             | κ ty gs p pvals pre j rs pos t H IH]; intros Hr t' H'; inversion Hr as [| ? ? Hg Hgs]; subst.
+  - destruct Hg as [Hds Htp].
+    inversion H' as [? ? ? ? ? ? ? ? ? ? ? pts' ? ? Hf' Ep' Hd' | ? ? ? ? ? ? ? ? ? ? ? ? ? H1 |]; subst.
+    + pose proof (set_eq_trans _ _ _ (set_eq_sym _ _ Ep) Ep') as E.
+      apply ordered_pair_inj in E as [_ E]. apply list_code_inj in E.
+      eapply (tree_decodes_injective Hsig Hnames Hrview); [exact Hd | | apply apply_points_resp; [exact E | apply set_eq_refl] | exact Hd'].
+      apply list_set_eq_skipn. apply Htp. apply list_set_eq_app; [apply list_set_eq_refl | exact E].
+    + exfalso. destruct (child_tree_index _ _ _ _ _ _ _ H1) as [j' [pts' [Hj Ep']]].
+      pose proof (set_eq_trans _ _ _ (set_eq_sym _ _ Ep) Ep') as E.
+      apply ordered_pair_inj in E as [E _]. apply numeral_set_inj in E. lia.
+  - inversion H' as [? ? ? ? ? ? ? ? ? ? ? pts' ? ? Hf' Ep' Hd' | ? ? ? ? ? ? ? ? ? ? ? ? ? H1 |]; subst.
+    + exfalso. destruct (child_tree_index _ _ _ _ _ _ _ H) as [j' [pts [Hj Ep]]].
+      pose proof (set_eq_trans _ _ _ (set_eq_sym _ _ Ep) Ep') as E.
+      apply ordered_pair_inj in E as [E _]. apply numeral_set_inj in E. lia.
+    + exact (IH Hgs t' H1).
+  - inversion H'; subst. auto.
+Qed.
+
+End Existence.
 
 End Bound.
