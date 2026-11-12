@@ -17,17 +17,8 @@ From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
 From Mctt.Core.Syntactic.System.Global Require Import Paths MemberLemmas DescTyping LookupSound.
+From Mctt.Core.Completeness.Modules Require Import ValidUnit.
 Import ListNotations.
-
-(** A prefix of a body is a tail of its context. *)
-Lemma body_ctx_of_prefix : forall Φ y Φp, gm_nopens Φ = 0 -> gm_prefix_upto Φ y = Some Φp ->
-    exists X, body_ctx Φ = X ++ body_ctx Φp.
-Proof.
-  induction Φ as [| Φ IH z E | Φ IH H its]; intros * Hn Hp; cbn in Hn, Hp; try discriminate.
-  destruct (String.eqb y z); [injection Hp as <-; exists nil; reflexivity |].
-  destruct (IH _ _ Hn Hp) as (X & HX).
-  destruct E as [? ? ? ? [] | | | |]; cbn [body_ctx]; rewrite HX; eexists (_ :: X); reflexivity.
-Qed.
 
 Section ValidUnit.
   Context {GC : GCtx}.
@@ -132,15 +123,21 @@ Lemma set_moves_nil_lift : forall Ψ Δ Γ σ Fσ, set_moves_with T γ Ψ Δ Γ 
     set_moves_with T γ nil (Ψ ++ Δ) (tele_sub Ψ σ ++ Γ) (sb_qn (List.length Ψ) σ) (set_env_moved (List.length Ψ) Fσ).
 Proof. intros * Hs. pose proof Hs as [_ _ HΔ _ Hc]. exact (set_moves_lift _ nil _ _ _ _ Hs HΔ Hc). Qed.
 
+(** Coherent slots along the substitution lifted past the extension the
+    setting moves past. *)
+Lemma set_sub_slots_coherent_of_moves : forall Ψ Δ Γ σ Fσ, set_moves_with T γ Ψ Δ Γ σ Fσ -> set_sub_slots_coherent γ Δ Γ σ ->
+    set_sub_slots_coherent γ (Ψ ++ Δ) (tele_sub Ψ σ ++ Γ) (sb_qn (List.length Ψ) σ).
+Proof. intros * _ Hκ. exact (set_sub_slots_coherent_lift γ _ _ _ _ Hκ). Qed.
+
 Lemma set_valid_unit_modexp_moved :
-  (forall Δ K, set_valid_unit T γ Δ K -> forall Γ σ Fσ, set_moves_with T γ nil Δ Γ σ Fσ ->
+  (forall Δ K, set_valid_unit T γ Δ K -> forall Γ σ Fσ, set_moves_with T γ nil Δ Γ σ Fσ -> set_sub_slots_coherent γ Δ Γ σ ->
      set_valid_unit T γ Γ (modexp_sub K σ)) /\
-  (forall Δ H, set_valid_modexp T γ Δ H -> forall Γ σ Fσ, set_moves_with T γ nil Δ Γ σ Fσ ->
+  (forall Δ H, set_valid_modexp T γ Δ H -> forall Γ σ Fσ, set_moves_with T γ nil Δ Γ σ Fσ -> set_sub_slots_coherent γ Δ Γ σ ->
      set_valid_modexp T γ Γ (modexp_sub H σ)).
 Proof.
   apply (set_valid_unit_modexp_ind T γ).
   - (* a filed module at arguments *)
-    intros Δ p T0 Φ Tr Tf Ns Hw Hgl HΔ [-> Hl Ha Hsc HN HNr] Γ σ Fσ Hs. pose proof Hs as [[Hσ _ _] HΓ _ _ _].
+    intros Δ p T0 Φ Tr Tf Ns Hw Hgl HΔ [-> Hl Ha Hsc HN HNr] Γ σ Fσ Hs Hκ. pose proof Hs as [[Hσ _ _] HΓ _ _ _].
     pose proof (sub_preserves_modexp _ _ _ _ _ _ _ Hw Hσ) as Hw'.
     rewrite me_apps_sub, qname_mod_sub in Hw' |- *.
     eapply set_valid_unit_filed; [exact Hw' | exact Hgl | exact HΓ |].
@@ -156,7 +153,7 @@ Proof.
       destruct (HNr _ _ HA0) as (Srt & [i |] & Hi); eexists; (split; [constructor |]);
         exact (set_exp_eq_moved T γ Hfn Hmods nil _ _ _ _ _ _ _ Hs Hi).
   - (* a body *)
-    intros Δ Δu Φ Φx [Hw Hx HΔu [l HΔur] HΔ HC Hsv Hsh Hsx HK Hopr] Hsl IHsl Hops IHops Γ σ Fσ Hs.
+    intros Δ Δu Φ Φx [Hw Hx HΔu [l HΔur] HΔ HC Hsv Hsh Hsx HK Hopr] Hsl IHsl Hops IHops Γ σ Fσ Hs Hκ.
     pose proof Hs as [Hg HΓ _ _ _]. pose proof (set_gsub_typed _ _ _ _ _ _ Hg) as Hσ.
     pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m unit_full] in Hf.
     destruct Hf as [Φx0 _ _ _ _ Hx0 HwCx _ _ _ _ _ _ _ _ _ _ _ _].
@@ -200,14 +197,15 @@ Proof.
       intros y Φ0w Ew Uw Hp HEu.
       destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE); subst Ew.
       pose proof (gm_prefix_upto_nopens _ _ _ Hp0 Hn) as Hn0; cbn [gm_nopens] in Hn0.
-      destruct (body_ctx_of_prefix _ _ _ Hn Hp0) as (X & HX).
+      destruct (prefix_body_ctx _ _ _ Hn Hp0) as (X & HX).
       destruct E as [| pv0 U | | pv0 A0 M0 U |]; cbn in HEu; try discriminate; injection HEu as <-;
         cbn [body_ctx] in HX; rewrite HX, <- !app_assoc in HC, HwCx; cbn [List.app] in HC, HwCx;
         rewrite app_assoc in HC, HwCx;
         pose proof (set_moves_of_ext (X ++ _ :: nil) _ _ _ _ _ Hg HΓ ltac:(rewrite <- app_assoc; exact HC)
                       ltac:(rewrite <- app_assoc; exact HwCx)) as Hs0;
         pose proof (set_moves_nil_lift _ _ _ _ _ Hs0) as Hs1; rewrite <- app_assoc in Hs1;
-        pose proof (IHsl _ _ _ _ Hp0 eq_refl _ _ _ Hs1) as HK0;
+        pose proof (set_sub_slots_coherent_of_moves _ _ _ _ _ Hs0 Hκ) as Hκ1; rewrite <- app_assoc in Hκ1;
+        pose proof (IHsl _ _ _ _ Hp0 eq_refl _ _ _ Hs1 Hκ1) as HK0;
         rewrite (body_ctx_sub _ _ Hn0), app_assoc, <- tele_sub_app;
         cbn [modexp_sub] in HK0;
         rewrite (gunit_sub_sb_eq U _ _ (sb_qn_add _ _ _)), <- (length_body_ctx _ Hn0), <- length_app;
@@ -220,10 +218,11 @@ Proof.
       rewrite HΨr, <- !app_assoc, (app_assoc Ψ Δu Δ) in HC, HwCx.
       pose proof (set_moves_of_ext _ _ _ _ _ _ Hg HΓ HC HwCx) as HsΨ.
       pose proof (set_moves_nil_lift _ _ _ _ _ HsΨ) as HsΨ'. rewrite <- app_assoc in HsΨ'.
-      pose proof (IHops _ _ _ Ek _ _ _ HsΨ') as HR.
+      pose proof (set_sub_slots_coherent_of_moves _ _ _ _ _ HsΨ Hκ) as HκΨ. rewrite <- app_assoc in HκΨ.
+      pose proof (IHops _ _ _ Ek _ _ _ HsΨ' HκΨ) as HR.
       rewrite (modexp_sub_sb_eq H _ _ (sb_qn_add _ _ _)), tele_sub_app, <- app_assoc, length_app in *. exact HR.
   - (* an alias *)
-    intros Δ Δu E [Hw HΔu [l HΔur] HΔ HΔΔ HK HE] HEv IHE Γ σ Fσ Hs.
+    intros Δ Δu E [Hw HΔu [l HΔur] HΔ HΔΔ HK HE] HEv IHE Γ σ Fσ Hs Hκ.
     pose proof Hs as [Hg HΓ _ _ _]. pose proof (set_gsub_typed _ _ _ _ _ _ Hg) as Hσ.
     pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m unit_full] in Hf.
     destruct Hf as [_ _ _ HwΔ _ _ _ _ _ _ _].
@@ -239,9 +238,9 @@ Proof.
     + exact (set_ctx_moved T γ Hfn Hmods _ _ _ _ _ Hg HΓ HΔΔ HwΔ).
     + exact HK'.
     + exact (set_modexp_rel_moved T γ Hfn Hmods _ _ _ _ _ _ _ HsΔ HE).
-    + exact (IHE _ _ _ (set_moves_nil_lift _ _ _ _ _ HsΔ)).
+    + exact (IHE _ _ _ (set_moves_nil_lift _ _ _ _ _ HsΔ) (set_sub_slots_coherent_of_moves _ _ _ _ _ HsΔ Hκ)).
   - (* a module expression equal to a valid unit *)
-    intros Δ H K R Rm RK [HwH HmH HmodH HHK HmK HmodK] HK IHK Γ σ Fσ Hs.
+    intros Δ H K R Rm RK [HwH HmH HmodH HHK HmK HmodK Hpf] HK IHK Γ σ Fσ Hs Hκ.
     pose proof Hs as [Hg _ _ _ _]. pose proof (set_gsub_typed _ _ _ _ _ _ Hg) as Hσ.
     pose proof (set_valid_unit_wf _ _ HK) as HwK.
     destruct (wf_modexp_eq_scoped _ _ _ _ _ HwH) as (HΔs & HHs & _).
@@ -249,13 +248,17 @@ Proof.
     pose proof (wf_sub_mod_compat _ _ _ _ _ Hσ) as Hc.
     pose proof (wf_gstack_closed _ _ Hgw) as Hcl.
     apply (set_valid_modexp_intro _ _ _ _ (modexp_sub K σ) (mdesc_sub R σ) (mdesc_sub Rm σ) (mdesc_sub RK σ));
-      [constructor | exact (IHK _ _ _ Hs)].
+      [constructor | exact (IHK _ _ _ Hs Hκ)].
     + exact (sub_preserves_modexp _ _ _ _ _ _ _ HwH Hσ).
     + exact (mdenote_sub _ _ Hcl _ _ _ HmH HΔs HHs _ _ Hc).
     + apply mdesc_mod_sub; exact HmodH.
     + exact (set_modexp_rel_moved T γ Hfn Hmods nil _ _ _ _ _ _ Hs HHK).
     + exact (mdenote_sub _ _ Hcl _ _ _ HmK HΔs HKs _ _ Hc).
     + apply mdesc_mod_sub; exact HmodK.
+    + intros κs Hcoh ys x.
+      rewrite !(proj1 (unit_member_proofs_sub_all γ) _ κs σ (fun s => modexp_member_proofs γ κs (sentry_modexp (σ s))))
+        by (intros s ys' x'; reflexivity).
+      exact (Hpf _ (Hκ _ Hcoh) ys x).
 Qed.
 
 (** ** Valid Units Past One More Entry, and Slots *)
@@ -265,7 +268,8 @@ Lemma set_valid_unit_shift : forall e Γ K, set_valid_unit T γ Γ K -> set_ctx 
 Proof.
   intros * HK HC Hc. rewrite <- modexp_sub_of_wk.
   apply (proj1 set_valid_unit_modexp_moved _ _ HK _ _ set_env_tail).
-  constructor; [exact (set_gsub_shift T γ _ _ Hc) | exact HC | exact (proj1 HC) | exact HC | exact (ctx_decomp_tail Hc)].
+  - constructor; [exact (set_gsub_shift T γ _ _ Hc) | exact HC | exact (proj1 HC) | exact HC | exact (ctx_decomp_tail Hc)].
+  - exact (set_sub_slots_coherent_shift γ _ _).
 Qed.
 
 Lemma set_valid_modexp_shift : forall e Γ H, set_valid_modexp T γ Γ H -> set_ctx T γ (e :: Γ) -> ⊢ gc_deps ⍮ gc_stack ⍮ e :: Γ ->
@@ -273,7 +277,8 @@ Lemma set_valid_modexp_shift : forall e Γ H, set_valid_modexp T γ Γ H -> set_
 Proof.
   intros * HH HC Hc. rewrite <- modexp_sub_of_wk.
   apply (proj2 set_valid_unit_modexp_moved _ _ HH _ _ set_env_tail).
-  constructor; [exact (set_gsub_shift T γ _ _ Hc) | exact HC | exact (proj1 HC) | exact HC | exact (ctx_decomp_tail Hc)].
+  - constructor; [exact (set_gsub_shift T γ _ _ Hc) | exact HC | exact (proj1 HC) | exact HC | exact (ctx_decomp_tail Hc)].
+  - exact (set_sub_slots_coherent_shift γ _ _).
 Qed.
 
 (** The unit of a slot of a context with valid slots is valid there. *)

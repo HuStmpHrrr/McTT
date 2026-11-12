@@ -319,9 +319,21 @@ Record set_alias_ok (Γ Δ : ctx) (E : modexp) : Prop :=
     (** So does its target *)
   ; set_alias_ok_target : set_modexp_rel (Δ ++ Γ) E E }.
 
+(** [set_slots_coherent Γ κs]: [κs] gives each slot of [Γ] the proofness
+    of its unit, read past the slot.  An environment of [Γ] gives such
+    slots ([env_slot_proofs]); so do slots pushed past assumptions, at
+    which no environment need exist. *)
+Fixpoint set_slots_coherent (Γ : ctx) (κs : nat -> member_proofness) : Prop :=
+  match Γ with
+  | nil => True
+  | ce :: Γ' =>
+      set_slots_coherent Γ' (fun s => κs (S s)) /\
+      forall U, centry_unit ce = Some U -> forall ys x, κs 0 ys x = unit_member_proofs γ (fun s => κs (S s)) U ys x
+  end.
+
 (** [set_modexp_valid_with Γ H K R Rm RK]: [H], well formed and denoting
     [R] of the module part [Rm], is equal to [K], which denotes [RK] of the
-    same module part. *)
+    same module part, and has [K]'s proofness. *)
 Record set_modexp_valid_with (Γ : ctx) (H K : modexp) (R Rm RK : mdesc) : Prop :=
   { (** [H] is well formed *)
     set_modexp_valid_wf : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H
@@ -334,7 +346,16 @@ Record set_modexp_valid_with (Γ : ctx) (H K : modexp) (R Rm RK : mdesc) : Prop 
     (** [K] denotes [RK] *)
   ; set_modexp_valid_unit_desc : mdenote gc_deps gc_stack Γ K RK
     (** Of the same module part *)
-  ; set_modexp_valid_unit_mod : mdesc_mod RK = Some Rm }.
+  ; set_modexp_valid_unit_mod : mdesc_mod RK = Some Rm
+    (** Its members are proofs where [K]'s are, read off the syntax at
+        slots coherent with [Γ], not at environments: in
+        [module N where def k : ℕ ≔ 0 end] and
+        [module M (n : ℕ) (z : Empty) ≔ N], [M.k] is the function
+        [n ↦ ∅] of [Π ℕ (Π Empty ℕ)] only if [N]'s proofness says [k] is
+        no proof, and [N] is read in [z : Empty, n : ℕ], which has no
+        environment: there [N]'s equality to [K] says nothing *)
+  ; set_modexp_valid_proofs : forall κs, set_slots_coherent Γ κs -> forall ys x,
+      modexp_member_proofs γ κs H ys x = modexp_member_proofs γ κs K ys x }.
 
 (** [set_valid_unit Γ K]: the unit [K] is valid in [Γ]. *)
 Inductive set_valid_unit : ctx -> modexp -> Prop :=

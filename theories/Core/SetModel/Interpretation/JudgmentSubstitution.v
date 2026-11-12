@@ -285,4 +285,65 @@ Proof.
     apply set_eq_sym. exact (set_denotes_unique _ _ _ _ _ HN _ _ _ Hr (set_denotes_exists _ _ _ _ _ HN _ Hr')).
 Qed.
 
+(** ** Coherent Slots Along Substitutions *)
+
+Lemma set_slots_coherent_resp : forall Γ κs κs', slot_proofs_eq κs κs' ->
+    set_slots_coherent γ Γ κs -> set_slots_coherent γ Γ κs'.
+Proof.
+  induction Γ as [| ce Γ IH]; intros κs κs' E Hc; cbn [set_slots_coherent] in *; [exact I |].
+  destruct Hc as [Hc Hu]. split; [exact (IH _ _ (fun s => E (S s)) Hc) |].
+  intros U HU ys x. rewrite <- (E 0 ys x), (Hu U HU ys x).
+  apply (proj1 (proj2 (unit_member_proofs_resp_all γ))). intros s; apply E.
+Qed.
+
+(** An environment of a context gives it coherent slots. *)
+Lemma set_slots_coherent_env : forall Γ ρ, set_env_in T γ Γ ρ -> set_slots_coherent γ Γ (env_slot_proofs γ ρ).
+Proof.
+  induction Γ as [| ce Γ IH]; intros ρ Hρ; cbn [set_slots_coherent]; [exact I |].
+  destruct Hρ as [Ht He]. split; [exact (IH _ Ht) |].
+  intros U HU ys x. unfold env_slot_proofs at 1.
+  destruct ce as [κ A | A M | U0 | A M U0]; cbn [centry_unit] in HU; try discriminate; injection HU as <-; cbn [set_entry_rel] in He.
+  - destruct He as (m & m' & n & [-> _ Hn Hmn _]); cbn [set_entry_module_part].
+    rewrite (module_member_proofs_resp γ ys _ _ Hmn x).
+    exact (proj1 (proj2 (proj2 (proj2 (proj2 (set_interp_member_proofs_all T γ))))) _ _ _ _ Hn ys x).
+  - destruct He as (v & v' & w & m & m' & n & [-> _ _ Hn _ _ Hmn _]); cbn [set_entry_module_part].
+    rewrite (module_member_proofs_resp γ ys _ _ Hmn x).
+    exact (proj1 (proj2 (proj2 (proj2 (proj2 (set_interp_member_proofs_all T γ))))) _ _ _ _ Hn ys x).
+Qed.
+
+(** [set_sub_slots_coherent Δ Γ σ]: [σ], a substitution of [Δ] in [Γ],
+    gives coherent slots of [Δ] at coherent slots of [Γ]. *)
+Definition set_sub_slots_coherent (Δ Γ : ctx) (σ : sub) : Prop :=
+  forall κs, set_slots_coherent γ Γ κs -> set_slots_coherent γ Δ (fun s => modexp_member_proofs γ κs (sentry_modexp (σ s))).
+
+Lemma centry_unit_sub : forall e τ U, centry_unit e = Some U -> centry_unit (centry_sub e τ) = Some (gunit_sub U τ).
+Proof. intros [] τ U H; cbn in *; try discriminate; injection H as <-; reflexivity. Qed.
+
+Lemma set_sub_slots_coherent_q : forall e Δ Γ τ, set_sub_slots_coherent Δ Γ τ ->
+    set_sub_slots_coherent (e :: Δ) (centry_sub e τ :: Γ) (sb_q τ).
+Proof.
+  intros * Hτ κs [Hc Hu].
+  set (κs0 := fun s => modexp_member_proofs γ (fun s' => κs (S s')) (sentry_modexp (τ s))).
+  apply (set_slots_coherent_resp _ (push_slot_proofs κs0 (κs 0))).
+  - intros s ys x. symmetry.
+    rewrite (proj1 (unit_member_proofs_resp_all γ) _ κs (push_slot_proofs (fun s' => κs (S s')) (κs 0))) by (intros [| s'] ys' x'; reflexivity).
+    symmetry. exact (slot_proofs_sub_q γ (fun s' => κs (S s')) τ κs0 (κs 0) (κs 0) ltac:(intros s' ys' x'; reflexivity)
+                       ltac:(intros; reflexivity) s ys x).
+  - split; [exact (Hτ _ Hc) |]. intros U HU ys x. cbn [push_slot_proofs].
+    rewrite (Hu _ (centry_unit_sub _ τ _ HU) ys x).
+    apply (proj2 (unit_member_proofs_sub_all γ)). intros s ys' x'; reflexivity.
+Qed.
+
+(** Lifted past an extension. *)
+Lemma set_sub_slots_coherent_lift : forall Ψ Δ Γ σ, set_sub_slots_coherent Δ Γ σ ->
+    set_sub_slots_coherent (Ψ ++ Δ) (tele_sub Ψ σ ++ Γ) (sb_qn (List.length Ψ) σ).
+Proof.
+  induction Ψ as [| e Ψ IH]; intros * Hσ; [exact Hσ |].
+  cbn [List.app tele_sub List.length sb_qn]. apply set_sub_slots_coherent_q. exact (IH _ _ _ Hσ).
+Qed.
+
+(** Weakening past one more entry. *)
+Lemma set_sub_slots_coherent_shift : forall e Γ, set_sub_slots_coherent Γ (e :: Γ) (sb_of_wk wk_shift).
+Proof. intros * κs [Hc _]. apply (set_slots_coherent_resp _ _ _ ltac:(intros s ys x; reflexivity) Hc). Qed.
+
 End Moves.
