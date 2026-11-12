@@ -114,7 +114,7 @@ Lemma set_rule_let_mod_zeta : forall Γ U B C FU FU' FC FB FB2, set_ctx T γ Γ 
     set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_mod (me_lit U)))) (a_let (b_mod U) B)
       (exp_sub B (sb_extend sb_id (se_mod (me_lit U)))).
 Proof.
-  intros * HΓ Hc Hσ [HU _ _ _] [HC HB _ _ HBm].
+  intros * HΓ Hc Hσ [HU _ _ _ _] [HC HB _ _ HBm].
   exists (fun ρ => FC (mod_env FU ρ)), (fun ρ => FB (mod_env FU ρ)), (fun ρ => FB (mod_env FU ρ)).
   constructor; [apply set_denotes_mod_sub; assumption | apply set_denotes_let_mod; assumption
                | apply set_denotes_mod_sub; assumption | intros; apply set_eq_refl |].
@@ -170,7 +170,7 @@ Lemma set_rule_let_dm_zeta : forall Γ A M U B C FA' FM FM2 FU FU' FC FB FB2, se
     set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_dm M (me_lit U)))) (a_let (b_def_mod A M U) B)
       (exp_sub B (sb_extend sb_id (se_dm M (me_lit U)))).
 Proof.
-  intros * HΓ Hc Hσ [_ HM _ _ _] [HU _ _ _] [HC HB _ _ HBm].
+  intros * HΓ Hc Hσ [_ HM _ _ _] [HU _ _ _ _] [HC HB _ _ HBm].
   exists (fun ρ => FC (dm_env FM FU ρ)), (fun ρ => FB (dm_env FM FU ρ)), (fun ρ => FB (dm_env FM FU ρ)).
   constructor; [apply set_denotes_dm_sub with (A := A); assumption | apply set_denotes_let_dm; assumption
                | apply set_denotes_dm_sub with (A := A); assumption | intros; apply set_eq_refl |].
@@ -213,7 +213,7 @@ Lemma set_rule_let_mod_cong : forall Γ U U' B B' C FU FU' FC FB FB', set_ctx T 
     set_modexp_eq_with T γ Γ (me_lit U) (me_lit U') FU FU' -> set_exp_eq_with T γ (ce_mod U :: Γ) C B B' FC FB FB' ->
     set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_mod (me_lit U)))) (a_let (b_mod U) B) (a_let (b_mod U') B').
 Proof.
-  intros * HΓ Hc Hc' Hid Hσ [HU HU' EU _] [HC HB HB' EB HBm].
+  intros * HΓ Hc Hc' Hid Hσ [HU HU' EU _ _] [HC HB HB' EB HBm].
   assert (Hin' : forall ρ, set_env_in T γ Γ ρ -> set_env_in T γ (ce_mod U :: Γ) (mod_env FU' ρ)).
   { intros ρ Hρ. split; [exact Hρ |]. exists (FU' ρ), (FU' ρ), (FU ρ).
     constructor; [reflexivity | reflexivity | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU _ Hρ)
@@ -241,7 +241,7 @@ Lemma set_rule_let_dm_cong : forall Γ A A' M M' U U' B B' C FA FM FM' FU FU' FC
     set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_dm M (me_lit U)))) (a_let (b_def_mod A M U) B)
       (a_let (b_def_mod A' M' U') B').
 Proof.
-  intros * HΓ Hc Hc' Hid Hσ [_ HM HM' EM _] [HU HU' EU _] [HC HB HB' EB HBm].
+  intros * HΓ Hc Hc' Hid Hσ [_ HM HM' EM _] [HU HU' EU _ _] [HC HB HB' EB HBm].
   assert (Hin' : forall ρ, set_env_in T γ Γ ρ -> set_env_in T γ (ce_dm A M U :: Γ) (dm_env FM' FU' ρ)).
   { intros ρ Hρ. split; [exact Hρ |]. exists (FM' ρ), (FM' ρ), (FM ρ), (FU' ρ), (FU' ρ), (FU ρ).
     constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ)

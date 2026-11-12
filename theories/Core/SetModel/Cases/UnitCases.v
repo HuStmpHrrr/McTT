@@ -117,7 +117,7 @@ Lemma set_unit_module_across : forall Γ Ψ Ψ' U U' FU FU' FU2 FU2' ρ, gc_deps
     set_modexp_eq_with T γ (Ψ' ++ Γ) (me_lit U') (me_lit U') FU2 FU2' ->
     set_env_in T γ (Ψ ++ Γ) ρ -> set_env_in T γ (Ψ' ++ Γ) ρ -> set_module_eq (FU ρ) (FU2 ρ).
 Proof.
-  intros * HΨ [_ HU' EU _] [HU2 _ _ _] Hρ Hρ'.
+  intros * HΨ [_ HU' EU _ _] [HU2 _ _ _ _] Hρ Hρ'.
   eapply set_module_eq_trans; [apply EU; exact Hρ | exact (set_modexp_denotes_across _ _ _ _ _ _ _ HΨ HU' HU2 Hρ Hρ')].
 Qed.
 
@@ -129,7 +129,7 @@ Lemma set_entry_rel_mod_iff : forall Γ Ψ Ψ' U U' FU FU' FU2 FU2' ρ e e', gc_
     set_entry_rel T γ (Ψ ++ Γ) ρ (ce_mod U) e e' <-> set_entry_rel T γ (Ψ' ++ Γ) ρ (ce_mod U') e e'.
 Proof.
   intros * HΨ HUe HU2e Hρ Hρ'. pose proof (set_unit_module_across _ _ _ _ _ _ _ _ _ _ HΨ HUe HU2e Hρ Hρ') as E.
-  destruct HUe as [HU _ _ _]. destruct HU2e as [HU2 _ _ _]. cbn [set_entry_rel]. split.
+  destruct HUe as [HU _ _ _ _]. destruct HU2e as [HU2 _ _ _ _]. cbn [set_entry_rel]. split.
   - intros (m & m' & n & [E1 E2 Hn Em Em']).
     pose proof (set_modexp_denotes_unique _ _ _ _ _ HU _ _ _ Hρ (proj2 (set_interp_me_lit_iff _ _ _ _ _ _) Hn)) as En.
     exists m, m', (FU2 ρ). constructor; [exact E1 | exact E2 | apply set_interp_me_lit_iff; exact (set_modexp_denotes_exists _ _ _ _ _ HU2 _ Hρ') | |].
@@ -152,7 +152,7 @@ Lemma set_entry_rel_dm_iff : forall Γ Ψ Ψ' A A' M M' U U' FA FM FM' FM2 FU FU
     set_entry_rel T γ (Ψ ++ Γ) ρ (ce_dm A M U) e e' <-> set_entry_rel T γ (Ψ' ++ Γ) ρ (ce_dm A' M' U') e e'.
 Proof.
   intros * HΨ HMe HM2 HUe HU2e Hρ Hρ'. pose proof (set_unit_module_across _ _ _ _ _ _ _ _ _ _ HΨ HUe HU2e Hρ Hρ') as EU.
-  destruct HUe as [HU _ _ _]. destruct HU2e as [HU2 _ _ _]. destruct HMe as [_ HM HM' EM _].
+  destruct HUe as [HU _ _ _ _]. destruct HU2e as [HU2 _ _ _ _]. destruct HMe as [_ HM HM' EM _].
   assert (E : set_eq (FM ρ) (FM2 ρ))
     by (eapply set_eq_trans; [apply EM; exact Hρ | exact (set_denotes_across _ _ _ _ _ _ _ HΨ HM' HM2 Hρ Hρ')]).
   cbn [set_entry_rel]. split.
@@ -187,7 +187,7 @@ Proof. intros * [HA HM _ _ Hm]. constructor; [exact HA | exact HM | exact HM | i
 Lemma set_modexp_eq_with_left : forall Γ H H' F F', set_modexp_eq_with T γ Γ H H' F F' ->
     set_modexp_eq_with T γ Γ H H F F.
 Proof.
-  intros * [HF _ _ Hv]. constructor; [exact HF | exact HF | | exact Hv].
+  intros * [HF _ _ Hv _]. constructor; [exact HF | exact HF | | exact Hv | exact Hv].
   intros ρ Hρ. exact (set_modexp_denotes_refl _ _ _ _ _ _ HF Hρ).
 Qed.
 

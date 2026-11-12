@@ -196,7 +196,9 @@ Record set_modexp_eq_with (Γ : ctx) (H H' : modexp) (F F' : set_env -> set_modu
     (** The two are equal *)
   ; set_modexp_eq_eq : forall ρ, set_env_in Γ ρ -> set_module_eq (F ρ) (F' ρ)
     (** Its members are of their types *)
-  ; set_modexp_eq_members : set_members_valid Γ H F }.
+  ; set_modexp_eq_members : set_members_valid Γ H F
+    (** The right expression's members are of their types *)
+  ; set_modexp_eq_members' : set_members_valid Γ H' F' }.
 
 (** [H] and [H'] are equal module expressions in [Γ]. *)
 Definition set_modexp_eq (Γ : ctx) (H H' : modexp) : Prop := exists F F', set_modexp_eq_with Γ H H' F F'.
@@ -288,7 +290,7 @@ Proof.
       exists v', v, (FM (set_env_tail ρ')). constructor; try assumption; [exact (set_denotes_exists _ _ _ HFM _ Hr) | |].
       * eapply set_eq_trans; [exact Ev' |]. eapply set_eq_trans; [exact Ew | apply set_eq_sym; exact Ew'].
       * eapply set_eq_trans; [exact Ev |]. eapply set_eq_trans; [exact Ew | apply set_eq_sym; exact Ew'].
-    + destruct He as (m & m' & n & [E1 E2 Hn Em Em']). destruct Hce as (FU & FU' & [HFU _ _ _]).
+    + destruct He as (m & m' & n & [E1 E2 Hn Em Em']). destruct Hce as (FU & FU' & [HFU _ _ _ _]).
       pose proof (set_modexp_denotes_unique _ _ _ HFU _ _ _ Hl (proj2 (set_interp_me_lit_iff _ _ _ _) Hn)) as En.
       pose proof (set_modexp_denotes_rel _ _ _ _ _ HFU Ht Hr) as En'.
       exists m', m, (FU (set_env_tail ρ')). constructor; try assumption;
@@ -296,7 +298,7 @@ Proof.
       * eapply set_module_eq_trans; [exact Em' |]. eapply set_module_eq_trans; [exact En | apply set_module_eq_sym; exact En'].
       * eapply set_module_eq_trans; [exact Em |]. eapply set_module_eq_trans; [exact En | apply set_module_eq_sym; exact En'].
     + destruct He as (v & v' & w & m & m' & n & [E1 E2 Hw Hn Ev Ev' Em Em']).
-      destruct Hce as [(FA & FM & FM' & [_ HFM _ _ _]) (FU & FU' & [HFU _ _ _])].
+      destruct Hce as [(FA & FM & FM' & [_ HFM _ _ _]) (FU & FU' & [HFU _ _ _ _])].
       pose proof (set_denotes_unique _ _ _ HFM _ _ _ Hl Hw) as Ew.
       pose proof (set_denotes_rel _ _ _ _ _ HFM Ht Hr) as Ew'.
       pose proof (set_modexp_denotes_unique _ _ _ HFU _ _ _ Hl (proj2 (set_interp_me_lit_iff _ _ _ _) Hn)) as En.
@@ -322,7 +324,7 @@ Proof.
       eapply set_eq_trans; [exact Eu3 |]. eapply set_eq_trans; [exact Ew' |].
       eapply set_eq_trans; [exact E12 | apply set_eq_sym; exact Ew].
     + destruct He12 as (m1 & m2 & n & [E1 E2 Hn Em1 Em2]). destruct He23 as (k2 & k3 & n' & [F2 F3 Hn' Ek2 Ek3]).
-      rewrite E2 in F2. injection F2 as <-. destruct Hce as (FU & FU' & [HFU _ _ _]).
+      rewrite E2 in F2. injection F2 as <-. destruct Hce as (FU & FU' & [HFU _ _ _ _]).
       destruct (Hin _ _ Ht12) as [Hl1 Hr2].
       pose proof (set_modexp_denotes_unique _ _ _ HFU _ _ _ Hl1 (proj2 (set_interp_me_lit_iff _ _ _ _) Hn)) as En.
       pose proof (set_modexp_denotes_unique _ _ _ HFU _ _ _ Hr2 (proj2 (set_interp_me_lit_iff _ _ _ _) Hn')) as En'.
@@ -332,7 +334,7 @@ Proof.
       eapply set_module_eq_trans; [exact E12 | apply set_module_eq_sym; exact En].
     + destruct He12 as (v1 & v2 & w & m1 & m2 & n & [E1 E2 Hw Hn Ev1 Ev2 Em1 Em2]).
       destruct He23 as (u2 & u3 & w' & k2 & k3 & n' & [F2 F3 Hw' Hn' Eu2 Eu3 Ek2 Ek3]).
-      rewrite E2 in F2. injection F2 as <- <-. destruct Hce as [(FA & FM & FM' & [_ HFM _ _ _]) (FU & FU' & [HFU _ _ _])].
+      rewrite E2 in F2. injection F2 as <- <-. destruct Hce as [(FA & FM & FM' & [_ HFM _ _ _]) (FU & FU' & [HFU _ _ _ _])].
       destruct (Hin _ _ Ht12) as [Hl1 Hr2].
       pose proof (set_denotes_unique _ _ _ HFM _ _ _ Hl1 Hw) as Ew.
       pose proof (set_denotes_unique _ _ _ HFM _ _ _ Hr2 Hw') as Ew'.
