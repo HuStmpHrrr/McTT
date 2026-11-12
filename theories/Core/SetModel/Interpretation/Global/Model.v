@@ -245,6 +245,8 @@ Record set_group_ok (p : qname) (D : ind_decl) (G : set_group) : Prop :=
   ; set_group_ok_carriers : forall k Mk ρ s, ind_member D k = Some Mk -> set_env_in T γ (im_params D Mk) ρ ->
       set_interp T γ (ind_uparams D) (set_env_drop (im_nn Mk) ρ) (ind_sort D) s ->
       exists U l, set_group_carrier_with G k (uniform_values D Mk ρ) (set_env_values (im_nparams Mk) ρ) s U l
+    (** A type former's closed type denotes *)
+  ; set_group_ok_former_types : forall k Mk, ind_member D k = Some Mk -> exists FA, set_denotes T γ nil (ind_ty D Mk) FA
     (** A type former is of its closed type *)
   ; set_group_ok_formers_typed : forall k Mk FA, ind_member D k = Some Mk -> set_denotes T γ nil (ind_ty D Mk) FA ->
       set_mem (global_former γ p k) (code_carrier (FA empty_set_env))
