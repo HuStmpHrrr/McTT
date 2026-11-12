@@ -12,26 +12,6 @@ From Mctt.Core.Syntactic Require Import Syntax.
 
 (** ** Groups of Inductive Types *)
 
-(** A step of a leaf path of a recursive argument ([leaf_path]): through a
-    function's domain, or through a record view's field. *)
-Inductive set_leaf_step : Type :=
-(** Through a domain, its type code read off the values before it *)
-| set_leaf_step_domain (domain : list aczel_set -> aczel_set)
-(** Through the field [f] of a record view *)
-| set_leaf_step_field (f : string).
-
-(** A leaf path: its steps, the member it ends in, and that member's
-    parameters (uniform, then non-uniform), read off the values before it
-    and the domains' points.  Each leaf of a recursive argument has one
-    recursive result. *)
-Record set_leaf : Type := mk_set_leaf
-  { (** The steps, outermost first *)
-    set_leaf_steps : list set_leaf_step
-    (** The member the path ends in *)
-  ; set_leaf_target : nat
-    (** That member's parameters *)
-  ; set_leaf_target_params : list aczel_set -> list aczel_set }.
-
 (** A constructor argument, its types read off the values of the
     parameters (uniform, then non-uniform) and of the arguments before it,
     outermost first. *)
@@ -40,10 +20,11 @@ Inductive set_argument : Type :=
 | set_argument_plain (κ : abs_kind) (type : list aczel_set -> aczel_set)
 (** A recursive argument of the type code [type]: a function over the
     [domains] (each read off the values before it and the earlier domains'
-    points) into the member [target] at the parameters [target_params];
-    with one recursive result per leaf path *)
+    points) into the member [target] at the parameters [target_params].
+    The eliminator reads its recursive results off the declaration, as
+    evaluation does ([eval_ih]) *)
 | set_argument_recursive (type : list aczel_set -> aczel_set) (domains : list (list aczel_set -> aczel_set))
-    (target : nat) (target_params : list aczel_set -> list aczel_set) (leaves : list set_leaf).
+    (target : nat) (target_params : list aczel_set -> list aczel_set).
 
 (** A constructor: its name and its arguments, in order. *)
 Record set_constructor : Type := mk_set_constructor

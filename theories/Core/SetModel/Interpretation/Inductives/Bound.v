@@ -46,7 +46,7 @@ Fixpoint plain_arguments_set (gs : list set_argument) (pre vals : list aczel_set
   | nil => singleton_set (list_code vals)
   | set_argument_plain _ t :: gs' =>
       union_set (replacement_set (code_carrier (t pre)) (fun a => plain_arguments_set gs' (pre ++ [a]) (vals ++ [a])))
-  | set_argument_recursive _ _ _ _ _ :: gs' => plain_arguments_set gs' (pre ++ [empty_set]) vals
+  | set_argument_recursive _ _ _ _ :: gs' => plain_arguments_set gs' (pre ++ [empty_set]) vals
   end.
 
 (** ** Shapes, Positions and Trees *)
@@ -70,7 +70,7 @@ Fixpoint argument_positions (gs : list set_argument) (pvals pre : list aczel_set
       | p :: pvals' => argument_positions gs' pvals' (pre ++ [p]) (S j)
       | nil => empty_set
       end
-  | set_argument_recursive _ ds _ _ _ :: gs' =>
+  | set_argument_recursive _ ds _ _ :: gs' =>
       union_set (unordered_pair_set (replacement_set (domains_set ds pre nil) (fun pts => ordered_pair (numeral_set j) pts))
                                     (argument_positions gs' pvals (pre ++ [empty_set]) (S j)))
   end.
@@ -80,7 +80,7 @@ Fixpoint plain_count (gs : list set_argument) : nat :=
   match gs with
   | nil => 0
   | set_argument_plain _ _ :: gs' => S (plain_count gs')
-  | set_argument_recursive _ _ _ _ _ :: gs' => plain_count gs'
+  | set_argument_recursive _ _ _ _ :: gs' => plain_count gs'
   end.
 
 (** The members and constructors of the group, as index pairs. *)
@@ -141,7 +141,7 @@ Fixpoint interleave_arguments (gs : list set_argument) (pvals rs : list aczel_se
       | p :: pvals' => p :: interleave_arguments gs' pvals' rs
       | nil => nil
       end
-  | set_argument_recursive _ _ _ _ _ :: gs' =>
+  | set_argument_recursive _ _ _ _ :: gs' =>
       match rs with
       | r :: rs' => r :: interleave_arguments gs' pvals rs'
       | nil => nil
@@ -172,10 +172,10 @@ with children_decode : aczel_set -> list set_argument -> list aczel_set -> list 
     children_decode g (set_argument_plain κ t :: gs) (p :: pvals) pre j rs
 (** A recursive argument: its value at every domain point the decoding of
     the child there *)
-| children_decode_recursive : forall g type ds target tparams ls gs pvals pre j r rs,
+| children_decode_recursive : forall g type ds target tparams gs pvals pre j r rs,
     child_decodes g j ds target tparams pre nil r ->
     children_decode g gs pvals (pre ++ [empty_set]) (S j) rs ->
-    children_decode g (set_argument_recursive type ds target tparams ls :: gs) pvals pre j (r :: rs)
+    children_decode g (set_argument_recursive type ds target tparams :: gs) pvals pre j (r :: rs)
 (** [child_decodes g j ds target tparams pre points r]: over the domains
     [ds] left after the points [points], the recursive argument [j] has
     the value [r] *)
@@ -243,7 +243,7 @@ Lemma plain_arguments_set_resp : forall gs, Forall argument_respects gs ->
 Proof.
   intros gs Hgs. induction Hgs as [| g gs Hg Hgs IH]; intros pre pre' vals vals' Hpre Hv; cbn [plain_arguments_set].
   - apply singleton_set_resp. apply list_code_resp. exact Hv.
-  - destruct g as [κ t | type ds target tparams ls]; cbn [argument_respects] in Hg.
+  - destruct g as [κ t | type ds target tparams]; cbn [argument_respects] in Hg.
     + apply union_set_resp. apply replacement_set_resp.
       * intros b b' Eb. apply IH; apply list_set_eq_app; try apply list_set_eq_refl; constructor; [exact Eb | constructor | exact Eb | constructor].
       * intros b b' Eb. apply IH; apply list_set_eq_app; try apply list_set_eq_refl; constructor; [exact Eb | constructor | exact Eb | constructor].
@@ -258,7 +258,7 @@ Lemma argument_positions_resp : forall gs, Forall argument_respects gs ->
 Proof.
   intros gs Hgs. induction Hgs as [| g gs Hg Hgs IH]; intros pvals pvals' pre pre' j Hpv Hpre; cbn [argument_positions].
   - apply set_eq_refl.
-  - destruct g as [κ t | type ds target tparams ls]; cbn [argument_respects] in Hg.
+  - destruct g as [κ t | type ds target tparams]; cbn [argument_respects] in Hg.
     + destruct Hpv as [| p p' pv pv' Hp Hpv]; [apply set_eq_refl |].
       apply IH; [exact Hpv | apply list_set_eq_app; [exact Hpre | constructor; [exact Hp | constructor]]].
     + destruct Hg as [Hds _]. apply union_set_resp. apply unordered_pair_set_resp.
@@ -304,7 +304,7 @@ Qed.
 Lemma interleave_arguments_resp : forall gs pvals pvals' rs rs', list_set_eq pvals pvals' -> list_set_eq rs rs' ->
     list_set_eq (interleave_arguments gs pvals rs) (interleave_arguments gs pvals' rs').
 Proof.
-  induction gs as [| [κ t | type ds target tparams ls] gs IH]; intros pvals pvals' rs rs' Hp Hr; cbn [interleave_arguments].
+  induction gs as [| [κ t | type ds target tparams] gs IH]; intros pvals pvals' rs rs' Hp Hr; cbn [interleave_arguments].
   - constructor.
   - destruct Hp as [| p p' pv pv' Hpp Hpv]; [constructor | constructor; [exact Hpp | apply IH; assumption]].
   - destruct Hr as [| r r' rv rv' Hrr Hrv]; [constructor | constructor; [exact Hrr | apply IH; assumption]].
@@ -342,7 +342,7 @@ Proof.
     inversion Hpv as [| ? p' ? pv' Hpp Hpv']; subst. inversion H'; subst.
     eapply IH; [exact Hgs | exact Eg | exact Hpv' | apply list_set_eq_app; [exact Hpre | constructor; [exact Hpp | constructor]] | eassumption].
   - (** a recursive argument *)
-    intros g type ds target tparams ls gs pvals pre j r rs _ IH1 _ IH2 Hr g' pvals' pre' rs' Eg Hpv Hpre H'.
+    intros g type ds target tparams gs pvals pre j r rs _ IH1 _ IH2 Hr g' pvals' pre' rs' Eg Hpv Hpre H'.
     inversion Hr as [| ? ? Hg Hgs]; subst. destruct Hg as [Hds Htp].
     inversion H'; subst. constructor.
     + eapply IH1; [exact Hds | exact Htp | exact Eg | exact Hpre | constructor | eassumption].
@@ -399,13 +399,13 @@ Qed.
     argument of [gs], numbered from [j]. *)
 Inductive position_of : list set_argument -> list aczel_set -> list aczel_set -> nat -> aczel_set -> Prop :=
 (** A position of this recursive argument *)
-| position_of_here : forall type ds target tparams ls gs pvals pre j pts pos,
+| position_of_here : forall type ds target tparams gs pvals pre j pts pos,
     points_fit ds pre nil pts -> set_eq pos (tree_position j pts) ->
-    position_of (set_argument_recursive type ds target tparams ls :: gs) pvals pre j pos
+    position_of (set_argument_recursive type ds target tparams :: gs) pvals pre j pos
 (** A position of a later argument, after a recursive one *)
-| position_of_after_recursive : forall type ds target tparams ls gs pvals pre j pos,
+| position_of_after_recursive : forall type ds target tparams gs pvals pre j pos,
     position_of gs pvals (pre ++ [empty_set]) (S j) pos ->
-    position_of (set_argument_recursive type ds target tparams ls :: gs) pvals pre j pos
+    position_of (set_argument_recursive type ds target tparams :: gs) pvals pre j pos
 (** A position of a later argument, after a non-recursive one *)
 | position_of_after_plain : forall κ t gs p pvals pre j pos,
     position_of gs pvals (pre ++ [p]) (S j) pos ->
@@ -416,7 +416,7 @@ Lemma set_mem_argument_positions : forall gs, Forall argument_respects gs -> for
 Proof.
   intros gs Hgs. induction Hgs as [| g gs Hg Hgs IH]; intros pvals pre j pos Hpos; cbn [argument_positions] in Hpos.
   - exfalso. exact (set_mem_empty _ Hpos).
-  - destruct g as [κ t | type ds target tparams ls]; cbn [argument_respects] in Hg.
+  - destruct g as [κ t | type ds target tparams]; cbn [argument_respects] in Hg.
     + destruct pvals as [| p pvals]; [exfalso; exact (set_mem_empty _ Hpos) |].
       apply position_of_after_plain. apply IH. exact Hpos.
     + destruct Hg as [Hds _]. apply set_mem_union in Hpos as [w [Hw Hpos]]. apply set_mem_unordered_pair in Hw as [Hw | Hw].
@@ -511,13 +511,13 @@ Fixpoint recursive_count (gs : list set_argument) : nat :=
   match gs with
   | nil => 0
   | set_argument_plain _ _ :: gs' => recursive_count gs'
-  | set_argument_recursive _ _ _ _ _ :: gs' => S (recursive_count gs')
+  | set_argument_recursive _ _ _ _ :: gs' => S (recursive_count gs')
   end.
 
 Lemma length_interleave_arguments : forall gs pvals rs, List.length pvals = plain_count gs -> List.length rs = recursive_count gs ->
     List.length (interleave_arguments gs pvals rs) = List.length gs.
 Proof.
-  induction gs as [| [κ t | type ds target tparams ls] gs IH]; intros pvals rs Hp Hr; cbn in *; [reflexivity | |].
+  induction gs as [| [κ t | type ds target tparams] gs IH]; intros pvals rs Hp Hr; cbn in *; [reflexivity | |].
   - destruct pvals; cbn in Hp; [discriminate | cbn; f_equal; apply IH; [lia | exact Hr]].
   - destruct rs; cbn in Hr; [discriminate | cbn; f_equal; apply IH; [exact Hp | lia]].
 Qed.
@@ -528,7 +528,7 @@ Lemma interleave_arguments_inj : forall gs pvals pvals' rs rs',
     list_set_eq (interleave_arguments gs pvals rs) (interleave_arguments gs pvals' rs') ->
     list_set_eq pvals pvals' /\ list_set_eq rs rs'.
 Proof.
-  induction gs as [| [κ t | type ds target tparams ls] gs IH]; intros pvals pvals' rs rs' Hp Hp' Hr Hr' E; cbn in *.
+  induction gs as [| [κ t | type ds target tparams] gs IH]; intros pvals pvals' rs rs' Hp Hp' Hr Hr' E; cbn in *.
   - destruct pvals, pvals', rs, rs'; try discriminate. split; constructor.
   - destruct pvals as [| p pvals], pvals' as [| p' pvals']; cbn in Hp, Hp'; try discriminate.
     inversion E as [| ? ? ? ? Epp Erest]; subst.
@@ -635,7 +635,7 @@ Proof.
     inversion Hpv as [| ? p' ? pv' Hpp Hpv']; subst. inversion H'; subst. inversion Hpos; subst.
     eapply IH; [exact Hgs | exact Hpv' | apply list_set_eq_app; [exact Hpre | constructor; [exact Hpp | constructor]] | exact Hrs | eassumption | eassumption].
   - (** a recursive argument *)
-    intros g type ds target tparams ls gs pvals pre j r rs _ IH1 _ IH2 Hr g' pvals' pre' rs' Hpv Hpre Hrs H' pos Hpos.
+    intros g type ds target tparams gs pvals pre j r rs _ IH1 _ IH2 Hr g' pvals' pre' rs' Hpv Hpre Hrs H' pos Hpos.
     inversion Hr as [| ? ? Hg Hgs]; subst. destruct Hg as [Hds Htp].
     inversion Hrs as [| ? r' ? rs'' Hrr Hrs']; subst. inversion H'; subst. inversion Hpos as [? ? ? ? ? ? ? ? ? pts ? Hf Ep | |]; subst.
     + eapply set_eq_trans; [apply set_apply_resp; [apply set_eq_refl | exact Ep] |].
@@ -672,7 +672,7 @@ End Injective.
 Fixpoint split_arguments (gs : list set_argument) (vals : list aczel_set) : list aczel_set * list aczel_set :=
   match gs, vals with
   | set_argument_plain _ _ :: gs', a :: vals' => let '(p, r) := split_arguments gs' vals' in (a :: p, r)
-  | set_argument_recursive _ _ _ _ _ :: gs', a :: vals' => let '(p, r) := split_arguments gs' vals' in (p, a :: r)
+  | set_argument_recursive _ _ _ _ :: gs', a :: vals' => let '(p, r) := split_arguments gs' vals' in (p, a :: r)
   | _, _ => (nil, nil)
   end.
 
@@ -681,7 +681,7 @@ Lemma split_arguments_spec : forall gs vals, List.length vals = List.length gs -
     List.length (fst (split_arguments gs vals)) = plain_count gs /\
     List.length (snd (split_arguments gs vals)) = recursive_count gs.
 Proof.
-  induction gs as [| [κ t | type ds target tparams ls] gs IH]; intros [| a vals] Hl; cbn in Hl; try discriminate; cbn.
+  induction gs as [| [κ t | type ds target tparams] gs IH]; intros [| a vals] Hl; cbn in Hl; try discriminate; cbn.
   - auto.
   - destruct (IH vals ltac:(lia)) as (H1 & H2 & H3). destruct (split_arguments gs vals) as [p r]. cbn in *. rewrite H1. auto.
   - destruct (IH vals ltac:(lia)) as (H1 & H2 & H3). destruct (split_arguments gs vals) as [p r]. cbn in *. rewrite H1. auto.
@@ -724,7 +724,7 @@ Qed.
 Lemma plain_arguments_set_of_fit : forall bound S pre gs vals, arguments_fit G bound S pre gs vals -> Forall argument_respects gs ->
     forall prefix, set_mem (list_code (prefix ++ fst (split_arguments gs vals))) (plain_arguments_set gs pre prefix).
 Proof.
-  intros bound S pre gs vals H. induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams ls gs a vals Ha H IH];
+  intros bound S pre gs vals H. induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams gs a vals Ha H IH];
     intros Hr prefix; cbn [split_arguments plain_arguments_set]; inversion Hr as [| ? ? Hg Hgs]; subst.
   - rewrite app_nil_r. apply set_mem_singleton. apply set_eq_refl.
   - destruct (split_arguments gs vals) as [p r] eqn:Es. cbn [fst] in *.
@@ -878,23 +878,23 @@ Inductive targets_good : list aczel_set -> list set_argument -> list aczel_set -
     targets_good (pre ++ [a]) gs vals -> targets_good pre (set_argument_plain κ t :: gs) (a :: vals)
 (** A recursive argument whose target, at every point of its domains, is
     good *)
-| targets_good_recursive : forall pre type ds target tparams ls gs a vals,
+| targets_good_recursive : forall pre type ds target tparams gs a vals,
     (forall pts, points_fit ds pre nil pts -> good_point target (List.skipn nuniform (tparams (pre ++ pts)))) ->
     targets_good (pre ++ [empty_set]) gs vals ->
-    targets_good pre (set_argument_recursive type ds target tparams ls :: gs) (a :: vals).
+    targets_good pre (set_argument_recursive type ds target tparams :: gs) (a :: vals).
 
 (** [child_tree gs pvals pre j rs pos t]: [t] is the tree of the recursive
     argument at the position [pos] *)
 Inductive child_tree : list set_argument -> list aczel_set -> list aczel_set -> nat -> list aczel_set -> aczel_set -> aczel_set -> Prop :=
 (** A position of this recursive argument: the tree of its value there *)
-| child_tree_here : forall type ds target tparams ls gs pvals pre j r rs pts pos t,
+| child_tree_here : forall type ds target tparams gs pvals pre j r rs pts pos t,
     points_fit ds pre nil pts -> set_eq pos (tree_position j pts) ->
     tree_decodes target (List.skipn nuniform (tparams (pre ++ pts))) t (apply_points r pts) ->
-    child_tree (set_argument_recursive type ds target tparams ls :: gs) pvals pre j (r :: rs) pos t
+    child_tree (set_argument_recursive type ds target tparams :: gs) pvals pre j (r :: rs) pos t
 (** A position of a later argument, after a recursive one *)
-| child_tree_after_recursive : forall type ds target tparams ls gs pvals pre j r rs pos t,
+| child_tree_after_recursive : forall type ds target tparams gs pvals pre j r rs pos t,
     child_tree gs pvals (pre ++ [empty_set]) (S j) rs pos t ->
-    child_tree (set_argument_recursive type ds target tparams ls :: gs) pvals pre j (r :: rs) pos t
+    child_tree (set_argument_recursive type ds target tparams :: gs) pvals pre j (r :: rs) pos t
 (** A position of a later argument, after a non-recursive one *)
 | child_tree_after_plain : forall κ ty gs p pvals pre j rs pos t,
     child_tree gs pvals (pre ++ [p]) (S j) rs pos t ->
@@ -932,7 +932,7 @@ Section Existence.
 Lemma child_tree_functional : forall gs pvals pre j rs pos t, child_tree gs pvals pre j rs pos t -> Forall argument_respects gs ->
     forall t', child_tree gs pvals pre j rs pos t' -> set_eq t t'.
 Proof.
-  intros * H. induction H as [type ds target tparams ls gs pvals pre j r rs pts pos t Hf Ep Hd | type ds target tparams ls gs pvals pre j r rs pos t H IH
+  intros * H. induction H as [type ds target tparams gs pvals pre j r rs pts pos t Hf Ep Hd | type ds target tparams gs pvals pre j r rs pos t H IH
                              | κ ty gs p pvals pre j rs pos t H IH]; intros Hr t' H'; inversion Hr as [| ? ? Hg Hgs]; subst.
   - destruct Hg as [Hds Htp].
     inversion H' as [? ? ? ? ? ? ? ? ? ? ? pts' ? ? Hf' Ep' Hd' | ? ? ? ? ? ? ? ? ? ? ? ? ? H1 |]; subst.
@@ -979,7 +979,7 @@ Lemma children_exist : forall pre gs vals, arguments_fit G U points_so_far pre g
     forall j pos, position_of gs (fst (split_arguments gs vals)) pre j pos ->
     exists t, set_mem t trees /\ child_tree gs (fst (split_arguments gs vals)) pre j (snd (split_arguments gs vals)) pos t.
 Proof.
-  intros pre gs vals H. induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams ls gs a vals Ha H IH];
+  intros pre gs vals H. induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams gs a vals Ha H IH];
     intros Htg Hr j pos Hpos; inversion Htg as [| ? ? ? ? ? ? Htg' | ? ? ? ? ? ? ? ? ? Hgood Htg']; subst;
     inversion Hr as [| ? ? Hg Hgs]; subst; cbn [split_arguments] in *.
   - inversion Hpos.
@@ -1036,7 +1036,7 @@ Qed.
 Lemma position_of_mem : forall gs pvals pre j pos, Forall argument_respects gs -> position_of gs pvals pre j pos ->
     set_mem pos (argument_positions gs pvals pre j).
 Proof.
-  intros * Hr H. induction H as [type ds target tparams ls gs pvals pre j pts pos Hf Ep | type ds target tparams ls gs pvals pre j pos H IH
+  intros * Hr H. induction H as [type ds target tparams gs pvals pre j pts pos Hf Ep | type ds target tparams gs pvals pre j pos H IH
                                  | κ ty gs p pvals pre j pos H IH];
     inversion Hr as [| ? ? Hg Hgs]; subst; cbn [argument_positions].
   - destruct Hg as [Hds _]. apply set_mem_union. eexists. split; [apply set_mem_unordered_pair; left; apply set_eq_refl |].
@@ -1054,7 +1054,7 @@ Lemma children_decode_of_fit : forall Sc g, (forall k ns w, good_point k ns -> s
     children_decode g gs (fst (split_arguments gs vals)) pre j (snd (split_arguments gs vals)).
 Proof.
   intros Sc g HS pre gs vals j H. revert j.
-  induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams ls gs a vals Ha H IH];
+  induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams gs a vals Ha H IH];
     intros j Htg Hr Hg; inversion Htg as [| ? ? ? ? ? ? Htg' | ? ? ? ? ? ? ? ? ? Hgood Htg']; subst;
     inversion Hr as [| ? ? Hgr Hgs]; subst; cbn [split_arguments] in *.
   - constructor.
@@ -1064,7 +1064,7 @@ Proof.
     + apply (child_decodes_of Sc g); [| exact Hds | exact Htp | exact Ha].
       intros pts Hf. cbn [List.app]. pose proof (shape_set_at _ _ _ _ _ Hds Htp _ _ _ Hf _ Ha) as Hleaf. cbn [List.app] in Hleaf.
       destruct (HS _ _ _ (Hgood pts Hf) Hleaf) as [t [_ Hd]].
-      assert (Hc : child_tree (set_argument_recursive type ds target tparams ls :: gs) p pre j (a :: r) (tree_position j pts) t)
+      assert (Hc : child_tree (set_argument_recursive type ds target tparams :: gs) p pre j (a :: r) (tree_position j pts) t)
         by (eapply child_tree_here; [exact Hf | apply set_eq_refl | exact Hd]).
       eapply tree_decodes_resp; [apply set_eq_sym; apply Hg; exact Hc | apply set_eq_refl | exact Hd].
     + apply IH; [exact Htg' | exact Hgs |]. intros pos t Hc. apply Hg. apply child_tree_after_recursive. exact Hc.

@@ -86,16 +86,11 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 (** An elimination into propositions: a proof *)
 | set_interp_elim_prop : forall Γ ρ p Us m Bks M,
     set_interp Γ ρ (a_elim ak_propositional p Us m Bks M) empty_set
-(** An elimination into types: the result the eliminator's graph relates
-    the scrutinee to, at the uniform parameters and the scrutinee's
-    non-uniform ones, each branch at its constructor read in its context *)
-| set_interp_elim : forall Γ ρ r p D Us m Bks M us v ns r0,
+(** An elimination into types: the eliminator at the scrutinee's value *)
+| set_interp_elim : forall Γ ρ r p Us m Bks M v r0,
     r <> ak_propositional ->
-    ind_lookup gc_deps gc_stack p = Some D ->
-    List.length Us = List.length (set_group_uniform_types (global_group γ p)) ->
-    set_interp_list Γ ρ Us us ->
     set_interp Γ ρ M v ->
-    set_elim_graph Γ ρ r p D Us Bks m (us ++ ns) v r0 ->
+    set_elim Γ ρ r p Us Bks m v r0 ->
     set_interp Γ ρ (a_elim r p Us m Bks M) r0
 (** A [Π] into propositions: the impredicative quantification *)
 | set_interp_pi_prop : forall Γ ρ κd A B a F,
@@ -248,71 +243,55 @@ with set_interp_gentry : ctx -> set_env -> gentry -> set_entry -> Prop :=
 | set_interp_ge_ind : forall Γ ρ pv pq k D Φ, set_interp_gentry Γ ρ (ge_ind pv pq k D Φ) (set_entry_module (set_module_members nil))
 (** A record type of a body: none is local, the empty table *)
 | set_interp_ge_record : forall Γ ρ pv p R Φ, set_interp_gentry Γ ρ (ge_record pv p R Φ) (set_entry_module (set_module_members nil))
-(** [set_branch Γ ρ r p D Us Bks k c vals res]: the branch of the
-    constructor [c] of the member [k], at the values [vals] of its binders,
-    has the result [res] ([elim_graph]'s branches, here as part of the
-    interpretation) *)
-with set_branch : ctx -> set_env -> abs_kind -> qname -> ind_decl -> list exp -> list eblock ->
-    nat -> string -> list aczel_set -> aczel_set -> Prop :=
-(** The branch read in its context, at the binders' values *)
-| set_branch_intro : forall Γ ρ r p D Us Bks k c vals res Mk gs nm Z A Bs n B,
-    ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-    List.nth_error Bks k = Some (eb_mk nm Z A Bs) -> brs_lookup Bs c = Some (n, B) ->
-    set_interp (elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ) (set_env_extend_values ρ vals) B res ->
-    set_branch Γ ρ r p D Us Bks k c vals res
-(** [set_elim_graph Γ ρ r p D Us Bks k params v res]: [elim_graph] of the
-    group at [p] with the branches [set_branch] *)
-with set_elim_graph : ctx -> set_env -> abs_kind -> qname -> ind_decl -> list exp -> list eblock ->
-    nat -> list aczel_set -> aczel_set -> aczel_set -> Prop :=
-(** At a constructor: its branch at the recursive results *)
-| set_elim_graph_intro : forall Γ ρ r p D Us Bks k Mk cs params vals ihs v res,
-    List.nth_error (set_group_members (global_group γ p)) k = Some Mk ->
-    In cs (set_member_constructors Mk) ->
-    set_eq v (con_val (set_constructor_name cs) (List.skipn (List.length (set_group_uniform_types (global_group γ p))) params ++ vals)) ->
-    set_arguments_results Γ ρ r p D Us Bks params (set_constructor_arguments cs) vals ihs ->
-    set_branch Γ ρ r p D Us Bks k (set_constructor_name cs)
-      (List.skipn (List.length (set_group_uniform_types (global_group γ p))) params ++ vals ++ ihs) res ->
-    set_elim_graph Γ ρ r p D Us Bks k params v res
-(** [arguments_results] with the branches [set_branch] *)
-with set_arguments_results : ctx -> set_env -> abs_kind -> qname -> ind_decl -> list exp -> list eblock ->
-    list aczel_set -> list set_argument -> list aczel_set -> list aczel_set -> Prop :=
-(** No argument *)
-| set_arguments_results_nil : forall Γ ρ r p D Us Bks pre, set_arguments_results Γ ρ r p D Us Bks pre nil nil nil
-(** A non-recursive argument *)
-| set_arguments_results_plain : forall Γ ρ r p D Us Bks pre κ type gs a vals ihs,
-    set_arguments_results Γ ρ r p D Us Bks (pre ++ [a]) gs vals ihs ->
-    set_arguments_results Γ ρ r p D Us Bks pre (set_argument_plain κ type :: gs) (a :: vals) ihs
-(** A recursive argument, one result per leaf path *)
-| set_arguments_results_recursive : forall Γ ρ r p D Us Bks pre type ds target tparams ls gs a vals ihs1 ihs2,
-    set_leaves_results Γ ρ r p D Us Bks pre a ls ihs1 ->
-    set_arguments_results Γ ρ r p D Us Bks (pre ++ [empty_set]) gs vals ihs2 ->
-    set_arguments_results Γ ρ r p D Us Bks pre (set_argument_recursive type ds target tparams ls :: gs) (a :: vals) (ihs1 ++ ihs2)
-(** [leaves_results] with the branches [set_branch] *)
-with set_leaves_results : ctx -> set_env -> abs_kind -> qname -> ind_decl -> list exp -> list eblock ->
-    list aczel_set -> aczel_set -> list set_leaf -> list aczel_set -> Prop :=
-(** No path *)
-| set_leaves_results_nil : forall Γ ρ r p D Us Bks pre a, set_leaves_results Γ ρ r p D Us Bks pre a nil nil
-(** A path, then the others *)
-| set_leaves_results_cons : forall Γ ρ r p D Us Bks pre a l ls ih ihs,
-    set_leaf_result Γ ρ r p D Us Bks pre (set_leaf_steps l) l nil a ih ->
-    set_leaves_results Γ ρ r p D Us Bks pre a ls ihs ->
-    set_leaves_results Γ ρ r p D Us Bks pre a (l :: ls) (ih :: ihs)
-(** [leaf_result] with the branches [set_branch] *)
-with set_leaf_result : ctx -> set_env -> abs_kind -> qname -> ind_decl -> list exp -> list eblock ->
-    list aczel_set -> list set_leaf_step -> set_leaf -> list aczel_set -> aczel_set -> aczel_set -> Prop :=
-(** At the end: the eliminator at the path's member *)
-| set_leaf_result_end : forall Γ ρ r p D Us Bks pre l points a ih,
-    set_elim_graph Γ ρ r p D Us Bks (set_leaf_target l) (set_leaf_target_params l (pre ++ points)) a ih ->
-    set_leaf_result Γ ρ r p D Us Bks pre nil l points a ih
-(** Through a domain: a function of the results at its points *)
-| set_leaf_result_domain : forall Γ ρ r p D Us Bks pre d steps l points a ih,
-    is_function_on (code_carrier (d (pre ++ points))) ih ->
-    (forall b, set_mem b (code_carrier (d (pre ++ points))) ->
-       set_leaf_result Γ ρ r p D Us Bks pre steps l (points ++ [b]) (set_apply a b) (set_apply ih b)) ->
-    set_leaf_result Γ ρ r p D Us Bks pre (set_leaf_step_domain d :: steps) l points a ih
-(** Through a field: the result of the field *)
-| set_leaf_result_field : forall Γ ρ r p D Us Bks pre f steps l points a ih,
-    set_leaf_result Γ ρ r p D Us Bks pre steps l points (tuple_field a f) ih ->
-    set_leaf_result Γ ρ r p D Us Bks pre (set_leaf_step_field f :: steps) l points a ih.
+(** [set_elim Γ ρ r p Us Bks j v res]: the eliminator of the group at
+    [p] at its member [j], into the sort [r], at the uniform parameters
+    [Us] and the blocks [Bks], takes [v] to [res] ([eval_elim]) *)
+with set_elim : ctx -> set_env -> abs_kind -> qname -> list exp -> list eblock -> nat -> aczel_set -> aczel_set -> Prop :=
+(** At a constructor of the member's container ([im_ref]: a view's
+    elements are its container's): the branch, read in its context, at the
+    non-uniform parameters, the arguments and the recursive results *)
+| set_elim_con : forall Γ ρ r p Us Bks j v res D Mj pc k Dq Mk c gs ns vs nm Z A Bs n B ihs,
+    ind_lookup gc_deps gc_stack p = Some D -> ind_member D j = Some Mj -> im_ref p j Mj = (pc, k) ->
+    ind_lookup gc_deps gc_stack pc = Some Dq -> ind_member Dq k = Some Mk -> ind_con Mj c = Some gs ->
+    set_eq v (con_val c (ns ++ vs)) -> List.length ns = im_nn Mk -> List.length vs = List.length gs ->
+    List.nth_error Bks j = Some (eb_mk nm Z A Bs) -> brs_lookup Bs c = Some (n, B) ->
+    set_ihs Γ ρ r p Us Bks gs vs ihs ->
+    set_interp (elim_bctx r p D Mj gs (blocks_motives Bks) Us ++ Γ)
+      (set_env_extend_kinded ρ (ctx_kinds (elim_bctx r p D Mj gs (blocks_motives Bks) Us)) (ns ++ vs ++ ihs)) B res ->
+    set_elim Γ ρ r p Us Bks j v res
+(** [set_ihs Γ ρ r p Us Bks gs vs ihs]: the arguments [vs] of the kinds
+    [gs] have the recursive results [ihs], one per leaf path of each
+    recursive argument, in order ([eval_ihs]) *)
+with set_ihs : ctx -> set_env -> abs_kind -> qname -> list exp -> list eblock -> list carg -> list aczel_set -> list aczel_set -> Prop :=
+(** No argument, no result *)
+| set_ihs_nil : forall Γ ρ r p Us Bks, set_ihs Γ ρ r p Us Bks nil nil nil
+(** A non-recursive argument has none *)
+| set_ihs_arg : forall Γ ρ r p Us Bks κ T gs v vs ihs,
+    set_ihs Γ ρ r p Us Bks gs vs ihs -> set_ihs Γ ρ r p Us Bks (ca_arg κ T :: gs) (v :: vs) ihs
+(** A recursive argument has its recursive results *)
+| set_ihs_rec : forall Γ ρ r p Us Bks t gs v vs ihs1 ihs2,
+    set_ih Γ ρ r p Us Bks t v ihs1 -> set_ihs Γ ρ r p Us Bks gs vs ihs2 ->
+    set_ihs Γ ρ r p Us Bks (ca_rec t :: gs) (v :: vs) (ihs1 ++ ihs2)
+(** [set_ih Γ ρ r p Us Bks t v ihs]: the argument [v] of the shape [t] has
+    the recursive results [ihs], one per leaf path ([eval_ih]) *)
+with set_ih : ctx -> set_env -> abs_kind -> qname -> list exp -> list eblock -> ptyp -> aczel_set -> list aczel_set -> Prop :=
+(** At the end of a shape, at a member with a block: the eliminator there *)
+| set_ih_self : forall Γ ρ r p Us Bks D j Mj Ps v r0,
+    ind_lookup gc_deps gc_stack p = Some D -> ind_member D j = Some Mj -> im_is_rview Mj = false ->
+    set_elim Γ ρ r p Us Bks j v r0 -> set_ih Γ ρ r p Us Bks (pt_self j Ps) v [r0]
+(** At the end of a shape, at a record view: the recursive results of its
+    fields at the fields of [v] *)
+| set_ih_rview : forall Γ ρ r p Us Bks D j Mj qr Is fl c gs Ps v rs,
+    ind_lookup gc_deps gc_stack p = Some D -> ind_member D j = Some Mj -> im_head Mj = mh_record qr Is fl ->
+    im_cons Mj = [(c, gs)] -> set_ihs Γ ρ r p Us Bks gs (List.map (tuple_field v) fl) rs ->
+    set_ih Γ ρ r p Us Bks (pt_self j Ps) v rs
+(** At a function shape: for each leaf path of the rest, the function on
+    [v]'s domain of the result at [v]'s values *)
+| set_ih_pi : forall Γ ρ r p Us Bks D B t v Rs,
+    ind_lookup gc_deps gc_stack p = Some D ->
+    (forall b, set_mem b (relation_domain v) -> set_ih Γ ρ r p Us Bks t (set_apply v b) (Rs b)) ->
+    set_ih Γ ρ r p Us Bks (pt_pi B t) v
+      (List.map (fun i => graph_set (relation_domain v) (fun b => List.nth i (Rs b) empty_set))
+                (List.seq 0 (List.length (shape_leaves (rview_leaves D) 0 t)))).
 
 End Interpretation.

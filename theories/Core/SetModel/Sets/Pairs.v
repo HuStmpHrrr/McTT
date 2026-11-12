@@ -184,6 +184,27 @@ Proof.
     split; [exact HxS | eapply set_eq_trans; [exact E | apply ordered_pair_resp; [apply set_eq_refl | apply set_eq_sym; apply EFG; exact HxS]]].
 Qed.
 
+(** The domain of a set of pairs: the first components of its pairs. *)
+Definition relation_domain (f : aczel_set) : aczel_set :=
+  family_set (aczel_index f) (fun a => pair_first (aczel_element f a)).
+
+Lemma relation_domain_graph : forall S F, set_eq (relation_domain (graph_set S F)) S.
+Proof.
+  intros S F. destruct S as [I e]. cbn [graph_set relation_domain aczel_index aczel_element family_set].
+  apply set_eq_intro; intros z Hz; apply set_mem_family in Hz as [a E]; cbn in a, E.
+  - exists a. eapply set_eq_trans; [exact E | apply pair_first_ordered_pair].
+  - apply set_mem_family. exists a. cbn. eapply set_eq_trans; [exact E | apply set_eq_sym; apply pair_first_ordered_pair].
+Qed.
+
+Lemma relation_domain_resp : forall f g, set_eq f g -> set_eq (relation_domain f) (relation_domain g).
+Proof.
+  intros f g E. apply set_eq_intro; intros z Hz; apply set_mem_family in Hz as [a Ea].
+  - assert (Hm : set_mem (aczel_element f a) g) by (eapply set_mem_eq_r; [exact E | exists a; apply set_eq_refl]).
+    destruct Hm as [b Eb]. apply set_mem_family. exists b. eapply set_eq_trans; [exact Ea | apply pair_first_resp; exact Eb].
+  - assert (Hm : set_mem (aczel_element g a) f) by (eapply set_mem_eq_r; [apply set_eq_sym; exact E | exists a; apply set_eq_refl]).
+    destruct Hm as [b Eb]. apply set_mem_family. exists b. eapply set_eq_trans; [exact Ea | apply pair_first_resp; exact Eb].
+Qed.
+
 (** The application of a set of pairs [f] to [x]: the union of the
     second components of its pairs whose first component is [x]. *)
 Definition set_apply (f x : aczel_set) : aczel_set :=

@@ -126,13 +126,14 @@
 ./Core/SetModel/Interpretation/Codes.v
 ./Core/SetModel/Interpretation/Values.v
 ./Core/SetModel/Interpretation/Global/Valuation.v
-./Core/SetModel/Interpretation/Inductives/ElimGraph.v
+./Core/SetModel/Interpretation/Inductives/Elements.v
 ./Core/SetModel/Interpretation/Operations.v
 ./Core/SetModel/Interpretation/Inductives/Carriers.v
 ./Core/SetModel/Interpretation/Inductives/Bound.v
 ./Core/SetModel/Interpretation/Interp.v
 ./Core/SetModel/Interpretation/Respects.v
 ./Core/SetModel/Judgments.v
+./Core/SetModel/Global/Model.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v
 ./Core/Semantic/Kinds/KindsEval.v

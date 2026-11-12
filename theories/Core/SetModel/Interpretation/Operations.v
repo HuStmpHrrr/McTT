@@ -5,7 +5,7 @@
     through a valuation only. *)
 
 From Stdlib Require Import String List.
-From Mctt.Core.SetModel.Interpretation.Inductives Require Export ElimGraph.
+From Mctt.Core.SetModel.Interpretation.Inductives Require Export Elements.
 From Mctt.Core.Syntactic Require Import Syntax.
 Import ListNotations.
 

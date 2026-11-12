@@ -11,7 +11,7 @@
     universe), and their parameters from the universe [U]. *)
 
 From Stdlib Require Import String List.
-From Mctt.Core.SetModel.Interpretation.Inductives Require Export ElimGraph.
+From Mctt.Core.SetModel.Interpretation.Inductives Require Export Elements.
 Import ListNotations.
 
 (** The point of the element [v] of the member [k] at the non-uniform
@@ -63,10 +63,10 @@ Inductive arguments_fit (S : aczel_set) : list aczel_set -> list set_argument ->
     arguments_fit S pre (set_argument_plain κ type :: gs) (a :: vals)
 (** A recursive argument in its shape's set; no later type depends on it,
     so the values after it see the empty set in its place *)
-| arguments_fit_recursive : forall pre type ds target tparams ls gs a vals,
+| arguments_fit_recursive : forall pre type ds target tparams gs a vals,
     set_mem a (shape_set S pre ds target tparams nil) ->
     arguments_fit S (pre ++ [empty_set]) gs vals ->
-    arguments_fit S pre (set_argument_recursive type ds target tparams ls :: gs) (a :: vals).
+    arguments_fit S pre (set_argument_recursive type ds target tparams :: gs) (a :: vals).
 
 (** [v] is built by the constructor [cs] of the member [Mk], the member
     [k], at [ns] from the arguments [vals] fitting [S]. *)
@@ -103,7 +103,7 @@ Definition carrier_operator (S : aczel_set) : aczel_set :=
 Definition argument_respects (g : set_argument) : Prop :=
   match g with
   | set_argument_plain _ type => list_function_respects type
-  | set_argument_recursive _ ds _ tparams _ => Forall list_function_respects ds /\ list_list_function_respects tparams
+  | set_argument_recursive _ ds _ tparams => Forall list_function_respects ds /\ list_list_function_respects tparams
   end.
 
 (** Every argument of every constructor respects equality. *)
@@ -174,7 +174,7 @@ Qed.
 Lemma arguments_fit_mono : forall S S' pre gs vals, set_sub S S' -> Forall argument_respects gs ->
     arguments_fit S pre gs vals -> arguments_fit S' pre gs vals.
 Proof.
-  intros S S' pre gs vals Hs Hr H. induction H as [| pre κ type gs a vals Ha H IH | pre type ds target tparams ls gs a vals Ha H IH];
+  intros S S' pre gs vals Hs Hr H. induction H as [| pre κ type gs a vals Ha H IH | pre type ds target tparams gs a vals Ha H IH];
     inversion Hr as [| ? ? Hg Hgs]; subst; econstructor; try eassumption; try (apply IH; assumption).
   destruct Hg as [Hds Htp]. eapply shape_set_mono; eassumption.
 Qed.
@@ -183,7 +183,7 @@ Lemma arguments_fit_resp : forall S pre pre' gs vals vals', Forall argument_resp
     list_set_eq pre pre' -> list_set_eq vals vals' -> arguments_fit S pre gs vals -> arguments_fit S pre' gs vals'.
 Proof.
   intros S pre pre' gs vals vals' Hr Hpre Hv H. revert pre' vals' Hpre Hv.
-  induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams ls gs a vals Ha H IH]; intros pre' vals' Hpre Hv;
+  induction H as [pre | pre κ type gs a vals Ha H IH | pre type ds target tparams gs a vals Ha H IH]; intros pre' vals' Hpre Hv;
     inversion Hv as [| x y l l' Hxy Hl]; subst; inversion Hr as [| ? ? Hg Hgs]; subst.
   - constructor.
   - constructor.

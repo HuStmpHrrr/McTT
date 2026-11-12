@@ -3238,6 +3238,26 @@ Definition entry_term (o : option qname) (E : gentry) : option mdesc :=
   | ge_record _ _ R _ => option_map (fun p => mdesc_term ak_relevant (ctx_pi (record_params R) (record_sort R)) (Some (a_record p))) o
   end.
 
+(** [stored_term_member Ξm Φ p x R0]: the term member [x] of the module
+    stored at [p] with the body [Φ], read as [R0] where it is stored. *)
+Inductive stored_term_member (Ξm : gstack) (Φ : gmod) (p : qname) (x : String.string) : mdesc -> Prop :=
+(** An entry of the body, read as its term part *)
+| stored_term_member_entry : forall Φ0 E R0,
+    gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
+    entry_term (Some (qname_in p x)) E = Some R0 ->
+    stored_term_member Ξm Φ p x R0
+(** The type former of an inductive type whose open frame is under it *)
+| stored_term_member_ind_former : forall pq k D Mk,
+    gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) ->
+    ind_member D k = Some Mk ->
+    stored_term_member Ξm Φ p x
+      (mdesc_term ak_relevant (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k)))
+(** The type former of a record type whose open frame is under it *)
+| stored_term_member_record_former : forall Rr,
+    gs_find_record Ξm (qname_in p x) = Some Rr ->
+    stored_term_member Ξm Φ p x
+      (mdesc_term ak_relevant (ctx_pi (record_params Rr) (record_sort Rr)) (Some (a_record (qname_in p x)))).
+
 (** A stored alias entry as the alias unit it is, over its full telescope:
     a definition with a module part as its module part. *)
 Definition entry_alias_unit (E : gentry) : option gunit :=

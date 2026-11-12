@@ -43,12 +43,23 @@ Definition empty_set_env : set_env := fun _ => absent_set_entry.
 Definition set_env_extend (ρ : set_env) (e : set_entry) : set_env :=
   fun x => match x with 0 => e | S y => ρ y end.
 
-(** [ρ] extended by the term values [vs], outermost first: the last is
-    [#0]. *)
-Fixpoint set_env_extend_values (ρ : set_env) (vs : list aczel_set) : set_env :=
+(** The kind of a context entry's term: an assumption's own, a
+    definition's relevant. *)
+Definition centry_kind (ce : centry) : abs_kind :=
+  match ce with
+  | ce_ass κ _ => κ
+  | _ => ak_relevant
+  end.
+
+(** The kinds of a context's entries, outermost first. *)
+Definition ctx_kinds (Δ : ctx) : list abs_kind := List.rev (List.map centry_kind Δ).
+
+(** [ρ] extended by the term values [vs] of the kinds [κs], both outermost
+    first: the last is [#0]; a value with no kind left is relevant. *)
+Fixpoint set_env_extend_kinded (ρ : set_env) (κs : list abs_kind) (vs : list aczel_set) : set_env :=
   match vs with
   | nil => ρ
-  | v :: vs' => set_env_extend_values (set_env_extend ρ (set_entry_term ak_relevant v)) vs'
+  | v :: vs' => set_env_extend_kinded (set_env_extend ρ (set_entry_term (List.hd ak_relevant κs) v)) (List.tl κs) vs'
   end.
 
 (** What an entry gives a term variable: its term, or at a module what

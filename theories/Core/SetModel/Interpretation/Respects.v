@@ -40,10 +40,10 @@ Lemma set_env_extend_resp : forall ρ ρ' e e', set_env_eq ρ ρ' -> set_entry_e
     set_env_eq (set_env_extend ρ e) (set_env_extend ρ' e').
 Proof. intros * Hρ He [| x]; cbn; [exact He | apply Hρ]. Qed.
 
-Lemma set_env_extend_values_resp : forall vs vs' ρ ρ', set_env_eq ρ ρ' -> list_set_eq vs vs' ->
-    set_env_eq (set_env_extend_values ρ vs) (set_env_extend_values ρ' vs').
+Lemma set_env_extend_kinded_resp : forall vs vs' κs ρ ρ', set_env_eq ρ ρ' -> list_set_eq vs vs' ->
+    set_env_eq (set_env_extend_kinded ρ κs vs) (set_env_extend_kinded ρ' κs vs').
 Proof.
-  intros vs vs' ρ ρ' Hρ H. revert ρ ρ' Hρ. induction H as [| v v' vs vs' Hv _ IH]; intros ρ ρ' Hρ; cbn; [exact Hρ |].
+  intros vs vs' κs ρ ρ' Hρ H. revert κs ρ ρ' Hρ. induction H as [| v v' vs vs' Hv _ IH]; intros κs ρ ρ' Hρ; cbn; [exact Hρ |].
   apply IH. apply set_env_extend_resp; [exact Hρ | constructor; exact Hv].
 Qed.
 
