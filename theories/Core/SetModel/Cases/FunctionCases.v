@@ -10,6 +10,7 @@ From Stdlib Require Import String List.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel.Cases Require Export PropCases.
+From Mctt.Core.SetModel.Interpretation Require Import Substitution.
 From Mctt.Core.Syntactic Require Import Syntax.
 From Mctt.Core.Syntactic.System Require Import Definitions.
 Import ListNotations.
@@ -196,6 +197,61 @@ Proof.
     apply (function_set_apply_on (FM ρ) (code_carrier (FA ρ)) (fun x => code_carrier (body_function κd FB ρ x)) (FN ρ));
       [| exact Hm | exact Hn].
     intros x y Hx E. apply code_carrier_resp. exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HB Hρ _ _ Hx E).
+Qed.
+
+(** ** β *)
+
+(** A term of [Γ ▹{κ} A] denotes, with a term [N] of [A] substituted, its
+    value at [N]'s. *)
+Lemma set_denotes_single_sub : forall Γ κ A N X FA FN FX, fn_kinds_unique ->
+    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κ A :: Γ ->
+    set_denotes T γ Γ A FA -> set_denotes T γ Γ N FN -> (forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA ρ))) ->
+    set_denotes T γ (ce_ass κ A :: Γ) X FX ->
+    set_denotes T γ Γ (exp_sub X (sb_extend sb_id (se_exp N))) (fun ρ => body_function κ FX ρ (FN ρ)).
+Proof.
+  intros * Hfn Hmods HΓ Hc Hσ HA HN HNm HX. apply set_denotes_of_exists; [exact Hfn | exact Hmods | exact HΓ |]. intros ρ Hρ.
+  apply (set_interp_single_sub T γ Γ ρ κ A N (FN ρ)); [exact Hc | exact Hσ | apply (set_denotes_exists _ _ _ _ _ HN); exact Hρ |].
+  apply (set_denotes_exists _ _ _ _ _ HX).
+  exact (set_env_in_extend_ass T γ Γ ρ κ A _ _ Hρ (set_denotes_exists _ _ _ _ _ HA _ Hρ) (HNm ρ Hρ)).
+Qed.
+
+(** [(λ A M) N ≈ M[N] : B[N]]. *)
+Lemma set_rule_pi_beta : forall Γ κd κc i A M B N FA FS FB FB2 FB' FM FM2 FA' FN FN2, fn_kinds_unique ->
+    (forall q, set_module_eq (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κd A :: Γ ->
+    set_denotes T γ Γ A FA ->
+    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
+    set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M FB' FM FM2 ->
+    set_exp_eq_with T γ Γ A N N FA' FN FN2 ->
+    set_exp_eq T γ Γ (exp_sub B (sb_extend sb_id (se_exp N))) (a_app (a_fn A M) N) (exp_sub M (sb_extend sb_id (se_exp N))).
+Proof.
+  intros * Hfn Hmods HΓ HT Hc Hσ HA [HS HB _ _ HBm] [HB' HM _ _ HMm] [HA' HN _ _ HNm].
+  assert (HNa : forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA ρ)))
+    by (intros ρ Hρ; eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).
+  exists (fun ρ => body_function κd FB ρ (FN ρ)), (fun ρ => set_apply (fn_denotation κd κc FA FM ρ) (FN ρ)),
+    (fun ρ => body_function κd FM ρ (FN ρ)).
+  assert (Hx : forall ρ, set_env_in T γ Γ ρ -> set_env_in T γ (ce_ass κd A :: Γ) (set_env_extend ρ (set_entry_term κd (FN ρ))))
+    by (intros ρ Hρ; exact (set_env_in_extend_ass T γ Γ ρ κd A _ _ Hρ (set_denotes_exists _ _ _ _ _ HA _ Hρ) (HNa ρ Hρ))).
+  assert (Heq : forall ρ, set_env_in T γ Γ ρ -> set_eq (set_apply (fn_denotation κd κc FA FM ρ) (FN ρ)) (body_function κd FM ρ (FN ρ))).
+  { intros ρ Hρ. destruct κc; cbn [fn_denotation].
+    - apply set_apply_graph_on; [exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HM Hρ) | exact (HNa ρ Hρ)].
+    - eapply set_eq_trans; [apply set_apply_empty |]. apply set_eq_sym.
+      assert (HP : is_prop_code (FB' (set_env_extend ρ (set_entry_term κd (FN ρ))))).
+      { apply is_prop_code_of_prop_universe. cbn [abs_kind_sort] in HS.
+        eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HS (set_denotes_prop T γ _) (Hx ρ Hρ)) |].
+        eapply set_mem_eq_l; [exact (set_denotes_agree _ _ _ _ _ HB HB' (Hx ρ Hρ)) |]. apply HBm. exact (Hx ρ Hρ). }
+      exact (prop_code_carrier_empty _ _ HP (HMm _ (Hx ρ Hρ))).
+    - apply set_apply_graph_on; [exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HM Hρ) | exact (HNa ρ Hρ)]. }
+  constructor.
+  - apply (set_denotes_single_sub Γ κd A N _ FA); assumption.
+  - apply set_denotes_app; [eapply set_denotes_fn; eassumption | exact HN].
+  - apply (set_denotes_single_sub Γ κd A N _ FA); assumption.
+  - exact Heq.
+  - intros ρ Hρ. eapply set_mem_eq_l; [apply set_eq_sym; exact (Heq ρ Hρ) |].
+    eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ HB' HB (Hx ρ Hρ)) |].
+    apply HMm. exact (Hx ρ Hρ).
 Qed.
 
 End Functions.
