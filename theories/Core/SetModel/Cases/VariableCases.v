@@ -45,7 +45,7 @@ Proof.
     eapply set_mem_eq_r; [| exact Hy]. apply code_carrier_resp. exact (set_denotes_unique _ _ _ _ _ HA _ _ _ Ht Ha).
   - destruct HΓ as [HΓ' HAM]. pose proof HAM as (FA & FM & FM' & [HA HM _ _ HMm]).
     exists (fun ρ => FA (set_env_tail ρ)). split; [apply set_denotes_shift; [split; assumption | exact Hc | exact HA] |].
-    intros ρ [Ht (v & v' & w & [E1 E2 Hw Ev _])]. rewrite E1. cbn [set_entry_value].
+    intros ρ [Ht (r & v & v' & w & [E1 E2 Hw Ev _])]. rewrite E1. cbn [set_entry_value].
     eapply set_mem_eq_l; [apply set_eq_sym; eapply set_eq_trans; [exact Ev | exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Ht Hw)] |].
     apply HMm. exact Ht.
   - destruct HΓ as [HΓ' HAM]. pose proof HAM as [(FA & FM & FM' & [HA HM _ _ HMm]) _].
@@ -73,7 +73,7 @@ Proof.
   intros * H. induction H as [Γ A M | Γ A M U | Γ n A M e H IH]; intros HΓ Hc.
   - destruct HΓ as [HΓ' HAM]. pose proof HAM as (FA & FM & FM' & [HA HM _ _ HMm]).
     exists (fun ρ => FM (set_env_tail ρ)). split; [apply set_denotes_shift; [split; assumption | exact Hc | exact HM] |].
-    intros ρ [Ht (v & v' & w & [E1 E2 Hw Ev _])]. rewrite E1. cbn [set_entry_value].
+    intros ρ [Ht (r & v & v' & w & [E1 E2 Hw Ev _])]. rewrite E1. cbn [set_entry_value].
     eapply set_eq_trans; [exact Ev | exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Ht Hw)].
   - destruct HΓ as [HΓ' HAM]. pose proof HAM as [(FA & FM & FM' & [HA HM _ _ HMm]) _].
     exists (fun ρ => FM (set_env_tail ρ)). split; [apply set_denotes_shift; [split; assumption | exact Hc | exact HM] |].

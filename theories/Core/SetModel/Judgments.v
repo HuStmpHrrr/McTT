@@ -55,13 +55,18 @@ Record set_assumption_with (Γ : ctx) (ρ : set_env) (κ : abs_kind) (A : exp) (
     (** The two are equal *)
   ; set_assumption_eq : set_eq x x' }.
 
-(** [set_definition_with Γ ρ M e e' v v' w]: the entries [e] and [e'] of a
-    definition of [M] are values [v] and [v'] equal to [M]'s value [w]. *)
-Record set_definition_with (Γ : ctx) (ρ : set_env) (M : exp) (e e' : set_entry) (v v' w : aczel_set) : Prop :=
-  { (** The left entry is the relevant term [v] *)
-    set_definition_left : e = set_entry_term ak_relevant v
-    (** The right entry is the relevant term [v'] *)
-  ; set_definition_right : e' = set_entry_term ak_relevant v'
+(** [set_definition_with Γ ρ M r e e' v v' w]: the entries [e] and [e'] of
+    a definition of [M] are values [v] and [v'] of the tag [r], equal to
+    [M]'s value [w].  The tag is any: the interpretation reads only the
+    values, and a body stores each definition at its own tag
+    ([set_interp_ge_def]), which [body_ctx] does not keep.  In
+    [module M where def p : ⊤ ≔ tt; def q : ⊤ ≔ p end], [p]'s entry is a
+    proof's, and [q] is read at it as at a definition of [body_ctx]. *)
+Record set_definition_with (Γ : ctx) (ρ : set_env) (M : exp) (r : abs_kind) (e e' : set_entry) (v v' w : aczel_set) : Prop :=
+  { (** The left entry is the term [v] *)
+    set_definition_left : e = set_entry_term r v
+    (** The right entry is the term [v'] *)
+  ; set_definition_right : e' = set_entry_term r v'
     (** [M] denotes [w] *)
   ; set_definition_value : set_interp T γ Γ ρ M w
     (** [v] is [w] *)
@@ -112,7 +117,7 @@ Record set_definition_module_with (Γ : ctx) (ρ : set_env) (M : exp) (U : gunit
 Definition set_entry_rel (Γ : ctx) (ρ : set_env) (ce : centry) (e e' : set_entry) : Prop :=
   match ce with
   | ce_ass κ A => exists x x' a, set_assumption_with Γ ρ κ A e e' x x' a
-  | ce_def _ M => exists v v' w, set_definition_with Γ ρ M e e' v v' w
+  | ce_def _ M => exists r v v' w, set_definition_with Γ ρ M r e e' v v' w
   | ce_mod U => exists m m' n, set_module_slot_with Γ ρ U e e' m m' n
   | ce_dm _ M U => exists v v' w m m' n, set_definition_module_with Γ ρ M U e e' v v' w m m' n
   end.
@@ -146,17 +151,14 @@ Record set_modexp_denotes (Γ : ctx) (H : modexp) (F : set_env -> set_module) : 
     (** Every module of [H] at a related environment is [F]'s *)
   ; set_modexp_denotes_unique : forall ρ ρ' m, set_env_rel Γ ρ ρ' -> set_interp_modexp T γ Γ ρ' H m -> set_module_eq m (F ρ) }.
 
-(** The submodule at the chain [ys] of a module. *)
-Definition select_modules (m : set_module) (ys : list string) : set_module := fold_left (select_module γ) ys m.
-
-(** [set_members_valid Γ H F]: every term member of a submodule of [H],
-    of [F]'s modules, is of its type, and is its δ-reduct when it has
-    one. *)
+(** [set_members_valid Γ H F]: every term member of [H], of [F]'s modules,
+    is of its type, and is its δ-reduct when it has one.  A member of a
+    submodule is one of the submodule's, valid in its turn. *)
 Definition set_members_valid (Γ : ctx) (H : modexp) (F : set_env -> set_module) : Prop :=
-  forall ys x R A FA, mdenote gc_deps gc_stack Γ (me_mem (me_mems H ys) x) R -> mdesc_type R = Some A ->
+  forall x R A FA, mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
     set_denotes Γ A FA -> forall ρ, set_env_in Γ ρ ->
-    set_mem (select_term γ (select_modules (F ρ) ys) x) (code_carrier (FA ρ)) /\
-    (forall N FN, mdesc_reduct R = Some N -> set_denotes Γ N FN -> set_eq (select_term γ (select_modules (F ρ) ys) x) (FN ρ)).
+    set_mem (select_term γ (F ρ) x) (code_carrier (FA ρ)) /\
+    (forall N FN, mdesc_reduct R = Some N -> set_denotes Γ N FN -> set_eq (select_term γ (F ρ) x) (FN ρ)).
 
 (** ** The Judgments *)
 
@@ -464,10 +466,10 @@ Proof.
       exists x', x, (FA (set_env_tail ρ')). constructor; try assumption; [| apply set_eq_sym; exact Exx'].
       eapply set_mem_eq_l; [exact Exx' |]. eapply set_mem_eq_r; [| exact Hx]. apply code_carrier_resp.
       eapply set_eq_trans; [exact Ea | apply set_eq_sym; exact Ea'].
-    + destruct He as (v & v' & w & [E1 E2 Hw Ev Ev']). destruct Hce as (FA & FM & FM' & [_ HFM _ _ _]).
+    + destruct He as (r & v & v' & w & [E1 E2 Hw Ev Ev']). destruct Hce as (FA & FM & FM' & [_ HFM _ _ _]).
       pose proof (set_denotes_unique _ _ _ HFM _ _ _ Hl Hw) as Ew.
       pose proof (set_denotes_rel _ _ _ _ _ HFM Ht Hr) as Ew'.
-      exists v', v, (FM (set_env_tail ρ')). constructor; try assumption; [exact (set_denotes_exists _ _ _ HFM _ Hr) | |].
+      exists r, v', v, (FM (set_env_tail ρ')). constructor; try assumption; [exact (set_denotes_exists _ _ _ HFM _ Hr) | |].
       * eapply set_eq_trans; [exact Ev' |]. eapply set_eq_trans; [exact Ew | apply set_eq_sym; exact Ew'].
       * eapply set_eq_trans; [exact Ev |]. eapply set_eq_trans; [exact Ew | apply set_eq_sym; exact Ew'].
     + destruct He as (m & m' & n & [E1 E2 Hn Em Em']). destruct Hce as (FU & FU' & [HFU _ _]).
@@ -494,13 +496,13 @@ Proof.
     destruct ce as [κ A | A M | U | A M U]; cbn [set_entry_rel set_entry_valid] in He12, He23, Hce |- *.
     + destruct He12 as (x1 & x2 & a & [E1 E2 Ha Hx Ex]). destruct He23 as (y2 & y3 & b & [F2 F3 Hb Hy Ey]).
       rewrite E2 in F2. injection F2 as <-. exists x1, y3, a. constructor; try assumption. eapply set_eq_trans; eassumption.
-    + destruct He12 as (v1 & v2 & w & [E1 E2 Hw Ev1 Ev2]). destruct He23 as (u2 & u3 & w' & [F2 F3 Hw' Eu2 Eu3]).
-      rewrite E2 in F2. injection F2 as <-. destruct Hce as (FA & FM & FM' & [_ HFM _ _ _]).
+    + destruct He12 as (r & v1 & v2 & w & [E1 E2 Hw Ev1 Ev2]). destruct He23 as (r' & u2 & u3 & w' & [F2 F3 Hw' Eu2 Eu3]).
+      rewrite E2 in F2. injection F2 as <- <-. destruct Hce as (FA & FM & FM' & [_ HFM _ _ _]).
       destruct (Hin _ _ Ht12) as [Hl1 Hr2].
       pose proof (set_denotes_unique _ _ _ HFM _ _ _ Hl1 Hw) as Ew.
       pose proof (set_denotes_unique _ _ _ HFM _ _ _ Hr2 Hw') as Ew'.
       pose proof (set_denotes_rel _ _ _ _ _ HFM Ht12 Hr2) as E12.
-      exists v1, u3, w. constructor; try assumption.
+      exists r, v1, u3, w. constructor; try assumption.
       eapply set_eq_trans; [exact Eu3 |]. eapply set_eq_trans; [exact Ew' |].
       eapply set_eq_trans; [exact E12 | apply set_eq_sym; exact Ew].
     + destruct He12 as (m1 & m2 & n & [E1 E2 Hn Em1 Em2]). destruct He23 as (k2 & k3 & n' & [F2 F3 Hn' Ek2 Ek3]).
@@ -557,7 +559,7 @@ Proof.
   pose proof (IH _ _ Ht) as Et. intros [| x]; [| exact (Et x)].
   destruct ce as [κ A | A M | U | A M U]; cbn [set_entry_rel] in He.
   - destruct He as (x & x' & a & [-> -> _ _ E]). constructor. exact E.
-  - destruct He as (v & v' & w & [-> -> _ E1 E2]). constructor. eapply set_eq_trans; [exact E1 | apply set_eq_sym; exact E2].
+  - destruct He as (r & v & v' & w & [-> -> _ E1 E2]). constructor. eapply set_eq_trans; [exact E1 | apply set_eq_sym; exact E2].
   - destruct He as (m & m' & n & [-> -> _ E1 E2]). constructor. eapply set_module_eq_trans; [exact E1 | apply set_module_eq_sym; exact E2].
   - destruct He as (v & v' & w & m & m' & n & [-> -> _ _ E1 E2 E3 E4]). constructor;
       [eapply set_eq_trans; [exact E1 | apply set_eq_sym; exact E2] | eapply set_module_eq_trans; [exact E3 | apply set_module_eq_sym; exact E4]].

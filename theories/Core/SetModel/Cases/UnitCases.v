@@ -101,12 +101,12 @@ Proof.
   assert (E : set_eq (FM ρ) (FM2 ρ))
     by (eapply set_eq_trans; [apply EM; exact Hρ | exact (set_denotes_across _ _ _ _ _ _ _ HΨ HM' HM2 Hρ Hρ')]).
   cbn [set_entry_rel]. split.
-  - intros (v & v' & w & [E1 E2 Hw Ev Ev']). pose proof (set_denotes_unique _ _ _ _ _ HM _ _ _ Hρ Hw) as Ew.
-    exists v, v', (FM2 ρ). constructor; [exact E1 | exact E2 | exact (set_denotes_exists _ _ _ _ _ HM2 _ Hρ') | |].
+  - intros (r & v & v' & w & [E1 E2 Hw Ev Ev']). pose proof (set_denotes_unique _ _ _ _ _ HM _ _ _ Hρ Hw) as Ew.
+    exists r, v, v', (FM2 ρ). constructor; [exact E1 | exact E2 | exact (set_denotes_exists _ _ _ _ _ HM2 _ Hρ') | |].
     + eapply set_eq_trans; [exact Ev | eapply set_eq_trans; [exact Ew | exact E]].
     + eapply set_eq_trans; [exact Ev' | eapply set_eq_trans; [exact Ew | exact E]].
-  - intros (v & v' & w & [E1 E2 Hw Ev Ev']). pose proof (set_denotes_unique _ _ _ _ _ HM2 _ _ _ Hρ' Hw) as Ew.
-    exists v, v', (FM ρ). constructor; [exact E1 | exact E2 | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ) | |].
+  - intros (r & v & v' & w & [E1 E2 Hw Ev Ev']). pose proof (set_denotes_unique _ _ _ _ _ HM2 _ _ _ Hρ' Hw) as Ew.
+    exists r, v, v', (FM ρ). constructor; [exact E1 | exact E2 | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ) | |].
     + eapply set_eq_trans; [exact Ev | eapply set_eq_trans; [exact Ew | apply set_eq_sym; exact E]].
     + eapply set_eq_trans; [exact Ev' | eapply set_eq_trans; [exact Ew | apply set_eq_sym; exact E]].
 Qed.

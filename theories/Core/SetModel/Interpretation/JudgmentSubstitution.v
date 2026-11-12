@@ -138,10 +138,10 @@ Proof.
     pose proof (set_interp_functional T γ Hfn Hmods _ _ _ _ Ha _ _ Eρ (Hmv _ _ Ha0)) as E.
     exists x, x', (FA ρs). constructor; [exact E1 | exact E2 | exact Ha0 | | exact Ex].
     eapply set_mem_eq_r; [apply code_carrier_resp; exact E | exact Hx].
-  - destruct He as (v & v' & w & [E1 E2 Hw Ev Ev']). destruct Hce as (FA & FM & FM' & [_ HM _ _ _]).
+  - destruct He as (r & v & v' & w & [E1 E2 Hw Ev Ev']). destruct Hce as (FA & FM & FM' & [_ HM _ _ _]).
     pose proof (set_denotes_exists _ _ _ _ _ HM _ Hin) as Hw0.
     pose proof (set_interp_functional T γ Hfn Hmods _ _ _ _ Hw _ _ Eρ (Hmv _ _ Hw0)) as E.
-    exists v, v', (FM ρs).
+    exists r, v, v', (FM ρs).
     constructor; [exact E1 | exact E2 | exact Hw0 | eapply set_eq_trans; [exact Ev | exact E] | eapply set_eq_trans; [exact Ev' | exact E]].
   - destruct He as (m & m' & n & [E1 E2 Hn Em Em']). destruct Hce as (FU & FU' & [HU _ _]).
     pose proof (proj1 (set_interp_me_lit_iff _ _ _ _ _ _) (set_modexp_denotes_exists _ _ _ _ _ HU _ Hin)) as Hn0.

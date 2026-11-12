@@ -25,7 +25,7 @@ Definition def_env (FM : set_env -> aczel_set) (ρ : set_env) : set_env := set_e
 Lemma set_env_in_def : forall Γ A M FM ρ, set_denotes T γ Γ M FM -> set_env_in T γ Γ ρ ->
     set_env_in T γ (ce_def A M :: Γ) (def_env FM ρ).
 Proof.
-  intros * HM Hρ. split; [exact Hρ |]. exists (FM ρ), (FM ρ), (FM ρ).
+  intros * HM Hρ. split; [exact Hρ |]. exists ak_relevant, (FM ρ), (FM ρ), (FM ρ).
   constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ) | apply set_eq_refl | apply set_eq_refl].
 Qed.
 
@@ -52,7 +52,7 @@ Proof.
     assert (Hρ : set_env_in T γ Γ ρ) by (eapply Htrans; [exact Hr | apply Hsym; exact Hr]).
     match goal with HM' : set_interp _ _ _ _ M ?v0, HB' : set_interp _ _ _ _ B _ |- _ =>
       apply (set_denotes_unique _ _ _ _ _ HB (def_env FM ρ) (set_env_extend ρ' (set_entry_term ak_relevant v0)) v); [| exact HB'];
-      split; [exact Hr |]; exists (FM ρ), v0, (FM ρ);
+      split; [exact Hr |]; exists ak_relevant, (FM ρ), v0, (FM ρ);
       constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ) | apply set_eq_refl
                    | exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Hr HM')] end.
 Qed.
@@ -191,10 +191,10 @@ Lemma set_rule_let_def_cong : forall Γ A A' M M' B B' C FA FM FM' FC FB FB', se
 Proof.
   intros * HΓ Hc Hc' Hid Hσ [_ HM HM' EM _] [HC HB HB' EB HBm].
   assert (Hin' : forall ρ, set_env_in T γ Γ ρ -> set_env_in T γ (ce_def A M :: Γ) (def_env FM' ρ)).
-  { intros ρ Hρ. split; [exact Hρ |]. exists (FM' ρ), (FM' ρ), (FM ρ).
+  { intros ρ Hρ. split; [exact Hρ |]. exists ak_relevant, (FM' ρ), (FM' ρ), (FM ρ).
     constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ) | apply set_eq_sym; apply EM; exact Hρ ..]. }
   assert (Hrel : forall ρ, set_env_in T γ Γ ρ -> set_env_rel T γ (ce_def A M :: Γ) (def_env FM ρ) (def_env FM' ρ)).
-  { intros ρ Hρ. split; [exact Hρ |]. exists (FM ρ), (FM' ρ), (FM ρ).
+  { intros ρ Hρ. split; [exact Hρ |]. exists ak_relevant, (FM ρ), (FM' ρ), (FM ρ).
     constructor; [reflexivity | reflexivity | exact (set_denotes_exists _ _ _ _ _ HM _ Hρ) | apply set_eq_refl | apply set_eq_sym; apply EM; exact Hρ]. }
   exists (fun ρ => FC (def_env FM ρ)), (fun ρ => FB (def_env FM ρ)), (fun ρ => FB' (def_env FM' ρ)).
   constructor; [apply set_denotes_def_sub with (A := A); assumption | apply set_denotes_let_def; assumption | | |].
