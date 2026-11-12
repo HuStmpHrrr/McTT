@@ -363,6 +363,307 @@ Proof.
                | apply list_set_eq_app; [exact Hpts | apply list_set_eq_refl] | apply Hc'; eapply set_mem_eq_r; [exact Ed | exact Hb]].
 Qed.
 
+(** ** Positions *)
+
+(** [points_fit ds pre points pts]: [pts] are points of the domains [ds]
+    after the points [points]. *)
+Inductive points_fit : list (list aczel_set -> aczel_set) -> list aczel_set -> list aczel_set -> list aczel_set -> Prop :=
+(** No domain left *)
+| points_fit_nil : forall pre points, points_fit nil pre points nil
+(** A point of the next domain, then the rest *)
+| points_fit_cons : forall d ds pre points b pts,
+    set_mem b (code_carrier (d (pre ++ points))) ->
+    points_fit ds pre (points ++ [b]) pts ->
+    points_fit (d :: ds) pre points (b :: pts).
+
+Lemma set_mem_domains_set : forall ds, Forall list_function_respects ds -> forall pre points z,
+    set_mem z (domains_set ds pre points) <-> exists pts, points_fit ds pre points pts /\ set_eq z (list_code (points ++ pts)).
+Proof.
+  intros ds Hds. induction Hds as [| d ds Hd Hds IH]; intros pre points z; cbn [domains_set].
+  - rewrite set_mem_singleton. split.
+    + intros E. exists nil. rewrite app_nil_r. split; [constructor | exact E].
+    + intros [pts [Hf E]]. inversion Hf; subst. rewrite app_nil_r in E. exact E.
+  - assert (HF : respects_set_eq_fun (fun b => domains_set ds pre (points ++ [b]))).
+    { intros b b' Eb. apply domains_set_resp; [exact Hds | apply list_set_eq_refl |
+        apply list_set_eq_app; [apply list_set_eq_refl | constructor; [exact Eb | constructor]]]. }
+    rewrite set_mem_union. split.
+    + intros [w [Hw Hz]]. apply (set_mem_replacement _ _ _ HF) in Hw as [b [Hb Ew]].
+      eapply set_mem_eq_r in Hz; [| exact Ew]. apply IH in Hz as [pts [Hf E]].
+      exists (b :: pts). split; [constructor; assumption |]. rewrite <- app_assoc in E. exact E.
+    + intros [pts [Hf E]]. inversion Hf as [| ? ? ? ? b pts' Hb Hf']; subst.
+      exists (domains_set ds pre (points ++ [b])). split; [apply (set_mem_replacement _ _ _ HF); exists b; split; [exact Hb | apply set_eq_refl] |].
+      apply IH. exists pts'. split; [exact Hf' | rewrite <- app_assoc; exact E].
+Qed.
+
+(** [position_of gs pvals pre j pos]: [pos] is a position of a recursive
+    argument of [gs], numbered from [j]. *)
+Inductive position_of : list set_argument -> list aczel_set -> list aczel_set -> nat -> aczel_set -> Prop :=
+(** A position of this recursive argument *)
+| position_of_here : forall type ds target tparams ls gs pvals pre j pts pos,
+    points_fit ds pre nil pts -> set_eq pos (tree_position j pts) ->
+    position_of (set_argument_recursive type ds target tparams ls :: gs) pvals pre j pos
+(** A position of a later argument, after a recursive one *)
+| position_of_after_recursive : forall type ds target tparams ls gs pvals pre j pos,
+    position_of gs pvals (pre ++ [empty_set]) (S j) pos ->
+    position_of (set_argument_recursive type ds target tparams ls :: gs) pvals pre j pos
+(** A position of a later argument, after a non-recursive one *)
+| position_of_after_plain : forall κ t gs p pvals pre j pos,
+    position_of gs pvals (pre ++ [p]) (S j) pos ->
+    position_of (set_argument_plain κ t :: gs) (p :: pvals) pre j pos.
+
+Lemma set_mem_argument_positions : forall gs, Forall argument_respects gs -> forall pvals pre j pos,
+    set_mem pos (argument_positions gs pvals pre j) -> position_of gs pvals pre j pos.
+Proof.
+  intros gs Hgs. induction Hgs as [| g gs Hg Hgs IH]; intros pvals pre j pos Hpos; cbn [argument_positions] in Hpos.
+  - exfalso. exact (set_mem_empty _ Hpos).
+  - destruct g as [κ t | type ds target tparams ls]; cbn [argument_respects] in Hg.
+    + destruct pvals as [| p pvals]; [exfalso; exact (set_mem_empty _ Hpos) |].
+      apply position_of_after_plain. apply IH. exact Hpos.
+    + destruct Hg as [Hds _]. apply set_mem_union in Hpos as [w [Hw Hpos]]. apply set_mem_unordered_pair in Hw as [Hw | Hw].
+      * eapply set_mem_eq_r in Hpos; [| exact Hw].
+        assert (HF : respects_set_eq_fun (fun pts => ordered_pair (numeral_set j) pts)) by (intros x y E; apply ordered_pair_resp; [apply set_eq_refl | exact E]).
+        apply (set_mem_replacement _ _ _ HF) in Hpos as [z [Hz Ep]]. apply (set_mem_domains_set _ Hds) in Hz as [pts [Hf Ez]].
+        eapply position_of_here; [exact Hf |]. eapply set_eq_trans; [exact Ep |]. apply ordered_pair_resp; [apply set_eq_refl | exact Ez].
+      * eapply set_mem_eq_r in Hpos; [| exact Hw]. apply position_of_after_recursive. apply IH. exact Hpos.
+Qed.
+
+(** A curried function applied to a list of points, outermost first. *)
+Fixpoint apply_points (r : aczel_set) (pts : list aczel_set) : aczel_set :=
+  match pts with
+  | nil => r
+  | b :: pts' => apply_points (set_apply r b) pts'
+  end.
+
+Lemma apply_points_resp : forall pts pts' r r', list_set_eq pts pts' -> set_eq r r' -> set_eq (apply_points r pts) (apply_points r' pts').
+Proof.
+  intros pts pts' r r' H. revert r r'. induction H as [| b b' pts pts' Hb H IH]; intros r r' Er; cbn [apply_points]; [exact Er |].
+  apply IH. apply set_apply_resp; assumption.
+Qed.
+
+(** Along the points of its domains, a decoded recursive argument reaches
+    the decoding of the child there. *)
+Lemma child_decodes_at : forall ds pre points pts, points_fit ds pre points pts ->
+    forall g j target tparams r, child_decodes g j ds target tparams pre points r ->
+    tree_decodes target (List.skipn nuniform (tparams (pre ++ points ++ pts))) (set_apply g (tree_position j (points ++ pts)))
+      (apply_points r pts).
+Proof.
+  intros ds pre points pts Hf. induction Hf as [pre points | d ds pre points b pts Hb Hf IH]; intros g j target tparams r Hc.
+  - inversion Hc; subst. rewrite !app_nil_r. cbn [apply_points]. assumption.
+  - inversion Hc as [| ? ? ? ? ? ? ? ? ? _ Hc']; subst. cbn [apply_points].
+    specialize (IH g j target tparams (set_apply r b) (Hc' b Hb)). rewrite <- !app_assoc in IH. exact IH.
+Qed.
+
 End Respecting.
+
+(** ** Injectivity of the Elements *)
+
+Lemma set_mem_tuple_code : forall z fs,
+    set_mem z (tuple_code fs) <-> Exists (fun f => set_eq z (ordered_pair (string_code (fst f)) (snd f))) fs.
+Proof.
+  intros z fs. unfold tuple_code. rewrite set_mem_set_of_list. rewrite Exists_map. reflexivity.
+Qed.
+
+Lemma tuple_code_field_absent : forall f fl vals x, ~ In f fl ->
+    ~ set_mem (ordered_pair (string_code f) x) (tuple_code (List.combine fl vals)).
+Proof.
+  intros f fl vals x Hf Hm. apply set_mem_tuple_code in Hm. apply Exists_exists in Hm as [[f' v'] [Hin E]].
+  apply ordered_pair_inj in E as [Ef _]. apply string_code_inj in Ef; cbn in Ef; subst f'.
+  apply Hf. exact (in_combine_l _ _ _ _ Hin).
+Qed.
+
+Lemma tuple_code_combine_inj : forall fl vals vals', NoDup fl -> List.length vals = List.length fl -> List.length vals' = List.length fl ->
+    set_eq (tuple_code (List.combine fl vals)) (tuple_code (List.combine fl vals')) -> list_set_eq vals vals'.
+Proof.
+  induction fl as [| f fl IH]; intros [| v vals] [| v' vals'] Hnd Hl Hl' E; cbn in Hl, Hl'; try discriminate; [constructor |].
+  inversion Hnd as [| ? ? Hnin Hnd']; subst.
+  cbn [List.combine] in E. unfold tuple_code in E. cbn [List.map set_of_list] in E. fold (tuple_code (List.combine fl vals)) in E.
+  fold (tuple_code (List.combine fl vals')) in E.
+  set (R := tuple_code (List.combine fl vals)) in *. set (R' := tuple_code (List.combine fl vals')) in *.
+  assert (Hmem : forall p x y X, set_mem p (union_set (unordered_pair_set (singleton_set (ordered_pair x y)) X)) <->
+                                  set_eq p (ordered_pair x y) \/ set_mem p X).
+  { intros p x y X. rewrite set_mem_union. split.
+    - intros [w [Hw Hp]]. apply set_mem_unordered_pair in Hw as [Hw | Hw].
+      + left. eapply set_mem_eq_r in Hp; [| exact Hw]. apply set_mem_singleton in Hp. exact Hp.
+      + right. eapply set_mem_eq_r; [exact Hw | exact Hp].
+    - intros [Hp | Hp].
+      + exists (singleton_set (ordered_pair x y)). split; [apply set_mem_unordered_pair; left; apply set_eq_refl | apply set_mem_singleton; exact Hp].
+      + exists X. split; [apply set_mem_unordered_pair; right; apply set_eq_refl | exact Hp]. }
+  cbn [fst snd] in E.
+  assert (Ev : set_eq v v').
+  { assert (H1 : set_mem (ordered_pair (string_code f) v) (union_set (unordered_pair_set (singleton_set (ordered_pair (string_code f) v')) R')))
+      by (eapply set_mem_eq_r; [exact E | apply Hmem; left; apply set_eq_refl]).
+    apply Hmem in H1 as [H1 | H1]; [apply ordered_pair_inj in H1; tauto |].
+    exfalso. exact (tuple_code_field_absent f fl vals' v Hnin H1). }
+  constructor; [exact Ev |]. apply IH; [exact Hnd' | lia | lia |].
+  apply set_eq_intro; intros z Hz.
+  - assert (H1 : set_mem z (union_set (unordered_pair_set (singleton_set (ordered_pair (string_code f) v')) R')))
+      by (eapply set_mem_eq_r; [exact E | apply Hmem; right; exact Hz]).
+    apply Hmem in H1 as [H1 | H1]; [| exact H1].
+    exfalso. apply (tuple_code_field_absent f fl vals v' Hnin). eapply set_mem_eq_l; [exact H1 | exact Hz].
+  - assert (H1 : set_mem z (union_set (unordered_pair_set (singleton_set (ordered_pair (string_code f) v)) R)))
+      by (eapply set_mem_eq_r; [apply set_eq_sym; exact E | apply Hmem; right; exact Hz]).
+    apply Hmem in H1 as [H1 | H1]; [| exact H1].
+    exfalso. apply (tuple_code_field_absent f fl vals' v Hnin). eapply set_mem_eq_l; [exact H1 | exact Hz].
+Qed.
+
+(** The number of recursive arguments. *)
+Fixpoint recursive_count (gs : list set_argument) : nat :=
+  match gs with
+  | nil => 0
+  | set_argument_plain _ _ :: gs' => recursive_count gs'
+  | set_argument_recursive _ _ _ _ _ :: gs' => S (recursive_count gs')
+  end.
+
+Lemma length_interleave_arguments : forall gs pvals rs, List.length pvals = plain_count gs -> List.length rs = recursive_count gs ->
+    List.length (interleave_arguments gs pvals rs) = List.length gs.
+Proof.
+  induction gs as [| [κ t | type ds target tparams ls] gs IH]; intros pvals rs Hp Hr; cbn in *; [reflexivity | |].
+  - destruct pvals; cbn in Hp; [discriminate | cbn; f_equal; apply IH; [lia | exact Hr]].
+  - destruct rs; cbn in Hr; [discriminate | cbn; f_equal; apply IH; [exact Hp | lia]].
+Qed.
+
+Lemma interleave_arguments_inj : forall gs pvals pvals' rs rs',
+    List.length pvals = plain_count gs -> List.length pvals' = plain_count gs ->
+    List.length rs = recursive_count gs -> List.length rs' = recursive_count gs ->
+    list_set_eq (interleave_arguments gs pvals rs) (interleave_arguments gs pvals' rs') ->
+    list_set_eq pvals pvals' /\ list_set_eq rs rs'.
+Proof.
+  induction gs as [| [κ t | type ds target tparams ls] gs IH]; intros pvals pvals' rs rs' Hp Hp' Hr Hr' E; cbn in *.
+  - destruct pvals, pvals', rs, rs'; try discriminate. split; constructor.
+  - destruct pvals as [| p pvals], pvals' as [| p' pvals']; cbn in Hp, Hp'; try discriminate.
+    inversion E as [| ? ? ? ? Epp Erest]; subst.
+    destruct (IH pvals pvals' rs rs' ltac:(lia) ltac:(lia) Hr Hr' Erest) as [Ep Er].
+    split; [constructor; assumption | exact Er].
+  - destruct rs as [| r rs], rs' as [| r' rs']; cbn in Hr, Hr'; try discriminate.
+    inversion E as [| ? ? ? ? Err Erest]; subst.
+    destruct (IH pvals pvals' rs rs' Hp Hp' ltac:(lia) ltac:(lia) Erest) as [Ep Er].
+    split; [exact Ep | constructor; assumption].
+Qed.
+
+Lemma children_decode_length : forall g gs pvals pre j rs, children_decode g gs pvals pre j rs -> List.length rs = recursive_count gs.
+Proof.
+  intros g gs pvals pre j rs H. induction H; cbn; [reflexivity | exact IHchildren_decode | f_equal; exact IHchildren_decode].
+Qed.
+
+Section Injective.
+  Hypothesis Hsig : signature_respects G.
+  (** The constructor names of each member are distinct *)
+  Hypothesis Hnames : forall k Mk, List.nth_error (set_group_members G) k = Some Mk ->
+    NoDup (List.map set_constructor_name (set_member_constructors Mk)).
+  (** A record view has one constructor, of one argument per field, and
+      its field names are distinct *)
+  Hypothesis Hrview : forall k Mk fl, List.nth_error (set_group_members G) k = Some Mk -> set_member_record_fields Mk = Some fl ->
+    NoDup fl /\ List.length (set_member_constructors Mk) = 1 /\
+    (forall cs, In cs (set_member_constructors Mk) -> List.length (set_constructor_arguments cs) = List.length fl).
+
+Lemma nodup_map_index : forall {A B} (f : A -> B) (l : list A) i i' x x', NoDup (List.map f l) ->
+    List.nth_error l i = Some x -> List.nth_error l i' = Some x' -> f x = f x' -> i = i'.
+Proof.
+  intros A B f l i i' x x' Hnd Hi Hi' Ef.
+  apply (proj1 (NoDup_nth_error (List.map f l)) Hnd i i').
+  - rewrite length_map. apply nth_error_Some. congruence.
+  - rewrite !nth_error_map, Hi, Hi'. cbn. f_equal. exact Ef.
+Qed.
+
+(** At one member, two equal elements are built by one constructor at
+    equal arguments. *)
+Lemma constructed_element_inj : forall k Mk i i' cs cs' ns ns' vals vals',
+    List.nth_error (set_group_members G) k = Some Mk ->
+    List.nth_error (set_member_constructors Mk) i = Some cs -> List.nth_error (set_member_constructors Mk) i' = Some cs' ->
+    List.length vals = List.length (set_constructor_arguments cs) -> List.length vals' = List.length (set_constructor_arguments cs') ->
+    list_set_eq ns ns' ->
+    set_eq (constructed_element Mk cs ns vals) (constructed_element Mk cs' ns' vals') -> i = i' /\ list_set_eq vals vals'.
+Proof.
+  intros * HMk Hi Hi' Hl Hl' Hns E. unfold constructed_element in E.
+  destruct (set_member_record_fields Mk) as [fl |] eqn:Hfl.
+  - destruct (Hrview _ _ _ HMk Hfl) as (Hnd & H1 & Hargs).
+    assert (i = 0) as -> by (assert (i < 1) by (rewrite <- H1; apply nth_error_Some; congruence); lia).
+    assert (i' = 0) as -> by (assert (i' < 1) by (rewrite <- H1; apply nth_error_Some; congruence); lia).
+    rewrite Hi in Hi'. injection Hi' as <-. split; [reflexivity |].
+    pose proof (Hargs cs (nth_error_In _ _ Hi)) as Ha.
+    apply (tuple_code_combine_inj fl vals vals' Hnd); [lia | lia | exact E].
+  - unfold con_val in E. apply ordered_pair_inj in E as [En El]. apply string_code_inj in En.
+    pose proof (nodup_map_index _ _ _ _ _ _ (Hnames _ _ HMk) Hi Hi' En) as <-.
+    rewrite Hi in Hi'. injection Hi' as <-. split; [reflexivity |].
+    apply list_code_inj in El. exact (proj2 (list_set_eq_app_split _ _ _ _ El (list_set_eq_length _ _ Hns))).
+Qed.
+
+(** Decoding is injective at one member: equal elements have equal
+    trees. *)
+Lemma tree_decodes_injective_all :
+  (forall k ns t v, tree_decodes k ns t v ->
+     forall ns' t' v', list_set_eq ns ns' -> set_eq v v' -> tree_decodes k ns' t' v' -> set_eq t t') /\
+  (forall g gs pvals pre j rs, children_decode g gs pvals pre j rs -> Forall argument_respects gs ->
+     forall g' pvals' pre' rs', list_set_eq pvals pvals' -> list_set_eq pre pre' -> list_set_eq rs rs' ->
+     children_decode g' gs pvals' pre' j rs' ->
+     forall pos, position_of gs pvals pre j pos -> set_eq (set_apply g pos) (set_apply g' pos)) /\
+  (forall g j ds target tparams pre points r, child_decodes g j ds target tparams pre points r ->
+     Forall list_function_respects ds -> list_list_function_respects tparams ->
+     forall g' pre' points' r', list_set_eq pre pre' -> list_set_eq points points' -> set_eq r r' ->
+     child_decodes g' j ds target tparams pre' points' r' ->
+     forall pts, points_fit ds pre points pts ->
+     set_eq (set_apply g (tree_position j (points ++ pts))) (set_apply g' (tree_position j (points' ++ pts)))).
+Proof.
+  apply tree_decodes_combined_ind.
+  - (** a node *)
+    intros k ns Mk i cs pvals g rs t v HMk Hcs Et Hlp Hfg Hc IHc Ev ns' t' v' Hns Evv H'.
+    inversion H' as [k0 ns0 Mk' i' cs' pvals' g' rs' t0 v0 HMk' Hcs' Et' Hlp' Hfg' Hc' Ev']; subst.
+    rewrite HMk in HMk'; injection HMk' as <-.
+    pose proof (children_decode_length _ _ _ _ _ _ Hc) as Hlr. pose proof (children_decode_length _ _ _ _ _ _ Hc') as Hlr'.
+    destruct (constructed_element_inj k Mk i i' cs cs' ns ns' _ _ HMk Hcs Hcs'
+                (length_interleave_arguments _ _ _ Hlp Hlr) (length_interleave_arguments _ _ _ Hlp' Hlr') Hns
+                (set_eq_trans _ _ _ (set_eq_sym _ _ Ev) (set_eq_trans _ _ _ Evv Ev'))) as [<- Eargs].
+    rewrite Hcs in Hcs'; injection Hcs' as <-.
+    destruct (interleave_arguments_inj _ _ _ _ _ Hlp Hlp' Hlr Hlr' Eargs) as [Epv Ers].
+    pose proof (Hsig _ _ _ HMk (nth_error_In _ _ Hcs)) as Hgs.
+    assert (Hpre : list_set_eq (us ++ ns) (us ++ ns')) by (apply list_set_eq_app; [apply list_set_eq_refl | exact Hns]).
+    assert (ED : set_eq (argument_positions (set_constructor_arguments cs) pvals (us ++ ns) 0)
+                        (argument_positions (set_constructor_arguments cs) pvals' (us ++ ns') 0))
+      by (apply argument_positions_resp; assumption).
+    assert (Eg : set_eq g g').
+    { apply (is_function_on_ext _ _ _ _ ED Hfg Hfg'). intros pos Hpos.
+      eapply IHc; [exact Hgs | exact Epv | exact Hpre | exact Ers | exact Hc' |].
+      exact (set_mem_argument_positions _ Hgs _ _ _ _ Hpos). }
+    eapply set_eq_trans; [exact Et |]. eapply set_eq_trans; [| apply set_eq_sym; exact Et'].
+    apply ordered_pair_resp; [| exact Eg]. unfold tree_shape. apply list_code_resp.
+    repeat constructor; try apply set_eq_refl; apply list_code_resp; assumption.
+  - (** no argument *)
+    intros g pvals pre j _ g' pvals' pre' rs' _ _ _ _ pos Hpos. inversion Hpos.
+  - (** a non-recursive argument *)
+    intros g κ t gs p pvals pre j rs _ IH Hr g' pvals' pre' rs' Hpv Hpre Hrs H' pos Hpos.
+    inversion Hr as [| ? ? _ Hgs]; subst.
+    inversion Hpv as [| ? p' ? pv' Hpp Hpv']; subst. inversion H'; subst. inversion Hpos; subst.
+    eapply IH; [exact Hgs | exact Hpv' | apply list_set_eq_app; [exact Hpre | constructor; [exact Hpp | constructor]] | exact Hrs | eassumption | eassumption].
+  - (** a recursive argument *)
+    intros g type ds target tparams ls gs pvals pre j r rs _ IH1 _ IH2 Hr g' pvals' pre' rs' Hpv Hpre Hrs H' pos Hpos.
+    inversion Hr as [| ? ? Hg Hgs]; subst. destruct Hg as [Hds Htp].
+    inversion Hrs as [| ? r' ? rs'' Hrr Hrs']; subst. inversion H'; subst. inversion Hpos as [? ? ? ? ? ? ? ? ? pts ? Hf Ep | |]; subst.
+    + eapply set_eq_trans; [apply set_apply_resp; [apply set_eq_refl | exact Ep] |].
+      eapply set_eq_trans; [| apply set_apply_resp; [apply set_eq_refl | apply set_eq_sym; exact Ep]].
+      exact (IH1 Hds Htp g' pre' nil r' Hpre (list_set_eq_refl _) Hrr ltac:(eassumption) pts Hf).
+    + eapply IH2; [exact Hgs | exact Hpv | apply list_set_eq_app; [exact Hpre | apply list_set_eq_refl] | exact Hrs' | eassumption | eassumption].
+  - (** the end *)
+    intros g j target tparams pre points r _ IH _ Htp g' pre' points' r' Hpre Hpts Hr H' pts Hf.
+    inversion Hf; subst. inversion H'; subst. rewrite !app_nil_r.
+    eapply IH; [| exact Hr | eassumption].
+    apply list_set_eq_skipn. apply Htp. apply list_set_eq_app; assumption.
+  - (** through a domain *)
+    intros g j d ds target tparams pre points r _ _ IH Hds Htp g' pre' points' r' Hpre Hpts Hr H' pts Hf.
+    inversion Hds as [| ? ? Hd Hds']; subst.
+    inversion H' as [| ? ? ? ? ? ? ? ? ? _ Hc']; subst.
+    inversion Hf as [| ? ? ? ? b pts' Hb Hf']; subst.
+    assert (Ed : set_eq (code_carrier (d (pre ++ points))) (code_carrier (d (pre' ++ points'))))
+      by (apply code_carrier_resp; apply Hd; apply list_set_eq_app; assumption).
+    pose proof (IH b Hb Hds' Htp g' pre' (points' ++ [b]) (set_apply r' b) Hpre
+                  (list_set_eq_app _ _ _ _ Hpts (list_set_eq_refl _)) (set_apply_resp _ _ _ _ Hr (set_eq_refl _))
+                  (Hc' b (set_mem_eq_r _ _ _ Ed Hb)) pts' Hf') as E.
+    rewrite <- !app_assoc in E. exact E.
+Qed.
+
+Corollary tree_decodes_injective : forall k ns t v ns' t' v', tree_decodes k ns t v ->
+    list_set_eq ns ns' -> set_eq v v' -> tree_decodes k ns' t' v' -> set_eq t t'.
+Proof. intros. eapply (proj1 tree_decodes_injective_all); eassumption. Qed.
+
+End Injective.
 
 End Bound.
