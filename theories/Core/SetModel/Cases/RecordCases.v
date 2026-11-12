@@ -645,6 +645,54 @@ Proof.
   rewrite EvB in EB. cbn beta. eapply set_mem_eq_r; [apply code_carrier_resp; exact EB | exact Hmem].
 Qed.
 
+Lemma set_rule_record_eta : forall Γ M p R Ns FA FM FM' GA GT GT', set_ctx T γ Γ ->
+    record_lookup gc_deps gc_stack p = Some R -> List.length Ns = List.length (record_params R) ->
+    NoDup (List.map fst (record_fields R)) ->
+    set_exp_eq_with T γ Γ (apps_exp (a_record p) Ns) M M FA FM FM' ->
+    set_exp_eq_with T γ Γ (apps_exp (a_record p) Ns) (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M))
+      (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M)) GA GT GT' ->
+    set_exp_eq T γ Γ (apps_exp (a_record p) Ns) M (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M)).
+Proof.
+  intros * HΓ HR Hl Hnd HM HT. apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HM HT).
+  pose proof HM as [HFA HFM _ _ HMm]. pose proof HT as [_ HGT _ _ _]. pose proof (set_gctx_ok_records _ _ Hok _ _ HR) as HSR.
+  intros ρ Hρ.
+  pose proof (set_denotes_exists _ _ _ _ _ HFA _ Hρ) as Hap. destruct (set_interp_apps_inv T γ _ _ _ _ _ Hap) as (v0 & ns & Hv0 & Hns & Eap).
+  inversion Hv0; subst.
+  assert (Hlns : List.length ns = List.length Ns) by (clear - Hns; induction Hns; cbn; congruence).
+  pose proof (HMm _ Hρ) as Hv. rewrite Eap in Hv.
+  destruct (set_record_ok_instances _ _ _ _ _ HSR ns _ ltac:(lia) Hv) as (ρp & Hρp & Ens).
+  eapply set_mem_eq_r in Hv; [| apply code_carrier_resp; eapply set_eq_trans;
+                                 [apply apply_values_resp; [apply set_eq_refl | exact Ens] | exact (set_record_ok_former_value _ _ _ _ _ HSR _ Hρp)]].
+  eapply set_mem_eq_r in Hv; [| apply code_carrier_type_code].
+  destruct (proj1 (set_record_ok_carrier _ _ _ _ _ HSR _ _ Hρp) Hv) as (vs & [Hlvs Etup _]).
+  rewrite (set_record_ok_names _ _ _ _ _ HSR) in Hlvs, Etup. rewrite List.length_map in Hlvs.
+  eapply set_eq_trans; [exact Etup |].
+  pose proof (set_denotes_exists _ _ _ _ _ HGT _ Hρ) as Ht. inversion Ht; subst.
+  match goal with Hfs : set_interp_fields _ _ _ _ (record_eta_fields R M) ?ws0 |- _ =>
+    apply set_eq_sym; apply tuple_code_resp; rename Hfs into Hws; set (ws := ws0) in * end.
+  assert (Hlws : List.length ws = List.length (record_fields R))
+    by (rewrite <- (List.length_map fst ws), (set_interp_fields_names _ _ _ _ Hws); unfold record_eta_fields;
+        rewrite !List.length_map; reflexivity).
+  apply Forall2_of_nth; [rewrite List.length_combine, List.length_map; lia |].
+  intros i [g w] [g' v] Hw Hv'.
+  assert (Hi : i < List.length (record_fields R)) by (rewrite <- Hlws; apply List.nth_error_Some; congruence).
+  destruct (List.nth_error (record_fields R) i) as [[f U] |] eqn:Hf; [| apply List.nth_error_None in Hf; lia].
+  assert (He : List.nth_error (record_eta_fields R M) i = Some (f, a_proj f M))
+    by (unfold record_eta_fields; rewrite List.nth_error_map, Hf; reflexivity).
+  destruct (set_interp_fields_nth _ _ _ _ Hws _ _ _ He) as (w' & Hw' & Hpw). rewrite Hw in Hw'. injection Hw' as <- <-.
+  destruct (List.nth_error vs i) as [vi |] eqn:Hvi; [| apply List.nth_error_None in Hvi; lia].
+  assert (Hc : List.nth_error (List.combine (List.map fst (record_fields R)) vs) i = Some (g, vi)).
+  { clear - Hf Hvi. revert i vs Hf Hvi. induction (record_fields R) as [| [f0 U0] l IH]; intros [| i] [| v vs] Hf Hvi; cbn in *;
+      try discriminate; [injection Hf as -> _; injection Hvi as ->; reflexivity | exact (IH _ _ Hf Hvi)]. }
+  rewrite Hc in Hv'. injection Hv' as <- <-. split; [reflexivity |].
+  inversion Hpw; subst.
+  match goal with Hu : set_interp _ _ _ _ M ?u |- _ =>
+    eapply set_eq_trans; [apply tuple_field_resp; exact (set_denotes_unique _ _ _ _ _ HFM _ _ _ Hρ Hu) |] end.
+  eapply set_eq_trans; [apply tuple_field_resp; exact Etup |]. apply tuple_field_at.
+  - rewrite map_fst_combine_le by (rewrite List.length_map; lia). exact Hnd.
+  - apply (In_combine_nth _ _ i); [rewrite List.nth_error_map, Hf; reflexivity | exact Hvi].
+Qed.
+
 Lemma set_rule_proj : forall Γ M p R Ns k f U, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_record p : record_ty R -> record_lookup gc_deps gc_stack p = Some R ->
     List.length Ns = List.length (record_params R) ->

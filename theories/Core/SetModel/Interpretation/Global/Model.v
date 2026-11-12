@@ -324,7 +324,15 @@ Record set_record_ok (p : qname) (R : record_decl) (SR : set_record) : Prop :=
     (** At parameters, it is the record type of the carrier *)
   ; set_record_ok_former_value : forall ρ, set_env_in T γ (record_params R) ρ ->
       set_eq (apply_values (global_record_former γ p) (set_env_values (record_params R) ρ))
-             (record_code (set_record_carrier SR (set_env_values (record_params R) ρ))) }.
+             (record_code (set_record_carrier SR (set_env_values (record_params R) ρ)))
+    (** Its applications hold elements only at instances of the
+        parameters: for a record [R (A : Type)] and [M : R ℕ] in
+        [n : ℕ], the η rule types no parameter, so that [M]'s value
+        lies in the record type's carrier at [⟦ℕ⟧] is read from this,
+        not from [⟦ℕ⟧ ∈ ⟦Type⟧] *)
+  ; set_record_ok_instances : forall ns z, List.length ns = List.length (record_params R) ->
+      set_mem z (code_carrier (apply_values (global_record_former γ p) ns)) ->
+      exists ρ, set_env_in T γ (record_params R) ρ /\ list_set_eq ns (set_env_values (record_params R) ρ) }.
 
 (** ** Models *)
 
