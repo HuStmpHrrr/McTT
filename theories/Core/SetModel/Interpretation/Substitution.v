@@ -335,6 +335,20 @@ Proof.
   - intros x. split; constructor.
 Qed.
 
+(** A term under a term entry [ce] at the value [n] of a term [N] keeps
+    its value with [N] substituted. *)
+Lemma set_interp_single_sub_entry : forall Γ ρ ce κ N n X v, ⊢ gc_deps ⍮ gc_stack ⍮ ce :: Γ ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce :: Γ ->
+    set_interp T γ Γ ρ N n -> set_interp T γ (ce :: Γ) (set_env_extend ρ (set_entry_term κ n)) X v ->
+    set_interp T γ Γ ρ (exp_sub X (sb_extend sb_id (se_exp N))) v.
+Proof.
+  intros * Hc Hσ HN HX.
+  apply (set_interp_sub _ _ _ _ HX Hc nil (ce :: Γ) Γ _ ρ ρ). constructor; [reflexivity | exact Hσ | | |].
+  - intros x Hx. cbn in Hx. lia.
+  - intros y. reflexivity.
+  - intros [| y]; split; cbn; first [exact HN | constructor].
+Qed.
+
 (** A term of [Γ ▹{κ} A] at the value [n] of a term [N] keeps its value
     with [N] substituted. *)
 Lemma set_interp_single_sub : forall Γ ρ κ A N n X v, ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ ->
