@@ -1,0 +1,398 @@
+(** * The Set Rules of the Eliminator
+
+    At an environment of its context, the eliminator of a group at an
+    element of a member's carrier has a result in the motive there: by
+    induction on the group's least fixed point ([member_carrier_ind]), the
+    element is built by a constructor from arguments whose recursive ones
+    have results, which the branch takes, in its context, to a result in
+    the motive at the constructor.
+
+    The recursive results are functions of the arguments: along a leaf
+    path, the eliminator's result at the end ([elim_result], described
+    among the elements of the universe of the motives, without choice),
+    under a domain the graph of the results at the argument's values, at a
+    projection the results at the field ([leaf_result]). *)
+
+From Stdlib Require Import String List Lia PeanoNat.
+From Mctt Require Import LibTactics.
+From Mctt.Core Require Import Base.
+From Mctt.Core.SetModel Require Export Judgments.
+From Mctt.Core.SetModel.Interpretation Require Import Weakening Substitution JudgmentSubstitution.
+From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel.Cases Require Import UniverseCases ValidUnit MemberTypes Sel IndCases RecordCases.
+From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
+From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
+From Mctt.Core.Syntactic.System.Global Require Import Paths DescTyping MemberLemmas.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
+From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing.
+Import ListNotations.
+
+Section Eliminator.
+  Context {GC : GCtx}.
+  Variable T : universe_tower.
+  Variable γ : global_valuation.
+  Hypothesis Hfn : fn_kinds_unique.
+  (** Every global module equals itself *)
+  Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
+  (** The global context is well formed *)
+  Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
+  (** The valuation models the global context *)
+  Hypothesis Hok : set_gctx_ok T γ.
+
+(** ** Closed Contexts Read Only Their Own Entries *)
+
+Lemma set_env_above_lt' : forall n ρ ρb x, x < n -> set_env_above n ρ ρb x = ρ x.
+Proof.
+  induction n as [| n IH]; intros ρ ρb x Hx; [lia |]. destruct x as [| x]; [reflexivity |]. cbn [set_env_above].
+  change (set_env_extend (set_env_above n (set_env_tail ρ) ρb) (ρ 0) (S x)) with (set_env_above n (set_env_tail ρ) ρb x).
+  rewrite IH by lia. reflexivity.
+Qed.
+
+Lemma set_env_above_ge' : forall n ρ ρb y, set_env_above n ρ ρb (n + y) = ρb y.
+Proof. induction n as [| n IH]; intros ρ ρb y; [reflexivity |]. cbn [set_env_above Nat.add]. apply IH. Qed.
+
+(** The values of a telescope read only its own entries. *)
+Lemma set_env_values_agree : forall Δ ρ ρ', (forall x, x < List.length Δ -> ρ x = ρ' x) -> set_env_values Δ ρ = set_env_values Δ ρ'.
+Proof.
+  induction Δ as [| e Δ IH]; intros ρ ρ' E; [reflexivity |]. cbn [set_env_values List.length] in *.
+  rewrite (IH (set_env_tail ρ) (set_env_tail ρ')); [| intros x Hx; unfold set_env_tail; apply E; lia].
+  rewrite (E 0) by lia. reflexivity.
+Qed.
+
+(** A term of a closed context has one value at two environments whose
+    entries in the context are equal, whatever they hold below it: both
+    are read at environments holding both below the context. *)
+Lemma set_interp_closed_ctx_functional : forall Δ ρ1 ρ2 M v1 v2, ctx_scoped 0 Δ -> exp_scoped (List.length Δ) M ->
+    (forall x, x < List.length Δ -> set_entry_eq γ (ρ1 x) (ρ2 x)) ->
+    set_env_eq γ (set_env_drop (List.length Δ) ρ1) (set_env_drop (List.length Δ) ρ1) ->
+    set_env_eq γ (set_env_drop (List.length Δ) ρ2) (set_env_drop (List.length Δ) ρ2) ->
+    set_interp T γ Δ ρ1 M v1 -> set_interp T γ Δ ρ2 M v2 -> set_eq v1 v2.
+Proof.
+  intros * HΔ HM E Ed1 Ed2 H1 H2. set (n := List.length Δ) in *.
+  pose proof (wf_ctx_empty _ _ Hgw) as Hc.
+  assert (Hwk : forall φ, gc_deps ⍮ gc_stack ⍮ nil ⊢ʷ φ : nil)
+    by (intros φ; constructor; [exact Hc | exact Hc | intros ? ? Hl; inversion Hl | intros ? ? ? Hl; inversion Hl
+                               | intros ? ? Hl; inversion Hl]).
+  set (ρb := set_env_merge (set_env_drop n ρ1) (set_env_drop n ρ2)).
+  assert (Hmv : forall ρ ρ' φ v, set_interp T γ Δ ρ M v -> (forall x, x < n -> ρ x = ρ' x) ->
+            (forall y, ρ (n + y) = ρ' (n + φ y)) -> set_interp T γ Δ ρ' M v).
+  { intros ρ ρ' φ v H Hlt Hge. rewrite <- (List.app_nil_r Δ) in H.
+    pose proof (set_interp_wk T γ _ _ _ _ H Δ nil nil φ ρ' eq_refl (Hwk φ)) as H'.
+    rewrite tele_closed_wk, List.app_nil_r in H' by exact HΔ. fold n in H'.
+    rewrite (proj1 syn_scoped_wk_id M n (wk_qn n φ) HM (fun x Hx => wk_qn_lt n φ x Hx)) in H'.
+    apply H'. intros x. destruct (Nat.lt_ge_cases x n) as [Hx | Hx].
+    - rewrite wk_qn_lt by exact Hx. apply Hlt. exact Hx.
+    - rewrite wk_qn_ge by exact Hx. replace x with (n + (x - n)) at 1 by lia. rewrite Hge. f_equal. lia. }
+  set (ρ3 := set_env_above n ρ1 ρb). set (ρ3' := set_env_above n ρ2 ρb).
+  assert (H1' : set_interp T γ Δ ρ3 M v1).
+  { apply (Hmv ρ1 ρ3 (fun y => y + y) v1 H1); intros; unfold ρ3;
+      [rewrite set_env_above_lt' by assumption; reflexivity | rewrite set_env_above_ge'; unfold ρb; rewrite set_env_merge_even; reflexivity]. }
+  assert (H2' : set_interp T γ Δ ρ3' M v2).
+  { apply (Hmv ρ2 ρ3' (fun y => S (y + y)) v2 H2); intros; unfold ρ3';
+      [rewrite set_env_above_lt' by assumption; reflexivity | rewrite set_env_above_ge'; unfold ρb; rewrite set_env_merge_odd; reflexivity]. }
+  apply (set_interp_functional T γ Hfn Hmods _ _ _ _ H1' ρ3' v2); [| exact H2'].
+  intros x. unfold ρ3, ρ3'. destruct (Nat.lt_ge_cases x n) as [Hx | Hx].
+  - rewrite !set_env_above_lt' by exact Hx. apply E. exact Hx.
+  - replace x with (n + (x - n)) by lia. rewrite !set_env_above_ge'. unfold ρb, set_env_merge.
+    destruct (Nat.even (x - n)); [apply Ed1 | apply Ed2].
+Qed.
+
+(** ** Instances of Closed Telescopes
+
+    A closed telescope [Ψ] over a closed base [B], instantiated in [Γ] by
+    a substitution [σ] of the base: an environment of the instance reads
+    one of [Ψ ++ B] ([inst_closed_env]), and grows by an element of the
+    next type's reading there. *)
+
+Section ClosedInstances.
+  Variables (Γ B : ctx) (σ : sub) (Fσ : set_env -> set_env).
+  Hypotheses (Hσ : set_gsub_with T γ Γ σ (B ++ Γ) Fσ) (HΓ : set_ctx T γ Γ) (HcΓ : ⊢ gc_deps ⍮ gc_stack ⍮ Γ).
+
+(** The environment of [Ψ ++ B] an environment of [tele_sub Ψ σ ++ Γ]
+    reads. *)
+Definition inst_closed_env (Ψ : ctx) (ρo : set_env) : set_env :=
+  set_env_moved (List.length (Ψ ++ B)) (set_env_drop (List.length Γ)) (set_env_moved (List.length Ψ) Fσ ρo).
+
+Lemma inst_closed_env_in : forall Ψ ρo, ctx_scoped 0 (Ψ ++ B) -> set_ctx T γ (Ψ ++ B) -> set_ctx T γ ((Ψ ++ B) ++ Γ) ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ Ψ ++ B -> ⊢ gc_deps ⍮ gc_stack ⍮ (Ψ ++ B) ++ Γ ->
+    set_env_in T γ (tele_sub Ψ σ ++ Γ) ρo ->
+    set_env_in T γ (Ψ ++ B ++ Γ) (set_env_moved (List.length Ψ) Fσ ρo) /\ set_env_in T γ (Ψ ++ B) (inst_closed_env Ψ ρo).
+Proof.
+  intros * Hs HC HCΓ Hc HcΓ' Hρo. rewrite <- List.app_assoc in HCΓ, HcΓ'.
+  pose proof (set_env_in_moved T γ Hfn Hmods _ _ _ _ _ _ Hσ HΓ HCΓ HcΓ' Hρo) as H1. split; [exact H1 |].
+  pose proof (set_gsub_drop T γ _ HcΓ) as Hd.
+  rewrite List.app_assoc in H1. rewrite <- (tele_sub_closed _ (sb_of_wk (wk_shiftn (List.length Γ))) Hs) in H1.
+  pose proof (set_env_in_moved T γ Hfn Hmods _ _ _ _ _ _ Hd HΓ ltac:(rewrite List.app_nil_r; exact HC)
+                ltac:(rewrite List.app_nil_r; exact Hc) H1) as H2.
+  rewrite List.app_nil_r in H2. exact H2.
+Qed.
+
+(** Its values: the base's at [Fσ], then the telescope's. *)
+Lemma inst_closed_env_values : forall Ψ ρo,
+    set_env_values (Ψ ++ B) (inst_closed_env Ψ ρo) = set_env_values B (Fσ (set_env_drop (List.length Ψ) ρo)) ++ set_env_values Ψ ρo.
+Proof.
+  intros Ψ ρo. rewrite set_env_values_app. f_equal.
+  - apply set_env_values_agree. intros x Hx. unfold inst_closed_env, set_env_drop, set_env_moved.
+    rewrite set_env_above_lt' by (rewrite List.length_app; lia). replace (List.length Ψ + x) with (List.length Ψ + x) by reflexivity.
+    rewrite set_env_above_ge'. reflexivity.
+  - apply set_env_values_agree. intros x Hx. unfold inst_closed_env, set_env_moved.
+    rewrite set_env_above_lt' by (rewrite List.length_app; lia). rewrite set_env_above_lt' by exact Hx. reflexivity.
+Qed.
+
+(** One more assumption of the telescope, at an element of its type's
+    reading at the closed environment. *)
+Lemma set_env_in_inst_extend : forall Ψ κ A F ρo x,
+    ctx_scoped 0 (Ψ ++ B) -> exp_scoped (List.length (Ψ ++ B)) A -> set_ctx T γ (Ψ ++ B) -> set_ctx T γ ((Ψ ++ B) ++ Γ) ->
+    ⊢ gc_deps ⍮ gc_stack ⍮ Ψ ++ B -> ⊢ gc_deps ⍮ gc_stack ⍮ (Ψ ++ B) ++ Γ ->
+    set_reads T γ (Ψ ++ B) A F -> set_env_in T γ (tele_sub Ψ σ ++ Γ) ρo ->
+    set_mem x (code_carrier (F (set_env_values (Ψ ++ B) (inst_closed_env Ψ ρo)))) ->
+    set_env_in T γ (tele_sub (ce_ass κ A :: Ψ) σ ++ Γ) (set_env_extend ρo (set_entry_term κ x)).
+Proof.
+  intros * Hs HA HC HCΓ Hc HcΓ' HF Hρo Hx.
+  destruct (inst_closed_env_in _ _ Hs HC HCΓ Hc HcΓ' Hρo) as [H1 H2].
+  set (a := F (set_env_values (Ψ ++ B) (inst_closed_env Ψ ρo))) in *.
+  pose proof (HF _ H2) as Ha. fold a in Ha.
+  pose proof (set_gsub_drop T γ _ HcΓ) as Hd.
+  assert (Hb1 : set_env_in T γ Γ (set_env_drop (List.length (Ψ ++ B)) (set_env_moved (List.length Ψ) Fσ ρo))).
+  { rewrite List.app_assoc in H1. exact (set_env_rel_drop T γ _ _ _ _ H1). }
+  pose proof (set_interp_moved T γ _ _ _ _ _ _ _ _ Hd ltac:(rewrite List.app_nil_r; exact Hc) Hb1 ltac:(rewrite List.app_nil_r; exact Ha))
+    as Ha1.
+  rewrite (tele_sub_closed _ _ Hs), (exp_scoped_sub_id _ _ _ HA (fun x Hx => sb_qn_lt _ _ _ Hx)), <- List.app_assoc in Ha1.
+  assert (Hb2 : set_env_in T γ Γ (set_env_drop (List.length Ψ) ρo)) by exact (set_env_in_drop T γ _ _ _ _ Hρo).
+  pose proof (set_interp_moved T γ _ _ _ _ _ _ _ _ Hσ ltac:(rewrite <- List.app_assoc in HcΓ'; exact HcΓ') Hb2 Ha1) as Ha2.
+  split; [exact Hρo |]. cbn [set_entry_rel centry_sub tele_sub]. exists x, x, a.
+  constructor; [reflexivity | reflexivity | exact Ha2 | exact Hx | apply set_eq_refl].
+Qed.
+
+End ClosedInstances.
+
+(** ** The Codes of Recursive Arguments *)
+
+Lemma list_set_eq_firstn : forall n xs ys, list_set_eq xs ys -> list_set_eq (List.firstn n xs) (List.firstn n ys).
+Proof.
+  induction n as [| n IH]; intros xs ys E; [constructor |]. destruct E as [| x y xs ys Exy E]; cbn; constructor; [exact Exy | apply IH; exact E].
+Qed.
+
+Section ShapeCodes.
+  Variable G : set_group.
+  (** The carriers respect equal parameters *)
+  Hypothesis HGresp : forall k ps ps', list_set_eq ps ps' -> set_eq (set_group_carrier G k ps) (set_group_carrier G k ps').
+
+Lemma shape_code_resp : forall ds target tparams, Forall list_function_respects ds -> list_list_function_respects tparams ->
+    forall pre pre' pts pts', list_set_eq pre pre' -> list_set_eq pts pts' ->
+    set_eq (shape_code G ds target tparams pre pts) (shape_code G ds target tparams pre' pts').
+Proof.
+  intros ds target tparams Hds Htp. induction Hds as [| d ds Hd Hds IH]; intros pre pre' pts pts' Epre Epts; cbn [shape_code].
+  - apply type_code_resp; [apply set_eq_refl |]. apply HGresp. apply list_set_eq_app;
+      [apply list_set_eq_firstn; exact Epre | apply list_set_eq_skipn; apply Htp; apply list_set_eq_app; assumption].
+  - apply pi_code_resp_on; [apply Hd; apply list_set_eq_app; assumption |].
+    intros x x' _ Ex. apply IH; [exact Epre | apply list_set_eq_app; [exact Epts | constructor; [exact Ex | constructor]]].
+Qed.
+
+(** The elements of a recursive argument's set of shapes, at the
+    candidate carriers [S], are of its code, when [S]'s elements at the
+    shape's ends are the carriers'. *)
+Lemma shape_set_sub_code : forall bound S pre target tparams ds pts1,
+    Forall list_function_respects ds -> list_list_function_respects tparams ->
+    (forall pts, points_fit ds pre pts1 pts ->
+       let ps := tparams (pre ++ pts1 ++ pts) in
+       set_sub (candidate_carrier bound S target (List.skipn (List.length (set_group_uniform_types G)) ps))
+               (set_group_carrier G target (List.firstn (List.length (set_group_uniform_types G)) pre ++
+                                            List.skipn (List.length (set_group_uniform_types G)) ps))) ->
+    set_sub (shape_set G bound S pre ds target tparams pts1) (code_carrier (shape_code G ds target tparams pre pts1)).
+Proof.
+  intros bound S pre target tparams ds. induction ds as [| d ds IH]; intros pts1 Hds Htp Hl; cbn [shape_set shape_code].
+  - intros z Hz. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
+    specialize (Hl nil (points_fit_nil _ _)). cbv zeta in Hl. rewrite List.app_nil_r in Hl. exact (Hl z Hz).
+  - inversion Hds as [| ? ? Hd Hds']; subst.
+    intros z Hz. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |]. revert z Hz.
+    apply function_set_mono_on.
+    + intros x y _ E. apply shape_set_resp; [exact Hds' | exact Htp | apply list_set_eq_refl |
+        apply list_set_eq_app; [apply list_set_eq_refl | constructor; [exact E | constructor]]].
+    + intros x y _ E. apply code_carrier_resp. apply shape_code_resp; [exact Hds' | exact Htp | apply list_set_eq_refl |
+        apply list_set_eq_app; [apply list_set_eq_refl | constructor; [exact E | constructor]]].
+    + intros x Hx. apply IH; [exact Hds' | exact Htp |]. intros pts Hpts. cbv zeta.
+      pose proof (Hl (x :: pts) (points_fit_cons _ _ _ _ _ _ Hx Hpts)) as H. cbv zeta in H.
+      rewrite <- !List.app_assoc. cbn [List.app]. exact H.
+Qed.
+
+End ShapeCodes.
+
+(** ** The Eliminator's Results at One Environment *)
+
+Section Results.
+  (** The eliminator's context and environment *)
+  Variables (Γ : ctx) (ρ : set_env).
+  (** Its sort, group, uniform parameters and blocks *)
+  Variables (r : abs_kind) (p : qname) (Us : list exp) (Bks : list eblock).
+  (** A set holding every result *)
+  Variable V : aczel_set.
+  (** The environment is one of the context *)
+  Hypothesis Hρ : set_env_in T γ Γ ρ.
+
+Lemma set_elim_functional : forall j v res res', set_elim T γ Γ ρ r p Us Bks j v res -> set_elim T γ Γ ρ r p Us Bks j v res' ->
+    set_eq res res'.
+Proof.
+  intros * H H'. destruct (set_interp_functional_all T γ Hfn Hmods) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Hel & _).
+  exact (Hel _ _ _ _ _ _ _ _ _ H _ _ _ (set_env_rel_eq T γ _ _ _ Hρ) (set_eq_refl _) H').
+Qed.
+
+Lemma set_ih_functional : forall t v ihs ihs', set_ih T γ Γ ρ r p Us Bks t v ihs -> set_ih T γ Γ ρ r p Us Bks t v ihs' ->
+    list_set_eq ihs ihs'.
+Proof.
+  intros * H H'. destruct (set_interp_functional_all T γ Hfn Hmods) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hih).
+  exact (Hih _ _ _ _ _ _ _ _ _ H _ _ _ (set_env_rel_eq T γ _ _ _ Hρ) (set_eq_refl _) H').
+Qed.
+
+(** A result is one at a value equal to the element. *)
+Lemma set_elim_resp_value : forall j v v' res, set_eq v v' -> set_elim T γ Γ ρ r p Us Bks j v res ->
+    set_elim T γ Γ ρ r p Us Bks j v' res.
+Proof.
+  intros * E H. destruct (set_elim_strip T γ _ _ _ _ _ _ _ _ _ H) as (res0 & E0 & H0).
+  apply (set_elim_resp T γ _ _ _ _ _ _ _ _ res0); [| apply set_eq_sym; exact E0].
+  destruct H0. eapply set_elim_con; try eassumption. eapply set_eq_trans; [apply set_eq_sym; exact E | eassumption].
+Qed.
+
+Lemma elim_result_pred_resp : forall j v, respects_set_eq (fun z => exists res, set_elim T γ Γ ρ r p Us Bks j v res /\ set_eq res z).
+Proof. intros j v x y E (res & H & Ex). exists res. split; [exact H | eapply set_eq_trans; eassumption]. Qed.
+
+(** The eliminator's result at the member [j] and the element [v]. *)
+Definition elim_result (j : nat) (v : aczel_set) : aczel_set :=
+  set_describe V (fun z => exists res, set_elim T γ Γ ρ r p Us Bks j v res /\ set_eq res z).
+
+(** A result in [V] is the described one. *)
+Lemma elim_result_eq : forall j v res, set_elim T γ Γ ρ r p Us Bks j v res -> set_mem res V ->
+    set_eq (elim_result j v) res.
+Proof.
+  intros * H HV. apply set_describe_eq; [apply elim_result_pred_resp | exact HV | exists res; split; [exact H | apply set_eq_refl] |].
+  intros w _ (res' & H' & E'). eapply set_eq_trans; [apply set_eq_sym; exact E' |]. exact (set_elim_functional _ _ _ _ H' H).
+Qed.
+
+(** The described result is a result. *)
+Lemma elim_result_spec : forall j v res, set_elim T γ Γ ρ r p Us Bks j v res -> set_mem res V ->
+    set_elim T γ Γ ρ r p Us Bks j v (elim_result j v).
+Proof. intros * H HV. apply (set_elim_resp T γ _ _ _ _ _ _ _ _ res); [exact H | apply set_eq_sym; exact (elim_result_eq _ _ _ H HV)]. Qed.
+
+(** The recursive result of an element [v] along a leaf path. *)
+Fixpoint leaf_result (l : leaf_path) (v : aczel_set) : aczel_set :=
+  match l with
+  | leaf_self j _ => elim_result j v
+  | leaf_pi _ l' => graph_set (relation_domain v) (fun b => leaf_result l' (set_apply v b))
+  | leaf_proj f _ l' => leaf_result l' (tuple_field v f)
+  end.
+
+Lemma elim_result_resp : forall j v v', set_eq v v' -> set_eq (elim_result j v) (elim_result j v').
+Proof.
+  intros j v v' E. unfold elim_result, set_describe. apply union_set_resp.
+  apply separation_set_resp; [apply elim_result_pred_resp | apply elim_result_pred_resp | apply set_eq_refl |].
+  intros z; split; intros (res0 & Hr & Ez); exists res0; (split; [| exact Ez]); eapply set_elim_resp_value; try exact Hr;
+    [exact E | apply set_eq_sym; exact E].
+Qed.
+
+Lemma leaf_result_resp : forall l v v', set_eq v v' -> set_eq (leaf_result l v) (leaf_result l v').
+Proof.
+  induction l as [j Ps | B l IH | f ns l IH]; intros v v' E; cbn [leaf_result].
+  - apply elim_result_resp; exact E.
+  - apply graph_set_resp; [intros b b' Eb; apply IH; apply set_apply_resp; [apply set_eq_refl | exact Eb]
+                          | intros b b' Eb; apply IH; apply set_apply_resp; [apply set_eq_refl | exact Eb]
+                          | apply relation_domain_resp; exact E |].
+    intros b _. apply IH. apply set_apply_resp; [exact E | apply set_eq_refl].
+  - apply IH. apply tuple_field_resp. exact E.
+Qed.
+
+(** A list of values indexed by positions, pointwise equal to a map. *)
+Lemma map_seq_set_eq : forall {X : Type} (L : list X) (f : nat -> aczel_set) (g : X -> aczel_set) k,
+    (forall i x, List.nth_error L i = Some x -> set_eq (f (k + i)) (g x)) ->
+    list_set_eq (List.map f (List.seq k (List.length L))) (List.map g L).
+Proof.
+  intros X L f g. induction L as [| x L IH]; intros k H; cbn [List.length List.seq List.map]; constructor.
+  - specialize (H 0 x eq_refl). rewrite Nat.add_0_r in H. exact H.
+  - apply IH. intros i y Hy. replace (S k + i) with (k + S i) by lia. exact (H (S i) y Hy).
+Qed.
+
+Lemma map_set_eq : forall {X : Type} (L : list X) (f g : X -> aczel_set), (forall x, In x L -> set_eq (f x) (g x)) ->
+    list_set_eq (List.map f L) (List.map g L).
+Proof. intros X L f g H. induction L as [| x L IH]; cbn; constructor; [apply H; left; reflexivity | apply IH; intros; apply H; right; assumption]. Qed.
+
+(** A moved path has the same results. *)
+Lemma leaf_result_wk : forall l φ v, set_eq (leaf_result (leaf_wk φ l) v) (leaf_result l v).
+Proof.
+  induction l as [j Ps | B l IH | f ns l IH]; intros φ v; cbn [leaf_wk leaf_result].
+  - apply set_eq_refl.
+  - apply graph_set_resp; [intros b b' Eb; apply leaf_result_resp; apply set_apply_resp; [apply set_eq_refl | exact Eb]
+                          | intros b b' Eb; apply leaf_result_resp; apply set_apply_resp; [apply set_eq_refl | exact Eb]
+                          | apply set_eq_refl |].
+    intros b _. apply IH.
+  - apply IH.
+Qed.
+
+(** ** The Recursive Results Along a Shape *)
+
+Section Shapes.
+  (** The group *)
+  Variable D : ind_decl.
+  Hypothesis HD : ind_lookup gc_deps gc_stack p = Some D.
+  (** Its record views' paths are read off their fields *)
+  Hypothesis Hco : leaves_coherent D.
+  (** It is typed *)
+  Hypothesis HDt : decl_typed gc_deps gc_stack D.
+
+(** [end_results j w]: at the end of a shape, the element [w] of the member
+    [j] has a result, at a member with a block, and its fields have the
+    recursive results along the record view's paths, at a record view. *)
+Record end_results (j : nat) (w : aczel_set) (Mj : imember) : Prop :=
+  { (** [Mj] is the member *)
+    end_results_member : ind_member D j = Some Mj
+    (** A member with a block: a result in [V] *)
+  ; end_results_block : im_is_rview Mj = false -> exists res, set_elim T γ Γ ρ r p Us Bks j w res /\ set_mem res V
+    (** A record view: its fields' results along its paths *)
+  ; end_results_rview : forall qr Is fl c gs, im_head Mj = mh_record qr Is fl -> im_cons Mj = [(c, gs)] ->
+      set_ihs T γ Γ ρ r p Us Bks gs (List.map (tuple_field w) fl)
+        (List.map (fun l => leaf_result l w) (fields_leaves (rview_leaves D) nil (List.combine fl gs))) }.
+
+(** [shape_results t a]: every value of [a] at the domains of [t] has its
+    results at the shape's end. *)
+Fixpoint shape_results (t : ptyp) (a : aczel_set) : Prop :=
+  match t with
+  | pt_self j _ => exists Mj, end_results j a Mj
+  | pt_pi _ t' => forall b, set_mem b (relation_domain a) -> shape_results t' (set_apply a b)
+  end.
+
+(** An argument whose values have their results has its recursive results
+    along the shape's paths. *)
+Lemma set_ih_of_shape_results : forall t m a, shape_results t a ->
+    set_ih T γ Γ ρ r p Us Bks t a (List.map (fun l => leaf_result l a) (shape_leaves (rview_leaves D) m t)).
+Proof.
+  induction t as [j Ps | B t IH]; intros m a Ha; cbn [shape_results shape_leaves] in *.
+  - destruct Ha as (Mj & [HMj Hblk Hrv]).
+    destruct (im_is_rview Mj) eqn:Hr.
+    + destruct (im_head Mj) as [pm | qc k' Is0 vm | qr Is fl] eqn:Hh; unfold im_is_rview in Hr; rewrite Hh in Hr; try discriminate.
+      destruct (rview_struct_con _ _ _ (decl_typed_record_struct _ _ _ HDt) _ _ _ _ _ HMj Hh) as (gs & Hcs & _).
+      pose proof (Hco _ _ _ _ _ _ _ HMj Hh Hcs) as E. rewrite E.
+      eapply (set_ih_resp T γ); [eapply set_ih_rview; [exact HD | exact HMj | exact Hh | exact Hcs | exact (Hrv _ _ _ _ _ eq_refl Hcs)] |].
+      rewrite List.map_map. apply map_set_eq. intros l _. apply set_eq_sym. apply leaf_result_wk.
+    + rewrite (rview_leaves_not_rview _ _ _ HMj Hr). cbn [List.map].
+      destruct (Hblk eq_refl) as (res & Hres & HV).
+      eapply set_ih_self; [exact HD | exact HMj | exact Hr |]. exact (elim_result_spec _ _ _ Hres HV).
+  - rewrite List.map_map.
+    set (Ls := shape_leaves (rview_leaves D) (S m) t).
+    eapply (set_ih_resp T γ);
+      [eapply (set_ih_pi T γ _ _ _ _ _ _ D B t a (fun b => List.map (fun l => leaf_result l (set_apply a b)) Ls));
+         [exact HD |]; intros b Hb; exact (IH (S m) (set_apply a b) (Ha b Hb)) |].
+    rewrite (length_shape_leaves (rview_leaves D) t 0 (S m)). fold Ls.
+    apply map_seq_set_eq. intros i l Hi. cbn [leaf_result Nat.add].
+    apply graph_set_resp; [| | apply set_eq_refl |].
+    + intros b b' Eb. apply list_set_eq_nth. apply map_set_eq. intros l0 _. apply leaf_result_resp.
+      apply set_apply_resp; [apply set_eq_refl | exact Eb].
+    + intros b b' Eb. apply leaf_result_resp. apply set_apply_resp; [apply set_eq_refl | exact Eb].
+    + intros b _.
+      assert (Hn : List.nth i (List.map (fun l0 => leaf_result l0 (set_apply a b)) Ls) empty_set = leaf_result l (set_apply a b))
+        by (apply List.nth_error_nth; rewrite List.nth_error_map, Hi; reflexivity).
+      rewrite Hn. apply set_eq_refl.
+Qed.
+
+End Shapes.
+
+End Results.
+
+End Eliminator.
