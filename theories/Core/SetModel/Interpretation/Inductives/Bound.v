@@ -1121,6 +1121,99 @@ Proof.
     rewrite <- Hint in Hel. exact Hel.
 Qed.
 
+(** Every good point of the carriers' fixed point, drawn from [U], has a
+    tree. *)
+Lemma carrier_points_have_trees : forall z, set_mem z (carrier_fixed_point G us U U) ->
+    forall k ns v, set_eq z (member_point k ns v) -> good_point k ns -> exists t, set_mem t trees /\ tree_decodes k ns t v.
+Proof.
+  set (fp := carrier_fixed_point G us U U).
+  set (P := fun z => forall k ns v, set_eq z (member_point k ns v) -> good_point k ns -> exists t, set_mem t trees /\ tree_decodes k ns t v).
+  assert (HP : respects_set_eq P) by (intros x y E H k ns v Ey Hg; apply (H k ns v); [eapply set_eq_trans; eassumption | exact Hg]).
+  pose proof (carrier_operator_monotone G us U U Hsig) as Hmono. pose proof (carrier_operator_bounded G us U U) as Hbound.
+  intros z Hz. apply (least_fixed_point_ind (carrier_ambient G U U) (carrier_operator G us U U) P HP); [| exact Hz].
+  intros w Hw. pose proof Hw as Hw0.
+  unfold carrier_operator in Hw. apply (set_mem_separation _ _ _ (carrier_operator_pred_resp G us U _)) in Hw as [Hamb [k0 [ns0 [v0 [Ew Hc]]]]].
+  apply (set_mem_separation _ _ _ HP). split.
+  - apply (least_fixed_point_closed _ _ Hmono Hbound). eapply Hmono; [| exact (least_fixed_point_bound _ _) | | exact Hw0].
+    + intros x Hx. apply (set_mem_separation _ _ _ HP) in Hx as [Hx _]. exact (least_fixed_point_bound _ _ _ Hx).
+    + intros x Hx. apply (set_mem_separation _ _ _ HP) in Hx as [Hx _]. exact Hx.
+  - intros k ns v Ek Hgood.
+    destruct (member_point_inj _ _ _ _ _ _ (set_eq_trans _ _ _ (set_eq_sym _ _ Ew) Ek)) as [<- [Ens Ev]].
+    eapply constructed_tree; [| exact Hgood | exact (constructed_from_resp G us U Hsig _ _ _ _ _ _ Ens Ev Hc)].
+    intros k' ns' x Hg' Hx. unfold candidate_carrier in Hx.
+    apply (set_mem_separation _ _ _ (member_point_pred_resp _ _ _)) in Hx as [_ Hx].
+    apply (set_mem_separation _ _ _ HP) in Hx as [_ Hx]. exact (Hx k' ns' x (set_eq_refl _) Hg').
+Qed.
+
+Corollary member_carrier_trees : forall k ns v, good_point k ns -> set_mem v (member_carrier G us U U k ns) ->
+    exists t, set_mem t trees /\ tree_decodes k ns t v.
+Proof.
+  intros k ns v Hg Hv. unfold member_carrier, candidate_carrier in Hv.
+  apply (set_mem_separation _ _ _ (member_point_pred_resp _ _ _)) in Hv as [_ Hv].
+  exact (carrier_points_have_trees _ Hv k ns v (set_eq_refl _) Hg).
+Qed.
+
+(** The trees that decode to a good element of [U]. *)
+Definition tree_decodable (t : aczel_set) : Prop :=
+  exists k ns v, good_point k ns /\ set_mem v U /\ tree_decodes k ns t v.
+
+(** The element a tree decodes to. *)
+Definition tree_element (t : aczel_set) : aczel_set :=
+  union_set (separation_set U (fun v => exists k ns, good_point k ns /\ tree_decodes k ns t v)).
+
+Lemma tree_element_pred_resp : forall t, respects_set_eq (fun v => exists k ns, good_point k ns /\ tree_decodes k ns t v).
+Proof. intros t x y E [k [ns [Hg Hd]]]. exists k, ns. split; [exact Hg | eapply tree_decodes_resp; [apply set_eq_refl | exact E | exact Hd]]. Qed.
+
+Lemma tree_decodable_resp : respects_set_eq tree_decodable.
+Proof.
+  intros x y E [k [ns [v [Hg [Hv Hd]]]]]. exists k, ns, v. split; [exact Hg | split; [exact Hv |]].
+  eapply tree_decodes_resp; [exact E | apply set_eq_refl | exact Hd].
+Qed.
+
+Lemma tree_element_resp : respects_set_eq_fun tree_element.
+Proof.
+  intros x y E. unfold tree_element. apply union_set_resp.
+  apply separation_set_resp; [apply tree_element_pred_resp | apply tree_element_pred_resp | apply set_eq_refl |].
+  intros v _. split; intros [k [ns [Hg Hd]]]; exists k, ns; split; try exact Hg;
+    (eapply tree_decodes_resp; [| apply set_eq_refl | exact Hd]); [exact E | apply set_eq_sym; exact E].
+Qed.
+
+Lemma tree_element_eq : forall k ns t v, good_point k ns -> set_mem v U -> tree_decodes k ns t v -> set_eq (tree_element t) v.
+Proof.
+  intros k ns t v Hg Hv Hd. unfold tree_element. apply union_set_const.
+  - exists v. apply (set_mem_separation _ _ _ (tree_element_pred_resp _)). split; [exact Hv | exists k, ns; split; assumption].
+  - intros w Hw. apply (set_mem_separation _ _ _ (tree_element_pred_resp _)) in Hw as [_ [k' [ns' [_ Hd']]]].
+    inversion Hd as [? ? Mk i cs pv g rs ? ? _ _ Et _ _ _ _]; subst.
+    inversion Hd' as [? ? Mk' i' cs' pv' g' rs' ? ? _ _ Et' _ _ _ _]; subst.
+    pose proof (set_eq_trans _ _ _ (set_eq_sym _ _ Et) Et') as E. apply ordered_pair_inj in E as [E _].
+    apply tree_shape_inj in E as (<- & _ & Ens & _).
+    apply set_eq_sym. exact (proj1 (tree_decodes_functional_all Hsig) _ _ _ _ Hd _ _ _ Ens (set_eq_refl _) Hd').
+Qed.
+
+(** The elements of good carriers are among the decoded elements, a
+    member of [U]. *)
+Definition decoded_elements : aczel_set := replacement_set (separation_set trees tree_decodable) tree_element.
+
+Lemma decoded_elements_in_universe : set_mem decoded_elements U.
+Proof.
+  apply (grothendieck_replacement _ HU); [| exact tree_element_resp |].
+  - apply (grothendieck_separation _ HU). apply (grothendieck_tree_set U HU); [apply shape_positions_resp; exact Hsig | exact Hshapes | exact Hpositions].
+  - intros t Ht. apply (set_mem_separation _ _ _ tree_decodable_resp) in Ht as [_ [k [ns [v [Hg [Hv Hd]]]]]].
+    eapply set_mem_eq_l; [apply set_eq_sym; exact (tree_element_eq _ _ _ _ Hg Hv Hd) | exact Hv].
+Qed.
+
+(** The carrier of a good member is a member of [U]. *)
+Theorem member_carrier_in_universe : forall k ns, good_point k ns -> set_mem (member_carrier G us U U k ns) U.
+Proof.
+  intros k ns Hg. apply (grothendieck_sub _ HU decoded_elements); [exact decoded_elements_in_universe |].
+  intros v Hv. pose proof Hv as Hv0. unfold member_carrier, candidate_carrier in Hv0.
+  apply (set_mem_separation _ _ _ (member_point_pred_resp _ _ _)) in Hv0 as [HvU _].
+  destruct (member_carrier_trees _ _ _ Hg Hv) as [t [Ht Hd]].
+  apply (set_mem_replacement _ _ _ tree_element_resp). exists t. split.
+  - apply (set_mem_separation _ _ _ tree_decodable_resp). split; [exact Ht | exists k, ns, v; auto].
+  - apply set_eq_sym. exact (tree_element_eq _ _ _ _ Hg HvU Hd).
+Qed.
+
 End Existence.
 
 End Bound.
