@@ -262,6 +262,23 @@ Qed.
 #[export]
 Hint Resolve presup_exp_eq_left presup_exp_eq_right : mctt.
 
+(** Conversion along an equation of types at the sort of a kind. *)
+Lemma wf_exp_eq_conv_kind : forall {Θ Ξ} Γ M M' A A' κ i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : abs_kind_sort κ Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A'.
+Proof.
+  intros * HM HA; eapply wf_exp_eq_conv_sort;
+    [ exact HM | exact (presup_exp_eq_right HA) | apply type_sort_abs_kind; constructor | exact HA ].
+Qed.
+
+(** A term of a type is of every type equal to it at the sort of a
+    kind. *)
+Lemma wf_exp_conv_kind : forall {Θ Ξ} Γ M A A' κ (l : nat),
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : abs_kind_sort κ Typeω@l -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
+Proof.
+  intros * HM HA; eapply wf_conv_sort;
+    [ exact HM | exact (presup_exp_eq_right HA) | apply type_sort_abs_kind; constructor | exact HA ].
+Qed.
+
 (** ** The Two Sides of a Refinement
 
     Each side of a refinement is a type, each of its own sort: that the two
