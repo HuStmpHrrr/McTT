@@ -1617,10 +1617,11 @@ Proof.
     match goal with
     | Hσ : wf_sub_eq _ _ _ _ ?σ ?σ', HH : wf_modexp_eq _ _ _ (me_mem ?H ?y) (me_mem ?H ?y),
       Hm : mdenote _ _ _ (me_mem ?H ?y) ?R, Hd : mdesc_mod ?R = Some ?Rm,
+      HU : wf_modexp_eq _ _ _ (mdesc_unit ?Rm) (mdesc_unit ?Rm),
       IHs : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_modexp_eq _ _ _ (modexp_sub (me_mem ?H ?y) _) _ /\ _
       |- wf_modexp_eq _ _ _ (modexp_sub (me_mem ?H ?y) ?σ) _ /\ wf_modexp_eq _ _ _ (modexp_sub (mdesc_unit ?Rm) _) _ =>
         pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hr;
-        pose proof (wf_me_delta_sel _ _ _ _ _ _ _ HH Hm Hd) as Hδ;
+        pose proof (wf_me_delta_sel _ _ _ _ _ _ _ HH Hm Hd HU) as Hδ;
         split; [ exact (proj1 (IHs _ _ _ Hσ)) |];
         eapply wf_me_trans; [ apply wf_me_sym; eapply sub_preserves_modexp; [ exact Hδ | exact Hl ] |];
         eapply wf_me_trans; [ exact (proj1 (IHs _ _ _ Hσ)) | eapply sub_preserves_modexp; [ exact Hδ | exact Hr ] ]

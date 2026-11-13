@@ -1378,7 +1378,9 @@ Lemma modexp_conv_delta_sel : forall Θ Ξ Γ H y R Rm, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ 
     modexp_conv Θ Ξ Γ (me_mem H y) (mdesc_unit Rm).
 Proof.
   intros * HH Hm Hmd HHH.
-  assert (Hd : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ mdesc_unit Rm) by (eapply wf_me_delta_sel; eassumption).
+  assert (Hd : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ mdesc_unit Rm)
+    by (eapply wf_me_delta_sel; [ eassumption | eassumption | eassumption
+                                | eapply wf_me_delta_sel_unit_refl; eassumption ]).
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ Hd) as (_ & _ & (RU & RUm & HmU & HmdU)).
   destruct (desc_of_props _ _ _ _ (ex_intro _ _ (conj HH Hm))) as (_ & _ & Hc & Hx & _).

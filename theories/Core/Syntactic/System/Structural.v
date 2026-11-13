@@ -2634,24 +2634,34 @@ Section WkMem.
   Lemma wk_mem_delta_case : forall H x R A M,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk H φ0 ≈ modexp_wk H φ0) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+      (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[φ0]ʷ : A[φ0]ʷ) ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[φ]ʷ ≈ M[φ]ʷ : A[φ]ʷ.
   Proof.
-    intros * HH IH Hm Ht Hr Hφ; cbn.
+    intros * HH IH Hm Ht Hr HM IHM Hφ; cbn.
     pose proof (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) as Hc.
     eapply wf_exp_eq_mem_delta;
-      [ exact (IH _ _ Hφ) | eapply wf_wk_mdenote_mem; eassumption | eapply mdesc_type_wk; eassumption | apply mdesc_reduct_wk; exact Hr ].
+      [ exact (IH _ _ Hφ) | eapply wf_wk_mdenote_mem; eassumption | eapply mdesc_type_wk; eassumption
+      | apply mdesc_reduct_wk; exact Hr
+      | exact (IHM _ _ Hφ) ].
   Qed.
 
   Lemma wk_me_delta_sel_case : forall H y R Rm,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk (me_mem H y) φ0 ≈ modexp_wk (me_mem H y) φ0) ->
-      mdenote Θ Ξ Γ (me_mem H y) R -> mdesc_mod R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ mdesc_unit Rm ≈ mdesc_unit Rm ->
+      (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk (mdesc_unit Rm) φ0 ≈ modexp_wk (mdesc_unit Rm) φ0) ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ᵐ modexp_wk (me_mem H y) φ ≈ modexp_wk (mdesc_unit Rm) φ.
   Proof.
-    intros * HH IH Hm Hd Hφ.
-    rewrite <- (modexp_sub_of_wk (mdesc_unit Rm) φ), <- mdesc_unit_sub; cbn.
-    eapply wf_me_delta_sel; [ exact (IH _ _ Hφ) | | apply mdesc_mod_sub; exact Hd ].
+    intros * HH IH Hm Hd HU IHU Hφ.
+    pose proof (IHU _ _ Hφ) as HUw.
+    rewrite <- (modexp_sub_of_wk (mdesc_unit Rm) φ), <- mdesc_unit_sub in HUw |- *; cbn.
+    eapply wf_me_delta_sel;
+      [ exact (IH _ _ Hφ) | | apply mdesc_mod_sub; exact Hd | exact HUw ].
     pose proof (wf_modexp_eq_scoped _ _ _ _ _ HH) as (HΓ & HHs & _).
     exact (mdenote_wk _ _ (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) _ _ _ Hm HΓ HHs _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)).
   Qed.
@@ -4008,24 +4018,32 @@ Section SubMem.
   Lemma sub_mem_delta_case : forall H x R A M,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ H[σ0]ᵐ ≈ H[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+      (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : A[σ0]) ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[σ] ≈ M[σ] : A[σ].
   Proof.
-    intros * HH IH Hm Ht Hr Hσ; cbn.
+    intros * HH IH Hm Ht Hr HM IHM Hσ; cbn.
     pose proof (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) as Hc.
     eapply wf_exp_eq_mem_delta;
-      [ exact (IH _ _ Hσ) | eapply wf_sub_mdenote_mem; eassumption | eapply mdesc_type_sub; eassumption | apply mdesc_reduct_sub; exact Hr ].
+      [ exact (IH _ _ Hσ) | eapply wf_sub_mdenote_mem; eassumption | eapply mdesc_type_sub; eassumption
+      | apply mdesc_reduct_sub; exact Hr | exact (IHM _ _ Hσ) ].
   Qed.
 
   Lemma sub_me_delta_sel_case : forall H y R Rm,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ (me_mem H y)[σ0]ᵐ ≈ (me_mem H y)[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H y) R -> mdesc_mod R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ mdesc_unit Rm ≈ mdesc_unit Rm ->
+      (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ (mdesc_unit Rm)[σ0]ᵐ ≈ (mdesc_unit Rm)[σ0]ᵐ) ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ᵐ (me_mem H y)[σ]ᵐ ≈ (mdesc_unit Rm)[σ]ᵐ.
   Proof.
-    intros * HH IH Hm Hd Hσ.
+    intros * HH IH Hm Hd HU IHU Hσ.
     rewrite <- mdesc_unit_sub; cbn.
-    eapply wf_me_delta_sel; [ exact (IH _ _ Hσ) | | apply mdesc_mod_sub; exact Hd ].
+    eapply wf_me_delta_sel;
+      [ exact (IH _ _ Hσ) | | apply mdesc_mod_sub; exact Hd | rewrite mdesc_unit_sub; exact (IHU _ _ Hσ) ].
     pose proof (wf_modexp_eq_scoped _ _ _ _ _ HH) as (HΓ & HHs & _).
     exact (mdenote_sub _ _ (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) _ _ _ Hm HΓ HHs _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)).
   Qed.

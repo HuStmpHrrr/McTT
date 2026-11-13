@@ -1135,7 +1135,7 @@ Proof.
         match goal with Hs : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H, Hm : mdenote Θ Ξ Γ (me_mem H x) ?R, Ht : mdesc_type ?R = Some A,
                         Hr : mdesc_reduct ?R = Some M, Hsu : gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ᵐ H ≈ H |- _ =>
           destruct (mem_unseal_red _ _ _ _ _ _ _ Hs Hm Hr) as [(R' & Hm' & Hr' & Ht') | (RH' & Θ' & p & T & Φ & Ns & HmH' & Hmd' & ->)];
-          [ eapply wf_exp_eq_mem_delta; [ exact Hsu | exact Hm' | rewrite Ht'; exact Ht | exact Hr' ]
+          [ eapply wf_exp_eq_mem_delta_desc; [ exact Hsu | exact Hm' | rewrite Ht'; exact Ht | exact Hr' ]
           | let Hd := fresh "Hd" in
             destruct (mdenote_mem_unseal _ _ _ _ _ _ _ Hs Hm) as (? & ? & Hd);
             eapply mem_closed_part; [ exact Hsu | exact HmH' | exact Hmd' | eassumption | rewrite (mdesc_unsealed_ty _ _ Hd); exact Ht ] ] end
@@ -1145,9 +1145,17 @@ Proof.
     | Hs : ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ᵐ me_mem ?H ?y ≈ me_mem ?H ?y, Hm : mdenote ?Θ ?Ξ ?Γ (me_mem ?H ?y) ?R, Hmd : mdesc_mod ?R = Some ?Rm
       |- gds_unseal ?Θ ⍮ gs_unseal ?Ξ ⍮ ?Γ ⊢ᵐ me_mem ?H ?y ≈ mdesc_unit ?Rm =>
         let Hd := fresh "Hd" in let Hdm := fresh "Hdm" in
-        destruct (mdenote_unseal _ _ _ _ _ _ Hs Hm) as (? & ? & Hd);
-        destruct (mdesc_unsealed_mod _ _ _ Hd Hmd) as (? & ? & Hdm);
-        rewrite <- (mdesc_unsealed_unit _ _ Hdm); eapply wf_me_delta_sel; eassumption
+        let Hmu := fresh "Hmu" in let Hmdu := fresh "Hmdu" in
+        destruct (mdenote_unseal _ _ _ _ _ _ Hs Hm) as (? & Hmu & Hd);
+        destruct (mdesc_unsealed_mod _ _ _ Hd Hmd) as (? & Hmdu & Hdm);
+        rewrite <- (mdesc_unsealed_unit _ _ Hdm); eapply wf_me_delta_sel;
+          [ eassumption | exact Hmu | exact Hmdu
+          | (** the new refl premise on the unit, derived in the unsealed
+                world from the unsealed [mdenote] and [mdesc_mod]; the
+                first [me_mem H y]-refl in context is the unsealed one,
+                supplied by the IH of the original rule's first premise *)
+            match goal with Hu : gds_unseal _ ⍮ gs_unseal _ ⍮ _ ⊢ᵐ me_mem ?H0 ?y0 ≈ me_mem ?H0 ?y0 |- _ =>
+              eapply wf_me_delta_sel_unit_refl; [ exact Hu | exact Hmu | exact Hmdu ] end ]
     end.
   (* a loaded unit or an open frame *)
   all: try match goal with

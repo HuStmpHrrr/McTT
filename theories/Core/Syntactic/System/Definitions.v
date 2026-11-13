@@ -1144,12 +1144,18 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
        : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] )
 (** [δ] for members: a member is the δ-reduct the lookup reads: the body of
     a transparent definition at the arguments, the name of a filed axiom or
-    abstract definition at them, or a type former. *)
+    abstract definition at them, or a type former.  The reduct's typing is
+    an admissible premise (presupposition's [presup_exp_eq_right] gives it
+    from the other premises) and lets the induction over typing hold the
+    hypothesis for it: for a mutual lemma like [slot_transport_all]'s part
+    on equations, the reduct needs an induction hypothesis that the
+    derivation would otherwise not carry. *)
 | wf_exp_eq_mem_delta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
      mdesc_type R = Some A ->
      mdesc_reduct R = Some M ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A )
 (** [δ] for local definitions: a defined variable is its body.  It is stated
     at every depth, since weakening moves a definition arbitrarily deep. *)
@@ -1650,6 +1656,11 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
      mdenote Θ Ξ Γ (me_mem H y) R ->
      mdesc_mod R = Some Rm ->
+     (** Reflexivity of the module part's unit is an admissible premise
+         (presupposition gives it from the lookup's description typing),
+         kept so that a mutual induction on module expressions holds an
+         induction hypothesis for the right side of the reduction. *)
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ mdesc_unit Rm ≈ mdesc_unit Rm ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ mdesc_unit Rm )
 (** *** [β] *)
 (** A literal body or alias given its outermost parameter is the literal
