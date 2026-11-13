@@ -71,6 +71,7 @@
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
 ./Core/Consequences/Consistency.v
+./Core/Consequences/TermKinds.v
 ./Core/Semantic/MemberWf.v
 ./Core/Semantic/Domain.v
 ./Core/Semantic/Evaluation.v
@@ -157,6 +158,7 @@
 ./Core/SetModel/Cases/RecordCases.v
 ./Core/SetModel/Cases/ElimCases.v
 ./Core/SetModel/Cases/ElimViewCases.v
+./Core/SetModel/FundamentalTheorem.v
 ./Core/SetModel/Interpretation/JudgmentSubstitution.v
 ./Core/SetModel/Interpretation/Global/Model.v
 ./Core/Semantic/Rename.v
