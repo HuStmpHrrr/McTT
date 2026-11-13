@@ -129,6 +129,7 @@
 ./Core/SetModel/Interpretation/Codes.v
 ./Core/SetModel/Interpretation/Values.v
 ./Core/SetModel/Interpretation/Global/Valuation.v
+./Core/SetModel/Interpretation/Global/Embedding.v
 ./Core/SetModel/Interpretation/Inductives/Elements.v
 ./Core/SetModel/Interpretation/Operations.v
 ./Core/SetModel/Interpretation/Inductives/Carriers.v
