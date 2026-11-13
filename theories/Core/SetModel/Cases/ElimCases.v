@@ -3754,6 +3754,31 @@ Lemma im_ty_at_not_rview : forall pq k M Us0 Ns, im_is_rview M = false ->
     im_ty_at pq k M Us0 Ns = apps_exp (a_ind (fst (im_ref pq k M)) (snd (im_ref pq k M))) (im_pre M Us0 ++ Ns).
 Proof. intros * Hr. unfold im_is_rview in Hr. unfold im_ty_at. destruct (im_head M); [reflexivity | reflexivity | discriminate]. Qed.
 
+(** An application of a type former is not the sort of levels. *)
+Lemma apps_ind_not_level_sort : forall Ns M, M <> a_level_sort -> apps_exp M Ns <> a_level_sort.
+Proof. induction Ns as [| N Ns IH]; intros M HM; cbn [apps_exp]; [exact HM | apply IH; discriminate]. Qed.
+
+(** A type former applied, well formed as a type, is of a group the
+    context declares. *)
+Lemma ind_head_lookup : forall Γ0 q k Ns, gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵗ apps_exp (a_ind q k) Ns ->
+    exists Dq, ind_lookup gc_deps gc_stack q = Some Dq.
+Proof.
+  intros * Ht; inversion Ht as [A0 Srt0 _ HA | HE]; subst.
+  - destruct (wf_apps_exp_head _ _ _ _ _ _ HA) as (T0 & HT0).
+    destruct (wf_ind_inversion HT0) as [Dq Mk Hl]; exists Dq; exact Hl.
+  - exfalso; apply (apps_ind_not_level_sort Ns (a_ind q k)); [ discriminate |].
+    match goal with E : _ = _ |- _ => first [ exact E | exact (eq_sym E) ] end.
+Qed.
+
+(** The group a member refers to is declared: its own, or a view's. *)
+Lemma im_ref_lookup : forall q Dg k Mk, ind_lookup gc_deps gc_stack q = Some Dg -> ind_member Dg k = Some Mk ->
+    exists Dq, ind_lookup gc_deps gc_stack (fst (im_ref q k Mk)) = Some Dq.
+Proof.
+  intros * Hl Hk; unfold im_ref; destruct (im_head Mk) as [| qc k' Is vm |] eqn:Hh; cbn [fst]; [ eauto | | eauto ].
+  destruct (decl_of_lookup _ _ _ _ _ (wf_ctx_empty _ _ Hgw) Hl) as [HDgt _].
+  destruct (decl_typed_view _ _ _ HDgt _ _ _ _ _ _ Hk Hh) as (D' & _ & HD' & _); eauto.
+Qed.
+
 (** At a member that is not a record view, the member's type at the
     instance read at its parameters' values is a code of the member's
     carrier there. *)
@@ -3772,7 +3797,8 @@ Proof.
   assert (Hlns : List.length ns0 = im_nn Mk) by (unfold ns0, im_nn; rewrite length_set_env_values; reflexivity).
   exists (apply_values (global_former γ (fst (im_ref p k Mk)) (snd (im_ref p k Mk))) (pre ++ ns0)). split.
   - unfold ind_mty. rewrite Hk, (im_ty_at_not_rview _ _ _ _ _ Hr).
-    apply set_interp_apps; [apply set_interp_indty |]. apply set_interp_list_app.
+    apply set_interp_apps; [match goal with Hm0 : ind_member D ?k0 = Some ?M0 |- set_interp _ _ _ _ (a_ind (fst (im_ref p ?k0 ?M0)) _) _ =>
+                             destruct (im_ref_lookup _ _ _ _ HD Hm0) as (Dq & HDq); eapply set_interp_indty; exact HDq end |]. apply set_interp_list_app.
     + pose proof (HMwf _ _ Hk) as Hwm. unfold elim_mctx in Hwm. pose proof (ctx_decomp_tail Hwm) as Hwn.
       pose proof (member_pre_wk k Mk pre _ ρn Hk (member_pre_interp _ _ _ Hpre) Hwn) as H.
       rewrite length_tele_sub in H. change (List.length (im_nparams Mk)) with (im_nn Mk) in H. apply H.
@@ -4033,7 +4059,8 @@ Proof.
                   (apps_exp (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c)
                      (im_pre Mk (List.map (fun U => exp_wk U (wk_shiftn nb)) Us) ++
                       vars_from (cargs_nrec D gs + List.length gs) (im_nn Mk) ++ vars_from (cargs_nrec D gs) (List.length gs))) cv).
-  { apply set_interp_apps; [apply set_interp_con |].
+  { apply set_interp_apps; [match goal with Hm0 : ind_member D ?k0 = Some ?M0 |- set_interp _ _ _ _ (a_con (fst (im_ref p ?k0 ?M0)) _ _) _ =>
+                             destruct (im_ref_lookup _ _ _ _ HD Hm0) as (Dq & HDq); eapply set_interp_con; exact HDq end |].
     apply set_interp_list_app; [| apply set_interp_list_app].
     - pose proof (member_pre_wk k Mk pre _ ρb Hk (member_pre_interp _ _ _ Hpre) Hbw) as H.
       rewrite length_elim_bctx in H. replace nb with (cargs_nrec D gs + List.length gs + im_nn Mk) by (unfold nb; lia). apply H.
@@ -4176,7 +4203,8 @@ Proof.
   set (ns := set_env_values (im_nparams Mm) θ) in *.
   exists (apply_values (global_former γ (fst (im_ref p m Mm)) (snd (im_ref p m Mm))) (pre ++ ns)). split.
   - unfold ind_mty. rewrite Hm, (im_ty_at_not_rview _ _ _ _ _ Hr).
-    apply set_interp_apps; [apply set_interp_indty |]. apply set_interp_list_app; [exact (member_pre_interp _ _ _ Hpre) | exact HNs].
+    apply set_interp_apps; [match goal with Hm0 : ind_member D ?k0 = Some ?M0 |- set_interp _ _ _ _ (a_ind (fst (im_ref p ?k0 ?M0)) _) _ =>
+                             destruct (im_ref_lookup _ _ _ _ HD Hm0) as (Dq & HDq); eapply set_interp_indty; exact HDq end |]. apply set_interp_list_app; [exact (member_pre_interp _ _ _ Hpre) | exact HNs].
   - pose proof (set_group_ok_formers_value _ _ _ _ _ HG m Mm θ Hm Hθ) as Ef.
     eapply set_eq_trans; [apply code_carrier_resp |].
     + apply (set_eq_trans _ (apply_values (global_former γ p m) (us ++ ns))).
@@ -4910,7 +4938,8 @@ Proof.
       unfold w. rewrite (apply_values_app _ pre), (apply_values_app _ us).
       apply apply_values_resp; [exact (member_pre_constructors _ _ _ Hpre c gs Hgs) | apply list_set_eq_refl]. }
     eapply set_interp_elim; [exact Hr0 | exact HLt | | exact (Helim Hr0 w Ew)].
-    apply set_interp_apps; [apply set_interp_con |].
+    apply set_interp_apps; [match goal with Hm0 : ind_member D ?k0 = Some ?M0 |- set_interp _ _ _ _ (a_con (fst (im_ref p ?k0 ?M0)) _ _) _ =>
+                             destruct (im_ref_lookup _ _ _ _ HD Hm0) as (Dq & HDq); eapply set_interp_con; exact HDq end |].
     apply set_interp_list_app; [exact (member_pre_interp _ _ _ Hpre) | apply set_interp_list_app; [exact HNv | exact HAv]].
 Qed.
 
@@ -5035,7 +5064,8 @@ Proof.
       fold ns. rewrite <- List.app_assoc. apply list_set_eq_app; [apply list_set_eq_sym; exact Huni | apply list_set_eq_refl]. }
   exists w. constructor.
   - exact HNv.
-  - apply set_interp_apps; [apply set_interp_con |].
+  - apply set_interp_apps; [match goal with Hm0 : ind_member D ?k0 = Some ?M0 |- set_interp _ _ _ _ (a_con (fst (im_ref p ?k0 ?M0)) _ _) _ =>
+                             destruct (im_ref_lookup _ _ _ _ HD Hm0) as (Dq & HDq); eapply set_interp_con; exact HDq end |].
     apply set_interp_list_app; [exact (member_pre_interp _ _ _ Hpre) | apply set_interp_list_app; [exact HNv | exact HAv]].
   - exact (proj2 (elim_at_scrutinee m Mm θk w Hm Hrv Hθk Huni Hw)).
 Qed.

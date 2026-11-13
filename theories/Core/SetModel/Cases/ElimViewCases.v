@@ -948,7 +948,7 @@ Proof.
   assert (Hrv : im_is_rview Mm = false) by (unfold im_is_rview; rewrite Hh; reflexivity).
   (* the scrutinee and the induction's setting *)
   destruct HMsem as (FA0 & FM & FM' & HMw).
-  destruct (elim_scrutinee_setting T γ Hfn Hmods Hok Γ p D m Mm Ps M FA0 FM FM' HΓ HcΓ HD Hm Hrv HPl HPs HPsem HMw) as (Fι & [HFι Hσ HNr Hpts]).
+  destruct (elim_scrutinee_setting T γ Hfn Hmods Hgw Hok Γ p D m Mm Ps M FA0 FM FM' HΓ HcΓ HD Hm Hrv HPl HPs HPsem HMw) as (Fι & [HFι Hσ HNr Hpts]).
   set (Fσ := fun ρ => set_env_drop (im_nn Mm) (Fι ρ)) in *.
   set (V := large_results T i).
   pose proof (elim_setting_of_rule T γ Hfn Hmods Hgw Hok Γ r p Us Bks D i Fσ HΓ HcΓ HD Hσ HUl HUt HlB Hcnt Hsc HMty HMotsem HMx HMxsem Hbrs HBx HBxsem

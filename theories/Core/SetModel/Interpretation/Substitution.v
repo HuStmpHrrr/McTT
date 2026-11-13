@@ -48,6 +48,15 @@ Proof.
   eapply sub_preserves_exp; [exact HM |]. apply wf_sub_ext; [exact Hσ | exact (ctx_sub _ _ _ _ HΓ Hσ) | exact HΓ].
 Qed.
 
+(** A well-formed module expression under an extension moves along a
+    substitution of the context under it. *)
+Lemma modexp_typing_sub : forall Ψ Γ Γ' σ H, gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ ⊢ᵐ H ≈ H -> gc_deps ⍮ gc_stack ⍮ Γ' ⊢ˢ σ : Γ ->
+    gc_deps ⍮ gc_stack ⍮ tele_sub Ψ σ ++ Γ' ⊢ᵐ modexp_sub H (sb_qn (List.length Ψ) σ) ≈ modexp_sub H (sb_qn (List.length Ψ) σ).
+Proof.
+  intros * HH Hσ. pose proof (presup_modexp_eq_ctx HH) as HΓ.
+  eapply sub_preserves_modexp; [exact HH |]. apply wf_sub_ext; [exact Hσ | exact (ctx_sub _ _ _ _ HΓ Hσ) | exact HΓ].
+Qed.
+
 (** What an entry of the substitution gives the entry of the variable:
     its term part the term's value, its module part the module. *)
 Definition sub_entry_agrees (Γ' : ctx) (ρb : set_env) (s : sentry) (e : set_entry) : Prop :=
@@ -163,28 +172,28 @@ Proof.
   Local Ltac start_elim := intros ?Ψ ?Γ0 ?Γ' ?σ ?ρb ?ρ' ?D0 ?HΞ ?Hs ?Hsh; pose proof (sub_setting_ctx _ _ _ _ _ _ _ _ Hs) as ->.
   apply (set_interp_combined_ind GC T γ); cbn [exp_sub modexp_sub binding_sub gentry_sub moddef_sub List.map fst snd].
   (** terms *)
-  - intros; constructor.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ t l _ IH; start; constructor; same IH.
-  - intros; constructor.
-  - intros; constructor.
-  - intros; constructor.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ M l _ IH; start; constructor; same IH.
   - intros Ξ ρ M N l l' _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
-  - intros; constructor.
-  - intros; constructor.
-  - intros; constructor.
-  - intros; constructor.
-  - intros; constructor.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ P Q p F Hc _ IHP _ IHQ; start;
       econstructor; [subctx Hc (ce_ass ak_propositional P) Hs | same IHP |].
     intros x Hx. under (IHQ x Hx) (ce_ass ak_propositional P) Hc.
-  - intros; constructor.
-  - intros; constructor.
-  - intros; constructor.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ P M v _ IH; start; constructor; same IH.
-  - intros; constructor.
-  - intros; constructor.
-  - intros; constructor.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ r p Us m Bks M C v r0 Hr HC _ IHM _ IHE; start.
     destruct (elim_shape_of_typing _ _ _ _ _ _ _ _ HC) as [D HD].
     eapply set_interp_elim; [exact Hr | exact (typing_sub _ _ _ _ _ _ HC (sub_setting_typed _ _ _ _ _ _ _ _ Hs)) | same IHM |].
@@ -207,19 +216,21 @@ Proof.
       econstructor; [subctx Hc (ce_mod U) Hs | same IHU | under IHB (ce_mod U) Hc].
   - intros Ξ ρ A M U B v m w Hc _ IHM _ IHU _ IHB; start;
       econstructor; [subctx Hc (ce_dm A M U) Hs | same IHM | same IHU | under IHB (ce_dm A M U) Hc].
-  - intros Ξ ρ H x m _ IH; start; constructor; same IH.
-  - intros; constructor.
+  - intros Ξ ρ H x m A _ IH HT; start; econstructor;
+      [same IH | exact (typing_sub _ _ _ _ _ _ HT (sub_setting_typed _ _ _ _ _ _ _ _ Hs))].
+  - intros; econstructor; eassumption.
   - intros Ξ ρ A fs vs _ IH; start; constructor; same IH.
   - intros Ξ ρ f M v _ IH; start; constructor; same IH.
   (** lists and fields *)
-  - intros; constructor.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ M Ms v vs _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
-  - intros; constructor.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ f M fs v vs _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
   (** module expressions *)
-  - intros; constructor.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ k; start. exact (proj2 (sub_setting_var _ _ _ _ _ _ _ _ k HΞ Hs)).
-  - intros Ξ ρ H y m _ IH; start; constructor; same IH.
+  - intros Ξ ρ H y m _ IH HT; start; econstructor;
+      [same IH | exact (modexp_typing_sub _ _ _ _ _ HT (sub_setting_typed _ _ _ _ _ _ _ _ Hs))].
   - intros Ξ ρ H N m n _ IH1 _ IH2; start; econstructor; [same IH1 | same IH2].
   - intros Ξ ρ U m _ IH; start; constructor; same IH.
   (** units *)
@@ -273,11 +284,11 @@ Proof.
     eapply IHE; [exact Hc | exact Hs'].
   (** entries *)
   - intros Ξ ρ b pv r A M v _ IH; start; constructor; same IH.
-  - intros; constructor.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ pv U m _ IH; start; constructor; same IH.
   - intros Ξ ρ pv A M U v m _ IHM _ IHU; start; econstructor; [same IHM | same IHU].
-  - intros; constructor.
-  - intros; constructor.
+  - intros; econstructor; eassumption.
+  - intros; econstructor; eassumption.
   (** the eliminator *)
   - intros Ξ ρ r p Us Bks j v res D Mj pc k Dq Mk c gs ns vs nm Z A Bs n B ihs
       HD HMj Href HDq HMk Hgs Hv Hns Hvs Hb HB _ IHihs Hlen Hc _ IHB; start_elim.
@@ -312,7 +323,7 @@ Proof.
     + intros y. rewrite List.length_app, <- Nat.add_assoc, <- Hlen, set_env_extend_kinded_ge. apply Hl.
     + intros y. rewrite List.length_app, <- Nat.add_assoc, <- Hlen, set_env_extend_kinded_ge. apply Hf.
   - intros Ξ ρ r p Us Bks j v res res' _ IH E; start_elim. eapply set_elim_resp; [| exact E]. eapply IH; eassumption.
-  - intros; constructor.
+  - intros; econstructor; eassumption.
   - intros Ξ ρ r p Us Bks κ T0 gs v vs ihs _ IH; start_elim; constructor. eapply IH; eassumption.
   - intros Ξ ρ r p Us Bks t gs v vs ihs1 ihs2 _ IH1 _ IH2; start_elim; constructor; [eapply IH1 | eapply IH2]; eassumption.
   - intros Ξ ρ r p Us Bks D j Mj Ps v r0 HD HMj Hrv _ IH; start_elim. eapply set_ih_self; [exact HD | exact HMj | exact Hrv |].

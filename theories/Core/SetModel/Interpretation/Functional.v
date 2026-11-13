@@ -227,8 +227,8 @@ Proof.
   - intros * HR He H'. inv H'. apply set_eq_refl.
   - intros * HR He H'. inv H'. apply set_eq_refl.
   - intros Γ ρ P M v _ IH Γ' ρ' v' HR He H'. inv H'. eapply IH; eassumption.
-  - intros * HR He H'. inv H'. apply set_eq_refl.
-  - intros * HR He H'. inv H'. apply set_eq_refl.
+  - intros Γ ρ p k D Hl Γ' ρ' v' HR He H'. inv H'. apply set_eq_refl.
+  - intros Γ ρ p k c D Hl Γ' ρ' v' HR He H'. inv H'. apply set_eq_refl.
   - intros * HR He H'. inv H'; [apply set_eq_refl | contradiction].
   - intros Γ ρ r p Us m Bks M C v r0 Hr HC _ IHM _ IHE Γ' ρ' v' HR He H'. inv H'; [contradiction |].
     eapply IHE; [exact HR | exact He | eapply IHM; eassumption | eassumption].
@@ -271,8 +271,8 @@ Proof.
     eapply IHB; [apply R_extend_one; [exact HR | exact Hc | eassumption] | | eassumption]; apply set_env_eq_extend; [exact He | constructor; eapply IHU; eassumption].
   - intros Γ ρ A M U B v m w Hc _ IHM _ IHU _ IHB Γ' ρ' v' HR He H'. inv H'.
     eapply IHB; [apply R_extend_one; [exact HR | exact Hc | eassumption] | | eassumption]; apply set_env_eq_extend; [exact He | constructor; [eapply IHM | eapply IHU]; eassumption].
-  - intros Γ ρ H x m _ IH Γ' ρ' v' HR He H'. inv H'. apply select_term_resp. eapply IH; eassumption.
-  - intros * HR He H'. inv H'. apply set_eq_refl.
+  - intros Γ ρ H x m A _ IH HT Γ' ρ' v' HR He H'. inv H'. apply select_term_resp. eapply IH; eassumption.
+  - intros Γ ρ p Rd Hl Γ' ρ' v' HR He H'. inv H'. apply set_eq_refl.
   - intros Γ ρ A fs vs _ IH Γ' ρ' v' HR He H'. inv H'. apply tuple_code_resp. eapply IH; eassumption.
   - intros Γ ρ f M v _ IH Γ' ρ' v' HR He H'. inv H'. apply tuple_field_resp. eapply IH; eassumption.
   (** lists and fields *)
@@ -283,7 +283,7 @@ Proof.
   (** module expressions *)
   - intros * HR He H'. inv H'. constructor. constructor.
   - intros Γ ρ k Γ' ρ' m' HR He H'. inv H'. apply set_entry_module_part_resp. apply He.
-  - intros Γ ρ H y m _ IH Γ' ρ' m' HR He H'. inv H'. apply select_module_resp; [exact Hmods |]. eapply IH; eassumption.
+  - intros Γ ρ H y m _ IH HT Γ' ρ' m' HR He H'. inv H'. apply select_module_resp; [exact Hmods |]. eapply IH; eassumption.
   - intros Γ ρ H N m n _ IH1 _ IH2 Γ' ρ' m' HR He H'. inv H'. apply apply_module_resp; [eapply IH1 | eapply IH2]; eassumption.
   - intros Γ ρ U m _ IH Γ' ρ' m' HR He H'. inv H'. eapply IH; eassumption.
   (** units *)

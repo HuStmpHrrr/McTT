@@ -60,8 +60,8 @@ Fixpoint module_member_proofs (m : set_module) (ys : list string) (x : string) {
       | Some (set_entry_term κ _) => is_proof_kind κ
       | _ => false
       end
-  (** In a global module: by the kind of its global *)
-  | nil, set_module_global p _ => is_proof_kind (fst (global_term γ (qname_in p x)))
+  (** In a global module: the valuation's table at its path *)
+  | nil, set_module_global p _ => global_proofs γ p x
   (** In a table's submodule: the entry's module part *)
   | y :: ys', set_module_members ms =>
       match members_lookup ms y with

@@ -107,7 +107,7 @@ Proof.
   apply (set_exp_eq_closed_global _ _ (global_former γ p k) FA); try assumption.
   - exact (decl_closed_ind_ty _ _ _ (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hgw) HD) Hk).
   - exact (set_group_ok_formers_typed _ _ _ _ _ HG _ _ _ Hk HFA).
-  - intros ρ. constructor.
+  - intros ρ. econstructor; eassumption.
 Qed.
 
 Lemma set_rule_con : forall Γ p k c D Mk gs i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
@@ -119,7 +119,7 @@ Proof.
   apply (set_exp_eq_closed_global _ _ (global_constructor γ p k c) FA); try assumption.
   - exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ Hw))).
   - exact (set_group_ok_constructors_typed _ _ _ _ _ HG _ _ _ _ _ Hk Hcon HFA).
-  - intros ρ. constructor.
+  - intros ρ. econstructor; eassumption.
 Qed.
 
 End Inductives.

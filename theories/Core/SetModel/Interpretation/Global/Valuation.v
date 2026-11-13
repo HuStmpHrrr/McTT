@@ -87,4 +87,8 @@ Record global_valuation : Type := mk_global_valuation
     (** The type former of the record type at [p] *)
   ; global_record_former : qname -> aczel_set
     (** The semantics of the record type at [p] *)
-  ; global_record : qname -> set_record }.
+  ; global_record : qname -> set_record
+    (** Whether the member [x] of the module at the path [q] is a proof:
+        what a global module's table reads at its term members, fixed
+        once for the whole context *)
+  ; global_proofs : qname -> string -> bool }.

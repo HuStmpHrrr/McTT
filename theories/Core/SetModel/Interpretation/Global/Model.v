@@ -135,8 +135,9 @@ Record set_filed_term_with (p : qname) (Tl : ctx) (x : string) (R0 : mdesc) (A0 
       mdesc_term_part_ats R0 Ns = Some R1 ->
       mdesc_type R1 = Some (exp_sub (ctx_pi_at (mdesc_kind R0) T1 A0) (sb_of_list sb_id Ns)) /\
       (mdesc_reduct R1 = None \/ exists M1, set_filed_reduct_with p x R1 Ns T1 T2 (mdesc_kind R0) A0 M1)
-    (** The value's kind is the stored one *)
-  ; set_filed_term_kind : fst (global_term γ (qname_in p x)) = mdesc_kind R0
+    (** The valuation's table has the member a proof exactly when its
+        stored kind is a proposition's *)
+  ; set_filed_term_proofs : global_proofs γ p x = is_proof_kind (mdesc_kind R0)
     (** A proof's value is the empty set *)
   ; set_filed_term_proof : mdesc_kind R0 = ak_propositional -> set_eq (snd (global_term γ (qname_in p x))) empty_set
     (** Applied to the values of an environment of the outer part, it is

@@ -306,7 +306,8 @@ Proof.
   - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_def_zeta; ft_prem].
   - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_mod_zeta; ft_prem].
   - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_dm_zeta; ft_prem].
-  - ft_by set_rule_mem.
+  - match goal with |- _ /\ set_exp_eq _ _ ?G ?A ?L _ => assert (HTm : gc_deps ⍮ gc_stack ⍮ G ⊢ L : A) by (eapply wf_mem; eassumption) end.
+    ft_by set_rule_mem.
   - ft_by set_rule_var.
   - ft_by set_rule_record.
   - split; [ft_cs |]. eapply (set_rule_tuple T γ Hfn0 Hmods Hgw Hok); [ft_syn | ft_ctx | eassumption | eassumption | eassumption | eassumption | ft_from_ih
@@ -359,7 +360,9 @@ Proof.
   - split; [ft_cs |]. pose proof (wf_ext_eq_one_dm Γ A A' M M' E E' i ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)
                                      ltac:(eassumption) ltac:(eassumption)).
     eapply set_rule_let_dm_cong; ft_prem.
-  - ft_by set_rule_mem_cong.
+  - match goal with |- _ /\ set_exp_eq _ _ ?G ?A ?L ?Rt =>
+      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (eapply wf_exp_eq_mem_cong; eassumption) end.
+    pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_cong.
   - ft_by set_rule_var.
   - ft_by set_rule_pi_beta.
   - split; [ft_cs |].
@@ -382,7 +385,9 @@ Proof.
   - ft_by set_rule_let_def_zeta.
   - ft_by set_rule_let_mod_zeta.
   - ft_by set_rule_let_dm_zeta.
-  - ft_by set_rule_mem_delta.
+  - match goal with |- _ /\ set_exp_eq _ _ ?G ?A ?L ?Rt =>
+      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (eapply wf_exp_eq_mem_delta; eassumption) end.
+    pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_delta.
   - match goal with H : _ ∋ #_ ≔ _ : _ |- _ => pose proof (ctx_lookup_def_lookup _ _ _ _ H) end.
     ft_by set_rule_var_delta.
   - assert (Hc : gc_deps ⍮ gc_stack ⍮ Γ ⊢ M ≈ a_fn A (a_app (exp_wk M wk_shift) (a_var 0)) : a_pi κd κc A B)
@@ -481,7 +486,10 @@ Proof.
   - ft_by set_rule_me_unit.
   - ft_by set_rule_me_var.
   - ft_by set_rule_me_lit.
-  - ft_by set_rule_me_mem.
+  - match goal with |- _ /\ set_modexp_eq _ _ ?G ?L ?Rt =>
+      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ L ≈ Rt) by (eapply wf_me_mem; eassumption) end.
+    pose proof (wf_modexp_eq_refl_left Hc). pose proof (wf_modexp_eq_refl_right Hc).
+    ft_by set_rule_me_mem.
   - split; [ft_cs | eapply (set_rule_me_app T γ Hfn0 Hmods Hgw Hok Γ H H' N N' R _ B _ Srt R' _ B' _ Srt'); ft_prem].
   - ft_by set_rule_me_delta_slot.
   - ft_by set_rule_me_delta_sel.

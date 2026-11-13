@@ -15,7 +15,7 @@ From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects Substitution JudgmentSubstitution.
 From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
 From Mctt.Core.SetModel.Cases Require Import PropCases FunctionCases ValidUnit.
-From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
+From Mctt.Core.Syntactic Require Import Syntax Substitution Members CoreInversions.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import Paths MemberLemmas DescTyping LookupSound.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit Mem Filed.
@@ -1054,7 +1054,7 @@ Proof.
     destruct (bare_member_typed _ _ _ _ _ _ _ _ _ HwE HmE HmdE Hm') as [Hl Hty].
     pose proof (set_filed_mod_path _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ (gc_loc_of_loc _ _ Hgw _ _ _ Hl))) as Hpath.
     assert (HFN : set_denotes T γ (Δ ++ Γ) (a_mem (qname_mod p) x) (fun _ => select_term γ (set_module_global p nil) x)).
-    { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΔΓ). intros ρ _. constructor. exact (Hpath _ ρ). }
+    { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΔΓ). intros ρ _. econstructor; [ exact (Hpath _ ρ) | exact Hty ]. }
     destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hvs HwE Hm') eq_refl) as [i HAi].
     apply (Hfin (mdesc_term r A0 (Some (a_mem (qname_mod p) x))) A0 i eq_refl eq_refl HAi (proj1 (IHd _ _ _ Hm' eq_refl))).
     intros N0 HN0. cbn in HN0. injection HN0 as <-. exact (conj Hty (ex_intro _ _ HFN)).
@@ -1096,7 +1096,7 @@ Proof.
     intros κs Hκ x R A Hm Ht. destruct (Hdesc _ _ _ Hm Ht) as (R0 & R1 & A0 & i & HR0 & Hats & Hft & Hk & _ & _ & _).
     rewrite me_apps_member_proofs, (mod_qname_member_proofs _ _ (mod_qname_qname_mod p) κs (env_slot_proofs γ empty_set_env)).
     rewrite <- (set_interp_modexp_member_proofs T γ _ _ _ _ (Hpath nil empty_set_env)). cbn [module_member_proofs].
-    rewrite (set_filed_term_kind _ _ _ _ _ _ _ _ Hft), Hk. reflexivity.
+    rewrite (set_filed_term_proofs _ _ _ _ _ _ _ _ Hft), Hk. reflexivity.
   - intros F HF x R A Hm Ht ρ Hρ.
     destruct (Hdesc _ _ _ Hm Ht) as (R0 & R1 & A0 & i & HR0 & Hats & Hft & Hk & HkR1 & Hty & Hred).
     pose proof (set_env_rel_eq T γ _ _ _ Hρ) as Eρ.
@@ -1173,6 +1173,17 @@ Proof.
       exact (apply_values_empty _ _ (set_filed_term_proof _ _ _ _ _ _ _ _ Hft Ekind)).
 Qed.
 
+(** The δ-reduct of a typed description is of its type. *)
+Lemma desc_ok_reduct_typed : forall Γ R A M, desc_ok gc_deps gc_stack Γ R -> mdesc_type R = Some A -> mdesc_reduct R = Some M ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : A.
+Proof.
+  intros * Hd Ht Hr.
+  destruct Hd as [Γ r A0 om i HA0 HM | | | Γ Θd A0 M0 Rm lΘ iA HΘd HaΘd HBt HMt _]; cbn in Ht, Hr; try discriminate.
+  - injection Ht as <-; exact (HM _ Hr).
+  - injection Ht as <-; injection Hr as <-.
+    exact (ctx_fn_at_wf _ _ ak_relevant _ _ _ _ _ ltac:(discriminate) HΘd HBt HMt).
+Qed.
+
 (** The reduct of a term member of a filed module at valid arguments
     denotes: the member read by name at the arguments, or the stored
     reduct instantiated by them. *)
@@ -1211,7 +1222,9 @@ Proof.
     pose proof (set_filed_term_scoped _ _ _ _ _ _ _ _ Hft) as HA0s. rewrite List.length_app in HA0s.
     pose proof (ctx_pi_scoped (mdesc_kind R0) _ _ _ HTrs HA0s) as HXs.
     exact (ex_intro _ _ (set_closed_inst_denotes _ _ _ _ _ _ Hι HΓ HCTf HTfs HcTf HCΓ Hwf HXs HX)). }
-  intros M HM. rewrite Hred in HM.
+  intros M HM.
+  pose proof (desc_ok_reduct_typed _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hvs Hw Hm) Ht HM) as HMt.
+  rewrite Hred in HM.
   destruct Hred1 as [HN1 | (M1 & [Hread Hvalid HM1s _])].
   - (* no stored reduct: the member read by name at the arguments *)
     assert (HR1t : exists r1 A1, R1 = mdesc_term r1 A1 None).
@@ -1235,7 +1248,8 @@ Proof.
     destruct (set_denotes_list _ _ HN) as (Fs & HFs).
     exists (fun ρ => apply_values (select_term γ (set_module_global p nil) x) (Fs ρ)).
     apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
-    apply set_interp_apps; [constructor; exact (Hpath _ ρ) | exact (HFs _ Hρ)].
+    destruct (wf_apps_exp_head _ _ _ _ _ _ HMt) as (T0 & HT0).
+    apply set_interp_apps; [econstructor; [exact (Hpath _ ρ) | exact HT0] | exact (HFs _ Hρ)].
   - (* a stored reduct, instantiated by the arguments *)
     rewrite (mdesc_reduct_named_some _ _ _ _ _ Hread) in HM. injection HM as <-.
     destruct Hvalid as (FS' & FM1 & FM1' & [_ HM1 _ _ _]).

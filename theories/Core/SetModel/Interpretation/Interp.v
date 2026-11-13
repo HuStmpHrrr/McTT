@@ -192,10 +192,12 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
 | set_interp_right : forall Γ ρ M, set_interp Γ ρ (a_right M) empty_set
 (** A tagged proof: the proof's value *)
 | set_interp_proof : forall Γ ρ P M v, set_interp Γ ρ M v -> set_interp Γ ρ (a_proof P M) v
-(** The type former of a member of a group *)
-| set_interp_indty : forall Γ ρ p k, set_interp Γ ρ (a_ind p k) (global_former γ p k)
-(** A constructor *)
-| set_interp_con : forall Γ ρ p k c, set_interp Γ ρ (a_con p k c) (global_constructor γ p k c)
+(** The type former of a member of a group the context declares *)
+| set_interp_indty : forall Γ ρ p k D, ind_lookup gc_deps gc_stack p = Some D ->
+    set_interp Γ ρ (a_ind p k) (global_former γ p k)
+(** A constructor of a group the context declares *)
+| set_interp_con : forall Γ ρ p k c D, ind_lookup gc_deps gc_stack p = Some D ->
+    set_interp Γ ρ (a_con p k c) (global_constructor γ p k c)
 (** An elimination into propositions: a proof *)
 | set_interp_elim_prop : forall Γ ρ p Us m Bks M,
     set_interp Γ ρ (a_elim ak_propositional p Us m Bks M) empty_set
@@ -263,11 +265,12 @@ Inductive set_interp : ctx -> set_env -> exp -> aczel_set -> Prop :=
     set_interp Γ ρ M v -> set_interp_gunit Γ ρ U m ->
     set_interp (ce_dm A M U :: Γ) (set_env_extend ρ (set_entry_both v m)) B w ->
     set_interp Γ ρ (a_let (b_def_mod A M U) B) w
-(** A member of a module *)
-| set_interp_mem : forall Γ ρ H x m,
-    set_interp_modexp Γ ρ H m -> set_interp Γ ρ (a_mem H x) (select_term γ m x)
-(** The type former of a record type *)
-| set_interp_record : forall Γ ρ p, set_interp Γ ρ (a_record p) (global_record_former γ p)
+(** A well-typed member of a module *)
+| set_interp_mem : forall Γ ρ H x m A,
+    set_interp_modexp Γ ρ H m -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H x : A -> set_interp Γ ρ (a_mem H x) (select_term γ m x)
+(** The type former of a record type the context declares *)
+| set_interp_record : forall Γ ρ p R, record_lookup gc_deps gc_stack p = Some R ->
+    set_interp Γ ρ (a_record p) (global_record_former γ p)
 (** A tuple: the graph of its fields on their names *)
 | set_interp_tuple : forall Γ ρ A fs vs,
     set_interp_fields Γ ρ fs vs -> set_interp Γ ρ (a_tuple A fs) (tuple_code vs)
@@ -294,8 +297,8 @@ with set_interp_modexp : ctx -> set_env -> modexp -> set_module -> Prop :=
 | set_interp_me_unit : forall Γ ρ fp, set_interp_modexp Γ ρ (me_unit fp) (set_module_global (q_abs fp nil) nil)
 (** A module slot: its entry's module *)
 | set_interp_me_var : forall Γ ρ k, set_interp_modexp Γ ρ (me_var k) (set_entry_module_part (ρ k))
-(** A submodule *)
-| set_interp_me_mem : forall Γ ρ H y m, set_interp_modexp Γ ρ H m ->
+(** A well-formed submodule *)
+| set_interp_me_mem : forall Γ ρ H y m, set_interp_modexp Γ ρ H m -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
     set_interp_modexp Γ ρ (me_mem H y) (select_module γ m y)
 (** An application *)
 | set_interp_me_app : forall Γ ρ H N m n, set_interp_modexp Γ ρ H m -> set_interp Γ ρ N n ->

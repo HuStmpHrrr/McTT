@@ -85,7 +85,7 @@ Proof.
   apply (set_exp_eq_closed_global T γ Hfn Hmods Hgw _ _ (global_record_former γ p) FA); try assumption.
   - exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ Hw))).
   - exact (set_record_ok_former_typed _ _ _ _ _ HSR _ HFA).
-  - intros ρ. constructor.
+  - intros ρ. econstructor; eassumption.
 Qed.
 
 Lemma set_rule_record_cong : forall Γ p R i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ -> record_lookup gc_deps gc_stack p = Some R ->
