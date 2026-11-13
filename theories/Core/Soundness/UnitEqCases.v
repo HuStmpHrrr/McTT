@@ -22,14 +22,6 @@ From Mctt.Core.Soundness Require Import LogicalRelation Instances Extensions.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
-(** The context of a grafted body without opens: the grafted entries over
-    the base's. *)
-Lemma body_ctx_graft : forall B A, gm_noopen B -> body_ctx (gm_graft A B) = body_ctx B ++ body_ctx A.
-Proof.
-  induction B as [| B IH x E | B IH H its Bg _]; intros A Hn; cbn in *; [ reflexivity | | contradiction ].
-  destruct E as [? ? ? ? [] | | | | ]; cbn; rewrite IH by exact Hn; reflexivity.
-Qed.
-
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 

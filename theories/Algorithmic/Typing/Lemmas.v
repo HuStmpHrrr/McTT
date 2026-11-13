@@ -697,6 +697,29 @@ Proof.
     eapply lift_exp_ge; [| exact HA ]; lia.
 Qed.
 
+(** A checked body with no open is its own expansion. *)
+Lemma alg_body_noopen_id : forall Γ Φ Φx, gm_noopen Φ -> Γ ⊢aᵇ Φ ⇝ Φx -> Φx = Φ.
+Proof. intros * Hn H; induction H; cbn in Hn; try contradiction; try reflexivity; f_equal; auto. Qed.
+
+(** [alg_body_open] from a check of the stored entries with any result:
+    they have no open, so the result is the entries themselves. *)
+Lemma alg_body_open_intro : forall Γ Φ Φx H R Rm its gs Φg Φgx,
+    Γ ⊢aᵇ Φ ⇝ Φx ->
+    body_ctx Φx ++ Γ ⊢aᵐ H ->
+    mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
+    mdesc_mod R = Some Rm ->
+    frame_free_target gc_deps gc_stack (body_ctx Φx ++ Γ) H ->
+    items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
+    items_ok its ->
+    gmod_retyped (gens_body gs) Φg ->
+    body_ctx Φx ++ Γ ⊢aᵇ Φg ⇝ Φgx ->
+    Γ ⊢aᵇ gm_open Φ H its Φg ⇝ gm_graft Φx Φg.
+Proof.
+  intros * HΦ HH HR HRm Hf Hg Hok Hr HΦg.
+  rewrite (alg_body_noopen_id _ _ _ (open_store_noopen _ _ Hr) HΦg) in HΦg.
+  econstructor; eassumption.
+Qed.
+
 Lemma alg_body_open_sound : forall Γ Φ Φx H R Rm its gs Φg,
     alg_body_sound Γ Φ Φx ->
     (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵐ H ≈ H) ->
@@ -705,21 +728,22 @@ Lemma alg_body_open_sound : forall Γ Φ Φx H R Rm its gs Φg,
     frame_free_target gc_deps gc_stack (body_ctx Φx ++ Γ) H ->
     items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
-    Φg = gens_body gs ->
-    alg_body_sound Γ (gm_open Φ H its Φg) (gens_append Φx 0 gs).
+    gmod_retyped (gens_body gs) Φg ->
+    alg_body_sound (body_ctx Φx ++ Γ) Φg Φg ->
+    alg_body_sound Γ (gm_open Φ H its Φg) (gm_graft Φx Φg).
 Proof.
-  intros * IH HH HR HRm HRf Hg Hok -> Γ0 Ψ -> HΓ0 HΨ.
+  intros * IH HH HR HRm HRf Hg Hok Hr IHg Γ0 Ψ -> HΓ0 HΨ.
   destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho Hof [L HL]].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HH HC).
-  pose proof (gens_ext_wf _ _ _ _ _ _ Hg HH HRf HX) as HXg.
-  constructor; [ econstructor; [ eassumption .. | reflexivity ] | exact HXg | | |].
-  - cbn [body_opens]; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append.
+  pose proof (open_store_noopen _ _ Hr) as Hn.
+  destruct (IHg Γ0 (body_ctx Φx ++ Ψ) ltac:(rewrite List.app_assoc; reflexivity) HΓ0 HX) as [_ HXg _ _ [Lg HLg]].
+  constructor; [ econstructor; eassumption | rewrite (body_ctx_graft _ _ Hn), <- !List.app_assoc; exact HXg | | |].
+  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg Hr).
     intros [| k] * Hk; cbn in Hk; [ injection Hk as <- <-; exact HH | exact (Ho _ _ _ Hk) ].
-  - cbn [body_opens]; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append.
+  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg Hr).
     intros [| k] * Hk; cbn in Hk; [ injection Hk as <- <-; exact HRf | exact (Hof _ _ _ Hk) ].
-  - pose proof (ext_eq_ctx_left _ _ _ _ _ HXg) as HCg; rewrite <- List.app_assoc in HCg.
-    exact (body_tags_gens _ _ _ _ Hg _ _ eq_refl HH Φx nil L eq_refl HCg HL).
+  - exists (max L Lg); apply body_tags_graft; [ exact Hn | exact HL | exact HLg ].
 Qed.
 
 (** The parameters [Δ] over [Γ], each, in the context of those outside
@@ -1492,8 +1516,7 @@ Lemma alg_body_functional : forall {Γ Φ Φx Φx'}, ⊢ᵍ gc_deps ⍮ gc_stack
 Proof.
   intros * Hg Hb1; revert Φx'; induction Hb1; intros Φx' Hb2; inversion Hb2; subst;
     try match goal with IH : forall Φx', _ ⊢aᵇ ?Φ ⇝ Φx' -> _ = Φx', Hb : _ ⊢aᵇ ?Φ ⇝ ?Y |- _ =>
-      pose proof (IH _ Hb); subst Y end; try reflexivity.
-  f_equal; eapply (proj2 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg))))); eassumption.
+      pose proof (IH _ Hb); subst Y end; reflexivity.
 Qed.
 
 (** The parts of a [Π] the algorithm infers: the domain at its universe, the
@@ -2113,7 +2136,9 @@ with gmod_lets (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ _ E => gmod_lets Φ + gentry_lets E
-  | gm_open Φ H _ _ => gmod_lets Φ + S (modexp_lets H)
+  (** an open counts the entries it stores, which are checked
+      ([alg_body_open]) *)
+  | gm_open Φ H _ Φg => gmod_lets Φ + S (modexp_lets H) + gmod_lets Φg
   end
 with gentry_lets (E : gentry) : nat :=
   match E with
@@ -2797,18 +2822,6 @@ Proof.
   - destruct (List.existsb _ _); [ discriminate | apply List.in_or_app; right; exact (IH _ _ Hp) ].
 Qed.
 
-(** Entries generated under names other than [y] do not hide what [y]
-    names. *)
-Lemma gm_prefix_upto_gens : forall gs Φ k y, ~ List.In y (List.map generated_item_name gs) ->
-    gm_prefix_upto (gens_append Φ k gs) y = gm_prefix_upto Φ y.
-Proof.
-  induction gs as [| g gs IH]; intros Φ k y Hy; cbn [gens_append]; [ reflexivity |].
-  cbn [List.map List.In] in Hy.
-  unfold generated_item_name in Hy; destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [fst] in Hy.
-  rewrite IH by tauto; cbn [gm_prefix_upto].
-  destruct (String.eqb_spec y d) as [-> | _]; [ tauto | reflexivity ].
-Qed.
-
 (** The tags of a body hold of its prefix before an entry of a fresh name. *)
 Lemma body_tagged_ext_inv : forall Γ Φ x E, body_tagged Γ (gm_ext Φ x E) -> ~ List.In x (gm_names Φ) -> body_tagged Γ Φ.
 Proof.
@@ -2822,17 +2835,6 @@ Proof.
   induction l as [| x l IH]; intros l' a Hnd Hin Hin'; [ exact Hin |].
   cbn [List.app] in Hnd; apply List.NoDup_cons_iff in Hnd as [Hx Hnd].
   destruct Hin as [-> | Hin]; [ apply Hx, List.in_or_app; right; exact Hin' | exact (IH _ _ Hnd Hin Hin') ].
-Qed.
-
-(** The same before the entries an open generates, under fresh names. *)
-Lemma body_tagged_gens_inv : forall Γ Φ gs, body_tagged Γ (gens_append Φ 0 gs) ->
-    List.NoDup (gm_names (gens_append Φ 0 gs)) -> body_tagged Γ Φ.
-Proof.
-  intros * HT Hnd y Φ0 E A M Hp HE; apply (HT y Φ0 E A M); [| exact HE ].
-  rewrite gm_prefix_upto_gens; [ exact Hp |].
-  rewrite gens_append_names in Hnd.
-  intros Hin; apply List.in_rev in Hin.
-  exact (nodup_app_disjoint _ _ y Hnd Hin (gm_prefix_upto_in _ _ _ Hp)).
 Qed.
 
 (** A type of the sorts of two kinds is of one kind ([subtyp_same_kind]
@@ -2926,27 +2928,24 @@ Proof.
   exfalso; exact (proj2 (body_shape_fill _ _ Hn0 Hs0) Hσ).
 Qed.
 
-(** A body checked from its expansion's entries: its own entries are
-    bounded by its lets; those its opens generate are not looked at.  A
-    definition is checked at the sort its tag says, which the entry's
-    type has ([body_tagged]); the names are distinct, so each entry is
-    the one its name finds. *)
-Lemma alg_body_of_entries : forall n Γ0 Δ Φ Φx, body_xp gc_deps gc_stack (Δ ++ Γ0) Φ Φx ->
-    ext_entries n Γ0 (body_ctx Φx ++ Δ) -> gmod_lets Φ <= n -> body_shape Φ Φ ->
-    List.NoDup (gm_names Φx) -> body_tagged (Δ ++ Γ0) Φx ->
-    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> S (modexp_lets H) <= n -> Ψ ++ Δ ++ Γ0 ⊢aᵐ H) ->
-    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target gc_deps gc_stack (Ψ ++ Δ ++ Γ0) H) ->
-    Δ ++ Γ0 ⊢aᵇ Φ ⇝ Φx.
+(** The entries a body ends with but the last are checked from the
+    context entries of the whole. *)
+Lemma ext_entries_ext_prefix : forall n Γ0 Δ Φx x E,
+    ext_entries n Γ0 (body_ctx (gm_ext Φx x E) ++ Δ) -> ext_entries n Γ0 (body_ctx Φx ++ Δ).
 Proof.
-  intros * Hx; remember (Δ ++ Γ0) as G eqn:HG; revert HG.
-  induction Hx as [G | G Φ Φx x E Hx IH | G Φ Φx H its Φg R Rm gs Hx IH HR HRm Hg Hok HΦg];
-    intros -> HE Hl Hs Hnd Htg Ho Hof; cbn [gmod_lets] in Hl.
-  - constructor.
-  - cbn [body_shape] in Hs; destruct Hs as (Hs & _ & HsE).
-    cbn [gm_names] in Hnd; apply List.NoDup_cons_iff in Hnd as [Hx' Hnd].
-    assert (HEt : ext_entries n Γ0 (body_ctx Φx ++ Δ)).
-    { destruct E as [? ? ? ? [] | | | | ]; cbn [body_ctx List.app] in HE; exact (ext_entries_app_r _ _ (_ :: nil) _ HE). }
-    specialize (IH eq_refl HEt ltac:(lia) Hs Hnd (body_tagged_ext_inv _ _ _ _ Htg Hx') Ho Hof).
+  intros * HE; destruct E as [? ? ? ? [] | | | | ]; cbn [body_ctx List.app] in HE; exact (ext_entries_app_r _ _ (_ :: nil) _ HE).
+Qed.
+
+(** One entry of a body checked from its context entry, after the body
+    before it: a definition at the sort its tag says, which the entry's
+    type has ([body_tagged]). *)
+Lemma alg_body_ext_of_entries : forall n Γ0 Δ Φ Φx x E,
+    Δ ++ Γ0 ⊢aᵇ Φ ⇝ Φx ->
+    ext_entries n Γ0 (body_ctx (gm_ext Φx x E) ++ Δ) -> gentry_lets E <= n ->
+    body_shape (gm_ext Φ x E) (gm_ext Φ x E) -> body_tagged (Δ ++ Γ0) (gm_ext Φx x E) ->
+    Δ ++ Γ0 ⊢aᵇ gm_ext Φ x E ⇝ gm_ext Φx x E.
+Proof.
+  intros * IH HE Hl Hs Htg; cbn [body_shape] in Hs; destruct Hs as (_ & _ & HsE).
     destruct E as [b pv r A [M |] | pm U | ? ? ? ? ? | pv A M U | ? ? ? ?]; cbn in HsE; try contradiction.
     + pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
       rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as ((UA & r' & u & HA & Hu) & HM).
@@ -2963,16 +2962,74 @@ Proof.
       pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
       rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as (((UA & u & HA & Hu) & HM) & HU & (Et & ->)).
       econstructor; eassumption.
-  - cbn [body_shape] in Hs; destruct Hs as [Hs _].
-    cbn [body_opens] in Ho, Hof; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append in Ho, Hof.
-    pose proof (body_tagged_gens_inv _ _ _ Htg Hnd) as Htg'.
-    assert (Hnd' : List.NoDup (gm_names Φx))
-      by (rewrite gens_append_names in Hnd; exact (List.NoDup_app_remove_l _ _ Hnd)).
-    rewrite gens_body_ctx_base, <- List.app_assoc in HE.
+Qed.
+
+(** A body with no open, checked from its context entries. *)
+Lemma alg_body_noopen_of_entries : forall n Γ0 Δ Φ, gm_noopen Φ ->
+    ext_entries n Γ0 (body_ctx Φ ++ Δ) -> gmod_lets Φ <= n -> body_shape Φ Φ ->
+    List.NoDup (gm_names Φ) -> body_tagged (Δ ++ Γ0) Φ ->
+    Δ ++ Γ0 ⊢aᵇ Φ ⇝ Φ.
+Proof.
+  induction Φ as [| Φ IH x E | ? ? ? ? ? ?]; intros Hn HE Hl Hs Hnd Htg; cbn [gm_noopen gmod_lets] in Hn, Hl;
+    [ constructor | | contradiction ].
+  pose proof Hs as Hs0; cbn [body_shape] in Hs; destruct Hs as (Hs & _ & _).
+  cbn [gm_names] in Hnd; apply List.NoDup_cons_iff in Hnd as [Hx' Hnd].
+  eapply alg_body_ext_of_entries; [| exact HE | lia | exact Hs0 | exact Htg ].
+  exact (IH Hn (ext_entries_ext_prefix _ _ _ _ _ _ HE) ltac:(lia) Hs Hnd (body_tagged_ext_inv _ _ _ _ Htg Hx')).
+Qed.
+
+(** The tags of a body followed by a fragment with no open, of distinct
+    names: those of the body, and those of the fragment over it. *)
+Lemma body_tagged_graft_inv : forall Γ Φx Φg, gm_noopen Φg -> body_tagged Γ (gm_graft Φx Φg) ->
+    List.NoDup (gm_names (gm_graft Φx Φg)) -> body_tagged Γ Φx /\ body_tagged (body_ctx Φx ++ Γ) Φg.
+Proof.
+  intros * Hn HT Hnd; rewrite (gm_names_graft _ _ Hn) in Hnd; split.
+  - intros y Φ0 E A M Hp HE; apply (HT y Φ0 E A M); [| exact HE ].
+    rewrite (gm_prefix_upto_graft _ _ _ Hn).
+    destruct (gm_prefix_upto Φg y) as [P |] eqn:EP; [| exact Hp ].
+    exfalso; exact (nodup_app_disjoint _ _ y Hnd (gm_prefix_upto_in _ _ _ EP) (gm_prefix_upto_in _ _ _ Hp)).
+  - intros y Φ0 E A M Hp HE.
+    assert (Hp' : gm_prefix_upto (gm_graft Φx Φg) y = Some (gm_ext (gm_graft Φx Φ0) y E))
+      by (rewrite (gm_prefix_upto_graft _ _ _ Hn), Hp; reflexivity).
+    destruct (HT _ _ _ _ _ Hp' HE) as [i Hi]; exists i.
+    pose proof (gm_noopen_prefix_upto _ _ _ Hn Hp) as HnP; cbn [gm_noopen] in HnP.
+    rewrite (body_ctx_graft _ _ HnP), <- List.app_assoc in Hi; exact Hi.
+Qed.
+
+(** A body checked from its expansion's entries: its own entries, and
+    those its opens store, are bounded by its lets.  The names are
+    distinct, so each entry is the one its name finds. *)
+Lemma alg_body_of_entries : forall n Γ0 Δ Φ Φx, body_xp gc_deps gc_stack (Δ ++ Γ0) Φ Φx ->
+    ext_entries n Γ0 (body_ctx Φx ++ Δ) -> gmod_lets Φ <= n -> body_shape Φ Φ ->
+    List.NoDup (gm_names Φx) -> body_tagged (Δ ++ Γ0) Φx ->
+    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> S (modexp_lets H) <= n -> Ψ ++ Δ ++ Γ0 ⊢aᵐ H) ->
+    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> frame_free_target gc_deps gc_stack (Ψ ++ Δ ++ Γ0) H) ->
+    Δ ++ Γ0 ⊢aᵇ Φ ⇝ Φx.
+Proof.
+  intros * Hx; remember (Δ ++ Γ0) as G eqn:HG; revert HG.
+  induction Hx as [G | G Φ Φx x E Hx IH | G Φ Φx H its Φg R Rm gs Hx IH HR HRm Hg Hok HΦg];
+    intros -> HE Hl Hs Hnd Htg Ho Hof; cbn [gmod_lets] in Hl.
+  - constructor.
+  - pose proof Hs as Hs0; cbn [body_shape] in Hs; destruct Hs as (Hs & _ & _).
+    cbn [gm_names] in Hnd; apply List.NoDup_cons_iff in Hnd as [Hx' Hnd].
+    specialize (IH eq_refl (ext_entries_ext_prefix _ _ _ _ _ _ HE) ltac:(lia) Hs Hnd (body_tagged_ext_inv _ _ _ _ Htg Hx') Ho Hof).
+    exact (alg_body_ext_of_entries _ _ _ _ _ _ _ IH HE ltac:(lia) Hs0 Htg).
+  - cbn [body_shape] in Hs; destruct Hs as (Hs & _ & Hsg).
+    pose proof (open_store_noopen _ _ HΦg) as Hn.
+    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg HΦg) in Ho, Hof.
+    destruct (body_tagged_graft_inv _ _ _ Hn Htg Hnd) as [Htg' Htgg].
+    rewrite (gm_names_graft _ _ Hn) in Hnd.
+    pose proof (List.NoDup_app_remove_l _ _ Hnd) as Hnd'; pose proof (List.NoDup_app_remove_r _ _ Hnd) as Hndg.
+    rewrite (body_ctx_graft _ _ Hn), <- List.app_assoc in HE.
     specialize (IH eq_refl (ext_entries_app_r _ _ _ _ HE) ltac:(lia) Hs Hnd' Htg' (fun k => Ho (S k)) (fun k => Hof (S k))).
     pose proof (Ho 0 _ _ eq_refl ltac:(lia)) as HH.
     (* the module opened is no module still being defined *)
     pose proof (Hof 0 _ _ eq_refl) as HHf.
+    (* the entries the open stores *)
+    assert (HΦgc : (body_ctx Φx ++ Δ) ++ Γ0 ⊢aᵇ Φg ⇝ Φg).
+    { apply (alg_body_noopen_of_entries n); [ exact Hn | exact HE | lia | exact Hsg | exact Hndg |].
+      rewrite <- List.app_assoc; exact Htgg. }
+    rewrite <- List.app_assoc in HΦgc.
     econstructor; eassumption.
 Qed.
 

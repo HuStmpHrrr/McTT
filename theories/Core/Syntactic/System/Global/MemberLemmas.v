@@ -103,9 +103,6 @@ Proof.
   - destruct (existsb _ _); auto.
 Qed.
 
-Lemma gens_body_ctx_length : forall gs k, List.length (body_ctx (gens_append gm_nil k gs)) = List.length gs.
-Proof. intros; rewrite length_body_ctx, gens_append_binders by (rewrite gens_append_nopens; reflexivity); cbn; lia. Qed.
-
 (** The open that declares a name, in a weakened or substituted body. *)
 Lemma gm_item_upto_wk : forall Φ x φ,
     gm_item_upto (gmod_wk Φ φ) x =
@@ -192,6 +189,26 @@ Proof.
   induction B as [| B IH x E | B IH H its Bg _]; intros A σ; cbn [gm_graft gmod_sub]; [ reflexivity | |];
     rewrite IH, gm_binders_graft; f_equal;
     first [ apply gentry_sub_sb_eq | apply modexp_sub_sb_eq | apply gmod_sub_sb_eq ]; symmetry; apply sb_qn_add.
+Qed.
+
+(** Fragments related up to the types of their term parts stay related
+    under a weakening and a substitution. *)
+Lemma gentry_retyped_wk : forall E E' φ, gentry_retyped E E' -> gentry_retyped (gentry_wk E φ) (gentry_wk E' φ).
+Proof. intros * []; cbn; constructor. Qed.
+
+Lemma gentry_retyped_sub : forall E E' σ, gentry_retyped E E' -> gentry_retyped (gentry_sub E σ) (gentry_sub E' σ).
+Proof. intros * []; cbn; constructor. Qed.
+
+Lemma gmod_retyped_wk : forall Φ Φ' φ, gmod_retyped Φ Φ' -> gmod_retyped (gmod_wk Φ φ) (gmod_wk Φ' φ).
+Proof.
+  intros Φ Φ' φ H; revert φ; induction H as [| Φ Φ' x E E' H IH HE]; intros φ; cbn [gmod_wk]; [ constructor |].
+  rewrite (gmod_retyped_binders _ _ H); constructor; [ apply IH | apply gentry_retyped_wk; exact HE ].
+Qed.
+
+Lemma gmod_retyped_sub : forall Φ Φ' σ, gmod_retyped Φ Φ' -> gmod_retyped (gmod_sub Φ σ) (gmod_sub Φ' σ).
+Proof.
+  intros Φ Φ' σ H; revert σ; induction H as [| Φ Φ' x E E' H IH HE]; intros σ; cbn [gmod_sub]; [ constructor |].
+  rewrite (gmod_retyped_binders _ _ H); constructor; [ apply IH | apply gentry_retyped_sub; exact HE ].
 Qed.
 
 (** Expansion commutes with weakening and substitution. *)
@@ -452,19 +469,6 @@ Qed.
 Lemma gentry_scoped_wk : forall E n m φ,
     gentry_scoped n E -> (forall x, x < n -> φ x < m) -> gentry_scoped m (gentry_wk E φ).
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk))))))). Qed.
-
-(** The entries an open generates, each scoped in the context of the open,
-    extend a scoped body. *)
-Lemma gens_append_scoped : forall gs Φ k n, gmod_scoped n Φ -> k <= gm_binders Φ ->
-    List.Forall (fun g => gentry_scoped (gm_binders Φ - k + n) (snd (generated_item_entry g))) gs ->
-    gmod_scoped n (gens_append Φ k gs).
-Proof.
-  induction gs as [| g gs IH]; intros * HΦ Hk Hg; cbn [gens_append]; [ assumption |].
-  inversion Hg as [| ? ? Hg1 Hgs]; subst.
-  destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [snd] in Hg1.
-  apply IH; [ cbn; split; [ assumption | eapply gentry_scoped_wk; [ exact Hg1 | cbn; lia ] ] | cbn; lia |].
-  cbn [gm_binders]; replace (S (gm_binders Φ) - S k) with (gm_binders Φ - k) by lia; exact Hgs.
-Qed.
 
 Lemma pi_view_scoped : forall A B C n,
     pi_view A = Some (B, C) -> exp_scoped n A -> exp_scoped n B /\ exp_scoped (S n) C.
@@ -1404,18 +1408,13 @@ Proof.
   - (* an entry *)
     destruct_all; split; [ eauto |].
     match goal with Hx : body_xp _ _ _ _ _ |- _ => rewrite (body_xp_binders _ _ _ _ _ Hx) end; assumption.
-  - (* an open: its generated entries *)
+  - (* an open: the entries it stores *)
     destruct_all.
     match goal with IH : forall m, slots_ok m ?Γ -> gmod_scoped m ?Φ -> gmod_scoped m ?Φx, Hx : body_xp _ _ _ ?Φ ?Φx,
                     HΓ : slots_ok ?m ?Γ |- _ =>
       assert (HΦx : gmod_scoped m Φx) by (apply IH; assumption) end.
-    apply gens_append_scoped; [ assumption | lia |].
-    match goal with Hx : body_xp _ _ _ _ ?Φx |- context [gm_binders ?Φx] =>
-      pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hnx end.
-    rewrite Nat.sub_0_r, <- (length_body_ctx _ Hnx).
-    match goal with IH : forall m, _ -> _ -> List.Forall _ _ |- _ => apply IH end;
-      [ apply slots_ok_app; [ assumption | apply gmod_scoped_body_ctx; assumption ] |].
-    rewrite (length_body_ctx _ Hnx); match goal with Hx : body_xp _ _ _ _ _ |- _ => rewrite (body_xp_binders _ _ _ _ _ Hx) end; assumption.
+    apply gmod_scoped_graft; split; [ assumption |].
+    match goal with Hx : body_xp _ _ _ _ _ |- _ => rewrite (body_xp_binders _ _ _ _ _ Hx) end; assumption.
   - constructor.
   - constructor; [ cbn; split; [ exact I | assumption ] | eauto ].
   - constructor; [ cbn; split; [| assumption ] | eauto ].
@@ -2814,8 +2813,7 @@ Proof.
     rewrite (body_xp_binders _ _ _ _ _ bx); constructor; eapply IHbx; eassumption.
   - (* an open *)
     intros Γ Φ Φx H its Φg R Rm gs bx IHbx d IHd em ig IHig iok HΦg m HS HΦ Γ' σ Hσ; cbn in *; destruct HΦ as [HΦ [HH _]].
-    subst Φg; rewrite gens_body_sub.
-    rewrite gens_append_sub by lia; rewrite Nat.sub_0_r.
+    rewrite gm_graft_sub.
     rewrite <- (body_xp_binders _ _ _ _ _ bx).
     pose proof (body_xp_nopens _ _ _ _ _ bx) as Hnx.
     pose proof (sub_mod_compat_lt_ext (body_ctx Φx) _ _ _ _ Hσ) as Hσ'.
@@ -2826,7 +2824,8 @@ Proof.
     rewrite (length_body_ctx _ Hnx) in Hok.
     rewrite <- (body_xp_binders _ _ _ _ _ bx) in HH.
     eapply body_xp_open; [ eapply IHbx; eassumption | eapply IHd; eassumption | apply mdesc_mod_sub; exact em
-                    | eapply IHig; [ exact Hok | exact HH | exact Hσ' ] | assumption | reflexivity ].
+                    | eapply IHig; [ exact Hok | exact HH | exact Hσ' ] | assumption |].
+    rewrite <- gens_body_sub; apply gmod_retyped_sub; exact HΦg.
   - intros; constructor.
   - intros Γ H d pv its gs ig IHig m HS HH Γ' σ Hσ; cbn.
     eapply items_gen_self; eapply IHig; eassumption.
@@ -2977,12 +2976,14 @@ Lemma body_opens_wk : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall 
     body_opens (gmod_wk Φ φ) (gmod_wk Φx φ) =
     List.map (fun p => (tele_wk (fst p) φ, modexp_wk (snd p) (wk_qn (length (fst p)) φ))) (body_opens Φ Φx).
 Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ _]; intros φ.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ Hr]; intros φ.
   - reflexivity.
   - cbn [gmod_wk body_opens gm_dropn]; apply IH.
-  - cbn [gmod_wk]; rewrite gens_append_wk by lia; rewrite Nat.sub_0_r.
-    rewrite body_opens_open_len by (rewrite List.length_map; eapply items_gen_length; eassumption).
-    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg); cbn [List.map fst snd]; rewrite IH.
+  - cbn [gmod_wk]; rewrite gm_graft_wk, (body_xp_binders _ _ _ _ _ Hx).
+    rewrite body_opens_open_len
+      by first [ apply gm_noopen_wk; exact (open_store_noopen _ _ Hr)
+               | rewrite gm_binders_wk; exact (open_store_binders _ _ _ _ _ _ _ Hg Hr) ].
+    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg Hr); cbn [List.map fst snd]; rewrite IH.
     pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hnx.
     rewrite (body_ctx_wk _ _ Hnx), (length_body_ctx _ Hnx), (body_xp_binders _ _ _ _ _ Hx); reflexivity.
 Qed.
@@ -2991,12 +2992,14 @@ Lemma body_opens_sub : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall
     body_opens (gmod_sub Φ σ) (gmod_sub Φx σ) =
     List.map (fun p => (tele_sub (fst p) σ, (snd p)[sb_qn (length (fst p)) σ]ᵐ)) (body_opens Φ Φx).
 Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ _]; intros σ.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ Hr]; intros σ.
   - reflexivity.
   - cbn [gmod_sub body_opens gm_dropn]; apply IH.
-  - cbn [gmod_sub]; rewrite gens_append_sub by lia; rewrite Nat.sub_0_r.
-    rewrite body_opens_open_len by (rewrite List.length_map; eapply items_gen_length; eassumption).
-    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg); cbn [List.map fst snd]; rewrite IH.
+  - cbn [gmod_sub]; rewrite gm_graft_sub, (body_xp_binders _ _ _ _ _ Hx).
+    rewrite body_opens_open_len
+      by first [ apply gm_noopen_sub; exact (open_store_noopen _ _ Hr)
+               | rewrite gm_binders_sub; exact (open_store_binders _ _ _ _ _ _ _ Hg Hr) ].
+    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg Hr); cbn [List.map fst snd]; rewrite IH.
     pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hnx.
     rewrite (body_ctx_sub _ _ Hnx), (length_body_ctx _ Hnx), (body_xp_binders _ _ _ _ _ Hx); reflexivity.
 Qed.
@@ -3005,12 +3008,14 @@ Lemma body_opens_at_wk : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> fora
     body_opens_at (gmod_wk Φ φ) (gmod_wk Φx φ) =
     List.map (fun p => (gmod_wk (fst p) φ, modexp_wk (snd p) (wk_qn (gm_binders (fst p)) φ))) (body_opens_at Φ Φx).
 Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ _]; intros φ.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ Hr]; intros φ.
   - reflexivity.
   - cbn [gmod_wk body_opens_at gm_dropn]; apply IH.
-  - cbn [gmod_wk]; rewrite gens_append_wk by lia; rewrite Nat.sub_0_r.
-    rewrite body_opens_at_open_len by (rewrite List.length_map; eapply items_gen_length; eassumption).
-    rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg); cbn [List.map fst snd]; rewrite IH.
+  - cbn [gmod_wk]; rewrite gm_graft_wk, (body_xp_binders _ _ _ _ _ Hx).
+    rewrite body_opens_at_open_len
+      by first [ apply gm_noopen_wk; exact (open_store_noopen _ _ Hr)
+               | rewrite gm_binders_wk; exact (open_store_binders _ _ _ _ _ _ _ Hg Hr) ].
+    rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg Hr); cbn [List.map fst snd]; rewrite IH.
     rewrite (body_xp_binders _ _ _ _ _ Hx); reflexivity.
 Qed.
 
@@ -3018,33 +3023,28 @@ Lemma body_opens_at_sub : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> for
     body_opens_at (gmod_sub Φ σ) (gmod_sub Φx σ) =
     List.map (fun p => (gmod_sub (fst p) σ, (snd p)[sb_qn (gm_binders (fst p)) σ]ᵐ)) (body_opens_at Φ Φx).
 Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ _]; intros σ.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ Hr]; intros σ.
   - reflexivity.
   - cbn [gmod_sub body_opens_at gm_dropn]; apply IH.
-  - cbn [gmod_sub]; rewrite gens_append_sub by lia; rewrite Nat.sub_0_r.
-    rewrite body_opens_at_open_len by (rewrite List.length_map; eapply items_gen_length; eassumption).
-    rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg); cbn [List.map fst snd]; rewrite IH.
+  - cbn [gmod_sub]; rewrite gm_graft_sub, (body_xp_binders _ _ _ _ _ Hx).
+    rewrite body_opens_at_open_len
+      by first [ apply gm_noopen_sub; exact (open_store_noopen _ _ Hr)
+               | rewrite gm_binders_sub; exact (open_store_binders _ _ _ _ _ _ _ Hg Hr) ].
+    rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg Hr); cbn [List.map fst snd]; rewrite IH.
     rewrite (body_xp_binders _ _ _ _ _ Hx); reflexivity.
-Qed.
-
-Lemma gens_append_body_ctx : forall gs Φ k, exists Ψ, body_ctx (gens_append Φ k gs) = Ψ ++ body_ctx Φ.
-Proof.
-  induction gs as [| g gs IH]; intros; cbn [gens_append]; [ exists nil; reflexivity |].
-  destruct (generated_item_entry g) as [d E]; destruct (IH (gm_ext Φ d (gentry_wk E (wk_shiftn k))) (S k)) as [Ψ HΨ].
-  rewrite HΨ; cbn [body_ctx].
-  destruct (gentry_wk E (wk_shiftn k)) as [? ? ? ? [] | | | | ]; eexists (Ψ ++ _ :: nil); rewrite <- List.app_assoc; reflexivity.
 Qed.
 
 (** The context an open's prefix makes is the inner part of the body's. *)
 Lemma body_opens_prefix : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
     forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> exists Ψr, body_ctx Φx = Ψr ++ Ψ.
 Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ _]; intros k Ψ H' Hk.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ Hr]; intros k Ψ H' Hk.
   - destruct k; discriminate.
   - cbn [body_opens gm_dropn] in Hk; destruct (IH _ _ _ Hk) as [Ψr HΨr]; cbn [body_ctx].
     destruct E as [? ? ? ? [] | | | | ]; eexists (_ :: Ψr); rewrite HΨr; reflexivity.
-  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Hk.
-    destruct (gens_append_body_ctx gs Φx 0) as [Ψg HΨg]; rewrite HΨg.
+  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg Hr) in Hk.
+    set (Ψg := body_ctx Φg); assert (HΨg : body_ctx (gm_graft Φx Φg) = Ψg ++ body_ctx Φx)
+      by exact (body_ctx_graft _ _ (open_store_noopen _ _ Hr)); rewrite HΨg.
     destruct k as [| k]; cbn in Hk; [ injection Hk as <- <-; exists Ψg; reflexivity |].
     destruct (IH _ _ _ Hk) as [Ψr HΨr]; rewrite HΨr; exists (Ψg ++ Ψr); apply List.app_assoc.
 Qed.

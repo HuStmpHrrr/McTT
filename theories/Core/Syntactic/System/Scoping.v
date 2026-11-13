@@ -944,13 +944,13 @@ Proof.
     cbn [gmod_scoped] in HΦ |- *; auto.
   - destruct HΦ as [HΦ HE]; split; [ apply IH; assumption |].
     rewrite <- (body_xp_binders _ _ _ _ _ Hx); assumption.
-  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Ho.
-    rewrite gens_append_body, gmod_scoped_graft in HΦ; destruct HΦ as [HΦx HΦg'].
+  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg HΦg) in Ho.
+    rewrite gmod_scoped_graft in HΦ; destruct HΦ as [HΦx HΦg'].
     split; [| split ].
     + apply IH; [ exact HΦx |].
       intros k Ψ H' Hk; exact (Ho (S k) _ _ Hk).
     + rewrite <- (body_xp_binders _ _ _ _ _ Hx), <- (length_body_ctx _ (body_xp_nopens _ _ _ _ _ Hx)); exact (Ho 0 _ _ eq_refl).
-    + subst Φg; rewrite <- (body_xp_binders _ _ _ _ _ Hx); exact HΦg'.
+    + rewrite <- (body_xp_binders _ _ _ _ _ Hx); exact HΦg'.
 Qed.
 
 Lemma body_shape_sym : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ' Φ.
@@ -984,15 +984,9 @@ Proof. induction 1; cbn; f_equal; assumption. Qed.
 
 Lemma body_xp_names : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_names Φx = gm_names Φ.
 Proof.
-  induction 1; cbn [gm_names]; [ reflexivity | f_equal; assumption |].
-  rewrite gens_append_names, (items_gen_names _ _ _ _ _ _ H3), IHbody_xp; reflexivity.
-Qed.
-
-(** The shape of an expansion is that of the body's own entries. *)
-Lemma body_shape_gens_l : forall gs Φ k, body_shape (gens_append Φ k gs) (gens_append Φ k gs) -> body_shape Φ Φ.
-Proof.
-  induction gs as [| g gs IH]; intros * Hs; [ exact Hs |].
-  destruct g; cbn [gens_append generated_item_entry] in Hs; apply IH in Hs; exact (proj1 Hs).
+  induction 1 as [| | Γ Φ Φx H its Φg R Rm gs Hx IH _ _ Hg _ Hr]; cbn [gm_names]; [ reflexivity | f_equal; assumption |].
+  rewrite (gm_names_graft _ _ (open_store_noopen _ _ Hr)), (gmod_retyped_names _ _ Hr).
+  unfold gens_body; rewrite gens_append_names, (items_gen_names _ _ _ _ _ _ Hg), IH; cbn; rewrite List.app_nil_r; reflexivity.
 Qed.
 
 (** The shape of a grafted fragment, read off the whole. *)
@@ -1002,11 +996,18 @@ Proof.
     destruct Hs as (Hs & H1 & H2); repeat split; eauto.
 Qed.
 
+(** The shape of the body a fragment is grafted on, read off the whole. *)
+Lemma body_shape_graft_base : forall B A, body_shape (gm_graft A B) (gm_graft A B) -> body_shape A A.
+Proof.
+  induction B as [| B IH x E | B IH H its Bg _]; intros A Hs; cbn [gm_graft body_shape] in Hs |- *; [ exact Hs | |];
+    destruct Hs as (Hs & _ & _); eauto.
+Qed.
+
 Lemma body_shape_of_xp : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body_shape Φx Φx -> body_shape Φ Φ.
 Proof.
   induction 1; intros Hs; cbn in Hs |- *; [ exact I | destruct Hs as (Hs & _ & HE); repeat split; auto |].
-  split; [ apply IHbody_xp; eapply body_shape_gens_l; exact Hs | split; [ reflexivity |] ].
-  subst; rewrite gens_append_body in Hs; exact (body_shape_graft_fragment _ _ Hs).
+  split; [ apply IHbody_xp; eapply body_shape_graft_base; exact Hs | split; [ reflexivity |] ].
+  exact (body_shape_graft_fragment _ _ Hs).
 Qed.
 
 

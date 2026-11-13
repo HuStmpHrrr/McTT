@@ -574,9 +574,10 @@ Section DenoteImpl.
           | inright HN => inright _
           | inleft (exist _ gs Hgs) with items_ok_dec its := {
             | right Hn => inright _
-            (** the entries the open stores are the ones its items generate *)
-            | left Hok with gmod_eq_dec Φg (gens_body gs) := {
-              | left Hg => inleft (exist _ (gens_append Φx 0 gs) _)
+            (** the entries the open stores are the ones its items
+                generate, up to the types of their term parts *)
+            | left Hok with gmod_retyped_dec (gens_body gs) Φg := {
+              | left Hg => inleft (exist _ (gm_graft Φx Φg) _)
               | right Hn => inright _ } } } } } }
 
   with items_gen_impl Γ H its (Ho : items_gen_order Θ Ξ Γ H its) :
@@ -606,8 +607,9 @@ Section DenoteImpl.
           | inleft (exist _ gs Hgs) => inleft (exist _ (generated_item_def_mod d pv A (a_mem H n) (me_mem H n) :: gs) _)
           | inright HN => inright _ } } } }.
   Solve All Obligations with try impl_obligation_tac.
-  (** An open storing entries other than those its items generate expands
-      to nothing: its prefix and its items have one expansion each. *)
+  (** An open storing entries other than those its items generate, up to
+      the types of their term parts, expands to nothing: its prefix and its
+      items have one expansion each. *)
   Next Obligation.
     match goal with Hd : body_xp _ _ _ (gm_open _ _ _ _) _ |- _ => inversion Hd; subst end.
     pose proof (mdenote_functional_all _ _ Hg) as (_ & _ & _ & Fb & Fi).
@@ -615,7 +617,7 @@ Section DenoteImpl.
       assert_fails (constr_eq a b); pose proof (Fb _ _ _ Hx _ H1); subst a end.
     match goal with Hgs : items_gen _ _ _ _ _ ?b, H1 : items_gen _ _ _ _ _ ?a |- _ =>
       assert_fails (constr_eq a b); pose proof (Fi _ _ _ _ Hgs _ H1); subst a end.
-    match goal with Hn : ?x <> ?x |- _ => exact (Hn eq_refl) end.
+    match goal with Hn : ~ gmod_retyped ?a ?b, H1 : gmod_retyped ?a ?b |- _ => exact (Hn H1) end.
   Qed.
 End DenoteImpl.
 

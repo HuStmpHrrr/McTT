@@ -1668,8 +1668,7 @@ Proof.
   - intros * Hx; inversion Hx; reflexivity.
   - intros * Hx IH Φx' Hx'; inversion Hx'; subst; f_equal; eauto.
   - intros * Hx IH Hm IHm Hmd Hgn IHg Hok HΦg Φx' Hx'; inversion Hx'; subst.
-    match goal with H1 : body_xp _ _ _ Φ _ |- _ => pose proof (IH _ H1) as E; subst end.
-    match goal with H1 : items_gen _ _ _ _ _ _ |- _ => rewrite (IHg _ H1) end; reflexivity.
+    match goal with H1 : body_xp _ _ _ Φ _ |- _ => pose proof (IH _ H1) as E; subst end; reflexivity.
   - intros * Hg'; inversion Hg'; reflexivity.
   - (* the module itself, by an alias *)
     intros * Hgn IH gs' Hg'; inversion Hg'; subst; f_equal; eauto.

@@ -725,20 +725,21 @@ Lemma body_opens_at_pair : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
     List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) ->
     exists Φ0' H', List.nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') /\ body_shape Φ0 Φ0' /\ gm_nopens Φ0 = 0.
 Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H0 its Φg R T gs Hx IH _ _ Hg _ _]; intros * Hx' Hs Hsx Hk.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H0 its Φg R T gs Hx IH _ _ Hg _ Hr]; intros * Hx' Hs Hsx Hk.
   - destruct k; discriminate.
   - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1 Φg1]; cbn in Hs; try contradiction; destruct Hs as (Hs & _ & _).
     inversion Hx'; subst; cbn [body_opens_at gm_dropn] in Hk |- *.
     cbn in Hsx; destruct Hsx as (Hsx & _ & _); eauto.
   - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1 Φg1]; cbn in Hs; try contradiction; destruct Hs as (Hs & <- & _).
     inversion Hx'; subst.
-    rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg) in Hk.
-    match goal with Hg' : items_gen _ _ _ _ its ?gs' |- _ =>
-      rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg');
-      assert (Hl : List.length gs = List.length gs')
-        by (rewrite (items_gen_length _ _ _ _ _ _ Hg), (items_gen_length _ _ _ _ _ _ Hg'); reflexivity);
-      pose proof (body_shape_dropn (List.length gs) _ _ Hsx) as Hsx0;
-      rewrite gm_dropn_gens_append in Hsx0; rewrite Hl, gm_dropn_gens_append in Hsx0 end.
+    rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg Hr) in Hk.
+    match goal with Hg' : items_gen _ _ _ _ its ?gs', Hr' : gmod_retyped (gens_body ?gs') ?Φg' |- _ =>
+      rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg' Hr');
+      assert (Hl : gm_binders Φg = gm_binders Φg')
+        by (rewrite (open_store_binders _ _ _ _ _ _ _ Hg Hr), (open_store_binders _ _ _ _ _ _ _ Hg' Hr'); reflexivity);
+      pose proof (body_shape_dropn (gm_binders Φg) _ _ Hsx) as Hsx0;
+      rewrite (gm_dropn_graft _ _ (open_store_noopen _ _ Hr)) in Hsx0;
+      rewrite Hl, (gm_dropn_graft _ _ (open_store_noopen _ _ Hr')) in Hsx0 end.
     destruct k as [| k]; cbn in Hk |- *; [| eauto ].
     injection Hk as <- <-; do 2 eexists; split; [ reflexivity | split; [ exact Hsx0 | eapply body_xp_nopens; exact Hx ] ].
 Qed.

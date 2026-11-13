@@ -692,7 +692,7 @@ Proof.
   - intros Γ Φ Φx x E Hx IHx Hpre; constructor; apply IHx; intros k Ψ H Hk; apply (Hpre k); exact Hk.
   - (* an open: what it generates is read alike *)
     intros Γ Φ Φx H its Φg R Rm gs Hx IHx Hm IHm Hmod Hig IHig Hok HΦg Hpre.
-    unfold body_unseal_precondition in Hpre; rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hig) in Hpre.
+    unfold body_unseal_precondition in Hpre; rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hig HΦg) in Hpre.
     pose proof (Hpre 0 _ _ eq_refl) as HH.
     destruct (IHm (or_introl HH)) as (R' & Hm' & Hd).
     destruct (mdesc_unsealed_mod _ _ _ Hd Hmod) as (Rm' & Hmod' & _).

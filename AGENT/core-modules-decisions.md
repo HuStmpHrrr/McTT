@@ -509,6 +509,20 @@ Supersedes the expansion part of 10.7.
   (`cmd_open_error`, `Extraction/Opens.v`), which only chooses the message.
 - `Evaluate` echoes a term as written: local opens print as `open`, no
   longer as the definitions they generate.
+- Stored entries are typed, not compared (`wip/opens-typed`, 2026-11-13,
+  owner): `body_xp_open` requires `gmod_retyped (gens_body gs) Φg`, the
+  stored fragment equal to the regenerated one except for the types of
+  term parts (name, privacy, transparency, kind, term and unit pinned),
+  and the expansion is the stored fragment, `gm_graft Φx Φg`, as
+  `gm_expand` reads it.  The unit rules type each stored entry like any
+  body entry, so a stored type is any type the selection has (convertible
+  to the member's, or a larger universe), read after the stored entries
+  before it.  `alg_body_open` checks `Φg` as a body in the open's context;
+  the checker decides `gmod_retyped_dec` and runs `body_check` on `Φg`.
+  Why: with syntactic equality, `module where open #0 (a) end` (storing
+  `def a : ℕ ≔ #0.a`) was ill-formed under `▹ₘ U'` for
+  `U' = module where def a : (λ X. X) ℕ ≔ 0 end`, an equal unit, so slot
+  conversion failed.
 
 ### 10.12 Local definitions with a module part (`wip/def-mod`, G2, 2026-10-25)
 Supersedes the local half of 10.11: a local open of an inductive or a

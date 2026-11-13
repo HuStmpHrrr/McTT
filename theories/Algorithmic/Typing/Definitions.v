@@ -433,8 +433,9 @@ with alg_unit : ctx -> gunit -> Prop :=
 where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope
 (** [Γ ⊢aᵇ Φ ⇝ Φx]: the entries of [Φ] are well-formed in [Γ], each in the
     context the expansion of the body before it makes, and [Φx] is the
-    expansion.  The entries a local open generates are not checked again:
-    they are the members of a well-formed module at their types. *)
+    expansion.  The entries a local open stores are checked as the
+    entries of a body, in the context of the open: their types may differ
+    from the members' ([gmod_retyped]). *)
 with alg_body : ctx -> gmod -> gmod -> Prop :=
 | alg_body_nil :
   `( Γ ⊢aᵇ gm_nil ⇝ gm_nil )
@@ -469,10 +470,13 @@ with alg_body : ctx -> gmod -> gmod -> Prop :=
      frame_free_target gc_deps gc_stack (body_ctx Φx ++ Γ) H ->
      items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
      items_ok its ->
-     (** The entries the open stores are the ones its items generate, as
-         [body_xp_open] has them *)
-     Φg = gens_body gs ->
-     Γ ⊢aᵇ gm_open Φ H its Φg ⇝ gens_append Φx 0 gs )
+     (** The entries the open stores are the ones its items generate up
+         to the types of their term parts, as [body_xp_open] has them *)
+     gmod_retyped (gens_body gs) Φg ->
+     (** and they are checked as the entries of a body, in the context of
+         the open *)
+     body_ctx Φx ++ Γ ⊢aᵇ Φg ⇝ Φg ->
+     Γ ⊢aᵇ gm_open Φ H its Φg ⇝ gm_graft Φx Φg )
 where "Γ '⊢aᵇ' Φ ⇝ Φx" := (alg_body Γ Φ Φx) : type_scope
 with alg_modexp : ctx -> modexp -> Prop :=
 | alg_modexp_unit :

@@ -589,11 +589,18 @@ Section Expansion.
   Lemma gm_binders_gens_body : forall gs, gm_binders (gens_body gs) = length gs.
   Proof. intros gs; unfold gens_body; rewrite gm_binders_gens_append; cbn; lia. Qed.
 
+  (** A fragment and one with other types of its term parts, grafted on a
+      body, have one size: sizes count module parts only. *)
+  Lemma body_size_graft_retyped : forall A B, gmod_retyped A B -> forall Φ ρ, body_size ρ (gm_graft Φ A) = body_size ρ (gm_graft Φ B).
+  Proof. induction 1 as [| A B x E E' H IH HE]; intros Φ ρ; [ reflexivity |]; cbn [gm_graft body_size]; rewrite IH; destruct HE; reflexivity. Qed.
+
   (** Expanding a body does not grow it. *)
   Lemma body_xp_size : forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall ρ,
       fst (body_size ρ Φx) <= fst (body_size ρ Φ) /\ Forall2 le (snd (body_size ρ Φx)) (snd (body_size ρ Φ)).
   Proof.
-    induction 1 as [Γ | Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R Rm gs Hx IH Hm Hmod Hig Hok ->]; intros ρ.
+    induction 1 as [Γ | Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R Rm gs Hx IH Hm Hmod Hig Hok Hr]; intros ρ;
+      [| | rewrite <- (body_size_graft_retyped _ _ Hr), <- gens_append_body; cbn [body_size fst snd];
+           rewrite (gmod_retyped_binders _ _ Hr) ].
     - cbn; split; [ lia | constructor ].
     - destruct (IH ρ) as [IH1 IH2]; cbn [body_size fst snd].
       pose proof (gentry_size_mono E x _ _ (sizes_le_app _ _ ρ ρ IH2 (sizes_le_refl ρ))) as He.

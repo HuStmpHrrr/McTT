@@ -383,7 +383,9 @@ Section type_check.
   (** A record declaration: as written in no local body, only the entries
       before it *)
   | body_order_record : forall {Φ x pv pr R Φr}, body_order Φ -> body_order (gm_ext Φ x (ge_record pv pr R Φr))
-  | body_order_open : forall {Φ H its Φg}, body_order Φ -> modexp_order H -> body_order (gm_open Φ H its Φg)
+  (** An open: the body before it, its target, and the entries it stores,
+      which are checked as a body *)
+  | body_order_open : forall {Φ H its Φg}, body_order Φ -> modexp_order H -> body_order Φg -> body_order (gm_open Φ H its Φg)
   with modexp_order : modexp -> Prop :=
   | modexp_order_unit : forall {fp}, modexp_order (me_unit fp)
   | modexp_order_var : forall {x}, modexp_order (me_var x)

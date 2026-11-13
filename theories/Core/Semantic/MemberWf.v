@@ -4,9 +4,9 @@
     type the lookup reads, and so is its δ-reduct ([member_wf]): what the
     lookup reads is typed ([mem_desc_ok], [desc_ok_ty]), so the premises of
     [wf_mem] hold of it.  The outermost parameter a module still takes is a
-    type ([mtele_head_wf]), and the entries a local open generates extend a
-    well-formed context ([gens_ext_wf]).  The checker reads all three off
-    the lookup, without checking anything again. *)
+    type ([mtele_head_wf]).  The checker reads both off the lookup, without
+    checking anything again; the entries a local open stores it checks as
+    a body ([alg_body_open]), at the sorts of their tags ([body_tags]). *)
 
 From Stdlib Require Import Lia List PeanoNat.
 
@@ -121,121 +121,6 @@ Proof.
   exists R, T; split; [ exact Hm | unfold mdesc_mod_tele; rewrite Hmd; exact HT ].
 Qed.
 
-(** An alias of a well-formed module under no parameters: the premises on
-    the parameters hold vacuously ([lv] true). *)
-Lemma wf_unit_eq_alias_nil : forall Γ E,
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E -> frame_free_target gc_deps gc_stack Γ E ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E).
-Proof.
-  intros * HE HF.
-  eapply wf_unit_eq_alias with (param_level := 0) (param_sorts := fun _ => Typeω@0) (lv := true) (lv' := true)
-                               (Rt := mdesc_term ak_relevant Typeω@0 None) (Rt' := mdesc_term ak_relevant Typeω@0 None);
-    try first [ exact HE | exact HF | constructor | intros [=]
-              | intros Δ1 ? ? ? Ex; destruct Δ1; discriminate | intros _ Δ1 ? ? ? Ex; destruct Δ1; discriminate ].
-  all: try (intros Δ1 ? ? ? Ex; destruct Δ1; discriminate).
-  all: try discriminate.
-  exact (presup_modexp_eq_ctx HE).
-Qed.
-
-(** ** What a Local Open Generates Is Well-Formed
-
-    The entries an open of a well-formed module generates are well-formed:
-    a definition is the member at its type, an alias the module or its
-    submodule, a definition with a module part both, each read past the
-    entries generated before it. *)
-Lemma gens_ext_wf_gen : forall Γ1 H its gs, items_gen gc_deps gc_stack Γ1 H its gs ->
-    forall Γ0 Ψ, Γ1 = Ψ ++ Γ0 -> gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ H ≈ H ->
-    frame_free_target gc_deps gc_stack (Ψ ++ Γ0) H ->
-    forall Φg, gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φg ++ Ψ ≈ body_ctx Φg ++ Ψ ->
-    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx (gens_append Φg (List.length (body_ctx Φg)) gs) ++ Ψ ≈
-                                body_ctx (gens_append Φg (List.length (body_ctx Φg)) gs) ++ Ψ.
-Proof.
-  induction 1 as [| Γ1 H d pv its gs _ IH | Γ1 H n d pv ra A om its gs Hm _ IH | Γ1 H n d pv R its gs Hm Hmod _ IH
-                 | Γ1 H n d pv R A Rm its gs Hm Hty Hmd _ IH ];
-    intros Γ0 Ψ -> HH HF Φg HX; cbn [gens_append generated_item_entry]; try exact HX.
-  all: pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- app_assoc in HC.
-  all: pose proof (wf_wk_shiftn_app' _ _ _ _ HC) as Hw.
-  - (* the module itself *)
-    pose proof (wf_unit_eq_alias_nil _ _ HH HF) as HU0.
-    pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
-    cbn [gentry_wk].
-    change (S (length (body_ctx Φg)))
-      with (length (body_ctx (gm_ext Φg d (ge_mod pv (gunit_wk (gu_mk nil (md_alias H)) (wk_shiftn (length (body_ctx Φg)))))))).
-    apply (IH Γ0 Ψ eq_refl HH HF).
-    cbn [body_ctx app]; apply wf_ext_eq_mod; [ exact HX | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
-  - (* a term member: a definition of it, at its type *)
-    destruct (member_wf _ _ _ _ _ HH Hm eq_refl) as ((Srt & HS & HA) & _ & HM).
-    pose proof (wk_preserves_sort _ _ _ _ _ _ _ HA HS Hw) as HA1.
-    pose proof (wk_preserves_exp _ _ _ _ _ _ _ HM Hw) as HM1.
-    cbn [gentry_wk option_map].
-    change (S (length (body_ctx Φg)))
-      with (length (body_ctx (gm_ext Φg d (ge_def true pv ra A[wk_shiftn (length (body_ctx Φg))]ʷ
-                                               (Some (a_mem H n)[wk_shiftn (length (body_ctx Φg))]ʷ))))).
-    apply (IH Γ0 Ψ eq_refl HH HF).
-    rewrite app_assoc in HA1, HM1; cbn [body_ctx app].
-    eapply wf_ext_eq_def_same; [ exact HX | exact HA1 | exact HS | exact HA1 | exact HM1 | exact HM1 ].
-  - (* a module member: an alias of it *)
-    pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
-    pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    destruct (desc_ok_tele _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hmod) as [T HT].
-    assert (Hmt : mdesc_mod_tele R = Some T) by (unfold mdesc_mod_tele; rewrite (mdesc_is_mod_mod _ Hmod); exact HT).
-    assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
-      by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
-    (* a member of a module that is no module still being defined is none *)
-    assert (HFm : frame_free_target gc_deps gc_stack (Ψ ++ Γ0) (me_mem H n)).
-    { destruct HF as (R0 & HmR0 & Hn0); exists R; split; [ exact Hm | exact (mem_frame_free _ _ Hg Hv _ _ _ _ _ _ HH HmR0 Hn0 Hm) ]. }
-    pose proof (wf_unit_eq_alias_nil _ _ HE HFm) as HU0.
-    pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
-    cbn [gentry_wk].
-    change (S (length (body_ctx Φg)))
-      with (length (body_ctx (gm_ext Φg d (ge_mod pv (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (length (body_ctx Φg)))))))).
-    apply (IH Γ0 Ψ eq_refl HH HF).
-    cbn [body_ctx app]; apply wf_ext_eq_mod; [ exact HX | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
-  - (* a member with a term part and a module part: a definition with a
-       module part, its term the selection, its module the alias of it *)
-    destruct (member_wf _ _ _ _ _ HH Hm Hty) as ((Srt & HS & HA) & _ & HM).
-    pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
-    pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    pose proof (desc_ok_mod _ _ Hg _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hmd) as Hok.
-    destruct (desc_ok_tele _ _ _ _ Hok (mdesc_mod_is_mod _ _ Hmd)) as [T HT].
-    assert (Hmt : mdesc_mod_tele R = Some T) by (unfold mdesc_mod_tele; rewrite Hmd; exact HT).
-    assert (HE : gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ0 ⊢ᵐ me_mem H n ≈ me_mem H n)
-      by (eapply wf_me_mem; [ exact HH | exact Hm | exact Hmt | exact Hm | exact Hmt ]).
-    (* a member of a module that is no module still being defined is none *)
-    assert (HFm : frame_free_target gc_deps gc_stack (Ψ ++ Γ0) (me_mem H n)).
-    { destruct HF as (R0 & HmR0 & Hn0); exists R; split; [ exact Hm | exact (mem_frame_free _ _ Hg Hv _ _ _ _ _ _ HH HmR0 Hn0 Hm) ]. }
-    pose proof (wf_unit_eq_alias_nil _ _ HE HFm) as HU0.
-    pose proof (wk_preserves_unit _ _ _ _ _ _ _ HU0 Hw) as HU1.
-    (* a member with a module part is relevant: its type is of a large universe *)
-    destruct (desc_ok_ty_mod _ _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty Hmd) as [iA HAi].
-    clear HA HS; rename HAi into HA.
-    pose proof (wk_preserves_typ _ _ _ _ _ _ _ HA Hw) as HA1.
-    pose proof (wk_preserves_exp _ _ _ _ _ _ _ HM Hw) as HM1.
-    cbn [gentry_wk].
-    change (S (length (body_ctx Φg)))
-      with (length (body_ctx (gm_ext Φg d (ge_def_mod pv A[wk_shiftn (length (body_ctx Φg))]ʷ
-                                               (a_mem H n)[wk_shiftn (length (body_ctx Φg))]ʷ
-                                               (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (length (body_ctx Φg)))))))).
-    apply (IH Γ0 Ψ eq_refl HH HF).
-    rewrite app_assoc in HA1, HM1; cbn [body_ctx app].
-    eapply wf_ext_eq_dm; [ exact HX | exact HA1 | apply wf_exp_eq_refl; exact HA1 | exact HM1 | apply wf_exp_eq_refl; exact HM1
-                         | exact HA1 | exact HM1 | rewrite <- app_assoc; exact HU1 | rewrite <- app_assoc; exact HU1 ].
-Qed.
-
-(** An open's entries, after the body before it. *)
-Corollary gens_ext_wf : forall Γ0 Ψ Φx H its gs,
-    items_gen gc_deps gc_stack (body_ctx Φx ++ Ψ ++ Γ0) H its gs ->
-    gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Ψ ++ Γ0 ⊢ᵐ H ≈ H ->
-    frame_free_target gc_deps gc_stack (body_ctx Φx ++ Ψ ++ Γ0) H ->
-    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φx ++ Ψ ≈ body_ctx Φx ++ Ψ ->
-    gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx (gens_append Φx 0 gs) ++ Ψ ≈ body_ctx (gens_append Φx 0 gs) ++ Ψ.
-Proof.
-  intros * Hg HH HF HX.
-  rewrite gens_body_ctx_base, <- app_assoc.
-  rewrite app_assoc in Hg, HH, HF.
-  exact (gens_ext_wf_gen _ _ _ _ Hg Γ0 (body_ctx Φx ++ Ψ) eq_refl HH HF gm_nil HX).
-Qed.
-
 (** ** The Sorts of a Body's Definitions
 
     [body_tags Γ Φ L]: the type of every term part of the body [Φ] over [Γ]
@@ -268,64 +153,21 @@ Proof.
   destruct (String.eqb y x); [ injection Hp as HΦ0 _ HE1; subst Φ0 E0; exact (HE _ _ HE0) | exact (HT _ _ _ _ _ Hp HE0) ].
 Qed.
 
-(** The entries an open of a well-formed module generates are of the sorts
-    at their tags: a definition's is the member's ([desc_ok_ty_at]), a
-    definition with a module part is relevant.  Read past the [k] entries
-    generated before, a weakening of the context the module is read in. *)
-Lemma body_tags_gens : forall Γ1 H its gs, items_gen gc_deps gc_stack Γ1 H its gs ->
-    forall Γ Φ, Γ1 = (body_ctx Φ ++ Γ)%list -> gc_deps ⍮ gc_stack ⍮ Γ1 ⊢ᵐ H ≈ H ->
-    forall Φg Ψk L, body_ctx Φg = (Ψk ++ body_ctx Φ)%list ->
-    ⊢ (body_ctx (gens_append Φg (List.length Ψk) gs) ++ Γ)%list ->
-    body_tags Γ Φg L ->
-    exists L', body_tags Γ (gens_append Φg (List.length Ψk) gs) L'.
+(** A fragment with no open, its term parts of the sorts at their tags
+    over the body it is grafted on, keeps the body's tags: what an open
+    stores ([alg_body_open]). *)
+Lemma body_tags_graft : forall Γ Φx Φg L L', gm_noopen Φg ->
+    body_tags Γ Φx L -> body_tags (body_ctx Φx ++ Γ)%list Φg L' -> body_tags Γ (gm_graft Φx Φg) (max L L').
 Proof.
-  induction 1 as [Γ1 H | Γ1 H d pv its gs _ IH | Γ1 H n d pv ra A om its gs Hm _ IH | Γ1 H n d pv R its gs Hm Hmod _ IH
-                 | Γ1 H n d pv R A Rm its gs Hm Hty Hmd _ IH ];
-    intros Γ Φ -> HH Φg Ψk L HΦg HC HT; cbn [gens_append generated_item_entry] in *; [ exists L; exact HT | .. ].
-  (** The context of the entry being generated is well formed. *)
-  all: assert (HCg : ⊢ (body_ctx Φg ++ Γ)%list)
-         by (match type of HC with ⊢ (body_ctx (gens_append ?Φ' ?k' ?gs') ++ _)%list =>
-               destruct (gens_append_body_ctx gs' Φ' k') as [Ψ' HΨ']; rewrite HΨ' in HC end;
-             cbn [body_ctx gentry_wk option_map] in HC; rewrite <- List.app_assoc in HC;
-             exact (ctx_decomp_tail (ctx_app_wf_tail _ _ _ _ HC))).
-  all: assert (Hw : (body_ctx Φg ++ Γ)%list ⊢ʷ wk_shiftn (List.length Ψk) : (body_ctx Φ ++ Γ)%list)
-         by (rewrite HΦg, <- List.app_assoc; apply wf_wk_shiftn_app'; rewrite List.app_assoc, <- HΦg; exact HCg).
-  - (** The module itself: no term part. *)
-    change (S (List.length Ψk)) with (List.length (ce_mod (gunit_wk (gu_mk nil (md_alias H)) (wk_shiftn (List.length Ψk))) :: Ψk)).
-    eapply IH; [ reflexivity | exact HH | cbn [body_ctx]; rewrite HΦg; reflexivity | exact HC |].
-    apply body_tags_ext; [ exact HT | intros * [=] ].
-  - (** A term member, at the sort of its tag. *)
-    pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
-    pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) eq_refl) as (i & HAi);
-      cbn [mdesc_kind] in HAi.
-    assert (HA1 : (body_ctx Φg ++ Γ)%list ⊢ A[wk_shiftn (List.length Ψk)]ʷ : abs_kind_sort ra Typeω@i)
-      by (exact (wk_preserves_sort _ _ _ _ _ _ _ HAi (type_sort_abs_kind _ _ (type_sort_universe i)) Hw)).
-    set (E1 := gentry_wk (ge_def true pv ra A (Some (a_mem H n))) (wk_shiftn (List.length Ψk))) in *.
-    change (S (List.length Ψk)) with (List.length (ce_def A[wk_shiftn (List.length Ψk)]ʷ (a_mem H n)[wk_shiftn (List.length Ψk)]ʷ :: Ψk)).
-    eapply IH; [ reflexivity | exact HH | unfold E1; cbn [body_ctx gentry_wk option_map]; rewrite HΦg; reflexivity | exact HC |].
-    apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HT (Nat.le_max_l L i)) |].
-    intros A' M' HE; unfold E1 in HE; cbn [gentry_wk option_map entry_tm] in HE; injection HE as <- <-.
-    unfold E1; cbn [entry_kind gentry_wk].
-    exact (abs_kind_sort_lift _ _ _ _ _ HA1 (Nat.le_max_r L i)).
-  - (** A module member: no term part. *)
-    change (S (List.length Ψk)) with (List.length (ce_mod (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (List.length Ψk))) :: Ψk)).
-    eapply IH; [ reflexivity | exact HH | cbn [body_ctx]; rewrite HΦg; reflexivity | exact HC |].
-    apply body_tags_ext; [ exact HT | intros * [=] ].
-  - (** A member with both parts: relevant. *)
-    pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg.
-    pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    destruct (desc_ok_ty_mod _ _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Hty Hmd) as [i HAi].
-    pose proof (wk_preserves_typ _ _ _ _ _ _ _ HAi Hw) as HA1.
-    set (E1 := gentry_wk (ge_def_mod pv A (a_mem H n) (gu_mk nil (md_alias (me_mem H n)))) (wk_shiftn (List.length Ψk))) in *.
-    change (S (List.length Ψk))
-      with (List.length (ce_dm A[wk_shiftn (List.length Ψk)]ʷ (a_mem H n)[wk_shiftn (List.length Ψk)]ʷ
-                           (gunit_wk (gu_mk nil (md_alias (me_mem H n))) (wk_shiftn (List.length Ψk))) :: Ψk)).
-    eapply IH; [ reflexivity | exact HH | unfold E1; cbn [body_ctx gentry_wk]; rewrite HΦg; reflexivity | exact HC |].
-    apply body_tags_ext; [ exact (body_tags_mono _ _ _ _ HT (Nat.le_max_l L i)) |].
-    intros A' M' HE; unfold E1 in HE; cbn [gentry_wk entry_tm] in HE; injection HE as <- <-.
-    unfold E1; cbn [entry_kind gentry_wk abs_kind_sort].
-    eapply lift_exp_ge; [| exact HA1 ]; lia.
+  intros * Hn HT HTg y Φ0 E A M Hp HE.
+  rewrite (gm_prefix_upto_graft _ _ _ Hn) in Hp.
+  destruct (gm_prefix_upto Φg y) as [P |] eqn:EP.
+  - injection Hp as HP; destruct (gm_prefix_upto_ext _ _ _ EP) as (P0 & E0 & ->); cbn [gm_graft] in HP.
+    injection HP as <- <-.
+    pose proof (gm_noopen_prefix_upto _ _ _ Hn EP) as HnP; cbn [gm_noopen] in HnP.
+    rewrite (body_ctx_graft _ _ HnP), <- List.app_assoc.
+    exact (abs_kind_sort_lift _ _ _ _ _ (HTg _ _ _ _ _ EP HE) (Nat.le_max_r L L')).
+  - exact (abs_kind_sort_lift _ _ _ _ _ (HT _ _ _ _ _ Hp HE) (Nat.le_max_l L L')).
 Qed.
 
 End Fixed_GCtx.

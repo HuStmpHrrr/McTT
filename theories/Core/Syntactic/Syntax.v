@@ -812,8 +812,9 @@ with gmod : Set :=
     generated private-or-public definitions, annotated with their types, a
     fragment (entries over [gm_nil]) read over the expansion of [Φ], the
     [k]-th under the [k] before it ([gens_body]).  The open phase of the
-    command semantics fills it ([items_gen]); typing pins it to the
-    generation ([body_xp]), and evaluation reads the body expanded
+    command semantics fills it ([items_gen]); typing relates it to the
+    generation up to the types of the term parts, and types the stored
+    entries ([body_xp]); evaluation reads the body expanded
     ([gm_expand]). *)
 | gm_open : gmod -> modexp -> list import_item -> gmod -> gmod
 with gentry : Set :=

@@ -2649,6 +2649,115 @@ Qed.
 Corollary gens_append_body : forall gs Φ, gens_append Φ 0 gs = gm_graft Φ (gens_body gs).
 Proof. intros; apply gens_append_graft. Qed.
 
+(** *** What an Open Stores
+
+    A local open stores the entries its items generate up to the types of
+    their term parts ([body_xp_open]): the stored type is checked by typing,
+    as the type of any body entry is, so it need only be one the selection
+    has, not the one the member is declared at. *)
+
+(** [gentry_retyped E E']: [E'] is the entry [E] with the type of its term
+    part, if it has one, replaced.  Name, privacy, transparency, kind, term
+    and module part are kept. *)
+Inductive gentry_retyped : gentry -> gentry -> Prop :=
+(** A definition, at any type *)
+| gentry_retyped_def : forall b pv r A A' oM,
+    gentry_retyped (ge_def b pv r A oM) (ge_def b pv r A' oM)
+(** A module, as it is *)
+| gentry_retyped_mod : forall pv U, gentry_retyped (ge_mod pv U) (ge_mod pv U)
+(** A definition with a module part, its term part at any type *)
+| gentry_retyped_def_mod : forall pv A A' M U,
+    gentry_retyped (ge_def_mod pv A M U) (ge_def_mod pv A' M U).
+
+(** [gmod_retyped Φ Φ']: two fragments with no open, entry by entry
+    [gentry_retyped], under the same names. *)
+Inductive gmod_retyped : gmod -> gmod -> Prop :=
+(** The empty fragments *)
+| gmod_retyped_nil : gmod_retyped gm_nil gm_nil
+(** An entry of each, under one name, after related fragments *)
+| gmod_retyped_ext : forall Φ Φ' x E E',
+    gmod_retyped Φ Φ' -> gentry_retyped E E' -> gmod_retyped (gm_ext Φ x E) (gm_ext Φ' x E').
+
+#[export]
+Hint Constructors gentry_retyped gmod_retyped : mctt.
+
+Lemma gentry_retyped_sym : forall E E', gentry_retyped E E' -> gentry_retyped E' E.
+Proof. intros * []; constructor. Qed.
+
+Lemma gentry_retyped_trans : forall E E' E'', gentry_retyped E E' -> gentry_retyped E' E'' -> gentry_retyped E E''.
+Proof. intros * [] H; inversion H; subst; constructor. Qed.
+
+Lemma gmod_retyped_sym : forall Φ Φ', gmod_retyped Φ Φ' -> gmod_retyped Φ' Φ.
+Proof. induction 1; constructor; auto using gentry_retyped_sym. Qed.
+
+Lemma gmod_retyped_trans : forall Φ Φ' Φ'', gmod_retyped Φ Φ' -> gmod_retyped Φ' Φ'' -> gmod_retyped Φ Φ''.
+Proof.
+  intros Φ Φ' Φ'' H; revert Φ''; induction H; intros Φ'' H'; inversion H'; subst; constructor;
+    eauto using gentry_retyped_trans.
+Qed.
+
+(** A fragment of the generated entries is related to itself. *)
+Lemma gmod_retyped_gens_append_refl : forall gs Φ k, gmod_retyped Φ Φ -> gmod_retyped (gens_append Φ k gs) (gens_append Φ k gs).
+Proof.
+  induction gs as [| g gs IH]; intros Φ k HΦ; cbn [gens_append]; [ exact HΦ |].
+  destruct g; cbn [generated_item_entry]; apply IH; constructor; try exact HΦ; cbn; constructor.
+Qed.
+
+Corollary gmod_retyped_gens_body_refl : forall gs, gmod_retyped (gens_body gs) (gens_body gs).
+Proof. intros; apply gmod_retyped_gens_append_refl; constructor. Qed.
+
+(** Related fragments: neither has an open, and both bind alike. *)
+Lemma gmod_retyped_noopen_l : forall Φ Φ', gmod_retyped Φ Φ' -> gm_noopen Φ.
+Proof. induction 1; cbn; auto. Qed.
+
+Lemma gmod_retyped_noopen_r : forall Φ Φ', gmod_retyped Φ Φ' -> gm_noopen Φ'.
+Proof. induction 1; cbn; auto. Qed.
+
+Lemma gmod_retyped_names : forall Φ Φ', gmod_retyped Φ Φ' -> gm_names Φ' = gm_names Φ.
+Proof. induction 1; cbn; congruence. Qed.
+
+Lemma gmod_retyped_binders : forall Φ Φ', gmod_retyped Φ Φ' -> gm_binders Φ' = gm_binders Φ.
+Proof. induction 1 as [| ? ? ? ? ? ? IH HE]; cbn; [ reflexivity |]; destruct HE; cbn; congruence. Qed.
+
+(** Related entries have one kind of entry in a context ([body_ctx]):
+    the same number of slots, of the same sorts. *)
+Lemma gmod_retyped_ctx_length : forall Φ Φ', gmod_retyped Φ Φ' -> List.length (body_ctx Φ') = List.length (body_ctx Φ).
+Proof.
+  induction 1 as [| Φ Φ' x E E' H IH HE]; [ reflexivity |].
+  destruct HE as [b pv r A A' [M |] | | ]; cbn [body_ctx]; cbn [List.length]; try congruence.
+Qed.
+
+(** Related entries are decided by comparing everything but the types. *)
+Definition gentry_retyped_dec (E E' : gentry) : {gentry_retyped E E'} + {~ gentry_retyped E E'}.
+Proof.
+  destruct E as [b pv r A oM | pv U | ? ? ? ? ? | pv A M U | ? ? ? ?];
+  destruct E' as [b' pv' r' A' oM' | pv' U' | ? ? ? ? ? | pv' A' M' U' | ? ? ? ?];
+    try (right; intros H; inversion H; fail).
+  - destruct (Bool.bool_dec b b') as [<- |]; [| right; intros H; inversion H; contradiction ].
+    destruct (Bool.bool_dec pv pv') as [<- |]; [| right; intros H; inversion H; contradiction ].
+    destruct (abs_kind_eq_dec r r') as [<- |]; [| right; intros H; inversion H; contradiction ].
+    assert (Ho : {oM = oM'} + {oM <> oM'}) by (decide equality; apply exp_eq_dec).
+    destruct Ho as [<- |]; [| right; intros H; inversion H; contradiction ].
+    left; constructor.
+  - destruct (Bool.bool_dec pv pv') as [<- |]; [| right; intros H; inversion H; contradiction ].
+    destruct (gunit_eq_dec U U') as [<- |]; [| right; intros H; inversion H; contradiction ].
+    left; constructor.
+  - destruct (Bool.bool_dec pv pv') as [<- |]; [| right; intros H; inversion H; contradiction ].
+    destruct (exp_eq_dec M M') as [<- |]; [| right; intros H; inversion H; contradiction ].
+    destruct (gunit_eq_dec U U') as [<- |]; [| right; intros H; inversion H; contradiction ].
+    left; constructor.
+Defined.
+
+Fixpoint gmod_retyped_dec (Φ Φ' : gmod) : {gmod_retyped Φ Φ'} + {~ gmod_retyped Φ Φ'}.
+Proof.
+  destruct Φ as [| Φ x E | ? ? ? ?]; destruct Φ' as [| Φ' x' E' | ? ? ? ?];
+    try (left; constructor; fail); try (right; intros H; inversion H; fail).
+  destruct (String.string_dec x x') as [<- |]; [| right; intros H; inversion H; contradiction ].
+  destruct (gmod_retyped_dec Φ Φ') as [HΦ |]; [| right; intros H; inversion H; contradiction ].
+  destruct (gentry_retyped_dec E E') as [HE |]; [| right; intros H; inversion H; contradiction ].
+  left; constructor; assumption.
+Defined.
+
 (** The first member named both by a private and by a public item. *)
 Definition src_has (n : string) (pv : bool) (its : list import_item) : bool :=
   existsb (fun it => match it with
@@ -2817,16 +2926,21 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
 | body_xp_ext : forall Γ Φ Φx x E,
     body_xp Θ Ξ Γ Φ Φx ->
     body_xp Θ Ξ Γ (gm_ext Φ x E) (gm_ext Φx x E)
-(** A local open of a module is replaced by the entries its items
-    generate, the ones it stores ([gens_body]) *)
+(** A local open of a module is replaced by the entries it stores, which
+    are the ones its items generate ([gens_body]) up to the types of their
+    term parts ([gmod_retyped]).  A stored type is checked by typing, as the
+    type of every entry of the expansion is ([wf_unit_eq_body]): the
+    selection must have it, so it is convertible to the member's type, or,
+    by cumulativity, a larger universe.  It is read where the entry stands,
+    after the stored entries before it. *)
 | body_xp_open : forall Γ Φ Φx H its Φg R Rm gs,
     body_xp Θ Ξ Γ Φ Φx ->
     mdenote Θ Ξ (body_ctx Φx ++ Γ) H R ->
     mdesc_mod R = Some Rm ->
     items_gen Θ Ξ (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
-    Φg = gens_body gs ->
-    body_xp Θ Ξ Γ (gm_open Φ H its Φg) (gens_append Φx 0 gs)
+    gmod_retyped (gens_body gs) Φg ->
+    body_xp Θ Ξ Γ (gm_open Φ H its Φg) (gm_graft Φx Φg)
 (** [items_gen Θ Ξ Γ H its gs]: what the items [its] of an open of [H]
     declare, all read in [Γ], by what the member each names denotes: a term
     gives a definition of its type, a module an alias, and a member with
@@ -2958,16 +3072,6 @@ Proof. induction 1; cbn; auto. Qed.
 Lemma items_gen_names : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> List.map generated_item_name gs = List.map import_item_name its.
 Proof. induction 1; cbn; f_equal; auto. Qed.
 
-(** The context an open's entries make, over the body before it. *)
-Lemma gens_body_ctx_base : forall gs Φ k,
-    body_ctx (gens_append Φ k gs) = body_ctx (gens_append gm_nil k gs) ++ body_ctx Φ.
-Proof.
-  induction gs as [| g gs IH]; intros; cbn [gens_append]; [ reflexivity |].
-  destruct (generated_item_entry g) as [d E].
-  rewrite IH, (IH (gm_ext gm_nil d _)), <- List.app_assoc.
-  destruct E as [? ? ? ? [] | | | |]; reflexivity.
-Qed.
-
 Lemma gens_append_binders : forall gs Φ k, gm_binders (gens_append Φ k gs) = List.length gs + gm_binders Φ.
 Proof.
   induction gs as [| g gs IH]; intros; cbn; [ reflexivity |].
@@ -2979,57 +3083,85 @@ Proof.
   induction a as [| a IH]; intros b [| Φ x E | Φ H its]; cbn; auto; destruct b; reflexivity.
 Qed.
 
-Lemma gm_dropn_gens_append : forall gs Φ k, gm_dropn (List.length gs) (gens_append Φ k gs) = Φ.
+Lemma gens_append_nopens : forall gs Φ k, gm_nopens (gens_append Φ k gs) = gm_nopens Φ.
+Proof. induction gs as [| g gs IH]; intros; cbn; [ reflexivity |]; destruct (generated_item_entry g); rewrite IH; reflexivity. Qed.
+
+(** A fragment with no open grafted onto a body: as many entries more,
+    no open more, and the body back once they are dropped. *)
+Lemma gm_dropn_graft : forall Φg Φ, gm_noopen Φg -> gm_dropn (gm_binders Φg) (gm_graft Φ Φg) = Φ.
 Proof.
-  induction gs as [| g gs IH]; intros; cbn [gens_append List.length]; [ destruct Φ; reflexivity |].
-  destruct (generated_item_entry g) eqn:E.
-  replace (S (List.length gs)) with (List.length gs + 1) by lia; rewrite gm_dropn_add, IH; reflexivity.
+  induction Φg as [| Φg IH x E | Φg IH H its Φgg _]; intros Φ Hn; cbn in Hn |- *; [ destruct Φ; reflexivity | | contradiction ].
+  exact (IH _ Hn).
+Qed.
+
+Lemma gm_nopens_graft : forall Φg Φ, gm_noopen Φg -> gm_nopens (gm_graft Φ Φg) = gm_nopens Φ.
+Proof. induction Φg as [| Φg IH x E | Φg IH H its Φgg _]; intros Φ Hn; cbn in Hn |- *; auto; contradiction. Qed.
+
+(** The context a fragment with no open makes, over the body before it. *)
+Lemma body_ctx_graft : forall Φg Φ, gm_noopen Φg -> body_ctx (gm_graft Φ Φg) = body_ctx Φg ++ body_ctx Φ.
+Proof.
+  induction Φg as [| Φg IH x E | Φg IH H its Φgg _]; intros Φ Hn; cbn in Hn |- *; [ reflexivity | | contradiction ].
+  rewrite (IH _ Hn); destruct E as [? ? ? ? [] | | | |]; cbn [body_ctx]; reflexivity.
+Qed.
+
+Lemma gm_names_graft : forall Φg Φ, gm_noopen Φg -> gm_names (gm_graft Φ Φg) = gm_names Φg ++ gm_names Φ.
+Proof.
+  induction Φg as [| Φg IH x E | Φg IH H its Φgg _]; intros Φ Hn; cbn in Hn |- *; [ reflexivity | | contradiction ].
+  rewrite (IH _ Hn); reflexivity.
+Qed.
+
+(** What an open stores: a fragment with no open, of one entry per item. *)
+Lemma open_store_noopen : forall gs Φg, gmod_retyped (gens_body gs) Φg -> gm_noopen Φg.
+Proof. intros * H; exact (gmod_retyped_noopen_r _ _ H). Qed.
+
+Lemma open_store_binders : forall Θ Ξ Γ H its gs Φg, items_gen Θ Ξ Γ H its gs -> gmod_retyped (gens_body gs) Φg ->
+    gm_binders Φg = List.length its.
+Proof.
+  intros * Hg Hr; rewrite (gmod_retyped_binders _ _ Hr); unfold gens_body; rewrite gens_append_binders; cbn.
+  rewrite (items_gen_length _ _ _ _ _ _ Hg); lia.
 Qed.
 
 Lemma body_xp_binders : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_binders Φx = gm_binders Φ.
 Proof.
-  induction 1; cbn; auto; subst.
-  unfold gens_body; rewrite !gens_append_binders; cbn; lia.
+  induction 1 as [| | Γ Φ Φx H its Φg R Rm gs Hx IH HR HRm Hg Hok Hr]; cbn; auto.
+  rewrite gm_binders_graft; lia.
 Qed.
-
-Lemma gens_append_nopens : forall gs Φ k, gm_nopens (gens_append Φ k gs) = gm_nopens Φ.
-Proof. induction gs as [| g gs IH]; intros; cbn; [ reflexivity |]; destruct (generated_item_entry g); rewrite IH; reflexivity. Qed.
 
 (** An expansion has no open. *)
 Lemma body_xp_nopens : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_nopens Φx = 0.
-Proof. induction 1; cbn; auto; rewrite gens_append_nopens; assumption. Qed.
-
-Lemma body_opens_length : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> List.length (body_opens Φ Φx) = gm_nopens Φ.
-Proof.
-  induction 1; cbn; auto.
-  erewrite <- items_gen_length by eassumption; rewrite gm_dropn_gens_append; f_equal; assumption.
-Qed.
+Proof. induction 1; cbn; auto; rewrite gm_nopens_graft by eauto using open_store_noopen; assumption. Qed.
 
 (** The opens of a body after an entry, or after an open, are those of the
     body before it, and that open. *)
 Lemma body_opens_ext : forall Φ Φx x E y E', body_opens (gm_ext Φ x E) (gm_ext Φx y E') = body_opens Φ Φx.
 Proof. reflexivity. Qed.
 
-Lemma body_opens_open_len : forall Φ Φx H its Φg gs, List.length gs = List.length its ->
-    body_opens (gm_open Φ H its Φg) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
-Proof. intros * Hl; cbn; rewrite <- Hl, gm_dropn_gens_append; reflexivity. Qed.
+Lemma body_opens_open_len : forall Φ Φx H its Φg, gm_noopen Φg -> gm_binders Φg = List.length its ->
+    body_opens (gm_open Φ H its Φg) (gm_graft Φx Φg) = (body_ctx Φx, H) :: body_opens Φ Φx.
+Proof. intros * Hn Hl; cbn; rewrite <- Hl, gm_dropn_graft by exact Hn; reflexivity. Qed.
 
 Lemma body_opens_open : forall Θ Ξ Γ Φ Φx H its Φg gs,
-    items_gen Θ Ξ Γ H its gs ->
-    body_opens (gm_open Φ H its Φg) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
+    items_gen Θ Ξ Γ H its gs -> gmod_retyped (gens_body gs) Φg ->
+    body_opens (gm_open Φ H its Φg) (gm_graft Φx Φg) = (body_ctx Φx, H) :: body_opens Φ Φx.
 Proof.
-  intros * Hg; cbn; erewrite <- items_gen_length by eassumption; rewrite gm_dropn_gens_append; reflexivity.
+  intros * Hg Hr; apply body_opens_open_len; [ exact (open_store_noopen _ _ Hr) | exact (open_store_binders _ _ _ _ _ _ _ Hg Hr) ].
 Qed.
 
-Lemma body_opens_at_open_len : forall Φ Φx H its Φg gs, List.length gs = List.length its ->
-    body_opens_at (gm_open Φ H its Φg) (gens_append Φx 0 gs) = (Φx, H) :: body_opens_at Φ Φx.
-Proof. intros * Hl; cbn; rewrite <- Hl, gm_dropn_gens_append; reflexivity. Qed.
+Lemma body_opens_at_open_len : forall Φ Φx H its Φg, gm_noopen Φg -> gm_binders Φg = List.length its ->
+    body_opens_at (gm_open Φ H its Φg) (gm_graft Φx Φg) = (Φx, H) :: body_opens_at Φ Φx.
+Proof. intros * Hn Hl; cbn; rewrite <- Hl, gm_dropn_graft by exact Hn; reflexivity. Qed.
 
 Lemma body_opens_at_open : forall Θ Ξ Γ Φ Φx H its Φg gs,
-    items_gen Θ Ξ Γ H its gs ->
-    body_opens_at (gm_open Φ H its Φg) (gens_append Φx 0 gs) = (Φx, H) :: body_opens_at Φ Φx.
+    items_gen Θ Ξ Γ H its gs -> gmod_retyped (gens_body gs) Φg ->
+    body_opens_at (gm_open Φ H its Φg) (gm_graft Φx Φg) = (Φx, H) :: body_opens_at Φ Φx.
 Proof.
-  intros * Hg; cbn; erewrite <- items_gen_length by eassumption; rewrite gm_dropn_gens_append; reflexivity.
+  intros * Hg Hr; apply body_opens_at_open_len; [ exact (open_store_noopen _ _ Hr) | exact (open_store_binders _ _ _ _ _ _ _ Hg Hr) ].
+Qed.
+
+Lemma body_opens_length : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> List.length (body_opens Φ Φx) = gm_nopens Φ.
+Proof.
+  induction 1; cbn [gm_nopens]; auto.
+  erewrite body_opens_open by eassumption; cbn; f_equal; assumption.
 Qed.
 
 
@@ -3050,7 +3182,7 @@ Fixpoint gm_item_xp (Φ Φx : gmod) (x : string) : gmod :=
 Lemma body_xp_expand : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> Φx = gm_expand Φ.
 Proof.
   induction 1 as [Γ | Γ Φ Φx y E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH HR HT Hg Hok HΦg]; cbn [gm_expand];
-    [ reflexivity | congruence | subst; rewrite gens_append_body, (gm_expand_noopen _ (gens_body_noopen gs)); reflexivity ].
+    [ reflexivity | congruence | subst; rewrite (gm_expand_noopen _ (open_store_noopen _ _ HΦg)); reflexivity ].
 Qed.
 
 Lemma body_xp_item : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
@@ -3059,7 +3191,7 @@ Proof.
   induction 1 as [Γ | Γ Φ Φx y E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH HR HT Hg Hok HΦg]; intros x Φ0 H0 its1 it Hi;
     cbn [gm_item_upto gm_item_xp] in *; try discriminate.
   - destruct (String.eqb x y); [ discriminate | eauto ].
-  - rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append.
+  - rewrite <- (open_store_binders _ _ _ _ _ _ _ Hg HΦg), (gm_dropn_graft _ _ (open_store_noopen _ _ HΦg)).
     destruct (items_upto x its) as [[its1' it'] |]; [ injection Hi as <- <- <- <-; exact Hx | eauto ].
 Qed.
 

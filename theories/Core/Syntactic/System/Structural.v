@@ -2123,14 +2123,15 @@ Lemma body_opens_lengths : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
     List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') ->
     length Ψ = length Ψ'.
 Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H0 its Φg R T gs Hx IH _ _ Hg _ _]; intros * Hx' Hs Hk Hk'.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H0 its Φg R T gs Hx IH _ _ Hg _ Hr]; intros * Hx' Hs Hk Hk'.
   - destruct k; discriminate.
   - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1 Φg1]; cbn in Hs; try contradiction; destruct Hs as (Hs & _ & _).
     inversion Hx'; subst; cbn [body_opens gm_dropn] in Hk, Hk'; eauto.
   - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1 Φg1]; cbn in Hs; try contradiction; destruct Hs as (Hs & <- & _).
     inversion Hx'; subst.
-    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Hk.
-    match goal with Hg' : items_gen _ _ _ _ its _ |- _ => rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg') in Hk' end.
+    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg Hr) in Hk.
+    match goal with Hg' : items_gen _ _ _ _ its ?gs', Hr' : gmod_retyped (gens_body ?gs') _ |- _ =>
+      rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg' Hr') in Hk' end.
     destruct k as [| k]; cbn in Hk, Hk'; [| eauto ].
     injection Hk as <- <-; injection Hk' as <- <-.
     rewrite !length_body_ctx by (eapply body_xp_nopens; eassumption); rewrite (body_xp_binders _ _ _ _ _ Hx).

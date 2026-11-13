@@ -492,8 +492,12 @@ with checker_obligation_positive :=
   | |- _ ⍮ _ ⍮ _ ⊢ᵐ _ ≈ _ => eapply alg_modexp_sound; [ eassumption | checker_ctx ]
   | |- _ ⊢aᵐ me_var _ => econstructor; apply ctx_find_mod_sound; eassumption
   | |- _ ⊢aᵇ _ ⇝ _ /\ ⊢ _ =>
-      split; [ econstructor; first [ eassumption | reflexivity ]
-             | first [ checker_ctx | eapply alg_body_ctx; [ checker_ctx | econstructor; first [ eassumption | reflexivity ] ] ] ]
+      (** an open's stored entries are checked with some result: their own *)
+      split; [ first [ econstructor; first [ eassumption | reflexivity ] | eapply alg_body_open_intro; eassumption ]
+             | first [ checker_ctx
+                     | eapply alg_body_ctx;
+                       [ checker_ctx
+                       | first [ econstructor; first [ eassumption | reflexivity ] | eapply alg_body_open_intro; eassumption ] ] ] ]
   | |- _ => first [ solve [ econstructor; first [ eassumption | reflexivity ] ] | solve [ mauto 3 ] ]
   end.
 
@@ -810,8 +814,11 @@ Section type_check.
       let*b->o _ := frame_free_target_dec F _ (body_ctx Φx ++ G) M _ while _ in
       let*o (exist _ gs _) := items_gen_dec F _ (body_ctx Φx ++ G) M its _ while _ in
       let*b->o _ := items_ok_dec its while _ in
-      let*b->o _ := gmod_eq_dec Φg (gens_body gs) while _ in
-      pureo (exist _ (gens_append Φx 0 gs) _)
+      (** the entries it stores are the generated ones up to their types,
+          and are checked as a body in the context of the open *)
+      let*b->o _ := gmod_retyped_dec (gens_body gs) Φg while _ in
+      let*o (exist _ Φgx _) := body_check (body_ctx Φx ++ G) _ Φg _ while _ in
+      pureo (exist _ (gm_graft Φx Φg) _)
   .
   Solve All Obligations with checker_obligation.
 
