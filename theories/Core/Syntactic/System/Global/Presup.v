@@ -2713,7 +2713,7 @@ Qed.
 Lemma wf_gs_tele : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ.
 Proof.
   intros Θ [| [[mp K] U] Ξ] Hg; [ constructor; exact Hg |].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (Hs0 & HU & Hff).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as [Hs0 HU Hff Hpath].
   pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ.
   assert (HP : ⊢ Θ ⍮ Ξ ⍮ frame_params K (gu_params U) ++ gs_tele Ξ) by exact (wf_gmod_ctx _ _ _ _ _ _ HΦ).
   assert (He : gctx_embedding Θ Ξ Θ ((mp, K, U) :: Ξ)) by (constructor; [ exact Hg | apply gc_sub_push; exact Hff ]).
@@ -2785,7 +2785,7 @@ Lemma wf_gs_tele_evaluated : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> exists l, params_
 Proof.
   intros Θ Ξ; induction Ξ as [| [[mp K] U] Ξ IH]; intros Hg.
   - exists 0; apply params_evaluated_nil.
-  - destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (Hs0 & HU & Hff).
+  - destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as [Hs0 HU Hff Hpath].
     pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ.
     assert (He : gctx_embedding Θ Ξ Θ ((mp, K, U) :: Ξ)) by (constructor; [ exact Hg | apply gc_sub_push; exact Hff ]).
     destruct (IH Hs0) as [l0 H0].
@@ -3057,7 +3057,7 @@ Section Induction.
     - (* a filed unit: it resolves as its closed frame did *)
       rename H into Hg, H0 into IHU.
       intros Θ2 Ξ2 He.
-      destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (_ & _ & [Hn _]).
+      destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as [_ _ [Hn _] _].
       destruct (IHU _ _ (gctx_embedding_pre _ _ _ _ _ _ (gc_sub_file _ _ U Hn) He)) as [HR HI HA].
       constructor; [ intros p E Hr; rewrite gc_resolve_file in Hr; eauto | |].
       + intros p D Hr; rewrite ind_lookup_file in Hr; eauto.
@@ -3471,7 +3471,7 @@ Section ModInduction.
       rename H into Hg, H0 into IHU.
       match goal with |- bodies_valid_along_embeddings ((?f, _) :: _) nil => rename f into fp0 end.
       intros Θ2 Ξ2 He Θs Ξs Hs; split; [| exact I ].
-      destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (_ & _ & [Hn _]).
+      destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as [_ _ [Hn _] _].
       destruct (IHU Θ2 Ξ2 ltac:(eapply gctx_embedding_with_bodies_pre; [ apply gc_sub_keeping_bodies_file; exact Hn | exact He ])
                   Θs Ξs ltac:(eapply gc_sub_trans; [ apply gc_sub_file; exact Hn | exact Hs ])) as [HΘ HΞ].
       intros fq W Hl; cbn in Hl; destruct (path_beq fq fp0);
@@ -3820,7 +3820,7 @@ Proof.
   intros * Hg * Hf.
   destruct (gs_find_record_split _ _ _ Hf) as (Ξ1 & U & Ξ0 & HΞ & _); subst Ξ.
   destruct (wf_gstack_app_inv _ _ _ Hg) as [Hg0 Hsub].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & [Δ Φ0 -> HΦ] & Hff).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as [_ [Δ Φ0 -> HΦ] Hff _].
   eapply gctx_embedding_preserves_record_typed; [| exact (wf_gmod_record_typed _ _ _ _ _ _ HΦ _ eq_refl) ].
   constructor; [ exact Hg | eapply gc_sub_trans; [ apply gc_sub_push; exact Hff | exact Hsub ] ].
 Qed.

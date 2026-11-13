@@ -1535,6 +1535,9 @@ Section Semantics.
       their records, [U] the unit, [B] its own record. *)
   with run_unit : list path -> surface_compilation_unit -> builtins -> builtins_map -> gdeps -> gunit -> Prop :=
   | run_unit_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P' l cs Θ1 Θ2 mp K U,
+      (** the unit's path is a file's name, never the empty one
+          ([top_fresh_named]) *)
+      fp <> nil ->
       nil ⍮ nil ⍮ builtins_empty ⍮ nil ⊢[fp :: ch] List.map ci_written imps ⇝* Θ1 ⍮ nil ⍮ B1 ⍮ Rb1 ->
       fill_params Θ1 nil B1 P P' ->
       all_assumptions P' ->
@@ -1991,7 +1994,10 @@ Qed.
 
 Lemma frame_fresh_grow : forall Θ Θ' Ξ mp,
     frame_fresh Θ Ξ mp -> gds_lookup Θ' (q_unit mp) = None -> frame_fresh Θ' Ξ mp.
-Proof. intros * H Hn; destruct Ξ as [| [mq V] Ξ]; cbn in *; [ split; [ exact Hn | exact (proj2 H) ] | exact H ]. Qed.
+Proof.
+  intros * H Hn; destruct Ξ as [| [mq V] Ξ]; cbn in *; [| exact H ].
+  constructor; [ exact Hn | exact (top_fresh_root _ _ H) | exact (top_fresh_named _ _ H) ].
+Qed.
 
 (** An entry checked at its path in the innermost frame keeps the stack
     well formed. *)
@@ -2110,7 +2116,7 @@ Qed.
 Lemma wf_gstack_ext_fresh : forall Θ mq Kq Δ Φ0 y E Ξ0,
     ⊢ᵍ Θ ⍮ (mq, Kq, gu_body Δ (Φ0 ⊳ y ↦ E)) :: Ξ0 -> gm_fresh y Φ0.
 Proof.
-  intros * Hg; destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (_ & HU & _).
+  intros * Hg; destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as [_ HU _ _].
   pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ; cbn in HΦ; inversion HΦ; subst; assumption.
 Qed.
 
@@ -2207,7 +2213,7 @@ Section GrowDeps.
       match goal with Hg : ⊢ᵍ Θ' ⍮ ?X |- _ => pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg)) as (Hc' & He' & _) end.
       eapply wf_gmod_record_nil; try eassumption; first [ apply Hc'; assumption | intros; apply He'; eauto | auto ].
     - match goal with HE : Θ ⍮ _ ⍮ qname_in _ _ ⊢ᵉ _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
-      destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & _ & Hff).
+      destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as [_ _ Hff Hpath].
       assert (HΦ : Θ' ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ) by auto.
       econstructor; [ exact HΦ | | assumption ].
       match goal with IH : _ = _ -> ⊢ᵍ _ ⍮ (mp, K, gu_body Δ Φ) :: Ξ -> _ |- _ => apply IH end;
@@ -2219,7 +2225,7 @@ Section GrowDeps.
       (forall mp K U, In (mp, K, U) Ξ -> gds_lookup Θ' (q_unit mp) = None) -> ⊢ᵍ Θ' ⍮ Ξ.
   Proof.
     induction Ξ as [| [[mp K] U] Ξ IH]; intros HΞ HΘ' Hfr; [ exact HΘ' |].
-    destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (HΞ0 & HU & Hff).
+    destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as [HΞ0 HU Hff Hpath].
     assert (HΞ' : ⊢ᵍ Θ' ⍮ Ξ) by (apply IH; [ assumption | assumption | intros; eapply Hfr; right; eassumption ]).
     pose proof (Hfr mp K U (or_introl eq_refl)) as Hn.
     destruct HU as [Δ Φ -> HΦ].
@@ -2248,14 +2254,14 @@ Theorem merge_wf : forall Θ Θ',
     ⊢ᵍ Θ ⍮ nil -> ⊢ᵍ Θ' ⍮ nil -> gds_agree Θ Θ' -> ⊢ᵍ gds_merge Θ Θ' ⍮ nil.
 Proof.
   intros Θ Θ' HΘ; induction Θ' as [| [fp U] Θ' IH]; intros HΘ' Hag; [ exact HΘ |].
-  destruct (wf_gstack_file_inv _ _ _ HΘ') as (HΘ0 & HU & Hn).
+  destruct (wf_gstack_file_inv _ _ _ HΘ') as [HΘ0 HU Hn Hfp].
   assert (Hag0 : gds_agree Θ Θ').
   { intros fq V V' H1 H2; apply (Hag fq V V' H1); cbn.
     destruct (path_beq fq fp) eqn:Hb; [ apply path_beq_true in Hb; subst; congruence | exact H2 ]. }
   assert (HM : ⊢ᵍ gds_merge Θ Θ' ⍮ nil) by auto.
   rewrite merge_cons; unfold gds_mem; destruct (gds_lookup Θ fp) eqn:Hf; [ exact HM |].
   assert (HnM : gds_lookup (gds_merge Θ Θ') fp = None) by (apply merge_none; split; assumption).
-  apply wf_gstack_file'; [ exact HM | | exact HnM ].
+  apply wf_gstack_file'; [ exact HM | | exact HnM | exact Hfp ].
   eapply unit_deps_grow; [ apply merge_right, Hag0 | exact HM | exact HnM | exact HU ].
 Qed.
 
@@ -2542,7 +2548,7 @@ Lemma ind_lookup_add : forall Θ Ξ x E p D,
 Proof.
   intros * HΞ Hfr Hl.
   destruct Ξ as [| [[mq Kq] U] Ξ0]; [ contradiction |].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as [_ [P Ψ -> _] _ _].
   cbn in Hfr |- *.
   eapply ind_lookup_gc_sub; [ apply gc_sub_grow; exact Hfr | exact Hl ].
 Qed.
@@ -2591,7 +2597,7 @@ Lemma gc_sub_close : forall Θ Ξ x pv K Δ Φ,
 Proof.
   intros * HΞ Hfr HK.
   destruct Ξ as [| [[mq Kq] U] Ξ0]; [ contradiction |].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as [_ [P Ψ -> _] _ _].
   cbn [gs_path gs_add gu_params gu_mod gs_fresh] in Hfr |- *.
   apply (gc_sub_nested _ _ _ pv); [ apply gc_sub_grow; exact Hfr | | exact HK ].
   exact (contributions_found_frame Θ mq Kq P Ψ x _ Ξ0 _ _ (gc_sub_refl _ _)).
@@ -2840,7 +2846,7 @@ Section WellFormed.
   Lemma gc_sub_add : forall Θ Ξ x E, ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> gc_sub Θ Ξ Θ (gs_add x E Ξ).
   Proof.
     intros * HΞ Hfr; destruct Ξ as [| [[mq Kq] U] Ξ]; [ contradiction |].
-    destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
+    destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as [_ [P Ψ -> _] _ _].
     apply gc_sub_grow; exact Hfr.
   Qed.
 
@@ -2918,7 +2924,7 @@ Section WellFormed.
     inversion Hclose as [| | ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? Hc0 Hnil]; subst.
     inversion Hnil; subst.
     inversion Hc0; subst.
-    destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ1) as (HΞ0 & [P Φ -> HΦ] & _).
+    destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ1) as [HΞ0 [P Φ -> HΦ] _ _].
     apply gen_run_add; [ exact HΞ | assumption |].
     apply add_entry_wf; [ exact HΞ0 | eapply wf_gentry_mod; exact HΦ | assumption ].
   Qed.
@@ -2977,7 +2983,7 @@ Section WellFormed.
       cbn; exists x; split; [ reflexivity | exact Hfr ]. }
     destruct (ind_mod_cmds_run_gen _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr Hpush) as [-> -> -> H1 _ Hp _].
     cbn in Hp; injection Hp as -> -> HP.
-    destruct (wf_gstack_cons_inv _ _ _ _ _ H1) as (H10 & [Δ Φ -> HΦ] & _); cbn in HP; subst Δ.
+    destruct (wf_gstack_cons_inv _ _ _ _ _ H1) as [H10 [Δ Φ -> HΦ] _ _]; cbn in HP; subst Δ.
     apply gen_run_add; [ exact HΞ | exact Hfr |].
     apply add_entry_wf; [ exact H10 | | exact Hfr ].
     eapply wf_gentry_ind_body; [ exact Hu | exact HΦ ].
@@ -3041,13 +3047,13 @@ Section WellFormed.
       cbn; exists x; split; [ reflexivity | exact Hfr ].
     - (* a module's frame, closed into its member of the frame below *)
       intros ch B Rb Θ Ξ x pv mp U -> Hfr HΞ Hc Hst.
-      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (HΞ0 & [P Φ -> HΦ] & _).
+      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as [HΞ0 [P Φ -> HΦ] _ _].
       repeat split; [| exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl
                     | apply stack_in_add; eapply stack_in_tl; exact Hst ].
       apply add_entry_wf; [ exact HΞ0 | eapply wf_gentry_mod; exact HΦ | exact Hfr ].
     - (* a record's frame, closed into the record in the frame below *)
       intros ch B Rb Θ Ξ x pv mp R U -> Hfr HΞ Hc Hst.
-      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (HΞ0 & [P Φ -> HΦ] & _).
+      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as [HΞ0 [P Φ -> HΦ] _ _].
       destruct (wf_gmod_record_params _ _ _ _ _ _ HΦ) as (Δ & -> & HR).
       repeat split; [| exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply builtins_le_refl
                     | apply stack_in_add; eapply stack_in_tl; exact Hst ].
@@ -3069,6 +3075,7 @@ Section WellFormed.
       pose proof (proj1 (proj2 (proj2 run_chain_fresh)) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
       assert (Hcf : canon ((fp, BU) :: RbU) ((fp, U) :: ΘU)) by (eapply canon_file; eassumption).
       assert (Hag : gds_agree Θ ((fp, U) :: ΘU)) by exact (proj1 (canon_agree _ _ _ _ Hc Hcf)).
+      assert (Hfp : fp <> nil) by (inversion Hu; assumption).
       assert (Hwf : ⊢ᵍ gds_merge Θ ((fp, U) :: ΘU) ⍮ nil)
         by (apply merge_wf; [ eapply wf_gstack_deps; eassumption | apply wf_gstack_file'; assumption | exact Hag ]).
       split; [ eapply gstack_deps_grow; [ apply merge_left | exact HΞ | exact Hwf |] |].
@@ -3143,7 +3150,7 @@ Section WellFormed.
     - (* a unit: its imports from nothing, its parameters, then its body in
          the frame named by its path, which nothing it imported filed, and
          which the body never closes ([run_bottom]) *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P l cs Θ1 Θ2 mp K U Hi IHi _ Htel HP HPr _ Hb IHb.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P l cs Θ1 Θ2 mp K U Hfp Hi IHi _ Htel HP HPr _ Hb IHb.
       destruct (IHi ltac:(constructor; constructor) canon_nil ltac:(intros ? ? ? [])) as (H1 & Hc1 & _ & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
@@ -3154,7 +3161,7 @@ Section WellFormed.
         - cbn; rewrite app_nil_r; exact HP.
         - exact Hps.
         - exact HT.
-        - cbn; split; [ exact Hn1 | reflexivity ]. }
+        - cbn; constructor; [ exact Hn1 | reflexivity | exact Hfp ]. }
       destruct (IHb Hpush Hc1 ltac:(intros ? ? ? [[= <- <- <-] | []]; left; reflexivity)) as (H2 & Hc2 & _ & _).
       pose proof (proj1 (proj2 run_bottom) _ _ _ _ _ _ _ _ _ _ Hb) as Hp; unfold gs_bottom in Hp; cbn in Hp.
       injection Hp as -> -> _.
@@ -3211,6 +3218,7 @@ Section WellFormed.
     pose proof (proj1 (proj2 (proj2 run_chain_fresh)) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
     assert (Hcf : canon ((fp, BU) :: RbU) ((fp, U) :: ΘU)) by (eapply canon_file; eassumption).
     assert (Hag : gds_agree Θ ((fp, U) :: ΘU)) by exact (proj1 (canon_agree _ _ _ _ Hc Hcf)).
+    assert (Hfp : fp <> nil) by (inversion Hu; assumption).
     assert (Hwf : ⊢ᵍ gds_merge Θ ((fp, U) :: ΘU) ⍮ nil)
       by (apply merge_wf; [ eapply wf_gstack_deps; eassumption | apply wf_gstack_file'; assumption | exact Hag ]).
     split; [ eapply gstack_deps_grow; [ apply merge_left | exact HΞ | exact Hwf |] |].
@@ -3276,12 +3284,12 @@ Section WellFormed.
       eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact Hff | eassumption ] | exact Hb ].
     - (* a module's frame closed: read in the member it becomes *)
       intros ch B Rb Θ Ξ x pv mp U -> Hfr HΞ _ _ Hb HR; split; [| exact HR ].
-      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (HΞ0 & [P Φ -> _] & _).
+      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as [HΞ0 [P Φ -> _] _ _].
       eapply builtins_wf_mono; [| exact Hb ].
       intros p0 D0 Hl; exact (ind_lookup_close _ Ξ x pv fk_module P Φ _ _ HΞ0 Hfr I Hl).
     - (* a record's frame closed: read in the record it becomes *)
       intros ch B Rb Θ Ξ x pv mp R U -> Hfr HΞ _ _ Hb HR; split; [| exact HR ].
-      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (HΞ0 & [P Φ -> HΦ] & _).
+      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as [HΞ0 [P Φ -> HΦ] _ _].
       destruct (wf_gmod_record_params _ _ _ _ _ _ HΦ) as (Δ & -> & HRp).
       eapply builtins_wf_mono; [| exact Hb ].
       intros p0 D0 Hl; exact (ind_lookup_close _ Ξ x pv (fk_record R) _ Φ _ _ HΞ0 Hfr (ex_intro _ Δ (conj eq_refl HRp)) Hl).
@@ -3361,12 +3369,12 @@ Section WellFormed.
       destruct (IH1 HΞ Hc Hst Hb HR) as [Hb1 HR1].
       exact (IH2 H1 Hc1 Hst1 Hb1 HR1).
     - (* a unit: its imports, its frame pushed, then filed *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P l cs Θ1 Θ2 mp K U Hi IHi _ Htel HP HPr _ Hbd IHb.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P l cs Θ1 Θ2 mp K U Hfp Hi IHi _ Htel HP HPr _ Hbd IHb.
       assert (Hnil : ⊢ᵍ nil ⍮ nil) by (constructor; constructor).
       destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hi Hnil canon_nil ltac:(intros ? ? ? [])) as (H1 & Hc1 & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
-      assert (Hff : frame_fresh Θ1 nil (q_abs fp nil)) by (cbn; split; [ exact Hn1 | reflexivity ]).
+      assert (Hff : frame_fresh Θ1 nil (q_abs fp nil)) by (cbn; constructor; [ exact Hn1 | reflexivity | exact Hfp ]).
       destruct (params_evaluated_sorts _ _ _ _ _ HPr) as (ps & Hps & HT).
       assert (Hpush : ⊢ᵍ Θ1 ⍮ gs_push (q_abs fp nil) P nil).
       { apply wf_gstack_cons; [ exact H1 | eapply wf_gmod_nil with (param_level := l) (param_sorts := ps) | exact Hff ].
@@ -3405,7 +3413,7 @@ Section WellFormed.
       destruct (IHr Hpush Hc Hst' Hb0 HR) as [Hb1 HR1].
       destruct (ind_mod_cmds_run_gen _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr Hpush) as [_ _ _ _ _ Hp _].
       cbn in Hp; injection Hp as -> -> HP.
-      destruct (wf_gstack_cons_inv _ _ _ _ _ H1) as (H10 & [Δ Φ -> HΦ] & _); cbn in HP; subst Δ.
+      destruct (wf_gstack_cons_inv _ _ _ _ _ H1) as [H10 [Δ Φ -> HΦ] _ _]; cbn in HP; subst Δ.
       assert (Hadd' : ⊢ᵍ Θ1 ⍮ gs_add x (ge_ind pv pq k D (gu_mod (gu_body (raw_decl_uparams R) Φ))) ((mq, Kq, Uq) :: Ξ0)).
       { apply add_entry_wf; [ exact H10 | | exact Hfr ].
         eapply wf_gentry_ind_body; [ exact Hu | exact HΦ ]. }
@@ -3554,14 +3562,14 @@ Fixpoint closure_ok (S : list path) (Θ : gdeps) : Prop :=
 Theorem restrict_wf : forall S Θ, ⊢ᵍ Θ ⍮ nil -> closure_ok S Θ -> ⊢ᵍ gds_restrict S Θ ⍮ nil.
 Proof.
   intros S; induction Θ as [| [fp U] Θ IH]; intros Hwf Hc; [ exact Hwf |].
-  destruct Hc as [Hc Hcl]; destruct (wf_gstack_file_inv _ _ _ Hwf) as (HΘ & _ & Hn).
+  destruct Hc as [Hc Hcl]; destruct (wf_gstack_file_inv _ _ _ Hwf) as [HΘ _ Hn Hfp].
   assert (HR : ⊢ᵍ gds_restrict S Θ ⍮ nil) by auto.
   unfold gds_restrict; cbn [filter fst]; fold (gds_restrict S Θ).
   destruct (existsb (path_beq fp) S) eqn:Hb; [| exact HR ].
   apply existsb_path_beq in Hb; destruct (Hc Hb) as (ΘU & HU & Hsub & Hdom).
   assert (HnR : gds_lookup (gds_restrict S Θ) fp = None)
     by (rewrite gds_lookup_restrict; destruct (existsb _ _); [ exact Hn | reflexivity ]).
-  apply wf_gstack_file'; [ exact HR | | exact HnR ].
+  apply wf_gstack_file'; [ exact HR | | exact HnR | exact Hfp ].
   eapply unit_deps_grow; [| exact HR | exact HnR | exact HU ].
   intros x V HV; rewrite gds_lookup_restrict.
   assert (Hx : In x S) by (apply Hdom, gds_dom_lookup; rewrite HV; discriminate).
@@ -3646,9 +3654,9 @@ Section Runs.
       eapply run_cmds_written; [ exact Ha | exact Hfa | apply IH1; eapply Hpre; eassumption | auto ].
     - intros * Hr1 IH1 Hr2 IH2 ch' Hch.
       eapply run_cmds_core; [ apply IH1; eapply Hpre; eassumption | auto ].
-    - intros fp ch B1 Rb1 B2 Rb2 imps P P3 l cs Θ1 Θ2 mp K U Hi IHi Hfa Htel HP HPr Ha Hb IHb ch' Hch.
+    - intros fp ch B1 Rb1 B2 Rb2 imps P P3 l cs Θ1 Θ2 mp K U Hfp Hi IHi Hfa Htel HP HPr Ha Hb IHb ch' Hch.
       cbn [hd] in *; econstructor;
-        [ apply IHi; eapply Hpre; eassumption | eassumption | assumption | assumption | exact HPr | assumption | auto ].
+        [ exact Hfp | apply IHi; eapply Hpre; eassumption | eassumption | assumption | assumption | exact HPr | assumption | auto ].
     - intros; constructor.
     - intros * HM Hfr HE Hr IHr Hrest IHrest ch' Hch.
       econstructor; [ exact HM | exact Hfr | exact HE | apply IHr; eapply Hpre'; eassumption | apply IHrest; exact Hch ].

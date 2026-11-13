@@ -2387,20 +2387,68 @@ Lemma wf_gstack_cons' : forall Θ Ξ mp K U,
     ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> frame_fresh Θ Ξ mp -> ⊢ᵍ Θ ⍮ (mp, K, U) :: Ξ.
 Proof. intros * ? [Δ Φ -> ?] ?; apply wf_gstack_cons; assumption. Qed.
 
-Lemma wf_gstack_cons_inv : forall Θ Ξ mp K U,
-    ⊢ᵍ Θ ⍮ (mp, K, U) :: Ξ -> ⊢ᵍ Θ ⍮ Ξ /\ Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U /\ frame_fresh Θ Ξ mp.
-Proof. inversion 1; subst; eauto using wf_gunit_intro. Qed.
+(** A path fresh on a well-formed stack is in a unit of a non-empty path:
+    the top frame's is named so ([top_fresh_named]), and a member is in its
+    module's unit. *)
+Lemma frame_fresh_named : forall Θ Ξ mp, ⊢ᵍ Θ ⍮ Ξ -> frame_fresh Θ Ξ mp -> q_unit mp <> nil.
+Proof.
+  intros Θ Ξ; induction Ξ as [| [[mq Kq] Uq] Ξ IH]; intros mp HΞ Hf.
+  - exact (top_fresh_named _ _ Hf).
+  - destruct Hf as (x & -> & _); cbn.
+    inversion HΞ; subst; eapply IH; eassumption.
+Qed.
+
+(** [gstack_cons_parts Θ Ξ mp K U]: the premises of [wf_gstack_cons] for
+    the frame [(mp, K, U)] over [Ξ]. *)
+Record gstack_cons_parts (Θ : gdeps) (Ξ : gstack) (mp : qname) (K : frame_kind) (U : gunit) : Prop :=
+  { (** The stack below is well formed *)
+    gstack_cons_below : ⊢ᵍ Θ ⍮ Ξ
+    (** The frame's unit is well formed over it *)
+  ; gstack_cons_unit : Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U
+    (** The frame's path is fresh there *)
+  ; gstack_cons_fresh : frame_fresh Θ Ξ mp
+    (** The frame's path is in a unit of a non-empty path *)
+  ; gstack_cons_path : q_unit mp <> nil }.
+
+Lemma wf_gstack_cons_inv : forall Θ Ξ mp K U, ⊢ᵍ Θ ⍮ (mp, K, U) :: Ξ -> gstack_cons_parts Θ Ξ mp K U.
+Proof. inversion 1; subst; constructor; eauto using wf_gunit_intro, frame_fresh_named. Qed.
+
+(** The path of a frame is in a unit of a non-empty path. *)
+Lemma wf_gstack_top_unit : forall Θ Ξ mp K U, ⊢ᵍ Θ ⍮ (mp, K, U) :: Ξ -> q_unit mp <> nil.
+Proof. intros * H; exact (gstack_cons_path _ _ _ _ _ (wf_gstack_cons_inv _ _ _ _ _ H)). Qed.
+
+(** A fresh path on a non-empty stack is in the same unit as the frame
+    it is in, so in a unit of a non-empty path. *)
+Lemma frame_fresh_unit : forall Θ mq Kq Uq Ξ mp, ⊢ᵍ Θ ⍮ (mq, Kq, Uq) :: Ξ -> frame_fresh Θ ((mq, Kq, Uq) :: Ξ) mp ->
+    q_unit mp <> nil.
+Proof. intros * H (x & -> & _); exact (wf_gstack_top_unit _ _ _ _ _ H). Qed.
 
 (** Filing, from the premises of the frame it closes. *)
 Lemma wf_gstack_file' : forall Θ fp U,
-    ⊢ᵍ Θ ⍮ nil -> Θ ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U -> gds_lookup Θ fp = None -> ⊢ᵍ (fp, U) :: Θ ⍮ nil.
-Proof. intros * ? ? ?; apply wf_gstack_file, wf_gstack_cons'; [ assumption | assumption | split; [ assumption | reflexivity ] ]. Qed.
+    ⊢ᵍ Θ ⍮ nil -> Θ ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U -> gds_lookup Θ fp = None -> fp <> nil ->
+    ⊢ᵍ (fp, U) :: Θ ⍮ nil.
+Proof.
+  intros * ? ? ? Hfp; apply wf_gstack_file.
+  apply wf_gstack_cons'; [ assumption | assumption | constructor; [ assumption | reflexivity | exact Hfp ] ].
+Qed.
 
-Lemma wf_gstack_file_inv : forall Θ fp U,
-    ⊢ᵍ (fp, U) :: Θ ⍮ nil -> ⊢ᵍ Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U /\ gds_lookup Θ fp = None.
+(** [gstack_file_parts Θ fp U]: the premises of filing the unit [U] at
+    [fp] over the units [Θ]. *)
+Record gstack_file_parts (Θ : gdeps) (fp : path) (U : gunit) : Prop :=
+  { (** The units filed before are well formed *)
+    gstack_file_below : ⊢ᵍ Θ ⍮ nil
+    (** The unit is well formed as the only frame, at its path *)
+  ; gstack_file_unit : Θ ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U
+    (** No unit is filed at its path *)
+  ; gstack_file_fresh : gds_lookup Θ fp = None
+    (** Its path is non-empty *)
+  ; gstack_file_path : fp <> nil }.
+
+Lemma wf_gstack_file_inv : forall Θ fp U, ⊢ᵍ (fp, U) :: Θ ⍮ nil -> gstack_file_parts Θ fp U.
 Proof.
   inversion 1; subst.
-  match goal with H : ⊢ᵍ _ ⍮ _ :: nil |- _ => destruct (wf_gstack_cons_inv _ _ _ _ _ H) as (? & ? & [? _]) end; auto.
+  match goal with H : ⊢ᵍ _ ⍮ _ :: nil |- _ => destruct (wf_gstack_cons_inv _ _ _ _ _ H) as [? ? [? _ ?] _] end.
+  constructor; assumption.
 Qed.
 
 #[export]

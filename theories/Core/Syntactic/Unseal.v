@@ -223,7 +223,7 @@ Lemma frame_fresh_unseal : forall Θ Ξ mp,
     frame_fresh Θ Ξ mp -> frame_fresh (gds_unseal Θ) (gs_unseal Ξ) mp.
 Proof.
   intros * H; destruct Ξ as [| [[mq Kq] U] Ξ]; cbn in *.
-  - destruct H as [Hn Hc]; split; [ rewrite gds_lookup_unseal, Hn; reflexivity | assumption ].
+  - destruct H as [Hn Hc Hu]; constructor; [ rewrite gds_lookup_unseal, Hn; reflexivity | exact Hc | exact Hu ].
   - destruct H as (x & -> & Hx); exists x; split; [ reflexivity |].
     rewrite gu_mod_unseal; apply gm_fresh_unseal; assumption.
 Qed.

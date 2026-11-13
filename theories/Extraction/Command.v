@@ -920,7 +920,7 @@ Lemma added_ind_params_evaluated : forall Θ Ξ x pv pq k Dd Φx Δu,
 Proof.
   intros * Hfr Hg Hu.
   destruct Ξ as [| [[mq Kq] U] Ξ0]; [ contradiction |]; cbn [gs_add] in Hg |- *.
-  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (Hg0 & HU & Hff).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as [Hg0 HU Hff Hpath].
   pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ; cbn [gu_mod gu_params] in HΦ.
   inversion HΦ; subst.
   (** the frame before the entry, where it is well formed *)

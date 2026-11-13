@@ -87,7 +87,7 @@ Proof.
   induction 1 as [| | Θ Ξ mq Kq Δ Φ HΞ IH HV Hff]; intros mp K0 V0 Hin; try (cbn in Hin; contradiction).
   destruct Hin as [[= <- <- <-] | Hin]; [| eauto ].
   destruct Ξ as [| [[mr Kr] W] Ξ']; cbn in Hff.
-  - exact (proj1 Hff).
+  - exact (top_fresh_unfiled _ _ Hff).
   - destruct Hff as (x & -> & _); cbn; apply (IH mr Kr W); left; reflexivity.
 Qed.
 
@@ -764,7 +764,7 @@ Proof.
   - injection Hf as HU Hip HT; subst ip U T0.
     apply qname_strip_app_inv in Hs; rewrite qname_app_nil in Hs; subst mf.
     destruct Ξ as [| [[mq Kq'] V] Ξ']; cbn in Hff |- *.
-    + left; destruct Hff as [Hn Hc]; repeat split; assumption.
+    + left; destruct Hff as [Hn Hc _]; repeat split; assumption.
     + destruct Hff as (x & -> & Hx); right.
       exists (q_chain mq), x, V, (gs_tele Ξ'); split; [ reflexivity |].
       split; [| split; [ exact Hx | reflexivity ] ].
@@ -1249,7 +1249,7 @@ Qed.
 Lemma wf_gstack_app_inv : forall Θ Ξ1 Ξ0, ⊢ᵍ Θ ⍮ Ξ1 ++ Ξ0 -> ⊢ᵍ Θ ⍮ Ξ0 /\ gc_sub Θ Ξ0 Θ (Ξ1 ++ Ξ0).
 Proof.
   intros Θ Ξ1; induction Ξ1 as [| [[mp K] U] Ξ1 IH]; intros Ξ0 H; cbn in *; [ split; [ exact H | apply gc_sub_refl ] |].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ H) as (H1 & _ & Hf); destruct (IH _ H1) as [H0 Hs].
+  destruct (wf_gstack_cons_inv _ _ _ _ _ H) as [H1 _ Hf _]; destruct (IH _ H1) as [H0 Hs].
   split; [ exact H0 | eapply gc_sub_trans; [ exact Hs | apply gc_sub_push; exact Hf ] ].
 Qed.
 
@@ -1259,7 +1259,7 @@ Lemma frame_ind_selfpath : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p pq k D, gs
 Proof.
   intros * Hg * Hf; destruct (gs_find_ind_split _ _ _ _ _ Hf) as (Ξ1 & U & Ξ0 & -> & _).
   destruct (wf_gstack_app_inv _ _ _ Hg) as [Hg0 _].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & [Δ Φ -> HΦ] & _).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as [_ [Δ Φ -> HΦ] _ _].
   exact (proj1 ((proj2 wf_gmod_kind) _ _ _ _ _ _ HΦ _ _ _ eq_refl)).
 Qed.
 
@@ -1274,7 +1274,7 @@ Proof.
     reflexivity.
   - destruct (gs_find_ind_split _ _ _ _ _ Hf) as (Ξ1 & U & Ξ0 & HΞ & _); rewrite HΞ in Hg |- *.
     destruct (wf_gstack_app_inv _ _ _ Hg) as [Hg0 Hs].
-    destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & [Δ Φ -> HΦ] & Hff).
+    destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as [_ [Δ Φ -> HΦ] Hff _].
     destruct (proj2 ((proj2 wf_gmod_kind) _ _ _ _ _ _ HΦ _ _ _ eq_refl)) as [Hk | Hl]; [ discriminate |].
     exact (ind_lookup_gc_sub _ _ _ _ _ _ (gc_sub_trans _ _ _ _ _ _ (gc_sub_push _ _ _ _ _ Hff) Hs) Hl).
 Qed.
@@ -1287,7 +1287,7 @@ Proof.
   intros * Hg * Hf Hfr; destruct (gs_find_ind_split _ _ _ _ _ Hf) as (Ξ1 & U & Ξ0 & HΞ & Ht).
   unfold gc_frame in Hfr; rewrite Ht in Hfr; rewrite HΞ in Hg.
   destruct (wf_gstack_app_inv _ _ _ Hg) as [Hg0 _].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & [Δ Φ0 -> HΦ] & _).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as [_ [Δ Φ0 -> HΦ] _ _].
   injection Hfr as <- <-; symmetry; exact (proj1 (wf_gmod_ind_uparams _ _ _ _ _ _ HΦ _ _ _ eq_refl)).
 Qed.
 
@@ -1297,7 +1297,7 @@ Proof.
   intros * Hg * Hf; destruct r as [[pq k] D].
   destruct (gs_find_ind_split _ _ _ _ _ Hf) as (Ξ1 & U & Ξ0 & HΞ & _); rewrite HΞ in Hg.
   destruct (wf_gstack_app_inv _ _ _ Hg) as [Hg0 _].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & [Δ Φ0 -> HΦ] & Hff).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as [_ [Δ Φ0 -> HΦ] Hff _].
   destruct (wf_gmod_ind_uparams _ _ _ _ _ _ HΦ _ _ _ eq_refl) as [_ Hne].
   destruct Ξ0 as [| [[mq Kq] V] Ξ0]; [ contradiction |].
   destruct Hff as (x & -> & _); eauto.
@@ -1340,7 +1340,7 @@ Proof.
   intros * Hg * Hf.
   destruct (gs_find_record_split _ _ _ Hf) as (Ξ1 & U & Ξ0 & HΞ & _); rewrite HΞ in Hg.
   destruct (wf_gstack_app_inv _ _ _ Hg) as [Hg0 _].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & [Δ Φ0 -> HΦ] & Hff).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as [_ [Δ Φ0 -> HΦ] Hff _].
   destruct (wf_gmod_record_params _ _ _ _ _ _ HΦ _ eq_refl) as (_ & _ & _ & Hne).
   destruct Ξ0 as [| [[mq Kq] V] Ξ0]; [ contradiction |].
   destruct Hff as (x & -> & _); eauto.
@@ -1413,7 +1413,7 @@ Proof.
   intros * Hg * Hf Ht; destruct (gs_find_record_split _ _ _ Hf) as (Ξ1 & U' & Ξ0 & HΞ & Ht').
   rewrite Ht in Ht'; injection Ht' as -> ->.
   rewrite HΞ in Hg; destruct (wf_gstack_app_inv _ _ _ Hg) as [Hg0 _].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & [Δ Φ0 -> HΦ] & _).
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as [_ [Δ Φ0 -> HΦ] _ _].
   destruct (wf_gmod_record_params _ _ _ _ _ _ HΦ _ eq_refl) as (Δr & -> & HP & _).
   exists Δr; split; [ reflexivity | exact HP ].
 Qed.

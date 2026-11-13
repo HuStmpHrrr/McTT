@@ -1308,13 +1308,26 @@ Proof.
     rewrite Hr; reflexivity.
 Qed.
 
+(** [top_frame_fresh Θ mp]: [mp] may name the frame of a unit opened with
+    no frame below it. *)
+Record top_frame_fresh (Θ : gdeps) (mp : qname) : Prop :=
+  { (** No unit is filed at its unit's path *)
+    top_fresh_unfiled : gds_lookup Θ (q_unit mp) = None
+    (** It is the unit itself, no member of one *)
+  ; top_fresh_root : q_chain mp = nil
+    (** Its unit's path is not the empty one: a unit's path is a file's
+        name.  So nothing is filed below the empty path, and the module a
+        term entry gives where a module is read ([sentry_modexp] of an
+        [se_exp]) has no member *)
+  ; top_fresh_named : q_unit mp <> nil }.
+
 (** A frame may be pushed when its module path is fresh where it is pushed: a
-    unit not filed below, named by its root path, or a member not yet declared
-    in the enclosing frame.  The root condition makes every prefix of a path
-    that resolves resolve as well. *)
+    unit not filed below, named by its root path ([top_frame_fresh]), or a
+    member not yet declared in the enclosing frame.  The root condition makes
+    every prefix of a path that resolves resolve as well. *)
 Definition frame_fresh (Θ : gdeps) (Ξ : gstack) (mp : qname) : Prop :=
   match Ξ with
-  | nil => gds_lookup Θ (q_unit mp) = None /\ q_chain mp = nil
+  | nil => top_frame_fresh Θ mp
   | (mq, _, U) :: _ => exists x, mp = qname_in mq x /\ gm_fresh x (gu_mod U)
   end.
 
@@ -1329,7 +1342,7 @@ Proof.
     destruct (path_beq (q_unit mp) (q_unit p)) eqn:Hb; [| discriminate ].
     apply path_beq_true in Hb.
     destruct Ξ as [| [[mq K'] V] Ξ']; cbn in Hf, Hr.
-    + destruct Hf as [Hf _].
+    + destruct Hf as [Hf _ _].
       rewrite <- Hb, Hf in Hr; discriminate.
     + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
@@ -1341,7 +1354,7 @@ Proof.
     destruct (path_beq (q_unit mp) (q_unit p)) eqn:Hb; [| discriminate ].
     apply path_beq_true in Hb.
     destruct Ξ as [| [[mq K'] V] Ξ']; cbn in Hf, Hr.
-    + destruct Hf as [Hf _].
+    + destruct Hf as [Hf _ _].
       rewrite <- Hb, Hf in Hr; discriminate.
     + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
@@ -1353,7 +1366,7 @@ Proof.
     destruct (path_beq (q_unit mp) (q_unit p)) eqn:Hb; [| discriminate ].
     apply path_beq_true in Hb.
     destruct Ξ as [| [[mq K'] V] Ξ']; cbn in Hf, Hr.
-    + destruct Hf as [Hf _].
+    + destruct Hf as [Hf _ _].
       rewrite <- Hb, Hf in Hr; discriminate.
     + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
@@ -1375,7 +1388,7 @@ Proof.
     destruct (path_beq (q_unit mp) (q_unit p)) eqn:Hb; [| discriminate ].
     apply path_beq_true in Hb.
     destruct Ξ as [| [[mq K'] V] Ξ']; cbn in Hf, Hr.
-    + destruct Hf as [Hf _].
+    + destruct Hf as [Hf _ _].
       rewrite <- Hb, Hf in Hr; discriminate.
     + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
@@ -1537,7 +1550,7 @@ Proof.
   destruct (path_beq (q_unit mp) (q_unit p)) eqn:Hb; [| discriminate ].
   apply path_beq_true in Hb.
   destruct Ξ as [| [[mq K'] V] Ξ']; cbn in Hf, Hr.
-  - destruct Hf as [Hf _]; rewrite <- Hb, Hf in Hr; discriminate.
+  - destruct Hf as [Hf _ _]; rewrite <- Hb, Hf in Hr; discriminate.
   - destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
     pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
     unfold qname_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.

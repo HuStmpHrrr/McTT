@@ -308,7 +308,7 @@ Section Impl.
       forall fp U, gds_lookup Θ fp = Some U -> entry_ok Θ K fp U.
   Proof.
     intros K; induction Θ as [| [fq V] Θ IH]; intros Hwf HE fp U HU; [ discriminate |]; destruct HE as [HV HΘ].
-    destruct (wf_gstack_file_inv _ _ _ Hwf) as (Hwf0 & _ & Hn).
+    destruct (wf_gstack_file_inv _ _ _ Hwf) as [Hwf0 _ Hn _].
     apply (entry_ok_sub Θ); [ apply gds_sub_cons, Hn |].
     cbn in HU; destruct (path_beq fp fq) eqn:Hb; [| exact (IH Hwf0 HΘ _ _ HU) ].
     apply path_beq_true in Hb as ->; injection HU as <-; exact HV.
@@ -419,12 +419,12 @@ Section Impl.
   Qed.
 
   (** A unit's own frame: its path heads the chain, so it is not filed. *)
-  Lemma unit_invariant_push_unit {fp ch Θ K D ΘR P l} :
+  Lemma unit_invariant_push_unit {fp ch Θ K D ΘR P l} : fp <> nil ->
     unit_invariant (fp :: ch) Θ K D ΘR nil -> all_assumptions P -> ⊢ gds_restrict D Θ ⍮ nil ⍮ P ->
     params_evaluated (gds_restrict D Θ) nil nil P l ->
     ⊢ ΘR ⍮ nil ⍮ P /\ params_evaluated ΘR nil nil P l /\ unit_invariant (fp :: ch) Θ K D ΘR (gs_push (q_abs fp nil) P nil).
   Proof.
-    intros Hli Htel HP HPr.
+    intros Hfp Hli Htel HP HPr.
     assert (HP' : ⊢ ΘR ⍮ nil ⍮ P)
       by exact (equiv_ctx _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HP).
     pose proof (equiv_params_evaluated _ _ _ _ _ _ (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) (ui_wf _ _ _ _ _ _ Hli) HPr) as HPr'.
@@ -433,7 +433,7 @@ Section Impl.
     destruct (params_evaluated_sorts _ _ _ _ _ HPr') as (ps & Hps & HT).
     apply wf_gstack_cons;
       [ apply (ui_wf _ _ _ _ _ _ Hli) | eapply wf_gmod_nil; [ exact Htel | cbn; rewrite app_nil_r; exact HP' | eassumption .. ] |].
-    cbn; split; [| reflexivity ].
+    cbn; constructor; [| reflexivity | exact Hfp ].
     exact (sub_none _ _ _ (ui_sub _ _ _ _ _ _ Hli) (gi_chain _ _ _ (ui_global _ _ _ _ _ _ Hli) _ (or_introl eq_refl))).
   Qed.
 
@@ -842,7 +842,7 @@ Section Impl.
     assert (Hn1 : gds_lookup Θ1 fp = None) by exact (gi_chain _ _ _ G1 _ (or_introl eq_refl)).
     set (ΘN := (fp, U) :: Θ1).
     assert (HwN : ⊢ᵍ ΘN ⍮ nil).
-    { apply wf_gstack_file'; [ exact (gi_wf _ _ _ G1) | | exact Hn1 ].
+    { apply wf_gstack_file'; [ exact (gi_wf _ _ _ G1) | | exact Hn1 | inversion Hu; assumption ].
       eapply unit_deps_grow; [ exact Hsub1 | exact (gi_wf _ _ _ G1) | exact Hn1 | exact HUu ]. }
     assert (Hsub1N : Θ1 ⊑ ΘN) by exact (gds_sub_cons _ _ _ Hn1).
     assert (HfpN : gds_lookup ΘN fp = Some U) by (cbn; rewrite path_beq_refl; reflexivity).
@@ -1416,19 +1416,19 @@ Section Impl.
     global_invariant ch Θ K -> post_cmds ch Θ K nil builtins_empty nil imps r1 -> ⊢ᵍ gds_restrict (run_state_core_imports r1) (run_state_core_deps r1) ⍮ nil.
   Proof. intros G Hp; destruct (unit_imports G Hp) as (ΘR1 & _ & _ & _ & Hli1 & _); exact (unit_invariant_restrict_gctx Hli1). Qed.
 
-  Lemma unit_body_pre {fp ch Θ K imps r1 P l} :
+  Lemma unit_body_pre {fp ch Θ K imps r1 P l} : fp <> nil ->
     global_invariant (fp :: ch) Θ K -> post_cmds (fp :: ch) Θ K nil builtins_empty nil imps r1 -> all_assumptions P ->
     ⊢ gds_restrict (run_state_core_imports r1) (run_state_core_deps r1) ⍮ nil ⍮ P ->
     params_evaluated (gds_restrict (run_state_core_imports r1) (run_state_core_deps r1)) nil nil P l ->
     exists ΘR, unit_invariant (fp :: ch) (run_state_core_deps r1) (run_state_core_closures r1) (run_state_core_imports r1) ΘR (gs_push (q_abs fp nil) P nil).
   Proof.
-    intros G Hp Htel HP HPr; destruct (unit_imports G Hp) as (ΘR1 & _ & _ & _ & Hli1 & _).
-    exists ΘR1; exact (proj2 (proj2 (unit_invariant_push_unit Hli1 Htel HP HPr))).
+    intros Hfp G Hp Htel HP HPr; destruct (unit_imports G Hp) as (ΘR1 & _ & _ & _ & Hli1 & _).
+    exists ΘR1; exact (proj2 (proj2 (unit_invariant_push_unit Hfp Hli1 Htel HP HPr))).
   Qed.
 
   (** A unit: its imports, its parameters filled and checked, then its
       body in its own frame, which is the only one left. *)
-  Lemma unit_ok {fp ch Θ K imps P0 P l cs r1 r2 mp Kf U} :
+  Lemma unit_ok {fp ch Θ K imps P0 P l cs r1 r2 mp Kf U} : fp <> nil ->
     post_cmds (fp :: ch) Θ K nil builtins_empty nil (List.map ci_written imps) r1 ->
     fill_params (gds_restrict (run_state_core_imports r1) (run_state_core_deps r1)) nil (run_state_core_builtins r1) P0 P ->
     all_assumptions P ->
@@ -1440,18 +1440,18 @@ Section Impl.
     run_state_core_stack r2 = (mp, Kf, U) :: nil ->
     post_unit (fp :: ch) Θ K (imps, P0, cs) (mk_unit_result_core (run_state_core_deps r2) (run_state_core_closures r2) (run_state_core_imports r2) (run_state_core_builtins r2) U).
   Proof.
-    intros Hp1 Hfa Htel HP HPr Hac Hp2 HΞ G; cbn [unit_result_core_deps unit_result_core_closures unit_result_core_imports unit_result_core_builtins unit_result_core_unit].
+    intros Hfp Hp1 Hfa Htel HP HPr Hac Hp2 HΞ G; cbn [unit_result_core_deps unit_result_core_closures unit_result_core_imports unit_result_core_builtins unit_result_core_unit].
     destruct (unit_imports G Hp1) as (ΘR1 & RbR1 & Hr1 & _ & Hli1 & Hrb1 & He1 & Hg1).
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli1)) as Heq.
     pose proof (equiv_acc _ _ _ _ Heq Hac) as Hac'.
     pose proof (equiv_fill_params _ _ _ _ _ _ Heq (ui_wf _ _ _ _ _ _ Hli1) Hfa) as Hfa'.
-    destruct (unit_invariant_push_unit Hli1 Htel HP HPr) as (HP' & HPr' & Hli1').
+    destruct (unit_invariant_push_unit Hfp Hli1 Htel HP HPr) as (HP' & HPr' & Hli1').
     destruct (Hp2 _ _ Hli1' Hrb1) as [ΘR2 RbR2 Hr2 Hli2 Hrb2 He2 Hg2]; cbn beta in Hr2.
     rewrite HΞ in Hr2, Hli2.
     destruct (unit_invariant_runs_wf Hli1' (proj1 Hrb1) Hr2) as (_ & _ & Hs12 & _).
     destruct Hli2 as [G2 Hs2 Hd2 Hc2 _ _].
     apply (mk_unit_post _ _ _ _ _ RbR2 ΘR2);
-      [ eapply run_unit_intro; [ exact Hr1 | exact Hfa' | exact Htel | exact HP' | exact HPr' | exact Hac' | exact Hr2 ]
+      [ eapply run_unit_intro; [ exact Hfp | exact Hr1 | exact Hfa' | exact Htel | exact HP' | exact HPr' | exact Hac' | exact Hr2 ]
       | exact G2 | exact Hs2 | exact Hd2 | exact Hc2 | exact (proj2 Hrb2) | eapply ext_trans; eassumption |].
     intros x Hx; destruct (Hg2 _ Hx) as [Hx1 | Hx1]; [| right; exact Hx1 ].
     destruct (Hg1 _ Hx1) as [Hx0 | Hx0]; [ left; exact Hx0 | right ].
@@ -2445,7 +2445,7 @@ Section Impl.
   Proof.
     intros H; pose proof (pre_gctx (pre_unit_invariant _ _ _ _ _ H)) as Hw.
     change (decode_stack (f :: fs2)) with (decode_frame f :: decode_stack fs2) in Hw.
-    destruct f as [mp Kf Δ t]; exact (proj1 (wf_gstack_cons_inv _ _ _ _ _ Hw)).
+    destruct f as [mp Kf Δ t]; exact (gstack_cons_below _ _ _ _ _ (wf_gstack_cons_inv _ _ _ _ _ Hw)).
   Qed.
 
   Lemma pre_tail_canon {ch s K D f fs2} : pre ch s K D (f :: fs2) -> canon_stack (decode_stack fs2).
@@ -2498,7 +2498,7 @@ Section Impl.
       value of it, as [kind_tele] has them. *)
   Lemma record_frame_kind_tele {Θ Ξ mp R Δ Φ} : ⊢ᵍ Θ ⍮ (mp, fk_record R, gu_body Δ Φ) :: Ξ -> kind_tele mp (fk_record R) Δ (gs_tele Ξ).
   Proof.
-    intros Hw; destruct (wf_gstack_cons_inv _ _ _ _ _ Hw) as (_ & HU & _).
+    intros Hw; destruct (wf_gstack_cons_inv _ _ _ _ _ Hw) as [_ HU _ _].
     pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ; cbn [gu_params gu_mod] in HΦ.
     destruct (wf_gmod_record_params _ _ _ _ _ _ HΦ R eq_refl) as (Δr & -> & HP & _).
     exists Δr; split; [ reflexivity | exact HP ].
@@ -3793,7 +3793,7 @@ Section Impl.
 
   (** A unit run: its own frame, the only one left, filed as the unit,
       fast *)
-  Lemma unit_res {fp ch s K imps P0 P l cs} (r1 r2 : run_state) {f} : global_invariant (fp :: ch) (decode_units s) K ->
+  Lemma unit_res {fp ch s K imps P0 P l cs} (r1 r2 : run_state) {f} : fp <> nil -> global_invariant (fp :: ch) (decode_units s) K ->
       fast_res (post_cmds (fp :: ch) (decode_units s) K nil builtins_empty nil (List.map ci_written imps)) r1 ->
       fill_params (gds_restrict (run_state_imports r1) (decode_units (run_state_units r1))) nil (run_state_builtins r1) P0 P ->
       all_assumptions P ->
@@ -3805,8 +3805,8 @@ Section Impl.
       run_state_frames r2 = f :: nil ->
       unit_run_ok (fp :: ch) s K (imps, P0, cs) (mk_unit_result (run_state_units r2) (run_state_closures r2) (run_state_imports r2) (run_state_builtins r2) (fu_mk (ff_params f) (fmd_body (ff_body f)))).
   Proof.
-    intros G Hr1 Hfa Htel HP HPr Hac Hr2 HΞ.
-    destruct (unit_body_pre G (fres_post _ _ Hr1) Htel HP HPr) as [ΘR1 Hli1].
+    intros Hfp G Hr1 Hfa Htel HP HPr Hac Hr2 HΞ.
+    destruct (unit_body_pre Hfp G (fres_post _ _ Hr1) Htel HP HPr) as [ΘR1 Hli1].
     destruct (unit_invariant_builtin_records Hli1) as [RbR1 Hrb1].
     destruct Hr1 as [Hp1 _ _ _]; destruct Hr2 as [Hp2 Hu _ Hf Huv Hfv].
     destruct (Hp2 _ _ Hli1 Hrb1) as [ΘR2 RbR2 Hrun Hli2 _ _ _];
@@ -3816,7 +3816,7 @@ Section Impl.
     destruct f as [mp Kf Δ t]; cbn in Hb; injection Hb as -> -> ->.
     assert (Est : run_state_core_stack (run_state_read r2) = decode_frame (mk_fframe (q_abs fp nil) fk_module P t) :: nil)
       by (cbn [run_state_read run_state_core_stack]; rewrite HΞ; reflexivity).
-    pose proof (unit_ok Hp1 Hfa Htel HP HPr Hac Hp2 Est) as Hpost.
+    pose proof (unit_ok Hfp Hp1 Hfa Htel HP HPr Hac Hp2 Est) as Hpost.
     constructor.
     - exact Hpost.
     - exact Hu.
@@ -3839,6 +3839,10 @@ Section Impl.
     | None => e
     end.
 
+  (** A path is the empty one, or not *)
+  Definition path_nil_dec (fp : path) : {fp = nil} + {fp <> nil}.
+  Proof. destruct fp as [| x fp]; [ left; reflexivity | right; discriminate ]. Defined.
+
   (** A list of one element, or not *)
   Definition single_case {A} (l : list A) : {x | l = x :: nil} + {forall x, l <> x :: nil}.
   Proof.
@@ -3853,6 +3857,11 @@ Section Impl.
     match ch as ch0 return loader ch0 -> global_invariant ch0 (decode_units s) K -> run_result ({r | unit_run_ok ch0 s K u r} * certified_log)%type with
     | nil => fun _ _ => run_failure (run_error_msg "internal error: no unit to run")
     | fp :: ch0 => fun L G =>
+    (** a unit's path is a file's name, never the empty one
+        ([top_fresh_named]) *)
+    match path_nil_dec fp with
+    | left _ => run_failure (run_error_msg "a unit at the empty path")
+    | right Hfp =>
     match u as u0 return run_result ({r | unit_run_ok (fp :: ch0) s K u0 r} * certified_log)%type with
     | (imps, P0, cs) =>
         match items_impl (fp :: ch0) L (List.map ci_written imps) (fus_with_visible s (PM.empty _)) K nil builtins_empty nil (unit_pre_f G Hs Hsv) with
@@ -3883,12 +3892,12 @@ Section Impl.
                 let HPr' := cmd_params_evaluated_at (run_state_builtins r1) H1 nil P l HPr in
                 match items_impl (fp :: ch0) L (List.map ci_written cs) (run_state_units r1) (run_state_closures r1) (run_state_imports r1)
                         (run_state_builtins r1) (fs_push (q_abs fp nil) P nil)
-                        (pre_push_unit H1 (unit_body_pre G (fres_post _ _ Hr1) Htel HP' HPr')) with
+                        (pre_push_unit H1 (unit_body_pre Hfp G (fres_post _ _ Hr1) Htel HP' HPr')) with
                 | run_failure e => run_failure e
                 | run_success (exist _ r2 Hr2, l2) =>
                     match single_case (run_state_frames r2) with
                     | inleft (exist _ f HΞ) =>
-                        run_success (exist _ _ (unit_res (s := s) r1 r2 G Hr1
+                        run_success (exist _ _ (unit_res (s := s) r1 r2 Hfp G Hr1
                                                   (cmd_fill_params (run_state_builtins r1) H1 _ _ (fill_params_fn_sound F1 (run_state_builtins r1) (lvd _) Hg1 _ _ Ea))
                                                   Htel HP' HPr' (cmd_acc (run_state_builtins r1) H1 _ Hac) Hr2 HΞ),
                                      log_app l1 l2)
@@ -3901,6 +3910,7 @@ Section Impl.
             end
             end
         end
+    end
     end
     end L G.
 
@@ -4749,8 +4759,9 @@ Section Impl.
         as [[[r2 Hp2] l2] E2]; cbn [run_state_read run_state_core_builtins] in E2; rewrite E2.
       simp items_impl; eexists; reflexivity.
     - (* a unit *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P l cs ΘR1 ΘR2 mp Kf U Hi IHi HPa Htel HP HPr Hac Hb IHb Hacc s K G Hs Hsv.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P l cs ΘR1 ΘR2 mp Kf U Hfp Hi IHi HPa Htel HP HPr Hac Hb IHb Hacc s K G Hs Hsv.
       rewrite run_unit_impl_unfold; cbn [run_unit_step].
+      destruct (path_nil_dec fp) as [Efp | Hfp']; [ contradiction | cbv beta iota ].
       destruct (IHi Hacc (fus_with_visible s (PM.empty _)) K nil nil (unit_pre_f G Hs Hsv) eq_refl (nil_unit_invariant G) (builtin_records_ok_nil K))
         as [[[r1 Hp1] l1] E1]; rewrite E1; cbv beta iota zeta.
       destruct (fres_post _ _ Hp1 _ _ (nil_unit_invariant G) (builtin_records_ok_nil K)) as [ΘR1' RbR1' Hr1 Hli1 Hrb1 _ _]; cbn beta in Hr1.
@@ -4774,7 +4785,7 @@ Section Impl.
             exact (equiv_params_evaluated _ _ _ _ _ _ (unit_invariant_equiv Hli1) (unit_invariant_restrict_gctx Hli1) HPr) ] end.
       match goal with |- context [refs_check ?a ?b ?c] => destruct (refs_check a b c) as [[e Hq] | Hac'] end;
         [ exfalso; apply Hq; cmd_goal; exact (equiv_acc _ _ _ _ (unit_invariant_equiv Hli1) Hac) | cbv beta iota zeta ].
-      destruct (unit_invariant_push_unit Hli1 Htel' (cmd_ctx_at _ _ P HP') (cmd_params_evaluated_at _ _ nil P lP HPr')) as (_ & _ & Hli1').
+      destruct (unit_invariant_push_unit Hfp' Hli1 Htel' (cmd_ctx_at _ _ P HP') (cmd_params_evaluated_at _ _ nil P lP HPr')) as (_ & _ & Hli1').
       match goal with |- context [items_impl (fp :: ch) ?L0 (List.map ci_written cs) (run_state_units r1) (run_state_closures r1) (run_state_imports r1)
                                     (run_state_builtins r1) ?fs1 ?H1] =>
         destruct (IHb Hacc (run_state_units r1) (run_state_closures r1) (run_state_imports r1) fs1 H1 eq_refl Hli1' Hrb1) as [[[r2 Hp2] l2] E2] end.

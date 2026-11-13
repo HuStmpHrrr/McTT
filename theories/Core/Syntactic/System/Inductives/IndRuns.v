@@ -414,7 +414,7 @@ Section IndRuns.
     - intros Φ' Hg' Hs'.
       assert (Hl' : ind_lookup Θ ((mr, fk_module, gu_body (recursor_tele pq D Δu) Φ') :: Ξ) pq = Some D).
       { eapply ind_lookup_gc_sub; [ exact Hs' |].
-        eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact (proj2 (proj2 (wf_gstack_cons_inv _ _ _ _ _ Hpush))) | exact Hl ]. }
+        eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact (gstack_cons_fresh _ _ _ _ _ (wf_gstack_cons_inv _ _ _ _ _ Hpush)) | exact Hl ]. }
       destruct (group_facts _ _ _ _ Hg' Hl') as (Hds' & HD' & _ & HU' & _).
       apply Forall_forall; intros d Hin; unfold ds in Hin; apply List.in_map_iff in Hin as ([[j Mj] x] & <- & Hin);
         cbn [gen_def_kind gen_def_type gen_def_body abs_kind_sort].

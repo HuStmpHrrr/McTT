@@ -1663,7 +1663,7 @@ Theorem canon_of_wf : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> canon_deps Θ /\ canon_s
 Proof.
   intros Θ Ξ H; induction H as [| Θ fp U H [IHΘ IHΞ] | Θ Ξ mp K Δ Φ H [IHΘ IHΞ] HΦ Hfr].
   - split; [ exact I | constructor ].
-  - destruct (wf_gstack_file_inv Θ fp U (wf_gstack_file _ _ _ H)) as (_ & _ & Hn).
+  - destruct (wf_gstack_file_inv Θ fp U (wf_gstack_file _ _ _ H)) as [_ _ Hn _].
     inversion IHΞ as [| ? ? HU _]; subst.
     split; [ cbn; split; [ exact Hn | split; [| exact IHΘ ] ] | constructor ].
     destruct U as [Δ [[|] Φ | E]]; cbn in HU |- *; tauto.
