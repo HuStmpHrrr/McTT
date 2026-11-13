@@ -759,6 +759,141 @@ Proof.
   exists (mdesc_sub X Id); split; [ exact HX' | rewrite mdesc_kind_sub; exact Hk ].
 Qed.
 
+(** Two expressions naming no open frame that denote alike have the same
+    chains. *)
+Lemma chain_proof_same_denote : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ P P' ys x, obs_root Ξ P -> obs_root Ξ P' ->
+    (forall R, mdenote Θ Ξ Γ P R <-> mdenote Θ Ξ Γ P' R) -> (chain_proof Θ Ξ Γ P ys x <-> chain_proof Θ Ξ Γ P' ys x).
+Proof.
+  intros * Hg * Ho Ho' Hd; unfold chain_proof; split; intros (X & HX & Hk); exists X; (split; [| exact Hk ]).
+  - destruct (mems_back _ _ Hg _ _ _ _ _ HX) as [R HR].
+    exact (proj2 (chain_desc_iff _ _ Hg _ _ _ _ _ _ Ho' (proj1 (Hd R) HR)) (proj1 (chain_desc_iff _ _ Hg _ _ _ _ _ _ Ho HR) HX)).
+  - destruct (mems_back _ _ Hg _ _ _ _ _ HX) as [R HR].
+    exact (proj2 (chain_desc_iff _ _ Hg _ _ _ _ _ _ Ho (proj2 (Hd R) HR)) (proj1 (chain_desc_iff _ _ Hg _ _ _ _ _ _ Ho' HR) HX)).
+Qed.
+
+(** A slot has the chains of its unit. *)
+Lemma chain_proof_slot_lit : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ k U ys x, Γ ∋ #k ≔ₘ U ->
+    (chain_proof Θ Ξ Γ (me_var k) ys x <-> chain_proof Θ Ξ Γ (me_lit U) ys x).
+Proof.
+  intros * Hg * Hk; apply (chain_proof_same_denote _ _ Hg); [ left; reflexivity | left; reflexivity |].
+  intros R; split; intros HR; inversion HR; subst; try (cbn in *; discriminate).
+  - match goal with Hk' : ctx_lookup_mod k ?U' Γ, HU' : udenote _ _ _ _ ?U' _ |- _ =>
+      pose proof (ctx_find_mod_complete _ _ _ Hk) as E1; pose proof (ctx_find_mod_complete _ _ _ Hk') as E2;
+      rewrite E1 in E2; injection E2 as <-; apply mdenote_lit; exact HU' end.
+  - eapply mdenote_slot; eassumption.
+Qed.
+
+(** What a well-formed unit denotes reads no open frame. *)
+Lemma udenote_frame_free : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ U R, unit_full Θ Ξ Γ U -> udenote Θ Ξ Γ None U R -> ~ desc_reads_frame Ξ R.
+Proof.
+  intros * Hg * HU HR (Θ' & p & T & Φ & Ns & Hm & Hf).
+  inversion HR as [? ? Δ sm Φb Φx R0 _ Hb | ? ? Δ E R0 R'' HE HR0]; subst.
+  - destruct sm; cbn in Hb, HU; [ injection Hb as <-; cbn in Hm; discriminate | contradiction ].
+  - destruct (unit_alias_frame_free _ _ _ _ _ HU) as (R1 & HR1 & Hn).
+    rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HE _ HR1) in HR0.
+    apply Hn; rewrite mdesc_mod_up in Hm; rewrite (mdesc_is_mod_mod _ (mdesc_mod_is_mod _ _ HR0)) in Hm; cbn in Hm.
+    injection Hm as Hm.
+    destruct R'' as [| | Θ0 p0 T0 Φ0 Ns0 |]; cbn in Hm; try discriminate; injection Hm as _ <- <- <- <-.
+    unfold desc_reads_frame; do 5 eexists; (split; [ exact HR0 | exact Hf ]).
+Qed.
+
+(** A slot of a well-formed context reads no open frame. *)
+Lemma slot_frame_free : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ k U, ⊢ Θ ⍮ Ξ ⍮ Γ -> Γ ∋ #k ≔ₘ U ->
+    forall R, mdenote Θ Ξ Γ (me_var k) R -> ~ desc_reads_frame Ξ R.
+Proof.
+  intros * Hg * HΓ Hk R HR; inversion HR; subst; try (cbn in *; discriminate).
+  match goal with Hk' : ctx_lookup_mod k ?U' Γ, HU' : udenote _ _ _ _ ?U' _ |- _ =>
+    exact (udenote_frame_free _ _ Hg _ _ _ (proj1 (unit_full_of_eq _ _ _ _ _ (ctx_lookup_mod_wf _ _ _ _ _ HΓ Hk'))) HU') end.
+Qed.
+
+(** A slot under one more entry has the chains it had. *)
+Lemma chain_proof_wk_var : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ e k U ys x, ⊢ Θ ⍮ Ξ ⍮ e :: Γ -> Γ ∋ #k ≔ₘ U ->
+    (chain_proof Θ Ξ (e :: Γ) (me_var (S k)) ys x <-> chain_proof Θ Ξ Γ (me_var k) ys x).
+Proof.
+  intros * Hg * HeΓ Hk.
+  pose proof (ctx_decomp_tail HeΓ) as HΓ.
+  exact (chain_proof_sub _ _ Hg _ (me_var k) _ Wk ys x (wf_me_var _ _ _ _ _ HΓ Hk) (slot_frame_free _ _ Hg _ _ _ HΓ Hk)
+           (wf_sub_shift _ _ _ _ HeΓ)).
+Qed.
+
+(** A literal unit, weakened under one more entry, has the chains it had. *)
+Lemma chain_proof_wk_lit : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ e U ys x, ⊢ Θ ⍮ Ξ ⍮ e :: Γ -> unit_full Θ Ξ Γ U ->
+    (chain_proof Θ Ξ (e :: Γ) (me_lit (gunit_wk U wk_shift)) ys x <-> chain_proof Θ Ξ Γ (me_lit U) ys x).
+Proof.
+  intros * Hg * HeΓ HU.
+  assert (HL : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U) by (apply wf_me_lit; exact (unit_eq_of_full _ _ _ _ HU)).
+  assert (Hff : forall R, mdenote Θ Ξ Γ (me_lit U) R -> ~ desc_reads_frame Ξ R)
+    by (intros R HR; inversion HR; subst; try (cbn in *; discriminate); eapply udenote_frame_free; eassumption).
+  pose proof (chain_proof_sub _ _ Hg _ (me_lit U) _ Wk ys x HL Hff (wf_sub_shift _ _ _ _ HeΓ)) as Hs.
+  cbn [modexp_sub] in Hs; rewrite (gunit_sub_of_wk_ext U wk_shift Wk) in Hs by (intros ?; reflexivity); exact Hs.
+Qed.
+
+(** The context of a grafted body: the fragment's entries over the
+    body's. *)
+Lemma body_ctx_graft : forall B A, body_ctx (gm_graft A B) = body_ctx B ++ body_ctx A.
+Proof.
+  induction B as [| B IH x E | B IH H its Bg _]; intros A; cbn [gm_graft]; [ reflexivity | | exact (IH A) ].
+  destruct E as [? ? ? ? [] | | | |]; cbn [body_ctx]; rewrite IH; reflexivity.
+Qed.
+
+(** A grafted body has a body's shape where it and the fragment do. *)
+Lemma body_shape_graft_base : forall B A, body_shape (gm_graft A B) (gm_graft A B) -> body_shape A A.
+Proof.
+  induction B as [| B IH x E | B IH H its Bg _]; intros A Hs; cbn [gm_graft body_shape] in Hs; [ exact Hs | |];
+    destruct Hs as (Hs & _); exact (IH _ Hs).
+Qed.
+
+(** Chains through a module entry of a local body: those of the entry's
+    unit, in the context of the entries before it. *)
+Lemma open_entry_chain : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ Δ Φ Φx Φ0 w E U σ ys x,
+    ⊢ Θ ⍮ Ξ ⍮ body_ctx (gm_ext Φ0 w E) ++ Δ ++ Γ -> gm_prefix_upto Φx w = Some (gm_ext Φ0 w E) ->
+    entry_unit E = Some U -> entry_readable E -> gm_fill Φ0 = Some σ ->
+    (chain_proof Θ Ξ (body_ctx Φ0 ++ Δ ++ Γ) (me_lit U) ys x <->
+     exists X, desc_chain Θ Ξ Γ (mdesc_open Δ Φ Φx) (w :: ys) x X /\ mdesc_kind X = ak_propositional).
+Proof.
+  intros * Hg * HC Hp HU Hrd Hσ.
+  set (Ψ0 := body_ctx Φ0 ++ Δ ++ Γ).
+  (* the entry's unit and what the entry denotes *)
+  assert (HR1 : unit_full Θ Ξ Ψ0 U /\ forall RU, udenote Θ Ξ Ψ0 None U RU ->
+            exists R1, edenote Θ Ξ Ψ0 None E R1 /\ mdesc_mod R1 = Some RU).
+  { destruct E as [? ? ? ? ? | pv U0 | | pv A M U0 |]; cbn in HU; try discriminate; injection HU as <-; cbn [body_ctx List.app] in HC.
+    - split; [ exact (proj1 (unit_full_of_eq _ _ _ _ _ (proj2 (ctx_decomp_mod HC)))) |].
+      intros RU HRU; exists RU; split; [ apply edenote_mod; exact HRU | exact (mdesc_is_mod_mod _ (udenote_is_mod _ _ _ _ _ _ HRU)) ].
+    - split; [ exact (proj1 (unit_full_of_eq _ _ _ _ _ (proj2 (proj2 (proj2 (ctx_decomp_dm HC)))))) |].
+      destruct (ctx_decomp_dm_alias HC) as [E0 ->].
+      intros RU HRU; exists (mdesc_dm nil A M RU); split; [ apply edenote_def_mod; exact HRU | cbn [mdesc_mod]; rewrite ?mdesc_up_nil; exact (mdesc_is_mod_mod _ (udenote_is_mod _ _ _ _ _ _ HRU)) ]. }
+  destruct HR1 as [HUf HR1].
+  assert (HΨ0 : ⊢ Θ ⍮ Ξ ⍮ Ψ0) by (destruct E; cbn [body_ctx List.app] in HC; try (destruct o); exact (ctx_decomp_tail HC)).
+  assert (HL : Θ ⍮ Ξ ⍮ Ψ0 ⊢ᵐ me_lit U ≈ me_lit U) by (apply wf_me_lit; exact (unit_eq_of_full _ _ _ _ HUf)).
+  destruct (me_denotes _ _ _ _ _ HL) as (RL & _ & HRL & _).
+  assert (HRU : udenote Θ Ξ Ψ0 None U RL) by (inversion HRL; subst; try (cbn in *; discriminate); assumption).
+  destruct (HR1 _ HRU) as (R1 & Hed & HmR1).
+  pose proof (mdesc_is_mod_mod _ (udenote_is_mod _ _ _ _ _ _ HRU)) as Hself.
+  set (S := mdesc_up Δ (mdesc_sub R1 σ)).
+  assert (Hsel : desc_sel Θ Ξ Γ (mdesc_open Δ Φ Φx) w S).
+  { exists (body_ctx Φ0 ++ Δ), E, (reader_open Δ Φ0), R1; split; [ apply (proj2 (open_entry_iff _ _ _ _ _ _ _)); exists Φ0; repeat split; assumption |].
+    split; [ cbn [mdesc_entry_path]; rewrite <- List.app_assoc; exact Hed | cbn; rewrite Hσ; reflexivity ]. }
+  (* moved by the filling into the body's context *)
+  pose proof (wf_gm_fill _ _ _ _ _ HΨ0 Hσ) as Hσt.
+  assert (Hff : forall R, mdenote Θ Ξ Ψ0 (me_lit U) R -> ~ desc_reads_frame Ξ R)
+    by (intros R HR; inversion HR; subst; try (cbn in *; discriminate); eapply udenote_frame_free; eassumption).
+  rewrite <- (chain_proof_sub _ _ Hg _ _ _ _ ys x HL Hff Hσt).
+  pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HL HRL Hσt) as HRσ.
+  assert (Hobsσ : obs_root Ξ (me_lit U)[σ]ᵐ) by (left; reflexivity).
+  rewrite (chain_proof_obs _ _ Hg _ _ _ _ _ Hobsσ HRσ).
+  assert (HmS : mdesc_mod S = option_map (mdesc_up Δ) (mdesc_mod (mdesc_sub RL σ))).
+  { unfold S; rewrite mdesc_mod_up, (mdesc_mod_sub _ _ σ HmR1), (mdesc_is_mod_mod _ (mdesc_is_mod_sub _ σ (udenote_is_mod _ _ _ _ _ _ HRU)));
+      reflexivity. }
+  destruct (desc_chain_up _ _ Hg Γ Δ ys x S (mdesc_sub RL σ)
+              (mdesc_canonical_sub _ _ _ σ (mdenote_canon _ _ _ _ _ Hg HRL)) HmS) as [U1 U2].
+  split.
+  - intros (X0 & HX0 & Hk); destruct (U2 _ HX0) as (X & HX & Hk').
+    exists X; split; [ eapply desc_chain_step; [ reflexivity | exact Hsel | exact HX ] | congruence ].
+  - intros (X & HX & Hk); inversion HX as [| ? Rm ? ? ? S' ? Hm Hs Hc]; subst; cbn in Hm; injection Hm as <-.
+    rewrite (desc_sel_functional _ _ Hg _ _ _ _ _ Hs Hsel) in Hc.
+    destruct (U1 _ Hc) as (X0 & HX0 & Hk'); exists X0; split; [ exact HX0 | congruence ].
+Qed.
+
 Section Coherence.
   Context {GC : GCtx}.
   Variable γ : global_valuation.
@@ -768,10 +903,88 @@ Section Coherence.
       module_member_proofs γ (set_module_global (q_abs fp nil) nil) ys x = true <->
       chain_proof gc_deps gc_stack nil (me_unit fp) ys x.
 
+  (** The table at a position holding no slot is empty. *)
+  Hypothesis Hno : forall ys x, no_slot_proofs γ ys x = false.
+
   (** [slots_proof_coherent Γ κs]: the table [κs] gives each module slot of
       [Γ] is what the slot's chains denote. *)
   Definition slots_proof_coherent (Γ : ctx) (κs : nat -> member_proofness) : Prop :=
     forall k U, ctx_find_mod Γ k = Some U -> forall ys x, κs k ys x = true <-> chain_proof gc_deps gc_stack Γ (me_var k) ys x.
+
+  (** The slots of a grafted body: the fragment's over the body's. *)
+  Lemma body_slot_proofs_graft : forall B A κs, body_slot_proofs γ κs (gm_graft A B) = body_slot_proofs γ (body_slot_proofs γ κs A) B.
+  Proof. induction B as [| B IH x E | B IH H its Bg _]; intros A κs; cbn [gm_graft body_slot_proofs]; rewrite ?IH; reflexivity. Qed.
+
+  (** A member of a grafted body: the fragment's, else the body's. *)
+  Lemma body_member_lookup_graft : forall B A κs ys x,
+      body_member_lookup γ κs (gm_graft A B) ys x =
+      match body_member_lookup γ (body_slot_proofs γ κs A) B ys x with Some b => Some b | None => body_member_lookup γ κs A ys x end.
+  Proof.
+    induction B as [| B IH z E | B IH H its Bg _]; intros A κs ys x; cbn [gm_graft body_member_lookup]; [ reflexivity | |].
+    - rewrite body_slot_proofs_graft; destruct (String.eqb (chain_key ys x) z); [ reflexivity | apply IH ].
+    - rewrite body_slot_proofs_graft, IH.
+      destruct (body_member_lookup γ (body_slot_proofs γ (body_slot_proofs γ κs A) B) Bg ys x); [ reflexivity |].
+      reflexivity.
+  Qed.
+
+  (** A body's tables are its expansion's: an open's are those of the
+      entries it stores. *)
+  Lemma body_tables_expand : forall Φ κs, body_slot_proofs γ κs (gm_expand Φ) = body_slot_proofs γ κs Φ /\
+      forall ys x, body_member_lookup γ κs (gm_expand Φ) ys x = body_member_lookup γ κs Φ ys x.
+  Proof.
+    induction Φ as [| Φ IH z E | Φ IH H its Φg IHg]; intros κs; cbn [gm_expand body_slot_proofs body_member_lookup].
+    - split; reflexivity.
+    - destruct (IH κs) as [Hs Hl]; rewrite Hs; split; [ reflexivity | intros ys x; rewrite Hl; reflexivity ].
+    - destruct (IH κs) as [Hs Hl]; rewrite body_slot_proofs_graft, Hs.
+      destruct (IHg (body_slot_proofs γ κs Φ)) as [Hsg Hlg]; split; [ exact Hsg |].
+      intros ys x; rewrite body_member_lookup_graft, Hs, Hlg, Hl; reflexivity.
+  Qed.
+
+  (** A member of a body with no open: at the last entry so named. *)
+  Lemma body_member_lookup_noopen : forall Φ κs ys x, gm_noopen Φ ->
+      body_member_lookup γ κs Φ ys x =
+      match gm_prefix_upto Φ (chain_key ys x) with
+      | Some (gm_ext Φ' _ E) =>
+          Some (match ys with nil => gentry_is_proof E | _ :: ys' => gentry_slot_proofs γ (body_slot_proofs γ κs Φ') E ys' x end)
+      | _ => None
+      end.
+  Proof.
+    induction Φ as [| Φ IH z E | Φ IH H its Φg _]; intros κs ys x Hn; cbn [body_member_lookup gm_prefix_upto gm_noopen] in Hn |- *;
+      [ reflexivity | | contradiction ].
+    destruct (String.eqb (chain_key ys x) z); [ reflexivity | exact (IH _ _ _ Hn) ].
+  Qed.
+
+  (** One more entry: a module slot of the table of what its unit's chains
+      denote, after slots coherent with the context, is coherent. *)
+  Lemma slots_coherent_push : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ e κs P, ⊢ gc_deps ⍮ gc_stack ⍮ e :: Γ ->
+      slots_proof_coherent Γ κs ->
+      (forall U0, match e with ce_mod U | ce_dm _ _ U => Some U | _ => None end = Some U0 ->
+         forall ys x, P ys x = true <-> chain_proof gc_deps gc_stack Γ (me_lit U0) ys x) ->
+      slots_proof_coherent (e :: Γ) (push_slot_proofs κs P).
+  Proof.
+    intros Hg * HeΓ Hκ HP [| k] U Hk ys x; cbn [push_slot_proofs].
+    - assert (HU0 : exists U0, match e with ce_mod U | ce_dm _ _ U => Some U | _ => None end = Some U0 /\
+                      U = gunit_wk U0 wk_shift /\ unit_full gc_deps gc_stack Γ U0).
+      { cbn in Hk; destruct e as [| | U0 | A M U0]; try discriminate; injection Hk as <-; exists U0;
+          (split; [ reflexivity | split; [ reflexivity |] ]).
+        - exact (proj1 (unit_full_of_eq _ _ _ _ _ (proj2 (ctx_decomp_mod HeΓ)))).
+        - exact (proj1 (unit_full_of_eq _ _ _ _ _ (proj2 (proj2 (proj2 (ctx_decomp_dm HeΓ)))))). }
+      destruct HU0 as (U0 & HeU & -> & HU0).
+      rewrite (HP _ HeU), (chain_proof_slot_lit _ _ Hg _ _ _ _ _ (ctx_find_mod_sound _ _ _ Hk)).
+      symmetry; exact (chain_proof_wk_lit _ _ Hg _ _ _ _ _ HeΓ HU0).
+    - cbn in Hk; destruct (ctx_find_mod Γ k) as [U' |] eqn:Ek; cbn in Hk; [| discriminate ].
+      rewrite (Hκ _ _ Ek); symmetry; exact (chain_proof_wk_var _ _ Hg _ _ _ _ _ _ HeΓ (ctx_find_mod_sound _ _ _ Ek)).
+  Qed.
+
+  (** Under a telescope of assumptions, the tables past it are coherent. *)
+  Lemma slots_coherent_tele : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Δ Γ κs, all_assumptions Δ -> ⊢ gc_deps ⍮ gc_stack ⍮ Δ ++ Γ ->
+      slots_proof_coherent Γ κs -> slots_proof_coherent (Δ ++ Γ) (tele_out_proofs γ κs (List.rev Δ)).
+  Proof.
+    intros Hg Δ; induction Δ as [| e Δ IH]; intros Γ κs Ha HΔ Hκ; [ exact Hκ |].
+    inversion Ha as [| ? ? (κ & A & ->) Ha']; subst.
+    cbn [List.rev]; rewrite tele_out_proofs_app; cbn [tele_out_proofs List.app].
+    apply (slots_coherent_push Hg); [ exact HΔ | exact (IH _ _ Ha' (ctx_decomp_tail HΔ) Hκ) | intros U0 HU0; discriminate ].
+  Qed.
 
   (** [table_coherent Γ κs E zs]: past the selections [zs], the table [E]'s
       syntax gives, at the tables [κs], is what [E]'s chains denote. *)
@@ -801,6 +1014,244 @@ Section Coherence.
   Proof.
     intros Hg * HA Hs HH ys x; cbn [modexp_member_proofs].
     rewrite (chain_proof_app _ _ Hg _ _ _ _ _ _ HA Hs); exact (HH ys x).
+  Qed.
+
+  (** A literal alias: its target's table under its parameters. *)
+  Lemma unit_coherent_alias : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ κs Δ E,
+      unit_alias_full gc_deps gc_stack Γ Δ E -> slots_proof_coherent Γ κs ->
+      (forall κs', slots_proof_coherent (Δ ++ Γ) κs' -> table_coherent (Δ ++ Γ) κs' E nil) ->
+      forall ys x, unit_member_proofs γ κs (gu_mk Δ (md_alias E)) ys x = true <->
+                   chain_proof gc_deps gc_stack Γ (me_lit (gu_mk Δ (md_alias E))) ys x.
+  Proof.
+    intros Hg * HU Hκ IH ys x.
+    pose proof (unit_alias_target _ _ _ _ _ HU) as HE; pose proof (unit_alias_ctx _ _ _ _ _ HU) as HΔ.
+    rewrite unit_member_proofs_tele_out; cbn [moddef_member_proofs].
+    rewrite (IH _ (slots_coherent_tele Hg _ _ _ (unit_alias_ass _ _ _ _ _ HU) HΔ Hκ) ys x).
+    destruct (unit_alias_frame_free _ _ _ _ _ HU) as (R1 & HR1 & Hn).
+    assert (Hobs : obs_root gc_stack E).
+    { apply (obs_root_of_frame_free _ _ Hg _ _ _ HE); intros R HR.
+      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ HR1); exact Hn. }
+    destruct (me_denotes _ _ _ _ _ HE) as (R0 & R'' & HR0 & HR'').
+    assert (Hlit : mdenote gc_deps gc_stack Γ (me_lit (gu_mk Δ (md_alias E))) (mdesc_up Δ R''))
+      by (apply mdenote_lit; eapply udenote_alias; eassumption).
+    assert (Hobs' : obs_root gc_stack (me_lit (gu_mk Δ (md_alias E)))) by (left; reflexivity).
+    rewrite (chain_proof_obs _ _ Hg _ _ _ _ _ Hobs HR0), (chain_proof_obs _ _ Hg _ _ _ _ _ Hobs' Hlit).
+    pose proof (mdesc_is_mod_mod _ (mdesc_mod_is_mod _ _ HR'')) as Hself.
+    assert (Hm : mdesc_mod (mdesc_up Δ R'') = option_map (mdesc_up Δ) (mdesc_mod R'')) by (rewrite mdesc_mod_up; reflexivity).
+    destruct (desc_chain_up _ _ Hg Γ Δ ys x _ _ (mdesc_canonical_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg HR0) HR'') Hm) as [U1 U2].
+    split.
+    - intros (X & HX & Hk).
+      destruct (U2 X (desc_chain_mod_eq _ _ _ _ _ _ _ _ ltac:(rewrite HR'', Hself; reflexivity) HX)) as (X1 & HX1 & Hk1).
+      exists X1; split; [ exact HX1 | congruence ].
+    - intros (X1 & HX1 & Hk1); destruct (U1 _ HX1) as (X & HX & Hk).
+      exists X; split; [ eapply desc_chain_mod_eq; [| exact HX ]; rewrite HR'', Hself; reflexivity | congruence ].
+  Qed.
+
+  (** [body_coherent Ψ κs Φx]: the tables of the body [Φx] with no open,
+      over the context [Ψ] and its tables [κs], are what chains denote: the
+      slots of its entries, and each entry's module part at its prefix. *)
+  Definition body_coherent (Ψ : ctx) (κs : nat -> member_proofness) (Φx : gmod) : Prop :=
+    slots_proof_coherent (body_ctx Φx ++ Ψ) (body_slot_proofs γ κs Φx) /\
+    forall y Φ0 E U0, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U0 ->
+      forall ys x, gentry_slot_proofs γ (body_slot_proofs γ κs Φ0) E ys x = true <->
+                   chain_proof gc_deps gc_stack (body_ctx Φ0 ++ Ψ) (me_lit U0) ys x.
+
+  (** A literal body: the member its expansion has at the chain's first
+      name, read as its entry's tag or module part's table. *)
+  Lemma unit_coherent_body : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ κs Δ Φ,
+      unit_body_full gc_deps gc_stack Γ Δ Φ -> slots_proof_coherent Γ κs ->
+      (forall Ψ κs', slots_proof_coherent Ψ κs' -> ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx (gm_expand Φ) ++ Ψ ->
+         body_shape (gm_expand Φ) (gm_expand Φ) -> body_coherent Ψ κs' (gm_expand Φ)) ->
+      forall ys x, unit_member_proofs γ κs (gu_mk Δ (md_body sm_open Φ)) ys x = true <->
+                   chain_proof gc_deps gc_stack Γ (me_lit (gu_mk Δ (md_body sm_open Φ))) ys x.
+  Proof.
+    intros Hg * HU Hκ IH ys x.
+    destruct HU as [Φx es l ps Hps Hx HC Hes Htg Hd Ho Hass Hs Hsh Hnd Hpar lv Rt HF Hff].
+    pose proof (body_xp_expand _ _ _ _ _ Hx) as HxE.
+    assert (HΔ : ⊢ gc_deps ⍮ gc_stack ⍮ Δ ++ Γ) by exact (ctx_app_wf_tail _ _ _ _ HC).
+    pose proof (slots_coherent_tele Hg _ _ _ Hass HΔ Hκ) as HκΔ.
+    set (κΔ := tele_out_proofs γ κs (List.rev Δ)) in HκΔ.
+    pose proof (IH _ _ HκΔ ltac:(rewrite <- HxE; exact HC) ltac:(rewrite <- HxE; exact Hsh)) as [_ Hent].
+    rewrite <- HxE in Hent.
+    assert (Hno' : gm_noopen Φx) by (rewrite HxE; apply gm_noopen_expand).
+    rewrite unit_member_proofs_tele_out; cbn [moddef_member_proofs]; fold κΔ.
+    rewrite <- (proj2 (body_tables_expand Φ κΔ)), <- HxE, (body_member_lookup_noopen _ _ _ _ Hno').
+    assert (Hlit : mdenote gc_deps gc_stack Γ (me_lit (gu_mk Δ (md_body sm_open Φ))) (mdesc_open Δ Φ Φx))
+      by (apply mdenote_lit; eapply udenote_body; [ exact Hx | reflexivity ]).
+    assert (Hobs : obs_root gc_stack (me_lit (gu_mk Δ (md_body sm_open Φ)))) by (left; reflexivity).
+    pose proof (body_shape_fill _ _ (gm_noopen_nopens _ Hno') Hsh) as [Hfill _].
+    rewrite (chain_proof_obs _ _ Hg _ _ _ _ _ Hobs Hlit).
+    (* the entry at the chain's first name *)
+    assert (Hfirst : forall X, desc_chain gc_deps gc_stack Γ (mdesc_open Δ Φ Φx) ys x X ->
+              exists Φ0 E R1 S, gm_prefix_upto Φx (chain_key ys x) = Some (gm_ext Φ0 (chain_key ys x) E) /\ entry_readable E /\
+                edenote gc_deps gc_stack (body_ctx Φ0 ++ Δ ++ Γ) None E R1 /\ mdesc_read (reader_open Δ Φ0) R1 = Some S /\
+                match ys with nil => X = S | _ :: ys' => desc_chain gc_deps gc_stack Γ S ys' x X end).
+    { intros X HX; inversion HX as [? Rm ? ? Hm (Γy & E & rd & R1 & He & Hed & Hr) | ? Rm ? ? ? S ? Hm (Γy & E & rd & R1 & He & Hed & Hr) Hc];
+        subst; cbn in Hm; injection Hm as <-;
+        destruct (proj1 (open_entry_iff _ _ _ _ _ _ _) He) as (Φ0 & Hp & Hrd & -> & ->);
+        exists Φ0, E, R1; [ exists X | exists S ]; cbn [chain_key];
+        (split; [ exact Hp | split; [ exact Hrd | split; [ rewrite <- List.app_assoc in Hed; exact Hed | split; [ exact Hr |] ] ] ]);
+        first [ reflexivity | exact Hc ]. }
+    destruct (gm_prefix_upto Φx (chain_key ys x)) as [Φ1 |] eqn:Hp.
+    2: { (* none: no member, no chain *)
+      split; [ destruct ys; discriminate |].
+      intros (X & HX & _); destruct (Hfirst _ HX) as (? & ? & ? & ? & Hp' & _); discriminate. }
+    destruct (gm_prefix_entry _ _ _ Hp) as (Φ0 & E & -> & _).
+    destruct (shape_prefix _ _ _ _ _ Hsh Hp) as (Φ0' & E' & Hp' & _ & HsE); rewrite Hp in Hp'; injection Hp' as <- <-.
+    destruct (fill_prefix _ _ _ _ Hfill Hp) as (σ & Hσ).
+    pose proof (body_prefix_wf _ _ _ _ _ _ _ HC Hp) as HCE.
+    destruct ys as [| w ys']; cbn [chain_key] in *.
+    - (* the member itself: a proof exactly when its entry is a definition
+         of a proposition *)
+      destruct E as [b pv κ A [M |] | pv U | | pv A M U |]; cbn in HsE; try contradiction; cbn [gentry_is_proof].
+      + destruct HsE as (-> & _ & _ & _); split.
+        * intros Hk; exists (mdesc_up Δ (mdesc_sub (mdesc_term κ A (Some M)) σ)); split.
+          -- eapply desc_chain_last; [ reflexivity |].
+             exists (body_ctx Φ0 ++ Δ), (ge_def true pv κ A (Some M)), (reader_open Δ Φ0), (mdesc_term κ A (Some M)).
+             split; [ apply (proj2 (open_entry_iff _ _ _ _ _ _ _)); exists Φ0; split; [ exact Hp | split; [ exact I | split; reflexivity ] ] |].
+             split; [ exact (edenote_def _ _ _ _ _ _ _ _ _) | cbn; rewrite Hσ; reflexivity ].
+          -- rewrite mdesc_kind_up, mdesc_kind_sub; cbn; destruct κ; cbn in Hk; congruence.
+        * intros (X & HX & Hk); destruct (Hfirst _ HX) as (Φ0' & E' & R1 & S & Hp' & _ & Hed & Hr & ->); injection Hp' as <- <-.
+          inversion Hed; subst; cbn in Hr; rewrite Hσ in Hr; injection Hr as <-; cbn in Hk; subst; reflexivity.
+      + split; [ discriminate |]; intros (X & HX & Hk).
+        destruct (Hfirst _ HX) as (Φ0' & E' & R1 & S & Hp' & _ & Hed & Hr & ->); injection Hp' as <- <-.
+        inversion Hed as [| ? ? ? ? R1' HU1 | | | ]; subst; cbn in Hr; rewrite Hσ in Hr; injection Hr as <-;
+          rewrite ?mdesc_kind_up, ?mdesc_kind_sub in Hk.
+        rewrite (proj1 (mdesc_is_mod_parts _ (udenote_is_mod _ _ _ _ _ _ HU1))) in Hk; discriminate.
+      + split; [ discriminate |]; intros (X & HX & Hk).
+        destruct (Hfirst _ HX) as (Φ0' & E' & R1 & S & Hp' & _ & Hed & Hr & ->); injection Hp' as <- <-.
+        inversion Hed; subst; cbn in Hr; rewrite Hσ in Hr; injection Hr as <-; rewrite ?mdesc_kind_up, ?mdesc_kind_sub in Hk;
+          cbn in Hk; discriminate.
+    - (* a member past the entry: none for a definition, else the entry's
+         unit's *)
+      destruct E as [b pv κ A [M |] | pv U | | pv A M U |]; cbn in HsE; try contradiction.
+      + cbn [gentry_slot_proofs]; rewrite Hno; split; [ discriminate |]; intros (X & HX & _).
+        destruct (Hfirst _ HX) as (Φ0' & E' & R1 & S & Hp' & _ & Hed & Hr & Hc); injection Hp' as <- <-.
+        inversion Hed; subst; cbn in Hr; rewrite Hσ in Hr; injection Hr as <-; inversion Hc; subst; cbn in *; discriminate.
+      + rewrite (Hent _ _ _ U Hp eq_refl); exact (open_entry_chain _ _ Hg _ _ _ _ _ _ _ _ _ _ _ HCE Hp eq_refl I Hσ).
+      + rewrite (Hent _ _ _ U Hp eq_refl); exact (open_entry_chain _ _ Hg _ _ _ _ _ _ _ _ _ _ _ HCE Hp eq_refl I Hσ).
+  Qed.
+
+  (** The entries before a body's last are well formed. *)
+  Lemma body_ctx_ext_wf : forall Ψ Φx z E, ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx (gm_ext Φx z E) ++ Ψ ->
+      ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Ψ.
+  Proof. intros * HC; destruct E as [? ? ? ? [] | | | |]; cbn [body_ctx List.app] in HC; exact (ctx_decomp_tail HC). Qed.
+
+  (** The unit of a body's last entry is well formed before it. *)
+  Lemma entry_unit_full : forall Ψ Φx z E U0, ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx (gm_ext Φx z E) ++ Ψ -> entry_unit E = Some U0 ->
+      unit_full gc_deps gc_stack (body_ctx Φx ++ Ψ) U0.
+  Proof.
+    intros * HC HU0; destruct E as [? ? ? ? [] | pv U | | pv A M U |]; cbn in HU0; try discriminate; injection HU0 as <-;
+      cbn [body_ctx List.app] in HC.
+    - exact (proj1 (unit_full_of_eq _ _ _ _ _ (proj2 (ctx_decomp_mod HC)))).
+    - exact (proj1 (unit_full_of_eq _ _ _ _ _ (proj2 (proj2 (proj2 (ctx_decomp_dm HC)))))).
+  Qed.
+
+  (** A body with one more entry, coherent with the body before it and the
+      entry's unit's tables. *)
+  Lemma body_coherent_ext : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Ψ κs Φx z E, body_coherent Ψ κs Φx ->
+      (forall Ψ0 κs0 U0, slots_proof_coherent Ψ0 κs0 -> entry_unit E = Some U0 -> unit_full gc_deps gc_stack Ψ0 U0 ->
+         forall ys x, gentry_slot_proofs γ κs0 E ys x = true <-> chain_proof gc_deps gc_stack Ψ0 (me_lit U0) ys x) ->
+      ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx (gm_ext Φx z E) ++ Ψ -> entry_shape E E -> body_coherent Ψ κs (gm_ext Φx z E).
+  Proof.
+    intros Hg * [Hs He] HE HC Hsh; split.
+    - cbn [body_slot_proofs].
+      destruct E as [b pv κ A [M |] | pv U | | pv A M U |]; cbn in Hsh; try contradiction; cbn [body_ctx List.app] in HC |- *;
+        (apply (slots_coherent_push Hg); [ exact HC | exact Hs |]); intros U0 HU0; try discriminate; injection HU0 as <-.
+      + apply HE; [ exact Hs | reflexivity | exact (proj1 (unit_full_of_eq _ _ _ _ _ (proj2 (ctx_decomp_mod HC)))) ].
+      + apply HE; [ exact Hs | reflexivity | exact (proj1 (unit_full_of_eq _ _ _ _ _ (proj2 (proj2 (proj2 (ctx_decomp_dm HC)))))) ].
+    - intros y Φ0 E0 U0 Hp HU0; cbn [gm_prefix_upto] in Hp.
+      destruct (String.eqb y z); [ injection Hp as <- <- <- | exact (He _ _ _ _ Hp HU0) ].
+      exact (HE _ _ _ Hs HU0 (entry_unit_full _ _ _ _ _ HC HU0)).
+  Qed.
+
+  (** A body grafted with a fragment, each coherent. *)
+  Lemma body_coherent_graft : forall Ψ κs A B, gm_noopen B -> body_coherent Ψ κs A ->
+      body_coherent (body_ctx A ++ Ψ) (body_slot_proofs γ κs A) B -> body_coherent Ψ κs (gm_graft A B).
+  Proof.
+    intros * HnB [HsA HeA] [HsB HeB]; split.
+    - rewrite body_ctx_graft, body_slot_proofs_graft, <- List.app_assoc; exact HsB.
+    - intros y Φ0 E U0 Hp HU0; rewrite (gm_prefix_upto_graft _ _ _ HnB) in Hp.
+      destruct (gm_prefix_upto B y) as [P |] eqn:HpB; [| exact (HeA _ _ _ _ Hp HU0) ].
+      destruct (gm_prefix_entry _ _ _ HpB) as (P0 & E' & -> & _); cbn [gm_graft] in Hp; injection Hp as <- <-.
+      rewrite body_slot_proofs_graft, body_ctx_graft, <- List.app_assoc; exact (HeB _ _ _ _ HpB HU0).
+  Qed.
+
+  (** The tables the syntax gives are what chains denote: of a module
+      expression past a well-started chain of selections, and of a unit. *)
+  Theorem proofs_coherent_all : ⊢ᵍ gc_deps ⍮ gc_stack ->
+    (forall H Γ κs zs, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> spine_ok gc_deps gc_stack Γ H zs -> slots_proof_coherent Γ κs ->
+       table_coherent Γ κs H zs) /\
+    (forall U Γ κs, unit_full gc_deps gc_stack Γ U -> slots_proof_coherent Γ κs ->
+       forall ys x, unit_member_proofs γ κs U ys x = true <-> chain_proof gc_deps gc_stack Γ (me_lit U) ys x).
+  Proof.
+    intros Hg.
+    set (Pm := fun H => forall Γ κs zs, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> spine_ok gc_deps gc_stack Γ H zs ->
+                 slots_proof_coherent Γ κs -> table_coherent Γ κs H zs).
+    set (Pu := fun U => forall Γ κs, unit_full gc_deps gc_stack Γ U -> slots_proof_coherent Γ κs ->
+                 forall ys x, unit_member_proofs γ κs U ys x = true <-> chain_proof gc_deps gc_stack Γ (me_lit U) ys x).
+    set (Pd := fun D => forall Γ Δ κs, unit_full gc_deps gc_stack Γ (gu_mk Δ D) -> slots_proof_coherent Γ κs ->
+                 forall ys x, unit_member_proofs γ κs (gu_mk Δ D) ys x = true <->
+                              chain_proof gc_deps gc_stack Γ (me_lit (gu_mk Δ D)) ys x).
+    set (Pg := fun Φ => forall Ψ κs, slots_proof_coherent Ψ κs -> ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx (gm_expand Φ) ++ Ψ ->
+                 body_shape (gm_expand Φ) (gm_expand Φ) -> body_coherent Ψ κs (gm_expand Φ)).
+    set (Pn := fun E => forall Ψ κs U0, slots_proof_coherent Ψ κs -> entry_unit E = Some U0 -> unit_full gc_deps gc_stack Ψ U0 ->
+                 forall ys x, gentry_slot_proofs γ κs E ys x = true <-> chain_proof gc_deps gc_stack Ψ (me_lit U0) ys x).
+    assert (Hall : (forall M : exp, True) /\ (forall H, Pm H) /\ (forall b : binding, True) /\ (forall U, Pu U) /\
+                   (forall D, Pd D) /\ (forall Φ, Pg Φ) /\ (forall E, Pn E) /\ (forall e : centry, True)).
+    { apply (syn_mut_ind (fun _ => True) Pm (fun _ => True) Pu Pd Pg Pn (fun _ => True));
+        unfold Pm, Pu, Pd, Pg, Pn; cbn beta; intros; try exact I.
+      (* a loaded unit or an open frame *)
+      1: { exact (table_coherent_unit Hg _ _ _ _). }
+      (* a slot *)
+      1: { destruct (me_denotes _ _ _ _ _ H) as (R & _ & HR & _); inversion HR; subst; try (cbn in *; discriminate).
+           eapply table_coherent_var; [ exact H1 | apply ctx_find_mod_complete; eassumption ]. }
+      (* a selection *)
+      1: { apply table_coherent_mem; apply H0; [ exact (proj1 (modexp_gen _ _ _ _ _ H1)) | | exact H3 ].
+           split; [ discriminate | intros z zs' [= <- _]; destruct (me_denotes _ _ _ _ _ H1) as (S & _ & HS & _); exists S; exact HS ]. }
+      (* an application *)
+      1: { apply (table_coherent_app Hg); [ exact H2 | exact H3 |].
+           apply H0; [ exact (proj1 (proj1 (modexp_gen _ _ _ _ _ H2))) | exact (spine_ok_app _ _ Hg _ _ _ _ H2 H3) | exact H4 ]. }
+      (* a literal *)
+      1: { intros ys x; cbn [modexp_member_proofs]; apply H; [ exact (proj1 (modexp_gen _ _ _ _ _ H0)) | exact H2 ]. }
+      (* a unit: its definition's *)
+      1: { apply H0; assumption. }
+      (* a body *)
+      1: { destruct s; [| cbn in H0; contradiction ]. exact (unit_coherent_body Hg _ _ _ _ H0 H1 H ys x). }
+      (* an alias *)
+      1: { apply (unit_coherent_alias Hg _ _ _ _ H0 H1); intros κs' Hκ'.
+           apply H; [ exact (unit_alias_target _ _ _ _ _ H0) | | exact Hκ' ].
+           split; [ intros _; exact (unit_alias_frame_free _ _ _ _ _ H0) | intros z zs' Hz; discriminate ]. }
+      (* the empty body *)
+      1: { split; [ exact H | intros; cbn in *; discriminate ]. }
+      (* an entry *)
+      1: { cbn [gm_expand] in H2, H3 |- *; destruct H3 as (Hsh0 & _ & HsE).
+           apply (body_coherent_ext Hg); [ apply H; [ exact H1 | exact (body_ctx_ext_wf _ _ _ _ H2) | exact Hsh0 ] | exact H0 | exact H2 | exact HsE ]. }
+      (* an open: its stored entries grafted *)
+      1: { cbn [gm_expand] in H4, H5 |- *.
+           pose proof (gm_noopen_expand Φg) as HnB.
+           rewrite body_ctx_graft, <- List.app_assoc in H4.
+           pose proof (ctx_app_wf_tail _ _ _ _ H4) as HA.
+           pose proof (H0 _ _ H3 HA (body_shape_graft_base _ _ H5)) as HcA.
+           apply (body_coherent_graft _ _ _ _ HnB HcA).
+           apply H2; [ exact (proj1 HcA) | exact H4 | exact (body_shape_graft_fragment _ _ H5) ]. }
+      (* entries: a module or a definition with a module part, its unit's *)
+      all: try (cbn in *; discriminate).
+      all: cbn [entry_unit gentry_slot_proofs] in *; match goal with HE : Some ?U = Some ?U0 |- _ => injection HE as <- end;
+        match goal with IH : forall _ _, unit_full _ _ _ ?U -> _ |- _ => apply IH; assumption end. }
+    destruct Hall as (_ & HPm & _ & HPu & _); split; [ exact HPm | exact HPu ].
+  Qed.
+
+  (** The table a well-formed module expression that is no open frame
+      gives, at tables coherent with its context, is what its chains
+      denote. *)
+  Corollary modexp_proofs_coherent : ⊢ᵍ gc_deps ⍮ gc_stack -> forall Γ E, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E ->
+      frame_free_target gc_deps gc_stack Γ E -> forall κs, slots_proof_coherent Γ κs ->
+      forall ys x, modexp_member_proofs γ κs E ys x = true <-> chain_proof gc_deps gc_stack Γ E ys x.
+  Proof.
+    intros Hg * HE Hff κs Hκ ys x.
+    refine (proj1 (proofs_coherent_all Hg) E Γ κs nil HE _ Hκ ys x).
+    split; [ intros _; exact Hff | intros z zs' Hz; discriminate ].
   Qed.
 
 End Coherence.
