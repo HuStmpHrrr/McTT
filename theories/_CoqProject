@@ -73,6 +73,7 @@
 ./Core/Consequences/Consistency.v
 ./Core/Consequences/TermKinds.v
 ./Core/Consequences/ModexpConversion.v
+./Core/Consequences/SetModelExists.v
 ./Core/Semantic/MemberWf.v
 ./Core/Semantic/Domain.v
 ./Core/Semantic/Evaluation.v
