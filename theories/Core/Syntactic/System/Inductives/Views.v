@@ -2626,3 +2626,65 @@ Proof.
                 HIl' HIs' HNl' HNs' HM') as H.
   rewrite Eb' in H; cbn [eb_motive] in H; exact H.
 Qed.
+
+(** ** The Recursive Eliminations of the View's Branch, Moved *)
+
+(** The uniform parameters in front of an instance of a telescope over
+    them: a substitution of the telescope and the uniform parameters. *)
+Lemma wf_sub_uparams_prefix : forall Θ Ξ Ψ Γ β Δ Δu Us L,
+    Θ ⍮ Ξ ⍮ Ψ ⊢ˢ β : Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list sb_id Us : Δu ++ Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ tele_sub Δ (sb_of_list sb_id Us) ++ Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ Δ ++ Δu ++ Γ ->
+    List.length L = List.length Δ -> List.length Us = List.length Δu ->
+    Θ ⍮ Ξ ⍮ Ψ ⊢ˢ sb_of_list β L : tele_sub Δ (sb_of_list sb_id Us) ++ Γ ->
+    Θ ⍮ Ξ ⍮ Ψ ⊢ˢ sb_of_list β (List.map (fun U => exp_sub U β) Us ++ L) : Δ ++ Δu ++ Γ.
+Proof.
+  intros * Hβ Hu HΔ HΔu HL HUl Hτ.
+  pose proof (wf_sub_ext _ _ Δ _ _ _ Hu HΔ HΔu) as Hq.
+  pose proof (wf_sub_compose _ _ _ _ _ _ _ Hq Hτ) as H.
+  eapply wf_sub_sb_eq; [exact H |].
+  intros x. rewrite sb_of_list_app.
+  destruct (Nat.lt_ge_cases x (List.length Δ)) as [Hx | Hx].
+  - cbn [sb_compose]. rewrite sb_qn_lt by exact Hx. cbn. rewrite <- HL in Hx.
+    rewrite (sb_of_list_lt_base L (sb_of_list β (List.map (fun U => exp_sub U β) Us)) β) by exact Hx. reflexivity.
+  - cbn [sb_compose]. rewrite sb_qn_ge by exact Hx. rewrite sentry_sub_wk.
+    replace x with (List.length L + (x - List.length Δ)) at 2 by lia. rewrite sb_of_list_ge, <- HL.
+    pose proof (sb_shift_of_list_app nil L β) as E. cbn [List.app sb_of_list] in E.
+    rewrite (sentry_sub_sb_eq _ _ _ E).
+    change (sentry_sub (sb_of_list sb_id Us (x - List.length L)) β) with (sb_compose (sb_of_list sb_id Us) β (x - List.length L)).
+    rewrite (sb_of_list_compose_gen Us sb_id β). apply sb_of_list_cong. apply sb_compose_id_left.
+Qed.
+
+(** The recursive eliminations of a constructor's arguments, read in the
+    context of the parameters and arguments ([vars_from]), moved to
+    parameters [Nv] and arguments [Av] past a renaming [w]: those of a
+    branch wrapped ([wrap_branch]). *)
+Lemma elim_ihs_moved : forall r pq D Us Bks nn gs w (Nv Av : list exp),
+    List.length Nv = nn -> List.length Av = List.length gs ->
+    List.map (fun N => exp_sub N (sb_of_list (sb_of_wk w) (Nv ++ Av)))
+      (elim_ihs r pq D (List.map (fun U => exp_sub U (sb_of_wk (wk_shiftn (nn + List.length gs)))) Us)
+         (blocks_sub Bks (sb_of_wk (wk_shiftn (nn + List.length gs))))
+         (sb_of_list (sb_of_wk (wk_shiftn (nn + List.length gs)))
+            (List.map (fun U => exp_sub U (sb_of_wk (wk_shiftn (nn + List.length gs)))) Us ++ vars_from (List.length gs) nn))
+         nn gs (vars_from 0 (List.length gs)))
+    = elim_ihs r pq D (List.map (fun U => exp_wk U w) Us) (blocks_wk Bks w)
+        (sb_of_list (sb_of_wk w) (List.map (fun U => exp_wk U w) Us ++ Nv)) nn gs Av.
+Proof.
+  intros * HNl HAl.
+  set (β := sb_of_wk (wk_shiftn (nn + List.length gs))).
+  set (σa := sb_of_list (sb_of_wk w) (Nv ++ Av)).
+  assert (Eβ : sb_eq (sb_compose β σa) (sb_of_wk w)).
+  { pose proof (sb_shift_of_list_app nil (Nv ++ Av) (sb_of_wk w)) as E. cbn [List.app sb_of_list] in E.
+    unfold β, σa. rewrite List.length_app, HNl, HAl in E. exact E. }
+  assert (EU : List.map (fun N => exp_sub N σa) (List.map (fun U => exp_sub U β) Us) = List.map (fun U => exp_wk U w) Us).
+  { rewrite List.map_map. apply List.map_ext. intros U. rewrite (exp_sub_sub_ext _ _ _ _ Eβ). apply exp_sub_of_wk. }
+  rewrite elim_ihs_sub, EU, blocks_sub_sub, (blocks_sub_sb_eq _ _ _ Eβ), blocks_sub_of_wk.
+  replace (List.map (fun N => exp_sub N σa) (vars_from 0 (List.length gs))) with Av.
+  2:{ unfold σa. rewrite <- HAl. pose proof (vars_from_sb_of_list_mid Nv Av nil (sb_of_wk w)) as E.
+      rewrite List.app_nil_r in E. cbn [List.length] in E. symmetry. exact E. }
+  apply elim_ihs_sb_eq. rewrite sb_of_list_compose_gen, List.map_app, EU.
+  replace (List.map (fun N => exp_sub N σa) (vars_from (List.length gs) nn)) with Nv.
+  2:{ unfold σa. rewrite <- HAl, <- HNl. symmetry. apply vars_from_sb_of_list_app. }
+  apply sb_of_list_cong. exact Eβ.
+Qed.
