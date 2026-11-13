@@ -91,6 +91,86 @@ Proof.
   - destruct Hff as (x & -> & _); cbn; apply (IH mr Kr W); left; reflexivity.
 Qed.
 
+(** ** Nothing Is at the Empty Unit Path
+
+    Every unit is filed at a non-empty path, and every frame is in such a
+    unit ([top_fresh_named]), so no lookup finds anything at a path whose
+    unit is the empty one.  The module a term entry gives where a module is
+    read ([sentry_modexp] of an [se_exp]) is the one there, and it has no
+    member. *)
+
+(** No unit is filed at the empty path. *)
+Lemma wf_gstack_deps_named : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> gds_lookup Θ nil = None.
+Proof.
+  induction 1 as [| Θ fp U H IH | Θ Ξ mq Kq Δ Φ HΞ IH HV Hff]; [ reflexivity | | exact IH ].
+  cbn; rewrite (path_beq_false nil fp (fun E => wf_gstack_top_unit _ _ _ _ _ H (eq_sym E))); exact IH.
+Qed.
+
+(** Every frame is in a unit of a non-empty path. *)
+Lemma wf_gstack_frames_named : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall mp K U, List.In (mp, K, U) Ξ -> q_unit mp <> nil.
+Proof.
+  induction 1 as [| | Θ Ξ mq Kq Δ Φ HΞ IH HV Hff]; intros mp K0 V0 Hin; try (cbn in Hin; contradiction).
+  destruct Hin as [[= <- <- <-] | Hin]; [| eauto ].
+  exact (frame_fresh_named _ _ _ HΞ Hff).
+Qed.
+
+(** [stack_finds_nothing Ξ p]: no frame of [Ξ] is found at [p], by any of
+    the stack's lookups. *)
+Record stack_finds_nothing (Ξ : gstack) (p : qname) : Prop :=
+  { (** No frame with its telescope *)
+    stack_nothing_tele : gs_find_tele Ξ p = None
+    (** No frame *)
+  ; stack_nothing_frame : gs_find Ξ p = None
+    (** No open frame of a group member's module *)
+  ; stack_nothing_ind : gs_find_ind Ξ p = None
+    (** No open frame of a record type's module *)
+  ; stack_nothing_record : gs_find_record Ξ p = None }.
+
+(** No frame is at a path whose unit is the empty one. *)
+Lemma gs_find_named : forall Ξ, (forall mp K U, List.In (mp, K, U) Ξ -> q_unit mp <> nil) ->
+    forall p, q_unit p = nil -> stack_finds_nothing Ξ p.
+Proof.
+  induction Ξ as [| [[mq Kq] Uq] Ξ IH]; intros Hn p Hp; [ constructor; reflexivity |].
+  destruct (IH (fun mp K U Hin => Hn mp K U (or_intror Hin)) p Hp) as [Ht Hf Hi Hr].
+  assert (Hs : qname_strip mq p = None)
+    by (unfold qname_strip; rewrite Hp, (path_beq_false _ _ (Hn _ _ _ (or_introl eq_refl))); reflexivity).
+  constructor; cbn; rewrite Hs; [ exact Ht | exact Hf | exact Hi | exact Hr ].
+Qed.
+
+(** [gctx_finds_nothing Θ Ξ p]: nothing at all is at the path [p] in the
+    global context. *)
+Record gctx_finds_nothing (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop :=
+  { (** No entry resolves there *)
+    gctx_nothing_resolve : gc_resolve Θ Ξ p = None
+    (** No module is there *)
+  ; gctx_nothing_module : gc_module Θ Ξ p = None
+    (** No filed module or open frame is there *)
+  ; gctx_nothing_loc : gc_loc Θ Ξ p = None
+    (** No group is declared there *)
+  ; gctx_nothing_ind : ind_lookup Θ Ξ p = None
+    (** No record type is declared there *)
+  ; gctx_nothing_record : record_lookup Θ Ξ p = None
+    (** No entry is stored there *)
+  ; gctx_nothing_entry : gc_entry Θ Ξ p = None }.
+
+(** So nothing at all is found at a path whose unit is the empty one. *)
+Lemma empty_unit_nothing : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p, q_unit p = nil -> gctx_finds_nothing Θ Ξ p.
+Proof.
+  intros Θ Ξ Hg p Hp.
+  pose proof (wf_gstack_deps_named _ _ Hg) as Hd; rewrite <- Hp in Hd.
+  destruct (gs_find_named Ξ (wf_gstack_frames_named _ _ Hg) p Hp) as [Ht Hf Hi Hr].
+  assert (He : gc_entry Θ Ξ p = None) by (unfold gc_entry, gc_entry_u; rewrite Hf, Hd; reflexivity).
+  assert (Hm : gc_module Θ Ξ p = None) by (unfold gc_module, gc_module_u; rewrite Ht, Hd; reflexivity).
+  constructor; [ unfold gc_resolve, gc_resolve_u; rewrite Hf, Hd; reflexivity
+               | exact Hm
+               | unfold gc_loc, gc_frame, gc_body; rewrite Ht, Hd; reflexivity
+               | unfold ind_lookup, ind_lookup_u, ind_mlookup_u; rewrite Hi;
+                 fold (gc_module_u (gds_lookup Θ) Ξ p); fold (gc_module Θ Ξ p); rewrite Hm; reflexivity
+               | unfold record_lookup, record_lookup_u; rewrite Hr;
+                 fold (gc_entry_u (gds_lookup Θ) Ξ p); fold (gc_entry Θ Ξ p); rewrite He; reflexivity
+               | exact He ].
+Qed.
+
 (** ** Prefixes of Extended Paths *)
 
 Lemma strip_prefix_snoc : forall l m y r,
