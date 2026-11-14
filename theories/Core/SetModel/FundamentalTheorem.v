@@ -379,8 +379,8 @@ Proof.
   - split; [ft_cs | eapply set_rel_exp_eq_refl_left; ft_kripke; eapply set_rule_let_def_zeta; ft_prem].
   - split; [ft_cs | eapply set_rel_exp_eq_refl_left; ft_kripke; eapply set_rule_let_mod_zeta; ft_prem].
   - split; [ft_cs | eapply set_rel_exp_eq_refl_left; ft_kripke; eapply set_rule_let_dm_zeta; ft_prem].
-  - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L _ => assert (HTm : gc_deps ⍮ gc_stack ⍮ G ⊢ L : A) by (apply Mv_exp; eapply wf_mem; eassumption) end.
-    ft_by set_rule_mem.
+  - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L _ => assert (HTm : Θ ⍮ Ξ ⍮ G ⊢ L : A) by (eapply wf_mem; eassumption) end.
+    ft_by_kripke set_rule_mem.
   - ft_by_kripke set_rule_var.
   - ft_by_kripke set_rule_record.
   - split; [ft_cs |]. ft_kripke. eapply set_rule_tuple; first [eassumption | ft_syn | ft_from_ih].
@@ -428,8 +428,8 @@ Proof.
                                      ltac:(eassumption) ltac:(eassumption)).
     ft_kripke; eapply set_rule_let_dm_cong; ft_prem.
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L ?Rt =>
-      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (apply Mv_eq; eapply wf_exp_eq_mem_cong; eassumption) end.
-    pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_cong.
+      assert (Hc : Θ ⍮ Ξ ⍮ G ⊢ L ≈ Rt : A) by (eapply wf_exp_eq_mem_cong; eassumption) end.
+    pose proof (presup_exp_eq_left Hc). pose proof (presup_exp_eq_right Hc). ft_by_kripke set_rule_mem_cong.
   - ft_by_kripke set_rule_var.
   - assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B) by (eapply wf_fn; eassumption).
     ft_by_kripke (set_rule_pi_beta Θ Ξ T γ Γ κd κc i Srt A M B N).
@@ -454,8 +454,8 @@ Proof.
   - ft_by_kripke set_rule_let_mod_zeta.
   - ft_by_kripke set_rule_let_dm_zeta.
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L ?Rt =>
-      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (apply Mv_eq; eapply wf_exp_eq_mem_delta; eassumption) end.
-    pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_delta.
+      assert (Hc : Θ ⍮ Ξ ⍮ G ⊢ L ≈ Rt : A) by (eapply wf_exp_eq_mem_delta; eassumption) end.
+    pose proof (presup_exp_eq_left Hc). ft_by_kripke set_rule_mem_delta.
   - match goal with H : _ ∋ #_ ≔ _ : _ |- _ => pose proof (ctx_lookup_def_lookup _ _ _ _ H) end.
     ft_by_kripke set_rule_var_delta.
   - assert (Hc : Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ a_fn A (a_app (exp_wk M wk_shift) (a_var 0)) : a_pi κd κc A B)
@@ -551,30 +551,30 @@ Proof.
   - split; [ft_cs | eapply set_rule_unit_eq_sym; do 2 eexists; eassumption].
   - split; [ft_cs | eapply set_rule_unit_eq_trans; do 2 eexists; eassumption].
   (* module expressions *)
-  - ft_by set_rule_me_unit.
-  - ft_by set_rule_me_var.
-  - ft_by set_rule_me_lit.
+  - ft_by_kripke set_rule_me_unit.
+  - ft_by_kripke set_rule_me_var.
+  - ft_by_kripke set_rule_me_lit.
   - match goal with |- _ /\ set_rel_modexp_eq _ _ ?G ?L ?Rt =>
       assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ L ≈ Rt) by (apply Mv_me; eapply wf_me_mem; eassumption) end.
     pose proof (wf_modexp_eq_refl_left Hc). pose proof (wf_modexp_eq_refl_right Hc).
     ft_by set_rule_me_mem.
-  - split; [ft_cs | eapply (set_rule_me_app T γ Hfn0 Hmods Hgw _ _ Hμ Γ H H' N N' R _ B _ Srt R' _ B' _ Srt'); ft_prem].
-  - ft_by set_rule_me_delta_slot.
+  - split; [ft_cs | ft_kripke; eapply (set_rule_me_app Θ Ξ T γ Γ H H' N N' R _ B _ Srt R' _ B' _ Srt'); ft_prem].
+  - ft_by_kripke set_rule_me_delta_slot.
   - ft_by set_rule_me_delta_sel.
   - split; [ft_cs |].
     match goal with |- context [me_lit (gu_open (tele_sub ?Δ ?σ) (gmod_sub ?Φ _))] =>
       replace (gu_open (tele_sub Δ σ) _) with (gunit_sub (gu_open Δ Φ) σ) by (rewrite gunit_sub_mk; reflexivity) end.
-    eapply set_rule_me_beta; [ft_prem | ft_prem | ft_prem | ft_prem | ft_prem | | ft_prem ..].
-    rewrite gunit_sub_mk. apply Mv_me; eapply wf_me_beta_body; eassumption.
+    ft_kripke. eapply set_rule_me_beta; [ft_prem | | ft_prem ..].
+    rewrite gunit_sub_mk. eapply wf_me_beta_body; eassumption.
   - split; [ft_cs |].
     match goal with |- context [me_lit (gu_mk (tele_sub ?Δ ?σ) (md_alias (modexp_sub ?E _)))] =>
       replace (gu_mk (tele_sub Δ σ) _) with (gunit_sub (gu_mk Δ (md_alias E)) σ) by (rewrite gunit_sub_mk; reflexivity) end.
-    eapply set_rule_me_beta; [ft_prem | ft_prem | ft_prem | ft_prem | ft_prem | | ft_prem ..].
-    rewrite gunit_sub_mk. apply Mv_me; eapply wf_me_beta_alias; eassumption.
-  - split; [ft_cs | eapply (set_rule_me_beta_alias0 T γ Hfn0 Hmods Hgw _ _ Hμ);
-                    [ft_prem | eapply wf_modexp_eq_refl_left; apply Mv_me; eapply wf_me_beta_alias0; eassumption | ft_prem]].
-  - ft_by set_rule_me_sym.
-  - ft_by set_rule_me_trans.
+    ft_kripke. eapply set_rule_me_beta; [ft_prem | | ft_prem ..].
+    rewrite gunit_sub_mk. eapply wf_me_beta_alias; eassumption.
+  - split; [ft_cs | ft_kripke; eapply set_rule_me_beta_alias0;
+                    [ft_prem | eapply wf_modexp_eq_refl_left; eapply wf_me_beta_alias0; eassumption | ft_prem]].
+  - ft_by_kripke set_rule_me_sym.
+  - ft_by_kripke set_rule_me_trans.
 Qed.
 
 End FundamentalTheorem.
