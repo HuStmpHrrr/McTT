@@ -419,7 +419,7 @@ Proof.
                                            | eassumption | ft_from_ih | ft_from_ih | do 3 eexists; eassumption].
   - split; [ft_cs |]. eapply (set_rule_proj T γ Hfn0 Hmods Hgw _ _ Hμ); [ft_syn | ft_ctx | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih
                                           | eassumption | do 3 eexists; eassumption | eassumption].
-  - split; [ft_cs | eapply set_rule_exp_eq_subtyp; eassumption].
+  - ft_by_kripke set_rule_exp_eq_subtyp.
   (* term equality *)
   - split; [ft_cs | ft_kripke; apply set_rule_typ].
   - ft_by_kripke set_rule_univ.
@@ -523,18 +523,18 @@ Proof.
     { match goal with Hn0 : List.map fst (record_eta_fields R M) = List.map fst (record_fields ?R0), Hnd1 : NoDup _ |- _ =>
         rewrite <- Hn0 in Hnd1; unfold record_eta_fields in Hnd1; rewrite List.map_map in Hnd1; exact Hnd1 end. }
     eapply (set_rule_record_eta T γ _ _ Hμ); [ft_ctx | eassumption | eassumption | exact Hnd | eassumption | eassumption].
-  - split; [ft_cs | eapply set_rule_exp_eq_subtyp; eassumption].
-  - split; [ft_cs | apply set_rule_exp_eq_sym; do 3 eexists; eassumption].
-  - split; [ft_cs | eapply set_rule_exp_eq_trans; do 3 eexists; eassumption].
+  - ft_by_kripke set_rule_exp_eq_subtyp.
+  - ft_by_kripke set_rule_exp_eq_sym.
+  - ft_by_kripke set_rule_exp_eq_trans.
   (* subtyping *)
-  - ft_by set_rule_subtyp_refl.
-  - split; [ft_cs | eapply set_rule_subtyp_trans; do 2 eexists; eassumption].
-  - ft_by set_rule_subtyp_univ.
-  - ft_by set_rule_subtyp_suniv.
-  - ft_by set_rule_subtyp_level.
-  - ft_by set_rule_subtyp_small_large.
+  - ft_by_kripke set_rule_subtyp_refl.
+  - ft_by_kripke set_rule_subtyp_trans.
+  - ft_by_kripke set_rule_subtyp_univ.
+  - ft_by_kripke set_rule_subtyp_suniv.
+  - ft_by_kripke set_rule_subtyp_level.
+  - ft_by_kripke set_rule_subtyp_small_large.
   - assert (κc <> ak_propositional) by (match goal with H : evaluated_kind κc |- _ => destruct H end; discriminate).
-    ft_by set_rule_subtyp_pi.
+    ft_by_kripke set_rule_subtyp_pi.
   (* universes *)
   - split; [ft_cs | apply set_rule_is_univ_large; ft_ctx].
   - ft_by set_rule_is_univ_small.

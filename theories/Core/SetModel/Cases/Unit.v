@@ -107,8 +107,8 @@ Lemma set_exp_eq_typ_le : forall Γ A l l', set_rel_exp_eq T γ Γ (a_typ l) A A
 Proof.
   intros * HA Hle. destruct (Nat.eq_dec l l') as [<- | Hne]; [exact HA |].
   destruct HA as (FS & FA & FA' & HA).
-  destruct (set_rule_subtyp_univ T γ Γ l l' ltac:(lia)) as (FS0 & FS' & HS).
-  exact (set_rule_exp_eq_subtyp T γ _ _ _ _ _ _ _ _ _ _ HA HS).
+  destruct (set_subtyp_typ_lt T γ Γ l l' ltac:(lia)) as (FS0 & FS' & HS).
+  exact (set_exp_eq_at_supertype T γ _ _ _ _ _ _ _ _ _ _ HA HS).
 Qed.
 
 Lemma set_params_evaluated_le : forall Γ Δ l l', set_params_evaluated T γ Γ Δ l -> l <= l' -> set_params_evaluated T γ Γ Δ l'.
