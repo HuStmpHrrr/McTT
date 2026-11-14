@@ -1052,7 +1052,7 @@ Proof.
     exact (conj (proj2 (desc_ok_ty_sorted _ _ Hvs _ _ _ Hd' Ht') _ HN0) (HN' _ HN0)).
   - (* the filed member read by name *)
     destruct (bare_member_typed _ _ _ _ _ _ _ _ _ HwE HmE HmdE Hm') as [Hl Hty].
-    pose proof (set_filed_mod_path _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ (gc_loc_of_loc _ _ Hgw _ _ _ Hl))) as Hpath.
+    pose proof (set_filed_mod_path _ _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ (gc_loc_of_loc _ _ Hgw _ _ _ Hl))) as Hpath.
     assert (HFN : set_denotes T γ (Δ ++ Γ) (a_mem (qname_mod p) x) (fun _ => select_term γ (set_module_global p nil) x)).
     { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΔΓ). intros ρ _. econstructor; [ exact (Hpath _ ρ) | exact Hty ]. }
     destruct (desc_ok_ty_at _ _ _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hvs HwE Hm') eq_refl) as [i HAi].
@@ -1083,11 +1083,11 @@ Proof.
           try discriminate; injection He as <-; eauto. }
       destruct HR0t as (r & A1 & om & ->).
       destruct (mdesc_term_part_ats_term _ _ _ _ _ Hats) as (A2 & om2 & ->); reflexivity. }
-    destruct (set_filed_mod_terms _ _ _ _ _ HFm _ _ HR0) as (A0 & i & Hft).
+    destruct (set_filed_mod_terms _ _ _ _ _ _ HFm _ _ HR0) as (A0 & i & Hft).
     exists R0, R1, A0, i.
     split; [exact HR0 | split; [exact Hats | split; [exact Hft | split; [rewrite Hk; exact HrR1 | split; [exact HrR1 |]]]]].
     split; [rewrite Hty; apply mdesc_type_named_m | exact Hred]. }
-  pose proof (set_filed_mod_path _ _ _ _ _ HFm) as Hpath.
+  pose proof (set_filed_mod_path _ _ _ _ _ _ HFm) as Hpath.
   assert (Hglob : forall Γ' ρ' m, set_env_eq γ ρ' ρ' -> set_interp_modexp T γ Γ' ρ' (qname_mod p) m ->
             set_module_eq γ m (set_module_global p nil)).
   { intros Γ' ρ' m Eρ Hm. exact (set_interp_modexp_functional T γ Hfn Hmods _ _ _ _ Hm _ _ Eρ (Hpath Γ' ρ')). }
@@ -1114,7 +1114,7 @@ Proof.
     destruct Hargs as [rest filled Hspl Hl2 _ _ Hwf Hsyn].
     destruct (app_split_length _ _ _ _ Hspl ltac:(rewrite Hl2; exact Hlen)) as [_ <-].
     pose proof (presup_modexp_eq_ctx Hw) as HcΓ.
-    pose proof (set_filed_mod_tele_ctx _ _ _ _ _ HFm) as HCTl.
+    pose proof (set_filed_mod_tele_ctx _ _ _ _ _ _ HFm) as HCTl.
     pose proof (set_ctx_app_r T γ _ _ HCTl) as HCTf.
     pose proof (ctx_app_wf_tail _ _ Tr Tf HcTl) as HcTf.
     assert (HCΓ : set_ctx T γ (Tf ++ Γ)).
@@ -1128,9 +1128,9 @@ Proof.
     destruct (set_filed_term_reads _ _ _ _ _ _ _ _ Hft Ns R1 Tr Tf eq_refl Hlen Hats) as [HtyR1 Hred1].
     rewrite Hty, HtyR1 in Ht. injection Ht as <-.
     destruct (set_filed_term_typed _ _ _ _ _ _ _ _ Hft) as (FS & FA0 & FA0' & [_ HA0 _ _ _]).
-    destruct (proj1 (List.Forall_app _ _ _) (set_filed_mod_tele_assumptions _ _ _ _ _ HFm)) as [HTra _].
+    destruct (proj1 (List.Forall_app _ _ _) (set_filed_mod_tele_assumptions _ _ _ _ _ _ HFm)) as [HTra _].
     destruct (set_ctx_pi_denotes _ _ (mdesc_kind R0) _ _ HTra HCTl HcTl HA0) as (FX & HX).
-    pose proof (set_filed_mod_tele_scoped _ _ _ _ _ HFm) as HTls. apply ctx_scoped_app_iff in HTls as [HTrs _].
+    pose proof (set_filed_mod_tele_scoped _ _ _ _ _ _ HFm) as HTls. apply ctx_scoped_app_iff in HTls as [HTrs _].
     pose proof (set_filed_term_scoped _ _ _ _ _ _ _ _ Hft) as HA0s. rewrite List.length_app in HA0s.
     pose proof (ctx_pi_scoped (mdesc_kind R0) _ _ _ HTrs HA0s) as HXs.
     set (g := snd (global_term γ (qname_in p x))) in *.
@@ -1194,7 +1194,7 @@ Lemma set_filed_members_denote : forall Γ p Tl Φ Tr Tf Ns,
 Proof.
   intros * Hw Hgl HΓ Ha x R A Hm Ht. pose proof (set_gctx_ok_filed _ _ Hok _ _ _ Hgl) as HFm.
   destruct (filed_mem_desc _ _ Hgw _ _ _ _ _ _ _ _ Hgl Hm Ht) as (R0 & R1 & HR0 & Hats & _ & Hty & Hred).
-  destruct (set_filed_mod_terms _ _ _ _ _ HFm _ _ HR0) as (A0 & i & Hft).
+  destruct (set_filed_mod_terms _ _ _ _ _ _ HFm _ _ HR0) as (A0 & i & Hft).
   (* the arguments' instance of the telescope, as for the members' values *)
   pose proof (gctx_valid_syn _ _ Hgw) as Hvs.
   destruct (filed_denote _ _ Hgw _ _ _ Γ Ns Hgl) as (RK & HmK & HmodK).
@@ -1204,7 +1204,7 @@ Proof.
   destruct Hargs as [rest filled Hspl Hl2 _ _ Hwf Hsyn].
   destruct (app_split_length _ _ _ _ Hspl ltac:(rewrite Hl2; exact Hlen)) as [_ <-].
   pose proof (presup_modexp_eq_ctx Hw) as HcΓ.
-  pose proof (set_filed_mod_tele_ctx _ _ _ _ _ HFm) as HCTl.
+  pose proof (set_filed_mod_tele_ctx _ _ _ _ _ _ HFm) as HCTl.
   pose proof (set_ctx_app_r T γ _ _ HCTl) as HCTf.
   pose proof (ctx_app_wf_tail _ _ Tr Tf HcTl) as HcTf.
   assert (HCΓ : set_ctx T γ (Tf ++ Γ)).
@@ -1216,9 +1216,9 @@ Proof.
   { (* the type: the [Π] over the rest of the telescope, instantiated *)
     rewrite Hty, mdesc_type_named_m, HtyR1 in Ht. injection Ht as <-.
     destruct (set_filed_term_typed _ _ _ _ _ _ _ _ Hft) as (FS & FA0 & FA0' & [_ HA0 _ _ _]).
-    destruct (proj1 (List.Forall_app _ _ _) (set_filed_mod_tele_assumptions _ _ _ _ _ HFm)) as [HTra _].
+    destruct (proj1 (List.Forall_app _ _ _) (set_filed_mod_tele_assumptions _ _ _ _ _ _ HFm)) as [HTra _].
     destruct (set_ctx_pi_denotes _ _ (mdesc_kind R0) _ _ HTra HCTl HcTl HA0) as (FX & HX).
-    pose proof (set_filed_mod_tele_scoped _ _ _ _ _ HFm) as HTls. apply ctx_scoped_app_iff in HTls as [HTrs _].
+    pose proof (set_filed_mod_tele_scoped _ _ _ _ _ _ HFm) as HTls. apply ctx_scoped_app_iff in HTls as [HTrs _].
     pose proof (set_filed_term_scoped _ _ _ _ _ _ _ _ Hft) as HA0s. rewrite List.length_app in HA0s.
     pose proof (ctx_pi_scoped (mdesc_kind R0) _ _ _ HTrs HA0s) as HXs.
     exact (ex_intro _ _ (set_closed_inst_denotes _ _ _ _ _ _ Hι HΓ HCTf HTfs HcTf HCΓ Hwf HXs HX)). }
@@ -1238,7 +1238,7 @@ Proof.
     destruct HR1t as (r1 & A1 & ->).
     destruct (mdesc_named_term_none nil Ns (apps_exp (a_mem (qname_mod p) x) Ns) r1 A1) as [(E & _ & _) | E];
       rewrite E in HM; cbn in HM; [discriminate |]. injection HM as <-.
-    pose proof (set_filed_mod_path _ _ _ _ _ HFm) as Hpath.
+    pose proof (set_filed_mod_path _ _ _ _ _ _ HFm) as Hpath.
     assert (HN : forall k N, List.nth_error Ns k = Some N -> exists FN, set_denotes T γ Γ N FN).
     { intros k N HN.
       destruct (List.nth_error (tele_insts Tf sb_id Ns) k) as [B |] eqn:EB.

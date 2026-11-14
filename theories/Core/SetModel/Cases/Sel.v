@@ -347,7 +347,7 @@ Lemma set_filed_value : forall Γ p T0 Φ ρ Ns m, gc_loc gc_deps gc_stack p = S
 Proof.
   intros * Hgl Hρ Hm. destruct (set_interp_me_apps_inv T γ _ _ _ _ _ Hm) as (m0 & ns & Hm0 & Hns & ->).
   exists ns. split; [exact Hns |].
-  pose proof (set_filed_mod_path _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ Hgl) Γ ρ) as Hpath.
+  pose proof (set_filed_mod_path _ _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ Hgl) Γ ρ) as Hpath.
   pose proof (set_interp_modexp_functional T γ Hfn Hmods _ _ _ _ Hm0 _ _ (set_env_rel_eq T γ _ _ _ Hρ) Hpath) as E.
   rewrite <- (List.app_nil_l ns), <- apply_module_args_global.
   apply apply_module_args_resp; [exact E | apply list_set_eq_refl].
@@ -358,7 +358,7 @@ Lemma filed_member_proofs : forall p T0 Φ Ns κs ys x, gc_loc gc_deps gc_stack 
     modexp_member_proofs γ κs (me_apps (qname_mod p) Ns) ys x = module_member_proofs γ (set_module_global p nil) ys x.
 Proof.
   intros * Hgl. rewrite me_apps_member_proofs, (mod_qname_member_proofs γ _ _ (mod_qname_qname_mod p) κs (env_slot_proofs γ empty_set_env)).
-  rewrite <- (set_interp_modexp_member_proofs T γ _ _ _ _ (set_filed_mod_path _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ Hgl) nil empty_set_env)).
+  rewrite <- (set_interp_modexp_member_proofs T γ _ _ _ _ (set_filed_mod_path _ _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ Hgl) nil empty_set_env)).
   reflexivity.
 Qed.
 
@@ -409,7 +409,7 @@ Lemma set_filed_alias_sel : forall Γ p T0 Φ Tr Tf Ns y Φ0 E Ua RU Rm,
 Proof.
   intros * Hw Hgl HΓ Ha Hp HUa HmU HmdU HwY.
   pose proof (set_gctx_ok_filed _ _ Hok _ _ _ Hgl) as HFm.
-  destruct (set_filed_mod_aliases _ _ _ _ _ HFm _ _ _ _ Hp HUa) as [HmUa HvUa].
+  destruct (set_filed_mod_aliases _ _ _ _ _ _ HFm _ _ _ _ Hp HUa) as [HmUa HvUa].
   pose proof (presup_modexp_eq_ctx Hw) as HcΓ.
   pose proof (HvUa _ HΓ HcΓ) as HKUa.
   pose proof (HvUa nil I (wf_ctx_empty _ _ Hgw)) as HKUa0.

@@ -49,7 +49,7 @@ Qed.
 Lemma set_valid_unit_rel : forall Γ K, set_valid_unit T γ Γ K -> set_modexp_rel T γ Γ K K.
 Proof.
   intros * HK. destruct HK as [Γ p T0 Φ Tr Tf Ns _ Hgl HΓ Ha | Γ Δ Φ Φx Hb _ _ | Γ Δ E Hal _].
-  - pose proof (set_filed_mod_path _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ Hgl)) as Hpath.
+  - pose proof (set_filed_mod_path _ _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ Hgl)) as Hpath.
     destruct Ha as [_ Hlen HTfa _ HNr _].
     assert (HN : forall k N, List.nth_error Ns k = Some N -> exists FN, set_denotes T γ Γ N FN).
     { intros k N HN.
@@ -587,8 +587,8 @@ Proof.
     injection Ht as <-.
     replace (List.length Tr + List.length Tf - List.length Ns) with (List.length Tr) in Hv by lia.
     rewrite List.firstn_app, List.firstn_all, Nat.sub_diag in Hv; cbn [List.firstn] in Hv; rewrite !List.app_nil_r in Hv.
-    pose proof (set_filed_mod_tele_assumptions T γ _ _ _ (set_gctx_ok_filed T γ Hok _ _ _ Hgl)) as HTa.
-    pose proof (set_filed_mod_tele_scoped T γ _ _ _ (set_gctx_ok_filed T γ Hok _ _ _ Hgl)) as HTs.
+    pose proof (set_filed_mod_tele_assumptions T γ _ _ _ _ (set_gctx_ok_filed T γ Hok _ _ _ Hgl)) as HTa.
+    pose proof (set_filed_mod_tele_scoped T γ _ _ _ _ (set_gctx_ok_filed T γ Hok _ _ _ Hgl)) as HTs.
     apply List.Forall_app in HTa as [HTa1 _].
     destruct (List.exists_last (l := Tr)) as (L & e & ->); [intros ->; cbn in Hv; discriminate |].
     apply List.Forall_app in HTa1 as [_ He]; inversion He as [| ? ? (κ & A & ->) _]; subst.

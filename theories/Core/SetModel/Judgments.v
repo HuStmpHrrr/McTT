@@ -825,9 +825,19 @@ Record set_filed_term_with (p : qname) (Tl : ctx) (x : string) (R0 : mdesc) (A0 
     (** The [Π]s over the telescope into the member's kind are formed *)
   ; set_filed_term_pi_kinds : forall Δ1 κ A Δ2, Tl = Δ1 ++ ce_ass κ A :: Δ2 -> pi_kinds κ (mdesc_kind R0) }.
 
-(** [set_filed_mod p Tl Φ]: the filed module [p], over its telescope [Tl],
-    of the stored body [Φ], is modelled. *)
-Record set_filed_mod (p : qname) (Tl : ctx) (Φ : gmod) : Prop :=
+(** [set_filed_mod Ξm p Tl Φ]: the filed module [p], over its telescope
+    [Tl], of the stored body [Φ], is modelled, its members read with the
+    stack [Ξm].  The stack is a parameter because a module's members are
+    not all in its body: the type former of an inductive type whose frame
+    is open under [p] is read off the stack ([stored_term_member]).  In
+    [module P where inductive V : Type where | mk : V → V end], [P.V] in
+    [mk]'s type is the former of the open frame [P.V], not an entry of
+    [P]'s body; once the frame closes it is an entry of a bigger body.  A
+    valuation modelling a context reads its own stack ([set_gctx_ok]); one
+    modelling a context where it grows reads the smaller context's
+    ([set_gctx_embedding]), whose open frames are the ones its
+    derivations saw. *)
+Record set_filed_mod (Ξm : gstack) (p : qname) (Tl : ctx) (Φ : gmod) : Prop :=
   { (** Its path reads the global module at no argument, anywhere *)
     set_filed_mod_path : forall Γ ρ, set_interp_modexp T γ Γ ρ (qname_mod p) (set_module_global p nil)
     (** The telescope denotes *)
@@ -838,9 +848,9 @@ Record set_filed_mod (p : qname) (Tl : ctx) (Φ : gmod) : Prop :=
   ; set_filed_mod_tele_scoped : ctx_scoped 0 Tl
     (** Of evaluated sorts, at one level *)
   ; set_filed_mod_tele_evaluated : exists l, set_params_evaluated T γ nil Tl l
-    (** Every term member stored at it, of an entry or an open frame's
-        type former, is modelled *)
-  ; set_filed_mod_terms : forall x R0, stored_term_member gc_stack Φ p x R0 -> exists A0 i, set_filed_term_with p Tl x R0 A0 i
+    (** Every term member stored at it, of an entry or of a type former
+        whose frame is open on [Ξm], is modelled *)
+  ; set_filed_mod_terms : forall x R0, stored_term_member Ξm Φ p x R0 -> exists A0 i, set_filed_term_with p Tl x R0 A0 i
     (** An alias stored in it is the module at its path, and a valid unit
         in every denoting context *)
   ; set_filed_mod_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
@@ -1105,7 +1115,7 @@ Record set_record_ok (p : qname) (R : record_decl) (SR : set_record) : Prop :=
 (** [set_gctx_ok]: [γ] models the global context. *)
 Record set_gctx_ok : Prop :=
   { (** Every filed module or frame is modelled *)
-    set_gctx_ok_filed : forall p Tl Φ, gc_loc gc_deps gc_stack p = Some (Tl, Φ) -> set_filed_mod p Tl Φ
+    set_gctx_ok_filed : forall p Tl Φ, gc_loc gc_deps gc_stack p = Some (Tl, Φ) -> set_filed_mod gc_stack p Tl Φ
     (** A filed module or frame is its own global module *)
   ; set_gctx_ok_bodies : forall q TΦ, gc_loc gc_deps gc_stack q = Some TΦ -> global_module γ q = set_module_global q nil
     (** Every global module equals itself, so selection respects equality *)
@@ -1153,7 +1163,7 @@ Record set_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gsta
   ; set_gctx_embedding_fn_kinds : @fn_kinds_unique_ext (gc_mk Θ2 Ξ2)
     (** Every module it files or has open is modelled there *)
   ; set_gctx_embedding_filed : forall p Tl Φ, gc_loc Θ1 Ξ1 p = Some (Tl, Φ) ->
-      @set_filed_mod (gc_mk Θ2 Ξ2) T γ p Tl Φ
+      @set_filed_mod (gc_mk Θ2 Ξ2) T γ Ξ1 p Tl Φ
     (** A filed module or frame is its own global module *)
   ; set_gctx_embedding_bodies : forall q TΦ, gc_loc Θ1 Ξ1 q = Some TΦ -> global_module γ q = set_module_global q nil
     (** Every global module equals itself, so selection respects
