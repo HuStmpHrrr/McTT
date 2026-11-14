@@ -413,7 +413,7 @@ Proof.
   - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_dm_zeta; ft_prem].
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L _ => assert (HTm : gc_deps ⍮ gc_stack ⍮ G ⊢ L : A) by (apply Mv_exp; eapply wf_mem; eassumption) end.
     ft_by set_rule_mem.
-  - ft_by set_rule_var.
+  - ft_by_kripke set_rule_var.
   - ft_by set_rule_record.
   - split; [ft_cs |]. eapply (set_rule_tuple T γ Hfn0 Hmods Hgw _ _ Hμ); [ft_syn | ft_ctx | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih
                                            | eassumption | ft_from_ih | ft_from_ih | do 3 eexists; eassumption].
@@ -468,7 +468,7 @@ Proof.
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L ?Rt =>
       assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (apply Mv_eq; eapply wf_exp_eq_mem_cong; eassumption) end.
     pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_cong.
-  - ft_by set_rule_var.
+  - ft_by_kripke set_rule_var.
   - ft_by set_rule_pi_beta.
   - split; [ft_cs |].
     eapply (set_rule_elim_iota T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
@@ -494,7 +494,7 @@ Proof.
       assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (apply Mv_eq; eapply wf_exp_eq_mem_delta; eassumption) end.
     pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_delta.
   - match goal with H : _ ∋ #_ ≔ _ : _ |- _ => pose proof (ctx_lookup_def_lookup _ _ _ _ H) end.
-    ft_by set_rule_var_delta.
+    ft_by_kripke set_rule_var_delta.
   - assert (Hc : gc_deps ⍮ gc_stack ⍮ Γ ⊢ M ≈ a_fn A (a_app (exp_wk M wk_shift) (a_var 0)) : a_pi κd κc A B)
       by (eapply wf_exp_eq_fn_eta; eassumption).
     pose proof (presup_exp_eq_right Hc). ft_by set_rule_fn_eta.

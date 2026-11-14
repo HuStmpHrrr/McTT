@@ -14,9 +14,14 @@ From Mctt.Core.Syntactic.System Require Import Definitions Structural.
 Import ListNotations.
 
 Section Variables.
-  Context {GC : GCtx}.
+  (** The context the rules' premises are read at *)
+  Variable Θ : gdeps.
+  Variable Ξ : gstack.
   Variable T : universe_tower.
   Variable γ : global_valuation.
+
+Section Lookups.
+  Context {GC : GCtx}.
   Hypothesis Hfn : fn_kinds_unique.
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
 
@@ -58,14 +63,6 @@ Proof.
     intros ρ [Ht _]. exact (Hm _ Ht).
 Qed.
 
-(** [Γ ∋ #x : A] gives [#x : A]. *)
-Lemma set_rule_var : forall Γ x A, Γ ∋ #x : A -> set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_rel_exp_eq T γ Γ A (a_var x) (a_var x).
-Proof.
-  intros * H HΓ Hc. destruct (set_lookup_denotes _ _ _ H HΓ Hc) as [FA [HA Hm]].
-  exists FA, (fun ρ => set_entry_value (ρ x)), (fun ρ => set_entry_value (ρ x)).
-  constructor; [exact HA | apply set_denotes_var .. | intros; apply set_eq_refl | exact Hm].
-Qed.
-
 (** A definition's body denotes, and its variable's value is the body's. *)
 Lemma set_lookup_def_denotes : forall Γ x A M, Γ ∋ #x ≔ M : A -> set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
     exists FM, set_denotes T γ Γ M FM /\ forall ρ, set_env_in T γ Γ ρ -> set_eq (set_entry_value (ρ x)) (FM ρ).
@@ -84,12 +81,22 @@ Proof.
     intros ρ [Ht _]. exact (Hm _ Ht).
 Qed.
 
-(** δ: a defined variable is its definition's body. *)
-Lemma set_rule_var_delta : forall Γ x A M, Γ ∋ #x : A -> Γ ∋ #x ≔ M : A -> set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
-    set_rel_exp_eq T γ Γ A (a_var x) M.
+End Lookups.
+
+(** [Γ ∋ #x : A] gives [#x : A]. *)
+Lemma set_rule_var : forall Γ x A, Γ ∋ #x : A -> set_ctx_slots Θ Ξ T γ Γ -> ⊢ Θ ⍮ Ξ ⍮ Γ -> set_exp_eq Θ Ξ T γ Γ A (a_var x) (a_var x).
 Proof.
-  intros * H Hd HΓ Hc. destruct (set_lookup_denotes _ _ _ H HΓ Hc) as [FA [HA Hm]].
-  destruct (set_lookup_def_denotes _ _ _ _ Hd HΓ Hc) as [FM [HM EM]].
+  intros * H HΓ Hc. set_open. destruct HΓ as [HΓ _]. destruct (set_lookup_denotes Hfn Hmods _ _ _ H HΓ Hc) as [FA [HA Hm]].
+  exists FA, (fun ρ => set_entry_value (ρ x)), (fun ρ => set_entry_value (ρ x)).
+  constructor; [exact HA | apply set_denotes_var .. | intros; apply set_eq_refl | exact Hm].
+Qed.
+
+(** δ: a defined variable is its definition's body. *)
+Lemma set_rule_var_delta : forall Γ x A M, Γ ∋ #x : A -> Γ ∋ #x ≔ M : A -> set_ctx_slots Θ Ξ T γ Γ -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    set_exp_eq Θ Ξ T γ Γ A (a_var x) M.
+Proof.
+  intros * H Hd HΓ Hc. set_open. destruct HΓ as [HΓ _]. destruct (set_lookup_denotes Hfn Hmods _ _ _ H HΓ Hc) as [FA [HA Hm]].
+  destruct (set_lookup_def_denotes Hfn Hmods _ _ _ _ Hd HΓ Hc) as [FM [HM EM]].
   exists FA, (fun ρ => set_entry_value (ρ x)), FM.
   constructor; [exact HA | apply set_denotes_var | exact HM | exact EM | exact Hm].
 Qed.
