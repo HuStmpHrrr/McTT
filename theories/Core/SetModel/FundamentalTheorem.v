@@ -156,27 +156,6 @@ Ltac ft_prem := first [ eassumption | ft_ctx | ft_syn | (do 3 eexists; eassumpti
 (** A case by its set rule. *)
 Ltac ft_by lemma := split; [ft_cs | eapply lemma; ft_prem].
 
-(** No extensions. *)
-Lemma set_ext_eq_suffixes_nil {GC : GCtx} : forall Γ, set_ctx T γ Γ -> set_valid_slots T γ Γ -> set_rel_ext_eq_suffixes T γ Γ nil nil.
-Proof.
-  intros Γ HΓ Hsl. constructor; [| exact Hsl | exact Hsl].
-  intros [| ? ?] Ψ [| ? ?] Ψ' E E' _; try discriminate. cbn in E, E'. subst. exact (set_rule_ext_eq_nil T γ _ HΓ).
-Qed.
-
-(** Extensions by one more entry each: their suffixes are the whole ones
-    or suffixes of the extensions before. *)
-Lemma set_ext_eq_suffixes_cons {GC : GCtx} : forall Γ Ψ Ψ' e e', set_rel_ext_eq_suffixes T γ Γ Ψ Ψ' -> List.length Ψ = List.length Ψ' ->
-    set_ext_eq_with T γ Γ (e :: Ψ) (e' :: Ψ') ->
-    set_valid_slots T γ (e :: Ψ ++ Γ) -> set_valid_slots T γ (e' :: Ψ' ++ Γ) -> set_rel_ext_eq_suffixes T γ Γ (e :: Ψ) (e' :: Ψ').
-Proof.
-  intros * [Hsuf _ _] Hlen Hwhole Hsl Hsl'. constructor; [| exact Hsl | exact Hsl'].
-  intros [| x X] Ψ0 [| x' X'] Ψ0' E E' Hl.
-  - cbn in E, E'. subst. exact Hwhole.
-  - exfalso. apply (f_equal (@List.length centry)) in E, E'. cbn in E, E'. rewrite List.length_app in E'. lia.
-  - exfalso. apply (f_equal (@List.length centry)) in E, E'. cbn in E, E'. rewrite List.length_app in E. lia.
-  - injection E as _ E. injection E' as _ E'. exact (Hsuf _ _ _ _ E E' Hl).
-Qed.
-
 (** Equal extensions of a context give it. *)
 Lemma set_ext_eq_suffixes_ctx_slots {GC : GCtx} : forall Γ Δ Δ', set_rel_ext_eq_suffixes T γ Γ Δ Δ' -> set_rel_ctx_slots T γ Γ.
 Proof.
@@ -225,17 +204,8 @@ Ltac ft_from_ih :=
                       apply Mv; solve [eauto]
                   end end ].
 
-(** The whole extensions of equal extensions denote, with valid slots. *)
-Lemma set_ext_eq_suffixes_whole {GC : GCtx} : forall Γ Δ Δ', set_rel_ext_eq_suffixes T γ Γ Δ Δ' -> List.length Δ = List.length Δ' ->
-    set_ctx T γ (Δ ++ Γ) /\ set_ctx T γ (Δ' ++ Γ).
-Proof. intros * [Hsuf _ _] Hlen. destruct (Hsuf nil Δ nil Δ' eq_refl eq_refl Hlen) as [HL HR _]. split; assumption. Qed.
-
 Ltac ft_cs' :=
   first [ ft_cs | match goal with H : set_rel_ext_eq_suffixes T γ ?Γ _ _ |- set_rel_ctx_slots T γ ?Γ => exact (set_ext_eq_suffixes_ctx_slots _ _ _ H) end ].
-
-Ltac ft_ext_cons :=
-  match goal with Hx : _ ⍮ _ ⍮ ?Γ ⊢ˣ ?Ψ ≈ ?Ψ' |- set_rel_ext_eq_suffixes T γ ?Γ (_ :: ?Ψ) (_ :: ?Ψ') =>
-    apply set_ext_eq_suffixes_cons; [assumption | exact (ext_eq_length _ _ _ _ _ Hx) | | |] end.
 
 (** A case's syntactic hypotheses, read at the derivation's context
     [Θs ⍮ Ξs], copied to this one beside their own: its judgments and
@@ -502,47 +472,24 @@ Proof.
   - ft_by_kripke set_rule_is_univ_large.
   - ft_by_kripke set_rule_is_univ_small.
   (* extensions *)
-  - apply set_ext_eq_suffixes_nil; assumption.
-  - ft_ext_cons; [eapply set_rule_ext_eq_ass; ft_prem | apply set_valid_slots_extend_plain; [assumption | reflexivity]
-                 | apply set_valid_slots_extend_plain; [assumption | reflexivity]].
-  - ft_ext_cons; [eapply set_rule_ext_eq_def; ft_prem | apply set_valid_slots_extend_plain; [assumption | reflexivity]
-                 | apply set_valid_slots_extend_plain; [assumption | reflexivity]].
-  - ft_ext_cons; [eapply set_rule_ext_eq_mod; ft_prem
-                 | split; [assumption | intros U0 [= <-]; eapply set_unit_eq_valid; eassumption]
-                 | split; [assumption | intros U0 [= <-]; eapply set_unit_eq_valid; eassumption]].
-  - ft_ext_cons; [eapply set_rule_ext_eq_dm; ft_prem
-                 | split; [assumption | intros U0 [= <-]; eapply set_unit_eq_valid; eassumption]
-                 | split; [assumption | intros U0 [= <-]; eapply set_unit_eq_valid; eassumption]].
+  - ft_kripke; eapply set_rule_ext_eq_nil; eassumption.
+  - ft_kripke; eapply set_rule_ext_eq_ass; eassumption.
+  - ft_kripke; eapply set_rule_ext_eq_def; eassumption.
+  - ft_kripke; eapply set_rule_ext_eq_mod; eassumption.
+  - ft_kripke; eapply set_rule_ext_eq_dm; eassumption.
   (* units *)
   - split; [ft_cs' |].
-    match goal with
-    | Hb : set_rel_ext_eq_suffixes T γ Γ (body_ctx Φx ++ Δ) (body_ctx Φx ++ Δ),
-      Hb' : set_rel_ext_eq_suffixes T γ Γ (body_ctx Φx' ++ Δ') (body_ctx Φx' ++ Δ'),
-      Hxb : _ ⍮ _ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ _, Hxb' : _ ⍮ _ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δ' ≈ _ |- _ =>
-        pose proof (proj1 (set_ext_eq_suffixes_whole _ _ _ Hb eq_refl)) as HC;
-        pose proof (proj1 (set_ext_eq_suffixes_whole _ _ _ Hb' eq_refl)) as HC';
-        pose proof (set_ext_eq_suffixes_slots T γ _ _ _ Hb) as Hsl; pose proof (set_ext_eq_suffixes_slots T γ _ _ _ Hb') as Hsl';
-        pose proof (ext_eq_ctx_left _ _ _ _ _ Hxb) as Hcx; pose proof (ext_eq_ctx_left _ _ _ _ _ Hxb') as Hcx'
-    end.
-    rewrite <- List.app_assoc in HC, HC', Hsl, Hsl', Hcx, Hcx'.
-    eapply (set_rule_unit_eq_body T γ Hfn Hmods _ _ Hμ) with (l := param_level) (entry_sort := entry_sort);
-      [apply Mv_unit; eapply wf_unit_eq_body; eassumption | eassumption | eassumption | eassumption | eassumption | eassumption
-      | match goal with H : set_rel_ext_eq_suffixes T γ Γ Δ Δ' |- _ => exact (set_ext_eq_suffixes_eq T γ _ _ _ H) end
-      | eassumption | eassumption | eassumption | eassumption
+    ft_kripke. eapply (set_rule_unit_eq_body Θ Ξ T γ) with (l := param_level) (ps := param_sorts) (entry_sort := entry_sort);
+      [eapply wf_unit_eq_body; eassumption | eassumption | eassumption | eassumption | eassumption | eassumption | eassumption
+      | eassumption | eassumption
       | intros; eapply sort_kind_abs_kind_sort_inv; eauto | intros; eapply sort_kind_abs_kind_sort_inv; eauto
       | ft_from_ih | ft_from_ih | ft_from_ih | ft_from_ih | ft_from_ih | ft_from_ih | ft_from_ih | ft_from_ih
-      | eassumption | eassumption
-      | apply (set_params_evaluated_of_sorts T γ Γ Δ param_level param_sorts); [assumption | ft_from_ih]
-      | apply (set_params_evaluated_of_sorts T γ Γ Δ' param_level param_sorts); [assumption | ft_from_ih]
+      | eassumption | eassumption | assumption | ft_from_ih | ft_from_ih
       | eassumption | eassumption | eassumption].
   - split; [ft_cs' |].
-    eapply (set_rule_unit_eq_alias T γ Hfn Hmods _ _ Hμ) with (l := param_level);
-      [apply Mv_unit; eapply wf_unit_eq_alias; eassumption | eassumption
-      | match goal with H : set_rel_ext_eq_suffixes T γ Γ Δ Δ' |- _ => exact (set_ext_eq_suffixes_eq T γ _ _ _ H) end
-      | eassumption | eassumption
-      | apply (set_params_evaluated_of_sorts T γ Γ Δ param_level param_sorts); [assumption | ft_from_ih]
-      | apply (set_params_evaluated_of_sorts T γ Γ Δ' param_level param_sorts); [assumption | ft_from_ih]
-      | do 2 eexists; eassumption | do 2 eexists; eassumption].
+    ft_kripke. eapply (set_rule_unit_eq_alias Θ Ξ T γ) with (l := param_level) (ps := param_sorts);
+      [eapply wf_unit_eq_alias; eassumption | eassumption | eassumption | eassumption | eassumption | assumption
+      | ft_from_ih | ft_from_ih | eassumption | eassumption].
   - split; [ft_cs' |].
     ft_kripke. eapply (set_rule_unit_eq_flatten Θ Ξ T γ) with (l := param_level) (ps := param_sorts);
       [eassumption | assumption | ft_from_ih | eassumption | eapply wf_unit_eq_flatten; eassumption].

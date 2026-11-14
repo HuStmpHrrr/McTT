@@ -1331,6 +1331,9 @@ Ltac set_open :=
       | H : wf_modexp_eq Θs Ξs _ _ _ |- _ => apply Mm in H
       | H : wf_no_level_members Θs Ξs _ _ |- _ => apply Mn in H
       | H : wf_sub Θs Ξs _ _ _ |- _ => apply (gctx_embedding_preserves_wf_sub _ _ _ _ He) in H
+      | H : body_xp Θs Ξs _ _ _ |- _ =>
+          apply (proj1 (proj2 (proj2 (proj2 (mdenote_grow_all _ _ _ _ (set_gctx_embedding_source_wf _ _ _ _ _ _ Hμ)
+                   (gctx_embedding_wf _ _ _ _ He) (gctx_embedding_resolution _ _ _ _ He)))))) in H
       end;
     clear Mc Mx Mq Ms Me Mu Mm Mn;
     let Hgw := fresh "Hgw" in pose proof (gctx_embedding_wf _ _ _ _ He) as Hgw;

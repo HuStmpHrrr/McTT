@@ -12,7 +12,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects ContextRelation JudgmentSubstitution.
 From Mctt.Core.SetModel Require Import Judgments.
-From Mctt.Core.SetModel.Cases Require Import ValidUnit MemberTypes ModuleCases Unit Sel.
+From Mctt.Core.SetModel.Cases Require Import ValidUnit MemberTypes ModuleCases Unit Sel ContextCases.
 From Mctt.Core.Syntactic Require Import Syntax Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural.
 From Mctt.Core.Syntactic.System.Global Require Import Presup DescTyping MemberLemmas.
@@ -22,9 +22,14 @@ From Mctt.Core.Completeness.Modules Require Import ValidUnit Body.
 Import ListNotations.
 
 Section Units.
-  Context {GC : GCtx}.
+  (** The context the rules' premises are read at *)
+  Variable Θ : gdeps.
+  Variable Ξ : gstack.
   Variable T : universe_tower.
   Variable γ : global_valuation.
+
+Section UnitSteps.
+  Context {GC : GCtx}.
   Hypothesis Hfn : fn_kinds_unique_ext.
   (** Every global module equals itself *)
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
@@ -206,12 +211,27 @@ Proof.
   intros ρ Hρ. exact (set_modexp_denotes_refl _ _ _ _ _ _ HF Hρ).
 Qed.
 
-(** ** The Rules of Extensions *)
+(** ** Equal Extensions, Entry by Entry *)
 
-Lemma set_rule_ext_eq_nil : forall Γ, set_ctx T γ Γ -> set_ext_eq_with T γ Γ nil nil.
+Lemma set_ext_eq_with_nil : forall Γ, set_ctx T γ Γ -> set_ext_eq_with T γ Γ nil nil.
 Proof. intros Γ HΓ. constructor; [exact HΓ | exact HΓ | intros; reflexivity]. Qed.
 
-Lemma set_rule_ext_eq_ass : forall Γ Ψ Ψ' κ A A' S FS FA FA2 S' FS' FA' FA'2, gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+(** The suffixes of extensions by one more entry each: the whole ones, or
+    suffixes of the extensions before. *)
+Lemma set_ext_eq_suffixes_eq_cons : forall Γ Ψ Ψ' e e',
+    (forall X Ψ0 X' Ψ0', Ψ = X ++ Ψ0 -> Ψ' = X' ++ Ψ0' -> List.length Ψ0 = List.length Ψ0' -> set_ext_eq_with T γ Γ Ψ0 Ψ0') ->
+    List.length Ψ = List.length Ψ' -> set_ext_eq_with T γ Γ (e :: Ψ) (e' :: Ψ') ->
+    forall X Ψ0 X' Ψ0', e :: Ψ = X ++ Ψ0 -> e' :: Ψ' = X' ++ Ψ0' -> List.length Ψ0 = List.length Ψ0' ->
+    set_ext_eq_with T γ Γ Ψ0 Ψ0'.
+Proof.
+  intros * Hsuf Hlen Hwhole [| x X] Ψ0 [| x' X'] Ψ0' E E' Hl.
+  - cbn in E, E'. subst. exact Hwhole.
+  - exfalso. apply (f_equal (@List.length centry)) in E, E'. cbn in E, E'. rewrite List.length_app in E'. lia.
+  - exfalso. apply (f_equal (@List.length centry)) in E, E'. cbn in E, E'. rewrite List.length_app in E. lia.
+  - injection E as _ E. injection E' as _ E'. exact (Hsuf _ _ _ _ E E' Hl).
+Qed.
+
+Lemma set_ext_eq_with_ass : forall Γ Ψ Ψ' κ A A' S FS FA FA2 S' FS' FA' FA'2, gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     set_ext_eq_with T γ Γ Ψ Ψ' ->
     set_exp_eq_with T γ (Ψ ++ Γ) S A A FS FA FA2 -> set_exp_eq_with T γ (Ψ' ++ Γ) S' A' A' FS' FA' FA'2 ->
     set_rel_subtyp T γ (Ψ ++ Γ) A A' -> set_rel_subtyp T γ (Ψ ++ Γ) A' A ->
@@ -222,7 +242,7 @@ Proof.
   intros. eapply set_entry_rel_ass_iff; eassumption.
 Qed.
 
-Lemma set_rule_ext_eq_def : forall Γ Ψ Ψ' A A' M M' FA FM FM' FA' FM2 FM2', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+Lemma set_ext_eq_with_def : forall Γ Ψ Ψ' A A' M M' FA FM FM' FA' FM2 FM2', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     set_ext_eq_with T γ Γ Ψ Ψ' ->
     set_exp_eq_with T γ (Ψ ++ Γ) A M M' FA FM FM' -> set_exp_eq_with T γ (Ψ' ++ Γ) A' M' M' FA' FM2 FM2' ->
     set_ext_eq_with T γ Γ (ce_def A M :: Ψ) (ce_def A' M' :: Ψ').
@@ -232,7 +252,7 @@ Proof.
   intros. destruct HM2e as [_ HM2 _ _ _]. eapply set_entry_rel_def_iff; eassumption.
 Qed.
 
-Lemma set_rule_ext_eq_mod : forall Γ Ψ Ψ' U U' FU FU' FU2 FU2', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+Lemma set_ext_eq_with_mod : forall Γ Ψ Ψ' U U' FU FU' FU2 FU2', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     set_ext_eq_with T γ Γ Ψ Ψ' ->
     set_unit_eq_with T γ (Ψ ++ Γ) U U' FU FU' ->
     set_unit_eq_with T γ (Ψ' ++ Γ) U' U' FU2 FU2' ->
@@ -244,7 +264,7 @@ Proof.
   intros. eapply set_entry_rel_mod_iff; eassumption.
 Qed.
 
-Lemma set_rule_ext_eq_dm : forall Γ Ψ Ψ' A A' M M' E E' FA FM FM' FA' FM2 FM2' FU FU' FU2 FU2',
+Lemma set_ext_eq_with_dm : forall Γ Ψ Ψ' A A' M M' E E' FA FM FM' FA' FM2 FM2' FU FU' FU2 FU2',
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> set_ext_eq_with T γ Γ Ψ Ψ' ->
     set_exp_eq_with T γ (Ψ ++ Γ) A M M' FA FM FM' -> set_exp_eq_with T γ (Ψ' ++ Γ) A' M' M' FA' FM2 FM2' ->
     set_unit_eq_with T γ (Ψ ++ Γ) (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E')) FU FU' ->
@@ -293,29 +313,33 @@ Proof.
            (set_modexp_rel_refl_left T γ _ _ _ (set_alias0_rel T γ Hfn0 Hmods _ _ HΔΓ HEE))).
 Qed.
 
-Lemma set_rule_unit_eq_alias : forall Γ Δ Δ' E E' l,
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
+(** Aliases over telescopes of one length of equal targets push the same
+    proofs. *)
+Lemma set_unit_alias_eq_proofs : forall Γ Δ Δ' E E', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
+    all_assumptions Δ -> all_assumptions Δ' -> set_rel_modexp_eq T γ (Δ ++ Γ) E E' ->
+    forall κs, set_slots_coherent γ Γ κs -> forall ys x,
+      unit_member_proofs γ κs (gu_mk Δ (md_alias E)) ys x = unit_member_proofs γ κs (gu_mk Δ' (md_alias E')) ys x.
+Proof.
+  intros * HΔw HΔ HΔ' (G & G' & [_ _ _ _ _ HprE]) κs Hκ ys x. pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hlen.
+  rewrite !unit_member_proofs_tele_out. cbn [moddef_member_proofs].
+  rewrite (HprE _ (set_slots_coherent_tele_out γ _ _ _ HΔ Hκ)).
+  rewrite (tele_out_proofs_assumptions (List.rev Δ) (List.rev Δ') κs (List.Forall_rev HΔ) (List.Forall_rev HΔ')
+             ltac:(rewrite !List.length_rev; exact Hlen)).
+  reflexivity.
+Qed.
+
+(** Aliases over equal telescopes of equal targets have equal values. *)
+Lemma set_unit_alias_eq_values : forall Γ Δ Δ' E E' F F', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
     (forall X Ψ X' Ψ', Δ = X ++ Ψ -> Δ' = X' ++ Ψ' -> List.length Ψ = List.length Ψ' -> set_ext_eq_with T γ Γ Ψ Ψ') ->
     all_assumptions Δ -> all_assumptions Δ' ->
-    set_params_evaluated T γ Γ Δ l -> set_params_evaluated T γ Γ Δ' l ->
     set_rel_modexp_eq T γ (Δ ++ Γ) E E' -> set_rel_modexp_eq T γ (Δ' ++ Γ) E' E' ->
-    set_rel_unit_eq T γ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ' (md_alias E')).
+    set_modexp_denotes T γ Γ (me_lit (gu_mk Δ (md_alias E))) F -> set_modexp_denotes T γ Γ (me_lit (gu_mk Δ' (md_alias E'))) F' ->
+    forall ρ, set_env_in T γ Γ ρ -> set_module_eq γ (F ρ) (F' ρ).
 Proof.
-  intros * HUU HΔw Hext HΔ HΔ' Hl Hl' (G & G' & [HG HG' EG HvE _ HprE]) (G2 & _ & [HG2 _ _ HvE2 _ _]).
+  intros * HΔw Hext HΔ HΔ' HEe (G2 & _ & [HG2 _ _ HvE2 _ _]) HF HF'.
+  pose proof (set_unit_alias_eq_proofs _ _ _ _ _ HΔw HΔ HΔ' HEe) as Hpr.
+  destruct HEe as (G & G' & [HG HG' EG HvE _ HprE]).
   pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0. pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hlen.
-  pose proof (set_valid_unit_alias_of _ _ _ _ (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_left HUU)) HΔ Hl HvE) as HK.
-  pose proof (set_valid_unit_alias_of _ _ _ _ (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_right HUU)) HΔ' Hl' HvE2) as HK'.
-  destruct (set_valid_unit_rel T γ Hfn0 Hmods set_here_wf Θs Ξs Hemb _ _ HK) as (F & _ & [HF _ _]).
-  destruct (set_valid_unit_rel T γ Hfn0 Hmods set_here_wf Θs Ξs Hemb _ _ HK') as (F' & _ & [HF' _ _]).
-  assert (Hpr : forall κs, set_slots_coherent γ Γ κs -> forall ys x,
-             unit_member_proofs γ κs (gu_mk Δ (md_alias E)) ys x = unit_member_proofs γ κs (gu_mk Δ' (md_alias E')) ys x).
-  { intros κs Hκ ys x. rewrite !unit_member_proofs_tele_out. cbn [moddef_member_proofs].
-    rewrite (HprE _ (set_slots_coherent_tele_out γ _ _ _ HΔ Hκ)).
-    rewrite (tele_out_proofs_assumptions (List.rev Δ) (List.rev Δ') κs (List.Forall_rev HΔ) (List.Forall_rev HΔ')
-               ltac:(rewrite !List.length_rev; exact Hlen)).
-    reflexivity. }
-  exists F, F'. constructor; [exact HF | exact HF' | | exact HK | exact HK' | exact Hpr].
   intros ρ Hρ.
   pose proof (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) as Hm1. apply set_interp_me_lit_iff in Hm1.
   pose proof (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ) as Hm2. apply set_interp_me_lit_iff in Hm2.
@@ -591,56 +615,97 @@ Proof.
     intros * Hq HEq Hq' HEq'. exact (Hu _ _ _ _ _ _ _ _ _ (prefix_ext_keep _ _ _ _ _ Hnd Hq) HEq (prefix_ext_keep _ _ _ _ _ Hnd' Hq') HEq').
 Qed.
 
-Lemma set_rule_unit_eq_body : forall Γ Δ Δ' Φ Φ' Φx Φx' l (entry_sort : string -> exp),
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' ->
-    body_xp gc_deps gc_stack (Δ ++ Γ) Φ Φx -> body_xp gc_deps gc_stack (Δ' ++ Γ) Φ' Φx' ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Δ ++ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx Φx' ++ Δ' ++ Γ ->
-    (forall X Ψ X' Ψ', Δ = X ++ Ψ -> Δ' = X' ++ Ψ' -> List.length Ψ = List.length Ψ' -> set_ext_eq_with T γ Γ Ψ Ψ') ->
-    set_ctx T γ (body_ctx Φx ++ Δ ++ Γ) -> set_ctx T γ (body_ctx Φx' ++ Δ' ++ Γ) ->
-    set_valid_slots T γ (body_ctx Φx ++ Δ ++ Γ) -> set_valid_slots T γ (body_ctx Φx' ++ Δ' ++ Γ) ->
-    (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       exists i, entry_sort y = abs_kind_sort (entry_kind E) (a_typ i)) ->
-    (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       exists i, entry_sort y = abs_kind_sort (entry_kind E') (a_typ i)) ->
-    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
-       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_rel_exp_eq T γ (Δ ++ Γ) (entry_sort y) (exp_sub A σ) (exp_sub A' σ')) ->
-    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
-       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_rel_exp_eq T γ (Δ' ++ Γ) (entry_sort y) (exp_sub A' σ') (exp_sub A' σ')) ->
-    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
-       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_rel_exp_eq T γ (Δ ++ Γ) (exp_sub A σ) (exp_sub M σ) (exp_sub M' σ')) ->
-    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
-       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
-       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
-       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_rel_exp_eq T γ (Δ' ++ Γ) (exp_sub A' σ') (exp_sub M' σ') (exp_sub M' σ')) ->
-    (forall y Φ0 E U Φ0' E' U' σ σ',
-       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
-       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
-       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_rel_unit_eq T γ (Δ ++ Γ) (gunit_sub U σ) (gunit_sub U' σ')) ->
-    (forall y Φ0 E U Φ0' E' U' σ σ',
-       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
-       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
-       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_rel_unit_eq T γ (Δ' ++ Γ) (gunit_sub U' σ') (gunit_sub U' σ')) ->
-    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> set_rel_modexp_eq T γ (Ψ ++ Δ ++ Γ) H H) ->
-    (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> set_rel_modexp_eq T γ (Ψ' ++ Δ' ++ Γ) H' H') ->
-    all_assumptions Δ -> all_assumptions Δ' ->
-    set_params_evaluated T γ Γ Δ l -> set_params_evaluated T γ Γ Δ' l ->
-    body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
-    set_rel_unit_eq T γ Γ (gu_open Δ Φ) (gu_open Δ' Φ').
+(** The facts at one context the equation of two bodies over equal
+    telescopes rests on: the derivation's premises read there. *)
+Record set_body_eq_setting (Γ Δ Δ' : ctx) (Φ Φ' Φx Φx' : gmod) (l : nat) (entry_sort : string -> exp) : Prop :=
+  { (** The two units are equal *)
+    set_body_eq_wf : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ'
+    (** The left body's expansion *)
+  ; set_body_eq_xp : body_xp gc_deps gc_stack (Δ ++ Γ) Φ Φx
+    (** The right body's expansion *)
+  ; set_body_eq_xp' : body_xp gc_deps gc_stack (Δ' ++ Γ) Φ' Φx'
+    (** The telescopes are equal extensions *)
+  ; set_body_eq_tele_wf : gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ'
+    (** The left body's context is well formed *)
+  ; set_body_eq_ctx_wf : ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Δ ++ Γ
+    (** The right body's context is well formed *)
+  ; set_body_eq_ctx_wf' : ⊢ gc_deps ⍮ gc_stack ⍮ body_ctx Φx' ++ Δ' ++ Γ
+    (** The telescopes' suffixes are equal *)
+  ; set_body_eq_tele : forall X Ψ X' Ψ', Δ = X ++ Ψ -> Δ' = X' ++ Ψ' -> List.length Ψ = List.length Ψ' -> set_ext_eq_with T γ Γ Ψ Ψ'
+    (** The left body's context denotes *)
+  ; set_body_eq_ctx : set_ctx T γ (body_ctx Φx ++ Δ ++ Γ)
+    (** The right body's context denotes *)
+  ; set_body_eq_ctx' : set_ctx T γ (body_ctx Φx' ++ Δ' ++ Γ)
+    (** The left body's context has valid slots *)
+  ; set_body_eq_slots : set_valid_slots T γ (body_ctx Φx ++ Δ ++ Γ)
+    (** The right body's context has valid slots *)
+  ; set_body_eq_slots' : set_valid_slots T γ (body_ctx Φx' ++ Δ' ++ Γ)
+    (** A left definition's sort is a universe of its kind *)
+  ; set_body_eq_sorts : forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+      exists i, entry_sort y = abs_kind_sort (entry_kind E) (a_typ i)
+    (** So is a right one's *)
+  ; set_body_eq_sorts' : forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+      exists i, entry_sort y = abs_kind_sort (entry_kind E') (a_typ i)
+    (** Partner definitions' types, filled in, are equal *)
+  ; set_body_eq_types : forall y Φ0 E A M Φ0' E' A' M' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+      gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+      set_rel_exp_eq T γ (Δ ++ Γ) (entry_sort y) (exp_sub A σ) (exp_sub A' σ')
+    (** A right definition's type, filled in, is of its sort *)
+  ; set_body_eq_types' : forall y Φ0 E A M Φ0' E' A' M' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+      gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+      set_rel_exp_eq T γ (Δ' ++ Γ) (entry_sort y) (exp_sub A' σ') (exp_sub A' σ')
+    (** Partner definitions' bodies, filled in, are equal *)
+  ; set_body_eq_terms : forall y Φ0 E A M Φ0' E' A' M' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+      gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+      set_rel_exp_eq T γ (Δ ++ Γ) (exp_sub A σ) (exp_sub M σ) (exp_sub M' σ')
+    (** A right definition's body, filled in, is of its type *)
+  ; set_body_eq_terms' : forall y Φ0 E A M Φ0' E' A' M' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+      gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+      set_rel_exp_eq T γ (Δ' ++ Γ) (exp_sub A' σ') (exp_sub M' σ') (exp_sub M' σ')
+    (** Partner modules, filled in, are equal units *)
+  ; set_body_eq_units : forall y Φ0 E U Φ0' E' U' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
+      gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+      set_rel_unit_eq T γ (Δ ++ Γ) (gunit_sub U σ) (gunit_sub U' σ')
+    (** A right module, filled in, is a unit equal to itself *)
+  ; set_body_eq_units' : forall y Φ0 E U Φ0' E' U' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
+      gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+      set_rel_unit_eq T γ (Δ' ++ Γ) (gunit_sub U' σ') (gunit_sub U' σ')
+    (** The left body's opens are valid *)
+  ; set_body_eq_opens : forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> set_rel_modexp_eq T γ (Ψ ++ Δ ++ Γ) H H
+    (** So are the right one's *)
+  ; set_body_eq_opens' : forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> set_rel_modexp_eq T γ (Ψ' ++ Δ' ++ Γ) H' H'
+    (** The left telescope is of assumptions *)
+  ; set_body_eq_assumptions : all_assumptions Δ
+    (** So is the right one *)
+  ; set_body_eq_assumptions' : all_assumptions Δ'
+    (** The left telescope's parameters are of evaluated sorts *)
+  ; set_body_eq_params : set_params_evaluated T γ Γ Δ l
+    (** So are the right one's *)
+  ; set_body_eq_params' : set_params_evaluated T γ Γ Δ' l
+    (** The bodies have one shape *)
+  ; set_body_eq_shape : body_shape Φ Φ'
+    (** So do their expansions *)
+  ; set_body_eq_shape_xp : body_shape Φx Φx'
+    (** The left body's names are distinct *)
+  ; set_body_eq_names : List.NoDup (gm_names Φ) }.
+
+(** The two bodies' units are valid. *)
+Lemma set_body_eq_valid : forall Γ Δ Δ' Φ Φ' Φx Φx' l entry_sort, set_body_eq_setting Γ Δ Δ' Φ Φ' Φx Φx' l entry_sort ->
+    set_valid_unit T γ Γ (me_lit (gu_open Δ Φ)) /\ set_valid_unit T γ Γ (me_lit (gu_open Δ' Φ')).
 Proof.
-  intros * HUU Hx Hx' HΔw Hcx Hcx' Hext HC HC' Hsl Hsl' Htag Htag' HA HA' HM HM' HU HU' Ho Ho' HΔ HΔ' Hl Hl' Hs Hsxx Hnd.
+  intros * [HUU Hx Hx' HΔw Hcx Hcx' Hext HC HC' Hsl Hsl' Htag Htag' HA HA' HM HM' HU HU' Ho Ho' HΔ HΔ' Hl Hl' Hs Hsxx Hnd].
   pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0. pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hlen.
   pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hn. pose proof (body_xp_nopens _ _ _ _ _ Hx') as Hn'.
   pose proof (body_xp_expand _ _ _ _ _ Hx) as Hxe. pose proof (body_xp_expand _ _ _ _ _ Hx') as Hxe'.
@@ -667,22 +732,42 @@ Proof.
   { apply (set_valid_unit_body_of _ _ _ _ l (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_right HUU)) Hx' Hcx' HΔ' Hl' HC' Hsl' Hsv'
              (body_shape_r _ _ Hs) (body_shape_r _ _ Hsxx)).
     intros k Ψ H Hk. destruct (Ho' _ _ _ Hk) as (G & G' & [_ _ _ Hv _ _]). exact Hv. }
-  destruct (set_valid_unit_rel T γ Hfn0 Hmods set_here_wf Θs Ξs Hemb _ _ HK) as (F & _ & [HF _ _]).
-  destruct (set_valid_unit_rel T γ Hfn0 Hmods set_here_wf Θs Ξs Hemb _ _ HK') as (F' & _ & [HF' _ _]).
-  (* the same proofness *)
-  assert (Hpr : forall κs, set_slots_coherent γ Γ κs -> forall ys x,
-             unit_member_proofs γ κs (gu_open Δ Φ) ys x = unit_member_proofs γ κs (gu_open Δ' Φ') ys x).
-  { intros κs Hκ ys x. rewrite !unit_member_proofs_tele_out. cbn [moddef_member_proofs].
-    rewrite (tele_out_proofs_assumptions (List.rev Δ') (List.rev Δ) κs (List.Forall_rev HΔ') (List.Forall_rev HΔ)
-               ltac:(rewrite !List.length_rev; symmetry; exact Hlen)).
-    rewrite <- (proj2 (body_member_proofs_expand γ Φ (tele_out_proofs γ κs (List.rev Δ)))),
-      <- (proj2 (body_member_proofs_expand γ Φ' (tele_out_proofs γ κs (List.rev Δ)))), <- Hxe, <- Hxe'.
-    rewrite (body_member_lookup_eq_filled Φx Φx' _ Hsxx Hn HndX); [reflexivity |].
-    intros * Hp HEu Hp' HEu' Hf Hf' ys0 x0.
-    destruct (HU _ _ _ _ _ _ _ _ _ Hp HEu Hp' HEu' Hf Hf') as (G1 & G2 & [_ _ _ _ _ HprU]).
-    exact (HprU _ (set_slots_coherent_tele_out γ _ _ _ HΔ Hκ) ys0 x0). }
-  exists F, F'. constructor; [exact HF | exact HF' | | exact HK | exact HK' | exact Hpr].
-  intros ρ Hρ.
+  split; assumption.
+Qed.
+
+(** The two bodies push the same proofs. *)
+Lemma set_body_eq_proofs : forall Γ Δ Δ' Φ Φ' Φx Φx' l entry_sort, set_body_eq_setting Γ Δ Δ' Φ Φ' Φx Φx' l entry_sort ->
+    forall κs, set_slots_coherent γ Γ κs -> forall ys x,
+      unit_member_proofs γ κs (gu_open Δ Φ) ys x = unit_member_proofs γ κs (gu_open Δ' Φ') ys x.
+Proof.
+  intros * [HUU Hx Hx' HΔw Hcx Hcx' Hext HC HC' Hsl Hsl' Htag Htag' HA HA' HM HM' HU HU' Ho Ho' HΔ HΔ' Hl Hl' Hs Hsxx Hnd]
+    κs Hκ ys x.
+  pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hlen.
+  pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hn.
+  pose proof (body_xp_expand _ _ _ _ _ Hx) as Hxe. pose proof (body_xp_expand _ _ _ _ _ Hx') as Hxe'.
+  assert (HndX : List.NoDup (gm_names Φx)) by (rewrite (body_xp_names _ _ _ _ _ Hx); exact Hnd).
+  rewrite !unit_member_proofs_tele_out. cbn [moddef_member_proofs].
+  rewrite (tele_out_proofs_assumptions (List.rev Δ') (List.rev Δ) κs (List.Forall_rev HΔ') (List.Forall_rev HΔ)
+             ltac:(rewrite !List.length_rev; symmetry; exact Hlen)).
+  rewrite <- (proj2 (body_member_proofs_expand γ Φ (tele_out_proofs γ κs (List.rev Δ)))),
+    <- (proj2 (body_member_proofs_expand γ Φ' (tele_out_proofs γ κs (List.rev Δ)))), <- Hxe, <- Hxe'.
+  rewrite (body_member_lookup_eq_filled Φx Φx' _ Hsxx Hn HndX); [reflexivity |].
+  intros * Hp HEu Hp' HEu' Hf Hf' ys0 x0.
+  destruct (HU _ _ _ _ _ _ _ _ _ Hp HEu Hp' HEu' Hf Hf') as (G1 & G2 & [_ _ _ _ _ HprU]).
+  exact (HprU _ (set_slots_coherent_tele_out γ _ _ _ HΔ Hκ) ys0 x0).
+Qed.
+
+(** The two bodies have equal values. *)
+Lemma set_body_eq_values : forall Γ Δ Δ' Φ Φ' Φx Φx' l entry_sort F F', set_body_eq_setting Γ Δ Δ' Φ Φ' Φx Φx' l entry_sort ->
+    set_modexp_denotes T γ Γ (me_lit (gu_open Δ Φ)) F -> set_modexp_denotes T γ Γ (me_lit (gu_open Δ' Φ')) F' ->
+    forall ρ, set_env_in T γ Γ ρ -> set_module_eq γ (F ρ) (F' ρ).
+Proof.
+  intros * Hset HF HF' ρ Hρ. pose proof (set_body_eq_proofs _ _ _ _ _ _ _ _ _ Hset) as Hpr.
+  destruct Hset as [HUU Hx Hx' HΔw Hcx Hcx' Hext HC HC' Hsl Hsl' Htag Htag' HA HA' HM HM' HU HU' Ho Ho' HΔ HΔ' Hl Hl' Hs Hsxx Hnd].
+  pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0. pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hlen.
+  pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hn. pose proof (body_xp_nopens _ _ _ _ _ Hx') as Hn'.
+  pose proof (body_xp_expand _ _ _ _ _ Hx) as Hxe. pose proof (body_xp_expand _ _ _ _ _ Hx') as Hxe'.
+  assert (HndX : List.NoDup (gm_names Φx)) by (rewrite (body_xp_names _ _ _ _ _ Hx); exact Hnd).
   pose proof (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) as Hm1. apply set_interp_me_lit_iff in Hm1.
   pose proof (set_modexp_denotes_exists _ _ _ _ _ HF' _ Hρ) as Hm2. apply set_interp_me_lit_iff in Hm2.
   inversion Hm1 as [? ? ? ? P1 m1 HP1 HL1]; subst. inversion Hm2 as [? ? ? ? P2 m2 HP2 HL2]; subst.
@@ -712,6 +797,178 @@ Proof.
       eapply set_module_eq_trans; [exact (EG _ Hρ1) |].
       eapply set_module_eq_trans; [exact (set_modexp_denotes_across _ _ _ _ _ _ _ HΔw HG2 HG3 Hρ1 Hρ2) |].
       exact (set_module_eq_sym _ _ (set_modexp_denotes_unique _ _ _ _ _ HG3 _ _ _ Hρ2 Hm')).
+Qed.
+
+(** The whole extensions of equal extensions denote. *)
+Lemma set_ext_eq_suffixes_whole : forall Γ Δ Δ', set_rel_ext_eq_suffixes T γ Γ Δ Δ' -> List.length Δ = List.length Δ' ->
+    set_ctx T γ (Δ ++ Γ) /\ set_ctx T γ (Δ' ++ Γ).
+Proof. intros * [Hsuf _ _] Hlen. destruct (Hsuf nil Δ nil Δ' eq_refl eq_refl Hlen) as [HL HR _]. split; assumption. Qed.
+
+End UnitSteps.
+
+(** ** The Rules of Extensions *)
+
+Lemma set_rule_ext_eq_nil : forall Γ, set_ctx_slots Θ Ξ T γ Γ -> set_ext_eq_suffixes Θ Ξ T γ Γ nil nil.
+Proof.
+  intros Γ HΓ. set_open. destruct HΓ as [HΓ Hsl]. constructor; [| exact Hsl | exact Hsl].
+  intros [| ? ?] Ψ [| ? ?] Ψ' E E' _; try discriminate. cbn in E, E'. subst. exact (set_ext_eq_with_nil _ HΓ).
+Qed.
+
+Lemma set_rule_ext_eq_ass : forall Γ Ψ Ψ' κ A A' S S', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> set_ext_eq_suffixes Θ Ξ T γ Γ Ψ Ψ' ->
+    set_exp_eq Θ Ξ T γ (Ψ ++ Γ) S A A -> set_exp_eq Θ Ξ T γ (Ψ' ++ Γ) S' A' A' ->
+    set_subtyp Θ Ξ T γ (Ψ ++ Γ) A A' -> set_subtyp Θ Ξ T γ (Ψ ++ Γ) A' A ->
+    set_ext_eq_suffixes Θ Ξ T γ Γ (ce_ass κ A :: Ψ) (ce_ass κ A' :: Ψ').
+Proof.
+  intros * HΨw HΨ HAe HA'e Hs Hs'. set_open. pose proof (ext_eq_length _ _ _ _ _ HΨw) as Hlen.
+  destruct HΨ as [Hsuf Hsl Hsl']. destruct HAe as (FS & FA & FA2 & HA). destruct HA'e as (FS' & FA' & FA'2 & HA').
+  constructor.
+  - apply (set_ext_eq_suffixes_eq_cons _ _ _ _ _ Hsuf Hlen).
+    pose proof (Hsuf nil Ψ nil Ψ' eq_refl eq_refl Hlen) as Hwh. eapply set_ext_eq_with_ass; eassumption.
+  - exact (set_valid_slots_extend_plain T γ _ (ce_ass κ A) Hsl eq_refl).
+  - exact (set_valid_slots_extend_plain T γ _ (ce_ass κ A') Hsl' eq_refl).
+Qed.
+
+Lemma set_rule_ext_eq_def : forall Γ Ψ Ψ' A A' M M', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> set_ext_eq_suffixes Θ Ξ T γ Γ Ψ Ψ' ->
+    set_exp_eq Θ Ξ T γ (Ψ ++ Γ) A M M' -> set_exp_eq Θ Ξ T γ (Ψ' ++ Γ) A' M' M' ->
+    set_ext_eq_suffixes Θ Ξ T γ Γ (ce_def A M :: Ψ) (ce_def A' M' :: Ψ').
+Proof.
+  intros * HΨw HΨ HMe HM'e. set_open. pose proof (ext_eq_length _ _ _ _ _ HΨw) as Hlen.
+  destruct HΨ as [Hsuf Hsl Hsl']. destruct HMe as (FA & FM & FM' & HM). destruct HM'e as (FA' & FM2 & FM2' & HM').
+  constructor.
+  - apply (set_ext_eq_suffixes_eq_cons _ _ _ _ _ Hsuf Hlen).
+    pose proof (Hsuf nil Ψ nil Ψ' eq_refl eq_refl Hlen) as Hwh. eapply set_ext_eq_with_def; eassumption.
+  - exact (set_valid_slots_extend_plain T γ _ (ce_def A M) Hsl eq_refl).
+  - exact (set_valid_slots_extend_plain T γ _ (ce_def A' M') Hsl' eq_refl).
+Qed.
+
+Lemma set_rule_ext_eq_mod : forall Γ Ψ Ψ' U U', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> set_ext_eq_suffixes Θ Ξ T γ Γ Ψ Ψ' ->
+    set_unit_eq Θ Ξ T γ (Ψ ++ Γ) U U' -> set_unit_eq Θ Ξ T γ (Ψ' ++ Γ) U' U' ->
+    set_ext_eq_suffixes Θ Ξ T γ Γ (ce_mod U :: Ψ) (ce_mod U' :: Ψ').
+Proof.
+  intros * HΨw HΨ HUe HU'e. set_open. pose proof (ext_eq_length _ _ _ _ _ HΨw) as Hlen.
+  destruct HΨ as [Hsuf Hsl Hsl']. destruct HUe as (FU & FU' & HU). destruct HU'e as (FU2 & FU2' & HU').
+  constructor.
+  - apply (set_ext_eq_suffixes_eq_cons _ _ _ _ _ Hsuf Hlen).
+    pose proof (Hsuf nil Ψ nil Ψ' eq_refl eq_refl Hlen) as Hwh. eapply set_ext_eq_with_mod; eassumption.
+  - split; [exact Hsl | intros U0 HU0; injection HU0 as <-; destruct HU as [_ _ _ Hv _ _]; exact Hv].
+  - split; [exact Hsl' | intros U0 HU0; injection HU0 as <-; destruct HU' as [_ _ _ Hv _ _]; exact Hv].
+Qed.
+
+Lemma set_rule_ext_eq_dm : forall Γ Ψ Ψ' A A' M M' E E', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> set_ext_eq_suffixes Θ Ξ T γ Γ Ψ Ψ' ->
+    set_exp_eq Θ Ξ T γ (Ψ ++ Γ) A M M' -> set_exp_eq Θ Ξ T γ (Ψ' ++ Γ) A' M' M' ->
+    set_unit_eq Θ Ξ T γ (Ψ ++ Γ) (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E')) ->
+    set_unit_eq Θ Ξ T γ (Ψ' ++ Γ) (gu_mk nil (md_alias E')) (gu_mk nil (md_alias E')) ->
+    set_ext_eq_suffixes Θ Ξ T γ Γ (ce_dm A M (gu_mk nil (md_alias E)) :: Ψ) (ce_dm A' M' (gu_mk nil (md_alias E')) :: Ψ').
+Proof.
+  intros * HΨw HΨ HMe HM'e HUe HU'e. set_open. pose proof (ext_eq_length _ _ _ _ _ HΨw) as Hlen.
+  destruct HΨ as [Hsuf Hsl Hsl']. destruct HMe as (FA & FM & FM' & HM). destruct HM'e as (FA' & FM2 & FM2' & HM').
+  destruct HUe as (FU & FU' & HU). destruct HU'e as (FU2 & FU2' & HU').
+  constructor.
+  - apply (set_ext_eq_suffixes_eq_cons _ _ _ _ _ Hsuf Hlen).
+    pose proof (Hsuf nil Ψ nil Ψ' eq_refl eq_refl Hlen) as Hwh. eapply set_ext_eq_with_dm; eassumption.
+  - split; [exact Hsl | intros U0 HU0; injection HU0 as <-; destruct HU as [_ _ _ Hv _ _]; exact Hv].
+  - split; [exact Hsl' | intros U0 HU0; injection HU0 as <-; destruct HU' as [_ _ _ Hv _ _]; exact Hv].
+Qed.
+
+(** ** The Rules of Units over Equal Telescopes *)
+
+Lemma set_rule_unit_eq_alias : forall Γ Δ Δ' E E' l ps,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' -> set_ext_eq_suffixes Θ Ξ T γ Γ Δ Δ' ->
+    all_assumptions Δ -> all_assumptions Δ' -> (forall k, parameter_sort l (ps k)) ->
+    (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> set_exp_eq Θ Ξ T γ (Δ2 ++ Γ) (ps (List.length Δ2)) A A) ->
+    (forall Δ1 κ A Δ2, Δ' = Δ1 ++ ce_ass κ A :: Δ2 -> set_exp_eq Θ Ξ T γ (Δ2 ++ Γ) (ps (List.length Δ2)) A A) ->
+    set_modexp_eq Θ Ξ T γ (Δ ++ Γ) E E' -> set_modexp_eq Θ Ξ T γ (Δ' ++ Γ) E' E' ->
+    set_unit_eq Θ Ξ T γ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ' (md_alias E')).
+Proof.
+  intros * HUU HΔw HΔs HΔ HΔ' Hps HAs HAs' HEe HE'e. set_open.
+  pose proof (set_params_evaluated_of_sorts T γ _ _ _ _ Hps (fun Δ1 κ A Δ2 E0 => HAs Δ1 κ A Δ2 E0 _ _ Hμ)) as Hl.
+  pose proof (set_params_evaluated_of_sorts T γ _ _ _ _ Hps (fun Δ1 κ A Δ2 E0 => HAs' Δ1 κ A Δ2 E0 _ _ Hμ)) as Hl'.
+  pose proof (set_ext_eq_suffixes_eq T γ _ _ _ HΔs) as Hext.
+  pose proof HEe as (G & G' & [_ _ _ HvE _ _]). pose proof HE'e as (G2 & _ & [_ _ _ HvE2 _ _]).
+  pose proof (set_valid_unit_alias_of Hfnx Hmods _ _ _ _ (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_left HUU)) HΔ Hl HvE) as HK.
+  pose proof (set_valid_unit_alias_of Hfnx Hmods _ _ _ _ (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_right HUU)) HΔ' Hl' HvE2) as HK'.
+  destruct (set_valid_unit_rel T γ Hfn Hmods Hgw Θ Ξ Hμ _ _ HK) as (F & _ & [HF _ _]).
+  destruct (set_valid_unit_rel T γ Hfn Hmods Hgw Θ Ξ Hμ _ _ HK') as (F' & _ & [HF' _ _]).
+  exists F, F'. constructor; [exact HF | exact HF' | | exact HK | exact HK' |].
+  - exact (set_unit_alias_eq_values Hfnx Hmods _ _ _ _ _ _ _ HΔw Hext HΔ HΔ' HEe HE'e HF HF').
+  - exact (set_unit_alias_eq_proofs _ _ _ _ _ HΔw HΔ HΔ' HEe).
+Qed.
+
+Lemma set_rule_unit_eq_body : forall Γ Δ Δ' Φ Φ' Φx Φx' l ps (entry_sort : string -> exp),
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' ->
+    body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> body_xp Θ Ξ (Δ' ++ Γ) Φ' Φx' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' -> set_ext_eq_suffixes Θ Ξ T γ Γ Δ Δ' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ -> set_ext_eq_suffixes Θ Ξ T γ Γ (body_ctx Φx ++ Δ) (body_ctx Φx ++ Δ) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δ' ≈ body_ctx Φx' ++ Δ' -> set_ext_eq_suffixes Θ Ξ T γ Γ (body_ctx Φx' ++ Δ') (body_ctx Φx' ++ Δ') ->
+    (forall y Φ0 E A M, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       exists i, entry_sort y = abs_kind_sort (entry_kind E) (a_typ i)) ->
+    (forall y Φ0' E' A' M', gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+       exists i, entry_sort y = abs_kind_sort (entry_kind E') (a_typ i)) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+       set_exp_eq Θ Ξ T γ (Δ ++ Γ) (entry_sort y) (exp_sub A σ) (exp_sub A' σ')) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+       set_exp_eq Θ Ξ T γ (Δ' ++ Γ) (entry_sort y) (exp_sub A' σ') (exp_sub A' σ')) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+       set_exp_eq Θ Ξ T γ (Δ ++ Γ) (exp_sub A σ) (exp_sub M σ) (exp_sub M' σ')) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
+       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+       set_exp_eq Θ Ξ T γ (Δ' ++ Γ) (exp_sub A' σ') (exp_sub M' σ') (exp_sub M' σ')) ->
+    (forall y Φ0 E U Φ0' E' U' σ σ',
+       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
+       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+       set_unit_eq Θ Ξ T γ (Δ ++ Γ) (gunit_sub U σ) (gunit_sub U' σ')) ->
+    (forall y Φ0 E U Φ0' E' U' σ σ',
+       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
+       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+       set_unit_eq Θ Ξ T γ (Δ' ++ Γ) (gunit_sub U' σ') (gunit_sub U' σ')) ->
+    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> set_modexp_eq Θ Ξ T γ (Ψ ++ Δ ++ Γ) H H) ->
+    (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> set_modexp_eq Θ Ξ T γ (Ψ' ++ Δ' ++ Γ) H' H') ->
+    all_assumptions Δ -> all_assumptions Δ' -> (forall k, parameter_sort l (ps k)) ->
+    (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> set_exp_eq Θ Ξ T γ (Δ2 ++ Γ) (ps (List.length Δ2)) A A) ->
+    (forall Δ1 κ A Δ2, Δ' = Δ1 ++ ce_ass κ A :: Δ2 -> set_exp_eq Θ Ξ T γ (Δ2 ++ Γ) (ps (List.length Δ2)) A A) ->
+    body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
+    set_unit_eq Θ Ξ T γ Γ (gu_open Δ Φ) (gu_open Δ' Φ').
+Proof.
+  intros * HUU Hx Hx' HΔw HΔs Hxb Hb Hxb' Hb' Htag Htag' HA0 HA0' HM0 HM0' HU0 HU0' Ho0 Ho0' HΔ HΔ' Hps HAs HAs' Hs Hsxx Hnd.
+  set_open.
+  pose proof (proj1 (set_ext_eq_suffixes_whole _ _ _ Hb eq_refl)) as HC.
+  pose proof (proj1 (set_ext_eq_suffixes_whole _ _ _ Hb' eq_refl)) as HC'.
+  pose proof (set_ext_eq_suffixes_slots T γ _ _ _ Hb) as Hsl. pose proof (set_ext_eq_suffixes_slots T γ _ _ _ Hb') as Hsl'.
+  pose proof (ext_eq_ctx_left _ _ _ _ _ Hxb) as Hcx. pose proof (ext_eq_ctx_left _ _ _ _ _ Hxb') as Hcx'.
+  rewrite <- List.app_assoc in HC, HC', Hsl, Hsl', Hcx, Hcx'.
+  assert (Hset : set_body_eq_setting Γ Δ Δ' Φ Φ' Φx Φx' l entry_sort).
+  { refine {| set_body_eq_wf := HUU; set_body_eq_xp := Hx; set_body_eq_xp' := Hx'; set_body_eq_tele_wf := HΔw;
+              set_body_eq_ctx_wf := Hcx; set_body_eq_ctx_wf' := Hcx'; set_body_eq_tele := set_ext_eq_suffixes_eq T γ _ _ _ HΔs;
+              set_body_eq_ctx := HC; set_body_eq_ctx' := HC'; set_body_eq_slots := Hsl; set_body_eq_slots' := Hsl';
+              set_body_eq_sorts := Htag; set_body_eq_sorts' := Htag';
+              set_body_eq_assumptions := HΔ; set_body_eq_assumptions' := HΔ';
+              set_body_eq_params := set_params_evaluated_of_sorts T γ _ _ _ _ Hps (fun Δ1 κ A Δ2 E0 => HAs Δ1 κ A Δ2 E0 _ _ Hμ);
+              set_body_eq_params' := set_params_evaluated_of_sorts T γ _ _ _ _ Hps (fun Δ1 κ A Δ2 E0 => HAs' Δ1 κ A Δ2 E0 _ _ Hμ);
+              set_body_eq_shape := Hs; set_body_eq_shape_xp := Hsxx; set_body_eq_names := Hnd |}.
+    - intros; eapply HA0; eassumption. - intros; eapply HA0'; eassumption.
+    - intros; eapply HM0; eassumption. - intros; eapply HM0'; eassumption.
+    - intros; eapply HU0; eassumption. - intros; eapply HU0'; eassumption.
+    - intros; eapply Ho0; eassumption. - intros; eapply Ho0'; eassumption. }
+  destruct (set_body_eq_valid Hfnx Hmods _ _ _ _ _ _ _ _ _ Hset) as [HK HK'].
+  destruct (set_valid_unit_rel T γ Hfn Hmods Hgw Θ Ξ Hμ _ _ HK) as (F & _ & [HF _ _]).
+  destruct (set_valid_unit_rel T γ Hfn Hmods Hgw Θ Ξ Hμ _ _ HK') as (F' & _ & [HF' _ _]).
+  exists F, F'. constructor; [exact HF | exact HF' | | exact HK | exact HK' |].
+  - exact (set_body_eq_values Hfnx Hmods _ _ _ _ _ _ _ _ _ _ _ Hset HF HF').
+  - exact (set_body_eq_proofs _ _ _ _ _ _ _ _ _ Hset).
 Qed.
 
 End Units.
