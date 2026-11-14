@@ -374,11 +374,11 @@ Proof.
     pose proof (set_gctx_embedding_modules _ _ _ _ _ _ Hμ) as Hmods;
     ft_move; ft_ihs.
   (* contexts *)
-  - split; exact I.
-  - split; [eapply set_rule_ctx_extend; eassumption | eapply set_rule_slots_extend_plain; [eassumption | reflexivity]].
-  - split; [eapply set_rule_ctx_extend_def; [eassumption | do 3 eexists; eassumption] | eapply set_rule_slots_extend_plain; [eassumption | reflexivity]].
-  - split; [eapply set_rule_ctx_extend_mod; ft_prem | eapply set_rule_slots_extend_mod; ft_prem].
-  - split; [eapply set_rule_ctx_extend_dm; ft_prem | eapply set_rule_slots_extend_dm; ft_prem].
+  - ft_kripke; apply set_rule_ctx_empty.
+  - ft_kripke; eapply set_rule_ctx_extend; eassumption.
+  - ft_kripke; eapply set_rule_ctx_extend_def; eassumption.
+  - ft_kripke; eapply set_rule_ctx_extend_mod; eassumption.
+  - ft_kripke; eapply set_rule_ctx_extend_dm; eassumption.
   (* terms *)
   - split; [ft_cs | ft_kripke; apply set_rule_typ].
   - ft_by_kripke set_rule_univ.
@@ -540,10 +540,10 @@ Proof.
   - ft_by set_rule_is_univ_small.
   (* extensions *)
   - apply set_ext_eq_suffixes_nil; assumption.
-  - ft_ext_cons; [eapply set_rule_ext_eq_ass; ft_prem | apply set_rule_slots_extend_plain; [assumption | reflexivity]
-                 | apply set_rule_slots_extend_plain; [assumption | reflexivity]].
-  - ft_ext_cons; [eapply set_rule_ext_eq_def; ft_prem | apply set_rule_slots_extend_plain; [assumption | reflexivity]
-                 | apply set_rule_slots_extend_plain; [assumption | reflexivity]].
+  - ft_ext_cons; [eapply set_rule_ext_eq_ass; ft_prem | apply set_valid_slots_extend_plain; [assumption | reflexivity]
+                 | apply set_valid_slots_extend_plain; [assumption | reflexivity]].
+  - ft_ext_cons; [eapply set_rule_ext_eq_def; ft_prem | apply set_valid_slots_extend_plain; [assumption | reflexivity]
+                 | apply set_valid_slots_extend_plain; [assumption | reflexivity]].
   - ft_ext_cons; [eapply set_rule_ext_eq_mod; ft_prem
                  | split; [assumption | intros U0 [= <-]; eapply set_unit_eq_valid; eassumption]
                  | split; [assumption | intros U0 [= <-]; eapply set_unit_eq_valid; eassumption]].
