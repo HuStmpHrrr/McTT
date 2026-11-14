@@ -6332,7 +6332,24 @@ Qed.
     [Us'] and [Bks'] ([set_elim_transfer_all]), whose branches' contexts
     are substitutions by the identity into those at [Us] and [Bks]
     ([elim_bctx_cong_eq]).  Into propositions, both sides are the proof. *)
-Lemma set_rule_elim_cong : forall Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i,
+(** [set_elim_cong_setting Γ r p m Bks Bks' M M' D Mm bm Ps Ps' i FM Fns FMot]:
+    the facts at one context the congruence of the eliminator rests on:
+    the left elimination's setting, and the right elimination denoting
+    the left's results. *)
+Record set_elim_cong_setting (Γ : ctx) (r : abs_kind) (p : qname) (m : nat) (Bks Bks' : list eblock) (M M' : exp)
+    (D : ind_decl) (Mm : imember) (bm : eblock) (Ps Ps' : list exp) (i : nat)
+    (FM : set_env -> aczel_set) (Fns : set_env -> list aczel_set) (FMot : set_env -> aczel_set) : Prop :=
+  { (** The left elimination's setting *)
+    set_elim_cong_setting_left : set_elim_setting Γ r p m Bks M D Mm bm Ps i FM Fns FMot
+    (** The right elimination denotes the left's results *)
+  ; set_elim_cong_setting_right : set_denotes T γ Γ (a_elim r p (List.firstn (ind_nu D) Ps') m Bks' M')
+      (fun ρ => end_value Γ ρ r p (List.firstn (ind_nu D) Ps) Bks (large_results i) m (FM ρ)) }.
+
+(** The congruence's setting, from its premises: at every environment, a
+    result of the left blocks is one of the right ones, by the agreement
+    of the inductions at the left blocks and at the left motives with the
+    right branches ([results_agree_of_carrier]). *)
+Lemma set_elim_cong_setting_of_premises : forall Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i,
     set_ctx T γ Γ ->
     ind_lookup Θs Ξs p = Some D ->
     ind_member D m = Some Mm ->
@@ -6392,8 +6409,7 @@ Lemma set_rule_elim_cong : forall Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i
        set_rel_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
          (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B') ->
     motive_kind r ->
-    set_rel_exp_eq T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
-      (a_elim r p Us m Bks M) (a_elim r p Us' m Bks' M').
+    exists FM Fns FMot, set_elim_cong_setting Γ r p m Bks Bks' M M' D Mm bm Ps Ps' i FM Fns FMot.
 Proof.
   intros Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i HΓ HDsrc Hm Hbm HlB HlB' HPl HPs HPsem HPl' HPP HMM HMMsem HUs HUs'
     Hcnt Hcnt' Hsc Hsc' HMty HMotsem HAA HMx HMxsem Hbrs Hnames HBx HBxsem Hn HBB HBBsem Hmk.
@@ -6531,18 +6547,16 @@ Proof.
     eapply set_eq_trans; [apply set_eq_sym; exact E2 | eapply set_eq_trans; [apply set_eq_sym; exact Eag | exact E1]]. }
   (* the right side denotes the left's denotation *)
   pose proof HMw as [_ HFM HFM' HMeq _].
+  exists FMs, Fns, FMot. constructor; [exact Hset |].
+  apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
   destruct Hmk.
-  - exists FA, FL, FL. constructor; [exact HFA | exact HFL | | intros; apply set_eq_refl | exact HLmem].
-    apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
-    destruct (Hright ρ Hρ ltac:(discriminate)) as (res & He & He').
+  - destruct (Hright ρ Hρ ltac:(discriminate)) as (res & He & He').
     eapply set_interp_elim; [discriminate | exact Hel' | exact (set_denotes_exists _ _ _ _ _ HFM' _ Hρ) |].
     apply (set_elim_resp T γ _ _ _ _ _ _ _ _ res).
     + eapply set_elim_resp_value; [exact (HMeq ρ Hρ) | exact He'].
     + eapply (set_denotes_unique _ _ _ _ _ HFL); [exact Hρ |].
       eapply set_interp_elim; [discriminate | exact Hel | exact (set_denotes_exists _ _ _ _ _ HFM _ Hρ) | exact He].
-  - exists FA, FL, (fun _ => empty_set). constructor; [exact HFA | exact HFL | | | exact HLmem].
-    + apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ _. apply set_interp_elim_prop.
-    + intros ρ Hρ. apply set_eq_sym. eapply (set_denotes_unique _ _ _ _ _ HFL); [exact Hρ | apply set_interp_elim_prop].
+  - apply set_interp_elim_prop.
 Qed.
 
 (** ** The Constructors of Views in the Model *)
@@ -6904,6 +6918,104 @@ Proof.
                | eapply set_elim_iota_lhs_denotes; eassumption
                | exact (set_elim_iota_setting_rhs _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hset)
                | eapply set_elim_iota_values; eassumption | eapply set_elim_iota_value_mem; eassumption].
+Qed.
+
+(** The congruence of the eliminator: equal parameters, scrutinees and
+    branches, at motives equal at each member, give equal eliminations. *)
+Lemma set_rule_elim_cong : forall Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i,
+    set_ctx_slots Θr Ξr T γ Γ ->
+    ind_lookup Θr Ξr p = Some D ->
+    ind_member D m = Some Mm ->
+    List.nth_error Bks m = Some bm ->
+    List.length Bks = ind_nblk D ->
+    List.length Bks' = ind_nblk D ->
+    List.length Ps = im_np D Mm ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ P : A) ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
+       set_exp_eq Θr Ξr T γ Γ A P P) ->
+    List.length Ps' = im_np D Mm ->
+    (forall k P P' A, List.nth_error Ps k = Some P -> List.nth_error Ps' k = Some P' ->
+       List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A -> Θr ⍮ Ξr ⍮ Γ ⊢ P ≈ P' : A) ->
+    Θr ⍮ Ξr ⍮ Γ ⊢ M ≈ M' : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
+    set_exp_eq Θr Ξr T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M' ->
+    Us = List.firstn (ind_nu D) Ps ->
+    Us' = List.firstn (ind_nu D) Ps' ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ˣ ce_ass ak_relevant (eb_scrutinee_type b) :: tele_sub (im_nparams Mk) (sb_of_list sb_id (List.firstn (ind_nu D) Ps))
+                    ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ˣ ce_ass ak_relevant (eb_scrutinee_type b) :: tele_sub (im_nparams Mk) (sb_of_list sb_id (List.firstn (ind_nu D) Ps))
+                    ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       Θr ⍮ Ξr ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r (a_typ i)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       set_exp_eq Θr Ξr T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
+    (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
+       Θr ⍮ Ξr ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b' : abs_kind_sort r (a_typ i)) ->
+    (forall k Mk, ind_member D k = Some Mk ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk, ind_member D k = Some Mk ->
+       set_ext_eq_suffixes Θr Ξr T γ Γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
+    (forall k b b', List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
+       List.map fst (eb_brs b) = List.map fst (eb_brs b')) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                    ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       set_ext_eq_suffixes Θr Ξr T γ Γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))
+         (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
+    (forall k Mk b b' j c gs n B B', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       List.nth_error Bks' k = Some b' ->
+       List.nth_error (eb_brs b) j = Some (c, n, B) -> List.nth_error (eb_brs b') j = Some (c, n, B') ->
+       ind_con Mk c = Some gs ->
+       Θr ⍮ Ξr ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
+         : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b b' j c gs n B B', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       List.nth_error Bks' k = Some b' ->
+       List.nth_error (eb_brs b) j = Some (c, n, B) -> List.nth_error (eb_brs b') j = Some (c, n, B') ->
+       ind_con Mk c = Some gs ->
+       set_exp_eq Θr Ξr T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
+         (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B') ->
+    motive_kind r ->
+    set_exp_eq Θr Ξr T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
+      (a_elim r p Us m Bks M) (a_elim r p Us' m Bks' M').
+Proof.
+  intros Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i HΓ HDsrc Hm Hbm HlB HlB' HPl HPs0 HPsem0 HPl' HPP0 HMM HMMsem HUs HUs'
+    Hcnt Hcnt' Hsc0 Hsc0' HMty0 HMotsem0 HAA0 HMx0 HMxsem0 Hbrs Hnames HBx0 HBxsem0 Hn HBB0 HBBsem0 Hmk.
+  set_open. destruct HΓ as [HΓ _]. subst Us Us'.
+  destruct (gctx_embedding_preserves_wf _ _ _ _ Hμe) as (_ & Mx & Mq & _ & Me & _).
+  pose proof (fun k P A H1 H2 => Mx _ _ _ (HPs0 k P A H1 H2)) as HPs.
+  pose proof (fun k P A H1 H2 => HPsem0 k P A H1 H2 _ _ Hμ) as HPsem.
+  pose proof (fun k P P' A H1 H2 H3 => Mq _ _ _ _ (HPP0 k P P' A H1 H2 H3)) as HPP.
+  pose proof (fun k Mk b H1 H2 => Me _ _ _ (Hsc0 k Mk b H1 H2)) as Hsc.
+  pose proof (fun k Mk b H1 H2 => Me _ _ _ (Hsc0' k Mk b H1 H2)) as Hsc'.
+  pose proof (fun k Mk b H1 H2 => Mx _ _ _ (HMty0 k Mk b H1 H2)) as HMty.
+  pose proof (fun k Mk b H1 H2 => HMotsem0 k Mk b H1 H2 _ _ Hμ) as HMotsem.
+  pose proof (fun k Mk b b' H1 H2 H3 => Mq _ _ _ _ (HAA0 k Mk b b' H1 H2 H3)) as HAA.
+  pose proof (fun k Mk H1 => Me _ _ _ (HMx0 k Mk H1)) as HMx.
+  pose proof (fun k Mk H1 => set_ext_eq_left T γ _ _ _
+                (set_ext_eq_suffixes_eq T γ _ _ _ (HMxsem0 k Mk H1 _ _ Hμ) nil _ nil _ eq_refl eq_refl eq_refl)) as HMxsem.
+  pose proof (fun k Mk c gs H1 H2 => Me _ _ _ (HBx0 k Mk c gs H1 H2)) as HBx.
+  pose proof (fun k Mk c gs H1 H2 => set_ext_eq_left T γ _ _ _
+                (set_ext_eq_suffixes_eq T γ _ _ _ (HBxsem0 k Mk c gs H1 H2 _ _ Hμ) nil _ nil _ eq_refl eq_refl eq_refl)) as HBxsem.
+  pose proof (fun k Mk b b' j c gs n B B' H1 H2 H3 H4 H5 H6 => Mq _ _ _ _ (HBB0 k Mk b b' j c gs n B B' H1 H2 H3 H4 H5 H6)) as HBB.
+  pose proof (fun k Mk b b' j c gs n B B' H1 H2 H3 H4 H5 H6 => HBBsem0 k Mk b b' j c gs n B B' H1 H2 H3 H4 H5 H6 _ _ Hμ) as HBBsem.
+  cbv beta in HPs, HPsem, HPP, Hsc, Hsc', HMty, HMotsem, HAA, HMx, HMxsem, HBx, HBxsem, HBB, HBBsem.
+  assert (Hex : exists FM Fns FMot, set_elim_cong_setting Γ r p m Bks Bks' M M' D Mm bm Ps Ps' i FM Fns FMot)
+    by (eapply set_elim_cong_setting_of_premises; first [eassumption | reflexivity]).
+  destruct Hex as (FM & Fns & FMot & [Hset HFR]).
+  exists (fun ρ => FMot (elim_motive_env p D m Mm (List.firstn (ind_nu D) Ps) Fns FM ρ)),
+    (fun ρ => end_value Γ ρ r p (List.firstn (ind_nu D) Ps) Bks (large_results i) m (FM ρ)),
+    (fun ρ => end_value Γ ρ r p (List.firstn (ind_nu D) Ps) Bks (large_results i) m (FM ρ)).
+  constructor; [eapply set_elim_motive_denotes; eassumption | eapply set_elim_denotes; eassumption | exact HFR
+               | intros; apply set_eq_refl | exact (set_elim_setting_value _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hset)].
 Qed.
 
 (** ** The Rules of Views' Constructors *)
