@@ -16,7 +16,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Consequences Require Import Consistency.
 From Mctt.Core.Syntactic Require Import Presup.
 From Mctt.Core.Syntactic.System Require Import Structural SlotConversion.
-From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping Presup Paths LookupSound.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping Presup Paths LookupSound NoLevelReflect.
 From Mctt.Core.Syntactic.System.Inductives Require Import UniformParams.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -76,7 +76,7 @@ Proof. intros * H; unfold mdesc_mod_tele; rewrite (mdesc_mod_idem _ _ H), H; ref
 Lemma leaf_conv_mod_part : forall Θ Ξ Γ Y Y' X X', leaf_conv Θ Ξ Γ Y Y' -> mdesc_mod Y = Some X -> mdesc_mod Y' = Some X' ->
     leaf_conv Θ Ξ Γ X X'.
 Proof.
-  intros * [Hk Ht Hr Hu Hh Hf] HY HY'.
+  intros * [Hk Ht Hr Hu Hh Hf Hn] HY HY'.
   destruct (mdesc_is_mod_parts _ (mdesc_mod_is_mod _ _ HY)) as (Hk1 & Ht1 & Hr1).
   destruct (mdesc_is_mod_parts _ (mdesc_mod_is_mod _ _ HY')) as (Hk2 & Ht2 & Hr2).
   constructor.
@@ -86,6 +86,7 @@ Proof.
   - rewrite (mdesc_mod_idem _ _ HY), (mdesc_mod_idem _ _ HY'); rewrite HY, HY' in Hu; exact Hu.
   - unfold mdesc_head in *; rewrite (mdesc_mod_tele_mod_part _ _ HY), (mdesc_mod_tele_mod_part _ _ HY'); exact Hh.
   - unfold desc_reads_frame in *; rewrite (mdesc_mod_idem _ _ HY), (mdesc_mod_idem _ _ HY'); rewrite HY, HY' in Hf; exact Hf.
+  - rewrite <- (no_level_mod_iff _ _ _ _ _ HY), <- (no_level_mod_iff _ _ _ _ _ HY'); exact Hn.
 Qed.
 
 (** [leaf_core Θ Ξ Γ R R']: [leaf_conv] but for the units: the leaves show
@@ -106,7 +107,10 @@ Record leaf_core (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (R R' : mdesc) : Prop := 
         refinement of the other *)
   ; core_head : opt_rel (fun B B' => Θ ⍮ Ξ ⍮ Γ ⊢ B ⊆ B' /\ Θ ⍮ Ξ ⍮ Γ ⊢ B' ⊆ B) (mdesc_head R) (mdesc_head R')
     (** Stored at an open frame on both sides or on neither *)
-  ; core_frame : desc_reads_frame Ξ R <-> desc_reads_frame Ξ R' }.
+  ; core_frame : desc_reads_frame Ξ R <-> desc_reads_frame Ξ R'
+    (** With no member of a type of levels on both sides or on neither,
+        as for [leaf_nl] *)
+  ; core_nl : Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R <-> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R' }.
 
 (** A [leaf_core] with units equal is a [leaf_conv]. *)
 Lemma leaf_conv_of_core : forall Θ Ξ Γ R R', leaf_core Θ Ξ Γ R R' ->
@@ -117,7 +121,7 @@ Proof. intros * [] Hu; constructor; assumption. Qed.
 (** A [leaf_conv] is a [leaf_core]. *)
 Lemma leaf_core_of_conv : forall Θ Ξ Γ R R', leaf_conv Θ Ξ Γ R R' -> leaf_core Θ Ξ Γ R R'.
 Proof.
-  intros * [Hk Ht Hr Hu Hh Hf]; constructor; try assumption.
+  intros * [Hk Ht Hr Hu Hh Hf Hn]; constructor; try assumption.
   destruct (mdesc_mod R), (mdesc_mod R'); cbn in *; tauto.
 Qed.
 
@@ -803,7 +807,7 @@ Definition paths_core (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (P P' : modexp) : Pr
     up to units. *)
 Lemma leaf_core_mod_opt : forall Θ Ξ Δ X X', leaf_core Θ Ξ Δ X X' -> opt_rel (leaf_core Θ Ξ Δ) (mdesc_mod X) (mdesc_mod X').
 Proof.
-  intros * [Hk Ht Hr Hm Hh Hf].
+  intros * [Hk Ht Hr Hm Hh Hf Hn].
   destruct (mdesc_mod X) as [Xm |] eqn:E; destruct (mdesc_mod X') as [Xm' |] eqn:E'; cbn in Hm |- *; try contradiction; [| exact I ].
   destruct (mdesc_is_mod_parts _ (mdesc_mod_is_mod _ _ E)) as (Hk1 & Ht1 & Hr1).
   destruct (mdesc_is_mod_parts _ (mdesc_mod_is_mod _ _ E')) as (Hk2 & Ht2 & Hr2).
@@ -814,6 +818,7 @@ Proof.
   - rewrite (mdesc_mod_idem _ _ E), (mdesc_mod_idem _ _ E'); exact I.
   - unfold mdesc_head in *; rewrite (mdesc_mod_tele_mod_part _ _ E), (mdesc_mod_tele_mod_part _ _ E'); exact Hh.
   - unfold desc_reads_frame in *; rewrite (mdesc_mod_idem _ _ E), (mdesc_mod_idem _ _ E'); rewrite E, E' in Hf; exact Hf.
+  - rewrite <- (no_level_mod_iff _ _ _ _ _ E), <- (no_level_mod_iff _ _ _ _ _ E'); exact Hn.
 Qed.
 
 (** Paths from two selections of one member, up to units. *)
@@ -1148,9 +1153,10 @@ Definition wb_rel (X Y : mdesc) : Prop :=
 Lemma leaf_core_wb : forall Θ Ξ Δ A X Y, leaf_conv Θ Ξ Δ A X -> wb_rel X Y -> leaf_core Θ Ξ Δ A Y.
 Proof.
   intros * Hl [<- | (Δ1 & Φ1 & Φ2 & Φx & -> & ->)]; [ exact (leaf_core_of_conv _ _ _ _ _ Hl) |].
-  destruct Hl as [Hk Ht Hr Hu Hh Hf]; constructor; cbn in *; try assumption.
+  destruct Hl as [Hk Ht Hr Hu Hh Hf Hn]; constructor; cbn in *; try assumption.
   - destruct (mdesc_mod A); cbn in *; tauto.
   - rewrite Hf; split; intros (? & ? & ? & ? & ? & Hc & _); cbn in Hc; discriminate.
+  - rewrite Hn; split; apply no_level_open_written.
 Qed.
 
 (** One step from two such descriptions. *)
@@ -1617,6 +1623,26 @@ Qed.
 Lemma mdesc_head_up_none : forall D X, mdesc_mod X = None -> mdesc_head (mdesc_up D X) = None.
 Proof. intros * Hm; unfold mdesc_head, mdesc_mod_tele; rewrite mdesc_mod_up, Hm; reflexivity. Qed.
 
+(** No member of a type of levels, under equal telescopes of assumptions:
+    along the identity, from one to the other ([ctxsub_ext]). *)
+Lemma no_level_ctx_conv : forall Θ Ξ Ψ D D' X, all_assumptions D -> Θ ⍮ Ξ ⍮ Ψ ⊢ˣ D ≈ D' ->
+    Θ ⍮ Ξ ⍮ D ++ Ψ ⊢ⁿˡ X -> Θ ⍮ Ξ ⍮ D' ++ Ψ ⊢ⁿˡ X.
+Proof.
+  intros * Ha HD H; pose proof (sub_preserves_no_level _ _ _ _ _ _ H (ctxsub_ext _ _ _ _ _ HD Ha)) as X0.
+  rewrite mdesc_sub_id in X0; exact X0.
+Qed.
+
+(** Two descriptions with no member of a type of levels together, under
+    equal telescopes of assumptions, abstracted over them. *)
+Lemma no_level_up_conv : forall Θ Ξ Ψ D D' X X', all_assumptions D -> all_assumptions D' -> Θ ⍮ Ξ ⍮ Ψ ⊢ˣ D ≈ D' ->
+    (Θ ⍮ Ξ ⍮ D ++ Ψ ⊢ⁿˡ X <-> Θ ⍮ Ξ ⍮ D ++ Ψ ⊢ⁿˡ X') ->
+    (Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ mdesc_up D X <-> Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ mdesc_up D' X').
+Proof.
+  intros * Ha Ha' HD Hn; rewrite <- !no_level_up_iff; split; intros H.
+  - exact (no_level_ctx_conv _ _ _ _ _ _ Ha HD (proj1 Hn H)).
+  - exact (proj2 Hn (no_level_ctx_conv _ _ _ _ _ _ Ha' (ext_eq_sym_ass _ _ _ _ _ Ha HD) H)).
+Qed.
+
 (** Two leaves compared under two equal telescopes of assumptions,
     abstracted over them. *)
 Lemma leaf_core_up : forall Θ Ξ Ψ D D' X X', all_assumptions D -> all_assumptions D' -> Θ ⍮ Ξ ⍮ Ψ ⊢ˣ D ≈ D' ->
@@ -1627,7 +1653,8 @@ Lemma leaf_core_up : forall Θ Ξ Ψ D D' X X', all_assumptions D -> all_assumpt
     (forall Xm', mdesc_mod X' = Some Xm' -> exists T, mdesc_mod_tele X' = Some T) ->
     leaf_core Θ Ξ Ψ (mdesc_up D X) (mdesc_up D' X').
 Proof.
-  intros * Ha Ha' HD [Hk Ht Hr Hm Hh Hf] Hpk HA HT HT'.
+  intros * Ha Ha' HD [Hk Ht Hr Hm Hh Hf Hn] Hpk HA HT HT'.
+  pose proof (no_level_up_conv _ _ _ _ _ _ _ Ha Ha' HD Hn) as Hnu.
   destruct D as [| e D0] using List.rev_ind.
   - destruct D'; [| apply ext_eq_length in HD; discriminate ]; rewrite !mdesc_up_nil; constructor; assumption.
   - clear IHD0; destruct D' as [| e' D0'] using List.rev_ind; [ apply ext_eq_length in HD; rewrite List.length_app in HD; cbn in HD; lia |].
@@ -1657,6 +1684,7 @@ Proof.
         rewrite (mdesc_head_up_last _ _ _ _ _ HT1), (mdesc_head_up_last _ _ _ _ _ HT1'); cbn; split; assumption.
       * rewrite !mdesc_head_up_none by assumption; exact I.
     + rewrite !desc_reads_frame_up; exact Hf.
+    + exact Hnu.
 Qed.
 
 (** *** Selections from Abstracted Modules *)
@@ -2588,6 +2616,7 @@ Proof.
       * exact I.
       * exact I.
       * unfold desc_reads_frame; cbn; split; intros (? & ? & ? & ? & ? & [=] & _).
+      * apply no_level_term_iff.
     + exact (pk_of_outer _ _ Hg _ _ _ HXok Ha).
     + intros A0 HA0; exact (desc_ok_type_kind _ _ _ _ _ HXQok HA0).
     + intros Xm [=].
@@ -2902,11 +2931,102 @@ Proof.
                        | exact Hed | cbn; rewrite Hf; cbn; rewrite mdesc_up_nil; reflexivity ].
 Qed.
 
-(** Two open modules of no parameter show the same, up to units. *)
-Lemma leaf_core_open_nil : forall Θ Ξ Ψ Φ1 Φx1 Φ2 Φx2, leaf_core Θ Ξ Ψ (mdesc_open nil Φ1 Φx1) (mdesc_open nil Φ2 Φx2).
+(** Two open modules of no parameter show the same, up to units, when
+    they have members of types of levels together. *)
+Lemma leaf_core_open_nil : forall Θ Ξ Ψ Φ1 Φx1 Φ2 Φx2,
+    (Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ mdesc_open nil Φ1 Φx1 <-> Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ mdesc_open nil Φ2 Φx2) ->
+    leaf_core Θ Ξ Ψ (mdesc_open nil Φ1 Φx1) (mdesc_open nil Φ2 Φx2).
 Proof.
-  intros; constructor; cbn; try reflexivity; try exact I; try (intros; discriminate).
+  intros * Hn; constructor; cbn; try reflexivity; try exact I; try (intros; discriminate); [| exact Hn ].
   unfold desc_reads_frame; split; intros (? & ? & ? & ? & ? & [=] & _).
+Qed.
+
+(** Entries of the same shape are of the same kind. *)
+Lemma entry_shape_kind : forall E E', entry_shape E E' -> entry_kind E = entry_kind E'.
+Proof. intros [? ? ? ? [] | | | | ] [? ? ? ? [] | | | | ] HS; cbn in *; try contradiction; try reflexivity; tauto. Qed.
+
+(** The unit of a module entry of a well-formed body is well formed where
+    the entry is. *)
+Lemma body_entry_unit_wf : forall Θ Ξ G Φx y Φ0 E U, gm_noopen Φx -> ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ G ->
+    gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+    ⊢ Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ G /\ Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ G ⊢ᵘ U ≈ U.
+Proof.
+  intros * Hn HΦ Hp HU.
+  destruct (gm_prefix_body_ctx _ _ _ Hn Hp) as (Ψ & HΨ); rewrite HΨ in HΦ.
+  pose proof (ctx_app_wf_tail _ _ _ _ ltac:(rewrite <- List.app_assoc in HΦ; exact HΦ)) as HΦ0.
+  exact (body_ext_unit_wf _ _ _ _ _ _ _ HΦ0 HU).
+Qed.
+
+(** A body unit with no parameter of the same shape as one with no member
+    of a type of levels, its module entries compared along paths with the
+    other's, filled in, has none: the entries' tags are the shape's, and
+    each module entry has none, read back along its filling
+    ([no_level_reflect]) from the other's, filled in, along the
+    comparison's [leaf_nl]. *)
+Lemma body_nl_transfer : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall G Φ Φx Φ' Φx',
+    Θ ⍮ Ξ ⍮ G ⊢ᵐ me_lit (gu_open nil Φ) ≈ me_lit (gu_open nil Φ) ->
+    mdenote Θ Ξ G (me_lit (gu_open nil Φ)) (mdesc_open nil Φ Φx) ->
+    Θ ⍮ Ξ ⍮ G ⊢ᵐ me_lit (gu_open nil Φ') ≈ me_lit (gu_open nil Φ') ->
+    mdenote Θ Ξ G (me_lit (gu_open nil Φ')) (mdesc_open nil Φ' Φx') ->
+    body_shape Φx Φx' ->
+    (forall y Φ0 E U Φ0' E' U' σ σ',
+       gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+       gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
+       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' -> modexp_conv Θ Ξ G (me_lit U[σ]ᵘ) (me_lit U'[σ']ᵘ)) ->
+    Θ ⍮ Ξ ⍮ G ⊢ⁿˡ mdesc_open nil Φ Φx -> Θ ⍮ Ξ ⍮ G ⊢ⁿˡ mdesc_open nil Φ' Φx'.
+Proof.
+  intros Θ Ξ Hg * HL HO HL' HO' Hsh HUc Hnl.
+  pose proof (presup_modexp_eq_ctx HL) as HG.
+  pose proof (desc_ok_of_typed _ _ Hg _ _ _ _ HL HO) as Hok.
+  pose proof (desc_ok_of_typed _ _ Hg _ _ _ _ HL' HO') as Hok'.
+  inversion Hok; subst.
+  match goal with H1 : ⊢ _ ⍮ _ ⍮ body_ctx Φx ++ _, H2 : gm_noopen Φx |- _ => rename H1 into HΦ; rename H2 into Hn end.
+  inversion Hok'; subst.
+  match goal with H1 : ⊢ _ ⍮ _ ⍮ body_ctx Φx' ++ _, H2 : gm_noopen Φx',
+                  H3 : forall y Φ0 E U, gm_prefix_upto Φx' y = _ -> _ -> forall R, udenote _ _ _ _ _ R -> desc_ok _ _ _ R |- _ =>
+    rename H1 into HΦ'; rename H2 into Hn'; rename H3 into Hent' end.
+  cbn [List.app] in HΦ, HΦ', Hent'.
+  inversion Hnl as [| ? ? ? ? ? md ? ? ? Hk Hu Hl | |]; subst; cbn [List.app] in Hu, Hl.
+  pose proof (gm_noopen_nopens _ Hn) as Hnx.
+  destruct (prefix_choice Φx' (fun y Φy R => forall Φ0 E U, Φy = gm_ext Φ0 y E -> entry_unit E = Some U ->
+                                 udenote Θ Ξ (body_ctx Φ0 ++ G) None U R)) as [md' Hmd'].
+  { intros y Φy Hp; destruct (gm_prefix_entry _ _ _ Hp) as (Φ0 & E & -> & _).
+    destruct (entry_unit E) as [U |] eqn:HE; [| exists (mdesc_open nil gm_nil gm_nil); intros * [= <- <-]; congruence ].
+    destruct (body_entry_unit_wf _ _ _ _ _ _ _ _ Hn' HΦ' Hp HE) as [_ HU].
+    destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & [R HR] & _).
+    exists R; intros * [= <- <-] HE'; rewrite HE in HE'; injection HE' as <-; exact HR. }
+  apply wf_no_level_open with (member_descs := md'); [ exact Hn' | | | |].
+  - apply ext_of_ctx'; rewrite List.app_nil_r; exact HΦ'.
+  - (* the tags are the shape's *)
+    intros y Φ0' E' A' M' Hp' HE'.
+    destruct (shape_prefix _ _ _ _ _ (body_shape_sym _ _ Hsh) Hp') as (Φ0 & E & Hp & _ & HS).
+    destruct (entry_shape_tm _ _ _ _ HS HE') as (A & M & HE).
+    rewrite (entry_shape_kind _ _ HS); exact (Hk _ _ _ _ _ Hp HE).
+  - intros * Hp HE; cbn [List.app]; exact (Hmd' _ _ Hp _ _ _ eq_refl HE).
+  - (* each module entry, by the other side's, filled in *)
+    intros y Φ0' E' U' Hp' HE'; cbn [List.app].
+    destruct (shape_prefix _ _ _ _ _ (body_shape_sym _ _ Hsh) Hp') as (Φ0 & E & Hp & Hsh0 & HS).
+    destruct (entry_shape_unit _ _ _ HS HE') as (U & HE).
+    destruct (body_shape_fill _ _ Hnx Hsh) as [Hf Hf'].
+    destruct (fill_prefix _ _ _ _ Hf Hp) as (σ & Hσf).
+    destruct (fill_prefix _ _ _ _ Hf' Hp') as (σ' & Hσf').
+    pose proof (HUc _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hσf Hσf') as Hc.
+    destruct (body_entry_unit_wf _ _ _ _ _ _ _ _ Hn HΦ Hp HE) as [HΦ0 HU].
+    destruct (body_entry_unit_wf _ _ _ _ _ _ _ _ Hn' HΦ' Hp' HE') as [HΦ0' HU'].
+    pose proof (wf_gm_fill _ _ _ _ _ HΦ0 Hσf) as Hσ.
+    pose proof (wf_gm_fill _ _ _ _ _ HΦ0' Hσf') as Hσ'.
+    pose proof (Hu _ _ _ _ Hp HE) as Hmd; pose proof (Hmd' _ _ Hp' _ _ _ eq_refl HE') as Hmd'y.
+    pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ (wf_me_lit _ _ _ _ _ HU) (mdenote_lit _ _ _ _ _ Hmd) Hσ) as Hm1.
+    pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ (wf_me_lit _ _ _ _ _ HU') (mdenote_lit _ _ _ _ _ Hmd'y) Hσ') as Hm2.
+    cbn [modexp_sub] in Hm1, Hm2.
+    pose proof (Hc _ _ _ (wf_sub_eq_refl _ _ _ _ _ (wf_sub_id _ _ _ HG))) as Hp0; rewrite !modexp_sub_id in Hp0.
+    destruct (proj1 (Hp0 nil (path_pairs_nil _ _ _ _)) _ Hm1) as (X' & HX' & Hlf).
+    rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HX' _ Hm2) in Hlf.
+    unfold path_leaf in Hlf; cbn in Hlf.
+    rewrite !mdesc_is_mod_mod in Hlf
+      by (apply mdesc_is_mod_sub; eapply udenote_is_mod; eassumption).
+    pose proof (proj1 (leaf_nl _ _ _ _ _ Hlf) (sub_preserves_no_level _ _ _ _ _ _ (Hl _ _ _ _ Hp HE) Hσ)) as Hn2.
+    exact (no_level_reflect _ _ Hg _ _ (Hent' _ _ _ _ Hp' HE' _ Hmd'y) _ _ Hσ' Hn2).
 Qed.
 
 (** Paths from two expressions denoting terms, compared wholly: no step
@@ -2966,19 +3086,36 @@ Proof.
     eauto.
 Qed.
 
+(** Two definitions with module parts have members of types of levels
+    together when their module parts, on both sides or on neither, do. *)
+Lemma no_level_dm_iff : forall Θ Ξ Ψ Θd A M Y Θd' A' M' Y', opt_rel (fun _ _ => True) (mdesc_mod Y) (mdesc_mod Y') ->
+    (Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ Y <-> Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ Y') ->
+    (Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ mdesc_dm Θd A M Y <-> Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ mdesc_dm Θd' A' M' Y').
+Proof.
+  intros * Hm Hn.
+  destruct (mdesc_mod Y) as [Y0 |] eqn:E; destruct (mdesc_mod Y') as [Y0' |] eqn:E'; cbn in Hm; try contradiction.
+  - rewrite (no_level_mod_iff _ _ _ _ _ E), (no_level_mod_iff _ _ _ _ _ E') in Hn.
+    split; intros H; inversion H; subst; constructor; intros Rm' HRm'.
+    + rewrite E' in HRm'; injection HRm' as <-; apply Hn; eauto.
+    + rewrite E in HRm'; injection HRm' as <-; apply Hn; eauto.
+  - split; intros _; constructor; intros Rm' HRm'; congruence.
+Qed.
+
 (** Two definitions with module parts of no parameter, compared wholly
     from their term parts and their module parts. *)
 Lemma leaf_conv_dm_nil : forall Θ Ξ Ψ A M Y A' M' Y', leaf_conv Θ Ξ Ψ Y Y' ->
     (exists i, Θ ⍮ Ξ ⍮ Ψ ⊢ A ≈ A' : Typeω@i) -> Θ ⍮ Ξ ⍮ Ψ ⊢ M ≈ M' : A ->
     leaf_conv Θ Ξ Ψ (mdesc_dm nil A M Y) (mdesc_dm nil A' M' Y').
 Proof.
-  intros * [Hk Ht Hr Hu Hh Hf] HA HM; constructor; cbn [mdesc_kind mdesc_type mdesc_reduct mdesc_mod ctx_pi ctx_fn].
+  intros * [Hk Ht Hr Hu Hh Hf Hn] HA HM; constructor; cbn [mdesc_kind mdesc_type mdesc_reduct mdesc_mod ctx_pi ctx_fn].
   - reflexivity.
   - exact HA.
   - intros A0 [= <-]; exact HM.
   - exact Hu.
   - unfold mdesc_head, mdesc_mod_tele in *; cbn [mdesc_mod]; exact Hh.
   - unfold desc_reads_frame in *; cbn [mdesc_mod]; exact Hf.
+  - apply no_level_dm_iff; [| exact Hn ].
+    destruct (mdesc_mod Y), (mdesc_mod Y'); cbn in Hu |- *; tauto.
 Qed.
 
 (** Paths from two expressions [Pl] and [Pr] whose module parts are what
@@ -3117,10 +3254,20 @@ Proof.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hσl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hσr.
   pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HL HO Hσl) as HOs.
   pose proof (wf_sub_mdenote _ _ _ _ _ _ _ _ HL' HO' Hσr) as HOs'.
+  (** members of types of levels together: each side read back to the
+      unit, compared there entry by entry ([body_nl_transfer]) *)
+  assert (Hnl : Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ mdesc_sub (mdesc_open nil Φ Φx) σ <-> Θ ⍮ Ξ ⍮ Ψ ⊢ⁿˡ mdesc_sub (mdesc_open nil Φ' Φx') σ').
+  { split; intros Hn0.
+    - pose proof (no_level_reflect _ _ Hg _ _ (desc_ok_of_typed _ _ Hg _ _ _ _ HL HO) _ _ Hσl Hn0) as X.
+      exact (sub_preserves_no_level _ _ _ _ _ _ (body_nl_transfer _ _ Hg _ _ _ _ _ HL HO HL' HO' Hsh HUc X) Hσr).
+    - pose proof (no_level_reflect _ _ Hg _ _ (desc_ok_of_typed _ _ Hg _ _ _ _ HL' HO') _ _ Hσr Hn0) as X.
+      refine (sub_preserves_no_level _ _ _ _ _ _ (body_nl_transfer _ _ Hg _ _ _ _ _ HL' HO' HL HO (body_shape_sym _ _ Hsh) _ X) Hσl).
+      intros * Hp' HE' Hp HE Hf' Hf0; apply modexp_conv_sym; exact (HUc _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf'). }
+  cbn [mdesc_sub tele_sub length sb_qn] in Hnl.
   destruct s as [| [y | N N'] s1].
   - cbn [path_left path_right path_leaf_m]; split.
-    + intros X HX; rewrite (Hf _ _ _ HX _ HOs); eexists; split; [ exact HOs' | cbn; apply leaf_core_open_nil ].
-    + intros X HX; rewrite (Hf _ _ _ HX _ HOs'); eexists; split; [ exact HOs | cbn; apply leaf_core_open_nil ].
+    + intros X HX; rewrite (Hf _ _ _ HX _ HOs); eexists; split; [ exact HOs' | cbn; apply leaf_core_open_nil; exact Hnl ].
+    + intros X HX; rewrite (Hf _ _ _ HX _ HOs'); eexists; split; [ exact HOs | cbn; apply leaf_core_open_nil; exact Hnl ].
   - inversion Hs as [| ? ? ? Hs1 |]; subst; clear Hs.
     cbn [path_left path_right path_leaf_m path_full_m path_all_apps andb].
     assert (Hdec : (exists Φ0 E, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E)) \/ (forall Φ0 E, gm_prefix_upto Φx y <> Some (gm_ext Φ0 y E))).
@@ -3162,7 +3309,8 @@ Proof.
         - intros A0 [= <-]; exact (exp_eq_sub_both _ _ _ _ _ _ _ _ _ HMeq Hσ).
         - exact I.
         - exact I.
-        - unfold desc_reads_frame; cbn; split; intros (? & ? & ? & ? & ? & [=] & _). }
+        - unfold desc_reads_frame; cbn; split; intros (? & ? & ? & ? & ? & [=] & _).
+        - apply no_level_term_iff. }
       refine (paths_full_terms _ _ Hg _ _ _ (Hq _ _) (Hq _ _) _ _ _ _ _ Hs1).
       * intros X HX; rewrite (Hf _ _ _ HX _ HPl); reflexivity.
       * intros X HX; rewrite (Hf _ _ _ HX _ HPr); reflexivity.
@@ -3306,6 +3454,11 @@ Proof.
     { intros σ (Θ' & p & T & Φ & Ns & Hm & Hf); unfold desc_reads_frame; rewrite (mdesc_mod_sub _ _ σ Hm); cbn;
         do 5 eexists; split; [ reflexivity | exact Hf ]. }
     split; intros H; apply Hfr; eapply desc_reads_frame_sub; exact H.
+  - (* each side read back to [D] ([no_level_reflect]), then moved to the other *)
+    pose proof (wf_sub_eq_left _ _ _ _ _ _ Hρ) as Hρl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hρ) as Hρr.
+    split; intros H.
+    + exact (sub_preserves_no_level _ _ _ _ _ _ (no_level_reflect _ _ Hg _ _ Hok _ _ Hρl H) Hρr).
+    + exact (sub_preserves_no_level _ _ _ _ _ _ (no_level_reflect _ _ Hg _ _ Hok _ _ Hρr H) Hρl).
 Qed.
 
 (** An entry of a typed closed description, denoted, can be read with the

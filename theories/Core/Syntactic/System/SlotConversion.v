@@ -102,7 +102,13 @@ Record leaf_conv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (R R' : mdesc) : Prop := 
         argument of the other ([wf_me_app]) *)
   ; leaf_head : opt_rel (fun B B' => Θ ⍮ Ξ ⍮ Γ ⊢ B ⊆ B' /\ Θ ⍮ Ξ ⍮ Γ ⊢ B' ⊆ B) (mdesc_head R) (mdesc_head R')
     (** Stored at an open frame on both sides or on neither *)
-  ; leaf_frame : desc_reads_frame Ξ R <-> desc_reads_frame Ξ R' }.
+  ; leaf_frame : desc_reads_frame Ξ R <-> desc_reads_frame Ξ R'
+    (** With no member of a type of levels on both sides or on neither
+        ([wf_no_level_members]).  It is a field, not a consequence of the
+        others: the judgment reads the tags of entries no lookup reads, an
+        opaque definition of a local body, so it is compared where the two
+        descriptions are built, entry by entry *)
+  ; leaf_nl : Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R <-> Θ ⍮ Ξ ⍮ Γ ⊢ⁿˡ R' }.
 
 (** [desc_conv Θ Ξ Γ R R']: under every substitution into [Γ], each
     sequence of steps reaches on each side what it reaches on the other,
@@ -133,7 +139,7 @@ Proof. intros * HS H1 H2; destruct o, o', o''; cbn in *; eauto; contradiction. Q
 (** [leaf_conv] the other way round. *)
 Lemma leaf_conv_sym : forall Θ Ξ Γ R R', leaf_conv Θ Ξ Γ R R' -> leaf_conv Θ Ξ Γ R' R.
 Proof.
-  intros * [Hk Ht Hr Hu Hte Hf]; constructor.
+  intros * [Hk Ht Hr Hu Hte Hf Hn]; constructor.
   - symmetry; exact Hk.
   - rewrite <- Hk; eapply opt_rel_sym; [| exact Ht ]; intros A A' (i & HA); exists i; apply wf_exp_eq_sym; exact HA.
   - intros A' HA'. destruct (mdesc_type R) as [A |] eqn:EA; [| rewrite HA' in Ht; destruct Ht ].
@@ -143,12 +149,13 @@ Proof.
   - eapply opt_rel_sym; [| exact Hu ]; intros; apply wf_me_sym; assumption.
   - eapply opt_rel_sym; [| exact Hte ]; intros B B' [H1 H2]; split; assumption.
   - symmetry; exact Hf.
+  - symmetry; exact Hn.
 Qed.
 
 (** [leaf_conv] chained. *)
 Lemma leaf_conv_trans : forall Θ Ξ Γ R R' R'', leaf_conv Θ Ξ Γ R R' -> leaf_conv Θ Ξ Γ R' R'' -> leaf_conv Θ Ξ Γ R R''.
 Proof.
-  intros * [Hk Ht Hr Hu Hte Hf] [Hk' Ht' Hr' Hu' Hte' Hf']; constructor.
+  intros * [Hk Ht Hr Hu Hte Hf Hn] [Hk' Ht' Hr' Hu' Hte' Hf' Hn']; constructor.
   - congruence.
   - rewrite <- Hk in Ht'; eapply opt_rel_trans; [| exact Ht | exact Ht' ].
     intros A A' A'' (i & H1) (j & H2); exists (max i j).
@@ -164,6 +171,7 @@ Proof.
   - eapply opt_rel_trans; [| exact Hte | exact Hte' ]; intros B B' B'' [H1 H2] [H3 H4].
     split; eapply wf_subtyp_trans; eassumption.
   - rewrite Hf; exact Hf'.
+  - rewrite Hn; exact Hn'.
 Qed.
 
 (** [desc_conv] the other way round. *)
@@ -435,6 +443,7 @@ Proof.
     destruct (desc_ok_head _ _ _ _ _ _ _ (desc_ok_mod _ _ Hg _ _ _ Hok Em) Et Ev) as (S & HS & HB).
     split; eapply wf_subtyp_refl; [ exact HB | exact HS | apply wf_exp_eq_refl; exact HB
                                  | exact HB | exact HS | apply wf_exp_eq_refl; exact HB ].
+  - reflexivity.
   - reflexivity.
 Qed.
 

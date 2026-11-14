@@ -74,6 +74,7 @@
 ./Core/Consequences/TermKinds.v
 ./Core/Consequences/ModexpConversion.v
 ./Core/Consequences/SetModelExists.v
+./Core/Consequences/SlotTransport.v
 ./Core/Semantic/MemberWf.v
 ./Core/Semantic/Domain.v
 ./Core/Semantic/Evaluation.v
@@ -260,6 +261,7 @@
 ./Core/Syntactic/System/Records/Syntax.v
 ./Core/Syntactic/System/Global/LookupSound.v
 ./Core/Syntactic/System/Global/NoLevelReach.v
+./Core/Syntactic/System/Global/NoLevelReflect.v
 ./Core/Syntactic/System/Inductives/Typing.v
 ./Core/Syntactic/System/Inductives/Runs.v
 ./Core/Syntactic/System/Inductives/GrecTyped.v

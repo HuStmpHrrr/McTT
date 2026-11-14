@@ -2382,6 +2382,28 @@ let%expect_test "a local body with public definitions and an import" =
              end --> 1 : ℕ
     |}]
 
+let%expect_test "a local open of a definition whose type is a redex" =
+  let _ =
+    main_of_body
+      "eval let module A where def a : (fun (X : Type@0) -> X) Nat := 0 end end in \
+       let module L where open A use (a) def x : Nat := a end end in L.x end end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   def a : (λ (A1 : Type@0) → A1) ℕ ≔
+                     0
+                   end
+                 end;
+                 module M2 where
+                   open M1 use (a)
+                   def x : ℕ ≔
+                     a
+                   end
+                 end
+             in M2.x
+             end --> 0 : ℕ
+    |}]
+
 let%expect_test "an import of a local module alias" =
   let _ =
     main_of_body
