@@ -28,9 +28,14 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing UniformP
 Import ListNotations.
 
 Section Eliminator.
-  Context {GC : GCtx}.
+  (** The context the rules' premises are read at ([Ξ] names contexts below) *)
+  Variable Θr : gdeps.
+  Variable Ξr : gstack.
   Variable T : universe_tower.
   Variable γ : global_valuation.
+
+Section EliminatorSteps.
+  Context {GC : GCtx}.
   Hypothesis Hfn : fn_kinds_unique.
   (** Every global module equals itself *)
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
@@ -6416,7 +6421,7 @@ Qed.
     constructor at the uniform values is the container's at the
     instance's values ([set_group_ok_view_constructors], read by
     [member_pre_view]). *)
-Lemma set_rule_con_view : forall Γ p D j Mj qc k Is vm c Us Ms A,
+Lemma set_con_view_values_eq : forall Γ p D j Mj qc k Is vm c Us Ms A FL FR,
     set_ctx T γ Γ ->
     ind_lookup Θs Ξs p = Some D ->
     ind_member D j = Some Mj ->
@@ -6427,11 +6432,11 @@ Lemma set_rule_con_view : forall Γ p D j Mj qc k Is vm c Us Ms A,
     (forall n U B, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) sb_id Us) n = Some B ->
        set_rel_exp_eq T γ Γ B U U) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
-    set_rel_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con p j c) (Us ++ Ms)) ->
-    set_rel_exp_eq T γ Γ A (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)) (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)) ->
-    set_rel_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)).
+    set_denotes T γ Γ (apps_exp (a_con p j c) (Us ++ Ms)) FL ->
+    set_denotes T γ Γ (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)) FR ->
+    forall ρ, set_env_in T γ Γ ρ -> set_eq (FL ρ) (FR ρ).
 Proof.
-  intros Γ p D j Mj qc k Is vm c Us Ms A HΓ HDsrc Hj Hh HUl HUt HUsem HLt HL HR.
+  intros Γ p D j Mj qc k Is vm c Us Ms A FL FR HΓ HDsrc Hj Hh HUl HUt HUsem HLt HFL HFR.
   pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDsrc) as HD.
   pose proof (presup_exp_ctx HLt) as HcΓ.
   (* the constructor's arguments, from its typing *)
@@ -6452,8 +6457,6 @@ Proof.
   destruct (set_gsub_closed_inst T γ Hfn Hmods (ind_uparams D) Γ Us HΓ Hass HUΓ HwΓ ltac:(rewrite HUl; reflexivity) HUt HUsem)
     as (Fσ & HFσ & Hvals).
   destruct (set_group_ok_view_instances _ _ _ _ _ HG j Mj qc k Is vm Hj Hh) as [Fis HFis].
-  destruct HL as (FA & FL & FL' & [HFA HFL _ _ HLm]). destruct HR as (FA2 & FR & FR' & [_ HFR _ _ _]).
-  exists FA, FL, FR. constructor; [exact HFA | exact HFL | exact HFR | | exact HLm].
   (* at every environment, the two applications' values *)
   intros ρ Hρ.
   destruct (member_pre_view Γ ρ p Us D Fσ HΓ HcΓ Hρ HDsrc HFσ HDt Hcl HUl j Mj qc k Is vm Fis Hj Hh HFis)
@@ -6480,7 +6483,7 @@ Qed.
     the member's parameters (the uniform ones), at which the constructor
     is the tuple of its arguments by field name
     ([set_group_ok_constructors_value]). *)
-Lemma set_rule_con_rview : forall Γ p D j Mj qr Is fl c gs Us Ms A,
+Lemma set_con_rview_values_eq : forall Γ p D j Mj qr Is fl c gs Us Ms A FL FR,
     set_ctx T γ Γ ->
     ind_lookup Θs Ξs p = Some D ->
     ind_member D j = Some Mj ->
@@ -6497,12 +6500,11 @@ Lemma set_rule_con_rview : forall Γ p D j Mj qr Is fl c gs Us Ms A,
     (forall n N B, List.nth_error Ms n = Some N ->
        List.nth_error (tele_insts (cargs_ctx p D Mj gs) (sb_of_list sb_id Us) Ms) n = Some B -> set_rel_exp_eq T γ Γ B N N) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
-    set_rel_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con p j c) (Us ++ Ms)) ->
-    set_rel_exp_eq T γ Γ A (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms))
-      (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms)) ->
-    set_rel_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms)).
+    set_denotes T γ Γ (apps_exp (a_con p j c) (Us ++ Ms)) FL ->
+    set_denotes T γ Γ (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms)) FR ->
+    forall ρ, set_env_in T γ Γ ρ -> set_eq (FL ρ) (FR ρ).
 Proof.
-  intros Γ p D j Mj qr Is fl c gs Us Ms A HΓ HDsrc Hj Hh Hgs HUl HUt HUsem HMl HMt HMsem HLt HL HR.
+  intros Γ p D j Mj qr Is fl c gs Us Ms A FL FR HΓ HDsrc Hj Hh Hgs HUl HUt HUsem HMl HMt HMsem HLt HFL HFR.
   pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDsrc) as HD.
   pose proof (presup_exp_ctx HLt) as HcΓ.
   destruct (decl_of_lookup _ _ _ _ _ HcΓ HD) as [HDt Hcl].
@@ -6550,8 +6552,6 @@ Proof.
   destruct (set_gsub_closed_inst T γ Hfn Hmods Tf Γ (Us ++ Ms) HΓ Hass1 HTΓ HwΓ1
               ltac:(unfold Tf; rewrite !List.length_app, length_cargs_ctx, length_im_params; unfold im_np; lia)
               (fun n N B HN HB => proj1 (HPA n N B HN HB)) (fun n N B HN HB => proj2 (HPA n N B HN HB))) as (Fκ & HFκ & Hvals).
-  destruct HL as (FA & FL & FL' & [HFA HFL _ _ HLm]). destruct HR as (FA2 & FR & FR' & [_ HFR _ _ _]).
-  exists FA, FL, FR. constructor; [exact HFA | exact HFL | exact HFR | | exact HLm].
   (* at every environment, the constructor's value is the tuple of the fields' *)
   intros ρ Hρ.
   destruct (set_closed_inst_env T γ Hfn Hmods _ _ _ _ HFκ HΓ HTc Hs1 Hw1 HwΓ1 ρ Hρ) as [Hθ Eθ].
@@ -6574,6 +6574,71 @@ Proof.
   destruct (set_interp_functional_all T γ Hfn Hmods) as (_ & Hlf & _).
   eapply list_set_eq_trans; [apply list_set_eq_skipn, list_set_eq_sym; exact Els |].
   rewrite <- HUl. exact (Hlf _ _ _ _ Hms _ _ (set_env_rel_eq T γ _ _ _ Hρ) Hf).
+Qed.
+
+End EliminatorSteps.
+
+(** ** The Rules of Views' Constructors *)
+
+(** A constructor of a view at the uniform parameters [Us], typed one by
+    one and holding in the model, applied to [Ms], is in the model the
+    container's constructor at the view's instance there. *)
+Lemma set_rule_con_view : forall Γ p D j Mj qc k Is vm c Us Ms A,
+    set_ctx_slots Θr Ξr T γ Γ ->
+    ind_lookup Θr Ξr p = Some D ->
+    ind_member D j = Some Mj ->
+    im_head Mj = mh_view qc k Is vm ->
+    List.length Us = ind_nu D ->
+    (forall n U B, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) sb_id Us) n = Some B ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ U : B) ->
+    (forall n U B, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) sb_id Us) n = Some B ->
+       set_exp_eq Θr Ξr T γ Γ B U U) ->
+    Θr ⍮ Ξr ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
+    set_exp_eq Θr Ξr T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con p j c) (Us ++ Ms)) ->
+    set_exp_eq Θr Ξr T γ Γ A (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)) (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)) ->
+    set_exp_eq Θr Ξr T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)).
+Proof.
+  intros * HΓ HDsrc Hj Hh HUl HUt0 HUsem0 HLt HL HR. set_open. destruct HΓ as [HΓ _].
+  pose proof (fun n U B H1 H2 => proj1 (proj2 (gctx_embedding_preserves_wf _ _ _ _ Hμe)) _ _ _ (HUt0 n U B H1 H2)) as HUt.
+  pose proof (fun n U B H1 H2 => HUsem0 n U B H1 H2 _ _ Hμ) as HUsem. cbv beta in HUt, HUsem.
+  destruct HL as (FA & FL & FL' & [HFA HFL _ _ HLm]). destruct HR as (FA2 & FR & FR' & [_ HFR _ _ _]).
+  exists FA, FL, FR. constructor; [exact HFA | exact HFL | exact HFR | | exact HLm].
+  eapply set_con_view_values_eq; eassumption.
+Qed.
+
+(** The constructor of a record view at the uniform parameters [Us] and
+    the fields [Ms], typed one by one and holding in the model, is in the
+    model the tuple of the fields. *)
+Lemma set_rule_con_rview : forall Γ p D j Mj qr Is fl c gs Us Ms A,
+    set_ctx_slots Θr Ξr T γ Γ ->
+    ind_lookup Θr Ξr p = Some D ->
+    ind_member D j = Some Mj ->
+    im_head Mj = mh_record qr Is fl ->
+    ind_con Mj c = Some gs ->
+    List.length Us = ind_nu D ->
+    (forall n U B, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) sb_id Us) n = Some B ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ U : B) ->
+    (forall n U B, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) sb_id Us) n = Some B ->
+       set_exp_eq Θr Ξr T γ Γ B U U) ->
+    List.length Ms = List.length fl ->
+    (forall n N B, List.nth_error Ms n = Some N ->
+       List.nth_error (tele_insts (cargs_ctx p D Mj gs) (sb_of_list sb_id Us) Ms) n = Some B -> Θr ⍮ Ξr ⍮ Γ ⊢ N : B) ->
+    (forall n N B, List.nth_error Ms n = Some N ->
+       List.nth_error (tele_insts (cargs_ctx p D Mj gs) (sb_of_list sb_id Us) Ms) n = Some B -> set_exp_eq Θr Ξr T γ Γ B N N) ->
+    Θr ⍮ Ξr ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
+    set_exp_eq Θr Ξr T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con p j c) (Us ++ Ms)) ->
+    set_exp_eq Θr Ξr T γ Γ A (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms))
+      (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms)) ->
+    set_exp_eq Θr Ξr T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms)).
+Proof.
+  intros * HΓ HDsrc Hj Hh Hgs HUl HUt0 HUsem0 HMl HMt0 HMsem0 HLt HL HR. set_open. destruct HΓ as [HΓ _].
+  pose proof (fun n U B H1 H2 => proj1 (proj2 (gctx_embedding_preserves_wf _ _ _ _ Hμe)) _ _ _ (HUt0 n U B H1 H2)) as HUt.
+  pose proof (fun n U B H1 H2 => HUsem0 n U B H1 H2 _ _ Hμ) as HUsem.
+  pose proof (fun n N B H1 H2 => proj1 (proj2 (gctx_embedding_preserves_wf _ _ _ _ Hμe)) _ _ _ (HMt0 n N B H1 H2)) as HMt.
+  pose proof (fun n N B H1 H2 => HMsem0 n N B H1 H2 _ _ Hμ) as HMsem. cbv beta in HUt, HUsem, HMt, HMsem.
+  destruct HL as (FA & FL & FL' & [HFA HFL _ _ HLm]). destruct HR as (FA2 & FR & FR' & [_ HFR _ _ _]).
+  exists FA, FL, FR. constructor; [exact HFA | exact HFL | exact HFR | | exact HLm].
+  eapply set_con_rview_values_eq; eassumption.
 Qed.
 
 End Eliminator.

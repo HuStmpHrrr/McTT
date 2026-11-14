@@ -417,9 +417,9 @@ Proof.
       intros; match goal with |- set_ctx _ _ _ =>
         solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [ft_from_ih | reflexivity]] end.
   - split; [ft_cs |].
-    eapply (set_rule_con_view T γ Hfn0 Hmods _ _ Hμ); try eassumption; try (do 3 eexists; eassumption); try ft_from_ih.
+    ft_kripke. eapply set_rule_con_view; first [eassumption | ft_from_ih].
   - split; [ft_cs |].
-    eapply (set_rule_con_rview T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try (do 3 eexists; eassumption); try ft_from_ih.
+    ft_kripke. eapply set_rule_con_rview; first [eassumption | ft_from_ih].
   - ft_by_kripke set_rule_let_def_zeta.
   - ft_by_kripke set_rule_let_mod_zeta.
   - ft_by_kripke set_rule_let_dm_zeta.
