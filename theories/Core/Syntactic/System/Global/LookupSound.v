@@ -1004,14 +1004,14 @@ Proof.
     destruct (mdesc_ats Rm Ns) as [Rm' |] eqn:HRm; [ injection Hats as <- | discriminate ].
     rewrite mdesc_named_fix in Hm, Ht by reflexivity.
     assert (Hδx : Θ ⍮ Ξ ⍮ Γ ⊢ a_mem (qname_mod p) y ≈ ctx_fn T M0 : ctx_pi T A0)
-      by (eapply wf_exp_eq_mem_delta_desc; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
+      by (eapply wf_exp_eq_mem_delta; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
     destruct (ats_up_red_eq _ _ Hg Ns Γ T (mdesc_term ak_relevant A0 (Some M0)) (a_mem (qname_mod p) y) M0 A0 HTΓ HaT
                 (args_ok_length _ _ _ _ _ Hargs) (args_ok_insts _ _ _ _ _ Hargs) eq_refl eq_refl
                 (ex_intro _ i HA0i) ltac:(intros Hk; discriminate Hk) HM Hδx)
       as (R' & A'' & M' & Hats' & Ht' & Hr' & Heq).
     cbn [mdesc_up option_map] in Hats'; rewrite HtA in Hats'; injection Hats' as <-.
     cbn [mdesc_up mdesc_type mdesc_reduct List.app ctx_pi ctx_fn] in Ht, Ht', Hr'; injection Ht as <-; injection Ht' as <-; injection Hr' as <-.
-    eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta_desc; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
+    eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
     apply wf_exp_eq_sym; exact Heq. }
   destruct E0 as [b pv ra A' oM | pv [Δ [sm Φy | E'] ] | pv pq kq D ΦD | pv Ad Md Ud | pv pr Rr ΦR ].
   - (* a definition, of either tag *)
@@ -1024,7 +1024,7 @@ Proof.
     + (* transparent: [δ] on both sides, then [β] *)
       destruct (HM0 M eq_refl) as (M0 & -> & HM).
       assert (Hδx : Θ ⍮ Ξ ⍮ Γ ⊢ a_mem (qname_mod p) y ≈ ctx_fn T M0 : ctx_pi_at ra T A0)
-        by (eapply wf_exp_eq_mem_delta_desc; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
+        by (eapply wf_exp_eq_mem_delta; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
       destruct (ats_up_red_eq _ _ Hg Ns Γ T (mdesc_term ra A0 (Some M0)) (a_mem (qname_mod p) y) M0 A0 HTΓ HaT
                   (args_ok_length _ _ _ _ _ Hargs) (args_ok_insts _ _ _ _ _ Hargs) eq_refl eq_refl
                   (ex_intro _ lA (closed_tele_weaken_exp _ _ _ _ _ _ HsT HA0 HTΓ)) HLsrt
@@ -1034,18 +1034,18 @@ Proof.
       destruct (mdesc_ats_some_red _ _ _ _ _ Hats) as (A1 & M1 & ->).
       rewrite mdesc_named_fix in Hm, Ht by reflexivity.
       cbn in Ht, Ht', Hr'; injection Ht as <-; injection Ht' as <-; injection Hr' as <-.
-      eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta_desc; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
+      eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
       apply wf_exp_eq_sym; exact Heq.
     + (* an axiom: its name, at arguments; read bare, itself *)
       destruct (Hnone _ _ _ Hats) as (A1 & ->); destruct Ns as [| N Ns'].
       * apply wf_exp_eq_refl; exact (wf_mem_desc _ _ _ _ _ _ _ Hw Hm Ht).
       * rewrite mdesc_named_self in Ht, Hm by (right; discriminate); cbn in Ht; injection Ht as <-.
-        eapply wf_exp_eq_mem_delta_desc; [ exact Hw | exact Hm | reflexivity | reflexivity ].
+        eapply wf_exp_eq_mem_delta; [ exact Hw | exact Hm | reflexivity | reflexivity ].
     + (* abstract: likewise *)
       destruct (Hnone _ _ _ Hats) as (A1 & ->); destruct Ns as [| N Ns'].
       * apply wf_exp_eq_refl; exact (wf_mem_desc _ _ _ _ _ _ _ Hw Hm Ht).
       * rewrite mdesc_named_self in Ht, Hm by (right; discriminate); cbn in Ht; injection Ht as <-.
-        eapply wf_exp_eq_mem_delta_desc; [ exact Hw | exact Hm | reflexivity | reflexivity ].
+        eapply wf_exp_eq_mem_delta; [ exact Hw | exact Hm | reflexivity | reflexivity ].
   - (* a body module is no term *)
     assert (Hmm : mdesc_is_mod Re) by (destruct sm; cbn [ge_read] in Hed; inversion Hed; subst; eapply udenote_is_mod; eassumption).
     rewrite mdesc_ats_read_mod in Hats by exact Hmm.
@@ -1071,9 +1071,9 @@ Proof.
     injection Hats as <-.
     rewrite mdesc_named_fix in Ht, Hm by reflexivity; cbn in Ht; injection Ht as <-.
     assert (Hδx : Θ ⍮ Ξ ⍮ Γ ⊢ a_mem (qname_mod p) y ≈ a_ind pq kq : ind_ty_at D Mk nil)
-      by (rewrite ind_ty_at_nil; eapply wf_exp_eq_mem_delta_desc; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
+      by (rewrite ind_ty_at_nil; eapply wf_exp_eq_mem_delta; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
     pose proof (wf_ind_args_eq _ _ _ _ _ _ _ _ _ HD HMk HΓ HargsU Hδx) as Heq.
-    eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta_desc; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
+    eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
     apply wf_exp_eq_sym; exact Heq.
   - (* a definition with a module part: its term part *)
     cbn [ge_read] in Hed; inversion Hed; subst.
@@ -1097,9 +1097,9 @@ Proof.
       cbn in Hats; injection Hats as <-.
     rewrite mdesc_named_fix in Ht, Hm by reflexivity; cbn in Ht; injection Ht as <-.
     assert (Hδx : Θ ⍮ Ξ ⍮ Γ ⊢ a_mem (qname_mod p) y ≈ a_record (qname_in p y) : record_ty_at Rr nil)
-      by (rewrite record_ty_at_nil; eapply wf_exp_eq_mem_delta_desc; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
+      by (rewrite record_ty_at_nil; eapply wf_exp_eq_mem_delta; [ exact HwP | exact Hmx | reflexivity | reflexivity ]).
     pose proof (wf_record_args_eq _ _ _ _ _ _ _ HRt HΓ HargsP Hδx) as Heq.
-    eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta_desc; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
+    eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta; [ exact Hw | exact Hm | reflexivity | reflexivity ] |].
     apply wf_exp_eq_sym; exact Heq.
 Qed.
 
@@ -1114,8 +1114,8 @@ Lemma mem_same_lookup : forall Θ Ξ Γ H H' x R A M,
     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_mem H' x : A.
 Proof.
   intros * HH HH' Hm Hm' Ht Hr.
-  eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta_desc; eassumption |].
-  apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta_desc; eassumption.
+  eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta; eassumption |].
+  apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta; eassumption.
 Qed.
 
 (** A term read from a closed module part has a δ-reduct. *)
@@ -1300,7 +1300,7 @@ Proof.
       rewrite Hs in HM'; cbn [mdesc_up] in HM'.
       assert (HMx : mdesc_reduct (mdesc_up nil (mdesc_named nil Ns (apps (a_mem (qname_mod p) x) Ns) R1)) = Some M')
         by (rewrite mdesc_named_fix by exact Hs; cbn [mdesc_up]; exact HM').
-      eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta_desc; [ exact HW | exact Hmx | exact HA0x | exact HMx ] |].
+      eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta; [ exact HW | exact Hmx | exact HA0x | exact HMx ] |].
       exact Hfa.
     - destruct R1 as [? ? [] | | |]; cbn in Er, HA0, HM'; try discriminate; injection HM' as <-.
       eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact Hfa | exact Hfa ]. }
@@ -1334,7 +1334,7 @@ Lemma mem_closed_part_named : forall Θ Ξ Γ H RH Θ' p T Φ Ns x R A,
 Proof.
   intros * Hne HH HmH HmdH Hm Ht.
   destruct (mem_closed_part_named_parts _ _ _ _ _ _ _ _ _ _ _ _ _ Hne HH HmH HmdH Hm Ht) as (M' & A0 & r & i & [HM' -> _ HΘ' HaΘ Hi Hl Heq]).
-  apply (wf_exp_eq_trans _ _ _ _ _ (ctx_fn Θ' M')); [ eapply wf_exp_eq_mem_delta_desc; eassumption |].
+  apply (wf_exp_eq_trans _ _ _ _ _ (ctx_fn Θ' M')); [ eapply wf_exp_eq_mem_delta; eassumption |].
   exact (ctx_fn_eq _ _ r _ _ _ _ _ i HaΘ HΘ' Hl Hi Heq).
 Qed.
 

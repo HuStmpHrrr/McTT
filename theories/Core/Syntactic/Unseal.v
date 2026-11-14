@@ -1135,7 +1135,7 @@ Proof.
         match goal with Hs : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H, Hm : mdenote Θ Ξ Γ (me_mem H x) ?R, Ht : mdesc_type ?R = Some A,
                         Hr : mdesc_reduct ?R = Some M, Hsu : gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ᵐ H ≈ H |- _ =>
           destruct (mem_unseal_red _ _ _ _ _ _ _ Hs Hm Hr) as [(R' & Hm' & Hr' & Ht') | (RH' & Θ' & p & T & Φ & Ns & HmH' & Hmd' & ->)];
-          [ eapply wf_exp_eq_mem_delta_desc; [ exact Hsu | exact Hm' | rewrite Ht'; exact Ht | exact Hr' ]
+          [ eapply wf_exp_eq_mem_delta; [ exact Hsu | exact Hm' | rewrite Ht'; exact Ht | exact Hr' ]
           | let Hd := fresh "Hd" in
             destruct (mdenote_mem_unseal _ _ _ _ _ _ _ Hs Hm) as (? & ? & Hd);
             eapply mem_closed_part; [ exact Hsu | exact HmH' | exact Hmd' | eassumption | rewrite (mdesc_unsealed_ty _ _ Hd); exact Ht ] ] end

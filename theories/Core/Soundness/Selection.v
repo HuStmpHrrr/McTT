@@ -399,8 +399,8 @@ Proof.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH0)) as Hg.
   destruct (mdesc_reduct R) as [M |] eqn:Hr.
   - (** Both are the reduct *)
-    eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta_desc; eassumption |].
-    apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta_desc; eassumption.
+    eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta; eassumption |].
+    apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta; eassumption.
   - (** Both are the filed member of the bare body *)
     destruct (mem_no_red _ _ _ _ _ _ _ Hm0 Ht Hr) as (R0' & p & T & Φ & _ & _ & _ & _ & _ & HR0' & Hmd0 & _).
     destruct (mem_no_red _ _ _ _ _ _ _ Hm1 Ht Hr) as (R1' & p' & T' & Φ' & _ & _ & _ & _ & _ & HR1' & Hmd1 & _).

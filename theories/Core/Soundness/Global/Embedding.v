@@ -225,7 +225,7 @@ Section Raw.
     assert (Hδ : forall Δ, ⊢ Θ ⍮ Ξ ⍮ Δ -> Θ ⍮ Ξ ⍮ Δ ⊢ a_mem (qname_mod p) x ≈ M : A).
     { intros Δ HΔ.
       destruct (filed_denote _ _ Hg _ _ _ Δ nil (gc_loc_of_loc _ _ Hg _ _ _ Hl)) as (R1 & Hm & Hmd); cbn [me_apps] in Hm.
-      eapply wf_exp_eq_mem_delta_desc; [ exact (loc_modexp_wf _ _ _ HΔ _ _ _ Hl) | | |].
+      eapply wf_exp_eq_mem_delta; [ exact (loc_modexp_wf _ _ _ HΔ _ _ _ Hl) | | |].
       - eapply mdenote_mem; [ exact Hm | exact Hmd | cbn; rewrite Hp; reflexivity | constructor | reflexivity ].
       - reflexivity.
       - rewrite mdesc_named_nil; reflexivity. }

@@ -230,9 +230,9 @@ Proof.
     unfold mdesc_mod_tele in HTx; rewrite HR0m in HTx; cbn [mdesc_tele] in HTx; injection HTx as <-.
     rewrite tele_view_last in Hvx; congruence. }
   eapply wf_exp_eq_trans;
-    [ eapply wf_exp_eq_app_cong'; [ eapply wf_exp_eq_mem_delta_desc; [ exact HH | exact Hm | exact HRt | exact HRr ] | apply wf_exp_eq_refl; exact HNt ] |].
+    [ eapply wf_exp_eq_app_cong'; [ eapply wf_exp_eq_mem_delta; [ exact HH | exact Hm | exact HRt | exact HRr ] | apply wf_exp_eq_refl; exact HNt ] |].
   eapply wf_exp_eq_trans; [ eapply wf_exp_eq_pi_beta'; [ exact HAb | exact Hk | exact HMb | exact HNt ] |].
-  apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta_desc; [ exact HHN | exact HmNx | exact HtR' | exact HrR' ].
+  apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta; [ exact HHN | exact HmNx | exact HtR' | exact HrR' ].
 Qed.
 
 (** ** Descriptions abstracted over a telescope ending in an assumption *)

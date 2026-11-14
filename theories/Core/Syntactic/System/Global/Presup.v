@@ -267,10 +267,8 @@ Proof.
       end.
     all: try solve [ econstructor; eauto ].
     (** The rules with a premise-only variable (a sort, a component) or
-        two rules for one former: a search over the whole rule.  The new
-        premise on the δ-reduct of [wf_exp_eq_mem_delta] has to be found
-        by [eauto] too — one more forward step. *)
-    all: solve [ eauto 3 using wf_right, wf_app, wf_let, wf_mem, wf_exp_eq_let_cong,
+        two rules for one former: a search over the whole rule. *)
+    all: solve [ eauto 2 using wf_right, wf_app, wf_let, wf_mem, wf_exp_eq_let_cong,
                    wf_exp_eq_mem_cong, wf_exp_eq_let_zeta, wf_exp_eq_mem_delta ].
  }
   destruct H as (Hc & He' & Hq & Hst & _ & Hx & Hu & Hm & Hn).
@@ -5605,33 +5603,6 @@ Proof.
   destruct (desc_ok_ty_sorted _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [(S & HS & Hi) HM].
   eapply wf_mem; [ exact HH | exact Hm | exact Ht | exact Hi | exact HS | exact HM ].
 Qed.
-
-(** The admissible premise on the δ-reduct of [wf_exp_eq_mem_delta]: the
-    reduct of a lookup, read at a typed description, is typed there; it is
-    kept as a premise so that an induction over [wf_exp_eq] holds an
-    induction hypothesis for the reduct. *)
-Corollary wf_mem_reduct_desc : forall Θ Ξ Γ H x R A M,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R ->
-    mdesc_type R = Some A -> mdesc_reduct R = Some M ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
-Proof.
-  intros * HH Hm Ht Hr.
-  pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH))) as Hv.
-  destruct (desc_ok_ty_sorted _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [_ HM]; exact (HM _ Hr).
-Qed.
-
-(** [wf_exp_eq_mem_delta] with the admissible premise on the reduct
-    derived from the others, as a drop-in replacement at the many call
-    sites where the reduct's typing is not otherwise named. *)
-Corollary wf_exp_eq_mem_delta_desc : forall Θ Ξ Γ H x R A M,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R ->
-    mdesc_type R = Some A -> mdesc_reduct R = Some M ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A.
-Proof.
-  intros * HH Hm Ht Hr; eapply wf_exp_eq_mem_delta;
-    [ exact HH | exact Hm | exact Ht | exact Hr | exact (wf_mem_reduct_desc _ _ _ _ _ _ _ _ HH Hm Ht Hr) ].
-Qed.
-
 
 (** ** Telescopes Below a Stored Body *)
 

@@ -1610,7 +1610,7 @@ Section MembersFromSource.
     pose proof (glu_rel_exp_under_sub_inst _ _ _ Hred _ _ Hτ) as HrA; rewrite EM, EA in HrA.
     pose proof (sub_preserves_modexp _ _ _ _ _ _ _ HH Hτt) as HHτ; rewrite (mod_qname_sub _ _ τ HqF) in HHτ.
     destruct (Hm Γ') as (Rm & Rmm & HmΓ & HRmm).
-    pose proof (wf_exp_eq_mem_delta_desc _ _ _ _ _ _ _ _ HHτ HmΓ eq_refl eq_refl) as Hδ.
+    pose proof (wf_exp_eq_mem_delta _ _ _ _ _ _ _ _ HHτ HmΓ eq_refl eq_refl) as Hδ.
     pose proof (mem_desc_ok _ _ _ _ _ _ _ (gctx_valid_syn _ _ Hg) HHτ HmΓ) as Hok.
     destruct (desc_ok_ty_mod _ _ _ _ _ _ Hok eq_refl HRmm) as [j HAj].
     destruct HrA as [Sb HSb lvl Hb].

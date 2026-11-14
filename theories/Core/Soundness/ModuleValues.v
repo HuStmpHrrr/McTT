@@ -893,7 +893,7 @@ Proof.
   pose proof (wf_gm_fill _ _ _ _ _ HC Hf) as Hζ.
   assert (HUl : gc_deps ⍮ gc_stack ⍮ Γ1 ⊢ᵐ me_lit (gu_open nil Φ)[ζ1]ᵘ ≈ me_lit (gu_open nil Φ)[ζ1]ᵘ)
     by exact (sub_preserves_modexp _ _ _ _ _ _ _ (wf_me_lit _ _ _ _ _ HU) Hζ1).
-  pose proof (wf_exp_eq_mem_delta_desc _ _ _ _ _ _ _ _ HUl Hm HA' Ered) as Hδ.
+  pose proof (wf_exp_eq_mem_delta _ _ _ _ _ _ _ _ HUl Hm HA' Ered) as Hδ.
   (** The factorization, read at the body's context *)
   assert (Hw : sb_eq (sb_wk σ'' φ) (ζ ⨟ sb_wk σ φ))
     by (rewrite (sb_wk_compose σ''), Eσ, sb_compose_assoc, <- sb_wk_compose; reflexivity).

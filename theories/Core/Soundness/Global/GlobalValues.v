@@ -656,7 +656,7 @@ Section Bare.
       assert (Hcp : sub_mod_compat Id Δ ⋅) by (intros ? ? Hx; inversion Hx).
       pose proof (proj1 (mdenote_sub_all _ _ Hc) _ _ _ Hm 0 Hsl Hsc _ _ Hcp) as HmΔ.
       cbn [modexp_sub] in HmΔ; rewrite (mod_qname_sub _ _ _ Hpm) in HmΔ.
-      eapply wf_exp_eq_mem_delta_desc; [ exact (loc_modexp_wf _ _ _ HΔ _ _ _ (gc_loc_loc _ _ _ _ _ Hgl)) | exact HmΔ | |].
+      eapply wf_exp_eq_mem_delta; [ exact (loc_modexp_wf _ _ _ HΔ _ _ _ (gc_loc_loc _ _ _ _ _ Hgl)) | exact HmΔ | |].
       - rewrite (mdesc_type_sub _ _ _ Ht), HAs; reflexivity.
       - rewrite (mdesc_reduct_sub _ _ _ Hr), HNs; reflexivity. }
     (** The stored description, valid *)

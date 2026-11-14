@@ -1144,18 +1144,12 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
        : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] )
 (** [δ] for members: a member is the δ-reduct the lookup reads: the body of
     a transparent definition at the arguments, the name of a filed axiom or
-    abstract definition at them, or a type former.  The reduct's typing is
-    an admissible premise (presupposition's [presup_exp_eq_right] gives it
-    from the other premises) and lets the induction over typing hold the
-    hypothesis for it: for a mutual lemma like [slot_transport_all]'s part
-    on equations, the reduct needs an induction hypothesis that the
-    derivation would otherwise not carry. *)
+    abstract definition at them, or a type former. *)
 | wf_exp_eq_mem_delta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
      mdesc_type R = Some A ->
      mdesc_reduct R = Some M ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A )
 (** [δ] for local definitions: a defined variable is its body.  It is stated
     at every depth, since weakening moves a definition arbitrarily deep. *)
