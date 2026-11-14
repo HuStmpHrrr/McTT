@@ -253,21 +253,6 @@ Qed.
 
 (** ** Weakenings and Substitutions of a View's Branch *)
 
-(** Past a telescope [E], by [⇑^|E|]. *)
-Lemma kripke_shiftn_app : forall E Δ, ⊢ E ++ Δ -> E ++ Δ ⊢ᵏ wk_shiftn (List.length E) : Δ.
-Proof.
-  assert (Hr : forall Γ0 Δ0 φ φ', wk_eq φ φ' -> Γ0 ⊢ᵏ φ : Δ0 -> Γ0 ⊢ᵏ φ' : Δ0).
-  { intros * Ee Hk; destruct Hk.
-    - eapply wk_kripke_id; [ eassumption | rewrite <- Ee; assumption ].
-    - eapply wk_kripke_shift; [ eassumption | eassumption | rewrite <- Ee; assumption ]. }
-  induction E as [| e E IH]; intros Δ H; cbn [List.app List.length] in *.
-  - eapply wk_kripke_id; [ apply ctx_sub_refl; exact H | apply wk_shiftn_zero ].
-  - pose proof (ctx_app_wf_tail _ _ (e :: nil) _ H) as H'; cbn [List.app] in H'.
-    assert (Hs : e :: E ++ Δ ⊢ᵏ ↑ : E ++ Δ)
-      by (eapply wk_kripke_shift; [ apply kripke_id; exact H | apply ctx_sub_refl; exact H' | symmetry; apply wk_compose_id_right ]).
-    exact (Hr _ _ _ _ (wk_shiftn_succ _) (kripke_compose _ _ _ _ _ Hs (IH Δ H'))).
-Qed.
-
 (** The substitution of the non-recursive arguments before a position,
     after a list. *)
 Lemma cargs_sub_of_list : forall gs σ L As, cargs_sub (sb_of_list σ L) gs As = sb_of_list σ (L ++ nonrec_exps gs As).

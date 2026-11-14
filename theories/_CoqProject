@@ -196,6 +196,7 @@
 ./Core/Soundness/Inductives/Args.v
 ./Core/Soundness/Inductives/Params.v
 ./Core/Soundness/Inductives/Comps.v
+./Core/Soundness/Inductives/Regressions.v
 ./Core/Soundness/Records/Former.v
 ./Core/Soundness/Inductives/ArgTypes.v
 ./Core/Soundness/Inductives/Con.v
