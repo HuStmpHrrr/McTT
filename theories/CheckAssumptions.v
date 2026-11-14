@@ -10,7 +10,7 @@
     takes minutes.  Add a theorem here when it becomes a main result. *)
 
 From Mctt Require Import Entrypoint.
-From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Consistency Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.Consequences.NormalFormWeakening.
+From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Consistency Core.Consequences.ModelConsistency Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.Consequences.NormalFormWeakening.
 From Mctt Require Import Reference.Refinement.
 From Mctt Require Import Extraction.GlobalCheck Extraction.CommandRun.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Consequences.FiledConstructorTypes.
@@ -20,21 +20,19 @@ Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.FundamentalTheorem.completeness_fundamental.
 Print Assumptions Mctt.Core.Soundness.soundness.
 Print Assumptions Mctt.Core.Soundness.soundness'.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_gctx.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_typ_gctx.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind_nat_gctx.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind_nat_no_axioms.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_bound_nat_prog.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_gctx.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_typ_gctx.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_ind_nat_gctx.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_ind_nat_no_axioms.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_bound_nat_prog.
 Print Assumptions Mctt.Core.Syntactic.System.Command.run_builtins_wf.
 Print Assumptions Mctt.Core.Syntactic.System.Command.prog_sem_builtins_wf.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_large.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_large_gctx.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_no_axioms.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_large_no_axioms.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_large_typ_gctx.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_typ_no_axioms.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_large_typ_no_axioms.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_large.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_large_gctx.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_large_typ_gctx.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_typ_no_axioms.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_large_typ_no_axioms.
 Print Assumptions alg_type_infer_typ_complete.
 Print Assumptions alg_type_infer_typ_complete_tm.
 Print Assumptions alg_type_infer_large_typ_complete.
@@ -53,19 +51,17 @@ Print Assumptions main_complete.
 Print Assumptions main_rep.
 Print Assumptions elaborate_core_iff.
 (* Sorted levels: the general statements and their corollaries. *)
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_typ.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_typ_lit.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_typ_lit_gctx.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_typ_lit_no_axioms.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_lit.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_lit_gctx.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_lit_no_axioms.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_False.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_False_no_axioms.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_False_gctx.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_False_prog.
-Print Assumptions Mctt.Core.Consequences.Consistency.consistency_False_run.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_large_typ.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_typ.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_typ_lit.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_typ_lit_gctx.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_typ_lit_no_axioms.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_lit.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_lit_gctx.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_False.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_False_gctx.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_False_prog.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_False_run.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_large_typ.
 Print Assumptions Mctt.Core.Consequences.Consistency.typ_nf_below_of_nbe.
 Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_suniv_bound.
 Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_suniv_lit_bound.
@@ -89,9 +85,9 @@ Print Assumptions Mctt.Reference.Refinement.nbe_env_impl_refines_at.
 Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines_at.
 (* Inductive types: canonical forms, and the generated eliminators. *)
 Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_pi.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind_gctx.
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_ind_nat.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_ind.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_ind_gctx.
+Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_ind_nat.
 Print Assumptions Mctt.Core.Consequences.FiledConstructorTypes.run_cmd_ind_con_types.
 Print Assumptions Mctt.Core.Syntactic.System.Inductives.IndRuns.run_cmd_ind_runs.
 (* Presupposition: local, and of the global context. *)

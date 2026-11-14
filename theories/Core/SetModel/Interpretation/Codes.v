@@ -155,6 +155,17 @@ Definition inductive_code (carrier : aczel_set) : aczel_set := type_code inducti
 (** A record type whose elements are [carrier], with no datum. *)
 Definition record_code (carrier : aczel_set) : aczel_set := type_code record_tag empty_set carrier.
 
+(** The code of the inductive type with no element is a member of every
+    universe of sets: every universe holds an empty type, which consistency
+    applies a closed inhabitant of [Π U #0] to. *)
+Lemma grothendieck_empty_inductive_code : forall V, grothendieck V -> set_mem (inductive_code empty_set) V.
+Proof. intros V HV. unfold inductive_code. apply (grothendieck_type_code _ HV); apply (grothendieck_empty _ HV). Qed.
+
+(** The code of the inductive type with no element is relevant: a code of
+    a universe, not of propositions. *)
+Lemma empty_inductive_code_relevant : is_relevant_code (inductive_code empty_set).
+Proof. exists inductive_tag, empty_set, empty_set. split; [apply set_eq_refl | discriminate]. Qed.
+
 (** ** Universes, Prop and Levels *)
 
 (** The universe at the index set [l] whose universe of sets is [U]: its

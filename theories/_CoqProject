@@ -73,7 +73,6 @@
 ./Core/Consequences/Consistency.v
 ./Core/Consequences/TermKinds.v
 ./Core/Consequences/ModexpConversion.v
-./Core/Consequences/SetModelExists.v
 ./Core/Consequences/SlotTransport.v
 ./Core/Consequences/FnKinds.v
 ./Core/Semantic/MemberWf.v
@@ -164,6 +163,7 @@
 ./Core/SetModel/Cases/ElimViewCases.v
 ./Core/SetModel/FundamentalTheorem.v
 ./Core/SetModel/Interpretation/JudgmentSubstitution.v
+./Core/Consequences/ModelConsistency.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v
 ./Core/Semantic/Kinds/KindsEval.v
