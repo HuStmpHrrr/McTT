@@ -1317,7 +1317,7 @@ Ltac set_open :=
       end;
     (* what moves is read at [gc_mk Θ2 Ξ2] itself *)
     change (set_gctx_embedding Θs Ξs (@gc_deps (gc_mk Θ2 Ξ2)) (@gc_stack (gc_mk Θ2 Ξ2)) T γ) in Hμ;
-    let He := fresh "He" in pose proof (set_gctx_embedding_embedding _ _ _ _ _ _ Hμ) as He;
+    let He := fresh "Hμe" in pose proof (set_gctx_embedding_embedding _ _ _ _ _ _ Hμ) as He;
     let Mc := fresh in let Mx := fresh in let Mq := fresh in let Ms := fresh in
     let Me := fresh in let Mu := fresh in let Mm := fresh in let Mn := fresh in
     destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Mc & Mx & Mq & Ms & Me & Mu & Mm & Mn);

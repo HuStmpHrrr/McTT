@@ -20,9 +20,14 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing.
 Import ListNotations.
 
 Section Records.
-  Context {GC : GCtx}.
+  (** The context the rules' premises are read at *)
+  Variable Θ : gdeps.
+  Variable Ξ : gstack.
   Variable T : universe_tower.
   Variable γ : global_valuation.
+
+Section RecordSteps.
+  Context {GC : GCtx}.
   Hypothesis Hfn : fn_kinds_unique.
   (** Every global module equals itself *)
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
@@ -78,37 +83,6 @@ Proof.
   intros * [HA HL _ _ HLm] [_ HR _ _ _] E. exists FA, FL, GR. constructor; assumption.
 Qed.
 
-(** ** The Rules *)
-
-Lemma set_rule_record : forall Γ p R i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ -> record_lookup Θs Ξs p = Some R ->
-    gc_deps ⍮ gc_stack ⍮ nil ⊢ record_ty R : a_typ i -> set_rel_exp_eq T γ nil (a_typ i) (record_ty R) (record_ty R) ->
-    set_rel_exp_eq T γ Γ (record_ty R) (a_record p) (a_record p).
-Proof.
-  intros * Hc HΓ HRs Hw (FS & FA & FA' & [_ HFA _ _ _]). pose proof (set_source_records T γ Θs Ξs Hemb _ _ HRs) as HSR.
-  pose proof (record_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HRs) as HR.
-  apply (set_exp_eq_closed_global T γ Hfn Hmods Hgw _ _ (global_record_former γ p) FA); try assumption.
-  - exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ Hw))).
-  - exact (set_record_ok_former_typed _ _ _ _ _ HSR _ HFA).
-  - intros ρ. econstructor; eassumption.
-Qed.
-
-Lemma set_rule_record_cong : forall Γ p R i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ -> record_lookup Θs Ξs p = Some R ->
-    gc_deps ⍮ gc_stack ⍮ nil ⊢ record_ty R : a_typ i -> set_rel_exp_eq T γ nil (a_typ i) (record_ty R) (record_ty R) ->
-    set_rel_exp_eq T γ Γ (record_ty R) (a_record p) (a_record p).
-Proof. exact set_rule_record. Qed.
-
-Lemma set_rule_proj_cong : forall Γ C f M M' A FC FM FM' FA FP FP' GA GP GP', set_exp_eq_with T γ Γ C M M' FC FM FM' ->
-    set_exp_eq_with T γ Γ A (a_proj f M) (a_proj f M) FA FP FP' -> set_exp_eq_with T γ Γ A (a_proj f M') (a_proj f M') GA GP GP' ->
-    set_rel_exp_eq T γ Γ A (a_proj f M) (a_proj f M').
-Proof.
-  intros * [_ HM HM' EM _] HL HR. apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HL HR).
-  pose proof HL as [_ HP _ _ _]. pose proof HR as [_ HP' _ _ _]. intros ρ Hρ.
-  eapply set_eq_trans; [apply set_eq_sym; exact (set_denotes_unique _ _ _ _ _ HP _ _ _ Hρ
-                                                    (set_interp_proj T γ _ _ _ _ _ (set_denotes_exists _ _ _ _ _ HM _ Hρ))) |].
-  eapply set_eq_trans; [apply tuple_field_resp; exact (EM _ Hρ) |].
-  exact (set_denotes_unique _ _ _ _ _ HP' _ _ _ Hρ (set_interp_proj T γ _ _ _ _ _ (set_denotes_exists _ _ _ _ _ HM' _ Hρ))).
-Qed.
-
 (** The fields' values keep the fields' names. *)
 Lemma set_interp_fields_names : forall Γ ρ fs vs, set_interp_fields T γ Γ ρ fs vs -> List.map fst vs = List.map fst fs.
 Proof. induction 1; cbn; [reflexivity | f_equal; assumption]. Qed.
@@ -145,49 +119,6 @@ Proof.
     inversion H' as [| ? ? ? ? ? w ws HN' Hfs']; subst. constructor.
     + split; [reflexivity | exact (E 0 g N N' v w eq_refl eq_refl HN HN')].
     + apply (IH _ _ Hfs' Hn). intros k. exact (E (S k)).
-Qed.
-
-Lemma set_rule_tuple_cong : forall Γ A fs A' fs' FA FL FL' GA GR GR', set_exp_eq_with T γ Γ A (a_tuple A fs) (a_tuple A fs) FA FL FL' ->
-    set_exp_eq_with T γ Γ A (a_tuple A' fs') (a_tuple A' fs') GA GR GR' -> List.map fst fs' = List.map fst fs ->
-    forall (R : record_decl), List.map fst fs = List.map fst (record_fields R) ->
-    (forall k f M M' U, List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') ->
-       List.nth_error (record_fields R) k = Some (f, U) -> exists B, set_rel_exp_eq T γ Γ B M M') ->
-    set_rel_exp_eq T γ Γ A (a_tuple A fs) (a_tuple A' fs').
-Proof.
-  intros * HL HR Hn R HnR Hf0.
-  assert (Hf : forall k f M M', List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') -> exists B, set_rel_exp_eq T γ Γ B M M').
-  { intros k f M M' Hk Hk'. pose proof (f_equal (fun l => List.nth_error l k) HnR) as E. cbn beta in E.
-    rewrite !List.nth_error_map, Hk in E.
-    destruct (List.nth_error (record_fields R) k) as [[g U] |] eqn:HU; cbn in E; [| discriminate]. injection E as <-.
-    exact (Hf0 _ _ _ _ _ Hk Hk' HU). }
-  apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HL HR).
-  pose proof HL as [_ HP _ _ _]. pose proof HR as [_ HP' _ _ _]. intros ρ Hρ.
-  pose proof (set_denotes_exists _ _ _ _ _ HP _ Hρ) as H1. pose proof (set_denotes_exists _ _ _ _ _ HP' _ Hρ) as H2.
-  inversion H1; subst. inversion H2; subst.
-  apply tuple_code_resp.
-  match goal with Hvs : set_interp_fields _ _ _ _ fs ?vs, Hvs' : set_interp_fields _ _ _ _ fs' ?vs' |- _ =>
-    apply (set_interp_fields_eq _ _ _ _ _ _ Hvs Hvs' Hn) end.
-  intros * Hk Hk' Hv Hv'. destruct (Hf _ _ _ _ Hk Hk') as (B & FB & FM & FM' & [_ HM HM' EM _]).
-  eapply set_eq_trans; [exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Hρ Hv) |].
-  eapply set_eq_trans; [exact (EM _ Hρ) |]. apply set_eq_sym. exact (set_denotes_unique _ _ _ _ _ HM' _ _ _ Hρ Hv').
-Qed.
-
-Lemma set_rule_field_beta : forall Γ A fs f M B FA FL FL' FB FP FP' GB GM GM', NoDup (List.map fst fs) ->
-    set_exp_eq_with T γ Γ A (a_tuple A fs) (a_tuple A fs) FA FL FL' -> field_lookup fs f = Some M ->
-    set_exp_eq_with T γ Γ B (a_proj f (a_tuple A fs)) (a_proj f (a_tuple A fs)) FB FP FP' ->
-    set_exp_eq_with T γ Γ B M M GB GM GM' -> set_rel_exp_eq T γ Γ B (a_proj f (a_tuple A fs)) M.
-Proof.
-  intros * Hnd [_ HL _ _ _] Hl HP HM. apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HP HM).
-  pose proof HP as [_ HPd _ _ _]. pose proof HM as [_ HMd _ _ _]. intros ρ Hρ.
-  pose proof (set_denotes_exists _ _ _ _ _ HL _ Hρ) as H1.
-  inversion H1; subst.
-  match goal with Hvs : set_interp_fields _ _ _ _ fs ?vs |- _ =>
-    destruct (set_interp_fields_lookup _ _ _ _ Hvs _ _ Hl) as (v & Hin & Hv);
-    pose proof (set_interp_fields_names _ _ _ _ Hvs) as Hnames end.
-  eapply set_eq_trans; [apply set_eq_sym; exact (set_denotes_unique _ _ _ _ _ HPd _ _ _ Hρ (set_interp_proj T γ _ _ _ _ _ H1)) |].
-  match goal with E : tuple_code _ = FL ρ |- _ => rewrite <- E end.
-  eapply set_eq_trans; [apply tuple_field_at; [rewrite Hnames; exact Hnd | exact Hin] |].
-  exact (set_denotes_unique _ _ _ _ _ HMd _ _ _ Hρ Hv).
 Qed.
 
 (** ** Telescopes of Fields *)
@@ -397,7 +328,9 @@ Proof.
     cbn [set_env_values]. change (set_env_tail (set_env_extend ?r ?d)) with r. rewrite (IH ρ vs1 ltac:(lia)). reflexivity.
 Qed.
 
-Lemma set_rule_tuple : forall Γ A fs p R Ns i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
+(** A tuple of a record type at its parameters denotes the tuple of its
+    fields' values, an element of the type's carrier. *)
+Lemma set_tuple_value_typed : forall Γ A fs p R Ns i FS FA FAp, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_record p : record_ty R -> record_lookup Θs Ξs p = Some R ->
     List.length Ns = List.length (record_params R) ->
     (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
@@ -409,10 +342,11 @@ Lemma set_rule_tuple : forall Γ A fs p R Ns i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ 
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : exp_sub U (sb_of_list sb_id (Ns ++ List.firstn k (List.map snd fs)))) ->
     (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
        set_rel_exp_eq T γ Γ (exp_sub U (sb_of_list sb_id (Ns ++ List.firstn k (List.map snd fs)))) M M) ->
-    set_rel_exp_eq T γ Γ (a_typ i) A (apps_exp (a_record p) Ns) ->
-    set_rel_exp_eq T γ Γ A (a_tuple A fs) (a_tuple A fs).
+    set_exp_eq_with T γ Γ (a_typ i) A (apps_exp (a_record p) Ns) FS FA FAp ->
+    exists Fs, set_denotes T γ Γ (a_tuple A fs) (fun ρ => tuple_code (Fs ρ)) /\
+      forall ρ, set_env_in T γ Γ ρ -> set_mem (tuple_code (Fs ρ)) (code_carrier (FA ρ)).
 Proof.
-  intros * Hc HΓ Hr HRs Hl HNs HNr Hn HFs HFr (FS & FA & FAp & [_ HFA HFAp EA _]).
+  intros * Hc HΓ Hr HRs Hl HNs HNr Hn HFs HFr [_ HFA HFAp EA _].
   pose proof (record_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HRs) as HR.
   destruct (wf_record_inversion Hr) as [R0 Hl0 Hnd Hass i0 _ HF _ _ _ _ _]. rewrite HR in Hl0. injection Hl0 as <-.
   pose proof (set_source_records T γ Θs Ξs Hemb _ _ HRs) as HSR.
@@ -432,8 +366,7 @@ Proof.
     destruct Hk' as (U & HU). destruct (HFr _ _ _ _ Hk HU) as (FU & FM & FM' & [_ HM _ _ _]). exists FM. exact HM. }
   assert (HT : set_denotes T γ Γ (a_tuple A fs) (fun ρ => tuple_code (Fs ρ)))
     by (apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ); intros ρ Hρ; constructor; exact (HFsd _ Hρ)).
-  exists FA, (fun ρ => tuple_code (Fs ρ)), (fun ρ => tuple_code (Fs ρ)).
-  constructor; [exact HFA | exact HT | exact HT | intros; apply set_eq_refl |]. intros ρ Hρ.
+  exists Fs. split; [exact HT |]. intros ρ Hρ.
   (* the type: the record type at the parameters' values *)
   pose proof (set_denotes_exists _ _ _ _ _ HFAp _ Hρ) as Hap. destruct (set_interp_apps_inv T γ _ _ _ _ _ Hap) as (v0 & ns & Hv0 & Hns & Eap).
   inversion Hv0; subst.
@@ -652,17 +585,23 @@ Proof.
   rewrite EvB in EB. cbn beta. eapply set_mem_eq_r; [apply code_carrier_resp; exact EB | exact Hmem].
 Qed.
 
-Lemma set_rule_record_eta : forall Γ M p R Ns FA FM FM' GA GT GT', set_ctx T γ Γ ->
-    record_lookup Θs Ξs p = Some R -> List.length Ns = List.length (record_params R) ->
+End RecordSteps.
+
+(** ** The Rules *)
+
+Lemma set_rule_record_eta : forall Γ M p R Ns, set_ctx_slots Θ Ξ T γ Γ ->
+    record_lookup Θ Ξ p = Some R -> List.length Ns = List.length (record_params R) ->
     NoDup (List.map fst (record_fields R)) ->
-    set_exp_eq_with T γ Γ (apps_exp (a_record p) Ns) M M FA FM FM' ->
-    set_exp_eq_with T γ Γ (apps_exp (a_record p) Ns) (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M))
-      (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M)) GA GT GT' ->
-    set_rel_exp_eq T γ Γ (apps_exp (a_record p) Ns) M (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M)).
+    set_exp_eq Θ Ξ T γ Γ (apps_exp (a_record p) Ns) M M ->
+    set_exp_eq Θ Ξ T γ Γ (apps_exp (a_record p) Ns) (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M))
+      (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M)) ->
+    set_exp_eq Θ Ξ T γ Γ (apps_exp (a_record p) Ns) M (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M)).
 Proof.
-  intros * HΓ HRs Hl Hnd HM HT. apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HM HT).
-  pose proof (record_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HRs) as HR.
-  pose proof HM as [HFA HFM _ _ HMm]. pose proof HT as [_ HGT _ _ _]. pose proof (set_source_records T γ Θs Ξs Hemb _ _ HRs) as HSR.
+  intros * HΓ HRs Hl Hnd HMe HTe. set_open. destruct HΓ as [HΓ _].
+  destruct HMe as (FA & FM & FM' & HM). destruct HTe as (GA & GT & GT' & HT).
+  apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HM HT).
+  pose proof (record_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θ Ξ Hμ) HRs) as HR.
+  pose proof HM as [HFA HFM _ _ HMm]. pose proof HT as [_ HGT _ _ _]. pose proof (set_source_records T γ Θ Ξ Hμ _ _ HRs) as HSR.
   intros ρ Hρ.
   pose proof (set_denotes_exists _ _ _ _ _ HFA _ Hρ) as Hap. destruct (set_interp_apps_inv T γ _ _ _ _ _ Hap) as (v0 & ns & Hv0 & Hns & Eap).
   inversion Hv0; subst.
@@ -701,19 +640,21 @@ Proof.
   - apply (In_combine_nth _ _ i); [rewrite List.nth_error_map, Hf; reflexivity | exact Hvi].
 Qed.
 
-Lemma set_rule_proj : forall Γ M p R Ns k f U, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_record p : record_ty R -> record_lookup Θs Ξs p = Some R ->
+Lemma set_rule_proj : forall Γ M p R Ns k f U, ⊢ Θ ⍮ Ξ ⍮ Γ -> set_ctx_slots Θ Ξ T γ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : record_ty R -> record_lookup Θ Ξ p = Some R ->
     List.length Ns = List.length (record_params R) ->
     (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
-       gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B) ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ N : B) ->
     (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
-       set_rel_exp_eq T γ Γ B N N) ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : apps_exp (a_record p) Ns -> set_rel_exp_eq T γ Γ (apps_exp (a_record p) Ns) M M ->
+       set_exp_eq Θ Ξ T γ Γ B N N) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : apps_exp (a_record p) Ns -> set_exp_eq Θ Ξ T γ Γ (apps_exp (a_record p) Ns) M M ->
     List.nth_error (record_fields R) k = Some (f, U) ->
-    set_rel_exp_eq T γ Γ (exp_sub U (sb_of_list sb_id (Ns ++ record_pre R k M))) (a_proj f M) (a_proj f M).
+    set_exp_eq Θ Ξ T γ Γ (exp_sub U (sb_of_list sb_id (Ns ++ record_pre R k M))) (a_proj f M) (a_proj f M).
 Proof.
-  intros * Hc HΓ Hr HRs Hl HNs HNr HMw (FA & FM & FM' & HM) Hk.
-  pose proof (record_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HRs) as HR.
+  intros * Hc HΓ Hr HRs Hl HNs0 HNr0 HMw HMe Hk. set_open. destruct HΓ as [HΓ _]. destruct HMe as (FA & FM & FM' & HM).
+  pose proof (fun k N B H1 H2 => proj1 (proj2 (gctx_embedding_preserves_wf _ _ _ _ Hμe)) _ _ _ (HNs0 k N B H1 H2)) as HNs.
+  pose proof (fun k N B H1 H2 => HNr0 k N B H1 H2 _ _ Hμ) as HNr. cbv beta in HNs, HNr.
+  pose proof (record_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θ Ξ Hμ) HRs) as HR.
   pose proof HM as [_ HFM _ _ _].
   assert (HP : forall g, set_denotes T γ Γ (a_proj g M) (fun ρ => tuple_field (FM ρ) g))
     by (intros g; apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ); intros ρ Hρ;
@@ -722,10 +663,118 @@ Proof.
             set_rel_exp_eq T γ Γ (exp_sub U' (sb_of_list sb_id (Ns ++ record_pre R i M))) (a_proj f' M) (a_proj f' M)).
   { induction j as [| j IH]; intros i f' U' Hi Hf'; [lia |].
     destruct (Nat.lt_ge_cases i j) as [Hij | Hij]; [exact (IH _ _ _ Hij Hf') |]. assert (i = j) by lia. subst i.
-    destruct (set_proj_field _ _ _ _ _ _ _ _ _ _ _ Hc HΓ Hr HRs Hl HNs HNr HMw HM Hf' IH) as (FU & HFU & Hmem).
+    destruct (set_proj_field Hfn Hmods Hgw Θ Ξ Hμ _ _ _ _ _ _ _ _ _ _ _ Hc HΓ Hr HRs Hl HNs HNr HMw HM Hf' IH) as (FU & HFU & Hmem).
     exists FU, (fun ρ => tuple_field (FM ρ) f'), (fun ρ => tuple_field (FM ρ) f').
     constructor; [exact HFU | exact (HP f') | exact (HP f') | intros; apply set_eq_refl | exact Hmem]. }
   exact (Hall (S k) k f U ltac:(lia) Hk).
+Qed.
+
+Lemma set_rule_record : forall Γ p R i, ⊢ Θ ⍮ Ξ ⍮ Γ -> set_ctx_slots Θ Ξ T γ Γ -> record_lookup Θ Ξ p = Some R ->
+    Θ ⍮ Ξ ⍮ nil ⊢ record_ty R : a_typ i -> set_exp_eq Θ Ξ T γ nil (a_typ i) (record_ty R) (record_ty R) ->
+    set_exp_eq Θ Ξ T γ Γ (record_ty R) (a_record p) (a_record p).
+Proof.
+  intros * Hc HΓ HRs Hw Hty. set_open. destruct HΓ as [HΓ _]. destruct Hty as (FS & FA & FA' & [_ HFA _ _ _]).
+  pose proof (set_source_records T γ Θ Ξ Hμ _ _ HRs) as HSR.
+  pose proof (record_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θ Ξ Hμ) HRs) as HR.
+  apply (set_exp_eq_closed_global T γ Hfn Hmods Hgw _ _ (global_record_former γ p) FA); try assumption.
+  - exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ Hw))).
+  - exact (set_record_ok_former_typed _ _ _ _ _ HSR _ HFA).
+  - intros ρ. econstructor; eassumption.
+Qed.
+
+Lemma set_rule_record_cong : forall Γ p R i, ⊢ Θ ⍮ Ξ ⍮ Γ -> set_ctx_slots Θ Ξ T γ Γ -> record_lookup Θ Ξ p = Some R ->
+    Θ ⍮ Ξ ⍮ nil ⊢ record_ty R : a_typ i -> set_exp_eq Θ Ξ T γ nil (a_typ i) (record_ty R) (record_ty R) ->
+    set_exp_eq Θ Ξ T γ Γ (record_ty R) (a_record p) (a_record p).
+Proof. exact set_rule_record. Qed.
+
+Lemma set_rule_proj_cong : forall Γ C f M M' A, set_exp_eq Θ Ξ T γ Γ C M M' ->
+    set_exp_eq Θ Ξ T γ Γ A (a_proj f M) (a_proj f M) -> set_exp_eq Θ Ξ T γ Γ A (a_proj f M') (a_proj f M') ->
+    set_exp_eq Θ Ξ T γ Γ A (a_proj f M) (a_proj f M').
+Proof.
+  intros * HMe HLe HRe. set_open.
+  destruct HMe as (FC & FM & FM' & [_ HM HM' EM _]). destruct HLe as (FA & FP & FP' & HL). destruct HRe as (GA & GP & GP' & HR).
+  apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HL HR).
+  pose proof HL as [_ HP _ _ _]. pose proof HR as [_ HP' _ _ _]. intros ρ Hρ.
+  eapply set_eq_trans; [apply set_eq_sym; exact (set_denotes_unique _ _ _ _ _ HP _ _ _ Hρ
+                                                    (set_interp_proj T γ _ _ _ _ _ (set_denotes_exists _ _ _ _ _ HM _ Hρ))) |].
+  eapply set_eq_trans; [apply tuple_field_resp; exact (EM _ Hρ) |].
+  exact (set_denotes_unique _ _ _ _ _ HP' _ _ _ Hρ (set_interp_proj T γ _ _ _ _ _ (set_denotes_exists _ _ _ _ _ HM' _ Hρ))).
+Qed.
+
+Lemma set_rule_tuple_cong : forall Γ A fs A' fs', set_exp_eq Θ Ξ T γ Γ A (a_tuple A fs) (a_tuple A fs) ->
+    set_exp_eq Θ Ξ T γ Γ A (a_tuple A' fs') (a_tuple A' fs') -> List.map fst fs' = List.map fst fs ->
+    forall (R : record_decl), List.map fst fs = List.map fst (record_fields R) ->
+    (forall k f M M' U, List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') ->
+       List.nth_error (record_fields R) k = Some (f, U) -> exists B, set_exp_eq Θ Ξ T γ Γ B M M') ->
+    set_exp_eq Θ Ξ T γ Γ A (a_tuple A fs) (a_tuple A' fs').
+Proof.
+  intros * HLe HRe Hn R HnR Hf0k. set_open.
+  destruct HLe as (FA & FL & FL' & HL). destruct HRe as (GA & GR & GR' & HR).
+  assert (Hf0 : forall k f M M' U, List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') ->
+            List.nth_error (record_fields R) k = Some (f, U) -> exists B, set_rel_exp_eq T γ Γ B M M')
+    by (intros * Hk Hk' HU; destruct (Hf0k _ _ _ _ _ Hk Hk' HU) as (B & HB); exists B; exact (HB _ _ Hμ)).
+  assert (Hf : forall k f M M', List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') -> exists B, set_rel_exp_eq T γ Γ B M M').
+  { intros k f M M' Hk Hk'. pose proof (f_equal (fun l => List.nth_error l k) HnR) as E. cbn beta in E.
+    rewrite !List.nth_error_map, Hk in E.
+    destruct (List.nth_error (record_fields R) k) as [[g U] |] eqn:HU; cbn in E; [| discriminate]. injection E as <-.
+    exact (Hf0 _ _ _ _ _ Hk Hk' HU). }
+  apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HL HR).
+  pose proof HL as [_ HP _ _ _]. pose proof HR as [_ HP' _ _ _]. intros ρ Hρ.
+  pose proof (set_denotes_exists _ _ _ _ _ HP _ Hρ) as H1. pose proof (set_denotes_exists _ _ _ _ _ HP' _ Hρ) as H2.
+  inversion H1; subst. inversion H2; subst.
+  apply tuple_code_resp.
+  match goal with Hvs : set_interp_fields _ _ _ _ fs ?vs, Hvs' : set_interp_fields _ _ _ _ fs' ?vs' |- _ =>
+    apply (set_interp_fields_eq _ _ _ _ _ _ Hvs Hvs' Hn) end.
+  intros * Hk Hk' Hv Hv'. destruct (Hf _ _ _ _ Hk Hk') as (B & FB & FM & FM' & [_ HM HM' EM _]).
+  eapply set_eq_trans; [exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Hρ Hv) |].
+  eapply set_eq_trans; [exact (EM _ Hρ) |]. apply set_eq_sym. exact (set_denotes_unique _ _ _ _ _ HM' _ _ _ Hρ Hv').
+Qed.
+
+Lemma set_rule_field_beta : forall Γ A fs f M B, NoDup (List.map fst fs) ->
+    set_exp_eq Θ Ξ T γ Γ A (a_tuple A fs) (a_tuple A fs) -> field_lookup fs f = Some M ->
+    set_exp_eq Θ Ξ T γ Γ B (a_proj f (a_tuple A fs)) (a_proj f (a_tuple A fs)) ->
+    set_exp_eq Θ Ξ T γ Γ B M M -> set_exp_eq Θ Ξ T γ Γ B (a_proj f (a_tuple A fs)) M.
+Proof.
+  intros * Hnd HTe Hl HPe HMe. set_open.
+  destruct HTe as (FA & FL & FL' & [_ HL _ _ _]). destruct HPe as (FB & FP & FP' & HP). destruct HMe as (GB & GM & GM' & HM).
+  apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HP HM).
+  pose proof HP as [_ HPd _ _ _]. pose proof HM as [_ HMd _ _ _]. intros ρ Hρ.
+  pose proof (set_denotes_exists _ _ _ _ _ HL _ Hρ) as H1.
+  inversion H1; subst.
+  match goal with Hvs : set_interp_fields _ _ _ _ fs ?vs |- _ =>
+    destruct (set_interp_fields_lookup _ _ _ _ Hvs _ _ Hl) as (v & Hin & Hv);
+    pose proof (set_interp_fields_names _ _ _ _ Hvs) as Hnames end.
+  eapply set_eq_trans; [apply set_eq_sym; exact (set_denotes_unique _ _ _ _ _ HPd _ _ _ Hρ (set_interp_proj T γ _ _ _ _ _ H1)) |].
+  match goal with E : tuple_code _ = FL ρ |- _ => rewrite <- E end.
+  eapply set_eq_trans; [apply tuple_field_at; [rewrite Hnames; exact Hnd | exact Hin] |].
+  exact (set_denotes_unique _ _ _ _ _ HMd _ _ _ Hρ Hv).
+Qed.
+
+Lemma set_rule_tuple : forall Γ A fs p R Ns i, ⊢ Θ ⍮ Ξ ⍮ Γ -> set_ctx_slots Θ Ξ T γ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : record_ty R -> record_lookup Θ Ξ p = Some R ->
+    List.length Ns = List.length (record_params R) ->
+    (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ N : B) ->
+    (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
+       set_exp_eq Θ Ξ T γ Γ B N N) ->
+    List.map fst fs = List.map fst (record_fields R) ->
+    (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ M : exp_sub U (sb_of_list sb_id (Ns ++ List.firstn k (List.map snd fs)))) ->
+    (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
+       set_exp_eq Θ Ξ T γ Γ (exp_sub U (sb_of_list sb_id (Ns ++ List.firstn k (List.map snd fs)))) M M) ->
+    set_exp_eq Θ Ξ T γ Γ (a_typ i) A (apps_exp (a_record p) Ns) ->
+    set_exp_eq Θ Ξ T γ Γ A (a_tuple A fs) (a_tuple A fs).
+Proof.
+  intros * Hc HΓ Hr HRs Hl HNs0 HNr0 Hn HFs0 HFr0 HAe. set_open. destruct HΓ as [HΓ _].
+  pose proof (fun k N B H1 H2 => proj1 (proj2 (gctx_embedding_preserves_wf _ _ _ _ Hμe)) _ _ _ (HNs0 k N B H1 H2)) as HNs.
+  pose proof (fun k N B H1 H2 => HNr0 k N B H1 H2 _ _ Hμ) as HNr.
+  pose proof (fun k f M U H1 H2 => proj1 (proj2 (gctx_embedding_preserves_wf _ _ _ _ Hμe)) _ _ _ (HFs0 k f M U H1 H2)) as HFs.
+  pose proof (fun k f M U H1 H2 => HFr0 k f M U H1 H2 _ _ Hμ) as HFr. cbv beta in HNs, HNr, HFs, HFr.
+  destruct HAe as (FS & FA & FAp & HA). pose proof HA as [_ HFA _ _ _].
+  destruct (set_tuple_value_typed Hfn Hmods Hgw Θ Ξ Hμ _ _ _ _ _ _ _ _ _ _ Hc HΓ Hr HRs Hl HNs HNr Hn HFs HFr HA)
+    as (Fs & HT & Hm).
+  exists FA, (fun ρ => tuple_code (Fs ρ)), (fun ρ => tuple_code (Fs ρ)).
+  constructor; [exact HFA | exact HT | exact HT | intros; apply set_eq_refl | exact Hm].
 Qed.
 
 End Records.

@@ -207,7 +207,9 @@ Ltac ft_by_kripke lemma := split; [ft_cs | ft_kripke; eapply lemma; ft_prem].
     syntactic premise of the derivation's context moved here along the
     moves [ft_move] names. *)
 Ltac ft_from_ih :=
-  intros; first [ ft_kripke; match goal with IH : forall _, _ |- _ =>
+  intros; first [ match goal with IH : forall _, _ |- _ =>
+                    solve [eapply proj2; eapply IH; eauto | eapply IH; eauto] end
+                | ft_kripke; match goal with IH : forall _, _ |- _ =>
                     solve [eapply proj2; eapply IH; eauto | eapply IH; eauto] end
                 | match goal with Hμ : set_gctx_embedding _ _ ?Θt ?Ξt T γ |- _ =>
                   match goal with
@@ -380,11 +382,9 @@ Proof.
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L _ => assert (HTm : gc_deps ⍮ gc_stack ⍮ G ⊢ L : A) by (apply Mv_exp; eapply wf_mem; eassumption) end.
     ft_by set_rule_mem.
   - ft_by_kripke set_rule_var.
-  - ft_by set_rule_record.
-  - split; [ft_cs |]. eapply (set_rule_tuple T γ Hfn0 Hmods Hgw _ _ Hμ); [ft_syn | ft_ctx | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih
-                                           | eassumption | ft_from_ih | ft_from_ih | do 3 eexists; eassumption].
-  - split; [ft_cs |]. eapply (set_rule_proj T γ Hfn0 Hmods Hgw _ _ Hμ); [ft_syn | ft_ctx | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih
-                                          | eassumption | do 3 eexists; eassumption | eassumption].
+  - ft_by_kripke set_rule_record.
+  - split; [ft_cs |]. ft_kripke. eapply set_rule_tuple; first [eassumption | ft_syn | ft_from_ih].
+  - split; [ft_cs |]. ft_kripke. eapply set_rule_proj; first [eassumption | ft_syn | ft_from_ih].
   - ft_by_kripke set_rule_exp_eq_subtyp.
   (* term equality *)
   - split; [ft_cs | ft_kripke; apply set_rule_typ].
@@ -462,21 +462,21 @@ Proof.
       by (eapply wf_exp_eq_fn_eta; eassumption).
     pose proof (presup_exp_eq_right Hc). ft_by_kripke (set_rule_fn_eta Θ Ξ T γ Γ κd κc i Srt A B M).
   - ft_by_kripke set_rule_irrelevant.
-  - ft_by set_rule_record_cong.
-  - split; [ft_cs |]. eapply (set_rule_tuple_cong T γ); [eassumption | eassumption | eassumption | eassumption |].
+  - ft_by_kripke set_rule_record_cong.
+  - split; [ft_cs |]. ft_kripke. eapply set_rule_tuple_cong; [eassumption | eassumption | eassumption | eassumption |].
     intros. eexists. ft_from_ih.
   - split; [ft_cs |].
-    match goal with H : _ ⍮ _ ⍮ _ ⊢ M ≈ M' : _ |- _ => pose proof (presup_exp_eq_left H) as HMl end.
-    edestruct (set_rule_proj T γ Hfn0 Hmods Hgw _ _ Hμ Γ M p R Ns k f U) as (FP & FPa & FPb & HPl);
-      [ft_syn | ft_ctx | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih | exact HMl
-      | apply set_rel_exp_eq_refl_left with (M' := M'); do 3 eexists; eassumption | eassumption |].
-    eapply (set_rule_proj_cong T γ); [eassumption | exact HPl | eassumption].
+    match goal with H : Θ ⍮ Ξ ⍮ _ ⊢ M ≈ M' : _ |- _ => pose proof (presup_exp_eq_left H) as HMl end.
+    ft_kripke. eapply set_rule_proj_cong; [eassumption | | eassumption].
+    eapply (set_rule_proj Θ Ξ T γ Γ M p R Ns k f U);
+      [ft_syn | eassumption | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih | exact HMl
+      | eapply set_exp_eq_left_refl; eassumption | eassumption].
   - split; [ft_cs |].
     match goal with H : _ ⍮ _ ⍮ _ ⊢ a_tuple T0 fs : T0 |- _ =>
       destruct (wf_tuple_inversion H) as [p0 R0 Ns0 i0 _ _ Hr0 Hl0 _ _ Hn0 _ _];
       destruct (wf_record_inversion Hr0) as [R1 Hl1 Hnd1 _ _ _ _ _ _ _ _ _] end.
     rewrite Hl0 in Hl1. injection Hl1 as <-. rewrite <- Hn0 in Hnd1.
-    eapply (set_rule_field_beta T γ); [exact Hnd1 | eassumption | eassumption | eassumption | eassumption].
+    ft_kripke. eapply set_rule_field_beta; [exact Hnd1 | eassumption | eassumption | eassumption | eassumption].
   - split; [ft_cs |].
     match goal with H : _ ⍮ _ ⍮ _ ⊢ a_tuple _ (record_eta_fields R M) : _, HR : record_lookup _ _ p = Some R |- _ =>
       destruct (wf_tuple_inversion H) as [p0 R0 Ns0 i0 _ _ Hr0 Hl0 _ _ Hn0 _ _];
@@ -485,7 +485,7 @@ Proof.
     assert (Hnd : NoDup (List.map fst (record_fields R))).
     { match goal with Hn0 : List.map fst (record_eta_fields R M) = List.map fst (record_fields ?R0), Hnd1 : NoDup _ |- _ =>
         rewrite <- Hn0 in Hnd1; unfold record_eta_fields in Hnd1; rewrite List.map_map in Hnd1; exact Hnd1 end. }
-    eapply (set_rule_record_eta T γ _ _ Hμ); [ft_ctx | eassumption | eassumption | exact Hnd | eassumption | eassumption].
+    ft_kripke. eapply set_rule_record_eta; [eassumption | eassumption | eassumption | exact Hnd | eassumption | eassumption].
   - ft_by_kripke set_rule_exp_eq_subtyp.
   - ft_by_kripke set_rule_exp_eq_sym.
   - ft_by_kripke set_rule_exp_eq_trans.
