@@ -363,8 +363,8 @@ Proof.
   - ft_by_kripke set_rule_left.
   - split; [ft_cs | ft_kripke; eapply (set_rule_right _ _ T γ Γ P Q M); ft_prem].
   - ft_by_kripke set_rule_proof_tag.
-  - ft_by set_rule_ind.
-  - ft_by set_rule_con.
+  - ft_by_kripke set_rule_ind.
+  - ft_by_kripke set_rule_con.
   - split; [ft_cs |].
     eapply (set_rule_elim T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
       try ft_from_ih;
@@ -406,8 +406,8 @@ Proof.
   - ft_by_kripke set_rule_False.
   - ft_by_kripke set_rule_absurd_cong.
   - ft_by_kripke set_rule_and_cong.
-  - ft_by set_rule_ind.
-  - ft_by set_rule_con.
+  - ft_by_kripke set_rule_ind.
+  - ft_by_kripke set_rule_con.
   - split; [ft_cs |].
     eapply (set_rule_elim_cong T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
       try ft_from_ih;
