@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1593"></a><h1 class="section">Computing Descriptions</h1>
+<a id="lab1860"></a><h1 class="section">Computing Descriptions</h1>
 
 
 <div class="paragraph"> </div>
@@ -71,7 +71,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1594"></a><h2 class="section">The Termination Order</h2>
+<a id="lab1861"></a><h2 class="section">The Termination Order</h2>
 
 </div>
 <div class="code">
@@ -183,7 +183,7 @@ A record entry: its type former, where it is stored
 </div>
 
 <div class="doc">
-<a id="lab1595"></a><h2 class="section">The Decision Procedure</h2>
+<a id="lab1862"></a><h2 class="section">The Decision Procedure</h2>
 
 <div class="paragraph"> </div>
 
@@ -835,11 +835,12 @@ A stored entry, at its path
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-the entries the open stores are the ones its items generate 
+the entries the open stores are the ones its items
+                generate, up to the types of their term parts 
 </div>
 <div class="code">
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#left"><span class="id" title="constructor">left</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#Hok:2484"><span class="id" title="variable">Hok</span></a> <span class="id" title="keyword">with</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod_eq_dec"><span class="id" title="definition">gmod_eq_dec</span></a> <span class="id" title="var">Φg</span> (<a class="idref" href="Mctt.Core.Syntactic.Members.html#gens_body"><span class="id" title="definition">gens_body</span></a> <span class="id" title="var">gs</span>) := {<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#left"><span class="id" title="constructor">left</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#Hg:2503"><span class="id" title="variable">Hg</span></a> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#inleft"><span class="id" title="constructor">inleft</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#exist"><span class="id" title="constructor">exist</span></a> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.Members.html#gens_append"><span class="id" title="definition">gens_append</span></a> <span class="id" title="var">Φx</span> 0 <span class="id" title="var">gs</span>) <span class="id" title="var">_</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#left"><span class="id" title="constructor">left</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#Hok:2484"><span class="id" title="variable">Hok</span></a> <span class="id" title="keyword">with</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#gmod_retyped_dec"><span class="id" title="definition">gmod_retyped_dec</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Members.html#gens_body"><span class="id" title="definition">gens_body</span></a> <span class="id" title="var">gs</span>) <span class="id" title="var">Φg</span> := {<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#left"><span class="id" title="constructor">left</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#Hg:2503"><span class="id" title="variable">Hg</span></a> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#inleft"><span class="id" title="constructor">inleft</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#exist"><span class="id" title="constructor">exist</span></a> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.Members.html#gm_graft"><span class="id" title="definition">gm_graft</span></a> <span class="id" title="var">Φx</span> <span class="id" title="var">Φg</span>) <span class="id" title="var">_</span>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#right"><span class="id" title="constructor">right</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#Hn:2528"><span class="id" title="variable">Hn</span></a> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#inright"><span class="id" title="constructor">inright</span></a> <span class="id" title="var">_</span> } } } } } }<br/>
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">with</span> <a id="items_gen_impl" class="idref" href="#items_gen_impl"><span class="id" title="definition">items_gen_impl</span></a> <a id="da1265f65295735c56212270316fef18" class="idref" href="#da1265f65295735c56212270316fef18"><span class="id" title="binder">Γ</span></a> <a id="H:310" class="idref" href="#H:310"><span class="id" title="binder">H</span></a> <a id="its:311" class="idref" href="#its:311"><span class="id" title="binder">its</span></a> (<a id="Ho:312" class="idref" href="#Ho:312"><span class="id" title="binder">Ho</span></a> : <a class="idref" href="Mctt.Extraction.MemberType.html#items_gen_order"><span class="id" title="inductive">items_gen_order</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#6e339d25b4e8063149b40e48a727392c"><span class="id" title="abbreviation">Θ</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#d6e9bb90c4b1ab258ecef626d58887f6"><span class="id" title="abbreviation">Ξ</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#da1265f65295735c56212270316fef18"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#H:310"><span class="id" title="variable">H</span></a> <a class="idref" href="Mctt.Extraction.MemberType.html#its:311"><span class="id" title="variable">its</span></a>) :<br/>
@@ -877,8 +878,9 @@ A member with a term part and a module part: a definition with a
 </div>
 
 <div class="doc">
-An open storing entries other than those its items generate expands
-      to nothing: its prefix and its items have one expansion each. 
+An open storing entries other than those its items generate, up to
+      the types of their term parts, expands to nothing: its prefix and its
+      items have one expansion each. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Next</span> <span class="id" title="keyword">Obligation</span>.<br/>
@@ -888,7 +890,7 @@ An open storing entries other than those its items generate expands
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">assert_fails</span> (<span class="id" title="var">constr_eq</span> <span class="id" title="var">a</span> <span class="id" title="var">b</span>); <span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<span class="id" title="var">Fb</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hx</span> <span class="id" title="var">_</span> <span class="id" title="var">H1</span>); <span class="id" title="tactic">subst</span> <span class="id" title="var">a</span> <span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">Hgs</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#items_gen"><span class="id" title="inductive">items_gen</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">b</span>, <span class="id" title="var">H1</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#items_gen"><span class="id" title="inductive">items_gen</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">a</span> |- <span class="id" title="var">_</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">assert_fails</span> (<span class="id" title="var">constr_eq</span> <span class="id" title="var">a</span> <span class="id" title="var">b</span>); <span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<span class="id" title="var">Fi</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hgs</span> <span class="id" title="var">_</span> <span class="id" title="var">H1</span>); <span class="id" title="tactic">subst</span> <span class="id" title="var">a</span> <span class="id" title="keyword">end</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">Hn</span> : ?<span class="id" title="var">x</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#::type_scope:x_'&lt;&gt;'_x"><span class="id" title="notation">&lt;&gt;</span></a> ?<span class="id" title="var">x</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">exact</span> (<span class="id" title="var">Hn</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a>) <span class="id" title="keyword">end</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">Hn</span> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#63a68285c81db8f9bc456233bb9ed181"><span class="id" title="notation">~</span></a> <a class="idref" href="Mctt.Core.Syntactic.Members.html#gmod_retyped"><span class="id" title="inductive">gmod_retyped</span></a> ?<span class="id" title="var">a</span> ?<span class="id" title="var">b</span>, <span class="id" title="var">H1</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#gmod_retyped"><span class="id" title="inductive">gmod_retyped</span></a> ?<span class="id" title="var">a</span> ?<span class="id" title="var">b</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">exact</span> (<span class="id" title="var">Hn</span> <span class="id" title="var">H1</span>) <span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
 <span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Extraction.MemberType.html#DenoteImpl"><span class="id" title="section">DenoteImpl</span></a>.<br/>
 
@@ -896,7 +898,7 @@ An open storing entries other than those its items generate expands
 </div>
 
 <div class="doc">
-<a id="lab1596"></a><h2 class="section">What Denotes Has an Order</h2>
+<a id="lab1863"></a><h2 class="section">What Denotes Has an Order</h2>
 
 </div>
 <div class="code">

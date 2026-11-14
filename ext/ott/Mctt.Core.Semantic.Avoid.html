@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab666"></a><h1 class="section">NbE Invents No Variables</h1>
+<a id="lab696"></a><h1 class="section">NbE Invents No Variables</h1>
 
 
 <div class="paragraph"> </div>
@@ -46,7 +46,7 @@
 
 <div class="paragraph"> </div>
 
-    The invariant is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span>: the value <span class="inlinecode"><span class="id" title="var">d</span></span> mentions no de Bruijn level
+    The invariant is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span>: the value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> mentions no de Bruijn level
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, and only levels below <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>.  It cannot be stated on environments
     alone: the environment of the extended context holds the new variable,
     at index <span class="inlinecode">0</span>, and so does every closure built in it.  What makes the
@@ -81,7 +81,7 @@
 </div>
 
 <div class="doc">
-<a id="lab667"></a><h2 class="section">Freshness at an Optional Position</h2>
+<a id="lab697"></a><h2 class="section">Freshness at an Optional Position</h2>
 
 </div>
 <div class="code">
@@ -147,7 +147,7 @@ The blocks of an eliminator: each motive fresh under the binders it
 </div>
 
 <div class="doc">
-<a id="lab668"></a><h2 class="section">The Invariant</h2>
+<a id="lab698"></a><h2 class="section">The Invariant</h2>
 
 
 <div class="paragraph"> </div>
@@ -211,7 +211,7 @@ At a function shape: the rest's
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span>: the value <span class="inlinecode"><span class="id" title="var">d</span></span> mentions no level <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, and only levels below
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span>: the value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> mentions no level <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>, and only levels below
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> (see the file header); mutually, for neutrals, normal values,
       module values, level atoms and environment entries. 
 </div>
@@ -561,7 +561,7 @@ The bound only grows.
 </div>
 
 <div class="doc">
-<a id="lab669"></a><h2 class="section">Environments</h2>
+<a id="lab699"></a><h2 class="section">Environments</h2>
 
 </div>
 <div class="code">
@@ -705,7 +705,7 @@ The atoms of a level value avoid <span class="inlinecode"><a class="idref" href=
 </div>
 
 <div class="doc">
-<a id="lab670"></a><h2 class="section">Freshness Through the Module Syntax</h2>
+<a id="lab700"></a><h2 class="section">Freshness Through the Module Syntax</h2>
 
 </div>
 <div class="code">
@@ -991,7 +991,7 @@ Freshness does not read the group or the member of an eliminator, so
 </div>
 
 <div class="doc">
-<a id="lab671"></a><h2 class="section">Evaluation Builds No Variable</h2>
+<a id="lab701"></a><h2 class="section">Evaluation Builds No Variable</h2>
 
 </div>
 <div class="code">
@@ -1822,7 +1822,7 @@ And so of every recursive argument of a constructor of <span class="inlinecode">
 </div>
 
 <div class="doc">
-<a id="lab672"></a><h2 class="section">Freshness Outside Proofs</h2>
+<a id="lab702"></a><h2 class="section">Freshness Outside Proofs</h2>
 
 
 <div class="paragraph"> </div>
@@ -1862,7 +1862,7 @@ And so of every recursive argument of a constructor of <span class="inlinecode">
 </div>
 
 <div class="doc">
-<a id="lab673"></a><h2 class="section">Readback Introduces Only Variables Above the Ones in Scope</h2>
+<a id="lab703"></a><h2 class="section">Readback Introduces Only Variables Above the Ones in Scope</h2>
 
 </div>
 <div class="code">
@@ -2585,7 +2585,7 @@ Under a binder: the closure is evaluated at a neutral at the readback
 </div>
 
 <div class="doc">
-<a id="lab674"></a><h2 class="section">The Initial Environment, and the Corollary</h2>
+<a id="lab704"></a><h2 class="section">The Initial Environment, and the Corollary</h2>
 
 <div class="paragraph"> </div>
 

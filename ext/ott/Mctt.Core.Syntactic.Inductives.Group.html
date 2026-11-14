@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab990"></a><h1 class="section">Groups of Inductive Types: Members, and the Classification of Arguments</h1>
+<a id="lab1238"></a><h1 class="section">Groups of Inductive Types: Members, and the Classification of Arguments</h1>
 
 
 <div class="paragraph"> </div>
@@ -62,7 +62,7 @@
 </div>
 
 <div class="doc">
-<a id="lab991"></a><h2 class="section">Lists of Variables and Pattern Weakenings</h2>
+<a id="lab1239"></a><h2 class="section">Lists of Variables and Pattern Weakenings</h2>
 
 <div class="paragraph"> </div>
 
@@ -129,7 +129,7 @@ The arguments of the constructor <span class="inlinecode"><a class="idref" href=
 </div>
 
 <div class="doc">
-<a id="lab992"></a><h2 class="section">Members</h2>
+<a id="lab1240"></a><h2 class="section">Members</h2>
 
 
 <div class="paragraph"> </div>
@@ -311,7 +311,7 @@ The declared members come before the views: a member is declared
 </div>
 
 <div class="doc">
-<a id="lab993"></a><h2 class="section">Classification of an Argument Type in Normal Form</h2>
+<a id="lab1241"></a><h2 class="section">Classification of an Argument Type in Normal Form</h2>
 
 
 <div class="paragraph"> </div>
@@ -322,8 +322,8 @@ The declared members come before the views: a member is declared
     parameters (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.np"><span class="id" title="variable">np</span></a></span> of them, the group's own <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#nu"><span class="id" title="abbreviation">nu</span></a></span> uniform ones outermost),
     the variables <span class="inlinecode"><span class="id" title="var">Self_0</span></span>, …, <span class="inlinecode"><span class="id" title="var">Self_</span>(<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>-1)</span> of the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> declared members
     (bound outside the parameters, <span class="inlinecode"><span class="id" title="var">Self_0</span></span> outermost, of type
-    <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode">(<span class="id" title="var">params</span>).</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span>), and the frames' parameters.  Under <span class="inlinecode"><span class="id" title="var">d</span></span> domains of a
-    function shape the context has <span class="inlinecode"><span class="id" title="var">d</span></span> more binders.
+    <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode">(<span class="id" title="var">params</span>).</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span>), and the frames' parameters.  Under <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> domains of a
+    function shape the context has <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> more binders.
 
 <div class="paragraph"> </div>
 
@@ -335,7 +335,7 @@ The declared members come before the views: a member is declared
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#classify_pat"><span class="id" title="definition">classify_pat</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.np"><span class="id" title="variable">np</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.pat"><span class="id" title="variable">pat</span></a></span> is the pattern of the weakening that sends the
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#classify_pat"><span class="id" title="definition">classify_pat</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.np"><span class="id" title="variable">np</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.pat"><span class="id" title="variable">pat</span></a></span> is the pattern of the weakening that sends the
     context of the domains, the non-recursive arguments before (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.pat"><span class="id" title="variable">pat</span></a></span> tells,
     innermost first, which arguments before are recursive), the parameters
     and the frames into the full one: a term in its image mentions no
@@ -361,7 +361,7 @@ The declared members come before the views: a member is declared
 </div>
 
 <div class="doc">
-An inductive view: the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the filed group at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.qc"><span class="id" title="variable">qc</span></a></span>,
+An inductive view: the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the filed group at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewCountFixed.ViewCount.qc"><span class="id" title="variable">qc</span></a></span>,
     at the uniform arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.SelfElim.WrapCv.Cs"><span class="id" title="variable">Cs</span></a></span> 
 </div>
 <div class="code">
@@ -388,7 +388,7 @@ An instance met, as the classification reads it off a type: its
 </div>
 
 <div class="doc">
-The declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the filed group at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.qc"><span class="id" title="variable">qc</span></a></span>, at the uniform
+The declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the filed group at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewCountFixed.ViewCount.qc"><span class="id" title="variable">qc</span></a></span>, at the uniform
     arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.SelfElim.WrapCv.Cs"><span class="id" title="variable">Cs</span></a></span> 
 </div>
 <div class="code">
@@ -518,7 +518,7 @@ Keys of one view have one head and, as many arguments, equal up to
 
 <div class="doc">
 The pattern of the weakening from the context of an argument's
-    <span class="inlinecode"><span class="id" title="var">Self</span></span>-free parts into the context the argument is written in: <span class="inlinecode"><span class="id" title="var">d</span></span>
+    <span class="inlinecode"><span class="id" title="var">Self</span></span>-free parts into the context the argument is written in: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span>
     domains, the arguments before (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.pat"><span class="id" title="variable">pat</span></a></span>), <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.np"><span class="id" title="variable">np</span></a></span> parameters, then the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>
     <span class="inlinecode"><span class="id" title="var">Self</span></span>s, which the image avoids. 
 </div>
@@ -826,7 +826,7 @@ A <span class="inlinecode"><span class="id" title="var">Self</span></span> occur
 </div>
 
 <div class="doc">
-<a id="lab994"></a><h2 class="section">The Guard of a Record Instance</h2>
+<a id="lab1242"></a><h2 class="section">The Guard of a Record Instance</h2>
 
 
 <div class="paragraph"> </div>
@@ -938,7 +938,7 @@ The number of parameters of the record at <span class="inlinecode"><span class="
 
 <div class="doc">
 A <span class="inlinecode"><span class="id" title="var">Self_j</span></span> at the uniform parameters and Self-free non-uniform ones,
-      under <span class="inlinecode"><span class="id" title="var">d</span></span> domains: the variable <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> at <span class="inlinecode"><span class="id" title="var">args</span></span>. 
+      under <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> domains: the variable <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> at <span class="inlinecode"><span class="id" title="var">args</span></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="classify_self" class="idref" href="#classify_self"><span class="id" title="definition">classify_self</span></a> (<a id="d:192" class="idref" href="#d:192"><span class="id" title="binder">d</span></a> <a id="x:193" class="idref" href="#x:193"><span class="id" title="binder">x</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="args:194" class="idref" href="#args:194"><span class="id" title="binder">args</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#written_ptyp"><span class="id" title="abbreviation">written_ptyp</span></a> :=<br/>
@@ -955,7 +955,7 @@ A <span class="inlinecode"><span class="id" title="var">Self_j</span></span> at 
 <div class="doc">
 A declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of a filed group at uniform arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.SelfElim.WrapCv.Cs"><span class="id" title="variable">Cs</span></a></span> in
       which a <span class="inlinecode"><span class="id" title="var">Self</span></span> occurs, and no argument, domain or non-uniform
-      parameter, and at Self-free non-uniform ones: the view <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.qc"><span class="id" title="variable">qc</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.SelfElim.WrapCv.Cs"><span class="id" title="variable">Cs</span></a>)</span>. 
+      parameter, and at Self-free non-uniform ones: the view <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewCountFixed.ViewCount.qc"><span class="id" title="variable">qc</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.SelfElim.WrapCv.Cs"><span class="id" title="variable">Cs</span></a>)</span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="classify_nest" class="idref" href="#classify_nest"><span class="id" title="definition">classify_nest</span></a> (<a id="d:196" class="idref" href="#d:196"><span class="id" title="binder">d</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="qc:197" class="idref" href="#qc:197"><span class="id" title="binder">qc</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="k:198" class="idref" href="#k:198"><span class="id" title="binder">k</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="args:199" class="idref" href="#args:199"><span class="id" title="binder">args</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#written_ptyp"><span class="id" title="abbreviation">written_ptyp</span></a> :=<br/>
@@ -997,7 +997,7 @@ A record at all its parameters <span class="inlinecode"><span class="id" title="
 </div>
 
 <div class="doc">
-A shape under <span class="inlinecode"><span class="id" title="var">d</span></span> of its domains: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#classify_self"><span class="id" title="definition">classify_self</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#classify_nest"><span class="id" title="definition">classify_nest</span></a></span>,
+A shape under <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> of its domains: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#classify_self"><span class="id" title="definition">classify_self</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#classify_nest"><span class="id" title="definition">classify_nest</span></a></span>,
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#classify_record_view"><span class="id" title="definition">classify_record_view</span></a></span>, or a <span class="inlinecode"><span class="id" title="var">Π</span></span> over a Self-free domain into a shape.  A
       <span class="inlinecode"><span class="id" title="var">Self</span></span> thus occurs only strictly positively, and in a nested
       occurrence only in its uniform arguments, or in a record's
@@ -1117,7 +1117,7 @@ The instances the constructors <span class="inlinecode"><span class="id" title="
 </div>
 
 <div class="doc">
-<a id="lab995"></a><h2 class="section">The Views of a Group</h2>
+<a id="lab1243"></a><h2 class="section">The Views of a Group</h2>
 
 
 <div class="paragraph"> </div>
@@ -1134,8 +1134,8 @@ The instances the constructors <span class="inlinecode"><span class="id" title="
     instance comes first.  The search is depth first: the instances a
     view's constructors meet are met before the instances still queued, so
     the views come in reading order, as the recursive results do: for
-    <span class="inlinecode"><span class="id" title="var">node</span></span> <span class="inlinecode">(<span class="id" title="var">xs</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="library">List</span></span> <span class="inlinecode">(<span class="id" title="library">List</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a>))</span> <span class="inlinecode">(<span class="id" title="var">o</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Option</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a>)</span> the members are <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>,
-    <span class="inlinecode"><span class="id" title="library">List</span></span> <span class="inlinecode">(<span class="id" title="library">List</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a>)</span>, <span class="inlinecode"><span class="id" title="library">List</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>, <span class="inlinecode"><span class="id" title="var">Option</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#views_dfs"><span class="id" title="inductive">views_dfs</span></a></span> <span class="inlinecode"><span class="id" title="var">sibs</span></span> <span class="inlinecode"><span class="id" title="var">meets</span></span> <span class="inlinecode"><span class="id" title="var">acc</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.TelePER.tr"><span class="id" title="variable">tr</span></a></span>
+    <span class="inlinecode"><span class="id" title="var">node</span></span> <span class="inlinecode">(<span class="id" title="var">xs</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="library">List</span></span> <span class="inlinecode">(<span class="id" title="library">List</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a>))</span> <span class="inlinecode">(<span class="id" title="var">o</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Option</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a>)</span> the members are <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>,
+    <span class="inlinecode"><span class="id" title="library">List</span></span> <span class="inlinecode">(<span class="id" title="library">List</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a>)</span>, <span class="inlinecode"><span class="id" title="library">List</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>, <span class="inlinecode"><span class="id" title="var">Option</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#views_dfs"><span class="id" title="inductive">views_dfs</span></a></span> <span class="inlinecode"><span class="id" title="var">sibs</span></span> <span class="inlinecode"><span class="id" title="var">meets</span></span> <span class="inlinecode"><span class="id" title="var">acc</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.TelePER.tr"><span class="id" title="variable">tr</span></a></span>
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.Vs"><span class="id" title="variable">Vs</span></a></span>: from the views found so far, <span class="inlinecode"><span class="id" title="var">acc</span></span>, and the instances still to
     meet, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.TelePER.tr"><span class="id" title="variable">tr</span></a></span>, in order, the views are <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.Vs"><span class="id" title="variable">Vs</span></a></span>; a view found has the
     instances its constructors meet (<span class="inlinecode"><span class="id" title="var">meets</span></span>) queued before the others.
@@ -1399,7 +1399,7 @@ A key among the keys has a position.
 </div>
 
 <div class="doc">
-<a id="lab996"></a><h2 class="section">The Order of the Filed Views</h2>
+<a id="lab1244"></a><h2 class="section">The Order of the Filed Views</h2>
 
 
 <div class="paragraph"> </div>

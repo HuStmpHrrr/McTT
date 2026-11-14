@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1343"></a><h1 class="section">An Accepted Declaration Runs</h1>
+<a id="lab1597"></a><h1 class="section">An Accepted Declaration Runs</h1>
 
 
 <div class="paragraph"> </div>
@@ -42,7 +42,7 @@
     the commands it generates always run (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#run_cmd_ind_runs"><span class="id" title="lemma">run_cmd_ind_runs</span></a></span>): each declared
     member's module, its constructors, the recursor <span class="inlinecode"><span class="id" title="keyword">rec</span></span> of a group of
     one member, and the recursor module <span class="inlinecode"><span class="id" title="var">Rec</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#ind_mod_cmds"><span class="id" title="definition">ind_mod_cmds</span></a></span>); then, for
-    a group declared by <span class="inlinecode"><span class="id" title="var">mutual</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span>, <span class="inlinecode"><span class="id" title="var">T.Rec</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rec_cmds"><span class="id" title="definition">rec_cmds</span></a></span>).  So the
+    a group declared by <span class="inlinecode"><span class="id" title="var">mutual</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span>, <span class="inlinecode"><span class="id" title="var">T.Rec</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rec_cmds"><span class="id" title="definition">rec_cmds</span></a></span>).  So the
     premises of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#run_cmd_ind_case"><span class="id" title="constructor">run_cmd_ind_case</span></a></span> up to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#gen_names_free"><span class="id" title="record">gen_names_free</span></a></span>, with the members' names
     distinct and fresh, are enough for it to derive. 
 </div>
@@ -70,7 +70,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1344"></a><h2 class="section">The Names of the Recursor Module's Functions Are Distinct</h2>
+<a id="lab1598"></a><h2 class="section">The Names of the Recursor Module's Functions Are Distinct</h2>
 
 </div>
 <div class="code">
@@ -217,7 +217,7 @@ The functions' names are distinct, one per member.
 </div>
 
 <div class="doc">
-<a id="lab1345"></a><h2 class="section">The Recursor Module's Parameters Are Assumptions</h2>
+<a id="lab1599"></a><h2 class="section">The Recursor Module's Parameters Are Assumptions</h2>
 
 </div>
 <div class="code">
@@ -243,7 +243,7 @@ The functions' names are distinct, one per member.
 </div>
 
 <div class="doc">
-<a id="lab1346"></a><h2 class="section">What the Declared Members Meet</h2>
+<a id="lab1600"></a><h2 class="section">What the Declared Members Meet</h2>
 
 
 <div class="paragraph"> </div>
@@ -463,7 +463,7 @@ A filed declaration meets them from its first member on.
 </div>
 
 <div class="doc">
-<a id="lab1347"></a><h2 class="section">Runs of Generated Commands</h2>
+<a id="lab1601"></a><h2 class="section">Runs of Generated Commands</h2>
 
 <div class="paragraph"> </div>
 
@@ -504,7 +504,7 @@ Its body
 </div>
 
 <div class="doc">
-The core command filing the generated definition <span class="inlinecode"><span class="id" title="var">d</span></span>, transparent
+The core command filing the generated definition <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span>, transparent
     when <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>, private when <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.pv"><span class="id" title="variable">pv</span></a></span>. 
 </div>
 <div class="code">
@@ -690,7 +690,7 @@ The telescope's types are types of universes or of levels: the
 &nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="tactic">intros</span> <span class="id" title="var">Φ'</span> <span class="id" title="var">Hg'</span> <span class="id" title="var">Hs'</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hl'</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#ind_lookup"><span class="id" title="definition">ind_lookup</span></a> <span class="id" title="var">Θ</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><span class="id" title="var">mr</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#fk_module"><span class="id" title="constructor">fk_module</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gu_body"><span class="id" title="abbreviation">gu_body</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.Command.html#recursor_tele"><span class="id" title="definition">recursor_tele</span></a> <span class="id" title="var">pq</span> <span class="id" title="var">D</span> <span class="id" title="var">Δu</span>) <span class="id" title="var">Φ'</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">Ξ</span>) <span class="id" title="var">pq</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">D</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#ind_lookup_gc_sub"><span class="id" title="lemma">ind_lookup_gc_sub</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hs'</span> |].<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#ind_lookup_gc_sub"><span class="id" title="lemma">ind_lookup_gc_sub</span></a>; [ <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#gc_sub_push"><span class="id" title="lemma">gc_sub_push</span></a>; <span class="id" title="tactic">exact</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#proj2"><span class="id" title="lemma">proj2</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#proj2"><span class="id" title="lemma">proj2</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gstack_cons_inv"><span class="id" title="lemma">wf_gstack_cons_inv</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hpush</span>))) | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hl</span> ]. }<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#ind_lookup_gc_sub"><span class="id" title="lemma">ind_lookup_gc_sub</span></a>; [ <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#gc_sub_push"><span class="id" title="lemma">gc_sub_push</span></a>; <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#gstack_cons_fresh"><span class="id" title="projection">gstack_cons_fresh</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gstack_cons_inv"><span class="id" title="lemma">wf_gstack_cons_inv</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hpush</span>)) | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hl</span> ]. }<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#group_facts"><span class="id" title="lemma">group_facts</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hg'</span> <span class="id" title="var">Hl'</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">Hds'</span> &amp; <span class="id" title="var">HD'</span> &amp; <span class="id" title="var">_</span> &amp; <span class="id" title="var">HU'</span> &amp; <span class="id" title="var">_</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="lemma">Forall_forall</span>; <span class="id" title="tactic">intros</span> <span class="id" title="var">d</span> <span class="id" title="var">Hin</span>; <span class="id" title="tactic">unfold</span> <span class="id" title="var">ds</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hin</span>; <span class="id" title="tactic">apply</span> <span class="id" title="lemma">List.in_map_iff</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hin</span> <span class="id" title="keyword">as</span> ([[<span class="id" title="var">j</span> <span class="id" title="var">Mj</span>] <span class="id" title="var">x</span>] &amp; &lt;- &amp; <span class="id" title="var">Hin</span>);<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#gen_def_kind"><span class="id" title="projection">gen_def_kind</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#gen_def_type"><span class="id" title="projection">gen_def_type</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.IndRuns.html#gen_def_body"><span class="id" title="projection">gen_def_body</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#abs_kind_sort"><span class="id" title="definition">abs_kind_sort</span></a>].<br/>
@@ -870,7 +870,7 @@ The uniform parameters are relevant where the first member is
 </div>
 
 <div class="doc">
-<a id="lab1348"></a><h2 class="section">An Accepted Declaration Runs</h2>
+<a id="lab1602"></a><h2 class="section">An Accepted Declaration Runs</h2>
 
 
 <div class="paragraph"> </div>
@@ -878,7 +878,7 @@ The uniform parameters are relevant where the first member is
       A group <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#run_cmd_ind_case"><span class="id" title="constructor">run_cmd_ind_case</span></a></span> classifies, files, checks at its views' instances
       and finds its generated names free, its members' names distinct and
       fresh: its declared members run, each with its module, then, for a
-      group declared by <span class="inlinecode"><span class="id" title="var">mutual</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span>, <span class="inlinecode"><span class="id" title="var">T.Rec</span></span>; so <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#run_cmd_ind_case"><span class="id" title="constructor">run_cmd_ind_case</span></a></span> derives. 
+      group declared by <span class="inlinecode"><span class="id" title="var">mutual</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span>, <span class="inlinecode"><span class="id" title="var">T.Rec</span></span>; so <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#run_cmd_ind_case"><span class="id" title="constructor">run_cmd_ind_case</span></a></span> derives. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <a id="run_cmd_ind_runs" class="idref" href="#run_cmd_ind_runs"><span class="id" title="lemma">run_cmd_ind_runs</span></a> : <span class="id" title="keyword">forall</span> <a id="ch:270" class="idref" href="#ch:270"><span class="id" title="binder">ch</span></a> <a id="B:271" class="idref" href="#B:271"><span class="id" title="binder">B</span></a> <a id="Rb:272" class="idref" href="#Rb:272"><span class="id" title="binder">Rb</span></a> <a id="e46e061337ff787fe5e2d344a59a5ebd" class="idref" href="#e46e061337ff787fe5e2d344a59a5ebd"><span class="id" title="binder">Θ</span></a> <a id="c14104f7f7ac1f36e7d51b9d8f2d56c9" class="idref" href="#c14104f7f7ac1f36e7d51b9d8f2d56c9"><span class="id" title="binder">Ξ</span></a> <a id="pv:275" class="idref" href="#pv:275"><span class="id" title="binder">pv</span></a> <a id="R:276" class="idref" href="#R:276"><span class="id" title="binder">R</span></a> <a id="Mr0:277" class="idref" href="#Mr0:277"><span class="id" title="binder">Mr0</span></a> <a id="Mrs:278" class="idref" href="#Mrs:278"><span class="id" title="binder">Mrs</span></a> <a id="csD:279" class="idref" href="#csD:279"><span class="id" title="binder">csD</span></a> <a id="Vs:280" class="idref" href="#Vs:280"><span class="id" title="binder">Vs</span></a> <a id="Ss:281" class="idref" href="#Ss:281"><span class="id" title="binder">Ss</span></a> <a id="csV:282" class="idref" href="#csV:282"><span class="id" title="binder">csV</span></a> <a id="Nvs:283" class="idref" href="#Nvs:283"><span class="id" title="binder">Nvs</span></a> <a id="D:284" class="idref" href="#D:284"><span class="id" title="binder">D</span></a>,<br/>

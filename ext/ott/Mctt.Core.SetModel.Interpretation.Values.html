@@ -1,0 +1,255 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+      <a href="./lib/index.html"> Library </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.SetModel.Interpretation.Values</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab732"></a><h1 class="section">The Values of the Set Model</h1>
+
+
+<div class="paragraph"> </div>
+
+    What a variable or a member denotes: a term, a module, or both
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry"><span class="id" title="inductive">set_entry</span></a></span>); a module is a function of its parameters' values, a
+    table of members, or a global module at arguments (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_module"><span class="id" title="inductive">set_module</span></a></span>).  An
+    environment gives every variable an entry (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_env"><span class="id" title="definition">set_env</span></a></span>). 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">String</span> <span class="id" title="library">List</span>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.SetModel.Sets</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Encodings.html#"><span class="id" title="library">Encodings</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.SetModel.Interpretation</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Codes.html#"><span class="id" title="library">Codes</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#"><span class="id" title="library">Syntax</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Which members of a module are proofs: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode"><span class="id" title="var">ys</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> says whether the member
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of the submodule at the chain <span class="inlinecode"><span class="id" title="var">ys</span></span> is. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="member_proofness" class="idref" href="#member_proofness"><span class="id" title="definition">member_proofness</span></a> : <span class="id" title="keyword">Type</span> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+What a variable or a member denotes. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Inductive</span> <a id="set_entry" class="idref" href="#set_entry"><span class="id" title="definition, inductive"><span id="set_entry_rect" class="id"><span id="set_entry_ind" class="id"><span id="set_entry_rec" class="id"><span id="set_entry_sind" class="id">set_entry</span></span></span></span></span></a> : <span class="id" title="keyword">Type</span> :=<br/>
+</div>
+
+<div class="doc">
+A term of the kind <span class="inlinecode"><span class="id" title="var">kind</span></span>, its value.  The kind is the one the syntax
+    stores (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ce_ass"><span class="id" title="constructor">ce_ass</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_def"><span class="id" title="constructor">ge_def</span></a></span>); it tells a member closure over a module's
+    parameters whether it is a proof 
+</div>
+<div class="code">
+| <a id="set_entry_term" class="idref" href="#set_entry_term"><span class="id" title="constructor">set_entry_term</span></a> (<a id="kind:5" class="idref" href="#kind:5"><span class="id" title="binder">kind</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#abs_kind"><span class="id" title="inductive">abs_kind</span></a>) (<a id="value:6" class="idref" href="#value:6"><span class="id" title="binder">value</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a>)<br/>
+</div>
+
+<div class="doc">
+A module 
+</div>
+<div class="code">
+| <a id="set_entry_module" class="idref" href="#set_entry_module"><span class="id" title="constructor">set_entry_module</span></a> (<a id="m:7" class="idref" href="#m:7"><span class="id" title="binder">m</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_module:2"><span class="id" title="inductive">set_module</span></a>)<br/>
+</div>
+
+<div class="doc">
+A definition with a module part: its term, relevant, and its module 
+</div>
+<div class="code">
+| <a id="set_entry_both" class="idref" href="#set_entry_both"><span class="id" title="constructor">set_entry_both</span></a> (<a id="value:8" class="idref" href="#value:8"><span class="id" title="binder">value</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a>) (<a id="m:9" class="idref" href="#m:9"><span class="id" title="binder">m</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_module:2"><span class="id" title="inductive">set_module</span></a>)<br/>
+<span class="id" title="keyword">with</span> <a id="set_module" class="idref" href="#set_module"><span class="id" title="definition, inductive"><span id="set_module_rect" class="id"><span id="set_module_ind" class="id"><span id="set_module_rec" class="id"><span id="set_module_sind" class="id">set_module</span></span></span></span></span></a> : <span class="id" title="keyword">Type</span> :=<br/>
+</div>
+
+<div class="doc">
+A unit's parameter of the type code <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a></span>: a function of the
+    parameter's value, with which of its members are proofs.  That is read
+    off the unit's syntax (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Interpretation.Interp.html#unit_member_proofs"><span class="id" title="definition">unit_member_proofs</span></a></span>), not off <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> is
+    fixed only on the domain, which may be empty, and an empty domain
+    tells nothing.  In <span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>)</span> <span class="inlinecode">(<span class="id" title="var">z</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Empty</span>)</span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>
+    <span class="inlinecode"><span class="id" title="keyword">end</span></span> the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> is no proof, so <span class="inlinecode"><span class="id" title="var">M.k</span></span> is the function
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">↦</span> <span class="inlinecode">∅</span> of <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>)</span> <span class="inlinecode">(<span class="id" title="var">z</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Empty</span>),</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span>; in
+    <span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>)</span> <span class="inlinecode">(<span class="id" title="var">z</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Empty</span>)</span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode">⊤</span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#tt"><span class="id" title="constructor">tt</span></a></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span> the member
+    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> is one, so <span class="inlinecode"><span class="id" title="var">M.p</span></span> is the empty set, as every proof is 
+</div>
+<div class="code">
+| <a id="set_module_params" class="idref" href="#set_module_params"><span class="id" title="constructor">set_module_params</span></a> (<a id="domain:10" class="idref" href="#domain:10"><span class="id" title="binder">domain</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a>) (<a id="proofs:11" class="idref" href="#proofs:11"><span class="id" title="binder">proofs</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#member_proofness"><span class="id" title="definition">member_proofness</span></a>) (<a id="f:12" class="idref" href="#f:12"><span class="id" title="binder">f</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_module:2"><span class="id" title="inductive">set_module</span></a>)<br/>
+</div>
+
+<div class="doc">
+A body: its members by name, in order 
+</div>
+<div class="code">
+| <a id="set_module_members" class="idref" href="#set_module_members"><span class="id" title="constructor">set_module_members</span></a> (<a id="members:13" class="idref" href="#members:13"><span class="id" title="binder">members</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry:1"><span class="id" title="inductive">set_entry</span></a>))<br/>
+</div>
+
+<div class="doc">
+The global module at the path <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>, at the arguments <span class="inlinecode"><span class="id" title="var">args</span></span>,
+    outermost first 
+</div>
+<div class="code">
+| <a id="set_module_global" class="idref" href="#set_module_global"><span class="id" title="constructor">set_module_global</span></a> (<a id="p:14" class="idref" href="#p:14"><span class="id" title="binder">p</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="args:15" class="idref" href="#args:15"><span class="id" title="binder">args</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a>)<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> where <span class="inlinecode"><span class="id" title="var">condition</span></span> holds, nothing where it fails: a function of a
+    parameter applied to an argument, guarded by the argument being of the
+    parameter's type.  The function is fixed only there, so without the
+    guard two derivations of an ill-typed <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#me_app"><span class="id" title="constructor">me_app</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, at an argument
+    outside <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span>'s parameter type, could give unrelated modules; the
+    interpretation is then not functional, and the uniqueness of a
+    substituted term such as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a>[<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a>]</span>, whose derivations are not typed node
+    by node, could not be derived.  Which members are proofs is kept
+    besides, as the function's: outside the domain <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> is anything 
+</div>
+<div class="code">
+| <a id="set_module_cond" class="idref" href="#set_module_cond"><span class="id" title="constructor">set_module_cond</span></a> (<a id="condition:16" class="idref" href="#condition:16"><span class="id" title="binder">condition</span></a> : <span class="id" title="keyword">Prop</span>) (<a id="proofs:17" class="idref" href="#proofs:17"><span class="id" title="binder">proofs</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#member_proofness"><span class="id" title="definition">member_proofness</span></a>) (<a id="m:18" class="idref" href="#m:18"><span class="id" title="binder">m</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_module:2"><span class="id" title="inductive">set_module</span></a>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+An environment: an entry for every variable. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="set_env" class="idref" href="#set_env"><span class="id" title="definition">set_env</span></a> : <span class="id" title="keyword">Type</span> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry"><span class="id" title="inductive">set_entry</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The entry of no binding: never read by a scoped term. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="absent_set_entry" class="idref" href="#absent_set_entry"><span class="id" title="definition">absent_set_entry</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry"><span class="id" title="inductive">set_entry</span></a> := <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry_term"><span class="id" title="constructor">set_entry_term</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_relevant"><span class="id" title="constructor">ak_relevant</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#empty_set"><span class="id" title="definition">empty_set</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The environment of the empty context. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="empty_set_env" class="idref" href="#empty_set_env"><span class="id" title="definition">empty_set_env</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_env"><span class="id" title="definition">set_env</span></a> := <span class="id" title="keyword">fun</span> <span class="id" title="var">_</span> =&gt; <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#absent_set_entry"><span class="id" title="definition">absent_set_entry</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode">ρ</span> extended by the entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> at the variable <span class="inlinecode">#0</span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="set_env_extend" class="idref" href="#set_env_extend"><span class="id" title="definition">set_env_extend</span></a> (<a id="ae40d588688470bd12bac261352e8063" class="idref" href="#ae40d588688470bd12bac261352e8063"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_env"><span class="id" title="definition">set_env</span></a>) (<a id="e:20" class="idref" href="#e:20"><span class="id" title="binder">e</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry"><span class="id" title="inductive">set_entry</span></a>) : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_env"><span class="id" title="definition">set_env</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">fun</span> <a id="x:21" class="idref" href="#x:21"><span class="id" title="binder">x</span></a> =&gt; <span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#x:21"><span class="id" title="variable">x</span></a> <span class="id" title="keyword">with</span> 0 =&gt; <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#e:20"><span class="id" title="variable">e</span></a> | <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">y</span> =&gt; <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#ae40d588688470bd12bac261352e8063"><span class="id" title="variable">ρ</span></a> <span class="id" title="var">y</span> <span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The kind of a context entry's term: an assumption's own, a
+    definition's relevant. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="centry_kind" class="idref" href="#centry_kind"><span class="id" title="definition">centry_kind</span></a> (<a id="ce:23" class="idref" href="#ce:23"><span class="id" title="binder">ce</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#centry"><span class="id" title="inductive">centry</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#abs_kind"><span class="id" title="inductive">abs_kind</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#ce:23"><span class="id" title="variable">ce</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ce_ass"><span class="id" title="constructor">ce_ass</span></a> <span class="id" title="var">κ</span> <span class="id" title="var">_</span> =&gt; <span class="id" title="var">κ</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">_</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_relevant"><span class="id" title="constructor">ak_relevant</span></a><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The kinds of a context's entries, outermost first. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="ctx_kinds" class="idref" href="#ctx_kinds"><span class="id" title="definition">ctx_kinds</span></a> (<a id="abb24ab0831b2ef85320bf139d282b53" class="idref" href="#abb24ab0831b2ef85320bf139d282b53"><span class="id" title="binder">Δ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#abs_kind"><span class="id" title="inductive">abs_kind</span></a> := <span class="id" title="definition">List.rev</span> (<span class="id" title="abbreviation">List.map</span> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#centry_kind"><span class="id" title="definition">centry_kind</span></a> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#abb24ab0831b2ef85320bf139d282b53"><span class="id" title="variable">Δ</span></a>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode">ρ</span> extended by the term values <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> of the kinds <span class="inlinecode"><span class="id" title="var">κs</span></span>, both outermost
+    first: the last is <span class="inlinecode">#0</span>; a value with no kind left is relevant. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Fixpoint</span> <a id="set_env_extend_kinded" class="idref" href="#set_env_extend_kinded"><span class="id" title="definition">set_env_extend_kinded</span></a> (<a id="5887ff30c3475dc86b5d5aeb60b7c453" class="idref" href="#5887ff30c3475dc86b5d5aeb60b7c453"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_env"><span class="id" title="definition">set_env</span></a>) (<a id="31205b653fdc09d1a66bb6f3fb76d088" class="idref" href="#31205b653fdc09d1a66bb6f3fb76d088"><span class="id" title="binder">κs</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#abs_kind"><span class="id" title="inductive">abs_kind</span></a>) (<a id="vs:28" class="idref" href="#vs:28"><span class="id" title="binder">vs</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a>) : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_env"><span class="id" title="definition">set_env</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#vs:28"><span class="id" title="variable">vs</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> =&gt; <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#5887ff30c3475dc86b5d5aeb60b7c453"><span class="id" title="variable">ρ</span></a><br/>
+&nbsp;&nbsp;| <span class="id" title="var">v</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">vs'</span> =&gt; <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_env_extend_kinded:29"><span class="id" title="definition">set_env_extend_kinded</span></a> (<a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_env_extend"><span class="id" title="definition">set_env_extend</span></a> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#5887ff30c3475dc86b5d5aeb60b7c453"><span class="id" title="variable">ρ</span></a> (<a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry_term"><span class="id" title="constructor">set_entry_term</span></a> (<span class="id" title="definition">List.hd</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_relevant"><span class="id" title="constructor">ak_relevant</span></a> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#31205b653fdc09d1a66bb6f3fb76d088"><span class="id" title="variable">κs</span></a>) <span class="id" title="var">v</span>)) (<span class="id" title="definition">List.tl</span> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#31205b653fdc09d1a66bb6f3fb76d088"><span class="id" title="variable">κs</span></a>) <span class="id" title="var">vs'</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+What an entry gives a term variable: its term, or at a module what
+    the substitution's <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#se_mod"><span class="id" title="constructor">se_mod</span></a></span> gives one, <span class="inlinecode"><span class="id" title="keyword">Prop</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sentry_exp"><span class="id" title="definition">sentry_exp</span></a></span>), so that
+    interpretation commutes with substitution. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="set_entry_value" class="idref" href="#set_entry_value"><span class="id" title="definition">set_entry_value</span></a> (<a id="e:31" class="idref" href="#e:31"><span class="id" title="binder">e</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry"><span class="id" title="inductive">set_entry</span></a>) : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#e:31"><span class="id" title="variable">e</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry_term"><span class="id" title="constructor">set_entry_term</span></a> <span class="id" title="var">_</span> <span class="id" title="var">v</span> | <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry_both"><span class="id" title="constructor">set_entry_both</span></a> <span class="id" title="var">v</span> <span class="id" title="var">_</span> =&gt; <span class="id" title="var">v</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry_module"><span class="id" title="constructor">set_entry_module</span></a> <span class="id" title="var">_</span> =&gt; <a class="idref" href="Mctt.Core.SetModel.Interpretation.Codes.html#prop_universe_code"><span class="id" title="definition">prop_universe_code</span></a><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+What an entry gives a module variable: its module, or at a term what
+    the substitution's <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#se_exp"><span class="id" title="constructor">se_exp</span></a></span> gives one, the empty unit at the empty path
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sentry_modexp"><span class="id" title="definition">sentry_modexp</span></a></span>). 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="set_entry_module_part" class="idref" href="#set_entry_module_part"><span class="id" title="definition">set_entry_module_part</span></a> (<a id="e:33" class="idref" href="#e:33"><span class="id" title="binder">e</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry"><span class="id" title="inductive">set_entry</span></a>) : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_module"><span class="id" title="inductive">set_module</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#e:33"><span class="id" title="variable">e</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry_module"><span class="id" title="constructor">set_entry_module</span></a> <span class="id" title="var">m</span> | <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry_both"><span class="id" title="constructor">set_entry_both</span></a> <span class="id" title="var">_</span> <span class="id" title="var">m</span> =&gt; <span class="id" title="var">m</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_entry_term"><span class="id" title="constructor">set_entry_term</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> =&gt; <a class="idref" href="Mctt.Core.SetModel.Interpretation.Values.html#set_module_global"><span class="id" title="constructor">set_module_global</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_abs"><span class="id" title="abbreviation">q_abs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

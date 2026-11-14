@@ -1,0 +1,181 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+      <a href="./lib/index.html"> Library </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.SetModel.Sets.Fixpoints</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab722"></a><h1 class="section">Least Fixed Points</h1>
+
+
+<div class="paragraph"> </div>
+
+    The Knaster–Tarski least fixed point of an operator <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> on the subsets
+    of a bound <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>: the members of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> in every subset of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> closed under
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span>.  Rocq's impredicative <span class="inlinecode"><span class="id" title="keyword">Prop</span></span> lets the separation quantify over all
+    such subsets.  The carriers of inductive types are such fixed points,
+    over a bound in their universe. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.SetModel.Sets</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#"><span class="id" title="library">Aczel</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Section</span> <a id="LeastFixedPoint" class="idref" href="#LeastFixedPoint"><span class="id" title="section">LeastFixedPoint</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Variable</span> <a id="LeastFixedPoint.B" class="idref" href="#LeastFixedPoint.B"><span class="id" title="variable">B</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Variable</span> <a id="4014b693745e03a5d65fc70c5ec558b6" class="idref" href="#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> is monotone on the subsets of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="monotone_operator" class="idref" href="#monotone_operator"><span class="id" title="definition">monotone_operator</span></a> : <span class="id" title="keyword">Prop</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <a id="S:5" class="idref" href="#S:5"><span class="id" title="binder">S</span></a> <a id="S':6" class="idref" href="#S':6"><span class="id" title="binder">S'</span></a>, <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:5"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.B"><span class="id" title="variable">B</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S':6"><span class="id" title="variable">S'</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.B"><span class="id" title="variable">B</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:5"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S':6"><span class="id" title="variable">S'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:5"><span class="id" title="variable">S</span></a>) (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S':6"><span class="id" title="variable">S'</span></a>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> maps the subsets of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> into <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="bounded_operator" class="idref" href="#bounded_operator"><span class="id" title="definition">bounded_operator</span></a> : <span class="id" title="keyword">Prop</span> := <span class="id" title="keyword">forall</span> <a id="S:7" class="idref" href="#S:7"><span class="id" title="binder">S</span></a>, <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:7"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.B"><span class="id" title="variable">B</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:7"><span class="id" title="variable">S</span></a>) <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.B"><span class="id" title="variable">B</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">z</span></span> is in every subset of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> closed under <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="in_every_closed_subset" class="idref" href="#in_every_closed_subset"><span class="id" title="definition">in_every_closed_subset</span></a> (<a id="z:8" class="idref" href="#z:8"><span class="id" title="binder">z</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <a id="S:9" class="idref" href="#S:9"><span class="id" title="binder">S</span></a>, <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:9"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.B"><span class="id" title="variable">B</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:9"><span class="id" title="variable">S</span></a>) <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:9"><span class="id" title="variable">S</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_mem"><span class="id" title="definition">set_mem</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#z:8"><span class="id" title="variable">z</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:9"><span class="id" title="variable">S</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="in_every_closed_subset_resp" class="idref" href="#in_every_closed_subset_resp"><span class="id" title="lemma">in_every_closed_subset_resp</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#respects_set_eq"><span class="id" title="definition">respects_set_eq</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#in_every_closed_subset"><span class="id" title="definition">in_every_closed_subset</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span> <span class="id" title="var">x</span> <span class="id" title="var">y</span> <span class="id" title="var">E</span> <span class="id" title="var">H</span> <span class="id" title="var">S</span> <span class="id" title="var">HS</span> <span class="id" title="var">HΦ</span>. <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_mem_eq_l"><span class="id" title="lemma">set_mem_eq_l</span></a>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">E</span> | <span class="id" title="tactic">apply</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">assumption</span>]. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The least fixed point of <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> below <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="least_fixed_point_set" class="idref" href="#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a> := <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#separation_set"><span class="id" title="definition">separation_set</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.B"><span class="id" title="variable">B</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#in_every_closed_subset"><span class="id" title="definition">in_every_closed_subset</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="least_fixed_point_bound" class="idref" href="#least_fixed_point_bound"><span class="id" title="lemma">least_fixed_point_bound</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.B"><span class="id" title="variable">B</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span> <span class="id" title="var">z</span> <span class="id" title="var">Hz</span>. <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_mem_separation"><span class="id" title="lemma">set_mem_separation</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#in_every_closed_subset_resp"><span class="id" title="lemma">in_every_closed_subset_resp</span></a>) <span class="id" title="tactic">in</span> <span class="id" title="var">Hz</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">Hz</span> <span class="id" title="var">_</span>]. <span class="id" title="tactic">exact</span> <span class="id" title="var">Hz</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+It is included in every subset of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> closed under <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="least_fixed_point_least" class="idref" href="#least_fixed_point_least"><span class="id" title="lemma">least_fixed_point_least</span></a> : <span class="id" title="keyword">forall</span> <a id="S:10" class="idref" href="#S:10"><span class="id" title="binder">S</span></a>, <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:10"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.B"><span class="id" title="variable">B</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:10"><span class="id" title="variable">S</span></a>) <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:10"><span class="id" title="variable">S</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#S:10"><span class="id" title="variable">S</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">S</span> <span class="id" title="var">HS</span> <span class="id" title="var">HΦ</span> <span class="id" title="var">z</span> <span class="id" title="var">Hz</span>. <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_mem_separation"><span class="id" title="lemma">set_mem_separation</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#in_every_closed_subset_resp"><span class="id" title="lemma">in_every_closed_subset_resp</span></a>) <span class="id" title="tactic">in</span> <span class="id" title="var">Hz</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">_</span> <span class="id" title="var">Hz</span>]. <span class="id" title="tactic">apply</span> <span class="id" title="var">Hz</span>; <span class="id" title="tactic">assumption</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Hypothesis</span> <a id="LeastFixedPoint.Hmono" class="idref" href="#LeastFixedPoint.Hmono"><span class="id" title="variable">Hmono</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#monotone_operator"><span class="id" title="definition">monotone_operator</span></a>.<br/>
+<span class="id" title="keyword">Hypothesis</span> <a id="LeastFixedPoint.Hbound" class="idref" href="#LeastFixedPoint.Hbound"><span class="id" title="variable">Hbound</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#bounded_operator"><span class="id" title="definition">bounded_operator</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+It is closed under <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="least_fixed_point_closed" class="idref" href="#least_fixed_point_closed"><span class="id" title="lemma">least_fixed_point_closed</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a>) <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">z</span> <span class="id" title="var">Hz</span>. <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_mem_separation"><span class="id" title="lemma">set_mem_separation</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#in_every_closed_subset_resp"><span class="id" title="lemma">in_every_closed_subset_resp</span></a>). <span class="id" title="tactic">split</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.Hbound"><span class="id" title="variable">Hbound</span></a> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_bound"><span class="id" title="lemma">least_fixed_point_bound</span></a> <span class="id" title="var">_</span> <span class="id" title="var">Hz</span>).<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">intros</span> <span class="id" title="var">S</span> <span class="id" title="var">HS</span> <span class="id" title="var">HΦ</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">HΦ</span>. <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.Hmono"><span class="id" title="variable">Hmono</span></a>; [<span class="id" title="tactic">exact</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_bound"><span class="id" title="lemma">least_fixed_point_bound</span></a> | <span class="id" title="tactic">exact</span> <span class="id" title="var">HS</span> | | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hz</span>].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_least"><span class="id" title="lemma">least_fixed_point_least</span></a>; <span class="id" title="tactic">assumption</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+It is a fixed point. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="least_fixed_point_unfold" class="idref" href="#least_fixed_point_unfold"><span class="id" title="lemma">least_fixed_point_unfold</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a>).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_least"><span class="id" title="lemma">least_fixed_point_least</span></a>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.Hbound"><span class="id" title="variable">Hbound</span></a> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_bound"><span class="id" title="lemma">least_fixed_point_bound</span></a>).<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.Hmono"><span class="id" title="variable">Hmono</span></a>; [<span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.Hbound"><span class="id" title="variable">Hbound</span></a> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_bound"><span class="id" title="lemma">least_fixed_point_bound</span></a>) | <span class="id" title="tactic">exact</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_bound"><span class="id" title="lemma">least_fixed_point_bound</span></a> | <span class="id" title="tactic">exact</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_closed"><span class="id" title="lemma">least_fixed_point_closed</span></a>].<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="least_fixed_point_eq" class="idref" href="#least_fixed_point_eq"><span class="id" title="lemma">least_fixed_point_eq</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_eq"><span class="id" title="definition">set_eq</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a>).<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_eq_intro"><span class="id" title="lemma">set_eq_intro</span></a>; [<span class="id" title="tactic">exact</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_unfold"><span class="id" title="lemma">least_fixed_point_unfold</span></a> | <span class="id" title="tactic">exact</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_closed"><span class="id" title="lemma">least_fixed_point_closed</span></a>]. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Induction: a property that respects equality and holds of every
+    member of <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> of the members having it holds of every member. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="least_fixed_point_ind" class="idref" href="#least_fixed_point_ind"><span class="id" title="lemma">least_fixed_point_ind</span></a> : <span class="id" title="keyword">forall</span> <a id="P:15" class="idref" href="#P:15"><span class="id" title="binder">P</span></a>, <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#respects_set_eq"><span class="id" title="definition">respects_set_eq</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#P:15"><span class="id" title="variable">P</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#separation_set"><span class="id" title="definition">separation_set</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#P:15"><span class="id" title="variable">P</span></a>)) (<a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#separation_set"><span class="id" title="definition">separation_set</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#P:15"><span class="id" title="variable">P</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <a id="z:16" class="idref" href="#z:16"><span class="id" title="binder">z</span></a>, <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_mem"><span class="id" title="definition">set_mem</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#z:16"><span class="id" title="variable">z</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#P:15"><span class="id" title="variable">P</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#z:16"><span class="id" title="variable">z</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">P</span> <span class="id" title="var">HP</span> <span class="id" title="var">Hcl</span> <span class="id" title="var">z</span> <span class="id" title="var">Hz</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hs</span> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_sub"><span class="id" title="definition">set_sub</span></a> (<a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#separation_set"><span class="id" title="definition">separation_set</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_set"><span class="id" title="definition">least_fixed_point_set</span></a> <span class="id" title="var">P</span>) <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint.B"><span class="id" title="variable">B</span></a>).<br/>
+&nbsp;&nbsp;{ <span class="id" title="tactic">intros</span> <span class="id" title="var">w</span> <span class="id" title="var">Hw</span>. <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_mem_separation"><span class="id" title="lemma">set_mem_separation</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HP</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">Hw</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">Hw</span> <span class="id" title="var">_</span>]. <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_bound"><span class="id" title="lemma">least_fixed_point_bound</span></a> <span class="id" title="var">_</span> <span class="id" title="var">Hw</span>). }<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#least_fixed_point_least"><span class="id" title="lemma">least_fixed_point_least</span></a> <span class="id" title="var">_</span> <span class="id" title="var">Hs</span> <span class="id" title="var">Hcl</span> <span class="id" title="var">_</span> <span class="id" title="var">Hz</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_mem_separation"><span class="id" title="lemma">set_mem_separation</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HP</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">_</span> <span class="id" title="var">H</span>]. <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#LeastFixedPoint"><span class="id" title="section">LeastFixedPoint</span></a>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

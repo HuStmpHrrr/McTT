@@ -1285,12 +1285,12 @@ The inner values are at the retagged environments; the subtyping is
 <div class="paragraph"> </div>
 
     Two instantiations of the same hypothesis at two weakenings.  Given
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#be00094b9621842fb6f0d5e9b43e16b8"><span class="id" title="variable">Γ'</span></a></span> <span class="inlinecode">⊨ʷ</span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> and <span class="inlinecode">ρ</span> <span class="inlinecode">≈</span> <span class="inlinecode">ρ'</span> <span class="inlinecode">∈</span> <span class="inlinecode"><span class="id" title="var">R_Γ'</span></span>, instantiate <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode">⊨ˢ</span> <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ'</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#0223ab6e6f73528ca206d109916371ac"><span class="id" title="variable">Δ'</span></a></span>:
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.SlotTransport.html#8552f896a49f1fa9217b725b5a97005d"><span class="id" title="variable">Γ'</span></a></span> <span class="inlinecode">⊨ʷ</span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> and <span class="inlinecode">ρ</span> <span class="inlinecode">≈</span> <span class="inlinecode">ρ'</span> <span class="inlinecode">∈</span> <span class="inlinecode"><span class="id" title="var">R_Γ'</span></span>, instantiate <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode">⊨ˢ</span> <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ'</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#0223ab6e6f73528ca206d109916371ac"><span class="id" title="variable">Δ'</span></a></span>:
 
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#be00094b9621842fb6f0d5e9b43e16b8"><span class="id" title="variable">Γ'</span></a></span> with the composite <span class="inlinecode">ψ</span> <span class="inlinecode">⊙</span> <span class="inlinecode">φ</span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_wk_compose"><span class="id" title="lemma">rel_wk_compose</span></a></span>), whose outer values
+<li> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.SlotTransport.html#8552f896a49f1fa9217b725b5a97005d"><span class="id" title="variable">Γ'</span></a></span> with the composite <span class="inlinecode">ψ</span> <span class="inlinecode">⊙</span> <span class="inlinecode">φ</span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_wk_compose"><span class="id" title="lemma">rel_wk_compose</span></a></span>), whose outer values
       are the outer values wanted, because <span class="inlinecode">σ[ψ][φ]</span> is <span class="inlinecode">σ[ψ</span> <span class="inlinecode">⊙</span> <span class="inlinecode">φ]</span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#sb_wk_wk"><span class="id" title="lemma">sb_wk_wk</span></a></span>);
 
 </li>
@@ -1973,7 +1973,7 @@ The term-level reflexive instances.  The substitution cases use one to
     types, or a prefix of it. 
 <div class="paragraph"> </div>
 
- The entries of <span class="inlinecode"><span class="id" title="var">Δ2</span></span>, at the environments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> relates, are propositional
+ The entries of <span class="inlinecode"><span class="id" title="var">Δ2</span></span>, at the environments <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> relates, are propositional
     entries of <span class="inlinecode"><span class="id" title="var">Δ1</span></span> exactly when they are of <span class="inlinecode"><span class="id" title="var">Δ2</span></span>: an evaluation at <span class="inlinecode"><span class="id" title="var">Δ1</span></span>
     holds a kept proof at the one and a value at the other, as an
     evaluation at <span class="inlinecode"><span class="id" title="var">Δ2</span></span> asks. 
@@ -2231,7 +2231,7 @@ The environments of <span class="inlinecode"><span class="id" title="var">Γ1</s
 
 <div class="paragraph"> </div>
 
-    Two valid terms of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> are equal when their values at related environments
+    Two valid terms of <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> are equal when their values at related environments
     are related.  The commutation obligations come from the two validity
     judgments, and the relatedness obligation from the pointwise premise read
     at the substituted environments. 

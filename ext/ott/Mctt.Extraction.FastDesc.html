@@ -42,7 +42,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1512"></a><h1 class="section">Fast Member Descriptions</h1>
+<a id="lab1779"></a><h1 class="section">Fast Member Descriptions</h1>
 
 
 <div class="paragraph"> </div>
@@ -63,7 +63,7 @@
     make decoding exact on them. 
 <div class="paragraph"> </div>
 
-<a id="lab1513"></a><h2 class="section">Canonical Tries and Entries</h2>
+<a id="lab1780"></a><h2 class="section">Canonical Tries and Entries</h2>
 
 <div class="paragraph"> </div>
 
@@ -111,7 +111,7 @@ An entry found in a canonical trie is canonical.
 </div>
 
 <div class="doc">
-A stored closed entry read in a closed body of telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ge_read"><span class="id" title="definition">ge_read</span></a></span>'s
+A stored closed entry read in a closed body of telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ge_read"><span class="id" title="definition">ge_read</span></a></span>'s
     twin: a closed submodule is read with its full telescope. 
 </div>
 <div class="code">
@@ -165,7 +165,7 @@ Reading commutes with decoding on a canonical entry.
 </div>
 
 <div class="doc">
-<a id="lab1514"></a><h2 class="section">Descriptions</h2>
+<a id="lab1781"></a><h2 class="section">Descriptions</h2>
 
 </div>
 <div class="code">
@@ -182,14 +182,14 @@ Reading commutes with decoding on a canonical entry.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#mdesc_open"><span class="id" title="constructor">mdesc_open</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span>: a local body, Core's 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#mdesc_open"><span class="id" title="constructor">mdesc_open</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span>: a local body, Core's 
 </div>
 <div class="code">
 | <a id="fmdesc_open" class="idref" href="#fmdesc_open"><span class="id" title="constructor">fmdesc_open</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Extraction.FastDesc.html#fmdesc:19"><span class="id" title="inductive">fmdesc</span></a><br/>
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#mdesc_closed"><span class="id" title="constructor">mdesc_closed</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#d263e40dc8a7d3c09db842596e99d9d2"><span class="id" title="variable">Θ'</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.AtNeut.Ns"><span class="id" title="variable">Ns</span></a></span>, with the stored body <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> kept as the
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#mdesc_closed"><span class="id" title="constructor">mdesc_closed</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#d263e40dc8a7d3c09db842596e99d9d2"><span class="id" title="variable">Θ'</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.AtNeut.Ns"><span class="id" title="variable">Ns</span></a></span>, with the stored body <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> kept as the
     canonical trie <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> 
 </div>
 <div class="code">
@@ -610,7 +610,7 @@ The Core description a fast one stands for, for types only
 </div>
 
 <div class="doc">
-<a id="lab1515"></a><h2 class="section">Entries of a Description</h2>
+<a id="lab1782"></a><h2 class="section">Entries of a Description</h2>
 
 <div class="paragraph"> </div>
 
@@ -823,7 +823,7 @@ An entry found is read at the path of the description's entries.
 </div>
 
 <div class="doc">
-<a id="lab1516"></a><h2 class="section">Located Bodies, Canonical</h2>
+<a id="lab1783"></a><h2 class="section">Located Bodies, Canonical</h2>
 
 <div class="paragraph"> </div>
 

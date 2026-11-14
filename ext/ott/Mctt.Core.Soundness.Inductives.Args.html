@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab794"></a><h1 class="section">Glued Arguments along a Telescope</h1>
+<a id="lab1041"></a><h1 class="section">Glued Arguments along a Telescope</h1>
 
 
 <div class="paragraph"> </div>
@@ -81,7 +81,7 @@
 </div>
 
 <div class="doc">
-<a id="lab795"></a><h2 class="section">Glued Arguments</h2>
+<a id="lab1042"></a><h2 class="section">Glued Arguments</h2>
 
 
 <div class="paragraph"> </div>
@@ -89,7 +89,7 @@
     A list of terms glued positionwise to a list of values along a
     telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GenericDec.C"><span class="id" title="variable">C</span></a></span> (innermost first), each at the instance of its type at the
     terms before it, over a base <span class="inlinecode">τ</span> and <span class="inlinecode">ρ</span>.  One argument: the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, evaluated in <span class="inlinecode">ρ</span>, is glued at a universe,
-    and the term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at its instance <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> to the value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>. 
+    and the term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at its instance <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> to the value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>. 
 </div>
 <div class="code">
 #[<span class="id" title="var">warnings</span>="-cannot-define-projection"]<br/>
@@ -139,14 +139,14 @@ It is glued at the universe
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> is glued to it 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> is glued to it 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="glu_arg_glu_typ" class="idref" href="#glu_arg_glu_typ"><span class="id" title="projection">glu_arg_glu_typ</span></a> : <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#2e9b9606fe17644c6a7e43c5356c998c"><span class="id" title="variable">Δ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#846f957ebd70dcf39c1be3b1f53f6561"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#T:5"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#846f957ebd70dcf39c1be3b1f53f6561"><span class="id" title="notation">®</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#glu_arg_typ:11"><span class="id" title="method">glu_arg_typ</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> is glued to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> is glued to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="glu_arg_glu" class="idref" href="#glu_arg_glu"><span class="id" title="projection">glu_arg_glu</span></a> : <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#2e9b9606fe17644c6a7e43c5356c998c"><span class="id" title="variable">Δ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#815d5005c18848d4c8347cf7a6662ce8"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#M:6"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#815d5005c18848d4c8347cf7a6662ce8"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#T:5"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#815d5005c18848d4c8347cf7a6662ce8"><span class="id" title="notation">®</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#v:7"><span class="id" title="variable">v</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#815d5005c18848d4c8347cf7a6662ce8"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#glu_arg_exp:12"><span class="id" title="method">glu_arg_exp</span></a> }.<br/>
@@ -275,7 +275,7 @@ Each argument's type is a type and the argument an element of it, so
 </div>
 
 <div class="doc">
-<a id="lab796"></a><h2 class="section">Glued Substitutions from Glued Arguments</h2>
+<a id="lab1043"></a><h2 class="section">Glued Substitutions from Glued Arguments</h2>
 
 </div>
 <div class="code">
@@ -382,7 +382,7 @@ The heads of an environment of a telescope of assumptions <span class="inlinecod
 </div>
 
 <div class="doc">
-A term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> of type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> glued to the value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> at the stored type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>
+A term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> of type <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> glued to the value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> at the stored type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>
     of its entry: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>'s value <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, glued at the universe <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span> by <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> and
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.RecordRealize.El"><span class="id" title="variable">El</span></a></span>, is the one <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is glued at. 
 </div>
@@ -406,7 +406,7 @@ The stored type evaluates to <span class="inlinecode"><a class="idref" href="Mct
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> is glued to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> there 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> is glued to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> there 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="glu_stored_at_glu" class="idref" href="#glu_stored_at_glu"><span class="id" title="projection">glu_stored_at_glu</span></a> : <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#f4afae4c60ced6ff1c05aee1830e5299"><span class="id" title="variable">Δ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#815d5005c18848d4c8347cf7a6662ce8"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#M:113"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#815d5005c18848d4c8347cf7a6662ce8"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#T:112"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#815d5005c18848d4c8347cf7a6662ce8"><span class="id" title="notation">®</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#v:114"><span class="id" title="variable">v</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#815d5005c18848d4c8347cf7a6662ce8"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#El:119"><span class="id" title="variable">El</span></a> }.<br/>
@@ -627,7 +627,7 @@ A substitution glued into a telescope of assumptions <span class="inlinecode"><a
 </div>
 
 <div class="doc">
-<a id="lab797"></a><h2 class="section">Constants of <span class="inlinecode"><span class="id" title="var">Π</span></span>-Types over Telescopes</h2>
+<a id="lab1044"></a><h2 class="section">Constants of <span class="inlinecode"><span class="id" title="var">Π</span></span>-Types over Telescopes</h2>
 
 <div class="paragraph"> </div>
 
@@ -652,9 +652,9 @@ A constant <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.I
     arguments are given by the relation <span class="inlinecode"><span class="id" title="var">Fr</span></span>, is glued at the <span class="inlinecode"><span class="id" title="var">Π</span></span> when its
     applications to glued arguments are glued at the codomain.  The
     arguments so far are the values <span class="inlinecode"><span class="id" title="var">xs</span></span> of the context <span class="inlinecode"><span class="id" title="var">Γb</span></span> already
-    consumed, a suffix of the full telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>; <span class="inlinecode"><span class="id" title="var">Fr</span></span> extends along an
+    consumed, a suffix of the full telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>; <span class="inlinecode"><span class="id" title="var">Fr</span></span> extends along an
     argument whose values so far are those of a glued substitution of a
-    suffix of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> (<span class="inlinecode"><span class="id" title="var">Happ</span></span>): the value of a view's constructor at its last
+    suffix of <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> (<span class="inlinecode"><span class="id" title="var">Happ</span></span>): the value of a view's constructor at its last
     uniform parameter needs the uniform parameters related. 
 </div>
 <div class="code">
@@ -1148,7 +1148,7 @@ The same over a closed telescope, at the value of the <span class="inlinecode"><
 </div>
 
 <div class="doc">
-<a id="lab798"></a><h2 class="section">Closed Constants</h2>
+<a id="lab1045"></a><h2 class="section">Closed Constants</h2>
 
 </div>
 <div class="code">
@@ -1233,7 +1233,7 @@ A closed constant whose value depends on the environment only through
 </div>
 
 <div class="doc">
-<a id="lab799"></a><h2 class="section">The Entries of a Glued Telescope</h2>
+<a id="lab1046"></a><h2 class="section">The Entries of a Glued Telescope</h2>
 
 <div class="paragraph"> </div>
 
@@ -1297,7 +1297,7 @@ The head of a glued context of an assumption is valid.
 </div>
 
 <div class="doc">
-<a id="lab800"></a><h2 class="section">Glued Arguments of Closed Telescopes</h2>
+<a id="lab1047"></a><h2 class="section">Glued Arguments of Closed Telescopes</h2>
 
 </div>
 <div class="code">
@@ -1546,7 +1546,7 @@ Arguments glued along a member's telescope are glued to their values
 </div>
 
 <div class="doc">
-<a id="lab801"></a><h2 class="section">The Non-Recursive Arguments, Syntactically</h2>
+<a id="lab1048"></a><h2 class="section">The Non-Recursive Arguments, Syntactically</h2>
 
 <div class="paragraph"> </div>
 
@@ -1847,7 +1847,7 @@ An element of the relation of a domain's type, read at a related value.
 </div>
 
 <div class="doc">
-<a id="lab802"></a><h2 class="section">Closed Gluing at <span class="inlinecode">⋅</span> Weakens to Every Glued Context</h2>
+<a id="lab1049"></a><h2 class="section">Closed Gluing at <span class="inlinecode">⋅</span> Weakens to Every Glued Context</h2>
 
 
 <div class="paragraph"> </div>

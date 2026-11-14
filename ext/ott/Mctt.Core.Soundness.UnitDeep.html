@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab763"></a><h1 class="section">Deep Units</h1>
+<a id="lab1010"></a><h1 class="section">Deep Units</h1>
 
 
 <div class="paragraph"> </div>
@@ -90,7 +90,7 @@
 </div>
 
 <div class="doc">
-<a id="lab764"></a><h2 class="section">Substitutions preserving instances</h2>
+<a id="lab1011"></a><h2 class="section">Substitutions preserving instances</h2>
 
 <div class="paragraph"> </div>
 
@@ -397,7 +397,7 @@ The entries before, and the context the entry's unit is read at
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">exact</span> (<span class="id" title="var">glu_gmod_units_deep_stable</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΦe'</span> <span class="id" title="var">HΦ</span> <span class="id" title="var">HΓ</span> <span class="id" title="var">H</span>σ <span class="id" title="var">Hm</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">destruct</span> <span class="id" title="var">HΦ</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">HΦ</span> <span class="id" title="var">HU</span>]; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">exact</span> (<span class="id" title="var">glu_gmod_units_deep_stable</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΦe'</span> <span class="id" title="var">HΦ</span> <span class="id" title="var">HΓ</span> <span class="id" title="var">H</span>σ <span class="id" title="var">Hm</span>) | <span class="id" title="tactic">exact</span> (<span class="id" title="var">Hat</span> <span class="id" title="var">_</span> <span class="id" title="var">HU</span>) ].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">exact</span> (<span class="id" title="var">glu_gmod_units_deep_stable</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΦe'</span> <span class="id" title="var">HΦ</span> <span class="id" title="var">HΓ</span> <span class="id" title="var">H</span>σ <span class="id" title="var">Hm</span>).<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Members.html#gm_expand"><span class="id" title="definition">gm_expand</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">HΦe</span>; <span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Core.Soundness.UnitEqCases.html#body_ctx_graft"><span class="id" title="lemma">body_ctx_graft</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">HΦe</span> <span class="id" title="tactic">by</span> <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#gm_noopen_expand"><span class="id" title="lemma">gm_noopen_expand</span></a>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Members.html#gm_expand"><span class="id" title="definition">gm_expand</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">HΦe</span>; <span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#body_ctx_graft"><span class="id" title="lemma">body_ctx_graft</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">HΦe</span> <span class="id" title="tactic">by</span> <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#gm_noopen_expand"><span class="id" title="lemma">gm_noopen_expand</span></a>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">HΦ</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">HΦ</span> <span class="id" title="var">HΦg</span>].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Soundness.UnitEqCases.html#glu_rel_ext_under_sub_app_inv"><span class="id" title="lemma">glu_rel_ext_under_sub_app_inv</span></a> <span class="id" title="var">_</span> <span class="id" title="var">HΦe</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HΦe'</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Soundness.UnitDeep.html#glu_rel_ext_under_sub_stable"><span class="id" title="lemma">glu_rel_ext_under_sub_stable</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΦe'</span> <span class="id" title="var">HΓ</span> <span class="id" title="var">H</span>σ) <span class="id" title="keyword">as</span> [<span class="id" title="var">HB</span>σ <span class="id" title="var">HBst</span>].<br/>
@@ -426,7 +426,7 @@ A slot moved: the substitution's module component
 </div>
 
 <div class="doc">
-<a id="lab765"></a><h2 class="section">Renamings</h2>
+<a id="lab1012"></a><h2 class="section">Renamings</h2>
 
 <div class="paragraph"> </div>
 
@@ -460,7 +460,7 @@ A deep unit renamed into a context glued with its types is deep.
 </div>
 
 <div class="doc">
-<a id="lab766"></a><h2 class="section">The β instance</h2>
+<a id="lab1013"></a><h2 class="section">The β instance</h2>
 
 <div class="paragraph"> </div>
 
@@ -529,7 +529,7 @@ A deep unit whose parameters end in <span class="inlinecode"><a class="idref" hr
 </div>
 
 <div class="doc">
-<a id="lab767"></a><h2 class="section">The fill of a body's entries</h2>
+<a id="lab1014"></a><h2 class="section">The fill of a body's entries</h2>
 
 <div class="paragraph"> </div>
 
@@ -614,7 +614,7 @@ A unit of the body, moved by the fill before it and renamed
 </div>
 
 <div class="doc">
-<a id="lab768"></a><h2 class="section">A submodule selected from a deep body</h2>
+<a id="lab1015"></a><h2 class="section">A submodule selected from a deep body</h2>
 
 <div class="paragraph"> </div>
 
@@ -668,7 +668,7 @@ The body submodule <span class="inlinecode"><span class="id" title="var">y</span
 </div>
 
 <div class="doc">
-<a id="lab769"></a><h2 class="section">Module slots</h2>
+<a id="lab1016"></a><h2 class="section">Module slots</h2>
 
 <div class="paragraph"> </div>
 
@@ -733,7 +733,7 @@ The unit of a module slot is glued at the instances of the context:
 </div>
 
 <div class="doc">
-<a id="lab770"></a><h2 class="section">Stored aliases</h2>
+<a id="lab1017"></a><h2 class="section">Stored aliases</h2>
 
 <div class="paragraph"> </div>
 

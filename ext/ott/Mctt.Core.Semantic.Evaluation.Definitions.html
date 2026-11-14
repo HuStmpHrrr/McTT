@@ -87,7 +87,7 @@ The codomain of a <span class="inlinecode"><span class="id" title="var">Π</span
 </div>
 
 <div class="doc">
-<a id="lab530"></a><h1 class="section">Kind-Directed Evaluation</h1>
+<a id="lab562"></a><h1 class="section">Kind-Directed Evaluation</h1>
 
 
 <div class="paragraph"> </div>
@@ -148,7 +148,7 @@ The global module at <span class="inlinecode"><a class="idref" href="Mctt.Extrac
 </div>
 
 <div class="doc">
-The kind of the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>-th parameter of a telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>, outermost first:
+The kind of the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>-th parameter of a telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>, outermost first:
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_level"><span class="id" title="constructor">ak_level</span></a></span> at an assumption tagged <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_level"><span class="id" title="constructor">ak_level</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ak_relevant"><span class="id" title="constructor">ak_relevant</span></a></span> at every
     other entry and past the telescope.  Parameters are never propositional
     by the typing rules (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.DescTyping.html#params_evaluated"><span class="id" title="definition">params_evaluated</span></a></span>: relevant or levels), so at a
@@ -297,7 +297,7 @@ The proof a member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syn
 <div class="doc">
 The environment a proof member of a global module <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> at the
     arguments <span class="inlinecode"><span class="id" title="var">args</span></span> is kept over (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_sel_global_proof"><span class="id" title="constructor">eval_sel_global_proof</span></a></span>): the arguments,
-    at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>'s parameter telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> (innermost first, as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gc_loc"><span class="id" title="definition">gc_loc</span></a></span> gives
+    at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>'s parameter telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> (innermost first, as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gc_loc"><span class="id" title="definition">gc_loc</span></a></span> gives
     it), then the module at <span class="inlinecode">#0</span>, stored at its alias applied to them, a
     unit written over the arguments.  So every entry is written over its
     own tail, and readback binds the arguments, then the module. 
@@ -310,7 +310,7 @@ The environment a proof member of a global module <span class="inlinecode"><a cl
 </div>
 
 <div class="doc">
-<a id="lab531"></a><h2 class="section">The Types of the Variables an Eliminator Binds</h2>
+<a id="lab563"></a><h2 class="section">The Types of the Variables an Eliminator Binds</h2>
 
 
 <div class="paragraph"> </div>
@@ -455,7 +455,7 @@ The variables of a motive of the member <span class="inlinecode"><a class="idref
 </div>
 
 <div class="doc">
-<a id="lab532"></a><h1 class="section">The Kinds of Members of Module Values</h1>
+<a id="lab564"></a><h1 class="section">The Kinds of Members of Module Values</h1>
 
 
 <div class="paragraph"> </div>
@@ -802,7 +802,7 @@ An entry adds its <span class="inlinecode"><a class="idref" href="Mctt.Core.Sema
 </div>
 
 <div class="doc">
-<a id="lab533"></a><h1 class="section">Evaluation of Expressions</h1>
+<a id="lab565"></a><h1 class="section">Evaluation of Expressions</h1>
 
 
 <div class="paragraph"> </div>
@@ -2326,7 +2326,7 @@ A submodule, then the rest of the chain.
 </div>
 
 <div class="doc">
-The environment the members of a body see after its entries <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>: each
+The environment the members of a body see after its entries <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span>: each
     definition adds its value and each module its closure. 
 </div>
 <div class="code">
@@ -2464,7 +2464,7 @@ A definition with a module part adds its term's value and its unit's
 </div>
 
 <div class="doc">
-<a id="lab534"></a><h1 class="section">Evaluation of Substitutions</h1>
+<a id="lab566"></a><h1 class="section">Evaluation of Substitutions</h1>
 
 
 <div class="paragraph"> </div>
@@ -2586,7 +2586,7 @@ The unit <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Sys
 </div>
 
 <div class="doc">
-An entry stored at the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> and the unit <span class="inlinecode"><span class="id" title="var">U</span></span>: its values
+An entry stored at the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> and the unit <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span>: its values
     unchanged. 
 </div>
 <div class="code">
@@ -2601,8 +2601,8 @@ An entry stored at the type <span class="inlinecode"><a class="idref" href="Mctt
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_sentry"><span class="id" title="definition">eval_sentry</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> <span class="inlinecode"><span class="id" title="var">U</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><span class="id" title="var">d</span></span>: the substitution entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> denotes the
-    environment entry <span class="inlinecode"><span class="id" title="var">d</span></span> in <span class="inlinecode">ρ</span>, stored at the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> and the unit <span class="inlinecode"><span class="id" title="var">U</span></span>:
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_sentry"><span class="id" title="definition">eval_sentry</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span>: the substitution entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> denotes the
+    environment entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> in <span class="inlinecode">ρ</span>, stored at the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> and the unit <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span>:
     a variable, the entry it reads; a term, its value; a module
     expression, its value; both, at a definition with a module part. 
 </div>
@@ -2620,7 +2620,7 @@ An entry stored at the type <span class="inlinecode"><a class="idref" href="Mctt
 
 <div class="doc">
 The entry a substitution entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> denotes in <span class="inlinecode">ρ</span> at a proposition,
-    stored at the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> and the unit <span class="inlinecode"><span class="id" title="var">U</span></span>: the proof kept as it is, or
+    stored at the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span> and the unit <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span>: the proof kept as it is, or
     the entry of a variable. 
 </div>
 <div class="code">
@@ -3205,7 +3205,7 @@ The substitution may be replaced by a pointwise-equal one.  The
 </div>
 
 <div class="doc">
-<a id="lab535"></a><h2 class="section">The Substitutions that Compute</h2>
+<a id="lab567"></a><h2 class="section">The Substitutions that Compute</h2>
 
 
 <div class="paragraph"> </div>

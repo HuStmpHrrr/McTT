@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab914"></a><h1 class="section">The Members of Glued Module Values</h1>
+<a id="lab1161"></a><h1 class="section">The Members of Glued Module Values</h1>
 
 
 <div class="paragraph"> </div>
@@ -91,7 +91,7 @@ A sort of types is the sort of a kind next to a universe.
 </div>
 
 <div class="doc">
-<a id="lab915"></a><h2 class="section">The types of members read at arguments</h2>
+<a id="lab1162"></a><h2 class="section">The types of members read at arguments</h2>
 
 <div class="paragraph"> </div>
 
@@ -176,14 +176,14 @@ A stored entry's description, of a <span class="inlinecode"><span class="id" tit
 </div>
 
 <div class="doc">
-<a id="lab916"></a><h2 class="section">Saturated bodies</h2>
+<a id="lab1163"></a><h2 class="section">Saturated bodies</h2>
 
 <div class="paragraph"> </div>
 
  The member of a saturated body value glued as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span>, at a type value of
     an evaluated kind related to the member types of the value
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#dmod_mem_type_rel"><span class="id" title="definition">dmod_mem_type_rel</span></a></span>), is glued as the member at any type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> glued
-    there, its own type equal to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>: glued at the entry's own type value
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#dmod_mem_type_rel"><span class="id" title="definition">dmod_mem_type_rel</span></a></span>), is glued as the member at any type <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> glued
+    there, its own type equal to <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>: glued at the entry's own type value
     through the identity factorization (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_body_member"><span class="id" title="record">glu_body_member</span></a></span>), moved to the
     related one (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Global.GlobalValues.html#glu_elem_to_target"><span class="id" title="lemma">glu_elem_to_target</span></a></span>).  A proof is no such member: its
     type is a proposition (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.ModuleValues.html#per_body_proof_kind"><span class="id" title="lemma">per_body_proof_kind</span></a></span>). 
@@ -566,7 +566,7 @@ Nor does a saturated body
 </div>
 
 <div class="doc">
-<a id="lab917"></a><h2 class="section">Saturated global modules</h2>
+<a id="lab1164"></a><h2 class="section">Saturated global modules</h2>
 
 </div>
 <div class="code">
@@ -1131,14 +1131,14 @@ The entry of the stored module, at no argument
 
 <div class="doc">
 The member of a module expression whose module part is a saturated
-      stored module at arguments glued as the value's, at any type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>
+      stored module at arguments glued as the value's, at any type <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>
       glued at a type value related to the member types of the values
-      related to it, its own type equal to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>: the stored member applied
+      related to it, its own type equal to <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>: the stored member applied
       (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Global.GlobalValues.html#glu_global_apps_at"><span class="id" title="lemma">glu_global_apps_at</span></a></span>), which the member is (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.LookupSound.html#mem_closed_part"><span class="id" title="lemma">mem_closed_part</span></a></span>); its
       own type, the stored type at the arguments
       (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#mdesc_ats_read_type_full"><span class="id" title="lemma">mdesc_ats_read_type_full</span></a></span>), is glued over the module's telescope
       there (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_def_over_tele"><span class="id" title="record">glu_def_over_tele</span></a></span>), at the member type of the value, so it
-      is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#glu_typ_to_target"><span class="id" title="lemma">glu_typ_to_target</span></a></span>).  The stored module is no open frame,
+      is <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#glu_typ_to_target"><span class="id" title="lemma">glu_typ_to_target</span></a></span>).  The stored module is no open frame,
       so that its member read bare is its entry. 
 </div>
 <div class="code">
@@ -1251,7 +1251,7 @@ The member is the stored member applied
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx_fn"><span class="id" title="definition">ctx_fn</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">Heq0</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_exp_eq"><span class="id" title="lemma">sub_preserves_exp_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Heq0</span> <span class="id" title="var">H</span>σ1) <span class="id" title="keyword">as</span> <span class="id" title="var">Heq1</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Core.Syntactic.Substitution.html#apps_exp_sub"><span class="id" title="lemma">apps_exp_sub</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Heq1</span>; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">Heq1</span>; <span class="id" title="tactic">rewrite</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#mod_qname_sub"><span class="id" title="lemma">mod_qname_sub</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#qname_mod_qname"><span class="id" title="lemma">qname_mod_qname</span></a> <span class="id" title="var">p</span>)) <span class="id" title="tactic">in</span> <span class="id" title="var">Heq1</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#wf_exp_eq_conv_kind"><span class="id" title="lemma">wf_exp_eq_conv_kind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Heq1</span> <span class="id" title="var">Heq</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Heq2</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.Presup.html#wf_exp_eq_conv_kind"><span class="id" title="lemma">wf_exp_eq_conv_kind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Heq1</span> <span class="id" title="var">Heq</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Heq2</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_trm_resp_exp_eq"><span class="id" title="lemma">glu_univ_elem_trm_resp_exp_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hga</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Happs</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_sym"><span class="id" title="constructor">wf_exp_eq_sym</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Heq2</span>)).<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
 
@@ -1259,7 +1259,7 @@ The member is the stored member applied
 </div>
 
 <div class="doc">
-<a id="lab918"></a><h3 class="section">Type formers read as members</h3>
+<a id="lab1165"></a><h3 class="section">Type formers read as members</h3>
 
 <div class="paragraph"> </div>
 
@@ -1403,7 +1403,7 @@ So is a record type's under declaration (<span class="inlinecode"><a class="idre
 </div>
 
 <div class="doc">
-<a id="lab919"></a><h3 class="section">Module expressions naming a stored module</h3>
+<a id="lab1166"></a><h3 class="section">Module expressions naming a stored module</h3>
 
 <div class="paragraph"> </div>
 
@@ -1491,7 +1491,7 @@ The value lacks the parameter: completeness at the instance
 </div>
 
 <div class="doc">
-<a id="lab920"></a><h2 class="section">Saturated global modules, from the source of a sound embedding</h2>
+<a id="lab1167"></a><h2 class="section">Saturated global modules, from the source of a sound embedding</h2>
 
 </div>
 <div class="code">
@@ -1510,7 +1510,7 @@ The value lacks the parameter: completeness at the instance
 
 <div class="doc">
 A term member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> stored at the source in the module <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> of the
-      telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>: what the member of a saturated global module value is
+      telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>: what the member of a saturated global module value is
       glued from (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#glu_global_member_src"><span class="id" title="lemma">glu_global_member_src</span></a></span>).  It names the path and the
       member only, so that it holds of every module expression whose
       description reads the stored module, at every context. 
@@ -1521,7 +1521,7 @@ A term member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntacti
 &nbsp;&nbsp;&nbsp;&nbsp;{ </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> is stored at the source, of the telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> and the body <span class="inlinecode"><span class="id" title="var">Φs</span></span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> is stored at the source, of the telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> and the body <span class="inlinecode"><span class="id" title="var">Φs</span></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a id="src_stored_member_loc" class="idref" href="#src_stored_member_loc"><span class="id" title="projection">src_stored_member_loc</span></a> : <a class="idref" href="Mctt.Core.Syntactic.System.Global.Paths.html#loc"><span class="id" title="definition">loc</span></a> <a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#f323c9d179844803b72de4085bdb6143"><span class="id" title="variable">Θs</span></a> <a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#df619b1c5dc7bd7a40ef9ba688379b8f"><span class="id" title="variable">Ξs</span></a> <a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#p:462"><span class="id" title="variable">p</span></a> <a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#T:463"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#98abb34dd521f37a0dbd9ad4e03caf58"><span class="id" title="variable">Φs</span></a><br/>
@@ -2018,7 +2018,7 @@ The member applied is the member of the application
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#modexp_sub_shift_extend"><span class="id" title="lemma">modexp_sub_shift_extend</span></a>, <a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#exp_sub_q_shift_var0_extend"><span class="id" title="lemma">exp_sub_q_shift_var0_extend</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">HeqN</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a>].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_trm_resp_exp_eq"><span class="id" title="lemma">glu_univ_elem_trm_resp_exp_eq</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hgb</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">HIglu</span> |].<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_sym"><span class="id" title="constructor">wf_exp_eq_sym</span></a>; <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#wf_exp_eq_conv_kind"><span class="id" title="lemma">wf_exp_eq_conv_kind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HeqN</span> <span class="id" title="var">HIeq</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_sym"><span class="id" title="constructor">wf_exp_eq_sym</span></a>; <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Syntactic.Presup.html#wf_exp_eq_conv_kind"><span class="id" title="lemma">wf_exp_eq_conv_kind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HeqN</span> <span class="id" title="var">HIeq</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;}<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
@@ -2059,7 +2059,7 @@ The member, glued at the <span class="inlinecode"><span class="id" title="var">�
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">HEl2</span>; <span class="id" title="tactic">econstructor</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#wf_exp_conv_kind"><span class="id" title="lemma">wf_exp_conv_kind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_exp"><span class="id" title="lemma">sub_preserves_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HxA</span> <span class="id" title="var">H</span>σ) <span class="id" title="var">Hout</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Syntactic.Presup.html#wf_exp_conv_kind"><span class="id" title="lemma">wf_exp_conv_kind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_exp"><span class="id" title="lemma">sub_preserves_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HxA</span> <span class="id" title="var">H</span>σ) <span class="id" title="var">Hout</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#mem_value_facts"><span class="id" title="lemma">mem_value_facts</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Core.Soundness.MemberGluing.html#MembersFromSource.Hg"><span class="id" title="variable">Hg</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HH</span> <span class="id" title="var">HmR</span> <span class="id" title="var">HtR</span> <span class="id" title="var">HRΓ</span> <span class="id" title="var">H</span>ρ <span class="id" title="var">Eh'</span> <span class="id" title="var">Hhh'</span> <span class="id" title="var">Ea2'</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ex_intro"><span class="id" title="constructor">ex_intro</span></a> <span class="id" title="var">_</span> <span class="id" title="var">Rj</span> <span class="id" title="var">HRj</span>) <span class="id" title="var">Hev</span> <span class="id" title="var">Hsel</span>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">as</span> (<span class="id" title="var">_</span> &amp; <span class="id" title="var">_</span> &amp; <span class="id" title="var">Hmm</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exact</span> (<span class="id" title="var">Hmm</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hpel</span>).<br/>
@@ -2147,7 +2147,7 @@ The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.S
       the value <span class="inlinecode"><span class="id" title="var">f0</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_ind"><span class="id" title="constructor">d_ind</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.CrossRel.pq"><span class="id" title="variable">pq</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span> or <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_record"><span class="id" title="constructor">d_record</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span>), at a module
       value given <span class="inlinecode"><span class="id" title="var">args</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Reference.TypeCheckAgreement.html#Fixed_GCtx.F"><span class="id" title="variable">F</span></a></span>'s telescope: it is glued as a term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.Mm"><span class="id" title="variable">Mm</span></a></span>
       equal to a term <span class="inlinecode"><span class="id" title="var">Mr</span></span> glued at the former applied to <span class="inlinecode"><span class="id" title="var">args</span></span>, at its
-      type's value <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, the value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx_pi"><span class="id" title="abbreviation">ctx_pi</span></a></span> <span class="inlinecode"><span class="id" title="var">Trem</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> for the parameters
+      type's value <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, the value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx_pi"><span class="id" title="abbreviation">ctx_pi</span></a></span> <span class="inlinecode"><span class="id" title="var">Trem</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> for the parameters
       <span class="inlinecode"><span class="id" title="var">Trem</span></span> still missing.  By induction on them: saturated, the member
       is the former applied (<span class="inlinecode"><span class="id" title="var">sel_sat</span></span>); lacking one, it is a member
       closure, glued at the <span class="inlinecode"><span class="id" title="var">Π</span></span> by its values at glued arguments, the
@@ -2219,7 +2219,7 @@ Lacking a parameter: a member closure, at a <span class="inlinecode"><span class
 The applications, equal 
 </div>
 <div class="code">
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#wf_exp_eq_conv_kind"><span class="id" title="lemma">wf_exp_eq_conv_kind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Heq</span> <span class="id" title="var">HTeq</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Heq'</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.Presup.html#wf_exp_eq_conv_kind"><span class="id" title="lemma">wf_exp_eq_conv_kind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Heq</span> <span class="id" title="var">HTeq</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Heq'</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_preserves_exp_eq"><span class="id" title="lemma">kripke_preserves_exp_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Heq'</span> <span class="id" title="var">H</span>φ) <span class="id" title="keyword">as</span> <span class="id" title="var">Heq</span>φ; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_wk"><span class="id" title="definition">exp_wk</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">Heq</span>φ.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_trm_escape"><span class="id" title="lemma">glu_univ_elem_trm_escape</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HgaB</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HN</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HNt</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.SystemOpt.html#wf_exp_eq_app_cong'"><span class="id" title="lemma">wf_exp_eq_app_cong'</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Heq</span>φ (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_exp_eq_refl"><span class="id" title="lemma">wf_exp_eq_refl</span></a> <span class="id" title="var">HNt</span>)) <span class="id" title="keyword">as</span> <span class="id" title="var">HeqN</span>.<br/>

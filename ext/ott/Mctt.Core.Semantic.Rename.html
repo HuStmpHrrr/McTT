@@ -33,14 +33,14 @@
 </div>
 
 <div class="doc">
-<a id="lab675"></a><h1 class="section">Renaming the Levels of Values: Readback Commutes with Weakening</h1>
+<a id="lab922"></a><h1 class="section">Renaming the Levels of Values: Readback Commutes with Weakening</h1>
 
 
 <div class="paragraph"> </div>
 
     A value names variables by de Bruijn *level* (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_var"><span class="id" title="constructor">d_var</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>); readback at
     length <span class="inlinecode"><span class="id" title="var">s</span></span> turns the level <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> into the index <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">-</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">-</span> <span class="inlinecode">1</span>.  So the same
-    value read back at <span class="inlinecode"><span class="id" title="var">s</span></span> and at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span></span> gives two normal forms that differ by
+    value read back at <span class="inlinecode"><span class="id" title="var">s</span></span> and at <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span></span> gives two normal forms that differ by
     the weakening <span class="inlinecode">↑</span> — provided the value only mentions levels below <span class="inlinecode"><span class="id" title="var">s</span></span>
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#read_shift"><span class="id" title="lemma">read_shift</span></a></span>).  This is the step "readback at <span class="inlinecode">|<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a>|</span> <span class="inlinecode">+</span> <span class="inlinecode">1</span> is the weakening
     of readback at <span class="inlinecode">|<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a>|</span>" of the semantic proof that NbE commutes with
@@ -50,7 +50,7 @@
 
     The two readbacks do not run in lockstep on the *same* value: under a
     binder, readback at <span class="inlinecode"><span class="id" title="var">s</span></span> applies the closure to the fresh level <span class="inlinecode"><span class="id" title="var">s</span></span>, and
-    readback at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span></span> to the fresh level <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span></span>.  So the statement is
+    readback at <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span></span> to the fresh level <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span></span>.  So the statement is
     generalised to a renaming <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> of levels, applied to values by <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#domain_rename"><span class="id" title="definition">domain_rename</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span>:
 
 <div class="paragraph"> </div>
@@ -60,7 +60,7 @@
       at a level, it only carries them;
 
 </li>
-<li> readback of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#domain_rename"><span class="id" title="definition">domain_rename</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> at <span class="inlinecode"><span class="id" title="var">s'</span></span> is the readback of <span class="inlinecode"><span class="id" title="var">d</span></span> at <span class="inlinecode"><span class="id" title="var">s</span></span>, renamed by
+<li> readback of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#domain_rename"><span class="id" title="definition">domain_rename</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> at <span class="inlinecode"><span class="id" title="var">s'</span></span> is the readback of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> at <span class="inlinecode"><span class="id" title="var">s</span></span>, renamed by
       a weakening <span class="inlinecode">φ</span> that sends the index of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> at <span class="inlinecode"><span class="id" title="var">s</span></span> to the index of
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> at <span class="inlinecode"><span class="id" title="var">s'</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#read_rn"><span class="id" title="lemma">read_rn</span></a></span>).  For the canonical form of a level this
       needs <span class="inlinecode">φ</span> to preserve the order of indices
@@ -71,7 +71,7 @@
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#read_shift"><span class="id" title="lemma">read_shift</span></a></span> is the instance <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> below <span class="inlinecode"><span class="id" title="var">s</span></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> from
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#read_shift"><span class="id" title="lemma">read_shift</span></a></span> is the instance <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> below <span class="inlinecode"><span class="id" title="var">s</span></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> from
     <span class="inlinecode"><span class="id" title="var">s</span></span> on: it fixes the initial environment of a context of length <span class="inlinecode"><span class="id" title="var">s</span></span>, and
     so every value evaluated in it.
 
@@ -95,7 +95,7 @@
 </div>
 
 <div class="doc">
-<a id="lab676"></a><h2 class="section">The Renaming</h2>
+<a id="lab923"></a><h2 class="section">The Renaming</h2>
 
 </div>
 <div class="code">
@@ -409,7 +409,7 @@ So is the kind of a function's next argument.
 </div>
 
 <div class="doc">
-<a id="lab677"></a><h2 class="section">Evaluation Is Equivariant</h2>
+<a id="lab924"></a><h2 class="section">Evaluation Is Equivariant</h2>
 
 </div>
 <div class="code">
@@ -560,12 +560,12 @@ So is the kind of a function's next argument.
 </div>
 
 <div class="doc">
-<a id="lab678"></a><h2 class="section">Values that Mention Only the Levels Below <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span></h2>
+<a id="lab925"></a><h2 class="section">Values that Mention Only the Levels Below <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span></h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> of <span class="inlinecode"><span class="id" title="library">Core.Semantic.Avoid</span></span> bounds the levels of <span class="inlinecode"><span class="id" title="var">d</span></span> by <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> and
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> of <span class="inlinecode"><span class="id" title="library">Core.Semantic.Avoid</span></span> bounds the levels of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> by <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> and
     excludes <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>; at every <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span> <span class="inlinecode">≥</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> the exclusion is vacuous, and a closure
     evaluated at a level <span class="inlinecode">≥</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span> stays within the bound.  The bound, like
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#domain_avoids"><span class="id" title="inductive">domain_avoids</span></a></span>, is relative to a global context; the section runs to the end of
@@ -685,7 +685,7 @@ Ex falso: its type.
 </div>
 
 <div class="doc">
-<a id="lab679"></a><h2 class="section">Inductive Types</h2>
+<a id="lab926"></a><h2 class="section">Inductive Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -1149,7 +1149,7 @@ The bound of a value built during readback: by its constructor, by
 </div>
 
 <div class="doc">
-<a id="lab680"></a><h2 class="section">Readback Is Equivariant</h2>
+<a id="lab927"></a><h2 class="section">Readback Is Equivariant</h2>
 
 
 <div class="paragraph"> </div>
@@ -1876,7 +1876,7 @@ A branch: under the fresh variables of the group read, as many as it
 </div>
 
 <div class="doc">
-<a id="lab681"></a><h2 class="section">Readback Shift</h2>
+<a id="lab928"></a><h2 class="section">Readback Shift</h2>
 
 
 <div class="paragraph"> </div>

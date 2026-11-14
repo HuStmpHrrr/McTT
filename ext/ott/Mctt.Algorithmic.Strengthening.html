@@ -468,7 +468,7 @@ Under an assumption of the telescope: the entry of the short initial
 </div>
 
 <div class="doc">
-The long and the short value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> are related, at the larger of
+The long and the short value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> are related, at the larger of
         their levels, so the variable of the short type is in the head PER. 
 </div>
 <div class="code">
@@ -736,7 +736,7 @@ The same with the short type on the right.
 
 <div class="doc">
 The right-hand side is a <span class="inlinecode"><span class="id" title="var">Π</span>ᵈ</span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_subtyp_pi"><span class="id" title="constructor">per_subtyp_pi</span></a></span> is the only rule with
-      one there, so the long value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> is a <span class="inlinecode"><span class="id" title="var">Π</span>ᵈ</span>; so is the short one,
+      one there, so the long value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> is a <span class="inlinecode"><span class="id" title="var">Π</span>ᵈ</span>; so is the short one,
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> relating only values of one head.  The codomain kind
       is evaluated, so the <span class="inlinecode"><span class="id" title="var">Π</span>ᵈ</span> is no proposition (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_prop"><span class="id" title="record">per_prop</span></a></span>). 
 </div>
@@ -3596,7 +3596,7 @@ A term strengthens at a sort: the sort is its own weakening.
 </div>
 
 <div class="doc">
-A term of a closed type <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#K"><span class="id" title="abbreviation">K</span></a></span> below the weakened <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> is of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>. 
+A term of a closed type <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#K"><span class="id" title="abbreviation">K</span></a></span> below the weakened <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> is of <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="typed_at_closed_strengthen" class="idref" href="#typed_at_closed_strengthen"><span class="id" title="lemma">typed_at_closed_strengthen</span></a> : <span class="id" title="keyword">forall</span> <a id="8eecab04858a61f755e0a26b89d050b9" class="idref" href="#8eecab04858a61f755e0a26b89d050b9"><span class="id" title="binder">Δ</span></a> <a id="b2207c168e38560f42efcfbca716847b" class="idref" href="#b2207c168e38560f42efcfbca716847b"><span class="id" title="binder">Γ</span></a> <a id="1a62fed0ac5da712e3c3ac1dffa81331" class="idref" href="#1a62fed0ac5da712e3c3ac1dffa81331"><span class="id" title="binder">κ</span></a> <a id="A:984" class="idref" href="#A:984"><span class="id" title="binder">A</span></a> <a id="W:985" class="idref" href="#W:985"><span class="id" title="binder">W</span></a> <a id="K:986" class="idref" href="#K:986"><span class="id" title="binder">K</span></a> <a id="SK:987" class="idref" href="#SK:987"><span class="id" title="binder">SK</span></a> <a id="T:988" class="idref" href="#T:988"><span class="id" title="binder">T</span></a> <a id="Srt:989" class="idref" href="#Srt:989"><span class="id" title="binder">Srt</span></a>,<br/>
@@ -3857,8 +3857,8 @@ The sort at a kind next to a universe is a type (<span class="inlinecode">⊢ᵗ
 </div>
 
 <div class="doc">
-A <span class="inlinecode"><span class="id" title="var">Π</span></span> next to a short universe <span class="inlinecode"><span class="id" title="var">U</span></span>, its parts typed long next to the
-    weakening of <span class="inlinecode"><span class="id" title="var">U</span></span>, is typed short next to <span class="inlinecode"><span class="id" title="var">U</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_pi"><span class="id" title="constructor">wf_pi</span></a></span>). 
+A <span class="inlinecode"><span class="id" title="var">Π</span></span> next to a short universe <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span>, its parts typed long next to the
+    weakening of <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span>, is typed short next to <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_pi"><span class="id" title="constructor">wf_pi</span></a></span>). 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="pi_at_univ_str" class="idref" href="#pi_at_univ_str"><span class="id" title="lemma">pi_at_univ_str</span></a> : <span class="id" title="keyword">forall</span> <a id="11f07d2c148e0885cfdf8dc2c04535ec" class="idref" href="#11f07d2c148e0885cfdf8dc2c04535ec"><span class="id" title="binder">Γ</span></a> <a id="9a586aac0c5cb8e5f3e5b16b2bc29426" class="idref" href="#9a586aac0c5cb8e5f3e5b16b2bc29426"><span class="id" title="binder">κ</span></a> <a id="A:1051" class="idref" href="#A:1051"><span class="id" title="binder">A</span></a> <a id="94dbff1f953f42bf57383e21c0706b00" class="idref" href="#94dbff1f953f42bf57383e21c0706b00"><span class="id" title="binder">Δ</span></a> <a id="22c57da42c5d8171e7b580ab0f968db6" class="idref" href="#22c57da42c5d8171e7b580ab0f968db6"><span class="id" title="binder">κd</span></a> <a id="9f3f92726045f3d76b73169324c4d654" class="idref" href="#9f3f92726045f3d76b73169324c4d654"><span class="id" title="binder">κc</span></a> <a id="A':1055" class="idref" href="#A':1055"><span class="id" title="binder">A'</span></a> <a id="B':1056" class="idref" href="#B':1056"><span class="id" title="binder">B'</span></a> <a id="U:1057" class="idref" href="#U:1057"><span class="id" title="binder">U</span></a>,<br/>
@@ -4144,7 +4144,7 @@ A function, into a universe or between levels
 &nbsp;&nbsp;- </div>
 
 <div class="doc">
-A proof of a <span class="inlinecode">∀</span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> is a proposition 
+A proof of a <span class="inlinecode">∀</span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> is a proposition 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Consequences.Consistency.html#prop_former_typed"><span class="id" title="lemma">prop_former_typed</span></a> <span class="id" title="var">HC0</span> <span class="id" title="keyword">ltac</span>:(<span class="id" title="tactic">right</span>; <span class="id" title="tactic">right</span>; <span class="id" title="tactic">left</span>; <span class="id" title="tactic">do</span> 3 <span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">reflexivity</span>)) <span class="id" title="keyword">as</span> <span class="id" title="var">Hp1</span>.<br/>

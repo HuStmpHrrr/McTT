@@ -41,7 +41,7 @@
 </div>
 
 <div class="doc">
-<a id="lab522"></a><h1 class="section">The Semantic Domain</h1>
+<a id="lab554"></a><h1 class="section">The Semantic Domain</h1>
 
 
 <div class="paragraph"> </div>
@@ -177,7 +177,7 @@ A flat level <span class="inlinecode"><a class="idref" href="http://rocq-prover.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_and"><span class="id" title="constructor">d_and</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><span class="id" title="var">Q</span></span>: a <span class="inlinecode"><span class="id" title="var">Σ</span>ₚ</span> with first component <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>, its second <span class="inlinecode"><span class="id" title="var">Q</span></span> a
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_and"><span class="id" title="constructor">d_and</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimCases.html#Eliminator.EliminatorSteps.Induction.Q"><span class="id" title="variable">Q</span></a></span>: a <span class="inlinecode"><span class="id" title="var">Σ</span>ₚ</span> with first component <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>, its second <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimCases.html#Eliminator.EliminatorSteps.Induction.Q"><span class="id" title="variable">Q</span></a></span> a
     closure in <span class="inlinecode">ρ</span> 
 </div>
 <div class="code">
@@ -470,7 +470,7 @@ The entry past the end of an environment: the value <span class="inlinecode"><a 
 <div class="doc">
 The entry of the variable <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, or <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#absent_entry"><span class="id" title="definition">absent_entry</span></a></span> past the end of the
     list.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_entry"><span class="id" title="definition">env_entry</span></a></span> is <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Lists.ListDef.html#nth"><span class="id" title="definition">nth</span></a></span>, but defined by recursion on the index so that
-    <span class="inlinecode">ρ↯</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>)</span> by conversion. 
+    <span class="inlinecode">ρ↯</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>)</span> by conversion. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="env_entry" class="idref" href="#env_entry"><span class="id" title="definition">env_entry</span></a> (<a id="438d9d966041835e9a2cdda7e9d0af67" class="idref" href="#438d9d966041835e9a2cdda7e9d0af67"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) (<a id="x:15" class="idref" href="#x:15"><span class="id" title="binder">x</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry"><span class="id" title="inductive">dentry</span></a> :=<br/>
@@ -549,7 +549,7 @@ never a user value: a term entry read as a module, only for
 </div>
 
 <div class="doc">
-The environment extended by a value <span class="inlinecode"><span class="id" title="var">d</span></span> of the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>. 
+The environment extended by a value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> of the type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.FastGlobal.html#PathOT.t"><span class="id" title="definition">t</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="extend_env" class="idref" href="#extend_env"><span class="id" title="definition">extend_env</span></a> (<a id="5530123bbc89ee36f295417b0dcb2472" class="idref" href="#5530123bbc89ee36f295417b0dcb2472"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) (<a id="d:29" class="idref" href="#d:29"><span class="id" title="binder">d</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) (<a id="t:30" class="idref" href="#t:30"><span class="id" title="binder">t</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#entry_type"><span class="id" title="inductive">entry_type</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#de_term"><span class="id" title="constructor">de_term</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#d:29"><span class="id" title="variable">d</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#t:30"><span class="id" title="variable">t</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#5530123bbc89ee36f295417b0dcb2472"><span class="id" title="variable">ρ</span></a>.<br/>
@@ -560,7 +560,7 @@ The environment extended by a value <span class="inlinecode"><span class="id" ti
 
 <div class="doc">
 The environment extended by a module value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> of the declared unit
-    <span class="inlinecode"><span class="id" title="var">U</span></span>, written over <span class="inlinecode">ρ</span>. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span>, written over <span class="inlinecode">ρ</span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="extend_env_mod" class="idref" href="#extend_env_mod"><span class="id" title="definition">extend_env_mod</span></a> (<a id="21a5a9d1bb42088c35cd2f336d25ba3b" class="idref" href="#21a5a9d1bb42088c35cd2f336d25ba3b"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) (<a id="m:32" class="idref" href="#m:32"><span class="id" title="binder">m</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#dmod"><span class="id" title="inductive">dmod</span></a>) (<a id="U:33" class="idref" href="#U:33"><span class="id" title="binder">U</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gunit"><span class="id" title="inductive">gunit</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#de_mod"><span class="id" title="constructor">de_mod</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#m:32"><span class="id" title="variable">m</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#U:33"><span class="id" title="variable">U</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#21a5a9d1bb42088c35cd2f336d25ba3b"><span class="id" title="variable">ρ</span></a>.<br/>
@@ -571,7 +571,7 @@ The environment extended by a module value <span class="inlinecode"><a class="id
 
 <div class="doc">
 The environment extended by a definition with a module part, its unit
-    <span class="inlinecode"><span class="id" title="var">U</span></span> written over <span class="inlinecode">ρ</span>. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span> written over <span class="inlinecode">ρ</span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="extend_env_dm" class="idref" href="#extend_env_dm"><span class="id" title="definition">extend_env_dm</span></a> (<a id="e191915c16cc5efa55eaecc59ca98be3" class="idref" href="#e191915c16cc5efa55eaecc59ca98be3"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) (<a id="d:35" class="idref" href="#d:35"><span class="id" title="binder">d</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) (<a id="t:36" class="idref" href="#t:36"><span class="id" title="binder">t</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#entry_type"><span class="id" title="inductive">entry_type</span></a>) (<a id="m:37" class="idref" href="#m:37"><span class="id" title="binder">m</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#dmod"><span class="id" title="inductive">dmod</span></a>) (<a id="U:38" class="idref" href="#U:38"><span class="id" title="binder">U</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gunit"><span class="id" title="inductive">gunit</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#de_dm"><span class="id" title="constructor">de_dm</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#d:35"><span class="id" title="variable">d</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#t:36"><span class="id" title="variable">t</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#m:37"><span class="id" title="variable">m</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#U:38"><span class="id" title="variable">U</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#e191915c16cc5efa55eaecc59ca98be3"><span class="id" title="variable">ρ</span></a>.<br/>
@@ -624,9 +624,9 @@ The type the head of a telescope gives a variable over <span class="inlinecode">
 </div>
 
 <div class="doc">
-The values <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> at the telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>, outermost first, with their
+The values <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> at the telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>, outermost first, with their
     types: each the type its entry gives, as a closure in <span class="inlinecode">ρ</span> extended by
-    the values before it.  Every value is kept: one past the end of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> is
+    the values before it.  Every value is kept: one past the end of <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> is
     at no type. 
 </div>
 <div class="code">
@@ -650,7 +650,7 @@ The values of a telescope's entries are the values given.
 </div>
 
 <div class="doc">
-The environment <span class="inlinecode">ρ</span> extended by the values <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> at the telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>,
+The environment <span class="inlinecode">ρ</span> extended by the values <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.vs"><span class="id" title="variable">vs</span></a></span> at the telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>,
     outermost first, as a unit's parameters are: the types are closures in
     the environment extended so far. 
 </div>
@@ -718,7 +718,7 @@ One more value, at the closure of its type.
 </div>
 
 <div class="doc">
-<a id="lab523"></a><h2 class="section">Semantic Notations</h2>
+<a id="lab555"></a><h2 class="section">Semantic Notations</h2>
 
 
 <div class="paragraph"> </div>
@@ -784,7 +784,7 @@ The value of the universe at an index, at either tier.
 </div>
 
 <div class="doc">
-<a id="lab524"></a><h2 class="section">Level Values</h2>
+<a id="lab556"></a><h2 class="section">Level Values</h2>
 
 
 <div class="paragraph"> </div>
@@ -801,7 +801,7 @@ The value of the universe at an index, at either tier.
 </div>
 
 <div class="doc">
-<a id="lab525"></a><h2 class="section">The Kind of a Type Value</h2>
+<a id="lab557"></a><h2 class="section">The Kind of a Type Value</h2>
 
 
 <div class="paragraph"> </div>
@@ -878,7 +878,7 @@ The successor and the join of levels: both only flatten.
 </div>
 
 <div class="doc">
-<a id="lab526"></a><h2 class="section">The Realiser of a Level Value</h2>
+<a id="lab558"></a><h2 class="section">The Realiser of a Level Value</h2>
 
 
 <div class="paragraph"> </div>
@@ -1002,7 +1002,7 @@ The two projections of an extended environment.
 </div>
 
 <div class="doc">
-<a id="lab527"></a><h2 class="section">Pointwise Equality</h2>
+<a id="lab559"></a><h2 class="section">Pointwise Equality</h2>
 
 
 <div class="paragraph"> </div>
@@ -1038,7 +1038,7 @@ The two projections of an extended environment.
 </div>
 
 <div class="doc">
-<a id="lab528"></a><h2 class="section">Agreement on a Prefix</h2>
+<a id="lab560"></a><h2 class="section">Agreement on a Prefix</h2>
 
 
 <div class="paragraph"> </div>
@@ -1070,7 +1070,7 @@ Pointwise-equal environments agree up to any index.
 </div>
 
 <div class="doc">
-Environments agreeing up to <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> have tails agreeing up to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> and
+Environments agreeing up to <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> have tails agreeing up to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> and
     equal heads. 
 </div>
 <div class="code">
@@ -1109,7 +1109,7 @@ Agreeing environments have the same variables and module slots below
 </div>
 
 <div class="doc">
-<a id="lab529"></a><h2 class="section">Weakening an Environment</h2>
+<a id="lab561"></a><h2 class="section">Weakening an Environment</h2>
 
 
 <div class="paragraph"> </div>

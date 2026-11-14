@@ -233,7 +233,7 @@ The same along the order of universe indices: in particular, a small type
 </div>
 
 <div class="doc">
-<a id="lab726"></a><h2 class="section">Inductive Types Across Universes</h2>
+<a id="lab973"></a><h2 class="section">Inductive Types Across Universes</h2>
 
 
 <div class="paragraph"> </div>
@@ -678,7 +678,7 @@ Down: the element moves to the smaller gluings, where its type is
 </div>
 
 <div class="doc">
-<a id="lab727"></a><h2 class="section">Records along the Cumulativity of the Gluing</h2>
+<a id="lab974"></a><h2 class="section">Records along the Cumulativity of the Gluing</h2>
 
 
 <div class="paragraph"> </div>
@@ -1372,7 +1372,7 @@ An element moves to the gluing of a related type at any index, given
 </div>
 
 <div class="doc">
-<a id="lab728"></a><h2 class="section">The Order on Levels, Syntactically</h2>
+<a id="lab975"></a><h2 class="section">The Order on Levels, Syntactically</h2>
 
 
 <div class="paragraph"> </div>
@@ -1888,7 +1888,7 @@ The argument, at the right domain's gluing, at the left one: the
 </div>
 
 <div class="doc">
-<a id="lab729"></a><h3 class="section">Lemmas for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_rel_typ_with_sub"><span class="id" title="record">glu_rel_typ_with_sub</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_rel_exp_with_sub"><span class="id" title="record">glu_rel_exp_with_sub</span></a></span></h3>
+<a id="lab976"></a><h3 class="section">Lemmas for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_rel_typ_with_sub"><span class="id" title="record">glu_rel_typ_with_sub</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_rel_exp_with_sub"><span class="id" title="record">glu_rel_exp_with_sub</span></a></span></h3>
 
 </div>
 <div class="code">
@@ -2012,7 +2012,7 @@ A type glued at <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundn
 </div>
 
 <div class="doc">
-<a id="lab730"></a><h3 class="section">Lemmas for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_ctx_env"><span class="id" title="inductive">glu_ctx_env</span></a></span></h3>
+<a id="lab977"></a><h3 class="section">Lemmas for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_ctx_env"><span class="id" title="inductive">glu_ctx_env</span></a></span></h3>
 
 <div class="paragraph"> </div>
 
@@ -3080,7 +3080,7 @@ The stored type is the type's value
 
 <div class="doc">
 The tail is the induction hypothesis pushed along <span class="inlinecode">↑</span>: <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode"><span class="id" title="var">Id</span></span> and
-          <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">↑</span> both send <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> to <span class="inlinecode">#(<a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>)</span>, so <span class="inlinecode"><span class="id" title="tactic">eapply</span></span> converts them. 
+          <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">↑</span> both send <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> to <span class="inlinecode">#(<a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>)</span>, so <span class="inlinecode"><span class="id" title="tactic">eapply</span></span> converts them. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">HG</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5c4f10e5d28c751a6e924af1a16469a5"><span class="id" title="notation">EG</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5c4f10e5d28c751a6e924af1a16469a5"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_ctx_env"><span class="id" title="inductive">glu_ctx_env</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5c4f10e5d28c751a6e924af1a16469a5"><span class="id" title="notation">↘</span></a> <span class="id" title="var">TSb</span> |- <span class="id" title="var">_</span> =&gt;<br/>
@@ -3221,7 +3221,7 @@ The type is of a universe, so the term's value is evaluated
 </div>
 
 <div class="doc">
-<a id="lab731"></a><h3 class="section">Tactics for <span class="inlinecode"><span class="id" title="var">glu_rel_</span>*</span></h3>
+<a id="lab978"></a><h3 class="section">Tactics for <span class="inlinecode"><span class="id" title="var">glu_rel_</span>*</span></h3>
 
 </div>
 <div class="code">
@@ -3269,7 +3269,7 @@ The type is of a universe, so the term's value is evaluated
 </div>
 
 <div class="doc">
-<a id="lab732"></a><h3 class="section">Lemmas about <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_rel_exp"><span class="id" title="record">glu_rel_exp</span></a></span></h3>
+<a id="lab979"></a><h3 class="section">Lemmas about <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_rel_exp"><span class="id" title="record">glu_rel_exp</span></a></span></h3>
 
 </div>
 <div class="code">
@@ -3368,7 +3368,7 @@ The type's value is glued at <span class="inlinecode"><a class="idref" href="Mct
 </div>
 
 <div class="doc">
-<a id="lab733"></a><h3 class="section">The Readback of a Glued Environment</h3>
+<a id="lab980"></a><h3 class="section">The Readback of a Glued Environment</h3>
 
 
 <div class="paragraph"> </div>
@@ -3382,7 +3382,7 @@ The type's value is glued at <span class="inlinecode"><a class="idref" href="Mct
     proof at the substitution (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.LetPeeling.html#lets_exp_of_sub"><span class="id" title="lemma">lets_exp_of_sub</span></a></span>). 
 <div class="paragraph"> </div>
 
- The definitions of the first <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> positions: those of the positions
+ The definitions of the first <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> positions: those of the positions
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, …, <span class="inlinecode">1</span>, then the head, innermost. 
 </div>
 <div class="code">
@@ -3778,8 +3778,8 @@ The chain's definition is the body at <span class="inlinecode">τ0</span>
 </div>
 
 <div class="doc">
-The same for a module slot of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, bound by its declared unit <span class="inlinecode"><span class="id" title="var">U</span></span>:
-    <span class="inlinecode"><span class="id" title="var">U</span></span> reads only positions the chain binds, so <span class="inlinecode">τ0</span> leaves it as it is;
+The same for a module slot of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, bound by its declared unit <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span>:
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span> reads only positions the chain binds, so <span class="inlinecode">τ0</span> leaves it as it is;
     its literal is, by δ, what the substitution sends the slot to. 
 </div>
 <div class="code">
@@ -4100,7 +4100,7 @@ A definition with a module part
 </div>
 
 <div class="doc">
-<a id="lab734"></a><h3 class="section">The Value of a Term at the Kind of Its Type</h3>
+<a id="lab981"></a><h3 class="section">The Value of a Term at the Kind of Its Type</h3>
 
 
 <div class="paragraph"> </div>

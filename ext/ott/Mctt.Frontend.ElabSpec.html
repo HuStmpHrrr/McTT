@@ -40,7 +40,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1738"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
+<a id="lab2005"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
 
 
 <div class="paragraph"> </div>
@@ -121,7 +121,7 @@ y, x, B, id ↦ Main.M.id, A
     <span class="inlinecode">⟨<span class="id" title="var">Main.M</span>⟩</span> and <span class="inlinecode"><span class="id" title="var">M.id</span></span> <span class="inlinecode"><span class="id" title="library">Nat</span></span> selects its member <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> and applies it. 
 <div class="paragraph"> </div>
 
-<a id="lab1739"></a><h2 class="section">Entries</h2>
+<a id="lab2006"></a><h2 class="section">Entries</h2>
 
 </div>
 <div class="code">
@@ -166,7 +166,7 @@ A member of an open frame (an open's declarations included), named by
 
 <div class="doc">
 A name a leading open declares, as the unit's parameter types see it:
-    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#scope_entry_open"><span class="id" title="constructor">scope_entry_open</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)</span> is the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> of the module <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#scope_entry_open"><span class="id" title="constructor">scope_entry_open</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span>
+    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#scope_entry_open"><span class="id" title="constructor">scope_entry_open</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)</span> is the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> of the module <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#scope_entry_open"><span class="id" title="constructor">scope_entry_open</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span>
     <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> itself.  <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span> is read where no binder is in scope. 
 </div>
 <div class="code">
@@ -190,7 +190,7 @@ A name a leading open declares, as the unit's parameter types see it:
 </div>
 
 <div class="doc">
-The names bound in <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span>, and the number of core binders in it. 
+The names bound in <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span>, and the number of core binders in it. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="names" class="idref" href="#names"><span class="id" title="definition">names</span></a> (<a id="S:7" class="idref" href="#S:7"><span class="id" title="binder">S</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#scope_entry"><span class="id" title="inductive">scope_entry</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span> :=<br/>
@@ -203,7 +203,7 @@ The names bound in <span class="inlinecode"><a class="idref" href="Mctt.Core.Com
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#bound"><span class="id" title="record">bound</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> is the innermost entry of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> that binds <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, with
+<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#bound"><span class="id" title="record">bound</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> is the innermost entry of <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> that binds <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, with
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> core binders inside it. 
 </div>
 <div class="code">
@@ -226,7 +226,7 @@ The entries outside <span class="inlinecode"><a class="idref" href="Mctt.Core.Sy
 &nbsp;&nbsp;; </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> is the inner entries, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span>, then the outer ones. 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> is the inner entries, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span>, then the outer ones. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<a id="bound_split" class="idref" href="#bound_split"><span class="id" title="projection">bound_split</span></a> : <a class="idref" href="Mctt.Frontend.ElabSpec.html#S:12"><span class="id" title="variable">S</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#bound_inner:17"><span class="id" title="method">bound_inner</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#e:15"><span class="id" title="variable">e</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#bound_outer:18"><span class="id" title="method">bound_outer</span></a><br/>
@@ -287,7 +287,7 @@ The entries of names bound in order, innermost first: the binders of
 </div>
 
 <div class="doc">
-<a id="lab1740"></a><h2 class="section">Names in the User Syntax</h2>
+<a id="lab2007"></a><h2 class="section">Names in the User Syntax</h2>
 
 <div class="paragraph"> </div>
 
@@ -333,7 +333,7 @@ The module named by a qualified name, and the member it names, as
 </div>
 
 <div class="doc">
-<a id="lab1741"></a><h2 class="section">What an Entry Denotes</h2>
+<a id="lab2008"></a><h2 class="section">What an Entry Denotes</h2>
 
 
 <div class="paragraph"> </div>
@@ -367,7 +367,7 @@ The module named by a qualified name, and the member it names, as
 </div>
 
 <div class="doc">
-What a leading open declares <span class="inlinecode"><span class="id" title="var">d</span></span> as: the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>, or <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>. 
+What a leading open declares <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> as: the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>, or <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="open_mod" class="idref" href="#open_mod"><span class="id" title="definition">open_mod</span></a> (<a id="E:43" class="idref" href="#E:43"><span class="id" title="binder">E</span></a> : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp"><span class="id" title="inductive">surface_modexp</span></a>) (<a id="oc:44" class="idref" href="#oc:44"><span class="id" title="binder">oc</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <span class="id" title="inductive">string</span>) : <a class="idref" href="Mctt.Core.Syntactic.UserSyntax.html#surface_modexp"><span class="id" title="inductive">surface_modexp</span></a> :=<br/>
@@ -460,14 +460,14 @@ A leading open's name: what it names in the module
 </div>
 
 <div class="doc">
-<a id="lab1742"></a><h2 class="section">What an Open Declares</h2>
+<a id="lab2009"></a><h2 class="section">What an Open Declares</h2>
 
 
 <div class="paragraph"> </div>
 
     The items of an open, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#import_item"><span class="id" title="definition">import_item</span></a></span>s, are generated by the core
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#items_gen"><span class="id" title="inductive">items_gen</span></a></span>): <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a>,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>)</span> declares <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> as a private
-    alias of the module, <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a>,</span> <span class="inlinecode"><span class="id" title="var">d</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.pv"><span class="id" title="variable">pv</span></a>)</span> declares <span class="inlinecode"><span class="id" title="var">d</span></span> as its member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span>,
+    alias of the module, <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.pv"><span class="id" title="variable">pv</span></a>)</span> declares <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.ViewLeaves.html#ViewLeaves.d"><span class="id" title="variable">d</span></a></span> as its member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span>,
     privately when <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.FiledConstructorTypes.html#ConTypes.pv"><span class="id" title="variable">pv</span></a></span>. 
 <div class="paragraph"> </div>
 
@@ -524,7 +524,7 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<a id="lab1743"></a><h2 class="section">Eliminators</h2>
+<a id="lab2010"></a><h2 class="section">Eliminators</h2>
 
 
 <div class="paragraph"> </div>
@@ -550,13 +550,13 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<a id="lab1744"></a><h2 class="section">Objects</h2>
+<a id="lab2011"></a><h2 class="section">Objects</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_exp"><span class="id" title="inductive">spec_exp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">o</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> holds when the surface object <span class="inlinecode"><span class="id" title="var">o</span></span> denotes the term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> in the
-    scope <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_modexp"><span class="id" title="inductive">spec_modexp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">o</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> when it denotes the module expression <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span>.
+    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_exp"><span class="id" title="inductive">spec_exp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">o</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> holds when the surface object <span class="inlinecode"><span class="id" title="var">o</span></span> denotes the term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> in the
+    scope <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_modexp"><span class="id" title="inductive">spec_modexp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">o</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> when it denotes the module expression <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span>.
     Every rule but the two for names, and the one for a projection from a
     head that is no path, is a homomorphism. 
 <div class="paragraph"> </div>
@@ -804,7 +804,7 @@ The blocks of an eliminator: each its binders, the scrutinee's type
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_binders"><span class="id" title="inductive">spec_binders</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.CommandRun.html#pre"><span class="id" title="record">pre</span></a></span> <span class="inlinecode"><span class="id" title="var">xs</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.Regressions.html#PhantomViews.Z"><span class="id" title="variable">Z</span></a></span>: the binders <span class="inlinecode"><span class="id" title="var">xs</span></span> of a block, after the binders
+<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_binders"><span class="id" title="inductive">spec_binders</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.CommandRun.html#pre"><span class="id" title="record">pre</span></a></span> <span class="inlinecode"><span class="id" title="var">xs</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.Regressions.html#PhantomViews.Z"><span class="id" title="variable">Z</span></a></span>: the binders <span class="inlinecode"><span class="id" title="var">xs</span></span> of a block, after the binders
     <span class="inlinecode"><a class="idref" href="Mctt.Extraction.CommandRun.html#pre"><span class="id" title="record">pre</span></a></span>, carry no type but the last, whose type is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Inductives.Regressions.html#PhantomViews.Z"><span class="id" title="variable">Z</span></a></span>, read under the
     binders before it, or the hole when it is not written. 
 </div>
@@ -852,7 +852,7 @@ A local module: its parameters, then its definition under them.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_body"><span class="id" title="inductive">spec_body</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span>: the commands <span class="inlinecode"><span class="id" title="var">cs</span></span> of a local body extend <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> to <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span>.
+<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_body"><span class="id" title="inductive">spec_body</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span>: the commands <span class="inlinecode"><span class="id" title="var">cs</span></span> of a local body extend <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Fixpoints.html#4014b693745e03a5d65fc70c5ec558b6"><span class="id" title="variable">Φ</span></a></span> to <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span>.
     Each entry is a core binder for the entries after it.  An open is a
     pre-form the core expands (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gm_open"><span class="id" title="constructor">gm_open</span></a></span>); each of its items is a core
     binder.  The names of a body are checked fresh by the core.  A local
@@ -886,7 +886,7 @@ It loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab1745"></a><h2 class="section">Inductive Declarations</h2>
+<a id="lab2012"></a><h2 class="section">Inductive Declarations</h2>
 
 
 <div class="paragraph"> </div>
@@ -935,7 +935,7 @@ The names of the members of a group.
 
 <div class="doc">
 The members of a group, under its uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a></span> in the
-    scope <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span>, the members' names <span class="inlinecode"><span class="id" title="var">xs</span></span> in scope in every argument outside
+    scope <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span>, the members' names <span class="inlinecode"><span class="id" title="var">xs</span></span> in scope in every argument outside
     the parameters: each its non-uniform parameters, its sort and its
     constructors. 
 </div>
@@ -956,7 +956,7 @@ The members of a group, under its uniform parameters <span class="inlinecode"><a
 </div>
 
 <div class="doc">
-<a id="lab1746"></a><h2 class="section">Mutual Definitions</h2>
+<a id="lab2013"></a><h2 class="section">Mutual Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -1002,7 +1002,7 @@ The entries of names filed in order in the open frame at member chain
 </div>
 
 <div class="doc">
-<a id="lab1747"></a><h2 class="section">Record Types</h2>
+<a id="lab2014"></a><h2 class="section">Record Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -1055,14 +1055,14 @@ The names a command declares in its frame.
 </div>
 
 <div class="doc">
-<a id="lab1748"></a><h2 class="section">Commands</h2>
+<a id="lab2015"></a><h2 class="section">Commands</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_cmd"><span class="id" title="inductive">spec_cmd</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Counts.fp"><span class="id" title="variable">fp</span></a></span> <span class="inlinecode"><span class="id" title="var">ch</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode"><span class="id" title="var">S'</span></span> <span class="inlinecode"><span class="id" title="var">c'</span></span>: the command <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span>, in the open frame at member
+    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_cmd"><span class="id" title="inductive">spec_cmd</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Counts.fp"><span class="id" title="variable">fp</span></a></span> <span class="inlinecode"><span class="id" title="var">ch</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode"><span class="id" title="var">S'</span></span> <span class="inlinecode"><span class="id" title="var">c'</span></span>: the command <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span>, in the open frame at member
     chain <span class="inlinecode"><span class="id" title="var">ch</span></span> of the unit <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Counts.fp"><span class="id" title="variable">fp</span></a></span>, whose parameters are named <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span>, read in
-    the scope <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> (the frame's entries so far, innermost first, then
+    the scope <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> (the frame's entries so far, innermost first, then
     everything outside the frame), extends the scope to <span class="inlinecode"><span class="id" title="var">S'</span></span> and emits the
     commands as written <span class="inlinecode"><span class="id" title="var">c'</span></span>.  <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#spec_cmds"><span class="id" title="inductive">spec_cmds</span></a></span> runs the commands of a body in order.  A
     definition keyword with a modifier it implies (<span class="inlinecode"><span class="id" title="var">Cst.c_error</span></span>) has no
@@ -1164,7 +1164,7 @@ An evaluation at a type written out
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">inductive</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">U</span></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the uniform
+<span class="inlinecode"><span class="id" title="var">inductive</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ups"><span class="id" title="variable">ups</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.U"><span class="id" title="variable">U</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the uniform
     parameters are read in the scope, each member's non-uniform ones and
     sort under them, the constructors' arguments under all, with the
     members' names in scope.  It declares each member, a module whose
@@ -1236,7 +1236,7 @@ An evaluation at a type written out
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">record</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">;</span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the parameters are
+<span class="inlinecode"><span class="id" title="var">record</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">;</span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: the parameters are
     read in the scope, the sort under them, each field's type under them
     and the fields before it.  The with-area is read in the record's frame
     (<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#record_scope_entries"><span class="id" title="definition">record_scope_entries</span></a></span>), whose parameters are <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.CargsRel.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a></span>, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> in scope outside
@@ -1279,7 +1279,7 @@ The first command, then the rest in the scope it leaves
 </div>
 
 <div class="doc">
-<a id="lab1749"></a><h2 class="section">Units</h2>
+<a id="lab2016"></a><h2 class="section">Units</h2>
 
 
 <div class="paragraph"> </div>
