@@ -402,54 +402,6 @@ Qed.
 
 End ApplyTele.
 
-(** The term part of a grown entry is the original's. *)
-Lemma entry_grows_entry_term : forall o E E', entry_grows E E' -> entry_term o E' = entry_term o E.
-Proof.
-  intros o E E' H; destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?];
-    destruct E' as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?]; cbn in H;
-    try (rewrite H; reflexivity); try discriminate; destruct_all; subst; reflexivity.
-Qed.
-
-(** A stored term member of a module is the one its path looks up: a
-    filed entry's term part, or the type former of the member or record
-    type an open frame is the module of; the three exclude each other, as
-    an open frame's path names no entry. *)
-Lemma stored_term_member_of_lookup : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ x R0 R0',
-    gc_loc Θ Ξ p = Some (T, Φ) -> stored_term_member Ξ Φ p x R0' ->
-    ((exists E, gc_entry Θ Ξ (qname_in p x) = Some E /\ entry_term (Some (qname_in p x)) E = Some R0) \/
-     (exists pq k D Mk, ind_mlookup Θ Ξ (qname_in p x) = Some (pq, k, D) /\ ind_member D k = Some Mk /\
-        R0 = mdesc_term ak_relevant (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))) \/
-     (exists Rr, record_lookup Θ Ξ (qname_in p x) = Some Rr /\
-        R0 = mdesc_term ak_relevant (ctx_pi (record_params Rr) (record_sort Rr)) (Some (a_record (qname_in p x))))) ->
-    R0' = R0.
-Proof.
-  intros Θ Ξ Hg * Hl Hst Hlk.
-  pose proof (gc_loc_loc _ _ _ _ _ Hl) as Hlc.
-  assert (Hnoent : forall U T0, gs_find_tele Ξ (qname_in p x) = Some (U, nil, T0) -> gc_entry Θ Ξ (qname_in p x) = None)
-    by (intros; eapply gc_entry_tele_nil; eassumption).
-  destruct Hst as [Φ0 E' R0'' Hp HE' | pq' k' D' Mk' Hk' HMk' | Rr' Hr'].
-  - destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
-    pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hlc x E') Hent) as HeE'.
-    destruct Hlk as [(E & HeE & HR0) | [(pq & k & D & Mk & Hind & HMk & ->) | (Rr & Hrl & ->)]].
-    + rewrite HeE in HeE'; injection HeE' as <-; congruence.
-    + destruct (ind_mlookup_entry _ _ _ _ _ _ Hind) as [(pv & ΦD & HeE) | Hk].
-      * rewrite HeE in HeE'; injection HeE' as <-; cbn in HE'; rewrite HMk in HE'; cbn in HE'; congruence.
-      * destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht); rewrite (Hnoent _ _ Ht) in HeE'; discriminate.
-    + destruct (record_lookup_entry _ _ _ _ Hrl) as [HeE | (pv & pr & ΦR & HeE)]; rewrite HeE in HeE'; [ discriminate |].
-      injection HeE' as <-; cbn in HE'; congruence.
-  - destruct (gs_find_ind_tele _ _ _ Hk') as (U & T0 & Ht); pose proof (Hnoent _ _ Ht) as HeN.
-    destruct Hlk as [(E & HeE & HR0) | [(pq & k & D & Mk & Hind & HMk & ->) | (Rr & Hrl & ->)]].
-    + congruence.
-    + rewrite ind_mlookup_unfold, Hk' in Hind; injection Hind as <- <- <-; congruence.
-    + unfold record_lookup in Hrl; rewrite (gs_find_ind_not_record _ _ _ Hk'), HeN in Hrl; discriminate.
-  - destruct (gs_find_record_tele _ _ _ Hr') as (U & T0 & Ht); pose proof (Hnoent _ _ Ht) as HeN.
-    destruct Hlk as [(E & HeE & HR0) | [(pq & k & D & Mk & Hind & HMk & ->) | (Rr & Hrl & ->)]].
-    + congruence.
-    + destruct (ind_mlookup_entry _ _ _ _ _ _ Hind) as [(pv & ΦD & HeE) | Hk]; [ congruence |].
-      rewrite (gs_find_ind_not_record _ _ _ Hk) in Hr'; discriminate.
-    + unfold record_lookup in Hrl; rewrite Hr' in Hrl; injection Hrl as <-; reflexivity.
-Qed.
-
 Section FiledOk.
   Variables (Θm : gdeps) (Ξm : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
   Hypothesis Hgm : ⊢ᵍ Θm ⍮ Ξm.

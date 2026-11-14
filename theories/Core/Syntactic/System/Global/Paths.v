@@ -2833,3 +2833,75 @@ Proof.
   split; assumption.
 Qed.
 
+(** ** Stored Members Where a Context Grows *)
+
+(** The term part of a grown entry is the original's. *)
+Lemma entry_grows_entry_term : forall o E E', entry_grows E E' -> entry_term o E' = entry_term o E.
+Proof.
+  intros o E E' H; destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?];
+    destruct E' as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?]; cbn in H;
+    try (rewrite H; reflexivity); try discriminate; destruct_all; subst; reflexivity.
+Qed.
+
+(** A stored term member of a module is the one its path looks up: a
+    filed entry's term part, or the type former of the member or record
+    type an open frame is the module of; the three exclude each other, as
+    an open frame's path names no entry. *)
+Lemma stored_term_member_of_lookup : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ x R0 R0',
+    gc_loc Θ Ξ p = Some (T, Φ) -> stored_term_member Ξ Φ p x R0' ->
+    ((exists E, gc_entry Θ Ξ (qname_in p x) = Some E /\ entry_term (Some (qname_in p x)) E = Some R0) \/
+     (exists pq k D Mk, ind_mlookup Θ Ξ (qname_in p x) = Some (pq, k, D) /\ ind_member D k = Some Mk /\
+        R0 = mdesc_term ak_relevant (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (Some (a_ind pq k))) \/
+     (exists Rr, record_lookup Θ Ξ (qname_in p x) = Some Rr /\
+        R0 = mdesc_term ak_relevant (ctx_pi (record_params Rr) (record_sort Rr)) (Some (a_record (qname_in p x))))) ->
+    R0' = R0.
+Proof.
+  intros Θ Ξ Hg * Hl Hst Hlk.
+  pose proof (gc_loc_loc _ _ _ _ _ Hl) as Hlc.
+  assert (Hnoent : forall U T0, gs_find_tele Ξ (qname_in p x) = Some (U, nil, T0) -> gc_entry Θ Ξ (qname_in p x) = None)
+    by (intros; eapply gc_entry_tele_nil; eassumption).
+  destruct Hst as [Φ0 E' R0'' Hp HE' | pq' k' D' Mk' Hk' HMk' | Rr' Hr'].
+  - destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
+    pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hlc x E') Hent) as HeE'.
+    destruct Hlk as [(E & HeE & HR0) | [(pq & k & D & Mk & Hind & HMk & ->) | (Rr & Hrl & ->)]].
+    + rewrite HeE in HeE'; injection HeE' as <-; congruence.
+    + destruct (ind_mlookup_entry _ _ _ _ _ _ Hind) as [(pv & ΦD & HeE) | Hk].
+      * rewrite HeE in HeE'; injection HeE' as <-; cbn in HE'; rewrite HMk in HE'; cbn in HE'; congruence.
+      * destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht); rewrite (Hnoent _ _ Ht) in HeE'; discriminate.
+    + destruct (record_lookup_entry _ _ _ _ Hrl) as [HeE | (pv & pr & ΦR & HeE)]; rewrite HeE in HeE'; [ discriminate |].
+      injection HeE' as <-; cbn in HE'; congruence.
+  - destruct (gs_find_ind_tele _ _ _ Hk') as (U & T0 & Ht); pose proof (Hnoent _ _ Ht) as HeN.
+    destruct Hlk as [(E & HeE & HR0) | [(pq & k & D & Mk & Hind & HMk & ->) | (Rr & Hrl & ->)]].
+    + congruence.
+    + rewrite ind_mlookup_unfold, Hk' in Hind; injection Hind as <- <- <-; congruence.
+    + unfold record_lookup in Hrl; rewrite (gs_find_ind_not_record _ _ _ Hk'), HeN in Hrl; discriminate.
+  - destruct (gs_find_record_tele _ _ _ Hr') as (U & T0 & Ht); pose proof (Hnoent _ _ Ht) as HeN.
+    destruct Hlk as [(E & HeE & HR0) | [(pq & k & D & Mk & Hind & HMk & ->) | (Rr & Hrl & ->)]].
+    + congruence.
+    + destruct (ind_mlookup_entry _ _ _ _ _ _ Hind) as [(pv & ΦD & HeE) | Hk]; [ congruence |].
+      rewrite (gs_find_ind_not_record _ _ _ Hk) in Hr'; discriminate.
+    + unfold record_lookup in Hrl; rewrite Hr' in Hrl; injection Hrl as <-; reflexivity.
+Qed.
+
+(** A term member a context has stored at a module is the one a context
+    it grows into has stored there: an entry grows keeping its term part,
+    and the type former of an open frame is still that former, whether
+    the frame is still open or has been filed.  In [module P where
+    inductive V : Type where | mk : V → V end], [P.V] is read off the
+    open frame while [mk] is checked and off [P]'s entry once [P] is
+    closed: the same description both times. *)
+Lemma stored_term_member_grow : forall Θ1 Ξ1 Θ2 Ξ2, ⊢ᵍ Θ1 ⍮ Ξ1 -> ⊢ᵍ Θ2 ⍮ Ξ2 -> gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
+    forall p T Φ1 Φ2 x R1 R2, gc_loc Θ1 Ξ1 p = Some (T, Φ1) -> stored_term_member Ξ1 Φ1 p x R1 ->
+    gc_loc Θ2 Ξ2 p = Some (T, Φ2) -> stored_term_member Ξ2 Φ2 p x R2 -> R2 = R1.
+Proof.
+  intros * Hg1 Hg2 Hs * Hl1 Hst1 Hl2 Hst2.
+  apply (stored_term_member_of_lookup _ _ Hg2 _ _ _ _ _ _ Hl2 Hst2).
+  destruct Hst1 as [Φ0 E R0 Hp HE | pq k D Mk Hk HMk | Rr Hr].
+  - destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
+    pose proof (proj2 (loc_entry _ _ Hg1 _ _ _ (gc_loc_loc _ _ _ _ _ Hl1) x E) Hent) as HeE.
+    destruct (gc_sub_entry _ _ _ _ _ _ Hs HeE) as (E2 & HeE2 & Hgr).
+    left; exists E2; split; [ exact HeE2 | rewrite (entry_grows_entry_term _ _ _ Hgr); exact HE ].
+  - right; left; exists pq, k, D, Mk; split; [ exact (gc_sub_frame_ind _ _ _ _ _ _ Hs Hk) | split; [ exact HMk | reflexivity ] ].
+  - right; right; exists Rr; split; [ exact (gc_sub_frame_record _ _ _ _ _ _ Hs Hr) | reflexivity ].
+Qed.
+

@@ -3247,6 +3247,14 @@ Class GCtx : Set := gc_mk
   { gc_deps : gdeps
   ; gc_stack : gstack }.
 
+(** A global context is the one of its two parts.  The two are not the
+    same term, as [GCtx] has no η rule: what is stated at
+    [gc_mk gc_deps gc_stack], such as the identity embedding or a
+    valuation modelling a context where it grows, is read at the context
+    itself through this. *)
+Lemma gc_mk_eta : forall G : GCtx, G = gc_mk (@gc_deps G) (@gc_stack G).
+Proof. intros [? ?]; reflexivity. Qed.
+
 (** * Scope and Notations *)
 
 #[global] Bind Scope mctt_scope with exp.

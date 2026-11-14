@@ -35,8 +35,11 @@ Section ElimView.
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
-  (** The valuation models the global context *)
-  Hypothesis Hok : set_gctx_ok T γ.
+  (** The context the derivations were checked at *)
+  Variable Θs : gdeps.
+  Variable Ξs : gstack.
+  (** The valuation models, here, everything that context resolves *)
+  Hypothesis Hemb : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ.
 
 (** ** The Container's Results Are the Group's *)
 
@@ -315,7 +318,7 @@ Section ViewStep.
   Variables (Γ : ctx) (ρ : set_env) (r : abs_kind) (p : qname) (Us : list exp) (Bks : list eblock) (V : aczel_set).
   Variables (D : ind_decl) (i : nat) (Fσ : set_env -> set_env) (U : aczel_set).
   (** The induction's setting *)
-  Hypothesis HS1 : elim_setting_with T γ Γ r p Us Bks V D i Fσ.
+  Hypothesis HS1 : elim_setting_with T γ Θs Ξs Γ r p Us Bks V D i Fσ.
   (** The environment is one of the context *)
   Hypothesis Hρ : set_env_in T γ Γ ρ.
   (** The carriers are the least fixed point in [U] *)
@@ -348,8 +351,9 @@ Lemma args_ihs_reading : forall S k Mk SMk cs gs vals θk,
       (ihs_values T γ Γ ρ r p Us Bks V D (im_nn Mk) nil gs vals).
 Proof.
   intros S k Mk SMk cs gs vals θk HSf Hk HSk Hcs Hgs Hθk Huni Hfit.
-  pose proof HS1 as [HΓ HcΓ HD Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
-  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG. fold G in HG.
+  pose proof HS1 as [HΓ HcΓ HDsrc Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDsrc) as HD.
+  pose proof (set_source_groups T γ Θs Ξs Hemb _ _ HDsrc) as HG. fold G in HG.
   pose proof (set_group_ok_members _ _ _ _ _ HG _ _ _ Hk HSk) as Hmok.
   pose proof (set_member_ok_constructors _ _ _ _ _ _ _ Hmok cs gs Hcs Hgs) as Hcok.
   pose proof (decls_of_ctx _ _ _ HcΓ) as HDs.
@@ -365,12 +369,12 @@ Proof.
   set (β := sb_of_wk (wk_shiftn (nn + na))).
   (* the environment of the parameters and the arguments *)
   set (ρn := set_env_extend_kinded ρ (ctx_kinds (im_nparams Mk)) ns0).
-  pose proof (nparams_env T γ Hfn Hmods Hgw Hok Γ ρ p D Us Fσ HΓ HcΓ Hρ HD Hσ k Mk SMk _ _ θk Hk HSk Hin Hθk Huni) as Hρn. fold ns0 ρn in Hρn.
+  pose proof (nparams_env T γ Hfn Hmods Hgw Θs Ξs Hemb Γ ρ p D Us Fσ HΓ HcΓ Hρ HDsrc Hσ k Mk SMk _ _ θk Hk HSk Hin Hθk Huni) as Hρn. fold ns0 ρn in Hρn.
   assert (Hdrop : forall x, set_env_drop nn ρn x = ρ x)
     by (intros x; unfold set_env_drop, ρn; rewrite <- Hln, set_env_extend_kinded_ge; reflexivity).
   assert (Hvn : set_env_values (im_nparams Mk) ρn = ns0)
     by (unfold ρn; apply set_env_values_extend_kinded; exact Hln).
-  pose proof (args_env T γ Hfn Hmods Hgw Hok Γ ρ p D Us Fσ HΓ HcΓ Hρ HD Hσ U Hcar S HSf k Mk SMk cs gs ρn vals Hk HSk Hcs Hgs Hcok Hρn Hdrop
+  pose proof (args_env T γ Hfn Hmods Hgw Θs Ξs Hemb Γ ρ p D Us Fσ HΓ HcΓ Hρ HDsrc Hσ U Hcar S HSf k Mk SMk cs gs ρn vals Hk HSk Hcs Hgs Hcok Hρn Hdrop
                 ltac:(rewrite Hvn; exact Hfit) gs nil (eq_sym (List.app_nil_r gs))) as Hρa.
   rewrite List.firstn_all2 in Hρa by lia.
   assert (Econ : con_inst_ctx Γ p D Mk Us gs = tele_sub (cargs_ctx p D Mk gs ++ im_nparams Mk) (sb_of_list sb_id Us) ++ Γ)
@@ -382,7 +386,7 @@ Proof.
   rewrite Eρa in Hρa.
   set (ρa := set_env_extend_kinded ρ (ctx_kinds (cargs_ctx p D Mk gs ++ im_nparams Mk)) (ns0 ++ vals)) in *.
   clear Eρa Hvn Hdrop Hρn.
-  pose proof (ihs_reading_at T γ Hfn Hmods Hgw Hok Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HD Hσ HDt Hcl HUl
+  pose proof (ihs_reading_at T γ Hfn Hmods Hgw Θs Ξs Hemb Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HDsrc Hσ HDt Hcl HUl
                 HMwf HMot HMctx HMh HBk Hcar Hbτ Hbctx Hbrs HBr HV HBt HUs (fun k' ns' v' _ _ _ => no_extra_point T γ D _ k' ns' v')) as HR.
   pose proof (proj2 (Hbctx k Mk c gs Hk Hgs)) as Hbw.
   clear HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HS1.
@@ -420,7 +424,7 @@ Proof.
     by (unfold im_params; rewrite set_env_values_app; apply list_set_eq_app; [exact (list_set_eq_sym _ _ Huni) | apply list_set_eq_refl]).
   assert (Hfitθ : arguments_fit G U S (set_env_values (im_params D Mk) θk) sgs vals)
     by (eapply arguments_fit_resp; [exact Hrs | exact Hvθ | apply list_set_eq_refl | exact Hfit]).
-  pose proof (args_env_closed T γ Hfn Hmods Hok ρ p D Fσ HD U Hcar S HSf k Mk SMk cs gs θk vals Hk HSk Hcs Hgs Hcok Hθk Huni Hfitθ
+  pose proof (args_env_closed T γ Hfn Hmods Θs Ξs Hemb ρ p D Fσ HDsrc U Hcar S HSf k Mk SMk cs gs θk vals Hk HSk Hcs Hgs Hcok Hθk Huni Hfitθ
                 gs nil (eq_sym (List.app_nil_r gs))) as Hθc0.
   rewrite List.firstn_all2 in Hθc0 by lia.
   set (Δ := cargs_ctx p D Mk gs ++ im_params D Mk) in *.
@@ -429,7 +433,7 @@ Proof.
   pose proof (decl_closed_params_ass _ _ _ Hcl Hk) as Hass0.
   assert (Hass1 : all_assumptions Δ) by (apply List.Forall_app; split; [apply cargs_ctx_aux_ass | exact Hass0]).
   pose proof (set_ctx_of_tele_types T γ Hfn Hmods _ _ _ (set_constructor_ok_types _ _ _ _ _ _ _ _ Hcok)
-                (member_params_ctx T γ Hfn Hmods Hok p D HD k Mk SMk Hk HSk)) as HTc. fold Δ in HTc.
+                (member_params_ctx T γ Hfn Hmods Θs Ξs Hemb p D HDsrc k Mk SMk Hk HSk)) as HTc. fold Δ in HTc.
   assert (Hvals : list_set_eq (set_env_values Δ θc0) (us ++ ns0 ++ vals)).
   { unfold Δ. rewrite set_env_values_app, List.app_assoc. apply list_set_eq_app.
     - rewrite (set_env_values_agree _ _ θk); [exact (list_set_eq_sym _ _ Hvθ) |].
@@ -546,8 +550,9 @@ Proof.
     Hm Hh HD' Hi' Hri' Hv Hcon' Hcorr Hlws.
   pose proof (arguments_fit_length _ _ _ _ _ _ Hfit) as Hlv.
   pose proof (args_ihs_reading S k Mk SMk cs gs vals θk HSf Hk HSk Hcs Hgs Hθk Huni Hfit) as HEI.
-  pose proof HS1 as [HΓ HcΓ HD Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
-  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG. fold G in HG.
+  pose proof HS1 as [HΓ HcΓ HDsrc Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDsrc) as HD.
+  pose proof (set_source_groups T γ Θs Ξs Hemb _ _ HDsrc) as HG. fold G in HG.
   pose proof (set_group_ok_respects _ _ _ _ _ HG) as HGr.
   (* the group's branch, at the group's branch environment *)
   assert (HQ1 : set_sub (carrier_fixed_point G us U U) (carrier_points_with G us U U (elim_point_with T γ Γ ρ r p Us Bks V D i no_extra us))).
@@ -560,7 +565,7 @@ Proof.
   assert (Hfit1 : arguments_fit G U (carrier_points_with G us U U (elim_point_with T γ Γ ρ r p Us Bks V D i no_extra us))
                     (us ++ set_env_values (im_nparams Mk) θk) (set_constructor_arguments cs) vals)
     by (eapply arguments_fit_mono; [intros z Hz; exact (HQ1 _ (HSf _ Hz)) | exact Hrs | exact Hfit]).
-  destruct (block_branch_elim T γ Hfn Hmods Hgw Hok Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HD Hσ HDt Hcl HUl
+  destruct (block_branch_elim T γ Hfn Hmods Hgw Θs Ξs Hemb Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HDsrc Hσ HDt Hcl HUl
               HMwf HMot HMctx HMh HBk Hcar Hbτ Hbctx HBr HV HBt k Mk SMk cs gs vals θk b n B FS FB FB' Hk Hrv HSk Hcs Hgs Hθk Huni
               Hfit1 Hb Hlook HBr0) as [Hρb _].
   pose proof HBr0 as [_ HFB _ _ _].
@@ -670,25 +675,26 @@ Lemma container_block_elim : forall S k Mk SMk cs gs vals θk m Mm qc k' Is vm D
 Proof.
   intros S k Mk SMk cs gs vals θk m Mm qc k' Is vm D' i' Mi' gs' w' Hr HSf Hk Hrv HSk Hcs Hgs Hθk Huni Hfit Hm Hh HD' Hi' Hri' Hv
     Hcon' Hcorr Href Ew Hel Hihs Hlws.
-  pose proof HS1 as [HΓ HcΓ HD Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
+  pose proof HS1 as [HΓ HcΓ HDsrc Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDsrc) as HD.
   destruct (HBk k Mk Hk Hrv) as [b Hb].
   destruct (brs_names_lookup _ _ _ _ (Hbrs k Mk b Hk Hb) Hgs) as (n & B & Hlook & HinB).
   destruct (HBr k Mk b _ gs n B Hk Hb Hgs HinB) as (FS & FB & FB' & HBr0).
   pose proof (wrapped_branch_interp S k Mk SMk cs gs vals θk b n B FS FB FB' m Mm qc k' Is vm D' i' Mi' gs' HSf Hk Hrv HSk Hcs Hgs
                 Hθk Huni Hfit Hb Hlook HBr0 Hm Hh HD' Hi' Hri' Hv Hcon' Hcorr Hlws) as HI.
   (* the group's result is the branch's *)
-  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG. fold G in HG.
+  pose proof (set_source_groups T γ Θs Ξs Hemb _ _ HDsrc) as HG. fold G in HG.
   assert (HQ1 : set_sub (carrier_fixed_point G us U U) (carrier_points_with G us U U (elim_point_with T γ Γ ρ r p Us Bks V D i no_extra us))).
   { apply (fixed_point_in_points_with G us U U (set_group_ok_respects _ _ _ _ _ HG)). intros k0 ns0' v0 Hn0 Hv0 Hc0. split; [| apply no_extra_point].
     eapply elim_point_step; first [eassumption | exact no_extra_resp | intros; apply no_extra_point]. }
   assert (Hfit1 : arguments_fit G U (carrier_points_with G us U U (elim_point_with T γ Γ ρ r p Us Bks V D i no_extra us))
                     (us ++ set_env_values (im_nparams Mk) θk) (set_constructor_arguments cs) vals)
     by (eapply arguments_fit_mono; [intros z Hz; exact (HQ1 _ (HSf _ Hz)) | exact (set_group_ok_respects _ _ _ _ _ HG _ _ _ HSk Hcs) | exact Hfit]).
-  destruct (block_branch_elim T γ Hfn Hmods Hgw Hok Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HD Hσ HDt Hcl HUl
+  destruct (block_branch_elim T γ Hfn Hmods Hgw Θs Ξs Hemb Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HDsrc Hσ HDt Hcl HUl
               HMwf HMot HMctx HMh HBk Hcar Hbτ Hbctx HBr HV HBt k Mk SMk cs gs vals θk b n B FS FB FB' Hk Hrv HSk Hcs Hgs Hθk Huni
               Hfit1 Hb Hlook HBr0) as [_ Helim1].
   pose proof (set_elim_functional T γ Hfn Hmods Γ ρ r p Us Bks Hρ _ _ _ _ Hel (Helim1 Hr w' Ew)) as E1.
-  destruct (member_reference p D HD HDt k Mk Hk Hrv) as (Dq & Mq & [HDq HMq Hnnq]).
+  destruct (member_reference T γ Θs Ξs Hemb p D HDsrc HDt k Mk Hk Hrv) as (Dq & Mq & [HDq HMq Hnnq]).
   rewrite Href in HDq, HMq.
   clear HMwf HMot HMctx HMh Hbτ Hbrs HBr HV HQ1 Hfit1 Helim1 Hcar.
   (* the container's block at [i'] and its branch at the constructor *)
@@ -756,8 +762,9 @@ Lemma view_step : forall k ns v, set_mem (list_code ns) U -> set_mem v U ->
     constructed_from G us U S k ns v -> extra_point T γ D XV us k ns v.
 Proof.
   intros k ns v HnsU HvU Hc Mk θk Hk Hθk Huni Hns.
-  pose proof HS1 as [HΓ HcΓ HD Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
-  pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG. fold G in HG.
+  pose proof HS1 as [HΓ HcΓ HDsrc Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDsrc) as HD.
+  pose proof (set_source_groups T γ Θs Ξs Hemb _ _ HDsrc) as HG. fold G in HG.
   pose proof (set_group_ok_respects _ _ _ _ _ HG) as HGr.
   assert (HSfix : set_sub S (carrier_fixed_point G us U U))
     by (intros z Hz; apply (set_mem_separation _ _ _ (carrier_points_with_pred_resp _)) in Hz as [Hz _]; exact Hz).
@@ -787,8 +794,8 @@ Proof.
             exists RV Mk0 Ta φ Bs1 θ, shape_closed_ok T γ Γ ρ r p Us Bks V D i RV XV Mk0 Ta φ Bs1 t θ v0).
   { intros gs' n0 t' t v0 _ _ H2 H3.
     destruct (List.nth_error_split gs n0 H2) as (gs1 & gs2 & Egs & Hl1). subst n0.
-    destruct (block_arg_closed T γ Hfn Hmods Hgw Hok Γ ρ r p Us Bks V D i Fσ U XV (view_agree_resp Γ ρ r p Us Bks V D vm qc Is' Bks' D')
-                HΓ HcΓ Hρ HD Hσ HDt Hcl HUl HMwf HMot HMctx Hcar k Mk SMk cs gs vals θk gs1 t gs2 v0 Hk HSk Hcs Hgs Hθk Huni Hfit0
+    destruct (block_arg_closed T γ Hfn Hmods Hgw Θs Ξs Hemb Γ ρ r p Us Bks V D i Fσ U XV (view_agree_resp Γ ρ r p Us Bks V D vm qc Is' Bks' D')
+                HΓ HcΓ Hρ HDsrc Hσ HDt Hcl HUl HMwf HMot HMctx Hcar k Mk SMk cs gs vals θk gs1 t gs2 v0 Hk HSk Hcs Hgs Hθk Huni Hfit0
                 Egs H3) as [_ Hcl'].
     do 6 eexists. exact Hcl'. }
   constructor.
@@ -808,7 +815,7 @@ Proof.
       - unfold con_val. apply ordered_pair_resp; [apply set_eq_refl |]. apply list_code_resp.
         apply list_set_eq_app; [exact (list_set_eq_sym _ _ Hns) | apply list_set_eq_refl]. }
     (* the group's result *)
-    pose proof (elim_point_of_carrier T γ Hfn Hmods Hgw Hok Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HD Hσ HDt Hcl
+    pose proof (elim_point_of_carrier T γ Hfn Hmods Hgw Θs Ξs Hemb Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HDsrc Hσ HDt Hcl
                   HUl HMwf HMot HMctx HMh HBk Hcar Hbτ Hbctx Hbrs HBr HV HBt HUs (fun k0 ns1 v1 _ _ _ => no_extra_point T γ D _ k0 ns1 v1)
                   k ns0 v Hvm0) as [HP1 _].
     destruct (HP1 Mk θk Hk Hθk Huni (list_set_eq_refl _)) as [Hres1 _ _ _].
@@ -853,8 +860,8 @@ Proof.
     intros n t' t v0 _ H2 H3. rewrite List.nth_error_map in H3.
     destruct (List.nth_error fl n) as [f |] eqn:Hf; [| discriminate]. cbn in H3. injection H3 as <-.
     destruct (List.nth_error_split (List.combine fl gs) n (Typing.nth_error_combine_both _ _ _ _ _ Hf H2)) as (fs1 & fs2 & Ec2 & _).
-    destruct (rview_field_closed_ok T γ Hfn Hmods Hok Γ ρ r p Us Bks V D i Fσ U XV (view_agree_resp Γ ρ r p Us Bks V D vm qc Is' Bks' D')
-                HD HDt Hcl HUl HMwf HMot HMctx Hcar k Mk qr Is0 fl SMk cs gs vals w' θ0 fs1 f t fs2 Hk Hh0 HSk Hcs Hgs Hfit0 Hnd Hlfv
+    destruct (rview_field_closed_ok T γ Hfn Hmods Θs Ξs Hemb Γ ρ r p Us Bks V D i Fσ U XV (view_agree_resp Γ ρ r p Us Bks V D vm qc Is' Bks' D')
+                HDsrc HDt Hcl HUl HMwf HMot HMctx Hcar k Mk qr Is0 fl SMk cs gs vals w' θ0 fs1 f t fs2 Hk Hh0 HSk Hcs Hgs Hfit0 Hnd Hlfv
                 (set_eq_trans _ _ _ (set_eq_sym _ _ Ew') Exv) Hθ0 Huni Ec2) as [_ Hshape].
     do 6 eexists. exact Hshape.
 Qed.
@@ -864,9 +871,10 @@ Qed.
 Lemma view_agree_of_carrier : forall k ns v, set_mem v (member_carrier G us U U k ns) -> extra_point T γ D XV us k ns v.
 Proof.
   intros k ns v Hv.
-  pose proof HS1 as [HΓ HcΓ HD Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
-  exact (proj2 (elim_point_of_carrier T γ Hfn Hmods Hgw Hok Γ ρ r p Us Bks V D i Fσ U XV
-                  (view_agree_resp Γ ρ r p Us Bks V D vm qc Is' Bks' D') HΓ HcΓ Hρ HD Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hcar
+  pose proof HS1 as [HΓ HcΓ HDsrc Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hbτ Hbctx Hbrs HBr HV HBt HUs _].
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDsrc) as HD.
+  exact (proj2 (elim_point_of_carrier T γ Hfn Hmods Hgw Θs Ξs Hemb Γ ρ r p Us Bks V D i Fσ U XV
+                  (view_agree_resp Γ ρ r p Us Bks V D vm qc Is' Bks' D') HΓ HcΓ Hρ HDsrc Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk Hcar
                   Hbτ Hbctx Hbrs HBr HV HBt HUs view_step k ns v Hv)).
 Qed.
 
@@ -884,7 +892,7 @@ End ViewStep.
     ([view_agree_of_carrier]). *)
 Lemma set_rule_elim_view : forall Γ r p Us m Bks M D Mm bm Ps i qc k' Is vm D' C,
     set_ctx T γ Γ ->
-    ind_lookup gc_deps gc_stack p = Some D ->
+    ind_lookup Θs Ξs p = Some D ->
     ind_member D m = Some Mm ->
     im_head Mm = mh_view qc k' Is vm ->
     ind_lookup gc_deps gc_stack qc = Some D' ->
@@ -934,10 +942,11 @@ Lemma set_rule_elim_view : forall Γ r p Us m Bks M D Mm bm Ps i qc k' Is vm D' 
       (a_elim r qc (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
          (view_wrap r p qc D D' vm (List.firstn (ind_nu D) Ps) (im_pre Mm (List.firstn (ind_nu D) Ps)) Bks) M).
 Proof.
-  intros Γ r p Us m Bks M D Mm bm Ps i qc k' Is vm D' C HΓ HD Hm Hh HD' Hbm HlB HPl HPs HPsem HMt HMsem HUs Hcnt Hsc HMty
+  intros Γ r p Us m Bks M D Mm bm Ps i qc k' Is vm D' C HΓ HDsrc Hm Hh HD' Hbm HlB HPl HPs HPsem HMt HMsem HUs Hcnt Hsc HMty
     HMotsem HMx HMxsem Hbrs HBx HBxsem Hn HBty HBsem Hmk HR.
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDsrc) as HD.
   (* the left side, by the eliminator's rule *)
-  destruct (set_rule_elim T γ Hfn Hmods Hgw Hok Γ r p Us m Bks M D Mm bm Ps i HΓ HD Hm Hbm HlB HPl HPs HPsem HMt HMsem HUs Hcnt
+  destruct (set_rule_elim T γ Hfn Hmods Hgw Θs Ξs Hemb Γ r p Us m Bks M D Mm bm Ps i HΓ HDsrc Hm Hbm HlB HPl HPs HPsem HMt HMsem HUs Hcnt
               Hsc HMty HMotsem HMx HMxsem Hbrs HBx HBxsem Hn HBty HBsem Hmk) as (FS & FL & FL' & HL).
   pose proof (wf_elim _ _ _ _ _ _ _ _ _ _ _ _ _ _ HD Hm Hbm HlB HPl HPs HMt HUs Hcnt Hsc HMty HMx Hbrs HBx Hn HBty Hmk) as Hel.
   subst Us. set (Us := List.firstn (ind_nu D) Ps) in *.
@@ -948,10 +957,10 @@ Proof.
   assert (Hrv : im_is_rview Mm = false) by (unfold im_is_rview; rewrite Hh; reflexivity).
   (* the scrutinee and the induction's setting *)
   destruct HMsem as (FA0 & FM & FM' & HMw).
-  destruct (elim_scrutinee_setting T γ Hfn Hmods Hgw Hok Γ p D m Mm Ps M FA0 FM FM' HΓ HcΓ HD Hm Hrv HPl HPs HPsem HMw) as (Fι & [HFι Hσ HNr Hpts]).
+  destruct (elim_scrutinee_setting T γ Hfn Hmods Hgw Θs Ξs Hemb Γ p D m Mm Ps M FA0 FM FM' HΓ HcΓ HDsrc Hm Hrv HPl HPs HPsem HMw) as (Fι & [HFι Hσ HNr Hpts]).
   set (Fσ := fun ρ => set_env_drop (im_nn Mm) (Fι ρ)) in *.
   set (V := large_results T i).
-  pose proof (elim_setting_of_rule T γ Hfn Hmods Hgw Hok Γ r p Us Bks D i Fσ HΓ HcΓ HD Hσ HUl HUt HlB Hcnt Hsc HMty HMotsem HMx HMxsem Hbrs HBx HBxsem
+  pose proof (elim_setting_of_rule T γ Hfn Hmods Hgw Θs Ξs Hemb Γ r p Us Bks D i Fσ HΓ HcΓ HDsrc Hσ HUl HUt HlB Hcnt Hsc HMty HMotsem HMx HMxsem Hbrs HBx HBxsem
               Hn HBty HBsem Hmk) as HS1. fold V in HS1.
   assert (EIs : im_pre Mm Us = List.map (fun I => exp_sub I (sb_of_list sb_id Us)) Is) by (unfold im_pre; rewrite Hh; reflexivity).
   rewrite EIs in HR |- *.
@@ -971,7 +980,7 @@ Proof.
     destruct (Hpts ρ Hρ) as (θc & [Hθc Huni Ens Hmem]).
     assert (Hw : set_mem (FM ρ) (member_carrier (global_group γ p) (elim_uniform_values ρ D Fσ) U U m (set_env_values (im_nparams Mm) θc)))
       by (eapply set_mem_eq_r; [exact (Hcar m Mm θc Hm Hθc Huni) | exact Hmem]).
-    destruct (elim_at_scrutinee T γ Hfn Hmods Hgw Hok Γ ρ _ p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HD Hσ HDt Hcl HUl
+    destruct (elim_at_scrutinee T γ Hfn Hmods Hgw Θs Ξs Hemb Γ ρ _ p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HDsrc Hσ HDt Hcl HUl
                 HMwf HMot HMctx HMh HBk Hcar Hbτ Hbctx Hbrs HBr HV HBt HUs0 (fun k0 ns1 v1 _ _ _ => no_extra_point T γ D _ k0 ns1 v1)
                 m Mm θc (FM ρ) Hm Hrv Hθc Huni Hmem) as [Hres _].
     destruct (Hres ltac:(discriminate)) as (res & Hel1 & HV1).

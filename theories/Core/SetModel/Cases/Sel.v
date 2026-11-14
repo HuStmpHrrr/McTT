@@ -30,8 +30,11 @@ Section Sel.
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
-  (** The valuation models the global context *)
-  Hypothesis Hok : set_gctx_ok T γ.
+  (** The context the derivations were checked at *)
+  Variable Θs : gdeps.
+  Variable Ξs : gstack.
+  (** The valuation models, here, everything that context resolves *)
+  Hypothesis Hemb : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ.
 
 (** ** The Proofness of a Body's Submodules *)
 
@@ -203,7 +206,7 @@ Proof.
   pose proof (body_xp_result_noopen _ _ _ _ _ Hx) as Hno. pose proof (gm_noopen_nopens _ Hno) as Hn.
   pose proof (body_xp_expand _ _ _ _ _ Hx) as Hxe. subst Φx.
   pose proof (Hsub _ _ _ _ Hp HEu) as HKU.
-  pose proof (proj1 (set_valid_unit_canon_all T γ Hfn Hmods Hgw Hok) _ _ HKU _ _ (mdenote_lit _ _ _ _ _ Hu)
+  pose proof (proj1 (set_valid_unit_canon_all T γ Hfn Hmods Hgw Θs Ξs Hemb) _ _ HKU _ _ (mdenote_lit _ _ _ _ _ Hu)
                 (mdesc_is_mod_mod _ (udenote_is_mod _ _ _ _ _ _ Hu))) as HcanU.
   pose proof (set_valid_unit_ctx T γ _ _ HKU) as HC0. pose proof (presup_modexp_eq_ctx (set_valid_unit_wf T γ _ _ HKU)) as Hc0.
   pose proof (set_ctx_app_r T γ _ _ HC0) as HD. pose proof (ctx_app_wf_tail _ _ _ _ Hc0) as HcD.
@@ -229,7 +232,7 @@ Proof.
       exact (HpX κs Hκ ys x).
   - (* over the parameters: the alias of it, flattened *)
     set (Δ := e :: Δ0) in *.
-    pose proof (set_alias_unit_up T γ Hfn Hmods Hok Γ Δ _ l ltac:(discriminate) HΔ Hl HΓ HD HcD
+    pose proof (set_alias_unit_up T γ Hfn Hmods Hgw Θs Ξs Hemb Γ Δ _ l ltac:(discriminate) HΔ Hl HΓ HD HcD
                   (mdesc_is_mod_sub _ σ (udenote_is_mod _ _ _ _ _ _ Hu)) HKX HwU) as [Hrup HKup Hpup].
     pose proof (set_modexp_rel_refl_left T γ _ _ _ Hrup) as (F2 & _ & [HF2 _ _]).
     assert (Hpa : forall κs, set_slots_coherent γ Γ κs -> forall ys x,
@@ -341,13 +344,14 @@ Qed.
 (** ** Submodules of Filed Modules *)
 
 (** A filed module at arguments is the global module at their values. *)
-Lemma set_filed_value : forall Γ p T0 Φ ρ Ns m, gc_loc gc_deps gc_stack p = Some (T0, Φ) -> set_env_in T γ Γ ρ ->
-    set_interp_modexp T γ Γ ρ (me_apps (qname_mod p) Ns) m ->
+Lemma set_filed_value : forall Γ p T0 Φ ρ Ns m, gc_loc gc_deps gc_stack p = Some (T0, Φ) -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
+    set_env_in T γ Γ ρ -> set_interp_modexp T γ Γ ρ (me_apps (qname_mod p) Ns) m ->
     exists ns, set_interp_list T γ Γ ρ Ns ns /\ set_module_eq γ m (set_module_global p ns).
 Proof.
-  intros * Hgl Hρ Hm. destruct (set_interp_me_apps_inv T γ _ _ _ _ _ Hm) as (m0 & ns & Hm0 & Hns & ->).
+  intros * Hgl HcΓ Hρ Hm. destruct (set_interp_me_apps_inv T γ _ _ _ _ _ Hm) as (m0 & ns & Hm0 & Hns & ->).
   exists ns. split; [exact Hns |].
-  pose proof (set_filed_mod_path _ _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ Hgl) Γ ρ) as Hpath.
+  pose proof (set_interp_filed_path T γ Hgw (set_target_bodies T γ Θs Ξs Hemb) _ HcΓ _ _ _ (gc_loc_loc _ _ _ _ _ Hgl) ρ)
+    as Hpath.
   pose proof (set_interp_modexp_functional T γ Hfn Hmods _ _ _ _ Hm0 _ _ (set_env_rel_eq T γ _ _ _ Hρ) Hpath) as E.
   rewrite <- (List.app_nil_l ns), <- apply_module_args_global.
   apply apply_module_args_resp; [exact E | apply list_set_eq_refl].
@@ -358,7 +362,9 @@ Lemma filed_member_proofs : forall p T0 Φ Ns κs ys x, gc_loc gc_deps gc_stack 
     modexp_member_proofs γ κs (me_apps (qname_mod p) Ns) ys x = module_member_proofs γ (set_module_global p nil) ys x.
 Proof.
   intros * Hgl. rewrite me_apps_member_proofs, (mod_qname_member_proofs γ _ _ (mod_qname_qname_mod p) κs (env_slot_proofs γ empty_set_env)).
-  rewrite <- (set_interp_modexp_member_proofs T γ _ _ _ _ (set_filed_mod_path _ _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ Hgl) nil empty_set_env)).
+  rewrite <- (set_interp_modexp_member_proofs T γ _ _ _ _
+                (set_interp_filed_path T γ Hgw (set_target_bodies T γ Θs Ξs Hemb) _ (wf_ctx_empty _ _ Hgw)
+                   _ _ _ (gc_loc_loc _ _ _ _ _ Hgl) empty_set_env)).
   reflexivity.
 Qed.
 
@@ -380,42 +386,58 @@ Proof.
   pose proof (set_valid_unit_filed T γ _ _ _ _ _ _ _ Hw Hgl HΓ Ha) as HK.
   pose proof (set_valid_unit_filed T γ _ _ _ _ _ _ _ Hwq Hglq HΓ Ha') as HKq.
   constructor; [| exact HKq |].
-  - destruct (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HK) as (FK & _ & [HFK _ _]).
-    destruct (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKq) as (Fq & _ & [HFq _ _]).
+  - destruct (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HK) as (FK & _ & [HFK _ _]).
+    destruct (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HKq) as (Fq & _ & [HFq _ _]).
     exists (fun ρ => select_module γ (FK ρ) y), Fq. constructor; [| exact HFq |].
     + apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
       econstructor; [ exact (set_modexp_denotes_exists _ _ _ _ _ HFK _ Hρ) | exact HwY ].
     + intros ρ Hρ.
-      destruct (set_filed_value _ _ _ _ _ _ _ Hgl Hρ (set_modexp_denotes_exists _ _ _ _ _ HFK _ Hρ)) as (ns & Hns & E1).
-      destruct (set_filed_value _ _ _ _ _ _ _ Hglq Hρ (set_modexp_denotes_exists _ _ _ _ _ HFq _ Hρ)) as (ns' & Hns' & E2).
+      destruct (set_filed_value _ _ _ _ _ _ _ Hgl (presup_modexp_eq_ctx Hw) Hρ (set_modexp_denotes_exists _ _ _ _ _ HFK _ Hρ)) as (ns & Hns & E1).
+      destruct (set_filed_value _ _ _ _ _ _ _ Hglq (presup_modexp_eq_ctx Hw) Hρ (set_modexp_denotes_exists _ _ _ _ _ HFq _ Hρ)) as (ns' & Hns' & E2).
       eapply set_module_eq_trans; [exact (select_module_resp γ Hmods _ _ E1 y) |].
-      cbn [select_module]. rewrite (set_gctx_ok_bodies _ _ Hok _ _ Hglq), apply_module_args_global. cbn [List.app].
+      cbn [select_module]. rewrite (set_target_bodies T γ Θs Ξs Hemb _ _ Hglq), apply_module_args_global. cbn [List.app].
       eapply set_module_eq_trans; [| exact (set_module_eq_sym _ _ E2)].
       apply set_module_eq_global.
       exact (proj1 (proj2 (set_interp_functional_all T γ Hfn Hmods)) _ _ _ _ Hns _ _ (set_env_rel_eq T γ _ _ _ Hρ) Hns').
   - intros κs _ ys x. cbn [mdesc_unit]. rewrite (filed_member_proofs _ _ _ _ _ _ _ Hgl), (filed_member_proofs _ _ _ _ _ _ _ Hglq).
-    cbn [module_member_proofs]. rewrite (set_gctx_ok_bodies _ _ Hok _ _ Hglq). reflexivity.
+    cbn [module_member_proofs]. rewrite (set_target_bodies T γ Θs Ξs Hemb _ _ Hglq). reflexivity.
 Qed.
 
-(** An alias submodule of a filed module at arguments: the stored unit at
-    the arguments, which is the module the valuation stores. *)
+(** An alias submodule of a filed module at arguments, one the context
+    [Θs ⍮ Ξs] has: the stored unit at the arguments, which is the module
+    the valuation stores. *)
 Lemma set_filed_alias_sel : forall Γ p T0 Φ Tr Tf Ns y Φ0 E Ua RU Rm,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns ->
     gc_loc gc_deps gc_stack p = Some (T0, Φ) -> set_ctx T γ Γ -> set_args_valid T γ Γ T0 Tr Tf Ns ->
+    set_member_known Θs Ξs Γ (me_apps (qname_mod p) Ns) y ->
     gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
     mdenote gc_deps gc_stack Γ (me_apps (me_lit Ua) Ns) RU -> mdesc_mod RU = Some Rm ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem (me_apps (qname_mod p) Ns) y ≈ me_mem (me_apps (qname_mod p) Ns) y ->
     set_sel_valid_with Γ (me_apps (qname_mod p) Ns) y Rm.
 Proof.
-  intros * Hw Hgl HΓ Ha Hp HUa HmU HmdU HwY.
-  pose proof (set_gctx_ok_filed _ _ Hok _ _ _ Hgl) as HFm.
-  destruct (set_filed_mod_aliases _ _ _ _ _ _ HFm _ _ _ _ Hp HUa) as [HmUa HvUa].
+  intros * Hw Hgl HΓ Ha Hkn Hp HUa HmU HmdU HwY.
+  (* the alias, as the smaller context files it, modelled here *)
+  destruct (filed_denote _ _ Hgw _ _ _ Γ Ns Hgl) as (RF0 & HmF0 & HmodF0).
+  destruct (set_member_known_alias_entry T γ Hgw Θs Ξs Hemb _ _ _ _ _ _ _ _ _ _ _ Hkn HmF0 HmodF0 Hgl Hp HUa)
+    as (Φ1 & Φ1' & Hgl1 & Hp1).
+  pose proof (set_filed_mod_aliases _ _ _ _ _ _ (set_source_filed T γ Θs Ξs Hemb _ _ _ Hgl1) _ _ _ _ Hp1 HUa) as [HmUa HvUa].
+  (* the alias is a module there too: both read it off the same entry *)
+  assert (HmUa1 : gc_module Θs Ξs (qname_in p y) = Some (mr_alias Ua)).
+  { destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent2).
+    destruct (gm_entry_head _ _ _ Hent2) as (z & ip & [= <- <-] & Hin2).
+    destruct (loc_read _ _ Hgw _ _ _ (gc_loc_loc _ _ _ _ _ Hgl) _ Hin2 nil) as (_ & _ & HmS2 & _).
+    destruct (gm_prefix_entry _ _ _ Hp1) as (? & ? & [= <- <-] & Hent1).
+    destruct (gm_entry_head _ _ _ Hent1) as (z' & ip' & [= <- <-] & Hin1).
+    destruct (loc_read _ _ (set_source_wf T γ Θs Ξs Hemb) _ _ _ (gc_loc_loc _ _ _ _ _ Hgl1) _ Hin1 nil) as (_ & _ & HmS1 & _).
+    rewrite <- qname_in_app in HmS1, HmS2.
+    rewrite (proj1 (gm_child_of_entry _ _ _ T0 Hent1)) in HmS1. rewrite (proj1 (gm_child_of_entry _ _ _ T0 Hent2)) in HmS2.
+    rewrite HmS1, <- HmS2. exact HmUa. }
   pose proof (presup_modexp_eq_ctx Hw) as HcΓ.
   pose proof (HvUa _ HΓ HcΓ) as HKUa.
   pose proof (HvUa nil I (wf_ctx_empty _ _ Hgw)) as HKUa0.
   pose proof (proj1 (proj2 (wf_modexp_eq_scoped _ _ _ _ _ (set_valid_unit_wf T γ _ _ HKUa0)))) as HUs. cbn in HUs.
-  destruct (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKUa0) as (FU0 & _ & [HFU0 _ _]).
-  pose proof (set_gctx_ok_aliases _ _ Hok _ _ _ HmUa HFU0) as EqA.
+  destruct (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HKUa0) as (FU0 & _ & [HFU0 _ _]).
+  pose proof (set_source_aliases T γ Θs Ξs Hemb _ _ _ HmUa1 HFU0) as EqA.
   pose proof (set_valid_unit_filed T γ _ _ _ _ _ _ _ Hw Hgl HΓ Ha) as HK.
   (* the stored unit at the arguments is valid in what it denotes *)
   assert (HsV : set_valid_modexp T γ Γ (me_apps (me_lit Ua) Ns)).
@@ -437,8 +459,8 @@ Proof.
     destruct (MemberTypes.app_split_length _ _ _ _ Hspl ltac:(rewrite Hl2; exact Hlen)) as [_ <-].
     assert (Hti : tele_insts (Δ0 ++ Tr ++ Tf) sb_id Ns = tele_insts Tf sb_id Ns)
       by (rewrite List.app_assoc; exact (Sel.tele_insts_app_full (Δ0 ++ Tr) Tf sb_id Ns HTfa (eq_sym Hlen))).
-    apply (set_valid_modexp_apps_up T γ Hfn Hmods Hgw Hok Ns Γ _ RmE _ lp
-             (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HKUa) (mdenote_lit _ _ _ _ _ Hu) (mdesc_mod_is_mod _ _ HmodE)
+    apply (set_valid_modexp_apps_up T γ Hfn Hmods Hgw Θs Ξs Hemb Ns Γ _ RmE _ lp
+             (set_valid_modexp_of_unit T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HKUa) (mdenote_lit _ _ _ _ _ Hu) (mdesc_mod_is_mod _ _ HmodE)
              HΔΓ HaTa).
     - rewrite !List.length_app. lia.
     - intros k N A HN HA. rewrite Hti in HA. exact (Hsyn _ _ _ HN HA).
@@ -446,9 +468,9 @@ Proof.
     - intros k A HA. rewrite Hti in HA. exact (HNr _ _ HA).
     - exact (params_evaluated_of_sorts _ _ _ _ _ _ Hps HTp).
     - exact HokR. }
-  destruct (set_valid_modexp_canon T γ Hfn Hmods Hgw Hok _ _ _ _ HsV HmU HmdU) as [HrK HKK HpK].
+  destruct (set_valid_modexp_canon T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ _ _ HsV HmU HmdU) as [HrK HKK HpK].
   pose proof HrK as (FK' & _ & [HFK' _ _]).
-  destruct (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HK) as (FK & _ & [HFK _ _]).
+  destruct (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HK) as (FK & _ & [HFK _ _]).
   assert (He : set_env_in T γ nil empty_set_env) by (intros x; constructor; apply set_eq_refl).
   constructor; [| exact HKK |].
   - eapply set_modexp_rel_trans; [| exact HrK].
@@ -456,7 +478,7 @@ Proof.
     + apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
       econstructor; [ exact (set_modexp_denotes_exists _ _ _ _ _ HFK _ Hρ) | exact HwY ].
     + intros ρ Hρ.
-      destruct (set_filed_value _ _ _ _ _ _ _ Hgl Hρ (set_modexp_denotes_exists _ _ _ _ _ HFK _ Hρ)) as (ns & Hns & E1).
+      destruct (set_filed_value _ _ _ _ _ _ _ Hgl (presup_modexp_eq_ctx Hw) Hρ (set_modexp_denotes_exists _ _ _ _ _ HFK _ Hρ)) as (ns & Hns & E1).
       destruct (set_interp_me_apps_inv T γ _ _ _ _ _ (set_modexp_denotes_exists _ _ _ _ _ HFK' _ Hρ)) as (m0 & ns' & Hm0 & Hns' & ->).
       apply set_interp_me_lit_iff in Hm0.
       eapply set_module_eq_trans; [exact (select_module_resp γ Hmods _ _ E1 y) |]. cbn [select_module].
@@ -506,7 +528,7 @@ Proof.
     exact (set_modexp_rel_mem _ _ _ _ HΓ (set_alias0_rel T γ Hfn Hmods _ _ HΓ HEE) HwLy HwEy).
   - (* over the parameters: the alias of the target's, abstracted *)
     set (Δ := e :: Δ0) in *.
-    pose proof (set_alias_unit_up T γ Hfn Hmods Hok Γ Δ _ l ltac:(discriminate) HΔ Hl HΓ HΔΓ HcΔΓ
+    pose proof (set_alias_unit_up T γ Hfn Hmods Hgw Θs Ξs Hemb Γ Δ _ l ltac:(discriminate) HΔ Hl HΓ HΔΓ HcΔΓ
                   (mdesc_mod_is_mod _ _ Hmd') HKE HwU) as [Hrup HKup Hpup].
     pose proof (set_modexp_rel_refl_left T γ _ _ _ Hrup) as (F2 & _ & [HF2 _ _]).
     destruct HrE as (G1 & G2 & [HG1 HG2 EG]).
@@ -535,31 +557,31 @@ Proof.
 Qed.
 
 Theorem set_valid_unit_sel_all :
-  (forall Γ K, set_valid_unit T γ Γ K -> forall y R Rm, mdenote gc_deps gc_stack Γ (me_mem K y) R -> mdesc_mod R = Some Rm ->
-     set_sel_valid_with Γ K y Rm) /\
-  (forall Γ H, set_valid_modexp T γ Γ H -> forall y R Rm, mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
-     set_sel_valid_with Γ H y Rm).
+  (forall Γ K, set_valid_unit T γ Γ K -> forall y R Rm, set_member_known Θs Ξs Γ K y ->
+     mdenote gc_deps gc_stack Γ (me_mem K y) R -> mdesc_mod R = Some Rm -> set_sel_valid_with Γ K y Rm) /\
+  (forall Γ H, set_valid_modexp T γ Γ H -> forall y R Rm, set_member_known Θs Ξs Γ H y ->
+     mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_mod R = Some Rm -> set_sel_valid_with Γ H y Rm).
 Proof.
   apply (set_valid_unit_modexp_ind T γ).
   - (* a filed module at arguments: the filed submodule or the stored alias *)
-    intros Γ p T0 Φ Tr Tf Ns Hw Hgl HΓ Ha y R Rm Hm Hmd.
+    intros Γ p T0 Φ Tr Tf Ns Hw Hgl HΓ Ha y R Rm Hkn Hm Hmd.
     destruct (Sel.mem_unit_wf _ _ Hgw _ _ _ _ _ Hw Hm Hmd) as (HwY & HwU & _).
     destruct (Sel.filed_mod_desc _ _ Hgw _ _ _ _ _ _ _ _ Hgl Hm Hmd)
       as [(Tq & Φq & Hglq & ->) | (Φ0 & E & Ua & RU & Hp & HUa & HmU & HmdU)].
     + cbn [mdesc_unit] in HwU. exact (set_filed_body_sel _ _ _ _ _ _ _ _ _ _ Hw Hgl HΓ Ha Hglq HwU HwY).
-    + exact (set_filed_alias_sel _ _ _ _ _ _ _ _ _ _ _ _ _ Hw Hgl HΓ Ha Hp HUa HmU HmdU HwY).
+    + exact (set_filed_alias_sel _ _ _ _ _ _ _ _ _ _ _ _ _ Hw Hgl HΓ Ha Hkn Hp HUa HmU HmdU HwY).
   - (* a body: its entry's unit, filled in, over the parameters *)
-    intros Γ Δ Φ Φx Hb Hsub _ _ _ y R Rm Hm Hmd. exact (set_body_sel _ _ _ _ _ _ _ Hb Hsub Hm Hmd).
+    intros Γ Δ Φ Φx Hb Hsub _ _ _ y R Rm _ Hm Hmd. exact (set_body_sel _ _ _ _ _ _ _ Hb Hsub Hm Hmd).
   - (* an alias: its target's, over the parameters *)
-    intros Γ Δ E Hal HE IHE y R Rm Hm Hmd.
+    intros Γ Δ E Hal HE IHE y R Rm Hkn Hm Hmd.
     pose proof Hal as [Hw _ _ _ _ _ _].
     pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m unit_full] in Hf.
     destruct Hf as [_ _ _ HwΔΓ _ _ _ _ _ _].
     destruct (Sel.alias_mod_desc _ _ Hgw _ _ _ _ _ _ HwΔΓ Hm Hmd) as (R' & Hm' & ->).
     rewrite mdesc_mod_up in Hmd. destruct (mdesc_mod R') as [Rm' |] eqn:Hmd'; cbn in Hmd; [injection Hmd as <- | discriminate].
-    exact (set_alias_sel _ _ _ _ _ _ Hal HE Hm Hmd' Hm' (IHE _ _ _ Hm' Hmd')).
+    exact (set_alias_sel _ _ _ _ _ _ Hal HE Hm Hmd' Hm' (IHE _ _ _ (set_member_known_alias Θs Ξs _ _ _ _ Hkn) Hm' Hmd')).
   - (* a module expression equal to a valid unit: as the unit's, or a frame *)
-    intros Γ H K R0 Rm0 RK [HwH HmH HmodH HHK HmK HmodK Hpr] HK IHK y R Rm Hm Hmd.
+    intros Γ H K R0 Rm0 RK Hv0 HK IHK y R Rm Hkn Hm Hmd. pose proof Hv0 as [HwH HmH HmodH HHK HmK HmodK Hpr].
     pose proof (set_valid_unit_ctx T γ _ _ HK) as HΓ.
     (* a path naming an open frame, of either kind: filed at it *)
     assert (Hframe : forall p Tq Φq, mod_qname (me_mem H y) = Some p -> gc_frame gc_stack p = Some (Tq, Φq) ->
@@ -595,7 +617,7 @@ Proof.
     + pose proof (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ Hm1 _ HmH) as ->.
       rewrite HmodH in Hmd1; injection Hmd1 as <-.
       assert (HmKy : mdenote gc_deps gc_stack Γ (me_mem K y) R) by (eapply mdenote_mem; [exact HmK | exact HmodK | exact He | exact Hed | exact Hr]).
-      destruct (IHK _ _ _ HmKy Hmd) as [HrK HKu HpK].
+      destruct (IHK _ _ _ (set_member_known_unit T γ Hgw Θs Ξs _ _ _ _ _ _ _ Hv0 Hkn) HmKy Hmd) as [HrK HKu HpK].
       constructor; [| exact HKu |].
       * destruct (Sel.mem_unit_wf _ _ Hgw _ _ _ _ _ HwH Hm Hmd) as (HwHy & _ & _).
         destruct (Sel.mem_unit_wf _ _ Hgw _ _ _ _ _ (set_valid_unit_wf T γ _ _ HK) HmKy Hmd) as (HwKy & _ & _).
@@ -609,11 +631,11 @@ Qed.
 
 (** A submodule of a module expression valid in what it denotes is valid,
     as the unit of its module part. *)
-Corollary set_valid_modexp_sel : forall Γ H y R Rm, set_valid_modexp T γ Γ H ->
+Corollary set_valid_modexp_sel : forall Γ H y R Rm, set_valid_modexp T γ Γ H -> set_member_known Θs Ξs Γ H y ->
     mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
     set_sel_valid_with Γ H y Rm /\ set_valid_modexp T γ Γ (me_mem H y).
 Proof.
-  intros * HH Hm Hmd. pose proof (proj2 set_valid_unit_sel_all _ _ HH _ _ _ Hm Hmd) as HS. split; [exact HS |].
+  intros * HH Hkn Hm Hmd. pose proof (proj2 set_valid_unit_sel_all _ _ HH _ _ _ Hkn Hm Hmd) as HS. split; [exact HS |].
   destruct HS as [Hr HK Hp].
   destruct (Sel.mem_unit_wf _ _ Hgw _ _ _ _ _ (set_valid_modexp_wf T γ _ _ HH) Hm Hmd) as (HwHy & _ & RK & HmK & HmdK).
   apply (set_valid_modexp_intro T γ _ _ (mdesc_unit Rm) R Rm RK); [| exact HK].
@@ -626,17 +648,31 @@ Qed.
 Lemma mdesc_mod_tele_mod : forall R Tl, mdesc_mod_tele R = Some Tl -> exists Rm, mdesc_mod R = Some Rm.
 Proof. intros * H. unfold mdesc_mod_tele in H. destruct (mdesc_mod R) as [Rm |]; [exists Rm; reflexivity | discriminate]. Qed.
 
+(** A submodule read at [Θs ⍮ Ξs] is one the context has, here read as
+    the module it has grown into, taking the same parameters. *)
+Lemma set_submodule_here : forall Γ H y R1 Tl, mdenote Θs Ξs Γ (me_mem H y) R1 -> mdesc_mod_tele R1 = Some Tl ->
+    exists R, mdenote gc_deps gc_stack Γ (me_mem H y) R /\ mdesc_mod_tele R = Some Tl /\ set_member_known Θs Ξs Γ H y.
+Proof.
+  intros * Hm1 Ht1.
+  destruct (gctx_embedding_mdenote _ _ _ _ (set_source_wf T γ Θs Ξs Hemb) (set_gctx_embedding_embedding _ _ _ _ _ _ Hemb)
+              _ _ _ Hm1) as (R & Hm & Hgr).
+  exists R. split; [exact Hm | split; [exact (mdesc_grows_mtele _ _ _ _ _ _ _ Hgr Ht1) |]].
+  exact (set_member_known_of_source T γ Hgw Θs Ξs Hemb _ _ _ _ Hm1).
+Qed.
+
 (** Submodules of equal module expressions are equal. *)
-Lemma set_rule_me_mem : forall Γ H H' y R Tl R' Tl', set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H' ->
-    mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_mod_tele R = Some Tl ->
-    mdenote gc_deps gc_stack Γ (me_mem H' y) R' -> mdesc_mod_tele R' = Some Tl' ->
+Lemma set_rule_me_mem : forall Γ H H' y R1 Tl R1' Tl', set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H' ->
+    mdenote Θs Ξs Γ (me_mem H y) R1 -> mdesc_mod_tele R1 = Some Tl ->
+    mdenote Θs Ξs Γ (me_mem H' y) R1' -> mdesc_mod_tele R1' = Some Tl' ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem H' y ≈ me_mem H' y ->
     set_rel_modexp_eq T γ Γ (me_mem H y) (me_mem H' y).
 Proof.
-  intros * HΓ (F & F' & [HF HF' E Hv Hv' Hpr]) Hm Ht Hm' Ht' HwY HwY'.
+  intros * HΓ (F & F' & [HF HF' E Hv Hv' Hpr]) Hm1 Ht1 Hm1' Ht1' HwY HwY'.
+  destruct (set_submodule_here _ _ _ _ _ Hm1 Ht1) as (R & Hm & Ht & Hkn).
+  destruct (set_submodule_here _ _ _ _ _ Hm1' Ht1') as (R' & Hm' & Ht' & Hkn').
   destruct (mdesc_mod_tele_mod _ _ Ht) as (Rm & Hmd). destruct (mdesc_mod_tele_mod _ _ Ht') as (Rm' & Hmd').
-  apply set_modexp_eq_of_rel; [| exact (proj2 (set_valid_modexp_sel _ _ _ _ _ Hv Hm Hmd))
-                              | exact (proj2 (set_valid_modexp_sel _ _ _ _ _ Hv' Hm' Hmd'))
+  apply set_modexp_eq_of_rel; [| exact (proj2 (set_valid_modexp_sel _ _ _ _ _ Hv Hkn Hm Hmd))
+                              | exact (proj2 (set_valid_modexp_sel _ _ _ _ _ Hv' Hkn' Hm' Hmd'))
                               | intros κs Hκ ys x; exact (Hpr κs Hκ (y :: ys) x)].
   apply set_modexp_rel_mem; [exact HΓ | | exact HwY | exact HwY']. exists F, F'. constructor; assumption.
 Qed.
@@ -644,11 +680,14 @@ Qed.
 (** [δ] for submodules: a submodule is the unit its module part stands
     for. *)
 Lemma set_rule_me_delta_sel : forall Γ H y R Rm, set_rel_modexp_eq T γ Γ (me_mem H y) (me_mem H y) ->
-    mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
+    mdenote Θs Ξs Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
     set_rel_modexp_eq T γ Γ (me_mem H y) (mdesc_unit Rm).
 Proof.
-  intros * (F & F' & [_ _ _ Hv _]) Hm Hmd. destruct (set_valid_modexp_canon T γ Hfn Hmods Hgw Hok _ _ _ _ Hv Hm Hmd) as [Hr HK Hpr].
-  exact (set_modexp_eq_of_rel T γ _ _ _ Hr Hv (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HK) Hpr).
+  intros * (F & F' & [_ _ _ Hv _]) Hms Hmds.
+  destruct (proj1 (mdenote_grow_all _ _ _ _ (set_source_wf T γ Θs Ξs Hemb) Hgw (set_source_sub T γ Θs Ξs Hemb)) _ _ _ Hms)
+    as (R2 & Hm & HR).
+  destruct (mdesc_grows_mod _ _ _ _ _ _ _ HR Hmds) as (Rm2 & Hmd & HRm). rewrite (mdesc_grows_unit _ _ _ _ _ _ HRm). destruct (set_valid_modexp_canon T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ _ _ Hv Hm Hmd) as [Hr HK Hpr].
+  exact (set_modexp_eq_of_rel T γ _ _ _ Hr Hv (set_valid_modexp_of_unit T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HK) Hpr).
 Qed.
 
 End Sel.

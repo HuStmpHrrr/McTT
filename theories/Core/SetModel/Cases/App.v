@@ -26,8 +26,11 @@ Section App.
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
-  (** The valuation models the global context *)
-  Hypothesis Hok : set_gctx_ok T γ.
+  (** The context the derivations were checked at *)
+  Variable Θs : gdeps.
+  Variable Ξs : gstack.
+  (** The valuation models, here, everything that context resolves *)
+  Hypothesis Hemb : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ.
 
 (** A module expression valid in what it denotes, given arguments for the
     outermost parameters of an abstraction its description is. *)
@@ -64,7 +67,7 @@ Proof.
   assert (Hmt : mdesc_mod_tele (mdesc_up (Δ1 ++ ce_ass κ C :: nil) R) = Some ((T0 ++ Δ1) ++ ce_ass κ C :: nil))
     by (unfold mdesc_mod_tele; rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ Hmod)), (mdesc_tele_up _ _ _ Ht0), List.app_assoc;
         reflexivity).
-  pose proof (proj2 (set_valid_unit_app_all T γ Hfn Hmods Hgw Hok) _ _ Hs _ _ _ _ _ _ Hm Hmt (tele_view_last _ _ _) HSC HC
+  pose proof (proj2 (set_valid_unit_app_all T γ Hfn Hmods Hgw Θs Ξs Hemb) _ _ Hs _ _ _ _ _ _ Hm Hmt (tele_view_last _ _ _) HSC HC
                 (ex_intro _ Sr (conj HSr HCr)) HN HNsem) as HsN.
   cbn [me_apps].
   eapply (IH Γ (tele_sub Δ1 (sb_extend sb_id (se_exp N))) (mdesc_sub R (sb_qn (List.length Δ1) (sb_extend sb_id (se_exp N)))) _ l).

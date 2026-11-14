@@ -47,6 +47,33 @@ Definition set_env_drop (n : nat) (ρ : set_env) : set_env := fun x => ρ (n + x
 Definition universe_shape (FU : set_env -> aczel_set) (ρ : set_env) (V : aczel_set) : Prop :=
   grothendieck V /\ exists l, set_eq (FU ρ) (universe_code l V).
 
+(** [set_member_seen Ξ1 Rm1 x]: [x] is a member of the module part [Rm1]
+    as the context with the stack [Ξ1] reads it: an entry of the part, or,
+    for a filed module, a stored member, which counts the type former of
+    an inductive type whose frame is open on [Ξ1]: in [module P where
+    inductive V : Type where | mk : V → V end], [P.V] in [mk]'s type is
+    read off the open frame, not off [P]'s body ([mdenote_ind_frame]). *)
+Inductive set_member_seen (Ξ1 : gstack) : mdesc -> string -> Prop :=
+(** An entry of the part *)
+| set_member_seen_entry : forall Rm1 x e, mdesc_entry Rm1 x = Some e -> set_member_seen Ξ1 Rm1 x
+(** A stored member of a filed module, its body's or an open frame's former *)
+| set_member_seen_stored : forall Θ' p T Φ1 Ns x R0, stored_term_member Ξ1 Φ1 p x R0 ->
+    set_member_seen Ξ1 (mdesc_closed Θ' p T Φ1 Ns) x
+(** A frame open on [Ξ1] under a filed module, a submodule there before
+    it is filed: in [module M where module N where … end end], [M.N] names
+    the open frame while [N]'s body is checked *)
+| set_member_seen_frame : forall Θ' p T Φ1 Ns y Ty Φy, gc_frame Ξ1 (qname_in p y) = Some (Ty, Φy) ->
+    set_member_seen Ξ1 (mdesc_closed Θ' p T Φ1 Ns) y.
+
+(** [set_member_at Θ1 Ξ1 Θ2 Ξ2 Rm x]: [x] is a member of the module part
+    [Rm] read at [Θ2 ⍮ Ξ2] that the part it grew from at [Θ1 ⍮ Ξ1] already
+    has.  A frame grows after a term is checked against it: in
+    [module M where def a ≔ 0; def b ≔ … M.a …; def c ≔ 1 end], [b] is
+    checked against [M = {a}], and the members a judgment about [b] may
+    speak of are those. *)
+Definition set_member_at (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (Rm : mdesc) (x : string) : Prop :=
+  exists Rm1, mdesc_grows Θ1 Ξ1 Θ2 Ξ2 Rm1 Rm /\ set_member_seen Ξ1 Rm1 x.
+
 Section Judgments.
   Context {GC : GCtx}.
   Variable T : universe_tower.
@@ -165,11 +192,21 @@ Record set_modexp_denotes (Γ : ctx) (H : modexp) (F : set_env -> set_module) : 
     (** Every module of [H] at a related environment is [F]'s *)
   ; set_modexp_denotes_unique : forall ρ ρ' m, set_env_rel Γ ρ ρ' -> set_interp_modexp T γ Γ ρ' H m -> set_module_eq γ m (F ρ) }.
 
-(** [set_members_valid Γ H F]: every term member of [H], of [F]'s modules,
-    is of its type, and is its δ-reduct when it has one.  A member of a
-    submodule is one of the submodule's, valid in its turn. *)
-Definition set_members_valid (Γ : ctx) (H : modexp) (F : set_env -> set_module) : Prop :=
-  forall x R A FA, mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
+(** [set_member_known Θ1 Ξ1 Γ H x]: [x] is a member of [H]'s module part
+    here that the context [Θ1 ⍮ Ξ1] this one grew from already has
+    ([set_member_at]).  It is read off the module part, not off [H], as
+    [H] and the unit it is equal to share their module part
+    ([set_modexp_valid_with]): for [H = A.B] with [A ≔ C], the unit is
+    [C.B], of which the smaller context need know nothing. *)
+Definition set_member_known (Θ1 : gdeps) (Ξ1 : gstack) (Γ : ctx) (H : modexp) (x : string) : Prop :=
+  forall R0 R0m, mdenote gc_deps gc_stack Γ H R0 -> mdesc_mod R0 = Some R0m -> set_member_at Θ1 Ξ1 gc_deps gc_stack R0m x.
+
+(** [set_members_valid Θ1 Ξ1 Γ H F]: every term member of [H] that the
+    context [Θ1 ⍮ Ξ1] already has, of [F]'s modules, is of its type, and
+    is its δ-reduct when it has one.  A member of a submodule is one of
+    the submodule's, valid in its turn. *)
+Definition set_members_valid (Θ1 : gdeps) (Ξ1 : gstack) (Γ : ctx) (H : modexp) (F : set_env -> set_module) : Prop :=
+  forall x R A FA, set_member_known Θ1 Ξ1 Γ H x -> mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
     set_denotes Γ A FA -> forall ρ, set_env_in Γ ρ ->
     set_mem (select_term γ (F ρ) x) (code_carrier (FA ρ)) /\
     (forall N FN, mdesc_reduct R = Some N -> set_denotes Γ N FN -> set_eq (select_term γ (F ρ) x) (FN ρ)).
@@ -838,10 +875,10 @@ Record set_filed_term_with (p : qname) (Tl : ctx) (x : string) (R0 : mdesc) (A0 
     ([set_gctx_embedding]), whose open frames are the ones its
     derivations saw. *)
 Record set_filed_mod (Ξm : gstack) (p : qname) (Tl : ctx) (Φ : gmod) : Prop :=
-  { (** Its path reads the global module at no argument, anywhere *)
-    set_filed_mod_path : forall Γ ρ, set_interp_modexp T γ Γ ρ (qname_mod p) (set_module_global p nil)
-    (** The telescope denotes *)
-  ; set_filed_mod_tele_ctx : set_ctx T γ Tl
+  { (** The telescope denotes.  That its path reads its global module is
+        no field: it follows from the module being its own global module
+        and the path's typing ([set_interp_filed_path]) *)
+    set_filed_mod_tele_ctx : set_ctx T γ Tl
     (** Of assumptions *)
   ; set_filed_mod_tele_assumptions : all_assumptions Tl
     (** Closed *)
@@ -1164,8 +1201,11 @@ Record set_gctx_embedding (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gsta
     (** Every module it files or has open is modelled there *)
   ; set_gctx_embedding_filed : forall p Tl Φ, gc_loc Θ1 Ξ1 p = Some (Tl, Φ) ->
       @set_filed_mod (gc_mk Θ2 Ξ2) T γ Ξ1 p Tl Φ
-    (** A filed module or frame is its own global module *)
-  ; set_gctx_embedding_bodies : forall q TΦ, gc_loc Θ1 Ξ1 q = Some TΦ -> global_module γ q = set_module_global q nil
+    (** A module or frame the bigger context files or has open is its own
+        global module.  Read at the bigger context: a path filed there
+        after the smaller one reads its global module as any other does,
+        and this fixes only which module the valuation gives a path *)
+  ; set_gctx_embedding_bodies : forall q TΦ, gc_loc Θ2 Ξ2 q = Some TΦ -> global_module γ q = set_module_global q nil
     (** Every global module equals itself, so selection respects
         equality *)
   ; set_gctx_embedding_modules : forall q, set_module_eq γ (global_module γ q) (global_module γ q)

@@ -27,8 +27,11 @@ Section Canon.
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
-  (** The valuation models the global context *)
-  Hypothesis Hok : set_gctx_ok T γ.
+  (** The context the derivations were checked at *)
+  Variable Θs : gdeps.
+  Variable Ξs : gstack.
+  (** The valuation models, here, everything that context resolves *)
+  Hypothesis Hemb : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ.
 
 (** The unit of the module part of what a well-formed module expression
     denotes is well formed. *)
@@ -74,23 +77,23 @@ Proof.
   assert (Halias : set_modexp_rel T γ Γ (me_lit (gu_mk Δ (md_alias (mdesc_unit X)))) (me_lit (gu_mk Δ (md_alias (mdesc_unit X))))).
   { exact (set_unit_rel_abs T γ Hfn Hmods Δ Γ nil _ HΔ HΔΓ HcΔΓ
              (set_modexp_rel_refl_left T γ _ _ _
-                (set_alias0_rel T γ Hfn Hmods _ _ HΔΓ (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKu)))). }
+                (set_alias0_rel T γ Hfn Hmods _ _ HΔΓ (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HKu)))). }
   destruct Δ as [| e Δ0]; [contradiction |]. set (Δ := e :: Δ0) in *.
   destruct X as [| Δe Φ Φx | [| e' Θ'] p T' Φ' Ns |]; cbn in Him; try contradiction.
   - (* a local body: the literal over both telescopes *)
     cbn [mdesc_up mdesc_unit] in HKu, Halias, Hwup |- *.
     pose proof (set_valid_unit_abs T γ Hfn Hmods Δ Γ Δe _ l HKu HΔ Hl Hwup) as HKup.
     constructor; [| exact HKup |].
-    + exact (set_unit_rel_flatten T γ Hfn Hmods _ _ _ _ HΔ Halias (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKup)).
+    + exact (set_unit_rel_flatten T γ Hfn Hmods _ _ _ _ HΔ Halias (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HKup)).
     + intros κs Hκ ys x. cbn [mdesc_unit modexp_member_proofs]. rewrite !unit_member_proofs_tele_out.
       cbn [moddef_member_proofs modexp_member_proofs]. rewrite unit_member_proofs_tele_out, List.rev_app_distr, tele_out_proofs_app.
       reflexivity.
   - (* a filed module at arguments: the alias of it *)
     cbn [mdesc_up mdesc_unit List.app] in HKu, Halias, Hwup |- *.
     constructor; [exact Halias | | intros; reflexivity].
-    apply set_valid_unit_alias; [| exact (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HKu)].
+    apply set_valid_unit_alias; [| exact (set_valid_modexp_of_unit T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HKu)].
     constructor; [exact Hwup | exact HΔ | exists l; exact Hl | exact HΓ | exact HΔΓ | exact Halias
-                 | exact (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKu)].
+                 | exact (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HKu)].
   - (* an alias of a filed module: the alias over both telescopes *)
     cbn [mdesc_up mdesc_unit] in HKu, Halias, Hwup |- *.
     change (match (e' :: Θ') ++ Δ with
@@ -99,7 +102,7 @@ Proof.
             end) with (me_lit (gu_mk ((e' :: Θ') ++ Δ) (md_alias (me_apps (qname_mod p) Ns)))) in Hwup |- *.
     pose proof (set_valid_unit_abs T γ Hfn Hmods Δ Γ (e' :: Θ') _ l HKu HΔ Hl Hwup) as HKup.
     constructor; [| exact HKup |].
-    + exact (set_unit_rel_flatten T γ Hfn Hmods _ _ _ _ HΔ Halias (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKup)).
+    + exact (set_unit_rel_flatten T γ Hfn Hmods _ _ _ _ HΔ Halias (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HKup)).
     + intros κs Hκ ys x.
       change (modexp_member_proofs γ κs (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk (e' :: Θ') (md_alias (me_apps (qname_mod p) Ns))))))) ys x
               = modexp_member_proofs γ κs (me_lit (gu_mk ((e' :: Θ') ++ Δ) (md_alias (me_apps (qname_mod p) Ns)))) ys x).
@@ -120,14 +123,14 @@ Proof.
     pose proof (set_valid_unit_filed T γ _ _ _ _ _ _ _ Hw Hgl HΓ Ha) as HK.
     destruct (filed_denote _ _ Hgw _ _ _ Γ Ns Hgl) as (R1 & Hm1 & Hmod1).
     rewrite (proj1 (mdenote_functional_all _ _ Hgw) _ _ _ Hm _ Hm1), Hmod1 in Hmd; injection Hmd as <-.
-    cbn [mdesc_unit]. constructor; [exact (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HK) | exact HK | intros; reflexivity].
+    cbn [mdesc_unit]. constructor; [exact (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HK) | exact HK | intros; reflexivity].
   - (* a body: its own literal *)
     intros Γ Δ Φ Φx Hb Hsub _ Hop _ RK Rm Hm Hmd.
     pose proof (set_valid_unit_body T γ _ _ _ _ Hb Hsub Hop) as HK.
     apply mdenote_lit_inv in Hm. inversion Hm; subst.
     match goal with Hb0 : mdesc_body _ _ _ _ _ = Some _ |- _ => cbn in Hb0; injection Hb0 as <- end.
     cbn in Hmd; injection Hmd as <-. cbn [mdesc_unit].
-    constructor; [exact (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HK) | exact HK | intros; reflexivity].
+    constructor; [exact (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HK) | exact HK | intros; reflexivity].
   - (* an alias: its target's unit, abstracted *)
     intros Γ Δ E Hal HE IHE RK Rm Hm Hmd.
     pose proof (set_valid_unit_alias T γ _ _ _ Hal HE) as HK0.

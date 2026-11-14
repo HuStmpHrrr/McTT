@@ -11,7 +11,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Weakening JudgmentSubstitution.
 From Mctt.Core.SetModel Require Import Judgments.
-From Mctt.Core.SetModel.Cases Require Import UniverseCases ValidUnit Sel.
+From Mctt.Core.SetModel.Cases Require Import UniverseCases ValidUnit MemberTypes Sel.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import Paths.
@@ -26,8 +26,11 @@ Section Inductives.
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
-  (** The valuation models the global context *)
-  Hypothesis Hok : set_gctx_ok T γ.
+  (** The context the derivations were checked at *)
+  Variable Θs : gdeps.
+  Variable Ξs : gstack.
+  (** The valuation models, here, everything that context resolves *)
+  Hypothesis Hemb : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ.
 
 (** ** Closed Terms Read Anywhere *)
 
@@ -99,10 +102,11 @@ Qed.
 (** ** The Rules *)
 
 Lemma set_rule_ind : forall Γ p k D Mk, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
-    ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk ->
+    ind_lookup Θs Ξs p = Some D -> ind_member D k = Some Mk ->
     set_rel_exp_eq T γ Γ (ind_ty D Mk) (a_ind p k) (a_ind p k).
 Proof.
-  intros * Hc HΓ HD Hk. pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG.
+  intros * Hc HΓ HDs Hk. pose proof (set_source_groups T γ Θs Ξs Hemb _ _ HDs) as HG.
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDs) as HD.
   destruct (set_group_ok_former_types _ _ _ _ _ HG _ _ Hk) as (FA & HFA).
   apply (set_exp_eq_closed_global _ _ (global_former γ p k) FA); try assumption.
   - exact (decl_closed_ind_ty _ _ _ (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hgw) HD) Hk).
@@ -111,11 +115,12 @@ Proof.
 Qed.
 
 Lemma set_rule_con : forall Γ p k c D Mk gs i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
-    ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+    ind_lookup Θs Ξs p = Some D -> ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gc_deps ⍮ gc_stack ⍮ nil ⊢ con_ty p D k Mk gs : a_typ i -> set_rel_exp_eq T γ nil (a_typ i) (con_ty p D k Mk gs) (con_ty p D k Mk gs) ->
     set_rel_exp_eq T γ Γ (con_ty p D k Mk gs) (a_con p k c) (a_con p k c).
 Proof.
-  intros * Hc HΓ HD Hk Hcon Hw (FS & FA & FA' & [_ HFA _ _ _]). pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG.
+  intros * Hc HΓ HDs Hk Hcon Hw (FS & FA & FA' & [_ HFA _ _ _]). pose proof (set_source_groups T γ Θs Ξs Hemb _ _ HDs) as HG.
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDs) as HD.
   apply (set_exp_eq_closed_global _ _ (global_constructor γ p k c) FA); try assumption.
   - exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ Hw))).
   - exact (set_group_ok_constructors_typed _ _ _ _ _ HG _ _ _ _ _ Hk Hcon HFA).

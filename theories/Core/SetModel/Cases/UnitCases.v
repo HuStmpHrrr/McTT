@@ -28,8 +28,15 @@ Section Units.
   Hypothesis Hfn : fn_kinds_unique_ext.
   (** Every global module equals itself *)
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
-  (** The valuation models the global context *)
-  Hypothesis Hok : set_gctx_ok T γ.
+  (** The context the derivations were checked at *)
+  Variable Θs : gdeps.
+  Variable Ξs : gstack.
+  (** The valuation models, here, everything that context resolves *)
+  Hypothesis Hemb : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ.
+
+(** This context is well formed, as one the smaller context grows into. *)
+Lemma set_here_wf : ⊢ᵍ gc_deps ⍮ gc_stack.
+Proof. exact (gctx_embedding_wf _ _ _ _ (set_gctx_embedding_embedding _ _ _ _ _ _ Hemb)). Qed.
 
 (** ** Values Read in Equal Extensions *)
 
@@ -299,8 +306,8 @@ Proof.
   pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0. pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hlen.
   pose proof (set_valid_unit_alias_of _ _ _ _ (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_left HUU)) HΔ Hl HvE) as HK.
   pose proof (set_valid_unit_alias_of _ _ _ _ (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_right HUU)) HΔ' Hl' HvE2) as HK'.
-  destruct (set_valid_unit_rel T γ Hfn0 Hmods Hok _ _ HK) as (F & _ & [HF _ _]).
-  destruct (set_valid_unit_rel T γ Hfn0 Hmods Hok _ _ HK') as (F' & _ & [HF' _ _]).
+  destruct (set_valid_unit_rel T γ Hfn0 Hmods set_here_wf Θs Ξs Hemb _ _ HK) as (F & _ & [HF _ _]).
+  destruct (set_valid_unit_rel T γ Hfn0 Hmods set_here_wf Θs Ξs Hemb _ _ HK') as (F' & _ & [HF' _ _]).
   assert (Hpr : forall κs, set_slots_coherent γ Γ κs -> forall ys x,
              unit_member_proofs γ κs (gu_mk Δ (md_alias E)) ys x = unit_member_proofs γ κs (gu_mk Δ' (md_alias E')) ys x).
   { intros κs Hκ ys x. rewrite !unit_member_proofs_tele_out. cbn [moddef_member_proofs].
@@ -660,8 +667,8 @@ Proof.
   { apply (set_valid_unit_body_of _ _ _ _ l (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_right HUU)) Hx' Hcx' HΔ' Hl' HC' Hsl' Hsv'
              (body_shape_r _ _ Hs) (body_shape_r _ _ Hsxx)).
     intros k Ψ H Hk. destruct (Ho' _ _ _ Hk) as (G & G' & [_ _ _ Hv _ _]). exact Hv. }
-  destruct (set_valid_unit_rel T γ Hfn0 Hmods Hok _ _ HK) as (F & _ & [HF _ _]).
-  destruct (set_valid_unit_rel T γ Hfn0 Hmods Hok _ _ HK') as (F' & _ & [HF' _ _]).
+  destruct (set_valid_unit_rel T γ Hfn0 Hmods set_here_wf Θs Ξs Hemb _ _ HK) as (F & _ & [HF _ _]).
+  destruct (set_valid_unit_rel T γ Hfn0 Hmods set_here_wf Θs Ξs Hemb _ _ HK') as (F' & _ & [HF' _ _]).
   (* the same proofness *)
   assert (Hpr : forall κs, set_slots_coherent γ Γ κs -> forall ys x,
              unit_member_proofs γ κs (gu_open Δ Φ) ys x = unit_member_proofs γ κs (gu_open Δ' Φ') ys x).

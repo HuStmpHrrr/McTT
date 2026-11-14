@@ -31,8 +31,11 @@ Section ModuleCases.
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
-  (** The valuation models the global context *)
-  Hypothesis Hok : set_gctx_ok T γ.
+  (** The context the derivations were checked at *)
+  Variable Θs : gdeps.
+  Variable Ξs : gstack.
+  (** The valuation models, here, everything that context resolves *)
+  Hypothesis Hemb : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ.
 
 (** ** Valid Units Are Valid Module Expressions *)
 
@@ -48,8 +51,10 @@ Qed.
 (** A valid unit denotes, alike on both sides. *)
 Lemma set_valid_unit_rel : forall Γ K, set_valid_unit T γ Γ K -> set_modexp_rel T γ Γ K K.
 Proof.
-  intros * HK. destruct HK as [Γ p T0 Φ Tr Tf Ns _ Hgl HΓ Ha | Γ Δ Φ Φx Hb _ _ | Γ Δ E Hal _].
-  - pose proof (set_filed_mod_path _ _ _ _ _ _ (set_gctx_ok_filed _ _ Hok _ _ _ Hgl)) as Hpath.
+  intros * HK. destruct HK as [Γ p T0 Φ Tr Tf Ns Hw Hgl HΓ Ha | Γ Δ Φ Φx Hb _ _ | Γ Δ E Hal _].
+  - (* the filed module's path reads its global module *)
+    pose proof (set_interp_filed_path T γ Hgw (set_target_bodies T γ Θs Ξs Hemb) _ (presup_modexp_eq_ctx Hw)
+                  _ _ _ (gc_loc_loc _ _ _ _ _ Hgl)) as Hpath.
     destruct Ha as [_ Hlen HTfa _ HNr _].
     assert (HN : forall k N, List.nth_error Ns k = Some N -> exists FN, set_denotes T γ Γ N FN).
     { intros k N HN.
@@ -61,7 +66,7 @@ Proof.
     set (F := fun ρ => apply_module_args (set_module_global p nil) (Fs ρ)).
     assert (HF : set_modexp_denotes T γ Γ (me_apps (qname_mod p) Ns) F).
     { apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
-      exact (set_interp_me_apps _ _ _ _ _ _ (Hpath Γ ρ) (HFs _ Hρ)). }
+      exact (set_interp_me_apps _ _ _ _ _ _ (Hpath ρ) (HFs _ Hρ)). }
     exists F, F. constructor; [exact HF | exact HF |].
     intros ρ Hρ. apply set_modexp_denotes_unique with (1 := HF) (2 := Hρ). exact (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ).
   - exact (set_body_ok_rel _ _ _ _ _ _ Hb).
@@ -174,10 +179,12 @@ Proof.
            (fun κs Hκ ys z => set_slots_coherent_lookup _ _ _ Hl _ Hκ ys z)).
 Qed.
 
-Lemma set_rule_me_unit : forall Γ fp TΦ, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ -> gc_unit gc_deps gc_stack (me_unit fp) = Some TΦ ->
+Lemma set_rule_me_unit : forall Γ fp TΦ, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ -> gc_unit Θs Ξs (me_unit fp) = Some TΦ ->
     set_rel_modexp_eq T γ Γ (me_unit fp) (me_unit fp).
 Proof.
-  intros * Hc HC Hu. destruct TΦ as [T0 Φ0]. destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq & Hl).
+  intros * Hc HC Hu. destruct TΦ as [T0 Φs]. destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq & Hls).
+  destruct (gc_loc_grow _ _ _ _ Hgw (set_source_sub T γ Θs Ξs Hemb) _ _ _
+              (gc_loc_of_loc _ _ (set_source_wf T γ Θs Ξs Hemb) _ _ _ Hls)) as (Φ0 & _ & _ & Hl).
   pose proof (mod_qname_inv _ _ Hq) as Heq. rewrite Heq.
   assert (HK : set_valid_unit T γ Γ (me_apps (qname_mod mp) nil)).
   { apply (set_valid_unit_filed T γ Γ mp T0 Φ0 T0 nil nil); [exact (loc_modexp_wf _ _ _ Hc _ _ _ Hl) | exact (gc_loc_of_loc _ _ Hgw _ _ _ Hl)
@@ -250,29 +257,46 @@ Qed.
 
 (** ** Members *)
 
+(** A term member read at [Θs ⍮ Ξs] is one the valuation has modelled,
+    here read as the member it has grown into, of the same type and
+    reduct. *)
+Lemma set_member_here : forall Γ H x R1 A, mdenote Θs Ξs Γ (me_mem H x) R1 -> mdesc_type R1 = Some A ->
+    exists R, mdenote gc_deps gc_stack Γ (me_mem H x) R /\ mdesc_type R = Some A /\ mdesc_reduct R = mdesc_reduct R1 /\
+      set_member_known Θs Ξs Γ H x.
+Proof.
+  intros * Hm1 Ht1.
+  pose proof (set_gctx_embedding_source_wf _ _ _ _ _ _ Hemb) as Hgs.
+  destruct (gctx_embedding_mdenote _ _ _ _ Hgs (set_gctx_embedding_embedding _ _ _ _ _ _ Hemb) _ _ _ Hm1) as (R & Hm & Hgr).
+  exists R. split; [exact Hm | split; [exact (mdesc_grows_ty _ _ _ _ _ _ _ Hgr Ht1) | split]].
+  - symmetry. exact (mdesc_grows_red _ _ _ _ _ _ Hgr).
+  - exact (set_member_known_of_source T γ Hgw Θs Ξs Hemb _ _ _ _ Hm1).
+Qed.
+
 (** A term member of a valid module expression is of its type. *)
-Lemma set_rule_mem : forall Γ H x R A, set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H ->
-    mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H x : A ->
+Lemma set_rule_mem : forall Γ H x R1 A, set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H ->
+    mdenote Θs Ξs Γ (me_mem H x) R1 -> mdesc_type R1 = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H x : A ->
     set_rel_exp_eq T γ Γ A (a_mem H x) (a_mem H x).
 Proof.
-  intros * HΓ (F & F' & [HF _ _ Hv _]) Hm Ht HT.
-  destruct (proj1 (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Hok _ _ Hv _ _ _ Hm Ht)) as (FA & HA).
+  intros * HΓ (F & F' & [HF _ _ Hv _]) Hm1 Ht1 HT.
+  destruct (set_member_here _ _ _ _ _ Hm1 Ht1) as (R & Hm & Ht & _ & Hkn).
+  destruct (proj1 (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ Hv _ _ _ Hkn Hm Ht)) as (FA & HA).
   assert (HM : set_denotes T γ Γ (a_mem H x) (fun ρ => select_term γ (F ρ) x)).
   { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
     econstructor; [ exact (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) | exact HT ]. }
   exists FA, (fun ρ => select_term γ (F ρ) x), (fun ρ => select_term γ (F ρ) x).
   constructor; [exact HA | exact HM | exact HM | intros; apply set_eq_refl |].
-  intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ)).
+  intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ _ Hv HF _ _ _ _ Hkn Hm Ht HA _ Hρ)).
 Qed.
 
 (** Members of equal module expressions are equal. *)
-Lemma set_rule_mem_cong : forall Γ H H' x R A, set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H' ->
-    mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
+Lemma set_rule_mem_cong : forall Γ H H' x R1 A, set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H' ->
+    mdenote Θs Ξs Γ (me_mem H x) R1 -> mdesc_type R1 = Some A ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H x : A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H' x : A ->
     set_rel_exp_eq T γ Γ A (a_mem H x) (a_mem H' x).
 Proof.
-  intros * HΓ (F & F' & [HF HF' E Hv _]) Hm Ht HT HT'.
-  destruct (proj1 (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Hok _ _ Hv _ _ _ Hm Ht)) as (FA & HA).
+  intros * HΓ (F & F' & [HF HF' E Hv _]) Hm1 Ht1 HT HT'.
+  destruct (set_member_here _ _ _ _ _ Hm1 Ht1) as (R & Hm & Ht & _ & Hkn).
+  destruct (proj1 (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ Hv _ _ _ Hkn Hm Ht)) as (FA & HA).
   assert (HM : set_denotes T γ Γ (a_mem H x) (fun ρ => select_term γ (F ρ) x)).
   { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
     econstructor; [ exact (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) | exact HT ]. }
@@ -282,25 +306,28 @@ Proof.
   exists FA, (fun ρ => select_term γ (F ρ) x), (fun ρ => select_term γ (F' ρ) x).
   constructor; [exact HA | exact HM | exact HM' | |].
   - intros ρ Hρ. exact (select_term_resp γ _ _ (E _ Hρ) x).
-  - intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ)).
+  - intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ _ Hv HF _ _ _ _ Hkn Hm Ht HA _ Hρ)).
 Qed.
 
 (** [δ] for members: a term member of a valid module expression is its
     reduct. *)
-Lemma set_rule_mem_delta : forall Γ H x R A M, set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H ->
-    mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M ->
+Lemma set_rule_mem_delta : forall Γ H x R1 A M, set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H ->
+    mdenote Θs Ξs Γ (me_mem H x) R1 -> mdesc_type R1 = Some A -> mdesc_reduct R1 = Some M ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H x : A -> set_rel_exp_eq T γ Γ A (a_mem H x) M.
 Proof.
-  intros * HΓ (F & F' & [HF _ _ Hv _]) Hm Ht HM HT.
-  destruct (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Hok _ _ Hv _ _ _ Hm Ht) as [(FA & HA) HMd].
+  intros * HΓ (F & F' & [HF _ _ Hv _]) Hm1 Ht1 HM1 HT.
+  destruct (set_member_here _ _ _ _ _ Hm1 Ht1) as (R & Hm & Ht & HRr & Hkn).
+  assert (HM : mdesc_reduct R = Some M) by (rewrite HRr; exact HM1).
+  destruct (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ Hv _ _ _ Hkn Hm Ht) as [(FA & HA) HMd].
   destruct (HMd _ HM) as (FM & HFM).
   assert (HMem : set_denotes T γ Γ (a_mem H x) (fun ρ => select_term γ (F ρ) x)).
   { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
     econstructor; [ exact (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) | exact HT ]. }
   exists FA, (fun ρ => select_term γ (F ρ) x), FM.
   constructor; [exact HA | exact HMem | exact HFM | |].
-  - intros ρ Hρ. exact (proj2 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ) _ _ HM HFM).
-  - intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Hok _ _ _ Hv HF _ _ _ _ Hm Ht HA _ Hρ)).
+  - intros ρ Hρ.
+    exact (proj2 (set_valid_modexp_members T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ _ Hv HF _ _ _ _ Hkn Hm Ht HA _ Hρ) _ _ HM HFM).
+  - intros ρ Hρ. exact (proj1 (set_valid_modexp_members T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ _ Hv HF _ _ _ _ Hkn Hm Ht HA _ Hρ)).
 Qed.
 
 (** ** A Unit's Outermost Parameter Moved Into the Context *)
@@ -587,8 +614,10 @@ Proof.
     injection Ht as <-.
     replace (List.length Tr + List.length Tf - List.length Ns) with (List.length Tr) in Hv by lia.
     rewrite List.firstn_app, List.firstn_all, Nat.sub_diag in Hv; cbn [List.firstn] in Hv; rewrite !List.app_nil_r in Hv.
-    pose proof (set_filed_mod_tele_assumptions T γ _ _ _ _ (set_gctx_ok_filed T γ Hok _ _ _ Hgl)) as HTa.
-    pose proof (set_filed_mod_tele_scoped T γ _ _ _ _ (set_gctx_ok_filed T γ Hok _ _ _ Hgl)) as HTs.
+    (* the telescope is of assumptions and closed, by its typing *)
+    pose proof (gc_loc_tele_all_assumptions _ _ Hgw _ _ _ Hgl) as HTa.
+    pose proof (proj1 (proj1 wf_scoped _ _ _ (syn_F_wf _ _ _ (proj1 (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hgw)
+                                                                 (gc_loc_loc _ _ _ _ _ Hgl)))))) as HTs.
     apply List.Forall_app in HTa as [HTa1 _].
     destruct (List.exists_last (l := Tr)) as (L & e & ->); [intros ->; cbn in Hv; discriminate |].
     apply List.Forall_app in HTa1 as [_ He]; inversion He as [| ? ? (κ & A & ->) _]; subst.
@@ -682,16 +711,19 @@ Qed.
 (** Equal module expressions given equal arguments are equal. *)
 Lemma set_rule_me_app : forall Γ H H' N N' R Tl B T1 Srt R' Tl' B' T1' Srt', set_ctx T γ Γ ->
     set_rel_modexp_eq T γ Γ H H' ->
-    mdenote gc_deps gc_stack Γ H R -> mdesc_mod_tele R = Some Tl -> tele_view Tl = Some (B, T1) ->
+    mdenote Θs Ξs Γ H R -> mdesc_mod_tele R = Some Tl -> tele_view Tl = Some (B, T1) ->
     evaluated_sort Srt -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B : Srt -> set_rel_exp_eq T γ Γ Srt B B ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_rel_exp_eq T γ Γ B N N -> set_rel_exp_eq T γ Γ B N N' ->
-    mdenote gc_deps gc_stack Γ H' R' -> mdesc_mod_tele R' = Some Tl' -> tele_view Tl' = Some (B', T1') ->
+    mdenote Θs Ξs Γ H' R' -> mdesc_mod_tele R' = Some Tl' -> tele_view Tl' = Some (B', T1') ->
     evaluated_sort Srt' -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B' : Srt' -> set_rel_exp_eq T γ Γ Srt' B' B' ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ N' : B' -> set_rel_exp_eq T γ Γ B' N' N' ->
     set_rel_modexp_eq T γ Γ (me_app H N) (me_app H' N').
 Proof.
-  intros * HΓ (F & F' & [HF HF' E Hv Hv' Hpr]) Hm Ht HV HS HBw HB HNw HN (FB & FN & FN' & [_ HFN HFN' EN _])
-    Hm' Ht' HV' HS' HBw' HB' HNw' HN'.
+  intros * HΓ (F & F' & [HF HF' E Hv Hv' Hpr]) Hms Hts HV HS HBw HB HNw HN (FB & FN & FN' & [_ HFN HFN' EN _])
+    Hms' Hts' HV' HS' HBw' HB' HNw' HN'.
+  pose proof (proj1 (mdenote_grow_all _ _ _ _ (set_source_wf T γ Θs Ξs Hemb) Hgw (set_source_sub T γ Θs Ξs Hemb))) as Hgrow.
+  destruct (Hgrow _ _ _ Hms) as (R2 & Hm & HR). pose proof (mdesc_grows_mtele _ _ _ _ _ _ _ HR Hts) as Ht.
+  destruct (Hgrow _ _ _ Hms') as (R2' & Hm' & HR'). pose proof (mdesc_grows_mtele _ _ _ _ _ _ _ HR' Hts') as Ht'.
   exists (fun ρ => apply_module (F ρ) (FN ρ)), (fun ρ => apply_module (F' ρ) (FN' ρ)). constructor.
   - apply (set_modexp_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
     exact (set_interp_me_app T γ _ _ _ _ _ _ (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ) (set_denotes_exists _ _ _ _ _ HFN _ Hρ)).

@@ -271,12 +271,6 @@ Record evaluated_params_telescope (Γ C : ctx) : Prop := mk_evaluated_params_tel
     (** It extends [Γ] *)
   ; evaluated_params_telescope_wf : ⊢ (C ++ Γ)%list }.
 
-(** A global context is the one of its two parts: what the semantic
-    validity of the identity embedding ([valid_gctx_embedding_refl_gc]),
-    stated at [gc_mk gc_deps gc_stack], is read at. *)
-Lemma gc_mk_eta : forall G : GCtx, G = gc_mk (@gc_deps G) (@gc_stack G).
-Proof. intros [? ?]; reflexivity. Qed.
-
 (** The parameters of a member of a group found from a well-formed
     context are such a telescope ([im_params_evaluated]). *)
 Lemma ind_evaluated_params_telescope : forall Γ p D k Mk, ⊢ Γ -> ind_lookup gc_deps gc_stack p = Some D ->

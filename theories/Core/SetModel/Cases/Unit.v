@@ -29,8 +29,11 @@ Section Unit.
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
   (** The global context is well formed *)
   Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
-  (** The valuation models the global context *)
-  Hypothesis Hok : set_gctx_ok T γ.
+  (** The context the derivations were checked at *)
+  Variable Θs : gdeps.
+  Variable Ξs : gstack.
+  (** The valuation models, here, everything that context resolves *)
+  Hypothesis Hemb : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ.
 
 (** ** The Proofness of Function Nodes *)
 
@@ -382,15 +385,15 @@ Proof.
   pose proof (set_valid_unit_ctx T γ _ _ HK) as HΔΓ. pose proof (set_ctx_app_r T γ _ _ HΔΓ) as HΓ.
   pose proof (presup_modexp_eq_ctx (set_valid_unit_wf T γ _ _ HK)) as HcΔΓ.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_left HUU)) as HwA. pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_refl_right HUU)) as HwF.
-  pose proof (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HK) as HrU.
+  pose proof (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HK) as HrU.
   assert (HrA : set_modexp_rel T γ Γ (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))) (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))))).
   { exact (set_unit_rel_abs Δ Γ nil _ HΔ HΔΓ HcΔΓ
              (set_modexp_rel_refl_left T γ _ _ _ (set_alias0_rel T γ Hfn Hmods _ _ HΔΓ HrU))). }
   assert (HKA : set_valid_unit T γ Γ (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))))).
-  { apply set_valid_unit_alias; [| exact (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HK)].
+  { apply set_valid_unit_alias; [| exact (set_valid_modexp_of_unit T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HK)].
     constructor; [exact HwA | exact HΔ | exists l; exact Hl | exact HΓ | exact HΔΓ | exact HrA | exact HrU]. }
   pose proof (set_valid_unit_abs _ _ _ _ _ HK HΔ Hl HwF) as HKF.
-  destruct (set_unit_rel_flatten _ _ _ _ HΔ HrA (set_valid_unit_rel T γ Hfn Hmods Hok _ _ HKF)) as (F1 & F2 & [HF1 HF2 E12]).
+  destruct (set_unit_rel_flatten _ _ _ _ HΔ HrA (set_valid_unit_rel T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HKF)) as (F1 & F2 & [HF1 HF2 E12]).
   exists F1, F2. constructor; [exact HF1 | exact HF2 | exact E12 | exact HKA | exact HKF |].
   intros κs _ ys x. rewrite !unit_member_proofs_tele_out. cbn [moddef_member_proofs modexp_member_proofs].
   rewrite unit_member_proofs_tele_out, List.rev_app_distr, tele_out_proofs_app. reflexivity.

@@ -19,16 +19,23 @@ From Mctt.Core.Syntactic Require Import Syntax Members Presup.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 Import ListNotations.
 
+(** A universe stays one where its context grows. *)
+Lemma wf_is_univ_embedding : forall Θ1 Ξ1 Θ2 Ξ2, gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
+    forall Γ U, Θ1 ⍮ Ξ1 ⍮ Γ ⊢ᵤ U -> Θ2 ⍮ Ξ2 ⍮ Γ ⊢ᵤ U.
+Proof.
+  intros * He * HU. pose proof (gctx_embedding_preserves_wf _ _ _ _ He) as (Hc & Hx & _).
+  destruct HU; [apply wf_is_univ_large; exact (Hc _ H) | eapply wf_is_univ_small; exact (Hx _ _ _ H)].
+Qed.
+
+(** The theorem is proved at a context its derivations' context grows
+    into: the section's, with the valuation modelling there what the
+    derivations' context resolves.  Its judgments are those of
+    [Judgments.v] at that one context; [set_fundamental] below reads them
+    at every such context. *)
 Section FundamentalTheorem.
   Context {GC : GCtx}.
   Variable T : universe_tower.
   Variable γ : global_valuation.
-  (** The global context is well formed *)
-  Hypothesis Hgw : ⊢ᵍ gc_deps ⍮ gc_stack.
-  (** The valuation models the global context *)
-  Hypothesis Hok : set_gctx_ok T γ.
-  (** A λ's kinds are unique across equal extensions *)
-  Hypothesis Hfn : fn_kinds_unique_ext.
 
 (** An assumption of a type equal to another reads the other's. *)
 Lemma wf_sub_id_conv_ass : forall Γ κ A A' Srt, gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Srt -> sort_kind Srt κ ->
@@ -199,22 +206,36 @@ Qed.
 
 (** A family at an argument of its domain denotes the family's value at
     the argument's. *)
-Lemma set_denotes_single_sub_with : forall Γ κ A N B S FA FAN FN FN2 FS FB FB2, fn_kinds_unique -> set_ctx T γ Γ ->
+Lemma set_denotes_single_sub_with : forall Γ κ A N B S FA FAN FN FN2 FS FB FB2, fn_kinds_unique ->
+    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κ A :: Γ ->
     set_denotes T γ Γ A FA -> set_exp_eq_with T γ Γ A N N FAN FN FN2 -> set_exp_eq_with T γ (ce_ass κ A :: Γ) S B B FS FB FB2 ->
     set_denotes T γ Γ (exp_sub B (sb_extend sb_id (se_exp N))) (fun ρ => body_function κ FB ρ (FN ρ)).
 Proof.
-  intros * Hfn0 HΓ Hc Hσ HA [HAN HN _ _ HNm] [_ HB _ _ _].
-  apply (set_denotes_single_sub T γ _ _ _ _ _ _ _ _ Hfn0 (set_gctx_ok_modules _ _ Hok) HΓ Hc Hσ HA HN); [| exact HB].
+  intros * Hfn0 Hmods HΓ Hc Hσ HA [HAN HN _ _ HNm] [_ HB _ _ _].
+  apply (set_denotes_single_sub T γ _ _ _ _ _ _ _ _ Hfn0 Hmods HΓ Hc Hσ HA HN); [| exact HB].
   intros ρ Hρ. eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HAN HA Hρ) |].
   exact (HNm _ Hρ).
 Qed.
 
-(** An extension by one more entry each. *)
-(** A premise under binders from its induction hypothesis. *)
+(** A premise under binders: an induction hypothesis read here, or a
+    syntactic premise of the derivation's context moved here along the
+    moves [ft_move] names. *)
 Ltac ft_from_ih :=
-  intros; match goal with IH : context [gc_deps = gc_deps -> gc_stack = gc_stack -> _] |- _ =>
-    eapply proj2; eapply IH; solve [eauto] end.
+  intros; first [ match goal with IH : context [set_gctx_embedding _ _ gc_deps gc_stack T γ -> _] |- _ =>
+                    eapply proj2; eapply IH; solve [eauto] end
+                | match goal with
+                  | Mv : forall _ _ _, wf_exp _ _ _ _ _ -> wf_exp gc_deps gc_stack _ _ _ |- wf_exp _ _ _ _ _ =>
+                      apply Mv; solve [eauto]
+                  | Mv : forall _ _ _ _, wf_exp_eq _ _ _ _ _ _ -> wf_exp_eq gc_deps gc_stack _ _ _ _ |- wf_exp_eq _ _ _ _ _ _ =>
+                      apply Mv; solve [eauto]
+                  | Mv : forall _ _ _, wf_subtyp _ _ _ _ _ -> wf_subtyp gc_deps gc_stack _ _ _ |- wf_subtyp _ _ _ _ _ =>
+                      apply Mv; solve [eauto]
+                  | Mv : forall _ _ _, wf_ext_eq _ _ _ _ _ -> wf_ext_eq gc_deps gc_stack _ _ _ |- wf_ext_eq _ _ _ _ _ =>
+                      apply Mv; solve [eauto]
+                  | Mv : forall _, wf_ctx _ _ _ -> wf_ctx gc_deps gc_stack _ |- wf_ctx _ _ _ =>
+                      apply Mv; solve [eauto]
+                  end ].
 
 (** The whole extensions of equal extensions denote, with valid slots. *)
 Lemma set_ext_eq_suffixes_whole : forall Γ Δ Δ', set_rel_ext_eq_suffixes T γ Γ Δ Δ' -> List.length Δ = List.length Δ' ->
@@ -228,20 +249,86 @@ Ltac ft_ext_cons :=
   match goal with Hx : _ ⍮ _ ⍮ ?Γ ⊢ˣ ?Ψ ≈ ?Ψ' |- set_rel_ext_eq_suffixes T γ ?Γ (_ :: ?Ψ) (_ :: ?Ψ') =>
     apply set_ext_eq_suffixes_cons; [assumption | exact (ext_eq_length _ _ _ _ _ Hx) | | |] end.
 
-Theorem set_fundamental :
-  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ = gc_deps -> Ξ = gc_stack -> set_rel_ctx_slots T γ Γ) /\
-  (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ = gc_deps -> Ξ = gc_stack -> set_rel_ctx_slots T γ Γ /\ set_rel_exp_eq T γ Γ A M M) /\
-  (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> Θ = gc_deps -> Ξ = gc_stack -> set_rel_ctx_slots T γ Γ /\ set_rel_exp_eq T γ Γ A M M') /\
-  (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> Θ = gc_deps -> Ξ = gc_stack -> set_rel_ctx_slots T γ Γ /\ set_rel_subtyp T γ Γ A A') /\
-  (forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> Θ = gc_deps -> Ξ = gc_stack -> set_rel_ctx_slots T γ Γ /\ set_rel_universe T γ Γ U) /\
-  (forall Θ Ξ Γ Δ Δ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' -> Θ = gc_deps -> Ξ = gc_stack -> set_rel_ext_eq_suffixes T γ Γ Δ Δ') /\
-  (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ = gc_deps -> Ξ = gc_stack -> set_rel_ctx_slots T γ Γ /\ set_rel_unit_eq T γ Γ U U') /\
-  (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ = gc_deps -> Ξ = gc_stack -> set_rel_ctx_slots T γ Γ /\ set_rel_modexp_eq T γ Γ H H').
+(** A case's syntactic hypotheses, read at the derivation's context
+    [Θs ⍮ Ξs], copied to this one beside their own: its judgments and
+    expansions along the embedding ([Mv_*], kept for the premises under
+    binders), its declarations' lookups (they do not grow, and the rules
+    read the model of each at [Θs ⍮ Ξs]). *)
+Ltac ft_move :=
+  match goal with Hμ : set_gctx_embedding ?Θs ?Ξs gc_deps gc_stack T γ |- _ =>
+    let He := fresh "He" in pose proof (set_gctx_embedding_embedding _ _ _ _ _ _ Hμ) as He;
+    let Hsub := fresh "Hsub" in pose proof (gctx_embedding_resolution _ _ _ _ He) as Hsub;
+    destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Mv_ctx & Mv_exp & Mv_eq & Mv_sub & Mv_ext & Mv_unit & Mv_me & Mv_nl);
+    pose proof (wf_is_univ_embedding _ _ _ _ He) as Mv_univ;
+    pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_grow_all _ _ _ _ (set_gctx_embedding_source_wf _ _ _ _ _ _ Hμ)
+                  (gctx_embedding_wf _ _ _ _ He) Hsub))))) as Mv_body;
+    repeat match goal with
+      | H : body_xp Θs Ξs ?a ?b ?c |- _ =>
+          lazymatch goal with _ : body_xp gc_deps gc_stack a b c |- _ => fail | _ => pose proof (Mv_body _ _ _ H) end
+      end;
+    (* the source judgments stay: a rule's source premises are read off them *)
+    repeat match goal with
+      | H : wf_ctx Θs Ξs ?a |- _ =>
+          lazymatch goal with _ : wf_ctx gc_deps gc_stack a |- _ => fail | _ => pose proof (Mv_ctx _ H) end
+      | H : wf_exp Θs Ξs ?a ?b ?c |- _ =>
+          lazymatch goal with _ : wf_exp gc_deps gc_stack a b c |- _ => fail | _ => pose proof (Mv_exp _ _ _ H) end
+      | H : wf_exp_eq Θs Ξs ?a ?b ?c ?d |- _ =>
+          lazymatch goal with _ : wf_exp_eq gc_deps gc_stack a b c d |- _ => fail | _ => pose proof (Mv_eq _ _ _ _ H) end
+      | H : wf_subtyp Θs Ξs ?a ?b ?c |- _ =>
+          lazymatch goal with _ : wf_subtyp gc_deps gc_stack a b c |- _ => fail | _ => pose proof (Mv_sub _ _ _ H) end
+      | H : wf_ext_eq Θs Ξs ?a ?b ?c |- _ =>
+          lazymatch goal with _ : wf_ext_eq gc_deps gc_stack a b c |- _ => fail | _ => pose proof (Mv_ext _ _ _ H) end
+      | H : wf_unit_eq Θs Ξs ?a ?b ?c |- _ =>
+          lazymatch goal with _ : wf_unit_eq gc_deps gc_stack a b c |- _ => fail | _ => pose proof (Mv_unit _ _ _ H) end
+      | H : wf_modexp_eq Θs Ξs ?a ?b ?c |- _ =>
+          lazymatch goal with _ : wf_modexp_eq gc_deps gc_stack a b c |- _ => fail | _ => pose proof (Mv_me _ _ _ H) end
+      | H : wf_no_level_members Θs Ξs ?a ?b |- _ =>
+          lazymatch goal with _ : wf_no_level_members gc_deps gc_stack a b |- _ => fail | _ => pose proof (Mv_nl _ _ H) end
+      | H : wf_is_univ Θs Ξs ?a ?b |- _ =>
+          lazymatch goal with _ : wf_is_univ gc_deps gc_stack a b |- _ => fail | _ => pose proof (Mv_univ _ _ H) end
+      end;
+    repeat match goal with
+      | H : ind_lookup Θs Ξs ?q = ?r |- _ =>
+          lazymatch goal with _ : ind_lookup gc_deps gc_stack q = r |- _ => fail | _ =>
+            pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hsub H) end
+      | H : record_lookup Θs Ξs ?q = ?r |- _ =>
+          lazymatch goal with _ : record_lookup gc_deps gc_stack q = r |- _ => fail | _ =>
+            pose proof (record_lookup_gc_sub _ _ _ _ _ _ Hsub H) end
+      end
+  end.
+
+(** At a context the derivation's context grows into, each judgment holds
+    there: the theorem at one context, of which [set_fundamental] is the
+    reading at every context. *)
+Theorem set_fundamental_here :
+  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> set_gctx_embedding Θ Ξ gc_deps gc_stack T γ -> set_rel_ctx_slots T γ Γ) /\
+  (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> set_gctx_embedding Θ Ξ gc_deps gc_stack T γ ->
+     set_rel_ctx_slots T γ Γ /\ set_rel_exp_eq T γ Γ A M M) /\
+  (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> set_gctx_embedding Θ Ξ gc_deps gc_stack T γ ->
+     set_rel_ctx_slots T γ Γ /\ set_rel_exp_eq T γ Γ A M M') /\
+  (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> set_gctx_embedding Θ Ξ gc_deps gc_stack T γ ->
+     set_rel_ctx_slots T γ Γ /\ set_rel_subtyp T γ Γ A A') /\
+  (forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> set_gctx_embedding Θ Ξ gc_deps gc_stack T γ ->
+     set_rel_ctx_slots T γ Γ /\ set_rel_universe T γ Γ U) /\
+  (forall Θ Ξ Γ Δ Δ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' -> set_gctx_embedding Θ Ξ gc_deps gc_stack T γ ->
+     set_rel_ext_eq_suffixes T γ Γ Δ Δ') /\
+  (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> set_gctx_embedding Θ Ξ gc_deps gc_stack T γ ->
+     set_rel_ctx_slots T γ Γ /\ set_rel_unit_eq T γ Γ U U') /\
+  (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> set_gctx_embedding Θ Ξ gc_deps gc_stack T γ ->
+     set_rel_ctx_slots T γ Γ /\ set_rel_modexp_eq T γ Γ H H').
 Proof.
-  pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0. pose proof (set_gctx_ok_modules _ _ Hok) as Hmods.
-  apply syntactic_wf_mut_ind; intros; subst;
-    repeat match goal with H : gc_deps = gc_deps -> gc_stack = gc_stack -> _ |- _ => specialize (H eq_refl eq_refl) end;
-    ft_ihs.
+  apply syntactic_wf_mut_ind; intros;
+    match goal with H : set_gctx_embedding _ _ gc_deps gc_stack T γ |- _ => rename H into Hμ end;
+    (* the induction hypotheses, read here *)
+    match goal with Hμ : set_gctx_embedding ?Θs ?Ξs gc_deps gc_stack T γ |- _ =>
+      repeat match goal with H : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ -> _ |- _ => specialize (H Hμ) end
+    end;
+    (* what the valuation gives here, as the section's hypotheses were *)
+    pose proof (gctx_embedding_wf _ _ _ _ (set_gctx_embedding_embedding _ _ _ _ _ _ Hμ)) as Hgw;
+    pose proof (set_gctx_embedding_fn_kinds _ _ _ _ _ _ Hμ) as Hfn; rewrite <- gc_mk_eta in Hfn;
+    pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0;
+    pose proof (set_gctx_embedding_modules _ _ _ _ _ _ Hμ) as Hmods;
+    ft_move; ft_ihs.
   (* contexts *)
   - split; exact I.
   - split; [eapply set_rule_ctx_extend; eassumption | eapply set_rule_slots_extend_plain; [eassumption | reflexivity]].
@@ -268,7 +355,7 @@ Proof.
   - ft_by set_rule_ind.
   - ft_by set_rule_con.
   - split; [ft_cs |].
-    eapply (set_rule_elim T γ Hfn0 Hmods Hgw Hok); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
+    eapply (set_rule_elim T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
       try ft_from_ih;
       intros; match goal with IH : context [set_rel_ext_eq_suffixes T γ _ _ _] |- set_ctx _ _ _ =>
         solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [eapply IH; eauto | reflexivity]] end.
@@ -280,13 +367,13 @@ Proof.
   - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_def_zeta; ft_prem].
   - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_mod_zeta; ft_prem].
   - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_dm_zeta; ft_prem].
-  - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L _ => assert (HTm : gc_deps ⍮ gc_stack ⍮ G ⊢ L : A) by (eapply wf_mem; eassumption) end.
+  - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L _ => assert (HTm : gc_deps ⍮ gc_stack ⍮ G ⊢ L : A) by (apply Mv_exp; eapply wf_mem; eassumption) end.
     ft_by set_rule_mem.
   - ft_by set_rule_var.
   - ft_by set_rule_record.
-  - split; [ft_cs |]. eapply (set_rule_tuple T γ Hfn0 Hmods Hgw Hok); [ft_syn | ft_ctx | eassumption | eassumption | eassumption | eassumption | ft_from_ih
-                                           | eassumption | eassumption | ft_from_ih | do 3 eexists; eassumption].
-  - split; [ft_cs |]. eapply (set_rule_proj T γ Hfn0 Hmods Hgw Hok); [ft_syn | ft_ctx | eassumption | eassumption | eassumption | eassumption | ft_from_ih
+  - split; [ft_cs |]. eapply (set_rule_tuple T γ Hfn0 Hmods Hgw _ _ Hμ); [ft_syn | ft_ctx | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih
+                                           | eassumption | ft_from_ih | ft_from_ih | do 3 eexists; eassumption].
+  - split; [ft_cs |]. eapply (set_rule_proj T γ Hfn0 Hmods Hgw _ _ Hμ); [ft_syn | ft_ctx | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih
                                           | eassumption | do 3 eexists; eassumption | eassumption].
   - split; [ft_cs | eapply set_rule_exp_eq_subtyp; eassumption].
   (* term equality *)
@@ -312,7 +399,7 @@ Proof.
   - ft_by set_rule_ind.
   - ft_by set_rule_con.
   - split; [ft_cs |].
-    eapply (set_rule_elim_cong T γ Hfn0 Hmods Hgw Hok); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
+    eapply (set_rule_elim_cong T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
       try ft_from_ih;
       intros; match goal with IH : context [set_rel_ext_eq_suffixes T γ _ _ _] |- set_ctx _ _ _ =>
         solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [eapply IH; eauto | reflexivity]] end.
@@ -335,32 +422,32 @@ Proof.
                                      ltac:(eassumption) ltac:(eassumption)).
     eapply set_rule_let_dm_cong; ft_prem.
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L ?Rt =>
-      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (eapply wf_exp_eq_mem_cong; eassumption) end.
+      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (apply Mv_eq; eapply wf_exp_eq_mem_cong; eassumption) end.
     pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_cong.
   - ft_by set_rule_var.
   - ft_by set_rule_pi_beta.
   - split; [ft_cs |].
-    eapply (set_rule_elim_iota T γ Hfn0 Hmods Hgw Hok); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
+    eapply (set_rule_elim_iota T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
       try ft_from_ih;
       intros; match goal with IH : context [set_rel_ext_eq_suffixes T γ _ _ _] |- set_ctx _ _ _ =>
         solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [eapply IH; eauto | reflexivity]] end.
   - split; [ft_cs |].
     match goal with |- set_rel_exp_eq _ _ ?G ?A ?L ?R => assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ R : A) end;
-      [ eapply wf_exp_eq_elim_view; first [eassumption | reflexivity] |].
+      [ apply Mv_eq; eapply wf_exp_eq_elim_view; first [eassumption | reflexivity] |].
     pose proof (presup_exp_eq_right Hc).
-    eapply (set_rule_elim_view T γ Hfn0 Hmods Hgw Hok); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
+    eapply (set_rule_elim_view T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
       try ft_from_ih;
       intros; match goal with IH : context [set_rel_ext_eq_suffixes T γ _ _ _] |- set_ctx _ _ _ =>
         solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [eapply IH; eauto | reflexivity]] end.
   - split; [ft_cs |].
-    eapply (set_rule_con_view T γ Hfn0 Hmods Hok); try eassumption; try (do 3 eexists; eassumption); try ft_from_ih.
+    eapply (set_rule_con_view T γ Hfn0 Hmods _ _ Hμ); try eassumption; try (do 3 eexists; eassumption); try ft_from_ih.
   - split; [ft_cs |].
-    eapply (set_rule_con_rview T γ Hfn0 Hmods Hgw Hok); try eassumption; try (do 3 eexists; eassumption); try ft_from_ih.
+    eapply (set_rule_con_rview T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try (do 3 eexists; eassumption); try ft_from_ih.
   - ft_by set_rule_let_def_zeta.
   - ft_by set_rule_let_mod_zeta.
   - ft_by set_rule_let_dm_zeta.
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L ?Rt =>
-      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (eapply wf_exp_eq_mem_delta; eassumption) end.
+      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (apply Mv_eq; eapply wf_exp_eq_mem_delta; eassumption) end.
     pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_delta.
   - match goal with H : _ ∋ #_ ≔ _ : _ |- _ => pose proof (ctx_lookup_def_lookup _ _ _ _ H) end.
     ft_by set_rule_var_delta.
@@ -373,8 +460,8 @@ Proof.
     intros. eexists. ft_from_ih.
   - split; [ft_cs |].
     match goal with H : _ ⍮ _ ⍮ _ ⊢ M ≈ M' : _ |- _ => pose proof (presup_exp_eq_left H) as HMl end.
-    edestruct (set_rule_proj T γ Hfn0 Hmods Hgw Hok Γ M p R Ns k f U) as (FP & FPa & FPb & HPl);
-      [ft_syn | ft_ctx | eassumption | eassumption | eassumption | eassumption | ft_from_ih | exact HMl
+    edestruct (set_rule_proj T γ Hfn0 Hmods Hgw _ _ Hμ Γ M p R Ns k f U) as (FP & FPa & FPb & HPl);
+      [ft_syn | ft_ctx | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih | exact HMl
       | apply set_exp_eq_refl_left with (M' := M'); do 3 eexists; eassumption | eassumption |].
     eapply (set_rule_proj_cong T γ); [eassumption | exact HPl | eassumption].
   - split; [ft_cs |].
@@ -391,7 +478,7 @@ Proof.
     assert (Hnd : NoDup (List.map fst (record_fields R))).
     { match goal with Hn0 : List.map fst (record_eta_fields R M) = List.map fst (record_fields ?R0), Hnd1 : NoDup _ |- _ =>
         rewrite <- Hn0 in Hnd1; unfold record_eta_fields in Hnd1; rewrite List.map_map in Hnd1; exact Hnd1 end. }
-    eapply (set_rule_record_eta T γ Hok); [ft_ctx | eassumption | eassumption | exact Hnd | eassumption | eassumption].
+    eapply (set_rule_record_eta T γ _ _ Hμ); [ft_ctx | eassumption | eassumption | exact Hnd | eassumption | eassumption].
   - split; [ft_cs | eapply set_rule_exp_eq_subtyp; eassumption].
   - split; [ft_cs | apply set_rule_exp_eq_sym; do 3 eexists; eassumption].
   - split; [ft_cs | eapply set_rule_exp_eq_trans; do 3 eexists; eassumption].
@@ -431,8 +518,8 @@ Proof.
         pose proof (ext_eq_ctx_left _ _ _ _ _ Hxb) as Hcx; pose proof (ext_eq_ctx_left _ _ _ _ _ Hxb') as Hcx'
     end.
     rewrite <- List.app_assoc in HC, HC', Hsl, Hsl', Hcx, Hcx'.
-    eapply (set_rule_unit_eq_body T γ Hfn Hmods Hok) with (l := param_level) (entry_sort := entry_sort);
-      [eapply wf_unit_eq_body; eassumption | eassumption | eassumption | eassumption | eassumption | eassumption
+    eapply (set_rule_unit_eq_body T γ Hfn Hmods _ _ Hμ) with (l := param_level) (entry_sort := entry_sort);
+      [apply Mv_unit; eapply wf_unit_eq_body; eassumption | eassumption | eassumption | eassumption | eassumption | eassumption
       | match goal with H : set_rel_ext_eq_suffixes T γ Γ Δ Δ' |- _ => exact (set_ext_eq_suffixes_eq T γ _ _ _ H) end
       | eassumption | eassumption | eassumption | eassumption
       | intros; eapply sort_kind_abs_kind_sort_inv; eauto | intros; eapply sort_kind_abs_kind_sort_inv; eauto
@@ -442,18 +529,18 @@ Proof.
       | apply (set_params_evaluated_of_sorts T γ Γ Δ' param_level param_sorts); [assumption | ft_from_ih]
       | eassumption | eassumption | eassumption].
   - split; [ft_cs' |].
-    eapply (set_rule_unit_eq_alias T γ Hfn Hmods Hok) with (l := param_level);
-      [eapply wf_unit_eq_alias; eassumption | eassumption
+    eapply (set_rule_unit_eq_alias T γ Hfn Hmods _ _ Hμ) with (l := param_level);
+      [apply Mv_unit; eapply wf_unit_eq_alias; eassumption | eassumption
       | match goal with H : set_rel_ext_eq_suffixes T γ Γ Δ Δ' |- _ => exact (set_ext_eq_suffixes_eq T γ _ _ _ H) end
       | eassumption | eassumption
       | apply (set_params_evaluated_of_sorts T γ Γ Δ param_level param_sorts); [assumption | ft_from_ih]
       | apply (set_params_evaluated_of_sorts T γ Γ Δ' param_level param_sorts); [assumption | ft_from_ih]
       | do 2 eexists; eassumption | do 2 eexists; eassumption].
   - split; [ft_cs' |].
-    eapply (set_rule_unit_eq_flatten T γ Hfn0 Hmods Hok) with (l := param_level);
+    eapply (set_rule_unit_eq_flatten T γ Hfn0 Hmods Hgw _ _ Hμ) with (l := param_level);
       [eassumption | apply (set_params_evaluated_of_sorts T γ Γ Δ param_level param_sorts); [assumption | ft_from_ih]
-      | do 2 eexists; eassumption | eapply wf_unit_eq_flatten; eassumption].
-  - split; [ft_cs | eapply (set_rule_unit_eq_expand T γ Hfn0 Hmods); [do 2 eexists; eassumption | eapply wf_unit_eq_expand; eassumption]].
+      | do 2 eexists; eassumption | apply Mv_unit; eapply wf_unit_eq_flatten; eassumption].
+  - split; [ft_cs | eapply (set_rule_unit_eq_expand T γ Hfn0 Hmods); [do 2 eexists; eassumption | apply Mv_unit; eapply wf_unit_eq_expand; eassumption]].
   - split; [ft_cs | eapply set_rule_unit_eq_sym; do 2 eexists; eassumption].
   - split; [ft_cs | eapply set_rule_unit_eq_trans; do 2 eexists; eassumption].
   (* module expressions *)
@@ -461,26 +548,53 @@ Proof.
   - ft_by set_rule_me_var.
   - ft_by set_rule_me_lit.
   - match goal with |- _ /\ set_rel_modexp_eq _ _ ?G ?L ?Rt =>
-      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ L ≈ Rt) by (eapply wf_me_mem; eassumption) end.
+      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ L ≈ Rt) by (apply Mv_me; eapply wf_me_mem; eassumption) end.
     pose proof (wf_modexp_eq_refl_left Hc). pose proof (wf_modexp_eq_refl_right Hc).
     ft_by set_rule_me_mem.
-  - split; [ft_cs | eapply (set_rule_me_app T γ Hfn0 Hmods Hgw Hok Γ H H' N N' R _ B _ Srt R' _ B' _ Srt'); ft_prem].
+  - split; [ft_cs | eapply (set_rule_me_app T γ Hfn0 Hmods Hgw _ _ Hμ Γ H H' N N' R _ B _ Srt R' _ B' _ Srt'); ft_prem].
   - ft_by set_rule_me_delta_slot.
   - ft_by set_rule_me_delta_sel.
   - split; [ft_cs |].
     match goal with |- context [me_lit (gu_open (tele_sub ?Δ ?σ) (gmod_sub ?Φ _))] =>
       replace (gu_open (tele_sub Δ σ) _) with (gunit_sub (gu_open Δ Φ) σ) by (rewrite gunit_sub_mk; reflexivity) end.
     eapply set_rule_me_beta; [ft_prem | ft_prem | ft_prem | ft_prem | ft_prem | | ft_prem ..].
-    rewrite gunit_sub_mk. eapply wf_me_beta_body; eassumption.
+    rewrite gunit_sub_mk. apply Mv_me; eapply wf_me_beta_body; eassumption.
   - split; [ft_cs |].
     match goal with |- context [me_lit (gu_mk (tele_sub ?Δ ?σ) (md_alias (modexp_sub ?E _)))] =>
       replace (gu_mk (tele_sub Δ σ) _) with (gunit_sub (gu_mk Δ (md_alias E)) σ) by (rewrite gunit_sub_mk; reflexivity) end.
     eapply set_rule_me_beta; [ft_prem | ft_prem | ft_prem | ft_prem | ft_prem | | ft_prem ..].
-    rewrite gunit_sub_mk. eapply wf_me_beta_alias; eassumption.
-  - split; [ft_cs | eapply set_rule_me_beta_alias0; [ft_prem | ft_prem | ft_prem | ft_prem
-                                                   | eapply wf_modexp_eq_refl_left; eapply wf_me_beta_alias0; eassumption | ft_prem]].
+    rewrite gunit_sub_mk. apply Mv_me; eapply wf_me_beta_alias; eassumption.
+  - split; [ft_cs | eapply (set_rule_me_beta_alias0 T γ Hfn0 Hmods Hgw _ _ Hμ);
+                    [ft_prem | eapply wf_modexp_eq_refl_left; apply Mv_me; eapply wf_me_beta_alias0; eassumption | ft_prem]].
   - ft_by set_rule_me_sym.
   - ft_by set_rule_me_trans.
 Qed.
 
 End FundamentalTheorem.
+
+(** The fundamental theorem: every judgment of a global context holds in
+    the set model, at every context it is modelled at
+    ([set_gctx_embedding]), each read as in [Judgments.v]. *)
+Theorem set_fundamental : forall T γ,
+  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> set_ctx_slots Θ Ξ T γ Γ) /\
+  (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> set_ctx_slots Θ Ξ T γ Γ /\ set_exp_eq Θ Ξ T γ Γ A M M) /\
+  (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> set_ctx_slots Θ Ξ T γ Γ /\ set_exp_eq Θ Ξ T γ Γ A M M') /\
+  (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> set_ctx_slots Θ Ξ T γ Γ /\ set_subtyp Θ Ξ T γ Γ A A') /\
+  (forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> set_ctx_slots Θ Ξ T γ Γ /\ set_universe Θ Ξ T γ Γ U) /\
+  (forall Θ Ξ Γ Δ Δ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' -> set_ext_eq_suffixes Θ Ξ T γ Γ Δ Δ') /\
+  (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> set_ctx_slots Θ Ξ T γ Γ /\ set_unit_eq Θ Ξ T γ Γ U U') /\
+  (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> set_ctx_slots Θ Ξ T γ Γ /\ set_modexp_eq Θ Ξ T γ Γ H H').
+Proof.
+  intros T γ.
+  pose proof (fun Θ2 Ξ2 => @set_fundamental_here (gc_mk Θ2 Ξ2) T γ) as FT.
+  refine (conj _ (conj _ (conj _ (conj _ (conj _ (conj _ (conj _ _))))))); intros * Hd;
+    try refine (conj _ _); intros Θ2 Ξ2 Hμ;
+    destruct (FT Θ2 Ξ2) as (F1 & F2 & F3 & F4 & F5 & F6 & F7 & F8);
+    first [ exact (F1 _ _ _ Hd Hμ) | exact (F6 _ _ _ _ _ Hd Hμ)
+          | exact (proj1 (F2 _ _ _ _ _ Hd Hμ)) | exact (proj2 (F2 _ _ _ _ _ Hd Hμ))
+          | exact (proj1 (F3 _ _ _ _ _ _ Hd Hμ)) | exact (proj2 (F3 _ _ _ _ _ _ Hd Hμ))
+          | exact (proj1 (F4 _ _ _ _ _ Hd Hμ)) | exact (proj2 (F4 _ _ _ _ _ Hd Hμ))
+          | exact (proj1 (F5 _ _ _ _ Hd Hμ)) | exact (proj2 (F5 _ _ _ _ Hd Hμ))
+          | exact (proj1 (F7 _ _ _ _ _ Hd Hμ)) | exact (proj2 (F7 _ _ _ _ _ Hd Hμ))
+          | exact (proj1 (F8 _ _ _ _ _ Hd Hμ)) | exact (proj2 (F8 _ _ _ _ _ Hd Hμ)) ].
+Qed.
