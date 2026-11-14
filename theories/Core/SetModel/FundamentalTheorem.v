@@ -382,10 +382,10 @@ Proof.
   (* terms *)
   - split; [ft_cs | ft_kripke; apply set_rule_typ].
   - ft_by_kripke set_rule_univ.
-  - split; [ft_cs | apply set_rule_level].
-  - split; [ft_cs | apply set_rule_llit; assumption].
-  - split; [ft_cs | eapply set_rule_succl; eassumption].
-  - split; [ft_cs | eapply set_rule_maxl; eassumption].
+  - ft_by_kripke set_rule_level.
+  - ft_by_kripke set_rule_llit.
+  - ft_by_kripke set_rule_succl.
+  - ft_by_kripke set_rule_maxl.
   - ft_by_kripke set_rule_prop.
   - ft_by_kripke set_rule_True.
   - ft_by_kripke set_rule_tt.
@@ -423,18 +423,18 @@ Proof.
   (* term equality *)
   - split; [ft_cs | ft_kripke; apply set_rule_typ].
   - ft_by_kripke set_rule_univ.
-  - split; [ft_cs | apply set_rule_level].
-  - split; [ft_cs | apply set_rule_llit; assumption].
-  - ft_by set_rule_succl.
-  - ft_by set_rule_maxl.
-  - ft_by set_rule_llit_succl.
-  - ft_by set_rule_maxl_absorb.
-  - ft_by set_rule_maxl_zero.
-  - ft_by set_rule_maxl_assoc.
-  - ft_by set_rule_maxl_comm.
-  - ft_by set_rule_maxl_idem.
-  - ft_by set_rule_succl_maxl.
-  - ft_by set_rule_maxl_succl.
+  - ft_by_kripke set_rule_level.
+  - ft_by_kripke set_rule_llit.
+  - ft_by_kripke set_rule_succl.
+  - ft_by_kripke set_rule_maxl.
+  - ft_by_kripke set_rule_llit_succl.
+  - ft_by_kripke set_rule_maxl_absorb.
+  - ft_by_kripke set_rule_maxl_zero.
+  - ft_by_kripke set_rule_maxl_assoc.
+  - ft_by_kripke set_rule_maxl_comm.
+  - ft_by_kripke set_rule_maxl_idem.
+  - ft_by_kripke set_rule_succl_maxl.
+  - ft_by_kripke set_rule_maxl_succl.
   - ft_by_kripke set_rule_prop.
   - ft_by_kripke set_rule_True.
   - ft_by_kripke set_rule_False.
