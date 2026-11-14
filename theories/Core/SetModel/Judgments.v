@@ -1327,7 +1327,8 @@ Ltac set_open :=
       end;
     clear Mc Mx Mq Ms Me Mu Mm Mn;
     let Hgw := fresh "Hgw" in pose proof (gctx_embedding_wf _ _ _ _ He) as Hgw;
-    let Hfn := fresh "Hfn" in pose proof (fn_kinds_unique_of_ext (set_gctx_embedding_fn_kinds _ _ _ _ _ _ Hμ)) as Hfn;
+    let Hfnx := fresh "Hfnx" in pose proof (set_gctx_embedding_fn_kinds _ _ _ _ _ _ Hμ) as Hfnx;
+    let Hfn := fresh "Hfn" in pose proof (fn_kinds_unique_of_ext Hfnx) as Hfn;
     let Hmods := fresh "Hmods" in pose proof (set_gctx_embedding_modules _ _ _ _ _ _ Hμ) as Hmods
   end;
   let GC := fresh "GC" in set (GC := gc_mk Θ2 Ξ2) in *.

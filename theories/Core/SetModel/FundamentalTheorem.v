@@ -408,9 +408,9 @@ Proof.
   - split; [ft_cs |]. eapply (set_rule_app T γ Γ κd κc i A B M N);
       [ft_ctx | ft_syn | eapply set_exp_eq_left; eassumption | eassumption | eassumption
       | eassumption | eapply (set_denotes_single_sub_with Γ κd A N B); ft_prem | intros; apply set_eq_refl].
-  - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_def_zeta; ft_prem].
-  - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_mod_zeta; ft_prem].
-  - split; [ft_cs | eapply set_exp_eq_refl_left; eapply set_rule_let_dm_zeta; ft_prem].
+  - split; [ft_cs | eapply set_exp_eq_refl_left; ft_kripke; eapply set_rule_let_def_zeta; ft_prem].
+  - split; [ft_cs | eapply set_exp_eq_refl_left; ft_kripke; eapply set_rule_let_mod_zeta; ft_prem].
+  - split; [ft_cs | eapply set_exp_eq_refl_left; ft_kripke; eapply set_rule_let_dm_zeta; ft_prem].
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L _ => assert (HTm : gc_deps ⍮ gc_stack ⍮ G ⊢ L : A) by (apply Mv_exp; eapply wf_mem; eassumption) end.
     ft_by set_rule_mem.
   - ft_by_kripke set_rule_var.
@@ -458,13 +458,13 @@ Proof.
       [ft_ctx | ft_syn | eapply set_exp_eq_left; eassumption | eassumption | eassumption
       | eassumption | eapply (set_denotes_single_sub_with Γ κd A N B); ft_prem | intros; apply set_eq_refl].
   - split; [ft_cs |].
-    destruct (wf_conv_def Γ A A' M M' Srt ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)).
-    eapply set_rule_let_def_cong; ft_prem.
-  - split; [ft_cs |]. pose proof (wf_ext_eq_one_mod Γ U U' ltac:(eassumption)).
-    eapply set_rule_let_mod_cong; ft_prem.
-  - split; [ft_cs |]. pose proof (wf_ext_eq_one_dm Γ A A' M M' E E' i ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)
+    destruct (@wf_conv_def Θ Ξ Γ A A' M M' Srt ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)).
+    ft_kripke; eapply set_rule_let_def_cong; ft_prem.
+  - split; [ft_cs |]. pose proof (@wf_ext_eq_one_mod Θ Ξ Γ U U' ltac:(eassumption)).
+    ft_kripke; eapply set_rule_let_mod_cong; ft_prem.
+  - split; [ft_cs |]. pose proof (@wf_ext_eq_one_dm Θ Ξ Γ A A' M M' E E' i ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)
                                      ltac:(eassumption) ltac:(eassumption)).
-    eapply set_rule_let_dm_cong; ft_prem.
+    ft_kripke; eapply set_rule_let_dm_cong; ft_prem.
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L ?Rt =>
       assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (apply Mv_eq; eapply wf_exp_eq_mem_cong; eassumption) end.
     pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_cong.
@@ -487,9 +487,9 @@ Proof.
     eapply (set_rule_con_view T γ Hfn0 Hmods _ _ Hμ); try eassumption; try (do 3 eexists; eassumption); try ft_from_ih.
   - split; [ft_cs |].
     eapply (set_rule_con_rview T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try (do 3 eexists; eassumption); try ft_from_ih.
-  - ft_by set_rule_let_def_zeta.
-  - ft_by set_rule_let_mod_zeta.
-  - ft_by set_rule_let_dm_zeta.
+  - ft_by_kripke set_rule_let_def_zeta.
+  - ft_by_kripke set_rule_let_mod_zeta.
+  - ft_by_kripke set_rule_let_dm_zeta.
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L ?Rt =>
       assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (apply Mv_eq; eapply wf_exp_eq_mem_delta; eassumption) end.
     pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_delta.
