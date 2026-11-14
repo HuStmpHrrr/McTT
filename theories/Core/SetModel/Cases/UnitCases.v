@@ -11,7 +11,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects ContextRelation JudgmentSubstitution.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import ValidUnit MemberTypes ModuleCases Unit Sel.
 From Mctt.Core.Syntactic Require Import Syntax Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural.
@@ -207,7 +207,7 @@ Proof. intros Γ HΓ. constructor; [exact HΓ | exact HΓ | intros; reflexivity]
 Lemma set_rule_ext_eq_ass : forall Γ Ψ Ψ' κ A A' S FS FA FA2 S' FS' FA' FA'2, gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
     set_ext_eq_with T γ Γ Ψ Ψ' ->
     set_exp_eq_with T γ (Ψ ++ Γ) S A A FS FA FA2 -> set_exp_eq_with T γ (Ψ' ++ Γ) S' A' A' FS' FA' FA'2 ->
-    set_subtyp T γ (Ψ ++ Γ) A A' -> set_subtyp T γ (Ψ ++ Γ) A' A ->
+    set_rel_subtyp T γ (Ψ ++ Γ) A A' -> set_rel_subtyp T γ (Ψ ++ Γ) A' A ->
     set_ext_eq_with T γ Γ (ce_ass κ A :: Ψ) (ce_ass κ A' :: Ψ').
 Proof.
   intros * HΨ Hext [_ HA _ _ _] [_ HA' _ _ _] (FX & FX' & Hs) (FY & FY' & Hs').
@@ -292,8 +292,8 @@ Lemma set_rule_unit_eq_alias : forall Γ Δ Δ' E E' l,
     (forall X Ψ X' Ψ', Δ = X ++ Ψ -> Δ' = X' ++ Ψ' -> List.length Ψ = List.length Ψ' -> set_ext_eq_with T γ Γ Ψ Ψ') ->
     all_assumptions Δ -> all_assumptions Δ' ->
     set_params_evaluated T γ Γ Δ l -> set_params_evaluated T γ Γ Δ' l ->
-    set_modexp_eq T γ (Δ ++ Γ) E E' -> set_modexp_eq T γ (Δ' ++ Γ) E' E' ->
-    set_unit_eq T γ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ' (md_alias E')).
+    set_rel_modexp_eq T γ (Δ ++ Γ) E E' -> set_rel_modexp_eq T γ (Δ' ++ Γ) E' E' ->
+    set_rel_unit_eq T γ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ' (md_alias E')).
 Proof.
   intros * HUU HΔw Hext HΔ HΔ' Hl Hl' (G & G' & [HG HG' EG HvE _ HprE]) (G2 & _ & [HG2 _ _ HvE2 _ _]).
   pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0. pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hlen.
@@ -406,7 +406,7 @@ Proof.
 Qed.
 
 (** A term equal to another is equal to itself. *)
-Lemma set_exp_eq_refl_left : forall Γ A M M', set_exp_eq T γ Γ A M M' -> set_exp_eq T γ Γ A M M.
+Lemma set_exp_eq_refl_left : forall Γ A M M', set_rel_exp_eq T γ Γ A M M' -> set_rel_exp_eq T γ Γ A M M.
 Proof. intros * (FA & FM & FM' & H). exists FA, FM, FM. exact (set_exp_eq_with_left _ _ _ _ _ _ _ H). Qed.
 
 (** The slots of a context's tail are valid. *)
@@ -443,7 +443,7 @@ Qed.
     sorts valid. *)
 Lemma set_body_sorts_valid_of_filled : forall Φ D, gm_nopens Φ = 0 -> List.NoDup (gm_names Φ) ->
     (forall y Φ0 E A M σ, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σ ->
-       exists i, set_exp_eq T γ D (abs_kind_sort (entry_kind E) (a_typ i)) (exp_sub A σ) (exp_sub A σ)) ->
+       exists i, set_rel_exp_eq T γ D (abs_kind_sort (entry_kind E) (a_typ i)) (exp_sub A σ) (exp_sub A σ)) ->
     set_body_sorts_valid T γ Φ D.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH H its Φg _]; intros D Hn Hnd Hf; cbn [set_body_sorts_valid gm_nopens] in *;
@@ -600,38 +600,38 @@ Lemma set_rule_unit_eq_body : forall Γ Δ Δ' Φ Φ' Φx Φx' l (entry_sort : s
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_exp_eq T γ (Δ ++ Γ) (entry_sort y) (exp_sub A σ) (exp_sub A' σ')) ->
+       set_rel_exp_eq T γ (Δ ++ Γ) (entry_sort y) (exp_sub A σ) (exp_sub A' σ')) ->
     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_exp_eq T γ (Δ' ++ Γ) (entry_sort y) (exp_sub A' σ') (exp_sub A' σ')) ->
+       set_rel_exp_eq T γ (Δ' ++ Γ) (entry_sort y) (exp_sub A' σ') (exp_sub A' σ')) ->
     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_exp_eq T γ (Δ ++ Γ) (exp_sub A σ) (exp_sub M σ) (exp_sub M' σ')) ->
+       set_rel_exp_eq T γ (Δ ++ Γ) (exp_sub A σ) (exp_sub M σ) (exp_sub M' σ')) ->
     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_exp_eq T γ (Δ' ++ Γ) (exp_sub A' σ') (exp_sub M' σ') (exp_sub M' σ')) ->
+       set_rel_exp_eq T γ (Δ' ++ Γ) (exp_sub A' σ') (exp_sub M' σ') (exp_sub M' σ')) ->
     (forall y Φ0 E U Φ0' E' U' σ σ',
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_unit_eq T γ (Δ ++ Γ) (gunit_sub U σ) (gunit_sub U' σ')) ->
+       set_rel_unit_eq T γ (Δ ++ Γ) (gunit_sub U σ) (gunit_sub U' σ')) ->
     (forall y Φ0 E U Φ0' E' U' σ σ',
        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
-       set_unit_eq T γ (Δ' ++ Γ) (gunit_sub U' σ') (gunit_sub U' σ')) ->
-    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> set_modexp_eq T γ (Ψ ++ Δ ++ Γ) H H) ->
-    (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> set_modexp_eq T γ (Ψ' ++ Δ' ++ Γ) H' H') ->
+       set_rel_unit_eq T γ (Δ' ++ Γ) (gunit_sub U' σ') (gunit_sub U' σ')) ->
+    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> set_rel_modexp_eq T γ (Ψ ++ Δ ++ Γ) H H) ->
+    (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> set_rel_modexp_eq T γ (Ψ' ++ Δ' ++ Γ) H' H') ->
     all_assumptions Δ -> all_assumptions Δ' ->
     set_params_evaluated T γ Γ Δ l -> set_params_evaluated T γ Γ Δ' l ->
     body_shape Φ Φ' -> body_shape Φx Φx' -> List.NoDup (gm_names Φ) ->
-    set_unit_eq T γ Γ (gu_open Δ Φ) (gu_open Δ' Φ').
+    set_rel_unit_eq T γ Γ (gu_open Δ Φ) (gu_open Δ' Φ').
 Proof.
   intros * HUU Hx Hx' HΔw Hcx Hcx' Hext HC HC' Hsl Hsl' Htag Htag' HA HA' HM HM' HU HU' Ho Ho' HΔ HΔ' Hl Hl' Hs Hsxx Hnd.
   pose proof (fn_kinds_unique_of_ext Hfn) as Hfn0. pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hlen.

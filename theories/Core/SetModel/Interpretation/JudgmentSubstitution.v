@@ -235,8 +235,8 @@ Proof.
     intros ρ Hρ; [apply E | apply Hm]; exact (set_env_in_moved _ _ _ _ _ _ Hg HΓ HΔ Hc Hρ).
 Qed.
 
-Lemma set_exp_eq_moved : forall Ψ Δ Γ σ Fσ A M M', set_moves_with Ψ Δ Γ σ Fσ -> set_exp_eq T γ (Ψ ++ Δ) A M M' ->
-    set_exp_eq T γ (tele_sub Ψ σ ++ Γ) (exp_sub A (sb_qn (List.length Ψ) σ)) (exp_sub M (sb_qn (List.length Ψ) σ))
+Lemma set_exp_eq_moved : forall Ψ Δ Γ σ Fσ A M M', set_moves_with Ψ Δ Γ σ Fσ -> set_rel_exp_eq T γ (Ψ ++ Δ) A M M' ->
+    set_rel_exp_eq T γ (tele_sub Ψ σ ++ Γ) (exp_sub A (sb_qn (List.length Ψ) σ)) (exp_sub M (sb_qn (List.length Ψ) σ))
       (exp_sub M' (sb_qn (List.length Ψ) σ)).
 Proof. intros * Hs (FA & FM & FM' & H). exact (ex_intro _ _ (ex_intro _ _ (ex_intro _ _ (set_exp_eq_with_moved _ _ _ _ _ _ _ _ _ _ _ Hs H)))). Qed.
 

@@ -23,20 +23,20 @@ Lemma set_rule_ctx_extend : forall Γ κ A S FS FA FA', set_ctx T γ Γ -> set_e
     set_ctx T γ (ce_ass κ A :: Γ).
 Proof. intros * HΓ [_ HA _ _ _]. split; [exact HΓ | exists FA; exact HA]. Qed.
 
-Lemma set_rule_ctx_extend_def : forall Γ A M, set_ctx T γ Γ -> set_exp_eq T γ Γ A M M -> set_ctx T γ (ce_def A M :: Γ).
+Lemma set_rule_ctx_extend_def : forall Γ A M, set_ctx T γ Γ -> set_rel_exp_eq T γ Γ A M M -> set_ctx T γ (ce_def A M :: Γ).
 Proof. intros * HΓ HM. split; assumption. Qed.
 
 (** A unit equal to another denotes. *)
-Lemma set_modexp_rel_of_unit_eq : forall Γ U U', set_unit_eq T γ Γ U U' -> set_modexp_rel T γ Γ (me_lit U) (me_lit U).
+Lemma set_modexp_rel_of_unit_eq : forall Γ U U', set_rel_unit_eq T γ Γ U U' -> set_modexp_rel T γ Γ (me_lit U) (me_lit U).
 Proof.
   intros * (F & F' & [HF _ _ _ _]). exists F, F. constructor; [exact HF | exact HF |].
   intros ρ Hρ. exact (set_modexp_denotes_refl _ _ _ _ _ _ HF Hρ).
 Qed.
 
-Lemma set_rule_ctx_extend_mod : forall Γ U, set_ctx T γ Γ -> set_unit_eq T γ Γ U U -> set_ctx T γ (ce_mod U :: Γ).
+Lemma set_rule_ctx_extend_mod : forall Γ U, set_ctx T γ Γ -> set_rel_unit_eq T γ Γ U U -> set_ctx T γ (ce_mod U :: Γ).
 Proof. intros * HΓ HU. split; [exact HΓ | exact (set_modexp_rel_of_unit_eq _ _ _ HU)]. Qed.
 
-Lemma set_rule_ctx_extend_dm : forall Γ A M U, set_ctx T γ Γ -> set_exp_eq T γ Γ A M M -> set_unit_eq T γ Γ U U ->
+Lemma set_rule_ctx_extend_dm : forall Γ A M U, set_ctx T γ Γ -> set_rel_exp_eq T γ Γ A M M -> set_rel_unit_eq T γ Γ U U ->
     set_ctx T γ (ce_dm A M U :: Γ).
 Proof. intros * HΓ HM HU. split; [exact HΓ | split; [exact HM | exact (set_modexp_rel_of_unit_eq _ _ _ HU)]]. Qed.
 
@@ -50,11 +50,11 @@ Lemma set_rule_slots_extend_plain : forall Γ ce, set_valid_slots T γ Γ -> cen
     set_valid_slots T γ (ce :: Γ).
 Proof. intros * HΓ Hn. split; [exact HΓ | intros U HU; congruence]. Qed.
 
-Lemma set_rule_slots_extend_mod : forall Γ U, set_valid_slots T γ Γ -> set_unit_eq T γ Γ U U ->
+Lemma set_rule_slots_extend_mod : forall Γ U, set_valid_slots T γ Γ -> set_rel_unit_eq T γ Γ U U ->
     set_valid_slots T γ (ce_mod U :: Γ).
 Proof. intros * HΓ (F & F' & [_ _ _ HU _]). split; [exact HΓ | intros U' [= <-]; exact HU]. Qed.
 
-Lemma set_rule_slots_extend_dm : forall Γ A M U, set_valid_slots T γ Γ -> set_unit_eq T γ Γ U U ->
+Lemma set_rule_slots_extend_dm : forall Γ A M U, set_valid_slots T γ Γ -> set_rel_unit_eq T γ Γ U U ->
     set_valid_slots T γ (ce_dm A M U :: Γ).
 Proof. intros * HΓ (F & F' & [_ _ _ HU _]). split; [exact HΓ | intros U' [= <-]; exact HU]. Qed.
 

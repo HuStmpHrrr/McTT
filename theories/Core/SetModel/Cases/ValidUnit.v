@@ -61,7 +61,7 @@ Lemma set_params_evaluated_nil : forall Γ l, set_params_evaluated T γ Γ nil l
 Proof. intros Γ l Δ1 κ A Δ2 H. destruct Δ1; discriminate. Qed.
 
 Lemma set_params_evaluated_cons_iff : forall Γ e Δ l, set_params_evaluated T γ Γ (e :: Δ) l <->
-    (forall κ A, e = ce_ass κ A -> set_exp_eq T γ (Δ ++ Γ) (a_typ l) A A \/ set_exp_eq T γ (Δ ++ Γ) a_level_sort A A) /\
+    (forall κ A, e = ce_ass κ A -> set_rel_exp_eq T γ (Δ ++ Γ) (a_typ l) A A \/ set_rel_exp_eq T γ (Δ ++ Γ) a_level_sort A A) /\
     set_params_evaluated T γ Γ Δ l.
 Proof.
   intros. split.

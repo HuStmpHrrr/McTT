@@ -4,7 +4,8 @@
     the value of each term entry, the module of each module entry, and the
     semantics of each group of inductive types and of each record type.
     The interpretation of terms reads globals only through a valuation;
-    [Model.v] states when a valuation is one of a global context. *)
+    [Judgments.v] states when a valuation is one of a global context
+    ([set_gctx_ok]). *)
 
 From Stdlib Require Import String List.
 From Mctt.Core.SetModel.Interpretation Require Export Values Codes.

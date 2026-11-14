@@ -84,10 +84,6 @@ Proof.
     intros x y _ Exy. apply HF. exact Exy.
 Qed.
 
-(** The universe of sets a universe's value is the code of. *)
-Definition universe_shape (FU : set_env -> aczel_set) (ρ : set_env) (V : aczel_set) : Prop :=
-  grothendieck V /\ exists l, set_eq (FU ρ) (universe_code l V).
-
 (** The value of the sort of the kind [κ] over the universe [U]. *)
 Definition kind_sort_value (κ : abs_kind) (FU : set_env -> aczel_set) (ρ : set_env) : aczel_set :=
   match κ with
@@ -146,7 +142,7 @@ Lemma set_rule_pi : forall Γ κd κc A B U FU FS FA FA2 FS' FB FB2, set_ctx T �
     set_denotes T γ Γ U FU -> (forall ρ, set_env_in T γ Γ ρ -> exists V, universe_shape FU ρ V) ->
     set_exp_eq_with T γ Γ (abs_kind_sort κd U) A A FS FA FA2 ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) B B FS' FB FB2 ->
-    set_exp_eq T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A B).
+    set_rel_exp_eq T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A B).
 Proof.
   intros * HΓ Hc Hk HU Hshape [HS HA _ _ HAm] [HS' HB _ _ HBm].
   exists (kind_sort_value κc FU), (pi_denotation κd κc FA FB), (pi_denotation κd κc FA FB).
@@ -212,7 +208,7 @@ Lemma set_rule_pi_cong : forall Γ κd κc A A' B B' U FU FS FA FA' FS' FB FB', 
     set_denotes T γ Γ U FU -> (forall ρ, set_env_in T γ Γ ρ -> exists V, universe_shape FU ρ V) ->
     set_exp_eq_with T γ Γ (abs_kind_sort κd U) A A' FS FA FA' ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) B B' FS' FB FB' ->
-    set_exp_eq T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A' B').
+    set_rel_exp_eq T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A' B').
 Proof.
   intros * Hfn Hmods HΓ Hc Hc' Hσ Hk HU Hshape [HS HA HA' EA HAm] [HS' HB HB' EB HBm].
   destruct (set_rule_pi Γ κd κc A B U FU FS FA FA FS' FB FB HΓ Hc Hk HU Hshape
@@ -307,7 +303,7 @@ Corollary set_rule_fn : forall Γ κd κc i A M B FA FS FB FB2 FB' FM FM2, fn_ki
     set_denotes T γ Γ A FA ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M FB' FM FM2 ->
-    set_exp_eq T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A M).
+    set_rel_exp_eq T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A M).
 Proof. intros. do 3 eexists. eapply set_rule_fn_with; eassumption. Qed.
 
 (** [λ A M ≈ λ A' M']. *)
@@ -319,7 +315,7 @@ Lemma set_rule_fn_cong : forall Γ κd κc i A A' M M' B C' B' Srt FS FA FA' FS2
     set_exp_eq_with T γ Γ Srt A A' FS FA FA' ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS2 FB FB2 ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M' FB3 FM FM' ->
-    set_exp_eq T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A' M').
+    set_rel_exp_eq T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A' M').
 Proof.
   intros * Hfn Hmods HΓ HT HT' Hc Hc' Hσ [HS HA HA' EA _] HB [HB3 HM HM' EM HMm].
   destruct (set_rule_fn_with _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hfn HΓ HT Hc HA HB
@@ -354,7 +350,7 @@ Lemma set_rule_app : forall Γ κd κc i A B M N C FA FS FB FB2 FP FM FM2 FA' FN
     set_exp_eq_with T γ Γ (a_pi κd κc A B) M M FP FM FM2 ->
     set_exp_eq_with T γ Γ A N N FA' FN FN2 ->
     set_denotes T γ Γ C FC -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FC ρ) (body_function κd FB ρ (FN ρ))) ->
-    set_exp_eq T γ Γ C (a_app M N) (a_app M N).
+    set_rel_exp_eq T γ Γ C (a_app M N) (a_app M N).
 Proof.
   intros * HΓ Hc HA [HS HB _ _ HBm] [HP HM _ _ HMm] [HA' HN _ _ HNm] HC EC.
   exists FC, (fun ρ => set_apply (FM ρ) (FN ρ)), (fun ρ => set_apply (FM ρ) (FN ρ)).
@@ -388,7 +384,7 @@ Lemma set_rule_app_cong : forall Γ κd κc i A B M M' N N' C FA FS FB FB2 FP FM
     set_exp_eq_with T γ Γ (a_pi κd κc A B) M M' FP FM FM' ->
     set_exp_eq_with T γ Γ A N N' FA' FN FN' ->
     set_denotes T γ Γ C FC -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FC ρ) (body_function κd FB ρ (FN ρ))) ->
-    set_exp_eq T γ Γ C (a_app M N) (a_app M' N').
+    set_rel_exp_eq T γ Γ C (a_app M N) (a_app M' N').
 Proof.
   intros * HΓ Hc HA HB [HP HM HM' EM HMm] [HA' HN HN' EN HNm] HC EC.
   destruct (set_rule_app Γ κd κc i A B M N C FA FS FB FB2 FP FM FM FA' FN FN FC HΓ Hc HA HB
@@ -409,7 +405,7 @@ Lemma set_rule_fn_eta : forall Γ κd κc i A B M FA FS FB FB2 FP FM FM2, fn_kin
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> set_denotes T γ Γ A FA ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
     set_exp_eq_with T γ Γ (a_pi κd κc A B) M M FP FM FM2 ->
-    set_exp_eq T γ Γ (a_pi κd κc A B) M (a_fn A (a_app (exp_wk M wk_shift) (a_var 0))).
+    set_rel_exp_eq T γ Γ (a_pi κd κc A B) M (a_fn A (a_app (exp_wk M wk_shift) (a_var 0))).
 Proof.
   intros * Hfn Hmods HΓ HT Hc HA [HS HB _ _ HBm] [HP HM _ _ HMm].
   set (Fb := fun ρ' => set_apply (FM (set_env_tail ρ')) (set_entry_value (ρ' 0))).
@@ -459,7 +455,7 @@ Lemma set_rule_pi_beta : forall Γ κd κc i A M B N FA FS FB FB2 FB' FM FM2 FA'
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M FB' FM FM2 ->
     set_exp_eq_with T γ Γ A N N FA' FN FN2 ->
-    set_exp_eq T γ Γ (exp_sub B (sb_extend sb_id (se_exp N))) (a_app (a_fn A M) N) (exp_sub M (sb_extend sb_id (se_exp N))).
+    set_rel_exp_eq T γ Γ (exp_sub B (sb_extend sb_id (se_exp N))) (a_app (a_fn A M) N) (exp_sub M (sb_extend sb_id (se_exp N))).
 Proof.
   intros * Hfn Hmods HΓ HT Hc Hσ HA [HS HB _ _ HBm] [HB' HM _ _ HMm] [HA' HN _ _ HNm].
   assert (HNa : forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA ρ)))

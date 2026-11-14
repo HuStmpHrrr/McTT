@@ -13,7 +13,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects Substitution JudgmentSubstitution.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import PropCases FunctionCases ValidUnit.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members CoreInversions.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
@@ -202,7 +202,7 @@ Qed.
 (** The type of a definition of a body, filled in, is of its kind's sort. *)
 Lemma set_body_sorts_valid_entry : forall Φ D x Φ' E A M σ, set_body_sorts_valid T γ Φ D ->
     gm_prefix_upto Φ x = Some (gm_ext Φ' x E) -> entry_tm E = Some (A, M) -> gm_fill Φ' = Some σ ->
-    exists i, set_exp_eq T γ D (abs_kind_sort (entry_kind E) (a_typ i)) (exp_sub A σ) (exp_sub A σ).
+    exists i, set_rel_exp_eq T γ D (abs_kind_sort (entry_kind E) (a_typ i)) (exp_sub A σ) (exp_sub A σ).
 Proof.
   induction Φ as [| Φ IH y E0 | Φ IH H its Φg _]; intros * Hs Hp HE Hf; cbn [gm_prefix_upto set_body_sorts_valid] in Hp, Hs;
     [discriminate | |].
@@ -829,7 +829,7 @@ Qed.
 Lemma set_gsub_closed_inst : forall Tf Γ Ns, set_ctx T γ Γ -> all_assumptions Tf -> set_ctx T γ (Tf ++ Γ) ->
     ⊢ gc_deps ⍮ gc_stack ⍮ Tf ++ Γ -> List.length Ns = List.length Tf ->
     (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts Tf sb_id Ns) k = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : A) ->
-    (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts Tf sb_id Ns) k = Some A -> set_exp_eq T γ Γ A N N) ->
+    (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts Tf sb_id Ns) k = Some A -> set_rel_exp_eq T γ Γ A N N) ->
     exists Fσ, set_gsub_with T γ Γ (sb_of_list sb_id Ns) (Tf ++ Γ) Fσ /\
       forall ρ ns, set_env_in T γ Γ ρ -> set_interp_list T γ Γ ρ Ns ns -> list_set_eq ns (set_env_values Tf (Fσ ρ)).
 Proof.

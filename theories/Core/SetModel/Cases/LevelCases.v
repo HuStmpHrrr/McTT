@@ -44,7 +44,7 @@ Proof.
 Qed.
 
 (** [Level@n : LevelSort]. *)
-Lemma set_rule_level : forall Γ n, set_exp_eq T γ Γ a_level_sort (a_level n) (a_level n).
+Lemma set_rule_level : forall Γ n, set_rel_exp_eq T γ Γ a_level_sort (a_level n) (a_level n).
 Proof.
   intros. exists (fun _ => level_sort_code (level_types_universe T)), (fun _ => level_type_code n), (fun _ => level_type_code n).
   constructor; [apply set_denotes_level_sort | apply set_denotes_level | apply set_denotes_level | intros; apply set_eq_refl |].
@@ -55,7 +55,7 @@ Proof.
 Qed.
 
 (** A level literal [𝕃ᵒ o : Level@n], [o]'s tier at most [n]. *)
-Lemma set_rule_llit : forall Γ o n, fst o <= n -> set_exp_eq T γ Γ (a_level n) (a_llit o) (a_llit o).
+Lemma set_rule_llit : forall Γ o n, fst o <= n -> set_rel_exp_eq T γ Γ (a_level n) (a_llit o) (a_llit o).
 Proof.
   intros * Ho. exists (fun _ => level_type_code n), (fun _ => pair_ordinal_set o), (fun _ => pair_ordinal_set o).
   constructor; [apply set_denotes_level | apply set_denotes_llit .. | intros; apply set_eq_refl |].
@@ -64,7 +64,7 @@ Qed.
 
 (** [M ≈ M' : Level@n] gives [succl M ≈ succl M' : Level@n]. *)
 Lemma set_rule_succl : forall Γ n M M' FL FM FM', set_exp_eq_with T γ Γ (a_level n) M M' FL FM FM' ->
-    set_exp_eq T γ Γ (a_level n) (a_succl M) (a_succl M').
+    set_rel_exp_eq T γ Γ (a_level n) (a_succl M) (a_succl M').
 Proof.
   intros * H. pose proof H as [HL HM HM' E Hm].
   exists (fun _ => level_type_code n), (fun ρ => successor_set (FM ρ)), (fun ρ => successor_set (FM' ρ)).
@@ -77,7 +77,7 @@ Qed.
 
 (** [M ≈ M'] and [N ≈ N'] at [Level@n] give [maxl M N ≈ maxl M' N']. *)
 Lemma set_rule_maxl : forall Γ n M M' N N' FL FM FM' FL' FN FN', set_exp_eq_with T γ Γ (a_level n) M M' FL FM FM' ->
-    set_exp_eq_with T γ Γ (a_level n) N N' FL' FN FN' -> set_exp_eq T γ Γ (a_level n) (a_maxl M N) (a_maxl M' N').
+    set_exp_eq_with T γ Γ (a_level n) N N' FL' FN FN' -> set_rel_exp_eq T γ Γ (a_level n) (a_maxl M N) (a_maxl M' N').
 Proof.
   intros * HMe HNe. pose proof HMe as [HL HM HM' EM Hm]. pose proof HNe as [HL' HN HN' EN Hn].
   exists (fun _ => level_type_code n), (fun ρ => union_set (unordered_pair_set (FM ρ) (FN ρ))),
@@ -97,7 +97,7 @@ Qed.
 Lemma set_rule_level_eq : forall Γ n L R FL FR, set_denotes T γ Γ L FL -> set_denotes T γ Γ R FR ->
     (forall ρ, set_env_in T γ Γ ρ -> set_eq (FL ρ) (FR ρ)) ->
     (forall ρ, set_env_in T γ Γ ρ -> set_mem (FL ρ) (code_carrier (level_type_code n))) ->
-    set_exp_eq T γ Γ (a_level n) L R.
+    set_rel_exp_eq T γ Γ (a_level n) L R.
 Proof. intros * HL HR E Hm. exists (fun _ => level_type_code n), FL, FR. constructor; [apply set_denotes_level | assumption ..]. Qed.
 
 Lemma pair_ordinal_level : forall o n, fst o <= n -> set_mem (pair_ordinal_set o) (code_carrier (level_type_code n)).
@@ -131,7 +131,7 @@ Proof. intros x y H. apply set_eq_intro; intros w Hw; rewrite ?set_mem_union_pai
 
 (** [𝕃(a, S b) ≈ succl 𝕃(a, b)]. *)
 Lemma set_rule_llit_succl : forall Γ a b n, a <= n ->
-    set_exp_eq T γ Γ (a_level n) (a_llit (a, S b)) (a_succl (a_llit (a, b))).
+    set_rel_exp_eq T γ Γ (a_level n) (a_llit (a, S b)) (a_succl (a_llit (a, b))).
 Proof.
   intros * Ha. apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_llit _ _) (set_denotes_succl _ _ _ (set_denotes_llit _ _)));
     [intros; apply set_eq_refl | intros; apply pair_ordinal_level; exact Ha].
@@ -139,7 +139,7 @@ Qed.
 
 (** [maxl M 𝕃(S n, 0) ≈ 𝕃(S n, 0) : Level@(S n)]. *)
 Lemma set_rule_maxl_absorb : forall Γ n M FL FM FM', set_exp_eq_with T γ Γ (a_level n) M M FL FM FM' ->
-    set_exp_eq T γ Γ (a_level (S n)) (a_maxl M (a_llit (S n, 0))) (a_llit (S n, 0)).
+    set_rel_exp_eq T γ Γ (a_level (S n)) (a_maxl M (a_llit (S n, 0))) (a_llit (S n, 0)).
 Proof.
   intros * H. pose proof H as [_ HM _ _ _].
   apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM (set_denotes_llit _ _)) (set_denotes_llit _ _)).
@@ -154,7 +154,7 @@ Qed.
 
 (** [maxl 𝕃@0 M ≈ M]. *)
 Lemma set_rule_maxl_zero : forall Γ n M FL FM FM', set_exp_eq_with T γ Γ (a_level n) M M FL FM FM' ->
-    set_exp_eq T γ Γ (a_level n) (a_maxl (a_llit (0, 0)) M) M.
+    set_rel_exp_eq T γ Γ (a_level n) (a_maxl (a_llit (0, 0)) M) M.
 Proof.
   intros * H. pose proof H as [_ HM _ _ Hm].
   apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ (set_denotes_llit _ _) HM) HM).
@@ -168,7 +168,7 @@ Qed.
 Lemma set_rule_maxl_assoc : forall Γ n M N P FL FM FM' FL' FN FN' FL'' FP FP',
     set_exp_eq_with T γ Γ (a_level n) M M FL FM FM' -> set_exp_eq_with T γ Γ (a_level n) N N FL' FN FN' ->
     set_exp_eq_with T γ Γ (a_level n) P P FL'' FP FP' ->
-    set_exp_eq T γ Γ (a_level n) (a_maxl (a_maxl M N) P) (a_maxl M (a_maxl N P)).
+    set_rel_exp_eq T γ Γ (a_level n) (a_maxl (a_maxl M N) P) (a_maxl M (a_maxl N P)).
 Proof.
   intros * HMe HNe HPe. pose proof HMe as [_ HM _ _ _]. pose proof HNe as [_ HN _ _ _]. pose proof HPe as [_ HP _ _ _].
   apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM HN) HP)
@@ -185,7 +185,7 @@ Qed.
 
 Lemma set_rule_maxl_comm : forall Γ n M N FL FM FM' FL' FN FN',
     set_exp_eq_with T γ Γ (a_level n) M M FL FM FM' -> set_exp_eq_with T γ Γ (a_level n) N N FL' FN FN' ->
-    set_exp_eq T γ Γ (a_level n) (a_maxl M N) (a_maxl N M).
+    set_rel_exp_eq T γ Γ (a_level n) (a_maxl M N) (a_maxl N M).
 Proof.
   intros * HMe HNe. destruct (set_rule_maxl _ _ _ _ _ _ _ _ _ _ _ _ HMe HNe) as (FA & FL0 & _ & [HA HL0 _ _ Hm0]).
   pose proof HMe as [_ HM _ _ _]. pose proof HNe as [_ HN _ _ _].
@@ -196,7 +196,7 @@ Proof.
 Qed.
 
 Lemma set_rule_maxl_idem : forall Γ n M FL FM FM', set_exp_eq_with T γ Γ (a_level n) M M FL FM FM' ->
-    set_exp_eq T γ Γ (a_level n) (a_maxl M M) M.
+    set_rel_exp_eq T γ Γ (a_level n) (a_maxl M M) M.
 Proof.
   intros * H. pose proof H as [_ HM _ _ Hm].
   apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM HM) HM); [intros; apply union_pair_idem |].
@@ -214,7 +214,7 @@ Qed.
 
 Lemma set_rule_succl_maxl : forall Γ n M N FL FM FM' FL' FN FN',
     set_exp_eq_with T γ Γ (a_level n) M M FL FM FM' -> set_exp_eq_with T γ Γ (a_level n) N N FL' FN FN' ->
-    set_exp_eq T γ Γ (a_level n) (a_succl (a_maxl M N)) (a_maxl (a_succl M) (a_succl N)).
+    set_rel_exp_eq T γ Γ (a_level n) (a_succl (a_maxl M N)) (a_maxl (a_succl M) (a_succl N)).
 Proof.
   intros * HMe HNe. pose proof HMe as [_ HM _ _ _]. pose proof HNe as [_ HN _ _ _].
   apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_succl _ _ _ (set_denotes_maxl _ _ _ _ _ HM HN))
@@ -237,7 +237,7 @@ Qed.
 
 (** [maxl M (succl M) ≈ succl M]. *)
 Lemma set_rule_maxl_succl : forall Γ n M FL FM FM', set_exp_eq_with T γ Γ (a_level n) M M FL FM FM' ->
-    set_exp_eq T γ Γ (a_level n) (a_maxl M (a_succl M)) (a_succl M).
+    set_rel_exp_eq T γ Γ (a_level n) (a_maxl M (a_succl M)) (a_succl M).
 Proof.
   intros * H. pose proof H as [_ HM _ _ _].
   apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM (set_denotes_succl _ _ _ HM)) (set_denotes_succl _ _ _ HM));

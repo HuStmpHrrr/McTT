@@ -16,7 +16,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Weakening Substitution JudgmentSubstitution.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import UniverseCases PropCases FunctionCases ValidUnit MemberTypes Sel IndCases RecordCases
   ElimCases.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members Presup CoreInversions.
@@ -894,9 +894,9 @@ Lemma set_rule_elim_view : forall Γ r p Us m Bks M D Mm bm Ps i qc k' Is vm D' 
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ P : A) ->
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
-       set_exp_eq T γ Γ A P P) ->
+       set_rel_exp_eq T γ Γ A P P) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-    set_exp_eq T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M ->
+    set_rel_exp_eq T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M ->
     Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
@@ -905,7 +905,7 @@ Lemma set_rule_elim_view : forall Γ r p Us m Bks M D Mm bm Ps i qc k' Is vm D' 
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        gc_deps ⍮ gc_stack ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r (a_typ i)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       set_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
+       set_rel_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
     (forall k Mk, ind_member D k = Some Mk ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk, ind_member D k = Some Mk -> set_ctx T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ)) ->
@@ -924,12 +924,12 @@ Lemma set_rule_elim_view : forall Γ r p Us m Bks M D Mm bm Ps i qc k' Is vm D' 
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-       set_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
+       set_rel_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
          (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B) ->
     motive_kind r ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_elim r qc (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
         (view_wrap r p qc D D' vm (List.firstn (ind_nu D) Ps) (im_pre Mm (List.firstn (ind_nu D) Ps)) Bks) M : C ->
-    set_exp_eq T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
+    set_rel_exp_eq T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
       (a_elim r p Us m Bks M)
       (a_elim r qc (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
          (view_wrap r p qc D D' vm (List.firstn (ind_nu D) Ps) (im_pre Mm (List.firstn (ind_nu D) Ps)) Bks) M).

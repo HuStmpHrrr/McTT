@@ -10,7 +10,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Weakening JudgmentSubstitution.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import UniverseCases ValidUnit Sel.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
@@ -85,7 +85,7 @@ Qed.
     the empty environment. *)
 Lemma set_exp_eq_closed_global : forall Γ A c F, exp_scoped 0 A -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
     set_denotes T γ nil A F -> set_mem c (code_carrier (F empty_set_env)) -> forall M, (forall ρ, set_interp T γ Γ ρ M c) ->
-    set_exp_eq T γ Γ A M M.
+    set_rel_exp_eq T γ Γ A M M.
 Proof.
   intros * HA Hc HΓ HF Hmem M HM.
   assert (HMd : set_denotes T γ Γ M (fun _ => c))
@@ -100,7 +100,7 @@ Qed.
 
 Lemma set_rule_ind : forall Γ p k D Mk, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
     ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk ->
-    set_exp_eq T γ Γ (ind_ty D Mk) (a_ind p k) (a_ind p k).
+    set_rel_exp_eq T γ Γ (ind_ty D Mk) (a_ind p k) (a_ind p k).
 Proof.
   intros * Hc HΓ HD Hk. pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG.
   destruct (set_group_ok_former_types _ _ _ _ _ HG _ _ Hk) as (FA & HFA).
@@ -112,8 +112,8 @@ Qed.
 
 Lemma set_rule_con : forall Γ p k c D Mk gs i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ ->
     ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-    gc_deps ⍮ gc_stack ⍮ nil ⊢ con_ty p D k Mk gs : a_typ i -> set_exp_eq T γ nil (a_typ i) (con_ty p D k Mk gs) (con_ty p D k Mk gs) ->
-    set_exp_eq T γ Γ (con_ty p D k Mk gs) (a_con p k c) (a_con p k c).
+    gc_deps ⍮ gc_stack ⍮ nil ⊢ con_ty p D k Mk gs : a_typ i -> set_rel_exp_eq T γ nil (a_typ i) (con_ty p D k Mk gs) (con_ty p D k Mk gs) ->
+    set_rel_exp_eq T γ Γ (con_ty p D k Mk gs) (a_con p k c) (a_con p k c).
 Proof.
   intros * Hc HΓ HD Hk Hcon Hw (FS & FA & FA' & [_ HFA _ _ _]). pose proof (set_gctx_ok_groups _ _ Hok _ _ HD) as HG.
   apply (set_exp_eq_closed_global _ _ (global_constructor γ p k c) FA); try assumption.

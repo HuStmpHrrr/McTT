@@ -20,7 +20,7 @@ Section Subtyping.
 
 (** Subsumption: a term of a subtype, or two equal ones, at the supertype. *)
 Lemma set_rule_exp_eq_subtyp : forall Γ A A' M M' FA FM FM' FA0 FA', set_exp_eq_with T γ Γ A M M' FA FM FM' ->
-    set_subtyp_with T γ Γ A A' FA0 FA' -> set_exp_eq T γ Γ A' M M'.
+    set_subtyp_with T γ Γ A A' FA0 FA' -> set_rel_exp_eq T γ Γ A' M M'.
 Proof.
   intros * [HA HM HM' E Hm] [HA0 HA' Hs]. exists FA', FM, FM'. constructor; try assumption.
   intros ρ Hρ. apply Hs; [exact Hρ |]. eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HA HA0 Hρ) |].
@@ -28,7 +28,7 @@ Proof.
 Qed.
 
 (** Equality of terms is symmetric. *)
-Lemma set_rule_exp_eq_sym : forall Γ A M M', set_exp_eq T γ Γ A M M' -> set_exp_eq T γ Γ A M' M.
+Lemma set_rule_exp_eq_sym : forall Γ A M M', set_rel_exp_eq T γ Γ A M M' -> set_rel_exp_eq T γ Γ A M' M.
 Proof.
   intros * (FA & FM & FM' & [HA HM HM' E Hm]). exists FA, FM', FM. constructor; try assumption.
   - intros ρ Hρ. apply set_eq_sym. exact (E _ Hρ).
@@ -36,7 +36,7 @@ Proof.
 Qed.
 
 (** And transitive. *)
-Lemma set_rule_exp_eq_trans : forall Γ A M M' M'', set_exp_eq T γ Γ A M M' -> set_exp_eq T γ Γ A M' M'' -> set_exp_eq T γ Γ A M M''.
+Lemma set_rule_exp_eq_trans : forall Γ A M M' M'', set_rel_exp_eq T γ Γ A M M' -> set_rel_exp_eq T γ Γ A M' M'' -> set_rel_exp_eq T γ Γ A M M''.
 Proof.
   intros * (FA & FM & FM' & [HA HM HM' E Hm]) (GA & GM & GM' & [_ HGM HGM' E' _]). exists FA, FM, GM'.
   constructor; try assumption.
@@ -45,13 +45,13 @@ Proof.
 Qed.
 
 (** Equal types are subtypes. *)
-Lemma set_rule_subtyp_refl : forall Γ S M M' FS FM FM', set_exp_eq_with T γ Γ S M M' FS FM FM' -> set_subtyp T γ Γ M M'.
+Lemma set_rule_subtyp_refl : forall Γ S M M' FS FM FM', set_exp_eq_with T γ Γ S M M' FS FM FM' -> set_rel_subtyp T γ Γ M M'.
 Proof.
   intros * [_ HM HM' E _]. exists FM, FM'. constructor; [exact HM | exact HM' |]. intros ρ Hρ z Hz.
   eapply set_mem_eq_r; [apply code_carrier_resp; exact (E ρ Hρ) | exact Hz].
 Qed.
 
-Lemma set_rule_subtyp_trans : forall Γ A A' A'', set_subtyp T γ Γ A A' -> set_subtyp T γ Γ A' A'' -> set_subtyp T γ Γ A A''.
+Lemma set_rule_subtyp_trans : forall Γ A A' A'', set_rel_subtyp T γ Γ A A' -> set_rel_subtyp T γ Γ A' A'' -> set_rel_subtyp T γ Γ A A''.
 Proof.
   intros * (FA & FA' & [HA HA' H1]) (FB & FB' & [HB HB' H2]). exists FA, FB'. constructor; [exact HA | exact HB' |].
   intros ρ Hρ z Hz. apply H2; [exact Hρ |]. eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HA' HB Hρ) |].
@@ -70,14 +70,14 @@ Lemma universe_code_sub : forall l l' U U', set_sub U U' -> set_sub (code_carrie
 Proof. intros * H z Hz. apply set_mem_universe_code in Hz as [Hz Hr]. apply set_mem_universe_code. split; [apply H; exact Hz | exact Hr]. Qed.
 
 (** [Typeω@i ⊆ Typeω@j], [i < j]. *)
-Lemma set_rule_subtyp_univ : forall Γ i j, i < j -> set_subtyp T γ Γ (a_typ i) (a_typ j).
+Lemma set_rule_subtyp_univ : forall Γ i j, i < j -> set_rel_subtyp T γ Γ (a_typ i) (a_typ j).
 Proof.
   intros * H. exists (fun _ => large_universe_code T i), (fun _ => large_universe_code T j).
   constructor; [apply set_denotes_typ .. |]. intros ρ _. apply universe_code_sub. apply tower_sub. cbn. lia.
 Qed.
 
 (** [Level@m ⊆ Level@n], [m ≤ n]. *)
-Lemma set_rule_subtyp_level : forall Γ m n, m <= n -> set_subtyp T γ Γ (a_level m) (a_level n).
+Lemma set_rule_subtyp_level : forall Γ m n, m <= n -> set_rel_subtyp T γ Γ (a_level m) (a_level n).
 Proof.
   intros * H. exists (fun _ => level_type_code m), (fun _ => level_type_code n).
   constructor; [apply set_denotes_level .. |]. intros ρ _ z Hz.
@@ -86,7 +86,7 @@ Qed.
 
 (** A small universe is below every large one. *)
 Lemma set_rule_subtyp_small_large : forall Γ n i M FL FM FM', set_exp_eq_with T γ Γ (a_level n) M M FL FM FM' ->
-    set_subtyp T γ Γ (a_univ M) (a_typ i).
+    set_rel_subtyp T γ Γ (a_univ M) (a_typ i).
 Proof.
   intros * H. pose proof H as [_ HM _ _ _]. exists (fun ρ => level_universe_code T (FM ρ)), (fun _ => large_universe_code T i).
   constructor; [apply set_denotes_univ; exact HM | apply set_denotes_typ |]. intros ρ Hρ.
@@ -98,7 +98,7 @@ Qed.
 Lemma set_rule_subtyp_suniv : forall Γ n M M' FL FM FM2 FL' FM' FM'2 FA FX FX',
     set_exp_eq_with T γ Γ (a_level n) M M FL FM FM2 -> set_exp_eq_with T γ Γ (a_level n) M' M' FL' FM' FM'2 ->
     set_exp_eq_with T γ Γ (a_level n) (a_maxl M M') M' FA FX FX' ->
-    set_subtyp T γ Γ (a_univ M) (a_univ M').
+    set_rel_subtyp T γ Γ (a_univ M) (a_univ M').
 Proof.
   intros * HMe HM'e [_ HX HX' EX _]. pose proof HMe as [_ HM _ _ _]. pose proof HM'e as [_ HM' _ _ _].
   exists (fun ρ => level_universe_code T (FM ρ)), (fun ρ => level_universe_code T (FM' ρ)).
@@ -130,7 +130,7 @@ Lemma set_rule_subtyp_pi : forall Γ κd κc i A A' B B' FS FA FA' FS1 FB FB1 FS
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS1 FB FB1 ->
     set_exp_eq_with T γ (ce_ass κd A' :: Γ) (abs_kind_sort κc (a_typ i)) B' B' FS2 FB' FB'2 ->
     set_subtyp_with T γ (ce_ass κd A' :: Γ) B B' FX FX' ->
-    set_subtyp T γ Γ (a_pi κd κc A B) (a_pi κd κc A' B').
+    set_rel_subtyp T γ Γ (a_pi κd κc A B) (a_pi κd κc A' B').
 Proof.
   intros * Hfn Hmods HΓ Hc Hc' Hσ Hκ [_ HA HA' EA _] [_ HB _ _ _] [_ HB' _ _ _] [HX HX' Hsub].
   pose proof (set_denotes_ctx_conv_ass _ _ _ _ _ _ _ _ _ _ Hfn Hmods HΓ Hc Hσ HA HA' EA HB) as HBc.

@@ -13,7 +13,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects Substitution JudgmentSubstitution.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import ValidUnit MemberTypes.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
@@ -81,7 +81,7 @@ Qed.
 (** Equal module expressions, both valid, of the same proofness. *)
 Lemma set_modexp_eq_of_rel : forall Γ H H', set_modexp_rel T γ Γ H H' -> set_valid_modexp T γ Γ H -> set_valid_modexp T γ Γ H' ->
     (forall κs, set_slots_coherent γ Γ κs -> forall ys x, modexp_member_proofs γ κs H ys x = modexp_member_proofs γ κs H' ys x) ->
-    set_modexp_eq T γ Γ H H'.
+    set_rel_modexp_eq T γ Γ H H'.
 Proof. intros * (F & F' & [HF HF' E]) HH HH' Hpr. exists F, F'. constructor; assumption. Qed.
 
 (** A denotation on the left relates to itself. *)
@@ -159,7 +159,7 @@ Qed.
 (** ** The Rules: Slots, Loaded Units, [δ] at a Slot, Symmetry and Transitivity *)
 
 Lemma set_rule_me_var : forall Γ x U, Γ ∋ #x ≔ₘ U -> set_ctx T γ Γ -> set_valid_slots T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
-    set_modexp_eq T γ Γ (me_var x) (me_var x).
+    set_rel_modexp_eq T γ Γ (me_var x) (me_var x).
 Proof.
   intros * Hl HC Hsl Hc. destruct (set_valid_modexp_var _ _ _ Hl HC Hsl Hc) as [Hv _].
   exact (set_modexp_eq_of_rel _ _ _ (set_modexp_rel_refl_left _ _ _ (set_slot_rel _ _ _ Hl HC Hc)) Hv Hv
@@ -167,7 +167,7 @@ Proof.
 Qed.
 
 Lemma set_rule_me_delta_slot : forall Γ x U, Γ ∋ #x ≔ₘ U -> set_ctx T γ Γ -> set_valid_slots T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
-    set_modexp_eq T γ Γ (me_var x) (me_lit U).
+    set_rel_modexp_eq T γ Γ (me_var x) (me_lit U).
 Proof.
   intros * Hl HC Hsl Hc. destruct (set_valid_modexp_var _ _ _ Hl HC Hsl Hc) as [Hv HK].
   exact (set_modexp_eq_of_rel _ _ _ (set_slot_rel _ _ _ Hl HC Hc) Hv (set_valid_modexp_of_unit _ _ HK)
@@ -175,7 +175,7 @@ Proof.
 Qed.
 
 Lemma set_rule_me_unit : forall Γ fp TΦ, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ -> gc_unit gc_deps gc_stack (me_unit fp) = Some TΦ ->
-    set_modexp_eq T γ Γ (me_unit fp) (me_unit fp).
+    set_rel_modexp_eq T γ Γ (me_unit fp) (me_unit fp).
 Proof.
   intros * Hc HC Hu. destruct TΦ as [T0 Φ0]. destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq & Hl).
   pose proof (mod_qname_inv _ _ Hq) as Heq. rewrite Heq.
@@ -188,14 +188,14 @@ Proof.
   exact (set_modexp_eq_of_rel _ _ _ (set_valid_unit_rel _ _ HK) Hv Hv (fun _ _ _ _ => eq_refl)).
 Qed.
 
-Lemma set_rule_me_sym : forall Γ H H', set_modexp_eq T γ Γ H H' -> set_modexp_eq T γ Γ H' H.
+Lemma set_rule_me_sym : forall Γ H H', set_rel_modexp_eq T γ Γ H H' -> set_rel_modexp_eq T γ Γ H' H.
 Proof.
   intros * (F & F' & [HF HF' E Hv Hv' Hpr]). exists F', F. constructor; [exact HF' | exact HF | | exact Hv' | exact Hv |].
   - intros ρ Hρ. apply set_module_eq_sym. exact (E _ Hρ).
   - intros κs Hκ ys x. exact (eq_sym (Hpr κs Hκ ys x)).
 Qed.
 
-Lemma set_rule_me_trans : forall Γ H H' H'', set_modexp_eq T γ Γ H H' -> set_modexp_eq T γ Γ H' H'' -> set_modexp_eq T γ Γ H H''.
+Lemma set_rule_me_trans : forall Γ H H' H'', set_rel_modexp_eq T γ Γ H H' -> set_rel_modexp_eq T γ Γ H' H'' -> set_rel_modexp_eq T γ Γ H H''.
 Proof.
   intros * (F & F' & [HF HF' E Hv _ Hpr]) (G & G' & [HG HG' E' _ Hv'' Hpr']). exists F, G'.
   constructor; [exact HF | exact HG' | | exact Hv | exact Hv'' |].
@@ -206,7 +206,7 @@ Qed.
 
 (** ** Literals *)
 
-Lemma set_rule_me_lit : forall Γ U U', set_unit_eq T γ Γ U U' -> set_modexp_eq T γ Γ (me_lit U) (me_lit U').
+Lemma set_rule_me_lit : forall Γ U U', set_rel_unit_eq T γ Γ U U' -> set_rel_modexp_eq T γ Γ (me_lit U) (me_lit U').
 Proof.
   intros * (F & F' & [HF HF' E HU HU' Hpr]). exists F, F'.
   constructor; [exact HF | exact HF' | exact E | exact (set_valid_modexp_of_unit _ _ HU) | exact (set_valid_modexp_of_unit _ _ HU') | exact Hpr].
@@ -228,7 +228,7 @@ Qed.
 (** An alias of no parameter is its target. *)
 Lemma set_rule_me_beta_alias0 : forall Γ E, set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_lit (gu_mk nil (md_alias E)) ≈ me_lit (gu_mk nil (md_alias E)) ->
-    set_modexp_eq T γ Γ E E -> set_modexp_eq T γ Γ (me_lit (gu_mk nil (md_alias E))) E.
+    set_rel_modexp_eq T γ Γ E E -> set_rel_modexp_eq T γ Γ (me_lit (gu_mk nil (md_alias E))) E.
 Proof.
   intros * HΓ Hw (FE & FE' & [HFE HFE' EE HvE _]).
   assert (HEE : set_modexp_rel T γ Γ E E).
@@ -251,9 +251,9 @@ Qed.
 (** ** Members *)
 
 (** A term member of a valid module expression is of its type. *)
-Lemma set_rule_mem : forall Γ H x R A, set_ctx T γ Γ -> set_modexp_eq T γ Γ H H ->
+Lemma set_rule_mem : forall Γ H x R A, set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H ->
     mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H x : A ->
-    set_exp_eq T γ Γ A (a_mem H x) (a_mem H x).
+    set_rel_exp_eq T γ Γ A (a_mem H x) (a_mem H x).
 Proof.
   intros * HΓ (F & F' & [HF _ _ Hv _]) Hm Ht HT.
   destruct (proj1 (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Hok _ _ Hv _ _ _ Hm Ht)) as (FA & HA).
@@ -266,10 +266,10 @@ Proof.
 Qed.
 
 (** Members of equal module expressions are equal. *)
-Lemma set_rule_mem_cong : forall Γ H H' x R A, set_ctx T γ Γ -> set_modexp_eq T γ Γ H H' ->
+Lemma set_rule_mem_cong : forall Γ H H' x R A, set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H' ->
     mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H x : A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H' x : A ->
-    set_exp_eq T γ Γ A (a_mem H x) (a_mem H' x).
+    set_rel_exp_eq T γ Γ A (a_mem H x) (a_mem H' x).
 Proof.
   intros * HΓ (F & F' & [HF HF' E Hv _]) Hm Ht HT HT'.
   destruct (proj1 (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Hok _ _ Hv _ _ _ Hm Ht)) as (FA & HA).
@@ -287,9 +287,9 @@ Qed.
 
 (** [δ] for members: a term member of a valid module expression is its
     reduct. *)
-Lemma set_rule_mem_delta : forall Γ H x R A M, set_ctx T γ Γ -> set_modexp_eq T γ Γ H H ->
+Lemma set_rule_mem_delta : forall Γ H x R A M, set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H ->
     mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H x : A -> set_exp_eq T γ Γ A (a_mem H x) M.
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_mem H x : A -> set_rel_exp_eq T γ Γ A (a_mem H x) M.
 Proof.
   intros * HΓ (F & F' & [HF _ _ Hv _]) Hm Ht HM HT.
   destruct (set_valid_modexp_members_denote T γ Hfn Hmods Hgw Hok _ _ Hv _ _ _ Hm Ht) as [(FA & HA) HMd].
@@ -458,7 +458,7 @@ Record set_app_reduct_with (Γ : ctx) (K : modexp) (N : exp) (Rm : mdesc) (K' : 
     literal instantiated. *)
 Lemma set_unit_beta_reduct : forall Γ Δ κ X D N R0, set_valid_unit T γ Γ (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) ->
     mdenote gc_deps gc_stack Γ (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) R0 ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : X -> set_exp_eq T γ Γ X N N ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : X -> set_rel_exp_eq T γ Γ X N N ->
     exists R', set_app_reduct_with Γ (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) N R0
                  (me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N)))) R' R'.
 Proof.
@@ -524,8 +524,8 @@ Qed.
 Lemma set_rule_me_beta : forall Γ Δ κ X D N, set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_app (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) N ≈ me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N))) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : X ->
-    set_unit_eq T γ Γ (gu_mk (Δ ++ [ce_ass κ X]) D) (gu_mk (Δ ++ [ce_ass κ X]) D) -> set_exp_eq T γ Γ X N N ->
-    set_modexp_eq T γ Γ (me_app (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) N) (me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N)))).
+    set_rel_unit_eq T γ Γ (gu_mk (Δ ++ [ce_ass κ X]) D) (gu_mk (Δ ++ [ce_ass κ X]) D) -> set_rel_exp_eq T γ Γ X N N ->
+    set_rel_modexp_eq T γ Γ (me_app (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)) N) (me_lit (gunit_sub (gu_mk Δ D) (sb_extend sb_id (se_exp N)))).
 Proof.
   intros * _ Hβ HNw (FU & _ & [_ _ _ HKU _]) HN.
   destruct (me_denotes _ _ _ _ _ (set_valid_unit_wf T γ _ _ HKU)) as (R0 & _ & HR0 & _).
@@ -566,11 +566,11 @@ Qed.
 Theorem set_valid_unit_app_all :
   (forall Γ K, set_valid_unit T γ Γ K -> forall RK Rm Tl B T1 Srt N, mdenote gc_deps gc_stack Γ K RK -> mdesc_mod RK = Some Rm ->
      mdesc_tele Rm = Some Tl -> tele_view Tl = Some (B, T1) -> evaluated_sort Srt -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B : Srt ->
-     (exists Srt', evaluated_sort Srt' /\ set_exp_eq T γ Γ Srt' B B) -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_exp_eq T γ Γ B N N ->
+     (exists Srt', evaluated_sort Srt' /\ set_rel_exp_eq T γ Γ Srt' B B) -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_rel_exp_eq T γ Γ B N N ->
      exists K' RK' Rm', set_app_reduct_with Γ K N Rm K' RK' Rm') /\
   (forall Γ H, set_valid_modexp T γ Γ H -> forall R Tl B T1 Srt N, mdenote gc_deps gc_stack Γ H R -> mdesc_mod_tele R = Some Tl ->
      tele_view Tl = Some (B, T1) -> evaluated_sort Srt -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B : Srt ->
-     (exists Srt', evaluated_sort Srt' /\ set_exp_eq T γ Γ Srt' B B) -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_exp_eq T γ Γ B N N ->
+     (exists Srt', evaluated_sort Srt' /\ set_rel_exp_eq T γ Γ Srt' B B) -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_rel_exp_eq T γ Γ B N N ->
      set_valid_modexp T γ Γ (me_app H N)).
 Proof.
   apply (set_valid_unit_modexp_ind T γ).
@@ -681,14 +681,14 @@ Qed.
 
 (** Equal module expressions given equal arguments are equal. *)
 Lemma set_rule_me_app : forall Γ H H' N N' R Tl B T1 Srt R' Tl' B' T1' Srt', set_ctx T γ Γ ->
-    set_modexp_eq T γ Γ H H' ->
+    set_rel_modexp_eq T γ Γ H H' ->
     mdenote gc_deps gc_stack Γ H R -> mdesc_mod_tele R = Some Tl -> tele_view Tl = Some (B, T1) ->
-    evaluated_sort Srt -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B : Srt -> set_exp_eq T γ Γ Srt B B ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_exp_eq T γ Γ B N N -> set_exp_eq T γ Γ B N N' ->
+    evaluated_sort Srt -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B : Srt -> set_rel_exp_eq T γ Γ Srt B B ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B -> set_rel_exp_eq T γ Γ B N N -> set_rel_exp_eq T γ Γ B N N' ->
     mdenote gc_deps gc_stack Γ H' R' -> mdesc_mod_tele R' = Some Tl' -> tele_view Tl' = Some (B', T1') ->
-    evaluated_sort Srt' -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B' : Srt' -> set_exp_eq T γ Γ Srt' B' B' ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ N' : B' -> set_exp_eq T γ Γ B' N' N' ->
-    set_modexp_eq T γ Γ (me_app H N) (me_app H' N').
+    evaluated_sort Srt' -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ B' : Srt' -> set_rel_exp_eq T γ Γ Srt' B' B' ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ N' : B' -> set_rel_exp_eq T γ Γ B' N' N' ->
+    set_rel_modexp_eq T γ Γ (me_app H N) (me_app H' N').
 Proof.
   intros * HΓ (F & F' & [HF HF' E Hv Hv' Hpr]) Hm Ht HV HS HBw HB HNw HN (FB & FN & FN' & [_ HFN HFN' EN _])
     Hm' Ht' HV' HS' HBw' HB' HNw' HN'.

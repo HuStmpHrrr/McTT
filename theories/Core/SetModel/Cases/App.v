@@ -9,7 +9,7 @@ From Stdlib Require Import String List Lia PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import ValidUnit MemberTypes ModuleCases.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
@@ -35,8 +35,8 @@ Lemma set_valid_modexp_apps_up : forall Ns Γ Δa R H l, set_valid_modexp T γ �
     mdenote gc_deps gc_stack Γ H (mdesc_up Δa R) -> mdesc_is_mod R ->
     ⊢ gc_deps ⍮ gc_stack ⍮ Δa ++ Γ -> all_assumptions Δa -> List.length Ns <= List.length Δa ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa sb_id Ns) k = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : A) ->
-    (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa sb_id Ns) k = Some A -> set_exp_eq T γ Γ A N N) ->
-    (forall k A, nth_error (tele_insts Δa sb_id Ns) k = Some A -> exists Srt, evaluated_sort Srt /\ set_exp_eq T γ Γ Srt A A) ->
+    (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa sb_id Ns) k = Some A -> set_rel_exp_eq T γ Γ A N N) ->
+    (forall k A, nth_error (tele_insts Δa sb_id Ns) k = Some A -> exists Srt, evaluated_sort Srt /\ set_rel_exp_eq T γ Γ Srt A A) ->
     params_evaluated gc_deps gc_stack Γ Δa l ->
     desc_ok gc_deps gc_stack (Δa ++ Γ) R ->
     set_valid_modexp T γ Γ (me_apps H Ns).

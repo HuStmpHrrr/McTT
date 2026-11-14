@@ -22,7 +22,7 @@ Lemma set_denotes_prop : forall Γ, set_denotes T γ Γ a_prop (fun _ => prop_un
 Proof. intros. apply set_denotes_const; [intros; constructor | intros ρ v H; inversion H; subst; apply set_eq_refl]. Qed.
 
 (** [Prop : Type@0]. *)
-Lemma set_rule_prop : forall Γ, set_exp_eq T γ Γ (a_univ (a_llit (0, 0))) a_prop a_prop.
+Lemma set_rule_prop : forall Γ, set_rel_exp_eq T γ Γ (a_univ (a_llit (0, 0))) a_prop a_prop.
 Proof.
   intros. exists (fun _ => small_universe_code T (0, 0)), (fun _ => prop_universe_code), (fun _ => prop_universe_code).
   constructor; [apply set_denotes_univ_lit | apply set_denotes_prop | apply set_denotes_prop | intros; apply set_eq_refl |].
@@ -48,7 +48,7 @@ Proof.
 Qed.
 
 (** [⊤ : Prop]. *)
-Lemma set_rule_True : forall Γ, set_exp_eq T γ Γ a_prop a_True a_True.
+Lemma set_rule_True : forall Γ, set_rel_exp_eq T γ Γ a_prop a_True a_True.
 Proof.
   intros. exists (fun _ => prop_universe_code), (fun _ => prop_code True), (fun _ => prop_code True).
   constructor; [apply set_denotes_prop | apply set_denotes_True | apply set_denotes_True | intros; apply set_eq_refl
@@ -56,7 +56,7 @@ Proof.
 Qed.
 
 (** [⊥ : Prop]. *)
-Lemma set_rule_False : forall Γ, set_exp_eq T γ Γ a_prop a_False a_False.
+Lemma set_rule_False : forall Γ, set_rel_exp_eq T γ Γ a_prop a_False a_False.
 Proof.
   intros. exists (fun _ => prop_universe_code), (fun _ => prop_code False), (fun _ => prop_code False).
   constructor; [apply set_denotes_prop | apply set_denotes_False | apply set_denotes_False | intros; apply set_eq_refl
@@ -64,7 +64,7 @@ Proof.
 Qed.
 
 (** [tt : ⊤]. *)
-Lemma set_rule_tt : forall Γ, set_exp_eq T γ Γ a_True a_tt a_tt.
+Lemma set_rule_tt : forall Γ, set_rel_exp_eq T γ Γ a_True a_tt a_tt.
 Proof.
   intros. exists (fun _ => prop_code True), (fun _ => empty_set), (fun _ => empty_set).
   constructor; [apply set_denotes_True | apply set_denotes_tt | apply set_denotes_tt | intros; apply set_eq_refl |]. intros ρ _.
@@ -82,7 +82,7 @@ Qed.
 Lemma set_rule_irrelevant : forall Γ P M M' FPr FP FP2 FPa FM FM2 FPb FM' FM'2,
     set_exp_eq_with T γ Γ a_prop P P FPr FP FP2 ->
     set_exp_eq_with T γ Γ P M M FPa FM FM2 -> set_exp_eq_with T γ Γ P M' M' FPb FM' FM'2 ->
-    set_exp_eq T γ Γ P M M'.
+    set_rel_exp_eq T γ Γ P M M'.
 Proof.
   intros * [HPr HP _ _ HPm] [HPa HM _ _ HMm] [HPb HM' _ _ HM'm]. exists FPa, FM, FM'.
   constructor; [exact HPa | exact HM | exact HM' | | exact HMm]. intros ρ Hρ.
@@ -115,7 +115,7 @@ Proof. intros * HC Hz. unfold prop_true. eapply set_mem_eq_l; [exact (prop_code_
 Lemma set_rule_absurd_cong : forall Γ S C C' M M' FS FC FC' FB FM FM2 FB' FM' FM'2,
     set_exp_eq_with T γ Γ S C C' FS FC FC' ->
     set_exp_eq_with T γ Γ a_False M M FB FM FM2 -> set_exp_eq_with T γ Γ a_False M' M' FB' FM' FM'2 ->
-    set_exp_eq T γ Γ C (a_absurd C M) (a_absurd C' M').
+    set_rel_exp_eq T γ Γ C (a_absurd C M) (a_absurd C' M').
 Proof.
   intros * [_ HC _ _ _] [HB _ _ _ HMm] _. exists FC, (fun _ => empty_set), (fun _ => empty_set).
   assert (HA : forall C M, set_denotes T γ Γ (a_absurd C M) (fun _ => empty_set))
@@ -127,7 +127,7 @@ Proof.
 Qed.
 
 Lemma set_rule_absurd : forall Γ S C M FS FC FC2 FB FM FM2, set_exp_eq_with T γ Γ S C C FS FC FC2 ->
-    set_exp_eq_with T γ Γ a_False M M FB FM FM2 -> set_exp_eq T γ Γ C (a_absurd C M) (a_absurd C M).
+    set_exp_eq_with T γ Γ a_False M M FB FM FM2 -> set_rel_exp_eq T γ Γ C (a_absurd C M) (a_absurd C M).
 Proof. intros * HC HM. eapply set_rule_absurd_cong; [exact HC | exact HM | exact HM]. Qed.
 
 Section Conjunctions.
@@ -164,7 +164,7 @@ Qed.
 (** [Σₚ P Q : Prop]. *)
 Lemma set_rule_and : forall Γ P Q FPr FP FP2 FQr FQ FQ2, set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass ak_propositional P :: Γ ->
     set_exp_eq_with T γ Γ a_prop P P FPr FP FP2 -> set_exp_eq_with T γ (ce_ass ak_propositional P :: Γ) a_prop Q Q FQr FQ FQ2 ->
-    set_exp_eq T γ Γ a_prop (a_and P Q) (a_and P Q).
+    set_rel_exp_eq T γ Γ a_prop (a_and P Q) (a_and P Q).
 Proof.
   intros * HΓ Hc [_ HP _ _ _] [_ HQ _ _ _]. exists (fun _ => prop_universe_code), (and_denotation FP FQ), (and_denotation FP FQ).
   constructor; [apply set_denotes_prop | apply set_denotes_and; assumption | apply set_denotes_and; assumption
@@ -177,7 +177,7 @@ Lemma set_rule_and_cong : forall Γ P P' Q Q' FPr FP FP' FQr FQ FQ', set_ctx T �
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass ak_propositional P :: Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass ak_propositional P' :: Γ ->
     gc_deps ⍮ gc_stack ⍮ ce_ass ak_propositional P' :: Γ ⊢ˢ sb_id : ce_ass ak_propositional P :: Γ ->
     set_exp_eq_with T γ Γ a_prop P P' FPr FP FP' -> set_exp_eq_with T γ (ce_ass ak_propositional P :: Γ) a_prop Q Q' FQr FQ FQ' ->
-    set_exp_eq T γ Γ a_prop (a_and P Q) (a_and P' Q').
+    set_rel_exp_eq T γ Γ a_prop (a_and P Q) (a_and P' Q').
 Proof.
   intros * HΓ Hc Hc' Hid [_ HP HP' EP _] [_ HQ HQ' EQ _].
   assert (Hin : forall ρ x, set_env_in T γ Γ ρ -> set_mem x (code_carrier (FP' ρ)) ->
@@ -230,7 +230,7 @@ Lemma set_rule_conj : forall Γ P Q M N FPr FP FP2 FQr FQ FQ2 FPa FM FM2 FQM FN 
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp M) : ce_ass ak_propositional P :: Γ ->
     set_exp_eq_with T γ Γ a_prop P P FPr FP FP2 -> set_exp_eq_with T γ (ce_ass ak_propositional P :: Γ) a_prop Q Q FQr FQ FQ2 ->
     set_exp_eq_with T γ Γ P M M FPa FM FM2 -> set_exp_eq_with T γ Γ (exp_sub Q (sb_extend sb_id (se_exp M))) N N FQM FN FN2 ->
-    set_exp_eq T γ Γ (a_and P Q) (a_conj P Q M N) (a_conj P Q M N).
+    set_rel_exp_eq T γ Γ (a_and P Q) (a_conj P Q M N) (a_conj P Q M N).
 Proof.
   intros * HΓ Hc Hσ HPe HQe [HPa HM _ _ HMm] [HQM _ _ _ HNm].
   pose proof HPe as [_ HP _ _ _]. pose proof HQe as [_ HQ _ _ _].
@@ -253,7 +253,7 @@ Qed.
 Lemma set_rule_left : forall Γ P Q M FPr FP FP2 FQr FQ FQ2 FS FM FM2, set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass ak_propositional P :: Γ ->
     set_exp_eq_with T γ Γ a_prop P P FPr FP FP2 -> set_exp_eq_with T γ (ce_ass ak_propositional P :: Γ) a_prop Q Q FQr FQ FQ2 ->
-    set_exp_eq_with T γ Γ (a_and P Q) M M FS FM FM2 -> set_exp_eq T γ Γ P (a_left M) (a_left M).
+    set_exp_eq_with T γ Γ (a_and P Q) M M FS FM FM2 -> set_rel_exp_eq T γ Γ P (a_left M) (a_left M).
 Proof.
   intros * HΓ Hc [_ HP _ _ _] [_ HQ _ _ _] [HS _ _ _ HMm].
   assert (HA : set_denotes T γ Γ (a_left M) (fun _ => empty_set))
@@ -271,7 +271,7 @@ Lemma set_rule_right : forall Γ P Q M FPr FP FP2 FQr FQ FQ2 FS FM FM2 FQLr FQL 
     set_exp_eq_with T γ Γ (a_and P Q) M M FS FM FM2 ->
     set_exp_eq_with T γ Γ a_prop (exp_sub Q (sb_extend sb_id (se_exp (a_left M)))) (exp_sub Q (sb_extend sb_id (se_exp (a_left M))))
       FQLr FQL FQL2 ->
-    set_exp_eq T γ Γ (exp_sub Q (sb_extend sb_id (se_exp (a_left M)))) (a_right M) (a_right M).
+    set_rel_exp_eq T γ Γ (exp_sub Q (sb_extend sb_id (se_exp (a_left M)))) (a_right M) (a_right M).
 Proof.
   intros * HΓ Hc Hσ HPe [_ HQ _ _ _] [HS _ _ _ HMm] [_ HQL _ _ _]. pose proof HPe as [_ HP _ _ _].
   assert (HL : set_denotes T γ Γ (a_left M) (fun _ => empty_set))
@@ -289,7 +289,7 @@ Qed.
 (** A tagged proof: the proof. *)
 Lemma set_rule_proof_tag : forall Γ P M FPr FP FP2 FPa FM FM2, set_ctx T γ Γ ->
     set_exp_eq_with T γ Γ a_prop P P FPr FP FP2 -> set_exp_eq_with T γ Γ P M M FPa FM FM2 ->
-    set_exp_eq T γ Γ P (a_proof P M) (a_proof P M).
+    set_rel_exp_eq T γ Γ P (a_proof P M) (a_proof P M).
 Proof.
   intros * HΓ _ [HPa HM _ _ HMm].
   assert (HA : set_denotes T γ Γ (a_proof P M) FM).

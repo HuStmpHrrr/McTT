@@ -59,7 +59,7 @@ Proof.
 Qed.
 
 (** [Γ ∋ #x : A] gives [#x : A]. *)
-Lemma set_rule_var : forall Γ x A, Γ ∋ #x : A -> set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_exp_eq T γ Γ A (a_var x) (a_var x).
+Lemma set_rule_var : forall Γ x A, Γ ∋ #x : A -> set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_rel_exp_eq T γ Γ A (a_var x) (a_var x).
 Proof.
   intros * H HΓ Hc. destruct (set_lookup_denotes _ _ _ H HΓ Hc) as [FA [HA Hm]].
   exists FA, (fun ρ => set_entry_value (ρ x)), (fun ρ => set_entry_value (ρ x)).
@@ -86,7 +86,7 @@ Qed.
 
 (** δ: a defined variable is its definition's body. *)
 Lemma set_rule_var_delta : forall Γ x A M, Γ ∋ #x : A -> Γ ∋ #x ≔ M : A -> set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
-    set_exp_eq T γ Γ A (a_var x) M.
+    set_rel_exp_eq T γ Γ A (a_var x) M.
 Proof.
   intros * H Hd HΓ Hc. destruct (set_lookup_denotes _ _ _ H HΓ Hc) as [FA [HA Hm]].
   destruct (set_lookup_def_denotes _ _ _ _ Hd HΓ Hc) as [FM [HM EM]].

@@ -13,7 +13,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects Substitution JudgmentSubstitution.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import SubtypingCases ValidUnit MemberTypes ModuleCases.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
@@ -100,7 +100,7 @@ Qed.
 (** ** Parameters of Evaluated Sorts *)
 
 (** A type of a universe is one of every universe above. *)
-Lemma set_exp_eq_typ_le : forall Γ A l l', set_exp_eq T γ Γ (a_typ l) A A -> l <= l' -> set_exp_eq T γ Γ (a_typ l') A A.
+Lemma set_exp_eq_typ_le : forall Γ A l l', set_rel_exp_eq T γ Γ (a_typ l) A A -> l <= l' -> set_rel_exp_eq T γ Γ (a_typ l') A A.
 Proof.
   intros * HA Hle. destruct (Nat.eq_dec l l') as [<- | Hne]; [exact HA |].
   destruct HA as (FS & FA & FA' & HA).
@@ -117,7 +117,7 @@ Qed.
 (** The parameters of a unit over one more parameter, of the context
     extended by it. *)
 Lemma set_params_evaluated_snoc : forall Γ Δ e l, set_params_evaluated T γ (e :: Γ) Δ l ->
-    (forall κ A, e = ce_ass κ A -> set_exp_eq T γ Γ (a_typ l) A A \/ set_exp_eq T γ Γ a_level_sort A A) ->
+    (forall κ A, e = ce_ass κ A -> set_rel_exp_eq T γ Γ (a_typ l) A A \/ set_rel_exp_eq T γ Γ a_level_sort A A) ->
     set_params_evaluated T γ Γ (Δ ++ [e]) l.
 Proof.
   intros * H He Δ1 κ A Δ2 E. destruct Δ2 as [| d Δ2 _] using List.rev_ind.
@@ -130,7 +130,7 @@ Qed.
     over one more parameter, when it is well formed so. *)
 Lemma set_valid_unit_bind : forall Γ Δ κ X D l, set_valid_unit T γ (ce_ass κ X :: Γ) (me_lit (gu_mk Δ D)) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_lit (gu_mk (Δ ++ [ce_ass κ X]) D) ≈ me_lit (gu_mk (Δ ++ [ce_ass κ X]) D) ->
-    (set_exp_eq T γ Γ (a_typ l) X X \/ set_exp_eq T γ Γ a_level_sort X X) ->
+    (set_rel_exp_eq T γ Γ (a_typ l) X X \/ set_rel_exp_eq T γ Γ a_level_sort X X) ->
     set_valid_unit T γ Γ (me_lit (gu_mk (Δ ++ [ce_ass κ X]) D)).
 Proof.
   intros * HK Hw HX. pose proof (set_valid_unit_ctx T γ _ _ HK) as HC.
@@ -348,21 +348,21 @@ Qed.
 (** Parameters each of a sort a universe at [l] or the type of levels,
     semantically. *)
 Lemma set_params_evaluated_of_sorts : forall Γ Δ l ps, (forall k, parameter_sort l (ps k)) ->
-    (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> set_exp_eq T γ (Δ2 ++ Γ) (ps (List.length Δ2)) A A) ->
+    (forall Δ1 κ A Δ2, Δ = Δ1 ++ ce_ass κ A :: Δ2 -> set_rel_exp_eq T γ (Δ2 ++ Γ) (ps (List.length Δ2)) A A) ->
     set_params_evaluated T γ Γ Δ l.
 Proof.
   intros * Hps HA Δ1 κ A Δ2 E. pose proof (HA _ _ _ _ E) as H.
   destruct (Hps (List.length Δ2)); [left | right]; exact H.
 Qed.
 
-Lemma set_rule_unit_eq_sym : forall Γ U U', set_unit_eq T γ Γ U U' -> set_unit_eq T γ Γ U' U.
+Lemma set_rule_unit_eq_sym : forall Γ U U', set_rel_unit_eq T γ Γ U U' -> set_rel_unit_eq T γ Γ U' U.
 Proof.
   intros * (F & F' & [HF HF' E HU HU' Hpr]). exists F', F. constructor; [exact HF' | exact HF | | exact HU' | exact HU |].
   - intros ρ Hρ. apply set_module_eq_sym. exact (E _ Hρ).
   - intros κs Hκ ys x. exact (eq_sym (Hpr κs Hκ ys x)).
 Qed.
 
-Lemma set_rule_unit_eq_trans : forall Γ U U' U'', set_unit_eq T γ Γ U U' -> set_unit_eq T γ Γ U' U'' -> set_unit_eq T γ Γ U U''.
+Lemma set_rule_unit_eq_trans : forall Γ U U' U'', set_rel_unit_eq T γ Γ U U' -> set_rel_unit_eq T γ Γ U' U'' -> set_rel_unit_eq T γ Γ U U''.
 Proof.
   intros * (F & F' & [HF HF' E HU _ Hpr]) (G & G' & [HG HG' E' _ HU'' Hpr']). exists F, G'.
   constructor; [exact HF | exact HG' | | exact HU | exact HU'' |].
@@ -374,9 +374,9 @@ Qed.
 (** An alias over assumptions of a literal is the literal over both
     telescopes. *)
 Lemma set_rule_unit_eq_flatten : forall Γ Δ Δ' D l, all_assumptions Δ -> set_params_evaluated T γ Γ Δ l ->
-    set_unit_eq T γ (Δ ++ Γ) (gu_mk Δ' D) (gu_mk Δ' D) ->
+    set_rel_unit_eq T γ (Δ ++ Γ) (gu_mk Δ' D) (gu_mk Δ' D) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D ->
-    set_unit_eq T γ Γ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))) (gu_mk (Δ' ++ Δ) D).
+    set_rel_unit_eq T γ Γ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))) (gu_mk (Δ' ++ Δ) D).
 Proof.
   intros * HΔ Hl (FU & _ & [HFU _ _ HK _]) HUU.
   pose proof (set_valid_unit_ctx T γ _ _ HK) as HΔΓ. pose proof (set_ctx_app_r T γ _ _ HΔΓ) as HΓ.
@@ -411,9 +411,9 @@ Proof.
 Qed.
 
 (** A body unit is its expansion. *)
-Lemma set_rule_unit_eq_expand : forall Γ Δ Φ, set_unit_eq T γ Γ (gu_open Δ Φ) (gu_open Δ Φ) ->
+Lemma set_rule_unit_eq_expand : forall Γ Δ Φ, set_rel_unit_eq T γ Γ (gu_open Δ Φ) (gu_open Δ Φ) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ (gm_expand Φ) ->
-    set_unit_eq T γ Γ (gu_open Δ Φ) (gu_open Δ (gm_expand Φ)).
+    set_rel_unit_eq T γ Γ (gu_open Δ Φ) (gu_open Δ (gm_expand Φ)).
 Proof.
   intros * (F & _ & [HF _ _ HK _]) HUU.
   pose proof (gm_noopen_expand Φ) as Hno. pose proof (gm_expand_noopen _ Hno) as Hee.

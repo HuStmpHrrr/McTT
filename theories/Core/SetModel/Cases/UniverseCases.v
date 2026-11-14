@@ -37,7 +37,7 @@ Proof.
 Qed.
 
 (** [Typeω@i : Typeω@(S i)]. *)
-Lemma set_rule_typ : forall Γ i, set_exp_eq T γ Γ (a_typ (S i)) (a_typ i) (a_typ i).
+Lemma set_rule_typ : forall Γ i, set_rel_exp_eq T γ Γ (a_typ (S i)) (a_typ i) (a_typ i).
 Proof.
   intros. exists (fun _ => large_universe_code (S i)), (fun _ => large_universe_code i), (fun _ => large_universe_code i).
   constructor; [apply set_denotes_typ .. | intros; apply set_eq_refl |]. intros ρ _.
@@ -97,7 +97,7 @@ Qed.
 
 (** [M ≈ M' : Level@n] gives [Type⟨M⟩ ≈ Type⟨M'⟩ : Type⟨succl M⟩]. *)
 Lemma set_rule_univ : forall Γ n M M' FL FM FM', set_exp_eq_with T γ Γ (a_level n) M M' FL FM FM' ->
-    set_exp_eq T γ Γ (a_univ (a_succl M)) (a_univ M) (a_univ M').
+    set_rel_exp_eq T γ Γ (a_univ (a_succl M)) (a_univ M) (a_univ M').
 Proof.
   intros * [HL HM HM' E Hm].
   exists (fun ρ => level_universe_code (successor_set (FM ρ))), (fun ρ => level_universe_code (FM ρ)),

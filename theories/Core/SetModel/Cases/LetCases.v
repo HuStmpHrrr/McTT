@@ -62,7 +62,7 @@ Lemma set_rule_let_def_zeta : forall Γ A M B C FS FA FA2 FA' FM FM2 FC FB FB2, 
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_def A M :: Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp M) : ce_def A M :: Γ ->
     set_exp_eq_with T γ Γ FS A A FA FA2 FA2 -> set_exp_eq_with T γ Γ A M M FA' FM FM2 ->
     set_exp_eq_with T γ (ce_def A M :: Γ) C B B FC FB FB2 ->
-    set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_exp M))) (a_let (b_def A M) B) (exp_sub B (sb_extend sb_id (se_exp M))).
+    set_rel_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_exp M))) (a_let (b_def A M) B) (exp_sub B (sb_extend sb_id (se_exp M))).
 Proof.
   intros * HΓ Hc Hσ _ [HA' HM _ _ HMm] [HC HB _ _ HBm].
   exists (fun ρ => FC (def_env FM ρ)), (fun ρ => FB (def_env FM ρ)), (fun ρ => FB (def_env FM ρ)).
@@ -111,7 +111,7 @@ Lemma set_rule_let_mod_zeta : forall Γ U B C FU FU' FC FB FB2, set_ctx T γ Γ 
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_mod U :: Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_mod (me_lit U)) : ce_mod U :: Γ ->
     set_unit_eq_with T γ Γ U U FU FU' ->
     set_exp_eq_with T γ (ce_mod U :: Γ) C B B FC FB FB2 ->
-    set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_mod (me_lit U)))) (a_let (b_mod U) B)
+    set_rel_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_mod (me_lit U)))) (a_let (b_mod U) B)
       (exp_sub B (sb_extend sb_id (se_mod (me_lit U)))).
 Proof.
   intros * HΓ Hc Hσ [HU _ _ _ _] [HC HB _ _ HBm].
@@ -167,7 +167,7 @@ Lemma set_rule_let_dm_zeta : forall Γ A M U B C FA' FM FM2 FU FU' FC FB FB2, se
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_dm M (me_lit U)) : ce_dm A M U :: Γ ->
     set_exp_eq_with T γ Γ A M M FA' FM FM2 -> set_unit_eq_with T γ Γ U U FU FU' ->
     set_exp_eq_with T γ (ce_dm A M U :: Γ) C B B FC FB FB2 ->
-    set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_dm M (me_lit U)))) (a_let (b_def_mod A M U) B)
+    set_rel_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_dm M (me_lit U)))) (a_let (b_def_mod A M U) B)
       (exp_sub B (sb_extend sb_id (se_dm M (me_lit U)))).
 Proof.
   intros * HΓ Hc Hσ [_ HM _ _ _] [HU _ _ _ _] [HC HB _ _ HBm].
@@ -187,7 +187,7 @@ Lemma set_rule_let_def_cong : forall Γ A A' M M' B B' C FA FM FM' FC FB FB', se
     gc_deps ⍮ gc_stack ⍮ ce_def A' M' :: Γ ⊢ˢ sb_id : ce_def A M :: Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp M) : ce_def A M :: Γ ->
     set_exp_eq_with T γ Γ A M M' FA FM FM' -> set_exp_eq_with T γ (ce_def A M :: Γ) C B B' FC FB FB' ->
-    set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_exp M))) (a_let (b_def A M) B) (a_let (b_def A' M') B').
+    set_rel_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_exp M))) (a_let (b_def A M) B) (a_let (b_def A' M') B').
 Proof.
   intros * HΓ Hc Hc' Hid Hσ [_ HM HM' EM _] [HC HB HB' EB HBm].
   assert (Hin' : forall ρ, set_env_in T γ Γ ρ -> set_env_in T γ (ce_def A M :: Γ) (def_env FM' ρ)).
@@ -226,7 +226,7 @@ Lemma set_rule_let_mod_cong : forall Γ U U' B B' C FU FU' FC FB FB' FS FL FL', 
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_mod (me_lit U)) : ce_mod U :: Γ ->
     set_unit_eq_with T γ Γ U U' FU FU' -> set_exp_eq_with T γ (ce_mod U :: Γ) C B B' FC FB FB' ->
     set_exp_eq_with T γ Γ (exp_sub C (sb_extend sb_id (se_mod (me_lit U)))) (a_let (b_mod U') B') (a_let (b_mod U') B') FS FL FL' ->
-    set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_mod (me_lit U)))) (a_let (b_mod U) B) (a_let (b_mod U') B').
+    set_rel_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_mod (me_lit U)))) (a_let (b_mod U) B) (a_let (b_mod U') B').
 Proof.
   intros * Hfnx HΓ Hc Hx Hσ [HU HU' EU _ _] [HC HB HB' EB HBm] [_ HL _ _ _].
   assert (Hin' : forall ρ, set_env_in T γ Γ ρ -> set_env_in T γ (ce_mod U :: Γ) (mod_env FU' ρ)).
@@ -259,7 +259,7 @@ Lemma set_rule_let_dm_cong : forall Γ A A' M M' U U' B B' C FA FM FM' FU FU' FC
     set_exp_eq_with T γ (ce_dm A M U :: Γ) C B B' FC FB FB' ->
     set_exp_eq_with T γ Γ (exp_sub C (sb_extend sb_id (se_dm M (me_lit U)))) (a_let (b_def_mod A' M' U') B')
       (a_let (b_def_mod A' M' U') B') FS FL FL' ->
-    set_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_dm M (me_lit U)))) (a_let (b_def_mod A M U) B)
+    set_rel_exp_eq T γ Γ (exp_sub C (sb_extend sb_id (se_dm M (me_lit U)))) (a_let (b_def_mod A M U) B)
       (a_let (b_def_mod A' M' U') B').
 Proof.
   intros * Hfnx HΓ Hc Hx Hσ [_ HM HM' EM _] [HU HU' EU _ _] [HC HB HB' EB HBm] [_ HL _ _ _].

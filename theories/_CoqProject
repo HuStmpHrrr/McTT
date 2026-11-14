@@ -129,7 +129,6 @@
 ./Core/SetModel/Interpretation/Codes.v
 ./Core/SetModel/Interpretation/Values.v
 ./Core/SetModel/Interpretation/Global/Valuation.v
-./Core/SetModel/Interpretation/Global/Embedding.v
 ./Core/SetModel/Interpretation/Inductives/Elements.v
 ./Core/SetModel/Interpretation/Operations.v
 ./Core/SetModel/Interpretation/Inductives/Carriers.v
@@ -163,7 +162,6 @@
 ./Core/SetModel/Cases/ElimViewCases.v
 ./Core/SetModel/FundamentalTheorem.v
 ./Core/SetModel/Interpretation/JudgmentSubstitution.v
-./Core/SetModel/Interpretation/Global/Model.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Kinds.v
 ./Core/Semantic/Kinds/KindsEval.v

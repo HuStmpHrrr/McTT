@@ -9,7 +9,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Weakening Substitution JudgmentSubstitution.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import UniverseCases ValidUnit MemberTypes Sel IndCases.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members Records.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
@@ -70,7 +70,7 @@ Qed.
 
 (** Two terms of a type, of equal values, are equal. *)
 Lemma set_exp_eq_of_sides : forall Γ A L R FA FL FL' GA GR GR', set_exp_eq_with T γ Γ A L L FA FL FL' ->
-    set_exp_eq_with T γ Γ A R R GA GR GR' -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FL ρ) (GR ρ)) -> set_exp_eq T γ Γ A L R.
+    set_exp_eq_with T γ Γ A R R GA GR GR' -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FL ρ) (GR ρ)) -> set_rel_exp_eq T γ Γ A L R.
 Proof.
   intros * [HA HL _ _ HLm] [_ HR _ _ _] E. exists FA, FL, GR. constructor; assumption.
 Qed.
@@ -78,8 +78,8 @@ Qed.
 (** ** The Rules *)
 
 Lemma set_rule_record : forall Γ p R i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ -> record_lookup gc_deps gc_stack p = Some R ->
-    gc_deps ⍮ gc_stack ⍮ nil ⊢ record_ty R : a_typ i -> set_exp_eq T γ nil (a_typ i) (record_ty R) (record_ty R) ->
-    set_exp_eq T γ Γ (record_ty R) (a_record p) (a_record p).
+    gc_deps ⍮ gc_stack ⍮ nil ⊢ record_ty R : a_typ i -> set_rel_exp_eq T γ nil (a_typ i) (record_ty R) (record_ty R) ->
+    set_rel_exp_eq T γ Γ (record_ty R) (a_record p) (a_record p).
 Proof.
   intros * Hc HΓ HR Hw (FS & FA & FA' & [_ HFA _ _ _]). pose proof (set_gctx_ok_records _ _ Hok _ _ HR) as HSR.
   apply (set_exp_eq_closed_global T γ Hfn Hmods Hgw _ _ (global_record_former γ p) FA); try assumption.
@@ -89,13 +89,13 @@ Proof.
 Qed.
 
 Lemma set_rule_record_cong : forall Γ p R i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_ctx T γ Γ -> record_lookup gc_deps gc_stack p = Some R ->
-    gc_deps ⍮ gc_stack ⍮ nil ⊢ record_ty R : a_typ i -> set_exp_eq T γ nil (a_typ i) (record_ty R) (record_ty R) ->
-    set_exp_eq T γ Γ (record_ty R) (a_record p) (a_record p).
+    gc_deps ⍮ gc_stack ⍮ nil ⊢ record_ty R : a_typ i -> set_rel_exp_eq T γ nil (a_typ i) (record_ty R) (record_ty R) ->
+    set_rel_exp_eq T γ Γ (record_ty R) (a_record p) (a_record p).
 Proof. exact set_rule_record. Qed.
 
 Lemma set_rule_proj_cong : forall Γ C f M M' A FC FM FM' FA FP FP' GA GP GP', set_exp_eq_with T γ Γ C M M' FC FM FM' ->
     set_exp_eq_with T γ Γ A (a_proj f M) (a_proj f M) FA FP FP' -> set_exp_eq_with T γ Γ A (a_proj f M') (a_proj f M') GA GP GP' ->
-    set_exp_eq T γ Γ A (a_proj f M) (a_proj f M').
+    set_rel_exp_eq T γ Γ A (a_proj f M) (a_proj f M').
 Proof.
   intros * [_ HM HM' EM _] HL HR. apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HL HR).
   pose proof HL as [_ HP _ _ _]. pose proof HR as [_ HP' _ _ _]. intros ρ Hρ.
@@ -147,11 +147,11 @@ Lemma set_rule_tuple_cong : forall Γ A fs A' fs' FA FL FL' GA GR GR', set_exp_e
     set_exp_eq_with T γ Γ A (a_tuple A' fs') (a_tuple A' fs') GA GR GR' -> List.map fst fs' = List.map fst fs ->
     forall (R : record_decl), List.map fst fs = List.map fst (record_fields R) ->
     (forall k f M M' U, List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') ->
-       List.nth_error (record_fields R) k = Some (f, U) -> exists B, set_exp_eq T γ Γ B M M') ->
-    set_exp_eq T γ Γ A (a_tuple A fs) (a_tuple A' fs').
+       List.nth_error (record_fields R) k = Some (f, U) -> exists B, set_rel_exp_eq T γ Γ B M M') ->
+    set_rel_exp_eq T γ Γ A (a_tuple A fs) (a_tuple A' fs').
 Proof.
   intros * HL HR Hn R HnR Hf0.
-  assert (Hf : forall k f M M', List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') -> exists B, set_exp_eq T γ Γ B M M').
+  assert (Hf : forall k f M M', List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') -> exists B, set_rel_exp_eq T γ Γ B M M').
   { intros k f M M' Hk Hk'. pose proof (f_equal (fun l => List.nth_error l k) HnR) as E. cbn beta in E.
     rewrite !List.nth_error_map, Hk in E.
     destruct (List.nth_error (record_fields R) k) as [[g U] |] eqn:HU; cbn in E; [| discriminate]. injection E as <-.
@@ -171,7 +171,7 @@ Qed.
 Lemma set_rule_field_beta : forall Γ A fs f M B FA FL FL' FB FP FP' GB GM GM', NoDup (List.map fst fs) ->
     set_exp_eq_with T γ Γ A (a_tuple A fs) (a_tuple A fs) FA FL FL' -> field_lookup fs f = Some M ->
     set_exp_eq_with T γ Γ B (a_proj f (a_tuple A fs)) (a_proj f (a_tuple A fs)) FB FP FP' ->
-    set_exp_eq_with T γ Γ B M M GB GM GM' -> set_exp_eq T γ Γ B (a_proj f (a_tuple A fs)) M.
+    set_exp_eq_with T γ Γ B M M GB GM GM' -> set_rel_exp_eq T γ Γ B (a_proj f (a_tuple A fs)) M.
 Proof.
   intros * Hnd [_ HL _ _ _] Hl HP HM. apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HP HM).
   pose proof HP as [_ HPd _ _ _]. pose proof HM as [_ HMd _ _ _]. intros ρ Hρ.
@@ -398,14 +398,14 @@ Lemma set_rule_tuple : forall Γ A fs p R Ns i, ⊢ gc_deps ⍮ gc_stack ⍮ Γ 
     (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B) ->
     (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
-       set_exp_eq T γ Γ B N N) ->
+       set_rel_exp_eq T γ Γ B N N) ->
     List.map fst fs = List.map fst (record_fields R) ->
     (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : exp_sub U (sb_of_list sb_id (Ns ++ List.firstn k (List.map snd fs)))) ->
     (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
-       set_exp_eq T γ Γ (exp_sub U (sb_of_list sb_id (Ns ++ List.firstn k (List.map snd fs)))) M M) ->
-    set_exp_eq T γ Γ (a_typ i) A (apps_exp (a_record p) Ns) ->
-    set_exp_eq T γ Γ A (a_tuple A fs) (a_tuple A fs).
+       set_rel_exp_eq T γ Γ (exp_sub U (sb_of_list sb_id (Ns ++ List.firstn k (List.map snd fs)))) M M) ->
+    set_rel_exp_eq T γ Γ (a_typ i) A (apps_exp (a_record p) Ns) ->
+    set_rel_exp_eq T γ Γ A (a_tuple A fs) (a_tuple A fs).
 Proof.
   intros * Hc HΓ Hr HR Hl HNs HNr Hn HFs HFr (FS & FA & FAp & [_ HFA HFAp EA _]).
   destruct (wf_record_inversion Hr) as [R0 Hl0 Hnd Hass i0 _ HF _ _ _ _ _]. rewrite HR in Hl0. injection Hl0 as <-.
@@ -418,7 +418,7 @@ Proof.
     by (rewrite !List.length_app, length_record_fctx, Hl, Hlf by (unfold n; lia); lia).
   destruct (set_gsub_closed_inst T γ Hfn Hmods _ _ _ HΓ (record_fctx_params_ass _ _ Hass) HCTΓ HcTΓ Hlen
               (record_args_typed (fun N B => gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B) _ _ _ Hl Hn Hass HNs HFs)
-              (record_args_typed (fun N B => set_exp_eq T γ Γ B N N) _ _ _ Hl Hn Hass HNr HFr)) as (Fι & Hι & Hvals).
+              (record_args_typed (fun N B => set_rel_exp_eq T γ Γ B N N) _ _ _ Hl Hn Hass HNr HFr)) as (Fι & Hι & Hvals).
   destruct (set_denotes_fields Γ fs) as (Fs & HFsd).
   { intros k f M Hk. assert (Hk' : exists U, List.nth_error (record_fields R) k = Some (f, U)).
     { pose proof (f_equal (fun l => List.nth_error l k) Hn) as E. cbn beta in E. rewrite !List.nth_error_map, Hk in E.
@@ -548,12 +548,12 @@ Lemma set_proj_field : forall Γ M p R Ns j f U FA FM FM', ⊢ gc_deps ⍮ gc_st
     (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B) ->
     (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
-       set_exp_eq T γ Γ B N N) ->
+       set_rel_exp_eq T γ Γ B N N) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : apps_exp (a_record p) Ns ->
     set_exp_eq_with T γ Γ (apps_exp (a_record p) Ns) M M FA FM FM' ->
     List.nth_error (record_fields R) j = Some (f, U) ->
     (forall i f' U', i < j -> List.nth_error (record_fields R) i = Some (f', U') ->
-       set_exp_eq T γ Γ (exp_sub U' (sb_of_list sb_id (Ns ++ record_pre R i M))) (a_proj f' M) (a_proj f' M)) ->
+       set_rel_exp_eq T γ Γ (exp_sub U' (sb_of_list sb_id (Ns ++ record_pre R i M))) (a_proj f' M) (a_proj f' M)) ->
     exists FU, set_denotes T γ Γ (exp_sub U (sb_of_list sb_id (Ns ++ record_pre R j M))) FU /\
       forall ρ, set_env_in T γ Γ ρ -> set_mem (tuple_field (FM ρ) f) (code_carrier (FU ρ)).
 Proof.
@@ -570,8 +570,8 @@ Proof.
   pose proof (record_pre_eq _ _ _ _ _ _ _ _ HMM Hr HR Hl HNs j ltac:(lia)) as Hsyn.
   assert (Hsem : forall k N B, List.nth_error (Ns ++ record_pre R j M) k = Some N ->
             List.nth_error (tele_insts (record_fctx R j ++ record_params R) sb_id (Ns ++ record_pre R j M)) k = Some B ->
-            set_exp_eq T γ Γ B N N).
-  { apply (record_args_typed_gen (fun N B => set_exp_eq T γ Γ B N N) R Ns (record_pre R j M) j ltac:(lia) Hl Hlp Hass HNr).
+            set_rel_exp_eq T γ Γ B N N).
+  { apply (record_args_typed_gen (fun N B => set_rel_exp_eq T γ Γ B N N) R Ns (record_pre R j M) j ltac:(lia) Hl Hlp Hass HNr).
     intros i f' U' N Hi Hf' HN. unfold record_pre in HN. rewrite List.nth_error_map, List.nth_error_firstn in HN.
     destruct (Nat.ltb_spec i j) as [_ | ]; [| lia]. rewrite Hf' in HN. cbn in HN. injection HN as <-.
     rewrite firstn_record_pre by lia. exact (Hpre _ _ _ Hi Hf'). }
@@ -651,7 +651,7 @@ Lemma set_rule_record_eta : forall Γ M p R Ns FA FM FM' GA GT GT', set_ctx T γ
     set_exp_eq_with T γ Γ (apps_exp (a_record p) Ns) M M FA FM FM' ->
     set_exp_eq_with T γ Γ (apps_exp (a_record p) Ns) (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M))
       (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M)) GA GT GT' ->
-    set_exp_eq T γ Γ (apps_exp (a_record p) Ns) M (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M)).
+    set_rel_exp_eq T γ Γ (apps_exp (a_record p) Ns) M (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M)).
 Proof.
   intros * HΓ HR Hl Hnd HM HT. apply (set_exp_eq_of_sides _ _ _ _ _ _ _ _ _ _ HM HT).
   pose proof HM as [HFA HFM _ _ HMm]. pose proof HT as [_ HGT _ _ _]. pose proof (set_gctx_ok_records _ _ Hok _ _ HR) as HSR.
@@ -699,10 +699,10 @@ Lemma set_rule_proj : forall Γ M p R Ns k f U, ⊢ gc_deps ⍮ gc_stack ⍮ Γ 
     (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B) ->
     (forall k N B, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) sb_id Ns) k = Some B ->
-       set_exp_eq T γ Γ B N N) ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : apps_exp (a_record p) Ns -> set_exp_eq T γ Γ (apps_exp (a_record p) Ns) M M ->
+       set_rel_exp_eq T γ Γ B N N) ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : apps_exp (a_record p) Ns -> set_rel_exp_eq T γ Γ (apps_exp (a_record p) Ns) M M ->
     List.nth_error (record_fields R) k = Some (f, U) ->
-    set_exp_eq T γ Γ (exp_sub U (sb_of_list sb_id (Ns ++ record_pre R k M))) (a_proj f M) (a_proj f M).
+    set_rel_exp_eq T γ Γ (exp_sub U (sb_of_list sb_id (Ns ++ record_pre R k M))) (a_proj f M) (a_proj f M).
 Proof.
   intros * Hc HΓ Hr HR Hl HNs HNr HMw (FA & FM & FM' & HM) Hk.
   pose proof HM as [_ HFM _ _ _].
@@ -710,7 +710,7 @@ Proof.
     by (intros g; apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ); intros ρ Hρ;
         exact (set_interp_proj T γ _ _ _ _ _ (set_denotes_exists _ _ _ _ _ HFM _ Hρ))).
   assert (Hall : forall j i f' U', i < j -> List.nth_error (record_fields R) i = Some (f', U') ->
-            set_exp_eq T γ Γ (exp_sub U' (sb_of_list sb_id (Ns ++ record_pre R i M))) (a_proj f' M) (a_proj f' M)).
+            set_rel_exp_eq T γ Γ (exp_sub U' (sb_of_list sb_id (Ns ++ record_pre R i M))) (a_proj f' M) (a_proj f' M)).
   { induction j as [| j IH]; intros i f' U' Hi Hf'; [lia |].
     destruct (Nat.lt_ge_cases i j) as [Hij | Hij]; [exact (IH _ _ _ Hij Hf') |]. assert (i = j) by lia. subst i.
     destruct (set_proj_field _ _ _ _ _ _ _ _ _ _ _ Hc HΓ Hr HR Hl HNs HNr HMw HM Hf' IH) as (FU & HFU & Hmem).

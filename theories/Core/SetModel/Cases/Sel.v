@@ -12,7 +12,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects Substitution JudgmentSubstitution.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import ValidUnit MemberTypes ModuleCases Unit Canon App.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
@@ -627,11 +627,11 @@ Lemma mdesc_mod_tele_mod : forall R Tl, mdesc_mod_tele R = Some Tl -> exists Rm,
 Proof. intros * H. unfold mdesc_mod_tele in H. destruct (mdesc_mod R) as [Rm |]; [exists Rm; reflexivity | discriminate]. Qed.
 
 (** Submodules of equal module expressions are equal. *)
-Lemma set_rule_me_mem : forall Γ H H' y R Tl R' Tl', set_ctx T γ Γ -> set_modexp_eq T γ Γ H H' ->
+Lemma set_rule_me_mem : forall Γ H H' y R Tl R' Tl', set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H' ->
     mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_mod_tele R = Some Tl ->
     mdenote gc_deps gc_stack Γ (me_mem H' y) R' -> mdesc_mod_tele R' = Some Tl' ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem H' y ≈ me_mem H' y ->
-    set_modexp_eq T γ Γ (me_mem H y) (me_mem H' y).
+    set_rel_modexp_eq T γ Γ (me_mem H y) (me_mem H' y).
 Proof.
   intros * HΓ (F & F' & [HF HF' E Hv Hv' Hpr]) Hm Ht Hm' Ht' HwY HwY'.
   destruct (mdesc_mod_tele_mod _ _ Ht) as (Rm & Hmd). destruct (mdesc_mod_tele_mod _ _ Ht') as (Rm' & Hmd').
@@ -643,9 +643,9 @@ Qed.
 
 (** [δ] for submodules: a submodule is the unit its module part stands
     for. *)
-Lemma set_rule_me_delta_sel : forall Γ H y R Rm, set_modexp_eq T γ Γ (me_mem H y) (me_mem H y) ->
+Lemma set_rule_me_delta_sel : forall Γ H y R Rm, set_rel_modexp_eq T γ Γ (me_mem H y) (me_mem H y) ->
     mdenote gc_deps gc_stack Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
-    set_modexp_eq T γ Γ (me_mem H y) (mdesc_unit Rm).
+    set_rel_modexp_eq T γ Γ (me_mem H y) (mdesc_unit Rm).
 Proof.
   intros * (F & F' & [_ _ _ Hv _]) Hm Hmd. destruct (set_valid_modexp_canon T γ Hfn Hmods Hgw Hok _ _ _ _ Hv Hm Hmd) as [Hr HK Hpr].
   exact (set_modexp_eq_of_rel T γ _ _ _ Hr Hv (set_valid_modexp_of_unit T γ Hfn Hmods Hok _ _ HK) Hpr).

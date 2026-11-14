@@ -18,7 +18,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Weakening Substitution JudgmentSubstitution.
-From Mctt.Core.SetModel.Interpretation.Global Require Import Model.
+From Mctt.Core.SetModel Require Import Judgments.
 From Mctt.Core.SetModel.Cases Require Import UniverseCases PropCases FunctionCases ValidUnit MemberTypes Sel IndCases RecordCases.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members Presup CoreInversions.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
@@ -5294,7 +5294,7 @@ Lemma elim_setting_of_rule : forall Γ r p Us Bks D i Fσ,
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        gc_deps ⍮ gc_stack ⍮ elim_mctx p D k Mk Us ++ Γ ⊢ eb_motive b : abs_kind_sort r (a_typ i)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       set_exp_eq T γ (elim_mctx p D k Mk Us ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
+       set_rel_exp_eq T γ (elim_mctx p D k Mk Us ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
     (forall k Mk, ind_member D k = Some Mk -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ elim_mctx p D k Mk Us ≈ elim_mctx p D k Mk Us) ->
     (forall k Mk, ind_member D k = Some Mk -> set_ctx T γ (elim_mctx p D k Mk Us ++ Γ)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
@@ -5309,7 +5309,7 @@ Lemma elim_setting_of_rule : forall Γ r p Us Bks D i Fσ,
        gc_deps ⍮ gc_stack ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ ⊢ B : elim_branch_type p D k Mk c gs (eb_motive b) Us) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-       set_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ) (elim_branch_type p D k Mk c gs (eb_motive b) Us) B B) ->
+       set_rel_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ) (elim_branch_type p D k Mk c gs (eb_motive b) Us) B B) ->
     motive_kind r ->
     elim_setting_with Γ r p Us Bks (large_results i) D i Fσ.
 Proof.
@@ -5589,7 +5589,7 @@ Lemma elim_scrutinee_setting : forall Γ p D m Mm Ps M FA0 FM FM',
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ P : A) ->
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
-       set_exp_eq T γ Γ A P P) ->
+       set_rel_exp_eq T γ Γ A P P) ->
     set_exp_eq_with T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M FA0 FM FM' ->
     exists Fι, elim_scrutinee_with Γ p D m Mm Ps FM Fι.
 Proof.
@@ -5666,9 +5666,9 @@ Lemma set_rule_elim : forall Γ r p Us m Bks M D Mm bm Ps i,
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ P : A) ->
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
-       set_exp_eq T γ Γ A P P) ->
+       set_rel_exp_eq T γ Γ A P P) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-    set_exp_eq T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M ->
+    set_rel_exp_eq T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M ->
     Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
@@ -5677,7 +5677,7 @@ Lemma set_rule_elim : forall Γ r p Us m Bks M D Mm bm Ps i,
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        gc_deps ⍮ gc_stack ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r (a_typ i)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       set_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
+       set_rel_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
     (forall k Mk, ind_member D k = Some Mk ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk, ind_member D k = Some Mk -> set_ctx T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ)) ->
@@ -5696,10 +5696,10 @@ Lemma set_rule_elim : forall Γ r p Us m Bks M D Mm bm Ps i,
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-       set_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
+       set_rel_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
          (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B) ->
     motive_kind r ->
-    set_exp_eq T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
+    set_rel_exp_eq T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
       (a_elim r p Us m Bks M) (a_elim r p Us m Bks M).
 Proof.
   intros Γ r p Us m Bks M D Mm bm Ps i HΓ HD Hm Hbm HlB HPl HPs HPsem HMt HMsem HUs Hcnt Hsc HMty HMotsem HMx HMxsem Hbrs
@@ -5785,12 +5785,12 @@ Lemma set_rule_elim_iota : forall Γ r p Us m Bks D Mm bm c gs Ps As n B i,
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ P : A) ->
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
-       set_exp_eq T γ Γ A P P) ->
+       set_rel_exp_eq T γ Γ A P P) ->
     List.length As = List.length gs ->
     (forall k N A, List.nth_error As k = Some N ->
        List.nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list sb_id Ps) As) k = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : A) ->
     (forall k N A, List.nth_error As k = Some N ->
-       List.nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list sb_id Ps) As) k = Some A -> set_exp_eq T γ Γ A N N) ->
+       List.nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list sb_id Ps) As) k = Some A -> set_rel_exp_eq T γ Γ A N N) ->
     Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
@@ -5799,7 +5799,7 @@ Lemma set_rule_elim_iota : forall Γ r p Us m Bks D Mm bm c gs Ps As n B i,
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        gc_deps ⍮ gc_stack ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r (a_typ i)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       set_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
+       set_rel_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
     (forall k Mk, ind_member D k = Some Mk ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk, ind_member D k = Some Mk -> set_ctx T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ)) ->
@@ -5818,11 +5818,11 @@ Lemma set_rule_elim_iota : forall Γ r p Us m Bks D Mm bm c gs Ps As n B i,
          : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-       set_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
+       set_rel_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
          (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B) ->
     brs_lookup (eb_brs bm) c = Some (n, B) ->
     motive_kind r ->
-    set_exp_eq T γ Γ
+    set_rel_exp_eq T γ Γ
       (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++
          apps_exp (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
            (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)))
@@ -5874,7 +5874,7 @@ Proof.
   assert (Hlti : List.length (tele_insts (im_params D Mm) sb_id Ps) = List.length Ps)
     by (rewrite length_tele_insts by exact Hass0; rewrite length_im_params, HPl; lia).
   assert (HPA : forall k N A, List.nth_error (Ps ++ As) k = Some N -> List.nth_error (tele_insts Tf sb_id (Ps ++ As)) k = Some A ->
-            gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : A /\ set_exp_eq T γ Γ A N N).
+            gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : A /\ set_rel_exp_eq T γ Γ A N N).
   { intros k N A HN HA. rewrite Eti in HA. destruct (Nat.lt_ge_cases k (List.length Ps)) as [Hk | Hk].
     - rewrite List.nth_error_app1 in HN by lia. rewrite List.nth_error_app1 in HA by lia.
       exact (conj (HPs _ _ _ HN HA) (HPsem _ _ _ HN HA)).
@@ -6174,12 +6174,12 @@ Lemma set_rule_elim_cong : forall Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ P : A) ->
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
-       set_exp_eq T γ Γ A P P) ->
+       set_rel_exp_eq T γ Γ A P P) ->
     List.length Ps' = im_np D Mm ->
     (forall k P P' A, List.nth_error Ps k = Some P -> List.nth_error Ps' k = Some P' ->
        List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ P ≈ P' : A) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ M ≈ M' : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-    set_exp_eq T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M' ->
+    set_rel_exp_eq T γ Γ (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) M M' ->
     Us = List.firstn (ind_nu D) Ps ->
     Us' = List.firstn (ind_nu D) Ps' ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
@@ -6193,7 +6193,7 @@ Lemma set_rule_elim_cong : forall Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        gc_deps ⍮ gc_stack ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r (a_typ i)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       set_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
+       set_rel_exp_eq T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
     (forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> List.nth_error Bks' k = Some b' ->
        gc_deps ⍮ gc_stack ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b ≈ eb_motive b' : abs_kind_sort r (a_typ i)) ->
     (forall k Mk, ind_member D k = Some Mk ->
@@ -6220,10 +6220,10 @@ Lemma set_rule_elim_cong : forall Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i
        List.nth_error Bks' k = Some b' ->
        List.nth_error (eb_brs b) j = Some (c, n, B) -> List.nth_error (eb_brs b') j = Some (c, n, B') ->
        ind_con Mk c = Some gs ->
-       set_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
+       set_rel_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
          (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B') ->
     motive_kind r ->
-    set_exp_eq T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
+    set_rel_exp_eq T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
       (a_elim r p Us m Bks M) (a_elim r p Us' m Bks' M').
 Proof.
   intros Γ r p Us Us' m Bks Bks' M M' D Mm bm Ps Ps' i HΓ HD Hm Hbm HlB HlB' HPl HPs HPsem HPl' HPP HMM HMMsem HUs HUs'
@@ -6261,7 +6261,7 @@ Proof.
     exact (presup_exp_eq_left (HBB k Mk b b' j c gs n B B' Hk Hb Hb' Hj Hj' Hc)). }
   assert (HBsem : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-       set_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ) (elim_branch_type p D k Mk c gs (eb_motive b) Us) B B).
+       set_rel_exp_eq T γ (elim_bctx r p D Mk gs (blocks_motives Bks) Us ++ Γ) (elim_branch_type p D k Mk c gs (eb_motive b) Us) B B).
   { intros k Mk b c gs n B Hk Hb Hc HIn. destruct (Hpart k b c n B Hb HIn) as (b' & j & B' & Hb' & Hj & Hj').
     pose proof (HBBsem k Mk b b' j c gs n B B' Hk Hb Hb' Hj Hj' Hc) as H. exact (set_exp_eq_trans T γ _ _ _ _ _ H (set_exp_eq_sym T γ _ _ _ _ H)). }
   pose proof (set_exp_eq_trans T γ _ _ _ _ _ HMMsem (set_exp_eq_sym T γ _ _ _ _ HMMsem)) as HMsem.
@@ -6408,11 +6408,11 @@ Lemma set_rule_con_view : forall Γ p D j Mj qc k Is vm c Us Ms A,
     (forall n U B, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) sb_id Us) n = Some B ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ U : B) ->
     (forall n U B, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) sb_id Us) n = Some B ->
-       set_exp_eq T γ Γ B U U) ->
+       set_rel_exp_eq T γ Γ B U U) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
-    set_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con p j c) (Us ++ Ms)) ->
-    set_exp_eq T γ Γ A (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)) (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)) ->
-    set_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)).
+    set_rel_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con p j c) (Us ++ Ms)) ->
+    set_rel_exp_eq T γ Γ A (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)) (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)) ->
+    set_rel_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms)).
 Proof.
   intros Γ p D j Mj qc k Is vm c Us Ms A HΓ HD Hj Hh HUl HUt HUsem HLt HL HR.
   pose proof (presup_exp_ctx HLt) as HcΓ.
@@ -6472,17 +6472,17 @@ Lemma set_rule_con_rview : forall Γ p D j Mj qr Is fl c gs Us Ms A,
     (forall n U B, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) sb_id Us) n = Some B ->
        gc_deps ⍮ gc_stack ⍮ Γ ⊢ U : B) ->
     (forall n U B, List.nth_error Us n = Some U -> List.nth_error (tele_insts (ind_uparams D) sb_id Us) n = Some B ->
-       set_exp_eq T γ Γ B U U) ->
+       set_rel_exp_eq T γ Γ B U U) ->
     List.length Ms = List.length fl ->
     (forall n N B, List.nth_error Ms n = Some N ->
        List.nth_error (tele_insts (cargs_ctx p D Mj gs) (sb_of_list sb_id Us) Ms) n = Some B -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B) ->
     (forall n N B, List.nth_error Ms n = Some N ->
-       List.nth_error (tele_insts (cargs_ctx p D Mj gs) (sb_of_list sb_id Us) Ms) n = Some B -> set_exp_eq T γ Γ B N N) ->
+       List.nth_error (tele_insts (cargs_ctx p D Mj gs) (sb_of_list sb_id Us) Ms) n = Some B -> set_rel_exp_eq T γ Γ B N N) ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
-    set_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con p j c) (Us ++ Ms)) ->
-    set_exp_eq T γ Γ A (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms))
+    set_rel_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (apps_exp (a_con p j c) (Us ++ Ms)) ->
+    set_rel_exp_eq T γ Γ A (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms))
       (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms)) ->
-    set_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms)).
+    set_rel_exp_eq T γ Γ A (apps_exp (a_con p j c) (Us ++ Ms)) (a_tuple (apps_exp (a_record qr) (im_pre Mj Us)) (List.combine fl Ms)).
 Proof.
   intros Γ p D j Mj qr Is fl c gs Us Ms A HΓ HD Hj Hh Hgs HUl HUt HUsem HMl HMt HMsem HLt HL HR.
   pose proof (presup_exp_ctx HLt) as HcΓ.
@@ -6521,7 +6521,7 @@ Proof.
   assert (Hlti : List.length (tele_insts (im_params D Mj) sb_id Us) = List.length Us)
     by (rewrite length_tele_insts by exact Hass0; rewrite length_im_params, HPl; lia).
   assert (HPA : forall n N B, List.nth_error (Us ++ Ms) n = Some N -> List.nth_error (tele_insts Tf sb_id (Us ++ Ms)) n = Some B ->
-            gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B /\ set_exp_eq T γ Γ B N N).
+            gc_deps ⍮ gc_stack ⍮ Γ ⊢ N : B /\ set_rel_exp_eq T γ Γ B N N).
   { intros n N B HN HB. rewrite Eti in HB. destruct (Nat.lt_ge_cases n (List.length Us)) as [Hn | Hn].
     - rewrite List.nth_error_app1 in HN by lia. rewrite List.nth_error_app1 in HB by lia. rewrite EP in HB.
       exact (conj (HUt _ _ _ HN HB) (HUsem _ _ _ HN HB)).
