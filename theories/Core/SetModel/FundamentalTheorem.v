@@ -400,13 +400,11 @@ Proof.
   - split; [ft_cs |].
     ft_kripke. eapply set_rule_elim_iota; first [eassumption | reflexivity | ft_from_ih].
   - split; [ft_cs |].
-    match goal with |- set_rel_exp_eq _ _ ?G ?A ?L ?R => assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ R : A) end;
-      [ apply Mv_eq; eapply wf_exp_eq_elim_view; first [eassumption | reflexivity] |].
+    ft_kripke.
+    match goal with |- set_exp_eq ?Θ ?Ξ _ _ ?G ?A ?L ?R => assert (Hc : Θ ⍮ Ξ ⍮ G ⊢ L ≈ R : A) end;
+      [ eapply wf_exp_eq_elim_view; first [eassumption | reflexivity] |].
     pose proof (presup_exp_eq_right Hc).
-    eapply (set_rule_elim_view T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
-      try ft_from_ih;
-      intros; match goal with |- set_ctx _ _ _ =>
-        solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [ft_from_ih | reflexivity]] end.
+    eapply set_rule_elim_view; first [eassumption | reflexivity | ft_from_ih].
   - split; [ft_cs |].
     ft_kripke. eapply set_rule_con_view; first [eassumption | ft_from_ih].
   - split; [ft_cs |].
