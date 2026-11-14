@@ -184,25 +184,6 @@ Proof.
   exact (set_ext_eq_left _ _ _ _ _ (Hsuf Δ nil Δ' nil (eq_sym (List.app_nil_r Δ)) (eq_sym (List.app_nil_r Δ')) eq_refl)).
 Qed.
 
-(** A large universe is a universe. *)
-Lemma set_rule_is_univ_large {GC : GCtx} : forall Γ i, set_ctx T γ Γ -> set_rel_universe T γ Γ (a_typ i).
-Proof.
-  intros Γ i HΓ. exists (fun _ => large_universe_code T i). constructor; [exact HΓ | apply set_denotes_typ |].
-  intros ρ _. exists (tower T (ul i)). split; [apply tower_grothendieck |]. exists (large_ordinal_set i). apply set_eq_refl.
-Qed.
-
-(** A universe at a level is a universe. *)
-Lemma set_rule_is_univ_small {GC : GCtx} : forall Γ n L FL FM FM', set_ctx T γ Γ -> set_exp_eq_with T γ Γ (a_level n) L L FL FM FM' ->
-    set_rel_universe T γ Γ (a_univ L).
-Proof.
-  intros * HΓ HL. pose proof HL as [_ HM _ _ _].
-  exists (fun ρ => level_universe_code T (FM ρ)). constructor; [exact HΓ | exact (set_denotes_univ T γ _ _ _ HM) |].
-  intros ρ Hρ. destruct (level_value T γ _ _ _ _ _ _ _ HL Hρ) as (o & _ & Eo).
-  exists (tower T (us o)). split; [apply tower_grothendieck |]. exists (FM ρ).
-  unfold level_universe_code, universe_code. apply type_code_resp; [apply set_eq_refl |].
-  apply separation_set_resp; [exact is_relevant_code_resp | exact is_relevant_code_resp | apply small_universe_set_eq; exact Eo | tauto].
-Qed.
-
 (** A judgment at this context, as the reading here ([Hμ]) of the same
     judgment at every context the derivation's context grows into. *)
 Ltac ft_kripke :=
@@ -518,8 +499,8 @@ Proof.
   - assert (κc <> ak_propositional) by (match goal with H : evaluated_kind κc |- _ => destruct H end; discriminate).
     ft_by_kripke set_rule_subtyp_pi.
   (* universes *)
-  - split; [ft_cs | apply set_rule_is_univ_large; ft_ctx].
-  - ft_by set_rule_is_univ_small.
+  - ft_by_kripke set_rule_is_univ_large.
+  - ft_by_kripke set_rule_is_univ_small.
   (* extensions *)
   - apply set_ext_eq_suffixes_nil; assumption.
   - ft_ext_cons; [eapply set_rule_ext_eq_ass; ft_prem | apply set_valid_slots_extend_plain; [assumption | reflexivity]

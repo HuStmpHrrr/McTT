@@ -94,6 +94,28 @@ Proof.
   - eapply set_eq_trans; [| apply union_pair_ordinal_set]. apply union_set_resp. apply unordered_pair_set_resp; assumption.
 Qed.
 
+(** ** Universes *)
+
+(** A large universe is a universe. *)
+Lemma set_rule_is_univ_large : forall Γ i, set_ctx_slots Θ Ξ T γ Γ -> set_universe Θ Ξ T γ Γ (a_typ i).
+Proof.
+  intros Γ i HΓ. set_open. destruct HΓ as [HΓ _]. exists (fun _ => large_universe_code T i).
+  constructor; [exact HΓ | apply set_denotes_typ |].
+  intros ρ _. exists (tower T (ul i)). split; [apply tower_grothendieck |]. exists (large_ordinal_set i). apply set_eq_refl.
+Qed.
+
+(** A universe at a level is a universe. *)
+Lemma set_rule_is_univ_small : forall Γ n L, set_ctx_slots Θ Ξ T γ Γ -> set_exp_eq Θ Ξ T γ Γ (a_level n) L L ->
+    set_universe Θ Ξ T γ Γ (a_univ L).
+Proof.
+  intros * HΓ HL. set_open. destruct HΓ as [HΓ _]. destruct HL as (FL & FM & FM' & HL). pose proof HL as [_ HM _ _ _].
+  exists (fun ρ => level_universe_code T (FM ρ)). constructor; [exact HΓ | exact (set_denotes_univ T γ _ _ _ HM) |].
+  intros ρ Hρ. destruct (level_value _ _ _ _ _ _ _ HL Hρ) as (o & _ & Eo).
+  exists (tower T (us o)). split; [apply tower_grothendieck |]. exists (FM ρ).
+  unfold level_universe_code, universe_code. apply type_code_resp; [apply set_eq_refl |].
+  apply separation_set_resp; [exact is_relevant_code_resp | exact is_relevant_code_resp | apply small_universe_set_eq; exact Eo | tauto].
+Qed.
+
 (** ** The Level Equations *)
 
 Lemma set_rule_level_eq {GC : GCtx} : forall Γ n L R FL FR, set_denotes T γ Γ L FL -> set_denotes T γ Γ R FR ->
