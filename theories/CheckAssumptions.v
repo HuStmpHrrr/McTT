@@ -12,6 +12,7 @@
 From Mctt Require Import Entrypoint.
 From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Consistency Core.Consequences.ModelConsistency Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.Consequences.NormalFormWeakening.
 From Mctt Require Import Reference.Refinement.
+From Mctt Require Import Core.Consequences.FnKinds Core.Consequences.SlotTransport.
 From Mctt Require Import Extraction.GlobalCheck Extraction.CommandRun.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Consequences.FiledConstructorTypes.
 From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns Core.Syntactic.System.Records.RecordRuns.
@@ -62,6 +63,11 @@ Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_False_gctx
 Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_False_prog.
 Print Assumptions Mctt.Core.Consequences.ModelConsistency.consistency_False_run.
 Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_large_typ.
+(* Local opens: a typing moves to an equal module slot; the kinds of a λ. *)
+Print Assumptions Mctt.Core.Consequences.FnKinds.fn_kinds_unique_ext_wf.
+Print Assumptions Mctt.Core.Consequences.SlotTransport.slot_transport_exp.
+Print Assumptions Mctt.Core.Consequences.SlotTransport.slot_conv_exp.
+Print Assumptions Mctt.Core.Consequences.SlotTransport.slot_conv_exp_dm.
 Print Assumptions Mctt.Core.Consequences.Consistency.typ_nf_below_of_nbe.
 Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_suniv_bound.
 Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_suniv_lit_bound.
