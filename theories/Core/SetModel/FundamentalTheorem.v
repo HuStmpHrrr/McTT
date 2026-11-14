@@ -544,12 +544,11 @@ Proof.
       | apply (set_params_evaluated_of_sorts T γ Γ Δ' param_level param_sorts); [assumption | ft_from_ih]
       | do 2 eexists; eassumption | do 2 eexists; eassumption].
   - split; [ft_cs' |].
-    eapply (set_rule_unit_eq_flatten T γ Hfn0 Hmods Hgw _ _ Hμ) with (l := param_level);
-      [eassumption | apply (set_params_evaluated_of_sorts T γ Γ Δ param_level param_sorts); [assumption | ft_from_ih]
-      | do 2 eexists; eassumption | apply Mv_unit; eapply wf_unit_eq_flatten; eassumption].
-  - split; [ft_cs | eapply (set_rule_unit_eq_expand T γ Hfn0 Hmods); [do 2 eexists; eassumption | apply Mv_unit; eapply wf_unit_eq_expand; eassumption]].
-  - split; [ft_cs | eapply set_rule_unit_eq_sym; do 2 eexists; eassumption].
-  - split; [ft_cs | eapply set_rule_unit_eq_trans; do 2 eexists; eassumption].
+    ft_kripke. eapply (set_rule_unit_eq_flatten Θ Ξ T γ) with (l := param_level) (ps := param_sorts);
+      [eassumption | assumption | ft_from_ih | eassumption | eapply wf_unit_eq_flatten; eassumption].
+  - split; [ft_cs | ft_kripke; eapply set_rule_unit_eq_expand; [eassumption | eapply wf_unit_eq_expand; eassumption]].
+  - ft_by_kripke set_rule_unit_eq_sym.
+  - ft_by_kripke set_rule_unit_eq_trans.
   (* module expressions *)
   - ft_by_kripke set_rule_me_unit.
   - ft_by_kripke set_rule_me_var.
