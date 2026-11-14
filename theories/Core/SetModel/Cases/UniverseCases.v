@@ -36,18 +36,6 @@ Proof.
   - do 3 eexists. split; [apply set_eq_refl | discriminate].
 Qed.
 
-(** [Typeω@i : Typeω@(S i)]. *)
-Lemma set_rule_typ : forall Γ i, set_rel_exp_eq T γ Γ (a_typ (S i)) (a_typ i) (a_typ i).
-Proof.
-  intros. exists (fun _ => large_universe_code (S i)), (fun _ => large_universe_code i), (fun _ => large_universe_code i).
-  constructor; [apply set_denotes_typ .. | intros; apply set_eq_refl |]. intros ρ _.
-  unfold large_universe_code at 1, universe_code. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
-  pose proof (tower_grothendieck T (ul (S i))) as HV.
-  destruct (universe_code_mem (large_ordinal_set i) (tower T (ul i)) _ HV
-              (grothendieck_universe_index_set _ HV (ul i)) (tower_increasing T (ul i) (ul (S i)) ltac:(cbn; lia))) as [Hm Hr].
-  apply set_mem_separation; [exact is_relevant_code_resp |]. split; assumption.
-Qed.
-
 (** The code of the small universe at a literal level [o]. *)
 Definition small_universe_code (o : o2) : aczel_set :=
   universe_code (pair_ordinal_set o) (small_universe_set T (pair_ordinal_set o)).
@@ -95,13 +83,30 @@ Proof.
   apply separation_set_resp; [exact is_relevant_code_resp | exact is_relevant_code_resp | apply small_universe_set_resp; exact E | tauto].
 Qed.
 
-(** [M ≈ M' : Level@n] gives [Type⟨M⟩ ≈ Type⟨M'⟩ : Type⟨succl M⟩]. *)
-Lemma set_rule_univ : forall Γ n M M' FL FM FM', set_exp_eq_with T γ Γ (a_level n) M M' FL FM FM' ->
-    set_rel_exp_eq T γ Γ (a_univ (a_succl M)) (a_univ M) (a_univ M').
+End Universes.
+
+(** ** The Rules *)
+
+(** [Typeω@i : Typeω@(S i)]. *)
+Lemma set_rule_typ : forall Θ Ξ T γ Γ i, set_exp_eq Θ Ξ T γ Γ (a_typ (S i)) (a_typ i) (a_typ i).
 Proof.
-  intros * [HL HM HM' E Hm].
-  exists (fun ρ => level_universe_code (successor_set (FM ρ))), (fun ρ => level_universe_code (FM ρ)),
-    (fun ρ => level_universe_code (FM' ρ)).
+  intros * Θ2 Ξ2 _.
+  exists (fun _ => large_universe_code T (S i)), (fun _ => large_universe_code T i), (fun _ => large_universe_code T i).
+  constructor; [apply set_denotes_typ .. | intros; apply set_eq_refl |]. intros ρ _.
+  unfold large_universe_code at 1, universe_code. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
+  pose proof (tower_grothendieck T (ul (S i))) as HV.
+  destruct (universe_code_mem (large_ordinal_set i) (tower T (ul i)) _ HV
+              (grothendieck_universe_index_set _ HV (ul i)) (tower_increasing T (ul i) (ul (S i)) ltac:(cbn; lia))) as [Hm Hr].
+  apply set_mem_separation; [exact is_relevant_code_resp |]. split; assumption.
+Qed.
+
+(** [M ≈ M' : Level@n] gives [Type⟨M⟩ ≈ Type⟨M'⟩ : Type⟨succl M⟩]. *)
+Lemma set_rule_univ : forall Θ Ξ T γ Γ n M M', set_exp_eq Θ Ξ T γ Γ (a_level n) M M' ->
+    set_exp_eq Θ Ξ T γ Γ (a_univ (a_succl M)) (a_univ M) (a_univ M').
+Proof.
+  intros * HMM' Θ2 Ξ2 Hμ. destruct (HMM' _ _ Hμ) as (FL & FM & FM' & [HL HM HM' E Hm]).
+  exists (fun ρ => level_universe_code T (successor_set (FM ρ))), (fun ρ => level_universe_code T (FM ρ)),
+    (fun ρ => level_universe_code T (FM' ρ)).
   constructor.
   - apply set_denotes_univ. constructor; [intros ρ Hρ; constructor; exact (set_denotes_exists _ _ _ _ _ HM _ Hρ) |].
     intros ρ ρ' v Hr Hv. inversion Hv; subst. apply successor_set_resp. exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Hr ltac:(eassumption)).
@@ -110,7 +115,7 @@ Proof.
   - intros ρ Hρ. unfold level_universe_code, universe_code. apply type_code_resp; [exact (E ρ Hρ) |].
     apply separation_set_resp; [exact is_relevant_code_resp | exact is_relevant_code_resp | apply small_universe_set_resp; exact (E ρ Hρ) | tauto].
   - intros ρ Hρ. pose proof (Hm ρ Hρ) as Hl.
-    eapply set_mem_eq_r in Hl; [| apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HL (set_denotes_level _ n) Hρ)].
+    eapply set_mem_eq_r in Hl; [| apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HL (set_denotes_level T γ _ n) Hρ)].
     apply set_mem_level_type in Hl as [[a b] [_ Eo]].
     unfold level_universe_code at 1, universe_code. eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |].
     apply set_mem_separation; [exact is_relevant_code_resp |].
@@ -123,5 +128,3 @@ Proof.
       apply tower_increasing. cbn. unfold ordinal_lt. cbn. right. split; [reflexivity | lia].
     + split; [eapply set_mem_eq_r; [apply set_eq_sym; exact Hs | exact Hc] | exact Hr].
 Qed.
-
-End Universes.
