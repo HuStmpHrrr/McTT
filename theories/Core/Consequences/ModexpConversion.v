@@ -189,13 +189,22 @@ Fixpoint path_all_apps (s : list path_step) : bool :=
 Definition path_leaf (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (s : list path_step) (X X' : mdesc) : Prop :=
   if path_all_apps s then opt_rel (leaf_conv Θ Ξ Δ) (mdesc_mod X) (mdesc_mod X') else leaf_conv Θ Ξ Δ X X'.
 
-(** [paths_conv Θ Ξ Δ P P']: along every path, the left side from [P]
-    denotes exactly when the right side from [P'] does, the two showing
-    the same ([path_leaf]). *)
-Definition paths_conv (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (P P' : modexp) : Prop :=
+(** [paths_rel Θ Ξ Δ L P P']: along every path [s], the left side from
+    [P] denotes exactly when the right side from [P'] does, the two
+    related by the leaf relation [L s].  The comparisons below are its
+    instances at three leaf relations: wholly ([paths_conv]), up to the
+    units of the leaves ([paths_core]), and up to the units at the root
+    only ([paths_conv_m]). *)
+Definition paths_rel (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (L : list path_step -> mdesc -> mdesc -> Prop)
+    (P P' : modexp) : Prop :=
   forall s, path_pairs Θ Ξ Δ P s ->
-    (forall X, mdenote Θ Ξ Δ (path_left P s) X -> exists X', mdenote Θ Ξ Δ (path_right P' s) X' /\ path_leaf Θ Ξ Δ s X X') /\
-    (forall X', mdenote Θ Ξ Δ (path_right P' s) X' -> exists X, mdenote Θ Ξ Δ (path_left P s) X /\ path_leaf Θ Ξ Δ s X X').
+    (forall X, mdenote Θ Ξ Δ (path_left P s) X -> exists X', mdenote Θ Ξ Δ (path_right P' s) X' /\ L s X X') /\
+    (forall X', mdenote Θ Ξ Δ (path_right P' s) X' -> exists X, mdenote Θ Ξ Δ (path_left P s) X /\ L s X X').
+
+(** [paths_conv Θ Ξ Δ P P']: [paths_rel] at the leaves showing the same
+    ([path_leaf]). *)
+Definition paths_conv (Θ : gdeps) (Ξ : gstack) (Δ : ctx) : modexp -> modexp -> Prop :=
+  paths_rel Θ Ξ Δ (path_leaf Θ Ξ Δ).
 
 (** [path_leaf] the other way round. *)
 Lemma path_leaf_sym : forall Θ Ξ Δ s X X', path_leaf Θ Ξ Δ s X X' -> path_leaf Θ Ξ Δ s X' X.
@@ -797,11 +806,9 @@ Qed.
 Definition path_core (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (s : list path_step) (X X' : mdesc) : Prop :=
   if path_all_apps s then opt_rel (leaf_core Θ Ξ Δ) (mdesc_mod X) (mdesc_mod X') else leaf_core Θ Ξ Δ X X'.
 
-(** [paths_conv] up to the units of the leaves. *)
-Definition paths_core (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (P P' : modexp) : Prop :=
-  forall s, path_pairs Θ Ξ Δ P s ->
-    (forall X, mdenote Θ Ξ Δ (path_left P s) X -> exists X', mdenote Θ Ξ Δ (path_right P' s) X' /\ path_core Θ Ξ Δ s X X') /\
-    (forall X', mdenote Θ Ξ Δ (path_right P' s) X' -> exists X, mdenote Θ Ξ Δ (path_left P s) X /\ path_core Θ Ξ Δ s X X').
+(** [paths_rel] up to the units of the leaves. *)
+Definition paths_core (Θ : gdeps) (Ξ : gstack) (Δ : ctx) : modexp -> modexp -> Prop :=
+  paths_rel Θ Ξ Δ (path_core Θ Ξ Δ).
 
 (** The leaves of two descriptions show the same of their module parts,
     up to units. *)
@@ -1146,13 +1153,17 @@ Qed.
 
 (** [wb_rel X Y]: [X] and [Y] are one description, or two open ones
     differing only in the body as written. *)
-Definition wb_rel (X Y : mdesc) : Prop :=
-  X = Y \/ exists Δ Φ1 Φ2 Φx, X = mdesc_open Δ Φ1 Φx /\ Y = mdesc_open Δ Φ2 Φx.
+Inductive wb_rel : mdesc -> mdesc -> Prop :=
+(** One description *)
+| wb_rel_same : forall X, wb_rel X X
+(** Two open descriptions with one telescope and one expansion, the
+    bodies as written possibly different *)
+| wb_rel_written : forall Δ Φ1 Φ2 Φx, wb_rel (mdesc_open Δ Φ1 Φx) (mdesc_open Δ Φ2 Φx).
 
 (** What a leaf shows but its unit does not see the body as written. *)
 Lemma leaf_core_wb : forall Θ Ξ Δ A X Y, leaf_conv Θ Ξ Δ A X -> wb_rel X Y -> leaf_core Θ Ξ Δ A Y.
 Proof.
-  intros * Hl [<- | (Δ1 & Φ1 & Φ2 & Φx & -> & ->)]; [ exact (leaf_core_of_conv _ _ _ _ _ Hl) |].
+  intros * Hl Hw; destruct Hw as [X | Δ1 Φ1 Φ2 Φx]; [ exact (leaf_core_of_conv _ _ _ _ _ Hl) |].
   destruct Hl as [Hk Ht Hr Hu Hh Hf Hn]; constructor; cbn in *; try assumption.
   - destruct (mdesc_mod A); cbn in *; tauto.
   - rewrite Hf; split; intros (? & ? & ? & ? & ? & Hc & _); cbn in Hc; discriminate.
@@ -1162,14 +1173,14 @@ Qed.
 (** One step from two such descriptions. *)
 Lemma wb_rel_at : forall X Y N X1, wb_rel X Y -> mdesc_at X N = Some X1 -> exists Y1, mdesc_at Y N = Some Y1 /\ wb_rel X1 Y1.
 Proof.
-  intros * [<- | (Δ1 & Φ1 & Φ2 & Φx & -> & ->)] Ha; [ exists X1; split; [ exact Ha | left; reflexivity ] |].
+  intros * Hw Ha; destruct Hw as [X | Δ1 Φ1 Φ2 Φx]; [ exists X1; split; [ exact Ha | constructor ] |].
   cbn in Ha |- *; destruct (tele_split (rev Δ1)) as [[[B Δ'] τ] |]; [| discriminate ]; injection Ha as <-.
-  eexists; split; [ reflexivity | right; do 4 eexists; split; reflexivity ].
+  eexists; split; [ reflexivity | constructor ].
 Qed.
 
 (** The other way round. *)
 Lemma wb_rel_sym : forall X Y, wb_rel X Y -> wb_rel Y X.
-Proof. intros * [<- | (Δ1 & Φ1 & Φ2 & Φx & -> & ->)]; [ left; reflexivity | right; do 4 eexists; split; reflexivity ]. Qed.
+Proof. intros * []; constructor. Qed.
 
 (** Paths from two literals of such descriptions reach such descriptions. *)
 Lemma wb_paths : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Δ s P1 P2, mod_qname P1 = None -> mod_qname P2 = None ->
@@ -1181,12 +1192,12 @@ Proof.
   intros Θ Ξ Hg Δ s; induction s as [| [y | N N'] s IH]; intros * Hq1 Hq2 H1 H2; cbn; [ split; assumption | |].
   - apply IH; [ cbn; rewrite Hq1; reflexivity | cbn; rewrite Hq2; reflexivity | |].
     + intros X1 HX1; destruct (mdenote_mem_obs_inv _ _ Hg _ _ _ _ (or_introl Hq1) HX1) as (X & Xm & Γy & E & rd & R1 & HX & Hd & He & Hed & Hr).
-      destruct (H1 _ HX) as (Y & HY & Hw); exists X1; split; [| left; reflexivity ].
-      destruct Hw as [<- | (Δ1 & Φ1 & Φ2 & Φx & -> & ->)]; [ econstructor; eassumption |].
+      destruct (H1 _ HX) as (Y & HY & Hw); exists X1; split; [| constructor ].
+      inversion Hw as [| Δ1 Φ1 Φ2 Φx E1 E2]; subst; [ econstructor; eassumption |].
       cbn in Hd; injection Hd as <-; econstructor; [ exact HY | reflexivity | exact He | exact Hed | exact Hr ].
     + intros Y1 HY1; destruct (mdenote_mem_obs_inv _ _ Hg _ _ _ _ (or_introl Hq2) HY1) as (Y & Ym & Γy & E & rd & R1 & HY & Hd & He & Hed & Hr).
-      destruct (H2 _ HY) as (X & HX & Hw); exists Y1; split; [| left; reflexivity ].
-      destruct Hw as [-> | (Δ1 & Φ1 & Φ2 & Φx & -> & ->)]; [ econstructor; eassumption |].
+      destruct (H2 _ HY) as (X & HX & Hw); exists Y1; split; [| constructor ].
+      inversion Hw as [| Δ1 Φ1 Φ2 Φx E1 E2]; subst; [ econstructor; eassumption |].
       cbn in Hd; injection Hd as <-; econstructor; [ exact HX | reflexivity | exact He | exact Hed | exact Hr ].
   - apply IH; [ reflexivity | reflexivity | |].
     + intros X1 HX1; destruct (mdenote_app_inv _ _ _ _ _ _ HX1) as (X & HX & Ha).
@@ -1214,19 +1225,19 @@ Proof.
   { apply mdenote_lit; eapply udenote_body; [ apply body_xp_noopen; apply gm_noopen_expand | reflexivity ]. }
   split.
   - intros X HX; rewrite (HL _ HX); exists (mdesc_open Δ1 (gm_expand Φ1) (gm_expand Φ1)); split; [ exact HR |].
-    right; do 4 eexists; split; reflexivity.
+    constructor.
   - intros Y HY.
     pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HP)) as Hg.
     rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HY _ HR).
     destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HP) as (_ & (X & Xm & HX & _) & _).
-    exists X; split; [ exact HX |]; rewrite (HL _ HX); right; do 4 eexists; split; reflexivity.
+    exists X; split; [ exact HX |]; rewrite (HL _ HX); constructor.
 Qed.
 
 (** The module parts of two such descriptions are such. *)
 Lemma wb_rel_mod : forall X Y, wb_rel X Y -> opt_rel wb_rel (mdesc_mod X) (mdesc_mod Y).
 Proof.
-  intros * [<- | (Δ1 & Φ1 & Φ2 & Φx & -> & ->)]; cbn; [ destruct (mdesc_mod X); cbn; [ left; reflexivity | exact I ] |].
-  right; do 4 eexists; split; reflexivity.
+  intros X Y Hw; destruct Hw as [X0 | Δ1 Φ1 Φ2 Φx]; cbn; [ destruct (mdesc_mod X0); cbn; [ constructor | exact I ] |].
+  constructor.
 Qed.
 
 (** Paths compared with one expression compare, up to units, with one
@@ -1886,11 +1897,9 @@ Proof.
   - pose proof (leaf_unit _ _ _ _ _ Hl) as Hu; rewrite E, E' in Hu; exact Hu.
 Qed.
 
-(** [paths_conv] with [path_leaf_m m]. *)
-Definition paths_conv_m (m : bool) (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (P P' : modexp) : Prop :=
-  forall s, path_pairs Θ Ξ Δ P s ->
-    (forall X, mdenote Θ Ξ Δ (path_left P s) X -> exists X', mdenote Θ Ξ Δ (path_right P' s) X' /\ path_leaf_m m Θ Ξ Δ s X X') /\
-    (forall X', mdenote Θ Ξ Δ (path_right P' s) X' -> exists X, mdenote Θ Ξ Δ (path_left P s) X /\ path_leaf_m m Θ Ξ Δ s X X').
+(** [paths_rel] at [path_leaf_m m]. *)
+Definition paths_conv_m (m : bool) (Θ : gdeps) (Ξ : gstack) (Δ : ctx) : modexp -> modexp -> Prop :=
+  paths_rel Θ Ξ Δ (path_leaf_m m Θ Ξ Δ).
 
 (** [modexp_conv] with [path_leaf_m m]. *)
 Definition modexp_conv_m (m : bool) (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H H' : modexp) : Prop :=

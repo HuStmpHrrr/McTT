@@ -2748,6 +2748,9 @@ Proof.
     left; constructor.
 Defined.
 
+(** Related bodies are decided entry by entry, by the names, then by
+    [gentry_retyped_dec]: two bodies are related when they bind the same
+    names, in the same order, to related entries, with no open. *)
 Fixpoint gmod_retyped_dec (Φ Φ' : gmod) : {gmod_retyped Φ Φ'} + {~ gmod_retyped Φ Φ'}.
 Proof.
   destruct Φ as [| Φ x E | ? ? ? ?]; destruct Φ' as [| Φ' x' E' | ? ? ? ?];
