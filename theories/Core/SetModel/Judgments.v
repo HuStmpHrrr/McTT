@@ -1281,6 +1281,13 @@ Definition set_modexp_eq (Θ : gdeps) (Ξ : gstack) (T : universe_tower) (γ : g
     (Γ : ctx) (H H' : modexp) : Prop :=
   forall Θ2 Ξ2, set_gctx_embedding Θ Ξ Θ2 Ξ2 T γ -> @set_rel_modexp_eq (gc_mk Θ2 Ξ2) T γ Γ H H'.
 
+(** A term equal to another is equal to itself. *)
+Lemma set_exp_eq_left_refl : forall Θ Ξ T γ Γ A M M', set_exp_eq Θ Ξ T γ Γ A M M' -> set_exp_eq Θ Ξ T γ Γ A M M.
+Proof.
+  intros * H Θ2 Ξ2 Hμ. destruct (H _ _ Hμ) as (FA & FM & FM' & [HA HM _ _ Hm]).
+  exists FA, FM, FM. constructor; [exact HA | exact HM | exact HM | intros; apply set_eq_refl | exact Hm].
+Qed.
+
 (** A substitution moves along an embedding unchanged: its record is of
     judgments. *)
 Lemma gctx_embedding_preserves_wf_sub : forall Θ1 Ξ1 Θ2 Ξ2, gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->

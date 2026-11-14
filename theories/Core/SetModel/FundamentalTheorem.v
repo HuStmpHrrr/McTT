@@ -203,20 +203,6 @@ Proof.
   apply separation_set_resp; [exact is_relevant_code_resp | exact is_relevant_code_resp | apply small_universe_set_eq; exact Eo | tauto].
 Qed.
 
-(** A family at an argument of its domain denotes the family's value at
-    the argument's. *)
-Lemma set_denotes_single_sub_with {GC : GCtx} : forall Γ κ A N B S FA FAN FN FN2 FS FB FB2, fn_kinds_unique ->
-    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κ A :: Γ ->
-    set_denotes T γ Γ A FA -> set_exp_eq_with T γ Γ A N N FAN FN FN2 -> set_exp_eq_with T γ (ce_ass κ A :: Γ) S B B FS FB FB2 ->
-    set_denotes T γ Γ (exp_sub B (sb_extend sb_id (se_exp N))) (fun ρ => body_function κ FB ρ (FN ρ)).
-Proof.
-  intros * Hfn0 Hmods HΓ Hc Hσ HA [HAN HN _ _ HNm] [_ HB _ _ _].
-  apply (set_denotes_single_sub T γ _ _ _ _ _ _ _ _ Hfn0 Hmods HΓ Hc Hσ HA HN); [| exact HB].
-  intros ρ Hρ. eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HAN HA Hρ) |].
-  exact (HNm _ Hρ).
-Qed.
-
 (** A judgment at this context, as the reading here ([Hμ]) of the same
     judgment at every context the derivation's context grows into. *)
 Ltac ft_kripke :=
@@ -403,11 +389,10 @@ Proof.
       try ft_from_ih;
       intros; match goal with |- set_ctx _ _ _ =>
         solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [ft_from_ih | reflexivity]] end.
-  - ft_by set_rule_pi.
-  - split; [ft_cs | do 3 eexists; eapply set_rule_fn_with; ft_prem].
-  - split; [ft_cs |]. eapply (set_rule_app T γ Γ κd κc i A B M N);
-      [ft_ctx | ft_syn | eapply set_exp_eq_left; eassumption | eassumption | eassumption
-      | eassumption | eapply (set_denotes_single_sub_with Γ κd A N B); ft_prem | intros; apply set_eq_refl].
+  - ft_by_kripke set_rule_pi.
+  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B) by (eapply wf_fn; eassumption).
+    ft_by_kripke (set_rule_fn Θ Ξ T γ Γ κd κc i Srt A M B).
+  - ft_by_kripke (set_rule_app Θ Ξ T γ Γ κd κc i Srt A B M N).
   - split; [ft_cs | eapply set_exp_eq_refl_left; ft_kripke; eapply set_rule_let_def_zeta; ft_prem].
   - split; [ft_cs | eapply set_exp_eq_refl_left; ft_kripke; eapply set_rule_let_mod_zeta; ft_prem].
   - split; [ft_cs | eapply set_exp_eq_refl_left; ft_kripke; eapply set_rule_let_dm_zeta; ft_prem].
@@ -447,16 +432,12 @@ Proof.
       try ft_from_ih;
       intros; match goal with |- set_ctx _ _ _ =>
         solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [ft_from_ih | reflexivity]] end.
-  - ft_by set_rule_pi_cong.
-  - split; [ft_cs |].
-    assert (Hc : gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M ≈ a_fn A' M' : a_pi κd κc A B) by (eapply wf_exp_eq_fn_cong; eassumption).
+  - ft_by_kripke set_rule_pi_cong.
+  - assert (Hc : Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M ≈ a_fn A' M' : a_pi κd κc A B) by (eapply wf_exp_eq_fn_cong; eassumption).
     pose proof (presup_exp_eq_left Hc). pose proof (presup_exp_eq_right Hc).
-    eapply set_rule_fn_cong; ft_prem.
-  - split; [ft_cs |].
-    match goal with H : _ ⍮ _ ⍮ _ ⊢ N ≈ N' : _ |- _ => pose proof (presup_exp_eq_left H) end.
-    eapply (set_rule_app_cong T γ Γ κd κc i A B M M' N N');
-      [ft_ctx | ft_syn | eapply set_exp_eq_left; eassumption | eassumption | eassumption
-      | eassumption | eapply (set_denotes_single_sub_with Γ κd A N B); ft_prem | intros; apply set_eq_refl].
+    ft_by_kripke set_rule_fn_cong.
+  - match goal with H : Θ ⍮ Ξ ⍮ _ ⊢ N ≈ N' : _ |- _ => pose proof (presup_exp_eq_left H) end.
+    ft_by_kripke (set_rule_app_cong Θ Ξ T γ Γ κd κc i Srt A B M M' N N').
   - split; [ft_cs |].
     destruct (@wf_conv_def Θ Ξ Γ A A' M M' Srt ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)).
     ft_kripke; eapply set_rule_let_def_cong; ft_prem.
@@ -469,7 +450,8 @@ Proof.
       assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ Rt : A) by (apply Mv_eq; eapply wf_exp_eq_mem_cong; eassumption) end.
     pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_cong.
   - ft_by_kripke set_rule_var.
-  - ft_by set_rule_pi_beta.
+  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B) by (eapply wf_fn; eassumption).
+    ft_by_kripke (set_rule_pi_beta Θ Ξ T γ Γ κd κc i Srt A M B N).
   - split; [ft_cs |].
     eapply (set_rule_elim_iota T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
       try ft_from_ih;
@@ -495,9 +477,9 @@ Proof.
     pose proof (presup_exp_eq_left Hc). ft_by set_rule_mem_delta.
   - match goal with H : _ ∋ #_ ≔ _ : _ |- _ => pose proof (ctx_lookup_def_lookup _ _ _ _ H) end.
     ft_by_kripke set_rule_var_delta.
-  - assert (Hc : gc_deps ⍮ gc_stack ⍮ Γ ⊢ M ≈ a_fn A (a_app (exp_wk M wk_shift) (a_var 0)) : a_pi κd κc A B)
+  - assert (Hc : Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ a_fn A (a_app (exp_wk M wk_shift) (a_var 0)) : a_pi κd κc A B)
       by (eapply wf_exp_eq_fn_eta; eassumption).
-    pose proof (presup_exp_eq_right Hc). ft_by set_rule_fn_eta.
+    pose proof (presup_exp_eq_right Hc). ft_by_kripke (set_rule_fn_eta Θ Ξ T γ Γ κd κc i Srt A B M).
   - ft_by_kripke set_rule_irrelevant.
   - ft_by set_rule_record_cong.
   - split; [ft_cs |]. eapply (set_rule_tuple_cong T γ); [eassumption | eassumption | eassumption | eassumption |].

@@ -16,7 +16,9 @@ From Mctt.Core.Syntactic.System Require Import Definitions Structural.
 Import ListNotations.
 
 Section Functions.
-  Context {GC : GCtx}.
+  (** The context the rules' premises are read at *)
+  Variable Θ : gdeps.
+  Variable Ξ : gstack.
   Variable T : universe_tower.
   Variable γ : global_valuation.
 
@@ -25,7 +27,7 @@ Definition body_function (κ : abs_kind) (F : set_env -> aczel_set) (ρ : set_en
   fun x => F (set_env_extend ρ (set_entry_term κ x)).
 
 (** A body's function respects equality on its domain. *)
-Lemma body_function_respects : forall Γ κ A FA B FB ρ, set_ctx T γ Γ -> set_denotes T γ Γ A FA ->
+Lemma body_function_respects {GC : GCtx} : forall Γ κ A FA B FB ρ, set_ctx T γ Γ -> set_denotes T γ Γ A FA ->
     set_denotes T γ (ce_ass κ A :: Γ) B FB -> set_env_in T γ Γ ρ ->
     respects_on (code_carrier (FA ρ)) (body_function κ FB ρ).
 Proof.
@@ -46,7 +48,7 @@ Definition pi_denotation (κd κc : abs_kind) (FA FB : set_env -> aczel_set) (ρ
   | _ => pi_code (FA ρ) (body_function κd FB ρ)
   end.
 
-Lemma set_denotes_pi : forall Γ κd κc A B FA FB, set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
+Lemma set_denotes_pi {GC : GCtx} : forall Γ κd κc A B FA FB, set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     set_denotes T γ Γ A FA -> set_denotes T γ (ce_ass κd A :: Γ) B FB ->
     set_denotes T γ Γ (a_pi κd κc A B) (pi_denotation κd κc FA FB).
 Proof.
@@ -92,10 +94,10 @@ Definition kind_sort_value (κ : abs_kind) (FU : set_env -> aczel_set) (ρ : set
   | ak_level => level_sort_code (level_types_universe T)
   end.
 
-Lemma set_denotes_level_sort : forall Γ, set_denotes T γ Γ a_level_sort (fun _ => level_sort_code (level_types_universe T)).
+Lemma set_denotes_level_sort {GC : GCtx} : forall Γ, set_denotes T γ Γ a_level_sort (fun _ => level_sort_code (level_types_universe T)).
 Proof. intros. apply set_denotes_const; [intros; constructor | intros ρ v H; inversion H; subst; apply set_eq_refl]. Qed.
 
-Lemma set_denotes_kind_sort : forall Γ κ U FU, set_denotes T γ Γ U FU ->
+Lemma set_denotes_kind_sort {GC : GCtx} : forall Γ κ U FU, set_denotes T γ Γ U FU ->
     set_denotes T γ Γ (abs_kind_sort κ U) (kind_sort_value κ FU).
 Proof. intros * HU. destruct κ; cbn [abs_kind_sort kind_sort_value]; [exact HU | apply set_denotes_prop | apply set_denotes_level_sort]. Qed.
 
@@ -114,7 +116,7 @@ Proof.
 Qed.
 
 (** A term keeps its value weakened past one more entry. *)
-Lemma set_interp_shift : forall Γ e ρ d M v, ⊢ gc_deps ⍮ gc_stack ⍮ e :: Γ -> set_interp T γ Γ ρ M v ->
+Lemma set_interp_shift {GC : GCtx} : forall Γ e ρ d M v, ⊢ gc_deps ⍮ gc_stack ⍮ e :: Γ -> set_interp T γ Γ ρ M v ->
     set_interp T γ (e :: Γ) (set_env_extend ρ d) (exp_wk M wk_shift) v.
 Proof.
   intros * Hc HM. exact (set_interp_wk T γ _ _ _ _ HM nil Γ (e :: Γ) wk_shift _ eq_refl (wf_wk_shift _ _ _ _ Hc) (fun y => eq_refl)).
@@ -122,7 +124,7 @@ Qed.
 
 (** The sort of a codomain, read under the domain, is the sort over the
     universe. *)
-Lemma kind_sort_value_shift : forall Γ κd A κc U FU FA FS ρ x, set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
+Lemma kind_sort_value_shift {GC : GCtx} : forall Γ κd A κc U FU FA FS ρ x, set_ctx T γ Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     set_denotes T γ Γ U FU -> set_denotes T γ Γ A FA -> set_denotes T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) FS ->
     set_env_in T γ Γ ρ -> set_mem x (code_carrier (FA ρ)) ->
     set_eq (FS (set_env_extend ρ (set_entry_term κd x))) (kind_sort_value κc FU ρ).
@@ -137,14 +139,14 @@ Qed.
 
 (** The [Π] formation rule, into the sort of the codomain's kind over a
     universe. *)
-Lemma set_rule_pi : forall Γ κd κc A B U FU FS FA FA2 FS' FB FB2, set_ctx T γ Γ ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> pi_kinds κd κc ->
-    set_denotes T γ Γ U FU -> (forall ρ, set_env_in T γ Γ ρ -> exists V, universe_shape FU ρ V) ->
-    set_exp_eq_with T γ Γ (abs_kind_sort κd U) A A FS FA FA2 ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) B B FS' FB FB2 ->
-    set_rel_exp_eq T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A B).
+Lemma set_rule_pi : forall Γ κd κc A B U, set_ctx_slots Θ Ξ T γ Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A :: Γ -> pi_kinds κd κc -> set_universe Θ Ξ T γ Γ U ->
+    set_exp_eq Θ Ξ T γ Γ (abs_kind_sort κd U) A A ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) B B ->
+    set_exp_eq Θ Ξ T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A B).
 Proof.
-  intros * HΓ Hc Hk HU Hshape [HS HA _ _ HAm] [HS' HB _ _ HBm].
+  intros * HΓ Hc Hk HUe HAe HBe. set_open. destruct HΓ as [HΓ _]. destruct HUe as (FU & [_ HU Hshape]).
+  destruct HAe as (FS & FA & FA2 & [HS HA _ _ HAm]). destruct HBe as (FS' & FB & FB2 & [HS' HB _ _ HBm]).
   exists (kind_sort_value κc FU), (pi_denotation κd κc FA FB), (pi_denotation κd κc FA FB).
   constructor; [apply set_denotes_kind_sort; exact HU | apply set_denotes_pi; assumption .. | intros; apply set_eq_refl |].
   intros ρ Hρ. destruct (Hshape ρ Hρ) as [V HV].
@@ -185,7 +187,7 @@ Qed.
 
 (** A term of an extension by [A], read in the extension by an equal
     [A'], keeps its denotation. *)
-Lemma set_denotes_ctx_conv_ass : forall Γ κ A A' M FA FA' FM, fn_kinds_unique ->
+Lemma set_denotes_ctx_conv_ass {GC : GCtx} : forall Γ κ A A' M FA FA' FM, fn_kinds_unique ->
     (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ -> gc_deps ⍮ gc_stack ⍮ ce_ass κ A' :: Γ ⊢ˢ sb_id : ce_ass κ A :: Γ ->
     set_denotes T γ Γ A FA -> set_denotes T γ Γ A' FA' -> (forall ρ, set_env_in T γ Γ ρ -> set_eq (FA ρ) (FA' ρ)) ->
@@ -201,20 +203,19 @@ Qed.
 
 (** [Π A B ≈ Π A' B'], into the sort of the codomain's kind over a
     universe. *)
-Lemma set_rule_pi_cong : forall Γ κd κc A A' B B' U FU FS FA FA' FS' FB FB', fn_kinds_unique ->
-    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ->
-    gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ⊢ˢ sb_id : ce_ass κd A :: Γ -> pi_kinds κd κc ->
-    set_denotes T γ Γ U FU -> (forall ρ, set_env_in T γ Γ ρ -> exists V, universe_shape FU ρ V) ->
-    set_exp_eq_with T γ Γ (abs_kind_sort κd U) A A' FS FA FA' ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) B B' FS' FB FB' ->
-    set_rel_exp_eq T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A' B').
+Lemma set_rule_pi_cong : forall Γ κd κc A A' B B' U, set_ctx_slots Θ Ξ T γ Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A :: Γ -> ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A' :: Γ ->
+    Θ ⍮ Ξ ⍮ ce_ass κd A' :: Γ ⊢ˢ sb_id : ce_ass κd A :: Γ -> pi_kinds κd κc -> set_universe Θ Ξ T γ Γ U ->
+    set_exp_eq Θ Ξ T γ Γ (abs_kind_sort κd U) A A' ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) (exp_wk (abs_kind_sort κc U) wk_shift) B B' ->
+    set_exp_eq Θ Ξ T γ Γ (abs_kind_sort κc U) (a_pi κd κc A B) (a_pi κd κc A' B').
 Proof.
-  intros * Hfn Hmods HΓ Hc Hc' Hσ Hk HU Hshape [HS HA HA' EA HAm] [HS' HB HB' EB HBm].
-  destruct (set_rule_pi Γ κd κc A B U FU FS FA FA FS' FB FB HΓ Hc Hk HU Hshape
-              (Build_set_exp_eq_with _ _ _ _ _ _ _ _ _ HS HA HA (fun _ _ => set_eq_refl _) HAm)
-              (Build_set_exp_eq_with _ _ _ _ _ _ _ _ _ HS' HB HB (fun _ _ => set_eq_refl _) HBm))
-    as (FK & FL & _ & [HK HL _ _ HLm]).
+  intros * HΓ Hc Hc' Hσ Hk HUe HAe HBe.
+  pose proof (set_rule_pi _ _ _ _ _ _ HΓ Hc Hk HUe (set_exp_eq_left_refl _ _ _ _ _ _ _ _ HAe)
+                (set_exp_eq_left_refl _ _ _ _ _ _ _ _ HBe)) as Hpi.
+  set_open. destruct HΓ as [HΓ _].
+  destruct HAe as (FS & FA & FA' & [HS HA HA' EA HAm]). destruct HBe as (FS' & FB & FB' & [HS' HB HB' EB HBm]).
+  destruct Hpi as (FK & FL & _ & [HK HL _ _ HLm]).
   pose proof (set_denotes_ctx_conv_ass _ _ _ _ _ _ _ _ Hfn Hmods HΓ Hc Hσ HA HA' EA HB') as HB''.
   exists FK, FL, (pi_denotation κd κc FA' FB'). constructor; [exact HK | exact HL | apply set_denotes_pi; assumption | | exact HLm].
   - intros ρ Hρ. eapply set_eq_trans; [exact (set_denotes_agree _ _ _ _ _ _ _ HL (set_denotes_pi _ _ κc _ _ _ _ HΓ Hc HA HB) Hρ) |].
@@ -237,7 +238,7 @@ Definition fn_denotation (κd κc : abs_kind) (FA FM : set_env -> aczel_set) (ρ
   | _ => graph_set (code_carrier (FA ρ)) (body_function κd FM ρ)
   end.
 
-Lemma set_denotes_fn : forall Γ κd κc A M C B FA FM, fn_kinds_unique -> set_ctx T γ Γ ->
+Lemma set_denotes_fn {GC : GCtx} : forall Γ κd κc A M C B FA FM, fn_kinds_unique -> set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc C B -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     set_denotes T γ Γ A FA -> set_denotes T γ (ce_ass κd A :: Γ) M FM ->
     set_denotes T γ Γ (a_fn A M) (fn_denotation κd κc FA FM).
@@ -265,8 +266,8 @@ Proof.
                                   | exact Hacross]).
 Qed.
 
-(** The λ rule: [λ A M : Π{κd,κc} A B]. *)
-Lemma set_rule_fn_with : forall Γ κd κc i A M B FA FS FB FB2 FB' FM FM2, fn_kinds_unique -> set_ctx T γ Γ ->
+(** A λ at one context, at the denotations of its parts. *)
+Lemma set_exp_eq_with_fn {GC : GCtx} : forall Γ κd κc i A M B FA FS FB FB2 FB' FM FM2, fn_kinds_unique -> set_ctx T γ Γ ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
     set_denotes T γ Γ A FA ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
@@ -298,27 +299,33 @@ Proof.
     intros x y Hxa E. apply code_carrier_resp. exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HB Hρ _ _ Hxa E).
 Qed.
 
-Corollary set_rule_fn : forall Γ κd κc i A M B FA FS FB FB2 FB' FM FM2, fn_kinds_unique -> set_ctx T γ Γ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
-    set_denotes T γ Γ A FA ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M FB' FM FM2 ->
-    set_rel_exp_eq T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A M).
-Proof. intros. do 3 eexists. eapply set_rule_fn_with; eassumption. Qed.
+(** The λ rule: [λ A M : Π{κd,κc} A B]. *)
+Lemma set_rule_fn : forall Γ κd κc i Srt A M B, set_ctx_slots Θ Ξ T γ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A :: Γ ->
+    set_exp_eq Θ Ξ T γ Γ Srt A A ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) B M M ->
+    set_exp_eq Θ Ξ T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A M).
+Proof.
+  intros * HΓ HT Hc HAe HBe HMe. set_open. destruct HΓ as [HΓ _].
+  destruct HAe as (FS & FA & FA2 & [_ HA _ _ _]). destruct HBe as (FS1 & FB & FB2 & HBe). destruct HMe as (FB' & FM & FM2 & HMe).
+  do 3 eexists. exact (set_exp_eq_with_fn _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hfn HΓ HT Hc HA HBe HMe).
+Qed.
 
 (** [λ A M ≈ λ A' M']. *)
-Lemma set_rule_fn_cong : forall Γ κd κc i A A' M M' B C' B' Srt FS FA FA' FS2 FB FB2 FB3 FM FM', fn_kinds_unique ->
-    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A' M' : a_pi κd κc C' B' ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ->
-    gc_deps ⍮ gc_stack ⍮ ce_ass κd A' :: Γ ⊢ˢ sb_id : ce_ass κd A :: Γ ->
-    set_exp_eq_with T γ Γ Srt A A' FS FA FA' ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS2 FB FB2 ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M' FB3 FM FM' ->
-    set_rel_exp_eq T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A' M').
+Lemma set_rule_fn_cong : forall Γ κd κc i A A' M M' B C' B' Srt, set_ctx_slots Θ Ξ T γ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A' M' : a_pi κd κc C' B' ->
+    ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A :: Γ -> ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A' :: Γ ->
+    Θ ⍮ Ξ ⍮ ce_ass κd A' :: Γ ⊢ˢ sb_id : ce_ass κd A :: Γ ->
+    set_exp_eq Θ Ξ T γ Γ Srt A A' ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) B M M' ->
+    set_exp_eq Θ Ξ T γ Γ (a_pi κd κc A B) (a_fn A M) (a_fn A' M').
 Proof.
-  intros * Hfn Hmods HΓ HT HT' Hc Hc' Hσ [HS HA HA' EA _] HB [HB3 HM HM' EM HMm].
-  destruct (set_rule_fn_with _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hfn HΓ HT Hc HA HB
+  intros * HΓ HT HT' Hc Hc' Hσ HAe HBe HMe. set_open. destruct HΓ as [HΓ _].
+  destruct HAe as (FS & FA & FA' & [HS HA HA' EA _]). destruct HBe as (FS2 & FB & FB2 & HB).
+  destruct HMe as (FB3 & FM & FM' & [HB3 HM HM' EM HMm]).
+  destruct (set_exp_eq_with_fn _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hfn HΓ HT Hc HA HB
               (Build_set_exp_eq_with _ _ _ _ _ _ _ _ _ HB3 HM HM (fun _ _ => set_eq_refl _) HMm))
     as [HP HL _ _ Hm].
   pose proof (set_denotes_ctx_conv_ass _ _ _ _ _ _ _ _ Hfn Hmods HΓ Hc Hσ HA HA' EA HM') as HM''.
@@ -333,7 +340,7 @@ Qed.
 
 (** ** Applications *)
 
-Lemma set_denotes_app : forall Γ M N FM FN, set_denotes T γ Γ M FM -> set_denotes T γ Γ N FN ->
+Lemma set_denotes_app {GC : GCtx} : forall Γ M N FM FN, set_denotes T γ Γ M FM -> set_denotes T γ Γ N FN ->
     set_denotes T γ Γ (a_app M N) (fun ρ => set_apply (FM ρ) (FN ρ)).
 Proof.
   intros * HM HN. constructor.
@@ -342,9 +349,9 @@ Proof.
       [exact (set_denotes_unique _ _ _ _ _ HM _ _ _ Hr ltac:(eassumption)) | exact (set_denotes_unique _ _ _ _ _ HN _ _ _ Hr ltac:(eassumption))].
 Qed.
 
-(** The application rule, at the codomain's instance [C], whose
-    denotation is the codomain's at the argument. *)
-Lemma set_rule_app : forall Γ κd κc i A B M N C FA FS FB FB2 FP FM FM2 FA' FN FN2 FC, set_ctx T γ Γ ->
+(** An application at one context, at a type [C] whose denotation is the
+    codomain's at the argument. *)
+Lemma set_app_at_codomain {GC : GCtx} : forall Γ κd κc i A B M N C FA FS FB FB2 FP FM FM2 FA' FN FN2 FC, set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> set_denotes T γ Γ A FA ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
     set_exp_eq_with T γ Γ (a_pi κd κc A B) M M FP FM FM2 ->
@@ -376,9 +383,9 @@ Proof.
     intros x y Hx E. apply code_carrier_resp. exact (body_function_respects _ _ _ _ _ _ _ HΓ HA HB Hρ _ _ Hx E).
 Qed.
 
-(** [M ≈ M'] and [N ≈ N'] give [M N ≈ M' N'], at the codomain's instance
-    [C] at [N]. *)
-Lemma set_rule_app_cong : forall Γ κd κc i A B M M' N N' C FA FS FB FB2 FP FM FM' FA' FN FN' FC, set_ctx T γ Γ ->
+(** [M ≈ M'] and [N ≈ N'] give [M N ≈ M' N'] at one context, at a type
+    [C] whose denotation is the codomain's at [N]. *)
+Lemma set_app_cong_at_codomain {GC : GCtx} : forall Γ κd κc i A B M M' N N' C FA FS FB FB2 FP FM FM' FA' FN FN' FC, set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> set_denotes T γ Γ A FA ->
     set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
     set_exp_eq_with T γ Γ (a_pi κd κc A B) M M' FP FM FM' ->
@@ -387,7 +394,7 @@ Lemma set_rule_app_cong : forall Γ κd κc i A B M M' N N' C FA FS FB FB2 FP FM
     set_rel_exp_eq T γ Γ C (a_app M N) (a_app M' N').
 Proof.
   intros * HΓ Hc HA HB [HP HM HM' EM HMm] [HA' HN HN' EN HNm] HC EC.
-  destruct (set_rule_app Γ κd κc i A B M N C FA FS FB FB2 FP FM FM FA' FN FN FC HΓ Hc HA HB
+  destruct (set_app_at_codomain Γ κd κc i A B M N C FA FS FB FB2 FP FM FM FA' FN FN FC HΓ Hc HA HB
               (Build_set_exp_eq_with _ _ _ _ _ _ _ _ _ HP HM HM (fun ρ _ => set_eq_refl _) HMm)
               (Build_set_exp_eq_with _ _ _ _ _ _ _ _ _ HA' HN HN (fun ρ _ => set_eq_refl _) HNm) HC EC)
     as (FC0 & FL & _ & [HC0 HL _ _ HLm]).
@@ -399,15 +406,16 @@ Qed.
 (** ** η *)
 
 (** [M ≈ λ A (M[↑] #0) : Π A B]. *)
-Lemma set_rule_fn_eta : forall Γ κd κc i A B M FA FS FB FB2 FP FM FM2, fn_kinds_unique ->
-    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A (a_app (exp_wk M wk_shift) (a_var 0)) : a_pi κd κc A B ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ -> set_denotes T γ Γ A FA ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
-    set_exp_eq_with T γ Γ (a_pi κd κc A B) M M FP FM FM2 ->
-    set_rel_exp_eq T γ Γ (a_pi κd κc A B) M (a_fn A (a_app (exp_wk M wk_shift) (a_var 0))).
+Lemma set_rule_fn_eta : forall Γ κd κc i Srt A B M, set_ctx_slots Θ Ξ T γ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A (a_app (exp_wk M wk_shift) (a_var 0)) : a_pi κd κc A B ->
+    ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A :: Γ -> set_exp_eq Θ Ξ T γ Γ Srt A A ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B ->
+    set_exp_eq Θ Ξ T γ Γ (a_pi κd κc A B) M M ->
+    set_exp_eq Θ Ξ T γ Γ (a_pi κd κc A B) M (a_fn A (a_app (exp_wk M wk_shift) (a_var 0))).
 Proof.
-  intros * Hfn Hmods HΓ HT Hc HA [HS HB _ _ HBm] [HP HM _ _ HMm].
+  intros * HΓ HT Hc HAe HBe HMe. set_open. destruct HΓ as [HΓ _].
+  destruct HAe as (FS0 & FA & FA2 & [_ HA _ _ _]). destruct HBe as (FS & FB & FB2 & [HS HB _ _ HBm]).
+  destruct HMe as (FP & FM & FM2 & [HP HM _ _ HMm]).
   set (Fb := fun ρ' => set_apply (FM (set_env_tail ρ')) (set_entry_value (ρ' 0))).
   assert (Hb : set_denotes T γ (ce_ass κd A :: Γ) (a_app (exp_wk M wk_shift) (a_var 0)) Fb).
   { apply set_denotes_of_exists; [exact Hfn | exact Hmods | split; [exact HΓ | exists FA; exact HA] |].
@@ -433,7 +441,7 @@ Qed.
 
 (** A term of [Γ ▹{κ} A] denotes, with a term [N] of [A] substituted, its
     value at [N]'s. *)
-Lemma set_denotes_single_sub : forall Γ κ A N X FA FN FX, fn_kinds_unique ->
+Lemma set_denotes_single_sub {GC : GCtx} : forall Γ κ A N X FA FN FX, fn_kinds_unique ->
     (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A :: Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κ A :: Γ ->
     set_denotes T γ Γ A FA -> set_denotes T γ Γ N FN -> (forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA ρ))) ->
@@ -447,17 +455,18 @@ Proof.
 Qed.
 
 (** [(λ A M) N ≈ M[N] : B[N]]. *)
-Lemma set_rule_pi_beta : forall Γ κd κc i A M B N FA FS FB FB2 FB' FM FM2 FA' FN FN2, fn_kinds_unique ->
-    (forall q, set_module_eq γ (global_module γ q) (global_module γ q)) -> set_ctx T γ Γ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κd A :: Γ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κd A :: Γ ->
-    set_denotes T γ Γ A FA ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B FS FB FB2 ->
-    set_exp_eq_with T γ (ce_ass κd A :: Γ) B M M FB' FM FM2 ->
-    set_exp_eq_with T γ Γ A N N FA' FN FN2 ->
-    set_rel_exp_eq T γ Γ (exp_sub B (sb_extend sb_id (se_exp N))) (a_app (a_fn A M) N) (exp_sub M (sb_extend sb_id (se_exp N))).
+Lemma set_rule_pi_beta : forall Γ κd κc i Srt A M B N, set_ctx_slots Θ Ξ T γ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B -> ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A :: Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κd A :: Γ ->
+    set_exp_eq Θ Ξ T γ Γ Srt A A ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) B M M ->
+    set_exp_eq Θ Ξ T γ Γ A N N ->
+    set_exp_eq Θ Ξ T γ Γ (exp_sub B (sb_extend sb_id (se_exp N))) (a_app (a_fn A M) N) (exp_sub M (sb_extend sb_id (se_exp N))).
 Proof.
-  intros * Hfn Hmods HΓ HT Hc Hσ HA [HS HB _ _ HBm] [HB' HM _ _ HMm] [HA' HN _ _ HNm].
+  intros * HΓ HT Hc Hσ HAe HBe HMe HNe. set_open. destruct HΓ as [HΓ _].
+  destruct HAe as (FS0 & FA & FA2 & [_ HA _ _ _]). destruct HBe as (FS & FB & FB2 & [HS HB _ _ HBm]).
+  destruct HMe as (FB' & FM & FM2 & [HB' HM _ _ HMm]). destruct HNe as (FA' & FN & FN2 & [HA' HN _ _ HNm]).
   assert (HNa : forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA ρ)))
     by (intros ρ Hρ; eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).
   exists (fun ρ => body_function κd FB ρ (FN ρ)), (fun ρ => set_apply (fn_denotation κd κc FA FM ρ) (FN ρ)),
@@ -482,6 +491,44 @@ Proof.
   - intros ρ Hρ. eapply set_mem_eq_l; [apply set_eq_sym; exact (Heq ρ Hρ) |].
     eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HB' HB (Hx ρ Hρ)) |].
     apply HMm. exact (Hx ρ Hρ).
+Qed.
+
+(** ** The Application Rules *)
+
+(** The application rule: [M N : B[N]]. *)
+Lemma set_rule_app : forall Γ κd κc i Srt A B M N, set_ctx_slots Θ Ξ T γ Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A :: Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κd A :: Γ ->
+    set_exp_eq Θ Ξ T γ Γ Srt A A ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B ->
+    set_exp_eq Θ Ξ T γ Γ (a_pi κd κc A B) M M -> set_exp_eq Θ Ξ T γ Γ A N N ->
+    set_exp_eq Θ Ξ T γ Γ (exp_sub B (sb_extend sb_id (se_exp N))) (a_app M N) (a_app M N).
+Proof.
+  intros * HΓ Hc Hσ HAe HBe HMe HNe. set_open. destruct HΓ as [HΓ _].
+  destruct HAe as (FS0 & FA & FA2 & [_ HA _ _ _]). destruct HBe as (FS & FB & FB2 & HBe).
+  destruct HMe as (FP & FM & FM2 & HMe). destruct HNe as (FA' & FN & FN2 & HNe).
+  pose proof HBe as [_ HB _ _ _]. pose proof HNe as [HA' HN _ _ HNm].
+  assert (HNa : forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA ρ)))
+    by (intros ρ Hρ; eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).
+  exact (set_app_at_codomain _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HΓ Hc HA HBe HMe HNe
+           (set_denotes_single_sub _ _ _ _ _ _ _ _ Hfn Hmods HΓ Hc Hσ HA HN HNa HB) (fun _ _ => set_eq_refl _)).
+Qed.
+
+(** [M ≈ M'] and [N ≈ N'] give [M N ≈ M' N' : B[N]]. *)
+Lemma set_rule_app_cong : forall Γ κd κc i Srt A B M M' N N', set_ctx_slots Θ Ξ T γ Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ ce_ass κd A :: Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_extend sb_id (se_exp N) : ce_ass κd A :: Γ ->
+    set_exp_eq Θ Ξ T γ Γ Srt A A ->
+    set_exp_eq Θ Ξ T γ (ce_ass κd A :: Γ) (abs_kind_sort κc (a_typ i)) B B ->
+    set_exp_eq Θ Ξ T γ Γ (a_pi κd κc A B) M M' -> set_exp_eq Θ Ξ T γ Γ A N N' ->
+    set_exp_eq Θ Ξ T γ Γ (exp_sub B (sb_extend sb_id (se_exp N))) (a_app M N) (a_app M' N').
+Proof.
+  intros * HΓ Hc Hσ HAe HBe HMe HNe. set_open. destruct HΓ as [HΓ _].
+  destruct HAe as (FS0 & FA & FA2 & [_ HA _ _ _]). destruct HBe as (FS & FB & FB2 & HBe).
+  destruct HMe as (FP & FM & FM' & HMe). destruct HNe as (FA' & FN & FN' & HNe).
+  pose proof HBe as [_ HB _ _ _]. pose proof HNe as [HA' HN _ _ HNm].
+  assert (HNa : forall ρ, set_env_in T γ Γ ρ -> set_mem (FN ρ) (code_carrier (FA ρ)))
+    by (intros ρ Hρ; eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HA' HA Hρ) | apply HNm; exact Hρ]).
+  exact (set_app_cong_at_codomain _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HΓ Hc HA HBe HMe HNe
+           (set_denotes_single_sub _ _ _ _ _ _ _ _ Hfn Hmods HΓ Hc Hσ HA HN HNa HB) (fun _ _ => set_eq_refl _)).
 Qed.
 
 End Functions.
