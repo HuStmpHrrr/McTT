@@ -401,10 +401,7 @@ Proof.
   - assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B) by (eapply wf_fn; eassumption).
     ft_by_kripke (set_rule_pi_beta Θ Ξ T γ Γ κd κc i Srt A M B N).
   - split; [ft_cs |].
-    eapply (set_rule_elim_iota T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
-      try ft_from_ih;
-      intros; match goal with |- set_ctx _ _ _ =>
-        solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [ft_from_ih | reflexivity]] end.
+    ft_kripke. eapply set_rule_elim_iota; first [eassumption | reflexivity | ft_from_ih].
   - split; [ft_cs |].
     match goal with |- set_rel_exp_eq _ _ ?G ?A ?L ?R => assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ L ≈ R : A) end;
       [ apply Mv_eq; eapply wf_exp_eq_elim_view; first [eassumption | reflexivity] |].

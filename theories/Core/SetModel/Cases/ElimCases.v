@@ -5863,7 +5863,59 @@ Qed.
     propositions, the constructor's value is in its member's carrier
     ([iota_scrutinee]), so the type is a proposition, of the branch's value
     as its proof. *)
-Lemma set_rule_elim_iota : forall Γ r p Us m Bks D Mm bm c gs Ps As n B i,
+(** [set_elim_iota_setting Γ r p m Bks D Mm bm c gs Ps As n B i ρb FS FB]:
+    the facts at one context the [ι] rule rests on, its premises read
+    there: the branch [B] of the constructor [c] is of its type, denoting
+    [FS] and [FB], and [ρb] gives, at every environment, the branch's
+    environment the [ι] substitution reads. *)
+Record set_elim_iota_setting (Γ : ctx) (r : abs_kind) (p : qname) (m : nat) (Bks : list eblock) (D : ind_decl) (Mm : imember)
+    (bm : eblock) (c : string) (gs : list carg) (Ps As : list exp) (n : nat) (B : exp) (i : nat)
+    (ρb : set_env -> set_env) (FS FB : set_env -> aczel_set) : Prop :=
+  { (** The context denotes *)
+    set_elim_iota_setting_ctx : set_ctx T γ Γ
+    (** The eliminator at the constructor is typed *)
+  ; set_elim_iota_setting_typed : gc_deps ⍮ gc_stack ⍮ Γ ⊢ a_elim r p (List.firstn (ind_nu D) Ps) m Bks
+        (apps_exp (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+           (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
+      : exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++
+          apps_exp (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+            (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil))
+    (** The branch is of its type, denoting [FS] and [FB] *)
+  ; set_elim_iota_setting_branch : exists FB', set_exp_eq_with T γ
+      (elim_bctx r p D Mm gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
+      (elim_branch_type p D m Mm c gs (eb_motive bm) (List.firstn (ind_nu D) Ps)) B B FS FB FB'
+    (** At every environment, the branch's environment *)
+  ; set_elim_iota_setting_env : forall ρ, set_env_in T γ Γ ρ ->
+      iota_branch_with Γ ρ r p (List.firstn (ind_nu D) Ps) Bks D m Mm c gs Ps As (ρb ρ)
+    (** The type denotes the branch's type there *)
+  ; set_elim_iota_setting_type : set_denotes T γ Γ
+      (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++
+         apps_exp (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+           (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)))
+      (fun ρ => FS (ρb ρ))
+    (** The right side denotes the branch's value there *)
+  ; set_elim_iota_setting_rhs : set_denotes T γ Γ
+      (exp_sub B (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ As ++
+         elim_ihs r p D (List.firstn (ind_nu D) Ps) Bks (sb_of_list sb_id Ps) (im_nn Mm) gs As)))
+      (fun ρ => FB (ρb ρ))
+    (** The block of the member *)
+  ; set_elim_iota_setting_block : List.nth_error Bks m = Some bm
+    (** The branch of the constructor *)
+  ; set_elim_iota_setting_lookup : brs_lookup (eb_brs bm) c = Some (n, B)
+    (** Into propositions, the type is a proposition *)
+  ; set_elim_iota_setting_prop : r = ak_propositional -> forall ρ, set_env_in T γ Γ ρ -> is_prop_code (FS (ρb ρ)) }.
+
+(** The [ι] rule's setting, from its premises.  At every environment, the
+    parameters and the arguments read an environment of the closed context
+    of the constructor's arguments and the member's parameters, past which
+    it is the environment itself; there the branch's environment is one
+    of its context, read by the [ι] substitution, at which the branch
+    reads the eliminator's value at the constructor ([iota_branch]); the
+    equation's type reads as the branch's type there
+    ([elim_branch_type_iota]); into propositions, the constructor's value
+    is in its member's carrier ([iota_scrutinee]), so the type is a
+    proposition. *)
+Lemma set_elim_iota_setting_of_premises : forall Γ r p Us m Bks D Mm bm c gs Ps As n B i,
     set_ctx T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
     ind_lookup Θs Ξs p = Some D ->
@@ -5912,14 +5964,7 @@ Lemma set_rule_elim_iota : forall Γ r p Us m Bks D Mm bm c gs Ps As n B i,
          (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B) ->
     brs_lookup (eb_brs bm) c = Some (n, B) ->
     motive_kind r ->
-    set_rel_exp_eq T γ Γ
-      (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++
-         apps_exp (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
-           (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)))
-      (a_elim r p Us m Bks (apps_exp (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
-                              (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As)))
-      (exp_sub B (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ As ++
-         elim_ihs r p D (List.firstn (ind_nu D) Ps) Bks (sb_of_list sb_id Ps) (im_nn Mm) gs As))).
+    exists ρb FS FB, set_elim_iota_setting Γ r p m Bks D Mm bm c gs Ps As n B i ρb FS FB.
 Proof.
   intros Γ r p Us m Bks D Mm bm c gs Ps As n B i HΓ HcΓ HDsrc Hm Hbm Hgs HlB HPl HPs HPsem HAl HAs HAsem HUs Hcnt Hsc HMty HMotsem
     HMx HMxsem Hbrs HBx HBxsem Hn HBty HBsem Hlook Hmk.
@@ -6043,11 +6088,17 @@ Proof.
   { apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
     destruct (Hbr ρ Hρ) as [Henv Hag _].
     exact (interp_realized _ (ρb ρ) Γ ρ _ _ _ (proj2 (Hbctx m Mm _ gs Hm Hgs)) Hδ Hag (set_denotes_exists _ _ _ _ _ HFB _ Henv)). }
-  assert (Hcase : r = ak_propositional \/ r <> ak_propositional) by (destruct r; first [left; reflexivity | right; discriminate]).
-  destruct Hcase as [Er | Hr0].
-  - (* into propositions: the type is a proposition, the branch its proof *)
-    assert (Hpc : forall ρ, set_env_in T γ Γ ρ -> is_prop_code (FS (ρb ρ))).
-    { intros ρ Hρ. destruct (Hcars ρ Hρ) as [U Hcar].
+  exists ρb, FS, FB. constructor.
+  - exact HΓ.
+  - exact HLt.
+  - exists FB'. exact HBr0.
+  - exact Hbr.
+  - exact HTA.
+  - exact HFR.
+  - exact Hbm.
+  - exact Hlook.
+  - (* into propositions: the type is a proposition *)
+    intros Er ρ Hρ. destruct (Hcars ρ Hρ) as [U Hcar].
       destruct (iota_scrutinee Γ ρ r p Us Bks V D i Fσ U no_extra no_extra_resp HΓ HcΓ Hρ HDsrc Hσ HDt Hcl HUl HMwf HMot HMctx HMh HBk
                   Hcar Hbτ Hbctx Hbrs HBr HV HBt HUt (fun k ns v _ _ _ => no_extra_point D _ k ns v) m Mm (set_constructor_name cs) gs (θc ρ) Ps As Hm Hrv Hgs (Hθc_in ρ Hρ)
                   (Hθc_us ρ) eq_refl HPl HPs HAl HAs (Hθc_ag ρ Hρ)) as (w & [HNs Hw Hfact]).
@@ -6065,20 +6116,47 @@ Proof.
       pose proof (set_denotes_exists _ _ _ _ _ HTA _ Hρ) as HT2. cbn beta in HT2.
       pose proof (set_interp_functional T γ Hfn Hmods _ _ _ _ HT1 _ _ (set_env_rel_eq T γ _ _ _ Hρ) HT2) as E.
       eapply is_prop_code_resp; [exact E |].
-      rewrite Er in HMotw. cbn [abs_kind_sort] in HMotw. exact (set_prop_is_prop_code T γ _ _ _ _ _ _ HMotw Hθm). }
-    exists (fun ρ => FS (ρb ρ)), (fun _ => empty_set), (fun ρ => FB (ρb ρ)).
-    constructor; [exact HTA | | exact HFR | |].
-    + apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ _. rewrite Er. apply set_interp_elim_prop.
-    + intros ρ Hρ. destruct (Hbr ρ Hρ) as [Henv _ _].
-      apply set_eq_sym. exact (prop_code_carrier_empty _ _ (Hpc ρ Hρ) (HFBm _ Henv)).
-    + intros ρ Hρ. destruct (Hbr ρ Hρ) as [Henv _ _]. pose proof (HFBm _ Henv) as Hm0.
-      eapply set_mem_eq_l; [exact (prop_code_carrier_empty _ _ (Hpc ρ Hρ) Hm0) | exact Hm0].
-  - (* into types: the eliminator reads the branch's value *)
-    exists (fun ρ => FS (ρb ρ)), (fun ρ => FB (ρb ρ)), (fun ρ => FB (ρb ρ)).
-    constructor; [exact HTA | | exact HFR | intros; apply set_eq_refl |].
-    + apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ.
-      destruct (Hbr ρ Hρ) as [_ _ Helim]. exact (Helim Hr0 _ bm n B FS FB FB' HLt Hbm Hlook HBr0).
-    + intros ρ Hρ. destruct (Hbr ρ Hρ) as [Henv _ _]. exact (HFBm _ Henv).
+      rewrite Er in HMotw. cbn [abs_kind_sort] in HMotw. exact (set_prop_is_prop_code T γ _ _ _ _ _ _ HMotw Hθm).
+Qed.
+
+(** The value of the eliminator at a constructor, by the [ι] rule: a
+    proof, into propositions, otherwise the branch's value. *)
+Definition iota_value (r : abs_kind) (FB : set_env -> aczel_set) (ρb : set_env -> set_env) (ρ : set_env) : aczel_set :=
+  match r with ak_propositional => empty_set | _ => FB (ρb ρ) end.
+
+(** The left side of [ι] denotes its value. *)
+Lemma set_elim_iota_lhs_denotes : forall Γ r p m Bks D Mm bm c gs Ps As n B i ρb FS FB,
+    set_elim_iota_setting Γ r p m Bks D Mm bm c gs Ps As n B i ρb FS FB ->
+    set_denotes T γ Γ (a_elim r p (List.firstn (ind_nu D) Ps) m Bks (apps_exp (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+                         (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As)))
+      (iota_value r FB ρb).
+Proof.
+  intros * [HΓ HLt (FB' & HBr0) Hbr _ _ Hbm Hlook _].
+  apply (set_denotes_of_exists T γ Hfn Hmods _ _ _ HΓ). intros ρ Hρ. unfold iota_value.
+  destruct r; [| apply set_interp_elim_prop |];
+    (destruct (Hbr ρ Hρ) as [_ _ Helim]; exact (Helim ltac:(discriminate) _ bm n B FS FB FB' HLt Hbm Hlook HBr0)).
+Qed.
+
+(** The left side's value is the branch's. *)
+Lemma set_elim_iota_values : forall Γ r p m Bks D Mm bm c gs Ps As n B i ρb FS FB,
+    set_elim_iota_setting Γ r p m Bks D Mm bm c gs Ps As n B i ρb FS FB ->
+    forall ρ, set_env_in T γ Γ ρ -> set_eq (iota_value r FB ρb ρ) (FB (ρb ρ)).
+Proof.
+  intros * [_ _ (FB' & [_ _ _ _ HFBm]) Hbr _ _ _ _ Hpc] ρ Hρ. unfold iota_value.
+  destruct r; [apply set_eq_refl | | apply set_eq_refl].
+  destruct (Hbr ρ Hρ) as [Henv _ _].
+  apply set_eq_sym. exact (prop_code_carrier_empty _ _ (Hpc eq_refl ρ Hρ) (HFBm _ Henv)).
+Qed.
+
+(** The left side's value is of the type. *)
+Lemma set_elim_iota_value_mem : forall Γ r p m Bks D Mm bm c gs Ps As n B i ρb FS FB,
+    set_elim_iota_setting Γ r p m Bks D Mm bm c gs Ps As n B i ρb FS FB ->
+    forall ρ, set_env_in T γ Γ ρ -> set_mem (iota_value r FB ρb ρ) (code_carrier (FS (ρb ρ))).
+Proof.
+  intros * [_ _ (FB' & [_ _ _ _ HFBm]) Hbr _ _ _ _ Hpc] ρ Hρ. unfold iota_value.
+  destruct (Hbr ρ Hρ) as [Henv _ _]. pose proof (HFBm _ Henv) as Hm0.
+  destruct r; [exact Hm0 | | exact Hm0].
+  eapply set_mem_eq_l; [exact (prop_code_carrier_empty _ _ (Hpc eq_refl ρ Hρ) Hm0) | exact Hm0].
 Qed.
 
 (** ** The Congruence of the Eliminator *)
@@ -6733,6 +6811,99 @@ Proof.
   constructor; [eapply set_elim_motive_denotes; eassumption | eapply set_elim_denotes; eassumption
                | eapply set_elim_denotes; eassumption | intros; apply set_eq_refl
                | exact (set_elim_setting_value _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hset)].
+Qed.
+
+(** The [ι] rule: the eliminator at a constructor is the constructor's
+    branch, at the non-uniform parameters, the arguments and the recursive
+    results. *)
+Lemma set_rule_elim_iota : forall Γ r p Us m Bks D Mm bm c gs Ps As n B i,
+    set_ctx_slots Θr Ξr T γ Γ ->
+    ⊢ Θr ⍮ Ξr ⍮ Γ ->
+    ind_lookup Θr Ξr p = Some D ->
+    ind_member D m = Some Mm ->
+    List.nth_error Bks m = Some bm ->
+    ind_con Mm c = Some gs ->
+    List.length Bks = ind_nblk D ->
+    List.length Ps = im_np D Mm ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ P : A) ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) sb_id Ps) k = Some A ->
+       set_exp_eq Θr Ξr T γ Γ A P P) ->
+    List.length As = List.length gs ->
+    (forall k N A, List.nth_error As k = Some N ->
+       List.nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list sb_id Ps) As) k = Some A -> Θr ⍮ Ξr ⍮ Γ ⊢ N : A) ->
+    (forall k N A, List.nth_error As k = Some N ->
+       List.nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list sb_id Ps) As) k = Some A -> set_exp_eq Θr Ξr T γ Γ A N N) ->
+    Us = List.firstn (ind_nu D) Ps ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_binder_count b = S (im_nn Mk)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ˣ ce_ass ak_relevant (eb_scrutinee_type b) :: tele_sub (im_nparams Mk) (sb_of_list sb_id (List.firstn (ind_nu D) Ps))
+                    ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       Θr ⍮ Ξr ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : abs_kind_sort r (a_typ i)) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       set_exp_eq Θr Ξr T γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) (abs_kind_sort r (a_typ i)) (eb_motive b) (eb_motive b)) ->
+    (forall k Mk, ind_member D k = Some Mk ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk, ind_member D k = Some Mk ->
+       set_ext_eq_suffixes Θr Ξr T γ Γ (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       Θr ⍮ Ξr ⍮ Γ ⊢ˣ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                    ≈ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       set_ext_eq_suffixes Θr Ξr T γ Γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))
+         (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       Θr ⍮ Ξr ⍮ elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+         : elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+       set_exp_eq Θr Ξr T γ (elim_bctx r p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ)
+         (elim_branch_type p D k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) B B) ->
+    brs_lookup (eb_brs bm) c = Some (n, B) ->
+    motive_kind r ->
+    set_exp_eq Θr Ξr T γ Γ
+      (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++
+         apps_exp (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+           (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)))
+      (a_elim r p Us m Bks (apps_exp (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+                              (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As)))
+      (exp_sub B (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ As ++
+         elim_ihs r p D (List.firstn (ind_nu D) Ps) Bks (sb_of_list sb_id Ps) (im_nn Mm) gs As))).
+Proof.
+  intros Γ r p Us m Bks D Mm bm c gs Ps As n B i HΓ HcΓ HDsrc Hm Hbm Hgs HlB HPl HPs0 HPsem0 HAl HAs0 HAsem0 HUs Hcnt Hsc0
+    HMty0 HMotsem0 HMx0 HMxsem0 Hbrs HBx0 HBxsem0 Hn HBty0 HBsem0 Hlook Hmk.
+  set_open. destruct HΓ as [HΓ _]. subst Us.
+  destruct (gctx_embedding_preserves_wf _ _ _ _ Hμe) as (_ & Mx & _ & _ & Me & _).
+  pose proof (fun k P A H1 H2 => Mx _ _ _ (HPs0 k P A H1 H2)) as HPs.
+  pose proof (fun k P A H1 H2 => HPsem0 k P A H1 H2 _ _ Hμ) as HPsem.
+  pose proof (fun k N A H1 H2 => Mx _ _ _ (HAs0 k N A H1 H2)) as HAs.
+  pose proof (fun k N A H1 H2 => HAsem0 k N A H1 H2 _ _ Hμ) as HAsem.
+  pose proof (fun k Mk b H1 H2 => Me _ _ _ (Hsc0 k Mk b H1 H2)) as Hsc.
+  pose proof (fun k Mk b H1 H2 => Mx _ _ _ (HMty0 k Mk b H1 H2)) as HMty.
+  pose proof (fun k Mk b H1 H2 => HMotsem0 k Mk b H1 H2 _ _ Hμ) as HMotsem.
+  pose proof (fun k Mk H1 => Me _ _ _ (HMx0 k Mk H1)) as HMx.
+  pose proof (fun k Mk H1 => set_ext_eq_left T γ _ _ _
+                (set_ext_eq_suffixes_eq T γ _ _ _ (HMxsem0 k Mk H1 _ _ Hμ) nil _ nil _ eq_refl eq_refl eq_refl)) as HMxsem.
+  pose proof (fun k Mk c gs H1 H2 => Me _ _ _ (HBx0 k Mk c gs H1 H2)) as HBx.
+  pose proof (fun k Mk c gs H1 H2 => set_ext_eq_left T γ _ _ _
+                (set_ext_eq_suffixes_eq T γ _ _ _ (HBxsem0 k Mk c gs H1 H2 _ _ Hμ) nil _ nil _ eq_refl eq_refl eq_refl)) as HBxsem.
+  pose proof (fun k Mk b c gs n B H1 H2 H3 H4 => Mx _ _ _ (HBty0 k Mk b c gs n B H1 H2 H3 H4)) as HBty.
+  pose proof (fun k Mk b c gs n B H1 H2 H3 H4 => HBsem0 k Mk b c gs n B H1 H2 H3 H4 _ _ Hμ) as HBsem.
+  cbv beta in HPs, HPsem, HAs, HAsem, Hsc, HMty, HMotsem, HMx, HMxsem, HBx, HBxsem, HBty, HBsem.
+  assert (Hex : exists ρb FS FB, set_elim_iota_setting Γ r p m Bks D Mm bm c gs Ps As n B i ρb FS FB)
+    by (eapply set_elim_iota_setting_of_premises; first [eassumption | reflexivity]).
+  destruct Hex as (ρb & FS & FB & Hset).
+  exists (fun ρ => FS (ρb ρ)), (iota_value r FB ρb), (fun ρ => FB (ρb ρ)).
+  constructor; [exact (set_elim_iota_setting_type _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hset)
+               | eapply set_elim_iota_lhs_denotes; eassumption
+               | exact (set_elim_iota_setting_rhs _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hset)
+               | eapply set_elim_iota_values; eassumption | eapply set_elim_iota_value_mem; eassumption].
 Qed.
 
 (** ** The Rules of Views' Constructors *)
