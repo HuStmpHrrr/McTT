@@ -555,12 +555,12 @@ Proof.
   - ft_by_kripke set_rule_me_var.
   - ft_by_kripke set_rule_me_lit.
   - match goal with |- _ /\ set_rel_modexp_eq _ _ ?G ?L ?Rt =>
-      assert (Hc : gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ L ≈ Rt) by (apply Mv_me; eapply wf_me_mem; eassumption) end.
+      assert (Hc : Θ ⍮ Ξ ⍮ G ⊢ᵐ L ≈ Rt) by (eapply wf_me_mem; eassumption) end.
     pose proof (wf_modexp_eq_refl_left Hc). pose proof (wf_modexp_eq_refl_right Hc).
-    ft_by set_rule_me_mem.
+    ft_by_kripke set_rule_me_mem.
   - split; [ft_cs | ft_kripke; eapply (set_rule_me_app Θ Ξ T γ Γ H H' N N' R _ B _ Srt R' _ B' _ Srt'); ft_prem].
   - ft_by_kripke set_rule_me_delta_slot.
-  - ft_by set_rule_me_delta_sel.
+  - ft_by_kripke set_rule_me_delta_sel.
   - split; [ft_cs |].
     match goal with |- context [me_lit (gu_open (tele_sub ?Δ ?σ) (gmod_sub ?Φ _))] =>
       replace (gu_open (tele_sub Δ σ) _) with (gunit_sub (gu_open Δ Φ) σ) by (rewrite gunit_sub_mk; reflexivity) end.

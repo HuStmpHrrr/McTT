@@ -22,9 +22,14 @@ From Mctt.Core.Completeness.Modules Require Sel.
 Import ListNotations.
 
 Section Sel.
-  Context {GC : GCtx}.
+  (** The context the rules' premises are read at *)
+  Variable Θ : gdeps.
+  Variable Ξ : gstack.
   Variable T : universe_tower.
   Variable γ : global_valuation.
+
+Section SelectionSteps.
+  Context {GC : GCtx}.
   Hypothesis Hfn : fn_kinds_unique.
   (** Every global module equals itself *)
   Hypothesis Hmods : forall q, set_module_eq γ (global_module γ q) (global_module γ q).
@@ -660,34 +665,40 @@ Proof.
   exact (set_member_known_of_source T γ Hgw Θs Ξs Hemb _ _ _ _ Hm1).
 Qed.
 
+End SelectionSteps.
+
+(** ** The Rules *)
+
 (** Submodules of equal module expressions are equal. *)
-Lemma set_rule_me_mem : forall Γ H H' y R1 Tl R1' Tl', set_ctx T γ Γ -> set_rel_modexp_eq T γ Γ H H' ->
-    mdenote Θs Ξs Γ (me_mem H y) R1 -> mdesc_mod_tele R1 = Some Tl ->
-    mdenote Θs Ξs Γ (me_mem H' y) R1' -> mdesc_mod_tele R1' = Some Tl' ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mem H' y ≈ me_mem H' y ->
-    set_rel_modexp_eq T γ Γ (me_mem H y) (me_mem H' y).
+Lemma set_rule_me_mem : forall Γ H H' y R1 Tl R1' Tl', set_ctx_slots Θ Ξ T γ Γ -> set_modexp_eq Θ Ξ T γ Γ H H' ->
+    mdenote Θ Ξ Γ (me_mem H y) R1 -> mdesc_mod_tele R1 = Some Tl ->
+    mdenote Θ Ξ Γ (me_mem H' y) R1' -> mdesc_mod_tele R1' = Some Tl' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H' y ≈ me_mem H' y ->
+    set_modexp_eq Θ Ξ T γ Γ (me_mem H y) (me_mem H' y).
 Proof.
-  intros * HΓ (F & F' & [HF HF' E Hv Hv' Hpr]) Hm1 Ht1 Hm1' Ht1' HwY HwY'.
-  destruct (set_submodule_here _ _ _ _ _ Hm1 Ht1) as (R & Hm & Ht & Hkn).
-  destruct (set_submodule_here _ _ _ _ _ Hm1' Ht1') as (R' & Hm' & Ht' & Hkn').
+  intros * HΓ HH Hm1 Ht1 Hm1' Ht1' HwY HwY'. set_open. destruct HΓ as [HΓ _].
+  destruct HH as (F & F' & [HF HF' E Hv Hv' Hpr]).
+  destruct (set_submodule_here Hgw Θ Ξ Hμ _ _ _ _ _ Hm1 Ht1) as (R & Hm & Ht & Hkn).
+  destruct (set_submodule_here Hgw Θ Ξ Hμ _ _ _ _ _ Hm1' Ht1') as (R' & Hm' & Ht' & Hkn').
   destruct (mdesc_mod_tele_mod _ _ Ht) as (Rm & Hmd). destruct (mdesc_mod_tele_mod _ _ Ht') as (Rm' & Hmd').
-  apply set_modexp_eq_of_rel; [| exact (proj2 (set_valid_modexp_sel _ _ _ _ _ Hv Hkn Hm Hmd))
-                              | exact (proj2 (set_valid_modexp_sel _ _ _ _ _ Hv' Hkn' Hm' Hmd'))
+  apply set_modexp_eq_of_rel; [| exact (proj2 (set_valid_modexp_sel Hfn Hmods Hgw Θ Ξ Hμ _ _ _ _ _ Hv Hkn Hm Hmd))
+                              | exact (proj2 (set_valid_modexp_sel Hfn Hmods Hgw Θ Ξ Hμ _ _ _ _ _ Hv' Hkn' Hm' Hmd'))
                               | intros κs Hκ ys x; exact (Hpr κs Hκ (y :: ys) x)].
-  apply set_modexp_rel_mem; [exact HΓ | | exact HwY | exact HwY']. exists F, F'. constructor; assumption.
+  apply set_modexp_rel_mem; [exact Hfn | exact Hmods | exact HΓ | | exact HwY | exact HwY']. exists F, F'. constructor; assumption.
 Qed.
 
 (** [δ] for submodules: a submodule is the unit its module part stands
     for. *)
-Lemma set_rule_me_delta_sel : forall Γ H y R Rm, set_rel_modexp_eq T γ Γ (me_mem H y) (me_mem H y) ->
-    mdenote Θs Ξs Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
-    set_rel_modexp_eq T γ Γ (me_mem H y) (mdesc_unit Rm).
+Lemma set_rule_me_delta_sel : forall Γ H y R Rm, set_modexp_eq Θ Ξ T γ Γ (me_mem H y) (me_mem H y) ->
+    mdenote Θ Ξ Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
+    set_modexp_eq Θ Ξ T γ Γ (me_mem H y) (mdesc_unit Rm).
 Proof.
-  intros * (F & F' & [_ _ _ Hv _]) Hms Hmds.
-  destruct (proj1 (mdenote_grow_all _ _ _ _ (set_source_wf T γ Θs Ξs Hemb) Hgw (set_source_sub T γ Θs Ξs Hemb)) _ _ _ Hms)
+  intros * HH Hms Hmds. set_open. destruct HH as (F & F' & [_ _ _ Hv _]).
+  destruct (proj1 (mdenote_grow_all _ _ _ _ (set_source_wf T γ Θ Ξ Hμ) Hgw (set_source_sub T γ Θ Ξ Hμ)) _ _ _ Hms)
     as (R2 & Hm & HR).
-  destruct (mdesc_grows_mod _ _ _ _ _ _ _ HR Hmds) as (Rm2 & Hmd & HRm). rewrite (mdesc_grows_unit _ _ _ _ _ _ HRm). destruct (set_valid_modexp_canon T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ _ _ Hv Hm Hmd) as [Hr HK Hpr].
-  exact (set_modexp_eq_of_rel T γ _ _ _ Hr Hv (set_valid_modexp_of_unit T γ Hfn Hmods Hgw Θs Ξs Hemb _ _ HK) Hpr).
+  destruct (mdesc_grows_mod _ _ _ _ _ _ _ HR Hmds) as (Rm2 & Hmd & HRm). rewrite (mdesc_grows_unit _ _ _ _ _ _ HRm).
+  destruct (set_valid_modexp_canon T γ Hfn Hmods Hgw Θ Ξ Hμ _ _ _ _ Hv Hm Hmd) as [Hr HK Hpr].
+  exact (set_modexp_eq_of_rel T γ _ _ _ Hr Hv (set_valid_modexp_of_unit T γ Hfn Hmods Hgw Θ Ξ Hμ _ _ HK) Hpr).
 Qed.
 
 End Sel.
