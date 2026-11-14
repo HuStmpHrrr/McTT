@@ -3110,37 +3110,216 @@ Qed.
 
 (** ** The Example of a Local Open
 
-    A slot holding a body that defines [a] of the type [N], and a body [L]
-    opening the slot, which stores the definition [a : N ≔ #0.a] it
-    generates.  With the slot holding instead the body defining [a] of the
-    type [(λ X. X) N], equal by [β], the stored definition is no longer
-    the one the open generates, of the type [(λ X. X) N]; [L.a] keeps its
-    type all the same, since the stored type need only be convertible to
-    the member's ([body_xp_open], [gmod_retyped]). *)
+    In the empty global context and the empty context, [U] is the body
+    defining [a : Typeω@1 ≔ Typeω@0] and [U'] the body defining
+    [a : (λ X. X) Typeω@1 ≔ Typeω@0]: the two types of [a] differ only by
+    [β], so [⊢ᵘ U ≈ U'] ([example_units_eq]).  [L] is the body
+    [module where open #0 (a) end] under a slot, storing the definition
+    [a : Typeω@1 ≔ #0.a] its open generates.  Under [▹ₘ U], [L.a] is of
+    the type [Typeω@1] ([example_member_typed]); under [▹ₘ U'] the open
+    would generate [a] at the type [(λ X. X) Typeω@1], so the stored
+    definition is no longer the generated one, and [L.a] keeps its type
+    all the same ([example_open_member], by [slot_conv_exp]): the stored
+    type need only be convertible to the member's ([body_xp_open],
+    [gmod_retyped]).  The large universes stand in for a library type such
+    as [ℕ], whose declaration would add nothing here.  Every derivation is
+    built from the rules, with no hypothesis. *)
 Module LocalOpenExample.
 Import Stdlib.Strings.String.
-Section Example.
-  Context (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (N z : exp).
+#[local] Open Scope string_scope.
 
-  (** The body defining [a] of the type [N] *)
-  Definition example_unit : gunit :=
-    gu_open nil (gm_ext gm_nil "a"%string (ge_def true false ak_relevant N (Some z))).
+(** [U]: the body defining [a : Typeω@1 ≔ Typeω@0] *)
+Definition example_unit : gunit :=
+  gu_open nil (gm_ext gm_nil "a" (ge_def true false ak_relevant Typeω@1 (Some Typeω@0))).
 
-  (** The body defining [a] of the type [(λ X. X) N] *)
-  Definition example_unit' : gunit :=
-    gu_open nil (gm_ext gm_nil "a"%string (ge_def true false ak_relevant ((λ Typeω@0 (a_var 0)) $ N) (Some z))).
+(** [U']: the body defining [a : (λ X. X) Typeω@1 ≔ Typeω@0] *)
+Definition example_unit' : gunit :=
+  gu_open nil (gm_ext gm_nil "a" (ge_def true false ak_relevant ((λ Typeω@2 (a_var 0)) $ Typeω@1) (Some Typeω@0))).
 
-  (** The body opening the slot, storing the generated definition of [a]
-      at the type [N] *)
-  Definition example_open : gunit :=
-    gu_open nil (gm_open gm_nil (me_var 0) ((Some "a"%string, "a"%string, false) :: nil)
-                   (gm_ext gm_nil "a"%string (ge_def true false ak_relevant N[↑]ʷ (Some (a_mem (me_var 0) "a"%string))))).
+(** The definitions [L]'s open stores: [a : Typeω@1 ≔ #0.a] *)
+Definition example_open_expansion : gmod :=
+  gm_ext gm_nil "a" (ge_def true false ak_relevant Typeω@1 (Some (a_mem (me_var 0) "a"))).
 
-  (** [L.a] under the slot holding the second body *)
-  Example example_open_member : forall T,
-      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ example_unit ≈ example_unit' ->
-      Θ ⍮ Ξ ⍮ Γ ▹ₘ example_unit ⊢ a_mem (me_lit example_open) "a"%string : T ->
-      Θ ⍮ Ξ ⍮ Γ ▹ₘ example_unit' ⊢ a_mem (me_lit example_open) "a"%string : T.
-  Proof. intros T; apply slot_conv_exp. Qed.
-End Example.
+(** [L]: the body [module where open #0 (a) end], storing
+    [example_open_expansion] *)
+Definition example_open : gunit :=
+  gu_open nil (gm_open gm_nil (me_var 0) ((Some "a", "a", false) :: nil) example_open_expansion).
+
+(** The empty global context is well formed. *)
+Lemma example_gctx_wf : ⊢ᵍ nil ⍮ nil.
+Proof. constructor; constructor. Qed.
+
+(** The empty context is well formed. *)
+Lemma example_ctx_wf : ⊢ nil ⍮ nil ⍮ ⋅.
+Proof. constructor; exact example_gctx_wf. Qed.
+
+(** The context of the bound variable of [λ X. X]. *)
+Lemma example_binder_ctx_wf : ⊢ nil ⍮ nil ⍮ ⋅ ▹{ak_relevant} Typeω@2.
+Proof. eapply wf_ctx_extend; [ apply wf_typ; exact example_ctx_wf | constructor ]. Qed.
+
+(** The type of [a] in [U'] is the one in [U], by [β]. *)
+Lemma example_redex_eq : nil ⍮ nil ⍮ ⋅ ⊢ (λ Typeω@2 #0) $ Typeω@1 ≈ Typeω@1 : Typeω@2.
+Proof.
+  assert (H : nil ⍮ nil ⍮ ⋅ ⊢ (λ Typeω@2 #0) $ Typeω@1 ≈ (a_var 0)[Id,,Typeω@1] : (Typeω@2)[Id,,Typeω@1]).
+  { eapply wf_exp_eq_pi_beta with (Srt := Typeω@3) (κd := ak_relevant) (κc := ak_relevant) (i := 3).
+    - apply wf_typ; exact example_ctx_wf.
+    - constructor.
+    - apply wf_typ; exact example_binder_ctx_wf.
+    - constructor.
+    - eapply wf_vlookup; [ exact example_binder_ctx_wf |].
+      change (⋅ ▹{ak_relevant} Typeω@2 ∋ #0 : (Typeω@2)[↑]ʷ); constructor.
+    - apply wf_typ; exact example_ctx_wf. }
+  cbn in H; exact H.
+Qed.
+
+(** The premises of [wf_unit_eq_body] on the entries named [y]: [y] is
+    [a], whose prefixes, terms and fills are computed, or no entry. *)
+Ltac example_entry_cases :=
+  intros;
+  match goal with y : string |- _ =>
+    let Ey := fresh "Ey" in
+    destruct (String.eqb y "a") eqn:Ey; [ apply String.eqb_eq in Ey; subst y | ];
+    repeat match goal with H : gm_prefix_upto _ _ = Some _ |- _ =>
+      cbn in H; rewrite ?String.eqb_refl in H; try rewrite Ey in H; cbn in H;
+      first [ discriminate H | inversion H; subst; clear H ] end end;
+  repeat match goal with H : entry_tm _ = Some _ |- _ => cbn in H; inversion H; subst; clear H end;
+  repeat match goal with H : entry_unit _ = Some _ |- _ => cbn in H; discriminate H end;
+  repeat match goal with H : gm_fill _ = Some _ |- _ => cbn in H; inversion H; subst; clear H end;
+  rewrite ?exp_sub_id; cbn [List.app entry_kind].
+
+(** [⊢ᵘ U ≈ U']: one entry each, of types equal by [β]. *)
+Lemma example_units_eq : nil ⍮ nil ⍮ ⋅ ⊢ᵘ example_unit ≈ example_unit'.
+Proof.
+  unfold example_unit, example_unit'.
+  eapply wf_unit_eq_body with (entry_sort := fun _ => Typeω@2) (param_level := 0) (param_sorts := fun _ => Typeω@0)
+    (lv := true) (lv' := true) (Rt := mdesc_open nil gm_nil gm_nil) (Rt' := mdesc_open nil gm_nil gm_nil)
+    (Φx := gm_ext gm_nil "a" (ge_def true false ak_relevant Typeω@1 (Some Typeω@0)))
+    (Φx' := gm_ext gm_nil "a" (ge_def true false ak_relevant ((λ Typeω@2 (a_var 0)) $ Typeω@1) (Some Typeω@0))).
+  all: try example_entry_cases.
+  all: try solve [ constructor ].
+  all: try solve [ apply wf_typ; exact example_ctx_wf ].
+  all: try solve [ apply wf_exp_eq_refl; apply wf_typ; exact example_ctx_wf ].
+  all: try solve [ intros [| k] ? ? H; cbn in H; discriminate H ].
+  all: try solve [ intros [| k] ? ? ? ? ? ? H; cbn in H; discriminate H ].
+  all: try solve [ intros ? ? ? ? H; destruct Δ1; discriminate H ].
+  all: try solve [ intros; discriminate ].
+  all: try solve [ cbn; repeat split ].
+  all: try solve [ apply body_xp_ext, body_xp_nil ].
+  all: try solve [ cbn; constructor; [ intros [] | constructor ] ].
+  all: try solve [ intros _ ? ? ? ? H; destruct Δ1; discriminate H ].
+  all: try solve [ apply wf_exp_eq_sym; exact example_redex_eq ].
+  all: try solve [ exact (presup_exp_eq_left example_redex_eq) ].
+  all: try solve [ eapply wf_conv_sort; [ apply wf_typ; exact example_ctx_wf | exact (presup_exp_eq_left example_redex_eq)
+                                        | constructor | apply wf_exp_eq_sym; exact example_redex_eq ] ].
+  all: try solve [ constructor; exact example_ctx_wf ].
+  all: apply ext_of_ctx'; cbn [body_ctx List.app].
+  - eapply wf_ctx_extend_def; [ apply wf_typ; exact example_ctx_wf | constructor | apply wf_typ; exact example_ctx_wf ].
+  - eapply wf_ctx_extend_def;
+      [ exact (presup_exp_eq_left example_redex_eq) | constructor
+      | eapply wf_conv_sort; [ apply wf_typ; exact example_ctx_wf | exact (presup_exp_eq_left example_redex_eq)
+                             | constructor | apply wf_exp_eq_sym; exact example_redex_eq ] ].
+Qed.
+
+(** The context [⋅ ▹ₘ U] is well formed. *)
+Lemma example_slot_ctx_wf : ⊢ nil ⍮ nil ⍮ ⋅ ▹ₘ example_unit.
+Proof. apply wf_ctx_extend_mod; exact (wf_unit_eq_refl_left example_units_eq). Qed.
+
+(** The large universes under the slot. *)
+Lemma example_slot_universe : forall i, nil ⍮ nil ⍮ ⋅ ▹ₘ example_unit ⊢ Typeω@i : Typeω@(S i).
+Proof. intros; apply wf_typ; exact example_slot_ctx_wf. Qed.
+
+(** The slot is a module expression. *)
+Lemma example_slot_var : nil ⍮ nil ⍮ ⋅ ▹ₘ example_unit ⊢ᵐ me_var 0 ≈ me_var 0.
+Proof. eapply wf_me_var; [ exact example_slot_ctx_wf | constructor ]. Qed.
+
+(** [#0.a] denotes [U]'s [a]. *)
+Lemma example_slot_denote :
+  mdenote nil nil (⋅ ▹ₘ example_unit) (me_mem (me_var 0) "a") (mdesc_term ak_relevant Typeω@1 (Some Typeω@0)).
+Proof.
+  eapply mdenote_mem.
+  - eapply mdenote_slot; [ constructor |]; eapply udenote_body; [| reflexivity ]; cbn; apply body_xp_ext, body_xp_nil.
+  - reflexivity.
+  - cbn; reflexivity.
+  - cbn; apply edenote_def.
+  - cbn; reflexivity.
+Qed.
+
+(** [#0.a : Typeω@1] under the slot. *)
+Lemma example_slot_member : nil ⍮ nil ⍮ ⋅ ▹ₘ example_unit ⊢ a_mem (me_var 0) "a" : Typeω@1.
+Proof.
+  eapply wf_mem; [ exact example_slot_var | exact example_slot_denote | reflexivity | apply example_slot_universe | constructor |].
+  intros M HM; cbn in HM; injection HM as <-; apply example_slot_universe.
+Qed.
+
+(** [L]'s open expands to the stored definition, the one it generates. *)
+Lemma example_open_xp :
+  body_xp nil nil (⋅ ++ ⋅ ▹ₘ example_unit) (gm_open gm_nil (me_var 0) ((Some "a", "a", false) :: nil) example_open_expansion)
+    example_open_expansion.
+Proof.
+  change example_open_expansion with (gm_graft gm_nil example_open_expansion) at 2.
+  eapply body_xp_open with (gs := generated_item_def "a" false ak_relevant Typeω@1 (a_mem (me_var 0) "a") :: nil).
+  - apply body_xp_nil.
+  - cbn; eapply mdenote_slot; [ constructor |]; eapply udenote_body; [| reflexivity ]; cbn; apply body_xp_ext, body_xp_nil.
+  - reflexivity.
+  - eapply items_gen_def; [ exact example_slot_denote | apply items_gen_nil ].
+  - cbn; split; reflexivity.
+  - cbn; repeat constructor.
+Qed.
+
+(** [L] is a unit under the slot. *)
+Lemma example_open_unit : nil ⍮ nil ⍮ ⋅ ▹ₘ example_unit ⊢ᵘ example_open ≈ example_open.
+Proof.
+  unfold example_open.
+  eapply wf_unit_eq_body with (entry_sort := fun _ => Typeω@2) (param_level := 0) (param_sorts := fun _ => Typeω@0)
+    (lv := true) (lv' := true) (Rt := mdesc_open nil gm_nil gm_nil) (Rt' := mdesc_open nil gm_nil gm_nil)
+    (Φx := example_open_expansion) (Φx' := example_open_expansion); unfold example_open_expansion.
+  all: try exact example_open_xp.
+  all: try example_entry_cases.
+  all: try solve [ constructor ].
+  all: try solve [ apply example_slot_universe ].
+  all: try solve [ apply wf_exp_eq_refl; apply example_slot_universe ].
+  all: try solve [ exact example_slot_member ].
+  all: try solve [ apply wf_exp_eq_refl; exact example_slot_member ].
+  all: try solve [ intros ? ? ? ? H; destruct Δ1; discriminate H ].
+  all: try solve [ intros; discriminate ].
+  all: try solve [ intros _ ? ? ? ? H; destruct Δ1; discriminate H ].
+  all: try solve [ cbn; repeat split ].
+  all: try solve [ cbn; constructor; [ intros [] | constructor ] ].
+  (** the open's target, the slot: a module expression, no open frame *)
+  all: try solve [ intros [| [| k]] ? ? H; cbn in H; try discriminate H; injection H as <- <-; exact example_slot_var ].
+  all: try solve [ intros [| [| k]] ? ? H; cbn in H; try discriminate H; injection H as <- <-;
+                   eexists; split;
+                   [ cbn; eapply mdenote_slot; [ constructor | eapply udenote_body; [ cbn; apply body_xp_ext, body_xp_nil | reflexivity ] ]
+                   | intros (? & ? & ? & ? & ? & Hc & _); discriminate Hc ] ].
+  all: try solve [ intros [| [| k]] ? ? ? ? ? ? H H'; cbn in H, H'; try discriminate H; injection H as <- <-; injection H' as <- <-;
+                   intros Hs Hs'; cbn in Hs, Hs'; injection Hs as <-; injection Hs' as <-; rewrite modexp_sub_id; exact example_slot_var ].
+  all: try solve [ constructor; exact example_slot_ctx_wf ].
+  all: apply ext_of_ctx'; cbn [body_ctx List.app];
+    eapply wf_ctx_extend_def; [ apply example_slot_universe | constructor | exact example_slot_member ].
+Qed.
+
+(** [L.a] denotes the stored definition. *)
+Lemma example_open_denote :
+  mdenote nil nil (⋅ ▹ₘ example_unit) (me_mem (me_lit example_open) "a")
+    (mdesc_term ak_relevant Typeω@1 (Some (a_mem (me_var 0) "a"))).
+Proof.
+  eapply mdenote_mem.
+  - apply mdenote_lit; eapply udenote_body; [ exact example_open_xp | reflexivity ].
+  - reflexivity.
+  - cbn; reflexivity.
+  - cbn; apply edenote_def.
+  - cbn; reflexivity.
+Qed.
+
+(** [L.a : Typeω@1] under [▹ₘ U]. *)
+Lemma example_member_typed : nil ⍮ nil ⍮ ⋅ ▹ₘ example_unit ⊢ a_mem (me_lit example_open) "a" : Typeω@1.
+Proof.
+  eapply wf_mem; [ apply wf_me_lit; exact example_open_unit | exact example_open_denote | reflexivity
+                 | apply example_slot_universe | constructor |].
+  intros M HM; cbn in HM; injection HM as <-; exact example_slot_member.
+Qed.
+
+(** [L.a : Typeω@1] under [▹ₘ U'], by the transport. *)
+Example example_open_member : nil ⍮ nil ⍮ ⋅ ▹ₘ example_unit' ⊢ a_mem (me_lit example_open) "a" : Typeω@1.
+Proof. exact (slot_conv_exp _ _ _ _ _ _ _ example_units_eq example_member_typed). Qed.
 End LocalOpenExample.
