@@ -374,9 +374,9 @@ Proof.
   - assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B) by (eapply wf_fn; eassumption).
     ft_by_kripke (set_rule_fn Θ Ξ T γ Γ κd κc i Srt A M B).
   - ft_by_kripke (set_rule_app Θ Ξ T γ Γ κd κc i Srt A B M N).
-  - split; [ft_cs | eapply set_exp_eq_refl_left; ft_kripke; eapply set_rule_let_def_zeta; ft_prem].
-  - split; [ft_cs | eapply set_exp_eq_refl_left; ft_kripke; eapply set_rule_let_mod_zeta; ft_prem].
-  - split; [ft_cs | eapply set_exp_eq_refl_left; ft_kripke; eapply set_rule_let_dm_zeta; ft_prem].
+  - split; [ft_cs | eapply set_rel_exp_eq_refl_left; ft_kripke; eapply set_rule_let_def_zeta; ft_prem].
+  - split; [ft_cs | eapply set_rel_exp_eq_refl_left; ft_kripke; eapply set_rule_let_mod_zeta; ft_prem].
+  - split; [ft_cs | eapply set_rel_exp_eq_refl_left; ft_kripke; eapply set_rule_let_dm_zeta; ft_prem].
   - match goal with |- _ /\ set_rel_exp_eq _ _ ?G ?A ?L _ => assert (HTm : gc_deps ⍮ gc_stack ⍮ G ⊢ L : A) by (apply Mv_exp; eapply wf_mem; eassumption) end.
     ft_by set_rule_mem.
   - ft_by_kripke set_rule_var.
@@ -469,7 +469,7 @@ Proof.
     match goal with H : _ ⍮ _ ⍮ _ ⊢ M ≈ M' : _ |- _ => pose proof (presup_exp_eq_left H) as HMl end.
     edestruct (set_rule_proj T γ Hfn0 Hmods Hgw _ _ Hμ Γ M p R Ns k f U) as (FP & FPa & FPb & HPl);
       [ft_syn | ft_ctx | eassumption | eassumption | eassumption | ft_from_ih | ft_from_ih | exact HMl
-      | apply set_exp_eq_refl_left with (M' := M'); do 3 eexists; eassumption | eassumption |].
+      | apply set_rel_exp_eq_refl_left with (M' := M'); do 3 eexists; eassumption | eassumption |].
     eapply (set_rule_proj_cong T γ); [eassumption | exact HPl | eassumption].
   - split; [ft_cs |].
     match goal with H : _ ⍮ _ ⍮ _ ⊢ a_tuple T0 fs : T0 |- _ =>

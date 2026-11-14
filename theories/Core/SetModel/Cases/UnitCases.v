@@ -413,7 +413,7 @@ Proof.
 Qed.
 
 (** A term equal to another is equal to itself. *)
-Lemma set_exp_eq_refl_left : forall Γ A M M', set_rel_exp_eq T γ Γ A M M' -> set_rel_exp_eq T γ Γ A M M.
+Lemma set_rel_exp_eq_refl_left : forall Γ A M M', set_rel_exp_eq T γ Γ A M M' -> set_rel_exp_eq T γ Γ A M M.
 Proof. intros * (FA & FM & FM' & H). exists FA, FM, FM. exact (set_exp_eq_with_left _ _ _ _ _ _ _ H). Qed.
 
 (** The slots of a context's tail are valid. *)
@@ -652,7 +652,7 @@ Proof.
   { apply (set_body_sorts_valid_of_filled _ _ Hn HndX). intros * Hp HE Hf.
     destruct (body_partner_tm _ _ _ _ _ _ _ Hsxx Hn' Hp HE) as (Φ0' & E' & A' & M' & σ' & Hp' & HE' & Hf' & _).
     destruct (Htag _ _ _ _ _ Hp HE) as [i Hi]. exists i. rewrite <- Hi.
-    exact (set_exp_eq_refl_left _ _ _ _ (HA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf')). }
+    exact (set_rel_exp_eq_refl_left _ _ _ _ (HA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf')). }
   assert (Hsv' : set_body_sorts_valid T γ Φx' (Δ' ++ Γ)).
   { apply (set_body_sorts_valid_of_filled _ _ Hn' HndX'). intros y Φ0' E' A' M' σ' Hp' HE' Hf'.
     destruct (body_partner_tm _ _ _ _ _ _ _ (body_shape_sym _ _ Hsxx) Hn Hp' HE') as (Φ0 & E & A0 & M0 & σ0 & Hp & HE & Hf & _).

@@ -118,7 +118,7 @@ Qed.
 
 (** ** The Level Equations *)
 
-Lemma set_rule_level_eq {GC : GCtx} : forall Γ n L R FL FR, set_denotes T γ Γ L FL -> set_denotes T γ Γ R FR ->
+Lemma set_level_eq_of_values {GC : GCtx} : forall Γ n L R FL FR, set_denotes T γ Γ L FL -> set_denotes T γ Γ R FR ->
     (forall ρ, set_env_in T γ Γ ρ -> set_eq (FL ρ) (FR ρ)) ->
     (forall ρ, set_env_in T γ Γ ρ -> set_mem (FL ρ) (code_carrier (level_type_code n))) ->
     set_rel_exp_eq T γ Γ (a_level n) L R.
@@ -157,7 +157,7 @@ Proof. intros x y H. apply set_eq_intro; intros w Hw; rewrite ?set_mem_union_pai
 Lemma set_rule_llit_succl : forall Γ a b n, a <= n ->
     set_exp_eq Θ Ξ T γ Γ (a_level n) (a_llit (a, S b)) (a_succl (a_llit (a, b))).
 Proof.
-  intros * Ha. set_open. apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_llit _ _) (set_denotes_succl _ _ _ (set_denotes_llit _ _)));
+  intros * Ha. set_open. apply (set_level_eq_of_values _ _ _ _ _ _ (set_denotes_llit _ _) (set_denotes_succl _ _ _ (set_denotes_llit _ _)));
     [intros; apply set_eq_refl | intros; apply pair_ordinal_level; exact Ha].
 Qed.
 
@@ -166,7 +166,7 @@ Lemma set_rule_maxl_absorb : forall Γ n M, set_exp_eq Θ Ξ T γ Γ (a_level n)
     set_exp_eq Θ Ξ T γ Γ (a_level (S n)) (a_maxl M (a_llit (S n, 0))) (a_llit (S n, 0)).
 Proof.
   intros * H. set_open. destruct H as (FL & FM & FM' & H). pose proof H as [_ HM _ _ _].
-  apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM (set_denotes_llit _ _)) (set_denotes_llit _ _)).
+  apply (set_level_eq_of_values _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM (set_denotes_llit _ _)) (set_denotes_llit _ _)).
   - intros ρ Hρ. destruct (level_value _ _ _ _ _ _ _ H Hρ) as [x [Hx Ex]].
     apply union_pair_sub. eapply set_sub_eq_l; [exact Ex |].
     apply pair_ordinal_set_sub. left. destruct x as [a b]. unfold pair_lt. cbn in *. lia.
@@ -181,7 +181,7 @@ Lemma set_rule_maxl_zero : forall Γ n M, set_exp_eq Θ Ξ T γ Γ (a_level n) M
     set_exp_eq Θ Ξ T γ Γ (a_level n) (a_maxl (a_llit (0, 0)) M) M.
 Proof.
   intros * H. set_open. destruct H as (FL & FM & FM' & H). pose proof H as [_ HM _ _ Hm].
-  apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ (set_denotes_llit _ _) HM) HM).
+  apply (set_level_eq_of_values _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ (set_denotes_llit _ _) HM) HM).
   - intros ρ Hρ. apply union_pair_sub. intros z Hz. destruct (set_mem_empty _ Hz).
   - intros ρ Hρ. destruct (level_value _ _ _ _ _ _ _ H Hρ) as [x [Hx Ex]].
     eapply set_mem_eq_l; [apply set_eq_sym; apply union_pair_sub; intros z Hz; destruct (set_mem_empty _ Hz) |].
@@ -196,7 +196,7 @@ Lemma set_rule_maxl_assoc : forall Γ n M N P,
 Proof.
   intros * HMe HNe HPe. set_open. destruct HMe as (FL & FM & FM' & HMe). destruct HNe as (FL' & FN & FN' & HNe).
   destruct HPe as (FL'' & FP & FP' & HPe). pose proof HMe as [_ HM _ _ _]. pose proof HNe as [_ HN _ _ _]. pose proof HPe as [_ HP _ _ _].
-  apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM HN) HP)
+  apply (set_level_eq_of_values _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM HN) HP)
            (set_denotes_maxl _ _ _ _ _ HM (set_denotes_maxl _ _ _ _ _ HN HP))); [intros; apply union_pair_assoc |].
   intros ρ Hρ.
   destruct (level_value _ _ _ _ _ _ _ HMe Hρ) as [x [Hx Ex]]. destruct (level_value _ _ _ _ _ _ _ HNe Hρ) as [y [Hy Ey]].
@@ -226,7 +226,7 @@ Lemma set_rule_maxl_idem : forall Γ n M, set_exp_eq Θ Ξ T γ Γ (a_level n) M
     set_exp_eq Θ Ξ T γ Γ (a_level n) (a_maxl M M) M.
 Proof.
   intros * H. set_open. destruct H as (FL & FM & FM' & H). pose proof H as [_ HM _ _ Hm].
-  apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM HM) HM); [intros; apply union_pair_idem |].
+  apply (set_level_eq_of_values _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM HM) HM); [intros; apply union_pair_idem |].
   intros ρ Hρ. destruct (level_value _ _ _ _ _ _ _ H Hρ) as [x [Hx Ex]].
   eapply set_mem_eq_l; [apply set_eq_sym; apply union_pair_idem |].
   eapply set_mem_eq_l; [apply set_eq_sym; exact Ex | apply pair_ordinal_level; exact Hx].
@@ -244,7 +244,7 @@ Lemma set_rule_succl_maxl : forall Γ n M N,
     set_exp_eq Θ Ξ T γ Γ (a_level n) (a_succl (a_maxl M N)) (a_maxl (a_succl M) (a_succl N)).
 Proof.
   intros * HMe HNe. set_open. destruct HMe as (FL & FM & FM' & HMe). destruct HNe as (FL' & FN & FN' & HNe). pose proof HMe as [_ HM _ _ _]. pose proof HNe as [_ HN _ _ _].
-  apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_succl _ _ _ (set_denotes_maxl _ _ _ _ _ HM HN))
+  apply (set_level_eq_of_values _ _ _ _ _ _ (set_denotes_succl _ _ _ (set_denotes_maxl _ _ _ _ _ HM HN))
            (set_denotes_maxl _ _ _ _ _ (set_denotes_succl _ _ _ HM) (set_denotes_succl _ _ _ HN))).
   - intros ρ Hρ. destruct (level_value _ _ _ _ _ _ _ HMe Hρ) as [[a b] [Hx Ex]]. destruct (level_value _ _ _ _ _ _ _ HNe Hρ) as [[a' b'] [Hy Ey]].
     eapply set_eq_trans; [apply successor_set_resp; eapply set_eq_trans;
@@ -267,7 +267,7 @@ Lemma set_rule_maxl_succl : forall Γ n M, set_exp_eq Θ Ξ T γ Γ (a_level n) 
     set_exp_eq Θ Ξ T γ Γ (a_level n) (a_maxl M (a_succl M)) (a_succl M).
 Proof.
   intros * H. set_open. destruct H as (FL & FM & FM' & H). pose proof H as [_ HM _ _ _].
-  apply (set_rule_level_eq _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM (set_denotes_succl _ _ _ HM)) (set_denotes_succl _ _ _ HM));
+  apply (set_level_eq_of_values _ _ _ _ _ _ (set_denotes_maxl _ _ _ _ _ HM (set_denotes_succl _ _ _ HM)) (set_denotes_succl _ _ _ HM));
     [intros; apply union_pair_sub; apply set_sub_successor |].
   intros ρ Hρ. destruct (level_value _ _ _ _ _ _ _ H Hρ) as [[a b] [Hx Ex]].
   eapply set_mem_eq_l; [apply set_eq_sym; apply union_pair_sub; apply set_sub_successor |].
