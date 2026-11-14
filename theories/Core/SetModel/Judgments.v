@@ -1280,3 +1280,54 @@ Definition set_unit_eq (Θ : gdeps) (Ξ : gstack) (T : universe_tower) (γ : glo
 Definition set_modexp_eq (Θ : gdeps) (Ξ : gstack) (T : universe_tower) (γ : global_valuation)
     (Γ : ctx) (H H' : modexp) : Prop :=
   forall Θ2 Ξ2, set_gctx_embedding Θ Ξ Θ2 Ξ2 T γ -> @set_rel_modexp_eq (gc_mk Θ2 Ξ2) T γ Γ H H'.
+
+(** A substitution moves along an embedding unchanged: its record is of
+    judgments. *)
+Lemma gctx_embedding_preserves_wf_sub : forall Θ1 Ξ1 Θ2 Ξ2, gctx_embedding Θ1 Ξ1 Θ2 Ξ2 ->
+    forall Γ Δ σ, Θ1 ⍮ Ξ1 ⍮ Γ ⊢ˢ σ : Δ -> Θ2 ⍮ Ξ2 ⍮ Γ ⊢ˢ σ : Δ.
+Proof.
+  intros * He * [Hd Hc Ha Had Ham]. destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Mc & Mx & Mq & _ & _ & Mu & _).
+  constructor; [exact (Mc _ Hd) | exact (Mc _ Hc) | intros; apply Mx; auto | intros; apply Mq; auto |].
+  intros x U Hx. destruct (Ham x U Hx) as [[E Hu] | Hy]; [left; split; [exact E | exact (Mu _ _ _ Hu)] | right; exact Hy].
+Qed.
+
+(** A rule over these judgments, proved at one context [gc_mk Θ2 Ξ2] its
+    premises' context grows into ([Hμ]): each judgment premise read there,
+    each syntactic premise moved there along the embedding, and what the
+    valuation gives there ([Hfn], [Hmods], [Hgw]). *)
+Ltac set_open :=
+  let Θ2 := fresh "Θ2" in let Ξ2 := fresh "Ξ2" in let Hμ := fresh "Hμ" in
+  intros Θ2 Ξ2 Hμ;
+  match type of Hμ with set_gctx_embedding ?Θs ?Ξs _ _ ?T ?γ =>
+    repeat match goal with
+      | H : set_ctx_slots Θs Ξs T γ _ |- _ => specialize (H _ _ Hμ)
+      | H : set_exp_eq Θs Ξs T γ _ _ _ _ |- _ => specialize (H _ _ Hμ)
+      | H : set_subtyp Θs Ξs T γ _ _ _ |- _ => specialize (H _ _ Hμ)
+      | H : set_universe Θs Ξs T γ _ _ |- _ => specialize (H _ _ Hμ)
+      | H : set_ext_eq_suffixes Θs Ξs T γ _ _ _ |- _ => specialize (H _ _ Hμ)
+      | H : set_unit_eq Θs Ξs T γ _ _ _ |- _ => specialize (H _ _ Hμ)
+      | H : set_modexp_eq Θs Ξs T γ _ _ _ |- _ => specialize (H _ _ Hμ)
+      end;
+    (* what moves is read at [gc_mk Θ2 Ξ2] itself *)
+    change (set_gctx_embedding Θs Ξs (@gc_deps (gc_mk Θ2 Ξ2)) (@gc_stack (gc_mk Θ2 Ξ2)) T γ) in Hμ;
+    let He := fresh "He" in pose proof (set_gctx_embedding_embedding _ _ _ _ _ _ Hμ) as He;
+    let Mc := fresh in let Mx := fresh in let Mq := fresh in let Ms := fresh in
+    let Me := fresh in let Mu := fresh in let Mm := fresh in let Mn := fresh in
+    destruct (gctx_embedding_preserves_wf _ _ _ _ He) as (Mc & Mx & Mq & Ms & Me & Mu & Mm & Mn);
+    repeat match goal with
+      | H : wf_ctx Θs Ξs _ |- _ => apply Mc in H
+      | H : wf_exp Θs Ξs _ _ _ |- _ => apply Mx in H
+      | H : wf_exp_eq Θs Ξs _ _ _ _ |- _ => apply Mq in H
+      | H : wf_subtyp Θs Ξs _ _ _ |- _ => apply Ms in H
+      | H : wf_ext_eq Θs Ξs _ _ _ |- _ => apply Me in H
+      | H : wf_unit_eq Θs Ξs _ _ _ |- _ => apply Mu in H
+      | H : wf_modexp_eq Θs Ξs _ _ _ |- _ => apply Mm in H
+      | H : wf_no_level_members Θs Ξs _ _ |- _ => apply Mn in H
+      | H : wf_sub Θs Ξs _ _ _ |- _ => apply (gctx_embedding_preserves_wf_sub _ _ _ _ He) in H
+      end;
+    clear Mc Mx Mq Ms Me Mu Mm Mn;
+    let Hgw := fresh "Hgw" in pose proof (gctx_embedding_wf _ _ _ _ He) as Hgw;
+    let Hfn := fresh "Hfn" in pose proof (fn_kinds_unique_of_ext (set_gctx_embedding_fn_kinds _ _ _ _ _ _ Hμ)) as Hfn;
+    let Hmods := fresh "Hmods" in pose proof (set_gctx_embedding_modules _ _ _ _ _ _ Hμ) as Hmods
+  end;
+  let GC := fresh "GC" in set (GC := gc_mk Θ2 Ξ2) in *.

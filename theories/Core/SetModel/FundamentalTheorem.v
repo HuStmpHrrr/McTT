@@ -37,8 +37,8 @@ Section FundamentalTheorem.
   Variable γ : global_valuation.
 
 (** An assumption of a type equal to another reads the other's. *)
-Lemma wf_sub_id_conv_ass {GC : GCtx} : forall Γ κ A A' Srt, gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Srt -> sort_kind Srt κ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ A ≈ A' : Srt -> gc_deps ⍮ gc_stack ⍮ ce_ass κ A' :: Γ ⊢ˢ sb_id : ce_ass κ A :: Γ.
+Lemma wf_sub_id_conv_ass {Θ : gdeps} {Ξ : gstack} : forall Γ κ A A' Srt, Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt -> sort_kind Srt κ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt -> Θ ⍮ Ξ ⍮ ce_ass κ A' :: Γ ⊢ˢ sb_id : ce_ass κ A :: Γ.
 Proof.
   intros * HA Hk HAA'. pose proof (presup_exp_eq_right HAA') as HA'.
   eapply wf_sub_id_extend; [apply wf_sub_id; exact (presup_exp_ctx HA) | exact HA | exact Hk | exact HA' | exact Hk |].
@@ -46,8 +46,8 @@ Proof.
 Qed.
 
 (** The same for types of the kind [κ] next to a universe. *)
-Lemma wf_sub_id_conv_univ {GC : GCtx} : forall Γ U κ A A', gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵤ U ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ A ≈ A' : abs_kind_sort κ U -> gc_deps ⍮ gc_stack ⍮ ce_ass κ A' :: Γ ⊢ˢ sb_id : ce_ass κ A :: Γ.
+Lemma wf_sub_id_conv_univ {Θ : gdeps} {Ξ : gstack} : forall Γ U κ A A', Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : abs_kind_sort κ U -> Θ ⍮ Ξ ⍮ ce_ass κ A' :: Γ ⊢ˢ sb_id : ce_ass κ A :: Γ.
 Proof.
   intros * HU HAA'. destruct κ; cbn [abs_kind_sort] in HAA'.
   - destruct (wf_exp_eq_is_univ_large HU HAA') as [i Hi].
@@ -58,40 +58,40 @@ Qed.
 
 (** A context extended by a type of the kind [κ] next to a universe,
     equal to another, by the other. *)
-Lemma wf_ctx_conv_univ {GC : GCtx} : forall Γ U κ A A', gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵤ U ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ A ≈ A' : abs_kind_sort κ U -> ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A' :: Γ.
+Lemma wf_ctx_conv_univ {Θ : gdeps} {Ξ : gstack} : forall Γ U κ A A', Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : abs_kind_sort κ U -> ⊢ Θ ⍮ Ξ ⍮ ce_ass κ A' :: Γ.
 Proof. intros * HU HAA'. exact (wf_ctx_extend_univ_kind _ _ _ _ _ _ HU (presup_exp_eq_right HAA')). Qed.
 
 (** A definition of equal type and body reads the other's. *)
-Lemma wf_conv_def {GC : GCtx} : forall Γ A A' M M' Srt, gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Srt -> type_sort Srt ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ A ≈ A' : Srt -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ M ≈ M' : A ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ ce_def A' M' :: Γ /\ gc_deps ⍮ gc_stack ⍮ ce_def A' M' :: Γ ⊢ˢ sb_id : ce_def A M :: Γ.
+Lemma wf_conv_def {Θ : gdeps} {Ξ : gstack} : forall Γ A A' M M' Srt, Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt -> type_sort Srt ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+    ⊢ Θ ⍮ Ξ ⍮ ce_def A' M' :: Γ /\ Θ ⍮ Ξ ⍮ ce_def A' M' :: Γ ⊢ˢ sb_id : ce_def A M :: Γ.
 Proof.
   intros * HA HS HAA' HMM'. pose proof (presup_exp_eq_right HAA') as HA'.
   pose proof (presup_exp_eq_left HMM') as HM. pose proof (presup_exp_eq_right HMM') as HM'.
-  assert (Hsub : gc_deps ⍮ gc_stack ⍮ Γ ⊢ A ⊆ A') by (eapply wf_subtyp_refl; eassumption).
-  assert (Hsub' : gc_deps ⍮ gc_stack ⍮ Γ ⊢ A' ⊆ A) by (eapply wf_subtyp_refl; [exact HA | exact HS | mauto 3]).
-  assert (HM'A' : gc_deps ⍮ gc_stack ⍮ Γ ⊢ M' : A') by (eapply wf_exp_subtyp; [exact HM' | exact HA' | exact HS | exact Hsub]).
+  assert (Hsub : Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A') by (eapply wf_subtyp_refl; eassumption).
+  assert (Hsub' : Θ ⍮ Ξ ⍮ Γ ⊢ A' ⊆ A) by (eapply wf_subtyp_refl; [exact HA | exact HS | mauto 3]).
+  assert (HM'A' : Θ ⍮ Ξ ⍮ Γ ⊢ M' : A') by (eapply wf_exp_subtyp; [exact HM' | exact HA' | exact HS | exact Hsub]).
   split; [eapply wf_ctx_extend_def; eassumption |].
   eapply wf_sub_id_extend_def; [apply wf_sub_id; exact (presup_exp_ctx HA) | exact HA | exact HS | exact HA' | exact HS
                                | exact Hsub' | exact HM | exact HM'A' | mauto 3].
 Qed.
 
 (** Module slots of equal units are equal one-entry extensions. *)
-Lemma wf_ext_eq_one_mod {GC : GCtx} : forall Γ U U', gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U' ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ ce_mod U :: nil ≈ ce_mod U' :: nil.
+Lemma wf_ext_eq_one_mod {Θ : gdeps} {Ξ : gstack} : forall Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ ce_mod U :: nil ≈ ce_mod U' :: nil.
 Proof.
   intros * HU. eapply wf_ext_eq_mod; [constructor; exact (presup_unit_eq_ctx HU) | exact HU | exact (wf_unit_eq_refl_right HU)].
 Qed.
 
 (** So are definitions with module parts of equal types, bodies and units. *)
-Lemma wf_ext_eq_one_dm {GC : GCtx} : forall Γ A A' M M' E E' i, gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : a_typ i ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ A ≈ A' : a_typ i -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : A -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ M ≈ M' : A ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E') ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ ce_dm A M (gu_mk nil (md_alias E)) :: nil ≈ ce_dm A' M' (gu_mk nil (md_alias E')) :: nil.
+Lemma wf_ext_eq_one_dm {Θ : gdeps} {Ξ : gstack} : forall Γ A A' M M' E E' i, Θ ⍮ Ξ ⍮ Γ ⊢ A : a_typ i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : a_typ i -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E') ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ ce_dm A M (gu_mk nil (md_alias E)) :: nil ≈ ce_dm A' M' (gu_mk nil (md_alias E')) :: nil.
 Proof.
   intros * HA HAA' HM HMM' HU. pose proof (presup_exp_eq_right HAA') as HA'.
-  assert (HM'A' : gc_deps ⍮ gc_stack ⍮ Γ ⊢ M' : A')
+  assert (HM'A' : Θ ⍮ Ξ ⍮ Γ ⊢ M' : A')
     by (eapply wf_exp_subtyp; [exact (presup_exp_eq_right HMM') | exact HA' | constructor
                               | eapply wf_subtyp_refl; [exact HA' | constructor | exact HAA']]).
   eapply wf_ext_eq_dm; [constructor; exact (presup_exp_ctx HA) | exact HA | exact HAA' | exact HM | exact HMM' | exact HA' | exact HM'A'
@@ -100,8 +100,8 @@ Qed.
 
 (** A context extended by an assumption of a type equal to another is
     well formed. *)
-Lemma wf_ctx_conv_ass {GC : GCtx} : forall Γ κ A A' Srt, sort_kind Srt κ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ A ≈ A' : Srt ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ ce_ass κ A' :: Γ.
+Lemma wf_ctx_conv_ass {Θ : gdeps} {Ξ : gstack} : forall Γ κ A A' Srt, sort_kind Srt κ -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Srt ->
+    ⊢ Θ ⍮ Ξ ⍮ ce_ass κ A' :: Γ.
 Proof. intros * Hk HAA'. eapply wf_ctx_extend; [exact (presup_exp_eq_right HAA') | exact Hk]. Qed.
 
 (** The judgments the theorem concludes are in [Judgments.v]. *)
@@ -386,16 +386,16 @@ Proof.
   - split; [ft_cs | apply set_rule_llit; assumption].
   - split; [ft_cs | eapply set_rule_succl; eassumption].
   - split; [ft_cs | eapply set_rule_maxl; eassumption].
-  - split; [ft_cs | apply set_rule_prop].
-  - split; [ft_cs | apply set_rule_True].
-  - split; [ft_cs | apply set_rule_tt].
-  - split; [ft_cs | apply set_rule_False].
-  - split; [ft_cs | eapply set_rule_absurd; eassumption].
-  - ft_by set_rule_and.
-  - ft_by set_rule_conj.
-  - ft_by set_rule_left.
-  - split; [ft_cs | eapply (set_rule_right T γ Hfn0 Hmods Γ P Q M); ft_prem].
-  - ft_by set_rule_proof_tag.
+  - ft_by_kripke set_rule_prop.
+  - ft_by_kripke set_rule_True.
+  - ft_by_kripke set_rule_tt.
+  - ft_by_kripke set_rule_False.
+  - ft_by_kripke set_rule_absurd.
+  - ft_by_kripke set_rule_and.
+  - ft_by_kripke set_rule_conj.
+  - ft_by_kripke set_rule_left.
+  - split; [ft_cs | ft_kripke; eapply (set_rule_right _ _ T γ Γ P Q M); ft_prem].
+  - ft_by_kripke set_rule_proof_tag.
   - ft_by set_rule_ind.
   - ft_by set_rule_con.
   - split; [ft_cs |].
@@ -435,11 +435,11 @@ Proof.
   - ft_by set_rule_maxl_idem.
   - ft_by set_rule_succl_maxl.
   - ft_by set_rule_maxl_succl.
-  - split; [ft_cs | apply set_rule_prop].
-  - split; [ft_cs | apply set_rule_True].
-  - split; [ft_cs | apply set_rule_False].
-  - ft_by set_rule_absurd_cong.
-  - ft_by set_rule_and_cong.
+  - ft_by_kripke set_rule_prop.
+  - ft_by_kripke set_rule_True.
+  - ft_by_kripke set_rule_False.
+  - ft_by_kripke set_rule_absurd_cong.
+  - ft_by_kripke set_rule_and_cong.
   - ft_by set_rule_ind.
   - ft_by set_rule_con.
   - split; [ft_cs |].
@@ -498,7 +498,7 @@ Proof.
   - assert (Hc : gc_deps ⍮ gc_stack ⍮ Γ ⊢ M ≈ a_fn A (a_app (exp_wk M wk_shift) (a_var 0)) : a_pi κd κc A B)
       by (eapply wf_exp_eq_fn_eta; eassumption).
     pose proof (presup_exp_eq_right Hc). ft_by set_rule_fn_eta.
-  - ft_by set_rule_irrelevant.
+  - ft_by_kripke set_rule_irrelevant.
   - ft_by set_rule_record_cong.
   - split; [ft_cs |]. eapply (set_rule_tuple_cong T γ); [eassumption | eassumption | eassumption | eassumption |].
     intros. eexists. ft_from_ih.
