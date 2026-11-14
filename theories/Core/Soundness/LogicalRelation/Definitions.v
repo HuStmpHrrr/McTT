@@ -2286,11 +2286,7 @@ Record glu_views_self (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_glu_vi
   ; glu_views_self_record_instances : forall k Mk qr Is fl R j I T, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
       record_lookup gc_deps gc_stack qr = Some R -> List.nth_error (IsS k) j = Some I ->
       List.nth_error (tele_insts (record_params R) Id (IsS k)) j = Some T ->
-      glu_rel_exp_under_sub (grp_selfs_ctx D) I T
-    (** Each record view's record is glued: the local counterpart of
-        completeness' [valid_group_records] *)
-  ; glu_views_self_records : forall k Mk qr Is fl R, ind_member D k = Some Mk -> im_head Mk = mh_record qr Is fl ->
-      record_lookup gc_deps gc_stack qr = Some R -> glu_record_decl R }.
+      glu_rel_exp_under_sub (grp_selfs_ctx D) I T }.
 
 (** A group glued: the judgments of its typing, read in the gluing model
     (see the section header). *)

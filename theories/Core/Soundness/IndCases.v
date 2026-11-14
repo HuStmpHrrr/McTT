@@ -104,9 +104,9 @@ Proof.
   cbn [exp_sub]; rewrite (con_ty_sub p D k M c gs τ (valid_group_closed _ _ (valid_groups_valid _ HVP p D Hl)) HM Hcon).
   apply glu_rel_exp_nil_weaken; [ exact (glu_rel_sub_inst_ctx _ _ _ Hτ) |].
   destruct (im_head M) as [pm | qc kc Is vm | qr Is fl] eqn:Hh.
-  - exact (glu_rel_exp_con0 _ p D HVP Hl (HGall _ _ Hl) (Hviewsall _ _ Hl) HGall HSall k M pm c gs HM Hh Hcon HΨ2 i HT2 Hc2).
-  - exact (glu_rel_exp_con_view0 _ HVP HGall Hviewsall HSall p D Hl k M qc kc Is vm c gs HM Hh Hcon HΨ2
-             (fun Dq Mc gs' Hq HMc Hc => glu_rel_ctx_types_ctx _ (glu_group_cargs _ HVP HGall HSall qc Dq kc Mc c gs'
+  - exact (glu_rel_exp_con0 _ p D HVP Hl (HGall _ _ Hl) (Hviewsall _ _ Hl) HGall HSall HRall k M pm c gs HM Hh Hcon HΨ2 i HT2 Hc2).
+  - exact (glu_rel_exp_con_view0 _ HVP HGall Hviewsall HSall HRall p D Hl k M qc kc Is vm c gs HM Hh Hcon HΨ2
+             (fun Dq Mc gs' Hq HMc Hc => glu_rel_ctx_types_ctx _ (glu_group_cargs _ HVP HGall HSall HRall qc Dq kc Mc c gs'
                                          (valid_groups_containers _ HVP _ _ _ _ _ _ _ _ _ Hl HM Hh Hq) HMc Hc))
              i HT2 Hc2).
   - exact (glu_rel_exp_con_rview0 _ HVP HGall Hviewsall HSall HRall p D Hl k M qr Is fl c gs HM Hh Hcon HΨ2 i HT2 Hc2).

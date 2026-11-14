@@ -145,7 +145,7 @@ Section AtType.
       [VP] are glued ([glu_group_cargs]). *)
   Let HΨall : forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj ->
                  ind_con Mj c0 = Some gs0 -> ⊩ cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj :=
-    fun q0 G0 j Mj c0 gs0 HP HM Hc0 => glu_rel_ctx_types_ctx _ (glu_group_cargs VP HVP HGall HSall q0 G0 j Mj c0 gs0 HP HM Hc0).
+    fun q0 G0 j Mj c0 gs0 HP HM Hc0 => glu_rel_ctx_types_ctx _ (glu_group_cargs VP HVP HGall HSall HRall q0 G0 j Mj c0 gs0 HP HM Hc0).
   Let Hselfs := HSall _ _ HPD.
   (** The ends at [ups] *)
   Let Hself := Hselfs ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf.
@@ -578,7 +578,7 @@ Section AtType.
     pose proof (valid_rview_record_lookup _ _ HR) as HlR.
     pose proof (ctx_wf_gctx _ _ _ HΔ) as Hgc.
     pose proof (HRall _ _ _ _ _ _ _ _ HPD HMj Hh HlR) as HGR.
-    pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs j Mj qr Is fl R HMj Hh HR Δ Us' ups cups HΔ HUs Ecups) as HNs.
+    pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs HRall j Mj qr Is fl R HMj Hh HR Δ Us' ups cups HΔ HUs Ecups) as HNs.
     pose proof (valid_rview_record_valid _ _ HR) as [HWR _ [is HS] _ _ _].
     destruct (Completeness.Records.Model.sort_tele_value (record_params R) (record_sort R) HWR (ex_intro _ is HS) cups
                 (RviewEnds.rview_args_container_uparams_rel p D Hvg j Mj qr Is fl R HMj Hh HR ups cups Hgu Hu Ecups)
@@ -1509,7 +1509,7 @@ Section AtType.
       (** The constructor, glued at the codomain's value. *)
       destruct (sort_bound VP p D HVP HPD) as [n0 Hn0].
       (** The codomain, glued at its instances ([con_codomain_glued]) *)
-      destruct (con_codomain_glued VP p D HVP HPD HGall HSall k Mk c gs HMk Hcon) as [i1 HB1].
+      destruct (con_codomain_glued VP p D HVP HPD HGall HSall HRall k Mk c gs HMk Hcon) as [i1 HB1].
       set (ib := Nat.max (Nat.max (Nat.max jb nb) n0) i1).
       assert (HBv : glu_entry_valid_at ib ((cargs_ctx p D Mk gs ++ im_params D Mk) ++ ⋅) ak_relevant
                       (ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk)))).
@@ -1661,7 +1661,7 @@ Section AtType.
     set (Ns' := List.map (fun I => I[sb_of_list Id Us]) Is).
     pose proof (valid_rview_record_closed _ _ HR) as HcR.
     pose proof (rview_record_len p D Hvg k Mk qr Is fl R HMk Hh HR) as HIl.
-    pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs k Mk qr Is fl R HMk Hh HR Γ Us ups cups HΓ HUs Ecups) as HNs'.
+    pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs HRall k Mk qr Is fl R HMk Hh HR Γ Us ups cups HΓ HUs Ecups) as HNs'.
     pose proof (rview_cargs_to_fields p D Hvg Hcv k Mk qr Is fl R c gs HMk Hh HR Hcs ups cups Hgu Hu Ecups HΨr
                   Γ Us As vs HΓ HUs HNs' HgC) as HgF'.
     (** The element is the tuple of the fields. *)

@@ -291,14 +291,6 @@ Proof.
       cbn [gc_deps gc_stack] in HlR; rewrite ElR in HlR; injection HlR as <-.
       eapply Ke; [| exact Hμ ].
       eapply (views_self_typed_record_instances _ _ _ _ HV); [ exact HMk | exact Hh | exact HlR0 | exact HI | exact HT ].
-    + (** A record view's record: its typing at the source, glued. *)
-      intros * HMk Hh HlR.
-      destruct (rview_struct_record _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R0 HR0].
-      pose proof (rview_record_lookup _ _ _ _ _ _ HR0) as HlR0.
-      pose proof (record_lookup_gc_sub _ _ _ _ _ _ Hs HlR0) as ElR.
-      cbn [gc_deps gc_stack] in HlR; rewrite ElR in HlR; injection HlR as <-.
-      pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ HlR0) as Ht.
-      exact (glu_record_decl_of_typed _ _ _ _ _ Ht Hμ).
 Qed.
 
 (** A record typed at the source, where it is filed, glues at the target:

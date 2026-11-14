@@ -1173,7 +1173,7 @@ End IndApps.
     container's at the view's instance, or a record view's record.  The
     containers are groups of [VP]. *)
 Lemma glu_group_mty : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) ->
-    (forall qn G, VP qn G -> glu_self_ends_all qn G) -> forall p D, VP p D ->
+    (forall qn G, VP qn G -> glu_self_ends_all qn G) -> glu_rview_records VP -> forall p D, VP p D ->
     forall j Mj Z nn L Ns, ind_member D j = Some Mj -> glu_rel_ctx_types (Z ++ ind_uparams D) -> all_assumptions Z ->
     List.length Z = L + nn -> List.length Ns = im_nn Mj ->
     (forall m N T, List.nth_error Ns m = Some N ->
@@ -1181,7 +1181,7 @@ Lemma glu_group_mty : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu
        glu_rel_exp_under_sub (Z ++ ind_uparams D) N T) ->
     exists i : nat, glu_rel_exp_under_sub (Z ++ ind_uparams D) (ind_mty p D j (ind_uvars D nn L) Ns) Typeω@i.
 Proof.
-  intros VP HVP HGall HSall p D HPD j Mj Z nn L Ns HMj HΨ HZa HlZ HlN HNs.
+  intros VP HVP HGall HSall HRall p D HPD j Mj Z nn L Ns HMj HΨ HZa HlZ HlN HNs.
   pose proof (valid_groups_valid VP HVP p D HPD) as Hg; pose proof (HGall _ _ HPD) as HG; pose proof (HSall _ _ HPD) as HS.
   pose proof (valid_group_closed _ _ Hg) as Hc; pose proof (decl_typed_mvc _ _ _ (valid_group_typed _ _ Hg)) as Hmv.
   pose proof (decl_closed_ass _ Hc) as HUa.
@@ -1328,8 +1328,8 @@ Proof.
     rewrite List.app_nil_r.
     destruct (valid_group_records _ _ Hg _ _ _ _ _ HMj Hh) as [R HR].
     pose proof (valid_rview_record_lookup _ _ HR) as HlR.
-    destruct (glu_ind_decl_view_self _ HG) as [IsS HV].
-    pose proof (glu_views_self_records _ _ HV _ _ _ _ _ _ HMj Hh HlR) as HGR.
+    (** The record is glued, by the global gluing ([HRall]) *)
+    pose proof (HRall _ _ _ _ _ _ _ _ HPD HMj Hh HlR) as HGR.
     pose proof (record_lookup_typed _ _ Hgw (gctx_valid_syn _ _ Hgw) _ _ HlR) as HtR.
     pose proof (typed_params_ass _ _ _ HtR) as HaR.
     pose proof (closed_params _ (valid_rview_record_closed _ _ HR)) as HsR.
@@ -1360,6 +1360,9 @@ Section GluArgsCtx.
   Variable (VP : qname -> ind_decl -> Prop).
   Hypotheses (HVP : valid_groups VP) (HGall : forall qn G, VP qn G -> glu_ind_decl G)
     (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G).
+  (** The records of the record views of the groups of [VP] are glued
+      ([glu_rview_records]) *)
+  Hypothesis (HRall : glu_rview_records VP).
   Variables (p : qname) (D : ind_decl) (k : nat) (Mk : imember) (c : String.string) (gs : list carg).
   Hypotheses (HPD : VP p D) (HM : ind_member D k = Some Mk) (Hcon : ind_con Mk c = Some gs).
   Let Hg := valid_groups_valid VP HVP p D HPD.
@@ -1474,7 +1477,7 @@ Section GluArgsCtx.
       { unfold pat', pat; rewrite pat_nargs_app, pat_nargs_cargs_pat; f_equal.
         clear; induction L as [| L IH]; cbn; lia. }
       pose proof (decl_typed_mvc _ _ _ Hdt) as Hmv.
-      destruct (glu_group_mty VP HVP HGall HSall p D HPD m Mj (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk) (im_nn Mk)
+      destruct (glu_group_mty VP HVP HGall HSall HRall p D HPD m Mj (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk) (im_nn Mk)
                   (List.length pat') (List.map (fun P => P[wk_pat pat']ʷ) Ps) HMj HE HZa) as [j0 Hv].
       + rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia.
       + rewrite List.length_map; exact HlPs.
@@ -1544,12 +1547,12 @@ End GluArgsCtx.
 (** The context of a constructor's arguments over its member's parameters
     is glued with its types, for every group of [VP]. *)
 Corollary glu_group_cargs : forall VP, valid_groups VP -> (forall qn G, VP qn G -> glu_ind_decl G) ->
-    (forall qn G, VP qn G -> glu_self_ends_all qn G) ->
+    (forall qn G, VP qn G -> glu_self_ends_all qn G) -> glu_rview_records VP ->
     forall q0 G0 j Mj c0 gs0, VP q0 G0 -> ind_member G0 j = Some Mj -> ind_con Mj c0 = Some gs0 ->
       glu_rel_ctx_types (cargs_ctx q0 G0 Mj gs0 ++ im_params G0 Mj).
 Proof.
-  intros * HVP HGall HSall * HPD HM Hcon.
-  exact (glu_group_cargs_all VP HVP HGall HSall q0 G0 j Mj c0 gs0 HPD HM Hcon gs0 nil (eq_sym (List.app_nil_r gs0))).
+  intros * HVP HGall HSall HRall * HPD HM Hcon.
+  exact (glu_group_cargs_all VP HVP HGall HSall HRall q0 G0 j Mj c0 gs0 HPD HM Hcon gs0 nil (eq_sym (List.app_nil_r gs0))).
 Qed.
 
 End Fixed_GCtx.

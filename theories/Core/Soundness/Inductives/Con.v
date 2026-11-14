@@ -1361,6 +1361,9 @@ Section ConFT.
   (** Every group of [VP] is glued, and so are the ends of its recursive
       arguments' shapes *)
   Hypotheses (HGall : forall qn G, VP qn G -> glu_ind_decl G) (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G).
+  (** The records of the record views of the groups of [VP] are glued
+      ([glu_rview_records]) *)
+  Hypothesis (HRall : glu_rview_records VP).
   Let Hselfs := HSall _ _ HPD.
   Let Hg := valid_groups_valid VP HVP p D HPD.
   Let Hl := valid_group_lookup _ _ Hg.
@@ -1546,7 +1549,7 @@ Section ConFT.
       glu_rel_exp_under_sub (cargs_ctx p D Mk gs ++ im_params D Mk)
         (ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk))) Typeω@i1.
   Proof.
-    pose proof (glu_group_cargs_all VP HVP HGall HSall p D k Mk c gs HPD HMk Hcon gs nil (eq_sym (List.app_nil_r gs))) as HC.
+    pose proof (glu_group_cargs_all VP HVP HGall HSall HRall p D k Mk c gs HPD HMk Hcon gs nil (eq_sym (List.app_nil_r gs))) as HC.
     pose proof (decl_closed_params_ass D k Mk Hc HMk) as HassP.
     pose proof (decl_closed_params D k Mk Hc HMk) as HsP.
     pose proof (decl_closed_ass _ Hc) as HassU.
@@ -1565,7 +1568,7 @@ Section ConFT.
     assert (HZa : all_assumptions (cargs_ctx p D Mk gs ++ im_nparams Mk))
       by (apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact HassN ]).
     unfold im_params in HC |- *; rewrite List.app_assoc in HC |- *.
-    eapply (glu_group_mty VP HVP HGall HSall p D HPD k Mk (cargs_ctx p D Mk gs ++ im_nparams Mk) (im_nn Mk) (List.length gs)
+    eapply (glu_group_mty VP HVP HGall HSall HRall p D HPD k Mk (cargs_ctx p D Mk gs ++ im_nparams Mk) (im_nn Mk) (List.length gs)
               (vars_from (List.length gs) (im_nn Mk)) HMk HC HZa);
       [ rewrite List.length_app, length_cargs_ctx; reflexivity | apply length_vars_from |].
     intros m N T HN HT.

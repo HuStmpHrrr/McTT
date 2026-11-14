@@ -2494,7 +2494,7 @@ Section Root.
   Hypothesis (HRall : glu_rview_records VP).
   Let Hselfs := HSall _ _ HPD.
   Let HΨv : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs -> ⊩ cargs_ctx p D Mj gs ++ im_params D Mj :=
-    fun j Mj c gs HM Hc => glu_rel_ctx_types_ctx _ (glu_group_cargs VP HVP HGall HSall p D j Mj c gs HPD HM Hc).
+    fun j Mj c gs HM Hc => glu_rel_ctx_types_ctx _ (glu_group_cargs VP HVP HGall HSall HRall p D j Mj c gs HPD HM Hc).
 
   (** Non-uniform parameters related at the group's member are related at
       the container's member it views. *)
@@ -2683,7 +2683,7 @@ Section Root.
         global gluing ([HRall]). *)
     pose proof (per_univ_elem_cumu_universe_index _ _ _ _ HR2 _ Hi2n) as HR2n.
     destruct (per_univ_glu_univ_elem m _ (ex_intro _ (record_rel R0 (canon_fields_rel R0 cups)) HR2n)) as (Pc & Elc & Hgl').
-    pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs j Mj qr Is fl R0 HMj Hh HR Δ Us ups cups HΔ HUs Ecups) as HNs0.
+    pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs HRall j Mj qr Is fl R0 HMj Hh HR Δ Us ups cups HΔ HUs Ecups) as HNs0.
     pose proof (Mctt.Core.Soundness.Records.Former.record_typ_glu qr R0 (ctx_wf_gctx _ _ _ HΔ) HlR (HRall _ _ _ _ _ _ _ _ HPD HMj Hh HlR) Δ _ cups b m Pc Elc HΔ HNs0 Eb Hbn Hgl') as HTc.
     (** The element's value is related to the record type at the instance,
         so the element's type is it ([glu_univ_elem_typ_unique]), and the
@@ -2701,7 +2701,7 @@ Section Root.
     pose proof (glu_args_resp_eq Δ' (ind_uparams D) nil _ Us' ups (decl_closed_ass _ Hc) (decl_typed_uparams_field _ _ _ Hdt) HΔ' HE
                   (glu_args_wk _ _ _ _ _ _ _ (decl_closed_ass _ Hc) (decl_closed_uparams _ Hc) Hφ HUs)) as HUs'.
     set (Ns' := List.map (fun I => I[sb_of_list Id Us']) Is).
-    pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs j Mj qr Is fl R0 HMj Hh HR Δ' Us' ups cups HΔ' HUs' Ecups) as HNs'.
+    pose proof (rview_uparams_glu VP p D HVP HPD HG Hselfs HRall j Mj qr Is fl R0 HMj Hh HR Δ' Us' ups cups HΔ' HUs' Ecups) as HNs'.
     (** The element's projections, glued along the record's fields, so
         along the view's constructor's telescope. *)
     destruct (record_elem_fields_glu qr R0 cups m Pc Elc Δ _ N v HlR Hgl' HNr Δ' φ Ns' Hφ HNs') as [ws l Hws HWeq HgF].

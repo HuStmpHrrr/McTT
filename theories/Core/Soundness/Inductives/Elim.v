@@ -9886,7 +9886,7 @@ Section ConRviewFT.
     assert (HSbC0 : EG (cargs_ctx p D Mk gs ++ im_params D Mk) ++ ⋅ ∈ glu_ctx_env ↘ SbC) by (rewrite List.app_nil_r; exact HSbC).
     (** The codomain, glued at its instances ([con_codomain_glued]): the
         witness of the base *)
-    destruct (con_codomain_glued VP p D HVP HPD HGall HSall k Mk c gs HMk Hcon) as [i1 HB].
+    destruct (con_codomain_glued VP p D HVP HPD HGall HSall HRall k Mk c gs HMk Hcon) as [i1 HB].
     assert (HBv1 : glu_entry_valid_at i1 ((cargs_ctx p D Mk gs ++ im_params D Mk) ++ ⋅) ak_relevant
                      (ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk))))
       by (rewrite List.app_nil_r; exact (glu_entry_valid_of_rel (glu_rel_exp_of_under_sub HB))).

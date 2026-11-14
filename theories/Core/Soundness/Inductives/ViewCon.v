@@ -1113,6 +1113,9 @@ Section RviewIs.
   Hypotheses (HVP : valid_groups VP) (HPD : VP p D) (HG : glu_ind_decl D).
   (** The ends of the group's recursive arguments' shapes are glued *)
   Hypothesis (Hselfs : glu_self_ends_all p D).
+  (** The records of the record views of the groups of [VP] are glued
+      ([glu_rview_records]) *)
+  Hypothesis (HRall : glu_rview_records VP).
   Let Hg := valid_groups_valid VP HVP p D HPD.
   Let Hl := valid_group_lookup _ _ Hg.
   Let HD := valid_group_valid _ _ Hg.
@@ -1151,9 +1154,8 @@ Section RviewIs.
     destruct (rview_struct_record _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HMk Hh) as [R' HR'].
     pose proof (valid_rview_record_lookup _ _ HR) as HlR0.
     rewrite (rview_record_lookup _ _ _ _ _ _ HR') in HlR0; injection HlR0 as ->.
-    (** The record is glued ([glu_views_self_records]) *)
-    destruct (glu_ind_decl_view_self _ HG) as [IsS HV].
-    pose proof (glu_views_self_records _ _ HV _ _ _ _ _ _ HMk Hh HlR) as HGR.
+    (** The record is glued, by the global gluing ([HRall]) *)
+    pose proof (HRall _ _ _ _ _ _ _ _ HPD HMk Hh HlR) as HGR.
     destruct (glu_rel_ctx_types_ctx _ (glued_params _ HGR)) as [SbR HSbR].
     eapply params_glu_args_at with (Γ := ind_uparams D) (RΓ := RU) (ρ := decl_env D ups);
       [ exact (typed_params_ass _ _ _ (valid_rview_record_typed _ _ HR)) | exact (closed_params _ HcR)
@@ -1211,7 +1213,9 @@ Section ConViewFT.
   Hypotheses (HVP : valid_groups VP) (HGall : forall qn G, VP qn G -> glu_ind_decl G)
     (Hviewsall : forall qn G, VP qn G -> glu_views_ok qn G)
     (** The ends of every group's recursive arguments' shapes are glued *)
-    (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G).
+    (HSall : forall qn G, VP qn G -> glu_self_ends_all qn G)
+    (** And so are the records of their record views *)
+    (HRall : glu_rview_records VP).
   Variables (p : qname) (D : ind_decl).
   Hypothesis (HPD : VP p D).
   Let HG := HGall _ _ HPD.
@@ -1474,7 +1478,7 @@ Section ConViewFT.
     pose proof HΨ as [SbC HSbC].
     assert (HSbC0 : EG (cargs_ctx p D Mk gs ++ im_params D Mk) ++ ⋅ ∈ glu_ctx_env ↘ SbC) by (rewrite List.app_nil_r; exact HSbC).
     (** The codomain, glued at its instances ([con_codomain_glued]) *)
-    destruct (con_codomain_glued VP p D HVP HPD HGall HSall k Mk c gs HMk Hcon) as [i1 HB].
+    destruct (con_codomain_glued VP p D HVP HPD HGall HSall HRall k Mk c gs HMk Hcon) as [i1 HB].
     assert (HBv1 : glu_entry_valid_at i1 ((cargs_ctx p D Mk gs ++ im_params D Mk) ++ ⋅) ak_relevant
                      (ind_mty p D k (ind_uvars D (im_nn Mk) (List.length gs)) (vars_from (List.length gs) (im_nn Mk))))
       by (rewrite List.app_nil_r; exact (glu_entry_valid_of_rel (glu_rel_exp_of_under_sub HB))).
