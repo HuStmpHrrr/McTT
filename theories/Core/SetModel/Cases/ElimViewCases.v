@@ -946,8 +946,15 @@ Proof.
     HMotsem HMx HMxsem Hbrs HBx HBxsem Hn HBty HBsem Hmk HR.
   pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (set_source_sub T γ Θs Ξs Hemb) HDsrc) as HD.
   (* the left side, by the eliminator's rule *)
-  destruct (set_rule_elim T γ Hfn Hmods Hgw Θs Ξs Hemb Γ r p Us m Bks M D Mm bm Ps i HΓ HDsrc Hm Hbm HlB HPl HPs HPsem HMt HMsem HUs Hcnt
-              Hsc HMty HMotsem HMx HMxsem Hbrs HBx HBxsem Hn HBty HBsem Hmk) as (FS & FL & FL' & HL).
+  destruct (set_elim_setting_of_premises T γ Hfn Hmods Hgw Θs Ξs Hemb Γ r p Us m Bks M D Mm bm Ps i HΓ HDsrc Hm Hbm HlB HPl HPs HPsem
+              HMt HMsem HUs Hcnt Hsc HMty HMotsem HMx HMxsem Hbrs HBx HBxsem Hn HBty HBsem Hmk) as (FMs & Fns & FMot & Hset).
+  set (FS := fun ρ => FMot (elim_motive_env p D m Mm (List.firstn (ind_nu D) Ps) Fns FMs ρ)).
+  set (FL := fun ρ => end_value T γ Γ ρ r p (List.firstn (ind_nu D) Ps) Bks (large_results T i) m (FMs ρ)).
+  assert (HL : set_exp_eq_with T γ Γ (exp_sub (eb_motive bm) (sb_of_list sb_id (List.skipn (ind_nu D) Ps ++ M :: nil)))
+                 (a_elim r p Us m Bks M) (a_elim r p Us m Bks M) FS FL FL).
+  { subst Us. constructor; [exact (set_elim_motive_denotes T γ Hfn Hmods _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hset)
+                           | exact (set_elim_denotes T γ Hfn Hmods _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hset) ..
+                           | intros; apply set_eq_refl | exact (set_elim_setting_value T γ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hset)]. }
   pose proof (wf_elim _ _ _ _ _ _ _ _ _ _ _ _ _ _ HD Hm Hbm HlB HPl HPs HMt HUs Hcnt Hsc HMty HMx Hbrs HBx Hn HBty Hmk) as Hel.
   subst Us. set (Us := List.firstn (ind_nu D) Ps) in *.
   pose proof (presup_exp_ctx HMt) as HcΓ.

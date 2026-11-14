@@ -338,10 +338,7 @@ Proof.
   - ft_by_kripke set_rule_ind.
   - ft_by_kripke set_rule_con.
   - split; [ft_cs |].
-    eapply (set_rule_elim T γ Hfn0 Hmods Hgw _ _ Hμ); try eassumption; try reflexivity; try (do 3 eexists; eassumption);
-      try ft_from_ih;
-      intros; match goal with |- set_ctx _ _ _ =>
-        solve [eapply proj1; eapply set_ext_eq_suffixes_whole; [ft_from_ih | reflexivity]] end.
+    ft_kripke. eapply set_rule_elim; first [eassumption | reflexivity | ft_from_ih].
   - ft_by_kripke set_rule_pi.
   - assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_fn A M : a_pi κd κc A B) by (eapply wf_fn; eassumption).
     ft_by_kripke (set_rule_fn Θ Ξ T γ Γ κd κc i Srt A M B).
