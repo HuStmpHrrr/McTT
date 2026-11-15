@@ -616,10 +616,6 @@ Proof.
     destruct (mdesc_mod X), (mdesc_mod X'); cbn in *; try contradiction; [ exact (leaf_core_of_conv _ _ _ _ _ Hl) | exact I ].
 Qed.
 
-(** The module part of a description is its own module part. *)
-Lemma mdesc_mod_idem : forall R Rm, mdesc_mod R = Some Rm -> mdesc_mod Rm = Some Rm.
-Proof. induction R; cbn; intros Rm H; try discriminate; try (injection H as <-; reflexivity); eauto. Qed.
-
 (** What a module expression denotes reads an open frame exactly when what
     a module expression compared with it denotes does, by the module parts. *)
 Lemma desc_reads_frame_mod_conv : forall Θ Ξ Δ X X',

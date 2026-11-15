@@ -871,35 +871,6 @@ Proof.
   exists j, M; auto.
 Qed.
 
-Lemma nbes_functional : forall Θ Ξ Γ Ms As Ws Ws', nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ Ms As Ws' -> Ws = Ws'.
-Proof.
-  intros * H; revert Ws'; induction H as [| M Ms A As W Ws HM HW Hn IH]; intros Ws' H'; inversion H'; subst; [ reflexivity |].
-  f_equal; [ eapply functional_nbe; eassumption | apply IH; assumption ].
-Qed.
-
-Lemma siblings_from_functional : forall Θ Ξ Γc qc Cs i ms ss ss', siblings_from Θ Ξ Γc qc Cs i ms ss -> siblings_from Θ Ξ Γc qc Cs i ms ss' ->
-    ss = ss'.
-Proof.
-  intros * H; revert ss'; induction H as [i | i M ms ss pm Hh Hs IH | i M ms ss qv kv Iv vmv Dv Ws Hh Hl Hn Hs IH
-                                         | i M ms ss qr Ir fl Rr Ws Hh Hl Hn Hs IH];
-    intros ss' H'; inversion H'; subst; try congruence.
-  - f_equal; apply IH; assumption.
-  - repeat match goal with
-      | Hh' : im_head M = _ |- _ => tryif unify Hh' Hh then fail else (rewrite Hh in Hh'; injection Hh' as <- <- <- <-)
-      | Hl' : ind_lookup _ _ qv = _ |- _ => tryif unify Hl' Hl then fail else (rewrite Hl in Hl'; injection Hl' as <-)
-      end.
-    match goal with Hn' : nbes _ _ _ _ _ ?Ws' |- _ => tryif unify Ws' Ws then fail else
-      rewrite (nbes_functional _ _ _ _ _ _ _ Hn' Hn) end.
-    f_equal; apply IH; assumption.
-  - repeat match goal with
-      | Hh' : im_head M = _ |- _ => tryif unify Hh' Hh then fail else (rewrite Hh in Hh'; injection Hh' as <- <- <-)
-      | Hl' : record_lookup _ _ qr = _ |- _ => tryif unify Hl' Hl then fail else (rewrite Hl in Hl'; injection Hl' as <-)
-      end.
-    match goal with Hn' : nbes _ _ _ _ _ ?Ws' |- _ => tryif unify Ws' Ws then fail else
-      rewrite (nbes_functional _ _ _ _ _ _ _ Hn' Hn) end.
-    f_equal; apply IH; assumption.
-Qed.
-
 Lemma nbes_nth : forall Θ Ξ Γ Ms As Ws, nbes Θ Ξ Γ Ms As Ws ->
     List.length Ws = List.length Ms /\ List.length As = List.length Ms /\
     forall j M A, List.nth_error Ms j = Some M -> List.nth_error As j = Some A ->

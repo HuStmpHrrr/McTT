@@ -143,16 +143,6 @@ Qed.
 
 (** Selecting a term member from a value lacking a parameter commutes with
     giving it that parameter. *)
-(** A global module lacking a parameter has fewer arguments than its
-    telescope has entries. *)
-Lemma next_param_global_lt : forall p args a, next_param (dm_global p args) a ->
-    exists T Φ, gc_loc gc_deps gc_stack p = Some (T, Φ) /\ List.length args < List.length T.
-Proof.
-  intros * Hn; inversion Hn as [| ? T Φ ? ? ? ? Hl Hnth |]; subst.
-  exists T, Φ; split; [ exact Hl |].
-  rewrite <- (List.length_rev T); apply List.nth_error_Some; congruence.
-Qed.
-
 Lemma sel_app_comm : forall h a, next_param h a ->
     forall c hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc ->
     forall x f, h ·ₜ x gc_deps ⍮ gc_stack ↘ f ->

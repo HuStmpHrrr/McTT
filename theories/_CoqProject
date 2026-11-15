@@ -10,6 +10,7 @@
 ./Algorithmic/Typing/Definitions.v
 ./Algorithmic/Typing/Functional.v
 ./Algorithmic/Typing/Lemmas.v
+./Algorithmic/Typing/Presup.v
 ./Core/Base.v
 ./Core/Completeness.v
 ./Core/Completeness/Consequences/ContextEquality.v

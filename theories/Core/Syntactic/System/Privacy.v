@@ -49,13 +49,6 @@ Qed.
 Lemma frame_gc_entry_none : forall Θ Ξ p U T, gs_find_tele Ξ p = Some (U, nil, T) -> gc_entry Θ Ξ p = None.
 Proof. intros * Ht; unfold gc_entry, gc_entry_u; rewrite gs_find_tele_find, Ht; cbn; apply gm_entry_nil. Qed.
 
-Lemma gc_frame_entry_none : forall Θ Ξ p TΦ, gc_frame Ξ p = Some TΦ -> gc_entry Θ Ξ p = None.
-Proof.
-  intros * Hf; unfold gc_frame in Hf.
-  destruct (gs_find_tele Ξ p) as [[[U [| ? ?]] T] |] eqn:Ht; try (destruct U as [? [[|] ? | ?]]); try discriminate.
-  exact (frame_gc_entry_none _ _ _ _ _ Ht).
-Qed.
-
 (** A module that is a loaded unit, an open frame, or the open frame of a
     member's or a record's module, is stored at its own path, and nowhere
     else. *)

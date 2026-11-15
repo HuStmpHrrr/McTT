@@ -2542,10 +2542,6 @@ Qed.
 
 (** ** The Cases at a Sort *)
 
-(** A sort is unchanged by a weakening. *)
-Lemma type_sort_wk : forall Srt φ, type_sort Srt -> Srt[φ]ʷ = Srt.
-Proof. intros * [i | |]; reflexivity. Qed.
-
 (** A sort is a type ([⊢ᵗ]): the large universes and [Prop] are of a large
     universe, [LevelSort] is the sort of the types of levels. *)
 Lemma type_sort_wf_type : forall Γ Srt, ⊢ Γ -> type_sort Srt -> Γ ⊢ᵗ Srt.
