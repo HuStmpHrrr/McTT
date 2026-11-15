@@ -15,7 +15,7 @@ From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects Substitution.
 From Mctt.Core.SetModel.Judgments Require Import Substitution.
 From Mctt.Core.SetModel Require Import Judgments.
-From Mctt.Core.SetModel Require Import Cases.PropCases Cases.FunctionCases Modules.ValidUnit.
+From Mctt.Core.SetModel Require Import Judgments.Props Judgments.Functions Modules.ValidUnit.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members CoreInversions.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import Paths MemberLemmas DescTyping LookupSound.

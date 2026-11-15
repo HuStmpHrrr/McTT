@@ -14,7 +14,7 @@ From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects Substitution.
 From Mctt.Core.SetModel.Judgments Require Import Substitution.
 From Mctt.Core.SetModel Require Import Judgments.
-From Mctt.Core.SetModel Require Import Modules.ValidUnit Modules.MemberTypes Cases.ModuleCases Modules.Unit Modules.Canon Modules.App.
+From Mctt.Core.SetModel Require Import Modules.ValidUnit Modules.MemberTypes Modules.ModuleLemmas Modules.Unit Modules.Canon Modules.App.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import Paths MemberLemmas DescTyping LookupSound Presup.
@@ -670,36 +670,6 @@ End SelectionSteps.
 
 (** ** The Rules *)
 
-(** Submodules of equal module expressions are equal. *)
-Lemma set_rule_me_mem : forall Γ H H' y R1 Tl R1' Tl', set_ctx_slots Θ Ξ T γ Γ -> set_modexp_eq Θ Ξ T γ Γ H H' ->
-    mdenote Θ Ξ Γ (me_mem H y) R1 -> mdesc_mod_tele R1 = Some Tl ->
-    mdenote Θ Ξ Γ (me_mem H' y) R1' -> mdesc_mod_tele R1' = Some Tl' ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H' y ≈ me_mem H' y ->
-    set_modexp_eq Θ Ξ T γ Γ (me_mem H y) (me_mem H' y).
-Proof.
-  intros * HΓ HH Hm1 Ht1 Hm1' Ht1' HwY HwY'. set_open. destruct HΓ as [HΓ _].
-  destruct HH as (F & F' & [HF HF' E Hv Hv' Hpr]).
-  destruct (set_submodule_here Hgw Θ Ξ Hμ _ _ _ _ _ Hm1 Ht1) as (R & Hm & Ht & Hkn).
-  destruct (set_submodule_here Hgw Θ Ξ Hμ _ _ _ _ _ Hm1' Ht1') as (R' & Hm' & Ht' & Hkn').
-  destruct (mdesc_mod_tele_mod _ _ Ht) as (Rm & Hmd). destruct (mdesc_mod_tele_mod _ _ Ht') as (Rm' & Hmd').
-  apply set_modexp_eq_of_rel; [| exact (proj2 (set_valid_modexp_sel Hfn Hmods Hgw Θ Ξ Hμ _ _ _ _ _ Hv Hkn Hm Hmd))
-                              | exact (proj2 (set_valid_modexp_sel Hfn Hmods Hgw Θ Ξ Hμ _ _ _ _ _ Hv' Hkn' Hm' Hmd'))
-                              | intros κs Hκ ys x; exact (Hpr κs Hκ (y :: ys) x)].
-  apply set_modexp_rel_mem; [exact Hfn | exact Hmods | exact HΓ | | exact HwY | exact HwY']. exists F, F'. constructor; assumption.
-Qed.
 
-(** [δ] for submodules: a submodule is the unit its module part stands
-    for. *)
-Lemma set_rule_me_delta_sel : forall Γ H y R Rm, set_modexp_eq Θ Ξ T γ Γ (me_mem H y) (me_mem H y) ->
-    mdenote Θ Ξ Γ (me_mem H y) R -> mdesc_mod R = Some Rm ->
-    set_modexp_eq Θ Ξ T γ Γ (me_mem H y) (mdesc_unit Rm).
-Proof.
-  intros * HH Hms Hmds. set_open. destruct HH as (F & F' & [_ _ _ Hv _]).
-  destruct (proj1 (mdenote_grow_all _ _ _ _ (set_source_wf T γ Θ Ξ Hμ) Hgw (set_source_sub T γ Θ Ξ Hμ)) _ _ _ Hms)
-    as (R2 & Hm & HR).
-  destruct (mdesc_grows_mod _ _ _ _ _ _ _ HR Hmds) as (Rm2 & Hmd & HRm). rewrite (mdesc_grows_unit _ _ _ _ _ _ HRm).
-  destruct (set_valid_modexp_canon T γ Hfn Hmods Hgw Θ Ξ Hμ _ _ _ _ Hv Hm Hmd) as [Hr HK Hpr].
-  exact (set_modexp_eq_of_rel T γ _ _ _ Hr Hv (set_valid_modexp_of_unit T γ Hfn Hmods Hgw Θ Ξ Hμ _ _ HK) Hpr).
-Qed.
 
 End Sel.

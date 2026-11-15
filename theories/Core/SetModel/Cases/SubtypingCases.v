@@ -1,14 +1,13 @@
 (** * The Set Rules of Subtyping
 
-    A subtype's carriers are in the supertype's: universes grow with their
-    indices, types of levels with their sorts, small universes are in the
-    large ones, and a [Π] into an evaluated kind is covariant in its
-    codomain.  A term of a subtype is a term of the supertype. *)
+    The rules of [⊆] in the set model, with the subsumption rules of terms
+    and equations and the symmetry and transitivity of equations.  The
+    lemmas they rest on are in [Judgments/Subtyping.v]. *)
 
 From Stdlib Require Import String List Lia.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.SetModel.Cases Require Export LevelCases.
+From Mctt.Core.SetModel.Judgments Require Import Levels Subtyping.
 From Mctt.Core.Syntactic Require Import Syntax.
 From Mctt.Core.Syntactic.System Require Import Definitions.
 Import ListNotations.
@@ -20,22 +19,12 @@ Section Subtyping.
   Variable T : universe_tower.
   Variable γ : global_valuation.
 
-(** Subsumption at one context: a term of a subtype, or two equal ones, at
-    the supertype. *)
-Lemma set_exp_eq_at_supertype {GC : GCtx} : forall Γ A A' M M' FA FM FM' FA0 FA', set_exp_eq_with T γ Γ A M M' FA FM FM' ->
-    set_subtyp_with T γ Γ A A' FA0 FA' -> set_rel_exp_eq T γ Γ A' M M'.
-Proof.
-  intros * [HA HM HM' E Hm] [HA0 HA' Hs]. exists FA', FM, FM'. constructor; try assumption.
-  intros ρ Hρ. apply Hs; [exact Hρ |]. eapply set_mem_eq_r; [apply code_carrier_resp; exact (set_denotes_agree _ _ _ _ _ _ _ HA HA0 Hρ) |].
-  apply Hm. exact Hρ.
-Qed.
-
 (** Subsumption. *)
 Lemma set_rule_exp_eq_subtyp : forall Γ A A' M M', set_exp_eq Θ Ξ T γ Γ A M M' ->
     set_subtyp Θ Ξ T γ Γ A A' -> set_exp_eq Θ Ξ T γ Γ A' M M'.
 Proof.
   intros * HM HA. set_open. destruct HM as (FA & FM & FM' & HM). destruct HA as (FA0 & FA' & HA).
-  exact (set_exp_eq_at_supertype _ _ _ _ _ _ _ _ _ _ HM HA).
+  exact (set_exp_eq_at_supertype T γ _ _ _ _ _ _ _ _ _ _ HM HA).
 Qed.
 
 (** Equality of terms is symmetric. *)
@@ -72,27 +61,9 @@ Proof.
   apply H1; assumption.
 Qed.
 
-(** A universe's carrier: the relevant codes of its universe of sets. *)
-Lemma set_mem_universe_code : forall l U z, set_mem z (code_carrier (universe_code l U)) <-> set_mem z U /\ is_relevant_code z.
-Proof.
-  intros. unfold universe_code. split; intros Hz.
-  - eapply set_mem_eq_r in Hz; [| apply code_carrier_type_code]. apply set_mem_separation in Hz; [exact Hz | exact is_relevant_code_resp].
-  - eapply set_mem_eq_r; [apply set_eq_sym; apply code_carrier_type_code |]. apply set_mem_separation; [exact is_relevant_code_resp | exact Hz].
-Qed.
-
-Lemma universe_code_sub : forall l l' U U', set_sub U U' -> set_sub (code_carrier (universe_code l U)) (code_carrier (universe_code l' U')).
-Proof. intros * H z Hz. apply set_mem_universe_code in Hz as [Hz Hr]. apply set_mem_universe_code. split; [apply H; exact Hz | exact Hr]. Qed.
-
-(** [Typeω@i ⊆ Typeω@j], [i < j], at one context. *)
-Lemma set_subtyp_typ_lt {GC : GCtx} : forall Γ i j, i < j -> set_rel_subtyp T γ Γ (a_typ i) (a_typ j).
-Proof.
-  intros * H. exists (fun _ => large_universe_code T i), (fun _ => large_universe_code T j).
-  constructor; [apply set_denotes_typ .. |]. intros ρ _. apply universe_code_sub. apply tower_sub. cbn. lia.
-Qed.
-
 (** [Typeω@i ⊆ Typeω@j], [i < j]. *)
 Lemma set_rule_subtyp_univ : forall Γ i j, i < j -> set_subtyp Θ Ξ T γ Γ (a_typ i) (a_typ j).
-Proof. intros * H. set_open. exact (set_subtyp_typ_lt _ _ _ H). Qed.
+Proof. intros * H. set_open. exact (set_subtyp_typ_lt T γ _ _ _ H). Qed.
 
 (** [Level@m ⊆ Level@n], [m ≤ n]. *)
 Lemma set_rule_subtyp_level : forall Γ m n, m <= n -> set_subtyp Θ Ξ T γ Γ (a_level m) (a_level n).

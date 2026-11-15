@@ -39,7 +39,7 @@ Require Import Mctt.Core.Syntactic.Command.
 From Mctt.Core.Syntactic Require Import Builtin NfRename.
 From Mctt.Core.SetModel Require Import Judgments FundamentalTheorem.
 From Mctt.Core.SetModel.Interpretation Require Import ContextRelation.
-From Mctt.Core.SetModel.Cases Require Import SubtypingCases.
+From Mctt.Core.SetModel.Judgments Require Import Subtyping.
 
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.

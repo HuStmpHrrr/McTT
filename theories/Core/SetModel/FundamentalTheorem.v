@@ -12,10 +12,13 @@ From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel.Interpretation Require Import Respects ContextRelation.
 From Mctt.Core.SetModel.Judgments Require Import Substitution.
 From Mctt.Core.SetModel Require Import Judgments.
+From Mctt.Core.SetModel Require Import Judgments.Universes Judgments.Props Judgments.Functions Judgments.Levels
+  Judgments.Variables Judgments.Lets Judgments.Subtyping Judgments.Contexts Modules.ValidUnit Modules.MemberTypes
+  Modules.ModuleLemmas Modules.Unit Modules.Canon Modules.App Modules.Sel Modules.Slots Inductives.Model Records.Model
+  Inductives.Elim Inductives.ElimView.
 From Mctt.Core.SetModel Require Import Cases.UniverseCases Cases.PropCases Cases.FunctionCases Cases.LevelCases
-  Cases.VariableCases Cases.LetCases Cases.SubtypingCases Cases.ContextCases Modules.ValidUnit Modules.MemberTypes
-  Cases.ModuleCases Modules.Unit Modules.Canon Modules.App Modules.Sel Cases.UnitCases Cases.IndCases Cases.RecordCases
-  Cases.ElimCases Cases.ElimViewCases.
+  Cases.VariableCases Cases.LetCases Cases.SubtypingCases Cases.ContextCases Cases.ModuleCases Cases.UnitCases
+  Cases.IndCases Cases.RecordCases Cases.ElimCases Cases.IotaCases.
 From Mctt.Core.Syntactic.System.Records Require Import Typing.
 From Mctt.Core.Syntactic Require Import Syntax Members Presup.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
