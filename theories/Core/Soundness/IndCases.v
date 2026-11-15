@@ -31,7 +31,7 @@ From Mctt.Core.Soundness Require Import
   SubtypingCases
   VariableCases
   UniverseCases
-  Instances.
+  LogicalRelation.Instance.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes.
 From Mctt.Core.Soundness.Inductives Require Import Args Comps Con ViewCon ArgTypes Bridge.
 Require Import Mctt.Core.Soundness.Inductives.Elim.

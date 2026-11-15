@@ -21,12 +21,12 @@ From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Completeness.Modules Require Import Values.
 From Mctt.Core.Completeness.Modules Require Filed Mem.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Soundness Require Import LogicalRelation VariableCases ModuleValues Selection MemberApp.
+From Mctt.Core.Soundness Require Import LogicalRelation VariableCases Modules.ModuleValues Modules.Sel Modules.App.
 From Mctt.Core.Soundness.Inductives Require Import Args.
 From Mctt.Core.Soundness Require UniverseCases.
 From Mctt.Core.Completeness.Consequences Require UptoProofs.
-From Mctt.Core.Soundness.Global Require Import GlobalValues.
-From Mctt.Core.Soundness Require Import UnitDeep ModuleExpressions.
+From Mctt.Core.Soundness.Global Require Import Values.
+From Mctt.Core.Soundness Require Import Modules.UnitDeep Modules.ModexpInstances.
 Import Domain_Notations Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 

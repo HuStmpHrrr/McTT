@@ -20,7 +20,7 @@ From Mctt.Core.Syntactic Require Import Substitution Members.
 From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import LetCases UnitCases.
-From Mctt.Core.Completeness.Modules Require Import ModuleVal.
+From Mctt.Core.Completeness.Modules Require Import ModuleValues.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.

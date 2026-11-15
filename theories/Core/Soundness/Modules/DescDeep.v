@@ -20,7 +20,8 @@ From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas LookupSound Presup Paths DescTyping.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Completeness Require UnitCases.
-From Mctt.Core.Soundness Require Import LogicalRelation ModuleValues Instances Extensions UnitEqCases UnitDeep Selection MemberGluing.
+From Mctt.Core.Soundness Require Import LogicalRelation Modules.ModuleValues LogicalRelation.Instance Modules.Extensions
+  Modules.UnitEq Modules.UnitDeep Modules.Sel Modules.Mem.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

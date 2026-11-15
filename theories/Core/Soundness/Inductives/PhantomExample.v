@@ -1,4 +1,4 @@
-(** * Regressions for the Gluing of Groups
+(** * A Phantom Argument in the Gluing of Groups
 
     [T (f : TF) := node (p : Phantom (T f) (f Z))], with
     [Phantom (A B) := mk (a : A)]: the view [Phantom (T f) (f Z)] has a

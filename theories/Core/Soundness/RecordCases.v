@@ -16,7 +16,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax.
-From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases Instances.
+From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases LogicalRelation.Instance.
 From Mctt.Core.Soundness.Inductives Require Import Args.
 From Mctt.Core.Soundness.Records Require Import Former Model.
 Import Domain_Notations Wk_Notations GlobalCtx_Notations.

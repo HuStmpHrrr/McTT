@@ -32,7 +32,7 @@ From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Algorithmic Require Import Strengthening.
 From Mctt.Extraction Require Import ViewsSearch ViewsReach IndDecl.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope Instance Substitution.
-From Mctt.Core.Completeness.Consequences Require Import Types Rules.
+From Mctt.Core.Completeness.Consequences Require Import RigidTypes ContextEquality.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model ArgTypes Elim ElimView ViewReadback.
 From Mctt.Core.Completeness Require Import LogicalRelation UnitCases UniverseCases.
 From Mctt.Core.Completeness.Global Require Import Args.

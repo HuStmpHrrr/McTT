@@ -19,7 +19,7 @@ From Mctt.Core.Completeness Require Import LogicalRelation ContextCases Function
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import LetCases UnitCases PropCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
-From Mctt.Core.Completeness.Modules Require Import MemberTypes ModuleVal Values ModexpRel.
+From Mctt.Core.Completeness.Modules Require Import MemberTypes ModuleValues Values ModexpRel.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Decl.

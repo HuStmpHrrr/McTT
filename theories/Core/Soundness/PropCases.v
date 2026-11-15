@@ -21,7 +21,7 @@ From Mctt.Core.Soundness Require Import
   SubtypingCases
   UniverseCases
   VariableCases
-  Instances.
+  LogicalRelation.Instance.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.

@@ -35,7 +35,8 @@ From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import ContextCases VariableCases UnitCases
   SubtypingCases UniverseCases FunctionCases LetCases PropCases.
 From Mctt.Core.Soundness.Inductives Require Import Con.
-From Mctt.Core.Soundness Require Import Instances Extensions UnitEqCases IndCases ModuleCases RecordCases.
+From Mctt.Core.Soundness Require Import LogicalRelation.Instance Modules.Extensions Modules.UnitEq IndCases ModuleCases
+  RecordCases.
 From Mctt.Core.Soundness.Global Require Import Embedding.
 From Mctt.Core.Completeness.Inductives Require Con.
 Require Mctt.Core.Soundness.Inductives.ArgTypes.

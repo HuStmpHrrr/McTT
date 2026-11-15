@@ -36,7 +36,7 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Soundness Require Import
   ContextCases
   FunctionCases
-  Instances
+  LogicalRelation.Instance
   LevelCases
   LogicalRelation
   SubtypingCases

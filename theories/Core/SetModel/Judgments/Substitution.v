@@ -11,7 +11,7 @@
 From Stdlib Require Import List Lia PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.SetModel Require Export Judgments.
+From Mctt.Core.SetModel.Judgments Require Export Definitions.
 From Mctt.Core.SetModel.Interpretation Require Import Substitution.
 From Mctt.Core.Syntactic Require Import Syntax.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural.

@@ -21,8 +21,9 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup Paths DescTyping LookupSound.
-From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases ModuleValues Instances
-  ModuleExpressions UnitEqCases UnitDeep Selection MemberGluing DescDeep.
+From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases Modules.ModuleValues
+  LogicalRelation.Instance Modules.ModexpInstances Modules.UnitEq Modules.UnitDeep Modules.Sel Modules.Mem
+  Modules.DescDeep.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -126,8 +127,8 @@ Proof. intros * [HH _]; exact (glu_ctx_of_modexp _ _ _ _ HH). Qed.
 
 (** *** Module expressions
 
-    The extensions and the units are in [Extensions.v] and
-    [UnitEqCases.v]. *)
+    The extensions and the units are in [Modules/Extensions.v] and
+    [Modules/UnitEq.v]. *)
 
 Lemma glu_me_unit :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->

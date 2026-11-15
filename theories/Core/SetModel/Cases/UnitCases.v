@@ -10,9 +10,10 @@ From Stdlib Require Import String List Lia.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
-From Mctt.Core.SetModel.Interpretation Require Import Respects ContextRelation JudgmentSubstitution.
+From Mctt.Core.SetModel.Interpretation Require Import Respects ContextRelation.
+From Mctt.Core.SetModel.Judgments Require Import Substitution.
 From Mctt.Core.SetModel Require Import Judgments.
-From Mctt.Core.SetModel.Cases Require Import ValidUnit MemberTypes ModuleCases Unit Sel ContextCases.
+From Mctt.Core.SetModel Require Import Modules.ValidUnit Modules.MemberTypes Cases.ModuleCases Modules.Unit Modules.Sel Cases.ContextCases.
 From Mctt.Core.Syntactic Require Import Syntax Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural.
 From Mctt.Core.Syntactic.System.Global Require Import Presup DescTyping MemberLemmas.

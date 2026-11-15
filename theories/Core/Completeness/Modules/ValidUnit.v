@@ -19,7 +19,7 @@ From Mctt.Core.Completeness Require Import LogicalRelation ContextCases Function
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import LetCases UnitCases PropCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
-From Mctt.Core.Completeness.Modules Require Import MemberTypes ModuleVal Values.
+From Mctt.Core.Completeness.Modules Require Import MemberTypes ModuleValues Values.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Semantic.Kinds Require Import Renaming Evaluation PER.
 Import Domain_Notations Fixed_Notations.

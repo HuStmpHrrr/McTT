@@ -18,7 +18,7 @@ From Mctt.Core.Semantic.PER.Lemmas Require Import UniverseSubtyping.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LogicalRelation.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
-From Mctt.Core.Completeness.Consequences Require Import Types.
+From Mctt.Core.Completeness.Consequences Require Import RigidTypes.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

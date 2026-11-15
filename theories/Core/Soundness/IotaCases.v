@@ -29,7 +29,7 @@ From Mctt.Core.Soundness Require Import
   SubtypingCases
   VariableCases
   UniverseCases
-  Instances.
+  LogicalRelation.Instance.
 Require Import Mctt.Core.Soundness.Inductives.Con.
 Require Import Mctt.Core.Soundness.Inductives.Elim.
 Import Domain_Notations Wk_Notations.

@@ -17,7 +17,7 @@ From Mctt Require Import Extraction.GlobalCheck Extraction.CommandRun.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Consequences.FiledConstructorTypes.
 From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns Core.Syntactic.System.Records.RecordRuns.
 From Mctt Require Import Extraction.AppSpine Reference.TypeCheckAgreement.
-From Mctt Require Core.Semantic.Inductives.NestingExamples.
+From Mctt Require Core.Semantic.Inductives.NestingExamples Core.Soundness.Inductives.PhantomExample.
 Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.FundamentalTheorem.completeness_fundamental.
 Print Assumptions Mctt.Core.Soundness.soundness.
@@ -152,3 +152,6 @@ Print Assumptions Mctt.Core.Semantic.Inductives.NestingExamples.t_over_rose_in_m
 Print Assumptions Mctt.Core.Semantic.Inductives.NestingExamples.t_over_phantom_related.
 Print Assumptions Mctt.Core.Semantic.Inductives.NestingExamples.run_cmd_ind_self_param_rejected.
 Print Assumptions Mctt.Core.Semantic.Inductives.NestingExamples.views_dfs_proof_keys_one_view.
+(* The gluing of a group with a phantom argument moves along readback
+   agreement up to proofs. *)
+Print Assumptions Mctt.Core.Soundness.Inductives.PhantomExample.t_over_phantom_glu_moves.

@@ -12,7 +12,7 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Semantic.Records Require Import PER.
 From Mctt.Core.Completeness.Consequences Require Import UptoProofs.
-From Mctt.Core.Soundness Require Import KeptProofs.
+From Mctt.Core.Soundness.LogicalRelation Require Import KeptProofs.
 From Mctt.Core.Syntactic.System Require Import LetPeeling.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 

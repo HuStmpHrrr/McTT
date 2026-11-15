@@ -36,8 +36,8 @@ From Mctt.Core.Soundness Require Import
   SubtypingCases
   VariableCases
   UniverseCases
-  Instances
-  Extensions.
+  LogicalRelation.Instance
+  Modules.Extensions.
 Require Import Mctt.Core.Soundness.Inductives.Con.
 Require Import Mctt.Core.Soundness.Inductives.Bridge.
 Require Import Mctt.Core.Soundness.Inductives.Elim.

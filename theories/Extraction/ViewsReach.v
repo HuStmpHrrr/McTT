@@ -26,7 +26,7 @@ From Mctt.Algorithmic Require Import Strengthening.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Extraction Require Import ViewsSearch IndDecl.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope Instance.
-From Mctt.Core.Completeness.Consequences Require Import Types.
+From Mctt.Core.Completeness.Consequences Require Import RigidTypes.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model ArgTypes Elim.
 From Mctt.Core.Completeness Require Import LogicalRelation UnitCases.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.

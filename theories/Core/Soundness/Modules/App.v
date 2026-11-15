@@ -13,7 +13,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System SystemOpt CoreInversions.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup Paths DescTyping LookupSound.
-From Mctt.Core.Soundness Require Import LogicalRelation ModuleValues Selection.
+From Mctt.Core.Soundness Require Import LogicalRelation Modules.ModuleValues Modules.Sel.
 Import Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 

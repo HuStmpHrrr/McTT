@@ -1953,7 +1953,7 @@ Definition glu_rel_entry_under_sub (Δ : ctx) (e : centry) : Prop :=
 (** An extension [Ψ] of a context [Γ] glued at the instances: the context
     is glued with its variables' types, and each entry's parts are glued at
     the instances of the context before it.  An instance of [Γ] then lifts
-    through [Ψ] and through every suffix of it ([Extensions.v]), and a term
+    through [Ψ] and through every suffix of it ([Modules/Extensions.v]), and a term
     glued at the instances of [Ψ ++ Γ] is glued at each lifted instance, as
     a binder's body is: the fundamental theorem's judgment of extensions.
     Each entry is glued at its own prefix's instances, not only at the

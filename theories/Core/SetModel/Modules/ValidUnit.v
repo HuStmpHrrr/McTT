@@ -11,7 +11,8 @@ From Stdlib Require Import List Lia PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
-From Mctt.Core.SetModel.Interpretation Require Import Substitution JudgmentSubstitution.
+From Mctt.Core.SetModel.Interpretation Require Import Substitution.
+From Mctt.Core.SetModel.Judgments Require Import Substitution.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.

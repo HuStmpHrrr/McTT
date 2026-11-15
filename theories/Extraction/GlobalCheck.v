@@ -4,7 +4,7 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base Soundness.
-From Mctt.Core.Completeness.Consequences Require Import Types.
+From Mctt.Core.Completeness.Consequences Require Import RigidTypes.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Extraction Require Import Lookup PseudoMonadic TypeCheck.
 Import Syntax_Notations GlobalCtx_Notations.

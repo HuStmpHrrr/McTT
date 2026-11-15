@@ -18,10 +18,10 @@ From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Completeness.Modules Require Import Values Filed.
 From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
-From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases Instances IndCases.
+From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases LogicalRelation.Instance IndCases.
 From Mctt.Core.Soundness.Inductives Require Import Args.
 From Mctt.Core.Soundness.Records Require Import Former.
-From Mctt.Core.Soundness Require Import RecordCases ModuleValues.
+From Mctt.Core.Soundness Require Import RecordCases Modules.ModuleValues.
 From Mctt.Core.Soundness.Global Require Import MemberValues.
 From Mctt.Core.Completeness.Global Require Args.
 From Mctt.Core.Completeness Require ContextCases.

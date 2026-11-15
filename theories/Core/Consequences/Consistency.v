@@ -14,7 +14,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Soundness.
-From Mctt.Core.Completeness.Consequences Require Export Types.
+From Mctt.Core.Completeness.Consequences Require Export RigidTypes.
 From Mctt.Core.Semantic Require Export Transparency Stuck.
 From Mctt.Core.Syntactic Require Export Unseal.
 From Mctt.Core.Syntactic Require Import CoreInversions.
@@ -22,7 +22,7 @@ From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Semantic Require Import Realizability Levels.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
 From Mctt.Core.Completeness Require Import UniverseCases ContextCases FunctionCases.
-From Mctt.Core.Completeness.Consequences Require Import Rules.
+From Mctt.Core.Completeness.Consequences Require Import ContextEquality.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import Cong.

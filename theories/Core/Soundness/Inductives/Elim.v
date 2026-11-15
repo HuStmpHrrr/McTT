@@ -43,7 +43,7 @@ From Mctt.Core.Soundness Require Import
   SubtypingCases
   VariableCases
   UniverseCases
-  Instances.
+  LogicalRelation.Instance.
 From Mctt.Core.Soundness.Inductives Require Import Args Params Comps Con ViewCon Bridge ElimBase AtType.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.

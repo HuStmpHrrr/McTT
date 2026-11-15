@@ -20,7 +20,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import CoreInversions.
 From Mctt.Core.Syntactic.System.Records Require Import Typing.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing Views UniformParams.
-From Mctt.Core.Completeness.Consequences Require Import Types.
+From Mctt.Core.Completeness.Consequences Require Import RigidTypes.
 Import Syntax_Notations Wk_Notations.
 
 (** [X'] is equal to [X] at every type of [X], when it is typed: the

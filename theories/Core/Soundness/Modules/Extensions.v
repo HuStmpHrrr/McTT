@@ -4,7 +4,7 @@
     ([glu_rel_ext_under_sub]) when each of its entries is glued at the
     instances of the context before it.  An instance of [Γ] then lifts
     through [Ψ]: each entry lifts it by the lifting of its kind
-    ([Instances.v]), so the instance lifted through [Ψ] is an instance of
+    ([LogicalRelation/Instance.v]), so the instance lifted through [Ψ] is an instance of
     [Ψ ++ Γ] ([glu_rel_ext_under_sub_inst]).  A term glued at the instances
     of [Ψ ++ Γ] is then glued at the instances of [Γ] lifted through [Ψ],
     as the motives and the branches of an eliminator are.  The extension
@@ -14,7 +14,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Soundness Require Import LogicalRelation Instances.
+From Mctt.Core.Soundness Require Import LogicalRelation LogicalRelation.Instance.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

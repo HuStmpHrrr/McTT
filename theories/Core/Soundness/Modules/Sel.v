@@ -17,10 +17,10 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup Paths DescTyping LookupSound.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
-From Mctt.Core.Completeness.Modules Require Import Values ModuleVal.
+From Mctt.Core.Completeness.Modules Require Import Values ModuleValues.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
-From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases ModuleValues.
-From Mctt.Core.Soundness.Global Require Import GlobalValues.
+From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases Modules.ModuleValues.
+From Mctt.Core.Soundness.Global Require Import Values.
 From Mctt.Core.Soundness.Inductives Require Import Args.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.

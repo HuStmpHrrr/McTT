@@ -10,7 +10,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
 From Mctt.Core.SetModel Require Import Judgments.
-From Mctt.Core.SetModel.Cases Require Import ValidUnit MemberTypes ModuleCases.
+From Mctt.Core.SetModel Require Import Modules.ValidUnit Modules.MemberTypes Cases.ModuleCases.
 From Mctt.Core.Syntactic Require Import Syntax Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.

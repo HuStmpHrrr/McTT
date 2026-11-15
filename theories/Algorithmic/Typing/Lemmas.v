@@ -4,7 +4,7 @@ From Mctt.Algorithmic.Typing Require Import Definitions.
 From Mctt.Algorithmic.Typing Require Export Functional.
 From Mctt.Algorithmic.Subtyping Require Export Lemmas.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import Consequences.Rules.
+From Mctt.Core.Completeness Require Import Consequences.ContextEquality.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit.
 From Mctt.Core.Consequences Require Import Consistency.
 From Mctt.Core.Syntactic Require Import CoreInversions SystemOpt Fresh.

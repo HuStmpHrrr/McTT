@@ -196,7 +196,7 @@ be silently shelved and only bite at `Qed`.
   **do not compose**. Every proof that wants either must go through the syntactic
   side. The extended-context PER is always the canonical one.
 - Syntactic context *equality* is not re-introduced; the semantic one is.
-  `Completeness/Consequences/Rules.v` provides `per_ctx_of_exp_eq :
+  `Completeness/Consequences/ContextEquality.v` provides `per_ctx_of_exp_eq :
   Γ ⊢ A ≈ A' : Type@i -> ⊨ Γ ▹ A ≈ Γ ▹ A'` (an `mctt` hint) and
   `ctxeq_nbe_eq` / `ctxeq_nbe_ty_eq` and primed variants, all taking
   `⊨ Γ ≈ Γ'`. **Direction matters**: `ctxeq_nbe_ty_eq'` transports *from*

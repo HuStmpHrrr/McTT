@@ -30,7 +30,7 @@ From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Soundness Require Import
   ContextCases
   FunctionCases
-  Instances
+  LogicalRelation.Instance
   LevelCases
   LogicalRelation
   SubtypingCases

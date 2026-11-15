@@ -20,7 +20,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths LookupS
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core.Syntactic.System.Inductives Require Import GeneratedCommands RecursorTyped.
 From Mctt.Algorithmic.Typing Require Import Definitions Lemmas.
-From Mctt.Core.Completeness.Consequences Require Import Types.
+From Mctt.Core.Completeness.Consequences Require Import RigidTypes.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 

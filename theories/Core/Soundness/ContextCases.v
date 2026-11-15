@@ -2,7 +2,7 @@
 
     Each entry kind extends a glued context.  The fundamental theorem's
     judgment of contexts also glues the variables' types, which
-    [Instances.v] builds on these. *)
+    [LogicalRelation/Instance.v] builds on these. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.

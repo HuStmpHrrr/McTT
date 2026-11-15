@@ -14,7 +14,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Soundness Require Import LogicalRelation VariableCases ContextCases ModuleValues.
+From Mctt.Core.Soundness Require Import LogicalRelation VariableCases ContextCases Modules.ModuleValues.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.

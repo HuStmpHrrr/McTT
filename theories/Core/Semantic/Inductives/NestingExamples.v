@@ -378,7 +378,7 @@ End RoseViews.
     view [Phantom (T f) (f Z)], its second argument a phantom one.  [T] at
     two uniform parameters whose readbacks agree is one type of the
     model; the gluing of soundness moves along it
-    ([Soundness.Inductives.Regressions]). *)
+    ([Soundness.Inductives.PhantomExample]). *)
 
 Section PhantomViews.
   Context {GC : GCtx}.

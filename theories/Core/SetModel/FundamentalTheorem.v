@@ -9,11 +9,13 @@ From Stdlib Require Import String List Lia.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.SetModel Require Export Judgments.
-From Mctt.Core.SetModel.Interpretation Require Import Respects ContextRelation JudgmentSubstitution.
+From Mctt.Core.SetModel.Interpretation Require Import Respects ContextRelation.
+From Mctt.Core.SetModel.Judgments Require Import Substitution.
 From Mctt.Core.SetModel Require Import Judgments.
-From Mctt.Core.SetModel.Cases Require Import UniverseCases PropCases FunctionCases LevelCases VariableCases LetCases
-  SubtypingCases ContextCases ValidUnit MemberTypes ModuleCases Unit Canon App Sel UnitCases IndCases RecordCases ElimCases
-  ElimViewCases.
+From Mctt.Core.SetModel Require Import Cases.UniverseCases Cases.PropCases Cases.FunctionCases Cases.LevelCases
+  Cases.VariableCases Cases.LetCases Cases.SubtypingCases Cases.ContextCases Modules.ValidUnit Modules.MemberTypes
+  Cases.ModuleCases Modules.Unit Modules.Canon Modules.App Modules.Sel Cases.UnitCases Cases.IndCases Cases.RecordCases
+  Cases.ElimCases Cases.ElimViewCases.
 From Mctt.Core.Syntactic.System.Records Require Import Typing.
 From Mctt.Core.Syntactic Require Import Syntax Members Presup.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.

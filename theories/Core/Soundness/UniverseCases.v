@@ -3,7 +3,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Soundness Require Import LogicalRelation SubtypingCases VariableCases Instances.
+From Mctt.Core.Soundness Require Import LogicalRelation SubtypingCases VariableCases LogicalRelation.Instance.
 Import Domain_Notations Fixed_Notations.
 
 

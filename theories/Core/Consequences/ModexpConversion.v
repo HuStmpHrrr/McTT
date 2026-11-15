@@ -2035,7 +2035,7 @@ Record abs_setting (m : bool) (Θ : gdeps) (Ξ : gstack) (Ψ D D' : ctx) (P P' F
 (** A member read abstracted has the module part of the member,
     abstracted. *)
 Lemma named_read_mod : forall Θ Ξ Ψ D Q y XQ X, named_read Θ Ξ Ψ D Q y XQ X -> mdesc_mod X = option_map (mdesc_up D) (mdesc_mod XQ).
-Proof. intros * []; intros; rewrite mdesc_mod_up; [| rewrite Selection.mdesc_mod_named ]; reflexivity. Qed.
+Proof. intros * []; intros; rewrite mdesc_mod_up; [| rewrite Soundness.Modules.Sel.mdesc_mod_named ]; reflexivity. Qed.
 
 (** A member selected from a well-formed module expression read through
     what it denotes reads no open frame. *)
