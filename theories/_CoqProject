@@ -166,7 +166,7 @@
 ./Core/SetModel/Cases/ElimViewCases.v
 ./Core/SetModel/FundamentalTheorem.v
 ./Core/SetModel/Judgments/Substitution.v
-./Core/Consequences/ModelConsistency.v
+./Core/Consequences/Consistency.v
 ./Core/Semantic/Rename.v
 ./Core/Semantic/Kinds/Renaming.v
 ./Core/Semantic/Kinds/Evaluation.v

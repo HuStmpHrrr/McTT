@@ -7,7 +7,7 @@
     normal forms of the types of a universe are in
     [UniverseNormalForms.v]; the consistency of the core and the canonical
     forms that rest on it, read off the set model, are in
-    [ModelConsistency.v]. *)
+    [Consistency.v]. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
