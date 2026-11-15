@@ -12,11 +12,11 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Completeness.Inductives Require Con.
 From Mctt.Core.Completeness.Inductives Require Decl.
-From Mctt.Core.Completeness Require UnitCases.
+From Mctt.Core.Completeness Require Modules.Slots.
 From Mctt.Core.Completeness.Inductives Require Elim.
 From Mctt.Core.Completeness.LogicalRelation Require Telescope Substitution.
 From Mctt.Core.Completeness.Global Require Args.
-From Mctt.Core.Completeness Require Import UniverseCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Universes.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic.Inductives Require Import Canon.
 From Mctt.Core.Syntactic Require Import Substitution.

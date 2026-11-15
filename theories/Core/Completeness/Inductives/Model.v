@@ -20,9 +20,9 @@ From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Scoping.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing.
 From Mctt.Core.Syntactic.System.Global Require Import Presup MemberLemmas DescTyping.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases VariableCases.
+From Mctt.Core.Completeness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Universes LogicalRelation.Variables.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import LetCases UnitCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Lets Modules.Slots.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance Telescope.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.

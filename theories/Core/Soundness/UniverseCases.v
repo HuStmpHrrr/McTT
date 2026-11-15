@@ -1,6 +1,6 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import LogicalRelation SubtypingCases VariableCases LogicalRelation.Instance.
@@ -311,7 +311,7 @@ Proof.
   eapply mk_glu_rel_exp with (glu_rel_exp_lvl := 0); [ exact HSb |].
   intros Δ σ ρ Hσ.
   destruct (Hbody _ _ _ Hσ) as (a & Pa & Ela & Ha & Hca & HAσ & Hga & HaP).
-  destruct (per_univ_glu_univ_elem 0 LevelSortᵈ ltac:(eexists; apply Completeness.UniverseCases.per_univ_elem_level_sort_univ; exact I))
+  destruct (per_univ_glu_univ_elem 0 LevelSortᵈ ltac:(eexists; apply Completeness.LogicalRelation.Universes.per_univ_elem_level_sort_univ; exact I))
     as (P & El & Hglu).
   econstructor; [ constructor | cbn; exact Ha | exact Hglu |].
   basic_invert_glu_univ_elem Hglu; apply_predicate_equivalence.

@@ -17,7 +17,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System SystemOpt.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup Paths DescTyping LookupSound.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Modules Require Import Values.
 From Mctt.Core.Completeness.Modules Require Filed Mem.
 From Mctt.Core.Semantic Require Import Realizability.
@@ -464,7 +464,7 @@ Section Members.
     destruct (Hbody _ _ HRB _ _ Hw _ _ _ _ Hρ' (eval_sub_shift _ _) (eval_sub_shift _ _)) as [hσ hh h' h'σ' E1 E2 E3 E4 Hch].
     assert (Hσh : per_dmod hσ hh) by (inversion Hch; subst; assumption).
     change ((ρ ↦ c ⦂ t)↯) with ρ in E2.
-    destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ HHc HRΓ _ _ (per_ctx_env_retag_left HRΓ _ _ Hρ))
+    destruct (Completeness.Modules.Slots.rel_modexp_at _ _ _ _ _ HHc HRΓ _ _ (per_ctx_env_retag_left HRΓ _ _ Hρ))
       as (h2 & h3 & Eh2 & Eh3 & Hh23).
     pose proof (functional_eval_modexp _ _ _ _ Eh2 E2) as ->.
     pose proof (functional_eval_modexp _ _ _ _ Eh3 Eh0) as ->.
@@ -588,7 +588,7 @@ Section Members.
     intros * HH Hm HA HRΓ Hρ Ea [Ra HRa].
     pose proof (mem_desc_ok _ _ _ _ _ _ _ (gctx_valid_syn _ _ Hg) HH Hm) as Hok.
     destruct (desc_ok_ty_at _ _ _ _ _ Hok HA) as [i HAi].
-    pose proof (FunctionCases.rel_type_kind_of_sort_kind (sort_kind_abs_kind_sort _ _) (completeness_fundamental_exp _ _ _ HAi)) as HK.
+    pose proof (Functions.rel_type_kind_of_sort_kind (sort_kind_abs_kind_sort _ _) (completeness_fundamental_exp _ _ _ HAi)) as HK.
     destruct (HK _ HRΓ _ _ Hρ) as (a & Ea0 & Hka).
     pose proof (functional_eval_exp _ _ _ _ Ea0 Ea) as ->.
     rewrite <- (per_univ_elem_kind _ _ _ _ HRa); exact Hka.
@@ -1280,7 +1280,7 @@ Section MembersFromSource.
     cbn [domain_kind].
     (** The kinds: the parameter's, the domain's and the value's next
         parameter's are one *)
-    destruct (FunctionCases.rel_type_kind_of_sort_kind Hsk (completeness_fundamental_exp _ _ _ HBt) _ HRΓ _ _ Hρ)
+    destruct (Functions.rel_type_kind_of_sort_kind Hsk (completeness_fundamental_exp _ _ _ HBt) _ HRΓ _ _ Hρ)
       as (aB0 & EaB0 & HkB).
     pose proof (functional_eval_exp _ _ _ _ EaB0 EaB) as ->.
     destruct (next_param_value_rel _ _ Hg _ _ _ _ _ _ _ _ _ _ _ _ _ _ HH HmH HTH HvH HSB HBt Hsk HRΓ Hρ Eh' Hhh' Hnp EaB)
@@ -1354,7 +1354,7 @@ Section MembersFromSource.
         as (bK & iK & EbK & HbK).
       pose proof (per_univ_trans' _ _ _ _ _ HbK HbCb) as HbKb.
       assert (Hkb : domain_kind b = κc).
-      { destruct (FunctionCases.rel_type_kind_of_sort_kind (sort_kind_abs_kind_sort _ _) (completeness_fundamental_exp _ _ _ HCt) _ HRΓb _ _ Hρ'')
+      { destruct (Functions.rel_type_kind_of_sort_kind (sort_kind_abs_kind_sort _ _) (completeness_fundamental_exp _ _ _ HCt) _ HRΓb _ _ Hρ'')
           as (bC0 & EbC0 & HkbC).
         pose proof (functional_eval_exp _ _ _ _ EbC0 EbC) as ->.
         destruct HbCb as [Rbb Hbb]; rewrite <- (per_univ_elem_kind _ _ _ _ Hbb); exact HkbC. }
@@ -1481,7 +1481,7 @@ Section MembersFromSource.
     destruct (HHg _ HSb _ _ _ Hσ) as (h & Eh & Hgd).
     destruct (glu_ctx_env_per_ctx_env HSb) as [RΓ HRΓ].
     pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
-    destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ (proj2 (proj2 (@completeness_fundamental_modules GCt)) _ _ _ HH) HRΓ _ _ Hρ)
+    destruct (Completeness.Modules.Slots.rel_modexp_at _ _ _ _ _ (proj2 (proj2 (@completeness_fundamental_modules GCt)) _ _ _ HH) HRΓ _ _ Hρ)
       as (h0 & h0' & Eh0 & Eh0' & Hhh).
     pose proof (functional_eval_modexp _ _ _ _ Eh0 Eh) as ->; pose proof (functional_eval_modexp _ _ _ _ Eh0' Eh) as ->.
     destruct (mem_valid_at _ _ Hg _ _ _ _ _ _ _ HH Hm Ht HRΓ Hρ) as [h1 a1 i1 R1 Eh1 Ea1 HR1 Hhas _ _].
@@ -1627,7 +1627,7 @@ Section MembersFromSource.
     destruct (glu_ctx_env_per_ctx_env HSb) as [RΓ HRΓ].
     pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
     destruct (glu_univ_elem_per_univ _ _ _ _ Hga) as [Ra HRa].
-    destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ (proj2 (proj2 (@completeness_fundamental_modules GCt)) _ _ _ HHτ) HRΓ _ _ Hρ)
+    destruct (Completeness.Modules.Slots.rel_modexp_at _ _ _ _ _ (proj2 (proj2 (@completeness_fundamental_modules GCt)) _ _ _ HHτ) HRΓ _ _ Hρ)
       as (h0 & h0' & Eh0 & Eh0' & Hhh).
     pose proof (functional_eval_modexp _ _ _ _ Eh0 (EhF ρ)) as ->; pose proof (functional_eval_modexp _ _ _ _ Eh0' (EhF ρ)) as ->.
     destruct (mem_valid_at _ _ Hg _ _ _ _ _ _ _ HHτ HmΓ eq_refl HRΓ Hρ) as [h1 a1 i1 R1 Eh1 Ea1 HR1 Hhas _ _].

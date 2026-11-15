@@ -23,13 +23,13 @@ From Mctt.Core.Syntactic Require Import Substitution Members.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
 From Mctt.Core.Semantic.PER Require Import Tele.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases.
+From Mctt.Core.Completeness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Universes.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import LetCases UnitCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Lets Modules.Slots.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
-From Mctt.Core.Completeness Require Import FunctionCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Functions.
 From Mctt.Core.Completeness.Inductives Require Import Decl.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.

@@ -16,17 +16,17 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases.
+From Mctt.Core.Completeness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Universes.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import LetCases UnitCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Lets Modules.Slots.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
-From Mctt.Core.Completeness Require Import VariableCases FunctionCases LevelCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Variables LogicalRelation.Functions LogicalRelation.Levels.
 From Mctt.Core.Completeness.Inductives Require Import Decl.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Con.
-From Mctt.Core.Completeness Require Import SubtypingCases PropCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Subtyping LogicalRelation.Props.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic.Inductives Require Import PER Elim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
@@ -34,40 +34,6 @@ From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes Elim ElimVi
 Import Domain_Notations Fixed_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 
-Section Fixed_GCtx.
-  Context {GC : GCtx}.
-
-(** The motive's instance of an eliminator into propositions is a
-    proposition: the motive is one in its context, moved by the
-    non-uniform parameters and the scrutinee.  Such an eliminator
-    evaluates to the proof [⋆ᵈ] under relevance-directed evaluation, so it
-    is related to any term at that type ([rel_exp_under_ctx_proof]). *)
-Lemma rel_exp_motive_instance_prop : forall VP p D, valid_groups VP -> VP p D ->
-    forall Γ m Mm bm Ps M, ⊨ Γ -> ind_member D m = Some Mm ->
-    List.length Ps = im_np D Mm ->
-    (forall k Pk T, List.nth_error Ps k = Some Pk -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
-       Γ ⊨ Pk : T) ->
-    Γ ⊨ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-    Forall (exp_scoped (List.length Γ)) Ps -> exp_scoped (List.length Γ) M ->
-    ⊨ elim_mctx p D m Mm (List.firstn (ind_nu D) Ps) ++ Γ ->
-    elim_mctx p D m Mm (List.firstn (ind_nu D) Ps) ++ Γ ⊨ eb_motive bm : Propₘ ->
-    Γ ⊨ (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] : Propₘ.
-Proof.
-  intros VP p D HP HPD * HΓ HMm HPl HPs HM HPss HMs HMa HA.
-  pose proof (valid_group_closed _ _ (valid_groups_valid VP HP p D HPD)) as Hc.
-  destruct (params_valid_split D m Mm Γ Ps Hc HMm HPl HPs) as [HUs HNs].
-  assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in HPl; lia).
-  assert (HNl : List.length (List.skipn (ind_nu D) Ps) = im_nn Mm) by (rewrite List.length_skipn; unfold im_np in HPl; lia).
-  pose proof (gsub_tau VP p D HP HPD Γ HΓ _ HUl m Mm HMm HMa _ M HNl HNs HM) as Hg.
-  (** The non-uniform parameters and the scrutinee are scoped by [Γ]. *)
-  assert (Hsc : Forall (exp_scoped (List.length Γ)) (List.skipn (ind_nu D) Ps ++ M :: nil)).
-  { apply Forall_app; split; [| constructor; [ exact HMs | constructor ] ].
-    apply Forall_forall; intros x Hx; apply (proj1 (Forall_forall _ _) HPss).
-    rewrite <- (List.firstn_skipn (ind_nu D) Ps); apply in_or_app; right; exact Hx. }
-  exact (rel_exp_under_ctx_gsub (Hg Hsc) HA).
-Qed.
-
-End Fixed_GCtx.
 
 #[local] Generalizable All Variables.
 

@@ -26,6 +26,16 @@
 ./Core/Completeness/LogicalRelation/Lemmas.v
 ./Core/Completeness/LogicalRelation/Tactics.v
 ./Core/Completeness/LogicalRelation/Substitution.v
+./Core/Completeness/LogicalRelation/Contexts.v
+./Core/Completeness/LogicalRelation/Variables.v
+./Core/Completeness/LogicalRelation/Universes.v
+./Core/Completeness/LogicalRelation/Levels.v
+./Core/Completeness/LogicalRelation/Props.v
+./Core/Completeness/LogicalRelation/Functions.v
+./Core/Completeness/LogicalRelation/Lets.v
+./Core/Completeness/LogicalRelation/Subtyping.v
+./Core/Completeness/Modules/Slots.v
+./Core/Completeness/Modules/ModuleLemmas.v
 ./Core/Completeness/SubtypingCases.v
 ./Core/Completeness/PropCases.v
 ./Core/Completeness/UnitCases.v

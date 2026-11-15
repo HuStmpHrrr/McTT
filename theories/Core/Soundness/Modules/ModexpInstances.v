@@ -17,7 +17,7 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas MemberWf.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
-From Mctt.Core.Completeness Require ContextCases UnitCases.
+From Mctt.Core.Completeness Require LogicalRelation.Contexts Modules.Slots.
 From Mctt.Core.Completeness.Modules Require Import ModexpRel Values.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases Modules.ModuleValues LogicalRelation.Instance.
 Import Domain_Notations Wk_Notations Fixed_Notations.
@@ -90,10 +90,10 @@ Proof.
   destruct (Hgl _ HTS HB) as (j & Pa & Ela & [Hga HBPa]).
   (** The parameter's type is of the kind of its sort, an evaluated one *)
   pose proof (completeness_fundamental_exp _ _ _ HB) as HBc.
-  assert (Hks : exists κs, sort_kind Srt κs /\ evaluated_kind κs /\ Completeness.ContextCases.rel_type_kind Γ B κs).
+  assert (Hks : exists κs, sort_kind Srt κs /\ evaluated_kind κs /\ Completeness.LogicalRelation.Contexts.rel_type_kind Γ B κs).
   { destruct HS as [l |];
-      [ exists ak_relevant; split; [ constructor | split; [ constructor | exact (Completeness.ContextCases.rel_type_kind_of_typ HBc) ] ]
-      | exists ak_level; split; [ constructor | split; [ constructor | exact (Completeness.ContextCases.rel_type_kind_of_level_sort HBc) ] ] ]. }
+      [ exists ak_relevant; split; [ constructor | split; [ constructor | exact (Completeness.LogicalRelation.Contexts.rel_type_kind_of_typ HBc) ] ]
+      | exists ak_level; split; [ constructor | split; [ constructor | exact (Completeness.LogicalRelation.Contexts.rel_type_kind_of_level_sort HBc) ] ] ]. }
   destruct Hks as (κs & Hsk & Hκs & HBk).
   destruct (HBk _ HRΓ _ _ Hρ) as (aB0 & EaB0 & HkB).
   pose proof (functional_eval_exp _ _ _ _ EaB0 EaB) as ->.
@@ -106,7 +106,7 @@ Proof.
         [ exists RB; apply per_univ_elem_sym; exact HR | exact HgB | exact Hga | exact HNσ | exact HBPa ]).
   (** The value at the argument: the application evaluates at [ρ]
       (completeness) *)
-  destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ (proj2 (proj2 completeness_fundamental_modules) _ _ _ HHN) HRΓ _ _ Hρ)
+  destruct (Completeness.Modules.Slots.rel_modexp_at _ _ _ _ _ (proj2 (proj2 completeness_fundamental_modules) _ _ _ HHN) HRΓ _ _ Hρ)
     as (hN & _ & EhN & _ & _).
   assert (Ehc : $ᵐ| h & n | gc_deps ⍮ gc_stack ↘ hN).
   { inversion EhN; subst.

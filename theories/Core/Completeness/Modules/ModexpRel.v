@@ -16,13 +16,13 @@ Import ListNotations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases FunctionCases UniverseCases.
+From Mctt.Core.Completeness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Functions LogicalRelation.Universes.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import LetCases UnitCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Lets Modules.Slots.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes ModuleValues Values.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
-From Mctt.Core.Completeness Require Import VariableCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Variables.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 #[local] Open Scope list_scope.

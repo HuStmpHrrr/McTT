@@ -19,7 +19,7 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas LookupSound Presup Paths DescTyping.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
-From Mctt.Core.Completeness Require UnitCases.
+From Mctt.Core.Completeness Require Modules.Slots.
 From Mctt.Core.Soundness Require Import LogicalRelation Modules.ModuleValues LogicalRelation.Instance Modules.Extensions
   Modules.UnitEq Modules.UnitDeep Modules.Sel Modules.Mem.
 Import Domain_Notations Wk_Notations Fixed_Notations.
@@ -970,7 +970,7 @@ Section FromSource.
       pose proof (sub_preserves_modexp _ _ _ _ _ _ _ (Hwm _ _ _ HHy) Hτt) as HHyτ; cbn [modexp_sub] in HHyτ |- *.
       destruct (glu_ctx_env_per_ctx_env HSb) as [RΓ HRΓ].
       pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
-      destruct (Completeness.UnitCases.rel_modexp_at _ _ _ _ _ (proj2 (proj2 (@completeness_fundamental_modules GCt)) _ _ _ HHyτ)
+      destruct (Completeness.Modules.Slots.rel_modexp_at _ _ _ _ _ (proj2 (proj2 (@completeness_fundamental_modules GCt)) _ _ _ HHyτ)
                   HRΓ _ _ Hρ) as (m & _ & Em & _ & _).
       inversion Em as [| | | ? ? ? h' ? Eh' Esel | ]; subst.
       destruct (glu_rel_modexp_under_sub_inst _ _ HHg _ _ Hτ _ HSb _ _ _ Hσ) as (h0 & Eh & Hgh).

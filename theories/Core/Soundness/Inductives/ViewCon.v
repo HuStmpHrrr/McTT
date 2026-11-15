@@ -12,7 +12,7 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Inductives Require Decl.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes FiledViews ViewEquations ViewArgs.
 From Mctt.Core.Completeness.Inductives Require Con.
@@ -1534,7 +1534,7 @@ Section ConViewFT.
     - intros R a' Ha' HR.
       destruct (rel_exp_under_ctx_simple (completeness_fundamental_exp _ _ _ Hcty)) as (env_rel & Henv & j' & Hsimp).
       assert (Hnil : env_rel nil nil) by (inversion Henv; subst; match goal with H : _ <~> _ |- _ => apply H; exact I end).
-      destruct (Completeness.ContextCases.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hj) _ Henv _ _ Hnil)
+      destruct (Completeness.LogicalRelation.Contexts.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hj) _ Henv _ _ Hnil)
         as (a0 & Ea0 & Hk0).
       destruct (Hsimp _ _ Hnil) as (a1 & a2 & R1 & Ha1 & Ha2 & HR1 & [Hp | (m1 & m2 & Hm1 & Hm2 & Hmm)]).
       { (* the type of a constructor is relevant *)

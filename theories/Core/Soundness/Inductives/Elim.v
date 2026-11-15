@@ -19,7 +19,7 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Inductives Require Decl.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes ViewBranch.
 From Mctt.Core.Completeness.Inductives Require Con.
@@ -1680,10 +1680,10 @@ Section ElimGlu.
     rewrite <- List.app_assoc in HCa, HCs; cbn [List.app] in HCa, HCs.
     assert (HKa : all_assumptions (Pre ++ ind_uparams D))
       by (unfold all_assumptions in HCa; apply List.Forall_app in HCa as [_ H]; inversion H; assumption).
-    pose proof (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HCs) as HK1.
+    pose proof (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HCs) as HK1.
     destruct (Completeness.Modules.MemberTypes.rel_ctx_wf_ass_inv HK1) as (Srt & HSk & HX).
     pose proof (rel_ctx_wf_tail HK1) as HK.
-    rewrite tele_sub_app, <- List.app_assoc in HCS; pose proof (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HCS) as HS1.
+    rewrite tele_sub_app, <- List.app_assoc in HCS; pose proof (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HCS) as HS1.
     cbn [tele_sub List.app] in HS1; pose proof (rel_ctx_wf_tail HS1) as HS.
     rewrite ErC in Hpg; rewrite <- (List.firstn_skipn k zs) in Hpg.
     rewrite !List.length_app in Hlz; cbn in Hlz.
@@ -1726,10 +1726,10 @@ Section ElimGlu.
       rewrite <- List.app_assoc in HCa, HCs; cbn [List.app] in HCa, HCs.
       assert (HKa : all_assumptions (Pre ++ ind_uparams D))
         by (unfold all_assumptions in HCa; apply List.Forall_app in HCa as [_ H]; inversion H; assumption).
-      pose proof (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HCs) as HK1.
+      pose proof (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HCs) as HK1.
       destruct (Completeness.Modules.MemberTypes.rel_ctx_wf_ass_inv HK1) as (Srt & HSk & HX).
       pose proof (rel_ctx_wf_tail HK1) as HK.
-      rewrite tele_sub_app, <- List.app_assoc in HCS; pose proof (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HCS) as HS1.
+      rewrite tele_sub_app, <- List.app_assoc in HCS; pose proof (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HCS) as HS1.
       cbn [tele_sub List.app] in HS1; pose proof (rel_ctx_wf_tail HS1) as HS.
       rewrite ErC in Hpg; rewrite <- (List.firstn_skipn k zs) in Hpg.
       assert (L1 : List.length (List.firstn k zs) = List.length (List.rev Pre)) by (rewrite List.length_rev, List.length_firstn; lia).
@@ -3651,7 +3651,7 @@ Section ElimGlu.
       - rewrite <- List.app_assoc; apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (member_params_ass D Hc _ _ HMk) ].
       - rewrite <- List.app_assoc; exact (valid_group_cargs_sem p D Hvg Hcv k Mk c gs HMk Hcon).
       - pose proof (valid_blocks_bctx _ _ _ _ _ _ HBv k Mk c gs HMk Hcon) as H.
-        unfold elim_bctx in H; rewrite <- List.app_assoc in H; apply Completeness.UnitCases.rel_ctx_wf_app_r in H.
+        unfold elim_bctx in H; rewrite <- List.app_assoc in H; apply Completeness.Modules.Slots.rel_ctx_wf_app_r in H.
         unfold con_inst_tele in H; rewrite tele_sub_app, length_im_nparams, <- List.app_assoc;
           first [ exact H | rewrite <- List.app_assoc in H; exact H ].
       - pose proof (cargs_ctx_closed p D k Mk c gs gs nil Hc HMk (cons_lookup_in _ _ _ Hcon) (eq_sym (List.app_nil_r gs))) as H.
@@ -4606,7 +4606,7 @@ Section ElimGlu.
         by (rewrite <- List.app_assoc; exact (valid_group_cargs_sem p D Hvg Hcv v Mv c gs HMv Hcon)).
       assert (HCS : ⊨ tele_sub (cargs_ctx p D Mv gs ++ im_nparams Mv) τU ++ Γ).
       { pose proof (valid_blocks_bctx _ _ _ _ _ _ HBv v Mv c gs HMv Hcon) as H.
-        rewrite Hbe, <- List.app_assoc in H; exact (Completeness.UnitCases.rel_ctx_wf_app_r _ _ H). }
+        rewrite Hbe, <- List.app_assoc in H; exact (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ H). }
       destruct (inst_entry_link _ HCa HCs HCS (ns ++ vs) Hpg
                   ltac:(rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia) kk κ X a HX Ea)
         as (κ0 & A0 & b & n & HA0 & Eb & Hab).
@@ -5567,7 +5567,7 @@ Section ElimGlu.
       by (rewrite <- List.app_assoc; exact (valid_group_cargs_sem p D Hvg Hcv v Mv c gs HMv Hcon)).
     assert (HCS : ⊨ CT ++ Γ).
     { pose proof (valid_blocks_bctx _ _ _ _ _ _ HBv v Mv c gs HMv Hcon) as HBc.
-      rewrite Esp, <- List.app_assoc in HBc; exact (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HBc). }
+      rewrite Esp, <- List.app_assoc in HBc; exact (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HBc). }
     destruct (inst_entry_link _ HCa HCs HCS (ns ++ vs) Hpg
                 ltac:(rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia) ka κA A0' aA He
                 ltac:(rewrite Efk; exact EaA))
@@ -7885,7 +7885,7 @@ Section ElimGlu.
                       = ihs_ctx_aux ak_relevant (rview_leaves D) (im_nn Mv) (blocks_motives Bks) Us (List.length gs) nil 0 gs
                         ++ tele_sub (cargs_ctx p D Mv gs ++ im_nparams Mv) τU)
           by (rewrite tele_sub_app, length_im_nparams; unfold elim_bctx; reflexivity).
-        rewrite Esp, <- List.app_assoc in H; exact (Completeness.UnitCases.rel_ctx_wf_app_r _ _ H). }
+        rewrite Esp, <- List.app_assoc in H; exact (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ H). }
       destruct (inst_entry_link _ HCa HCs HCS (ns ++ vs) Hpg
                   ltac:(rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia) ka κA A0' aA He EaA)
         as (κ0 & A0 & bA & j0 & HA0 & Eb & Hab).
@@ -9913,7 +9913,7 @@ Section ConRviewFT.
     - intros R a' Ha' HR.
       destruct (rel_exp_under_ctx_simple (completeness_fundamental_exp _ _ _ Hcty)) as (env_rel & Henv & j' & Hsimp).
       assert (Hnil : env_rel nil nil) by (inversion Henv; subst; match goal with H : _ <~> _ |- _ => apply H; exact I end).
-      destruct (Completeness.ContextCases.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hj) _ Henv _ _ Hnil)
+      destruct (Completeness.LogicalRelation.Contexts.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hj) _ Henv _ _ Hnil)
         as (a0 & Ea0 & Hk0).
       destruct (Hsimp _ _ Hnil) as (a1 & a2 & R1 & Ha1 & Ha2 & HR1 & [Hp | (m1 & m2 & Hm1 & Hm2 & Hmm)]).
       { (* the type of a constructor is relevant *)

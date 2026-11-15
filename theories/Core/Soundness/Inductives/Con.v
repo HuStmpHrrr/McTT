@@ -14,13 +14,13 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Inductives Require Decl.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes.
 From Mctt.Core.Completeness.Inductives Require Con ViewArgs CargsRel.
 From Mctt.Core.Completeness.LogicalRelation Require Telescope Substitution.
 From Mctt.Core.Completeness.Global Require Args.
-From Mctt.Core.Completeness Require UnitCases.
+From Mctt.Core.Completeness Require Modules.Slots.
 From Mctt.Core.Semantic Require Import Realizability RetagReadable.
 From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence.
 From Mctt.Core.Syntactic Require Import Substitution.
@@ -430,7 +430,7 @@ Section ConGlu.
     pose proof (rec_sub_valid D HD Hc k Mk c gs HMk Hcon gs1 t gs2 Mj Heq HMj m (Nat.lt_le_incl _ _ Hm)) as Hτ.
     (** The parameter's type is relevant, so the parameter's value is its
         evaluation. *)
-    destruct (Completeness.LetCases.rel_exp_of_typ_sub_relevant HR0 Hτ HAv _ _ HE) as (a0 & Ea0 & Hk0).
+    destruct (Completeness.LogicalRelation.Lets.rel_exp_of_typ_sub_relevant HR0 Hτ HAv _ _ HE) as (a0 & Ea0 & Hk0).
     fold K L in Ea0; rewrite <- ETk in Ea0.
     assert (a0 = a1) as -> by (eapply functional_eval_exp; eassumption).
     rewrite Hk0 in Hm1; cbn [glu_term_value] in Hm1.
@@ -443,7 +443,7 @@ Section ConGlu.
     { pose proof (valid_ind_decl_params _ HD _ _ HMj) as HPm; unfold im_params in HPm.
       rewrite <- (List.rev_involutive (im_nparams Mj)), <- (List.firstn_skipn m (List.rev (im_nparams Mj))),
         List.rev_app_distr, <- List.app_assoc in HPm.
-      exact (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HPm). }
+      exact (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HPm). }
     destruct (rel_ctx_wf_per_ctx_env HWm) as [Rm HRm].
     assert (Hlfb : List.length (List.firstn m bsr) = m) by (rewrite List.length_firstn; lia).
     assert (HEτ : Rm Eτ Eτ).
@@ -475,7 +475,7 @@ Section ConGlu.
         rewrite Hlfb, List.length_firstn, List.length_rev, length_im_nparams; lia. }
       rewrite <- HX; unfold τm, nparams_prefix.
       apply Completeness.Inductives.Decl.eval_sb_of_list;
-        [ apply eval_sub_of_wk, Completeness.UnitCases.wk_mono_shiftn | apply eval_exps_firstn; exact Hbsr | exact Hlτ |].
+        [ apply eval_sub_of_wk, Completeness.Modules.Slots.wk_mono_shiftn | apply eval_exps_firstn; exact Hbsr | exact Hlτ |].
       rewrite HX; intros x Hx Hpx.
       apply (evaluated_entries_not_propositional (nparams_prefix Mj m) (ind_uparams D) Rm
                ltac:(unfold nparams_prefix; apply List.Forall_rev, Forall_firstn', List.Forall_rev;
@@ -1633,7 +1633,7 @@ Section ConFT.
     - intros R a' Ha' HR.
       destruct (rel_exp_under_ctx_simple (completeness_fundamental_exp _ _ _ Hcty)) as (env_rel & Henv & j' & Hsimp).
       assert (Hnil : env_rel nil nil) by (inversion Henv; subst; match goal with H : _ <~> _ |- _ => apply H; exact I end).
-      destruct (Completeness.ContextCases.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hj) _ Henv _ _ Hnil)
+      destruct (Completeness.LogicalRelation.Contexts.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hj) _ Henv _ _ Hnil)
         as (a0 & Ea0 & Hk0).
       destruct (Hsimp _ _ Hnil) as (a1 & a2 & R1 & Ha1 & Ha2 & HR1 & [Hp | (m1 & m2 & Hm1 & Hm2 & Hmm)]).
       { (* the type of a constructor is relevant *)

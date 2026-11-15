@@ -14,7 +14,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System Records.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup Paths DescTyping LookupSound.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Modules Require Import Values Filed.
 From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
@@ -24,12 +24,12 @@ From Mctt.Core.Soundness.Records Require Import Former.
 From Mctt.Core.Soundness Require Import RecordCases Modules.ModuleValues.
 From Mctt.Core.Soundness.Global Require Import MemberValues.
 From Mctt.Core.Completeness.Global Require Args.
-From Mctt.Core.Completeness Require ContextCases.
+From Mctt.Core.Completeness Require LogicalRelation.Contexts.
 From Mctt.Core.Completeness.Modules Require Import Mem.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.LogicalRelation Require Substitution.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
-From Mctt.Core.Completeness Require UnitCases.
+From Mctt.Core.Completeness Require Modules.Slots.
 From Mctt.Core.Semantic.PER.Lemmas Require Import CanonicalContexts UniverseSubtyping.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -52,7 +52,7 @@ Section Fixed_GCtx.
       gc_loc gc_deps gc_stack p = Some (T, Φ) ->
       evaluated_kind r ->
       ⋅ ⊨ᵗ A ≈ A at i ->
-      Completeness.ContextCases.rel_type_kind ⋅ A r ->
+      Completeness.LogicalRelation.Contexts.rel_type_kind ⋅ A r ->
       (forall σ, A[σ] = A) -> (forall σ, N[σ] = N) ->
       (forall Δ, ⊢ Δ -> Δ ⊢ a_mem (qname_mod p) x ≈ N : A) ->
       ⋅ ⊩ N : A ->
@@ -147,7 +147,7 @@ Section Fixed_GCtx.
       intros * Hts HC HRT Hρ; [ constructor |].
     cbn [List.rev] in HC; rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
     assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
-    destruct (rel_ctx_wf_ass_typ (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HC)) as [jA HAv].
+    destruct (rel_ctx_wf_ass_typ (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HC)) as [jA HAv].
     destruct (rel_type_inversion_simple_at HRT HAv _ _ Hρ) as (a' & a'' & Ea' & Ea'' & [R HR]).
     assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
     assert (a'' = a) as -> by (eapply functional_eval_exp; eassumption).
@@ -545,7 +545,7 @@ Section Fixed_GCtx.
       cbn [List.rev] in HC, Eb; rewrite ctx_pi_at_snoc in Eb.
       rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
       assert (Hts' : all_assumptions ts) by (inversion Hts; assumption).
-      destruct (rel_ctx_wf_ass_typ (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HC)) as [jA HAv].
+      destruct (rel_ctx_wf_ass_typ (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HC)) as [jA HAv].
       destruct (rel_type_inversion_simple_at HRT HAv _ _ Hρ) as (a' & a1 & Ea' & Ea1 & Haa1).
       assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
       inversion Eb; subst.
@@ -678,7 +678,7 @@ Section Bare.
     destruct (valid_filed_mod_tele_evaluated _ _ _ _ _ HfM) as [l HTr].
     assert (HT0 : ⊨ T ++ ⋅) by (rewrite List.app_nil_r; exact (valid_filed_mod_tele_wf _ _ _ _ _ HfM)).
     assert (HA1' : T ++ ⋅ ⊨ᵗ A1 ≈ A1 at iA) by (rewrite List.app_nil_r; exact HA1).
-    assert (HA1k' : Completeness.ContextCases.rel_type_kind (T ++ ⋅) A1 (mdesc_kind R0)) by (rewrite List.app_nil_r; exact HA1k).
+    assert (HA1k' : Completeness.LogicalRelation.Contexts.rel_type_kind (T ++ ⋅) A1 (mdesc_kind R0)) by (rewrite List.app_nil_r; exact HA1k).
     destruct (rel_type_ctx_pi _ _ _ _ _ _ (valid_filed_mod_tele_all_assumptions _ _ _ _ _ HfM) HT0 HTr Hpk Hk HA1' HA1k')
       as [HAv HAk].
     (** The reduct's value at [nil] *)
@@ -777,7 +777,7 @@ Section Bare.
     pose proof (valid_filed_mod_tele_all_assumptions _ _ _ _ _ HfM) as HTa.
     assert (HT0 : ⊨ T ++ ⋅) by (rewrite List.app_nil_r; exact HT).
     assert (HA1' : T ++ ⋅ ⊨ᵗ A1 ≈ A1 at iA) by (rewrite List.app_nil_r; exact HA1).
-    assert (HA1k' : Completeness.ContextCases.rel_type_kind (T ++ ⋅) A1 (mdesc_kind S0)) by (rewrite List.app_nil_r; exact HA1k).
+    assert (HA1k' : Completeness.LogicalRelation.Contexts.rel_type_kind (T ++ ⋅) A1 (mdesc_kind S0)) by (rewrite List.app_nil_r; exact HA1k).
     destruct (rel_type_ctx_pi _ _ _ _ _ _ HTa HT0 HTr Hpk Hk HA1' HA1k') as [HAv HAk].
     (** The member read bare, glued at [nil] *)
     assert (HΔ : ⊢ Θ ⍮ Ξ ⍮ Δ) by exact (wf_sub_dom _ _ _ _ _ Hσ1).
@@ -868,7 +868,7 @@ Section Bare.
     pose proof (valid_filed_mod_tele_all_assumptions _ _ _ _ _ HfM) as HTa.
     assert (HT0 : ⊨ T ++ ⋅) by (rewrite List.app_nil_r; exact HT).
     assert (HA1' : T ++ ⋅ ⊨ᵗ A1 ≈ A1 at iA) by (rewrite List.app_nil_r; exact HA1).
-    assert (HA1k' : Completeness.ContextCases.rel_type_kind (T ++ ⋅) A1 (mdesc_kind S0)) by (rewrite List.app_nil_r; exact HA1k).
+    assert (HA1k' : Completeness.LogicalRelation.Contexts.rel_type_kind (T ++ ⋅) A1 (mdesc_kind S0)) by (rewrite List.app_nil_r; exact HA1k).
     destruct (rel_type_ctx_pi _ _ _ _ _ _ HTa HT0 HTr Hpk Hk HA1' HA1k') as [HAv HAk].
     (** The member read bare, glued at [nil] *)
     destruct HGa as [SbN HSbN kN HNb].

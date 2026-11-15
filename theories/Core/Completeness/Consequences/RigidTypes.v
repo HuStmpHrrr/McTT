@@ -12,12 +12,12 @@ From Stdlib Require Import Lia.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Completeness.
-From Mctt.Core.Completeness Require Import UniverseCases FunctionCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Universes LogicalRelation.Functions.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model.
 From Mctt.Core.Completeness.Modules Require Import Filed.
-From Mctt.Core.Completeness Require Import UnitCases LetCases.
+From Mctt.Core.Completeness Require Import Modules.Slots LogicalRelation.Lets.
 From Mctt.Core.Syntactic.System.Global Require Import Presup DescTyping.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing Cong.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
@@ -392,7 +392,7 @@ Proof.
   (** NbE reads it at the first: the two readbacks agree up to proofs *)
   pose proof (completeness_fundamental_exp _ _ _ (HMs _ _ _ HP HT)) as HPs.
   pose proof HPs as [env_relΓ' HΓ' _ _].
-  destruct (LetCases.rel_exp_under_ctx_simple_full_at HΓ' HPs) as [kP HM].
+  destruct (Lets.rel_exp_under_ctx_simple_full_at HΓ' HPs) as [kP HM].
   assert (E1 : RΓ <~> env_relΓ') by (eapply per_ctx_env_right_irrel; eassumption).
   destruct (HM _ _ (proj1 (E1 _ _) Hrel)) as (t & t' & R' & Ht & Ht' & HR' & Hexp).
   destruct HV as [ρ0 a0 Hρ0 Ha0 HVt].

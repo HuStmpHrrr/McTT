@@ -21,7 +21,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base Soundness Completeness.
 From Mctt.Core.Consequences Require Import Inversions.
-From Mctt.Core.Completeness Require Import UniverseCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Universes.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import Structural Command.

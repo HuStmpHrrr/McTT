@@ -14,9 +14,9 @@ Import ListNotations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases FunctionCases UniverseCases.
+From Mctt.Core.Completeness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Functions LogicalRelation.Universes.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import SubtypingCases VariableCases LetCases PropCases UnitCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Subtyping LogicalRelation.Variables LogicalRelation.Lets LogicalRelation.Props Modules.Slots.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
@@ -45,25 +45,7 @@ Qed.
 
 End Fixed_GCtx.
 
-Lemma sem_ctx_extend_mod :
-  `( Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U ->
-     ⊨ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
-Proof.
-  intros * HU; sem_intro.
-  apply valid_ctx_mod;
-    [ assumption | eapply rel_ctx_wf_extend_mod; [ eassumption | eassumption | eapply valid_unit_lit_scoped; eassumption ]
-    | assumption ].
-Qed.
 
-Lemma sem_ctx_extend_dm :
-  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ M : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U ->
-     ⊨ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ).
-Proof.
-  intros * HA HM HU; sem_intro.
-  apply valid_ctx_dm; [ assumption | eapply rel_ctx_wf_extend_dm; [ eassumption | eassumption | eassumption | eassumption | eapply valid_unit_lit_scoped; eassumption ] | assumption ].
-Qed.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.

@@ -7,7 +7,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Completeness Require Import UniverseCases LetCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Universes LogicalRelation.Lets.
 From Mctt.Core.Completeness Require Export FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic Require Export NbE.

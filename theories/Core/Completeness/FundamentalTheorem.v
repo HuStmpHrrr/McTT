@@ -22,8 +22,12 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import
   MemberLemmas MemberWf Presup Paths DescTyping LookupSound.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
+From Mctt.Core.Completeness Require Import LogicalRelation.Contexts LogicalRelation.Functions LogicalRelation.Lets
+  LogicalRelation.Levels.
 From Mctt.Core.Completeness Require Import ContextCases FunctionCases LetCases LevelCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
+From Mctt.Core.Completeness Require Import LogicalRelation.Subtyping LogicalRelation.Props LogicalRelation.Universes
+  LogicalRelation.Variables Modules.Slots.
 From Mctt.Core.Completeness Require Import
   SubtypingCases PropCases UniverseCases VariableCases UnitCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
@@ -33,6 +37,7 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Elim.
 From Mctt.Core.Completeness Require Import IndCases ElimCases.
 From Mctt.Core.Completeness.Inductives Require Import Iota.
+From Mctt.Core.Completeness Require Import Modules.ModuleLemmas.
 From Mctt.Core.Completeness Require Import IotaCases ModuleCases RecordCases.
 From Mctt.Core.Completeness.Records Require Model.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit.

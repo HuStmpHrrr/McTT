@@ -11,8 +11,8 @@
 From Stdlib Require Import PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem LevelCases.
-From Mctt.Core.Completeness Require UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Levels.
+From Mctt.Core.Completeness Require LogicalRelation.Universes.
 From Mctt.Core.Semantic Require Import Levels Realizability.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Syntactic Require Import Substitution.
@@ -47,7 +47,7 @@ Proof.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   assert (HΔ : ⊢ Δ) by (gen_presups; assumption).
-  destruct (per_univ_glu_univ_elem 0 LevelSortᵈ ltac:(eexists; apply Completeness.UniverseCases.per_univ_elem_level_sort_univ; exact I))
+  destruct (per_univ_glu_univ_elem 0 LevelSortᵈ ltac:(eexists; apply Completeness.LogicalRelation.Universes.per_univ_elem_level_sort_univ; exact I))
     as (P & El & Hglu).
   econstructor; [ constructor | cbn; constructor | exact Hglu |].
   basic_invert_glu_univ_elem Hglu; apply_predicate_equivalence.

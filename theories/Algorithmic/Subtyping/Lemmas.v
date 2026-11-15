@@ -6,7 +6,7 @@ From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Syntactic Require Import SystemOpt.
 From Mctt.Core Require Import Semantic.Levels Consequences.Inversions Consequences.UniverseNormalForms.
 From Mctt.Core.Completeness.Consequences Require Import ContextEquality.
-From Mctt.Core.Completeness Require Import UniverseCases ContextCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Universes LogicalRelation.Contexts.
 Import Syntax_Notations Fixed_Notations.
 
 #[local]

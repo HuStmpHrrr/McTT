@@ -25,7 +25,7 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases UnitCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes Modules.Slots.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution Telescope.
 From Mctt.Core.Completeness.Modules Require Filed.
 From Mctt.Core.Semantic Require Import Realizability.
@@ -44,7 +44,7 @@ From Mctt.Core.Soundness Require Import
   UniverseCases.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes.
 From Mctt.Core.Soundness.Inductives Require Import Args Params Comps.
-From Mctt.Core.Completeness Require Import RecordCases.
+From Mctt.Core.Completeness Require Import Records.Model.
 From Mctt.Core.Completeness.Records Require Model.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic Require Import Records.
@@ -254,7 +254,7 @@ Proof.
     destruct (rel_exp_under_ctx_simple HV) as (RU2 & HRU2 & l & Hsim).
     pose proof (tele_args_env_rel _ _ _ _ _ _ HRU2 HΓb Hlx Hxs) as HρU2.
     destruct (Hsim _ _ HρU2) as (b0 & b0' & R1 & Eb0 & Eb0' & HR1 & [Hp | (m & m' & Em & Em' & Hmm)]).
-    { destruct (Completeness.ContextCases.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ HPi) _ HRU2 _ _ HρU2)
+    { destruct (Completeness.LogicalRelation.Contexts.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ HPi) _ HRU2 _ _ HρU2)
         as (b1 & Eb1 & Hk1).
       assert (b1 = b0) as -> by (eapply functional_eval_exp; eassumption); congruence. }
     pose proof (HXev _ _ Hw Hlx) as Ed.
@@ -896,7 +896,7 @@ Section IndApps.
     pose proof Hi as Hi'; unfold ind_ty in Hi'.
     destruct (ctx_pi_split_typed _ _ _ _ HassP Hi') as [HCs0 _].
     pose proof (valid_ind_decl_params D HD k Mk HM) as HP; rewrite EP in HP.
-    pose proof (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HP) as HPb.
+    pose proof (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HP) as HPb.
     assert (HBev : exists l, rel_params_evaluated ⋅ Γb l).
     { apply rel_params_evaluated_of_entries; intros Δ1 κ A Δ2 E.
       destruct (im_params_evaluated D HD k Mk HM (Δt ++ Δ1) κ A Δ2 ltac:(rewrite EP, E, List.app_assoc; reflexivity)) as [l Hl0].

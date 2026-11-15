@@ -2,7 +2,7 @@ From Stdlib Require Import Lia List PeanoNat Equivalence Morphisms Morphisms_Pro
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import ContextCases FundamentalTheorem UniverseCases UnitCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Contexts FundamentalTheorem LogicalRelation.Universes Modules.Slots.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic.Inductives Require Import Canon.
 From Mctt.Core.Soundness.LogicalRelation Require Export Realizability.

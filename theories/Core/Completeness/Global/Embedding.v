@@ -20,23 +20,24 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import
   MemberLemmas MemberWf Presup Paths DescTyping LookupSound.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
-From Mctt.Core.Completeness Require Import ContextCases FunctionCases LetCases LevelCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Contexts LogicalRelation.Functions LogicalRelation.Lets
+  LogicalRelation.Levels.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import
-  SubtypingCases PropCases UniverseCases VariableCases LogicalRelation UnitCases.
+  LogicalRelation.Subtyping LogicalRelation.Props LogicalRelation.Universes LogicalRelation.Variables LogicalRelation
+  Modules.Slots.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness.Inductives Require Import Con.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Elim.
-From Mctt.Core.Completeness Require Import IndCases ElimCases.
+From Mctt.Core.Completeness Require Import Inductives.ElimViewRule.
 From Mctt.Core.Completeness.Inductives Require Import Iota.
-From Mctt.Core.Completeness Require Import IotaCases.
 From Mctt.Core.Completeness.Modules Require Import ModuleValues Values UnitSubst ModexpRel.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit Body Filed Unit Mem Canon App Sel.
-From Mctt.Core.Completeness Require Import ModuleCases.
+From Mctt.Core.Completeness Require Import Modules.ModuleLemmas.
 From Mctt.Core.Syntactic Require Import Records.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax.
 From Mctt.Core.Completeness.Records Require Import Model.

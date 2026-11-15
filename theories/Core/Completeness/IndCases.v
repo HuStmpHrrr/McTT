@@ -18,17 +18,17 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases.
+From Mctt.Core.Completeness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Universes.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import LetCases UnitCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Lets Modules.Slots.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
-From Mctt.Core.Completeness Require Import VariableCases FunctionCases LevelCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Variables LogicalRelation.Functions LogicalRelation.Levels.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model ArgTypes.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Con.
-From Mctt.Core.Completeness Require Import SubtypingCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Subtyping.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic.Inductives Require Import PER Elim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.

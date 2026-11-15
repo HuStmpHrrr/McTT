@@ -11,11 +11,11 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Inductives Require Decl.
 From Mctt.Core.Completeness.Inductives Require Import Model.
 From Mctt.Core.Completeness.LogicalRelation Require Telescope Substitution.
-From Mctt.Core.Completeness Require UnitCases.
+From Mctt.Core.Completeness Require Modules.Slots.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic.Inductives Require Import PER Canon.
 From Mctt.Core.Syntactic Require Import Substitution.
@@ -137,7 +137,7 @@ Section RecParams.
               by exact HK; lia).
       assert (HΞe : Ξ0 = (ptyp_tele t ++ nonrec_args_prefix gs K ++ im_nparams Mk) ++ ind_uparams D)
         by (unfold Ξ0, im_params; rewrite <- !List.app_assoc; reflexivity).
-      fold L; rewrite HΞe, HL; apply Completeness.UnitCases.rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0.
+      fold L; rewrite HΞe, HL; apply Completeness.Modules.Slots.rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0.
     - pose proof (IH ltac:(lia)) as Hτ.
       destruct (nth_error_lt_some (ptyp_ps t) m ltac:(lia)) as [P HP].
       assert (HT : exists T, List.nth_error (tele_insts (im_nparams Mj) (sb_of_wk (wk_shiftn L)) (ptyp_ps t)) m = Some T).
@@ -1195,7 +1195,7 @@ Section Former.
     destruct (rel_exp_under_ctx_simple (completeness_fundamental_exp _ _ _ Hty)) as (env_rel & Henv & j & Hsimp).
     assert (Hnil : env_rel nil nil) by (inversion Henv; subst; match goal with H : _ <~> _ |- _ => apply H; exact I end).
     destruct (ind_ty_typed0 _ _ _ _ _ Hdt HM) as [j0 Hj0].
-    destruct (Completeness.ContextCases.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hj0) _ Henv _ _ Hnil) as (a0 & Ea0 & Hk0).
+    destruct (Completeness.LogicalRelation.Contexts.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hj0) _ Henv _ _ Hnil) as (a0 & Ea0 & Hk0).
     destruct (Hsimp _ _ Hnil) as (a1 & a2 & R1 & Ha1 & Ha2 & HR1 & [Hp | (m1 & m2 & Hm1 & Hm2 & Hmm)]).
     { (* the type of a type former is relevant *)
       assert (a1 = a0) as -> by (eapply functional_eval_exp; eassumption); congruence. }

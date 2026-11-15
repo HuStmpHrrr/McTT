@@ -23,9 +23,10 @@ From Mctt.Core.Syntactic.System Require Import Definitions Scoping.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases VariableCases.
+From Mctt.Core.Completeness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Universes LogicalRelation.Variables.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import LetCases UnitCases LevelCases PropCases FunctionCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Lets Modules.Slots LogicalRelation.Levels LogicalRelation.Props
+  LogicalRelation.Functions.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance Telescope.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model.
@@ -1975,3 +1976,46 @@ Proof.
 Qed.
 
 End Fixed_GCtx.
+
+(** ** A Record along an Embedding *)
+
+(** What [Records/Model.v] asks of a record [R] at [p], read at [GC]. *)
+#[warnings="-cannot-define-projection"]
+Record record_model {GC : GCtx} (p : qname) (R : record_decl) : Prop := mk_record_model
+  { (** The record is found at [p] *)
+    model_lookup : record_lookup gc_deps gc_stack p = Some R
+    (** Its declaration is closed *)
+  ; model_closed : record_closed R
+    (** Its parameters are assumptions *)
+  ; model_params_ass : all_assumptions (record_params R)
+    (** Its field names are distinct *)
+  ; model_fields_distinct : List.NoDup (List.map fst (record_fields R))
+    (** Its sort is a universe *)
+  ; model_sort : ind_sort_univ (record_sort R)
+    (** Its declaration is valid in the PER model *)
+  ; model_valid : valid_record_decl R }.
+
+(** A record of [Θ ⍮ Ξ] is one of the target of a sound embedding of it. *)
+Lemma record_model_of_embedding : forall Θ Ξ Θ2 Ξ2 p R, valid_gctx_embedding Θ Ξ Θ2 Ξ2 -> record_lookup Θ Ξ p = Some R ->
+    @record_model (gc_mk Θ2 Ξ2) p R.
+Proof.
+  intros * He Hl.
+  pose proof (valid_gctx_embedding_wf _ _ _ _ He) as Hg.
+  pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl) as Ht.
+  constructor.
+  - exact (record_lookup_gc_sub _ _ _ _ _ _ (gctx_embedding_resolution _ _ _ _ (valid_gctx_embedding_embedding _ _ _ _ He)) Hl).
+  - exact (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg) Hl).
+  - exact (typed_params_ass _ _ _ Ht).
+  - exact (typed_nodup _ _ _ Ht).
+  - exact (record_typed_sort_univ _ _ _ Ht).
+  - exact (valid_gctx_embedding_record _ _ _ _ He _ _ Hl).
+Qed.
+
+(** Put what the model asks of the record [R] at [p] in the context. *)
+Ltac record_model_intro Hl :=
+  match goal with He : valid_gctx_embedding _ _ _ _ |- _ =>
+    let Hl2 := fresh "Hl2" in let Hc := fresh "Hc" in let Hass := fresh "Hass" in let Hnd := fresh "Hnd" in
+    let Hsu := fresh "Hsu" in let HPv := fresh "HPv" in let HSv := fresh "HSv" in let HFv := fresh "HFv" in
+    let HTv := fresh "HTv" in let HPr := fresh "HPr" in
+    destruct (record_model_of_embedding _ _ _ _ _ _ He Hl) as [Hl2 Hc Hass Hnd Hsu [HPv HPr HSv HFv HTv]]
+  end.

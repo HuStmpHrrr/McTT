@@ -28,7 +28,7 @@ From Mctt.Extraction Require Import Views.ViewsSearch Commands.IndDecl.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope Instance.
 From Mctt.Core.Completeness.Consequences Require Import RigidTypes.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model ArgTypes Elim.
-From Mctt.Core.Completeness Require Import LogicalRelation UnitCases.
+From Mctt.Core.Completeness Require Import LogicalRelation Modules.Slots.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Syntactic Require Import Fresh NfRename.
 From Mctt.Core.Syntactic.System.Inductives Require Import Cong.

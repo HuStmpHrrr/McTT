@@ -23,8 +23,8 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import LetCases UniverseCases.
-From Mctt.Core.Completeness Require LevelCases FunctionCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Lets LogicalRelation.Universes.
+From Mctt.Core.Completeness Require LogicalRelation.Levels LogicalRelation.Functions.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import
   ContextCases
@@ -337,7 +337,7 @@ Qed.
 
 (** [Π] into a small universe: its realiser is the level's at every
     glued substitution, the codomain's the weakened level's at the extended
-    one, which is the same ([Completeness.FunctionCases.suniv_real_shift]). *)
+    one, which is the same ([Completeness.LogicalRelation.Functions.suniv_real_shift]). *)
 Lemma glu_rel_exp_pi_small_relevant : forall {Γ κd A B L} {n : nat},
     Γ ⊩ L : Level@n ->
     Γ ⊩ A : abs_kind_sort κd Type⟨L⟩ ->
@@ -356,7 +356,7 @@ Proof.
   pose proof (wk_preserves_exp _ _ _ _ _ _ _ HLt (wf_wk_shift _ _ _ _ ltac:(eassumption))) as HLA; cbn [exp_wk] in HLA.
   pose proof (wf_pi_small HLt HAt HBt) as HΠt.
   pose proof (completeness_fundamental_exp _ _ _ HΠt) as HΠc.
-  destruct (LevelCases.rel_exp_of_suniv_tm_inversion_simple HΠc) as [R [HR HΠs]].
+  destruct (Levels.rel_exp_of_suniv_tm_inversion_simple HΠc) as [R [HR HΠs]].
   destruct (glu_ctx_env_per_ctx_env HSbB) as [RB HRB].
   pose proof (rel_type_of_abs_kind_sort (completeness_fundamental_exp _ _ _ HAl)) as HAc.
   pose proof (completeness_fundamental_exp _ _ _ HLt) as HLc.
@@ -381,7 +381,7 @@ Proof.
   { intros Δ' σ' c Hc.
     destruct (glu_rel_exp_of_suniv_tm_inversion' HSbB HB _ _ _ Hc) as (l' & Hl' & _ & _ & b & Hb & _ & HbP & HbR).
     pose proof (glu_ctx_env_per_env HSbB HRB Hc) as Hρc.
-    rewrite (FunctionCases.suniv_real_shift HAc HLc HRB _ _ _ _ _ _ _ _ Hρc Hl' Hl) in HbP.
+    rewrite (Functions.suniv_real_shift HAc HLc HRB _ _ _ _ _ _ _ _ Hρc Hl' Hl) in HbP.
     exists b; split; [ exact Hb | split; [ exact HbP | exact HbR ] ]. }
   split; [ cbn [exp_sub]; eapply wf_pi_small; [ exact HLσ | exact HAσ | exact HBq ] |].
   exists (d_pi κd ak_relevant a ρ B); split; [ constructor; exact Ha |].

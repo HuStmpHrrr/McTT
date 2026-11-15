@@ -15,7 +15,7 @@ From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import LetPeeling.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping LookupSound.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases UnitCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes Modules.Slots.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit Values Mem.
 From Mctt.Core.Completeness.Consequences Require Import UptoProofs.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases.

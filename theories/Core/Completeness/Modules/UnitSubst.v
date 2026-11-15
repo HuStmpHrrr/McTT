@@ -16,9 +16,9 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import Paths MemberLemmas LookupSound.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases.
+From Mctt.Core.Completeness Require Import LogicalRelation LogicalRelation.Contexts.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import LetCases UnitCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Lets Modules.Slots.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.

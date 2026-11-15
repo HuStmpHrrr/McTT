@@ -15,12 +15,12 @@ From Stdlib Require String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Inductives Require Decl.
 From Mctt.Core.Completeness.LogicalRelation Require Telescope Substitution.
-From Mctt.Core.Completeness Require UnitCases.
+From Mctt.Core.Completeness Require Modules.Slots.
 From Mctt.Core.Completeness.Records Require Import Model.
-From Mctt.Core.Completeness Require Import RecordCases.
+From Mctt.Core.Completeness Require Import Records.Model.
 From Mctt.Core.Semantic Require Import Realizability Records.PER Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 From Mctt.Core.Syntactic Require Import Substitution Records.
@@ -384,7 +384,7 @@ Section RecordFormer.
       assert (Hty0 : ⋅ ⊢ a_record p : record_ty R) by (apply record_former_wf; constructor; exact Hg).
       destruct (rel_exp_under_ctx_simple (completeness_fundamental_exp _ _ _ Hty0)) as (env_rel & Henv & j & Hsimp).
       assert (Hnil : env_rel nil nil) by (inversion Henv; subst; match goal with H : _ <~> _ |- _ => apply H; exact I end).
-      destruct (Completeness.ContextCases.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hty) _ Henv _ _ Hnil)
+      destruct (Completeness.LogicalRelation.Contexts.rel_type_kind_of_typ (completeness_fundamental_exp _ _ _ Hty) _ Henv _ _ Hnil)
         as (a0 & Ea0 & Hk0).
       destruct (Hsimp _ _ Hnil) as (a1 & a2 & R1 & Ha1 & Ha2 & HR1 & [Hp | (m1 & m2 & Hm1 & Hm2 & Hmm)]).
       { (* the type of a type former is relevant *)

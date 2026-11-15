@@ -9,7 +9,7 @@ From Stdlib Require Import RelationClasses.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Completeness.
-From Mctt.Core.Completeness Require Import ContextCases LetCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Contexts LogicalRelation.Lets.
 From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Fixed_Notations.
 

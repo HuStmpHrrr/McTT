@@ -16,10 +16,10 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup Paths DescTyping LookupSound.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Modules Require Import Values.
 From Mctt.Core.Completeness.Global Require Import Embedding.
-From Mctt.Core.Completeness Require ContextCases.
+From Mctt.Core.Completeness Require LogicalRelation.Contexts.
 From Mctt.Core.Completeness.Modules Require Filed.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LevelCases.

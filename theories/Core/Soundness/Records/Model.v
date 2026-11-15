@@ -14,12 +14,12 @@ From Stdlib Require String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Inductives Require Decl.
 From Mctt.Core.Completeness.LogicalRelation Require Telescope Substitution.
-From Mctt.Core.Completeness Require UnitCases.
+From Mctt.Core.Completeness Require Modules.Slots.
 From Mctt.Core.Completeness.Records Require Import Model.
-From Mctt.Core.Completeness Require Import RecordCases.
+From Mctt.Core.Completeness Require Import Records.Model.
 From Mctt.Core.Semantic Require Import Realizability Records.PER Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 From Mctt.Core.Syntactic Require Import Substitution Records.

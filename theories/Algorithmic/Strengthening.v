@@ -22,7 +22,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
-From Mctt.Core.Completeness Require Import UniverseCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Universes.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
 From Mctt.Core Require Import Consequences.Inversions Semantic.Realizability.
 From Mctt.Core.Syntactic Require Import CoreInversions Fresh.
@@ -36,7 +36,7 @@ From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Completeness.Records Require Model.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes Values.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
-From Mctt.Core.Completeness Require Import LetCases.
+From Mctt.Core.Completeness Require Import LogicalRelation.Lets.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 
 (** ** The Weakening that Inserts a Variable

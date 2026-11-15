@@ -13,14 +13,14 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Inductives Require Decl.
 From Mctt.Core.Completeness.Inductives Require Import Model.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.LogicalRelation Require Substitution Instance.
 From Mctt.Core.Completeness.Global Require Args.
 From Mctt.Core.Completeness.Modules Require MemberTypes Filed.
-From Mctt.Core.Completeness Require ContextCases UnitCases.
+From Mctt.Core.Completeness Require LogicalRelation.Contexts Modules.Slots.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import LogicalRelation.
@@ -103,7 +103,7 @@ Proof.
   destruct (ctx_rev_split C k _ HA) as (C1 & Pre & EC & HPl).
   assert (HPa : all_assumptions Pre)
     by (rewrite EC in Hass; unfold all_assumptions in Hass; apply List.Forall_app in Hass as [_ H']; inversion H'; assumption).
-  pose proof HC as HC1; rewrite EC in HC1; pose proof (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HC1) as HC2.
+  pose proof HC as HC1; rewrite EC in HC1; pose proof (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HC1) as HC2.
   pose proof (rel_ctx_wf_tail HC2) as HPre.
   destruct (Completeness.Inductives.Model.closed_evaluated_over C Γ Hass HC HΓ HCev _ _ _ _ EC) as [i HAi].
   assert (Hle : List.length Pre <= List.length Ms) by (rewrite Hl, EC, List.length_app; cbn; lia).
@@ -156,8 +156,8 @@ Proof.
   (** The instance is of an evaluated kind, so the term's value is its
       evaluation. *)
   destruct (HTs k T0 HT0) as (Srt & HSrt & HT0s).
-  destruct (Completeness.ContextCases.rel_typ_evaluated_at
-              (Completeness.ContextCases.rel_type_evaluated_of_evaluated_sort HSrt HT0s) HRΓ ρ ρ Hρ) as (a0 & Ea0 & Hka).
+  destruct (Completeness.LogicalRelation.Contexts.rel_typ_evaluated_at
+              (Completeness.LogicalRelation.Contexts.rel_type_evaluated_of_evaluated_sort HSrt HT0s) HRΓ ρ ρ Hρ) as (a0 & Ea0 & Hka).
   assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
   assert (Em' : ⟦ N ⟧ ρ ↘ m) by (unfold glu_term_value in Em; destruct (domain_kind a); first [ exact Em | inversion Hka ]).
   assert (m = v0) as -> by (eapply functional_eval_exp; eassumption).
@@ -167,7 +167,7 @@ Proof.
       ([closed_inst_typ]). *)
   destruct (ctx_rev_split C k _ HA) as (C1 & Pre & EC & HPl).
   assert (HPa : all_assumptions Pre) by (rewrite EC in Hass; unfold all_assumptions in Hass; apply List.Forall_app in Hass as [_ H']; inversion H'; assumption).
-  pose proof HC as HC1; rewrite EC in HC1; pose proof (Completeness.UnitCases.rel_ctx_wf_app_r _ _ HC1) as HC2.
+  pose proof HC as HC1; rewrite EC in HC1; pose proof (Completeness.Modules.Slots.rel_ctx_wf_app_r _ _ HC1) as HC2.
   destruct (Completeness.Modules.MemberTypes.rel_ctx_wf_ass_inv HC2) as (SrtA & HkA & HAs).
   destruct (rel_type_of_sort (sort_kind_type_sort _ _ HkA) HAs) as [j HAj].
   pose proof (rel_ctx_wf_tail HC2) as HPre.
