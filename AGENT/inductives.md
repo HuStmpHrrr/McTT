@@ -149,8 +149,8 @@ end
   Self-free: an `image_pat` under `classify_pat d np n pat = repeat false d
   ++ pat ++ repeat false np ++ repeat true n`.  The normal-form path makes
   `(f : Arr Ord)`, `Arr X := ∀ (n : ℕ) → X`, recursive.
-* Rejections (`classify_reason`, `Extraction/IndDecl.v`, messages in
-  `Extraction/Command.v`): the name in a domain ("… occurs in the domain of
+* Rejections (`classify_reason`, `Extraction/Commands/IndDecl.v`, messages in
+  `Extraction/Commands/Command.v`): the name in a domain ("… occurs in the domain of
   a function in the argument f of mk, which is not strictly positive"),
   under a head that does not compute, not at the uniform parameters as
   declared, elsewhere.
@@ -210,7 +210,7 @@ judgment, outside the mutual block; NbE builds no syntax.
 * `F Bad` with `F` abstract, an axiom or a module parameter: "Bad occurs in
   the argument f of mk under a head that does not compute (an opaque
   definition, an axiom or a parameter)" (`classify_reason` 4).
-* The checker (`classify_arg_in_dec`, `Extraction/IndDecl.v`) checks the context
+* The checker (`classify_arg_in_dec`, `Extraction/Commands/IndDecl.v`) checks the context
   and that the argument is a type, normalizes it, and classifies the normal
   form; a rejection gives the reason on the normal form.  The judgment's
   global state is equivalent to the checker's, so the normal forms agree
@@ -245,7 +245,7 @@ step to be proved never to fail at the user's type, beyond
 | completeness | `Core/Completeness/Inductives/{Decl,Con,Elim,Iota}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v`, `LogicalRelation/Telescope.v` |
 | gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `ind_glu_elem`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/Inductives/{Con,Elim}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v` |
 | commands: `core_cmd_inductive`, `run_cmd_ind_case`, `run_ind_members`, `ind_mod_cmds`, `rec_cmds`, `raw_decl_uparams`, `ind_qname` | `Core/Syntactic/Command.v`, `System/Command.v` |
-| the checker's group step (`members_step`, `ind_step`) | `Extraction/Command.v` |
+| the checker's group step (`members_step`, `ind_step`) | `Extraction/Commands/Command.v` |
 
 ## The entry: `ge_ind pv D Φ`
 
@@ -297,7 +297,7 @@ stored closed over them, as every definition is.
   - it files `ge_ind pv pq k D (gu_mod U)` with the body they end with.
 
   For `mutual T where`, `rec_cmds` then runs `T.Rec` in `T`'s frame. The
-  checker (`Extraction/Command.v`) runs the generated commands through the
+  checker (`Extraction/Commands/Command.v`) runs the generated commands through the
   ordinary steps (`members_step` uses `rec_step` per member). These runs
   load and bind nothing (`gen_run`, `gen_cmds_run_wf`).
 
@@ -393,7 +393,7 @@ need typing:
   eliminator needs it to bound, rename and relate the motives along each
   path: `Rename.read_rn` (`ihs_motives_domain_bounded`), `Avoid.read_avoids`
   (`ends_fresh_of_blocks`, `cargs_ends_fresh`) and
-  `Extraction.Simulation.fast_read_sim` (`ends_agree_of_blocks`,
+  `Extraction.Evaluation.Evaluation.Simulation.fast_read_sim` (`ends_agree_of_blocks`,
   `cargs_ends_agree`). It is also the source of the next gate's
   `leaves_coherent` in readback (`leaves_coherent_of_order
   (rview_leaf_order …)`). Discharged by `grp_tele_ass_leaf_arity`.
@@ -514,10 +514,10 @@ through the `fk_ind` frame. So `A.Rec.rec_B` types `a_ind pq 1` through
   are re-derived at `Rs` and are no longer subderivations; its head counts
   too (`modexp_lets`), whose arguments are re-checked as the type former's
   (`exp_lets_head_apps`).
-* Both checkers share `Extraction/IndCheck.v`; the eliminator's recursive
+* Both checkers share `Extraction/Checker/IndCheck.v`; the eliminator's recursive
   calls are passed in as closures, so the mutual fixpoints and their
   obligation numbering are unchanged.
-* A declaration is decided premise by premise in `Extraction/IndDecl.v`
+* A declaration is decided premise by premise in `Extraction/Commands/IndDecl.v`
   (`ind_entry_dec`, the entry `ge_ind pv D ⋄`); `exp_mvc` by a boolean
   mirror (`mvcb_spec`).
 
@@ -607,7 +607,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   `Prelude›Builtin›Nat` is one binding; `Lib›Unary` and `Lib›Peano` together
   conflict; a binding made in a body does not reach a unit imported later
   in it, and meets that unit's own binding there.
-* **Checker.**  `Extraction/Command.v`: `run_state` / `unit_result` carry the
+* **Checker.**  `Extraction/Commands/Command.v`: `run_state` / `unit_result` carry the
   record (`run_state_core_builtins`, `unit_result_core_builtins`); the map of records is part of `unit_closure_map`, which
   keeps, for each filed unit, its closure (`unit_closure_find`) and its record (`unit_closure_builtins`).
   The judgment's map is related by `builtin_records_ok K ΘR RbR` (canonical, and the

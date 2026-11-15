@@ -625,7 +625,7 @@ Definition record_lookup (Θ : gdeps) (Ξ : gstack) (p : qname) : option record_
 
 (** [record_lookup] at a function giving the filed units, [gc_entry_u]
     in place of [gc_entry]: the lookup the checker runs, through a trie
-    ([Extraction.Lookup]); equal to [record_lookup] at a function agreeing
+    ([Extraction.Context.Lookup]); equal to [record_lookup] at a function agreeing
     with [gds_lookup Θ] ([record_lookup_u_ok]). *)
 Definition record_lookup_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option record_decl :=
   match gs_find_record Ξ p with

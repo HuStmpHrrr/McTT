@@ -619,15 +619,15 @@ predicate to expose the recursive sub-orders, then `econstructor; mauto`.
 
 | Tactic | Location | Description |
 | --- | --- | --- |
-| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/Evaluation.v:96, 104` | Inverts `eval_exp_order`, `eval_natrec_order`, `eval_app_order`, `eval_sub_order`; then `try econstructor; eauto`. |
-| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/Readback.v:102, 110` | Same for `read_nf_order`, `read_ne_order`, `read_typ_order`. |
-| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/NbE.v:35/41`, `123/129`, `181/187` | Three separate copies inside three `Section`s, for `initial_env_order`, `nbe_order`, and `nbe_ty_order` respectively. |
-| `subtyping_tac` | `Extraction/Subtyping.v:9` | Obligations of the *decision* procedure `subtyping_nf_impl`: for a positive goal `⊢anf A ⊆ B`, `subst; mauto 4; try congruence; econstructor`; for a negative goal, introduce, `dependent destruction`, and close by `lia`/`congruence`. |
-| `subtyping_impl_tac1` / `subtyping_impl_tac` | `Extraction/Subtyping.v:69, 76` | Inverts `subtyping_order` and `nbe_ty_order`; then `econstructor; mauto`. |
-| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/TypeCheck.v:14, 23` | For `lookup`: introduce negations, invert `⊢ Γ ▹ A` and impossible `⋅ ∋ #x : A` / `Γ ▹ A ∋ #(S x) : A` hypotheses, then `intuition (mauto 4)`. |
-| `clear_defs` | `Extraction/TypeCheckBase.v:492` | Housekeeping: `Equations` leaves the mutual recursive-call hypotheses and `let H := fixproto in …` bindings in every obligation context, where they confuse `mauto`. This clears them by matching their (spelled-out) types. |
-| `impl_obligation_tac` | `Extraction/TypeCheck.v:121` | The big one — obligations of `type_check` / `type_infer`. `clear_defs`, invert the order predicates, `destruct_conjs`, then dispatch on the goal: well-formedness and typing goals via `gen_presups; mautosolve 4`; universe-level maxima via `lift_exp_max_left/right`; negative goals by inverting the algorithmic derivation and using `functional_alg_type_infer_rewrite_clear`; `subtyping_order` goals by routing through `soundness_ty` and `nbe_ty_order_sound`. |
-| `impl_obligation_tac` | `Extraction/TypeCheck.v:394` | Obligations of `type_check_closed`: `unfold not in *; intros; mauto 3 using user_exp_to_type_infer_order, type_check_order, type_infer_order`. |
+| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/Evaluation/Evaluation.v:96, 104` | Inverts `eval_exp_order`, `eval_natrec_order`, `eval_app_order`, `eval_sub_order`; then `try econstructor; eauto`. |
+| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/Evaluation/Readback.v:102, 110` | Same for `read_nf_order`, `read_ne_order`, `read_typ_order`. |
+| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/Evaluation/NbE.v:35/41`, `123/129`, `181/187` | Three separate copies inside three `Section`s, for `initial_env_order`, `nbe_order`, and `nbe_ty_order` respectively. |
+| `subtyping_tac` | `Extraction/Checker/Subtyping.v:9` | Obligations of the *decision* procedure `subtyping_nf_impl`: for a positive goal `⊢anf A ⊆ B`, `subst; mauto 4; try congruence; econstructor`; for a negative goal, introduce, `dependent destruction`, and close by `lia`/`congruence`. |
+| `subtyping_impl_tac1` / `subtyping_impl_tac` | `Extraction/Checker/Subtyping.v:69, 76` | Inverts `subtyping_order` and `nbe_ty_order`; then `econstructor; mauto`. |
+| `impl_obligation_tac1` / `impl_obligation_tac` | `Extraction/Checker/TypeCheck.v:14, 23` | For `lookup`: introduce negations, invert `⊢ Γ ▹ A` and impossible `⋅ ∋ #x : A` / `Γ ▹ A ∋ #(S x) : A` hypotheses, then `intuition (mauto 4)`. |
+| `clear_defs` | `Extraction/Checker/TypeCheckBase.v:492` | Housekeeping: `Equations` leaves the mutual recursive-call hypotheses and `let H := fixproto in …` bindings in every obligation context, where they confuse `mauto`. This clears them by matching their (spelled-out) types. |
+| `impl_obligation_tac` | `Extraction/Checker/TypeCheck.v:121` | The big one — obligations of `type_check` / `type_infer`. `clear_defs`, invert the order predicates, `destruct_conjs`, then dispatch on the goal: well-formedness and typing goals via `gen_presups; mautosolve 4`; universe-level maxima via `lift_exp_max_left/right`; negative goals by inverting the algorithmic derivation and using `functional_alg_type_infer_rewrite_clear`; `subtyping_order` goals by routing through `soundness_ty` and `nbe_ty_order_sound`. |
+| `impl_obligation_tac` | `Extraction/Checker/TypeCheck.v:394` | Obligations of `type_check_closed`: `unfold not in *; intros; mauto 3 using user_exp_to_type_infer_order, type_check_order, type_infer_order`. |
 | `impl_obligation_tac` | `Entrypoint.v:31` | `try eassumption` — the top-level `main` needs nothing more. |
 
 Completeness of the extracted functions is proved by a third pattern: assert
@@ -636,9 +636,9 @@ result.
 
 | Tactic | Location | Description |
 | --- | --- | --- |
-| `functional_eval_complete` | `Extraction/Evaluation.v:161` | For a goal `exists H H', f x H = exist _ m H'`: `assert` the order predicate by `mauto 3`, `eexists` it, `destruct` the call, `functional_eval_rewrite_clear`, `eexists; reflexivity`. |
-| `functional_read_complete` | `Extraction/Readback.v:174` | Same, with `functional_read_rewrite_clear`. |
-| `functional_nbe_complete` | `Extraction/NbE.v:75` | Same, with `functional_nbe_rewrite_clear`. |
+| `functional_eval_complete` | `Extraction/Evaluation/Evaluation.v:161` | For a goal `exists H H', f x H = exist _ m H'`: `assert` the order predicate by `mauto 3`, `eexists` it, `destruct` the call, `functional_eval_rewrite_clear`, `eexists; reflexivity`. |
+| `functional_read_complete` | `Extraction/Evaluation/Readback.v:174` | Same, with `functional_read_rewrite_clear`. |
+| `functional_nbe_complete` | `Extraction/Evaluation/NbE.v:75` | Same, with `functional_nbe_rewrite_clear`. |
 
 The `let*b` / `let*o` / `let*b->o` / `let*o->b` / `pureb` / `pureo` notations
 these definitions are written in are *not* tactics — they are the
@@ -663,7 +663,7 @@ pseudo-monadic notations for `sumbool`/`sumor` in
 - **`invert_glu_rel_exp` is not one tactic.** See *A deliberate
   redefinition* — its meaning depends
   on whether `Soundness/UniverseCases.v` is in scope.
-- **`Extraction/TypeCheck.v:115` (`impl_obl_tac_helper`) is dead code** — it
+- **`Extraction/Checker/TypeCheck.v:115` (`impl_obl_tac_helper`) is dead code** — it
   is defined and never referenced. `impl_obligation_tac` at line 121 inlines the same
   `type_infer_order` inversion.
 - **`clear_defs` hard-codes the types it clears.** If the signature of
@@ -696,7 +696,7 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `basic_per_univ_elem_econstructor` | `Core/Semantic/PER/CoreTactics.v:54` |
 | `bulky_rewrite`, `…1`, `…_in`, `…_in1` | `LibTactics.v:471, 465, 479, 473` |
 | `clean replace … with … by …` | `LibTactics.v:158` (impl. `clean_replace_by`, 149) |
-| `clear_defs` | `Extraction/TypeCheckBase.v:492` |
+| `clear_defs` | `Extraction/Checker/TypeCheckBase.v:492` |
 | `clear_dups` | `LibTactics.v:106` |
 | `clear_PER` | `LibTactics.v:356` |
 | `clear_predicate_equivalence` | `Core/Soundness/LogicalRelation/CoreLemmas.v:400` |
@@ -727,13 +727,13 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `find_dup_hyp` | `LibTactics.v:89` |
 | `find_head` | `LibTactics.v:161` |
 | `functional_alg_type_infer_rewrite_clear`, `…1` | `Algorithmic/Typing/Lemmas.v:43, 37` |
-| `functional_eval_complete` | `Extraction/Evaluation.v:161` |
+| `functional_eval_complete` | `Extraction/Evaluation/Evaluation.v:161` |
 | `functionalize_per_univ_chain` | `Core/Semantic/PER/Lemmas.v:635` |
 | `functional_eval_rewrite_clear`, `…1` | `Core/Semantic/Evaluation/Lemmas.v:86, 73` |
 | `functional_initial_env_rewrite_clear`, `…1` | `Core/Semantic/NbE.v:57, 51` |
-| `functional_nbe_complete` | `Extraction/NbE.v:75` |
+| `functional_nbe_complete` | `Extraction/Evaluation/NbE.v:75` |
 | `functional_nbe_rewrite_clear`, `…1` | `Core/Semantic/NbE.v:181, 171` |
-| `functional_read_complete` | `Extraction/Readback.v:174` |
+| `functional_read_complete` | `Extraction/Evaluation/Readback.v:174` |
 | `functional_read_rewrite_clear`, `…1` | `Core/Semantic/Readback/Lemmas.v:68, 58` |
 | `gen` | `LibTactics.v:17–20` |
 | `gen_core_presup`, `gen_core_presups` | `Core/Syntactic/System/Tactics.v:47, 76` |
@@ -744,8 +744,8 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `handle_functional_glu_univ_elem` | `Core/Soundness/LogicalRelation/CoreLemmas.v:530` |
 | `handle_per_ctx_env_irrel` | `Core/Semantic/PER/Lemmas.v:999` |
 | `handle_per_univ_elem_irrel` | `Core/Semantic/PER/Lemmas.v:463` |
-| `impl_obligation_tac`, `…1` | `Entrypoint.v:31`; `Extraction/Evaluation.v:104, 96`; `Extraction/NbE.v:41/35, 129/123, 187/181`; `Extraction/Readback.v:110, 102`; `Extraction/TypeCheck.v:23/14, 121, 394` |
-| `impl_obl_tac_helper` (unused) | `Extraction/TypeCheck.v:115` |
+| `impl_obligation_tac`, `…1` | `Entrypoint.v:31`; `Extraction/Evaluation/Evaluation.v:104, 96`; `Extraction/Evaluation/NbE.v:41/35, 129/123, 187/181`; `Extraction/Evaluation/Readback.v:110, 102`; `Extraction/Checker/TypeCheck.v:23/14, 121, 394` |
+| `impl_obl_tac_helper` (unused) | `Extraction/Checker/TypeCheck.v:115` |
 | `impl_opt_constructor` | `Core/Syntactic/SystemOpt.v:68` |
 | `inversion_by_head`, `directed_inversion_by_head` | `LibTactics.v:188, 189` |
 | `inversion_clear_by_head`, `directed_inversion_clear_by_head` | `LibTactics.v:190, 191` |
@@ -806,8 +806,8 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `solve_refl` | `LibTactics.v:404` |
 | `solve_rel_chain` | `Core/Semantic/PER/Chain.v:371` |
 | `strong_apply` | `LibTactics.v:321` |
-| `subtyping_impl_tac`, `…1` | `Extraction/Subtyping.v:76, 69` |
-| `subtyping_tac` | `Extraction/Subtyping.v:9` |
+| `subtyping_impl_tac`, `…1` | `Extraction/Checker/Subtyping.v:76, 69` |
+| `subtyping_tac` | `Extraction/Checker/Subtyping.v:9` |
 | `Tauto.intuition_solver` (redefinition) | `LibTactics.v:248` |
 | `unfold_ops` | `Core/Syntactic/Substitution.v:132` |
 | `unify_args` | `LibTactics.v:312` |

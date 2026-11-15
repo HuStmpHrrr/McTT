@@ -1,0 +1,1488 @@
+(** * The Instances the Classification Meets, and the Siblings
+
+    Where the classification of a group declaration's arguments
+    ([Core.Syntactic.System.Command], [classify_arg_in]) finds a nested
+    occurrence: in the normal form of an argument's type, at the end of
+    its [Π]s, the type former of a declared member of a filed group at
+    uniform arguments ([classify_arg_view]).  Those instances, keyed, are
+    typed views ([key_inv], [nest_key_inv], [view_meets_inv]), and so are a
+    typed view's siblings, the members of its container's group at its
+    arguments ([sibling_view_inv]); the siblings of a view sibling are
+    siblings up to their proofs ([view_entry_siblings]), by the view
+    equations.  The same for records: the classification finds a record
+    view at the end of an argument's normal form, the record type at all
+    its parameters ([classify_arg_record_view]), a typed record view
+    ([nest_record_view_typed]); a container's record member gives a record
+    view sibling ([sibling_record], [sibling_record_inv]).  Normal forms are
+    compared up to their proofs: a kept proof normalized again is read back
+    over the definitions of the variables it reads once more. *)
+
+From Stdlib Require Import Lia List PeanoNat String.
+From Mctt Require Import LibTactics.
+From Mctt.Core Require Import Base Completeness Soundness Consequences.NormalFormWeakening.
+From Mctt.Core Require Import Consequences.Consistency Semantic.Realizability.
+From Mctt.Core.Semantic.Inductives Require Import NestingOrder.
+From Mctt.Algorithmic Require Import Strengthening.
+From Mctt.Core.Syntactic.System Require Import Command.
+From Mctt.Extraction Require Import Views.ViewsSearch Commands.IndDecl.
+From Mctt.Core.Completeness.LogicalRelation Require Import Telescope Instance.
+From Mctt.Core.Completeness.Consequences Require Import RigidTypes.
+From Mctt.Core.Completeness.Inductives Require Import Decl Model ArgTypes Elim.
+From Mctt.Core.Completeness Require Import LogicalRelation UnitCases.
+From Mctt.Core.Completeness.Modules Require Import MemberTypes.
+From Mctt.Core.Syntactic Require Import Fresh NfRename.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
+From Mctt.Core.Syntactic.System.Inductives Require Import UniformParams Views.
+From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
+Import Domain_Notations Fixed_Notations Wk_Notations.
+#[local] Open Scope list_scope.
+
+(** The [j]-th value of a telescope's readback, read at its type in the
+    environment of the values before it. *)
+Lemma read_ps_nth : forall Θ Ξ s ρ T vs Ws, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ws ->
+    forall j κ A v, List.nth_error T j = Some (ce_ass κ A) -> List.nth_error vs j = Some v ->
+    exists a V, ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_tele ρ T (List.firstn j vs) ↘ a /\ Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V /\
+      List.nth_error Ws j = Some V.
+Proof.
+  induction 1 as [| ? ? ? ? ? ? ? ? ? ? Ea HV Hr IH]; intros [| j] κ' A' v' HT Hv; cbn in HT, Hv; try discriminate.
+  - injection HT as <- <-; injection Hv as <-; do 2 eexists; cbn; eauto.
+  - destruct (IH _ _ _ _ HT Hv) as (a1 & V1 & Ea1 & HVa & Hn); exists a1, V1; cbn; auto.
+Qed.
+
+(** An inductive type former applied evaluates its arguments, all of them
+    (its parameters are relevant, [eval_app_args_ind]), and applies its
+    value to theirs. *)
+Lemma eval_apps_ind_exp : forall Θ Ξ p k Ms ρ r, ⟦ apps (a_ind p k) Ms ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+    exists f ms, ⟦ a_ind p k ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f /\ ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms /\ $*| f & ms | Θ ⍮ Ξ ↘ r.
+Proof.
+  intros * H; apply Modules.eval_apps_exp in H as (f & Hf & Ha).
+  pose proof Hf as Hf'; inversion Hf'; subst.
+  apply Modules.eval_app_args_ind in Ha as (ms & ? & ?); eauto.
+Qed.
+
+(** And so does a record type former, [eval_app_args_record]. *)
+Lemma eval_apps_record_exp : forall Θ Ξ p Ms ρ r, ⟦ apps (a_record p) Ms ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+    exists f ms, ⟦ a_record p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f /\ ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms /\ $*| f & ms | Θ ⍮ Ξ ↘ r.
+Proof.
+  intros * H; apply Modules.eval_apps_exp in H as (f & Hf & Ha).
+  pose proof Hf as Hf'; inversion Hf'; subst.
+  apply Modules.eval_app_args_record in Ha as (ms & ? & ?); eauto.
+Qed.
+
+(** ** Normal Forms of Types, Read Structurally *)
+
+Lemma nbe_ty_pi_inv : forall Θ Ξ Γ κd κc B C W, nbe_ty Θ Ξ Γ (a_pi κd κc B C) W ->
+    exists WB WC, W = nf_pi κd κc WB WC /\ nbe_ty Θ Ξ Γ B WB /\ nbe_ty Θ Ξ (ce_ass κd B :: Γ) C WC.
+Proof.
+  intros * [ρ m Hi He Hr].
+  inversion He; subst.
+  inversion Hr; subst.
+  all: do 2 eexists; split; [ reflexivity |].
+  all: split; econstructor; eauto.
+  all: econstructor; eassumption.
+Qed.
+
+(** ** Where the Classification Finds a Nested Occurrence *)
+
+(** A chain of relevant [Π]s over the domains [Bs], outermost first: the
+    shapes the classification reads ([classify_shape]). *)
+Fixpoint pis (Bs : list exp) (E : exp) : exp :=
+  match Bs with
+  | nil => E
+  | B :: Bs' => a_pi ak_relevant ak_relevant B (pis Bs' E)
+  end.
+
+Lemma image_pat_spec : forall pat T A, image_pat pat T = Some A -> T = A[wk_pat pat]ʷ.
+Proof.
+  intros * H; unfold image_pat in H.
+  destruct (exp_eq_dec T T[unwk_pat pat]ʷ[wk_pat pat]ʷ) as [E |]; [ injection H as <-; exact E | discriminate ].
+Qed.
+
+Lemma image_pats_spec : forall pat Ts As, image_pats pat Ts = Some As -> Ts = List.map (fun A => A[wk_pat pat]ʷ) As.
+Proof.
+  induction Ts as [| T Ts IH]; intros As H; cbn in H; [ injection H as <-; reflexivity |].
+  destruct (image_pat pat T) as [A |] eqn:E1; [| discriminate ].
+  destruct (image_pats pat Ts) as [As' |] eqn:E2; [| discriminate ].
+  injection H as <-; cbn; rewrite <- (image_pat_spec _ _ _ E1), <- (IH _ eq_refl); reflexivity.
+Qed.
+
+(** A shape the classification finds a nested occurrence [(qc, k, Cs)] in
+    ends, past its domains, in the type former of the declared member [k]
+    of the filed group at [qc] at arguments the first [m] of which, the
+    group's uniform ones, are [Cs] weakened past the domains, the
+    arguments before and the member's non-uniform parameters. *)
+Lemma classify_shape_view : forall grp recs nu np n pat T d t qc k Cs,
+    classify_shape grp recs nu np n pat d T = Some t -> In (vi_ind qc k Cs) (classified_ptyp_view t) ->
+    exists Bs E m, T = pis Bs E /\ (forall B C, E <> a_pi ak_relevant ak_relevant B C) /\ app_head E = a_ind qc k /\ grp qc k = Some m /\
+      m <= List.length (app_args E) /\
+      List.firstn m (app_args E) = List.map (fun C => C[wk_pat (List.repeat true (d + List.length Bs + List.length pat + (np - nu)))]ʷ) Cs.
+Proof.
+  (* a shape that is no [Π] ends here *)
+  assert (Hnest : forall grp recs nu np n pat d T t qc k Cs, (forall B C, T <> a_pi ak_relevant ak_relevant B C) ->
+      match app_head T with
+      | a_var x => classify_self nu np n pat d x (app_args T)
+      | a_ind qc k => classify_nest grp nu np n pat d qc k (app_args T)
+      | a_record qr => classify_record_view recs nu np n pat d qr (app_args T)
+      | _ => None
+      end = Some t -> In (vi_ind qc k Cs) (classified_ptyp_view t) ->
+      exists m, app_head T = a_ind qc k /\ grp qc k = Some m /\ m <= List.length (app_args T) /\
+        List.firstn m (app_args T) = List.map (fun C => C[wk_pat (List.repeat true (d + List.length pat + (np - nu)))]ʷ) Cs).
+  { intros * HT H Hin.
+    destruct (app_head T) eqn:Eh; try discriminate.
+    - unfold classify_nest in H.
+      destruct (grp _ _) as [m |] eqn:Eg; [| discriminate ].
+      destruct (m <=? _) eqn:Em; [| discriminate ].
+      destruct (image_pats _ (List.firstn m _)) as [Cs1 |] eqn:EC; [| discriminate ].
+      destruct (image_pats _ (List.skipn m _)) as [Ns |] eqn:EN; [| discriminate ].
+      destruct (selfs_occur _ _ _); [| discriminate ].
+      injection H as <-; destruct Hin as [[= <- <- <-] | []].
+      exists m; repeat split; [ exact Eg | apply Nat.leb_le; exact Em | exact (image_pats_spec _ _ _ EC) ].
+    - unfold classify_self in H; destruct (_ && _)%bool; [| discriminate ].
+      destruct (list_eq_dec _ _ _); [| discriminate ].
+      destruct (image_pats _ _); cbn in H; [ injection H as <-; destruct Hin | discriminate ].
+    - unfold classify_record_view in H.
+      destruct (recs _) as [m |]; [| discriminate ].
+      destruct (Nat.eqb _ _); [| discriminate ].
+      destruct (image_pats _ _); [| discriminate ].
+      destruct (_ && _)%bool; [| discriminate ].
+      injection H as <-; destruct Hin as [[=] | []]. }
+  intros grp recs nu np n pat T; induction T; intros d t qc0 k0 Cs0 Hcl Hin.
+  (* a [∀] is no shape the classification reads through *)
+  all: repeat match goal with r : abs_kind |- _ => destruct r end.
+  all: try (match type of Hcl with classify_shape _ _ _ _ _ _ _ ?T0 = _ =>
+              destruct (Hnest grp recs nu np n pat d T0 t qc0 k0 Cs0 ltac:(intros ? ? [=]) Hcl Hin) as (mlen & Hh & Hg & Hm & HC) end;
+            exists nil; eexists; exists mlen; cbn [pis List.length]; rewrite Nat.add_0_r;
+            split; [ reflexivity |];
+            repeat split; [ intros ? ? [=] | exact Hh | exact Hg | exact Hm | exact HC ]).
+  (* the [Π]: its codomain under one more domain *)
+  cbn [classify_shape] in Hcl.
+  destruct (image_pat _ T1) as [B0 |]; [| discriminate ].
+  destruct (classify_shape grp recs nu np n pat (S d) T2) as [t' |] eqn:Et; cbn in Hcl; [ injection Hcl as <- | discriminate ].
+  destruct (IHT2 _ _ _ _ _ Et Hin) as (Bs & E & m & -> & HE & Hh & Hg & Hm & HC).
+  exists (T1 :: Bs), E, m; cbn [pis List.length]; repeat split; try assumption.
+  rewrite HC; replace (d + S (List.length Bs)) with (S d + List.length Bs) by lia; reflexivity.
+Qed.
+
+(** A shape the classification finds a record view [(qr, Is)] in ends,
+    past its domains, in the record type at [qr] at all its parameters,
+    which are [Is] weakened past the domains, the arguments before and
+    the member's non-uniform parameters, a [Self] occurring in them only
+    where a type former or a [Π] takes it. *)
+Lemma classify_shape_record_view : forall grp recs nu np n pat T d t qr Is,
+    classify_shape grp recs nu np n pat d T = Some t -> In (vi_record qr Is) (classified_ptyp_view t) ->
+    exists Bs E, T = pis Bs E /\ (forall B C, E <> a_pi ak_relevant ak_relevant B C) /\ app_head E = a_record qr /\
+      recs qr = Some (List.length (app_args E)) /\ selfs_guarded nu n Is = true /\
+      app_args E = List.map (fun C => C[wk_pat (List.repeat true (d + List.length Bs + List.length pat + (np - nu)))]ʷ) Is.
+Proof.
+  (* a shape that is no [Π] ends here *)
+  assert (Hrec : forall grp recs nu np n pat d T t qr Is, (forall B C, T <> a_pi ak_relevant ak_relevant B C) ->
+      match app_head T with
+      | a_var x => classify_self nu np n pat d x (app_args T)
+      | a_ind qc k => classify_nest grp nu np n pat d qc k (app_args T)
+      | a_record qr => classify_record_view recs nu np n pat d qr (app_args T)
+      | _ => None
+      end = Some t -> In (vi_record qr Is) (classified_ptyp_view t) ->
+      app_head T = a_record qr /\ recs qr = Some (List.length (app_args T)) /\ selfs_guarded nu n Is = true /\
+        app_args T = List.map (fun C => C[wk_pat (List.repeat true (d + List.length pat + (np - nu)))]ʷ) Is).
+  { intros * HT H Hin.
+    destruct (app_head T) eqn:Eh; try discriminate.
+    - unfold classify_nest in H.
+      destruct (grp _ _) as [m |]; [| discriminate ].
+      destruct (m <=? _); [| discriminate ].
+      destruct (image_pats _ (List.firstn m _)); [| discriminate ].
+      destruct (image_pats _ (List.skipn m _)); [| discriminate ].
+      destruct (selfs_occur _ _ _); [| discriminate ].
+      injection H as <-; destruct Hin as [[=] | []].
+    - unfold classify_self in H; destruct (_ && _)%bool; [| discriminate ].
+      destruct (list_eq_dec _ _ _); [| discriminate ].
+      destruct (image_pats _ _); cbn in H; [ injection H as <-; destruct Hin | discriminate ].
+    - unfold classify_record_view in H.
+      destruct (recs _) as [m |] eqn:Em; [| discriminate ].
+      destruct (Nat.eqb m _) eqn:Eml; [| discriminate ].
+      destruct (image_pats _ _) as [Is1 |] eqn:EI; [| discriminate ].
+      destruct (selfs_occur _ _ _ && selfs_guarded _ _ _)%bool eqn:Eg; [| discriminate ].
+      injection H as <-; destruct Hin as [[= <- <-] | []].
+      apply Nat.eqb_eq in Eml; subst m; apply andb_prop in Eg as [_ Eg].
+      repeat split; [ exact Em | exact Eg | exact (image_pats_spec _ _ _ EI) ]. }
+  intros grp recs nu np n pat T; induction T; intros d t qr0 Is0 Hcl Hin.
+  (* a [∀] is no shape the classification reads through *)
+  all: repeat match goal with r : abs_kind |- _ => destruct r end.
+  all: try (match type of Hcl with classify_shape _ _ _ _ _ _ _ ?T0 = _ =>
+              destruct (Hrec grp recs nu np n pat d T0 t qr0 Is0 ltac:(intros ? ? [=]) Hcl Hin) as (Hh & Hg & Hgu & HC) end;
+            exists nil; eexists; cbn [pis List.length]; rewrite Nat.add_0_r;
+            split; [ reflexivity |];
+            repeat split; [ intros ? ? [=] | exact Hh | exact Hg | exact Hgu | exact HC ]).
+  (* the [Π]: its codomain under one more domain *)
+  cbn [classify_shape] in Hcl.
+  destruct (image_pat _ T1) as [B0 |]; [| discriminate ].
+  destruct (classify_shape grp recs nu np n pat (S d) T2) as [t' |] eqn:Et; cbn in Hcl; [ injection Hcl as <- | discriminate ].
+  destruct (IHT2 _ _ _ _ Et Hin) as (Bs & E & -> & HE & Hh & Hg & Hgu & HC).
+  exists (T1 :: Bs), E; cbn [pis List.length]; repeat split; try assumption.
+  rewrite HC; replace (d + S (List.length Bs)) with (S d + List.length Bs) by lia; reflexivity.
+Qed.
+
+(** So does an argument the classification finds a nested occurrence
+    in. *)
+Lemma classify_arg_view : forall grp recs nu np n pat T g qc k Cs,
+    classify_arg grp recs nu np n pat T = Some g -> In (vi_ind qc k Cs) (classified_carg_view g) ->
+    exists Bs E m, T = pis Bs E /\ (forall B C, E <> a_pi ak_relevant ak_relevant B C) /\ app_head E = a_ind qc k /\ grp qc k = Some m /\
+      m <= List.length (app_args E) /\
+      List.firstn m (app_args E) = List.map (fun C => C[wk_pat (List.repeat true (List.length Bs + List.length pat + (np - nu)))]ʷ) Cs.
+Proof.
+  intros * H Hin; unfold classify_arg in H.
+  destruct (image_pat _ T); [ injection H as <-; destruct Hin |].
+  destruct (classify_shape grp recs nu np n pat 0 T) as [t |] eqn:Et; cbn in H; [ injection H as <- | discriminate ].
+  exact (classify_shape_view _ _ _ _ _ _ _ _ _ _ _ _ Et Hin).
+Qed.
+
+(** And one it finds a record view in. *)
+Lemma classify_arg_record_view : forall grp recs nu np n pat T g qr Is,
+    classify_arg grp recs nu np n pat T = Some g -> In (vi_record qr Is) (classified_carg_view g) ->
+    exists Bs E, T = pis Bs E /\ (forall B C, E <> a_pi ak_relevant ak_relevant B C) /\ app_head E = a_record qr /\
+      recs qr = Some (List.length (app_args E)) /\ selfs_guarded nu n Is = true /\
+      app_args E = List.map (fun C => C[wk_pat (List.repeat true (List.length Bs + List.length pat + (np - nu)))]ʷ) Is.
+Proof.
+  intros * H Hin; unfold classify_arg in H.
+  destruct (image_pat _ T); [ injection H as <-; destruct Hin |].
+  destruct (classify_shape grp recs nu np n pat 0 T) as [t |] eqn:Et; cbn in H; [ injection H as <- | discriminate ].
+  exact (classify_shape_record_view _ _ _ _ _ _ _ _ _ _ _ Et Hin).
+Qed.
+
+(** The classification as written, with no filed group and no record,
+    finds no nested occurrence. *)
+Lemma classify_arg_none_view : forall nu np n pat T g, classify_arg grp_none rec_none nu np n pat T = Some g -> classified_carg_view g = nil.
+Proof.
+  intros * H; destruct (classified_carg_view g) as [| [qc k Cs | qr Is] zs] eqn:E; [ reflexivity | |].
+  - destruct (classify_arg_view _ _ _ _ _ _ _ _ qc k Cs H ltac:(rewrite E; left; reflexivity)) as (? & ? & ? & _ & _ & _ & Hg & _).
+    discriminate.
+  - destruct (classify_arg_record_view _ _ _ _ _ _ _ _ qr Is H ltac:(rewrite E; left; reflexivity)) as (? & ? & _ & _ & _ & Hg & _).
+    discriminate.
+Qed.
+
+(** ** Typed Views
+
+    A view [(qc, k, Cs)] over the context [Γu] of a group declaration (its
+    uniform parameters, the [Self]s and the frames' parameters) is typed
+    when [qc] files a group whose member [k] is declared, and [Cs] are
+    typed at its uniform telescope there. *)
+#[warnings="-cannot-define-projection"]
+Record view_typed (Θ : gdeps) (Ξ : gstack) (Γu : ctx) (qc : qname) (k : nat) (Cs : list exp) : Prop := mk_view_typed
+  { (** The container's group *)
+    typed_group : ind_decl
+    (** It is filed at [qc] *)
+  ; typed_lookup : ind_lookup Θ Ξ qc = Some typed_group
+    (** The member [k] is declared *)
+  ; typed_declared : k < ind_ndecl typed_group
+    (** As many arguments as uniform parameters *)
+  ; typed_length : List.length Cs = ind_nu typed_group
+    (** Each argument is typed at the uniform telescope at those before *)
+  ; typed_args : forall j C T, List.nth_error Cs j = Some C ->
+      List.nth_error (tele_insts (ind_uparams typed_group) Id Cs) j = Some T -> Θ ⍮ Ξ ⍮ Γu ⊢ C : T
+    (** The context is well formed *)
+  ; typed_ctx : ⊢ Θ ⍮ Ξ ⍮ Γu }.
+
+(** A record view [(qr, Is)] over [Γu] is typed when [qr] files a record
+    and [Is] are typed at its parameters there. *)
+#[warnings="-cannot-define-projection"]
+Record record_view_typed (Θ : gdeps) (Ξ : gstack) (Γu : ctx) (qr : qname) (Is : list exp) : Prop := mk_record_view_typed
+  { (** The record *)
+    typed_record : record_decl
+    (** It is filed at [qr] *)
+  ; typed_record_lookup : record_lookup Θ Ξ qr = Some typed_record
+    (** As many arguments as parameters *)
+  ; typed_record_length : List.length Is = List.length (record_params typed_record)
+    (** Each argument is typed at the parameters at those before *)
+  ; typed_record_args : forall j C T, List.nth_error Is j = Some C ->
+      List.nth_error (tele_insts (record_params typed_record) Id Is) j = Some T -> Θ ⍮ Ξ ⍮ Γu ⊢ C : T
+    (** The context is well formed *)
+  ; typed_record_ctx : ⊢ Θ ⍮ Ξ ⍮ Γu }.
+
+(** The invariant of a key of either kind: its arguments, read back, are
+    typed.  (A key's arguments are normal, but read back and normalized
+    again they are its own only up to their proofs: a kept proof is read
+    back over the definitions of the variables it reads, so the views are
+    counted up to proofs, [ViewsSearch].) *)
+Definition key_inv (Θ : gdeps) (Ξ : gstack) (Γu : ctx) (x : view_key) : Prop :=
+  match x with
+  | vk_ind qc k Ws => view_typed Θ Ξ Γu qc k (List.map nf_to_exp Ws)
+  | vk_record qr Ws => record_view_typed Θ Ξ Γu qr (List.map nf_to_exp Ws)
+  end.
+
+Lemma unwk_wk_pat : forall pat, wk_eq (wk_compose (wk_pat pat) (unwk_pat pat)) wk_id.
+Proof.
+  induction pat as [| [] pat IH]; intros x; cbn; [ reflexivity | |].
+  - unfold wk_compose, wk_shift in *; cbn; apply IH.
+  - destruct x as [| x]; cbn; [ reflexivity |].
+    unfold wk_compose in IH; rewrite IH; reflexivity.
+Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+  (** A group filed in a well-formed global context is semantically
+      valid. *)
+  Lemma valid_ind_decl_gc : forall p D, ⊢ᵍ gc_deps ⍮ gc_stack -> ind_lookup gc_deps gc_stack p = Some D -> valid_ind_decl D.
+  Proof.
+    intros p D Hg Hl; destruct GC as [Θ Ξ]; cbn in *.
+    exact (valid_gctx_embedding_ind_field _ _ _ _ (valid_gctx_embedding_refl _ _ Hg) _ _ Hl).
+  Qed.
+
+  (** So is a filed record. *)
+  Lemma valid_record_decl_gc : forall p R, ⊢ᵍ gc_deps ⍮ gc_stack -> record_lookup gc_deps gc_stack p = Some R -> valid_record_decl R.
+  Proof.
+    intros p R Hg Hl; destruct GC as [Θ Ξ]; cbn in *.
+    exact (valid_gctx_embedding_record _ _ _ _ (valid_gctx_embedding_refl _ _ Hg) _ _ Hl).
+  Qed.
+
+  (** A normal form without proofs equal, up to proofs, to the normal form
+      of a term is that normal form ([nf_ne_proof_free_eq]). *)
+  Lemma nbe_of_proof_free_upto : forall Γ P T R V, nf_proof_free R -> nbe_f Γ P T V -> nf_eq_upto_proofs V R -> nbe_f Γ P T R.
+  Proof.
+    intros * Hpf HV HE.
+    replace R with V; [ exact HV |].
+    symmetry; apply (proj1 nf_ne_proof_free_eq R Hpf); symmetry; exact HE.
+  Qed.
+
+  (** The arguments of the normal form of an inductive type, without
+      proofs, are the normal forms of its arguments, each at its type: the
+      normal forms agree up to proofs ([nbe_ty_ind_params]), and the
+      first holds none. *)
+  Lemma nbe_ind_args : forall Γ p D k Mk Ms Rs,
+      ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk -> List.length Ms = im_np D Mk ->
+      (forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T ->
+         Γ ⊢ P : T) ->
+      nbe_ty_f Γ (apps (a_ind p k) Ms) (nf_indty p k Rs) -> all_list nf_proof_free Rs ->
+      forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T ->
+        exists R, List.nth_error Rs j = Some R /\ nbe_f Γ P T R.
+  Proof.
+    intros * Hl Hk HMl HMs HW Hpf j P T HP HT.
+    assert (HΓ : ⊢ Γ) by (pose proof (HMs j P T HP HT); gen_presups; assumption).
+    destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HMl HMs HW) as (Rs' & [= <-] & HRl & HRs).
+    destruct (soundness (HMs _ _ _ HP HT)) as (V & HV & _).
+    destruct (List.nth_error Rs j) as [R |] eqn:HR;
+      [| apply List.nth_error_None in HR; assert (Hj : List.nth_error Ms j <> None) by congruence;
+         apply List.nth_error_Some in Hj; lia ].
+    exists R; split; [ reflexivity |].
+    apply (nbe_of_proof_free_upto _ _ _ _ V); [| exact HV | exact (HRs _ _ _ _ _ HP HT HR HV) ].
+    apply all_list_Forall in Hpf; exact (proj1 (List.Forall_forall _ _) Hpf _ (List.nth_error_In _ _ HR)).
+  Qed.
+
+  (** The arguments of the normal form of a record type, without proofs,
+      are the normal forms of its arguments, each at its type, as for
+      [nbe_ind_args] ([nbe_ty_record_params]). *)
+  Lemma nbe_record_args : forall Γ p R Ms Rs (i : nat),
+      record_lookup gc_deps gc_stack p = Some R -> Γ ⊢ apps (a_record p) Ms : Typeω@i ->
+      nbe_ty_f Γ (apps (a_record p) Ms) (nf_record p Rs) -> all_list nf_proof_free Rs ->
+      forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (record_params R) Id Ms) j = Some T ->
+        exists R', List.nth_error Rs j = Some R' /\ nbe_f Γ P T R'.
+  Proof.
+    intros * Hl HT HW Hpf j P T HP HTj.
+    pose proof (wf_record_apps_len _ _ _ _ _ Hl HT) as HMl.
+    pose proof (wf_record_apps_inv _ _ _ _ _ Hl HT HMl) as HMs.
+    assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+    destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HMl HMs HW) as (Rs' & [= <-] & HRl & HRs).
+    destruct (soundness (HMs _ _ _ HP HTj)) as (V & HV & _).
+    destruct (List.nth_error Rs j) as [Q |] eqn:HQ;
+      [| apply List.nth_error_None in HQ; assert (Hj : List.nth_error Ms j <> None) by congruence;
+         apply List.nth_error_Some in Hj; lia ].
+    exists Q; split; [ reflexivity |].
+    apply (nbe_of_proof_free_upto _ _ _ _ V); [| exact HV | exact (HRs _ _ _ _ _ HP HTj HQ HV) ].
+    apply all_list_Forall in Hpf; exact (proj1 (List.Forall_forall _ _) Hpf _ (List.nth_error_In _ _ HQ)).
+  Qed.
+
+  (** ** The Pieces of a Normal Form of a Type *)
+
+  Lemma wk_pat_trues : forall L, wk_eq (wk_pat (List.repeat true L)) (wk_shiftn L).
+  Proof.
+    induction L as [| L IH]; intros x; cbn; [ unfold wk_shiftn; lia |].
+    unfold wk_compose, wk_shift; rewrite IH; unfold wk_shiftn; lia.
+  Qed.
+
+  Lemma apps_head_args : forall M, apps (app_head M) (app_args M) = M.
+  Proof.
+    induction M; try reflexivity.
+    cbn [app_head app_args]; rewrite apps_exp_app; cbn; rewrite IHM1; reflexivity.
+  Qed.
+
+  Lemma app_head_apps : forall M Ns, app_head (apps M Ns) = app_head M.
+  Proof. intros M Ns; revert M; induction Ns as [| N Ns IH]; intros M; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+
+  Lemma app_args_apps : forall M Ns, app_args (apps M Ns) = app_args M ++ Ns.
+  Proof.
+    intros M Ns; revert M; induction Ns as [| N Ns IH]; intros M; cbn; [ rewrite List.app_nil_r; reflexivity |].
+    rewrite IH; cbn; rewrite <- List.app_assoc; reflexivity.
+  Qed.
+
+  Lemma member_ref_shape : forall ch H, member_ref H ch = a_prop \/ exists H' x, member_ref H ch = a_mem H' x.
+  Proof.
+    induction ch as [| y ch IH]; intros H; [ left; reflexivity |].
+    destruct ch as [| z ch']; [ right; exists H, y; reflexivity | exact (IH (me_mem H y)) ].
+  Qed.
+
+  (** A neutral is no [Π] and no inductive type. *)
+  Lemma ne_head_not_ind : forall u, (forall κd κc X Y, ne_to_exp u <> a_pi κd κc X Y) /\ (forall p k, app_head (ne_to_exp u) <> a_ind p k).
+  Proof.
+    induction u; cbn; split; intros; try discriminate; [ apply (proj2 IHu) | |];
+      match goal with |- context [qname_term ?p] =>
+        unfold qname_term; destruct (member_ref_shape (q_chain p) (me_unit (q_unit p))) as [E | (H' & x & E)];
+        rewrite E; discriminate end.
+  Qed.
+
+  (** The normal forms readback gives types. *)
+  Inductive type_nf : nf -> Prop :=
+  (** A large universe *)
+  | type_nf_typ : forall i, type_nf (nf_typ i)
+  (** A small universe *)
+  | type_nf_univ : forall c xs, type_nf (nf_univ c xs)
+  (** A type of levels *)
+  | type_nf_level : forall n, type_nf (nf_level n)
+  (** The universe of propositions *)
+  | type_nf_prop : type_nf nf_prop
+  (** [⊤] *)
+  | type_nf_True : type_nf nf_True
+  (** [⊥] *)
+  | type_nf_False : type_nf nf_False
+  (** The sort of the types of levels *)
+  | type_nf_level_sort : type_nf nf_level_sort
+  (** A [Π] at any kinds into a type *)
+  | type_nf_pi : forall κd κc A B, type_nf B -> type_nf (nf_pi κd κc A B)
+  (** A conjunction [Σₚ] into a type *)
+  | type_nf_and : forall P Q, type_nf Q -> type_nf (nf_and P Q)
+  (** A member of a group at its parameters *)
+  | type_nf_indty : forall p k Ms, type_nf (nf_indty p k Ms)
+  (** A neutral *)
+  | type_nf_neut : forall κ u, type_nf (nf_neut κ u)
+  (** A record type at its parameters *)
+  | type_nf_record : forall p Ms, type_nf (nf_record p Ms).
+
+  Lemma read_typ_type_nf : forall s m W, Rtyp m in gc_deps ⍮ gc_stack ⍮ s ↘ W -> type_nf W.
+  Proof. induction 1; constructor; assumption. Qed.
+
+  Lemma nf_pi_view : forall W X Y, type_nf W -> nf_to_exp W = a_pi ak_relevant ak_relevant X Y ->
+      exists W1 W2, W = nf_pi ak_relevant ak_relevant W1 W2 /\ type_nf W2 /\ nf_to_exp W1 = X /\ nf_to_exp W2 = Y.
+  Proof.
+    intros W X Y HW H; destruct HW; cbn in H; try discriminate.
+    - injection H as -> <- <-; do 2 eexists; eauto.
+    - destruct (List.map nf_to_exp _) using List.rev_ind; cbn in H; [ discriminate | rewrite apps_exp_app in H; discriminate ].
+    - exfalso; exact (proj1 (ne_head_not_ind _) _ _ _ _ H).
+    - destruct (List.map nf_to_exp _) using List.rev_ind; cbn in H; [ discriminate | rewrite apps_exp_app in H; discriminate ].
+  Qed.
+
+  Lemma nf_pis_end : forall Bs E W, type_nf W -> nf_to_exp W = pis Bs E -> exists WE, type_nf WE /\ nf_to_exp WE = E.
+  Proof.
+    induction Bs as [| B Bs IH]; intros E W HW H; cbn in H; [ exists W; split; assumption |].
+    destruct (nf_pi_view _ _ _ HW H) as (W1 & W2 & -> & HW2 & _ & HE2); exact (IH _ _ HW2 HE2).
+  Qed.
+
+  (** So does a proof-free one, at a proof-free end. *)
+  Lemma nf_pis_end_proof_free : forall Bs E W, type_nf W -> nf_proof_free W -> nf_to_exp W = pis Bs E ->
+      exists WE, type_nf WE /\ nf_proof_free WE /\ nf_to_exp WE = E.
+  Proof.
+    induction Bs as [| B Bs IH]; intros E W HW Hpf H; cbn in H; [ exists W; auto |].
+    destruct (nf_pi_view _ _ _ HW H) as (W1 & W2 & -> & HW2 & _ & HE2); exact (IH _ _ HW2 (proj2 Hpf) HE2).
+  Qed.
+
+  (** An element of a list of proof-free normal forms is proof-free. *)
+  Lemma all_proof_free_nth : forall Rs j R, all_list nf_proof_free Rs -> List.nth_error Rs j = Some R -> nf_proof_free R.
+  Proof.
+    intros * H Hj; apply all_list_Forall in H.
+    exact (proj1 (List.Forall_forall _ _) H _ (List.nth_error_In _ _ Hj)).
+  Qed.
+
+  Lemma nf_ind_view : forall W p k, type_nf W -> app_head (nf_to_exp W) = a_ind p k ->
+      exists Rs, W = nf_indty p k Rs.
+  Proof.
+    intros W p k HW H; destruct HW; cbn in H; try discriminate.
+    - rewrite app_head_apps in H; cbn in H; injection H as <- <-; eexists; reflexivity.
+    - exfalso; exact (proj2 (ne_head_not_ind _) _ _ H).
+    - rewrite app_head_apps in H; cbn in H; discriminate.
+  Qed.
+
+  (** A neutral is no record type. *)
+  Lemma ne_head_not_record : forall u p, app_head (ne_to_exp u) <> a_record p.
+  Proof.
+    induction u; cbn; intros; try discriminate; try exact (IHu _);
+      match goal with |- context [qname_term ?p] =>
+        unfold qname_term; destruct (member_ref_shape (q_chain p) (me_unit (q_unit p))) as [E | (H' & x & E)];
+        rewrite E; discriminate end.
+  Qed.
+
+  Lemma nf_record_view : forall W p, type_nf W -> app_head (nf_to_exp W) = a_record p -> exists Rs, W = nf_record p Rs.
+  Proof.
+    intros W p HW H; destruct HW; cbn in H; try discriminate.
+    - rewrite app_head_apps in H; cbn in H; discriminate.
+    - exfalso; exact (ne_head_not_record _ _ H).
+    - rewrite app_head_apps in H; cbn in H; injection H as <-; eexists; reflexivity.
+  Qed.
+
+  (** The end of a typed chain of [Π]s is a type under its domains. *)
+  Lemma pis_typed_inv : forall Bs Γ E (i : nat), Γ ⊢ pis Bs E : Typeω@i -> doms_ctx Bs ++ Γ ⊢ E : Typeω@i.
+  Proof.
+    induction Bs as [| B Bs IH]; intros Γ E i H; cbn in H |- *; [ exact H |].
+    destruct (wf_pi_inversion' H) as [_ HC].
+    unfold doms_ctx in *; cbn [List.map List.rev]; rewrite <- List.app_assoc; exact (IH _ _ _ HC).
+  Qed.
+
+  (** A type former applied, at a universe, is applied to all its
+      parameters: its value reads back as a type only then. *)
+  Lemma ind_type_length : forall Γ p D k Mk Ms (i : nat), ind_lookup gc_deps gc_stack p = Some D ->
+      ind_member D k = Some Mk -> Γ ⊢ apps (a_ind p k) Ms : Typeω@i -> List.length Ms = im_np D Mk.
+  Proof.
+    intros * Hl Hk HT.
+    destruct (soundness_ty HT) as (W & [ρ m Hinit Ea Hr] & _).
+    apply eval_apps_ind_exp in Ea as (f & ms & Ef & Ems & Eap).
+    inversion Ef; subst.
+    apply eval_apps_ind_inv in Eap; cbn in Eap; subst.
+    inversion Hr; subst.
+    match goal with H4 : ind_lookup _ _ p = Some ?D0, H5 : ind_member ?D0 k = Some ?M0 |- _ =>
+      rewrite Hl in H4; injection H4 as <-; rewrite Hk in H5; injection H5 as <- end.
+    rewrite <- (eval_exps_length _ _ _ Ems); assumption.
+  Qed.
+
+  (** Renaming keeps a normal form free of proofs. *)
+  Lemma nf_wk_proof_free :
+    (forall W φ, nf_proof_free W -> nf_proof_free (nf_wk φ W)) /\
+    (forall u φ, ne_proof_free u -> ne_proof_free (ne_wk φ u)).
+  Proof.
+    apply nf_ne_ind; intros; cbn in *; rewrite ?all_list_map;
+      repeat match goal with H : _ /\ _ |- _ => destruct H end; repeat split; eauto.
+    all: nested_elements; cbn in *; eauto.
+    all: unfold normal_block_forall in *; cbn in *; destruct Hy as [Hm Hb]; split; [ eauto |]; rewrite ?all_list_map.
+    all: try (destruct Hb as [Hb1 Hb2]; split; [ eauto |]; rewrite ?all_list_map).
+    all: nested_elements; cbn in *; eauto.
+  Qed.
+
+  (** A proof-free normal form whose weakening past a telescope of
+      assumptions is typed at a weakened type is typed at the type
+      ([nf_strengthen_shift]). *)
+  Lemma nf_strengthen_tele : forall Δ Γ (W : nf) T Srt, nf_proof_free W -> all_assumptions Δ -> ⊢ Δ ++ Γ ->
+      type_sort Srt -> Γ ⊢ T : Srt ->
+      Δ ++ Γ ⊢ (W : exp)[wk_shiftn (List.length Δ)]ʷ : T[wk_shiftn (List.length Δ)]ʷ -> Γ ⊢ W : T.
+  Proof.
+    induction Δ as [| e Δ IH]; intros Γ W T Srt Hpf Hass HΔ HS HT HW.
+    - cbn [List.length List.app] in HW |- *;
+        rewrite !(exp_wk_id_ext _ (wk_shiftn 0)) in HW by (intros x; unfold wk_shiftn, wk_id; lia); exact HW.
+    - assert (He : exists κ A, e = ce_ass κ A) by (inversion Hass as [| ? ? He _]; exact He).
+      destruct He as (κ & A & ->).
+      assert (Hass' : all_assumptions Δ) by (inversion Hass; assumption).
+      cbn [List.app] in HΔ |- *; cbn [List.length] in HW.
+      pose proof (ctx_decomp_tail HΔ) as HΔ'.
+      apply (IH Γ W T Srt Hpf Hass' HΔ' HS HT).
+      assert (Hsh : forall M, M[wk_shiftn (S (List.length Δ))]ʷ = M[wk_shiftn (List.length Δ)]ʷ[↑]ʷ)
+        by (intros M; symmetry; apply exp_wk_wk_ext; intros x; unfold wk_compose, wk_shiftn, wk_shift; lia).
+      rewrite !Hsh in HW.
+      rewrite <- (proj1 nf_wk_to_exp) in HW |- *.
+      apply (nf_strengthen_shift _ κ A _ _ (proj1 nf_wk_proof_free _ _ Hpf) HΔ); [| exact HW ].
+      assert (HTw : Δ ++ Γ ⊢ T[wk_shiftn (List.length Δ)]ʷ : Srt[wk_shiftn (List.length Δ)]ʷ)
+        by (eapply wk_preserves_exp; [ exact HT | apply wf_wk_shiftn_app; [ exact HΔ' | eapply ctx_app_wf_tail; exact HΔ' ] ]).
+      eapply wf_type_of_sort; [ exact HS | destruct HS; exact HTw ].
+  Qed.
+
+  (** ** The Instances the Classification Meets Are Typed *)
+
+  (** An argument type in a context [Δ ++ Γu], [Δ] the arguments before
+      it and the member's non-uniform parameters, classified as its normal
+      form, which is proof-free as [classify_in_nf] asks: each nested
+      occurrence it meets is a typed view over [Γu]. *)
+  Theorem nest_view_typed : forall Δ Γu T W (i : nat) nu np n pat g qc k Cs,
+      all_assumptions Δ -> List.length Δ = List.length pat + (np - nu) ->
+      Δ ++ Γu ⊢ T : Typeω@i -> nbe_ty_f (Δ ++ Γu) T W -> nf_proof_free W ->
+      classify_arg (grp_info gc_deps gc_stack) (rec_info gc_deps gc_stack) nu np n pat (nf_to_exp W) = Some g ->
+      In (vi_ind qc k Cs) (classified_carg_view g) ->
+      view_typed gc_deps gc_stack Γu qc k Cs.
+  Proof.
+    intros * Hass Hlen HT HW HpfW Hcls Hin.
+    destruct (classify_arg_view _ _ _ _ _ _ _ _ _ _ _ Hcls Hin) as (Bs & E & m & HWe & HE & Hh & Hg & Hm & HC).
+    unfold grp_info in Hg.
+    destruct (ind_lookup gc_deps gc_stack qc) as [D2 |] eqn:Hl2; [| discriminate ].
+    destruct (k <? ind_ndecl D2) eqn:Hk2; [ injection Hg as <- | discriminate ].
+    apply Nat.ltb_lt in Hk2.
+    destruct (List.nth_error (ind_members D2) k) as [Mk2 |] eqn:HMk2;
+      [| apply List.nth_error_None in HMk2; pose proof (ind_ndecl_le D2); lia ].
+    change (ind_member D2 k = Some Mk2) in HMk2.
+    (** the normal form is a type, so is the end of its [Π]s, under them *)
+    pose proof (soundness_ty' HT HW) as HTW.
+    assert (HWt : Δ ++ Γu ⊢ nf_to_exp W : Typeω@i) by (gen_presups; assumption).
+    rewrite HWe in HWt.
+    pose proof (pis_typed_inv _ _ _ _ HWt) as HEt.
+    destruct HW as [ρ0 m0 Hi0 Ee0 Hr0].
+    destruct (nf_pis_end_proof_free _ _ _ (read_typ_type_nf _ _ _ Hr0) HpfW HWe) as (WE & HWE & HpfE & HWEe).
+    rewrite <- HWEe in Hh; destruct (nf_ind_view _ _ _ HWE Hh) as [Rs ->].
+    cbn [nf_to_exp] in HWEe; subst E.
+    cbn [nf_proof_free] in HpfE.
+    rewrite app_args_apps in HC, Hm; cbn [app_args List.app] in HC, Hm.
+    (** its parameters are typed *)
+    pose proof (ind_type_length _ _ _ _ _ _ _ Hl2 HMk2 HEt) as HRl.
+    pose proof (wf_ind_apps_inv _ _ _ _ _ _ _ Hl2 HMk2 HEt HRl) as HRt.
+    assert (HΓe : ⊢ doms_ctx Bs ++ Δ ++ Γu) by (gen_presups; assumption).
+    assert (HΓu : ⊢ Γu) by (rewrite List.app_assoc in HΓe; eapply ctx_app_wf_tail; exact HΓe).
+    destruct (decl_of_lookup _ _ _ _ _ HΓu Hl2) as [Hdt Hc2].
+    assert (HCl : List.length Cs = ind_nu D2).
+    { apply (f_equal (@List.length _)) in HC; rewrite List.length_map, List.length_firstn in HC; lia. }
+    set (L := List.length Bs + List.length pat + (np - nu)) in *.
+    assert (HLe : List.length (doms_ctx Bs ++ Δ) = L)
+      by (unfold L, doms_ctx; rewrite List.length_app, List.length_rev, List.length_map; lia).
+    apply (mk_view_typed _ _ _ _ _ _ D2 Hl2 Hk2 HCl); [| exact HΓu ].
+    (** and the uniform ones, strengthened past the [Π]s' domains, the
+        arguments before and the member's non-uniform parameters, are
+        typed over [Γu] *)
+    apply (tele_insts_typed_all (ind_uparams D2) nil Γu Id Cs (decl_typed_ass _ _ _ Hdt)
+             ltac:(rewrite List.app_nil_r; exact (decl_typed_uparams_field _ _ _ Hdt)) (wf_sub_to_nil _ _ _ HΓu)).
+    intros j N T0 HN HT0 [i0 HT0t].
+    assert (Hj : j < ind_nu D2) by (rewrite <- HCl; apply List.nth_error_Some; congruence).
+    set (φ := wk_pat (List.repeat true L)) in *.
+    assert (HNw : List.nth_error (List.map nf_to_exp Rs) j = Some N[φ]ʷ).
+    { rewrite <- (List.firstn_skipn (ind_nu D2) (List.map nf_to_exp Rs)), List.nth_error_app1
+        by (rewrite List.length_firstn; lia).
+      rewrite HC, List.nth_error_map, HN; reflexivity. }
+    assert (HTw : List.nth_error (tele_insts (im_params D2 Mk2) Id (List.map nf_to_exp Rs)) j = Some T0[φ]ʷ).
+    { rewrite <- (List.firstn_skipn (ind_nu D2) (List.map nf_to_exp Rs)).
+      unfold im_params; rewrite tele_insts_app by (try exact (decl_typed_ass _ _ _ Hdt); rewrite List.length_firstn; unfold ind_nu in *; lia).
+      rewrite List.nth_error_app1 by (rewrite length_tele_insts by exact (decl_typed_ass _ _ _ Hdt); rewrite List.length_firstn; unfold ind_nu in *; lia).
+      rewrite HC.
+      rewrite (List.map_ext (fun C => C[φ]ʷ) (fun M => M[ι φ]) (fun M => eq_sym (exp_sub_of_wk M φ))).
+      rewrite (tele_insts_closed_sub _ _ _ _ _ (decl_typed_ass _ _ _ Hdt) (decl_closed_uparams _ Hc2) HT0), exp_sub_of_wk; reflexivity. }
+    pose proof (HRt _ _ _ HNw HTw) as HNt.
+    rewrite List.nth_error_map in HNw.
+    destruct (List.nth_error Rs j) as [R |] eqn:HR; cbn in HNw; [ injection HNw as HRN | discriminate ].
+    assert (HNR : N = nf_to_exp (nf_wk (unwk_pat (List.repeat true L)) R)).
+    { rewrite (proj1 nf_wk_to_exp), HRN, exp_wk_wk_ext with (χ := wk_id) by apply unwk_wk_pat; symmetry; apply exp_wk_id. }
+    rewrite HNR in HNt |- *.
+    destruct HT0t as [HS0 HT0t].
+    apply (nf_strengthen_tele (doms_ctx Bs ++ Δ) Γu _ T0 i0);
+      [ exact (proj1 nf_wk_proof_free _ _ (all_proof_free_nth _ _ _ HpfE HR)) | | rewrite <- List.app_assoc; exact HΓe | exact HS0 | exact HT0t |].
+    { unfold all_assumptions; apply List.Forall_app; split; [ unfold doms_ctx; apply List.Forall_rev, all_assumptions_map_ass | exact Hass ]. }
+    rewrite HLe, <- List.app_assoc.
+    rewrite <- !(exp_wk_wk_eq _ φ (wk_shiftn L)) by apply wk_pat_trues; exact HNt.
+  Qed.
+
+  (** ** Normal Instances *)
+
+  (** A type's normal form, without proofs, is its own: its own normal
+      form is equal to it up to proofs ([completeness_ty]), and it holds
+      none ([nf_ne_proof_free_eq]). *)
+  Lemma nbe_ty_self : forall Γ T W (i : nat), Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T W -> nf_proof_free W ->
+      nbe_ty_f Γ (nf_to_exp W) W.
+  Proof.
+    intros * HT HW Hpf.
+    destruct (completeness_ty (soundness_ty' HT HW)) as (W' & W'' & HW1 & HW2 & HE).
+    pose proof (functional_nbe_ty _ _ _ _ HW HW1) as <-.
+    rewrite <- (proj1 nf_ne_proof_free_eq W Hpf W'' HE) in HW2; exact HW2.
+  Qed.
+
+  (** The normal form of a chain of [Π]s, its own, ends in the normal
+      form of the end under the domains. *)
+  Lemma nbe_ty_pis : forall Bs Γ E W, type_nf W -> nbe_ty_f Γ (nf_to_exp W) W -> nf_to_exp W = pis Bs E ->
+      exists WE, type_nf WE /\ nbe_ty_f (doms_ctx Bs ++ Γ) E WE /\ nf_to_exp WE = E.
+  Proof.
+    induction Bs as [| B Bs IH]; intros Γ E W HW HnW HWe; cbn in HWe.
+    - exists W; rewrite HWe in HnW; auto.
+    - destruct (nf_pi_view _ _ _ HW HWe) as (W1 & W2 & -> & HW2 & HW1e & HW2e).
+      cbn [nf_to_exp] in HnW.
+      destruct (nbe_ty_pi_inv _ _ _ _ _ _ _ _ HnW) as (WB & WC & [= <- <-] & _ & HC).
+      rewrite HW1e in HC.
+      unfold doms_ctx in *; cbn [List.map List.rev]; rewrite <- List.app_assoc.
+      apply (IH _ _ _ HW2); [ exact HC | exact HW2e ].
+  Qed.
+
+  (** The same for a proof-free normal form, whose end is proof-free. *)
+  Lemma nbe_ty_pis_proof_free : forall Bs Γ E W, type_nf W -> nf_proof_free W -> nbe_ty_f Γ (nf_to_exp W) W ->
+      nf_to_exp W = pis Bs E ->
+      exists WE, type_nf WE /\ nf_proof_free WE /\ nbe_ty_f (doms_ctx Bs ++ Γ) E WE /\ nf_to_exp WE = E.
+  Proof.
+    induction Bs as [| B Bs IH]; intros Γ E W HW Hpf HnW HWe; cbn in HWe.
+    - exists W; rewrite HWe in HnW; auto.
+    - destruct (nf_pi_view _ _ _ HW HWe) as (W1 & W2 & -> & HW2 & HW1e & HW2e).
+      cbn [nf_to_exp] in HnW.
+      destruct (nbe_ty_pi_inv _ _ _ _ _ _ _ _ HnW) as (WB & WC & [= <- <-] & _ & HC).
+      rewrite HW1e in HC.
+      unfold doms_ctx in *; cbn [List.map List.rev]; rewrite <- List.app_assoc.
+      apply (IH _ _ _ HW2); [ exact (proj2 Hpf) | exact HC | exact HW2e ].
+  Qed.
+
+  (** Normalizing commutes, up to proofs, with weakening past a telescope
+      of assumptions ([nbe_wk]): the normal form of the weakening is equal
+      up to proofs to a normal form [W''] that is the weakening of the
+      normal form. *)
+  Lemma nbe_wk_tele : forall Δ Γ M T W, all_assumptions Δ -> ⊢ Δ ++ Γ -> Γ ⊢ M : T -> nbe_f Γ M T W ->
+      exists W' W'', nbe_f (Δ ++ Γ) M[wk_shiftn (List.length Δ)]ʷ T[wk_shiftn (List.length Δ)]ʷ W' /\
+        nf_eq_upto_proofs W' W'' /\ nf_to_exp W'' = (nf_to_exp W)[wk_shiftn (List.length Δ)]ʷ.
+  Proof.
+    induction Δ as [| e Δ IH]; intros Γ M T W Hass HΔ HM HW.
+    - cbn [List.length List.app]; exists W, W.
+      rewrite !(exp_wk_id_ext _ (wk_shiftn 0)) by (intros x; unfold wk_shiftn, wk_id; lia).
+      split; [ exact HW | split; reflexivity ].
+    - assert (He : exists κ A, e = ce_ass κ A) by (inversion Hass as [| ? ? He _]; exact He).
+      destruct He as (κ & A & ->).
+      assert (Hass' : all_assumptions Δ) by (inversion Hass; assumption).
+      cbn [List.app] in HΔ |- *.
+      pose proof (ctx_decomp_tail HΔ) as HΔ'.
+      destruct (IH _ _ _ _ Hass' HΔ' HM HW) as (W1 & W1'' & HW1 & HE1 & HW1e).
+      assert (HM1 : Δ ++ Γ ⊢ M[wk_shiftn (List.length Δ)]ʷ : T[wk_shiftn (List.length Δ)]ʷ)
+        by (eapply wk_preserves_exp; [ exact HM | apply wf_wk_shiftn_app; [ exact HΔ' | eapply ctx_app_wf_tail; exact HΔ' ] ]).
+      destruct (nbe_wk _ _ _ _ _ _ HΔ HM1 HW1) as (W2 & HW2 & HE2).
+      assert (Hsh : forall N, N[wk_shiftn (List.length Δ)]ʷ[↑]ʷ = N[wk_shiftn (S (List.length Δ))]ʷ)
+        by (intros N; apply exp_wk_wk_ext; intros x; unfold wk_compose, wk_shiftn, wk_shift; lia).
+      rewrite !Hsh in HW2.
+      exists W2, (nf_wk ↑ W1''); cbn [List.length]; split; [ exact HW2 | split ].
+      + etransitivity; [ exact HE2 | apply nf_wk_upto_proofs; exact HE1 ].
+      + rewrite (proj1 nf_wk_to_exp), HW1e, Hsh; reflexivity.
+  Qed.
+
+  (** The types of a member's uniform parameters, at parameters whose
+      uniform ones are weakenings, are the weakenings of theirs. *)
+  Lemma tele_insts_params_uniform_wk : forall D Mk Cs Ms φ j T, all_assumptions (ind_uparams D) -> ctx_scoped 0 (ind_uparams D) ->
+      List.length Cs = ind_nu D -> List.firstn (ind_nu D) Ms = List.map (fun C => C[φ]ʷ) Cs ->
+      List.nth_error (tele_insts (ind_uparams D) Id Cs) j = Some T ->
+      List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T[φ]ʷ.
+  Proof.
+    intros * Hass Hsc HCl HC HT.
+    assert (Hj : j < ind_nu D)
+      by (assert (Hn : List.nth_error (tele_insts (ind_uparams D) Id Cs) j <> None) by congruence;
+          apply List.nth_error_Some in Hn; rewrite length_tele_insts in Hn by exact Hass; unfold ind_nu in *; lia).
+    assert (HMl : ind_nu D <= List.length Ms)
+      by (apply (f_equal (@List.length _)) in HC; rewrite List.length_firstn, List.length_map in HC; lia).
+    rewrite <- (List.firstn_skipn (ind_nu D) Ms).
+    unfold im_params; rewrite tele_insts_app by (try exact Hass; rewrite List.length_firstn; unfold ind_nu in *; lia).
+    rewrite List.nth_error_app1 by (rewrite length_tele_insts by exact Hass; rewrite List.length_firstn; unfold ind_nu in *; lia).
+    rewrite HC, (List.map_ext (fun C => C[φ]ʷ) (fun M => M[ι φ]) (fun M => eq_sym (exp_sub_of_wk M φ))).
+    rewrite (tele_insts_closed_sub _ _ _ _ _ Hass Hsc HT), exp_sub_of_wk; reflexivity.
+  Qed.
+
+  (** A term's normal form at equal types is one up to its proofs: a kept
+      proof is read back at the type, whose normal form may differ in its
+      own proofs. *)
+  Lemma nbe_conv_typ_upto : forall Γ M A A' W Srt, Γ ⊢ M : A -> type_sort Srt -> Γ ⊢ A ≈ A' : Srt -> nbe_f Γ M A W ->
+      exists W', nbe_f Γ M A' W' /\ nf_eq_upto_proofs W W'.
+  Proof.
+    intros * HM HS HAA' HW.
+    assert (HA't : Γ ⊢ A' : Srt) by (gen_presups; assumption).
+    pose proof (wf_conv_sort _ _ _ _ _ _ _ HM HA't HS HAA') as HM'.
+    destruct (soundness HM') as (W' & HW' & _).
+    exists W'; split; [ exact HW' |].
+    exact (completeness_at_equal_types HS (wf_exp_eq_refl HM) HAA' HW HW').
+  Qed.
+
+  (** The normal form of a term's normal form is it, up to its proofs. *)
+  Lemma nbe_self_upto : forall Γ M A W, Γ ⊢ M : A -> nbe_f Γ M A W ->
+      exists W', nbe_f Γ (nf_to_exp W) A W' /\ nf_eq_upto_proofs W W'.
+  Proof.
+    intros * HM HW.
+    destruct (completeness (soundness' HM HW)) as (W1 & W' & HW1 & HW2 & HWW).
+    pose proof (functional_nbe _ _ _ _ _ HW HW1) as <-; exists W'; split; assumption.
+  Qed.
+
+  (** A proof-free one is its own. *)
+  Lemma nbe_self : forall Γ M A W, Γ ⊢ M : A -> nbe_f Γ M A W -> nf_proof_free W -> nbe_f Γ (nf_to_exp W) A W.
+  Proof.
+    intros * HM HW Hpf.
+    destruct (nbe_self_upto _ _ _ _ HM HW) as (W' & HW' & HWW).
+    rewrite <- (proj1 nf_ne_proof_free_eq _ Hpf _ HWW) in HW'; exact HW'.
+  Qed.
+
+  (** The record end of a normal form the classification finds a record
+      view in: the record type at the normal forms [Rs] of its arguments,
+      which are the instance weakened, all typed at the parameters, and
+      proof-free with the normal form. *)
+  Lemma nest_record_end : forall Δ Γu T W (i : nat) nu np n pat g qr Is,
+      Δ ++ Γu ⊢ T : Typeω@i -> nbe_ty_f (Δ ++ Γu) T W -> nf_proof_free W ->
+      classify_arg (grp_info gc_deps gc_stack) (rec_info gc_deps gc_stack) nu np n pat (nf_to_exp W) = Some g ->
+      In (vi_record qr Is) (classified_carg_view g) ->
+      exists Bs Rr Rs, nf_to_exp W = pis Bs (apps (a_record qr) (List.map nf_to_exp Rs)) /\
+        record_lookup gc_deps gc_stack qr = Some Rr /\
+        doms_ctx Bs ++ Δ ++ Γu ⊢ apps (a_record qr) (List.map nf_to_exp Rs) : Typeω@i /\
+        nbe_ty_f (doms_ctx Bs ++ Δ ++ Γu) (apps (a_record qr) (List.map nf_to_exp Rs)) (nf_record qr Rs) /\
+        List.length Rs = List.length (record_params Rr) /\ selfs_guarded nu n Is = true /\
+        List.map nf_to_exp Rs = List.map (fun C => C[wk_pat (List.repeat true (List.length Bs + List.length pat + (np - nu)))]ʷ) Is /\
+        all_list nf_proof_free Rs.
+  Proof.
+    intros * HT HW HpfW Hcls Hin.
+    destruct (classify_arg_record_view _ _ _ _ _ _ _ _ _ _ Hcls Hin) as (Bs & E & HWe & HE & Hh & Hr & Hgu & HC).
+    unfold rec_info in Hr.
+    destruct (record_lookup gc_deps gc_stack qr) as [Rr |] eqn:Hl2; [| discriminate ]; cbn in Hr; injection Hr as Hr.
+    pose proof HW as [ρ0 m0 _ _ Hr0]; pose proof (read_typ_type_nf _ _ _ Hr0) as HWn.
+    destruct (nbe_ty_pis_proof_free _ _ _ _ HWn HpfW (nbe_ty_self _ _ _ _ HT HW HpfW) HWe) as (WE & HWE & HpfE & HnE & HWEe).
+    rewrite <- HWEe in Hh; destruct (nf_record_view _ _ HWE Hh) as [Rs ->].
+    cbn [nf_to_exp] in HWEe; subst E.
+    cbn [nf_proof_free] in HpfE.
+    rewrite app_args_apps in HC, Hr; cbn [app_args List.app] in HC, Hr.
+    pose proof (soundness_ty' HT HW) as HTW.
+    assert (HWt : Δ ++ Γu ⊢ nf_to_exp W : Typeω@i) by (gen_presups; assumption).
+    rewrite HWe in HWt; pose proof (pis_typed_inv _ _ _ _ HWt) as HEt.
+    exists Bs, Rr, Rs; repeat split; try assumption.
+    rewrite List.length_map in Hr; lia.
+  Qed.
+
+  (** The record views the classification finds in a normal form are
+      typed. *)
+  Theorem nest_record_view_typed : forall Δ Γu T W (i : nat) nu np n pat g qr Is,
+      all_assumptions Δ -> List.length Δ = List.length pat + (np - nu) ->
+      Δ ++ Γu ⊢ T : Typeω@i -> nbe_ty_f (Δ ++ Γu) T W -> nf_proof_free W ->
+      classify_arg (grp_info gc_deps gc_stack) (rec_info gc_deps gc_stack) nu np n pat (nf_to_exp W) = Some g ->
+      In (vi_record qr Is) (classified_carg_view g) ->
+      record_view_typed gc_deps gc_stack Γu qr Is.
+  Proof.
+    intros * Hass Hlen HT HW HpfW Hcls Hin.
+    destruct (nest_record_end _ _ _ _ _ _ _ _ _ _ _ _ HT HW HpfW Hcls Hin) as (Bs & Rr & Rs & HWe & Hl2 & HEt & HnE & HRl & _ & HC & HpfR).
+    pose proof (wf_record_apps_inv _ _ _ _ _ Hl2 HEt ltac:(rewrite List.length_map; exact HRl)) as HRt.
+    destruct (wf_record_inversion (wf_record_own_apps _ _ _ _ _ _ _ HEt Hl2)) as [R0 Hl0 _ HRa _ _ HF _ _ _].
+    rewrite Hl2 in Hl0; injection Hl0 as <-.
+    assert (HΓe : ⊢ doms_ctx Bs ++ Δ ++ Γu) by (gen_presups; assumption).
+    assert (HΓu : ⊢ Γu) by (rewrite List.app_assoc in HΓe; eapply ctx_app_wf_tail; exact HΓe).
+    pose proof (wf_record_closed _ _ _ _ _ HΓu Hl2) as Hc2.
+    assert (HCl : List.length Is = List.length (record_params Rr)).
+    { apply (f_equal (@List.length _)) in HC; rewrite !List.length_map in HC; lia. }
+    set (L := List.length Bs + List.length pat + (np - nu)) in *.
+    assert (HLe : List.length (doms_ctx Bs ++ Δ) = L)
+      by (unfold L, doms_ctx; rewrite List.length_app, List.length_rev, List.length_map; lia).
+    apply (mk_record_view_typed _ _ _ _ _ Rr Hl2 HCl); [| exact HΓu ].
+    (** the arguments, strengthened past the [Π]s' domains, the arguments
+        before and the member's non-uniform parameters, are typed over
+        [Γu] *)
+    apply (tele_insts_typed_all (record_params Rr) nil Γu Id Is HRa
+             ltac:(rewrite List.app_nil_r; exact (ctx_app_wf_tail _ _ _ _ HF)) (wf_sub_to_nil _ _ _ HΓu)).
+    intros j N T0 HN HT0 [i0 HT0t].
+    set (φ := wk_pat (List.repeat true L)) in *.
+    assert (HNw : List.nth_error (List.map nf_to_exp Rs) j = Some N[φ]ʷ) by (rewrite HC, List.nth_error_map, HN; reflexivity).
+    assert (HTw : List.nth_error (tele_insts (record_params Rr) Id (List.map nf_to_exp Rs)) j = Some T0[φ]ʷ).
+    { rewrite HC, (List.map_ext (fun C => C[φ]ʷ) (fun M => M[ι φ]) (fun M => eq_sym (exp_sub_of_wk M φ))).
+      rewrite (tele_insts_closed_sub _ _ _ _ _ HRa (closed_params _ Hc2) HT0), exp_sub_of_wk; reflexivity. }
+    pose proof (HRt _ _ _ HNw HTw) as HNt.
+    rewrite List.nth_error_map in HNw.
+    destruct (List.nth_error Rs j) as [R |] eqn:HR; cbn in HNw; [ injection HNw as HRN | discriminate ].
+    assert (HNR : N = nf_to_exp (nf_wk (unwk_pat (List.repeat true L)) R)).
+    { rewrite (proj1 nf_wk_to_exp), HRN, exp_wk_wk_ext with (χ := wk_id) by apply unwk_wk_pat; symmetry; apply exp_wk_id. }
+    rewrite HNR in HNt |- *.
+    destruct HT0t as [HS0 HT0t].
+    apply (nf_strengthen_tele (doms_ctx Bs ++ Δ) Γu _ T0 i0);
+      [ exact (proj1 nf_wk_proof_free _ _ (all_proof_free_nth _ _ _ HpfR HR)) | | rewrite <- List.app_assoc; exact HΓe | exact HS0 | exact HT0t |].
+    { unfold all_assumptions; apply List.Forall_app; split; [ unfold doms_ctx; apply List.Forall_rev, all_assumptions_map_ass | exact Hass ]. }
+    rewrite HLe, <- List.app_assoc.
+    rewrite <- !(exp_wk_wk_eq _ φ (wk_shiftn L)) by apply wk_pat_trues; exact HNt.
+  Qed.
+
+  (** The instance a keyed classification meets is the key of an instance
+      it finds. *)
+  Lemma written_carg_key_view : forall Γ gw g z, written_carg_key gc_deps gc_stack Γ gw g -> In z (classified_carg_view g) ->
+      exists x, In x (classified_carg_view gw) /\ view_inst_key gc_deps gc_stack Γ x z.
+  Proof.
+    intros * [κ A | tw tc Hk] Hz; [ destruct Hz |]; cbn [classified_carg_view] in Hz |- *.
+    induction Hk as [j Ps | x y Ns Hxy | B tw tc _ IH]; cbn in Hz |- *; [ destruct Hz | | exact (IH Hz) ].
+    destruct Hz as [<- | []]; exists x; split; [ left; reflexivity | exact Hxy ].
+  Qed.
+
+End Fixed_GCtx.
+
+(** ** The Siblings of a View *)
+
+(** The sibling [e] of a view of a container's group at [Cs], from its
+    member [M] at position [i]. *)
+Inductive sibling_entry (Θ : gdeps) (Ξ : gstack) (Γc : ctx) (qc : qname) (Cs : list nf) : nat -> imember -> view_key -> Prop :=
+(** A declared member: itself at [Cs] *)
+| sibling_decl : forall i M pm, im_head M = mh_decl pm -> sibling_entry Θ Ξ Γc qc Cs i M (vk_ind qc i Cs)
+(** A view: the member it views, at its own uniform arguments at [Cs],
+    normalized *)
+| sibling_view : forall i M qv kv Iv vmv Dv Ws, im_head M = mh_view qv kv Iv vmv -> ind_lookup Θ Ξ qv = Some Dv ->
+    nbes Θ Ξ Γc (List.map (fun I => I[sb_of_list sb_id (List.map nf_to_exp Cs)]) Iv)
+      (List.map (fun T => T[sb_of_list sb_id (List.map nf_to_exp Cs)]) (tele_insts (ind_uparams Dv) sb_id Iv)) Ws ->
+    sibling_entry Θ Ξ Γc qc Cs i M (vk_ind qv kv Ws)
+(** A record view: the record at its instance at [Cs], normalized *)
+| sibling_record : forall i M qr Ir fl Rr Ws, im_head M = mh_record qr Ir fl -> record_lookup Θ Ξ qr = Some Rr ->
+    nbes Θ Ξ Γc (List.map (fun I => I[sb_of_list sb_id (List.map nf_to_exp Cs)]) Ir)
+      (List.map (fun T => T[sb_of_list sb_id (List.map nf_to_exp Cs)]) (tele_insts (record_params Rr) sb_id Ir)) Ws ->
+    sibling_entry Θ Ξ Γc qc Cs i M (vk_record qr Ws).
+
+Lemma siblings_from_nth : forall Θ Ξ Γc qc Cs i ms ss, siblings_from Θ Ξ Γc qc Cs i ms ss ->
+    List.length ss = List.length ms /\
+    forall j M, List.nth_error ms j = Some M -> exists e, List.nth_error ss j = Some e /\ sibling_entry Θ Ξ Γc qc Cs (i + j) M e.
+Proof.
+  induction 1 as [i | i M ms ss pm Hh Hs IH | i M ms ss qv kv Iv vmv Dv Ws Hh Hl Hn Hs IH
+                 | i M ms ss qr Ir fl Rr Ws Hh Hl Hn Hs IH].
+  - split; [ reflexivity | intros [] ? ?; discriminate ].
+  - destruct IH as [IHl IH]; split; [ cbn; lia |].
+    intros [| j] M0 HM0; cbn in HM0.
+    + injection HM0 as <-; eexists; split; [ reflexivity |]; rewrite Nat.add_0_r; eapply sibling_decl; eassumption.
+    + destruct (IH _ _ HM0) as (e & He & Hse); exists e; split; [ exact He |].
+      replace (i + S j) with (S i + j) by lia; exact Hse.
+  - destruct IH as [IHl IH]; split; [ cbn; lia |].
+    intros [| j] M0 HM0; cbn in HM0.
+    + injection HM0 as <-; eexists; split; [ reflexivity |]; rewrite Nat.add_0_r; eapply sibling_view; eassumption.
+    + destruct (IH _ _ HM0) as (e & He & Hse); exists e; split; [ exact He |].
+      replace (i + S j) with (S i + j) by lia; exact Hse.
+  - destruct IH as [IHl IH]; split; [ cbn; lia |].
+    intros [| j] M0 HM0; cbn in HM0.
+    + injection HM0 as <-; eexists; split; [ reflexivity |]; rewrite Nat.add_0_r; eapply sibling_record; eassumption.
+    + destruct (IH _ _ HM0) as (e & He & Hse); exists e; split; [ exact He |].
+      replace (i + S j) with (S i + j) by lia; exact Hse.
+Qed.
+
+Lemma siblings_from_in : forall Θ Ξ Γc qc Cs i ms ss, siblings_from Θ Ξ Γc qc Cs i ms ss ->
+    forall e, In e ss -> exists j M, List.nth_error ms j = Some M /\ List.nth_error ss j = Some e /\ sibling_entry Θ Ξ Γc qc Cs (i + j) M e.
+Proof.
+  intros * Hs e He.
+  destruct (siblings_from_nth _ _ _ _ _ _ _ _ Hs) as [Hl Hn].
+  destruct (List.In_nth_error _ _ He) as [j Hj].
+  destruct (List.nth_error ms j) as [M |] eqn:HM.
+  2:{ apply List.nth_error_None in HM.
+      assert (Hj' : List.nth_error ss j <> None) by congruence; apply List.nth_error_Some in Hj'; lia. }
+  destruct (Hn _ _ HM) as (e' & He' & Hse); rewrite Hj in He'; injection He' as <-.
+  exists j, M; auto.
+Qed.
+
+Lemma nbes_functional : forall Θ Ξ Γ Ms As Ws Ws', nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ Ms As Ws' -> Ws = Ws'.
+Proof.
+  intros * H; revert Ws'; induction H as [| M Ms A As W Ws HM HW Hn IH]; intros Ws' H'; inversion H'; subst; [ reflexivity |].
+  f_equal; [ eapply functional_nbe; eassumption | apply IH; assumption ].
+Qed.
+
+Lemma siblings_from_functional : forall Θ Ξ Γc qc Cs i ms ss ss', siblings_from Θ Ξ Γc qc Cs i ms ss -> siblings_from Θ Ξ Γc qc Cs i ms ss' ->
+    ss = ss'.
+Proof.
+  intros * H; revert ss'; induction H as [i | i M ms ss pm Hh Hs IH | i M ms ss qv kv Iv vmv Dv Ws Hh Hl Hn Hs IH
+                                         | i M ms ss qr Ir fl Rr Ws Hh Hl Hn Hs IH];
+    intros ss' H'; inversion H'; subst; try congruence.
+  - f_equal; apply IH; assumption.
+  - repeat match goal with
+      | Hh' : im_head M = _ |- _ => tryif unify Hh' Hh then fail else (rewrite Hh in Hh'; injection Hh' as <- <- <- <-)
+      | Hl' : ind_lookup _ _ qv = _ |- _ => tryif unify Hl' Hl then fail else (rewrite Hl in Hl'; injection Hl' as <-)
+      end.
+    match goal with Hn' : nbes _ _ _ _ _ ?Ws' |- _ => tryif unify Ws' Ws then fail else
+      rewrite (nbes_functional _ _ _ _ _ _ _ Hn' Hn) end.
+    f_equal; apply IH; assumption.
+  - repeat match goal with
+      | Hh' : im_head M = _ |- _ => tryif unify Hh' Hh then fail else (rewrite Hh in Hh'; injection Hh' as <- <- <-)
+      | Hl' : record_lookup _ _ qr = _ |- _ => tryif unify Hl' Hl then fail else (rewrite Hl in Hl'; injection Hl' as <-)
+      end.
+    match goal with Hn' : nbes _ _ _ _ _ ?Ws' |- _ => tryif unify Ws' Ws then fail else
+      rewrite (nbes_functional _ _ _ _ _ _ _ Hn' Hn) end.
+    f_equal; apply IH; assumption.
+Qed.
+
+(** The siblings of a view depend on its container's group and its
+    instance only. *)
+Lemma view_siblings_same : forall Θ Ξ R qc k k' Cs ss ss', view_siblings Θ Ξ R (vk_ind qc k Cs) ss -> view_siblings Θ Ξ R (vk_ind qc k' Cs) ss' ->
+    ss = ss'.
+Proof.
+  intros * H H'; inversion H as [? ? ? D1 ? Hl1 Hs1 |]; inversion H' as [? ? ? D2 ? Hl2 Hs2 |]; subst.
+  rewrite Hl1 in Hl2; injection Hl2 as <-; exact (siblings_from_functional _ _ _ _ _ _ _ _ _ Hs1 Hs2).
+Qed.
+
+Lemma nbes_nth : forall Θ Ξ Γ Ms As Ws, nbes Θ Ξ Γ Ms As Ws ->
+    List.length Ws = List.length Ms /\ List.length As = List.length Ms /\
+    forall j M A, List.nth_error Ms j = Some M -> List.nth_error As j = Some A ->
+      exists W, List.nth_error Ws j = Some W /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\ nbe Θ Ξ Γ M A W.
+Proof.
+  induction 1 as [| M Ms A As W Ws HM HW Hn IH];
+    [ split; [ reflexivity | split; [ reflexivity | intros j M A HM; destruct j; discriminate ] ] |].
+  destruct IH as (IH1 & IH2 & IH); cbn; split; [ lia | split; [ lia |] ].
+  intros [| j] M0 A0 HM0 HA0; cbn in HM0, HA0;
+    [ injection HM0 as <-; injection HA0 as <-; exists W; cbn; auto | exact (IH _ _ _ HM0 HA0) ].
+Qed.
+
+(** Keys of one head at arguments equal up to their proofs are of one
+    view. *)
+Lemma key_args_upto : forall qc k A B, nfs_eq_upto_proofs A B -> view_key_eq (vk_ind qc k A) (vk_ind qc k B).
+Proof. intros * H; unfold view_key_eq; cbn; rewrite dec_eqb_refl, Nat.eqb_refl; exact H. Qed.
+
+Lemma record_key_args_upto : forall qr A B, nfs_eq_upto_proofs A B -> view_key_eq (vk_record qr A) (vk_record qr B).
+Proof. intros * H; unfold view_key_eq; cbn; rewrite dec_eqb_refl; exact H. Qed.
+
+Section SiblingInv.
+  Context {GC : GCtx}.
+
+  (** Normal forms of terms of a closed telescope's instance are typed at
+      the telescope's instance at them. *)
+  Lemma nbes_inst_inv : forall Γ U Ms Ws, all_assumptions U -> ctx_scoped 0 U -> ⊢ U -> ⊢ Γ ->
+      nbes gc_deps gc_stack Γ Ms (tele_insts U Id Ms) Ws ->
+      forall j N T, List.nth_error (List.map nf_to_exp Ws) j = Some N ->
+         List.nth_error (tele_insts U Id (List.map nf_to_exp Ws)) j = Some T -> Γ ⊢ N : T.
+  Proof.
+    intros * Hass Hsc HU HΓ Hn.
+    destruct (nbes_nth _ _ _ _ _ _ Hn) as (HlW & HlA & Hnth).
+    assert (Heq : forall j N N' T, List.nth_error Ms j = Some N -> List.nth_error (List.map nf_to_exp Ws) j = Some N' ->
+              List.nth_error (tele_insts U Id Ms) j = Some T -> Γ ⊢ N ≈ N' : T).
+    { intros * HN HN' HT; destruct (Hnth _ _ _ HN HT) as (W & HW & HNt & HNW).
+      rewrite List.nth_error_map, HW in HN'; cbn in HN'; injection HN' as <-.
+      exact (soundness' HNt HNW). }
+    assert (HTT : forall j T T', List.nth_error (tele_insts U Id Ms) j = Some T ->
+              List.nth_error (tele_insts U Id (List.map nf_to_exp Ws)) j = Some T' -> exists S, type_sort S /\ Γ ⊢ T ≈ T' : S).
+    { intros * HT HT'; eapply (tele_insts_cong_upto U nil Γ Id Id Ms (List.map nf_to_exp Ws) Hass
+                                ltac:(rewrite List.app_nil_r; exact HU) (wf_sub_eq_refl _ _ _ _ _ (wf_sub_to_nil _ _ _ HΓ)) j T T' HT HT').
+      intros j' N N' T0 _ HN HN' HT0; exact (Heq _ _ _ _ HN HN' HT0). }
+    intros j N T HN HT'.
+    assert (Hj : j < List.length Ms) by (rewrite <- HlW, <- (List.length_map nf_to_exp); apply List.nth_error_Some; congruence).
+    destruct (nth_error_lt_some' Ms j Hj) as [M HM].
+    assert (Hj' : j < List.length (tele_insts U Id Ms)) by lia.
+    destruct (nth_error_lt_some' _ j Hj') as [T0 HT0].
+    destruct (Hnth _ _ _ HM HT0) as (W & HW & HMt & HMW).
+    rewrite List.nth_error_map, HW in HN; cbn in HN; injection HN as <-.
+    destruct (HTT _ _ _ HT0 HT') as (S & HS & Hi).
+    pose proof (soundness' HMt HMW) as HMW'.
+    assert (HWt : Γ ⊢ nf_to_exp W : T0) by (gen_presups; assumption).
+    assert (HT't : Γ ⊢ T : S) by (gen_presups; assumption).
+    exact (wf_conv_sort _ _ _ _ _ _ _ HWt HT't HS Hi).
+  Qed.
+
+  (** Equal instances of a closed telescope have normal forms equal up to
+      their proofs. *)
+  Lemma nbes_conv_inst : forall Γ U Ms Ms' Ws Ws', all_assumptions U -> ⊢ U -> ⊢ Γ ->
+      nbes gc_deps gc_stack Γ Ms (tele_insts U Id Ms) Ws -> nbes gc_deps gc_stack Γ Ms' (tele_insts U Id Ms') Ws' ->
+      List.length Ms = List.length Ms' ->
+      (forall j N N' T, List.nth_error Ms j = Some N -> List.nth_error Ms' j = Some N' ->
+         List.nth_error (tele_insts U Id Ms) j = Some T -> Γ ⊢ N ≈ N' : T) ->
+      nfs_eq_upto_proofs Ws Ws'.
+  Proof.
+    intros * Hass HU HΓ Hn Hn' Hl Heq.
+    revert Ms' Ws' Hn' Hl Heq.
+    enough (H : forall Ms' Ws', nbes gc_deps gc_stack Γ Ms' (tele_insts U Id Ms') Ws' -> List.length Ms = List.length Ms' ->
+               (forall j N N' T, List.nth_error Ms j = Some N -> List.nth_error Ms' j = Some N' ->
+                  List.nth_error (tele_insts U Id Ms) j = Some T -> Γ ⊢ N ≈ N' : T) ->
+               List.length Ws = List.length Ws' /\
+               forall j W W', List.nth_error Ws j = Some W -> List.nth_error Ws' j = Some W' -> nf_eq_upto_proofs W W').
+    { intros Ms' Ws' Hn' Hl Heq; destruct (H _ _ Hn' Hl Heq) as [HlW Hp]; clear - HlW Hp.
+      unfold nfs_eq_upto_proofs; revert Ws' HlW Hp; induction Ws as [| W Ws IH]; intros [| W' Ws'] HlW Hp; cbn in *;
+        try discriminate; [ reflexivity |].
+      apply andb_true_intro; split; [ exact (Hp 0 _ _ eq_refl eq_refl) | apply IH; [ lia |] ].
+      intros j; exact (Hp (S j)). }
+    intros Ms' Ws' Hn' Hl Heq.
+    destruct (nbes_nth _ _ _ _ _ _ Hn) as (HlW & HlA & Hnth).
+    destruct (nbes_nth _ _ _ _ _ _ Hn') as (HlW' & HlA' & Hnth').
+    split; [ lia |]; intros j W W' HW HW'.
+    assert (Hj : j < List.length Ms) by (rewrite <- HlW; apply List.nth_error_Some; congruence).
+    destruct (nth_error_lt_some' Ms j Hj) as [N HN].
+    destruct (nth_error_lt_some' Ms' j ltac:(lia)) as [N' HN'].
+    destruct (nth_error_lt_some' (tele_insts U Id Ms) j ltac:(lia)) as [T HT].
+    destruct (nth_error_lt_some' (tele_insts U Id Ms') j ltac:(lia)) as [T' HT'].
+    destruct (Hnth _ _ _ HN HT) as (W0 & HW0 & HNt & HNW); rewrite HW in HW0; injection HW0 as <-.
+    destruct (Hnth' _ _ _ HN' HT') as (W1 & HW1 & HNt' & HNW'); rewrite HW' in HW1; injection HW1 as <-.
+    destruct (tele_insts_cong_upto U nil Γ Id Id Ms Ms' Hass ltac:(rewrite List.app_nil_r; exact HU)
+                (wf_sub_eq_refl _ _ _ _ _ (wf_sub_to_nil _ _ _ HΓ)) j T T' HT HT') as (S & HS & Hi).
+    { intros j' M0 M0' T0 _ HM0 HM0' HT0; exact (Heq _ _ _ _ HM0 HM0' HT0). }
+    exact (completeness_at_equal_types HS (Heq _ _ _ _ HN HN' HT) Hi HNW HNW').
+  Qed.
+
+  (** A view sibling is a typed view. *)
+  Lemma sibling_view_inv : forall Γu qc D' Cs i M qv kv Iv vmv Dv Ws,
+      ⊢ᵍ gc_deps ⍮ gc_stack -> ⊢ Γu -> ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i = Some M ->
+      im_head M = mh_view qv kv Iv vmv -> ind_lookup gc_deps gc_stack qv = Some Dv ->
+      nbes gc_deps gc_stack Γu (List.map (fun I => I[sb_of_list sb_id Cs]) Iv)
+        (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (ind_uparams Dv) sb_id Iv)) Ws ->
+      view_typed gc_deps gc_stack Γu qv kv (List.map nf_to_exp Ws).
+  Proof.
+    intros * Hg HΓu Hl HM Hh Hlv Hn.
+    destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt _].
+    destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (Dv' & Mk' & Hlv' & HMk' & Hkv & HIl & _).
+    rewrite Hlv in Hlv'; injection Hlv' as <-.
+    destruct (decl_of_glookup _ _ _ _ Hg Hlv) as [Hdtv Hcv].
+    rewrite (tele_insts_sub (ind_uparams Dv) 0 Id Id (sb_of_list sb_id Cs) Iv (decl_closed_ass _ Hcv) (decl_closed_uparams _ Hcv)
+               ltac:(intros; lia)) in Hn.
+    pose proof (nbes_inst_inv _ _ _ _ (decl_closed_ass _ Hcv) (decl_closed_uparams _ Hcv) (decl_typed_uparams_field _ _ _ Hdtv) HΓu Hn) as Hty.
+    destruct (nbes_nth _ _ _ _ _ _ Hn) as (HlW & _).
+    assert (HlWs : List.length (List.map nf_to_exp Ws) = ind_nu Dv) by (rewrite List.length_map, HlW, List.length_map; exact HIl).
+    exact (mk_view_typed _ _ _ _ _ _ Dv Hlv Hkv HlWs Hty HΓu).
+  Qed.
+
+  (** A record view sibling is a typed record view. *)
+  Lemma sibling_record_inv : forall Γu qc D' Cs i M qr Ir fl Rr Ws,
+      ⊢ᵍ gc_deps ⍮ gc_stack -> ⊢ Γu -> ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i = Some M ->
+      im_head M = mh_record qr Ir fl -> record_lookup gc_deps gc_stack qr = Some Rr ->
+      nbes gc_deps gc_stack Γu (List.map (fun I => I[sb_of_list sb_id Cs]) Ir)
+        (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (record_params Rr) sb_id Ir)) Ws ->
+      record_view_typed gc_deps gc_stack Γu qr (List.map nf_to_exp Ws).
+  Proof.
+    intros * Hg HΓu Hl HM Hh Hlr Hn.
+    destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt _].
+    destruct (rview_struct_record _ _ _ (decl_typed_record_struct _ _ _ Hdt) _ _ _ _ _ HM Hh) as [Rr' HRf].
+    pose proof (rview_record_lookup _ _ _ _ _ _ HRf) as Hlr'; rewrite Hlr in Hlr'; injection Hlr' as <-.
+    pose proof (rview_record_count _ _ _ _ _ _ HRf) as HIl.
+    pose proof (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg) Hlr) as HcR.
+    pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hlr) as HRt.
+    pose proof (record_typed_fctx_wf _ _ _ HRt 0 ltac:(lia)) as HP; cbn [record_fctx List.app] in HP.
+    rewrite (record_params_insts_sub Rr Ir (sb_of_list sb_id Cs) HcR) in Hn.
+    pose proof (nbes_inst_inv _ _ _ _ (typed_params_ass _ _ _ HRt) (closed_params _ HcR) HP HΓu Hn) as Hty.
+    destruct (nbes_nth _ _ _ _ _ _ Hn) as (HlW & _).
+    assert (HlWs : List.length (List.map nf_to_exp Ws) = List.length (record_params Rr))
+      by (rewrite List.length_map, HlW, List.length_map; exact HIl).
+    exact (mk_record_view_typed _ _ _ _ _ Rr Hlr HlWs Hty HΓu).
+  Qed.
+
+  (** The siblings of a view sibling of [(q, k, Cs)] are siblings of
+      [(q, k, Cs)]: the view equations of [q]'s group at [Cs]. *)
+  Lemma view_entry_siblings : forall Γu qx D Csn m Mm qv kv Iv vm Ws Dqv ss ssy,
+      ⊢ᵍ gc_deps ⍮ gc_stack -> ⊢ Γu -> ind_lookup gc_deps gc_stack qx = Some D -> List.length (List.map nf_to_exp Csn) = ind_nu D ->
+      (forall j C T, List.nth_error (List.map nf_to_exp Csn) j = Some C ->
+         List.nth_error (tele_insts (ind_uparams D) Id (List.map nf_to_exp Csn)) j = Some T -> Γu ⊢ C : T) ->
+      ind_member D m = Some Mm -> im_head Mm = mh_view qv kv Iv vm -> ind_lookup gc_deps gc_stack qv = Some Dqv ->
+      nbes gc_deps gc_stack Γu (List.map (fun I => I[sb_of_list sb_id (List.map nf_to_exp Csn)]) Iv)
+        (List.map (fun T => T[sb_of_list sb_id (List.map nf_to_exp Csn)]) (tele_insts (ind_uparams Dqv) sb_id Iv)) Ws ->
+      siblings_from gc_deps gc_stack Γu qx Csn 0 (ind_members D) ss ->
+      siblings_from gc_deps gc_stack Γu qv Ws 0 (ind_members Dqv) ssy ->
+      forall e, In e ssy -> key_in e ss.
+  Proof.
+    intros * Hg HΓu Hl HCl HCt HMm Hh Hlv Hn Hss Hssy e He.
+    set (Cs := List.map nf_to_exp Csn) in *.
+    destruct (decl_of_glookup _ _ _ _ Hg Hl) as [Hdt Hc].
+    destruct (decl_of_glookup _ _ _ _ Hg Hlv) as [Hdtv Hcv].
+    destruct (decl_typed_view _ _ _ Hdt _ _ _ _ _ _ HMm Hh) as (Dqv' & Mkv & Hlv' & HMkv & Hkv & HIl & Hvml & Hvmk & _).
+    rewrite Hlv in Hlv'; injection Hlv' as <-.
+    pose proof (wf_uparams_sub _ _ _ _ _ Hdt HΓu HCl HCt) as HσC.
+    destruct (siblings_from_in _ _ _ _ _ _ _ _ Hssy _ He) as (i' & Mi' & HMi' & Hei' & Hse).
+    cbn [Nat.add] in Hse.
+    assert (Hi'l : i' < List.length vm) by (rewrite Hvml; apply List.nth_error_Some; congruence).
+    destruct (nth_error_lt_some' vm i' Hi'l) as [v Hv].
+    destruct (siblings_from_nth _ _ _ _ _ _ _ _ Hss) as [Hssl Hssn].
+    inversion Hse as [? ? pm' Hhd | ? ? q'' k'' Is'' vm'' D'' We Hhd Hl'' Hne | ? ? q'' Is'' fl'' R'' We Hhd Hl'' Hne]; subst.
+    - (* a declared member of the sibling's group: the view of it at the
+         same instance *)
+      destruct (decl_typed_view_decl _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMm Hh Hlv HMi' Hhd Hv) as (Mv & vm' & HMv & HhMv).
+      destruct (Hssn _ _ HMv) as (e0 & He0 & Hse0).
+      inversion Hse0 as [? ? ? Hh0 | ? ? qv0 kv0 Iv0 vm0 Dv0 Ws0 Hh0 Hl0 Hn0 | ? ? ? ? ? ? ? Hh0 ? ?]; subst; rewrite HhMv in Hh0;
+        try discriminate.
+      injection Hh0 as <- <- <- <-.
+      rewrite Hlv in Hl0; injection Hl0 as <-.
+      rewrite (nbes_functional _ _ _ _ _ _ _ Hn0 Hn) in He0.
+      exact (key_in_of_in _ _ (List.nth_error_In _ _ He0)).
+    - (* a view of the sibling's group: the view of the same member, at an
+         instance equal to the sibling's instance there *)
+      destruct (decl_typed_view_view _ _ _ Hdt m Mm qv kv Iv vm Dqv i' Mi' v q'' k'' Is'' vm'' HMm Hh Hlv HMi' Hhd Hv)
+        as (Mv & X & vm' & HMv & HhMv & HXl).
+      destruct (Hssn _ _ HMv) as (e0 & He0 & Hse0).
+      inversion Hse0 as [? ? ? Hh0 | ? ? qv0 kv0 Iv0 vm0 Dv0 Ws0 Hh0 Hl0 Hn0 | ? ? ? ? ? ? ? Hh0 ? ?]; subst; rewrite HhMv in Hh0;
+        try discriminate.
+      injection Hh0 as <- <- <- <-.
+      rewrite Hl'' in Hl0; injection Hl0 as <-.
+      destruct (decl_of_glookup _ _ _ _ Hg Hl'') as [Hdt'' Hc''].
+      fold Cs in Hn0.
+      rewrite (tele_insts_sub (ind_uparams D'') 0 Id Id (sb_of_list sb_id Cs) X (decl_closed_ass _ Hc'') (decl_closed_uparams _ Hc'')
+                 ltac:(intros; lia)) in Hn0.
+      rewrite (tele_insts_sub (ind_uparams D'') 0 Id Id (sb_of_list sb_id (List.map nf_to_exp Ws)) Is'' (decl_closed_ass _ Hc'') (decl_closed_uparams _ Hc'')
+                 ltac:(intros; lia)) in Hne.
+      enough (Hw : nfs_eq_upto_proofs Ws0 We)
+        by (eexists; split; [ exact (List.nth_error_In _ _ He0) | symmetry; apply key_args_upto; exact Hw ]).
+      assert (HsIs : List.Forall (exp_scoped (ind_nu Dqv)) Is'') by exact (decl_closed_head_scoped Dqv Hcv _ _ _ _ _ _ HMi' Hhd).
+      set (σC := sb_of_list sb_id Cs) in *.
+      set (σY := sb_of_list sb_id (List.map nf_to_exp Ws)) in *.
+      assert (HIvC : forall I, In I Is'' -> I[sb_of_list Id Iv][σC] = I[sb_of_list Id (List.map (fun J => J[σC]) Iv)]).
+      { intros I HI; apply exp_list_grp_sb0; rewrite HIl; rewrite List.Forall_forall in HsIs; exact (HsIs _ HI). }
+      rewrite (tele_insts_sub (ind_uparams Dqv) 0 Id Id σC Iv (decl_closed_ass _ Hcv) (decl_closed_uparams _ Hcv) ltac:(intros; lia)) in Hn.
+      destruct (nbes_nth _ _ _ _ _ _ Hn) as (HlWs & HlTs & Hnth).
+      (** the view's instance at [Cs] is equal to its normal form *)
+      assert (HσIY : Γu ⊢ˢ sb_of_list Id (List.map (fun J => J[σC]) Iv) ≈ σY : ind_uparams Dqv).
+      { rewrite <- (List.app_nil_r (ind_uparams Dqv)).
+        eapply wf_sub_eq_of_list; [ exact (decl_closed_ass _ Hcv) | rewrite List.app_nil_r; exact (decl_typed_uparams_field _ _ _ Hdtv)
+                                  | exact (wf_sub_eq_refl _ _ _ _ _ (wf_sub_to_nil _ _ _ HΓu)) | rewrite List.length_map; exact HIl
+                                  | rewrite List.length_map, HlWs, List.length_map; exact HIl |].
+        intros j0 N0 N0' T0 HN0 HN0' HT0.
+        destruct (Hnth _ _ _ HN0 HT0) as (W0 & HW0 & HN0t & HN0W).
+        rewrite List.nth_error_map, HW0 in HN0'; cbn in HN0'; injection HN0' as <-.
+        exact (soundness' HN0t HN0W). }
+      assert (HUD : ⊢ ind_uparams D) by exact (decl_typed_uparams_field _ _ _ Hdt).
+      assert (HTsub : forall (τ : sub) Ms j0 T0, List.nth_error (tele_insts (ind_uparams D'') Id Ms) j0 = Some T0 ->
+                List.nth_error (tele_insts (ind_uparams D'') Id (List.map (fun M => M[τ]) Ms)) j0 = Some T0[τ])
+        by (intros; apply tele_insts_closed_sub; [ exact (decl_closed_ass _ Hc'') | exact (decl_closed_uparams _ Hc'') | assumption ]).
+      apply (nbes_conv_inst Γu (ind_uparams D'') _ _ _ _ (decl_closed_ass _ Hc'') (decl_typed_uparams_field _ _ _ Hdt'') HΓu Hn0 Hne);
+        [ rewrite !List.length_map; exact HXl |].
+      intros j N N' T HN HN' HT.
+      apply nth_error_map_inv in HN as (Cj & HCj & ->); apply nth_error_map_inv in HN' as (Ij & HIj & ->).
+      assert (Hjl : j < List.length Is'') by (apply List.nth_error_Some; congruence).
+      assert (HUa'' : all_assumptions (ind_uparams D'')) by exact (decl_closed_ass _ Hc'').
+      destruct (nth_error_lt_some' (tele_insts (ind_uparams D'') Id Is'') j
+                  ltac:(rewrite length_tele_insts by exact HUa''; pose proof (decl_typed_view _ _ _ Hdtv _ _ _ _ _ _ HMi' Hhd) as (? & ? & Hl3 & _ & _ & HIl3 & _);
+                        rewrite Hl'' in Hl3; injection Hl3 as <-; unfold ind_nu in HIl3; lia)) as [T0 HT0].
+      destruct (nth_error_lt_some' (tele_insts (ind_uparams D'') Id X) j
+                  ltac:(rewrite length_tele_insts by exact HUa'';
+                        assert (HT1l : j < List.length (tele_insts (ind_uparams D'') Id Is'')) by (apply List.nth_error_Some; congruence);
+                        rewrite length_tele_insts in HT1l by exact HUa''; lia)) as [T1 HT1].
+      pose proof (HTsub σC X j T1 HT1) as HT1C; rewrite HT in HT1C; injection HT1C as ->.
+      (** the view equation of the instances, at the group's uniform
+          parameters *)
+      assert (HeqD : forall j' C C' T', List.nth_error X j' = Some C ->
+                List.nth_error (List.map (fun I => I[sb_of_list Id Iv]) Is'') j' = Some C' ->
+                List.nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T' ->
+                ind_uparams D ⊢ C ≈ C' : T'[sb_of_list Id Iv])
+        by (intros; eapply (decl_typed_view_view_is _ _ _ _ Hg Hdt Hl m Mm qv kv Iv vm Dqv i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm');
+            eassumption).
+      assert (HIjv : List.nth_error (List.map (fun I => I[sb_of_list Id Iv]) Is'') j = Some Ij[sb_of_list Id Iv])
+        by (rewrite List.nth_error_map, HIj; reflexivity).
+      pose proof (HeqD _ _ _ _ HCj HIjv HT0) as Hab.
+      destruct (tele_insts_cong_upto (ind_uparams D'') nil (ind_uparams D) Id Id (List.map (fun I => I[sb_of_list Id Iv]) Is'') X
+                  HUa'' ltac:(rewrite List.app_nil_r; exact (decl_typed_uparams_field _ _ _ Hdt'')) (wf_sub_eq_refl _ _ _ _ _ (wf_sub_to_nil _ _ _ HUD))
+                  j _ _ (HTsub _ _ _ _ HT0) HT1) as (i & Hsi & HT01).
+      { intros j' N0 N0' T0' _ HN0 HN0' HT0'.
+        assert (Hj'l : j' < List.length (tele_insts (ind_uparams D'') Id Is''))
+          by (rewrite length_tele_insts by exact HUa'';
+              assert (Hx : j' < List.length (tele_insts (ind_uparams D'') Id (List.map (fun I => I[sb_of_list Id Iv]) Is'')))
+                by (apply List.nth_error_Some; congruence);
+              rewrite length_tele_insts, List.length_map in Hx by exact HUa''; lia).
+        destruct (nth_error_lt_some' _ _ Hj'l) as [T' HT'].
+        rewrite (HTsub _ _ _ _ HT') in HT0'; injection HT0' as <-.
+        apply nth_error_map_inv in HN0 as (I0 & HI0 & ->).
+        apply wf_exp_eq_sym; apply (HeqD j'); [ exact HN0' | rewrite List.nth_error_map, HI0; reflexivity | exact HT' ]. }
+      (** moved to [Γu] along [Cs], and the view's instance replaced by its
+          normal form *)
+      pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Hab HσC) as Hab'.
+      pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ HT01 HσC) as HT01'; rewrite (type_sort_sub _ _ Hsi) in HT01'.
+      rewrite (HIvC Ij (List.nth_error_In _ _ HIj)) in Hab'.
+      pose proof (decl_typed_view_is _ _ _ _ Hg Hdtv Hlv i' Mi' q'' k'' Is'' vm'' D'' j Ij T0 HMi' Hhd Hl'' HIj HT0) as HIjt.
+      pose proof (sub_eq_preserves_exp _ _ _ _ _ HIjt _ _ _ HσIY) as Hb.
+      assert (HTT : T0[sb_of_list Id (List.map (fun J => J[σC]) Iv)] = T0[sb_of_list Id Iv][σC]).
+      { pose proof (HTsub σC _ _ _ (HTsub (sb_of_list Id Iv) _ _ _ HT0)) as E1.
+        pose proof (HTsub (sb_of_list Id (List.map (fun J => J[σC]) Iv)) _ _ _ HT0) as E2.
+        rewrite List.map_map, (List.map_ext_in _ (fun I => I[sb_of_list Id (List.map (fun J => J[σC]) Iv)])) in E1
+          by (intros I HI; exact (HIvC I HI)).
+        rewrite E1 in E2; injection E2 as E2; symmetry; exact E2. }
+      rewrite HTT in Hb.
+      eapply wf_exp_eq_conv_sort; [ eapply wf_exp_eq_trans; [ exact Hab' | exact Hb ] | | exact Hsi | exact HT01' ].
+      gen_presups; assumption.
+    - (* a record view of the sibling's group: the record view of the same
+         record, at an instance equal to the sibling's instance there *)
+      destruct (decl_typed_view_rview _ _ _ Hdt m Mm qv kv Iv vm Dqv i' Mi' v q'' Is'' fl'' HMm Hh Hlv HMi' Hhd Hv)
+        as (Mv & X & HMv & HhMv & HXl).
+      destruct (Hssn _ _ HMv) as (e0 & He0 & Hse0).
+      inversion Hse0 as [? ? ? Hh0 | ? ? ? ? ? ? ? ? Hh0 ? ? | ? ? qr0 Ir0 fl0 R0 Ws0 Hh0 Hl0 Hn0]; subst; rewrite HhMv in Hh0;
+        try discriminate.
+      injection Hh0 as <- <- <-.
+      rewrite Hl'' in Hl0; injection Hl0 as <-.
+      pose proof (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ Hg) Hl'') as HcR.
+      pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl'') as HRt.
+      pose proof (record_typed_fctx_wf _ _ _ HRt 0 ltac:(lia)) as HP0; cbn [record_fctx List.app] in HP0.
+      assert (HRa : all_assumptions (record_params R'')) by exact (typed_params_ass _ _ _ HRt).
+      fold Cs in Hn0; rewrite (record_params_insts_sub R'' X (sb_of_list sb_id Cs) HcR) in Hn0.
+      rewrite (record_params_insts_sub R'' Is'' (sb_of_list sb_id (List.map nf_to_exp Ws)) HcR) in Hne.
+      enough (Hw : nfs_eq_upto_proofs Ws0 We)
+        by (eexists; split; [ exact (List.nth_error_In _ _ He0) | symmetry; apply record_key_args_upto; exact Hw ]).
+      assert (HsIs : List.Forall (exp_scoped (ind_nu Dqv)) Is'') by exact (decl_closed_rhead_scoped Dqv Hcv _ _ _ _ _ HMi' Hhd).
+      set (σC := sb_of_list sb_id Cs) in *.
+      set (σY := sb_of_list sb_id (List.map nf_to_exp Ws)) in *.
+      assert (HIvC : forall I, In I Is'' -> I[sb_of_list Id Iv][σC] = I[sb_of_list Id (List.map (fun J => J[σC]) Iv)]).
+      { intros I HI; apply exp_list_grp_sb0; rewrite HIl; rewrite List.Forall_forall in HsIs; exact (HsIs _ HI). }
+      rewrite (tele_insts_sub (ind_uparams Dqv) 0 Id Id σC Iv (decl_closed_ass _ Hcv) (decl_closed_uparams _ Hcv) ltac:(intros; lia)) in Hn.
+      destruct (nbes_nth _ _ _ _ _ _ Hn) as (HlWs & HlTs & Hnth).
+      (** the view's instance at [Cs] is equal to its normal form *)
+      assert (HσIY : Γu ⊢ˢ sb_of_list Id (List.map (fun J => J[σC]) Iv) ≈ σY : ind_uparams Dqv).
+      { rewrite <- (List.app_nil_r (ind_uparams Dqv)).
+        eapply wf_sub_eq_of_list; [ exact (decl_closed_ass _ Hcv) | rewrite List.app_nil_r; exact (decl_typed_uparams_field _ _ _ Hdtv)
+                                  | exact (wf_sub_eq_refl _ _ _ _ _ (wf_sub_to_nil _ _ _ HΓu)) | rewrite List.length_map; exact HIl
+                                  | rewrite List.length_map, HlWs, List.length_map; exact HIl |].
+        intros j0 N0 N0' T0 HN0 HN0' HT0.
+        destruct (Hnth _ _ _ HN0 HT0) as (W0 & HW0 & HN0t & HN0W).
+        rewrite List.nth_error_map, HW0 in HN0'; cbn in HN0'; injection HN0' as <-.
+        exact (soundness' HN0t HN0W). }
+      assert (HUD : ⊢ ind_uparams D) by exact (decl_typed_uparams_field _ _ _ Hdt).
+      assert (HTsub : forall (τ : sub) Ms j0 T0, List.nth_error (tele_insts (record_params R'') Id Ms) j0 = Some T0 ->
+                List.nth_error (tele_insts (record_params R'') Id (List.map (fun M => M[τ]) Ms)) j0 = Some T0[τ])
+        by (intros; apply tele_insts_closed_sub; [ exact HRa | exact (closed_params _ HcR) | assumption ]).
+      destruct (rview_struct_record _ _ _ (decl_typed_record_struct _ _ _ Hdtv) _ _ _ _ _ HMi' Hhd) as [R3 HR3].
+      pose proof (rview_record_lookup _ _ _ _ _ _ HR3) as Hl3; rewrite Hl'' in Hl3; injection Hl3 as <-.
+      pose proof (rview_record_count _ _ _ _ _ _ HR3) as HIl''.
+      apply (nbes_conv_inst Γu (record_params R'') _ _ _ _ HRa HP0 HΓu Hn0 Hne);
+        [ rewrite !List.length_map; exact HXl |].
+      intros j N N' T HN HN' HT.
+      apply nth_error_map_inv in HN as (Cj & HCj & ->); apply nth_error_map_inv in HN' as (Ij & HIj & ->).
+      destruct (nth_error_lt_some' (tele_insts (record_params R'') Id Is'') j
+                  ltac:(rewrite length_tele_insts by exact HRa; assert (Hjl : j < List.length Is'') by (apply List.nth_error_Some; congruence);
+                        lia)) as [T0 HT0].
+      destruct (nth_error_lt_some' (tele_insts (record_params R'') Id X) j
+                  ltac:(rewrite length_tele_insts by exact HRa;
+                        assert (HT1l : j < List.length (tele_insts (record_params R'') Id Is'')) by (apply List.nth_error_Some; congruence);
+                        rewrite length_tele_insts in HT1l by exact HRa; lia)) as [T1 HT1].
+      pose proof (HTsub σC X j T1 HT1) as HT1C; rewrite HT in HT1C; injection HT1C as ->.
+      (** the record view equation of the instances, at the group's
+          uniform parameters *)
+      assert (HeqD : forall j' C C' T', List.nth_error X j' = Some C ->
+                List.nth_error (List.map (fun I => I[sb_of_list Id Iv]) Is'') j' = Some C' ->
+                List.nth_error (tele_insts (record_params R'') Id Is'') j' = Some T' ->
+                ind_uparams D ⊢ C ≈ C' : T'[sb_of_list Id Iv])
+        by (intros; eapply (decl_typed_view_rview_is _ _ _ _ Hg Hdt Hl m Mm qv kv Iv vm Dqv i' Mi' v q'' Is'' fl'' R'' Mv X fl'');
+            eassumption).
+      assert (HIjv : List.nth_error (List.map (fun I => I[sb_of_list Id Iv]) Is'') j = Some Ij[sb_of_list Id Iv])
+        by (rewrite List.nth_error_map, HIj; reflexivity).
+      pose proof (HeqD _ _ _ _ HCj HIjv HT0) as Hab.
+      destruct (tele_insts_cong_upto (record_params R'') nil (ind_uparams D) Id Id (List.map (fun I => I[sb_of_list Id Iv]) Is'') X
+                  HRa ltac:(rewrite List.app_nil_r; exact HP0) (wf_sub_eq_refl _ _ _ _ _ (wf_sub_to_nil _ _ _ HUD))
+                  j _ _ (HTsub _ _ _ _ HT0) HT1) as (i & Hsi & HT01).
+      { intros j' N0 N0' T0' _ HN0 HN0' HT0'.
+        assert (Hj'l : j' < List.length (tele_insts (record_params R'') Id Is''))
+          by (rewrite length_tele_insts by exact HRa;
+              assert (Hx : j' < List.length (tele_insts (record_params R'') Id (List.map (fun I => I[sb_of_list Id Iv]) Is'')))
+                by (apply List.nth_error_Some; congruence);
+              rewrite length_tele_insts, List.length_map in Hx by exact HRa; lia).
+        destruct (nth_error_lt_some' _ _ Hj'l) as [T' HT'].
+        rewrite (HTsub _ _ _ _ HT') in HT0'; injection HT0' as <-.
+        apply nth_error_map_inv in HN0 as (I0 & HI0 & ->).
+        apply wf_exp_eq_sym; apply (HeqD j'); [ exact HN0' | rewrite List.nth_error_map, HI0; reflexivity | exact HT' ]. }
+      (** moved to [Γu] along [Cs], and the view's instance replaced by its
+          normal form *)
+      pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Hab HσC) as Hab'.
+      pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ HT01 HσC) as HT01'; rewrite (type_sort_sub _ _ Hsi) in HT01'.
+      rewrite (HIvC Ij (List.nth_error_In _ _ HIj)) in Hab'.
+      pose proof (decl_typed_rview_is _ _ _ _ Hg Hdtv Hlv i' Mi' q'' Is'' fl'' R'' j Ij T0 HMi' Hhd Hl'' HIj HT0) as HIjt.
+      pose proof (sub_eq_preserves_exp _ _ _ _ _ HIjt _ _ _ HσIY) as Hb.
+      assert (HTT : T0[sb_of_list Id (List.map (fun J => J[σC]) Iv)] = T0[sb_of_list Id Iv][σC]).
+      { pose proof (HTsub σC _ _ _ (HTsub (sb_of_list Id Iv) _ _ _ HT0)) as E1.
+        pose proof (HTsub (sb_of_list Id (List.map (fun J => J[σC]) Iv)) _ _ _ HT0) as E2.
+        rewrite List.map_map, (List.map_ext_in _ (fun I => I[sb_of_list Id (List.map (fun J => J[σC]) Iv)])) in E1
+          by (intros I HI; exact (HIvC I HI)).
+        rewrite E1 in E2; injection E2 as E2; symmetry; exact E2. }
+      rewrite HTT in Hb.
+      eapply wf_exp_eq_conv_sort; [ eapply wf_exp_eq_trans; [ exact Hab' | exact Hb ] | | exact Hsi | exact HT01' ].
+      gen_presups; assumption.
+  Qed.
+End SiblingInv.
+
+Section NestKeys.
+  Context {GC : GCtx}.
+
+  (** The instances the classification finds in a normal form, keyed, are
+      of the invariant: typed, as their normal forms are. *)
+  Corollary nest_key_inv : forall Δ Γu T W (i : nat) nu np n pat gw g z,
+      all_assumptions Δ -> List.length Δ = List.length pat + (np - nu) ->
+      Δ ++ Γu ⊢ T : Typeω@i -> nbe_ty_f (Δ ++ Γu) T W -> nf_proof_free W ->
+      classify_arg (grp_info gc_deps gc_stack) (rec_info gc_deps gc_stack) nu np n pat (nf_to_exp W) = Some gw ->
+      written_carg_key gc_deps gc_stack Γu gw g ->
+      In z (classified_carg_view g) -> key_inv gc_deps gc_stack Γu z.
+  Proof.
+    intros * Hass Hlen HT HW HpfW Hcls Hk Hin.
+    destruct (written_carg_key_view _ _ _ _ Hk Hin) as (x & Hx & Hxz).
+    destruct Hxz as [qc k Cs D Ws Hl HWs | qr Is Rr Ws Hl HWs]; cbn [key_inv].
+    - destruct (nest_view_typed _ _ _ _ _ _ _ _ _ _ _ _ _ Hass Hlen HT HW HpfW Hcls Hx) as [D2 Hl2 Hk2 HCl HCt HΓu].
+      rewrite Hl in Hl2; injection Hl2 as <-.
+      destruct (decl_of_lookup _ _ _ _ _ HΓu Hl) as [Hdt Hc].
+      destruct (nbes_nth _ _ _ _ _ _ HWs) as (HlW & _).
+      refine (mk_view_typed _ _ _ _ _ _ D Hl Hk2 ltac:(rewrite List.length_map, HlW; exact HCl) _ HΓu).
+      exact (nbes_inst_inv _ _ _ _ (decl_closed_ass _ Hc) (decl_closed_uparams _ Hc) (decl_typed_uparams_field _ _ _ Hdt) HΓu HWs).
+    - destruct (nest_record_view_typed _ _ _ _ _ _ _ _ _ _ _ _ Hass Hlen HT HW HpfW Hcls Hx) as [R2 Hl2 HCl HCt HΓu].
+      rewrite Hl in Hl2; injection Hl2 as <-.
+      pose proof (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ (ctx_wf_gctx _ _ _ HΓu)) Hl) as HcR.
+      pose proof (record_lookup_typed _ _ (ctx_wf_gctx _ _ _ HΓu) (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ HΓu)) _ _ Hl) as HRt.
+      pose proof (record_typed_fctx_wf _ _ _ HRt 0 ltac:(lia)) as HP; cbn [record_fctx List.app] in HP.
+      destruct (nbes_nth _ _ _ _ _ _ HWs) as (HlW & _).
+      refine (mk_record_view_typed _ _ _ _ _ Rr Hl ltac:(rewrite List.length_map, HlW; exact HCl) _ HΓu).
+      exact (nbes_inst_inv _ _ _ _ (typed_params_ass _ _ _ HRt) (closed_params _ HcR) HP HΓu HWs).
+  Qed.
+
+  (** Terms typed at a closed telescope's instance at them have normal
+      forms there. *)
+  Lemma nbes_exist : forall Γ U Ms, all_assumptions U -> List.length Ms = List.length U ->
+      (forall j N T, List.nth_error Ms j = Some N -> List.nth_error (tele_insts U Id Ms) j = Some T -> Γ ⊢ N : T) ->
+      exists Ws, nbes gc_deps gc_stack Γ Ms (tele_insts U Id Ms) Ws.
+  Proof.
+    intros Γ U Ms Hass Hl Ht.
+    assert (HlT : List.length (tele_insts U Id Ms) = List.length Ms) by (rewrite length_tele_insts by exact Hass; lia).
+    assert (H : forall As Ms, List.length As = List.length Ms ->
+               (forall j N T, List.nth_error Ms j = Some N -> List.nth_error As j = Some T -> Γ ⊢ N : T) ->
+               exists Ws, nbes gc_deps gc_stack Γ Ms As Ws).
+    { clear; induction As as [| A As IH]; intros [| M Ms] Hl Ht; cbn in Hl; try discriminate.
+      - exists nil; constructor.
+      - pose proof (Ht 0 M A eq_refl eq_refl) as HM.
+        destruct (soundness HM) as (W & HW & _).
+        destruct (IH Ms ltac:(lia) (fun j => Ht (S j))) as [Ws HWs].
+        exists (W :: Ws); constructor; assumption. }
+    exact (H _ _ HlT Ht).
+  Qed.
+
+  (** The conditions of [classify_in_nf] key each instance it finds: its
+      arguments are typed over [Γu], so they have normal forms. *)
+  Corollary nest_key_exists : forall Δ Γu T W (i : nat) nu np n pat gw,
+      all_assumptions Δ -> List.length Δ = List.length pat + (np - nu) ->
+      Δ ++ Γu ⊢ T : Typeω@i -> nbe_ty_f (Δ ++ Γu) T W -> nf_proof_free W ->
+      classify_arg (grp_info gc_deps gc_stack) (rec_info gc_deps gc_stack) nu np n pat (nf_to_exp W) = Some gw ->
+      exists g, written_carg_key gc_deps gc_stack Γu gw g.
+  Proof.
+    intros * Hass Hlen HT HW HpfW Hcls.
+    assert (Hinst : forall x, In x (classified_carg_view gw) -> exists y, view_inst_key gc_deps gc_stack Γu x y).
+    { intros [qc k Cs | qr Is] Hx.
+      - destruct (nest_view_typed _ _ _ _ _ _ _ _ _ _ _ _ _ Hass Hlen HT HW HpfW Hcls Hx) as [D Hl _ HCl HCt HΓu].
+        destruct (decl_of_lookup _ _ _ _ _ HΓu Hl) as [Hdt _].
+        destruct (nbes_exist Γu (ind_uparams D) Cs (decl_typed_ass _ _ _ Hdt) ltac:(rewrite HCl; reflexivity) HCt) as [Ws HWs].
+        exists (vk_ind qc k Ws); econstructor; [ exact Hl | exact HWs ].
+      - destruct (nest_record_view_typed _ _ _ _ _ _ _ _ _ _ _ _ Hass Hlen HT HW HpfW Hcls Hx) as [Rr Hl HCl HCt HΓu].
+        pose proof (record_lookup_typed _ _ (ctx_wf_gctx _ _ _ HΓu) (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ HΓu)) _ _ Hl) as HRt.
+        destruct (nbes_exist Γu (record_params Rr) Is (typed_params_ass _ _ _ HRt) HCl HCt) as [Ws HWs].
+        exists (vk_record qr Ws); econstructor; [ exact Hl | exact HWs ]. }
+    destruct gw as [κ A | tw]; [ eexists; constructor |].
+    cbn [classified_carg_view] in Hinst.
+    assert (Ht : exists tc, written_ptyp_key gc_deps gc_stack Γu tw tc).
+    { clear - Hinst; induction tw as [j Ps | x Ns | B tw IH]; cbn in Hinst.
+      - eexists; constructor.
+      - destruct (Hinst x (or_introl eq_refl)) as [y Hy]; eexists; constructor; exact Hy.
+      - destruct (IH Hinst) as [tc Htc]; eexists; constructor; exact Htc. }
+    destruct Ht as [tc Htc]; eexists; constructor; exact Htc.
+  Qed.
+End NestKeys.
+
+(** ** Where a Constructor's Classified Arguments Meet an Instance *)
+
+(** An instance the classified arguments [gs] meet is met by one of them,
+    classified in the context of those before it, with as many bits as
+    arguments before. *)
+Lemma classify_args_in_meet : forall Θ Ξ Γp nu np n pat args1 args gs,
+    classify_args_in Θ Ξ Γp nu np n pat args1 args gs -> List.length pat = List.length args1 ->
+    forall z, In z (List.concat (List.map classified_carg_view gs)) ->
+    exists args1' T g pat', classify_arg_in Θ Ξ (raw_args_tele args1' ++ Γp) nu np n pat' T g /\ In z (classified_carg_view g) /\
+      List.length pat' = List.length args1'.
+Proof.
+  induction 1 as [| pat args1 y κ T args g gs Hg _ Hgs IH]; intros Hl z Hz; cbn in Hz; [ destruct Hz |].
+  apply List.in_app_or in Hz as [Hz | Hz].
+  - assert (Ev : classified_carg_view (classified_carg_tag κ g) = classified_carg_view g) by (destruct g; reflexivity).
+    rewrite Ev in Hz; exists args1, T, g, pat; auto.
+  - apply IH; [ rewrite List.length_app; cbn; lia | exact Hz ].
+Qed.
+
+(** An instance the classified constructors meet. *)
+Lemma classify_cons_in_meet : forall Θ Ξ Γp nu np n rcs cs, classify_cons_in Θ Ξ Γp nu np n rcs cs ->
+    forall z, In z (classified_cons_views cs) ->
+    exists args1' T g pat', classify_arg_in Θ Ξ (raw_args_tele args1' ++ Γp) nu np n pat' T g /\ In z (classified_carg_view g) /\
+      List.length pat' = List.length args1'.
+Proof.
+  unfold classify_cons_in, classified_cons_views; induction 1 as [| rc c rcs cs [_ Hc] _ IH]; intros z Hz; cbn in Hz; [ destruct Hz |].
+  apply List.in_app_or in Hz as [Hz | Hz]; [| exact (IH _ Hz) ].
+  exact (classify_args_in_meet _ _ _ _ _ _ _ _ _ _ Hc eq_refl _ Hz).
+Qed.
+
+(** The instances any view's constructors meet are typed views, whose
+    arguments are their own normal forms. *)
+Theorem view_meets_inv : forall Θ Ξ R x cs z, view_classify Θ Ξ R x cs -> In z (classified_cons_views cs) ->
+    key_inv Θ Ξ (raw_decl_uniform_ctx Ξ R) z.
+Proof.
+  intros * Hx Hz.
+  assert (Hskip : forall (Δ Γ : ctx) m, m = List.length Δ -> List.skipn m (Δ ++ Γ) = Γ)
+    by (intros Δ Γ m ->; rewrite List.skipn_app, List.skipn_all, Nat.sub_diag; reflexivity).
+  inversion Hx as [qx kx Csx D' Mk' cs' HD' HMk' Hcls | qx Isx Rr cs' HRr Hcls]; subst.
+  - destruct (classify_cons_in_meet _ _ _ _ _ _ _ _ Hcls _ Hz) as (args1 & T & g & pat & Hg & Hin & Hl).
+    inversion Hg as [gw g' Hsyn Hk | i W gw g' Hnf HT HW Hpf Hcl Hk]; subst.
+    + destruct (@written_carg_key_view (gc_mk Θ Ξ) _ _ _ _ Hk Hin) as (x0 & Hx0 & _).
+      rewrite (classify_arg_none_view _ _ _ _ _ _ Hsyn) in Hx0; destruct Hx0.
+    + set (Δ := raw_args_tele args1 ++ tele_sub (im_nparams Mk') (sb_of_list sb_id (List.map nf_to_exp Csx))).
+      assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Δ ++ raw_decl_uniform_ctx Ξ R) by (unfold Δ; rewrite <- List.app_assoc; gen_presups; assumption).
+      destruct (decl_of_lookup _ _ _ _ _ HΓ HD') as [Hdt _].
+      rewrite List.app_assoc, (Hskip Δ) in Hk
+        by (unfold Δ, raw_args_tele; rewrite List.length_app, List.length_rev, List.length_map, length_tele_sub; unfold im_nn; lia).
+      apply (@nest_key_inv (gc_mk Θ Ξ) Δ (raw_decl_uniform_ctx Ξ R) T W i (raw_decl_nu R) (im_nn Mk' + raw_decl_nu R) (raw_decl_nmembers R) pat gw g); cbn.
+      * unfold Δ, all_assumptions, raw_args_tele; apply List.Forall_app; split;
+          [ apply List.Forall_rev, List.Forall_map, List.Forall_forall; intros; do 2 eexists; reflexivity
+          | apply all_assumptions_sub, (decl_typed_nparams_ass _ _ _ Hdt _ _ HMk') ].
+      * unfold Δ, raw_args_tele; rewrite List.length_app, List.length_rev, List.length_map, length_tele_sub; unfold im_nn; lia.
+      * unfold Δ; rewrite <- List.app_assoc; exact HT.
+      * unfold Δ; rewrite <- List.app_assoc; exact HW.
+      * exact Hpf.
+      * exact Hcl.
+      * exact Hk.
+      * exact Hin.
+  - (** a record view: its fields, over the group's context *)
+    destruct (classify_cons_in_meet _ _ _ _ _ _ _ _ Hcls _ Hz) as (args1 & T & g & pat & Hg & Hin & Hl).
+    inversion Hg as [gw g' Hsyn Hk | i W gw g' Hnf HT HW Hpf Hcl Hk]; subst.
+    + destruct (@written_carg_key_view (gc_mk Θ Ξ) _ _ _ _ Hk Hin) as (x0 & Hx0 & _).
+      rewrite (classify_arg_none_view _ _ _ _ _ _ Hsyn) in Hx0; destruct Hx0.
+    + rewrite Nat.sub_diag, Nat.add_0_r, (Hskip (raw_args_tele args1)) in Hk
+        by (unfold raw_args_tele; rewrite List.length_rev, List.length_map; lia).
+      apply (@nest_key_inv (gc_mk Θ Ξ) (raw_args_tele args1) (raw_decl_uniform_ctx Ξ R) T W i (raw_decl_nu R) (raw_decl_nu R) (raw_decl_nmembers R) pat gw g); cbn.
+      * unfold all_assumptions, raw_args_tele; apply List.Forall_rev, List.Forall_map, List.Forall_forall; intros; do 2 eexists; reflexivity.
+      * unfold raw_args_tele; rewrite List.length_rev, List.length_map; lia.
+      * exact HT.
+      * exact HW.
+      * exact Hpf.
+      * exact Hcl.
+      * exact Hk.
+      * exact Hin.
+Qed.

@@ -10,13 +10,13 @@
     takes minutes.  Add a theorem here when it becomes a main result. *)
 
 From Mctt Require Import Entrypoint.
-From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Consistency Core.Consequences.ModelConsistency Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.Consequences.NormalFormWeakening.
+From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Consistency Core.Consequences.ModelConsistency Extraction.Commands.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.Consequences.NormalFormWeakening.
 From Mctt Require Import Reference.Refinement.
 From Mctt Require Import Core.Consequences.FnKinds Core.Consequences.SlotTransport.
-From Mctt Require Import Extraction.GlobalCheck Extraction.CommandRun.
+From Mctt Require Import Extraction.Commands.GlobalCheck Extraction.Commands.CommandRun.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Consequences.FiledConstructorTypes.
 From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns Core.Syntactic.System.Records.RecordRuns.
-From Mctt Require Import Extraction.AppSpine Reference.TypeCheckAgreement.
+From Mctt Require Import Extraction.Checker.AppSpine Reference.TypeCheckAgreement.
 From Mctt Require Core.Semantic.Inductives.NestingExamples Core.Soundness.Inductives.PhantomExample.
 Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.FundamentalTheorem.completeness_fundamental.
@@ -73,9 +73,9 @@ Print Assumptions Mctt.Core.Consequences.Consistency.typ_nf_below_of_nbe.
 Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_suniv_bound.
 Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_suniv_lit_bound.
 Print Assumptions Mctt.Algorithmic.Typing.Lemmas.alg_type_infer_typ_complete_lit.
-Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_typ_complete'.
-Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_typ_complete_lit'.
-Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_large_typ_complete'.
+Print Assumptions Mctt.Extraction.Commands.GlobalCheck.alg_type_infer_typ_complete'.
+Print Assumptions Mctt.Extraction.Commands.GlobalCheck.alg_type_infer_typ_complete_lit'.
+Print Assumptions Mctt.Extraction.Commands.GlobalCheck.alg_type_infer_large_typ_complete'.
 (* Refinement: the extracted normalizers agree with the reference ones;
    the checkers' agreement is Reference.TypeCheckAgreement. *)
 Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines_eq.
@@ -105,12 +105,12 @@ Print Assumptions Mctt.Core.Syntactic.Presup.presup_sub_eq.
 Print Assumptions Mctt.Core.Syntactic.System.Global.Presup.presup_global.
 Print Assumptions Mctt.Core.Syntactic.System.Global.Presup.presup_exp_typ.
 (* The checker of commands and units, and the elaborator. *)
-Print Assumptions Mctt.Extraction.CommandRun.items_impl_sound.
-Print Assumptions Mctt.Extraction.CommandRun.run_unit_impl_sound.
-Print Assumptions Mctt.Extraction.CommandRun.run_impl_complete.
-Print Assumptions Mctt.Extraction.CommandRun.items_impl_complete.
-Print Assumptions Mctt.Extraction.CommandRun.run_unit_impl_complete.
-Print Assumptions Mctt.Extraction.CommandRun.prog_impl_complete_wf.
+Print Assumptions Mctt.Extraction.Commands.CommandRun.items_impl_sound.
+Print Assumptions Mctt.Extraction.Commands.CommandRun.run_unit_impl_sound.
+Print Assumptions Mctt.Extraction.Commands.CommandRun.run_impl_complete.
+Print Assumptions Mctt.Extraction.Commands.CommandRun.items_impl_complete.
+Print Assumptions Mctt.Extraction.Commands.CommandRun.run_unit_impl_complete.
+Print Assumptions Mctt.Extraction.Commands.CommandRun.prog_impl_complete_wf.
 Print Assumptions Mctt.Frontend.ElabCorrect.elaborate_core_sound.
 Print Assumptions Mctt.Frontend.ElabCorrect.elaborate_core_complete.
 Print Assumptions Mctt.Frontend.ElabCorrect.elab_spec_functional.
@@ -128,16 +128,16 @@ Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.run_cmd_record_r
 Print Assumptions Mctt.Core.TypedElab.Lemmas.fill_cmd_functional.
 Print Assumptions Mctt.Core.TypedElab.Lemmas.fill_params_functional.
 Print Assumptions Mctt.Core.Syntactic.System.Command.fill_unique_run.
-Print Assumptions Mctt.Extraction.TypedElab.fill_cmd_fn_sound.
-Print Assumptions Mctt.Extraction.TypedElab.fill_cmd_fn_complete.
-Print Assumptions Mctt.Extraction.TypedElab.fill_params_fn_sound.
-Print Assumptions Mctt.Extraction.TypedElab.fill_params_fn_complete.
-Print Assumptions Mctt.Extraction.MdefGroup.mdef_group_dec_complete.
+Print Assumptions Mctt.Extraction.Commands.TypedElab.fill_cmd_fn_sound.
+Print Assumptions Mctt.Extraction.Commands.TypedElab.fill_cmd_fn_complete.
+Print Assumptions Mctt.Extraction.Commands.TypedElab.fill_params_fn_sound.
+Print Assumptions Mctt.Extraction.Commands.TypedElab.fill_params_fn_complete.
+Print Assumptions Mctt.Extraction.Commands.MdefGroup.mdef_group_dec_complete.
 (* The application spine: one step relates the value of the type to the
    reference's normal form, and the extracted checker infers the
    reference checker's types and accepts what it accepts.  All rest on
    soundness. *)
-Print Assumptions Mctt.Extraction.AppSpine.spine_step_related.
+Print Assumptions Mctt.Extraction.Checker.AppSpine.spine_step_related.
 Print Assumptions Mctt.Reference.TypeCheckAgreement.type_infer_in_agrees_with_reference.
 Print Assumptions Mctt.Reference.TypeCheckAgreement.type_check_in_agrees_with_reference.
 Print Assumptions Mctt.Reference.TypeCheckAgreement.params_check_agrees_with_reference.

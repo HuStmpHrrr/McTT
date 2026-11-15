@@ -56,7 +56,7 @@ output: the checker's log entry for it, printed by `PrettyPrinter`
 (`eval_outputs`), so the text is exactly what `mctt` prints; a click on the
 open output folds it again. An eval's extent is the span from its `eval`
 token that the parser reads back as the same command (`Doc.eval_spans`). Names are resolved by the extracted `Elaborator.lookup`/`elab_cmd`
-and the core's `def_site` (`Extraction/Privacy.v`), never by rules of its
+and the core's `def_site` (`Extraction/Commands/Privacy.v`), never by rules of its
 own (`driver/Doc.ml`). Extraction exports `def_site` explicitly
 (`CoqMakefile.mk.local-late`).
 
@@ -138,8 +138,8 @@ be.
 
 Almost all checking time goes to normalizations at the initial environment
 of the context. The checker therefore carries that environment along
-(`checker_env` in `Extraction/TypeCheckBase.v`, `nbe_ty_env_impl` in
-`Extraction/NbE.v`), and never rebuilds it per normalization.  The
+(`checker_env` in `Extraction/Checker/TypeCheckBase.v`, `nbe_ty_env_impl` in
+`Extraction/Evaluation/NbE.v`), and never rebuilds it per normalization.  The
 refinements of the checker and of evaluation are in
 [`refinement.md`](refinement.md).
 

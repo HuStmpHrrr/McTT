@@ -5,7 +5,7 @@
     ([Reference.Evaluation], [Reference.Readback]): one function per
     relation, one match branch per rule.  None of these relations is
     recursive but the initial environment, on its context: their orders are
-    the existence of the Core result ([Extraction.NbE]), from which the
+    the existence of the Core result ([Extraction.Evaluation.NbE]), from which the
     orders of the evaluations and readbacks they make follow
     ([eval_exp_order_sound], [read_nf_order_sound], ...). *)
 From Equations Require Import Equations.
@@ -15,7 +15,7 @@ From Mctt.Core Require Import Base.
 From Stdlib Require Import List String.
 From Mctt.Core.Semantic Require Export NbE.
 From Mctt.Reference Require Import Evaluation Readback.
-From Mctt.Extraction Require Import NbE.
+From Mctt.Extraction.Evaluation Require Import NbE.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
 

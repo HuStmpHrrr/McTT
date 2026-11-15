@@ -369,7 +369,7 @@ interfaces — is future work, and none of it is forced by the present design.
   (`run_cmd`/`run_cmds`/`run_unit`, `prog_sem`). `import` loads through
   `load_path`, runs the unit from nothing, and merges it in; the chain rules
   cycles out. The main theorem is `run_wf`.
-* `Extraction/Command.v`: the interpreter `prog_impl`, which accumulates one
+* `Extraction/Commands/Command.v`: the interpreter `prog_impl`, which accumulates one
   gdeps and checks each unit against its restriction to the unit's closure.
   It recurses on `Acc load_step`, which is erased, and is sound and complete
   for `prog_sem` (`prog_impl_sound`, `prog_impl_complete`).

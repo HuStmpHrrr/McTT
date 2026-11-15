@@ -10,15 +10,15 @@ every fast context `F` (see below).
 
 | Extracted | Reference | Refinement |
 | --- | --- | --- |
-| `Extraction/TypeCheck.v` | `Reference/TypeCheck.v` | an application spine is checked against the *value* of the head's type (`type_infer_val_in`, `type_infer_app_in`), and the codomain is evaluated without the argument when it does not read it (`app_cod`); a check normalizes only the type it checks against; an eliminator's motive and branches get their initial environments from the context's (`checker_env_ext`) |
-| `Extraction/Evaluation.v`, `Readback.v` | `Reference/Evaluation.v`, `Readback.v` | the eliminator of an inductive type at a constructor computes the result of a recursive argument only when the branch reads it (`exp_freshb (cargs_nrec gs) B`); an unread entry is `𝕌ω@0`.  Constructors of the shape of `zero` and `succ` are taken apart without lists (`con_view`); a branch's environment is built without copying the arguments (`elim_env`); global names are looked up in the data of the command (`FCtx`) |
-| `Extraction/NbE.v` | `Reference/NbE.v` | normalization by the fast evaluator, same specification (`nbe`, `nbe_ty`) |
+| `Extraction/Checker/TypeCheck.v` | `Reference/TypeCheck.v` | an application spine is checked against the *value* of the head's type (`type_infer_val_in`, `type_infer_app_in`), and the codomain is evaluated without the argument when it does not read it (`app_cod`); a check normalizes only the type it checks against; an eliminator's motive and branches get their initial environments from the context's (`checker_env_ext`) |
+| `Extraction/Evaluation/Evaluation.v`, `Readback.v` | `Reference/Evaluation.v`, `Readback.v` | the eliminator of an inductive type at a constructor computes the result of a recursive argument only when the branch reads it (`exp_freshb (cargs_nrec gs) B`); an unread entry is `𝕌ω@0`.  Constructors of the shape of `zero` and `succ` are taken apart without lists (`con_view`); a branch's environment is built without copying the arguments (`elim_env`); global names are looked up in the data of the command (`FCtx`) |
+| `Extraction/Evaluation/NbE.v` | `Reference/NbE.v` | normalization by the fast evaluator, same specification (`nbe`, `nbe_ty`) |
 
 The termination orders of normalization (`nbe_ty_order`, …) stay those of
 the reference evaluator: they are the specification the checker's
 obligations prove.
 
-Shared by both checkers: `Extraction/TypeCheckBase.v` (orders, side-condition
+Shared by both checkers: `Extraction/Checker/TypeCheckBase.v` (orders, side-condition
 decisions, `checker_env`, and the obligation tactics, which live outside the
 sections so that both checkers can use them).
 
@@ -38,7 +38,7 @@ so that the head of an application is a strict subterm at the order of a
 check: `type_infer_val_in` recurses through `type_infer_app_in` on an
 application and calls `type_infer_in` otherwise, both structurally.
 
-## The skipped recursive result (`Extraction/FastEval.v`, `FastRead.v`, `FastEquiv.v`, `Simulation.v`, `NbE.v`)
+## The skipped recursive result (`Extraction/Evaluation/Evaluation/FastEval.v`, `FastRead.v`, `FastEquiv.v`, `Simulation.v`, `NbE.v`)
 
 Core evaluates every recursive result of an eliminator (`eval_ihs`).  The
 fast relations (`FastEval.v`, `FastRead.v`) copy Core's at a mode
@@ -84,13 +84,13 @@ and gets Core's normal form by `FastEquiv.v`.  The application spine
 (`TypeCheck.v`) keeps a fast value simulating Core's spine value
 (`spine_value_sim`), and uses a readback only where it is proof-free.
 
-## What the extracted code looks up in (`Extraction/FastContext.v`, `Lookup.v`)
+## What the extracted code looks up in (`Extraction/Context/FastContext.v`, `Lookup.v`)
 
 The extracted code runs on fast data only.  Neither a Core global context
 `Θ ⍮ Ξ` nor any `gdeps` or `gstack` is built or read at run time:
 
 - the filed units are one map from the whole path of a unit to the unit,
-  with the filing order (`funits`, `Extraction/FastGlobal.v`);
+  with the filing order (`funits`, `Extraction/Context/FastGlobal.v`);
 - next to it, in `funits`, the units the unit being run sees: a second map
   of the same kind (`fus_visible`), whose invariant `visible_rep s D` says it holds
   exactly the filed units at the imported paths `D`.  It grows by one add
@@ -123,16 +123,16 @@ Record FCtx : Type := mk_fctx
 The Core context a fast context stands for, `fc_gctx F` (`fc_deps F`,
 `fc_stack F`), is the decoding of its data (`decode_units`, `decode_stack`,
 `view_deps`).  It is in types and proofs only: the decoding sits behind the
-sealed module of `Extraction/Decoding.v` (`FcDecoding`, `fc_gctx_eq`
+sealed module of `Extraction/Context/Decoding.v` (`FcDecoding`, `fc_gctx_eq`
 implemented by a proof), in a file of its own so that extraction does not
 need it.  Every lookup has a fast twin with the lemma that, on a
 translation, it finds the translation of what the Core lookup of the
 decoding finds (`fc_entry_ok`, `fc_ind_ok`, `gc_entry_f`, …), and every Core
 function of the checker that reads the global context has a twin over `F`
-(`Extraction/LookupTwins.v`, `FastState.v`, with `_ok` or `_dec` lemmas).
+(`Extraction/Context/LookupTwins.v`, `FastState.v`, with `_ok` or `_dec` lemmas).
 Core is unchanged.
 
-**The run's state** (`Extraction/Command.v`).  The interpreter keeps the
+**The run's state** (`Extraction/Commands/Command.v`).  The interpreter keeps the
 state fast (`run_state`: the filed units, the closures, the paths imported,
 the builtin bindings, the frames; `unit_result` for a unit's result); the
 invariants and the `post_*` are about its Core reading (`run_state_read`,
@@ -180,7 +180,7 @@ it), or a `{GC : GCtx}` instance.  The fix is a twin over `F`, or the
 indices taken from `F` (`{F : FCtx}`, as `blame_error` and
 `level_blame_app` do).
 
-## Fast values (`Extraction/FastDomain.v`)
+## Fast values (`Extraction/Evaluation/Evaluation/FastDomain.v`)
 
 The extracted evaluator and readback compute on `fdomain`, a copy of Core's
 `domain` in which a type former `fd_ind p oD k vs` and a constructor
@@ -211,7 +211,7 @@ constructor, a selection); its consumer looks it up.
   implementations, so that Equations does not unfold them in obligations
   (`Opaque` has no `export` form).
 
-## Stored values (`Extraction/FastValues.v`, `Command.v`)
+## Stored values (`Extraction/Evaluation/Evaluation/FastValues.v`, `Command.v`)
 
 A transparent definition a command adds is filed with the value its
 body, closed over the frames' parameters, has in the empty environment:
@@ -246,7 +246,7 @@ definition without its value.
   `funit_drop` / `fstack_drop` / `funits_drop`.  `unit_run` drops them once,
   at the end of the program, so `prog_impl_rep` keeps its statement.
 
-## Fast paths of the evaluator and readback (`Extraction/Evaluation.v`, `Readback.v`)
+## Fast paths of the evaluator and readback (`Extraction/Evaluation/Evaluation.v`, `Readback.v`)
 
 The relations are those of `FastEval.v`; only the implementations take the
 shortcuts below, and each is proved to give the value or normal form of
@@ -285,7 +285,7 @@ as the type former at the uniform parameters, and `fast_eval_ihty_fast` the type
 of its recursive result as the motive at the argument, without evaluating
 an empty list of indices; readback uses both.
 
-## The checker's shortcuts (`Extraction/TypeCheck.v`, `IndCheck.v`)
+## The checker's shortcuts (`Extraction/Checker/TypeCheck.v`, `IndCheck.v`)
 
 **The codomain of an application (`app_cod`).**  The type of an
 application spine is a value: the codomain closure `Πᵈ a ρ b` at the
@@ -308,7 +308,7 @@ timings do not move beyond noise; the work no longer grows with `G`.
 
 ## The equalities at every fast context (`Reference/Refinement.v`)
 
-The extracted code takes a fast context `F : FCtx` (`Extraction/Lookup.v`)
+The extracted code takes a fast context `F : FCtx` (`Extraction/Context/Lookup.v`)
 and no Core global context: the Core context `fc_gctx F` it stands for
 (`fc_deps F`, `fc_stack F`) is the decoding of the fast data, in types and
 proofs only.  So the refinement theorems are stated over `F`:
@@ -334,7 +334,7 @@ The decoding `fc_gctx` sits behind a sealed module (`FcDecoding`, with
 `fc_gctx_eq` implemented by a proof), so that no tactic reduces it into
 the decoding functions: `firstorder` does so through any transparent
 definition whatever its `Opaque` status, and took two minutes per
-obligation of `Extraction/TypeCheck.v` before the sealing.
+obligation of `Extraction/Checker/TypeCheck.v` before the sealing.
 
 ## Timings
 

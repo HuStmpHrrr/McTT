@@ -1,7 +1,7 @@
 (** * The Extracted Checker Infers the Reference Checker's Types
 
-    The extracted checker ([Extraction.TypeCheck]) infers the type of an
-    application along a value-based spine ([Extraction.AppSpine]); the
+    The extracted checker ([Extraction.Checker.TypeCheck]) infers the type of an
+    application along a value-based spine ([Extraction.Checker.AppSpine]); the
     reference checker ([Reference.TypeCheck]) normalizes [B[Id,,N]] at each
     argument, as the rule [alg_type_infer_app] reads.  Both decide the
     algorithmic judgment, and it infers one type
@@ -13,10 +13,10 @@
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
-From Mctt.Extraction Require Import Lookup.
-From Mctt.Extraction Require TypeCheck.
+From Mctt.Extraction.Context Require Import Lookup.
+From Mctt.Extraction.Checker Require TypeCheck.
 From Mctt.Reference Require TypeCheck.
-From Mctt.Extraction Require Import TypeCheckBase.
+From Mctt.Extraction.Checker Require Import TypeCheckBase.
 Import Domain_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -74,7 +74,7 @@ Section type_check.
       at each environment and order.  Rests on [soundness_ty'] /
       [soundness], through the extracted checker. *)
   Theorem type_infer_in_agrees_with_reference : forall G (HG : ⊢ G) P M H,
-      inferred_type (Extraction.TypeCheck.type_infer_in F levels_abstractable_dec G HG P M H) =
+      inferred_type (Extraction.Checker.TypeCheck.type_infer_in F levels_abstractable_dec G HG P M H) =
       inferred_type (Reference.TypeCheck.type_infer_in F levels_abstractable_dec G HG P M H).
   Proof. intros; apply inferred_type_unique; exact HG. Qed.
 
@@ -84,32 +84,32 @@ Section type_check.
       applications.  Rests on [soundness_ty'] / [soundness], through the
       extracted checker. *)
   Theorem type_check_in_agrees_with_reference : forall G A (HA : G ⊢ᵗ A) P M H,
-      decided (Extraction.TypeCheck.type_check_in F levels_abstractable_dec G A HA P M H) =
+      decided (Extraction.Checker.TypeCheck.type_check_in F levels_abstractable_dec G A HA P M H) =
       decided (Reference.TypeCheck.type_check_in F levels_abstractable_dec G A HA P M H).
   Proof. intros; apply decided_unique. Qed.
 
   Theorem params_check_agrees_with_reference : forall G (HG : ⊢ G) Δ H,
-      decided (Extraction.TypeCheck.params_check F levels_abstractable_dec G HG Δ H) =
+      decided (Extraction.Checker.TypeCheck.params_check F levels_abstractable_dec G HG Δ H) =
       decided (Reference.TypeCheck.params_check F levels_abstractable_dec G HG Δ H).
   Proof. intros; apply decided_unique. Qed.
 
   Theorem unit_check_agrees_with_reference : forall G (HG : ⊢ G) U H,
-      decided (Extraction.TypeCheck.unit_check F levels_abstractable_dec G HG U H) =
+      decided (Extraction.Checker.TypeCheck.unit_check F levels_abstractable_dec G HG U H) =
       decided (Reference.TypeCheck.unit_check F levels_abstractable_dec G HG U H).
   Proof. intros; apply decided_unique. Qed.
 
   Theorem modexp_check_agrees_with_reference : forall G (HG : ⊢ G) M H,
-      decided (Extraction.TypeCheck.modexp_check F levels_abstractable_dec G HG M H) =
+      decided (Extraction.Checker.TypeCheck.modexp_check F levels_abstractable_dec G HG M H) =
       decided (Reference.TypeCheck.modexp_check F levels_abstractable_dec G HG M H).
   Proof. intros; apply decided_unique. Qed.
 
   Theorem body_check_agrees_with_reference : forall G (HG : ⊢ G) Φ H,
-      elaborated_body (Extraction.TypeCheck.body_check F levels_abstractable_dec G HG Φ H) =
+      elaborated_body (Extraction.Checker.TypeCheck.body_check F levels_abstractable_dec G HG Φ H) =
       elaborated_body (Reference.TypeCheck.body_check F levels_abstractable_dec G HG Φ H).
   Proof. intros; apply elaborated_body_unique. Qed.
 
   Theorem ext_check_agrees_with_reference : forall G (HG : ⊢ G) Ψ H,
-      decided (Extraction.TypeCheck.ext_check F levels_abstractable_dec G HG Ψ H) =
+      decided (Extraction.Checker.TypeCheck.ext_check F levels_abstractable_dec G HG Ψ H) =
       decided (Reference.TypeCheck.ext_check F levels_abstractable_dec G HG Ψ H).
   Proof. intros; apply decided_unique. Qed.
 End type_check.

@@ -150,7 +150,7 @@ Qed.
 
 (** ** What the Declared Members Meet
 
-    Shared with the checker ([Extraction.Command.members_step]). *)
+    Shared with the checker ([Extraction.Commands.Command.members_step]). *)
 
 (** The group [Dd] at [pq] is filed at the entry of its first declared
     member, in the innermost frame of [Ξ]: so the later members are

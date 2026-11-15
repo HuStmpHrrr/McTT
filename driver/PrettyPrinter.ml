@@ -464,7 +464,7 @@ let empty_view : FG.fview = McttExtracted.FastState.cmd_view FG.funits_empty []
 (* The state the printed terms live in, where it is known: that of the eval
    printed, as the checker keeps it, fast: the units it sees and the open
    frames.  [current_fctx] is the checker's fast context at that state, which
-   every lookup of the printer goes through ([Extraction.Lookup]). *)
+   every lookup of the printer goes through ([Extraction.Context.Lookup]). *)
 let current_state : (FG.fview * FG.fstack) ref = ref (empty_view, [])
 let current_fctx : McttExtracted.FastContext.coq_FCtx ref = ref (Lk.fctx_at empty_view [] None)
 

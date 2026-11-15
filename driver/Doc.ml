@@ -10,7 +10,7 @@
      way and in the same order;
    - a member chain, [M.x] or [A.B.x], through aliases, opens and applied
      modules and across units, is resolved by the core's [def_site]
-     (Extraction/Privacy.v), over the global context the checker built;
+     (Extraction/Commands/Privacy.v), over the global context the checker built;
    - the token [ℕ] is the type bound as the natural numbers in the
      checker's run of the unit ([check_units]), a member resolved by
      [def_site] as any other;

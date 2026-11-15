@@ -3431,7 +3431,7 @@ End WellFormed.
 
 (** ** Restricting to What a Unit Imported
 
-    The executable ([Extraction.Command]) keeps one set of filed units for the
+    The executable ([Extraction.Commands.Command]) keeps one set of filed units for the
     whole program, so no unit is run twice; but a unit runs from nothing, and
     may mention only what it imported.  So it is checked against the
     restriction of that set to the paths it imported, which has the lookups of

@@ -15,7 +15,7 @@ Generalizable All Variables.
     The evaluation relations of [Core.Semantic.Evaluation] implemented
     literally: one function per relation, one match branch per rule, in the
     rule's order and with the rule's premises, over Core values and
-    environments.  It is not extracted: [Extraction.Evaluation] is the
+    environments.  It is not extracted: [Extraction.Evaluation.Evaluation] is the
     evaluator the checker runs, and [Reference.Refinement] relates the
     two. *)
 

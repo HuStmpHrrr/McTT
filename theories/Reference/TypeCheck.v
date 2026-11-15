@@ -8,9 +8,10 @@ From Mctt.Core Require Import Consequences.Consistency Semantic.Realizability.
 From Mctt.Core.Syntactic.System.Global Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Syntactic.System.Global Require Import MemberTyping.
-From Mctt.Extraction Require Import FastDomain Evaluation Readback NbE PseudoMonadic Subtyping MemberType.
-From Mctt.Extraction Require Export TypeCheckBase.
-From Mctt.Extraction Require Import IndCheck RecordCheck.
+From Mctt.Extraction Require Import Evaluation.FastDomain Evaluation.Evaluation Evaluation.Readback Evaluation.NbE
+  PseudoMonadic Checker.Subtyping Checker.MemberType.
+From Mctt.Extraction.Checker Require Export TypeCheckBase.
+From Mctt.Extraction.Checker Require Import IndCheck RecordCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 (** * The Reference Checker
@@ -21,13 +22,13 @@ Import Domain_Notations Wk_Notations Fixed_Notations.
     ([subtyping_env_impl]).  Every normalization is at the initial
     environment of its context, which the checker carries
     ([checker_env]) and extends under binders.  It is not extracted:
-    [Extraction.TypeCheck] is the checker that is, checking an application
+    [Extraction.Checker.TypeCheck] is the checker that is, checking an application
     spine against the value of the head's type, and [Reference.Refinement]
     proves the two accept the same programs, at types equal up to proofs.
     The parts they share (orders, decisions of side conditions, the
     initial environment, eliminators and records) are in
-    [Extraction.TypeCheckBase], [Extraction.IndCheck] and
-    [Extraction.RecordCheck]. *)
+    [Extraction.Checker.TypeCheckBase], [Extraction.Checker.IndCheck] and
+    [Extraction.Checker.RecordCheck]. *)
 
 Section Fixed_GCtx.
 Variable F : FCtx.
@@ -604,7 +605,7 @@ Section type_check.
         let*b->o _ := type_check_in G P' _ P M' _ while _ in
         let (W, _) := nbe_ty_env_impl F G P P' _ in
         pureo (exist _ W _)
-    (** The forms of inductive types ([Extraction.IndCheck]); the
+    (** The forms of inductive types ([Extraction.Checker.IndCheck]); the
         eliminator's recursive calls are passed on. *)
     | a_ind pq k => ind_infer F G HG P pq k
     | a_con pq k c => con_infer F G HG P pq k c
@@ -615,7 +616,7 @@ Section type_check.
           (fun b Hb G' HG' P' => type_infer_in G' HG' P' (eb_scrutinee_type b) ltac:(order_part))
           (fun b Hb G' HG' P' => type_infer_in G' HG' P' (eb_motive b) ltac:(order_part))
           (fun b br Hb Hbr G' A'' HA'' P' => type_check_in G' A'' HA'' P' (snd br) ltac:(order_part))
-    (** The forms of record types ([Extraction.RecordCheck]). *)
+    (** The forms of record types ([Extraction.Checker.RecordCheck]). *)
     | a_record pq => record_infer F G HG P pq
     | a_tuple T' fs =>
         tuple_infer F G HG P T' fs (type_infer_in G HG P T' ltac:(obligation_order))

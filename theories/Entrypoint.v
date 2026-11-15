@@ -7,8 +7,8 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Semantic Require Import NbE.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Extraction Require Import FastGlobal Command CommandRun NoLevelDec.
-From Mctt.Extraction Require ViewsFound.
+From Mctt.Extraction Require Import Context.FastGlobal Commands.Command Commands.CommandRun Commands.NoLevelDec.
+From Mctt.Extraction.Views Require ViewsFound.
 From Mctt.Frontend Require Import Elaborator Parser.
 Import MenhirLibParser.Inter.
 Import Syntax_Notations GlobalCtx_Notations.
@@ -16,7 +16,7 @@ Import Syntax_Notations GlobalCtx_Notations.
 (** * The Driver's Entry Point
 
     The program on the command line is parsed, elaborated into core commands,
-    and run by the verified interpreter of [Extraction.Command], which loads
+    and run by the verified interpreter of [Extraction.Commands.Command], which loads
     every unit it imports.  The interpreter finds the views of a group with
     [ViewsFound.views_search], proved to terminate.  The driver supplies two
     functions:
@@ -29,7 +29,7 @@ Import Syntax_Notations GlobalCtx_Notations.
     given a thunk [all_files : unit -> list path] enumerating them).
 
     The run returns the filed units and the program's unit fast
-    ([Extraction.FastGlobal]); the statements read them in Core
+    ([Extraction.Context.FastGlobal]); the statements read them in Core
     ([decode_units], [decode_unit]), and [main_rep] says the fast results are the
     translations of their readings. *)
 
@@ -142,7 +142,7 @@ Set Extraction Flag 1007.
 Set Extraction Output Directory "../driver/extracted".
 
 (** [String.compare], which orders the keys of the fast tables
-    ([Extraction.FastGlobal]), runs as OCaml's.  Strings are OCaml's native
+    ([Extraction.Context.FastGlobal]), runs as OCaml's.  Strings are OCaml's native
     strings ([ExtrOcamlNativeString]), and the two orders agree: Rocq's
     compares two strings character by character, a character by its code
     ([Ascii.compare], on [N]), the first difference deciding and a proper

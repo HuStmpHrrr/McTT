@@ -137,7 +137,7 @@ Arguments eval_sub : simpl never.
 with `eval_sub_intro`/`eval_sub_index` as its intro and elim, `eval_wk φ ρ :=
 fun x => ρ (φ x)`, and `eval_exp_var_eq : ρ x = m -> ⟦ # x ⟧ ρ ↘ m` for
 conversion-only goals. Consequences: readback and the PER model need no
-substitution case at all, and `Extraction/Evaluation.v` needs no fourth
+substitution case at all, and `Extraction/Evaluation/Evaluation.v` needs no fourth
 termination order (below).
 
 ### The four-value pattern
@@ -269,7 +269,7 @@ Other things worth knowing before editing a gluing proof:
   (`⊢ Γ -> i <= j -> Γ ⊢ Type@i ⊆ Type@j`) subsumes it. The old call
   site silently no-op'd, because `repeat match goal` swallows an
   unresolved-reference error.
-- `Extraction/Evaluation.v` lost `eval_sub_order` and `eval_sub_impl` entirely —
+- `Extraction/Evaluation/Evaluation.v` lost `eval_sub_order` and `eval_sub_impl` entirely —
   `eval_sub` is a `Definition` over `eval_exp`, not a relation to recurse on, and
   `M[σ]` is no longer an expression, so a substituted term reaches
   `eval_exp_impl` already computed. `eval_sub_order_sound` survives as a
@@ -277,7 +277,7 @@ Other things worth knowing before editing a gluing proof:
 - `type_infer`'s `| _ => inright _` catch-all is gone: it covered `M[σ]`, the one
   expression with no inference rule, and every constructor of `exp` is now
   inferrable.
-- Several `Next Obligation`s in `Extraction/TypeCheck.v` had to be made
+- Several `Next Obligation`s in `Extraction/Checker/TypeCheck.v` had to be made
   deterministic. Two reasons, both worth remembering:
   `eapply sub_preserves_exp` cannot unify `?A[?σ]` with `Type@i`, so it is
   applied by hand (`exact (sub_preserves_exp _ _ _ _ _ HA' Hσ)`); and
@@ -327,7 +327,7 @@ makefile and runs the whole thing with the deprecation warnings silenced; a
 single file is
 
 ```sh
-eval "$(opam env --switch=rocq-9.2.0)" && make -f CoqMakefile.mk Extraction/TypeCheck.vo
+eval "$(opam env --switch=rocq-9.2.0)" && make -f CoqMakefile.mk Extraction/Checker/TypeCheck.vo
 ```
 
 Do **not** run `make update_CoqProject` while files are being added and removed.

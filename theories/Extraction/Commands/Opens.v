@@ -1,0 +1,579 @@
+(** * Computing What an Open Generates
+
+    The checker computes the entries an open of a well-formed module
+    expression generates ([import_gen]) from what its members denote
+    ([mdenote_impl]): it computes exactly the generation relation of the core
+    ([open_gens], [import_gen_spec]), or says why there is none ([open_failure_reason]). *)
+
+From Stdlib Require Import List String Bool.
+
+From Mctt Require Import LibTactics.
+From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic Require Export Members.
+From Mctt.Core.Syntactic Require Import Command.
+From Mctt.Core.Syntactic.System.Global Require Import Presup.
+From Mctt.Extraction Require Import Context.Lookup Context.FastDesc Checker.MemberType.
+Import Syntax_Notations.
+#[local] Open Scope list_scope.
+
+(** ** Results *)
+
+(** Why an open fails. *)
+Inductive open_failure_reason : Set :=
+(** The open's target is not a module *)
+| open_failure_reason_target : modexp -> open_failure_reason
+(** Not a member of the target *)
+| open_failure_reason_member : modexp -> string -> open_failure_reason
+(** A member both used and exported *)
+| open_failure_reason_both : string -> open_failure_reason
+(** A name the open declares twice *)
+| open_failure_reason_fresh : string -> open_failure_reason.
+
+Inductive open_result (A : Type) : Type :=
+| open_success : A -> open_result A
+| open_failure : open_failure_reason -> open_result A.
+
+Arguments open_success {A}.
+Arguments open_failure {A}.
+
+Definition open_bind {A B} (m : open_result A) (f : A -> open_result B) : open_result B :=
+  match m with
+  | open_success a => f a
+  | open_failure e => open_failure e
+  end.
+
+#[local] Notation "'let+' x ':=' m 'in' f" := (open_bind m (fun x => f))
+  (at level 200, x name, m at level 100, f at level 200, right associativity).
+
+Fixpoint open_map {A B} (f : A -> open_result B) (l : list A) : open_result (list B) :=
+  match l with
+  | nil => open_success nil
+  | a :: l' => let+ b := f a in let+ bs := open_map f l' in open_success (b :: bs)
+  end.
+
+(** ** Generation *)
+
+Section Gen.
+  (** The fast context the denotations are computed in; the judgments are
+      at the Core context it stands for. *)
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
+  Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
+
+  (** What a module expression denotes, when it has an order: a fast
+      description, standing for the Core one *)
+  Definition mdenote_with_order (Γ : ctx) (H : modexp) (Ho : mdenote_order Θ Ξ Γ H) : option fmdesc :=
+    match mdenote_impl F Hg Γ H Ho with
+    | inleft (exist _ R _) => Some R
+    | inright _ => None
+    end.
+
+  Lemma mdenote_with_order_spec : forall Γ H Ho R, option_map decode_desc (mdenote_with_order Γ H Ho) = Some R <-> mdenote Θ Ξ Γ H R.
+  Proof.
+    intros *; unfold mdenote_with_order.
+    destruct (mdenote_impl _ _ _ _ _) as [[R' HR'] | HN]; cbn [option_map]; split; intros HR.
+    - injection HR as <-; exact HR'.
+    - f_equal; exact (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR' _ HR).
+    - discriminate.
+    - exfalso; exact (HN _ HR).
+  Qed.
+
+  (** A fast description found stands for what the expression denotes. *)
+  Lemma mdenote_with_order_sound : forall Γ H Ho R, mdenote_with_order Γ H Ho = Some R -> mdenote Θ Ξ Γ H (decode_desc R).
+  Proof. intros * E; apply (proj1 (mdenote_with_order_spec Γ H Ho _)); rewrite E; reflexivity. Qed.
+
+  (** What an expression denotes is found, as a fast description standing
+      for it. *)
+  Lemma mdenote_with_order_complete : forall Γ H Ho R, mdenote Θ Ξ Γ H R ->
+      exists R', mdenote_with_order Γ H Ho = Some R' /\ decode_desc R' = R.
+  Proof.
+    intros * Hm; apply (proj2 (mdenote_with_order_spec Γ H Ho R)) in Hm.
+    destruct (mdenote_with_order Γ H Ho) as [R' |]; cbn in Hm; [| discriminate ]; injection Hm as <-; eauto.
+  Qed.
+
+  Section Target.
+    Variables (Γ : ctx) (H : modexp) (H' : modexp).
+    Hypothesis HH : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'.
+
+    (** Whether a description is a module only, an open or a closed one. *)
+    Definition mdesc_is_modb (R : mdesc) : bool :=
+      match R with
+      | mdesc_open _ _ _ | mdesc_closed _ _ _ _ _ => true
+      | _ => false
+      end.
+
+    Lemma mdesc_is_modb_spec : forall R, mdesc_is_modb R = true <-> mdesc_is_mod R.
+    Proof. intros []; cbn; split; first [ tauto | discriminate | intros [] ]. Qed.
+
+    (** The definition with a module part an item names: a member with a
+        term part and a module part ([items_gen_dm]), of the term part's type. *)
+    Definition dm_gen (d : string) (pv : bool) (n : string) (R : fmdesc) : open_result generated_item :=
+      match fmdesc_type R, fmdesc_mod R with
+      | Some A, Some _ => open_success (generated_item_def_mod d pv A (a_mem H n) (me_mem H n))
+      | _, _ => open_failure (open_failure_reason_member H n)
+      end.
+
+    (** The item [it] of an open of [H], by what the member it names
+        denotes: a term gives a definition, a module an alias, a member with
+        a term part and a module part a definition with a module part; an
+        item naming no member, the alias of [H] itself. *)
+    Definition item_gen (it : import_item) : open_result generated_item :=
+      match it with
+      | (None, d, pv) => open_success (generated_item_alias d pv H)
+      | (Some n, d, pv) =>
+          match mdenote_with_order Γ (me_mem H n) (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) with
+          | Some (fmdesc_term r A _) => open_success (generated_item_def d pv r A (a_mem H n))
+          | Some R =>
+              if fmdesc_is_modb R then open_success (generated_item_alias d pv (me_mem H n))
+              else dm_gen d pv n R
+          | None => open_failure (open_failure_reason_member H n)
+          end
+      end.
+
+    (** [import_gen its]: [H] is a module, each item names a member of it,
+        no member is both used and exported, and the names declared are
+        distinct; then each item's declaration, all in [Γ]. *)
+    Definition import_gen (its : list import_item) : open_result (list generated_item) :=
+      match option_map fmdesc_mod (mdenote_with_order Γ H (mdenote_order_of_wf _ _ Hg _ _ _ HH)) with
+      | Some (Some _) =>
+          let+ gs := open_map item_gen its in
+          match both_dup its with
+          | Some n => open_failure (open_failure_reason_both n)
+          | None =>
+              match name_dup (map import_item_name its) with
+              | Some d => open_failure (open_failure_reason_fresh d)
+              | None => open_success gs
+              end
+          end
+      | _ => open_failure (open_failure_reason_target H)
+      end.
+
+    (** ** Generation Computes the Relation *)
+
+    Lemma open_map_item_gen_sound : forall its gs,
+        open_map item_gen its = open_success gs -> items_gen Θ Ξ Γ H its gs.
+    Proof.
+      induction its as [| [[[n |] d] pv] its IH]; intros gs Hx; cbn in Hx.
+      - injection Hx as <-; constructor.
+      - destruct (mdenote_with_order Γ (me_mem H n) _) as [R |] eqn:E; cbn in Hx; [| discriminate ]; apply mdenote_with_order_sound in E.
+        destruct R as [A om | Δ Φ Φx | Θ' ? T t Ht Ns | Θd A M Rm]; cbn -[dm_gen] in Hx.
+        1-3: destruct (open_map item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-;
+          cbn [decode_desc] in E;
+          first [ eapply items_gen_def; [ exact E | apply IH; reflexivity ]
+                | eapply items_gen_mod; [ exact E | exact I | apply IH; reflexivity ] ].
+        unfold dm_gen in Hx; destruct (fmdesc_type _) as [A0 |] eqn:Et; [| discriminate ];
+          destruct (fmdesc_mod _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
+        destruct (open_map item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-.
+        eapply items_gen_dm; [ exact E | rewrite fmdesc_type_dec; exact Et | rewrite fmdesc_mod_dec, Em; reflexivity | apply IH; reflexivity ].
+      - destruct (open_map item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
+        injection Hx as <-; constructor; apply IH; reflexivity.
+    Qed.
+
+    Lemma open_map_item_gen_complete : forall its gs,
+        items_gen Θ Ξ Γ H its gs -> open_map item_gen its = open_success gs.
+    Proof.
+      induction its as [| [[[n |] d] pv] its IH]; intros gs Hi; inversion Hi; subst; cbn.
+      - reflexivity.
+      - match goal with Hm : mdenote _ _ _ _ _ |- _ =>
+          destruct (mdenote_with_order_complete _ _ (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & ER) end.
+        destruct R'; cbn in ER; try discriminate; injection ER as <- <-; rewrite (IH _ ltac:(eassumption)); reflexivity.
+      - match goal with Hm : mdenote _ _ _ _ ?R, Hk : mdesc_is_mod ?R |- _ =>
+          destruct (mdenote_with_order_complete _ _ (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
+          rewrite (IH _ ltac:(eassumption));
+          destruct R'; cbn in Hk; try contradiction; reflexivity end.
+      - match goal with Hm : mdenote _ _ _ _ ?R, Ht : mdesc_type ?R = Some _, Hd : mdesc_mod ?R = Some _ |- _ =>
+          destruct (mdenote_with_order_complete _ _ (mdenote_order_mem_of_wf _ _ Hg _ _ _ n HH) _ Hm) as (R' & -> & <-);
+          rewrite fmdesc_type_dec in Ht; rewrite fmdesc_mod_dec in Hd;
+          destruct R'; try (cbn in Ht; discriminate); try (cbn in Hd; discriminate);
+          cbn [fmdesc_is_modb]; unfold dm_gen; rewrite Ht;
+          destruct (fmdesc_mod _); [| discriminate ]; rewrite (IH _ ltac:(eassumption)); reflexivity end.
+      - rewrite (IH _ ltac:(eassumption)); reflexivity.
+    Qed.
+
+    Lemma open_map_item_gen_spec : forall its gs,
+        open_map item_gen its = open_success gs <-> items_gen Θ Ξ Γ H its gs.
+    Proof. split; [ apply open_map_item_gen_sound | apply open_map_item_gen_complete ]. Qed.
+
+    (** [import_gen] computes [open_gens]. *)
+    Theorem import_gen_spec : forall its gs,
+        import_gen its = open_success gs <-> open_gens Θ Ξ Γ H its gs.
+    Proof.
+      intros; unfold import_gen.
+      destruct (mdenote_with_order Γ H _) as [R |] eqn:E; cbn [option_map].
+      - apply mdenote_with_order_sound in E.
+        destruct (fmdesc_mod R) as [Rm |] eqn:Em.
+        + destruct (open_map item_gen its) as [gs' | e] eqn:Er; cbn.
+          * destruct (both_dup its) eqn:Eb; [ split; [ discriminate | intros [_ _ _ _ _ [Hb _]]; congruence ] |].
+            destruct (name_dup (map import_item_name its)) eqn:En; [ split; [ discriminate | intros [_ _ _ _ _ [_ Hn]]; congruence ] |].
+            split; [ intros [= <-]; eapply mk_open_gens;
+                     [ exact E | rewrite fmdesc_mod_dec, Em; reflexivity | apply open_map_item_gen_spec; exact Er | split; assumption ] |].
+            intros [_ _ _ _ Hi _]; apply open_map_item_gen_spec in Hi; congruence.
+          * split; [ discriminate |]; intros [_ _ _ _ Hi _]; apply open_map_item_gen_spec in Hi; congruence.
+        + split; [ discriminate |]; intros [R' Rm' HR HRm _ _].
+          rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ E), fmdesc_mod_dec, Em in HRm; discriminate.
+      - split; [ discriminate |]; intros [R' Rm' HR _ _ _].
+        destruct (mdenote_with_order_complete _ _ (mdenote_order_of_wf _ _ Hg _ _ _ HH) _ HR) as (R'' & E' & _); congruence.
+    Qed.
+  End Target.
+End Gen.
+
+(** ** The First Open That Generates Nothing
+
+    Where a command is rejected, the error names the first open in it that
+    generates nothing, if there is one ([cmd_open_error]): its terms are
+    read in order, each local body entry by entry, every open replaced by
+    what it generates so that the ones after it are read in the context it
+    makes.  This only chooses the message; the judgment and the checker
+    read the opens themselves ([body_xp]).
+
+    [S] is the slot skeleton of the context: [Some U] for a module slot
+    holding the unit [U], [None] for anything else.  Member types read a
+    context only through its module slots. *)
+
+Abbreviation skeleton := (list (option gunit)).
+
+(** The context a skeleton stands for: a module slot at its unit, any
+    other entry an assumption, whose type member types never read. *)
+Definition skeleton_ctx (S : skeleton) : ctx :=
+  map (fun o => match o with Some U => ce_mod U | None => ce_ass ak_relevant a_prop end) S.
+
+Definition centry_skeleton (e : centry) : option gunit :=
+  match e with
+  | ce_mod U | ce_dm _ _ U => Some U
+  | _ => None
+  end.
+
+Definition entry_skeleton (E : gentry) : option gunit :=
+  match E with
+  | ge_mod _ U | ge_def_mod _ _ _ U => Some U
+  | _ => None
+  end.
+
+Definition binding_skeleton (b : binding) : option gunit :=
+  match b with
+  | b_mod U | b_def_mod _ _ U => Some U
+  | _ => None
+  end.
+
+(** The skeleton of the indices a body binds, newest first. *)
+Fixpoint body_skeleton (Φ : gmod) : skeleton :=
+  match Φ with
+  | gm_nil => nil
+  | gm_ext Φ _ E => entry_skeleton E :: body_skeleton Φ
+  | gm_open Φ _ its _ => repeat None (List.length its) ++ body_skeleton Φ
+  end.
+
+(** The skeleton of a frame: its parameters are assumptions. *)
+Definition frame_skeleton (Ξ : gstack) : skeleton := map (fun _ => None) (gs_tele Ξ).
+
+Section OpenError.
+  (** The fast context the opens are generated in *)
+  Variable F : FCtx.
+  #[local] Abbreviation Θ := (fc_deps F).
+  #[local] Abbreviation Ξ := (fc_stack F).
+  Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
+  (** The checker of module expressions: what an open generates is computed
+      only for a target it accepts. *)
+  Variable mchk : forall Γ H, option (Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H).
+
+  Fixpoint open_expand_exp (S : skeleton) (M : exp) {struct M} : open_result exp :=
+    match M with
+    | a_typ _ | a_level _ | a_level_sort | a_llit _ | a_prop | a_True | a_tt | a_False | a_var _ => open_success M
+    | a_univ M => let+ M' := open_expand_exp S M in open_success (a_univ M')
+    | a_succl M => let+ M' := open_expand_exp S M in open_success (a_succl M')
+    | a_maxl M N =>
+        let+ M' := open_expand_exp S M in
+        let+ N' := open_expand_exp S N in
+        open_success (a_maxl M' N')
+    | a_absurd C M =>
+        let+ C' := open_expand_exp S C in
+        let+ M' := open_expand_exp S M in
+        open_success (a_absurd C' M')
+    | a_proof P M =>
+        let+ P' := open_expand_exp S P in
+        let+ M' := open_expand_exp S M in
+        open_success (a_proof P' M')
+    (** A conjunction binds its first component in its second *)
+    | a_and P Q =>
+        let+ P' := open_expand_exp S P in
+        let+ Q' := open_expand_exp (None :: S) Q in
+        open_success (a_and P' Q')
+    (** A proof of a conjunction: its annotations, the second over the
+        first, and its components *)
+    | a_conj P Q M N =>
+        let+ P' := open_expand_exp S P in
+        let+ Q' := open_expand_exp (None :: S) Q in
+        let+ M' := open_expand_exp S M in
+        let+ N' := open_expand_exp S N in
+        open_success (a_conj P' Q' M' N')
+    | a_left M => let+ M' := open_expand_exp S M in open_success (a_left M')
+    | a_right M => let+ M' := open_expand_exp S M in open_success (a_right M')
+    | a_ind _ _ | a_con _ _ _ => open_success M
+    (** An eliminator: its uniform parameters, each block's scrutinee
+        type, motive and branches under their binders, its scrutinee *)
+    | a_elim r p Us m Bks M =>
+        let+ Us' := (fix open_expand_us (Us : list exp) : open_result (list exp) :=
+                       match Us with
+                       | nil => open_success nil
+                       | U :: Us0 => let+ U' := open_expand_exp S U in let+ Us0' := open_expand_us Us0 in open_success (U' :: Us0')
+                       end) Us in
+        let+ Bks' := (fix open_expand_blocks (Bks : list eblock) : open_result (list eblock) :=
+                        match Bks with
+                        | nil => open_success nil
+                        | eb_mk nm Z A Bs :: Bks0 =>
+                            let+ Z' := open_expand_exp (List.repeat None (nm - 1) ++ S) Z in
+                            let+ A' := open_expand_exp (List.repeat None nm ++ S) A in
+                            let+ Bs' := (fix open_expand_brs (Bs : list (String.string * nat * exp)) : open_result (list (String.string * nat * exp)) :=
+                                           match Bs with
+                                           | nil => open_success nil
+                                           | b :: Bs0 =>
+                                               let+ B' := open_expand_exp (List.repeat None (snd (fst b)) ++ S) (snd b) in
+                                               let+ Bs0' := open_expand_brs Bs0 in
+                                               open_success ((fst b, B') :: Bs0')
+                                           end) Bs in
+                            let+ Bks0' := open_expand_blocks Bks0 in
+                            open_success (eb_mk nm Z' A' Bs' :: Bks0')
+                        end) Bks in
+        let+ M' := open_expand_exp S M in
+        open_success (a_elim r p Us' m Bks' M')
+    | a_pi κd κc A B =>
+        let+ A' := open_expand_exp S A in
+        let+ B' := open_expand_exp (None :: S) B in
+        open_success (a_pi κd κc A' B')
+    | a_fn A M =>
+        let+ A' := open_expand_exp S A in
+        let+ M' := open_expand_exp (None :: S) M in
+        open_success (a_fn A' M')
+    | a_app M N =>
+        let+ M' := open_expand_exp S M in
+        let+ N' := open_expand_exp S N in
+        open_success (a_app M' N')
+    | a_let b B =>
+        let+ b' := open_expand_binding S b in
+        let+ B' := open_expand_exp (binding_skeleton b' :: S) B in
+        open_success (a_let b' B')
+    | a_mem H x => let+ H' := open_expand_modexp S H in open_success (a_mem H' x)
+    (** A record type former is closed; a tuple, its type and its fields;
+        a projection, its argument *)
+    | a_record _ => open_success M
+    | a_tuple T fs =>
+        let+ T' := open_expand_exp S T in
+        let+ fs' := (fix open_expand_fields (fs : list (String.string * exp)) : open_result (list (String.string * exp)) :=
+                       match fs with
+                       | nil => open_success nil
+                       | (f, N) :: fs0 => let+ N' := open_expand_exp S N in let+ fs0' := open_expand_fields fs0 in open_success ((f, N') :: fs0')
+                       end) fs in
+        open_success (a_tuple T' fs')
+    | a_proj f N => let+ N' := open_expand_exp S N in open_success (a_proj f N')
+    end
+  with open_expand_modexp (S : skeleton) (H : modexp) {struct H} : open_result modexp :=
+    match H with
+    | me_unit _ | me_var _ => open_success H
+    | me_mem H y => let+ H' := open_expand_modexp S H in open_success (me_mem H' y)
+    | me_app H N =>
+        let+ H' := open_expand_modexp S H in
+        let+ N' := open_expand_exp S N in
+        open_success (me_app H' N')
+    | me_lit U => let+ U' := open_expand_unit S U in open_success (me_lit U')
+    end
+  with open_expand_binding (S : skeleton) (b : binding) {struct b} : open_result binding :=
+    match b with
+    | b_def A M =>
+        let+ A' := open_expand_exp S A in
+        let+ M' := open_expand_exp S M in
+        open_success (b_def A' M')
+    | b_mod U => let+ U' := open_expand_unit S U in open_success (b_mod U')
+    | b_def_mod A M U =>
+        let+ A' := open_expand_exp S A in
+        let+ M' := open_expand_exp S M in
+        let+ U' := open_expand_unit S U in
+        open_success (b_def_mod A' M' U')
+    end
+  with open_expand_unit (S : skeleton) (U : gunit) {struct U} : open_result gunit :=
+    match U with
+    | gu_mk Δ D =>
+        let+ Δ' := (fix open_expand_tele (Δ : list centry) : open_result ctx :=
+                      match Δ with
+                      | nil => open_success nil
+                      | e :: Δ0 =>
+                          let+ Δ0' := open_expand_tele Δ0 in
+                          let+ e' := open_expand_centry (map centry_skeleton Δ0' ++ S) e in
+                          open_success (e' :: Δ0')
+                      end) Δ in
+        let+ D' := open_expand_def (map centry_skeleton Δ' ++ S) D in
+        open_success (gu_mk Δ' D')
+    end
+  with open_expand_def (S : skeleton) (D : moddef) {struct D} : open_result moddef :=
+    match D with
+    | md_body sm Φ => let+ Φ' := open_expand_body S Φ in open_success (md_body sm Φ')
+    | md_alias E => let+ E' := open_expand_modexp S E in open_success (md_alias E')
+    end
+  with open_expand_body (S : skeleton) (Φ : gmod) {struct Φ} : open_result gmod :=
+    match Φ with
+    | gm_nil => open_success gm_nil
+    | gm_ext Φ x E =>
+        let+ Φ' := open_expand_body S Φ in
+        let+ E' := open_expand_entry (body_skeleton Φ' ++ S) E in
+        open_success (gm_ext Φ' x E')
+    | gm_open Φ H its _ =>
+        let+ Φ' := open_expand_body S Φ in
+        let+ H' := open_expand_modexp (body_skeleton Φ' ++ S) H in
+        match mchk (skeleton_ctx (body_skeleton Φ' ++ S)) H' with
+        | Some HH =>
+            let+ gs := import_gen F Hg (skeleton_ctx (body_skeleton Φ' ++ S)) H' H' HH its in
+            open_success (gens_append Φ' 0 gs)
+        | None => open_failure (open_failure_reason_target H')
+        end
+    end
+  with open_expand_entry (S : skeleton) (E : gentry) {struct E} : open_result gentry :=
+    match E with
+    | ge_def b pv r A B =>
+        let+ A' := open_expand_exp S A in
+        let+ B' := match B with
+                   | Some M => let+ M' := open_expand_exp S M in open_success (Some M')
+                   | None => open_success None
+                   end in
+        open_success (ge_def b pv r A' B')
+    | ge_mod pv U => let+ U' := open_expand_unit S U in open_success (ge_mod pv U')
+    | ge_def_mod pv A M U =>
+        let+ A' := open_expand_exp S A in
+        let+ M' := open_expand_exp S M in
+        let+ U' := open_expand_unit S U in
+        open_success (ge_def_mod pv A' M' U')
+    | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => open_success E
+    end
+  with open_expand_centry (S : skeleton) (e : centry) {struct e} : open_result centry :=
+    match e with
+    | ce_ass κ A => let+ A' := open_expand_exp S A in open_success (ce_ass κ A')
+    | ce_def A M =>
+        let+ A' := open_expand_exp S A in
+        let+ M' := open_expand_exp S M in
+        open_success (ce_def A' M')
+    | ce_mod U => let+ U' := open_expand_unit S U in open_success (ce_mod U')
+    | ce_dm A M U =>
+        let+ A' := open_expand_exp S A in
+        let+ M' := open_expand_exp S M in
+        let+ U' := open_expand_unit S U in
+        open_success (ce_dm A' M' U')
+    end.
+
+  (** A telescope, each entry in the skeleton of the entries outside it. *)
+  Fixpoint open_expand_tele (S : skeleton) (Δ : ctx) : open_result ctx :=
+    match Δ with
+    | nil => open_success nil
+    | e :: Δ0 =>
+        let+ Δ0' := open_expand_tele S Δ0 in
+        let+ e' := open_expand_centry (map centry_skeleton Δ0' ++ S) e in
+        open_success (e' :: Δ0')
+    end.
+
+  (** The arguments of a constructor, or the fields of a record, as
+      written, each at its kind: each binds a variable for the ones after
+      it. *)
+  Fixpoint open_expand_raw_args (S : skeleton) (args : list (string * abs_kind * exp)) : open_result (list (string * abs_kind * exp)) :=
+    match args with
+    | nil => open_success nil
+    | (y, κ, T) :: args' =>
+        let+ T' := open_expand_exp S T in
+        let+ args'' := open_expand_raw_args (None :: S) args' in
+        open_success ((y, κ, T') :: args'')
+    end.
+
+  (** A member of a group as written, its uniform parameters [Su] and the
+      number [n] of the group's declared types: its non-uniform parameters
+      as a telescope over the uniform ones, its sort over the uniform ones,
+      its constructors' arguments over the member's parameters and the
+      declared types ([raw_member]). *)
+  Definition open_expand_member (Su : skeleton) (S : skeleton) (Δu : ctx) (n : nat) (M : raw_member) : open_result raw_member :=
+    let+ Δn := open_expand_tele Su (raw_member_nparams M) in
+    let+ A' := open_expand_exp Su (raw_member_sort M) in
+    let Sm := map centry_skeleton Δn ++ map centry_skeleton Δu ++ List.repeat None n ++ S in
+    let+ cs' := open_map (fun cg => let+ args := open_expand_raw_args Sm (snd cg) in open_success (fst cg, args)) (raw_member_cons M) in
+    open_success (mk_rmem (raw_member_name M) Δn A' cs').
+
+  (** A group as written: its uniform parameters as a telescope, then each
+      member. *)
+  Definition open_expand_decl (S : skeleton) (R : raw_decl) : open_result raw_decl :=
+    let+ Δ' := open_expand_tele S (raw_decl_uparams R) in
+    let+ ms' := open_map (open_expand_member (map centry_skeleton Δ' ++ S) S Δ' (List.length (raw_decl_members R))) (raw_decl_members R) in
+    open_success (mk_raw Δ' ms' (raw_decl_rec_field R)).
+
+  (** A function of a [mutual def] as written, over the block's parameters'
+      skeleton [Sd]: its non-uniform parameters as a telescope, its
+      scrutinee's type over them, its result type over them and the
+      scrutinee, and its clauses under their binders. *)
+  Definition open_expand_fun (Sd : skeleton) (f : raw_fun) : open_result raw_fun :=
+    let+ ys := open_expand_tele Sd (raw_fun_nparams f) in
+    let Sy := map centry_skeleton ys ++ Sd in
+    let+ Z := open_expand_exp Sy (raw_fun_scrut f) in
+    let+ A := open_expand_exp (None :: Sy) (raw_fun_res f) in
+    let+ cls := open_map (fun cl => let+ B := open_expand_exp (List.repeat None (snd (fst cl)) ++ Sd) (snd cl) in open_success (fst cl, B))
+                  (raw_fun_clauses f) in
+    open_success (mk_rfun (raw_fun_name f) ys Z A cls).
+
+  (** A command's own terms: the commands of a module's body run after
+      it, in its frame. *)
+  Definition open_expand_cmd (S : skeleton) (c : core_cmd) : open_result core_cmd :=
+    match c with
+    | core_cmd_def x b pv κ A (Some M) =>
+        let+ A' := open_expand_exp S A in
+        let+ M' := open_expand_exp S M in
+        open_success (core_cmd_def x b pv κ A' (Some M'))
+    | core_cmd_def x b pv κ A None =>
+        let+ A' := open_expand_exp S A in
+        open_success (core_cmd_def x b pv κ A' None)
+    | core_cmd_mod_open x pv Δ =>
+        let+ Δ' := open_expand_tele S Δ in
+        open_success (core_cmd_mod_open x pv Δ')
+    | core_cmd_alias x pv Δ E =>
+        let+ Δ' := open_expand_tele S Δ in
+        let+ E' := open_expand_modexp (map centry_skeleton Δ' ++ S) E in
+        open_success (core_cmd_alias x pv Δ' E')
+    | core_cmd_load fp => open_success (core_cmd_load fp)
+    | core_cmd_open E its =>
+        let+ E' := open_expand_modexp S E in
+        open_success (core_cmd_open E' its)
+    | core_cmd_eval M A =>
+        let+ M' := open_expand_exp S M in
+        let+ A' := open_expand_exp S A in
+        open_success (core_cmd_eval M' A')
+    | core_cmd_inductive pv D =>
+        let+ D' := open_expand_decl S D in
+        open_success (core_cmd_inductive pv D')
+    | core_cmd_mdef b pv Δ fs =>
+        let+ Δ' := open_expand_tele S Δ in
+        let+ fs' := open_map (open_expand_fun (map centry_skeleton Δ' ++ S)) fs in
+        open_success (core_cmd_mdef b pv Δ' fs')
+    | core_cmd_builtin k H =>
+        let+ H' := open_expand_modexp S H in
+        open_success (core_cmd_builtin k H')
+    | core_cmd_inductive_alias x pv Δ H =>
+        let+ Δ' := open_expand_tele S Δ in
+        let+ H' := open_expand_modexp (map centry_skeleton Δ' ++ S) H in
+        open_success (core_cmd_inductive_alias x pv Δ' H')
+    | core_cmd_record_alias x pv Δ H =>
+        let+ Δ' := open_expand_tele S Δ in
+        let+ H' := open_expand_modexp (map centry_skeleton Δ' ++ S) H in
+        open_success (core_cmd_record_alias x pv Δ' H')
+    | core_cmd_record_open x pv Δ Srt fs =>
+        let+ Δ' := open_expand_tele S Δ in
+        let+ Srt' := open_expand_exp (map centry_skeleton Δ' ++ S) Srt in
+        let+ fs' := open_expand_raw_args (map centry_skeleton Δ' ++ S) fs in
+        open_success (core_cmd_record_open x pv Δ' Srt' fs')
+    | core_cmd_close x pv => open_success (core_cmd_close x pv)
+    end.
+  (** The first open of a command's own terms that generates nothing, if
+      any, read as the checker reads the command. *)
+  Definition cmd_open_error (S : skeleton) (c : core_cmd) : option open_failure_reason :=
+    match open_expand_cmd S c with
+    | open_failure e => Some e
+    | open_success _ => None
+    end.
+
+  Definition tele_open_error (S : skeleton) (Δ : ctx) : option open_failure_reason :=
+    match open_expand_tele S Δ with
+    | open_failure e => Some e
+    | open_success _ => None
+    end.
+End OpenError.

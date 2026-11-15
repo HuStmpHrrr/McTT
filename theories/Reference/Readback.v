@@ -7,7 +7,7 @@ From Mctt.Core.Semantic Require Import Readback Evaluation.
 From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Reference Require Import Evaluation.
-From Mctt.Extraction Require Import Readback.
+From Mctt.Extraction.Evaluation Require Import Readback.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
 
@@ -19,7 +19,7 @@ Generalizable All Variables.
     literally, with their termination orders; see [Reference.Evaluation].
     The relations along the leaf paths of a recursive argument,
     [fresh_leaf_vars] and [wrap_leaf_vals], need no order: they are
-    computed by [leaf_vars_f] and [leaf_wrap_f] ([Extraction.Readback]),
+    computed by [leaf_vars_f] and [leaf_wrap_f] ([Extraction.Evaluation.Readback]),
     sound at the lengths their relations have. *)
 
 Lemma read_nf_level_lvl_of_nf : forall Θ Ξ s l W,
