@@ -27,8 +27,8 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Consequences Require Import Inversions ModexpConversion.
 From Mctt.Core.Syntactic Require Import Presup.
-From Mctt.Core.Syntactic.System Require Import Structural SlotConversion.
-From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping Presup Paths LookupSound NoLevelReflect.
+From Mctt.Core.Syntactic.System Require Import Structural.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping Presup Paths LookupSound NoLevelReflect LeafConversion.
 From Mctt.Core.Syntactic.System.Records Require Typing.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.

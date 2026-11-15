@@ -18,7 +18,8 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Consequences Require Import Inversions TermKinds SlotTransport.
 From Mctt.Core.Syntactic Require Import CoreInversions.
-From Mctt.Core.Syntactic.System Require Import Structural SlotConversion.
+From Mctt.Core.Syntactic.System Require Import Structural.
+From Mctt.Core.Syntactic.System.Global Require Import LeafConversion.
 From Mctt Require Import Algorithmic.Strengthening.
 From Mctt.Core.SetModel.Interpretation Require Import Functional ContextRelation.
 Import Syntax_Notations Domain_Notations Fixed_Notations.
