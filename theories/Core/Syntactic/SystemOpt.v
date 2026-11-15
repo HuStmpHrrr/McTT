@@ -626,3 +626,18 @@ Proof.
     subtyp_univ_step HBB'.
 Qed.
 
+(** ** Context Lookup
+
+    A variable has one type in a context; the variable case of the
+    soundness proof uses it. *)
+
+Lemma ctx_lookup_functional : forall n T Γ,
+    Γ ∋ #n : T ->
+    forall T',
+      Γ ∋ #n : T' ->
+      T = T'.
+Proof.
+  induction 1; intros; progressive_inversion; eauto.
+  erewrite IHctx_lookup; eauto.
+Qed.
+

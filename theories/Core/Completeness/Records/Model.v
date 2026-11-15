@@ -4,7 +4,7 @@
     context, its sort a universe over them, each field a type of the sort
     over the fields before it) is, at related parameters, a type of the
     universe its sort denotes, with the canonical relations of
-    [Core.Semantic.RecordPER] ([record_relate]).  Its type former is then an
+    [Core.Semantic.Records.PER] ([record_relate]).  Its type former is then an
     element of its [Π]-type ([valid_exp_under_ctx_record]).
 
     The validity of the declaration is the hypotheses of [RecordModel]; a
@@ -29,7 +29,7 @@ From Mctt.Core.Completeness Require Import LetCases UnitCases LevelCases PropCas
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance Telescope.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model.
-From Mctt.Core.Semantic Require Import Realizability RecordPER Evaluation.Modules.
+From Mctt.Core.Semantic Require Import Realizability Records.PER Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.

@@ -33,7 +33,7 @@ From Mctt.Core.Completeness Require Import VariableCases FunctionCases LevelCase
 From Mctt.Core.Completeness.Inductives Require Import Decl Model FiledViews ArgTypes RviewEnds ViewEquations ViewArgs Con Elim Iota
   ViewBranch ElimView.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence ViewCount IndElim ReadPairs.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence ViewCount Elim ReadPairs.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations Wk_Notations.
@@ -2180,7 +2180,7 @@ Section CrossBot.
   Let drQ := canon_doms_rel D' ub.
   Let AsA := blocks_motives VBb.
   Let AsB := blocks_motives Bks.
-  (** The group's eliminator's model at [C1] against itself ([IndElim]). *)
+  (** The group's eliminator's model at [C1] against itself ([Semantic.Inductives.Elim]). *)
   #[local] Abbreviation Had := (valid_group_adm p D Hvg u0 u0 u0_tele_args' u0_len' u0_tele_args').
   #[local] Abbreviation XS f := (f p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had iA C1 C1 Bks Bks u0 u0 (SE self_ups_ok) Rel
      HBks HBks (valid_blocks_binder_count _ _ _ _ _ _ HBk) (valid_blocks_binder_count _ _ _ _ _ _ HBk)
@@ -2191,7 +2191,7 @@ Section CrossBot.
   #[local] Abbreviation Hubub := (uparams_refl_l D' (valid_group_valid _ _ HgQ) (valid_group_closed _ _ HgQ) _ _ Hub).
   #[local] Abbreviation HcpQ := (valid_group_canon qc D' HgQ ub Hubub Lub).
   (** The container's eliminator's uniform parameters [ub], at the
-      container's own canonical relations: what [IndElim] asks of an
+      container's own canonical relations: what [Semantic.Inductives.Elim] asks of an
       eliminator's uniform parameters ([ElimViewRule] has it of the
       container's group at its instance). *)
   Hypothesis (Hcups_x : elim_ups_ok qc D' ub nrQ arQ drQ ub ub).

@@ -5,7 +5,7 @@
     phantom argument.  The gluing of [T] at [f := g] is one at [T] at a
     [g'] whose readback agrees with [g]'s up to proofs
     ([t_over_phantom_glu_moves]), at the relation of
-    [Semantic.Inductives.Regressions.t_over_phantom_related]: the
+    [Semantic.Inductives.NestingExamples.t_over_phantom_related]: the
     phantom argument never blocks the move.
 
     Both sides must be the values of typed terms [F] and [F'].  Readback
@@ -26,7 +26,7 @@ From Stdlib Require String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import PER Readback.
-From Mctt.Core.Semantic.Inductives Require Import Regressions.
+From Mctt.Core.Semantic.Inductives Require Import NestingExamples.
 From Mctt.Core.Soundness.LogicalRelation Require Import Definitions CoreLemmas CoreTactics.
 From Mctt.Core.Soundness.Weakening Require Import Lemmas.
 Import Domain_Notations Wk_Notations Fixed_Notations.

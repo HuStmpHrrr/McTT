@@ -8,7 +8,7 @@
     arguments as many as the container's branch binds ([cargs_container_count_view]).
     Readback reads a stuck eliminator at a view as the container's and asks
     this count of each branch ([read_brs_cons]); the eliminator's model
-    ([IndElim]) and completeness give it. *)
+    ([Elim]) and completeness give it. *)
 
 From Stdlib Require Import Lia List PeanoNat.
 

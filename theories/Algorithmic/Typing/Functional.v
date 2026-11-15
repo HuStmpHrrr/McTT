@@ -8,7 +8,8 @@
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic.Typing Require Import Definitions.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Corollaries.
+From Mctt.Core.Syntactic Require Import SystemOpt.
+#[local] Open Scope list_scope.
 From Mctt.Core.Syntactic.System.Global Require Import Paths.
 Import Domain_Notations Fixed_Notations.
 

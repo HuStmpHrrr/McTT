@@ -30,7 +30,7 @@ From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness Require Import VariableCases FunctionCases LevelCases SubtypingCases.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model FiledViews ArgTypes ViewEquations ViewArgs Con Elim Iota.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence IndElim.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence Elim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations Wk_Notations.

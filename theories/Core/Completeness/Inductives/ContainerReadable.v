@@ -35,7 +35,7 @@ From Mctt.Core.Completeness Require Import VariableCases FunctionCases LevelCase
 From Mctt.Core.Completeness.Inductives Require Import Decl Model FiledViews ArgTypes ViewEquations ViewArgs Con CargsRel Elim
   Iota ViewBranch ElimView ViewReadback.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence ViewCount IndElim ReadPairs.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence ViewCount Elim ReadPairs.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations Wk_Notations.

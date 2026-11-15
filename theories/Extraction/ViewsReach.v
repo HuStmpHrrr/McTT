@@ -21,7 +21,7 @@ From Stdlib Require Import Lia List PeanoNat String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base Completeness Soundness Consequences.NormalFormWeakening.
 From Mctt.Core Require Import Consequences.Consistency Semantic.Realizability.
-From Mctt.Core.Semantic.Inductives Require Import NestAcc.
+From Mctt.Core.Semantic.Inductives Require Import NestingOrder.
 From Mctt.Algorithmic Require Import Strengthening.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Extraction Require Import ViewsSearch IndDecl.
@@ -31,7 +31,7 @@ From Mctt.Core.Completeness.Inductives Require Import Decl Model ArgTypes Elim.
 From Mctt.Core.Completeness Require Import LogicalRelation UnitCases.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Syntactic Require Import Fresh NfRename.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Inductives Require Import UniformParams Views.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 Import Domain_Notations Fixed_Notations Wk_Notations.

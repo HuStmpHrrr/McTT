@@ -13,7 +13,7 @@
     eliminator stuck at a member of lower rank.  The values the gluings are
     at are related to those the evaluation reaches through the PER model,
     as [Core/Completeness/Inductives/Elim.v] and
-    [Core/Semantic/Inductives/IndElim.v] relate them. *)
+    [Core/Semantic/Inductives/Elim.v] relate them. *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
 
@@ -28,10 +28,10 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.LogicalRelation Require Instance.
 From Mctt.Core.Completeness.Global Require Args.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCount IndElim.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCount Elim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup DescTyping.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Syntactic.System.Inductives Require Views.

@@ -17,6 +17,7 @@ From Mctt Require Import Extraction.GlobalCheck Extraction.CommandRun.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Consequences.FiledConstructorTypes.
 From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns Core.Syntactic.System.Records.RecordRuns.
 From Mctt Require Import Extraction.AppSpine Reference.TypeCheckAgreement.
+From Mctt Require Core.Semantic.Inductives.NestingExamples.
 Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.FundamentalTheorem.completeness_fundamental.
 Print Assumptions Mctt.Core.Soundness.soundness.
@@ -144,3 +145,10 @@ Print Assumptions Mctt.Reference.TypeCheckAgreement.unit_check_agrees_with_refer
 Print Assumptions Mctt.Reference.TypeCheckAgreement.modexp_check_agrees_with_reference.
 Print Assumptions Mctt.Reference.TypeCheckAgreement.body_check_agrees_with_reference.
 Print Assumptions Mctt.Reference.TypeCheckAgreement.ext_check_agrees_with_reference.
+(* Examples of mutual and nested inductive types, in the PER model and in
+   the checker of declarations. *)
+Print Assumptions Mctt.Core.Semantic.Inductives.NestingExamples.t_over_c_in_model.
+Print Assumptions Mctt.Core.Semantic.Inductives.NestingExamples.t_over_rose_in_model.
+Print Assumptions Mctt.Core.Semantic.Inductives.NestingExamples.t_over_phantom_related.
+Print Assumptions Mctt.Core.Semantic.Inductives.NestingExamples.run_cmd_ind_self_param_rejected.
+Print Assumptions Mctt.Core.Semantic.Inductives.NestingExamples.views_dfs_proof_keys_one_view.

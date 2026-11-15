@@ -547,7 +547,7 @@ Section Clusters.
       ([views_cluster]); every instance the cluster meets outside it is a
       nesting step below it ([view_lt], by [nonrec_meet_below]); and
       nesting steps are well founded on the types of the model
-      ([NestAcc.per_univ_nest_acc]).  Every instance met is good
+      ([NestingOrder.per_univ_nest_acc]).  Every instance met is good
       ([views_meets_good]), and so is every sibling of a good view
       ([views_siblings_good]) and every instance the declared members'
       constructors meet ([init_good]). *)

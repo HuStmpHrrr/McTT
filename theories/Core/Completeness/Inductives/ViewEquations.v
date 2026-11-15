@@ -29,7 +29,7 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Substitution Instance
 From Mctt.Core.Completeness Require Import UnitCases.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Inductives Require Import Decl.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

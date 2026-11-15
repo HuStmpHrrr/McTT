@@ -27,7 +27,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System.Inductives Require Export ViewLeaves.
 From Mctt.Core.Semantic Require Export PER Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER ViewCoherence ViewCount.
+From Mctt.Core.Semantic.Inductives Require Import PER ViewCoherence ViewCount.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

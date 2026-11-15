@@ -1478,7 +1478,7 @@ Proof.
     [| exfalso; match goal with Hn : next_param (dm_local nil _ _) _ |- _ => inversion Hn; subst end;
        match goal with Hl : _ ++ _ :: nil = nil |- _ => destruct Δ0; discriminate end ].
   match goal with Hb : per_body ρh Φ ρh Φ |- _ => rename Hb into Hbb end.
-  pose proof (proj1 (KindsPER.per_body_noopen _ _ _ _ Hbb)) as Hno.
+  pose proof (proj1 (Kinds.PER.per_body_noopen _ _ _ _ Hbb)) as Hno.
   inversion Hsel; subst.
   - match goal with Hl : 0 < length nil |- _ => inversion Hl end.
   - (** A definition of an evaluated kind *)

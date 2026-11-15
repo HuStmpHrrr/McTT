@@ -7,7 +7,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core Require Import Consequences.Consistency Semantic.Realizability.
 From Mctt.Core.Syntactic.System.Global Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
-From Mctt.Core.Semantic Require Import MemberWf.
+From Mctt.Core.Syntactic.System.Global Require Import MemberTyping.
 From Mctt.Extraction Require Import FastDomain Evaluation Readback NbE PseudoMonadic Subtyping MemberType AppSpine.
 From Mctt.Extraction Require Export TypeCheckBase.
 From Mctt.Extraction Require Import IndCheck RecordCheck.

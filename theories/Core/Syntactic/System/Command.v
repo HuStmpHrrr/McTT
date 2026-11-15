@@ -23,7 +23,7 @@ From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.Inductives Require Export Inductives.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
-From Mctt.Core.Syntactic.System.Global Require Import MemberWf Modules LookupSound.
+From Mctt.Core.Syntactic.System.Global Require Import MemberWf Presup LookupSound.
 From Mctt.Core.Syntactic.System Require Export Privacy Translations.
 From Mctt.Core Require Export TypedElab.
 From Mctt.Core.Semantic Require Import NbE.

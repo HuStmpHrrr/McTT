@@ -4,7 +4,7 @@
     types are: these are the judgments of its typing, read in the PER model.
     From them, each declared member at related parameters is a type of the
     universe its sort denotes ([ind_relate]), with the canonical relations
-    of [Core.Semantic.Inductives.IndPER]: the group's canonical model.  The
+    of [Core.Semantic.Inductives.PER]: the group's canonical model.  The
     type formers are then elements of their [Π]-types
     ([valid_exp_under_ctx_ind]), and the values of the declared members at
     the group's uniform parameters make an environment of the context of
@@ -28,7 +28,7 @@ From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness.Inductives Require Import Decl.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations.

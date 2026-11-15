@@ -239,9 +239,9 @@ step to be proved never to fail at the user's type, beyond
 | `a_ind p`, `a_con p c`, `a_elim nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D Φ`, `ge_def_mod pv A M U` | `Core/Syntactic/Syntax.v` |
 | telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_branch_type`, `elim_ihs` | `Core/Syntactic/Inductives/Inductives.v` |
 | `wf_ind`, `wf_con`, `wf_elim`, congruences, `wf_exp_eq_elim_iota`, `wf_gentry_indty` (in the mutual block) | `Core/Syntactic/System/Definitions.v` |
-| declarations are well typed (`decl_typed`), presupposition | `System/Global/Presup.v`, `System/Inductives/Typing.v`, `Syntactic/System/Inductives/IndCong.v`, `Syntactic/System/Inductives/IndConv.v` |
+| declarations are well typed (`decl_typed`), presupposition | `System/Global/Presup.v`, `System/Inductives/Typing.v`, `Syntactic/System/Inductives/Cong.v`, `Syntactic/System/Inductives/ParamConversion.v` |
 | values `d_ind`, `d_con`, neutral eliminator; evaluation, readback | `Core/Semantic/Domain.v`, `Evaluation*`, `Readback*` |
-| PER: `ind_rel` (two-sided, each element at its own parameters, indexed by both sides' non-uniform parameters), `con_args_rel`, `rec_arg_rel`, `rec_arg_app_rel`, `adm_uparams`; canonical relations `canon_nparams_rel`, `canon_args_rel`, `canon_doms_rel`; telescopes `tele_rel`, `tele_prefix_rel`, `shape_doms_rel` | `Core/Semantic/PER/Definitions.v`, `Inductives/IndPER.v`, `Inductives/IndCanon.v`, `Inductives/IndElim.v`, `PER/Tele.v` |
+| PER: `ind_rel` (two-sided, each element at its own parameters, indexed by both sides' non-uniform parameters), `con_args_rel`, `rec_arg_rel`, `rec_arg_app_rel`, `adm_uparams`; canonical relations `canon_nparams_rel`, `canon_args_rel`, `canon_doms_rel`; telescopes `tele_rel`, `tele_prefix_rel`, `shape_doms_rel` | `Core/Semantic/PER/Definitions.v`, `Inductives/PER.v`, `Inductives/Canon.v`, `Inductives/Elim.v`, `PER/Tele.v` |
 | completeness | `Core/Completeness/Inductives/{Decl,Con,Elim,Iota}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v`, `LogicalRelation/Telescope.v` |
 | gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `ind_glu_elem`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/Inductives/{Con,Elim}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v` |
 | commands: `core_cmd_inductive`, `run_cmd_ind_case`, `run_ind_members`, `ind_mod_cmds`, `rec_cmds`, `raw_decl_uparams`, `ind_qname` | `Core/Syntactic/Command.v`, `System/Command.v` |
@@ -401,7 +401,7 @@ need typing:
   agrees with its fields, so `⟦ih …⟧` yields one result per leaf path
   (`eval_ih_length_all`, `eval_ihs_length`). That count is the count of
   the branch's binders (`n = im_nn + |gs| + cargs_nrec D gs`). The
-  evaluation lemmas of `Rename`, `Avoid` and `IndElim` use it, as do
+  evaluation lemmas of `Rename`, `Avoid` and `Semantic/Inductives/Elim` use it, as do
   `wrap_ihs_eval_length` and the fast evaluator's skip of unread results
   (`ihs_skipb`, `Simulation.fast_fresh_wrap_sim`). Discharged by
   `leaves_coherent_of_order (rview_struct_order …)`.
@@ -454,7 +454,7 @@ conditions, not checks the evaluator runs.
   with a block (`mdef_group_count : length ms = ind_nblk D`, `mdef_member`
   over `ind_block_members D`). A record view has no function.
 - **Termination of the search** (`ViewsCluster.v`, `ViewsFound.v`).
-  - `NestAcc.grp_step_record` is a nesting step out of a record type into
+  - `NestingOrder.grp_step_record` is a nesting step out of a record type into
     a field's type, at elements of the fields before. `per_univ_nest_acc`
     proves it accessible through the PER model's record clause, whose
     `fields_evals` carries each field's induction hypothesis.
@@ -508,7 +508,7 @@ through the `fk_ind` frame. So `A.Rec.rec_B` types `a_ind pq 1` through
 * `alg_type_infer_ind_case`, `alg_type_infer_con`, `alg_type_infer_elim` (`Algorithmic/Typing/Definitions.v`); the
   eliminator's scrutinee infers `nf_indty p Rs`, and the motive and branches
   are checked at the parameters' normal forms `Rs`, related to the
-  derivation's by `wf_elim_params_conv` (`Core/Syntactic/System/Inductives/IndConv.v`).
+  derivation's by `wf_elim_params_conv` (`Core/Syntactic/System/Inductives/ParamConversion.v`).
 * Completeness is by induction on the derivation with an outer induction on
   `exp_lets`; an eliminator counts `+1` there, since its motive and branches
   are re-derived at `Rs` and are no longer subderivations; its head counts

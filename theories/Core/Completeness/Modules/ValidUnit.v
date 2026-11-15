@@ -21,7 +21,7 @@ From Mctt.Core.Completeness Require Import LetCases UnitCases PropCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes ModuleVal Values.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
-From Mctt.Core.Semantic.Kinds Require Import Kinds KindsTyping KindsEval KindsPER.
+From Mctt.Core.Semantic.Kinds Require Import Renaming Evaluation PER.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
@@ -785,14 +785,6 @@ Lemma body_sorts_valid_of_gens_append : forall gs Φ k D, body_sorts_valid (gens
 Proof.
   induction gs as [| g gs IH]; intros * Hv; cbn [gens_append] in Hv; [ exact Hv |].
   destruct (generated_item_entry g) as [d E]; exact (proj1 (IH _ _ _ Hv)).
-Qed.
-
-(** A body prefixed by some of an open's generated entries has its sorts
-    valid when the whole does. *)
-Lemma body_sorts_valid_gens_firstn : forall Φ D gs0 gs1, body_sorts_valid (gens_append Φ 0 (gs0 ++ gs1)) D ->
-    body_sorts_valid (gens_append Φ 0 gs0) D.
-Proof.
-  intros * Hsv; rewrite gens_append_app in Hsv; exact (body_sorts_valid_of_gens_append _ _ _ _ Hsv).
 Qed.
 
 (** The entries an open generates are of their tagged sorts over any base

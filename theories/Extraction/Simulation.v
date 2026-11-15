@@ -23,7 +23,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members Records Fresh NfRename.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import Domain Evaluation Readback Avoid.
-From Mctt.Core.Semantic.Kinds Require Import Kinds.
+From Mctt.Core.Semantic.Kinds Require Import Renaming.
 From Mctt.Extraction Require Import FastEval FastRead FastDomain.
 Import Domain_Notations.
 #[local] Open Scope list_scope.

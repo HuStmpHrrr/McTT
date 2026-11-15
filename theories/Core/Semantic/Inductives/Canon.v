@@ -2,14 +2,14 @@
 
     Two related members of a group give the relations of the group's
     telescopes as arguments of the clause of [per_univ_elem_core].  These
-    are the canonical ones of [Core.Semantic.Inductives.IndPER], at the
+    are the canonical ones of [Core.Semantic.Inductives.PER], at the
     uniform parameters of either type. *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Semantic.Inductives Require Export IndPER.
+From Mctt.Core.Semantic.Inductives Require Export PER.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

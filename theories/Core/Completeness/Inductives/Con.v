@@ -30,7 +30,7 @@ From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model FiledViews ArgTypes CargsRel ViewEquations RviewEnds ViewArgs.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence ViewCount.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence ViewCount.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations.

@@ -1,6 +1,6 @@
-(** * Regressions for Mutual and Nested Inductive Types
+(** * Examples of Mutual and Nested Inductive Types
 
-    Closed lemmas about the groups that broke earlier designs.
+    Closed lemmas about particular mutual and nested groups.
 
     - [T := t : C T → T] with [C (B) := mk : Sigma (C B) (λ_. B) → C B]:
       [T] nests through a container that has a view of its own, and the

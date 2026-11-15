@@ -4,10 +4,10 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export PER.
-From Mctt.Core.Semantic.Inductives Require Export IndPER.
-From Mctt.Core.Semantic Require Export RecordPER.
+From Mctt.Core.Semantic.Inductives Require Export PER.
+From Mctt.Core.Semantic.Records Require Export PER.
 From Mctt.Core.Syntactic Require Export SystemOpt.
-From Mctt.Core.Syntactic.System.Inductives Require Export IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Export Cong.
 From Mctt.Core.Syntactic.Levels Require Import Levels LevelEq.
 From Mctt.Core.Syntactic.System.Global Require Import Presup Paths.
 From Mctt.Core.Soundness.Weakening Require Export Definitions.
@@ -304,7 +304,7 @@ Definition suniv_glu_typ_pred (l : domain) (U : typ) : glu_typ_pred := suniv_glu
     inductive type, so they have no gluing at its universe.  The non-uniform
     ones are glued at the gluing predicates of their types ([NEl], indexed
     by the position and the values before it).  The parameters' equation
-    is [exps_eq_at] (Syntactic/System/Inductives/IndCong.v). *)
+    is [exps_eq_at] (Syntactic/System/Inductives/Cong.v). *)
 
 (** The parameters [Ps] of a type whose head is the declared member [Mh]
     of the group [Dh], glued to their values by their readback at the
@@ -922,7 +922,7 @@ Section Gluing.
       every member, at each related instance of the member's non-uniform
       parameters, and the domains of the shapes of its recursive ones; the
       relations are the canonical ones of
-      [Core.Semantic.Inductives.IndPER]. *)
+      [Core.Semantic.Inductives.PER]. *)
   | glu_univ_elem_core_indty :
     `{ forall (NP : nat -> nat -> list domain -> glu_typ_pred) (NEl : nat -> nat -> list domain -> glu_exp_pred)
          (AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred)
@@ -977,7 +977,7 @@ Section Gluing.
 
   (** A record type at its parameters: the type of each field glues at the
       related values of the fields before it; the relations are the
-      canonical ones of [Core.Semantic.RecordPER]. *)
+      canonical ones of [Core.Semantic.Records.PER]. *)
   | glu_univ_elem_core_record :
     `{ forall (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
          typ_rel el_rel (elem_rel : relation domain),

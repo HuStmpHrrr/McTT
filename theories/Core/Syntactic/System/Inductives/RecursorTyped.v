@@ -16,7 +16,7 @@ From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing Syntax.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Core.Syntactic.System.Inductives Require Import Runs.
+From Mctt.Core.Syntactic.System.Inductives Require Import GeneratedCommands.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 

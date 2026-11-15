@@ -11,7 +11,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Members.
 From Mctt.Core.Syntactic Require Import Command.
-From Mctt.Core.Syntactic.System.Global Require Import Modules.
+From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Extraction Require Import Lookup FastDesc MemberType.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.

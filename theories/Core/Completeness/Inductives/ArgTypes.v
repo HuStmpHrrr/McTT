@@ -28,8 +28,8 @@ From Mctt.Core.Completeness Require Import LetCases UnitCases.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model FiledViews.
-From Mctt.Core.Semantic Require Import Realizability RecordPER.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence.
+From Mctt.Core.Semantic Require Import Realizability Records.PER.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 From Mctt.Core.Completeness.Records Require Model.

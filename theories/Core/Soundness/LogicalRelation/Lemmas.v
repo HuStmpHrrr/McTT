@@ -4,13 +4,13 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import ContextCases FundamentalTheorem UniverseCases UnitCases.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndCanon.
+From Mctt.Core.Semantic.Inductives Require Import Canon.
 From Mctt.Core.Soundness.LogicalRelation Require Export Realizability.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
-From Mctt.Core.Semantic Require Import RecordPER.
+From Mctt.Core.Semantic.Records Require Import PER.
 From Mctt.Core.Completeness.Consequences Require Import UptoProofs.
 From Mctt.Core.Soundness Require Import KeptProofs.
 From Mctt.Core.Syntactic.System Require Import LetPeeling.

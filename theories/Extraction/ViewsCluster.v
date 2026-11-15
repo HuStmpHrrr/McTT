@@ -6,7 +6,7 @@
     a member of that group at [Cs] (directly, or, for a view sibling,
     through the view equations: [view_sibling_link]):
     - at a recursive argument, it is a sibling ([rec_meet_in_siblings]);
-    - at a non-recursive one, it is one nesting step ([NestAcc.grp_step])
+    - at a non-recursive one, it is one nesting step ([NestingOrder.grp_step])
       below the group at [Cs], at the initial environment of the
       declaration's context ([nonrec_meet_below]), which the order
       [view_lt] records ([view_below]).
@@ -15,7 +15,7 @@
 
     A record view [(qr, Is)] is its own cluster: every instance its
     constructor's fields meet, at a field's normal form at [Is], is one
-    nesting step ([NestAcc.grp_step_record]) below the record type at
+    nesting step ([NestingOrder.grp_step_record]) below the record type at
     [Is] ([record_view_meets_below]).  A record view sibling of an
     inductive view is its container's record member at [Cs]: its meets are
     the member's, by the record view equations ([record_sibling_link],
@@ -27,7 +27,7 @@ From Stdlib Require Import Lia List PeanoNat String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base Completeness Soundness Consequences.NormalFormWeakening.
 From Mctt.Core Require Import Consequences.Consistency Consequences.FiledConstructorTypes Semantic.Realizability.
-From Mctt.Core.Semantic.Inductives Require Import NestAcc IndCanon.
+From Mctt.Core.Semantic.Inductives Require Import NestingOrder Canon.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Algorithmic Require Import Strengthening.
 From Mctt.Extraction Require Import ViewsSearch ViewsReach IndDecl.
@@ -37,7 +37,7 @@ From Mctt.Core.Completeness.Inductives Require Import Decl Model ArgTypes Elim E
 From Mctt.Core.Completeness Require Import LogicalRelation UnitCases UniverseCases.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Syntactic.System.Inductives Require Import UniformParams Views.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.

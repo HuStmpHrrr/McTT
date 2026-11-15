@@ -28,7 +28,7 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Con.
 From Mctt.Core.Completeness Require Import SubtypingCases PropCases.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndElim.
+From Mctt.Core.Semantic.Inductives Require Import PER Elim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes Elim ElimViewRule.
 Import Domain_Notations Fixed_Notations Wk_Notations.

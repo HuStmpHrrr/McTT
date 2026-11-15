@@ -19,7 +19,8 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural.
-From Mctt.Core.Syntactic.System.Global Require Import Paths MemberLemmas DescTyping Presup LookupSound NoLevelReach.
+From Mctt.Core.Syntactic.System.Global Require Import Paths MemberLemmas DescTyping Presup LookupSound.
+From Mctt.Extraction Require Import NoLevelOrder.
 From Mctt.Extraction Require Import Lookup FastDesc MemberType TypeCheckBase.
 Import Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.

@@ -19,7 +19,7 @@ From Mctt.Core.Completeness.Inductives Require Import Decl Model.
 From Mctt.Core.Completeness.Modules Require Import Filed.
 From Mctt.Core.Completeness Require Import UnitCases LetCases.
 From Mctt.Core.Syntactic.System.Global Require Import Presup DescTyping.
-From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing Cong.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 Import Domain_Notations Fixed_Notations.

@@ -18,7 +18,7 @@ From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing Syntax.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths LookupSound.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Core.Syntactic.System.Inductives Require Import Runs GrecTyped.
+From Mctt.Core.Syntactic.System.Inductives Require Import GeneratedCommands RecursorTyped.
 From Mctt.Algorithmic.Typing Require Import Definitions Lemmas.
 From Mctt.Core.Completeness.Consequences Require Import Types.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.

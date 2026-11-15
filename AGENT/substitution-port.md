@@ -117,8 +117,7 @@ passes, and `dune exec mctt examples/Nary.mctt` prints `6 : Nat`.
 | `SubEq.v` | `sub_eq_preserves_exp_eq`, `sub_eq_preserves_subtyp`; `exp_eq_sub_eq_head`/`_single` replace the deleted `exp_eq_sub_cong_*` family |
 | `CoreInversions.v` | the 9 term-former inversions |
 | `CtxSub.v` | the inductive `ctx_sub`, plus `ctxsub_sub_cod` |
-| `Corollaries.v` | the three survivors, plus `ctx_lookup_functional` (was `functional_ctx_lookup`) |
-| `SystemOpt.v` | rewriting morphisms + the rules with redundant premises removed |
+| `SystemOpt.v` | rewriting morphisms + the rules with redundant premises removed; `ctx_lookup_functional` |
 
 `CtxEq.v` is **deleted and stays deleted**: `Δ ⊢ˢ Id : Γ` *is* context
 refinement, and `ctxsub_exp` / `ctxsub_exp_eq` / `ctxsub_subtyp` (all `mctt`

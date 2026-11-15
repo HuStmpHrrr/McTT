@@ -14,7 +14,6 @@ From Mctt.Core.Syntactic.System Require Import Definitions.
 From Mctt.Core.Syntactic.System.Global Require Import Paths Presup LookupSound.
 From Mctt.Core.Completeness Require Import LogicalRelation.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
-From Mctt.Core.Semantic.Kinds Require Import KindsTyping.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

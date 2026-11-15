@@ -26,7 +26,7 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Decl.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit Body Filed Unit Canon.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
-From Mctt.Core.Semantic.Kinds Require Import Kinds KindsTyping KindsEval KindsPER.
+From Mctt.Core.Semantic.Kinds Require Import Renaming Evaluation PER.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

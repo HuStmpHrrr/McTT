@@ -25,7 +25,7 @@ From Mctt.Core.Completeness Require Import UniverseCases ContextCases FunctionCa
 From Mctt.Core.Completeness.Consequences Require Import Rules.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 Require Import Mctt.Core.Syntactic.Command.
 From Mctt.Core.Syntactic Require Import Builtin NfRename.
 Import Domain_Notations Fixed_Notations.

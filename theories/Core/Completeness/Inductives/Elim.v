@@ -34,7 +34,7 @@ From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness Require Import VariableCases FunctionCases LevelCases SubtypingCases.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model FiledViews ArgTypes CargsRel ViewEquations RviewEnds ViewArgs Con.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence IndElim.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence Elim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations Wk_Notations.
@@ -4397,7 +4397,7 @@ Section GroupElim.
 
       (** The same, the left motive not [LevelSort], not a type of levels
           ([motive_mid_not_level_sort]): the hypothesis on the motives of
-          [IndElim]. *)
+          [Semantic.Inductives.Elim]. *)
       Lemma motive_mid : forall j Mj b A0, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
           elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ A0 : Typeω@iA ->
           forall u u' ns ns' m m' ts ts', G j u u' ns ns' m m' ->

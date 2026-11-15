@@ -21,10 +21,10 @@ From Mctt.Core.Completeness.LogicalRelation Require Telescope Substitution.
 From Mctt.Core.Completeness Require UnitCases.
 From Mctt.Core.Completeness.Records Require Import Model.
 From Mctt.Core.Completeness Require Import RecordCases.
-From Mctt.Core.Semantic Require Import Realizability RecordPER Evaluation.Modules.
+From Mctt.Core.Semantic Require Import Realizability Records.PER Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 From Mctt.Core.Syntactic Require Import Substitution Records.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Soundness Require Import

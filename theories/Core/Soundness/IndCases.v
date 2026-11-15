@@ -18,9 +18,9 @@ From Mctt.Core.Completeness.LogicalRelation Require Telescope Substitution.
 From Mctt.Core.Completeness.Global Require Args.
 From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndCanon.
+From Mctt.Core.Semantic.Inductives Require Import Canon.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Soundness Require Import

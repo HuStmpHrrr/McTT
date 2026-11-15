@@ -8,7 +8,7 @@
       have the kinds of the original's at the renamed positions, has the
       same kinds ([kind_rename]);
     - a module expression has the kinds of its value ([kind_eval], in
-      [KindsEval]). *)
+      [Kinds.Evaluation]). *)
 
 From Stdlib Require Import Lia List PeanoNat String.
 Import ListNotations.

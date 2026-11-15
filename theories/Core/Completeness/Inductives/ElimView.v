@@ -35,7 +35,7 @@ From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness Require Import VariableCases FunctionCases LevelCases SubtypingCases.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model FiledViews ArgTypes ViewEquations ViewArgs Con CargsRel Elim Iota ViewBranch.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence ViewCount IndElim.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence ViewCount Elim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations Wk_Notations.
@@ -2019,7 +2019,7 @@ Section CrossElim.
   #[local] Abbreviation self_ref_target := (SE self_ref_target).
   #[local] Abbreviation self_index_readable := (SE self_index_readable).
   #[local] Abbreviation self_ups_ok := (SE self_ups_ok).
-  (** The group's eliminator's model at [C1] against itself ([IndElim]). *)
+  (** The group's eliminator's model at [C1] against itself ([Semantic.Inductives.Elim]). *)
   #[local] Abbreviation XS f := (f p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI Had iA C1 C1 Bks Bks u0 u0 self_ups_ok Rel
      HBks HBks (valid_blocks_binder_count _ _ _ _ _ _ HBk) (valid_blocks_binder_count _ _ _ _ _ _ HBk)
      (valid_blocks_names _ _ _ _ _ _ HBk) (valid_blocks_names _ _ _ _ _ _ HBk) (valid_blocks_arity _ _ _ _ _ _ HBk)
@@ -2043,7 +2043,7 @@ Section CrossElim.
     (HarB : forall i' Mi' b c gs' n B, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b ->
               ind_con Mi' c = Some gs' -> In (c, n, B) (eb_brs b) -> n = (im_nn Mi' + List.length gs' + cargs_nrec D' gs')%nat).
   (** The motives, at related indices and elements stored at any types they
-      read back at (as [IndElim]'s [Hmot]). *)
+      read back at (as [Semantic.Inductives.Elim]'s [Hmot]). *)
   Hypothesis (Hmot_x : forall i' Mi' v bb ba u u' ns ns' x x' ts ts', ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
                 List.nth_error vm i' = Some v -> List.nth_error VBb i' = Some bb -> List.nth_error Bks v = Some ba ->
                 G v u u' ns ns' x x' ->
@@ -2054,7 +2054,7 @@ Section CrossElim.
                   DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x' /\ not_level_sort a /\ domain_kind a <> ak_level).
   (** The branches, at related constructors and related recursive results,
       their variables stored at any types they read back at (as
-      [IndElim]'s [Hbr]). *)
+      [Semantic.Inductives.Elim]'s [Hbr]). *)
   Hypothesis (Hbr_x : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k ts ts',
                 ind_member D' i' = Some Mi' -> im_is_rview Mi' = false ->
                 List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->

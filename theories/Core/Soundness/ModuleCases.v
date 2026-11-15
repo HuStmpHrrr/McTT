@@ -20,7 +20,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Modules Paths DescTyping LookupSound Presup.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup Paths DescTyping LookupSound.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases ModuleValues Instances
   ModuleExpressions UnitEqCases UnitDeep Selection MemberGluing DescDeep.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.

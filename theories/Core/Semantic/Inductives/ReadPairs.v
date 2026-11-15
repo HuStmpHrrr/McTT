@@ -16,7 +16,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import PER Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndElim.
+From Mctt.Core.Semantic.Inductives Require Import Elim.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

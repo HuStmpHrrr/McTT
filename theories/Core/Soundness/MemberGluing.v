@@ -16,7 +16,7 @@ From Stdlib Require Import Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System SystemOpt.
-From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Modules Paths DescTyping LookupSound Presup.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup Paths DescTyping LookupSound.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Completeness.Modules Require Import Values.
 From Mctt.Core.Completeness.Modules Require Filed Mem.
@@ -135,7 +135,7 @@ Proof.
     [| exfalso; match goal with Hn : next_param (dm_local nil _ _) _ |- _ => inversion Hn; subst end;
        match goal with Hl : _ ++ _ :: nil = nil |- _ => destruct Δ0; discriminate end ].
   match goal with Hb : per_body ρh Φ ρh Φ |- _ => rename Hb into Hbb end.
-  pose proof (proj1 (KindsPER.per_body_noopen _ _ _ _ Hbb)) as Hno.
+  pose proof (proj1 (Kinds.PER.per_body_noopen _ _ _ _ Hbb)) as Hno.
   inversion Hsel; subst.
   - match goal with Hl : 0 < length nil |- _ => inversion Hl end.
   - (** A definition of an evaluated kind *)

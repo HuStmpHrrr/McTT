@@ -16,7 +16,7 @@ From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Soundness Require Import

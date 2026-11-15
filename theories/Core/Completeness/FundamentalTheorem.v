@@ -18,9 +18,9 @@ From Stdlib Require Import Lia List.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import
-  MemberLemmas MemberWf Modules Paths DescTyping LookupSound.
+  MemberLemmas MemberWf Presup Paths DescTyping LookupSound.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
 From Mctt.Core.Completeness Require Import ContextCases FunctionCases LetCases LevelCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.

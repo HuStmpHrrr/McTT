@@ -9,7 +9,7 @@ From Stdlib Require Import Lia List PeanoNat.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic.System.Global Require Export Modules.
+From Mctt.Core.Syntactic.System.Global Require Export Presup.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 

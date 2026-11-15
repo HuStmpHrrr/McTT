@@ -2909,7 +2909,7 @@ Lemma open_entry_iff : forall Δ Φw Φx y Γy E rd, mdesc_entry (mdesc_open Δ 
 Proof.
   intros; cbn [mdesc_entry]; split.
   - destruct (gm_prefix_upto Φx y) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
-    pose proof (KindsEval.gm_prefix_name _ _ _ _ _ Hp) as ->.
+    pose proof (Kinds.Evaluation.gm_prefix_name _ _ _ _ _ Hp) as ->.
     destruct E0 as [[|] ? ? ? [] | | | |]; try discriminate; intros [= <- <- <-]; exists Φ'; cbn; auto.
   - intros (Φ0 & -> & HE & -> & ->); destruct E as [[|] ? ? ? [] | | | |]; cbn in HE; try contradiction; reflexivity.
 Qed.
@@ -3281,7 +3281,7 @@ Proof.
     cbn [path_left path_right path_leaf_m path_full_m path_all_apps andb].
     assert (Hdec : (exists Φ0 E, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E)) \/ (forall Φ0 E, gm_prefix_upto Φx y <> Some (gm_ext Φ0 y E))).
     { destruct (gm_prefix_upto Φx y) as [[| Φ0 z E | ] |] eqn:Hp; try (right; intros ? ? Hc; discriminate).
-      left; pose proof (KindsEval.gm_prefix_name _ _ _ _ _ Hp); subst; eauto. }
+      left; pose proof (Kinds.Evaluation.gm_prefix_name _ _ _ _ _ Hp); subst; eauto. }
     destruct Hdec as [(Φ0 & E & Hp) | Hn].
     2: { (* no entry: neither side selects anything *)
          split; intros X HX; exfalso.

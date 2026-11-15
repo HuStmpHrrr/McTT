@@ -15,7 +15,7 @@ From Mctt.Core.Completeness.Inductives Require Import Model.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.LogicalRelation Require Instance.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon IndElim.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon Elim.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Soundness Require Import

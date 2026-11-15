@@ -3,9 +3,7 @@
     Related module values have the same kinds ([per_dmod_kinds_equiv]): two unit
     closures are related through related arguments, and every parameter's
     type has some ([per_univ_elem_inhabited]); a module
-    expression has the kinds of its value ([kind_eval]).  So the
-    environments a context PER relates match the context
-    ([per_ctx_env_kinds_match]). *)
+    expression has the kinds of its value ([kind_eval]). *)
 
 From Stdlib Require Import Lia List String.
 Import ListNotations.
@@ -14,7 +12,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.System Require Import Definitions.
 From Mctt.Core.Semantic Require Import PER Realizability.
-From Mctt.Core.Semantic.Kinds Require Import Kinds KindsTyping KindsEval.
+From Mctt.Core.Semantic.Kinds Require Import Renaming Evaluation.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
 
@@ -117,37 +115,5 @@ Section Fixed_GCtx.
 
   Corollary per_dmod_kinds_equiv : forall h h', per_dmod h h' -> kinds_equiv gc_deps gc_stack h h'.
   Proof. exact (proj1 per_dmod_kinds_equiv_all). Qed.
-
-  Lemma per_ctx_env_kinds_match : forall Γ Γ' R, EF Γ ≈ Γ' ∈ per_ctx_env ↘ R ->
-      forall ρ ρ', R ρ ρ' -> kinds_match gc_deps gc_stack Γ ρ /\ kinds_match gc_deps gc_stack Γ' ρ'.
-  Proof.
-    induction 1; intros ρ ρ' Hρ.
-    - split; apply kinds_match_nil.
-    - apply H2 in Hρ as [Ht _].
-      destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
-      split; apply kinds_match_drop_term; first [ assumption | discriminate ].
-    - apply H3 in Hρ as [Ht _].
-      destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
-      split; apply kinds_match_drop_term; first [ assumption | discriminate ].
-    - apply H3 in Hρ as [Ht P1 P2 P3 P4 _ _].
-      destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
-      split; apply kinds_match_drop_mod; try assumption.
-      + destruct P1 as (h & Hh & Hr).
-        eapply kinds_equiv_trans; [ apply per_dmod_kinds_equiv, Hr |].
-        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), modexp_member_kind_lit_iff, dmod_member_kind_clo_iff; reflexivity.
-      + destruct P4 as (h & Hh & Hr).
-        eapply kinds_equiv_trans; [ apply per_dmod_kinds_equiv, Hr |].
-        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), modexp_member_kind_lit_iff, dmod_member_kind_clo_iff; reflexivity.
-    - (* a definition with a module part: its unit as a slot's *)
-      match goal with HE : _ <~> per_ctx_env_dm_rel _ _ _ _ _ _ _ _ |- _ => apply HE in Hρ as [Ht _ _ P1 _ _ P4] end.
-      destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
-      split; apply kinds_match_drop_dm; try assumption.
-      + destruct P1 as (h & Hh & Hr).
-        eapply kinds_equiv_trans; [ apply per_dmod_kinds_equiv, Hr |].
-        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), modexp_member_kind_lit_iff, dmod_member_kind_clo_iff; reflexivity.
-      + destruct P4 as (h & Hh & Hr).
-        eapply kinds_equiv_trans; [ apply per_dmod_kinds_equiv, Hr |].
-        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), modexp_member_kind_lit_iff, dmod_member_kind_clo_iff; reflexivity.
-  Qed.
 
 End Fixed_GCtx.

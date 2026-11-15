@@ -13,9 +13,9 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members.
 From Mctt.Core.Syntactic.System Require Import Definitions.
-From Mctt.Core.Syntactic.System.Global Require Import Modules.
+From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Semantic Require Import Evaluation.
-From Mctt.Core.Semantic.Kinds Require Import Kinds KindsTyping.
+From Mctt.Core.Semantic.Kinds Require Import Renaming.
 Import Domain_Notations Syntax_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 

@@ -37,7 +37,7 @@ From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import Structural Command.
 From Mctt.Core Require Import TypedElab.
 From Mctt.Core.Syntactic.System.Global Require Import MemberWf Paths LookupSound.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndRuns Runs.
+From Mctt.Core.Syntactic.System.Inductives Require Import IndRuns GeneratedCommands.
 From Mctt.Core.Syntactic.System.Records Require Import RecordRuns.
 From Mctt.Extraction Require Import Lookup NbE TypeCheck GlobalCheck IndDecl RecordDecl MemberType Opens Privacy.
 From Mctt.Extraction Require Import MdefGroup TypedElab FastDesc LookupTwins FastState Command NoLevelDec.

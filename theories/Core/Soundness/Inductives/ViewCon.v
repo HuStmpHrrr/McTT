@@ -20,9 +20,9 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.LogicalRelation Require Substitution.
 From Mctt.Core.Completeness.Global Require Args.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER IndCanon ViewCoherence.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup DescTyping.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Syntactic.System.Inductives Require Views.

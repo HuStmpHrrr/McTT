@@ -17,10 +17,10 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base Soundness.
 From Mctt.Core.Consequences Require Import Consistency.
 From Mctt.Core.Syntactic Require Import SystemOpt CtxSub.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System Require Import Scoping.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
-From Mctt.Core.Syntactic.System.Inductives Require Import Typing Syntax Runs Views.
+From Mctt.Core.Syntactic.System.Inductives Require Import Typing Syntax GeneratedCommands Views.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core Require Import Completeness.

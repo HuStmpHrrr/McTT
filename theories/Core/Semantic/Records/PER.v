@@ -14,7 +14,7 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export PER Realizability.
-From Mctt.Core.Semantic.Inductives Require Import IndPER.
+From Mctt.Core.Semantic.Inductives Require Import PER.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
