@@ -28,7 +28,7 @@ From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Completeness.Inductives Require Import Decl.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import PER Canon.
+From Mctt.Core.Semantic.Inductives Require Import PER Canon Elim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
 Import Domain_Notations Fixed_Notations.
@@ -97,9 +97,6 @@ Qed.
 
 Lemma all_assumptions_map_ass : forall κ As, all_assumptions (List.map (ce_ass κ) As).
 Proof. intros κ As; induction As; constructor; eauto. Qed.
-
-Lemma eval_exps_length : forall Ms ρ ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ms = List.length Ms.
-Proof. induction 1; cbn; congruence. Qed.
 
 Lemma eval_exps_each : forall Ms ρ, (forall m M, List.nth_error Ms m = Some M -> exists v, ⟦ M ⟧ ρ ↘ v) ->
     exists vs, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ vs.

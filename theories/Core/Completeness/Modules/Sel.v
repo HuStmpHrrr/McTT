@@ -28,6 +28,7 @@ From Mctt.Core.Completeness.Inductives Require Import Decl.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit Body Filed Unit Mem Canon App.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Semantic.Kinds Require Import Renaming Evaluation PER.
+From Mctt.Core.Semantic.Inductives Require Import Elim.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

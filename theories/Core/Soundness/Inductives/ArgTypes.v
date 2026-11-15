@@ -901,7 +901,7 @@ Section IndApps.
       rewrite <- EP in HgM, Eb.
       exact (ind_former_base p D Hl HG Hc Hdt Hsu Hass Hselfs k Mk pm Δ' _ _ i b P El HM Hh HΔ' HgM Eb Hgb HPb').
     - intros ρ us Eus; exists (d_ind p k us); split; [| reflexivity ].
-      pose proof (Completeness.Inductives.Model.eval_exps_length _ _ _ Eus) as Lus.
+      pose proof (Semantic.Inductives.Elim.eval_exps_length _ _ _ Eus) as Lus.
       apply Modules.eval_apps_exp; exists (d_ind p k nil); split; [ constructor |].
       apply Modules.eval_app_args_ind; exists us; split; [ exact Eus |].
       apply (eval_apps_indty p D k Mk us nil Hl HM); cbn.

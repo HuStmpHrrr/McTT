@@ -36,6 +36,7 @@ From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence ViewCount.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
+From Mctt.Core.Semantic.Inductives Require Import Elim.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

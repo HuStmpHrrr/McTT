@@ -32,6 +32,7 @@ From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Inductives Require Import Decl Model.
 From Mctt.Core.Semantic Require Import Realizability Records.PER Evaluation.Modules.
 From Mctt.Core.Semantic.PER Require Import Tele.
+From Mctt.Core.Semantic.Inductives Require Import Elim.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

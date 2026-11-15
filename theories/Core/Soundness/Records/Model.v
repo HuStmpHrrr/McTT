@@ -202,7 +202,7 @@ Section RecordAt.
     (** The parameters' values and the fields' before, related at the
         fields' telescope. *)
     assert (Hlns : List.length ns = List.length (record_params R))
-      by (rewrite <- Hn; exact (Completeness.Inductives.Model.eval_exps_length _ _ _ Ens)).
+      by (rewrite <- Hn; exact (Semantic.Inductives.Elim.eval_exps_length _ _ _ Ens)).
     pose proof (params_inst_tele_args R Hass HFv HPr Γ Ns RΓ ρ ρ ns ns HΓs HRΓ Hn HNv HNss Hρ Ens Ens) as Hgp.
     destruct (sort_tele_value _ _ HPv HSv ns Hgp Hlns) as [a0 Ha0].
     pose proof (canon_fields_tele_args R Hsu HFv HSv HTv HFk ns ns a0 Hgp Hlns Ha0 k (List.firstn k vs) (List.firstn k vs)
@@ -377,7 +377,7 @@ Section RecordAt.
       (** The parameters' values and the fields' before, related at the
           fields' telescope. *)
       assert (Hlns : List.length ns = List.length (record_params R))
-        by (rewrite <- Hn; exact (Completeness.Inductives.Model.eval_exps_length _ _ _ Ens)).
+        by (rewrite <- Hn; exact (Semantic.Inductives.Elim.eval_exps_length _ _ _ Ens)).
       pose proof (params_inst_tele_args R Hass HFv HPr Γ Ns RΓ ρ ρ ns ns HΓs HRΓ Hn HNv
                     (typed_insts_scoped _ _ _ Hass Hn HNt) Hρ Ens Ens) as Hgp.
       destruct (sort_tele_value _ _ HPv HSv ns Hgp Hlns) as [a0 Ha0].

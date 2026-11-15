@@ -11,6 +11,7 @@ From Stdlib Require Import Lia.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Semantic.Inductives Require Import Elim.
 From Mctt.Core Require Export Completeness.
 From Mctt.Core.Completeness Require Import LogicalRelation.Universes LogicalRelation.Functions.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.

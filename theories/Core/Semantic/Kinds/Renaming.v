@@ -461,17 +461,4 @@ Section Kinds.
     - (* a definition with a module part: its module part *) exact H1.
   Qed.
 
-
-  (** *** A Substitution Has the Kinds of What It Substitutes
-
-      As a renaming, a substitution that sends each slot to a module
-      expression with the kinds of the original environment's entry there:
-      terms are never looked at. *)
-
-  Definition kinds_sub (σ : sub) (ρ ρ' : env) : Prop :=
-    forall x ch k, modexp_member_kind Θ Ξ ρ (sentry_modexp (σ x)) ch k <-> dmod_member_kind Θ Ξ (env_mod ρ' x) ch k.
-
-  #[local] Ltac kinds_sub_ih :=
-    match goal with IH : forall σ ρ ρ', kinds_sub σ ρ ρ' -> _, Hr : kinds_sub _ _ _ |- _ => apply IH; exact Hr end.
-
 End Kinds.

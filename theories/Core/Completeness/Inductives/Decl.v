@@ -29,7 +29,7 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Semantic.Inductives Require Import PER.
+From Mctt.Core.Semantic.Inductives Require Import PER Elim.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -785,9 +785,6 @@ Qed.
 Lemma env_entry_extend_typed_app : forall ρ vts i, env_entry (env_extend_typed ρ vts) (List.length vts + i) = env_entry ρ i.
 Proof. intros; rewrite <- env_entry_skipn, skipn_env_extend_typed; reflexivity. Qed.
 
-Lemma eval_exps_count : forall Ms ρ ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ms = List.length Ms.
-Proof. induction 1; cbn; congruence. Qed.
-
 (** The tags and units of a context extended by [ts], past [ts]: those of
     the context, over the environment's tail. *)
 Lemma ctx_entry_tag_app : forall ts Δ y E,
@@ -876,7 +873,7 @@ Proof.
     pose proof (Hev (Hn (List.length ts) ltac:(cbn [List.length]; lia))) as Hm; rewrite Hσx in Hm.
     destruct Hm as (m & Hme & Hm).
     rewrite <- (List.length_rev ts), ctx_entry_tag_app_at, List.length_rev in Hme.
-    pose proof (eval_exps_count _ _ _ Hms) as Hlms.
+    pose proof (eval_exps_length _ _ _ Hms) as Hlms.
     exists (m :: ms); split; [ econstructor; eassumption |].
     (** The tail past the later entries has the head term's value, at its
         tag, before the rest. *)
@@ -899,7 +896,7 @@ Lemma eval_sb_of_list_inv : forall Ms ts σ Δ ρ E E0, List.length ts = List.le
 Proof.
   intros * Hl H Hn H0.
   destruct (eval_sb_of_list_vals _ _ _ _ _ _ Hl H Hn) as (ms & Hms & Hag).
-  pose proof (eval_exps_count _ _ _ Hms) as Hlms.
+  pose proof (eval_exps_length _ _ _ Hms) as Hlms.
   pose proof (functional_eval_sub _ _ _ _ _ (eval_sb_of_list_tail _ _ _ _ _ _ Hl H) H0) as Ht.
   exists ms; split; [ exact Hms |].
   intros x Hx; rewrite Hag.

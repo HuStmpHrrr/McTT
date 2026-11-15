@@ -132,7 +132,7 @@ Lemma params_glu_args_at : forall C SbC Γ RΓ Δ σ ρ Ms vs, all_assumptions C
 Proof.
   intros * Hass Hs HC HΓ HSbC HΔ HRΓ Hρ Hl HMs HCev HMss HMg Hv.
   pose proof (closed_inst_sorts C Γ Ms Hass HC HΓ HCev Hl HMs HMss) as HTs.
-  assert (Lv : List.length vs = List.length C) by (rewrite <- Hl; exact (Completeness.Inductives.Model.eval_exps_length _ _ _ Hv)).
+  assert (Lv : List.length vs = List.length C) by (rewrite <- Hl; exact (Semantic.Inductives.Elim.eval_exps_length _ _ _ Hv)).
   assert (HSbC' : EG C ++ ⋅ ∈ glu_ctx_env ↘ SbC) by (rewrite List.app_nil_r; exact HSbC).
   assert (Hnil : EG ⋅ ∈ glu_ctx_env ↘ nil_glu_sub_pred) by (econstructor; [ reflexivity | eapply ctx_wf_gctx; exact HΔ ]).
   eapply (glu_args_of_related C ⋅ SbC nil_glu_sub_pred Δ Id nil);

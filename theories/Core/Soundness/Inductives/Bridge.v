@@ -15,6 +15,7 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Semantic.Inductives Require Import Elim.
 From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Universes.
 From Mctt.Core.Completeness.Inductives Require Decl.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes FiledViews ViewEquations ViewArgs.

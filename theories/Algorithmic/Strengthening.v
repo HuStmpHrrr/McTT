@@ -25,7 +25,7 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import LogicalRelation.Universes.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
 From Mctt.Core Require Import Consequences.Inversions Semantic.Realizability.
-From Mctt.Core.Syntactic Require Import CoreInversions Fresh.
+From Mctt.Core.Syntactic Require Import CoreInversions Fresh NfRename.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Syntactic.System.Inductives Require Import Cong ParamConversion.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas MemberWf.
@@ -43,10 +43,7 @@ Import Domain_Notations Fixed_Notations Wk_Notations.
 
     [q^k ↑] keeps the [k] innermost variables and shifts the rest by one: it is
     the weakening from the long context to the short one.  It is monotone, so
-    it acts on environments by [⟪_⟫]. *)
-Lemma wk_mono_qn : forall n φ, wk_mono φ -> wk_mono (wk_qn n φ).
-Proof. induction n; intros; cbn; [ assumption | apply wk_mono_q; auto ]. Qed.
-
+    it acts on environments by [⟪_⟫] ([wk_mono_qn]). *)
 #[local]
 Instance WkMono_qn_shift : forall k, WkMono (wk_qn k ↑).
 Proof. intros k; apply wk_mono_qn, wk_mono_shift. Qed.
@@ -1183,7 +1180,7 @@ Proof.
   destruct (eval_record_value _ _ _ _ Ha') as [ys ->].
   invert_per_univ_elem HR.
   match goal with H' : record_lookup _ _ p = Some ?R1 |- _ => rewrite Hl in H'; injection H' as <- end.
-  rewrite <- (Completeness.Inductives.Model.eval_exps_length _ _ _ Exs); assumption.
+  rewrite <- (Semantic.Inductives.Elim.eval_exps_length _ _ _ Exs); assumption.
 Qed.
 
 (** A member's type former applied and typed at a universe is applied to
@@ -1203,7 +1200,7 @@ Proof.
   match goal with H' : ind_lookup _ _ p = Some ?D1 |- _ => rewrite Hl in H'; injection H' as <- end.
   match goal with H' : ind_member D k = Some ?M1 |- _ => rewrite Hk in H'; injection H' as <- end.
   match goal with H' : tele_rel _ _ _ _ |- _ => destruct H' as [Hl' _] end.
-  rewrite <- (Completeness.Inductives.Model.eval_exps_length _ _ _ Exs), List.length_app.
+  rewrite <- (Semantic.Inductives.Elim.eval_exps_length _ _ _ Exs), List.length_app.
   unfold im_np, im_nn; rewrite List.length_rev in Hl'; lia.
 Qed.
 
@@ -1314,7 +1311,7 @@ Proof.
   invert_per_univ_elem HR.
   match goal with H' : record_lookup _ _ p' = Some ?R1 |- _ => rewrite Hl in H'; injection H' as <- end.
   split; [ reflexivity |].
-  rewrite <- (Completeness.Inductives.Model.eval_exps_length _ _ _ Exs); assumption.
+  rewrite <- (Semantic.Inductives.Elim.eval_exps_length _ _ _ Exs); assumption.
 Qed.
 
 (** ** Instances of Telescopes

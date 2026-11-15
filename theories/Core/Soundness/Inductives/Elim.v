@@ -1494,7 +1494,7 @@ Section ElimGlu.
   (** ** The Uniform Parameters *)
 
   Lemma ups_len : List.length ups = ind_nu D.
-  Proof. rewrite (Completeness.Inductives.Model.eval_exps_length _ _ _ HUv); exact HUl. Qed.
+  Proof. rewrite (Semantic.Inductives.Elim.eval_exps_length _ _ _ HUv); exact HUl. Qed.
 
   Lemma ups_tele_args : per_tele_args (List.rev (ind_uparams D)) nil nil ups ups.
   Proof. exact (EB Elim.u0_tele_args). Qed.
@@ -9420,7 +9420,7 @@ Proof.
   destruct (Completeness.Inductives.Elim.us_vals VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs HUss ρ ρ Hρ)
     as (ups & _ & HUv & _ & _).
   pose proof (Completeness.Inductives.Elim.u0_tele_args VP p D HVP HPD Γ RΓ HRΓ HΓs RU HRU Us HUl HUs HUss ρ ups Hρ HUv) as Hgu.
-  assert (Hu : List.length ups = ind_nu D) by (rewrite (Completeness.Inductives.Model.eval_exps_length _ _ _ HUv); exact HUl).
+  assert (Hu : List.length ups = ind_nu D) by (rewrite (Semantic.Inductives.Elim.eval_exps_length _ _ _ HUv); exact HUl).
   destruct (HiM _ _ _ Hσ) as [aM mv PM ElM EaM Em HgM HMσ].
   destruct (eval_mty_inv p D m Mm Us Ns ρ aM HMm Hrvm EaM) as (cs & ns0 & Ecs & Ens & EaMd).
   (** The scrutinee is relevant: it is evaluated. *)
@@ -9567,7 +9567,7 @@ Proof.
   pose proof (functional_eval_exps' _ _ _ _ Eqv Hevl) as ->.
   (** The substitution's value, against the motive's environment at the
       values ([mctx_at_typed]). *)
-  assert (Lns0 : List.length ns0 = im_nn Mm) by (rewrite (Completeness.Inductives.Model.eval_exps_length _ _ _ Ens); exact HNl).
+  assert (Lns0 : List.length ns0 = im_nn Mm) by (rewrite (Semantic.Inductives.Elim.eval_exps_length _ _ _ Ens); exact HNl).
   assert (Lq : List.length (List.rev (elim_mctx p D m Mm Us)) = List.length (ns0 ++ mv :: nil))
     by (rewrite List.length_rev, length_elim_mctx, List.length_app, Lns0; cbn [List.length]; lia).
   rewrite Decl.env_extend_tagged_typed in HRτ.

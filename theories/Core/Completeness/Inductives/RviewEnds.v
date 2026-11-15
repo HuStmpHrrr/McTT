@@ -31,6 +31,7 @@ From Mctt.Core.Completeness.Records Require Model.
 From Mctt.Core.Semantic Require Import Realizability Records.PER.
 From Mctt.Core.Semantic.Inductives Require Import PER Canon ViewCoherence.
 From Mctt.Core.Semantic.PER Require Import Tele.
+From Mctt.Core.Semantic.Inductives Require Import Elim.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

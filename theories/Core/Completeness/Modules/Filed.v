@@ -26,6 +26,7 @@ From Mctt.Core.Completeness.Inductives Require Import Decl.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Semantic.Kinds Require Import Renaming Evaluation PER.
+From Mctt.Core.Semantic.Inductives Require Import Elim.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
@@ -98,9 +99,6 @@ Proof.
 Qed.
 
 (** ** Instances of Closed Telescopes *)
-
-Lemma eval_exps_length : forall Ms ρ ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ms = List.length Ms.
-Proof. induction 1; cbn; congruence. Qed.
 
 (** Arguments valid at a closed telescope, at relevant instantiated types,
     evaluate, and the substitution they make evaluates at the telescope
