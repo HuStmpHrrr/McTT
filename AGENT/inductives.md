@@ -551,8 +551,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   no typing judgment reads it.  Records merge field by field (`builtins_merge`):
   a field bound on one side keeps its binding, one bound on both sides must
   agree, else the merge fails.  `builtins_merge` has the empty record as unit and
-  is commutative, associative up to failure (`builtins_merge_assoc`, in the
-  option monad), idempotent, and keeps well-formedness (`builtins_merge_wf`).
+  is commutative, associative up to failure (in the option monad), idempotent, and keeps well-formedness (`builtins_merge_wf`).
 * **Scope.**  A unit sees the bindings it makes and those of the units it
   imports, transitively, never those of the unit importing it.
   `run_cmd`/`run_cmds` (`Core/Syntactic/System/Command.v`) thread the

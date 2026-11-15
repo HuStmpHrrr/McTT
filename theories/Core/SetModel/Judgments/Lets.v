@@ -1,4 +1,4 @@
-(** * The Set Rules of Local Definitions
+(** * The Set Model of Local Definitions
 
     A local definition's body is read at the definition's value; with the
     definition substituted it has the same value ([ζ]). *)

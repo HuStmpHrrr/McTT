@@ -1,4 +1,4 @@
-(** * The Set Rules of Contexts
+(** * The Set Model of Contexts
 
     A context is valid when each entry is valid in the context before it:
     an assumption's type denotes, a definition is of its type, a module

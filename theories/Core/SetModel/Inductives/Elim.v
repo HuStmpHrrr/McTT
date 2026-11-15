@@ -1,4 +1,4 @@
-(** * The Set Rules of the Eliminator
+(** * The Set Model of the Eliminator
 
     At an environment of its context, the eliminator of a group at an
     element of a member's carrier has a result in the motive there: by

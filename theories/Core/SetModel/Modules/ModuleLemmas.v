@@ -1,4 +1,4 @@
-(** * The Set Rules of Module Expressions
+(** * The Set Model of Module Expressions
 
     Equal module expressions denote equal modules and are valid
     ([set_modexp_eq]).  A valid unit is valid as a module expression, of
@@ -6,7 +6,7 @@
     loaded unit is filed at no argument; a literal is its unit; [β]
     instantiates a literal's outermost parameter.  Selections and
     applications are valid by the units their module parts stand for
-    ([set_valid_unit_sel_all], [set_valid_modexp_app]). *)
+    ([set_valid_unit_sel_all], [set_valid_unit_app_all]). *)
 
 From Stdlib Require Import String List Lia PeanoNat.
 From Mctt Require Import LibTactics.

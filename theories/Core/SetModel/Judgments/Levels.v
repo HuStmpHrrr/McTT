@@ -1,4 +1,4 @@
-(** * The Set Rules of Levels
+(** * The Set Model of Levels
 
     A level is an ordinal below [ω²]; a type of levels [Level@n] the set
     of those below [ω·(n+1)], a member of every universe of sets.  The

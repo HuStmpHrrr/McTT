@@ -1,12 +1,12 @@
-(** * The Module Rules
+(** * Lemmas for the Module Rules
 
-    First the rules about units and module expressions at one global context
+    The rules about units and module expressions at one global context
     [GC] that a global context [Θm ⍮ Ξm] embeds into: the units and module
     expressions are moreover valid in what they denote, read at [Θm ⍮ Ξm]
     ([valid_unit], [valid_modexp]), and the slots of a context with valid
-    slots hold valid units ([valid_slots]).  Then the rules themselves, about
-    the semantic judgments: each reads its premises at the target of a sound
-    embedding and concludes there by the lemma at one global context. *)
+    slots hold valid units ([valid_slots]).  The rules about the semantic
+    judgments ([ModuleCases]) read their premises at the target of a sound
+    embedding and conclude there by these lemmas. *)
 
 From Stdlib Require Import Lia List PeanoNat.
 

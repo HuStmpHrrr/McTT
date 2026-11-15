@@ -1,4 +1,4 @@
-(** * The Set Rules of Propositions
+(** * The Set Model of Propositions
 
     The set judgments of the rules of [Prop], [⊤], [⊥] and [tt]: [Prop]
     is a relevant code of the first small universe, a proposition a

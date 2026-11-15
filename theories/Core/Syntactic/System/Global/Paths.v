@@ -5,7 +5,7 @@
     the same storage: in a well-formed context a closed description is the
     body stored at some path, its entries are what resolves below that path,
     the description a module expression denotes is unique, and it grows
-    with the context ([mdenote_grow]). *)
+    with the context ([mdenote_grow_all]). *)
 
 From Stdlib Require Import Lia List PeanoNat.
 

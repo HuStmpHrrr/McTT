@@ -1,7 +1,7 @@
 (** * Fundamental Theorem: Variables
 
     Substitution into a variable computes ([sb_extend]'s two clauses and
-    [exp_sub_shift_extend]), so only the variable rule itself is validated here,
+    [exp_sub_shift_extend]), so only the variable rule itself ([VariableCases]) needs a semantic proof,
     together with the semantic weakening lemma its induction step is an instance
     of: [#(S x)] is [(#x)[↑]ʷ], and the type it reports is [A[↑]ʷ].
 

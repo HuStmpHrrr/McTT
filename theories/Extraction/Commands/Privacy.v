@@ -1,8 +1,8 @@
 (** * Checking Privacy
 
     [decl_impl] computes where a member reached from a unit is declared, by
-    recursion on the order [mt_order] of member types, which follows aliases
-    exactly as [mdecl] does.  [refs_check] decides [acc_ok], and names the
+    recursion on the order of sites ([site_order_total]), which follows
+    aliases exactly as [mdecl] does.  [refs_check] decides [acc_ok], and names the
     first private member that is out of reach. *)
 
 From Stdlib Require Import List String.

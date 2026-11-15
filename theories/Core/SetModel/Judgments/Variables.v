@@ -1,4 +1,4 @@
-(** * The Set Rules of Variables
+(** * The Set Model of Variables
 
     A variable denotes its entry's term in the environment; at an
     environment of a valid context it is of its type, the type of its

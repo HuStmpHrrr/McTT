@@ -1,5 +1,8 @@
 # Core modules: decisions, paths taken, and the design as of 2026-10-03
 
+The file, lemma and tactic names below are historical: each is the name at the
+time of its decision, and many have since been renamed, moved or removed.
+
 This note records every decision made about local and global module bindings
 in the core, the alternatives that were rejected and why, and the current
 concrete design. It is written so that the effort can be restarted from it.

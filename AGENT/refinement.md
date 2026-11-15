@@ -24,7 +24,7 @@ sections so that both checkers can use them).
 
 ## The value of a type (`typ_val`)
 
-`typ_val G P v T`: the fast value `v` stands (`fast_value_simulation`) for
+`typ_val G P v T`: the fast value `v` stands (`domain_simulation`) for
 a value related by `per_univ i` to `⟦ T ⟧ ρ`, `ρ` the initial environment
 `P` agrees with, and `G ⊢ T : Typeω@i`.  It reads back to `T`
 (`typ_val_rtyp`), and a `fd_pi a ρ' b` that stands for `Πⁿ A B` gives, at an
@@ -38,7 +38,7 @@ so that the head of an application is a strict subterm at the order of a
 check: `type_infer_val_in` recurses through `type_infer_app_in` on an
 application and calls `type_infer_in` otherwise, both structurally.
 
-## The skipped recursive result (`Extraction/Evaluation/Evaluation/FastEval.v`, `FastRead.v`, `FastEquiv.v`, `Simulation.v`, `NbE.v`)
+## The skipped recursive result (`Extraction/Evaluation/FastEval.v`, `FastRead.v`, `FastEquiv.v`, `Simulation.v`, `NbE.v`)
 
 Core evaluates every recursive result of an eliminator (`eval_ihs`).  The
 fast relations (`FastEval.v`, `FastRead.v`) copy Core's at a mode
@@ -180,7 +180,7 @@ it), or a `{GC : GCtx}` instance.  The fix is a twin over `F`, or the
 indices taken from `F` (`{F : FCtx}`, as `blame_error` and
 `level_blame_app` do).
 
-## Fast values (`Extraction/Evaluation/Evaluation/FastDomain.v`)
+## Fast values (`Extraction/Evaluation/FastDomain.v`)
 
 The extracted evaluator and readback compute on `fdomain`, a copy of Core's
 `domain` in which a type former `fd_ind p oD k vs` and a constructor
@@ -200,18 +200,17 @@ constructor, a selection); its consumer looks it up.
   Θ Ξ p = Some D`).  The implementations take it of their inputs.
 - `fast_member_reference` is the fast result of `⟦mrefᶠ⟧`, with
   `fast_member_reference_erase` and `fast_member_reference_ok`.
-- `fast_value_simulation Θ Ξ a a' := domain_simulation Θ Ξ a (fdomain_erase a')
-  /\ fdomain_ok Θ Ξ a'` and `fast_env_agree Θ Ξ P ρ ρ' := env_agree Θ Ξ P ρ
-  (fenv_erase ρ') /\ fenv_ok Θ Ξ ρ'` (`Simulation.v`) relate reference
-  values to fast ones; `fast_env`, `typ_val` and the refinement theorems
-  of evaluation and the initial environment use them.
+- `fast_env_agree Θ Ξ P ρ ρ' := env_agree Θ Ξ P ρ
+  (fenv_erase ρ') /\ fenv_ok Θ Ξ ρ'` (`Simulation.v`) relates reference
+  environments to fast ones; `fast_env`, `typ_val` and the refinement theorems
+  of evaluation and the initial environment use it.
 - Tactics: `ferase_norm` rewrites erasures inwards through the operations
   (their erasure equations); `ok_solve` proves rightness from the parts.
   The operations are `#[local] Opaque` in each file that defines
   implementations, so that Equations does not unfold them in obligations
   (`Opaque` has no `export` form).
 
-## Stored values (`Extraction/Evaluation/Evaluation/FastValues.v`, `Command.v`)
+## Stored values (`Extraction/Evaluation/FastValues.v`, `Command.v`)
 
 A transparent definition a command adds is filed with the value its
 body, closed over the frames' parameters, has in the empty environment:
@@ -293,7 +292,7 @@ argument's value.  `app_cod G P N ρ b` evaluates `b` at `ρ ↦ 𝕌ω@0`,
 without evaluating the argument `N`, when `b` does not read its variable
 (`exp_freshb 0 b = true`), and at `ρ ↦ n`, `n` the value of `N`, otherwise
 (`app_cod_val`).  `typ_val` is up to `domain_simulation`, which relates closures only
-where their bodies read (`fast_eval_clo_unread`, `Simulation.v`), so the value
+where their bodies read (`Simulation.v`), so the value
 still stands for the normal form (`typ_val_app_cod_step`).  A numeral, a
 chain of `n` constructors typed by the spine rule, is typed in time linear
 in `n`: `eval succ 3200` takes 15 ms, 141 ms before.

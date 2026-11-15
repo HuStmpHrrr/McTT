@@ -138,8 +138,9 @@ so does the mechanization — but the mechanization also records *why it cannot
 have one*: `wf_sub` constrains `σ` only at the indices `Δ` types, whereas
 `eval_sub` is total, so `⋅ ⊢ˢ (fun _ => zero zero) : ⋅` holds vacuously
 while its semantic counterpart would need `zero zero` to have a value. Concrete
-substitutions are handled by lemmas in `Completeness/LogicalRelation/Substitution.v` and
-`Soundness/SubstitutionCases`-style helpers instead. The documents present the
+substitutions are handled by lemmas in `Completeness/LogicalRelation/Substitution.v` and,
+in the gluing model, by glued substitutions built from glued terms where they are
+needed instead. The documents present the
 omission as a design choice; here it is a necessity.
 
 ---
@@ -234,8 +235,8 @@ non-mutual inductions.
   and the tactics `solve_in`, `solve_incl`, `solve_chain_PER`, `pairwise`,
   `solve_rel_chain`, `merge_rel_chain`. The generalization from four values to
   a list is what makes merge statable once instead of per-case.
-- **`completeness_fundamental_typ_shift`** — a bespoke bridge for the soundness
-  variable case, discussed in §5.1.
+- **The soundness variable case** relates a type's value weakened past an entry
+  to its value in the tail, discussed in §5.1.
 - **The `Algorithmic`, `Extraction` and `Frontend` layers**: algorithmic
   subtyping and type checking, extraction to OCaml, a Menhir parser and
   elaborator. Neither document mentions them; they are 1 746 code lines, and the
@@ -275,7 +276,6 @@ counted as occurrences in proof scripts with comments stripped:
 | Lemma appealed to | Pre-port | Now |
 | --- | --- | --- |
 | `completeness_fundamental_exp` | 6 | 15 |
-| `completeness_fundamental_typ_shift` (new) | — | 2 |
 | `completeness_fundamental_subtyp` | 2 | 2 |
 | `completeness_fundamental_ctx` | 3 | 2 |
 | `completeness_fundamental_ctx_eq` | 1 | — |
@@ -298,10 +298,10 @@ completeness *before* the port (2 each), so the pattern is not new to those
 rules — only one extra appeal appears there.
 
 The variable case is worth spelling out, because it is the one place where a
-bespoke lemma had to be added to the completeness layer to serve soundness.
+bespoke lemma had to be added to serve soundness.
 `cons_glu_sub_pred` supplies the gluing at `⟦A⟧(ρ↯)` while the goal reads
-`⟦A[↑]ʷ⟧(ρ)`, and those are not equal. `completeness_fundamental_typ_shift`
-produces `Dom a ≈ a' ∈ per_univ i` between them and
+`⟦A[↑]ʷ⟧(ρ)`, and those are not equal. `glu_typ_shift_per`
+(`Soundness/LogicalRelation/Variables.v`) produces `Dom a ≈ a' ∈ per_univ i` between them and
 `glu_univ_elem_resp_per_univ` moves `P` and `El` across — exactly the
 paper's argument, and needed in *both* branches of the lookup induction, not
 only the base case the paper considers.
@@ -356,7 +356,7 @@ the expensive part.** Two observations:
   | `Completeness/LogicalRelation/Lemmas.v` | 38 | 520 | ×13.7 |
   | `Completeness/LogicalRelation/Substitution.v` | 257 | 640 | ×2.5 |
   | `Completeness/LogicalRelation/Definitions.v` | 51 | 113 | ×2.2 |
-  | `Completeness/NatCases.v` | 734 | 909 | ×1.24 |
+  | `Completeness/NatCases.v` (no longer in the tree) | 734 | 909 | ×1.24 |
   | `Completeness/FunctionCases.v` | 297 | 344 | ×1.16 |
   | `Completeness/ContextCases.v` | 70 | 55 | ×0.79 |
 

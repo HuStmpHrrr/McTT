@@ -210,8 +210,7 @@ rn_ok f s s' φ -> domain_nf_bounded s m -> Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rn
 
 **Consequences.**
 
-- `nbe_wk_fresh_sem` and `nbe_ty_wk_fresh_sem`: the normal form of a weakened
-  term is fresh at `#0`, because `nf_wk ↑ W` is (`nf_wk_fresh`).
+- `nbe_wk_fresh_sem`: the normal form of a weakened term is fresh at `#0`.
 - `exp_eq_strengthen_sem`: if `M` and `N` are terms of `Γ` and
   `Γ ▹ A ⊢ M[↑]ʷ ≈ N[↑]ʷ : T[↑]ʷ`, then `Γ ⊢ M ≈ N : T`. Completeness gives
   one normal form of `M[↑]ʷ` and `N[↑]ʷ`. It is `nf_wk ↑` of the normal form

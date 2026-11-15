@@ -202,8 +202,7 @@ be silently shelved and only bite at `Qed`.
   `⊨ Γ ≈ Γ'`. **Direction matters**: `ctxeq_nbe_ty_eq'` transports *from*
   its first context *to* its second, so the `nbe_ty` source context comes first.
 - `per_head_of` supplies the `per_head` premise of `per_bot_natrec_diag`;
-  `per_univ_of_instance` is the destruct pattern that cooperates with
-  `saturate_glu_by_per`.
+
 
 ### Soundness and Kripke weakening
 

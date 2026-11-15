@@ -8,7 +8,7 @@
     description of its module gives, and an open through its target in the
     context of the expanded body before it.  Wherever a lookup succeeds, the
     order asks for an order of what it found, so every module expression
-    that denotes has an order ([mdenote_order_of_mdenote]); so does a selection
+    that denotes has an order ([order_of_denote]); so does a selection
     from a well-formed module expression ([mdenote_order_mem_of_wf]), since the
     entries of the description of a well-formed module expression denote. *)
 

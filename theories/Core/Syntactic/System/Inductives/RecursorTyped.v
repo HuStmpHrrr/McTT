@@ -1,7 +1,7 @@
 (** * The Functions of a Recursor Module Type-Check
 
     The functions [rec_<member>] of the recursor module [Rec] a group
-    generates ([recursor_mod_cmd]) are of their types in the module's
+    generates ([recursor_mod_cmds]) are of their types in the module's
     telescope ([recursor_tele]): each is the group's eliminator at its member,
     at the motives, of branches that are the cases applied to what they
     bind ([recursor_fn_typed]). *)
@@ -681,7 +681,7 @@ Section GrecTyped.
   Qed.
 
   (** Each member's recursor is of its type over the module's telescope:
-      each member with a block's, as [recursor_mod_cmd] files them.  A group
+      each member with a block's, as [recursor_mod_cmds] files them.  A group
       without record views has [ind_block_members D = ind_members D], so this is
       every member there. *)
   Lemma recursor_fn_typed : forall j Mj, List.nth_error (ind_block_members D) j = Some Mj -> Θ ⍮ Ξ ⍮ CT ⊢ recursor_fn p D j Mj : recursor_fn_ty p D j Mj.

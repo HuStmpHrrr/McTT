@@ -1,4 +1,4 @@
-(** * The Set Rules of Universes
+(** * The Set Model of Universes
 
     The set judgments of the rules of the universes: a universe denotes
     its code, a member of the next universe's carrier. *)

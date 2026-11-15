@@ -729,7 +729,7 @@ Qed.
     type in the short context.  The induction is on the normal form, not on the
     derivation: each case inverts the long typing of its head ([CoreInversions]),
     strengthens the parts by the induction hypotheses, and moves the remaining
-    subtyping and equations with [subtyp_strengthen] and [exp_eq_strengthen].
+    subtyping and equations with [subtyp_strengthen_sort] and [exp_eq_strengthen].
     A neutral has no type of its own to be checked against, so its statement
     returns one: a short type whose weakening is below the long one. *)
 

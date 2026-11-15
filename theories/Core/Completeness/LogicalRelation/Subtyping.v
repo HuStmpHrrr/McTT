@@ -1,7 +1,7 @@
 (** * Subtyping
 
-    The four rules of [wf_subtyp] and the subsumption rule of [wf_exp_subtyp],
-    validated semantically.
+    What the four rules of [wf_subtyp] and the subsumption rule of
+    [wf_exp_subtyp] ([SubtypingCases]) rest on.
 
     At each instantiation, [rel_subtyp_under_ctx] states three facts: the two
     commutation links [⟦A[σ]⟧ρ ≈ ⟦A⟧ρσ] and [⟦A'[σ']⟧ρ' ≈ ⟦A'⟧ρ'σ'], and

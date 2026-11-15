@@ -2,7 +2,7 @@
 
     Substitution pushes through every level form by computation of [exp_sub]:
     [Level@n[σ]] is [Level@n], [(𝕃ᵒ o)[σ]] is [𝕃ᵒ o], and [succl] and [maxl] commute
-    with it.  So what is validated here is the typing of [Level@n] and of a level
+    with it.  So what needs a semantic proof ([LevelCases]) is the typing of [Level@n] and of a level
     literal, the congruence rules of [succl] and [maxl], and the level
     equations.
 

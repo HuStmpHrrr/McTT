@@ -121,7 +121,7 @@ Lemma type_sort_abs_kind_sort_inv : forall S, type_sort S -> exists κ (j : nat)
 Proof. intros S []; [ exists ak_relevant, i | exists ak_propositional, 0 | exists ak_level, 0 ]; reflexivity. Qed.
 
 (** The value of a type weakened past an entry is related to its value in
-    the tail ([completeness_fundamental_typ_shift] at any sort). *)
+    the tail, at any sort. *)
 Lemma glu_typ_shift_per : forall {Γ e κ A} {i : nat} {env_rel ρ},
     ⊢ (e :: Γ)%list ->
     Γ ⊢ A : abs_kind_sort κ Typeω@i ->

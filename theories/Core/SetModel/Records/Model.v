@@ -1,4 +1,4 @@
-(** * The Set Rules of Record Types
+(** * The Set Model of Record Types
 
     A record type former is its global value, of its closed type; a tuple
     is the graph of its fields on their names, and a projection its value

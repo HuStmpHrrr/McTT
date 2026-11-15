@@ -8,7 +8,7 @@
     body's module entries denote, where they are, descriptions whose images
     are what the moved entries denote ([mdenote_sub_all]).  The judgment is
     also moved along the parameters a description is abstracted over
-    ([no_level_up], [no_level_up_inv]). *)
+    ([no_level_up], [no_level_up_iff]). *)
 
 From Stdlib Require Import Lia List PeanoNat.
 From Stdlib Require String.

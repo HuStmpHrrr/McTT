@@ -11,7 +11,7 @@
     group's canonical model ([shape_char]).  At a shape that ends in a view,
     the type is the container's at the view's instance, whose relation is
     the group's at the view when the view's elements cohere
-    ([view_type_rel]). *)
+    ([view_end_rel_of_agreement]). *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
 

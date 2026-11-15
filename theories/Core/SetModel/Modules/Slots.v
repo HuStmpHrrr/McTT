@@ -1,4 +1,4 @@
-(** * The Set Rules of Extensions and Units
+(** * The Set Model of Extensions and Units
 
     Equal extensions relate the same environments.  Each side's entries
     are read in its own context, and a term has the same value read in two

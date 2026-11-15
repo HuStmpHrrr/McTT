@@ -540,8 +540,8 @@ Combined Scheme alg_type_mut_ind from
 (** ** User Expressions
 
     The expressions the type checker accepts.  Every [exp] is one
-    ([user_exp_all]); the predicate exists because [type_check_closed] is
-    indexed by it. *)
+    ([user_exp_all]); the completeness of the algorithmic judgments
+    ([alg_type_infer_typ_complete]) takes it as a premise. *)
 Generalizable All Variables.
 
 Inductive user_exp : exp -> Prop :=

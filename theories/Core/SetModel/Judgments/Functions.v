@@ -1,4 +1,4 @@
-(** * The Set Rules of Functions
+(** * The Set Model of Functions
 
     The denotations of [Π] types and of λs, from those of their parts,
     and the set judgments of the rules of functions.  A λ's kind is read

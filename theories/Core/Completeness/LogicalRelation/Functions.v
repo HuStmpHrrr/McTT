@@ -2,7 +2,7 @@
 
     Substitution pushes through [Π], [λ] and application by computation of
     [exp_sub]: [(a_pi r A B)[σ]] is [a_pi r (A[σ]) (B[q σ])].  So only the
-    congruence, β and η rules are validated here.
+    congruence, β and η rules ([FunctionCases]) need a semantic proof.
 
     A [Π] carries a relevance tag.  At [relevant] it is a type of functions
     in a universe: its domain is a type of that universe, a proposition (a

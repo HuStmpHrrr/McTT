@@ -1,7 +1,7 @@
 (** * The Universe
 
-    The rules that mention the universe directly ([wf_typ] and
-    [wf_exp_eq_typ_cong]), and cumulativity ([rel_exp_cumu]), which brings any two
+    What the rules that mention the universe directly ([wf_typ] and
+    [wf_exp_eq_typ_cong], in [UniverseCases]) rest on, and cumulativity ([rel_exp_cumu]), which brings any two
     type judgments to a common level.  [Typeω@i[σ]] is [Typeω@i] because [exp_sub]
     computes on it, so the universe has no substitution rule.
 

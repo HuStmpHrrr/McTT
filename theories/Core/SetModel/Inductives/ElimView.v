@@ -1,4 +1,4 @@
-(** * The Set Rule of the Eliminator at a View
+(** * The Set Model of the Eliminator at a View
 
     The eliminator of a group [D] at its view [m] of the container's
     declared member [k'] at the instance [Is] is, in the model, the

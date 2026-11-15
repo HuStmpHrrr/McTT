@@ -14,7 +14,7 @@
 
     Evaluation, from environments that agree where the term may read, gives
     values related by [domain_simulation] ([fast_eval_sim]), and readback of related values
-    gives the same normal form ([fast_read_sim]).  So both evaluations normalize
+    gives the same normal form ([fast_read_simulation]).  So both evaluations normalize
     alike, which is what [Extraction.Evaluation.NbE] needs. *)
 From Stdlib Require Import Lia List PeanoNat String.
 

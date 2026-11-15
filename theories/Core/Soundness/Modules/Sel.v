@@ -4,7 +4,7 @@
     selection ([glu_dmod_sel]).  A value lacking a parameter recurses
     through its applications: the selection from the application is moved
     to the application of the selection, which has the same module part
-    ([mdenote_mem_app_part]), by the transfer between module expressions
+    ([mdenote_mem_app_of_app_mem]), by the transfer between module expressions
     with the same module part ([glu_dmod_same_part_typed]).  The transfer
     needs no equation between the module expressions: their members are
     equal through their δ-reducts or as the filed members they are

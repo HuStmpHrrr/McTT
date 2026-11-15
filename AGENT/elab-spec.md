@@ -31,8 +31,7 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   entry `scope_entry_mem x q n` records the `n` binders outside it, `binders S` of the
   scope it is declared in: exactly the parameters it is generalized over.  A
   use is pre-applied to `outer_param_vars k n`.  A scope only grows at its front, so
-  the count stays right (`mems_counted`, `spec_cmd_mems_counted`,
-  `bound_mem_counted` in `ElabCorrect.v`), and a lookup never reads past the
+  the count stays right, and a lookup never reads past the
   entry it finds.
 * A command is read in one scope `S`, the frame's entries so far followed by
   everything outside it, and pushes its declarations on the front: nothing is

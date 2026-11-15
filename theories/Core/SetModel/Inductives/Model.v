@@ -1,4 +1,4 @@
-(** * The Set Rules of Inductive Types and Constructors
+(** * The Set Model of Inductive Types and Constructors
 
     A type former and a constructor are their global values, of their
     closed types; a closed type has one value at every environment

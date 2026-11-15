@@ -1,4 +1,4 @@
-(** * The Set Rules of Subtyping
+(** * The Set Model of Subtyping
 
     A subtype's carriers are in the supertype's: universes grow with their
     indices, types of levels with their sorts, small universes are in the

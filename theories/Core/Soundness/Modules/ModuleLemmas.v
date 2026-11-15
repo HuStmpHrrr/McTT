@@ -1,6 +1,6 @@
 (** * The Global Rules in the Gluing Model, at the Target
 
-    The soundness counterpart of [Core/Completeness/ModuleCases.v]: the
+    The soundness counterpart of [Core/Completeness/Modules/ModuleLemmas.v]: the
     members and the module expressions, at every target of a sound
     embedding ([glu_gctx_embedding]).  A member is glued by
     [glu_rel_exp_member_under_sub], read through the stored modules its

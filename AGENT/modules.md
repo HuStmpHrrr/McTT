@@ -1,5 +1,9 @@
 # Modules, Global and Local Bindings
 
+Several files this note names are no longer in the tree: `GlobalCtx.v`,
+`ModSubst.v`, `System/Transport.v`, `System/Discharge.v` and
+`Frontend/Resolve.v`.
+
 The design as built.  The request it implements is
 [`modules-spec.md`](modules-spec.md); everything below that contradicts it is
 listed under [Deviations](#deviations-from-the-specification).

@@ -3,7 +3,8 @@
     The gluing of module values ([glu_dmod]) read through substitutions
     and equations of module expressions, the environment of a body glued
     along the body's context ([glu_body_env]), and the closure of a glued
-    unit's literal glued as the literal ([glu_lit_modexp_at]): the
+    unit's literal glued as the literal ([glu_lit_body_modexp_at],
+    [glu_lit_alias_modexp_at]): the
     producer of the slot clause of the context gluing. *)
 
 From Stdlib Require Import Lia List PeanoNat.

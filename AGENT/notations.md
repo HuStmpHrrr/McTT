@@ -116,7 +116,7 @@ arguments and at the branches of a stuck eliminator follows `Rps`:
 fresh variables of readback are `Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs`
 (`fresh_tele`), `Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs` (`fresh_cargs`)
 and `Fihs vs at gs under ρm A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ihs` (`fresh_ihs`).  The
-extracted evaluation and readback (`Extraction/Evaluation/Evaluation/FastEval.v`) carry a `ᶠ` on
+extracted evaluation and readback (`Extraction/Evaluation/FastEval.v`) carry a `ᶠ` on
 every keyword: `⟦ihᶠ … ⟧ᶠ`, `⟦shtyᶠ … ⟧ᶠ`, `⟦ihtyᶠ … ⟧ᶠ`, `Rcargsᶠ`,
 `Rbrsᶠ`, `Fteleᶠ`, `Fcargsᶠ`, and `Fihsᶠ vs at gs under ρm A for B in …`,
 whose branch `B` is the one of `⟦ihsᶠ … for B ⟧ᶠ`.  The domain predicates of

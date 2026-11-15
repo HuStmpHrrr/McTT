@@ -2,8 +2,8 @@
 
     The syntactic helpers of [Members] commute with the operations: a
     telescope, a body and a member chain are moved entry by entry, under the
-    binders before each entry.  The relation [member_type] and the function
-    [member_unfold] commute with a weakening and with a substitution that sends
+    binders before each entry.  Descriptions and what is read off them
+    ([mdesc_type_wk], [mdesc_type_sub]) commute with a weakening and with a substitution that sends
     every module slot to the same unit ([wf_sub]'s module field), and they grow
     with the global context. *)
 
