@@ -19,7 +19,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup Paths 
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Completeness.Modules Require Import Values ModuleValues.
 From Mctt.Core.Semantic Require Import Evaluation.Modules.
-From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases Modules.ModuleValues.
+From Mctt.Core.Soundness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Variables Modules.ModuleValues.
 From Mctt.Core.Soundness.Global Require Import Values.
 From Mctt.Core.Soundness.Inductives Require Import Args.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.

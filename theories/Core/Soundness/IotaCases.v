@@ -22,13 +22,13 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup.
 From Mctt.Core.Soundness Require Import
-  ContextCases
-  FunctionCases
-  LevelCases
+  LogicalRelation.Contexts
+  LogicalRelation.Functions
+  LogicalRelation.Levels
   LogicalRelation
-  SubtypingCases
-  VariableCases
-  UniverseCases
+  LogicalRelation.Subtyping
+  LogicalRelation.Variables
+  LogicalRelation.Universes
   LogicalRelation.Instance.
 Require Import Mctt.Core.Soundness.Inductives.Con.
 Require Import Mctt.Core.Soundness.Inductives.Elim.

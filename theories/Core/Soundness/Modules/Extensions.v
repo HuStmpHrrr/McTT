@@ -70,44 +70,5 @@ End Fixed_GCtx.
 
 #[local] Generalizable All Variables.
 
-Lemma glu_ext_eq_nil :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ˣ ⋅ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ ⋅ ).
-Proof. intros * HΓ; split; intros Θ2 Ξ2 Hμ; exact (HΓ _ _ Hμ). Qed.
 
-(** An assumption: its type at a sort of its kind, on each side. *)
-Lemma glu_ext_eq_ass :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ' ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ A : Srt ->
-     sort_kind Srt κ ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ A' : Srt' ->
-     sort_kind Srt' κ ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ ▹{κ} A) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ' ▹{κ} A') ).
-Proof.
-  intros * [HΨ HΨ'] HA HS HA' HS'; split; intros Θ2 Ξ2 Hμ.
-  - destruct (HΨ _ _ Hμ) as [He Hd]; split; [ split; [ exact He | exists Srt; split; [ exact HS | exact (proj1 (HA _ _ Hμ)) ] ] |].
-    apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
-  - destruct (HΨ' _ _ Hμ) as [He Hd]; split; [ split; [ exact He | exists Srt'; split; [ exact HS' | exact (proj1 (HA' _ _ Hμ)) ] ] |].
-    apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
-Qed.
 
-(** A definition: its type at a sort of types and its body at the type, on
-    each side. *)
-Lemma glu_ext_eq_def :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ' ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ A : Srt ->
-     type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ A' : Srt' ->
-     type_sort Srt' ->
-     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ M : A ->
-     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ M' : A' ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ ▸ A ≔ M) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ' ▸ A' ≔ M') ).
-Proof.
-  intros * [HΨ HΨ'] HA HS HA' HS' HM HM'; split; intros Θ2 Ξ2 Hμ.
-  - destruct (HΨ _ _ Hμ) as [He Hd]; split; [ split; [ exact He |] |].
-    + exists Srt; constructor; [ exact HS | exact (proj1 (HA _ _ Hμ)) | exact (proj1 (HM _ _ Hμ)) ].
-    + apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
-  - destruct (HΨ' _ _ Hμ) as [He Hd]; split; [ split; [ exact He |] |].
-    + exists Srt'; constructor; [ exact HS' | exact (proj1 (HA' _ _ Hμ)) | exact (proj1 (HM' _ _ Hμ)) ].
-    + apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
-Qed.

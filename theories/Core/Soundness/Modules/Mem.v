@@ -21,9 +21,9 @@ From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Un
 From Mctt.Core.Completeness.Modules Require Import Values.
 From Mctt.Core.Completeness.Modules Require Filed Mem.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Soundness Require Import LogicalRelation VariableCases Modules.ModuleValues Modules.Sel Modules.App.
+From Mctt.Core.Soundness Require Import LogicalRelation LogicalRelation.Variables Modules.ModuleValues Modules.Sel Modules.App.
 From Mctt.Core.Soundness.Inductives Require Import Args.
-From Mctt.Core.Soundness Require UniverseCases.
+From Mctt.Core.Soundness Require LogicalRelation.Universes.
 From Mctt.Core.Completeness.Consequences Require UptoProofs.
 From Mctt.Core.Soundness.Global Require Import Values.
 From Mctt.Core.Soundness Require Import Modules.UnitDeep Modules.ModexpInstances.
@@ -1469,11 +1469,11 @@ Section MembersFromSource.
     intros * HH Hnf Hsrc Hm Ht HS HAt Hx HHg HAg.
     assert (HSk : Srt = Propₘ \/ exists κ (i : nat), evaluated_kind κ /\ Srt = abs_kind_sort κ Typeω@i)
       by (destruct HS; [ right; exists ak_relevant, i | left | right; exists ak_level, 0 ]; (split; [ constructor |]) || idtac; reflexivity).
-    destruct HSk as [-> | (κ & i & Hκ & ->)]; [ exact (Soundness.UniverseCases.glu_rel_exp_proof HAg Hx) |].
+    destruct HSk as [-> | (κ & i & Hκ & ->)]; [ exact (Soundness.LogicalRelation.Universes.glu_rel_exp_proof HAg Hx) |].
     destruct (presup_ctx_glu_rel_exp HAg) as [Sb HSb].
     eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ exact HSb |].
     intros Δ σ ρ Hσ.
-    destruct (Soundness.UniverseCases.glu_rel_exp_kind_sort_large_inversion HSb HAg _ _ _ Hσ) as [HAσ (a & Ea & Ha & HaP)].
+    destruct (Soundness.LogicalRelation.Universes.glu_rel_exp_kind_sort_large_inversion HSb HAg _ _ _ Hσ) as [HAσ (a & Ea & Ha & HaP)].
     destruct (per_univ_glu_univ_elem _ _ Ha) as (P & El & Hga).
     pose proof (HaP _ _ Hga) as HAP.
     destruct (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hga HAP HAσ) as [Hka _].
@@ -1683,7 +1683,7 @@ Section MembersFromSource.
     pose proof (glu_rel_exp_under_sub_inst _ _ _ HAg _ _ Hτ) as HAτ; rewrite ESrt in HAτ.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hx Hτt) as Hxτ.
     (** At a proposition, by its typing *)
-    destruct HS as [i | | ]; [| exact (Soundness.UniverseCases.glu_rel_exp_proof HAτ Hxτ) |].
+    destruct HS as [i | | ]; [| exact (Soundness.LogicalRelation.Universes.glu_rel_exp_proof HAτ Hxτ) |].
     all: cbn [exp_sub] in Hxτ |- *.
     all: pose proof (sub_preserves_exp _ _ _ _ _ _ _ HAt Hτt) as HAtτ; rewrite ESrt in HAtτ.
     (** At an evaluated kind: the member's kind, the sort's *)

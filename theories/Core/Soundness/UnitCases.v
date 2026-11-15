@@ -1,351 +1,201 @@
-(** * Module [let]s in the Gluing Model
+(** * The Rules of Extensions and Units
 
-    Module values are not glued.  A module slot glues by its syntactic typing
-    and by the tie of its value to the closure of its unit
-    ([cons_mod_glu_sub_pred]).  A module [let] glues through its body, at the
-    environment extended by the unit's closure: the term is equal to the
-    body's instance syntactically ([glu_univ_elem_trm_resp_exp_eq]), its
-    value is the body's, and it is moved from the body's type's value to the
-    related value of its own type at that type's gluing, its witness
-    ([glu_univ_elem_exp_conv]). *)
+    The rules of [⊢ˣ] (equal extensions) and of [⊢ᵘ] (equal units) in the
+    gluing model.  The lemmas they rest on are in [Modules/Extensions.v]
+    and [Modules/UnitEq.v]. *)
 
+From Stdlib Require Import Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Lets Modules.Slots LogicalRelation.Universes.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Soundness Require Import
-  ContextCases
-  LogicalRelation
-  VariableCases
-  Modules.ModuleValues
-  LogicalRelation.Instance.
+From Mctt.Core.Syntactic Require Import System.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas.
+From Mctt.Core.Soundness Require Import LogicalRelation LogicalRelation.Instance Modules.Extensions Modules.UnitEq.
 Import Domain_Notations Wk_Notations Fixed_Notations.
-
-Section Fixed_GCtx.
-  Context {GC : GCtx}.
-
-(** The value of a type under the module [let] of a unit: the value of the
-    type substituted by the unit's literal is related to the value of the
-    type at the environment extended by the unit's closure
-    ([rel_exp_let_mod_gen] at the type, a term of its sort). *)
-Lemma let_mod_typ_value : forall {Γ U C R},
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
-    gc_deps ⍮ gc_stack ⍮ Γ ▹ₘ U ⊢ᵗ C ->
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
-    exists (i : nat), forall ρ h,
-      Dom ρ ≈ ρ ∈ R ->
-      ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h ->
-      exists c' c, ⟦ C[Id ,,ₘ me_lit U] ⟧ ρ ↘ c' /\ ⟦ C ⟧ ρ ↦ᵐ h ⦂ U ↘ c /\ Dom c' ≈ c ∈ per_univ i.
-Proof.
-  intros * HU HCt HR.
-  inversion HCt as [? S HS HCs | ?]; subst.
-  - pose proof (proj1 (proj2 completeness_fundamental_modules) _ _ _ HU) as HUc.
-    pose proof (completeness_fundamental_exp _ _ _ HCs) as HCc.
-    pose proof (wf_unit_eq_scoped_left _ _ _ _ _ HU) as HUs.
-    pose proof (rel_exp_let_mod_gen HUc HCc HUs HUs) as Hz.
-    assert (HSs : S[Id ,,ₘ me_lit U] = S) by (destruct HS; reflexivity).
-    rewrite HSs in Hz.
-    destruct (rel_type_of_sort HS Hz) as [i Hi].
-    exists i; intros ρ h Hρ Hh.
-    destruct (rel_type_inversion_simple_at HR Hi _ _ Hρ) as (c' & c0 & Ec' & Ec0 & Hc).
-    exists c', c0; split; [ exact Ec' | split; [| exact Hc ] ].
-    destruct U as [Δu Du]; inversion Ec0; subst.
-    match goal with Hcl : ⟦ Δu ⊢ Du ⟧ᶜ _ ⍮ _ ⍮ ρ ↘ ?h0 |- _ =>
-      assert (h0 = h) as -> by (eapply functional_eval_modexp; [ apply eval_me_lit_iff; exact Hcl | exact Hh ]) end.
-    assumption.
-  - (** [LevelSort], substituted or not *)
-    exists 0; intros ρ h _ _; exists LevelSortᵈ, LevelSortᵈ; repeat split; [ constructor | constructor |].
-    eexists; apply per_univ_elem_level_sort_univ; exact I.
-Qed.
-
-(** ζ for a module [let]: [σ,,ₘ⌜U[σ]⌝] glues with [ρ ↦ᵐ ⟦⌜U⌝⟧ρ] into
-    [Γ ▹ₘ U], the tie being the unit's closure related to itself. *)
-Lemma glu_rel_exp_let_mod : forall {Γ U C S B},
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
-    Γ ▹ₘ U ⊢ C : S ->
-    type_sort S ->
-    module_body_sort S ->
-    Γ ▹ₘ U ⊢ B : C ->
-    Γ ▹ₘ U ⊩ B : C ->
-    Γ ⊩ C[Id ,,ₘ me_lit U] : S ->
-    Γ ⊩ ℓₘ U in B : C[Id ,,ₘ me_lit U].
-Proof.
-  intros * HU HCs HS HSm HBt HB HW.
-  assert (HCt : Γ ▹ₘ U ⊢ᵗ C) by (econstructor; eassumption).
-  pose proof HB as [SbU HΓU k HBi].
-  inversion HΓU as [| | | ? ? TSb ? HΓ _ _ HSbU |]; subst.
-  destruct (glu_ctx_env_per_ctx_env HΓ) as [R HR].
-  destruct (let_mod_typ_value HU HCt HR) as [i HCv].
-  assert (HSk : exists κ, sort_kind S κ) by (destruct HS; eexists; constructor).
-  destruct HSk as [κW HSk].
-  destruct (glu_rel_exp_sort_typ HW HSk) as (SbW & kW & HSbW & _ & HWg).
-  assert (EW : TSb <∙> SbW) by (eapply functional_glu_ctx_env; eassumption).
-  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := kW); [ exact HΓ |].
-  intros Δ σ ρ Hσ.
-  pose proof (glu_ctx_env_sub_escape HΓ _ _ _ Hσ) as Hσs.
-  pose proof (glu_ctx_env_per_env HΓ HR Hσ) as Hρ.
-  (* the unit's closure, related to itself *)
-  assert (HUl : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U) by (apply wf_me_lit; exact HU).
-  destruct (rel_modexp_at _ _ _ _ _ (proj2 (proj2 completeness_fundamental_modules) _ _ _ HUl) HR _ _ Hρ)
-    as (h & h' & Hh & Hh' & Hhh).
-  pose proof (functional_eval_modexp _ _ _ _ Hh' Hh) as ->.
-  assert (Hσ' : Δ ⊢ˢ σ ,,ₘ me_lit U[σ]ᵘ ® ρ ↦ᵐ h ⦂ U ∈ SbU).
-  { apply HSbU; econstructor.
-    - apply wf_sub_extend_mod; [ exact Hσs | exact HU | eapply sub_preserves_unit; eassumption ].
-    - exists h; split; [ exact Hh | exact Hhh ].
-    - (** The slot's value, glued as the unit's literal by the context's
-          slot premise *)
-      eapply (proj1 glu_dmod_resp_sub_eq); [ exact (glu_ctx_env_lit_inversion HΓ HΓU eq_refl _ _ _ _ Hσ Hh) |].
-      apply wf_sub_eq_of_sb_eq; [ exact Hσs | apply sb_eq_wk_extend_mod ].
-    - eexists; reflexivity.
-    - split; [ apply mod_entry_readable | cbn; exact (gunit_scoped_free_bound _ _ (wf_unit_eq_scoped_left _ _ _ _ _ HU)) ].
-    - exact Hσ. }
-  destruct (HBi _ _ _ Hσ') as [c b Pc Elc Hc Hb Hgluc HBσ].
-  destruct (HCv _ _ Hρ Hh) as (c' & c'' & Hc' & Hc'' & Hcc).
-  functional_eval_rewrite_clear.
-  (** The witness: the type glued at its value *)
-  destruct (HWg _ _ _ (proj1 (EW _ _ _) Hσ)) as [c0 Pw Elw Ec0 Hglu'' HWσ].
-  assert (c0 = c') by (eapply functional_eval_exp; eassumption); subst c0; clear Ec0.
-  destruct Hcc as [Rc Hcc].
-  assert (Hζ0 : Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U]) by (eapply wf_exp_eq_let_mod_zeta; eassumption).
-  assert (Hζ : Δ ⊢ (ℓₘ U in B)[σ] ≈ B[Id ,,ₘ me_lit U][σ] : C[Id ,,ₘ me_lit U][σ])
-    by (eapply sub_preserves_exp_eq; [ exact Hζ0 | eassumption ]).
-  rewrite (exp_sub_extend_mod_sub B), (exp_sub_extend_mod_sub C) in Hζ.
-  change ((me_lit U)[σ]ᵐ) with (me_lit U[σ]ᵘ) in *.
-  assert (HN0 : Δ ⊢ (ℓₘ U in B)[σ] : C[Id ,,ₘ me_lit U][σ] ® b ∈ Elc).
-  { rewrite (exp_sub_extend_mod_sub C).
-    eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hgluc | exact HBσ | apply wf_exp_eq_sym; exact Hζ ]. }
-  assert (Hcc' : Dom c ≈ c' ∈ per_univ i) by (eexists; symmetry; exact Hcc).
-  pose proof (glu_univ_elem_exp_conv Hcc' Hgluc Hglu'' HN0 HWσ) as HN.
-  (** The term's value at the kind of its type *)
-  assert (Hevb : evaluated_kind (domain_kind c') -> ⟦ ℓₘ U in B ⟧ ρ ↘ b).
-  { intros Hev.
-    rewrite (per_univ_elem_kind _ _ _ _ Hcc) in Hev.
-    destruct (domain_kind c); cbn in Hb; try solve [ inversion Hev ];
-      destruct U as [Δu Du]; apply eval_me_lit_iff in Hh; eapply eval_exp_let_mod; eassumption. }
-  destruct (glu_term_value_intro Hglu'' HΓ Hσ (presup_exp_eq_left Hζ0) Hevb HN) as (m' & Hm' & HMg).
-  econstructor; [ exact Hc' | exact Hm' | exact Hglu'' | exact HMg ].
-Qed.
-
-(** The value of a type under a [let] with a module part: the value of
-    the type instantiated by the definiens and the unit's literal is
-    related to the value of the type at the environment extended by both
-    ([rel_exp_under_ctx_let_dm_zeta] at the type, a term of its sort). *)
-Lemma let_dm_typ_value : forall {Γ A M U C S R} {i : nat},
-    Γ ⊢ A : Typeω@i ->
-    Γ ⊢ M : A ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
-    Γ ▸ₘ A ≔ M ‖ U ⊢ C : S ->
-    type_sort S ->
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
-    exists j : nat, forall ρ a m h,
-      Dom ρ ≈ ρ ∈ R ->
-      ⟦ A ⟧ ρ ↘ a ->
-      ⟦ M ⟧ ρ ↘ m ->
-      ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h ->
-      exists c c', ⟦ C[Id ,,ᵈ M ‖ me_lit U] ⟧ ρ ↘ c /\ ⟦ C ⟧ ρ ↦ᵈ m ⦂ entry_type_value a ‖ h ⦂ U ↘ c' /\
-              Dom c ≈ c' ∈ per_univ j.
-Proof.
-  intros * HA HM HU HC HS HR.
-  pose proof (completeness_fundamental_exp _ _ _ HA) as HAc.
-  pose proof (completeness_fundamental_exp _ _ _ HM) as HMc.
-  pose proof (proj1 (proj2 completeness_fundamental_modules) _ _ _ HU) as HUc.
-  pose proof (completeness_fundamental_exp _ _ _ HC) as HCc.
-  assert (HMs : exp_scoped (List.length Γ) M) by exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HM))).
-  pose proof (wf_unit_eq_scoped_left _ _ _ _ _ HU) as HUs.
-  pose proof (rel_exp_under_ctx_let_dm_zeta HAc HMc HUc HMs HUs HCc) as Hz.
-  assert (HSs : S[Id ,,ᵈ M ‖ me_lit U] = S) by (destruct HS; reflexivity).
-  rewrite HSs in Hz.
-  destruct (rel_type_of_sort HS Hz) as [j Hj].
-  exists j; intros ρ a m h Hρ Ha Hm Hh.
-  destruct (rel_type_inversion_simple_at HR Hj _ _ Hρ) as (c1 & c & Ec1 & Ec & Hc).
-  exists c, c1; split; [ exact Ec | split; [| symmetry; exact Hc ] ].
-  inversion Ec1; subst; functional_eval_rewrite_clear; assumption.
-Qed.
-
-(** ζ for a [let] with a module part: [σ ,,ᵈ M[σ] ‖ ⌜U[σ]⌝] glues with [ρ]
-    extended by [M]'s value and the unit's closure into the context, as a
-    definition's head and as a slot's. *)
-Lemma glu_rel_exp_let_dm : forall {Γ A M E C S B} {i : nat},
-    Γ ⊩ A : Typeω@i ->
-    Γ ⊩ M : A ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
-    Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : S ->
-    type_sort S ->
-    module_body_sort S ->
-    Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊩ B : C ->
-    Γ ⊩ C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] : S ->
-    Γ ⊩ ℓᵈ A ≔ M ‖ (gu_mk nil (md_alias E)) in B : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))].
-Proof.
-  intros * HA HM HU HCt HS HSm HB HW.
-  set (U := gu_mk nil (md_alias E)) in *.
-  assert (HSk : exists κ, sort_kind S κ) by (destruct HS; eexists; constructor).
-  destruct HSk as [κW HSk].
-  destruct (glu_rel_exp_sort_typ HW HSk) as (SbW & kW & HSbW & _ & HWg).
-  pose proof (glu_rel_exp_to_wf_exp HA) as HAt.
-  pose proof (glu_rel_exp_to_wf_exp HM) as HMt.
-  pose proof (glu_rel_exp_to_wf_exp HB) as HBt.
-  destruct (presup_ctx_glu_rel_exp HA) as [SbΓ HSbΓ].
-  destruct (presup_ctx_glu_rel_exp HB) as [SbD HSbD].
-  destruct (glu_ctx_env_cons_dm_clean_inversion HSbΓ HSbD) as (i' & HAi & _ & _ & _ & HMg & ESb).
-  destruct (glu_rel_exp_clean_inversion1 HSbD HB) as [k HBk].
-  destruct (glu_ctx_env_per_ctx_env HSbΓ) as [R HR].
-  destruct (let_dm_typ_value HAt HMt HU HCt HS HR) as [j HCv].
-  assert (Hζ0 : Γ ⊢ ℓᵈ A ≔ M ‖ U in B ≈ B[Id ,,ᵈ M ‖ me_lit U] : C[Id ,,ᵈ M ‖ me_lit U])
-    by (eapply wf_exp_eq_let_dm_zeta; [ exact HAt | exact HMt | exact HU | exact HCt | exact HS | exact HSm | exact HBt ]).
-  pose proof (wf_unit_eq_scoped_left _ _ _ _ _ HU) as HUs.
-  assert (HUl : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U) by (apply wf_me_lit; exact HU).
-  assert (EW : SbΓ <∙> SbW) by (eapply functional_glu_ctx_env; eassumption).
-  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := kW); [ exact HSbΓ |].
-  intros Δ σ ρ Hσ.
-  pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ) as Hσt.
-  pose proof (glu_ctx_env_per_env HSbΓ HR Hσ) as Hρ.
-  destruct (HMg _ _ _ Hσ) as [a m P El Ea Hm Hglu HMσ].
-  (** The type is of a universe, so the definiens' value is evaluated *)
-  assert (Hka : domain_kind a = ak_relevant).
-  { assert (HAσ : Δ ⊢ A[σ] : abs_kind_sort ak_relevant Typeω@i') by (cbn; exact (sub_preserves_exp _ _ _ _ _ _ _ HAi Hσt)).
-    exact (proj1 (glu_univ_elem_typ_kind _ _ _ _ _ _ _ _ Hglu (glu_univ_elem_trm_typ _ _ _ _ Hglu _ _ _ _ HMσ) HAσ)). }
-  rewrite Hka in Hm; cbn in Hm.
-  destruct (rel_modexp_at _ _ _ _ _ (proj2 (proj2 completeness_fundamental_modules) _ _ _ HUl) HR _ _ Hρ)
-    as (h & h' & Hh & Hh' & Hhh).
-  pose proof (functional_eval_modexp _ _ _ _ Hh' Hh) as ->.
-  destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [Ra HRa].
-  pose proof (glu_univ_elem_per_elem _ _ _ _ Hglu _ _ _ _ _ HMσ HRa) as Hmm.
-  pose proof (glu_univ_elem_trm_escape _ _ _ _ Hglu _ _ _ _ HMσ) as HMσt.
-  assert (Hc : Δ ⊢ˢ σ ,,ᵈ M[σ] ‖ me_lit U[σ]ᵘ ® ρ ↦ᵈ m ⦂ entry_type_value a ‖ h ⦂ U ∈ SbD).
-  { apply ESb; econstructor; [ | exact Ea | exact Hglu | | | | | | | ].
-    - eapply wf_sub_extend_dm; [ exact Hσt | exact HAi | exact HMt | exact HU | exact HMσt | apply wf_exp_eq_refl; exact HMσt
-                               | eapply sub_preserves_unit; eassumption ].
-    - rewrite exp_sub_shift_extend; exact HMσ.
-    - exists m; split; [ exact Hm | exact (per_head_of Ea Ea HRa Hmm) ].
-    - exists h; split; [ exact Hh | exact Hhh ].
-    - (** The module part's value, glued as the unit's literal by the
-          context's slot premise *)
-      eapply (proj1 glu_dmod_resp_sub_eq); [ exact (glu_ctx_env_lit_inversion HSbΓ HSbD eq_refl _ _ _ _ Hσ Hh) |].
-      apply wf_sub_eq_of_sb_eq; [ exact Hσt | apply sb_eq_wk_extend_dm ].
-    - (** The stored type is the type's value *)
-      eexists; split; [ reflexivity |].
-      refine (mk_glu_stored_type _ _ _ _ _ i' a P El ltac:(constructor) Hglu _).
-      rewrite exp_sub_shift_extend; exact HMσ.
-    - split; [| cbn; exact (gunit_scoped_free_bound _ _ HUs) ].
-      intros s; destruct (proj1 (entry_readable_of_elem HRa Hmm) s) as [b Hb].
-      inversion Hb; subst; eexists; eapply read_entry_dm; eassumption.
-    - first [ exact Hσ | cbn; exact Hσ | eapply glu_ctx_env_sub_resp_sub_eq; [ eassumption | exact Hσ | mauto 3 ] ]. }
-  destruct (HBk _ _ _ Hc) as [c' b Pc Elc Ec' Hb Hgc HBσ].
-  destruct (HCv _ _ _ _ Hρ Ea Hm Hh) as (c & c'' & Ec & Ec'' & Hcc).
-  functional_eval_rewrite_clear.
-  (** The witness: the type glued at its value *)
-  destruct (HWg _ _ _ (proj1 (EW _ _ _) Hσ)) as [c0 Pw Elw Ec0 Hglu'' HWσ].
-  assert (c0 = c) by (eapply functional_eval_exp; eassumption); subst c0; clear Ec0.
-  destruct Hcc as [Rc Hcc].
-  assert (Hζ : Δ ⊢ (ℓᵈ A ≔ M ‖ U in B)[σ] ≈ B[Id ,,ᵈ M ‖ me_lit U][σ] : C[Id ,,ᵈ M ‖ me_lit U][σ])
-    by (eapply sub_preserves_exp_eq; [ exact Hζ0 | exact Hσt ]).
-  rewrite (exp_sub_extend_dm_sub B), (exp_sub_extend_dm_sub C) in Hζ.
-  change ((me_lit U)[σ]ᵐ) with (me_lit U[σ]ᵘ) in *.
-  assert (HN0 : Δ ⊢ (ℓᵈ A ≔ M ‖ U in B)[σ] : C[Id ,,ᵈ M ‖ me_lit U][σ] ® b ∈ Elc).
-  { rewrite (exp_sub_extend_dm_sub C).
-    eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hgc | exact HBσ | apply wf_exp_eq_sym; exact Hζ ]. }
-  assert (Hc'c : Dom c' ≈ c ∈ per_univ j) by (eexists; symmetry; exact Hcc).
-  pose proof (glu_univ_elem_exp_conv Hc'c Hgc Hglu'' HN0 HWσ) as HN.
-  (** The term's value at the kind of its type *)
-  assert (Hevb : evaluated_kind (domain_kind c) -> ⟦ ℓᵈ A ≔ M ‖ U in B ⟧ ρ ↘ b).
-  { intros Hev.
-    rewrite (per_univ_elem_kind _ _ _ _ Hcc) in Hev.
-    destruct (domain_kind c'); cbn in Hb; try solve [ inversion Hev ];
-      eapply eval_exp_let_dm; eassumption. }
-  destruct (glu_term_value_intro Hglu'' HSbΓ Hσ (presup_exp_eq_left Hζ0) Hevb HN) as (m' & Hm' & HMg').
-  econstructor; [ exact Ec | exact Hm' | exact Hglu'' | exact HMg' ].
-Qed.
-
-End Fixed_GCtx.
-
-#[export]
-Hint Resolve glu_rel_ctx_tail glu_rel_ctx_extend_mod glu_rel_exp_let_mod : mctt.
-
-(** ** The Rules
-
-    A module slot and a module [let] read their syntactic premises at the
-    target, moved along the embedding. *)
-
+#[local] Open Scope list_scope.
 #[local] Generalizable All Variables.
 
-Lemma glu_let_mod :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-     glu_unit_eq Θ Ξ Γ U U ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ C : Srt ->
-     type_sort Srt ->
-     module_body_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
-     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ B : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ ℓₘ U in B : C[Id ,,ₘ me_lit U] ).
+Lemma glu_ext_eq_nil :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ˣ ⋅ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ ⋅ ).
+Proof. intros * HΓ; split; intros Θ2 Ξ2 Hμ; exact (HΓ _ _ Hμ). Qed.
+
+(** An assumption: its type at a sort of its kind, on each side. *)
+Lemma glu_ext_eq_ass :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ A : Srt ->
+     sort_kind Srt κ ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ A' : Srt' ->
+     sort_kind Srt' κ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ ▹{κ} A) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ' ▹{κ} A') ).
 Proof.
-  glu_inst_intro.
-  match goal with HU : Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U |- _ => pose proof (Hwu _ _ _ HU) as HU2 end.
-  assert (HUτ : Θ2 ⍮ Ξ2 ⍮ Γ' ⊢ᵘ U[τ]ᵘ ≈ U[τ]ᵘ) by (eapply sub_preserves_unit; [ exact HU2 | apply Hτ ]).
-  assert (Hq : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) (Γ' ▹ₘ U[τ]ᵘ) (q τ) (Γ ▹ₘ U))
-    by (eapply glu_rel_sub_inst_q_mod; eassumption).
-  (** The type's instance at the unit's literal, the witness *)
-  assert (Hext : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) Γ' (τ ,,ₘ me_lit U[τ]ᵘ) (Γ ▹ₘ U))
-    by (eapply glu_rel_sub_inst_extend_mod; eassumption).
-  rewrite exp_sub_extend_mod_sub, <- exp_sub_q_extend_mod.
-  match goal with HS : type_sort Srt |- _ => rename HS into HSt end.
-  eapply (glu_rel_exp_let_mod (C := C[q τ]) (S := Srt)); try glu_inst_premise.
-  - rewrite <- (type_sort_sub Srt (q τ) HSt).
-    eapply sub_preserves_exp; [ apply Hwe; eassumption | apply Hq ].
-  - eapply sub_preserves_exp; [ apply Hwe; eassumption | apply Hq ].
-  - rewrite exp_sub_q_extend_mod; glu_inst.
+  intros * [HΨ HΨ'] HA HS HA' HS'; split; intros Θ2 Ξ2 Hμ.
+  - destruct (HΨ _ _ Hμ) as [He Hd]; split; [ split; [ exact He | exists Srt; split; [ exact HS | exact (proj1 (HA _ _ Hμ)) ] ] |].
+    apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
+  - destruct (HΨ' _ _ Hμ) as [He Hd]; split; [ split; [ exact He | exists Srt'; split; [ exact HS' | exact (proj1 (HA' _ _ Hμ)) ] ] |].
+    apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
 Qed.
 
-Lemma glu_let_dm :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
-     glu_unit_eq Θ Ξ Γ (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E)) ->
-     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊢ C : Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊩ C : Srt ->
+(** A definition: its type at a sort of types and its body at the type, on
+    each side. *)
+Lemma glu_ext_eq_def :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ A : Srt ->
      type_sort Srt ->
-     module_body_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ⊩ B : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ ℓᵈ A ≔ M ‖ (gu_mk nil (md_alias E)) in B : C[Id ,,ᵈ M ‖ me_lit (gu_mk nil (md_alias E))] ).
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ A' : Srt' ->
+     type_sort Srt' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ M : A ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ M' : A' ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ ▸ A ≔ M) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ' ▸ A' ≔ M') ).
 Proof.
-  glu_inst_intro.
-  match goal with HU : Θ ⍮ Ξ ⍮ Γ ⊢ᵘ _ ≈ _ |- _ => pose proof (Hwu _ _ _ HU) as HU2 end.
-  assert (HUτ : Θ2 ⍮ Ξ2 ⍮ Γ' ⊢ᵘ (gu_mk nil (md_alias E))[τ]ᵘ ≈ (gu_mk nil (md_alias E))[τ]ᵘ)
-    by (eapply sub_preserves_unit; [ exact HU2 | apply Hτ ]).
-  assert (HAt : Θ2 ⍮ Ξ2 ⍮ Γ ⊢ A : Typeω@i) by (eapply (@glu_rel_exp_under_sub_wf (gc_mk Θ2 Ξ2)); eassumption).
-  assert (Hq : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) (Γ' ▸ₘ A[τ] ≔ M[τ] ‖ gu_mk nil (md_alias E[τ]ᵐ)) (q τ)
-                 (Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)))
-    by (eapply glu_rel_sub_inst_q_dm; [ exact Hτ | eassumption | eassumption | exact HU2 | exact HUτ | eassumption ]).
-  (** The type's instance at the definiens and the unit's literal, the
-      witness *)
-  assert (Hext : @glu_rel_sub_inst (gc_mk Θ2 Ξ2) Γ' (τ ,,ᵈ M[τ] ‖ me_lit (gu_mk nil (md_alias E))[τ]ᵘ)
-                   (Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)))
-    by (eapply glu_rel_sub_inst_extend_dm; [ exact Hτ | exact HAt | eassumption | exact HU2 | exact HUτ | eassumption ]).
-  rewrite exp_sub_extend_dm_sub, <- exp_sub_q_extend_dm.
-  match goal with HS : type_sort Srt |- _ => rename HS into HSt end.
-  eapply (glu_rel_exp_let_dm (A := A[τ]) (M := M[τ]) (E := E[τ]ᵐ) (C := C[q τ]) (S := Srt)); try glu_inst_premise.
-  - rewrite <- (type_sort_sub Srt (q τ) HSt).
-    eapply sub_preserves_exp; [ apply Hwe; eassumption | apply Hq ].
-  - rewrite exp_sub_q_extend_dm; glu_inst.
+  intros * [HΨ HΨ'] HA HS HA' HS' HM HM'; split; intros Θ2 Ξ2 Hμ.
+  - destruct (HΨ _ _ Hμ) as [He Hd]; split; [ split; [ exact He |] |].
+    + exists Srt; constructor; [ exact HS | exact (proj1 (HA _ _ Hμ)) | exact (proj1 (HM _ _ Hμ)) ].
+    + apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
+  - destruct (HΨ' _ _ Hμ) as [He Hd]; split; [ split; [ exact He |] |].
+    + exists Srt'; constructor; [ exact HS' | exact (proj1 (HA' _ _ Hμ)) | exact (proj1 (HM' _ _ Hμ)) ].
+    + apply glu_ctx_deep_cons_term; [ reflexivity | exact Hd ].
 Qed.
 
-Lemma glu_exp_eq_let_dm_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
+(** A body unit: each side's expansion's context over its parameters is an
+    extension the rule glues. *)
+Lemma glu_unit_eq_body :
+  `( body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
+     body_xp Θ Ξ (Δ' ++ Γ) Φ' Φx' ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ' ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ˣ (body_ctx Φx ++ Δ) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (body_ctx Φx ++ Δ) ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ˣ (body_ctx Φx' ++ Δ') /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (body_ctx Φx' ++ Δ') ->
+     glu_unit_eq Θ Ξ Γ (gu_open Δ Φ) (gu_open Δ' Φ') ).
+Proof.
+  intros * HΦx HΦx' [HΔ _] [HB _] [HB' _].
+  apply body_xp_expand in HΦx, HΦx'; subst Φx Φx'.
+  constructor; intros Θ2 Ξ2 Hμ; destruct (HΔ _ _ Hμ) as [HΔg HΔd].
+  - split; [ exact (glu_rel_ext_under_sub_ctx HΔg) | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+  - destruct (HB _ _ Hμ) as [HBg HBd]; rewrite <- app_assoc in HBd.
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_body_inst _ _ _ _ HBg _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; split; [ exact HBg | exact (glu_gmod_units_deep_of_ctx _ _ HBd) ].
+  - destruct (HB' _ _ Hμ) as [HBg HBd]; rewrite <- app_assoc in HBd.
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_body_inst _ _ _ _ HBg _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; split; [ exact HBg | exact (glu_gmod_units_deep_of_ctx _ _ HBd) ].
+Qed.
 
-Lemma glu_exp_eq_let_dm_zeta :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
+(** An alias: each side's parameters are an extension the rule glues, and
+    each side's target over them a module expression it glues. *)
+Lemma glu_unit_eq_alias :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ' ->
+     glu_modexp Θ Ξ (Δ ++ Γ) E /\ glu_modexp Θ Ξ (Δ ++ Γ) E' ->
+     glu_modexp Θ Ξ (Δ' ++ Γ) E' /\ glu_modexp Θ Ξ (Δ' ++ Γ) E' ->
+     glu_unit_eq Θ Ξ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ' (md_alias E')) ).
+Proof.
+  intros * [HΔ HΔ'] [HE _] [HE' _].
+  constructor; intros Θ2 Ξ2 Hμ; destruct (HΔ _ _ Hμ) as [HΔg HΔd].
+  - split; [ exact (glu_rel_ext_under_sub_ctx HΔg) | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+  - destruct (HE _ _ Hμ) as [HEi HEp _].
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_alias_inst _ _ _ HΔg HEi _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; constructor; [ exact HΔg | exact HEi | exact HEp ].
+  - destruct (HΔ' _ _ Hμ) as [HΔg' _]; destruct (HE' _ _ Hμ) as [HEi HEp _].
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_alias_inst _ _ _ HΔg' HEi _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; constructor; [ exact HΔg' | exact HEi | exact HEp ].
+Qed.
 
-Lemma glu_exp_eq_let_mod_cong :
+(** An alias of a literal: the alias by its parameters and its target, the
+    literal, glued at the instances by the construction
+    ([glu_rel_modexp_under_sub_lit]); the literal over both telescopes by
+    the literal, glued at the instance lifted through the alias's
+    parameters. *)
+Lemma glu_unit_eq_flatten :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Δ ->
+     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
+     glu_unit_eq Θ Ξ (Δ ++ Γ) (gu_mk Δ' D) (gu_mk Δ' D) ->
+     glu_unit_eq Θ Ξ Γ (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D)))) (gu_mk (Δ' ++ Δ) D) ).
+Proof.
+  intros * [HΔ _] HUt [HUc HU _].
+  constructor; intros Θ2 Ξ2 Hμ; destruct (HΔ _ _ Hμ) as [HΔg HΔd].
+  - split; [ exact (glu_rel_ext_under_sub_ctx HΔg) | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+  - glu_gctx_embedding_wf.
+    destruct (HUc _ _ Hμ) as [HUcg _]; destruct (HU _ _ Hμ) as [HUi HUd _].
+    pose proof (glu_rel_modexp_under_sub_lit HUcg (Hwu _ _ _ HUt) HUi) as HL.
+    constructor; [ intros Γ' τ Hτ; exact (glu_unit_at_alias_inst _ _ _ HΔg HL _ _ Hτ) | | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    cbn [glu_unit_deep]; constructor; [ exact HΔg | exact HL | cbn [glu_modexp_parts_deep]; exact HUd ].
+  - destruct (HU _ _ Hμ) as [HUi HUd _].
+    constructor; [ intros Γ' τ Hτ | exact (glu_unit_deep_params_join _ _ _ _ HΔg HUd) | exact (glu_ctx_deep_suffix _ _ HΔd) ].
+    pose proof (glu_rel_ext_under_sub_inst HΔg _ _ Hτ) as Hτ'.
+    pose proof (HUi _ _ Hτ') as H.
+    rewrite gunit_sub_mk in H |- *.
+    rewrite tele_sub_app, List.length_app, <- (moddef_sub_sb_eq _ _ _ (sb_qn_add _ _ _)).
+    apply glu_unit_at_flatten; [| exact (glu_rel_ext_under_renaming_of_inst HΔg Hτ) | exact H ].
+    destruct (glu_rel_sub_inst_ctx _ _ _ Hτ') as [Sb HSb]; exact (glu_ctx_env_wf_ctx HSb).
+Qed.
+
+(** A body and its expansion: the expansion's context is the body's, and
+    its module entries are the body's and those of its opens' fragments. *)
+Lemma glu_unit_eq_expand :
+  `( glu_unit_eq Θ Ξ Γ (gu_open Δ Φ) (gu_open Δ Φ) ->
+     glu_unit_eq Θ Ξ Γ (gu_open Δ Φ) (gu_open Δ (gm_expand Φ)) ).
+Proof.
+  intros * [HΓ HU _]; constructor; [ exact HΓ | exact HU |].
+  intros Θ2 Ξ2 Hμ; destruct (HU _ _ Hμ) as [HUi HUd HUcd]; constructor; [ intros Γ' τ Hτ | | exact HUcd ].
+  - pose proof (HUi _ _ Hτ) as H.
+    rewrite gunit_sub_mk in H |- *; cbn [moddef_sub glu_unit_at] in H |- *.
+    destruct H as [H1 H2]; split.
+    + rewrite !gm_expand_sub in *; rewrite (gm_expand_noopen _ (gm_noopen_expand _)); exact H1.
+    + rewrite <- gm_expand_sub; exact (glu_gmod_units_expand _ _ H2).
+  - cbn [glu_unit_deep] in HUd |- *; destruct HUd as [H1 H2]; split.
+    + rewrite (gm_expand_noopen _ (gm_noopen_expand _)); exact H1.
+    + exact (glu_gmod_units_deep_expand _ _ H2).
+Qed.
+
+Lemma glu_unit_eq_sym :
   `( glu_unit_eq Θ Ξ Γ U U' ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
+     glu_unit_eq Θ Ξ Γ U' U ).
+Proof. intros * [HΓ HU HU']; constructor; assumption. Qed.
 
-Lemma glu_exp_eq_let_mod_zeta :
-  `( glu_unit_eq Θ Ξ Γ U U ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
+Lemma glu_unit_eq_trans :
+  `( glu_unit_eq Θ Ξ Γ U U' ->
+     glu_unit_eq Θ Ξ Γ U' U'' ->
+     glu_unit_eq Θ Ξ Γ U U'' ).
+Proof. intros * [HΓ HU _] [_ _ HU'']; constructor; assumption. Qed.
+
+Lemma glu_ext_eq_mod :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ᵘ U ≈ U' ->
+     glu_unit_eq Θ Ξ (Ψ ++ Γ) U U' ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ᵘ U' ≈ U' ->
+     glu_unit_eq Θ Ξ (Ψ' ++ Γ) U' U' ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ ▹ₘ U) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ' ▹ₘ U') ).
+Proof.
+  intros * [HΨ HΨ'] HUU [_ HU _] HU' [_ HU'g _].
+  pose proof (wf_unit_eq_trans _ _ _ _ _ _ HUU (wf_unit_eq_sym _ _ _ _ _ HUU)) as HUw.
+  split; intros Θ2 Ξ2 Hμ; glu_gctx_embedding_wf.
+  - destruct (HΨ _ _ Hμ) as [HΨg HΨd]; destruct (HU _ _ Hμ) as [HUi HUd _].
+    split; [ cbn; split; [ exact HΨg | split; [ exact (Hwu _ _ _ HUw) | exact HUi ] ] |].
+    exact (glu_ctx_deep_cons_unit (ce_mod U) _ U eq_refl HUd HΨd).
+  - destruct (HΨ' _ _ Hμ) as [HΨg HΨd]; destruct (HU'g _ _ Hμ) as [HUi HUd _].
+    split; [ cbn; split; [ exact HΨg | split; [ exact (Hwu _ _ _ HU') | exact HUi ] ] |].
+    exact (glu_ctx_deep_cons_unit (ce_mod U') _ U' eq_refl HUd HΨd).
+Qed.
+
+Lemma glu_ext_eq_dm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ Ψ' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ M : A ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ M' : A' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E') ->
+     glu_unit_eq Θ Ξ (Ψ ++ Γ) (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E')) ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ᵘ gu_mk nil (md_alias E') ≈ gu_mk nil (md_alias E') ->
+     glu_unit_eq Θ Ξ (Ψ' ++ Γ) (gu_mk nil (md_alias E')) (gu_mk nil (md_alias E')) ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E)) /\ Θ ⍮ Ξ ⍮ Γ ⊩ˣ (Ψ' ▸ₘ A' ≔ M' ‖ gu_mk nil (md_alias E')) ).
+Proof.
+  intros * [HΨ HΨ'] HA HM HA' HM' HUU [_ HU _] HU' [_ HU'g _].
+  pose proof (wf_unit_eq_trans _ _ _ _ _ _ HUU (wf_unit_eq_sym _ _ _ _ _ HUU)) as HUw.
+  split; intros Θ2 Ξ2 Hμ; glu_gctx_embedding_wf.
+  - destruct (HΨ _ _ Hμ) as [HΨg HΨd]; destruct (HU _ _ Hμ) as [HUi HUd _].
+    split; [ cbn; split; [ exact HΨg |] |].
+    + do 2 eexists; constructor; [ reflexivity | exact (proj1 (HA _ _ Hμ)) | exact (proj1 (HM _ _ Hμ)) | exact (Hwu _ _ _ HUw) | exact HUi ].
+    + exact (glu_ctx_deep_cons_unit (ce_dm A M (gu_mk nil (md_alias E))) _ _ eq_refl HUd HΨd).
+  - destruct (HΨ' _ _ Hμ) as [HΨg HΨd]; destruct (HU'g _ _ Hμ) as [HUi HUd _].
+    split; [ cbn; split; [ exact HΨg |] |].
+    + do 2 eexists; constructor; [ reflexivity | exact (proj1 (HA' _ _ Hμ)) | exact (proj1 (HM' _ _ Hμ)) | exact (Hwu _ _ _ HU') | exact HUi ].
+    + exact (glu_ctx_deep_cons_unit (ce_dm A' M' (gu_mk nil (md_alias E'))) _ _ eq_refl HUd HΨd).
+Qed.

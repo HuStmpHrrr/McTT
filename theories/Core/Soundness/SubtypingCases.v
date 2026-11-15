@@ -1,75 +1,36 @@
-(** * Subtyping and Conversion
+(** * The Rules of Subtyping
 
-    The gluing model has subsumption and conversion rules for terms only: there
-    is no substitution judgment, and context subtyping is the syntactic
-    relation [ctx_sub]. *)
+    The rules of [⊆] in the gluing model, with the subsumption rules of
+    terms and equations and the symmetry and transitivity of equations.
+    The lemmas they rest on are in [LogicalRelation/Subtyping.v] and
+    [LogicalRelation/Levels.v]. *)
 
+From Stdlib Require Import PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem.
-From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Soundness Require Import LogicalRelation VariableCases LogicalRelation.Instance.
-Import Domain_Notations Fixed_Notations.
-
-
-Section Fixed_GCtx.
-  Context {GC : GCtx}.
-
-(** Subsumption: the term's gluing moves to the larger type, glued as a
-    type of a sort ([glu_rel_exp_sort_typ]), along the semantic subtyping
-    of the two types' values ([glu_univ_elem_per_subtyp_trm_conv]); the
-    term's value is at the same kind ([per_subtyp_kind]). *)
-Lemma glu_rel_exp_subtyp : forall {Γ M A A' S},
-    Γ ⊩ M : A ->
-    Γ ⊩ A' : S ->
-    type_sort S ->
-    Γ ⊢ A ⊆ A' ->
-    Γ ⊩ M : A'.
-Proof.
-  intros * HM HA' HS Hsub%completeness_fundamental_subtyp.
-  destruct HM as [Sb HSb k HMg].
-  assert (HSk : exists κ, sort_kind S κ) by (destruct HS; eexists; constructor).
-  destruct HSk as [κ HSk].
-  destruct (glu_rel_exp_sort_typ HA' HSk) as (Sb' & i & HSb' & _ & HA'g).
-  assert (E : Sb <∙> Sb') by (eapply functional_glu_ctx_env; eassumption).
-  pose proof (rel_subtyp_under_ctx_simple Hsub) as [env_relΓ [HΓ [k' Hss]]].
-  eapply mk_glu_rel_exp with (glu_rel_exp_lvl := i); [ exact HSb |].
-  intros Δ σ ρ Hσ.
-  pose proof (glu_ctx_env_per_env HSb HΓ Hσ) as Hρ.
-  destruct (Hss _ _ Hρ) as (a1 & a2 & Ea1 & Ea2 & Hsa).
-  destruct (HMg _ _ _ Hσ) as [a0 m P El Ea0 Hm Hg HN].
-  destruct (HA'g _ _ _ (proj1 (E _ _ _) Hσ)) as [a3 P' El' Ea3 Hg' HA'σ].
-  functional_eval_rewrite_clear.
-  econstructor; [ eassumption | rewrite <- (per_subtyp_kind _ _ _ Hsa); exact Hm | exact Hg' |].
-  eapply glu_univ_elem_per_subtyp_trm_conv; [ exact Hsa | exact Hg | exact Hg' | exact HA'σ | exact HN ].
-Qed.
-
-Hint Resolve glu_rel_exp_subtyp : mctt.
-
-Lemma glu_rel_exp_conv : forall {Γ M A A' S},
-    Γ ⊩ M : A ->
-    Γ ⊩ A' : S ->
-    type_sort S ->
-    Γ ⊢ A ≈ A' : S ->
-    Γ ⊩ M : A'.
-Proof.
-  intros * HM HA' HS Heq.
-  eapply glu_rel_exp_subtyp; [ exact HM | exact HA' | exact HS |].
-  eapply wf_subtyp_refl; [ exact (glu_rel_exp_to_wf_exp HA') | exact HS | exact Heq ].
-Qed.
-
-Hint Resolve glu_rel_exp_conv : mctt.
-
-End Fixed_GCtx.
-
-#[export]
-Hint Resolve glu_rel_exp_subtyp : mctt.
-#[export]
-Hint Resolve glu_rel_exp_conv : mctt.
-
-(** ** The Rules *)
-
+From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Levels.
+From Mctt.Core.Completeness Require LogicalRelation.Universes.
+From Mctt.Core.Semantic Require Import Levels Realizability.
+From Mctt.Core.Syntactic.Levels Require Import LevelEq.
+From Mctt.Core.Syntactic Require Import Substitution.
+From Mctt.Core.Soundness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Subtyping
+  LogicalRelation.Variables LogicalRelation.Instance LogicalRelation.Universes LogicalRelation.Levels.
+Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Generalizable All Variables.
+
+Lemma glu_subtyp_suniv :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M' : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_subtyp_small_large :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
 
 Lemma glu_exp_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->

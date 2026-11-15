@@ -30,13 +30,13 @@ From Mctt.Core.Syntactic Require Import Records.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Completeness.Records Require Model.
 From Mctt.Core.Soundness Require Import
-  ContextCases
-  FunctionCases
-  LevelCases
+  LogicalRelation.Contexts
+  LogicalRelation.Functions
+  LogicalRelation.Levels
   LogicalRelation
-  SubtypingCases
-  VariableCases
-  UniverseCases
+  LogicalRelation.Subtyping
+  LogicalRelation.Variables
+  LogicalRelation.Universes
   LogicalRelation.Instance.
 From Mctt.Core.Soundness.Inductives Require Import Args Params Comps ArgTypes Con.
 Import Domain_Notations Wk_Notations.

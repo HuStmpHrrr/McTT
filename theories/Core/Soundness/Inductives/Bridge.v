@@ -32,13 +32,13 @@ From Mctt.Core.Syntactic.System.Inductives Require Views.
 From Mctt.Core.Syntactic Require Import Records.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Soundness Require Import
-  ContextCases
-  FunctionCases
-  LevelCases
+  LogicalRelation.Contexts
+  LogicalRelation.Functions
+  LogicalRelation.Levels
   LogicalRelation
-  SubtypingCases
-  VariableCases
-  UniverseCases.
+  LogicalRelation.Subtyping
+  LogicalRelation.Variables
+  LogicalRelation.Universes.
 From Mctt.Core.Soundness.Records Require Model.
 From Mctt.Core.Soundness.Inductives Require Import Args Params Comps Con ViewCon ArgTypes.
 Import Domain_Notations Wk_Notations.

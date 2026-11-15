@@ -34,14 +34,14 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Soundness Require Import
-  ContextCases
-  FunctionCases
+  LogicalRelation.Contexts
+  LogicalRelation.Functions
   LogicalRelation.Instance
-  LevelCases
+  LogicalRelation.Levels
   LogicalRelation
-  SubtypingCases
-  VariableCases
-  UniverseCases.
+  LogicalRelation.Subtyping
+  LogicalRelation.Variables
+  LogicalRelation.Universes.
 From Mctt.Core.Completeness.Inductives Require Import Model ArgTypes.
 From Mctt.Core.Soundness.Inductives Require Import Args Params Comps.
 From Mctt.Core.Completeness Require Import Records.Model.

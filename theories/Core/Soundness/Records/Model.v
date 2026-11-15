@@ -27,13 +27,13 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Soundness Require Import
-  ContextCases
-  FunctionCases
-  LevelCases
+  LogicalRelation.Contexts
+  LogicalRelation.Functions
+  LogicalRelation.Levels
   LogicalRelation
-  SubtypingCases
-  VariableCases
-  UniverseCases.
+  LogicalRelation.Subtyping
+  LogicalRelation.Variables
+  LogicalRelation.Universes.
 From Mctt.Core.Soundness.Inductives Require Import Args Params.
 From Mctt.Core.Soundness.Records Require Import Former.
 Import Domain_Notations Wk_Notations.
@@ -721,3 +721,11 @@ Section RecordAt.
 End RecordAt.
 
 End Fixed_GCtx.
+
+(** A record of the source, found at the target of a sound embedding. *)
+Lemma record_lookup_of_glu_gctx_embedding : forall Θ Ξ Θ2 Ξ2 p R, glu_gctx_embedding Θ Ξ Θ2 Ξ2 -> record_lookup Θ Ξ p = Some R ->
+    record_lookup Θ2 Ξ2 p = Some R.
+Proof.
+  intros * Hμ Hl.
+  exact (record_lookup_gc_sub _ _ _ _ _ _ (gctx_embedding_resolution _ _ _ _ (glu_gctx_embedding_embedding _ _ _ _ Hμ)) Hl).
+Qed.

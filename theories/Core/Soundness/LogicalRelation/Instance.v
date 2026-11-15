@@ -14,7 +14,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Soundness Require Import LogicalRelation VariableCases ContextCases Modules.ModuleValues.
+From Mctt.Core.Soundness Require Import LogicalRelation LogicalRelation.Variables LogicalRelation.Contexts Modules.ModuleValues.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -714,23 +714,8 @@ Ltac glu_inst :=
 Ltac glu_inst_premise :=
   first [ glu_inst | eapply glu_rel_sub_inst_ctx; eassumption | eassumption ].
 
-Lemma glu_ctx_empty :
-  `( ⊢ᵍ Θ ⍮ Ξ ->
-     ⊩ Θ ⍮ Ξ ⍮ ⋅ ).
-Proof. glu_intro; eapply glu_rel_ctx_types_empty; eapply gctx_embedding_wf, glu_gctx_embedding_embedding; eassumption. Qed.
 
-Lemma glu_ctx_extend :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
-     sort_kind Srt κ ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ▹{κ} A ).
-Proof. glu_intro; eapply glu_rel_ctx_types_extend; eassumption. Qed.
 
-Lemma glu_ctx_extend_def :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
-     type_sort Srt ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ).
-Proof. glu_intro; eapply glu_rel_ctx_types_extend_def; eassumption. Qed.
 
 (** An entry with a deep module part over a context whose module parts are
     deep. *)
@@ -742,43 +727,8 @@ Proof.
   - exact (HΓ Γ1 e0 Γ0 U0 E Hu).
 Qed.
 
-(** A slot glues when the context does and its unit is well formed and
-    glues. *)
-Lemma glu_ctx_extend_mod :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-     glu_unit_eq Θ Ξ Γ U U ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
-Proof.
-  glu_intro; glu_gctx_embedding_wf.
-  - eapply (@glu_rel_ctx_types_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption | eassumption ].
-  - eapply glu_ctx_deep_cons_unit; [ reflexivity | eassumption | eassumption ].
-Qed.
 
-(** A definition with a module part glues when its term part does and its
-    unit is well formed and glues. *)
-Lemma glu_ctx_extend_dm :
-  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
-     glu_unit_eq Θ Ξ Γ (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E)) ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ).
-Proof.
-  glu_intro; glu_gctx_embedding_wf.
-  - eapply (@glu_rel_ctx_types_extend_dm (gc_mk _ _)); [ eassumption | eassumption | apply Hwu; eassumption | eassumption ].
-  - eapply glu_ctx_deep_cons_unit; [ reflexivity | eassumption | eassumption ].
-Qed.
 
-(** A variable at an instance is the instance's component, glued at its
-    type at every renaming, so at the identity. *)
-Lemma glu_vlookup :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ∋ #x : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊩ #x : A ).
-Proof.
-  glu_intro; econstructor; [ eassumption |].
-  intros Γ' τ Hτ.
-  apply glu_rel_exp_of_under_renaming; [ apply Hτ | apply Hτ; eassumption ].
-Qed.
 
 (** So at a target: a variable of a context glued with its types is glued
     at the instances. *)
@@ -789,14 +739,4 @@ Proof.
   intros Γ' τ Hτ; apply glu_rel_exp_of_under_renaming; [ apply Hτ | apply Hτ; exact Hx ].
 Qed.
 
-Lemma glu_exp_eq_var :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ∋ #x : A ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.
 
-Lemma glu_exp_eq_var_delta :
-  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ∋ #x ≔ M : A ->
-     ⊩ Θ ⍮ Ξ ⍮ Γ ).
-Proof. glu_ctx_case. Qed.

@@ -19,7 +19,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas MemberWf.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Completeness Require LogicalRelation.Contexts Modules.Slots.
 From Mctt.Core.Completeness.Modules Require Import ModexpRel Values.
-From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases Modules.ModuleValues LogicalRelation.Instance.
+From Mctt.Core.Soundness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Variables Modules.ModuleValues LogicalRelation.Instance.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

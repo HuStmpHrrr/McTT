@@ -31,7 +31,10 @@ From Mctt.Core.Completeness Require Import FundamentalTheorem LogicalRelation.Un
 From Mctt.Core.Completeness.Modules Require Import Values.
 From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
-From Mctt.Core.Soundness Require Import LevelCases.
+From Mctt.Core.Soundness Require Import LogicalRelation.Levels LevelCases.
+From Mctt.Core.Soundness Require Import LogicalRelation.Contexts LogicalRelation.Variables Modules.Slots
+  LogicalRelation.Subtyping LogicalRelation.Universes LogicalRelation.Functions LogicalRelation.Lets LogicalRelation.Props
+  Modules.ModuleLemmas.
 From Mctt.Core.Soundness Require Import ContextCases VariableCases UnitCases
   SubtypingCases UniverseCases FunctionCases LetCases PropCases.
 From Mctt.Core.Soundness.Inductives Require Import Con.

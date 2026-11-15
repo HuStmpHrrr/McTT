@@ -36,13 +36,13 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup DescTy
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Syntactic.System.Inductives Require Views.
 From Mctt.Core.Soundness Require Import
-  ContextCases
-  FunctionCases
-  LevelCases
+  LogicalRelation.Contexts
+  LogicalRelation.Functions
+  LogicalRelation.Levels
   LogicalRelation
-  SubtypingCases
-  VariableCases
-  UniverseCases
+  LogicalRelation.Subtyping
+  LogicalRelation.Variables
+  LogicalRelation.Universes
   LogicalRelation.Instance.
 From Mctt.Core.Soundness.Inductives Require Import Args Params Comps Con ViewCon Bridge ElimBase AtType.
 Import Domain_Notations Wk_Notations.
@@ -10003,3 +10003,111 @@ Proof.
   cbn in HlR; rewrite HlR2 in HlR; injection HlR as <-.
   exact (glu_gctx_embedding_record_field _ _ _ _ Hμ _ _ HlR0).
 Qed.
+
+Require Import Mctt.Core.Soundness.Inductives.ArgTypes.
+
+(** The non-uniform parameters and the scrutinee of an eliminator, at the
+    instances of its motive's context: the parameters at the instances of
+    their telescope, the scrutinee at the member's type.  For any property
+    [Q] of a term at a type. *)
+Lemma elim_mctx_insts_of_params : forall p D, decl_closed D ->
+    forall (Q : exp -> typ -> Prop) m Mm Ps M, ind_member D m = Some Mm ->
+    List.length Ps = im_np D Mm ->
+    (forall k Pk T, List.nth_error Ps k = Some Pk -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T -> Q Pk T) ->
+    Q M (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) ->
+    forall j N T, List.nth_error (List.skipn (ind_nu D) Ps ++ M :: nil) j = Some N ->
+      List.nth_error (tele_insts (elim_mctx p D m Mm (List.firstn (ind_nu D) Ps)) Id (List.skipn (ind_nu D) Ps ++ M :: nil)) j = Some T ->
+      Q N T.
+Proof.
+  intros p D Hc Q m Mm Ps M HMm HPl HPg HM.
+  set (Us := List.firstn (ind_nu D) Ps) in *; set (Ns := List.skipn (ind_nu D) Ps) in *.
+  assert (HUl : List.length Us = ind_nu D) by (unfold Us; rewrite List.length_firstn; unfold im_np in HPl; lia).
+  assert (HNl : List.length Ns = im_nn Mm) by (unfold Ns; rewrite List.length_skipn; unfold im_np in HPl; lia).
+  assert (Hti : tele_insts (im_params D Mm) Id Ps
+                = tele_insts (ind_uparams D) Id Us ++ tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns).
+  { unfold Us, Ns; rewrite <- (List.firstn_skipn (ind_nu D) Ps) at 1; unfold im_params; apply tele_insts_app;
+      [ exact (decl_closed_ass _ Hc) | fold Us; rewrite HUl; reflexivity ]. }
+  assert (HlTU : List.length (tele_insts (ind_uparams D) Id Us) = ind_nu D)
+    by (rewrite length_tele_insts by exact (decl_closed_ass _ Hc); unfold ind_nu in *; lia).
+  (** The non-uniform parameters, at their instances *)
+  assert (HNs : forall j N T0, List.nth_error Ns j = Some N ->
+             List.nth_error (tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns) j = Some T0 -> Q N T0).
+  { intros j N T0 HN HT; apply (HPg (ind_nu D + j)).
+    - unfold Ns in HN; rewrite List.nth_error_skipn in HN; exact HN.
+    - rewrite Hti, List.nth_error_app2, HlTU by lia; replace (ind_nu D + j - ind_nu D) with j by lia; exact HT. }
+  assert (Hrass : all_assumptions (tele_sub (im_nparams Mm) (sb_of_list Id Us)))
+    by (apply all_assumptions_sub, (decl_closed_nparams_ass D Hc _ _ HMm)).
+  intros j N T0 HN HT.
+  unfold elim_mctx in HT; change (ce_ass ?κ0 ?H0 :: ?R) with ((ce_ass κ0 H0 :: nil) ++ R) in HT.
+  rewrite tele_insts_app in HT by (try exact Hrass; rewrite length_tele_sub; exact HNl).
+  assert (Hl2 : List.length (tele_insts (tele_sub (im_nparams Mm) (sb_of_list Id Us)) Id Ns) = im_nn Mm)
+    by (rewrite length_tele_insts by exact Hrass; rewrite length_tele_sub, length_im_nparams; lia).
+  destruct (Nat.lt_ge_cases j (im_nn Mm)) as [Hk | Hk].
+  - rewrite List.nth_error_app1 in HN by lia.
+    rewrite List.nth_error_app1 in HT by lia.
+    rewrite tele_insts_tele_sub in HT.
+    rewrite (tele_insts_sb_eq _ _ (sb_of_list Id Us)) in HT by (intros x; cbn; apply sentry_sub_id).
+    exact (HNs _ _ _ HN HT).
+  - rewrite List.nth_error_app2 in HN by lia.
+    rewrite List.nth_error_app2, Hl2 in HT by lia.
+    rewrite HNl in HN.
+    destruct (j - im_nn Mm) as [| j'] eqn:Hk'; cbn in HN, HT; [| destruct j'; discriminate ].
+    injection HN as <-; unfold tele_insts in HT; cbn in HT; injection HT as <-.
+    rewrite ind_head_inst by (try exact Hc; try exact HUl; exact HNl).
+    rewrite (List.map_ext (fun U => U[Id]) (fun U => U)), List.map_id by (intros; apply exp_sub_id).
+    exact HM.
+Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+(** The motive's instance at the non-uniform parameters and the scrutinee,
+    at an instance of the context: the motive at the instance extended by
+    their instances, an instance of the motive's context
+    ([glu_rel_sub_inst_of_list]).  As [rel_exp_motive_instance_prop]. *)
+Lemma glu_rel_exp_motive_instance_at : forall p D, decl_closed D ->
+    forall Γ m Mm A S Ps M Γ' τ, ind_member D m = Some Mm ->
+    List.length Ps = im_np D Mm ->
+    (forall k Pk T, List.nth_error Ps k = Some Pk -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
+       glu_rel_exp_under_sub Γ Pk T) ->
+    glu_rel_exp_under_sub Γ M (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps)) ->
+    glu_rel_exp_under_sub (elim_mctx p D m Mm (List.firstn (ind_nu D) Ps) ++ Γ) A S ->
+    type_sort S ->
+    glu_rel_sub_inst Γ' τ Γ ->
+    Γ' ⊩ A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)][τ] : S.
+Proof.
+  intros p D Hc * HMm HPl HPg HM HA HS Hτ.
+  set (Us := List.firstn (ind_nu D) Ps) in *; set (Ns := List.skipn (ind_nu D) Ps) in *.
+  assert (HUl : List.length Us = ind_nu D) by (unfold Us; rewrite List.length_firstn; unfold im_np in HPl; lia).
+  assert (HNl : List.length Ns = im_nn Mm) by (unfold Ns; rewrite List.length_skipn; unfold im_np in HPl; lia).
+  set (Ps' := List.map (fun P => P[τ]) Ps).
+  assert (E : A[sb_of_list Id (Ns ++ M :: nil)][τ] = A[sb_of_list τ (List.skipn (ind_nu D) Ps' ++ M[τ] :: nil)]).
+  { rewrite exp_sub_sub; apply exp_sub_sb_eq; intros x.
+    rewrite sb_of_list_compose_gen.
+    unfold Ps'; rewrite List.skipn_map, List.map_app; fold Ns; cbn [List.map].
+    apply sb_of_list_cong; intros y; reflexivity. }
+  rewrite E.
+  assert (HΨ : ⊢ elim_mctx p D m Mm Us ++ Γ)
+    by (destruct (glu_rel_ctx_types_ctx _ (glu_rel_exp_under_sub_ctx _ _ _ HA)) as [Sb HSb]; exact (glu_ctx_env_wf_ctx HSb)).
+  assert (Hinst : glu_rel_sub_inst Γ' (sb_of_list τ (List.skipn (ind_nu D) Ps' ++ M[τ] :: nil)) (elim_mctx p D m Mm Us ++ Γ)).
+  { apply glu_rel_sub_inst_of_list; [ exact (elim_mctx_ass p D m Mm Us Hc HMm) | exact Hτ | exact HΨ
+                                    | unfold Ps'; rewrite List.length_app, List.skipn_map, List.length_map, length_elim_mctx;
+                                      fold Ns; cbn; lia |].
+    intros k N T HN HT.
+    rewrite (tele_insts_sb_eq _ _ (τ ⨟ Id)) in HT by (intros x; symmetry; apply sb_compose_id_right).
+    rewrite <- tele_insts_tele_sub in HT; erewrite elim_mctx_sub in HT by eassumption.
+    replace (List.map (fun U => U[τ]) Us) with (List.firstn (ind_nu D) Ps') in HT by (unfold Ps', Us; apply List.firstn_map).
+    revert k N T HN HT; apply elim_mctx_insts_of_params; [ exact Hc | exact HMm | unfold Ps'; rewrite List.length_map; exact HPl | |].
+    - intros k Pk T HP HT; unfold Ps' in HP, HT.
+      rewrite <- (params_insts_sub D m Mm Ps τ Hc HMm) in HT; rewrite List.nth_error_map in HP, HT.
+      destruct (List.nth_error Ps k) as [P0 |] eqn:HP0; cbn in HP; [| discriminate ]; injection HP as <-.
+      destruct (List.nth_error (tele_insts (im_params D Mm) Id Ps) k) as [T0 |] eqn:HT0; cbn in HT; [| discriminate ]; injection HT as <-.
+      exact (glu_rel_exp_under_sub_inst_renaming (HPg _ _ _ HP0 HT0) Hτ).
+    - unfold Ps'; rewrite List.firstn_map, List.skipn_map; fold Us Ns.
+      rewrite <- ind_mty_sub by (try exact Hc; exact HUl).
+      exact (glu_rel_exp_under_sub_inst_renaming HM Hτ). }
+  pose proof (glu_rel_exp_under_sub_inst _ _ _ HA _ _ Hinst) as H.
+  rewrite (type_sort_sub S _ HS) in H; exact H.
+Qed.
+
+End Fixed_GCtx.

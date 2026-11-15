@@ -19,13 +19,13 @@ From Mctt.Core.Semantic.Inductives Require Import PER Canon Elim.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Soundness Require Import
-  ContextCases
-  FunctionCases
-  LevelCases
+  LogicalRelation.Contexts
+  LogicalRelation.Functions
+  LogicalRelation.Levels
   LogicalRelation
-  SubtypingCases
-  VariableCases
-  UniverseCases.
+  LogicalRelation.Subtyping
+  LogicalRelation.Variables
+  LogicalRelation.Universes.
 From Mctt.Core.Soundness.Inductives Require Import Args Comps Con ViewCon.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.

@@ -16,7 +16,7 @@ From Mctt.Core.Semantic Require Export NbE.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic.Levels Require Export LevelEq.
 From Mctt.Core.Soundness Require Export FundamentalTheorem.
-From Mctt.Core.Soundness Require Import LevelCases.
+From Mctt.Core.Soundness Require Import LogicalRelation.Levels.
 From Mctt.Core.Completeness.Consequences Require Import UptoProofs.
 Import Domain_Notations Fixed_Notations.
 

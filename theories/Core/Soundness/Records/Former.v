@@ -28,14 +28,14 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Core.Soundness Require Import
-  ContextCases
-  FunctionCases
+  LogicalRelation.Contexts
+  LogicalRelation.Functions
   LogicalRelation.Instance
-  LevelCases
+  LogicalRelation.Levels
   LogicalRelation
-  SubtypingCases
-  VariableCases
-  UniverseCases.
+  LogicalRelation.Subtyping
+  LogicalRelation.Variables
+  LogicalRelation.Universes.
 From Mctt.Core.Soundness.Inductives Require Import Args.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.

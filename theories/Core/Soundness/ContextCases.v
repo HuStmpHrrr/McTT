@@ -1,109 +1,57 @@
-(** * Glued Contexts
+(** * The Rules of Contexts
 
-    Each entry kind extends a glued context.  The fundamental theorem's
-    judgment of contexts also glues the variables' types, which
-    [LogicalRelation/Instance.v] builds on these. *)
+    The rules of [⊢ Γ] in the gluing model: the empty context and its
+    extensions.  The lemmas they rest on are in [LogicalRelation/Contexts.v]
+    and [LogicalRelation/Instance.v]. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Soundness Require Import LogicalRelation VariableCases.
-Import Domain_Notations Fixed_Notations.
+From Mctt.Core.Syntactic Require Import Substitution.
+From Mctt.Core.Soundness Require Import LogicalRelation LogicalRelation.Variables LogicalRelation.Contexts
+  Modules.ModuleValues LogicalRelation.Instance.
+Import Domain_Notations Wk_Notations Fixed_Notations.
+#[local] Generalizable All Variables.
 
+Lemma glu_ctx_empty :
+  `( ⊢ᵍ Θ ⍮ Ξ ->
+     ⊩ Θ ⍮ Ξ ⍮ ⋅ ).
+Proof. glu_intro; eapply glu_rel_ctx_types_empty; eapply gctx_embedding_wf, glu_gctx_embedding_embedding; eassumption. Qed.
 
-Section Fixed_GCtx.
-  Context {GC : GCtx}.
+Lemma glu_ctx_extend :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
+     sort_kind Srt κ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▹{κ} A ).
+Proof. glu_intro; eapply glu_rel_ctx_types_extend; eassumption. Qed.
 
-(** As [wf_ctx_empty], relative to a well-formed global context. *)
-Lemma glu_rel_ctx_empty : ⊢ᵍ gc_deps ⍮ gc_stack -> ⊩ ⋅.
+Lemma glu_ctx_extend_def :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Srt ->
+     type_sort Srt ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ).
+Proof. glu_intro; eapply glu_rel_ctx_types_extend_def; eassumption. Qed.
+
+(** A slot glues when the context does and its unit is well formed and
+    glues. *)
+Lemma glu_ctx_extend_mod :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+     glu_unit_eq Θ Ξ Γ U U ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
 Proof.
-  intros; do 2 econstructor; [reflexivity | assumption].
+  glu_intro; glu_gctx_embedding_wf.
+  - eapply (@glu_rel_ctx_types_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption | eassumption ].
+  - eapply glu_ctx_deep_cons_unit; [ reflexivity | eassumption | eassumption ].
 Qed.
 
-Hint Resolve glu_rel_ctx_empty : mctt.
-
-(** An assumption of a type of a sort of its kind. *)
-Lemma glu_rel_ctx_extend : forall {Γ A S κ},
-    ⊩ Γ ->
-    Γ ⊩ A : S ->
-    sort_kind S κ ->
-    ⊩ Γ ▹{κ} A.
+(** A definition with a module part glues when its term part does and its
+    unit is well formed and glues. *)
+Lemma glu_ctx_extend_dm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
+     glu_unit_eq Θ Ξ Γ (gu_mk nil (md_alias E)) (gu_mk nil (md_alias E)) ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E) ).
 Proof.
-  intros * _ HA HS.
-  destruct (glu_rel_exp_sort_typ HA HS) as (Sb & i & HSb & HAt & HAg).
-  eexists; econstructor; [ exact HSb | exact HAt | exact HAg | reflexivity ].
+  glu_intro; glu_gctx_embedding_wf.
+  - eapply (@glu_rel_ctx_types_extend_dm (gc_mk _ _)); [ eassumption | eassumption | apply Hwu; eassumption | eassumption ].
+  - eapply glu_ctx_deep_cons_unit; [ reflexivity | eassumption | eassumption ].
 Qed.
-
-Hint Resolve glu_rel_ctx_extend : mctt.
-
-(** A definition, of a type of a sort. *)
-Lemma glu_rel_ctx_extend_def : forall {Γ A S M},
-    ⊩ Γ ->
-    Γ ⊩ A : S ->
-    type_sort S ->
-    Γ ⊩ M : A ->
-    ⊩ Γ ▸ A ≔ M.
-Proof.
-  intros * _ HA HS HM.
-  pose proof (glu_rel_exp_to_wf_exp HM) as HMt.
-  assert (HSk : exists κ, sort_kind S κ) by (destruct HS; eexists; constructor).
-  destruct HSk as [κ HSk].
-  destruct (glu_rel_exp_sort_typ HA HSk) as (Sb & i & HSb & HAt & HAg).
-  pose proof (glu_rel_exp_at_typ_index HSb HAg HM) as HMg.
-  eexists; econstructor; [ exact HSb | exact HAt | exact HMt | exact HAg | exact HMg | reflexivity ].
-Qed.
-
-Hint Resolve glu_rel_ctx_extend_def : mctt.
-
-(** The premise of a slot's context gluing, from the literal's gluing:
-    the value of the literal is the closure, by determinism. *)
-Lemma glu_lit_values_of_modexp_at : forall {Γ U Sb},
-    EG Γ ∈ glu_ctx_env ↘ Sb ->
-    glu_modexp_at Γ (me_lit U) ->
-    forall Δ σ ρ h, Δ ⊢ˢ σ ® ρ ∈ Sb -> ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h -> glu_dmod Δ σ Γ (me_lit U) h.
-Proof.
-  intros * HΓ HU * Hσ Hh.
-  destruct (HU _ HΓ _ _ _ Hσ) as (h' & Hh' & Hg).
-  pose proof (functional_eval_modexp _ _ _ _ Hh Hh') as ->; exact Hg.
-Qed.
-
-(** A module slot of a well-formed unit whose literal glues. *)
-Lemma glu_rel_ctx_extend_mod : forall {Γ U},
-    ⊩ Γ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
-    glu_modexp_at Γ (me_lit U) ->
-    ⊩ Γ ▹ₘ U.
-Proof.
-  intros * [Sb HΓ] HU HUg.
-  exists (cons_mod_glu_sub_pred Γ U Sb).
-  econstructor; [ exact HΓ | exact HU | exact (glu_lit_values_of_modexp_at HΓ HUg) | reflexivity ].
-Qed.
-
-(** A definition with a module part glues when its term part does as a
-    definition and its unit is well formed. *)
-Lemma glu_rel_ctx_extend_dm : forall {Γ A M E} {i : nat},
-    ⊩ Γ ->
-    Γ ⊩ A : Typeω@i ->
-    Γ ⊩ M : A ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_mk nil (md_alias E) ≈ gu_mk nil (md_alias E) ->
-    glu_modexp_at Γ (me_lit (gu_mk nil (md_alias E))) ->
-    ⊩ Γ ▸ₘ A ≔ M ‖ gu_mk nil (md_alias E).
-Proof.
-  intros * _ HA HM HU HUg.
-  pose proof (glu_rel_exp_to_wf_exp HA) as HAt; pose proof (glu_rel_exp_to_wf_exp HM) as HMt.
-  destruct (glu_rel_exp_sort_typ (κ := ak_relevant) HA ltac:(constructor)) as (Sb & j & HSb & HAt' & HAg).
-  pose proof (glu_rel_exp_at_typ_index HSb HAg HM) as HMg.
-  eexists; econstructor;
-    [ exact HSb | exact HAt' | exact HMt | eapply wf_ctx_extend_dm; eassumption | exact HAg | exact HMg
-    | exact (glu_lit_values_of_modexp_at HSb HUg) | reflexivity ].
-Qed.
-
-(** The tail of a glued context glues. *)
-Lemma glu_rel_ctx_tail : forall {e Γ}, ⊩ e :: Γ -> ⊩ Γ.
-Proof. intros * [Sb H]; inversion H; subst; eexists; eassumption. Qed.
-
-End Fixed_GCtx.
-
-#[export]
-Hint Resolve glu_rel_ctx_empty : mctt.
-#[export]
-Hint Resolve glu_rel_ctx_extend glu_rel_ctx_extend_def : mctt.

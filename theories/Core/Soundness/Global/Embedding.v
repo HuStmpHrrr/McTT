@@ -22,11 +22,10 @@ From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Completeness Require LogicalRelation.Contexts.
 From Mctt.Core.Completeness.Modules Require Filed.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
-From Mctt.Core.Soundness Require Import LevelCases.
-From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases UnitCases
-  SubtypingCases UniverseCases FunctionCases LetCases PropCases.
+From Mctt.Core.Soundness Require Import LogicalRelation.Levels.
+From Mctt.Core.Soundness Require Import LogicalRelation LogicalRelation.Contexts LogicalRelation.Variables Modules.Slots
+  LogicalRelation.Subtyping LogicalRelation.Universes LogicalRelation.Functions LogicalRelation.Lets LogicalRelation.Props.
 From Mctt.Core.Soundness.Inductives Require Import Args Con.
-From Mctt.Core.Soundness Require Import IndCases.
 From Mctt.Core.Soundness.Global Require Import MemberValues.
 From Mctt.Core.Completeness.Inductives Require Con.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.

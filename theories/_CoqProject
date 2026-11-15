@@ -189,6 +189,16 @@
 ./Core/Soundness/LogicalRelation/Core.v
 ./Core/Soundness/LogicalRelation/Realizability.v
 ./Core/Soundness/LogicalRelation/Lemmas.v
+./Core/Soundness/LogicalRelation/Contexts.v
+./Core/Soundness/LogicalRelation/Variables.v
+./Core/Soundness/LogicalRelation/Universes.v
+./Core/Soundness/LogicalRelation/Levels.v
+./Core/Soundness/LogicalRelation/Props.v
+./Core/Soundness/LogicalRelation/Functions.v
+./Core/Soundness/LogicalRelation/Lets.v
+./Core/Soundness/LogicalRelation/Subtyping.v
+./Core/Soundness/Modules/Slots.v
+./Core/Soundness/Modules/ModuleLemmas.v
 ./Core/Soundness/LogicalRelation.v
 ./Core/Soundness/VariableCases.v
 ./Core/Soundness/ContextCases.v
