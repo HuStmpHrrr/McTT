@@ -31,9 +31,6 @@ Qed.
 Lemma tuple_field_resp : forall t t' f, set_eq t t' -> set_eq (tuple_field t f) (tuple_field t' f).
 Proof. intros. unfold tuple_field. apply set_apply_resp; [assumption | apply set_eq_refl]. Qed.
 
-Lemma set_entry_value_eq {γ : global_valuation} : forall e e', set_entry_eq γ e e' -> set_eq (set_entry_value e) (set_entry_value e').
-Proof. exact set_entry_value_resp. Qed.
-
 Section Functional.
   Context {GC : GCtx}.
   Variable T : universe_tower.

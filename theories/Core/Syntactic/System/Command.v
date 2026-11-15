@@ -1592,14 +1592,6 @@ Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ]⟨ lp ⍮ rd ⍮ tc ⟩ cs ⇝* Θ' �
 
 (** ** A Cycle Has No Meaning *)
 
-Lemma load_acyclic : forall load_path read to_core ch B Rb Θ Ξ fp B' Rb' Θ' Ξ',
-    In fp ch ->
-    gds_lookup Θ fp = None ->
-    ~ Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_load fp ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
-Proof.
-  intros * Hin Hnone Hr; inversion Hr; subst; [ congruence | contradiction ].
-Qed.
-
 (** ** Running is Deterministic
 
     Every rule is a check, never a choice, and [load_path], [read] and [to_core]
@@ -2011,11 +2003,6 @@ Proof.
   apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
   cbn; econstructor; [ eassumption | exact HE | exact Hfr ].
 Qed.
-
-Lemma add_ind_wf : forall Θ Ξ x pv pq k D Φ,
-    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) x ⊢ᵉ ge_ind pv pq k D Φ -> gs_fresh x Ξ ->
-    ⊢ᵍ Θ ⍮ gs_add x (ge_ind pv pq k D Φ) Ξ.
-Proof. intros; apply add_entry_wf; assumption. Qed.
 
 (** A member checked with an empty module has its group's own uniform
     parameters, over the frames', as assumptions of a well-formed context:
@@ -2530,13 +2517,6 @@ Qed.
 Lemma gens_run_shape : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> gs_shape Ξ' = gs_shape Ξ.
 Proof. induction 1; rewrite ?IHgens_run, ?gs_add_params; reflexivity. Qed.
 
-Lemma gens_run_tl : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ.
-Proof.
-  assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
-    by (intros ? ? [| [[? ?] ?] ?]; split; reflexivity).
-  induction 1; [ auto | .. ]; destruct IHgens_run as [Ht Hl]; rewrite Ht, Hl; apply Hadd.
-Qed.
-
 (** ** Inductive Types Stay Where They Are Declared
 
     An entry added to the innermost frame, and a closed module frame filed
@@ -2573,13 +2553,6 @@ Qed.
 
 Lemma mdefs_run_shape : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> gs_shape Ξ' = gs_shape Ξ.
 Proof. induction 1; rewrite ?IHmdefs_run, ?gs_add_params; reflexivity. Qed.
-
-Lemma mdefs_run_tl : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ.
-Proof.
-  assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
-    by (intros ? ? [| [[? ?] ?] ?]; split; reflexivity).
-  induction 1; [ auto | .. ]; destruct IHmdefs_run as [Ht Hl]; rewrite Ht, Hl; apply Hadd.
-Qed.
 
 Lemma mdefs_run_ind_lookup : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ ->
     forall p D0, ind_lookup Θ Ξ p = Some D0 -> ind_lookup Θ Ξ' p = Some D0.
@@ -3232,18 +3205,6 @@ Section WellFormed.
     + split; [ apply canon_merge; assumption | apply merge_left ].
   Qed.
 
-  Corollary load_coherent : forall ch B Rb B' Rb' Θ Ξ fp Θ',
-      ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_load fp ⇝ Θ' ⍮ Ξ ⍮ B' ⍮ Rb' ->
-      ⊢ᵍ Θ' ⍮ nil /\ gds_lookup Θ' fp <> None.
-  Proof.
-    intros * HΞ Hc Hst Hr; destruct (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hr HΞ Hc Hst) as (H' & _ & _).
-    split; [ eapply wf_gstack_deps; eassumption |].
-    inversion Hr; subst; [ congruence |].
-    (* [fp] was loaded: it is filed on top of what its run filed *)
-    rewrite merge_none; cbn; rewrite path_beq_refl; intros [_ ?]; discriminate.
-  Qed.
-
   Corollary prog_sem_wf : forall prg B Θ U,
       prog_sem load_path read to_core prg B Θ U ->
       ⊢ᵍ Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs (prog_path prg) nil ⍮ fk_module ⊢ᵍᵘ U.
@@ -3483,14 +3444,8 @@ Proof.
     [ exfalso; apply H; discriminate | discriminate | reflexivity | intros H'; apply H'; reflexivity ].
 Qed.
 
-Lemma gds_equiv_refl : forall Θ, gds_equiv Θ Θ.
-Proof. intros; split; apply gds_sub_refl. Qed.
-
 Lemma gds_equiv_sym : forall Θ Θ', gds_equiv Θ Θ' -> gds_equiv Θ' Θ.
 Proof. intros * [H1 H2]; split; assumption. Qed.
-
-Lemma gds_equiv_trans : forall Θ1 Θ2 Θ3, gds_equiv Θ1 Θ2 -> gds_equiv Θ2 Θ3 -> gds_equiv Θ1 Θ3.
-Proof. intros * [H1 H2] [H3 H4]; split; eauto using gds_sub_trans. Qed.
 
 (** A judgment state below [Θ], with domain [S], is equivalent to the
     restriction of [Θ] to [S]. *)
@@ -3669,37 +3624,6 @@ Section Runs.
     intros * H; pose proof (proj1 (proj2 (run_bottom load_path read to_core)) _ _ _ _ _ _ _ _ _ _ H) as Hb.
     destruct Ξ' as [| f Ξ']; [ reflexivity |]; unfold gs_bottom in Hb; cbn [gs_shape List.map List.rev] in Hb.
     destruct (rev (map (fun f0 => (fst f0, gu_params (snd f0))) Ξ')); cbn in Hb; discriminate.
-  Qed.
-
-  (** A name fresh in the innermost frame after definitions was fresh
-      before them: they only add entries to it. *)
-  Lemma defs_fresh_back : forall ch cs B Rb Θ Ξ B' Rb' Θ' Ξ',
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ List.map ci_core cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
-      Forall cmd_is_def cs -> forall y, gs_fresh y Ξ' -> gs_fresh y Ξ.
-  Proof.
-    intros ch cs; induction cs as [| c cs IH]; intros * Hr Hd y Hy; cbn [List.map] in Hr;
-      [ inversion Hr; subst; exact Hy |].
-    inversion Hr as [| | ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? H1 H2]; subst.
-    inversion Hd as [| ? ? Hc Hds]; subst; destruct c; try contradiction.
-    pose proof (IH _ _ _ _ _ _ _ _ H2 Hds _ Hy) as Hy1.
-    inversion H1; subst; exact (proj1 (gs_fresh_add_inv _ _ _ _ Hy1)).
-  Qed.
-
-  (** After its field definitions, each field of a record is taken in its
-      module's frame. *)
-  Lemma record_field_cmds_taken : forall ch B Rb Θ Ξ R B' Rb' Θ' Ξ' f,
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ List.map ci_core (record_field_cmds R) ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
-      In f (List.map fst (record_fields R)) -> ~ gs_fresh f Ξ'.
-  Proof.
-    intros ch B Rb Θ Ξ R B' Rb' Θ' Ξ' f; unfold record_field_cmds; generalize 0.
-    revert B Rb Θ Ξ; induction (record_fields R) as [| [g T] fs IH]; intros B Rb Θ Ξ k Hr Hin; [ destruct Hin |].
-    cbn in Hr; inversion Hr as [| | ? ? ? ? ? ? ? B1 Rb1 Θ1 Ξ1 ? ? ? ? Hc Hcs]; subst.
-    inversion Hc; subst.
-    destruct Hin as [<- | Hin]; [| exact (IH _ _ _ _ _ Hcs Hin) ].
-    assert (Hd : Forall cmd_is_def (record_fields_cmds R (S k) fs)).
-    { clear; revert k; induction fs as [| [? ?] fs IH]; intros k; constructor; [ exact I | apply IH ]. }
-    intros Hy; apply (defs_fresh_back _ _ _ _ _ _ _ _ _ _ Hcs Hd) in Hy.
-    apply gs_fresh_add_inv in Hy as [_ Hne]; exact (Hne eq_refl).
   Qed.
 
 End Runs.

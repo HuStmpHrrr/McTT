@@ -96,16 +96,6 @@ Section Gen.
     Variables (Γ : ctx) (H : modexp) (H' : modexp).
     Hypothesis HH : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'.
 
-    (** Whether a description is a module only, an open or a closed one. *)
-    Definition mdesc_is_modb (R : mdesc) : bool :=
-      match R with
-      | mdesc_open _ _ _ | mdesc_closed _ _ _ _ _ => true
-      | _ => false
-      end.
-
-    Lemma mdesc_is_modb_spec : forall R, mdesc_is_modb R = true <-> mdesc_is_mod R.
-    Proof. intros []; cbn; split; first [ tauto | discriminate | intros [] ]. Qed.
-
     (** The definition with a module part an item names: a member with a
         term part and a module part ([items_gen_dm]), of the term part's type. *)
     Definition dm_gen (d : string) (pv : bool) (n : string) (R : fmdesc) : open_result generated_item :=

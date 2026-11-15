@@ -73,12 +73,6 @@ Qed.
 
 Hint Resolve var_per_bot : mctt.
 
-(** Two neutrals reading back to the same neutral are related. *)
-Lemma per_bot_of_reads : forall m n,
-    (forall s, exists L, Rne m in s ↘ L /\ Rne n in s ↘ L) ->
-    Dom m ≈ n ∈ per_bot.
-Proof. intros * H s; destruct (H s) as (L & HL & HL'); exact (mk_neutral_reads_alike _ _ _ _ _ HL HL' ltac:(reflexivity)). Qed.
-
 Lemma per_top_sym : forall m n,
     Dom m ≈ n ∈ per_top ->
     Dom n ≈ m ∈ per_top.
@@ -98,12 +92,6 @@ Proof.
   pose proof (functional_read_nf _ _ _ _ HL1 HL2) as <-.
   exact (mk_normal_reads_alike _ _ _ _ _ HL HL' (transitivity HE HE')).
 Qed.
-
-(** Two values reading back to the same normal form are related. *)
-Lemma per_top_of_reads : forall m n,
-    (forall s, exists L, Rnf m in s ↘ L /\ Rnf n in s ↘ L) ->
-    Dom m ≈ n ∈ per_top.
-Proof. intros * H s; destruct (H s) as (L & HL & HL'); exact (mk_normal_reads_alike _ _ _ _ _ HL HL' ltac:(reflexivity)). Qed.
 
 (** Related levels read back to one canonical level without proofs. *)
 Lemma per_lvl_reads : forall m n,
@@ -433,15 +421,6 @@ Proof.
   intros * [a a' Ea Ea' Ht He _] Hx s.
   destruct (Ht s) as [T T' _ HT' _]; destruct (He _ _ Hx s) as [W W' _ HW' _].
   eexists; eapply read_entry_term; [ eapply eval_entry_type_closure; exact Ea' | exact HT' | exact HW' ].
-Qed.
-
-(** And at the type at the first base. *)
-Lemma component_elem_readable_at_base : forall A ρ ρ' R x x',
-    rel_component_types A ρ ρ' R -> R x x' -> entry_readable (de_term x (entry_type_closure A ρ)).
-Proof.
-  intros * [a a' Ea Ea' Ht He _] Hx s.
-  destruct (Ht s) as [T T' HT _ _]; destruct (He _ _ Hx s) as [W W' HW _ _].
-  eexists; eapply read_entry_term; [ eapply eval_entry_type_closure; exact Ea | exact HT | exact HW ].
 Qed.
 
 (** The elements of a [Π] read the domains only through their sorts. *)

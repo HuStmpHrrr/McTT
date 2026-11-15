@@ -9,7 +9,7 @@
     [cond φ x] is [x] when [φ] holds and the empty set when it fails,
     without deciding [φ]. *)
 
-From Mctt.Core.SetModel.Sets Require Export Fixpoints WSets.
+From Mctt.Core.SetModel.Sets Require Export Fixpoints Grothendieck.
 From Mctt.Core.SetModel Require Export Tower.
 
 (** ** Tags *)
@@ -41,13 +41,6 @@ Proof.
   - intros w Hw. apply set_mem_separation in Hw as [Hw _]; [| intros ? ? _ Hφ; exact Hφ]. apply set_mem_singleton in Hw. exact Hw.
 Qed.
 
-Lemma cond_false : forall (φ : Prop) x, ~ φ -> set_eq (cond φ x) empty_set.
-Proof.
-  intros φ x H. apply set_eq_intro; intros z Hz; [| exfalso; exact (set_mem_empty _ Hz)].
-  apply set_mem_union in Hz as [w [Hw _]]. apply set_mem_separation in Hw as [_ Hφ]; [| intros ? ? _ Hφ; exact Hφ].
-  exfalso; exact (H Hφ).
-Qed.
-
 Lemma set_mem_cond : forall (φ : Prop) x z, set_mem z (cond φ x) <-> φ /\ set_mem z x.
 Proof.
   intros φ x z. unfold cond. rewrite set_mem_union. split.
@@ -55,12 +48,6 @@ Proof.
     apply set_mem_singleton in Hw. split; [exact Hφ | eapply set_mem_eq_r; [exact Hw | exact Hz]].
   - intros [Hφ Hz]. exists x. split; [| exact Hz].
     apply set_mem_separation; [intros ? ? _ Hp; exact Hp |]. split; [apply set_mem_singleton; apply set_eq_refl | exact Hφ].
-Qed.
-
-Lemma cond_resp : forall (φ ψ : Prop) x y, (φ <-> ψ) -> set_eq x y -> set_eq (cond φ x) (cond ψ y).
-Proof.
-  intros * Hφ E. unfold cond. apply union_set_resp. apply separation_set_resp;
-    [intros ? ? _ H; exact H | intros ? ? _ H; exact H | apply singleton_set_resp; exact E | intros _ _; exact Hφ].
 Qed.
 
 (** Conditional sets at equivalent conditions, equal where they hold. *)
@@ -89,15 +76,6 @@ Definition pi_codomain (C : aczel_set) (x : aczel_set) : aczel_set := set_apply 
     proposition codes [F]: true when every [F x] is. *)
 Definition forall_code (dom : aczel_set) (F : aczel_set -> aczel_set) : aczel_set :=
   prop_code (forall x, set_mem x (code_carrier dom) -> prop_true (F x)).
-
-Lemma pi_codomain_pi_code : forall dom F x, respects_set_eq_fun F -> set_mem x (code_carrier dom) ->
-    set_eq (pi_codomain (pi_code dom F) x) (F x).
-Proof.
-  intros dom F x HF Hx. unfold pi_codomain, pi_code.
-  eapply set_eq_trans; [apply set_apply_resp; [| apply set_eq_refl] |].
-  - eapply set_eq_trans; [apply pair_second_resp; apply code_datum_type_code | apply pair_second_ordered_pair].
-  - apply set_apply_graph; assumption.
-Qed.
 
 Lemma pi_domain_pi_code : forall dom F, set_eq (pi_domain (pi_code dom F)) dom.
 Proof.
@@ -143,13 +121,6 @@ Qed.
 Lemma pi_code_relevant : forall dom F, is_relevant_code (pi_code dom F).
 Proof. intros. do 3 eexists. split; [apply set_eq_refl | discriminate]. Qed.
 
-Lemma forall_code_prop : forall dom F, is_prop_code (forall_code dom F).
-Proof. intros. eexists. apply set_eq_refl. Qed.
-
-(** ** Inductive and Record Types *)
-
-(** An inductive type whose elements are [carrier]: no datum, so that no
-    parameter, small or large, is stored. *)
 Definition inductive_code (carrier : aczel_set) : aczel_set := type_code inductive_tag empty_set carrier.
 
 (** A record type whose elements are [carrier], with no datum. *)

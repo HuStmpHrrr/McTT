@@ -115,35 +115,6 @@ Definition builtins_merge (B1 B2 : builtins) : option builtins :=
   | Some p1, Some p2 => if qname_eq_dec p1 p2 then Some (mk_builtins (Some p1)) else None
   end.
 
-Lemma builtins_eta : forall B, mk_builtins (builtins_nat B) = B.
-Proof. intros []; reflexivity. Qed.
-
-Lemma builtins_merge_empty_l : forall B, builtins_merge builtins_empty B = Some B.
-Proof. intros [o]; reflexivity. Qed.
-
-Lemma builtins_merge_empty_r : forall B, builtins_merge B builtins_empty = Some B.
-Proof. intros [[p |]]; reflexivity. Qed.
-
-Lemma builtins_merge_comm : forall B1 B2, builtins_merge B1 B2 = builtins_merge B2 B1.
-Proof.
-  intros [[p1 |]] [[p2 |]]; unfold builtins_merge; cbn; try reflexivity.
-  destruct (qname_eq_dec p1 p2) as [<- | Hne];
-    [ destruct (qname_eq_dec p1 p1); congruence | destruct (qname_eq_dec p2 p1); congruence ].
-Qed.
-
-Lemma builtins_merge_idem : forall B, builtins_merge B B = Some B.
-Proof. intros [[p |]]; unfold builtins_merge; cbn; [ destruct (qname_eq_dec p p); [ reflexivity | contradiction ] | reflexivity ]. Qed.
-
-(** Associativity, where failure is a value of its own. *)
-Lemma builtins_merge_assoc : forall B1 B2 B3,
-    match builtins_merge B1 B2 with Some B12 => builtins_merge B12 B3 | None => None end =
-    match builtins_merge B2 B3 with Some B23 => builtins_merge B1 B23 | None => None end.
-Proof.
-  intros [[p1 |]] [[p2 |]] [[p3 |]]; unfold builtins_merge; cbn;
-    repeat (match goal with |- context [qname_eq_dec ?a ?b] => destruct (qname_eq_dec a b); try subst end; cbn);
-    congruence.
-Qed.
-
 (** What a merge has: the bindings of both sides. *)
 Lemma builtins_merge_inv : forall B1 B2 B p,
     builtins_merge B1 B2 = Some B -> builtins_nat B = Some p -> builtins_nat B1 = Some p \/ builtins_nat B2 = Some p.

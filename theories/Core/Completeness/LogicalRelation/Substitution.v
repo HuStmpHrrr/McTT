@@ -1383,47 +1383,6 @@ Qed.
     link of the chain above.  Relatedness suffices because
     [glu_univ_elem_resp_per_univ] transports a gluing predicate along
     [per_univ]. *)
-Lemma per_univ_of_instance : forall {Γ κ A} {i j : nat} {B N env_relΓ},
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A ≈ A : Typeω@j ->
-    Γ ▹{κ} A ⊨ B ≈ B : Typeω@i ->
-    Γ ⊨ N ≈ N : A ->
-    exp_scoped (List.length Γ) N ->
-    forall ρ n,
-      Dom ρ ≈ ρ ∈ env_relΓ ->
-      ⟦ N ⟧ ρ ↘ n ->
-      exists a b,
-        ⟦ B[Id,,N] ⟧ ρ ↘ a /\ ⟦ B ⟧ ρ ↦ n ⦂ centry_tag (ce_ass κ A) Γ ρ ↘ b /\
-          Dom a ≈ a ∈ per_univ i /\ Dom a ≈ b ∈ per_univ i.
-Proof.
-  intros * HΓ HA HB HN HNs * Hρ Hn.
-  pose proof (rel_sub_under_ctx_extend_sub (κ := κ) (rel_sub_id (ex_intro _ _ HΓ)) HN (rel_exp_of_typ_not_level_sort HA) HNs HNs)
-    as HidN.
-  rewrite exp_sub_id in HidN.
-  pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
-  (** [Id,,N] evaluates to the extension of the retagged environment; the
-      instance is read at the extension of [ρ] itself
-      ([rel_type_body_of_retagged]). *)
-  destruct (head_not_propositional_of_typ (e := ce_ass κ A) HΓ eq_refl HA _ _ (per_ctx_env_retag HΓ _ _ Hρ)) as [Hnp _].
-  destruct (eval_sub_id_rel HΓ Hρ) as [Hid _].
-  destruct (rel_exp_under_ctx_simple_at_rel HΓ HA HN _ _ Hρ) as (m & m' & Hm & Hm' & Hmm).
-  assert (m = n) as -> by (eapply functional_eval_exp; eassumption).
-  assert (m' = n) as -> by (eapply functional_eval_exp; eassumption).
-  pose proof (per_ctx_env_of_typ (κ := κ) HΓ (rel_type_of_typ HA)) as HΓA0.
-  assert (EA : env_relΓA <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
-  assert (Hext : Dom ρ ↦ n ⦂ centry_tag (ce_ass κ A) Γ ρ ≈ ρ ↦ n ⦂ centry_tag (ce_ass κ A) Γ ρ ∈ env_relΓA)
-    by (apply EA; exact (per_env_extend_intro_tagged HΓA0 HΓ Hρ Hmm)).
-  destruct (rel_type_body_of_retagged HΓA HBgen _ _ HΓ _ _ HidN ρ ρ
-              (ρ ↦ n ⦂ centry_tag (ce_ass κ A) Γ ρ) (ρ ↦ n ⦂ centry_tag (ce_ass κ A) Γ ρ) Hρ
-              (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn) (eval_sub_extend _ _ _ _ _ _ _ Hid Hnp Hn) Hext)
-    as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Hchain].
-  apply rel_chain_relevant_univ in Hchain.
-  destruct Hchain as [Ht12 _].
-  exists t1, t2.
-  do 2 (split; [ eassumption |]).
-  split; [| eassumption ].
-  etransitivity; [ eassumption | symmetry; eassumption ].
-Qed.
 
 End Fixed_GCtx.
 

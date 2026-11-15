@@ -129,11 +129,6 @@ Proof.
   intros; unfold fam_cod; eapply eval_exp_app; [ apply eval_exp_var | cbn; constructor | apply eval_exp_var | econstructor; eassumption ].
 Qed.
 
-(** The type of a shape is relevant: a member, a record or a [Π]. *)
-Lemma eval_shape_type_relevant : forall p ups ρ t a,
-    ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a -> domain_kind a = ak_relevant.
-Proof. intros * H; inversion H; reflexivity. Qed.
-
 Lemma eval_fam_cod_ihfam : forall ρm A p ups ρ B t i f x fx as' a tf tx,
     $| f & x | gc_deps ⍮ gc_stack ↘ fx ->
     ⟦ihty fx of t at p ups under ρm A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ x ⦂ entry_type_closure B ρ ↘ as' ->
@@ -181,18 +176,6 @@ Proof.
   rewrite !List.app_assoc; apply components_env_snoc.
   rewrite !List.length_app, List.length_rev, length_nonrec_arg_vals by exact Hv.
   rewrite length_cargs_nonrec_tele; lia.
-Qed.
-
-(** One recursive argument more: nothing joins the environment. *)
-Lemma components_env_args_snoc_rec : forall D u (Mk : imember) gs1 t xs vp v,
-    List.length vp = List.length gs1 ->
-    components_env D u (List.rev (im_nparams Mk) ++ cargs_nonrec_tele (gs1 ++ ca_rec t :: nil))
-      (xs ++ nonrec_arg_vals (gs1 ++ ca_rec t :: nil) (vp ++ v :: nil))
-    = components_env D u (List.rev (im_nparams Mk) ++ cargs_nonrec_tele gs1) (xs ++ nonrec_arg_vals gs1 vp).
-Proof.
-  intros * Hv.
-  rewrite cargs_nonrec_tele_snoc_rec, nonrec_arg_vals_app by exact Hv; cbn [nonrec_arg_vals].
-  rewrite List.app_nil_r; reflexivity.
 Qed.
 
 (** The environment of a recursive argument's components, at its shape's
@@ -794,19 +777,6 @@ Proof.
   rewrite (functional_read_nf _ _ _ _ HW' HW0'); exact Hp.
 Qed.
 
-(** So does a type readback related to one without proofs. *)
-Lemma per_top_typ_proof_free_right : forall a a' s A',
-    Dom a ≈ a' ∈ per_top_typ ->
-    (forall A, Rtyp a in gc_deps ⍮ gc_stack ⍮ s ↘ A -> nf_proof_free A) ->
-    Rtyp a' in gc_deps ⍮ gc_stack ⍮ s ↘ A' -> nf_proof_free A'.
-Proof.
-  intros * Ha Hpf HA'.
-  destruct (Ha s) as [A0 A0' HA0 HA0' HE].
-  pose proof (Hpf _ HA0) as Hp.
-  pose proof (proj1 nf_ne_proof_free_eq _ Hp _ HE) as <-.
-  rewrite (functional_read_typ _ _ _ _ HA' HA0'); exact Hp.
-Qed.
-
 (** A field's kind is not that of the types of levels. *)
 Lemma field_kind_not_level : forall κ, field_kind κ -> κ <> ak_level.
 Proof. intros κ []; discriminate. Qed.
@@ -1103,15 +1073,6 @@ Proof.
   intros * H Hk; exact (realizable_type_elem_proof_free _ _ _ (realize_per_univ_elem_gen H) Hk _ _ _ _).
 Qed.
 
-(** A type of levels reads back without proofs. *)
-Corollary level_type_read_proof_free : forall {i a a' R s A},
-    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
-    domain_kind a = ak_level ->
-    Rtyp a in gc_deps ⍮ gc_stack ⍮ s ↘ A -> nf_proof_free A.
-Proof.
-  intros * H Hk; exact (realizable_type_type_proof_free _ _ _ (realize_per_univ_elem_gen H) Hk _ _).
-Qed.
-
 (** [per_bot_then_per_elem] is not a hint: its conclusion has the relation [R]
     in head position, so the pattern would be higher-order, and Rocq rejects
     it. *)
@@ -1156,55 +1117,6 @@ Qed.
     reaches does: the lets bind entries only ([read_lets]).  Past its end
     an environment has no entry ([absent_entry]), which never reads back,
     so the scope must stay within the environment. *)
-
-(** The entries of an environment past its end are [absent_entry]. *)
-Lemma env_entry_past_end : forall ρ x, List.length ρ <= x -> env_entry ρ x = absent_entry.
-Proof. intros * H; rewrite env_entry_nth; apply List.nth_overflow; exact H. Qed.
-
-(** The entry past the end of an environment does not read back: it has
-    no type. *)
-Lemma absent_entry_unreadable : forall s b, ~ Rent absent_entry in gc_deps ⍮ gc_stack ⍮ s ↘ b.
-Proof. intros * H; inversion H; subst; match goal with He : eval_entry_type _ _ entry_type_none _ |- _ => inversion He end. Qed.
-
-(** An entry that reads back is inside its environment. *)
-Lemma entry_readable_inside : forall ρ x, entry_readable (env_entry ρ x) -> x < List.length ρ.
-Proof.
-  intros * H; destruct (Nat.lt_ge_cases x (List.length ρ)) as [Hx | Hx]; [ exact Hx | exfalso ].
-  rewrite env_entry_past_end in H by exact Hx; destruct (H 0) as [b Hb]; exact (absent_entry_unreadable _ _ Hb).
-Qed.
-
-(** The lets of an environment whose entries read back, at any number of
-    positions within its length. *)
-Lemma read_lets_of_env_readable : forall ρ, env_readable ρ ->
-    forall k s, k <= List.length ρ -> exists bs, Rlets ρ at k in gc_deps ⍮ gc_stack ⍮ s ↘ bs.
-Proof.
-  intros ρ H k; induction k as [| k IH]; intros s Hk; [ eexists; constructor |].
-  destruct (H k ltac:(lia) s) as [b Hb]; destruct (IH (S s) ltac:(lia)) as [bs Hbs]; eexists; econstructor; eassumption.
-Qed.
-
-(** A proof kept over an environment whose entries read back reads back,
-    when its scope stays within the environment. *)
-Lemma kept_proof_readable : forall M ρ, env_readable ρ -> proof_scope M ρ <= List.length ρ -> proof_readable ⋆ᵈ⟨M, ρ⟩.
-Proof.
-  intros * H Hk s; destruct (read_lets_of_env_readable _ H (proof_scope M ρ) s Hk) as [bs Hbs].
-  eexists; constructor; exact Hbs.
-Qed.
-
-(** An initial environment has an entry for each entry of its context. *)
-Lemma initial_env_length : forall Γ ρ, initial_env_f Γ ρ -> List.length ρ = List.length Γ.
-Proof. induction 1; cbn; congruence. Qed.
-
-(** Related initial environments read back at every entry. *)
-Lemma initial_env_readable : forall Γ Γ' R ρ ρ', EF Γ ≈ Γ' ∈ per_ctx_env ↘ R ->
-    initial_env_f Γ ρ -> initial_env_f Γ' ρ' -> Dom ρ ≈ ρ' ∈ R -> env_readable ρ /\ env_readable ρ'.
-Proof.
-  intros * HΓ Hi Hi' Hρ.
-  pose proof (per_ctx_env_length HΓ) as Hl.
-  pose proof (initial_env_length _ _ Hi) as Hl1; pose proof (initial_env_length _ _ Hi') as Hl2.
-  split; intros x Hx'; [ rewrite Hl1 in Hx' | rewrite Hl2 in Hx'; rewrite <- Hl in Hx' ];
-    first [ exact (proj1 (per_ctx_env_entries_readable _ _ _ HΓ _ _ Hρ x Hx'))
-          | exact (proj2 (per_ctx_env_entries_readable _ _ _ HΓ _ _ Hρ x Hx')) ].
-Qed.
 
 (** A module entry reads back, by its stored unit. *)
 Lemma mod_entry_readable : forall h U, entry_readable (de_mod h U).

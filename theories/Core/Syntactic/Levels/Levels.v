@@ -323,9 +323,6 @@ Proof.
     split; [ eqb_split; rewrite ?Nat.eqb_refl, ?dec_eqb_refl; try reflexivity; try assumption | congruence ].
 Qed.
 
-Lemma nf_code_inj : forall M N t t', nf_code M t = nf_code N t' -> nf_eq_upto_proofs M N /\ t = t'.
-Proof. apply nf_ne_code_inj. Qed.
-
 Lemma ne_code_inj : forall m m' t t', ne_code m t = ne_code m' t' -> ne_eq_upto_proofs m m' /\ t = t'.
 Proof. apply nf_ne_code_inj. Qed.
 
@@ -387,9 +384,6 @@ Proof.
   - intros H; apply ne_code_upto; exact H.
 Qed.
 
-Lemma ne_cmp_refl : forall m, ne_cmp m m = Eq.
-Proof. intros; apply ne_cmp_eq; reflexivity. Qed.
-
 (** Neutrals equal in the order compare alike to every other. *)
 Lemma ne_cmp_eq_compat : forall m m' n, ne_cmp m m' = Eq -> ne_cmp m n = ne_cmp m' n.
 Proof. intros * H; unfold ne_cmp in *; apply lt_cmp_eq in H; rewrite H; reflexivity. Qed.
@@ -427,13 +421,6 @@ Proof.
   - apply ne_cmp_eq in E; rewrite Nat.compare_eq_iff; intuition.
   - split; [ discriminate | intros [H _]; apply ne_cmp_eq in H; congruence ].
   - split; [ discriminate | intros [H _]; apply ne_cmp_eq in H; congruence ].
-Qed.
-
-(** Atoms equal in the order compare alike to every other. *)
-Lemma at_cmp_eq_compat : forall a s b t c u, at_cmp a s b t = Eq -> at_cmp a s c u = at_cmp b t c u.
-Proof.
-  intros * H; unfold at_cmp in *; destruct (ne_cmp a b) eqn:E; try discriminate.
-  apply Nat.compare_eq_iff in H as ->; rewrite (ne_cmp_eq_compat _ _ _ E); reflexivity.
 Qed.
 
 Lemma at_cmp_refl : forall a s, at_cmp a s a s = Eq.
@@ -1010,21 +997,6 @@ Proof. intros; apply lvl_canon_iff; intros; rewrite !lvl_eval_max, !lvl_canon_ev
 Lemma lvl_canon_suc : forall l, lvl_eq_upto_proofs (lvl_canon (lvl_suc (lvl_canon l))) (lvl_canon (lvl_suc l)).
 Proof. intros; apply lvl_canon_iff; intros; rewrite !lvl_eval_suc, !lvl_canon_eval by assumption; reflexivity. Qed.
 
-Lemma lvl_canon_max_cong : forall l1 l1' l2 l2',
-    lvl_eq_upto_proofs (lvl_canon l1) (lvl_canon l1') -> lvl_eq_upto_proofs (lvl_canon l2) (lvl_canon l2') ->
-    lvl_eq_upto_proofs (lvl_canon (lvl_max l1 l2)) (lvl_canon (lvl_max l1' l2')).
-Proof.
-  intros * H1 H2; rewrite lvl_canon_iff in H1, H2 |- *.
-  intros; rewrite !lvl_eval_max, H1, H2 by assumption; reflexivity.
-Qed.
-
-Lemma lvl_canon_suc_cong : forall l l',
-    lvl_eq_upto_proofs (lvl_canon l) (lvl_canon l') -> lvl_eq_upto_proofs (lvl_canon (lvl_suc l)) (lvl_canon (lvl_suc l')).
-Proof.
-  intros * H; rewrite lvl_canon_iff in H |- *.
-  intros; rewrite !lvl_eval_suc, H by assumption; reflexivity.
-Qed.
-
 (** ** Properties of Every Atom
 
     Canonicalisation only reorders, merges and drops atoms, so a property of
@@ -1081,19 +1053,6 @@ Proof. induction xs as [| [k s a] r IH]; cbn; [ reflexivity | rewrite IH; reflex
 Lemma list_all_level_atoms_all : forall (P : ne -> Prop) xs, list_all level_atom (level_atom_g_all ne P) xs -> level_atoms_all P xs.
 Proof. intros P xs H; induction H as [| [k s a] Ha r Hr IH]; cbn; [ exact I | inversion Ha; subst; auto ]. Qed.
 
-(** The atoms of a level are clean, as [nf_clean] asks of a level, when
-    every atom's neutral is. *)
-Lemma level_atoms_clean_all : forall xs, all_list (fun a => ne_clean (atom_level a)) xs <-> level_atoms_all ne_clean xs.
-Proof. intros; apply level_atoms_all_all_list. Qed.
-
-Lemma level_atoms_clean_canon : forall c xs, all_list (fun a => ne_clean (atom_level a)) xs ->
-    all_list (fun a => ne_clean (atom_level a)) (snd (lvl_canon (c, xs))).
-Proof. intros * H; apply level_atoms_clean_all, level_atoms_all_canon, level_atoms_clean_all; assumption. Qed.
-
-Lemma level_atoms_clean_sort : forall xs, all_list (fun a => ne_clean (atom_level a)) xs ->
-    all_list (fun a => ne_clean (atom_level a)) (level_atoms_sort xs).
-Proof. intros * H; apply level_atoms_clean_all, level_atoms_all_sort, level_atoms_clean_all; assumption. Qed.
-
 (** ** The Order on Levels
 
     [lvl_le l l'] is the decidable order [l ⊔ l' = l'], which is the pointwise
@@ -1106,12 +1065,6 @@ Proof.
   intros l l'; unfold lvl_le; rewrite lvl_canon_iff; split; intros H ν Hν; specialize (H ν Hν);
     rewrite lvl_eval_max in *; revert H; generalize (lvl_eval ν l) (lvl_eval ν l'); intros; ordinal_solve.
 Qed.
-
-Definition lvl_eq_dec : forall (l l' : lvl), ({l = l'} + {l <> l'})%type.
-Proof.
-  intros [c xs] [c' ys]; destruct (o2_eq_dec c c') as [-> |]; [| right; congruence ].
-  destruct (List.list_eq_dec (level_atom_eq_dec_g ne_eq_dec) xs ys) as [-> |]; [ left; reflexivity | right; congruence ].
-Defined.
 
 (** Equality up to proofs of levels is decidable. *)
 Definition lvl_eq_upto_proofs_dec : forall l l', ({lvl_eq_upto_proofs l l'} + {~ lvl_eq_upto_proofs l l'})%type.
@@ -1133,31 +1086,11 @@ Proof.
   eapply ordinal_le_trans; [ apply H1, Hν | apply H2, Hν ].
 Qed.
 
-Lemma lvl_le_canon : forall l l', lvl_eq_upto_proofs (lvl_canon l) (lvl_canon l') -> lvl_le l l'.
-Proof.
-  intros * H; rewrite lvl_canon_iff in H; apply lvl_le_correct; intros ν Hν; rewrite (H ν Hν); apply ordinal_le_refl.
-Qed.
-
 Lemma lvl_le_antisym : forall l l', lvl_le l l' -> lvl_le l' l -> lvl_eq_upto_proofs (lvl_canon l) (lvl_canon l').
 Proof.
   intros * H H'; rewrite lvl_le_correct in H, H'; apply lvl_canon_iff; intros ν Hν.
   apply ordinal_le_antisym; [ apply H, Hν | apply H', Hν ].
 Qed.
-
-Lemma lvl_le_max_left : forall l l', lvl_le l (lvl_max l l').
-Proof. intros; apply lvl_le_correct; intros; rewrite lvl_eval_max; apply ordinal_le_ordinal_max_l. Qed.
-
-Lemma lvl_le_max_right : forall l l', lvl_le l' (lvl_max l l').
-Proof. intros; apply lvl_le_correct; intros; rewrite lvl_eval_max; apply ordinal_le_ordinal_max_r. Qed.
-
-Lemma lvl_le_max_lub : forall l l' l'', lvl_le l l'' -> lvl_le l' l'' -> lvl_le (lvl_max l l') l''.
-Proof.
-  intros * H H'; rewrite lvl_le_correct in H, H'; apply lvl_le_correct; intros ν Hν.
-  rewrite lvl_eval_max; apply ordinal_max_lub; [ apply H, Hν | apply H', Hν ].
-Qed.
-
-Lemma lvl_le_suc : forall l, lvl_le l (lvl_suc l).
-Proof. intros; apply lvl_le_correct; intros; rewrite lvl_eval_suc; apply ordinal_le_ordinal_succ. Qed.
 
 (** The least level, and the literals. *)
 Definition lvl_lit (o : o2) : lvl := (o, nil).
@@ -1284,15 +1217,6 @@ Proof. intros; rewrite !lvl_real_eval; apply lvl_canon_eval, lvl_adm_zero. Qed.
 Lemma lvl_le_real : forall l l', lvl_le l l' -> ordinal_le (lvl_real l) (lvl_real l').
 Proof. intros * H; rewrite lvl_le_correct in H; rewrite !lvl_real_eval; apply H, lvl_adm_zero. Qed.
 
-Lemma lvl_real_lit : forall o, lvl_real (lvl_lit o) = o.
-Proof. reflexivity. Qed.
-
-Lemma lvl_real_suc : forall l, lvl_real (lvl_suc l) = ordinal_succ (lvl_real l).
-Proof. intros; rewrite !lvl_real_eval; apply lvl_eval_suc. Qed.
-
-Lemma lvl_real_max : forall l l', lvl_real (lvl_max l l') = ordinal_max (lvl_real l) (lvl_real l').
-Proof. intros; rewrite !lvl_real_eval; apply lvl_eval_max. Qed.
-
 (** ** Levels Equal up to Proofs
 
     Two related levels are interchangeable for everything the semantics
@@ -1337,9 +1261,6 @@ Proof.
   match goal with |- exists l', nf_univ ?c' ?xs' = _ /\ _ => exists (c', xs') end.
   split; [ reflexivity | apply nf_univ_of_upto_proofs_iff; exact H ].
 Qed.
-
-Lemma lvl_real_upto_proofs : forall l l', lvl_eq_upto_proofs l l' -> lvl_real l = lvl_real l'.
-Proof. intros * H; rewrite !lvl_real_eval; apply lvl_eval_upto; [ apply lvl_adm_zero | exact H ]. Qed.
 
 Lemma lvl_le_of_upto_proofs : forall l l', lvl_eq_upto_proofs l l' -> lvl_le l l'.
 Proof.
@@ -1386,27 +1307,11 @@ Definition universe_nf_le (u v : universe_nf) : Prop :=
   | universe_large i, universe_large j => i <= j
   end.
 
-Lemma universe_nf_le_refl : forall u, universe_nf_le u u.
-Proof. intros []; cbn; [ apply lvl_le_refl | lia ]. Qed.
-
-Lemma universe_nf_le_trans : forall u v w, universe_nf_le u v -> universe_nf_le v w -> universe_nf_le u w.
-Proof.
-  intros [] [] []; cbn; try contradiction; intros;
-    first [ eapply lvl_le_trans; eassumption | exact I | lia ].
-Qed.
-
 (** The large universe a type at [u] also lives in. *)
 Definition universe_nf_large_index (u : universe_nf) : nat := match u with universe_small _ => 0 | universe_large n => n end.
 
 Lemma universe_nf_le_large : forall u, universe_nf_le u (universe_large (universe_nf_large_index u)).
 Proof. intros []; cbn; [ exact I | lia ]. Qed.
-
-(** The semantic index of a universe normal form. *)
-Definition universe_nf_idx (u : universe_nf) : universe_index :=
-  match u with universe_small L => us (lvl_real L) | universe_large i => ul i end.
-
-Lemma universe_nf_le_idx : forall u v, universe_nf_le u v -> universe_index_le (universe_nf_idx u) (universe_nf_idx v).
-Proof. intros [] []; cbn; try contradiction; intros; [ apply lvl_le_real | exact I |]; assumption. Qed.
 
 (** ** The Join of Two Universe Normal Forms
 
@@ -1421,18 +1326,6 @@ Definition universe_nf_max (u v : universe_nf) : universe_nf :=
   | universe_large i, universe_small _ => universe_large i
   | universe_large i, universe_large j => universe_large (Nat.max i j)
   end.
-
-Lemma universe_nf_le_max_left : forall u v, universe_nf_le u (universe_nf_max u v).
-Proof.
-  intros [l |] [l' |]; cbn [universe_nf_max universe_nf_le]; try solve [ exact I | lia ].
-  apply lvl_le_correct; intros ν Hν; rewrite lvl_canon_eval, lvl_eval_max by exact Hν; apply ordinal_le_ordinal_max_l.
-Qed.
-
-Lemma universe_nf_le_max_right : forall u v, universe_nf_le v (universe_nf_max u v).
-Proof.
-  intros [l |] [l' |]; cbn [universe_nf_max universe_nf_le]; try solve [ exact I | lia ].
-  apply lvl_le_correct; intros ν Hν; rewrite lvl_canon_eval, lvl_eval_max by exact Hν; apply ordinal_le_ordinal_max_r.
-Qed.
 
 (** A level below a literal has no atom of a sort at least the literal's
     tier: such an atom can be assigned [ω·s + N] for any [N].  Below a finite
@@ -1461,9 +1354,6 @@ Qed.
 
 (** The literal small universes. *)
 Definition universe_nf_lit (o : o2) : universe_nf := universe_small (lvl_lit o).
-
-Lemma universe_nf_le_lit : forall o o', ordinal_le o o' -> universe_nf_le (universe_nf_lit o) (universe_nf_lit o').
-Proof. intros; apply lvl_le_lit; assumption. Qed.
 
 (** Decides an identity between ordinals built from the values of levels:
     each value [lvl_eval ν l] is an opaque ordinal, and [ordinal_solve] does the rest. *)

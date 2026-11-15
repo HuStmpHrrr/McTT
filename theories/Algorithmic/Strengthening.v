@@ -71,27 +71,6 @@ Proof.
   - cbn in Htl, Hhd; rewrite Htl; f_equal; exact Hhd.
 Qed.
 
-(** Inserting an entry at position [k], and dropping it again. *)
-Definition env_insert (k : nat) (e : dentry) (ρ : env) : env :=
-  List.firstn k ρ ++ e :: List.skipn k ρ.
-
-Lemma env_insert_zero : forall e ρ, env_insert 0 e ρ = e :: ρ.
-Proof. reflexivity. Qed.
-
-Lemma env_insert_succ : forall k e e' ρ, env_insert (S k) e (e' :: ρ) = e' :: env_insert k e ρ.
-Proof. reflexivity. Qed.
-
-Lemma eval_wk_qn_shift_insert : forall k e ρ,
-    k <= List.length ρ ->
-    ⟪wk_qn k ↑⟫ (env_insert k e ρ) = ρ.
-Proof.
-  induction k as [| k IH]; intros * Hk; cbn [wk_qn].
-  - rewrite env_insert_zero; apply eval_wk_shift.
-  - destruct ρ as [| e' ρ]; cbn [List.length] in Hk; [ lia |].
-    rewrite env_insert_succ, eval_wk_q_cons by typeclasses eauto.
-    rewrite IH by lia; reflexivity.
-Qed.
-
 (** ** Semantic Weakening at Position [k]
 
     [rel_wk_under_ctx_q] lifts a semantic weakening over one assumption; the
@@ -925,19 +904,6 @@ Proof.
     exists T; split; [ exact HT | split; [ etransitivity; eassumption | exact HT' ] ].
 Qed.
 
-(** [subtyp_strengthen_sort] with the two sides at universes. *)
-Corollary subtyp_strengthen' : forall Δ Γ κ A T T' i j,
-    all_assumptions Δ ->
-    ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ->
-    (Δ ++ Γ)%list ⊢ T : Typeω@i ->
-    (Δ ++ Γ)%list ⊢ T' : Typeω@j ->
-    (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ T[wk_qn (length Δ) ↑]ʷ ⊆ T'[wk_qn (length Δ) ↑]ʷ ->
-    (Δ ++ Γ)%list ⊢ T ⊆ T'.
-Proof.
-  intros * Hass HΓf HT HT' Hs.
-  exact (subtyp_strengthen_sort _ _ _ _ _ _ _ _ Hass HΓf (type_sort_universe i) (type_sort_universe j) HT HT' Hs).
-Qed.
-
 (** Two propositions are below each other only when they are equal: a
     proposition is no universe and no [Π] ([typ_prop_absurd]). *)
 Lemma subtyp_prop_eq : forall Γ P Q,
@@ -954,41 +920,6 @@ Proof.
     + assert (Γ ⊢ P : Typeω@k1) by (gen_presups; assumption); eapply typ_prop_absurd; eassumption.
     + assert (Γ ⊢ P : LevelSort) by (gen_presups; assumption); eapply level_type_not_prop; eassumption.
   - exfalso; assert (Γ ⊢ P : LevelSort) by (gen_presups; assumption); eapply level_type_not_prop; eassumption.
-Qed.
-
-(** A [Π] over a domain of a sort, into a type of a large universe, is a
-    type of a large universe. *)
-Lemma wf_pi_sort : forall Γ κd A B S i,
-    sort_kind S κd -> Γ ⊢ A : S -> Γ ▹{κd} A ⊢ B : Typeω@i -> exists j, Γ ⊢ Π{κd} A B : Typeω@j.
-Proof.
-  intros * HS HA HB; inversion HS; subst.
-  - exists (max i0 i); exact (wf_pi_at_max _ _ _ ak_relevant ak_relevant _ _ i0 i HA HB (pi_kinds_relevant _)).
-  - exists (max 0 i); exact (wf_pi_at_max _ _ _ ak_propositional ak_relevant _ _ 0 i HA HB (pi_kinds_relevant _)).
-  - exists (max 0 i); exact (wf_pi_at_max _ _ _ ak_level ak_relevant _ _ 0 i HA HB (pi_kinds_relevant _)).
-Qed.
-
-(** A [∀] over a domain of a sort, into a proposition, is a proposition. *)
-Lemma wf_all_sort : forall Γ κd A P S,
-    sort_kind S κd -> Γ ⊢ A : S -> Γ ▹{κd} A ⊢ P : Propₘ -> Γ ⊢ ∀ₚ{κd} A P : Propₘ.
-Proof.
-  intros * HS HA HP; inversion HS; subst.
-  - exact (wf_pi_at_max _ _ _ ak_relevant ak_propositional _ _ i 0 HA HP (pi_kinds_prop _)).
-  - exact (wf_pi_at_max _ _ _ ak_propositional ak_propositional _ _ 0 0 HA HP (pi_kinds_prop _)).
-  - exact (wf_pi_at_max _ _ _ ak_level ak_propositional _ _ 0 0 HA HP (pi_kinds_prop _)).
-Qed.
-
-(** For a type the weakening fixes, such as a constant. *)
-Corollary subtyp_strengthen_closed : forall Δ Γ κ A K T i j,
-    all_assumptions Δ ->
-    ⊢ (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ->
-    (Δ ++ Γ)%list ⊢ K : Typeω@j ->
-    (Δ ++ Γ)%list ⊢ T : Typeω@i ->
-    K[wk_qn (length Δ) ↑]ʷ = K ->
-    (tele_wk Δ ↑ ++ Γ ▹{κ} A)%list ⊢ K ⊆ T[wk_qn (length Δ) ↑]ʷ ->
-    (Δ ++ Γ)%list ⊢ K ⊆ T.
-Proof.
-  intros * Hass HΓf HK HT HKφ Hs; rewrite <- HKφ in Hs.
-  eapply subtyp_strengthen'; eassumption.
 Qed.
 
 (** A [Π] below a [Π]: the domains are equal, at their sort (a type or a
@@ -1129,23 +1060,6 @@ Proof.
   split; [ reflexivity | split; [ exists (abs_kind_sort κ Typeω@i); split; [ apply sort_kind_abs_kind_sort | exact Hd ] |] ].
   assert (Γ ▹{κ} A ⊢ P' : Propₘ) by (gen_presups; assumption).
   eapply wf_subtyp_refl; [ eassumption | constructor | exact HP ].
-Qed.
-
-(** A type above a [Π] is a [Π]. *)
-Lemma subtyp_pi_left_shape : forall Γ κ A B T,
-    Γ ⊢ Π{κ} A B ⊆ T ->
-    exists A' B' k, Γ ⊢ T ≈ Π{κ} A' B' : Typeω@k.
-Proof.
-  intros * H.
-  assert (exists C, Γ ⊢ Π{κ} A B : C) as [C HC] by (gen_presups; eexists; eassumption).
-  destruct (wf_pi_typed_large HC) as [k0 Hk0].
-  destruct (subtyp_spec_large (k := k0) H (or_introl Hk0))
-    as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & HUV) | (κ1 & A1 & A2 & B1 & B2 & [k1 Ha] & [k2 Hb] & _ & _)]].
-  - do 3 eexists; symmetry; exact Heq.
-  - exfalso; destruct (univ_sub_sort_term HUV) as [HUt _].
-    eapply (pi_sort_term_absurd HUt); exact HU.
-  - destruct (exp_eq_pi_inversion Ha) as (<- & _ & _).
-    do 3 eexists; symmetry; exact Hb.
 Qed.
 
 (** ** The Arguments of an Application of a Head of a [Π] over a Telescope

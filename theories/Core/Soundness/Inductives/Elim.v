@@ -285,33 +285,6 @@ Qed.
 Lemma nonrec_exps_firstn_len : forall gs As, nonrec_exps gs (List.firstn (List.length gs) As) = nonrec_exps gs As.
 Proof. induction gs as [| [] gs IH]; intros [| A As]; cbn; rewrite ?IH; reflexivity. Qed.
 
-(** The type of a variable is glued at no gluing of [LevelSort], which is
-    of no sort ([level_sort_untyped]). *)
-Lemma glu_var_typ_not_level_sort : forall (i : universe_index) a P El Δ T x,
-    DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ T ® P -> Δ ⊢ #x : T -> not_level_sort a.
-Proof.
-  intros * Hg HT Hx Ha; subst a.
-  basic_invert_glu_univ_elem Hg; try discriminate.
-  match goal with H : _ <∙> level_sort_glu_typ_pred |- _ => apply H in HT; destruct HT as [-> _] end.
-  destruct (presup_exp_typ_not_level Hx ltac:(intro Hl0; inversion Hl0)) as (S & _ & HS).
-  exact (level_sort_untyped HS).
-Qed.
-
-(** A variable is glued at its type, of a value other than [LevelSort],
-    to the fresh variable of its level at any value [b] related to the
-    type's, at which the type is glued too. *)
-Lemma var_glu_elem_per : forall (i i' : universe_index) a b (n : nat) P El P' El' Δ T x, DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    DG b ∈ glu_univ_elem i' ↘ P' ↘ El' -> not_level_sort b ->
-    Δ ⊢ T ® P -> Δ ⊢ T ® P' -> Δ ⊢ #x : T -> x < List.length Δ -> Dom b ≈ a ∈ per_univ n ->
-    Δ ⊢ #x : T ® ⇑! b (List.length Δ - 1 - x) ∈ El.
-Proof.
-  intros * Hg Hg' Hn HT HT' Hx Hlt Hba.
-  (** At [b], the variable's own annotation, glued by its type there; then
-      at [a], related, where its type is glued too *)
-  pose proof (var_glu_elem_at _ _ _ _ _ _ _ Hg' Hn HT' Hx Hlt) as Hv.
-  exact (glu_univ_elem_exp_conv_universe_index Hba Hg' Hg Hv HT).
-Qed.
-
 (** ** The Families of a Group, at its Sort
 
     The types of the telescopes of a valid group at uniform parameters
@@ -6942,51 +6915,6 @@ Section ElimGlu.
         rewrite !List.app_assoc in Hrel.
         exact (readback_branch k Mk b c gs n B HMk Hrv Hb Hcn (List.nth_error_In _ _ HBi) Δ σ'' hd k0 pre ns vs ihs bv t Bn Hσ'' Er
                  Fn Fc Fi Hrel Hrecs Ebv Et Rn).
-  Qed.
-
-  (** Witnesses up to proofs of the bodies of a list of branches, chosen
-      position by position. *)
-  Lemma branches_witness : forall (Pb : nat -> nf -> Prop) Bs,
-      (forall i br, List.nth_error Bs i = Some br -> exists W, nf_eq_upto_proofs (branch_body br) W /\ Pb i W) ->
-      exists Bs', branches_eq_upto_proofs Bs Bs' /\
-        List.map (fun br => (branch_constructor br, branch_arity br)) Bs'
-          = List.map (fun br => (branch_constructor br, branch_arity br)) Bs /\
-        forall i br', List.nth_error Bs' i = Some br' -> Pb i (branch_body br').
-  Proof.
-    intros Pb Bs; revert Pb; induction Bs as [| [c n W] Bs IH]; intros Pb H.
-    - exists nil; split; [ apply branches_eq_upto_proofs_nil | split; [ reflexivity | intros [] *; discriminate ] ].
-    - destruct (H 0 _ eq_refl) as (W' & HW & HP).
-      destruct (IH (fun i => Pb (S i)) (fun i br Hi => H (S i) br Hi)) as (Bs' & HB & Hn & HP').
-      exists (mk_normal_branch c n W' :: Bs'); split; [ apply branches_eq_upto_proofs_cons; assumption |].
-      split; [ cbn; f_equal; exact Hn |].
-      intros [| i] br' Hi; cbn in Hi; [ injection Hi as <-; exact HP | exact (HP' i br' Hi) ].
-  Qed.
-
-  (** The same for the scrutinee types, the motives and the branches of a
-      list of blocks. *)
-  Lemma blocks_witness : forall (Pz Pa : nat -> nf -> Prop) (Pb : nat -> nat -> nf -> Prop) NBks,
-      (forall k b, List.nth_error NBks k = Some b ->
-         (exists Z, nf_eq_upto_proofs (block_scrutinee_type b) Z /\ Pz k Z) /\
-         (exists A, nf_eq_upto_proofs (block_motive b) A /\ Pa k A) /\
-         (forall i br, List.nth_error (block_branches b) i = Some br -> exists W, nf_eq_upto_proofs (branch_body br) W /\ Pb k i W)) ->
-      exists NBks', blocks_eq_upto_proofs NBks NBks' /\ List.length NBks' = List.length NBks /\
-        forall k b', List.nth_error NBks' k = Some b' -> exists b, List.nth_error NBks k = Some b /\
-          block_arity b' = block_arity b /\ Pz k (block_scrutinee_type b') /\ Pa k (block_motive b') /\
-          List.map (fun br => (branch_constructor br, branch_arity br)) (block_branches b')
-            = List.map (fun br => (branch_constructor br, branch_arity br)) (block_branches b) /\
-          forall i br', List.nth_error (block_branches b') i = Some br' -> Pb k i (branch_body br').
-  Proof.
-    intros Pz Pa Pb NBks; revert Pz Pa Pb; induction NBks as [| [n Z A Bs] NBks IH]; intros Pz Pa Pb H.
-    - exists nil; split; [ apply blocks_eq_upto_proofs_nil | split; [ reflexivity | intros [] *; discriminate ] ].
-    - destruct (H 0 _ eq_refl) as ((Z' & HZ & PZ) & (A' & HA & PA) & HBs); cbn in HZ, HA, HBs.
-      destruct (branches_witness (Pb 0) Bs HBs) as (Bs' & HB & Hn & PB).
-      destruct (IH (fun k => Pz (S k)) (fun k => Pa (S k)) (fun k => Pb (S k)) (fun k b Hk => H (S k) b Hk))
-        as (NBks' & HK & Lk & HP).
-      exists (mk_normal_block n Z' A' Bs' :: NBks'); split; [ apply blocks_eq_upto_proofs_cons; assumption |].
-      split; [ cbn; f_equal; exact Lk |].
-      intros [| k] b' Hk; cbn in Hk.
-      + injection Hk as <-; exists (mk_normal_block n Z A Bs); cbn; repeat split; first [ reflexivity | assumption ].
-      + exact (HP k b' Hk).
   Qed.
 
   (** The readback of a stuck eliminator at a declared member is the

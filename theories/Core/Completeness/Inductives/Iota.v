@@ -40,20 +40,6 @@ Import Domain_Notations Fixed_Notations Wk_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma eval_exps_firstn' : forall Ms ρ ms k, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms ->
-    ⟦ List.firstn k Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ List.firstn k ms.
-Proof.
-  induction Ms as [| M Ms IH]; intros * H; inversion H; subst; destruct k; cbn; try constructor; [ assumption | apply IH; assumption ].
-Qed.
-
-(** The non-recursive arguments of a list of arguments followed by more:
-    the later ones' first. *)
-Lemma cargs_nonrec_ctx_app : forall gs1 gs2, cargs_nonrec_ctx (gs1 ++ gs2) = cargs_nonrec_ctx gs2 ++ cargs_nonrec_ctx gs1.
-Proof.
-  induction gs1 as [| [r A | t] gs1 IH]; intros gs2; cbn [List.app cargs_nonrec_ctx];
-    [ rewrite List.app_nil_r; reflexivity | rewrite IH, <- List.app_assoc; reflexivity | exact (IH gs2) ].
-Qed.
-
 (** The values, of a referenced constructor's kinds, of its non-uniform
     parameters and its arguments: the parameters' values (relevant,
     [con_kinds_skipn]), then the arguments' of their kinds. *)
@@ -589,15 +575,6 @@ Section LeafVals.
              elim_bctx ak_relevant p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_branch_type p D j Mj c gs (eb_motive b) Us).
   (** The blocks of the members with one. *)
   Let HBks' := block_of_nblk D Bks Hdt HBks.
-
-  Lemma uparams_have_types : forall j U, List.nth_error Us j = Some U -> exists T, Γ ⊨ U : T.
-  Proof.
-    intros j U HU.
-    destruct (nth_error_lt_some' (tele_insts (ind_uparams D) Id Us) j) as [T HT].
-    { rewrite length_tele_insts by exact Ua.
-      assert (j < List.length Us) by (apply List.nth_error_Some; congruence); unfold ind_nu in *; lia. }
-    exists T; exact (HUs _ _ _ HU HT).
-  Qed.
 
   Variable (RΓ RU : relation env).
   Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HRU : EF ind_uparams D ≈ ind_uparams D ∈ per_ctx_env ↘ RU).

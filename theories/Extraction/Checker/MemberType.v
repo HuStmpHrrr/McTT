@@ -97,29 +97,11 @@ with items_gen_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list import_i
     items_gen_order Θ Ξ Γ H its ->
     items_gen_order Θ Ξ Γ H ((Some n, d, pv) :: its).
 
-Scheme mdenote_order_mut_ind := Induction for mdenote_order Sort Prop
-with udenote_order_mut_ind := Induction for udenote_order Sort Prop
-with edenote_order_mut_ind := Induction for edenote_order Sort Prop
-with body_xp_order_mut_ind := Induction for body_xp_order Sort Prop
-with items_gen_order_mut_ind := Induction for items_gen_order Sort Prop.
-
-(** ** The Decision Procedure *)
-
-(** The conditions of an open on its own items, decided. *)
 Definition items_ok_dec (its : list import_item) : { items_ok its } + { ~ items_ok its }.
 Proof.
   unfold items_ok.
   destruct (both_dup its) as [n |]; [ right; intros [H _]; discriminate |].
   destruct (name_dup (List.map import_item_name its)) as [n |]; [ right; intros [_ H]; discriminate | left; split; reflexivity ].
-Defined.
-
-(** Equality of references to members of groups, decided. *)
-Definition indref_eq_dec (x y : (qname * nat * ind_decl)%type) : {x = y} + {x <> y}.
-Proof.
-  destruct x as [[p1 k1] D1], y as [[p2 k2] D2].
-  destruct (ind_decl_eq_dec_g exp_eq_dec centry_eq_dec D1 D2) as [<- | HD]; [| right; congruence ].
-  destruct (Nat.eq_dec k1 k2) as [<- | Hk]; [| right; congruence ].
-  destruct (qname_eq_dec p1 p2) as [<- | Hp]; [ left; reflexivity | right; congruence ].
 Defined.
 
 Lemma gc_unit_var : forall Θ Ξ x, gc_unit Θ Ξ (me_var x) = None.

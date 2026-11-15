@@ -193,20 +193,6 @@ Proof.
   assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption); kind_congruence.
 Qed.
 
-Corollary rel_exp_under_ctx_simple_full_at_rel : forall {Γ A M M' env_relΓ} {k : nat},
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A : Typeω@k ->
-    Γ ⊨ M ≈ M' : A ->
-    exists i,
-    forall ρ ρ',
-      Dom ρ ≈ ρ' ∈ env_relΓ ->
-      exists a a' R,
-        ⟦ A ⟧ ρ ↘ a /\
-        ⟦ A ⟧ ρ' ↘ a' /\
-        DF a ≈ a' ∈ per_univ_elem i ↘ R /\
-        exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ R.
-Proof. intros * HΓ HA; exact (rel_exp_under_ctx_simple_full_at_evaluated HΓ (rel_type_evaluated_of_typ HA)). Qed.
-
 (** The canonical context PER of a substituted definition entry of a type
     of an evaluated kind. *)
 Lemma per_ctx_env_of_def_sub_evaluated : forall {Γ Δ σ σ' A} {i : nat} {M env_relΓ},
@@ -224,19 +210,6 @@ Proof.
   - exact (rel_type_sub_simple HΓ Hσj HA).
   - exact (rel_type_sub_kind_at HΓ Hσj HA HArelk).
   - exact (rel_exp_under_ctx_sub_simple_evaluated HΓ Hσj HArel HM).
-Qed.
-
-(** The same at a type of a universe. *)
-Corollary per_ctx_env_of_def_sub : forall {Γ Δ σ σ' A} {i : nat} {M env_relΓ},
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ˢ σ ≈ σ' : Δ ->
-    Δ ⊨ A : Typeω@i ->
-    Δ ⊨ M : A ->
-    EF Γ ▸ A[σ] ≔ M[σ] ≈ Γ ▸ A[σ] ≔ M[σ] ∈ per_ctx_env
-       ↘ per_env_extend_def A[σ] M[σ] env_relΓ.
-Proof.
-  intros * HΓ Hσj HA.
-  exact (per_ctx_env_of_def_sub_evaluated HΓ Hσj (rel_type_of_typ HA) (rel_type_evaluated_of_typ HA)).
 Qed.
 
 (** A member of the canonical context PER of a definition entry, from a

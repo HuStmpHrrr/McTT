@@ -666,9 +666,6 @@ Definition eb_brs {E : Set} (b : eblock_g E) : list (string * nat * E) := match 
     closed (a filed module or an open frame). *)
 Inductive storage_mark : Set := sm_open | sm_closed.
 
-Definition storage_mark_eq_dec : forall (s s' : storage_mark), {s = s'} + {s <> s'}.
-Proof. decide equality. Defined.
-
 (** The terms and the module syntax are one mutual family; its mutual
     principle [syn_mut_ind] below is written by hand, with one motive per
     sort that the hand-written cases share. *)
@@ -1220,8 +1217,6 @@ Definition im_path (M : imember) : option qname :=
     that it is closed, as an alias is. *)
 Definition ind_unit (D : ind_decl) (Φ : gmod) : gunit := gu_body (ind_uparams D) Φ.
 
-Definition gu_def (U : gunit) : moddef := match U with gu_mk _ D => D end.
-
 (** The body of a body unit, and the empty body for an alias. *)
 Definition gu_mod (U : gunit) : gmod :=
   match U with
@@ -1449,17 +1444,11 @@ Definition universe_index_le (u v : universe_index) : Prop :=
   | ul j, ul k => j <= k
   end.
 
-Lemma universe_index_lt_le_trans : forall u v w, universe_index_lt u v -> universe_index_le v w -> universe_index_lt u w.
-Proof. intros [] [] []; cbn; intros; auto; try lia; ordinal_solve. Qed.
-
 Lemma universe_index_le_refl : forall u, universe_index_le u u.
 Proof. intros []; cbn; [ ordinal_solve | lia ]. Qed.
 
 Lemma universe_index_le_trans : forall u v w, universe_index_le u v -> universe_index_le v w -> universe_index_le u w.
 Proof. intros [] [] []; cbn; intros; auto; try lia; ordinal_solve. Qed.
-
-Lemma universe_index_lt_le : forall u v, universe_index_lt u v -> universe_index_le u v.
-Proof. intros [] []; cbn; intros; auto; try lia; ordinal_solve. Qed.
 
 Lemma universe_index_wf : well_founded universe_index_lt.
 Proof.
@@ -1517,9 +1506,6 @@ Proof. intros [] []; cbn; try exact I; try lia; ordinal_solve. Qed.
 
 Lemma universe_index_le_universe_index_max_right : forall u v, universe_index_le v (universe_index_max u v).
 Proof. intros [] []; cbn; try exact I; try lia; ordinal_solve. Qed.
-
-Lemma universe_index_max_lub : forall u v w, universe_index_le u w -> universe_index_le v w -> universe_index_le (universe_index_max u v) w.
-Proof. intros [] [] []; cbn; intros; try contradiction; try exact I; try lia; ordinal_solve. Qed.
 
 (** Discharges the order side conditions between universe indices. *)
 Ltac solve_universe_index :=
@@ -1674,10 +1660,6 @@ Proof. induction l as [| x l IH]; cbn; [ auto | intros l' [Hx Hl] Hl'; split; au
 Lemma all_list_map {A B : Set} (f : A -> B) (Q : B -> Prop) : forall l,
     all_list Q (List.map f l) <-> all_list (fun x => Q (f x)) l.
 Proof. induction l as [| x l IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
-
-Lemma list_all_Forall_map {A B : Set} (P : A -> Set) (Q : B -> Prop) (f : A -> B) : forall l,
-    list_all A P l -> (forall x, P x -> Q (f x)) -> List.Forall Q (List.map f l).
-Proof. intros l Hl HPQ; induction Hl; constructor; auto. Qed.
 
 (** A goal [List.map f l = List.map g l], or [all_list R l], reduced to one
     goal per element [x] of [l], from the generated hypothesis on [l] (and,
@@ -1849,13 +1831,6 @@ Definition block_exp (b : normal_block) : eblock :=
 (** The clauses of [nf_to_exp] at the levels and at a stuck eliminator,
     through the definitions above. *)
 Lemma nf_to_exp_univ : forall c xs, nf_to_exp (nf_univ c xs) = a_univ (lvl_exp_of c (List.map atom_exp xs)).
-Proof. reflexivity. Qed.
-
-Lemma nf_to_exp_lvl : forall c xs, nf_to_exp (nf_lvl c xs) = lvl_exp_of c (List.map atom_exp xs).
-Proof. reflexivity. Qed.
-
-Lemma ne_to_exp_elim : forall p Us m Bks M,
-    ne_to_exp (ne_elim p Us m Bks M) = a_elim ak_relevant p (List.map nf_to_exp Us) m (List.map block_exp Bks) (ne_to_exp M).
 Proof. reflexivity. Qed.
 
 (** * Canonical Levels
@@ -2552,19 +2527,9 @@ Qed.
 #[export] Hint Extern 1 (ne_eq_upto_proofs _ _) => reflexivity : core.
 #[export] Hint Extern 1 (nfs_eq_upto_proofs _ _) => reflexivity : core.
 
-(** Equal normal forms are equal up to proofs. *)
-Lemma nf_eq_upto_proofs_of_eq : forall W W', W = W' -> nf_eq_upto_proofs W W'.
-Proof. intros * ->; reflexivity. Qed.
-
-Lemma ne_eq_upto_proofs_of_eq : forall M M', M = M' -> ne_eq_upto_proofs M M'.
-Proof. intros * ->; reflexivity. Qed.
-
 (** Equality up to proofs is decidable, by its decision procedure. *)
 Definition nf_eq_upto_proofs_dec (W W' : nf) : {nf_eq_upto_proofs W W'} + {~ nf_eq_upto_proofs W W'} :=
   Bool.bool_dec (nf_eqb_upto_proofs W W') true.
-
-Definition ne_eq_upto_proofs_dec (M M' : ne) : {ne_eq_upto_proofs M M'} + {~ ne_eq_upto_proofs M M'} :=
-  Bool.bool_dec (ne_eqb_upto_proofs M M') true.
 
 
 (** ** Notations *)

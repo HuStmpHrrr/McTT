@@ -1416,38 +1416,5 @@ Section type_check.
       { A : nf | G ⊢a M ⟹ A } + { forall A, ~ G ⊢a M ⟹ A } :=
     type_infer_in G HG (checker_env_of F G HG) M H.
 
-  (** A term of a well-formed context: the type it infers, at which it is
-      typed *)
-  Definition type_infer_at G (HG : ⊢ G) M : { A : nf | G ⊢a M ⟹ A /\ G ⊢ M : A } + { forall A, ~ G ⊢a M ⟹ A } :=
-    match type_infer G HG M (type_infer_order_all M) with
-    | inleft (exist _ A HA) => inleft (exist _ A (conj HA (alg_type_infer_sound HA HG)))
-    | inright Hn => inright Hn
-    end.
-
-  (** The checker decides the judgments. *)
-  Lemma type_check_complete : forall G M A (HA : G ⊢ᵗ A),
-      G ⊢a M ⟸ A -> exists H', type_check G A HA M (type_check_order_all M) = left H'.
-  Proof. intros; decision_complete. Qed.
-
-  Lemma type_infer_complete : forall G M A (HG : ⊢ G),
-      G ⊢a M ⟹ A -> exists H', type_infer G HG M (type_infer_order_all M) = inleft (exist _ A H').
-  Proof.
-    intros * HM.
-    destruct (type_infer G HG M (type_infer_order_all M)) as [[A' HA'] | Hn]; [| exfalso; exact (Hn _ HM) ].
-    assert (A' = A) as -> by (eapply functional_alg_type_infer; [ exact (ctx_wf_gctx _ _ _ HG) | exact HA' | exact HM ]).
-    eexists; reflexivity.
-  Qed.
-
-  Lemma ext_check_complete : forall G Ψ (HG : ⊢ G),
-      G ⊢aˣ Ψ -> exists H', ext_check G HG Ψ (ext_order_all Ψ) = left H'.
-  Proof. intros; decision_complete. Qed.
-
-  Lemma unit_check_complete : forall G U (HG : ⊢ G),
-      G ⊢aᵘ U -> exists H', unit_check G HG U (unit_order_all U) = left H'.
-  Proof. intros; decision_complete. Qed.
-
-  Lemma modexp_check_complete : forall G M (HG : ⊢ G),
-      G ⊢aᵐ M -> exists H', modexp_check G HG M (modexp_order_all M) = left H'.
-  Proof. intros; decision_complete. Qed.
 End type_check.
 End Fixed_GCtx.

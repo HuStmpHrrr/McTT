@@ -23,34 +23,6 @@ Import Domain_Notations.
     stand for the definition's body in every later context
     ([Extraction.Evaluation.Evaluation], [Extraction.Commands.Command]). *)
 
-(** An alias module is an entry at its path: an alias submodule, or a
-    definition with a module part, whose module part is the alias. *)
-Lemma gm_submodule_alias_entry : forall Φ T x ip U, gm_submodule T Φ x ip = Some (mr_alias U) ->
-    exists E, gm_entry Φ (x :: ip) = Some E /\ ((exists pv, E = ge_mod pv U) \/ (exists pv A M, E = ge_def_mod pv A M U)).
-Proof.
-  fix IH 1; intros [| Φ y E | Φ c its] * Hs; cbn in Hs |- *; [ discriminate | | exact (IH _ _ _ _ _ Hs) ].
-  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ Hs) ].
-  destruct E as [? ? ? ? | ? [Δ [? Φ' | E']] | ? ? ? D Φ' | ? Aa Ma [Δa [? Φa | Ea]] | ? Rr ΦR]; try discriminate;
-    destruct ip as [| z ip]; try discriminate; try (exact (IH _ _ _ _ _ Hs)); injection Hs as <-; eauto 8.
-Qed.
-
-Lemma gc_module_alias_entry : forall Θ Ξ p U, gc_module Θ Ξ p = Some (mr_alias U) ->
-    exists E, gc_entry Θ Ξ p = Some E /\ ((exists pv, E = ge_mod pv U) \/ (exists pv A M, E = ge_def_mod pv A M U)).
-Proof.
-  intros * H; unfold gc_module, gc_module_u, gc_entry, gc_entry_u in *; rewrite gs_find_tele_find.
-  destruct (gs_find_tele Ξ p) as [[[V [| x ip]] T] |]; cbn; [ discriminate | eapply gm_submodule_alias_entry; exact H |].
-  destruct (gds_lookup Θ (q_unit p)) as [V |]; [| discriminate ].
-  unfold gm_module in H; destruct (q_chain p) as [| x ip]; [ discriminate | eapply gm_submodule_alias_entry; exact H ].
-Qed.
-
-(** ** Where a Member's Module Is Stored
-
-    A selection from a saturated global module ([module_saturated]) reads
-    the module's telescope off where the module is stored.  In a
-    well-formed context, a module one of whose members is found is
-    stored. *)
-
-(** An entry below a body's member [x] is in the body [x] names. *)
 Lemma gm_entry_snoc_inv : forall Φ T x ip y E, gm_entry Φ (x :: ip ++ y :: nil) = Some E ->
     exists T' Φ', gm_subbody T Φ x ip = Some (T', Φ') /\ gm_entry Φ' (y :: nil) = Some E.
 Proof.
@@ -192,83 +164,7 @@ Section Growth.
       destruct (gc_frame Ξ2 p); eauto.
   Qed.
 
-  (** A member with a term part and a module part stays one. *)
-  Lemma dm_path_grows : forall p, dm_path Θ1 Ξ1 p -> dm_path Θ2 Ξ2 p.
-  Proof.
-    intros p [(r & Hl) | [(R & Hl) | (pv & A & M & U & He)]].
-    - left; exists r; exact (ind_mlookup_gc_sub _ _ _ _ _ _ Hs Hl).
-    - right; left; exists R; exact (record_lookup_gc_sub _ _ _ _ _ _ Hs Hl).
-    - right; right; destruct (gc_sub_entry _ _ _ _ _ _ Hs He) as (E' & He' & Hg); cbn in Hg; subst E'; eauto 6.
-  Qed.
-
-  (** A definition names no member with a term part and a module part,
-      before and after. *)
-  Lemma not_dm_path_def_grows : forall p b pv r A B, gc_resolve Θ1 Ξ1 p = Some (ge_def b pv r A B) -> ~ dm_path Θ2 Ξ2 p.
-  Proof. intros * H; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ _ (gc_sub_resolve _ _ _ _ _ _ Hs H)). Qed.
-
-  (** A location that is no member with a term part and a module part
-      stays none: a frame of no member's and no record type's module is
-      filed as a plain body or stays open, and a plain body module stays
-      one. *)
-  Lemma not_dm_path_loc_grows : forall p TΦ, gc_loc Θ1 Ξ1 p = Some TΦ -> ~ dm_path Θ1 Ξ1 p -> ~ dm_path Θ2 Ξ2 p.
-  Proof.
-    intros p [T Φ] Hl Hn; unfold gc_loc in Hl.
-    destruct (gc_frame Ξ1 p) as [[T0 Φ0] |] eqn:Ef.
-    - injection Hl as <- <-.
-      apply (frame_not_dm_sub _ _ _ _ _ _ _ Hs Ef).
-      + destruct (gs_find_ind Ξ1 p) as [r |] eqn:Hk; [| reflexivity ].
-        exfalso; apply Hn; left; exists r; exact (gc_sub_frame_ind _ _ _ _ _ _ (gc_sub_refl Θ1 Ξ1) Hk).
-      + destruct (gs_find_record Ξ1 p) as [R |] eqn:Hk; [| reflexivity ].
-        exfalso; apply Hn; right; left; exists R; exact (gc_sub_frame_record _ _ _ _ _ _ (gc_sub_refl Θ1 Ξ1) Hk).
-    - destruct (gc_body_module _ _ _ _ _ Hl) as [oD Hm].
-      destruct oD as [r |].
-      { exfalso; apply Hn; left; exists r; rewrite (ind_mlookup_body _ _ _ _ _ Hm); reflexivity. }
-      assert (Hr : record_lookup Θ1 Ξ1 p = None).
-      { destruct (record_lookup Θ1 Ξ1 p) as [R |] eqn:Hr; [| reflexivity ].
-        exfalso; apply Hn; right; left; eauto. }
-      apply (module_body_not_dm _ _ _ T); [ exact (gc_sub_module _ _ _ _ _ _ Hs Hm) |].
-      exact (record_lookup_none_gc_sub _ _ _ _ _ _ _ Hs Hl Hr).
-  Qed.
-
-  (** An alias that is no member with a term part and a module part stays
-      none: its entry is an alias submodule, which stays itself. *)
-  Lemma not_dm_path_alias_grows : forall p U, gc_module Θ1 Ξ1 p = Some (mr_alias U) -> ~ dm_path Θ1 Ξ1 p -> ~ dm_path Θ2 Ξ2 p.
-  Proof.
-    intros * Hm Hn.
-    destruct (gc_module_alias_entry _ _ _ _ Hm) as (E & He & [(pv & ->) | (pv & A & M & ->)]);
-      [| exfalso; apply Hn; right; right; eauto 6 ].
-    destruct (gc_module_alias_unit _ _ _ _ Hm) as (Δ & E0 & ->).
-    destruct (gc_sub_entry _ _ _ _ _ _ Hs He) as (E' & He' & Hg); cbn in Hg; subst E'.
-    exact (module_alias_not_dm _ _ _ _ _ _ (gc_sub_module _ _ _ _ _ _ Hs Hm) He').
-  Qed.
-
   (** ** The Kinds of Members *)
-
-  Theorem kinds_grow :
-    (forall h ch k, dmod_member_kind Θ1 Ξ1 h ch k -> dmod_member_kind Θ2 Ξ2 h ch k) /\
-    (forall ρ U ch k, gunit_member_kind Θ1 Ξ1 ρ U ch k -> gunit_member_kind Θ2 Ξ2 ρ U ch k) /\
-    (forall ρ H ch k, modexp_member_kind Θ1 Ξ1 ρ H ch k -> modexp_member_kind Θ2 Ξ2 ρ H ch k) /\
-    (forall ρ Φ ρ1, kinds_env Θ1 Ξ1 ρ Φ ρ1 -> kinds_env Θ2 Ξ2 ρ Φ ρ1).
-  Proof.
-    apply kind_mut_ind; intros; try solve [ econstructor; eauto ].
-    - eapply dmod_member_kind_global_here_def; eapply gc_sub_resolve; eassumption.
-    - apply dmod_member_kind_global_here_mod; destruct o as [(T & oD & Hm) | ([T Φ] & Hf)].
-      + left; exists T, oD; exact (gc_sub_module _ _ _ _ _ _ Hs Hm).
-      + destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs Hf) as (Φ' & [(Hf2 & _ & _) | (_ & Hm2 & _)]); eauto.
-    - destruct (gc_loc_grows _ _ e) as (TΦ' & e').
-      eapply dmod_member_kind_global_here_dm; [ exact (dm_path_grows _ d) | exact e' ].
-    - eapply dmod_member_kind_global_alias_case; [ exact (gc_sub_module _ _ _ _ _ _ Hs e) | | exact H ].
-      destruct o as [? | Hn]; [ left; assumption | right; exact (not_dm_path_alias_grows _ _ e Hn) ].
-    - eapply dmod_member_kind_global_alias_dm; [ exact (gc_sub_module _ _ _ _ _ _ Hs e) | exact (dm_path_grows _ d) | exact H ].
-    - apply dmod_member_kind_global_step; [ | | exact H ].
-      + destruct o as [(TΦ & Hl) | (b & pv & r & A & B & Hr)].
-        * left; exact (gc_loc_grows _ _ Hl).
-        * right; exists b, pv, r, A, B; exact (gc_sub_resolve _ _ _ _ _ _ Hs Hr).
-      + destruct o0 as [? | Hn]; [ left; assumption | right ].
-        destruct o as [(TΦ & Hl) | (b & pv & r & A & B & Hr)].
-        * exact (not_dm_path_loc_grows _ _ Hl Hn).
-        * exact (not_dm_path_def_grows _ _ _ _ _ _ Hr).
-  Qed.
 
   (** ** The Fast Evaluation
 

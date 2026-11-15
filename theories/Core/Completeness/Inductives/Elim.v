@@ -1318,18 +1318,6 @@ Section ConValueApps.
       exact Ecs.
   Qed.
 
-  Lemma con_value_apps : forall zs ys w l, List.length ys + List.length zs <= im_np D Mk + List.length gs ->
-      con_value p D k Mk c ys w -> $*| w & zs | gc_deps ⍮ gc_stack ↘ l -> con_value p D k Mk c (ys ++ zs) l.
-  Proof.
-    induction zs as [| z zs IH]; intros * Hlen Hw Happ; inversion Happ; subst.
-    - rewrite List.app_nil_r; exact Hw.
-    - cbn [List.length] in Hlen.
-      match goal with H1 : eval_app _ _ w z ?w1, H2 : eval_apps _ _ ?w1 zs l |- _ =>
-        pose proof (con_value_app ys z w w1 ltac:(lia) Hw H1) as Hw1;
-        pose proof (IH (ys ++ z :: nil) w1 l ltac:(rewrite List.length_app; cbn; lia) Hw1 H2) as H end.
-      rewrite <- List.app_assoc in H; exact H.
-  Qed.
-
   (** The kind of the [n]-th value the constructor takes: a parameter's tag
       ([tele_param_kind]), then the argument's, as [con_value_arg_kind]
       reads it off the constructor's values. *)
@@ -1458,19 +1446,6 @@ Section ConValueApps.
     exact (con_value_full p D k Mk c gs zs l Hrv ltac:(lia) Hl0).
   Qed.
 
-  (** The application has values of the constructor's sorts. *)
-  Lemma con_apps_sorted : forall ρ Ms l,
-      List.length Ms = im_np D Mk + List.length gs ->
-      ⟦ apps (a_con p k c) Ms ⟧ ρ ↘ l ->
-      exists zs, eval_field_vals gc_deps gc_stack con_kinds Ms ρ zs.
-  Proof.
-    intros * HlM El.
-    apply eval_apps_exp in El as (f & Ef & Ea).
-    destruct (con_value_start P p D HP HPD k Mk c HM ρ) as (f0 & Ef0 & Hf0).
-    pose proof (functional_eval_exp _ _ _ _ Ef Ef0) as ->.
-    destruct (con_value_app_args_sorted Ms nil f0 ρ l ltac:(cbn; lia) Hf0 Ea) as (zs & Ezs & _).
-    exists zs; exact Ezs.
-  Qed.
 End ConValueApps.
 
 (** Past the uniform parameters, a member's parameters are relevant
@@ -1491,18 +1466,6 @@ Proof.
     by (rewrite List.length_map, List.length_seq; exact Hj).
   rewrite List.map_nth, List.seq_nth by exact Hj.
   first [ apply (tele_param_kind_nparams _ _ _ Hdt _ _ _ HM) | symmetry; apply (tele_param_kind_nparams _ _ _ Hdt _ _ _ HM) ]; lia.
-Qed.
-
-(** A declared member's constructor along its arguments. *)
-Lemma eval_apps_con_decl : forall qh Dq kq Mq pm c gs' ys xs, ind_lookup gc_deps gc_stack qh = Some Dq ->
-    ind_member Dq kq = Some Mq -> im_head Mq = mh_decl pm -> ind_con Mq c = Some gs' ->
-    List.length xs + List.length ys <= im_np Dq Mq + List.length gs' ->
-    $*| d_con qh kq c xs & ys | gc_deps ⍮ gc_stack ↘ d_con qh kq c (xs ++ ys).
-Proof.
-  intros qh Dq kq Mq pm c gs'; induction ys as [| y ys IH]; intros xs Hq HM Hh Hcon Hlen; [ rewrite List.app_nil_r; constructor |].
-  econstructor; [ eapply eval_app_con; [ exact Hq | exact HM | exact Hh | exact Hcon | cbn in Hlen; lia ] |].
-  replace (xs ++ y :: ys) with ((xs ++ y :: nil) ++ ys) by (rewrite <- List.app_assoc; reflexivity).
-  apply IH; [ exact Hq | exact HM | exact Hh | exact Hcon | rewrite List.length_app; cbn in *; lia ].
 Qed.
 
 (** A declared member's constructor takes its parameters relevantly: the
@@ -2064,15 +2027,6 @@ Qed.
     a substitution moves along an equation of contexts; the front of a
     list fills the context below the list's rest; and the list's last
     term is of its entry's type. *)
-(** An entry of the front [C] of [C ++ Γ] that is a proposition is one
-    of [C]: its type reads the entries after it in [C] only. *)
-Lemma entry_propositional_app_front : forall C Γ ρ x, x < List.length C ->
-    entry_propositional gc_deps gc_stack (C ++ Γ) ρ x -> entry_propositional gc_deps gc_stack C ρ x.
-Proof.
-  intros * Hx [T HT E HE a Ea Hp]; econstructor; [ | | exact Ea | exact Hp ].
-  - unfold ctx_entry_type in *; rewrite List.nth_error_app1 in HT by lia; exact HT.
-  - intros y Hy; apply HE; rewrite !List.length_skipn, List.length_app in *; lia.
-Qed.
 
 (** The identity weakening from [C ++ Γ] to a closed telescope [C] of
     assumptions is valid: it reads the front of an environment. *)
@@ -2192,18 +2146,6 @@ Proof.
   destruct (app_split_eq _ _ _ _ Heq ltac:(rewrite List.length_rev; lia)) as [_ He].
   injection He as -> <-; split; [ exact He0 |].
   rewrite List.firstn_app, (proj2 (Nat.sub_0_le j (List.length l1))), List.app_nil_r, List.firstn_all2 by lia; reflexivity.
-Qed.
-
-(** Environments extended by the same values agree past them where the
-    environments do. *)
-Lemma env_extend_typed_agree : forall n A A' vts, env_agree_upto n A A' ->
-    env_agree_upto (List.length vts + n) (env_extend_typed A vts) (env_extend_typed A' vts).
-Proof.
-  intros n A A' vts; induction vts as [| [v t] vts IH] using List.rev_ind; intros H y Hy; [ exact (H y Hy) |].
-  rewrite List.length_app in Hy; cbn [List.length] in Hy.
-  rewrite !env_extend_typed_app; cbn [env_extend_typed List.fold_left extend_env fst snd].
-  destruct y as [| y]; [ reflexivity |].
-  cbn [env_entry List.nth]; exact (IH H y ltac:(lia)).
 Qed.
 
 (** Two extensions by the same values, at any types, agree up to
@@ -3260,38 +3202,6 @@ Section GroupElim.
       assert (b' = a) as -> by (eapply functional_eval_exp; eassumption).
       assert (Eq : R <~> per_proof) by (eapply per_univ_elem_right_irrel; [ exact HR | exact (per_univ_elem_of_prop i _ _ Hpp) ]).
       apply Eq; split; assumption.
-    Qed.
-
-    (** Arguments of a constructor whose non-recursive ones are related
-        canonically: a proof that reads back at each propositional
-        argument. *)
-    Lemma con_args_proofs : forall m Mm c gs ns vs vs', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
-        tele_rel (nr m) (List.rev (im_nparams Mm)) ns ns ->
-        tele_rel (ar m ns c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
-        List.length vs = List.length gs -> List.length vs' = List.length gs ->
-        forall a A v v', List.nth_error gs a = Some (ca_arg ak_propositional A) ->
-        List.nth_error vs a = Some v -> List.nth_error vs' a = Some v' -> proof_readable v /\ proof_readable v'.
-    Proof.
-      intros * HMm Hcon Hns Har Lvs Lvs' * Ha Hv Hv'.
-      destruct (List.nth_error_split _ _ Ha) as (gs1 & gs2 & -> & Lg1).
-      destruct (List.nth_error_split _ _ Hv) as (vs1 & vs2 & -> & Lv1).
-      destruct (List.nth_error_split _ _ Hv') as (vs1' & vs2' & -> & Lv1').
-      rewrite !List.length_app in Lvs, Lvs'; cbn [List.length] in Lvs, Lvs'.
-      rewrite !nonrec_arg_vals_app in Har by lia; cbn [nonrec_arg_vals] in Har.
-      set (j := List.length (cargs_nonrec gs1)).
-      assert (Lj : List.length (nonrec_arg_vals gs1 vs1) = j) by (apply length_nonrec_arg_vals; lia).
-      assert (Lj' : List.length (nonrec_arg_vals gs1 vs1') = j) by (apply length_nonrec_arg_vals; lia).
-      assert (HA : List.nth_error (cargs_nonrec (gs1 ++ ca_arg ak_propositional A :: gs2)) j = Some A)
-        by (rewrite cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-      pose proof (nonrec_kind_at gs1 gs2 ak_propositional A) as Hr.
-      pose proof Har as H0; rewrite tele_rel_iff in H0; destruct H0 as (_ & _ & Hall).
-      assert (Hy : List.nth_error (nonrec_arg_vals gs1 vs1 ++ v :: nonrec_arg_vals gs2 vs2) j = Some v)
-        by (rewrite List.nth_error_app2, Lj, Nat.sub_diag by lia; reflexivity).
-      assert (Hy' : List.nth_error (nonrec_arg_vals gs1 vs1' ++ v' :: nonrec_arg_vals gs2 vs2') j = Some v')
-        by (rewrite List.nth_error_app2, Lj', Nat.sub_diag by lia; reflexivity).
-      assert (Hjl : j <= List.length (cargs_nonrec (gs1 ++ ca_arg ak_propositional A :: gs2)))
-        by (rewrite cargs_nonrec_app, List.length_app; unfold j; lia).
-      exact (canon_arg_proof m Mm c _ ns j A _ _ HMm Hcon Hns HA Hr (tele_prefix_rel_of_full _ _ _ _ j Har Hjl) v v' (Hall _ _ _ Hy Hy')).
     Qed.
 
     Lemma adm_of_ru : forall w, RU (decl_env D w) (decl_env D u0) -> List.length w = ind_nu D -> adm_uparams D u0 nr ar dr w.

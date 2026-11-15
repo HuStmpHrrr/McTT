@@ -26,10 +26,6 @@ Proof.
   induction H; simpl; congruence.
 Qed.
 
-(** A context below another has as many entries. *)
-Lemma per_ctx_subtyp_length : forall Γ Δ, SubE Γ <: Δ -> length Γ = length Δ.
-Proof. induction 1; cbn [length]; congruence. Qed.
-
 Lemma per_ctx_subtyp_to_env : forall Γ Δ,
     SubE Γ <: Δ ->
     exists R R',
@@ -211,21 +207,6 @@ Proof.
   - rewrite env_entry_ctx_retag_ge by exact Hx.
     destruct (retag_entry_self (env_entry ρ x)) as (t & U & E); exists t, U; exact E.
   - rewrite env_entry_ctx_retag by exact Hx; eexists; eexists; reflexivity.
-Qed.
-
-(** An environment agreeing with the retagging of [ρ], as an evaluation
-    of [Id] at [ρ] is ([eval_sub_id], [functional_eval_sub]). *)
-Lemma env_agree_retagged_of_upto : forall Δ n ρ e, env_agree_upto n e (ctx_retag Δ ρ) -> env_agree_retagged n ρ e.
-Proof.
-  intros * H x Hx; rewrite (H x Hx); exact (env_agree_retagged_ctx_retag Δ n ρ x Hx).
-Qed.
-
-(** An environment against its head retagged, as [q σ] keeps it
-    ([eval_sub_q]). *)
-Lemma env_agree_retagged_head : forall n t U e ρ, env_agree_retagged n (e :: ρ) (retag_entry t U e :: ρ).
-Proof.
-  intros n t U e ρ [| x] _; [ exists t, U; reflexivity |].
-  destruct (retag_entry_self (env_entry ρ x)) as (t' & U' & E); exists t', U'; exact E.
 Qed.
 
 Lemma env_agree_retagged_drop : forall n ρ1 ρ2, env_agree_retagged (S n) ρ1 ρ2 -> env_agree_retagged n ρ1↯ ρ2↯.
@@ -545,72 +526,6 @@ Proof.
   basic_invert_per_univ_elem H; try assumption.
   all: try solve [ cbn in Hr; discriminate Hr ].
   all: congruence.
-Qed.
-
-(** The head relation of an extension at a type whose value at a tail
-    pointwise equal to the left one is a proposition is the proof's, and
-    so it is at the right one. *)
-Lemma per_ctx_head_propositional_left : forall Γ Γ' tail_rel i A A'
-    (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) ρ ρ' (Ht : Dom ρ ≈ ρ' ∈ tail_rel) E a,
-    EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
-    (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-    env_agree_upto (List.length Γ) E ρ -> ⟦ A ⟧ E ↘ a -> domain_kind a = ak_propositional ->
-    head_rel Ht <~> per_proof.
-Proof.
-  intros * HΓ HT HE Ea Hp.
-  assert (HE' : Dom E ≈ ρ' ∈ tail_rel) by (eapply per_ctx_env_resp_agree; [ exact HΓ | symmetry; exact HE | reflexivity | exact Ht ]).
-  destruct (HT _ _ HE') as [a1 b1 Ea1 Eb1 R1].
-  destruct (HT _ _ Ht) as [a0 b0 Ea0 Eb0 R0].
-  functional_eval_rewrite_clear.
-  pose proof (per_univ_elem_kind _ _ _ _ R1) as Hr1.
-  pose proof (per_univ_elem_kind _ _ _ _ R0) as Hr0.
-  eapply per_univ_elem_propositional; [ exact R0 | congruence ].
-Qed.
-
-Lemma per_ctx_head_propositional_right : forall Γ Γ' tail_rel i A A'
-    (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) ρ ρ' (Ht : Dom ρ ≈ ρ' ∈ tail_rel) E a',
-    EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
-    (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-    env_agree_upto (List.length Γ') E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_kind a' = ak_propositional ->
-    head_rel Ht <~> per_proof.
-Proof.
-  intros * HΓ HT HE Ea Hp.
-  assert (HE' : Dom ρ ≈ E ∈ tail_rel)
-    by (eapply per_ctx_env_resp_agree; [ exact HΓ | reflexivity | rewrite (per_ctx_env_length HΓ); symmetry; exact HE | exact Ht ]).
-  destruct (HT _ _ HE') as [a1 b1 Ea1 Eb1 R1].
-  destruct (HT _ _ Ht) as [a0 b0 Ea0 Eb0 R0].
-  functional_eval_rewrite_clear.
-  pose proof (per_univ_elem_kind _ _ _ _ R1) as Hr1.
-  eapply per_univ_elem_propositional; [ exact R0 | congruence ].
-Qed.
-
-(** A type of an extension is a proposition at a tail when it is one at a
-    pointwise equal environment, on either side. *)
-Lemma rel_typ_propositional_env_eq_left : forall Γ Γ' tail_rel i A A'
-    (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) ρ ρ' E a,
-    EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
-    (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-    Dom ρ ≈ ρ' ∈ tail_rel ->
-    env_agree_upto (List.length Γ) E ρ -> ⟦ A ⟧ E ↘ a -> domain_kind a = ak_propositional ->
-    rel_typ_propositional A ρ.
-Proof.
-  intros * HΓ HT Ht HE Ea Hp.
-  assert (HE' : Dom E ≈ ρ' ∈ tail_rel) by (eapply per_ctx_env_resp_agree; [ exact HΓ | symmetry; exact HE | reflexivity | exact Ht ]).
-  exact (rel_typ_propositional_left (HT _ _ Ht) (rel_typ_propositional_right (HT _ _ HE') (ex_intro _ a (conj Ea Hp)))).
-Qed.
-
-Lemma rel_typ_propositional_env_eq_right : forall Γ Γ' tail_rel i A A'
-    (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain) ρ ρ' E a',
-    EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel ->
-    (forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
-    Dom ρ ≈ ρ' ∈ tail_rel ->
-    env_agree_upto (List.length Γ') E ρ' -> ⟦ A' ⟧ E ↘ a' -> domain_kind a' = ak_propositional ->
-    rel_typ_propositional A' ρ'.
-Proof.
-  intros * HΓ HT Ht HE Ea Hp.
-  assert (HE' : Dom ρ ≈ E ∈ tail_rel)
-    by (eapply per_ctx_env_resp_agree; [ exact HΓ | reflexivity | rewrite (per_ctx_env_length HΓ); symmetry; exact HE | exact Ht ]).
-  exact (rel_typ_propositional_right (HT _ _ Ht) (rel_typ_propositional_left (HT _ _ HE') (ex_intro _ a' (conj Ea Hp)))).
 Qed.
 
 (** The tail after the head is the drop. *)

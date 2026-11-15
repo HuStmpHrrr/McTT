@@ -105,27 +105,6 @@ Definition fmdesc_type (R : fmdesc) : option typ :=
 Lemma fmdesc_type_dec : forall R, mdesc_type (decode_desc R) = fmdesc_type R.
 Proof. intros []; reflexivity. Qed.
 
-(** [mdesc_kind]'s twin *)
-Definition fmdesc_kind (R : fmdesc) : abs_kind :=
-  match R with
-  | fmdesc_term κ _ _ => κ
-  | _ => ak_relevant
-  end.
-
-Lemma fmdesc_kind_dec : forall R, mdesc_kind (decode_desc R) = fmdesc_kind R.
-Proof. intros []; reflexivity. Qed.
-
-(** [mdesc_reduct]'s twin *)
-Definition fmdesc_reduct (R : fmdesc) : option exp :=
-  match R with
-  | fmdesc_term _ _ om => om
-  | fmdesc_dm Θd _ M _ => Some (ctx_fn Θd M)
-  | _ => None
-  end.
-
-Lemma fmdesc_reduct_dec : forall R, mdesc_reduct (decode_desc R) = fmdesc_reduct R.
-Proof. intros []; reflexivity. Qed.
-
 (** [mdesc_mod]'s twin *)
 Fixpoint fmdesc_mod (R : fmdesc) : option fmdesc :=
   match R with
@@ -143,9 +122,6 @@ Definition fmdesc_is_modb (R : fmdesc) : bool :=
   | fmdesc_open _ _ _ | fmdesc_closed _ _ _ _ _ _ => true
   | _ => false
   end.
-
-Lemma fmdesc_is_modb_spec : forall R, fmdesc_is_modb R = true <-> mdesc_is_mod (decode_desc R).
-Proof. intros []; cbn; split; intros; first [ exact I | reflexivity | discriminate | contradiction ]. Qed.
 
 (** [mdesc_tele]'s twin *)
 Definition fmdesc_tele (R : fmdesc) : option ctx :=
@@ -467,37 +443,14 @@ Proof.
   - destruct (inspect (ft_find t y)) as [[e |] Ee]; [ injection He as _ <- _; reflexivity | discriminate ].
 Qed.
 
-(** [mdesc_unit]'s twin *)
-Definition fmdesc_unit (R : fmdesc) : modexp :=
-  match R with
-  | fmdesc_open Δ Φ _ => me_lit (gu_mk Δ (md_body sm_open Φ))
-  | fmdesc_closed nil p _ _ _ Ns => me_apps (qname_mod p) Ns
-  | fmdesc_closed Θ' p _ _ _ Ns => me_lit (gu_mk Θ' (md_alias (me_apps (qname_mod p) Ns)))
-  | _ => me_lit (gu_mk nil (md_body sm_open gm_nil))
-  end.
-
-Lemma fmdesc_unit_dec : forall R, mdesc_unit (decode_desc R) = fmdesc_unit R.
-Proof. intros [| | [|] | ]; reflexivity. Qed.
-
 (** [ind_former_desc]'s twin *)
 Definition fast_ind_former_desc (pq : qname) (k : nat) (D : ind_decl) (Mk : imember) (Rm : fmdesc) : fmdesc :=
   fmdesc_dm nil (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (a_ind pq k) Rm.
-
-Lemma fast_ind_former_desc_dec : forall pq k D Mk Rm,
-    decode_desc (fast_ind_former_desc pq k D Mk Rm) = ind_former_desc pq k D Mk (decode_desc Rm).
-Proof. reflexivity. Qed.
 
 (** [record_former_desc]'s twin *)
 Definition fast_record_former_desc (p : qname) (R : record_decl) (Rm : fmdesc) : fmdesc :=
   fmdesc_dm nil (ctx_pi (record_params R) (record_sort R)) (a_record p) Rm.
 
-Lemma fast_record_former_desc_dec : forall p R Rm,
-    decode_desc (fast_record_former_desc p R Rm) = record_former_desc p R (decode_desc Rm).
-Proof. reflexivity. Qed.
-
-(** ** Located Bodies, Canonical *)
-
-(** The located bodies of a fast context, with their tries canonical *)
 Section Located.
   Variable F : FCtx.
 
@@ -526,16 +479,6 @@ Section Located.
     rewrite Hl, Hf, (fast_gc_unit_ok _ _ Huf _ _ HcΞ) in Hd.
     destruct (gc_unit _ _ H) as [[T0 Φ] |] eqn:E; [| discriminate ]; injection Hd as _ Hd.
     exists Φ; split; [ symmetry; exact Hd | exact (canon_gc_unit _ _ HcR HcΞ _ _ _ E) ].
-  Qed.
-
-  (** An entry: canonical *)
-  Lemma fc_entry_canon : forall p e, fc_entry F p = Some e -> canon_fentry e.
-  Proof.
-    intros * He; unfold fc_entry in He; canon_open.
-    pose proof (fast_gc_entry_drop (fun fp => fv_find (fc_view F) fp) _ (fv_find_drop (fc_view F)) (fc_frames F) p) as Hd.
-    rewrite He, Hf, (fast_gc_entry_ok _ _ Huf HcR _ _ HcΞ) in Hd.
-    destruct (gc_entry _ _ p) as [E |] eqn:E0; [| discriminate ]; injection Hd as Hd.
-    exists E; split; [ symmetry; exact Hd | exact (canon_gc_entry _ _ HcR HcΞ _ _ E0) ].
   Qed.
 
   (** [gc_loc], with the canonicity of the trie found *)

@@ -103,15 +103,6 @@ Section Fixed_GCtx.
     all: match goal with Ha : $| _ & _ | _ ⍮ _ ↘ _ |- _ => cbn in Ha; inversion Ha; subst; assumption end.
   Qed.
 
-  (** Applications that read back alike have arguments that do. *)
-  Lemma per_bot_app_inv : forall m m' n n', Dom m $ᵈ n ≈ m' $ᵈ n' ∈ per_bot -> Dom n ≈ n' ∈ per_top.
-  Proof.
-    intros * H s; destruct (H s) as [M M' H1 H2 HE].
-    inversion H1; subst; inversion H2; subst.
-    unfold ne_eq_upto_proofs in HE; cbn in HE; apply Bool.andb_true_iff in HE as [_ HE].
-    eapply mk_normal_reads_alike; eassumption.
-  Qed.
-
   Lemma nth_blocks_motives : forall Bks j b, List.nth_error Bks j = Some b ->
       List.nth j (blocks_motives Bks) a_prop = eb_motive b.
   Proof.
@@ -126,10 +117,6 @@ Section Fixed_GCtx.
     - f_equal; exact (IH _ (proj2 H)).
     - f_equal; exact (IH _ (proj2 (proj2 H))).
   Qed.
-
-  Lemma tele_rel_len : forall {X Y : Type} tr (T : list X) (T' : list Y) a b, List.length T = List.length T' ->
-      tele_rel tr T a b -> tele_rel tr T' a b.
-  Proof. intros * HT [Hl Hr]; split; [ congruence | exact Hr ]. Qed.
 
   Lemma cons_lookup_names : forall cs c, In c (List.map fst cs) -> exists gs, cons_lookup cs c = Some gs.
   Proof.

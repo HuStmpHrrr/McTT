@@ -185,9 +185,6 @@ Lemma nparams_prefix_S : forall M k κ A, List.nth_error (List.rev (im_nparams M
     nparams_prefix M (S k) = ce_ass κ A :: nparams_prefix M k.
 Proof. intros * H; unfold nparams_prefix; rewrite (firstn_S_snoc _ _ _ H), List.rev_app_distr; reflexivity. Qed.
 
-Lemma nparams_prefix_full : forall M, nparams_prefix M (im_nn M) = im_nparams M.
-Proof. intros; unfold nparams_prefix; rewrite List.firstn_all2 by (rewrite List.length_rev, length_im_nparams; lia); apply List.rev_involutive. Qed.
-
 (** Related arguments at a closed telescope make related environments of
     it. *)
 Lemma tele_args_env_rel : forall Ctx R zs zs' ρ ρ', EF Ctx ≈ Ctx ∈ per_ctx_env ↘ R -> ⊨ Ctx ->
@@ -202,54 +199,6 @@ Proof.
   assert (E : R' <~> R) by (eapply per_ctx_env_right_irrel; eassumption).
   apply E; exact Hρ.
 Qed.
-
-(** The values of an entry of a closed telescope of types of universes,
-    at related arguments before it, are relevant. *)
-Lemma closed_relevant_dom : forall C, ⊨ C ->
-    (forall Δ1 κ T Δ2, C = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, Δ2 ⊨ T : Typeω@i) ->
-    forall ρ ρ' ts1 κ A ts2 ys ys' b, List.rev C = ts1 ++ ce_ass κ A :: ts2 -> per_tele_args ts1 ρ ρ' ys ys' ->
-      List.length ys = List.length ts1 -> ⟦ A ⟧ env_tele ρ ts1 ys ↘ b -> domain_kind b = ak_relevant.
-Proof.
-  intros * HC Hrel * Heq Hg Hl Eb.
-  assert (HCe : C = List.rev ts2 ++ ce_ass κ A :: List.rev ts1)
-    by (rewrite <- (List.rev_involutive C), Heq, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
-  destruct (Hrel _ _ _ _ HCe) as [i HA].
-  assert (HC1 : ⊨ List.rev ts1) by (rewrite HCe in HC; exact (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC))).
-  destruct (rel_ctx_wf_per_ctx_env HC1) as [R HR].
-  assert (Hρ : R (env_tele ρ ts1 ys) (env_tele ρ' ts1 ys')).
-  { rewrite <- (List.rev_involutive ts1) at 1 2.
-    apply (tele_args_env_rel _ _ _ _ _ _ HR HC1); [ rewrite List.length_rev; exact Hl | rewrite List.rev_involutive; exact Hg ]. }
-  destruct (rel_exp_of_typ_relevant_at HR HA _ _ Hρ) as (b0 & Eb0 & Hr).
-  assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption).
-  exact Hr.
-Qed.
-
-(** The same for a closed telescope of entries of given kinds: the values
-    of an entry are of its kind. *)
-Lemma closed_sorted_dom : forall C (rf : nat -> abs_kind), ⊨ C ->
-    (forall Δ1 κ T Δ2, C = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, Δ2 ⊨ T : abs_kind_sort (rf (List.length Δ2)) Typeω@i) ->
-    forall ρ ρ' ts1 κ A ts2 ys ys' b, List.rev C = ts1 ++ ce_ass κ A :: ts2 -> per_tele_args ts1 ρ ρ' ys ys' ->
-      List.length ys = List.length ts1 -> ⟦ A ⟧ env_tele ρ ts1 ys ↘ b -> domain_kind b = rf (List.length ts1).
-Proof.
-  intros * HC Hrel * Heq Hg Hl Eb.
-  assert (HCe : C = List.rev ts2 ++ ce_ass κ A :: List.rev ts1)
-    by (rewrite <- (List.rev_involutive C), Heq, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
-  destruct (Hrel _ _ _ _ HCe) as [i HA]; rewrite List.length_rev in HA.
-  assert (HC1 : ⊨ List.rev ts1) by (rewrite HCe in HC; exact (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC))).
-  destruct (rel_ctx_wf_per_ctx_env HC1) as [R HR].
-  assert (Hρ : R (env_tele ρ ts1 ys) (env_tele ρ' ts1 ys')).
-  { rewrite <- (List.rev_involutive ts1) at 1 2.
-    apply (tele_args_env_rel _ _ _ _ _ _ HR HC1); [ rewrite List.length_rev; exact Hl | rewrite List.rev_involutive; exact Hg ]. }
-  destruct (rel_exp_of_abs_kind_sort_at HR HA _ _ Hρ) as (b0 & Eb0 & Hr).
-  assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption).
-  exact Hr.
-Qed.
-
-(** A telescope of types of universes is one of parameter types. *)
-Lemma rel_param_typed_of_universes : forall Γ C,
-    (forall Δ1 κ T Δ2, C = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, Δ2 ++ Γ ⊨ T : Typeω@i) ->
-    forall Δ1 κ T Δ2, C = Δ1 ++ ce_ass κ T :: Δ2 -> exists i : nat, rel_param_typed (Δ2 ++ Γ) T i.
-Proof. intros * H * E; destruct (H _ _ _ _ E) as [i Hi]; exists i; left; exact Hi. Qed.
 
 (** An entry of a telescope over [Γ] that is a type of a universe or a
     type of levels ([rel_param_typed]) is no proposition at an environment
@@ -411,61 +360,6 @@ Proof.
                 | exact (Hsub _ _ _ Eu1 Hag1 Hnp1) | exact (Hsub _ _ _ Eu2 Hag2 Hnp2) ].
 Qed.
 
-(** A substitution extended by terms [Ms] whose entries are of the kinds
-    [rf]: those of an evaluated kind no proposition at the value [E], the
-    values [ms] the terms' values there, and those of the propositional
-    one propositions there, the values [ms] the terms kept as proofs over
-    [ρ].  [E] then holds the values [ms] at their entries' tags over its
-    tail.  The term [M] at index [j] of [Ms] is the entry
-    [|Ms| - 1 - j]. *)
-Lemma eval_sb_of_list_sorted_vals : forall Ms ts σ Δ ρ E ms (rf : nat -> abs_kind),
-    List.length ts = List.length Ms -> List.length ms = List.length Ms ->
-    ⟦ sb_of_list σ Ms : List.rev ts ++ Δ ⟧s ρ ↘ E ->
-    (forall j M m, List.nth_error Ms j = Some M -> List.nth_error ms j = Some m -> evaluated_kind (rf (List.length Ms - 1 - j)) ->
-       ~ entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E (List.length Ms - 1 - j) /\ ⟦ M ⟧ ρ ↘ m) ->
-    (forall j M m, List.nth_error Ms j = Some M -> List.nth_error ms j = Some m -> rf (List.length Ms - 1 - j) = ak_propositional ->
-       entry_propositional gc_deps gc_stack (List.rev ts ++ Δ) E (List.length Ms - 1 - j) /\ m = ⋆ᵈ⟨M, ρ⟩) ->
-    forall x, env_entry E x = env_entry (env_extend_tagged Δ ts (List.skipn (List.length ts) E) ms) x.
-Proof.
-  #[local] Transparent eval_sub.
-  induction Ms as [| M Ms IH]; intros [| e ts] * Hl Hlm H Hr Hp; cbn [List.length] in Hl, Hlm; try discriminate.
-  - destruct ms; cbn [List.length] in Hlm; [| discriminate Hlm ]; intros x; reflexivity.
-  - destruct ms as [| m ms]; cbn [List.length] in Hlm; [ discriminate Hlm |].
-    assert (Hl' : List.length ts = List.length Ms) by lia.
-    assert (Hlm' : List.length ms = List.length Ms) by lia.
-    cbn [List.length] in Hr, Hp.
-    cbn [sb_of_list List.rev] in H, Hr, Hp; rewrite <- List.app_assoc in H, Hr, Hp; cbn [List.app] in H, Hr, Hp.
-    assert (Hag : forall x, env_entry E x = env_entry (env_extend_tagged (e :: Δ) ts (List.skipn (List.length ts) E) ms) x).
-    { apply (IH ts _ (e :: Δ) _ _ ms rf Hl' Hlm' H).
-      - intros j M0 m0 HM0 Hm0 Hrf; replace (List.length Ms - 1 - j) with (S (List.length Ms) - 1 - S j) by lia.
-        apply (Hr (S j)); [ exact HM0 | exact Hm0 | replace (S (List.length Ms) - 1 - S j) with (List.length Ms - 1 - j) by lia; exact Hrf ].
-      - intros j M0 m0 HM0 Hm0 Hrf; replace (List.length Ms - 1 - j) with (S (List.length Ms) - 1 - S j) by lia.
-        apply (Hp (S j)); [ exact HM0 | exact Hm0 | replace (S (List.length Ms) - 1 - S j) with (List.length Ms - 1 - j) by lia; exact Hrf ]. }
-    (** The head term, at the entry past the later ones. *)
-    assert (Hx : List.length ts < List.length (List.rev ts ++ e :: Δ))
-      by (rewrite List.length_app, List.length_rev; cbn [List.length]; lia).
-    destruct (H _ Hx) as [HP HN].
-    assert (Hσx : sb_of_list (σ ,, M) Ms (List.length ts) = se_exp M)
-      by (rewrite Hl', <- (Nat.add_0_r (List.length Ms)), sb_of_list_ge; reflexivity).
-    rewrite Hσx in HP, HN.
-    assert (Hi : S (List.length Ms) - 1 - 0 = List.length ts) by lia.
-    assert (Hme : env_entry E (List.length ts) = de_term m (ctx_entry_tag (List.rev ts ++ e :: Δ) (List.length ts) E)).
-    { destruct (evaluated_kind_or_propositional (rf (List.length ts))) as [Erf | Erf].
-      - destruct (Hr 0 M m eq_refl eq_refl ltac:(rewrite Hi; exact Erf)) as [Hn Em]; rewrite Hi in Hn.
-        destruct (HN Hn) as (m' & Hme & Hm'); rewrite Hme; f_equal.
-        eapply functional_eval_exp; eassumption.
-      - destruct (Hp 0 M m eq_refl eq_refl ltac:(rewrite Hi; exact Erf)) as [Hpx ->]; rewrite Hi in Hpx.
-        exact (HP Hpx). }
-    rewrite <- (List.length_rev ts), ctx_entry_tag_app_at, List.length_rev in Hme.
-    (** The tail past the later entries has the head term's value, at its
-        tag, before the rest. *)
-    intros x; rewrite Hag; cbn [List.length env_extend_tagged].
-    apply env_extend_tagged_eq; intros [| k]; rewrite env_entry_skipn.
-    + rewrite Nat.add_0_r, Hme; reflexivity.
-    + transitivity (env_entry (List.skipn (S (List.length ts)) E) k); [| reflexivity ].
-      rewrite env_entry_skipn; f_equal; lia.
-Qed.
-
 (** Any value of a substitution extended by terms [Ms] whose entries are
     of the kinds [rf] holds, at the entries, values [ms]: the terms' values
     at those of an evaluated kind, the terms kept as proofs at the
@@ -601,20 +495,6 @@ Proof.
   rewrite <- (tagged_entries_fst _ Γ (ctx_retag Γ B1) _ Hl1), <- (tagged_entries_fst _ Γ (ctx_retag Γ B2) _ Hl2).
   eapply closed_env_tele; [ exact Ha | exact HC | exact HRC | | | exact H12' ];
     rewrite tagged_entries_length; lia.
-Qed.
-
-(** Related arguments of a closed telescope [C] over related environments
-    of [Γ] are related environments of [C ++ Γ]. *)
-Lemma closed_args_rel_over : forall C Γ RΓ RCΓ E E' zs zs', all_assumptions C -> ⊨ C -> ⊨ Γ ->
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF C ++ Γ ≈ C ++ Γ ∈ per_ctx_env ↘ RCΓ -> RΓ E E' ->
-    List.length zs = List.length C -> per_tele_args (List.rev C) nil nil zs zs' ->
-    RCΓ (env_tele E (List.rev C) zs) (env_tele E' (List.rev C) zs').
-Proof.
-  intros * Ha HC HΓ HRΓ HRCΓ HE Hl Hg.
-  assert (HC' : ⊨ List.rev (List.rev C) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
-  pose proof (per_tele_args_base _ _ _ per_ctx_env_nil_true HC' (List.Forall_rev Ha) nil nil E E' zs zs' I I I Hg) as Hg'.
-  destruct (closed_app_sem _ _ Ha HC HΓ) as [HCΓ _].
-  exact (tele_args_env_rel_gen _ _ _ _ _ _ _ _ HRΓ HRCΓ HCΓ HE Hl Hg').
 Qed.
 
 (** Arguments related at a telescope are related by the canonical
@@ -1868,15 +1748,6 @@ Section Sort.
         exact (ind_at_params R1 ρ ρ' vts vts' HR1 Hl1 Hl1' HE1).
     Qed.
   End DeclMember.
-
-  Lemma eval_apps_ind : forall k Mk ys xs, ind_member D k = Some Mk -> List.length xs + List.length ys <= im_np D Mk ->
-      $*| d_ind p k xs & ys | gc_deps ⍮ gc_stack ↘ d_ind p k (xs ++ ys).
-  Proof.
-    intros k Mk; induction ys as [| y ys IH]; intros xs HM Hlen; [ rewrite List.app_nil_r; constructor |].
-    econstructor; [ eapply eval_app_indty; [ exact Hl | exact HM | cbn in *; lia ] |].
-    replace (xs ++ y :: ys) with ((xs ++ y :: nil) ++ ys) by (rewrite <- List.app_assoc; reflexivity).
-    apply IH; [ exact HM | rewrite List.length_app; cbn in *; lia ].
-  Qed.
 
   (** ** The Members as Values of the Context of the Members as Variables
 

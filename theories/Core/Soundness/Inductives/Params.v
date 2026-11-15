@@ -42,14 +42,6 @@ Proof.
   rewrite <- (List.rev_involutive C), E, List.rev_app_distr; cbn; rewrite <- List.app_assoc; reflexivity.
 Qed.
 
-(** A prefix of a sequence is the shorter sequence. *)
-Lemma firstn_seq_le : forall k n s, k <= n -> List.firstn k (List.seq s n) = List.seq s k.
-Proof.
-  intros * Hk; replace n with (k + (n - k)) by lia.
-  rewrite List.seq_app, List.firstn_app, List.length_seq, Nat.sub_diag, List.firstn_all2 by (rewrite List.length_seq; lia).
-  cbn; apply List.app_nil_r.
-Qed.
-
 (** An instance of a telescope's suffix [Pre] at the first terms is the
     instance of the whole telescope there. *)
 Lemma tele_insts_prefix_nth : forall C1 Pre Ms k T, all_assumptions Pre -> List.length Pre <= List.length Ms ->

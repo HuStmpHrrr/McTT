@@ -98,25 +98,6 @@ Definition glu_tele_entries (Δ Γ : ctx) : Prop :=
 Lemma glu_tele_entries_tail : forall e Δ Γ, glu_tele_entries (e :: Δ) Γ -> glu_tele_entries Δ Γ.
 Proof. intros * H Δ1 κ A Δ2 E; apply (H (e :: Δ1)); rewrite E; reflexivity. Qed.
 
-(** The entries of a telescope past its last entry, over the context
-    extended by it. *)
-Lemma glu_tele_entries_snoc : forall Δ e Γ, glu_tele_entries (Δ ++ e :: nil) Γ -> glu_tele_entries Δ (e :: Γ).
-Proof.
-  intros * H Δ1 κ A Δ2 E.
-  destruct (H Δ1 κ A (Δ2 ++ e :: nil)) as [j Hj]; [ rewrite E, <- List.app_assoc; reflexivity |].
-  exists j; rewrite <- List.app_assoc in Hj; exact Hj.
-Qed.
-
-(** A telescope of glued entries extends a context glued with its types. *)
-Lemma glu_rel_ctx_types_app : forall Δ Γ, all_assumptions Δ -> glu_rel_ctx_types Γ -> glu_tele_entries Δ Γ ->
-    glu_rel_ctx_types (Δ ++ Γ).
-Proof.
-  induction Δ as [| e Δ IH]; intros * Hass HΓ HΔ; [ exact HΓ |].
-  apply List.Forall_cons_iff in Hass as [(κ & A & ->) Hass].
-  destruct (HΔ nil κ A Δ eq_refl) as [j HA].
-  exact (glu_rel_ctx_types_extend HA (sort_kind_abs_kind_sort κ j)).
-Qed.
-
 (** The [Π] over a telescope of glued entries of a type of a large
     universe glued at its instances. *)
 Lemma glu_rel_exp_under_sub_ctx_pi : forall Δ Γ B (i : nat), all_assumptions Δ -> glu_tele_entries Δ Γ ->
@@ -172,13 +153,6 @@ Proof.
 Qed.
 
 (** ** Type Formers Applied at Instances *)
-
-(** A term scoped by a list instance does not see the instance's base. *)
-Lemma exp_sub_sb_of_list_base : forall M Ms σ τ, exp_scoped (List.length Ms) M -> M[sb_of_list σ Ms] = M[sb_of_list τ Ms].
-Proof.
-  intros * Hs; eapply exp_scoped_sub_agree; [ exact Hs |]; intros x Hx.
-  rewrite !(sb_of_list_nth _ _ _ (a_var 0)) by lia; reflexivity.
-Qed.
 
 (** A list instance followed by a substitution, on a term it scopes: the
     list of the substituted terms. *)

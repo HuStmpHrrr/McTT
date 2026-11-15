@@ -702,9 +702,6 @@ Proof.
   rewrite (IH (me_app H N) R (args ++ N :: nil) pre); [ rewrite <- app_assoc; reflexivity | cbn; rewrite Hs; reflexivity ].
 Qed.
 
-Lemma member_ref_snoc : forall pre R x, member_ref R (pre ++ x :: nil) = a_mem (me_mems R pre) x.
-Proof. induction pre as [| y pre IH]; intros; [ reflexivity | cbn [app me_mems]; rewrite <- IH; destruct pre; reflexivity ]. Qed.
-
 Lemma me_noargs_mems : forall pre H, me_noargs H -> me_noargs (me_mems H pre).
 Proof. induction pre as [| y pre IH]; intros H Hn; cbn [me_mems]; [ exact Hn | apply IH; exact Hn ]. Qed.
 

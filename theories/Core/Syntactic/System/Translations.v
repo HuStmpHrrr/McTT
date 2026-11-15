@@ -239,12 +239,6 @@ Proof.
   - apply IH.
 Qed.
 
-(** A function of a mutual definition is its parts. *)
-Lemma raw_fun_parts_eq : forall f f',
-    raw_fun_name f' = raw_fun_name f -> raw_fun_nparams f' = raw_fun_nparams f -> raw_fun_scrut f' = raw_fun_scrut f ->
-    raw_fun_res f' = raw_fun_res f -> raw_fun_clauses f' = raw_fun_clauses f -> f' = f.
-Proof. intros [] []; cbn; intros; subst; reflexivity. Qed.
-
 (** A declared member as written is its parts. *)
 Lemma raw_member_parts_eq : forall Mr Mr',
     raw_member_name Mr' = raw_member_name Mr -> raw_member_nparams Mr' = raw_member_nparams Mr -> raw_member_sort Mr' = raw_member_sort Mr ->
@@ -255,15 +249,6 @@ Proof. intros [] []; cbn; intros; subst; reflexivity. Qed.
 Lemma raw_decl_parts_eq : forall R R',
     raw_decl_uparams R' = raw_decl_uparams R -> raw_decl_members R' = raw_decl_members R -> raw_decl_rec_field R' = raw_decl_rec_field R -> R' = R.
 Proof. intros [] []; cbn; intros; subst; reflexivity. Qed.
-
-(** Arguments are their names and their telescope. *)
-Lemma raw_args_tele_names_eq : forall args args', List.map fst args' = List.map fst args -> raw_args_tele args' = raw_args_tele args -> args' = args.
-Proof.
-  intros args args' En Et; unfold raw_args_tele in Et; apply (f_equal (@List.rev _)) in Et; rewrite !rev_involutive in Et.
-  revert args En Et; induction args' as [| [y T] a' IH]; intros [| [z U] a] En Et; cbn in *; try discriminate;
-    [ reflexivity |].
-  injection En as -> En; injection Et as -> Et; rewrite (IH _ En Et); reflexivity.
-Qed.
 
 (** The [Self]s are read off the uniform parameters and the members'
     parameters and sorts. *)

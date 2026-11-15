@@ -52,9 +52,6 @@ Section Closure.
   Variable U : aczel_set.
   Hypothesis HU : grothendieck U.
 
-Lemma grothendieck_eq : forall x y, set_eq x y -> set_mem x U -> set_mem y U.
-Proof. intros x y E H. eapply set_mem_eq_l; [exact E | exact H]. Qed.
-
 Lemma grothendieck_sub : forall x y, set_mem x U -> set_sub y x -> set_mem y U.
 Proof.
   intros x y Hx Hs. apply (grothendieck_transitive _ HU (power_set x)); [apply grothendieck_power; auto | apply set_mem_power; exact Hs].
@@ -86,9 +83,6 @@ Proof. intros X P H. apply (grothendieck_sub X); [exact H |]. intros z [[a Pa] H
 
 Lemma grothendieck_successor : forall x, set_mem x U -> set_mem (successor_set x) U.
 Proof. intros. unfold successor_set. apply (grothendieck_union _ HU). apply (grothendieck_pair _ HU); [| apply grothendieck_singleton]; auto. Qed.
-
-Lemma grothendieck_pair_first : forall p, set_mem p U -> set_mem (pair_first p) U.
-Proof. intros. unfold pair_first. apply (grothendieck_union _ HU). apply grothendieck_separation. apply (grothendieck_union _ HU). auto. Qed.
 
 Lemma grothendieck_pair_second : forall p, set_mem p U -> set_mem (pair_second p) U.
 Proof. intros. unfold pair_second. apply (grothendieck_union _ HU). apply grothendieck_separation. apply (grothendieck_union _ HU). auto. Qed.
@@ -140,15 +134,6 @@ Lemma grothendieck_function : forall S F, respects_set_eq_fun F -> set_mem S U -
 Proof.
   intros. unfold function_set. apply grothendieck_separation. apply (grothendieck_power _ HU).
   apply grothendieck_product; [auto | apply grothendieck_indexed_union; auto].
-Qed.
-
-Lemma grothendieck_sigma : forall S F, respects_set_eq_fun F -> set_mem S U -> (forall x, set_mem x S -> set_mem (F x) U) ->
-    set_mem (sigma_set S F) U.
-Proof.
-  intros S F HF HS HFx. apply (grothendieck_sub (product_set S (indexed_union_set S F))); [apply grothendieck_product; [auto | apply grothendieck_indexed_union; auto] |].
-  intros z Hz. apply (set_mem_sigma _ _ _ HF) in Hz as [x [y [Hx [Hy Ez]]]].
-  apply set_mem_product. exists x, y. split; [exact Hx | split; [| exact Ez]].
-  apply (set_mem_indexed_union _ _ _ HF). exists x. auto.
 Qed.
 
 Lemma grothendieck_truth : forall P, set_mem (truth_set P) U.

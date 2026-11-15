@@ -121,13 +121,7 @@ Section Rename.
       level_atoms_rename ((k, n, m) :: xs) = (k, n, domain_ne_rename m) :: level_atoms_rename xs.
   Proof. reflexivity. Qed.
 
-  Lemma env_rename_cons : forall e ρ, env_rename (e :: ρ) = dentry_rename e :: env_rename ρ.
-  Proof. reflexivity. Qed.
-
   Lemma env_rename_extend_env : forall ρ c t, env_rename (ρ ↦ c ⦂ t) = env_rename ρ ↦ domain_rename c ⦂ entry_type_rename t.
-  Proof. reflexivity. Qed.
-
-  Lemma env_rename_nil : env_rename nil = nil.
   Proof. reflexivity. Qed.
 
   Lemma env_entry_rn : forall ρ x, env_entry (env_rename ρ) x = dentry_rename (env_entry ρ x).
@@ -211,9 +205,6 @@ Section Rename.
       env_rename (global_proof_env p T args) = global_proof_env p T (List.map domain_rename args).
   Proof. intros; unfold global_proof_env; cbn; rewrite env_tele_rn, List.length_map; reflexivity. Qed.
 
-  Lemma kinds_pads_rn : forall n ρ, env_rename (kinds_pads n ρ) = kinds_pads n (env_rename ρ).
-  Proof. intros; unfold kinds_pads, env_rename; rewrite List.map_app; f_equal; induction n; cbn; f_equal; assumption. Qed.
-
   Lemma domain_level_sort_rn : forall d, domain_level_sort (domain_rename d) = domain_level_sort d.
   Proof. destruct d; reflexivity. Qed.
 
@@ -231,9 +222,6 @@ Section Rename.
     intros; unfold domain_level_max, domain_level_const, domain_level_atoms; rewrite !domain_level_view_rn, domain_rename_lvl; cbn [fst snd]; f_equal.
     unfold level_atoms_rename; apply List.map_app.
   Qed.
-
-  Lemma length_env_rename : forall ρ, List.length (env_rename ρ) = List.length ρ.
-  Proof. intros; apply List.length_map. Qed.
 
   (** The fields of a renamed tuple: each value renamed. *)
   Lemma tuple_rn : forall (vs : list (string * domain)),
@@ -878,17 +866,8 @@ Proof. intros * H -> ->; apply rn_ok_qn, H. Qed.
 
   Variable (f : nat -> nat).
 
-  Lemma eval_clo_rn : forall B ρ c t d,
-      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c ⦂ t ↘ d -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_rename f ρ ↦ domain_rename f c ⦂ entry_type_rename f t ↘ domain_rename f d.
-  Proof. intros * H; exact (proj1 (eval_rn Θ Ξ f) _ _ _ H). Qed.
-
   Lemma app_rn : forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> $| domain_rename f m & domain_rename f n | Θ ⍮ Ξ ↘ domain_rename f r.
   Proof. intros * H; exact (proj1 (proj2 (eval_rn Θ Ξ f)) _ _ _ H). Qed.
-
-  Lemma eval_extend_typed_rn : forall B ρ vts d,
-      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_extend_typed ρ vts ↘ d ->
-      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_extend_typed (env_rename f ρ) (List.map (typed_rename f) vts) ↘ domain_rename f d.
-  Proof. intros * H; rewrite <- env_extend_typed_rn; exact (proj1 (eval_rn Θ Ξ f) _ _ _ H). Qed.
 
   (** The fresh variables of the telescopes of a declaration, renamed: from
       the readback length on, [f] is the shift to the other length. *)

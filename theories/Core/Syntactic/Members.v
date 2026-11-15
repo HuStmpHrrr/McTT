@@ -455,10 +455,6 @@ Proof.
   destruct (qname_strip mp p) as [[| ? ?] |]; [ eauto | discriminate | eauto ].
 Qed.
 
-(** [gs_find_record] does not depend on the units of the frames. *)
-Lemma gs_find_record_unit : forall mp K U U' Ξ p, gs_find_record ((mp, K, U) :: Ξ) p = gs_find_record ((mp, K, U') :: Ξ) p.
-Proof. reflexivity. Qed.
-
 (** A frame is the module of a member or of a record type, not both. *)
 Lemma gs_find_ind_not_record : forall Ξ p r, gs_find_ind Ξ p = Some r -> gs_find_record Ξ p = None.
 Proof.
@@ -623,20 +619,6 @@ Definition record_lookup (Θ : gdeps) (Ξ : gstack) (p : qname) : option record_
       end
   end.
 
-(** [record_lookup] at a function giving the filed units, [gc_entry_u]
-    in place of [gc_entry]: the lookup the checker runs, through a trie
-    ([Extraction.Context.Lookup]); equal to [record_lookup] at a function agreeing
-    with [gds_lookup Θ] ([record_lookup_u_ok]). *)
-Definition record_lookup_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option record_decl :=
-  match gs_find_record Ξ p with
-  | Some R => Some R
-  | None =>
-      match gc_entry_u uf Ξ p with
-      | Some (ge_record _ _ R _) => Some R
-      | _ => None
-      end
-  end.
-
 (** A global path naming a member with a term part and a module part: an
     inductive type or a record type, stored or with its module's frame
     open, or a definition with a module part. *)
@@ -689,20 +671,6 @@ Section UnitsOk.
   Lemma gc_resolve_u_ok : forall Ξ p, gc_resolve_u uf Ξ p = gc_resolve Θ Ξ p.
   Proof. intros; unfold gc_resolve, gc_resolve_u; rewrite Huf; reflexivity. Qed.
 
-  Lemma gc_module_u_ok : forall Ξ p, gc_module_u uf Ξ p = gc_module Θ Ξ p.
-  Proof. intros; unfold gc_module, gc_module_u; rewrite Huf; reflexivity. Qed.
-
-  Lemma ind_mlookup_u_ok : forall Ξ p, ind_mlookup_u uf Ξ p = ind_mlookup Θ Ξ p.
-  Proof. intros; unfold ind_mlookup_u; rewrite gc_module_u_ok; reflexivity. Qed.
-
-  Lemma ind_lookup_u_ok : forall Ξ p, ind_lookup_u uf Ξ p = ind_lookup Θ Ξ p.
-  Proof. intros; unfold ind_lookup_u; rewrite ind_mlookup_u_ok; reflexivity. Qed.
-
-  Lemma gc_entry_u_ok : forall Ξ p, gc_entry_u uf Ξ p = gc_entry Θ Ξ p.
-  Proof. intros; unfold gc_entry, gc_entry_u; rewrite Huf; reflexivity. Qed.
-
-  Lemma record_lookup_u_ok : forall Ξ p, record_lookup_u uf Ξ p = record_lookup Θ Ξ p.
-  Proof. intros; unfold record_lookup_u, record_lookup; rewrite gc_entry_u_ok; reflexivity. Qed.
 End UnitsOk.
 
 (** ** One Lookup for a Global
@@ -794,14 +762,6 @@ Proof.
     destruct (q_chain p) as [| x ip]; cbn in Hl; [ discriminate |].
     destruct (gm_submodule _ _ _ _) as [[T' [r |] | U'] |] eqn:E; try discriminate.
     injection Hl as ->; eapply gm_submodule_entry; exact E.
-Qed.
-
-Lemma ind_lookup_entry : forall Θ Ξ p D,
-    ind_lookup Θ Ξ p = Some D ->
-    exists pq, (exists pv Φ, gc_entry Θ Ξ p = Some (ge_ind pv pq 0 D Φ)) \/ gs_find_ind Ξ p = Some (pq, 0, D).
-Proof.
-  intros * Hl; destruct (ind_lookup_mlookup _ _ _ _ Hl) as [pq Hm].
-  exists pq; exact (ind_mlookup_entry _ _ _ _ _ _ Hm).
 Qed.
 
 Lemma gm_entry_resolve_none : forall Φ ip E,
@@ -967,18 +927,6 @@ Inductive gm_grows (Φ : gmod) : gmod -> Prop :=
 #[export]
 Hint Constructors gm_grows : mctt.
 
-Lemma gm_grows_trans : forall Φ1 Φ2 Φ3, gm_grows Φ1 Φ2 -> gm_grows Φ2 Φ3 -> gm_grows Φ1 Φ3.
-Proof. intros * H12 H23; induction H23; eauto with mctt. Qed.
-
-(** ** How Resolution Grows
-
-    Every way a global context grows preserves what resolves, both definitions
-    and modules, and the declarations of inductive types: this is the whole of
-    what moving a judgment from one global context to a bigger one needs.  A
-    body module keeps its body, but for entries after it: only the module of
-    an inductive type grows so, while its members are checked. *)
-(** [entry_grows E1 E2]: the entry [E2] is [E1], but for the body of a
-    module or of an inductive type, which may have grown. *)
 Definition entry_grows (E1 E2 : gentry) : Prop :=
   match E1, E2 with
   | ge_mod pv (gu_mk Δ (md_body sm _)), ge_mod pv' (gu_mk Δ' (md_body sm' _)) => pv = pv' /\ Δ = Δ' /\ sm = sm'
@@ -1025,28 +973,6 @@ Proof. intros * H; apply (gc_sub_resolve_field _ _ _ _ H). Qed.
 Lemma gc_sub_module : forall Θ1 Ξ1 Θ2 Ξ2 p r,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r.
 Proof. intros * H; apply (gc_sub_module_field _ _ _ _ H). Qed.
-
-(** An open frame that is the module of no member and of no record type
-    names no member with a term part and a module part in any global
-    context it grows into: still an open frame there, or filed as a body
-    module of the same kind. *)
-Lemma frame_not_dm_sub : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ, gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
-    gc_frame Ξ1 p = Some (T, Φ) -> gs_find_ind Ξ1 p = None -> gs_find_record Ξ1 p = None -> ~ dm_path Θ2 Ξ2 p.
-Proof.
-  intros * Hs Hf Hk Hr.
-  destruct (gc_sub_frame_field _ _ _ _ Hs _ _ _ Hf) as (Φ' & [(Hf2 & Hk2 & Hr2) | (Hb2 & Hm2 & Hr2)]).
-  - rewrite Hk in Hk2; rewrite Hr in Hr2.
-    assert (HT : exists U0 T0, gs_find_tele Ξ2 p = Some (U0, nil, T0)).
-    { unfold gc_frame in Hf2; destruct (gs_find_tele Ξ2 p) as [[[U0 [| ? ?]] T0] |];
-        [ eauto | destruct U0 as [? [[|] ? | ?]]; discriminate | discriminate ]. }
-    destruct HT as (U0 & T0 & HT).
-    pose proof (gc_entry_tele_nil Θ2 _ _ _ _ HT) as He2.
-    intros [(r & Hl) | [(R & Hl) | (pv & A & M & U & He)]].
-    + rewrite ind_mlookup_unfold, Hk2 in Hl; unfold gc_module, gc_module_u in Hl; rewrite HT in Hl; discriminate.
-    + unfold record_lookup in Hl; rewrite Hr2, He2 in Hl; discriminate.
-    + rewrite He2 in He; discriminate.
-  - rewrite Hk in Hm2; rewrite Hr in Hr2; exact (module_body_not_dm _ _ _ _ Hm2 Hr2).
-Qed.
 
 Lemma gc_sub_body : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some (T, Φ) ->
@@ -1235,23 +1161,6 @@ Proof.
   rewrite ind_lookup_unfold, (ind_mlookup_gc_sub _ _ _ _ _ _ Hs Hm); reflexivity.
 Qed.
 
-(** A body growing keeps its modules and its bodies. *)
-Lemma gm_grows_names : forall Φ Φ', gm_grows Φ Φ' -> forall z, List.In z (gm_names Φ) -> List.In z (gm_names Φ').
-Proof. induction 1; intros z Hz; cbn; auto. Qed.
-
-Lemma gm_grows_submodule : forall Φ Φ', gm_grows Φ Φ' ->
-    forall T x ip, gm_submodule T Φ' x ip = gm_submodule T Φ x ip.
-Proof.
-  induction 1 as [| Φ' y b pv r A B Hg IH Hf]; intros; [ reflexivity |].
-  cbn; destruct (String.eqb_spec x y) as [-> |]; [| apply IH ].
-  destruct (gm_submodule T Φ y ip) eqn:E; [| reflexivity ].
-  exfalso; exact (Hf (gm_grows_names _ _ Hg _ (gm_submodule_head _ _ _ _ _ E))).
-Qed.
-
-Lemma gm_grows_module : forall Φ Φ', gm_grows Φ Φ' ->
-    forall T oD ch, gm_module T oD Φ' ch = gm_module T oD Φ ch.
-Proof. intros * Hg T oD [| x ip]; cbn; [ reflexivity | apply gm_grows_submodule; exact Hg ]. Qed.
-
 (** One body growing into another, as [gc_sub] asks of the frame holding
     it. *)
 Record gm_sub (Φ1 Φ2 : gmod) : Prop := mk_gm_sub
@@ -1260,17 +1169,6 @@ Record gm_sub (Φ1 Φ2 : gmod) : Prop := mk_gm_sub
   ; gm_sub_subbody : forall T z ip T' Φ, gm_subbody T Φ1 z ip = Some (T', Φ) ->
       gm_subbody T Φ2 z ip = Some (T', Φ)
   ; gm_sub_entry : forall ip E, gm_entry Φ1 ip = Some E -> exists E', gm_entry Φ2 ip = Some E' /\ entry_grows E E' }.
-
-Lemma gm_sub_refl : forall Φ, gm_sub Φ Φ.
-Proof. repeat split; intros * H; eauto using entry_grows_refl with mctt. Qed.
-
-Lemma gm_sub_trans : forall Φ1 Φ2 Φ3, gm_sub Φ1 Φ2 -> gm_sub Φ2 Φ3 -> gm_sub Φ1 Φ3.
-Proof.
-  intros * [H12 M12 B12 E12] [H23 M23 B23 E23]; constructor; intros * H;
-    [ apply H23, H12, H | apply M23, M12, H | apply B23, B12, H | ].
-  - destruct (E12 _ _ H) as (E2 & H2 & G12); destruct (E23 _ _ H2) as (E3 & H3 & G23).
-    exists E3; split; [ exact H3 | exact (entry_grows_trans _ _ _ G12 G23) ].
-Qed.
 
 (** An entry of a fresh name. *)
 Lemma gm_sub_ext_fresh : forall Φ x E, gm_fresh x Φ -> gm_sub Φ (Φ ⊳ x ↦ E).
@@ -1695,13 +1593,6 @@ Fixpoint items_upto (x : string) (its : list import_item) : option (list import_
       end
   end.
 
-(** The chain an item of an open reads in its target, before [ch]. *)
-Definition item_chain (it : import_item) (ch : list string) : list string :=
-  match it with
-  | (Some n, _, _) => n :: ch
-  | (None, _, _) => ch
-  end.
-
 (** The body up to and including the entry named [x].  A name a local
     open declares is no entry, and shadows the entries before it. *)
 Fixpoint gm_prefix_upto (Φ : gmod) (x : string) : option gmod :=
@@ -1826,22 +1717,6 @@ Fixpoint tele_open (R : list centry) : option (typ * ctx)%type :=
   end.
 
 Definition tele_view (T : ctx) : option (typ * ctx)%type := tele_open (rev T).
-
-(** The telescope left when the outermost parameter is instantiated with
-    [N]: a module of arity [T], applied to [N], has arity [tele_inst T N]. *)
-Definition tele_inst (T : ctx) (N : exp) : option ctx :=
-  match tele_view T with
-  | Some (_, T') => Some (tele_sub T' (Id,,N))
-  | None => None
-  end.
-
-(** A module [F (A : Typeω@0) (f : forall (x : A) -> A)] takes [⋅ ▹{ak_relevant} Typeω@0
-    ▹{ak_relevant} Π{ak_relevant} #0 #1]; applied to [⊤], it takes
-    [⋅ ▹{ak_relevant} Π{ak_relevant} ⊤ ⊤] (the kinds as written: the typed fill would
-    tag [⊤]'s binder [ak_propositional]). *)
-Example tele_inst_example : tele_inst (⋅ ▹{ak_relevant} Typeω@0 ▹{ak_relevant} Π{ak_relevant} #0 #1) a_True
-                            = Some (⋅ ▹{ak_relevant} Π{ak_relevant} a_True a_True).
-Proof. reflexivity. Qed.
 
 (** ** The Outermost Missing Parameter
 
@@ -2423,13 +2298,6 @@ Proof.
   apply Bool.orb_false_iff in H as [H1 H2]; rewrite IH by assumption; rewrite H1; reflexivity.
 Qed.
 
-Lemma items_upto_some : forall x its r, items_upto x its = Some r -> existsb (String.eqb x) (map import_item_name its) = true.
-Proof.
-  induction its as [| it its IH]; intros r H; cbn in *; [ discriminate |].
-  destruct (items_upto x its) eqn:E; [ rewrite (IH _ eq_refl); apply Bool.orb_true_r |].
-  destruct (String.eqb x (import_item_name it)); [ reflexivity | discriminate ].
-Qed.
-
 Lemma gm_prefix_item_exclusive : forall Φ x Φ1, gm_prefix_upto Φ x = Some Φ1 -> gm_item_upto Φ x = None.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hp; cbn in *; [ discriminate | |].
@@ -2599,9 +2467,6 @@ Definition gunit_expand (U : gunit) : gunit :=
   | gu_mk Δ (md_alias E) => gu_mk Δ (md_alias E)
   end.
 
-Lemma gunit_expand_idem : forall U, gunit_expand (gunit_expand U) = gunit_expand U.
-Proof. intros [Δ [sm Φ | E]]; cbn [gunit_expand]; [ rewrite gm_expand_idem |]; reflexivity. Qed.
-
 (** A module definition with its body expanded: what a closure of it
     stores ([eval_close]). *)
 Definition moddef_expand (D : moddef) : moddef :=
@@ -2625,16 +2490,6 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; cbn [gm_expand gm_binders];
     [ reflexivity | congruence | rewrite gm_binders_graft, IH, IHg; reflexivity ].
 Qed.
-
-Lemma gm_noopen_gens_append : forall gs Φ k, gm_noopen Φ -> gm_noopen (gens_append Φ k gs).
-Proof.
-  induction gs as [| g gs IH]; intros Φ k Hn; cbn [gens_append]; [ exact Hn |].
-  destruct (generated_item_entry g); apply IH; exact Hn.
-Qed.
-
-(** The fragment an open stores has no open. *)
-Corollary gens_body_noopen : forall gs, gm_noopen (gens_body gs).
-Proof. intros; apply gm_noopen_gens_append; exact I. Qed.
 
 (** A body up to an entry ends with the entry. *)
 Lemma gm_prefix_upto_ext : forall Φ x P, gm_prefix_upto Φ x = Some P -> exists P' E, P = gm_ext P' x E.
@@ -2701,34 +2556,14 @@ Inductive gmod_retyped : gmod -> gmod -> Prop :=
 #[export]
 Hint Constructors gentry_retyped gmod_retyped : mctt.
 
-Lemma gentry_retyped_sym : forall E E', gentry_retyped E E' -> gentry_retyped E' E.
-Proof. intros * []; constructor. Qed.
-
 Lemma gentry_retyped_trans : forall E E' E'', gentry_retyped E E' -> gentry_retyped E' E'' -> gentry_retyped E E''.
 Proof. intros * [] H; inversion H; subst; constructor. Qed.
-
-Lemma gmod_retyped_sym : forall Φ Φ', gmod_retyped Φ Φ' -> gmod_retyped Φ' Φ.
-Proof. induction 1; constructor; auto using gentry_retyped_sym. Qed.
 
 Lemma gmod_retyped_trans : forall Φ Φ' Φ'', gmod_retyped Φ Φ' -> gmod_retyped Φ' Φ'' -> gmod_retyped Φ Φ''.
 Proof.
   intros Φ Φ' Φ'' H; revert Φ''; induction H; intros Φ'' H'; inversion H'; subst; constructor;
     eauto using gentry_retyped_trans.
 Qed.
-
-(** A fragment of the generated entries is related to itself. *)
-Lemma gmod_retyped_gens_append_refl : forall gs Φ k, gmod_retyped Φ Φ -> gmod_retyped (gens_append Φ k gs) (gens_append Φ k gs).
-Proof.
-  induction gs as [| g gs IH]; intros Φ k HΦ; cbn [gens_append]; [ exact HΦ |].
-  destruct g; cbn [generated_item_entry]; apply IH; constructor; try exact HΦ; cbn; constructor.
-Qed.
-
-Corollary gmod_retyped_gens_body_refl : forall gs, gmod_retyped (gens_body gs) (gens_body gs).
-Proof. intros; apply gmod_retyped_gens_append_refl; constructor. Qed.
-
-(** Related fragments: neither has an open, and both bind alike. *)
-Lemma gmod_retyped_noopen_l : forall Φ Φ', gmod_retyped Φ Φ' -> gm_noopen Φ.
-Proof. induction 1; cbn; auto. Qed.
 
 Lemma gmod_retyped_noopen_r : forall Φ Φ', gmod_retyped Φ Φ' -> gm_noopen Φ'.
 Proof. induction 1; cbn; auto. Qed.
@@ -2738,14 +2573,6 @@ Proof. induction 1; cbn; congruence. Qed.
 
 Lemma gmod_retyped_binders : forall Φ Φ', gmod_retyped Φ Φ' -> gm_binders Φ' = gm_binders Φ.
 Proof. induction 1 as [| ? ? ? ? ? ? IH HE]; cbn; [ reflexivity |]; destruct HE; cbn; congruence. Qed.
-
-(** Related entries have one kind of entry in a context ([body_ctx]):
-    the same number of slots, of the same sorts. *)
-Lemma gmod_retyped_ctx_length : forall Φ Φ', gmod_retyped Φ Φ' -> List.length (body_ctx Φ') = List.length (body_ctx Φ).
-Proof.
-  induction 1 as [| Φ Φ' x E E' H IH HE]; [ reflexivity |].
-  destruct HE as [b pv r A A' [M |] | | ]; cbn [body_ctx]; cbn [List.length]; try congruence.
-Qed.
 
 (** Related entries are decided by comparing everything but the types. *)
 Definition gentry_retyped_dec (E E' : gentry) : {gentry_retyped E E'} + {~ gentry_retyped E E'}.
@@ -3072,13 +2899,6 @@ Proof.
   destruct k as [| k]; cbn in *; [ injection Hk as <- <-; reflexivity | eauto ].
 Qed.
 
-Lemma body_opens_nth_at : forall Φ Φx k Ψ H,
-    nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> exists Φ0, nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) /\ Ψ = body_ctx Φ0.
-Proof.
-  induction Φ as [| Φ IH x E | Φ IH H0 its]; intros * Hk; cbn in *; [ destruct k; discriminate | eauto |].
-  destruct k as [| k]; cbn in *; [ injection Hk as <- <-; eauto | eauto ].
-Qed.
-
 (** The number of local opens of a body. *)
 Fixpoint gm_nopens (Φ : gmod) : nat :=
   match Φ with
@@ -3100,14 +2920,6 @@ Proof.
   induction gs as [| g gs IH]; intros; cbn; [ reflexivity |].
   destruct (generated_item_entry g) eqn:E; rewrite IH; cbn; lia.
 Qed.
-
-Lemma gm_dropn_add : forall a b Φ, gm_dropn (a + b) Φ = gm_dropn b (gm_dropn a Φ).
-Proof.
-  induction a as [| a IH]; intros b [| Φ x E | Φ H its]; cbn; auto; destruct b; reflexivity.
-Qed.
-
-Lemma gens_append_nopens : forall gs Φ k, gm_nopens (gens_append Φ k gs) = gm_nopens Φ.
-Proof. induction gs as [| g gs IH]; intros; cbn; [ reflexivity |]; destruct (generated_item_entry g); rewrite IH; reflexivity. Qed.
 
 (** A fragment with no open grafted onto a body: as many entries more,
     no open more, and the body back once they are dropped. *)
@@ -3181,25 +2993,6 @@ Proof.
   intros * Hg Hr; apply body_opens_at_open_len; [ exact (open_store_noopen _ _ Hr) | exact (open_store_binders _ _ _ _ _ _ _ Hg Hr) ].
 Qed.
 
-Lemma body_opens_length : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> List.length (body_opens Φ Φx) = gm_nopens Φ.
-Proof.
-  induction 1; cbn [gm_nopens]; auto.
-  erewrite body_opens_open by eassumption; cbn; f_equal; assumption.
-Qed.
-
-
-(** The expansion of the body before the open that declares [x], read off
-    the body [Φ] and its expansion [Φx]. *)
-Fixpoint gm_item_xp (Φ Φx : gmod) (x : string) : gmod :=
-  match Φ, Φx with
-  | gm_ext Φ' _ _, gm_ext Φx' _ _ => gm_item_xp Φ' Φx' x
-  | gm_open Φ' _ its _, _ =>
-      match items_upto x its with
-      | Some _ => gm_dropn (List.length its) Φx
-      | None => gm_item_xp Φ' (gm_dropn (List.length its) Φx) x
-      end
-  | _, _ => gm_nil
-  end.
 
 (** The expansion of a body is the one its opens store. *)
 Lemma body_xp_expand : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> Φx = gm_expand Φ.
@@ -3208,27 +3001,6 @@ Proof.
     [ reflexivity | congruence | subst; rewrite (gm_expand_noopen _ (open_store_noopen _ _ HΦg)); reflexivity ].
 Qed.
 
-Lemma body_xp_item : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
-    forall x Φ0 H its1 it, gm_item_upto Φ x = Some (Φ0, H, its1, it) -> body_xp Θ Ξ Γ Φ0 (gm_item_xp Φ Φx x).
-Proof.
-  induction 1 as [Γ | Γ Φ Φx y E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH HR HT Hg Hok HΦg]; intros x Φ0 H0 its1 it Hi;
-    cbn [gm_item_upto gm_item_xp] in *; try discriminate.
-  - destruct (String.eqb x y); [ discriminate | eauto ].
-  - rewrite <- (open_store_binders _ _ _ _ _ _ _ Hg HΦg), (gm_dropn_graft _ _ (open_store_noopen _ _ HΦg)).
-    destruct (items_upto x its) as [[its1' it'] |]; [ injection Hi as <- <- <- <-; exact Hx | eauto ].
-Qed.
-
-(** ** The Module that Declares a Member
-
-    [msite Θ Ξ H q]: the module expression [H], reached from a unit, is the
-    module stored at [q], read step by step: a loaded unit or an open frame is
-    stored at its own path, a body module (or the module of an inductive
-    type) at its entry's path, an alias (or the module view of an inductive
-    alias) where its target is, and arguments change nothing.  [mdecl Θ Ξ H y
-    q pv]: the member [y] of [H] is the entry [y] of the module stored at
-    [q], with privacy [pv]. *)
-
-(** The body an entry stores, as a module. *)
 Definition entry_is_body (E : gentry) : Prop :=
   match E with
   | ge_mod _ (gu_mk _ (md_body _ _)) | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => True

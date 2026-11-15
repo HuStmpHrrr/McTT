@@ -220,55 +220,6 @@ Proof. induction n; intros; cbn; [ assumption | apply wk_reflects_q; auto ]. Qed
 #[local]
 Hint Resolve wk_reflects_q wk_reflects_qn : core.
 
-Lemma syn_fresh_wk :
-  (forall M k k' φ, exp_fresh k M -> wk_reflects k k' φ -> exp_fresh k' M[φ]ʷ) /\
-  (forall H k k' φ, modexp_fresh k H -> wk_reflects k k' φ -> modexp_fresh k' (modexp_wk H φ)) /\
-  (forall b k k' φ, binding_fresh k b -> wk_reflects k k' φ -> binding_fresh k' (binding_wk b φ)) /\
-  (forall U k k' φ, gunit_fresh k U -> wk_reflects k k' φ -> gunit_fresh k' (gunit_wk U φ)) /\
-  (forall D k k' φ, moddef_fresh k D -> wk_reflects k k' φ -> moddef_fresh k' (moddef_wk D φ)) /\
-  (forall Φ k k' φ, gmod_fresh k Φ -> wk_reflects k k' φ -> gmod_fresh k' (gmod_wk Φ φ)) /\
-  (forall E k k' φ, gentry_fresh k E -> wk_reflects k k' φ -> gentry_fresh k' (gentry_wk E φ)) /\
-  (forall e k k' φ, centry_fresh k e -> wk_reflects k k' φ -> centry_fresh k' (centry_wk e φ)).
-Proof.
-  syn_mut_ind; fresh_case; rewrite ?gm_binders_wk, ?length_tele_wk; eauto;
-    try solve [ match goal with H : wk_reflects _ _ _ |- _ => intros Heq; apply H in Heq; contradiction end
-              | match goal with H : forall A, Some ?X = Some A -> _ |- _ => eapply (H X); eauto end ].
-  all: try ups_case ltac:(fun H => eapply H; eassumption).
-  all: try fields_case ltac:(fun H => eapply H; eassumption).
-  - blocks_case ltac:(fun H => eapply H; [ eassumption | apply wk_reflects_qn; assumption ]).
-  - match goal with
-    | HF : List.Forall _ ?Δ, Hf : _ ?Δ, Hw : wk_reflects _ _ _ |- _ =>
-        clear - HF Hf Hw; induction HF as [| ? ? HB ? IH]; cbn in *; destruct_conjs; [ exact I | rewrite length_tele_wk; split ];
-        [ eapply HB; [ eassumption | apply wk_reflects_qn; assumption ] | apply IH; assumption ]
-    end.
-Qed.
-
-Corollary modexp_fresh_shiftn : forall H k n, modexp_fresh k H -> modexp_fresh (n + k) (modexp_wk H (wk_shiftn n)).
-Proof.
-  intros * Hf; eapply (proj1 (proj2 syn_fresh_wk)); [ exact Hf |].
-  intros x Hx; cbn in Hx; lia.
-Qed.
-
-Corollary gentry_fresh_shiftn : forall E k n, gentry_fresh k E -> gentry_fresh (n + k) (gentry_wk E (wk_shiftn n)).
-Proof.
-  intros * Hf; eapply (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_fresh_wk))))))); [ exact Hf |].
-  intros x Hx; cbn in Hx; lia.
-Qed.
-
-(** The term part of an entry avoids what the entry avoids. *)
-Lemma entry_tm_fresh : forall E A M k, entry_tm E = Some (A, M) -> gentry_fresh k E -> exp_fresh k M.
-Proof.
-  intros [? ? ? ? [] | | | |] * He Hf; cbn in *; try discriminate;
-    injection He as <- <-; tauto.
-Qed.
-
-(** The module part of an entry avoids what the entry avoids. *)
-Lemma entry_unit_fresh : forall E U k, entry_unit E = Some U -> gentry_fresh k E -> gunit_fresh k U.
-Proof.
-  intros [| | | |] * He Hf; cbn in *; try discriminate;
-    injection He as <-; tauto.
-Qed.
-
 (** ** [unwk k] Inverts [q^k ↑]
 
     One way round the composite is the identity away from [k], the other is
@@ -704,12 +655,6 @@ Proof.
                                 | split; [ exact I | apply succl_n_fresh; exact Ha ] ].
 Qed.
 
-(** A global is closed: the term of a qualified name is a chain of selections
-    from a unit, and a unit holds no local index.  So it is fresh at every
-    index, and no renaming touches it. *)
-Lemma me_mems_fresh : forall pre H k, modexp_fresh k H -> modexp_fresh k (me_mems H pre).
-Proof. induction pre; intros; cbn; auto. Qed.
-
 Lemma member_ref_fresh : forall ch H k, modexp_fresh k H -> exp_fresh k (member_ref H ch).
 Proof.
   induction ch as [| x ch IH]; intros * HH; cbn; [ exact I |].
@@ -718,13 +663,6 @@ Qed.
 
 Lemma qname_term_fresh : forall p k, exp_fresh k (qname_term p).
 Proof. intros [fp ch] k; apply member_ref_fresh; exact I. Qed.
-
-Lemma me_mems_wk : forall pre H φ,
-    modexp_wk H φ = H -> modexp_wk (me_mems H pre) φ = me_mems H pre.
-Proof.
-  induction pre as [| y pre IH]; intros * HH; cbn; [ exact HH |].
-  apply IH; cbn; rewrite HH; reflexivity.
-Qed.
 
 Lemma member_ref_wk : forall ch H φ,
     modexp_wk H φ = H -> (member_ref H ch)[φ]ʷ = member_ref H ch.
@@ -736,12 +674,6 @@ Qed.
 
 Lemma qname_term_wk : forall p φ, (qname_term p)[φ]ʷ = qname_term p.
 Proof. intros [fp ch] φ; apply member_ref_wk; reflexivity. Qed.
-
-Lemma qname_mod_wk : forall p φ, modexp_wk (qname_mod p) φ = qname_mod p.
-Proof. intros [fp ch] φ; apply me_mems_wk; reflexivity. Qed.
-
-Lemma qname_mod_fresh : forall p k, modexp_fresh k (qname_mod p).
-Proof. intros [fp ch] k; apply me_mems_fresh; exact I. Qed.
 
 (** The fields of a tuple read back from its names and values: each as
     its value. *)

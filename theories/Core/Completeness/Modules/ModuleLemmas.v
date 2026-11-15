@@ -47,34 +47,8 @@ Section Slots.
   #[local] Abbreviation valid_unit := (valid_unit Θm Ξm).
   #[local] Abbreviation valid_slots := (ValidUnit.valid_slots Θm Ξm).
 
-Lemma valid_slots_nil : valid_slots nil.
-Proof. unfold ValidUnit.valid_slots; intros Γ1 e U Γ0 H; destruct Γ1; discriminate. Qed.
-
 Lemma valid_slots_tail : forall e Γ, valid_slots (e :: Γ) -> valid_slots Γ.
 Proof. unfold ValidUnit.valid_slots; intros * H Γ1 e0 U Γ0 ->; exact (H (e :: Γ1) e0 U Γ0 eq_refl). Qed.
-
-Lemma valid_slots_app_r : forall Ψ Γ, valid_slots (Ψ ++ Γ) -> valid_slots Γ.
-Proof. unfold ValidUnit.valid_slots; intros * H Γ1 e0 U Γ0 ->; apply (H (Ψ ++ Γ1)); rewrite app_assoc; reflexivity. Qed.
-
-Lemma valid_slots_cons : forall e Γ, valid_slots Γ -> (forall U, centry_unit e = Some U -> valid_unit Γ (me_lit U)) ->
-    valid_slots (e :: Γ).
-Proof.
-  unfold ValidUnit.valid_slots; intros * H He [| e1 Γ1] e0 U Γ0 Heq Hu; cbn in Heq; injection Heq as -> Heq;
-    [ subst; exact (He _ Hu) |].
-  exact (H _ _ _ _ Heq Hu).
-Qed.
-
-Lemma valid_slots_ass : forall Γ κ A, valid_slots Γ -> valid_slots (Γ ▹{κ} A).
-Proof. intros * H; apply valid_slots_cons; [ exact H | discriminate ]. Qed.
-
-Lemma valid_slots_def : forall Γ A M, valid_slots Γ -> valid_slots (Γ ▸ A ≔ M).
-Proof. intros * H; apply valid_slots_cons; [ exact H | discriminate ]. Qed.
-
-Lemma valid_slots_mod : forall Γ U, valid_slots Γ -> valid_unit Γ (me_lit U) -> valid_slots (Γ ▹ₘ U).
-Proof. intros * H HU; apply valid_slots_cons; [ exact H | intros U0 [= <-]; exact HU ]. Qed.
-
-Lemma valid_slots_dm : forall Γ A M U, valid_slots Γ -> valid_unit Γ (me_lit U) -> valid_slots (Γ ▸ₘ A ≔ M ‖ U).
-Proof. intros * H HU; apply valid_slots_cons; [ exact H | intros U0 [= <-]; exact HU ]. Qed.
 
 (** A valid unit stays valid one entry further in. *)
 Lemma valid_unit_shift : forall e Γ K, valid_unit Γ K -> ⊨ e :: Γ -> ⊢ Θm ⍮ Ξm ⍮ e :: Γ -> valid_unit (e :: Γ) K[sb_of_wk ↑]ᵐ.

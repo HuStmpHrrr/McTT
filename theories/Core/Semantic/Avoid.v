@@ -319,14 +319,6 @@ Section Env.
       env_avoids v b None ρ -> (forall a, In a vs -> domain_avoids v b a) -> env_avoids v b None (env_tele ρ T vs).
   Proof. intros * Hρ Hv; unfold env_tele; apply env_avoids_extend_typed_none; [ exact Hρ | rewrite tele_entries_values; exact Hv ]. Qed.
 
-  (** Pads are [absent_entry]: [Prop] at no type. *)
-  Lemma env_avoids_kinds_pads : forall n K ρ, env_avoids v b K ρ -> env_avoids v b (optional_shift n K) (kinds_pads n ρ).
-  Proof.
-    unfold kinds_pads; induction n as [| n IH]; intros K ρ Hρ; cbn; [ rewrite optional_shift_zero; exact Hρ |].
-    replace (S n) with (1 + n) by lia; rewrite <- optional_shift_optional_shift.
-    apply env_avoids_cons; [ apply IH; exact Hρ | repeat constructor ].
-  Qed.
-
   Lemma env_avoids_var : forall K ρ x, env_avoids v b K ρ -> K <> Some x -> domain_avoids v b (ρ x).
   Proof.
     intros * H Hx; unfold env_var; destruct (H x Hx); [ assumption | repeat constructor | assumption ].
@@ -1136,18 +1128,6 @@ Proof.
       apply (List.map_nth (fun v => List.nth v (blocks_motives Bks) a_prop)). }
     rewrite E; apply Hb.
   - left; apply List.nth_overflow; rewrite List.length_map; exact Hj.
-Qed.
-
-(** The shapes of a constructor's recursive arguments end in a member at
-    as many parameters as it has non-uniform ones, argument by argument. *)
-Lemma params_length_forall : forall D (gs : list carg), cargs_params_length D gs ->
-    Forall (fun g => match g with
-                     | ca_rec t => exists Mj, ind_member D (ptyp_mem t) = Some Mj /\ List.length (ptyp_ps t) = im_nn Mj
-                     | ca_arg _ _ => True end) gs.
-Proof.
-  unfold cargs_params_length; intros D; induction gs as [| g gs IH]; intros H; constructor.
-  - destruct g as [r A | t]; [ exact I | exact (H nil t gs eq_refl) ].
-  - apply IH; intros gs1 t gs2 E; apply (H (g :: gs1) t gs2); rewrite E; reflexivity.
 Qed.
 
 (** The motives at the ends of the leaf paths of a shape, fresh under

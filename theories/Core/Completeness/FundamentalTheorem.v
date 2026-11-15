@@ -407,14 +407,6 @@ Proof.
     exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ H).
 Qed.
 
-(** A parameter type at the source is one at the target, along a sound
-    embedding. *)
-Lemma rel_param_typed_of_embedding : forall Θ Ξ Θ2 Ξ2 Γ A l, valid_gctx_embedding Θ Ξ Θ2 Ξ2 ->
-    param_typed Θ Ξ Γ A l -> @rel_param_typed (gc_mk Θ2 Ξ2) Γ A l.
-Proof.
-  intros * Hμ [H | H]; [ left | right ]; exact (valid_exp_under_ctx_of_embedding _ _ _ _ _ _ _ Hμ H).
-Qed.
-
 Lemma valid_mod_tele_nil : forall Θ Ξ Δ l Θ2 Ξ2,
     all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> params_evaluated Θ Ξ (gs_tele Ξ) Δ l ->
     bodies_valid_along_embeddings valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> gctx_embedding_with_bodies Θ Ξ Θ2 Ξ2 ->
@@ -744,49 +736,6 @@ End FundamentalTheorem.
 Section Corollaries.
   Context {GC : GCtx}.
 
-(** The substitution instance soundness needs, in its [Π]-β case, at
-    any tag: the PER model of substitutions does not read it.  The
-    extended context is a context: [A] is a type, not [LevelSort]. *)
-Corollary completeness_fundamental_sub_single : forall Γ κ M A,
-    ⊢ Γ ▹{κ} A ->
-    Γ ⊢ M : A ->
-    Γ ⊨ˢ Id,,M : Γ ▹{κ} A.
-Proof.
-  intros * HΓA HM.
-  pose proof (wf_exp_scoped_term _ _ _ _ _ HM) as Hs.
-  apply completeness_fundamental_exp in HM.
-  destruct (rel_ctx_wf_ass_typ (completeness_fundamental_ctx _ HΓA)) as [i HA].
-  pose proof HM as [env_relΓ HΓ _ _].
-  eapply rel_sub_under_ctx_extend;
-    [ apply (rel_sub_id (ex_intro _ _ HΓ)) | eassumption | rewrite exp_sub_id; eassumption | exact Hs | exact Hs ].
-Qed.
-
-(** The weakening instance soundness needs, in its variable case.  [⟦A[↑]ʷ⟧(ρ)]
-    and [⟦A⟧(ρ↯)] are not equal; this relatedness replaces the equation, and
-    moving [P] and [El] along it with [glu_univ_elem_resp_per_univ] is all
-    soundness does with it. *)
-Corollary completeness_fundamental_typ_shift : forall {Γ e A} {i : nat} {env_rel ρ},
-    ⊢ (e :: Γ)%list ->
-    Γ ⊢ A : Typeω@i ->
-    EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ env_rel ->
-    Dom ρ ≈ ρ ∈ env_rel ->
-    exists a a',
-      ⟦ A[↑]ʷ ⟧ ρ ↘ a /\
-      ⟦ A ⟧ ρ↯ ↘ a' /\
-      Dom a ≈ a' ∈ per_univ i.
-Proof.
-  intros * ? ? Hper Hρ.
-  assert ((e :: Γ)%list ⊨ʷ ↑ : Γ)
-    by (apply rel_wk_under_ctx_shift, completeness_fundamental_ctx; eassumption).
-  assert (Γ ⊨ A : Typeω@i) by (apply completeness_fundamental_exp; eassumption).
-  destruct (rel_exp_of_typ_inversion_wk ltac:(eassumption) ltac:(eassumption))
-    as [env_rel' [Hper' Hbridge]].
-  handle_per_ctx_env_irrel.
-  destruct (Hbridge _ _ Hρ) as [a [a' ?]].
-  rewrite eval_wk_shift in *.
-  exists a, a'; eassumption.
-Qed.
-
 (** Equal types of a sort have related values at an environment of the
     context. *)
 Lemma eq_type_value_rel : forall Γ A A' S RΓ ρ a',
@@ -806,5 +755,4 @@ End Corollaries.
 
 #[export]
 Hint Resolve completeness_fundamental_ctx completeness_fundamental_exp
-             completeness_fundamental_exp_eq completeness_fundamental_subtyp
-             completeness_fundamental_sub_single : mctt.
+             completeness_fundamental_exp_eq completeness_fundamental_subtyp : mctt.

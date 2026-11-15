@@ -243,20 +243,6 @@ Lemma rel_type_inversion : forall {Γ A A'} {i : nat},
         rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ i).
 Proof. intros * [env_relΓ HΓ HA _]; exists env_relΓ, HΓ; exact HA. Qed.
 
-(** And put together. *)
-Lemma rel_type_intro : forall {Γ A A'} {i : nat},
-    (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
-      forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-        Γ' ⊨ˢ σ ≈ σ' : Γ ->
-        forall ρ ρ' ρσ ρ'σ',
-          Dom ρ ≈ ρ' ∈ env_rel' ->
-          ⟦ σ : Γ ⟧s ρ ↘ ρσ ->
-          ⟦ σ' : Γ ⟧s ρ' ↘ ρ'σ' ->
-          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ i)) ->
-    rel_type_not_level_sort Γ A ->
-    Γ ⊨ᵗ A ≈ A' at i.
-Proof. intros * [env_relΓ [HΓ HA]] Hn; econstructor; [ exact HΓ | exact HA | exact Hn ]. Qed.
-
 Lemma rel_type_inversion_simple : forall {Γ A A'} {i : nat},
     Γ ⊨ᵗ A ≈ A' at i ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),

@@ -347,26 +347,6 @@ Section Fixed_GCtx.
       eapply per_univ_elem_resp_iff; [ exact HR | exact Hdd ].
   Qed.
 
-  (** A member of a group related to another stays so at related
-      non-uniform parameters, and so is every other declared member. *)
-  Lemma per_univ_elem_ind_reinst : forall i R p D k ups ups' ns ns',
-      DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups' ++ ns') ∈ per_univ_elem i ↘ R ->
-      ind_lookup gc_deps gc_stack p = Some D -> List.length ups = ind_nu D -> List.length ups' = ind_nu D ->
-      forall j Mj pm bs bs', ind_member D j = Some Mj -> im_head Mj = mh_decl pm ->
-        tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bs bs' ->
-        exists R', DF d_ind p j (ups ++ bs) ≈ d_ind p j (ups' ++ bs') ∈ per_univ_elem i ↘ R'.
-  Proof.
-    intros * H Hl Hu Hu' j Mj pm bs bs' HMj Hhj Hbs.
-    basic_invert_per_univ_elem H.
-    assert (D0 = D) by congruence; subst D0.
-    destruct (app_split_eq _ _ _ _ x0 ltac:(congruence)) as [-> ->].
-    destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
-    pose proof (ind_fam_agree_of_evals i D ups ups' nr ar dr H0 H7 H10 H13) as Hag.
-    destruct (ind_fam_agree_sym _ _ _ _ _ _ _ Hag) as [Hn0' Ha0' Hd0'].
-    pose proof (tele_rel_nr_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0' j Mj HMj _ _ Hbs) as Hbs'.
-    eexists; basic_per_univ_elem_econstructor; try eassumption; reflexivity.
-  Qed.
-
   Corollary ind_canon_of_per : forall i R p D k ups ups' ns ns',
       DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups' ++ ns') ∈ per_univ_elem i ↘ R ->
       ind_lookup gc_deps gc_stack p = Some D -> List.length ups = ind_nu D -> List.length ups' = ind_nu D ->

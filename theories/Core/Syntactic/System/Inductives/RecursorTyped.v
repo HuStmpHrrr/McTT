@@ -240,9 +240,6 @@ Section GrecTyped.
     rewrite List.length_map, List.length_combine, List.length_seq, length_ind_block_members; lia.
   Qed.
 
-  Lemma length_recursor_motives : forall k, List.length (recursor_motives D k) = N.
-  Proof. intros; unfold recursor_motives; rewrite List.length_map, List.length_combine, List.length_seq, length_ind_block_members; lia. Qed.
-
   (** The group's uniform parameters, under [E] past the motives. *)
   Lemma recursor_uvars_at : forall E, ⊢ Θ ⍮ Ξ ⍮ E ++ MT ->
       (forall k U T, List.nth_error (recursor_uvars D N (List.length E)) k = Some U ->

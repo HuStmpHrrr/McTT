@@ -121,21 +121,6 @@ Proof.
     | split; [| split ]; apply (per_ctx_env_retag HR'); assumption ].
 Qed.
 
-Lemma rel_sub_under_ctx_conv_src : forall Γ Γ' Δ σ σ', Γ ⊨ˢ σ ≈ σ' : Δ -> ⊨ Γ' -> ⊨ Γ ≈ Γ' -> Γ' ⊨ˢ σ ≈ σ' : Δ.
-Proof.
-  intros * [RΓ HRΓ Ro HRo Hb Hsc] HΓ' Heq.
-  destruct (rel_ctx_wf_per_ctx_env HΓ') as [R' HR'].
-  pose proof (per_ctx_env_eq_iff _ _ _ _ Heq HRΓ HR') as E.
-  assert (Hlx : List.length Γ = List.length Γ') by (destruct Heq as [Rx HRx]; exact (per_ctx_env_length HRx)).
-  econstructor; [ exact HR' | exact HRo | | intros x Hx; rewrite <- Hlx; exact (Hsc x Hx) ].
-  intros * HΓ'' φ [Hm Hw] Hφ ρ ρ' Hρ.
-  apply (Hb _ _ HΓ'' φ); [| intros x Hx; apply Hφ; lia | exact Hρ ].
-  constructor; [ exact Hm |]; intros ? ? H; apply E, Hw, H.
-Qed.
-
-(** ** The Contexts of the Arguments and of the Domains *)
-
-(** The kind of a non-recursive argument is its tag. *)
 Lemma nonrec_kind_at : forall gs1 gs2 r A,
     List.nth_error (cargs_nonrec_kinds (gs1 ++ ca_arg r A :: gs2)) (List.length (cargs_nonrec gs1)) = Some r.
 Proof. induction gs1 as [| [r0 B | Ps] gs1 IH]; intros; cbn; [ reflexivity | apply IH | apply IH ]. Qed.
@@ -480,13 +465,6 @@ Lemma typ_of_univ_elem : forall Ψ M S, ⊨ Ψ -> Ψ ⊨ M : S ->
 Proof.
   intros * HΨ HM [[i ->] | (t & n & -> & Ht)]; [ eauto |].
   exists 0; eapply rel_exp_under_ctx_subtyp; [ exact HM | exact (rel_type_of_typ (rel_exp_typ_at _ 0 HΨ)) | exact (rel_subtyp_small_large_at _ _ n 0 Ht) ].
-Qed.
-
-Lemma rel_exp_conv_typ : forall Γ N T T' (i : nat), Γ ⊨ N : T -> Γ ⊨ T ≈ T' : Typeω@i -> Γ ⊨ N : T'.
-Proof.
-  intros * HN HT.
-  eapply rel_exp_under_ctx_subtyp; [ exact HN | | exact (rel_subtyp_under_ctx_refl (rel_type_of_typ HT)) ].
-  exact (rel_type_of_typ (rel_exp_under_ctx_trans (rel_exp_under_ctx_sym HT) HT)).
 Qed.
 
 (** Terms of the types of a telescope are terms of the types of an equal
@@ -1364,23 +1342,6 @@ Section ShapeChar.
   Let Hc := valid_group_closed _ _ Hg.
   Let Hsu := valid_group_sort _ _ Hg.
   Let Hass := valid_group_ass _ _ Hg.
-
-  (** At a declared member there is no view to cohere. *)
-  Lemma view_end_rel_decl : forall ups ups' j Mj pm, ind_member D j = Some Mj -> im_head Mj = mh_decl pm ->
-      view_end_rel p D ups ups' j.
-  Proof.
-    intros * HM Hh Mj' qc kc Is vm Dq cups cups' HM' Hh'.
-    rewrite HM in HM'; injection HM' as <-; rewrite Hh in Hh'; discriminate.
-  Qed.
-
-  (** At a member that is not a record view there is no record to
-      cohere. *)
-  Lemma rview_end_rel_not_rview : forall ups ups' j Mj, ind_member D j = Some Mj -> im_is_rview Mj = false ->
-      rview_end_rel p D ups ups' j.
-  Proof.
-    intros * HM Hrv Mj' qr Is fl R cups cups' HM' Hh'.
-    rewrite HM in HM'; injection HM' as <-; exfalso; exact (not_rview_record _ _ _ _ Hrv Hh').
-  Qed.
 
   (** The instance of a record view [j] at the group's uniform parameters
       as variables, after more variables [zs] related to themselves:

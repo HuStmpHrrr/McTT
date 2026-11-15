@@ -55,36 +55,4 @@ Definition env_lets_typed (Γ0 Γ : ctx) (ρ : env) : Prop :=
     gc_deps ⍮ gc_stack ⍮ ctx_lets Δ bs ⊢ˢ Id : Γ /\
     gc_deps ⍮ gc_stack ⍮ Δ ⊢ˢ lets_sub bs : Γ.
 
-(** The readback of a kept proof whose environment stands for the context
-    its term is typed in is typed, and equal to the term at the
-    substitution the definitions ζ-reduce to ([lets_exp_of_sub]).  This is
-    what makes the normal form of a proof position typable, and so the
-    normal form of a term typable where the gluing alone leaves it open. *)
-Lemma kept_proof_readback_typed : forall Γ0 Γ ρ N P,
-    env_lets_typed Γ0 Γ ρ ->
-    List.length Γ = proof_scope N ρ ->
-    Γ ⊢ N : P ->
-    Γ ⊢ P : Propₘ ->
-    forall Δ φ R, Δ ⊢ᵏ φ : Γ0 ->
-      Rprf ⋆ᵈ⟨N, ρ⟩ in gc_deps ⍮ gc_stack ⍮ (List.length Δ) ↘ R ->
-      exists σ, Δ ⊢ˢ σ : Γ /\ Δ ⊢ R : P[σ] /\ Δ ⊢ R ≈ N[σ] : P[σ].
-Proof.
-  intros * Henv Hlen HN HP * Hφ HR.
-  (** The readback of a kept proof is its term under the definitions of
-      the positions it reads *)
-  inversion HR; subst.
-  match goal with Hb : Rlets ρ at proof_scope N ρ in _ ⍮ _ ⍮ _ ↘ _ |- _ => rename Hb into Hbs end.
-  rewrite <- Hlen in Hbs.
-  destruct (Henv _ _ _ Hφ Hbs) as [Hid Hsub].
-  eexists; split; [ exact Hsub |].
-  (** The term is scoped by the definitions: they are one per position,
-      and the term is scoped by the context it is typed in *)
-  assert (Hsc : exp_scoped (List.length _) N)
-    by (rewrite (read_lets_length _ _ _ _ Hbs); exact (proj1 (proj2 (proj1 (proj2 wf_scoped) _ _ _ _ _ HN)))).
-  assert (Hz : Δ ⊢ˢ Id ⨟ lets_sub _ ≈ lets_sub _ : Γ)
-    by (eapply wf_sub_eq_respects_sb_eq; [ apply wf_sub_eq_refl; exact Hsub | symmetry; apply sb_compose_id_left ]).
-  destruct (lets_exp_of_sub _ HN HP Hsc Hid ltac:(intros; reflexivity) Hz) as [Ht Heq].
-  split; [ exact Ht | exact Heq ].
-Qed.
-
 End Fixed_GCtx.

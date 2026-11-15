@@ -821,24 +821,4 @@ Section FastReadLengths.
   (** The mode the relations run at *)
   Context {SM : SkipMode}.
 
-Lemma fast_fresh_tele_length : forall {Θ Ξ} ρ T s vs,
-    Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length T.
-Proof. induction 1; cbn; congruence. Qed.
-
-Lemma fast_fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs,
-    Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length gs.
-Proof. induction 1; cbn; congruence. Qed.
-
-Lemma fast_fresh_ihs_length : forall {Θ Ξ} ρ As p ups Dc B ρa gs' gs vs s ihs D, ind_lookup Θ Ξ p = Some D ->
-    Fihsᶠ vs at gs' gs of Dc under ρ As at p ups for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_container_count D Dc gs' gs.
-Proof.
-  intros * HD H; induction H; cbn; try congruence.
-  all: match goal with H1 : ind_lookup _ _ _ = Some _, H2 : ind_lookup _ _ _ = Some _ |- _ =>
-         rewrite H1 in H2; injection H2 as <- end.
-  all: match goal with Hf : fresh_leaf_vars _ _ _ _ |- _ => rewrite List.length_app, (fresh_leaf_vars_length _ _ _ _ Hf) end.
-  all: rewrite IHfast_fresh_ihs by assumption.
-  all: unfold leaves_in_count; f_equal.
-  all: clear; induction (shape_leaves (rview_leaves D) 0 t); cbn; [ reflexivity |].
-  all: destruct (leaf_in Dc t' a); cbn; congruence.
-Qed.
 End FastReadLengths.

@@ -402,58 +402,6 @@ Qed.
     The types ignore each erasure ([set_constructor_ok_ignores]), at any
     values, so they ignore all of them. *)
 
-(** [l] with the positions [P] erased. *)
-Fixpoint erase_all (P : list nat) (l : list aczel_set) : list aczel_set :=
-  match P with
-  | nil => l
-  | n :: P' => erase_at n (erase_all P' l)
-  end.
-
-Lemma length_erase_at : forall n l, n < List.length l -> List.length (erase_at n l) = List.length l.
-Proof.
-  intros n l Hn. unfold erase_at. rewrite List.length_app, List.length_firstn. cbn [List.length]. rewrite List.length_skipn. lia.
-Qed.
-
-Lemma length_erase_all : forall P l, (forall n, In n P -> n < List.length l) -> List.length (erase_all P l) = List.length l.
-Proof.
-  induction P as [| n P IH]; intros l HP; [reflexivity |]. cbn [erase_all].
-  rewrite length_erase_at; [apply IH; intros; apply HP; right; assumption |].
-  rewrite IH by (intros; apply HP; right; assumption). apply HP. left. reflexivity.
-Qed.
-
-(** A function that ignores each erasure at every list of a length
-    ignores all of them. *)
-Lemma erase_all_ignored : forall (F : list aczel_set -> aczel_set) N P l,
-    (forall n l', In n P -> List.length l' = N -> set_eq (F l') (F (erase_at n l'))) ->
-    (forall n, In n P -> n < N) -> List.length l = N -> set_eq (F l) (F (erase_all P l)).
-Proof.
-  intros F N P. induction P as [| n P IH]; intros l HF HP Hl; cbn [erase_all]; [apply set_eq_refl |].
-  eapply set_eq_trans; [apply IH; [intros; apply HF; [right |]; assumption | intros; apply HP; right; assumption | exact Hl] |].
-  apply HF; [left; reflexivity |]. rewrite length_erase_all; [exact Hl |]. intros m Hm. rewrite Hl. apply HP. right. exact Hm.
-Qed.
-
-Lemma erase_all_ignored_list : forall (F : list aczel_set -> list aczel_set) N P l,
-    (forall n l', In n P -> List.length l' = N -> list_set_eq (F l') (F (erase_at n l'))) ->
-    (forall n, In n P -> n < N) -> List.length l = N -> list_set_eq (F l) (F (erase_all P l)).
-Proof.
-  intros F N P. induction P as [| n P IH]; intros l HF HP Hl; cbn [erase_all]; [apply list_set_eq_refl |].
-  eapply list_set_eq_trans; [apply IH; [intros; apply HF; [right |]; assumption | intros; apply HP; right; assumption | exact Hl] |].
-  apply HF; [left; reflexivity |]. rewrite length_erase_all; [exact Hl |]. intros m Hm. rewrite Hl. apply HP. right. exact Hm.
-Qed.
-
-Lemma nth_error_erase_at : forall n l i, n < List.length l ->
-    List.nth_error (erase_at n l) i = if Nat.eqb i n then Some empty_set else List.nth_error l i.
-Proof.
-  intros n l i Hn. unfold erase_at. destruct (Nat.lt_trichotomy i n) as [Hi | [-> | Hi]].
-  - rewrite List.nth_error_app1 by (rewrite List.length_firstn; lia). rewrite List.nth_error_firstn.
-    destruct (Nat.ltb_spec i n); [| lia]. destruct (Nat.eqb_spec i n); [lia | reflexivity].
-  - rewrite List.nth_error_app2 by (rewrite List.length_firstn; lia). rewrite List.length_firstn, Nat.min_l by lia.
-    rewrite Nat.sub_diag, Nat.eqb_refl. reflexivity.
-  - rewrite List.nth_error_app2 by (rewrite List.length_firstn; lia). rewrite List.length_firstn, Nat.min_l by lia.
-    destruct (i - n) as [| k] eqn:E; [lia |]. cbn [List.nth_error]. rewrite List.nth_error_skipn.
-    destruct (Nat.eqb_spec i n); [lia |]. f_equal. lia.
-Qed.
-
 (** The values of arguments as the carriers read them: the recursive
     ones erased. *)
 Fixpoint erase_args (sgs : list set_argument) (vals : list aczel_set) : list aczel_set :=
@@ -1397,13 +1345,6 @@ Proof.
   exact (Hel _ _ _ _ _ _ _ _ _ H _ _ _ (set_env_rel_eq T γ _ _ _ Hρ) (set_eq_refl _) H').
 Qed.
 
-Lemma set_ih_functional : forall t v ihs ihs', set_ih T γ Γ ρ r p Us Bks t v ihs -> set_ih T γ Γ ρ r p Us Bks t v ihs' ->
-    list_set_eq ihs ihs'.
-Proof.
-  intros * H H'. destruct (set_interp_functional_all T γ Hfn Hmods) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hih).
-  exact (Hih _ _ _ _ _ _ _ _ _ H _ _ _ (set_env_rel_eq T γ _ _ _ Hρ) (set_eq_refl _) H').
-Qed.
-
 (** A result is one at a value equal to the element. *)
 Lemma set_elim_resp_value : forall j v v' res, set_eq v v' -> set_elim T γ Γ ρ r p Us Bks j v res ->
     set_elim T γ Γ ρ r p Us Bks j v' res.
@@ -1509,18 +1450,6 @@ Proof.
                           | apply set_eq_refl |].
     intros b _. apply IH.
   - apply IH.
-Qed.
-
-(** Arguments have their recursive results up to equality. *)
-Lemma set_ihs_resp_results : forall gs vs ihs, set_ihs T γ Γ ρ r p Us Bks gs vs ihs ->
-    forall ihs', list_set_eq ihs ihs' -> set_ihs T γ Γ ρ r p Us Bks gs vs ihs'.
-Proof.
-  intros gs. induction gs as [| g gs IH]; intros vs ihs H ihs' E; inversion H as [| ? ? ? ? ? ? κ T0 ? v vs0 ihs0 H0 | ? ? ? ? ? ? t ? v vs0 ihs1 ihs2 H1 H2];
-    subst.
-  - inversion E. constructor.
-  - constructor. exact (IH _ _ H0 _ E).
-  - destruct (List.Forall2_app_inv_l _ _ E) as (ihs1' & ihs2' & E1 & E2 & ->).
-    constructor; [exact (set_ih_resp T γ _ _ _ _ _ _ _ _ _ _ H1 E1) | exact (IH _ _ H2 _ E2)].
 Qed.
 
 (** ** The Recursive Results Along a Shape *)
@@ -3768,22 +3697,6 @@ Qed.
 Lemma im_ty_at_not_rview : forall pq k M Us0 Ns, im_is_rview M = false ->
     im_ty_at pq k M Us0 Ns = apps_exp (a_ind (fst (im_ref pq k M)) (snd (im_ref pq k M))) (im_pre M Us0 ++ Ns).
 Proof. intros * Hr. unfold im_is_rview in Hr. unfold im_ty_at. destruct (im_head M); [reflexivity | reflexivity | discriminate]. Qed.
-
-(** An application of a type former is not the sort of levels. *)
-Lemma apps_ind_not_level_sort : forall Ns M, M <> a_level_sort -> apps_exp M Ns <> a_level_sort.
-Proof. induction Ns as [| N Ns IH]; intros M HM; cbn [apps_exp]; [exact HM | apply IH; discriminate]. Qed.
-
-(** A type former applied, well formed as a type, is of a group the
-    context declares. *)
-Lemma ind_head_lookup : forall Γ0 q k Ns, gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ᵗ apps_exp (a_ind q k) Ns ->
-    exists Dq, ind_lookup gc_deps gc_stack q = Some Dq.
-Proof.
-  intros * Ht; inversion Ht as [A0 Srt0 _ HA | HE]; subst.
-  - destruct (wf_apps_exp_head _ _ _ _ _ _ HA) as (T0 & HT0).
-    destruct (wf_ind_inversion HT0) as [Dq Mk Hl]; exists Dq; exact Hl.
-  - exfalso; apply (apps_ind_not_level_sort Ns (a_ind q k)); [ discriminate |].
-    match goal with E : _ = _ |- _ => first [ exact E | exact (eq_sym E) ] end.
-Qed.
 
 (** The group a member refers to is declared: its own, or a view's. *)
 Lemma im_ref_lookup : forall q Dg k Mk, ind_lookup gc_deps gc_stack q = Some Dg -> ind_member Dg k = Some Mk ->

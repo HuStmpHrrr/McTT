@@ -20,21 +20,6 @@ Ltac apply_subtyping :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** The codomain of a [Π] in normal form is the normal form of the codomain,
-    in the context extended by the domain: the readback of a [Π] reads its
-    codomain at the next variable, which is the initial environment of the
-    extended context. *)
-Lemma nbe_ty_pi_cod : forall Γ κd κc A B A' B',
-    nbe_ty_f Γ (a_pi κd κc A B) (nf_pi κd κc A' B') ->
-    nbe_ty_f (Γ ▹{κd} A) B B'.
-Proof.
-  intros * Hn.
-  inversion Hn; subst.
-  directed_inversion_by_head eval_exp; subst.
-  directed_inversion_by_head read_typ; subst.
-  econstructor; [ econstructor; eassumption | eassumption | cbn; eassumption ].
-Qed.
-
 (** The normal form of a [Π] at the kinds [κd] and [κc]: the [Π] of its
     domain's normal form and of its codomain's, in the context extended by
     the domain. *)

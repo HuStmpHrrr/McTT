@@ -38,31 +38,9 @@ Section Bridge.
     intros; eapply (alg_type_infer_sound (GC := gc_mk Θ Ξ)); eassumption.
   Qed.
 
-  Lemma alg_type_infer_large_typ_sound' : forall Θ Ξ Γ i A,
-      @alg_type_infer (gc_mk Θ Ξ) Γ Typeωⁿ@i A ->
-      ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
-  Proof.
-    (** [exact] rather than [eapply]: [nf_to_exp Typeωⁿ@i] and [Typeω@i] are
-        convertible, but the unifier cannot unify them in this direction. *)
-    intros * H HΓ; exact (alg_type_infer_sound' _ _ _ Typeωⁿ@i _ H HΓ).
-  Qed.
-
-  (** Soundness at the inferred universe, precisely: a type that infers the
-      universe [u] is a type of [universe_nf_tm u], at either tier. *)
-  Lemma alg_type_infer_typ_sound' : forall Θ Ξ Γ UA u A,
-      @alg_type_infer (gc_mk Θ Ξ) Γ UA A ->
-      is_univ_nf UA u ->
-      ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_nf_tm u.
-  Proof.
-    intros * H Hu HΓ.
-    rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu).
-    exact (alg_type_infer_sound' _ _ _ UA _ H HΓ).
-  Qed.
-
-  (** The same at an index of either tier: a type of [universe_nf_tm u] is one of the
-      large universe [Typeω@(universe_nf_large_index u)] the index lives at. *)
+  (** At an index of either tier, a type that infers the universe [u] is a
+      type of the large universe [Typeω@(universe_nf_large_index u)] the
+      index lives at. *)
   Lemma alg_type_infer_univ_sound' : forall Θ Ξ Γ UA u A,
       @alg_type_infer (gc_mk Θ Ξ) Γ UA A ->
       is_univ_nf UA u ->
@@ -74,15 +52,6 @@ Section Bridge.
       by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
           exact (alg_type_infer_sound' _ _ _ UA _ H HΓ)).
     exact (wf_exp_universe_nf_large_index (GC := gc_mk Θ Ξ) ltac:(eassumption)).
-  Qed.
-
-  Lemma alg_type_check_sound' : forall Θ Ξ Γ i A M,
-      @alg_type_check (gc_mk Θ Ξ) Γ A M ->
-      ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
-  Proof.
-    intros; eapply (alg_type_check_sound (GC := gc_mk Θ Ξ)); eassumption.
   Qed.
 
   (** Every expression is a [user_exp] ([user_exp_all]), so completeness has
@@ -153,30 +122,6 @@ Section Bridge.
       by (eapply (functional_alg_type_infer (GC := gc_mk Θ Ξ)); [ exact (ctx_wf_gctx _ _ _ (presup_exp_ctx H)) | eassumption .. ]).
     subst; exact (Hne _ Hu).
   Qed.
-
-  Lemma alg_ext_sound' : forall Θ Ξ Γ Ψ,
-      @alg_ext (gc_mk Θ Ξ) Γ Ψ -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ.
-  Proof. intros; eapply (alg_ext_sound (GC := gc_mk Θ Ξ)); eassumption. Qed.
-
-  Lemma alg_ext_complete' : forall Θ Ξ Γ Ψ,
-      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ -> @alg_ext (gc_mk Θ Ξ) Γ Ψ.
-  Proof. intros; eapply (alg_ext_complete (GC := gc_mk Θ Ξ)); eassumption. Qed.
-
-  Lemma alg_unit_sound' : forall Θ Ξ Γ U,
-      @alg_unit (gc_mk Θ Ξ) Γ U -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
-  Proof. intros; eapply (alg_unit_sound (GC := gc_mk Θ Ξ)); eassumption. Qed.
-
-  Lemma alg_unit_complete' : forall Θ Ξ Γ U,
-      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U -> @alg_unit (gc_mk Θ Ξ) Γ U.
-  Proof. intros; eapply (alg_unit_complete (GC := gc_mk Θ Ξ)); eassumption. Qed.
-
-  Lemma alg_modexp_sound' : forall Θ Ξ Γ H,
-      @alg_modexp (gc_mk Θ Ξ) Γ H -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H.
-  Proof. intros; eapply (alg_modexp_sound (GC := gc_mk Θ Ξ)); eassumption. Qed.
-
-  Lemma alg_modexp_complete' : forall Θ Ξ Γ H,
-      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> @alg_modexp (gc_mk Θ Ξ) Γ H.
-  Proof. intros; eapply (alg_modexp_complete (GC := gc_mk Θ Ξ)); eassumption. Qed.
 
 End Bridge.
 

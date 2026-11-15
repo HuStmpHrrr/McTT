@@ -223,22 +223,6 @@ Section Members.
         apply (Hna (y :: m1) m2 eq_refl ltac:(discriminate)).
   Qed.
 
-  Lemma eval_mems_inv : forall pre H ρ h,
-      ⟦ me_mems H pre ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> exists h0, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h0 /\ h0 ·ₘ* pre Θ ⍮ Ξ ↘ h.
-  Proof.
-    induction pre as [| y pre IH]; intros * Hh; cbn [me_mems] in Hh.
-    - exists h; split; [ exact Hh | constructor ].
-    - destruct (IH _ _ _ Hh) as (h1 & Hh1 & Hc); inversion Hh1; subst.
-      eexists; split; [ eassumption | econstructor; eassumption ].
-  Qed.
-
-  Lemma eval_mems_intro : forall pre H ρ h0 h,
-      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h0 -> h0 ·ₘ* pre Θ ⍮ Ξ ↘ h -> ⟦ me_mems H pre ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h.
-  Proof.
-    induction pre as [| y pre IH]; intros * Hh Hc; cbn [me_mems]; inversion Hc; subst; [ exact Hh |].
-    eapply IH; [ econstructor; eassumption | eassumption ].
-  Qed.
-
   Corollary eval_path_mod : forall p ρ,
       (forall m1 m2, q_chain p = m1 ++ m2 -> m1 <> nil ->
          exists TΦ, gc_loc Θ Ξ (q_abs (q_unit p) m1) = Some TΦ) ->
@@ -352,35 +336,6 @@ Section Members.
       apply (proj2 (IH ρ Hn _ _ eq_refl _)); eauto.
   Qed.
 
-  (** A member of a module expression is its root's member, applied to the
-      values of the expression's arguments, whatever the spine. *)
-  Lemma eval_member_ref : forall ch H ρ r,
-      ch <> nil ->
-      ⟦ member_ref H ch ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <->
-      (let '(R, args, pre) := modexp_spine H in
-       exists h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ ch) Θ ⍮ Ξ ↘ f /\
-                 ⟦ args ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| f & ns | Θ ⍮ Ξ ↘ r).
-  Proof.
-    induction ch as [| x ch IH]; intros * Hch; [ contradiction |].
-    destruct ch as [| y ch].
-    - cbn [member_ref]; destruct (modexp_spine H) as [[R args] pre] eqn:E; split.
-      + intros Hm; inversion Hm; subst.
-        match goal with Hs : modexp_spine H = _ |- _ => rewrite E in Hs; injection Hs as <- <- <- end.
-        do 3 eexists; repeat split; eassumption.
-      + intros (h & f & ns & ? & ? & ? & ?); econstructor; eassumption.
-    - change (member_ref H (x :: y :: ch)) with (member_ref (me_mem H x) (y :: ch)).
-      rewrite (IH _ _ _ ltac:(discriminate)); cbn [modexp_spine].
-      destruct (modexp_spine H) as [[R args] pre].
-      rewrite <- app_assoc; reflexivity.
-  Qed.
-
-  Lemma modexp_spine_root_spine : forall H R args pre,
-      modexp_spine H = (R, args, pre) -> modexp_spine R = (R, nil, nil).
-  Proof.
-    induction H as [| | H IH y | H IH N |]; intros * Hs; cbn in Hs; try (injection Hs as <- <- <-; reflexivity);
-      destruct (modexp_spine H) as [[R' a'] p'] eqn:E; injection Hs as <- <- <-; eauto.
-  Qed.
-
   Lemma eval_mem_spine : forall H x R args pre ρ r,
       modexp_spine H = (R, args, pre) ->
       ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <->
@@ -392,38 +347,6 @@ Section Members.
       match goal with Hs' : modexp_spine H = _ |- _ => rewrite Hs in Hs'; injection Hs' as <- <- <- end.
       do 3 eexists; repeat split; eassumption.
     - intros (h & f & ns & ? & ? & ? & ?); econstructor; eassumption.
-  Qed.
-
-  (** [H.x] and [apps (member_ref R (pre ++ x)) args] evaluate alike where
-      the member's value, and every value it is applied to the arguments
-      along the way, takes arguments of an evaluated kind ([P]): the
-      arguments of a module are evaluated, those of an application only at
-      an argument of an evaluated kind. *)
-  Lemma eval_mem_apps : forall (P : domain -> Prop),
-      (forall f, P f -> evaluated_kind (arg_kind Θ Ξ f)) ->
-      (forall f n g, P f -> $| f & n | Θ ⍮ Ξ ↘ g -> P g) ->
-      forall H x R args pre ρ r,
-      modexp_spine H = (R, args, pre) ->
-      (forall f, ⟦ member_ref R (pre ++ [x]) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f -> P f) ->
-      ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <-> ⟦ apps (member_ref R (pre ++ [x])) args ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r.
-  Proof.
-    intros P HP HPa * Hs HPf.
-    pose proof (modexp_spine_root_spine _ _ _ _ Hs) as HR.
-    rewrite (eval_mem_spine _ _ _ _ _ _ _ Hs), eval_apps_exp.
-    assert (Href : forall f, ⟦ member_ref R (pre ++ [x]) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f <->
-                        exists h, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ [x]) Θ ⍮ Ξ ↘ f).
-    { intros f; rewrite eval_member_ref by (destruct pre; discriminate).
-      rewrite HR; cbn [app]; split.
-      - intros (h & f' & ns & ? & ? & Hns & Ha); inversion Hns; subst; inversion Ha; subst; eauto.
-      - intros (h & ? & ?); exists h, f, nil; repeat split; [ assumption | assumption | constructor | constructor ]. }
-    split.
-    - intros (h & f & ns & ? & ? & ? & ?).
-      assert (Hf : ⟦ member_ref R (pre ++ [x]) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f) by (apply Href; eauto).
-      exists f; split; [ exact Hf |].
-      apply (eval_app_args_evaluated_iff P HP HPa _ _ _ _ (HPf _ Hf)); eauto.
-    - intros (f & Hf & Ha).
-      apply (eval_app_args_evaluated_iff P HP HPa _ _ _ _ (HPf _ Hf)) in Ha as (ns & ? & ?).
-      apply Href in Hf as (h & ? & ?); exists h, f, ns; repeat split; assumption.
   Qed.
 
   (** Without arguments, a member is selection from the module's value. *)
@@ -449,20 +372,3 @@ Section Members.
       apply eval_selc_app; [ discriminate |]; exists h; split; [ assumption | constructor; assumption ].
   Qed.
 End Members.
-
-(** The spine of a substituted module expression: the substituted root's spine,
-    followed by the substituted arguments and the selections. *)
-Lemma modexp_spine_sub_gen : forall H R args pre σ,
-    modexp_spine H = (R, args, pre) ->
-    modexp_spine H[σ]ᵐ =
-      (let '(R', a', p') := modexp_spine R[σ]ᵐ in (R', a' ++ List.map (fun N => N[σ]) args, p' ++ pre)).
-Proof.
-  induction H as [| | H IH y | H IH N |]; intros * Hs; cbn in Hs.
-  1,2,5: injection Hs as <- <- <-; destruct (modexp_spine _) as [[R' a'] p']; rewrite !app_nil_r; reflexivity.
-  - destruct (modexp_spine H) as [[R0 a0] p0] eqn:E; injection Hs as <- <- <-.
-    cbn [modexp_sub modexp_spine]; rewrite (IH _ _ _ _ eq_refl).
-    destruct (modexp_spine R0[σ]ᵐ) as [[R' a'] p']; rewrite app_assoc; reflexivity.
-  - destruct (modexp_spine H) as [[R0 a0] p0] eqn:E; injection Hs as <- <- <-.
-    cbn [modexp_sub modexp_spine]; rewrite (IH _ _ _ _ eq_refl).
-    destruct (modexp_spine R0[σ]ᵐ) as [[R' a'] p']; rewrite map_app, app_assoc; reflexivity.
-Qed.

@@ -105,30 +105,6 @@ Proof.
   exists i; eexists; exact W.
 Qed.
 
-Lemma fresh_cargs_arg_inv : forall pq U r A gs ρ s vs, Fcargs ca_arg r A :: gs of pq U in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs ->
-    exists a vs', vs = ⇑! a s :: vs' /\ ⟦ A ⟧ ρ ↘ a /\
-      Fcargs gs of pq U in gc_deps ⍮ gc_stack ⍮ ρ ↦ ⇑! a s ⦂ entry_type_closure A ρ ⍮ S s ↘ vs'.
-Proof. intros * H; inversion H; subst; eauto. Qed.
-
-Lemma fresh_cargs_rec_inv : forall pq U t gs ρ s vs, Fcargs ca_rec t :: gs of pq U in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs ->
-    exists a vs', vs = ⇑! a s :: vs' /\ ⟦shty t of pq U ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a /\
-      Fcargs gs of pq U in gc_deps ⍮ gc_stack ⍮ ρ ⍮ S s ↘ vs'.
-Proof. intros * H; inversion H; subst; eauto. Qed.
-
-(** ** The Domains of Two Shapes, Read Alike
-
-    The domains of the container's shape [t'] after its own prefix [preQ]
-    of the container's telescope [TsQ], at its uniform parameters [ub],
-    and of the group's [t] after the prefix [pre'] of the group's
-    telescope [Ts], at its uniform parameters [u0]; the group's canonical
-    prefix [pre] of the member [k]: each defined, at arguments related at
-    the group's relation of the domain read back alike, related to
-    themselves at the container's, and so on for the rests after them. *)
-
-(** At the domains' values [bA] (the container's, of [B'] after [preQ])
-    and [bB] (the group's, of [B] after [pre']), at related arguments [c]
-    and [c']: what [cross_doms] has of them, [R] of the rests [t'] and [t]
-    after them. *)
 #[warnings="-cannot-define-projection"]
 Record cross_doms_step (R : list domain -> list centry -> list domain -> list centry -> list domain -> ptyp -> ptyp -> Prop)
     (D' : ind_decl) (ub : list domain) (pre : list domain) (Ts : list centry) (preQ : list domain) (TsQ : list centry)
@@ -273,17 +249,6 @@ Inductive cross_tops (qc : qname) (D D' : ind_decl) (ub u0 : list domain)
     cross_tops qc D D' ub u0 dr kQ k pre Ts preQ TsQ pre' gsA gsB vsA vsB ->
     cross_tops qc D D' ub u0 dr kQ k pre Ts preQ TsQ pre' (ca_rec t' :: gsA) (ca_rec t :: gsB) (vA :: vsA) (vB :: vsB).
 
-Lemma cross_tops_arg_inv : forall qc D D' ub u0 dr kQ k pre Ts preQ TsQ pre' rA' A' rA A gsA gsB vA vB vsA vsB,
-    cross_tops qc D D' ub u0 dr kQ k pre Ts preQ TsQ pre' (ca_arg rA' A' :: gsA) (ca_arg rA A :: gsB) (vA :: vsA) (vB :: vsB) ->
-    cross_tops qc D D' ub u0 dr kQ k (pre ++ vA :: nil) (Ts ++ ce_ass rA A :: nil) (preQ ++ vA :: nil) (TsQ ++ ce_ass rA' A' :: nil)
-      (pre' ++ vB :: nil) gsA gsB vsA vsB.
-Proof. intros * H; inversion H; subst; assumption. Qed.
-
-Lemma cross_tops_nest_inv : forall qc D D' ub u0 dr kQ k pre Ts preQ TsQ pre' rA' A' t gsA gsB vA vB vsA vsB,
-    cross_tops qc D D' ub u0 dr kQ k pre Ts preQ TsQ pre' (ca_arg rA' A' :: gsA) (ca_rec t :: gsB) (vA :: vsA) (vB :: vsB) ->
-    cross_tops qc D D' ub u0 dr kQ k pre Ts (preQ ++ vA :: nil) (TsQ ++ ce_ass rA' A' :: nil) pre' gsA gsB vsA vsB.
-Proof. intros * H; inversion H; subst; assumption. Qed.
-
 Lemma con_args_arg_inv : forall p D okr nr ar dr k u u' pre pre' Ts rA A gs v v' vs vs',
     con_args_rel p D okr nr ar dr k u u' pre pre' Ts (ca_arg rA A :: gs) (v :: vs) (v' :: vs') ->
     con_args_rel p D okr nr ar dr k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) (Ts ++ ce_ass rA A :: nil) gs vs vs'.
@@ -293,9 +258,6 @@ Lemma con_args_rec_inv : forall p D okr nr ar dr k u u' pre pre' Ts t gs v v' vs
     con_args_rel p D okr nr ar dr k u u' pre pre' Ts (ca_rec t :: gs) (v :: vs) (v' :: vs') ->
     rec_arg_rel p D okr nr ar dr k u u' pre pre' Ts t v v' /\ con_args_rel p D okr nr ar dr k u u' pre pre' Ts gs vs vs'.
 Proof. intros * H; inversion H; subst; split; assumption. Qed.
-
-Lemma cargs_params_length_tail : forall D g gs, cargs_params_length D (g :: gs) -> cargs_params_length D gs.
-Proof. intros D g gs H gs1 t gs2 E; apply (H (g :: gs1) t gs2); rewrite E; reflexivity. Qed.
 
 (** A member's type at uniform parameters [X]: at the reference the
     member has, after as many values as its own uniform parameters. *)
@@ -1757,9 +1719,6 @@ Proof.
   match goal with H0 : cross_leaf_results _ _ nil _ nil _ _ _ |- _ => destruct (IH _ _ _ _ _ H0) as [-> ->] end.
   split; reflexivity.
 Qed.
-
-Lemma marked_app : forall cs1 cs2, marked (cs1 ++ cs2) = marked cs1 + marked cs2.
-Proof. intros; unfold marked; rewrite List.filter_app, List.length_app; reflexivity. Qed.
 
 Lemma cross_leaf_results_length : forall cs fs as1 as2 rs1 rs2 o1 o2, cross_leaf_results cs fs as1 as2 rs1 rs2 o1 o2 ->
     List.length o1 = marked cs /\ List.length o2 = List.length cs.

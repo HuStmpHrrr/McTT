@@ -182,10 +182,6 @@ Lemma entry_propositional_shift_wk : forall e Γ ρ x,
     entry_propositional gc_deps gc_stack (e :: Γ) ρ (↑ x) <-> entry_propositional gc_deps gc_stack Γ (⟪↑⟫ ρ) x.
 Proof. intros *; rewrite eval_wk_shift; exact (entry_propositional_succ _ _ _ _). Qed.
 
-Lemma entry_propositional_id_wk : forall Γ ρ x,
-    entry_propositional gc_deps gc_stack Γ ρ (wk_id x) <-> entry_propositional gc_deps gc_stack Γ (⟪wk_id⟫ ρ) x.
-Proof. intros *; rewrite eval_wk_id; reflexivity. Qed.
-
 (** ** Evaluating the Identity and the Weakenings at a Context
 
     The identity evaluates to the environment retagged at the context,
@@ -575,9 +571,6 @@ Qed.
     tail, with valid slots. *)
 Lemma valid_ctx_rel_ctx_wf : forall {Θm Ξm Γ}, valid_ctx Θm Ξm Γ -> ⊨ Γ.
 Proof. intros * H; destruct H; [ constructor | assumption .. ]. Qed.
-
-Lemma valid_ctx_tail : forall {Θm Ξm Γ e}, valid_ctx Θm Ξm (e :: Γ)%list -> valid_ctx Θm Ξm Γ.
-Proof. intros * H; inversion H; assumption. Qed.
 
 (** [⇑] as a weakening judgment — the form the weakening lemmas below, and
     soundness through them, are instantiated at. *)
@@ -1458,22 +1451,6 @@ Proof.
   assert (Hρρ : Dom ρ ≈ ρ ∈ R) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
   destruct (per_ctx_env_sym _ _ _ HR) as [HR' _].
   split; [ exact (per_ctx_env_props_cross _ _ _ HR _ _ Hρρ x) | exact (per_ctx_env_props_cross _ _ _ HR' _ _ Hρρ x) ].
-Qed.
-
-(** The identity from a context to a prefix of it, when the context's
-    relation is included in the prefix's: past the prefix nothing is asked
-    of the environments. *)
-Lemma rel_wk_under_ctx_drop : forall {Γ Δ R R'},
-    EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ R ->
-    EF Δ ≈ Δ ∈ per_ctx_env ↘ R' ->
-    (forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R') ->
-    Δ ++ Γ ⊨ʷ wk_id : Δ.
-Proof.
-  intros * HR HR' Hsub.
-  eapply rel_wk_under_ctx_intro;
-    [ exact HR | exact HR' | split; [ typeclasses eauto | intros ρ ρ' Hρ; rewrite !eval_wk_id; exact (Hsub _ _ Hρ) ] | |].
-  - intros x Hx; rewrite List.length_app; unfold wk_id; lia.
-  - intros ρ ρ' Hρ x Hx; rewrite eval_wk_id; exact (ctx_props_agree_app _ _ Δ Γ HR HR' Hsub ρ ρ' Hρ x Hx).
 Qed.
 
 (** An evaluation at [Δ1] gives one at [Δ2], to the environment retagged

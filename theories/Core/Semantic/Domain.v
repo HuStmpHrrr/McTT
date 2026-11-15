@@ -238,10 +238,6 @@ Definition env_mod (ρ : env) (x : nat) : dmod :=
 Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ absent_entry.
 Proof. intros ρ x; revert ρ; induction x; intros [| d ρ]; cbn; auto; rewrite IHx; destruct x; reflexivity. Qed.
 
-Lemma env_var_nth : forall ρ x,
-    env_var ρ x = match List.nth x ρ absent_entry with de_term d _ | de_dm d _ _ _ => d | de_mod _ _ => d_prop end.
-Proof. intros; unfold env_var; rewrite env_entry_nth; reflexivity. Qed.
-
 (** The environment extended by a value [d] of the type [t]. *)
 Definition extend_env (ρ : env) (d : domain) (t : entry_type) : env := de_term d t :: ρ.
 Arguments extend_env _ _ _ /.
@@ -453,18 +449,6 @@ Definition domain_level_real (d : domain) : o2 := domain_level_max_offset (domai
 Fact domain_level_real_lit : forall o, domain_level_real (domain_level_lit o) = o.
 Proof. reflexivity. Qed.
 
-Fact domain_level_real_neut : forall a m, domain_level_real (d_neut a m) = ordinal_zero.
-Proof. reflexivity. Qed.
-
-Fact domain_level_max_offset_app : forall c c' xs ys,
-    domain_level_max_offset (ordinal_max c c') (xs ++ ys) = ordinal_max (domain_level_max_offset c xs) (domain_level_max_offset c' ys).
-Proof.
-  intros c c' xs ys; induction xs as [| ka xs IH]; cbn [domain_level_max_offset List.app].
-  - induction ys as [| ka ys IH]; cbn [domain_level_max_offset]; [ reflexivity |].
-    rewrite IH; generalize (domain_level_max_offset c' ys); intros; ordinal_solve.
-  - rewrite IH; generalize (domain_level_max_offset c xs) (domain_level_max_offset c' ys); intros; ordinal_solve.
-Qed.
-
 Fact domain_level_max_offset_suc : forall c xs,
     domain_level_max_offset (ordinal_succ c) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs) = ordinal_succ (domain_level_max_offset c xs).
 Proof.
@@ -478,35 +462,8 @@ Proof.
   apply domain_level_max_offset_suc.
 Qed.
 
-Fact domain_level_real_max : forall l l',
-    domain_level_real (domain_level_max l l') = ordinal_max (domain_level_real l) (domain_level_real l').
-Proof.
-  intros; unfold domain_level_real, domain_level_max, domain_level_const, domain_level_atoms; cbn [domain_level_view fst snd].
-  apply domain_level_max_offset_app.
-Qed.
-
 
 Import Domain_Notations.
-
-(** The two projections of an extended environment. *)
-Proposition drop_env_extend_env_cancel : forall ρ a t,
-    (ρ ↦ a ⦂ t)↯ = ρ.
-Proof. reflexivity. Qed.
-
-Proposition extend_env_zero_cancel : forall ρ a t,
-    env_var (ρ ↦ a ⦂ t) 0 = a.
-Proof. reflexivity. Qed.
-
-Proposition extend_env_zero_type : forall ρ a t,
-    env_type (ρ ↦ a ⦂ t) 0 = t.
-Proof. reflexivity. Qed.
-
-Proposition extend_env_succ : forall ρ a t x,
-    env_var (ρ ↦ a ⦂ t) (S x) = env_var ρ x.
-Proof. reflexivity. Qed.
-
-Proposition env_var_drop : forall ρ x, env_var ρ↯ x = env_var ρ (S x).
-Proof. reflexivity. Qed.
 
 Proposition env_var_cons_succ : forall e ρ x, env_var (e :: ρ) (S x) = env_var ρ x.
 Proof. reflexivity. Qed.
@@ -517,15 +474,6 @@ Proof. reflexivity. Qed.
 Proposition env_entry_drop : forall ρ x, env_entry ρ↯ x = env_entry ρ (S x).
 Proof. reflexivity. Qed.
 
-Proposition env_mod_drop : forall ρ x, env_mod ρ↯ x = env_mod ρ (S x).
-Proof. reflexivity. Qed.
-
-Proposition extend_env_mod_zero : forall ρ m U, env_mod (ρ ↦ᵐ m ⦂ U) 0 = m.
-Proof. reflexivity. Qed.
-
-Proposition extend_env_mod_succ : forall ρ m U x, env_entry (ρ ↦ᵐ m ⦂ U) (S x) = env_entry ρ x.
-Proof. reflexivity. Qed.
-
 (** ** Pointwise Equality
 
     Two environments are equal when they agree at every index, entry by entry.  Evaluating a
@@ -534,12 +482,6 @@ Proof. reflexivity. Qed.
     [λᵈ a ρ M] carries its environment; values from pointwise-equal environments
     are related by the PER model instead. *)
 Definition env_eq : relation env := fun ρ ρ' => forall x, env_entry ρ x = env_entry ρ' x.
-
-Lemma env_eq_var : forall ρ ρ', env_eq ρ ρ' -> forall x, env_var ρ x = env_var ρ' x.
-Proof. intros * H x; unfold env_var; rewrite H; reflexivity. Qed.
-
-Lemma env_eq_mod : forall ρ ρ', env_eq ρ ρ' -> forall x, env_mod ρ x = env_mod ρ' x.
-Proof. intros * H x; unfold env_mod; rewrite H; reflexivity. Qed.
 
 #[export]
 Instance env_eq_Equivalence : Equivalence env_eq.
@@ -564,11 +506,6 @@ Proof. split; [ intros ? ? ? | intros ? ? H ? Hx; symmetry; exact (H _ Hx) | int
 (** Pointwise-equal environments agree up to any index. *)
 Lemma env_eq_agree_upto : forall n ρ ρ', env_eq ρ ρ' -> env_agree_upto n ρ ρ'.
 Proof. intros * H x _; apply H. Qed.
-
-(** Environments agreeing up to [S n] have tails agreeing up to [n] and
-    equal heads. *)
-Lemma env_agree_upto_drop : forall n ρ ρ', env_agree_upto (S n) ρ ρ' -> env_agree_upto n ρ↯ ρ'↯.
-Proof. intros * H x Hx; rewrite !env_entry_drop; apply H; lia. Qed.
 
 (** Agreeing environments have the same variables and module slots below
     the bound. *)

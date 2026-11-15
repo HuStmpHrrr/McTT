@@ -577,23 +577,6 @@ Section Members.
     exact (per_univ_trans' _ _ _ _ _ (per_univ_trans' _ _ _ _ _ (ex_intro _ R HaR) (ex_intro _ Rb1 Hab1)) Hb1).
   Qed.
 
-  (** The value of a member's type at an environment, up to [per_univ], is
-      of the member's kind: its type is of the sort of its kind
-      ([desc_ok_ty_at]). *)
-  Lemma mem_type_value_kind : forall Γ H x R A RΓ ρ a2' a2 (j : universe_index),
-      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R -> mdesc_type R = Some A ->
-      EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> ⟦ A ⟧ ρ ↘ a2' -> Dom a2' ≈ a2 ∈ per_univ j ->
-      domain_kind a2 = mdesc_kind R.
-  Proof.
-    intros * HH Hm HA HRΓ Hρ Ea [Ra HRa].
-    pose proof (mem_desc_ok _ _ _ _ _ _ _ (gctx_valid_syn _ _ Hg) HH Hm) as Hok.
-    destruct (desc_ok_ty_at _ _ _ _ _ Hok HA) as [i HAi].
-    pose proof (Functions.rel_type_kind_of_sort_kind (sort_kind_abs_kind_sort _ _) (completeness_fundamental_exp _ _ _ HAi)) as HK.
-    destruct (HK _ HRΓ _ _ Hρ) as (a & Ea0 & Hka).
-    pose proof (functional_eval_exp _ _ _ _ Ea0 Ea) as ->.
-    rewrite <- (per_univ_elem_kind _ _ _ _ HRa); exact Hka.
-  Qed.
-
   (** The outermost parameter of what a well-formed module expression
       denotes is a type of a universe or of levels: an open module's and
       the outer parameters of a closed one are ([params_evaluated] of
@@ -1751,30 +1734,6 @@ Section MembersFromSource.
     - intros U HU.
       pose proof (proj2 (loc_child_grow _ _ _ _ Hgs Hg Hsub _ _ _ _ _ _ Hl1 Hl2 He) _ HU) as HUs.
       exact (glu_gctx_embedding_alias_modexp _ _ _ _ _ _ _ _ _ Hμ (gc_loc_of_loc _ _ Hg _ _ _ Hl2) HUs HU).
-  Qed.
-
-  (** A module expression naming the module stored at [pm] at the source,
-      read there as that module at no argument, is glued at the target:
-      it is stored there over the same telescope ([gc_loc_grow]), glued by
-      the embedding, and read so as grown ([mdenote_grow_all]). *)
-  Lemma glu_rel_modexp_under_sub_path_of_source : forall Γ H pm T Φs,
-      Θs ⍮ Ξs ⍮ Γ ⊢ᵐ H ≈ H -> mod_qname H = Some pm -> loc Θs Ξs pm T Φs ->
-      (forall Γ1, mdenote Θs Ξs Γ1 H (mdesc_closed nil pm T Φs nil)) ->
-      glu_rel_ctx_types Γ -> glu_rel_modexp_under_sub Γ H.
-  Proof.
-    intros * HHs Hq Hl Hd HΓ.
-    pose proof (glu_gctx_embedding_embedding _ _ _ _ Hμ) as Hem.
-    pose proof (gctx_embedding_resolution _ _ _ _ Hem) as Hsub.
-    destruct (gctx_embedding_preserves_wf _ _ _ _ Hem) as (_ & _ & _ & _ & _ & _ & Hwm & _).
-    pose proof (gc_loc_of_loc _ _ Hgs _ _ _ Hl) as HlS.
-    destruct (gc_loc_grow _ _ _ _ Hg Hsub _ _ _ HlS) as (Φt & HlT & _ & Hl2).
-    apply (glu_rel_modexp_under_sub_path _ _ Hg Γ H pm T Φt (Hwm _ _ _ HHs) Hq HlT); [| | exact HΓ ].
-    - exact (glu_rel_ctx_types_ctx _ (glu_gctx_embedding_tele _ _ _ _ Hμ _ _ _ HlS)).
-    - intros Γ1 R HmR.
-      destruct (proj1 (mdenote_grow_all _ _ _ _ Hgs Hg Hsub) _ _ _ (Hd Γ1)) as (R' & HmR' & Hgr).
-      rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HmR _ HmR').
-      inversion Hgr as [? Hc | ? ? Φ1 Φ2 ? ? Hl1' Hl2' | ]; subst; [ cbn in Hc; discriminate |].
-      cbn; rewrite (proj2 (loc_functional _ _ _ _ _ _ _ Hl2' Hl2)); reflexivity.
   Qed.
 
   (** A selection typed at the source, read from an entry [y] of the

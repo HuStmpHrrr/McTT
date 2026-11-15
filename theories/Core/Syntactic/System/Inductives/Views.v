@@ -631,9 +631,6 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma repeat_false_S : forall d (pat : list bool), List.repeat false (S d) ++ pat = false :: (List.repeat false d ++ pat).
-Proof. reflexivity. Qed.
-
 (** The recursive results' telescope, split after some arguments. *)
 Lemma ihs_ctx_aux_app : forall r D nn As Us na gs1 gs2 pat j,
     ihs_ctx_aux r (rview_leaves D) nn As Us na pat j (gs1 ++ gs2)
@@ -658,9 +655,6 @@ Proof. intros; symmetry; apply sb_q_compose_ext; reflexivity. Qed.
 
 Lemma sb_compose_cong_r : forall σ τ τ', sb_eq τ τ' -> sb_eq (σ ⨟ τ) (σ ⨟ τ').
 Proof. intros * H x; cbn [sb_compose]; apply sentry_sub_sb_eq, H. Qed.
-
-Lemma sb_compose_cong_l : forall σ σ' τ, sb_eq σ σ' -> sb_eq (σ ⨟ τ) (σ' ⨟ τ).
-Proof. intros * H x; cbn [sb_compose]; rewrite H; reflexivity. Qed.
 
 Lemma shape_sub_step : forall d (pat : list bool) Sb,
     sb_eq (q (ι (wk_pat (List.repeat false d ++ pat)) ⨟ Sb)) (ι (wk_pat (List.repeat false (S d) ++ pat)) ⨟ q Sb).

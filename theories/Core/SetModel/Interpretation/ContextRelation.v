@@ -104,8 +104,4 @@ Theorem set_interp_modexp_functional_ext : forall Δ ρ H m, set_interp_modexp T
     forall Δ' ρ' m', ctx_ext_equal Δ Δ' -> set_env_eq γ ρ ρ' -> set_interp_modexp T γ Δ' ρ' H m' -> set_module_eq γ m m'.
 Proof. exact (proj1 (proj2 (proj2 (proj2 set_interp_functional_ext_all)))). Qed.
 
-Theorem set_interp_gunit_functional_ext : forall Δ ρ U m, set_interp_gunit T γ Δ ρ U m ->
-    forall Δ' ρ' m', ctx_ext_equal Δ Δ' -> set_env_eq γ ρ ρ' -> set_interp_gunit T γ Δ' ρ' U m' -> set_module_eq γ m m'.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 set_interp_functional_ext_all))))). Qed.
-
 End ContextRelation.

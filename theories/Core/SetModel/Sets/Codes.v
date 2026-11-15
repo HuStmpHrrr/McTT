@@ -112,10 +112,3 @@ Proof.
   intros C z [P E] Hz. eapply set_mem_eq_r in Hz; [| eapply set_eq_trans; [apply code_carrier_resp; exact E | apply code_carrier_type_code]].
   apply set_mem_truth in Hz. tauto.
 Qed.
-
-(** No code is both a proposition's and a relevant type's. *)
-Lemma prop_relevant_code_absurd : forall C, is_prop_code C -> is_relevant_code C -> False.
-Proof.
-  intros C [P E] [t [d [c [E' Ht]]]]. apply Ht.
-  apply (type_code_inj t d c prop_tag empty_set (truth_set P)). eapply set_eq_trans; [apply set_eq_sym; exact E' | exact E].
-Qed.

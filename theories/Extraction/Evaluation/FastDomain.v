@@ -193,9 +193,6 @@ Definition fextend_env_dm (ρ : fenv) (d : fdomain) (t : fentry_type) (m : fdmod
 Definition fenv_extend_typed (ρ : fenv) (vts : list (fdomain * fentry_type)) : fenv :=
   List.fold_left (fun ρ vt => fextend_env ρ (fst vt) (snd vt)) vts ρ.
 
-Lemma fenv_extend_typed_app : forall ρ vs ws, fenv_extend_typed ρ (vs ++ ws) = fenv_extend_typed (fenv_extend_typed ρ vs) ws.
-Proof. intros; unfold fenv_extend_typed; rewrite List.fold_left_app; reflexivity. Qed.
-
 (** The type the head of a telescope gives a variable over [ρ], as
     [tele_head_type] *)
 Definition ftele_head_type (ρ : fenv) (T : list centry) : fentry_type :=

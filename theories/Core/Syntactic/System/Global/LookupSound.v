@@ -578,15 +578,6 @@ Proof.
   exact (IH _ _ _ Hm1 Ha).
 Qed.
 
-Lemma mdesc_mod_ats_inv : forall Ns R Rm Rm', mdesc_mod R = Some Rm -> mdesc_ats Rm Ns = Some Rm' ->
-    exists R', mdesc_ats R Ns = Some R' /\ mdesc_mod R' = Some Rm'.
-Proof.
-  induction Ns as [| N Ns IH]; intros * Hm Ha; cbn in Ha |- *; [ injection Ha as <-; eauto |].
-  destruct (mdesc_at Rm N) as [Rm1 |] eqn:E; [| discriminate ].
-  destruct (mdesc_mod_at_inv _ _ _ _ Hm E) as (R1 & -> & Hm1).
-  exact (IH _ _ _ Hm1 Ha).
-Qed.
-
 (** The module part of a description read at arguments ([mdesc_ats_read])
     is its module part given them ([mdesc_mod_ats]): a definition with a
     module part gives them to its module part as a module. *)
@@ -613,51 +604,6 @@ Proof.
 Qed.
 
 (** ** Applied Module Expressions *)
-
-(** A module expression denoting a description abstracted over [Δa], given
-    arguments for the outermost parameters of [Δa], is well formed. *)
-Lemma wf_apps_up : forall Θ Ξ Ns Γ Δa R H l,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ H (mdesc_up Δa R) -> mdesc_is_mod R ->
-    ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> all_assumptions Δa -> length Ns <= length Δa ->
-    (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
-    desc_ok Θ Ξ (Δa ++ Γ) R -> params_evaluated Θ Ξ Γ Δa l ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps H Ns ≈ me_apps H Ns.
-Proof.
-  intros Θ Ξ; induction Ns as [| N Ns IH]; intros * HH Hm Hmod HΔ Ha Hl HNs HR HRΔ; [ exact HH |].
-  pose proof (ctx_wf_gctx _ _ _ HΔ) as Hg.
-  destruct (List.exists_last (l := Δa)) as (Δ1 & e & ->); [ intros ->; cbn in Hl; lia |].
-  unfold all_assumptions in Ha; apply List.Forall_app in Ha as [Ha1 He]; apply List.Forall_cons_iff in He as [(κ & C & ->) _].
-  rewrite tele_insts_snoc in HNs.
-  pose proof (HNs 0 N C[Id] eq_refl eq_refl) as HN; rewrite exp_sub_id in HN.
-  (* the argument's type is relevant, as every parameter of a module *)
-  destruct (params_evaluated_app_inv _ _ _ _ _ _ HRΔ) as [HRΔ1 HRC].
-  pose proof (HRC nil κ C nil eq_refl) as HC0; cbn [List.app] in HC0, HRΔ1.
-  destruct (param_typed_evaluated _ _ _ _ _ HC0) as (SC & HSC & HC).
-  rewrite <- List.app_assoc in HΔ, HR; cbn [List.app] in HΔ, HR.
-  destruct (ctx_decomp_sort_kind (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ (SCκ & HSCκ & HCκ)].
-  pose proof (wf_sub_single _ _ _ _ _ _ _ HCκ HSCκ HN) as Hs1.
-  assert (HΔN : ⊢ Θ ⍮ Ξ ⍮ tele_sub Δ1 (Id,,N) ++ Γ) by (eapply ctx_sub_wf_gen; eassumption).
-  assert (Hσ : Θ ⍮ Ξ ⍮ tele_sub Δ1 (Id,,N) ++ Γ ⊢ˢ sb_qn (length Δ1) (Id,,N) : Δ1 ++ ce_ass κ C :: Γ)
-    by (apply wf_sub_ext; assumption).
-  destruct (desc_ok_tele _ _ _ _ HR Hmod) as (T0 & Ht0).
-  assert (HHN : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H N).
-  { eapply wf_me_app; [ exact HH | exact Hm | | apply (tele_view_last (T0 ++ Δ1)) | exact HC | exact HSC | exact HN
-                      | apply wf_exp_eq_refl; exact HN | exact Hm | | apply (tele_view_last (T0 ++ Δ1)) | exact HC | exact HSC | exact HN ].
-    all: unfold mdesc_mod_tele; rewrite (mdesc_is_mod_mod _ (mdesc_is_mod_up _ _ Hmod)), (mdesc_tele_up _ _ _ Ht0), app_assoc; reflexivity. }
-  cbn [me_apps].
-  eapply (IH Γ (tele_sub Δ1 (Id,,N)) (mdesc_sub R (sb_qn (length Δ1) (Id,,N)))).
-  - exact HHN.
-  - eapply mdenote_app; [ exact Hm | apply mdesc_at_up ].
-  - apply mdesc_is_mod_sub; exact Hmod.
-  - exact HΔN.
-  - apply all_assumptions_sub; exact Ha1.
-  - rewrite length_tele_sub; rewrite List.length_app in Hl; cbn in Hl; lia.
-  - intros k N1 A HN1 HA.
-    rewrite tele_insts_tele_sub, (tele_insts_sb_eq _ _ (Id,,N)) in HA by apply sb_compose_id_right.
-    exact (HNs (S k) N1 A HN1 HA).
-  - exact (desc_ok_sub _ _ Hg _ _ HR _ _ Hσ).
-  - exact (params_evaluated_sub _ _ _ _ _ _ _ HRΔ1 Hs1 HΔ HΔN).
-Qed.
 
 (** [β] for a well-formed literal, its two forms in one. *)
 Lemma beta_step : forall Θ Ξ Γ Δ κ X D N,
@@ -691,76 +637,11 @@ Qed.
 
 (** ** Filed Modules at Arguments *)
 
-(** A module expression is well formed at the arguments another one is,
-    when at every prefix of them it takes a first parameter of the same
-    type. *)
-Lemma apps_transfer : forall Θ Ξ Γ Ns H H',
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps H Ns ≈ me_apps H Ns -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H' ≈ H' ->
-    (forall Ms Ms' R R' T B T1, Ns = Ms ++ Ms' -> Ms' <> nil ->
-       mdenote Θ Ξ Γ (me_apps H Ms) R -> mdenote Θ Ξ Γ (me_apps H' Ms) R' ->
-       mdesc_mod_tele R = Some T -> tele_view T = Some (B, T1) ->
-       exists T' T1', mdesc_mod_tele R' = Some T' /\ tele_view T' = Some (B, T1')) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps H' Ns ≈ me_apps H' Ns.
-Proof.
-  intros * Hw HH'; induction Ns as [| N Ns IH] using List.rev_ind; intros Ht; [ exact HH' |].
-  rewrite !me_apps_snoc in *.
-  destruct (proj1 (modexp_gen _ _ _ _ _ Hw)) as (Hw0 & R & T & B & T1 & SB & Hm & HT & Hv & HB & HSB & HN); cbn [gen_m] in *.
-  assert (IH' : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps H' Ns ≈ me_apps H' Ns).
-  { apply IH; [ exact Hw0 |].
-    intros * Heq Hne; apply (Ht Ms (Ms' ++ N :: nil)); [ rewrite Heq, app_assoc; reflexivity | destruct Ms'; [ contradiction | discriminate ] ]. }
-  destruct (me_denotes _ _ _ _ _ IH') as (R' & _ & Hm' & _).
-  destruct (Ht Ns (N :: nil) R R' T B T1 eq_refl ltac:(discriminate) Hm Hm' HT Hv) as (T' & T1' & HT' & Hv').
-  eapply wf_me_app; [ exact IH' | exact Hm' | exact HT' | exact Hv' | exact HB | exact HSB | exact HN | apply wf_exp_eq_refl; exact HN
-                    | exact Hm' | exact HT' | exact Hv' | exact HB | exact HSB | exact HN ].
-Qed.
-
-(** What the telescope of a filed module at arguments is. *)
-Lemma filed_apps_mtele : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ Γ Ms R, gc_loc Θ Ξ p = Some (T, Φ) ->
-    mdenote Θ Ξ Γ (me_apps (qname_mod p) Ms) R -> mdesc_mod_tele R = mdesc_tele (mdesc_closed nil p T Φ Ms).
-Proof.
-  intros * Hg * Hgl Hm.
-  destruct (filed_denote _ _ Hg _ _ _ Γ Ms Hgl) as (R0 & Hm0 & Hmod0).
-  rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm _ Hm0).
-  unfold mdesc_mod_tele; rewrite Hmod0; reflexivity.
-Qed.
-
 Lemma tele_view_app_r : forall X Y B Y1, tele_view Y = Some (B, Y1) -> exists Y1', tele_view (X ++ Y) = Some (B, Y1').
 Proof.
   intros * Hv; unfold tele_view in *; rewrite rev_app_distr.
   destruct (tele_open_split _ _ _ Hv) as (τ & Hs).
   exact (tele_open_app_inl _ _ _ _ _ Hs).
-Qed.
-
-(** A filed module whose telescope ends in another's takes the same first
-    parameter at the same arguments. *)
-Lemma mdesc_tele_closed_ext : forall p T Φ pq Δ0 Φ' Ms T0 B T1,
-    mdesc_tele (mdesc_closed nil p T Φ Ms) = Some T0 -> tele_view T0 = Some (B, T1) ->
-    exists T0' T1', mdesc_tele (mdesc_closed nil pq (Δ0 ++ T) Φ' Ms) = Some T0' /\ tele_view T0' = Some (B, T1').
-Proof.
-  intros * Ht Hv; cbn in Ht |- *.
-  destruct (Nat.leb (length Ms) (length T)) eqn:Hl; [ injection Ht as <- | discriminate ].
-  apply Nat.leb_le in Hl.
-  replace (Nat.leb (length Ms) (length (Δ0 ++ T))) with true by (symmetry; apply Nat.leb_le; rewrite length_app; lia).
-  replace (length (Δ0 ++ T) - length Ms) with (length Δ0 + (length T - length Ms)) by (rewrite length_app; lia).
-  rewrite List.firstn_app, List.firstn_all2 by lia.
-  replace (length Δ0 + (length T - length Ms) - length Δ0) with (length T - length Ms) by lia.
-  rewrite tele_sub_app; rewrite ?List.app_nil_r in Hv |- *.
-  destruct (tele_view_app_r (tele_sub Δ0 (sb_qn (length (firstn (length T - length Ms) T)) (sb_of_list Id Ms))) _ _ _ Hv) as (T1' & Hv').
-  eauto.
-Qed.
-
-Lemma filed_apps_ext : forall Θ Ξ Γ p T Φ pq Δ0 Φ' Ns, ⊢ᵍ Θ ⍮ Ξ ->
-    gc_loc Θ Ξ p = Some (T, Φ) -> gc_loc Θ Ξ pq = Some (Δ0 ++ T, Φ') ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ qname_mod pq ≈ qname_mod pq ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_apps (qname_mod pq) Ns ≈ me_apps (qname_mod pq) Ns.
-Proof.
-  intros * Hg Hp Hq Hw Hw'.
-  apply (apps_transfer _ _ _ _ _ _ Hw Hw').
-  intros * _ _ Hm Hm' Ht Hv.
-  rewrite (filed_apps_mtele _ _ Hg _ _ _ _ _ _ Hp Hm) in Ht.
-  rewrite (filed_apps_mtele _ _ Hg _ _ _ _ _ _ Hq Hm').
-  exact (mdesc_tele_closed_ext _ _ _ _ _ _ _ _ _ _ Ht Hv).
 Qed.
 
 (** A module expression over a closed telescope is well formed on top of
@@ -1108,15 +989,6 @@ Qed.
     Every term a module expression looks up has a δ-reduct, so two module
     expressions whose module parts agree have equal members: [A.x ≈ P.x]
     for [module A := P]. *)
-Lemma mem_same_lookup : forall Θ Ξ Γ H H' x R A M,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H' ≈ H' ->
-    mdenote Θ Ξ Γ (me_mem H x) R -> mdenote Θ Ξ Γ (me_mem H' x) R -> mdesc_type R = Some A -> mdesc_reduct R = Some M ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_mem H' x : A.
-Proof.
-  intros * HH HH' Hm Hm' Ht Hr.
-  eapply wf_exp_eq_trans; [ eapply wf_exp_eq_mem_delta; eassumption |].
-  apply wf_exp_eq_sym; eapply wf_exp_eq_mem_delta; eassumption.
-Qed.
 
 (** A term read from a closed module part has a δ-reduct. *)
 Lemma mdesc_reduct_closed_read : forall Θ' M R1 A, mdesc_type (mdesc_up Θ' (mdesc_self M R1)) = Some A ->
@@ -1594,19 +1466,6 @@ Proof.
   exists Ru; split; [ exact Hmu |].
   intros (Θ' & p & T & Φ & Ns & Hm' & Hf); apply Hn; rewrite Hmdu in Hm'; injection Hm' as ->.
   do 5 eexists; split; [ reflexivity | exact Hf ].
-Qed.
-
-(** The literal an alias of a literal flattens to is well formed when the
-    alias is. *)
-Lemma flatten_unit_wf : forall Θ Ξ Γ Δ Δ' D,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk (Δ' ++ Δ) D ≈ gu_mk (Δ' ++ Δ) D.
-Proof.
-  intros * HU; pose proof (proj1 (unit_full_of_eq _ _ _ _ _ HU)) as Hf; cbn [unit_full] in Hf.
-  destruct Hf as [lp ps Hps HC Ha HE HRp lv Rt [Hf1 Hf2 Hf3] Hff].
-  eapply wf_unit_eq_refl_right; eapply wf_unit_eq_flatten with (param_level := lp) (param_sorts := ps) (lv := lv) (Rt := Rt);
-    [ apply ext_of_ctx; exact HC | exact Ha | apply lit_unit_wf; exact HE | exact Hps | exact HRp | exact Hf1 | exact Hf2 | exact Hf3
-    | exact Hff ].
 Qed.
 
 (** An alias with parameters of the unit of a module part is the unit of

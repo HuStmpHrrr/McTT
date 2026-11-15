@@ -153,15 +153,6 @@ Proof.
   mauto.
 Qed.
 
-Corollary glu_univ_elem_cumu_max_right : forall {i : nat} {j : nat} {a P El},
-    DG a ∈ glu_univ_elem j ↘ P ↘ El ->
-    exists P' El', DG a ∈ glu_univ_elem (max i j) ↘ P' ↘ El'.
-Proof.
-  intros.
-  assert (j <= max i j) by lia.
-  mauto.
-Qed.
-
 (** ** Inductive Types Across Universes
 
     The gluing of an inductive type at two universes differs in the gluings
@@ -1009,17 +1000,6 @@ Proof.
   eapply glu_univ_elem_typ_cumu_ge; mauto 4.
 Qed.
 
-Corollary glu_univ_elem_typ_cumu_max_right : forall {i : nat} {j : nat} {a P P' El El' Γ A},
-    DG a ∈ glu_univ_elem j ↘ P ↘ El ->
-    DG a ∈ glu_univ_elem (max i j) ↘ P' ↘ El' ->
-    Γ ⊢ A ® P ->
-    Γ ⊢ A ® P'.
-Proof.
-  intros.
-  assert (j <= max i j) by lia.
-  eapply glu_univ_elem_typ_cumu_ge; mauto 4.
-Qed.
-
 Corollary glu_univ_elem_exp_cumu_ge : forall {i : nat} {j : nat} {a P P' El El' Γ A M m},
     i <= j ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -1039,17 +1019,6 @@ Corollary glu_univ_elem_exp_cumu_max_left : forall {i : nat} {j : nat} {a P P' E
 Proof.
   intros.
   assert (i <= max i j) by lia.
-  eapply glu_univ_elem_exp_cumu_ge; mauto 4.
-Qed.
-
-Corollary glu_univ_elem_exp_cumu_max_right : forall {i : nat} {j : nat} {a P P' El El' Γ A M m},
-    DG a ∈ glu_univ_elem j ↘ P ↘ El ->
-    DG a ∈ glu_univ_elem (max i j) ↘ P' ↘ El' ->
-    Γ ⊢ M : A ® m ∈ El ->
-    Γ ⊢ M : A ® m ∈ El'.
-Proof.
-  intros.
-  assert (j <= max i j) by lia.
   eapply glu_univ_elem_exp_cumu_ge; mauto 4.
 Qed.
 
@@ -1074,18 +1043,6 @@ Corollary glu_univ_elem_exp_lower_max_left :  forall {i : nat} {j : nat} {a P P'
 Proof.
   intros.
   assert (i <= max i j) by lia.
-  eapply glu_univ_elem_exp_lower; mauto 4.
-Qed.
-
-Corollary glu_univ_elem_exp_lower_max_right :  forall {i : nat} {j : nat} {a P P' El El' Γ A M m},
-    DG a ∈ glu_univ_elem j ↘ P ↘ El ->
-    DG a ∈ glu_univ_elem (max i j) ↘ P' ↘ El' ->
-    Γ ⊢ A ® P ->
-    Γ ⊢ M : A ® m ∈ El' ->
-    Γ ⊢ M : A ® m ∈ El.
-Proof.
-  intros.
-  assert (j <= max i j) by lia.
   eapply glu_univ_elem_exp_lower; mauto 4.
 Qed.
 
@@ -1602,34 +1559,6 @@ Qed.
 Lemma wf_exp_kind_sort_max_right : forall Γ κ X n m,
     Γ ⊢ X : abs_kind_sort κ Typeω@m -> Γ ⊢ X : abs_kind_sort κ Typeω@(max n m).
 Proof. intros * H; destruct κ; cbn in *; [ mauto 3 using lift_exp_max_right | exact H | exact H ]. Qed.
-
-(** A glued term typed in [Γ0] moves along [σ ≈ σ'], at a gluing of the
-    same type value at a large enough index: its type is of a sort of a
-    kind next to a large universe, or [LevelSort], which no substitution
-    changes. *)
-Lemma glu_typed_resp_sub_eq : forall {i : nat} {a P El Γ0 M A Δ σ σ' m},
-    Γ0 ⊢ M : A ->
-    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    Δ ⊢ M[σ] : A[σ] ® m ∈ El ->
-    Δ ⊢ˢ σ ≈ σ' : Γ0 ->
-    exists (i' : nat) P' El', DG a ∈ glu_univ_elem i' ↘ P' ↘ El' /\ Δ ⊢ A[σ'] ® P' /\ Δ ⊢ M[σ'] : A[σ'] ® m ∈ El'.
-Proof.
-  intros * HM Hglu HMg Heq.
-  destruct (presup_exp_typ_cases HM) as [A S HS HA | HΓ0 _].
-  - assert (HSk : exists κ (j : nat), S = abs_kind_sort κ Typeω@j)
-      by (destruct HS as [j | |]; [ exists ak_relevant, j | exists ak_propositional, 0 | exists ak_level, 0 ]; reflexivity).
-    destruct HSk as (κ & j & ->).
-    destruct (glu_univ_elem_cumu_max_left (j := j) Hglu) as (Pm & Elm & Hgm).
-    pose proof (glu_univ_elem_exp_cumu_max_left Hglu Hgm HMg) as HMm.
-    pose proof (glu_univ_elem_trm_resp_sub_eq (wf_exp_kind_sort_max_right _ _ _ i _ HA) HM Heq Hgm HMm) as HM'.
-    exists (max i j), Pm, Elm; split; [ exact Hgm | split; [ eapply glu_univ_elem_trm_typ; eassumption | exact HM' ] ].
-  - (** [LevelSort]: unchanged *)
-    exists i, P, El; split; [ exact Hglu |].
-    pose proof (glu_univ_elem_trm_typ _ _ _ _ Hglu _ _ _ _ HMg) as HT; cbn in HT |- *.
-    split; [ exact HT |].
-    eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hglu | exact HMg |].
-    exact (sub_eq_preserves_exp_eq _ _ _ _ _ _ _ _ _ (wf_exp_eq_refl HM) Heq).
-Qed.
 
 (** A type of [Γ0] glued under [τ] is glued under an equal [τ'], at a
     gluing of the same value at a large enough index, and its elements

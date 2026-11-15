@@ -297,12 +297,6 @@ Proof. induction Φ; cbn; tauto. Qed.
 Lemma ge_read_unseal : forall T E, ge_read T (ge_unseal E) = ge_unseal (ge_read T E).
 Proof. intros T [| ? [? [[] ?| ?]] | | |]; reflexivity. Qed.
 
-Lemma entry_is_body_unseal : forall E, entry_is_body E -> entry_is_body (ge_unseal E).
-Proof. intros [| ? [? [[] ?| ?]] | | |]; cbn; tauto. Qed.
-
-Lemma entry_alias_unit_unseal : forall E, entry_alias_unit (ge_unseal E) = entry_alias_unit E.
-Proof. intros [| ? [? [[] ?| ?]] | | |]; reflexivity. Qed.
-
 (** ** Descriptions under Unsealing
 
     [mdesc_unsealed R R']: [R'] is [R] read in the unsealed context: a definition may
@@ -1289,20 +1283,6 @@ Corollary unseal_exp_eq : forall Θ Ξ Γ A M M',
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ M ≈ M' : A.
 Proof. apply unseal_preserves_wf. Qed.
 
-Corollary unseal_subtyp : forall Θ Ξ Γ A A',
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ A ⊆ A'.
-Proof. apply unseal_preserves_wf. Qed.
-
-Corollary unseal_gctx : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ gds_unseal Θ ⍮ gs_unseal Ξ.
-Proof. apply unseal_preserves_wf. Qed.
-
-(** ** Global Contexts without Axioms
-
-    Every definition has a body, at every depth of nesting; an alias declares
-    no definition of its own.  Transparency is not asked for. *)
-
-(** [ge_no_axioms E]: every definition in [E] has a body; mutually,
-    [gm_no_axioms] for module bodies. *)
 Fixpoint ge_no_axioms (E : gentry) : Prop :=
   match E with
   | ge_def _ _ _ _ B => B <> None
@@ -1640,11 +1620,6 @@ Section Run.
   Corollary run_unit_no_axioms : forall ch u B Rb Θ U,
       run_unit load_path read to_core ch u B Rb Θ U -> unit_no_axioms u -> gds_no_axioms Θ /\ gm_no_axioms (gu_mod U).
   Proof. exact (proj1 (proj2 (proj2 run_no_axioms))). Qed.
-
-  (** Every state a unit runs through, from nothing, has no axioms. *)
-  Corollary run_cmds_no_axioms : forall ch B Rb cs B' Rb' Θ Ξ,
-      nil ⍮ nil ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ ⍮ Ξ ⍮ B' ⍮ Rb' -> items_no_axioms cs -> gc_no_axioms Θ Ξ.
-  Proof. intros * H Hc; eapply (proj1 (proj2 run_no_axioms)); [ exact H | exact Hc | split; auto with mctt ]. Qed.
 
   (** What a program files, filed with it. *)
   Corollary prog_sem_no_axioms : forall prg B Θ U,

@@ -1446,9 +1446,6 @@ Definition ctx_entry_type (Δ : ctx) (x : nat) : option typ :=
     environment of a context of length [n] holds of [ρ]. *)
 Definition env_upto (n : nat) (ρ : env) : env := List.map (env_entry ρ) (List.seq 0 n).
 
-Lemma length_env_upto : forall n ρ, List.length (env_upto n ρ) = n.
-Proof. intros; unfold env_upto; rewrite List.length_map, List.length_seq; reflexivity. Qed.
-
 Lemma env_entry_env_upto : forall n ρ x, x < n -> env_entry (env_upto n ρ) x = env_entry ρ x.
 Proof.
   intros * Hx; unfold env_upto; rewrite (env_entry_nth (List.map _ _)).
@@ -1617,27 +1614,6 @@ Proof.
   destruct ρ; cbn [List.tl]; [ rewrite !env_entry_nth, !List.nth_overflow by (cbn; lia); reflexivity | reflexivity ].
 Qed.
 
-(** Retagging keeps the values. *)
-Lemma env_var_retag_entry : forall t ou e, match retag_entry t ou e with de_term d _ | de_dm d _ _ _ => d | de_mod _ _ => d_prop end =
-    match e with de_term d _ | de_dm d _ _ _ => d | de_mod _ _ => d_prop end.
-Proof. intros t ou []; reflexivity. Qed.
-
-Lemma env_mod_retag_entry : forall t ou e, match retag_entry t ou e with de_mod m _ | de_dm _ _ m _ => m | de_term _ _ => dm_global (q_abs nil nil) nil end =
-    match e with de_mod m _ | de_dm _ _ m _ => m | de_term _ _ => dm_global (q_abs nil nil) nil end.
-Proof. intros t ou []; reflexivity. Qed.
-
-Lemma env_var_ctx_retag : forall Δ ρ x, env_var (ctx_retag Δ ρ) x = env_var ρ x.
-Proof.
-  intros; unfold env_var; destruct (Compare_dec.le_lt_dec (List.length Δ) x) as [Hx | Hx];
-    [ rewrite env_entry_ctx_retag_ge by exact Hx; reflexivity | rewrite env_entry_ctx_retag by exact Hx; apply env_var_retag_entry ].
-Qed.
-
-Lemma env_mod_ctx_retag : forall Δ ρ x, env_mod (ctx_retag Δ ρ) x = env_mod ρ x.
-Proof.
-  intros; unfold env_mod; destruct (Compare_dec.le_lt_dec (List.length Δ) x) as [Hx | Hx];
-    [ rewrite env_entry_ctx_retag_ge by exact Hx; reflexivity | rewrite env_entry_ctx_retag by exact Hx; apply env_mod_retag_entry ].
-Qed.
-
 (** Retagging forgets the tags before. *)
 Lemma retag_entry_twice : forall t U t' U' e, retag_entry t U (retag_entry t' U' e) = retag_entry t U e.
 Proof. intros t U t' U' []; reflexivity. Qed.
@@ -1675,10 +1651,6 @@ Proof.
   - apply IH.
 Qed.
 
-(** Pointwise-equal environments have pointwise-equal tails. *)
-Lemma env_eq_skipn : forall n ρ ρ', env_eq ρ ρ' -> env_eq (List.skipn n ρ) (List.skipn n ρ').
-Proof. intros * H y; rewrite !env_entry_skipn; apply H. Qed.
-
 (** Being a proposition is read up to agreement on the entries of the
     context. *)
 Lemma entry_propositional_resp_agree : forall {Θ Ξ} Δ ρσ ρσ' x,
@@ -1687,11 +1659,6 @@ Proof.
   intros * Hρ [T HT E HE v Ev Hv]; econstructor; [ exact HT | | exact Ev | exact Hv ].
   intros y Hy; rewrite (HE y Hy), !env_entry_skipn; apply Hρ; rewrite List.length_skipn in Hy; lia.
 Qed.
-
-(** In particular up to pointwise equality. *)
-Corollary entry_propositional_resp_env_eq : forall {Θ Ξ} Δ ρσ ρσ' x,
-    env_eq ρσ ρσ' -> entry_propositional Θ Ξ Δ ρσ x -> entry_propositional Θ Ξ Δ ρσ' x.
-Proof. intros * Hρ; apply entry_propositional_resp_agree, env_eq_agree_upto, Hρ. Qed.
 
 (** The entries after the first of [e :: Δ] are those of [Δ], in the tail
     of the environment. *)

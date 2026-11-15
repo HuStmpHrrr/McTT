@@ -207,8 +207,4 @@ Corollary rel_ctx_wf_gsub : forall Ψ Δ Γ τ, ⊨ Ψ ++ Δ -> ⊢ Θm ⍮ Ξm 
     ⊨ tele_sub Ψ τ ++ Γ /\ gsub (tele_sub Ψ τ ++ Γ) (sb_qn (length Ψ) τ) (Ψ ++ Δ).
 Proof. intros * HC HwC Hg Hc; exact (proj1 rel_ctx_wf_unit_gsub_all _ HC nil Ψ Δ eq_refl HwC _ _ Hg Hc). Qed.
 
-Corollary rel_unit_wf_gsub : forall C U Γ τ, rel_unit_wf C U -> ⊢ Θm ⍮ Ξm ⍮ C ▹ₘ U ->
-    gsub Γ τ C -> sub_mod_compat τ Γ C -> rel_unit_wf Γ U[τ]ᵘ.
-Proof. intros * HU HwU Hg Hc; exact (proj2 rel_ctx_wf_unit_gsub_all _ _ HU HwU _ _ Hg Hc). Qed.
-
 End Fixed_GCtx.

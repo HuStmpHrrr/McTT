@@ -274,15 +274,6 @@ Proof.
   - exact (set_sub_slots_coherent_shift γ _ _).
 Qed.
 
-Lemma set_valid_modexp_shift : forall e Γ H, set_valid_modexp T γ Γ H -> set_ctx T γ (e :: Γ) -> ⊢ gc_deps ⍮ gc_stack ⍮ e :: Γ ->
-    set_valid_modexp T γ (e :: Γ) (modexp_wk H wk_shift).
-Proof.
-  intros * HH HC Hc. rewrite <- modexp_sub_of_wk.
-  apply (proj2 set_valid_unit_modexp_moved _ _ HH _ _ set_env_tail).
-  - constructor; [exact (set_gsub_shift T γ _ _ Hc) | exact HC | exact (proj1 HC) | exact HC | exact (ctx_decomp_tail Hc)].
-  - exact (set_sub_slots_coherent_shift γ _ _).
-Qed.
-
 (** The unit of a slot of a context with valid slots is valid there. *)
 Lemma set_slot_valid_unit : forall Γ x U, Γ ∋ #x ≔ₘ U -> set_ctx T γ Γ -> set_valid_slots T γ Γ ->
     ⊢ gc_deps ⍮ gc_stack ⍮ Γ -> set_valid_unit T γ Γ (me_lit U).

@@ -410,20 +410,6 @@ Proof.
   exact Hb.
 Qed.
 
-(** The canonical forms of an element of [Level@n] hold no proof. *)
-Lemma per_lvl_at_canon_proof_free : forall n l l' s L,
-    Dom l ≈ l' ∈ per_lvl_at n ->
-    domain_level_canon s l L ->
-    nf_proof_free (nf_lvl_of L).
-Proof.
-  intros * H HL.
-  destruct (H s) as [L' HL' _ _ Hp].
-  apply domain_level_canon_of_read in HL' as [_ [L'' [Heq HL'']]].
-  apply nf_lvl_of_inj in Heq as <-.
-  assert (L = L') as -> by (eapply domain_level_canon_functional; eassumption).
-  exact Hp.
-Qed.
-
 (** A level related to one whose canonical forms are of sort [n] is an
     element of [Level@n]. *)
 Lemma per_lvl_at_intro : forall n l l',
@@ -684,30 +670,6 @@ Proof.
   unfold lvl_le; rewrite (domain_level_canon_canonical _ _ _ HB').
   etransitivity; [| exact Hj ]; etransitivity; [| symmetry; exact EJ ].
   symmetry in EB; lvl_upto_eval.
-Qed.
-
-(** The same from readbacks: if [maxl l l'] and [l'] read back equally, the
-    canonical forms of [l] and [l'] are in [lvl_le].  This is what the
-    algorithmic subtyping of two small universes decides. *)
-Lemma read_max_lvl_le : forall s n1 n2 n3 n4 l l' L L' W,
-    Rnf ⇓ (Levelᵈ@n1) l in s ↘ nf_lvl_of L ->
-    Rnf ⇓ (Levelᵈ@n2) l' in s ↘ nf_lvl_of L' ->
-    Rnf ⇓ (Levelᵈ@n3) (domain_level_max l l') in s ↘ W ->
-    Rnf ⇓ (Levelᵈ@n4) l' in s ↘ W ->
-    lvl_le L L'.
-Proof.
-  intros * HL HL' Hmax Hmax'.
-  apply (read_nf_level_sort _ _ 0 _ _) in HL, HL', Hmax, Hmax'.
-  pose proof (functional_read_nf _ _ _ _ HL' Hmax') as <-.
-  apply domain_level_canon_of_read in HL as [_ [L1 [Heq1 HL1]]].
-  apply nf_lvl_of_inj in Heq1 as <-.
-  apply domain_level_canon_of_read in HL' as [_ [L2 [Heq2 HL2]]].
-  apply nf_lvl_of_inj in Heq2 as <-.
-  apply domain_level_canon_of_read in Hmax as [_ [L3 [Heq3 HL3]]].
-  apply nf_lvl_of_inj in Heq3.
-  pose proof (domain_level_canon_max_upto _ _ _ _ _ _ HL1 HL2 HL3) as Hc.
-  unfold lvl_le; rewrite (domain_level_canon_canonical _ _ _ HL2).
-  symmetry; rewrite Heq3 at 1; exact Hc.
 Qed.
 
 End Fixed_GCtx.

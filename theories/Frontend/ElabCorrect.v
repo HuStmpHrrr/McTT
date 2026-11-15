@@ -572,9 +572,6 @@ Proof.
   intros; apply target_iff, Forall_forall; intros ? _ ? ?; apply elab_iff.
 Qed.
 
-Lemma elab_args_iff : forall S os Ns, elab_args_with elab S os = elab_success Ns <-> Forall2 (spec_exp S) os Ns.
-Proof. intros; apply args_iff, Forall_forall; intros ? _ ? ?; apply elab_iff. Qed.
-
 Lemma elab_brs_iff : forall S bs Bs, elab_brs_with elab S bs = elab_success Bs <-> spec_branches S bs Bs.
 Proof. intros; apply brs_iff, Forall_forall; intros ? _ ? ?; apply elab_iff. Qed.
 
@@ -862,140 +859,10 @@ End Commands.
     in every scope a command reads, each member's count is the number of
     binders outside its entry, which is what [outer_param_vars] needs. *)
 
-(** In [S], each member's count is the binders outside its entry. *)
-Definition mems_counted (S : list scope_entry) : Prop :=
-  forall S1 x p m S2, S = S1 ++ scope_entry_mem x p m :: S2 -> m = binders S2.
-
-(** Entries pushed on a counted scope [S] keep it counted when they are no
-    binders and each member among them counts [binders S]. *)
-Lemma counted_app : forall L S,
-    mems_counted S ->
-    Forall (fun e => scope_entry_binders e = 0 /\ forall x p m, e = scope_entry_mem x p m -> m = binders S) L ->
-    mems_counted (L ++ S).
-Proof.
-  intros L S HS HL S1 x p m S2 Heq.
-  apply app_eq_app in Heq as (l & [[-> Hl] | [-> Hl]]).
-  - destruct l as [| e l]; cbn in Hl.
-    + subst S; exact (HS nil x p m S2 eq_refl).
-    + injection Hl as <- ->.
-      apply Forall_app in HL as [_ HL]; inversion HL as [| ? ? [_ Hm] Hl']; subst.
-      rewrite binders_app, (Hm x p m eq_refl).
-      assert (H0 : binders l = 0).
-      { clear - Hl'; induction Hl' as [| e l [He _] _ IH]; [ reflexivity |].
-        change (binders (e :: l)) with (scope_entry_binders e + binders l); rewrite He, IH; reflexivity. }
-      rewrite H0; reflexivity.
-  - exact (HS l x p m S2 Hl).
-Qed.
-
-(** A scope with no member is counted. *)
-Lemma counted_no_mem : forall S, (forall x p m, ~ In (scope_entry_mem x p m) S) -> mems_counted S.
-Proof.
-  intros S Hn S1 x p m S2 ->; exfalso; apply (Hn x p m), in_or_app; right; left; reflexivity.
-Qed.
-
-(** Entries that are no members, binders or not, pushed on a counted
-    scope keep it counted: a member's count is about what lies outside
-    it. *)
-Lemma counted_push : forall L S, mems_counted S -> (forall x p m, ~ In (scope_entry_mem x p m) L) -> mems_counted (L ++ S).
-Proof.
-  intros L S HS Hn S1 x p m S2 Heq.
-  apply app_eq_app in Heq as (l & [[-> Hl] | [-> Hl]]).
-  - destruct l as [| e l]; cbn in Hl.
-    + subst S; exact (HS nil x p m S2 eq_refl).
-    + injection Hl as <- ->. exfalso; apply (Hn x p m), in_or_app; right; left; reflexivity.
-  - exact (HS l x p m S2 Hl).
-Qed.
-
-(** The new entries of a command, as [counted_app] needs them *)
-Lemma mems_fresh : forall {A} (f : A -> string) (g : A -> qname) n S xs,
-    n = binders S ->
-    Forall (fun e => scope_entry_binders e = 0 /\ forall x p m, e = scope_entry_mem x p m -> m = binders S)
-      (rev (map (fun a => scope_entry_mem (f a) (g a) n) xs)).
-Proof.
-  intros A f g n S xs ->; apply Forall_rev, Forall_map, Forall_forall; intros a _.
-  split; [ reflexivity | intros x p m [=]; congruence ].
-Qed.
-
 Section Counts.
   Variable fp : path.
 
-  (** A command keeps its scope counted. *)
-  Lemma spec_cmd_mems_counted : forall ch P S c S' c',
-      spec_cmd fp ch P S c S' c' -> mems_counted S -> mems_counted S'.
-  Proof.
-    intros * H HS; destruct H; try exact HS.
-    all: first
-      [ change (scope_entry_mem ?y ?qy ?n :: S) with ((scope_entry_mem y qy n :: nil) ++ S);
-        apply counted_app; [ exact HS | constructor; [ split; [ reflexivity | intros ? ? ? [=]; congruence ] | constructor ] ]
-      | change (scope_entry_unit ?fq :: S) with ((scope_entry_unit fq :: nil) ++ S);
-        apply counted_app; [ exact HS | constructor; [ split; [ reflexivity | intros ? ? ? [=] ] | constructor ] ]
-      | apply counted_app; [ exact HS | apply mems_fresh; reflexivity ] ].
-  Qed.
-
-  (** So does a run of commands: each command [c] of a frame, after the
-      commands [cs0], reads a counted scope. *)
-  Lemma spec_cmds_mems_counted : forall ch P cs0 c cs1 S ccs,
-      spec_cmds fp ch P S (cs0 ++ c :: cs1) ccs -> mems_counted S ->
-      exists S1 S1' c', spec_cmd fp ch P S1 c S1' c' /\ mems_counted S1.
-  Proof.
-    intros ch P cs0; induction cs0 as [| c0 cs0 IH]; intros c cs1 S ccs H HS; inversion H; subst.
-    - do 3 eexists; split; eassumption.
-    - eapply IH; [ eassumption | eapply spec_cmd_mems_counted; eassumption ].
-  Qed.
-
-  (** A nested module's scope is counted when its enclosing one is: its
-      parameters are no members. *)
-  Lemma mod_scope_counted : forall ps S, mems_counted S -> mems_counted (param_scope_entries ps ++ S).
-  Proof.
-    intros ps S HS; apply counted_push; [ exact HS |].
-    intros x p m Hin; unfold param_scope_entries in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
-  Qed.
-
-  (** So is a record's with-area's scope: its value and parameters are no
-      members, and the record and its fields count the binders outside
-      them. *)
-  Lemma record_scope_counted : forall ch n x ps fs S,
-      n = binders S -> mems_counted S ->
-      mems_counted (record_scope_entries fp ch n x ps fs ++ scope_entry_mem x (q_abs fp (ch ++ x :: nil)) n :: S).
-  Proof.
-    intros * -> HS. unfold record_scope_entries. rewrite <- app_assoc.
-    apply counted_app.
-    - change (scope_entry_self :: param_scope_entries ps ++ scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: S)
-        with ((scope_entry_self :: param_scope_entries ps) ++ (scope_entry_mem x (q_abs fp (ch ++ x :: nil)) (binders S) :: nil) ++ S).
-      apply counted_push; [ apply (counted_app (_ :: nil) S); [ exact HS | constructor; [ split; [ reflexivity | intros ? ? ? [=]; congruence ] | constructor ] ] |].
-      intros y p m [Hin | Hin]; [ discriminate |]; unfold param_scope_entries in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
-    - unfold filed_mems; apply mems_fresh. rewrite (binders_app (scope_entry_self :: param_scope_entries ps)), binders_mem. reflexivity.
-  Qed.
 End Counts.
-
-(** A member a name denotes, in a counted scope, is generalized over
-    exactly the binders outside its entry. *)
-Corollary bound_mem_counted : forall S x k y p m,
-    mems_counted S -> bound S x k (scope_entry_mem y p m) ->
-    exists S1 S2, S = S1 ++ scope_entry_mem y p m :: S2 /\ k = binders S1 /\ m = binders S2.
-Proof.
-  intros * HS [S1 S2 Heq _ _ Hk]; exists S1, S2; split; [ exact Heq | split; [ exact Hk | exact (HS _ _ _ _ _ Heq) ] ].
-Qed.
-
-(** The leading scope has no member, so a unit's frame starts counted. *)
-Lemma spec_lead_no_mem : forall L cs L' lds,
-    spec_lead L cs L' lds -> (forall x p m, ~ In (scope_entry_mem x p m) L) -> forall x p m, ~ In (scope_entry_mem x p m) L'.
-Proof.
-  induction 1 as [| L fq cs L' lds _ IH | L fq ip args its o E cs L' lds _ _ _ IH]; intros Hn; [ exact Hn | |].
-  - apply IH; intros x p m [[=] | Hin]; exact (Hn x p m Hin).
-  - apply IH; intros x p m Hin; apply in_app_or in Hin as [Hin | Hin]; [| exact (Hn x p m Hin) ].
-    unfold open_scope_entries in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
-Qed.
-
-(** The scope a unit's frame starts in, its parameters over the leading
-    scope ([elab_spec_intro]), is counted. *)
-Lemma elab_spec_frame_counted : forall leads ps L lds,
-    spec_lead nil leads L lds -> mems_counted (param_scope_entries ps ++ L).
-Proof.
-  intros * Hl; apply counted_no_mem; intros x p m Hin; apply in_app_or in Hin as [Hin | Hin].
-  - unfold param_scope_entries in Hin; apply in_rev, in_map_iff in Hin as (? & [=] & _).
-  - exact (spec_lead_no_mem _ _ _ _ Hl (fun _ _ _ H => H) x p m Hin).
-Qed.
 
 (** ** Units *)
 

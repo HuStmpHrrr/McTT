@@ -188,14 +188,6 @@ Qed.
 Definition relation_domain (f : aczel_set) : aczel_set :=
   family_set (aczel_index f) (fun a => pair_first (aczel_element f a)).
 
-Lemma relation_domain_graph : forall S F, set_eq (relation_domain (graph_set S F)) S.
-Proof.
-  intros S F. destruct S as [I e]. cbn [graph_set relation_domain aczel_index aczel_element family_set].
-  apply set_eq_intro; intros z Hz; apply set_mem_family in Hz as [a E]; cbn in a, E.
-  - exists a. eapply set_eq_trans; [exact E | apply pair_first_ordered_pair].
-  - apply set_mem_family. exists a. cbn. eapply set_eq_trans; [exact E | apply set_eq_sym; apply pair_first_ordered_pair].
-Qed.
-
 Lemma relation_domain_resp : forall f g, set_eq f g -> set_eq (relation_domain f) (relation_domain g).
 Proof.
   intros f g E. apply set_eq_intro; intros z Hz; apply set_mem_family in Hz as [a Ea].
@@ -414,35 +406,6 @@ Definition sigma_set (S : aczel_set) (F : aczel_set -> aczel_set) : aczel_set :=
   family_set {a : aczel_index S & aczel_index (F (aczel_element S a))}
     (fun p => ordered_pair (aczel_element S (projT1 p)) (aczel_element (F (aczel_element S (projT1 p))) (projT2 p))).
 
-Lemma set_mem_sigma : forall p S F, respects_set_eq_fun F ->
-    (set_mem p (sigma_set S F) <-> exists x y, set_mem x S /\ set_mem y (F x) /\ set_eq p (ordered_pair x y)).
-Proof.
-  intros p S F HF. split.
-  - intros [[a b] H]. exists (aczel_element S a), (aczel_element (F (aczel_element S a)) b).
-    split; [exists a; apply set_eq_refl |]. split; [exists b; apply set_eq_refl | exact H].
-  - intros [x [y [[a Ha] [Hy E]]]]. pose proof (set_mem_eq_r _ _ _ (HF _ _ Ha) Hy) as [b Hb].
-    exists (existT _ a b). cbn. eapply set_eq_trans; [exact E | apply ordered_pair_resp; auto].
-Qed.
-
-Lemma sigma_set_resp : forall S S' F G, respects_set_eq_fun F -> respects_set_eq_fun G -> set_eq S S' -> agree_on S F G ->
-    set_eq (sigma_set S F) (sigma_set S' G).
-Proof.
-  intros * HF HG ES EFG. apply set_eq_intro; intros p Hp.
-  - apply (set_mem_sigma _ _ _ HF) in Hp as [x [y [Hx [Hy E]]]]. apply (set_mem_sigma _ _ _ HG). exists x, y.
-    split; [eapply set_mem_eq_r; eauto | split; [eapply set_mem_eq_r; [apply EFG; exact Hx | exact Hy] | exact E]].
-  - apply (set_mem_sigma _ _ _ HG) in Hp as [x [y [Hx [Hy E]]]].
-    assert (HxS : set_mem x S) by (eapply set_mem_eq_r; [apply set_eq_sym; exact ES | exact Hx]).
-    apply (set_mem_sigma _ _ _ HF). exists x, y.
-    split; [exact HxS | split; [eapply set_mem_eq_r; [apply set_eq_sym; apply EFG; exact HxS | exact Hy] | exact E]].
-Qed.
-
-(** ** Functions Respecting Equality on a Set
-
-    A binder's body is fixed only at the values of its domain; the
-    restriction of such a function to the domain respects equality
-    everywhere and agrees with it on the domain. *)
-
-(** [F] respects equality at the members of [S]. *)
 Definition respects_on (S : aczel_set) (F : aczel_set -> aczel_set) : Prop :=
   forall x y, set_mem x S -> set_eq x y -> set_eq (F x) (F y).
 

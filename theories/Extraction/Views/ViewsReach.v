@@ -327,13 +327,6 @@ Section Fixed_GCtx.
     exact (valid_gctx_embedding_ind_field _ _ _ _ (valid_gctx_embedding_refl _ _ Hg) _ _ Hl).
   Qed.
 
-  (** So is a filed record. *)
-  Lemma valid_record_decl_gc : forall p R, ⊢ᵍ gc_deps ⍮ gc_stack -> record_lookup gc_deps gc_stack p = Some R -> valid_record_decl R.
-  Proof.
-    intros p R Hg Hl; destruct GC as [Θ Ξ]; cbn in *.
-    exact (valid_gctx_embedding_record _ _ _ _ (valid_gctx_embedding_refl _ _ Hg) _ _ Hl).
-  Qed.
-
   (** A normal form without proofs equal, up to proofs, to the normal form
       of a term is that normal form ([nf_ne_proof_free_eq]). *)
   Lemma nbe_of_proof_free_upto : forall Γ P T R V, nf_proof_free R -> nbe_f Γ P T V -> nf_eq_upto_proofs V R -> nbe_f Γ P T R.
@@ -396,12 +389,6 @@ Section Fixed_GCtx.
   Proof.
     induction L as [| L IH]; intros x; cbn; [ unfold wk_shiftn; lia |].
     unfold wk_compose, wk_shift; rewrite IH; unfold wk_shiftn; lia.
-  Qed.
-
-  Lemma apps_head_args : forall M, apps (app_head M) (app_args M) = M.
-  Proof.
-    induction M; try reflexivity.
-    cbn [app_head app_args]; rewrite apps_exp_app; cbn; rewrite IHM1; reflexivity.
   Qed.
 
   Lemma app_head_apps : forall M Ns, app_head (apps M Ns) = app_head M.
@@ -670,22 +657,8 @@ Section Fixed_GCtx.
     rewrite <- (proj1 nf_ne_proof_free_eq W Hpf W'' HE) in HW2; exact HW2.
   Qed.
 
-  (** The normal form of a chain of [Π]s, its own, ends in the normal
-      form of the end under the domains. *)
-  Lemma nbe_ty_pis : forall Bs Γ E W, type_nf W -> nbe_ty_f Γ (nf_to_exp W) W -> nf_to_exp W = pis Bs E ->
-      exists WE, type_nf WE /\ nbe_ty_f (doms_ctx Bs ++ Γ) E WE /\ nf_to_exp WE = E.
-  Proof.
-    induction Bs as [| B Bs IH]; intros Γ E W HW HnW HWe; cbn in HWe.
-    - exists W; rewrite HWe in HnW; auto.
-    - destruct (nf_pi_view _ _ _ HW HWe) as (W1 & W2 & -> & HW2 & HW1e & HW2e).
-      cbn [nf_to_exp] in HnW.
-      destruct (nbe_ty_pi_inv _ _ _ _ _ _ _ _ HnW) as (WB & WC & [= <- <-] & _ & HC).
-      rewrite HW1e in HC.
-      unfold doms_ctx in *; cbn [List.map List.rev]; rewrite <- List.app_assoc.
-      apply (IH _ _ _ HW2); [ exact HC | exact HW2e ].
-  Qed.
-
-  (** The same for a proof-free normal form, whose end is proof-free. *)
+  (** The normal form of a chain of [Π]s, its own and proof-free, ends in
+      a proof-free normal form of the end under the domains. *)
   Lemma nbe_ty_pis_proof_free : forall Bs Γ E W, type_nf W -> nf_proof_free W -> nbe_ty_f Γ (nf_to_exp W) W ->
       nf_to_exp W = pis Bs E ->
       exists WE, type_nf WE /\ nf_proof_free WE /\ nbe_ty_f (doms_ctx Bs ++ Γ) E WE /\ nf_to_exp WE = E.
@@ -747,37 +720,6 @@ Section Fixed_GCtx.
     rewrite List.nth_error_app1 by (rewrite length_tele_insts by exact Hass; rewrite List.length_firstn; unfold ind_nu in *; lia).
     rewrite HC, (List.map_ext (fun C => C[φ]ʷ) (fun M => M[ι φ]) (fun M => eq_sym (exp_sub_of_wk M φ))).
     rewrite (tele_insts_closed_sub _ _ _ _ _ Hass Hsc HT), exp_sub_of_wk; reflexivity.
-  Qed.
-
-  (** A term's normal form at equal types is one up to its proofs: a kept
-      proof is read back at the type, whose normal form may differ in its
-      own proofs. *)
-  Lemma nbe_conv_typ_upto : forall Γ M A A' W Srt, Γ ⊢ M : A -> type_sort Srt -> Γ ⊢ A ≈ A' : Srt -> nbe_f Γ M A W ->
-      exists W', nbe_f Γ M A' W' /\ nf_eq_upto_proofs W W'.
-  Proof.
-    intros * HM HS HAA' HW.
-    assert (HA't : Γ ⊢ A' : Srt) by (gen_presups; assumption).
-    pose proof (wf_conv_sort _ _ _ _ _ _ _ HM HA't HS HAA') as HM'.
-    destruct (soundness HM') as (W' & HW' & _).
-    exists W'; split; [ exact HW' |].
-    exact (completeness_at_equal_types HS (wf_exp_eq_refl HM) HAA' HW HW').
-  Qed.
-
-  (** The normal form of a term's normal form is it, up to its proofs. *)
-  Lemma nbe_self_upto : forall Γ M A W, Γ ⊢ M : A -> nbe_f Γ M A W ->
-      exists W', nbe_f Γ (nf_to_exp W) A W' /\ nf_eq_upto_proofs W W'.
-  Proof.
-    intros * HM HW.
-    destruct (completeness (soundness' HM HW)) as (W1 & W' & HW1 & HW2 & HWW).
-    pose proof (functional_nbe _ _ _ _ _ HW HW1) as <-; exists W'; split; assumption.
-  Qed.
-
-  (** A proof-free one is its own. *)
-  Lemma nbe_self : forall Γ M A W, Γ ⊢ M : A -> nbe_f Γ M A W -> nf_proof_free W -> nbe_f Γ (nf_to_exp W) A W.
-  Proof.
-    intros * HM HW Hpf.
-    destruct (nbe_self_upto _ _ _ _ HM HW) as (W' & HW' & HWW).
-    rewrite <- (proj1 nf_ne_proof_free_eq _ Hpf _ HWW) in HW'; exact HW'.
   Qed.
 
   (** The record end of a normal form the classification finds a record
@@ -956,15 +898,6 @@ Proof.
     match goal with Hn' : nbes _ _ _ _ _ ?Ws' |- _ => tryif unify Ws' Ws then fail else
       rewrite (nbes_functional _ _ _ _ _ _ _ Hn' Hn) end.
     f_equal; apply IH; assumption.
-Qed.
-
-(** The siblings of a view depend on its container's group and its
-    instance only. *)
-Lemma view_siblings_same : forall Θ Ξ R qc k k' Cs ss ss', view_siblings Θ Ξ R (vk_ind qc k Cs) ss -> view_siblings Θ Ξ R (vk_ind qc k' Cs) ss' ->
-    ss = ss'.
-Proof.
-  intros * H H'; inversion H as [? ? ? D1 ? Hl1 Hs1 |]; inversion H' as [? ? ? D2 ? Hl2 Hs2 |]; subst.
-  rewrite Hl1 in Hl2; injection Hl2 as <-; exact (siblings_from_functional _ _ _ _ _ _ _ _ _ Hs1 Hs2).
 Qed.
 
 Lemma nbes_nth : forall Θ Ξ Γ Ms As Ws, nbes Θ Ξ Γ Ms As Ws ->
@@ -1381,34 +1314,6 @@ Section NestKeys.
     exact (H _ _ HlT Ht).
   Qed.
 
-  (** The conditions of [classify_in_nf] key each instance it finds: its
-      arguments are typed over [Γu], so they have normal forms. *)
-  Corollary nest_key_exists : forall Δ Γu T W (i : nat) nu np n pat gw,
-      all_assumptions Δ -> List.length Δ = List.length pat + (np - nu) ->
-      Δ ++ Γu ⊢ T : Typeω@i -> nbe_ty_f (Δ ++ Γu) T W -> nf_proof_free W ->
-      classify_arg (grp_info gc_deps gc_stack) (rec_info gc_deps gc_stack) nu np n pat (nf_to_exp W) = Some gw ->
-      exists g, written_carg_key gc_deps gc_stack Γu gw g.
-  Proof.
-    intros * Hass Hlen HT HW HpfW Hcls.
-    assert (Hinst : forall x, In x (classified_carg_view gw) -> exists y, view_inst_key gc_deps gc_stack Γu x y).
-    { intros [qc k Cs | qr Is] Hx.
-      - destruct (nest_view_typed _ _ _ _ _ _ _ _ _ _ _ _ _ Hass Hlen HT HW HpfW Hcls Hx) as [D Hl _ HCl HCt HΓu].
-        destruct (decl_of_lookup _ _ _ _ _ HΓu Hl) as [Hdt _].
-        destruct (nbes_exist Γu (ind_uparams D) Cs (decl_typed_ass _ _ _ Hdt) ltac:(rewrite HCl; reflexivity) HCt) as [Ws HWs].
-        exists (vk_ind qc k Ws); econstructor; [ exact Hl | exact HWs ].
-      - destruct (nest_record_view_typed _ _ _ _ _ _ _ _ _ _ _ _ Hass Hlen HT HW HpfW Hcls Hx) as [Rr Hl HCl HCt HΓu].
-        pose proof (record_lookup_typed _ _ (ctx_wf_gctx _ _ _ HΓu) (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ HΓu)) _ _ Hl) as HRt.
-        destruct (nbes_exist Γu (record_params Rr) Is (typed_params_ass _ _ _ HRt) HCl HCt) as [Ws HWs].
-        exists (vk_record qr Ws); econstructor; [ exact Hl | exact HWs ]. }
-    destruct gw as [κ A | tw]; [ eexists; constructor |].
-    cbn [classified_carg_view] in Hinst.
-    assert (Ht : exists tc, written_ptyp_key gc_deps gc_stack Γu tw tc).
-    { clear - Hinst; induction tw as [j Ps | x Ns | B tw IH]; cbn in Hinst.
-      - eexists; constructor.
-      - destruct (Hinst x (or_introl eq_refl)) as [y Hy]; eexists; constructor; exact Hy.
-      - destruct (IH Hinst) as [tc Htc]; eexists; constructor; exact Htc. }
-    destruct Ht as [tc Htc]; eexists; constructor; exact Htc.
-  Qed.
 End NestKeys.
 
 (** ** Where a Constructor's Classified Arguments Meet an Instance *)

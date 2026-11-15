@@ -24,13 +24,6 @@ Section KindsEval.
 
   (** *** Renaming by the Identity *)
 
-  Lemma modexp_member_kind_id : forall ρ ρ', kinds_rename Θ Ξ wk_id ρ ρ' -> forall H ch k, modexp_member_kind Θ Ξ ρ H ch k <-> modexp_member_kind Θ Ξ ρ' H ch k.
-  Proof.
-    intros * K H ch k.
-    rewrite <- (proj1 (kind_rename Θ Ξ) H wk_id ρ ρ' K), modexp_wk_id_ext by (intros x; reflexivity).
-    reflexivity.
-  Qed.
-
   (** Of an expanded unit, as kinds read units ([gunit_expand]). *)
   Lemma gunit_member_kind_id : forall ρ ρ', kinds_rename Θ Ξ wk_id ρ ρ' -> forall U ch k,
       gunit_member_kind Θ Ξ ρ (gunit_expand U) ch k <-> gunit_member_kind Θ Ξ ρ' (gunit_expand U) ch k.
@@ -104,15 +97,6 @@ Section KindsEval.
     - apply Forall_app; split; [ apply Forall_forall; intros e He; apply repeat_spec in He as ->; reflexivity | repeat constructor ].
     - apply Forall_app; split; [ apply Forall_forall; intros e He; apply repeat_spec in He as ->; reflexivity | repeat constructor ].
     - apply kinds_shape_refl.
-  Qed.
-
-  Lemma kinds_shape_args_pad : forall ρ vts n, List.length vts = n -> kinds_shape (env_extend_typed ρ vts) (kinds_pads n ρ).
-  Proof.
-    intros * <-; rewrite env_extend_typed_rev; unfold kinds_pads; apply kinds_shape_terms.
-    - rewrite length_rev, length_map, repeat_length; reflexivity.
-    - apply Forall_rev, Forall_map, Forall_forall; reflexivity.
-    - apply Forall_forall; intros e He; apply repeat_spec in He as ->; reflexivity.
-    - split; [ intros x; apply kinds_equiv_refl | reflexivity ].
   Qed.
 
   (** *** Global Modules *)
@@ -204,17 +188,6 @@ Section KindsEval.
   Qed.
 
   (** *** The Kinds a Body Gives Its Names *)
-
-  Lemma gunit_member_kind_gens_other : forall gs Φ k ρ sm y ch kk, existsb (String.eqb y) (map generated_item_name gs) = false ->
-      gunit_member_kind Θ Ξ ρ (gu_mk nil (md_body sm (gens_append Φ k gs))) (y :: ch) kk <->
-      gunit_member_kind Θ Ξ ρ (gu_mk nil (md_body sm Φ)) (y :: ch) kk.
-  Proof.
-    induction gs as [| g gs IH]; intros * Hn; cbn [gens_append]; [ reflexivity |].
-    cbn [map existsb] in Hn; apply Bool.orb_false_iff in Hn as [Hy Hn].
-    unfold generated_item_name in Hy; destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [fst] in Hy.
-    rewrite IH by exact Hn; apply gunit_member_kind_body_ext_other.
-    intros ->; rewrite String.eqb_refl in Hy; discriminate.
-  Qed.
 
   Lemma gm_prefix_name : forall Φ y Φ0 z E, gm_prefix_upto Φ y = Some (gm_ext Φ0 z E) -> z = y.
   Proof.
@@ -317,12 +290,6 @@ Section KindsEval.
   Qed.
 
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
-
-  Lemma gm_item_prefix_exclusive : forall Φ x r, gm_item_upto Φ x = Some r -> gm_prefix_upto Φ x = None.
-  Proof.
-    intros * Hi; destruct (gm_prefix_upto Φ x) eqn:E; [| reflexivity ].
-    rewrite (gm_prefix_item_exclusive _ _ _ E) in Hi; discriminate.
-  Qed.
 
   (** *** The Kinds of Values *)
 

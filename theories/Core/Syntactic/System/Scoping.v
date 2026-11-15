@@ -313,10 +313,6 @@ Lemma gunit_scoped_wk : forall U n m φ,
     gunit_scoped n U -> (forall x, x < n -> φ x < m) -> gunit_scoped m (gunit_wk U φ).
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_scoped_wk)))). Qed.
 
-Lemma centry_scoped_wk : forall e n m φ,
-    centry_scoped n e -> (forall x, x < n -> φ x < m) -> centry_scoped m (centry_wk e φ).
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk))))))). Qed.
-
 Corollary exp_scoped_shift : forall M n, exp_scoped n M -> exp_scoped (S n) M[↑]ʷ.
 Proof. intros; eapply exp_scoped_wk; [ eassumption |]; cbn; lia. Qed.
 
@@ -748,9 +744,6 @@ Proof. intros; eapply exp_scoped_wk_id; [ eassumption | lia ]. Qed.
 Corollary exp_closed_sub : forall M σ, exp_scoped 0 M -> M[σ] = M.
 Proof. intros; eapply exp_scoped_sub_id; [ eassumption | lia ]. Qed.
 
-Corollary gunit_closed_wk : forall U φ, gunit_scoped 0 U -> gunit_wk U φ = U.
-Proof. intros; eapply (proj1 (proj2 (proj2 (proj2 syn_scoped_wk_id)))); [ eassumption | lia ]. Qed.
-
 Corollary gunit_closed_sub : forall U σ, gunit_scoped 0 U -> U[σ]ᵘ = U.
 Proof. intros; eapply (proj1 (proj2 (proj2 (proj2 syn_scoped_sub_id)))); [ eassumption | lia ]. Qed.
 
@@ -766,14 +759,6 @@ Proof.
   intros; eapply tele_sub_id_gen; [| eassumption | lia ].
   apply List.Forall_forall; intros e _ n τ He Hτ.
   exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_sub_id)))))) _ _ _ He Hτ).
-Qed.
-
-Lemma tele_wk_scoped : forall Δ n m φ,
-    ctx_scoped n Δ -> (forall x, x < n -> φ x < m) -> ctx_scoped m (tele_wk Δ φ).
-Proof.
-  intros; eapply tele_wk_scoped_gen; [| eassumption | assumption ].
-  apply List.Forall_forall; intros e _ k l ψ He Hψ.
-  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk)))))) _ _ _ _ He Hψ).
 Qed.
 
 Lemma tele_sub_scoped : forall Δ n m σ,
@@ -896,12 +881,6 @@ Proof.
       first [ rewrite <- (length_body_ctx _ Ho); assumption | rewrite <- (length_body_ctx Φ' Ho'); assumption ].
 Qed.
 
-Lemma gens_append_scoped_prefix : forall gs Φ k n, gmod_scoped n (gens_append Φ k gs) -> gmod_scoped n Φ.
-Proof.
-  induction gs as [| g gs IH]; intros * H; cbn in H; [ assumption |].
-  destruct (generated_item_entry g); apply IH in H; destruct H; assumption.
-Qed.
-
 (** A body followed by a fragment is scoped when both are, the fragment
     over the body. *)
 Lemma gmod_scoped_graft : forall Φg Φ n,
@@ -1022,28 +1001,6 @@ Proof.
     (split; [ destruct (gm_fill Φ) | destruct (gm_fill Φ') ]; cbn; congruence).
 Qed.
 
-(** The opens of two bodies of the same shape correspond. *)
-Lemma body_opens_nth : forall Θ Ξ Γ Γ' Φ Φ' Φx Φx' k p,
-    body_xp Θ Ξ Γ Φ Φx -> body_xp Θ Ξ Γ' Φ' Φx' -> body_shape Φ Φ' ->
-    nth_error (body_opens Φ Φx) k = Some p -> exists p', nth_error (body_opens Φ' Φx') k = Some p'.
-Proof.
-  intros * Hx Hx' Hs Hk.
-  destruct (nth_error (body_opens Φ' Φx') k) as [p' |] eqn:E; [ eauto |].
-  apply nth_error_None in E; rewrite (body_opens_length _ _ _ _ _ Hx'), <- (body_shape_nopens _ _ Hs),
-    <- (body_opens_length _ _ _ _ _ Hx) in E.
-  assert (k < length (body_opens Φ Φx)) by (apply nth_error_Some; congruence); lia.
-Qed.
-
-(** ** Inductive Types
-
-    A declaration is closed: its parameters are a closed telescope of
-    assumptions, its sort is in the uniform ones, and the types of the
-    arguments of its constructors are in the parameters and the
-    non-recursive arguments before them; the components of a shape too,
-    each under the domains before it. *)
-
-(** A shape is scoped at [n]: each domain under those before it, and the
-    leaf's parameters under all of them. *)
 Fixpoint ptyp_scoped (n : nat) (t : ptyp) : Prop :=
   match t with
   | pt_pi B t => exp_scoped n B /\ ptyp_scoped (S n) t
@@ -1442,14 +1399,6 @@ Proof.
   induction ch as [| y ch IH]; intros H HH; cbn; [ exact HH | apply IH; exact HH ].
 Qed.
 
-Lemma qname_term_scoped : forall p n, exp_scoped n (qname_term p).
-Proof.
-  intros [fp ch] n; unfold qname_term; cbn [q_unit q_chain].
-  generalize (me_unit fp) (I : modexp_scoped n (me_unit fp)).
-  induction ch as [| y ch IH]; intros H HH; [ exact I |].
-  destruct ch as [| z ch]; [ exact HH | apply IH; exact HH ].
-Qed.
-
 (** The blocks' binder counts are the members': the premise of the
     eliminator's rules that the lemmas below need. *)
 Definition blocks_binder_count_ok (D : ind_decl) (Bks : list eblock) : Prop :=
@@ -1477,14 +1426,6 @@ Proof.
   - apply List.Forall_map; eapply List.Forall_impl; [| exact Hl ]; intros P HP; eapply exp_scoped_wk; eassumption.
   - destruct Hl as [HB Hl]; split; [ eapply exp_scoped_wk; eassumption | eapply IH; [ exact Hl | apply wk_q_bound; exact Hφ ] ].
   - eapply IH; [ exact Hl | apply wk_qn_bound; exact Hφ ].
-Qed.
-
-Lemma leaf_scoped_mono : forall l n m, n <= m -> leaf_scoped n l -> leaf_scoped m l.
-Proof.
-  induction l as [j Ps | B l IH | f ns l IH]; intros * Hle Hl; cbn in *.
-  - eapply List.Forall_impl; [| exact Hl ]; intros; eapply exp_scoped_mono; eassumption.
-  - destruct Hl as [HB Hl]; split; [ eapply exp_scoped_mono; eassumption | eapply IH; [| exact Hl ]; lia ].
-  - eapply IH; [| exact Hl ]; lia.
 Qed.
 
 (** The leaf paths of a shape scoped at [m] binders above the [nu]
@@ -2221,35 +2162,6 @@ Proof.
   - destruct (stack_closed_in _ _ _ _ HΞ Hin) as (T & HU).
     exact (proj1 (unit_closed_mod _ _ HU) _ _ Hm).
   - exact (proj1 (unit_closed_mod _ _ (HΘ _ _ Hl)) _ _ Hm).
-Qed.
-
-(** Every entry of a closed body is closed. *)
-Lemma body_closed_entry : forall Φ k ip E, body_closed k Φ -> gm_entry Φ ip = Some E -> entry_closed E.
-Proof.
-  fix IH 1; intros [| Φ y E0 | Φ H its] k ip E HΦ He; cbn in HΦ, He; [ discriminate | | contradiction ].
-  destruct HΦ as [HΦ HE]; destruct ip as [| x ip]; [ discriminate |].
-  destruct (String.eqb x y); [| exact (IH _ _ _ _ HΦ He) ].
-  destruct ip as [| z ip].
-  - injection He as <-.
-    destruct E0 as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Aa Ma Ua | pv pr Rr Φ1]; cbn;
-      first [ exact HE | exact I | exact (proj1 HE) ].
-  - destruct E0 as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Aa Ma Ua | pv pr Rr Φ1]; try discriminate.
-    + exact (IH _ _ _ _ (proj2 (proj2 HE)) He).
-    + exact (IH _ _ _ _ (proj2 HE) He).
-    + exact (IH _ _ _ _ (proj2 HE) He).
-Qed.
-
-(** Every entry of a closed global context is closed. *)
-Lemma gctx_closed_entry : forall Θ Ξ p E,
-    gctx_closed Θ Ξ -> gc_entry Θ Ξ p = Some E -> entry_closed E.
-Proof.
-  intros * [HΘ HΞ] He; unfold gc_entry, gc_entry_u in He.
-  destruct (gs_find Ξ p) as [[U ip] |] eqn:Hf.
-  - destruct (gs_find_unit _ _ _ _ Hf) as (mp & K & Hin & _).
-    destruct (stack_closed_in _ _ _ _ HΞ Hin) as (T & _ & HU).
-    exact (body_closed_entry _ _ _ _ HU He).
-  - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
-    exact (body_closed_entry _ _ _ _ (proj2 (HΘ _ _ Hl)) He).
 Qed.
 
 Lemma gctx_closed_module : forall Θ Ξ p r,

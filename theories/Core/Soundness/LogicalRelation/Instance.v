@@ -215,17 +215,6 @@ Proof.
   apply HM; eapply glu_rel_sub_inst_of_wk_comp; eassumption.
 Qed.
 
-(** The same for a unit. *)
-Lemma glu_rel_unit_under_sub_wk : forall {Σ Σ' U φ},
-    glu_rel_unit_under_sub Σ U ->
-    Σ' ⊢ʷ φ : Σ ->
-    glu_rel_unit_under_sub Σ' (gunit_wk U φ).
-Proof.
-  intros * HU Hφ Γ τ Hτ.
-  rewrite <- gunit_sub_of_wk, gunit_sub_sub.
-  apply HU; eapply glu_rel_sub_inst_of_wk_comp; eassumption.
-Qed.
-
 (** A type of a sort of types glued at its instances is glued at each,
     at the sort. *)
 Lemma glu_rel_exp_under_sub_inst_sort : forall {Γ Δ τ A S},

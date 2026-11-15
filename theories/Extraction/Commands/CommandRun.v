@@ -1109,16 +1109,6 @@ Section Impl.
     apply (ui_dom _ _ _ _ _ _ Hli2), (sub_dom _ _ _ Hs), (ui_dom _ _ _ _ _ _ Hli1), Hx.
   Qed.
 
-  (** The imports of a later command include those of an earlier one. *)
-  Lemma dom_grows_cmd {ch Θ1 K1 D1 B1 RbR1 ΘR1 Ξ1 Θ2 K2 D2 B2 RbR2 ΘR2 Ξ2 c} :
-    unit_invariant ch Θ1 K1 D1 ΘR1 Ξ1 -> canon RbR1 ΘR1 -> ΘR1 ⍮ Ξ1 ⍮ B1 ⍮ RbR1 ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR2 ⍮ Ξ2 ⍮ B2 ⍮ RbR2 ->
-    unit_invariant ch Θ2 K2 D2 ΘR2 Ξ2 -> incl D1 D2.
-  Proof.
-    intros Hli1 Hc Hr Hli2 x Hx.
-    destruct (unit_invariant_run_wf Hli1 Hc Hr) as (_ & _ & Hs & _).
-    apply (ui_dom _ _ _ _ _ _ Hli2), (sub_dom _ _ _ Hs), (ui_dom _ _ _ _ _ _ Hli1), Hx.
-  Qed.
-
   (** A core command, then the rest *)
   Lemma core_cons_ok {ch Θ K D B Ξ c cs r1 r2} :
     post_cmd ch Θ K D B Ξ c r1 ->
@@ -1414,10 +1404,6 @@ Section Impl.
     pose proof (run_cmds_empty _ _ _ _ _ _ _ _ _ _ _ _ Hr1) as HΞ; rewrite HΞ in Hr1, Hli1.
     exists ΘR1, RbR1; exact (conj Hr1 (conj HΞ (conj Hli1 (conj Hrb1 (conj He1 Hg1))))).
   Qed.
-
-  Lemma unit_gctx {ch Θ K imps r1} :
-    global_invariant ch Θ K -> post_cmds ch Θ K nil builtins_empty nil imps r1 -> ⊢ᵍ gds_restrict (run_state_core_imports r1) (run_state_core_deps r1) ⍮ nil.
-  Proof. intros G Hp; destruct (unit_imports G Hp) as (ΘR1 & _ & _ & _ & Hli1 & _); exact (unit_invariant_restrict_gctx Hli1). Qed.
 
   Lemma unit_body_pre {fp ch Θ K imps r1 P l} : fp <> nil ->
     global_invariant (fp :: ch) Θ K -> post_cmds (fp :: ch) Θ K nil builtins_empty nil imps r1 -> all_assumptions P ->

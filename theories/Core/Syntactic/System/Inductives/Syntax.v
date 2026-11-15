@@ -858,9 +858,6 @@ Proof.
   unfold brs_sub; apply map_ext; intros [[c k] B]; cbn; f_equal; apply exp_sub_sb_eq, sb_qn_cong, H.
 Qed.
 
-Lemma hd_error_blocks_sub : forall Bks τ, List.hd_error (blocks_sub Bks τ) = option_map (fun b => eblock_sub b τ) (List.hd_error Bks).
-Proof. intros [| b Bks] τ; reflexivity. Qed.
-
 (** The motive of the block at the member [m], moved, at the non-uniform
     parameters and the scrutinee moved. *)
 Lemma elim_type_sub : forall D Mm bm Ps M τ,
@@ -1105,17 +1102,6 @@ Proof.
   rewrite exp_sub_qn_of_wk, map_sub_of_wk; reflexivity.
 Qed.
 
-Lemma elim_ihs_wk_inst : forall r pq D k M c gs Bks Ps As φ,
-    decl_closed D -> ind_member D k = Some M -> In (c, gs) (im_cons M) -> List.length Ps = im_np D M ->
-    blocks_binder_count_ok D Bks ->
-    List.map (fun N => N[φ]ʷ) (elim_ihs r pq D (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) (im_nn M) gs As)
-    = elim_ihs r pq D (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) (blocks_wk Bks φ)
-        (sb_of_list Id (List.map (fun P => P[φ]ʷ) Ps)) (im_nn M) gs (List.map (fun N => N[φ]ʷ) As).
-Proof.
-  intros; rewrite <- !map_sub_of_wk; erewrite elim_ihs_sub_inst by eassumption.
-  rewrite blocks_sub_of_wk; reflexivity.
-Qed.
-
 Lemma ind_ty_wk : forall D k M φ, decl_closed D -> ind_member D k = Some M -> (ind_ty D M)[φ]ʷ = ind_ty D M.
 Proof. intros; apply exp_closed_wk; eapply decl_closed_ind_ty; eassumption. Qed.
 
@@ -1130,12 +1116,6 @@ Lemma params_insts_wk : forall D k M Ps φ,
     List.map (fun T => T[φ]ʷ) (tele_insts (im_params D M) Id Ps)
     = tele_insts (im_params D M) Id (List.map (fun P => P[φ]ʷ) Ps).
 Proof. intros; rewrite <- !map_sub_of_wk; eapply params_insts_sub; eassumption. Qed.
-
-Lemma cargs_insts_wk : forall pq D k M c gs Ps As φ,
-    decl_closed D -> ind_member D k = Some M -> ind_con M c = Some gs -> List.length Ps = im_np D M ->
-    List.map (fun T => T[φ]ʷ) (tele_insts (cargs_ctx pq D M gs) (sb_of_list Id Ps) As)
-    = tele_insts (cargs_ctx pq D M gs) (sb_of_list Id (List.map (fun P => P[φ]ʷ) Ps)) (List.map (fun N => N[φ]ʷ) As).
-Proof. intros; rewrite <- !map_sub_of_wk; eapply cargs_insts_sub; eassumption. Qed.
 
 Lemma ind_mty_wk : forall pq D j Us Ns φ,
     decl_closed D -> List.length Us = ind_nu D ->
@@ -1287,12 +1267,3 @@ Proof.
     - apply IH; intros i Mi Hi; replace (S s + i) with (s + S i) by lia; exact (Hms (S i) _ Hi). }
   apply H; intros i Mi' Hi; exact (proj1 (ind_block_members_member _ _ _ Hi)).
 Qed.
-
-Lemma view_wrap_wk : forall r pq qc D D' vm Us Uc Bks φ,
-    decl_closed D -> view_wrap_ok D D' vm -> List.length Us = ind_nu D -> blocks_binder_count_ok D Bks ->
-    decl_closed D' -> List.length Uc = ind_nu D' ->
-    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec D gs)%nat) ->
-    blocks_wk (view_wrap r pq qc D D' vm Us Uc Bks) φ
-    = view_wrap r pq qc D D' vm (List.map (fun U => U[φ]ʷ) Us) (List.map (fun U => U[φ]ʷ) Uc) (blocks_wk Bks φ).
-Proof. intros; rewrite <- !blocks_sub_of_wk, <- !map_sub_of_wk; apply view_wrap_sub; assumption. Qed.

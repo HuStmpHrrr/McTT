@@ -139,24 +139,6 @@ Proof.
       rewrite Hk in Hrd; exact Hrd.
 Qed.
 
-(** A type at an index [u] is a type at the large level [large_level u], which is
-    the index a context entry is glued at. *)
-Lemma glu_rel_typ_with_sub_universe_index : forall {u : universe_index} {Δ A σ ρ},
-    (exists a,
-        ⟦ A ⟧ ρ ↘ a /\
-          Dom a ≈ a ∈ per_univ u /\
-          forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) ->
-    glu_rel_typ_with_sub (large_level u) Δ A σ ρ.
-Proof.
-  intros * [a [Hae [[R HR] HaP]]].
-  assert (exists P El, DG a ∈ glu_univ_elem u ↘ P ↘ El) as [P [El HPEl]] by mauto 3.
-  assert (exists P' El', DG a ∈ glu_univ_elem (large_level u) ↘ P' ↘ El') as [P' [El' HPEl']]
-      by (eapply (glu_univ_elem_cumu_ge_universe_index (i := u)); [ apply universe_index_le_large_level | exact HPEl ]).
-  econstructor; [ exact Hae | exact HPEl' |].
-  eapply (glu_univ_elem_typ_cumu_ge_universe_index (i := u) (j := large_level u));
-    [ apply universe_index_le_large_level | exact HPEl | exact HPEl' | exact (HaP P El HPEl) ].
-Qed.
-
 (** Cumulativity of the gluing judgment, along the order of indices. *)
 Lemma glu_rel_exp_lift_universe_index : forall {Γ A} {u v : universe_index},
     universe_index_le u v ->

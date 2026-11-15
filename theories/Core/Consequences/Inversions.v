@@ -72,10 +72,6 @@ Qed.
 Lemma sort_kind_sort_exp_kind : forall S, type_sort S -> sort_kind S (sort_exp_kind S).
 Proof. intros * []; constructor. Qed.
 
-(** The kind of the sort at a kind is that kind. *)
-Lemma sort_exp_kind_abs_kind_sort : forall κ (i : nat), sort_exp_kind (abs_kind_sort κ Typeω@i) = κ.
-Proof. intros []; reflexivity. Qed.
-
 (** The value at an environment of a type of a sort is of the sort's
     kind. *)
 Lemma rel_value_kind_of_sort : forall {Γ X T R ρ ρ' x}, type_sort T -> Γ ⊨ X : T ->
@@ -465,20 +461,6 @@ Lemma exp_eq_of_nbe_ty_same : forall {Γ A A' S W W'},
 Proof.
   intros * HS HA HA' Hn Hn' HE.
   exact (soundness_upto_proofs HA HA' (nbe_ty_to_nbe_sort HS Hn) (nbe_ty_to_nbe_sort HS Hn') HE).
-Qed.
-
-(** The value at the initial environment of a type of a sort is of the
-    sort's kind ([sort_exp_kind]). *)
-Lemma initial_value_kind_of_sort : forall {Γ X T ρ x}, type_sort T -> Γ ⊢ X : T -> initial_env_f Γ ρ -> ⟦ X ⟧ ρ ↘ x ->
-    domain_kind x = sort_exp_kind T.
-Proof.
-  intros * HT HX Hρ Hx.
-  pose proof (completeness_fundamental_exp _ _ _ HX) as HXs.
-  pose proof HXs as [R HR _ _].
-  pose proof (wf_ctx_scoped_exp HX) as HsΓ.
-  destruct (per_ctx_then_per_env_initial_env HR HsΓ HsΓ) as (ρ0 & ρ0' & Hρ0 & Hρ0' & Hρρ).
-  assert (ρ0 = ρ) as -> by (eapply functional_initial_env; eassumption).
-  exact (rel_value_kind_of_sort HT HXs HR Hρρ Hx).
 Qed.
 
 (** Two types at sorts of one kind are types at the sort of the kind at

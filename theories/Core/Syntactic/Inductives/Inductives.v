@@ -399,15 +399,6 @@ Proof.
   unfold im_np in *; lia.
 Qed.
 
-Lemma ind_motive_args_length : forall {A} D M (as' : list A) x,
-    List.length as' = im_np D M ->
-    List.length (skipn (ind_nu D) as' ++ x :: nil) = S (im_nn M).
-Proof. intros * H; rewrite length_app, length_skipn; cbn; unfold im_np in *; lia. Qed.
-
-(** The telescope of the non-uniform parameters, outermost first. *)
-Lemma im_nn_tele_length : forall M, List.length (List.rev (im_nparams M)) = im_nn M.
-Proof. intros; rewrite length_rev; reflexivity. Qed.
-
 (** ** The Types of a Declaration
 
     What typing reads off a group [D] at [pq]: the types of the type
@@ -1065,14 +1056,6 @@ Proof.
       rewrite (Hc _ _ _ _ _ _ _ HM Hh Hcs) in Hr; discriminate Hr.
   - apply List.in_map_iff in Hin as (l1 & <- & Hl1); cbn [leaf_in leaf_size] in Hs |- *.
     exact (IH l1 ltac:(lia) t1 _ (ex_intro _ M HM) Hl1).
-Qed.
-
-(** At rank [0] below [1], every argument may be nested through. *)
-Lemma cargs_nest_ok_zero : forall D D' gs' gs, cargs_nest_ok D D' (fun _ => 0) 1 gs' gs.
-Proof.
-  intros D D'; induction gs' as [| g' gs' IH]; intros gs; [ destruct gs; cbn; auto |].
-  destruct gs as [| g gs]; [ destruct g'; cbn; auto |].
-  destruct g', g; cbn; auto.
 Qed.
 
 (** The recursive results along the leaf paths [ls] of an argument

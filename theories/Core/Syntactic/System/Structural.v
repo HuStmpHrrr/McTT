@@ -664,14 +664,6 @@ Qed.
 Lemma ext_eq_cons_inv : forall Θ Ξ Γ e e' Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ e :: Ψ ≈ e' :: Ψ' -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'.
 Proof. intros * H; inversion H; subst; assumption. Qed.
 
-Lemma body_shape_wk : forall Φ Φ' φ φ', body_shape Φ Φ' -> body_shape (gmod_wk Φ φ) (gmod_wk Φ' φ').
-Proof.
-  induction Φ as [| Φ IH x E | Φ IH c its Φg IHg]; intros [| Φ' x' E' | Φ' c' its' Φg'] * Hs; cbn in *; try contradiction; auto.
-  - destruct Hs as (Hs & -> & HE); repeat split; auto.
-    destruct E as [? ? ? ? [] | | | | ], E' as [? ? ? ? [] | | | | ]; cbn in *; auto.
-  - destruct Hs as (Hs & -> & Hg); repeat split; auto.
-Qed.
-
 Lemma body_shape_sub : forall Φ Φ' σ σ', body_shape Φ Φ' -> body_shape (gmod_sub Φ σ) (gmod_sub Φ' σ').
 Proof.
   induction Φ as [| Φ IH x E | Φ IH c its Φg IHg]; intros [| Φ' x' E' | Φ' c' its' Φg'] * Hs; cbn in *; try contradiction; auto.
@@ -871,20 +863,6 @@ Section ElimMove.
   Proof.
     intros * HD HM Hl HR HΨ HΨσ.
     erewrite <- elim_mctx_sub by eassumption; rewrite <- (length_elim_mctx p D k M Us).
-    apply move_ext; assumption.
-  Qed.
-
-  Lemma move_ann_ctx : forall Γ Δ σ p D k M Us,
-      decl_closed D -> ind_member D k = Some M -> List.length Us = ind_nu D -> R Δ σ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k M Us ≈ elim_mctx p D k M Us ->
-      Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (elim_mctx p D k M Us) σ ≈ tele_sub (elim_mctx p D k M Us) σ ->
-      R (tele_sub (im_nparams M) (sb_of_list Id (List.map (fun U => U[σ]) Us)) ++ Δ) (sb_qn (im_nn M) σ)
-        (tele_sub (im_nparams M) (sb_of_list Id Us) ++ Γ).
-  Proof.
-    intros * HD HM Hl HR HΨ HΨσ; unfold elim_mctx in HΨ, HΨσ; cbn [tele_sub] in HΨσ.
-    apply ext_eq_cons_inv in HΨ; apply ext_eq_cons_inv in HΨσ.
-    erewrite <- nparams_sub by eassumption.
-    rewrite <- (length_nparams_sub M (sb_of_list Id Us)).
     apply move_ext; assumption.
   Qed.
 
@@ -1771,11 +1749,6 @@ Proof.
   exact (HL _ _ _ _ eq_refl).
 Qed.
 
-(** The same under a weakening. *)
-Lemma level_sorted_parameters_wk : forall Δu φ,
-    level_sorted_parameters Δu -> level_sorted_parameters (tele_wk Δu φ).
-Proof. intros * HL; rewrite <- tele_sub_of_wk; apply level_sorted_parameters_sub, HL. Qed.
-
 (** The relevant-only parameters of a unit or a declaration, moved along
     an operation [R] that lifts over a well-formed extension: each
     assumption of the moved telescope is a type of its sort [ps], the
@@ -2108,36 +2081,6 @@ Ltac wk_elim_case :=
 
 Lemma wf_ctx_app_tail : forall Θ Ξ Ψ Γ, ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ Γ.
 Proof. induction Ψ; intros * H; cbn in *; [ assumption | apply IHΨ; eapply ctx_decomp_tail; exact H ]. Qed.
-
-Lemma body_shape_binders : forall Φ Φ', body_shape Φ Φ' -> gm_binders Φ = gm_binders Φ'.
-Proof.
-  induction Φ as [| Φ IH y E | Φ IH c its Φg IHg]; intros [| Φ' y' E' | Φ' c' its' Φg'] Hs; cbn in *; try contradiction; auto.
-  - destruct Hs as (Hs & _ & _); f_equal; auto.
-  - destruct Hs as (Hs & -> & Hg); f_equal; auto.
-Qed.
-
-(** The opens of two bodies of the same shape stand after prefixes binding
-    as many indices. *)
-Lemma body_opens_lengths : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
-    forall Γ' Φ' Φx' k Ψ H Ψ' H', body_xp Θ Ξ Γ' Φ' Φx' -> body_shape Φ Φ' ->
-    List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> List.nth_error (body_opens Φ' Φx') k = Some (Ψ', H') ->
-    length Ψ = length Ψ'.
-Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H0 its Φg R T gs Hx IH _ _ Hg _ Hr]; intros * Hx' Hs Hk Hk'.
-  - destruct k; discriminate.
-  - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1 Φg1]; cbn in Hs; try contradiction; destruct Hs as (Hs & _ & _).
-    inversion Hx'; subst; cbn [body_opens gm_dropn] in Hk, Hk'; eauto.
-  - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1 Φg1]; cbn in Hs; try contradiction; destruct Hs as (Hs & <- & _).
-    inversion Hx'; subst.
-    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg Hr) in Hk.
-    match goal with Hg' : items_gen _ _ _ _ its ?gs', Hr' : gmod_retyped (gens_body ?gs') _ |- _ =>
-      rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg' Hr') in Hk' end.
-    destruct k as [| k]; cbn in Hk, Hk'; [| eauto ].
-    injection Hk as <- <-; injection Hk' as <- <-.
-    rewrite !length_body_ctx by (eapply body_xp_nopens; eassumption); rewrite (body_xp_binders _ _ _ _ _ Hx).
-    match goal with Hx1 : body_xp _ _ _ Φ1 _ |- _ => rewrite (body_xp_binders _ _ _ _ _ Hx1) end.
-    apply body_shape_binders; assumption.
-Qed.
 
 (** A body unit moved along a substitution, from the moved premises: the
     entries of the moved body, filled in, are the filled-in entries moved
@@ -2590,9 +2533,6 @@ Proof.
   intros * HD HU HN; rewrite <- !modexp_sub_of_wk; rewrite <- gunit_sub_of_wk in HU; rewrite <- !exp_sub_of_wk in HN.
   apply sub_beta_gen; assumption.
 Qed.
-
-Lemma me_apps_wk : forall Ns H φ, modexp_wk (me_apps H Ns) φ = me_apps (modexp_wk H φ) (List.map (fun M => M[φ]ʷ) Ns).
-Proof. induction Ns as [| N Ns IH]; intros; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
 (** The member rules, weakened. *)
 Section WkMem.

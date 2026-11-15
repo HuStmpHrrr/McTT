@@ -34,10 +34,6 @@ Lemma functional_eval_sel : forall h x r1 r2,
     h ·ₜ x gc_deps ⍮ gc_stack ↘ r1 -> h ·ₜ x gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
 Proof. intros; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
 
-Lemma functional_eval_selc : forall h ch r1 r2,
-    h ·ₜ* ch gc_deps ⍮ gc_stack ↘ r1 -> h ·ₜ* ch gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
-Proof. intros; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
-
 Lemma functional_eval_apps : forall f args r1 r2,
     $*| f & args | gc_deps ⍮ gc_stack ↘ r1 -> $*| f & args | gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
 Proof. intros; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.

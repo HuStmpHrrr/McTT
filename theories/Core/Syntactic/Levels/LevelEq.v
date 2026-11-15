@@ -302,12 +302,6 @@ Proof.
   apply level_atoms_keep_atoms_in, level_atoms_sort_atoms_in in Hin; exact Hin.
 Qed.
 
-Lemma level_atoms_coherent_canon : forall {Γ} l, level_atoms_coherent Γ (snd l) -> level_atoms_coherent Γ (snd (lvl_canon l)).
-Proof. intros Γ l; apply level_atoms_coherent_incl; apply lvl_canon_atoms_in. Qed.
-
-Lemma level_atoms_coherent_app_l : forall {Γ} xs ys, level_atoms_coherent Γ (xs ++ ys) -> level_atoms_coherent Γ xs.
-Proof. intros Γ xs ys; apply level_atoms_coherent_incl; intros j s a Hin; exists j; apply in_or_app; left; exact Hin. Qed.
-
 Lemma level_atoms_coherent_app_r : forall {Γ} xs ys, level_atoms_coherent Γ (xs ++ ys) -> level_atoms_coherent Γ ys.
 Proof. intros Γ xs ys; apply level_atoms_coherent_incl; intros j s a Hin; exists j; apply in_or_app; right; exact Hin. Qed.
 
@@ -823,34 +817,6 @@ Proof.
   - apply wf_exp_eq_sym; exact Hsk.
 Qed.
 
-Theorem lvl_exp_of_canon : forall {Γ} c xs,
-    fst c <= n ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    level_atoms_well_scoped Γ xs ->
-    level_atoms_coherent Γ xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (List.map atom_exp xs)
-             ≈ nf_to_exp (nf_lvl_of (lvl_canon (c, xs))) : Level@n.
-Proof.
-  intros Γ c xs Hc HΓ Hxs Hco.
-  pose proof (level_atoms_well_scoped_wf _ Hxs) as Hxw.
-  assert (Hcanon : level_atoms_wf Γ (snd (lvl_canon (c, xs))))
-    by (unfold lvl_canon; cbn; apply level_atoms_wf_keep, level_atoms_wf_sort; assumption).
-  assert (Hcc : fst (fst (lvl_canon (c, xs))) <= n) by (eapply Nat.le_trans; [ apply lvl_canon_const_le | exact Hc ]).
-  transitivity (lvl_tm c xs); [ apply lvl_exp_of_tm; assumption |].
-  transitivity (lvl_tm (fst (lvl_canon (c, xs))) (snd (lvl_canon (c, xs))));
-    [ apply lvl_tm_canon; assumption |].
-  apply wf_exp_eq_sym.
-  unfold nf_lvl_of; cbn [nf_to_exp].
-  apply lvl_exp_of_tm; assumption.
-Qed.
-
-(** ** The Atoms of a Well-Typed Level
-
-    Soundness meets a level only as the readback of a value, so what it has is
-    the typing of the whole expression; these recover the typing of each atom,
-    which the equations above need. *)
-(** The inversions give the argument at its own sort, which subsumption
-    moves to the sort of the whole level. *)
 Lemma wf_succl_n_inversion : forall {Γ M} k,
     Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k M : Level@n ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n.

@@ -455,15 +455,6 @@ Fixpoint open_size (Γ : ctx) (R : mdesc) : nat :=
   | _ => 0
   end.
 
-Lemma body_size_mono : forall Φ ρ' ρ, sizes_le ρ' ρ ->
-    fst (body_size ρ' Φ) <= fst (body_size ρ Φ) /\ Forall2 le (snd (body_size ρ' Φ)) (snd (body_size ρ Φ)).
-Proof.
-  intros * H; pose proof (proj1 (proj2 (proj2 (proj2 sizes_wk))) Φ ρ' ρ wk_id (wk_keeps_sizes_id _ _ H)) as H0.
-  rewrite gmod_wk_id in H0; exact H0.
-Qed.
-
-(** The slot sizes of the binders of a body with no open. *)
-(** A chain of selections from a unit is one more than its selections. *)
 Lemma modexp_size_mems : forall ρ H pre, modexp_size ρ (me_mems H pre) = modexp_size ρ H + length pre.
 Proof. intros ρ H pre; revert H; induction pre as [| y pre IH]; intros H; cbn; [ lia | rewrite IH; cbn; lia ]. Qed.
 
@@ -513,18 +504,6 @@ Proof.
   - destruct (tele_split (rev Θ')) as [[[? ?] ?] | ?]; injection Ha as <-; cbn; lia.
 Qed.
 
-Lemma open_size_ats : forall Ns Γ R R', mdesc_ats R Ns = Some R' -> open_size Γ R' <= open_size Γ R.
-Proof.
-  induction Ns as [| N Ns IH]; intros * Ha; cbn in Ha; [ injection Ha as <-; lia |].
-  destruct (mdesc_at R N) as [R1 |] eqn:E; [| discriminate ].
-  etransitivity; [ eapply IH; exact Ha | eapply open_size_at; exact E ].
-Qed.
-
-(** ** What an Open Generates, and the Expansion of a Body *)
-
-(** The sizes of the body [gens_append Φ k gs] after the generated entries
-    [gs], each of size at most [c] read under [B]: [Φ]'s slot sizes are
-    [new ++ B], with [k] new ones. *)
 #[warnings="-cannot-define-projection"]
 Record gens_sizes (ρ : list nat) (Φ : gmod) (k : nat) (gs : list generated_item) (B new : list nat) (c : nat) : Prop :=
   mk_gens_sizes

@@ -86,28 +86,6 @@ Proof.
     + intros Hx; apply (H x ltac:(lia)); intros Hy; exact (Hx (entry_propositional_extend_intro _ _ _ _ _ Hy)).
 Qed.
 
-(** An evaluation at an extended target gives one at the same tail
-    extended by another entry of the same type, when neither head is a
-    proposition: the head retagged at the other entry.  For example
-    [σ ,,ᵈ N ‖ H] at [Δ ▸ₘ A ≔ M ‖ U] stores [de_dm n t h U]; at [Δ ▸ A ≔ M]
-    it stores [de_dm n t h gunit_default]. *)
-Lemma eval_sub_change_head_retag : forall e e' Δ σ ρ ρτ,
-    ⟦ σ : e :: Δ ⟧s ρ ↘ ρτ ->
-    ~ head_propositional gc_deps gc_stack e Δ ρτ↯ ->
-    ~ head_propositional gc_deps gc_stack e' Δ ρτ↯ ->
-    ⟦ σ : e' :: Δ ⟧s ρ ↘ retag_entry (centry_tag e' Δ ρτ↯) (centry_slot_unit e') (env_entry ρτ 0) :: ρτ↯.
-Proof.
-  intros * H Hn Hn' [| x] Hlt.
-  - rewrite ctx_entry_tag_head, ctx_entry_unit_head; cbn [drop_env List.tl env_entry].
-    split; [ intros Hp; exfalso; apply Hn'; exact (proj1 (entry_propositional_zero_head _ _ _) Hp) |].
-    intros _; apply eval_sentry_retag with (t := ctx_entry_tag (e :: Δ) 0 ρτ) (U := ctx_entry_unit (e :: Δ) 0).
-    apply (H 0 ltac:(cbn; lia)); intros Hp; apply Hn; exact (proj1 (entry_propositional_zero_head _ _ _) Hp).
-  - cbn [List.length] in Hlt; rewrite env_entry_cons_succ, ctx_entry_tag_succ, env_entry_drop, (ctx_entry_tag_drop e);
-      change (ctx_entry_unit (e' :: Δ) (S x)) with (ctx_entry_unit (e :: Δ) (S x)); split.
-    + intros Hp; apply (H (S x) ltac:(cbn; lia)); apply (proj2 (entry_propositional_succ _ _ _ _)); exact (proj1 (entry_propositional_succ _ _ _ _) Hp).
-    + intros Hn0; apply (H (S x) ltac:(cbn; lia)); intros Hp; apply Hn0.
-      apply (proj2 (entry_propositional_succ _ _ _ _)); exact (proj1 (entry_propositional_succ _ _ _ _) Hp).
-Qed.
 #[local] Opaque eval_sub.
 
 (** [σ[φ]] after [τ] is [τ ⨟ σ] weakened by [φ]. *)

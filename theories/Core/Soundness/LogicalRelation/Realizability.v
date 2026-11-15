@@ -244,30 +244,6 @@ Proof.
   apply wf_exp_eq_refl; eapply Ht; eassumption.
 Qed.
 
-(** A choice of a witness at each position of a list. *)
-Lemma list_choice_nth : forall {X Y : Type} (R : nat -> X -> Y -> Prop) (xs : list X),
-    (forall j x, List.nth_error xs j = Some x -> exists y, R j x y) ->
-    exists ys, List.length ys = List.length xs /\
-      forall j x y, List.nth_error xs j = Some x -> List.nth_error ys j = Some y -> R j x y.
-Proof.
-  intros X Y R xs; revert R; induction xs as [| x xs IH]; intros R H.
-  - exists nil; split; [ reflexivity | intros [] *; discriminate ].
-  - destruct (H 0 x eq_refl) as [y Hy].
-    destruct (IH (fun j => R (S j)) (fun j x' Hx' => H (S j) x' Hx')) as (ys & Hl & Hys).
-    exists (y :: ys); split; [ cbn; congruence |].
-    intros [| j] x' y' Hx' Hy'; cbn in Hx', Hy'; [ injection Hx' as <-; injection Hy' as <-; exact Hy | exact (Hys _ _ _ Hx' Hy') ].
-Qed.
-
-(** Lists of normal forms related position by position are related. *)
-Lemma nfs_eq_upto_proofs_of_nth : forall Ms Ms', List.length Ms = List.length Ms' ->
-    (forall j M M', List.nth_error Ms j = Some M -> List.nth_error Ms' j = Some M' -> nf_eq_upto_proofs M M') ->
-    nfs_eq_upto_proofs Ms Ms'.
-Proof.
-  induction Ms as [| M Ms IH]; intros [| M' Ms'] Hl H; cbn in Hl; try discriminate; [ reflexivity |].
-  apply nfs_eq_upto_proofs_cons; split; [ exact (H 0 _ _ eq_refl eq_refl) |].
-  apply IH; [ congruence | intros j N N' HN HN'; exact (H (S j) _ _ HN HN') ].
-Qed.
-
 Lemma nf_con_upto_proofs : forall p k c Ms Ms', nfs_eq_upto_proofs Ms Ms' -> nf_eq_upto_proofs (nf_con p k c Ms) (nf_con p k c Ms').
 Proof. intros * H; unfold nf_eq_upto_proofs, nfs_eq_upto_proofs in *; cbn; rewrite !dec_eqb_refl, PeanoNat.Nat.eqb_refl; exact H. Qed.
 

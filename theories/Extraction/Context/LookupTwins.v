@@ -45,19 +45,6 @@ Definition fe_is_body_b (e : fentry) : bool :=
   | _ => false
   end.
 
-Lemma fe_is_body_b_spec : forall e, fe_is_body_b e = true <-> entry_is_body (decode_entry e).
-Proof.
-  intros [| pv [Δ [t] | [Δ [sm Φ | E]]] | | pv A M [Δ [t] | [Δ [sm Φ | E]]] |]; cbn;
-    split; intros; first [ exact I | reflexivity | discriminate | contradiction ].
-Qed.
-
-(** ** Walks of Fast Bodies
-
-    For the checker's messages only: every group filed in a body, its
-    submodules' included, and their paths, in the order of the trie
-    rather than in filing order (the messages read them as sets). *)
-
-(** The groups of a Core body, where a fast unit keeps Core's *)
 Fixpoint gmod_inds_core (Φ : gmod) : list ind_decl :=
   match Φ with
   | gm_nil => nil

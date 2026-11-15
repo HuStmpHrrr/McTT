@@ -33,24 +33,6 @@ Definition universe_index_set (i : universe_index) : aczel_set :=
   | ul k => large_ordinal_set k
   end.
 
-Lemma universe_index_set_lt : forall i j, universe_index_lt i j -> set_mem (universe_index_set i) (universe_index_set j).
-Proof.
-  intros [o | k] [o' | k'] H; cbn in H |- *.
-  - apply pair_ordinal_set_lt. exact H.
-  - apply pair_ordinal_set_below_large.
-  - destruct H.
-  - apply large_ordinal_set_lt. exact H.
-Qed.
-
-Lemma universe_index_set_inj : forall i j, set_eq (universe_index_set i) (universe_index_set j) -> i = j.
-Proof.
-  intros [o | k] [o' | k'] E; cbn in E.
-  - f_equal. apply pair_ordinal_set_inj. exact E.
-  - exfalso. exact (pair_large_ordinal_set_distinct _ _ E).
-  - exfalso. exact (pair_large_ordinal_set_distinct _ _ (set_eq_sym _ _ E)).
-  - f_equal. apply large_ordinal_set_inj. exact E.
-Qed.
-
 (** Every ordinal below [ω²+ω] is a member of every universe of sets. *)
 Section Ordinals.
   Variable U : aczel_set.

@@ -191,19 +191,6 @@ Proof.
   exists x; split; [ reflexivity | exact Hx ].
 Qed.
 
-(** The closed telescope, at the identity base. *)
-Corollary wf_vars_tele_closed : forall Θ Ξ Φ Δ,
-    all_assumptions Δ -> ctx_scoped 0 Δ -> ctx_mvc Δ -> ⊢ Θ ⍮ Ξ ⍮ Φ ++ Δ ->
-    forall k N T, List.nth_error (vars_from (List.length Φ) (List.length Δ)) k = Some N ->
-      List.nth_error (tele_insts Δ Id (vars_from (List.length Φ) (List.length Δ))) k = Some T ->
-      Θ ⍮ Ξ ⍮ Φ ++ Δ ⊢ N : T.
-Proof.
-  intros * Hass Hs Hmv HΨ k N T HN HT.
-  assert (E : Φ ++ Δ = Φ ++ tele_sub Δ Id ++ ⋅) by (rewrite tele_sub_id, List.app_nil_r; reflexivity).
-  rewrite E in HΨ |- *.
-  eapply (wf_vars_tele_gen _ _ _ _ Id Id ⋅ 0); try eassumption; intros; lia.
-Qed.
-
 (** ** The Parameters *)
 
 Lemma exp_shift_past : forall M Ms Ns σ,
@@ -451,13 +438,6 @@ Proof.
   destruct (elim_mctx_head_wf _ _ _ _ _ _ _ _ Hg HDs Hl Hk HΓ HUl HUs) as [j Hj].
   unfold elim_mctx; cbn [List.app]; eapply wf_ctx_extend; [ exact Hj | constructor ].
 Qed.
-
-(** The head of a well-formed motive's context is a type. *)
-Lemma elim_mctx_head_typed : forall Θ Ξ Γ p D k Mk Us,
-    ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us ++ Γ ->
-    Θ ⍮ Ξ ⍮ tele_sub (im_nparams Mk) (sb_of_list Id Us) ++ Γ
-      ⊢ᵗ ind_mty p D k (List.map (fun U => U[wk_shiftn (im_nn Mk)]ʷ) Us) (vars_from 0 (im_nn Mk)).
-Proof. intros * HM; unfold elim_mctx in HM; cbn [List.app] in HM; exact (proj2 (ctx_decomp HM)). Qed.
 
 (** ** The Arguments of a Constructor at the Parameters *)
 
@@ -1359,12 +1339,6 @@ Lemma cargs_nrec_snoc : forall D gs g,
     cargs_nrec D (gs ++ g :: nil)
     = cargs_nrec D gs + match g with ca_rec t => List.length (shape_leaves (rview_leaves D) 0 t) | ca_arg _ _ => 0 end.
 Proof. intros D; induction gs as [| [] gs IH]; intros; cbn; rewrite ?IH; destruct g; cbn; lia. Qed.
-
-(** The number of leaf paths of a shape does not depend on the binders
-    its components are over. *)
-Lemma length_shape_leaves_any : forall D t m,
-    List.length (shape_leaves (rview_leaves D) m t) = List.length (shape_leaves (rview_leaves D) 0 t).
-Proof. intros; apply length_shape_leaves. Qed.
 
 (** The recursive results of a recursive argument along the leaf paths
     [ls] of its shape, after [E], are a well-formed context. *)

@@ -312,9 +312,6 @@ Proof. induction 1; intros; cbn [List.app]; econstructor; eauto. Qed.
 Lemma dmod_has_sel_resp_r : forall y k v v', dmod_has_sel y k v -> per_dmod v v' -> dmod_has_sel y k v'.
 Proof. intros * Hs Hv h Hh; destruct (Hs _ Hh) as (r & Hr & Hrv); exists r; split; [ exact Hr | exact (per_dmod_trans _ _ _ Hrv Hv) ]. Qed.
 
-Lemma dmod_has_sel_resp_l : forall y k k' v, dmod_has_sel y k v -> per_dmod k' k -> dmod_has_sel y k' v.
-Proof. intros * Hs Hk h Hh; exact (Hs _ (per_dmod_trans _ _ _ Hh Hk)). Qed.
-
 Section Desc.
   Variables (Θm : gdeps) (Ξm : gstack).
   Hypothesis Hgm : ⊢ᵍ Θm ⍮ Ξm.

@@ -97,9 +97,6 @@ Definition im_ty_at (pq : qname) (k : nat) (M : imember) (Us Ns : list exp) : ty
   | _ => apps_exp (a_ind (fst (im_ref pq k M)) (snd (im_ref pq k M))) (im_pre M Us ++ Ns)
   end.
 
-(** The arguments of a member's constructor [c], if it has one. *)
-Definition im_con (M : imember) (c : string) : option (list carg) := cons_lookup (im_cons M) c.
-
 (** Whether a member is a declared type (rather than a view or a record
     view). *)
 Definition im_is_decl (M : imember) : bool :=
@@ -126,24 +123,6 @@ Definition im_starts (D : ind_decl) (M : imember) : bool := im_is_decl M || (0 <
 (** The declared members come first: [ind_ndecl D] of them, then the
     views. *)
 Definition ind_ndecl (D : ind_decl) : nat := List.length (List.filter im_is_decl (ind_members D)).
-
-(** A group has views when some member is not declared: its eliminator
-    then carries the group's uniform parameters. *)
-Definition ind_has_views (D : ind_decl) : bool := negb (List.forallb im_is_decl (ind_members D)).
-
-Lemma no_views_decl : forall D j Mj, ind_has_views D = false -> ind_member D j = Some Mj -> im_is_decl Mj = true.
-Proof.
-  intros * Hv Hj; unfold ind_has_views in Hv; apply Bool.negb_false_iff in Hv.
-  rewrite List.forallb_forall in Hv; exact (Hv _ (List.nth_error_In _ _ Hj)).
-Qed.
-
-(** A group with a view member has views. *)
-Lemma view_has_views : forall D j Mj qc k Is vm, ind_member D j = Some Mj -> im_head Mj = mh_view qc k Is vm ->
-    ind_has_views D = true.
-Proof.
-  intros * Hj Hh; destruct (ind_has_views D) eqn:Hv; [ reflexivity |].
-  pose proof (no_views_decl _ _ _ Hv Hj) as Hd; unfold im_is_decl in Hd; rewrite Hh in Hd; discriminate.
-Qed.
 
 (** The declared members come before the views: a member is declared
     exactly when its position is below [ind_ndecl D]. *)
@@ -663,17 +642,6 @@ Proof.
   destruct (view_key_index x Vs) as [v' |] eqn:E; cbn in H; [ injection H as <-; cbn; apply IH; reflexivity | discriminate ].
 Qed.
 
-(** The index is the first view of the key's view. *)
-Lemma view_key_index_first : forall x Vs v, view_key_index x Vs = Some v ->
-    forall w y, w < v -> List.nth_error Vs w = Some y -> ~ view_key_eq x y.
-Proof.
-  induction Vs as [| z Vs IH]; cbn; intros v H; [ discriminate |].
-  destruct (view_key_eqb x z) eqn:Exz; [ injection H as <-; intros w y Hw; lia |].
-  destruct (view_key_index x Vs) as [v' |] eqn:E; cbn in H; [ injection H as <- | discriminate ].
-  intros [| w] y Hw Hy; cbn in Hy; [ injection Hy as <-; unfold view_key_eq; congruence |].
-  exact (IH _ eq_refl w y ltac:(lia) Hy).
-Qed.
-
 (** A key has an index exactly when its view is among the views. *)
 Lemma view_key_mem_spec : forall x Vs, view_key_mem x Vs = true <-> key_in x Vs.
 Proof.
@@ -686,13 +654,6 @@ Proof.
     rewrite E, IH; split.
     + intros (z & Hz & Hxz); exists z; split; [ right; exact Hz | exact Hxz ].
     + intros (z & [<- | Hz] & Hxz); [ unfold view_key_eq in Hxz; congruence | exists z; split; assumption ].
-Qed.
-
-(** A key among the views has an index. *)
-Lemma view_key_index_in_some : forall x Vs, key_in x Vs -> exists v, view_key_index x Vs = Some v.
-Proof.
-  intros x Vs H; apply view_key_mem_spec in H; unfold view_key_mem in H.
-  destruct (view_key_index x Vs) as [v |]; [ exists v; reflexivity | discriminate ].
 Qed.
 
 (** Among keys one more key: among the first, or of its view. *)

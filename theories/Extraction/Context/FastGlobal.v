@@ -58,10 +58,6 @@ Proof.
     exfalso; exact (OrderedTypeEx.String_as_OT.lt_not_eq Hg eq_refl).
 Qed.
 
-(** Nothing is found in the empty tree. *)
-Lemma sraw_find_leaf {A} y : SRaw.find y (SRaw.Leaf A) = None.
-Proof. reflexivity. Qed.
-
 (** The components of paths are compared by [String.compare], which runs
     natively once extracted (the directive of [Entrypoint]); it is the
     order of [OrdersEx.String_as_OT], whose lemmas the proofs use.
@@ -590,13 +586,6 @@ Proof. intros [Δ [[|] Φ | H]]; reflexivity. Qed.
 Lemma translate_unit_body : forall U, canon_unit U -> fu_body (translate_unit U) = translate_mod (gu_mod U).
 Proof. intros [Δ [[|] Φ | H]] Hc; cbn in Hc; first [ contradiction | reflexivity ]. Qed.
 
-(** A translated entry's privacy *)
-Lemma translate_entry_private : forall E, fe_private (translate_entry E) = ge_private E.
-Proof. intros []; reflexivity. Qed.
-
-(** ** Decoding Undoes the Translation on Canonical Data *)
-
-(** Finding in a decoded tree decodes what is found. *)
 Lemma find_decode_tree : forall m x, SRaw.find x (decode_tree_with decode_entry m) = option_map decode_entry (SRaw.find x m).
 Proof.
   induction m as [| l IHl k e r IHr h]; intros x; cbn; [ reflexivity |].
@@ -808,14 +797,6 @@ Proof.
   destruct (existsb _ _); [ apply (ur_find _ _ H) | reflexivity ].
 Qed.
 
-(** The decoded view finds the decoding of what the view finds. *)
-Theorem view_deps_lookup : forall v Θ fp, units_rep (fv_units v) Θ -> visible_rep_exact (fv_units v) (fv_dom v) ->
-    gds_lookup (view_deps v) fp = option_map decode_unit (fv_find v fp).
-Proof.
-  intros [s D] Θ fp H Hv; unfold view_deps, fv_find; cbn [fv_dom fv_units] in *.
-  rewrite gds_lookup_restrict, Hv; destruct (existsb _ _); [ exact (decode_units_lookup _ _ H fp) | reflexivity ].
-Qed.
-
 (** ** Open Frames
 
     A frame as Core's ([qname * frame_kind * gunit]), its body a trie. *)
@@ -905,10 +886,6 @@ Definition fs_path (fs : fstack) : qname :=
   | nil => q_abs nil nil
   end.
 
-(** The path of the innermost fast frame of a stack *)
-Lemma fs_path_of : forall Ξ, fs_path (fs_of Ξ) = gs_path Ξ.
-Proof. intros [| [[mp K] U] Ξ]; reflexivity. Qed.
-
 (** The path of the innermost frame of a decoded stack *)
 Lemma fs_path_dec : forall fs, gs_path (decode_stack fs) = fs_path fs.
 Proof. intros [| f fs]; reflexivity. Qed.
@@ -928,25 +905,13 @@ Proof. intros x E [| [[mp K] U] Ξ]; reflexivity. Qed.
 (** A frame pushed, [gs_push]'s twin *)
 Definition fs_push (mp : qname) (Δ : ctx) (fs : fstack) : fstack := mk_fframe mp fk_module Δ ft_empty :: fs.
 
-(** Pushing a frame fast is pushing it in Core. *)
-Lemma fs_push_of : forall mp Δ Ξ, fs_push mp Δ (fs_of Ξ) = fs_of (gs_push mp Δ Ξ).
-Proof. reflexivity. Qed.
-
 (** The frame of the module of a member of a group, [gs_push_ind]'s twin *)
 Definition fs_push_ind (mp pq : qname) (k : nat) (D : ind_decl) (Δ : ctx) (fs : fstack) : fstack :=
   mk_fframe mp (fk_ind pq k D) Δ ft_empty :: fs.
 
-(** Alike for a member's module *)
-Lemma fs_push_ind_of : forall mp pq k D Δ Ξ, fs_push_ind mp pq k D Δ (fs_of Ξ) = fs_of (gs_push_ind mp pq k D Δ Ξ).
-Proof. reflexivity. Qed.
-
 (** The frame of the module of a record type, [gs_push_record]'s twin *)
 Definition fs_push_record (mp : qname) (R : record_decl) (Δ : ctx) (fs : fstack) : fstack :=
   mk_fframe mp (fk_record R) (ce_ass (sort_exp_kind (record_sort R)) (record_self mp R) :: Δ) ft_empty :: fs.
-
-(** Alike for a record's module *)
-Lemma fs_push_record_of : forall mp R Δ Ξ, fs_push_record mp R Δ (fs_of Ξ) = fs_of (gs_push_record mp R Δ Ξ).
-Proof. reflexivity. Qed.
 
 (** Whether [x] is fresh in the innermost frame, [gs_fresh]'s twin *)
 Definition fs_fresh_dec (x : string) (fs : fstack) : bool :=
@@ -1109,38 +1074,6 @@ Fixpoint ft_resolve (t : ftrie) (ip : list string) {struct ip} : option gentry :
           end
       end
   end.
-
-(** [gm_resolve] reads the newest entry of the first name. *)
-Lemma gm_resolve_newest : forall Φ x ip,
-    gm_resolve Φ (x :: ip) =
-      match gm_newest Φ x with
-      | None => None
-      | Some E => match ip, E with
-                  | nil, ge_def _ _ _ _ _ => Some E
-                  | _ :: _, _ => match entry_body E with Some Φ' => gm_resolve Φ' ip | None => None end
-                  | nil, _ => None
-                  end
-      end.
-Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its Φg IHg]; intros x ip; cbn [gm_resolve gm_newest].
-  - reflexivity.
-  - destruct (String.eqb x y); [| apply IH ].
-    destruct ip; destruct E as [| ? [? [] ] | | |]; reflexivity.
-  - apply IH.
-Qed.
-
-(** The trie resolves what [gm_resolve] resolves. *)
-Theorem ft_resolve_ok : forall ip Φ, canon_mod Φ -> ft_resolve (translate_mod Φ) ip = gm_resolve Φ ip.
-Proof.
-  induction ip as [| x ip IH]; intros Φ Hc; [ rewrite gm_resolve_nil; reflexivity |].
-  cbn [ft_resolve]; rewrite translate_mod_find, gm_resolve_newest.
-  destruct (gm_newest Φ x) as [E |] eqn:En; cbn [option_map]; [| reflexivity ].
-  pose proof (canon_newest _ _ _ Hc En) as HE.
-  destruct ip as [| z ip'].
-  - destruct E; reflexivity.
-  - rewrite fe_body_translate by exact HE; destruct (entry_body E) eqn:Eb; cbn [option_map]; [| reflexivity ].
-    apply IH, (canon_entry_body _ _ HE Eb).
-Qed.
 
 (** What the submodule [ip] is, through the entry [e] of a body of
     telescope [T]: [gm_submodule]'s step *)
@@ -1429,17 +1362,6 @@ Section Lookups.
         end
     end.
 
-  (** [gc_term]'s twin *)
-  Definition fast_gc_term (fs : fstack) (p : qname) : option exp :=
-    match fast_gc_resolve fs p with
-    | Some (ge_def true _ ak_relevant _ (Some M)) | Some (ge_def true _ ak_level _ (Some M)) => Some M
-    | _ =>
-        match fast_gc_entry fs p with
-        | Some (fe_def_mod _ _ M _ _) => Some M
-        | _ => None
-        end
-    end.
-
   (** [record_lookup]'s twin *)
   Definition fast_gc_record (fs : fstack) (p : qname) : option record_decl :=
     match fs_find_record fs p with
@@ -1540,16 +1462,6 @@ Section LookupsOk.
     injection H as -> -> -> ->; auto.
   Qed.
 
-  Theorem fast_gc_resolve_ok : forall Ξ p, canon_stack Ξ -> fast_gc_resolve uf (fs_of Ξ) p = gc_resolve Θ Ξ p.
-  Proof.
-    intros Ξ p HcΞ; unfold fast_gc_resolve, gc_resolve, gc_resolve_u.
-    pose proof (fs_find_some Ξ p) as H.
-    destruct (fs_find (fs_of Ξ) p) as [[f ip] |], (gs_find Ξ p) as [[U ip'] |] eqn:Eg; try contradiction.
-    - destruct H as [-> ->]; apply ft_resolve_ok, canon_frame_mod, (canon_gs_find _ _ _ _ HcΞ Eg).
-    - rewrite Huf; destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:El; cbn [option_map]; [| reflexivity ].
-      rewrite translate_unit_body by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_resolve_ok, (canon_found _ _ El).
-  Qed.
-
   Theorem fast_gc_module_ok : forall Ξ p, canon_stack Ξ -> fast_gc_module uf (fs_of Ξ) p = gc_module Θ Ξ p.
   Proof.
     intros Ξ p HcΞ; unfold fast_gc_module, gc_module, gc_module_u.
@@ -1607,13 +1519,6 @@ Section LookupsOk.
     - destruct H as [-> ->]; apply ft_entry_ok, canon_frame_mod, (canon_gs_find _ _ _ _ HcΞ Eg).
     - rewrite Huf; destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:El; cbn [option_map]; [| reflexivity ].
       rewrite translate_unit_body by exact (canon_deps_lookup _ _ _ HcΘ El); apply ft_entry_ok, (canon_found _ _ El).
-  Qed.
-
-  Theorem fast_gc_term_ok : forall Ξ p, canon_stack Ξ -> fast_gc_term uf (fs_of Ξ) p = gc_term Θ Ξ p.
-  Proof.
-    intros * Hc; unfold fast_gc_term, gc_term; rewrite fast_gc_resolve_ok, fast_gc_entry_ok by exact Hc.
-    destruct (gc_resolve Θ Ξ p) as [[[] ? ? [] | | | |] |];
-      try (destruct (gc_entry Θ Ξ p) as [[| | | | ] |]; reflexivity); reflexivity.
   Qed.
 
   Theorem fast_gc_record_ok : forall Ξ p, canon_stack Ξ -> fast_gc_record uf (fs_of Ξ) p = record_lookup Θ Ξ p.
@@ -1828,9 +1733,6 @@ Proof. intros [T t]; unfold decode_loc, loc_drop; cbn; rewrite decode_mod_drop; 
 Lemma ftrie_drop_ext : forall t x e, ftrie_drop (ft_ext t x e) = ft_ext (ftrie_drop t) x (fentry_drop e).
 Proof. intros [m xs] x e; cbn; rewrite sraw_map_add; reflexivity. Qed.
 
-Lemma ftrie_drop_empty : ftrie_drop ft_empty = ft_empty.
-Proof. reflexivity. Qed.
-
 Fixpoint translate_unit_drop (U : gunit) : funit_drop (translate_unit U) = translate_unit U
 with translate_mod_drop (Φ : gmod) : ftrie_drop (translate_mod Φ) = translate_mod Φ
 with translate_entry_drop (E : gentry) : fentry_drop (translate_entry E) = translate_entry E.
@@ -1841,16 +1743,10 @@ Proof.
   - destruct E; cbn [translate_entry fentry_drop]; rewrite ?translate_unit_drop, ?translate_mod_drop; reflexivity.
 Qed.
 
-Lemma translate_loc_drop : forall r, loc_drop (translate_loc r) = translate_loc r.
-Proof. intros [T Φ]; unfold loc_drop, translate_loc; cbn; rewrite translate_mod_drop; reflexivity. Qed.
-
 (** *** The Lookups in a Body Commute with Dropping *)
 
 Lemma ft_find_drop : forall t x, ft_find (ftrie_drop t) x = option_map fentry_drop (ft_find t x).
 Proof. intros [m xs] x; unfold ft_find; cbn; apply string_tree_find_map. Qed.
-
-Lemma ft_names_drop : forall t, ft_names (ftrie_drop t) = ft_names t.
-Proof. intros [m xs]; reflexivity. Qed.
 
 Lemma fe_body_drop : forall e, fe_body (fentry_drop e) = option_map ftrie_drop (fe_body e).
 Proof. intros [| ? [? [?] | ?] | | | ]; reflexivity. Qed.
@@ -1868,17 +1764,6 @@ Proof. intros [? [?] | ?]; reflexivity. Qed.
 
 Lemma fu_body_drop : forall u, fu_body (funit_drop u) = ftrie_drop (fu_body u).
 Proof. intros [? [?] | ?]; reflexivity. Qed.
-
-Lemma fe_private_drop : forall e, fe_private (fentry_drop e) = fe_private e.
-Proof. intros []; reflexivity. Qed.
-
-Lemma ft_resolve_drop : forall ip t, ft_resolve (ftrie_drop t) ip = ft_resolve t ip.
-Proof.
-  induction ip as [| x ip IH]; intros t; cbn [ft_resolve]; [ reflexivity |].
-  rewrite ft_find_drop; destruct (ft_find t x) as [e |]; cbn [option_map]; [| reflexivity ].
-  destruct ip as [| y ip']; [ destruct e; reflexivity |].
-  rewrite fe_body_drop; destruct (fe_body e); cbn [option_map]; [ apply IH | destruct e; reflexivity ].
-Qed.
 
 Lemma fe_submodule_drop : forall ip T e, fe_submodule T (fentry_drop e) ip = fe_submodule T e ip.
 Proof.
@@ -1937,20 +1822,8 @@ Qed.
 Lemma fs_tele_drop : forall fs, fs_tele (fstack_drop fs) = fs_tele fs.
 Proof. unfold fstack_drop; induction fs as [| f fs IH]; [ reflexivity |]; cbn [map fs_tele] in *; rewrite IH; reflexivity. Qed.
 
-Lemma fs_path_drop : forall fs, fs_path (fstack_drop fs) = fs_path fs.
-Proof. intros [| f fs]; reflexivity. Qed.
-
 Lemma fs_add_drop : forall x e fs, fstack_drop (fs_add x e fs) = fs_add x (fentry_drop e) (fstack_drop fs).
 Proof. intros x e [| f fs]; [ reflexivity |]; cbn; unfold fframe_drop; cbn; rewrite ftrie_drop_ext; reflexivity. Qed.
-
-Lemma fs_push_drop : forall mp Δ fs, fstack_drop (fs_push mp Δ fs) = fs_push mp Δ (fstack_drop fs).
-Proof. reflexivity. Qed.
-
-Lemma fs_push_ind_drop : forall mp pq k D Δ fs, fstack_drop (fs_push_ind mp pq k D Δ fs) = fs_push_ind mp pq k D Δ (fstack_drop fs).
-Proof. reflexivity. Qed.
-
-Lemma fs_push_record_drop : forall mp R Δ fs, fstack_drop (fs_push_record mp R Δ fs) = fs_push_record mp R Δ (fstack_drop fs).
-Proof. reflexivity. Qed.
 
 Lemma fs_fresh_dec_drop : forall x fs, fs_fresh_dec x (fstack_drop fs) = fs_fresh_dec x fs.
 Proof.
@@ -1994,13 +1867,6 @@ Section LookupsDrop.
   Variables (uf ufd : path -> option funit).
   Hypothesis Hufd : forall fp, ufd fp = option_map funit_drop (uf fp).
 
-  Lemma fast_gc_resolve_drop : forall fs p, fast_gc_resolve ufd (fstack_drop fs) p = fast_gc_resolve uf fs p.
-  Proof.
-    intros; unfold fast_gc_resolve; rewrite fs_find_drop.
-    destruct (fs_find fs p) as [[f ip] |]; cbn [option_map]; [ apply ft_resolve_drop |].
-    rewrite Hufd; destruct (uf (q_unit p)); cbn [option_map]; [ rewrite fu_body_drop; apply ft_resolve_drop | reflexivity ].
-  Qed.
-
   Lemma fast_gc_module_drop : forall fs p, fast_gc_module ufd (fstack_drop fs) p = fast_gc_module uf fs p.
   Proof.
     intros; unfold fast_gc_module; rewrite fs_find_tele_drop.
@@ -2038,13 +1904,6 @@ Section LookupsDrop.
     intros; unfold fast_gc_entry; rewrite fs_find_drop.
     destruct (fs_find fs p) as [[f ip] |]; cbn [option_map]; [ apply ft_entry_drop |].
     rewrite Hufd; destruct (uf (q_unit p)); cbn [option_map]; [ rewrite fu_body_drop; apply ft_entry_drop | reflexivity ].
-  Qed.
-
-  Lemma fast_gc_term_drop : forall fs p, fast_gc_term ufd (fstack_drop fs) p = fast_gc_term uf fs p.
-  Proof.
-    intros; unfold fast_gc_term; rewrite fast_gc_resolve_drop, fast_gc_entry_drop.
-    destruct (fast_gc_resolve uf fs p) as [[[|] ? [| |] ? [?|] | | | |] |];
-      try reflexivity; destruct (fast_gc_entry uf fs p) as [[] |]; reflexivity.
   Qed.
 
   Lemma fast_gc_record_drop : forall fs p, fast_gc_record ufd (fstack_drop fs) p = fast_gc_record uf fs p.
@@ -2171,7 +2030,4 @@ Definition fview_drop (v : fview) : fview := mk_fview (funits_drop (fv_units v))
 
 Lemma fv_find_drop : forall v fp, fv_find (fview_drop v) fp = option_map funit_drop (fv_find v fp).
 Proof. intros; apply path_key_find_map. Qed.
-
-Lemma view_deps_drop : forall v, view_deps (fview_drop v) = view_deps v.
-Proof. intros; unfold view_deps, fview_drop; cbn [fv_units fv_dom]; rewrite decode_units_drop; reflexivity. Qed.
 

@@ -72,13 +72,6 @@ Fixpoint module_member_proofs (m : set_module) (ys : list string) (x : string) {
   | y :: ys', set_module_global p _ => module_member_proofs (global_module γ (qname_in p y)) ys' x
   end.
 
-(** The term member [x] of a module is a proof. *)
-Definition member_is_proof (m : set_module) (x : string) : Prop := module_member_proofs m nil x = true.
-
-(** ** Equality of Values *)
-
-(** [set_entry_eq e e']: the entries [e] and [e'] are equal: of one shape
-    and kind, with equal parts. *)
 Inductive set_entry_eq : set_entry -> set_entry -> Prop :=
 (** Two terms of one kind *)
 | set_entry_eq_term : forall κ v v', set_eq v v' -> set_entry_eq (set_entry_term κ v) (set_entry_term κ v')

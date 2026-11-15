@@ -166,26 +166,6 @@ Corollary set_env_in_moved : forall Ψ Δ Γ σ Fσ ρ, set_gsub_with Γ σ Δ F
     set_env_in T γ (Ψ ++ Δ) (set_env_moved (List.length Ψ) Fσ ρ).
 Proof. intros * Hg HΓ HΔ Hc Hρ. exact (set_env_rel_moved _ _ _ _ _ _ _ Hg HΓ HΔ Hc Hρ). Qed.
 
-(** Conversely, over a telescope of assumptions: an environment whose
-    part below the moved telescope is one of [Γ], and whose moved reading
-    is one of [Ψ ++ Δ], is one of [tele_sub Ψ σ ++ Γ]. *)
-Lemma set_env_in_unmoved : forall Ψ Δ Γ σ Fσ ρ, set_gsub_with Γ σ Δ Fσ -> all_assumptions Ψ ->
-    ⊢ gc_deps ⍮ gc_stack ⍮ Ψ ++ Δ -> set_env_in T γ Γ (set_env_drop (List.length Ψ) ρ) ->
-    set_env_in T γ (Ψ ++ Δ) (set_env_moved (List.length Ψ) Fσ ρ) -> set_env_in T γ (tele_sub Ψ σ ++ Γ) ρ.
-Proof.
-  intros Ψ Δ Γ σ Fσ. induction Ψ as [| ce Ψ IH]; intros ρ Hg Hass Hc Hb Hρ; [exact Hb |].
-  inversion Hass as [| ? ? (κ & A & ->) Hass']; subst.
-  pose proof (ctx_decomp_tail Hc) as Hc'.
-  destruct Hρ as [Ht He].
-  change (set_env_tail (set_env_moved (S (List.length Ψ)) Fσ ρ)) with (set_env_moved (List.length Ψ) Fσ (set_env_tail ρ)) in Ht, He.
-  change (set_env_moved (S (List.length Ψ)) Fσ ρ 0) with (ρ 0) in He.
-  pose proof (IH (set_env_tail ρ) Hg Hass' Hc' Hb Ht) as Ht'.
-  split; [exact Ht' |].
-  cbn [set_entry_rel centry_sub] in He |- *. destruct He as (x & x' & a & [E1 E2 Ha Hx Ex]).
-  exists x, x', a. constructor; [exact E1 | exact E2 | | exact Hx | exact Ex].
-  exact (set_interp_moved _ _ _ _ _ _ _ _ Hg Hc' Hb Ha).
-Qed.
-
 Lemma set_env_in_drop : forall Ψ σ Γ ρ, set_env_in T γ (tele_sub Ψ σ ++ Γ) ρ ->
     set_env_in T γ Γ (set_env_drop (List.length Ψ) ρ).
 Proof. intros * Hρ. pose proof (set_env_rel_drop _ _ _ _ Hρ) as H. rewrite length_tele_sub in H. exact H. Qed.

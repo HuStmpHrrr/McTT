@@ -337,39 +337,6 @@ Section Fixed_GCtx.
     injection HA as _ <-; rewrite List.app_nil_r; reflexivity.
   Qed.
 
-  (** The sort of an inductive type at equal parameters. *)
-  Lemma ind_sort_inst_cong : forall Ψ p D k Mk Ms Ms',
-      ind_lookup Θ Ξ p = Some D -> ind_member D k = Some Mk -> ⊢ Θ ⍮ Ξ ⍮ Ψ ->
-      List.length Ms = im_np D Mk -> List.length Ms' = im_np D Mk ->
-      (forall j N N' T, List.nth_error Ms j = Some N -> List.nth_error Ms' j = Some N' ->
-         List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T -> Θ ⍮ Ξ ⍮ Ψ ⊢ N ≈ N' : T) ->
-      exists i, Θ ⍮ Ξ ⍮ Ψ ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms]
-                  ≈ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms'] : Typeω@i.
-  Proof.
-    intros * Hl Hk HΨ HMl HMl' HMs.
-    destruct (decl_of_lookup _ _ _ _ _ HΨ Hl) as [HD Hc].
-    destruct (member_sort_typed _ _ _ _ _ HD Hk) as ([i Hi] & _).
-    pose proof (decl_closed_params_ass _ _ _ Hc Hk) as Hass; pose proof (decl_closed_params _ _ _ Hc Hk) as Hs.
-    assert (HsB : exp_scoped (List.length (im_params D Mk)) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)
-      by (eapply exp_scoped_wk; [ exact (decl_closed_sort _ Hc) |]; intros x Hx; rewrite length_im_params; unfold wk_shiftn, im_np; lia).
-    assert (HΔ0 : ⊢ Θ ⍮ Ξ ⍮ im_params D Mk ++ ⋅) by (rewrite List.app_nil_r; eapply presup_exp_ctx; exact Hi).
-    pose proof (wf_wk_shiftn_app Θ Ξ Ψ ⋅) as Hw; rewrite List.app_nil_r in Hw.
-    specialize (Hw HΨ ltac:(constructor; eapply ctx_wf_gctx; eassumption)).
-    pose proof (params_ctx_wf _ _ _ _ _ Hl Hk HΨ) as HΔΨ.
-    pose proof (wf_wk_ext _ _ (im_params D Mk) _ _ _ Hw) as Hq.
-    rewrite tele_closed_wk in Hq by exact Hs; specialize (Hq HΔΨ HΔ0).
-    assert (HB : Θ ⍮ Ξ ⍮ im_params D Mk ++ Ψ ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ : Typeω@i).
-    { rewrite <- (exp_scoped_wk_id (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ (List.length (im_params D Mk) + 0)
-                   (wk_qn (List.length (im_params D Mk)) (wk_shiftn (List.length Ψ))))
-        by (rewrite Nat.add_0_r; assumption || (intros; apply wk_qn_fix with (n := 0); [ lia | lia ])).
-      assert (HB0 : Θ ⍮ Ξ ⍮ im_params D Mk ++ ⋅ ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ : Typeω@i)
-        by (rewrite List.app_nil_r; exact Hi).
-      exact (wk_preserves_exp _ _ _ _ _ _ _ HB0 Hq). }
-    exists i; eapply sub_eq_preserves_typ; [ exact HB |].
-    eapply wf_sub_eq_of_list; [ exact Hass | exact HΔΨ | mauto 3 | rewrite length_im_params; exact HMl
-                              | rewrite length_im_params; exact HMl' | exact HMs ].
-  Qed.
-
   (** The pieces of a [Π] over a telescope are types at its level. *)
   Lemma ctx_pi_inv_outer : forall Δ2 Γ C j, all_assumptions Δ2 ->
       Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ2 C : Typeω@j -> Θ ⍮ Ξ ⍮ Δ2 ++ Γ ⊢ C : Typeω@j.

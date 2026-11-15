@@ -612,29 +612,6 @@ Section AtType.
     rewrite List.map_map; f_equal; apply List.map_ext; intros U; apply exp_shift_extend_wk.
   Qed.
 
-  (** The premises of [glu_rec] at each shape. *)
-  Lemma glu_rec_self_inv : forall k Γ Us pre Ts j Ps A N v, glu_rec p D ups NEl AEl DP DEl k Γ Us pre Ts (pt_self j Ps) A N v ->
-      exists Mj, ind_member D j = Some Mj /\
-      (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bsr ->
-         A = im_ty_at p j Mj Us Q ->
-         List.length Q = im_nn Mj /\ tele_rel (nr j) (List.rev (im_nparams Mj)) bsr bsr) /\
-      (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ components_env D ups Ts pre ↘ bsr ->
-         A = im_ty_at p j Mj Us Q ->
-         forall Δ φ Us' Q', Δ ⊢ᵏ φ : Γ -> List.length Us' = ind_nu D ->
-           exps_eq_at Δ (im_params D Mj) (List.map (fun P => P[φ]ʷ) (Us ++ Q)) (Us' ++ Q') ->
-           ind_glu_elem p D ups NEl AEl DP DEl j Δ Us' Q' N[φ]ʷ v).
-  Proof. intros * H; inversion H; subst; eauto. Qed.
-
-  Lemma glu_rec_pi_inv : forall k Γ Us pre Ts B t A N v, glu_rec p D ups NEl AEl DP DEl k Γ Us pre Ts (pt_pi B t) A N v ->
-      (forall IT OT, A = a_pi ak_relevant ak_relevant IT OT -> forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP k pre Ts B) /\
-      (forall IT OT, A = a_pi ak_relevant ak_relevant IT OT -> forall Δ φ b c, Δ ⊢ᵏ φ : Γ -> dr k pre Ts B c c ->
-         Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl k pre Ts B -> exists fc, $| v & c | gc_deps ⍮ gc_stack ↘ fc) /\
-      (forall IT OT, A = a_pi ak_relevant ak_relevant IT OT -> forall Δ φ b c fc, Δ ⊢ᵏ φ : Γ -> dr k pre Ts B c c ->
-         Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl k pre Ts B -> $| v & c | gc_deps ⍮ gc_stack ↘ fc ->
-         glu_rec p D ups NEl AEl DP DEl k Δ (List.map (fun U => U[φ]ʷ) Us) (pre ++ c :: nil) (Ts ++ ce_ass ak_relevant B :: nil) t
-           OT[(ι φ),,b] (a_app N[φ]ʷ b) fc).
-  Proof. intros * H; inversion H; subst; eauto. Qed.
-
   Lemma eval_shape_type_pi_inv : forall B t ρ a, ⟦shty pt_pi B t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a ->
       exists b, ⟦ B ⟧ ρ ↘ b /\ a = Πᵈ{ak_relevant} b (nil ↦ d_shfam p ups ρ B t ⦂ entry_type_none) fam_cod.
   Proof. intros * H; inversion H; subst; eauto. Qed.

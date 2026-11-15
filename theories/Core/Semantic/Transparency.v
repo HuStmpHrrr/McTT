@@ -36,9 +36,6 @@ Qed.
 Lemma nf_stuck_clean : forall (G : qname -> Prop), (forall p, ~ G p) -> forall W, nf_stuck G W -> nf_clean W.
 Proof. intros G HG; apply (nf_ne_stuck_clean G HG). Qed.
 
-Lemma ne_stuck_clean : forall (G : qname -> Prop), (forall p, ~ G p) -> forall M, ne_stuck G M -> ne_clean M.
-Proof. intros G HG; apply (nf_ne_stuck_clean G HG). Qed.
-
 (** A transparent context has no stuck global: every definition it
     resolves to is transparent with a body ([gc_transparent_resolve]). *)
 Lemma global_stuck_not_transparent : forall Θ Ξ, gc_transparent Θ Ξ -> forall p, ~ global_stuck Θ Ξ p.

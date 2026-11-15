@@ -177,15 +177,6 @@ Proof.
     injection Hk as <-; exact (IH _ _ _ E Hv).
 Qed.
 
-(** A field so named has a first position. *)
-Lemma field_lookup_index : forall {A : Type} (fs : list (string * A)) f v,
-    field_lookup fs f = Some v -> exists k, field_index fs f = Some k.
-Proof.
-  induction fs as [| [g w] fs IH]; intros * Hv; cbn in Hv |- *; [ discriminate |].
-  destruct (String.eqb f g); [ eauto |].
-  destruct (IH _ _ Hv) as [k ->]; cbn; eauto.
-Qed.
-
 (** The names and values of a list of named terms, combined back. *)
 Lemma combine_names_values : forall {A : Type} (fs : list (string * A)),
     List.combine (List.map fst fs) (List.map snd fs) = fs.

@@ -382,12 +382,6 @@ Section RecTyped.
   Lemma EK_wf : ⊢ Θ ⍮ Ξ ⍮ EK ++ Lm.
   Proof. exact (branch_types_wf (im_cons M) nil cons_con Lm_wf). Qed.
 
-  Lemma ndecl_pos : 0 < ind_ndecl D.
-  Proof.
-    unfold ind_ndecl; unfold ind_member in HM; destruct (ind_members D) as [| M' ms]; [ discriminate |].
-    cbn in HM; injection HM as ->; cbn; unfold im_is_decl at 1; rewrite Hh; cbn; lia.
-  Qed.
-
   Lemma ind_mty_0 : forall Us Ns, ind_mty p D 0 Us Ns = apps (a_ind p 0) (Us ++ Ns).
   Proof. intros; unfold ind_mty; rewrite HM; unfold im_ty_at, im_ref, im_pre; rewrite Hh; reflexivity. Qed.
 

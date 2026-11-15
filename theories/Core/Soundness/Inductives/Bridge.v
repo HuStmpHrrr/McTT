@@ -452,37 +452,6 @@ Section ViewSyn.
       rewrite !List.length_app, view_syntax_is_length; lia.
   Qed.
 
-  (** The domains of the two shapes of an argument recursive in both, at
-      the two instances: equal. *)
-  Lemma view_syntax_dom_eq : forall Γ c gs' gs gs1' t' gs2' gs1 t gs2 kk B' B τ Us Ns As1 Ds,
-      ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs -> gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 ->
-      List.length gs1' = List.length gs1 ->
-      List.nth_error (ptyp_doms t') kk = Some B' -> List.nth_error (ptyp_doms t) kk = Some B ->
-      List.length Us = ind_nu D -> List.length Ns = im_nn Mv -> List.length As1 = List.length gs1 -> List.length Ds = kk -> ⊢ Γ ->
-      Γ ⊢ˢ sb_of_list τ (Us ++ Ns ++ As1 ++ Ds) : shape_domains_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t)) ++ cargs_ctx p D Mv gs1 ++ im_params D Mv ->
-      exists i, Γ ⊢ B'[sb_of_list τ (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns ++ nonrec_exps gs1' As1 ++ Ds)]
-                ≈ B[sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds)] : Typeω@i.
-  Proof.
-    intros * Hcon' Hcon Heq' Heq Hl1 HB' HB HUl HNl HAl HDl HΓ Hσ.
-    assert (Hkk : kk < ptyp_depth t) by (unfold ptyp_depth; apply List.nth_error_Some; congruence).
-    destruct (decl_typed_view_doms _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) Hdt Hl k Mk qc kc Is vm Dq i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 kk
-                HMk Hh Hq HMi' Hv HMv Hcon' Hcon Heq' Heq Hl1 Hkk) as [i H].
-    pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ H Hσ) as H'.
-    exists i; cbn [exp_sub] in H'.
-    unfold ptyp_dom_at in H'.
-    assert (EB : List.nth kk (ptyp_doms t) a_prop = B) by (apply List.nth_error_nth; exact HB).
-    assert (EB' : List.nth kk (ptyp_doms t') a_prop = B') by (apply List.nth_error_nth; exact HB').
-    rewrite EB, EB' in H'.
-    rewrite <- Hl1 in H'.
-    rewrite (view_syntax_wk_inst B' c gs' gs1' t' gs2' kk τ Us Ns As1 Ds Hcon' Heq' HUl HNl ltac:(lia) HDl) in H'.
-    - replace (Us ++ Ns ++ As1 ++ Ds) with ((Us ++ Ns) ++ (As1 ++ Ds)) in H' by (rewrite <- !List.app_assoc; reflexivity).
-      rewrite (sb_of_list_app (Us ++ Ns) (As1 ++ Ds) τ), <- HDl, exp_wk_pat_falses_sb_of_list in H' by exact HAl.
-      rewrite <- (sb_of_list_app (Us ++ Ns) (nonrec_exps gs1 As1 ++ Ds) τ), <- !List.app_assoc in H'.
-      exact H'.
-    - pose proof (member_closed_recs _ _ (decl_closed_members _ HcQ _ _ HMi') c gs' gs1' t' gs2' (cons_lookup_in _ _ _ Hcon') Heq') as Hst.
-      exact (ptyp_scoped_dom _ _ _ _ Hst HB').
-  Qed.
-
   (** The parameters the two shapes end in, at the two instances: equal at
       the telescope of the group's member the group's shape ends in. *)
   Lemma view_syntax_ps_eq : forall Γ c gs' gs gs1' t' gs2' gs1 t gs2 Mj τ Us Ns As1 Ds,
@@ -1118,13 +1087,6 @@ Section ToGroup.
       destruct (glu_args_length _ _ _ _ _ _ HUs) as [HUl _].
       unfold im_params; apply glu_args_app; [ exact (decl_closed_ass _ Hc) | exact HUl | exact Hu |].
       split; [ exact HUs | exact at_nparams_glu ].
-    Qed.
-
-    Lemma at_params_c : glu_args Γ (im_params Dq Mi') Id nil (view_args Us ++ Ns) (cups ++ ns).
-    Proof.
-      unfold im_params; apply glu_args_app; [ exact (decl_closed_ass _ HcQ) | exact (length_view_args Us) | exact length_container_uparams |].
-      split; [ exact (view_uparams_glu VP p D HVP HPD HG Hselfs k Mk qc kc Is vm Dq HMk Hh Hq HGq Γ Us ups cups HΓ HUs Ecups)
-             | exact at_nparams_c ].
     Qed.
 
     Lemma at_lengths : List.length Us = ind_nu D /\ List.length Ns = im_nn Mv /\ List.length ns = im_nn Mv.

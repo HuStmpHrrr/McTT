@@ -26,22 +26,6 @@ Import Syntax_Notations.
     [gm_entry], [gc_entry], [ge_private] and [mdecl] are defined in
     [Members], where expansion reads them too. *)
 
-Lemma gm_entry_resolve : forall Φ ip E, gm_resolve Φ ip = Some E -> gm_entry Φ ip = Some E.
-Proof.
-  fix IH 1; intros [| Φ y E0 | Φ c] ip E H; cbn in H |- *; try discriminate; [| exact (IH _ _ _ H) ].
-  destruct ip as [| x ip']; [ discriminate |].
-  destruct (String.eqb x y); [| exact (IH _ _ _ H) ].
-  destruct ip' as [| z ip''], E0 as [b pv A B | pm [Δ [? Φ' | E']] | pv ? D Φ' | pv Δa pa Nsa | pv Rr ΦR]; try discriminate; auto;
-    exact (IH _ _ _ H).
-Qed.
-
-Lemma gc_entry_resolve : forall Θ Ξ p E, gc_resolve Θ Ξ p = Some E -> gc_entry Θ Ξ p = Some E.
-Proof.
-  intros * H; unfold gc_resolve, gc_resolve_u, gc_entry, gc_entry_u in *.
-  destruct (gs_find Ξ p) as [[U ip] |]; [ apply gm_entry_resolve; exact H |].
-  destruct (gds_lookup Θ (q_unit p)); [ apply gm_entry_resolve; exact H | discriminate ].
-Qed.
-
 Lemma gc_entry_deps_sub : forall Θ1 Θ2 Ξ p E, Θ1 ⊑ Θ2 -> gc_entry Θ1 Ξ p = Some E -> gc_entry Θ2 Ξ p = Some E.
 Proof.
   intros * Hs H; unfold gc_entry, gc_entry_u in *.
@@ -59,19 +43,6 @@ Proof.
   destruct (q_chain mp); [| discriminate ].
   destruct (gds_lookup Θ1 (q_unit mp)) as [V |] eqn:E1; [| discriminate ].
   rewrite (Hs _ _ E1); exact H0.
-Qed.
-
-(** An open frame below another is no entry of it. *)
-Lemma gc_unit_mem_entry_none : forall Θ Ξ H z T Φ p,
-    gc_unit Θ Ξ (me_mem H z) = Some (T, Φ) -> mod_qname (me_mem H z) = Some p -> gc_entry Θ Ξ p = None.
-Proof.
-  intros * Hu Hp.
-  destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq & [Hf | (_ & Hc & _)]); rewrite Hp in Hq; injection Hq as <-.
-  - unfold gc_frame in Hf; unfold gc_entry, gc_entry_u; rewrite gs_find_tele_find.
-    destruct (gs_find_tele Ξ p) as [[[[Δ [sm Φ0 | E]] [| x ip]] T0] |]; try discriminate;
-      try (destruct sm; discriminate); cbn [option_map]; apply gm_entry_nil.
-  - cbn in Hp; destruct (mod_qname H) as [p0 |]; [| discriminate ]; injection Hp as <-; cbn in Hc.
-    apply List.app_eq_nil in Hc as [_ Hc]; discriminate.
 Qed.
 
 (** The path of an open frame names no entry: its members are its own. *)
@@ -183,23 +154,6 @@ Proof.
   intros * Hs * [pq E HH He]; constructor; [ eapply msite_deps_sub; eassumption | eapply gc_entry_deps_sub; eassumption ].
 Qed.
 
-(** The module [mdecl] finds declares the member: the member names an entry
-    of it, with the privacy found. *)
-Lemma mdecl_entry : forall Θ Ξ H y qd pv, mdecl Θ Ξ H y qd pv ->
-    exists E, gc_entry Θ Ξ (qname_in qd y) = Some E /\ ge_private E = pv.
-Proof. intros * [pq E _ He]; exists E; split; [ exact He | reflexivity ]. Qed.
-
-(** ** Module Tables
-
-    What a reference may know of the module it selects from: nothing, that
-    the module is reached from a unit (the global check below decides), or
-    the entries of a body, newest first, each with its privacy and its own
-    table.  [privacy_table_body ch es] also records the chain [ch] of submodules
-    selected from the local module it was read from, which the checker
-    reports.  The tables are read off the syntax, in a scope [S] giving the
-    table of each index: binders hold [privacy_table_none], a local module the table of
-    its unit. *)
-(** No induction principle: tables are only computed and read. *)
 Unset Elimination Schemes.
 Inductive privacy_table : Set :=
 (** Nothing is known: a term variable, a parameter, a definition *)
@@ -301,14 +255,6 @@ Definition binding_privacy_table (S : list privacy_table) (b : surface_binding) 
   end.
 
 (** ** Member References *)
-
-(** The references a name from a unit is written with, as a chain of
-    selections: each member, from the chain before it. *)
-Fixpoint chain_refs (H : modexp) (ch : list string) : list (privacy_table * string)%type :=
-  match ch with
-  | nil => nil
-  | y :: ch' => (privacy_table_global H, y) :: chain_refs (me_mem H y) ch'
-  end.
 
 (** The member references a term is written with ([surface_exp], before the
     fill), each with the table of the module it selects from: every

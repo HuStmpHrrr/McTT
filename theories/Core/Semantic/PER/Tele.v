@@ -962,17 +962,6 @@ Section Tele.
         tele_prefix_rel (args_rel m ns c) (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vp) (nonrec_arg_vals gs1 vp').
     Proof. intros * _ _ _ Heq Hl Hl' Ha; exact (nonrec_prefix_gen _ _ _ _ _ _ _ _ Heq Hl Hl' Ha). Qed.
 
-    Lemma nonrec_prefix_refl : forall m Mm ns c gsf gs1 gs vp vp' vs vs', ind_member D m = Some Mm ->
-        tele_rel (nparams_rel m) (List.rev (im_nparams Mm)) ns ns -> ind_con Mm c = Some gsf -> gsf = gs1 ++ gs ->
-        List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
-        tele_rel (args_rel m ns c) (cargs_nonrec gsf) (nonrec_arg_vals gsf (vp ++ vs)) (nonrec_arg_vals gsf (vp' ++ vs')) ->
-        tele_prefix_rel (args_rel m ns c) (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vp) (nonrec_arg_vals gs1 vp).
-    Proof.
-      intros * HM Hns Hc Heq Hl Hl' Ha.
-      eapply (args_rel_pre_refl_l _ _ HM ns c gsf Hns Hc); [ rewrite Heq, cargs_nonrec_app, List.length_app; lia |].
-      eapply nonrec_prefix; eassumption.
-    Qed.
-
     Lemma nonrec_arg_vals_snoc_arg : forall gs1 vp r A v, List.length vp = List.length gs1 ->
         nonrec_arg_vals (gs1 ++ ca_arg r A :: nil) (vp ++ v :: nil) = nonrec_arg_vals gs1 vp ++ v :: nil.
     Proof. intros; rewrite nonrec_arg_vals_app by assumption; reflexivity. Qed.
@@ -1007,19 +996,6 @@ Section Tele.
         symmetric by swapping its sides and transitive by sharing the
         middle element's evaluations; no base is moved, and no
         admissibility is used. *)
-
-    (** Weakening the admissible bases and indices. *)
-    Lemma ind_rel_ok : forall (okr1 okr2 : nat -> list domain -> list centry -> list exp -> list domain -> Prop),
-        (forall j pre Ts Ps bs, okr1 j pre Ts Ps bs -> okr2 j pre Ts Ps bs) ->
-        (forall k u u' ns ns' x y, ind_rel p D okr1 nparams_rel args_rel doms_rel k u u' ns ns' x y ->
-           ind_rel p D okr2 nparams_rel args_rel doms_rel k u u' ns ns' x y) /\
-        (forall k u u' pre pre' Ts gs vs vs', con_args_rel p D okr1 nparams_rel args_rel doms_rel k u u' pre pre' Ts gs vs vs' ->
-           con_args_rel p D okr2 nparams_rel args_rel doms_rel k u u' pre pre' Ts gs vs vs') /\
-        (forall k u u' pre pre' Ts t v v', rec_arg_rel p D okr1 nparams_rel args_rel doms_rel k u u' pre pre' Ts t v v' ->
-           rec_arg_rel p D okr2 nparams_rel args_rel doms_rel k u u' pre pre' Ts t v v') /\
-        (forall k u u' pre pre' Ts t f a f' a', rec_arg_app_rel p D okr1 nparams_rel args_rel doms_rel k u u' pre pre' Ts t f a f' a' ->
-           rec_arg_app_rel p D okr2 nparams_rel args_rel doms_rel k u u' pre pre' Ts t f a f' a').
-    Proof. intros * HK; apply ind_rel_mut_ind_all; intros; econstructor; eauto. Qed.
 
     Lemma ind_rel_sym_all : forall okr,
         (forall k u u' ns ns' x y, ind_rel p D okr nparams_rel args_rel doms_rel k u u' ns ns' x y ->
@@ -2200,17 +2176,9 @@ Section Tele.
         tele_prefix_rel fr k a b -> tele_prefix_rel fr k b a.
     Proof. exact (tele_prefix_rel_sym _ fr HP' HI'). Qed.
 
-    Lemma fields_prefix_trans : forall k a b c, k <= List.length (record_fields R) ->
-        tele_prefix_rel fr k a b -> tele_prefix_rel fr k b c -> tele_prefix_rel fr k a c.
-    Proof. exact (tele_prefix_rel_trans _ fr HP' HI'). Qed.
-
     Lemma fields_prefix_refl_l : forall k a b, k <= List.length (record_fields R) ->
         tele_prefix_rel fr k a b -> tele_prefix_rel fr k a a.
     Proof. exact (tele_prefix_rel_refl_l _ fr HP' HI'). Qed.
-
-    Lemma fields_prefix_refl_r : forall k a b, k <= List.length (record_fields R) ->
-        tele_prefix_rel fr k a b -> tele_prefix_rel fr k b b.
-    Proof. exact (tele_prefix_rel_refl_r _ fr HP' HI'). Qed.
 
     Lemma record_rel_sym : forall v v', record_rel R fr v v' -> record_rel R fr v' v.
     Proof.
@@ -2226,7 +2194,5 @@ Section Tele.
       exact (tele_rel_trans _ fr HP' HI' _ _ _ _ (le_n _) Hrel Hrel').
     Qed.
 
-    Lemma record_rel_PER : PER (record_rel R fr).
-    Proof. split; [ exact record_rel_sym | exact record_rel_trans ]. Qed.
   End RecordPER.
 End Tele.

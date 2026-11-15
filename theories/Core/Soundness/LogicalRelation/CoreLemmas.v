@@ -1302,21 +1302,6 @@ Proof.
   rewrite (Fps _ _ _ _ _ HR _ HC2); exact (glu_nfs_eq_at_upto _ _ _ _ _ _ E (Hr _ _ _ Hφ HC1) (Hr' _ _ _ Hφ HC2)).
 Qed.
 
-Lemma record_typ_at_resp_per : forall p R ns ns' FP FEl FP' FEl' U Γ A A' Ns Ns2,
-    per_top_ps (List.rev (record_params R)) ns ns' ->
-    (forall k vs, k <= List.length (record_fields R) ->
-       tele_prefix_rel (canon_fields_rel R ns') k vs vs -> tele_prefix_rel (canon_fields_rel R ns) k vs vs) ->
-    record_typ_at p R ns FP FEl U Γ A Ns -> record_typ_at p R ns' FP' FEl' U Γ A' Ns2 ->
-    record_typ_at p R ns' FP FEl U Γ A Ns.
-Proof.
-  intros * Ht Hmv [HA Hk] [_ Hk']; constructor; [ exact HA |].
-  intros Δ φ Hφ; destruct (Hk Δ φ Hφ) as [Hp Hs Hf]; destruct (Hk' Δ φ Hφ) as [Hp' _ _]; constructor;
-    [ exact (params_glu_top_resp_per_top_ps _ _ _ _ _ _ Ht Hp Hp') | exact Hs |].
-  intros Ns' HNs' k f T Ms ms Hfk HMl Hml HMs Hpre.
-  assert (Hlt : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
-  exact (Hf Ns' HNs' k f T Ms ms Hfk HMl Hml HMs (Hmv k ms ltac:(lia) Hpre)).
-Qed.
-
 (** The projections of an element related to itself are related to
     themselves, prefix by prefix. *)
 Lemma record_projs_prefix_diag : forall R ns m vs k,
@@ -1494,15 +1479,6 @@ Proof.
   5:{ exfalso; match goal with H : not_level_sort _ |- _ => apply H; reflexivity end. }
   all: simpl_glu_rel; trivial.
 Qed.
-
-Lemma glu_univ_elem_univ_lvl : forall i U P El a,
-    abs_kind_sort (domain_kind a) Typeω@(large_level i) = U ->
-    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    not_level_sort a ->
-    forall Γ A,
-      Γ ⊢ A ® P ->
-      Γ ⊢ A : U.
-Proof. intros * <- **; eapply glu_univ_elem_univ_lvl_gen; eassumption. Qed.
 
 Lemma glu_univ_elem_typ_resp_exp_eq : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -1752,17 +1728,6 @@ Proof.
   eauto.
 Qed.
 
-Lemma glu_univ_elem_trm_univ_lvl : forall i U P El a,
-    abs_kind_sort (domain_kind a) Typeω@(large_level i) = U ->
-    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    not_level_sort a ->
-    forall Γ M A m,
-      Γ ⊢ M : A ® m ∈ El ->
-      Γ ⊢ A : U.
-Proof.
-  intros. eapply glu_univ_elem_univ_lvl; [ eassumption | eassumption | eassumption | eapply glu_univ_elem_trm_typ ]; eassumption.
-Qed.
-
 Lemma glu_univ_elem_trm_resp_exp_eq : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A M m M',
@@ -1958,28 +1923,6 @@ Proof with mautosolve.
 Qed.
 
 (** *** Moving [neut_glu_*_pred]s along [per_bot] *)
-(** A neutral type glued at its value, along neutrals that read back alike
-    up to proofs, given a type glued at the other neutral: that one's
-    readback is then typed. *)
-Lemma neut_glu_typ_pred_resp_per_bot : forall U b b' Γ A A',
-    Dom b ≈ b' ∈ per_bot -> Γ ⊢ A ® neut_glu_typ_pred U b -> Γ ⊢ A' ® neut_glu_typ_pred U b' ->
-    Γ ⊢ A ® neut_glu_typ_pred U b'.
-Proof.
-  intros * Hb [HA HR] [_ HR']; split; [ exact HA |].
-  intros Δ φ A0 Hφ HA0; destruct (Hb (length Δ)) as [W1 W2 HW1 HW2 E].
-  pose proof (functional_read_ne _ _ _ _ HA0 HW2) as ->.
-  apply (glu_ne_eq_upto _ _ _ _ _ E (HR _ _ _ Hφ HW1)).
-  exists U; exact (presup_exp_eq_right (HR' _ _ _ Hφ HW2)).
-Qed.
-
-(** The same for a neutral element, at a type glued at the other
-    neutral. *)
-Lemma neut_glu_exp_pred_resp_per_bot : forall U b b' Γ A A' M m,
-    Dom b ≈ b' ∈ per_bot -> Γ ⊢ M : A ® m ∈ neut_glu_exp_pred U b -> Γ ⊢ A' ® neut_glu_typ_pred U b' ->
-    Γ ⊢ M : A ® m ∈ neut_glu_exp_pred U b'.
-Proof.
-  intros * Hb [] HA'; econstructor; [ eapply neut_glu_typ_pred_resp_per_bot; eassumption | eassumption .. ].
-Qed.
 
 (** *** Morphism instances for [pi_glu_*_pred]s *)
 Add Parametric Morphism κd κc U IR : (pi_glu_typ_pred κd κc U IR)

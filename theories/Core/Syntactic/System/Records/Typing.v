@@ -445,28 +445,6 @@ Qed.
         eapply wf_conv_sort; [ exact Hp' | exact HUl | exact HSi0 | symmetry; exact HUU ].
   Qed.
 
-  (** So a field's types at the projections of two equal elements are
-      equal. *)
-  Corollary record_proj_typ_eq : forall Θ Ξ Γ M M' p R Ns k f U,
-      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : apps_exp (a_record p) Ns ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : record_ty R -> record_lookup Θ Ξ p = Some R ->
-      List.length Ns = List.length (record_params R) ->
-      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
-         Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
-      List.nth_error (record_fields R) k = Some (f, U) ->
-      exists S, type_sort S /\ Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] ≈ U[sb_of_list Id (Ns ++ record_pre R k M')] : S.
-  Proof.
-    intros * HMM Hr Hl Hn HNs Hfk.
-    destruct (wf_record_inversion Hr) as [R0 Hl0 Hnd Hass i Hty HF HS HFs _].
-    rewrite Hl in Hl0; injection Hl0 as <-.
-    assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) by (gen_presups; assumption).
-    assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
-    eapply record_field_typ_cong;
-      [ exact (wf_record_closed _ _ _ _ _ HΓ Hl) | exact Hass | exact HF | exact HΓ | exact Hfk
-      | rewrite List.length_app, length_record_pre by lia; lia | rewrite List.length_app, length_record_pre by lia; lia |].
-    exact (record_pre_eq _ _ _ _ _ _ _ _ HMM Hr Hl Hn HNs k ltac:(lia)).
-  Qed.
-
   (** ** Instances along a Weakening, and η-Expansions *)
 
   Lemma record_field_wk : forall R k f U Ns L φ, record_closed R -> List.nth_error (record_fields R) k = Some (f, U) ->

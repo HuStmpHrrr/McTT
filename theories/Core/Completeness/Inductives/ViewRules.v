@@ -103,20 +103,6 @@ Proof.
     unfold record_projs; match goal with Hf : nil = record_fields _ |- _ => rewrite <- Hf end; constructor.
 Qed.
 
-(** A declared member's constructor along any arguments it takes. *)
-Lemma eval_apps_con_decl_inv : forall qh Dq kq Mq pm c ys xs r, ind_lookup gc_deps gc_stack qh = Some Dq ->
-    ind_member Dq kq = Some Mq -> im_head Mq = mh_decl pm ->
-    $*| d_con qh kq c xs & ys | gc_deps ⍮ gc_stack ↘ r -> r = d_con qh kq c (xs ++ ys).
-Proof.
-  intros qh Dq kq Mq pm c; induction ys as [| y ys IH]; intros xs r Hq HM Hh E; inversion E; subst;
-    [ rewrite List.app_nil_r; reflexivity |].
-  match goal with H : eval_app _ _ _ y _ |- _ => inversion H; subst end;
-    match goal with H1 : ind_lookup _ _ qh = Some ?D1 |- _ => rewrite Hq in H1; injection H1 as <- end;
-    match goal with H1 : ind_member Dq kq = Some ?M1 |- _ => rewrite HM in H1; injection H1 as <- end;
-    try congruence.
-  rewrite (IH _ _ Hq HM Hh ltac:(eassumption)), <- List.app_assoc; reflexivity.
-Qed.
-
 (** A declared member's constructor along terms: the values it takes
     after the stored values [xs] are those it takes after any [xs'] as
     long, the sort of each argument depending on its position only.  No

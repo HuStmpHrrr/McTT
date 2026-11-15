@@ -725,6 +725,3 @@ Inductive elab_spec : Cst.prog -> surface_compilation_unit -> Prop :=
     spec_params L ps tys ->
     spec_cmds fp nil (map fst ps) (param_scope_entries ps ++ L) (leads ++ cs) ccs ->
     elab_spec (leads, (fp, ps, cs)) (lds, params_tele tys, ccs).
-
-Scheme spec_cmd_mind := Minimality for spec_cmd Sort Prop
-with spec_cmds_mind := Minimality for spec_cmds Sort Prop.

@@ -43,11 +43,6 @@ Section ClosedTele.
   Lemma ctele_rev_sem : ⊨ List.rev (List.rev Δ) ++ ⋅.
   Proof. rewrite List.rev_involutive, List.app_nil_r; exact HW. Qed.
 
-  Lemma ctele_refl_l : forall xs ys, per_tele_args (List.rev Δ) nil nil xs ys -> per_tele_args (List.rev Δ) nil nil xs xs.
-  Proof.
-    intros * Hg; eapply (per_tele_args_refl_l _ _ _ per_ctx_env_nil_true ctele_rev_sem); [ exact (List.Forall_rev Ha) | exact I | exact Hg ].
-  Qed.
-
   Lemma ctele_sym : forall xs ys, per_tele_args (List.rev Δ) nil nil xs ys -> List.length xs = List.length Δ ->
       per_tele_args (List.rev Δ) nil nil ys xs.
   Proof.

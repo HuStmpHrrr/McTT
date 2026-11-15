@@ -44,15 +44,6 @@ Proof. intros * H; exact H. Qed.
 Lemma glu_desc_deep_no_mod : forall Γ R, mdesc_mod R = None -> glu_desc_deep Γ R.
 Proof. intros * Hm; unfold glu_desc_deep; rewrite Hm; exact I. Qed.
 
-(** Source and grown target descriptions agree under [glu_desc_deep]: a
-    closed description grows in its stored body only, which
-    [glu_desc_deep] does not read. *)
-Lemma glu_desc_deep_grows : forall Θ1 Ξ1 Θ2 Ξ2 Γ R1 R2,
-    mdesc_grows Θ1 Ξ1 Θ2 Ξ2 R1 R2 -> glu_desc_deep Γ R1 -> glu_desc_deep Γ R2.
-Proof.
-  induction 1 as [R Hc | Θ' T Φ1 Φ2 Ns p _ _ | Θd A M R1 R2 Hd IH]; intros HR; [ exact HR | exact HR | exact (IH HR) ].
-Qed.
-
 (** No argument is glued. *)
 Lemma glu_args_deep_nil : forall Γ T, glu_args_deep Γ T nil.
 Proof. intros * Trest Tfilled _ _ [| k] *; cbn; discriminate. Qed.

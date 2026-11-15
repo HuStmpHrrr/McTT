@@ -103,42 +103,6 @@ Qed.
 Definition same_denote (Γ0 : ctx) (H0 H1 : modexp) : Prop :=
   forall Γ1 ζ R, Γ1 ⊢ˢ ζ : Γ0 -> mdenote gc_deps gc_stack Γ1 H0[ζ]ᵐ R -> mdenote gc_deps gc_stack Γ1 H1[ζ]ᵐ R.
 
-(** Denoting alike at every substitution, so at every substitution of a
-    substitution. *)
-Lemma same_denote_sub : forall {Γ0 Γ1 ζ H0 H1}, Γ1 ⊢ˢ ζ : Γ0 -> same_denote Γ0 H0 H1 -> same_denote Γ1 H0[ζ]ᵐ H1[ζ]ᵐ.
-Proof.
-  intros * Hζ Hs Γ2 ζ' R Hζ' Hm; rewrite modexp_sub_sub in *.
-  exact (Hs _ _ _ (wf_sub_compose _ _ _ _ _ _ _ Hζ Hζ') Hm).
-Qed.
-
-(** Selection keeps denoting alike, from a module expression that names
-    no stored module at any substitution: its selections are looked up
-    in what it denotes, not by path. *)
-Lemma same_denote_mem : forall {Γ0 H0 H1} y, same_denote Γ0 H0 H1 ->
-    (forall Γ1 ζ, Γ1 ⊢ˢ ζ : Γ0 -> mod_qname H0[ζ]ᵐ = None) ->
-    same_denote Γ0 (me_mem H0 y) (me_mem H1 y).
-Proof.
-  intros * Hs Hq Γ1 ζ R Hζ Hm; cbn [modexp_sub] in *.
-  inversion Hm; subst;
-    try (match goal with Hp : mod_qname (me_mem _ _) = Some _ |- _ =>
-           cbn [mod_qname] in Hp; rewrite (Hq _ _ Hζ) in Hp; discriminate end).
-  econstructor; [ eapply Hs; eassumption | eassumption .. ].
-Qed.
-
-(** Application to the variable of a further parameter keeps denoting
-    alike. *)
-Lemma same_denote_app_var : forall {Γ0 H0 H1} κ B, same_denote Γ0 H0 H1 ->
-    same_denote (Γ0 ▹{κ} B) (me_app H0[Wk]ᵐ #0) (me_app H1[Wk]ᵐ #0).
-Proof.
-  intros * Hs Γ1 ζ R Hζ Hm; cbn [modexp_sub] in *.
-  rewrite !modexp_sub_sub in *.
-  inversion Hm; subst;
-    try (match goal with Hp : mod_qname (me_app _ _) = Some _ |- _ => cbn in Hp; discriminate end).
-  eapply mdenote_app; [| eassumption ].
-  eapply Hs; [| eassumption ].
-  eapply wf_sub_compose; [ eapply wf_sub_shift; exact (wf_sub_cod _ _ _ _ _ Hζ) | exact Hζ ].
-Qed.
-
 (** A well-formed module expression denotes a module with a telescope. *)
 Lemma me_mod_tele_exists : forall {Γ H H'}, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H' ->
     exists R T, mdenote gc_deps gc_stack Γ H R /\ mdesc_mod_tele R = Some T.
@@ -1450,62 +1414,6 @@ Proof.
         destruct Hk as (a0 & Ea0 & Ka0); exists ρ0, a0; repeat split; assumption end.
     + inversion Hb; subst; eapply IH; eassumption.
   - inversion Hb.
-Qed.
-
-(** The member of a saturated body value glued as [H], at a type value of
-    an evaluated kind related to the member types of the value
-    ([dmod_mem_type_rel]), is glued as the member there: glued at the
-    entry's own type value through the identity factorization, moved to
-    the related one ([glu_univ_elem_exp_conv_universe_index]).  A proof is
-    no such member: its type is a proposition ([per_body_proof_kind]). *)
-Lemma glu_mem_body_value : forall Δ σ Γ H sm Φ ρh x R A Srt m a2 (k : nat) P2 El2,
-    glu_dmod Δ σ Γ H (dm_local nil (md_body sm Φ) ρh) ->
-    mdenote gc_deps gc_stack Γ (me_mem H x) R -> mdesc_type R = Some A -> type_sort Srt -> Γ ⊢ A : Srt ->
-    dm_local nil (md_body sm Φ) ρh ·ₜ x gc_deps ⍮ gc_stack ↘ m ->
-    per_dmod (dm_local nil (md_body sm Φ) ρh) (dm_local nil (md_body sm Φ) ρh) ->
-    dmod_mem_type_rel (dm_local nil (md_body sm Φ) ρh) x a2 ->
-    evaluated_kind (domain_kind a2) ->
-    DG a2 ∈ glu_univ_elem k ↘ P2 ↘ El2 -> Δ ⊢ A[σ] ® P2 ->
-    Δ ⊢ (a_mem H x)[σ] : A[σ] ® m ∈ El2.
-Proof.
-  intros * Hg Hm HA HS HAt Hsel Hhh Hty Hev Hg2 HP2.
-  inversion Hg; subst;
-    [| exfalso; match goal with Hn : next_param (dm_local nil _ _) _ |- _ => inversion Hn; subst end;
-       match goal with Hl : _ ++ _ :: nil = nil |- _ => destruct Δ0; discriminate end ].
-  match goal with Hσ0 : Δ ⊢ˢ σ : Γ, Hmem0 : forall (x0 : String.string) _ _ _ _ _, _ -> _ -> _ -> _ -> exists _ _, glu_body_member _ _ _ _ _ _ _ _ _ _ |- _ =>
-    rename Hσ0 into Hσ, Hmem0 into Hmem end.
-  inversion Hhh; subst;
-    [| exfalso; match goal with Hn : next_param (dm_local nil _ _) _ |- _ => inversion Hn; subst end;
-       match goal with Hl : _ ++ _ :: nil = nil |- _ => destruct Δ0; discriminate end ].
-  match goal with Hb : per_body ρh Φ ρh Φ |- _ => rename Hb into Hbb end.
-  pose proof (proj1 (Kinds.PER.per_body_noopen _ _ _ _ Hbb)) as Hno.
-  inversion Hsel; subst.
-  - match goal with Hl : 0 < length nil |- _ => inversion Hl end.
-  - (** A definition of an evaluated kind *)
-    destruct (Hmem _ _ _ _ _ _ H3 H4 H5 H8) as (a & m' & [Ea Em Hfield]).
-    pose proof (functional_eval_exp _ _ _ _ Em H10) as ->.
-    pose proof (dmod_mem_type_body sm Φ ρh x _ _ _ _ _ _ H3 H4 H8 Ea) as Hmt.
-    destruct (Hty _ _ Hhh Hmt) as [j Hj].
-    pose proof (wf_sub_cod _ _ _ _ _ Hσ) as HwΓ.
-    assert (Hst : glu_sub_through Δ σ Γ Δ wk_id Γ Id σ).
-    { constructor; [ apply kripke_id; exact (wf_sub_dom _ _ _ _ _ Hσ) | apply wf_sub_id; exact HwΓ | exact Hσ |].
-      apply wf_sub_eq_of_sb_eq; [ exact (wf_sub_sb_wk Hσ (kripke_id _ (wf_sub_dom _ _ _ _ _ Hσ))) |].
-      rewrite sb_compose_id_left; intros n; unfold sb_wk; destruct (σ n); cbn;
-        [ reflexivity | rewrite exp_wk_id | rewrite modexp_wk_id | rewrite exp_wk_id, modexp_wk_id ]; reflexivity. }
-    rewrite <- (modexp_sub_id H) in Hm.
-    destruct (Hfield _ _ _ _ _ _ _ _ Hst Hm HA HS HAt) as (i & P & El & [Hga HAP HMm]).
-    rewrite !modexp_sub_id in HMm.
-    exact (glu_univ_elem_exp_conv_universe_index (i := ul i) (j := ul k) Hj Hga Hg2 HMm HP2).
-  - (** A proof: its type is a proposition, not of the evaluated kind of
-        the member's type *)
-    exfalso.
-    match goal with Hp : gm_prefix_upto _ x = Some (gm_ext ?Φ1 x ?E), Ht : entry_tm ?E = Some _, Hk : entry_kind ?E = ak_propositional |- _ =>
-      rename Hp into Hp0, Ht into Ht0, Hk into Hk0 end.
-    destruct E as [b pv κ A1 [M1 |] | | | | ]; cbn in Ht0, Hk0; try discriminate; injection Ht0 as <- <-; subst κ.
-    pose proof Hp0 as Hp'; rewrite (gm_expand_noopen _ Hno) in Hp'.
-    destruct (per_body_proof_kind _ _ _ _ Hbb _ _ _ _ _ _ Hp') as (ρ1 & b0 & Hb1 & Eb0 & Kb0).
-    destruct (Hty _ _ Hhh (dmod_mem_type_body _ _ _ _ _ _ _ _ _ _ Hp0 eq_refl Hb1 Eb0)) as [j [Rj Hj]].
-    rewrite <- (per_univ_elem_kind _ _ _ _ Hj), Kb0 in Hev; inversion Hev.
 Qed.
 
 (** A module slot is glued in a glued context. *)

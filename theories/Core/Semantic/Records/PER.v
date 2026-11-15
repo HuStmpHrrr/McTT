@@ -189,22 +189,6 @@ Section Fixed_GCtx.
       exact (proj2 (Hag j qa qb ltac:(lia) Hp1 _ _) Hxy).
   Qed.
 
-  Lemma record_canon_prefix_move : forall i p R ns ns' elem_rel,
-      record_lookup gc_deps gc_stack p = Some R ->
-      DF d_record p ns ≈ d_record p ns' ∈ per_univ_elem i ↘ elem_rel ->
-      forall k vs, k <= List.length (record_fields R) ->
-      tele_prefix_rel (canon_fields_rel R ns') k vs vs -> tele_prefix_rel (canon_fields_rel R ns) k vs vs.
-  Proof.
-    intros * Hl HR; basic_invert_per_univ_elem HR.
-    match goal with Hl2 : record_lookup _ _ p = Some ?R2 |- _ => assert_fails constr_eq R2 R;
-      rewrite Hl in Hl2; injection Hl2 as <- end.
-    intros k vs Hk Hp.
-    match goal with
-    | HfP : fields_per R ?fr, HfI : fields_inv R ?fr, HfE : fields_evals _ R ns ns' ?fr |- _ =>
-        exact (proj2 (record_canon_prefix_clause _ _ R ns ns' fr (fun _ _ _ H => H) HfP HfI HfE k vs Hk Hp))
-    end.
-  Qed.
-
   (** What a related pair of record types gives, at the canonical
       relations: the conditions of the clause. *)
   #[warnings="-cannot-define-projection"]
@@ -347,27 +331,4 @@ Section Fixed_GCtx.
     exact (functional_eval_proj _ _ _ _ Hpw Hpv).
   Qed.
 
-  (** The readback of the fields of a record value, one by one: the
-      readback of each projection at the field's type, in [ρ] extended by
-      the projections before it, at their types (whatever their kinds
-      [κs]). *)
-  Lemma read_fields_nth : forall s ρ fl v Fs, Rflds v at fl in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Fs ->
-      forall vs, List.Forall2 (fun fT r => eval_proj gc_deps gc_stack (fst fT) v r) fl vs ->
-      List.length (List.map nf_to_exp Fs) = List.length fl /\
-      forall κs j g T r, List.nth_error fl j = Some (g, T) -> List.nth_error vs j = Some r ->
-        exists t F, ⟦ T ⟧ env_tele ρ (fields_tele_in_order fl κs) (List.firstn j vs) ↘ t /\ Rnf ⇓ t r in gc_deps ⍮ gc_stack ⍮ s ↘ F /\
-          List.nth_error (List.map nf_to_exp Fs) j = Some (nf_to_exp F).
-  Proof.
-    induction 1 as [| f v r T ρ t s F fl Fs Hp Et HF HFs IH]; intros vs Hvs.
-    - inversion Hvs; subst; split; [ reflexivity |]; intros κs [| j]; discriminate.
-    - inversion Hvs as [| ? r' ? vs' Hr' Hvs']; subst; cbn [fst] in Hr'.
-      pose proof (functional_eval_proj _ _ _ _ Hp Hr') as <-.
-      destruct (IH vs' Hvs') as [Hl IHn].
-      split; [ cbn; congruence |].
-      intros κs [| j] g U r0 Hj Hr0; cbn in Hj, Hr0.
-      + injection Hj as <- <-; injection Hr0 as <-; exists t, F; split; [| split; [ exact HF | reflexivity ] ].
-        exact Et.
-      + destruct (IHn (List.tl κs) _ _ _ _ Hj Hr0) as (t' & F' & Et' & HF' & HnF); exists t', F'; split; [| split; [ exact HF' | exact HnF ] ].
-        exact Et'.
-  Qed.
 End Fixed_GCtx.

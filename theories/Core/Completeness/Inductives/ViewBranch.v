@@ -157,10 +157,6 @@ Proof.
     try contradiction; try (split; [ exact I | exact H ]); exact (IH gs1 gs2' gs2 ltac:(lia) H).
 Qed.
 
-Lemma cargs_same_kinds_app : forall gs1' gs1 gs2' gs2, cargs_same_kinds gs1' gs1 -> cargs_same_kinds gs2' gs2 ->
-    cargs_same_kinds (gs1' ++ gs2') (gs1 ++ gs2).
-Proof. induction gs1' as [| [] gs1' IH]; intros [| [] gs1] * H1 H2; cbn in *; try contradiction; auto. Qed.
-
 Lemma cargs_nrec_app' : forall D gs1 gs2, cargs_nrec D (gs1 ++ gs2) = cargs_nrec D gs1 + cargs_nrec D gs2.
 Proof. intros D; induction gs1 as [| [] gs1 IH]; intros; cbn; rewrite ?IH; lia. Qed.
 

@@ -437,9 +437,6 @@ Lemma domain_list_simulation_at_app : forall P l1 l1' l2 l2', domain_list_simula
     domain_list_simulation_at P (l1 ++ l2) (l1' ++ l2').
 Proof. induction 1; intros; cbn; [ assumption | constructor; auto ]. Qed.
 
-Lemma domain_list_simulation_at_length : forall P l l', domain_list_simulation_at P l l' -> List.length l = List.length l'.
-Proof. induction 1; cbn; congruence. Qed.
-
 Lemma env_agree_args_at : forall P Q vts vts' ρ ρ',
     env_agree P ρ ρ' -> domain_list_simulation_at Q (List.map fst vts) (List.map fst vts') ->
     (forall y, Q (List.length vts + y) -> P y) ->
@@ -1557,24 +1554,6 @@ Section Read.
     intros [| x] Hx; cbn; [ constructor; exact Hc | apply Hρ, Hx ].
   Qed.
 
-  (** A closure that does not read its argument, at any argument. *)
-  Lemma fast_eval_clo_unread : forall B (ρ ρ' : env) c c' t t' b,
-      env_agree (fun x => ~ exp_fresh (S x) B) ρ ρ' -> exp_fresh 0 B -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c ⦂ t ↘ b ->
-      exists b', ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ (ρ' ↦ c' ⦂ t') ↘ b' /\ domain_simulation b b'.
-  Proof.
-    intros * Hρ H0 Hb; eapply fast_eval_exp_sim; [ exact Hb |].
-    intros [| x] Hx; cbn; [ contradiction | apply Hρ, Hx ].
-  Qed.
-
-  Lemma fast_eval_clo2_sim : forall B (ρ ρ' : env) c1 c1' c2 c2' t1 t1' t2 t2' b,
-      env_agree (fun x => ~ exp_fresh (S (S x)) B) ρ ρ' -> domain_simulation c1 c1' -> domain_simulation c2 c2' ->
-      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c1 ⦂ t1 ↦ c2 ⦂ t2 ↘ b ->
-      exists b', ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ (ρ' ↦ c1' ⦂ t1' ↦ c2' ⦂ t2') ↘ b' /\ domain_simulation b b'.
-  Proof.
-    intros * Hρ Hc1 Hc2 Hb; eapply fast_eval_exp_sim; [ exact Hb |].
-    intros [| [| x]] Hx; cbn; [ constructor; exact Hc2 | constructor; exact Hc1 | apply Hρ, Hx ].
-  Qed.
-
   (** The fresh variables of the telescopes of a declaration, from
       environments related everywhere. *)
   Lemma fast_fresh_tele_sim : forall ρ T s ns, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ns ->
@@ -2213,10 +2192,6 @@ Hint Resolve domain_simulation_lvl_suc domain_simulation_lvl_max domain_list_sim
 Section FastSim.
   Variables (Θ : gdeps) (Ξ : gstack).
 
-  (** The reference value [a] and the fast value [a'] *)
-  Definition fast_value_simulation (a : domain) (a' : fdomain) : Prop :=
-    domain_simulation Θ Ξ a (fdomain_erase a') /\ fdomain_ok Θ Ξ a'.
-
   (** A reference environment and a fast one, agreeing at the entries [P]
       selects *)
   Definition fast_env_agree (P : nat -> Prop) (ρ : env) (ρ' : fenv) : Prop :=
@@ -2224,9 +2199,6 @@ Section FastSim.
 
   Lemma fast_env_agree_all : forall P ρ ρ', fast_env_agree (fun _ => True) ρ ρ' -> env_agree Θ Ξ P ρ (fenv_erase ρ').
   Proof. intros * [H _]; eapply env_agree_mono; [ exact H | intros; exact I ]. Qed.
-
-  Lemma fast_env_agree_ok : forall P ρ ρ', fast_env_agree P ρ ρ' -> fenv_ok Θ Ξ ρ'.
-  Proof. intros * [_ H]; exact H. Qed.
 
   Lemma fast_env_agree_nil : forall P, fast_env_agree P nil nil.
   Proof. intros; split; [ apply env_agree_nil | constructor ]. Qed.

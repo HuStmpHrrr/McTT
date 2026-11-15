@@ -186,9 +186,6 @@ Proof. intros. eapply (proj1 (proj2 set_value_eq_trans)); eassumption. Qed.
 Corollary set_entry_eq_trans : forall e1 e2 e3, set_entry_eq γ e1 e2 -> set_entry_eq γ e2 e3 -> set_entry_eq γ e1 e3.
 Proof. intros. eapply (proj1 set_value_eq_trans); eassumption. Qed.
 
-Lemma member_is_proof_resp : forall m m', set_module_eq γ m m' -> forall x, member_is_proof γ m x <-> member_is_proof γ m' x.
-Proof. intros m m' H x. unfold member_is_proof. rewrite (module_member_proofs_resp nil _ _ H x). reflexivity. Qed.
-
 Lemma select_term_resp : forall m m', set_module_eq γ m m' -> forall x, set_eq (select_term γ m x) (select_term γ m' x).
 Proof.
   intros m m' H. induction H as [a a' P P' f f' Ea EP Hf IH | ms ms' Hms | p args args' Hargs | φ φ' P P' m m' Hφ EP _ IH

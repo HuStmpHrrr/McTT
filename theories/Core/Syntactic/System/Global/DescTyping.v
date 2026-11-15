@@ -231,14 +231,6 @@ Proof.
       [ apply wf_is_univ_large; eapply presup_exp_ctx, HB | exact HB | exact HBB | rewrite abs_kind_sort_wk; exact HA | exact Hk ].
 Qed.
 
-(** Into a type of a large universe. *)
-Corollary wf_pi_sort : forall Θ Ξ Γ κd B A Srt i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ B : Srt ->
-    sort_kind Srt κd ->
-    Θ ⍮ Ξ ⍮ Γ ▹{κd} B ⊢ A : Typeω@i ->
-    exists j, Θ ⍮ Ξ ⍮ Γ ⊢ Π{κd} B A : Typeω@j.
-Proof. intros * HB HS HA; exact (wf_pi_sort_at _ _ _ _ ak_relevant _ _ _ _ HB HS HA ltac:(discriminate)). Qed.
-
 (** The [Π] at [r] over a telescope into a term of the sort at [r] is of
     the sort at [r], and the [λ] over it of a term of that type is of it. *)
 Lemma ctx_pi_at_wf : forall Θ Ξ r Δ Γ A i,
@@ -422,14 +414,6 @@ Proof.
   intros; eapply ctx_pi_wf; rewrite List.app_nil_r; [ eauto using presup_exp_ctx | eassumption ].
 Qed.
 
-Corollary ctx_fn_wf0 : forall Θ Ξ Δ A M i,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ ctx_fn Δ M : ctx_pi Δ A.
-Proof.
-  intros; eapply ctx_fn_wf; rewrite List.app_nil_r; [ eauto using presup_exp_ctx | eassumption.. ].
-Qed.
-
 (** The [Π] into the kind [r] (not of levels) over a telescope into a term
     of the sort of [r] is of that sort, and the [λ] over it of a term of
     that type is of it: the type and the body of a definition filed over
@@ -569,16 +553,6 @@ Proof.
       rewrite tele_insts_tele_sub in HT; rewrite <- HT; f_equal.
       apply tele_insts_sb_eq; symmetry; apply sb_compose_id_right.
 Qed.
-
-(** A member at its arguments: at the kind [r] of its filed [Π]s. *)
-Corollary wf_apps_ctx_pi_at : forall Θ Ξ r Δ Γ B i M Ms,
-    all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ B : abs_kind_sort r Typeω@i ->
-    (r = ak_level -> level_sorted_parameters Δ) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : ctx_pi_at r Δ B ->
-    List.length Ms = List.length Δ ->
-    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ Id Ms) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ apps M Ms : B[sb_of_list Id Ms].
-Proof. intros; eapply wf_apps_ctx_pi_n; eauto. Qed.
 
 Corollary wf_apps_ctx_pi : forall Θ Ξ Δ Γ B i M Ms,
     all_assumptions Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ B : Typeω@i ->
@@ -1348,10 +1322,6 @@ Proof.
     match goal with IH : forall m, slots_ok m _ -> _ -> _ |- _ => eapply IH; [ eassumption |] end.
     cbn in *; left; tauto.
 Qed.
-
-Corollary mdenote_xp : forall Θ Ξ, gctx_closed Θ Ξ ->
-    forall Γ H R, mdenote Θ Ξ Γ H R -> ctx_scoped 0 Γ -> modexp_scoped (length Γ) H -> mdesc_xp Θ Ξ Γ R.
-Proof. intros * Hc * Hm HΓ HH; exact (proj1 (mdenote_xp_all _ _ Hc) _ _ _ Hm _ (slots_ok_ctx _ HΓ) HH). Qed.
 
 (** What a well-formed module expression denotes is read where it is. *)
 Lemma wf_mdenote_xp : forall Θ Ξ Γ H H' R,
@@ -2779,12 +2749,6 @@ Section DescOk.
       first [ eassumption | apply params_evaluated_nil | apply desc_levels_abstractable_nil | constructor
             | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) ].
   Qed.
-
-  Lemma desc_ok_closed_unroot : forall Γ Θ' p T Φ Ns l, all_assumptions Θ' -> params_evaluated Θ Ξ Γ Θ' l ->
-      desc_levels_abstractable Θ Ξ Γ Θ' (mdesc_closed nil p T Φ Ns) ->
-      (Θ' <> nil -> gc_frame Ξ p = None) ->
-      desc_ok (Θ' ++ Γ) (mdesc_closed nil p T Φ Ns) -> desc_ok Γ (mdesc_closed Θ' p T Φ Ns).
-  Proof. intros * Ha HR HL HF H; inversion H; subst; econstructor; cbn [List.app] in *; first [ eassumption | constructor ]. Qed.
 
   (** "R at N", where the module part of [R] takes a parameter [N] fills. *)
   Lemma desc_ok_at : ⊢ᵍ Θ ⍮ Ξ -> forall Γ R T B T1 N R',

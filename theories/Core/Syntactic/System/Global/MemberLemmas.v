@@ -56,13 +56,6 @@ Proof.
     first [ reflexivity | rewrite exp_sub_sub_extend_dm; reflexivity ].
 Qed.
 
-Lemma ctx_fn_wk : forall Δ M φ,
-    (ctx_fn Δ M)[φ]ʷ = ctx_fn (tele_wk Δ φ) M[wk_qn (length Δ) φ]ʷ.
-Proof.
-  induction Δ as [| [] Δ IH]; intros; cbn; [ reflexivity | | | |]; rewrite IH; cbn;
-    first [ reflexivity | rewrite exp_wk_sub_extend_dm; reflexivity ].
-Qed.
-
 Lemma ctx_fn_sub : forall Δ M σ,
     (ctx_fn Δ M)[σ] = ctx_fn (tele_sub Δ σ) M[sb_qn (length Δ) σ].
 Proof.
@@ -72,13 +65,7 @@ Qed.
 
 (** ** Bodies *)
 
-Lemma gm_names_wk : forall Φ φ, gm_names (gmod_wk Φ φ) = gm_names Φ.
-Proof. induction Φ as [| Φ IHΦ ? ? | Φ IHΦ ? ? ? ?]; intros; cbn; rewrite ?IHΦ; reflexivity. Qed.
-
 Lemma gm_names_sub : forall Φ σ, gm_names (gmod_sub Φ σ) = gm_names Φ.
-Proof. induction Φ as [| Φ IHΦ ? ? | Φ IHΦ ? ? ? ?]; intros; cbn; rewrite ?IHΦ; reflexivity. Qed.
-
-Lemma gm_nopens_wk : forall Φ φ, gm_nopens (gmod_wk Φ φ) = gm_nopens Φ.
 Proof. induction Φ as [| Φ IHΦ ? ? | Φ IHΦ ? ? ? ?]; intros; cbn; rewrite ?IHΦ; reflexivity. Qed.
 
 Lemma gm_nopens_sub : forall Φ σ, gm_nopens (gmod_sub Φ σ) = gm_nopens Φ.
@@ -103,27 +90,6 @@ Proof.
   - destruct (existsb _ _); auto.
 Qed.
 
-(** The open that declares a name, in a weakened or substituted body. *)
-Lemma gm_item_upto_wk : forall Φ x φ,
-    gm_item_upto (gmod_wk Φ φ) x =
-    option_map (fun r => match r with (Φ0, H, its1, it) => (gmod_wk Φ0 φ, modexp_wk H (wk_qn (gm_binders Φ0) φ), its1, it) end)
-               (gm_item_upto Φ x).
-Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros; cbn; auto.
-  - destruct (String.eqb x y); auto.
-  - destruct (items_upto x its) as [[its1 it] |]; auto.
-Qed.
-
-Lemma gm_item_upto_sub : forall Φ x σ,
-    gm_item_upto (gmod_sub Φ σ) x =
-    option_map (fun r => match r with (Φ0, H, its1, it) => (gmod_sub Φ0 σ, H[sb_qn (gm_binders Φ0) σ]ᵐ, its1, it) end)
-               (gm_item_upto Φ x).
-Proof.
-  induction Φ as [| Φ IH y E | Φ IH H its]; intros; cbn; auto.
-  - destruct (String.eqb x y); auto.
-  - destruct (items_upto x its) as [[its1 it] |]; auto.
-Qed.
-
 (** *** Generated Entries under the Operations *)
 
 Lemma generated_item_entry_wk : forall g φ, generated_item_entry (generated_item_wk g φ) = (fst (generated_item_entry g), gentry_wk (snd (generated_item_entry g)) φ).
@@ -131,28 +97,6 @@ Proof. destruct g; reflexivity. Qed.
 
 Lemma generated_item_entry_sub : forall g σ, generated_item_entry (generated_item_sub g σ) = (fst (generated_item_entry g), gentry_sub (snd (generated_item_entry g)) σ).
 Proof. destruct g; reflexivity. Qed.
-
-Lemma wk_qn_shiftn_comm : forall k r φ, wk_eq (wk_shiftn k ⊙ wk_qn (r + k) φ) (wk_qn r φ ⊙ wk_shiftn k).
-Proof.
-  intros k r φ x; cbn [wk_compose wk_shiftn]; revert x; induction k as [| k IH]; intros x.
-  - rewrite !Nat.add_0_r; reflexivity.
-  - replace (r + S k) with (S (r + k)) by lia; replace (x + S k) with (S (x + k)) by lia.
-    cbn [wk_qn wk_q]; rewrite IH; lia.
-Qed.
-
-(** The entries an open generates, after a weakening or a substitution of
-    the body they extend: each is moved under the entries before it. *)
-Lemma gens_append_wk : forall gs Φ k φ, k <= gm_binders Φ ->
-    gmod_wk (gens_append Φ k gs) φ =
-    gens_append (gmod_wk Φ φ) k (List.map (fun g => generated_item_wk g (wk_qn (gm_binders Φ - k) φ)) gs).
-Proof.
-  induction gs as [| g gs IH]; intros * Hk; cbn [gens_append List.map]; [ reflexivity |].
-  rewrite generated_item_entry_wk; destruct (generated_item_entry g) as [d E] eqn:Eg; cbn [fst snd].
-  rewrite IH by (cbn; lia); cbn [gmod_wk gm_binders].
-  replace (S (gm_binders Φ) - S k) with (gm_binders Φ - k) by lia.
-  do 2 f_equal; rewrite !gentry_wk_wk; apply gentry_wk_wk_eq.
-  set (r := gm_binders Φ - k); replace (gm_binders Φ) with (r + k) by (subst r; lia); apply wk_qn_shiftn_comm.
-Qed.
 
 Lemma gens_append_sub : forall gs Φ k σ, k <= gm_binders Φ ->
     gmod_sub (gens_append Φ k gs) σ =
@@ -166,11 +110,6 @@ Proof.
   set (r := gm_binders Φ - k); replace (gm_binders Φ) with (k + r) by (subst r; lia).
   rewrite sb_qn_plus, sb_qn_ge by (cbn; lia); cbn [wk_shiftn]; replace (x + k - k) with x by lia; reflexivity.
 Qed.
-
-(** The fragment an open stores, weakened or substituted, is the fragment
-    of its items weakened or substituted. *)
-Corollary gens_body_wk : forall gs φ, gmod_wk (gens_body gs) φ = gens_body (List.map (fun g => generated_item_wk g φ) gs).
-Proof. intros; unfold gens_body; rewrite gens_append_wk by (cbn; lia); reflexivity. Qed.
 
 Corollary gens_body_sub : forall gs σ, gmod_sub (gens_body gs) σ = gens_body (List.map (fun g => generated_item_sub g σ) gs).
 Proof. intros; unfold gens_body; rewrite gens_append_sub by (cbn; lia); reflexivity. Qed.
@@ -199,12 +138,6 @@ Proof. intros * []; cbn; constructor. Qed.
 Lemma gentry_retyped_sub : forall E E' σ, gentry_retyped E E' -> gentry_retyped (gentry_sub E σ) (gentry_sub E' σ).
 Proof. intros * []; cbn; constructor. Qed.
 
-Lemma gmod_retyped_wk : forall Φ Φ' φ, gmod_retyped Φ Φ' -> gmod_retyped (gmod_wk Φ φ) (gmod_wk Φ' φ).
-Proof.
-  intros Φ Φ' φ H; revert φ; induction H as [| Φ Φ' x E E' H IH HE]; intros φ; cbn [gmod_wk]; [ constructor |].
-  rewrite (gmod_retyped_binders _ _ H); constructor; [ apply IH | apply gentry_retyped_wk; exact HE ].
-Qed.
-
 Lemma gmod_retyped_sub : forall Φ Φ' σ, gmod_retyped Φ Φ' -> gmod_retyped (gmod_sub Φ σ) (gmod_sub Φ' σ).
 Proof.
   intros Φ Φ' σ H; revert σ; induction H as [| Φ Φ' x E E' H IH HE]; intros σ; cbn [gmod_sub]; [ constructor |].
@@ -219,12 +152,6 @@ Proof.
   - rewrite IH, IHg, gm_graft_wk, gm_binders_expand; reflexivity.
 Qed.
 
-Lemma gunit_expand_wk : forall U φ, gunit_expand (gunit_wk U φ) = gunit_wk (gunit_expand U) φ.
-Proof.
-  intros [Δ [sm Φ | E]] φ; rewrite !gunit_wk_mk; cbn [gunit_expand moddef_wk]; rewrite ?gunit_wk_mk; cbn [moddef_wk];
-    rewrite ?gm_expand_wk; reflexivity.
-Qed.
-
 Lemma gm_expand_sub : forall Φ σ, gm_expand (gmod_sub Φ σ) = gmod_sub (gm_expand Φ) σ.
 Proof.
   induction Φ as [| Φ IH x E | Φ IH H its Φg IHg]; intros σ; cbn [gmod_sub gm_expand]; [ reflexivity | |].
@@ -237,9 +164,6 @@ Proof.
   intros [Δ [sm Φ | E]] σ; rewrite !gunit_sub_mk; cbn [gunit_expand moddef_sub]; rewrite ?gunit_sub_mk; cbn [moddef_sub];
     rewrite ?gm_expand_sub; reflexivity.
 Qed.
-
-Lemma mod_qname_wk_eq : forall H φ, mod_qname (modexp_wk H φ) = mod_qname H.
-Proof. induction H as [| | H IH y | H IH N |]; intros; cbn; rewrite ?IH; reflexivity. Qed.
 
 (** The prefix of a body up to an entry is a prefix of its context. *)
 Lemma gm_prefix_upto_body_ctx : forall Φ x Φx,
@@ -257,10 +181,6 @@ Qed.
 
 Lemma member_ref_wk : forall ch H φ,
     (member_ref H ch)[φ]ʷ = member_ref (modexp_wk H φ) ch.
-Proof. induction ch as [| x [| y ch] IH]; intros; cbn; auto; apply IH. Qed.
-
-Lemma member_ref_sub : forall ch H σ,
-    (member_ref H ch)[σ] = member_ref H[σ]ᵐ ch.
 Proof. induction ch as [| x [| y ch] IH]; intros; cbn; auto; apply IH. Qed.
 
 Lemma apps_wk : forall args M φ, (apps M args)[φ]ʷ = apps M[φ]ʷ (map (fun N => N[φ]ʷ) args).
@@ -281,20 +201,6 @@ Lemma mod_qname_sub : forall H p σ, mod_qname H = Some p -> H[σ]ᵐ = H.
 Proof.
   induction H as [fp | x | H IHH y | H IHH N | U]; intros * Hp; cbn in *; try discriminate; auto.
   destruct (mod_qname H) eqn:E; [ erewrite IHH; eauto | discriminate ].
-Qed.
-
-Lemma mod_qname_spine : forall H p, mod_qname H = Some p -> modexp_spine H = (me_unit (q_unit p), nil, q_chain p).
-Proof.
-  induction H as [fp | x | H IHH y | H IHH N | U]; intros * Hp; cbn in *; try discriminate.
-  - injection Hp as <-; reflexivity.
-  - destruct (mod_qname H) as [p0 |] eqn:E; [| discriminate ]; injection Hp as <-.
-    rewrite (IHH _ eq_refl); reflexivity.
-Qed.
-
-Lemma mod_qname_noargs : forall H p, mod_qname H = Some p -> me_noargs H.
-Proof.
-  induction H as [fp | x | H IHH y | H IHH N | U]; intros * Hp; cbn in *; try discriminate; auto.
-  destruct (mod_qname H) eqn:E; [ eauto | discriminate ].
 Qed.
 
 Lemma me_mems_app : forall pre1 pre2 H, me_mems H (pre1 ++ pre2) = me_mems (me_mems H pre1) pre2.
@@ -360,57 +266,9 @@ Proof.
     rewrite me_mems_app; reflexivity.
 Qed.
 
-(** A root that a weakening or a same-unit substitution sends to a root. *)
-Definition me_root (H : modexp) : Prop :=
-  match H with
-  | me_unit _ | me_var _ | me_lit _ => True
-  | _ => False
-  end.
-
-Lemma modexp_spine_root : forall H R args pre, modexp_spine H = (R, args, pre) -> me_root R.
-Proof.
-  induction H; intros * Hs; cbn in Hs; try (injection Hs as <- <- <-; exact I);
-    destruct (modexp_spine H) as [[R' args'] pre']; injection Hs as <- <- <-; eauto.
-Qed.
-
-Lemma modexp_spine_wk : forall H R args pre φ,
-    modexp_spine H = (R, args, pre) ->
-    modexp_spine (modexp_wk H φ) = (modexp_wk R φ, map (fun N => N[φ]ʷ) args, pre).
-Proof.
-  induction H as [| | H IHH y | H IHH N |]; intros * Hs; cbn in Hs |- *; try (injection Hs as <- <- <-; reflexivity).
-  - destruct (modexp_spine H) as [[R' args'] pre'] eqn:E; injection Hs as <- <- <-.
-    rewrite (IHH _ _ _ _ eq_refl); reflexivity.
-  - destruct (modexp_spine H) as [[R' args'] pre'] eqn:E; injection Hs as <- <- <-.
-    rewrite (IHH _ _ _ _ eq_refl), map_app; reflexivity.
-Qed.
-
-Lemma me_noargs_wk : forall H φ, me_noargs H -> me_noargs (modexp_wk H φ).
-Proof. induction H; intros; cbn in *; auto. Qed.
-
 
 
 (** ** The [Π] of a Type *)
-
-Lemma pi_view_wk : forall A φ B C,
-    pi_view A = Some (B, C) -> pi_view A[φ]ʷ = Some (B[φ]ʷ, C[wk_q φ]ʷ).
-Proof.
-  induction A; repeat match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H; try destruct b as [B0 N | U | ? ? ?]; cbn in H |- *; try discriminate.
-  - injection H as <- <-; reflexivity.
-  - destruct (pi_view A) as [[B' C'] |] eqn:E; [| discriminate ].
-    injection H as <- <-; rewrite (IHA _ _ _ eq_refl).
-    f_equal; f_equal.
-    + symmetry; apply exp_wk_sub_extend.
-    + rewrite exp_wk_sub, exp_sub_wk; apply exp_sub_sb_eq.
-      intros [| [| x]]; reduce_index; try reflexivity.
-      cbn; f_equal; symmetry; apply exp_wk_shift_wk_q.
-  - destruct (pi_view A) as [[B' C'] |] eqn:E; [| discriminate ].
-    injection H as <- <-; rewrite (IHA _ _ _ eq_refl).
-    f_equal; f_equal.
-    + rewrite exp_wk_sub, exp_sub_wk; apply exp_sub_sb_eq; intros [| x]; reduce_index; reflexivity.
-    + rewrite exp_wk_sub, exp_sub_wk; apply exp_sub_sb_eq.
-      intros [| [| x]]; reduce_index; try reflexivity.
-      cbn; f_equal; f_equal; symmetry; apply gunit_wk_shift_wk_q.
-Qed.
 
 Lemma pi_view_sub : forall A σ B C,
     pi_view A = Some (B, C) -> pi_view A[σ] = Some (B[σ], C[q σ]).
@@ -466,10 +324,6 @@ Proof.
   - destruct (existsb _ _); [ discriminate | eauto ].
 Qed.
 
-Lemma gentry_scoped_wk : forall E n m φ,
-    gentry_scoped n E -> (forall x, x < n -> φ x < m) -> gentry_scoped m (gentry_wk E φ).
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk))))))). Qed.
-
 Lemma pi_view_scoped : forall A B C n,
     pi_view A = Some (B, C) -> exp_scoped n A -> exp_scoped n B /\ exp_scoped (S n) C.
 Proof.
@@ -496,53 +350,6 @@ Qed.
 
 Lemma ctx_pi_app : forall r T Δ A, ctx_pi_at r (T ++ Δ) A = ctx_pi_at r Δ (ctx_pi_at r T A).
 Proof. intros r; induction T as [| [] T IH]; intros; cbn; auto. Qed.
-
-Lemma ctx_pi_rev_cons : forall r e R A,
-    ctx_pi_at r (rev (e :: R)) A =
-    match e with
-    | ce_ass κ B => a_pi κ r B (ctx_pi_at r (rev R) A)
-    | ce_def B N => a_let (b_def B N) (ctx_pi_at r (rev R) A)
-    | ce_mod U => a_let (b_mod U) (ctx_pi_at r (rev R) A)
-    | ce_dm _ N U => (ctx_pi_at r (rev R) A)[Id ,,ᵈ N ‖ me_lit U]
-    end.
-Proof. intros; cbn [rev]; rewrite ctx_pi_app; destruct e; reflexivity. Qed.
-
-(** The [Π] an arity type is, substituted.  An arity type ends in a
-    closed term that is no [Π], here [Propₘ], so that only its parameters
-    make [Π]s and a substitution fixes the end. *)
-Lemma pi_view_ctx_pi_sub : forall R σ,
-    pi_view (ctx_pi (rev R) a_prop)[σ] =
-    option_map (fun BC => ((fst BC)[σ], (snd BC)[q σ])) (pi_view (ctx_pi (rev R) a_prop)).
-Proof.
-  induction R as [| e R IH]; intros σ; [ reflexivity |].
-  rewrite !ctx_pi_rev_cons; destruct e as [B | B N | U | B N U].
-  - reflexivity.
-  - cbn [exp_sub binding_sub pi_view option_map]; rewrite IH.
-    destruct (pi_view (ctx_pi (rev R) a_prop)) as [[B' C'] |]; cbn; [| reflexivity ].
-    f_equal; f_equal; [ apply (exp_sub_extend_comm_gen _ _ (se_exp N)) | apply (exp_sub_q_extend_comm_gen _ _ (se_exp N)) ].
-  - cbn [exp_sub binding_sub pi_view option_map]; rewrite IH.
-    destruct (pi_view (ctx_pi (rev R) a_prop)) as [[B' C'] |]; cbn; [| reflexivity ].
-    f_equal; f_equal;
-      [ apply (exp_sub_extend_comm_gen _ _ (se_mod (me_lit U))) | apply (exp_sub_q_extend_comm_gen _ _ (se_mod (me_lit U))) ].
-  - rewrite exp_sub_sub_extend_dm, (exp_sub_sub _ (q σ)), IH, IH.
-    destruct (pi_view (ctx_pi (rev R) a_prop)) as [[B' C'] |]; cbn; [| reflexivity ].
-    f_equal; f_equal.
-    + rewrite <- exp_sub_sub; apply (exp_sub_extend_comm_gen _ _ (se_dm N (me_lit U))).
-    + rewrite <- (exp_sub_sb_eq _ _ _ (sb_q_compose _ _)), <- exp_sub_sub.
-      apply (exp_sub_q_extend_comm_gen _ _ (se_dm N (me_lit U))).
-Qed.
-
-(** The [Π] the arity type of a telescope is, is its outermost parameter. *)
-Lemma tele_view_pi : forall T,
-    pi_view (ctx_pi T a_prop) = option_map (fun BT => (fst BT, ctx_pi (snd BT) a_prop)) (tele_view T).
-Proof.
-  intros T; unfold tele_view; rewrite <- (rev_involutive T) at 1; generalize (rev T) as R; clear T.
-  induction R as [| [B | B N | U | B N U] R IH]; [ reflexivity | | | |]; rewrite ctx_pi_rev_cons; cbn [pi_view tele_open].
-  - reflexivity.
-  - rewrite IH; destruct (tele_open R) as [[B' T'] |]; cbn; [ rewrite ctx_pi_sub; reflexivity | reflexivity ].
-  - rewrite IH; destruct (tele_open R) as [[B' T'] |]; cbn; [ rewrite ctx_pi_sub; reflexivity | reflexivity ].
-  - rewrite pi_view_ctx_pi_sub, IH; destruct (tele_open R) as [[B' T'] |]; cbn; [ rewrite ctx_pi_sub; reflexivity | reflexivity ].
-Qed.
 
 Lemma tele_wk_rev_cons : forall e R φ,
     tele_wk (rev (e :: R)) φ = rev (centry_wk e φ :: rev (tele_wk (rev R) (wk_q φ))).
@@ -623,37 +430,6 @@ Lemma ctx_scoped_rev_cons : forall e R n,
     ctx_scoped n (rev (e :: R)) <-> ce_scoped n e /\ ctx_scoped (S n) (rev R).
 Proof. intros; cbn [rev]; rewrite ctx_scoped_app; cbn; tauto. Qed.
 
-Lemma tele_view_scoped : forall T B T' n,
-    tele_view T = Some (B, T') -> ctx_scoped n T -> exp_scoped n B /\ ctx_scoped (S n) T'.
-Proof.
-  intros T; unfold tele_view; rewrite <- (rev_involutive T); generalize (rev T) as R; clear T.
-  intros R; rewrite rev_involutive; induction R as [| [B0 | B0 N | U | B0 N U] R IH]; intros * Hv HT;
-    cbn [tele_open] in Hv; [ discriminate | | | |];
-    apply ctx_scoped_rev_cons in HT as [He HR]; cbn in He; destruct_all.
-  - injection Hv as <- <-; auto.
-  - destruct (tele_open R) as [[B' T0] |] eqn:E; [| discriminate ]; injection Hv as <- <-.
-    destruct (IH _ _ _ eq_refl HR) as [HB HT0]; split.
-    + apply exp_scoped_sub1; assumption.
-    + eapply tele_sub_scoped; [ eassumption |].
-      apply sb_q_bound; intros [| x] ?; cbn; auto; lia.
-  - destruct (tele_open R) as [[B' T0] |] eqn:E; [| discriminate ]; injection Hv as <- <-.
-    destruct (IH _ _ _ eq_refl HR) as [HB HT0]; split.
-    + apply exp_scoped_sub1_mod; cbn; assumption.
-    + eapply tele_sub_scoped; [ eassumption |].
-      apply sb_q_bound; intros [| x] ?; cbn; auto; lia.
-  - destruct (tele_open R) as [[B' T0] |] eqn:E; [| discriminate ]; injection Hv as <- <-.
-    destruct (IH _ _ _ eq_refl HR) as [HB HT0]; split.
-    + apply exp_scoped_sub1_dm; cbn; assumption.
-    + eapply tele_sub_scoped; [ eassumption |].
-      apply sb_q_bound; intros [| x] ?; cbn; [ split; assumption | lia ].
-Qed.
-
-Lemma ctx_scoped_closed : forall T n, ctx_scoped 0 T -> ctx_scoped n T.
-Proof.
-  intros * HT; rewrite <- (tele_closed_wk T (fun x => x) HT).
-  eapply tele_wk_scoped; [ exact HT | lia ].
-Qed.
-
 Lemma ctx_scoped_mono' : forall Δ n m, n <= m -> ctx_scoped n Δ -> ctx_scoped m Δ.
 Proof.
   induction Δ as [| e Δ IH]; intros * Hle HΔ; cbn in *; [ exact I |]; destruct HΔ as [He HΔ].
@@ -713,10 +489,6 @@ Proof. intros * HU [| x] Hx; cbn; [ exact HU | lia ]. Qed.
 Lemma sb_id_extdm_bound : forall N U n, exp_scoped n N -> gunit_scoped n U ->
     forall x, x < S n -> sentry_scoped n ((Id ,,ᵈ N ‖ me_lit U) x).
 Proof. intros * HN HU [| x] Hx; cbn; [ split; assumption | lia ]. Qed.
-
-Lemma ctx_scoped_rev_cons_iff : forall e R n,
-    ctx_scoped n (rev (e :: R)) <-> ce_scoped n e /\ ctx_scoped (S n) (rev R).
-Proof. exact ctx_scoped_rev_cons. Qed.
 
 (** The outermost assumption of a scoped telescope, the rest, and the
     substitution are scoped. *)
@@ -1251,22 +1023,6 @@ Proof.
     exact (gm_subbody_closed _ _ _ _ _ _ (HΘ _ _ Hl) Hb).
 Qed.
 
-(** The module part and its telescope. *)
-Lemma gctx_closed_entry_ind : forall Θ Ξ p pv pq k D Φ,
-    gctx_closed Θ Ξ -> gc_entry Θ Ξ p = Some (ge_ind pv pq k D Φ) -> unit_closed (ind_uparams D) Φ.
-Proof.
-  intros * [HΘ HΞ] He; unfold gc_entry, gc_entry_u in He.
-  destruct (gs_find Ξ p) as [[U ip] |] eqn:Hf.
-  - destruct (gs_find_unit _ _ _ _ Hf) as (mp & K & Hin & _).
-    destruct (stack_closed_in _ _ _ _ HΞ Hin) as (T & _ & HU).
-    destruct (gm_entry_closed _ _ _ _ HU He) as (_ & HD & HΦ).
-    split; [ apply (decl_closed_uparams _ HD) | exact HΦ ].
-  - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
-    destruct (HΘ _ _ Hl) as (_ & HU).
-    destruct (gm_entry_closed _ _ _ _ HU He) as (_ & HD & HΦ).
-    split; [ apply (decl_closed_uparams _ HD) | exact HΦ ].
-Qed.
-
 (** The body at a located path, closed. *)
 Lemma gc_loc_closed : forall Θ Ξ p T Φ, gctx_closed Θ Ξ -> gc_loc Θ Ξ p = Some (T, Φ) -> unit_closed T Φ.
 Proof.
@@ -1427,25 +1183,6 @@ Proof.
 Qed.
 
 
-(** What a closed body's term entry describes is closed. *)
-Lemma entry_term_scoped : forall k Φ x Φ0 E o R m,
-    body_closed k Φ -> gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_term o E = Some R ->
-    mdesc_scoped m R.
-Proof.
-  intros * HΦ Hp He; pose proof (body_closed_prefix _ _ _ _ HΦ Hp) as [_ HE].
-  destruct E as [b pv r A B | pv U | pv pq k0 D Φ1 | pv A M U | pv pr Rr Φ1]; cbn in He; try discriminate.
-  2: destruct (ind_member D k0) as [Mk |] eqn:HMk; cbn in He; [| discriminate ].
-  4: destruct o; cbn in He; [| discriminate ].
-  all: injection He as <-; cbn in *.
-  - destruct HE as [HA HB]; split; [ eapply exp_scoped_mono; [| exact HA ]; lia |].
-    destruct b, B; cbn in *; try exact I; eapply exp_scoped_mono; [| exact HB ]; lia.
-  - destruct HE as [HD _]; split; [| exact I ].
-    rewrite <- ind_ty_at_nil; eapply ind_ty_at_scoped; [ exact HD | exact HMk | constructor ].
-  - destruct HE as (HA & HM & _); split; eapply exp_scoped_mono; [| exact HA | | exact HM ]; lia.
-  - destruct HE as [[HF HS] _]; split; [| exact I ].
-    rewrite <- record_ty_at_nil; apply record_ty_at_scoped; [ exact (proj2 (proj1 (ctx_scoped_app_iff _ _) HF)) | exact HS | constructor ].
-Qed.
-
 (** The alias unit of a closed body's entry is closed. *)
 Lemma entry_alias_unit_scoped : forall k Φ y Φ0 E Ua m,
     body_closed k Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua -> gunit_scoped m Ua.
@@ -1454,13 +1191,6 @@ Proof.
   destruct E as [b pv r A B | pv [Ta [sm Φ1 | E']] | pv pq D Φ1 | pv A M [Ta [sm Φ1 | E']] | pv Rr Φ1]; cbn in He; try discriminate; injection He as <-; cbn in HE.
   - eapply gunit_scoped_mono; [| exact HE ]; lia.
   - eapply gunit_scoped_mono; [| exact (proj2 (proj2 HE)) ]; lia.
-Qed.
-
-Lemma gunit_abs_scoped : forall Δ U m,
-    ctx_scoped m Δ -> gunit_scoped (length Δ + m) U -> gunit_scoped m (gunit_abs Δ U).
-Proof.
-  intros Δ [Δy D] m HΔ HU; cbn [gunit_abs]; rewrite gunit_scoped_mk in *; destruct HU as [HΔy HD].
-  split; [ apply ctx_scoped_app; split; assumption | rewrite length_app, <- Nat.add_assoc; exact HD ].
 Qed.
 
 (** The unit a module description stands for is scoped as it is. *)
@@ -1867,17 +1597,6 @@ Corollary wf_gc_resolve_closed : forall Θ Ξ Γ p b pv r A B,
     exp_scoped 0 A /\ opt_scoped 0 B.
 Proof.
   intros * HΓ Hr; eapply gctx_closed_resolve; [ eapply wf_gctx_closed | ]; eassumption.
-Qed.
-
-(** In a well-formed context, the type and the term of a def-mod are
-    closed. *)
-Corollary wf_def_mod_closed : forall Θ Ξ Γ p pv A M U,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    gc_entry Θ Ξ p = Some (ge_def_mod pv A M U) ->
-    exp_scoped 0 A /\ exp_scoped 0 M.
-Proof.
-  intros * HΓ He; pose proof (gctx_closed_entry _ _ _ _ (wf_gctx_closed _ _ _ HΓ) He) as (HA & HM & _).
-  split; assumption.
 Qed.
 
 Corollary wf_gc_resolve_type_closed : forall Θ Ξ Γ p b pv r A B,
@@ -2442,29 +2161,6 @@ Proof.
   destruct (mod_qname H) eqn:E; [ eauto | discriminate ].
 Qed.
 
-Lemma modexp_spine_sub : forall H R args pre σ Γ Δ,
-    sub_mod_compat σ Γ Δ ->
-    me_slot_root Δ H ->
-    modexp_spine H = (R, args, pre) ->
-    modexp_spine H[σ]ᵐ = (R[σ]ᵐ, map (fun N => N[σ]) args, pre).
-Proof.
-  induction H as [| n | H IHH y | H IHH N |]; intros * Hσ Hr Hs; cbn in Hr, Hs |- *;
-    try (injection Hs as <- <- <-; reflexivity).
-  - injection Hs as <- <- <-; destruct Hr as [U HU]; cbn.
-    destruct (Hσ _ _ HU) as [-> | (y & -> & _)]; reflexivity.
-  - destruct (modexp_spine H) as [[R' args'] pre'] eqn:E; injection Hs as <- <- <-.
-    rewrite (IHH _ _ _ _ _ _ Hσ Hr eq_refl); reflexivity.
-  - destruct (modexp_spine H) as [[R' args'] pre'] eqn:E; injection Hs as <- <- <-.
-    rewrite (IHH _ _ _ _ _ _ Hσ Hr eq_refl), map_app; reflexivity.
-Qed.
-
-Lemma me_noargs_sub : forall H σ Γ Δ,
-    sub_mod_compat σ Γ Δ -> me_slot_root Δ H -> me_noargs H -> me_noargs H[σ]ᵐ.
-Proof.
-  induction H as [| n | H IHH y | H IHH N |]; intros * Hσ Hr HH; cbn in *; eauto.
-  destruct Hr as [U HU]; destruct (Hσ _ _ HU) as [-> | (y & -> & _)]; exact I.
-Qed.
-
 Lemma sub_mod_compat_q : forall σ Γ Δ e,
     sub_mod_compat σ Γ Δ -> sub_mod_compat (q σ) (centry_sub e σ :: Γ) (e :: Δ).
 Proof.
@@ -2592,26 +2288,6 @@ Proof.
     + eapply sub_mod_compat_compose; [ exact IH | exact Hs ].
 Qed.
 
-Lemma gm_prefix_upto_mod_sub : forall Φ x Φ' pm U σ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_mod pm U)) ->
-    gm_prefix_upto (gmod_sub Φ σ) x = Some (gm_ext (gmod_sub Φ' σ) x (ge_mod pm U[sb_qn (gm_binders Φ') σ]ᵘ)).
-Proof. intros * H; rewrite gm_prefix_upto_sub, H; reflexivity. Qed.
-
-Lemma gm_prefix_upto_def_sub : forall Φ x Φ' b pv r A B σ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv r A B)) ->
-    gm_prefix_upto (gmod_sub Φ σ) x =
-    Some (gm_ext (gmod_sub Φ' σ) x (ge_def b pv r A[sb_qn (gm_binders Φ') σ]
-                                        (option_map (fun M => M[sb_qn (gm_binders Φ') σ]) B))).
-Proof. intros * H; rewrite gm_prefix_upto_sub, H; cbn; destruct B; reflexivity. Qed.
-
-Lemma ctx_pi_body_sub : forall r Φ' Δ A σ, gm_nopens Φ' = 0 ->
-    (ctx_pi_at r (body_ctx Φ' ++ Δ) A)[σ] =
-    ctx_pi_at r (body_ctx (gmod_sub Φ' (sb_qn (length Δ) σ)) ++ tele_sub Δ σ)
-      A[sb_qn (gm_binders Φ') (sb_qn (length Δ) σ)].
-Proof.
-  intros * Hn; rewrite ctx_pi_sub, tele_sub_app, (body_ctx_sub _ _ Hn); f_equal.
-  apply exp_sub_sb_eq; rewrite sb_qn_add, length_app, (length_body_ctx _ Hn); reflexivity.
-Qed.
 Lemma mod_qname_sub_eq : forall H σ Γ Δ, sub_mod_compat σ Γ Δ -> me_slot_root Δ H -> mod_qname H[σ]ᵐ = mod_qname H.
 Proof.
   induction H as [fp | x | H IH y | H IH N | U]; intros * Hσ Hr; cbn in *; try reflexivity.
@@ -2636,28 +2312,6 @@ Qed.
 Lemma wk_mod_compat_ext : forall Ψ φ Γ Δ,
     wk_mod_compat φ Γ Δ -> wk_mod_compat (wk_qn (length Ψ) φ) (tele_wk Ψ φ ++ Γ) (Ψ ++ Δ).
 Proof. induction Ψ; intros; cbn; auto using wk_mod_compat_q. Qed.
-
-Lemma gm_prefix_upto_mod_wk : forall Φ x Φ' pm U φ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_mod pm U)) ->
-    gm_prefix_upto (gmod_wk Φ φ) x = Some (gm_ext (gmod_wk Φ' φ) x (ge_mod pm (gunit_wk U (wk_qn (gm_binders Φ') φ)))).
-Proof. intros * H; rewrite gm_prefix_upto_wk, H; reflexivity. Qed.
-
-Lemma gm_prefix_upto_def_wk : forall Φ x Φ' b pv r A B φ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv r A B)) ->
-    gm_prefix_upto (gmod_wk Φ φ) x =
-    Some (gm_ext (gmod_wk Φ' φ) x (ge_def b pv r A[wk_qn (gm_binders Φ') φ]ʷ
-                                        (option_map (fun M => M[wk_qn (gm_binders Φ') φ]ʷ) B))).
-Proof. intros * H; rewrite gm_prefix_upto_wk, H; cbn; destruct B; reflexivity. Qed.
-
-(** The type of a body member after a weakening of its unit. *)
-Lemma ctx_pi_body_wk : forall r Φ' Δ A φ, gm_nopens Φ' = 0 ->
-    (ctx_pi_at r (body_ctx Φ' ++ Δ) A)[φ]ʷ =
-    ctx_pi_at r (body_ctx (gmod_wk Φ' (wk_qn (length Δ) φ)) ++ tele_wk Δ φ)
-      A[wk_qn (gm_binders Φ') (wk_qn (length Δ) φ)]ʷ.
-Proof.
-  intros * Hn; rewrite ctx_pi_wk, tele_wk_app, (body_ctx_wk _ _ Hn); f_equal.
-  apply exp_wk_wk_eq; rewrite wk_qn_add, length_app, (length_body_ctx _ Hn); reflexivity.
-Qed.
 
 Lemma entry_sc_mono0 : forall E m, entry_sc 0 E -> m >= 0 -> entry_sc m E.
 Proof.
@@ -2958,9 +2612,6 @@ Proof.
 Qed.
 
 
-Lemma mdesc_reduct_sub_opt : forall R σ, mdesc_reduct (mdesc_sub R σ) = option_map (fun M => M[σ]) (mdesc_reduct R).
-Proof. intros [r A [M |] | | | ] σ; cbn; try reflexivity; rewrite ctx_fn_sub, ?apps_exp_sub; reflexivity. Qed.
-
 Lemma gunit_abs_sub : forall Δ U σ, (gunit_abs Δ U)[σ]ᵘ = gunit_abs (tele_sub Δ σ) U[sb_qn (length Δ) σ]ᵘ.
 Proof.
   intros Δ [Δy D] σ; cbn [gunit_abs]; rewrite !gunit_sub_mk, tele_sub_app, length_app, sb_qn_plus; reflexivity.
@@ -2970,22 +2621,6 @@ Lemma gunit_abs_wk : forall Δ U φ, gunit_wk (gunit_abs Δ U) φ = gunit_abs (t
 Proof.
   intros Δ [Δy D] φ; cbn [gunit_abs]; rewrite !gunit_wk_mk; cbn [gunit_abs]; rewrite tele_wk_app, length_app; f_equal.
   apply moddef_wk_wk_eq; symmetry; apply wk_qn_add.
-Qed.
-
-Lemma body_opens_wk : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall φ,
-    body_opens (gmod_wk Φ φ) (gmod_wk Φx φ) =
-    List.map (fun p => (tele_wk (fst p) φ, modexp_wk (snd p) (wk_qn (length (fst p)) φ))) (body_opens Φ Φx).
-Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ Hr]; intros φ.
-  - reflexivity.
-  - cbn [gmod_wk body_opens gm_dropn]; apply IH.
-  - cbn [gmod_wk]; rewrite gm_graft_wk, (body_xp_binders _ _ _ _ _ Hx).
-    rewrite body_opens_open_len
-      by first [ apply gm_noopen_wk; exact (open_store_noopen _ _ Hr)
-               | rewrite gm_binders_wk; exact (open_store_binders _ _ _ _ _ _ _ Hg Hr) ].
-    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg Hr); cbn [List.map fst snd]; rewrite IH.
-    pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hnx.
-    rewrite (body_ctx_wk _ _ Hnx), (length_body_ctx _ Hnx), (body_xp_binders _ _ _ _ _ Hx); reflexivity.
 Qed.
 
 Lemma body_opens_sub : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall σ,
@@ -3002,21 +2637,6 @@ Proof.
     rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg Hr); cbn [List.map fst snd]; rewrite IH.
     pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hnx.
     rewrite (body_ctx_sub _ _ Hnx), (length_body_ctx _ Hnx), (body_xp_binders _ _ _ _ _ Hx); reflexivity.
-Qed.
-
-Lemma body_opens_at_wk : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall φ,
-    body_opens_at (gmod_wk Φ φ) (gmod_wk Φx φ) =
-    List.map (fun p => (gmod_wk (fst p) φ, modexp_wk (snd p) (wk_qn (gm_binders (fst p)) φ))) (body_opens_at Φ Φx).
-Proof.
-  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its Φg R T gs Hx IH _ _ Hg _ Hr]; intros φ.
-  - reflexivity.
-  - cbn [gmod_wk body_opens_at gm_dropn]; apply IH.
-  - cbn [gmod_wk]; rewrite gm_graft_wk, (body_xp_binders _ _ _ _ _ Hx).
-    rewrite body_opens_at_open_len
-      by first [ apply gm_noopen_wk; exact (open_store_noopen _ _ Hr)
-               | rewrite gm_binders_wk; exact (open_store_binders _ _ _ _ _ _ _ Hg Hr) ].
-    rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg Hr); cbn [List.map fst snd]; rewrite IH.
-    rewrite (body_xp_binders _ _ _ _ _ Hx); reflexivity.
 Qed.
 
 Lemma body_opens_at_sub : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall σ,

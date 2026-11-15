@@ -154,13 +154,6 @@ Corollary nbe_wk_fresh_sem : forall Γ κ A M T W,
     nf_fresh_outside_proofs 0 W.
 Proof. intros * _ _ Hn; exact (nbe_wk_fresh _ _ _ _ _ _ _ _ Hn). Qed.
 
-Corollary nbe_ty_wk_fresh_sem : forall Γ κ A T i W,
-    ⊢ Γ ▹{κ} A ->
-    Γ ⊢ T : Typeω@i ->
-    nbe_ty_f (Γ ▹{κ} A) T[↑]ʷ W ->
-    nf_fresh_outside_proofs 0 W.
-Proof. intros * _ _ Hn; exact (nbe_ty_wk_fresh _ _ _ _ _ _ _ Hn). Qed.
-
 (** ** Strengthening an Equation
 
     Both ends are terms of [Γ]: their normal forms in [Γ ▹{κ} A] are, up

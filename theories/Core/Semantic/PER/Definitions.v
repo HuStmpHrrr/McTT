@@ -233,21 +233,12 @@ Definition per_proof : relation domain := fun v v' => proof_readable v /\ proof_
 Definition entry_readable (e : dentry) : Prop :=
   forall s, exists b, Rent e in gc_deps ⍮ gc_stack ⍮ s ↘ b.
 
-(** Every entry of an environment reads back.  Past its end an
-    environment has no entry ([absent_entry]), so only the positions below
-    its length are asked. *)
-Definition env_readable (ρ : env) : Prop := forall x, x < List.length ρ -> entry_readable (env_entry ρ x).
-
 (** A head of an environment a context PER relates: it reads back, and
     the unit it stores, if any, is scoped by the [n] entries of its tail
     ([entry_unit_bound]), so that the readback of a proof kept over the
     environment binds no entry past the context ([proof_scope]).  A term
     head stores no unit, and is asked [n = 0]. *)
 Definition head_readable (n : nat) (e : dentry) : Prop := entry_readable e /\ entry_unit_bound e <= n.
-
-(** A head readable within [n] entries is readable within more. *)
-Lemma head_readable_mono : forall n m e, n <= m -> head_readable n e -> head_readable m e.
-Proof. intros * Hnm [Hr Hb]; split; [ exact Hr | exact (Nat.le_trans _ _ _ Hb Hnm) ]. Qed.
 
 (** The elements of [Prop]: two propositions by their heads, read back
     equally at every length.  The relation does not recurse into the model,

@@ -684,13 +684,6 @@ Qed.
 #[export]
 Hint Resolve user_exp_all : mctt.
 
-Lemma user_exp_nf : forall M, user_exp (nf_to_exp M)
-with user_exp_ne : forall M, user_exp (ne_to_exp M).
-Proof.
-  - clear user_exp_nf; induction M; mauto 3.
-  - clear user_exp_ne; induction M; mauto 3.
-Qed.
-
 #[export]
 Hint Constructors is_univ_nf : mctt.
 #[export]

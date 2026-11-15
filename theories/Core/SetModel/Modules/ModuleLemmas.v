@@ -102,12 +102,6 @@ Proof.
   intros ρ Hρ. exact (set_modexp_denotes_unique _ _ _ _ _ HF _ _ _ Hρ (set_modexp_denotes_exists _ _ _ _ _ HF _ Hρ)).
 Qed.
 
-Lemma set_modexp_rel_sym : forall Γ H H', set_modexp_rel T γ Γ H H' -> set_modexp_rel T γ Γ H' H.
-Proof. intros * (F & F' & [HF HF' E]). exists F', F. constructor; [exact HF' | exact HF |]. intros ρ Hρ. apply set_module_eq_sym. exact (E _ Hρ). Qed.
-
-(** ** Slots *)
-
-(** A slot's proofness is its unit's, at coherent slots. *)
 Lemma set_slots_coherent_lookup : forall Γ x U, Γ ∋ #x ≔ₘ U -> forall κs, set_slots_coherent γ Γ κs ->
     forall ys z, κs x ys z = unit_member_proofs γ κs U ys z.
 Proof.

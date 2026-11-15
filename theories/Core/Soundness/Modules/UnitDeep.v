@@ -470,18 +470,6 @@ Proof.
   exact (glu_ctx_deep_lookup_wk _ _ _ Hx _ _ (wf_wk_id _ _ _ (glu_rel_ctx_types_wf HΓ)) HΓ Hd).
 Qed.
 
-(** The unit of a module slot is glued at the instances of the context:
-    the instance's component for the slot is glued at the unit moved
-    ([glu_rel_sub_inst_mods]). *)
-Lemma glu_rel_unit_under_sub_slot : forall Γ x U, Γ ∋ #x ≔ₘ U -> glu_rel_unit_under_sub Γ U.
-Proof.
-  intros * Hx Γ' τ Hτ.
-  pose proof (glu_rel_sub_inst_ctx _ _ _ Hτ) as HΓ'.
-  assert (HwΓ' : ⊢ Γ') by (destruct HΓ' as [Sb HSb]; exact (glu_ctx_env_wf_ctx HSb)).
-  pose proof (glu_rel_sub_inst_mods _ _ _ Hτ _ _ Hx _ _ (wf_wk_id _ _ _ HwΓ') HΓ') as Hg.
-  rewrite gunit_wk_id in Hg; exact Hg.
-Qed.
-
 End Fixed_GCtx.
 
 (** ** Stored aliases *)

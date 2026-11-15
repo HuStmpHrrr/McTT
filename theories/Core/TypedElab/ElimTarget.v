@@ -143,11 +143,6 @@ Section ElimTarget.
     | rs => elim_target_ambiguous rs
     end.
 
-  (** One reading at most is the eliminator's. *)
-  Lemma elim_target_functional : forall pc k Rs m Bns p1 Us1 p2 Us2,
-      elim_target pc k Rs m Bns = elim_target_one p1 Us1 -> elim_target pc k Rs m Bns = elim_target_one p2 Us2 ->
-      p1 = p2 /\ Us1 = Us2.
-  Proof. intros * H1 H2; rewrite H1 in H2; injection H2; auto. Qed.
 End ElimTarget.
 
 (** [elim_target] reads the global context through [ind_lookup] alone. *)

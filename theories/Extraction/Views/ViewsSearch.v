@@ -338,21 +338,11 @@ Section Search.
   (** An instance a view reachable from [x] meets *)
   | reach_from_meet : forall y a w, reach_from x y -> E y a -> In w (meets_of a) -> reach_from x w.
 
-  Lemma reach_from_trans : forall x y w, reach_from x y -> reach_from y w -> reach_from x w.
-  Proof.
-    intros x y w Hxy Hyw; induction Hyw as [| y' a w Hy IH He Hw | y' a w Hy IH He Hw ];
-      [ exact Hxy | eapply reach_from_sibling | eapply reach_from_meet ]; eassumption.
-  Qed.
-
   Lemma key_in_app_l : forall x l1 l2, key_in x l1 -> key_in x (l1 ++ l2).
   Proof. intros * (y & Hy & Hxy); exists y; split; [ apply in_or_app; left; exact Hy | exact Hxy ]. Qed.
 
   Lemma key_in_app_r : forall x l1 l2, key_in x l2 -> key_in x (l1 ++ l2).
   Proof. intros * (y & Hy & Hxy); exists y; split; [ apply in_or_app; right; exact Hy | exact Hxy ]. Qed.
-
-  (** A key of the view of a key among keys is among them. *)
-  Lemma key_in_trans : forall x y l, view_key_eq x y -> key_in y l -> key_in x l.
-  Proof. intros * Hxy (z & Hz & Hyz); exists z; split; [ exact Hz | etransitivity; eassumption ]. Qed.
 
   Section Clusters.
     (** The views of the invariant: those whose data is read off the PER

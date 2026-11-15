@@ -75,21 +75,6 @@ Proof.
       | unfold nf_eq_upto_proofs; cbn [nf_eqb_upto_proofs]; exact HE ].
 Qed.
 
-(** A normal form in the left context has one in the right context, equal up
-    to its proofs. *)
-Corollary ctxeq_nbe_eq' : forall Γ Γ' M A W,
-    Γ ⊢ M : A ->
-    ctx_scoped 0 Γ' ->
-    ⊨ Γ ≈ Γ' ->
-    nbe_f Γ M A W ->
-    exists W', nbe_f Γ' M A W' /\ nf_eq_upto_proofs W W'.
-Proof.
-  intros * HM HsΓ' HΓΓ' HW.
-  destruct (ctxeq_nbe_eq _ _ _ _ HM HsΓ' HΓΓ') as (W0 & W' & HW0 & HW' & HE).
-  functional_nbe_rewrite_clear.
-  exists W'; split; assumption.
-Qed.
-
 Corollary ctxeq_nbe_ty_eq : forall Γ Γ' A i,
     Γ ⊢ A : Typeω@i ->
     ctx_scoped 0 Γ' ->

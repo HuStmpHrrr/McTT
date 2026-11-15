@@ -171,21 +171,6 @@ Proof.
   exists W; split; [ apply nbe_type_to_nbe_ty in Hn; exact Hn | exact HE ].
 Qed.
 
-(** Two types of a sort whose normal forms are equal up to their proofs
-    are equal ([soundness_upto_proofs]). *)
-Lemma soundness_ty_upto_proofs : forall {Γ S A B W W'},
-    type_sort S ->
-    Γ ⊢ A : S ->
-    Γ ⊢ B : S ->
-    nbe_ty_f Γ A W ->
-    nbe_ty_f Γ B W' ->
-    nf_eq_upto_proofs W W' ->
-    Γ ⊢ A ≈ B : S.
-Proof.
-  intros * HS HA HB HnA HnB E.
-  exact (soundness_upto_proofs HA HB (nbe_ty_to_nbe_at_sort _ _ _ _ HS HnA) (nbe_ty_to_nbe_at_sort _ _ _ _ HS HnB) E).
-Qed.
-
 (** The normal form of a level of sort [n] is a canonical level of sort [n]:
     its constant is of a tier at most [n], and each atom is a level of its
     own sort ([nf_lvl_well_scoped]).  It is read off the gluing of the level,

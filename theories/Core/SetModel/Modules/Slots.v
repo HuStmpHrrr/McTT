@@ -40,10 +40,6 @@ Section UnitSteps.
   (** The valuation models, here, everything that context resolves *)
   Hypothesis Hemb : set_gctx_embedding Θs Ξs gc_deps gc_stack T γ.
 
-(** This context is well formed, as one the smaller context grows into. *)
-Lemma set_here_wf : ⊢ᵍ gc_deps ⍮ gc_stack.
-Proof. exact (gctx_embedding_wf _ _ _ _ (set_gctx_embedding_embedding _ _ _ _ _ _ Hemb)). Qed.
-
 (** ** Values Read in Equal Extensions *)
 
 Lemma ctx_ext_equal_of_ext_eq : forall Γ Ψ Ψ', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> ctx_ext_equal (Ψ ++ Γ) (Ψ' ++ Γ).

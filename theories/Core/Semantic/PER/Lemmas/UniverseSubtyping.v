@@ -70,21 +70,6 @@ Proof. intros a Hk ->; discriminate Hk. Qed.
 Lemma propositional_kind_not_level_sort : forall a, domain_kind a = ak_propositional -> not_level_sort a.
 Proof. intros a Hk ->; discriminate Hk. Qed.
 
-(** Two elements of a sort's PER — a universe's or [Prop]'s — are not the
-    sort [LevelSort]: it is of no sort ([per_universe_elements],
-    [per_prop]). *)
-Lemma sort_element_not_level_sort : forall i R s s' a a',
-    DF s ≈ s' ∈ per_univ_elem i ↘ R ->
-    (exists j, s = 𝕌ω@j) \/ (exists l, s = 𝕌@l) \/ s = Propᵈ ->
-    Dom a ≈ a' ∈ R ->
-    not_level_sort a /\ not_level_sort a'.
-Proof.
-  intros * H Hs Ha.
-  destruct Hs as [[j ->] | [[l ->] | ->]]; basic_invert_per_univ_elem H; apply_relation_equivalence.
-  1-2: destruct Ha as [_ _ _ Hnl Hnr]; split; assumption.
-  destruct Ha as [Hl Hr _]; split; apply propositional_kind_not_level_sort; assumption.
-Qed.
-
 (** The [per_univ_elem] rule for [Π] without its PER premise. *)
 Lemma per_univ_elem_pi' :
   forall i κd κc a a' ρ B ρ' B'
@@ -204,48 +189,12 @@ Proof.
     + eapply level_code_pi_codomain; [ exact Hl' | apply per_univ_sym; eassumption | exact Hc'c' | exact Eb' ].
 Qed.
 
-(** A type related to a type of levels is one: the types of levels are
-    [Level@n] and the [Π]s between them. *)
-Lemma per_univ_elem_level_code_right : forall i R a a',
-    DF a ≈ a' ∈ per_univ_elem i ↘ R -> level_code a -> level_code a'.
-Proof.
-  intros * H; per_univ_elem_induction H; intros Hl.
-  all: try (destruct (level_code_head _ Hl) as [(? & [=]) | (? & ? & ? & [=])]; fail).
-  - exists (per_lvl_at n), Levelᵈ@n; left; constructor; reflexivity.
-  - exfalso; match goal with Hp : per_prop _ _ |- _ =>
-      destruct Hp as [Hpl _ _]; rewrite (level_code_kind _ Hl) in Hpl; discriminate Hpl end.
-  - (** A [Π]: between types of levels, the domains and the codomains
-        are types of levels. *)
-    destruct (level_code_head _ Hl) as [(? & [=]) | (? & ? & ? & [= -> -> <- <- <-])].
-    destruct_conjs.
-    assert (Hd : level_code a) by (eapply level_code_pi_domain; exact Hl).
-    assert (Hd' : level_code a') by (apply IHH; exact Hd).
-    do 2 eexists; right.
-    econstructor; [ eapply per_univ_elem_level_code; eassumption | eassumption | | eassumption ].
-    intros c c' Hc.
-    assert (Hcc : Dom c ≈ c ∈ in_rel) by (etransitivity; [ exact Hc | symmetry; exact Hc ]).
-    match goal with HT : forall c c' (_ : in_rel c c'), rel_mod_eval _ B _ B' _ _ |- _ =>
-      destruct (HT _ _ Hc) as [b b' Eb Eb' [Hb IHb]]
-    end.
-    econstructor; [ exact Eb | exact Eb' |].
-    assert (Hlb : level_code b) by (eapply level_code_pi_codomain; [ exact Hl | eassumption | exact Hcc | exact Eb ]).
-    exact (per_univ_elem_level_code _ _ _ _ Hb Hlb (IHb Hlb)).
-Qed.
-
 (** Related types of levels stay so at an equivalent relation. *)
 Lemma per_level_code_resp_iff : forall R R' a a', R <~> R' -> per_level_code R a a' -> per_level_code R' a a'.
 Proof.
   intros * HE H; destruct H.
   - econstructor; etransitivity; [ symmetry; exact HE | eassumption ].
   - econstructor; try eassumption; etransitivity; [ symmetry; exact HE | eassumption ].
-Qed.
-
-(** The converse of [per_univ_elem_level_code_right]. *)
-Corollary per_univ_elem_level_code_left : forall i R a a',
-    DF a ≈ a' ∈ per_univ_elem i ↘ R -> level_code a' -> level_code a.
-Proof.
-  intros * H Hl; destruct (per_univ_elem_sym _ _ _ _ H) as [H' _].
-  exact (per_univ_elem_level_code_right _ _ _ _ H' Hl).
 Qed.
 
 End Fixed_GCtx.
@@ -624,10 +573,6 @@ Proof.
   assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
   exists a'; split; [ exact Ha' | rewrite <- (per_univ_elem_kind _ _ _ _ HR); exact Hr ].
 Qed.
-
-(** A kind is the propositions' or an evaluated one. *)
-Lemma kind_cases : forall r, r = ak_propositional \/ evaluated_kind r.
-Proof. intros []; [ right; constructor | left; reflexivity | right; constructor ]. Qed.
 
 (** At an evaluated kind the bodies' values are related and the heads
     tied to them. *)

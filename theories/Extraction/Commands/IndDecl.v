@@ -703,9 +703,6 @@ Proof.
   - right; intros l H'; apply (H l); intros * Hk * Hh; exact (H' _ _ _ _ _ _ Hk Hh).
 Defined.
 
-(** The same with one bound, at every member of a group. *)
-Definition members_bound_dec' := members_bound_dec.
-
 (** A property of the constructors two members share, decided at each. *)
 Definition con_pairs_dec (M1 M2 : imember) (Q : string -> list carg -> list carg -> Prop)
     (f : forall c gs1 gs2, ind_con M1 c = Some gs1 -> ind_con M2 c = Some gs2 -> {Q c gs1 gs2} + {~ Q c gs1 gs2}) :
@@ -883,17 +880,6 @@ Section Judgments.
     | left HΓ => check_type F levels_abstractable_dec Γ HΓ A
     | right HnΓ => inright (fun r i H => HnΓ (presup_exp_ctx H))
     end.
-
-  (** A type in a context: [LevelSort], or a type of a sort. *)
-  Definition type_dec (Γ : ctx) (A : typ) : {Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A}.
-  Proof.
-    destruct (check_ctx F levels_abstractable_dec HΞ Γ) as [HΓ | HnΓ]; [| right; intros H; exact (HnΓ (wf_type_ctx _ _ H)) ].
-    destruct (exp_eq_dec A LevelSort) as [-> | HnL]; [ left; exact (wf_type_level_sort HΓ) |].
-    destruct (check_type F levels_abstractable_dec Γ HΓ A) as [(r & i & HA) | HnA];
-      [ left; exact (type_of_check_type F Γ A r i HA) | right ].
-    intros H; inversion H as [A0 S HS HA0 | HG]; subst; [| exact (HnL eq_refl) ].
-    destruct (type_sort_kind_sort _ HS) as (κ & i & ->); exact (HnA _ _ HA0).
-  Defined.
 
   (** The least large universe a type is in: that of the universe it
       infers. *)
@@ -2809,9 +2795,6 @@ Proof.
   all: unfold gc_loc in *; rewrite <- (gds_equiv_body _ _ _ _ He); assumption.
 Qed.
 
-Corollary gds_equiv_mdenote : forall Θ Θ' Ξ Γ H R, gds_equiv Θ Θ' -> mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R.
-Proof. intros * He; exact (proj1 (gds_equiv_mdenote_all _ _ _ He) _ _ _). Qed.
-
 Section Equiv.
   Variables (Θ Θ' : gdeps) (Ξ : gstack).
   Hypothesis He : gds_equiv Θ Θ'.
@@ -2845,9 +2828,6 @@ Section Equiv.
     destruct Hw as [w Hp Hr | m w Hk Hm Hw]; [ apply nbe_term_proof; eauto | eapply nbe_term_evaluated; eauto ].
   Qed.
 
-
-  Lemma equiv_typ : forall Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ' ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
-  Proof. intros; eapply equiv_exp; eassumption. Qed.
 
   Lemma equiv_nbes : forall Γ Ms As Ws, nbes Θ Ξ Γ Ms As Ws -> nbes Θ' Ξ Γ Ms As Ws.
   Proof.

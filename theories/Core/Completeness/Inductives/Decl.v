@@ -47,12 +47,6 @@ Section Fixed_GCtx.
     about these types only through their readability, so statements over
     a context PER take the extensions with any types. *)
 
-(** An argument at the head of a telescope extends the environment at the
-    closure of its type there. *)
-Lemma env_tele_cons : forall ρ κ A T x xs,
-    env_tele ρ (ce_ass κ A :: T) (x :: xs) = env_tele (ρ ↦ x ⦂ entry_type_closure A ρ) T xs.
-Proof. reflexivity. Qed.
-
 (** One more argument of a telescope, at the type of its entry. *)
 Lemma env_tele_snoc_at : forall ρ T vs κ A v, List.nth_error T (List.length vs) = Some (ce_ass κ A) ->
     env_tele ρ T (vs ++ v :: nil) = env_tele ρ T vs ↦ v ⦂ entry_type_closure A (env_tele ρ T vs).
@@ -791,13 +785,6 @@ Qed.
 Lemma env_entry_extend_typed_app : forall ρ vts i, env_entry (env_extend_typed ρ vts) (List.length vts + i) = env_entry ρ i.
 Proof. intros; rewrite <- env_entry_skipn, skipn_env_extend_typed; reflexivity. Qed.
 
-Corollary env_entry_extend_tagged_app : forall ts Δ ρ ms i, List.length ts = List.length ms ->
-    env_entry (env_extend_tagged Δ ts ρ ms) (List.length ms + i) = env_entry ρ i.
-Proof. intros * Hl; rewrite <- env_entry_skipn, skipn_env_extend_tagged by exact Hl; reflexivity. Qed.
-
-(** ** Environments of Arguments, Inverted *)
-
-(** Evaluated terms are as many as the terms. *)
 Lemma eval_exps_count : forall Ms ρ ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ms = List.length Ms.
 Proof. induction 1; cbn; congruence. Qed.
 

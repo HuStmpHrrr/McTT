@@ -143,15 +143,6 @@ Qed.
 
 (** ** The Units a Command Sees *)
 
-(** A restriction reads its paths as a set. *)
-Lemma gds_restrict_ext : forall L L' Θ, (forall x, In x L <-> In x L') -> gds_restrict L Θ = gds_restrict L' Θ.
-Proof.
-  intros L L' Θ H; unfold gds_restrict; apply filter_ext; intros [fp U]; cbn [fst].
-  destruct (existsb (path_beq fp) L) eqn:E1, (existsb (path_beq fp) L') eqn:E2; try reflexivity.
-  - apply existsb_path_beq in E1; apply H, existsb_path_beq in E1; congruence.
-  - apply existsb_path_beq in E2; apply H, existsb_path_beq in E2; congruence.
-Qed.
-
 (** What a command sees: the units filed, restricted to the paths
     imported; nothing is built, the units seen are kept in [s]. *)
 Definition cmd_view (s : funits) (D : list path) : fview := mk_fview s D.
@@ -171,9 +162,6 @@ Proof. intros; rewrite fc_gctx_eq; unfold fctx_cmd, fctx_at; cbn [fc_view fc_fra
 
 Lemma fc_tele_cmd : forall B s D fs Hok, fc_tele (fctx_cmd B s D fs Hok) = gs_tele (decode_stack fs).
 Proof. intros; unfold fc_tele, fctx_cmd, fctx_at; cbn [fc_frames]; symmetry; apply fs_tele_dec. Qed.
-
-Lemma fc_path_cmd : forall B s D fs Hok, fc_path (fctx_cmd B s D fs Hok) = gs_path (decode_stack fs).
-Proof. intros; unfold fc_path, fctx_cmd, fctx_at; cbn [fc_frames]; symmetry; apply fs_path_dec. Qed.
 
 (** The Core reading of the facts found at a command's fast context: its
     decodings rewritten to the restriction and the decoded stack *)

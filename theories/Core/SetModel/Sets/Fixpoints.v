@@ -50,17 +50,6 @@ Proof.
     apply least_fixed_point_least; assumption.
 Qed.
 
-(** It is a fixed point. *)
-Lemma least_fixed_point_unfold : set_sub least_fixed_point_set (Φ least_fixed_point_set).
-Proof.
-  apply least_fixed_point_least.
-  - exact (Hbound _ least_fixed_point_bound).
-  - apply Hmono; [exact (Hbound _ least_fixed_point_bound) | exact least_fixed_point_bound | exact least_fixed_point_closed].
-Qed.
-
-Lemma least_fixed_point_eq : set_eq least_fixed_point_set (Φ least_fixed_point_set).
-Proof. apply set_eq_intro; [exact least_fixed_point_unfold | exact least_fixed_point_closed]. Qed.
-
 (** Induction: a property that respects equality and holds of every
     member of [Φ] of the members having it holds of every member. *)
 Lemma least_fixed_point_ind : forall P, respects_set_eq P ->

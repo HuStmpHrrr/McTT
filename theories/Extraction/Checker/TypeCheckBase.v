@@ -216,16 +216,6 @@ Section type_check.
   Lemma wf_type_of_infer : forall G M A, ⊢ G -> G ⊢a M ⟹ A -> G ⊢ᵗ A.
   Proof. intros * HG HM; exact (presup_exp_typ (alg_type_infer_sound HM HG)). Qed.
 
-  (** The normal form of a type is a type. *)
-  Lemma wf_type_nbe : forall G X W, G ⊢ᵗ X -> nbe_ty_f G X W -> G ⊢ᵗ W.
-  Proof.
-    intros * [? S HS HX | HG] HW.
-    - pose proof (soundness_ty_at_sort HS HX HW) as HXW.
-      eapply wf_type_of_sort; [ exact HS | gen_presups; eassumption ].
-    - pose proof (nbe_ty_level_sort_self HG).
-      functional_nbe_rewrite_clear; exact (wf_type_level_sort HG).
-  Qed.
-
   (** A type whose inferred sort is one of a kind ([is_sort_nf]) is a
       type. *)
   Lemma type_of_sort_infer : forall G A UA κ u, ⊢ G -> G ⊢a A ⟹ UA -> is_sort_nf UA κ u -> G ⊢ᵗ A.
@@ -264,12 +254,6 @@ Section type_check.
 
   Lemma checker_env_order_of_wf : forall G, ⊢ G -> initial_env_order gc_deps gc_stack G.
   Proof. intros G HG; destruct (initial_env_of_wf G HG) as [ρ Hρ]; eauto using initial_env_order_sound. Qed.
-
-  (** The initial environment of a context one entry longer: by its rule,
-      at the initial environment of the context. *)
-  Lemma initial_env_of_wf_cons : forall G e ρ, ⊢ e :: G -> initial_env_f G ρ ->
-      exists ρ', initial_env_f (e :: G) ρ'.
-  Proof. intros * HG _; exact (initial_env_of_wf _ HG). Qed.
 
   (** The entries of a context evaluate, fast, at an environment that
       simulates the context's initial one ([fast_env_ass_order] and the
@@ -489,27 +473,17 @@ Section type_check.
   Lemma type_infer_order_all : forall M, type_infer_order M.
   Proof. exact (proj1 syn_orders_all). Qed.
 
-  Lemma type_check_order_all : forall M, type_check_order M.
-  Proof. intros; constructor; apply type_infer_order_all. Qed.
-
   Lemma modexp_order_all : forall H, modexp_order H.
   Proof. exact (proj1 (proj2 syn_orders_all)). Qed.
 
   Lemma unit_order_all : forall U, unit_order U.
   Proof. exact (proj1 (proj2 (proj2 (proj2 syn_orders_all)))). Qed.
 
-  Lemma body_order_all : forall Φ, body_order Φ.
-  Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_orders_all)))))). Qed.
-
   Lemma ext_order_all : forall Ψ, ext_order Ψ.
   Proof.
     intros; apply ext_order_of_forall, Forall_forall; intros.
     destruct syn_orders_all as (_ & _ & _ & _ & _ & _ & _ & Hc); apply Hc.
   Qed.
-
-  (** [LevelSort] is of no type ([level_sort_untyped]). *)
-  Lemma alg_level_sort_no_infer : forall G A, ⊢ G -> ~ G ⊢a LevelSort ⟹ A.
-  Proof. intros * HG H; exact (level_sort_untyped (alg_type_infer_sound H HG)). Qed.
 
   (** A closed body is a filed module's or an open frame's: no unit the
       checker is given is one. *)

@@ -136,7 +136,6 @@
 ./Core/SetModel/Sets/Ordinals.v
 ./Core/SetModel/Sets/Grothendieck.v
 ./Core/SetModel/Sets/Fixpoints.v
-./Core/SetModel/Sets/WSets.v
 ./Core/SetModel/Tower.v
 ./Core/SetModel/Sets/Encodings.v
 ./Core/SetModel/Interpretation/Codes.v

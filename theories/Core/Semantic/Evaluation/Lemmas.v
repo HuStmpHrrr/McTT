@@ -471,10 +471,6 @@ Import Domain_Notations.
   Qed.
   #[local] Opaque eval_sub.
 
-  Corollary eval_sub_retag : forall {Θ Ξ} Δ σ ρ ρσ,
-      ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ -> ⟦ σ : Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρσ.
-  Proof. intros * H; exact (eval_sub_resp_agree _ _ _ _ _ H (eval_sub_agree_retag _ _ _ _ H)). Qed.
-
   (** At an environment an evaluated substitution yields, [Wk] evaluates to
       the tail itself: its entries are stored at their declarations
       already. *)

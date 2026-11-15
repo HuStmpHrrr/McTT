@@ -97,9 +97,6 @@ Qed.
 Corollary per_dmod_sym : forall m m', per_dmod m m' -> per_dmod m' m.
 Proof. exact (proj1 per_dmod_sym_all). Qed.
 
-Corollary per_body_sym : forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' -> per_body ρ' Φ' ρ Φ.
-Proof. exact (proj2 (proj2 per_dmod_sym_all)). Qed.
-
 (** ** Transitivity *)
 
 Lemma per_dmod_trans_all :
@@ -179,9 +176,6 @@ Qed.
 
 Corollary per_dmod_trans : forall m1 m2 m3, per_dmod m1 m2 -> per_dmod m2 m3 -> per_dmod m1 m3.
 Proof. intros; eapply (proj1 per_dmod_trans_all); eassumption. Qed.
-
-Corollary per_body_trans : forall ρ1 Φ1 ρ2 Φ2 ρ3 Φ3, per_body ρ1 Φ1 ρ2 Φ2 -> per_body ρ2 Φ2 ρ3 Φ3 -> per_body ρ1 Φ1 ρ3 Φ3.
-Proof. intros; eapply (proj2 (proj2 per_dmod_trans_all)); eassumption. Qed.
 
 #[export] Instance per_dmod_PER : PER per_dmod.
 Proof. split; [ exact per_dmod_sym | exact per_dmod_trans ]. Qed.

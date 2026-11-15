@@ -294,24 +294,6 @@ Proof.
     rewrite <- !nth_tl_kind; split; assumption.
 Qed.
 
-(** And conversely: values of the fields' kinds pointwise are their
-    values. *)
-Lemma eval_field_vals_of_nth : forall Ms rs ρ vs, List.length vs = List.length Ms ->
-    (forall k M v, List.nth_error Ms k = Some M -> List.nth_error vs k = Some v ->
-       (evaluated_kind (List.nth k rs ak_relevant) -> ⟦ M ⟧ ρ ↘ v) /\
-       (List.nth k rs ak_relevant = ak_propositional -> v = ⋆ᵈ⟨M, ρ⟩)) ->
-    eval_field_vals gc_deps gc_stack rs Ms ρ vs.
-Proof.
-  induction Ms as [| M Ms IH]; intros rs ρ [| v vs] Hl H; cbn in Hl; try discriminate; [ constructor |].
-  assert (Hrest : eval_field_vals gc_deps gc_stack (List.tl rs) Ms ρ vs).
-  { apply IH; [ lia |]; intros k N w HN Hw; rewrite !nth_tl_kind; exact (H (S k) N w HN Hw). }
-  destruct (H 0 M v eq_refl eq_refl) as [Hr Hp].
-  destruct (evaluated_kind_or_propositional (List.hd ak_relevant rs)) as [Er | Er].
-  - eapply eval_field_vals_evaluated; [ exact Er | apply Hr; rewrite <- hd_nth_kind; exact Er | exact Hrest ].
-  - rewrite (Hp ltac:(rewrite <- hd_nth_kind; exact Er)).
-    eapply eval_field_vals_proof; [ exact Er | exact Hrest ].
-Qed.
-
 Lemma eval_field_vals_length : forall rs Ms ρ vs, eval_field_vals gc_deps gc_stack rs Ms ρ vs -> List.length vs = List.length Ms.
 Proof. induction 1; cbn; congruence. Qed.
 
@@ -370,48 +352,6 @@ Proof.
   induction 1 as [rs ρ | rs M ρ m Ms ms Hr Hm Hms IH | rs M ρ Ms ms Hr Hms IH]; intros Hall; [ constructor | |].
   - constructor; [ exact Hm | apply IH; intros j Hj; rewrite nth_tl_kind; apply Hall; cbn; lia ].
   - exfalso; specialize (Hall 0 ltac:(cbn; lia)); rewrite <- hd_nth_kind, Hr in Hall; inversion Hall.
-Qed.
-
-(** A substitution extended by fields, at a context extended by entries
-    [ts] whose kinds are the fields', evaluated: to the fields' values. *)
-Lemma eval_sb_of_list_fields : forall Fs ts σ Δ ρ ρσ rs vs,
-    ⟦ σ : Δ ⟧s ρ ↘ ρσ -> eval_field_vals gc_deps gc_stack rs Fs ρ vs -> List.length ts = List.length Fs ->
-    (forall j e, List.nth_error ts j = Some e ->
-       (evaluated_kind (List.nth j rs ak_relevant) ->
-          ~ head_propositional gc_deps gc_stack e (List.rev (List.firstn j ts) ++ Δ)
-              (env_extend_tagged Δ (List.firstn j ts) ρσ (List.firstn j vs))) /\
-       (List.nth j rs ak_relevant = ak_propositional ->
-          head_propositional gc_deps gc_stack e (List.rev (List.firstn j ts) ++ Δ)
-            (env_extend_tagged Δ (List.firstn j ts) ρσ (List.firstn j vs)))) ->
-    ⟦ sb_of_list σ Fs : List.rev ts ++ Δ ⟧s ρ ↘ env_extend_tagged Δ ts ρσ vs.
-Proof.
-  induction Fs as [| M Fs IH]; intros [| e ts] * Hσ Hvs Hl Hst; cbn [List.length] in Hl; try discriminate.
-  - inversion Hvs; subst; exact Hσ.
-  - cbn [sb_of_list List.rev]; rewrite <- List.app_assoc; cbn [List.app].
-    destruct (Hst 0 e eq_refl) as [Hr0 Hp0]; cbn [List.firstn List.rev List.app env_extend_tagged] in Hr0, Hp0.
-    inversion Hvs; subst;
-      match goal with Hms : eval_field_vals _ _ _ Fs ρ ?ms |- _ => rename Hms into Hms'; rename ms into ms' end;
-      rename Hms' into Hms; rename ms' into ms.
-    + match goal with Hm : ⟦ M ⟧ _ ⍮ _ ⍮ ρ ↘ ?m, Hhd : evaluated_kind (List.hd ak_relevant rs) |- _ =>
-        rename Hm into Hm'; rename Hhd into Hhd'; rename m into m' end.
-      rename Hm' into Hm; rename Hhd' into Hhd; rename m' into m.
-      change (env_extend_tagged Δ (e :: ts) ρσ (m :: ms)) with (env_extend_tagged (e :: Δ) ts (ρσ ↦ m ⦂ centry_tag e Δ ρσ) ms).
-      apply (IH ts (σ ,, M) (e :: Δ) ρ (ρσ ↦ m ⦂ centry_tag e Δ ρσ) (List.tl rs) ms); [ | exact Hms | lia |].
-      * apply eval_sub_extend; [ exact Hσ | | exact Hm ].
-        apply Hr0; rewrite <- hd_nth_kind; exact Hhd.
-      * intros j e' He'; destruct (Hst (S j) e' He') as [Hr Hp].
-        cbn [List.firstn List.rev] in Hr, Hp; rewrite <- List.app_assoc in Hr, Hp; cbn [List.app] in Hr, Hp.
-        rewrite nth_tl_kind; split; assumption.
-    + match goal with Hhd : List.hd ak_relevant rs = ak_propositional |- _ => rename Hhd into Hhd' end.
-      rename Hhd' into Hhd.
-      change (env_extend_tagged Δ (e :: ts) ρσ (⋆ᵈ⟨M, ρ⟩ :: ms))
-        with (env_extend_tagged (e :: Δ) ts (ρσ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ centry_tag e Δ ρσ) ms).
-      apply (IH ts (σ ,, M) (e :: Δ) ρ (ρσ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ centry_tag e Δ ρσ) (List.tl rs) ms); [ | exact Hms | lia |].
-      * apply eval_sub_extend_proof; [ exact Hσ |].
-        apply Hp0; rewrite <- hd_nth_kind; exact Hhd.
-      * intros j e' He'; destruct (Hst (S j) e' He') as [Hr Hp].
-        cbn [List.firstn List.rev] in Hr, Hp; rewrite <- List.app_assoc in Hr, Hp; cbn [List.app] in Hr, Hp.
-        rewrite nth_tl_kind; split; assumption.
 Qed.
 
 (** A type related to a record type former at parameters is one. *)
@@ -1618,26 +1558,6 @@ Section RecordModel.
         * exact (mk_record_rel _ _ _ _ V1 V2 (tuple_projs _ V1 Hfs ltac:(lia)) (tuple_projs _ V2 Hfs ltac:(lia)) H12).
         * exact (mk_record_rel _ _ _ _ V2 V3 (tuple_projs _ V2 Hfs ltac:(lia)) (tuple_projs _ V3 Hfs ltac:(lia)) H23).
         * exact (mk_record_rel _ _ _ _ V3 V4 (tuple_projs _ V3 Hfs ltac:(lia)) (tuple_projs _ V4 Hfs ltac:(lia)) H34).
-  Qed.
-
-  (** The element relation of the record type at parameters, at two
-      related environments: the canonical one at the left values. *)
-  Lemma record_typ_at_envs : forall Γ Ns RΓ ρ ρ', ⊨ Γ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
-      (exists i : nat, Γ ⊨ apps_exp (a_record p) Ns : Typeω@i) -> List.length Ns = List.length (record_params R) ->
-      RΓ ρ ρ' ->
-      exists ns, ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns /\
-        (per_head (apps_exp (a_record p) Ns) (apps_exp (a_record p) Ns) ρ ρ' <~> record_rel R (canon_fields_rel R ns)).
-  Proof.
-    intros * HΓ HRΓ [i HA] Hn Hρ.
-    destruct (rel_exp_of_typ_inversion_simple_at HRΓ HA _ _ Hρ) as (a & a' & Ea & Ea' & [X HX]).
-    destruct (eval_record_apps_inv _ _ _ Ea Hn) as (ns & Ens & ->).
-    pose proof (record_typ_facts _ _ _ _ (per_univ_sym _ _ _ _ HX)) as Hf.
-    pose proof (per_head_iff Ea Ea' HX) as E1.
-    assert (E2 : X <~> record_rel R (canon_fields_rel R ns)).
-    { pose proof (per_univ_trans _ _ _ _ _ _ HX (per_univ_sym _ _ _ _ HX)) as Hd.
-      etransitivity; [ eapply per_univ_elem_right_irrel; [ exact HX | exact Hd ] |].
-      exact (record_canon_facts_elem _ _ _ _ _ (per_univ_elem_record_facts _ _ _ _ _ _ Hl Hd)). }
-    exists ns; split; [ exact Ens | etransitivity; [ symmetry; exact E1 | exact E2 ] ].
   Qed.
 
   (** η: an element is equal to the tuple of its projections. *)

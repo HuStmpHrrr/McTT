@@ -203,26 +203,8 @@ Proof.
   apply ordered_pair_resp; [apply set_eq_refl | exact Hxy].
 Qed.
 
-Lemma constructed_element_resp : forall Mk cs ns ns' vals vals', list_set_eq ns ns' -> list_set_eq vals vals' ->
-    set_eq (constructed_element Mk cs ns vals) (constructed_element Mk cs ns' vals').
-Proof.
-  intros. unfold constructed_element. destruct (set_member_record_fields Mk) as [fl |].
-  - apply tuple_code_combine_resp. assumption.
-  - unfold con_val. apply ordered_pair_resp; [apply set_eq_refl | apply list_code_resp; apply list_set_eq_app; assumption].
-Qed.
-
 Section Respecting.
   Hypothesis Hsig : signature_respects.
-
-Lemma constructed_from_resp : forall S k ns ns' v v', list_set_eq ns ns' -> set_eq v v' ->
-    constructed_from S k ns v -> constructed_from S k ns' v'.
-Proof.
-  intros S k ns ns' v v' En Ev [Mk [cs [vals [HMk Hcs Hfit Hel]]]].
-  exists Mk, cs, vals. apply (mk_constructed_with S k ns' v' Mk cs vals HMk Hcs).
-  - eapply arguments_fit_resp; [exact (Hsig _ _ _ HMk Hcs) | apply list_set_eq_app; [apply list_set_eq_refl | exact En] | apply list_set_eq_refl | exact Hfit].
-  - eapply set_eq_trans; [apply set_eq_sym; exact Ev |]. eapply set_eq_trans; [exact Hel |].
-    apply constructed_element_resp; [exact En | apply list_set_eq_refl].
-Qed.
 
 Lemma constructed_from_mono : forall S S' k ns v, set_sub S S' -> constructed_from S k ns v -> constructed_from S' k ns v.
 Proof.
@@ -272,17 +254,6 @@ Proof.
       exists (exist _ k Hk). apply set_eq_refl.
     + split; [apply set_mem_product; exists (list_code ns), v; split; [exact HU | split; [exact Hb | apply set_eq_refl]] | apply set_eq_refl].
   - exists k, ns, v. split; [apply set_eq_refl | exact Hc].
-Qed.
-
-(** An element of a member's carrier is constructed from the carriers. *)
-Lemma member_carrier_inversion : forall k ns v, set_mem v (member_carrier k ns) -> constructed_from carrier_fixed_point k ns v.
-Proof.
-  intros k ns v Hv. unfold member_carrier, candidate_carrier in Hv.
-  apply (set_mem_separation _ _ _ (member_point_pred_resp _ _ _)) in Hv as [_ Hp].
-  apply (least_fixed_point_unfold carrier_ambient carrier_operator carrier_operator_monotone carrier_operator_bounded) in Hp.
-  unfold carrier_operator in Hp. apply (set_mem_separation _ _ _ (carrier_operator_pred_resp _)) in Hp as [_ [k' [ns' [v' [Et Hc]]]]].
-  apply member_point_inj in Et as [<- [En Ev]].
-  eapply constructed_from_resp; [apply list_set_eq_sym; exact En | apply set_eq_sym; exact Ev | exact Hc].
 Qed.
 
 (** The points of the fixed point whose elements have the property [Q]. *)

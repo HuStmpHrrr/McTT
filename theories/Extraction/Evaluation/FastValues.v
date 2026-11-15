@@ -72,14 +72,6 @@ Proof.
   change e with (proj1_sig (exist P e He)); rewrite <- sraw_map_add; apply sig_sraw_all.
 Qed.
 
-(** [P] of every element implies [Q] of every element when [P] implies
-    [Q]. *)
-Lemma sraw_all_impl : forall {A} (P Q : A -> Prop) m, (forall e, P e -> Q e) -> sraw_all P m -> sraw_all Q m.
-Proof.
-  intros A P Q m H; induction m as [| l IHl y d r IHr h]; cbn; [ auto |].
-  intros (Hl & Hd & Hr); split; [ exact (IHl Hl) | split; [ exact (H _ Hd) | exact (IHr Hr) ] ].
-Qed.
-
 (** ** Right Stored Values *)
 
 Section ValuesOk.
@@ -300,13 +292,6 @@ Proof.
   apply (frames_values_add _ _ _ _ _ HΞ HΞ' (frames_values_deps _ _ _ HΘ HΞ0 HΞ Hfs) Ed).
   apply He; destruct f as [mp Kf Δ t]; cbn [ff_path ff_kind ff_params ff_body decode_frame] in *; subst mp.
   exact (ftrie_values_grow _ _ _ _ (gc_sub_close _ _ _ pv _ _ _ HΞ Hfr HK) HΞf HΞ' _ Hf).
-Qed.
-
-(** The frames of a translation store no value. *)
-Lemma fs_of_values : forall Θ Ξ, frames_values_ok Θ (fs_of Ξ).
-Proof.
-  intros Θ; induction Ξ as [| [[mp K] U] Ξ IH]; cbn [fs_of frames_values_ok]; [ exact I |].
-  split; [| exact IH ]; destruct U as [Δ [[|] Φ | H]]; cbn; first [ apply translate_mod_values | exact I ].
 Qed.
 
 (** Alike, in any context *)

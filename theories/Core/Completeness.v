@@ -279,31 +279,4 @@ Proof.
   exact (read_at_level_type_proof_free HR Hk Hmm Hw).
 Qed.
 
-(** Nor does the normal form of a type of levels, read back as an element
-    of [LevelSort]: a type of levels is [Level@n] or a [Π] between types of
-    levels ([level_code_head]), read back without proofs
-    ([level_type_read_proof_free]). *)
-Theorem nbe_level_type_proof_free : forall {Γ A W},
-    Γ ⊢ A : LevelSort ->
-    nbe_f Γ A LevelSort W ->
-    nf_proof_free W.
-Proof.
-  intros * HA [ρ0 a0 Hρ0 Ha0 HW].
-  pose proof (completeness_fundamental_exp _ _ _ HA) as HA0.
-  pose proof HA0 as [env_relΓ HΓ _ _].
-  pose proof (wf_ctx_scoped_exp HA) as HsΓ.
-  pose proof (per_ctx_then_per_env_initial_env HΓ HsΓ HsΓ) as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
-  assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
-  assert (ρ0 = ρ) as -> by (eapply functional_initial_env; eassumption).
-  destruct (rel_exp_of_level_sort_inversion_simple_at HΓ HA0 _ _ Hrel) as (a & a' & Ea & _ & (Hl & _ & [R HR])).
-  inversion Ha0; subst.
-  (** [LevelSort] is relevant: the type is evaluated and read back as a
-      type *)
-  destruct HW as [w Hp Hw | m w Hr Hm Hw]; [ discriminate |].
-  functional_eval_rewrite_clear.
-  inversion Hw; subst.
-  - discriminate.
-  - exact (level_type_read_proof_free HR (level_code_kind _ Hl) H1).
-Qed.
-
 End Fixed_GCtx.

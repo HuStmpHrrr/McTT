@@ -2418,16 +2418,6 @@ Record gstack_cons_parts (Θ : gdeps) (Ξ : gstack) (mp : qname) (K : frame_kind
 Lemma wf_gstack_cons_inv : forall Θ Ξ mp K U, ⊢ᵍ Θ ⍮ (mp, K, U) :: Ξ -> gstack_cons_parts Θ Ξ mp K U.
 Proof. inversion 1; subst; constructor; eauto using wf_gunit_intro, frame_fresh_named. Qed.
 
-(** The path of a frame is in a unit of a non-empty path. *)
-Lemma wf_gstack_top_unit : forall Θ Ξ mp K U, ⊢ᵍ Θ ⍮ (mp, K, U) :: Ξ -> q_unit mp <> nil.
-Proof. intros * H; exact (gstack_cons_path _ _ _ _ _ (wf_gstack_cons_inv _ _ _ _ _ H)). Qed.
-
-(** A fresh path on a non-empty stack is in the same unit as the frame
-    it is in, so in a unit of a non-empty path. *)
-Lemma frame_fresh_unit : forall Θ mq Kq Uq Ξ mp, ⊢ᵍ Θ ⍮ (mq, Kq, Uq) :: Ξ -> frame_fresh Θ ((mq, Kq, Uq) :: Ξ) mp ->
-    q_unit mp <> nil.
-Proof. intros * H (x & -> & _); exact (wf_gstack_top_unit _ _ _ _ _ H). Qed.
-
 (** Filing, from the premises of the frame it closes. *)
 Lemma wf_gstack_file' : forall Θ fp U,
     ⊢ᵍ Θ ⍮ nil -> Θ ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U -> gds_lookup Θ fp = None -> fp <> nil ->
@@ -2522,9 +2512,6 @@ Ltac destruct_type_sort :=
 
 (** A parameter's sort is closed: no operation moves it. *)
 Lemma parameter_sort_sub : forall l S σ, parameter_sort l S -> S[σ] = S.
-Proof. intros * []; reflexivity. Qed.
-
-Lemma parameter_sort_wk : forall l S φ, parameter_sort l S -> S[φ]ʷ = S.
 Proof. intros * []; reflexivity. Qed.
 
 (** A parameter's sort is a type sort. *)

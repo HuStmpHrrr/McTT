@@ -75,10 +75,6 @@ Proof.
   split; [ reflexivity | exact (ihs_skipb_sound _ _ _ H) ].
 Qed.
 
-(** With the skip off, nothing is skipped. *)
-Lemma ihs_skip_at_off : forall oB base k, ihs_skip_at false oB base k = false.
-Proof. reflexivity. Qed.
-
 (** ** The Relations *)
 
 Reserved Notation "'⟦' M '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, M at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
@@ -1116,10 +1112,6 @@ Section FastDeterminism.
       fast_eval_field_vals Θ Ξ rs Ms ρ ms1 -> fast_eval_field_vals Θ Ξ rs Ms ρ ms2 -> ms1 = ms2.
   Proof. intros Θ Ξ; pose proof (@functional_fast_eval Θ Ξ) as H; destruct_all; eauto. Qed.
 
-  (** A function applied along terms has one value. *)
-  Corollary functional_fast_eval_app_args : forall {Θ Ξ} f Ms ρ r1 r2,
-      fast_eval_app_args Θ Ξ f Ms ρ r1 -> fast_eval_app_args Θ Ξ f Ms ρ r2 -> r1 = r2.
-  Proof. intros Θ Ξ; pose proof (@functional_fast_eval Θ Ξ) as H; destruct_all; eauto. Qed.
 End FastDeterminism.
 
 #[export]

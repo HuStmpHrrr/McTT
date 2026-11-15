@@ -278,16 +278,6 @@ Qed.
 Lemma type_sort_kind_universe : forall r i, type_sort (abs_kind_sort r Typeω@i).
 Proof. intros; apply type_sort_abs_kind; constructor. Qed.
 
-(** It is a type ([⊢ᵗ]): a large universe or [Prop] of the next universe,
-    [LevelSort] the sort of the types of levels. *)
-Lemma kind_sort_universe_wf_type : forall Γ r i, ⊢ Γ -> Γ ⊢ᵗ abs_kind_sort r Typeω@i.
-Proof.
-  intros * HΓ; destruct r; cbn [abs_kind_sort];
-    [ eapply wf_type_of_sort; [ apply (type_sort_universe (S i)) | apply wf_typ, HΓ ]
-    | eapply wf_type_of_sort; [ apply (type_sort_universe 0) | eapply wf_prop_large; exact HΓ ]
-    | apply wf_type_level_sort, HΓ ].
-Qed.
-
 (** The sort of a motive's kind is of the next universe: a large universe
     or [Prop], never [LevelSort] ([motive_kind]). *)
 Lemma motive_kind_sort_typed : forall Γ r i, motive_kind r -> ⊢ Γ -> Γ ⊢ abs_kind_sort r Typeω@i : Typeω@(S i).
@@ -943,18 +933,6 @@ Proof.
     + exfalso; pose proof (soundness_ty_at_sort HSB HUB0 HnB) as HE; cbn [nf_to_exp] in HE.
       exact (level_sort_untyped (presup_exp_eq_right HE)).
     + exact HBU.
-Qed.
-
-(** The parts of a typed [Π] at the kinds [κd] and [κc]: the domain of a
-    sort, the codomain of the sort at [κc] at a large universe
-    ([wf_pi_parts]). *)
-Lemma wf_pi_parts_large : forall Γ κd κc A B C,
-    Γ ⊢ a_pi κd κc A B : C ->
-    exists Sd k, type_sort Sd /\ Γ ⊢ A : Sd /\ Γ ▹{κd} A ⊢ B : abs_kind_sort κc Typeω@k.
-Proof.
-  intros * H.
-  destruct (wf_pi_parts H) as (_ & (Sd & HSd & HA) & (k & HB)).
-  exists Sd, k; repeat split; [ exact (sort_kind_type_sort _ _ HSd) | exact HA | exact HB ].
 Qed.
 
 (** A type of a sort, of the kind [r] its value says, is of the sort [r]
@@ -2182,10 +2160,6 @@ Proof.
     cbn; unfold qname_mod; rewrite ?modexp_lets_mems; cbn; lia.
 Qed.
 
-Lemma exp_lets_apps : forall M args,
-    exp_lets (apps M args) = exp_lets M + List.fold_right (fun N n => exp_lets N + n) 0 args.
-Proof. intros M args; revert M; induction args; intros; cbn; [ lia | rewrite IHargs; cbn; lia ]. Qed.
-
 Ltac lets_bound :=
   repeat first
     [ progress rewrite ?gunit_lets_mk, ?ctx_lets_app in *
@@ -3056,14 +3030,7 @@ Proof.
   - apply alg_modexp_lit, HU; [ exact (unit_eq_of_full _ _ _ _ Hgen) | exact Hl ].
 Qed.
 
-(** An extension of an extension is one extension. *)
-Lemma alg_ext_app : forall Γ Δ Ψ, Γ ⊢aˣ Δ -> Δ ++ Γ ⊢aˣ Ψ -> Γ ⊢aˣ Ψ ++ Δ.
-Proof.
-  intros * HΔ HΨ; remember (Δ ++ Γ) as G eqn:HG; induction HΨ; subst; cbn [List.app];
-    [ exact HΔ | .. ]; econstructor; rewrite <- ?List.app_assoc; eauto.
-Qed.
-
-(** The same for parameters. *)
+(** Parameters after parameters are one list of parameters. *)
 Lemma alg_params_app : forall Γ Δ Ψ, Γ ⊢aᵖ Δ -> Δ ++ Γ ⊢aᵖ Ψ -> Γ ⊢aᵖ Ψ ++ Δ.
 Proof.
   intros * HΔ HΨ; remember (Δ ++ Γ) as G eqn:HG; induction HΨ; subst; cbn [List.app];
@@ -3287,28 +3254,8 @@ Qed.
 
 (** ** Completeness of the Rules of Either Sort *)
 
-(** Two types equal at a sort have normal forms equal up to proofs. *)
-Lemma nbe_ty_of_exp_eq_sort : forall {Γ A B S W},
-    type_sort S -> Γ ⊢ A ≈ B : S -> nbe_ty_f Γ A W -> exists W', nbe_ty_f Γ B W' /\ nf_eq_upto_proofs W W'.
-Proof.
-  intros * HS HE HW.
-  destruct (completeness_ty_sort HS HE) as (W0 & W' & HW1 & HW2 & E).
-  pose proof (functional_nbe_ty _ _ _ _ HW HW1) as <-; exists W'; split; assumption.
-Qed.
-
-(** A term that infers a type equal up to proofs to the normal form of
-    another checks against it: the inferred type is equal up to proofs to
-    its own normal form ([alg_type_infer_self_upto]). *)
-Lemma alg_type_check_of_infer_upto : forall {Γ M A} {W0 W : nf},
-    ⊢ Γ -> Γ ⊢a M ⟹ W0 -> nbe_ty_f Γ A W -> nf_eq_upto_proofs W0 W -> Γ ⊢a M ⟸ A.
-Proof.
-  intros * HΓ Hi HW E.
-  destruct (alg_type_infer_self_upto HΓ Hi) as (W0' & Hn & E0).
-  econstructor; [ exact Hi | econstructor; [ exact Hn | exact HW |] ].
-  apply alg_subtyping_nf_of_upto_proofs; transitivity W0; [ symmetry; exact E0 | exact E ].
-Qed.
-
-(** The same, the inferred type below the normal form. *)
+(** A term that infers a type below the normal form of another checks
+    against it. *)
 Lemma alg_type_check_of_infer_sub_nf : forall {Γ M A} {W0 W : nf},
     ⊢ Γ -> Γ ⊢a M ⟹ W0 -> nbe_ty_f Γ A W -> ⊢anf W0 ⊆ W -> Γ ⊢a M ⟸ A.
 Proof.

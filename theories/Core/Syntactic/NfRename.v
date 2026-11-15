@@ -61,9 +61,6 @@ Definition lvl_wk (φ : wk) (l : lvl) : lvl := (fst l, List.map (map_level_atom 
 Lemma nf_lvl_of_wk : forall φ l, nf_wk φ (nf_lvl_of l) = nf_lvl_of (lvl_wk φ l).
 Proof. reflexivity. Qed.
 
-Lemma nf_univ_of_wk : forall φ l, nf_wk φ (nf_univ_of l) = nf_univ_of (lvl_wk φ l).
-Proof. reflexivity. Qed.
-
 (** ** The Renaming of the Term a Normal Form Denotes *)
 
 Lemma nf_wk_to_exp :
@@ -109,9 +106,6 @@ Proof.
 Qed.
 
 Lemma nf_wk_upto_proofs : forall φ W W', nf_eq_upto_proofs W W' -> nf_eq_upto_proofs (nf_wk φ W) (nf_wk φ W').
-Proof. intros; apply nf_ne_wk_upto_proofs; assumption. Qed.
-
-Lemma ne_wk_upto_proofs : forall φ u u', ne_eq_upto_proofs u u' -> ne_eq_upto_proofs (ne_wk φ u) (ne_wk φ u').
 Proof. intros; apply nf_ne_wk_upto_proofs; assumption. Qed.
 
 (** ** Order-Preserving Renamings Preserve the Order on Atoms
@@ -343,18 +337,6 @@ Qed.
 
     A renaming that never hits [k] produces normal forms fresh at [k]. *)
 
-Lemma nf_wk_fresh :
-  (forall W k φ, wk_avoids k φ -> nf_fresh k (nf_wk φ W)) /\
-  (forall u k φ, wk_avoids k φ -> ne_fresh k (ne_wk φ u)).
-Proof.
-  apply nf_ne_ind; intros; cbn; rewrite ?all_list_map; repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
-  (** A proof term: renamed away from [k] ([syn_wk_fresh]) *)
-  all: try solve [ apply (proj1 syn_wk_fresh); assumption ].
-  all: nested_elements; cbn; unfold normal_block_forall; cbn; rewrite ?all_list_map;
-    repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
-  all: nested_elements; cbn; eauto 6 using wk_avoids_q, wk_avoids_qn.
-Qed.
-
 (** ** Injectivity
 
     A renaming with a left inverse is injective on normal forms: on the
@@ -375,49 +357,7 @@ Proof. induction n; intros; cbn; [ assumption | apply wk_left_inverse_q; auto ].
 Lemma exp_wk_left_inverse : forall ψ φ M, wk_left_inverse ψ φ -> M[φ]ʷ[ψ]ʷ = M.
 Proof. intros * H; rewrite exp_wk_wk_ext with (χ := wk_id); [ apply exp_wk_id | intros x; exact (H x) ]. Qed.
 
-Lemma exp_wk_inj : forall ψ φ M N, wk_left_inverse ψ φ -> M[φ]ʷ = N[φ]ʷ -> M = N.
-Proof. intros * H E; rewrite <- (exp_wk_left_inverse ψ φ M H), <- (exp_wk_left_inverse ψ φ N H), E; reflexivity. Qed.
-
-(** A map injective on the elements of a list is injective on the list. *)
-Lemma list_all_map_inj {A B : Set} (P : A -> Set) (g : A -> B) : forall l,
-    list_all A P l -> (forall x, P x -> forall y, g x = g y -> x = y) ->
-    forall l', List.map g l = List.map g l' -> l = l'.
-Proof.
-  intros l Hl Hg; induction Hl as [| x Hx l Hl IH]; intros [| y l'] H; cbn in H; try discriminate; [ reflexivity |].
-  injection H as Hxy Hr; f_equal; [ eapply Hg; eassumption | apply IH; exact Hr ].
-Qed.
-
-Lemma nf_wk_inj :
-  (forall W φ ψ W', wk_left_inverse ψ φ -> nf_wk φ W = nf_wk φ W' -> W = W') /\
-  (forall u φ ψ u', wk_left_inverse ψ φ -> ne_wk φ u = ne_wk φ u' -> u = u').
-Proof.
-  apply nf_ne_ind; intros;
-    match goal with
-    | H : nf_wk _ _ = nf_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
-    | H : ne_wk _ _ = ne_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
-    end;
-    f_equal; eauto using wk_left_inverse_q, wk_left_inverse_qn, exp_wk_inj.
-  (** A variable: renamed back *)
-  all: try solve [ match goal with Hψ : wk_left_inverse ?ψ ?φ, E : ?φ ?x = ?φ ?y |- ?x = ?y =>
-                     rewrite <- (Hψ x), <- (Hψ y), E; reflexivity end ].
-  (** The lists, element by element. *)
-  all: eapply list_all_map_inj; [ eassumption | | eassumption ].
-  all: let x := fresh "x" in let Hx := fresh "Hx" in let y := fresh "y" in let Hy := fresh "Hy" in
-       intros x Hx y Hy; try solve [ eauto ].
-  (** An atom. *)
-  all: try (destruct Hx; destruct y; unfold map_level_atom in Hy; cbn in Hy; injection Hy as -> -> Hy;
-            f_equal; eauto).
-  (** A block: its scrutinee's type, its motive and its branches. *)
-  all: destruct Hx as [n Z HZ A HA brs Hbrs]; destruct y as [n' Z' A' brs']; unfold map_normal_block in Hy; cbn in Hy;
-    injection Hy as -> HyZ Hy Hy'; f_equal; [ eauto using wk_left_inverse_qn | eauto using wk_left_inverse_qn |].
-  all: eapply list_all_map_inj; [ exact Hbrs | | exact Hy' ].
-  all: let z := fresh "z" in let Hz := fresh "Hz" in let w := fresh "w" in let Hw := fresh "Hw" in
-       intros z Hz w Hw; destruct Hz; destruct w; unfold map_normal_branch in Hw; cbn in Hw;
-       injection Hw as -> -> Hw; f_equal; eauto using wk_left_inverse_qn.
-Qed.
-
-(** The same up to proofs: a renaming with a left inverse reflects
-    equality up to proofs. *)
+(** A renaming with a left inverse reflects equality up to proofs. *)
 Lemma nf_ne_wk_inj_upto_proofs :
   (forall W φ ψ W', wk_left_inverse ψ φ -> nf_eq_upto_proofs (nf_wk φ W) (nf_wk φ W') -> nf_eq_upto_proofs W W') /\
   (forall u φ ψ u', wk_left_inverse ψ φ -> ne_eq_upto_proofs (ne_wk φ u) (ne_wk φ u') -> ne_eq_upto_proofs u u').
