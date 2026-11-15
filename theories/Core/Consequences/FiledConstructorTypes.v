@@ -15,7 +15,7 @@ From Stdlib Require Import Lia List String PeanoNat Bool Wf_nat.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base Soundness.
-From Mctt.Core.Consequences Require Import Consistency.
+From Mctt.Core.Consequences Require Import Inversions.
 From Mctt.Core.Syntactic Require Import SystemOpt CtxSub.
 From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Core.Syntactic.System Require Import Scoping.

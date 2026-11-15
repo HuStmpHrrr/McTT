@@ -16,7 +16,7 @@
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Consequences Require Import Consistency TermKinds SlotTransport.
+From Mctt.Core.Consequences Require Import Inversions TermKinds SlotTransport.
 From Mctt.Core.Syntactic Require Import CoreInversions.
 From Mctt.Core.Syntactic.System Require Import Structural SlotConversion.
 From Mctt Require Import Algorithmic.Strengthening.

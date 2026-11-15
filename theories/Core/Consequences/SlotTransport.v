@@ -25,7 +25,7 @@ From Stdlib Require String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Consequences Require Import Consistency ModexpConversion.
+From Mctt.Core.Consequences Require Import Inversions ModexpConversion.
 From Mctt.Core.Syntactic Require Import Presup.
 From Mctt.Core.Syntactic.System Require Import Structural SlotConversion.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas DescTyping Presup Paths LookupSound NoLevelReflect.

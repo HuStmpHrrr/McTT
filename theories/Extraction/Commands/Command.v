@@ -20,15 +20,16 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base Soundness Completeness.
-From Mctt.Core.Consequences Require Import Consistency.
+From Mctt.Core.Consequences Require Import Inversions.
 From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import Structural Command.
 From Mctt.Core Require Import TypedElab.
 From Mctt.Core.Syntactic.System.Global Require Import MemberWf Paths LookupSound.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndRuns GeneratedCommands.
-From Mctt.Core.Syntactic.System.Records Require Import RecordRuns.
+From Mctt.Core.Consequences Require Import InductiveRuns.
+From Mctt.Core.Syntactic.System.Inductives Require Import GeneratedCommands.
+From Mctt.Core.Consequences Require Import RecordRuns.
 From Mctt.Core.Syntactic.System.Inductives Require Import Cong.
 From Mctt.Extraction Require Import Context.Lookup Evaluation.NbE Checker.TypeCheck Commands.GlobalCheck
   Commands.IndDecl Commands.RecordDecl Checker.MemberType Commands.Opens Commands.Privacy.

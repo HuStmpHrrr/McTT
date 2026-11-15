@@ -26,7 +26,7 @@
 From Stdlib Require Import Lia List PeanoNat String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base Completeness Soundness Consequences.NormalFormWeakening.
-From Mctt.Core Require Import Consequences.Consistency Consequences.FiledConstructorTypes Semantic.Realizability.
+From Mctt.Core Require Import Consequences.Inversions Consequences.FiledConstructorTypes Semantic.Realizability.
 From Mctt.Core.Semantic.Inductives Require Import NestingOrder Canon.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Algorithmic Require Import Strengthening.

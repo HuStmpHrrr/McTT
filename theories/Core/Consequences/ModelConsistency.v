@@ -16,11 +16,12 @@
     and so for every program ([canonical_form_of_bound_nat_prog]).
 
     It sits after the set model's fundamental theorem, which the
-    consequences of NbE in [Consistency.v] come before. *)
+    consequences of NbE in [Inversions.v] and [UniverseNormalForms.v]
+    come before. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Consequences Require Export Consistency.
+From Mctt.Core.Consequences Require Export Inversions UniverseNormalForms.
 From Mctt.Core.Consequences Require Import FnKinds.
 From Mctt.Core Require Export Soundness.
 From Mctt.Core.Completeness.Consequences Require Export RigidTypes.

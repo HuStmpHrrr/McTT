@@ -24,7 +24,7 @@ From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
-From Mctt.Core Require Import Consequences.Consistency Semantic.Realizability.
+From Mctt.Core Require Import Consequences.Inversions Semantic.Realizability.
 From Mctt.Core.Syntactic Require Import CoreInversions Fresh.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Syntactic.System.Inductives Require Import Cong ParamConversion.

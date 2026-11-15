@@ -13,7 +13,7 @@ From Stdlib Require Import List Lia.
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base Soundness Completeness.
-From Mctt.Core.Consequences Require Import Consistency.
+From Mctt.Core.Consequences Require Import Inversions.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core Require Import TypedElab.
 From Mctt.Core.Syntactic.System.Inductives Require Import GeneratedCommands Cong.

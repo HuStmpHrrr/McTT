@@ -6,7 +6,7 @@ From Mctt.Algorithmic.Subtyping Require Export Lemmas.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import Consequences.ContextEquality.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit.
-From Mctt.Core.Consequences Require Import Consistency.
+From Mctt.Core.Consequences Require Import Inversions UniverseNormalForms.
 From Mctt.Core.Syntactic Require Import CoreInversions SystemOpt Fresh.
 #[local] Open Scope list_scope.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.

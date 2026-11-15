@@ -10,7 +10,7 @@
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Consequences Require Import Consistency.
+From Mctt.Core.Consequences Require Import Inversions.
 From Mctt.Algorithmic.Typing Require Import Definitions Lemmas.
 Import Domain_Notations Fixed_Notations.
 

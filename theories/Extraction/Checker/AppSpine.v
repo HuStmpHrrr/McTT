@@ -16,7 +16,7 @@ From Mctt.Core.Semantic.PER Require Import CoreTactics.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Completeness Require Import LetCases.
 From Mctt.Core.Completeness.Modules Require Import Values.
-From Mctt.Core.Consequences Require Import Consistency.
+From Mctt.Core.Consequences Require Import Inversions.
 From Mctt.Core.Syntactic.System Require Import Structural.
 Import Domain_Notations Fixed_Notations.
 

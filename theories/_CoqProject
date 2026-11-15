@@ -70,7 +70,10 @@
 ./Core/Completeness/IotaCases.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
-./Core/Consequences/Consistency.v
+./Core/Consequences/Inversions.v
+./Core/Consequences/UniverseNormalForms.v
+./Core/Consequences/InductiveRuns.v
+./Core/Consequences/RecordRuns.v
 ./Core/Consequences/TermKinds.v
 ./Core/Consequences/ModexpConversion.v
 ./Core/Consequences/SlotTransport.v
@@ -264,7 +267,6 @@
 ./Core/Syntactic/System/Inductives/Typing.v
 ./Core/Syntactic/System/Inductives/GeneratedCommands.v
 ./Core/Syntactic/System/Inductives/RecursorTyped.v
-./Core/Syntactic/System/Inductives/IndRuns.v
 ./Core/Syntactic/System/Inductives/Views.v
 ./Core/Syntactic/System/Inductives/ViewLeaves.v
 ./Core/Syntactic/System/Inductives/UniformParams.v
@@ -276,7 +278,6 @@
 ./Core/Syntactic/SystemOpt.v
 ./Core/Syntactic/System/LetPeeling.v
 ./Core/Syntactic/System/Records/Typing.v
-./Core/Syntactic/System/Records/RecordRuns.v
 ./Core/Syntactic/Unseal.v
 ./Entrypoint.v
 ./Extraction/Commands/Command.v

@@ -10,12 +10,12 @@
     takes minutes.  Add a theorem here when it becomes a main result. *)
 
 From Mctt Require Import Entrypoint.
-From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Consistency Core.Consequences.ModelConsistency Extraction.Commands.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.Consequences.NormalFormWeakening.
+From Mctt Require Import Core.Completeness Core.Soundness Core.Consequences.Inversions Core.Consequences.UniverseNormalForms Core.Consequences.ModelConsistency Extraction.Commands.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.Consequences.NormalFormWeakening.
 From Mctt Require Import Reference.Refinement.
 From Mctt Require Import Core.Consequences.FnKinds Core.Consequences.SlotTransport.
 From Mctt Require Import Extraction.Commands.GlobalCheck Extraction.Commands.CommandRun.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Consequences.FiledConstructorTypes.
-From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns Core.Syntactic.System.Records.RecordRuns.
+From Mctt Require Import Core.Consequences.InductiveRuns Core.Consequences.RecordRuns.
 From Mctt Require Import Extraction.Checker.AppSpine Reference.TypeCheckAgreement.
 From Mctt Require Core.Semantic.Inductives.NestingExamples Core.Soundness.Inductives.PhantomExample.
 Print Assumptions Mctt.Core.Completeness.completeness.
@@ -69,9 +69,9 @@ Print Assumptions Mctt.Core.Consequences.FnKinds.fn_kinds_unique_ext_wf.
 Print Assumptions Mctt.Core.Consequences.SlotTransport.slot_transport_exp.
 Print Assumptions Mctt.Core.Consequences.SlotTransport.slot_conv_exp.
 Print Assumptions Mctt.Core.Consequences.SlotTransport.slot_conv_exp_dm.
-Print Assumptions Mctt.Core.Consequences.Consistency.typ_nf_below_of_nbe.
-Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_suniv_bound.
-Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_suniv_lit_bound.
+Print Assumptions Mctt.Core.Consequences.UniverseNormalForms.typ_nf_below_of_nbe.
+Print Assumptions Mctt.Core.Consequences.UniverseNormalForms.subtyp_suniv_bound.
+Print Assumptions Mctt.Core.Consequences.UniverseNormalForms.subtyp_suniv_lit_bound.
 Print Assumptions Mctt.Algorithmic.Typing.Lemmas.alg_type_infer_typ_complete_lit.
 Print Assumptions Mctt.Extraction.Commands.GlobalCheck.alg_type_infer_typ_complete'.
 Print Assumptions Mctt.Extraction.Commands.GlobalCheck.alg_type_infer_typ_complete_lit'.
@@ -91,12 +91,12 @@ Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines_at.
 Print Assumptions Mctt.Reference.Refinement.nbe_env_impl_refines_at.
 Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines_at.
 (* Inductive types: canonical forms, and the generated eliminators. *)
-Print Assumptions Mctt.Core.Consequences.Consistency.canonical_form_of_pi.
+Print Assumptions Mctt.Core.Consequences.Inversions.canonical_form_of_pi.
 Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_ind.
 Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_ind_gctx.
 Print Assumptions Mctt.Core.Consequences.ModelConsistency.canonical_form_of_ind_nat.
 Print Assumptions Mctt.Core.Consequences.FiledConstructorTypes.run_cmd_ind_con_types.
-Print Assumptions Mctt.Core.Syntactic.System.Inductives.IndRuns.run_cmd_ind_runs.
+Print Assumptions Mctt.Core.Consequences.InductiveRuns.run_cmd_ind_runs.
 (* Presupposition: local, and of the global context. *)
 Print Assumptions Mctt.Core.Syntactic.System.Lemmas.presup_exp.
 Print Assumptions Mctt.Core.Syntactic.Presup.presup_exp_eq.
@@ -116,12 +116,12 @@ Print Assumptions Mctt.Frontend.ElabCorrect.elaborate_core_complete.
 Print Assumptions Mctt.Frontend.ElabCorrect.elab_spec_functional.
 (* Records: equal record types have equal parameters, and a type below a
    record type normalises to it. *)
-Print Assumptions Mctt.Core.Consequences.Consistency.exp_eq_record_apps_inv.
-Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_record_nf.
+Print Assumptions Mctt.Core.Consequences.Inversions.exp_eq_record_apps_inv.
+Print Assumptions Mctt.Core.Consequences.Inversions.subtyp_record_nf.
 (* Records: a field's projection of its module's value is of the field's
    type, and an accepted record declaration runs. *)
-Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.record_field_def_typed.
-Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.run_cmd_record_runs.
+Print Assumptions Mctt.Core.Consequences.RecordRuns.record_field_def_typed.
+Print Assumptions Mctt.Core.Consequences.RecordRuns.run_cmd_record_runs.
 (* The typed fill of a command (its literals, its eliminators' groups,
    its accesses through terms) is functional, and decided by the
    checker. *)

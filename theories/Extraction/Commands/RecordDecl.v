@@ -15,7 +15,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System Require Import Command.
-From Mctt.Core.Syntactic.System.Records Require Import RecordRuns.
+From Mctt.Core.Consequences Require Import RecordRuns.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Extraction Require Import Context.Lookup Context.LookupTwins Checker.TypeCheckBase Checker.TypeCheck
   Commands.GlobalCheck Commands.IndDecl.

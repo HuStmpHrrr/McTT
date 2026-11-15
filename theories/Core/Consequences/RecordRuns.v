@@ -17,7 +17,7 @@ From Mctt.Core.Syntactic.System.Inductives Require Import Typing Syntax.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths LookupSound.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
-From Mctt.Core.Syntactic.System.Inductives Require Import IndRuns.
+From Mctt.Core.Consequences Require Import InductiveRuns.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 

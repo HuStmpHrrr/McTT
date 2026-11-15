@@ -6,7 +6,7 @@ From Mctt.Core.Syntactic Require Import System Fresh.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core Require Import Soundness Completeness.
-From Mctt.Core.Consequences Require Import Consistency.
+From Mctt.Core.Consequences Require Import Inversions.
 From Mctt.Core.Semantic Require Import GlobalExt.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Extraction Require Import Context.Lookup Context.LookupTwins PseudoMonadic Evaluation.NbE
