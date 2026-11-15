@@ -322,14 +322,12 @@
 ./Extraction/NoLevelDec.v
 ./Extraction/IndCheck.v
 ./Extraction/RecordCheck.v
-./Extraction/Kinds.v
 ./Frontend/ElabCorrect.v
 ./Frontend/ElabExamples.v
 ./Frontend/ElabSpec.v
 ./Frontend/Elaborator.v
 ./Frontend/Parser.v
 ./LibTactics.v
-./Reference/Kinds.v
 ./Reference/Evaluation.v
 ./Reference/NbE.v
 ./Reference/Readback.v

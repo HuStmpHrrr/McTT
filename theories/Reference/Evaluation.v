@@ -6,7 +6,6 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import Evaluation.
-From Mctt.Extraction Require Import Kinds.
 Import Domain_Notations.
 
 Generalizable All Variables.

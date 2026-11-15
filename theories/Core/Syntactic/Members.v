@@ -1843,6 +1843,26 @@ Example tele_inst_example : tele_inst (⋅ ▹{ak_relevant} Typeω@0 ▹{ak_rele
                             = Some (⋅ ▹{ak_relevant} Π{ak_relevant} a_True a_True).
 Proof. reflexivity. Qed.
 
+(** ** The Outermost Missing Parameter
+
+    A closure lacking the parameters [Δ ++ e :: nil] takes an argument for
+    [e], the outermost one; both evaluators find it with [tele_snoc]. *)
+Definition tele_snoc (Δ : ctx) : option (ctx * centry) :=
+  match rev Δ with
+  | nil => None
+  | e :: r => Some (rev r, e)
+  end.
+
+Lemma tele_snoc_some : forall Δ Δ0 e, tele_snoc Δ = Some (Δ0, e) -> Δ = Δ0 ++ e :: nil.
+Proof.
+  unfold tele_snoc; intros * H.
+  destruct (rev Δ) as [| e' r] eqn:E; [ discriminate |]; injection H as <- <-.
+  rewrite <- (rev_involutive Δ), E; reflexivity.
+Qed.
+
+Lemma tele_snoc_app : forall Δ0 e, tele_snoc (Δ0 ++ e :: nil) = Some (Δ0, e).
+Proof. intros; unfold tele_snoc; rewrite rev_unit, rev_involutive; reflexivity. Qed.
+
 (** ** Descriptions
 
     A description says what a module expression denotes ([mdenote] below):

@@ -6,7 +6,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import Evaluation.
-From Mctt.Extraction Require Import FastEval Kinds.
+From Mctt.Extraction Require Import FastEval FastDomain.
 From Mctt.Extraction Require Export Lookup.
 Import Domain_Notations.
 
