@@ -428,6 +428,23 @@ Proof with mautosolve.
   reflexivity.
 Qed.
 
+(** The morphism for rewriting a hypothesis [per_univ_elem i R a b] left to
+    right.  Such a rewrite asks for a [Basics.impl] instance; the [iff] one,
+    [per_univ_elem_morphism_iff], is found only at the end of a long
+    typeclass search through [subrelation] and partial applications, which
+    takes 0.31 s per rewrite, against 0.003 s with this instance.  The
+    relation tactics ([rewrite_relation_equivalence_left]) make such
+    rewrites by the dozen. *)
+Instance per_univ_elem_morphism_impl_Proper i :
+  Proper (@relation_equivalence domain ==> eq ==> eq ==> Basics.impl) (per_univ_elem i) | 0.
+Proof. intros R R' HR ? ? -> ? ? -> H. exact (per_univ_elem_resp_iff H HR). Qed.
+
+(** The same, right to left ([Basics.flip Basics.impl]), for
+    [rewrite <-] ([rewrite_relation_equivalence_right]). *)
+Instance per_univ_elem_morphism_flip_impl_Proper i :
+  Proper (@relation_equivalence domain ==> eq ==> eq ==> Basics.flip Basics.impl) (per_univ_elem i) | 0.
+Proof. intros R R' HR ? ? -> ? ? -> H. exact (per_univ_elem_resp_iff H (symmetry HR)). Qed.
+
 Add Parametric Morphism i A ρ A' ρ' : (rel_typ i A ρ A' ρ')
     with signature (@relation_equivalence domain) ==> iff as rel_typ_morphism.
 Proof.
@@ -495,20 +512,34 @@ Hint Resolve per_prop_sym per_prop_trans per_proof_sym per_proof_trans per_proof
 #[export] Existing Instance per_univ_elem_morphism_iff_Proper.
 #[export] Existing Instance per_univ_elem_morphism_relation_equivalence_Proper.
 #[export] Existing Instance rel_typ_morphism_Proper.
+#[export] Existing Instance per_univ_elem_morphism_impl_Proper | 0.
+#[export] Existing Instance per_univ_elem_morphism_flip_impl_Proper | 0.
+
+(** Rewrite the goal and every hypothesis by each [R1 <~> R2] in context,
+    left to right.  A hypothesis is tried only if its type mentions [R1]:
+    the [setoid_rewrite] would fail on the others, but only after a search,
+    and a context PER's goals carry a hundred hypotheses and a dozen
+    equivalences. *)
 Ltac rewrite_relation_equivalence_left :=
   repeat match goal with
     | H : ?R1 <~> ?R2 |- _ =>
         try setoid_rewrite H;
-        (on_all_hyp: fun H' => assert_fails (unify H H'); unmark H; setoid_rewrite H in H');
+        (on_all_hyp: fun H' => assert_fails (unify H H');
+                                lazymatch type of H' with context [R1] => idtac end;
+                                unmark H; setoid_rewrite H in H');
         let T := type of H in
         fold (id T) in H
     end; unfold id in *.
 
+(** The same, right to left: a hypothesis is tried only if its type
+    mentions [R2]. *)
 Ltac rewrite_relation_equivalence_right :=
   repeat match goal with
     | H : ?R1 <~> ?R2 |- _ =>
         try setoid_rewrite <- H;
-        (on_all_hyp: fun H' => assert_fails (unify H H'); unmark H; setoid_rewrite <- H in H');
+        (on_all_hyp: fun H' => assert_fails (unify H H');
+                                lazymatch type of H' with context [R2] => idtac end;
+                                unmark H; setoid_rewrite <- H in H');
         let T := type of H in
         fold (id T) in H
     end; unfold id in *.
