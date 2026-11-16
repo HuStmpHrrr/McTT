@@ -33,14 +33,14 @@
 </div>
 
 <div class="doc">
-<a id="lab1519"></a><h1 class="section">What Well-Formed Module Expressions Look Up</h1>
+<a id="lab1514"></a><h1 class="section">What Well-Formed Module Expressions Look Up</h1>
 
 
 <div class="paragraph"> </div>
 
     A member a well-formed module expression looks up is typed, at the
     type the lookup reads, and so is its δ-reduct (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.MemberTyping.html#member_wf"><span class="id" title="lemma">member_wf</span></a></span>): what the
-    lookup reads is typed (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#mem_desc_ok"><span class="id" title="lemma">mem_desc_ok</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#desc_ok_ty"><span class="id" title="lemma">desc_ok_ty</span></a></span>), so the premises of
+    lookup reads is typed (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#mem_desc_ok"><span class="id" title="lemma">mem_desc_ok</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#desc_ok_ty_sorted"><span class="id" title="lemma">desc_ok_ty_sorted</span></a></span>), so the premises of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_mem"><span class="id" title="constructor">wf_mem</span></a></span> hold of it.  The outermost parameter a module still takes is a
     type (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.MemberTyping.html#mtele_head_wf"><span class="id" title="lemma">mtele_head_wf</span></a></span>).  The checker reads both off the lookup, without
     checking anything again; the entries a local open stores it checks as
@@ -198,7 +198,7 @@ A well-formed module expression denotes a module with a telescope.
 </div>
 
 <div class="doc">
-<a id="lab1520"></a><h2 class="section">The Sorts of a Body's Definitions</h2>
+<a id="lab1515"></a><h2 class="section">The Sorts of a Body's Definitions</h2>
 
 
 <div class="paragraph"> </div>

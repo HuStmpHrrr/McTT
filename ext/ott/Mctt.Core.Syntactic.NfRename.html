@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1315"></a><h1 class="section">Renaming Normal Forms</h1>
+<a id="lab1311"></a><h1 class="section">Renaming Normal Forms</h1>
 
 
 <div class="paragraph"> </div>
@@ -118,7 +118,7 @@ A normal form renamed by the weakening <span class="inlinecode">φ</span>; mutua
 </div>
 
 <div class="doc">
-<a id="lab1316"></a><h2 class="section">The Renaming of the Term a Normal Form Denotes</h2>
+<a id="lab1312"></a><h2 class="section">The Renaming of the Term a Normal Form Denotes</h2>
 
 </div>
 <div class="code">
@@ -161,7 +161,7 @@ A block's branches.
 </div>
 
 <div class="doc">
-<a id="lab1317"></a><h2 class="section">Renaming Respects Equality up to Proofs</h2>
+<a id="lab1313"></a><h2 class="section">Renaming Respects Equality up to Proofs</h2>
 
 
 <div class="paragraph"> </div>
@@ -198,7 +198,7 @@ A block's branches.
 </div>
 
 <div class="doc">
-<a id="lab1318"></a><h2 class="section">Order-Preserving Renamings Preserve the Order on Atoms</h2>
+<a id="lab1314"></a><h2 class="section">Order-Preserving Renamings Preserve the Order on Atoms</h2>
 
 
 <div class="paragraph"> </div>
@@ -443,7 +443,7 @@ A variable: an order-preserving renaming preserves the comparison.
 </div>
 
 <div class="doc">
-<a id="lab1319"></a><h2 class="section">Order-Preserving Renamings Commute with the Canonical Form</h2>
+<a id="lab1315"></a><h2 class="section">Order-Preserving Renamings Commute with the Canonical Form</h2>
 
 </div>
 <div class="code">
@@ -496,7 +496,7 @@ A variable: an order-preserving renaming preserves the comparison.
 </div>
 
 <div class="doc">
-<a id="lab1320"></a><h2 class="section">The Canonical Form Sees Atoms up to Proofs</h2>
+<a id="lab1316"></a><h2 class="section">The Canonical Form Sees Atoms up to Proofs</h2>
 
 
 <div class="paragraph"> </div>
@@ -532,7 +532,7 @@ So atoms equal up to proofs to the renamings of others have, as a
 </div>
 
 <div class="doc">
-<a id="lab1321"></a><h2 class="section">Freshness</h2>
+<a id="lab1317"></a><h2 class="section">Freshness</h2>
 
 
 <div class="paragraph"> </div>
@@ -540,14 +540,13 @@ So atoms equal up to proofs to the renamings of others have, as a
     A renaming that never hits <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> produces normal forms fresh at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>. 
 <div class="paragraph"> </div>
 
-<a id="lab1322"></a><h2 class="section">Injectivity</h2>
+<a id="lab1318"></a><h2 class="section">Injectivity</h2>
 
 
 <div class="paragraph"> </div>
 
     A renaming with a left inverse is injective on normal forms: on the
-    proof terms they hold too, which the left inverse renames back
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.NfRename.html#exp_wk_left_inverse"><span class="id" title="lemma">exp_wk_left_inverse</span></a></span>). 
+    proof terms they hold too, which the left inverse renames back. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="wk_left_inverse" class="idref" href="#wk_left_inverse"><span class="id" title="definition">wk_left_inverse</span></a> (<a id="43d53d3d7c5b13625492fb7ce7357d2a" class="idref" href="#43d53d3d7c5b13625492fb7ce7357d2a"><span class="id" title="binder">ψ</span></a> <a id="7daa287e528036c696860f585d8407e3" class="idref" href="#7daa287e528036c696860f585d8407e3"><span class="id" title="binder">φ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk"><span class="id" title="definition">wk</span></a>) : <span class="id" title="keyword">Prop</span> := <span class="id" title="keyword">forall</span> <a id="x:133" class="idref" href="#x:133"><span class="id" title="binder">x</span></a>, <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#43d53d3d7c5b13625492fb7ce7357d2a"><span class="id" title="variable">ψ</span></a> (<a class="idref" href="Mctt.Core.Syntactic.NfRename.html#7daa287e528036c696860f585d8407e3"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#x:133"><span class="id" title="variable">x</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#x:133"><span class="id" title="variable">x</span></a>.<br/>
@@ -568,22 +567,12 @@ So atoms equal up to proofs to the renamings of others have, as a
 </div>
 
 <div class="doc">
-A term renamed by <span class="inlinecode">φ</span>, then by a left inverse of <span class="inlinecode">φ</span>, is itself. 
-</div>
-<div class="code">
-<span class="id" title="keyword">Lemma</span> <a id="exp_wk_left_inverse" class="idref" href="#exp_wk_left_inverse"><span class="id" title="lemma">exp_wk_left_inverse</span></a> : <span class="id" title="keyword">forall</span> <a id="69cef02045490d82953aafa53749cebd" class="idref" href="#69cef02045490d82953aafa53749cebd"><span class="id" title="binder">ψ</span></a> <a id="c612fad6b902207a0f4f3a5cf20e562f" class="idref" href="#c612fad6b902207a0f4f3a5cf20e562f"><span class="id" title="binder">φ</span></a> <a id="M:141" class="idref" href="#M:141"><span class="id" title="binder">M</span></a>, <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#wk_left_inverse"><span class="id" title="definition">wk_left_inverse</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#69cef02045490d82953aafa53749cebd"><span class="id" title="variable">ψ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#c612fad6b902207a0f4f3a5cf20e562f"><span class="id" title="variable">φ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#M:141"><span class="id" title="variable">M</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f6a66c355c7471e972cbef067b45c41"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.NfRename.html#c612fad6b902207a0f4f3a5cf20e562f"><span class="id" title="variable">φ</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f6a66c355c7471e972cbef067b45c41"><span class="id" title="notation">]ʷ[</span></a><a class="idref" href="Mctt.Core.Syntactic.NfRename.html#69cef02045490d82953aafa53749cebd"><span class="id" title="variable">ψ</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f6a66c355c7471e972cbef067b45c41"><span class="id" title="notation">]ʷ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#M:141"><span class="id" title="variable">M</span></a>.<br/>
-<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span> * <span class="id" title="var">H</span>; <span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_wk_wk_ext"><span class="id" title="lemma">exp_wk_wk_ext</span></a> <span class="id" title="keyword">with</span> (χ := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_id"><span class="id" title="definition">wk_id</span></a>); [ <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_wk_id"><span class="id" title="lemma">exp_wk_id</span></a> | <span class="id" title="tactic">intros</span> <span class="id" title="var">x</span>; <span class="id" title="tactic">exact</span> (<span class="id" title="var">H</span> <span class="id" title="var">x</span>) ]. <span class="id" title="keyword">Qed</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
 A renaming with a left inverse reflects equality up to proofs. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="nf_ne_wk_inj_upto_proofs" class="idref" href="#nf_ne_wk_inj_upto_proofs"><span class="id" title="lemma">nf_ne_wk_inj_upto_proofs</span></a> :<br/>
-&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">(</span></a><span class="id" title="keyword">forall</span> <a id="W:142" class="idref" href="#W:142"><span class="id" title="binder">W</span></a> <a id="04ae5a60ca3a8cf5eb06875ae4483237" class="idref" href="#04ae5a60ca3a8cf5eb06875ae4483237"><span class="id" title="binder">φ</span></a> <a id="8dd2eac5a319ff55a49b4633b298f852" class="idref" href="#8dd2eac5a319ff55a49b4633b298f852"><span class="id" title="binder">ψ</span></a> <a id="W':145" class="idref" href="#W':145"><span class="id" title="binder">W'</span></a>, <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#wk_left_inverse"><span class="id" title="definition">wk_left_inverse</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#8dd2eac5a319ff55a49b4633b298f852"><span class="id" title="variable">ψ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#04ae5a60ca3a8cf5eb06875ae4483237"><span class="id" title="variable">φ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_upto_proofs"><span class="id" title="definition">nf_eq_upto_proofs</span></a> (<a class="idref" href="Mctt.Core.Syntactic.NfRename.html#nf_wk"><span class="id" title="definition">nf_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#04ae5a60ca3a8cf5eb06875ae4483237"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#W:142"><span class="id" title="variable">W</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.NfRename.html#nf_wk"><span class="id" title="definition">nf_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#04ae5a60ca3a8cf5eb06875ae4483237"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#W':145"><span class="id" title="variable">W'</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_upto_proofs"><span class="id" title="definition">nf_eq_upto_proofs</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#W:142"><span class="id" title="variable">W</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#W':145"><span class="id" title="variable">W'</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">)</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a><br/>
-&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">(</span></a><span class="id" title="keyword">forall</span> <a id="u:146" class="idref" href="#u:146"><span class="id" title="binder">u</span></a> <a id="5894ef06d61540d92f871cfdcc371a11" class="idref" href="#5894ef06d61540d92f871cfdcc371a11"><span class="id" title="binder">φ</span></a> <a id="e05c437bec01d3d4f7b88f8801b61ad5" class="idref" href="#e05c437bec01d3d4f7b88f8801b61ad5"><span class="id" title="binder">ψ</span></a> <a id="u':149" class="idref" href="#u':149"><span class="id" title="binder">u'</span></a>, <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#wk_left_inverse"><span class="id" title="definition">wk_left_inverse</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#e05c437bec01d3d4f7b88f8801b61ad5"><span class="id" title="variable">ψ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#5894ef06d61540d92f871cfdcc371a11"><span class="id" title="variable">φ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ne_eq_upto_proofs"><span class="id" title="definition">ne_eq_upto_proofs</span></a> (<a class="idref" href="Mctt.Core.Syntactic.NfRename.html#ne_wk"><span class="id" title="definition">ne_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#5894ef06d61540d92f871cfdcc371a11"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#u:146"><span class="id" title="variable">u</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.NfRename.html#ne_wk"><span class="id" title="definition">ne_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#5894ef06d61540d92f871cfdcc371a11"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#u':149"><span class="id" title="variable">u'</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ne_eq_upto_proofs"><span class="id" title="definition">ne_eq_upto_proofs</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#u:146"><span class="id" title="variable">u</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#u':149"><span class="id" title="variable">u'</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">)</span></a>.<br/>
+&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">(</span></a><span class="id" title="keyword">forall</span> <a id="W:139" class="idref" href="#W:139"><span class="id" title="binder">W</span></a> <a id="c612fad6b902207a0f4f3a5cf20e562f" class="idref" href="#c612fad6b902207a0f4f3a5cf20e562f"><span class="id" title="binder">φ</span></a> <a id="922c2f9840441a90d4940264320f9b17" class="idref" href="#922c2f9840441a90d4940264320f9b17"><span class="id" title="binder">ψ</span></a> <a id="W':142" class="idref" href="#W':142"><span class="id" title="binder">W'</span></a>, <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#wk_left_inverse"><span class="id" title="definition">wk_left_inverse</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#922c2f9840441a90d4940264320f9b17"><span class="id" title="variable">ψ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#c612fad6b902207a0f4f3a5cf20e562f"><span class="id" title="variable">φ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_upto_proofs"><span class="id" title="definition">nf_eq_upto_proofs</span></a> (<a class="idref" href="Mctt.Core.Syntactic.NfRename.html#nf_wk"><span class="id" title="definition">nf_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#c612fad6b902207a0f4f3a5cf20e562f"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#W:139"><span class="id" title="variable">W</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.NfRename.html#nf_wk"><span class="id" title="definition">nf_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#c612fad6b902207a0f4f3a5cf20e562f"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#W':142"><span class="id" title="variable">W'</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_upto_proofs"><span class="id" title="definition">nf_eq_upto_proofs</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#W:139"><span class="id" title="variable">W</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#W':142"><span class="id" title="variable">W'</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">)</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">(</span></a><span class="id" title="keyword">forall</span> <a id="u:143" class="idref" href="#u:143"><span class="id" title="binder">u</span></a> <a id="d3f4400c8528fba8508abb6cd96e1a3a" class="idref" href="#d3f4400c8528fba8508abb6cd96e1a3a"><span class="id" title="binder">φ</span></a> <a id="ff4825275be273be5d9d57116ba6e402" class="idref" href="#ff4825275be273be5d9d57116ba6e402"><span class="id" title="binder">ψ</span></a> <a id="u':146" class="idref" href="#u':146"><span class="id" title="binder">u'</span></a>, <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#wk_left_inverse"><span class="id" title="definition">wk_left_inverse</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#ff4825275be273be5d9d57116ba6e402"><span class="id" title="variable">ψ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#d3f4400c8528fba8508abb6cd96e1a3a"><span class="id" title="variable">φ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ne_eq_upto_proofs"><span class="id" title="definition">ne_eq_upto_proofs</span></a> (<a class="idref" href="Mctt.Core.Syntactic.NfRename.html#ne_wk"><span class="id" title="definition">ne_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#d3f4400c8528fba8508abb6cd96e1a3a"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#u:143"><span class="id" title="variable">u</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.NfRename.html#ne_wk"><span class="id" title="definition">ne_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#d3f4400c8528fba8508abb6cd96e1a3a"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#u':146"><span class="id" title="variable">u'</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ne_eq_upto_proofs"><span class="id" title="definition">ne_eq_upto_proofs</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#u:143"><span class="id" title="variable">u</span></a> <a class="idref" href="Mctt.Core.Syntactic.NfRename.html#u':146"><span class="id" title="variable">u'</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">)</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_upto_proofs"><span class="id" title="definition">nf_eq_upto_proofs</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ne_eq_upto_proofs"><span class="id" title="definition">ne_eq_upto_proofs</span></a>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_ne_ind"><span class="id" title="definition">nf_ne_ind</span></a>; <span class="id" title="tactic">intros</span>;<br/>

@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1716"></a><h1 class="section">Running Commands</h1>
+<a id="lab1711"></a><h1 class="section">Running Commands</h1>
 
 
 <div class="paragraph"> </div>
@@ -138,8 +138,6 @@ The search finds the views whenever there are some.
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Hypothesis</span> <a id="Impl.views_search_complete" class="idref" href="#Impl.views_search_complete"><span class="id" title="variable">views_search_complete</span></a> : <span class="id" title="keyword">forall</span> <a id="F:15" class="idref" href="#F:15"><span class="id" title="binder">F</span></a> <a id="e5e4a2140f3ff778ca6d344d6900d886" class="idref" href="#e5e4a2140f3ff778ca6d344d6900d886"><span class="id" title="binder">HΞ</span></a> <a id="R:17" class="idref" href="#R:17"><span class="id" title="binder">R</span></a> <a id="csD:18" class="idref" href="#csD:18"><span class="id" title="binder">csD</span></a> <a id="Hcls:19" class="idref" href="#Hcls:19"><span class="id" title="binder">Hcls</span></a> <a id="Vs:20" class="idref" href="#Vs:20"><span class="id" title="binder">Vs</span></a> <a id="Ss:21" class="idref" href="#Ss:21"><span class="id" title="binder">Ss</span></a> <a id="csV:22" class="idref" href="#csV:22"><span class="id" title="binder">csV</span></a> <a id="Nvs:23" class="idref" href="#Nvs:23"><span class="id" title="binder">Nvs</span></a>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Extraction.Commands.Command.html#views_ok"><span class="id" title="record">views_ok</span></a> (<a class="idref" href="Mctt.Extraction.Context.Lookup.html#fc_deps"><span class="id" title="abbreviation">fc_deps</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#F:15"><span class="id" title="variable">F</span></a>) (<a class="idref" href="Mctt.Extraction.Context.Lookup.html#fc_stack"><span class="id" title="abbreviation">fc_stack</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#F:15"><span class="id" title="variable">F</span></a>) <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#R:17"><span class="id" title="variable">R</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#csD:18"><span class="id" title="variable">csD</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Vs:20"><span class="id" title="variable">Vs</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Ss:21"><span class="id" title="variable">Ss</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#csV:22"><span class="id" title="variable">csV</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Nvs:23"><span class="id" title="variable">Nvs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">exists</span></a> <a id="v:24" class="idref" href="#v:24"><span class="id" title="binder">v</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.views_search"><span class="id" title="variable">views_search</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#F:15"><span class="id" title="variable">F</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#e5e4a2140f3ff778ca6d344d6900d886"><span class="id" title="variable">HΞ</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#R:17"><span class="id" title="variable">R</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#csD:18"><span class="id" title="variable">csD</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Hcls:19"><span class="id" title="variable">Hcls</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Extraction.Commands.Command.html#run_success"><span class="id" title="constructor">run_success</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#v:24"><span class="id" title="variable">v</span></a>.<br/>
-&nbsp;&nbsp;#[<span class="id" title="var">local</span>] <span class="id" title="var">Abbreviation</span> <a id="run_cmd" class="idref" href="#run_cmd"><span class="id" title="abbreviation">run_cmd</span></a> := (<a class="idref" href="Mctt.Core.Syntactic.System.Command.html#run_cmd"><span class="id" title="inductive">run_cmd</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.load_path"><span class="id" title="variable">load_path</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.read"><span class="id" title="variable">read</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.to_core"><span class="id" title="variable">to_core</span></a>).<br/>
-&nbsp;&nbsp;#[<span class="id" title="var">local</span>] <span class="id" title="var">Abbreviation</span> <a id="run_cmds" class="idref" href="#run_cmds"><span class="id" title="abbreviation">run_cmds</span></a> := (<a class="idref" href="Mctt.Core.Syntactic.System.Command.html#run_cmds"><span class="id" title="inductive">run_cmds</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.load_path"><span class="id" title="variable">load_path</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.read"><span class="id" title="variable">read</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.to_core"><span class="id" title="variable">to_core</span></a>).<br/>
 &nbsp;&nbsp;#[<span class="id" title="var">local</span>] <span class="id" title="var">Abbreviation</span> <a id="run_unit" class="idref" href="#run_unit"><span class="id" title="abbreviation">run_unit</span></a> := (<a class="idref" href="Mctt.Core.Syntactic.System.Command.html#run_unit"><span class="id" title="inductive">run_unit</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.load_path"><span class="id" title="variable">load_path</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.read"><span class="id" title="variable">read</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.to_core"><span class="id" title="variable">to_core</span></a>).<br/>
 &nbsp;&nbsp;#[<span class="id" title="var">local</span>] <span class="id" title="var">Abbreviation</span> <a id="canon" class="idref" href="#canon"><span class="id" title="abbreviation">canon</span></a> := (<a class="idref" href="Mctt.Core.Syntactic.System.Command.html#canon"><span class="id" title="definition">canon</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.load_path"><span class="id" title="variable">load_path</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.read"><span class="id" title="variable">read</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.to_core"><span class="id" title="variable">to_core</span></a>).<br/>
 &nbsp;&nbsp;#[<span class="id" title="var">local</span>] <span class="id" title="var">Abbreviation</span> <a id="run_wf" class="idref" href="#run_wf"><span class="id" title="abbreviation">run_wf</span></a> := (<a class="idref" href="Mctt.Core.Syntactic.System.Command.html#run_wf"><span class="id" title="lemma">run_wf</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.load_path"><span class="id" title="variable">load_path</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.read"><span class="id" title="variable">read</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#Impl.to_core"><span class="id" title="variable">to_core</span></a>).<br/>
@@ -148,7 +146,7 @@ The search finds the views whenever there are some.
 </div>
 
 <div class="doc">
-<a id="lab1717"></a><h2 class="section">The Invariants</h2>
+<a id="lab1712"></a><h2 class="section">The Invariants</h2>
 
 </div>
 <div class="code">
@@ -847,7 +845,7 @@ by imports only
 </div>
 
 <div class="doc">
-<a id="lab1718"></a><h2 class="section">Consequences of the Invariants</h2>
+<a id="lab1713"></a><h2 class="section">Consequences of the Invariants</h2>
 
 </div>
 <div class="code">
@@ -1180,7 +1178,7 @@ Where items end, the invariant holds.
 </div>
 
 <div class="doc">
-<a id="lab1719"></a><h2 class="section">One Step per Rule</h2>
+<a id="lab1714"></a><h2 class="section">One Step per Rule</h2>
 
 
 <div class="paragraph"> </div>
@@ -1424,7 +1422,7 @@ A mutual definition, with the premises of <span class="inlinecode"><a class="idr
 </div>
 
 <div class="doc">
-<a id="lab1720"></a><h3 class="section">Loads</h3>
+<a id="lab1715"></a><h3 class="section">Loads</h3>
 
 <div class="paragraph"> </div>
 
@@ -1650,7 +1648,7 @@ A loaded unit is filed on top of everything its run filed, which holds
 </div>
 
 <div class="doc">
-<a id="lab1721"></a><h3 class="section">The Generated Entries of an Open</h3>
+<a id="lab1716"></a><h3 class="section">The Generated Entries of an Open</h3>
 
 </div>
 <div class="code">
@@ -1861,7 +1859,7 @@ An open declares what its items generate, which files nothing.
 </div>
 
 <div class="doc">
-<a id="lab1722"></a><h3 class="section">Items</h3>
+<a id="lab1717"></a><h3 class="section">Items</h3>
 
 </div>
 <div class="code">
@@ -1957,7 +1955,7 @@ An entry checked at the restriction, at a path in the innermost
 </div>
 
 <div class="doc">
-<a id="lab1723"></a><h3 class="section">Groups</h3>
+<a id="lab1718"></a><h3 class="section">Groups</h3>
 
 <div class="paragraph"> </div>
 
@@ -2217,7 +2215,7 @@ A group declaration, with the premises of <span class="inlinecode"><a class="idr
 </div>
 
 <div class="doc">
-<a id="lab1724"></a><h3 class="section">Records</h3>
+<a id="lab1719"></a><h3 class="section">Records</h3>
 
 <div class="paragraph"> </div>
 
@@ -2264,7 +2262,7 @@ A record's frame opened and its field definitions run in it, as
 </div>
 
 <div class="doc">
-<a id="lab1725"></a><h3 class="section">Units</h3>
+<a id="lab1720"></a><h3 class="section">Units</h3>
 
 </div>
 <div class="code">
@@ -2345,7 +2343,7 @@ A unit: its imports, its parameters filled and checked, then its
 </div>
 
 <div class="doc">
-<a id="lab1726"></a><h2 class="section">The Executable</h2>
+<a id="lab1721"></a><h2 class="section">The Executable</h2>
 
 
 <div class="paragraph"> </div>
@@ -2409,7 +2407,7 @@ and whose file is found
 </div>
 
 <div class="doc">
-<a id="lab1727"></a><h3 class="section">The Fast State</h3>
+<a id="lab1722"></a><h3 class="section">The Fast State</h3>
 
 
 <div class="paragraph"> </div>
@@ -3356,7 +3354,7 @@ A command as written, then the rest, fast
 </div>
 
 <div class="doc">
-<a id="lab1728"></a><h3 class="section">Deciders</h3>
+<a id="lab1723"></a><h3 class="section">Deciders</h3>
 
 <div class="paragraph"> </div>
 
@@ -3448,7 +3446,7 @@ The name a command as written declares, if any
 </div>
 
 <div class="doc">
-<a id="lab1729"></a><h3 class="section">Messages</h3>
+<a id="lab1724"></a><h3 class="section">Messages</h3>
 
 <div class="paragraph"> </div>
 
@@ -3719,7 +3717,8 @@ An open's target, checked in the context the error reader builds.
 </div>
 
 <div class="doc">
-The skeleton of the frames of a fast context: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Commands.Opens.html#frame_skeleton"><span class="id" title="definition">frame_skeleton</span></a></span> 
+The skeleton of the frames of a fast context: their parameters are
+      assumptions. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="fc_skeleton" class="idref" href="#fc_skeleton"><span class="id" title="definition">fc_skeleton</span></a> (<a id="F:1764" class="idref" href="#F:1764"><span class="id" title="binder">F</span></a> : <a class="idref" href="Mctt.Extraction.Context.FastContext.html#FCtx"><span class="id" title="record">FCtx</span></a>) : <a class="idref" href="Mctt.Extraction.Commands.Opens.html#skeleton"><span class="id" title="abbreviation">skeleton</span></a> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Lists.ListDef.html#map"><span class="id" title="definition">map</span></a> (<span class="id" title="keyword">fun</span> <span class="id" title="var">_</span> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a>) (<a class="idref" href="Mctt.Extraction.Context.Lookup.html#fc_tele"><span class="id" title="definition">fc_tele</span></a> <a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#F:1764"><span class="id" title="variable">F</span></a>).<br/>
@@ -3960,7 +3959,7 @@ the target of a builtin binding or an inductive alias that is a
 </div>
 
 <div class="doc">
-<a id="lab1730"></a><h3 class="section">Definitions, Modules and Aliases</h3>
+<a id="lab1725"></a><h3 class="section">Definitions, Modules and Aliases</h3>
 
 <div class="paragraph"> </div>
 
@@ -4081,7 +4080,7 @@ A module's frame opened, its parameters checked as
 </div>
 
 <div class="doc">
-<a id="lab1731"></a><h3 class="section">Frames Closed</h3>
+<a id="lab1726"></a><h3 class="section">Frames Closed</h3>
 
 <div class="paragraph"> </div>
 
@@ -4324,7 +4323,7 @@ A module alias, checked premise by premise as <span class="inlinecode"><a class=
 </div>
 
 <div class="doc">
-<a id="lab1732"></a><h3 class="section">The Generated Entries of an Open</h3>
+<a id="lab1727"></a><h3 class="section">The Generated Entries of an Open</h3>
 
 <div class="paragraph"> </div>
 
@@ -4478,7 +4477,7 @@ the type, of the sort of the kind the item is tagged with
 </div>
 
 <div class="doc">
-<a id="lab1733"></a><h3 class="section">Builtins, Aliases of Types, Mutual Definitions</h3>
+<a id="lab1728"></a><h3 class="section">Builtins, Aliases of Types, Mutual Definitions</h3>
 
 <div class="paragraph"> </div>
 
@@ -4716,7 +4715,7 @@ A mutual definition, checked premise by premise: its kind, its
 </div>
 
 <div class="doc">
-<a id="lab1734"></a><h3 class="section">Generated Commands</h3>
+<a id="lab1729"></a><h3 class="section">Generated Commands</h3>
 
 
 <div class="paragraph"> </div>
@@ -4765,7 +4764,7 @@ Generated commands, in order
 </div>
 
 <div class="doc">
-<a id="lab1735"></a><h3 class="section">Groups</h3>
+<a id="lab1730"></a><h3 class="section">Groups</h3>
 
 <div class="paragraph"> </div>
 
@@ -4923,7 +4922,7 @@ The declared members <span class="inlinecode"><a class="idref" href="Mctt.Core.S
 </div>
 
 <div class="doc">
-<a id="lab1736"></a><h2 class="section">Why a Group Is Ill Formed</h2>
+<a id="lab1731"></a><h2 class="section">Why a Group Is Ill Formed</h2>
 
 
 <div class="paragraph"> </div>
@@ -5301,7 +5300,7 @@ A group declaration, checked premise by premise: one sort, the
 </div>
 
 <div class="doc">
-<a id="lab1737"></a><h3 class="section">Records</h3>
+<a id="lab1732"></a><h3 class="section">Records</h3>
 
 <div class="paragraph"> </div>
 
@@ -5383,7 +5382,7 @@ A record: its entry checked with an empty module
 </div>
 
 <div class="doc">
-<a id="lab1738"></a><h3 class="section">Loads</h3>
+<a id="lab1733"></a><h3 class="section">Loads</h3>
 
 <div class="paragraph"> </div>
 
@@ -5665,7 +5664,7 @@ An <span class="inlinecode"><span class="id" title="tactic">eval</span></span> r
 </div>
 
 <div class="doc">
-<a id="lab1739"></a><h3 class="section">One Core Command</h3>
+<a id="lab1734"></a><h3 class="section">One Core Command</h3>
 
 </div>
 <div class="code">
@@ -5732,7 +5731,7 @@ An <span class="inlinecode"><span class="id" title="tactic">eval</span></span> r
 </div>
 
 <div class="doc">
-<a id="lab1740"></a><h3 class="section">Items</h3>
+<a id="lab1735"></a><h3 class="section">Items</h3>
 
 
 <div class="paragraph"> </div>
@@ -5864,7 +5863,7 @@ The items of a run, one after the other: a command as written checked
 </div>
 
 <div class="doc">
-<a id="lab1741"></a><h3 class="section">Units</h3>
+<a id="lab1736"></a><h3 class="section">Units</h3>
 
 <div class="paragraph"> </div>
 
@@ -6141,7 +6140,7 @@ Run on the unit it elaborates to, the program runs as that unit.
 </div>
 
 <div class="doc">
-<a id="lab1742"></a><h2 class="section">Soundness</h2>
+<a id="lab1737"></a><h2 class="section">Soundness</h2>
 
 
 <div class="paragraph"> </div>
@@ -6203,7 +6202,7 @@ A unit run from the filed units <span class="inlinecode"><span class="id" title=
 </div>
 
 <div class="doc">
-<a id="lab1743"></a><h2 class="section">The Program</h2>
+<a id="lab1738"></a><h2 class="section">The Program</h2>
 
 
 <div class="paragraph"> </div>
@@ -6260,7 +6259,7 @@ The program's fast results refine their reading.
 </div>
 
 <div class="doc">
-<a id="lab1744"></a><h2 class="section">Completeness</h2>
+<a id="lab1739"></a><h2 class="section">Completeness</h2>
 
 
 <div class="paragraph"> </div>
@@ -6707,7 +6706,7 @@ The entries an open generates, which the judgment declares, the
 </div>
 
 <div class="doc">
-<a id="lab1745"></a><h3 class="section">Generated Commands</h3>
+<a id="lab1740"></a><h3 class="section">Generated Commands</h3>
 
 <div class="paragraph"> </div>
 
@@ -6799,7 +6798,7 @@ What a group and a record generate is so.
 </div>
 
 <div class="doc">
-<a id="lab1746"></a><h3 class="section">Groups</h3>
+<a id="lab1741"></a><h3 class="section">Groups</h3>
 
 <div class="paragraph"> </div>
 
@@ -6922,7 +6921,7 @@ A group declaration the judgment runs, the executable runs.
 </div>
 
 <div class="doc">
-<a id="lab1747"></a><h3 class="section">Records</h3>
+<a id="lab1742"></a><h3 class="section">Records</h3>
 
 <div class="paragraph"> </div>
 
@@ -6965,7 +6964,7 @@ A group declaration the judgment runs, the executable runs.
 </div>
 
 <div class="doc">
-<a id="lab1748"></a><h3 class="section">The Run</h3>
+<a id="lab1743"></a><h3 class="section">The Run</h3>
 
 <div class="paragraph"> </div>
 
@@ -7233,7 +7232,7 @@ The result is the judgment's, by determinism.
 </div>
 
 <div class="doc">
-<a id="lab1749"></a><h2 class="section">Finitely Many Files</h2>
+<a id="lab1744"></a><h2 class="section">Finitely Many Files</h2>
 
 
 <div class="paragraph"> </div>
