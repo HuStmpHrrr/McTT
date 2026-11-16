@@ -113,6 +113,9 @@ def data_of_depline(depline: str) -> str:
     else:
         raise ValueError(f"Broken Dependency: \"{depline}\"")
 
+# The clusters are declared in their left-to-right order: graphviz places
+# them in declaration order, so Core comes first and the checkers
+# (Algorithmic, Extraction, Reference) all stand on its right.
 def gen_graph() -> str:
     newline = "\n"
     data = newline.join(data_of_depline(depline) for depline in sys.stdin)
@@ -120,7 +123,6 @@ def gen_graph() -> str:
       digraph Mctt {{
         graph [center=true,class="depgraph",cluster=true,fontname="Open Sans",fontsize=28,label="Mctt",labeljust=l,labelloc=t,newrank=true,nodesep=0.1,penwidth=2,splines=true,tooltip=""];
         node [fontsize=18,shape=note,style=filled,URL="\\N.html"];
-        {default_subgraph_decl("Algorithmic")}
         {default_subgraph_decl("Core")}
         {core_subgraph_decl("Completeness")}
         {core_subgraph_decl("Semantic")}
@@ -128,6 +130,7 @@ def gen_graph() -> str:
         {core_subgraph_decl("Syntactic")}
         {core_subgraph_decl("SetModel")}
         {core_subgraph_decl("Consequences")}
+        {default_subgraph_decl("Algorithmic")}
         {default_subgraph_decl("Extraction")}
         {default_subgraph_decl("Frontend")}
         {default_subgraph_decl("Reference")}
