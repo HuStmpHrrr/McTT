@@ -1001,7 +1001,10 @@ Section Former.
     match goal with H : ind_member D k = Some ?M0 |- _ => assert (M0 = Mk) as -> by congruence end.
     match goal with H : ?w ++ ?x = ups ++ ns, H' : List.length ?w = ind_nu D |- _ =>
       destruct (app_split_eq _ _ _ _ H ltac:(congruence)) as [-> ->] end.
-    handle_per_univ_elem_irrel.
+    (** The two relations of the type agree; the record takes that
+        equivalence as it is.  Rewriting by it ([handle_per_univ_elem_irrel])
+        would search 30 s for a morphism of [ind_glu_exp_pred]. *)
+    do_per_univ_elem_irrel_assert.
     econstructor; [ exact Hglu | eassumption | eassumption | eassumption |].
     constructor; eassumption.
   Qed.
