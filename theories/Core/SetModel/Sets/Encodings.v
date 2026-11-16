@@ -64,13 +64,6 @@ Proof.
   - apply ordered_pair_inj in E as [Ex Exs]. constructor; [exact Ex | exact (IH _ Exs)].
 Qed.
 
-(** The first [n] entries of a coded list. *)
-Fixpoint list_decode (n : nat) (L : aczel_set) : list aczel_set :=
-  match n with
-  | 0 => nil
-  | S n' => pair_first L :: list_decode n' (pair_second L)
-  end.
-
 (** The set of the entries of a list. *)
 Fixpoint set_of_list (xs : list aczel_set) : aczel_set :=
   match xs with

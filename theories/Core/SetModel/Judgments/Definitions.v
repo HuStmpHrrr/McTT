@@ -1174,7 +1174,7 @@ End Model.
     modelled there.  One valuation serves the whole growth, as in the
     gluing model ([glu_gctx_embedding]): the context grows, the valuation
     does not.  [set_gctx_ok] is the instance where the two contexts are
-    the same ([set_gctx_embedding_refl], [set_gctx_ok_of_embedding]). *)
+    the same ([set_gctx_embedding_refl]). *)
 
 (** [set_gctx_embedding Θ1 Ξ1 Θ2 Ξ2 T γ]: everything the context
     [Θ1 ⍮ Ξ1] resolves is modelled at [Θ2 ⍮ Ξ2] by [γ].  The fields are
@@ -1227,13 +1227,6 @@ Proof.
   intros * Hg Hfn [Hf Hb Hm Ha Hgr Hr]; constructor;
     [ exact (gctx_embedding_refl _ _ Hg) | exact Hg | exact Hfn
     | exact Hf | exact Hb | exact Hm | exact Ha | exact Hgr | exact Hr ].
-Qed.
-
-(** So, read where it is, an embedding is what it is to model a context. *)
-Lemma set_gctx_ok_of_embedding : forall Θ Ξ T γ, set_gctx_embedding Θ Ξ Θ Ξ T γ -> @set_gctx_ok (gc_mk Θ Ξ) T γ.
-Proof.
-  intros * [_ _ _ Hf Hb Hm Ha Hgr Hr]; constructor;
-    [ exact Hf | exact Hb | exact Hm | exact Ha | exact Hgr | exact Hr ].
 Qed.
 
 (** * The Judgments of the Fundamental Theorem

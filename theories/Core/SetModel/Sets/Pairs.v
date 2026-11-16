@@ -1,9 +1,8 @@
-(** * Pairs, Functions and Dependent Sums of Sets
+(** * Pairs and Functions of Sets
 
     Kuratowski ordered pairs and their projections, products, the graph of
-    a function on sets, application of a set of pairs, the set of
-    dependent functions ([function_set]) and of dependent pairs
-    ([sigma_set]). *)
+    a function on sets, application of a set of pairs and the set of
+    dependent functions ([function_set]). *)
 
 From Mctt.Core.SetModel.Sets Require Export Aczel.
 
@@ -398,13 +397,6 @@ Proof.
   - intros p Hpg. destruct (Hp p Hpg) as [x [y [Hx [Hy E]]]]. exists x, y. split; [exact Hx | split; [apply Hsub; assumption | exact E]].
   - intros x Hx. destruct (Ht x Hx) as [y [Hy HyF]]. exists y. split; [exact Hy | apply Hsub; assumption].
 Qed.
-
-(** ** Dependent Pairs *)
-
-(** The pairs of a member [x] of [S] and a member of [F x]. *)
-Definition sigma_set (S : aczel_set) (F : aczel_set -> aczel_set) : aczel_set :=
-  family_set {a : aczel_index S & aczel_index (F (aczel_element S a))}
-    (fun p => ordered_pair (aczel_element S (projT1 p)) (aczel_element (F (aczel_element S (projT1 p))) (projT2 p))).
 
 Definition respects_on (S : aczel_set) (F : aczel_set -> aczel_set) : Prop :=
   forall x y, set_mem x S -> set_eq x y -> set_eq (F x) (F y).
