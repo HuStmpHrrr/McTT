@@ -30,19 +30,26 @@ def color_of_module_parts(parts: tuple[str, ...]) -> str:
     return next((COLORS[part] for part in reversed(dedupe_parts) if part in COLORS), COLORS["others"])
 
 GRAPH_SET: set[str] = set()
-EDGES: list[tuple[str, str]] = []
 
 # The set model depends only on the syntax, but it is the last part of the
-# metatheory: its files that import no other set-model file are ranked with
-# the soundness theorem, so that the set model is drawn below it.
+# metatheory, so it is drawn below the soundness theorem: an invisible edge
+# runs from the soundness theorem to each set-model file that imports no
+# other set-model file.  A `rank=same` constraint does not do this (graphviz
+# 12, which CI uses, ignores it across clusters), and the edges are only
+# for the layout: they are added after `tred` (`--setmodel-below`), so that
+# the transitive reduction still sees the real imports alone.
 SETMODEL_PREFIX = f"{ROOT_MODULE_NAME}.Core.SetModel."
 SETMODEL_ANCHOR = f"{ROOT_MODULE_NAME}.Core.Soundness"
+DOT_EDGE_PATTERN = re.compile(r'^\s*"([^"]+)" -> "([^"]+)";?\s*$', re.MULTILINE)
 
-def setmodel_rank() -> str:
-    setmodel = {m for edge in EDGES for m in edge if m.startswith(SETMODEL_PREFIX)}
-    entered = {sink for source, sink in EDGES if source in setmodel and sink in setmodel}
+def setmodel_below(dot: str) -> str:
+    edges = DOT_EDGE_PATTERN.findall(dot)
+    setmodel = {m for edge in edges for m in edge if m.startswith(SETMODEL_PREFIX)}
+    entered = {sink for source, sink in edges if source in setmodel and sink in setmodel}
     sources = sorted(setmodel - entered)
-    return f"""{{ rank=same; "{SETMODEL_ANCHOR}"; {" ".join(f'"{m}";' for m in sources)} }}"""
+    hints = "".join(f"""\t"{SETMODEL_ANCHOR}" -> "{m}" [style=invis];\n""" for m in sources)
+    end = dot.rstrip().rindex("}")
+    return f"{dot[:end]}{hints}}}\n"
 
 def under_subgraph(name: str, body: str) -> str:
     return f"""subgraph "{name}" {{ {body} }}"""
@@ -101,7 +108,6 @@ def data_of_depline(depline: str) -> str:
         sink_module = module_name_of_path(result.group(1))
         source_paths = result.group(2).split(" ")
         source_modules = [module_name_of_path(source_path) for source_path in source_paths if DEPSOURCE_PATTERN.match(source_path)]
-        EDGES.extend((source_module, sink_module) for source_module in source_modules)
         edges = "\n".join(f""""{source_module}" -> "{sink_module}";""" for source_module in source_modules)
         return f"""{edges}{node_of_path(result.group(1))}"""
     else:
@@ -126,7 +132,9 @@ def gen_graph() -> str:
         {default_subgraph_decl("Frontend")}
         {default_subgraph_decl("Reference")}
         {textwrap.indent(data, "        ").lstrip()}
-        {setmodel_rank()}
       }}""")
 
-print(gen_graph())
+if sys.argv[1:] == ["--setmodel-below"]:
+    sys.stdout.write(setmodel_below(sys.stdin.read()))
+else:
+    print(gen_graph())

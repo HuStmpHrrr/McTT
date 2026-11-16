@@ -64,7 +64,7 @@ coqdoc: html
 	cp -R $(EXTRA_DIR)/resources html
 
 $(DEPGRAPHDOT): $(VFILES) $(DEPGRAPHSCRIPT)
-	@$(COQDEP) $(VFILES) -f _CoqProject | python3 "$(DEPGRAPHSCRIPT)" | tred > "$@"
+	@$(COQDEP) $(VFILES) -f _CoqProject | python3 "$(DEPGRAPHSCRIPT)" | tred | python3 "$(DEPGRAPHSCRIPT)" --setmodel-below > "$@"
 
 $(DEPGRAPHDOC): $(DEPGRAPHDOT) $(DEPPOSTPROCESSSCRIPT)
 	@dot -T svg "$(DEPGRAPHDOT)" | python3 "$(DEPPOSTPROCESSSCRIPT)" > "$(DEPGRAPHDOC)"
