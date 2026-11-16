@@ -179,13 +179,14 @@ Proof.
   eapply glu_rel_exp_of_typ; mauto 3.
   intros.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
-  split; mauto 4.
+  (** [Typeω@i[σ]] is of [Typeω@(S i)[σ]], which is [Typeω@(S i)].  A
+      depth-4 search took 9 s for it. *)
+  split; [ rewrite <- (exp_sub_typ σ (S i)); eapply sub_preserves_exp; [ mauto 3 | eassumption ] | ].
   eexists; repeat split; mauto.
   intros.
   match_by_head1 glu_univ_elem invert_glu_univ_elem.
   apply_predicate_equivalence.
   cbn.
-  mauto 4.
   (** [Typeω@i[σ]] is [Typeω@i], so the equation is reflexivity, which needs
       [⊢ Δ] from a presupposition. *)
   gen_presups; mauto 3.
