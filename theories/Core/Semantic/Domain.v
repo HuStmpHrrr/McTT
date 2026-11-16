@@ -507,14 +507,6 @@ Proof. split; [ intros ? ? ? | intros ? ? H ? Hx; symmetry; exact (H _ Hx) | int
 Lemma env_eq_agree_upto : forall n ρ ρ', env_eq ρ ρ' -> env_agree_upto n ρ ρ'.
 Proof. intros * H x _; apply H. Qed.
 
-(** Agreeing environments have the same variables and module slots below
-    the bound. *)
-Lemma env_agree_var : forall n ρ ρ', env_agree_upto n ρ ρ' -> forall x, x < n -> env_var ρ x = env_var ρ' x.
-Proof. intros * H x Hx; unfold env_var; rewrite (H x Hx); reflexivity. Qed.
-
-Lemma env_agree_mod : forall n ρ ρ', env_agree_upto n ρ ρ' -> forall x, x < n -> env_mod ρ x = env_mod ρ' x.
-Proof. intros * H x Hx; unfold env_mod; rewrite (H x Hx); reflexivity. Qed.
-
 #[export]
 Instance extend_env_mod_Proper : Proper (env_eq ==> eq ==> eq ==> env_eq) extend_env_mod.
 Proof. intros ρ ρ' Hρ d d' <- U U' <- [| n]; [ reflexivity | apply Hρ ]. Qed.

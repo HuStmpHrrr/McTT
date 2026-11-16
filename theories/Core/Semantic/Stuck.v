@@ -238,17 +238,6 @@ Proof.
   intros [| x]; cbn; [ exact dentry_stuck_absent_entry | exact (IH ρ Hρ x) ].
 Qed.
 
-Lemma stuck_app_snoc : forall (args : list domain) n,
-    (forall a, In a args -> domain_stuck a) -> domain_stuck n -> forall a, In a (args ++ n :: nil) -> domain_stuck a.
-Proof. intros * H Hn a Ha; apply in_app_or in Ha as [Ha | [<- | []]]; auto. Qed.
-
-Lemma env_stuck_entry : forall ρ x, env_stuck ρ -> dentry_stuck (env_entry ρ x).
-Proof. intros * H; exact (H x). Qed.
-
-
-Lemma dmod_stuck_global_nil : forall p, dmod_stuck (dm_global p nil).
-Proof. intros; constructor; intros ? []. Qed.
-
 (** The atoms a level value is built of.  The flat view of a neutral is the
     single atom [(0, m)], so the level operations preserve the property. *)
 Lemma level_atoms_stuck_view : forall d, domain_stuck d -> level_atoms_stuck (domain_level_atoms d).
@@ -270,7 +259,7 @@ Lemma domain_stuck_lvl_max : forall d e, domain_stuck d -> domain_stuck e -> dom
 Proof. intros; unfold domain_level_max; constructor; apply level_atoms_stuck_app; apply level_atoms_stuck_view; assumption. Qed.
 
 #[local] Hint Resolve env_stuck_nil env_stuck_extend env_stuck_extend_mod env_stuck_extend_dm env_stuck_var env_stuck_mod
-  env_stuck_extend_typed stuck_app_snoc dmod_stuck_global_nil env_stuck_entry : mctt.
+  env_stuck_extend_typed : mctt.
 
 (** The level lemmas are [Hint Extern], keyed on the operation in the goal: as
     [Hint Resolve] their conclusions would match a goal about an unknown

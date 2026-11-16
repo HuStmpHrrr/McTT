@@ -1795,21 +1795,6 @@ Proof.
   intros; apply eval_sub_extend_dm; [ apply eval_sub_id | assumption .. ].
 Qed.
 
-Corollary eval_sub_single : forall {Θ Ξ} e Δ ρ M m,
-    ~ head_propositional Θ Ξ e Δ (ctx_retag Δ ρ) ->
-    ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ ↦ m ⦂ centry_tag e Δ (ctx_retag Δ ρ).
-Proof.
-  intros; apply eval_sub_extend; [ apply eval_sub_id | assumption .. ].
-Qed.
-
-Corollary eval_sub_single_proof : forall {Θ Ξ} e Δ ρ M,
-    head_propositional Θ Ξ e Δ (ctx_retag Δ ρ) ->
-    ⟦ Id,,M : e :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ ↦ ⋆ᵈ⟨M, ρ⟩ ⦂ centry_tag e Δ (ctx_retag Δ ρ).
-Proof.
-  intros; apply eval_sub_extend_proof; [ apply eval_sub_id | assumption ].
-Qed.
-
 Corollary eval_sub_single_mod : forall {Θ Ξ} U Δ ρ H h,
     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
     ⟦ Id ,,ₘ H : ce_mod U :: Δ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ctx_retag Δ ρ ↦ᵐ h ⦂ U.
@@ -1958,8 +1943,8 @@ Proof.
 Qed.
 
 #[export]
-Hint Resolve eval_sub_id eval_sub_shift eval_sub_extend eval_sub_extend_proof eval_sub_extend_mod eval_sub_single
-             eval_sub_single_proof eval_sub_single_mod eval_sub_wk_extend eval_sub_q eval_sub_wk_q eval_sub_shift_pre : mctt.
+Hint Resolve eval_sub_id eval_sub_shift eval_sub_extend eval_sub_extend_proof eval_sub_extend_mod
+             eval_sub_single_mod eval_sub_wk_extend eval_sub_q eval_sub_wk_q eval_sub_shift_pre : mctt.
 
 (** From here on an evaluation of a substitution is used through the
     lemmas above only.  Its definition is a pointwise conjunction, which

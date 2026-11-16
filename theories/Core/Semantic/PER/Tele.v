@@ -1279,12 +1279,6 @@ Section Tele.
     Lemma adm_diag_r : forall ups', adm_uparams D ups nparams_rel args_rel doms_rel ups' -> adm_uparams D ups' nparams_rel args_rel doms_rel ups'.
     Proof. intros * H'; exact (adm_base _ _ H' H'). Qed.
 
-    (** The bases admissible beside [ups] are those admissible beside a
-        base admissible beside it. *)
-    Lemma adm_iff : forall ups', adm_uparams D ups nparams_rel args_rel doms_rel ups' ->
-        forall u, adm_uparams D ups nparams_rel args_rel doms_rel u <-> adm_uparams D ups' nparams_rel args_rel doms_rel u.
-    Proof. intros * H' u; split; [ exact (adm_base _ _ H') | exact (adm_compose _ _ H') ]. Qed.
-
     (** *** Admissibility at the Fresh Variables, at Another Base
 
         A base [ups'] admissible beside [ups] at every prefix makes the

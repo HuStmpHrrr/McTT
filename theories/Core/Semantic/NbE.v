@@ -189,58 +189,6 @@ Ltac invert_nbe_term :=
 #[export]
 Hint Resolve functional_nbe : mctt.
 
-Lemma nbe_cumu : forall {Θ Ξ Γ A i W},
-    nbe Θ Ξ Γ A Typeω@i W ->
-    nbe Θ Ξ Γ A Typeω@(S i) W.
-Proof.
-  intros * [ρ a Hi Ha Hw].
-  simplify_evals.
-  (** A universe is no proposition: only the case of a type is left. *)
-  destruct Hw as [w Hp _ | m w Hr Hm Hw]; [ cbn in Hp; discriminate |].
-  inversion_clear_by_head read_nf; try (cbn in *; discriminate).
-  all: econstructor; [ eassumption | mauto | eapply nbe_term_evaluated; [ cbn; constructor | eassumption | mauto ] ].
-Qed.
-
-Lemma lift_nbe_ge : forall {Θ Ξ Γ A i j W},
-    i <= j ->
-    nbe Θ Ξ Γ A Typeω@i W ->
-    nbe Θ Ξ Γ A Typeω@j W.
-Proof.
-  induction 1; mauto using nbe_cumu.
-Qed.
-
-Lemma lift_nbe_max_left : forall {Θ Ξ Γ A i i' W},
-    nbe Θ Ξ Γ A Typeω@i W ->
-    nbe Θ Ξ Γ A Typeω@(max i i') W.
-Proof.
-  intros.
-  assert (i <= max i i') by lia.
-  mauto using lift_nbe_ge.
-Qed.
-
-Lemma lift_nbe_max_right : forall {Θ Ξ Γ A i i' W},
-    nbe Θ Ξ Γ A Typeω@i' W ->
-    nbe Θ Ξ Γ A Typeω@(max i i') W.
-Proof.
-  intros.
-  assert (i' <= max i i') by lia.
-  mauto using lift_nbe_ge.
-Qed.
-
-#[export]
-Hint Resolve lift_nbe_max_left lift_nbe_max_right : mctt.
-
-Lemma functional_nbe_of_typ : forall {Θ Ξ} Γ A i j W W',
-    nbe Θ Ξ Γ A Typeω@i W ->
-    nbe Θ Ξ Γ A Typeω@j W' ->
-    W = W'.
-Proof.
-  mauto.
-Qed.
-
-#[export]
-Hint Resolve functional_nbe_of_typ : mctt.
-
 
 #[warnings="-cannot-define-projection"]
 Record nbe_ty (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : typ) (W : nf) : Prop := nbe_ty_run

@@ -60,15 +60,6 @@ Section KindsEval.
       kinds_shape (de_dm a t h U :: ρ) (de_dm a' t' h' U' :: ρ').
   Proof. intros * [K S] Hh; split; intros [| x]; first [ exact Hh | apply K | reflexivity | apply S ]. Qed.
 
-  (** An environment extended by typed values is their entries, innermost
-      first, over it. *)
-  Lemma env_extend_typed_rev : forall vts ρ,
-      env_extend_typed ρ vts = List.rev (List.map (fun vt => de_term (fst vt) (snd vt)) vts) ++ ρ.
-  Proof.
-    induction vts as [| vt vts IH]; intros; [ reflexivity |].
-    unfold env_extend_typed in *; cbn [List.fold_left List.map List.rev]; rewrite IH, <- app_assoc; reflexivity.
-  Qed.
-
   Lemma kinds_shape_terms : forall X Y ρ ρ', List.length X = List.length Y ->
       Forall (fun e => dentry_tag e = 0) X -> Forall (fun e => dentry_tag e = 0) Y ->
       kinds_shape ρ ρ' -> kinds_shape (X ++ ρ) (Y ++ ρ').
@@ -385,16 +376,8 @@ Section KindsEval.
       forall ch k, dmod_member_kind Θ Ξ h ch k <-> modexp_member_kind Θ Ξ ρ H ch k.
   Proof. pose proof kind_eval as K; destruct_all; eauto. Qed.
 
-  Corollary kind_eval_close : forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-      forall ch k, dmod_member_kind Θ Ξ h ch k <-> gunit_member_kind Θ Ξ ρ (gunit_expand (gu_mk Δ D)) ch k.
-  Proof. pose proof kind_eval as K; destruct_all; eauto. Qed.
-
   Corollary kind_eval_appm : forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r ->
       forall ch k, dmod_member_kind Θ Ξ r ch k <-> dmod_member_kind Θ Ξ h ch k.
-  Proof. pose proof kind_eval as K; destruct_all; eauto. Qed.
-
-  Corollary kind_eval_body_env : forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
-      forall σ, kinds_shape ρ σ -> exists σ', kinds_env Θ Ξ σ Φ σ' /\ kinds_shape ρ' σ'.
   Proof. pose proof kind_eval as K; destruct_all; eauto. Qed.
 
 End KindsEval.

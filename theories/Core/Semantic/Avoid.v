@@ -348,10 +348,6 @@ Section Env.
 
   Lemma dmod_avoids_global_nil : forall p, dmod_avoids v b (dm_global p nil).
   Proof. intros; constructor; intros ? []. Qed.
-
-  Lemma domain_avoids_args_snoc : forall (args : list domain) n,
-      (forall a, In a args -> domain_avoids v b a) -> domain_avoids v b n -> forall a, In a (args ++ n :: nil) -> domain_avoids v b a.
-  Proof. intros * H Hn a Ha; apply in_app_or in Ha as [Ha | [<- | []]]; auto. Qed.
 End Env.
 
 (** ** Freshness Through the Module Syntax *)
@@ -435,27 +431,9 @@ Qed.
 Section OFresh.
   Variable K : option nat.
 
-  Lemma optional_exp_fresh_univ : forall M, optional_exp_fresh K Type⟨M⟩ -> optional_exp_fresh K M.
-  Proof. destruct K; cbn; auto. Qed.
   Lemma optional_exp_fresh_succl : forall M, optional_exp_fresh K (succl M) -> optional_exp_fresh K M.
   Proof. destruct K; cbn; auto. Qed.
-  Lemma optional_exp_fresh_maxl_l : forall M N, optional_exp_fresh K (maxl M N) -> optional_exp_fresh K M.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_maxl_r : forall M N, optional_exp_fresh K (maxl M N) -> optional_exp_fresh K N.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_absurd_type : forall C M, optional_exp_fresh K (efq M return C) -> optional_exp_fresh K C.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_absurd_proof : forall C M, optional_exp_fresh K (efq M return C) -> optional_exp_fresh K M.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_and_left : forall P Q, optional_exp_fresh K (Σₚ P Q) -> optional_exp_fresh K P.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_and_right : forall P Q, optional_exp_fresh K (Σₚ P Q) -> optional_exp_fresh (optional_shift 1 K) Q.
-  Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_fn_A : forall A M, optional_exp_fresh K (λ A M) -> optional_exp_fresh K A.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_pi_A : forall κd κc A B, optional_exp_fresh K (a_pi κd κc A B) -> optional_exp_fresh K A.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_exp_fresh_pi_B : forall κd κc A B, optional_exp_fresh K (a_pi κd κc A B) -> optional_exp_fresh (optional_shift 1 K) B.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_exp_fresh_fn_M : forall A M, optional_exp_fresh K (λ A M) -> optional_exp_fresh (optional_shift 1 K) M.
   Proof. destruct K; cbn; tauto. Qed.
@@ -506,15 +484,9 @@ Section OFresh.
     destruct K as [k |]; cbn; [| intros; apply Forall_forall; intros; exact I ].
     intros T fs [_ H]; induction fs as [| [f M] fs IH]; cbn in H |- *; constructor; tauto.
   Qed.
-  Lemma optional_exp_fresh_proj : forall f M, optional_exp_fresh K (a_proj f M) -> optional_exp_fresh K M.
-  Proof. destruct K; cbn; auto. Qed.
 
   Lemma optional_modexp_fresh_var : forall x, optional_modexp_fresh K (me_var x) -> K <> Some x.
   Proof. destruct K; cbn; congruence. Qed.
-  Lemma optional_modexp_fresh_lit : forall U, optional_modexp_fresh K (me_lit U) -> optional_gunit_fresh K U.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma optional_modexp_fresh_mem : forall H y, optional_modexp_fresh K (me_mem H y) -> optional_modexp_fresh K H.
-  Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_modexp_fresh_app_l : forall H N, optional_modexp_fresh K (me_app H N) -> optional_modexp_fresh K H.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma optional_modexp_fresh_app_r : forall H N, optional_modexp_fresh K (me_app H N) -> optional_exp_fresh K N.
@@ -570,12 +542,11 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
 End OFresh.
 
-#[local] Hint Resolve optional_exp_fresh_univ optional_exp_fresh_succl optional_exp_fresh_maxl_l optional_exp_fresh_maxl_r
-  optional_exp_fresh_absurd_type optional_exp_fresh_absurd_proof
-  optional_exp_fresh_and_left optional_exp_fresh_and_right optional_exp_fresh_fn_A optional_exp_fresh_let_A optional_exp_fresh_tuple_T
-  optional_exp_fresh_pi_A optional_exp_fresh_pi_B optional_exp_fresh_fn_M optional_exp_fresh_app_l optional_exp_fresh_app_r optional_exp_fresh_let_M optional_exp_fresh_let_B
+#[local] Hint Resolve optional_exp_fresh_succl
+  optional_exp_fresh_fn_A optional_exp_fresh_let_A optional_exp_fresh_tuple_T
+  optional_exp_fresh_fn_M optional_exp_fresh_app_l optional_exp_fresh_app_r optional_exp_fresh_let_M optional_exp_fresh_let_B
   optional_exp_fresh_letmod_U optional_exp_fresh_letdm_A optional_exp_fresh_letdm_M optional_exp_fresh_letdm_lit
-  optional_exp_fresh_mem optional_exp_fresh_var optional_exp_fresh_tuple_fields optional_exp_fresh_proj optional_modexp_fresh_var optional_modexp_fresh_lit optional_modexp_fresh_mem optional_modexp_fresh_app_l optional_modexp_fresh_app_r
+  optional_exp_fresh_mem optional_exp_fresh_var optional_exp_fresh_tuple_fields optional_modexp_fresh_var optional_modexp_fresh_app_l optional_modexp_fresh_app_r
   optional_gunit_fresh_body optional_gunit_fresh_alias optional_gmod_fresh_def_prefix optional_gmod_fresh_def_body optional_gmod_fresh_mod_prefix optional_gmod_fresh_mod_unit
   optional_gmod_fresh_dm_prefix optional_gmod_fresh_dm_body optional_gmod_fresh_dm_unit
   : avoid.
@@ -595,7 +566,7 @@ End OFresh.
 Section Eval.
   Variables (v b : nat).
 
-  #[local] Hint Resolve env_avoids_nil env_avoids_cons env_avoids_var env_avoids_mod domain_avoids_args_snoc
+  #[local] Hint Resolve env_avoids_nil env_avoids_cons env_avoids_var env_avoids_mod
     dmod_avoids_global_nil : mctt.
   (** The uniform parameters an eliminator carries are fresh where it is. *)
   #[local] Hint Extern 1 (Forall (optional_exp_fresh _) _) =>

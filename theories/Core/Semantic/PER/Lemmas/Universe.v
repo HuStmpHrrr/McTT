@@ -298,7 +298,7 @@ Proof.
         symmetry of their types; the elements are swapped by
         [ind_rel_sym_all], their indices exchanged by [ind_rel_idx], and the
         bases admissible beside [ups] are those admissible beside [ups']
-        ([adm_iff]). *)
+        ([adm_base], [adm_compose]). *)
     rename H into Hl, H0 into Hass, H1 into HM, H2 into Hh, H3 into Hu, H4 into Hu', H5 into Hps, H6 into HnP, H7 into Hn,
       H8 into HnI, H9 into HaP, H10 into Ha, H11 into HaI,
       H12 into HdP, H13 into Hd, H14 into HdI, H15 into Hcl, H16 into Hcd, H17 into Hdnl,

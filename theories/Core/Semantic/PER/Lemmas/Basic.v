@@ -109,14 +109,6 @@ Proof.
   - eauto using per_top_trans.
 Qed.
 
-(** Related levels are [per_top] at [Level]. *)
-Lemma per_lvl_then_per_top : forall m n,
-    Dom m ≈ n ∈ per_lvl ->
-    Dom ⇓ Levelᵈ m ≈ ⇓ Levelᵈ n ∈ per_top.
-Proof. intros * H s; destruct (H s) as [L HL HL' _]; exact (mk_normal_reads_alike _ _ _ _ _ HL HL' ltac:(reflexivity)). Qed.
-
-Hint Resolve per_lvl_then_per_top : mctt.
-
 (** A literal level reads back as itself, so it is related to itself and the
     literals are ordered by their indices.  These are the only levels the
     universes at a [universe_index] use. *)
@@ -134,16 +126,6 @@ Proof.
 Qed.
 
 Hint Resolve per_lvl_lit : mctt.
-
-Lemma per_sublvl_lit : forall n m,
-    ordinal_le n m ->
-    per_sublvl (domain_level_lit n) (domain_level_lit m).
-Proof.
-  intros n m Hle s; exists (lvl_lit n) (lvl_lit m); [ apply read_nf_domain_level_lit | apply read_nf_domain_level_lit | | exact I | exact I ].
-  apply lvl_le_lit; assumption.
-Qed.
-
-Hint Resolve per_sublvl_lit : mctt.
 
 (** Related levels have the same realiser: readback preserves the offsets, so
     the realiser is the one of the canonical form they read back as. *)
@@ -172,14 +154,7 @@ Proof.
   intros * H s; destruct (H s) as [L L' HL HL' _ Hp _]; exists L; assumption.
 Qed.
 
-Lemma per_sublvl_right : forall l l',
-    per_sublvl l l' ->
-    Dom l' ≈ l' ∈ per_lvl.
-Proof.
-  intros * H s; destruct (H s) as [L L' HL HL' _ _ Hp]; exists L'; assumption.
-Qed.
-
-Hint Resolve per_sublvl_left per_sublvl_right : mctt.
+Hint Resolve per_sublvl_left : mctt.
 
 Lemma per_sublvl_real : forall l l',
     per_sublvl l l' ->
@@ -242,26 +217,6 @@ Proof.
   - eauto using per_lvl_sym.
   - eauto using per_lvl_trans.
 Qed.
-
-(** A neutral of type [Level@n] is a level: it reads back as the single atom
-    at offset [0], of sort [n], which is canonical.  The sort is read off the
-    neutral's type, so two neutrals are related levels only at types of one
-    sort.  Neutrals of a type of levels hold no proof ([per_bot_at]), and
-    then the two read back as one. *)
-Lemma per_bot_then_per_lvl : forall m m' a a',
-    domain_level_sort a = domain_level_sort a' ->
-    Dom m ≈ m' ∈ per_bot_at ak_level ->
-    Dom ⇑ a m ≈ ⇑ a' m' ∈ per_lvl.
-Proof.
-  intros * Ha [H Hpf] s.
-  destruct (H s) as [M M' Hl Hr HE].
-  pose proof (proj1 (Hpf eq_refl) _ _ Hl) as Hp.
-  pose proof (ne_proof_free_eq _ _ Hp HE) as <-.
-  exists (ordinal_zero, cons (mk_level_atom 0 (domain_level_sort a) M) nil);
-    [ econstructor; eassumption | rewrite Ha; econstructor; eassumption | cbn; split; [ exact Hp | exact I ] ].
-Qed.
-
-Hint Resolve per_bot_then_per_lvl : mctt.
 
 (** A canonical level without proofs is the only one equal to it up to
     proofs ([nf_ne_proof_free_eq]). *)
@@ -515,13 +470,11 @@ Hint Resolve per_top_typ_sym : mctt.
 Hint Resolve per_top_typ_trans : mctt.
 #[export] Existing Instance per_top_typ_PER.
 #[export]
-Hint Resolve read_nf_domain_level_lit per_lvl_lit per_sublvl_lit : mctt.
+Hint Resolve read_nf_domain_level_lit per_lvl_lit : mctt.
 #[export]
 Hint Resolve per_lvl_real : mctt.
 #[export]
-Hint Resolve per_sublvl_left per_sublvl_right per_sublvl_of_per_lvl per_sublvl_trans : mctt.
-#[export]
-Hint Resolve per_lvl_then_per_top : mctt.
+Hint Resolve per_sublvl_left per_sublvl_of_per_lvl per_sublvl_trans : mctt.
 #[export]
 Hint Resolve per_lvl_sym : mctt.
 #[export]
@@ -530,8 +483,6 @@ Hint Resolve per_lvl_trans : mctt.
 #[export] Existing Instance per_lvl_at_PER.
 #[export]
 Hint Resolve per_lvl_at_sym per_lvl_at_trans per_bot_then_per_lvl_at per_lvl_at_lvl : mctt.
-#[export]
-Hint Resolve per_bot_then_per_lvl : mctt.
 #[export]
 Hint Resolve per_ne_sym : mctt.
 #[export]

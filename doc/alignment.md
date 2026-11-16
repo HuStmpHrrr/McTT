@@ -230,7 +230,7 @@ non-mutual inductions.
   list, per the standing instruction to use `list` rather than a set. Around it:
   `rel_chain_pairwise` (paper Lemma 2.5), `rel_chain_merge` (Lemma 2.6),
   `rel_chain_incl`, `rel_chain_4` with its three projections
-  (`_commut_left`, `_related`, `_commut_right`), `rel_chain_4_outer`,
+  (`_commut_left`, `_related`, `_commut_right`),
   `_4_of_2`, `_4_sym`, `rel_chain_mono`, `rel_chain_map`, a `Proper` instance,
   and the tactics `solve_in`, `solve_incl`, `solve_chain_PER`, `pairwise`,
   `solve_rel_chain`, `merge_rel_chain`. The generalization from four values to
@@ -631,7 +631,8 @@ which exists only because `per_ctx_env_cons` asks for `⟦A⟧ρ` while the judg
 delivers `⟦A[σ]⟧ρ`; at `Id` they agree, and getting there is `rewrite
 exp_sub_id` plus `rel_chain_4_related`. The 99 `rel_chain_*` uses in the layer
 are overwhelmingly that projection step: `rel_chain_4_related` 50,
-`rel_chain_4` 44, `rel_chain_4_outer` 26, against `rel_chain_merge` 3.
+`rel_chain_4` 44, `rel_chain_4_outer` 26 (at the port; the lemma has since
+been removed as unused), against `rel_chain_merge` 3.
 
 **(c) `LogicalRelation/Substitution.v` changed job.** Pre-port it proved the fifteen cases
 of the substitution judgment; about 173 of its 257 lines were the ten

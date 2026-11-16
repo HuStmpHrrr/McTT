@@ -212,8 +212,7 @@ Section RelChain.
   (** ** The Four-Value Pattern
 
       Its introduction and its projections, named after the obligations they
-      discharge: the two commutations and the relatedness between them.  The
-      outer pair, often the one wanted, is [rel_chain_4_outer]. *)
+      discharge: the two commutations and the relatedness between them. *)
   Lemma rel_chain_4 : forall v1 v2 v3 v4,
       R v1 v2 ->
       R v2 v3 ->
@@ -239,13 +238,6 @@ Section RelChain.
       rel_chain ([v1; v2; v3; v4]) -> R v3 v4.
   Proof.
     intros * [? []]; assumption.
-  Qed.
-
-  Corollary rel_chain_4_outer : forall v1 v2 v3 v4,
-      rel_chain ([v1; v2; v3; v4]) -> R v1 v4.
-  Proof.
-    intros * H.
-    eapply rel_chain_pairwise; [ exact H | simpl; auto | simpl; auto ].
   Qed.
 
   (** The degenerate four-value pattern, in which both commutation obligations
