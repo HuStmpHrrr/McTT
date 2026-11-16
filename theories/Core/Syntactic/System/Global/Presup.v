@@ -5013,8 +5013,10 @@ Proof.
   all: try solve [ match goal with Hl : _ ∋ #_ : _, HΓ : ⊢ _ ⍮ _ ⍮ _ |- _ =>
          let S := fresh "S" in let HS := fresh "HS" in let HT := fresh "HT" in
          destruct (ctx_lookup_wf_sorted _ _ _ _ _ HΓ Hl) as (S & HS & HT); exact (typ_presup_sorted _ HS HT) end ].
-  all: try solve [ eapply typ_presup_univ; mauto 3 ].
-  all: eapply typ_presup_prop; mauto 3.
+  (* A type of a proposition first: tried first, the universe search
+     failed on each of the 130 goals of a proposition, at 0.1 s each. *)
+  all: try solve [ eapply typ_presup_prop; mauto 3 ].
+  all: eapply typ_presup_univ; mauto 3.
 Qed.
 
 Lemma presup_exp_typ_v : forall {Θ Ξ Γ M A},
