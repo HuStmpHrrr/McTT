@@ -17,7 +17,7 @@
     relations at the global context, as the corollaries below state them for
     contexts and terms.  There is no part for substitutions: the syntactic
     substitution judgment is not in the mutual block, and the glued
-    substitutions ([⊩ˢ]) are built from glued terms where they are needed.
+    substitutions are built from glued terms where they are needed.
     There is none for equalities, since the model relates a term to a value
     rather than two terms to each other. *)
 

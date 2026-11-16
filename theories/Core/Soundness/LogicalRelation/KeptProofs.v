@@ -12,12 +12,11 @@
     readbacks differ only under [nf_proof], which [nf_eq_upto_proofs]
     ignores — and the readback of the second, [f 𝕃@0], is not typed.
 
-    So the readback of a kept proof is typed under a hypothesis on its
-    environment instead, stated here and proved for the environments the
-    model builds: the definitions the readback of [ρ] produces are a
-    well-formed context extension, and the substitution they ζ-reduce to
-    is typed ([env_lets_typed]).  The syntactic work is
-    [lets_exp_of_sub]. *)
+    So the readback of a kept proof is typed through its environment
+    instead, for the environments the model builds: the definitions the
+    readback of [ρ] produces are a well-formed context extension, and the
+    substitution they ζ-reduce to is typed ([glu_env_lets]).  The
+    syntactic work is [lets_exp_of_sub]. *)
 
 From Stdlib Require Import Lia List PeanoNat.
 
@@ -42,17 +41,5 @@ Proof.
   intros k; induction k as [| k IH]; intros * H; inversion H; subst; cbn [List.length]; [ reflexivity |].
   f_equal; eapply IH; eassumption.
 Qed.
-
-(** [ρ] stands for the context [Γ] over [Γ0]: at every Kripke weakening of
-    [Γ0], the definitions the readback of [ρ]'s first [List.length Γ]
-    positions produces bind a well-formed extension whose first entries
-    are those of [Γ], and ζ-reduce to a substitution of [Γ].  The two
-    conjuncts are the premises [lets_exp_of_sub] asks of a chain of
-    definitions, at the substitution [Id] of the bound positions. *)
-Definition env_lets_typed (Γ0 Γ : ctx) (ρ : env) : Prop :=
-  forall Δ φ bs, Δ ⊢ᵏ φ : Γ0 ->
-    Rlets ρ at (List.length Γ) in gc_deps ⍮ gc_stack ⍮ (List.length Δ) ↘ bs ->
-    gc_deps ⍮ gc_stack ⍮ ctx_lets Δ bs ⊢ˢ Id : Γ /\
-    gc_deps ⍮ gc_stack ⍮ Δ ⊢ˢ lets_sub bs : Γ.
 
 End Fixed_GCtx.

@@ -2079,57 +2079,6 @@ Proof.
   - exact (H Γ1 e0 Γ0 U E Hu).
 Qed.
 
-(** A weakening glued from [Γ] to [Δ], as [Γ ⊨ʷ φ : Δ] in the PER model:
-    precomposed with it, a substitution glued into [Γ] at [ρ] is glued
-    into [Δ] at [⟪φ⟫ ρ].  Unlike a substitution, a weakening acts on
-    environments without evaluation, so the judgment can be stated; it
-    weakens term judgments ([glu_rel_exp_wk]). *)
-#[warnings="-cannot-define-projection"]
-Record glu_rel_wk Γ φ Δ : Prop := mk_glu_rel_wk
-  { (** The glued substitutions into the source *)
-    glu_rel_wk_sb : glu_sub_pred
-  ; glu_rel_wk_ctx : EG Γ ∈ glu_ctx_env ↘ glu_rel_wk_sb
-    (** The glued substitutions into the target *)
-  ; glu_rel_wk_sb' : glu_sub_pred
-  ; glu_rel_wk_ctx' : EG Δ ∈ glu_ctx_env ↘ glu_rel_wk_sb'
-    (** The weakening is well formed *)
-  ; glu_rel_wk_typed : Γ ⊢ʷ φ : Δ
-    (** The weakening is semantic: it takes related environments to related
-        ones, the kinds of the entries agreeing *)
-  ; glu_rel_wk_sem : Γ ⊨ʷ φ : Δ
-    (** A substitution glued into the source, precomposed with the
-        weakening, is glued into the target at the weakened environment *)
-  ; glu_rel_wk_glu : forall Δ' σ ρ, Δ' ⊢ˢ σ ® ρ ∈ glu_rel_wk_sb -> Δ' ⊢ˢ ι φ ⨟ σ ® ⟪φ⟫ ρ ∈ glu_rel_wk_sb' }.
-
-Notation "Γ ⊩ʷ φ : Δ" := (glu_rel_wk Γ φ Δ) (at level 70, φ constr at level 0, Δ at level 69).
-
-(** A substitution glued from [Γ] to [Δ]: precomposed with it, a
-    substitution glued into [Γ] at [ρ] is glued into [Δ] at an environment
-    the context PER of [Δ] relates to the value of [τ] at [ρ].  The value
-    itself stores the entries at [Δ]'s types ([ctx_retag], [centry_tag]),
-    the glued environment at any related ones.  It is semantic, so the
-    values of [M[τ]] at [ρ] and of [M] there are related, and term
-    judgments move along it ([glu_rel_exp_sub]). *)
-#[warnings="-cannot-define-projection"]
-Record glu_rel_sub Γ τ Δ : Prop := mk_glu_rel_sub
-  { (** The glued substitutions into the source *)
-    glu_rel_sub_sb : glu_sub_pred
-  ; glu_rel_sub_ctx : EG Γ ∈ glu_ctx_env ↘ glu_rel_sub_sb
-    (** The glued substitutions into the target *)
-  ; glu_rel_sub_sb' : glu_sub_pred
-  ; glu_rel_sub_ctx' : EG Δ ∈ glu_ctx_env ↘ glu_rel_sub_sb'
-    (** The substitution is well formed *)
-  ; glu_rel_sub_typed : Γ ⊢ˢ τ : Δ
-    (** It is semantic *)
-  ; glu_rel_sub_sem : Γ ⊨ˢ τ ≈ τ : Δ
-    (** A substitution glued into the source, precomposed with it, is glued
-        into the target at an environment related to its value *)
-  ; glu_rel_sub_glu : forall Δ' σ ρ, Δ' ⊢ˢ σ ® ρ ∈ glu_rel_sub_sb ->
-      exists ρτ, Δ' ⊢ˢ τ ⨟ σ ® ρτ ∈ glu_rel_sub_sb' /\
-        forall RΔ ρτ0, EF Δ ≈ Δ ∈ per_ctx_env ↘ RΔ -> ⟦ τ : Δ ⟧s ρ ↘ ρτ0 -> Dom ρτ0 ≈ ρτ ∈ RΔ }.
-
-Notation "Γ ⊩ˢ τ : Δ" := (glu_rel_sub Γ τ Δ) (at level 70, τ at level 69, Δ at level 69).
-
 End Fixed_GCtx.
 
 #[export]
@@ -2186,8 +2135,6 @@ Hint Extern 1 =>
   end : mctt.
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
-Notation "Γ ⊩ʷ φ : Δ" := (glu_rel_wk Γ φ Δ) (at level 70, φ constr at level 0, Δ at level 69).
-Notation "Γ ⊩ˢ τ : Δ" := (glu_rel_sub Γ τ Δ) (at level 70, τ at level 69, Δ at level 69).
 
 (** [induction H using glu_univ_elem_ind] does not apply, for the reason
     [per_univ_elem_induction] explains. The tactics below perform the same

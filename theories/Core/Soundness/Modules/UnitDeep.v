@@ -9,8 +9,7 @@
     are the renamings, the [β] instance [(Id,,N)] of a term glued at the
     instances ((c), [glu_unit_deep_beta]), and the fill of the entries of a
     deep body before one of them ((d), [glu_rel_sub_stable_fill] and
-    [glu_rel_sub_mods_deep_fill]): a submodule selected from a deep body is
-    deep ([glu_unit_deep_select_body]).  These are what the right-hand
+    [glu_rel_sub_mods_deep_fill]).  These are what the right-hand
     sides of [wf_me_beta_body], [wf_me_beta_alias] and [wf_me_delta_sel]
     need to be glued. *)
 
@@ -411,33 +410,6 @@ Proof.
   assert (HΦ0 : glu_gmod_units_deep Γ Φ)
     by (destruct En as [? ? ? ? ? | ? ? | ? ? ? ? ? | ? ? ? ? | ? ? ? ?]; cbn [glu_gmod_units_deep] in HΦ; try apply HΦ; exact HΦ).
   destruct (String.eqb y x); [ injection Hp as <-; exact HΦ | exact (IH _ _ _ Hn Hp HΦ0) ].
-Qed.
-
-(** The body submodule [y] of a deep body, its unit filled with the
-    entries before it ([gm_fill]) and abstracted over the body's
-    parameters, as an open body's entry is read ([reader_open]), is deep:
-    (b) at the fill ((d)), then joined with the parameters. *)
-Lemma glu_unit_deep_select_body : forall Γ Δ sm Φ Φ' y pv Δy smy Φy σ,
-    glu_unit_deep Γ (gu_mk Δ (md_body sm Φ)) ->
-    gm_prefix_upto (gm_expand Φ) y = Some (gm_ext Φ' y (ge_mod pv (gu_mk Δy (md_body smy Φy)))) ->
-    gm_fill Φ' = Some σ ->
-    glu_unit_deep Γ (gu_mk (tele_sub Δy σ ++ Δ) (md_body smy (gmod_sub Φy (sb_qn (List.length Δy) σ)))).
-Proof.
-  intros * HU Hp Hf; cbn [glu_unit_deep] in HU; destruct HU as [HΦ HΦu].
-  pose proof (gm_noopen_prefix_upto _ _ _ (gm_noopen_expand Φ) Hp) as Hn'; cbn [gm_noopen] in Hn'.
-  destruct (gm_prefix_body_ctx _ _ _ (gm_noopen_expand Φ) Hp) as (Ψ & EΨ).
-  rewrite EΨ, <- app_assoc in HΦ.
-  pose proof (glu_rel_ext_under_sub_app_inv _ HΦ) as HΦ'; cbn [body_ctx app glu_rel_ext_under_sub] in HΦ'.
-  destruct HΦ' as [HΦ' _].
-  pose proof (glu_gmod_units_deep_prefix _ _ _ _ (gm_noopen_expand Φ) Hp (glu_gmod_units_deep_expand _ _ HΦu)) as Hy.
-  cbn [glu_gmod_units_deep] in Hy; destruct Hy as [HΦ'u HUy].
-  rewrite (gm_expand_noopen _ Hn') in HUy.
-  pose proof (glu_rel_ext_under_sub_app_inv _ HΦ') as HΔ.
-  pose proof (glu_rel_ext_under_sub_ctx_types _ _ HΔ) as HΔΓ.
-  pose proof (glu_unit_deep_stable _ _ _ _ HUy HΔΓ (glu_rel_sub_stable_fill _ _ _ _ Hn' HΦ' Hf)
-                (glu_rel_sub_mods_deep_fill _ _ _ _ Hn' HΦ' HΦ'u Hf)) as Hσ.
-  rewrite gunit_sub_mk in Hσ; cbn [moddef_sub] in Hσ.
-  exact (glu_unit_deep_params_join _ _ _ _ HΔ Hσ).
 Qed.
 
 (** ** Module slots *)

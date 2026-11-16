@@ -1143,7 +1143,7 @@ Qed.
 
 (** [ihs_sub] past the recursive results before [jq] is, on the shape's
     components, the arguments' substitution at the context's variables,
-    the uniform parameters weakened past them ([ihs_sub_as_vars]). *)
+    the uniform parameters weakened past them ([ihs_sub_as_vars_ptyp]). *)
 Lemma ihs_sub_vars_pointwise : forall nn Us na gs1 jq y, List.length gs1 <= na -> y < pat_nargs (cargs_pat gs1) + nn + List.length Us ->
     sentry_exp (ihs_sub nn Us na (cargs_pat gs1) jq y)
     = sentry_exp ((ι (wk_pat (cargs_pat gs1)) ⨟ sb_of_list (sb_of_list Id (List.map (fun U => U[wk_shiftn (jq + na + nn)]ʷ) Us
@@ -1185,29 +1185,11 @@ Proof.
       rewrite exp_sub_of_wk, exp_wk_wk; apply exp_wk_wk_eq; intros w; cbn; unfold wk_shiftn; lia.
 Qed.
 
-(** The type of a recursive result of a branch's context at the
-    position [jq] among the results, past [na] arguments and [nn]
-    non-uniform parameters at the uniform ones [Us]: its components'
-    substitution ([ihs_sub]) is the arguments' one at the context's own
-    variables ([cargs_sub]), the uniform parameters weakened past them. *)
-Lemma ihs_sub_as_vars : forall r l As β x nn Us na gs1 jq,
-    leaf_scoped (pat_nargs (cargs_pat gs1) + nn + List.length Us) l -> leaf_mvc l -> List.length gs1 <= na ->
-    leaf_ihty r As β (ihs_sub nn Us na (cargs_pat gs1) jq) x l
-    = leaf_ihty r As β (cargs_sub (sb_of_list Id (List.map (fun U => U[wk_shiftn (jq + na + nn)]ʷ) Us ++ vars_from (jq + na) nn))
-                          gs1 (vars_from jq na)) x l.
-Proof.
-  intros * Hs Hm Hg.
-  transitivity (leaf_ihty r As β (ι (wk_pat (cargs_pat gs1)) ⨟ sb_of_list (sb_of_list Id (List.map (fun U => U[wk_shiftn (jq + na + nn)]ʷ) Us
-                                                                             ++ vars_from (jq + na) nn))
-                                                            (List.firstn (List.length gs1) (vars_from jq na))) x l).
-  2:{ apply leaf_ihty_sb_eq; [ intros z; reflexivity |].
-      rewrite <- (cargs_sub_firstn gs1 _ (vars_from jq na)).
-      apply cargs_sub_pat; rewrite List.length_firstn, length_vars_from; lia. }
-  apply (leaf_ihty_mvc_agree _ _ _ _ _ _ _ _ Hs Hm).
-  intros y Hy; exact (ihs_sub_vars_pointwise nn Us na gs1 jq y Hg Hy).
-Qed.
-
-(** The same for the type of a recursive argument of a shape. *)
+(** The type of a recursive argument of a shape, at the position [jq]
+    among the results, past [na] arguments and [nn] non-uniform parameters
+    at the uniform ones [Us]: its components' substitution ([ihs_sub]) is
+    the arguments' one at the context's own variables ([cargs_sub]), the
+    uniform parameters weakened past them. *)
 Lemma ihs_sub_as_vars_ptyp : forall pq D Us' t nn Us na gs1 jq,
     ptyp_scoped (pat_nargs (cargs_pat gs1) + nn + List.length Us) t ->
     List.Forall (exp_mvc 0) (ptyp_doms t) -> List.Forall (exp_mvc 0) (ptyp_ps t) -> List.length gs1 <= na ->

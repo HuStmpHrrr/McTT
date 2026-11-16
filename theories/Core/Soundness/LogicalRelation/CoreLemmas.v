@@ -61,20 +61,6 @@ Qed.
 
 Hint Resolve glu_lvl_resp_ctxsub : mctt.
 
-Lemma glu_lvl_resp_exp_eq : forall Γ M a n,
-    glu_lvl n Γ M a ->
-    forall M',
-    Γ ⊢ M ≈ M' : Level@n ->
-    glu_lvl n Γ M' a.
-Proof.
-  intros * H * ? Δ φ L Hφ Hr.
-  destruct (H _ _ _ Hφ Hr) as [Heq Hws]; split; [| exact Hws ].
-  transitivity M[φ]ʷ; mauto 4.
-Qed.
-
-#[local]
-Hint Resolve glu_lvl_resp_exp_eq : mctt.
-
 (** ** Cumulativity of an Element of a Small Universe
 
     An element of a small universe is a type of that universe [Type⟨t⟩], and
@@ -1407,7 +1393,7 @@ Hint Resolve glu_lvl_escape glu_lvl_resp_ctxsub : mctt.
     [glu_lvl Γ M m] into its premises; the readback clause is then
     [glu_lvl_readback], and it is a hint so that the shared scripts reach it. *)
 #[local]
-Hint Resolve glu_lvl_resp_exp_eq glu_lvl_readback glu_lvl_well_scoped_readback : mctt.
+Hint Resolve glu_lvl_readback glu_lvl_well_scoped_readback : mctt.
 #[global]
 Ltac simpl_glu_rel :=
   apply_equiv_left;
@@ -2697,40 +2683,6 @@ Proof.
     + do 2 rewrite exp_wk_wk; mauto 4.
 Qed.
 
-(** Transport along a context refinement, as in [glu_lvl_resp_ctxsub]: a
-    Kripke weakening into [Δ] extends to one into [Γ] by [kripke_ctxsub], which
-    is all three lemmas need. *)
-
-Lemma glu_elem_bot_resp_ctxsub : forall i a Γ A M m Δ,
-    Γ ⊢ M : A ® m ∈ glu_elem_bot i a ->
-    Δ ⊆ Γ ->
-    Δ ⊢ M : A ® m ∈ glu_elem_bot i a.
-Proof.
-  intros * [] ?; econstructor;
-    [ mauto 3 | eassumption | eapply glu_univ_elem_typ_resp_ctxsub | eassumption | intros ];
-    mauto 4.
-Qed.
-
-Lemma glu_elem_top_resp_ctxsub : forall i a Γ A M m Δ,
-    Γ ⊢ M : A ® m ∈ glu_elem_top i a ->
-    Δ ⊆ Γ ->
-    Δ ⊢ M : A ® m ∈ glu_elem_top i a.
-Proof.
-  intros * [] ?; econstructor;
-    [ mauto 3 | eassumption | eapply glu_univ_elem_typ_resp_ctxsub | eassumption | intros ];
-    mauto 4.
-Qed.
-
-Lemma glu_typ_top_resp_ctxsub : forall i a Γ A Δ,
-    Γ ⊢ A ® glu_typ_top i a ->
-    Δ ⊆ Γ ->
-    Δ ⊢ A ® glu_typ_top i a.
-Proof.
-  intros * [] ?; econstructor; [ mauto 3 | eassumption | intros ]; mauto 4.
-Qed.
-
-Hint Resolve glu_elem_bot_resp_ctxsub glu_elem_top_resp_ctxsub glu_typ_top_resp_ctxsub : mctt.
-
 (** The realisability predicates along equations: of the type, at the sort
     of its value's kind next to the large universe of the index, and of the
     term. *)
@@ -2830,8 +2782,6 @@ End Fixed_GCtx.
 #[export] Existing Instance glu_elem_top_morphism_iff3_Proper.
 #[export] Existing Instance glu_typ_top_morphism_iff2_Proper.
 #[export] Existing Instance simple_glu_ctx_env_morphism_iff_Proper.
-#[export]
-Hint Resolve glu_elem_bot_resp_ctxsub glu_elem_top_resp_ctxsub glu_typ_top_resp_ctxsub : mctt.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.

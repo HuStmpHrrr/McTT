@@ -44,17 +44,6 @@ Qed.
 
 Hint Resolve presup_ctx_glu_rel_exp : mctt.
 
-Lemma presup_typ_glu_rel_exp : forall {Γ M A},
-    Γ ⊩ M : A ->
-    exists Sb i, EG Γ ∈ glu_ctx_env ↘ Sb /\
-            forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ Sb -> glu_rel_typ_with_sub i Δ A σ ρ.
-Proof.
-  intros * []%presup_glu_rel_exp.
-  eassumption.
-Qed.
-
-Hint Resolve presup_typ_glu_rel_exp : mctt.
-
 (** A term of a sort of the kind [κ] is a type glued at an index [i], of
     the sort of [κ] next to [Typeω@i]: a type of a universe at the
     universe's index, a proposition or a type of levels at any. *)
@@ -249,5 +238,3 @@ End Fixed_GCtx.
 
 #[export]
 Hint Resolve presup_ctx_glu_rel_exp : mctt.
-#[export]
-Hint Resolve presup_typ_glu_rel_exp : mctt.

@@ -171,38 +171,6 @@ Proof.
   edestruct Hbody as [? [? [? []]]]; mauto.
 Qed.
 
-(** The small universe as a term of the next small universe. *)
-Lemma glu_rel_exp_suniv : forall {Γ} {a n : nat},
-    ⊩ Γ ->
-    Γ ⊩ Type⟨𝕃ᵒ(a, n)⟩ : Type⟨𝕃ᵒ(a, S n)⟩.
-Proof.
-  intros * [Sb HΓ].
-  assert (⊢ Γ) by mauto 2.
-  eapply (glu_rel_exp_of_univ (u := us (a, S n))); [ eassumption |].
-  intros Δ σ ρ HΔ.
-  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
-  saturate_sub.
-  cbn.
-  split; [ apply wf_univ_lit; assumption |].
-  exists 𝕌@(domain_level_lit (a, n)).
-  split; [ apply eval_exp_univ, eval_exp_llit |].
-  split; [ eexists; apply (per_univ_elem_universe_index_value (us (a, n)) (us (a, S n))); cbn; ordinal_solve |].
-  split.
-  - intros P El HPEl.
-    pose proof (glu_univ_elem_univ_at (u := us (a, n)) (i := us (a, S n)) ltac:(cbn; ordinal_solve)).
-    handle_functional_glu_univ_elem.
-    cbn; apply (mk_suniv_glu_typ _ _ _ _ (𝕃ᵒ(a, n)) a); [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
-  - (** The small universe reads back as itself. *)
-    intros Δ' φ W Hφ Hr.
-    assert (⊢ Δ') by (eapply kripke_dom; eassumption).
-    inversion Hr; subst.
-    assert (Hn := read_nf_domain_level_lit (a, n) (length Δ')); unfold domain_level_lit in Hn.
-    assert (L = lvl_lit (a, n)) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
-    apply glu_nf_eq_intro; cbn; apply wf_exp_eq_univ_cong_lit; assumption.
-Qed.
-
-Hint Resolve glu_rel_exp_suniv : mctt.
-
 Lemma glu_rel_exp_typ : forall {Γ} {i : nat},
     ⊩ Γ ->
     Γ ⊩ Typeω@i : Typeω@(S i).
@@ -427,7 +395,7 @@ Qed.
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve glu_rel_exp_typ glu_rel_exp_suniv : mctt.
+Hint Resolve glu_rel_exp_typ : mctt.
 
 (** ** The Rules *)
 

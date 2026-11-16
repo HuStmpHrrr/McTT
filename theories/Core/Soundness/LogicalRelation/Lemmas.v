@@ -59,23 +59,6 @@ Qed.
 
 Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq : mctt.
 
-Lemma glu_univ_elem_typ_unique_upto_exp_eq_ge : forall {i j : universe_index} {a P P' El El' Γ A A'},
-    universe_index_le i j ->
-    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    DG a ∈ glu_univ_elem j ↘ P' ↘ El' ->
-    not_level_sort a ->
-    Γ ⊢ A ® P ->
-    Γ ⊢ A' ® P' ->
-    Γ ⊢ A ≈ A' : abs_kind_sort (domain_kind a) Typeω@(large_level j).
-Proof.
-  intros.
-  replace (large_level j) with (max (large_level i) (large_level j))
-    by (pose proof (universe_index_le_large_level_le _ _ ltac:(eassumption)); lia).
-  eapply glu_univ_elem_typ_unique_upto_exp_eq; eassumption.
-Qed.
-
-Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq_ge : mctt.
-
 Lemma glu_univ_elem_typ_unique_upto_exp_eq' : forall {i : universe_index} {a P El Γ A A'},
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     not_level_sort a ->
@@ -1471,51 +1454,6 @@ Qed.
 
 Hint Resolve mk_glu_rel_typ_with_sub'' : mctt.
 
-(** The term's value is given at the kind of the type's value
-    ([glu_term_value]): kept at a proposition. *)
-Lemma mk_glu_rel_exp_with_sub' : forall {i : nat} {Δ A M σ ρ a m},
-    ⟦ A ⟧ ρ ↘ a ->
-    glu_term_value M ρ (domain_kind a) m ->
-    (exists P El, DG a ∈ glu_univ_elem i ↘ P ↘ El) ->
-    (forall P El, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ M[σ] : A[σ] ® m ∈ El) ->
-    glu_rel_exp_with_sub i Δ M A σ ρ.
-Proof.
-  intros * Ha Hm (P & El & Hglu) HEl.
-  econstructor; [ exact Ha | exact Hm | exact Hglu | exact (HEl _ _ Hglu) ].
-Qed.
-
-Hint Resolve mk_glu_rel_exp_with_sub' : mctt.
-
-Lemma mk_glu_rel_exp_with_sub'' : forall {i : nat} {Δ A M σ ρ a m},
-    ⟦ A ⟧ ρ ↘ a ->
-    glu_term_value M ρ (domain_kind a) m ->
-    Dom a ≈ a ∈ per_univ i ->
-    (forall P El, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ M[σ] : A[σ] ® m ∈ El) ->
-    glu_rel_exp_with_sub i Δ M A σ ρ.
-Proof.
-  intros * Ha Hm Hper HEl.
-  destruct (per_univ_glu_univ_elem _ _ Hper) as (P & El & Hglu).
-  eapply mk_glu_rel_exp_with_sub'; [ exact Ha | exact Hm | eauto | exact HEl ].
-Qed.
-
-Hint Resolve mk_glu_rel_exp_with_sub'' : mctt.
-
-(** A type that is a term of a universe: its value is evaluated (a
-    universe's kind is relevant) and glued at the universe's index. *)
-Lemma glu_rel_exp_with_sub_implies_glu_rel_typ_with_sub : forall {i : nat} {Δ A} {j : nat} {σ ρ},
-  glu_rel_exp_with_sub i Δ A Typeω@j σ ρ ->
-  glu_rel_typ_with_sub j Δ A σ ρ.
-Proof.
-  intros * [a m P El Ha Hm Hglu HA].
-  simplify_evals; cbn [domain_kind glu_term_value] in Hm.
-  basic_invert_glu_univ_elem Hglu.
-  apply_predicate_equivalence.
-  destruct HA as [_ _ [Pm Elm Hgm Hpm]].
-  econstructor; [ exact Hm | exact Hgm | exact Hpm ].
-Qed.
-
-Hint Resolve glu_rel_exp_with_sub_implies_glu_rel_typ_with_sub : mctt.
-
 (** A type glued at [j], of the universe [Typeω@j], is a term of it. *)
 Lemma glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : forall {Δ A} {j : nat} {σ Γ ρ},
   Δ ⊢ˢ σ : Γ ->
@@ -2012,8 +1950,6 @@ End Fixed_GCtx.
 #[export]
 Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq : mctt.
 #[export]
-Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq_ge : mctt.
-#[export]
 Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq' : mctt.
 #[export]
 Hint Resolve glu_univ_elem_per_univ_elem_typ_escape : mctt.
@@ -2027,12 +1963,6 @@ Hint Resolve glu_univ_elem_per_subtyp_typ_escape : mctt.
 Hint Resolve mk_glu_rel_typ_with_sub' : mctt.
 #[export]
 Hint Resolve mk_glu_rel_typ_with_sub'' : mctt.
-#[export]
-Hint Resolve mk_glu_rel_exp_with_sub' : mctt.
-#[export]
-Hint Resolve mk_glu_rel_exp_with_sub'' : mctt.
-#[export]
-Hint Resolve glu_rel_exp_with_sub_implies_glu_rel_typ_with_sub : mctt.
 #[export]
 Hint Resolve glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : mctt.
 #[export] Existing Instance glu_ctx_env_sub_morphism_iff2_Proper.

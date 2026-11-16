@@ -46,26 +46,10 @@ Qed.
 
 Hint Resolve glu_rel_exp_subtyp : mctt.
 
-Lemma glu_rel_exp_conv : forall {Γ M A A' S},
-    Γ ⊩ M : A ->
-    Γ ⊩ A' : S ->
-    type_sort S ->
-    Γ ⊢ A ≈ A' : S ->
-    Γ ⊩ M : A'.
-Proof.
-  intros * HM HA' HS Heq.
-  eapply glu_rel_exp_subtyp; [ exact HM | exact HA' | exact HS |].
-  eapply wf_subtyp_refl; [ exact (glu_rel_exp_to_wf_exp HA') | exact HS | exact Heq ].
-Qed.
-
-Hint Resolve glu_rel_exp_conv : mctt.
-
 End Fixed_GCtx.
 
 #[export]
 Hint Resolve glu_rel_exp_subtyp : mctt.
-#[export]
-Hint Resolve glu_rel_exp_conv : mctt.
 
 (** ** The Rules *)
 
