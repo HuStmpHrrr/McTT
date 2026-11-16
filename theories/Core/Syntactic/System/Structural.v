@@ -2703,15 +2703,10 @@ Proof.
       disappears, and the rule applies at the type the induction hypothesis
       gives. *)
   all: try solve [ push_closed; mauto 3 ].
-  (** With the weakenings pushed in and the lifted ones in the context, most
-      cases are the corresponding rule applied to the induction hypotheses:
-      the rule application is taken by hand, which [eauto] does not reach in
-      time for the wider rules. *)
   (** The subtyping of [Π]s between types of levels: the universe's level
       plays no part, [0] is taken. *)
   all: try solve [ match goal with |- wf_subtyp _ _ _ (a_pi ak_level ak_level _ _) _ =>
                      eapply wf_subtyp_pi with (i := 0); mauto 3 end ].
-  all: try solve [ econstructor; mauto 3 ].
   (** The module rules. *)
   all: try solve [ rewrite ?exp_wk_sub_extend_mod; eapply wf_let_mod;
                    eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left, type_sort_universe, type_sort_prop, type_sort_level, module_body_universe, module_body_prop ].
@@ -2922,6 +2917,12 @@ Proof.
         rewrite !gunit_wk_mk in HU1, HU2 |- *; cbn [tele_wk moddef_wk List.length wk_qn] in HU1, HU2 |- *;
         eapply wf_ext_eq_dm; [ exact (IHx _ _ Hφ) |..]; rewrite ?Hlen in *; eauto
     end ].
+  (** With the weakenings pushed in and the lifted ones in the context, most
+      cases are the corresponding rule applied to the induction hypotheses:
+      the rule application is taken by hand, which [eauto] does not reach in
+      time for the wider rules.  It comes last: on a goal of a rule handled
+      above it fails only after a search of up to 2 s. *)
+  all: try solve [ econstructor; mauto 3 ].
   (** A body unit is its expansion: expansion commutes with weakening. *)
   all: match goal with H0 : forall _ _, _ -> wf_unit_eq _ _ _ (gunit_wk (gu_open _ _) _) _, H1 : wf_wk _ _ _ _ _ |- _ =>
          pose proof (H0 _ _ H1) as HU' end.
@@ -4034,7 +4035,6 @@ Proof.
       plays no part, [0] is taken. *)
   all: try solve [ match goal with |- wf_subtyp _ _ _ (a_pi ak_level ak_level _ _) _ =>
                      eapply wf_subtyp_pi with (i := 0); mauto 3 end ].
-  all: try solve [ econstructor; mauto 3 ].
   (** The module rules.  A local module is lifted over by [q σ] at the
       transported unit. *)
   all: try solve [ rewrite ?exp_sub_sub_extend_mod; eapply wf_let_mod;
@@ -4214,6 +4214,9 @@ Proof.
         rewrite !gunit_sub_mk in HU1, HU2 |- *; cbn [tele_sub moddef_sub List.length sb_qn] in HU1, HU2 |- *;
         eapply wf_ext_eq_dm; [ exact (IHx _ _ Hσ) |..]; rewrite ?Hlen in *; eauto
     end ].
+  (** Most cases are the corresponding rule applied to the induction
+      hypotheses, as for weakening, and last for the same reason. *)
+  all: try solve [ econstructor; mauto 3 ].
   all: match goal with H0 : forall _ _, _ -> wf_unit_eq _ _ _ (gunit_sub (gu_open _ _) _) _, H1 : wf_sub _ _ _ _ _ |- _ =>
          pose proof (H0 _ _ H1) as HU' end.
   all: rewrite !gunit_sub_mk in HU'; rewrite !gunit_sub_mk; cbn [moddef_sub] in HU' |- *.
