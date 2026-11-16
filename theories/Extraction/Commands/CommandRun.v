@@ -2395,6 +2395,7 @@ Section Impl.
 
   (** A module's frame opened, its parameters checked as
       [run_cmd_mod_open] checks them *)
+  #[derive(eliminator=no)]
   Equations mod_open_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (x : string) (pv : bool) (Δ : ctx) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_mod_open x pv Δ) :=
   | ch, s, K, D, B, fs, x, pv, Δ, H with all_assumptions_dec Δ => {
@@ -2539,6 +2540,7 @@ Section Impl.
   (** The frame on top closed, as [run_cmd_close_mod] or
       [run_cmd_close_record] files it; a member's frame is closed by its
       group's run only. *)
+  #[derive(eliminator=no)]
   Equations close_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (x : string) (pv : bool) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_close x pv) :=
   | ch, s, K, D, B, nil, x, pv, H => run_failure (run_error_msg ("internal error: " ++ x ++ " is closed with no frame open"))
@@ -2554,6 +2556,7 @@ Section Impl.
 
   (** A module alias, checked premise by premise as [run_cmd_alias] has
       them. *)
+  #[derive(eliminator=no)]
   Equations alias_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (x : string) (pv : bool) (Δ : ctx) (E : modexp) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_alias x pv Δ E) :=
   | ch, s, K, D, B, fs, x, pv, Δ, E, H with all_assumptions_dec Δ => {
@@ -2721,6 +2724,7 @@ Section Impl.
 
   (** A builtin binding, checked premise by premise: the module expression
       read as a term, its inferred type, then its normal form. *)
+  #[derive(eliminator=no)]
   Equations builtin_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (k : string) (E : modexp) (H : pre ch s K D fs) :
     run_result {B' | post_cmd ch (decode_units s) K D B (decode_stack fs) (core_cmd_builtin k E) (mk_run_state_core (decode_units s) K D B' (decode_stack fs))} :=
@@ -2773,6 +2777,7 @@ Section Impl.
   (** An inductive alias, checked premise by premise: its parameters, the
       module it applies, the module expression, read as a term, its type
       inferred, and whether it is a type former of an inductive type. *)
+  #[derive(eliminator=no)]
   Equations indalias_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (x : string) (pv : bool) (Δ : ctx) (E : modexp) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_inductive_alias x pv Δ E) :=
   | ch, s, K, D, B, fs, x, pv, Δ, E, H with all_assumptions_dec Δ => {
@@ -2819,6 +2824,7 @@ Section Impl.
 
   (** A record alias, checked as an inductive alias is, for a type former
       of a record type. *)
+  #[derive(eliminator=no)]
   Equations recalias_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (x : string) (pv : bool) (Δ : ctx) (E : modexp) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_record_alias x pv Δ E) :=
   | ch, s, K, D, B, fs, x, pv, Δ, E, H with all_assumptions_dec Δ => {
@@ -2880,6 +2886,7 @@ Section Impl.
   (** A mutual definition, checked premise by premise: its kind, its
       parameters, its functions' group ([mdef_group_dec]), then the
       definitions filed. *)
+  #[derive(eliminator=no)]
   Equations mdef_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (b pv : bool) (r : abs_kind) (Δ : ctx) (fns : list raw_fun) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_mdef b pv r Δ fns) :=
   | ch, s, K, D, B, fs, b, pv, r, Δ, nil, H => run_failure (run_error_msg "a mutual definition with no function")
@@ -3025,6 +3032,7 @@ Section Impl.
   (** The declared members [k], [k + 1], … of a group, named [xs]: each
       member's module's commands run in its frame, as [run_ind_members_cons]
       runs them, and the member filed with the body they end with. *)
+  #[derive(eliminator=no)]
   Equations members_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (pv : bool) (R : raw_decl) (pq : qname) (Dd : ind_decl) (k : nat) (xs : list string)
     (H : pre ch s K D fs) (Hp : mems_pre (decode_stack fs) R pq Dd k xs) (HE : head_entry ch (decode_units s) K D (decode_stack fs) pv pq Dd k xs) :
@@ -3284,6 +3292,7 @@ Section Impl.
       instances read back, and the names it generates free; then its
       members, each with its module, by [members_step], and its recursor
       module, if any, by [gen_items_impl]. *)
+  #[derive(eliminator=no)]
   Equations ind_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (pv : bool) (R : raw_decl) (H : pre ch s K D fs) : step_result ch s K D B fs (core_cmd_inductive pv R) :=
   | ch, s, K, D, B, fs, pv, R, H with list_case (raw_decl_members R) => {
@@ -3382,6 +3391,7 @@ Section Impl.
   (** A record: its entry checked with an empty module
       ([record_entry_dec]), its frame opened, its field definitions run in
       it. *)
+  #[derive(eliminator=no)]
   Equations record_open_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (x : string) (pv : bool) (Δ : ctx) (Srt : typ) (fds : list (string * abs_kind * typ)) (H : pre ch s K D fs) :
     step_result ch s K D B fs (core_cmd_record_open x pv Δ Srt fds) :=
@@ -3597,6 +3607,7 @@ Section Impl.
 
   (** *** One Core Command *)
 
+  #[derive(eliminator=no)]
   Equations core_step (ch : list path) (L : loader ch) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
     (c : core_cmd) (H : pre ch s K D fs) : step_result ch s K D B fs c :=
   | ch, L, s, K, D, B, fs, core_cmd_def x b pv κ A oM, H => frames_step H (def_step ch s K D B fs x b pv κ A oM H)
@@ -3718,6 +3729,7 @@ Section Impl.
       core command run by [core_step], then the rest.  Its unfolding
       equations are proved without functional extensionality. *)
   #[local] Unset Equations With Funext.
+  #[derive(eliminator=no)]
   Equations items_impl (ch : list path) (L : loader ch) (its : list cmd_item) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins)
     (fs : fstack) (H : pre ch s K D fs) :
     run_result ({r | fast_res (post_cmds ch (decode_units s) K D B (decode_stack fs) its) r} * certified_log)%type
