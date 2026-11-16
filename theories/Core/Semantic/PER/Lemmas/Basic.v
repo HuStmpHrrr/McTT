@@ -516,30 +516,44 @@ Hint Resolve per_prop_sym per_prop_trans per_proof_sym per_proof_trans per_proof
 #[export] Existing Instance per_univ_elem_morphism_flip_impl_Proper | 0.
 
 (** Rewrite the goal and every hypothesis by each [R1 <~> R2] in context,
-    left to right.  A hypothesis is tried only if its type mentions [R1]:
-    the [setoid_rewrite] would fail on the others, but only after a search,
-    and a context PER's goals carry a hundred hypotheses and a dozen
-    equivalences. *)
+    left to right, the most recent hypothesis first.  A hypothesis is
+    visited only if its type mentions [R1]: the [setoid_rewrite] would fail
+    on the others, but only after a search, and a context PER's goals carry
+    a hundred hypotheses and a dozen equivalences.  Each visited hypothesis
+    is marked, so it is rewritten, or its failing rewrite tried, once.  A
+    hypothesis an enclosing tactic has marked is skipped. *)
 Ltac rewrite_relation_equivalence_left :=
   repeat match goal with
     | H : ?R1 <~> ?R2 |- _ =>
         try setoid_rewrite H;
-        (on_all_hyp: fun H' => assert_fails (unify H H');
-                                lazymatch type of H' with context [R1] => idtac end;
-                                unmark H; setoid_rewrite H in H');
+        repeat match goal with
+          | H' : context [R1] |- _ =>
+              lazymatch type of H' with __mark__ _ _ => fail | _ => idtac end;
+              assert_fails (unify H H');
+              (** Marked and unmarked, its type loses its casts, through
+                  which [setoid_rewrite] finds nothing *)
+              mark_with H' 0; unmark H';
+              (try setoid_rewrite H in H'); mark_with H' 0
+          end;
+        unmark_all_with 0;
         let T := type of H in
         fold (id T) in H
     end; unfold id in *.
 
-(** The same, right to left: a hypothesis is tried only if its type
+(** The same, right to left: a hypothesis is visited only if its type
     mentions [R2]. *)
 Ltac rewrite_relation_equivalence_right :=
   repeat match goal with
     | H : ?R1 <~> ?R2 |- _ =>
         try setoid_rewrite <- H;
-        (on_all_hyp: fun H' => assert_fails (unify H H');
-                                lazymatch type of H' with context [R2] => idtac end;
-                                unmark H; setoid_rewrite <- H in H');
+        repeat match goal with
+          | H' : context [R2] |- _ =>
+              lazymatch type of H' with __mark__ _ _ => fail | _ => idtac end;
+              assert_fails (unify H H');
+              mark_with H' 0; unmark H';
+              (try setoid_rewrite <- H in H'); mark_with H' 0
+          end;
+        unmark_all_with 0;
         let T := type of H in
         fold (id T) in H
     end; unfold id in *.
