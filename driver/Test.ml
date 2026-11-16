@@ -5468,6 +5468,57 @@ let%expect_test "a mutual definition misses a member" =
       the group has 2 members, the definition 1 function
     |}]
 
+(* A group of two members, [T] and [F], for the mutual definitions into
+   [Prop] below. *)
+let group_t_f =
+  "inductive T : Type@0 where | leaf | node (f : F) \
+   with F : Type@0 where | nil | cons (t : T) (f : F) end "
+
+let%expect_test "a mutual definition into Prop is a proof by the group's eliminator" =
+  let _ = main_of_body (group_t_f ^
+    "mutual def okT (t : T) : Nat := | leaf => 0 | node f, h => h \
+     with okF (f : F) : Nat := | nil => 0 | cons t f, ht hf => ht end \
+     mutual def pT (t : T) : ⊤ := | leaf => true | node f, h => h \
+     with pF (f : F) : ⊤ := | nil => true | cons t f, ht hf => ht end \
+     eval okT (T.node (F.cons T.leaf F.nil)) \
+     eval pT (T.node (F.cons T.leaf F.nil))") in
+  [%expect {|
+    Evaluate okT (T.node (F.cons T.leaf F.nil)) --> 0 : ℕ
+    Evaluate pT (T.node (F.cons T.leaf F.nil))
+      --> pT (T.node (F.cons T.leaf F.nil)) : ⊤
+    |}]
+
+let%expect_test "an abstract mutual definition into Prop" =
+  let _ = main_of_body (group_t_f ^
+    "abstract mutual def pT (t : T) : ⊤ := | leaf => true | node f, h => h \
+     with pF (f : F) : ⊤ := | nil => true | cons t f, ht hf => ht end \
+     def q : ⊤ := pF (F.cons T.leaf F.nil) end \
+     eval q") in
+  [%expect {| Evaluate q --> q : ⊤ |}]
+
+let%expect_test "the results of a mutual definition are of one kind" =
+  let _ = main_of_body (group_t_f ^
+    "mutual def pT (t : T) : ⊤ := | leaf => true | node f, h => h \
+     with okF (f : F) : Nat := | nil => 0 | cons t f, ht hf => hf end") in
+  [%expect {|
+    Error: the body of pT,
+      λ (x1 : T)
+        → elim x1
+          at (x2 : T) → ⊤
+          | leaf ⇒ true
+          | node x3, x4 ⇒ x4
+          with (x5 : F) → ℕ
+          | nil ⇒ 0
+          | cons x6 x7, x8 x9 ⇒ x9
+          end, is not of type ∀ (x1 : T) → ⊤
+    |}]
+
+let%expect_test "the results of a mutual definition are no levels" =
+  let _ = main_of_body (group_t_f ^
+    "mutual def lT (t : T) : Level := | leaf => 0l | node f, h => h \
+     with lF (f : F) : Level := | nil => 0l | cons t f, ht hf => ht end") in
+  [%expect {| Error: the results of a mutual definition are levels: no level is computed by an eliminator |}]
+
 let%expect_test "a nested occurrence is eliminated at its view's block" =
   let _ = main_of_body
     "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \

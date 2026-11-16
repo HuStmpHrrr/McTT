@@ -120,19 +120,21 @@ Definition mdef_blocks (k nm : nat) (fs : list raw_fun) (ms : list nat) : list e
                      end)
     (List.seq 0 nm).
 
-(** The definitions filed: each function's name, type and term.  The
-    eliminator of the group [D] at [pq] carries the uniform parameters
-    [Us], moved under the function's non-uniform parameters and its
-    scrutinee. *)
-Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs : list raw_fun) (ms : list nat) :
+(** The definitions filed: each function's name, type and term, at the
+    kind [r] of the eliminator.  The eliminator of the group [D] at [pq]
+    carries the uniform parameters [Us], moved under the function's
+    non-uniform parameters and its scrutinee.  Each type is a [Π] into
+    the result's kind: a type of functions when [r] is relevant, a
+    universal proposition ([∀]) when it is propositional. *)
+Definition mdef_defs (r : abs_kind) (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs : list raw_fun) (ms : list nat) :
     list (string * typ * exp) :=
   List.map (fun fm =>
               let f := fst fm in
               let k := S (List.length (raw_fun_nparams f)) in
-              (raw_fun_name f, ctx_pi Δ (ctx_pi (raw_fun_nparams f) (a_pi ak_relevant ak_relevant (raw_fun_scrut f) (raw_fun_res f))),
+              (raw_fun_name f, ctx_pi_at r Δ (ctx_pi_at r (raw_fun_nparams f) (a_pi ak_relevant r (raw_fun_scrut f) (raw_fun_res f))),
                ctx_fn Δ (ctx_fn (raw_fun_nparams f)
                            (a_fn (raw_fun_scrut f)
-                              (a_elim ak_relevant pq (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
+                              (a_elim r pq (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
                                  (mdef_blocks k (ind_nblk D) fs ms) (a_var 0))))))
     (List.combine fs ms).
 

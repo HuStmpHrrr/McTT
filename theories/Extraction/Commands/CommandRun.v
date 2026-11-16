@@ -43,7 +43,7 @@ From Mctt.Core.Consequences Require Import RecordRuns.
 From Mctt.Extraction Require Import Context.Lookup Evaluation.NbE Checker.TypeCheck Commands.GlobalCheck
   Commands.IndDecl Commands.RecordDecl Checker.MemberType Commands.Opens Commands.Privacy.
 From Mctt.Extraction Require Import Commands.MdefGroup Commands.TypedElab Context.FastDesc Context.LookupTwins
-  Context.FastState Commands.Command Commands.NoLevelDec.
+  Context.FastState Commands.Command Commands.NoLevelDec Checker.IndCheck.
 Import Syntax_Notations GlobalCtx_Notations.
 
 Local Open Scope string_scope.
@@ -715,18 +715,19 @@ Section Impl.
   (** A mutual definition, with the premises of [run_cmd_mdef] at the
       restriction: its definitions are filed on the stack [Ξ'] their run
       ends at. *)
-  Lemma mdef_ok {ch Θ K D B Ξ Ξ' b pv Δ f0 fs pq m0 Ps Dd Us ms} :
+  Lemma mdef_ok {ch Θ K D B Ξ Ξ' b pv r Δ f0 fs pq m0 Ps Dd Us ms} :
+    motive_kind r ->
     all_assumptions Δ ->
     ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
     mdef_group (gds_restrict D Θ) Ξ Δ (raw_fun_head_of f0) (List.map raw_fun_head_of fs) pq m0 Ps Dd Us ms ->
-    mdefs_run (gds_restrict D Θ) b pv (mdef_defs pq Dd Us Δ (f0 :: fs) ms) Ξ Ξ' ->
-    post_cmd ch Θ K D B Ξ (core_cmd_mdef b pv Δ (f0 :: fs)) (mk_run_state_core Θ K D B Ξ').
+    mdefs_run (gds_restrict D Θ) b pv r (mdef_defs r pq Dd Us Δ (f0 :: fs) ms) Ξ Ξ' ->
+    post_cmd ch Θ K D B Ξ (core_cmd_mdef b pv r Δ (f0 :: fs)) (mk_run_state_core Θ K D B Ξ').
   Proof.
-    intros Htel HΔ Hgp Hr; apply same_post; intros ΘR RbR Hli.
+    intros Hk Htel HΔ Hgp Hr; apply same_post; intros ΘR RbR Hli.
     pose proof (gds_equiv_sym _ _ (unit_invariant_equiv Hli)) as Heq; pose proof (ui_wf _ _ _ _ _ _ Hli) as HΞ.
     eapply run_cmd_mdef;
-      [ exact Htel | exact (equiv_ctx _ _ _ _ Heq HΞ HΔ) | exact (equiv_mdef_group _ _ _ _ _ _ _ _ _ _ _ _ Heq HΞ Hgp)
-      | exact (equiv_mdefs_run _ _ _ _ _ _ _ Heq HΞ Hr) ].
+      [ exact Hk | exact Htel | exact (equiv_ctx _ _ _ _ Heq HΞ HΔ) | exact (equiv_mdef_group _ _ _ _ _ _ _ _ _ _ _ _ Heq HΞ Hgp)
+      | exact (equiv_mdefs_run _ _ _ _ _ _ _ _ Hk Heq HΞ Hr) ].
   Qed.
 
   (** *** Loads *)
@@ -2866,23 +2867,26 @@ Section Impl.
   Proof. rewrite cmd_view_deps; exact (pre_gctx (pre_unit_invariant _ _ _ _ _ H)). Qed.
 
   (** A mutual definition's definitions filed, fast *)
-  Lemma mdef_res {ch s K D B fs b pv Δ f0 fs0 pq m0 Ps Dd Us ms fs'} : all_assumptions Δ ->
+  Lemma mdef_res {ch s K D B fs b pv r Δ f0 fs0 pq m0 Ps Dd Us ms fs'} : motive_kind r -> all_assumptions Δ ->
       ⊢ gds_restrict D (decode_units s) ⍮ decode_stack fs ⍮ Δ ++ gs_tele (decode_stack fs) ->
       mdef_group (gds_restrict D (decode_units s)) (decode_stack fs) Δ (raw_fun_head_of f0) (List.map raw_fun_head_of fs0) pq m0 Ps Dd Us ms ->
-      mdefs_filed (cmd_view s D) b pv (mdef_defs pq Dd Us Δ (f0 :: fs0) ms) fs fs' ->
-      post_cmd ch (decode_units s) K D B (decode_stack fs) (core_cmd_mdef b pv Δ (f0 :: fs0)) (mk_run_state_core (decode_units s) K D B (decode_stack fs')) /\
+      mdefs_filed (cmd_view s D) b pv r (mdef_defs r pq Dd Us Δ (f0 :: fs0) ms) fs fs' ->
+      post_cmd ch (decode_units s) K D B (decode_stack fs) (core_cmd_mdef b pv r Δ (f0 :: fs0)) (mk_run_state_core (decode_units s) K D B (decode_stack fs')) /\
       frames_rep (gds_restrict D (decode_units s)) fs'.
   Proof.
-    intros Htel HΔ Hgp [Hok Hv Hr]; rewrite cmd_view_deps in Hr, Hv; split; [| exact (mk_frames_rep _ _ (proj1 (fctx_ok_frames _ _ Hok)) Hv) ].
-    exact (mdef_ok Htel HΔ Hgp Hr).
+    intros Hk Htel HΔ Hgp [Hok Hv Hr]; rewrite cmd_view_deps in Hr, Hv; split; [| exact (mk_frames_rep _ _ (proj1 (fctx_ok_frames _ _ Hok)) Hv) ].
+    exact (mdef_ok Hk Htel HΔ Hgp Hr).
   Qed.
 
-  (** A mutual definition, checked premise by premise: its parameters, its
-      functions' group ([mdef_group_dec]), then the definitions filed. *)
+  (** A mutual definition, checked premise by premise: its kind, its
+      parameters, its functions' group ([mdef_group_dec]), then the
+      definitions filed. *)
   Equations mdef_step (ch : list path) (s : funits) (K : unit_closure_map) (D : list path) (B : builtins) (fs : fstack)
-    (b pv : bool) (Δ : ctx) (fns : list raw_fun) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_mdef b pv Δ fns) :=
-  | ch, s, K, D, B, fs, b, pv, Δ, nil, H => run_failure (run_error_msg "a mutual definition with no function")
-  | ch, s, K, D, B, fs, b, pv, Δ, f0 :: fns, H with all_assumptions_dec Δ => {
+    (b pv : bool) (r : abs_kind) (Δ : ctx) (fns : list raw_fun) (H : pre ch s K D fs) : frames_result ch s K D B fs (core_cmd_mdef b pv r Δ fns) :=
+  | ch, s, K, D, B, fs, b, pv, r, Δ, nil, H => run_failure (run_error_msg "a mutual definition with no function")
+  | ch, s, K, D, B, fs, b, pv, r, Δ, f0 :: fns, H with motive_kind_dec r => {
+    | right _ => run_failure (run_error_msg "the results of a mutual definition are levels: no level is computed by an eliminator")
+    | left Hk with all_assumptions_dec Δ => {
     | right _ => run_failure (run_error_msg "parameters of a mutual definition that are not assumptions")
     | left Htel with check_ctx (cmd_F B H) (lvd _) (pre_gctx_f B H) (Δ ++ fc_tele (cmd_F B H)) => {
       | right _ => run_failure (tele_blame_error fs (find_tele_blame (cmd_F B H) (lvd _) (fc_tele (cmd_F B H)) (pre_ctx_f B H) Δ)
@@ -2890,11 +2894,11 @@ Section Impl.
       | left HΔ with mdef_group_dec (cmd_F B H) (lvd _) (pre_gctx_f B H) Δ (raw_fun_head_of f0) (List.map raw_fun_head_of fns) => {
         | inr e => run_failure (mdef_group_why_error e)
         | inl (exist _ (pq, m0, Ps, Dd, Us, ms) Hgp)
-            with mdefs_dec lvd (cmd_view s D) b pv (mdef_defs pq Dd Us Δ (f0 :: fns) ms) fs (pre_fctx_ok H) (pre_gctx_view H)
+            with mdefs_dec lvd (cmd_view s D) b pv r Hk (mdef_defs r pq Dd Us Δ (f0 :: fns) ms) fs (pre_fctx_ok H) (pre_gctx_view H)
                    (pre_frame_values _ _ _ _ _ H) => {
           | inr (exist _ e _) => run_failure (mdefs_why_error e)
           | inl (exist _ fs' Hm) =>
-              run_success (exist _ fs' (mdef_res Htel (cmd_ctx B H Δ HΔ) (cmd_mdef_group B H _ _ _ _ _ _ _ _ _ Hgp) Hm)) } } } }.
+              run_success (exist _ fs' (mdef_res Hk Htel (cmd_ctx B H Δ HΔ) (cmd_mdef_group B H _ _ _ _ _ _ _ _ _ Hgp) Hm)) } } } } }.
 
   (** *** Generated Commands
 
@@ -3643,7 +3647,7 @@ Section Impl.
     | left HM => run_success (exist _ _ (state_res H (eval_ok (cmd_exp B H nil M A HM))), eval_log (cmd_F B H) (pre_gctx_f B H) M A HM)
     | right _ => run_failure (eval_error (cmd_F B H) (pre_ctx_f B H) M A) }
   | ch, L, s, K, D, B, fs, core_cmd_inductive pv R, H => ind_step ch s K D B fs pv R H
-  | ch, L, s, K, D, B, fs, core_cmd_mdef b pv Δ fns, H => frames_step H (mdef_step ch s K D B fs b pv Δ fns H)
+  | ch, L, s, K, D, B, fs, core_cmd_mdef b pv r Δ fns, H => frames_step H (mdef_step ch s K D B fs b pv r Δ fns H)
   | ch, L, s, K, D, B, fs, core_cmd_builtin k E, H with builtin_step ch s K D B fs k E H => {
     | run_failure e => run_failure e
     | run_success Hp => run_success (builtins_ok H Hp, log_nil) }
@@ -4299,14 +4303,15 @@ Section Impl.
   Qed.
 
   (** A mutual definition the judgment runs, the executable runs. *)
-  Lemma mdef_complete : forall ch B RbR ΘR b pv Δ fns B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
+  Lemma mdef_complete : forall ch B RbR ΘR b pv r Δ fns B' RbR' ΘR' Ξ' s K D fs (H : pre ch s K D fs),
       unit_invariant ch (decode_units s) K D ΘR (decode_stack fs) ->
-      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_mdef b pv Δ fns ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
-      exists r, mdef_step ch s K D B fs b pv Δ fns H = run_success r.
+      ΘR ⍮ decode_stack fs ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ core_cmd_mdef b pv r Δ fns ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
+      exists res, mdef_step ch s K D B fs b pv r Δ fns H = run_success res.
   Proof.
-    intros * Hli Hr; inversion Hr as [| | | | | | | | | | ? ? ? ? ? ? ? ? f0 fs0 pq m0 Ps Dd Us ms Ξ1 Htel HΔ Hgp Hrun | | | | |]; subst.
+    intros * Hli Hr; inversion Hr as [| | | | | | | | | | ? ? ? ? ? ? ? ? ? f0 fs0 pq m0 Ps Dd Us ms Ξ1 Hk Htel HΔ Hgp Hrun | | | | |]; subst.
     pose proof (unit_invariant_equiv Hli) as He; pose proof (unit_invariant_restrict_gctx Hli) as Hgr.
     simp mdef_step.
+    destruct (motive_kind_dec r) as [Hk' | Hk']; [| contradiction ]; simp mdef_step.
     destruct (all_assumptions_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp mdef_step.
     match goal with |- context [check_ctx ?f ?l ?a ?b] => destruct (check_ctx f l a b) as [HΔ' | HΔ'] end;
       [| exfalso; apply HΔ'; cmd_goal; exact (equiv_ctx _ _ _ _ He Hgr HΔ) ].
@@ -4318,9 +4323,9 @@ Section Impl.
       destruct (mdef_group_dec_complete _ l Hg _ _ _ _ _ _ _ _ _ Hgp') as [Hp E]; rewrite E
     end.
     simp mdef_step.
-    destruct (mdefs_dec _ _ _ _ _ _ _ _ _) as [[fs' [Hok' Hv' Hr']] | [e Hn]].
+    destruct (mdefs_dec _ _ _ _ _ _ _ _ _ _ _) as [[fs' [Hok' Hv' Hr']] | [e Hn]].
     - simp mdef_step; eexists; reflexivity.
-    - exfalso; apply (Hn Ξ'); rewrite cmd_view_deps; exact (equiv_mdefs_run _ _ _ _ _ _ _ He Hgr Hrun).
+    - exfalso; apply (Hn Ξ'); rewrite cmd_view_deps; exact (equiv_mdefs_run _ _ _ _ _ _ _ _ Hk He Hgr Hrun).
   Qed.
 
   (** The entries an open generates, which the judgment declares, the

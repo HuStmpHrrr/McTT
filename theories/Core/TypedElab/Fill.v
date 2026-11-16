@@ -471,11 +471,11 @@ Section Fill.
     ; fill_raw_fun_head_scrut : fill_exp (raw_fun_head_nparams h ++ Γ) (surface_raw_fun_scrut f) (raw_fun_head_scrut h) }.
 
   (** A function [f] of the member [m] of the group [D] at [pq], at the
-      uniform parameters [Us] and the motives [As], over [Γ], its head
-      filled to [h], filled to [f']: the result in the motive's context,
-      the clauses in their branches', as [alg_type_infer_elim] reads
-      them. *)
-  Record fill_raw_fun_body (pq : qname) (D : ind_decl) (Us : list exp) (Γ : ctx) (As : list exp)
+      eliminator's kind [r], the uniform parameters [Us] and the motives
+      [As], over [Γ], its head filled to [h], filled to [f']: the result in
+      the motive's context, the clauses in their branches' at [r], as
+      [alg_type_infer_elim] reads them. *)
+  Record fill_raw_fun_body (r : abs_kind) (pq : qname) (D : ind_decl) (Us : list exp) (Γ : ctx) (As : list exp)
       (f : surface_raw_fun) (h : raw_fun_head) (m : nat) (f' : raw_fun) : Prop := mk_fill_raw_fun_body
     { (** The head is the filled one *)
       fill_raw_fun_body_head : raw_fun_head_of f' = h
@@ -488,7 +488,7 @@ Section Fill.
       (** The clauses, each in its constructor's branch context, are
           filled *)
     ; fill_raw_fun_body_clauses : forall Mm, ind_member D m = Some Mm ->
-        fill_brs ak_relevant Γ pq D Mm Us As (surface_raw_fun_clauses f) (raw_fun_clauses f') }.
+        fill_brs r Γ pq D Mm Us As (surface_raw_fun_clauses f) (raw_fun_clauses f') }.
 
   (** A declared member [Mr] of a group whose filled form is [R'], filled
       to [Mr']: its parameters and sort over the uniform parameters, its
@@ -573,16 +573,22 @@ Section Fill.
   (** A mutual definition: its telescope; its functions' heads, from
       which the group is read as [run_cmd_mdef] reads it; then their
       results and clauses, at the group, at the motives of the blocks of
-      the filled functions *)
-  | fill_cmd_mdef : forall b pv Δ Δ' f0 fs h0 hs f0' fs' pq m0 Ps D Us ms,
+      the filled functions, at the kind of the sort the first function's
+      filled result infers to, in the context of its member's motive
+      ([elim_mctx]), as [fill_exp_elim] reads an eliminator's kind *)
+  | fill_cmd_mdef : forall b pv Δ Δ' f0 fs h0 hs f0' fs' pq m0 Ps D Us ms mf Mf W,
       fill_tele (gs_tele Ξ) Δ Δ' ->
       Forall2 (fill_raw_fun_head (Δ' ++ gs_tele Ξ)) (f0 :: fs) (h0 :: hs) ->
       mdef_group Θ Ξ Δ' h0 hs pq m0 Ps D Us ms ->
-      Forall2 (fun fhm f' => fill_raw_fun_body pq D Us (Δ' ++ gs_tele Ξ)
+      List.hd_error ms = Some mf ->
+      ind_member D mf = Some Mf ->
+      ⊢ Θ ⍮ Ξ ⍮ elim_mctx pq D mf Mf Us ++ Δ' ++ gs_tele Ξ ->
+      elim_mctx pq D mf Mf Us ++ Δ' ++ gs_tele Ξ ⊢a raw_fun_res f0' ⟹ W ->
+      Forall2 (fun fhm f' => fill_raw_fun_body (sort_abs_kind W) pq D Us (Δ' ++ gs_tele Ξ)
                                (blocks_motives (mdef_blocks 0 (ind_nblk D) (f0' :: fs') ms))
                                (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f')
         (List.combine (List.combine (f0 :: fs) (h0 :: hs)) ms) (f0' :: fs') ->
-      fill_cmd (surface_cmd_mdef b pv Δ (f0 :: fs)) (ci_core (core_cmd_mdef b pv Δ' (f0' :: fs')) :: nil)
+      fill_cmd (surface_cmd_mdef b pv Δ (f0 :: fs)) (ci_core (core_cmd_mdef b pv (sort_abs_kind W) Δ' (f0' :: fs')) :: nil)
   (** A record declaration: its parameters, its sort over them, its
       fields over them and the fields before; its frame opened, its
       with-area as written, its frame closed *)

@@ -1170,19 +1170,21 @@ Proof. intros * [] pv; eapply wf_gentry_ind_nil; eassumption. Qed.
     files ([mdef_defs]) are in [Translations]; they are filed in order,
     each checked as a definition is. *)
 
-(** [mdefs_run Θ b pv ds Ξ Ξ']: filing the definitions [ds] in order in
-    [Ξ], each checked at its type as [run_cmd_def] does, gives [Ξ']. *)
-Inductive mdefs_run (Θ : gdeps) (b pv : bool) : list (string * typ * exp) -> gstack -> gstack -> Prop :=
+(** [mdefs_run Θ b pv r ds Ξ Ξ']: filing the definitions [ds] in order in
+    [Ξ], each checked at its type, of the kind [r], as [run_cmd_def]
+    does, gives [Ξ']. *)
+Inductive mdefs_run (Θ : gdeps) (b pv : bool) (r : abs_kind) : list (string * typ * exp) -> gstack -> gstack -> Prop :=
 (** No definition left *)
-| mdefs_nil : forall Ξ, mdefs_run Θ b pv nil Ξ Ξ
+| mdefs_nil : forall Ξ, mdefs_run Θ b pv r nil Ξ Ξ
 (** The next definition, checked and filed, then the rest.  Its type is a
-    [Π] into a type of a universe ([mdef_defs]), so it is relevant. *)
+    [Π] into the kind of the eliminator ([mdef_defs]), so it is of the
+    kind [r]. *)
 | mdefs_cons : forall x A M (i : nat) ds Ξ Ξ',
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i ->
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
     gs_fresh x Ξ ->
-    mdefs_run Θ b pv ds (gs_add x (gs_def b pv ak_relevant Ξ A M) Ξ) Ξ' ->
-    mdefs_run Θ b pv ((x, A, M) :: ds) Ξ Ξ'.
+    mdefs_run Θ b pv r ds (gs_add x (gs_def b pv r Ξ A M) Ξ) Ξ' ->
+    mdefs_run Θ b pv r ((x, A, M) :: ds) Ξ Ξ'.
 
 (** ** Merging Filed Units
 
@@ -1416,15 +1418,18 @@ Section Semantics.
       run_ind_members ch B Rb Θ Ξ pv R (ind_qname Ξ (raw_member_name Mr0)) D 0 (List.map raw_member_name (raw_decl_members R)) B' Rb' Θ' Ξ' ->
       Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ⊢[ch] List.map ci_core (rec_cmds Θ' Ξ' R (ind_qname Ξ (raw_member_name Mr0)) D) ⇝* Θ'' ⍮ Ξ'' ⍮ B'' ⍮ Rb'' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_inductive pv R ⇝ Θ'' ⍮ Ξ'' ⍮ B'' ⍮ Rb''
-  (** A mutual definition: the group, its uniform parameters and each
-      function's member ([mdef_group]), and the definitions filed in order,
-      each checked as a definition is. *)
-  | run_cmd_mdef : forall ch B Rb Θ Ξ b pv Δ f0 fs pq m0 Ps D Us ms Ξ',
+  (** A mutual definition: the kind [r] of its eliminator, a motive's
+      ([motive_kind]: into a universe or into [Prop], never a type of
+      levels); the group, its uniform parameters and each function's
+      member ([mdef_group]); and the definitions filed in order, at the
+      kind [r], each checked as a definition is. *)
+  | run_cmd_mdef : forall ch B Rb Θ Ξ b pv r Δ f0 fs pq m0 Ps D Us ms Ξ',
+      motive_kind r ->
       all_assumptions Δ ->
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
       mdef_group Θ Ξ Δ (raw_fun_head_of f0) (List.map raw_fun_head_of fs) pq m0 Ps D Us ms ->
-      mdefs_run Θ b pv (mdef_defs pq D Us Δ (f0 :: fs) ms) Ξ Ξ' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_mdef b pv Δ (f0 :: fs) ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
+      mdefs_run Θ b pv r (mdef_defs r pq D Us Δ (f0 :: fs) ms) Ξ Ξ' ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] core_cmd_mdef b pv r Δ (f0 :: fs) ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** [builtin natural := X]: [X], read as a term, is in normal form the
       type former of the first member of a group, at no argument, with the
       shape of the natural numbers, in [Type@0]; its binding is merged in
@@ -1701,7 +1706,7 @@ Proof.
   split; reflexivity.
 Qed.
 
-Lemma mdefs_run_functional : forall Θ b pv ds Ξ Ξ1, mdefs_run Θ b pv ds Ξ Ξ1 -> forall Ξ2, mdefs_run Θ b pv ds Ξ Ξ2 -> Ξ1 = Ξ2.
+Lemma mdefs_run_functional : forall Θ b pv r ds Ξ Ξ1, mdefs_run Θ b pv r ds Ξ Ξ1 -> forall Ξ2, mdefs_run Θ b pv r ds Ξ Ξ2 -> Ξ1 = Ξ2.
 Proof.
   induction 1 as [| x A M i ds Ξ Ξ' HA HM Hfr Hrun IH]; intros Ξ2 Hother; inversion Hother; subst; [ reflexivity |].
   auto.
@@ -2437,12 +2442,6 @@ Proof.
     [ exact HA | exact Hl | intros ? [= <-]; exact HM | discriminate ].
 Qed.
 
-(** A relevant definition, of a type of a large universe. *)
-Lemma add_relevant_def_wf : forall Θ Ξ x b pv A M (i : nat),
-    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> gs_fresh x Ξ ->
-    ⊢ᵍ Θ ⍮ gs_add x (gs_def b pv ak_relevant Ξ A M) Ξ.
-Proof. intros * HΞ HA HM Hfr; exact (add_def_wf _ _ _ _ _ ak_relevant _ _ i HΞ HA ltac:(discriminate) HM Hfr). Qed.
-
 Lemma add_axiom_wf : forall Θ Ξ x b pv r A (i : nat),
     ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i -> r <> ak_level -> gs_fresh x Ξ ->
     ⊢ᵍ Θ ⍮ gs_add x (gs_axiom b pv r Ξ A) Ξ.
@@ -2545,19 +2544,29 @@ Proof.
 Qed.
 
 (** The definitions of a mutual definition, filed in order, likewise. *)
-Lemma mdefs_run_wf : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ'.
+(** A definition of a motive's kind, of a type of a large universe or a
+    proposition, filed. *)
+Lemma add_motive_def_wf : forall Θ Ξ x b pv r A M (i : nat),
+    motive_kind r -> ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> gs_fresh x Ξ ->
+    ⊢ᵍ Θ ⍮ gs_add x (gs_def b pv r Ξ A M) Ξ.
 Proof.
-  induction 1; intros HΞ; [ exact HΞ |].
-  apply IHmdefs_run; eapply add_relevant_def_wf; eassumption.
+  intros * Hk HΞ HA HM Hfr; eapply add_def_wf; [ exact HΞ | exact HA | | exact HM | exact Hfr ].
+  intros ->; inversion Hk.
 Qed.
 
-Lemma mdefs_run_shape : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> gs_shape Ξ' = gs_shape Ξ.
+Lemma mdefs_run_wf : forall Θ b pv r ds Ξ Ξ', motive_kind r -> mdefs_run Θ b pv r ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ'.
+Proof.
+  intros * Hk; induction 1; intros HΞ; [ exact HΞ |].
+  apply IHmdefs_run; eapply add_motive_def_wf; eassumption.
+Qed.
+
+Lemma mdefs_run_shape : forall Θ b pv r ds Ξ Ξ', mdefs_run Θ b pv r ds Ξ Ξ' -> gs_shape Ξ' = gs_shape Ξ.
 Proof. induction 1; rewrite ?IHmdefs_run, ?gs_add_params; reflexivity. Qed.
 
-Lemma mdefs_run_ind_lookup : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ ->
+Lemma mdefs_run_ind_lookup : forall Θ b pv r ds Ξ Ξ', motive_kind r -> mdefs_run Θ b pv r ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ ->
     forall p D0, ind_lookup Θ Ξ p = Some D0 -> ind_lookup Θ Ξ' p = Some D0.
 Proof.
-  induction 1; intros HΞ p0 D0 Hl; [ exact Hl |]; apply IHmdefs_run; [ eapply add_relevant_def_wf; eassumption |].
+  intros * Hk; induction 1; intros HΞ p0 D0 Hl; [ exact Hl |]; apply IHmdefs_run; [ eapply add_motive_def_wf; eassumption |].
   apply ind_lookup_add; assumption.
 Qed.
 
@@ -2681,7 +2690,7 @@ Section WellFormed.
         end;
       repeat match goal with
         | H : gens_run _ _ _ _ |- _ => pose proof (gs_bottom_shape _ _ (gens_run_shape _ _ _ _ H)); clear H
-        | H : mdefs_run _ _ _ _ _ _ |- _ => pose proof (gs_bottom_shape _ _ (mdefs_run_shape _ _ _ _ _ _ H)); clear H
+        | H : mdefs_run _ _ _ _ _ _ _ |- _ => pose proof (gs_bottom_shape _ _ (mdefs_run_shape _ _ _ _ _ _ _ H)); clear H
         end;
       unfold gs_push, gs_push_record, gs_push_ind in *;
       repeat (rewrite gs_bottom_cons in * by assumption);
@@ -3074,9 +3083,9 @@ Section WellFormed.
       repeat split; [ exact H2 | exact (proj1 Hc2) | exact (proj2 Hc2) | eapply gds_sub_trans; eassumption
                     | eapply builtins_le_trans; eassumption | exact Hst2 ].
     - (* a mutual definition: its definitions, each checked as a definition is *)
-      intros * _ _ _ Hd HΞ Hc Hst.
-      repeat split; [ exact (mdefs_run_wf _ _ _ _ _ _ Hd HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
-                    | apply gds_sub_refl | apply builtins_le_refl | exact (stack_in_shape _ _ _ (mdefs_run_shape _ _ _ _ _ _ Hd) Hst) ].
+      intros * Hk _ _ _ Hd HΞ Hc Hst.
+      repeat split; [ exact (mdefs_run_wf _ _ _ _ _ _ _ Hk Hd HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
+                    | apply gds_sub_refl | apply builtins_le_refl | exact (stack_in_shape _ _ _ (mdefs_run_shape _ _ _ _ _ _ _ Hd) Hst) ].
     - (* a builtin binding: nothing filed, and its binding merged in *)
       intros * _ _ _ _ _ _ _ _ Hb HΞ Hc Hst.
       repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | exact (builtins_bind_nat_le _ _ _ Hb)
@@ -3291,7 +3300,7 @@ Section WellFormed.
       destruct (proj2 (proj2 (proj2 run_wf)) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HΞ Hc Hst Hu) as (H1 & Hc1 & _ & _ & Hst1).
       destruct (IHm HΞ Hc Hst Hu Hb HR) as [Hb1 HR1].
       exact (IHr H1 Hc1 Hst1 Hb1 HR1).
-    - intros * _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
+    - intros * Hk _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply mdefs_run_ind_lookup; eassumption.
     - (* a binding: of a type read here *)
       intros ch B Rb B' Θ Ξ H M W p D z0 s0 _ _ _ _ _ Hs Ho Hso Hbd _ _ _ Hb HR; split; [| exact HR ].

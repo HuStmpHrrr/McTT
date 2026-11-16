@@ -452,7 +452,13 @@ conditions, not checks the evaluator runs.
   `raw_decl_filed_case`).
 - **Mutual definitions.** A mutual definition has one function per member
   with a block (`mdef_group_count : length ms = ind_nblk D`, `mdef_member`
-  over `ind_block_members D`). A record view has no function.
+  over `ind_block_members D`). A record view has no function. The command
+  `core_cmd_mdef b pv r Δ fs` carries the eliminator's kind `r`, filled
+  from the sort of the first function's result (`fill_cmd_mdef`, as
+  `fill_exp_elim` fills a direct eliminator's tag). `run_cmd_mdef` asks
+  `motive_kind r`, so a mutual definition goes into a universe or into
+  `Prop` (each function then a proof of a `∀`), never into a type of levels.
+  `mdef_defs r` files each function at `ctx_pi_at r` with `a_elim r`.
 - **Termination of the search** (`ViewsCluster.v`, `ViewsFound.v`).
   - `NestingOrder.grp_step_record` is a nesting step out of a record type into
     a field's type, at elements of the fields before. `per_univ_nest_acc`

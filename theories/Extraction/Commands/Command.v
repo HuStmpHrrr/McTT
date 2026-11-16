@@ -1000,22 +1000,31 @@ Lemma closed_typed {Θ Ξ Γ M A} {i : nat} : Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i 
     Θ ⍮ Ξ ⍮ nil ⊢ ctx_fn Γ M : ctx_pi Γ A /\ exists j : nat, Θ ⍮ Ξ ⍮ nil ⊢ ctx_pi Γ A : Typeω@j.
 Proof. intros HA HM; rewrite <- (app_nil_r Γ) in HA, HM; exact (under_typed HA HM). Qed.
 
-(** "Is [A] a type of a large universe?", the level found: the sort its
-    type infers ([check_type]) is a universe.  None at another kind, since
-    a type is of one kind only ([kind_sort_unique]): [n = 0] is no type
-    of a universe. *)
+(** "Is [A] a type of the kind [κ]?", the level found: the sort its type
+    infers ([check_type]) is that of [κ].  None at another kind, since a
+    type is of one kind only ([kind_sort_unique]). *)
+Definition kind_type_dec (F : FCtx)
+    (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G -> fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
+       { levels_abstractable (fc_deps F) (fc_stack F) G Δ E } + { ~ levels_abstractable (fc_deps F) (fc_stack F) G Δ E })
+    (Γ : ctx) (HΓ : ⊢ fc_deps F ⍮ fc_stack F ⍮ Γ) (κ : abs_kind) (A : typ) :
+    { i : nat | fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@i }
+    + { forall i : nat, ~ fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : abs_kind_sort κ Typeω@i }.
+Proof.
+  destruct (check_type F levels_abstractable_dec Γ HΓ A) as [(r & i & HA) | HnA].
+  - destruct (abs_kind_eq_dec r κ) as [-> | Hr]; [ left; exists i; exact HA |].
+    right; intros j Hj; apply Hr.
+    exact (@kind_sort_unique (fc_gctx F) Γ A r κ i j ltac:(rewrite fc_gctx_eta; exact HA) ltac:(rewrite fc_gctx_eta; exact Hj)).
+  - right; intros j Hj; exact (HnA κ j Hj).
+Defined.
+
+(** "Is [A] a type of a large universe?": of the relevant kind; [n = 0]
+    is no type of a universe. *)
 Definition large_type_dec (F : FCtx)
     (levels_abstractable_dec : forall G Δ E, ⊢ fc_deps F ⍮ fc_stack F ⍮ Δ ++ G -> fc_deps F ⍮ fc_stack F ⍮ Δ ++ G ⊢ᵐ E ≈ E ->
        { levels_abstractable (fc_deps F) (fc_stack F) G Δ E } + { ~ levels_abstractable (fc_deps F) (fc_stack F) G Δ E })
     (Γ : ctx) (HΓ : ⊢ fc_deps F ⍮ fc_stack F ⍮ Γ) (A : typ) :
-    { i : nat | fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : Typeω@i } + { forall i : nat, ~ fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : Typeω@i }.
-Proof.
-  destruct (check_type F levels_abstractable_dec Γ HΓ A) as [(r & i & HA) | HnA].
-  - destruct (abs_kind_eq_dec r ak_relevant) as [-> | Hr]; [ left; exists i; exact HA |].
-    right; intros j Hj; apply Hr.
-    exact (@kind_sort_unique (fc_gctx F) Γ A r ak_relevant i j ltac:(rewrite fc_gctx_eta; exact HA) ltac:(rewrite fc_gctx_eta; exact Hj)).
-  - right; intros j Hj; exact (HnA ak_relevant j Hj).
-Defined.
+    { i : nat | fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : Typeω@i } + { forall i : nat, ~ fc_deps F ⍮ fc_stack F ⍮ Γ ⊢ A : Typeω@i } :=
+  kind_type_dec F levels_abstractable_dec Γ HΓ ak_relevant A.
 
 (** The fast entry of a definition [A ≔ M] of the kind [κ] in the
     innermost frame of [F]: a transparent one of a type of a universe
@@ -1053,21 +1062,23 @@ Definition dm_fentry (F : FCtx) (pv : bool) (Δ : ctx) (i : nat) (A M : exp) (E 
 
 (** The frames [fs'] the definitions [ds] end with, filed on the frames
     [fs] of the units seen [v] *)
-Record mdefs_filed (v : fview) (b pv : bool) (ds : list (string * typ * exp)) (fs fs' : fstack) : Prop := mk_mdefs_filed
+Record mdefs_filed (v : fview) (b pv : bool) (r : abs_kind) (ds : list (string * typ * exp)) (fs fs' : fstack) : Prop := mk_mdefs_filed
   { (** they are a fast context, with the units seen *)
     mf_ok : fctx_ok v fs'
     (** their values are right where each frame is open *)
   ; mf_values : frames_values_ok (view_deps v) fs'
-    (** they are those [mdefs_run] ends with *)
-  ; mf_run : mdefs_run (view_deps v) b pv ds (decode_stack fs) (decode_stack fs') }.
+    (** they are those [mdefs_run] ends with, at the kind [r] *)
+  ; mf_run : mdefs_run (view_deps v) b pv r ds (decode_stack fs) (decode_stack fs') }.
 
-(** The definitions filed in order, each checked as [run_cmd_def] does, on
-    the frames [fs] of the units seen [v], fast: the frames they end with,
-    and that they are those [mdefs_run] ends with. *)
-Fixpoint mdefs_dec (lvd : levels_abstractable_decider) (v : fview) (b pv : bool) (ds : list (string * typ * exp)) (fs : fstack)
+(** The definitions filed in order, at the kind [r] of a motive, each
+    checked as [run_cmd_def] does, on the frames [fs] of the units seen
+    [v], fast: the frames they end with, and that they are those
+    [mdefs_run] ends with. *)
+Fixpoint mdefs_dec (lvd : levels_abstractable_decider) (v : fview) (b pv : bool) (r : abs_kind) (Hk : motive_kind r)
+    (ds : list (string * typ * exp)) (fs : fstack)
     (Hok : fctx_ok v fs) (HΞ : ⊢ᵍ view_deps v ⍮ decode_stack fs) (Hv : frames_values_ok (view_deps v) fs) {struct ds} :
-    ({fs' : fstack | mdefs_filed v b pv ds fs fs'}
-     + {e : mdefs_why | forall Ξ', ~ mdefs_run (view_deps v) b pv ds (decode_stack fs) Ξ'})%type.
+    ({fs' : fstack | mdefs_filed v b pv r ds fs fs'}
+     + {e : mdefs_why | forall Ξ', ~ mdefs_run (view_deps v) b pv r ds (decode_stack fs) Ξ'})%type.
 Proof.
   pose (F := mk_fctx v fs Hok None).
   assert (HΞF : ⊢ᵍ fc_deps F ⍮ fc_stack F) by (rewrite fc_deps_view, fc_stack_frames; exact HΞ).
@@ -1084,22 +1095,22 @@ Proof.
     destruct (check_ctx F (lvd _) HΞF (fc_tele F)) as [HT | HnT].
     2:{ right; exists (mdefs_why_untyped_type x fs A); intros Ξ' Hr'; inversion Hr'; subst; apply HnT.
         rewrite Ed, Es, Et; gen_presups; assumption. }
-    destruct (large_type_dec F (lvd _) (fc_tele F) HT A) as [[i HA] | HnA].
+    destruct (kind_type_dec F (lvd _) (fc_tele F) HT r A) as [[i HA] | HnA].
     2:{ right; exists (mdefs_why_untyped_type x fs A); intros Ξ' Hr'; inversion Hr'; subst.
-        match goal with HA0 : _ ⍮ _ ⍮ _ ⊢ A : Typeω@?i0 |- _ => apply (HnA i0); rewrite Ed, Es, Et; exact HA0 end. }
-    destruct (check_exp_typed F (lvd _) (fc_tele F) HT A (type_of_check_type F _ _ ak_relevant i HA) M) as [HM | Hn].
+        match goal with HA0 : _ ⍮ _ ⍮ _ ⊢ A : abs_kind_sort r Typeω@?i0 |- _ => apply (HnA i0); rewrite Ed, Es, Et; exact HA0 end. }
+    destruct (check_exp_typed F (lvd _) (fc_tele F) HT A (type_of_check_type F _ _ r i HA) M) as [HM | Hn].
     2:{ right; exists (mdefs_why_untyped x fs A M); intros Ξ' Hr'; inversion Hr'; subst; apply Hn.
         rewrite Ed, Es, Et; assumption. }
     pose proof HA as HAF; rewrite Ed, Es, Et in HA.
     assert (HM' : view_deps v ⍮ decode_stack fs ⍮ gs_tele (decode_stack fs) ⊢ M : A) by (rewrite <- Et, <- Ed, <- Es; exact HM).
-    pose proof (add_def_wf _ _ _ b pv ak_relevant _ _ _ HΞ HA ltac:(intros [=]) HM' Hfr) as HΞ'.
+    pose proof (add_motive_def_wf _ _ _ b pv r _ _ _ Hk HΞ HA HM' Hfr) as HΞ'.
     pose proof (add_def_canon _ _ _ _ _ _ _ _ HΞ') as HcΞ'.
     rewrite <- fs_def_dec in HΞ', HcΞ'.
-    destruct (def_fentry F b pv ak_relevant i A M HAF HM) as [e0 [Hd Hev]].
-    change (fentry_drop e0 = translate_entry (fs_def b pv ak_relevant fs A M)) in Hd.
+    destruct (def_fentry F b pv r i A M HAF HM) as [e0 [Hd Hev]].
+    change (fentry_drop e0 = translate_entry (fs_def b pv r fs A M)) in Hd.
     assert (Hev' : fentry_values_ok (view_deps v) (decode_stack fs) e0)
       by (unfold F in Hev; rewrite fc_deps_view, fc_stack_frames in Hev; exact Hev).
-    destruct (mdefs_dec lvd v b pv ds' (fs_add x e0 fs)
+    destruct (mdefs_dec lvd v b pv r Hk ds' (fs_add x e0 fs)
                 (fctx_ok_add _ _ _ _ _ Hok Hd HcΞ' (gc_sub_add _ _ _ _ HΞ Hfr) HΞ HΞ'
                    (fentry_values_grow _ _ _ _ (gc_sub_add _ _ _ _ HΞ Hfr) HΞ HΞ' _ Hev'))
                 (eq_ind_r (fun Ξ0 => ⊢ᵍ view_deps v ⍮ Ξ0) HΞ' (decode_stack_add _ _ _ _ Hr Hd HcΞ'))
@@ -1113,14 +1124,14 @@ Proof.
 Defined.
 
 (** Filing the definitions alike along an equivalence. *)
-Lemma equiv_mdefs_run : forall Θ Θ' b pv ds Ξ Ξ', gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ ->
-    mdefs_run Θ b pv ds Ξ Ξ' -> mdefs_run Θ' b pv ds Ξ Ξ'.
+Lemma equiv_mdefs_run : forall Θ Θ' b pv r ds Ξ Ξ', motive_kind r -> gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ ->
+    mdefs_run Θ b pv r ds Ξ Ξ' -> mdefs_run Θ' b pv r ds Ξ Ξ'.
 Proof.
-  intros * He HΞ Hr; revert HΞ; induction Hr as [| x A M i ds Ξ Ξ' HA HM Hfr _ IH]; intros HΞ; [ constructor |].
+  intros * Hk He HΞ Hr; revert HΞ; induction Hr as [| x A M i ds Ξ Ξ' HA HM Hfr _ IH]; intros HΞ; [ constructor |].
   pose proof (equiv_exp _ _ _ _ _ _ He HΞ HM) as HM'.
   pose proof (equiv_exp _ _ _ _ _ _ He HΞ HA) as HA'.
   econstructor; [ exact HA' | exact HM' | exact Hfr |].
-  apply IH; eapply (add_def_wf _ _ _ b pv ak_relevant); [ exact HΞ | exact HA' | intros [=] | exact HM' | exact Hfr ].
+  apply IH; exact (add_motive_def_wf _ _ _ b pv r _ _ _ Hk HΞ HA' HM' Hfr).
 Qed.
 
 (** What a command's checks look names up in ([Extraction.Context.Lookup]) is

@@ -531,10 +531,10 @@ Section OpenError.
     | core_cmd_inductive pv D =>
         let+ D' := open_expand_decl S D in
         open_success (core_cmd_inductive pv D')
-    | core_cmd_mdef b pv Δ fs =>
+    | core_cmd_mdef b pv r Δ fs =>
         let+ Δ' := open_expand_tele S Δ in
         let+ fs' := open_map (open_expand_fun (map centry_skeleton Δ' ++ S)) fs in
-        open_success (core_cmd_mdef b pv Δ' fs')
+        open_success (core_cmd_mdef b pv r Δ' fs')
     | core_cmd_builtin k H =>
         let+ H' := open_expand_modexp S H in
         open_success (core_cmd_builtin k H')

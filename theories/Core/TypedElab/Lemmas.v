@@ -235,14 +235,14 @@ Section Functional.
 
   (** The bodies of functions have one fill: first their results, which fix
       the motives, then their clauses. *)
-  Lemma fill_raw_fun_bodies_functional : forall Γ pq D Us As1 As2 (l : list (surface_raw_fun * raw_fun_head * nat)) fs1 fs2,
-      Forall2 (fun fhm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As1 (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f') l fs1 ->
-      Forall2 (fun fhm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As2 (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f') l fs2 ->
+  Lemma fill_raw_fun_bodies_functional : forall r1 r2 Γ pq D Us As1 As2 (l : list (surface_raw_fun * raw_fun_head * nat)) fs1 fs2,
+      Forall2 (fun fhm f' => fill_raw_fun_body Θ Ξ B r1 pq D Us Γ As1 (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f') l fs1 ->
+      Forall2 (fun fhm f' => fill_raw_fun_body Θ Ξ B r2 pq D Us Γ As2 (fst (fst fhm)) (snd (fst fhm)) (snd fhm) f') l fs2 ->
       Forall2 (fun f1 f2 => raw_fun_nparams f1 = raw_fun_nparams f2 /\ raw_fun_res f1 = raw_fun_res f2) fs1 fs2 /\
-      (As1 = As2 -> fs1 = fs2).
+      (As1 = As2 -> r1 = r2 -> fs1 = fs2).
   Proof.
     pose proof fill_functional_all as (Fe & _ & _ & _ & Fb & _).
-    intros Γ pq D Us As1 As2 l fs1 fs2 H1; revert fs2; induction H1 as [| [[f h] m] f1 l fs1 [Eh1 Hm1 Hr1 Hc1] _ IH];
+    intros r1 r2 Γ pq D Us As1 As2 l fs1 fs2 H1; revert fs2; induction H1 as [| [[f h] m] f1 l fs1 [Eh1 Hm1 Hr1 Hc1] _ IH];
       intros fs2 H2; inversion H2 as [| ? f2 ? fs2' [Eh2 _ Hr2 Hc2] H2']; subst; [ split; [ constructor | reflexivity ] |].
     cbn [fst snd] in *.
     destruct (ind_member D m) as [Mm |] eqn:Hj; [| contradiction ].
@@ -251,8 +251,8 @@ Section Functional.
     assert (Ep : raw_fun_nparams f1 = raw_fun_nparams f2)
       by (apply (f_equal raw_fun_head_nparams) in Eh1, Eh2; cbn in Eh1, Eh2; congruence).
     split; [ constructor; [ split; [ exact Ep | exact Er ] | exact Hrs ] |].
-    intros <-; pose proof (Fb _ _ _ _ _ _ _ _ _ (Hc1 Mm eq_refl) _ (Hc2 Mm eq_refl)) as Ec.
-    rewrite (raw_fun_head_parts_eq f1 f2 (eq_trans Eh2 (eq_sym Eh1)) (eq_sym Er) (eq_sym Ec)), (IHe eq_refl); reflexivity.
+    intros <- <-; pose proof (Fb _ _ _ _ _ _ _ _ _ (Hc1 Mm eq_refl) _ (Hc2 Mm eq_refl)) as Ec.
+    rewrite (raw_fun_head_parts_eq f1 f2 (eq_trans Eh2 (eq_sym Eh1)) (eq_sym Er) (eq_sym Ec)), (IHe eq_refl eq_refl); reflexivity.
   Qed.
 
   (** A command has one fill. *)
@@ -290,9 +290,19 @@ Section Functional.
         then their clauses *)
     lazymatch goal with
     | Ha : Forall2 _ ?l (?a :: ?x), Hb : Forall2 _ ?l (?b :: ?y) |- _ =>
-        destruct (fill_raw_fun_bodies_functional _ _ _ _ _ _ _ _ _ Ha Hb) as [Hrs He];
-        rewrite (He (mdef_blocks_motives_eq _ _ _ _ _ Hrs)) in *; reflexivity
+        destruct (fill_raw_fun_bodies_functional _ _ _ _ _ _ _ _ _ _ _ Ha Hb) as [Hrs He];
+        assert (Er : raw_fun_res a = raw_fun_res b) by (inversion Hrs; tauto)
     end.
+    (** the first function's member, and its result's sort: the kind *)
+    match goal with H1 : List.hd_error ?ms = Some ?m1, H2 : List.hd_error ?ms = Some ?m2 |- _ =>
+      rewrite H1 in H2; injection H2 as <- end.
+    match goal with H1 : ind_member ?D ?m = Some ?M1, H2 : ind_member ?D ?m = Some ?M2 |- _ =>
+      rewrite H1 in H2; injection H2 as <- end.
+    match goal with Ha : _ ⊢a raw_fun_res ?a ⟹ ?W1, Hb : _ ⊢a raw_fun_res ?b ⟹ ?W2 |- _ =>
+      rewrite Er in Ha;
+      assert (W1 = W2) by (refine (@functional_alg_type_infer _ _ _ _ _ _ Ha Hb); exact Hg); subst W1
+    end.
+    rewrite (He (mdef_blocks_motives_eq _ _ _ _ _ Hrs) eq_refl) in *; reflexivity.
   Qed.
 
   (** A unit's parameter telescope has one fill. *)

@@ -110,9 +110,11 @@ Inductive core_cmd : Set :=
 | core_cmd_inductive : bool -> raw_decl -> core_cmd
 (** [mutual def (Δ) f (ys) (z : Z) : A | … with g … end], abstract and
     private or not: one function per member of a group, in any order,
-    each filed as the definition [λ Δ ys z. a_elim pq m Bks z] of
-    the group's eliminator at its member [m]. *)
-| core_cmd_mdef : bool -> bool -> ctx -> list raw_fun -> core_cmd
+    each filed as the definition [λ Δ ys z. a_elim r pq m Bks z] of
+    the group's eliminator at its member [m].  The kind [r] is that of the
+    eliminator, and of the definitions it files (filled from the sort of
+    the first function's result): into a universe, or into [Prop]. *)
+| core_cmd_mdef : bool -> bool -> abs_kind -> ctx -> list raw_fun -> core_cmd
 (** [builtin k := X]: the module [X], as written, is bound as the builtin
     [k]; the command resolves it to the inductive type it names. *)
 | core_cmd_builtin : string -> modexp -> core_cmd

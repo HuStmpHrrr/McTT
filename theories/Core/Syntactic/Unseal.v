@@ -1493,7 +1493,7 @@ Proof. intros * H mp K U Hin; apply (H mp K U); right; exact Hin. Qed.
 Lemma gens_run_no_axioms : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> gs_no_axioms Ξ -> gs_no_axioms Ξ'.
 Proof. induction 1; intros HΞ; auto; apply IHgens_run, gs_no_axioms_add; cbn; auto; congruence. Qed.
 
-Lemma mdefs_run_no_axioms : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> gs_no_axioms Ξ -> gs_no_axioms Ξ'.
+Lemma mdefs_run_no_axioms : forall Θ b pv r ds Ξ Ξ', mdefs_run Θ b pv r ds Ξ Ξ' -> gs_no_axioms Ξ -> gs_no_axioms Ξ'.
 Proof. induction 1; intros HΞ; [ exact HΞ |]; apply IHmdefs_run, gs_no_axioms_add; cbn; [ discriminate | exact HΞ ]. Qed.
 
 (** The commands of a recursor module: its frame opened, its definitions,
