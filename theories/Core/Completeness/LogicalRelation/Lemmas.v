@@ -32,6 +32,23 @@ Proof.
     (eapply rel_chain_mono; [| eassumption]); intros; now apply HRR'.
 Qed.
 
+(** The morphism for rewriting a hypothesis [rel_exp … R] left to right
+    ([Basics.impl]).  The [iff] one, [rel_exp_morphism], is reached only
+    after a long typeclass search, 2.6 s per rewrite, which the relation
+    tactics ([apply_relation_equivalence]) make for every equivalence in
+    context.  Only these specific instances: generic ones, turning any
+    [relation_equivalence ==> iff] morphism into an [impl] one, made
+    rewrites succeed that used to fail, and [handle_per_ctx_env_irrel] in
+    [Completeness/LogicalRelation/Substitution.v] went from 1 s to 175 s. *)
+Instance rel_exp_morphism_impl_Proper M σ ρ ρσ M' σ' ρ' ρ'σ' :
+  Proper (@relation_equivalence domain ==> Basics.impl) (rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ') | 0.
+Proof. intros R R' HR H. exact (proj1 (rel_exp_morphism _ _ _ _ _ _ _ _ _ _ HR) H). Qed.
+
+(** The same, right to left ([Basics.flip Basics.impl]). *)
+Instance rel_exp_morphism_flip_impl_Proper M σ ρ ρσ M' σ' ρ' ρ'σ' :
+  Proper (@relation_equivalence domain ==> Basics.flip Basics.impl) (rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ') | 0.
+Proof. intros R R' HR H. exact (proj2 (rel_exp_morphism _ _ _ _ _ _ _ _ _ _ HR) H). Qed.
+
 Add Parametric Morphism Δ σ φ ρ σ' ρ' : (rel_sub Δ σ φ ρ σ' ρ')
     with signature (@relation_equivalence env) ==> iff as rel_sub_morphism.
 Proof.
@@ -1645,6 +1662,8 @@ Ltac eval_wk_at H :=
 
 #[export] Existing Instance rel_wk_morphism_Proper.
 #[export] Existing Instance rel_exp_morphism_Proper.
+#[export] Existing Instance rel_exp_morphism_impl_Proper | 0.
+#[export] Existing Instance rel_exp_morphism_flip_impl_Proper | 0.
 #[export] Existing Instance rel_sub_morphism_Proper.
 #[export]
 Hint Resolve rel_exp_implies_rel_typ : mctt.
