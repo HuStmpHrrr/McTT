@@ -99,12 +99,6 @@ Qed.
     read ([sentry_modexp] of an [se_exp]) is the one there, and it has no
     member. *)
 
-(** ** Prefixes of Extended Paths *)
-
-Lemma strip_prefix_snoc : forall l m y r,
-    strip_prefix l m = Some r -> strip_prefix l (m ++ y :: nil) = Some (r ++ y :: nil).
-Proof. intros * H; apply strip_prefix_spec in H; subst; rewrite <- app_assoc; apply strip_prefix_app. Qed.
-
 (** ** Bodies of Modules *)
 
 

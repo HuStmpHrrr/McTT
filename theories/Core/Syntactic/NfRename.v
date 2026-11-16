@@ -340,8 +340,7 @@ Qed.
 (** ** Injectivity
 
     A renaming with a left inverse is injective on normal forms: on the
-    proof terms they hold too, which the left inverse renames back
-    ([exp_wk_left_inverse]). *)
+    proof terms they hold too, which the left inverse renames back. *)
 Definition wk_left_inverse (ψ φ : wk) : Prop := forall x, ψ (φ x) = x.
 
 Lemma wk_left_inverse_q : forall ψ φ, wk_left_inverse ψ φ -> wk_left_inverse (wk_q ψ) (wk_q φ).
@@ -352,10 +351,6 @@ Proof. intros x; reflexivity. Qed.
 
 Lemma wk_left_inverse_qn : forall n ψ φ, wk_left_inverse ψ φ -> wk_left_inverse (wk_qn n ψ) (wk_qn n φ).
 Proof. induction n; intros; cbn; [ assumption | apply wk_left_inverse_q; auto ]. Qed.
-
-(** A term renamed by [φ], then by a left inverse of [φ], is itself. *)
-Lemma exp_wk_left_inverse : forall ψ φ M, wk_left_inverse ψ φ -> M[φ]ʷ[ψ]ʷ = M.
-Proof. intros * H; rewrite exp_wk_wk_ext with (χ := wk_id); [ apply exp_wk_id | intros x; exact (H x) ]. Qed.
 
 (** A renaming with a left inverse reflects equality up to proofs. *)
 Lemma nf_ne_wk_inj_upto_proofs :

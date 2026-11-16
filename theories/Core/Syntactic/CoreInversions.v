@@ -68,20 +68,8 @@ Proof.
   exfalso; eapply level_sort_untyped; exact HS.
 Qed.
 
-Corollary wf_llit_inversion : forall Θ Ξ Γ A o,
-    Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : A ->
-    exists n, Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ⊆ A.
-Proof.
-  intros * H.
-  dependent induction H;
-    [ eexists; mauto 3
-    | specialize (IHwf_exp1 _ eq_refl) as (n & Hs); exists n; mauto 3 ].
-Qed.
-
-#[export]
-Hint Resolve wf_llit_inversion : mctt.
-
-(** The same with the bound of the sort the literal is typed at. *)
+(** A level literal is of the type of levels of a sort [n], up to
+    subtyping, with the bound of [n] the literal is typed at. *)
 Corollary wf_llit_inversion_sort : forall Θ Ξ Γ A o,
     Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : A ->
     exists n, fst o <= n /\ Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ⊆ A.
@@ -165,34 +153,6 @@ Qed.
 
 #[export]
 Hint Resolve wf_False_inversion : mctt.
-
-(** What ex falso [efq M return C] is typed by. *)
-#[warnings="-cannot-define-projection"]
-Record absurd_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M C A : typ) : Prop := mk_absurd_inv
-  { (** The sort of the type it returns *)
-    absurd_inv_sort : typ
-    (** It is a sort *)
-  ; absurd_inv_sort_ok : type_sort absurd_inv_sort
-    (** The type it returns is of it *)
-  ; absurd_inv_typ : Θ ⍮ Ξ ⍮ Γ ⊢ C : absurd_inv_sort
-    (** The proof of [⊥] *)
-  ; absurd_inv_proof : Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥
-    (** The type it returns is below [A] *)
-  ; absurd_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ C ⊆ A }.
-
-Lemma wf_absurd_inversion : forall Θ Ξ Γ A M C,
-    Θ ⍮ Ξ ⍮ Γ ⊢ efq M return C : A ->
-    absurd_inv Θ Ξ Γ M C A.
-Proof.
-  intros * H.
-  dependent induction H.
-  - econstructor; [ eassumption | eassumption | eassumption | mautosolve 3 ].
-  - destruct (IHwf_exp1 _ _ eq_refl) as [S HS HC HM Hs].
-    econstructor; [ exact HS | exact HC | exact HM | eapply wf_subtyp_trans; eassumption ].
-Qed.
-
-#[export]
-Hint Resolve wf_absurd_inversion : mctt.
 
 (** What a [∀] over a domain of the kind [κ] is typed by. *)
 #[warnings="-cannot-define-projection"]
@@ -313,65 +273,6 @@ Qed.
 #[export]
 Hint Resolve wf_and_inversion : mctt.
 
-(** What a proof of the conjunction [Σₚ P Q] is typed by: its components'
-    propositions and its components. *)
-#[warnings="-cannot-define-projection"]
-Record conj_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (P Q M N C : typ) : Prop := mk_conj_inv
-  { (** The first component's proposition is one *)
-    conj_inv_left_prop_wf : Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ
-    (** So is the second's, under the first *)
-  ; conj_inv_right_prop_wf : Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊢ Q : Propₘ
-    (** The first component *)
-  ; conj_inv_left : Θ ⍮ Ξ ⍮ Γ ⊢ M : P
-    (** The second component, at the first *)
-  ; conj_inv_right : Θ ⍮ Ξ ⍮ Γ ⊢ N : Q[Id,,M]
-    (** The conjunction is below [C] *)
-  ; conj_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ Σₚ P Q ⊆ C }.
-
-Lemma wf_conj_inversion : forall Θ Ξ Γ P Q M N C,
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_conj P Q M N : C ->
-    conj_inv Θ Ξ Γ P Q M N C.
-Proof.
-  intros * H.
-  dependent induction H.
-  - econstructor; try eassumption; mautosolve 3.
-  - destruct (IHwf_exp1 _ _ _ _ eq_refl) as [HP HQ HM HN Hs].
-    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
-Qed.
-
-#[export]
-Hint Resolve wf_conj_inversion : mctt.
-
-(** What a first projection of a proof of a conjunction is typed by. *)
-#[warnings="-cannot-define-projection"]
-Record left_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M C : typ) : Prop := mk_left_inv
-  { (** The first component's proposition *)
-    left_inv_left_prop : typ
-    (** The second's, under the first *)
-  ; left_inv_right_prop : typ
-    (** The first is a proposition *)
-  ; left_inv_left_prop_wf : Θ ⍮ Ξ ⍮ Γ ⊢ left_inv_left_prop : Propₘ
-    (** So is the second, under the first *)
-  ; left_inv_right_prop_wf : Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} left_inv_left_prop ⊢ left_inv_right_prop : Propₘ
-    (** The projected proof *)
-  ; left_inv_arg : Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ left_inv_left_prop left_inv_right_prop
-    (** The first component's proposition is below [C] *)
-  ; left_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ left_inv_left_prop ⊆ C }.
-
-Lemma wf_left_inversion : forall Θ Ξ Γ M C,
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_left M : C ->
-    left_inv Θ Ξ Γ M C.
-Proof.
-  intros * H.
-  dependent induction H.
-  - econstructor; try eassumption; mautosolve 3.
-  - destruct (IHwf_exp1 _ eq_refl) as [P Q HP HQ HM Hs].
-    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
-Qed.
-
-#[export]
-Hint Resolve wf_left_inversion : mctt.
-
 (** What a tagged proof [a_proof P M] at [C] is typed by. *)
 Record proof_tag_inv Θ Ξ Γ P M C : Prop := mk_proof_tag_inv
   { (** The tag is a proposition *)
@@ -394,37 +295,6 @@ Qed.
 
 #[export]
 Hint Resolve wf_proof_tag_inversion : mctt.
-
-(** What a second projection is typed by: the same, at the first
-    projection. *)
-#[warnings="-cannot-define-projection"]
-Record right_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M C : typ) : Prop := mk_right_inv
-  { (** The first component's proposition *)
-    right_inv_left_prop : typ
-    (** The second's, under the first *)
-  ; right_inv_right_prop : typ
-    (** The first is a proposition *)
-  ; right_inv_left_prop_wf : Θ ⍮ Ξ ⍮ Γ ⊢ right_inv_left_prop : Propₘ
-    (** So is the second, under the first *)
-  ; right_inv_right_prop_wf : Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} right_inv_left_prop ⊢ right_inv_right_prop : Propₘ
-    (** The projected proof *)
-  ; right_inv_arg : Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ right_inv_left_prop right_inv_right_prop
-    (** The second at the first projection is below [C] *)
-  ; right_inv_sub : Θ ⍮ Ξ ⍮ Γ ⊢ right_inv_right_prop[Id,,a_left M] ⊆ C }.
-
-Lemma wf_right_inversion : forall Θ Ξ Γ M C,
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_right M : C ->
-    right_inv Θ Ξ Γ M C.
-Proof.
-  intros * H.
-  dependent induction H.
-  - eapply mk_right_inv with (right_inv_left_prop := P) (right_inv_right_prop := Q); try eassumption; mautosolve 3.
-  - destruct (IHwf_exp1 _ eq_refl) as [P Q HP HQ HM Hs].
-    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
-Qed.
-
-#[export]
-Hint Resolve wf_right_inversion : mctt.
 
 (** A [Π] into types of a universe, over a domain of the kind [κd], is in
     a large universe, or in a small one at a level, its domain of the sort

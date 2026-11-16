@@ -163,8 +163,8 @@ Proof.
   eapply HQ; eassumption.
 Qed.
 
-(** A constructor of any member of a group applied to equal parameters and
-    arguments: [wf_exp_eq_con_apps], at a view too. *)
+(** A constructor of any member of a group, a declared member or a view,
+    applied to equal parameters and arguments. *)
 Lemma wf_exp_eq_con_apps_member : forall Γ p D k Mk c gs Ps Ps' As As',
     ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk -> ind_con Mk c = Some gs -> ⊢ Γ ->
     List.length Ps = im_np D Mk -> List.length Ps' = im_np D Mk ->

@@ -4724,14 +4724,6 @@ Proof.
     split; [ exact (ex_intro _ _ (conj (type_sort_universe j) Hty)) | intros M [= <-]; exact (Hfn _ HMt) ].
 Qed.
 
-(** The same, as a type ([⊢ᵗ]). *)
-Lemma desc_ok_ty : forall Θ Ξ, valid_syn Θ Ξ -> forall Γ R A, desc_ok Θ Ξ Γ R -> mdesc_type R = Some A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A /\ (forall M, mdesc_reduct R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A).
-Proof.
-  intros * Hv * HR HA; destruct (desc_ok_ty_sorted _ _ Hv _ _ _ HR HA) as [(S & HS & HT) HM].
-  exact (conj (wf_type_of_sort _ HS HT) HM).
-Qed.
-
 (** The type of a member with both a term part and a module part is of a
     large universe: the term part of a definition with a module part is
     relevant, and not a level. *)

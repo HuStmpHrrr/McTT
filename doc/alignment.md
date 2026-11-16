@@ -125,8 +125,8 @@ The paper proves substitution equivalence (§4.6 in the report) before
 presupposition. The mechanization cannot: `wf_exp_eq_natrec_cong` with a varying
 motive makes the direct induction for `sub_eq_preserves_exp_eq` fail. The order
 is instead typing → presupposition → the rest, and it pays for itself:
-`sub_eq_preserves_exp_eq` and `sub_eq_preserves_subtyp` become **three-line
-proofs with no induction at all** (`Core/Syntactic/SubEq.v`), since an
+`sub_eq_preserves_exp_eq` becomes a **three-line proof with no induction at
+all** (`Core/Syntactic/SubEq.v`), since an
 equivalence `σ ≈ σ'` is both a pair of substitutions and a relation between
 them. All fifteen rule cases a direct induction works through disappear. That
 is a simplification the write-ups do not describe.
@@ -216,8 +216,8 @@ not available at that point in the file order (§2.4), hence the premise.
 
 ### 3.4 Minimality schemes, not induction schemes
 
-The mutual judgment block generates `Minimality` schemes (plus combined 4-way,
-3-way and 2-way variants) rather than `Induction` schemes. This is invisible in
+The mutual judgment block generates `Minimality` schemes (plus combined 4-way
+and 3-way variants) rather than `Induction` schemes. This is invisible in
 the write-ups but is what lets the three presupposition lemmas be separate
 non-mutual inductions.
 

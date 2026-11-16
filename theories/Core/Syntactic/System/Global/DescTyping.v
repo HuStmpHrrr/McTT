@@ -135,61 +135,6 @@ Proof.
     eapply wf_exp_eq_let_mod_zeta; [ exact HU | exact HCS | constructor | constructor | exact HB ].
 Qed.
 
-(** [wf_let] at a universe, which [Typeω@j[Id,,M]] is by computation only. *)
-Lemma wf_let_typ : forall Θ Ξ Γ A M B Srt j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    type_sort Srt ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Typeω@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : Typeω@j.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : Typeω@j[Id,,M]) as Hl
-    by (eapply wf_let with (Srt := Srt);
-        [ eassumption | eassumption | eassumption | apply wf_typ; eauto using presup_exp_ctx | constructor | eassumption ]).
-  exact Hl.
-Qed.
-
-Lemma wf_exp_eq_let_zeta_typ : forall Θ Ξ Γ A M B Srt j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Srt ->
-    type_sort Srt ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Typeω@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : Typeω@j.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : Typeω@j[Id,,M]) as Hl
-      by (eapply wf_exp_eq_let_zeta with (Srt := Srt);
-          [ eassumption | eassumption | eassumption | apply wf_typ; eauto using presup_exp_ctx | constructor | eassumption ]).
-  exact Hl.
-Qed.
-
-(** The same for a local module. *)
-Lemma wf_let_mod_typ : forall Θ Ξ Γ U B j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-    Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : Typeω@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : Typeω@j.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : Typeω@j[Id ,,ₘ me_lit U]) as Hl
-    by (eapply wf_let_mod; [ eassumption | econstructor; eauto using presup_exp_ctx | constructor | constructor | eassumption ]).
-  exact Hl.
-Qed.
-
-Lemma wf_exp_eq_let_mod_zeta_typ : forall Θ Ξ Γ U B j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-    Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : Typeω@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : Typeω@j.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : Typeω@j[Id ,,ₘ me_lit U]) as Hl
-      by (eapply wf_exp_eq_let_mod_zeta; [ eassumption | econstructor; eauto using presup_exp_ctx | constructor | constructor | eassumption ]).
-  exact Hl.
-Qed.
-
-#[export]
-Hint Resolve wf_let_typ wf_exp_eq_let_zeta_typ wf_let_mod_typ wf_exp_eq_let_mod_zeta_typ : mctt.
-
 (** The kinds of a [Π] out of a domain of any kind into a codomain of a
     kind that is not of levels ([pi_kinds]). *)
 Lemma pi_kinds_not_level : forall κd r, r <> ak_level -> pi_kinds κd r.
@@ -2741,13 +2686,6 @@ Section DescOk.
       desc_ok (Δ ++ Γ) (mdesc_open nil Φw Φ) -> desc_ok Γ (mdesc_open Δ Φw Φ).
   Proof.
     intros * Ha HR HL H; inversion H; subst; econstructor; cbn [List.app] in *; first [ eassumption | constructor ].
-  Qed.
-
-  Lemma desc_ok_closed_root : forall Γ Θ' p T Φ Ns, all_assumptions Θ' -> desc_ok Γ (mdesc_closed Θ' p T Φ Ns) -> desc_ok (Θ' ++ Γ) (mdesc_closed nil p T Φ Ns).
-  Proof.
-    intros * Ha H; inversion H; subst; eapply desc_ok_closed with (param_level := 0); cbn [List.app] in *;
-      first [ eassumption | apply params_evaluated_nil | apply desc_levels_abstractable_nil | constructor
-            | let Hne := fresh "Hne" in intros Hne; contradiction (Hne eq_refl) ].
   Qed.
 
   (** "R at N", where the module part of [R] takes a parameter [N] fills. *)

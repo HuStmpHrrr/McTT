@@ -2,7 +2,7 @@
 
     A member a well-formed module expression looks up is typed, at the
     type the lookup reads, and so is its δ-reduct ([member_wf]): what the
-    lookup reads is typed ([mem_desc_ok], [desc_ok_ty]), so the premises of
+    lookup reads is typed ([mem_desc_ok], [desc_ok_ty_sorted]), so the premises of
     [wf_mem] hold of it.  The outermost parameter a module still takes is a
     type ([mtele_head_wf]).  The checker reads both off the lookup, without
     checking anything again; the entries a local open stores it checks as

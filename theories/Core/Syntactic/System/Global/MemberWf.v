@@ -78,13 +78,6 @@ Definition me_noapp (H : modexp) : Prop := match H with me_app _ _ => False | _ 
 Lemma me_apps_snoc : forall Ns H N, me_apps H (Ns ++ N :: nil) = me_app (me_apps H Ns) N.
 Proof. induction Ns as [| N' Ns IH]; intros; cbn; [ reflexivity | apply IH ]. Qed.
 
-Lemma app_split_length : forall (Ms Ks Ms' Ks' : list exp),
-    Ms ++ Ks = Ms' ++ Ks' -> List.length Ms = List.length Ms' -> Ms = Ms' /\ Ks = Ks'.
-Proof.
-  induction Ms as [| M Ms IH]; intros * HL Hl; destruct Ms' as [| M' Ms']; cbn in *; try discriminate; [ auto |].
-  injection HL as -> HL; injection Hl as Hl; destruct (IH _ _ _ HL Hl) as [-> ->]; auto.
-Qed.
-
 (** A module split into the module it applies and the arguments. *)
 Fixpoint me_unapps (H : modexp) : (modexp * list exp)%type :=
   match H with

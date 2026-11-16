@@ -32,8 +32,6 @@ take a level term `L` of `Γ`. The codomain is at the weakening of `L`:
   extend the context with it.
 - **Why the congruence rule is generalized too.** The gluing readback clause
   asks for `Π A B ≈ W : Type⟨L⟩` at open `L`.
-- **The literal forms.** `wf_pi_small_lit` and `wf_exp_eq_pi_cong_small_lit`
-  are derived, since `𝕃@n[↑]ʷ` is `𝕃@n`.
 
 ## The algorithm
 

@@ -2259,19 +2259,6 @@ Combined Scheme syntactic_wf_mut_ind' from
   wf_modexp_eq_mind,
   wf_no_level_members_mind.
 
-(** The two-way scheme is the shape of the soundness fundamental theorem: the
-    gluing model relates contexts and terms, and its
-    subtyping case consumes [Γ ⊢ A ⊆ A'] syntactically, so neither of the
-    two equality judgments needs a predicate. *)
-
-Scheme wf_ctx_mind' := Minimality for wf_ctx Sort Prop
-with wf_exp_mind' := Minimality for wf_exp Sort Prop
-with wf_is_univ_mind' := Minimality for wf_is_univ Sort Prop.
-Combined Scheme syntactic_wf_ctx_exp_mut_ind from
-  wf_ctx_mind',
-  wf_exp_mind',
-  wf_is_univ_mind'.
-
 (** The global subset: the shape of [wf_global_canon] and
     [gsub_preserves_global]. *)
 
@@ -2475,20 +2462,9 @@ Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A" := (wf_type Θ Ξ Γ A) (at level 70, Ξ at
 #[export]
 Hint Constructors wf_type : mctt.
 
-(** A type of a large universe is a type. *)
-Lemma wf_type_univ : forall {Θ Ξ Γ A i}, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof. intros * H; exact (wf_type_of_sort _ (type_sort_universe i) H). Qed.
-
-(** So is a proposition. *)
-Lemma wf_type_prop : forall {Θ Ξ Γ A}, Θ ⍮ Ξ ⍮ Γ ⊢ A : Propₘ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof. intros * H; exact (wf_type_of_sort _ type_sort_prop H). Qed.
-
-(** So is a term of the sort at a kind. *)
+(** A term of the sort at a kind is a type. *)
 Lemma wf_type_kind : forall {Θ Ξ Γ r A i}, Θ ⍮ Ξ ⍮ Γ ⊢ A : abs_kind_sort r Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
 Proof. intros * H; exact (wf_type_of_sort _ (type_sort_abs_kind r _ (type_sort_universe i)) H). Qed.
-
-#[export]
-Hint Resolve wf_type_univ wf_type_prop : mctt.
 
 
 (** Make the sorts of a rule concrete: a type sort is a large universe,
@@ -2514,10 +2490,6 @@ Ltac destruct_type_sort :=
 Lemma parameter_sort_sub : forall l S σ, parameter_sort l S -> S[σ] = S.
 Proof. intros * []; reflexivity. Qed.
 
-(** A parameter's sort is a type sort. *)
-Lemma parameter_sort_type_sort : forall l S, parameter_sort l S -> type_sort S.
-Proof. intros * []; constructor. Qed.
-
 (** An evaluated sort is a type sort. *)
 Lemma evaluated_sort_type_sort : forall S, evaluated_sort S -> type_sort S.
 Proof. intros S []; constructor. Qed.
@@ -2539,13 +2511,9 @@ Proof. intros r i []; constructor. Qed.
 Lemma module_body_sort_type_sort : forall S, module_body_sort S -> type_sort S.
 Proof. intros * []; constructor. Qed.
 
-(** A type of levels is a type. *)
-Lemma wf_type_level : forall {Θ Ξ Γ A}, Θ ⍮ Ξ ⍮ Γ ⊢ A : LevelSort -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof. intros * H; exact (wf_type_of_sort _ type_sort_level H). Qed.
-
 #[export]
 Hint Resolve evaluated_sort_type_sort level_closed_sort_type_sort
-  level_closed_motive_kind module_body_motive_kind module_body_sort_type_sort parameter_sort_type_sort wf_type_level : mctt.
+  level_closed_motive_kind module_body_motive_kind module_body_sort_type_sort : mctt.
 
 #[export]
 Hint Constructors type_sort sort_kind evaluated_sort pi_kinds motive_kind carg_kind field_kind evaluated_kind
@@ -2554,29 +2522,8 @@ Hint Constructors type_sort sort_kind evaluated_sort pi_kinds motive_kind carg_k
 #[export]
 Hint Constructors wf_ext_eq wf_unit_eq wf_modexp_eq : mctt.
 
-(** The two instances of [wf_gentry_def], with a body and without (an
-    axiom), whose conclusions name the entry as it is filed. *)
-Lemma wf_gentry_def_body : forall Θ Ξ mp b pv r A M i, r <> ak_level ->
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i ->
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)).
-Proof.
-  intros * Hr HA HM; change (Some (ctx_fn (gs_tele Ξ) M)) with (option_map (ctx_fn (gs_tele Ξ)) (Some M)).
-  eapply wf_gentry_def; [ exact HA | intros E; contradiction | intros ? [= <-]; exact HM | discriminate ].
-Qed.
-
-Lemma wf_gentry_def_axiom : forall Θ Ξ mp b pv r A i, r <> ak_level ->
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : abs_kind_sort r Typeω@i ->
-    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv r (ctx_pi_at r (gs_tele Ξ) A) None.
-Proof.
-  intros * Hr HA; change (@None exp) with (option_map (ctx_fn (gs_tele Ξ)) None).
-  eapply wf_gentry_def; [ exact HA | intros E; contradiction | discriminate | intros _; exact Hr ].
-Qed.
-
 #[export]
 Hint Constructors wf_gentry wf_gmod wf_gstack : mctt.
-#[export]
-Hint Resolve wf_gentry_def_body wf_gentry_def_axiom : mctt.
 #[export]
 Hint Resolve wf_gunit_intro : mctt.
 

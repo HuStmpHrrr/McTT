@@ -28,16 +28,6 @@ Import Syntax_Notations Wk_Notations.
 
 (** ** Basic Inversions and Presuppositions *)
 
-Lemma ctx_lookup_lt : forall {Γ A x},
-    Γ ∋ #x : A ->
-    x < length Γ.
-Proof.
-  induction 1; simpl; lia.
-Qed.
-
-#[export]
-Hint Resolve ctx_lookup_lt : mctt.
-
 (** The variable rules look up in the local context extended by the parameters
     in scope; a lookup in the local context is one of those. *)
 Lemma ctx_lookup_app_l : forall {Γ Δ A x},
@@ -105,21 +95,6 @@ Proof.
   - exists LevelSort; split; [ constructor | assumption ].
 Qed.
 
-(** The small [Π] and its congruence at a literal level, whose weakening is
-    itself. *)
-Lemma wf_pi_small_lit : forall {Θ Ξ Γ A B n},
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨𝕃ᵒ n⟩ ->
-    Θ ⍮ Ξ ⍮ Γ ▹{ak_relevant} A ⊢ B : Type⟨𝕃ᵒ n⟩ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π{ak_relevant} A B : Type⟨𝕃ᵒ n⟩.
-Proof. intros * HA HB; eapply wf_pi_lvl; [ apply wf_llit_ordinal; mauto 2 | exact HA | exact HB ]. Qed.
-
-Lemma wf_exp_eq_pi_cong_small_lit : forall {Θ Ξ Γ A A' B B' n},
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨𝕃ᵒ n⟩ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨𝕃ᵒ n⟩ ->
-    Θ ⍮ Ξ ⍮ Γ ▹{ak_relevant} A ⊢ B ≈ B' : Type⟨𝕃ᵒ n⟩ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π{ak_relevant} A B ≈ Π{ak_relevant} A' B' : Type⟨𝕃ᵒ n⟩.
-Proof. intros * HA HAA HB; eapply wf_exp_eq_pi_cong_lvl; [ apply wf_llit_ordinal; mauto 2 | exact HA | exact HAA | exact HB ]. Qed.
-
 Lemma wf_exp_eq_small_large : forall {Θ Ξ Γ A A' o i},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨𝕃ᵒ o⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i.
 Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | eapply wf_subtyp_small_large; mauto 3 ]. Qed.
@@ -157,13 +132,8 @@ Proof.
   intros * ?%ctx_decomp; easy.
 Qed.
 
-Corollary ctx_decomp_right : forall {Θ Ξ Γ κ A}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹{κ} A -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof.
-  intros * ?%ctx_decomp; easy.
-Qed.
-
 #[export]
-Hint Resolve ctx_decomp_left ctx_decomp_right : mctt.
+Hint Resolve ctx_decomp_left : mctt.
 
 Lemma ctx_decomp_def : forall {Θ Ξ Γ A M},
     ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ->
@@ -184,12 +154,6 @@ Proof.
   intros * ?%ctx_decomp_def; easy.
 Qed.
 
-Corollary ctx_decomp_def_typ : forall {Θ Ξ Γ A M},
-    ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof.
-  intros * ?%ctx_decomp_def; easy.
-Qed.
-
 Corollary ctx_decomp_def_body : forall {Θ Ξ Γ A M},
     ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
 Proof.
@@ -197,7 +161,7 @@ Proof.
 Qed.
 
 #[export]
-Hint Resolve ctx_decomp_def_left ctx_decomp_def_typ ctx_decomp_def_body : mctt.
+Hint Resolve ctx_decomp_def_left ctx_decomp_def_body : mctt.
 
 (** A definition with a module part: a definition of a type of a large
     universe and a module slot. *)
@@ -217,10 +181,6 @@ Proof. inversion 1; eauto. Qed.
 Corollary ctx_decomp_dm_left : forall {Θ Ξ Γ A M U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U -> ⊢ Θ ⍮ Ξ ⍮ Γ.
 Proof. intros * ?%ctx_decomp_dm; easy. Qed.
 
-Corollary ctx_decomp_dm_typ : forall {Θ Ξ Γ A M U},
-    ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U -> Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof. intros * (_ & [i HA] & _)%ctx_decomp_dm; exact (wf_type_univ HA). Qed.
-
 Corollary ctx_decomp_dm_body : forall {Θ Ξ Γ A M U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
 Proof. intros * ?%ctx_decomp_dm; easy. Qed.
 
@@ -228,7 +188,7 @@ Corollary ctx_decomp_dm_unit : forall {Θ Ξ Γ A M U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▸
 Proof. intros * ?%ctx_decomp_dm; easy. Qed.
 
 #[export]
-Hint Resolve ctx_decomp_dm_left ctx_decomp_dm_typ ctx_decomp_dm_body ctx_decomp_dm_unit : mctt.
+Hint Resolve ctx_decomp_dm_left ctx_decomp_dm_body ctx_decomp_dm_unit : mctt.
 
 (** The tail of a well-formed context, whatever its head. *)
 Corollary ctx_decomp_tail : forall {Θ Ξ Γ e}, ⊢ Θ ⍮ Ξ ⍮ e :: Γ -> ⊢ Θ ⍮ Ξ ⍮ Γ.
@@ -4354,18 +4314,8 @@ Proof.
   eapply sub_preserves_exp; [ eassumption | eapply wf_sub_single; eassumption ].
 Qed.
 
-Corollary exp_eq_sub_single : forall Θ Ξ Γ κ A B M M' N,
-    Θ ⍮ Ξ ⍮ Γ ▹{κ} A ⊢ M ≈ M' : B ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M[Id,,N] ≈ M'[Id,,N] : B[Id,,N].
-Proof.
-  intros * HM HN.
-  destruct (ctx_decomp_kind (presup_exp_eq_ctx HM)) as (Srt & HS & HA).
-  eapply sub_preserves_exp_eq; [ eassumption | eapply wf_sub_single; eassumption ].
-Qed.
-
 #[export]
-Hint Resolve exp_sub_single exp_eq_sub_single : mctt.
+Hint Resolve exp_sub_single : mctt.
 
 
 (** ** Context Conversion
@@ -4612,7 +4562,7 @@ Hint Resolve ctxsub_exp ctxsub_exp_eq ctxsub_subtyp : mctt.
 (** ** Transporting a Type
 
     [Typeω@i] is closed, so [Typeω@i[φ]ʷ] and [Typeω@i[σ]] are [Typeω@i] — but only
-    up to conversion, and [eauto]'s [simple apply] does not reduce.  These four
+    up to conversion, and [eauto]'s [simple apply] does not reduce.  These two
     spell it out; every "and the type is still a type" step below goes through
     one of them. *)
 
@@ -4626,16 +4576,6 @@ Proof.
   assumption.
 Qed.
 
-Corollary wk_preserves_typ_eq : forall Θ Ξ Γ Δ A A' φ i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeω@i.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (a_typ i) φ) by mauto 2.
-  assumption.
-Qed.
-
 Corollary sub_preserves_typ : forall Θ Ξ Γ Δ A σ i,
     Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
@@ -4646,37 +4586,8 @@ Proof.
   assumption.
 Qed.
 
-Corollary sub_preserves_typ_eq : forall Θ Ξ Γ Δ A A' σ i,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A ≈ A' : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A'[σ] : Typeω@i.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ ≈ exp_sub A' σ : exp_sub (a_typ i) σ) by mauto 2.
-  assumption.
-Qed.
-
-(** The same four for a small universe [Type⟨𝕃ᵒ n⟩], also closed. *)
-
-Corollary wk_preserves_styp : forall Θ Ξ Γ Δ A φ n,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨𝕃ᵒ n⟩ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type⟨𝕃ᵒ n⟩.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ : exp_wk (Type⟨𝕃ᵒ n⟩) φ) by mauto 2.
-  assumption.
-Qed.
-
-Corollary wk_preserves_styp_eq : forall Θ Ξ Γ Δ A A' φ n,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨𝕃ᵒ n⟩ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type⟨𝕃ᵒ n⟩.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (Type⟨𝕃ᵒ n⟩) φ) by mauto 2.
-  assumption.
-Qed.
+(** The same under a substitution for a small universe [Type⟨𝕃ᵒ n⟩], also
+    closed. *)
 
 Corollary sub_preserves_styp : forall Θ Ξ Γ Δ A σ n,
     Θ ⍮ Ξ ⍮ Δ ⊢ A : Type⟨𝕃ᵒ n⟩ ->
@@ -4685,16 +4596,6 @@ Corollary sub_preserves_styp : forall Θ Ξ Γ Δ A σ n,
 Proof.
   intros.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : exp_sub (Type⟨𝕃ᵒ n⟩) σ) by mauto 2.
-  assumption.
-Qed.
-
-Corollary sub_preserves_styp_eq : forall Θ Ξ Γ Δ A A' σ n,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A ≈ A' : Type⟨𝕃ᵒ n⟩ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A'[σ] : Type⟨𝕃ᵒ n⟩.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ ≈ exp_sub A' σ : exp_sub (Type⟨𝕃ᵒ n⟩) σ) by mauto 2.
   assumption.
 Qed.
 
@@ -4736,16 +4637,7 @@ Proof.
   intros * HA HS Hσ; rewrite <- (type_sort_sub _ σ HS); mauto 2.
 Qed.
 
-(** A type moved by an operation is a type. *)
-Corollary wk_preserves_type : forall Θ Ξ Γ Δ A φ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ᵗ A[φ]ʷ.
-Proof.
-  intros * [? Srt HS HA | HΓ] Hφ;
-    [ exact (wf_type_of_sort _ HS (wk_preserves_sort _ _ _ _ _ _ _ HA HS Hφ)) | exact (wf_type_level_sort (wf_wk_dom _ _ _ _ _ Hφ)) ].
-Qed.
-
+(** A type moved by a substitution is a type. *)
 Corollary sub_preserves_type : forall Θ Ξ Γ Δ A σ,
     Θ ⍮ Ξ ⍮ Δ ⊢ᵗ A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
@@ -4756,14 +4648,12 @@ Proof.
 Qed.
 
 #[export]
-Hint Resolve wk_preserves_typ wk_preserves_typ_eq
-             sub_preserves_typ sub_preserves_typ_eq : mctt.
+Hint Resolve wk_preserves_typ sub_preserves_typ : mctt.
 #[export]
 Hint Resolve wk_preserves_sort wk_preserves_sort_eq
-             sub_preserves_sort sub_preserves_sort_eq wk_preserves_type sub_preserves_type : mctt.
+             sub_preserves_sort sub_preserves_sort_eq sub_preserves_type : mctt.
 #[export]
-Hint Resolve wk_preserves_styp wk_preserves_styp_eq
-             sub_preserves_styp sub_preserves_styp_eq : mctt.
+Hint Resolve sub_preserves_styp : mctt.
 
 (** ** Lifting without the Extra Premise
 
@@ -4794,23 +4684,6 @@ Proof.
   pose proof (sub_preserves_exp _ _ _ _ _ _ _ HA Hσ) as H.
   rewrite type_sort_sub in H by exact (sort_kind_type_sort _ _ HS); exact H.
 Qed.
-
-(** The rule whose type is a substitution instance premised to be a
-    proposition, without that premise: it is admissible by substitution.
-    Later layers use this form. *)
-Corollary wf_right' : forall Θ Ξ Γ P Q M,
-    Θ ⍮ Ξ ⍮ Γ ⊢ P : Propₘ ->
-    Θ ⍮ Ξ ⍮ Γ ▹{ak_propositional} P ⊢ Q : Propₘ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : Σₚ P Q ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_right M : Q[Id,,a_left M].
-Proof.
-  intros * HP HQ HM; eapply wf_right; [ exact HP | exact HQ | exact HM |].
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_left M : P) by (eapply wf_left; eassumption).
-  exact (sub_preserves_sort _ _ _ _ _ _ _ HQ type_sort_prop (wf_sub_single _ _ _ _ _ _ _ HP sort_kind_prop H)).
-Qed.
-
-#[export]
-Hint Resolve wf_right' : mctt.
 
 #[export]
 Hint Resolve wf_wk_q' wf_sub_q' : mctt.
@@ -4927,16 +4800,6 @@ Proof.
     | apply wf_subtyp_ge; assumption ].
 Qed.
 
-(** The same from a type of any universe, large or small. *)
-Lemma wf_subtyp_refl_univ : forall Θ Ξ Γ A u, Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_index_term u -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
-Proof.
-  intros * HA; eapply wf_subtyp_refl_typ; [ eapply (lift_exp_universe_index _ _ _ _ u (large_level u)) | constructor ];
-    [ apply universe_index_le_large_level | exact HA ].
-Qed.
-
-#[export]
-Hint Resolve wf_subtyp_refl_univ : mctt.
-
 
 
 Corollary lift_exp_max_left : forall Θ Ξ Γ A i j,
@@ -4980,51 +4843,6 @@ Qed.
 
 #[export]
 Hint Resolve exp_eq_trans_typ_max : mctt.
-
-(** Two types are always types at a common level.  Stating it in this form —
-    with the level existentially quantified rather than spelled [max i j] — is
-    what lets a proof reach it with [eapply] and leave both levels to
-    unification, which is the only way to use cumulativity in a case whose level
-    variables the induction named for us. *)
-Corollary lift_exp_common : forall Θ Ξ Γ A A' i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@j ->
-    exists k, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@k /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@k.
-Proof.
-  intros.
-  exists (max i j); split; mauto 3 using lift_exp_max_left, lift_exp_max_right.
-Qed.
-
-(** [wf_pi_large] checks the domain and the codomain at the same level, which is
-    almost never how they arrive: the domain's level comes from its own premise
-    and the codomain's from presupposition.  This is the form that takes them as
-    they come.  It is a hint, and the level it produces is a [max] of two evars,
-    so it only fires where the level of the [Π]-type is still open — which is
-    exactly where the strict [wf_pi_large] cannot fire at all. *)
-Corollary wf_pi_max : forall Θ Ξ Γ A B i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ▹{ak_relevant} A ⊢ B : Typeω@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π{ak_relevant} A B : Typeω@(max i j).
-Proof.
-  intros.
-  eapply wf_pi_large; [ eapply lift_exp_max_left | eapply lift_exp_max_right ]; eassumption.
-Qed.
-
-#[export]
-Hint Resolve wf_pi_max : mctt.
-
-(** [lift_exp_common] for the two components of a [Π]-type, which do not live in
-    the same context and so are not two instances of it.  Every rule that
-    mentions a [Π]-type checks both components at one level, and this is what
-    supplies that level when they arrive at two. *)
-Corollary lift_exp_pi_common : forall Θ Ξ Γ A B i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ▹{ak_relevant} A ⊢ B : Typeω@j ->
-    exists k, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@k /\ Θ ⍮ Ξ ⍮ Γ ▹{ak_relevant} A ⊢ B : Typeω@k.
-Proof.
-  intros.
-  exists (max i j); split; mauto 3 using lift_exp_max_left, lift_exp_max_right.
-Qed.
 
 (** ** Types of a Tag's Sort
 
@@ -5126,24 +4944,8 @@ Qed.
 #[export]
 Hint Resolve ctx_wf_gctx : mctt.
 
-(** A local binding is a type in its context by the weakening [ctx_lookup]
-    carries. *)
-Lemma ctx_lookup_wf : forall Ξ Θ Γ x A,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Γ ∋ #x : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵗ A.
-Proof.
-  intros * HΓ Hlk; gen HΓ; induction Hlk; intros HΓ;
-    assert (Θ ⍮ Ξ ⍮ _ ⊢ʷ ↑ : Γ) by (eapply wf_wk_shift; exact HΓ);
-    [ pose proof (ctx_decomp_right HΓ)
-    | pose proof (ctx_decomp_def_typ HΓ)
-    | pose proof (ctx_decomp_dm_typ HΓ)
-    | pose proof (IHHlk ltac:(mauto 2)) ];
-    eapply wk_preserves_type; eassumption.
-Qed.
-
-(** The type of a local binding is of a sort: no binding is at the sort
-    [LevelSort] itself. *)
+(** The type of a local binding is of a sort, by the weakening
+    [ctx_lookup] carries: no binding is at the sort [LevelSort] itself. *)
 Lemma ctx_lookup_wf_sorted : forall Ξ Θ Γ x A,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Γ ∋ #x : A ->
@@ -5174,4 +4976,4 @@ Proof.
 Qed.
 
 #[export]
-Hint Resolve ctx_lookup_wf ctx_lookup_def_wf : mctt.
+Hint Resolve ctx_lookup_def_wf : mctt.

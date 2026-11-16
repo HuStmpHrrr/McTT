@@ -92,9 +92,6 @@ Qed.
 
 (** *** Generated Entries under the Operations *)
 
-Lemma generated_item_entry_wk : forall g φ, generated_item_entry (generated_item_wk g φ) = (fst (generated_item_entry g), gentry_wk (snd (generated_item_entry g)) φ).
-Proof. destruct g; reflexivity. Qed.
-
 Lemma generated_item_entry_sub : forall g σ, generated_item_entry (generated_item_sub g σ) = (fst (generated_item_entry g), gentry_sub (snd (generated_item_entry g)) σ).
 Proof. destruct g; reflexivity. Qed.
 
@@ -178,10 +175,6 @@ Proof.
 Qed.
 
 (** ** Module Expressions *)
-
-Lemma member_ref_wk : forall ch H φ,
-    (member_ref H ch)[φ]ʷ = member_ref (modexp_wk H φ) ch.
-Proof. induction ch as [| x [| y ch] IH]; intros; cbn; auto; apply IH. Qed.
 
 Lemma apps_wk : forall args M φ, (apps M args)[φ]ʷ = apps M[φ]ʷ (map (fun N => N[φ]ʷ) args).
 Proof. induction args; intros; cbn; auto; apply IHargs. Qed.

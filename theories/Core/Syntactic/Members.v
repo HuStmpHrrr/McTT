@@ -312,8 +312,7 @@ Qed.
 (** Each lookup of a global name is defined at a function [uf] finding the
     filed unit at a path (its [_u] version), and then at [gds_lookup Θ]: an
     implementation may find the filed units faster, and gets the same results
-    when its function agrees with [gds_lookup Θ] ([gc_resolve_u_ok] and the
-    like). *)
+    when its function agrees with [gds_lookup Θ]. *)
 
 (** A path inside an open frame is read there, and anything else in the filed
     unit it names.  Nothing is re-expressed: entries are closed and paths
@@ -661,17 +660,6 @@ Proof.
   destruct (gm_entry_head _ _ _ Hr) as (z & ip' & -> & Hin).
   destruct (String.eqb_spec z x) as [-> |]; [ contradiction | assumption ].
 Qed.
-
-(** The lookups at a function agreeing with [gds_lookup Θ] are those at
-    [Θ]. *)
-Section UnitsOk.
-  Variables (uf : path -> option gunit) (Θ : gdeps).
-  Hypothesis Huf : forall fp, uf fp = gds_lookup Θ fp.
-
-  Lemma gc_resolve_u_ok : forall Ξ p, gc_resolve_u uf Ξ p = gc_resolve Θ Ξ p.
-  Proof. intros; unfold gc_resolve, gc_resolve_u; rewrite Huf; reflexivity. Qed.
-
-End UnitsOk.
 
 (** ** One Lookup for a Global
 
@@ -2385,16 +2373,8 @@ Definition generated_item_entry (g : generated_item) : (string * gentry)%type :=
 
 Definition generated_item_name (g : generated_item) : string := fst (generated_item_entry g).
 
-(** A generated item under a weakening and a substitution, as its entry
-    is ([generated_item_entry_wk], [generated_item_entry_sub]). *)
-Definition generated_item_wk (g : generated_item) (φ : wk) : generated_item :=
-  match g with
-  | generated_item_def d pv r A M => generated_item_def d pv r A[φ]ʷ M[φ]ʷ
-  | generated_item_alias d pv E => generated_item_alias d pv (modexp_wk E φ)
-  | generated_item_def_mod d pv A M E => generated_item_def_mod d pv A[φ]ʷ M[φ]ʷ (modexp_wk E φ)
-  end.
-
-(** The substitution counterpart of [generated_item_wk]. *)
+(** A generated item under a substitution, as its entry is
+    ([generated_item_entry_sub]). *)
 Definition generated_item_sub (g : generated_item) (σ : sub) : generated_item :=
   match g with
   | generated_item_def d pv r A M => generated_item_def d pv r A[σ] M[σ]

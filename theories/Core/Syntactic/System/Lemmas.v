@@ -26,8 +26,7 @@ Qed.
 (** ** Context Conversion of Substitutions
 
     [Θ ⍮ Ξ ⍮ Γ' ⊢ˢ Id : Γ] transports substitutions too: compose with the inclusion and
-    cancel the identity.  Which side it goes on is what distinguishes the two:
-    [ctxsub_sub] refines the domain, [ctxsub_sub_cod] coarsens the codomain. *)
+    cancel the identity, which refines the domain ([ctxsub_sub]). *)
 
 Corollary ctxsub_sub : forall Θ Ξ Γ Γ' Δ σ,
     Θ ⍮ Ξ ⍮ Γ' ⊢ˢ Id : Γ ->
@@ -36,15 +35,6 @@ Corollary ctxsub_sub : forall Θ Ξ Γ Γ' Δ σ,
 Proof.
   intros.
   rewrite <- (sb_compose_id_right σ); mauto 2.
-Qed.
-
-Corollary ctxsub_sub_cod : forall Θ Ξ Γ Γ' Δ σ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id : Γ' ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ'.
-Proof.
-  intros.
-  rewrite <- (sb_compose_id_left σ); mauto 2.
 Qed.
 
 #[export]
@@ -262,22 +252,8 @@ Proof.
     rewrite ?exp_sub_id; mauto 3.
 Qed.
 
-Lemma wf_sub_eq_wk : forall Θ Ξ Γ Γ' Δ σ σ' φ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Γ' ⊢ʷ φ : Γ ->
-    Θ ⍮ Ξ ⍮ Γ' ⊢ˢ (sb_wk σ φ) ≈ (sb_wk σ' φ) : Δ.
-Proof.
-  intros * H ?; saturate_wk; saturate_sub_eq.
-  econstructor; [ mauto 2 | mauto 2 | |].
-  - intros x A ?; reduce_index; rewrite <- exp_wk_sub, <- !sentry_exp_wk; fold (exp_sub (a_var x) σ) (exp_sub (a_var x) σ').
-    eapply wk_preserves_exp_eq; [ eapply wf_sub_eq_apply; eassumption | eassumption ].
-  - intros x U Hl; cbn [sb_wk]; rewrite !sentry_modexp_wk.
-    eapply wk_preserves_modexp; [ eapply wf_sub_eq_apply_mod; eassumption | eassumption ].
-Qed.
-
 #[export]
-Hint Resolve wf_sub_eq_extend wf_sub_eq_id_extend wf_sub_eq_extend_def wf_sub_eq_id_extend_def
-             wf_sub_eq_wk : mctt.
+Hint Resolve wf_sub_eq_extend wf_sub_eq_id_extend wf_sub_eq_extend_def wf_sub_eq_id_extend_def : mctt.
 
 (** Extending equivalent substitutions into a module slot, each by the literal
     of its own transported unit, the two transported units being equal. *)
@@ -375,10 +351,9 @@ Qed.
     [sub_preserves_subtyp] rather than by an induction hypothesis.  Because
     [wf_exp_eq_elim_cong] lets the motive vary, the presupposition lemma
     needs to move a type along an equivalence of substitutions, that is, it
-    needs this lemma.  Its counterparts for equality and
-    subtyping ([sub_eq_preserves_exp_eq], [sub_eq_preserves_subtyp]) in turn
-    need presupposition for the symmetry case, and so come after it, in
-    [Core.Syntactic.SubEq]. *)
+    needs this lemma.  Its counterpart for equality
+    ([sub_eq_preserves_exp_eq]) in turn needs presupposition for the
+    symmetry case, and so comes after it, in [Core.Syntactic.SubEq]. *)
 
 Ltac lift_sub_eq_step :=
   match goal with
@@ -1938,7 +1913,7 @@ Hint Resolve sub_eq_preserves_typ sub_eq_preserves_sort : mctt.
 (** ** Substitution Equivalence is a PER
 
     Both directions need to move an image from [A[σ]] to [A[σ']], which is what
-    [sub_eq_preserves_typ] and [ctx_lookup_wf] together provide. *)
+    [sub_eq_preserves_typ] and [ctx_lookup_wf_sorted] together provide. *)
 
 Lemma wf_sub_eq_sym : forall Θ Ξ Γ Δ σ σ',
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
@@ -2034,19 +2009,8 @@ Proof.
     eapply sub_eq_preserves_modexp; [ eapply wf_sub_mod_image; eassumption | eassumption ].
 Qed.
 
-Corollary wf_sub_eq_compose : forall Θ Ξ Γ Γ' Δ σ σ' τ τ',
-    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Γ' ⊢ˢ τ ≈ τ' : Γ ->
-    Θ ⍮ Ξ ⍮ Γ' ⊢ˢ σ ⨟ τ ≈ σ' ⨟ τ' : Δ.
-Proof.
-  intros * H1 H2; saturate_sub_eq.
-  etransitivity;
-    [ eapply wf_sub_eq_compose_left; [ eassumption | eassumption ]
-    | eapply wf_sub_eq_compose_right; [ eassumption | eassumption ] ].
-Qed.
-
 #[export]
-Hint Resolve wf_sub_eq_compose_left wf_sub_eq_compose_right wf_sub_eq_compose : mctt.
+Hint Resolve wf_sub_eq_compose_left wf_sub_eq_compose_right : mctt.
 
 (** ** η-Expansion
 

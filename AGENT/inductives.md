@@ -253,7 +253,7 @@ An inductive type is ONE entry of its frame, `ge_ind pv D Φ`
 (`Syntax.v`): the declaration `D` and the body `Φ` of its module, whose
 members are exactly the constructors and `rec`.  There is no separate
 declaration entry, no `#` name, no frame of its own.  Its module is
-derived, `ind_unit D Φ = gu_mk (ind_uparams D) (md_body Φ)`: its parameters
+derived, the unit `gu_mk (ind_uparams D) (md_body Φ)`: its parameters
 are the uniform ones (the frames' parameters outermost), and its members are
 stored closed over them, as every definition is.
 

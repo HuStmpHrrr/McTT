@@ -5,8 +5,6 @@
     index [k]; together they invert [q^k ↑], the weakening that inserts a
     variable at position [k]:
 
-    - [exp_unwk_wk]: dropping what was just inserted gives the term back,
-      with no hypothesis;
     - [exp_unwk_spec]: inserting what was dropped gives the term back, when
       the dropped variable did not occur;
     - [exp_wk_fresh]: what [q^k ↑] produces never mentions [#k].
@@ -14,7 +12,7 @@
     Nothing here is a judgment: these are facts about terms and renamings.
     They are what the checker needs to turn a level that is typed in an
     extended context, and does not mention the new variable, into a level of
-    the shorter one.  The same three facts are proved for normal and neutral
+    the shorter one.  The same facts are proved for normal and neutral
     forms, where the un-weakening has to produce a normal form again
     ([nf_unwk]) rather than go through [nf_to_exp]. *)
 From Stdlib Require Import Arith Lia List PeanoNat.
@@ -109,13 +107,6 @@ with centry_fresh (k : nat) (e : centry) {struct e} : Prop :=
   | ce_dm A M U => exp_fresh k A /\ exp_fresh k M /\ gunit_fresh k U
   end.
 
-(** The telescope clause of [gunit_fresh], as a definition of its own. *)
-Fixpoint tele_fresh (k : nat) (Δ : list centry) : Prop :=
-  match Δ with
-  | nil => True
-  | cons e Δ' => centry_fresh (List.length Δ' + k) e /\ tele_fresh k Δ'
-  end.
-
 (** The blocks clause of [exp_fresh], as a definition of its own. *)
 Definition blocks_fresh (k : nat) (Bks : list eblock) : Prop :=
   all_blocks (fun nm Z A Bs => exp_fresh (nm - 1 + k) Z /\ exp_fresh (nm + k) A /\
@@ -207,38 +198,15 @@ Proof.
   end.
 Qed.
 
-(** A renaming that sends only [k] to [k'] keeps [#k'] out of what kept
-    [#k] out. *)
-Definition wk_reflects (k k' : nat) (φ : wk) : Prop := forall x, φ x = k' -> x = k.
-
-Lemma wk_reflects_q : forall k k' φ, wk_reflects k k' φ -> wk_reflects (S k) (S k') (wk_q φ).
-Proof. intros k k' φ H [|x] Hx; cbn in Hx; [ discriminate | injection Hx as Hx; rewrite (H _ Hx); reflexivity ]. Qed.
-
-Lemma wk_reflects_qn : forall n k k' φ, wk_reflects k k' φ -> wk_reflects (n + k) (n + k') (wk_qn n φ).
-Proof. induction n; intros; cbn; [ assumption | apply wk_reflects_q; auto ]. Qed.
-
-#[local]
-Hint Resolve wk_reflects_q wk_reflects_qn : core.
-
 (** ** [unwk k] Inverts [q^k ↑]
 
-    One way round the composite is the identity away from [k], the other is
-    the identity outright. *)
+    The composite [unwk k ⊙ q^k ↑] is the identity away from [k]. *)
 Lemma unwk_after_wk : forall k, wk_id_away k (unwk k ⊙ wk_qn k ↑).
 Proof.
   intros k x Hx; unfold unwk; cbn.
   destruct (Compare_dec.lt_dec x k).
   - rewrite (wk_qn_lt _ _ x) by lia; rewrite wk_qn_lt by lia; reflexivity.
   - rewrite (wk_qn_ge k pred x) by lia; cbn; rewrite wk_qn_ge by lia; cbn; lia.
-Qed.
-
-Lemma wk_after_unwk : forall k, wk_eq (wk_qn k ↑ ⊙ unwk k) wk_id.
-Proof.
-  intros k x; unfold unwk; cbn.
-  destruct (Compare_dec.lt_dec x k).
-  - rewrite (wk_qn_lt _ _ x) by lia; rewrite wk_qn_lt by lia; reflexivity.
-  - rewrite (wk_qn_ge k ↑ x) by lia; cbv [wk_shift]; rewrite wk_qn_ge by lia;
-      rewrite Nat.add_sub; cbn [pred]; lia.
 Qed.
 
 Lemma wk_qn_shift_avoids : forall k, wk_avoids k (wk_qn k ↑).
@@ -249,9 +217,6 @@ Proof.
   intros; rewrite (exp_wk_wk_ext _ _ _ (unwk k ⊙ wk_qn k ↑)) by reflexivity.
   symmetry; eapply (proj1 syn_fresh_id); eauto using unwk_after_wk.
 Qed.
-
-Theorem exp_unwk_wk : forall k M, M[wk_qn k ↑]ʷ[unwk k]ʷ = M.
-Proof. intros; rewrite (exp_wk_wk_ext _ _ _ wk_id) by apply wk_after_unwk; apply exp_wk_id. Qed.
 
 Theorem exp_wk_fresh : forall k M, exp_fresh k M[wk_qn k ↑]ʷ.
 Proof. intros; apply (proj1 syn_wk_fresh), wk_qn_shift_avoids. Qed.
@@ -882,35 +847,13 @@ Proof.
   revert Hle Hge Hs HN1 HN2; generalize (level_atoms_eval (ν_at a s N) xs) (level_atoms_max_offset ys); intros; ordinal_solve.
 Qed.
 
-(** Un-weakening respects equality up to proofs: it acts on the proofs
-    without changing which positions hold one. *)
-Lemma nf_ne_unwk_upto_proofs :
-  (forall W W' k, nf_eq_upto_proofs W W' -> nf_eq_upto_proofs (nf_unwk k W) (nf_unwk k W')) /\
-  (forall u u' k, ne_eq_upto_proofs u u' -> ne_eq_upto_proofs (ne_unwk k u) (ne_unwk k u')).
-Proof.
-  unfold nf_eq_upto_proofs, ne_eq_upto_proofs.
-  apply nf_ne_ind; intros;
-    lazymatch goal with
-    | H : nf_eqb_upto_proofs _ ?N = true |- _ => destruct N
-    | H : ne_eqb_upto_proofs _ ?N = true |- _ => destruct N
-    end;
-    cbn [nf_unwk ne_unwk nf_eqb_upto_proofs ne_eqb_upto_proofs] in *; try discriminate; try reflexivity;
-    eqb_split; eqb_leaves; try solve [ eauto ].
-  all: eapply list_eqb_map_all; [ eassumption | | eassumption ]; intros x Hx y Hxy; try solve [ eauto ].
-  all: destruct Hx; destruct y; cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *;
-    eqb_split; eqb_leaves; subst; eqb_split; eqb_leaves; try solve [ eauto ].
-  all: eapply list_eqb_map_all; [ eassumption | | eassumption ]; intros br Hbr br' Hbb; destruct Hbr; destruct br';
-    cbn -[nf_eqb_upto_proofs ne_eqb_upto_proofs list_eqb Nat.eqb dec_eqb] in *; eqb_split; eqb_leaves; subst;
-    eqb_split; eqb_leaves; eauto.
-Qed.
-
 (** ** The Bound of a Level Under a Binder
 
     The least level of the context that is above a level [l] of the context
     extended by a variable, for every value of the variable: an atom fresh
     at [k] stays, un-weakened, and an atom that mentions [k], of sort [s],
     ranges over the ordinals below [ω·(s+1)], which is the bound it
-    contributes ([lvl_bound_le], [lvl_le_bound]). *)
+    contributes ([lvl_bound_above], [lvl_le_bound_wk]). *)
 Fixpoint level_atoms_fresh_part (k : nat) (xs : list level_atom) : list level_atom :=
   match xs with
   | nil => nil
@@ -941,12 +884,6 @@ Proof.
   - revert IH Hν; generalize (level_atoms_eval ν r) (level_atoms_open_bound k r) (level_atoms_eval ν (level_atoms_fresh_part k r)) (ν a s); intros; ordinal_solve.
 Qed.
 
-(** The bound is below every level fresh at [k] above the level, un-weakened:
-    so it is the least such level of the context. *)
-Lemma level_atoms_eval_unwk : forall ν k xs,
-    level_atoms_eval ν (List.map (map_level_atom (ne_unwk k)) xs) = level_atoms_eval (fun a s => ν (ne_unwk k a) s) xs.
-Proof. intros ν k; induction xs as [| [j s a] r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
-
 Lemma level_atoms_eval_fresh_part : forall ν k xs, ordinal_le (level_atoms_eval ν (level_atoms_fresh_part k xs)) (level_atoms_eval ν xs).
 Proof.
   intros ν k; induction xs as [| [j s a] r IH]; cbn [level_atoms_eval level_atoms_fresh_part]; [ ordinal_solve |].
@@ -965,23 +902,6 @@ Proof.
   assert (Hs : s < fst d).
   { eapply H; [ left; repeat split; reflexivity | exact Ha |]. intros Hf; apply (proj2 nf_freshb_iff) in Hf; congruence. }
   revert IH' Hs; generalize (level_atoms_open_bound k r); intros; ordinal_solve.
-Qed.
-
-Lemma lvl_le_bound : forall k l l', all_list (fun a => ne_proof_free (atom_level a)) (snd l) -> lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
-    lvl_le (lvl_bound k l) (fst l', List.map (map_level_atom (ne_unwk k)) (snd l')).
-Proof.
-  intros k [c xs] [d ys] HE Hle Hys; cbn [fst snd] in *.
-  pose proof (lvl_le_level_atoms_fresh _ _ _ Hle Hys) as Hs; cbn [fst snd] in Hs.
-  pose proof (level_atoms_open_bound_le k xs d HE Hs) as Hb.
-  rewrite lvl_le_correct in Hle |- *; intros ν Hν.
-  set (ν' := fun a s => ν (ne_unwk k a) s).
-  assert (Hν' : lvl_adm ν').
-  { constructor; intros a; [ intros s; apply (lvl_adm_sort _ Hν) |].
-    intros b s Hab; apply (lvl_adm_upto_proofs _ Hν), (proj2 nf_ne_unwk_upto_proofs), Hab. }
-  specialize (Hle ν' Hν'); unfold lvl_bound, lvl_eval in *; cbn [fst snd] in *.
-  rewrite !level_atoms_eval_unwk; fold ν'.
-  pose proof (level_atoms_eval_fresh_part ν' k xs) as Hf.
-  revert Hle Hb Hf; generalize (level_atoms_eval ν' xs) (level_atoms_eval ν' ys) (level_atoms_eval ν' (level_atoms_fresh_part k xs)) (level_atoms_open_bound k xs); intros; ordinal_solve.
 Qed.
 
 (** The fresh atoms are fresh and are atoms of the level; the bound of the

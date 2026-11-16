@@ -754,9 +754,8 @@ Qed.
     than the highest record view its fields meet, the views met through an
     inductive view not counted (a leaf path stops there).  Ties keep the
     order found.  A record view's fields then end only in record views
-    before it ([rview_order_ok]): the height drops along each field
-    ([record_height_drop]), and the sort puts lower heights first
-    ([sort_by_height_lt]).  The heights are computed in as many rounds as
+    before it ([rview_order_ok]): the height drops along each field, and
+    the sort puts lower heights first.  The heights are computed in as many rounds as
     there are record views, as the rank of the views is ([grp_rank]). *)
 
 (** The record views among the keys [xs], in order. *)
@@ -798,21 +797,6 @@ Definition sort_by_height (h : view_key -> nat) (l : list view_key) : list view_
 Definition filed_keys (meets : view_key -> list view_key) (Vs : list view_key) : list view_key :=
   ind_keys Vs ++ sort_by_height (record_height meets Vs) (record_keys Vs).
 
-(** The height of a record view is above that of each record view its
-    fields meet, where the height of that one is stable. *)
-Lemma record_height_drop : forall meets m x y, In y (record_keys (meets x)) ->
-    record_height_iter meets m y = record_height_iter meets (S m) y ->
-    record_height_iter meets (S m) y < record_height_iter meets (S m) x.
-Proof.
-  intros * Hy Hs; rewrite <- Hs; cbn [record_height_iter].
-  assert (Hle : forall l, In y l ->
-            record_height_iter meets m y <= List.fold_right Nat.max 0 (List.map (record_height_iter meets m) l)).
-  { induction l as [| z zs IH]; intros Hin; cbn in *; [ destruct Hin |].
-    destruct Hin as [-> | Hin]; [ lia | specialize (IH Hin); lia ]. }
-  destruct (record_keys (meets x)) as [| y0 ys] eqn:E; [ destruct Hy |].
-  specialize (Hle _ Hy); lia.
-Qed.
-
 Lemma insert_by_height_in : forall h x l y, In y (insert_by_height h x l) <-> y = x \/ In y l.
 Proof.
   intros h x l; induction l as [| z l IH]; intros y; cbn [insert_by_height].
@@ -828,47 +812,4 @@ Proof.
     by (intros y; rewrite H; cbn; split; intros Hy; intuition).
   induction l as [| x l IH]; intros acc y; cbn; [ split; intros Hy; intuition |].
   rewrite IH, insert_by_height_in; split; intros Hy; intuition subst; auto.
-Qed.
-
-(** The keys sorted by height: no key higher than one after it. *)
-Definition height_sorted (h : view_key -> nat) : list view_key -> Prop := Sorted (fun a b => h a <= h b).
-
-(** Inserting keeps the keys sorted. *)
-Lemma insert_by_height_sorted : forall h x l, height_sorted h l -> height_sorted h (insert_by_height h x l).
-Proof.
-  unfold height_sorted; intros h x l H; induction H as [| z l Hl IH Hhd]; cbn [insert_by_height].
-  - repeat constructor.
-  - destruct (h x <? h z) eqn:E.
-    + apply Nat.ltb_lt in E; constructor; [ constructor; assumption | constructor; lia ].
-    + apply Nat.ltb_ge in E; constructor; [ exact IH |].
-      destruct l as [| w l]; cbn [insert_by_height]; [ constructor; lia |].
-      destruct (h x <? h w); constructor; [ lia | inversion Hhd; assumption ].
-Qed.
-
-Lemma sort_by_height_sorted : forall h l, height_sorted h (sort_by_height h l).
-Proof.
-  intros h l; unfold sort_by_height.
-  enough (H : forall acc, height_sorted h acc -> height_sorted h (List.fold_left (fun acc x => insert_by_height h x acc) l acc))
-    by (apply H; constructor).
-  induction l as [| x l IH]; intros acc Hacc; cbn; [ exact Hacc | apply IH, insert_by_height_sorted, Hacc ].
-Qed.
-
-(** A key of a sorted list is no higher than one at a later index. *)
-Lemma height_sorted_nth : forall h l, height_sorted h l ->
-    forall i j a b, List.nth_error l i = Some a -> List.nth_error l j = Some b -> i < j -> h a <= h b.
-Proof.
-  intros h l Hs; apply Sorted_StronglySorted in Hs; [| intros ? ? ?; lia ].
-  induction Hs as [| z l _ IH Hall]; intros [| i] [| j] a b Ha Hb Hij; cbn in Ha, Hb; try discriminate; try lia.
-  - injection Ha as <-; rewrite List.Forall_forall in Hall; exact (Hall b (List.nth_error_In _ _ Hb)).
-  - exact (IH i j a b Ha Hb ltac:(lia)).
-Qed.
-
-(** In the keys sorted by height, a lower key comes first. *)
-Lemma sort_by_height_lt : forall h l i j a b, List.nth_error (sort_by_height h l) i = Some a ->
-    List.nth_error (sort_by_height h l) j = Some b -> h b < h a -> j < i.
-Proof.
-  intros * Ha Hb Hab.
-  destruct (Compare_dec.lt_eq_lt_dec i j) as [[Hij | ->] | Hji]; [| | exact Hji ].
-  - pose proof (height_sorted_nth _ _ (sort_by_height_sorted h l) _ _ _ _ Ha Hb Hij); lia.
-  - rewrite Ha in Hb; injection Hb as ->; lia.
 Qed.

@@ -827,7 +827,7 @@ with gentry : Set :=
     inductive types, private when [pv]: the group's path [pq] (the path of
     the entry of member [0]), and the body [Φ] of the member's module,
     whose members are its constructors (and the recursor), under the
-    uniform parameters of [D] ([ind_unit]).  As a term the entry is the
+    uniform parameters of [D].  As a term the entry is the
     type former [a_ind pq k]. *)
 | ge_ind : bool -> qname -> nat -> ind_decl_g exp centry -> gmod -> gentry
 (** [ge_def_mod pv A M U]: a definition with a module part, private when
@@ -1212,11 +1212,6 @@ Definition im_np (D : ind_decl) (M : imember) : nat := im_nn M + ind_nu D.
 Definition im_path (M : imember) : option qname :=
   match im_head M with mh_decl p => Some p | _ => None end.
 
-(** The module of the inductive type [D] of body [Φ], as a unit: it takes
-    the uniform parameters, with the frames' parameters outside them, so
-    that it is closed, as an alias is. *)
-Definition ind_unit (D : ind_decl) (Φ : gmod) : gunit := gu_body (ind_uparams D) Φ.
-
 (** The body of a body unit, and the empty body for an alias. *)
 Definition gu_mod (U : gunit) : gmod :=
   match U with
@@ -1483,29 +1478,10 @@ Proof. intros []; cbn; [ exact I | lia ]. Qed.
 Lemma universe_index_le_large_level : forall u, universe_index_le u (large_level u).
 Proof. intros []; cbn; [ exact I | lia ]. Qed.
 
-(** The least index: [Type@0] is below every universe. *)
-Lemma universe_index_le_least : forall u, universe_index_le (us ordinal_zero) u.
-Proof. intros []; cbn; [ ordinal_solve | exact I ]. Qed.
-
 (** The large levels of two ordered indices are ordered: a small universe
     lives in [Typeω@0], and the large tier's order is the order on levels. *)
 Lemma universe_index_le_large_level_le : forall u v, universe_index_le u v -> large_level u <= large_level v.
 Proof. intros [] []; cbn; intros; lia. Qed.
-
-(** The join of two indices: a large universe absorbs a small one. *)
-Definition universe_index_max (u v : universe_index) : universe_index :=
-  match u, v with
-  | us n, us m => us (ordinal_max n m)
-  | us _, ul i => ul i
-  | ul i, us _ => ul i
-  | ul i, ul j => ul (max i j)
-  end.
-
-Lemma universe_index_le_universe_index_max_left : forall u v, universe_index_le u (universe_index_max u v).
-Proof. intros [] []; cbn; try exact I; try lia; ordinal_solve. Qed.
-
-Lemma universe_index_le_universe_index_max_right : forall u v, universe_index_le v (universe_index_max u v).
-Proof. intros [] []; cbn; try exact I; try lia; ordinal_solve. Qed.
 
 (** Discharges the order side conditions between universe indices. *)
 Ltac solve_universe_index :=
@@ -1827,11 +1803,6 @@ Definition branch_exp (br : normal_branch) : (string * nat * exp)%type :=
 (** A block of a stuck eliminator as a term's block. *)
 Definition block_exp (b : normal_block) : eblock :=
   eb_mk (block_arity b) (nf_to_exp (block_scrutinee_type b)) (nf_to_exp (block_motive b)) (List.map branch_exp (block_branches b)).
-
-(** The clauses of [nf_to_exp] at the levels and at a stuck eliminator,
-    through the definitions above. *)
-Lemma nf_to_exp_univ : forall c xs, nf_to_exp (nf_univ c xs) = a_univ (lvl_exp_of c (List.map atom_exp xs)).
-Proof. reflexivity. Qed.
 
 (** * Canonical Levels
 
