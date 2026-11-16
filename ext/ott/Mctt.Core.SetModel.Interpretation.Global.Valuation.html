@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab733"></a><h1 class="section">The Valuation of a Global Context</h1>
+<a id="lab747"></a><h1 class="section">The Valuation of a Global Context</h1>
 
 
 <div class="paragraph"> </div>
@@ -43,7 +43,7 @@
     semantics of each group of inductive types and of each record type.
     The interpretation of terms reads globals only through a valuation;
     <span class="inlinecode"><span class="id" title="var">Judgments.v</span></span> states when a valuation is one of a global context
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Judgments.html#set_gctx_ok"><span class="id" title="record">set_gctx_ok</span></a></span>). 
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Judgments.Definitions.html#set_gctx_ok"><span class="id" title="record">set_gctx_ok</span></a></span>). 
 </div>
 <div class="code">
 
@@ -56,7 +56,7 @@
 </div>
 
 <div class="doc">
-<a id="lab734"></a><h2 class="section">Groups of Inductive Types</h2>
+<a id="lab748"></a><h2 class="section">Groups of Inductive Types</h2>
 
 <div class="paragraph"> </div>
 
@@ -176,7 +176,7 @@ The carrier of the member <span class="inlinecode"><a class="idref" href="Mctt.C
 </div>
 
 <div class="doc">
-<a id="lab735"></a><h2 class="section">Record Types</h2>
+<a id="lab749"></a><h2 class="section">Record Types</h2>
 
 <div class="paragraph"> </div>
 
@@ -218,7 +218,7 @@ The carrier at the values of the parameters
 </div>
 
 <div class="doc">
-<a id="lab736"></a><h2 class="section">Valuations</h2>
+<a id="lab750"></a><h2 class="section">Valuations</h2>
 
 <div class="paragraph"> </div>
 
@@ -245,35 +245,35 @@ The closed module of the module entry at a path: a body is the
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The type former of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
+The type former of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="global_former" class="idref" href="#global_former"><span class="id" title="projection">global_former</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The constructor <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
+The constructor <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="global_constructor" class="idref" href="#global_constructor"><span class="id" title="projection">global_constructor</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The semantics of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
+The semantics of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="global_group" class="idref" href="#global_group"><span class="id" title="projection">global_group</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Global.Valuation.html#set_group"><span class="id" title="record">set_group</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The type former of the record type at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
+The type former of the record type at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="global_record_former" class="idref" href="#global_record_former"><span class="id" title="projection">global_record_former</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The semantics of the record type at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
+The semantics of the record type at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="global_record" class="idref" href="#global_record"><span class="id" title="projection">global_record</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Interpretation.Global.Valuation.html#set_record"><span class="id" title="record">set_record</span></a><br/>

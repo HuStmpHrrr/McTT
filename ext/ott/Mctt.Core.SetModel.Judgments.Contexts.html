@@ -1,0 +1,123 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+      <a href="./lib/index.html"> Library </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.SetModel.Judgments.Contexts</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab841"></a><h1 class="section">The Set Model of Contexts</h1>
+
+
+<div class="paragraph"> </div>
+
+    A context is valid when each entry is valid in the context before it:
+    an assumption's type denotes, a definition is of its type, a module
+    slot's unit is equal to itself. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">List</span>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.SetModel</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.SetModel.Judgments.html#"><span class="id" title="library">Judgments</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#"><span class="id" title="library">Syntax</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <span class="id" title="module">ListNotations</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Section</span> <a id="Contexts" class="idref" href="#Contexts"><span class="id" title="section">Contexts</span></a>.<br/>
+</div>
+
+<div class="doc">
+The context the rules' premises are read at 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Variable</span> <a id="3259c66dc132ea98b72d6591c3315066" class="idref" href="#3259c66dc132ea98b72d6591c3315066"><span class="id" title="variable">Θ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gdeps"><span class="id" title="definition">gdeps</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Variable</span> <a id="dfc7c548464faf4a9feaa958cddb0930" class="idref" href="#dfc7c548464faf4a9feaa958cddb0930"><span class="id" title="variable">Ξ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gstack"><span class="id" title="definition">gstack</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Variable</span> <a id="Contexts.T" class="idref" href="#Contexts.T"><span class="id" title="variable">T</span></a> : <a class="idref" href="Mctt.Core.SetModel.Tower.html#universe_tower"><span class="id" title="record">universe_tower</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Variable</span> <a id="b326568ac15cff0c6ac12151f7edccdd" class="idref" href="#b326568ac15cff0c6ac12151f7edccdd"><span class="id" title="variable">γ</span></a> : <a class="idref" href="Mctt.Core.SetModel.Interpretation.Global.Valuation.html#global_valuation"><span class="id" title="record">global_valuation</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+A unit equal to another denotes. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="set_modexp_rel_of_unit_eq" class="idref" href="#set_modexp_rel_of_unit_eq"><span class="id" title="lemma">set_modexp_rel_of_unit_eq</span></a> {<a id="GC:9" class="idref" href="#GC:9"><span class="id" title="binder">GC</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GCtx"><span class="id" title="class">GCtx</span></a>} : <span class="id" title="keyword">forall</span> <a id="2c1ebf9f6f644b76d36a0d699f8e9ac4" class="idref" href="#2c1ebf9f6f644b76d36a0d699f8e9ac4"><span class="id" title="binder">Γ</span></a> <a id="U:11" class="idref" href="#U:11"><span class="id" title="binder">U</span></a> <a id="U':12" class="idref" href="#U':12"><span class="id" title="binder">U'</span></a>, <a class="idref" href="Mctt.Core.SetModel.Judgments.Definitions.html#set_rel_unit_eq"><span class="id" title="definition">set_rel_unit_eq</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#Contexts.T"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#b326568ac15cff0c6ac12151f7edccdd"><span class="id" title="variable">γ</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#2c1ebf9f6f644b76d36a0d699f8e9ac4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#U:11"><span class="id" title="variable">U</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#U':12"><span class="id" title="variable">U'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.SetModel.Judgments.Definitions.html#set_modexp_rel"><span class="id" title="definition">set_modexp_rel</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#Contexts.T"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#b326568ac15cff0c6ac12151f7edccdd"><span class="id" title="variable">γ</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#2c1ebf9f6f644b76d36a0d699f8e9ac4"><span class="id" title="variable">Γ</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#me_lit"><span class="id" title="constructor">me_lit</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#U:11"><span class="id" title="variable">U</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#me_lit"><span class="id" title="constructor">me_lit</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#U:11"><span class="id" title="variable">U</span></a>).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> * (<span class="id" title="var">F</span> &amp; <span class="id" title="var">F'</span> &amp; [<span class="id" title="var">HF</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>]). <span class="id" title="tactic">exists</span> <span class="id" title="var">F</span>, <span class="id" title="var">F</span>. <span class="id" title="tactic">constructor</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">HF</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">HF</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> ρ <span class="id" title="var">H</span>ρ. <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.SetModel.Judgments.Definitions.html#set_modexp_denotes_refl"><span class="id" title="lemma">set_modexp_denotes_refl</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HF</span> <span class="id" title="var">H</span>ρ).<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+An entry with no unit keeps the slots valid. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="set_valid_slots_extend_plain" class="idref" href="#set_valid_slots_extend_plain"><span class="id" title="lemma">set_valid_slots_extend_plain</span></a> {<a id="GC:13" class="idref" href="#GC:13"><span class="id" title="binder">GC</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GCtx"><span class="id" title="class">GCtx</span></a>} : <span class="id" title="keyword">forall</span> <a id="6f77cad99d2eda9ef19109858c066b07" class="idref" href="#6f77cad99d2eda9ef19109858c066b07"><span class="id" title="binder">Γ</span></a> <a id="ce:15" class="idref" href="#ce:15"><span class="id" title="binder">ce</span></a>, <a class="idref" href="Mctt.Core.SetModel.Judgments.Definitions.html#set_valid_slots"><span class="id" title="definition">set_valid_slots</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#Contexts.T"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#b326568ac15cff0c6ac12151f7edccdd"><span class="id" title="variable">γ</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#6f77cad99d2eda9ef19109858c066b07"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#centry_unit"><span class="id" title="definition">centry_unit</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#ce:15"><span class="id" title="variable">ce</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.SetModel.Judgments.Definitions.html#set_valid_slots"><span class="id" title="definition">set_valid_slots</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#Contexts.T"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#b326568ac15cff0c6ac12151f7edccdd"><span class="id" title="variable">γ</span></a> (<a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#ce:15"><span class="id" title="variable">ce</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#6f77cad99d2eda9ef19109858c066b07"><span class="id" title="variable">Γ</span></a>).<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span> * <span class="id" title="var">HΓ</span> <span class="id" title="var">Hn</span>. <span class="id" title="tactic">split</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">HΓ</span> | <span class="id" title="tactic">intros</span> <span class="id" title="var">U</span> <span class="id" title="var">HU</span>; <span class="id" title="tactic">congruence</span>]. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+A unit equal to itself makes a slot holding it valid. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="set_valid_slots_extend_unit" class="idref" href="#set_valid_slots_extend_unit"><span class="id" title="lemma">set_valid_slots_extend_unit</span></a> {<a id="GC:16" class="idref" href="#GC:16"><span class="id" title="binder">GC</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GCtx"><span class="id" title="class">GCtx</span></a>} : <span class="id" title="keyword">forall</span> <a id="de99c0e007bd311d76da1801ff347713" class="idref" href="#de99c0e007bd311d76da1801ff347713"><span class="id" title="binder">Γ</span></a> <a id="ce:18" class="idref" href="#ce:18"><span class="id" title="binder">ce</span></a> <a id="U:19" class="idref" href="#U:19"><span class="id" title="binder">U</span></a>, <a class="idref" href="Mctt.Core.SetModel.Judgments.Definitions.html#set_valid_slots"><span class="id" title="definition">set_valid_slots</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#Contexts.T"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#b326568ac15cff0c6ac12151f7edccdd"><span class="id" title="variable">γ</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#de99c0e007bd311d76da1801ff347713"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#centry_unit"><span class="id" title="definition">centry_unit</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#ce:18"><span class="id" title="variable">ce</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#U:19"><span class="id" title="variable">U</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.SetModel.Judgments.Definitions.html#set_rel_unit_eq"><span class="id" title="definition">set_rel_unit_eq</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#Contexts.T"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#b326568ac15cff0c6ac12151f7edccdd"><span class="id" title="variable">γ</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#de99c0e007bd311d76da1801ff347713"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#U:19"><span class="id" title="variable">U</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#U:19"><span class="id" title="variable">U</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Definitions.html#set_valid_slots"><span class="id" title="definition">set_valid_slots</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#Contexts.T"><span class="id" title="variable">T</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#b326568ac15cff0c6ac12151f7edccdd"><span class="id" title="variable">γ</span></a> (<a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#ce:18"><span class="id" title="variable">ce</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#de99c0e007bd311d76da1801ff347713"><span class="id" title="variable">Γ</span></a>).<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span> * <span class="id" title="var">HΓ</span> <span class="id" title="var">Hu</span> (<span class="id" title="var">F</span> &amp; <span class="id" title="var">F'</span> &amp; [<span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HU</span> <span class="id" title="var">_</span>]). <span class="id" title="tactic">split</span>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">HΓ</span> | <span class="id" title="tactic">intros</span> <span class="id" title="var">U'</span> <span class="id" title="var">HU'</span>; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hu</span> <span class="id" title="tactic">in</span> <span class="id" title="var">HU'</span>; <span class="id" title="tactic">injection</span> <span class="id" title="var">HU'</span> <span class="id" title="keyword">as</span> &lt;-; <span class="id" title="tactic">exact</span> <span class="id" title="var">HU</span>]. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab842"></a><h2 class="section">The Rules</h2>
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Core.SetModel.Judgments.Contexts.html#Contexts"><span class="id" title="section">Contexts</span></a>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

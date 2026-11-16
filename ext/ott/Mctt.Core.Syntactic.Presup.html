@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1266"></a><h1 class="section">Presupposition</h1>
+<a id="lab1288"></a><h1 class="section">Presupposition</h1>
 
 
 <div class="paragraph"> </div>
@@ -48,7 +48,7 @@
 
     These statements come after <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_exp"><span class="id" title="lemma">sub_eq_preserves_exp</span></a></span>, because the
     congruences whose type depends on a left premise, such as application's
-    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a>]</span>, type their right-hand side at the type built from the right
+    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Commands.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.RecursorTyped.html#N"><span class="id" title="abbreviation">N</span></a>]</span>, type their right-hand side at the type built from the right
     premises, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_exp"><span class="id" title="lemma">sub_eq_preserves_exp</span></a></span> bridges the two.  That lemma is
     about typing derivations only, so it is proved by induction on <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a></span>
     without presupposition.
@@ -105,7 +105,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1267"></a><h2 class="section">The Two Sides of a Term Equation</h2>
+<a id="lab1289"></a><h2 class="section">The Two Sides of a Term Equation</h2>
 
 <div class="paragraph"> </div>
 
@@ -205,7 +205,7 @@ Members: the left-hand side by <span class="inlinecode"><a class="idref" href="M
 </div>
 
 <div class="doc">
-The universe congruence is stated at <span class="inlinecode"><span class="id" title="keyword">Type</span>⟨<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a>⟩</span>, so its
+The universe congruence is stated at <span class="inlinecode"><span class="id" title="keyword">Type</span>⟨<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GeneratedCommands.html#RecTyped.M"><span class="id" title="variable">M</span></a>⟩</span>, so its
       right-hand side has to be moved there from <span class="inlinecode"><span class="id" title="keyword">Type</span>⟨<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.M'"><span class="id" title="variable">M'</span></a>⟩</span>.  Its goal
       is the only one of that shape. 
 </div>
@@ -233,10 +233,10 @@ The left-hand side of absorption is at the sort above the one its
 <div class="doc">
 The eliminator of an inductive type, congruence, <span class="inlinecode"><span class="id" title="var">ι</span></span> and the
       eliminator at a view: each side by the lemmas of
-      <span class="inlinecode"><span class="id" title="library">System</span>/<a class="idref" href="Mctt.Core.SetModel.Cases.IndCases.html#Inductives"><span class="id" title="section">Inductives</span></a>/<span class="id" title="var">Typing.v</span></span>.  The positional premises of the
+      <span class="inlinecode"><span class="id" title="library">System</span>/<a class="idref" href="Mctt.Core.SetModel.Inductives.Model.html#Inductives"><span class="id" title="section">Inductives</span></a>/<span class="id" title="var">Typing.v</span></span>.  The positional premises of the
       congruence on the motives and the branches give those of either side,
       one component of their induction hypotheses each.  The lemmas are
-      stated at the motives' sort, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#abs_kind_sort"><span class="id" title="definition">abs_kind_sort</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.r"><span class="id" title="variable">r</span></a></span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span>, so they
+      stated at the motives' sort, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#abs_kind_sort"><span class="id" title="definition">abs_kind_sort</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.r"><span class="id" title="variable">r</span></a></span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span>, so they
       cover both tags. 
 </div>
 <div class="code">
@@ -265,7 +265,7 @@ The eliminator of an inductive type, congruence, <span class="inlinecode"><span 
 
 <div class="doc">
 <span class="inlinecode"><span class="id" title="var">Π</span></span>, right.  Only the codomain has to move, and it moves by context
-      conversion: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹{<span class="id" title="var">κd</span>}</span> <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Subtyping.Definitions.html#A'"><span class="id" title="projection">A'</span></a></span> refines <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹{<span class="id" title="var">κd</span>}</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, at a sort of the
+      conversion: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹{<span class="id" title="var">κd</span>}</span> <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Subtyping.Definitions.html#A'"><span class="id" title="projection">A'</span></a></span> refines <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹{<span class="id" title="var">κd</span>}</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Views.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, at a sort of the
       domain's kind the domain's sort lifts to (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#pi_domain_eq_sort"><span class="id" title="lemma">pi_domain_eq_sort</span></a></span>). 
 </div>
 <div class="code">
@@ -287,7 +287,7 @@ The eliminator of an inductive type, congruence, <span class="inlinecode"><span 
 
 <div class="doc">
 <span class="inlinecode"><span class="id" title="var">λ</span></span>, right.  The codomain moves by context conversion; the bridging
-      equation <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_pi"><span class="id" title="constructor">a_pi</span></a></span> <span class="inlinecode"><span class="id" title="var">κd</span></span> <span class="inlinecode"><span class="id" title="var">κc</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_pi"><span class="id" title="constructor">a_pi</span></a></span> <span class="inlinecode"><span class="id" title="var">κd</span></span> <span class="inlinecode"><span class="id" title="var">κc</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Subtyping.Definitions.html#A'"><span class="id" title="projection">A'</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> is at a sort the <span class="inlinecode"><span class="id" title="var">Π</span></span> is
+      equation <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_pi"><span class="id" title="constructor">a_pi</span></a></span> <span class="inlinecode"><span class="id" title="var">κd</span></span> <span class="inlinecode"><span class="id" title="var">κc</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Views.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Commands.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_pi"><span class="id" title="constructor">a_pi</span></a></span> <span class="inlinecode"><span class="id" title="var">κd</span></span> <span class="inlinecode"><span class="id" title="var">κc</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Subtyping.Definitions.html#A'"><span class="id" title="projection">A'</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Commands.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> is at a sort the <span class="inlinecode"><span class="id" title="var">Π</span></span> is
       of (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Presup.html#wf_pi_cong_at_kinds"><span class="id" title="lemma">wf_pi_cong_at_kinds</span></a></span>). 
 </div>
 <div class="code">
@@ -482,7 +482,7 @@ A term of a type is of every type equal to it at the sort of a
 </div>
 
 <div class="doc">
-<a id="lab1268"></a><h2 class="section">The Two Sides of a Refinement</h2>
+<a id="lab1290"></a><h2 class="section">The Two Sides of a Refinement</h2>
 
 
 <div class="paragraph"> </div>
@@ -559,7 +559,7 @@ The types of levels of a sort: types of levels.
 </div>
 
 <div class="doc">
-<a id="lab1269"></a><h2 class="section">Substitution Equivalence</h2>
+<a id="lab1291"></a><h2 class="section">Substitution Equivalence</h2>
 
 </div>
 <div class="code">
@@ -577,7 +577,7 @@ The types of levels of a sort: types of levels.
 </div>
 
 <div class="doc">
-<a id="lab1270"></a><h2 class="section">Saturating the Context, with Equality</h2>
+<a id="lab1292"></a><h2 class="section">Saturating the Context, with Equality</h2>
 
 
 <div class="paragraph"> </div>

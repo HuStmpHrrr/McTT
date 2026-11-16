@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1144"></a><h1 class="section">Inductive Types in the Gluing Model: the Type Former and the Constructors</h1>
+<a id="lab1173"></a><h1 class="section">Inductive Types in the Gluing Model: the Type Former and the Constructors</h1>
 
 
 <div class="paragraph"> </div>
@@ -41,7 +41,7 @@
     The gluing rules of the type former and the constructors of an
     inductive type, and of their congruences.  The type former and the
     constructors are glued at the target of a sound embedding
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.IndCases.html#Inductives"><span class="id" title="section">Inductives</span></a>/<span class="id" title="var">Con.v</span></span>). 
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Inductives.Model.html#Inductives"><span class="id" title="section">Inductives</span></a>/<span class="id" title="var">Con.v</span></span>). 
 </div>
 <div class="code">
 
@@ -54,26 +54,26 @@
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#"><span class="id" title="library">FundamentalTheorem</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness.Inductives</span> <span class="id" title="keyword">Require</span> <a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#"><span class="id" title="library">Con</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness.Inductives</span> <span class="id" title="keyword">Require</span> <a class="idref" href="Mctt.Core.Completeness.Inductives.Decl.html#"><span class="id" title="library">Decl</span></a>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness</span> <span class="id" title="keyword">Require</span> <a class="idref" href="Mctt.Core.Completeness.UnitCases.html#"><span class="id" title="library">UnitCases</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness</span> <span class="id" title="keyword">Require</span> <a class="idref" href="Mctt.Core.Completeness.Modules.Slots.html#"><span class="id" title="library">Modules.Slots</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness.Inductives</span> <span class="id" title="keyword">Require</span> <a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#"><span class="id" title="library">Elim</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness.LogicalRelation</span> <span class="id" title="keyword">Require</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Telescope.html#"><span class="id" title="library">Telescope</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#"><span class="id" title="library">Substitution</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness.Global</span> <span class="id" title="keyword">Require</span> <a class="idref" href="Mctt.Core.Completeness.Global.Args.html#"><span class="id" title="library">Args</span></a>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#"><span class="id" title="library">UniverseCases</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Universes.html#"><span class="id" title="library">LogicalRelation.Universes</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Semantic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Realizability.html#"><span class="id" title="library">Realizability</span></a>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Semantic.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Inductives.IndCanon.html#"><span class="id" title="library">IndCanon</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Semantic.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Inductives.Canon.html#"><span class="id" title="library">Canon</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Substitution.html#"><span class="id" title="library">Substitution</span></a>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.IndCong.html#"><span class="id" title="library">IndCong</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Cong.html#"><span class="id" title="library">Cong</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System.Global</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#"><span class="id" title="library">MemberLemmas</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#"><span class="id" title="library">Presup</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#"><span class="id" title="library">Typing</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Soundness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span><br/>
-&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.ContextCases.html#"><span class="id" title="library">ContextCases</span></a><br/>
-&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.FunctionCases.html#"><span class="id" title="library">FunctionCases</span></a><br/>
-&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LevelCases.html#"><span class="id" title="library">LevelCases</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Contexts.html#"><span class="id" title="library">LogicalRelation.Contexts</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Functions.html#"><span class="id" title="library">LogicalRelation.Functions</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Levels.html#"><span class="id" title="library">LogicalRelation.Levels</span></a><br/>
 &nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.html#"><span class="id" title="library">LogicalRelation</span></a><br/>
-&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#"><span class="id" title="library">SubtypingCases</span></a><br/>
-&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.VariableCases.html#"><span class="id" title="library">VariableCases</span></a><br/>
-&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.UniverseCases.html#"><span class="id" title="library">UniverseCases</span></a><br/>
-&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.Instances.html#"><span class="id" title="library">Instances</span></a>.<br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Subtyping.html#"><span class="id" title="library">LogicalRelation.Subtyping</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Variables.html#"><span class="id" title="library">LogicalRelation.Variables</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Universes.html#"><span class="id" title="library">LogicalRelation.Universes</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Instance.html#"><span class="id" title="library">LogicalRelation.Instance</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Completeness.Inductives.Model.html#"><span class="id" title="library">Model</span></a> <a class="idref" href="Mctt.Core.Completeness.Inductives.ArgTypes.html#"><span class="id" title="library">ArgTypes</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Soundness.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Soundness.Inductives.Args.html#"><span class="id" title="library">Args</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Comps.html#"><span class="id" title="library">Comps</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Con.html#"><span class="id" title="library">Con</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.ViewCon.html#"><span class="id" title="library">ViewCon</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.ArgTypes.html#"><span class="id" title="library">ArgTypes</span></a> <a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#"><span class="id" title="library">Bridge</span></a>.<br/>
 <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#"><span class="id" title="library">Mctt.Core.Soundness.Inductives.Elim</span></a>.<br/>
@@ -85,7 +85,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1145"></a><h2 class="section">The Rules</h2>
+<a id="lab1174"></a><h2 class="section">The Rules</h2>
 
 
 <div class="paragraph"> </div>

@@ -33,15 +33,15 @@
 </div>
 
 <div class="doc">
-<a id="lab1676"></a><h1 class="section">Peeling the Local Definitions of a Kept Proof</h1>
+<a id="lab1684"></a><h1 class="section">Peeling the Local Definitions of a Kept Proof</h1>
 
 
 <div class="paragraph"> </div>
 
-    The readback of a kept proof <span class="inlinecode">⋆ᵈ⟨<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a>,</span> <span class="inlinecode">ρ⟩</span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> copied under local
+    The readback of a kept proof <span class="inlinecode">⋆ᵈ⟨<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GeneratedCommands.html#RecTyped.M"><span class="id" title="variable">M</span></a>,</span> <span class="inlinecode">ρ⟩</span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GeneratedCommands.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> copied under local
     definitions of the positions of <span class="inlinecode">ρ</span> it reads (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_proof_kept"><span class="id" title="constructor">read_proof_kept</span></a></span>): a let
-    chain <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#lets_exp"><span class="id" title="definition">lets_exp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.bs"><span class="id" title="variable">bs</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>.  An implementation may instead move the local
-    definitions in front of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> into the environment first ("peeling"),
+    chain <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#lets_exp"><span class="id" title="definition">lets_exp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.bs"><span class="id" title="variable">bs</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GeneratedCommands.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>.  An implementation may instead move the local
+    definitions in front of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GeneratedCommands.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> into the environment first ("peeling"),
     and read back a different chain over the body.  The two chains differ
     in length and in their definitions, and this file shows the peeled one
     is typed and convertible to the original
@@ -53,8 +53,8 @@
 
 <div class="paragraph"> </div>
 
-    With <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">→</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> in context, the wrapped readback
-    <span class="inlinecode"><span class="id" title="var">ℓ</span></span> <span class="inlinecode"><span class="id" title="var">q'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">→</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode">≔</span> <span class="inlinecode">#0</span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><span class="id" title="var">ℓ</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><span class="id" title="var">q'</span></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#h"><span class="id" title="projection">h</span></a></span> <span class="inlinecode"><span class="id" title="var">y</span></span> and the peeled one
+    With <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">→</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> in context, the wrapped readback
+    <span class="inlinecode"><span class="id" title="var">ℓ</span></span> <span class="inlinecode"><span class="id" title="var">q'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">→</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode">≔</span> <span class="inlinecode">#0</span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><span class="id" title="var">ℓ</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><span class="id" title="var">q'</span></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#h"><span class="id" title="projection">h</span></a></span> <span class="inlinecode"><span class="id" title="var">y</span></span> and the peeled one
     <span class="inlinecode"><span class="id" title="var">ℓ</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#h"><span class="id" title="projection">h</span></a></span> <span class="inlinecode"><span class="id" title="var">y</span></span>, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> the normal form of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><span class="id" title="var">q</span></span>, are related
     by the substitution <span class="inlinecode">#0</span> <span class="inlinecode">↦</span> <span class="inlinecode">#0,</span> <span class="inlinecode">#1</span> <span class="inlinecode">↦</span> <span class="inlinecode">#1,</span> <span class="inlinecode">#(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a>+2)</span> <span class="inlinecode">↦</span> <span class="inlinecode">#(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a>+1)</span>. 
 </div>
@@ -71,7 +71,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1677"></a><h2 class="section">Let Chains</h2>
+<a id="lab1685"></a><h2 class="section">Let Chains</h2>
 
 <div class="paragraph"> </div>
 
@@ -132,7 +132,7 @@ A chain over a chain is one chain.
 </div>
 
 <div class="doc">
-<a id="lab1678"></a><h2 class="section">ζ Along a Chain</h2>
+<a id="lab1686"></a><h2 class="section">ζ Along a Chain</h2>
 
 <div class="paragraph"> </div>
 
@@ -216,7 +216,7 @@ The same for a definition with a module part.
 </div>
 
 <div class="doc">
-<a id="lab1679"></a><h2 class="section">Typing a Chain</h2>
+<a id="lab1687"></a><h2 class="section">Typing a Chain</h2>
 
 <div class="paragraph"> </div>
 
@@ -605,7 +605,7 @@ A chain whose body is typed at a proposition of <span class="inlinecode"><a clas
 </div>
 
 <div class="doc">
-<a id="lab1680"></a><h2 class="section">Replacing a Chain</h2>
+<a id="lab1688"></a><h2 class="section">Replacing a Chain</h2>
 
 
 <div class="paragraph"> </div>
@@ -692,19 +692,19 @@ Both chains ζ-reduce, to instances of <span class="inlinecode"><a class="idref"
 </div>
 
 <div class="doc">
-<a id="lab1681"></a><h2 class="section">A Chain Over the Images of a Substitution</h2>
+<a id="lab1689"></a><h2 class="section">A Chain Over the Images of a Substitution</h2>
 
 
 <div class="paragraph"> </div>
 
-    A proof <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> of a proposition <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> that reads only the first
+    A proof <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> of a proposition <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> that reads only the first
     <span class="inlinecode">|<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.bs"><span class="id" title="variable">bs</span></a>|</span> positions of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, under a chain <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ConCase.bs"><span class="id" title="variable">bs</span></a></span> of definitions over <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span>:
     <span class="inlinecode">τ</span> maps <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> into the chain's context, as the chain's own variables at
     those positions (so <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a>[τ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span>), and the chain's ζ-substitution after
-    <span class="inlinecode">τ</span> is <span class="inlinecode">σ</span>.  The chain is then typed at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a>[σ]</span>, and equal to <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a>[σ]</span>.
+    <span class="inlinecode">τ</span> is <span class="inlinecode">σ</span>.  The chain is then typed at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a>[σ]</span>, and equal to <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a>[σ]</span>.
     This is the readback of a kept proof <span class="inlinecode">⋆ᵈ⟨<a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a>,</span> <span class="inlinecode">ρ⟩</span> over an environment
     <span class="inlinecode">ρ</span> glued to <span class="inlinecode">σ</span>: the chain binds the readbacks of the entries of <span class="inlinecode">ρ</span>
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_proof_kept"><span class="id" title="constructor">read_proof_kept</span></a></span>).  For example, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#h"><span class="id" title="projection">h</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> at position <span class="inlinecode">0</span> of
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_proof_kept"><span class="id" title="constructor">read_proof_kept</span></a></span>).  For example, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#h"><span class="id" title="projection">h</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> at position <span class="inlinecode">0</span> of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> and <span class="inlinecode">ρ</span> <span class="inlinecode">0</span> read back as <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>, the chain <span class="inlinecode"><span class="id" title="var">ℓ</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">P'</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode">#0</span>
     (<span class="inlinecode">τ</span> <span class="inlinecode">0</span> <span class="inlinecode">=</span> <span class="inlinecode">#0</span>) is <span class="inlinecode">#0[σ]</span> when <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode">#0[σ]</span>. 
 </div>
@@ -725,7 +725,7 @@ Both chains ζ-reduce, to instances of <span class="inlinecode"><a class="idref"
 </div>
 
 <div class="doc">
-The proof in the chain's context, at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a>[τ]</span> 
+The proof in the chain's context, at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a>[τ]</span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_exp"><span class="id" title="lemma">sub_preserves_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HX</span> <span class="id" title="var">H</span>τ) <span class="id" title="keyword">as</span> <span class="id" title="var">HX</span>τ.<br/>
@@ -733,7 +733,7 @@ The proof in the chain's context, at <span class="inlinecode"><a class="idref" h
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a>[τ]</span> is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a>[σ]</span>, weakened past the chain 
+<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a>[τ]</span> is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a>[σ]</span>, weakened past the chain 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HP</span>τ : <span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⍮</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.LetPeeling.html#ctx_lets"><span class="id" title="definition">ctx_lets</span></a> <span class="id" title="var">Δ</span> <span class="id" title="var">bs</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⊢</span></a> <span class="id" title="var">P</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">[</span></a>τ<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">]</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#0195a57770aa08789c2281bb9b525de8"><span class="id" title="notation">Prop</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#0195a57770aa08789c2281bb9b525de8"><span class="id" title="notation">ₘ</span></a>)<br/>

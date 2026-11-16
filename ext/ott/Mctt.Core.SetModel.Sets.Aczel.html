@@ -33,13 +33,13 @@
 </div>
 
 <div class="doc">
-<a id="lab705"></a><h1 class="section">Aczel Sets</h1>
+<a id="lab722"></a><h1 class="section">Aczel Sets</h1>
 
 
 <div class="paragraph"> </div>
 
-    The sets of the set model: well-founded trees <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_sup"><span class="id" title="constructor">aczel_sup</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span>, with an
-    index type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> and the children <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span>; equality (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.CommandRun.html#set_eq"><span class="id" title="definition">set_eq</span></a></span>) is
+    The sets of the set model: well-founded trees <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_sup"><span class="id" title="constructor">aczel_sup</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Views.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span>, with an
+    index type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Views.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> and the children <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span>; equality (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Commands.CommandRun.html#set_eq"><span class="id" title="definition">set_eq</span></a></span>) is
     bisimulation, and membership (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#set_mem"><span class="id" title="definition">set_mem</span></a></span>) is being equal to a child.
     Rocq's impredicative <span class="inlinecode"><span class="id" title="keyword">Prop</span></span> gives separation and power sets
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#separation_set"><span class="id" title="definition">separation_set</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#power_set"><span class="id" title="definition">power_set</span></a></span>).  Everything is constructive, without
@@ -61,7 +61,7 @@ A set: a family of sets indexed by a type.
 </div>
 
 <div class="doc">
-The set of the members <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, for every index <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> 
+The set of the members <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Bound.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, for every index <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Views.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> 
 </div>
 <div class="code">
 | <a id="aczel_sup" class="idref" href="#aczel_sup"><span class="id" title="constructor">aczel_sup</span></a> (<a id="A:3" class="idref" href="#A:3"><span class="id" title="binder">A</span></a> : <span class="id" title="keyword">Type</span>) (<a id="f:4" class="idref" href="#f:4"><span class="id" title="binder">f</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#A:3"><span class="id" title="variable">A</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set:1"><span class="id" title="inductive">aczel_set</span></a>).<br/>
@@ -205,7 +205,7 @@ A function on sets that respects equality.
 </div>
 
 <div class="doc">
-<a id="lab706"></a><h2 class="section">Constructions</h2>
+<a id="lab723"></a><h2 class="section">Constructions</h2>
 
 <div class="paragraph"> </div>
 
@@ -284,7 +284,7 @@ The union of the members of <span class="inlinecode"><a class="idref" href="Mctt
 </div>
 
 <div class="doc">
-The members of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> satisfying <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span>. 
+The members of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#X"><span class="id" title="abbreviation">X</span></a></span> satisfying <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="separation_set" class="idref" href="#separation_set"><span class="id" title="definition">separation_set</span></a> (<a id="X:74" class="idref" href="#X:74"><span class="id" title="binder">X</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a>) (<a id="P:75" class="idref" href="#P:75"><span class="id" title="binder">P</span></a> : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="keyword">Prop</span>) : <a class="idref" href="Mctt.Core.SetModel.Sets.Aczel.html#aczel_set"><span class="id" title="inductive">aczel_set</span></a> :=<br/>
@@ -324,7 +324,7 @@ The subsets of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundne
 </div>
 
 <div class="doc">
-<a id="lab707"></a><h2 class="section">The Constructions Respect Equality</h2>
+<a id="lab724"></a><h2 class="section">The Constructions Respect Equality</h2>
 
 </div>
 <div class="code">
@@ -396,7 +396,7 @@ The union of a nonempty set whose members are all equal to <span class="inlineco
 </div>
 
 <div class="doc">
-The member of <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Cases.ElimViewCases.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> with the property <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span>, when there is one and only
+The member of <span class="inlinecode"><a class="idref" href="Mctt.Core.SetModel.Inductives.ElimView.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> with the property <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Checker.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span>, when there is one and only
     one up to equality: a definite description, without choice. 
 </div>
 <div class="code">

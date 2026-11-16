@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab49"></a><h1 class="section">Normal Forms Equal up to Their Proofs Are Equal</h1>
+<a id="lab50"></a><h1 class="section">Normal Forms Equal up to Their Proofs Are Equal</h1>
 
 
 <div class="paragraph"> </div>
@@ -50,7 +50,7 @@
 <div class="paragraph"> </div>
 
     The induction needs one fact the syntax does not give: two equal
-    domains of functions are types of one kind (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Consequences.Types.html#subtyp_same_kind"><span class="id" title="lemma">subtyp_same_kind</span></a></span>), so
+    domains of functions are types of one kind (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Consequences.RigidTypes.html#subtyp_same_kind"><span class="id" title="lemma">subtyp_same_kind</span></a></span>), so
     the bodies are typed in one context.  It is a consequence of
     completeness; the lemma is used by soundness (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.html#soundness_upto_proofs"><span class="id" title="lemma">soundness_upto_proofs</span></a></span>). 
 </div>
@@ -63,7 +63,7 @@
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.CoreInversions.html#"><span class="id" title="library">CoreInversions</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System.Records</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Records.Typing.html#"><span class="id" title="library">Typing</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#"><span class="id" title="library">Typing</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#"><span class="id" title="library">Views</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.UniformParams.html#"><span class="id" title="library">UniformParams</span></a>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness.Consequences</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Completeness.Consequences.Types.html#"><span class="id" title="library">Types</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness.Consequences</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Completeness.Consequences.RigidTypes.html#"><span class="id" title="library">RigidTypes</span></a>.<br/>
 <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Wk_Notations"><span class="id" title="module">Wk_Notations</span></a>.<br/>
 
 <br/>
@@ -95,7 +95,7 @@ Two equal domains, the second typed at some sort, are types of one
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.Presup.html#presup_exp_eq_left"><span class="id" title="lemma">presup_exp_eq_left</span></a> <span class="id" title="var">HAA</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HA</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hs</span> : <span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#c409e737e5aca9fc3d3675aa41782251"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#c409e737e5aca9fc3d3675aa41782251"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#c409e737e5aca9fc3d3675aa41782251"><span class="id" title="notation">⊢</span></a> <span class="id" title="var">A</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#c409e737e5aca9fc3d3675aa41782251"><span class="id" title="notation">⊆</span></a> <span class="id" title="var">A'</span>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_subtyp_refl"><span class="id" title="constructor">wf_subtyp_refl</span></a>; [ <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Syntactic.Presup.html#presup_exp_eq_right"><span class="id" title="lemma">presup_exp_eq_right</span></a> <span class="id" title="var">HAA</span>) | <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#sort_kind_type_sort"><span class="id" title="lemma">sort_kind_type_sort</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HS</span>) | <span class="id" title="tactic">exact</span> <span class="id" title="var">HAA</span> ]).<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">exact</span> (@<a class="idref" href="Mctt.Core.Completeness.Consequences.Types.html#subtyp_same_kind"><span class="id" title="lemma">subtyp_same_kind</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gc_mk"><span class="id" title="constructor">gc_mk</span></a> <span class="id" title="var">Θ</span> <span class="id" title="var">Ξ</span>) <span class="id" title="var">Γ</span> <span class="id" title="var">A</span> <span class="id" title="var">A'</span> <span class="id" title="var">κ</span> <span class="id" title="var">κ'</span> <span class="id" title="var">i</span> <span class="id" title="var">j</span> <span class="id" title="var">Hs</span> <span class="id" title="var">HA</span> <span class="id" title="var">HA'</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">exact</span> (@<a class="idref" href="Mctt.Core.Completeness.Consequences.RigidTypes.html#subtyp_same_kind"><span class="id" title="lemma">subtyp_same_kind</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gc_mk"><span class="id" title="constructor">gc_mk</span></a> <span class="id" title="var">Θ</span> <span class="id" title="var">Ξ</span>) <span class="id" title="var">Γ</span> <span class="id" title="var">A</span> <span class="id" title="var">A'</span> <span class="id" title="var">κ</span> <span class="id" title="var">κ'</span> <span class="id" title="var">i</span> <span class="id" title="var">j</span> <span class="id" title="var">Hs</span> <span class="id" title="var">HA</span> <span class="id" title="var">HA'</span>).<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
@@ -120,7 +120,7 @@ The codomain of a <span class="inlinecode"><span class="id" title="var">Π</span
 </div>
 
 <div class="doc">
-<a id="lab50"></a><h2 class="section">Functions</h2>
+<a id="lab51"></a><h2 class="section">Functions</h2>
 
 <div class="paragraph"> </div>
 
@@ -155,12 +155,12 @@ The codomain of a <span class="inlinecode"><span class="id" title="var">Π</span
 </div>
 
 <div class="doc">
-<a id="lab51"></a><h2 class="section">The Other Formers</h2>
+<a id="lab52"></a><h2 class="section">The Other Formers</h2>
 
 
 <div class="paragraph"> </div>
 
-    Each former: invert the first at <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.ModelConsistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>, the second where it is typed,
+    Each former: invert the first at <span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.Consistency.html#Stuck_GCtx.T"><span class="id" title="variable">T</span></a></span>, the second where it is typed,
     compare the parts at the first's types, and close by the congruence
     rule and the subtyping the inversion gives. 
 <div class="paragraph"> </div>
@@ -322,7 +322,7 @@ Ex falso: the returned types equal, the proofs of <span class="inlinecode">⊥</
 </div>
 
 <div class="doc">
-<a id="lab52"></a><h2 class="section">Proofs</h2>
+<a id="lab53"></a><h2 class="section">Proofs</h2>
 
 <div class="paragraph"> </div>
 
@@ -373,7 +373,7 @@ Two related lists are related at each position they both have.
 </div>
 
 <div class="doc">
-<a id="lab53"></a><h2 class="section">Records</h2>
+<a id="lab54"></a><h2 class="section">Records</h2>
 
 </div>
 <div class="code">
@@ -433,7 +433,7 @@ The fields, position by position
 </div>
 
 <div class="doc">
-<a id="lab54"></a><h2 class="section">Stuck Eliminators</h2>
+<a id="lab55"></a><h2 class="section">Stuck Eliminators</h2>
 
 </div>
 <div class="code">
@@ -590,7 +590,7 @@ The branches, at the first's motives: the second's context is equal
 </div>
 
 <div class="doc">
-<a id="lab55"></a><h2 class="section">The Induction</h2>
+<a id="lab56"></a><h2 class="section">The Induction</h2>
 
 <div class="paragraph"> </div>
 
