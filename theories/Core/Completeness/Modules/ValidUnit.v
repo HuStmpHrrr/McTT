@@ -629,27 +629,6 @@ Hypothesis Hgm : ⊢ᵍ Θm ⍮ Ξm.
 Hypothesis Hgf : valid_filed_mods Θm Ξm.
 Hypothesis Hsb : gc_sub Θm Ξm gc_deps gc_stack.
 
-(** An open frame a member names is a module, unless it is the module of
-    a member with a term part. *)
-Lemma frame_kind : forall H x p TΦ, mod_qname (me_mem H x) = Some p -> gc_frame Ξm p = Some TΦ ->
-    ~ dm_path gc_deps gc_stack p ->
-    forall ρ, modexp_member_kind gc_deps gc_stack ρ H (x :: nil) member_kind_mod.
-Proof.
-  intros * Hq Hf Hdm ρ.
-  cbn in Hq; destruct (mod_qname H) as [mq |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
-  change {| q_unit := q_unit mq; q_chain := q_chain mq ++ x :: nil |} with (qname_in mq x) in Hf.
-  assert (Ht : exists U T0, gs_find_tele Ξm (qname_in mq x) = Some (U, nil, T0)).
-  { unfold gc_frame in Hf; destruct (gs_find_tele Ξm (qname_in mq x)) as [[[U [| ? ?]] T0] |];
-      try (destruct U as [? [[|] ? | ?]]); try discriminate; eauto. }
-  destruct Ht as (U & T0 & Ht).
-  destruct (frame_parent _ _ Hgm _ _ _ _ Ht) as (T1 & Φ1 & Hf1 & _).
-  assert (Hgl0 : gc_loc Θm Ξm mq = Some (T1, Φ1)) by (unfold gc_loc; rewrite Hf1; reflexivity).
-  assert (Hgl : gc_loc Θm Ξm (qname_in mq x) = Some TΦ) by (unfold gc_loc; rewrite Hf; reflexivity).
-  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ Hsub _ _ _ _ _ _].
-  rewrite (mod_qname_inv _ _ Hq0).
-  apply (kind_eval_modexp _ _ _ _ _ (Hp ρ)), (Hsub x TΦ); [ exact Hgl | exact Hdm ].
-Qed.
-
 (** A prefix of a body is a tail of its context. *)
 Lemma prefix_body_ctx : forall Φ y Φp, gm_nopens Φ = 0 -> gm_prefix_upto Φ y = Some Φp ->
     exists X, body_ctx Φ = X ++ body_ctx Φp.

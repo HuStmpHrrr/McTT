@@ -364,7 +364,7 @@ the expensive part.** Two observations:
   cheaper — grew by 9 % (1 632 → 1 782 across the six case files, counting the
   deleted `TermStructureCases.v` on the pre side). The growth is in *plumbing*:
   introduction and inversion lemmas for the judgments (`rel_exp_of_*`,
-  `rel_exp_of_typ_inversion_wk`, …) and the algebra of semantic
+  `rel_exp_of_typ_inversion`, …) and the algebra of semantic
   substitutions. That is a tactic-and-lemma-API problem, not a semantics
   problem. `Chain.v` itself, the entire mechanization of the four-value
   pattern, is 222 lines. §6 takes this apart in detail.

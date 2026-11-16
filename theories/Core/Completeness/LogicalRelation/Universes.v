@@ -115,48 +115,6 @@ Proof.
     apply rel_chain_4; assumption.
 Qed.
 
-(** Cumulativity across the tiers, in particular from a small universe to
-    every large one. *)
-Lemma rel_exp_under_ctx_univ_cumu : forall {Γ A A' u v},
-    universe_index_le u v ->
-    Γ ⊨ A ≈ A' : universe_index_term u ->
-    Γ ⊨ A ≈ A' : universe_index_term v.
-Proof.
-  intros * Huv H%rel_exp_of_univ_inversion.
-  destruct H as [env_relΓ [HΓ HA]].
-  apply rel_exp_of_univ.
-  eexists; eexists; [eassumption |].
-  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
-    as [? ? ? ? ? ? ? ? Hchain].
-  econstructor; try eassumption.
-  eapply rel_chain_mono; [| eassumption].
-  intros ? ? [[R HR] Hl Hr Hnl Hnr]; constructor;
-    [ exists R; eapply per_univ_elem_cumu_universe_index; eassumption | assumption .. ].
-Qed.
-
-Corollary rel_exp_under_ctx_small_large : forall {Γ A A' n} {i : nat},
-    Γ ⊨ A ≈ A' : Type⟨𝕃ᵒ n⟩ ->
-    Γ ⊨ A ≈ A' : Typeω@i.
-Proof. intros * H; exact (rel_exp_under_ctx_univ_cumu (u := us n) (v := ul i) I H). Qed.
-
-Lemma valid_exp_under_ctx_univ : forall {a n Γ},
-    ⊨ Γ ->
-    Γ ⊨ Type⟨𝕃ᵒ(a, n)⟩ : Type⟨𝕃ᵒ(a, S n)⟩.
-Proof.
-  intros * H.
-  pose proof (rel_ctx_wf_per_ctx_env H) as [env_relΓ HΓ].
-  apply (rel_exp_of_univ (u := us (a, S n))).
-  eexists; eexists; [eassumption |].
-  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hu : per_universe_elements (per_univ (us (a, S n))) 𝕌@(domain_level_lit (a, n)) 𝕌@(domain_level_lit (a, n)))
-    by (constructor; [| reflexivity | reflexivity | discriminate | discriminate ];
-        eexists; apply per_univ_elem_core_suniv';
-        [ apply per_lvl_lit | cbn; ordinal_solve | reflexivity ]).
-  econstructor; try (apply eval_exp_univ, eval_exp_llit).
-  apply rel_chain_4; assumption.
-Qed.
-
 Lemma rel_exp_of_typ_inversion : forall {Γ A A'} {i : nat},
     Γ ⊨ A ≈ A' : Typeω@i ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
@@ -425,18 +383,6 @@ Proof.
   pairwise.
 Qed.
 
-Corollary rel_exp_of_typ_inversion_wk : forall {Γ Δ φ A A'} {i : nat},
-    Γ ⊨ʷ φ : Δ ->
-    Δ ⊨ A ≈ A' : Typeω@i ->
-    exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
-    forall ρ ρ',
-      Dom ρ ≈ ρ' ∈ env_rel ->
-      exists a a',
-        ⟦ A[φ]ʷ ⟧ ρ ↘ a /\
-        ⟦ A' ⟧ ⟪φ⟫ ρ' ↘ a' /\
-        Dom a ≈ a' ∈ per_univ i.
-Proof. intros * Hφ H; exact (rel_type_inversion_wk Hφ (rel_type_of_typ H)). Qed.
-
 (** [per_head_resp] in the form a type judgment supplies its premises: the four
     values it asks for are four instances of the judgment, at pairs selected by a
     chain of environments.
@@ -583,8 +529,6 @@ Ltac eexists_rel_exp_of_typ :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Hint Resolve valid_exp_under_ctx_univ rel_exp_under_ctx_small_large : mctt.
-
 (** Cumulativity acts on the chain member by member: [rel_chain_mono] at
     [per_univ_elem_cumu]. *)
 Lemma rel_exp_cumu : forall {i : nat} {Γ A A'},
@@ -619,8 +563,6 @@ Hint Resolve rel_exp_cumu_ge : mctt.
 
 End Fixed_GCtx.
 
-#[export]
-Hint Resolve valid_exp_under_ctx_univ rel_exp_under_ctx_small_large : mctt.
 #[export]
 Hint Resolve rel_exp_cumu : mctt.
 #[export]

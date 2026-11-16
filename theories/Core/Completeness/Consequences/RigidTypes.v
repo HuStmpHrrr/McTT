@@ -65,37 +65,6 @@ Qed.
 
 Hint Resolve exp_eq_typ_implies_eq_level : mctt.
 
-(** The same at either tier, and across them: the universes at two different
-    indices are never equal, since their values are not related. *)
-Lemma exp_eq_universe_index_term_implies_eq : forall {Γ} {u v : universe_index} {k},
-    Γ ⊢ universe_index_term u ≈ universe_index_term v : Typeω@k ->
-    u = v.
-Proof.
-  intros * H.
-  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) (completeness_fundamental_exp_eq _ _ _ _ H)) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a = universe_index_value u) as ->
-      by (eapply functional_eval_exp; [ exact Ha | apply eval_universe_index_term ]).
-  assert (a' = universe_index_value v) as ->
-      by (eapply functional_eval_exp; [ exact Ha' | apply eval_universe_index_term ]).
-  destruct u as [n | n], v as [m | m]; cbn in HR;
-    invert_per_univ_elem HR; try congruence.
-  (** Two small universes at literal levels: their levels are related, so
-      they have the same realiser, which is the literal. *)
-  match goal with H : per_lvl _ _ |- _ => apply per_lvl_real in H; cbn in H end.
-  congruence.
-Qed.
-
-Corollary exp_eq_univ_implies_eq_level : forall {Γ} {n m k},
-    Γ ⊢ Type⟨𝕃ᵒ n⟩ ≈ Type⟨𝕃ᵒ m⟩ : Typeω@k ->
-    n = m.
-Proof.
-  intros * H.
-  assert (us n = us m) as Heq by (eapply (exp_eq_universe_index_term_implies_eq (u := us n) (v := us m)); exact H).
-  injection Heq; trivial.
-Qed.
-
-Hint Resolve exp_eq_univ_implies_eq_level : mctt.
-
 (** A type of a large universe headed by a type constructor, or a
     variable.  The propositions [⊤], [⊥], [∀ₚ] and [Σₚ] are in [Prop], in no
     universe. *)
@@ -421,66 +390,6 @@ Inductive univ_term : exp -> Prop :=
 | univ_term_suniv : forall t, univ_term Type⟨t⟩.
 Hint Constructors univ_term : mctt.
 
-Theorem is_typ_constr_and_exp_eq_var_implies_eq_var : forall Γ A x i,
-    rigid_typ Γ A ->
-    ctx_ass Γ x ->
-    Γ ⊢ A ≈ #x : Typeω@i ->
-    A = #x.
-Proof.
-  intros * Histyp Hx H.
-  assert (Γ ⊢ A : Typeω@i) by mauto 2.
-  assert (Γ ⊢ #x : Typeω@i) by mauto 2.
-  pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
-  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) Hsem)
-    as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  destruct (eval_var_at_initial_env Hx Hρ Ha' ltac:(eassumption)) as [Hxlt [b ->]].
-  (** Only the variable case survives: [⇑! b _] has no other constructor to be
-      related to. *)
-  destruct Histyp;
-    [ assert (a = 𝕌ω@i0) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌@(domain_level_lit n)) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
-    | inversion Ha; subst
-    | assert (a = ⊤ᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
-    | assert (a = ⊥ᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_False ])
-    | idtac
-    | match goal with Hc : ctx_ass _ _ |- _ =>
-        destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end
-    | destruct (eval_ind_value _ _ _ _ _ Ha) as [? ->]
-    | destruct (eval_record_value _ _ _ _ Ha) as [? ->] ];
-    invert_per_univ_elem HR.
-  (** Two propositions related in [per_prop] read back alike up to their
-      proofs: a relevant type or a type former is no neutral variable's,
-      up to proofs or not. *)
-  all: try solve [ match goal with Hp : per_prop _ _ |- _ =>
-                     let Hl := fresh "Hl" in let Ht := fresh "Ht" in let HC := fresh "HC" in let HC' := fresh "HC'" in
-                     let HE := fresh "HE" in
-                     destruct Hp as [Hl _ Ht];
-                     try (match goal with He : ⟦ a_pi _ _ _ _ ⟧ _ ↘ _ |- _ => inversion He; subst end);
-                     first [ cbn in Hl; discriminate
-                           | destruct (Ht (length Γ)) as [? ? HC HC' HE]; inversion HC; subst; inversion HC'; subst;
-                             cbn in HE; discriminate ] end ].
-  (** [Π A B] evaluates to a [Π]-value once its domain does. *)
-  all: try solve [ match_by_head eval_exp ltac:(fun H => directed dependent destruction H) ].
-  (** Two neutral variables related in [per_bot], or as propositions in
-      [per_prop]: read both back at [length Γ] and compare the indices they
-      produce, which the relation compares exactly. *)
-  all: match goal with |- #?y = #?z => f_equal; enough (length Γ - y - 1 = length Γ - z - 1) by lia end.
-  all: first [ match_by_head1 per_bot ltac:(fun H => destruct (H (length Γ)) as [? ? ? ? HE])
-             | match goal with Hp : per_prop _ _ |- _ =>
-                 let Ht := fresh "Ht" in destruct Hp as [_ _ Ht]; destruct (Ht (length Γ)) as [? ? ? ? HE] end;
-               match_by_head read_typ ltac:(fun H => directed dependent destruction H) ].
-  all: match_by_head read_ne ltac:(fun H => directed dependent destruction H).
-  (** A neutral type's recorded kind is compared first; the indices after. *)
-  all: unfold nf_eq_upto_proofs, ne_eq_upto_proofs in HE; cbn in HE;
-    repeat (apply Bool.andb_true_iff in HE as [_ HE]); apply PeanoNat.Nat.eqb_eq in HE; lia.
-Qed.
-
-Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
-
 Theorem is_typ_constr_and_exp_eq_typ_implies_eq_typ : forall Γ A i j,
     rigid_typ Γ A ->
     Γ ⊢ A ≈ Typeω@i : Typeω@j ->
@@ -515,43 +424,6 @@ Qed.
 
 Hint Resolve is_typ_constr_and_exp_eq_typ_implies_eq_typ : mctt.
 
-Theorem is_typ_constr_and_exp_eq_univ_implies_eq_univ : forall Γ A n j,
-    rigid_typ Γ A ->
-    Γ ⊢ A ≈ Type⟨𝕃ᵒ n⟩ : Typeω@j ->
-    A = Type⟨𝕃ᵒ n⟩.
-Proof.
-  intros * Histyp H.
-  assert (Γ ⊢ A : Typeω@j) by mauto 2.
-  pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
-  destruct (rel_typ_under_ctx_at_initial_env (wf_ctx_scoped_exp_eq H) Hsem)
-    as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a' = 𝕌@(domain_level_lit n)) as ->
-      by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_univ, eval_exp_llit ]).
-  destruct Histyp;
-    [ assert (a = 𝕌ω@i) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌@(domain_level_lit n0)) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
-    | inversion Ha; subst
-    | assert (a = ⊤ᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
-    | assert (a = ⊥ᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_False ])
-    | idtac
-    | match goal with Hc : ctx_ass _ _ |- _ =>
-        destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end
-    | destruct (eval_ind_value _ _ _ _ _ Ha) as [? ->]
-    | destruct (eval_record_value _ _ _ _ Ha) as [? ->] ];
-    invert_per_univ_elem HR.
-  - (** The two levels are related, so the two literals are the same
-        realiser. *)
-    match goal with H : per_lvl _ _ |- _ => apply per_lvl_real in H; cbn in H end.
-    congruence.
-  - match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
-Qed.
-
-Hint Resolve is_typ_constr_and_exp_eq_univ_implies_eq_univ : mctt.
-
 
 (** ** Universe Terms
 
@@ -559,10 +431,6 @@ Hint Resolve is_typ_constr_and_exp_eq_univ_implies_eq_univ : mctt.
     small ones at a level term are not [rigid_typ] — their level is a term —
     so these lemmas state what a judgment with a universe term on one side
     says about the other. *)
-
-Lemma univ_term_universe_index_term : forall u, univ_term (universe_index_term u).
-Proof. intros []; constructor. Qed.
-Hint Resolve univ_term_universe_index_term : mctt.
 
 Lemma pi_not_univ_term : forall κ A B, ~ univ_term (Π{κ} A B).
 Proof. intros * H; inversion H. Qed.
@@ -628,28 +496,6 @@ Proof.
   invert_per_univ_elem HR.
 Qed.
 
-(** A rigid type equal to a universe is that universe, at either tier. *)
-Corollary rigid_typ_eq_universe_index_term : forall Γ A (u : universe_index) k,
-    rigid_typ Γ A ->
-    Γ ⊢ A ≈ universe_index_term u : Typeω@k ->
-    A = universe_index_term u.
-Proof. intros * ? H; destruct u as [n | i]; cbn in H |- *; mauto 3. Qed.
-
-(** A type constructor other than a universe is never a universe: the goal is
-    closed by inspecting the two tiers. *)
-Lemma var_neq_universe_index_term : forall x (u : universe_index), #x <> universe_index_term u.
-Proof. intros ? []; discriminate. Qed.
-
-(** A [Π] is never a universe, at either tier. *)
-Corollary pi_universe_index_term_absurd : forall Γ κ A B (u : universe_index) k,
-    Γ ⊢ Π{κ} A B ≈ universe_index_term u : Typeω@k ->
-    False.
-Proof.
-  intros * H; destruct u as [n | i]; cbn in H;
-    [ assert (Π{κ} A B = Type⟨𝕃ᵒ n⟩) as Heq by mauto 3 | assert (Π{κ} A B = Typeω@i) as Heq by mauto 3 ];
-    discriminate Heq.
-Qed.
-
 (** The same-sort theorem: the two sides of a subtyping are types of the
     same kind, at an environment of the context their values are of one
     kind, which a subtyping keeps ([per_subtyp_kind]).  It is why
@@ -690,21 +536,13 @@ Qed.
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve exp_eq_typ_implies_eq_level exp_eq_univ_implies_eq_level : mctt.
+Hint Resolve exp_eq_typ_implies_eq_level : mctt.
 #[export]
 Hint Constructors is_typ_constr rigid_typ : mctt.
 #[export]
-Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
-#[export]
 Hint Resolve is_typ_constr_and_exp_eq_typ_implies_eq_typ : mctt.
 #[export]
-Hint Resolve is_typ_constr_and_exp_eq_univ_implies_eq_univ : mctt.
-#[export]
-Hint Resolve pi_universe_index_term_absurd rigid_typ_eq_universe_index_term var_neq_universe_index_term : mctt.
-#[export]
 Hint Constructors univ_term : mctt.
-#[export]
-Hint Resolve univ_term_universe_index_term : mctt.
 (** A concrete type that is not a universe is not a universe term. *)
 #[export] Hint Extern 1 (~ univ_term _) =>
   (let Hu := fresh "Hu" in intro Hu; inversion Hu; fail) : mctt.

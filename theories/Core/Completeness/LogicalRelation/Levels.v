@@ -75,17 +75,6 @@ Proof.
   apply rel_chain_4; exact per_level_sort_level.
 Qed.
 
-Corollary valid_exp_under_ctx_level : forall {Γ},
-    ⊨ Γ ->
-    Γ ⊨ Level@n : LevelSort.
-Proof.
-  intros * H%rel_ctx_wf_per_ctx_env.
-  destruct H as [env_relΓ HΓ].
-  eapply rel_exp_of_level_sort_level; eassumption.
-Qed.
-
-Hint Resolve valid_exp_under_ctx_level : mctt.
-
 End Fixed_GCtx.
 
 
@@ -150,7 +139,7 @@ End Fixed_GCtx.
 #[export]
 Hint Resolve per_univ_elem_level : mctt.
 #[export]
-Hint Resolve rel_exp_of_level_sort_level valid_exp_under_ctx_level : mctt.
+Hint Resolve rel_exp_of_level_sort_level : mctt.
 #[export]
 Hint Resolve rel_exp_of_level : mctt.
 Ltac eexists_rel_exp_of_level :=

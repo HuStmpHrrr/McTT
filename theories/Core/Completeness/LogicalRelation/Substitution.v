@@ -437,7 +437,7 @@ Qed.
     the term judgment produced, and the work is to identify that PER with the head
     PER of [Δ, A].  This needs [A]'s values at all four environments linked, which
     takes two more instantiations of the type judgment: along [sb_wk σ φ]
-    ([rel_sub_under_ctx_wk]) for the outer pair, and along [σ] for the inner pair.
+    ([rel_sub_under_ctx_wk_rel]) for the outer pair, and along [σ] for the inner pair.
     The type judgment's own chain links these to each other and to the term
     judgment's type chain, and [handle_per_univ_elem_irrel] then closes everything
     ([solve_per_env_extend_chain]). *)
@@ -698,10 +698,10 @@ Qed.
     and by the variable [ψ 0].
 
     Tails: [q σ] extends [σ[↑]ʷ], so all four tails are values of [σ[↑]ʷ], which is
-    a semantic substitution [Γ ▹ A[σ] ⊨ˢ σ[↑]ʷ : Δ] by [rel_sub_under_ctx_wk]
+    a semantic substitution [Γ ▹ A[σ] ⊨ˢ σ[↑]ʷ : Δ] by [rel_sub_under_ctx_wk_rel]
     applied to the weakening [Γ ▹ A[σ] ⊨ʷ ↑ : Γ].  One instantiation of it
     produces all four tails and their chain; the merge this would otherwise need
-    is done once, in the proof of [rel_sub_under_ctx_wk].
+    is done once, in the proof of [rel_sub_under_ctx_wk_rel].
 
     Heads: all four heads are the same two values, [(⟪ψ⟫ ρ) 0] and [(⟪ψ⟫ ρ') 0],
     because [(#0)[ψ]ʷ] is [#(ψ 0)] and [#0] reads index [0].  The Ctx-Ext

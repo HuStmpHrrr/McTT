@@ -1,8 +1,6 @@
 (** * Consequences of Completeness: normal forms respect context equality
 
-    Context equality is not a judgment, so the hypothesis here is semantic.
-    [per_ctx_of_exp_eq] is the instance needed: extending one context by two
-    judgmentally equal types. *)
+    Context equality is not a judgment, so the hypothesis here is semantic. *)
 
 From Stdlib Require Import RelationClasses.
 
@@ -16,17 +14,6 @@ Import Domain_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
-
-Corollary per_ctx_of_exp_eq : forall {Γ κ A A'} {i : nat},
-    Γ ⊢ A ≈ A' : Typeω@i ->
-    ⊨ Γ ▹{κ} A ≈ Γ ▹{κ} A'.
-Proof.
-  intros * H.
-  assert (⊢ Γ) by mauto 2.
-  eapply per_ctx_extend; [ apply rel_ctx_wf_per_ctx | ]; mauto 2.
-Qed.
-
-Hint Resolve per_ctx_of_exp_eq : mctt.
 
 (** A term has normal forms in two equal contexts, equal up to their
     proofs: a proof is kept over each context's initial environment, whose
@@ -100,6 +87,3 @@ Proof.
 Qed.
 
 End Fixed_GCtx.
-
-#[export]
-Hint Resolve per_ctx_of_exp_eq : mctt.

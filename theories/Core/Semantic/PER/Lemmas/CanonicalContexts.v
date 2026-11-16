@@ -75,7 +75,7 @@ Section Fixed_GCtx.
 
     [per_head] names the head relation once, impredicatively:
     [per_head S S' ρ ρ'] relates what every [per_univ_elem] relating the
-    values of [S] and [S'] in [ρ] and [ρ'] relates.  [per_ctx_extend] makes
+    values of [S] and [S'] in [ρ] and [ρ'] relates.  [per_ctx_env_extend] makes
     the same choice.  [per_head] does not mention the tail evidence, so the
     extended PER [per_env_extend] is a conjunction rather than a dependent
     pair. *)

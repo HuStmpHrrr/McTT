@@ -6,10 +6,9 @@
     universe its sort denotes ([ind_relate]), with the canonical relations
     of [Core.Semantic.Inductives.PER]: the group's canonical model.  The
     type formers are then elements of their [Π]-types
-    ([valid_exp_under_ctx_ind]), and the values of the declared members at
-    the group's uniform parameters make an environment of the context of
-    the group's members as variables ([selfs_env_rel]), at which the view
-    equations are read ([Inductives/ViewEquations.v]). *)
+    ([valid_exp_under_ctx_ind]), and the context of the group's members as
+    variables, at which the view equations are read
+    ([Inductives/ViewEquations.v]), is valid ([grp_selfs_ctx_sem]). *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
 
@@ -697,12 +696,6 @@ Proof.
   - intros v Mv qc kc Is vm Dq HMv Hh HDq.
     exact (decl_typed_record_struct _ _ _ (Hcont _ _ _ _ _ _ _ HMv Hh HDq)).
 Qed.
-
-(** The values of the declared members of the group at [p] at the uniform
-    parameters [ups], in order: the values of the members as variables
-    ([grp_selfs]) the substitution [grp_sb p D] gives at [ups]. *)
-Definition selfs_vals (p : qname) (D : ind_decl) (ups : list domain) : list domain :=
-  List.map (fun j => d_ind p j ups) (List.seq 0 (ind_ndecl D)).
 
 (** ** A Telescope at the Sort
 
@@ -1746,13 +1739,11 @@ Section Sort.
     Qed.
   End DeclMember.
 
-  (** ** The Members as Values of the Context of the Members as Variables
+  (** ** The Context of the Members as Variables
 
       The type of [Self_j], the declared member [j] with the members as
-      variables, is a type over the uniform parameters, and the type former
-      [j] at uniform parameters is of it there.  So the values of the
-      declared members at related uniform parameters, after them, are
-      related environments of [grp_selfs_ctx D]. *)
+      variables, is a type over the uniform parameters, so the context of
+      the members as variables, [grp_selfs_ctx D], is valid. *)
   Section Selfs.
     Hypothesis (Hord : ind_order_ok D).
 
@@ -1763,51 +1754,6 @@ Section Sort.
       pose proof (valid_ind_decl_params _ HD _ _ HMj) as HP; unfold im_params in HP.
       pose proof (rel_exp_under_ctx_wk (rel_wk_under_ctx_shiftn _ _ HP) HS) as HSw; cbn [exp_wk] in HSw.
       unfold self_ty, im_nn; eapply rel_exp_ctx_pi; [ exact (member_nparams_ass _ _ HMj) | exact HP | exact HSw ].
-    Qed.
-
-    Lemma self_val_rel : forall j Mj, ind_member D j = Some Mj -> j < ind_ndecl D ->
-        forall ups ups', per_tele_args (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-        forall i R a a', ⟦ self_ty D Mj ⟧ decl_env D ups ↘ a -> ⟦ self_ty D Mj ⟧ decl_env D ups' ↘ a' ->
-          DF a ≈ a' ∈ per_univ_elem i ↘ R -> Dom d_ind p j ups ≈ d_ind p j ups' ∈ R.
-    Proof.
-      intros * HMj Hj * Hg Hu * Ea Ea' HR.
-      assert (Hd : im_is_decl Mj = true) by (apply (proj2 (Hord _ _ HMj)); exact Hj).
-      assert (Hh : exists pm, im_head Mj = mh_decl pm)
-        by (unfold im_is_decl in Hd; destruct (im_head Mj); [ eauto | discriminate .. ]).
-      destruct Hh as [pm Hh].
-      pose proof (length_ups_tele_args _ _ Hg Hu) as Hu'.
-      destruct (rel_ctx_wf_per_ctx_env uparams_sem) as [RU HRU].
-      assert (HCm : ⊨ List.rev (List.rev (im_nparams Mj)) ++ ind_uparams D)
-        by (rewrite List.rev_involutive; exact (valid_ind_decl_params _ HD _ _ HMj)).
-      unfold self_ty in Ea, Ea'; rewrite <- (List.rev_involutive (im_nparams Mj)) in Ea, Ea'.
-      assert (Hlu : List.length ups = List.length (List.rev (ind_uparams D))) by (rewrite List.length_rev; exact Hu).
-      eapply (ctx_pi_rel_elem (im_np D Mj) (d_ind p j) _ (List.rev (im_params D Mj))
-                ltac:(intros xs x Hx; eapply eval_app_indty; eassumption)
-                ltac:(intros xs κ A _ Hn Hev; eapply arg_kind_ind_param; eassumption)
-                (List.rev (im_nparams Mj)) (ind_uparams D) RU
-                ltac:(apply List.Forall_rev, (member_nparams_ass _ _ HMj)) HRU HCm (decl_env D ups) (decl_env D ups') ups ups');
-        [ rewrite List.length_rev, length_im_nparams; unfold im_np in *; lia | lia | exact (uparams_rel_env _ _ Hg Hu _ HRU)
-        | rewrite rev_im_params, Hlu, List.skipn_app, List.skipn_all, Nat.sub_diag; reflexivity
-        | | exact Ea | exact Ea' | exact HR | ].
-      - (** The parameters are relevant or levels: of evaluated kinds. *)
-        intros ts1 κ A ts2 R1 vts vts' b Heq HR1 Hl1 Hl1' HE1 Eb.
-        assert (Hpe : im_params D Mj = List.rev ts2 ++ ce_ass κ A :: (List.rev ts1 ++ ind_uparams D))
-          by (unfold im_params; rewrite <- (List.rev_involutive (im_nparams Mj)), Heq, List.rev_app_distr; cbn [List.rev];
-              rewrite <- !List.app_assoc; reflexivity).
-        destruct (im_params_evaluated _ _ HMj _ _ _ _ Hpe) as [i0 HA].
-        destruct (rel_param_typed_evaluated HA) as (r & Hr0 & HAr).
-        destruct (HAr _ HR1 _ _ HE1) as (b0 & Eb0 & Hr).
-        assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption); rewrite Hr; exact Hr0.
-      - (** At the parameters' values, the type former, over the uniform
-            parameters' environment. *)
-        intros R1 vts vts' HR1 Hl1 Hl1' HE1.
-        rewrite List.rev_involutive in HR1; fold (im_params D Mj) in HR1.
-        rewrite List.length_rev, length_im_nparams in Hl1, Hl1'.
-        pose proof (ind_at_params j Mj pm HMj Hh R1 nil nil (tele_entries nil (List.rev (ind_uparams D)) ups ++ vts)
-                      (tele_entries nil (List.rev (ind_uparams D)) ups' ++ vts') HR1) as H.
-        rewrite !List.map_app, !tele_entries_values, !env_extend_typed_app in H.
-        apply H; [ rewrite List.length_app, tele_entries_length; unfold im_np in *; lia
-                 | rewrite List.length_app, tele_entries_length; unfold im_np in *; lia | exact HE1 ].
     Qed.
 
     Lemma grp_selfs_prefix_sem : forall n, n <= ind_ndecl D ->
@@ -1841,101 +1787,6 @@ Section Sort.
       destruct (per_tele_args_of_env_tele _ _ _ _ per_ctx_env_nil_true rev_uparams_sem rev_uparams_ass HRU' nil nil ups' ups'
                   ltac:(rewrite List.length_rev; exact Hu') ltac:(rewrite List.length_rev; exact Hu') H22) as [_ H].
       exact H.
-    Qed.
-
-    Lemma selfs_tele_args : forall n, n <= ind_ndecl D ->
-        forall ups ups', per_tele_args (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-        per_tele_args (List.rev (grp_selfs_from D 0 (List.firstn n (ind_members D)))) (decl_env D ups) (decl_env D ups')
-          (List.map (fun j => d_ind p j ups) (List.seq 0 n)) (List.map (fun j => d_ind p j ups') (List.seq 0 n)).
-    Proof.
-      induction n as [| n IH]; intros Hn ups ups' Hg Hu; [ constructor |].
-      pose proof (length_ups_tele_args _ _ Hg Hu) as Hu'.
-      pose proof (uparams_refl_r _ _ Hg Hu) as Hgr.
-      pose proof (uparams_refl_l _ _ Hg) as Hgl.
-      pose proof (ind_ndecl_le D) as Hle.
-      destruct (List.nth_error (ind_members D) n) as [Mn |] eqn:HMn; [| apply List.nth_error_None in HMn; lia ].
-      pose proof (IH ltac:(lia) _ _ Hg Hu) as IHn.
-      pose proof (IH ltac:(lia) _ _ Hgr Hu') as IHr.
-      set (Ψ := grp_selfs_from D 0 (List.firstn n (ind_members D))) in *.
-      assert (HlΨ : List.length Ψ = n) by (unfold Ψ; rewrite length_grp_selfs_from, List.length_firstn; lia).
-      rewrite (firstn_S_nth_error _ _ _ HMn), grp_selfs_from_snoc; fold Ψ; cbn [Nat.add List.rev].
-      rewrite List.seq_S, !List.map_app; cbn [List.map Nat.add].
-      rewrite List.length_firstn; replace (Nat.min n (List.length (ind_members D))) with n by lia.
-      (** The prefix environments are related at the prefix context. *)
-      pose proof (grp_selfs_prefix_sem n ltac:(lia)) as HC; fold Ψ in HC.
-      destruct (rel_ctx_wf_per_ctx_env HC) as [RΓ0 HRΓ0].
-      assert (Henv : forall ys ys', per_tele_args (List.rev (ind_uparams D)) nil nil ys ys' -> List.length ys = ind_nu D ->
-                 per_tele_args (List.rev Ψ) (decl_env D ys) (decl_env D ys')
-                   (List.map (fun j => d_ind p j ys) (List.seq 0 n)) (List.map (fun j => d_ind p j ys') (List.seq 0 n)) ->
-                 RΓ0 (components_env D ys (List.rev Ψ) (List.map (fun j => d_ind p j ys) (List.seq 0 n)))
-                     (components_env D ys' (List.rev Ψ) (List.map (fun j => d_ind p j ys') (List.seq 0 n)))).
-      { intros ys ys' Hgy Hly Hgs.
-        pose proof (length_ups_tele_args _ _ Hgy Hly) as Hly'.
-        rewrite <- !env_tele_uparams by assumption.
-        apply (tele_args_env_rel _ _ _ _ _ _ HRΓ0 HC); [ rewrite !List.length_app, List.length_map, List.length_seq; unfold ind_nu in *; lia |].
-        rewrite List.rev_app_distr; apply per_tele_args_app_intro; [ rewrite List.length_rev; exact Hly | exact Hgy | exact Hgs ]. }
-      destruct (self_ty_sem _ _ HMn) as [i Hi].
-      destruct (rel_exp_under_ctx_wk_simple (rel_wk_under_ctx_shiftn _ _ HC) Hi) as (RΓ & HΓ & i0 & Hwk).
-      assert (E0 : RΓ0 <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
-      rewrite HlΨ in Hwk.
-      assert (Hval : forall ys ys', per_tele_args (List.rev (ind_uparams D)) nil nil ys ys' -> List.length ys = ind_nu D ->
-                 per_tele_args (List.rev Ψ) (decl_env D ys) (decl_env D ys')
-                   (List.map (fun j => d_ind p j ys) (List.seq 0 n)) (List.map (fun j => d_ind p j ys') (List.seq 0 n)) ->
-                 exists m m', ⟦ (self_ty D Mn)[wk_shiftn n]ʷ ⟧ components_env D ys (List.rev Ψ) (List.map (fun j => d_ind p j ys) (List.seq 0 n)) ↘ m /\
-                   ⟦ self_ty D Mn ⟧ decl_env D ys' ↘ m' /\ Dom m ≈ m' ∈ per_univ i).
-      { intros ys ys' Hgy Hly Hgs.
-        destruct (Hwk _ _ (proj1 (E0 _ _) (Henv _ _ Hgy Hly Hgs))) as (y & y' & Ry & Ey & Ey' & HRy & Hmm).
-        assert (Hy1 : y = d_univ i) by (cbn in Ey; inversion Ey; reflexivity).
-        destruct Hmm as [Hp | (m & m' & Em & Em' & Hmm)]; [ rewrite Hy1 in Hp; discriminate |].
-        replace n with (List.length (List.map (fun j => d_ind p j ys') (List.seq 0 n))) in Em' at 1
-          by (rewrite List.length_map, List.length_seq; reflexivity).
-        rewrite eval_wk_shiftn_components_env in Em'.
-        rewrite Hy1 in HRy.
-        destruct (per_univ_elem_univ _ _ _ _ HRy (or_introl (ex_intro _ _ eq_refl))) as [_ ERy].
-        apply ERy in Hmm; destruct Hmm as [Hmm _ _].
-        exists m, m'; split; [ exact Em | split; [ exact Em' | exact Hmm ] ]. }
-      destruct (Hval _ _ Hg Hu IHn) as (m & m' & Em & Em' & [R1 HR1]).
-      destruct (Hval _ _ Hgr Hu' IHr) as (m2 & m2' & Em2 & Em2' & [R2 HR2]).
-      assert (m2' = m') as -> by (eapply functional_eval_exp; eassumption).
-      (** The type of [Self_n] at the left prefix, related to the one at the
-          right prefix through the member's type at the right uniform
-          parameters. *)
-      pose proof (per_univ_sym _ _ _ _ HR2) as HR2'.
-      pose proof (per_univ_trans _ _ _ _ _ _ HR1 (per_univ_elem_resp_iff HR2'
-                    ltac:(eapply per_univ_elem_right_irrel; [ exact HR2' | exact (per_univ_sym _ _ _ _ HR1) ]))) as HR12.
-      apply (per_tele_args_snoc _ _ _ _ _ _ _ _ _ i R1); [ rewrite List.length_rev, HlΨ, List.length_map, List.length_seq; reflexivity | exact IHn | |].
-      - econstructor; [ exact Em | exact Em2 | exact HR12 ].
-      - (** The value: the type former at the uniform parameters, of the
-            member's type there. *)
-        assert (Hn' : n < ind_ndecl D) by lia.
-        destruct (rel_ctx_wf_per_ctx_env uparams_sem) as [RU HRU].
-        assert (HRu : RU (decl_env D ups) (decl_env D ups')) by exact (uparams_rel_env _ _ Hg Hu _ HRU).
-        destruct (rel_exp_of_typ_inversion_simple_at HRU Hi _ _ HRu) as (b & b' & Eb & Eb' & [Rb HRb]).
-        assert (b' = m') as -> by (eapply functional_eval_exp; eassumption).
-        pose proof (self_val_rel _ _ HMn Hn' _ _ Hg Hu _ _ _ _ Eb Eb' HRb) as Hx.
-        destruct (Hval _ _ Hgl Hu (IH ltac:(lia) _ _ Hgl Hu)) as (m3 & m3' & Em3 & Em3' & [R3 HR3]).
-        assert (m3 = m) as -> by (eapply functional_eval_exp; eassumption).
-        assert (m3' = b) as -> by (eapply functional_eval_exp; eassumption).
-        assert (E1 : R1 <~> R3) by (eapply per_univ_elem_right_irrel; eassumption).
-        assert (E3 : R3 <~> Rb) by (eapply per_univ_elem_right_irrel; [ exact (per_univ_sym _ _ _ _ HR3) | exact HRb ]).
-        apply E1, E3; exact Hx.
-    Qed.
-
-    (** The values of the declared members at the uniform parameters [ups],
-        after them: an environment of [grp_selfs_ctx D]. *)
-    Lemma selfs_env_rel : forall RS, EF grp_selfs_ctx D ≈ grp_selfs_ctx D ∈ per_ctx_env ↘ RS ->
-        forall ups ups', per_tele_args (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-        RS (components_env D ups (List.rev (grp_selfs D)) (selfs_vals p D ups))
-           (components_env D ups' (List.rev (grp_selfs D)) (selfs_vals p D ups')).
-    Proof.
-      intros RS HRS ups ups' Hg Hu.
-      pose proof (length_ups_tele_args _ _ Hg Hu) as Hu'.
-      rewrite <- !env_tele_uparams by assumption; fold (grp_selfs_ctx D).
-      apply (tele_args_env_rel _ _ _ _ _ _ HRS grp_selfs_ctx_sem).
-      - rewrite length_grp_selfs_ctx, List.length_app; unfold selfs_vals; rewrite List.length_map, List.length_seq; lia.
-      - unfold grp_selfs_ctx, grp_selfs; rewrite List.rev_app_distr.
-        apply per_tele_args_app_intro; [ rewrite List.length_rev; exact Hu | exact Hg |].
-        exact (selfs_tele_args _ (le_n _) _ _ Hg Hu).
     Qed.
 
     (** ** The Substitution of the Members for their Variables

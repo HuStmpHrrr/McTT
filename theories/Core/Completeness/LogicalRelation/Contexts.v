@@ -42,12 +42,6 @@ Proof.
   - intros ρ ρ' Hρ%Hirrel; exact (Hn _ HΓ _ _ Hρ).
 Qed.
 
-Corollary per_ctx_extend : forall {Γ Γ' κ A A'} {i : nat},
-    ⊨ Γ ≈ Γ' ->
-    Γ ⊨ A ≈ A' : Typeω@i ->
-    ⊨ Γ ▹{κ} A ≈ Γ' ▹{κ} A'.
-Proof. intros * HΓ H; exact (per_ctx_extend_type HΓ (rel_type_of_typ H)). Qed.
-
 (** An assumption of a type of a sort, at the sort's kind. *)
 Lemma rel_ctx_wf_extend_sort : forall {Γ κ A S},
     ⊨ Γ ->
@@ -67,7 +61,7 @@ Corollary rel_ctx_wf_extend : forall {Γ A} {i : nat},
     ⊨ Γ ▹{ak_relevant} A.
 Proof. intros * HΓ HA; exact (rel_ctx_wf_extend_sort HΓ (sort_kind_universe i) HA). Qed.
 
-Hint Resolve per_ctx_extend rel_ctx_wf_extend : mctt.
+Hint Resolve rel_ctx_wf_extend : mctt.
 
 End Fixed_GCtx.
 
@@ -198,15 +192,6 @@ Proof.
   - econstructor; [ eassumption | eapply per_ctx_env_of_def_prop; eassumption | constructor | eassumption | eassumption ].
   - econstructor; [ eassumption | eapply per_ctx_env_of_def_level; eassumption | constructor | eassumption | eassumption ].
 Qed.
-
-Corollary rel_ctx_wf_extend_def : forall {Γ A} {i : nat} {M},
-    ⊨ Γ ->
-    Γ ⊨ A : Typeω@i ->
-    Γ ⊨ M : A ->
-    ⊨ Γ ▸ A ≔ M.
-Proof. intros * HΓ HA HM; exact (rel_ctx_wf_extend_def_sort HΓ (type_sort_universe i) HA HM). Qed.
-
-Hint Resolve rel_ctx_wf_extend_def : mctt.
 
 End Fixed_GCtx.
 
@@ -371,41 +356,8 @@ Qed.
     of its term part either, for the same reason; its δ is read directly
     ([rel_exp_under_ctx_var_delta_here_dm]). *)
 
-Lemma rel_ctx_sub_empty :
-  SubE ⋅ <: ⋅.
-Proof. mauto. Qed.
-
-(** An assumption of a smaller type, the two types of sorts of one kind
-    [κ] ([sort_kind]), so the two entries are of [κ]. *)
-Lemma rel_ctx_sub_extend : forall {Γ Δ κ Srt Srt' A A'},
-  SubE Γ <: Δ ->
-  ⊨ Γ ->
-  ⊨ Δ ->
-  Γ ⊨ A : Srt ->
-  sort_kind Srt κ ->
-  Δ ⊨ A' : Srt' ->
-  sort_kind Srt' κ ->
-  Γ ⊨ A ⊆ A' ->
-  SubE Γ ▹{κ} A <: Δ ▹{κ} A'.
-Proof.
-  intros * Hsub HΓ HΔ HA HS HA' HS' Hsubtyp.
-  pose proof (rel_ctx_wf_extend_sort HΓ HS HA) as HΓA%rel_ctx_wf_per_ctx_env.
-  pose proof (rel_ctx_wf_extend_sort HΔ HS' HA') as HΔA'%rel_ctx_wf_per_ctx_env.
-  destruct HΓA as [env_relΓA HΓA], HΔA' as [env_relΔA' HΔA'].
-  pose proof (rel_subtyp_under_ctx_simple Hsubtyp) as [env_relΓ [HΓ' [j Hsub2]]].
-  econstructor; try eassumption.
-  intros ρ ρ' a a' Hρ Ha Ha'.
-  destruct (Hsub2 _ _ Hρ) as [a2 [a2' [Ha2 [Ha2' Hsubaa']]]].
-  functional_eval_rewrite_clear.
-  eassumption.
-Qed.
-
-Hint Resolve rel_ctx_sub_empty rel_ctx_sub_extend : mctt.
-
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve per_ctx_extend rel_ctx_wf_extend rel_ctx_wf_extend_def : mctt.
-#[export]
-Hint Resolve rel_ctx_sub_empty rel_ctx_sub_extend : mctt.
+Hint Resolve rel_ctx_wf_extend : mctt.
 

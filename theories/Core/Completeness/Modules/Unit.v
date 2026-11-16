@@ -1,7 +1,8 @@
 (** * Valid Units: Validity, Substitution, Instantiation, Abstraction
 
-    A valid unit is valid in the PER model ([valid_unit_rel]) and moved along
-    substitutions as the PER model asks ([valid_unit_links]).  Valid units and
+    A valid unit is valid in the PER model ([valid_unit_rel]) and, under one
+    parameter fewer, moved along substitutions as the PER model asks
+    ([valid_unit_links_unabs1]).  Valid units and
     module expressions valid in what they denote stay so along
     substitutions built from valid parts ([valid_unit_modexp_gsub]); a valid literal
     with an outermost parameter, given an argument for it, is the valid
@@ -84,17 +85,8 @@ Qed.
 
 (** ** Valid Units along Substitutions, in the PER Model *)
 
-Lemma valid_unit_links : forall Γ U, valid_unit Γ (me_lit U) -> modexp_sub_rel Γ (me_lit U).
-Proof.
-  intros * HK; inversion HK as [| ? Δ Φ Φx Hw Hx HΔ HΔr HΓ HC Hsv Hsl Hsh Hsx HU Hov Hos | ? Δ E Hw HΔ HΔr HΓ HΔΓ HU HE Hsm];
-    subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_not_lit _ _ _ Hq) end | |];
-    intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
-  - eapply unit_sub_link_body; try eassumption.
-    exact (body_xp_scoped_of_wf _ _ _ _ _ _ Hw Hx).
-  - eapply unit_sub_link_alias; eassumption.
-Qed.
-
-(** The same under one parameter fewer. *)
+(** A valid unit under one parameter fewer is moved along substitutions as
+    the PER model asks. *)
 Lemma valid_unit_links_unabs1 : forall Γ Δ κ X D, valid_unit Γ (me_lit (gu_mk (Δ ++ ce_ass κ X :: nil) D)) ->
     modexp_sub_rel (Γ ▹{κ} X) (me_lit (gu_mk Δ D)).
 Proof.

@@ -134,47 +134,6 @@ End Fixed_GCtx.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** ** Small Universes
-
-    As [sem_subtyp_univ], at the small level, and from a small universe to a large
-    one; any ambient level relates small universes. *)
-Lemma rel_subtyp_under_ctx_suniv : forall {Γ n m},
-    ⊨ Γ ->
-    ordinal_le n m ->
-    Γ ⊨ Type⟨𝕃ᵒ n⟩ ⊆ Type⟨𝕃ᵒ m⟩.
-Proof.
-  intros * HΓsem Hnm.
-  pose proof (rel_ctx_wf_per_ctx_env HΓsem) as [env_relΓ HΓ].
-  eexists_subtyp_with 0.
-  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌@(domain_level_lit n) 𝕌@(domain_level_lit n) 𝕌@(domain_level_lit m) 𝕌@(domain_level_lit m); try (apply eval_exp_univ, eval_exp_llit).
-  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_universe_index | reflexivity ].
-  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_universe_index | reflexivity ].
-  - apply per_subtyp_suniv; [ apply per_sublvl_lit; assumption | solve_universe_index ].
-Qed.
-
-Lemma rel_subtyp_under_ctx_small_large : forall {Γ n} {i : nat},
-    ⊨ Γ ->
-    Γ ⊨ Type⟨𝕃ᵒ n⟩ ⊆ Typeω@i.
-Proof.
-  intros * HΓsem.
-  pose proof (rel_ctx_wf_per_ctx_env HΓsem) as [env_relΓ HΓ].
-  eexists_subtyp_with (S i).
-  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌@(domain_level_lit n) 𝕌@(domain_level_lit n) 𝕌ω@i 𝕌ω@i; try (apply eval_exp_univ, eval_exp_llit); try apply eval_exp_typ.
-  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_universe_index | reflexivity ].
-  - eexists; apply per_univ_elem_core_univ'; [ solve_universe_index | reflexivity ].
-  - apply per_subtyp_small_large; [ apply per_lvl_lit | solve_universe_index ].
-Qed.
-
-Hint Resolve rel_subtyp_under_ctx_suniv rel_subtyp_under_ctx_small_large : mctt.
-
-End Fixed_GCtx.
-
-
-Section Fixed_GCtx.
-  Context {GC : GCtx}.
-
 (** ** [Subsump]
 
     The term chain is unchanged; only the PER it is read in changes.
@@ -259,7 +218,5 @@ Hint Resolve rel_subtyp_under_ctx_refl : mctt.
 #[export]
 Hint Resolve rel_subtyp_under_ctx_trans : mctt.
 #[export] Existing Instance rel_subtyp_under_ctx_Transitive.
-#[export]
-Hint Resolve rel_subtyp_under_ctx_suniv rel_subtyp_under_ctx_small_large : mctt.
 #[export]
 Hint Resolve rel_exp_under_ctx_subtyp : mctt.

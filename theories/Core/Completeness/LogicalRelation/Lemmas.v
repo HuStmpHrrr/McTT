@@ -948,15 +948,6 @@ Proof.
   merge_rel_chain Hc Ha a2.
 Qed.
 
-Corollary rel_sub_under_ctx_wk : forall {Γ ψ Δ σ σ' Δ'},
-    Δ ⊨ˢ σ ≈ σ' : Δ' ->
-    Γ ⊨ʷ ψ : Δ ->
-    Γ ⊨ˢ (sb_wk σ ψ) ≈ (sb_wk σ' ψ) : Δ'.
-Proof.
-  intros * Hσ [env_relΓ HΓ env_relΔ2 HΔ2 Hψ Hψb _].
-  exact (rel_sub_under_ctx_wk_rel Hσ HΓ HΔ2 Hψ Hψb).
-Qed.
-
 (** Precomposition by a weakening, which, unlike general composition of two
     semantic substitutions, is semantic.  Nothing is instantiated twice: the four
     environments wanted are the [⟪φ⟫]-images of the four the hypothesis supplies,

@@ -246,12 +246,6 @@ Proof.
   rewrite !List.firstn_all2 in Hp by lia; exact Hp.
 Qed.
 
-Lemma eval_exps_firstn : forall Ms ρ vs k, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ vs ->
-    ⟦ List.firstn k Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ List.firstn k vs.
-Proof.
-  intros * H; revert k; induction H; intros [| k]; cbn; try solve [ constructor ]; econstructor; eauto.
-Qed.
-
 (** ** Values of Fields by Their Kinds *)
 
 (** The kind a list of kinds gives a field past its head: the rest's. *)
