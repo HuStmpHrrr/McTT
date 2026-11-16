@@ -5,7 +5,7 @@
     occurrence: in the normal form of an argument's type, at the end of
     its [Π]s, the type former of a declared member of a filed group at
     uniform arguments ([classify_arg_view]).  Those instances, keyed, are
-    typed views ([key_inv], [nest_key_inv], [view_meets_inv]), and so are a
+    typed views ([key_inv], [nest_view_typed]), and so are a
     typed view's siblings, the members of its container's group at its
     arguments ([sibling_view_inv]); the siblings of a view sibling are
     siblings up to their proofs ([view_entry_siblings]), by the view
@@ -37,18 +37,6 @@ From Mctt.Core.Syntactic.System.Inductives Require Import UniformParams Views.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 #[local] Open Scope list_scope.
-
-(** The [j]-th value of a telescope's readback, read at its type in the
-    environment of the values before it. *)
-Lemma read_ps_nth : forall Θ Ξ s ρ T vs Ws, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ws ->
-    forall j κ A v, List.nth_error T j = Some (ce_ass κ A) -> List.nth_error vs j = Some v ->
-    exists a V, ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_tele ρ T (List.firstn j vs) ↘ a /\ Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V /\
-      List.nth_error Ws j = Some V.
-Proof.
-  induction 1 as [| ? ? ? ? ? ? ? ? ? ? Ea HV Hr IH]; intros [| j] κ' A' v' HT Hv; cbn in HT, Hv; try discriminate.
-  - injection HT as <- <-; injection Hv as <-; do 2 eexists; cbn; eauto.
-  - destruct (IH _ _ _ _ HT Hv) as (a1 & V1 & Ea1 & HVa & Hn); exists a1, V1; cbn; auto.
-Qed.
 
 (** An inductive type former applied evaluates its arguments, all of them
     (its parameters are relevant, [eval_app_args_ind]), and applies its
@@ -1238,34 +1226,6 @@ End SiblingInv.
 Section NestKeys.
   Context {GC : GCtx}.
 
-  (** The instances the classification finds in a normal form, keyed, are
-      of the invariant: typed, as their normal forms are. *)
-  Corollary nest_key_inv : forall Δ Γu T W (i : nat) nu np n pat gw g z,
-      all_assumptions Δ -> List.length Δ = List.length pat + (np - nu) ->
-      Δ ++ Γu ⊢ T : Typeω@i -> nbe_ty_f (Δ ++ Γu) T W -> nf_proof_free W ->
-      classify_arg (grp_info gc_deps gc_stack) (rec_info gc_deps gc_stack) nu np n pat (nf_to_exp W) = Some gw ->
-      written_carg_key gc_deps gc_stack Γu gw g ->
-      In z (classified_carg_view g) -> key_inv gc_deps gc_stack Γu z.
-  Proof.
-    intros * Hass Hlen HT HW HpfW Hcls Hk Hin.
-    destruct (written_carg_key_view _ _ _ _ Hk Hin) as (x & Hx & Hxz).
-    destruct Hxz as [qc k Cs D Ws Hl HWs | qr Is Rr Ws Hl HWs]; cbn [key_inv].
-    - destruct (nest_view_typed _ _ _ _ _ _ _ _ _ _ _ _ _ Hass Hlen HT HW HpfW Hcls Hx) as [D2 Hl2 Hk2 HCl HCt HΓu].
-      rewrite Hl in Hl2; injection Hl2 as <-.
-      destruct (decl_of_lookup _ _ _ _ _ HΓu Hl) as [Hdt Hc].
-      destruct (nbes_nth _ _ _ _ _ _ HWs) as (HlW & _).
-      refine (mk_view_typed _ _ _ _ _ _ D Hl Hk2 ltac:(rewrite List.length_map, HlW; exact HCl) _ HΓu).
-      exact (nbes_inst_inv _ _ _ _ (decl_closed_ass _ Hc) (decl_closed_uparams _ Hc) (decl_typed_uparams_field _ _ _ Hdt) HΓu HWs).
-    - destruct (nest_record_view_typed _ _ _ _ _ _ _ _ _ _ _ _ Hass Hlen HT HW HpfW Hcls Hx) as [R2 Hl2 HCl HCt HΓu].
-      rewrite Hl in Hl2; injection Hl2 as <-.
-      pose proof (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ (ctx_wf_gctx _ _ _ HΓu)) Hl) as HcR.
-      pose proof (record_lookup_typed _ _ (ctx_wf_gctx _ _ _ HΓu) (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ HΓu)) _ _ Hl) as HRt.
-      pose proof (record_typed_fctx_wf _ _ _ HRt 0 ltac:(lia)) as HP; cbn [record_fctx List.app] in HP.
-      destruct (nbes_nth _ _ _ _ _ _ HWs) as (HlW & _).
-      refine (mk_record_view_typed _ _ _ _ _ Rr Hl ltac:(rewrite List.length_map, HlW; exact HCl) _ HΓu).
-      exact (nbes_inst_inv _ _ _ _ (typed_params_ass _ _ _ HRt) (closed_params _ HcR) HP HΓu HWs).
-  Qed.
-
   (** Terms typed at a closed telescope's instance at them have normal
       forms there. *)
   Lemma nbes_exist : forall Γ U Ms, all_assumptions U -> List.length Ms = List.length U ->
@@ -1287,79 +1247,3 @@ Section NestKeys.
   Qed.
 
 End NestKeys.
-
-(** ** Where a Constructor's Classified Arguments Meet an Instance *)
-
-(** An instance the classified arguments [gs] meet is met by one of them,
-    classified in the context of those before it, with as many bits as
-    arguments before. *)
-Lemma classify_args_in_meet : forall Θ Ξ Γp nu np n pat args1 args gs,
-    classify_args_in Θ Ξ Γp nu np n pat args1 args gs -> List.length pat = List.length args1 ->
-    forall z, In z (List.concat (List.map classified_carg_view gs)) ->
-    exists args1' T g pat', classify_arg_in Θ Ξ (raw_args_tele args1' ++ Γp) nu np n pat' T g /\ In z (classified_carg_view g) /\
-      List.length pat' = List.length args1'.
-Proof.
-  induction 1 as [| pat args1 y κ T args g gs Hg _ Hgs IH]; intros Hl z Hz; cbn in Hz; [ destruct Hz |].
-  apply List.in_app_or in Hz as [Hz | Hz].
-  - assert (Ev : classified_carg_view (classified_carg_tag κ g) = classified_carg_view g) by (destruct g; reflexivity).
-    rewrite Ev in Hz; exists args1, T, g, pat; auto.
-  - apply IH; [ rewrite List.length_app; cbn; lia | exact Hz ].
-Qed.
-
-(** An instance the classified constructors meet. *)
-Lemma classify_cons_in_meet : forall Θ Ξ Γp nu np n rcs cs, classify_cons_in Θ Ξ Γp nu np n rcs cs ->
-    forall z, In z (classified_cons_views cs) ->
-    exists args1' T g pat', classify_arg_in Θ Ξ (raw_args_tele args1' ++ Γp) nu np n pat' T g /\ In z (classified_carg_view g) /\
-      List.length pat' = List.length args1'.
-Proof.
-  unfold classify_cons_in, classified_cons_views; induction 1 as [| rc c rcs cs [_ Hc] _ IH]; intros z Hz; cbn in Hz; [ destruct Hz |].
-  apply List.in_app_or in Hz as [Hz | Hz]; [| exact (IH _ Hz) ].
-  exact (classify_args_in_meet _ _ _ _ _ _ _ _ _ _ Hc eq_refl _ Hz).
-Qed.
-
-(** The instances any view's constructors meet are typed views, whose
-    arguments are their own normal forms. *)
-Theorem view_meets_inv : forall Θ Ξ R x cs z, view_classify Θ Ξ R x cs -> In z (classified_cons_views cs) ->
-    key_inv Θ Ξ (raw_decl_uniform_ctx Ξ R) z.
-Proof.
-  intros * Hx Hz.
-  assert (Hskip : forall (Δ Γ : ctx) m, m = List.length Δ -> List.skipn m (Δ ++ Γ) = Γ)
-    by (intros Δ Γ m ->; rewrite List.skipn_app, List.skipn_all, Nat.sub_diag; reflexivity).
-  inversion Hx as [qx kx Csx D' Mk' cs' HD' HMk' Hcls | qx Isx Rr cs' HRr Hcls]; subst.
-  - destruct (classify_cons_in_meet _ _ _ _ _ _ _ _ Hcls _ Hz) as (args1 & T & g & pat & Hg & Hin & Hl).
-    inversion Hg as [gw g' Hsyn Hk | i W gw g' Hnf HT HW Hpf Hcl Hk]; subst.
-    + destruct (@written_carg_key_view (gc_mk Θ Ξ) _ _ _ _ Hk Hin) as (x0 & Hx0 & _).
-      rewrite (classify_arg_none_view _ _ _ _ _ _ Hsyn) in Hx0; destruct Hx0.
-    + set (Δ := raw_args_tele args1 ++ tele_sub (im_nparams Mk') (sb_of_list sb_id (List.map nf_to_exp Csx))).
-      assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Δ ++ raw_decl_uniform_ctx Ξ R) by (unfold Δ; rewrite <- List.app_assoc; gen_presups; assumption).
-      destruct (decl_of_lookup _ _ _ _ _ HΓ HD') as [Hdt _].
-      rewrite List.app_assoc, (Hskip Δ) in Hk
-        by (unfold Δ, raw_args_tele; rewrite List.length_app, List.length_rev, List.length_map, length_tele_sub; unfold im_nn; lia).
-      apply (@nest_key_inv (gc_mk Θ Ξ) Δ (raw_decl_uniform_ctx Ξ R) T W i (raw_decl_nu R) (im_nn Mk' + raw_decl_nu R) (raw_decl_nmembers R) pat gw g); cbn.
-      * unfold Δ, all_assumptions, raw_args_tele; apply List.Forall_app; split;
-          [ apply List.Forall_rev, List.Forall_map, List.Forall_forall; intros; do 2 eexists; reflexivity
-          | apply all_assumptions_sub, (decl_typed_nparams_ass _ _ _ Hdt _ _ HMk') ].
-      * unfold Δ, raw_args_tele; rewrite List.length_app, List.length_rev, List.length_map, length_tele_sub; unfold im_nn; lia.
-      * unfold Δ; rewrite <- List.app_assoc; exact HT.
-      * unfold Δ; rewrite <- List.app_assoc; exact HW.
-      * exact Hpf.
-      * exact Hcl.
-      * exact Hk.
-      * exact Hin.
-  - (** a record view: its fields, over the group's context *)
-    destruct (classify_cons_in_meet _ _ _ _ _ _ _ _ Hcls _ Hz) as (args1 & T & g & pat & Hg & Hin & Hl).
-    inversion Hg as [gw g' Hsyn Hk | i W gw g' Hnf HT HW Hpf Hcl Hk]; subst.
-    + destruct (@written_carg_key_view (gc_mk Θ Ξ) _ _ _ _ Hk Hin) as (x0 & Hx0 & _).
-      rewrite (classify_arg_none_view _ _ _ _ _ _ Hsyn) in Hx0; destruct Hx0.
-    + rewrite Nat.sub_diag, Nat.add_0_r, (Hskip (raw_args_tele args1)) in Hk
-        by (unfold raw_args_tele; rewrite List.length_rev, List.length_map; lia).
-      apply (@nest_key_inv (gc_mk Θ Ξ) (raw_args_tele args1) (raw_decl_uniform_ctx Ξ R) T W i (raw_decl_nu R) (raw_decl_nu R) (raw_decl_nmembers R) pat gw g); cbn.
-      * unfold all_assumptions, raw_args_tele; apply List.Forall_rev, List.Forall_map, List.Forall_forall; intros; do 2 eexists; reflexivity.
-      * unfold raw_args_tele; rewrite List.length_rev, List.length_map; lia.
-      * exact HT.
-      * exact HW.
-      * exact Hpf.
-      * exact Hcl.
-      * exact Hk.
-      * exact Hin.
-Qed.

@@ -254,9 +254,6 @@ Fixpoint body_skeleton (Φ : gmod) : skeleton :=
   | gm_open Φ _ its _ => repeat None (List.length its) ++ body_skeleton Φ
   end.
 
-(** The skeleton of a frame: its parameters are assumptions. *)
-Definition frame_skeleton (Ξ : gstack) : skeleton := map (fun _ => None) (gs_tele Ξ).
-
 Section OpenError.
   (** The fast context the opens are generated in *)
   Variable F : FCtx.

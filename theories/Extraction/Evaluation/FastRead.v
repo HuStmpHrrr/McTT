@@ -776,26 +776,13 @@ Corollary functional_fast_read_nf : forall {Θ Ξ} s m M1 M2,
     Rnfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 -> Rnfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 -> M1 = M2.
 Proof. intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder. Qed.
 
-Corollary functional_fast_read_level_atoms : forall {Θ Ξ} s xs ys1 ys2,
-    Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys1 -> Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys2 -> ys1 = ys2.
-Proof. intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder. Qed.
-
-Corollary functional_fast_read_ne : forall {Θ Ξ} s m M1 M2,
-    Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 -> Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 -> M1 = M2.
-Proof. intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder. Qed.
-
 Corollary functional_fast_read_typ : forall {Θ Ξ} s m M1 M2,
     Rtypᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 -> Rtypᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 -> M1 = M2.
-Proof. intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder. Qed.
-
-Corollary functional_fast_read_proof : forall {Θ Ξ} s m M1 M2,
-    Rprfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 -> Rprfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M2 -> M1 = M2.
 Proof. intros Θ Ξ; pose proof (@functional_fast_read Θ Ξ); firstorder. Qed.
 End FastReadDeterminismMutual.
 
 #[export]
-Hint Resolve functional_fast_read_nf functional_fast_read_ne functional_fast_read_typ functional_fast_read_level_atoms
-  functional_fast_read_proof : mctt.
+Hint Resolve functional_fast_read_nf functional_fast_read_typ : mctt.
 
 Ltac functional_fast_read_rewrite_clear1 :=
   let tactic_error o1 o2 := fail 3 "functional_fast_read equality between" o1 "and" o2 "cannot be solved by mauto" in

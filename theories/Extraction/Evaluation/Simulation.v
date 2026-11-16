@@ -628,9 +628,6 @@ Proof.
   apply H; destruct Hz as [Hz | (y & Hy & HP)]; [ left; lia | right; exists y; split; [ lia | exact HP ] ].
 Qed.
 
-Lemma nil_agree : forall x, dentry_simulation (env_entry nil x) (env_entry nil x).
-Proof. intros; apply env_agree_nil with (P := fun _ => True); exact I. Qed.
-
 Lemma agree_spine : forall H R args pre y (ρ ρ' : env),
     modexp_spine H = (R, args, pre) ->
     env_agree (fun x => ~ exp_fresh x (a_mem H y)) ρ ρ' ->
@@ -639,9 +636,6 @@ Proof.
   intros * Hs Hρ; split; eapply env_agree_mono; try exact Hρ; intros x Hx Hf; apply Hx;
     cbn in Hf; destruct (modexp_spine_fresh _ _ _ _ _ Hs Hf); assumption.
 Qed.
-
-#[local]
-Hint Resolve nil_agree : mctt.
 
 (** ** Evaluation *)
 
@@ -1784,14 +1778,8 @@ Section Read.
   (** ** Readback
 
       The formers readback builds respect equality up to proofs. *)
-  Lemma nf_proof_upto_proofs : forall P P' M M', nf_eq_upto_proofs P P' -> nf_eq_upto_proofs (nf_proof P M) (nf_proof P' M').
-  Proof. intros * H; exact H. Qed.
-
   Lemma nf_neut_upto_proofs : forall κ κ' M M', κ = κ' -> ne_eq_upto_proofs M M' -> nf_eq_upto_proofs (nf_neut κ M) (nf_neut κ' M').
   Proof. intros * <- H; unfold nf_eq_upto_proofs, ne_eq_upto_proofs in *; cbn; rewrite dec_eqb_refl, H; reflexivity. Qed.
-
-  Lemma ne_absurd_upto_proofs : forall C C' M M', nf_eq_upto_proofs C C' -> ne_eq_upto_proofs (ne_absurd C M) (ne_absurd C' M').
-  Proof. intros * H; exact H. Qed.
 
   Lemma nf_lvl_atom_upto_proofs : forall k n n' M M', n = n' -> ne_eq_upto_proofs M M' ->
       nf_eq_upto_proofs (lvⁿ ordinal_zero (mk_level_atom k n M :: nil)) (lvⁿ ordinal_zero (mk_level_atom k n' M' :: nil)).
@@ -1963,7 +1951,7 @@ Section Read.
 
   Create HintDb upto.
   #[local]
-  Hint Resolve nf_proof_upto_proofs nf_neut_upto_proofs ne_absurd_upto_proofs nf_lvl_atom_upto_proofs
+  Hint Resolve nf_neut_upto_proofs nf_lvl_atom_upto_proofs
     nf_lvl_canon_upto_proofs nf_univ_of_upto_proofs nf_con_upto_proofs nf_indty_upto_proofs nf_record_upto_proofs
     nf_fn_upto_proofs nf_pi_upto_proofs nf_and_upto_proofs nf_tuple_upto_proofs ne_app_upto_proofs ne_proj_upto_proofs
     ne_elim_upto_proofs nfs_eq_upto_proofs_app nfs_eq_upto_proofs_cons_intro branches_eq_upto_proofs_nil
@@ -2183,7 +2171,7 @@ End Sim.
 Hint Constructors domain_simulation domain_ne_simulation domain_nf_simulation dmod_simulation level_atoms_simulation domain_list_simulation domain_fields_simulation dentry_simulation ends_agree domain_list_simulation_at : mctt.
 #[export]
 Hint Resolve domain_simulation_lvl_suc domain_simulation_lvl_max domain_list_simulation_snoc env_agree_nil
-  domain_list_simulation_app domain_list_simulation_firstn domain_list_simulation_skipn env_agree_all_args env_agree_all_cons nil_agree : mctt.
+  domain_list_simulation_app domain_list_simulation_firstn domain_list_simulation_skipn env_agree_all_args env_agree_all_cons : mctt.
 
 (** ** Fast Values
 

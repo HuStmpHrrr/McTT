@@ -57,19 +57,6 @@ Fixpoint gmod_inds_core (Φ : gmod) : list ind_decl :=
   | gm_open Φ _ _ _ => gmod_inds_core Φ
   end.
 
-(** The paths of the groups of a Core body *)
-Fixpoint gmod_groups_core (Φ : gmod) : list qname :=
-  match Φ with
-  | gm_nil => nil
-  | gm_ext Φ _ E =>
-      match E with
-      | ge_ind _ p _ _ Φi => p :: gmod_groups_core Φi
-      | ge_mod _ (gu_mk _ (md_body _ Φi)) => gmod_groups_core Φi
-      | _ => nil
-      end ++ gmod_groups_core Φ
-  | gm_open Φ _ _ _ => gmod_groups_core Φ
-  end.
-
 (** The groups filed in a fast body *)
 Fixpoint ft_inds (t : ftrie) : list ind_decl :=
   match t with
@@ -95,31 +82,6 @@ with fu_inds (u : funit) : list ind_decl :=
   | fu_core _ => nil
   end.
 
-(** The paths of the groups filed in a fast body *)
-Fixpoint ft_groups (t : ftrie) : list qname :=
-  match t with
-  | ft_mk m _ =>
-      (fix tree_groups (m : SRaw.tree fentry) : list qname :=
-         match m with
-         | SRaw.Leaf _ => nil
-         | SRaw.Node l _ e r _ => tree_groups l ++ fe_groups e ++ tree_groups r
-         end) m
-  end
-(** The paths of the groups an entry files *)
-with fe_groups (e : fentry) : list qname :=
-  match e with
-  | fe_ind _ p _ _ t => p :: ft_groups t
-  | fe_mod _ u => fu_groups u
-  | _ => nil
-  end
-(** The paths of the groups a unit's body files *)
-with fu_groups (u : funit) : list qname :=
-  match u with
-  | fu_mk _ (fmd_body t) => ft_groups t
-  | fu_core (gu_mk _ (md_body _ Φ)) => gmod_groups_core Φ
-  | fu_core _ => nil
-  end.
-
 (** The units a view sees, newest first *)
 Definition fv_units_seen (v : fview) : list funit :=
   flat_map (fun fp => match fv_find v fp with Some u => u :: nil | None => nil end) (fus_order (fv_units v)).
@@ -127,10 +89,6 @@ Definition fv_units_seen (v : fview) : list funit :=
 (** The groups of the units a fast context sees and of its frames *)
 Definition fc_all_inds (F : FCtx) : list ind_decl :=
   flat_map fu_inds (fv_units_seen (fc_view F)) ++ flat_map (fun f => ft_inds (ff_body f)) (fc_frames F).
-
-(** Their paths *)
-Definition fc_all_groups (F : FCtx) : list qname :=
-  flat_map fu_groups (fv_units_seen (fc_view F)) ++ flat_map (fun f => ft_groups (ff_body f)) (fc_frames F).
 
 (** Two tests that agree everywhere agree on a list. *)
 Lemma forallb_pointwise : forall {X} (f g : X -> bool) l, (forall x, f x = g x) -> forallb f l = forallb g l.

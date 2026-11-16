@@ -30,40 +30,6 @@ Import Syntax_Notations GlobalCtx_Notations.
 
 Section Bridge.
 
-  Lemma alg_type_infer_sound' : forall Θ Ξ Γ (A : nf) M,
-      @alg_type_infer (gc_mk Θ Ξ) Γ A M ->
-      ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
-  Proof.
-    intros; eapply (alg_type_infer_sound (GC := gc_mk Θ Ξ)); eassumption.
-  Qed.
-
-  (** At an index of either tier, a type that infers the universe [u] is a
-      type of the large universe [Typeω@(universe_nf_large_index u)] the
-      index lives at. *)
-  Lemma alg_type_infer_univ_sound' : forall Θ Ξ Γ UA u A,
-      @alg_type_infer (gc_mk Θ Ξ) Γ UA A ->
-      is_univ_nf UA u ->
-      ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(universe_nf_large_index u).
-  Proof.
-    intros * H Hu HΓ.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : universe_nf_tm u)
-      by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
-          exact (alg_type_infer_sound' _ _ _ UA _ H HΓ)).
-    exact (wf_exp_universe_nf_large_index (GC := gc_mk Θ Ξ) ltac:(eassumption)).
-  Qed.
-
-  (** Every expression is a [user_exp] ([user_exp_all]), so completeness has
-      no side condition on this side of the bridge. *)
-  Lemma alg_type_check_complete' : forall Θ Ξ Γ A M,
-      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-      @alg_type_check (gc_mk Θ Ξ) Γ A M.
-  Proof.
-    intros; eapply (alg_type_check_complete (GC := gc_mk Θ Ξ));
-      [ apply user_exp_all | eassumption ].
-  Qed.
-
   (** A type of a large universe infers a universe, at either tier. *)
   Lemma alg_type_infer_large_typ_complete' : forall Θ Ξ Γ i A,
       Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -97,32 +63,6 @@ Section Bridge.
     exact (alg_type_infer_typ_complete_lit (GC := gc_mk Θ Ξ) (user_exp_all _) H).
   Qed.
 
-  (** The two ways "is [A] a type?" can fail: nothing is inferred for [A], or
-      what is inferred is not a universe.  Each contradicts completeness, the
-      second through functionality of inference. *)
-  Lemma not_wf_typ_of_no_infer : forall Θ Ξ Γ A,
-      (forall B : nf, ~ @alg_type_infer (gc_mk Θ Ξ) Γ B A) ->
-      forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
-  Proof.
-    intros * Hno * H.
-    assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u) as [UA [u []]]
-        by eauto using alg_type_infer_large_typ_complete'.
-    firstorder.
-  Qed.
-
-  Lemma not_wf_typ_of_infer_not_typ : forall Θ Ξ Γ A (B : nf),
-      @alg_type_infer (gc_mk Θ Ξ) Γ B A ->
-      (forall u, ~ is_univ_nf B u) ->
-      forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
-  Proof.
-    intros * HB Hne * H.
-    assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u) as [UA [u [HA Hu]]]
-        by eauto using alg_type_infer_large_typ_complete'.
-    assert (B = UA)
-      by (eapply (functional_alg_type_infer (GC := gc_mk Θ Ξ)); [ exact (ctx_wf_gctx _ _ _ (presup_exp_ctx H)) | eassumption .. ]).
-    subst; exact (Hne _ Hu).
-  Qed.
-
 End Bridge.
 
 (** The same at the global context found by instance resolution, which is
@@ -131,7 +71,9 @@ End Bridge.
 Section BridgeInstance.
   Context {GC : GCtx}.
 
-  (** [alg_type_infer_univ_sound'] *)
+  (** At an index of either tier, a type that infers the universe [u] is a
+      type of the large universe [Typeω@(universe_nf_large_index u)] the
+      index lives at. *)
   Lemma alg_type_infer_univ_sound_gc : forall Γ UA u A,
       Γ ⊢a A ⟹ UA -> is_univ_nf UA u -> ⊢ gc_deps ⍮ gc_stack ⍮ Γ ->
       gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@(universe_nf_large_index u).
@@ -142,7 +84,8 @@ Section BridgeInstance.
     exact (wf_exp_universe_nf_large_index ltac:(eassumption)).
   Qed.
 
-  (** [alg_type_check_complete'] *)
+  (** Every expression is a [user_exp] ([user_exp_all]), so completeness has
+      no side condition here. *)
   Lemma alg_type_check_complete_gc : forall Γ A M, gc_deps ⍮ gc_stack ⍮ Γ ⊢ M : A -> Γ ⊢a M ⟸ A.
   Proof. intros; eapply alg_type_check_complete; [ apply user_exp_all | eassumption ]. Qed.
 
@@ -156,7 +99,9 @@ Section BridgeInstance.
     eauto.
   Qed.
 
-  (** [not_wf_typ_of_no_infer] *)
+  (** The two ways "is [A] a type?" can fail: nothing is inferred for [A], or
+      what is inferred is not a universe.  Each contradicts completeness, the
+      second through functionality of inference. *)
   Lemma not_wf_typ_of_no_infer_gc : forall Γ A,
       (forall B : nf, ~ Γ ⊢a A ⟹ B) -> forall i, ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@i.
   Proof.
@@ -201,7 +146,8 @@ Section BridgeInstance.
       κ = κ'.
   Proof. intros * H H'; exact (nbe_ty_kind_functional (nbe_ty_kind_of_typed H) (nbe_ty_kind_of_typed H')). Qed.
 
-  (** [not_wf_typ_of_infer_not_typ] *)
+  (** The second way "is [A] a type?" can fail: what is inferred is not a
+      universe. *)
   Lemma not_wf_typ_of_infer_not_typ_gc : forall Γ A (B : nf),
       Γ ⊢a A ⟹ B -> (forall u, ~ is_univ_nf B u) -> forall i, ~ gc_deps ⍮ gc_stack ⍮ Γ ⊢ A : Typeω@i.
   Proof.

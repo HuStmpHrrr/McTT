@@ -513,10 +513,6 @@ Proof. reflexivity. Qed.
 Lemma fdomain_kind_erase : forall a, domain_kind (fdomain_erase a) = fdomain_kind a.
 Proof. intros []; try reflexivity; match goal with a : fdomain |- _ => destruct a; reflexivity end. Qed.
 
-(** The kind of a fast type, read as its erasure's *)
-Lemma fdomain_kind_erase_eq : forall a κ, fdomain_kind a = κ -> domain_kind (fdomain_erase a) = κ.
-Proof. intros * H; rewrite fdomain_kind_erase; exact H. Qed.
-
 (** A record value's fields, erased *)
 Lemma fields_erase_combine : forall (fl : list string) vs,
     List.map (fun f => (fst f, fdomain_erase (snd f))) (List.combine fl vs) = List.combine fl (fdomains_erase vs).
@@ -809,14 +805,8 @@ Section Ok.
       fdomain_ne_ok (fd_elim ρ Bks p D ups j as' m) -> ind_lookup Θ Ξ p = Some D.
   Proof. intros * H; inversion H; assumption. Qed.
 
-  Lemma decl_carried_some : forall p D, ind_lookup Θ Ξ p = Some D -> decl_carried_ok p (Some D).
-  Proof. intros * E D' [= <-]; exact E. Qed.
-
   Lemma decl_carried_none : forall p, decl_carried_ok p None.
   Proof. intros p D E; discriminate E. Qed.
-
-  Lemma decl_carried_lookup : forall p, decl_carried_ok p (ind_lookup Θ Ξ p).
-  Proof. intros p D E; exact E. Qed.
 
   Lemma decl_carried_carry : forall p D, ind_lookup Θ Ξ p = Some D -> decl_carried_ok p (carry D).
   Proof. intros * E D' [= <-]; exact E. Qed.
@@ -839,7 +829,7 @@ Section Ok.
 End Ok.
 
 #[export]
-Hint Resolve decl_carried_some decl_carried_none decl_carried_lookup decl_carried_carry Forall_app_intro Forall_repeat_intro Forall_skipn_intro
+Hint Resolve decl_carried_none decl_carried_carry Forall_app_intro Forall_repeat_intro Forall_skipn_intro
   Forall_firstn_intro : mctt.
 #[export]
 Hint Constructors Forall : mctt.

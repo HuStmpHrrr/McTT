@@ -61,8 +61,6 @@ Section Impl.
   (** The search finds the views whenever there are some. *)
   Hypothesis views_search_complete : forall F HΞ R csD Hcls Vs Ss csV Nvs,
       views_ok (fc_deps F) (fc_stack F) R csD Vs Ss csV Nvs -> exists v, views_search F HΞ R csD Hcls = run_success v.
-  #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
-  #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
   #[local] Abbreviation canon := (canon load_path read to_core).
   #[local] Abbreviation run_wf := (run_wf load_path read to_core).
@@ -2150,7 +2148,8 @@ Section Impl.
     | right _ => None
     end.
 
-  (** The skeleton of the frames of a fast context: [frame_skeleton] *)
+  (** The skeleton of the frames of a fast context: their parameters are
+      assumptions. *)
   Definition fc_skeleton (F : FCtx) : skeleton := map (fun _ => None) (fc_tele F).
 
   (** The error of a rejected core command: the first open of it that

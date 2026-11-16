@@ -115,13 +115,6 @@ Section SiteDesc.
       injection Hm as <-; (do 4 eexists; split; [ reflexivity | exact Hl ]).
   Qed.
 
-  Lemma mdenote_apps : forall Ns Γ H R R', mdenote Θ Ξ Γ H R -> mdesc_ats R Ns = Some R' -> mdenote Θ Ξ Γ (me_apps H Ns) R'.
-  Proof.
-    induction Ns as [| N Ns IH]; intros * Hm Ha; cbn in Ha |- *; [ injection Ha as <-; exact Hm |].
-    destruct (mdesc_at R N) as [R1 |] eqn:E; [| discriminate ].
-    apply (IH _ _ R1); [ eapply mdenote_app; eassumption | exact Ha ].
-  Qed.
-
   (** An open frame, of either kind, named by its path, is stored there. *)
   Lemma site_of_frame : forall H p TΦ, mod_qname H = Some p -> gc_frame Ξ p = Some TΦ -> msite Θ Ξ H p.
   Proof.

@@ -508,7 +508,7 @@ Section BlocksBlame.
 
   (** The group of an eliminator: its own once filled; with none, the one
       group without uniform parameters, among those of the units seen and
-      the frames ([fc_all_groups]), a member of which its block [m] is
+      the frames ([fc_all_inds]), a member of which its block [m] is
       for.  That second case is a guess, a hint for the message only: it
       reads the branches' names, not the scrutinee's type, and is asked of
       a term already rejected, so it decides nothing about typing. *)

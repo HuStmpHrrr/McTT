@@ -1944,16 +1944,6 @@ Qed.
 
 Hint Resolve alg_type_check_subtyp : mctt.
 
-Corollary alg_type_check_conv : forall {Γ i A A' M},
-    Γ ⊢a M ⟸ A ->
-    Γ ⊢ A ≈ A' : Typeω@i ->
-    Γ ⊢a M ⟸ A'.
-Proof.
-  mauto 3.
-Qed.
-
-Hint Resolve alg_type_check_conv : mctt.
-
 (** A term that infers the normal form of a type of a sort checks against
     the type. *)
 Lemma alg_type_check_of_infer_nbe : forall {Γ M A S},
@@ -4227,8 +4217,6 @@ Hint Resolve alg_type_check_typ_implies_alg_type_infer_typ : mctt.
 Hint Resolve alg_type_check_pi_implies_alg_type_infer_pi : mctt.
 #[export]
 Hint Resolve alg_type_check_subtyp : mctt.
-#[export]
-Hint Resolve alg_type_check_conv : mctt.
 #[export]
 Hint Resolve alg_type_check_complete : mctt.
 #[export]

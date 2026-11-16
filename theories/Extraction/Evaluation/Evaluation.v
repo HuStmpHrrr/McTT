@@ -984,7 +984,6 @@ End TypedEntriesOk.
 (** The erasure of an element found, for the obligations' [eauto] *)
 #[local] Hint Resolve nth_error_map_some field_lookup_erase_some : core.
 #[local] Hint Extern 1 => match goal with |- context [ List.length (List.map _ _) ] => rewrite List.length_map end : core.
-#[local] Hint Resolve fdomain_kind_erase_eq : core.
 
 (** A prefix up to a name ends with the entry of that name. *)
 Lemma gm_prefix_upto_ext : forall Φ y Φ1, gm_prefix_upto Φ y = Some Φ1 -> exists Φ0 E, Φ1 = gm_ext Φ0 y E.
