@@ -256,13 +256,19 @@ Cumulativity of the gluing judgment, along the order of indices.
 &nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Universes.html#glu_rel_exp_of_typ"><span class="id" title="lemma">glu_rel_exp_of_typ</span></a>; <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">⊢ˢ</span></a> σ <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">split</span>; <span class="id" title="var">mauto</span> 4.<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a>[σ]</span> is of <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@(<a class="idref" href="Mctt.Core.SetModel.Inductives.ElimView.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a>)[σ]</span>, which is <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@(<a class="idref" href="Mctt.Core.SetModel.Inductives.ElimView.html#ElimView.ElimViewSteps.ViewStep.ViewAt.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a>)</span>.  A
+      depth-4 search took 9 s for it. 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">rewrite</span> &lt;- (<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_typ"><span class="id" title="lemma">exp_sub_typ</span></a> σ (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">i</span>)); <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_exp"><span class="id" title="lemma">sub_preserves_exp</span></a>; [ <span class="id" title="var">mauto</span> 3 | <span class="id" title="var">eassumption</span> ] | ].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">repeat</span> <span class="id" title="tactic">split</span>; <span class="id" title="var">mauto</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">match_by_head1</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a> <span class="id" title="var">invert_glu_univ_elem</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">apply_predicate_equivalence</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">cbn</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="var">mauto</span> 4.<br/>
 </div>
 
 <div class="doc">
